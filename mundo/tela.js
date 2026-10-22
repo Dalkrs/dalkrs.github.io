@@ -13,17 +13,18 @@
   const RAIO_EVENTO = 80;                         // raio de um evento posto com um clique (unidades do mapa)
   const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0,
     terPincel: '', pinTer: 'fl', pinRaio: 24, freModo: 'linha', des: 'carimbo', carimbo: 'arvore', carTam: 40, fonte: 'mapa', txtTam: 28, estilo: 'rio', linNivel: 2,
-    tipoGrupo: '', zonaTipo: 'tempestade' };                                // (lote 7, parte 5b) o tipo do grupo novo: '' (grupo), caravana, patrulha, exército
+    tipoGrupo: '', zonaTipo: 'tempestade',                                  // (lote 7, parte 5b) o tipo do grupo novo: '' (grupo), caravana, patrulha, exército
+    setaFac: null, zAj: 'por', recPin: '', recQtd: 1 };                      // (lote 17) a seta (a facção), o ajuste da zona, o recurso do pincel
   // a largura de cada desenho de linha, em pixels da tela, para Fina, Média, Larga e Bem larga (no rio: a da foz)
   const LARGURAS = { rio: [6, 12, 20, 32], estrada: [2, 3.5, 5, 8], trilha: [1.5, 2.5, 4, 6] };
-  const CAMADA = { r: 'reg', f: 'fre', t: 'rot', e: 'eve', m: 'mar', g: 'gru', z: 'zon', l: 'lin', c: 'car', x: 'txt' };
+  const CAMADA = { r: 'reg', f: 'fre', t: 'rot', e: 'eve', m: 'mar', g: 'gru', z: 'zon', l: 'lin', c: 'car', x: 'txt', a: 'set' };
   const APAGADO = { m: 'Marcador apagado.', g: 'Grupo apagado.', r: 'Região apagada.', e: 'Evento apagado.', t: 'Rota apagada.', f: 'Frente apagada.',
-    z: 'Zona de guerra apagada.', l: 'Linha apagada.', c: 'Carimbo apagado.', x: 'Texto apagado.' };
+    z: 'Zona de guerra apagada.', l: 'Linha apagada.', c: 'Carimbo apagado.', x: 'Texto apagado.', a: 'Seta apagada.' };
   // rótulos do desfazer em minúsculas, como os do painel e do App ("Desfazer: novo marcador")
   const NOVO = { m: 'novo marcador', g: 'novo grupo', r: 'nova região', e: 'novo evento', t: 'nova rota', f: 'nova frente',
-    z: 'nova zona de guerra', l: 'nova linha', c: 'novo carimbo', x: 'novo texto' };
+    z: 'nova zona de guerra', l: 'nova linha', c: 'novo carimbo', x: 'novo texto', a: 'nova seta' };
   // o que só se escolhe ao soltar (arrastar por cima ainda anda pelo mapa): áreas, linhas e os enfeites
-  const LARGOS = new Set(['r', 't', 'f', 'z', 'l', 'c', 'x']);
+  const LARGOS = new Set(['r', 't', 'f', 'z', 'l', 'c', 'x', 'a']);
   // as fontes dos textos livres (Grenze e IM Fell English vêm do Google Fonts, no index.html)
   const FONTE_CSS = { mapa: "'Grenze', Georgia, serif", classica: "'IM Fell English', Georgia, 'Times New Roman', serif", simples: "'Atkinson Hyperlegible Next', system-ui, sans-serif" };
   const TINTA = '#2a2118';                        // a tinta escura dos carimbos e dos textos de mapa
@@ -40,8 +41,9 @@
     { id: 'p', nome: 'Desenho', tecla: 'P' },
     { id: 'n', nome: 'Névoa', tecla: 'N' },
     { id: 'd', nome: 'Régua', tecla: 'D' },
+    { id: 'w', nome: 'Caneta', tecla: 'W' },                    // (lote 17) o desenho de agora, que todos veem (também quem joga)
   ];
-  const SEPARA_DEPOIS = new Set(['sel', 'f']);
+  const SEPARA_DEPOIS = new Set(['sel', 'f', 'd']);
   const POR_TECLA = Object.fromEntries(FERRAMENTAS.map(f => [f.tecla.toLowerCase(), f.id]));
   const VALIDAS = new Set(FERRAMENTAS.map(f => f.id));
   // ícones do trilho: traço simples numa caixa 24×24, na cor do botão
@@ -57,6 +59,7 @@
     p: '<path d="M14.6 4.4l5 5L9.2 19.8l-5.6.6.6-5.6z"/><path d="M12.6 6.4l5 5"/>',
     n: '<path d="M7 18.5h10.5a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.7-1.2A4.6 4.6 0 0 0 7 18.5z"/>',
     d: '<path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
+    w: '<path d="M14.5 3.5l4 4L8 18l-4.5 1 1-4.5z"/><path d="M12.5 5.5l4 4M13 21c1.8-1.2 3.4-1.2 5.2 0 .9.6 1.8.6 2.8 0"/>',
   };
 
   let App = null;
@@ -279,10 +282,12 @@
 
   const podeEditar = () => { try { return !!(App && App.podeEditar()); } catch (e) { return false; } };
   const mestreVe = () => !!(App && App.papel === 'mestre' && !App.comoJogador);
+  // (lote 17) a caneta é de todos (quem joga também desenha), com um mapa aberto
+  const podeRabiscar = () => { try { return !!(App && App.podeRabiscar && App.podeRabiscar()); } catch (e) { return false; } };
   function ferramenta() {
     if (medindo) return 'd';
     const f = App && App.ferramenta;
-    return podeEditar() && VALIDAS.has(f) ? f : 'sel';
+    return podeEditar() && VALIDAS.has(f) ? f : f === 'w' && podeRabiscar() ? 'w' : 'sel';
   }
   const selecao = () => (Array.isArray(App.sel) ? App.sel : []).filter(id => indice.has(id));
   /* (lote 8, parte 4) As camadas deste aparelho (camadas.js): o que está numa camada escondida não se desenha; o que
@@ -300,6 +305,7 @@
       case 'f': return opt('freModo') === 'perigo' ? 'perigos' : 'guerra';
       case 'h': return 'terreno';
       case 'p': return modoDesenho() === 'linha' ? 'linhas' : 'enfeites';
+      case 'w': return 'desenhos';
     }
     return null;
   }
@@ -481,12 +487,12 @@
     if (qTudo) { cancelAnimationFrame(qTudo); qTudo = 0; }
     if (!App || !svg) return;
     // no meio de um arrasto o provisório manda; o resto espera o gesto acabar
-    if (g && (g.tipo === 'mover' || g.tipo === 'alca' || g.tipo === 'pincel' || g.tipo === 'hexpincel' || g.tipo === 'pintura' || g.tipo === 'carimbos')) { adiado = true; return; }
+    if (g && (g.tipo === 'mover' || g.tipo === 'alca' || g.tipo === 'pincel' || g.tipo === 'hexpincel' || g.tipo === 'pintura' || g.tipo === 'carimbos' || g.tipo === 'rabisco')) { adiado = true; return; }
     adiado = false;
     const m = safeVista();
     M = m;
     pintarTrilho();
-    palco.className = 'palco ' + (podeEditar() ? 't-' + ferramenta() : 't-ver') + (g && g.tipo === 'pan' ? ' pan' : '');
+    palco.className = 'palco ' + (podeEditar() || ferramenta() === 'w' ? 't-' + ferramenta() : 't-ver') + (g && g.tipo === 'pan' ? ' pan' : '');
     if (!m) {
       mundoEl.hidden = true; indice = new Map();
       desenharOpts(); atualizarDica();
@@ -507,9 +513,13 @@
     desenharPintura(m);
     desenharGrade(m);
     const fac = new Map((m.faccoes || []).map(f => [f.id, f]));
-    ctxAtual = { m, dia: (m.cal && m.cal.dia) || 0, fac, mestre: mestreVe(), fb: escalaBandeira() };
+    ctxAtual = { m, dia: (m.cal && m.cal.dia) || 0, fac, mestre: mestreVe(), fb: escalaBandeira(), marHex: marDoMapa(m) };
     desenharObjetos(m, ctxAtual);
     desenharHexGuerra(m);
+    // (lote 17) a zona de guerra automática, as rotas por mar, as setas das marchas, os recursos dos hexágonos e a caneta
+    for (const [nome, fn] of [['zona', () => desenharZonaAuto(m, ctxAtual)], ['mar', () => desenharMar(m, ctxAtual)], ['setas', () => desenharSetasDosGrupos(m, ctxAtual)],
+      ['recursos', () => desenharRecursosHex(m)], ['caneta', () => desenharRabiscos(m)]]) { try { fn(); } catch (e) { if (!avisouErro) { avisouErro = true; console.error('Mapa-múndi: não deu para desenhar ' + nome + '.', e); } } }
+    pintarCaneta();
     // As animações (pulso dos eventos, marcha das frentes) repintam o SVG a cada quadro, fora da placa de vídeo.
     // Poucas, dão vida ao mapa; muitas, gastam a bateria e travam o resto: acima da conta, ficam paradas.
     svg.classList.toggle('sem-pulso', C.eve.getElementsByClassName('eve-pulso').length + C.zon.getElementsByClassName('zona-pulsa').length > 24);
@@ -660,7 +670,8 @@
       x.globalAlpha = 1;
     }
     const n = { mato: 9, arvores: 7, colinas: 4, montes: 4, juncos: 6, areia: 40, neve: 14, ondas: 4, pedras: 8,
-      ruinas: 4, lava: 5, cristais: 6, selva: 10, savana: 6, tundra: 7, corrompida: 5 }[tex] || 0, pos = [];
+      ruinas: 4, lava: 5, cristais: 6, selva: 10, savana: 6, tundra: 7, corrompida: 5,
+      raso: 5, fundo: 4, desfiladeiro: 3, geleira: 5, morta: 6, oasis: 2, charneca: 8, devastada: 5 }[tex] || 0, pos = [];     // (lote 17: os oito novos)
     for (let i = 0; i < n; i++) {
       let melhor = null, dm = -1;
       for (let k = 0; k < 8; k++) {
@@ -694,6 +705,16 @@
         case 'savana': x.strokeStyle = misturar(cor, '#6b4a1b', 0.45); linhas([-3, 1, -1.5, -2.5], [0, 1.5, 0.3, -3.5], [3, 1, 1.8, -2.5]); break;
         case 'tundra': x.fillStyle = misturar(cor, '#2f4a35', 0.55); x.beginPath(); x.arc(-2, 0, 2.2, 0, 7); x.arc(2, 0, 2.2, 0, 7); x.arc(0, -2, 2.5, 0, 7); x.fill(); x.fillStyle = '#ffffff'; x.globalAlpha = 0.6; x.beginPath(); x.ellipse(5, 5, 4, 1.6, 0, 0, 7); x.fill(); x.globalAlpha = 1; break;
         case 'corrompida': x.lineWidth = 3; x.strokeStyle = '#b25cff'; x.globalAlpha = 0.45; linhas([-6, -3, -1, 0], [-1, 0, 2, -2], [2, -2, 6, 3]); x.lineWidth = 1; x.strokeStyle = '#241228'; x.globalAlpha = 1; linhas([-6, -3, -1, 0], [-1, 0, 2, -2], [2, -2, 6, 3]); x.fillStyle = '#d7a6ff'; x.beginPath(); x.arc(-3, 4, 0.9, 0, 7); x.fill(); break;
+        // (lote 17) os oito novos
+        case 'raso': x.strokeStyle = cla; x.lineWidth = 1.1; x.beginPath(); x.arc(0, 0, 3.6, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); x.beginPath(); x.arc(0, 0, 6, Math.PI * 1.2, Math.PI * 1.8); x.stroke(); x.fillStyle = esc; x.globalAlpha = 0.35; x.beginPath(); x.arc(4, 3, 0.9, 0, 7); x.arc(-3, 3.5, 0.7, 0, 7); x.fill(); x.globalAlpha = 1; break;
+        case 'fundo': x.strokeStyle = misturar(cor, '#ffffff', 0.2); x.lineWidth = 1.6; x.beginPath(); x.moveTo(-10, 0); x.quadraticCurveTo(-5, -5, 0, 0); x.quadraticCurveTo(5, 5, 10, 0); x.stroke(); x.strokeStyle = esc; x.lineWidth = 1; x.beginPath(); x.moveTo(-7, 5); x.quadraticCurveTo(-3.5, 2, 0, 5); x.stroke(); break;
+        case 'desfiladeiro': x.lineWidth = 3.2; x.strokeStyle = misturar(cor, '#000000', 0.5); linhas([-9, -4, -3, 0], [-3, 0, 2, -2.5], [2, -2.5, 9, 3]); x.lineWidth = 1; x.strokeStyle = cla; linhas([-9, -6.2, -3, -2.2], [-3, -2.2, 2, -4.7], [2, -4.7, 9, 0.8]); break;
+        case 'geleira': x.fillStyle = '#ffffff'; x.globalAlpha = 0.5; x.beginPath(); x.moveTo(-6, 2); x.lineTo(-1, -4); x.lineTo(5, -1); x.lineTo(1, 4); x.closePath(); x.fill(); x.globalAlpha = 1; x.strokeStyle = misturar('#5f8fb0', cor, 0.15); x.lineWidth = 0.9; linhas([-6, 2, -1, -4], [-1, -4, 5, -1], [-1, -4, 0, 1]); break;
+        case 'morta': x.strokeStyle = misturar(cor, '#000000', 0.5); x.lineWidth = 1.3; linhas([0, 5, 0, -5], [0, -1, -3.5, -4], [0, 1, 3, -3], [-2, -3, -3, -5.5], [1.8, -1.8, 3.5, -5]); break;
+        case 'oasis': x.fillStyle = '#4f9fd0'; x.globalAlpha = 0.75; x.beginPath(); x.ellipse(0, 4, 6, 2.2, 0, 0, 7); x.fill(); x.globalAlpha = 1; x.strokeStyle = misturar(cor, '#3a2a10', 0.5); x.lineWidth = 1.2; linhas([0, 3, 1, -5]);
+          x.fillStyle = misturar(cor, '#1d4a22', 0.55); x.beginPath(); x.ellipse(-2, -5, 3.5, 1.2, -0.4, 0, 7); x.ellipse(3.6, -5, 3.5, 1.2, 0.4, 0, 7); x.fill(); break;
+        case 'charneca': x.strokeStyle = misturar(cor, '#3a2a3a', 0.45); linhas([-3, 1, -1.5, -1.5], [0, 1.5, 0.3, -2], [3, 1, 1.8, -1.5]); x.fillStyle = '#c08cbb'; x.beginPath(); x.arc(-1.5, -2, 1, 0, 7); x.arc(1.8, -2, 1, 0, 7); x.arc(0.3, -2.6, 0.9, 0, 7); x.fill(); break;
+        case 'devastada': x.lineWidth = 1.2; x.strokeStyle = '#2a1f18'; linhas([-6, -2, -1, 1], [-1, 1, 3, -1], [3, -1, 7, 2]); x.fillStyle = '#e0702a'; x.globalAlpha = 0.7; x.beginPath(); x.arc(-3, 3, 0.9, 0, 7); x.arc(4, -3, 0.7, 0, 7); x.fill(); x.globalAlpha = 1; break;
       }
     });
     return cv;
@@ -1158,6 +1179,71 @@
         for (let i = 0; i < 5; i++) { const [dx, dy] = ponto(0.75); circ(cx + dx * u, cy + dy * u, u * 0.028); enche('#d7a6ff', 0.85); }
         break;
       }
+      // (lote 17) os oito novos
+      case 'raso': {
+        for (const [dx, dy] of espalhar(2 + Math.floor(rnd() * 2), 0.55)) { const [x, y] = P(dx, dy), r = u * (0.12 + rnd() * 0.06); c.beginPath(); c.arc(x, y, r, Math.PI * 1.1, Math.PI * 1.9); tra(cla, lw * 1.1); c.beginPath(); c.arc(x, y, r * 1.7, Math.PI * 1.2, Math.PI * 1.8); tra(cla, lw, 0.6); }
+        for (let i = 0; i < 4; i++) { const [dx, dy] = ponto(0.7); circ(cx + dx * u, cy + dy * u, u * (0.025 + rnd() * 0.02)); enche(esc, 0.4); }
+        break;
+      }
+      case 'fundo': {
+        for (const [dx, dy] of espalhar(3 + Math.floor(rnd() * 2), 0.6)) {
+          const [x, y] = P(dx, dy), w = u * (0.2 + rnd() * 0.06);
+          c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x - w / 2, y - w * 0.6, x, y); c.quadraticCurveTo(x + w / 2, y + w * 0.6, x + w, y); tra(misturar(cor, '#ffffff', 0.25), lw * 1.3);
+          c.beginPath(); c.moveTo(x - w * 0.6, y + w * 0.45); c.quadraticCurveTo(x - w * 0.3, y + w * 0.15, x, y + w * 0.45); tra(esc, lw * 0.9, 0.7);
+        }
+        break;
+      }
+      case 'desfiladeiro': {
+        const a0 = rnd() * Math.PI, pts = [];
+        for (let i = 0; i <= 5; i++) { const t = i / 5 - 0.5, desvio = (rnd() - 0.5) * 0.25; pts.push([cx + Math.cos(a0) * t * 1.5 * u - Math.sin(a0) * desvio * u, cy + Math.sin(a0) * t * 1.5 * u + Math.cos(a0) * desvio * u]); }
+        c.save(); c.beginPath(); hexNoCaminho(c, m, hx.q, hx.r); c.clip();
+        poli(pts); tra(misturar(cor, '#000000', 0.55), u * 0.16, 0.85);
+        poli(pts.map(p => [p[0] - u * 0.06, p[1] - u * 0.06])); tra(cla, lw, 0.8);
+        c.restore();
+        for (const [dx, dy] of espalhar(2, 0.6)) { const [x, y] = P(dx, dy); poli([[x - u * 0.12, y + u * 0.08], [x, y - u * 0.14], [x + u * 0.12, y + u * 0.08]], true); enche(som, 0.8); tra(esc, lw); }
+        break;
+      }
+      case 'geleira': {
+        for (const [dx, dy] of espalhar(2 + Math.floor(rnd() * 2), 0.5)) {
+          const [x, y] = P(dx, dy), r = u * (0.18 + rnd() * 0.08);
+          poli([[x - r, y + r * 0.4], [x - r * 0.2, y - r * 0.7], [x + r, y - r * 0.2], [x + r * 0.3, y + r * 0.7]], true); enche('#ffffff', 0.55); tra(misturar('#5f8fb0', cor, 0.15), lw);
+          c.beginPath(); c.moveTo(x - r * 0.2, y - r * 0.7); c.lineTo(x, y + r * 0.1); tra(misturar('#5f8fb0', cor, 0.15), lw * 0.8, 0.8);
+        }
+        break;
+      }
+      case 'morta': {
+        for (const [dx, dy] of espalhar(2 + Math.floor(rnd() * 2), 0.5)) {
+          const [x, y] = P(dx, dy), H = u * (0.46 + rnd() * 0.14);
+          c.beginPath(); c.moveTo(x, y + H * 0.5); c.lineTo(x, y - H * 0.5);
+          c.moveTo(x, y); c.lineTo(x - H * 0.35, y - H * 0.35); c.moveTo(x, y + H * 0.1); c.lineTo(x + H * 0.32, y - H * 0.25);
+          c.moveTo(x - H * 0.2, y - H * 0.2); c.lineTo(x - H * 0.28, y - H * 0.5); c.moveTo(x + H * 0.18, y - H * 0.13); c.lineTo(x + H * 0.34, y - H * 0.45);
+          tra(misturar(cor, '#000000', 0.6), lw * 1.6);
+        }
+        break;
+      }
+      case 'oasis': {
+        c.beginPath(); c.ellipse(cx, cy + u * 0.15, u * 0.38, u * 0.16, 0, 0, Math.PI * 2); enche('#4f9fd0', 0.85); tra(misturar('#4f9fd0', '#000000', 0.35), lw);
+        for (const lado of [-1, 1]) {
+          const x = cx + lado * u * 0.32, y = cy - u * 0.05, H = u * 0.38;
+          c.beginPath(); c.moveTo(x, y + H * 0.35); c.quadraticCurveTo(x + lado * H * 0.1, y - H * 0.2, x - lado * H * 0.05, y - H * 0.6); tra(misturar(cor, '#3a2a10', 0.55), lw * 1.4);
+          for (const a of [-2.6, -1.9, -1.2, -0.5]) { c.beginPath(); c.moveTo(x - lado * H * 0.05, y - H * 0.6); c.quadraticCurveTo(x - lado * H * 0.05 + Math.cos(a) * H * 0.3, y - H * 0.6 + Math.sin(a) * H * 0.3 - H * 0.08, x - lado * H * 0.05 + Math.cos(a) * H * 0.45, y - H * 0.6 + Math.sin(a) * H * 0.45 + H * 0.12); tra(misturar(cor, '#1d4a22', 0.6), lw * 1.2); }
+        }
+        break;
+      }
+      case 'charneca': {
+        for (const [dx, dy] of espalhar(5 + Math.floor(rnd() * 3), 0.72)) {
+          const x = cx + dx * u, y = cy + dy * u, sz = u * (0.08 + rnd() * 0.04);
+          tufo(x, y, sz, misturar(cor, '#3a2a3a', 0.45));
+          circ(x - sz * 0.6, y - sz * 1.1, sz * 0.32); enche('#c08cbb', 0.95); circ(x + sz * 0.6, y - sz * 1.05, sz * 0.3); enche('#c08cbb', 0.95);
+        }
+        break;
+      }
+      case 'devastada': {
+        for (let i = 0; i < 2 + (rnd() < 0.5 ? 1 : 0); i++) { const [dx, dy] = ponto(0.45); rachadura(cx + dx * u, cy + dy * u, 4, '#6b4a33', '#1f1712', 2.4); }
+        for (let i = 0; i < 3; i++) { const [dx, dy] = ponto(0.6); const x = cx + dx * u, y = cy + dy * u; c.beginPath(); c.ellipse(x, y, u * 0.09, u * 0.05, 0, 0, Math.PI * 2); enche('#2a211b', 0.6); }
+        for (let i = 0; i < 4; i++) { const [dx, dy] = ponto(0.7); circ(cx + dx * u, cy + dy * u, u * 0.024); enche('#ef8a3a', 0.85); }
+        break;
+      }
       default: break;                            // liso: só a cor
     }
     c.globalAlpha = 1;
@@ -1201,14 +1287,15 @@
     if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)) + chaveBr(ctx, fid) + '|' + JSON.stringify(modoDe(ctx, o)) + (o.ocup ? '|oc' + corOcup(ctx, o) : ''); }
     else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o)) + chaveBr(ctx, o.fac) + (o.desc && ctx.mestre && N().descansandoAgora && N().descansandoAgora(ctx.m, o) ? '|zz' : '');
     else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
-    else if (o.k === 't') extra += '|' + andadoDe(ctx.m, o);
+    else if (o.k === 't') extra += '|' + andadoDe(ctx.m, o) + '|mar' + trechosDeMar(ctx, o.pts).join(',');
+    else if (o.k === 'a') { const f = o.fac && ctx.fac.get(o.fac); extra += (f ? f.cor : ''); }
     else if (o.k === 'e') extra += '|' + eventoAtivo(o, ctx.dia) + '|' + raioNoDia(o, ctx.dia);
     else if (o.k === 'z') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + zonaAtiva(o, ctx.dia) + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
     return JSON.stringify(o) + extra;
   }
   let avisouErro = false;
   function desenharObjetos(m, ctx) {
-    const vistos = new Set(), por = { lin: [], car: [], reg: [], zon: [], nreg: [], txt: [], fre: [], rot: [], eve: [], mar: [], gru: [] }, Cm = Cam();
+    const vistos = new Set(), por = { lin: [], car: [], reg: [], zon: [], nreg: [], txt: [], fre: [], rot: [], set: [], eve: [], mar: [], gru: [] }, Cm = Cam();
     for (const o of m.objs || []) {
       const cam = CAMADA[o.k];
       if (!cam || !o.id) continue;
@@ -1268,6 +1355,7 @@
       case 'l': linhaGeo(g0, o); break;
       case 'c': carimbo(g0, o); break;
       case 'x': textoLivre(g0, o); break;
+      case 'a': seta(g0, o, ctx); break;
     }
     return g0;
   }
@@ -1417,6 +1505,8 @@
     g0.append(s('path', { class: 'rot-fundo', d }), s('path', { class: 'rot' + via, d }));
     const andou = andadoDe(ctx.m, o);
     if (andou > 0) g0.append(s('path', { class: 'rot-andado' + via, d: caminho(trecho(o.pts, andou)) }));
+    // (lote 17) a travessia por mar (de um porto a outro ligado a ele): a linha azul das ondas por cima
+    for (const i of trechosDeMar(ctx, o.pts)) g0.append(s('path', { class: 'rot-mar', d: caminho([o.pts[i], o.pts[i + 1]]) }));
     g0.append(s('path', { class: 'rot-hit', d }));
     if (o.nome) { const c = meioDe(o.pts), fx = fixo(c[0], c[1]); fx.append(rotulo(o.nome, -10, 'rotulo rotulo-linha')); g0.append(fx); }
   }
@@ -2011,8 +2101,8 @@
       carimbo(el, { id: 'fantasma', x: cursor.x, y: cursor.y, ic: opt('carimbo'), tam: tamCarimbo(), cor: '', vira: false, nome: '' });
       c.append(el);
     }
-    // a ferramenta Terreno: os hexágonos que o pincel pega, embaixo do cursor
-    else if (ferramenta() === 'h' && cursor && podeEditar() && temGrade(M) && !(g && g.toque)) {
+    // a ferramenta Terreno: os hexágonos que o pincel pega, embaixo do cursor (lote 17: e o ajuste da zona de guerra)
+    else if ((ferramenta() === 'h' || (ferramenta() === 'f' && opt('freModo') === 'ajuste')) && cursor && podeEditar() && temGrade(M) && !(g && g.toque)) {
       const hx = N().hexDe(M, cursor.x, cursor.y);
       let d = '';
       for (const x of hexesDoPincel(hx)) d += caminho(N().cantosHex(M, x.q, x.r), true);
@@ -2103,8 +2193,9 @@
     return out;
   }
   function corDoPincel() {
+    if (ferramenta() === 'f') return opt('zAj') === 'tira' ? '#05070c' : opt('zAj') === 'auto' ? '#9aa3b5' : '#c0503a';     // (lote 17) o ajuste da zona
     const modo = opt('terModo'), t = terrenoEscolhido();
-    return modo === 'ter' ? (t ? t.cor : '#9aa3b5') : modo === 'custo' ? '#e6ab4f' : '#05070c';
+    return modo === 'ter' ? (t ? t.cor : '#9aa3b5') : modo === 'custo' ? '#e6ab4f' : modo === 'rec' ? '#f2c14e' : '#05070c';
   }
   function pintarHex(p) {
     const hx = N().hexDe(M, p.x, p.y);
@@ -2119,6 +2210,8 @@
     }
   }
   function aplicarPincelHex(chaves) {
+    if (ferramenta() === 'f') { aplicarAjusteZona(chaves); return; }                 // (lote 17) a zona de guerra
+    if (opt('terModo') === 'rec' || opt('terModo') === 'semrec') { aplicarRecursoHex(chaves); return; }     // (lote 17) os recursos
     const modo = opt('terModo'), t = terrenoEscolhido(), custo = limitar(Number(opt('custo')) || 0, 0.1, 9999);
     if (modo === 'ter' && !t) { App.toast('Este mapa não tem tipos de terreno. Crie um na aba Terreno.'); return; }
     const lim = (N().LIMITES && N().LIMITES.hexes) || 20000;
@@ -2148,8 +2241,326 @@
     // (lote 7, parte 5a) os eventos de hoje que pesam ali: os cubos a mais e o que fecha a passagem
     if (i.extra) de = de ? de.slice(0, -1) + '; +' + num(i.extra, 1) + ' dos eventos)' : ' (+' + num(i.extra, 1) + ' dos eventos)';
     const fecha = i.fechado ? M.objs.find(o => o.id === i.fechado) : null;
+    // (lote 17) com a economia ligada, o que o hexágono produz por semana (o terreno e o que o pincel pôs)
+    let prod = '';
+    if (ecoLigada(M) && mestreVe()) {
+      const tr = (i.terreno && M.eco.ter[i.terreno.id]) || {}, hr = (M.eco.hexr || {})[hx.q + ',' + hx.r] || {}, ids = [...new Set(Object.keys(tr).concat(Object.keys(hr)))];
+      if (ids.length) prod = ' Produz por semana: ' + ids.map(id => { const r = M.eco.rec.find(x => x.id === id); return (r ? r.nome : id) + ' ' + num((tr[id] || 0) + (hr[id] || 0), 1) + (hr[id] ? ' (' + num(hr[id], 1) + ' do pincel)' : ''); }).join(', ') + '.';
+    }
     return 'Aqui: ' + (i.terreno ? i.terreno.nome + (i.desenho ? ' (do desenho)' : '') : 'sem terreno') + ' · ' + num(i.custo, 1) + ' cubos' + de + '.'
-      + (fecha ? ' Fechado: "' + N().nomeEvento(fecha) + '".' : '');
+      + (fecha ? ' Fechado: "' + N().nomeEvento(fecha) + '".' : '') + prod;
+  }
+
+  /* ---------------- (lote 17) a zona de guerra automática, as setas, o mar, os recursos e a caneta ---------------- */
+  const VIZ6 = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+  const j0 = x => JSON.stringify(x);
+  // os segmentos [[x, y], [x, y]] emendados em linhas (as pontas que se tocam viram uma só)
+  function encadear(segs) {
+    const ch = p => Math.round(p[0] * 10) + ',' + Math.round(p[1] * 10), por = new Map(), usado = new Uint8Array(segs.length), out = [];
+    segs.forEach((sg, i) => { for (const p of sg) { const k = ch(p); if (!por.has(k)) por.set(k, []); por.get(k).push(i); } });
+    const prox = p => { for (const i of por.get(ch(p)) || []) if (!usado[i]) return i; return -1; };
+    for (let i = 0; i < segs.length; i++) {
+      if (usado[i]) continue;
+      usado[i] = 1;
+      const l = [segs[i][0], segs[i][1]];
+      for (let j = prox(l[l.length - 1]); j >= 0; j = prox(l[l.length - 1])) { usado[j] = 1; const sg = segs[j]; l.push(ch(sg[0]) === ch(l[l.length - 1]) ? sg[1] : sg[0]); }
+      for (let j = prox(l[0]); j >= 0; j = prox(l[0])) { usado[j] = 1; const sg = segs[j]; l.unshift(ch(sg[0]) === ch(l[0]) ? sg[1] : sg[0]); }
+      out.push(l);
+    }
+    return out;
+  }
+  // o lado que dois hexágonos vizinhos dividem (os dois cantos em comum)
+  function ladoComum(m, a, b) {
+    const ca = N().cantosHex(m, a.q, a.r), cb = N().cantosHex(m, b.q, b.r), tol = Math.max(0.01, (m.grade.tam || 1) * 0.02), out = [];
+    for (const p of ca) if (cb.some(q => Math.abs(q[0] - p[0]) < tol && Math.abs(q[1] - p[1]) < tol)) out.push(p);
+    return out.length === 2 ? out : null;
+  }
+  /* A zona de guerra automática (camada Guerra): os hexágonos listrados nas cores de quem controla e de contra quem, a
+     borda da zona tracejada e a linha do front (as duas cores, andando, como a frente de batalha). O mestre conta ela
+     (MundoNucleo.zonaDeGuerra); quem joga recebe pronta na projeção (guerra.zauto). */
+  let zagChave = null, zagFonte = null, zagRapida = '';
+  // a zona que vale aqui: a pronta da projeção (quem joga, "ver como jogador") ou a conta do mestre; e de onde ela veio
+  function zonaParaDesenhar(m, ctx) {
+    if (!camVisivel('guerra') || !temGrade(m)) return null;
+    const za = m.guerra && m.guerra.zauto;
+    if (za) return { fonte: za, z: () => ({ h: Object.keys(za.h).map(k => [k, za.h[k][0], za.h[k][1], za.h[k][2]]), f: za.f }) };
+    if (!ctx.mestre || !N().zonaDeGuerra) return null;
+    const z = N().zonaDeGuerra(m);
+    return z ? { fonte: z, z: () => ({ h: [...z.h].map(([k, x]) => [k, x.a, x.b, x.o ? 1 : 0]), f: z.f }) } : null;
+  }
+  function desenharZonaAuto(m, ctx) {
+    const zf = zonaParaDesenhar(m, ctx);
+    // (a conta do mestre fica guardada por mapa: com o mesmo objeto, a mesma grade e as mesmas cores, nada a refazer)
+    const cores = (m.faccoes || []).map(f => f.id + f.cor).join('|'), rapida = j0([m.grade, cores]);
+    if (zf && zf.fonte === zagFonte && rapida === zagRapida) return;
+    zagFonte = zf ? zf.fonte : null; zagRapida = rapida;
+    const z = zf ? zf.z() : null;
+    const ids = z ? [...new Set(z.h.flatMap(x => [x[1], x[2]]).concat(z.f.flatMap(x => [x[2], x[3]])))] : [];
+    const chave = z ? j0([m.grade, z, ids.map(id => corFac(ctx, id))]) : '';
+    if (chave === zagChave) return;
+    zagChave = chave;
+    C.zag.replaceChildren();
+    if (!z || !(z.h.length || z.f.length)) return;
+    const defs = s('defs'), pares = new Map(), W = um(limitar(m.grade.tam * 0.3, 2, 400));
+    const padrao = (a, b) => {
+      const k = (a || '') + '|' + (b || '');
+      if (!pares.has(k)) {
+        const ca = a ? corFac(ctx, a) : '#8a7a5e', cb0 = b ? corFac(ctx, b) : misturar(ca, '#000000', 0.45), cb = cb0 === ca ? misturar(ca, '#000000', 0.45) : cb0, id = 'zag-p' + pares.size;
+        defs.append(s('pattern', { id, patternUnits: 'userSpaceOnUse', width: W, height: W, patternTransform: 'rotate(45)' },
+          s('rect', { width: um(W / 2), height: W, fill: ca }), s('rect', { x: um(W / 2), width: um(W / 2), height: W, fill: cb })));
+        pares.set(k, { id, d: '' });
+      }
+      return pares.get(k);
+    };
+    const naZona = new Set(z.h.map(x => x[0])), borda = [];
+    for (const [k, a, b] of z.h) {
+      const h0 = N().lerChaveHex(k);
+      if (!h0) continue;
+      padrao(a, b).d += caminho(N().cantosHex(m, h0.q, h0.r), true);
+      for (const [dq, dr] of VIZ6) {
+        const hn = { q: h0.q + dq, r: h0.r + dr };
+        if (naZona.has(hn.q + ',' + hn.r)) continue;
+        const l = ladoComum(m, h0, hn);
+        if (l) borda.push(l);
+      }
+    }
+    C.zag.append(defs);
+    for (const x of pares.values()) C.zag.append(s('path', { class: 'zag-hex', d: x.d, fill: 'url(#' + x.id + ')' }));
+    if (borda.length) C.zag.append(s('path', { class: 'zag-borda', d: encadear(borda).map(l => caminho(l)).join('') }));
+    // a linha do front: por par de facções, as duas cores andando
+    const porPar = new Map();
+    for (const [k1, k2, a, b] of z.f) {
+      const h1 = N().lerChaveHex(k1), h2 = N().lerChaveHex(k2), l = h1 && h2 ? ladoComum(m, h1, h2) : null;
+      if (!l) continue;
+      const k = (a || '') + '|' + (b || '');
+      if (!porPar.has(k)) porPar.set(k, { a, b, segs: [] });
+      porPar.get(k).segs.push(l);
+    }
+    for (const x of porPar.values()) {
+      const d = encadear(x.segs).map(l => caminho(l)).join('');
+      C.zag.append(s('path', { class: 'fre-a frente-anda zag-front', d, stroke: corFac(ctx, x.a) }), s('path', { class: 'fre-b frente-anda zag-front', d, stroke: corFac(ctx, x.b) }));
+    }
+  }
+
+  /* As rotas por mar: a linha tracejada entre dois portos ligados, com os dias (camada Rotas); a travessia de uma rota
+     por ela fica azul (trechosDeMar). */
+  function marDoMapa(m) {
+    const out = new Set();
+    try { for (const L of N().ligacoesMar ? N().ligacoesMar(m) : []) if (L.ka && L.kb) { out.add(L.ka + '|' + L.kb); out.add(L.kb + '|' + L.ka); } } catch (e) { /* núcleo antigo */ }
+    return out;
+  }
+  function trechosDeMar(ctx, pts) {
+    const out = [];
+    if (!ctx || !ctx.marHex || !ctx.marHex.size || !Array.isArray(pts) || !temGrade(ctx.m)) return out;
+    const hk = p => { const hx = N().hexDe(ctx.m, p[0], p[1]); return hx ? hx.q + ',' + hx.r : ''; };
+    for (let i = 0; i + 1 < pts.length; i++) { const a = hk(pts[i]), b = hk(pts[i + 1]); if (a !== b && ctx.marHex.has(a + '|' + b)) out.push(i); }
+    return out;
+  }
+  let mlanChave = null;
+  function desenharMar(m) {
+    const ls = camVisivel('rotas') && N().ligacoesMar ? N().ligacoesMar(m) : [];
+    const it = ls.map(L => { const a = indice.get(L.a), b = indice.get(L.b); return a && b ? [L.d, a.x, a.y, b.x, b.y] : null; }).filter(Boolean);
+    const chave = JSON.stringify(it);
+    if (chave === mlanChave) return;
+    mlanChave = chave;
+    C.mlan.replaceChildren();
+    for (const [d, ax, ay, bx, by] of it) {
+      C.mlan.append(s('path', { class: 'mar-rota', d: caminho([[ax, ay], [bx, by]]) }));
+      const fx = fixo((ax + bx) / 2, (ay + by) / 2);
+      fx.append(rotulo(d === 1 ? '1 dia de mar' : d + ' dias de mar', 18, 'rotulo rotulo-mar'));  // embaixo da linha: em cima fica o nome da rota que passa por ela
+      C.mlan.append(fx);
+    }
+  }
+
+  /* As setas de ofensiva: a livre (o objeto da seta, que o mestre desenha com a ferramenta Frente) e a da marcha
+     planejada de um grupo (da posição dele até o fim da rota), curvas, na cor da facção, andando. */
+  function curva(pts) {
+    if (pts.length < 3) return caminho(pts);
+    let d = 'M' + um(pts[0][0]) + ' ' + um(pts[0][1]);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      d += 'C' + um(p1[0] + (p2[0] - p0[0]) / 6) + ' ' + um(p1[1] + (p2[1] - p0[1]) / 6) + ' ' + um(p2[0] - (p3[0] - p1[0]) / 6) + ' ' + um(p2[1] - (p3[1] - p1[1]) / 6) + ' ' + um(p2[0]) + ' ' + um(p2[1]);
+    }
+    return d;
+  }
+  function desenharSeta(g0, pts, cor, nome) {
+    const d = curva(pts), n = pts.length, fim = pts[n - 1], ant = pts[n - 2];
+    g0.append(s('path', { class: 'set-fundo', d }), s('path', { class: 'set-linha set-anda', d, stroke: cor }));
+    const ang = Math.atan2(fim[1] - ant[1], fim[0] - ant[0]) * 180 / Math.PI, fx = fixo(fim[0], fim[1]);
+    fx.append(s('path', { class: 'set-ponta', d: 'M6 0L-11 -10L-7 0L-11 10Z', fill: cor, transform: 'rotate(' + um(ang) + ')' }));
+    g0.append(fx);
+    if (nome) { const c = meioDe(pts), f2 = fixo(c[0], c[1]); f2.append(rotulo(nome, -12, 'rotulo rotulo-linha')); g0.append(f2); }
+  }
+  const corDaSeta = (ctx, fac, cor0) => (fac && ctx.fac.get(fac) ? corFac(ctx, fac) : cor0 || '#c0503a');
+  function seta(g0, o, ctx) {
+    if (!Array.isArray(o.pts) || o.pts.length < 2) return;
+    g0.classList.add('set');
+    desenharSeta(g0, o.pts, o.cor || corDaSeta(ctx, o.fac, ''), o.nome);
+    g0.append(s('path', { class: 'set-hit', d: curva(o.pts) }));
+  }
+  let setgChave = null;
+  function desenharSetasDosGrupos(m, ctx) {
+    const lista = [];
+    if (camVisivel('guerra')) for (const o of m.objs || []) {
+      if (o.k !== 'g') continue;
+      let pts = Array.isArray(o.sp) ? o.sp : null;
+      if (!pts && ctx.mestre && o.seta && N().setaDaMarcha) { try { pts = N().setaDaMarcha(m, o); } catch (e) { pts = null; } }
+      if (pts && pts.length >= 2) lista.push([o.id, pts, corDaSeta(ctx, o.fac, o.cor || '#e6ab4f')]);
+    }
+    const chave = JSON.stringify(lista);
+    if (chave === setgChave) return;
+    setgChave = chave;
+    C.setg.replaceChildren();
+    for (const [id, pts, cor] of lista) { const g1 = s('g', { class: 'setg', 'data-de': id }); desenharSeta(g1, pts, cor, ''); C.setg.append(g1); }
+  }
+
+  /* O ajuste da zona de guerra (a ferramenta Frente, "Ajustar a zona"): pôr, tirar, ou voltar ao automático. */
+  function aplicarAjusteZona(chaves) {
+    const modo = opt('zAj') === 'tira' ? 'tira' : opt('zAj') === 'auto' ? 'auto' : 'por';
+    const rot = modo === 'por' ? 'pôr hexágonos na zona de guerra' : modo === 'tira' ? 'tirar hexágonos da zona de guerra' : 'voltar hexágonos da zona ao automático';
+    App.mudar(rot, d => {
+      if (!d.guerra || typeof d.guerra !== 'object') d.guerra = { tipos: [], bats: [], hexes: {} };
+      const z = d.guerra.zona && typeof d.guerra.zona === 'object' ? d.guerra.zona : {}, antes = JSON.stringify([z.add || [], z.tira || []]);
+      const add = new Set(z.add || []), tira = new Set(z.tira || []);
+      for (const k of chaves) { add.delete(k); tira.delete(k); if (modo === 'por') add.add(k); else if (modo === 'tira') tira.add(k); }
+      const nz = Object.assign({}, z);
+      if (add.size) nz.add = [...add]; else delete nz.add;
+      if (tira.size) nz.tira = [...tira]; else delete nz.tira;
+      if (JSON.stringify([nz.add || [], nz.tira || []]) === antes) return false;
+      if (Object.keys(nz).length) d.guerra.zona = nz; else delete d.guerra.zona;
+    });
+  }
+
+  /* Os recursos por hexágono (a ferramenta Terreno, "Recurso…"): o pincel põe um recurso e quanto ele dá por semana em
+     cada hexágono (soma com o do terreno, na conta da região); "Tirar os recursos" limpa. Enquanto o pincel está nesse
+     modo, cada hexágono com recurso mostra o que tem. */
+  const ecoLigada = m => !!(m && m.eco && m.eco.on && Array.isArray(m.eco.rec) && m.eco.rec.length);
+  function recDoPincel() { const e = M && M.eco; return e && Array.isArray(e.rec) ? e.rec.find(r => r.id === opt('recPin')) || e.rec[0] || null : null; }
+  const qtdDoPincel = () => { const n = Math.round(Number(opt('recQtd')) * 10) / 10; return Number.isFinite(n) ? limitar(n, -9999, 9999) : 1; };
+  function aplicarRecursoHex(chaves) {
+    const rec = recDoPincel(), tirar = opt('terModo') === 'semrec', qtd = qtdDoPincel();
+    if (!ecoLigada(M) || !rec) { App.toast('Ligue a economia na aba Reinos para pôr recursos nos hexágonos.'); return; }
+    const lim = (N().LIMITES && N().LIMITES.hexes) || 20000;
+    let passou = false;
+    App.mudar(tirar ? 'tirar os recursos dos hexágonos' : 'pôr ' + rec.nome + ' nos hexágonos', d => {
+      if (!d.eco || typeof d.eco !== 'object') return false;
+      const hr = d.eco.hexr && typeof d.eco.hexr === 'object' ? Object.assign({}, d.eco.hexr) : {}, antes = JSON.stringify(hr);
+      for (const k of chaves) {
+        if (tirar) { delete hr[k]; continue; }
+        const t = Object.assign({}, hr[k] || {});
+        if (qtd) t[rec.id] = qtd; else delete t[rec.id];
+        if (Object.keys(t).length) hr[k] = t; else delete hr[k];
+      }
+      if (JSON.stringify(hr) === antes) return false;
+      if (Object.keys(hr).length > lim) { passou = true; return false; }
+      if (Object.keys(hr).length) d.eco.hexr = hr; else delete d.eco.hexr;
+    });
+    if (passou) App.toast('O mapa chegou ao limite de ' + num(lim, 0) + ' hexágonos com recurso. Nada mudou.');
+  }
+  let hexrChave = null;
+  function desenharRecursosHex(m) {
+    const on = mestreVe() && podeEditar() && ferramenta() === 'h' && modoTerreno() === 'hex' && (opt('terModo') === 'rec' || opt('terModo') === 'semrec') && ecoLigada(m) && temGrade(m);
+    const hr = on && m.eco.hexr ? m.eco.hexr : null, ks = hr ? Object.keys(hr).slice(0, 800) : [];
+    const chave = hr ? JSON.stringify([m.grade, ks.map(k => [k, hr[k]]), m.eco.rec.map(r => [r.id, r.nome, r.cor])]) : '';
+    if (chave === hexrChave) return;
+    hexrChave = chave;
+    C.hexr.replaceChildren();
+    for (const k of ks) {
+      const h0 = N().lerChaveHex(k);
+      if (!h0) continue;
+      const c = N().centroHex(m, h0.q, h0.r), fx = fixo(c.x, c.y), ids = Object.keys(hr[k]);
+      ids.slice(0, 3).forEach((id, i) => {
+        const r = m.eco.rec.find(x => x.id === id), n = hr[k][id], y = (i - (Math.min(3, ids.length) - 1) / 2) * 13;
+        fx.append(s('circle', { class: 'hexr-bola', cx: -15, cy: um(y), r: 4.5, fill: r ? r.cor : '#9aa3b5' }),
+          s('text', { class: 'hexr-txt', x: -8, y: um(y + 4), 'font-size': 11, texto: (n > 0 ? '+' : '') + num(n, 1) + ' ' + curto(r ? r.nome : id, 12) }));
+      });
+      C.hexr.append(fx);
+    }
+  }
+
+  /* ---- a caneta (para todos): o traço de agora, que todos na mesa veem ----
+     Duas canetas: a que some em poucos segundos e a que fica até alguém limpar ("Limpar desenhos", do mestre, apaga a de
+     todos; quem joga limpa a dele). Cada pessoa tem a cor dela. Quem guarda e manda é o App (mundo.js); aqui só o gesto e
+     o desenho. O traço vai sendo mandado enquanto é desenhado (a cada pouco), para os outros verem ao vivo. */
+  let canetaBt = null, rabVivo = null, rabChave = null, rabTempo = 0;
+  function montarCaneta() {
+    const caixa = palco && palco.querySelector('.zoom');
+    if (!caixa || canetaBt) return;
+    canetaBt = h('button', { type: 'button', class: 'ib caneta-bt', id: 'zCaneta', title: 'Caneta (W): desenhar no mapa para todos verem', 'aria-label': 'Caneta', 'aria-pressed': 'false', hidden: true });
+    const ic = s('svg', { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.9, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
+    ic.innerHTML = ICONE_FERRAMENTA.w;                           // desenho fixo, sem texto de ninguém
+    canetaBt.append(ic);
+    canetaBt.addEventListener('click', () => { if (App && podeRabiscar()) App.usarFerramenta(App.ferramenta === 'w' ? 'sel' : 'w'); });
+    caixa.prepend(canetaBt);
+  }
+  function pintarCaneta() {
+    if (!canetaBt) return;
+    canetaBt.hidden = !podeRabiscar();
+    canetaBt.setAttribute('aria-pressed', String(ferramenta() === 'w'));
+  }
+  function comecarRabisco(gg) {
+    gg.cor = App.minhaCor ? App.minhaCor() : '#e6ab4f';
+    gg.some = !(App.rabModo && App.rabModo() === 'fica');
+    gg.id = 'rb' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    gg.ultEnvio = performance.now();
+    if (rabVivo) rabVivo.remove();
+    rabVivo = s('path', { class: 'rab rab-vivo', stroke: gg.cor, d: caminho(gg.pts) + 'l0.01 0' });
+    C.rab.append(rabVivo);
+  }
+  const tracoDe = gg => ({ id: gg.id, c: gg.cor, s: gg.some, p: simplificar(gg.pts, 0.7 / V.z).map(q => [um(q[0]), um(q[1])]) });
+  function maisRabisco(gg, p) {
+    const ult = gg.pts[gg.pts.length - 1], q = [um(limitar(p.x, 0, L)), um(limitar(p.y, 0, A))];
+    if (Math.hypot((q[0] - ult[0]) * V.z, (q[1] - ult[1]) * V.z) < 2.5 || gg.pts.length >= 2000) return;
+    gg.pts.push(q);
+    if (rabVivo) rabVivo.setAttribute('d', caminho(gg.pts));
+    const agora = performance.now();
+    if (agora - gg.ultEnvio > 700 && App.rabiscar) { gg.ultEnvio = agora; gg.mandou = true; App.rabiscar(tracoDe(gg), true); }
+  }
+  function fimRabisco(gg, p) {
+    if (p) maisRabisco(gg, p);
+    if (gg.pts.length === 1) gg.pts.push([um(gg.pts[0][0] + 0.2 / V.z), gg.pts[0][1]]);       // (um toque: um ponto)
+    if (App.rabiscar) App.rabiscar(tracoDe(gg), false);
+    if (rabVivo) { rabVivo.remove(); rabVivo = null; }
+    rabChave = null;
+  }
+  function largarRabisco(gg) {
+    if (rabVivo) { rabVivo.remove(); rabVivo = null; }
+    if (gg.mandou && App.tirarRabisco) App.tirarRabisco(gg.id);
+  }
+  function desenharRabiscos(m) {
+    clearTimeout(rabTempo);
+    const lista = camVisivel('desenhos') && App.rabiscosDe ? App.rabiscosDe(m.id) : [];
+    const chave = JSON.stringify(lista.map(t => [t.id, t.c, t.p.length, t.s ? 1 : 0]));
+    if (chave !== rabChave) {
+      rabChave = chave;
+      const vivo = rabVivo;
+      C.rab.replaceChildren();
+      for (const t of lista) {
+        const el = s('path', { class: 'rab' + (t.s ? ' rab-some' : ''), stroke: t.c, d: caminho(t.p) + (t.p.length < 3 ? 'l0.01 0' : '') });
+        if (t.s) el.style.animationDelay = (-Math.max(0, t.idade || 0) / 1000).toFixed(2) + 's';
+        C.rab.append(el);
+      }
+      if (vivo) C.rab.append(vivo);
+    }
+    const prox = lista.filter(t => t.s).reduce((mn, t) => Math.min(mn, t.resta), Infinity);
+    if (prox < Infinity) rabTempo = setTimeout(agendar, Math.max(60, prox + 40));
+  }
+  function optsCaneta() {
+    const modo = App.rabModo ? App.rabModo() : 'some', mestra = App.papel === 'mestre' && !App.comoJogador;
+    optsEl.append(...[['some', 'Some em segundos', 'O traço apaga sozinho em poucos segundos'], ['fica', 'Fica até limpar', 'O traço fica no mapa até alguém limpar']]
+      .map(([v, tx, dica]) => chip({ 'aria-pressed': String(modo === v), title: dica, onclick: () => { if (App.rabModo) App.rabModo(v); desenharOpts(true); atualizarDica(); } }, tx)));
+    const cores = App.coresCaneta ? App.coresCaneta() : [], minha = App.minhaCor ? App.minhaCor() : '';
+    if (cores.length) {
+      const caixa = h('span', { class: 'chip cores-caneta', role: 'group', 'aria-label': 'A cor da sua caneta' });
+      for (const c of cores) caixa.append(h('button', { type: 'button', class: 'cor-caneta', title: 'Esta cor', 'aria-label': 'Cor ' + c, 'aria-pressed': String(c === minha), style: 'background:' + c,
+        onclick: () => { if (App.mudarCor) App.mudarCor(c); desenharOpts(true); } }));
+      optsEl.append(caixa);
+    }
+    const meus = App.rabiscosMeus ? App.rabiscosMeus(M.id) : 0, todos = App.rabiscosDe ? App.rabiscosDe(M.id).length : 0;
+    optsEl.append(
+      chip({ title: 'Desfazer o seu último traço', disabled: !meus, onclick: () => App.desfazerRabisco(M.id) }, 'Desfazer o meu último'),
+      chip({ title: 'Apagar os seus traços neste mapa', disabled: !meus, onclick: () => App.limparRabiscos(M.id, false) }, 'Limpar os meus'));
+    if (mestra) optsEl.append(chip({ class: 'chip per', title: 'Apagar os traços de todos neste mapa (o aviso deixa desfazer)', disabled: !todos, onclick: () => App.limparRabiscos(M.id, true) }, 'Limpar desenhos'));
   }
 
   /* ---- trilho, opções e dica ---- */
@@ -2160,7 +2571,7 @@
       const ic = s('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.9, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
       ic.innerHTML = ICONE_FERRAMENTA[f.id];                 // desenho fixo, sem texto de ninguém
       b.append(ic);
-      b.addEventListener('click', () => { if (App && podeEditar()) App.usarFerramenta(f.id); });
+      b.addEventListener('click', () => { if (App && (podeEditar() || (f.id === 'w' && podeRabiscar()))) App.usarFerramenta(f.id); });
       railEl.append(b);
       if (SEPARA_DEPOIS.has(f.id)) railEl.append(h('hr'));
     }
@@ -2170,7 +2581,7 @@
     const f = ferramenta(), editar = podeEditar();
     for (const b of railEl.querySelectorAll('.tool')) {
       b.setAttribute('aria-pressed', String(b.dataset.f === f));
-      b.disabled = !editar && b.dataset.f !== 'sel';
+      b.disabled = !editar && b.dataset.f !== 'sel' && !(b.dataset.f === 'w' && podeRabiscar());
     }
   }
 
@@ -2192,13 +2603,15 @@
     const f = ferramenta(), editar = podeEditar() && !!M;
     const facs = M ? (M.faccoes || []).map(x => [x.id, x.nome, x.cor]) : [];
     const chave = JSON.stringify([f, editar, App.opt || null, facs, rasc ? rasc.pts.length : -1, M && M.nevoa ? !!M.nevoa.on : null, !!medindo,
-      f === 'h' && M ? [temGrade(M), (M.terrenos || []).map(t => [t.id, t.nome, t.cor]), !!(M.pintura && M.pintura.ops && M.pintura.ops.length)] : null]);
+      f === 'h' && M ? [temGrade(M), (M.terrenos || []).map(t => [t.id, t.nome, t.cor]), !!(M.pintura && M.pintura.ops && M.pintura.ops.length), ecoLigada(M) ? M.eco.rec.map(r => [r.id, r.nome, r.cor]) : null] : null,
+      // (lote 17) a caneta: os traços de quem desenha (para os botões), a cor e a caneta escolhidas
+      f === 'w' && M && App.rabiscosMeus ? [App.rabiscosMeus(M.id), (App.rabiscosDe(M.id) || []).length, App.minhaCor(), App.rabModo(), podeRabiscar(), App.papel, !!App.comoJogador] : null]);
     if (!forcar && chave === optsChave) return;
     optsChave = chave;
     // não derruba um seletor aberto: quem está escolhendo termina antes
     if (!forcar && optsEl.contains(document.activeElement) && document.activeElement.tagName === 'SELECT') { optsChave = null; return; }
     optsEl.replaceChildren();
-    if (!editar) return;
+    if (!editar) { if (f === 'w' && M && podeRabiscar()) optsCaneta(); return; }       // (lote 17) quem joga também tem a caneta
     const reabrir = () => desenharOpts(true);
     // trocar o modo de uma ferramenta (o desenho por pontos que estava pela metade fica para trás)
     const trocarModo = (nome, v) => { porOpt(nome, v); rasc = null; reabrir(); atualizarDica(); desenharRascunho(); };
@@ -2222,10 +2635,21 @@
       const lista = [['', 'Sem facção']].concat(facs.map(x => [x[0], x[1] || 'Facção sem nome']));
       const val = id => (id && facs.some(x => x[0] === id) ? id : '');
       // (lote 7, parte 5c) a zona de perigo: o tipo, no lugar dos lados
-      const modo = opt('freModo') === 'zona' ? 'zona' : opt('freModo') === 'perigo' && dicionario('ZONAS').frio ? 'perigo' : 'linha', Z = dicionario('ZONAS');
+      const fm = opt('freModo'), Z = dicionario('ZONAS');
+      const modo = fm === 'zona' ? 'zona' : fm === 'perigo' && Z.frio ? 'perigo' : fm === 'seta' ? 'seta' : fm === 'ajuste' ? 'ajuste' : 'linha';
       optsEl.append(...chips('freModo', modo, [['linha', 'Linha de frente', 'Uma linha de combate entre duas facções'], ['zona', 'Zona de guerra', 'A área em guerra entre duas facções (pode mudar com o tempo)']]
-        .concat(Z.frio ? [['perigo', 'Zona de perigo', 'Uma área que cansa, desconforta ou assusta quem passa o dia dentro: tempestade, praga, frio extremo, terra amaldiçoada, território de monstro']] : [])));
+        .concat(Z.frio ? [['perigo', 'Zona de perigo', 'Uma área que cansa, desconforta ou assusta quem passa o dia dentro: tempestade, praga, frio extremo, terra amaldiçoada, território de monstro']] : [])
+        // (lote 17) a seta de ofensiva e o ajuste da zona de guerra automática
+        .concat([['seta', 'Seta de ofensiva', 'Uma seta curva, na cor da facção, que mostra para onde vai o ataque'], ['ajuste', 'Ajustar a zona', 'Pinte para pôr ou tirar hexágonos da zona de guerra automática']])));
       if (modo === 'perigo') optsEl.append(seletor('Tipo', Z[opt('zonaTipo')] && opt('zonaTipo') !== 'guerra' ? opt('zonaTipo') : 'tempestade', Object.keys(Z).filter(k => k !== 'guerra').map(k => [k, Z[k].nome]), v => { porOpt('zonaTipo', v); atualizarDica(); }));
+      else if (modo === 'seta') optsEl.append(seletor('Facção', val(opt('setaFac')), lista, v => porOpt('setaFac', v || null)));
+      else if (modo === 'ajuste') {
+        const aj = opt('zAj') === 'tira' ? 'tira' : opt('zAj') === 'auto' ? 'auto' : 'por';
+        optsEl.append(...chips('zAj', aj, [['por', 'Pôr na zona', 'Os hexágonos pintados entram na zona de guerra'], ['tira', 'Tirar da zona', 'Os hexágonos pintados saem da zona de guerra'],
+          ['auto', 'Automático', 'Os hexágonos pintados voltam a seguir a conta automática']]),
+          seletor('Tamanho', String(limitar(Math.round(Number(opt('hexPincel')) || 0), 0, 2)), [['0', '1 hexágono'], ['1', '7 hexágonos'], ['2', '19 hexágonos']], v => { porOpt('hexPincel', Number(v)); desenharRascunho(); }));
+        if (M.guerra && M.guerra.zona && M.guerra.zona.off) optsEl.append(chip({ class: 'chip pri', title: 'A zona automática está desligada (aba Guerra)', onclick: () => abrirAba('guerra') }, 'A zona está desligada…'));
+      }
       else optsEl.append(
         seletor('Lado A', val(opt('a')), lista, v => porOpt('a', v || null)),
         seletor('Lado B', val(opt('b')), lista, v => porOpt('b', v || null)));
@@ -2265,10 +2689,12 @@
           h('label', { class: 'chip', title: 'Tamanho do pincel na tela' }, h('span', { texto: 'Tamanho' }), faixa));
       } else if (!temGrade(M)) optsEl.append(chip({ class: 'chip pri', title: 'A grade de hexágonos fica na aba Terreno', onclick: () => abrirAba('terreno') }, 'Definir a grade de hexágonos…'));
       else {
-        const t = terrenoEscolhido(), modo = ['ter', 'nada', 'desenho', 'custo', 'semcusto'].includes(opt('terModo')) ? opt('terModo') : 'ter';
+        const comRec = ecoLigada(M), t = terrenoEscolhido(), modo = ['ter', 'nada', 'desenho', 'custo', 'semcusto'].concat(comRec ? ['rec', 'semrec'] : []).includes(opt('terModo')) ? opt('terModo') : 'ter';
         const sel = h('select', { 'aria-label': 'O que o pincel faz' });
         for (const x of M.terrenos || []) sel.append(h('option', { value: 'ter:' + x.id, texto: x.nome }));
-        const modos = [['nada', 'Sem terreno'], temDesenho ? ['desenho', 'Seguir o desenho'] : null, ['custo', 'Custo próprio…'], ['semcusto', 'Tirar o custo próprio']].filter(Boolean);
+        // (lote 17) os recursos por hexágono (com a economia ligada): somam aos do terreno
+        const modos = [['nada', 'Sem terreno'], temDesenho ? ['desenho', 'Seguir o desenho'] : null, ['custo', 'Custo próprio…'], ['semcusto', 'Tirar o custo próprio'],
+          comRec ? ['rec', 'Recurso…'] : null, comRec ? ['semrec', 'Tirar os recursos'] : null].filter(Boolean);
         for (const [v, tx] of modos) sel.append(h('option', { value: v, texto: tx }));
         sel.value = modo === 'ter' ? (t ? 'ter:' + t.id : 'nada') : modo === 'desenho' && !temDesenho ? 'nada' : modo;
         sel.addEventListener('change', () => {
@@ -2277,7 +2703,17 @@
           reabrir(); atualizarDica(); desenharRascunho();
         });
         optsEl.append(h('label', { class: 'chip', title: 'O que o pincel pinta nos hexágonos' },
-          h('span', { class: 'amostra', style: 'background:' + (modo === 'ter' && t ? t.cor : modo === 'custo' ? '#e6ab4f' : 'transparent') }), h('span', { texto: 'Pincel' }), sel));
+          h('span', { class: 'amostra', style: 'background:' + (modo === 'ter' && t ? t.cor : modo === 'custo' ? '#e6ab4f' : modo === 'rec' ? ((recDoPincel() || {}).cor || '#f2c14e') : 'transparent') }), h('span', { texto: 'Pincel' }), sel));
+        if (modo === 'rec') {
+          const r = recDoPincel(), sr = h('select', { 'aria-label': 'O recurso que o pincel põe' });
+          for (const x of M.eco.rec) sr.append(h('option', { value: x.id, texto: x.nome }));
+          sr.value = r ? r.id : '';
+          sr.addEventListener('change', () => { porOpt('recPin', sr.value); reabrir(); atualizarDica(); });
+          const qi = h('input', { type: 'number', min: -9999, max: 9999, step: 1, value: String(qtdDoPincel()), 'aria-label': 'Quanto o hexágono produz por semana', class: 'num' });
+          qi.addEventListener('change', () => { const n = Number(String(qi.value).replace(',', '.')); if (Number.isFinite(n)) porOpt('recQtd', Math.round(limitar(n, -9999, 9999) * 10) / 10); qi.value = String(qtdDoPincel()); atualizarDica(); });
+          optsEl.append(h('label', { class: 'chip', title: 'O recurso que o hexágono produz por semana, além do terreno' }, h('span', { texto: 'Recurso' }), sr),
+            h('label', { class: 'chip', title: 'Quanto, por semana (0 tira este recurso)' }, qi, h('span', { texto: 'por semana' })));
+        }
         if (modo === 'custo') {
           const ci = h('input', { type: 'number', min: 0.1, max: 9999, step: 0.5, value: String(Number(opt('custo')) || 10), 'aria-label': 'Custo próprio, em cubos por hexágono', class: 'num' });
           ci.addEventListener('change', () => { const n = Number(String(ci.value).replace(',', '.')); if (Number.isFinite(n) && n > 0) porOpt('custo', Math.round(limitar(n, 0.1, 9999) * 10) / 10); ci.value = String(opt('custo')); atualizarDica(); });
@@ -2285,6 +2721,8 @@
         }
         optsEl.append(seletor('Tamanho', String(limitar(Math.round(Number(opt('hexPincel')) || 0), 0, 2)), [['0', '1 hexágono'], ['1', '7 hexágonos'], ['2', '19 hexágonos']], v => { porOpt('hexPincel', Number(v)); desenharRascunho(); }));
       }
+    } else if (f === 'w') {
+      optsCaneta();                                             // (lote 17) a caneta
     } else if (f === 'n') {
       const p = opt('pincel') === 'cobrir' ? 'cobrir' : 'revelar';
       const faixa = h('input', { type: 'range', min: 10, max: 240, step: 5, value: limitar(Number(opt('raio')) || 60, 10, 240), 'aria-label': 'Tamanho do pincel' });
@@ -2296,7 +2734,7 @@
     }
     // o que for criado com esta opção já nasce escondido: um segredo preparado num mapa que os jogadores estão vendo
     // não aparece para eles no meio do caminho (antes de dar tempo de marcar "Esconder")
-    if (f in NOVO || f === 'p') optsEl.append(chip({ 'aria-pressed': String(!!opt('oculto')), title: 'O que você criar agora já nasce escondido dos jogadores',
+    if ((f in NOVO && !(f === 'f' && opt('freModo') === 'ajuste')) || f === 'p') optsEl.append(chip({ 'aria-pressed': String(!!opt('oculto')), title: 'O que você criar agora já nasce escondido dos jogadores',
       onclick: () => { porOpt('oculto', !opt('oculto')); reabrir(); } }, 'Criar escondido'));
     // medindo para a escala: no celular não há Esc, então um botão
     if (medindo) optsEl.append(chip({ title: 'Cancelar a medida (Esc)', onclick: () => cancelarMedida() }, 'Cancelar a medida'));
@@ -2362,6 +2800,12 @@
       const u = regua ? Math.hypot(regua.b.x - regua.a.x, regua.b.y - regua.a.y) : 0;
       return u > 0 ? num(u, 0) + ' unidades do mapa. Solte para usar esta medida.' : 'Arraste sobre uma distância que você conhece no mapa (alguns hexágonos da imagem, por exemplo).' + (tq ? '' : ' Esc cancela.');
     }
+    // (lote 17) a caneta, para todos
+    if (ferramenta() === 'w') {
+      const fica = App.rabModo && App.rabModo() === 'fica';
+      return (tq ? 'Arraste o dedo para desenhar' : 'Arraste para desenhar') + ': todos na mesa veem na hora. ' + (fica ? 'Esta caneta fica até alguém limpar.' : 'Esta caneta some sozinha em poucos segundos.')
+        + (tq ? '' : ' Esc volta para Selecionar.');
+    }
     if (App.papel === 'mestre' && App.comoJogador) return 'Vendo como jogador: assim os jogadores veem o mapa. Nada aqui muda o mapa.';
     if (!podeEditar()) return tq ? 'Toque num lugar para ler sobre ele. Arraste para andar; pince para aproximar.' : 'Clique num lugar para ler sobre ele. Arraste para andar pelo mapa; a roda do mouse aproxima.';
     // (lote 7, parte 5b) um clique pedido pelo painel (a parada na rota)
@@ -2381,6 +2825,16 @@
         if (n < 3) return `${Cl} para pôr mais pontos (uma região tem pelo menos 3).` + fim;
         return tq ? 'Toque para mais pontos, ou no primeiro ponto para fechar.' : 'Clique para mais pontos. Clique no primeiro ponto ou aperte Enter para fechar.' + fim;
       case 't': case 'f': {
+        // (lote 17) o ajuste da zona automática e a seta de ofensiva
+        if (f === 'f' && opt('freModo') === 'ajuste') {
+          if (!temGrade(M)) return 'A zona de guerra automática precisa da grade de hexágonos (aba Terreno).';
+          const aj = opt('zAj') === 'tira' ? 'tirar da zona de guerra' : opt('zAj') === 'auto' ? 'que voltem a seguir a zona automática' : 'pôr na zona de guerra';
+          return 'Arraste sobre os hexágonos para ' + aj + '.' + (tq ? '' : ' Cada traço é um passo de desfazer.');
+        }
+        if (f === 'f' && opt('freModo') === 'seta') {
+          if (!n) return `${Cl} para pôr o começo da seta (a ponta fica no último ponto).`;
+          return tq ? 'Toque para mais pontos (a seta faz a curva); toque de novo no último para terminar.' : 'Clique para mais pontos (a seta faz a curva por eles). Duplo clique ou Enter termina.' + fim;
+        }
         if (f === 'f' && (opt('freModo') === 'zona' || opt('freModo') === 'perigo')) {
           const Zp = opt('freModo') === 'perigo' ? dicionario('ZONAS')[opt('zonaTipo')] : null;
           if (!n) return Zp ? `${Cl} para pôr o primeiro ponto da zona de perigo (${Zp.nome.toLocaleLowerCase('pt-BR')}).` : `${Cl} para pôr o primeiro ponto da zona de guerra (as cores vêm dos lados A e B).`;
@@ -2416,7 +2870,10 @@
         }
         if (!temGrade(M)) return 'Defina a grade de hexágonos primeiro (aba Terreno).';
         const modo = opt('terModo'), t = terrenoEscolhido();
-        const o = modo === 'nada' ? 'Arraste sobre os hexágonos para tirar o terreno.' : modo === 'desenho' ? 'Arraste sobre os hexágonos para que voltem a seguir o desenho à mão.' : modo === 'custo' ? 'Arraste sobre os hexágonos para que custem ' + num(Number(opt('custo')) || 0, 1) + ' cubos.'
+        const r0 = modo === 'rec' ? recDoPincel() : null;
+        const o = modo === 'rec' ? (r0 ? 'Arraste sobre os hexágonos para que produzam ' + num(qtdDoPincel(), 1) + ' de ' + r0.nome + ' por semana, além do terreno (0 tira).' : 'Ligue a economia na aba Reinos para pôr recursos.')
+          : modo === 'semrec' ? 'Arraste sobre os hexágonos para tirar os recursos que o pincel pôs (o do terreno fica).'
+          : modo === 'nada' ? 'Arraste sobre os hexágonos para tirar o terreno.' : modo === 'desenho' ? 'Arraste sobre os hexágonos para que voltem a seguir o desenho à mão.' : modo === 'custo' ? 'Arraste sobre os hexágonos para que custem ' + num(Number(opt('custo')) || 0, 1) + ' cubos.'
           : modo === 'semcusto' ? 'Arraste sobre os hexágonos para tirar o custo próprio (volta o do terreno).' : 'Arraste sobre os hexágonos para pintar: ' + (t ? t.nome : 'terreno') + '.';
         const sob = cursor && !tq ? sobOCursor(cursor) : '';
         return o + (sob ? ' ' + sob : '') + (tq ? '' : ' Cada traço é um passo de desfazer.');
@@ -2548,7 +3005,7 @@
   function tipoDoRasc() {
     const f = ferramenta();
     if (f === 'r' || f === 't') return f;
-    if (f === 'f') return opt('freModo') === 'zona' || opt('freModo') === 'perigo' ? 'z' : 'f';
+    if (f === 'f') return opt('freModo') === 'zona' || opt('freModo') === 'perigo' ? 'z' : opt('freModo') === 'seta' ? 'a' : opt('freModo') === 'ajuste' ? null : 'f';
     if (f === 'p' && modoDesenho() === 'linha') return 'l';
     return null;
   }
@@ -2595,6 +3052,7 @@
       return;
     }
     if (k === 'f' || k === 'z') { campos.a = opt('a') || null; campos.b = opt('b') || null; }
+    if (k === 'a') campos.fac = (M.faccoes || []).some(x => x.id === opt('setaFac')) ? opt('setaFac') : null;     // (lote 17) a seta: a facção
     if (k === 'z') campos.ini = (App.mapa.cal && App.mapa.cal.dia) || 0;
     // (lote 7, parte 5c) a zona de perigo: o tipo (sem lados); os números de começo do tipo valem até o mestre mudar
     if (k === 'z' && opt('freModo') === 'perigo') {
@@ -2674,7 +3132,25 @@
     }
     // (lote 8) a ferramenta cria numa camada escondida ou travada neste aparelho: o clique só avisa (arrastar ainda anda pelo mapa)
     { const cam = editar ? camadaDaFerramenta(f) : null; if (cam && !camLivre(cam)) { comecar(e, 'parado', { cam }); return; } }
+    // (lote 17) a caneta: o traço de agora, que todos veem
+    if (f === 'w') {
+      if (!podeRabiscar()) return;
+      if (!camVisivel('desenhos')) { camadaParada('desenhos'); return; }
+      comecar(e, 'rabisco', { ultEnvio: 0, id: null });
+      g.pts = [[um(g.p0.x), um(g.p0.y)]];
+      comecarRabisco(g);
+      return;
+    }
     if (f === 'm' || f === 'g') { comecar(e, 'por'); return; }
+    // (lote 17) a zona de guerra: o pincel do ajuste (pôr, tirar, voltar ao automático)
+    if (f === 'f' && opt('freModo') === 'ajuste') {
+      if (!temGrade(M)) { App.toast('A zona automática precisa da grade de hexágonos: defina na aba Terreno.'); abrirAba('terreno'); return; }
+      comecar(e, 'hexpincel', { hexes: new Map(), ult: null });
+      C.tra.replaceChildren();
+      C.tra.setAttribute('class', 'c-tra hexes');
+      cursor = g.p0; pintarHex(g.p0); desenharRascunho();
+      return;
+    }
     if (f === 'r' || f === 't' || f === 'f') { comecar(e, 'ponto'); return; }
     if (f === 'e') { comecar(e, 'evento', { r: 0 }); return; }
     if (f === 'n') {
@@ -2726,7 +3202,7 @@
     cursor = p;
     const dx = e.clientX - g.sx, dy = e.clientY - g.sy;
     if (!g.moveu) {
-      if (g.tipo !== 'pincel' && g.tipo !== 'hexpincel' && g.tipo !== 'pintura' && Math.hypot(dx, dy) < (g.toque ? 10 : 4)) return;
+      if (g.tipo !== 'pincel' && g.tipo !== 'hexpincel' && g.tipo !== 'pintura' && g.tipo !== 'rabisco' && Math.hypot(dx, dy) < (g.toque ? 10 : 4)) return;
       g.moveu = true;
       clearTimeout(tLongo);
       comecouArrastar();
@@ -2745,6 +3221,7 @@
       case 'pincel': pincelar(p); desenharRascunho(); break;
       case 'hexpincel': pintarHex(p); desenharRascunho(); break;
       case 'pintura': pintarAoVivo(p); desenharRascunho(); break;
+      case 'rabisco': maisRabisco(g, p); break;
       case 'carimbos': espalhar(p); break;
       case 'regua': regua.b = p; desenharRascunho(); atualizarDica(); break;
     }
@@ -2818,7 +3295,7 @@
     const p = paraMundo(e.clientX, e.clientY);
     if (gg.tipo === 'pan') soltarMovendo();
     try { terminarGesto(gg, p, e); }
-    finally { if (adiado || gg.tipo === 'mover' || gg.tipo === 'alca' || gg.tipo === 'pincel' || gg.tipo === 'hexpincel' || gg.tipo === 'pintura' || gg.tipo === 'carimbos') redesenhar(); }
+    finally { if (adiado || gg.tipo === 'mover' || gg.tipo === 'alca' || gg.tipo === 'pincel' || gg.tipo === 'hexpincel' || gg.tipo === 'pintura' || gg.tipo === 'carimbos' || gg.tipo === 'rabisco') redesenhar(); }
   }
   function terminarGesto(gg, p, e) {
     const editar = podeEditar();
@@ -2891,6 +3368,9 @@
         if (editar && gg.pts.length) gravarPincelada(gg);
         else desenharPintura(M, true);
         break;
+      case 'rabisco':
+        fimRabisco(gg, p);
+        break;
       case 'carimbos':
         C.tra.replaceChildren();
         if (!gg.moveu) { const q = preso(gg.p0); gg.lista = dentroDoMapa(gg.p0, 2) ? [{ x: q.x, y: q.y, ic: opt('carimbo'), tam: um(tamCarimbo()), vira: false }] : []; }
@@ -2927,6 +3407,7 @@
     if (!mundoEl.classList.contains('movendo')) quieto(false);
     if (gg.tipo === 'regua') regua = null;
     if (gg.tipo === 'hexpincel' || gg.tipo === 'carimbos') C.tra.replaceChildren();
+    if (gg.tipo === 'rabisco') largarRabisco(gg);
     if (gg.tipo === 'pintura') desenharPintura(M, true);             // tira a prévia do traço que não vai ser gravado
     if (gg.tipo === 'mover') soltarProvisorio(gg);
     if (gg.tipo === 'pan') soltarMovendo();
@@ -3048,7 +3529,7 @@
       if (rasc) { cancelarRascunho(); e.preventDefault(); if (App.rotaPara) { App.rotaPara = null; App.usarFerramenta('sel'); } return; }
       if (regua) { regua = null; desenharRascunho(); atualizarDica(); e.preventDefault(); return; }
       // numa ferramenta de criar, Esc volta para Selecionar (como a dica promete); em Selecionar, limpa a seleção
-      if (editar && App.ferramenta !== 'sel') { App.usarFerramenta('sel'); e.preventDefault(); return; }
+      if ((editar || ferramenta() === 'w') && App.ferramenta !== 'sel') { App.usarFerramenta('sel'); e.preventDefault(); return; }
       if ((App.sel || []).length) { App.selecionar([]); e.preventDefault(); }
       return;
     }
@@ -3081,7 +3562,7 @@
     if (k === '-' || k === '_') { zoomNoMeio(1 / 1.25); return; }
     if (k === '0') { caber(); return; }
     if (lk === 'c' && !e.repeat && Cam()) { e.preventDefault(); Cam().alternar(true); return; }    // (lote 8) as camadas (para todos)
-    if (editar && POR_TECLA[lk] && !e.repeat) { e.preventDefault(); App.usarFerramenta(POR_TECLA[lk]); }
+    if ((editar || (POR_TECLA[lk] === 'w' && podeRabiscar())) && POR_TECLA[lk] && !e.repeat) { e.preventDefault(); App.usarFerramenta(POR_TECLA[lk]); }
   }
   function aoSoltarTecla(e) {
     if (e.key === ' ' || e.code === 'Space') { espaco = false; palco.style.cursor = ''; }
@@ -3173,7 +3654,9 @@
     gradePat = s('pattern', { id: GRADE, patternUnits: 'userSpaceOnUse', width: 1, height: 1 }, gradePath);
     svg.append(s('defs', null, mascara, gradePat));
     // (a região fica por baixo de tudo — das estradas, dos rios e dos carimbos —; o nome dela, por cima deles: nreg)
-    for (const n of ['hex', 'reg', 'lin', 'car', 'hexg', 'zon', 'nreg', 'txt', 'fre', 'rot', 'eve', 'mar', 'nev', 'tra', 'gru', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
+    // (lote 17) zag: a zona de guerra automática; mlan: as rotas por mar; set e setg: as setas (as livres e as das marchas);
+    // hexr: os recursos dos hexágonos (com o pincel); rab: a caneta
+    for (const n of ['hex', 'reg', 'lin', 'car', 'hexg', 'zon', 'zag', 'nreg', 'txt', 'fre', 'rot', 'mlan', 'set', 'setg', 'eve', 'hexr', 'mar', 'nev', 'tra', 'gru', 'rab', 'sel', 'rasc']) { C[n] = s('g', { class: 'c-' + n }); svg.append(C[n]); }
     hexTer = s('g', { class: 'hex-tinta' });
     gradeRect = s('rect', { class: 'grade', x: 0, y: 0, fill: `url(#${GRADE})` });
     C.hex.append(hexTer, gradeRect);
@@ -3224,6 +3707,8 @@
     // (lote 8) as camadas: o botão na caixa do zoom e a janelinha; mudou alguma, redesenha
     if (Cam()) Cam().iniciar(App, palco);
     App.on('camadas', agendar);
+    montarCaneta();                                                 // (lote 17) o botão da caneta, na caixa do zoom (para todos)
+    App.on('rabiscos', agendar);
 
     // o palco muda de tamanho (painel abre e fecha, celular gira): mantém o mesmo ponto no meio
     if (window.ResizeObserver) new ResizeObserver(() => {

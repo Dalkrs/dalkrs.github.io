@@ -77,17 +77,18 @@ const selo = (a, id) => A(a, id => {
     await aba(L, 'terreno');
     await escrever(L, 'ter:tam', '80');
     let m = await mapa(L);
-    ok(m.terrenos.length === 16 && j(m.terrenos.slice(8).map(t => t.nome)) === j(['Lavoura', 'Ruínas', 'Lava', 'Cristais', 'Selva', 'Savana', 'Tundra', 'Terra corrompida']) && await campo(L, 'ter:novos').count() === 0,
-      'um mapa novo já vem com os dezesseis terrenos (os oito novos com o desenho deles), sem a oferta');
-    ok(await L.F.locator('#pane .ter-linha').count() === 16 && /Textura: Lavoura/.test(await campo(L, 'ter:la:tex').locator('option:checked').innerText()), 'a aba Terreno lista os dezesseis, cada um com a sua textura');
+    // (lote 17: e mais oito, no fim)
+    ok(m.terrenos.length === 24 && j(m.terrenos.slice(8, 16).map(t => t.nome)) === j(['Lavoura', 'Ruínas', 'Lava', 'Cristais', 'Selva', 'Savana', 'Tundra', 'Terra corrompida']) && await campo(L, 'ter:novos').count() === 0,
+      'um mapa novo já vem com os terrenos novos (com o desenho deles), sem a oferta');
+    ok(await L.F.locator('#pane .ter-linha').count() === 24 && /Textura: Lavoura/.test(await campo(L, 'ter:la:tex').locator('option:checked').innerText()), 'a aba Terreno lista todos, cada um com a sua textura');
     // um mapa de antes (só os oito de começo, um deles renomeado)
     await A(L, () => __mundo.App.mudar('mapa de antes', mm => { mm.terrenos = mm.terrenos.slice(0, 8); mm.terrenos[0].nome = 'Campos'; }));
     await espera(200);
-    ok(/Terrenos novos: Lavoura, Ruínas, Lava, Cristais, Selva, Savana, Tundra, Terra corrompida\./.test(await L.F.locator('#pane').innerText()) && /Acrescentar os 8/.test(await campo(L, 'ter:novos').innerText()),
-      'num mapa de antes, a aba Terreno oferece os oito terrenos novos (nada muda sozinho)');
+    ok(/Terrenos novos: Lavoura, Ruínas, Lava, Cristais, Selva, Savana, Tundra, Terra corrompida, Água rasa, Mar profundo, Desfiladeiro, Geleira, Floresta morta, Oásis, Charneca, Terra devastada\./.test(await L.F.locator('#pane').innerText()) && /Acrescentar os 16/.test(await campo(L, 'ter:novos').innerText()),
+      'num mapa de antes, a aba Terreno oferece os terrenos novos (os do lote 6 e os do lote 17; nada muda sozinho)');
     await botao(L, 'ter:novos');
     m = await mapa(L);
-    ok(m.terrenos.length === 16 && m.terrenos[0].nome === 'Campos' && await rotulo(L) === 'acrescentar os terrenos novos' && await campo(L, 'ter:novos').count() === 0, 'um clique acrescenta os oito (os de antes ficam como estavam)');
+    ok(m.terrenos.length === 24 && m.terrenos[0].nome === 'Campos' && await rotulo(L) === 'acrescentar os terrenos novos' && await campo(L, 'ter:novos').count() === 0, 'um clique acrescenta todos (os de antes ficam como estavam)');
   });
 
   await passo('o desenho em cada hexágono', async () => {

@@ -83,8 +83,9 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
   também moram no `estado`, para o que o jogador grava na ficha não desfazê-las: `ativo: false` (fora do grupo ativo)
   e `ferTrava` (o cadeado dos ferimentos).
 - `documentos`: o resto, um documento por assunto. Cada documento é "só do mestre" ou "da mesa":
-  - Mapa-múndi: `mundo:mapa:<id>` (mestre), `mundo:pub:<id>` (o que os jogadores veem) e `mundo:indice` (os nomes
-    dos mapas do mundo que os jogadores podem abrir, e qual está sendo mostrado).
+  - Mapa-múndi: `mundo:mapa:<id>` (mestre), `mundo:pub:<id>` (o que os jogadores veem), `mundo:indice` (os nomes
+    dos mapas do mundo que os jogadores podem abrir, e qual está sendo mostrado) e `mundo:rabisco:<usuário>` (os traços
+    da caneta de cada pessoa, em todos os mapas: ver "O Mapa-múndi e a guerra (lote 17)").
   - Acampamento: `acampamento` — numa mesa com campanhas, um por campanha: `acampamento@<campanha>`. É o único
     documento que um jogador (com a permissão do acampamento) também grava — sem as partes do mestre.
   - Cenas: `cenas:indice` (a ordem das cenas, qual está no ar e qual aparelho do mestre a transmite), `cena:<id>:m`
@@ -104,8 +105,8 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
   - Clã: `cla:c:<clã>` (mestre: o clã inteiro), `cla:pub:<clã>` (o que a mesa vê dele, montado pelo banco) e
     `cla:nomes` (da mesa: os nomes dos níveis) — ver "O Clã (lote 6)".
   - Os documentos são escritos pelo mestre (sem dono). O que o banco deixa um jogador criar: o `cena:pedido:` dele
-    mesmo, as cartas dele ao Jornal (`jornal:cartas:<ele>`) e a prática de um personagem dele na Meditação
-    (`medit:pratica:<personagem>`). `jornal:resp:<jogador>` e `medit:achados:<personagem>` têm o jogador como dono
+    mesmo, as cartas dele ao Jornal (`jornal:cartas:<ele>`), a prática de um personagem dele na Meditação
+    (`medit:pratica:<personagem>`) e a caneta dele no Mapa-múndi (`mundo:rabisco:<ele>`, que a mesa inteira lê). `jornal:resp:<jogador>` e `medit:achados:<personagem>` têm o jogador como dono
     (para ele ler), mas quem escreve é quem mestra — e, no segundo, as funções da Meditação.
 - Storage, pasta `mesas/<mesa>/`: as imagens (mapas, retratos, fundos).
 
@@ -1326,6 +1327,66 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   fica** fecha o guia e destaca o lugar no sistema por uns instantes (nas Fichas, abrindo antes a aba da ficha); o lugar
   que não está à vista dá o aviso do assunto. Trocar de aba com o guia aberto troca os assuntos. Nada muda sozinho.
 - (conserto) A busca rápida que leva a um item da bolsa abre a aba Bolsas e itens da ficha.
+
+### O Mapa-múndi e a guerra (lote 17)
+
+- **A zona de guerra automática** (mundo/nucleo.js: `donosDosHexes`, `zonaDeGuerra`; mundo/tela.js: `desenharZonaAuto`):
+  com a grade, o dono de cada hexágono é quem controla a região de dentro onde o centro dele cai (quem ocupa, ou a dona);
+  o hexágono de uma cidade ocupada fica com quem ocupa. A zona são os hexágonos ocupados e os dois lados da fronteira
+  entre facções em guerra (aba Facções), listrados nas duas cores, com a borda tracejada e a **linha do front** (os lados
+  de hexágono entre as duas, nas duas cores, andando, como a frente de batalha). Ela cresce sozinha com a ocupação. O
+  mestre ajusta: a ferramenta **Frente → Ajustar a zona** pinta para **pôr**, **tirar** ou voltar ao **automático**
+  (`guerra.zona = { off, add, tira }`, um passo de Desfazer por traço); na aba Guerra, **Zona de guerra** liga e desliga,
+  conta os hexágonos e tem **Voltar ao automático**. É só desenho: nenhuma regra muda por ela. Todos veem: quem joga
+  recebe a zona pronta na projeção (`guerra.zauto`, fora da névoa, sem as facções escondidas). Sem a grade, as regiões
+  ocupadas continuam listradas (lote 12).
+- **As setas de ofensiva** (o objeto `a`: `{ pts, fac, cor, ver }`; `MundoNucleo.setaDaMarcha`): a ferramenta **Frente →
+  Seta de ofensiva** desenha uma seta curva pelos pontos, na cor da facção (ou numa cor própria), andando, com a ponta no
+  último ponto. E a **marcha planejada** de um grupo com rota vira seta ("Mostrar a marcha como seta", no painel do
+  grupo: de onde ele está até o fim da rota; encurta conforme ele anda). Os jogadores veem as setas da facção deles (a
+  facção dos jogadores); as das outras, só as que o mestre mostrar, uma por uma ("Os jogadores veem"). A seta da marcha
+  vai para eles pronta (`sp`), sem a rota, que pode continuar escondida.
+- **As viagens por mar** (`marcador.mar = [{ p, d }]`; `ligacoesMar`, `caminhoComMar`): no painel de um porto, **Viagens
+  por mar → Ligar a outro porto…** liga os dois com os dias de viagem (vale nos dois sentidos; dá para mudar os dias ou
+  desligar). A linha tracejada entre os dois portos aparece no mapa, com os dias, para todos que veem os dois portos. No
+  **Traçar entre dois marcadores** de um grupo, o caminho vai por mar quando chega antes (os dias da ligação contam no
+  passo de quem anda). Na viagem, a travessia leva os dias da ligação: os hexágonos do mar dividem o tempo (as bolinhas
+  continuam valendo), e a rota fica azul nesse trecho.
+- **Os recursos por hexágono** (`eco.hexr = { "q,r": { recurso: n } }`): na ferramenta **Terreno → Por hexágono**, com a
+  economia ligada, o pincel **Recurso…** põe um recurso e quanto ele dá por semana em cada hexágono pintado (0 tira); soma
+  com o do terreno, na conta da região (`producaoPropria`, na fonte "terreno"). **Tirar os recursos** limpa. Enquanto o
+  pincel está nesses modos, cada hexágono com recurso mostra o que tem, e a dica do cursor diz o que o hexágono produz. O
+  mestre vê tudo; quem joga, a produção da facção dele (a economia de sempre).
+- **Os lugares que fazem algo**: a **mina**, a **pedreira**, a **serraria** e a **fazenda** produzem um recurso por semana
+  (`marcador.pr`; o de começo é o do papel do ícone — o metal, a pedra, a madeira, a comida — com 5 por semana) para quem
+  controla a região onde ficam (`MundoReino.lugaresQueProduzem`; na produção, a fonte nova **lugares**, que quem joga vê
+  na economia dele). O **castelo** e o **forte** somam na defesa da fortificação (+3 e +2, de começo), mesmo sem uma
+  fortificação escrita: quem defende ali já ganha isso na batalha. A **ruína**, a **masmorra** e o **ninho de monstro**
+  têm **Gerar este lugar…** (o ninho: a boca da caverna, com o covil embaixo).
+- **A defesa do terreno** (`guerra.def = { ter, ic }`; `defesaDoTerreno`, `defesaDoIcone`, `defesaNoHex`; o bônus
+  `terreno` de mundo/guerra.js): na aba Guerra, **Defesa do terreno e dos lugares** mostra a tabela (de começo: Montanha
+  e Desfiladeiro +3, Colina +2, Floresta, Selva, Pântano, Ruínas, Geleira e Floresta morta +1; Castelo +3, Forte +2) e
+  **Mudar a tabela…** (de −10 a +10; "Voltar à de começo"). Na batalha, quem defende o hexágono dela ganha o número do
+  terreno dele, no Choque e na resumida — por começo, o lado atacado; com uma fortificação, quem a defende; o alto da
+  janela deixa trocar (ou "Ninguém (campo aberto)"). A lista dos bônus diz de onde veio: "Terreno (Montanha) +3".
+- **Os terrenos novos**: Água rasa, Mar profundo, Desfiladeiro, Geleira, Floresta morta, Oásis, Charneca e Terra
+  devastada, cada um com o desenho dele (na tinta e em cada hexágono) e com o bioma da cena que nasce dele. Um mapa novo
+  já vem com eles; num mapa de antes, a aba Terreno oferece acrescentar (nada muda sozinho). E os **ícones novos**:
+  Fazenda, Pedreira, Serraria, Forte, Farol, Estalagem, Mercado, Cemitério, Portal e Ninho de monstro.
+- **A terra devastada** (`MundoCampanha.devastadaNoDia`, `aplicarDevastada`): no **Próximo dia**, onde houve batalha nos
+  dias que passaram (ou onde um cerco continua), a janela sugere marcar o hexágono como Terra devastada — a linha vem
+  **desmarcada**: só vale a que o mestre marca (o custo próprio do hexágono fica). O mestre também pinta a Terra
+  devastada como qualquer terreno.
+- **A caneta** (supabase/migrations/0020_caneta_do_mapa.sql; mundo/mundo.js: `App.rabiscar`, `rabiscosDe`,
+  `limparRabiscos`; mundo/tela.js): o botão da caneta, no canto do mapa (e no trilho do mestre, tecla W), é de todos —
+  quem joga também desenha. Duas canetas: a que **some em segundos** (o traço apaga sozinho, uns segundos depois da última
+  mudança dele) e a que **fica até limpar**. Cada pessoa tem a cor dela (a de quem participa da mesa; dá para escolher
+  outra, neste aparelho). Os outros veem ao vivo (o traço vai sendo mandado enquanto é desenhado). Quem joga limpa os
+  dele ("Limpar os meus", "Desfazer o meu último"); o mestre, os de todos (**Limpar desenhos**, com Desfazer no aviso).
+  Na mesa, cada pessoa tem o documento dela, `mundo:rabisco:<usuário>` (ela é a dona, a mesa inteira lê), que o banco
+  só deixa o dono criar e mudar (e quem mestra o Mapa-múndi, para limpar), com um tamanho máximo. Sem mesa, os traços
+  que ficam ficam neste navegador. A caneta não mexe no mapa nem no Desfazer dele; a camada **Caneta** esconde os traços
+  só neste aparelho.
 
 ### A Guerra no Mapa-múndi (lote 8)
 
@@ -3213,3 +3274,19 @@ muda de nome levando a caixinha); e o `lote16b.rede.test.js` (com `SO=aniv`, `SO
 aniversário no calendário do mapa da mesa e no Jornal, o titular da Corte escolhido entre as fichas e o governante na
 Diplomacia com "Abrir a ficha", as skills únicas do mestre chegando ao jogador (a Árvore, a ficha, o bônus, "Abrir na
 Árvore") e o guia de cada papel.
+
+**Lote 17 (mapa-múndi e guerra)**: o `lote17-nucleo.test.js` confere as contas — o que se guarda (a seta, a seta da
+marcha, a produção do lugar, as ligações por mar, a zona e o ajuste, a tabela da defesa, a zona pronta e os recursos por
+hexágono, com os limites), a zona de guerra automática (a fronteira dos dois lados, os ocupados, o ajuste, a linha do
+front, desligada, sem guerra e sem grade), as viagens por mar (a ligação de cada par, o caminho que vai por mar quando
+chega antes, a viagem nos dias da ligação) e a seta da marcha, a projeção (quem vê cada seta, a zona pronta fora da
+névoa, sem o que é do mestre), a economia (os recursos dos hexágonos, os lugares que produzem para quem controla, a
+fonte "lugares" para os jogadores), a defesa do terreno e dos lugares e o bônus na batalha, a terra devastada do dia da
+campanha e os terrenos e ícones novos; o `mundo-lote17.test.js` (sem mesa), o mapa — a zona e o pincel do ajuste (pôr,
+tirar, Desfazer, a aba Guerra, desligar), a seta livre e a da marcha, vendo como jogador, ligar dois portos e o
+"Traçar" por mar, o pincel dos recursos, a mina que produz, o castelo e a tabela da defesa, o terreno na batalha, os
+terrenos e ícones novos, a terra devastada no Próximo dia e a caneta (a que some, a que fica, a cor, desfazer, limpar,
+guardada neste navegador); e o `lote17.rede.test.js`, numa mesa com dois jogadores, o que quem joga vê da guerra (a
+zona pronta, as setas da facção dele, a do Vale só depois de mostrada) e a caneta entre as contas (o documento de
+cada um, o que some sumindo para todos, o outro jogador que não apaga — nem pelo banco —, "Limpar os meus", "Limpar
+desenhos" com Desfazer).

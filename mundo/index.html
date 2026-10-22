@@ -440,6 +440,38 @@ svg text.forca-n { font-family: var(--ui); font-weight: 800; fill: #fff3d6; stro
 @keyframes anda-b { from { stroke-dashoffset: 12; } to { stroke-dashoffset: -12; } }
 @media (prefers-reduced-motion: reduce) { .fre-a.frente-anda, .fre-b.frente-anda { animation: none; } }
 
+/* (lote 17) a zona de guerra automática (os hexágonos listrados, a borda e a linha do front), as viagens por mar, as setas
+   de ofensiva, os recursos dos hexágonos (com o pincel) e a caneta */
+.c-zag, .c-mlan, .c-setg, .c-hexr, .c-rab { pointer-events: none; }
+.zag-hex { opacity: .3; }
+.zag-borda { fill: none; stroke: rgba(196, 64, 52, .85); stroke-width: 2; stroke-dasharray: 7 5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.zag-front { stroke-width: 4.5; }
+.mar-rota { fill: none; stroke: #9fd0f0; stroke-width: 2.2; stroke-dasharray: 3 7; stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: .9; }
+.rotulo.rotulo-mar { fill: #cfe6f7; }
+.rot-mar { fill: none; stroke: #9fd0f0; stroke-width: 3.2; stroke-dasharray: 8 6; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.set-fundo { fill: none; stroke: rgba(10, 12, 18, .5); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.set-linha { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 16 8; vector-effect: non-scaling-stroke; }
+.set-anda { animation: anda-seta 1.3s linear infinite; }
+@keyframes anda-seta { to { stroke-dashoffset: -24; } }
+.set-ponta { stroke: rgba(10, 12, 18, .65); stroke-width: 1.2; stroke-linejoin: round; }
+.set-hit { fill: none; stroke: transparent; stroke-width: 18; vector-effect: non-scaling-stroke; }
+.setg { opacity: .92; }
+.camadas.quieto .set-anda { animation-play-state: paused; }
+.camadas.sem-marcha .set-anda { animation: none; }
+@media (prefers-reduced-motion: reduce) { .set-anda { animation: none; } }
+.hexr-bola { stroke: rgba(10, 12, 18, .7); stroke-width: 1; }
+.hexr-txt { fill: #f3ead2; font-family: var(--mono); font-weight: 600; paint-order: stroke; stroke: rgba(10, 12, 18, .85); stroke-width: 3px; }
+.rab { fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.rab-some { animation: rab-some 8s linear forwards; }
+@keyframes rab-some { 0%, 72% { opacity: 1; } 100% { opacity: 0; } }
+.palco.t-w { cursor: crosshair; }
+.chip.cores-caneta { gap: 5px; }
+.cor-caneta { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .25); padding: 0; cursor: pointer; }
+.cor-caneta[aria-pressed="true"] { border-color: var(--lamp); box-shadow: 0 0 0 2px var(--lamp-soft); }
+.zoom .caneta-bt[aria-pressed="true"] { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); }
+.mar-li .tx { flex: 1; min-width: 0; }
+.gd-nums { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+
 /* rascunho, régua e alças */
 .rasc.linha { fill: none; }
 .rasc-ponto { fill: var(--lamp); stroke: #14171f; stroke-width: 1.5; }
@@ -1368,22 +1400,22 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=39"></script>
-<script src="guerra.js?v=5"></script>
-<script src="reino.js?v=13"></script>
+<script src="nucleo.js?v=40"></script>
+<script src="guerra.js?v=6"></script>
+<script src="reino.js?v=14"></script>
 <script src="corte.js?v=4"></script>
 <script src="diplomacia.js?v=3"></script>
 <script src="intrigas.js?v=2"></script>
-<script src="campanha.js?v=4"></script>
-<script src="camadas.js?v=3"></script>
-<script src="tela.js?v=25"></script>
-<script src="painel.js?v=41"></script>
-<script src="guerra-painel.js?v=11"></script>
-<script src="guerra-ajuda.js?v=4"></script>
-<script src="reino-painel.js?v=14"></script>
+<script src="campanha.js?v=5"></script>
+<script src="camadas.js?v=4"></script>
+<script src="tela.js?v=26"></script>
+<script src="painel.js?v=42"></script>
+<script src="guerra-painel.js?v=12"></script>
+<script src="guerra-ajuda.js?v=5"></script>
+<script src="reino-painel.js?v=15"></script>
 <script src="corte-painel.js?v=6"></script>
 <script src="diplomacia-painel.js?v=7"></script>
 <script src="intrigas-painel.js?v=2"></script>
-<script src="mundo.js?v=14"></script>
+<script src="mundo.js?v=15"></script>
 </body>
 </html>

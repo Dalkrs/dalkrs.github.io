@@ -1,7 +1,7 @@
 /* Tiny Cats · Mapa-múndi · a guerra (lote 8, parte 6): o motor das batalhas, sem página e sem DOM.
    Os lados (a partir do grupo do Exército: as unidades, a moral, o comandante, os mantimentos), os bônus de cada lado
    (na escala do d20: os números, a qualidade, os tipos de tropa, a moral, o comandante, a magia, a distância, as
-   máquinas de cerco — lote 12, parte 12d —, a fortificação, a fome e o que o mestre pôs), a batalha resumida (um d100 de cada lado) e a detalhada (um d20 de cada
+   máquinas de cerco — lote 12, parte 12d —, a fortificação, o terreno — lote 17 —, a fome e o que o mestre pôs), a batalha resumida (um d100 de cada lado) e a detalhada (um d20 de cada
    lado em cada momento: Abertura, Choque, Virada e Desfecho; momento-chave quando fica apertado ou sai 1 ou 20), o
    fim por recuo, rendição ou trégua, o depois da batalha (a prévia: tropas e HP, moral, mantimentos, a fortificação,
    a frente que anda e o hexágono) e o aplicar, os mantimentos de cada dia e os exércitos que se encontram.
@@ -25,13 +25,13 @@
   // (lote 12, parte 12d) as máquinas de cerco entram na Abertura (como os magos) e na resumida
   const DO_MOMENTO = {
     ab: ['magia', 'distancia', 'maquinas'],
-    ch: ['numeros', 'qualidade', 'tipos', 'estrutura', 'fome'],
+    ch: ['numeros', 'qualidade', 'tipos', 'estrutura', 'terreno', 'fome'],
     vi: ['moral', 'comandante', 'herois'],
     de: ['numeros', 'moral', 'fome'],
-    d100: ['numeros', 'qualidade', 'tipos', 'moral', 'comandante', 'herois', 'magia', 'distancia', 'maquinas', 'estrutura', 'fome'],
+    d100: ['numeros', 'qualidade', 'tipos', 'moral', 'comandante', 'herois', 'magia', 'distancia', 'maquinas', 'estrutura', 'terreno', 'fome'],
   };
   const NOMES = { numeros: 'Números', qualidade: 'ATQ contra DEF', tipos: 'Tipos de tropa', moral: 'Moral', comandante: 'Comandante', herois: 'Heróis', magia: 'Magos',
-    distancia: 'À distância', maquinas: 'Máquinas de cerco', estrutura: 'Fortificação', fome: 'Sem mantimentos', mestre: 'Do mestre' };
+    distancia: 'À distância', maquinas: 'Máquinas de cerco', estrutura: 'Fortificação', terreno: 'Terreno', fome: 'Sem mantimentos', mestre: 'Do mestre' };
   const BONUS_MESTRE = { tatica: 'Tática', terreno: 'Terreno', reforco: 'Reforço', magia: 'Magia', outro: 'Outro' };
 
   /* (lote 9) Os heróis: personagens com ficha (os do grupo, NPCs) que lutam junto. O bônus sugerido é a média de dois:
@@ -117,12 +117,14 @@
         if (!e || e.lado !== quem) return 0;
         return Math.max(0, Math.round(e.def * (e.hpMax ? limitar(e.hp / e.hpMax, 0, 1) : 1)));
       },
+      // (lote 17) o terreno do hexágono da batalha (a tabela da aba Guerra), para quem defende ali
+      terreno: () => { const t = ctx && ctx.terreno; return t && t.lado === quem ? Math.round(Number(t.v) || 0) : 0; },
       fome: () => -Math.min(3, X.fome),
       // (lote 9) os heróis do lado (o bônus de cada um: o da ficha, ou o que o mestre escreveu), até +10 por lado
       herois: () => limitar(Math.round(soma((ctx && ctx.herois && ctx.herois[quem]) || [], h => Number(h.v) || 0)), -MAX_HEROIS_BONUS, MAX_HEROIS_BONUS),
     };
     const out = [];
-    for (const k of DO_MOMENTO[mom] || []) { const v = c[k](); if (v) out.push({ k, nome: NOMES[k], v }); }
+    for (const k of DO_MOMENTO[mom] || []) { const v = c[k](); if (v) out.push({ k, nome: k === 'terreno' && ctx.terreno.nome ? NOMES[k] + ' (' + ctx.terreno.nome + ')' : NOMES[k], v }); }
     // (lote 9) as ações heroicas do momento (fora do teto dos heróis)
     for (const h of (ctx && ctx.acoes) || []) {
       if (h.lado !== quem || !h.v || h.mom !== mom) continue;

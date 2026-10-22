@@ -72,7 +72,7 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
         poe('g', { x: 700, y: 600, tipo: 'exercito', sigla: 'ALD' }, { id: 'ga', nome: 'Hoste de Aldar', fac: 'fa', tipo: 'exercito' });
         poe('g', { x: 760, y: 610, tipo: 'exercito', sigla: 'VAL' }, { id: 'gb', nome: 'Legião do Vale', fac: 'fb', tipo: 'exercito' });
         poe('g', { x: 1600, y: 1200, tipo: 'exercito', sigla: 'BAN' }, { id: 'gc', nome: 'Bandoleiros', tipo: 'exercito' });
-        poe('m', { x: 765, y: 612, ic: 'castelo' }, { id: 'cast', nome: 'Forte do Vale' });
+        poe('m', { x: 765, y: 612, ic: 'torre' }, { id: 'cast', nome: 'Forte do Vale' });     // (lote 17: o ícone do castelo soma na defesa; aqui, uma torre, para as contas da fortificação escrita)
         poe('f', { pts: [[730, 200], [730, 1000]] }, { id: 'fr', nome: 'Frente do Vale', a: 'fa', b: 'fb' });
         m.grade.on = true;
       });

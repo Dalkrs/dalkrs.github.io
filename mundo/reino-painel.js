@@ -133,7 +133,7 @@
   function blocoProducao(o, m) {
     const { h, nota, botao, linha, fmt, irPara, nomeDe } = kit();
     const eco = m.eco, p = R().producaoDaRegiao(m, o), out = [], comSubs = R().subregioesDe(m, o).length > 0;
-    const FONTES = [['terreno', 'terreno'], ['pop', 'população'], ['cons', 'construções'], ['gasto', 'manutenção'], ['guilda', 'guildas'], ['mestre', 'do mestre']];
+    const FONTES = [['terreno', 'terreno'], ['lugar', 'lugares'], ['pop', 'população'], ['cons', 'construções'], ['gasto', 'manutenção'], ['guilda', 'guildas'], ['mestre', 'do mestre']];
     const linhas = eco.rec.filter(r => p.total[r.id]).map(r => h('div', { class: 'prod-li', 'data-rec': r.id },
       h('i', { style: { background: r.cor } }), h('b', { text: r.nome + ' ' + sinalN(p.total[r.id]) }),
       h('small', { text: FONTES.filter(([k]) => p[k][r.id]).map(([k, t]) => t + ' ' + sinalN(p[k][r.id])).join(' · ') })));
@@ -1510,7 +1510,7 @@
   /* Para quem joga, na aba Reinos: a linha da facção deles no Livro do reino (as províncias, as sub-regiões, os
      hexágonos e os exércitos que eles veem; o que produz por semana e o estoque) e, ao abrir "De onde vem", cada recurso
      com as fontes, a manutenção dos exércitos e a produção por província. Vem pronto na projeção (v.ecoJ). */
-  const FONTES_J = [['terreno', 'terreno'], ['pop', 'população'], ['cons', 'construções'], ['guilda', 'guildas'], ['cla', 'sede do clã'], ['mestre', 'outras fontes']];
+  const FONTES_J = [['terreno', 'terreno'], ['lugar', 'lugares'], ['pop', 'população'], ['cons', 'construções'], ['guilda', 'guildas'], ['cla', 'sede do clã'], ['mestre', 'outras fontes']];
   const abertosJ = new Set();                // o que quem joga deixou aberto (só nesta página: o painel se refaz a cada mudança)
   function secLivroJog(v) {
     const e = v && v.ecoJ, K = kit();

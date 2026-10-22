@@ -11,9 +11,9 @@
   const MOM = { ab: 'Abertura', ch: 'Choque', vi: 'Virada', de: 'Desfecho' };
   const EM = { ab: 'na', ch: 'no', vi: 'na', de: 'no' };
   const SECOES = [['modos', 'Resumida ou detalhada'], ['momentos', 'Os quatro momentos'], ['bonus', 'Os bônus'], ['resultado', 'O resultado'], ['depois', 'Depois da batalha'], ['herois', 'Os heróis']];
-  const BONUS = ['numeros', 'qualidade', 'tipos', 'moral', 'comandante', 'herois', 'magia', 'distancia', 'maquinas', 'estrutura', 'fome', 'mestre', 'heroica'];
+  const BONUS = ['numeros', 'qualidade', 'tipos', 'moral', 'comandante', 'herois', 'magia', 'distancia', 'maquinas', 'estrutura', 'terreno', 'fome', 'mestre', 'heroica'];
   const NOME_B = { numeros: 'Números', qualidade: 'ATQ contra DEF', tipos: 'Tipos de tropa', moral: 'Moral', comandante: 'Comandante', herois: 'Heróis', magia: 'Magos',
-    distancia: 'À distância', maquinas: 'Máquinas de cerco', estrutura: 'Fortificação', fome: 'Sem mantimentos', mestre: 'Do mestre', heroica: 'Ação heroica' };
+    distancia: 'À distância', maquinas: 'Máquinas de cerco', estrutura: 'Fortificação', terreno: 'Terreno', fome: 'Sem mantimentos', mestre: 'Do mestre', heroica: 'Ação heroica' };
   // o "?" pede uma parte; algumas moram dentro de outra
   const ondeMora = id => (SECOES.some(([s]) => s === id) || /^(m|b):/.test(id) || ['resumida', 'detalhada', 'chave', 'parar'].includes(id) ? id : 'modos');
 
@@ -134,7 +134,14 @@
         itens.estrutura = [p('Quem defende uma fortificação (escolhida no alto da janela) ganha a DEF dela. Danificada, ela protege menos: as máquinas de cerco do outro lado tiram do HP dela depois da batalha e em cada dia de cerco. As construções de defesa do assentamento (a Paliçada, a Muralha) somam na DEF. Vale no Choque (e na resumida).'),
           ex(f ? nome(f.lado) + ' defende ' + f.nome + ': DEF ' + f.def + (f.cons ? ' (' + f.cons + ' das construções)' : '') + (f.hpMax && f.hp < f.hpMax ? ', com ' + f.hp + ' de ' + f.hpMax + ' de HP: protege ' + base : '') +
             ' → ' + sinal(f.lado === 'a' ? vA('estrutura') : vB('estrutura')) + '.' : 'ninguém defende uma fortificação.'),
-          conta('Bônus = DEF × (HP ÷ HP máx.), arredondado.', 'A DEF é a da fortificação mais a defesa das construções do assentamento (até 20).')];
+          conta('Bônus = DEF × (HP ÷ HP máx.), arredondado.', 'A DEF é a da fortificação mais a defesa das construções do assentamento e a do ícone do lugar — o castelo, o forte (até 20).')];
+      }
+      {
+        // (lote 17) o terreno do hexágono da batalha
+        const t = d.ctx && d.ctx.terreno;
+        itens.terreno = [p('O terreno do hexágono da batalha ajuda quem o defende (por começo, o lado atacado; com uma fortificação, quem a defende — dá para escolher no alto da janela). Quanto cada terreno dá fica na tabela da aba Guerra (de começo: Montanha e Desfiladeiro +3, Colina +2, Floresta, Selva, Pântano, Ruínas, Geleira e Floresta morta +1). Vale no Choque (e na resumida).'),
+          ex(t ? nome(t.lado) + ' defende ' + t.nome + ' → ' + sinal(t.v) + '.' : 'o hexágono da batalha não dá defesa (ou ninguém o defende).'),
+          conta('Bônus = o número do terreno na tabela, para quem defende.')];
       }
       itens.fome = [p('O exército sem mantimentos perde 1 por dia sem eles, até −3. Vale no Choque e no Desfecho (e na resumida).'),
         ex(lado2(A.fome ? 'sem mantimentos há ' + A.fome + (A.fome === 1 ? ' dia' : ' dias') + ' → ' + sinal(vA('fome')) : 'com mantimentos → 0', B.fome ? 'sem mantimentos há ' + B.fome + (B.fome === 1 ? ' dia' : ' dias') + ' → ' + sinal(vB('fome')) : 'com mantimentos → 0')),

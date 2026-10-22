@@ -340,7 +340,7 @@ const m10eq = (a, b) => { const ks = new Set(Object.keys(a || {}).concat(Object.
       App.mudar('a economia e a cidade', m => {
         R.ligarEconomia(m);
         if (!m.eco.cons.length) m.eco.cons = R.catalogoPronto(m, m.eco);
-        m.objs.push(Object.assign(N.objNovo('m', { x: 700, y: 650, ic: 'castelo' }), { id: 'cid', nome: 'Cidade Alta', ass: { niv: 'cidade', pop: 0 } }));
+        m.objs.push(Object.assign(N.objNovo('m', { x: 700, y: 650, ic: 'cidade' }), { id: 'cid', nome: 'Cidade Alta', ass: { niv: 'cidade', pop: 0 } }));     // (lote 17: a cidade, não o castelo, que soma na defesa sozinho)
         const fa = m.faccoes.find(f => f.id === 'fa');
         for (const [id, n] of [['lapros', 200], ['madeira', 100], ['pedra', 100], ['orith', 30]]) fa.rec.find(r => r.id === id).n = n;
       });

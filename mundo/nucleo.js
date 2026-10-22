@@ -28,7 +28,24 @@
     perigo: { nome: 'Perigo', cor: '#f0786e', svg: '<path d="M12 3 2 20h20zM12 9v5M12 17v.01"/>' },
     misterio: { nome: 'Mistério', cor: '#b39cf0', svg: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.3 2.4c-.5.2-.8.7-.8 1.2V14M12 17v.01"/>' },
     bandeira: { nome: 'Bandeira', cor: '#e58a6b', svg: '<path d="M5 21V3M5 4h12l-3 4 3 4H5"/>' },
+    // (lote 17) os lugares novos
+    fazenda: { nome: 'Fazenda', cor: '#c9b458', svg: '<path d="M3 21h18M4 21v-9l5-4 5 4v9M7.5 21v-4h3v4M16 21V9a2 2 0 0 1 4 0v12M16 13h4"/>' },
+    pedreira: { nome: 'Pedreira', cor: '#aaa49a', svg: '<path d="M3 21h18M4 21v-4h7v4M11 21v-4h7v4M7.5 17v-4h7v4M15.5 3.5c2 .2 3.7 1.5 4.6 3.3M18 5.2 13.8 9.4"/>' },
+    serraria: { nome: 'Serraria', cor: '#b98f5c', svg: '<path d="M3 21h18"/><ellipse cx="7" cy="16.5" rx="2" ry="3"/><path d="M7 13.5h10.5a2 3 0 0 1 0 6H7M13 3l7 7M14.6 4.6 13 6.2M16.6 6.6 15 8.2M18.6 8.6 17 10.2"/>' },
+    forte: { nome: 'Forte', cor: '#b39c7e', svg: '<path d="M3 21h18M4 21V9l2.5-2L9 9v12M15 21V9l2.5-2L20 9v12M9 13h6M9 21v-8M15 13v8M10.5 21v-3a1.5 1.5 0 0 1 3 0v3"/>' },
+    farol: { nome: 'Farol', cor: '#f0c75e', svg: '<path d="M9 21l1-10h4l1 10zM8.5 11h7M10 11V7.5h4V11M12 4v3.5M4.5 5.5l3 1.5M19.5 5.5l-3 1.5M5 21h14"/>' },
+    estalagem: { nome: 'Estalagem', cor: '#d9a56b', svg: '<path d="M2.5 11 9 5.5l6.5 5.5M4.5 9.5V20h9V9.5M7.5 20v-4h3v4M15.5 8h5M19 8v2.5M17 10.5h4v3.2h-4z"/>' },
+    mercado: { nome: 'Mercado', cor: '#e3a352', svg: '<path d="M3.5 10 5 5h14l1.5 5M3.5 10a2.8 2.5 0 0 0 5.7 0 2.8 2.5 0 0 0 5.6 0 2.8 2.5 0 0 0 5.7 0M5 12.5V20h14v-7.5M3 20h18M9.5 20v-4h5v4"/>' },
+    cemiterio: { nome: 'Cemitério', cor: '#a2a7b5', svg: '<path d="M2.5 21h19M4 21v-6a3 3 0 0 1 6 0v6M15.5 21V8M12.5 11h6M6 17.5h2"/>' },
+    portal: { nome: 'Portal', cor: '#9a8af0', svg: '<path d="M3 21h18M5.5 21V10a6.5 6.5 0 0 1 13 0v11M12 16.5a2.2 2.2 0 1 1 2.2-2.2c0 2.4-2 4.4-4.4 4.4"/>' },
+    ninho: { nome: 'Ninho de monstro', cor: '#cf7f5c', svg: '<path d="M2.5 15.5c2 3.2 5.2 4.5 9.5 4.5s7.5-1.3 9.5-4.5M3 15.5c3 1 6 1.4 9 1.4s6-.4 9-1.4M6.8 15a2.6 3 0 1 1 5.2 0M12 15a2.6 3 0 1 1 5.2 0M8 4l-1.2 4M12 3v4.4M16 4l1.2 4"/>' },
   };
+  /* (lote 17) Os lugares que fazem algo. PRODUCAO_ICONE: os que produzem por semana (o papel do recurso que vem de
+     começo; o mestre escolhe outro e quanto) para quem controla a região onde ficam. DEF_ICONE_PADRAO: a defesa que o
+     lugar soma na fortificação, na batalha (o mestre muda na tabela da aba Guerra). ENCONTRO_ICONE: os que têm
+     "Gerar este lugar…". */
+  const PRODUCAO_ICONE = { mina: 'metal', pedreira: 'pedra', serraria: 'madeira', fazenda: 'comida' };
+  const DEF_ICONE_PADRAO = { castelo: 3, forte: 2 };
   const EVENTOS = {
     guerra: { nome: 'Guerra', cor: '#e05a4f', svg: '<path d="M4 4l10 10M11 17l6-6M15 15l4 4M20 4 10 14M7 11l6 6M9 15l-4 4"/>' },
     conflito: { nome: 'Conflito', cor: '#e58a4f', svg: '<path d="M3 12h7M7 8l4 4-4 4M21 12h-7M17 8l-4 4 4 4"/>' },
@@ -132,7 +149,21 @@
     { id: 'tu', nome: 'Tundra', cor: '#b7c3b5', custo: 10, tex: 'tundra' },
     { id: 'tc', nome: 'Terra corrompida', cor: '#5d4166', custo: 12, tex: 'corrompida' },
   ];
-  TERRENOS_PADRAO.push(...TERRENOS_NOVOS);
+  // (lote 17) mais oito, com o desenho de cada um; como os do lote 6, um mapa de antes os recebe pela aba Terreno
+  const TERRENOS_L17 = [
+    { id: 'ar', nome: 'Água rasa', cor: '#7fb3d9', custo: 8, tex: 'raso' },
+    { id: 'md', nome: 'Mar profundo', cor: '#2f5f9a', custo: 15, tex: 'fundo' },
+    { id: 'df', nome: 'Desfiladeiro', cor: '#8a6f55', custo: 15, tex: 'desfiladeiro' },
+    { id: 'gl', nome: 'Geleira', cor: '#cfe6f2', custo: 20, tex: 'geleira' },
+    { id: 'fm', nome: 'Floresta morta', cor: '#6e6455', custo: 10, tex: 'morta' },
+    { id: 'oa', nome: 'Oásis', cor: '#6fb87a', custo: 5, tex: 'oasis' },
+    { id: 'ch', nome: 'Charneca', cor: '#8f7a8c', custo: 8, tex: 'charneca' },
+    { id: 'td', nome: 'Terra devastada', cor: '#6e5a48', custo: 8, tex: 'devastada' },
+  ];
+  TERRENOS_PADRAO.push(...TERRENOS_NOVOS, ...TERRENOS_L17);
+  /* (lote 17) A defesa do terreno na batalha (de começo; o mestre muda na tabela da aba Guerra): quem defende o
+     hexágono da batalha ganha o número do terreno dele. */
+  const DEF_TERRENO_PADRAO = { mo: 3, df: 3, co: 2, fl: 1, se: 1, pa: 1, ru: 1, gl: 1, fm: 1 };
   // A textura de cada terreno no desenho à mão: o desenho miúdo que se repete dentro da pincelada (a tela é quem
   // desenha; aqui ficam os nomes). Um terreno de antes, sem textura, fica com a do terreno de começo de mesmo id.
   const TEXTURAS = {
@@ -141,6 +172,8 @@
     ondas: { nome: 'Ondas' }, pedras: { nome: 'Pedras' },
     lavoura: { nome: 'Lavoura' }, ruinas: { nome: 'Ruínas' }, lava: { nome: 'Lava' }, cristais: { nome: 'Cristais' },
     selva: { nome: 'Selva' }, savana: { nome: 'Savana' }, tundra: { nome: 'Tundra' }, corrompida: { nome: 'Corrompida' },
+    raso: { nome: 'Água rasa' }, fundo: { nome: 'Mar profundo' }, desfiladeiro: { nome: 'Desfiladeiro' }, geleira: { nome: 'Geleira' },     // (lote 17)
+    morta: { nome: 'Floresta morta' }, oasis: { nome: 'Oásis' }, charneca: { nome: 'Charneca' }, devastada: { nome: 'Terra devastada' },
   };
   const TEX_PADRAO = Object.fromEntries(TERRENOS_PADRAO.map(t => [t.id, t.tex]));
   /* Carimbos: desenhos para enfeitar o mapa (arte própria, numa caixa 24×24). Na tela, .cc é preenchido com a cor do
@@ -237,7 +270,7 @@
   const MAX_NIVEL = 10;                           // regiões dentro de regiões: até quantos níveis (Reino → Condado → …)
   // (lote 6) a honra (lote 8: de −10 a +10) e o histórico dela; o painel das facções: recursos, números, histórico
   const MAX_HONRA = 10, MAX_HIST = 100, MAX_MOTIVO = 200, MAX_REC = 40, MAX_FHIST = 200, MAX_MUD = 40, MAX_NUM = 1e12;
-  const PREFIXO = { m: 'mc', g: 'gr', r: 'rg', e: 'ev', t: 'rt', f: 'fr', z: 'zg', l: 'ln', c: 'cb', x: 'tx' };
+  const PREFIXO = { m: 'mc', g: 'gr', r: 'rg', e: 'ev', t: 'rt', f: 'fr', z: 'zg', l: 'ln', c: 'cb', x: 'tx', a: 'st' };
   const PADROES = {
     m: { x: 0, y: 0, ic: 'cidade', cor: '', rumor: false, falso: false, liga: null },
     g: { x: 0, y: 0, cor: '#e6ab4f', sigla: 'GR', cubos: CUBOS_DIA, rota: null, prog: 0, estilo: '', honra: 0, hhist: [], fac: null },   // (lote 8: fac — a facção do grupo)
@@ -250,6 +283,9 @@
     l: { pts: [], estilo: 'rio', larg: 10, cor: '' },                  // linha: rio, estrada ou trilha
     c: { x: 0, y: 0, ic: 'arvore', tam: 40, cor: '', vira: false },    // carimbo (tam: a largura, em unidades do mapa)
     x: { x: 0, y: 0, fonte: 'mapa', tam: 28, cor: '', rot: 0, esp: 0 }, // texto livre: o texto é o nome
+    // (lote 17) a seta de ofensiva: o caminho (curvo, pelos pontos) na cor da facção; os jogadores da facção dela sempre a
+    // veem, os outros só com ver (o mestre mostra)
+    a: { pts: [], fac: null, cor: '', ver: false },
   };
 
   /* ---------------- apoio ---------------- */
@@ -790,7 +826,8 @@
   // o desenho do terreno → o bioma da cena ('agua': o mar ou o lago; o desenho liso — o de quem não escolheu — fica campo,
   // como no Encontro); o hexágono sem terreno não diz nada (null)
   const BIOMA_DA_TEX = { mato: 'campo', liso: 'campo', arvores: 'floresta', colinas: 'campo', montes: 'montanha', pedras: 'montanha', juncos: 'pantano', areia: 'deserto', neve: 'neve',
-    ondas: 'agua', lavoura: 'campo', ruinas: 'campo', lava: 'lava', cristais: 'cristais', selva: 'selva', savana: 'savana', tundra: 'tundra', corrompida: 'corrompida' };
+    ondas: 'agua', lavoura: 'campo', ruinas: 'campo', lava: 'lava', cristais: 'cristais', selva: 'selva', savana: 'savana', tundra: 'tundra', corrompida: 'corrompida',
+    raso: 'agua', fundo: 'agua', desfiladeiro: 'montanha', geleira: 'neve', morta: 'floresta', oasis: 'deserto', charneca: 'campo', devastada: 'campo' };     // (lote 17)
   const texDoTerreno = t => (!t ? '' : t.tex || (TERRENOS_PADRAO.find(x => x.id === t.id) || {}).tex || '');
   const biomaDoHex = (m, q, r) => BIOMA_DA_TEX[texDoTerreno(hexInfoBase(m, q, r).terreno)] || null;
   // o número do mapa (pelo id), para as sementes das fronteiras: dois mapas não dão as mesmas
@@ -945,6 +982,85 @@
     return Object.keys(out).length ? out : null;
   }
 
+  /* ---------------- (lote 17) a zona de guerra automática ----------------
+     Só com a grade. O dono de cada hexágono é quem controla a região de dentro onde o centro dele cai (quem a ocupa, ou
+     a dona — a facção dela ou a da região de fora); o hexágono de um lugar ocupado (a cidade que caiu) fica com quem
+     ocupa. A zona: os hexágonos ocupados e os dois lados da fronteira entre facções em guerra, mais os que o mestre pôs,
+     menos os que ele tirou. A linha do front: os lados de hexágono entre duas facções em guerra (sem os tirados). Só
+     desenho: nenhuma regra muda por ela. */
+  const MAX_CONTA_ZONA = 800000;
+  const cacheDonos = typeof WeakMap === 'function' ? new WeakMap() : null;
+  // "q,r" → { fac (quem controla), dono (a dona, quando está ocupado), oc (ocupado) }
+  function donosDosHexes(m) {
+    if (cacheDonos && cacheDonos.has(m)) return cacheDonos.get(m);
+    const out = new Map(), regs = (Array.isArray(m.objs) ? m.objs : []).filter(o => ehObj(o) && o.k === 'r' && Array.isArray(o.pts) && o.pts.length >= 3);
+    const acima = new Map(regs.map(r => [r.id, acimaDe(m, r)])), daRegiao = new Map();
+    let contas = 0;
+    for (const r of regs) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const p of r.pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
+      const cs = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map(p => hexDe(m, p[0], p[1]));
+      const q0 = Math.min(...cs.map(h => h.q)) - 1, q1 = Math.max(...cs.map(h => h.q)) + 1, r0 = Math.min(...cs.map(h => h.r)) - 1, r1 = Math.max(...cs.map(h => h.r)) + 1;
+      contas += (q1 - q0 + 1) * (r1 - r0 + 1);
+      if (contas > MAX_CONTA_ZONA) break;
+      for (let q = q0; q <= q1; q++) for (let rr = r0; rr <= r1; rr++) {
+        const c = centroHex(m, q, rr);
+        if (c.x < x0 || c.x > x1 || c.y < y0 || c.y > y1 || !dentroPoligono([c.x, c.y], r.pts)) continue;
+        const k = q + ',' + rr, ant = daRegiao.get(k);
+        // (como em regioesEm: vale a de dentro; entre duas sem parentesco, a desenhada por último)
+        if (!ant || !acima.get(ant.id).has(r.id)) daRegiao.set(k, r);
+      }
+    }
+    for (const [k, r] of daRegiao) {
+      const fac = controleDaRegiao(m, r), oc = !!(r.ocup && r.ocup.fac);
+      if (fac) out.set(k, oc ? { fac, dono: facDaRegiao(m, r), oc: true } : { fac, dono: fac, oc: false });
+    }
+    for (const o of Array.isArray(m.objs) ? m.objs : []) {
+      if (!ehObj(o) || o.k !== 'm' || !ehObj(o.ocup) || !o.ocup.fac) continue;
+      const h = hexDe(m, o.x, o.y), k = chaveHex(h), ant = out.get(k);
+      out.set(k, { fac: o.ocup.fac, dono: ant ? ant.dono : (r => (r ? facDaRegiao(m, r) : null))(regiaoEm(m, o.x, o.y)), oc: true });
+    }
+    if (cacheDonos) cacheDonos.set(m, out);
+    return out;
+  }
+  const emGuerra = (m, a, b) => { const f = a && b && a !== b && Array.isArray(m.faccoes) ? m.faccoes.find(x => x.id === a) : null; return !!(f && ehObj(f.rel) && f.rel[b] === 'guerra'); };
+  const cacheZona = typeof WeakMap === 'function' ? new WeakMap() : null;
+  // → { h: Map "q,r" → { a (quem controla), b (contra quem), o (ocupado) }, f: [[k1, k2, a, b]] } | null (sem grade, ou desligada)
+  function zonaDeGuerra(m) {
+    if (!ehObj(m) || !temGrade(m)) return null;
+    const Z = ehObj(m.guerra) && ehObj(m.guerra.zona) ? m.guerra.zona : {};
+    if (Z.off) return null;
+    if (cacheZona && cacheZona.has(m)) return cacheZona.get(m);
+    const donos = donosDosHexes(m), h = new Map(), f = [], tira = new Set(Z.tira || []);
+    for (const [k, d] of donos) {
+      if (d.oc) h.set(k, { a: d.fac, b: d.dono && d.dono !== d.fac ? d.dono : null, o: true });
+      const hx = lerChaveHex(k);
+      for (const [dq, dr] of VIZ) {
+        const kn = (hx.q + dq) + ',' + (hx.r + dr), dn = donos.get(kn);
+        if (!dn || !emGuerra(m, d.fac, dn.fac)) continue;
+        if (!h.has(k)) h.set(k, { a: d.fac, b: dn.fac, o: false });
+        if (k < kn && !tira.has(k) && !tira.has(kn)) f.push([k, kn, d.fac, dn.fac]);
+      }
+    }
+    for (const k of Z.add || []) if (!h.has(k)) { const d = donos.get(k); h.set(k, { a: d ? d.fac : null, b: null, o: false }); }
+    for (const k of tira) h.delete(k);
+    const out = h.size || f.length ? { h, f } : null;
+    if (cacheZona) cacheZona.set(m, out);
+    return out;
+  }
+  /* (lote 17) A tabela da defesa (a do mestre, na aba Guerra; sem ela, a de começo): o terreno do hexágono da batalha
+     soma na defesa de quem defende ali; o castelo e o forte somam na fortificação. */
+  const tabelaDef = m => (ehObj(m) && ehObj(m.guerra) && ehObj(m.guerra.def) ? m.guerra.def : null);
+  function defesaDoTerreno(m, terId) { const t = tabelaDef(m); return (t ? t.ter[terId] : DEF_TERRENO_PADRAO[terId]) || 0; }
+  function defesaDoIcone(m, ic) { const t = tabelaDef(m); return (t ? t.ic[ic] : DEF_ICONE_PADRAO[ic]) || 0; }
+  // o terreno do hexágono "q,r" e o quanto ele dá de defesa: { terreno, v } (sem grade, sem terreno ou sem defesa: null)
+  function defesaNoHex(m, k) {
+    const h = typeof k === 'string' ? lerChaveHex(k) : null;
+    if (!h || !temGrade(m)) return null;
+    const t = hexInfoBase(m, h.q, h.r).terreno, v = t ? defesaDoTerreno(m, t.id) : 0;
+    return t && v ? { terreno: t, v } : null;
+  }
+
   /* ---------------- viagem ---------------- */
   const n1 = n => String(Math.round(n * 10) / 10).replace('.', ',');
   const plHex = n => (n === 1 ? '1 hexágono' : n + ' hexágonos');
@@ -967,8 +1083,60 @@
   function viagem(mapa, g) {
     const rota = g && g.rota ? objDe(mapa, g.rota, 't') : null;
     if (!rota || !Array.isArray(rota.pts) || rota.pts.length < 2 || !temGrade(mapa)) return null;
-    const cam = caminhoHex(mapa, ptsDaRota(rota, g)), acum = custosDoCaminho(mapa, cam);
-    return { rota, cam, acum, total: acum[acum.length - 1] };
+    const { cam, mar } = caminhoComMar(mapa, ptsDaRota(rota, g));
+    let acum = custosDoCaminho(mapa, cam);
+    // (lote 17) a travessia por mar: os dias da ligação, no passo de quem anda (os hexágonos do mar dividem o tempo)
+    if (mar.length) {
+      const tpd = tpdDe(mapa.cal), porDia = passoDe(g, tpd) * tpd, c = [0];
+      const custoMar = new Map();
+      for (const s of mar) for (let i = s.i0 + 1; i <= s.i1; i++) custoMar.set(i, s.d * porDia / (s.i1 - s.i0));
+      for (let i = 1; i < cam.length; i++) c.push(c[i - 1] + (custoMar.has(i) ? custoMar.get(i) : acum[i] - acum[i - 1]));
+      acum = c;
+    }
+    const out = { rota, cam, acum, total: acum[acum.length - 1] };
+    if (mar.length) out.mar = mar;
+    return out;
+  }
+  /* (lote 17) As ligações por mar entre dois portos: [{ a, b (os portos), d (os dias), ka, kb (os hexágonos) }], uma por
+     par (guardada num lado ou nos dois: vale a menor). */
+  const cacheMar = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function ligacoesMar(mapa) {
+    if (cacheMar && ehObj(mapa) && cacheMar.has(mapa)) return cacheMar.get(mapa);
+    const objs = ehObj(mapa) && Array.isArray(mapa.objs) ? mapa.objs : [], portos = new Map(objs.filter(o => ehObj(o) && o.k === 'm' && o.ic === 'porto').map(o => [o.id, o])), par = new Map();
+    for (const o of portos.values()) for (const x of Array.isArray(o.mar) ? o.mar : []) {
+      const p = portos.get(x.p);
+      if (!p || p === o) continue;
+      const [a, b] = o.id < p.id ? [o, p] : [p, o], k = a.id + '\n' + b.id, ant = par.get(k);
+      if (!ant || x.d < ant.d) par.set(k, { a: a.id, b: b.id, d: x.d, pa: a, pb: b });
+    }
+    const out = [];
+    for (const x of par.values()) {
+      const L = { a: x.a, b: x.b, d: x.d };
+      if (temGrade(mapa)) { L.ka = chaveHex(hexDe(mapa, x.pa.x, x.pa.y)); L.kb = chaveHex(hexDe(mapa, x.pb.x, x.pb.y)); }
+      out.push(L);
+    }
+    if (cacheMar && ehObj(mapa)) cacheMar.set(mapa, out);
+    return out;
+  }
+  // os hexágonos por onde passa a linha, como caminhoHex, e os trechos dela que são uma travessia por mar (de um porto a
+  // outro ligado a ele, em linha reta): [{ i0, i1 (os índices no caminho), d, a, b }]; seg: o índice no caminho do
+  // hexágono de cada ponto da linha
+  function caminhoComMar(mapa, pts) {
+    const ls = temGrade(mapa) ? ligacoesMar(mapa) : [], porHex = new Map();
+    for (const L of ls) { porHex.set(L.ka + '|' + L.kb, L); porHex.set(L.kb + '|' + L.ka, L); }
+    const cam = [], mar = [], seg = [];
+    if (!temGrade(mapa) || !Array.isArray(pts)) return { cam, mar, seg };
+    let ant = null;
+    for (const p of pts) {
+      const q = xy(p), h = hexDe(mapa, q.x, q.y);
+      const L = ant && ls.length && distHex(ant, h) > 1 ? porHex.get(chaveHex(ant) + '|' + chaveHex(h)) : null;
+      const i0 = cam.length - 1;
+      for (const x of ant ? linhaHex(ant, h) : [h]) { const u = cam[cam.length - 1]; if (!u || u.q !== x.q || u.r !== x.r) cam.push(x); }
+      if (L && cam.length - 1 > i0) mar.push({ i0, i1: cam.length - 1, d: L.d, a: L.a, b: L.b });
+      seg.push(cam.length - 1);
+      ant = h;
+    }
+    return { cam, mar, seg };
   }
   /* Em que hexágono do caminho o grupo está: o dele, se o caminho passa por ali (passando mais de uma vez, o que bate
      com o que ele já andou); fora do caminho, o mais perto — e a distância até ele, em hexágonos. */
@@ -1260,7 +1428,10 @@
      o desconto das estradas), via: 'estrada' | 'trilha' (a que mais aparece no caminho; sem nenhuma, trilha), msg } */
   const VIZ = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
   const MAX_NOS = 200000;
-  function tracarRota(mapa, de, para) {
+  /* (lote 17) com as ligações por mar: de um porto ao outro, os dias da ligação valem como cubos no passo de quem vai
+     andar (opc.cubosDia: os cubos de um dia dele; sem isso, os de um grupo novo) — o caminho pode ir por mar quando é
+     mais curto. → também dias (os dias de mar) e mar: [{ a, b, d }] */
+  function tracarRota(mapa, de, para, opc) {
     if (!temGrade(mapa)) return { ok: false, msg: 'Defina a grade de hexágonos do mapa primeiro (aba Terreno)' };
     const a = xy(de), b = xy(para), ha = hexDe(mapa, a.x, a.y), hb = hexDe(mapa, b.x, b.y);
     if (ha.q === hb.q && ha.r === hb.r) return { ok: false, msg: 'Os dois pontos ficam no mesmo hexágono' };
@@ -1285,6 +1456,15 @@
     for (const t of mapa.terrenos || []) menor = Math.min(menor, num(t.custo, CUBOS_HEX));
     menor = Math.max(0.01, Math.min(menor, CUBOS_HEX, ...mapa.objs.filter(o => o.k === 'r' && o.custo != null).map(o => o.custo)) * (fator.size ? 0.4 : 1));
     for (const [k] of fator) { const h = lerChaveHex(k); menor = Math.min(menor, Math.max(0.01, hexInfoBase(mapa, h.q, h.r).custo) * fator.get(k)); }
+    // (lote 17) as travessias por mar: do hexágono de um porto ao do outro
+    const cubosDia = ehObj(opc) && num(opc.cubosDia, 0) > 0 ? num(opc.cubosDia, 0) : CUBOS_DIA, saidas = new Map(), ligMar = new Map();
+    for (const L of ligacoesMar(mapa)) {
+      if (!L.ka || L.ka === L.kb) continue;
+      const c = L.d * cubosDia;
+      for (const [x, y] of [[L.ka, L.kb], [L.kb, L.ka]]) { if (!saidas.has(x)) saidas.set(x, []); saidas.get(x).push([y, c]); ligMar.set(x + '|' + y, L); }
+      const dd = distHex(lerChaveHex(L.ka), lerChaveHex(L.kb));
+      if (dd > 0) menor = Math.min(menor, Math.max(0.01, c / dd));
+    }
     // A*, com uma fila de prioridade (heap)
     const heap = [], push = (f, k) => { heap.push([f, k]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
     const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
@@ -1306,6 +1486,11 @@
         const ng = gk + c;
         if (ng < (g.has(kn) ? g.get(kn) : Infinity)) { g.set(kn, ng); veio.set(kn, k); push(ng + distHex(n, hb) * menor, kn); }
       }
+      for (const [kn, c] of saidas.get(k) || []) {                   // (lote 17) por mar
+        if (feito.has(kn)) continue;
+        const ng = gk + c;
+        if (ng < (g.has(kn) ? g.get(kn) : Infinity)) { g.set(kn, ng); veio.set(kn, k); push(ng + distHex(lerChaveHex(kn), hb) * menor, kn); }
+      }
     }
     if (!achou) return { ok: false, msg: nos > MAX_NOS ? 'O mapa é grande demais para traçar este caminho' : 'Não há caminho: um evento fecha a passagem' };
     const cam = [hb];
@@ -1320,10 +1505,21 @@
     }
     const cn = centroHex(mapa, hb.q, hb.r);
     pts.push([arred(cn.x), arred(cn.y)]);
-    let custo = 0, est = 0, tri = 0;
-    for (let i = 1; i < cam.length; i++) { const k = chaveHex(cam[i]); custo += custoHex(mapa, cam[i].q, cam[i].r); if (tipoVia.get(k) === 'estrada') est++; else if (tipoVia.get(k) === 'trilha') tri++; }
-    const hexes = cam.length - 1;
-    return { ok: true, pts, cam, hexes, custo: arred(custo), via: est >= tri && est ? 'estrada' : 'trilha', naVia: est + tri, msg: plHex(hexes) + ' (' + n1(custo) + ' cubos)' + (est + tri ? ', ' + plHex(est + tri) + ' por estrada ou trilha' : '') };
+    let custo = 0, est = 0, tri = 0, dias = 0, terra = 0;
+    const mar = [];
+    for (let i = 1; i < cam.length; i++) {
+      const k = chaveHex(cam[i]), L = distHex(cam[i - 1], cam[i]) > 1 ? ligMar.get(chaveHex(cam[i - 1]) + '|' + k) : null;
+      if (L) { dias += L.d; mar.push({ a: L.a, b: L.b, d: L.d }); continue; }      // (lote 17) a travessia: os dias, não os cubos
+      terra++;
+      custo += custoHex(mapa, cam[i].q, cam[i].r); if (tipoVia.get(k) === 'estrada') est++; else if (tipoVia.get(k) === 'trilha') tri++;
+    }
+    const hexes = mar.length ? terra : cam.length - 1;
+    const out = { ok: true, pts, cam, hexes, custo: arred(custo), via: est >= tri && est ? 'estrada' : 'trilha', naVia: est + tri, msg: plHex(hexes) + ' (' + n1(custo) + ' cubos)' + (est + tri ? ', ' + plHex(est + tri) + ' por estrada ou trilha' : '') };
+    if (mar.length) {
+      const txMar = (dias === 1 ? '1 dia' : dias + ' dias') + ' de mar' + (mar.length > 1 ? ' (' + mar.length + ' travessias)' : '');
+      out.dias = dias; out.mar = mar; out.msg = hexes ? out.msg + ' e ' + txMar : txMar.charAt(0).toUpperCase() + txMar.slice(1);
+    }
+    return out;
   }
   /* (lote 7, parte 5b) Os encontros no caminho: um grupo do mundo (caravana, patrulha, exército) e um grupo comum que
      passaram a até 1 hexágono um do outro. pass: id → os hexágonos por onde cada um passou ("q,r"; quem não está ali, o
@@ -1367,6 +1563,19 @@
     const total = Math.min(100000, Math.ceil(C / pt - 1e-9)), faltam = Math.ceil((C - sobra) / pt - 1e-9);
     const prox = hexInfo(mapa, v.cam[i + 1].q, v.cam[i + 1].r);
     return { total, feitas: limitar(total - faltam, 0, total - 1), terreno: prox.terreno ? prox.terreno.nome || '' : '' };
+  }
+  /* (lote 17) A marcha planejada como seta: de onde o grupo está até o fim da rota (no sentido de agora), pelos cantos do
+     caminho (onde ele muda de direção; a travessia por mar, em linha reta). null: sem rota, sem grade, fora dela ou no fim. */
+  function setaDaMarcha(mapa, g) {
+    if (!ehObj(g) || g.k !== 'g' || !g.rota || !temGrade(mapa)) return null;
+    const r = naRota(mapa, g.id);
+    if (r.erro || r.i >= r.ult) return null;
+    // os pontos da rota que ainda faltam: os do trecho onde ele está em diante
+    const rp = ptsDaRota(r.v.rota, r.g), { seg } = caminhoComMar(mapa, rp), pts = [[arred(g.x), arred(g.y)]];
+    let j = 0;
+    while (j < seg.length - 1 && seg[j + 1] <= r.i) j++;
+    for (let k = j + 1; k < rp.length; k++) pts.push([arred(rp[k][0]), arred(rp[k][1])]);
+    return pts.length >= 2 && (pts.length > 2 || pts[0][0] !== pts[1][0] || pts[0][1] !== pts[1][1]) ? pts : null;
   }
   /* ---------------- regiões dentro de regiões (lote 6) ----------------
      Uma região pode ficar dentro de outra (pai: o Condado dentro do Reino). Sem facção, ela é da facção do pai (e do
@@ -1739,6 +1948,12 @@
         if (oc) mc.ocup = oc;
         const ce = normCerco(o.cerco);                            // (lote 12, parte 12e) o cerco do lugar
         if (ce) mc.cerco = ce;
+        // (lote 17) o que o lugar produz por semana (mina, pedreira, serraria, fazenda: os recursos conferem no fim) e,
+        // no porto, as ligações por mar com outros portos (os dias de viagem)
+        const pr = normTabProd(o.pr);
+        if (Object.keys(pr).length) mc.pr = pr;
+        const mar = normMar(o.mar);
+        if (mar.length) mc.mar = mar;
         return mc;
       }
       case 'g':
@@ -1753,6 +1968,10 @@
         if (tem(CLIMAS, o.ch)) g.ch = o.ch;                       // (lote 7, parte 5c) na projeção: o clima de hoje onde ele está
         // (lote 8, parte 6) o exército: as unidades, o comandante, a moral e os mantimentos
         if (g.tipo === 'exercito') { const exe = normExe(o.exe); if (exe) g.exe = exe; }
+        // (lote 17) a marcha planejada vira seta (ver: os jogadores de outra facção também veem); na projeção, sp = os
+        // pontos da seta, prontos
+        if (ehObj(o.seta)) g.seta = { ver: sim(o.seta.ver) };
+        { const sp = pontos(o.sp, 2); if (sp) g.sp = sp; }
         return normAndar(o, g, true);
       case 'r': {
         const pts = pontos(o.pts, leve ? 0 : 3);
@@ -1831,8 +2050,27 @@
         if (!lugar()) return null;
         return Object.assign(b, { fonte: escolha(FONTES, o.fonte, 'mapa'), tam: arred(limitar(num(o.tam, 28), 1, MAX_COORD)), cor: cor(o.cor, ''),
           rot: inteiro(o.rot, 0, -180, 180), esp: Math.round(limitar(num(o.esp, 0), 0, 1) * 100) / 100 });
+      case 'a': {                                                 // (lote 17) a seta de ofensiva
+        const pts = pontos(o.pts, leve ? 0 : 2);
+        if (!pts) return null;
+        return Object.assign(b, { pts, fac: idRef(o.fac), cor: cor(o.cor, ''), ver: sim(o.ver) });
+      }
     }
     return null;
+  }
+  /* (lote 17) As ligações por mar de um porto: [{ p (o outro porto), d (os dias de viagem) }], sem repetir o outro porto.
+     (Cada ligação fica guardada num dos dois portos; ligacoesMar junta as dos dois lados.) */
+  const MAX_MAR = 12, MAX_DIAS_MAR = 365;
+  function normMar(v) {
+    const out = [], vistos = new Set();
+    for (const x of Array.isArray(v) ? v : []) {
+      if (!ehObj(x) || out.length >= MAX_MAR) continue;
+      const p = idRef(x.p), d = inteiro(x.d, 0, 0, MAX_DIAS_MAR);
+      if (!p || !(d >= 1) || vistos.has(p)) continue;
+      vistos.add(p);
+      out.push({ p, d });
+    }
+    return out;
   }
   function normCal(c) {
     c = ehObj(c) ? c : {};
@@ -2221,6 +2459,15 @@
       niv.push({ id, nome: texto(n.nome, '', 40).trim() || 'Nível', esp: inteiro(n.esp, 2, 0, 40), dist: ehObj(n.dist) ? normTabPos(n.dist, ve) : distDeComeco(id, ve) });
     }
     const eco = { on: sim(v.on), rec, ter, estr, niv, cons: normCatalogo(v.cons, ids, terIds, vn), guildas: normGuildas(v.guildas, true, MAX_GUILDAS_CAT) };
+    // (lote 17) os recursos que o pincel pôs em cada hexágono: somam aos do terreno dele, por semana ("q,r" → { recurso: n })
+    const hexr = {};
+    let nh = 0;
+    for (const k of ehObj(v.hexr) ? Object.keys(v.hexr) : []) {
+      if (nh >= MAX_HEX) break;
+      const h = lerChaveHex(k), t = h ? normTabProd(v.hexr[k], ids) : null;
+      if (t && Object.keys(t).length) { hexr[chaveHex(h)] = t; nh++; }
+    }
+    if (nh) eco.hexr = hexr;
     for (const g of eco.guildas) conferirGuilda(g, ids, ve);           // (parte 5b) o catálogo de guildas
     // (parte 4) a semana: sem o número guardado, a de hoje (nenhuma pendente); sem os dias da semana no mapa, nenhuma
     const semHoje = ehObj(cal) && Number.isInteger(cal.sem0) ? Math.floor((cal.sem0 + Math.floor(num(cal.dia, 0))) / 7) : null;
@@ -2332,7 +2579,7 @@
      província; null: as terras que eles não veem e o que fica fora das províncias), nome, prod }], livro: { prov, sub,
      hex, exe, grade } (a linha deles no Livro do reino), trocas (lote 11, parte 3b: o tributo e as trocas dela por semana,
      [{ tipo ('trib' | 'troca'), sentido ('envia' | 'recebe'), com (a outra facção; null: uma que eles não veem), rec, q }]) }. */
-  const FONTES_J = ['terreno', 'pop', 'cons', 'guilda', 'cla', 'mestre', 'total'], MAX_TROCAS_J = 100;
+  const FONTES_J = ['terreno', 'lugar', 'pop', 'cons', 'guilda', 'cla', 'mestre', 'total'], MAX_TROCAS_J = 100;     // (lote 17: lugar — minas, pedreiras, serrarias, fazendas)
   function normEcoJ(v) {
     if (!ehObj(v) || !idOk(v.fac)) return null;
     const rec = [], vistos = new Set();
@@ -2719,7 +2966,62 @@
     const pres = normPresenca(v.pres);                           // (parte 12b) os dias contados para a ocupação (e a libertação)
     if (Object.keys(pres).length) g.pres = pres;
     if (Array.isArray(v.maqs)) g.maqs = normMaqs(v.maqs);        // (parte 12d) os tipos de máquina do mestre (sem eles, os de começo)
-    return g.tipos.length || g.bats.length || Object.keys(g.hexes).length || g.regras || g.forr || g.pres || g.maqs ? g : null;
+    // (lote 17) a zona de guerra automática: desligada (off) e o ajuste do mestre (add, tira); a tabela da defesa do
+    // terreno e dos lugares (só quando o mestre mudou); na projeção, a zona pronta (zauto)
+    const zona = normZonaGuerra(v.zona);
+    if (zona) g.zona = zona;
+    const def = normDefGuerra(v.def, terrenos);
+    if (def) g.def = def;
+    const za = normZonaPronta(v.zauto);
+    if (za) g.zauto = za;
+    return guerraVazia(g) ? null : g;
+  }
+  const guerraVazia = g => !(g.tipos.length || g.bats.length || Object.keys(g.hexes).length || g.regras || g.forr || g.pres || g.maqs || g.zona || g.def || g.zauto);
+  // as chaves de hexágono de uma lista ("q,r"), sem repetir, até o limite
+  function chavesHex(v) {
+    const out = [], vistos = new Set();
+    for (const k of Array.isArray(v) ? v : []) {
+      if (out.length >= MAX_HEX) break;
+      const h = typeof k === 'string' ? lerChaveHex(k) : null, c = h ? chaveHex(h) : null;
+      if (c && !vistos.has(c)) { vistos.add(c); out.push(c); }
+    }
+    return out;
+  }
+  function normZonaGuerra(v) {
+    if (!ehObj(v)) return null;
+    const tira = chavesHex(v.tira), sai = new Set(tira), add = chavesHex(v.add).filter(k => !sai.has(k));
+    const z = {};
+    if (sim(v.off)) z.off = true;
+    if (add.length) z.add = add;
+    if (tira.length) z.tira = tira;
+    return Object.keys(z).length ? z : null;
+  }
+  const MAX_DEF = 10;
+  function normDefGuerra(v, terrenos) {
+    if (!ehObj(v)) return null;
+    const ters = new Set((Array.isArray(terrenos) ? terrenos : TERRENOS_PADRAO).map(t => t.id)), ter = {}, ic = {};
+    if (ehObj(v.ter)) for (const k of Object.keys(v.ter)) if (ters.has(k)) { const n = inteiro(v.ter[k], 0, -MAX_DEF, MAX_DEF); if (n) ter[k] = n; }
+    if (ehObj(v.ic)) for (const k of Object.keys(v.ic)) if (tem(ICONES, k)) { const n = inteiro(v.ic[k], 0, -MAX_DEF, MAX_DEF); if (n) ic[k] = n; }
+    return { ter, ic };
+  }
+  // a zona pronta da projeção: { h: { "q,r": [facção, contra, ocupado] }, f: [["q,r", "q,r", facção, contra]] }
+  function normZonaPronta(v) {
+    if (!ehObj(v)) return null;
+    const h = {}, f = [];
+    let n = 0;
+    for (const k of ehObj(v.h) ? Object.keys(v.h) : []) {
+      if (n >= MAX_HEX) break;
+      const hx = lerChaveHex(k), x = v.h[k];
+      if (!hx || !Array.isArray(x)) continue;
+      h[chaveHex(hx)] = [idRef(x[0]), idRef(x[1]), x[2] ? 1 : 0];
+      n++;
+    }
+    for (const x of Array.isArray(v.f) ? v.f.slice(0, MAX_HEX * 3) : []) {
+      if (!Array.isArray(x)) continue;
+      const a = typeof x[0] === 'string' ? lerChaveHex(x[0]) : null, b = typeof x[1] === 'string' ? lerChaveHex(x[1]) : null;
+      if (a && b && distHex(a, b) === 1) f.push([chaveHex(a), chaveHex(b), idRef(x[2]), idRef(x[3])]);
+    }
+    return Object.keys(h).length || f.length ? { h, f } : null;
   }
   /* (lote 12, parte 12b) os dias contados para a ocupação de cada região (e, com lib, para a libertação): { região: { fac
      (quem conta), n (os dias seguidos), lib } } */
@@ -2884,7 +3186,7 @@
   function terrenosQueFaltam(mapa) {
     const ts = ehObj(mapa) && Array.isArray(mapa.terrenos) ? mapa.terrenos : [];
     const ids = new Set(ts.map(t => t.id)), nomes = new Set(ts.map(t => String(t.nome || '').trim().toLowerCase()));
-    return TERRENOS_NOVOS.filter(t => !ids.has(t.id) && !nomes.has(t.nome.toLowerCase())).slice(0, Math.max(0, MAX_TER - ts.length)).map(t => copia(t));
+    return TERRENOS_NOVOS.concat(TERRENOS_L17).filter(t => !ids.has(t.id) && !nomes.has(t.nome.toLowerCase())).slice(0, Math.max(0, MAX_TER - ts.length)).map(t => copia(t));
   }
   /* (lote 8) A bandeira do clã ligado à facção, como a projeção a leva aos jogadores (f.br): a forma, a divisão, as duas
      cores, o símbolo e a imagem (só a do banco, https). Quem desenha (ClaNucleo.brasaoSvg) confere tudo de novo. */
@@ -2971,6 +3273,9 @@
     for (const o of mapa.objs) {
       if (o.k === 'r' && !facs.has(o.fac)) o.fac = null;
       if (o.k === 'f' || o.k === 'z') { if (!facs.has(o.a)) o.a = null; if (!facs.has(o.b)) o.b = null; }
+      if (o.k === 'a' && !facs.has(o.fac)) o.fac = null;           // (lote 17) a seta: a facção dela tem de existir
+      // (lote 17) a produção do lugar, só dos recursos do mundo
+      if (o.k === 'm' && o.pr) { const p = normTabProd(o.pr, recIds); if (Object.keys(p).length) o.pr = p; else delete o.pr; }
       if (o.k === 'g') {
         if (!facs.has(o.fac)) o.fac = null;                   // (lote 8) a facção do grupo tem de existir
         if (!rotas.has(o.rota)) o.rota = null;
@@ -2995,7 +3300,7 @@
       const rs = new Set(mapa.objs.filter(o => o.k === 'r').map(o => o.id));
       mapa.guerra.forr = mapa.guerra.forr.filter(x => rs.has(x.r));
       if (!mapa.guerra.forr.length) delete mapa.guerra.forr;
-      if (!mapa.guerra.tipos.length && !mapa.guerra.bats.length && !Object.keys(mapa.guerra.hexes).length && !mapa.guerra.regras && !mapa.guerra.forr && !mapa.guerra.pres && !mapa.guerra.maqs) delete mapa.guerra;
+      if (guerraVazia(mapa.guerra)) delete mapa.guerra;
     }
     // a região de dentro de outra: o pai tem de existir (e ser região), e subindo pelos pais não se volta a ela
     const regs = new Map();
@@ -3016,6 +3321,14 @@
     }
     // (lote 12, parte 12e) o cerco: de uma facção que existe (sem a facção: só na projeção)
     for (const o of mapa.objs) if (o.k === 'm' && o.cerco && o.cerco.fac && !facs.has(o.cerco.fac)) delete o.cerco;
+    // (lote 17) as ligações por mar: com outro marcador que existe (não com ele mesmo); só valem entre dois portos
+    // (ligacoesMar), mas ficam guardadas se o mestre troca o ícone por um tempo
+    const marcs = new Set(mapa.objs.filter(o => o.k === 'm').map(o => o.id));
+    for (const o of mapa.objs) {
+      if (o.k !== 'm' || !o.mar) continue;
+      o.mar = o.mar.filter(x => x.p !== o.id && marcs.has(x.p));
+      if (!o.mar.length) delete o.mar;
+    }
     // (lote 12, parte 12d) as máquinas das unidades e das fortificações: só dos tipos que existem
     const tiposMaq = new Set(maquinasDe(mapa).map(t => t.id));
     for (const o of mapa.objs) {
@@ -3026,7 +3339,7 @@
     if (mapa.guerra && mapa.guerra.pres) {
       for (const id of Object.keys(mapa.guerra.pres)) if (!regs.has(id) || !facs.has(mapa.guerra.pres[id].fac)) delete mapa.guerra.pres[id];
       if (!Object.keys(mapa.guerra.pres).length) delete mapa.guerra.pres;
-      if (!mapa.guerra.tipos.length && !mapa.guerra.bats.length && !Object.keys(mapa.guerra.hexes).length && !mapa.guerra.regras && !mapa.guerra.forr && !mapa.guerra.pres && !mapa.guerra.maqs) delete mapa.guerra;
+      if (guerraVazia(mapa.guerra)) delete mapa.guerra;
     }
     return mapa;
   }
@@ -3151,6 +3464,7 @@
     const ecoJ = Rn ? Rn.economiaDosJogadores(m, opts && opts.clas, vai) : null;
     if (Rn) for (const o of m.objs) if (o.k === 'm' && o.ass && vai(o) && Rn.verDentro(m, o)) { const d = Rn.dentroParaJogadores(m, o); if (d) dentro.set(o.id, d); }
     const W = m.eco && m.eco.on ? new Set(m.eco.rec.map(r => r.id)) : null;     // os recursos do mundo
+    const zg = zonaDeGuerra(m);                                // (lote 17) a zona de guerra automática, no mapa inteiro
     const hexes = {};
     for (const k of Object.keys(m.hexes)) {
       const v = m.hexes[k], t = typeof v === 'string' ? v : v[0], h = lerChaveHex(k);
@@ -3166,14 +3480,29 @@
       for (const k of Object.keys(m.guerra.hexes)) { const h = lerChaveHex(k), c = h && temGrade(m) ? centroHex(m, h.q, h.r) : null; if (c && !coberto(c.x, c.y)) hg[k] = m.guerra.hexes[k]; }
       m.guerra = { tipos: m.guerra.tipos.map(t => ({ id: t.id, nome: t.nome })), bats: [], hexes: hg };
     }
+    /* (lote 17) a zona de guerra automática, pronta (os jogadores não têm as regiões escondidas nem as facções ocultas
+       para contar): fora da névoa, sem as facções escondidas. O ajuste e a tabela da defesa são do mestre. */
+    if (zg) {
+      const oc = new Set(m.faccoes.filter(f => f.oculta).map(f => f.id)), fv = id => (id && !oc.has(id) ? id : null);
+      const fora = k => { const h = lerChaveHex(k), c = centroHex(m, h.q, h.r); return coberto(c.x, c.y); };
+      const h = {}, f = [];
+      for (const [k, x] of zg.h) if (!fora(k)) h[k] = [fv(x.a), fv(x.b), x.o ? 1 : 0];
+      for (const x of zg.f) if (!fora(x[0]) && !fora(x[1])) f.push([x[0], x[1], fv(x[2]), fv(x[3])]);
+      if (Object.keys(h).length || f.length) { if (!m.guerra) m.guerra = { tipos: [], bats: [], hexes: {} }; m.guerra.zauto = { h, f }; }
+    }
     // (lote 6) as bolinhas dos grupos e a facção que cada região herda são contadas aqui, no mapa inteiro: os custos e
     // as regiões de cima podem não ir para os jogadores
-    const bols = new Map(), facEf = new Map();
+    const bols = new Map(), facEf = new Map(), setas = new Map();
+    const jogF = (m.faccoes.find(f => f.jog) || {}).id || null;
     // (lote 7, parte 5c) o clima de hoje: no mundo, nas regiões com ajuste (ou com o de hoje escolhido à mão) e onde cada
     // grupo está — pronto, porque a tabela e os ajustes são do mestre
     const chMundo = climaDoDia(m, dia, null).k, chReg = new Map(), chGru = new Map();
     for (const o of m.objs) {
-      if (o.k === 'g') { const b = bolinhas(m, o); if (b) bols.set(o.id, [b.feitas, b.total]); chGru.set(o.id, climaNoPonto(m, o.x, o.y, dia).k); }
+      if (o.k === 'g') {
+        const b = bolinhas(m, o); if (b) bols.set(o.id, [b.feitas, b.total]); chGru.set(o.id, climaNoPonto(m, o.x, o.y, dia).k);
+        // (lote 17) a marcha como seta: a da facção dos jogadores, ou a que o mestre mostrou
+        if (o.seta && (o.seta.ver || (jogF && o.fac === jogF))) { const sp = setaDaMarcha(m, o); if (sp && !todoCoberto(sp)) setas.set(o.id, sp); }
+      }
       else if (o.k === 'r') { facEf.set(o.id, facDaRegiao(m, o)); if (o.clima || (o.chj && o.chj.d === dia)) chReg.set(o.id, climaDoDia(m, dia, o).k); }
     }
     m.clima = { hoje: chMundo };
@@ -3210,7 +3539,7 @@
       if (o.mis) { if (!o.mis.ver) delete o.mis; else if (!o.mis.ref) o.mis = { t: o.mis.t, ref: null, ver: true, e: situacaoDaMissao(o.mis) }; else delete o.mis.ok; }
       if (o.k === 'm') {
         const est0 = o.estr;
-        delete o.falso; delete o.estr; delete o.desc; delete o.ass; delete o.dentro;
+        delete o.falso; delete o.estr; delete o.desc; delete o.ass; delete o.dentro; delete o.pr;     // (lote 17: a produção do lugar é do mestre)
         if (coberto(o.x, o.y)) continue;
         // (lote 12, parte 12e) o cerco: quem cerca (sem a facção escondida) e desde quando; a reserva e o HP da muralha
         // só para a facção dos jogadores, quando ela cerca ou é cercada ali
@@ -3224,6 +3553,8 @@
       }
       else if (o.k === 'g') {
         if (bols.has(o.id)) o.bol = bols.get(o.id); else delete o.bol;
+        delete o.seta; delete o.sp;                              // (lote 17) a seta da marcha: pronta, só a que eles veem
+        if (setas.has(o.id)) o.sp = setas.get(o.id);
         // (lote 7, parte 5b) o jeito de andar e as paradas são do mestre
         delete o.modo; delete o.sentido; delete o.paradas; delete o.espera;
         delete o.desc; delete o.pdesc;                           // (lote 9) o descanso e os pontos de descanso também
@@ -3258,6 +3589,12 @@
         if (todoCoberto(o.pts)) continue;
       }
       else if (o.k === 'c' || o.k === 'x') { if (coberto(o.x, o.y)) continue; }
+      else if (o.k === 'a') {
+        // (lote 17) a seta de ofensiva: a da facção dos jogadores, ou a que o mestre mostrou
+        if (!(o.ver || (jogF && o.fac === jogF))) continue;
+        if (escondidas.has(o.fac)) o.fac = null;
+        if (todoCoberto(o.pts)) continue;
+      }
       objs.push(o);
     }
     const rotas = new Set(objs.filter(o => o.k === 't').map(o => o.id));
@@ -3346,6 +3683,9 @@
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
     GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE, FORMAS_SUC, GENEROS_SUC, REGRA_PADRAO,
     TIPOS_TRATADO, normDipl, TIPOS_DONO, TIPOS_ALVO, ESTADOS_INTRIGA,
+    // (lote 17) o mapa-múndi e a guerra
+    PRODUCAO_ICONE, DEF_ICONE_PADRAO, DEF_TERRENO_PADRAO, TERRENOS_L17, zonaDeGuerra, donosDosHexes, emGuerra, defesaDoTerreno, defesaDoIcone, defesaNoHex,
+    ligacoesMar, caminhoComMar, setaDaMarcha, MAX_MAR, MAX_DIAS_MAR,
     LIMITES: { herois: MAX_HEROIS, honra: MAX_HONRA, historico: MAX_HIST, motivo: MAX_MOTIVO, recursos: MAX_REC, historicoFac: MAX_FHIST, niveis: MAX_NIVEL, tempos: MAX_TEMPOS, objs: MAX_OBJS, ops: MAX_OPS, texto: MAX_TXT, hexes: MAX_HEX, terrenos: MAX_TER, pinceladas: MAX_PINC, pontosPintura: MAX_PONTOS_PINT, pontos: MAX_PTS, fases: MAX_FASES, unidades: MAX_UNID, equipamentos: MAX_EQUIP, tiposGuerra: MAX_TIPOS_G, batalhas: MAX_BATS, momentos: MAX_MOM, notasBatalha: MAX_NOTAS, tropas: MAX_TROPAS, atributo: MAX_ATR, bonus: MAX_BONUS,
       construcoes: MAX_CONS, niveisConstrucao: MAX_NIV_CONS, construcoesAss: MAX_CONS_ASS, semanasObra: MAX_SEM_OBRA, defesaConstrucao: MAX_DEF_CONS, espacosConstrucao: MAX_ESP_CONS, efeitoConstrucao: MAX_EF_CONS,
       estratos: MAX_ESTR, pessoas: MAX_PESSOAS, lembrete: MAX_LEMBRA, guildas: MAX_GUILDAS, guildasCatalogo: MAX_GUILDAS_CAT, servicos: MAX_SERV, textoGuilda: MAX_TXT_GUILDA,

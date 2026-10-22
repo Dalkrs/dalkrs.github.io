@@ -49,11 +49,15 @@
         { t: 'As ferramentas', txt: 'À esquerda: regiões, marcadores, rotas, grupos e exércitos. Shift + clique em dois exércitos oferece a batalha entre os dois.', onde: { sel: '#rail' } },
         { t: 'O painel', txt: 'À direita, por abas: reinos, corte (gente, casas, títulos), diplomacia, guerra, economia… Na Corte, o titular de um título pode ser uma ficha da mesa; na Diplomacia, quem fala por cada facção.', onde: { sel: '#tabs' } },
         { t: 'Ver como jogador', txt: 'Mostra o mapa como os jogadores veem: sem o que é só seu e com a névoa fechada.', onde: { sel: '#comoJogBox' } },
+        { t: 'A guerra no mapa', txt: 'A zona de guerra aparece sozinha: as terras ocupadas e a fronteira entre facções em guerra, com a linha do front. A ferramenta Frente ajusta a zona e desenha setas de ofensiva; a tabela da defesa do terreno fica na aba Guerra.', onde: { sel: '#rail [data-f="f"]' } },
+        { t: 'A caneta', txt: 'No canto do mapa (ou a tecla W): desenhe para a mesa inteira ver na hora. A caneta que some apaga sozinha em segundos; a que fica, só com “Limpar desenhos”, que apaga a de todos.', onde: { sel: '#zCaneta' } },
       ],
       jogador: [
         { t: 'O mapa', txt: 'O que o mestre mostra do mundo: as regiões e os lugares que vocês conhecem.', onde: { sel: '#palco' } },
         { t: 'A data do mundo', txt: 'O dia, a hora e o clima de agora.', onde: { sel: '#dataTxt' } },
         { t: 'O painel', txt: 'À direita: o que vocês sabem dos reinos, da corte e da diplomacia.', onde: { sel: '#tabs' } },
+        { t: 'A caneta', txt: 'No canto do mapa: desenhe para a mesa ver na hora (uma rota, um alvo). A caneta que some apaga sozinha em segundos; a que fica, até alguém limpar — você limpa os seus.', onde: { sel: '#zCaneta' } },
+        { t: 'A guerra', txt: 'As listras são a zona de guerra, com a linha do front. As setas mostram as ofensivas da sua facção (e as que o mestre mostrar).', onde: { sel: '#palco' } },
       ],
     },
     acampamento: {

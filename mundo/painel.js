@@ -21,12 +21,13 @@
     { id: 'intrigas', nome: 'Intrigas', fila: 2 },                // (lote 11, parte 4a) os segredos (4b: as intrigas)
     { id: 'guerra', nome: 'Guerra', fila: 2, mestre: true },      // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
   ];
-  const TIPO = { m: 'Marcador', g: 'Grupo', r: 'Região', e: 'Evento', t: 'Rota', f: 'Frente', z: 'Zona de guerra', l: 'Linha', c: 'Carimbo', x: 'Texto' };
+  const TIPO = { m: 'Marcador', g: 'Grupo', r: 'Região', e: 'Evento', t: 'Rota', f: 'Frente', z: 'Zona de guerra', l: 'Linha', c: 'Carimbo', x: 'Texto', a: 'Seta' };
   const APAGADO = { m: 'Marcador apagado.', g: 'Grupo apagado.', r: 'Região apagada.', e: 'Evento apagado.', t: 'Rota apagada.', f: 'Frente apagada.',
-    z: 'Zona de guerra apagada.', l: 'Linha apagada.', c: 'Carimbo apagado.', x: 'Texto apagado.' };
-  const ORDEM = { g: 0, m: 1, e: 2, z: 3, r: 4, t: 5, f: 6, l: 7, x: 8, c: 9 };
+    z: 'Zona de guerra apagada.', l: 'Linha apagada.', c: 'Carimbo apagado.', x: 'Texto apagado.', a: 'Seta apagada.' };
+  const ORDEM = { g: 0, m: 1, e: 2, z: 3, r: 4, t: 5, f: 6, a: 7, l: 8, x: 9, c: 10 };
   const PLURAL = { m: ['marcador', 'marcadores'], g: ['grupo', 'grupos'], r: ['região', 'regiões'], e: ['evento', 'eventos'], t: ['rota', 'rotas'], f: ['frente', 'frentes'],
-    z: ['zona de guerra', 'zonas de guerra'], l: ['linha', 'linhas'], c: ['carimbo', 'carimbos'], x: ['texto', 'textos'] };
+    z: ['zona de guerra', 'zonas de guerra'], l: ['linha', 'linhas'], c: ['carimbo', 'carimbos'], x: ['texto', 'textos'], a: ['seta', 'setas'] };
+  const SETA_SVG = '<path d="M4 18c3-6 7-9 13-10"/><path d="M13.5 4.5 18 8l-4 3.8"/>';      // (lote 17) a seta de ofensiva
   const ESPACOS = [['0', 'Normal'], ['0.15', 'Aberto'], ['0.35', 'Bem aberto']];
   const TEXTO_SVG = '<path d="M5 6V4.5h14V6M12 4.5v15M9 19.5h6"/>';
   const LINHA_SVG = '<path d="M3 18c4 0 4-6 9-6s5-6 9-6"/>';
@@ -163,6 +164,7 @@
       case 'r': { const f = facDaReg(m, o), p = paiDe(m, o); return p ? 'Parte de ' + nomeDe(p, m) : f && f.nome ? 'Território de ' + f.nome : 'Região sem nome'; }
       case 't': return 'Rota sem nome';
       case 'f': return 'Frente sem nome';
+      case 'a': { const f = facDe(m, o.fac); return f && f.nome ? 'Ofensiva de ' + f.nome : 'Seta de ofensiva'; }     // (lote 17)
       case 'z': {
         const Z = (N().ZONAS || {})[o.tipo];                                 // (lote 7, parte 5c) a zona de perigo
         if (Z && o.tipo !== 'guerra') return Z.nome;
@@ -204,8 +206,15 @@
       case 'l': return ((N_.LINHAS || {})[o.estilo] || { nome: 'Linha' }).nome;
       case 'c': return 'Carimbo';
       case 'x': return 'Texto' + ((N_.FONTES || {})[o.fonte] ? ' · ' + N_.FONTES[o.fonte].nome.toLocaleLowerCase('pt-BR') : '');
+      case 'a': { const f = facDe(m, o.fac); return 'Seta de ofensiva' + (f ? ' · ' + nomeFac(f) : '') + (mestre ? ' · ' + quemVeSeta(m, o) : ''); }
     }
     return '';
+  }
+  // (lote 17) quem vê a seta: os jogadores da facção dela sempre; os outros, só com "mostrar"
+  function quemVeSeta(m, o) {
+    if (o.oculto) return 'escondida';
+    const jog = (m.faccoes || []).find(f => f.jog);
+    return o.ver ? 'todos veem' : jog && o.fac === jog.id ? 'os jogadores veem (é da facção deles)' : 'só você vê';
   }
   function statusZona(o, dia) {
     const ini = o.ini == null ? dia : o.ini;
@@ -237,6 +246,7 @@
       case 'l': { const L0 = (N().LINHAS || {})[o.estilo]; return h('span', { class: 'ico linha', style: { color: o.cor || (L0 && L0.cor) || '#4f86c0' } }, glifo(LINHA_SVG, 18)); }
       case 'c': { const C0 = (N().CARIMBOS || {})[o.ic]; return h('span', { class: 'ico carimbo-ico', style: { color: o.cor || (C0 && C0.cor) || '#5d9a4e' } }, glifoCarimbo(C0 ? C0.svg : '', 18)); }
       case 'x': return h('span', { class: 'ico linha' }, glifo(TEXTO_SVG, 18));
+      case 'a': { const f = facDe(m, o.fac); return h('span', { class: 'ico linha', style: { color: o.cor || (f ? f.cor : '#c0503a') } }, glifo(SETA_SVG, 18)); }
     }
     return h('span', { class: 'ico' });
   }
@@ -1219,6 +1229,8 @@
       out.push(nota((a || b ? 'Guerra entre ' + (a ? nomeFac(a) : 'lado desconhecido') + ' e ' + (b ? nomeFac(b) : 'lado desconhecido') : 'Guerra de lados desconhecidos') + ' · desde ' + dataTxt(v, o.ini == null ? v.cal.dia : o.ini)));
     }
     if (o.k === 'l' && temGrade(v)) out.push(nota('Cerca de ' + fmt(cubos(v, N_.compPolilinha(o.pts)), 0) + ' cubos de ponta a ponta.'));
+    // (lote 17) o porto: as viagens por mar daqui
+    if (o.k === 'm' && o.ic === 'porto' && N_.ligacoesMar) { const ls = N_.ligacoesMar(v).filter(L => L.a === o.id || L.b === o.id); if (ls.length) out.push(nota('Por mar: ' + ls.map(L => nomeDe(achar(v, L.a === o.id ? L.b : L.a) || {}, v) + ' (' + plural(L.d, 'dia', 'dias') + ')').join(', ') + '.')); }
     // (lote 10, parte 6) a cidade que o mestre abriu: o nível, a população, as construções prontas e as guildas
     if (o.k === 'm' && o.dentro && RP() && RP().leituraDentro) { const d = RP().leituraDentro(o); if (d) out.push(d); }
     if ((o.k === 'r' || o.k === 'm') && CP() && CP().secTitulos) { const s = CP().secTitulos(o, v); if (s) out.push(s); }   // (lote 11, parte 2a) os títulos de lá
@@ -1243,13 +1255,15 @@
     if (o.k === 'l') out.push(secLinha(o, m, grava));
     if (o.k === 'c') out.push(secCarimbo(o, grava));
     if (o.k === 'x') out.push(secTexto(o, grava));
-    if (o.k === 'g') out.push(secGrupo(o, m, grava), secDescanso(o, m), secHonra(o, m), secMissao(o, m));
+    if (o.k === 'g') out.push(secGrupo(o, m, grava), secSetaDaMarcha(o, m, grava), secDescanso(o, m), secHonra(o, m), secMissao(o, m));
     if (o.k === 'g' && o.tipo === 'exercito' && GP()) out.push(...GP().secExercito(o, m));   // (lote 8, parte 6) as unidades
     if (o.k === 'r') out.push(secRegiao(o, m, grava), GP() && GP().secOcupacao ? GP().secOcupacao(o, m) : null, RP() ? RP().secProvincia(o, m) : null, secClimaRegiao(o, m), secMissao(o, m));   // (lote 10) a província; (lote 12) a ocupação
     if (o.k === 'e') out.push(...secEvento(o, m, grava), secMissao(o, m));
     if (o.k === 't') out.push(secRota(o, m, grava));
     if (o.k === 'f') out.push(secFrente(o, m, grava));
     if (o.k === 'f' && GP()) out.push(GP().secFasesFrente(o, m));          // (lote 8, parte 6) a frente que anda
+    if (o.k === 'a') out.push(secSeta(o, m, grava));                       // (lote 17) a seta de ofensiva
+    if (o.k === 'm') out.push(...secLugarQueFaz(o, m));                    // (lote 17) a produção do lugar, o porto
     if ((o.k === 'r' || o.k === 'm') && CP() && CP().secTitulos) { const s = CP().secTitulos(o, m); if (s) out.push(s); }   // (lote 11, parte 2a) os títulos de lá
     if ((o.k === 'm' || o.k === 'g') && CP()) { const q = CP().secQuemEsta(o, m); if (q) out.push(q); }    // (lote 11) quem está aqui
     out.push(campoTexto('o:' + id + ':txt', 'O que os jogadores sabem', o.txt, grava('mudar o que os jogadores sabem', (x, v) => { x.txt = v; }), { area: true, linhas: 3, ph: 'O que se conta por aí…' }));
@@ -1258,7 +1272,7 @@
       o.k === 'm' && o.rumor ? caixa('o:' + id + ':falso', 'O boato é falso', o.falso, grava('marcar o boato', (x, v) => { x.falso = !!v; }), { dica: 'Os jogadores nunca veem isto.' }) : null));
     if (o.k === 'r') out.push(secEncontros(o, grava));
     // (o grupo do mundo tem o "Os jogadores veem" lá em cima, no painel dele)
-    if (!(o.k === 'g' && grupoDoMundo(o))) out.push(caixa('o:' + id + ':oculto', 'Esconder dos jogadores', o.oculto, grava('esconder dos jogadores', (x, v) => { x.oculto = !!v; }),
+    if (!(o.k === 'g' && grupoDoMundo(o)) && o.k !== 'a') out.push(caixa('o:' + id + ':oculto', 'Esconder dos jogadores', o.oculto, grava('esconder dos jogadores', (x, v) => { x.oculto = !!v; }),
       { dica: 'Some do mapa dos jogadores até você mostrar.' }));
     out.push(h('div', { class: 'row acoes' },
       botao('Centralizar', () => irPara(id), { k: 'o:centrar' }),
@@ -1367,6 +1381,110 @@
       // (lote 7, parte 4b) sem atalho, o lugar que o ícone é (cidade, vila, ponte, floresta, montanha) pode ser gerado
       !o.liga && naCasca() && LUGAR_DO_ICONE[o.ic] ? h('div', { class: 'row' }, botao('Gerar este lugar…', () => gerarLugar(o), { c: 'sm', k: 'o:' + id + ':gerar', title: 'Abre a janela "Gerar um lugar" das Cenas, já preenchida (o terreno, a hora, o clima e o estilo daqui); ao criar, este marcador fica ligado à cena' })) : null);
   }
+  /* ---------------- (lote 17) a seta de ofensiva, a seta da marcha, o lugar que produz e o porto ---------------- */
+  // a seta: a facção (a cor dela), a cor própria e quem vê — os jogadores da facção dela sempre; os outros, se o mestre mostrar
+  function secSeta(o, m, grava) {
+    const id = o.id, jog = m.faccoes.find(f => f.jog), daJog = !!(jog && o.fac === jog.id), f = facDe(m, o.fac), out = [];
+    out.push(campoEscolha('o:' + id + ':sfac', 'Facção', o.fac || '', [['', 'Sem facção']].concat(m.faccoes.map(x => [x.id, nomeFac(x) + (x.oculta ? ' (escondida)' : '')])),
+      grava('mudar a facção da seta', (x, v) => { if ((x.fac || '') === v) return false; x.fac = v || null; }), { dica: 'A seta fica na cor da facção (sem facção, vermelha), a menos que você escolha outra.' }));
+    out.push(h('div', { class: 'linha-cor' }, campoCor('o:' + id + ':scor', 'Cor da seta', o.cor || (f ? f.cor : '#c0503a'), grava('mudar a cor da seta', (x, v) => { x.cor = v; })),
+      h('span', { class: 'note', text: o.cor ? 'Cor própria' : f ? 'Cor da facção' : 'Cor de começo' }),
+      o.cor ? botao('Usar a cor da facção', () => mudarObj(id, 'mudar a cor da seta', x => { x.cor = ''; }), { c: 'sm', k: 'o:' + id + ':scor0' }) : null));
+    out.push(caixa('o:' + id + ':sver', 'Os jogadores veem', daJog ? !o.oculto : !!o.ver && !o.oculto,
+      grava('mudar quem vê a seta', (x, v) => { if (daJog) x.oculto = !v; else { x.ver = !!v; if (v) x.oculto = false; } }),
+      { dica: daJog ? 'É da facção dos jogadores: eles veem, a menos que você desmarque.' : 'Sem marcar, só você vê. Os jogadores da facção da seta sempre veem as setas dela.' }));
+    return secao('Seta de ofensiva', out);
+  }
+  // a marcha planejada do grupo (a rota dele) como seta
+  function secSetaDaMarcha(o, m, grava) {
+    if (!o.rota || !achar(m, o.rota)) return null;
+    const id = o.id, jog = m.faccoes.find(f => f.jog), daJog = !!(jog && o.fac === jog.id), out = [];
+    out.push(caixa('o:' + id + ':seta', 'Mostrar a marcha como seta', !!o.seta, grava(o.seta ? 'tirar a seta da marcha' : 'mostrar a marcha como seta', (x, v) => { if (v) x.seta = { ver: false }; else delete x.seta; }),
+      { dica: 'Uma seta curva, na cor da facção, de onde o grupo está até o fim da rota. Ela encurta conforme ele anda.' }));
+    if (o.seta) out.push(caixa('o:' + id + ':seta-ver', 'Os jogadores veem a seta', daJog || !!o.seta.ver, grava('mudar quem vê a seta da marcha', (x, v) => { if (!x.seta) return false; x.seta.ver = !!v; }),
+      { off: daJog, dica: daJog ? 'É da facção dos jogadores: eles sempre veem (o grupo precisa estar à vista deles).' : 'Sem marcar, só você vê.' }));
+    return secao('Seta da marcha', out);
+  }
+  /* o lugar que produz (mina, pedreira, serraria, fazenda): um recurso por semana para quem controla a região; o porto:
+     as ligações por mar com outros portos (os dias de viagem, que a marcha usa) */
+  function secLugarQueFaz(o, m) {
+    const N_ = N(), id = o.id, P = N_.PRODUCAO_ICONE || {}, out = [], ic = (N_.ICONES[o.ic] || {}).nome || 'O lugar';
+    if (P[o.ic]) {
+      const eco = m.eco && m.eco.on && m.eco.rec.length ? m.eco : null, sec = [];
+      if (!eco) {
+        sec.push(nota('Com a economia ligada (aba Reinos), ' + ic.toLocaleLowerCase('pt-BR') + ' produz um recurso por semana para quem controla a região.'));
+        sec.push(linha(botao('Abrir a aba Reinos', () => abrirAba('reino'), { c: 'sm', k: 'o:' + id + ':ir-reino' })));
+      } else {
+        const r = N_.regiaoEm(m, o.x, o.y), fid = r ? N_.controleDaRegiao(m, r) : null, fac = facDe(m, fid), rec0 = Object.keys(o.pr || {})[0] || null;
+        if (!rec0) {
+          const R0 = window.MundoReino && MundoReino.recursoDoLugar ? MundoReino.recursoDoLugar(m, o.ic) : eco.rec[0];
+          sec.push(nota('Ainda não produz nada.'));
+          sec.push(linha(botao('Produzir…', () => mudarObj(id, 'pôr o lugar para produzir', x => { x.pr = { [(R0 || eco.rec[0]).id]: 5 }; }), { c: 'sm', k: 'o:' + id + ':pr-novo', title: 'Começa com 5 de ' + ((R0 || eco.rec[0]).nome) + ' por semana (dá para mudar)' })));
+        } else {
+          const n0 = o.pr[rec0];
+          sec.push(h('div', { class: 'row' },
+            campoEscolha('o:' + id + ':pr-rec', 'Recurso', rec0, eco.rec.map(x => [x.id, x.nome]), v => mudarObj(id, 'mudar o recurso do lugar', x => { const n = (x.pr || {})[rec0] || n0; if (v === rec0) return false; x.pr = { [v]: n }; })),
+            campoNumero('o:' + id + ':pr-n', 'Por semana', n0, n => mudarObj(id, 'mudar a produção do lugar', x => { if (!n) return false; x.pr = { [rec0]: n }; }), { decimal: true, min: -1e6, max: 1e6, erro: 'Use um número (diferente de zero).' })));
+          sec.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':pr-dono', text: fac ? 'Vai para ' + nomeFac(fac) + (r && r.ocup && r.ocup.fac === fid ? ' (que ocupa a região)' : ', que controla a região') + '.' : r ? 'A região não tem dono: a produção não vai para ninguém.' : 'Fora de uma região: a produção não vai para ninguém.' }));
+          sec.push(linha(botao('Parar de produzir', () => { if (mudarObj(id, 'parar a produção do lugar', x => { if (!x.pr) return false; delete x.pr; }) !== false) avisoDesfazer(ic + ' parou de produzir.'); }, { c: 'sm', k: 'o:' + id + ':pr-x' })));
+        }
+      }
+      out.push(secao('Produção', sec));
+    }
+    if (o.ic === 'porto' && N_.ligacoesMar) {
+      const sec = [], ls = N_.ligacoesMar(m).filter(L => L.a === id || L.b === id), outros = m.objs.filter(x => x.k === 'm' && x.ic === 'porto' && x.id !== id);
+      for (const L of ls) {
+        const pid = L.a === id ? L.b : L.a, p = achar(m, pid);
+        sec.push(h('div', { class: 'row mar-li', 'data-k': 'o:' + id + ':mar:' + pid },
+          h('span', { class: 'tx' }, h('b', { text: nomeDe(p, m) })),
+          campoNumero('o:' + id + ':mar-d:' + pid, 'Dias', L.d, n => ligarPortos(id, pid, n), { min: 1, max: N_.MAX_DIAS_MAR || 365, erro: 'Use um número de dias, de 1 a ' + (N_.MAX_DIAS_MAR || 365) + '.' }),
+          botao('Centralizar', () => irPara(pid), { c: 'sm', k: 'o:' + id + ':mar-ir:' + pid }),
+          botao('Desligar', () => { if (desligarPortos(id, pid) !== false) avisoDesfazer('A ligação por mar com ' + nomeDe(p, m) + ' saiu.'); }, { c: 'sm', k: 'o:' + id + ':mar-x:' + pid })));
+      }
+      if (!ls.length) sec.push(nota(outros.length ? 'Ligue este porto a outro: a viagem por mar leva os dias que você escolher.' : 'Ponha outro porto no mapa para ligar os dois por mar.'));
+      if (outros.length) sec.push(linha(botao('Ligar a outro porto…', () => janelaLigarPorto(id), { c: 'sm', k: 'o:' + id + ':mar-novo', off: ls.length >= outros.length })));
+      sec.push(nota('No "Traçar entre dois marcadores" de um grupo, o caminho vai por mar quando chega antes. Os jogadores veem a linha das viagens por mar entre os portos que eles conhecem.'));
+      out.push(secao('Viagens por mar', sec));
+    }
+    return out;
+  }
+  // liga dois portos (os dias): a ligação de antes entre eles, de qualquer lado, sai
+  function ligarPortos(a, b, d) {
+    return App.mudar('ligar os portos por mar', mm => {
+      const pa = achar(mm, a), pb = achar(mm, b);
+      if (!pa || !pb || !(d >= 1)) return false;
+      const antes = JSON.stringify([pa.mar || [], pb.mar || []]);
+      for (const [x, y] of [[pa, b], [pb, a]]) { x.mar = (x.mar || []).filter(l => l.p !== y); if (!x.mar.length) delete x.mar; }
+      pa.mar = (pa.mar || []).concat([{ p: b, d: Math.round(d) }]);
+      if (JSON.stringify([pa.mar || [], pb.mar || []]) === antes) return false;
+    });
+  }
+  function desligarPortos(a, b) {
+    return App.mudar('desligar os portos', mm => {
+      const pa = achar(mm, a), pb = achar(mm, b);
+      let mudou = false;
+      for (const [x, y] of [[pa, b], [pb, a]]) { if (!x || !x.mar) continue; const n = x.mar.length; x.mar = x.mar.filter(l => l.p !== y); if (x.mar.length !== n) mudou = true; if (!x.mar.length) delete x.mar; }
+      if (!mudou) return false;
+    });
+  }
+  async function janelaLigarPorto(id) {
+    const m0 = App.mapa, o0 = m0 && achar(m0, id);
+    if (!o0 || !App.podeEditar()) return;
+    const ja = new Set(N().ligacoesMar(m0).filter(L => L.a === id || L.b === id).map(L => (L.a === id ? L.b : L.a)));
+    const outros = m0.objs.filter(x => x.k === 'm' && x.ic === 'porto' && x.id !== id && !ja.has(x.id));
+    if (!outros.length) return;
+    const r = await janela({ titulo: 'Ligar ' + nomeDe(o0, m0) + ' por mar', ok: 'Ligar',
+      texto: 'A viagem de um porto ao outro leva os dias que você escolher (nos dois sentidos).',
+      campos: [{ id: 'p', rotulo: 'Até o porto', tipo: 'select', valor: outros[0].id, opcoes: outros.map(x => [x.id, nomeDe(x, m0)]) }, { id: 'd', rotulo: 'Dias de viagem', tipo: 'number', valor: 3, min: 1, max: N().MAX_DIAS_MAR || 365 }],
+      ler: v => {
+        const d = Number(v.d);
+        if (!Number.isInteger(d) || d < 1 || d > (N().MAX_DIAS_MAR || 365)) throw new Error('Use um número inteiro de dias, de 1 a ' + (N().MAX_DIAS_MAR || 365) + '.');
+        if (!outros.some(x => x.id === v.p)) throw new Error('Escolha um porto.');
+        return { p: v.p, d };
+      } });
+    if (!r || !mesmoMapa(m0.id)) return;
+    if (ligarPortos(id, r.p, r.d) !== false) avisoDesfazer(nomeDe(o0, m0) + ' e ' + nomeDe(achar(App.mapa, r.p), App.mapa) + ' ligados por mar: ' + plural(r.d, 'dia', 'dias') + '.');
+  }
   /* ---- atalhos: do Mapa-múndi para as Cenas, para outro mapa e para o Acampamento ---- */
   const naCasca = () => !!(window.TC && TC.ponte && TC.ponte.naCasca);
   // as cenas para onde um atalho pode levar: numa mesa, as da mesa; fora dela, as que este navegador guarda
@@ -1413,11 +1531,13 @@
   const LUGAR_DO_ICONE = { cidade: { lugar: 'cidade' }, vila: { lugar: 'vila' }, ponte: { lugar: 'encontro', op: { terreno: 'estrada', situacao: 'ponte' } }, floresta: { lugar: 'encontro', op: { terreno: 'floresta' } }, montanha: { lugar: 'encontro', op: { terreno: 'montanha' } }, porto: { lugar: 'porto' },
     // (lote 7, parte 4b-3) as ruínas: a aba Ruínas, já no lugar do ícone (a masmorra: a aba Masmorra, 4b-3c)
     ruina: { lugar: 'ruinas' }, templo: { lugar: 'ruinas', op: { tipo: 'templo' } }, torre: { lugar: 'ruinas', op: { tipo: 'torre' } }, castelo: { lugar: 'ruinas', op: { tipo: 'forte' } },
-    masmorra: { lugar: 'masmorra' }, caverna: { lugar: 'ruinas', op: { tipo: 'circulo' } }, mina: { lugar: 'ruinas', op: { tipo: 'mina' } } };
+    masmorra: { lugar: 'masmorra' }, caverna: { lugar: 'ruinas', op: { tipo: 'circulo' } }, mina: { lugar: 'ruinas', op: { tipo: 'mina' } },
+    ninho: { lugar: 'ruinas', op: { tipo: 'circulo' } } };     // (lote 17) o ninho de monstro: a boca da caverna, com o covil lá embaixo
   // (o desenho do hexágono → o terreno do encontro e, às vezes, a situação; lote 13: a savana e a tundra nos terrenos delas)
   const ENC_DA_TEX = { mato: ['campo'], liso: ['campo'], arvores: ['floresta'], colinas: ['campo', 'morro'], montes: ['montanha'], juncos: ['pantano'], areia: ['deserto'], neve: ['neve'], ondas: ['agua', 'navio'], pedras: ['montanha'],
-    lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['savana'], tundra: ['tundra'], corrompida: ['corrompida'] };
-  const VILA_DA_TEX = { arvores: 'floresta', selva: 'floresta', areia: 'areia', savana: 'areia', neve: 'neve', tundra: 'neve' };
+    lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['savana'], tundra: ['tundra'], corrompida: ['corrompida'],
+    raso: ['agua'], fundo: ['agua', 'navio'], desfiladeiro: ['montanha'], geleira: ['neve'], morta: ['floresta'], oasis: ['deserto'], charneca: ['campo'], devastada: ['campo'] };     // (lote 17)
+  const VILA_DA_TEX = { arvores: 'floresta', selva: 'floresta', areia: 'areia', savana: 'areia', neve: 'neve', tundra: 'neve', geleira: 'neve', oasis: 'areia', morta: 'floresta' };
   function terrenoNoPonto(m, x, y) { const hx = N().hexDe(m, x, y); return hx ? N().hexInfo(m, hx.q, hx.r).terreno : null; }
   /* (lote 7, parte 5a) o que os eventos de hoje levam para a cena: o clima (a tempestade e a inundação, chuva; o incêndio,
      a erupção e os meteoros, cinzas; o inverno, neve; a assombração, neblina; a magia e o reino secreto, vaga-lumes), a
@@ -2134,7 +2254,7 @@
   // quanto leva o caminho traçado, no passo de quem vai andar
   function quantoLeva(m, o, r) {
     const pt = o.k === 'e' ? (o.pt || 2) : passoDoGrupo(m, o);
-    return 'cerca de ' + duracaoTxt(m, r.custo / Math.max(0.1, pt));
+    return 'cerca de ' + duracaoTxt(m, r.custo / Math.max(0.1, pt) + (r.dias || 0) * tpdDe(m));     // (lote 17: e os dias de mar)
   }
   function formTracado(o, m) {
     const marcs = m.objs.filter(x => x.k === 'm').map(x => [x.id, nomeDe(x, m)]);
@@ -2151,14 +2271,16 @@
         botao('Ver o caminho', () => verTracado(o.id), { c: 'sm', k: 'tr:ver', off: !t.de || !t.para || t.de === t.para }),
         t.r && t.r.ok ? botao('Usar esta rota', () => usarTracado(o.id), { c: 'sm pri', k: 'tr:usar' }) : null,
         botao('Cancelar', () => { tracado = null; previaRota(null); agendar(); }, { c: 'sm', k: 'tr:cancelar' })),
-      nota('Nada muda até "Usar esta rota". O caminho vai pelos hexágonos mais baratos, preferindo as estradas e as trilhas desenhadas, e não entra onde um evento fecha a passagem.'));
+      nota('Nada muda até "Usar esta rota". O caminho vai pelos hexágonos mais baratos, preferindo as estradas e as trilhas desenhadas (e as viagens por mar entre portos ligados, quando chegam antes), e não entra onde um evento fecha a passagem.'));
   }
   function verTracado(id) {
     const t = tracado, m = App.mapa;
     if (!t || t.id !== id || !m) return;
     const de = achar(m, t.de), para = achar(m, t.para);
     if (!de || !para) return;
-    t.r = N().tracarRota(m, de, para);
+    // (lote 17) as viagens por mar entram no passo de quem vai andar
+    const o = achar(m, id), pt = o && o.k === 'e' ? (o.pt || 2) : o ? passoDoGrupo(m, o) : null;
+    t.r = N().tracarRota(m, de, para, pt ? { cubosDia: pt * tpdDe(m) } : null);
     previaRota(t.r.ok ? t.r.pts : null);
     agendar();
   }

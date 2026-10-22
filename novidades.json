@@ -2,6 +2,73 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.22-5",
+      "data": "2026-10-22",
+      "titulo": "Mapa-múndi e guerra",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: a zona de guerra aparece sozinha — as terras ocupadas e a fronteira entre facções em guerra, listradas nas duas cores, com a linha do front. Ela cresce com a ocupação."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a ferramenta Frente ajusta a zona de guerra (pôr, tirar, voltar ao automático), e a aba Guerra liga e desliga a zona."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: as setas de ofensiva, curvas, na cor da facção — e a marcha planejada de um exército vira seta, que encurta conforme ele anda. Vocês veem as da sua facção."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: desenhe setas de ofensiva (ferramenta Frente, “Seta de ofensiva”) e mostre a marcha de um grupo como seta. As setas de outras facções, você mostra aos jogadores uma por uma."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: a caneta, no canto do mapa — desenhe para a mesa inteira ver na hora. A que some apaga sozinha em segundos; a que fica, até limpar. Cada um com a sua cor."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “Limpar desenhos” apaga a caneta de todos, com Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: as viagens por mar entre portos aparecem no mapa, com os dias de viagem."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: ligue dois portos com os dias de viagem; o “Traçar entre dois marcadores” vai por mar quando chega antes."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: o pincel de recursos por hexágono (ferramenta Terreno, “Recurso…”): o recurso e quanto ele dá por semana, somado ao do terreno, com Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a mina, a pedreira, a serraria e a fazenda produzem um recurso por semana para quem controla a região; o castelo e o forte somam na defesa; o ninho de monstro também tem “Gerar este lugar…”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Guerra: o terreno ajuda quem o defende na batalha (a tabela fica na aba Guerra, já com os números de começo), e a lista dos bônus diz de onde veio cada um."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Guerra: no Próximo dia, onde houve batalha ou cerco, a sugestão (desmarcada) de marcar a terra como devastada."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: oito terrenos novos — Água rasa, Mar profundo, Desfiladeiro, Geleira, Floresta morta, Oásis, Charneca e Terra devastada — e dez ícones novos: Fazenda, Pedreira, Serraria, Forte, Farol, Estalagem, Mercado, Cemitério, Portal e Ninho de monstro."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.22-4",
       "data": "2026-10-22",
       "titulo": "Fichas, grupo e árvore",

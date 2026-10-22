@@ -87,8 +87,95 @@
         g.exe && !g.exe.pub && g.exe.fome ? h('span', { class: 'tag guerra', text: 'sem mantimentos' }) : null)))
       : nota('Nenhum exército no mapa. Ponha um grupo (ferramenta Grupo) e escolha o tipo Exército na seção dele.')));
     if (CA()) { const sc = secCercos(m); if (sc) out.push(sc); out.push(secOcupadas(m), secRegras(m)); }     // (parte 12e) os cercos
+    out.push(secZona(m), secDefesa(m));                         // (lote 17) a zona de guerra automática e a tabela da defesa
     out.push(secTipos(m), secMaquinas(m), secHexes(m), secHistorico(m));
     return out;
+  }
+
+  /* ---- (lote 17) a zona de guerra automática: ligada ou não, o que tem agora e o ajuste do mestre ---- */
+  function secZona(m) {
+    const { h, botao, nota, secao, linha, caixa, plural } = kit(), A = app(), Z = (m.guerra && m.guerra.zona) || {}, out = [];
+    if (!N().temGrade(m)) return secao('Zona de guerra', nota('A zona de guerra automática precisa da grade de hexágonos (aba Terreno). Sem ela, as regiões ocupadas ficam listradas nas cores de quem ocupa.'));
+    out.push(caixa('gu:zona-on', 'Mostrar a zona de guerra automática', !Z.off, v => A.mudar(v ? 'mostrar a zona de guerra automática' : 'esconder a zona de guerra automática', d => {
+      const g = guerraDe(d), z = g.zona || {};
+      if (!!z.off === !v) return false;
+      if (v) delete z.off; else z.off = true;
+      if (Object.keys(z).length) g.zona = z; else delete g.zona;
+    }), { dica: 'Os hexágonos ocupados e a fronteira entre facções em guerra, listrados, com a linha do front. Todos veem; nenhuma regra muda por ela.' }));
+    if (!Z.off) {
+      const zg = N().zonaDeGuerra(m), nh = zg ? zg.h.size : 0, nf = zg ? zg.f.length : 0, add = (Z.add || []).length, tira = (Z.tira || []).length;
+      out.push(h('p', { class: 'note', 'data-k': 'gu:zona-txt', text: nh ? plural(nh, 'hexágono', 'hexágonos') + ' na zona' + (nf ? ', com ' + plural(nf, 'lado', 'lados') + ' de hexágono na linha do front' : '') + '.'
+        : 'Nenhum hexágono agora: a zona aparece com uma região ocupada, ou na fronteira entre duas facções em guerra (aba Facções).' }));
+      if (add || tira) out.push(h('p', { class: 'note', 'data-k': 'gu:zona-ajuste', text: 'Seu ajuste: ' + [add ? plural(add, 'hexágono posto', 'hexágonos postos') : '', tira ? plural(tira, 'hexágono tirado', 'hexágonos tirados') : ''].filter(Boolean).join(' e ') + ' à mão.' }));
+      out.push(linha(
+        botao('Ajustar no mapa', () => { if (!A.opt) A.opt = {}; A.opt.freModo = 'ajuste'; A.usarFerramenta('f'); }, { c: 'sm', k: 'gu:zona-ajustar', title: 'A ferramenta Frente, no modo "Ajustar a zona": pinte para pôr ou tirar hexágonos' }),
+        add || tira ? botao('Voltar ao automático', () => { if (A.mudar('voltar a zona de guerra ao automático', d => { const g = guerraDe(d); if (!g.zona || (!g.zona.add && !g.zona.tira)) return false; delete g.zona.add; delete g.zona.tira; if (!Object.keys(g.zona).length) delete g.zona; }) !== false) kit().avisoDesfazer('A zona de guerra voltou a ser só a automática.'); }, { c: 'sm', k: 'gu:zona-auto' }) : null));
+    }
+    return secao('Zona de guerra', out);
+  }
+
+  /* ---- (lote 17) a defesa do terreno e dos lugares, na batalha ---- */
+  function secDefesa(m) {
+    const { h, botao, nota, secao, linha } = kit(), N_ = N(), prop = !!(m.guerra && m.guerra.def);
+    const ters = (m.terrenos || []).map(t => [t.nome, N_.defesaDoTerreno(m, t.id)]).filter(x => x[1]), ics = ['castelo', 'forte'].concat(Object.keys((m.guerra && m.guerra.def && m.guerra.def.ic) || {}).filter(k => k !== 'castelo' && k !== 'forte'))
+      .map(k => [(N_.ICONES[k] || {}).nome || k, N_.defesaDoIcone(m, k)]).filter(x => x[1]);
+    const txt = l => l.map(([n, v]) => n + ' ' + sinal(v)).join(' · ') || 'nenhum';
+    return secao('Defesa do terreno e dos lugares',
+      h('p', { class: 'note', 'data-k': 'gu:def-ter', text: 'Terreno (para quem defende o hexágono da batalha): ' + txt(ters) + '.' }),
+      h('p', { class: 'note', 'data-k': 'gu:def-ic', text: 'Lugares (somam na fortificação): ' + txt(ics) + '.' }),
+      nota(prop ? 'A tabela é a sua.' : 'A tabela é a de começo.' + ' Na batalha, a lista dos bônus mostra de onde veio cada um.'),
+      linha(botao('Mudar a tabela…', () => janelaDefesa(), { c: 'sm', k: 'gu:def-mudar' })));
+  }
+  async function janelaDefesa() {
+    const A = app(), m = A.mapa;
+    if (!m || !A.podeEditar()) return;
+    const v = await dialogoDefesa(m);
+    if (!v || !kit().mesmoMapa(m.id)) return;
+    if (v.comeco) {
+      if (A.mudar('voltar à tabela de defesa de começo', d => { if (!d.guerra || !d.guerra.def) return false; delete d.guerra.def; }) !== false) kit().avisoDesfazer('A tabela da defesa voltou à de começo.');
+      return;
+    }
+    if (A.mudar('mudar a tabela da defesa', d => { const g = guerraDe(d), ant = JSON.stringify(g.def || null); g.def = v.def; if (JSON.stringify(v.def) === ant) return false; }) !== false) kit().avisoDesfazer('A tabela da defesa está salva.');
+  }
+  // a janela da tabela: um número para cada terreno do mapa e para o castelo e o forte → { def } | { comeco: true } | null
+  function dialogoDefesa(m) {
+    const { h } = kit(), N_ = N();
+    return new Promise(resolve => {
+      const prop = !!(m.guerra && m.guerra.def), ICS = ['castelo', 'forte'];
+      const campo = (k, rot, v0) => { const i = h('input', { type: 'number', min: -10, max: 10, step: 1, class: 'num', 'data-k': 'gd:' + k, value: String(v0 || 0) }); return { k, i, rot, el: h('label', null, rot, i) }; };
+      const ters = (m.terrenos || []).map(t => campo('t:' + t.id, t.nome, N_.defesaDoTerreno(m, t.id))), ics = ICS.map(k => campo('i:' + k, N_.ICONES[k].nome, N_.defesaDoIcone(m, k)));
+      const titulo = h('h2', { text: 'A defesa do terreno e dos lugares' });
+      titulo.id = 'dl-gd-' + Date.now().toString(36);
+      const err = h('p', { class: 'err', role: 'alert' });
+      const bComeco = prop ? h('button', { type: 'button', class: 'btn', 'data-k': 'gd:comeco', text: 'Voltar à de começo' }) : null;
+      const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'gd:nao', text: 'Cancelar' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'gd:ok', text: 'Salvar' });
+      const form = h('form', { class: 'dl', novalidate: true }, titulo,
+        h('p', { class: 'note', text: 'De −10 a +10, no d20 (no d100 vale 5 vezes). O terreno ajuda quem defende o hexágono da batalha; o castelo e o forte somam na fortificação do lugar. Nada muda até você salvar.' }),
+        h('div', { class: 'cr-sec' }, h('span', { class: 'ps-rot', text: 'O terreno' }), h('div', { class: 'cr-nums gd-nums' }, ters.map(c => c.el))),
+        h('div', { class: 'cr-sec' }, h('span', { class: 'ps-rot', text: 'Os lugares' }), h('div', { class: 'cr-nums gd-nums' }, ics.map(c => c.el))),
+        err, h('div', { class: 'pe' }, bComeco, h('span', { class: 'esp' }), bNao, bOk));
+      const dl = h('dialog', { class: 'mundo-dl cr-dl', 'aria-labelledby': titulo.id }, form);
+      form.addEventListener('input', () => { err.textContent = ''; });
+      let feito = false;
+      const fim = v0 => { if (feito) return; feito = true; try { if (dl.open) dl.close(); } catch (e) { /* já fechada */ } dl.remove(); resolve(v0); };
+      form.addEventListener('submit', ev => {
+        ev.preventDefault();
+        const def = { ter: {}, ic: {} };
+        for (const c of ters.concat(ics)) {
+          const n0 = Number(String(c.i.value).replace(',', '.'));
+          if (!Number.isInteger(n0) || n0 < -10 || n0 > 10) { err.textContent = c.rot + ': um número inteiro de −10 a +10.'; c.i.focus(); return; }
+          if (n0) def[c.k[0] === 't' ? 'ter' : 'ic'][c.k.slice(2)] = n0;
+        }
+        fim({ def });
+      });
+      if (bComeco) bComeco.addEventListener('click', () => fim({ comeco: true }));
+      bNao.addEventListener('click', () => fim(null));
+      dl.addEventListener('close', () => fim(null));
+      dl.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.append(dl);
+      dl.showModal();
+      (ters[0] || ics[0]).i.focus();
+    });
   }
 
   /* ---- (lote 12, parte 12d) as máquinas de cerco: os tipos (sem a lista do mestre, os de começo) ---- */
@@ -785,25 +872,29 @@
   /* (lote 10, parte 3) a defesa que as construções do assentamento somam na fortificação (a Paliçada, a Muralha…), e
      a fortificação de um marcador na batalha: { def (até 20), hp, hpMax } — null se ele não protege ninguém */
   const defCons = (m, mk) => (window.MundoReino && m && mk ? window.MundoReino.defDoAssentamento(m, mk) : 0);
+  // (lote 17) a defesa que o ícone do lugar soma (o castelo, o forte: a tabela da aba Guerra)
+  const defIc = (m, mk) => (mk && N().defesaDoIcone ? N().defesaDoIcone(m, mk.ic) : 0);
   function fortDe(m, mk) {
-    const dc = defCons(m, mk);
-    if (!mk || (!mk.estr && !(dc > 0))) return null;
+    const dc = defCons(m, mk), di = defIc(m, mk);
+    if (!mk || (!mk.estr && !(dc > 0) && !(di > 0))) return null;
     // (lote 12, parte 12d) as máquinas da fortificação (o dano contra exército delas entra na Abertura de quem defende)
     const sm = N().somaDasMaquinas(m, mk.estr ? mk.estr.maq : null);
-    return { def: Math.min(20, (mk.estr ? mk.estr.def : 0) + dc), hp: mk.estr ? mk.estr.hp : 1, hpMax: mk.estr ? mk.estr.hpMax : 1, cons: dc, maqN: sm.n, maqExe: sm.exe, maq: mk.estr && mk.estr.maq ? mk.estr.maq : {} };
+    return { def: Math.max(0, Math.min(20, (mk.estr ? mk.estr.def : 0) + dc + di)), hp: mk.estr ? mk.estr.hp : 1, hpMax: mk.estr ? mk.estr.hpMax : 1, cons: dc, ic: di, maqN: sm.n, maqExe: sm.exe, maq: mk.estr && mk.estr.maq ? mk.estr.maq : {} };
   }
   /* ================= o marcador: a Fortificação ================= */
   function secFortificacao(o, m) {
-    const { h, botao, nota, secao, linha, campoTexto, campoNumero, mudarObj } = kit(), id = o.id, e = o.estr, dc = defCons(m, o);
+    const { h, botao, nota, secao, linha, campoTexto, campoNumero, mudarObj } = kit(), id = o.id, e = o.estr, dc = defCons(m, o), di = defIc(m, o);
     const notaCons = dc > 0 ? nota('As construções daqui (aba Seleção, Assentamento) somam ' + sinal(dc) + ' de defesa' + (e ? ' na DEF da fortificação.' : ': quem defende aqui já ganha isso na batalha.')) : null;
+    // (lote 17) o castelo e o forte somam pela tabela da aba Guerra
+    const notaIc = di ? nota('O ícone (' + ((N().ICONES[o.ic] || {}).nome || 'lugar') + ') soma ' + sinal(di) + ' de defesa' + (e ? ' na DEF da fortificação' : ': quem defende aqui já ganha isso na batalha') + ' (a tabela fica na aba Guerra).') : null;
     // (lote 12, parte 12e) o cerco: a situação, Assaltar e Levantar; sem cerco, "Cercar…" (com um exército de outra facção perto)
     const C = CA(), sob = C && o.cerco ? blocoCerco(m, o, null) : null, podem = C && !o.cerco && (e || dc > 0) ? quemPodeCercar(m, id, null) : [];
     const cercar = podem.length ? botao('Cercar…', () => cercarLugar(id, null), { c: 'sm', k: 'o:' + id + ':cercar' }) : null;
-    if (!e) return secao('Fortificação', sob, nota('Uma muralha, um forte, uma paliçada: quem defende aqui ganha a DEF dela na batalha, e as máquinas de cerco do outro lado a danificam.'), notaCons,
+    if (!e) return secao('Fortificação', sob, nota('Uma muralha, um forte, uma paliçada: quem defende aqui ganha a DEF dela na batalha, e as máquinas de cerco do outro lado a danificam.'), notaCons, notaIc,
       linha(botao('Pôr uma fortificação', () => mudarObj(id, 'pôr uma fortificação', x => { x.estr = { nome: '', def: 3, hp: 100, hpMax: 100 }; }), { c: 'sm', k: 'o:' + id + ':estr' }), cercar));
     const RP = N().RESERVA_PADRAO, MP = N().MILICIA_PADRAO;
     const porPadrao = (campo, pad, rot) => n => mudarObj(id, rot, x => { const v0 = x.estr[campo] != null ? x.estr[campo] : pad; if (v0 === n) return false; if (n === pad) delete x.estr[campo]; else x.estr[campo] = n; });
-    const defT = Math.min(20, e.def + dc);
+    const defT = Math.max(0, Math.min(20, e.def + dc + di));
     const est = e.hp <= 0 ? 'em ruínas: não protege' : e.hp < e.hpMax ? 'danificada (' + Math.round(e.hp / e.hpMax * 100) + '%)' : 'intacta';
     return secao('Fortificação', sob,
       h('div', { class: 'row' },
@@ -817,7 +908,7 @@
         campoNumero('o:' + id + ':estr-res', 'Reserva (dias)', e.res != null ? e.res : RP, porPadrao('res', RP, 'mudar a reserva da cidade'), { min: 0, max: (N().LIMITES && N().LIMITES.reserva) || 3650 }),
         campoNumero('o:' + id + ':estr-mil', 'Milícia (tropas)', e.mil != null ? e.mil : MP, porPadrao('mil', MP, 'mudar a milícia'), { min: 0, max: 1e7 })),
       nota('A reserva: os dias de comida da cidade num cerco (enche de novo quando ele acaba). A milícia: quem defende no assalto, sem exército dentro.'),
-      notaCons,
+      notaCons, notaIc,
       h('p', { class: 'status' }, h('span', { class: 'tag' + (e.hp < e.hpMax ? ' guerra' : ''), text: est }), ' · protege com ' + sinal(Math.round(defT * e.hp / e.hpMax)) + ' quem defende aqui'),
       // (lote 12, parte 12d) as máquinas da fortificação
       camposMaq('o:' + id + ':estr-maq', e.maq, (tid, n) => mudarObj(id, 'mudar as máquinas da fortificação', x => { const t = porMaq(x.estr.maq, tid, n); if (!t) return false; x.estr.maq = t; }), m, 'Máquinas da fortificação (atiram em quem cerca e entram na batalha de quem defende)'),
@@ -873,7 +964,7 @@
     // (parte 12e) o sorteio dos tiros de cada cerco: o mesmo a cada conta refeita (as caixas)
     const seqs = {}, rngDe = id => { const q = seqs[id] || (seqs[id] = []); let i = 0; return () => { if (i >= q.length) q.push(rng()); return q[i++]; }; };
     const base = C.diaDaCampanha(m, dias, [], rngDe);
-    if (!base.linhas.length && !(base.cercos || []).length) return;
+    if (!base.linhas.length && !(base.cercos || []).length && !(base.devast || []).length) return;
     // (o pior caso, sem reabastecer nem forragem: as linhas do desgaste que podem aparecer ficam no lugar desde o começo)
     const pior = C.diaDaCampanha(m, dias, base.linhas.flatMap(L => ['reab:' + L.g, 'forr:' + L.g]), rngDe);
     const res = await dialogoDia(m, base, pior, rec => C.diaDaCampanha(m, dias, rec, rngDe), !!(A.temJornal && A.temJornal() && DP()));
@@ -896,6 +987,8 @@
       + (perdas > 0 ? ' Desgaste: −' + plural(perdas, 'tropa', 'tropas') + '.' : '')
       + (curou > 0 ? ' Cura: +' + plural(curou, 'HP', 'HP') + '.' : '')
       + propostasMarcadas(res).map(x => ' ' + nR(x.r) + (x.lib ? ' livre de novo.' : ' ocupada por ' + nomeFacDe(m, x.fac) + '.')).join('')
+      // (lote 17) a terra devastada marcada
+      + ((n0 => (n0 ? ' ' + (n0 === 1 ? '1 hexágono virou' : n0 + ' hexágonos viraram') + ' Terra devastada.' : ''))((res.devast || []).filter(x => !x.recusado).length))
       // (parte 12e) os cercos
       + (res.cercos || []).map(X => {
         const nL = nomeLugarDe(m, X.m);
@@ -1051,13 +1144,24 @@
       const secReg = regs.length ? h('div', { class: 'dia-regs', 'data-k': 'dia:regs' }, h('b', { class: 'dia-regs-tit', text: 'A ocupação' }), regs.map(blocoReg),
         props.length ? h('small', { class: 'dia-nota', text: 'Desmarcada, a proposta não vale agora e a contagem recomeça do zero.' }) : null,
         caixaJ) : null;
+      // (lote 17) a terra devastada: onde houve batalha ou cerco, a sugestão vem DESMARCADA (o mestre marca a que vale)
+      const devs = base.devast || [];
+      const blocoDev = x => {
+        const cb = h('input', { type: 'checkbox', 'data-k': 'dia:dev:' + x.k });
+        cxs.push(['dev:' + x.k, cb]);
+        const el = h('label', { class: 'op dia-op dia-reg-op nao', 'data-k': 'dia:dev-linha:' + x.k }, cb, h('span', { text: 'Marcar como Terra devastada o hexágono ' + (x.por === 'batalha' ? 'da batalha' + (x.nome ? ' “' + x.nome + '”' : '') : 'do cerco de ' + (x.nome || 'o lugar')) + ' (' + x.k + ').' }));
+        pintores.push(() => el.classList.toggle('nao', !cb.checked));
+        return el;
+      };
+      const secDev = devs.length ? h('div', { class: 'dia-regs', 'data-k': 'dia:devs' }, h('b', { class: 'dia-regs-tit', text: 'A terra devastada' }), devs.map(blocoDev),
+        h('small', { class: 'dia-nota', text: 'Só uma sugestão: marque o que vale. O terreno muda (o custo próprio do hexágono fica); dá para desfazer.' })) : null;
       const titulo = h('h2', { text: base.dias > 1 ? 'Os ' + base.dias + ' dias da campanha' : 'O dia da campanha' });
       titulo.id = 'dl-dia-' + Date.now().toString(36);
       const lista = h('div', { class: 'dia-lista', 'data-k': 'dia:lista' }, base.linhas.map(blocoDe));
       const bNao = h('button', { type: 'button', class: 'btn', 'data-k': 'dia:nao', text: 'Agora não' }), bOk = h('button', { type: 'submit', class: 'btn pri', 'data-k': 'dia:ok', text: 'Aplicar' });
       const form = h('form', { class: 'dl', novalidate: true }, titulo,
         h('p', { class: 'note', text: 'Cada exército come pelo tamanho da tropa. Desmarque o que não vale; nada muda até você aplicar.' }),
-        lista, secCer, secReg,
+        lista, secCer, secReg, secDev,
         h('small', { class: 'ajuda', text: 'As regras (o teto de ' + plural(rg.teto, 'dia', 'dias') + ', a forragem, o desgaste, os terrenos duros, o inverno e os dias para ocupar) ficam na aba Guerra.' }),
         h('div', { class: 'pe' }, bNao, bOk));
       const dl = h('dialog', { class: 'mundo-dl dia-dl', 'aria-labelledby': titulo.id }, form);
@@ -1101,7 +1205,8 @@
   }
   function novaBatalha(m, a, b) {
     const x = { a, b, estr: null, hex: null, mestre: [], modo: null, res: null, moms: [], fim: null, notas: [], tela: 'montar', frente: null, hexEst: null, form: null, formAberto: false, formM: null,
-      herois: { a: [], b: [] }, acoes: [], formH: null, ferir: true };          // (lote 9) os heróis só desta batalha, as ações heroicas e os ferimentos
+      herois: { a: [], b: [] }, acoes: [], formH: null, ferir: true,          // (lote 9) os heróis só desta batalha, as ações heroicas e os ferimentos
+      terLado: null };                                                       // (lote 17) quem defende o terreno (null: o de sempre)
     lugarDaBatalha(m, x);
     return x;
   }
@@ -1152,7 +1257,19 @@
     if (bat.estr) { const mk = kit().achar(m, bat.estr.m), ft = fortDe(m, mk); if (ft) estr = { lado: bat.estr.lado, def: ft.def, hp: ft.hp, hpMax: ft.hpMax, maqExe: ft.maqExe }; }
     // (lote 9) os heróis (o bônus de cada um) e as ações heroicas
     const hv = q => heroisDoLado(m, q).map(x => ({ nome: x.nome, v: x.v }));
-    return { estr, mestre: bat.mestre, herois: { a: hv('a'), b: hv('b') }, acoes: bat.acoes };
+    const out = { estr, mestre: bat.mestre, herois: { a: hv('a'), b: hv('b') }, acoes: bat.acoes };
+    // (lote 17) o terreno do hexágono da batalha, para quem defende ali
+    const t = terrenoDaBatalha(m);
+    if (t && t.lado) out.terreno = { lado: t.lado, v: t.v, nome: t.terreno.nome || 'terreno' };
+    return out;
+  }
+  /* (lote 17) o terreno do hexágono da batalha: { terreno, v (a defesa da tabela), lado (quem defende: o escolhido; sem
+     escolha, o da fortificação, senão B — o lado atacado) } | null */
+  function terrenoDaBatalha(m) {
+    const d = bat && bat.hex && N().defesaNoHex ? N().defesaNoHex(m, bat.hex) : null;
+    if (!d) return null;
+    const lado = bat.terLado === 'a' || bat.terLado === 'b' ? bat.terLado : bat.terLado === '-' ? null : bat.estr ? bat.estr.lado : 'b';
+    return Object.assign({ lado }, d);
   }
   const lados = m => [G().lado(m, kit().achar(m, bat.a)), G().lado(m, kit().achar(m, bat.b))];
 
@@ -1282,7 +1399,18 @@
         el('select', { class: 'in', 'data-k': 'gb:estr', disabled: rolou || null, onchange: ev => { const v = ev.target.value; bat.estr = v ? { m: v.split('|')[0], lado: v.split('|')[1] } : null; pintarBatalha(); } },
           [el('option', { value: '', text: 'Ninguém defende uma fortificação', selected: !bat.estr ? true : null })].concat(fts.map(f => { const mk = kit().achar(m, f.m); return el('option', { value: f.m + '|' + f.lado, selected: bat.estr && bat.estr.m === f.m && bat.estr.lado === f.lado ? true : null, text: nomeL(f.lado) + ' defende ' + ((mk.estr && mk.estr.nome) || kit().nomeDe(mk, m)) }); })))));
     }
-    if (rolou && !bat.fim) out.push(el('p', { class: 'note', text: 'Para trocar os lados ou a fortificação, recomece a batalha.' }));
+    // (lote 17) o terreno do hexágono: quem defende ganha a defesa dele (a tabela da aba Guerra)
+    const tb = terrenoDaBatalha(m);
+    if (tb) {
+      const val = bat.terLado === 'a' || bat.terLado === 'b' || bat.terLado === '-' ? bat.terLado : '';
+      const op = (v, t) => el('option', { value: v, selected: val === v ? true : null, text: t });
+      out.push(el('label', { class: 'field' }, el('span', { class: 'gb-rot-q' }, 'Terreno: ' + (tb.terreno.nome || 'terreno') + ' (' + sinal(tb.v) + ')', q('b:terreno', 'Como o terreno ajuda')),
+        el('select', { class: 'in', 'data-k': 'gb:terreno', disabled: rolou || null, onchange: ev => { bat.terLado = ev.target.value || null; pintarBatalha(); } },
+          op('', 'Quem defende: ' + (bat.estr ? (bat.estr.lado === 'a' ? nomeA : nomeB) + ' (o da fortificação)' : nomeB + ' (o atacado)')),
+          op(bat.estr && bat.estr.lado === 'a' ? 'b' : 'a', (bat.estr && bat.estr.lado === 'a' ? nomeB : nomeA) + ' defende o terreno'),
+          op('-', 'Ninguém (campo aberto)'))));
+    }
+    if (rolou && !bat.fim) out.push(el('p', { class: 'note', text: 'Para trocar os lados, a fortificação ou o terreno, recomece a batalha.' }));
     // a comparação
     out.push(comparacao(m, A_, B_));
     // (lote 9) os heróis

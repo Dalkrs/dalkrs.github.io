@@ -21,16 +21,17 @@
     { id: 'perigos', nome: 'Zonas de perigo', dica: 'As tempestades, as pragas, o frio extremo, as terras amaldiçoadas e os territórios de monstro.' },
     { id: 'regioes', nome: 'Regiões', dica: 'As províncias (as regiões de fora, com as cores das facções) e os nomes delas.' },
     { id: 'subregioes', nome: 'Sub-regiões', dica: 'As divisões dentro das províncias (os ducados, as prefeituras…): a área, a borda e o nome.' },
-    { id: 'guerra', nome: 'Guerra', dica: 'As zonas de guerra e as frentes.' },
+    { id: 'guerra', nome: 'Guerra', dica: 'As zonas de guerra (a automática também), as frentes e as setas de ofensiva.' },
     { id: 'enfeites', nome: 'Textos e carimbos', dica: 'Os textos escritos no mapa e os carimbos (árvores, montanhas…).' },
     { id: 'terreno', nome: 'Terreno', dica: 'A tinta do terreno: o pincel livre e os hexágonos pintados.' },
     { id: 'grade', nome: 'Grade', dica: 'As linhas da grade de hexágonos.', semTrava: true },
+    { id: 'desenhos', nome: 'Caneta', dica: 'Os traços da caneta: os seus e os dos outros na mesa.', semTrava: true },     // (lote 17)
   ];
   const IDS = LISTA.map(c => c.id);
   const ATALHOS = [
-    { id: 'viagem', nome: 'Viagem', mostra: ['lugares', 'linhas', 'rotas', 'eventos', 'perigos', 'enfeites', 'terreno', 'grade'] },
-    { id: 'politica', nome: 'Política', mostra: ['regioes', 'subregioes', 'lugares', 'guerra', 'linhas', 'enfeites', 'terreno'] },
-    { id: 'guerra', nome: 'Guerra', mostra: ['guerra', 'lugares', 'regioes', 'linhas', 'terreno', 'grade'] },
+    { id: 'viagem', nome: 'Viagem', mostra: ['lugares', 'linhas', 'rotas', 'eventos', 'perigos', 'enfeites', 'terreno', 'grade', 'desenhos'] },
+    { id: 'politica', nome: 'Política', mostra: ['regioes', 'subregioes', 'lugares', 'guerra', 'linhas', 'enfeites', 'terreno', 'desenhos'] },
+    { id: 'guerra', nome: 'Guerra', mostra: ['guerra', 'lugares', 'regioes', 'linhas', 'terreno', 'grade', 'desenhos'] },
     { id: 'tudo', nome: 'Tudo', mostra: IDS },
   ];
   const defCamada = id => LISTA.find(c => c.id === id) || null;
@@ -72,7 +73,7 @@
       case 't': return 'rotas';
       case 'e': return 'eventos';
       case 'r': return o.pai ? 'subregioes' : 'regioes';            // (lote 10) a região de dentro: a camada das sub-regiões
-      case 'f': return 'guerra';
+      case 'f': case 'a': return 'guerra';
       case 'z': return o.tipo && o.tipo !== 'guerra' ? 'perigos' : 'guerra';
       case 'c': case 'x': return 'enfeites';
     }

@@ -1084,9 +1084,11 @@
      respostas às cartas dele (escritas por quem mestra o Jornal, com ele como dono, para só ele e o mestre verem). E,
      da Meditação, a prática de um personagem e o que a meditação guardou dele: têm como dono o dono do personagem (o
      banco só deixa o jogador criar a prática de um personagem dele, e o resto é escrito pelas funções da meditação).
+     (lote 17) E a caneta do Mapa-múndi: os traços de cada um, com ele como dono, que a mesa inteira vê.
      Qualquer outro documento com dono não é entregue a nenhum sistema. */
   const aceita = (nome, r) => nome !== 'documentos' || r.dono_id == null || r.id === 'cena:pedido:' + r.dono_id
     || r.id === 'jornal:cartas:' + r.dono_id || r.id === 'jornal:resp:' + r.dono_id
+    || r.id === 'mundo:rabisco:' + r.dono_id                       // (lote 17) a caneta de cada um no Mapa-múndi
     || (typeof r.id === 'string' && (r.id.startsWith('medit:pratica:') || r.id.startsWith('medit:achados:')));
   function dadosZerar() {
     for (const k in cols) {

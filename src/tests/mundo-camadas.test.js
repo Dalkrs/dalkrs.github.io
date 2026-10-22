@@ -1,5 +1,5 @@
 // Mapa-múndi, lote 8 (parte 4): as camadas, pela interface (a página sozinha, no navegador).
-//   · o botão Camadas, na caixa do zoom, abre a janelinha: as onze camadas (lote 10: com as Sub-regiões), com quanto há de cada uma, os atalhos e as
+//   · o botão Camadas, na caixa do zoom, abre a janelinha: as camadas (lote 10: com as Sub-regiões; lote 17: a Caneta), com quanto há de cada uma, os atalhos e as
 //     travas; C abre e fecha, Esc fecha;
 //   · esconder uma camada tira do mapa só o que é dela (o evento some com a área e o selo); fica guardado neste
 //     aparelho (volta igual ao recarregar) e o ponto no botão avisa;
@@ -86,11 +86,11 @@ const meio = (a, css) => A(a, css => { const r = document.querySelector(css).get
     await L.F.click('#zCamadas'); await espera(200);
     ok(await L.F.locator('#camPop').isVisible(), 'o clique abre a janelinha das camadas');
     const ls = await linhas(L);
-    ok(j(ls.map(l => l.nome)) === j(['Cidades e grupos', 'Estradas e rios', 'Rotas', 'Eventos', 'Zonas de perigo', 'Regiões', 'Sub-regiões', 'Guerra', 'Textos e carimbos', 'Terreno', 'Grade']), 'as onze camadas (lote 10: com as Sub-regiões): ' + j(ls.map(l => l.nome)));
+    ok(j(ls.map(l => l.nome)) === j(['Cidades e grupos', 'Estradas e rios', 'Rotas', 'Eventos', 'Zonas de perigo', 'Regiões', 'Sub-regiões', 'Guerra', 'Textos e carimbos', 'Terreno', 'Grade', 'Caneta']), 'as camadas (lote 10: com as Sub-regiões; lote 17: e a Caneta): ' + j(ls.map(l => l.nome)));
     const n = Object.fromEntries(ls.map(l => [l.id, l.n]));
     ok(n.lugares === '2' && n.linhas === '1' && n.rotas === '1' && n.eventos === '1' && n.perigos === '1' && n.regioes === '1' && n.guerra === '2' && n.enfeites === '2' && n.terreno === '' && n.grade === '',
       'cada uma diz quanto há dela no mapa (a guerra conta a zona e a frente; a tempestade é zona de perigo): ' + j(n));
-    ok(ls.every(l => l.ve === 'true') && ls.filter(l => l.trava === null).map(l => l.id).join() === 'grade', 'tudo à vista, e todas têm o cadeado (menos a grade)');
+    ok(ls.every(l => l.ve === 'true') && ls.filter(l => l.trava === null).map(l => l.id).join() === 'grade,desenhos', 'tudo à vista, e todas têm o cadeado (menos a grade e a caneta)');
     ok((await atalhoMarcado(L)) === 'at:tudo', 'o atalho Tudo fica marcado');
     ok(/Só neste aparelho/.test(await L.F.locator('#camPop').innerText()), 'a janelinha diz que vale só neste aparelho');
   });

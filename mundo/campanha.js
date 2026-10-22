@@ -22,6 +22,8 @@
    vale para os dois lados —; o fim (ninguém cercando: o cerco acaba; a rendição, sem comida dentro e com a moral de
    quem está dentro em 2 ou menos); a queda (o lugar fica ocupado por quem cercou, com a região dele — ou livre de novo —,
    e os exércitos de dentro saem do mapa); a milícia que vira exército; o cerco na batalha (a queda e o socorro).
+   (lote 17) A terra devastada: onde houve batalha ou cerco, o dia sugere (desmarcado) marcar o hexágono como Terra
+   devastada.
    Roda no navegador (window.MundoCampanha) e no Node (testes). */
 (() => {
   'use strict';
@@ -216,7 +218,45 @@
       const comoFica = id => { const L = linhas.find(l => l.g === id), g = (m.objs || []).find(o => o.id === id); return L && !L.fora ? { mant: L.mant1, moral: L.moral1 } : { mant: g.exe.mant, moral: g.exe.moral }; };
       if (X.dentro.every(id => { const q = comoFica(id); return q.mant <= 0 && q.moral <= 2; })) { X.rend = true; X.recRend = no.has('rend:' + X.m); }
     }
-    return { dias: n, rec, regras: rg, linhas, estoque, forr: forrs, regioes: oc.regioes, pres: oc.pres, cercos };
+    // (lote 17) a terra devastada: a sugestão, desmarcada, onde houve batalha ou cerco
+    const devast = devastadaNoDia(m, n, no, cercos);
+    return { dias: n, rec, regras: rg, linhas, estoque, forr: forrs, regioes: oc.regioes, pres: oc.pres, cercos, devast };
+  }
+  /* (lote 17) A terra devastada: os hexágonos onde houve batalha nos dias que passaram, ou onde um cerco continua, que
+     ainda não são Terra devastada (o terreno precisa existir no mapa). Cada um vem como sugestão DESMARCADA: só vale com
+     'dev:q,r' fora das recusadas (o mestre marca). → [{ k, por: 'batalha' | 'cerco', nome, recusado }] */
+  function terrenoDevastado(m) { const ts = ehObj(m) && Array.isArray(m.terrenos) ? m.terrenos : []; return ts.find(t => t.id === 'td') || ts.find(t => t.tex === 'devastada') || null; }
+  function devastadaNoDia(m, n, no, cercos) {
+    const N = NN(), t = terrenoDevastado(m);
+    if (!t || !N.temGrade(m)) return [];
+    const hoje = ehObj(m.cal) ? Number(m.cal.dia) || 0 : 0, out = new Map();
+    const ja = k => { const h = N.lerChaveHex(k); return !h || ((N.hexInfo(m, h.q, h.r) || {}).terreno || {}).id === t.id; };
+    for (const b of ehObj(m.guerra) && Array.isArray(m.guerra.bats) ? m.guerra.bats : []) {
+      if (!ehObj(b) || !b.hex || !(b.d >= hoje - n && b.d <= hoje) || out.has(b.hex) || ja(b.hex)) continue;
+      out.set(b.hex, { k: b.hex, por: 'batalha', nome: String(b.nome || '').trim() });
+    }
+    for (const X of cercos || []) {
+      const mk = marcadorDe(m, X.m);
+      if (!mk || X.fim) continue;
+      const h = N.hexDe(m, mk.x, mk.y), k = h ? h.q + ',' + h.r : null;
+      if (!k || out.has(k) || ja(k)) continue;
+      out.set(k, { k, por: 'cerco', nome: String(mk.nome || '').trim(), m: mk.id });
+    }
+    return [...out.values()].map(x => Object.assign(x, { recusado: no.has('dev:' + x.k) }));
+  }
+  // marca (como Terra devastada) os hexágonos da sugestão que ficaram marcados; o custo próprio do hexágono fica
+  function aplicarDevastada(d, res) {
+    const t = terrenoDevastado(d);
+    let n = 0;
+    if (!t) return 0;
+    for (const x of res.devast || []) {
+      if (x.recusado) continue;
+      if (!ehObj(d.hexes)) d.hexes = {};
+      const v = d.hexes[x.k];
+      d.hexes[x.k] = Array.isArray(v) ? [t.id, v[1]] : t.id;
+      n++;
+    }
+    return n;
   }
   /* Aplica o dia no rascunho (d, o mapa de App.mudar): os mantimentos, a fome, a moral e as tropas de cada exército (a
      unidade que fica sem ninguém sai), o estoque de comida das facções (com o motivo no histórico) e a forragem da semana.
@@ -271,6 +311,7 @@
       if (x.tipo === 'ocupar') r.ocup = { fac: x.fac, d: hoje }; else delete r.ocup;
       n++;
     }
+    n += aplicarDevastada(d, res);                                // (lote 17) a terra devastada que o mestre marcou
     const tinha = ehObj(d.guerra) && ehObj(d.guerra.pres) && Object.keys(d.guerra.pres).length;
     if (Object.keys(pres).length || tinha) {
       if (!ehObj(d.guerra)) d.guerra = { tipos: [], bats: [], hexes: {} };
@@ -608,7 +649,8 @@
   const MundoCampanha = { mesesDeInverno, regrasDe, recComida, aliadas, emGuerra, ondeEsta, REABASTECE, FORRAGEIA, terrenoDuro, invernoEm, diaDaCampanha, aplicarDia, forragemDaSemana, enfermariaPerto,
     fortesDePe, presencas, ocupacaoNoDia, anexar, devolver, ocupar, terrasEntre, terrasNaPaz, noticiaOcupacao, noticiaLibertacao, noticiaAnexacao, textoTerrasNaPaz,
     donoDoLugar, temFortificacao, distAoLugar, quemCerca, quemDentro, lugaresParaCercar, cercoDe, cercosDe, cercoDoExercito, cercosNoDia, cercar, levantar, cair, chamarMilicia, cercoNaBatalha,
-    noticiaCerco, noticiaQueda, noticiaFimDoCerco };
+    noticiaCerco, noticiaQueda, noticiaFimDoCerco,
+    terrenoDevastado, devastadaNoDia, aplicarDevastada };          // (lote 17)
   if (typeof module === 'object' && module && module.exports) module.exports = MundoCampanha;
   if (typeof window !== 'undefined') window.MundoCampanha = MundoCampanha;
 })();

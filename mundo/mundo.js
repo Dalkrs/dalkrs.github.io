@@ -19,7 +19,7 @@
   const $ = id => document.getElementById(id);
   const CHAVE = 'tinycats:mundo:v1';                 // { atual, mapas: { [id]: Mapa } } — sem mesa
   const PRE_MAPA = 'mundo:mapa:', PRE_PUB = 'mundo:pub:', INDICE = 'mundo:indice';
-  const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'h', 'p', 'n', 'd'];
+  const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'h', 'p', 'n', 'd', 'w'];      // (lote 17: w, a caneta — de todos)
   const MAX_DESFAZER = 100;
   const ESPERA = { local: 400, fora: 900 };
   const DEBUG = /[?&]debug(?:[=&]|$)/.test(location.search);
@@ -168,7 +168,7 @@
     },
     usarFerramenta(f) {
       if (!FERRAMENTAS.includes(f)) return;
-      if (f !== 'sel' && !App.podeEditar()) f = 'sel';
+      if (f !== 'sel' && !App.podeEditar() && !(f === 'w' && App.podeRabiscar())) f = 'sel';
       if (f === App.ferramenta) return;
       App.ferramenta = f;
       App.emit('ferramenta', f);
@@ -1262,6 +1262,144 @@
     return m;
   }
 
+  /* ---------------- (lote 17) a caneta: o desenho de agora, que todos veem ----------------
+     Cada pessoa tem um documento só dela, "mundo:rabisco:<usuário>" (ela é a dona; a mesa inteira lê), com os traços:
+     { v: 1, t: [{ id, mp (o mapa), c (a cor), s (1: some sozinho), em (quando, no relógio de quem desenhou), p (os pontos) }] }.
+     O traço que some fica à vista alguns segundos depois da última mudança dele (contados aqui, quando ele chega) e
+     depois sai do documento de quem o desenhou; o que fica, só sai com "Limpar" (o mestre limpa o de todos; cada um, o
+     seu). Sem mesa, os traços ficam neste navegador. Nada disso mexe no mapa (nem no desfazer dele). */
+  const PRE_RAB = 'mundo:rabisco:', RAB_LOCAL = 'tinycats:mundo:rabiscos', CANETA = 'tinycats:mundo:caneta';
+  const TEMPO_SOME = 8000, VELHO = 60000, MAX_TRACOS = 300, MAX_PTS_TRACO = 600, MAX_PTS_DOC = 20000;
+  const CORES_CANETA = ['#e6ab4f', '#f0786e', '#7fbf7a', '#7fb7e0', '#b39cf0', '#f2c14e', '#f3ead2', '#2a2118'];
+  const vistoRab = new Map();                        // id do traço → { n (quantos pontos), t (quando mudou, aqui) }
+  let rabLocal = null, tLimpaRab = 0;
+  const lerJ = k => { try { return JSON.parse(guarda.ler(k) || 'null'); } catch (e) { return null; } };
+  const corOk = c => (typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c : null);
+  function normTracos(v) {
+    const out = [], vistos = new Set();
+    let pts = 0;
+    for (const x of v && Array.isArray(v.t) ? v.t.slice(-MAX_TRACOS) : []) {
+      if (!x || typeof x !== 'object' || !idValido(x.id) || vistos.has(x.id) || !idValido(x.mp) || !Array.isArray(x.p)) continue;
+      const p = x.p.slice(0, MAX_PTS_TRACO).filter(q => Array.isArray(q) && Number.isFinite(q[0]) && Number.isFinite(q[1])).map(q => [Math.round(q[0] * 10) / 10, Math.round(q[1] * 10) / 10]);
+      if (!p.length || pts + p.length > MAX_PTS_DOC) continue;
+      vistos.add(x.id); pts += p.length;
+      out.push({ id: x.id, mp: x.mp, c: corOk(x.c) || CORES_CANETA[0], s: x.s ? 1 : 0, em: Number.isFinite(x.em) ? x.em : 0, p });
+    }
+    return out;
+  }
+  const meuRab = () => (modo === 'mesa' ? (App.eu ? PRE_RAB + App.eu : null) : 'local');
+  // os documentos de traços: [{ dono, doc, t }]
+  function docsRab() {
+    if (modo !== 'mesa') { if (!rabLocal) rabLocal = { t: normTracos(lerJ(RAB_LOCAL)) }; return [{ dono: 'local', doc: 'local', t: rabLocal.t }]; }
+    if (!D) return [];
+    return D.todas().filter(l => typeof l.id === 'string' && l.id.startsWith(PRE_RAB) && idValido(l.id.slice(PRE_RAB.length))).map(l => ({ dono: l.id.slice(PRE_RAB.length), doc: l.id, t: tracosDoDoc(dadosDoc(l)) }));
+  }
+  // (os traços de um documento, guardados pelo objeto dele: o desenho de cada quadro não refaz a conta)
+  const cacheTracos = new WeakMap();
+  function tracosDoDoc(d) {
+    if (!d || typeof d !== 'object') return [];
+    if (!cacheTracos.has(d)) cacheTracos.set(d, normTracos(d));
+    return cacheTracos.get(d);
+  }
+  function tracosMeus() { const id = meuRab(); const d = id ? docsRab().find(x => x.doc === id) : null; return d ? d.t.slice() : []; }
+  function gravarMeus(t) {
+    const id = meuRab();
+    if (!id) return;
+    if (modo !== 'mesa') {
+      rabLocal = { t };
+      guarda.gravar(RAB_LOCAL, j({ v: 1, t: t.filter(x => !x.s) }));      // (o que some não fica guardado)
+    } else D.gravar(id, { dados: { v: 1, t }, vis: 'mesa', dono_id: App.eu });
+    App.emit('rabiscos');
+  }
+  // o traço que some sai do documento de quem desenhou depois do tempo dele
+  function agendarLimpeza() {
+    clearTimeout(tLimpaRab);
+    const t = tracosMeus().filter(x => x.s);
+    if (!t.length) return;
+    const prox = Math.min(...t.map(x => (x.em || 0) + TEMPO_SOME + 1500)) - Date.now();
+    tLimpaRab = setTimeout(() => {
+      const agora = Date.now(), meus = tracosMeus(), fica = meus.filter(x => !x.s || (x.em || 0) + TEMPO_SOME + 1000 > agora);
+      if (fica.length !== meus.length) gravarMeus(fica);
+      agendarLimpeza();
+    }, Math.max(500, prox));
+  }
+  const caneta = () => { const v = lerJ(CANETA); return v && typeof v === 'object' ? v : {}; };
+  Object.assign(App, {
+    TEMPO_SOME,
+    // a caneta: com um mapa aberto (numa mesa, com quem usa conhecido)
+    podeRabiscar() { return !!App.mapa && (modo !== 'mesa' || !!App.eu); },
+    rabModo(v) {
+      if (v === 'some' || v === 'fica') { guarda.gravar(CANETA, j(Object.assign(caneta(), { modo: v }))); App.emit('rabiscos'); return v; }
+      return caneta().modo === 'fica' ? 'fica' : 'some';
+    },
+    coresCaneta: () => CORES_CANETA.slice(),
+    // a cor de quem desenha: a escolhida neste aparelho, senão a de quem participa da mesa, senão uma da lista
+    minhaCor() {
+      const c = corOk(caneta().cor);
+      if (c) return c;
+      const st = window.TC && TC.ponte ? TC.ponte.estado : null, eu = App.eu, mb = st && eu && Array.isArray(st.membros) ? st.membros.find(x => x && x.id === eu) : null;
+      if (mb && corOk(mb.cor)) return mb.cor;
+      let h0 = 0;
+      for (const ch of String(eu || 'local')) h0 = (h0 * 31 + ch.charCodeAt(0)) >>> 0;
+      return App.papel === 'mestre' && !eu ? CORES_CANETA[0] : CORES_CANETA[h0 % (CORES_CANETA.length - 2)];
+    },
+    mudarCor(c) { if (corOk(c)) { guarda.gravar(CANETA, j(Object.assign(caneta(), { cor: c }))); App.emit('rabiscos'); } },
+    /* um traço: novo, ou o mesmo crescendo (parcial: ainda sendo desenhado) — sempre no mapa aberto */
+    rabiscar(tr, parcial) {
+      if (!App.podeRabiscar() || !tr || !idValido(tr.id) || !Array.isArray(tr.p) || !tr.p.length) return;
+      const t = tracosMeus().filter(x => x.id !== tr.id), novo = { id: tr.id, mp: App.mapa.id, c: corOk(tr.c) || App.minhaCor(), s: tr.s ? 1 : 0, em: Date.now(), p: tr.p.slice(0, MAX_PTS_TRACO) };
+      t.push(novo);
+      while (t.length > MAX_TRACOS) t.shift();
+      vistoRab.set(novo.id, { n: novo.p.length, t: Date.now() });
+      gravarMeus(t);
+      if (!parcial && novo.s) agendarLimpeza();
+    },
+    tirarRabisco(id) { const t = tracosMeus(), f = t.filter(x => x.id !== id); if (f.length !== t.length) gravarMeus(f); },
+    rabiscosMeus(mp) { return tracosMeus().filter(x => x.mp === mp).length; },
+    desfazerRabisco(mp) { const t = tracosMeus(); for (let i = t.length - 1; i >= 0; i--) if (t[i].mp === mp) { t.splice(i, 1); gravarMeus(t); return true; } return false; },
+    /* limpar: os meus traços neste mapa, ou (quem mestra) os de todos — o aviso deixa desfazer */
+    limparRabiscos(mp, todos) {
+      const mestra = App.papel === 'mestre' && !comoJog, antes = [];
+      for (const d of docsRab()) {
+        const mine = d.doc === meuRab();
+        if (!mine && !(todos && mestra)) continue;
+        const fica = d.t.filter(x => x.mp !== mp);
+        if (fica.length === d.t.length) continue;
+        antes.push({ doc: d.doc, dono: d.dono, t: d.t });
+        if (mine) gravarMeus(fica);
+        else D.gravar(d.doc, { dados: { v: 1, t: fica } });
+      }
+      if (!antes.length) return false;
+      App.emit('rabiscos');
+      App.toast(todos && mestra ? 'Os desenhos deste mapa foram limpos (de todos).' : 'Os seus traços neste mapa saíram.', 'Desfazer', () => {
+        for (const a of antes) {
+          if (a.doc === meuRab()) { const atual = tracosMeus(), ids = new Set(atual.map(x => x.id)); gravarMeus(atual.concat(a.t.filter(x => x.mp === mp && !ids.has(x.id) && !x.s))); }
+          else if (modo === 'mesa' && D) { const l = D.pegar(a.doc), atual = normTracos(dadosDoc(l)), ids = new Set(atual.map(x => x.id)); D.gravar(a.doc, { dados: { v: 1, t: atual.concat(a.t.filter(x => x.mp === mp && !ids.has(x.id) && !x.s)) } }); }
+        }
+        App.emit('rabiscos');
+      }, 12000);
+      return true;
+    },
+    /* os traços de um mapa para desenhar: [{ id, c, s, p, idade, resta }] — o que some, só enquanto ainda está no tempo */
+    rabiscosDe(mp) {
+      const agora = Date.now(), out = [];
+      for (const d of docsRab()) for (const x of d.t) {
+        if (x.mp !== mp) continue;
+        let v = vistoRab.get(x.id);
+        if (!v || v.n !== x.p.length) { v = { n: x.p.length, t: v && v.n === x.p.length ? v.t : agora }; vistoRab.set(x.id, v); }
+        if (x.s) {
+          const idade = agora - v.t;
+          if (idade >= TEMPO_SOME || (x.em && x.em < agora - VELHO)) continue;
+          out.push({ id: x.id, c: x.c, s: 1, p: x.p, idade, resta: TEMPO_SOME - idade });
+        } else out.push({ id: x.id, c: x.c, s: 0, p: x.p });
+      }
+      if (vistoRab.size > 4000) { const ids = new Set(); for (const d of docsRab()) for (const x of d.t) ids.add(x.id); for (const k of [...vistoRab.keys()]) if (!ids.has(k)) vistoRab.delete(k); }
+      return out;
+    },
+  });
+  // sem mesa: os traços que outra aba deste navegador deixou
+  window.addEventListener('storage', ev => { if (modo === 'local' && (ev.key === RAB_LOCAL || ev.key === null)) { rabLocal = null; App.emit('rabiscos'); } });
+
   /* ---------------- partida ---------------- */
   async function lerPapel() {
     const TC = window.TC;
@@ -1346,6 +1484,7 @@
         return;
       }
       if (!l || typeof l.id !== 'string' || !l.id.startsWith('mundo:')) return;
+      if (l.id.startsWith(PRE_RAB)) { App.emit('rabiscos'); return; }          // (lote 17) a caneta: só redesenha (o mapa não mudou)
       if (App.papel === 'mestre' && l.id.startsWith(PRE_PUB)) {           // outro aparelho do mestre publicou
         const id = l.id.slice(PRE_PUB.length), d = dadosDoc(l);
         if (d) sombraPub.set(id, j(N.normalizarMapa(Object.assign({}, d, { id })))); else sombraPub.delete(id);

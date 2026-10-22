@@ -277,6 +277,22 @@
     if (cacheAss) cacheAss.set(m, out);
     return out;
   }
+  /* (lote 17) Os lugares que produzem: os marcadores de mina, pedreira, serraria ou fazenda com a produção escrita pelo
+     mestre (pr), com a região de dentro onde ficam (a produção vai para quem controla a região). → [{ o, r }] */
+  const cacheLug = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function lugaresQueProduzem(m) {
+    if (cacheLug && cacheLug.has(m)) return cacheLug.get(m);
+    const N = NN(), P = N.PRODUCAO_ICONE || {}, out = [];
+    for (const o of objsDe(m)) if (ehObj(o) && o.k === 'm' && P[o.ic] && ehObj(o.pr) && Object.keys(o.pr).length) out.push({ o, r: N.regiaoEm(m, o.x, o.y) });
+    if (cacheLug) cacheLug.set(m, out);
+    return out;
+  }
+  // (lote 17) o recurso de começo de um lugar que produz: o do papel do ícone (a mina, o metal…), senão o primeiro
+  function recursoDoLugar(m, ic) {
+    const e = ecoDe(m), papel = (NN().PRODUCAO_ICONE || {})[ic];
+    if (!e || !papel) return null;
+    return e.rec.find(r => r.papel === papel) || e.rec[0] || null;
+  }
   const nivelDe = (m, id) => { const e = ehObj(m) && ehObj(m.eco) ? m.eco : null; return e && id ? e.niv.find(n => n.id === id) || null : null; };
   /* A parte própria de uma região, por semana: { terreno, pop, cons, gasto, mestre, total } (cada um { recurso: n }; o
      gasto das construções, negativo); null sem a economia ligada. */
@@ -287,14 +303,17 @@
     let c = cacheProd ? cacheProd.get(m) : null;
     if (cacheProd && !c) { c = new Map(); cacheProd.set(m, c); }
     if (c && c.has(r.id)) return c.get(r.id);
-    const out = { terreno: {}, pop: {}, cons: {}, gasto: {}, guilda: {}, mestre: {}, total: {} };
-    for (const k of hexesProprios(m, r)) { const t = terrenoDoHex(m, k); if (t && eco.ter[t.id]) somar(out.terreno, eco.ter[t.id]); }
+    const out = { terreno: {}, lugar: {}, pop: {}, cons: {}, gasto: {}, guilda: {}, mestre: {}, total: {} };
+    // (lote 17) e os recursos que o pincel pôs no hexágono, somados aos do terreno dele
+    for (const k of hexesProprios(m, r)) { const t = terrenoDoHex(m, k); if (t && eco.ter[t.id]) somar(out.terreno, eco.ter[t.id]); if (eco.hexr && eco.hexr[k]) somar(out.terreno, eco.hexr[k]); }
+    // (lote 17) os lugares que produzem (mina, pedreira, serraria, fazenda) dentro da região
+    for (const a of lugaresQueProduzem(m)) if (a.r && a.r.id === r.id) somar(out.lugar, a.o.pr);
     for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.estr) somar(out.pop, producaoDaPopulacao(m, a.o));
     for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.cons) { const e = efeitoDasConstrucoes(m, a.o); somar(out.cons, e.prod); somar(out.gasto, e.gasto); }
     // (parte 5b) a parte das guildas que vai para a facção dona da cidade
     for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.guildas) for (const g of a.o.ass.guildas) somar(out.guilda, partesDaGuilda(g).fac);
     somar(out.mestre, r.prod);
-    somar(somar(somar(out.total, out.terreno), out.pop), out.mestre);
+    somar(somar(somar(somar(out.total, out.terreno), out.lugar), out.pop), out.mestre);
     somar(somar(somar(out.total, out.cons), out.gasto), out.guilda);
     if (c) c.set(r.id, out);
     return out;
@@ -303,8 +322,8 @@
   function producaoDaRegiao(m, r) {
     const p = producaoPropria(m, r);
     if (!p) return null;
-    const out = { terreno: somar({}, p.terreno), pop: somar({}, p.pop), cons: somar({}, p.cons), gasto: somar({}, p.gasto), guilda: somar({}, p.guilda), mestre: somar({}, p.mestre), total: somar({}, p.total) };
-    for (const { r: s } of subregioesDe(m, r)) { const q = producaoPropria(m, s); for (const k of ['terreno', 'pop', 'cons', 'gasto', 'guilda', 'mestre', 'total']) somar(out[k], q[k]); }
+    const out = { terreno: somar({}, p.terreno), lugar: somar({}, p.lugar), pop: somar({}, p.pop), cons: somar({}, p.cons), gasto: somar({}, p.gasto), guilda: somar({}, p.guilda), mestre: somar({}, p.mestre), total: somar({}, p.total) };
+    for (const { r: s } of subregioesDe(m, r)) { const q = producaoPropria(m, s); for (const k of ['terreno', 'lugar', 'pop', 'cons', 'gasto', 'guilda', 'mestre', 'total']) somar(out[k], q[k]); }
     return out;
   }
   /* A produção de cada facção por semana (a parte própria das regiões dela; (parte 3) e as sedes dos clãs): { por: {
@@ -784,7 +803,7 @@
     const N = NN(), e = ecoDe(m), f = e ? facJog(m) : null;
     if (!f || f.oculta) return null;
     const vis = typeof visivel === 'function' ? visivel : () => true;
-    const nova = () => ({ terreno: {}, pop: {}, cons: {}, guilda: {}, cla: {}, mestre: {}, total: {} });
+    const nova = () => ({ terreno: {}, lugar: {}, pop: {}, cons: {}, guilda: {}, cla: {}, mestre: {}, total: {} });
     const prod = nova(), porProv = new Map(), livro = { prov: 0, sub: 0, hex: 0, exe: 0, grade: !!N.temGrade(m) };
     const juntar = (r, k, t) => {
       if (!ehObj(t) || !Object.keys(t).length) return;
@@ -796,7 +815,7 @@
       // (lote 12, parte 12b) a produção, de quem controla (a ocupada, de quem ocupa); o Livro, das regiões dela
       if (N.controleDaRegiao(m, r) === f.id) {
         const q = producaoPropria(m, r);
-        juntar(r, 'terreno', q.terreno); juntar(r, 'pop', q.pop); juntar(r, 'cons', somar(somar({}, q.cons), q.gasto)); juntar(r, 'guilda', q.guilda); juntar(r, 'mestre', q.mestre);
+        juntar(r, 'terreno', q.terreno); juntar(r, 'lugar', q.lugar); juntar(r, 'pop', q.pop); juntar(r, 'cons', somar(somar({}, q.cons), q.gasto)); juntar(r, 'guilda', q.guilda); juntar(r, 'mestre', q.mestre);
       }
       if (N.facDaRegiao(m, r) !== f.id || !vis(r)) continue;
       if (r.pai) livro.sub++; else livro.prov++;
@@ -883,7 +902,8 @@
     CONSTRUCOES_INICIAIS, catalogoPronto, construcoesQueFaltam, tipoDe, espacosDe, exigenciasDe, proximoNivel, faltaPara, moverEstoque, comecarObra, subirNivel, terminarObra,
     cancelarObra, demolir, efeitoDasConstrucoes, defDoAssentamento, curaDoAssentamento, producaoDoCla,
     semanaN, semanasPendentes, diasDaSemana, manutencaoDe, semanaPrevia, aplicarSemana,
-    verDentro, dentroParaJogadores, economiaDosJogadores, resumoDaSemana };
+    verDentro, dentroParaJogadores, economiaDosJogadores, resumoDaSemana,
+    lugaresQueProduzem, recursoDoLugar };                         // (lote 17)
   if (typeof module === 'object' && module && module.exports) module.exports = MundoReino;
   if (typeof window !== 'undefined') window.MundoReino = MundoReino;
 })();
