@@ -1145,6 +1145,14 @@
     const conta = {};
     for (const o of objs) conta[o.k] = (conta[o.k] || 0) + 1;
     const out = [h('h3', { text: ids.length + ' objetos' }), h('p', { class: 'sub', text: Object.keys(ORDEM).filter(k => conta[k]).map(k => plural(conta[k], PLURAL[k][0], PLURAL[k][1])).join(' · ') })];
+    // (lote 15) dois exércitos escolhidos (Shift + clique): a batalha entre eles, já com os dois lados
+    const exs = objs.filter(o => o && o.k === 'g' && o.tipo === 'exercito');
+    if (ed && exs.length === 2 && GP() && GP().abrirBatalha) {
+      const prontos = exs.every(o => GP().comUnidades(o)), nm = o => nomeDe(o, v);
+      out.push(linha(botao('Batalha entre os dois…', () => GP().abrirBatalha({ a: exs[0].id, b: exs[1].id }), { c: 'pri', k: 'varios:batalha', off: !prontos,
+        title: prontos ? 'Abre a batalha com ' + nm(exs[0]) + ' de um lado e ' + nm(exs[1]) + ' do outro. Nada é rolado antes de você pedir.' : 'Os dois precisam ter unidades para lutar' })));
+      if (!prontos) out.push(nota('Para lutar, os dois exércitos precisam ter unidades (na ficha de cada um, Unidades).'));
+    }
     out.push(h('div', { class: 'lista' }, objs.map(o => itemLista(o, v, mestre))));
     if (ed) {
       const todosOcultos = objs.every(o => o.oculto);

@@ -566,6 +566,14 @@ function gridDist(sc, ax, ay, bx, by) {
 }
 const distLabel = (sc, q) => `${fmt(q)} q · ${fmt(q * sc.grid.unit)} ${sc.grid.unitName}`;
 
+/* (lote 15) A porcentagem numa barra, sempre do máximo (arredonda para baixo): "-10%" tira 10% do máximo (Vida 80/100
+   → 70/100), "+25%" põe, "50%" deixa a barra na metade. → { d } (quanto somar), { v } (o valor novo) ou null. */
+function barPct(b, s) {
+  const m = /^([+-]?)(\d+(?:\.\d+)?)%$/.exec(s);
+  if (!m || !b || !(b.m > 0)) return null;
+  const q = Math.floor(b.m * Number(m[2]) / 100 + 1e-9);
+  return m[1] ? { d: m[1] === '-' ? -q : q } : { v: Math.min(q, Math.max(b.m, b.v)) };
+}
 // Interpreta o que foi digitado numa barra: "12" define, "+5" e "-8" somam.
 function parseBar(text, cur, max, lo) {
   const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
@@ -639,11 +647,33 @@ const Act = {
     const b = t.bars[i];
     const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
     let p;
-    if (/^[+-]\d+(\.\d+)?$/.test(s)) p = barAfter(b, Number(s));           // "+5" e "-8": o dano gasta primeiro a sobrevida
+    const pc = barPct(b, s);                                                // (lote 15) "-10%", "+25%" e "50%": do máximo
+    if (pc) { if (pc.d === 0 || pc.v === b.v) return false; p = pc.d != null ? barAfter(b, pc.d) : { v: barPod(b) > 0 ? Math.min(pc.v, barTeto(b)) : pc.v }; }
+    else if (/^[+-]\d+(\.\d+)?$/.test(s)) p = barAfter(b, Number(s));      // "+5" e "-8": o dano gasta primeiro a sobrevida
     else { const v = parseBar(text, b.v, b.m, barLo(b)); if (v == null) return false; p = { v: barPod(b) > 0 ? Math.min(v, barTeto(b)) : v }; }     // (lote 8: nem acima do teto da ferida)
     if (p.v === b.v && p.x === undefined) return false;
     Store.tx('Alterar ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? barWith(x, p) : x)) }));
     return true;
+  },
+  /* (lote 15) A porcentagem para vários tokens, na barra de nome `barName`: cada um muda a porcentagem do máximo DELE
+     (sem sinal, tira — como o número da caixa "Somar ou subtrair de todos"). Um passo de desfazer. → quantos mudaram,
+     ou −1 se o texto não é uma porcentagem. */
+  groupPct(tokens, barName, text) {
+    const s0 = String(text).trim().replace(/\s+/g, '').replace(',', '.');
+    if (!/^[+-]?\d+(\.\d+)?%$/.test(s0)) return -1;
+    const s = /^[+-]/.test(s0) ? s0 : '-' + s0;
+    let n = 0;
+    Store.tx('Alterar ' + barName, () => {
+      for (const t of tokens) {
+        const i = t.bars.findIndex(b => b.on && b.n === barName);
+        if (i < 0) continue;
+        const b = t.bars[i], pc = barPct(b, s);
+        if (!pc || !pc.d) continue;
+        const q = barAfter(b, pc.d);
+        if (q.v !== b.v || q.x !== undefined) { Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? barWith(x, q) : x)) }); n++; }
+      }
+    });
+    return n;
   },
   // Sobrevida de uma barra: pontos por cima dela, que absorvem o dano primeiro. Zero tira.
   barExtra(t, i, value) {

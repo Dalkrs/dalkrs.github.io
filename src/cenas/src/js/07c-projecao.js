@@ -101,6 +101,7 @@ const Proj = (() => {
     const x = barX(b);
     if (x > 0) { o.x = Math.max(0.1, Math.round(1000 * x / b.m) / 10); o.xn = x; }
     if (barPod(b) > 0) o.pod = Math.max(0.1, Math.round(1000 * barPod(b) / b.m) / 10);      // (lote 8) a ponta podre, em proporção
+    if (barMapa(b) === 'passar') o.mapa = 'passar';                                          // (lote 15) a barra que só aparece ao passar o mouse
     return o;
   }
   // `jogadores`: os ids dos jogadores da mesa (Set). Token cujo dono não está mais na mesa conta como do mestre.

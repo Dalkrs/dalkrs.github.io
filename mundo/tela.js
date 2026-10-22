@@ -1644,13 +1644,63 @@
     g.append(s('rect', { class: 'hon-num-fundo', x: largo ? -9.6 : -7, y: 8.6, width: largo ? 19.2 : 14, height: 9.6, rx: 4.8 }), s('text', { class: 'hon-num', x: 0, y: 16.1, 'text-anchor': 'middle', 'font-size': largo ? 7.8 : 8.5, texto: t }));
     return g;
   }
+  /* (lote 15) A força do exército, para o mestre: quantos soldados ele tem (de qualquer tipo: a soma das tropas das unidades
+     que lutam), e — quando há — quantos magos e quantas máquinas de cerco. null se não há o que contar (ou se não é o
+     exército completo: o que os jogadores recebem vem sem as unidades). */
+  function forcaDoExercito(o) {
+    const exe = o && o.tipo === 'exercito' && o.exe && !o.exe.pub && Array.isArray(o.exe.unid) ? o.exe : null;
+    if (!exe) return null;
+    let tropas = 0, magos = 0, maq = 0;
+    for (const u of exe.unid) {
+      if (!u || !(Number(u.tropas) > 0)) continue;
+      tropas += Math.round(Number(u.tropas) || 0); magos += Math.max(0, Math.round(Number(u.magos) || 0));
+      if (u.maq && typeof u.maq === 'object') for (const k of Object.keys(u.maq)) maq += Math.max(0, Math.round(Number(u.maq[k]) || 0));
+    }
+    return tropas > 0 || magos > 0 || maq > 0 ? { tropas, magos, maq } : null;
+  }
+  // 850 · 1,2 mil · 12 mil · 1,5 mi
+  function numCurto(n) {
+    if (n < 1000) return String(n);
+    const um1 = x => (Math.floor(x * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    if (n < 10000) return um1(n / 1000) + ' mil';
+    if (n < 1e6) return Math.floor(n / 1000).toLocaleString('pt-BR') + ' mil';
+    return um1(n / 1e6) + ' mi';
+  }
+  const FORCA_Y = -31;
+  function seloDaForca(o, f) {
+    const nT = numCurto(f.tropas), itens = [{ k: 'tropas', t: nT, w: Math.max(14, nT.length * 5.1 + 8) }];
+    if (f.magos > 0) itens.push({ k: 'magos', t: numCurto(f.magos), w: 0 });
+    if (f.maq > 0) itens.push({ k: 'maq', t: numCurto(f.maq), w: 0 });
+    for (const it of itens) if (!it.w) it.w = it.t.length * 4.6 + 13;
+    const gap = 2, W = itens.reduce((sm, it) => sm + it.w, 0) + gap * (itens.length - 1);
+    const fmtN = n => n.toLocaleString('pt-BR');
+    const g = s('g', { class: 'forca', transform: 'translate(0 ' + FORCA_Y + ')' });
+    g.append(s('title', { texto: fmtN(f.tropas) + (f.tropas === 1 ? ' soldado' : ' soldados') + (f.magos ? ' · ' + fmtN(f.magos) + (f.magos === 1 ? ' mago' : ' magos') : '') + (f.maq ? ' · ' + fmtN(f.maq) + (f.maq === 1 ? ' máquina de cerco' : ' máquinas de cerco') : '') + ' (só o mestre vê)' }));
+    let x = -W / 2;
+    for (const it of itens) {
+      const sel = s('g', { class: 'forca-' + it.k, transform: 'translate(' + d3(x) + ' 0)' });
+      sel.append(s('rect', { class: 'forca-fundo', x: 0, y: -5.5, width: d3(it.w), height: 11, rx: 5.5, style: it.k === 'tropas' ? 'stroke:' + (o.cor || '#e6ab4f') : null }));
+      if (it.k === 'tropas') sel.append(s('text', { class: 'forca-n', x: d3(it.w / 2), y: 3.1, 'text-anchor': 'middle', 'font-size': 8.6, texto: it.t }));
+      else {
+        // o desenho: a estrela do mago; a roda da máquina de cerco
+        sel.append(it.k === 'magos' ? s('path', { class: 'forca-ico', d: 'M6 -3.6l.9 2.7 2.7.9-2.7.9L6 3.6l-.9-2.7L2.4 0l2.7-.9z' })
+          : s('path', { class: 'forca-ico roda', d: 'M6 -3.1a3.1 3.1 0 1 0 0 6.2a3.1 3.1 0 1 0 0-6.2zM6 -3.1v6.2M2.9 0h6.2' }));
+        sel.append(s('text', { class: 'forca-n', x: 10.6, y: 3, 'font-size': 7.8, texto: it.t }));
+      }
+      g.append(sel);
+      x += it.w + gap;
+    }
+    return g;
+  }
   function grupo(g0, o, ctx) {
     g0.classList.add('gru');
     const fx = fixo(o.x, o.y), bol = ctx ? bolinhasDe(ctx, o) : null;
+    const forca = ctx && ctx.mestre ? forcaDoExercito(o) : null;
     if (bol) {
       // uma fileira em cima do token: as cheias são os tempos andados; com muitas, as primeiras e a conta
+      // (lote 15: com a força do exército em cima do token, a fileira sobe para acima dela)
       const [feitas, total] = bol, n = Math.min(total, MAX_BOL), passo = 8.5, x0 = -((n - 1) * passo) / 2, cor = o.cor || '#e6ab4f';
-      const gb = s('g', { class: 'bolinhas', transform: 'translate(0 -29)' });
+      const gb = s('g', { class: 'bolinhas', transform: 'translate(0 ' + (forca ? FORCA_Y - 13 : -29) + ')' });
       gb.append(s('title', { texto: 'Atravessando: ' + feitas + ' de ' + total + ' tempos de marcha' }));
       for (let i = 0; i < n; i++) gb.append(s('circle', { class: 'bol' + (i < feitas ? ' feita' : ''), cx: d3(x0 + i * passo), cy: 0, r: 3.3, style: i < feitas ? 'fill:' + cor : 'stroke:' + cor }));
       if (total > MAX_BOL) gb.append(s('text', { class: 'bol-conta', x: d3(x0 + n * passo + 2), y: 3.5, 'font-size': 10, texto: feitas + '/' + total }));
@@ -1677,6 +1727,7 @@
       fx.append(s('g', { class: 'dorme', transform: 'translate(-15 15) scale(1.15)' }, s('title', { texto: 'Descansando (do ' + jn.de + 'º ao ' + jn.ate + 'º tempo)' }),
         s('circle', { class: 'dorme-bola', r: 8.5 }), s('text', { class: 'dorme-z', x: -0.5, y: 3.6, 'text-anchor': 'middle', 'font-size': 9.5, texto: 'zZ' })));
     }
+    if (forca) fx.append(seloDaForca(o, forca));
     if (o.nome) fx.append(rotulo(o.nome, 35));
     g0.append(fx);
   }

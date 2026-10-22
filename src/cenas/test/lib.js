@@ -28,6 +28,8 @@ async function open(opt = {}) {
   const srv = await serve(opt.root);
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: opt.w || 1440, height: opt.h || 900 }, colorScheme: opt.theme || 'dark', deviceScaleFactor: opt.dpr || 1, reducedMotion: opt.reduce ? 'reduce' : 'no-preference' });
+  // (lote 15) opt.init: um código que roda antes da página (por exemplo, um site de mentira em window.TC)
+  if (opt.init) await ctx.addInitScript({ content: opt.init });
   const page = await ctx.newPage();
   const errs = [];
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errs.push(`[${m.type()}] ${m.text()}`); });

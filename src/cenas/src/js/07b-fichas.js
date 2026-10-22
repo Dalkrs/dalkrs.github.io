@@ -437,6 +437,83 @@ const Fichas = (() => {
       return true;
     } };
   }
+  /* (lote 15) O máximo de uma barra ligada, mudado aqui no token, vai para a ficha. Antes, o token ficava com o número
+     só até a próxima mudança: ao descontar, a ficha devolvia o máximo dela (na ficha de jogador ainda sem pontos, o
+     "LVL*5" da fórmula — o HP que não descontava e voltava para 10). Agora o número entra na ficha no lugar da fórmula
+     do recurso (o que a árvore e os itens somam continua por cima: o total fica o número digitado); na barra especial,
+     ele é o máximo dela. O valor de agora fica como está.
+     → { ok: false, error } (error null: não é barra de ficha, e o token muda sozinho, como sempre)
+       ou { ok: true, nada } (o máximo já é esse) ou { ok: true, nome, dono, formula, resultado, numero, soma, fazer }:
+       formula é a fórmula que sairia de uma ficha preenchida (null quando não há o que perder: a ficha ainda vazia, um
+       máximo que já era número, a barra especial); fazer() grava e devolve { max, desfazer() } (null se a ficha sumiu). */
+  const SO_NUMERO = /^-?\d+(\.\d+)?$/;
+  function maximoParaFicha(t, i, m) {
+    const b = t && t.bars ? t.bars[i] : null;
+    if (!on || !b || !b.ref || !t.char || t.clone) return { ok: false, error: null };
+    const l = get(t.char);
+    if (!l) return escondida(t) ? { ok: false, error: `O máximo de ${b.n} vem da ficha, que não está à vista aqui: mude na aba Fichas.` } : { ok: false, error: null };
+    if (l.ficha == null) return { ok: false, error: `O máximo de ${b.n} vem da ficha, que ainda não chegou. Tente de novo num instante.` };
+    if (papel !== 'mestre' && !(eu && l.dono_id === eu)) return { ok: false, error: `O máximo de ${b.n} vem da ficha.` };
+    const charId = t.char, ref = b.ref, dono = String(l.nome || '').trim() || 'Sem nome';
+    if (ehPd(ref)) {
+      const id = ref.slice(PD.length), lista = Array.isArray(l.ficha.poderes) ? l.ficha.poderes : [];
+      const k = lista.findIndex(x => x && String(x.id) === id);
+      if (k < 0) return { ok: false, error: null };
+      const n = Math.round(Number(m) || 0), antes = lista[k].max;
+      if (n < 1) return { ok: false, error: `${b.n} precisa de pelo menos 1 de máximo. Para tirar a barra, apague-a na ficha.` };
+      if (Math.round(Number(antes) || 0) === n) return { ok: true, nada: true };
+      return { ok: true, nome: b.n, dono, formula: null, resultado: Math.round(Number(antes) || 0), numero: n, soma: 0, fazer: () => {
+        const agora = get(charId), ps = agora && agora.ficha && Array.isArray(agora.ficha.poderes) ? agora.ficha.poderes : null;
+        const j = ps ? ps.findIndex(x => x && String(x.id) === id) : -1;
+        if (j < 0) return null;
+        const ps2 = ps.slice(); ps2[j] = Object.assign({}, ps2[j], { max: n });
+        P.gravar(charId, { ficha: Object.assign({}, agora.ficha, { poderes: ps2 }) });
+        syncAll(charId);
+        return { max: n, desfazer: () => {
+          const a2 = get(charId), q = a2 && a2.ficha && Array.isArray(a2.ficha.poderes) ? a2.ficha.poderes : null;
+          const j2 = q ? q.findIndex(x => x && String(x.id) === id) : -1;
+          if (j2 < 0 || Math.round(Number(q[j2].max) || 0) !== n) return false;          // (mudou de novo depois: fica)
+          const q2 = q.slice(); q2[j2] = Object.assign({}, q2[j2], { max: antes });
+          P.gravar(charId, { ficha: Object.assign({}, a2.ficha, { poderes: q2 }) });
+          syncAll(charId);
+          return true;
+        } };
+      } };
+    }
+    const recs = Array.isArray(l.ficha.recursos) ? l.ficha.recursos : [], k = recs.findIndex(x => x && x.id === ref);
+    if (k < 0) return { ok: false, error: null };
+    const c = R().calcular(pcDe(l), cfg(), extra(l)), rc = (c.recursos || []).find(x => x.id === ref) || {};
+    if (rc.max === m) return { ok: true, nada: true };
+    const soma = Math.round(((Number(rc.arv) || 0) + (Number(rc.eq) || 0)) * 10) / 10;
+    const numero = Math.max(0, Math.round((m - soma) * 10) / 10);
+    const fml = String(recs[k].fml == null ? '' : recs[k].fml).trim();
+    const vazia = (R().ATRIBS || []).every(a => !(Number((c.nat || {})[a.k]) > 0));        // (nenhum atributo com ponto ainda)
+    return { ok: true, nome: b.n, dono, formula: fml === '' || SO_NUMERO.test(fml) || vazia ? null : fml, resultado: rc.max, numero, soma, fazer: () => {
+      const agora = get(charId), rs = agora && agora.ficha && Array.isArray(agora.ficha.recursos) ? agora.ficha.recursos : null;
+      const j = rs ? rs.findIndex(x => x && x.id === ref) : -1;
+      if (j < 0) return null;
+      const velho = rs[j].fml, rs2 = rs.slice();
+      rs2[j] = Object.assign({}, rs2[j], { fml: String(numero) });
+      const campos = { ficha: Object.assign({}, agora.ficha, { recursos: rs2 }) };
+      // o valor de agora fica: sem nada guardado, a ficha encheria a barra no máximo novo
+      const est = agora.estado || {}, rec0 = est.rec && typeof est.rec === 'object' ? est.rec : {};
+      if (!Object.prototype.hasOwnProperty.call(rec0, ref) && isFinite(b.v)) campos.estado = Object.assign({}, est, { rec: Object.assign({}, rec0, { [ref]: b.v }) });
+      P.gravar(charId, campos);
+      syncAll(charId);
+      const depois = get(charId), r2 = depois ? (resumo(depois).recursos || []).find(x => x.id === ref) : null;
+      return { max: r2 ? r2.max : m, desfazer: () => {
+        const a2 = get(charId), q = a2 && a2.ficha && Array.isArray(a2.ficha.recursos) ? a2.ficha.recursos : null;
+        const j2 = q ? q.findIndex(x => x && x.id === ref) : -1;
+        if (j2 < 0 || String(q[j2].fml) !== String(numero)) return false;          // (a fórmula mudou de novo depois: fica)
+        const q2 = q.slice(), o = Object.assign({}, q2[j2]);
+        if (velho === undefined) delete o.fml; else o.fml = velho;
+        q2[j2] = o;
+        P.gravar(charId, { ficha: Object.assign({}, a2.ficha, { recursos: q2 }) });
+        syncAll(charId);
+        return true;
+      } };
+    } };
+  }
   const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
   /* Rola um atributo da ficha com a regra da fixa: um dado de (atributo − fixa) lados, mais a fixa. `mais`: os bônus só
      desta rolagem — { atr: soma no atributo antes de rolar (muda o dado), res: soma no resultado }. */
@@ -765,7 +842,7 @@ const Fichas = (() => {
     return true;
   }
   return { start, on: () => on, chars, get, link, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
-    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, papel: () => papel, eu: () => eu, vejoTodas, escondida,
+    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
     flush() { for (const id of [...cegas.keys()]) mandarCegas(id); } };

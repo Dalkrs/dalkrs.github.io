@@ -240,6 +240,8 @@ const ICONS = {
   brush: 'M14 4l6 6-8.5 8.5a3 3 0 0 1-2 .9l-3 .1c-.9 0-1.6-.6-1.6-1.5l.1-3a3 3 0 0 1 .9-2zM11 7l6 6',
   shield: 'M12 3l7.5 2.8v5.4c0 4.6-3 8.3-7.5 9.8-4.5-1.5-7.5-5.2-7.5-9.8V5.8z',
   heart: 'M12 20.5s-7.5-4.6-7.5-10.4A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 7.5 2.9c0 5.8-7.5 10.4-7.5 10.4zM12 10.2v4.6M9.7 12.5h4.6',
+  // (lote 15) a fogueira do descanso
+  rest: 'M12 3.5c2.3 2.5 3.8 4.4 3.8 6.7a3.8 3.8 0 0 1-7.6 0c0-1.4.8-2.6 1.7-3.4.1 1.2.7 1.9 1.3 2.2 0-2.1.2-3.6.8-5.5zM5 20.5l14-3.6M5 16.9l14 3.6',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3 2',
   area: 'M12 12m-8.5 0a8.5 8.5 0 1 0 17 0a8.5 8.5 0 1 0-17 0M8 12h8M12 8v8',
   room: 'M4 5h16v14H4zM4 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M4 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0',
@@ -402,8 +404,13 @@ const cleanBarRef = (b, o) => {
   if (o && o.st != null && o.st !== '' && isFinite(Number(o.st))) b.st = Math.min(b.m, Math.max(-(b.lo || 0), Math.round(Number(o.st) * 10) / 10));
   // (lote 8) a ferida permanente: quanto da ponta da barra apodreceu (a cura não passa de m − pod)
   if (o && Number(o.pod) > 0 && b.m > 0) b.pod = Math.round(Math.min(Number(o.pod), b.m) * 10) / 10;
+  if (o && (o.mapa === 'sempre' || o.mapa === 'passar')) b.mapa = o.mapa;         // (lote 15) quando ela aparece no mapa
   return b;
 };
+/* (lote 15) Quando a barra aparece em cima do token, no mapa: 'sempre', ou 'passar' — só com o mouse por cima ou com o
+   token selecionado. As barras especiais da ficha (as cargas, os usos: ref "pd:…") começam em 'passar', para não ficarem
+   o tempo todo no token; as outras, em 'sempre'. O mestre escolhe outra coisa nas opções da barra (b.mapa). */
+const barMapa = b => (b && (b.mapa === 'sempre' || b.mapa === 'passar') ? b.mapa : b && typeof b.ref === 'string' && b.ref.startsWith('pd:') ? 'passar' : 'sempre');
 const barX = b => Math.max(0, Number(b && b.x) || 0);
 const barLo = b => { const n = Math.round((Number(b && b.lo) || 0) * 10) / 10; return n > 0 ? Math.min(n, 999999) : 0; };
 /* (lote 8) A ferida permanente: o que apodreceu na ponta da barra (0 a m) e o teto da cura (o máximo menos isso,

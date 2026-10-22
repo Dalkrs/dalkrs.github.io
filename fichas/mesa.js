@@ -69,11 +69,31 @@ const FichasMesa = (() => {
     pc._vis = l.vis === 'mesa' ? 'mesa' : 'mestre';
     pc._camp = l.campanha || null;
     pc.ultRol = antigo ? antigo.ultRol || null : null;     // a última rolagem mostrada na ficha é só desta tela
+    if (pc.estaqueOculto && mestre()) pc.estaque = estaqueGuardado(pc.id, manter ? antigo : null);
     return pc;
+  }
+  /* (lote 15) O Estaque escondido do jogador (ficha.estaqueOculto): o texto não vai na ficha — que o jogador recebe —,
+     mas com o mestre, no documento dos segredos (fichas:segredos, em est: { id: { a, b } }). A ficha leva o campo vazio.
+     Na tela do mestre, o Estaque volta para a ficha: o que esta tela já tem (uma mudança que chegou da mesa não apaga o
+     que está aqui) ou, ao abrir, o que está guardado. */
+  const estaqueVazio = () => ({ a: '', b: '' });
+  const comTexto = e => !!e && typeof e === 'object' && (!!e.a || !!e.b);
+  function estaqueGuardado(id, daTela) {
+    if (daTela && comTexto(daTela.estaque)) return { a: String(daTela.estaque.a || ''), b: String(daTela.estaque.b || '') };
+    const sg = doc('segredos'), e = sg && sg.est && sg.est[id];
+    return comTexto(e) ? { a: String(e.a || ''), b: String(e.b || '') } : estaqueVazio();
+  }
+  // os Estaques escondidos, para o documento dos segredos (só na tela do mestre): o que está nas fichas desta tela
+  function acertarEstaques(s) {
+    const seg = s.segredos && typeof s.segredos === 'object' && !Array.isArray(s.segredos) ? s.segredos : (s.segredos = {}), est = {};
+    for (const pc of s.personagens) if (pc && pc.estaqueOculto && comTexto(pc.estaque)) est[pc.id] = { a: String(pc.estaque.a || ''), b: String(pc.estaque.b || '') };
+    if (Object.keys(est).length) seg.est = est; else delete seg.est;
+    if (S && S !== s) { if (!S.segredos || typeof S.segredos !== 'object' || Array.isArray(S.segredos)) S.segredos = {}; if (seg.est) S.segredos.est = JSON.parse(j(seg.est)); else delete S.segredos.est; }
   }
   function partes(pc) {
     const ficha = Object.assign({}, pc);
     for (const k of ['id', 'skills', 'estado', '_dono', '_vis', '_camp', 'ultRol']) delete ficha[k];
+    if (ficha.estaqueOculto) ficha.estaque = estaqueVazio();          // (lote 15) o texto fica com o mestre
     return { nome: String(pc.nome || '').slice(0, 120), ficha, skills: pc.skills || {}, estado: pc.estado || {}, dono_id: pc._dono || null, vis: pc._vis === 'mesa' ? 'mesa' : 'mestre', campanha: pc._camp || null };
   }
   const retrato = (p, ordem) => ({ nome: p.nome, ficha: j(p.ficha), skills: j(p.skills), estado: j(p.estado), dono: p.dono_id, vis: p.vis, camp: p.campanha || null, ordem });
@@ -172,6 +192,7 @@ const FichasMesa = (() => {
       sombra.pcs.set(pc.id, r);
     });
     if (mestre()) {
+      acertarEstaques(s);
       for (const id of [...sombra.pcs.keys()]) if (!vistos.has(id)) { P.apagar(id); sombra.pcs.delete(id); }
       for (const k in DOCS) {
         const v = k === 'cfg' ? s.cfg : (s[k] || vazioDe(k)), jv = j(v);
@@ -243,6 +264,8 @@ const FichasMesa = (() => {
       sombra.docs[k] = jv;
       if (k === 'segredos' && !mestre()) return;                  // (só o mestre recebe; por garantia)
       if (k === 'cfg') S.cfg = v || estadoPadrao().cfg; else S[k] = v || vazioDe(k);
+      // (lote 15) os Estaques escondidos, mudados na outra tela do mestre
+      if (k === 'segredos') for (const pc of S.personagens) if (pc.estaqueOculto) { const e = v && v.est && v.est[pc.id]; pc.estaque = comTexto(e) ? { a: String(e.a || ''), b: String(e.b || '') } : estaqueVazio(); }
     }
     guardarTela();
     redesenhar();

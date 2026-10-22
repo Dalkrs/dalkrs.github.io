@@ -411,6 +411,13 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 
 /* (lote 9) o descanso: o grupo dormindo ("zZ") e o ponto de descanso (a lua) — só o mestre vê */
 .dorme .dorme-bola { fill: #26304a; stroke: #b9c7f0; stroke-width: 1.4; }
+/* (lote 15) a força do exército (só o mestre): os soldados, e os selinhos dos magos e das máquinas de cerco */
+.forca .forca-fundo { fill: rgba(16, 18, 25, .9); stroke: rgba(255, 243, 214, .55); stroke-width: .9; }
+.forca .forca-magos .forca-fundo { fill: #3b2a6e; stroke: #b9a3ff; }
+.forca .forca-maq .forca-fundo { fill: #4a3720; stroke: #e0b979; }
+svg text.forca-n { font-family: var(--ui); font-weight: 800; fill: #fff3d6; stroke-width: 0; }
+.forca .forca-ico { fill: #e3d8ff; stroke: none; }
+.forca .forca-ico.roda { fill: none; stroke: #f3dcae; stroke-width: 1.2; }
 .dorme .dorme-z { fill: #dfe6ff; font-weight: 800; stroke-width: 0; letter-spacing: -0.5px; }
 .pdesc-selo .pdesc-bola { fill: #26304a; stroke: #f3ead2; stroke-width: 1.3; }
 .pdesc-selo .pdesc-lua { fill: #f2d98a; stroke: none; }

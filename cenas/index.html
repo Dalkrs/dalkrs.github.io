@@ -1227,6 +1227,8 @@ const ICONS = {
   brush: 'M14 4l6 6-8.5 8.5a3 3 0 0 1-2 .9l-3 .1c-.9 0-1.6-.6-1.6-1.5l.1-3a3 3 0 0 1 .9-2zM11 7l6 6',
   shield: 'M12 3l7.5 2.8v5.4c0 4.6-3 8.3-7.5 9.8-4.5-1.5-7.5-5.2-7.5-9.8V5.8z',
   heart: 'M12 20.5s-7.5-4.6-7.5-10.4A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 7.5 2.9c0 5.8-7.5 10.4-7.5 10.4zM12 10.2v4.6M9.7 12.5h4.6',
+  // (lote 15) a fogueira do descanso
+  rest: 'M12 3.5c2.3 2.5 3.8 4.4 3.8 6.7a3.8 3.8 0 0 1-7.6 0c0-1.4.8-2.6 1.7-3.4.1 1.2.7 1.9 1.3 2.2 0-2.1.2-3.6.8-5.5zM5 20.5l14-3.6M5 16.9l14 3.6',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3 2',
   area: 'M12 12m-8.5 0a8.5 8.5 0 1 0 17 0a8.5 8.5 0 1 0-17 0M8 12h8M12 8v8',
   room: 'M4 5h16v14H4zM4 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M4 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0',
@@ -1389,8 +1391,13 @@ const cleanBarRef = (b, o) => {
   if (o && o.st != null && o.st !== '' && isFinite(Number(o.st))) b.st = Math.min(b.m, Math.max(-(b.lo || 0), Math.round(Number(o.st) * 10) / 10));
   // (lote 8) a ferida permanente: quanto da ponta da barra apodreceu (a cura não passa de m − pod)
   if (o && Number(o.pod) > 0 && b.m > 0) b.pod = Math.round(Math.min(Number(o.pod), b.m) * 10) / 10;
+  if (o && (o.mapa === 'sempre' || o.mapa === 'passar')) b.mapa = o.mapa;         // (lote 15) quando ela aparece no mapa
   return b;
 };
+/* (lote 15) Quando a barra aparece em cima do token, no mapa: 'sempre', ou 'passar' — só com o mouse por cima ou com o
+   token selecionado. As barras especiais da ficha (as cargas, os usos: ref "pd:…") começam em 'passar', para não ficarem
+   o tempo todo no token; as outras, em 'sempre'. O mestre escolhe outra coisa nas opções da barra (b.mapa). */
+const barMapa = b => (b && (b.mapa === 'sempre' || b.mapa === 'passar') ? b.mapa : b && typeof b.ref === 'string' && b.ref.startsWith('pd:') ? 'passar' : 'sempre');
 const barX = b => Math.max(0, Number(b && b.x) || 0);
 const barLo = b => { const n = Math.round((Number(b && b.lo) || 0) * 10) / 10; return n > 0 ? Math.min(n, 999999) : 0; };
 /* (lote 8) A ferida permanente: o que apodreceu na ponta da barra (0 a m) e o teto da cura (o máximo menos isso,
@@ -5523,6 +5530,14 @@ function gridDist(sc, ax, ay, bx, by) {
 }
 const distLabel = (sc, q) => `${fmt(q)} q · ${fmt(q * sc.grid.unit)} ${sc.grid.unitName}`;
 
+/* (lote 15) A porcentagem numa barra, sempre do máximo (arredonda para baixo): "-10%" tira 10% do máximo (Vida 80/100
+   → 70/100), "+25%" põe, "50%" deixa a barra na metade. → { d } (quanto somar), { v } (o valor novo) ou null. */
+function barPct(b, s) {
+  const m = /^([+-]?)(\d+(?:\.\d+)?)%$/.exec(s);
+  if (!m || !b || !(b.m > 0)) return null;
+  const q = Math.floor(b.m * Number(m[2]) / 100 + 1e-9);
+  return m[1] ? { d: m[1] === '-' ? -q : q } : { v: Math.min(q, Math.max(b.m, b.v)) };
+}
 // Interpreta o que foi digitado numa barra: "12" define, "+5" e "-8" somam.
 function parseBar(text, cur, max, lo) {
   const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
@@ -5596,11 +5611,33 @@ const Act = {
     const b = t.bars[i];
     const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
     let p;
-    if (/^[+-]\d+(\.\d+)?$/.test(s)) p = barAfter(b, Number(s));           // "+5" e "-8": o dano gasta primeiro a sobrevida
+    const pc = barPct(b, s);                                                // (lote 15) "-10%", "+25%" e "50%": do máximo
+    if (pc) { if (pc.d === 0 || pc.v === b.v) return false; p = pc.d != null ? barAfter(b, pc.d) : { v: barPod(b) > 0 ? Math.min(pc.v, barTeto(b)) : pc.v }; }
+    else if (/^[+-]\d+(\.\d+)?$/.test(s)) p = barAfter(b, Number(s));      // "+5" e "-8": o dano gasta primeiro a sobrevida
     else { const v = parseBar(text, b.v, b.m, barLo(b)); if (v == null) return false; p = { v: barPod(b) > 0 ? Math.min(v, barTeto(b)) : v }; }     // (lote 8: nem acima do teto da ferida)
     if (p.v === b.v && p.x === undefined) return false;
     Store.tx('Alterar ' + b.n, () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? barWith(x, p) : x)) }));
     return true;
+  },
+  /* (lote 15) A porcentagem para vários tokens, na barra de nome `barName`: cada um muda a porcentagem do máximo DELE
+     (sem sinal, tira — como o número da caixa "Somar ou subtrair de todos"). Um passo de desfazer. → quantos mudaram,
+     ou −1 se o texto não é uma porcentagem. */
+  groupPct(tokens, barName, text) {
+    const s0 = String(text).trim().replace(/\s+/g, '').replace(',', '.');
+    if (!/^[+-]?\d+(\.\d+)?%$/.test(s0)) return -1;
+    const s = /^[+-]/.test(s0) ? s0 : '-' + s0;
+    let n = 0;
+    Store.tx('Alterar ' + barName, () => {
+      for (const t of tokens) {
+        const i = t.bars.findIndex(b => b.on && b.n === barName);
+        if (i < 0) continue;
+        const b = t.bars[i], pc = barPct(b, s);
+        if (!pc || !pc.d) continue;
+        const q = barAfter(b, pc.d);
+        if (q.v !== b.v || q.x !== undefined) { Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? barWith(x, q) : x)) }); n++; }
+      }
+    });
+    return n;
   },
   // Sobrevida de uma barra: pontos por cima dela, que absorvem o dano primeiro. Zero tira.
   barExtra(t, i, value) {
@@ -6718,6 +6755,83 @@ const Fichas = (() => {
       return true;
     } };
   }
+  /* (lote 15) O máximo de uma barra ligada, mudado aqui no token, vai para a ficha. Antes, o token ficava com o número
+     só até a próxima mudança: ao descontar, a ficha devolvia o máximo dela (na ficha de jogador ainda sem pontos, o
+     "LVL*5" da fórmula — o HP que não descontava e voltava para 10). Agora o número entra na ficha no lugar da fórmula
+     do recurso (o que a árvore e os itens somam continua por cima: o total fica o número digitado); na barra especial,
+     ele é o máximo dela. O valor de agora fica como está.
+     → { ok: false, error } (error null: não é barra de ficha, e o token muda sozinho, como sempre)
+       ou { ok: true, nada } (o máximo já é esse) ou { ok: true, nome, dono, formula, resultado, numero, soma, fazer }:
+       formula é a fórmula que sairia de uma ficha preenchida (null quando não há o que perder: a ficha ainda vazia, um
+       máximo que já era número, a barra especial); fazer() grava e devolve { max, desfazer() } (null se a ficha sumiu). */
+  const SO_NUMERO = /^-?\d+(\.\d+)?$/;
+  function maximoParaFicha(t, i, m) {
+    const b = t && t.bars ? t.bars[i] : null;
+    if (!on || !b || !b.ref || !t.char || t.clone) return { ok: false, error: null };
+    const l = get(t.char);
+    if (!l) return escondida(t) ? { ok: false, error: `O máximo de ${b.n} vem da ficha, que não está à vista aqui: mude na aba Fichas.` } : { ok: false, error: null };
+    if (l.ficha == null) return { ok: false, error: `O máximo de ${b.n} vem da ficha, que ainda não chegou. Tente de novo num instante.` };
+    if (papel !== 'mestre' && !(eu && l.dono_id === eu)) return { ok: false, error: `O máximo de ${b.n} vem da ficha.` };
+    const charId = t.char, ref = b.ref, dono = String(l.nome || '').trim() || 'Sem nome';
+    if (ehPd(ref)) {
+      const id = ref.slice(PD.length), lista = Array.isArray(l.ficha.poderes) ? l.ficha.poderes : [];
+      const k = lista.findIndex(x => x && String(x.id) === id);
+      if (k < 0) return { ok: false, error: null };
+      const n = Math.round(Number(m) || 0), antes = lista[k].max;
+      if (n < 1) return { ok: false, error: `${b.n} precisa de pelo menos 1 de máximo. Para tirar a barra, apague-a na ficha.` };
+      if (Math.round(Number(antes) || 0) === n) return { ok: true, nada: true };
+      return { ok: true, nome: b.n, dono, formula: null, resultado: Math.round(Number(antes) || 0), numero: n, soma: 0, fazer: () => {
+        const agora = get(charId), ps = agora && agora.ficha && Array.isArray(agora.ficha.poderes) ? agora.ficha.poderes : null;
+        const j = ps ? ps.findIndex(x => x && String(x.id) === id) : -1;
+        if (j < 0) return null;
+        const ps2 = ps.slice(); ps2[j] = Object.assign({}, ps2[j], { max: n });
+        P.gravar(charId, { ficha: Object.assign({}, agora.ficha, { poderes: ps2 }) });
+        syncAll(charId);
+        return { max: n, desfazer: () => {
+          const a2 = get(charId), q = a2 && a2.ficha && Array.isArray(a2.ficha.poderes) ? a2.ficha.poderes : null;
+          const j2 = q ? q.findIndex(x => x && String(x.id) === id) : -1;
+          if (j2 < 0 || Math.round(Number(q[j2].max) || 0) !== n) return false;          // (mudou de novo depois: fica)
+          const q2 = q.slice(); q2[j2] = Object.assign({}, q2[j2], { max: antes });
+          P.gravar(charId, { ficha: Object.assign({}, a2.ficha, { poderes: q2 }) });
+          syncAll(charId);
+          return true;
+        } };
+      } };
+    }
+    const recs = Array.isArray(l.ficha.recursos) ? l.ficha.recursos : [], k = recs.findIndex(x => x && x.id === ref);
+    if (k < 0) return { ok: false, error: null };
+    const c = R().calcular(pcDe(l), cfg(), extra(l)), rc = (c.recursos || []).find(x => x.id === ref) || {};
+    if (rc.max === m) return { ok: true, nada: true };
+    const soma = Math.round(((Number(rc.arv) || 0) + (Number(rc.eq) || 0)) * 10) / 10;
+    const numero = Math.max(0, Math.round((m - soma) * 10) / 10);
+    const fml = String(recs[k].fml == null ? '' : recs[k].fml).trim();
+    const vazia = (R().ATRIBS || []).every(a => !(Number((c.nat || {})[a.k]) > 0));        // (nenhum atributo com ponto ainda)
+    return { ok: true, nome: b.n, dono, formula: fml === '' || SO_NUMERO.test(fml) || vazia ? null : fml, resultado: rc.max, numero, soma, fazer: () => {
+      const agora = get(charId), rs = agora && agora.ficha && Array.isArray(agora.ficha.recursos) ? agora.ficha.recursos : null;
+      const j = rs ? rs.findIndex(x => x && x.id === ref) : -1;
+      if (j < 0) return null;
+      const velho = rs[j].fml, rs2 = rs.slice();
+      rs2[j] = Object.assign({}, rs2[j], { fml: String(numero) });
+      const campos = { ficha: Object.assign({}, agora.ficha, { recursos: rs2 }) };
+      // o valor de agora fica: sem nada guardado, a ficha encheria a barra no máximo novo
+      const est = agora.estado || {}, rec0 = est.rec && typeof est.rec === 'object' ? est.rec : {};
+      if (!Object.prototype.hasOwnProperty.call(rec0, ref) && isFinite(b.v)) campos.estado = Object.assign({}, est, { rec: Object.assign({}, rec0, { [ref]: b.v }) });
+      P.gravar(charId, campos);
+      syncAll(charId);
+      const depois = get(charId), r2 = depois ? (resumo(depois).recursos || []).find(x => x.id === ref) : null;
+      return { max: r2 ? r2.max : m, desfazer: () => {
+        const a2 = get(charId), q = a2 && a2.ficha && Array.isArray(a2.ficha.recursos) ? a2.ficha.recursos : null;
+        const j2 = q ? q.findIndex(x => x && x.id === ref) : -1;
+        if (j2 < 0 || String(q[j2].fml) !== String(numero)) return false;          // (a fórmula mudou de novo depois: fica)
+        const q2 = q.slice(), o = Object.assign({}, q2[j2]);
+        if (velho === undefined) delete o.fml; else o.fml = velho;
+        q2[j2] = o;
+        P.gravar(charId, { ficha: Object.assign({}, a2.ficha, { recursos: q2 }) });
+        syncAll(charId);
+        return true;
+      } };
+    } };
+  }
   const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
   /* Rola um atributo da ficha com a regra da fixa: um dado de (atributo − fixa) lados, mais a fixa. `mais`: os bônus só
      desta rolagem — { atr: soma no atributo antes de rolar (muda o dado), res: soma no resultado }. */
@@ -7046,7 +7160,7 @@ const Fichas = (() => {
     return true;
   }
   return { start, on: () => on, chars, get, link, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
-    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, papel: () => papel, eu: () => eu, vejoTodas, escondida,
+    podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
     flush() { for (const id of [...cegas.keys()]) mandarCegas(id); } };
@@ -7154,6 +7268,7 @@ const Proj = (() => {
     const x = barX(b);
     if (x > 0) { o.x = Math.max(0.1, Math.round(1000 * x / b.m) / 10); o.xn = x; }
     if (barPod(b) > 0) o.pod = Math.max(0.1, Math.round(1000 * barPod(b) / b.m) / 10);      // (lote 8) a ponta podre, em proporção
+    if (barMapa(b) === 'passar') o.mapa = 'passar';                                          // (lote 15) a barra que só aparece ao passar o mouse
     return o;
   }
   // `jogadores`: os ids dos jogadores da mesa (Set). Token cujo dono não está mais na mesa conta como do mestre.
@@ -9309,15 +9424,20 @@ const Render = (() => {
     }
 
     // Barras e pontos, empilhados acima do token; afinam quando são muitos
-    const rows = barsShown(t);
+    // (lote 15) As barras "só ao passar o mouse" (as especiais da ficha, de começo) aparecem com o mouse por cima ou com o
+    // token selecionado, no alto da pilha; a altura conta com elas sempre — as outras não saem do lugar quando elas aparecem.
+    const todas = barsShown(t), aberto = App.hoverTok === t.id || App.sel.some(x => x.c === 'tokens' && x.id === t.id);
+    const passar = todas.filter(x => barMapa(x.b) === 'passar'), rows = todas.filter(x => barMapa(x.b) !== 'passar');
     // Sanidade e Conforto da ficha: só o mestre vê, no alto da pilha, com o contorno tracejado (os jogadores não veem,
     // nem no token deles)
     const mt = isGM() ? Fichas.mente(t) : null;
     if (mt) rows.unshift({ b: { n: 'Sanidade', c: MENTE_COR.san, v: mt.san, m: 100, k: 'bar', on: true }, mode: 'num', gm: 'San' }, { b: { n: 'Conforto', c: MENTE_COR.conf, v: mt.conf, m: 100, k: 'bar', on: true }, mode: 'num', gm: 'Conf' });
+    const nCheio = rows.length + passar.length;
+    if (aberto) rows.unshift(...passar);
     if (rows.length) {
       const n = rows.length, gap = 1.5 * px, w = s * 0.94, x = cx - w / 2;
       let bh = clamp(s * 0.11, 5 * px, 13 * px);
-      if (n > 3) bh = Math.max(3 * px, Math.min(bh, (s * 0.46) / n - gap));
+      if (nCheio > 3) bh = Math.max(3 * px, Math.min(bh, (s * 0.46) / nCheio - gap));
       let y = t.y - 2 * px - n * (bh + gap);
       for (const { b, mode, gm } of rows) {
         // Pontos: uma bolinha por ponto. Se não couberem com folga (token pequeno na tela), a barra comum assume.
@@ -12355,7 +12475,8 @@ const UI = (() => {
         h('div', { class: 'row' }, btn('Trazer cenas deste navegador…', bringLocal, { icon: 'upload', kind: 'primary small', id: 'localBring' }))) : null,
       gm ? h('div', { class: 'row' }, btn('Novo token', () => Tools.set('token'), { icon: 'token' }), btn('Trazer imagem…', () => pickImage(f => importImages(f, null)), { icon: 'image' }),
         Fichas.on() ? btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', id: 'sel-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }) : null,
-        sc.tokens.some(t => !t.prop) ? btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', id: 'sel-geral', title: 'O mesmo atributo para vários tokens: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' }) : null) : null,
+        sc.tokens.some(t => !t.prop) ? btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', id: 'sel-geral', title: 'O mesmo atributo para vários tokens: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' }) : null,
+        Luta.podeDescanso() && sc.tokens.some(t => t.char && !t.clone) ? btn('Descanso curto…', () => Luta.descansoCurto(), { icon: 'rest', id: 'sel-curto', title: 'Abre o Descanso curto do Acampamento com quem está nesta cena já marcado (os personagens dos jogadores e os aliados). Lá você confere e confirma.' }) : null) : null,
     ];
   }
   function ownerLabel(t) {
@@ -12695,6 +12816,26 @@ const UI = (() => {
     toast(`Barra "${n}" removida de ${t.name}.`, { action: 'Desfazer', run: Tools.undo });
   }
   // full: o mestre edita tudo (nome, máximo, estilo, quem vê, criar e remover); o jogador só muda os valores.
+  /* (lote 15) O máximo digitado numa barra. Na barra ligada à ficha, o número vai para a ficha (Fichas.maximoParaFicha):
+     numa ficha preenchida, pergunta antes de trocar a fórmula pelo número; depois, o aviso com Desfazer. */
+  function maxDaBarra(t, i, v) {
+    const r = Fichas.on() ? Fichas.maximoParaFicha(t, i, v) : { ok: false, error: null };
+    if (!r.ok) { if (r.error) { toast(r.error); renderSide(); } else Act.barPatch(t, i, { m: v }); return; }
+    if (r.nada) { renderSide(); return; }
+    const vai = () => {
+      const f = r.fazer();
+      if (!f) { toast('A ficha mudou nesse meio-tempo: o máximo ficou como estava.'); renderSide(); return; }
+      toast(`${r.nome} de ${r.dono}: o máximo agora é ${fmt(f.max)}, também na ficha.`, { action: 'Desfazer', run: () => {
+        toast(f.desfazer() ? (r.formula ? `Desfeito: o máximo de ${r.nome} voltou para a fórmula da ficha.` : `Desfeito: o máximo de ${r.nome} voltou para ${fmt(r.resultado)}.`)
+          : `O máximo de ${r.nome} mudou de novo depois: ficou como está.`);
+      } });
+    };
+    if (!r.formula) { vai(); return; }
+    confirmBox(`Trocar a fórmula de ${r.nome}?`,
+      (r.soma ? `Na ficha de ${r.dono}, o máximo de ${r.nome} é ${fmt(r.resultado)}: a fórmula “${r.formula}” mais ${fmt(r.soma)} dos itens e da árvore. Com ${fmt(v)}, a fórmula sai da ficha e fica o número ${fmt(r.numero)} (os itens e a árvore continuam somando ${fmt(r.soma)} por cima).`
+        : `Na ficha de ${r.dono}, o máximo de ${r.nome} vem da fórmula “${r.formula}”, que dá ${fmt(r.resultado)}. Com ${fmt(v)}, a fórmula sai da ficha e fica o número ${fmt(r.numero)}.`) + ' Dá para desfazer.', 'Trocar pelo número')
+      .then(ok => { if (ok) vai(); else renderSide(); });
+  }
   function barsEditor(t, full) {
     const rows = [];
     t.bars.forEach((b, i) => {
@@ -12704,7 +12845,7 @@ const UI = (() => {
       const setBars = p => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, p) : x)) });
       const val = h('input', {
         id: `tk-b${i}-v`, class: 'in bar-v' + (b.v < 0 ? ' neg' : ''), type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off',
-        'aria-label': b.n + ' atual', title: 'Digite um valor, ou +5 e -8 para somar e subtrair' + (barLo(b) > 0 ? `. Esta barra pode ficar negativa até −${fmt(barLo(b))}.` : ''),
+        'aria-label': b.n + ' atual', title: 'Digite um valor, ou +5 e -8 para somar e subtrair (-10% tira 10% do máximo)' + (barLo(b) > 0 ? `. Esta barra pode ficar negativa até −${fmt(barLo(b))}.` : ''),
         onchange: e => { if (!Act.barSet(t, i, e.target.value)) e.target.value = b.v; },
       });
       rows.push(h('div', { class: 'bar-row' + (b.on ? '' : ' off') },
@@ -12712,7 +12853,7 @@ const UI = (() => {
         h('span', { class: 'bar-dot' + (b.k === 'pts' ? ' pt' : ''), style: { background: b.c } }),
         full ? inText(`tk-b${i}-n`, b.n, v => Act.barPatch(t, i, { n: v.trim().slice(0, 24) || b.n }), { class: 'in bar-n', 'aria-label': 'Nome da barra', maxlength: 24 }) : h('span', { class: 'bar-n ro', text: b.n }),
         val, h('span', { class: 'bar-sl', text: '/' }),
-        full ? inNum(`tk-b${i}-m`, b.m, v => Act.barPatch(t, i, { m: v }), { min: 0, label: b.n + ' máximo' }) : h('span', { class: 'bar-m', text: fmt(b.m) }),
+        full ? inNum(`tk-b${i}-m`, b.m, v => maxDaBarra(t, i, v), { min: 0, label: b.n + ' máximo', title: b.ref && t.char && !t.clone && Fichas.on() ? 'O máximo vem da ficha: mudar aqui muda também a ficha' : undefined }) : h('span', { class: 'bar-m', text: fmt(b.m) }),
         b.on ? iconBtn('shield', (xAberta ? 'Sobrevida de ' : 'Dar sobrevida a ') + b.n, () => { barXOpen[key] = !xAberta; renderSide(); if (!xAberta) { const n = document.getElementById(`tk-b${i}-x`); if (n) n.focus(); } }, { size: 16, cls: 'bar-more bar-xb' + (barX(b) > 0 ? ' tem' : ''), on: xAberta, id: `tk-b${i}-xb` }) : null,
         full ? iconBtn('more', 'Opções da barra ' + b.n, () => { barOpen[key] = !barOpen[key]; renderSide(); }, { size: 16, cls: 'bar-more', on: open, id: `tk-b${i}-more` }) : null));
       if (b.k === 'pts' && b.on && m >= 1 && m <= 20) rows.push(h('div', { class: 'bar-pips' + (full ? ' full' : '') }, pips(t, b, i, true, 'tk-b')));
@@ -12730,6 +12871,8 @@ const UI = (() => {
         field('Cor', inColor(`tk-b${i}-c`, b.c, v => setBars({ c: v }), 'Cor da barra ' + b.n)),
         field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
         field('Os outros veem', inSelect(`tk-b${i}-vis`, b.vis || '', [['', 'O mesmo que o token'], ['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => Act.barPatch(t, i, { vis: v }), { title: 'O que vê desta barra quem não é dono do token' })),
+        // (lote 15) a barra que só aparece no token com o mouse por cima (as especiais da ficha começam assim)
+        field('No mapa', inSelect(`tk-b${i}-mapa`, barMapa(b), [['sempre', 'Sempre no token'], ['passar', 'Só ao passar o mouse ou selecionar']], v => Act.barPatch(t, i, { mapa: v }), { title: 'Quando esta barra aparece em cima do token, no mapa (o painel e a faixa de baixo mostram sempre)' })),
         b.ref ? (barLo(b) > 0 || b.st != null ? note((barLo(b) > 0 ? `Pode ficar negativa até −${fmt(barLo(b))}. ` : '') + (b.st != null ? `Começa em ${fmtV(b.st)}: a cura total leva para lá. ` : '') + 'Isso vem da ficha (Opções da barra).') : null)
           : field('Negativa até −', inNum(`tk-b${i}-lo`, barLo(b), v => Act.barPatch(t, i, { lo: Math.max(0, Math.round((Number(v) || 0) * 10) / 10), v: Math.max(-Math.max(0, Number(v) || 0), b.v) }), { min: 0, step: 1, label: `Até quanto abaixo de zero ${b.n} pode ir`, title: 'Zero: a barra para em zero. Com um valor, ela pode ficar negativa até esse tanto (a parte negativa aparece riscada).' })),
         b.k === 'pts' && m > PIP_MAX ? note(`No mapa, os pontos aparecem como barra quando o máximo passa de ${PIP_MAX}.`) : null,
@@ -13406,7 +13549,8 @@ const UI = (() => {
     const amt = h('input', { id: 'mt-amt', class: 'in bar-v', type: 'text', inputmode: 'decimal', placeholder: '-5', autocomplete: 'off', 'aria-label': 'Quanto somar ou subtrair' });
     const apply = () => {
       if (!/^\s*[+-]?\s*\d/.test(amt.value)) { toast('Digite um número, como -5 ou +10.'); return; }
-      const n = Act.areaApply(editable.map(t => ({ t, half: false })), sel.value, amt.value, null);
+      // (lote 15) "-10%": cada um perde 10% do máximo dele
+      const n = /%\s*$/.test(amt.value) ? Act.groupPct(editable, sel.value, amt.value) : Act.areaApply(editable.map(t => ({ t, half: false })), sel.value, amt.value, null);
       if (n < 0) { toast('Digite um número, como -5 ou +10.'); return; }
       amt.value = '';
     };
@@ -13417,13 +13561,14 @@ const UI = (() => {
         h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: `${toks.length} ${toks.length === 1 ? 'token' : 'tokens'}` + (extra ? ` e ${extra} ${extra === 1 ? 'objeto' : 'objetos'}` : '') }), h('div', { class: 'p-sub', text: extra ? 'Barras e condições valem para os tokens; os objetos de cenário ficam de fora.' : 'O que você mudar aqui vale para todos.' }))),
       editable.length && names.length ? sec('s-mbar', 'Somar ou subtrair de todos', true,
         h('div', { class: 'row' }, sel, amt, btn('Aplicar', apply, { kind: 'primary' })),
-        note('Sem sinal, o número é subtraído: útil para dano em área. Só muda quem tem a barra escolhida.'),
+        note('Sem sinal, o número é subtraído: útil para dano em área. Com %, é do máximo de cada um (-10% tira 10%). Só muda quem tem a barra escolhida.'),
         gm ? h('div', { class: 'row' },
           btn('Com metade e condição…', () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null), { icon: 'area', kind: 'small', id: 'mt-area', title: 'Escolhe quem leva tudo, quem leva metade e quem fica de fora, com condição opcional' }),
           btn('Cura total', () => healToast(editable), { icon: 'heart', kind: 'small', id: 'mt-heal', title: 'Enche todas as barras em uso dos tokens selecionados. Dá para desfazer.' }),
           btn('Sobrevida…', () => sobreBox(editable, `Sobrevida a ${editable.length} tokens`), { icon: 'shield', kind: 'small', id: 'mt-sobre', title: 'Pontos por cima da barra para todos os selecionados; cada um fica com a maior (não soma)' }),
           Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque(toks), { icon: 'shield', kind: 'small', id: 'mt-ataque', title: 'Um ataque contra estes tokens: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null,
           btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', kind: 'small', id: 'mt-geral', title: 'O mesmo atributo para todos os selecionados: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' }),
+          Luta.podeDescanso() && toks.some(t => t.char && !t.clone) ? btn('Descanso curto…', () => Luta.descansoCurto(toks), { icon: 'rest', kind: 'small', id: 'mt-curto', title: 'Abre o Descanso curto do Acampamento com estes tokens já marcados (os ligados a uma ficha). Lá você confere e confirma.' }) : null,
           toks.some(t => t.char && (Fichas.mente(t) || Fichas.fadiga(t))) ? btn('Fadiga, Conforto e Sanidade…', () => menteTodosBox(toks), { icon: 'heart', kind: 'small', id: 'mt-mente', title: 'Para menos ou para mais, nas fichas dos tokens selecionados, de uma vez (com o antes e o depois de cada um)' }) : null) : null) : null,
       condToks.length ? sec('s-cond', 'Condições', true, condActiveMulti(condToks), condGrid(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
@@ -14109,6 +14254,7 @@ const UI = (() => {
         setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); openTab('sel', 'tk-name');
       } });
       if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
+      if (Luta.podeDescanso() && Store.scene().tokens.some(t => t.char && !t.clone)) items.push({ label: 'Descanso curto do grupo…', icon: 'rest', run: () => Luta.descansoCurto() });
       if (App.clip.length && (gm || can('draw') || can('fx'))) items.push({ label: 'Colar aqui', icon: 'copy', key: 'Ctrl+V', run: () => Act.pasteAt(p.x, p.y) });
       if (can('ping')) items.push({ label: 'Ping aqui', icon: 'ping', key: 'G', run: () => Act.ping(p.x, p.y) });
       items.push({ label: 'Enquadrar a cena', icon: 'fit', key: '0', run: () => { Render.fit(); status(); } });
@@ -14134,7 +14280,7 @@ const UI = (() => {
       if (edit && dots) {
         kids.push(h('span', { class: 'hud-b', style: { '--c': b.c } }, h('span', { class: 'hud-n', text: b.n }), pips(t, b, i, true, 'hud-b'), h('span', { class: 'hud-m' + (b.v < 0 ? ' neg' : ''), text: `${fmtV(b.v)}/${fmt(b.m)}` })));
       } else if (edit) {
-        kids.push(h('label', { class: 'hud-b', style: { '--c': b.c }, title: `${b.n}: digite um valor, ou +5 e -8 para somar e subtrair` },
+        kids.push(h('label', { class: 'hud-b', style: { '--c': b.c }, title: `${b.n}: digite um valor, ou +5 e -8 para somar e subtrair (-10% tira 10% do máximo)` },
           h('span', { class: 'hud-n', text: b.n }),
           h('input', { id: 'hud-b' + i, class: 'hud-in' + (b.v < 0 ? ' neg' : ''), type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off', 'aria-label': b.n,
             onfocus: e => e.target.select(),
@@ -15048,6 +15194,28 @@ const Luta = (() => {
     paint();
   }
 
+  /* ================= (lote 15) O Descanso curto do grupo =================
+     Pelo Acampamento: abre a aba Acampamento já na janela do Descanso curto, com quem está nesta cena marcado — os
+     tokens escolhidos (os ligados a uma ficha) ou, sem escolha, os personagens dos jogadores e os aliados à vista na
+     cena. Lá o mestre confere quem descansa e as rações, e confirma (e lá também se desfaz). */
+  function quemDescansa(toks) {
+    const escolhidos = Array.isArray(toks) && toks.length ? toks : null, ids = [];
+    for (const t of escolhidos || Store.scene().tokens.filter(k => !k.hidden)) {
+      if (!t || !t.char || t.clone || t.prop || ids.includes(t.char)) continue;
+      const l = Fichas.get(t.char);
+      if (!l || l.ficha == null) continue;
+      if (escolhidos || Fichas.donoDe(l) || String(l.ficha.lado || 'Aliado') === 'Aliado') ids.push(t.char);
+    }
+    return ids;
+  }
+  const podeDescanso = () => isGM() && Fichas.on() && !!(window.TC && window.TC.ponte && window.TC.ponte.naCasca);
+  function descansoCurto(toks) {
+    if (!podeDescanso()) { toast('O descanso curto do grupo é feito pelo Acampamento, dentro do site, com uma mesa aberta.'); return false; }
+    const ids = quemDescansa(toks);
+    if (!ids.length) { toast(toks && toks.length ? 'Nenhum dos tokens escolhidos está ligado a uma ficha.' : 'Ninguém nesta cena está ligado a uma ficha. Puxe o grupo, ou ligue os tokens às fichas.'); return false; }
+    return !!window.TC.ponte.ir('acampamento', { descanso: 'curto', marcar: ids });
+  }
+
   /* ================= Puxar o grupo =================
      Cria de uma vez os tokens de vários personagens das Fichas, já ligados a elas (nome, barras, iniciativa,
      imagem e dono). O mestre vê a lista antes e marca quem vem; quem já tem token nesta cena fica de fora. */
@@ -15612,7 +15780,7 @@ const Luta = (() => {
   }
 
   return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop,
-    equipamentos, fecharEquip, equipAberto: () => !!epop, rolagemGeral };
+    equipamentos, fecharEquip, equipAberto: () => !!epop, rolagemGeral, quemDescansa, podeDescanso, descansoCurto };
 })();
 /* ---------------------------------------------------------------
    10c2. ESTILOS — o jeito de cada lugar gerado (lote 7)

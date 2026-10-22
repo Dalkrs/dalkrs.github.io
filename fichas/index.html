@@ -693,6 +693,10 @@ button.apagar:disabled{background:var(--rubric-off);border-color:var(--rubric-bo
 .subtabs .sub.on{color:var(--ink);border-bottom-color:var(--brass);background:var(--zebra)}
 .subtabs .mk{color:var(--brass);font-size:10px;margin-left:3px}
 .colunas{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* (lote 15) a marca do Estaque escondido, em cima das colunas */
+.estoc{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0 0 10px}
+.estoc .chk{display:inline-flex;align-items:center;gap:7px;font-size:13px}
+.estoc .chk input{width:auto}
 .habrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;
   padding:9px 0;border-bottom:1px solid var(--linha-sut)}
 .habrow:last-child{border-bottom:0}
@@ -1892,7 +1896,7 @@ function renderFicha(){
   }
   const c=calcular(pc);
   const pd=Array.isArray(pc.poderes)? pc.poderes : (pc.poderes=[]);
-  const sub0=S.abaFicha||'estaque';
+  const sub0=abaDaFicha(pc);
   const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'});
   const soma=somaPercentuaisUsados(pc);
   const optTier=S.cfg.tiersPersonagem.map(t=>`<option ${t.t===pc.tier?'selected':''}>${t.t}</option>`).join('');
@@ -2100,7 +2104,7 @@ function renderFicha(){
             </div>
             ${r.err||r.val==null?'':`<div class="atual${atualDoRecurso(pc,r)<0?' neg':''}">
               <span class="eyebrow">Atual</span>
-              <input class="inm" type="text" inputmode="decimal" autocomplete="off" data-resatual="${r.id}" value="${atualDoRecurso(pc,r)}" aria-label="Valor atual de ${esc(r.nome)}" title="Digite o valor e Enter, ou -8 e +5 para tirar e pôr (o dano gasta primeiro a sobrevida). Esc desfaz o que foi digitado.">
+              <input class="inm" type="text" inputmode="decimal" autocomplete="off" data-resatual="${r.id}" value="${atualDoRecurso(pc,r)}" aria-label="Valor atual de ${esc(r.nome)}" title="Digite o valor e Enter, ou -8 e +5 para tirar e pôr (o dano gasta primeiro a sobrevida); -10% tira 10% do máximo. Esc desfaz o que foi digitado.">
               <span class="de">de ${fmt(arred(r.val))}${r.min<0?` · até ${fmt(r.min).replace('-','−')}`:''}</span>
               ${podreDoRecurso(pc,r)?`<span class="podre-tag" data-respodre="${r.id}" title="Ferida permanente: a ponta da barra apodreceu. A cura, até a total, não passa de ${fmt(tetoDoRecurso(pc,r))} até o mestre tirar a ferida.">${fmt(podreDoRecurso(pc,r))} apodrecidos</span>${!FichasMesa.ativo()||FichasMesa.mestre()?`<button class="mini" data-restirapodre="${r.id}" title="Tira a ferida permanente desta barra (a cura volta a ir até o máximo)">Tirar a ferida</button>`:''}`:''}
               ${temAtual(pc,r)?(r.inicio!=null && r.inicio!==arred(r.val)
@@ -2149,16 +2153,16 @@ function renderFicha(){
 
   <div class="panel">
     <div class="hd subtabs">
-      ${[['estaque','Estaque', (pc.estaque?.a||pc.estaque?.b)?'•':''],
+      ${[estaqueEscondido(pc)? null : ['estaque','Estaque', (pc.estaque?.a||pc.estaque?.b)?'•':''],
          ['skills','Skills', Object.keys(skillsDe(pc).alocados).length||''],
          ['habs','Passivas e Habilidades', ((pc.habilidades||[]).length + habsDaArvore(pc).length)||''],
          ['missoes','Missões', FichasQuadros.contaAtivas(pc)||''],
          ['notas','Anotações gerais', (pc.notas||'').trim()?'•':'']
-        ].map(([k,rot,mk])=>`<button class="sub ${sub0===k?'on':''}" data-sub="${k}">${rot}
+        ].filter(Boolean).map(([k,rot,mk])=>`<button class="sub ${sub0===k?'on':''}" data-sub="${k}">${rot}
           ${mk!==''?`<span class="mk">${mk}</span>`:''}</button>`).join('')}
     </div>
     <div class="bd">
-      ${sub0==='estaque'?`
+      ${sub0==='estaque'?`${htmlEstaqueOculto(pc)}
         <div class="colunas">
           <textarea class="entrada" rows="10" data-est="a" placeholder="Dificuldade de Visão - 0/100&#10;Sangramento - 2 turnos">${esc(pc.estaque.a||'')}</textarea>
           <textarea class="entrada" rows="10" data-est="b" placeholder="Segunda coluna">${esc(pc.estaque.b||'')}</textarea>
@@ -2189,6 +2193,22 @@ function renderFicha(){
   `;
   ligarFicha(pc);
 }
+/* (lote 15) O Estaque escondido: o mestre marca, ficha por ficha, e quem não mestra deixa de ver a aba (o texto nem
+   chega: mora com o mestre, no documento dos segredos — ver FichasMesa). A marca só aparece numa mesa, para o mestre,
+   nas fichas que algum jogador vê: a de um jogador, ou a de um NPC aberta aos jogadores. */
+const estaqueEscondido=pc=>!!(pc&&pc.estaqueOculto) && FichasMesa.ativo() && !FichasMesa.mestre();
+const abaDaFicha=pc=>{ const a=S.abaFicha||'estaque'; return a==='estaque' && estaqueEscondido(pc)? 'skills' : a; };
+const podeEsconderEstaque=pc=>FichasMesa.ativo() && FichasMesa.mestre() && !!pc && !pc.petDe && (FichasMesa.deJogador(pc) || pc._vis==='mesa');
+function quemNaoVeEstaque(pc){ const d=FichasMesa.deJogador(pc)? FichasMesa.nomeDoDono(pc) : ''; return FichasMesa.deJogador(pc)? (d||'o jogador') : 'os jogadores'; }
+function htmlEstaqueOculto(pc){
+  if(!podeEsconderEstaque(pc)) return '';
+  const quem=quemNaoVeEstaque(pc), de=FichasMesa.deJogador(pc)? (FichasMesa.nomeDoDono(pc)? 'de '+esc(quem) : 'do jogador') : 'dos jogadores';
+  return `<div class="estoc">
+    <label class="chk" title="Marcada, a aba Estaque some da ficha para ${esc(quem)}, e o que está escrito aqui fica só com você."><input type="checkbox" id="f_estoculto" ${pc.estaqueOculto?'checked':''}> <span>Esconder o Estaque ${de}</span></label>
+    ${pc.estaqueOculto?`<span class="hint">Só você vê o Estaque desta ficha.</span>`:''}
+  </div>`;
+}
+const avisoEstaque=(pc,on)=>on? 'O Estaque de '+(pc.nome||'Sem nome')+' ficou escondido: só você vê.' : 'O Estaque de '+(pc.nome||'Sem nome')+' voltou a aparecer para '+quemNaoVeEstaque(pc)+'.';
 /* As barras especiais (os antigos "poderes divinos"): a lista — nome e limite — mora na ficha (pc.poderes); o valor
    de agora, no estado (estado.pd), para a ficha, o token e o acampamento mexerem nele sem um desfazer o do outro.
    Sem nada anotado no estado, vale o que a ficha guardava (o `atual` de antes). */
@@ -2325,14 +2345,18 @@ function ligarFicha(pc){
     const txt=String(i.value).trim().replace(/\s+/g,'').replace(',','.'), antes=atualDoRecurso(pc,r);
     const est=pc.estado||(pc.estado={}), rec=est.rec||(est.rec={}), max=tetoDoRecurso(pc,r), piso=r.min<0? r.min : 0, pod=podreDoRecurso(pc,r);
     let novo=null, aviso='';
+    // (lote 15) a porcentagem, sempre do máximo (arredonda para baixo): -10% tira 10% dele, +25% põe, 50% deixa na metade
+    const pct=/^([+-]?)(\d+(?:\.\d+)?)%$/.exec(txt), q=pct&&r.max>0? Math.floor(r.max*Number(pct[2])/100+1e-9) : null;
     if(txt===''){ delete rec[id]; }
-    else if(/^[+-]\d+(\.\d+)?$/.test(txt)){
-      let d=Number(txt);
+    else if(pct&&q==null){ i.value=String(antes); toast('Esta barra não tem máximo para tirar a porcentagem.'); return; }
+    else if(pct&&!pct[1]) novo=q;
+    else if(pct||/^[+-]\d+(\.\d+)?$/.test(txt)){
+      let d=pct? (pct[1]==='-'? -q : q) : Number(txt);
       if(d<0){ const sob=FichasExtras.sobrevidaDe(pc,r); if(sob>0){ const usa=Math.min(sob,-d), sb=est.sob||(est.sob={}); if(sob-usa>0) sb[id]=Math.round((sob-usa)*10)/10; else delete sb[id]; d+=usa; } }
       novo=antes+d;
     }
     else if(isFinite(+txt)) novo=+txt;
-    else { i.value=String(antes); toast('Digite um número, como 30, -8 ou +5.'); return; }
+    else { i.value=String(antes); toast('Digite um número, como 30, -8, +5 ou -10%.'); return; }
     if(novo!=null){
       if(novo<piso){ novo=piso; aviso=r.nome+' não desce de '+fmt(piso).replace('-','−')+'.'; }
       if(novo>max){ novo=max; if(pod) aviso=r.nome+' não passa de '+fmt(max)+': '+fmt(pod)+' estão apodrecidos (ferida permanente).'; }
@@ -2395,9 +2419,11 @@ function ligarFicha(pc){
   const nt=host.querySelector('#f_notas');
   if(nt) nt.oninput=e=>patchLeve(()=>pc.notas=e.target.value);
   host.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{S.abaFicha=b.dataset.sub; save(); renderFicha()});
-  if((S.abaFicha||'estaque')==='skills') ligarSkills(pc,host);
+  if(abaDaFicha(pc)==='skills') ligarSkills(pc,host);
   host.querySelectorAll('[data-est]').forEach(i=>i.oninput=e=>patchLeve(()=>{
     pc.estaque[e.target.dataset.est]=e.target.value;}));
+  const eo=host.querySelector('#f_estoculto');
+  if(eo) eo.onchange=e=>{ const on=e.target.checked; patch(()=>{ if(on) pc.estaqueOculto=true; else delete pc.estaqueOculto; }); toast(avisoEstaque(pc,on)); };
   host.querySelectorAll('[data-habadd]').forEach(b=>b.onclick=()=>patch(()=>
     pc.habilidades.push({id:uid(), nome:'', desc:'', tipo:'Ativo'})));
   host.querySelectorAll('[data-habtipo]').forEach(sl=>sl.onchange=e=>patch(()=>{

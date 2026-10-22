@@ -507,15 +507,20 @@ const Render = (() => {
     }
 
     // Barras e pontos, empilhados acima do token; afinam quando são muitos
-    const rows = barsShown(t);
+    // (lote 15) As barras "só ao passar o mouse" (as especiais da ficha, de começo) aparecem com o mouse por cima ou com o
+    // token selecionado, no alto da pilha; a altura conta com elas sempre — as outras não saem do lugar quando elas aparecem.
+    const todas = barsShown(t), aberto = App.hoverTok === t.id || App.sel.some(x => x.c === 'tokens' && x.id === t.id);
+    const passar = todas.filter(x => barMapa(x.b) === 'passar'), rows = todas.filter(x => barMapa(x.b) !== 'passar');
     // Sanidade e Conforto da ficha: só o mestre vê, no alto da pilha, com o contorno tracejado (os jogadores não veem,
     // nem no token deles)
     const mt = isGM() ? Fichas.mente(t) : null;
     if (mt) rows.unshift({ b: { n: 'Sanidade', c: MENTE_COR.san, v: mt.san, m: 100, k: 'bar', on: true }, mode: 'num', gm: 'San' }, { b: { n: 'Conforto', c: MENTE_COR.conf, v: mt.conf, m: 100, k: 'bar', on: true }, mode: 'num', gm: 'Conf' });
+    const nCheio = rows.length + passar.length;
+    if (aberto) rows.unshift(...passar);
     if (rows.length) {
       const n = rows.length, gap = 1.5 * px, w = s * 0.94, x = cx - w / 2;
       let bh = clamp(s * 0.11, 5 * px, 13 * px);
-      if (n > 3) bh = Math.max(3 * px, Math.min(bh, (s * 0.46) / n - gap));
+      if (nCheio > 3) bh = Math.max(3 * px, Math.min(bh, (s * 0.46) / nCheio - gap));
       let y = t.y - 2 * px - n * (bh + gap);
       for (const { b, mode, gm } of rows) {
         // Pontos: uma bolinha por ponto. Se não couberem com folga (token pequeno na tela), a barra comum assume.

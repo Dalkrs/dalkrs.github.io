@@ -344,6 +344,28 @@ const Luta = (() => {
     paint();
   }
 
+  /* ================= (lote 15) O Descanso curto do grupo =================
+     Pelo Acampamento: abre a aba Acampamento já na janela do Descanso curto, com quem está nesta cena marcado — os
+     tokens escolhidos (os ligados a uma ficha) ou, sem escolha, os personagens dos jogadores e os aliados à vista na
+     cena. Lá o mestre confere quem descansa e as rações, e confirma (e lá também se desfaz). */
+  function quemDescansa(toks) {
+    const escolhidos = Array.isArray(toks) && toks.length ? toks : null, ids = [];
+    for (const t of escolhidos || Store.scene().tokens.filter(k => !k.hidden)) {
+      if (!t || !t.char || t.clone || t.prop || ids.includes(t.char)) continue;
+      const l = Fichas.get(t.char);
+      if (!l || l.ficha == null) continue;
+      if (escolhidos || Fichas.donoDe(l) || String(l.ficha.lado || 'Aliado') === 'Aliado') ids.push(t.char);
+    }
+    return ids;
+  }
+  const podeDescanso = () => isGM() && Fichas.on() && !!(window.TC && window.TC.ponte && window.TC.ponte.naCasca);
+  function descansoCurto(toks) {
+    if (!podeDescanso()) { toast('O descanso curto do grupo é feito pelo Acampamento, dentro do site, com uma mesa aberta.'); return false; }
+    const ids = quemDescansa(toks);
+    if (!ids.length) { toast(toks && toks.length ? 'Nenhum dos tokens escolhidos está ligado a uma ficha.' : 'Ninguém nesta cena está ligado a uma ficha. Puxe o grupo, ou ligue os tokens às fichas.'); return false; }
+    return !!window.TC.ponte.ir('acampamento', { descanso: 'curto', marcar: ids });
+  }
+
   /* ================= Puxar o grupo =================
      Cria de uma vez os tokens de vários personagens das Fichas, já ligados a elas (nome, barras, iniciativa,
      imagem e dono). O mestre vê a lista antes e marca quem vem; quem já tem token nesta cena fica de fora. */
@@ -908,5 +930,5 @@ const Luta = (() => {
   }
 
   return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop,
-    equipamentos, fecharEquip, equipAberto: () => !!epop, rolagemGeral };
+    equipamentos, fecharEquip, equipAberto: () => !!epop, rolagemGeral, quemDescansa, podeDescanso, descansoCurto };
 })();

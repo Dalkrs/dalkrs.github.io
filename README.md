@@ -1235,6 +1235,44 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   502 impressões dos lugares, dos desenhos e das cenas, 312 planos e 50 desenhos dos geradores de fora e 1.200 planos de
   hexágono).
 
+### Consertos e ajustes rápidos (lote 15)
+
+- **O máximo da barra ligada vai para a ficha** (`Fichas.maximoParaFicha`, 07b-fichas.js; o campo do máximo no painel do
+  token): antes, o máximo mudado só no token voltava para o da ficha na primeira mudança — numa ficha de jogador ainda
+  sem pontos, o `LVL*5` da fórmula: o HP "que não descontava e voltava para 10". Agora o número entra na ficha no lugar da
+  fórmula do recurso (o que a árvore e os itens somam continua por cima: o total fica o número digitado) e o valor de
+  agora fica como estava. Na ficha preenchida (algum atributo com ponto) a Cena pergunta antes de trocar a fórmula pelo
+  número, mostrando a fórmula, o que ela dá e o número que fica; na ficha vazia, ou com o máximo que já era número,
+  troca direto. O aviso tem **Desfazer**, que volta a fórmula (e não passa por cima de uma mudança feita depois na
+  ficha). Na barra especial, o número é o máximo dela (pelo menos 1). A ficha que não está à vista (o mestre auxiliar sem
+  a aba Fichas) não muda: o aviso diz onde mudar.
+- **As barras especiais só ao passar o mouse**: as barras especiais da ficha (as cargas, os usos) aparecem em cima do
+  token só com o mouse por cima ou com o token selecionado, no alto da pilha — a altura conta com elas sempre, e as outras
+  barras não saem do lugar. Nas opções de cada barra, **No mapa**: "Sempre no token" ou "Só ao passar o mouse ou
+  selecionar" (qualquer barra; a escolha fica na barra e vai para os jogadores). O painel e a faixa de baixo mostram
+  todas.
+- **A porcentagem nas barras**, sempre do máximo e arredondando para baixo: `-10%` tira 10% do máximo (Vida 80/100 →
+  70/100), `+25%` põe, `50%` deixa a barra na metade. No campo da barra (o painel do token e a faixa de baixo), na caixa
+  "Somar ou subtrair de todos" (cada um com o máximo dele; sem sinal, tira, como o número dessa caixa) e no valor atual
+  dos recursos na ficha. O dano gasta a sobrevida primeiro, como o `-8` de sempre.
+- **O Estaque escondido do jogador**, ficha por ficha: no Estaque da ficha de um jogador (ou de um NPC aberto aos
+  jogadores), o mestre marca "Esconder o Estaque de …". O jogador deixa de ver a aba, e o texto nem chega a ele: a ficha
+  leva o Estaque vazio e o texto vai para o documento dos segredos do mestre (`fichas:segredos`, em `est`); o mestre vê e
+  escreve como sempre (também depois de recarregar, e sem perder o texto quando chega uma mudança do jogador).
+  Desmarcado, o texto volta para a ficha.
+- **O Descanso curto da equipe ativa**: no Acampamento, a janela do Descanso curto traz, além de quem está em volta da
+  fogueira, a equipe ativa (os personagens de jogador da campanha, e os do mundo, que o mestre deixou ativos na ficha) —
+  "longe da fogueira", marcados — e gasta as rações do acampamento do mesmo jeito. O inativo não entra sozinho; o Descanso
+  longo continua sendo de quem está na fogueira. Nas **Cenas**, o botão **Descanso curto…** (na Seleção vazia, na
+  seleção de vários tokens e no menu do mapa) abre a aba Acampamento já nessa janela, com quem está na cena marcado: os
+  tokens escolhidos (os ligados a uma ficha) ou, sem escolha, os personagens dos jogadores e os aliados à vista (o inimigo
+  não). Lá o mestre confere quem descansa e as rações, e confirma (e lá também se desfaz).
+- **Mapa-múndi**: Shift + clique em dois exércitos e a seleção oferece **Batalha entre os dois…**, que abre a batalha com
+  um de cada lado (nada é rolado antes de pedir; sem unidades, o botão fica apagado, com a explicação). Em cima do token
+  do exército, só para o mestre, **quantos soldados** ele tem (de qualquer tipo: a soma das tropas das unidades que lutam,
+  "1,2 mil", "25 mil") e, quando há, os selinhos dos **magos** (a estrela) e das **máquinas de cerco** (a roda); o título
+  diz por extenso. A fileira da marcha sobe para cima deles.
+
 ### A Guerra no Mapa-múndi (lote 8)
 
 - **A aba Guerra** (só do mestre; `mundo/guerra-painel.js`, `window.MundoGuerraPainel`, com as contas em
@@ -3089,3 +3127,17 @@ hexágono no pedido do marcador (o cerco do forte marcado; a masmorra sem ele) e
 nas Cenas com os arredores e o hexágono. Os testes de antes dos arredores conferem o lugar sozinho: o apoio dos testes
 das Cenas (`src/cenas/test/lib.js`) abre a página com os arredores em Nenhum (também depois de recarregar; o
 `lote14c.js` pede `arredores: true` e encontra o Médio de começo), e os testes da mesa escolhem Nenhum na janela.
+No lote 15, o `src/cenas/test/lote15.js` (com um site de mentira em `window.TC`: a ponte de um mestre, os personagens
+na memória e as regras de verdade; o apoio dos testes ganhou `opt.init`) confere o máximo da barra ligada indo para a
+ficha (a ficha vazia sem pergunta, o valor de agora anotado, o dano que desconta, o Desfazer; a ficha preenchida com a
+pergunta, Cancelar e Trocar, o número já número, o Desfazer que não passa por cima; a barra especial e o zero; o token
+sem ficha; a ficha escondida), as barras especiais só ao passar o mouse (pelos pixels: escondida, com o mouse, com o
+token selecionado, o HP no mesmo lugar, a escolha nas opções, o Ctrl+Z, a marca que vai para os jogadores), a
+porcentagem (do máximo, para cima e para baixo, sem sinal, com espaços, os limites, o arredondamento, a sobrevida, a
+faixa de baixo, a barra ligada e vários tokens) e o Descanso curto das Cenas (quem vai, com e sem escolha, o aviso e o
+menu do mapa). O `fichas-lote15.test.js` confere a porcentagem no valor atual da ficha; o `mundo-lote15.test.js`, a
+força em cima do token (os números, os selinhos, o título, quem joga não vê, o número que acompanha) e a Batalha entre os
+dois (Shift + clique, os lados, sem unidades, com outra coisa, com três); o `lote15.rede.test.js` (com `SO=estaque` ou
+`SO=descanso`), o Estaque escondido entre o mestre e o jogador (o banco, os segredos, a aba, recarregar, mostrar de
+novo) e o Descanso curto (a equipe ativa longe da fogueira, o inativo, o longo, e o botão das Cenas abrindo o
+Acampamento com a cena marcada, até as fichas e as rações).

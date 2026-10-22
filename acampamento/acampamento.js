@@ -962,11 +962,22 @@
   const seta = (de, para, sufixo) => (para === de ? h('span', { class: 'igual', text: de + (sufixo || '') }) : h('span', {}, de + ' → ', h('b', { text: para + (sufixo || '') })));
   // a regra de uma barra especial, por extenso (o título dela na prévia do descanso)
   const regraDaEspecial = (p, id) => { const b = (p.poderes || []).find(x => x.id === id); return b && R() && R().textoRecEspecial ? R().textoRecEspecial(b) : ''; };
-  function abrirDescanso(tipo) {
+  /* (lote 15) O descanso curto é de quem está jogando — normalmente, o grupo que está em cena —, esteja ou não em volta
+     da fogueira: além de quem está no acampamento, a janela traz a equipe ativa (os personagens de jogador desta
+     campanha, e os do mundo, que o mestre deixou ativos na ficha) e, vindo das Cenas, quem está na cena. Vêm marcados
+     os ativos — ou, vindo das Cenas, só quem está na cena. Quem descansa longe da fogueira gasta as rações do
+     acampamento do mesmo jeito. */
+  const ativoNaFicha = l => !(l && l.estado && l.estado.ativo === false);
+  const equipeAtiva = () => (naMesa() ? linhas().filter(l => ehJogador(l.dono_id) && !(l.ficha && l.ficha.petDe) && (!campId || !l.campanha || l.campanha === campId) && ativoNaFicha(l)).map(l => l.id) : []);
+  function abrirDescanso(tipo, o) {
     if (!mestre()) return;
-    const todos = presentes().filter(p => !p.semFicha);
-    if (!todos.length) { toast('Não há ninguém com ficha em volta da fogueira. Chame os personagens pela aba Grupo.'); return; }
-    const marcados = new Set(todos.map(p => p.id)), longo = tipo !== 'curto';
+    const longo = tipo !== 'curto', aqui = presentes().filter(p => !p.semFicha);
+    const daCena = !longo && o && Array.isArray(o.marcar) ? o.marcar.filter(id => typeof id === 'string') : null;
+    const naFogueira = new Set(aqui.map(p => p.id));
+    const longe = longo ? [] : (daCena || []).concat(equipeAtiva()).filter((id, i, a) => a.indexOf(id) === i && !naFogueira.has(id)).map(pessoa).filter(p => p && !p.semFicha);
+    const todos = aqui.concat(longe);
+    if (!todos.length) { toast(longo ? 'Não há ninguém com ficha em volta da fogueira. Chame os personagens pela aba Grupo.' : 'Não há ninguém com ficha em volta da fogueira nem na equipe ativa. Chame os personagens pela aba Grupo.'); return; }
+    const marcados = new Set(longo ? todos.map(p => p.id) : daCena ? todos.filter(p => daCena.includes(p.id)).map(p => p.id) : todos.filter(p => ativoNaFicha(linha(p.id))).map(p => p.id));
     // o que se serve neste descanso: a provisão do descanso, ou outra escolhida na hora; e quantas cada um come
     // (porPessoa: o que o mestre mudou na hora, pessoa por pessoa — só para este descanso)
     const escolha = { servir: camp.servir[longo ? 'longo' : 'curto'], prov: camp.regras[longo ? 'longo' : 'curto'].prov, porPessoa: {}, tiraBonus: camp.regras[longo ? 'longo' : 'curto'].tiraBonus !== false };
@@ -981,6 +992,9 @@
       plano = N.planejar(camp, tipo, todos.filter(p => marcados.has(p.id)), { servir: escolha.servir, prov: escolha.prov, porPessoa: escolha.porPessoa, tiraBonus: escolha.tiraBonus, clima: escolha.clima && climaM ? { k: climaM.k, conf: climaM.conf } : null });
       const sobra = plano.disponivel - plano.gasto;
       const avisos = [];
+      // (lote 15) quem veio da cena, e quem descansa longe da fogueira
+      if (daCena) avisos.push(h('div', { class: 'aviso', id: 'ds-cena', text: daCena.length ? 'Vindo da cena: ' + (daCena.length === 1 ? 'marcado quem está nela.' : 'marcados os ' + daCena.length + ' que estão nela.') + ' Confira quem descansa e as rações.' : 'Ninguém da cena tem ficha aqui: marque quem descansa.' }));
+      if (longe.length) avisos.push(h('div', { class: 'aviso', id: 'ds-longe', text: 'Longe da fogueira: ' + juntarE(longe.map(p => p.nome)) + '. Quem descansa gasta as rações do acampamento do mesmo jeito.' }));
       // o que servir (a provisão que sai primeiro, e cujo efeito vale para quem a come) e quantas cada um come
       avisos.push(h('div', { class: 'servir', id: 'ds-servir' }, h('span', { text: 'Servir' }),
         h('select', { class: 'in', id: 'ds-sv', 'aria-label': 'O que servir neste descanso', onchange: e => { escolha.servir = e.target.value || null; refazer('ds-sv'); } },
@@ -1007,7 +1021,8 @@
       const linhasT = todos.map(p => {
         const ln = plano.linhas.find(x => x.id === p.id), dentroD = !!ln;
         return h('tr', { class: dentroD ? '' : 'fora' },
-          h('td', {}, h('label', { class: 'sw', style: 'color:var(--fg);font-weight:600' }, h('input', { type: 'checkbox', id: 'ds-' + p.id, checked: dentroD, onchange: e => { if (e.target.checked) marcados.add(p.id); else marcados.delete(p.id); refazer('ds-' + p.id); } }), p.nome)),
+          h('td', {}, h('label', { class: 'sw', style: 'color:var(--fg);font-weight:600' }, h('input', { type: 'checkbox', id: 'ds-' + p.id, checked: dentroD, onchange: e => { if (e.target.checked) marcados.add(p.id); else marcados.delete(p.id); refazer('ds-' + p.id); } }), p.nome),
+            naFogueira.has(p.id) ? null : h('span', { class: 'note', 'data-longe': p.id, text: ' longe da fogueira' })),
           // quantas rações esta pessoa come (a dela, a da raça ou o padrão; mudando aqui, vale só para este descanso)
           h('td', {}, h('input', { class: 'in num', id: 'ds-c-' + p.id, type: 'number', min: 0, max: 99, step: 1, disabled: !dentroD,
             value: dentroD ? ln.quer : (Object.prototype.hasOwnProperty.call(escolha.porPessoa, p.id) ? escolha.porPessoa[p.id] : N.quantoCome(camp, tipo, p, escolha.prov)),
@@ -1429,6 +1444,12 @@
     pronto = true;
     manterRoda();
     pintar();
+    // (lote 15) as Cenas pedem o Descanso curto do grupo: a janela abre já com quem está na cena marcado
+    if (TCx && TCx.ponte && TCx.ponte.aoIr) TCx.ponte.aoIr(alvo => {
+      if (!alvo || alvo.descanso !== 'curto') return;
+      if (!mestre()) { toast(encerrada ? 'Campanha encerrada: o acampamento é só para consulta.' : 'Quem faz o descanso é o mestre.'); return; }
+      abrirDescanso('curto', { marcar: Array.isArray(alvo.marcar) ? alvo.marcar : [] });
+    });
   }
   if (DEBUG) window.__acamp = { N, get camp() { return camp; }, get pilha() { return pilha; }, mudar, desfazer, presentes, pessoa, abrirDescanso, descansar, get modo() { return modo; }, get papel() { return papel; }, get pronto() { return pronto; },
     verArea, get areaVista() { return areaVista; }, selecionar, edita, ajudante, get sel() { return sel; } };

@@ -2,6 +2,41 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.22-3",
+      "data": "2026-10-22",
+      "titulo": "Barras, descanso e exércitos",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Cenas: mudar no token o máximo de uma barra ligada à ficha (o HP, o SP…) agora muda a ficha também. Era o HP que não descontava e voltava para 10 na ficha ainda sem pontos. Na ficha preenchida, a cena pergunta antes de trocar a fórmula pelo número, e o aviso tem “Desfazer”."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: as barras especiais da ficha (as cargas, os usos) aparecem em cima do token só com o mouse por cima ou com o token selecionado, sem empurrar as outras barras. Nas opções de cada barra, “No mapa” escolhe entre sempre no token ou só ao passar o mouse."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas e Fichas: as barras aceitam porcentagem, sempre do máximo — “-10%” tira 10% (a Vida 80/100 fica 70/100), “+25%” põe e “50%” deixa a barra na metade. Vale no campo da barra, na caixa de vários tokens e no valor atual da ficha."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas: o Estaque pode ficar escondido do jogador, ficha por ficha. O jogador não vê a aba, e o que está escrito fica só com o mestre."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Acampamento e Cenas: o Descanso curto traz a equipe ativa mesmo longe da fogueira, e gasta as rações do mesmo jeito. Nas Cenas, o botão “Descanso curto…” abre o Acampamento já com quem está na cena marcado."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: com Shift + clique em dois exércitos, a seleção oferece “Batalha entre os dois…”, já com um de cada lado. Em cima do token do exército aparece quantos soldados ele tem, com os magos e as máquinas de cerco à parte."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.22-2",
       "data": "2026-10-22",
       "titulo": "Os arredores do lugar",

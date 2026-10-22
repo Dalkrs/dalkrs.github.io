@@ -611,7 +611,7 @@
           : 'Manutenção: ' + txt + ' por semana, mas sem facção ninguém paga (os mantimentos são a comida que ele leva).' }));
     }
     return [secao('Exército', out), secHeroisDoExercito(o, m), secUnidades(o, m),
-      linha(botao('Abrir uma batalha com este exército…', () => abrirBatalha({ a: id }), { k: 'o:' + id + ':batalha', off: !comUnidades(o) }))];
+      linha(botao('Abrir uma batalha com este exército…', () => abrirBatalha({ a: id }), { k: 'o:' + id + ':batalha', off: !comUnidades(o), title: 'Este exército de um lado; o outro, você escolhe. (Shift + clique em outro exército, no mapa, escolhe os dois de uma vez: “Batalha entre os dois”.)' }))];
   }
   // (lote 12, parte 12a) "Em Terra Alta, terra de Aldar: no "Próximo dia", reabastece do estoque de Aldar até 10 dias."
   const OCUP_LADO = { aliada: 'aliada', inimiga: 'inimiga', neutra: 'neutra' };   // (parte 12b) na ocupada, o lado de quem ocupa
@@ -1665,7 +1665,7 @@
       + (comCerco ? (sc.tipo === 'queda' ? ' ' + nL + ' caiu para ' + nomeFacDe(m, sc.fac) + '.' : ' O cerco de ' + nL + ' acabou.') : '') + ' Fica no histórico (aba Guerra).' + (nj ? nj.texto : ''));
   }
 
-  window.MundoGuerraPainel = { abaGuerra, secExercito, secFortificacao, secFasesFrente, leituraExercito, ofertarBatalhas, proporMantimentos, menuHex, abrirBatalha,
+  window.MundoGuerraPainel = { abaGuerra, secExercito, secFortificacao, secFasesFrente, leituraExercito, ofertarBatalhas, proporMantimentos, menuHex, abrirBatalha, comUnidades,
     secOcupacao, janelaOcupacao,                                 // (lote 12, parte 12b) a ocupação da região
     get batalha() { return bat; }, get encontros() { return encontros.slice(); } };
 })();
