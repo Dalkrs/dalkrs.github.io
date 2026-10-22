@@ -2010,11 +2010,18 @@ const Encontro = (() => {
       default: if (PINTORES[o.k]) PINTORES[o.k](g, o, c, rnd, p);
     }
   }
-  function pintar(p, c) {
+  /* (lote 14, parte 14c) op: { g, dx, dy, semChao, semVinheta, estacaoEm, estacaoFora } — o lugar dentro dos arredores:
+     pinta noutra tela (g), deslocado dx, dy quadrados, sem o chão de base (o sorteio dele corre do mesmo jeito numa tela
+     de um pixel: o resto do desenho sai igual) e sem a vinheta; o chão da estação só dentro (estacaoEm) ou só fora
+     (estacaoFora) do retângulo [x0, y0, x1, y1] (em quadrados) — sem op, tudo como sempre. */
+  function pintar(p, c, op) {
+    op = op || {};
     const W = p.W * c, H = p.H * c, est = p.estilo, P = Paisagem;
-    const cv = document.createElement('canvas'); cv.width = Math.round(W); cv.height = Math.round(H);
-    const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x6c8e9cf5) >>> 0 || 9);
-    P.chao(g, p.W, p.H, c, rnd, p.pal);
+    const cv = op.g ? op.g.canvas : document.createElement('canvas');
+    if (!op.g) { cv.width = Math.round(W); cv.height = Math.round(H); }
+    const g = op.g || cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x6c8e9cf5) >>> 0 || 9);
+    if (op.g) { g.save(); g.translate((op.dx || 0) * c, (op.dy || 0) * c); }
+    P.chao(op.semChao ? telinha() : g, p.W, p.H, c, rnd, p.pal);
     // (lote 13) o chão dos biomas vizinhos (a Região livre): as manchas de beira macia, por cima do chão do principal
     for (const b of p.biomas || []) if (b.pal !== p.pal) P.chaoMisto(g, p.W, p.H, c, rnd, b.pal, b.pts);
     // a gruta: tudo rocha, e o chão por cima
@@ -2025,13 +2032,19 @@ const Encontro = (() => {
     if (p.aguaToda) { P.aguaRasa(g, p.W, p.H, c, rnd, p.pal); if (EST && p.aguaToda.tipo === 'gelo') EST.geloRaso(g); }
     for (const m of p.chao) P.mancha(g, m.pts, c, rnd, m.cores, m.op || {});
     for (const o of p.pintados) if (o.z === 0) pintaObjeto(g, o, c, rnd, p);
-    if (EST) EST.chao(g);
+    if (EST && (op.estacaoEm || op.estacaoFora)) { g.save(); recorte(g, op.estacaoEm || op.estacaoFora, c, p.W, p.H, !!op.estacaoFora); EST.chao(g); g.restore(); }
+    else if (EST) EST.chao(g);
     for (const a of p.abismos) P.abismo(g, a.pts, c, rnd, a.cores || [P.pedraDe(p.pal)[1], P.pedraDe(p.pal)[2], '#070606']);
     // (lote 13: a água de outro bioma traz a paleta dele)
     for (const a of p.aguas) if (a.k === 'lago') P.lago(g, a.pts, c, rnd, a.pal || p.pal, a.tipo);
+    // (lote 14, parte 14c: op.recorteLinhas — os rios e os caminhos do lugar só dentro do retângulo dele; o anel dos
+    // arredores os continua da beira para fora)
+    if (op.recorteLinhas) { g.save(); recorte(g, op.recorteLinhas, c, p.W, p.H, false); }
     for (const a of p.aguas) if (a.k === 'rio') P.rio(g, a.pts, a.hw, c, rnd, a.pal || p.pal, a.tipo);
     const cores = Estilos.corDaRua(est, P.PAL[p.pal] || P.PAL.campo);
-    for (const cm of p.caminhos) P.caminho(g, cm.pts, cm.hw, c, rnd, cores, cm.tipo);
+    // (lote 14, parte 14c: o caminho do lugar continuado nos arredores tem as cores do chão do lugar — cm.pal)
+    for (const cm of p.caminhos) P.caminho(g, cm.pts, cm.hw, c, rnd, cm.pal && P.PAL[cm.pal] ? Estilos.corDaRua(est, P.PAL[cm.pal]) : cores, cm.tipo);
+    if (op.recorteLinhas) g.restore();
     for (const o of p.pintados) if (o.z === 1) pintaObjeto(g, o, c, rnd, p);
     for (const m of p.massas) P.penhasco(g, m.pts, c, rnd, m.cores || P.pedraDe(p.pal), m.alt);
     if (EST) EST.nosPenhascos(g);
@@ -2058,8 +2071,19 @@ const Encontro = (() => {
       if (EST) EST.naArvore(g, a, pa, nv);
     }
     for (const o of p.pintados) if (o.z === 3) pintaObjeto(g, o, c, rnd, p);
-    P.vinheta(g, p.W, p.H, c, p.terreno === 'cristais' && p.sit === 'gruta' ? 0.4 : 0.22);
+    if (!op.semVinheta) P.vinheta(g, p.W, p.H, c, p.terreno === 'cristais' && p.sit === 'gruta' ? 0.4 : 0.22);
+    if (op.g) g.restore();
     return cv;
+  }
+  // (lote 14, parte 14c) a tela de um pixel (o sorteio do chão de base corre nela) e o recorte de um retângulo (fora: o
+  // resto da tela, sem ele)
+  let telinha1 = null;
+  const telinha = () => { if (!telinha1) { const t = document.createElement('canvas'); t.width = 1; t.height = 1; telinha1 = t.getContext('2d'); } return telinha1; };
+  function recorte(g, R, c, W, H, fora) {
+    g.beginPath();
+    if (fora) g.rect(-c, -c, (W + 2) * c, (H + 2) * c);
+    g.rect(R[0] * c, R[1] * c, (R[2] - R[0]) * c, (R[3] - R[1]) * c);
+    g.clip(fora ? 'evenodd' : 'nonzero');
   }
 
   /* ================= a cena ================= */
@@ -2181,6 +2205,11 @@ const Encontro = (() => {
     cv.width = fundo.width; cv.height = fundo.height;
     const g = cv.getContext('2d');
     g.drawImage(fundo, 0, 0);
+    previaSobre(g, p, cell, op);
+    return { cell };
+  }
+  // (lote 14, parte 14c: o que vai por cima do fundo na prévia, à parte — os arredores desenham o do lugar deslocado)
+  function previaSobre(g, p, cell, op) {
     if (!op || op.relevo !== false) Estilos.relevoNaPrevia(g, p.relevo.map(r => Object.assign({ a: LEVE[r.t] || 0.22 }, r)), p.formas, cell, 1.5);
     g.lineCap = 'round';
     const seg = (x1, y1, x2, y2, cor, w, tr) => { g.strokeStyle = cor; g.lineWidth = w; g.setLineDash(tr || []); g.beginPath(); g.moveTo(x1 * cell, y1 * cell); g.lineTo(x2 * cell, y2 * cell); g.stroke(); g.setLineDash([]); };
@@ -2204,7 +2233,6 @@ const Encontro = (() => {
     }
     g.fillStyle = '#f3ead2';
     for (const o of p.objetos) { g.beginPath(); g.arc((o.x + o.s / 2) * cell, (o.y + o.s / 2) * cell, Math.max(1.5, cell * 0.16 * o.s), 0, TAU); g.fill(); }
-    return { cell };
   }
 
   /* ================= o lugar, para a janela do gerador ================= */
@@ -2299,6 +2327,7 @@ const Encontro = (() => {
   /* (lote 7, parte 4b) o motor, para os outros lugares de fora (a tribo, o porto): o contexto com a grade de ocupação e
      as peças (contexto), a vegetação e os enfeites do terreno, o desenho, a montagem da cena, a prévia, a cena e o
      registro de pintores */
-  const motor = { contexto, vegetacao, enfeites, marcadores, lugarDePe, pintar, montar, previa, criarPlano, resolucao, sub, portaNoLado, foraDaPorta, CH, LEVE, blob, elipse, faixa, ladosDaFaixa, curva, perto, lerp, distLinha, dentroPoli, PINTORES };
+  const motor = { contexto, vegetacao, enfeites, marcadores, lugarDePe, pintar, montar, previa, previaSobre, criarPlano, resolucao, sub, portaNoLado, foraDaPorta, CH, LEVE, blob, elipse, faixa, ladosDaFaixa, curva, perto, lerp, distLinha, dentroPoli, PINTORES,
+    telinha, recorte, TER, ENFEITES, PEDRINHAS, especieDe, zonaNaCena, pintaObjeto, LINHAS_PINTADAS };
   return { TAMANHOS, TERRENOS, TER, CAMINHOS, SIT, camValido, gerar, pintar, montar, criar, previa, resumo, parteEm, travaDe, limparTrava, nomePadrao, curva, blob, faixa, cruzamento, LUGAR, motor };
 })();

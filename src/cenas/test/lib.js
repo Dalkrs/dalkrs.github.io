@@ -21,6 +21,9 @@ function serve(root) {
 
 // opt.root + opt.file abrem outra página que não a de teste (ex.: a página do site, servida a partir da raiz do
 // repositório); opt.debug === false abre sem ?debug, como um visitante.
+// (lote 14, parte 14c) A janela "Gerar um lugar" começa com os arredores em Médio; os testes de antes dos arredores
+// conferem o lugar sozinho, então a página abre com eles em Nenhum (também depois de recarregar) — opt.arredores === true
+// deixa como o mestre encontra (o Médio de começo).
 async function open(opt = {}) {
   const srv = await serve(opt.root);
   const browser = await chromium.launch();
@@ -31,8 +34,13 @@ async function open(opt = {}) {
   page.on('pageerror', e => errs.push('[pageerror] ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 5).join('\n')));
   const base = `http://127.0.0.1:${srv.address().port}/`;
   const url = `${base}${opt.file || 'page.html'}${opt.debug === false ? (opt.query || '').replace(/^&/, '?') : '?debug' + (opt.query || '')}`;
+  if (opt.arredores !== true) {
+    const semArredores = () => page.evaluate(() => { try { if (window.__tc && __tc.App && __tc.App.opt && __tc.App.opt.genArr == null) __tc.App.opt.genArr = 'nenhum'; } catch (e) { /* (a página sem as Cenas) */ } }).catch(() => {});
+    page.on('load', semArredores);
+  }
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForTimeout(opt.wait || 900);
+  if (opt.arredores !== true) await page.evaluate(() => { try { if (window.__tc && __tc.App && __tc.App.opt && __tc.App.opt.genArr == null) __tc.App.opt.genArr = 'nenhum'; } catch (e) { /* (a página sem as Cenas) */ } }).catch(() => {});
   return { page, ctx, browser, errs, url, base, close: async () => { await browser.close(); srv.close(); } };
 }
 module.exports = { open };

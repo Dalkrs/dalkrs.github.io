@@ -10,7 +10,9 @@
 //     pedaços) e a Região livre já preenchida com ele (o bioma, a água, o caminho); no mar, o hexágono sem a Região;
 //   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha, porto; as ruínas: ruína, templo, torre, castelo,
 //     masmorra, caverna, mina), o terreno da vila e o nome; o atalho para a
-//     cena que vai nascer (um passo de Desfazer); outros ícones e fora da casca, sem o botão.
+//     cena que vai nascer (um passo de Desfazer); outros ícones e fora da casca, sem o botão;
+//   · (lote 14, parte 14c) o marcador leva o hexágono dele (menos a masmorra), com o cerco do próprio lugar marcado; nas
+//     Cenas, a janela abre no lugar com os arredores (o Médio) e o bloco do hexágono.
 const { start, checker } = require('./lib');
 const { ok, end } = checker();
 const j = JSON.stringify;
@@ -210,9 +212,14 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   ok(await F.evaluate(id => !__mundo.App.mapa.objs.find(o => o.id === id).liga, ids['m:cidade:12']), 'Desfazer solta o marcador');
   const v1 = await lugar('m:vila:6'), v2 = await lugar('m:vila:9');
   ok(v1 && v1.gerar.lugar === 'vila' && v1.gerar.op.terreno === 'campo' && v2 && v2.gerar.op.terreno === 'neve', 'a vila na planície fica no campo; a da neve, na neve: ' + j([v1 && v1.gerar.op, v2 && v2.gerar.op]));
+  // (lote 14, parte 14c) os lugares do marcador levam o hexágono dele (o chão dele vai nos arredores do lugar)
+  ok(v1 && v1.gerar.hex && v1.gerar.hex.k === '6,14' && v1.gerar.hex.ter === 'campo' && v2.gerar.hex.ter === 'neve' && cid && cid.gerar.hex && cid.gerar.hex.k === '12,14' && cid.gerar.hex.ter === 'deserto' && !('guerra' in v1.gerar.hex), 'os lugares do marcador levam o hexágono dele (o chão dos arredores): ' + j([v1 && v1.gerar.hex && [v1.gerar.hex.k, v1.gerar.hex.ter], cid && cid.gerar.hex && cid.gerar.hex.k]));
   const pt = await lugar('m:ponte:7'), fl = await lugar('m:floresta:1'), mo = await lugar('m:montanha:8');
   ok(pt && pt.gerar.lugar === 'encontro' && pt.gerar.op.terreno === 'estrada' && pt.gerar.op.situacao === 'ponte', 'a ponte: o encontro da ponte sobre o rio: ' + j(pt && pt.gerar.op));
   ok(fl && j(fl.gerar.op) === j({ terreno: 'floresta', caminho: 'nenhum' }) && fl.gerar.estilo === 'oriental' && mo && mo.gerar.op.terreno === 'montanha', 'a floresta (no Reino: oriental) e a montanha: ' + j([fl && fl.gerar, mo && mo.gerar.op]));
+  ok(pt.gerar.hex && pt.gerar.hex.k === '7,14' && fl.gerar.hex && fl.gerar.hex.ter === 'floresta' && mo.gerar.hex && mo.gerar.hex.k === '8,14', 'o encontro do marcador também leva o hexágono (a ponte, a floresta, a montanha): ' + j([pt.gerar.hex && pt.gerar.hex.k, mo.gerar.hex && mo.gerar.hex.k]));
+  // (14c) o cerco do forte: o pedido do marcador dele leva o cerco marcado (a cena é o próprio lugar cercado)
+  await F.evaluate(id => __mundo.App.mudar('o cerco do forte', m => { const N = __mundo.N, f = Object.assign(N.faccaoNova('Ferro', '#b03a2e'), { id: 'fc_ferro14c' }); m.faccoes = (m.faccoes || []).concat([f]); m.objs.find(o => o.id === id).cerco = { fac: f.id, d: m.cal.dia - 3 }; }), ids['m:castelo:3']);
   const po = await lugar('m:porto:13');
   ok(po && po.gerar.lugar === 'porto' && j(po.gerar.op) === j({ terreno: 'areia' }) && po.gerar.nome === 'Porto Azul' && po.liga && po.liga.t === 'cena', 'o porto (lote 7, parte 4b-2b): a aba Porto, no terreno do hexágono (o deserto), com o nome do marcador: ' + j(po && po.gerar));
   const sem = await lugar('m:vila:5');
@@ -224,6 +231,24 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   ok(ru['m:caverna:4'] === j({ tipo: 'circulo', terreno: 'areia' }) && ru['m:mina:13'] === j({ tipo: 'mina', terreno: 'areia' }) && ru['m:masmorra:10'] === null, 'a caverna (o círculo de pedras com a boca) e a mina (a boca da mina): ' + j(ru));
   // (4b-3c) a masmorra: a aba Masmorra (o nível 1), com o nome do marcador
   ok(gerou['m:masmorra:10'] && gerou['m:masmorra:10'].lugar === 'masmorra' && gerou['m:masmorra:10'].nome === 'Masmorra', 'o marcador Masmorra abre a aba Masmorra, com o nome do marcador: ' + j(gerou['m:masmorra:10']));
+  const fo = gerou['m:castelo:3'] && gerou['m:castelo:3'].hex;
+  ok(fo && fo.k === '3,14' && fo.guerra && fo.guerra.cerco && fo.guerra.cerco.nome === 'Forte' && fo.guerra.cerco.aqui === true && fo.guerra.cerco.dias === 3 && !('hex' in gerou['m:masmorra:10']), 'o forte cercado: o hexágono com o cerco dele, marcado (aqui); a masmorra, sem o hexágono: ' + j(fo && fo.guerra));
+  await F.evaluate(id => __mundo.App.mudar('sem o cerco', m => { delete m.objs.find(o => o.id === id).cerco; m.faccoes = m.faccoes.filter(f => f.id !== 'fc_ferro14c'); }), ids['m:castelo:3']);
+  // (14c) de ponta a ponta: o pedido da vila chega às Cenas e a janela abre no Vilarejo, com os arredores (o Médio) e o
+  // bloco do hexágono; o Traçado diz os portões do mapa (o caminho que passa ali: nenhum — a rosa fica)
+  {
+    await P.evaluate(() => { const f = document.createElement('iframe'); f.id = 'cenasF2'; f.src = '/cenas/?debug'; f.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2'; document.body.append(f); });
+    let CF = null;
+    for (let i = 0; i < 100 && !CF; i++) { CF = P.frames().find(f => /\/cenas\//.test(f.url())) || null; if (!CF) await espera(100); }
+    await CF.waitForFunction(() => window.__tc && __tc.Gerador && __tc.Store && __tc.Store.S, null, { timeout: 20000 });
+    await espera(800);
+    await P.evaluate(alvo => document.getElementById('cenasF2').contentWindow.postMessage({ tinycats: { t: 'alvo', alvo } }, location.origin), { cena: v1.cena, gerar: v1.gerar });
+    await CF.waitForFunction(() => !!__tc.Gerador.vivo(), null, { timeout: 15000 }).catch(() => null);
+    const na = await CF.evaluate(() => { const V = __tc.Gerador.vivo(); if (!V) return null; const p = V.estado.plano; return { lugar: V.lugar, arr: p.arredores || null, hex: p.anel && p.anel.hex ? p.anel.hex.k : null, bts: [...document.querySelectorAll('#ger-arredores button')].map(b => [b.textContent, b.getAttribute('aria-pressed')]), chave: !!document.getElementById('ger-hex'), txt: (document.getElementById('ger-hex-txt') || {}).textContent || '', resumo: (document.getElementById('ger-resumo') || {}).textContent || '' }; });
+    ok(na && na.lugar === 'vila' && na.arr === 'medio' && na.hex === '6,14' && na.chave && j(na.bts.find(b => b[1] === 'true')) === j(['Médio', 'true']) && /^Planície \(hexágono 6, 14\)/.test(na.txt) && /os arredores Médio/.test(na.resumo), 'de ponta a ponta: o marcador da vila abre o Vilarejo com os arredores (o Médio) e o hexágono dele: ' + j(na && [na.lugar, na.arr, na.hex, na.txt]));
+    await CF.evaluate(() => __tc.UI.closeModal());
+    await P.evaluate(() => document.getElementById('cenasF2').remove());
+  }
   ok(await lugar('m:tesouro:3') === null, 'um ícone que não é lugar gerável (o tesouro) não tem o botão');
   // ligado a uma cena que ainda não existe: o botão de seguir oferece gerar de novo, com o mesmo id
   await selecionar(ids['m:vila:6']);

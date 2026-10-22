@@ -38,6 +38,7 @@ const j = JSON.stringify;
     await C.locator('#sceneBtn').click(); await w(300);
     await C.locator('.menu-i', { hasText: 'Gerar um lugar…' }).click(); await w(800);
     await C.locator('#ger-lugar button', { hasText: 'Ruínas' }).click(); await w(700);
+    await C.locator('#ger-arredores button', { hasText: 'Nenhum' }).click(); await w(500);      // (lote 14, parte 14c: o lugar sozinho)
     await C.locator('#rui-tipo button', { hasText: 'Forte em ruínas' }).click(); await w(500);
     await C.locator('#rui-tam button', { hasText: 'Pequeno' }).click(); await w(500);
     { const f = C.locator('#ger-semente'); await f.fill('5'); await f.press('Enter'); await w(500); }

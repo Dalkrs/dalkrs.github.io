@@ -636,13 +636,15 @@ const Estilos = (() => {
   function relevoNaPrevia(g, relevo, formas, pc, unidade) {
     if (typeof Render === 'undefined' || !Render.drawTer || !Render.drawShape) return;
     const k = pc / 64, sc = { cell: 64, grid: { unit: unidade || 1.5 } };
+    // (lote 14, parte 14c: o deslocamento da tela vale — o lugar dentro dos arredores)
+    const T = g.getTransform ? g.getTransform() : null, ox = T ? T.e : 0, oy = T ? T.f : 0;
     if (relevo && relevo.length) {
       const cv = document.createElement('canvas'); cv.width = g.canvas.width; cv.height = g.canvas.height;
-      const t = cv.getContext('2d'); t.setTransform(k, 0, 0, k, 0, 0);
+      const t = cv.getContext('2d'); t.setTransform(k, 0, 0, k, ox, oy);
       for (const r of relevo) { try { const sh = terrenoNaCena(r, 64, 0, 0); if (r.a != null) sh.a = r.a; Render.drawTer(t, sh, sc, 1 / k); } catch (e) { /* (um tipo que a página não conhece) */ } }
       g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 0.62; g.drawImage(cv, 0, 0); g.restore();
     }
-    if (formas && formas.length) { g.save(); g.setTransform(k, 0, 0, k, 0, 0); for (const f of formas) Render.drawShape(g, formaNaCena(f, 64, 0, 0)); g.restore(); }
+    if (formas && formas.length) { g.save(); g.setTransform(k, 0, 0, k, ox, oy); for (const f of formas) Render.drawShape(g, formaNaCena(f, 64, 0, 0)); g.restore(); }
   }
   return { LISTA, ADJ, valido, TIPOS, tipos, formaDe, ESTILO, de, lados, contorno, proaDe, pedacos, paredesDaCasa, corDaRua, piso, paredesPintadas, arvore, praca, enfeiteDaCasa, telhado, tom,
     quintal, terrenoNaCena, formaNaCena, caixaDe, moverRelevo, retangulo, bandeirinhas, relevoNaPrevia };

@@ -39,6 +39,7 @@ const j = JSON.stringify;
     await C.locator('#sceneBtn').click(); await w(300);
     await C.locator('.menu-i', { hasText: 'Gerar um lugar…' }).click(); await w(800);
     await C.locator('#ger-lugar button', { hasText: 'Tribo' }).click(); await w(700);
+    await C.locator('#ger-arredores button', { hasText: 'Nenhum' }).click(); await w(500);      // (lote 14, parte 14c: o lugar sozinho)
     await C.locator('#tri-mor button', { hasText: 'Iglus' }).click(); await w(500);
     await C.locator('#tri-tam button', { hasText: 'Pequena' }).click(); await w(500);
     await C.locator('#tri-ter button', { hasText: 'Neve' }).click(); await w(500);

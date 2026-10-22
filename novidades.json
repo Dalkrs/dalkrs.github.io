@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.22-2",
+      "data": "2026-10-22",
+      "titulo": "Os arredores do lugar",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o Vilarejo, a Cidade, a Tribo, as Ruínas e o Porto ganham os “Arredores” na janela do gerador — Nenhum, Pouco, Médio (o de começo) ou Muito. O lugar fica no meio da cena, com o chão de fora em volta: as manchas dos biomas vizinhos, a vegetação, os morros longe do lugar e o rio e os caminhos dele seguindo até a borda, com as pontes, sem emenda na beira. Os arredores têm a história e os achados raros deles. Em Nenhum, o lugar de sempre."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi e Cenas: “Gerar este lugar…” no marcador leva o hexágono dele. O chão do hexágono e dos vizinhos fica em volta do lugar, o rio do mapa entra e sai pelos pontos certos e os portões ficam onde chegam os caminhos do mapa; o lugar sem rio fica com o rio do mapa passando em volta, e o mar do Porto fica no lado da água do hexágono."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a guerra em volta do lugar. O lugar cercado fica com a trincheira em volta, as máquinas viradas para ele, o aríete diante do portão e o acampamento de quem cerca mais para fora; no hexágono destruído, parte das casas do próprio lugar aparece queimada. Quando os acampamentos ou a batalha não cabem, o resumo sugere os arredores em Muito."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.22-1",
       "data": "2026-10-22",
       "titulo": "As marcas da guerra na cena",

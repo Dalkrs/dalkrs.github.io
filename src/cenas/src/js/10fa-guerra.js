@@ -23,7 +23,7 @@
 const MarcasGuerra = (() => {
   const TAU = Math.PI * 2, MO = Encontro.motor;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const FRESCA = 7, MARGEM = 2.5;
+  const FRESCA = 7, MARGEM = 2.5, MARGEM_LUGAR = 1.6;           // (lote 14, parte 14c: nos arredores de um lugar, a borda fica mais perto)
   // as perdas pelo tamanho da vitória (as de mundo/guerra.js): quem perde e quem vence
   const PERDA_P = [0.06, 0.12, 0.22, 0.35, 0.5], PERDA_V = [0.06, 0.08, 0.07, 0.06, 0.04];
   const juntar = l => (l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]);
@@ -52,7 +52,8 @@ const MarcasGuerra = (() => {
     (gu.exes || []).forEach((e, i) => out.push({ k: 'exe' + i, n: 'Acampamento: ' + e.nome + ' (' + milhar(e.tropas) + ' tropas)' + (e.oculto ? ' · escondido no mapa' : ''), on: !e.oculto,
       dica: 'As tendas em roda da tenda do comando, nas cores ' + (e.fac ? 'da facção (' + e.fac + ')' : 'do exército') + ', as fogueiras acesas e o estandarte; mais tropas, mais tendas (até 16)' + (e.maq ? '; as máquinas de cerco paradas' : '') + (e.oculto ? '. Ele está escondido dos jogadores no mapa: começa desligado.' : '') }));
     if (gu.cerco) out.push({ k: 'cerco', n: 'Cerco de ' + gu.cerco.nome + ' (' + (gu.cerco.dias ? 'há ' + plural(gu.cerco.dias, 'dia') : 'começou hoje') + ')', on: true,
-      dica: 'A trincheira com as estacas e ' + (gu.cerco.maq ? 'as máquinas viradas para o lugar' : 'os postos de quem cerca') + ' (o lugar fica além da trincheira, fora da cena)' });
+      dica: gu.cerco.aqui ? 'Em volta do lugar: a trincheira com as estacas, ' + (gu.cerco.maq ? 'as máquinas viradas para ele' + (gu.cerco.maq.ariete ? ', o aríete diante do portão' : '') : 'o posto de quem cerca') + ' e as flechas dos tiros de lá (com os arredores)'
+        : 'A trincheira com as estacas e ' + (gu.cerco.maq ? 'as máquinas viradas para o lugar' : 'os postos de quem cerca') + ' (o lugar fica além da trincheira, fora da cena)' });
     return out;
   }
   const padrao = gu => itens(gu).filter(x => x.on).map(x => x.k);
@@ -82,6 +83,17 @@ const MarcasGuerra = (() => {
   const tendasDe = t => clamp(Math.round(3 + 1.7 * Math.log2(Math.max(1, t) / 50)), 3, 16);
   const tirar = (arr, f) => { for (let i = arr.length - 1; i >= 0; i--) if (f(arr[i], i)) arr.splice(i, 1); };
   const caixa = pts => { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); } return [x0, y0, x1, y1]; };
+  // (lote 14, parte 14c) a volta em torno do retângulo R, a d dele, com os cantos de raio rc: um ponto a cada meio quadrado
+  function anelEmVolta(R, d, rc) {
+    const x0 = R[0] - d, y0 = R[1] - d, x1 = R[2] + d, y1 = R[3] + d, r = Math.min(rc, (x1 - x0) / 2, (y1 - y0) / 2), out = [];
+    const reta = (a, b) => { const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.round(L / 0.5)); for (let k = 0; k < n; k++) out.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]); };
+    const arco = (cx, cy, a0) => { const n = Math.max(2, Math.round(r * Math.PI / 2 / 0.5)); for (let k = 0; k < n; k++) { const a = a0 + k / n * Math.PI / 2; out.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } };
+    reta([x0 + r, y0], [x1 - r, y0]); arco(x1 - r, y0 + r, -Math.PI / 2);
+    reta([x1, y0 + r], [x1, y1 - r]); arco(x1 - r, y1 - r, 0);
+    reta([x1 - r, y1], [x0 + r, y1]); arco(x0 + r, y1 - r, Math.PI / 2);
+    reta([x0, y1 - r], [x0, y0 + r]); arco(x0 + r, y0 + r, Math.PI);
+    return out;
+  }
   const ARVORE = s => s !== 'juncos' && s !== 'cacto' && s !== 'cristal' && s !== 'cristalNegro' && s !== 'flor' && s !== 'cogumelo';
   const QUEIMA = { arbusto: true, flores: true, cogumelos: true };
 
@@ -89,7 +101,7 @@ const MarcasGuerra = (() => {
      [[x, y, r]] (o meio da situação, os pontos de interesse, a chegada) }. → as áreas que ela usou ([x, y, r]: a história
      fica longe delas). No plano: guerra (os marcadores) e guerraInfo (o que entrou, para o resumo). */
   function noLugar(K, A, op) {
-    const { W, H, P } = K, g = op && op.g;
+    const { W, H, P } = K, g = op && op.g, MG = op && op.lugar ? MARGEM_LUGAR : MARGEM, LG = op && op.lugar ? op.lugar : null;
     if (!g || !A || (P.cavernas && P.cavernas.length) || K.terreno === 'agua' || P.aguaToda) return [];
     const rG = mulberry((MO.sub(op.sT || 1, 150) % 2147483000) + 1);
     const evitar = (op.evitar || []).slice(), feitos = [], I = { exes: [], fora: [] };
@@ -99,7 +111,7 @@ const MarcasGuerra = (() => {
     const livreQ = (i, j) => i >= 0 && j >= 0 && i < W && j < H && A.occ[j * W + i] === 0 && (K.at(i, j) === 0 || K.at(i, j) === 4);
     // o círculo cabe: dentro da margem, sem nada ruim (a água, a pedra, o abismo) e com até tol dele ocupado (o caminho…)
     const cabe = (x, y, R, tol) => {
-      if (x - R < MARGEM || y - R < MARGEM || x + R > W - MARGEM || y + R > H - MARGEM) return false;
+      if (x - R < MG || y - R < MG || x + R > W - MG || y + R > H - MG) return false;
       let n = 0, mal = 0;
       for (let j = Math.floor(y - R); j <= Math.floor(y + R); j++) for (let i = Math.floor(x - R); i <= Math.floor(x + R); i++) {
         if (Math.hypot(i + 0.5 - x, j + 0.5 - y) > R) continue;
@@ -117,7 +129,7 @@ const MarcasGuerra = (() => {
       let melhor = null, dm = Infinity;
       for (const f of [1, 0.7, 0.45]) {
         for (let k = 0; k < 240; k++) {
-          const x = R + MARGEM + rG() * (W - 2 * (R + MARGEM)), y = R + MARGEM + rG() * (H - 2 * (R + MARGEM));
+          const x = R + MG + rG() * (W - 2 * (R + MG)), y = R + MG + rG() * (H - 2 * (R + MG));
           if (!longe(x, y, f, R) || !cabe(x, y, R, tol) || (extra && !extra(x, y))) continue;
           if (!alvo) return [x, y];
           const d = Math.hypot(x - alvo[0], y - alvo[1]) + (1 - f) * 12;
@@ -156,6 +168,24 @@ const MarcasGuerra = (() => {
     // (a máquina não fica em cima do caminho: nenhuma casa dele debaixo dela)
     const semCaminho = (x, y, R) => { for (let j = Math.floor(y - R); j <= Math.floor(y + R); j++) for (let i = Math.floor(x - R); i <= Math.floor(x + R); i++) if (Math.hypot(i + 0.5 - x, j + 0.5 - y) <= R && K.at(i, j) === 1) return false; return true; };
     const listaDeMaq = (mq, max) => { const out = []; for (const t of ['trabuco', 'catapulta']) for (let k = 0; k < Math.min(2, (mq && mq[t]) || 0); k++) out.push(t); return out.slice(0, max); };
+    /* (lote 14, parte 14c) as casas do próprio lugar que queimaram (o destruído): umas quatro em cada dez (de uma a seis),
+       com a fuligem; as fechadas (com o telhado), as duas primeiras desabadas — o chão de cinzas, as vigas e a chaminé; nas
+       abertas, o chão chamuscado. Vão por cima do desenho do lugar (sobreLugar), com o marcador do mestre nas três
+       primeiras. → quantas */
+    function queimarNoLugar(Lg) {
+      const ps = Lg.predios.slice();
+      for (let i = ps.length - 1; i > 0; i--) { const k = Math.floor(rG() * (i + 1)); [ps[i], ps[k]] = [ps[k], ps[i]]; }
+      const n = clamp(Math.round(ps.length * 0.4), 1, 6), lista = ps.slice(0, n), sobre = P.sobreLugar = P.sobreLugar || [];
+      let desabadas = 0;
+      lista.forEach((k, i) => {
+        const cx = k.x + k.w / 2, cy = k.y + k.h / 2;
+        if (!k.aberto && !k.redonda && desabadas < 2) { sobre.push({ z: 2, k: 'casaQueimada', x: r2(cx), y: r2(cy), w: k.w, h: k.h, ang: 0, ch: [r2(k.x + 0.7), r2(k.y + 0.7)] }); desabadas++; }
+        else sobre.push({ z: 3, k: 'fuligem', pts: k.pts.map(q => [r2(q[0]), r2(q[1])]) });
+        if (k.aberto || k.redonda) sobre.push({ z: 1, k: 'chamusco', itens: [{ x: r2(cx + (rG() - 0.5) * k.w * 0.3), y: r2(cy + (rG() - 0.5) * k.h * 0.3), r: +clamp(Math.min(k.w, k.h) * 0.32, 0.6, 1.6).toFixed(2) }] });
+        if (i < 3) P.guerra.push({ k: 'casa', n: 'Casa queimada', x: Math.floor(cx), y: Math.floor(cy), cx: r2(cx), cy: r2(cy), R: r2(Math.max(k.w, k.h) / 2) });
+      });
+      return lista.length;
+    }
 
     /* ---- o acampamento: e (o exército), x, y (o meio), n (as tendas), frente (para onde abre), parar (as máquinas
        paradas atrás) ---- */
@@ -229,10 +259,10 @@ const MarcasGuerra = (() => {
       return tendas;
     }
     // o acampamento de e, perto de alvo (ou sorteado): do tamanho das tropas; sem lugar, cada vez menor (até 3 tendas)
-    function poeAcampamento(e, alvo, frenteDe, parar, deCerco) {
+    function poeAcampamento(e, alvo, frenteDe, parar, deCerco, extra) {
       const quer = tendasDe(e.tropas);
       for (const n of [quer, Math.round(quer * 0.7), Math.round(quer * 0.5), 3].filter((v, i, a) => v >= 3 && a.indexOf(v) === i)) {
-        const R = raioCamp(n), l = lugar(R, 0.18, alvo, (x, y) => cabe(x, y, 2.2, 0));
+        const R = raioCamp(n), l = lugar(R, 0.18, alvo, (x, y) => cabe(x, y, 2.2, 0) && (!extra || extra(x, y)));
         if (!l) continue;
         acampamento(e, l[0], l[1], n, frenteDe(l[0], l[1]), parar, quer, deCerco);
         return true;
@@ -245,16 +275,111 @@ const MarcasGuerra = (() => {
        a ponta, paralela a ele; as máquinas atrás dela, viradas para lá (o aríete na frente); entre ela e a borda, as
        flechas e os buracos dos tiros de lá ---- */
     const camps = (g.exes || []).slice(), exeCerco = g.cerco ? camps.find(e => e.lado === 'cerco') : null;
-    if (g.cerco) {
+    /* ---- (lote 14, parte 14c) o cerco em volta do próprio lugar (a cena é o lugar cercado, no meio dos arredores): a
+       trincheira em anel, a uns dois quadrados da beira dele (com as passagens nos caminhos), as estacas do lado de lá,
+       as máquinas atrás dela viradas para o lugar, o aríete diante de um portão, as flechas e os buracos dos tiros entre
+       a trincheira e o lugar e, mais para fora, o acampamento de quem cerca (ou o posto) ---- */
+    if (g.cerco && g.cerco.aqui && LG) {
+      const c = g.cerco, R = LG.R, cx = (R[0] + R[2]) / 2, cy = (R[1] + R[3]) / 2, dT = 2.3;
+      const dentroR = (x, y, m) => x >= m && y >= m && x <= W - m && y <= H - m;
+      // o ponto mais perto do retângulo do lugar e a direção para ele (para dentro)
+      const paraDentro = (x, y) => { const nx = clamp(x, R[0], R[2]), ny = clamp(y, R[1], R[3]), dx = nx - x, dy = ny - y, L = Math.hypot(dx, dy) || 1; return [dx / L, dy / L]; };
+      const volta = anelEmVolta(R, dT, 2.4);
+      const pecas = [];
+      let atual = [];
+      for (const q of volta) { const v = K.at(Math.floor(q[0]), Math.floor(q[1])); if (dentroR(q[0], q[1], MG + 0.5) && !ruim(v) && v !== 1) atual.push(q); else { if (atual.length > 3) pecas.push(atual); atual = []; } }
+      if (atual.length > 3) { if (pecas.length && volta.indexOf(pecas[0][0]) === 0 && atual[atual.length - 1] === volta[volta.length - 1]) pecas[0] = atual.concat(pecas[0]); else pecas.push(atual); }
+      const feitas = { catapulta: 0, trabuco: 0, ariete: 0 };
+      let arieteNoLugar = false;
+      if (!pecas.length) I.fora.push('o cerco de ' + c.nome);
+      else {
+        limpar((x, y) => pecas.some(pc => MO.distLinha(pc, x, y) <= 1.7));
+        for (const pc of pecas) {
+          K.pinta(1, 'trincheira', { pts: pc.map(q => [r2(q[0]), r2(q[1])]), larg: 0.85, ds: pc.map(q => paraDentro(q[0], q[1]).map(v => +v.toFixed(3))) });
+          K.marcaLinha(pc, 0.55, 6);
+          P.relevo.push({ t: 'fosso', alt: -1, k: 'free', pts: pc.filter((_, i) => i % 2 === 0 || i === pc.length - 1), sw: 0.85 });
+          for (let i = 2; i < pc.length - 1; i += 6) { const [ux, uy] = paraDentro(pc[i][0], pc[i][1]); K.objeto('estacas', Math.floor(pc[i][0] + ux * 1.35), Math.floor(pc[i][1] + uy * 1.35), 0, v => v === 0 || v === 6 || v === 5); }
+          for (let i = 0; i < pc.length; i += 4) { evitar.push([pc[i][0], pc[i][1], 2.2]); feitos.push([pc[i][0], pc[i][1], 2]); }
+        }
+        // as máquinas, atrás da trincheira (pela volta, espalhadas), viradas para o meio do lugar
+        const todos = pecas.flat(), lista = listaDeMaq(c.maq, Math.max(1, Math.min(4, Math.floor(todos.length / 14))));
+        lista.forEach((tp, k) => {
+          for (let t = 0; t < 12; t++) {
+            const q = todos[Math.floor(((k + 0.5) / lista.length + (t ? (rG() - 0.5) * 0.18 : 0)) * todos.length) % todos.length], [ux, uy] = paraDentro(q[0], q[1]);
+            const back = [3.2, 2.8, 3.8][t % 3], mx = q[0] - ux * back, my = q[1] - uy * back;
+            if (!cabe(mx, my, RAIO_MAQ[tp], 0.3) || !semCaminho(mx, my, RAIO_MAQ[tp])) continue;
+            limpar((x, y) => Math.hypot(x - mx, y - my) <= RAIO_MAQ[tp] + 0.5);
+            maquina(tp, mx, my, Math.atan2(cy - my, cx - mx), c.cores[0]);
+            evitar.push([mx, my, RAIO_MAQ[tp] + 0.8]); feitos.push([mx, my, RAIO_MAQ[tp] + 0.5]);
+            feitas[tp]++;
+            break;
+          }
+        });
+        // o aríete: diante do portão (dentro do retângulo do lugar, ele vai por cima do desenho dele)
+        if (c.maq && c.maq.ariete && (LG.portoes || []).length) {
+          const gt = LG.portoes[Math.floor(rG() * LG.portoes.length) % LG.portoes.length], dx = gt.x - cx, dy = gt.y - cy, L = Math.hypot(dx, dy) || 1, mx = gt.x + dx / L * 1.5, my = gt.y + dy / L * 1.5;
+          const o = { z: 2, k: 'ariete', x: r2(mx), y: r2(my), ang: +Math.atan2(-dy, -dx).toFixed(3), c1: c.cores[0] };
+          if (mx > R[0] && my > R[1] && mx < R[2] && my < R[3]) { (P.sobreLugar = P.sobreLugar || []).push(o); arieteNoLugar = true; }
+          else if (cabe(mx, my, 1.0, 0.5)) { P.pintados.push(o); K.marcaCirc(mx, my, RAIO_MAQ.ariete * 0.8, 3, true); }
+          if (arieteNoLugar || P.pintados.includes(o)) feitas.ariete++;
+        }
+        // entre a trincheira e o lugar: as flechas e os buracos dos tiros de lá
+        const flechas = [], buracos = [];
+        for (let k = 0, n = 4 + Math.floor(rG() * 4); k < n; k++) {
+          const q = todos[Math.floor(rG() * todos.length) % todos.length], [ux, uy] = paraDentro(q[0], q[1]), f = 0.7 + rG() * 0.9, fx = q[0] + ux * f, fy = q[1] + uy * f, v = K.at(Math.floor(fx), Math.floor(fy));
+          if (dentroR(fx, fy, MG) && !ruim(v)) flechas.push({ x: r2(fx), y: r2(fy), ang: +(Math.atan2(-uy, -ux) + (rG() - 0.5) * 0.6).toFixed(2), n: 3 + Math.floor(rG() * 4) });
+        }
+        for (let k = 0; k < (c.dias >= 2 ? 1 + (c.dias >= 6 ? 1 : 0) : 0); k++) {
+          const q = todos[Math.floor(rG() * todos.length) % todos.length], [ux, uy] = paraDentro(q[0], q[1]), fx = q[0] - ux * 1.6, fy = q[1] - uy * 1.6, v = K.at(Math.floor(fx), Math.floor(fy));
+          if (dentroR(fx, fy, MG + 0.5) && (v === 0 || v === 4)) buracos.push({ x: r2(fx), y: r2(fy), r: +(0.55 + rG() * 0.25).toFixed(2) });
+        }
+        if (flechas.length) K.pinta(2, 'flechas', { itens: flechas });
+        if (buracos.length) K.pinta(1, 'buracoGuerra', { itens: buracos });
+        // o estandarte de quem cerca, fincado atrás da trincheira, e o marcador do mestre
+        const q0 = todos[Math.floor(rG() * todos.length) % todos.length], [u0, v0] = paraDentro(q0[0], q0[1]);
+        K.pinta(3, 'estandarte', { x: r2(q0[0] - u0 * 1.8), y: r2(q0[1] - v0 * 1.8), ang: +vento.toFixed(3), c1: c.cores[0], c2: c.cores[1] });
+        marca('cerco', 'Cerco de ' + c.nome + ' (' + (c.dias ? 'há ' + plural(c.dias, 'dia') : 'começou hoje') + (c.fac ? ', ' + c.fac : '') + ')', q0[0] - u0 * 2.6, q0[1] - v0 * 2.6, q0[0], q0[1], 3);
+        // quem cerca: o acampamento mais para fora; sem o exército na cena (ou sem lugar), o posto
+        let posto = !exeCerco;
+        const longeDoLugar = (x, y) => { const [ux, uy] = paraDentro(x, y), nx = clamp(x, R[0], R[2]), ny = clamp(y, R[1], R[3]); void ux; void uy; return Math.hypot(x - nx, y - ny) >= dT + 2.5; };
+        if (exeCerco) {
+          camps.splice(camps.indexOf(exeCerco), 1);
+          if (!poeAcampamento(exeCerco, null, (x, y) => Math.atan2(cy - y, cx - x), false, true, longeDoLugar)) posto = true;
+        }
+        if (posto) {
+          const l = lugar(2.8, 0.25, null, (x, y) => cabe(x, y, 1.6, 0) && longeDoLugar(x, y));
+          if (l) {
+            const [ox, oy] = l, an = Math.atan2(cy - oy, cx - ox), px = -Math.sin(an), py = Math.cos(an);
+            limpar((x, y) => Math.hypot(x - ox, y - oy) <= 3.2);
+            abrir((x, y) => Math.hypot(x - ox, y - oy) <= 2.8);
+            for (const sg of [-1, 1]) {
+              const ex = ox + px * sg * 1.3, ey = oy + py * sg * 1.3, at = an + Math.PI / 2, fp = Estilos.retangulo(ex, ey, TENDA.l, TENDA.w, at);
+              if (!rectLivre(fp, ehTmp)) continue;
+              K.pinta(2, 'tendaGuerra', { x: r2(ex), y: r2(ey), ang: +at.toFixed(3), l: TENDA.l, w: TENDA.w, c1: c.cores[0], c2: c.cores[1] });
+              K.marcaPoli(fp, 3, true); K.visaoPoli(fp); P.cobertura.push({ x: ex, y: ey, r: 0.9 });
+            }
+            K.objeto('fogueira', Math.floor(ox + Math.cos(an) * 1.3), Math.floor(oy + Math.sin(an) * 1.3), 0, ehTmp);
+            fechar();
+            feitos.push([ox, oy, 3]); evitar.push([ox, oy, 3.5]);
+          } else posto = false;
+        }
+        I.cerco = { nome: c.nome, dir: null, emVolta: true, maq: feitas, pecas: pecas.length };
+        if (posto) I.cerco.posto = true;
+        if (arieteNoLugar) I.cerco.arieteNoPortao = true;
+      }
+    } else if (g.cerco && LG) {
+      // (nos arredores de um lugar que não é o cercado: o cerco do outro lugar do hexágono fica fora da cena)
+      I.outroCerco = g.cerco.nome;
+    } else if (g.cerco) {
       const c = g.cerco, du = c.u - 0.5, dv = c.v - 0.5;
       const lado = Math.hypot(du, dv) < 0.08 ? ['n', 'l', 's', 'o'][Math.floor(rG() * 4) % 4] : Math.abs(du) >= Math.abs(dv) ? (du > 0 ? 'l' : 'o') : (dv > 0 ? 's' : 'n');
-      const ang = { l: 0, s: Math.PI / 2, o: Math.PI, n: -Math.PI / 2 }[lado], dx = Math.round(Math.cos(ang)), dy = Math.round(Math.sin(ang)), px = -dy, py = dx, IN = MARGEM + 2.8;
+      const ang = { l: 0, s: Math.PI / 2, o: Math.PI, n: -Math.PI / 2 }[lado], dx = Math.round(Math.cos(ang)), dy = Math.round(Math.sin(ang)), px = -dy, py = dx, IN = MG + 2.8;
       const deLado = lado === 'l' || lado === 'o', comp = deLado ? H : W, ao = clamp((deLado ? c.v : c.u) * comp, comp * 0.32, comp * 0.68);
       const T = lado === 'l' ? [W - IN, ao] : lado === 'o' ? [IN, ao] : lado === 'n' ? [ao, IN] : [ao, H - IN];
       const dentroR = (x, y, m) => x >= m && y >= m && x <= W - m && y <= H - m;
       let s1 = 0, s2 = 0;
-      while (s1 < 9.5 && dentroR(T[0] - px * (s1 + 0.5), T[1] - py * (s1 + 0.5), MARGEM + 0.6)) s1 += 0.5;
-      while (s2 < 9.5 && dentroR(T[0] + px * (s2 + 0.5), T[1] + py * (s2 + 0.5), MARGEM + 0.6)) s2 += 0.5;
+      while (s1 < 9.5 && dentroR(T[0] - px * (s1 + 0.5), T[1] - py * (s1 + 0.5), MG + 0.6)) s1 += 0.5;
+      while (s2 < 9.5 && dentroR(T[0] + px * (s2 + 0.5), T[1] + py * (s2 + 0.5), MG + 0.6)) s2 += 0.5;
       const Lm = Math.max(s1, s2, 1), linha = [];
       // (as pontas um pouco mais perto do lugar: o arco em volta dele)
       for (let s = -s1; s <= s2 + 1e-9; s += 0.5) { const b = 0.8 * (s / Lm) ** 2; linha.push([T[0] + px * s + dx * b, T[1] + py * s + dy * b]); }
@@ -291,7 +416,7 @@ const MarcasGuerra = (() => {
         if (c.maq && c.maq.ariete) {
           for (let k = 0; k < 10; k++) {
             const s = (rG() - 0.5) * span * 0.7, mx = T[0] + px * s + dx * 1.9, my = T[1] + py * s + dy * 1.9;
-            if (!dentroR(mx, my, MARGEM + 0.8) || !cabe(mx, my, 1.0, 0.5) || !semCaminho(mx, my, RAIO_MAQ.ariete)) continue;
+            if (!dentroR(mx, my, MG + 0.8) || !cabe(mx, my, 1.0, 0.5) || !semCaminho(mx, my, RAIO_MAQ.ariete)) continue;
             limpar((x, y) => Math.hypot(x - mx, y - my) <= 1.8);
             maquina('ariete', mx, my, ang, c.cores[0]);
             feitas.ariete++;
@@ -302,11 +427,11 @@ const MarcasGuerra = (() => {
         const flechas = [], buracos = [];
         for (let k = 0; k < 3 + Math.floor(rG() * 3); k++) {
           const s = -s1 + rG() * (s1 + s2), f = 1.6 + rG() * 1.5, fx = T[0] + px * s + dx * f, fy = T[1] + py * s + dy * f, v = K.at(Math.floor(fx), Math.floor(fy));
-          if (dentroR(fx, fy, MARGEM) && !ruim(v)) flechas.push({ x: r2(fx), y: r2(fy), ang: +(ang + Math.PI + (rG() - 0.5) * 0.6).toFixed(2), n: 3 + Math.floor(rG() * 4) });
+          if (dentroR(fx, fy, MG) && !ruim(v)) flechas.push({ x: r2(fx), y: r2(fy), ang: +(ang + Math.PI + (rG() - 0.5) * 0.6).toFixed(2), n: 3 + Math.floor(rG() * 4) });
         }
         for (let k = 0; k < (c.dias >= 2 ? 1 + (c.dias >= 6 ? 1 : 0) : 0); k++) {
           const s = -s1 + 1 + rG() * span, fx = T[0] + px * s + dx * 2.4, fy = T[1] + py * s + dy * 2.4, v = K.at(Math.floor(fx), Math.floor(fy));
-          if (dentroR(fx, fy, MARGEM + 0.5) && (v === 0 || v === 4)) buracos.push({ x: r2(fx), y: r2(fy), r: +(0.55 + rG() * 0.25).toFixed(2) });
+          if (dentroR(fx, fy, MG + 0.5) && (v === 0 || v === 4)) buracos.push({ x: r2(fx), y: r2(fy), r: +(0.55 + rG() * 0.25).toFixed(2) });
         }
         if (flechas.length) K.pinta(2, 'flechas', { itens: flechas });
         if (buracos.length) K.pinta(1, 'buracoGuerra', { itens: buracos });
@@ -446,7 +571,7 @@ const MarcasGuerra = (() => {
           R = R0 * f;
           const ry = R * fy;
           for (let t = 0; t < 70 && !l; t++) {
-            const x = R + MARGEM + 0.5 + rG() * (W - 2 * (R + MARGEM + 0.5)), y = R + MARGEM + 0.5 + rG() * (H - 2 * (R + MARGEM + 0.5));
+            const x = R + MG + 0.5 + rG() * (W - 2 * (R + MG + 0.5)), y = R + MG + 0.5 + rG() * (H - 2 * (R + MG + 0.5));
             if (manchas.some(m => Math.hypot(x - m.x, y - m.y) < (R + m.R) * 0.75) || !evitar.every(([ex, ey, er]) => Math.hypot(x - ex, y - ey) >= er * 0.5)) continue;
             let n = 0, ag = 0, duro = 0;
             for (let j = Math.floor(y - ry - 1); j <= Math.floor(y + ry + 1); j++) for (let i = Math.floor(x - R - 1); i <= Math.floor(x + R + 1); i++) { n++; const v = K.at(i, j); if (v === 2 || v === 8) ag++; else if (v === 3 || v === 7 || v === 9 || v === 10) duro++; }
@@ -472,10 +597,12 @@ const MarcasGuerra = (() => {
         for (const a of P.arvores) if (ARVORE(a.esp) && naMancha(a.x, a.y)) { if (d) a.esp = 'queimada'; else { a.esp = 'morta'; a.pal = 'corrompida'; a.neve = false; } }
         tirar(P.objetos, (o, i) => { if (i < A.obj || !QUEIMA[o.id] || !naMancha(o.x + 0.5, o.y + 0.5)) return false; if (K.at(o.x, o.y) === 4 && A.occ[o.y * W + o.x] === 0) K.pos(o.x, o.y, 0); return true; });
         let casas = 0, cristais = 0;
+        // (lote 14, parte 14c) nos arredores de um lugar: as casas dele queimam (por cima do desenho dele, na cena)
+        const doLugar = d && LG && (LG.predios || []).length ? queimarNoLugar(LG) : 0;
         if (d) {
           for (const m of manchas) for (let k = 0; k < 2; k++) objPerto('toco', m.x, m.y, 0.5, m.R * 0.8, v => v === 0);
           // a casa queimada (uma; duas no grande), dentro de uma mancha
-          for (let k = 0, n = W * H >= 1100 ? 2 : 1; k < n; k++) {
+          for (let k = 0, n = doLugar ? 0 : W * H >= 1100 ? 2 : 1; k < n; k++) {
             const m = manchas[k % manchas.length];
             let l = null;
             for (let t = 0; t < 120 && !l; t++) { const a = rG() * TAU, rr = rG() * m.R * 0.75, x = m.x + Math.cos(a) * rr, y = m.y + Math.sin(a) * rr; if (cabe(x, y, 2.3, 0.15) && longe(x, y, t < 60 ? 0.7 : 0.45, 2.3)) l = [x, y]; }
@@ -518,12 +645,14 @@ const MarcasGuerra = (() => {
         const mm = manchas.reduce((a, b) => (b.R > a.R ? b : a));
         if (!d) marca('corrompida', 'Terra corrompida (o hexágono corrompido)', mm.x + 1, mm.y + 0.5, mm.x, mm.y, mm.R);
         else if (!casas) marca('queimado', 'Terra arrasada (o hexágono destruído)', mm.x + 1, mm.y + 0.5, mm.x, mm.y, mm.R);
-        I.marca = { t: g.marca, manchas: manchas.length, casas, cristais };
+        I.marca = { t: g.marca, manchas: manchas.length, casas: casas + doLugar, cristais };
+        if (doLugar) I.marca.noLugar = doLugar;
       }
     }
     if (!P.guerra.length) delete P.guerra;
     if (!I.fora.length) delete I.fora;
     if (!I.exes.length) delete I.exes;
+    if (Object.keys(I).length && LG) I.arredores = LG.nivel || 'medio';          // (lote 14, parte 14c: o resumo diz o que cabe com mais arredores)
     if (Object.keys(I).length) P.guerraInfo = I;
     return feitos;
   }
@@ -532,19 +661,26 @@ const MarcasGuerra = (() => {
   function texto(p) {
     const I = p.guerraInfo, partes = [];
     if (!I) return partes;
+    // (lote 14, parte 14c: nos arredores de um lugar, o que cabe mais é com os arredores em Muito)
+    const maior = I.arredores ? I.arredores === 'muito' : p.tamanho === 'grande', comoCabe = I.arredores ? 'com os arredores em Muito cabe mais' : 'no tamanho Grande cabe mais';
     if (I.cerco) {
       const c = I.cerco, mq = [];
-      for (const [k, s, pl] of [['catapulta', 'catapulta'], ['trabuco', 'trabuco'], ['ariete', 'aríete']]) if (c.maq[k]) mq.push(plural(c.maq[k], s, pl));
-      partes.push('o cerco de ' + c.nome + ' (o lugar fica ' + NA_DIR[c.dir] + '): ' + juntar(['a trincheira'].concat(mq, c.posto ? ['o posto de quem cerca'] : [])));
+      for (const [k, s, pl] of [['catapulta', 'catapulta'], ['trabuco', 'trabuco'], ['ariete', 'aríete']]) if (c.maq[k]) mq.push(k === 'ariete' && c.arieteNoPortao ? (c.maq[k] === 1 ? 'o aríete no portão' : plural(c.maq[k], s, pl)) : plural(c.maq[k], s, pl));
+      if (c.emVolta) partes.push('o cerco de ' + c.nome + ': ' + juntar(['a trincheira em volta'].concat(mq, c.posto ? ['o posto de quem cerca'] : [])));
+      else partes.push('o cerco de ' + c.nome + ' (o lugar fica ' + NA_DIR[c.dir] + '): ' + juntar(['a trincheira'].concat(mq, c.posto ? ['o posto de quem cerca'] : [])));
     }
     for (const e of I.exes || []) {
       const menos = e.tendas < e.quer;
       partes.push('o acampamento ' + (e.lado === 'cerco' ? 'de quem cerca ' : '') + '“' + e.nome + '” (' + (menos ? e.tendas + ' das ' + e.quer + ' tendas' : plural(e.tendas, 'tenda')) + ' e ' + plural(e.fogos, 'fogueira') +
-        (e.maq ? ', com ' + plural(e.maq, 'máquina de cerco parada', 'máquinas de cerco paradas') : '') + (menos ? '; ' + (p.tamanho === 'grande' ? 'não cabe mais' : 'no tamanho Grande cabe mais') : '') + ')');
+        (e.maq ? ', com ' + plural(e.maq, 'máquina de cerco parada', 'máquinas de cerco paradas') : '') + (menos ? '; ' + (maior ? 'não cabe mais' : comoCabe) : '') + ')');
     }
     if (I.bat) partes.push('o campo de batalha (' + I.bat.nome + ', ' + quando(I.bat.dias) + ')' + (I.bat.brasas ? ' com as brasas ainda acesas' : I.bat.covas ? ' com ' + (I.bat.covas === 1 ? 'a cova' : 'as covas') : ''));
-    if (I.marca) partes.push(I.marca.t === 'd' ? 'o chão queimado do hexágono destruído' + (I.marca.casas ? (I.marca.casas === 1 ? ' e a casa queimada' : ' e ' + I.marca.casas + ' casas queimadas') : '') : 'a terra corrompida do hexágono' + (I.marca.cristais ? ' com os cristais negros' : ''));
-    if (I.fora) partes.push('sem lugar para ' + juntar(I.fora) + ' (a cena não comporta' + (p.tamanho !== 'grande' ? '; no tamanho Grande cabe mais' : '') + ')');
+    if (I.marca) {
+      const nl = I.marca.noLugar || 0, fora = I.marca.casas - nl;
+      partes.push(I.marca.t === 'd' ? 'o chão queimado do hexágono destruído' + (nl ? (nl === 1 ? ' e uma casa do lugar queimada' : ' e ' + nl + ' casas do lugar queimadas') : fora ? (fora === 1 ? ' e a casa queimada' : ' e ' + fora + ' casas queimadas') : '') : 'a terra corrompida do hexágono' + (I.marca.cristais ? ' com os cristais negros' : ''));
+    }
+    if (I.outroCerco) partes.push('o cerco de ' + I.outroCerco + ' fica fora da cena (o lugar cercado é outro, no mesmo hexágono)');
+    if (I.fora) partes.push('sem lugar para ' + juntar(I.fora) + ' (' + (I.arredores ? 'os arredores não comportam' : 'a cena não comporta') + (!maior ? '; ' + comoCabe : '') + ')');
     return partes;
   }
 
@@ -858,10 +994,11 @@ const MarcasGuerra = (() => {
     g.restore();
   }
   // a trincheira: a vala escura e, do lado de cá (o contrário de d, o lado do lugar), o monte da terra tirada
+  // (lote 14, parte 14c: ds — a direção do lugar em cada ponto, na trincheira em volta dele)
   function trincheira(g, o, c, rnd) {
-    const pts = o.pts || [], d = o.d || [1, 0], L = (o.larg || 0.85) * c;
+    const pts = o.pts || [], d0 = o.d || [1, 0], L = (o.larg || 0.85) * c, dd = i => (o.ds && o.ds[i]) || d0;
     if (pts.length < 2) return;
-    const linha = (off, w, cor, a) => { g.globalAlpha = a; g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], i) => { const X = (x + d[0] * off) * c, Y = (y + d[1] * off) * c; if (i) g.lineTo(X, Y); else g.moveTo(X, Y); }); g.stroke(); };
+    const linha = (off, w, cor, a) => { g.globalAlpha = a; g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], i) => { const d = dd(i), X = (x + d[0] * off) * c, Y = (y + d[1] * off) * c; if (i) g.lineTo(X, Y); else g.moveTo(X, Y); }); g.stroke(); };
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
     linha(-0.75, c * 0.7, '#8a7254', 0.9);
     linha(-0.78, c * 0.36, '#a08a68', 0.6);
@@ -869,7 +1006,7 @@ const MarcasGuerra = (() => {
     linha(0, L, '#21180f', 0.95);
     linha(0.05, L * 0.35, '#120d08', 0.6);
     g.globalAlpha = 0.8; g.fillStyle = '#6a5438';
-    for (let i = 0; i < pts.length; i += 1) { const [x, y] = pts[i]; g.beginPath(); g.arc((x - d[0] * (0.6 + rnd() * 0.4)) * c, (y - d[1] * (0.6 + rnd() * 0.4)) * c, c * (0.05 + rnd() * 0.06), 0, TAU); g.fill(); }
+    for (let i = 0; i < pts.length; i += 1) { const [x, y] = pts[i], d = dd(i); g.beginPath(); g.arc((x - d[0] * (0.6 + rnd() * 0.4)) * c, (y - d[1] * (0.6 + rnd() * 0.4)) * c, c * (0.05 + rnd() * 0.06), 0, TAU); g.fill(); }
     g.restore();
   }
   // a casa queimada: o alicerce de pedra, o chão de cinzas, as vigas carbonizadas, o entulho e a chaminé de pé

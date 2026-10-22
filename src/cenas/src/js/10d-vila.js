@@ -693,37 +693,50 @@ const Vila = (() => {
     areia: { base: '#c9a86a', manchas: ['#bf9c5e', '#d4b57a', '#b8935a', '#cfae72', '#b48c52'], fios: ['#d8bd85', '#a8844c'], rua: ['#a88a5a', '#bfa274', '#cdb388'], copa: ['#5e7a3a', '#6f8c45', '#4f6a30'], luz: '#87a457', agua: ['#356f8c', '#4683a0', '#69a2bc'], margem: '#9a7d4c' },
     neve: { base: '#dfe6ec', manchas: ['#cfd8e0', '#e9eef2', '#c4ced8', '#f2f5f8', '#bcc7d2'], fios: ['#f4f7fa', '#b9c4ce'], rua: ['#8e8273', '#a99d8d', '#bdb3a6'], copa: ['#2f4a3c', '#3a5a49', '#456a56'], luz: '#e8f0f2', agua: ['#5d8aa6', '#7aa3bc', '#a9c8da'], margem: '#9aa6b0' },
   };
-  function pintar(p, cell) {
+  /* (lote 14, parte 14c) op: { g, dx, dy, semChao, semVinheta, recorte } — a vila dentro dos arredores: noutra tela,
+     deslocada (em quadrados), sem o chão (o sorteio dele corre numa tela de um pixel: o resto sai igual), sem a vinheta e,
+     com o recorte, só dentro do retângulo dela (menos as árvores, que passam um pouco da beira) */
+  function pintar(p, cell, op) {
+    op = op || {};
     const W = p.W * cell, H = p.H * cell, pal = PAL[p.terreno] || PAL.campo, est = Estilos.valido(p.estilo), TP = Estilos.tipos(est);
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x5bd1e995) >>> 0 || 7), c = cell;
+    const cv = op.g ? op.g.canvas : document.createElement('canvas');
+    if (!op.g) { cv.width = W; cv.height = H; }
+    const g = op.g || cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x5bd1e995) >>> 0 || 7), c = cell;
     const TAU2 = Math.PI * 2;
+    if (op.g) { g.save(); g.translate((op.dx || 0) * c, (op.dy || 0) * c); }
     // o chão
-    g.fillStyle = pal.base; g.fillRect(0, 0, W, H);
-    for (let i = 0, n = Math.round(p.W * p.H * 0.9); i < n; i++) {
-      const rr = (0.45 + rnd() * 1.4) * c;
-      g.globalAlpha = 0.1 + rnd() * 0.14; g.fillStyle = pal.manchas[i % pal.manchas.length];
-      g.beginPath(); g.ellipse(rnd() * W, rnd() * H, rr, rr * (0.5 + rnd() * 0.6), rnd() * Math.PI, 0, TAU2); g.fill();
-    }
-    g.lineCap = 'round';
-    if (p.terreno === 'areia') {
-      g.globalAlpha = 0.25; g.lineWidth = Math.max(1, c * 0.03);
-      for (let i = 0, n = Math.round(p.W * p.H * 0.35); i < n; i++) {
-        const x = rnd() * W, y = rnd() * H, l = c * (0.4 + rnd() * 0.9);
-        g.strokeStyle = pal.fios[i % 2]; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - c * 0.12, x + l, y); g.stroke();
+    { const gc = op.semChao ? Encontro.motor.telinha() : g;
+      gc.fillStyle = pal.base; gc.fillRect(0, 0, W, H);
+      for (let i = 0, n = Math.round(p.W * p.H * 0.9); i < n; i++) {
+        const rr = (0.45 + rnd() * 1.4) * c;
+        gc.globalAlpha = 0.1 + rnd() * 0.14; gc.fillStyle = pal.manchas[i % pal.manchas.length];
+        gc.beginPath(); gc.ellipse(rnd() * W, rnd() * H, rr, rr * (0.5 + rnd() * 0.6), rnd() * Math.PI, 0, TAU2); gc.fill();
       }
-    } else {
-      g.globalAlpha = p.terreno === 'neve' ? 0.22 : 0.3; g.lineWidth = Math.max(1, c * 0.024);
-      for (let i = 0, n = Math.round(p.W * p.H * (p.terreno === 'neve' ? 1.2 : 4)); i < n; i++) {
-        const x = rnd() * W, y = rnd() * H, a = -Math.PI / 2 + (rnd() - 0.5) * 0.9, l = c * (0.06 + rnd() * 0.1);
-        g.strokeStyle = pal.fios[i % 2]; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+      gc.lineCap = 'round';
+      if (p.terreno === 'areia') {
+        gc.globalAlpha = 0.25; gc.lineWidth = Math.max(1, c * 0.03);
+        for (let i = 0, n = Math.round(p.W * p.H * 0.35); i < n; i++) {
+          const x = rnd() * W, y = rnd() * H, l = c * (0.4 + rnd() * 0.9);
+          gc.strokeStyle = pal.fios[i % 2]; gc.beginPath(); gc.moveTo(x, y); gc.quadraticCurveTo(x + l / 2, y - c * 0.12, x + l, y); gc.stroke();
+        }
+      } else {
+        gc.globalAlpha = p.terreno === 'neve' ? 0.22 : 0.3; gc.lineWidth = Math.max(1, c * 0.024);
+        for (let i = 0, n = Math.round(p.W * p.H * (p.terreno === 'neve' ? 1.2 : 4)); i < n; i++) {
+          const x = rnd() * W, y = rnd() * H, a = -Math.PI / 2 + (rnd() - 0.5) * 0.9, l = c * (0.06 + rnd() * 0.1);
+          gc.strokeStyle = pal.fios[i % 2]; gc.beginPath(); gc.moveTo(x, y); gc.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); gc.stroke();
+        }
       }
+      gc.globalAlpha = 1;
     }
-    g.globalAlpha = 1;
+    // (sem o chão: o resto começa com o mesmo estado da tela)
+    if (op.semChao) { const t = Encontro.motor.telinha(); Object.assign(g, { lineCap: t.lineCap, lineWidth: t.lineWidth, globalAlpha: 1, strokeStyle: t.strokeStyle, fillStyle: t.fillStyle }); }
+    // (com o recorte: tudo, menos as árvores, só dentro do retângulo da vila)
+    if (op.recorte) { g.save(); g.beginPath(); g.rect(0, 0, W, H); g.clip(); }
     const linha = pts => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); };
     // (lote 7) os quintais atrás das casas (num sorteio à parte: o resto do desenho fica igual)
     { const rq2 = mulberry((p.seed ^ 0x3c6ef372) >>> 0 || 3); for (const q of p.quintais || []) Estilos.quintal(g, q, c, rq2); }
-    // o rio (por baixo das ruas: a ponte passa por cima)
+    // o rio (por baixo das ruas: a ponte passa por cima; lote 14, parte 14c — com o recorte, o rio fica dentro do
+    // retângulo: o anel dos arredores o continua da beira para fora, sem emenda; o lago passa da beira)
     if (p.rio) {
       const pts = p.rio.pts, hw = p.rio.hw;
       g.lineJoin = 'round'; g.lineCap = 'butt';
@@ -745,8 +758,10 @@ const Vila = (() => {
         linha(pa); g.strokeStyle = pal.agua[0]; g.lineWidth = ha * 2 * c; g.stroke();
         linha(pa); g.strokeStyle = pal.agua[1]; g.lineWidth = ha * 1.3 * c; g.stroke();
       }
-      if (p.lago) Paisagem.lago(g, p.lago, c, rnd, p.terreno, 'agua');
     }
+    if (op.recorte) g.restore();
+    if (p.rio && p.lago) Paisagem.lago(g, p.lago, c, rnd, p.terreno, 'agua');
+    if (op.recorte) { g.save(); g.beginPath(); g.rect(0, 0, W, H); g.clip(); }
     // (lote 8) as pedras do relevo natural, em grupos
     if (p.pedras && p.pedras.length) { const cp = Paisagem.pedraDe(p.terreno === 'areia' ? 'areia' : p.terreno === 'neve' ? 'neve' : p.terreno === 'floresta' ? 'floresta' : 'campo'); for (const q of p.pedras) Paisagem.pedra(g, q.x, q.y, q.r, c, rnd, cp); }
     // as ruas (com as cores do estilo) e a praça
@@ -821,12 +836,16 @@ const Vila = (() => {
         for (const [a, b] of m.lados.l) for (let t = a + 0.21; t < b; t += passo) tronco(m.x2 * c, t * c);
       }
     }
+    if (op.recorte) g.restore();
     for (const a of p.arvores) Estilos.arvore(g, a, c, rnd, p.especie || 'folhosa', pal, p.terreno === 'neve');
     g.globalAlpha = 1;
     // um escurecido de leve nas bordas
-    const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.22)');
-    g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    if (!op.semVinheta) {
+      const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
+      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.22)');
+      g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    }
+    if (op.g) g.restore();
     return cv;
   }
 
@@ -845,8 +864,17 @@ const Vila = (() => {
     sc.weather = { k: WEATHERS.some(w => w[0] === (ex && ex.clima)) ? ex.clima : '', pow: 0.6 };
     sc.bgColor = (PAL[p.terreno] || PAL.campo).base;
     try { const cv = pintar(p, c); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
+    montar(sc, p, c, ex);
+    normalizeScene(sc);
+    Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
+    return sc;
+  }
+  /* (lote 14, parte 14c: à parte — os arredores montam a vila numa cena de rascunho e a deslocam) As paredes, as portas
+     e as janelas de cada casa, os móveis, a luz de dentro à noite (sc.tone), a muralha, o poço, os lampiões, os enfeites,
+     o relevo e as formas. */
+  function montar(sc, p, c, ex) {
     const parede = (x1, y1, x2, y2, k, extra) => sc.walls.push(Object.assign({ id: uid('wl'), k: k || 'wall', x1: x1 * c, y1: y1 * c, x2: x2 * c, y2: y2 * c, open: false, locked: false }, extra || null));
-    const noite = tom.id === 'noite' || tom.id === 'breu';
+    const noite = sc.tone === 'noite' || sc.tone === 'breu';
     for (const k of p.casas) {
       for (const s of Estilos.paredesDaCasa(k)) parede(s.x1, s.y1, s.x2, s.y2, s.k);
       // o tapete vai primeiro (fica por baixo dos outros móveis)
@@ -874,9 +902,6 @@ const Vila = (() => {
       for (const r of p.relevo || []) sc.shapes.push(Estilos.terrenoNaCena(r, c, 0, 0));
       for (const f of p.formas || []) sc.shapes.push(Estilos.formaNaCena(f, c, 0, 0));
     }
-    normalizeScene(sc);
-    Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
-    return sc;
   }
 
   /* ================= a prévia ================= */
@@ -895,6 +920,11 @@ const Vila = (() => {
     cv.width = fundo.width; cv.height = fundo.height;
     const g = cv.getContext('2d');
     g.drawImage(fundo, 0, 0);
+    previaSobre(g, p, cell, op);
+    return { cell };
+  }
+  // (lote 14, parte 14c: o que vai por cima do fundo na prévia, à parte)
+  function previaSobre(g, p, cell, op) {
     if (!op || op.relevo !== false) Estilos.relevoNaPrevia(g, p.relevo, p.formas, cell, 1.5);
     g.lineCap = 'round';
     const seg = (s, cor, w) => { g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); g.moveTo(s.x1 * cell, s.y1 * cell); g.lineTo(s.x2 * cell, s.y2 * cell); g.stroke(); };
@@ -904,7 +934,6 @@ const Vila = (() => {
       for (const mv of k.moveis) { g.beginPath(); g.arc((mv.x + mv.s / 2) * cell, (mv.y + mv.s / 2) * cell, Math.max(1.5, cell * 0.18 * mv.s), 0, Math.PI * 2); g.fill(); }
     }
     if (p.muro) for (const gt of p.muro.portoes) seg(gt, '#7fd1ff', Math.max(2, cell * 0.2));
-    return { cell };
   }
 
   /* ================= o lugar, para a janela do gerador ================= */
@@ -918,7 +947,8 @@ const Vila = (() => {
   }
   const lembrar = st => { App.opt.vilaTam = st.tamanho; App.opt.vilaTer = st.terreno; App.opt.vilaRio = st.rio; App.opt.vilaMuro = st.muralha; App.opt.vilaTracado = Tracado.soMudadas(st.t || Tracado.padrao()); };
   // os controles: mudou(true) sorteia o plano de novo (mesma semente); soltar() avisa que as partes travadas saíram
-  function controles(st, K, mudou) {
+  // (lote 14, parte 14c: ctx.hex — com os arredores, o rio e os portões vêm do hexágono do Mapa-múndi: a nota no lugar da rosa)
+  function controles(st, K, mudou, ctx) {
     const { field, seg, toggle, stepper } = K, T = TAMANHOS[st.tamanho];
     return h('div', { class: 'ger-c' },
       h('div', { class: 'ger-l' },
@@ -930,9 +960,9 @@ const Vila = (() => {
         toggle('vila-rio', st.rio, v => { st.rio = v; lembrar(st); mudou(true); }, 'Com rio (e uma ponte)'),
         toggle('vila-muro', st.muralha, v => { st.muralha = v; lembrar(st); mudou(true); }, 'Com paliçada (portões abertos)')),
       // (lote 8) o traçado: os portões na rosa, a forma da paliçada, o rio, a praça, as pontes e o relevo natural
-      Tracado.secao(st.t || (st.t = Tracado.padrao()), K, () => { lembrar(st); mudou(true); }, { pre: 'vila', portoes: 'Portões',
+      Tracado.secao(st.t || (st.t = Tracado.padrao()), K, () => { lembrar(st); mudou(true); }, Object.assign({ pre: 'vila', portoes: 'Portões',
         muro: { nome: 'Paliçada', formas: [['ret', 'Retângulo'], ['oct', 'Octógono'], ['redonda', 'Redonda'], ['irregular', 'Irregular']], ligada: !!st.muralha, padraoLigada: false, ligar: v => { st.muralha = v; } },
-        rio: st.rio ? true : false, praca: true, pontes: true }));
+        rio: st.rio ? true : false, praca: true, pontes: true }, Arredores.notasHex(ctx, !!st.rio))));
   }
   // as escolhas que vão num modelo, e de volta (o que não fizer sentido fica como está)
   const opcoesDe = st => Object.assign({ tamanho: st.tamanho, terreno: st.terreno, rio: !!st.rio, muralha: !!st.muralha, casas: st.casas }, Tracado.soMudadas(st.t || Tracado.padrao()));
@@ -953,5 +983,5 @@ const Vila = (() => {
     feito: (sc, p) => `"${sc.name}" criada: ${p.casas.length} ${p.casas.length === 1 ? 'casa' : 'casas'}, com paredes, portas, janelas e móveis. Tudo é editável.` };
   // (o atalho de antes: abre a janela do gerador no vilarejo)
   const abrir = () => Gerador.abrir('vila');
-  return { TAMANHOS, TERRENOS_V, PAL, gerar, pintar, criar, previa, resumo, parteEm, formaDaParte, alternar, travada, travaDe, limparTrava, nomePadrao, janelasDe, mobiliar, LUGAR, abrir };
+  return { TAMANHOS, TERRENOS_V, PAL, gerar, pintar, criar, montar, previa, previaSobre, resumo, parteEm, formaDaParte, alternar, travada, travaDe, limparTrava, nomePadrao, janelasDe, mobiliar, LUGAR, abrir };
 })();

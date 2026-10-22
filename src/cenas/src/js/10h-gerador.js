@@ -10,7 +10,8 @@
    cenas). Nada muda nas cenas que já existem até "Criar a cena".
    --------------------------------------------------------------- */
 const Gerador = (() => {
-  const LUGARES = [Vila.LUGAR, Cidade.LUGAR, Tribo.LUGAR, Encontro.LUGAR, Regiao.LUGAR, Ruinas.LUGAR, Masmorra.LUGAR, Porto.LUGAR];
+  // (lote 14, parte 14c: o Vilarejo, a Cidade, a Tribo, as Ruínas e o Porto com os arredores — Arredores.envolver)
+  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Encontro.LUGAR, Regiao.LUGAR, Arredores.LUGARES.ruinas, Masmorra.LUGAR, Arredores.LUGARES.porto];
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
@@ -103,6 +104,9 @@ const Gerador = (() => {
       for (const k of Object.keys(App.opt)) if (!(k in lembrado)) delete App.opt[k];
       Object.assign(App.opt, lembrado);
     }
+    // (lote 14, parte 14c) os lugares com os arredores vêm preenchidos pelo hexágono: o rio (de onde vem e para onde vai) e
+    // os portões nas direções dos caminhos do mapa — sem mexer no que a janela lembra
+    if (hexPedido && HexCena.aceita(hexPedido)) for (const l of LUGARES) if (l.preencherHex) l.preencherHex(estadoDe(l).op, hexPedido);
     let nomeMexido = !!(pre && typeof pre.nome === 'string' && pre.nome.trim()), foco = -1, sobre = null, modeloNovo = false;
     const idPedido = pre && typeof pre.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(pre.id) ? pre.id : null;
     const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 460, height: 330, tabindex: 0, 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
@@ -269,7 +273,7 @@ const Gerador = (() => {
         K.toggle('ger-hex', comum.comHex, v => { comum.comHex = v; const E2 = estadoDe(L); E2.trava = null; E2.base = null; pintar(); refazer(); }, 'Com o hexágono do Mapa-múndi: os vizinhos nas bordas, o rio e os caminhos pelos lados certos'),
         (n => { n.id = 'ger-hex-txt'; return n; })(note(HexCena.texto(hexPedido, L.biomaDe ? L.biomaDe(E.op) : null))),
         comum.comHex && hexPedido.guerra ? MarcasGuerra.campo(hexPedido.guerra, comum.guerra, K, v => { comum.guerra = v; const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }) : null)
-        : hexPedido && L.aceitaHex ? h('div', { class: 'ger-hex', id: 'ger-hex-bloco' }, (n => { n.id = 'ger-hex-nao'; return n; })(note(!HexCena.aceita(hexPedido)
+        : hexPedido && L.aceitaHex ? h('div', { class: 'ger-hex', id: 'ger-hex-bloco' }, (n => { n.id = 'ger-hex-nao'; return n; })(note(L.hexNaoTxt && L.hexNaoTxt(E.op, hexPedido) ? L.hexNaoTxt(E.op, hexPedido) : !HexCena.aceita(hexPedido)
           ? (hexPedido.ter === 'agua' ? 'O hexágono do Mapa-múndi é de água: os vizinhos, o rio e os caminhos dele não entram aqui.' : 'O hexágono do Mapa-múndi não tem terreno: pinte o terreno dele (na aba Terreno do Mapa-múndi) para os vizinhos, o rio e os caminhos entrarem.')
           : 'O hexágono do Mapa-múndi não entra no pântano nem na água: eles cobrem a cena toda.'))) : null;
       ctl.replaceChildren(...[blocoHex,

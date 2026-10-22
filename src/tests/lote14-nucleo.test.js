@@ -10,7 +10,9 @@
 //   · (14b) a guerra do hexágono (guerraDoHex): a batalha mais nova (os dias, os lados com as cores — a bandeira do clã,
 //     a da facção, a cor dela e um tom; sem facção, a do grupo; sem nada, as neutras — e as tropas que ainda têm), a marca,
 //     os exércitos juntos pela facção (até dois; as máquinas pelo desenho; o escondido), o cerco (o lugar no tijolo, quem
-//     cerca e as máquinas a até um hexágono; quem está dentro não acampa; o lugar ocupado).
+//     cerca e as máquinas a até um hexágono; quem está dentro não acampa; o lugar ocupado);
+//   · (14c) o pedido do marcador ("Gerar este lugar…"): o cerco do próprio lugar vem primeiro e sai marcado (aqui); o de
+//     outro lugar do mesmo hexágono, sem a marca; o resto do pedido é o mesmo.
 // Uso: node src/tests/lote14-nucleo.test.js
 'use strict';
 const path = require('path');
@@ -245,6 +247,30 @@ for (const orient of ['pe', 'deitado']) {
     const g2 = N.guerraDoHex(N.normalizarMapa(m), 0, 0, T);
     ok(g2.dentro === 1 && g2.maisExes === 2, 'o lugar ocupado: quem ocupa é o dono (os de dentro são os dele; a guarda de antes e a aliada dela acampam fora): ' + JSON.stringify([g2.dentro, g2.maisExes]));
   }
+}
+
+// ---------------- (14c) o pedido do marcador ("Gerar este lugar…"): o cerco do próprio lugar ----------------
+{
+  const m = mapa('pe', 'mp_14c');
+  m.cal.dia = 50;
+  m.faccoes = [Object.assign(N.faccaoNova('Ferro', '#b03a2e'), { id: 'fc_a' }), Object.assign(N.faccaoNova('Corvos', '#101820'), { id: 'fc_b' })];
+  const p = N.centroHex(m, 0, 0);
+  m.objs.push(Object.assign(N.objNovo('m', { x: p.x + 15, y: p.y - 10 }), { id: 'mk1', nome: 'Pedravale', ic: 'castelo', cerco: { fac: 'fc_a', d: 42 } }));
+  m.objs.push(Object.assign(N.objNovo('m', { x: p.x - 12, y: p.y + 8 }), { id: 'mk2', nome: 'Torre Velha', ic: 'torre', cerco: { fac: 'fc_b', d: 47 } }));
+  m.objs.push(Object.assign(N.objNovo('m', { x: p.x, y: p.y + 14 }), { id: 'mk3', nome: 'Vau', ic: 'vila' }));
+  const mm = N.normalizarMapa(m), H = opc => N.hexParaCena(mm, 0, 0, opc);
+  const sem = H(), m1 = H({ marcador: 'mk1' }), m2 = H({ marcador: 'mk2' }), m3 = H({ marcador: 'mk3' });
+  eq([sem.guerra.cerco.nome, 'aqui' in sem.guerra.cerco], ['Pedravale', false], 'sem o marcador: o cerco do primeiro lugar cercado do hexágono, sem aqui');
+  eq([m1.guerra.cerco.nome, m1.guerra.cerco.aqui], ['Pedravale', true], 'o marcador cercado: o cerco dele, aqui (a cena é o próprio lugar cercado)');
+  eq([m2.guerra.cerco.nome, m2.guerra.cerco.aqui, m2.guerra.cerco.fac, m2.guerra.cerco.dias], ['Torre Velha', true, 'Corvos', 3], 'o outro lugar cercado do mesmo hexágono: o cerco dele vem primeiro');
+  eq([m3.guerra.cerco.nome, 'aqui' in m3.guerra.cerco], ['Pedravale', false], 'o marcador que não está cercado: o cerco do outro lugar, sem aqui (fica fora da cena dele)');
+  ok(JSON.stringify(H({ marcador: 'nao_tem' })) === JSON.stringify(sem) && JSON.stringify(H({ marcador: 5 })) === JSON.stringify(sem) && JSON.stringify(H({})) === JSON.stringify(sem), 'o marcador que não existe (ou que não é texto): como sem marcador');
+  const semG = o => { const x = Object.assign({}, o); delete x.guerra; return JSON.stringify(x); };
+  ok(semG(m1) === semG(sem) && semG(m2) === semG(sem) && semG(m3) === semG(sem), 'o resto do pedido é o mesmo (o terreno, os vizinhos, os rios e os caminhos)');
+  // (sem cerco nenhum no hexágono, o marcador não muda nada)
+  const m4 = mapa('pe', 'mp_14c'); m4.objs.push(Object.assign(N.objNovo('m', { x: p.x, y: p.y }), { id: 'mk9', nome: 'Só', ic: 'vila' }));
+  const mm4 = N.normalizarMapa(m4);
+  ok(JSON.stringify(N.hexParaCena(mm4, 0, 0, { marcador: 'mk9' })) === JSON.stringify(N.hexParaCena(mm4, 0, 0)) && !('guerra' in N.hexParaCena(mm4, 0, 0, { marcador: 'mk9' })), 'sem guerra no hexágono, o pedido do marcador é o do hexágono');
 }
 
 console.log((bad ? 'FALHOU: ' : 'ok: ') + (n - bad) + '/' + n + ' conferências da cena do hexágono (núcleo)');

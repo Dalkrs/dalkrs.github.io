@@ -53,7 +53,8 @@ const SHOTS = process.env.FOTOS;
     const g0 = await G();
     ok(await ev(() => __tc.Gerador.vivo().lugar) === 'cidade' && g0.plano.lugar === 'cidade' && g0.plano.W === 80 && g0.plano.H === 56 && g0.plano.modo === 'completa', 'a aba Cidade: a cidade média, em cena completa, de 80 × 56 quadrados');
     const ctl = (await page.locator('.ger-op').innerText()).replace(/\n+/g, ' | ');
-    ok(/Como \| Cena completa \| Mapa de bairros \| Tamanho \| Pequena \| Média \| Grande \| Terreno \| Campo \| Floresta \| Deserto \| Neve \| Prédios \| 42 \| Com rio \(e pontes\) \| Com muralha \(portões abertos\)/.test(ctl), 'as escolhas da cidade: como, tamanho, terreno, quantos prédios, rio e muralha — ' + ctl.slice(0, 200));
+    // (lote 14, parte 14c: os arredores logo depois do tamanho e do terreno)
+    ok(/Como \| Cena completa \| Mapa de bairros \| Tamanho \| Pequena \| Média \| Grande \| Terreno \| Campo \| Floresta \| Deserto \| Neve \| Arredores \| Nenhum \| Pouco \| Médio \| Muito \| Prédios \| 42 \| Com rio \(e pontes\) \| Com muralha \(portões abertos\)/.test(ctl), 'as escolhas da cidade: como, tamanho, terreno, os arredores, quantos prédios, rio e muralha — ' + ctl.slice(0, 240));
     ok(/^\d+ prédios( \(couberam \d+ dos 42\))? · 80 × 56 quadrados · muralha com [34] portões · rio com \d+ pontes?\.$/.test(await page.locator('#ger-resumo').innerText()), 'o resumo: prédios, medidas, a muralha e os portões, o rio e as pontes — ' + await page.locator('#ger-resumo').innerText());
     ok(/um prédio, ou as ruas e a praça — o traçado/.test(await page.locator('#ger-dica').innerText()) && /marcador de Entrada \(só seu\) na porta de cada um/.test(await page.locator('.modal').innerText()), 'a dica e a nota são as da cidade');
     ok(await page.locator('#ger-nome').inputValue() === 'Cidade', 'o nome da cena: "Cidade" (sem nome inventado)');

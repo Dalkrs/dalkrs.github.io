@@ -1190,6 +1190,51 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 - **O que sai igual**: sem guerra no hexágono, ou com as marcas desligadas, os planos são os de antes (conferidos: 312
   planos e 50 desenhos dos geradores de fora e 1.200 planos de hexágono, com e sem a história e os achados).
 
+### Os arredores do lugar (lote 14, parte 14c)
+
+- **A escolha** (`Arredores`, 10fb-arredores.js): o Vilarejo, a Cidade (a cena completa), a Tribo, as Ruínas e o Porto
+  ganham os **Arredores** na janela — Nenhum (o lugar sozinho, como sempre), Pouco (uns 4 quadrados de cada lado), Médio
+  (uns 8; o de começo) e Muito (uns 14: cabem os acampamentos e a batalha). A janela lembra a escolha. O lugar sai como
+  sempre e fica no meio da cena, com o chão de fora em volta. No mapa de bairros da Cidade os arredores não entram (a
+  nota diz). Com eles, a **História** e os **Achados raros** dos arredores (a batalha antiga, o acampamento abandonado, o
+  incêndio e as ruínas pequenas em volta do lugar; o achado só o mestre vê). O modelo guarda os arredores; o modelo de
+  antes deles abre o lugar sozinho, como era.
+- **O anel**: o chão do terreno do lugar (com o hexágono, o dele), as manchas dos biomas vizinhos longe do lugar, a
+  vegetação e os enfeites de cada bioma, os morros e os penhascos a três quadrados ou mais do lugar e da água. O lugar
+  de outro chão (a Cidade no campo, num hexágono de floresta) fica numa clareira do chão dele, de beira macia. O rio e
+  os caminhos do lugar seguem pelos arredores até a borda — o rio a um ou dois quadrados do lugar, descendo pelo relevo;
+  o caminho reto para fora e depois pelo mais barato —, com as pontes onde cruzam, nas cores e na largura do lugar: o
+  desenho do lugar fica dentro da beira dele e o anel continua o rio e os caminhos dali, sem emenda; o relevo da água (a
+  fundura, a do rio do lugar) é um só, de borda a borda, e todos os caminhos dos arredores têm as cores do lugar (o do
+  mapa que chega no dele também). O que o lugar desenha além da beira de propósito (as copas, o lago, o mar e a praia do
+  Porto, o lago das palafitas) fica, e o anel não põe nada em cima.
+- **Com o hexágono**: "Gerar este lugar…", no marcador do Mapa-múndi, manda o hexágono dele junto (a masmorra, não; o
+  encontro do marcador — a ponte, a floresta, a montanha — também leva). O chão do hexágono e os vizinhos nas bordas, a
+  água dos vizinhos fora do lugar; o lugar vem preenchido — o rio do mapa (ligado, de onde vem e para onde vai) e os
+  portões onde chegam os caminhos do mapa (o Traçado diz, no lugar das rosas) —, sem mexer no que a janela lembra. O rio
+  do lugar sai pelo ponto exato do rio do mapa na borda; no lugar sem rio (as Ruínas), o rio do mapa passa em volta. Os
+  caminhos do lugar vão até as pontas dos caminhos do mapa: a ponta do mapa que sobra chega no caminho que já existe; o
+  caminho do lugar que sobra acaba no campo (o resumo diz); a ponta que cai no mar vai até a beira. O mar do Porto e o da
+  Cidade ficam no lado da água do hexágono, de borda a borda da cena. Com os arredores em Nenhum, o chão do hexágono não
+  entra (a nota diz por quê).
+- **A guerra em volta do lugar** (as marcas da parte 14b, nos arredores): o **cerco do próprio lugar** (o pedido do
+  marcador marca o cerco dele, `hexParaCena(m, q, r, { marcador })`) — a trincheira em volta, a uns dois quadrados da
+  beira (com as passagens nos caminhos), as estacas do lado de lá, as máquinas atrás dela viradas para o meio do lugar,
+  o aríete diante de um portão (o da muralha da vila e da cidade, o portão arrombado do forte, a paliçada da tribo), as
+  flechas e os buracos dos tiros, o estandarte e, mais para fora, o acampamento de quem cerca (ou o posto), com o
+  marcador do mestre ("Cerco de Pedravale (há 5 dias, Casa de Ferro)"). O cerco de outro lugar do mesmo hexágono fica
+  fora da cena (o resumo diz). No **hexágono destruído**, umas quatro em cada dez casas do próprio lugar queimadas (de
+  uma a seis): a fuligem, as duas primeiras fechadas desabadas (as cinzas, as vigas e a chaminé), o chão chamuscado nas
+  abertas e nas redondas (a tenda, a iurte e o iglu queimam na forma delas), com o marcador do mestre nas três primeiras.
+  O corrompido e a batalha fresca ficam nos arredores. Os acampamentos e a batalha precisam de espaço: quando não cabem,
+  o resumo diz ("com os arredores em Muito cabe mais").
+- **A cena criada**: do tamanho dos arredores, com o fundo esticado (o anel, o lugar por cima e as marcas no lugar); as
+  paredes, as portas, os móveis, as luzes, os marcadores e a entrada da masmorra do lugar, deslocados para o meio; os
+  marcadores dos arredores (a história, a guerra) ocultos. O aviso diz que eles vieram junto ("Os arredores (Médio) vieram junto.").
+- **O que sai igual**: com os arredores em Nenhum, os planos, as prévias, os resumos e as cenas de sempre (conferidos:
+  502 impressões dos lugares, dos desenhos e das cenas, 312 planos e 50 desenhos dos geradores de fora e 1.200 planos de
+  hexágono).
+
 ### A Guerra no Mapa-múndi (lote 8)
 
 - **A aba Guerra** (só do mestre; `mundo/guerra-painel.js`, `window.MundoGuerraPainel`, com as contas em
@@ -3018,4 +3063,29 @@ aríete na frente), as estacas, o acampamento de quem cerca, quem está dentro s
 máquinas e o cerco desligado; com `SO=janela`, os botões no bloco do hexágono, desligar um nas duas abas, a chave
 desligada, a cena criada (os marcadores ocultos com o nome, as fogueiras acesas), a nota do cerco, a batalha antiga sem
 mexer na História e o escondido; com `SO=robusto`, guerras sorteadas nos dois lugares (sem erro e rápido). O
-`mundo-cenas.test.js` confere a guerra no pedido da cena e, de ponta a ponta, os botões das marcas nas Cenas.
+`mundo-cenas.test.js` confere a guerra no pedido da cena e, de ponta a ponta, os botões das marcas nas Cenas. Na parte
+14c, o `lote14-nucleo.test.js` confere o pedido do marcador: o cerco do próprio lugar marcado (aqui), o do outro lugar
+cercado do mesmo hexágono primeiro quando é ele quem pede, o marcador que não está cercado (o cerco do outro, sem a
+marca), o marcador que não existe e o resto do pedido igual. O `src/cenas/test/lote14c.js` confere os arredores: com
+`SO=dados`, os níveis, as passagens de uma linha pela beira (a que corre rente vai junto) e o pedido do marcador; com
+`SO=igual`, o Nenhum dando o plano, a prévia e o resumo de sempre (e o lugar de dentro igual ao de sempre) nos cinco
+lugares, e a Cidade de bairros sem os arredores; com `SO=anel`, o tamanho, o lugar bloqueado e limpo, a faixa sem
+árvores, o rio e os caminhos continuados até a borda, o rio longe do lugar, os morros e as manchas longe dele, as cores
+e a largura do lugar no que continua, o relevo do rio continuado um só; com `SO=emenda`, o rio e os caminhos de cada lugar dentro da beira dele (a tela
+só do lugar, nas pontas de fora); com `SO=hex`, o chão do hexágono, o lugar preenchido (o rio do mapa e os portões), o
+rio pelo ponto do mapa, as pontas dos caminhos, a água dos vizinhos fora do lugar, a clareira do lugar de outro chão, o
+rio do mapa em volta do lugar sem rio, os caminhos que sobram (e a ponta que cai no mar) e a estrada da Cidade
+pintada com as cores dela, nas duas orientações; com `SO=mar`, o mar do Porto e da
+Cidade no lado da água, de borda a borda, sem árvore nele; com `SO=guerra`, o cerco em volta (a trincheira nos quatro
+lados, as máquinas viradas para o meio, o aríete no portão do forte, as flechas, o marcador, o acampamento do lado de
+fora da trincheira e o do Médio que não cabe), o cerco de outro lugar fora da cena, as casas queimadas na vila, na
+cidade e na tribo (as redondas na forma delas), o corrompido em volta, os acampamentos no Muito e a batalha fresca;
+com `SO=janela`, a escolha (o Médio de começo, o Muito lembrado, o Nenhum com a nota do hexágono), a história e os
+achados, o Traçado com o rio e os portões do mapa, as abas que têm os arredores, a Cidade de bairros e os modelos; com
+`SO=cena`, a cena criada pela janela (o id e o nome do marcador, o tamanho, o fundo esticado, as paredes, os tokens e as
+luzes deslocados, os marcadores ocultos, a entrada da masmorra no forte, o aviso); com `SO=robusto`, lugares, níveis e
+sementes sorteados, com e sem o hexágono (sem erro, nada do anel no lugar, rápido). O `mundo-cenas.test.js` confere o
+hexágono no pedido do marcador (o cerco do forte marcado; a masmorra sem ele) e, de ponta a ponta, o Vilarejo abrindo
+nas Cenas com os arredores e o hexágono. Os testes de antes dos arredores conferem o lugar sozinho: o apoio dos testes
+das Cenas (`src/cenas/test/lib.js`) abre a página com os arredores em Nenhum (também depois de recarregar; o
+`lote14c.js` pede `arredores: true` e encontra o Médio de começo), e os testes da mesa escolhem Nenhum na janela.

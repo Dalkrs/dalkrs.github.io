@@ -1039,7 +1039,8 @@ const Tribo = (() => {
     return { moradias: MEDIDA[o.triMor] ? o.triMor : 'tenda', tamanho: TAMANHOS[o.triTam] ? o.triTam : 'media', terreno: TERRENOS_T.some(t => t[0] === o.triTer) ? o.triTer : 'floresta', palicada: o.triPal !== false, sagrados: o.triSag !== false, vida: o.triVida !== false,
       t: Tracado.limpar(o.triTracado) };                                         // (lote 8) o traçado (a seção "Traçado")
   }
-  function controles(st, K, mudou) {
+  // (lote 14, parte 14c: ctx.hex — com os arredores, o rio e os portões vêm do hexágono do Mapa-múndi: a nota no lugar da rosa)
+  function controles(st, K, mudou, ctx) {
     const { field, seg, toggle } = K;
     const muda = (campo, v) => { st[campo] = v; lembrar(st); mudou(true, { soltar: true }); };
     return h('div', { class: 'ger-c' },
@@ -1051,11 +1052,11 @@ const Tribo = (() => {
       toggle('tri-sag', st.sagrados, v => muda('sagrados', v), 'Lugares sagrados (o círculo de pedras com a fogueira dos ancestrais, o mastro com crânios, os totens)'),
       toggle('tri-vida', st.vida, v => muda('vida', v), 'O dia a dia (o cercado com os bichos, os secadores, o forno, o tear, a lenha, o riacho e as canoas)'),
       // (lote 8) o traçado: os portões na rosa, a forma da paliçada, o riacho, a praça na beira dele, as pontes e o relevo natural
-      Tracado.secao(st.t || (st.t = Tracado.padrao()), K, () => { lembrar(st); mudou(true); }, { pre: 'tri', portoes: 'Portões',
+      Tracado.secao(st.t || (st.t = Tracado.padrao()), K, () => { lembrar(st); mudou(true); }, Object.assign({ pre: 'tri', portoes: 'Portões',
         portoesNota: 'Uma trilha sai de cada portão até a praça; a moradia do chefe fica de frente para o primeiro.',
         muro: { nome: 'Paliçada', formas: [['redonda', 'Redonda'], ['oct', 'Octógono'], ['irregular', 'Irregular']], ligada: !!st.palicada, padraoLigada: true, ligar: v => { st.palicada = v; } },
         rio: st.vida && st.moradias !== 'palafita' ? true : false, rioNota: st.moradias === 'palafita' ? 'Nas palafitas, a água é o lago da aldeia.' : 'O riacho vem com "O dia a dia" (ligue para escolher de onde ele vem, para onde vai, a largura e as curvas).',
-        praca: ['centro', 'rio'], pontes: true }));
+        praca: ['centro', 'rio'], pontes: true }, Arredores.notasHex(ctx, !!st.vida && st.moradias !== 'palafita'))));
   }
   const opcoesDe = st => Object.assign({ moradias: st.moradias, tamanho: st.tamanho, terreno: st.terreno, palicada: !!st.palicada, sagrados: !!st.sagrados, vida: !!st.vida }, Tracado.soMudadas(st.t || Tracado.padrao()));
   function aplicarOpcoes(st, o) {

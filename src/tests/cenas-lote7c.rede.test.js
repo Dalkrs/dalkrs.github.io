@@ -55,6 +55,7 @@ const { ok, end } = checker();
     await C.locator('.menu-i', { hasText: 'Gerar um lugar…' }).click(); await w(800);
     ok(await C.locator('#ger-prev').count() === 1, '"Gerar um lugar…": a janela, com a prévia');
     await C.locator('#vila-tam button', { hasText: 'Vila' }).click(); await w(400);
+    await C.locator('#ger-arredores button', { hasText: 'Nenhum' }).click(); await w(400);      // (lote 14, parte 14c: o lugar sozinho)
     await C.locator('#ger-est button', { hasText: 'Oriental' }).click(); await w(400);
     await C.locator('#ger-hora button', { hasText: 'Noite' }).click(); await w(150);
     await C.locator('#ger-clima button', { hasText: 'Chuva' }).click(); await w(150);

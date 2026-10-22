@@ -111,15 +111,17 @@ const Cidade = (() => {
   const dDoMar = m => (x, y) => (m.lado === 's' ? m.b - y : m.lado === 'n' ? y - m.b : m.lado === 'l' ? m.b - x : x - m.b);
   /* O mar de uma cidade: o lado (sorteado à parte, da semente do traçado), a fundura (um quinto do mapa) e a linha da
      beira (b: o y ou o x dela). pt(t, d): o ponto a t quadrados ao longo da beira e a d dela, para dentro da terra. O
-     contorno do mar passa sete quadrados das bordas do mapa (o desenho do raso só aparece junto da beira). */
-  function marDe(sR, W, H) {
-    const rm = mulberry(sub(sR, 11)), lado = ['s', 'n', 'o', 'l'][Math.floor(rm() * 4) % 4], horiz = lado === 'n' || lado === 's';
+     contorno do mar passa sete quadrados das bordas do mapa (o desenho do raso só aparece junto da beira).
+     (lote 14, parte 14c) alem: com os arredores, o mar passa mais (até a borda da cena); ladoMar: o lado do mar, quando o
+     hexágono do Mapa-múndi tem água (o sorteio dele corre do mesmo jeito) */
+  function marDe(sR, W, H, alem, ladoMar) {
+    const rm = mulberry(sub(sR, 11)), lado0 = ['s', 'n', 'o', 'l'][Math.floor(rm() * 4) % 4], lado = DIR_MAR[ladoMar] ? ladoMar : lado0, horiz = lado === 'n' || lado === 's';
     const C = horiz ? W : H, fundo = Math.round((horiz ? H : W) * 0.2), b = lado === 's' ? H - fundo : lado === 'l' ? W - fundo : fundo, [ux, uy] = DIR_MAR[lado];
-    const d = dDoMar({ lado, b }), pt = (t, dd) => (horiz ? [t, lado === 's' ? b - dd : b + dd] : [lado === 'l' ? b - dd : b + dd, t]);
+    const d = dDoMar({ lado, b }), pt = (t, dd) => (horiz ? [t, lado === 's' ? b - dd : b + dd] : [lado === 'l' ? b - dd : b + dd, t]), F = Math.max(7, Number(alem) || 0);
     return { lado, horiz, fundo, b, ux, uy, rm, d, pt, comprimento: C, naAgua: (x, y) => d(x, y) < 0,
-      beira: [pt(-7, 0), pt(C + 7, 0)], poli: [pt(-7, 0), pt(C + 7, 0), pt(C + 7, -fundo - 7), pt(-7, -fundo - 7)],
+      beira: [pt(-F, 0), pt(C + F, 0)], poli: [pt(-F, 0), pt(C + F, 0), pt(C + F, -fundo - F), pt(-F, -fundo - F)],
       // as praias de fora da muralha: a faixa de areia nos pedaços da beira que ficam fora do cais
-      praias: cais => [[-7, cais.t0 + 0.6], [cais.t1 - 0.6, C + 7]].filter(([a, z]) => z - a > 1).map(([a, z]) => [pt(a, -0.4), pt(z, -0.4), pt(z, 2.4), pt(a, 2.4)]) };
+      praias: cais => [[-F, cais.t0 + 0.6], [cais.t1 - 0.6, C + F]].filter(([a, z]) => z - a > 1).map(([a, z]) => [pt(a, -0.4), pt(z, -0.4), pt(z, 2.4), pt(a, 2.4)]) };
   }
   // a abertura do meio da amurada de um navio (x), como o Navio a põe
   const aberturaX = (q, proa) => { const uAb = Math.round(q.w * 0.44); return proa === 'o' ? q.x + q.w - uAb : q.x + uAb; };
@@ -215,7 +217,7 @@ const Cidade = (() => {
     function tracado(sR) {
       const rnd = mulberry(sR), r = (a, b) => a + rnd() * (b - a), ri = (a, b) => Math.floor(r(a, b + 1)), pick = a => a[Math.floor(rnd() * a.length) % a.length];
       // (com mar) o lado do mar, a fundura e a linha da beira: um sorteio à parte, para a cidade sem mar sair como sempre
-      const mar = comMar ? marDe(sR, W, H) : null, naAgua = mar ? mar.naAgua : () => false;
+      const mar = comMar ? marDe(sR, W, H, o.alem, o.ladoMar) : null, naAgua = mar ? mar.naAgua : () => false;
       // a muralha: um octógono a três quadrados da borda, com os cantos cortados (com mar, o lado da água desce até a
       // beira e fica aberto: o lado "aberto" não tem muro)
       const mg = 3, cc = Math.round(Math.min(W, H) * 0.14);
@@ -861,20 +863,30 @@ const Cidade = (() => {
   const MURO = { comum: ['#6e6a62', '#8a857b', '#4f4b45'], oriental: ['#e8e2d3', '#f4efe3', '#2f3846'], nordico: ['#6b4a2b', '#7a5532', '#3b2814'], desertico: ['#c9a46a', '#d8b98a', '#9c7448'], elfico: ['#c8cfc0', '#dde3d4', '#5d8a55'], anao: ['#4b4f57', '#5e646e', '#2f3238'] };
   const TOM_BAIRRO = { c: null, n: 'rgba(90,150,70,0.18)', m: 'rgba(170,140,100,0.16)', p: 'rgba(100,75,45,0.22)', q: 'rgba(130,100,70,0.2)', r: 'rgba(80,90,70,0.12)', o: 'rgba(120,110,90,0.14)', '#': null, '.': null, '~': null };
   const LETRA_BAIRRO = { c: 'centro', n: 'nobres', m: 'mercado', p: 'pobres', q: 'quartel', r: 'rio', o: 'porto' };
-  /* Pinta a cidade toda, com c pixels por quadrado. bairros: true pinta também o tom de cada bairro (o mapa de bairros). */
-  function pintar(p, c, bairros) {
+  /* Pinta a cidade toda, com c pixels por quadrado. bairros: true pinta também o tom de cada bairro (o mapa de bairros).
+     (lote 14, parte 14c) op: { g, dx, dy, semChao, semVinheta, recorte } — a cidade dentro dos arredores: noutra tela,
+     deslocada (em quadrados), sem o chão (o sorteio dele corre numa tela de um pixel: o resto sai igual), sem a vinheta e,
+     com o recorte, só dentro do retângulo dela (menos o mar, que segue pelos arredores, e as árvores). */
+  function pintar(p, c, bairros, op) {
+    op = op || {};
     const W = p.W * c, H = p.H * c, pal = Vila.PAL[p.terreno] || Vila.PAL.campo, est = Estilos.valido(p.estilo);
-    const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(W)); cv.height = Math.max(1, Math.round(H));
-    const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x2545f491) >>> 0 || 9), TAU2 = Math.PI * 2;
+    const cv = op.g ? op.g.canvas : document.createElement('canvas');
+    if (!op.g) { cv.width = Math.max(1, Math.round(W)); cv.height = Math.max(1, Math.round(H)); }
+    const g = op.g || cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x2545f491) >>> 0 || 9), TAU2 = Math.PI * 2;
     const linha = pts => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); };
+    if (op.g) { g.save(); g.translate((op.dx || 0) * c, (op.dy || 0) * c); }
+    const recortar = () => { if (op.recorte) { g.save(); g.beginPath(); g.rect(0, 0, W, H); g.clip(); } }, soltar = () => { if (op.recorte) g.restore(); };
     // o chão
-    g.fillStyle = pal.base; g.fillRect(0, 0, W, H);
-    for (let i = 0, n = Math.round(p.W * p.H * 0.6); i < n; i++) {
-      const rr = (0.5 + rnd() * 1.6) * c;
-      g.globalAlpha = 0.1 + rnd() * 0.12; g.fillStyle = pal.manchas[i % pal.manchas.length];
-      g.beginPath(); g.ellipse(rnd() * W, rnd() * H, rr, rr * (0.5 + rnd() * 0.6), rnd() * Math.PI, 0, TAU2); g.fill();
+    { const gc = op.semChao ? Encontro.motor.telinha() : g;
+      gc.fillStyle = pal.base; gc.fillRect(0, 0, W, H);
+      for (let i = 0, n = Math.round(p.W * p.H * 0.6); i < n; i++) {
+        const rr = (0.5 + rnd() * 1.6) * c;
+        gc.globalAlpha = 0.1 + rnd() * 0.12; gc.fillStyle = pal.manchas[i % pal.manchas.length];
+        gc.beginPath(); gc.ellipse(rnd() * W, rnd() * H, rr, rr * (0.5 + rnd() * 0.6), rnd() * Math.PI, 0, TAU2); gc.fill();
+      }
+      gc.globalAlpha = 1;
     }
-    g.globalAlpha = 1;
+    recortar();
     // fora da muralha: as roças (retângulos com os sulcos), longe dos caminhos
     if (p.ring && p.terreno !== 'areia') {
       for (let i = 0; i < 26; i++) {
@@ -896,7 +908,8 @@ const Cidade = (() => {
     }
     // os quintais: a horta (os canteiros com as fileiras), o terreiro (a lenha empilhada e o feno) e o jardim
     for (const q of p.quintais || []) Estilos.quintal(g, q, c, rnd);
-    // o rio, com o cais na beira-rio
+    // o rio, com o cais na beira-rio (lote 14, parte 14c — com o recorte, o rio fica dentro do retângulo: o anel dos
+    // arredores o continua da beira para fora, sem emenda; o lago e o mar passam da beira)
     if (p.rio) {
       const pts = p.rio.pts, hw = p.rio.hw;
       g.lineJoin = 'round'; g.lineCap = 'butt';
@@ -911,6 +924,9 @@ const Cidade = (() => {
         linha(pa); g.strokeStyle = pal.agua[0]; g.lineWidth = ha * 2 * c; g.stroke();
         linha(pa); g.strokeStyle = pal.agua[1]; g.lineWidth = ha * 1.3 * c; g.stroke();
       }
+    }
+    soltar();
+    if (p.rio) {
       if (p.lago) Paisagem.lago(g, p.lago, c, rnd, p.terreno, 'agua');
       // os píeres de madeira, de um lado e do outro
       for (const q of p.pieres || []) {
@@ -924,9 +940,10 @@ const Cidade = (() => {
       for (const pr of m.praias || []) Paisagem.praia(g, pr, c, rnd);
       Paisagem.lago(g, m.poli, c, rnd, p.terreno, 'mar');
       Paisagem.espuma(g, m.beira.map(([x, y]) => [x + ux * 0.3, y + uy * 0.3]), c, rnd);
+      recortar();
       Paisagem.cais(g, { pts: m.cais.pts, a: m.cais.a, b: m.cais.b, ux, uy }, c, rnd);
       for (const q of m.molhes) Paisagem.molhe(g, q, c, rnd);
-    }
+    } else recortar();
     // (lote 8) as pedras do relevo natural, em grupos
     if (p.pedras && p.pedras.length) { const cp = Paisagem.pedraDe(p.terreno === 'areia' ? 'areia' : p.terreno === 'neve' ? 'neve' : p.terreno === 'floresta' ? 'floresta' : 'campo'); for (const q of p.pedras) Paisagem.pedra(g, q.x, q.y, q.r, c, rnd, cp); }
     // as ruas: as principais de pedra (com as pedrinhas), as de bairro mais estreitas; o anel
@@ -1084,6 +1101,7 @@ const Cidade = (() => {
       for (const q of m.guindastes || []) Paisagem.guindaste(g, q, c);
     }
     // as árvores
+    soltar();
     for (const a of p.arvores) Estilos.arvore(g, a, c, rnd, p.especie || 'folhosa', pal, p.terreno === 'neve');
     g.globalAlpha = 1;
     // o mapa de bairros: o tom de cada bairro, por cima, e a linha entre um bairro e outro
@@ -1101,9 +1119,12 @@ const Cidade = (() => {
       g.stroke(); g.setLineDash([]);
     }
     // um escurecido de leve nas bordas
-    const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.24)');
-    g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    if (!op.semVinheta) {
+      const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
+      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.24)');
+      g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    }
+    if (op.g) g.restore();
     return cv;
   }
 
@@ -1402,8 +1423,12 @@ const Cidade = (() => {
     cv.width = fundo.width; cv.height = fundo.height;
     const g = cv.getContext('2d');
     g.drawImage(fundo, 0, 0);
-    if (!op || op.relevo !== false) Estilos.relevoNaPrevia(g, p.relevo, p.modo === 'bairros' ? [] : p.formas, cell, 1.5);
+    previaSobre(g, p, cell, op);
     return { cell };
+  }
+  // (lote 14, parte 14c: o que vai por cima do fundo na prévia, à parte)
+  function previaSobre(g, p, cell, op) {
+    if (!op || op.relevo !== false) Estilos.relevoNaPrevia(g, p.relevo, p.modo === 'bairros' ? [] : p.formas, cell, 1.5);
   }
   function padrao() {
     const o = App.opt;
@@ -1413,7 +1438,8 @@ const Cidade = (() => {
     return st;
   }
   const lembrar = st => { App.opt.cidModo = st.modo; App.opt.cidTam = st.tamanho; App.opt.cidTer = st.terreno; App.opt.cidRio = st.rio; App.opt.cidMuro = st.muralha; App.opt.cidMar = !!st.mar; App.opt.cidTracado = Tracado.soMudadas(st.t || Tracado.padrao()); };
-  function controles(st, K, mudou) {
+  // (lote 14, parte 14c: ctx.hex — com os arredores, o rio e os portões vêm do hexágono do Mapa-múndi: a nota no lugar da rosa)
+  function controles(st, K, mudou, ctx) {
     const { field, seg, toggle, stepper } = K, T = TAMANHOS[st.tamanho];
     return h('div', { class: 'ger-c' },
       field('Como', seg('cid-modo', st.modo, MODOS.map(([k, n]) => [k, n, null, k === 'completa' ? 'Uma cena grande, com a cidade inteira na escala de batalha' : 'A cidade vista de longe; cada bairro vira uma cena quando você quiser']), v => { st.modo = v; lembrar(st); mudou(true); }), 'stack'),
@@ -1426,9 +1452,9 @@ const Cidade = (() => {
         toggle('cid-muro', st.muralha, v => { st.muralha = v; lembrar(st); mudou(true); }, 'Com muralha (portões abertos)'),
         toggle('cid-mar', !!st.mar, v => { st.mar = v; lembrar(st); mudou(true); }, 'Com mar (um lado vira mar: o cais, os molhes e os navios atracados)')),
       // (lote 8) o traçado: os portões na rosa, a forma da muralha, o rio, a praça, as pontes e o relevo natural
-      Tracado.secao(st.t, K, () => { lembrar(st); mudou(true); }, { pre: 'cid', portoes: 'Portões',
+      Tracado.secao(st.t, K, () => { lembrar(st); mudou(true); }, Object.assign({ pre: 'cid', portoes: 'Portões',
         muro: { nome: 'Muralha', formas: [['oct', 'Octógono'], ['redonda', 'Redonda'], ['irregular', 'Irregular']], ligada: !!st.muralha, padraoLigada: true, ligar: v => { st.muralha = v; } },
-        rio: st.rio ? true : false, mar: !!st.mar, praca: true, pontes: true }));
+        rio: st.rio ? true : false, mar: !!st.mar, praca: true, pontes: true }, Arredores.notasHex(st.modo !== 'bairros' ? ctx : null, !!st.rio))));
   }
   const opcoesDe = st => Object.assign({ modo: st.modo, tamanho: st.tamanho, terreno: st.terreno, rio: !!st.rio, muralha: !!st.muralha, mar: !!st.mar, predios: st.predios }, Tracado.soMudadas(st.t || Tracado.padrao()));
   function aplicarOpcoes(st, o) {
@@ -1448,5 +1474,5 @@ const Cidade = (() => {
     dica: 'Clique numa parte da prévia (um prédio, ou as ruas e a praça — o traçado) para travar: ela fica igual quando você gera outro.',
     nota: 'Cena completa: a cidade inteira numa cena grande, com as paredes de cada prédio e um marcador de Entrada (só seu) na porta de cada um — dois cliques nele geram o interior. Mapa de bairros: a cidade vista de longe, com um marcador em cada bairro — dois cliques geram o bairro, recortado da cidade, numa cena dentro do mapa. Com mar: um lado vira mar, com o cais e os navios atracados (cada navio é um lugar: dois cliques na escotilha geram o porão). Nada sai escrito; tudo continua editável.',
     feito: (sc, p) => (p.modo === 'bairros' ? `"${sc.name}" criada: o mapa, com um marcador em cada bairro (dois cliques geram o bairro).` : `"${sc.name}" criada: ${p.predios.length} prédios, cada um com o marcador de Entrada na porta (dois cliques geram o interior).`) };
-  return { TAMANHOS, MODOS, BAIRROS, NOME_TIPO, GRANDES, gerar, pintar, montar, criar, recorte, criarBairro, abrirBairro, limparTrava, parteEm, alternar, travada, travaDe, LUGAR };
+  return { TAMANHOS, MODOS, BAIRROS, NOME_TIPO, GRANDES, gerar, pintar, montar, criar, recorte, criarBairro, abrirBairro, limparTrava, parteEm, alternar, travada, travaDe, previaSobre, resolucao, LUGAR };
 })();

@@ -833,7 +833,9 @@
      comprido primeiro), caminhos: [{ t, pts, ini, fim }] } — os rios são as linhas de rio; os caminhos, as linhas de
      estrada e de trilha e as rotas de estrada e de trilha (o mesmo caminho desenhado duas vezes — a rota em cima da
      estrada — fica um só; a estrada vale mais que a trilha). Sem grade: null. */
-  function hexParaCena(m, q, r) {
+  // (lote 14, parte 14c) opc: { marcador } — o marcador que pediu a cena (o "Gerar este lugar…"): o cerco dele vem primeiro
+  // e sai marcado (cerco.aqui: a cena é o próprio lugar cercado)
+  function hexParaCena(m, q, r, opc) {
     if (!temGrade(m)) return null;
     const T = tijoloHex(m, q, r), pe = m.grade.orient !== 'deitado', viz = {}, rios = [], caminhos = [];
     for (const [d, dq, dr] of VIZINHOS_HEX[pe ? 'pe' : 'deitado']) viz[d] = biomaDoHex(m, q + dq, r + dr);
@@ -850,7 +852,7 @@
     rios.sort((a, b) => compr(b) - compr(a));
     const t0 = hexInfoBase(m, q, r).terreno;
     const out = { k: q + ',' + r, q, r, orient: pe ? 'pe' : 'deitado', sem: semDoMapa(m), ter: biomaDoHex(m, q, r), nome: t0 ? texto(t0.nome, '', 60).trim() : '', viz, rios: rios.slice(0, 3), caminhos: cam.slice(0, 6) };
-    const gu = guerraDoHex(m, q, r, T);                          // (lote 14, parte 14b: só quando há guerra ali)
+    const gu = guerraDoHex(m, q, r, T, opc);                     // (lote 14, parte 14b: só quando há guerra ali)
     if (gu) out.guerra = gu;
     return out;
   }
@@ -888,7 +890,7 @@
   const maqDoExe = (ts, g) => { const t = {}; for (const u of ehObj(g.exe) && Array.isArray(g.exe.unid) ? g.exe.unid : []) if ((u.tropas || 0) > 0) somaMaq(ts, t, u.maq); return t; };
   // (junta as já desenhadas: sem desenhar de novo)
   const juntaMaq = (alvo, t) => { for (const k of Object.keys(t)) alvo[k] = Math.min(MAX_MAQ_N, (alvo[k] || 0) + t[k]); return alvo; };
-  function guerraDoHex(m, q, r, T) {
+  function guerraDoHex(m, q, r, T, opc) {
     const k = q + ',' + r, G = ehObj(m.guerra) ? m.guerra : null, dia = ehObj(m.cal) ? num(m.cal.dia, 0) : 0, out = {}, ts = maquinasDe(m);
     const objs = Array.isArray(m.objs) ? m.objs : [], noHex = o => { const h = hexDe(m, o.x, o.y); return h.q === q && h.r === r; };
     const exercitos = objs.filter(g => ehObj(g) && g.k === 'g' && g.tipo === 'exercito' && ehObj(g.exe) && !g.exe.pub && tropasDe(g.exe) > 0);
@@ -903,7 +905,8 @@
     }
     if (G && ehObj(G.hexes) && tem(HEX_GUERRA, G.hexes[k])) out.marca = G.hexes[k];
     // o cerco do lugar que fica no hexágono (o primeiro)
-    const mk = objs.find(o => ehObj(o) && o.k === 'm' && ehObj(o.cerco) && o.cerco.fac && noHex(o));
+    const cercado = o => ehObj(o) && o.k === 'm' && ehObj(o.cerco) && o.cerco.fac && noHex(o), meu = opc && typeof opc.marcador === 'string' ? opc.marcador : null;
+    const mk = (meu && objs.find(o => cercado(o) && o.id === meu)) || objs.find(cercado);
     const alia = (a, b) => { const f = a && Array.isArray(m.faccoes) ? m.faccoes.find(x => x.id === a) : null; return !!(f && ehObj(f.rel) && f.rel[b] === 'alianca'); };
     const doLado = (a, b) => !!a && !!b && (a === b || alia(a, b));
     let dono = null;
@@ -914,6 +917,7 @@
       out.cerco = { nome: texto(mk.nome, '', 80).trim() || 'o lugar', fac: nomeFac(m, cf), cores: coresDeGuerra(m, cf, null), dias: Math.max(0, Math.round(dia - num(mk.cerco.d, dia))),
         u: Math.round(limitar((mk.x - T.x0) / T.w, 0, 1) * 1e3) / 1e3, v: Math.round(limitar((mk.y - T.y0) / T.h, 0, 1) * 1e3) / 1e3 };
       if (Object.keys(maq).length) out.cerco.maq = maq;
+      if (meu && mk.id === meu) out.cerco.aqui = true;
     }
     // os exércitos no hexágono, juntos pela facção (com o cerco ali, os do lado do dono estão dentro do lugar)
     const grupos = new Map();

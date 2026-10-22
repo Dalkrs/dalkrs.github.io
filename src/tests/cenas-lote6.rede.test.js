@@ -404,6 +404,7 @@ const goblin = ficha('Goblin batedor', { lado: 'Inimigo', itens: [{ id: 'i_cla',
     await C.locator('#sceneBtn').click(); await w(300);
     await C.locator('.menu-i', { hasText: 'Gerar um lugar…' }).click(); await w(600);
     ok(await C.locator('#ger-prev').count() === 1 && /casas/.test(await C.locator('#ger-resumo').innerText()), '"Gerar um lugar…": a janela, com a prévia');
+    await C.locator('#ger-arredores button', { hasText: 'Nenhum' }).click(); await w(400);      // (lote 14, parte 14c: o lugar sozinho)
     await C.locator('#ger-nome').fill('Pedravale de teste');
     const nCenas = await C.evaluate(() => __tc.Store.S.order.length);
     await C.locator('.modal .btn.primary', { hasText: 'Criar a cena' }).click();

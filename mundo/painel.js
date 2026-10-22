@@ -1436,8 +1436,8 @@
   /* (lote 14, parte 14a) o hexágono do ponto (N().hexParaCena: o terreno dele e dos seis vizinhos, os rios e os
      caminhos que passam por ele) e a Região livre já preenchida com ele: o bioma, o rio (se o mapa tem) e o caminho
      (o tipo do mapa; sem caminho no mapa, nenhum) — a janela abre no Encontro e a aba Região livre também vem pronta */
-  function doHexagono(m, x, y) {
-    const hx = N().hexDe(m, x, y), hex = hx && N().hexParaCena ? N().hexParaCena(m, hx.q, hx.r) : null;
+  function doHexagono(m, x, y, opc) {
+    const hx = N().hexDe(m, x, y), hex = hx && N().hexParaCena ? N().hexParaCena(m, hx.q, hx.r, opc) : null;
     if (!hex) return null;
     const out = { hex };
     if (hex.ter && hex.ter !== 'agua') out.ops = { regiao: { bioma: hex.ter, agua: hex.rios.length ? 'rio' : 'nenhuma', caminho: hex.caminhos.some(c => c.t === 'estrada') ? 'estrada' : hex.caminhos.length ? 'trilha' : 'nenhum' } };
@@ -1461,7 +1461,10 @@
     }
     return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'encontro', op }, comum(m, g.x, g.y), hx) });
   }
-  // "Gerar este lugar…": o lugar do ícone do marcador; o marcador fica ligado à cena que vai nascer (um passo de desfazer)
+  /* "Gerar este lugar…": o lugar do ícone do marcador; o marcador fica ligado à cena que vai nascer (um passo de desfazer).
+     (lote 14, parte 14c) com o hexágono do marcador: o Vilarejo, a Cidade, as Ruínas e o Porto ficam no meio da cena, com
+     o chão do hexágono em volta (os arredores), e o encontro do marcador vem com o hexágono, como o "Gerar a cena aqui" —
+     a masmorra, lá embaixo, não */
   function gerarLugar(o) {
     const m = App.mapa, def = LUGAR_DO_ICONE[o.ic];
     if (!m || !def || !naCasca() || !App.podeEditar()) return false;
@@ -1473,8 +1476,8 @@
     const op = Object.assign({}, def.op || null);
     if (def.lugar === 'encontro') op.caminho = 'nenhum';
     else { const ter = terrenoNoPonto(m, o.x, o.y); op.terreno = VILA_DA_TEX[(ter && ter.tex) || ''] || 'campo'; }
-    const nome = (o.nome || '').trim();
-    return TC.ponte.ir('cenas', { cena: id, gerar: Object.assign({ lugar: def.lugar, op }, nome ? { nome } : null, comum(m, o.x, o.y)) });
+    const nome = (o.nome || '').trim(), hx = def.lugar !== 'masmorra' ? doHexagono(m, o.x, o.y, { marcador: o.id }) : null;
+    return TC.ponte.ir('cenas', { cena: id, gerar: Object.assign({ lugar: def.lugar, op }, nome ? { nome } : null, comum(m, o.x, o.y), hx) });
   }
   function setasNaGrade(ev) {
     const bs = [...this.querySelectorAll('button')], i = bs.indexOf(document.activeElement), col = 6;

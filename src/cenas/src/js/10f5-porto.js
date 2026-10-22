@@ -71,7 +71,8 @@ const Porto = (() => {
     P.paredes = [];
 
     /* ---- o mar: o lado (u aponta para ele), a beira (sa = 0) e a medida ao longo dela (sv) ---- */
-    const ladoM = K.pick(['s', 'n', 'o', 'l']), [ux, uy] = DIR[ladoM], vx = -uy, vy = ux, deitado = !ux;
+    // (lote 14, parte 14c: o lado do mar pode vir do hexágono do Mapa-múndi — o sorteio corre do mesmo jeito)
+    const lado0 = K.pick(['s', 'n', 'o', 'l']), ladoM = DIR[o.ladoMar] ? o.ladoMar : lado0, [ux, uy] = DIR[ladoM], vx = -uy, vy = ux, deitado = !ux;
     const Du = deitado ? H : W, Dv = deitado ? W : H;
     const fundo = Math.round(Du * (porto ? 0.36 : deitado ? 0.4 : 0.34)), terra = Du - fundo;
     const B0 = [W / 2 + ux * (Du / 2 - fundo), H / 2 + uy * (Du / 2 - fundo)];
@@ -80,7 +81,9 @@ const Porto = (() => {
     // a caixa (em quadrados da cena) entre v0..v1 ao longo da beira e a0..a1 na direção do mar
     const caixa = (v0, v1, a0, a1) => { const p = pt(v0, a0), q = pt(v1, a1); return { x: Math.round(Math.min(p[0], q[0])), y: Math.round(Math.min(p[1], q[1])), w: Math.round(Math.abs(q[0] - p[0])), h: Math.round(Math.abs(q[1] - p[1])) }; };
     const poliDe = q => [[q.x, q.y], [q.x + q.w, q.y], [q.x + q.w, q.y + q.h], [q.x, q.y + q.h]];
-    const Lv = Dv / 2 + 7;          // (a beira passa das bordas do mapa: o desenho do raso só aparece junto dela)
+    // (a beira passa das bordas do mapa: o desenho do raso só aparece junto dela; lote 14, parte 14c — com os arredores,
+    // ela vai até a borda da cena: alem)
+    const F = Math.max(7, Number(o.alem) || 0), Lv = Dv / 2 + F;
     // a ponta do farol (o quebra-mar no porto, a ponta de pedras na vila) fica num dos lados; os píeres não chegam lá
     const ladoF = r() < 0.5 ? -1 : 1, reserva = 8;
     const vMin = -Dv / 2 + (ladoF < 0 ? reserva : 2), vMax = Dv / 2 - (ladoF > 0 ? reserva : 2);
@@ -88,7 +91,7 @@ const Porto = (() => {
     const costa = porto ? () => 0 : sv => Math.sin(sv * 0.21 + fase) * onda + Math.sin(sv * 0.07 + fase2) * 0.7;
     const beira = [];
     for (let sv = -Lv; sv <= Lv + 0.01; sv += 1) beira.push(pt(sv, costa(sv)));
-    K.poeLago(beira.concat([pt(Lv, fundo + 7), pt(-Lv, fundo + 7)]), 'mar', -2);
+    K.poeLago(beira.concat([pt(Lv, fundo + F), pt(-Lv, fundo + F)]), 'mar', -2);
     P.mar = { lado: ladoM, fundo };
 
     /* ---- a beira de terra: o cais de pedra (porto) ou a praia (vila) ---- */
@@ -118,7 +121,9 @@ const Porto = (() => {
     }
     const ultima = filas.length > 1 ? filas[filas.length - 1].rua : null;
     if (!porto) K.poeCaminho([pt(-Lv, -5.4), pt(Lv, -5.4)]);
-    for (const f of filas.slice(1)) K.poeCaminho([pt(-Lv, f.rua), pt(Lv, f.rua)]);
+    // (as ruas de trás: com os arredores, acabam na beira do lugar — só a da praia e o cais seguem pela costa)
+    const Li = o.alem ? Dv / 2 - 0.5 : Lv;
+    for (const f of filas.slice(1)) K.poeCaminho([pt(-Li, f.rua), pt(Li, f.rua)]);
     // as travessas, da beira até a última rua; uma delas segue até a borda do mapa (a estrada que sai do lugar)
     const nT = Math.max(1, Math.round(Dv / (porto ? 22 : 24))), travessas = [];
     for (let i = 0; i < nT; i++) travessas.push(Math.round(-Dv / 2 + (i + 0.5 + r(-0.15, 0.15)) * Dv / nT));

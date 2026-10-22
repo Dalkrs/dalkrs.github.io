@@ -80,6 +80,7 @@ const HexCena = (() => {
       out.cerco = { nome: txt(c.nome, 80) || 'o lugar', fac: txt(c.fac, 60), cores: cores2(c.cores), dias: nInt(c.dias, 0, 1e6) || 0, u: u == null ? 0.5 : u, v: v == null ? 0.5 : v };
       const mq = maqs(c.maq);
       if (mq) out.cerco.maq = mq;
+      if (c.aqui === true) out.cerco.aqui = true;                          // (lote 14, parte 14c: a cena é o próprio lugar cercado)
     }
     return Object.keys(out).length ? out : null;
   }
