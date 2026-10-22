@@ -21,6 +21,9 @@
      TC.ponte.registro.encerrar(id, fim) — o pedido acabou: 'aplicado' ou 'cancelado'
      TC.ponte.meditacao(op, args) — promessa: a Meditação pede ao banco (op 'entrar' | 'liberar' | 'tentar')
      TC.ponte.cla(op, args)       — promessa: o líder de um clã pede ao banco (op 'cargos': { cla, mudar, txt })
+     TC.ponte.caixa(op, args)     — promessa: a caixinha do grupo (op 'mover': { camp, grupo, pc, q, nota } | 'levar')
+     TC.ponte.aoMostrar(fn)       — o guia da casca vai destacar um lugar deste sistema: fn({ sel, sub }) prepara (abre a
+                                   parte certa — nas Fichas, a aba da ficha); depois a ponte destaca o lugar, se está à vista
    Sem a casca (página do sistema aberta sozinha) ou sem mesa, nada disso age: o sistema funciona como sempre. */
 (() => {
   'use strict';
@@ -28,7 +31,7 @@
   const naCasca = window.parent !== window;
   let canal = null;
   try { canal = new BroadcastChannel('tinycats'); } catch (e) { /* navegador sem BroadcastChannel: só funciona dentro da casca */ }
-  const ouvintes = [], ouvintesIr = [], ouvintesFechar = [], ouvintesRegistro = [];
+  const ouvintes = [], ouvintesIr = [], ouvintesFechar = [], ouvintesRegistro = [], ouvintesMostrar = [];
   let avisar, alvoGuardado = null;        // um alvo que chegou antes de o sistema estar pronto para ouvir
   /* "Campanha em evidência": onde se escolhe um personagem (ou uma cena, um mapa), o que é da campanha em vista vem
      primeiro, depois o que é do mundo (sem campanha) e por fim o das outras campanhas. Devolve os grupos que têm
@@ -106,6 +109,17 @@
       setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
       return p;
     },
+    /* (lote 16) A caixinha do grupo: pôr lapros da ficha nela, ou pegar dela para a ficha; levar a de um grupo que mudou
+       de nome. Passa pelo banco, que muda as duas pontas juntas. */
+    caixa(op, args) {
+      if (!naCasca || !ponte.estado.mesa) return Promise.reject(new Error('A caixinha do grupo só passa pela mesa dentro do site, com uma mesa aberta.'));
+      const n = ++seq;
+      const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
+      enviar({ t: 'caixa', n, mesa: ponte.estado.mesa.id, op, args: args || {} });
+      setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
+      return p;
+    },
+    aoMostrar(fn) { ouvintesMostrar.push(fn); },
     aoIr(fn) { ouvintesIr.push(fn); if (alvoGuardado) { const a = alvoGuardado; alvoGuardado = null; try { fn(a); } catch (e) { console.error(e); } } },
     aoMudar(fn) { ouvintes.push(fn); try { fn(ponte.estado); } catch (e) { console.error(e); } },
     aoFechar(fn) { ouvintesFechar.push(fn); },
@@ -210,8 +224,37 @@
     apagar(url) { enviar({ t: 'arquivo.apagar', url }); },
   };
 
+  /* (lote 16) O guia da casca: "Mostrar onde fica". O sistema prepara (aoMostrar), e o lugar ganha um contorno por uns
+     instantes, depois de rolar até ele. Responde à casca se achou (à vista: existe e aparece na tela). */
+  const reduzido = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function destacar(el) {
+    try { el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reduzido() ? 'auto' : 'smooth' }); } catch (e) { el.scrollIntoView(); }
+    const anel = document.createElement('div');
+    anel.className = 'tc-guia-anel';
+    anel.setAttribute('aria-hidden', 'true');
+    Object.assign(anel.style, { position: 'fixed', zIndex: 2147483000, pointerEvents: 'none', borderRadius: '10px', border: '3px solid #e2b23e', boxShadow: '0 0 0 4px rgba(226,178,62,.28), 0 0 24px rgba(226,178,62,.45)', transition: reduzido() ? 'none' : 'opacity .4s', opacity: '0' });
+    const pos = () => { const r = el.getBoundingClientRect(); Object.assign(anel.style, { left: (r.left - 6) + 'px', top: (r.top - 6) + 'px', width: (r.width + 12) + 'px', height: (r.height + 12) + 'px' }); };
+    document.querySelectorAll('.tc-guia-anel').forEach(x => x.remove());
+    document.body.append(anel);
+    let n = 0;
+    const seguir = () => { pos(); if (++n < 40) requestAnimationFrame(seguir); };      // (acompanha a rolagem suave)
+    pos(); requestAnimationFrame(() => { anel.style.opacity = '1'; seguir(); });
+    setTimeout(() => { anel.style.opacity = '0'; setTimeout(() => anel.remove(), 450); }, 2600);
+    if (el.matches('button, a, input, select, textarea, [tabindex]')) { try { el.focus({ preventScroll: true }); } catch (e) { /* sem foco */ } }
+  }
+  function mostrarParaOGuia(m) {
+    for (const f of ouvintesMostrar.slice()) { try { f({ sel: m.sel, sub: m.sub || null }); } catch (e) { console.error(e); } }
+    setTimeout(() => {
+      let el = null;
+      try { el = m.sel ? document.querySelector(m.sel) : null; } catch (e) { el = null; }
+      const ok = !!el && !el.closest('[hidden]') && el.getClientRects().length > 0;
+      if (ok) destacar(el);
+      enviar({ t: 'guia.res', n: m.n, ok });
+    }, 80);
+  }
   function receber(m) {
     if (!m || typeof m !== 'object') return;
+    if (m.t === 'guia.mostrar') { mostrarParaOGuia(m); return; }
     if ((m.t === 'arquivo.ok' || m.t === 'arquivo.erro') && esperas[m.n]) {
       const e = esperas[m.n]; delete esperas[m.n];
       if (m.t === 'arquivo.ok') e.ok(m.url); else e.falha(new Error(m.erro || 'Não deu para enviar a imagem.'));
@@ -227,9 +270,9 @@
       if (m.t === 'item.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu para usar o item agora.'));
       return;
     }
-    if ((m.t === 'medit.ok' || m.t === 'medit.erro' || m.t === 'cla.ok' || m.t === 'cla.erro') && esperas[m.n]) {
+    if ((m.t === 'medit.ok' || m.t === 'medit.erro' || m.t === 'cla.ok' || m.t === 'cla.erro' || m.t === 'caixa.ok' || m.t === 'caixa.erro') && esperas[m.n]) {
       const e = esperas[m.n]; delete esperas[m.n];
-      if (m.t === 'medit.ok' || m.t === 'cla.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu certo agora. Tente de novo.'));
+      if (m.t === 'medit.ok' || m.t === 'cla.ok' || m.t === 'caixa.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu certo agora. Tente de novo.'));
       return;
     }
     if (m.t === 'registro.pedido' && esperas[m.n]) {

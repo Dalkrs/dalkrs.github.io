@@ -15,6 +15,8 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   const t = await start();
   const { page: P } = await t.device({ name: 'fichas', w: 1320, h: 900, seed: { urgm_calc_atributos_v1: estado } });
   const w = ms => P.waitForTimeout(ms);
+  // (lote 16) a ficha em abas: Atributos · Bolsas e itens · Social · Skills · Notas (o resumo fica em todas)
+  const aba = async k => { await P.locator('[data-abaficha="' + k + '"]').click(); await w(150); };
   const S0 = (fn, a) => P.evaluate(fn, a);
   const sel = () => S0(() => JSON.parse(JSON.stringify(S.personagens.find(x => x.id === 'pc_sel'))));
   const des = () => S0(() => calcular(S.personagens.find(x => x.id === 'pc_sel')).tot.DES);
@@ -75,6 +77,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.locator('#lista .pc', { hasText: 'Selene' }).click(); await w(350);
 
   // ---------- Ascensão ----------
+  await aba('skills');
   ok(await P.locator('#painelAsc .ascrow').count() === 2 && (await P.locator('#painelAsc [data-asc="pr"] .ascconta').innerText()).replace(/\s+/g, ' ') === '2 gastos · 0 livres' && await P.locator('[data-asctot="pr"]').inputValue() === '2' && await P.locator('[data-asctot="pc"]').inputValue() === '0',
     'o quadro de Ascensão mostra cada tipo de ponto: Raça 2 (2 gastos, 0 livres) e Classe 0');
   ok(await P.locator('[data-ascstep="pc|-1"]').isDisabled(), 'não dá para tirar ponto de quem tem zero');
@@ -88,13 +91,14 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   ok(await P.locator('#painelAsc [data-asc="pr"] .ascconta.warn').count() === 1 && /gastou mais do que tem/.test(await P.locator('#painelAsc [data-asc="pr"] .ascconta').innerText()) && (await sel()).skills.alocados.n1 === 1, 'tirar pontos já gastos avisa ("gastou mais do que tem") e não mexe no que está alocado');
   await P.locator('[data-asctot="pr"]').fill('3'); await P.locator('[data-asctot="pr"]').press('Tab'); await w(250);
   await P.locator('[data-ascir]').click(); await w(400);
-  ok(await P.locator('#ficha [data-sub="skills"].on').count() === 1 && (await P.locator('.poolbar [data-skpontos="pr"]').inputValue()) === '3', '"Gastar em Skills" abre a aba Skills, que mostra os mesmos pontos');
+  ok(await P.locator('#ficha [data-abaficha="skills"].on').count() === 1 && (await P.locator('.poolbar [data-skpontos="pr"]').inputValue()) === '3', '"Gastar em Skills" leva às skills da árvore (na mesma aba), que mostram os mesmos pontos');
   await P.locator('.poolbar [data-skpontos="pr"]').fill('6'); await P.locator('.poolbar [data-skpontos="pr"]').press('Tab'); await w(350);
   ok(await P.locator('[data-asctot="pr"]').inputValue() === '6', 'e o que muda lá aparece no quadro (são os mesmos pontos)');
   await P.locator('[data-ascstep="pr|-1"]').click(); await w(350);
   ok(await P.locator('.poolbar [data-skpontos="pr"]').inputValue() === '5', 'e o contrário também');
 
   // ---------- corpo e ferimentos ----------
+  await aba('atributos');
   await P.locator('#lista .pc', { hasText: 'Guarda' }).click(); await w(350);
   ok(await P.locator('#painelCorpo svg').count() === 0 && await P.locator('[data-corpo="usar"]').count() === 1, 'numa ficha que não é de jogador, o corpo fica desligado até alguém pedir');
   await P.locator('[data-corpo="usar"]').click(); await w(300);
@@ -162,7 +166,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   ok(await des() === 12 && await P.locator('#painelCorpo svg').count() === 0, 'cada ficha tem o seu corpo: a da Selene não mudou');
 
   // ---------- missões ----------
-  await P.locator('#ficha [data-sub="missoes"]').click(); await w(300);
+  await aba('notas');
   ok(await P.locator('[data-misnova="g"]').count() === 1 && await P.locator('[data-misnova="p"]').count() === 1 && await P.locator('.miscard').count() === 0 && await P.locator('.misdica').count() === 0, 'a aba Missões: do grupo e do personagem, vazias (sem mesa, nada de "escondida")');
   await P.locator('[data-misnova="g"]').click(); await w(300);
   const gid = await S0(() => Object.keys(S.missoes)[0]);
@@ -180,9 +184,9 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.locator('[data-misnova="p"]').click(); await w(300);
   const pid = await S0(() => Object.keys(S.personagens[0].estado.mis)[0]);
   await P.locator(`[data-mist="p|${pid}"]`).fill('Aprender a runa do gelo'); await P.locator(`[data-mist="p|${pid}"]`).press('Tab'); await w(300);
-  ok((await sel()).estado.mis[pid].t === 'Aprender a runa do gelo' && (await P.locator('#ficha [data-sub="missoes"] .mk').innerText()) === '2', 'missão da Selene: fica na ficha dela; a aba mostra 2 missões ativas');
+  ok((await sel()).estado.mis[pid].t === 'Aprender a runa do gelo' && (await P.locator('#ficha [data-abaficha="notas"] .mk').innerText()) === '2', 'missão da Selene: fica na ficha dela; a aba mostra 2 missões ativas');
   await P.locator(`[data-mise="p|${pid}"]`).selectOption('feita'); await w(300);
-  ok((await sel()).estado.mis[pid].e === 'feita' && (await P.locator(`[data-mis="p|${pid}"] .misest`).innerText()).toLowerCase() === 'concluída' && (await P.locator('#ficha [data-sub="missoes"] .mk').innerText()) === '1', 'concluída: muda a situação, e deixa de contar como ativa');
+  ok((await sel()).estado.mis[pid].e === 'feita' && (await P.locator(`[data-mis="p|${pid}"] .misest`).innerText()).toLowerCase() === 'concluída' && (await P.locator('#ficha [data-abaficha="notas"] .mk').innerText()) === '1', 'concluída: muda a situação, e deixa de contar como ativa');
   await P.locator(`[data-misodel="g|${gid}|${oids[1]}"]`).click(); await w(300);
   ok(await S0(g => Object.keys(S.missoes[g].o).length, gid) === 1 && (await P.locator(`[data-mis="g|${gid}"] .misprog`).innerText()) === '1/1', 'tirar um objetivo');
   await P.locator(`[data-misabrir="g|${gid}"]`).click(); await w(250);
@@ -201,6 +205,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   // (um campo de número só avisa que mudou quando o cursor sai dele; se a ficha fosse redesenhada nessa hora, o
   //  botão em que a pessoa está clicando deixaria de existir no meio do clique)
   await P.locator('#lista .pc', { hasText: 'Selene' }).click(); await w(350);
+  await aba('atributos');
   const pts = k => P.locator(`#ficha [data-pts="${k}"]`);
   const ativo = () => S0(() => { const e = document.activeElement; return { id: e.id || '', pts: e.dataset ? e.dataset.pts || '' : '', tag: e.tagName, dentro: e.isConnected }; });
   // (um clique de verdade: o botão do mouse desce, fica um instante e sobe — no meio da tela, longe do cabeçalho fixo)
@@ -269,6 +274,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   ok((await sel()).level === 4 && await pts('FOR').inputValue() === '9' && await P.locator('#f_level').evaluate(e => e.__marca === undefined && e.value === '4'), 'feita a escolha, a ficha é redesenhada com as duas mudanças (nível 4, FOR 9)');
   await P.locator('#f_level').selectOption('3'); await w(250);
   // um quadro que esperava para ser redesenhado não aparece na ficha de outro personagem
+  await aba('social');
   await P.locator('#ficha [data-mente="usar"]').click(); await w(250);
   await digitar(P.locator('#ficha [data-mval="san"]'), '77');
   await apertar(P.locator('#lista .pc', { hasText: 'Guarda' })); await w(350);
@@ -276,6 +282,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.locator('#lista .pc', { hasText: 'Selene' }).click(); await w(350);
   ok(await P.locator('#ficha [data-mval="san"]').inputValue() === '77', 'de volta à Selene: Sanidade 77');
   // quem redesenha por conta de uma mudança que veio de fora espera o clique terminar
+  await aba('atributos');
   await P.locator('#ficha [data-ptsstep="AGI|-1"]').evaluate(e => e.scrollIntoView({ block: 'center' }));
   const bx = await P.locator('#ficha [data-ptsstep="AGI|-1"]').boundingBox();
   ok(await S0(() => FichasMesa.depoisDoGesto(() => { window.__fora = 1; })) === false && await S0(() => window.__fora) === undefined, 'sem clique em andamento, nada precisa esperar');

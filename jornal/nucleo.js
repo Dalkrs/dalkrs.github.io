@@ -208,8 +208,38 @@
     return { txt: s.slice(0, a) + marca + dentro + marca + s.slice(b), ini: a + marca.length, fim: a + marca.length + dentro.length };
   }
 
+  /* ---------------- (lote 16) os aniversários do mundo ----------------
+     No dia do mundo do jornal: quem faz aniversário hoje e nos próximos dias. pcs: [{ nome, aniv: { d, m, a? } }] (o
+     aniversário da ficha, no calendário do mundo); dataDe(k): a data do mundo k dias depois de hoje — { ano, mes,
+     diaMes, nomeMes } (do Mapa-múndi). → { hoje: [{ nome, idade }], logo: [{ nome, idade, k, data }], texto } ou null
+     (ninguém). O texto é a nota pronta: "Hoje é aniversário de Ana (faz 23 anos) e de Bia. Nos próximos dias: Caio
+     (amanhã, 13 de Degelo)." */
+  const DIAS_ANIV = 7;
+  const listaE = l => (l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1]);
+  function aniversarios(pcs, dataDe, dias) {
+    const n = Math.max(1, Math.min(31, Math.round(+dias || DIAS_ANIV))), hoje = [], logo = [];
+    const lista = (Array.isArray(pcs) ? pcs : []).filter(p => ehObj(p) && ehObj(p.aniv) && Number.isFinite(+p.aniv.d) && Number.isFinite(+p.aniv.m) && p.aniv.d !== null && p.aniv.m !== null);
+    if (!lista.length || typeof dataDe !== 'function') return null;
+    for (let k = 0; k < n; k++) {
+      const d = dataDe(k);
+      if (!ehObj(d)) continue;
+      for (const p of lista) {
+        if (Math.round(+p.aniv.m) !== d.mes || Math.round(+p.aniv.d) !== d.diaMes) continue;
+        const a = p.aniv.a, idade = a != null && a !== '' && Number.isFinite(+a) ? d.ano - Math.round(+a) : null;
+        const x = { nome: linha(p.nome, MAX.nome) || 'Sem nome', idade };
+        if (k) logo.push(Object.assign(x, { k, data: d.diaMes + ' de ' + linha(d.nomeMes, 60) })); else hoje.push(x);
+      }
+    }
+    if (!hoje.length && !logo.length) return null;
+    const anos = i => (i == null || i < 0 ? '' : ' (faz ' + i + (i === 1 ? ' ano)' : ' anos)'));
+    const partes = [];
+    if (hoje.length) partes.push('Hoje é aniversário ' + listaE(hoje.map(x => 'de ' + x.nome + anos(x.idade))) + '.');
+    if (logo.length) partes.push((hoje.length ? 'Nos próximos dias: ' : 'Aniversários nos próximos dias: ') + listaE(logo.map(x => x.nome + ' (' + (x.k === 1 ? 'amanhã, ' : '') + x.data + ')')) + '.');
+    return { hoje, logo, texto: partes.join(' ').slice(0, MAX.nota) };
+  }
+
   const JornalNucleo = {
-    CLIMAS, MAX, novoId,
+    CLIMAS, MAX, novoId, aniversarios,
     normJornal, normPub, vazioPub, publicar, mudouDesde,
     normCartas, normResp, assTxt, mandarCarta, situacao, caixaDeCartas, porNoJornal, saidasAoPublicar,
     marcacao, envolver,

@@ -123,12 +123,23 @@
     return app().mudar(rotulo0, mm => { if (!mm.corte) mm.corte = { pessoas: [], casas: [], cargos: {}, titulos: [] }; if (!mm.corte.titulos) mm.corte.titulos = []; return fn(mm.corte, mm); });
   }
 
+  /* (lote 16) As fichas da mesa chegam a esta página na primeira vez que alguém as pede: antes de abrir o cartão que as
+     lista (o do personagem, o do título), espera elas chegarem (um instante, no máximo 3 segundos). */
+  async function fichasProntas() {
+    const TC = window.TC;
+    if (!app().naMesa || !TC || !TC.dados || !TC.dados.disponivel || !TC.dados.disponivel()) return;
+    const P = TC.dados.col('personagens');
+    if (P && P.pronta) await Promise.race([Promise.resolve(P.pronta).catch(() => {}), new Promise(ok => setTimeout(ok, 3000))]);
+  }
+
   /* ---------------- o cartão do personagem ---------------- */
   async function janelaPessoa(id) {
     const A = app(), K = kit(), m = A.mapa;
     if (!A.podeEditar() || !m) return;
     const p = id ? C().pessoaDe(m, id) : null;
     if (id && !p) return;
+    await fichasProntas();
+    if (!K.mesmoMapa(m.id)) return;
     const v = await dialogoPessoa(m, p);
     if (!v || !K.mesmoMapa(m.id)) return;
     if (v.sucessao) { await janelaSucessao(p.id); return; }        // (parte 2b) a sucessão de quem já morreu
@@ -643,6 +654,8 @@
     if (!A.podeEditar() || !m) return;
     const t = id ? C().tituloDe(m, id) : null;
     if (id && !t) return;
+    await fichasProntas();
+    if (!K.mesmoMapa(m.id)) return;
     const v = await dialogoTitulo(m, t, padrao || null);
     if (!v || !K.mesmoMapa(m.id)) return;
     if (v.sucessao) { await janelaSucessao(t.tit); return; }      // (parte 2b) o titular morreu: a sucessão
@@ -654,7 +667,19 @@
       return;
     }
     const nome1 = C().nomeDoTitulo(m, Object.assign({ id: '' }, v));
+    const fx = v._ficha; delete v._ficha;
+    let entrou = null;
     const ok = mudarCorte(t ? 'mudar o título ' + nome0 : 'criar o título ' + nome1, c => {
+      // (lote 16) o titular escolhido entre as fichas da mesa: entra na corte, com a ficha ligada
+      if (fx) {
+        let q = c.pessoas.find(y => y.ficha === fx.id);
+        if (!q) {
+          if (c.pessoas.length >= (LIM('personagens') || 400)) return false;
+          q = { id: N().novoId('ps'), nome: String(fx.nome || '').trim().slice(0, 80) || 'Sem nome', gen: '', casa: null, fac: v.fac || null, cargo: null, nasc: nascDaFicha(fx.id), morte: null, pais: [], conj: [], onde: null, ficha: fx.id, txt: '', nota: '', ver: true };
+          c.pessoas.push(q); entrou = q.nome;
+        }
+        v.tit = q.id;
+      }
       if (!t) { if (c.titulos.length >= (LIM('titulos') || 200)) return false; c.titulos.push(Object.assign({ id: N().novoId('tt') }, v)); return; }
       const x = c.titulos.find(y => y.id === t.id);
       if (!x) return false;
@@ -662,7 +687,17 @@
       Object.assign(x, v);
       if (JSON.stringify(x) === ant) return false;
     });
-    if (ok !== false) K.avisoDesfazer(t ? nome1 + ': salvo.' : 'O título ' + nome1 + ' entrou na corte.');
+    if (ok !== false) K.avisoDesfazer((t ? nome1 + ': salvo.' : 'O título ' + nome1 + ' entrou na corte.') + (entrou ? ' ' + entrou + ' entrou na corte (com a ficha).' : ''));
+  }
+  /* (lote 16) o nascimento que a ficha diz (o aniversário dela, no calendário do mundo, com o ano): { a, m, d } ou null.
+     (Os dois guardam o mês pela posição: 0 = o primeiro.) */
+  function nascDaFicha(id) {
+    const TC = window.TC, P = TC && TC.dados && TC.dados.disponivel && TC.dados.disponivel() ? TC.dados.col('personagens') : null;
+    const l = P && P.pegar ? P.pegar(id) : null, an = l && l.ficha && l.ficha.aniv;
+    if (!an || typeof an !== 'object' || !Number.isInteger(an.a)) return null;
+    const out = { a: an.a };
+    if (Number.isInteger(an.m) && an.m >= 0) { out.m = an.m; if (Number.isInteger(an.d) && an.d >= 1) out.d = an.d; }
+    return out;
   }
   // os campos de uma data do mundo (o ano, o mês e o dia) e a leitura deles (null sem o ano)
   function campoDataMundo(k, dt, meses) {
@@ -722,7 +757,18 @@
       const de = inp('tt:de', t ? t.de : '', { maxlength: 80 }), nomeL = inp('tt:nome', t ? t.nome : '', { maxlength: 80, placeholder: 'Ex.: Grão-Mestre da Ordem do Sol' });
       const rotDe = h('label', null, 'De quê', de), rotNome = h('label', null, 'Nome do título', nomeL);
       const fac = escolha('tt:fac', [['', 'Sem reino']].concat(m.faccoes.map(f => [f.id, K.nomeFac(f)])), t ? t.fac : facDaTerra(m, preso0));
-      const tit = escolha('tt:tit', opPessoas('Ninguém (vago)'), t ? t.tit : '');
+      /* (lote 16) o titular: a gente da corte (quem tem ficha diz) e, embaixo, as fichas da mesa que ainda não estão na
+         corte — escolher uma põe o personagem na corte (com a ficha ligada; o nascimento vem do aniversário, se ele tem
+         o ano) e dá o título a ele. */
+      const fichasM = RP() && RP().fichasDaMesa ? RP().fichasDaMesa() : null;
+      const fichasFora = fichasM ? fichasM.filter(f => !pessoas.some(p => p.ficha === f.id)) : [];
+      const tit = h('select', { 'data-k': 'tt:tit' }, h('option', { value: '', text: 'Ninguém (vago)' }),
+        fichasFora.length ? h('optgroup', { label: 'Gente da corte' }, pessoas.map(p => h('option', { value: p.id, text: nomeP(p) + (p.ficha ? ' · ficha' : '') }))) : pessoas.map(p => h('option', { value: p.id, text: nomeP(p) + (p.ficha ? ' · ficha' : '') })),
+        fichasFora.length ? h('optgroup', { label: 'Fichas da mesa (entram na corte)' }, fichasFora.map(f => h('option', { value: 'ficha:' + f.id, text: (f.nome || 'Sem nome') + ' · ficha' }))) : null);
+      tit.value = t && t.tit ? t.tit : '';
+      if (tit.value !== (t && t.tit ? t.tit : '')) tit.value = '';
+      const fichaDoTit = () => (tit.value.indexOf('ficha:') === 0 ? fichasFora.find(f => 'ficha:' + f.id === tit.value) || null : null);
+      const notaFicha = h('small', { class: 'ajuda', 'data-k': 'tt:ficha-nota', hidden: true });
       const desde = campoDataMundo('tt:desde', t ? t.desde : null, meses);
       const pAntes = t ? pessoa(t.tit) : null;
       const antes = h('input', { type: 'checkbox', 'data-k': 'tt:antes', checked: true });
@@ -743,7 +789,9 @@
         rotDe.hidden = !grau.value; rotNome.hidden = !!grau.value;
         const pr = lerPreso(), x = { grau: grau.value || null, de: de.value.trim(), nome: nomeL.value.trim(), preso: pr }, n = Cx.nomeDaTerra(m, x);
         de.placeholder = n ? 'de ' + n : 'Ex.: das Ilhas';
-        const g = Cx.grauDe(m, x), q = pessoa(tit.value), dq = Cx.deQue(m, x);
+        const fx = fichaDoTit(), g = Cx.grauDe(m, x), q = fx ? { id: '', nome: fx.nome || 'Sem nome', gen: '' } : pessoa(tit.value), dq = Cx.deQue(m, x);
+        notaFicha.hidden = !fx;
+        notaFicha.textContent = fx ? (fx.nome || 'Esse personagem') + ' ainda não está na corte: ao salvar, entra nela (com a ficha ligada' + (nascDaFicha(fx.id) ? ' e o nascimento do aniversário da ficha' : '') + ') e fica com o título.' : '';
         const formas = g ? [...new Set([g.h, g.m, g.o].filter(Boolean))].map(f0 => f0 + (dq ? ' ' + dq : '')) : [];
         const ou = formas.length <= 1 ? formas.join('') : formas.slice(0, -1).join(', ') + ' ou ' + formas[formas.length - 1];
         previa.textContent = Cx.nomeDoTitulo(m, x) + (q ? ' · ' + q.nome + (g ? ': ' + Cx.tituloDoTitular(m, x, q) : '') : ou ? ' · quem tem: ' + ou : '');
@@ -752,7 +800,7 @@
         regra.options[0].textContent = 'A do reino: ' + Cx.textoRegra(rr);
         if (!regra.value) regraGen.value = rr.gen;
         regraGen.disabled = !regra.value || regra.value === 'eletiva';
-        const tx = { id: t ? t.id : '', fac: fac.value || null, tit: tit.value || null, herd: herd.value || null, regra: lerRegra(), hist: t ? t.hist : [], pret: [] };
+        const tx = { id: t ? t.id : '', fac: fac.value || null, tit: fichaDoTit() ? null : tit.value || null, herd: herd.value || null, regra: lerRegra(), hist: t ? t.hist : [], pret: [] };
         const ls = Cx.linhaDeSucessao(m, tx, 5);
         linhaSuc.replaceChildren(...(ls.length ? ls.map(y => { const z = pessoa(y.id), i0 = Cx.idadeDe(m, z); return h('li', { text: z.nome + ' (' + y.por + (i0 != null && i0 >= 0 ? ', ' + K.plural(i0, 'ano', 'anos') : '') + ')' }); })
           : [h('li', { class: 'vazia', text: Cx.regraDe(m, tx).forma === 'eletiva' && !tx.herd ? 'O mestre escolhe na hora.' : 'Ninguém na linha (sem titular, ou sem parentes vivos na corte).' })]));
@@ -812,6 +860,7 @@
         h('div', { class: 'lin' }, rotDe, rotNome, lbl('Reino', fac)),
         previa,
         h('div', { class: 'tt-tit' }, h('div', { class: 'lin' }, lbl('Titular', tit)), h('div', null, h('span', { class: 'ps-rot', text: 'Desde' }), desde.el)),
+        notaFicha,
         rotAntes,
         h('div', { class: 'lin' }, lbl('Herdeiro escolhido', herd), lbl('Regente', reg)),
         h('small', { class: 'ajuda', text: 'O herdeiro escolhido passa na frente da regra de sucessão. O regente governa pelo titular menor de idade (maioridade: ' + Cx.maioridadeDe(m) + ' anos).' }),
@@ -831,10 +880,10 @@
           const g = grau.value || null, pr = lerPreso(), de0 = g ? de.value.trim() : '', nome0 = g ? '' : nomeL.value.trim();
           if (g && !pr && !de0) throw new Error('Diga de quê é o título (ex.: “das Ilhas”) ou prenda-o a uma terra.');
           if (!g && !nome0) throw new Error('Escreva o nome do título.');
-          const ti = tit.value || null, he = herd.value || null, re = reg.value || null;
+          const fx = fichaDoTit(), ti = fx ? null : tit.value || null, he = herd.value || null, re = reg.value || null;
           if (he && he === ti) throw new Error('O herdeiro escolhido não pode ser o próprio titular.');
           if (re && re === ti) throw new Error('O regente não pode ser o próprio titular.');
-          const ds = ti ? lerDataMundo(desde, 'Desde', meses) : null;
+          const ds = ti || fx ? lerDataMundo(desde, 'Desde', meses) : null;
           const pret = [], vistos = new Set();
           for (const l of caixaPret.children) {
             const p0 = l.querySelector('select').value, mot = l.querySelector('input').value.trim();
@@ -852,7 +901,7 @@
             hist.push({ p: p0, nome: n0, de: dataDe(ya, o0 && o0.de), ate: dataDe(yb, o0 && o0.ate) });
           }
           if (pAntes && ti !== pAntes.id && antes.checked && hist.length < LH) hist.push({ p: pAntes.id, nome: pAntes.nome, de: t.desde, ate: Cx.hoje(m) });
-          fim({ grau: g, de: de0, nome: nome0, preso: pr, fac: fac.value || null, tit: ti, desde: ds, herd: he, reg: re, regra: lerRegra(), pret, hist, txt: pub.value.trim(), nota: nota.value.trim() });
+          fim({ grau: g, de: de0, nome: nome0, preso: pr, fac: fac.value || null, tit: ti, desde: ds, herd: he, reg: re, regra: lerRegra(), pret, hist, txt: pub.value.trim(), nota: nota.value.trim(), _ficha: fx ? { id: fx.id, nome: fx.nome || '' } : null });
         } catch (e) { err.textContent = (e && e.message) || 'Confira o que foi escrito.'; }
       });
       if (bTirar) bTirar.addEventListener('click', () => fim({ tirar: true }));

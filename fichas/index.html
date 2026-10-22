@@ -163,6 +163,18 @@ label.f > span{display:block;margin-bottom:3px}
 .sec:hover .sechd .secacts{opacity:1}
 .sechd .secacts button{padding:1px 5px;font-size:10.5px;line-height:1.4}
 .secitens{min-height:8px}
+/* (lote 16) os inativos de cada grupo, embaixo, recolhidos */
+.inat{border-top:1px dashed var(--linha-sut)}
+.inathd{display:flex;align-items:center;gap:6px;width:100%;border:0;border-radius:0;background:transparent;padding:3px 8px 3px 26px;text-align:left;color:var(--ink-soft);cursor:pointer}
+.inathd .caret{font-size:10px;width:10px}
+.inathd .inatnome{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-style:italic}
+.inathd .cnt{font-size:10px}
+.inathd:hover{color:var(--ink-2);background:var(--campo-sut)}
+.inat.zero .inathd{cursor:default;opacity:.6}
+.inat.zero .inathd .caret{visibility:hidden}
+.inathd.alvo{background:var(--brass-fundo);color:var(--brass-ink);outline:1px dashed var(--brass);outline-offset:-2px;opacity:1}
+.secitens.inativas{background:var(--zebra)}
+.secitens.inativas .pcrow{opacity:.85}
 .pcrow{display:flex;align-items:stretch;border-bottom:1px solid var(--linha-sut)}
 .pcrow:last-child{border-bottom:0}
 .pcrow.arrastando{opacity:.35}
@@ -684,6 +696,86 @@ button.apagar:hover:not(:disabled){background:var(--rubric-forte);border-color:v
 button.apagar:disabled{background:var(--rubric-off);border-color:var(--rubric-borda);color:var(--panel);cursor:not-allowed}
 .modalacts{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}
 
+/* ---------- (lote 16) o resumo fixo no alto da ficha e as abas ---------- */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.resumo .rscorpo{display:grid;gap:10px;align-content:start}
+.rsnome{display:flex;align-items:flex-end;gap:6px 14px;flex-wrap:wrap}
+.rsnome label.f{flex:0 1 340px;min-width:180px}
+.rsnome #f_nome{font-size:17px;font-weight:600}
+.rsmeta{font-size:13px;color:var(--ink-2);padding-bottom:9px}
+.rsbarras{display:flex;flex-wrap:wrap;gap:8px;width:auto;margin:0}
+.rsb{display:grid;grid-template-columns:auto auto;align-items:center;gap:4px 8px;padding:6px 10px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--campo-sut);min-width:150px}
+.rsb .rsbl{display:flex;align-items:center;gap:6px;grid-column:1/-1}
+.rsb .rsbn{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;white-space:nowrap}
+.rsb input[data-resatual]{width:72px;padding:4px 6px;font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600;text-align:right}
+.rsb .rsbm{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-soft);white-space:nowrap}
+.rsb .rsx{justify-self:start;font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:var(--teal);border:1px solid var(--teal-borda);background:var(--teal-fundo);border-radius:9px;padding:0 6px}
+.rsb .bz{grid-column:1/-1;display:block}
+.rsb .bzt{display:block;height:6px;border-radius:3px;background:var(--campo);border:1px solid var(--line);overflow:hidden;position:relative}
+.rsb .bzt i{display:block;height:100%;border-radius:2px}
+.rsb .bzt b.podre{position:absolute;top:0;right:0;bottom:0;background:repeating-linear-gradient(135deg,#6b7a35 0 2px,#3b3020 2px 4px);border-left:1px solid #2a2216}
+.rsb.neg input[data-resatual]{color:var(--rubric);border-color:var(--rubric-borda)}
+.rsb .bz.neg .bzt i{background:repeating-linear-gradient(135deg,var(--rubric) 0 3px,transparent 3px 6px)}
+.rsb.rsesp,.rsb.rsfad{grid-template-columns:auto auto auto;row-gap:6px}
+.rsb .pdctl{gap:6px}
+.rsb .pdctl .step{width:26px;height:26px;font-size:15px}
+.rsb .pdval{font-size:17px;min-width:44px}
+.rsb .pips{grid-column:1/-1;gap:5px}
+.rsb .pip{width:15px;height:15px}
+.rsb.rsfad .bateria{grid-column:auto;margin:0}
+.rsb.rsfad .bateria .cel{width:18px;height:12px}
+.rsb.rsfad .fadfaixa{grid-column:1/-1;font-size:11.5px;color:var(--ink-2)}
+.rsnums{display:flex;flex-wrap:wrap;gap:6px 14px}
+.rsgrupo{display:inline-flex;flex-wrap:wrap;gap:4px}
+.rsn{display:inline-flex;align-items:baseline;gap:5px;padding:2px 8px;border:1px solid var(--line-2);border-radius:999px;background:var(--campo);font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--ink)}
+.rsn b{font-size:9.5px;letter-spacing:.08em;color:var(--ink-soft);font-weight:600}
+.rsestado{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px}
+.rsestado .lapros{width:150px}
+.rschip{padding:4px 10px;border-radius:999px;font-size:12.5px;background:var(--campo);border:1px solid var(--line);color:var(--ink-2);margin-bottom:2px}
+.rschip b{font-family:"IBM Plex Mono",monospace;margin-left:3px;color:var(--ink)}
+.rschip.ruim{border-color:var(--rubric-borda);background:var(--rubric-fundo);color:var(--rubric)}
+.rschip:hover{border-color:var(--ink-2)}
+.abasficha{display:flex;flex-wrap:wrap;gap:2px;margin:0 0 14px;border-bottom:1px solid var(--line)}
+.abasficha .abf{border:0;border-radius:0;background:transparent;color:var(--ink-soft);padding:9px 14px 8px;border-bottom:2px solid transparent;margin-bottom:-1px;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.abasficha .abf:hover{color:var(--ink);background:var(--hover)}
+.abasficha .abf.on{color:var(--ink);border-bottom-color:var(--brass);background:var(--zebra);font-weight:600}
+.abasficha .mk{color:var(--brass);font-size:10px;margin-left:5px}
+.idcardq{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+.aniv{display:grid;gap:4px;margin-top:10px}
+.anivlin{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.anivlin .anivd{width:74px}.anivlin select{width:auto;min-width:140px}.anivlin .aniva{width:160px}
+.anivinfo{color:var(--ink-2)}
+.rschip.cxchip{display:inline-flex;align-items:center;gap:4px}
+.rschip.cxchip svg{color:var(--brass)}
+/* (lote 16) a caixinha do grupo */
+.caixa .hd{display:flex;align-items:center;gap:8px}
+.caixa .cxg{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-soft);letter-spacing:.04em}
+.caixa .cxtot{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--ink-2)}
+.caixa .cxtot svg{color:var(--brass)}
+.caixa .cxtot b{font-family:"IBM Plex Mono",monospace;font-size:16px;color:var(--ink)}
+.cxacao{display:grid;grid-template-columns:110px minmax(140px,1fr);gap:8px 10px;align-items:end}
+.cxacao .cxq input{font-family:"IBM Plex Mono",monospace;font-weight:600}
+.cxacao .cxnota i{font-style:normal;color:var(--ink-fraco);text-transform:none;letter-spacing:0}
+.cxbts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cxbts button:disabled{opacity:.4;cursor:not-allowed}
+.cxbts .cxsep{width:1px;height:18px;background:var(--line);margin:0 4px}
+.cxprev{display:flex;flex-direction:column;gap:2px;min-height:38px;margin-top:8px;font-size:12.5px;color:var(--ink-2)}
+.cxprev .cxerro,.cxerro{color:var(--rubric)}
+.cxexthd{display:flex;align-items:center;gap:8px;margin:12px 0 4px}
+.cxexthd .linkbtn{margin-left:auto;font-size:12px}
+.cxext{list-style:none;margin:0;padding:0;border-top:1px solid var(--linha-sut)}
+.cxext li{display:grid;grid-template-columns:92px 1fr auto;gap:8px;padding:4px 2px;border-bottom:1px solid var(--linha-sut);font-size:12.5px;align-items:baseline}
+.cxext .cxquando{font-size:11px;color:var(--ink-soft)}
+.cxext .cxsaldo{font-size:12px;color:var(--ink-soft)}
+.cxext li.entra .cxoque{color:var(--ink)}
+.cxext li.sai .cxoque{color:var(--ink-2)}
+.cxext .cxnotatxt{color:var(--ink-soft);font-style:italic}
+.rschip.festa{border-color:var(--brass-luz);background:var(--brass-fundo);color:var(--brass-ink)}
+.fadcfg{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:0 0 10px;margin:0 0 10px;border-bottom:1px solid var(--linha-sut)}
+.pdrow .pdvalcfg{font-size:15px;min-width:auto;color:var(--ink-2)}
+@media (max-width:700px){ .rsb{min-width:0;flex:1 1 140px} .abasficha .abf{padding:8px 9px;letter-spacing:.06em} }
+
 /* ---------- abas internas da ficha ---------- */
 .subtabs{gap:2px;flex-wrap:wrap}
 .subtabs .sub{border:0;border-radius:0;background:transparent;color:var(--ink-soft);
@@ -710,6 +802,22 @@ button.apagar:disabled{background:var(--rubric-off);border-color:var(--rubric-bo
 .habrow.off .habnome,.habrow.off textarea{opacity:.5}
 /* o que veio da árvore de habilidades: só leitura, no mesmo quadro das escritas à mão */
 .habarv{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+/* (lote 16) os cartões da aba Skills */
+.skcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.habrow.skcard{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;border:1px solid var(--line);border-left:3px solid var(--skcor,var(--line-2));border-radius:var(--r);padding:8px 10px;background:var(--campo-sut)}
+.habrow.skcard:last-child{border-bottom:1px solid var(--line)}
+.habrow.skcard .habnome{flex:1 1 auto;font-weight:600}
+.habrow.skcard .skde{flex-basis:100%;order:-1;font-size:10.5px;font-family:"IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase}
+.habrow.skcard .habtexto,.habrow.skcard .habcusto{flex-basis:100%}
+.habrow.skcard.unica{border-left-color:var(--brass)}
+.habrow.skcard.unica .skde{color:var(--brass-ink)}
+.skbonus{color:var(--ink)}
+.puops{display:grid;gap:6px;max-height:50vh;overflow-y:auto}
+.puop{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);cursor:pointer}
+.puop input{width:auto;flex:none;margin:3px 0 0;padding:0}
+.puop.on{border-color:var(--brass);background:var(--brass-fundo)}
+.pucorpo{display:flex;flex-direction:column;gap:2px;font-size:13.5px}
+.pudesc{font-size:12.5px;color:var(--ink-2)}
 .habarv .sitbar{margin-bottom:4px}
 .habrow.daarv{align-items:baseline}
 .habuso{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:10px;border:1px solid var(--line-2);background:var(--campo-sut);color:var(--ink-2);white-space:nowrap}
@@ -1050,11 +1158,11 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=15"></script>
-<script src="../tc/rules.js?v=15"></script>
-<script src="mesa.js?v=11"></script>
-<script src="extras.js?v=16"></script>
-<script src="quadros.js?v=4"></script>
+<script src="../tc/ponte.js?v=16"></script>
+<script src="../tc/rules.js?v=16"></script>
+<script src="mesa.js?v=12"></script>
+<script src="extras.js?v=17"></script>
+<script src="quadros.js?v=5"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -1490,6 +1598,9 @@ function renderLista(){
      campanhas (recolhidos). Cada bloco tem os grupos dele. Sem campanhas, é um bloco só, sem nome: a lista de sempre. */
   const blocos=FichasMesa.blocos(), mestre=!FichasMesa.ativo()||FichasMesa.mestre(), comCamp=blocos.length>1 || !!blocos[0].nome;
   const organiza=FichasMesa.organiza();        // (passar ficha ou grupo de uma campanha para outra: só o mestre da mesa)
+  /* (lote 16) Na mesa, o mestre vê cada grupo em dois blocos: os ativos em cima e, embaixo, "Inativos (n)", recolhido.
+     Arrastar uma ficha de um bloco para o outro muda o ativo dela (o mesmo da caixinha "Personagem ativo"). */
+  const divide=FichasMesa.ativo() && FichasMesa.mestre();
   let html='';
   blocos.forEach(b=>{
     const doBloco=b.unico? S.personagens : S.personagens.filter(p=>FichasMesa.blocoDe(p)===b.camp);
@@ -1507,6 +1618,8 @@ function renderLista(){
       if(g==='' && !total && !soltarAqui) return;        // "Sem grupo" só aparece se tiver alguém (ou para o bloco vazio ter onde soltar)
       if(filtroAtivo() && !membros.length) return;       // filtrando: esconde seção vazia
       const chave=chaveSec(b.camp,g), fechado=(S.fechados||[]).includes(chave);
+      const ativos=divide? membros.filter(FichasMesa.ativoNaFicha) : membros, inativos=divide? membros.filter(p=>!FichasMesa.ativoNaFicha(p)) : [];
+      const abertoIn=inativos.length>0 && (filtroAtivo() || (S.abertos||[]).includes(chave+'\u0002in'));
       dentro+=`<li class="sec" data-sec="${esc(g||SEM)}" data-camp="${esc(b.camp)}">
         <div class="sechd">
           <button class="caret" data-toggle="${esc(g||SEM)}">${fechado?'▸':'▾'}</button>
@@ -1521,8 +1634,13 @@ function renderLista(){
           </span>`:''}
         </div>
         <ul class="secitens" data-lista="${esc(g||SEM)}" data-camp="${esc(b.camp)}" ${trancado?'data-trancado="1"':''} ${fechado?'hidden':''}>
-          ${linhasComPets(membros) || (trancado?'<li class="vazio hint">ninguém aqui</li>':'<li class="vazio hint">arraste alguém pra cá'+(comCamp && !b.camp && soltarAqui?': quem é do mundo aparece em todas as campanhas':'')+'</li>')}
-        </ul></li>`;
+          ${linhasComPets(ativos) || (trancado?'<li class="vazio hint">'+(inativos.length?'ninguém ativo':'ninguém aqui')+'</li>':'<li class="vazio hint">'+(inativos.length?'ninguém ativo: arraste alguém pra cá':'arraste alguém pra cá'+(comCamp && !b.camp && soltarAqui?': quem é do mundo aparece em todas as campanhas':''))+'</li>')}
+        </ul>${divide?`
+        <div class="inat${inativos.length?'':' zero'}" data-inat="${esc(g||SEM)}" ${fechado?'hidden':''}>
+          <button class="inathd" data-inhd="${esc(g||SEM)}" aria-expanded="${abertoIn}" title="${inativos.length?(abertoIn?'Recolher':'Mostrar')+' quem está fora do grupo ativo. ':''}Arraste uma ficha para cá para tirá-la do grupo ativo (ao puxar o grupo na cena, ela vem desmarcada); arraste de volta para cima para ativá-la.">
+            <span class="caret" aria-hidden="true">${abertoIn?'▾':'▸'}</span><span class="inatnome">Inativos</span><span class="cnt mono">${inativos.length}</span></button>
+          <ul class="secitens inativas" data-lista="${esc(g||SEM)}" data-camp="${esc(b.camp)}" data-inativo="1" ${trancado?'data-trancado="1"':''} ${abertoIn?'':'hidden'}>${linhasComPets(inativos)}</ul>
+        </div>`:''}</li>`;
     });
     if(!comCamp){ html+=dentro; return; }
     if(filtroAtivo() && !dentro) return;                 // filtrando: esconde o bloco sem ninguém
@@ -1573,25 +1691,6 @@ function atualDoRecurso(pc,r){
 /* As barrinhas embaixo da imagem do personagem: cada recurso (HP, SP…) com o valor atual, só para ver de relance.
    Mexer continua sendo no quadro dos recursos; as cores são as das barras dos tokens, na mesma ordem. */
 const CORES_BARRINHA=['#d6524b','#4a9be0','#e2b23e','#6fbf73','#b07ad9','#e58a4e','#4fc3c0','#d96aa0'];
-function htmlBarrinhas(pc, c){
-  const rs=((c||calcular(pc)).recursos||[]).filter(r=>!r.err && r.val!=null && isFinite(r.val) && arred(r.val)>0);
-  if(!rs.length) return '';
-  return `<div class="barrinhas" id="barrinhas" role="group" aria-label="Recursos do personagem">${rs.map((r,i)=>{
-    // abaixo de zero (na barra que pode ficar negativa), a barrinha mostra a parte negativa, riscada
-    const max=arred(r.val), at=atualDoRecurso(pc,r), neg=at<0 && r.min<0, pod=podreDoRecurso(pc,r);
-    const pct=neg? Math.min(100,at/r.min*100) : Math.max(0,Math.min(100,at/max*100));
-    // (lote 8) a ferida permanente: a ponta da barra, apodrecida
-    return `<div class="bz${neg?' neg':''}${pod?' pod':''}" data-bz="${r.id}" title="${esc(r.nome)}: ${fmt(at).replace('-','−')} de ${fmt(max)}${neg?' (pode ir até '+fmt(r.min).replace('-','−')+')':''}${pod?' — '+fmt(pod)+' apodrecidos (ferida permanente)':''}">
-      <span class="bzn">${esc(r.nome)}</span><span class="bzv">${fmt(at).replace('-','−')}/${fmt(max)}</span>
-      <span class="bzt"><i style="width:${pct.toFixed(1)}%;${neg?'':'background:'+CORES_BARRINHA[i%CORES_BARRINHA.length]}"></i>${pod?`<b class="podre" style="width:${Math.min(100,pod/max*100).toFixed(1)}%"></b>`:''}</span></div>`;
-  }).join('')}</div>`;
-}
-// (depois de mexer num valor atual sem redesenhar a ficha inteira)
-function pintarBarrinhas(host, pc){
-  const el=host.querySelector('#barrinhas'); if(!el) return;
-  const t=document.createElement('template'); t.innerHTML=htmlBarrinhas(pc);
-  const novo=t.content.firstElementChild; if(novo) el.replaceWith(novo); else el.remove();
-}
 /* Chegou uma mudança da mesa enquanto alguém digita nesta ficha. A ficha inteira só é redesenhada quando a pessoa
    sai do campo (para não tirar o cursor de quem escreve), mas o que muda no meio do jogo — o valor das barras, a
    sobrevida, as moedas — aparece já, nos outros campos. */
@@ -1604,7 +1703,7 @@ function pintarAoVivo(){
     if(i===foco||!r||r.err||r.val==null) return;
     const at=atualDoRecurso(pc,r), v=String(at);
     if(i.value!==v) i.value=v;
-    const box=i.closest('.atual'); if(box) box.classList.toggle('neg', at<0);
+    const box=i.closest('.rsb'); if(box) box.classList.toggle('neg', at<0);
   });
   host.querySelectorAll('[data-ressob]').forEach(i=>{ if(i===foco) return; const v=String(FichasExtras.sobrevidaDe(pc,{id:i.dataset.ressob})); if(i.value!==v) i.value=v; });
   const lp=host.querySelector('#f_lapros');
@@ -1646,6 +1745,12 @@ function ligarElenco(){
     S.fechados = S.fechados.includes(g)? S.fechados.filter(x=>x!==g) : [...S.fechados,g];
     save(); renderLista();
   });
+  ul.querySelectorAll('[data-inhd]').forEach(b=>b.onclick=()=>{
+    if(b.closest('.inat').classList.contains('zero') || filtroAtivo()) return;
+    const k=chaveSec(campDe(b), b.dataset.inhd===SEM?'':b.dataset.inhd)+'\u0002in'; S.abertos=S.abertos||[];
+    S.abertos = S.abertos.includes(k)? S.abertos.filter(x=>x!==k) : [...S.abertos,k];
+    save(); renderLista();
+  });
   ul.querySelectorAll('[data-btoggle]').forEach(b=>b.onclick=()=>{
     // o bloco em vista lembra se foi recolhido; os outros, se foram abertos
     const camp=b.dataset.btoggle, k=chaveBloco(camp), vista=b.closest('.bloco').classList.contains('vista'), campo=vista?'fechados':'abertos';
@@ -1667,10 +1772,12 @@ function ligarElenco(){
     doGrupo(camp,g).forEach(p=>{p.grupo=novo});
     S.fechados=(S.fechados||[]).map(x=>x===chaveSec(camp,g)?chaveSec(camp,novo):x);
     save(); render();
+    // (lote 16) a caixinha do grupo vai junto com o nome novo
+    FichasMesa.levarCaixa(camp||null, g, camp||null, novo).then(r=>{ if(r) render(); }, e=>toast('A caixinha do grupo não foi junto: '+e.message));
   });
   ul.querySelectorAll('[data-gdel]').forEach(b=>b.onclick=()=>{
-    const g=b.dataset.gdel, camp=campDe(b);
-    if(!confirm('Desfazer o grupo "'+g+'"? Os personagens voltam para "Sem grupo".')) return;
+    const g=b.dataset.gdel, camp=campDe(b), cx=FichasMesa.caixaDoGrupo(camp||null, g);
+    if(!confirm('Desfazer o grupo "'+g+'"? Os personagens voltam para "Sem grupo".'+(cx&&cx.q? '\n\nA caixinha dele ('+cx.q+' lapros) fica guardada com o nome do grupo: se um grupo com esse nome voltar, ela volta junto.' : ''))) return;
     fixarGrupos();
     porGrupos(camp, gruposDe(camp).filter(x=>x!==g));
     doGrupo(camp,g).forEach(p=>{p.grupo=''});
@@ -1715,6 +1822,10 @@ function moverArraste(e){
   else if(e.clientY>rc.bottom-28) caixa.scrollTop+=8;
   const alvo=document.elementFromPoint(e.clientX,e.clientY);
   if(!alvo||!alvo.closest) return;
+  // (lote 16) em cima do "Inativos" de um grupo: a ficha vai para o fim da lista dos inativos dele (aberta ou não)
+  const hd=alvo.closest('[data-inhd]');
+  document.querySelectorAll('#lista .inathd.alvo').forEach(x=>{ if(x!==hd) x.classList.remove('alvo'); });
+  if(hd){ const l=hd.parentNode.querySelector('[data-inativo]'); hd.classList.add('alvo'); if(l && arrasto.li.parentNode!==l) l.appendChild(arrasto.li); return; }
   const linha=alvo.closest('.pcrow:not(.fantasma)');
   if(linha && linha!==arrasto.li){
     const rr=linha.getBoundingClientRect();
@@ -1733,6 +1844,9 @@ function soltarArraste(){
   document.body.classList.remove('arrastando-agora');
   const movido=arrasto.li.dataset.id;
   arrasto=null;
+  document.querySelectorAll('#lista .inathd.alvo').forEach(x=>x.classList.remove('alvo'));
+  const divide=FichasMesa.ativo() && FichasMesa.mestre();
+  let trocouAtivo=null;          // (lote 16) a ficha arrastada passou de ativa para inativa, ou o contrário
   const mapa=new Map(S.personagens.map(p=>[p.id,p])), novos=[], antes=S.personagens.slice();
   let mudou=null, recusado=false;     // mudou: a ficha arrastada passou para outra campanha (dá para desfazer)
   document.querySelectorAll('#lista [data-lista]').forEach(ulSec=>{
@@ -1747,6 +1861,13 @@ function soltarArraste(){
       if(de!==camp && !FichasMesa.organiza()){ if(p.id===movido) recusado='papel'; novos.push(p); mapa.delete(li.dataset.id); return; }
       if(de!==camp && (trancado || FichasMesa.encerrada(p._camp) || de==='?')){ if(p.id===movido) recusado=true; novos.push(p); mapa.delete(li.dataset.id); return; }
       if(de!==camp){ if(p.id===movido) mudou={pc:p, camp:p._camp||null, grupo:p.grupo||''}; p._camp=camp||null; }
+      if(divide && p.id===movido){
+        const quer=!ulSec.dataset.inativo;
+        if(FichasMesa.ativoNaFicha(p)!==quer){
+          if(trancado) recusado='encerrada';
+          else { marcarAtivo(p,quer); trocouAtivo={pc:p, on:quer}; }
+        }
+      }
       p.grupo=g; novos.push(p); mapa.delete(li.dataset.id);
     });
   });
@@ -1764,18 +1885,29 @@ function soltarArraste(){
   }
   for(const p of novos) if(!ja.has(p.id)) comPets.push(p);
   S.personagens=comPets; fixarGrupos(); save(); renderLista();
-  if(recusado) toast(recusado==='papel'? 'Só o mestre da mesa passa fichas de uma campanha para outra.' : 'Campanha encerrada: as fichas dela não saem, e nenhuma entra.');
+  if(recusado) toast(recusado==='papel'? 'Só o mestre da mesa passa fichas de uma campanha para outra.' : recusado==='encerrada'? 'Campanha encerrada: só para consulta.' : 'Campanha encerrada: as fichas dela não saem, e nenhuma entra.');
+  if(trocouAtivo && !mudou){
+    const {pc,on}=trocouAtivo;
+    if(S.sel===pc.id){ const x=document.querySelector('#f_ativo'); if(x) x.checked=on; }
+    FichasExtras.aviso(on? pc.nome+' está ativo: vem marcado ao puxar o grupo na cena.' : pc.nome+' ficou fora do grupo ativo: ao puxar o grupo na cena, vem desmarcado.', 'Desfazer', ()=>{
+      marcarAtivo(pc,!on); save(); renderLista();
+      if(S.sel===pc.id){ const x=document.querySelector('#f_ativo'); if(x) x.checked=!on; }
+    });
+  }
   if(mudou){
     const pc=mudou.pc;
     FichasMesa.garantirRelacoes(); save(); if(S.sel===pc.id) renderFicha();
     FichasExtras.aviso(pc.nome+' passou para '+(pc._camp? 'a campanha '+FichasMesa.nomeDaCampanha(pc._camp) : 'o mundo (aparece em todas as campanhas)')+'.', 'Desfazer', ()=>{
       pc._camp=mudou.camp; pc.grupo=mudou.grupo;
+      if(trocouAtivo) marcarAtivo(pc,!trocouAtivo.on);
       S.personagens=antes.filter(p=>S.personagens.includes(p)).concat(S.personagens.filter(p=>!antes.includes(p)));
       fixarGrupos(); save(); render();
     }, 9000);
     FichasMesa.avisarDeFora([pc]);
   }
 }
+// (lote 16) ativo ou não: estado.ativo=false para quem está fora (sem o campo, está ativo)
+function marcarAtivo(pc,on){ const est=Object.assign({}, pc.estado||{}); if(on) delete est.ativo; else est.ativo=false; pc.estado=est; }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 const SEM='__sem__';
 /* Os grupos de um bloco da lista, na ordem do mestre: os do mundo ficam em S.grupos; os de cada campanha, em
@@ -1860,10 +1992,15 @@ function passarGrupo(camp, g, para){
   porGrupos(camp, gruposDe(camp).filter(x=>x!==g));
   const ld=gruposDe(para); if(!ld.includes(g)) ld.push(g);
   FichasMesa.garantirRelacoes(); save(); render();
+  // (lote 16) a caixinha do grupo vai junto (somada à de lá, se já houver um grupo com esse nome)
+  const cxLa=FichasMesa.caixaDoGrupo(para||null, g), laVazia=!cxLa||(!cxLa.q&&!cxLa.ext.length);
+  FichasMesa.levarCaixa(camp||null, g, para||null, g).then(r=>{ if(r) render(); }, e=>toast('A caixinha do grupo não foi junto: '+e.message));
   FichasExtras.aviso('O grupo '+g+' passou para '+(para? 'a campanha '+FichasMesa.nomeDaCampanha(para) : 'o mundo (aparece em todas as campanhas)')+'.', 'Desfazer', ()=>{
     fichas.forEach(p=>{ p._camp=camp||null; });
     porGrupos(camp, antes.origem); porGrupos(para, antes.destino);
     save(); render();
+    if(laVazia) FichasMesa.levarCaixa(para||null, g, camp||null, g).then(r=>{ if(r) render(); }, e=>toast('A caixinha do grupo não voltou: '+e.message));
+    else toast('A caixinha do grupo ficou em '+(para? FichasMesa.nomeDaCampanha(para) : 'Do mundo')+', somada à de lá.');
   }, 12000);
   FichasMesa.avisarDeFora(fichas);
 }
@@ -1896,54 +2033,19 @@ function renderFicha(){
   }
   const c=calcular(pc);
   const pd=Array.isArray(pc.poderes)? pc.poderes : (pc.poderes=[]);
-  const sub0=abaDaFicha(pc);
   const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'});
   const soma=somaPercentuaisUsados(pc);
   const optTier=S.cfg.tiersPersonagem.map(t=>`<option ${t.t===pc.tier?'selected':''}>${t.t}</option>`).join('');
   const optLvl=S.cfg.niveis.map(r=>`<option value="${r.lvl}" ${+r.lvl===+pc.level?'selected':''}>${r.lvl}</option>`).join('');
 
+  const aba=abaDaFicha(pc);
+  // (lote 16) cada aba fica na página (as que não estão abertas, escondidas): trocar de aba não redesenha a ficha
+  const parte=(k,html)=>`<div class="abaficha" id="abafichac-${k}" data-abafichac="${k}" role="tabpanel" aria-labelledby="abaficha-${k}"${aba===k?'':' hidden'}>${html}</div>`;
   host.innerHTML=`
-  <div class="panel" style="margin-bottom:18px">
-    <div class="hd">
-      <span class="eyebrow">${pc.petDe?'Ficha de pet':'Ficha'}</span>
-      <span class="mono" style="font-size:11.5px;color:var(--ink-soft);margin-left:6px">${c.total.toFixed(2)} pts${FichasMesa.deJogador(pc) && c.mult===1 ? '' : ' · ×'+c.mult}</span>
-      ${pc.petDe?`<span class="petde">${PATA_SVG} pet de <button type="button" class="linkbtn" data-abrirpc="${esc(pc.petDe)}" title="Abrir a ficha do dono">${esc(FichasMesa.nomeDoPetDe(pc))}</button></span>`:''}
-      <span style="margin-left:auto;display:flex;gap:6px">
-        ${!pc.petDe && FichasMesa.podeEditar(pc)?`<button class="mini" data-act="addpet" title="Uma ficha suplementar para o animal ou companheiro de ${esc(pc.nome||'este personagem')}: atributos à mão, barras e habilidades, sem bolsa. Quem controla ${esc(pc.nome||'o personagem')} controla o pet.">+ Pet</button>`:''}
-        <button class="mini" data-act="dup">Duplicar</button>
-        <button class="mini danger" data-act="del">Excluir</button>
-      </span>
-    </div>
-    <div class="bd">
-      <div class="idtopo">
-      ${FichasExtras.htmlRetrato(pc, htmlBarrinhas(pc, c))}
-      <div class="idcorpo">
-      <div class="idcard">
-        <label class="f"><span class="eyebrow">Nome</span><input id="f_nome" value="${esc(pc.nome)}"></label>
-        <label class="f"><span class="eyebrow">Raça / classe</span><input id="f_raca" value="${esc(pc.raca||'')}"></label>
-        <label class="f"><span class="eyebrow">Lado</span><select id="f_lado">
-          ${['Aliado','Inimigo','Neutro'].map(l=>`<option ${(pc.lado||'Aliado')===l?'selected':''}>${l}</option>`).join('')}
-        </select></label>
-        ${FichasMesa.deJogador(pc) || pc.petDe? '' : `<label class="f"><span class="eyebrow">Tier</span><select id="f_tier">${optTier}</select></label>`}
-        <label class="f"><span class="eyebrow">Level</span><select id="f_level">${optLvl}</select></label>
-      </div>
-      ${FichasQuadros.htmlXp(pc)}
-      ${FichasMesa.htmlDono(pc)}
-      <div class="idcard2">
-        <label class="f"><span class="eyebrow">${FichasMesa.campanhas().length?'Campanha e grupo':'Grupo'}</span>
-          <select id="f_grupo">
-            ${opcoesDeGrupo(pc)}
-            <option value="__novo__">+ Criar grupo…</option>
-          </select></label>
-        <label class="f"><span class="eyebrow">Tags</span>
-          <input id="f_tags" value="${esc((pc.tags||[]).join(', '))}" placeholder="separadas por vírgula — ex: capítulo 3, boss, aliado do rei"></label>
-        ${FichasExtras.htmlLapros(pc)}
-      </div>
-      ${FichasExtras.htmlIdentidade(pc)}
-      </div>
-      </div>
-    </div>
-  </div>
+  ${htmlResumo(pc,c)}
+  ${htmlAbasFicha(pc,aba)}
+  ${parte('atributos', `
+  ${htmlQuemE(pc,optTier,optLvl)}
 
   <div class="two" style="margin-bottom:18px">
     ${FichasExtras.abaDefesas(c)? FichasExtras.painelDefesas(pc,c) : FichasExtras.ehLivre(pc)? FichasExtras.painelAtributosLivre(pc,c) : `
@@ -2061,29 +2163,25 @@ function renderFicha(){
     </div>
   </div>
 
+
   <div class="panel" style="margin-bottom:18px" id="especiais">
     <div class="hd"><span class="eyebrow">Barras especiais</span>
-      <span class="hint" style="margin-left:8px">clique nos círculos para gastar ou devolver · aparecem no token, em bolinhas</span>
+      <span class="hint" style="margin-left:8px">gaste e devolva no resumo, no alto · aparecem no token, em bolinhas</span>
       <span style="margin-left:auto;display:flex;gap:6px">
         ${pd.length?'<button class="mini" data-pdall="cheio">Encher todas</button>':''}
         ${usaFadigaNaFicha(pc)?'':'<button class="mini" data-fadusar="1" title="A pilha de fadiga, de 5 (descansado) a 0 (esgotado): o descanso do Acampamento enche, e ela aparece no token">+ Fadiga</button>'}
         <button class="mini primary" data-pdadd="1">+ Barra especial</button>
       </span></div>
     <div class="bd">
-      ${usaFadigaNaFicha(pc)? htmlFadiga(pc) : ''}
+      ${usaFadigaNaFicha(pc)? `<div class="fadcfg"><span class="hint">A fadiga está em uso: a pilha fica no resumo, no alto (o descanso longo enche · o curto devolve um).</span>${FichasMesa.deJogador(pc)?'':'<button class="mini danger" data-faddel="1" title="Esta ficha deixa de usar a fadiga" aria-label="Tirar a fadiga desta ficha">×</button>'}</div>` : ''}
       ${pd.length? `<div class="pdlist">${especiaisDe(pc).map(pw=>`
         <div class="pdrow">
           <input class="inm" data-pdnome="${pw.id}" value="${esc(nomeCruDoEspecial(pc,pw.id))}" placeholder="Nome (ex.: Poder divino, Cargas da varinha)" aria-label="Nome da barra especial">
-          <div class="pdctl">
-            <button class="step" data-pdstep="${pw.id}|-1" ${pw.atual<=0?'disabled':''} aria-label="Gastar um de ${esc(pw.nome)}">−</button>
-            <span class="pdval">${pw.atual}<small>/ ${pw.max||'∞'}</small></span>
-            <button class="step" data-pdstep="${pw.id}|1" ${pw.max>0&&pw.atual>=pw.max?'disabled':''} aria-label="Devolver um de ${esc(pw.nome)}">+</button>
-          </div>
+          <span class="pdval pdvalcfg" title="Agora (gaste e devolva no resumo)">${pw.atual}<small>/ ${pw.max||'∞'}</small></span>
           <label class="sitbar" style="gap:6px"><span class="eyebrow">Limite</span>
             <input type="number" min="0" data-pdmax="${pw.id}" value="${pw.max}" style="width:64px"></label>
           <button class="mini danger" data-pddel="${pw.id}" title="Tirar esta barra especial" aria-label="Tirar a barra especial ${esc(pw.nome)}">×</button>
           ${htmlRecEspecial(pw)}
-          <div class="pips">${pips(pw)}</div>
         </div>`).join('')}</div>`
       : '<div class="hint">Nenhuma barra especial. Cada uma tem o próprio contador, o próprio limite e a própria regra de recuperação (poderes divinos, cargas, usos…) — e aparece no token do personagem, em bolinhas.</div>'}
     </div>
@@ -2102,10 +2200,9 @@ function renderFicha(){
               <button class="mini danger" data-resdel="${r.id}">Remover</button>
               <span class="val ${r.err?'err':''}">${r.err? 'erro' : (r.val==null?'—':fmt(r.val))}</span>
             </div>
-            ${r.err||r.val==null?'':`<div class="atual${atualDoRecurso(pc,r)<0?' neg':''}">
-              <span class="eyebrow">Atual</span>
-              <input class="inm" type="text" inputmode="decimal" autocomplete="off" data-resatual="${r.id}" value="${atualDoRecurso(pc,r)}" aria-label="Valor atual de ${esc(r.nome)}" title="Digite o valor e Enter, ou -8 e +5 para tirar e pôr (o dano gasta primeiro a sobrevida); -10% tira 10% do máximo. Esc desfaz o que foi digitado.">
-              <span class="de">de ${fmt(arred(r.val))}${r.min<0?` · até ${fmt(r.min).replace('-','−')}`:''}</span>
+            ${r.err||r.val==null?'':`<div class="atual${atualDoRecurso(pc,r)<0?' neg':''}" data-resbox="${r.id}">
+              <span class="eyebrow">Agora</span>
+              <span class="de" title="O valor de agora se muda no resumo, no alto da ficha">${fmt(atualDoRecurso(pc,r)).replace('-','−')} de ${fmt(arred(r.val))}${r.min<0?` · até ${fmt(r.min).replace('-','−')}`:''}</span>
               ${podreDoRecurso(pc,r)?`<span class="podre-tag" data-respodre="${r.id}" title="Ferida permanente: a ponta da barra apodreceu. A cura, até a total, não passa de ${fmt(tetoDoRecurso(pc,r))} até o mestre tirar a ferida.">${fmt(podreDoRecurso(pc,r))} apodrecidos</span>${!FichasMesa.ativo()||FichasMesa.mestre()?`<button class="mini" data-restirapodre="${r.id}" title="Tira a ferida permanente desta barra (a cura volta a ir até o máximo)">Tirar a ferida</button>`:''}`:''}
               ${temAtual(pc,r)?(r.inicio!=null && r.inicio!==arred(r.val)
                 ? `<button class="mini" data-rescheio="${r.id}" title="Voltar ao valor em que a barra começa">Voltar a ${fmt(r.inicio).replace('-','−')}</button>`
@@ -2141,40 +2238,309 @@ function renderFicha(){
 
   ${FichasQuadros.painelCorpo(pc)}
 
-  ${FichasExtras.painelTemporarios(pc,c)}
-
-  ${FichasExtras.painelMente(pc)}
-
+  ${FichasExtras.painelTemporarios(pc,c)}`)}
+  ${parte('bolsas', `
   ${FichasExtras.painelItens(pc,c)}
 
   ${pc.petDe? '' : FichasExtras.painelBolsa(pc,c)}
 
-  ${FichasQuadros.painelAscensao(pc)}
-
-  <div class="panel">
-    <div class="hd subtabs">
-      ${[estaqueEscondido(pc)? null : ['estaque','Estaque', (pc.estaque?.a||pc.estaque?.b)?'•':''],
-         ['skills','Skills', Object.keys(skillsDe(pc).alocados).length||''],
-         ['habs','Passivas e Habilidades', ((pc.habilidades||[]).length + habsDaArvore(pc).length)||''],
-         ['missoes','Missões', FichasQuadros.contaAtivas(pc)||''],
-         ['notas','Anotações gerais', (pc.notas||'').trim()?'•':'']
-        ].filter(Boolean).map(([k,rot,mk])=>`<button class="sub ${sub0===k?'on':''}" data-sub="${k}">${rot}
-          ${mk!==''?`<span class="mk">${mk}</span>`:''}</button>`).join('')}
+  ${htmlCaixinha(pc)}`)}
+  ${parte('social', `${FichasExtras.painelMente(pc)}`)}
+  ${parte('skills', htmlAbaSkills(pc))}
+  ${parte('notas', htmlAbaNotas(pc))}
+  `;
+  ligarFicha(pc);
+}
+/* (lote 15) O Estaque escondido: o mestre marca, ficha por ficha, e quem não mestra deixa de ver a aba (o texto nem
+   chega: mora com o mestre, no documento dos segredos — ver FichasMesa). A marca só aparece numa mesa, para o mestre,
+   nas fichas que algum jogador vê: a de um jogador, ou a de um NPC aberta aos jogadores. */
+const estaqueEscondido=pc=>!!(pc&&pc.estaqueOculto) && FichasMesa.ativo() && !FichasMesa.mestre();
+/* (lote 16) A ficha em abas, com um resumo fixo no alto. O resumo (em todas as abas): o retrato, o nome, quem é em
+   uma linha, as barras (o valor de agora se muda ali: os recursos, as barras especiais e a fadiga), os números (os
+   atributos, os derivados e as defesas, com o equipamento), os lapros e a caixinha do grupo, os ferimentos abertos, a
+   Sanidade e o Conforto. As abas: Atributos (quem é, a tabela, a flor e a rolagem, as barras e os recursos, o corpo e os
+   bônus temporários) · Bolsas e itens · Social · Skills · Notas (o Estaque, as missões e as anotações). A aba aberta
+   fica lembrada nesta tela (S.abaFicha); a de antes do lote 16 (as abas de baixo) abre em Atributos. */
+const ABAS_FICHA=[['atributos','Atributos'],['bolsas','Bolsas e itens'],['social','Social'],['skills','Skills'],['notas','Notas']];
+const abaDaFicha=pc=>{ const a=S.abaFicha; return ABAS_FICHA.some(x=>x[0]===a)? a : 'atributos'; };
+function marcaDaAba(pc,k){
+  if(k==='skills'){ const n=(pc.habilidades||[]).length+habsDaArvore(pc).length+unicasDaFicha(pc).length; return n||''; }
+  if(k==='bolsas'){ const n=(pc.itens||[]).length; return n||''; }
+  if(k==='notas'){ const n=FichasQuadros.contaAtivas(pc); return n? n : ((!estaqueEscondido(pc)&&(pc.estaque?.a||pc.estaque?.b))||(pc.notas||'').trim())? '•' : ''; }
+  return '';
+}
+function htmlAbasFicha(pc,aba){
+  return `<div class="abasficha" role="tablist" aria-label="Partes da ficha">${ABAS_FICHA.map(([k,rot])=>{ const mk=marcaDaAba(pc,k);
+    return `<button type="button" role="tab" class="abf${aba===k?' on':''}" id="abaficha-${k}" data-abaficha="${k}" aria-selected="${aba===k}" aria-controls="abafichac-${k}">${rot}${mk!==''?`<span class="mk">${mk}</span>`:''}</button>`; }).join('')}</div>`;
+}
+// troca de aba sem redesenhar a ficha (quem está digitando noutra aba não perde nada)
+function irParaAba(k, alvo){
+  if(!ABAS_FICHA.some(x=>x[0]===k)) return;
+  S.abaFicha=k; save();
+  const host=document.getElementById('ficha'); if(!host) return;
+  host.querySelectorAll('[data-abafichac]').forEach(el=>{ el.hidden = el.dataset.abafichac!==k; });
+  host.querySelectorAll('[data-abaficha]').forEach(b=>{ const on=b.dataset.abaficha===k; b.classList.toggle('on',on); b.setAttribute('aria-selected',String(on)); });
+  if(alvo){ const el=host.querySelector(alvo); if(el) el.scrollIntoView({block:'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches? 'auto' : 'smooth'}); }
+}
+// a linha de quem é: "Kitsune · Level 12 · Aliado · Batedores"
+function metaDaFicha(pc){
+  const g=String(pc.grupo||'').trim();
+  return [String(pc.raca||'').trim(), 'Level '+(pc.level||1), pc.lado||'Aliado', g].filter(Boolean).join(' · ');
+}
+// o medidor de uma barra (o desenho), com o valor por extenso para quem lê a tela
+function htmlMedidor(pc,r,i){
+  const max=arred(r.val), at=atualDoRecurso(pc,r), neg=at<0 && r.min<0, pod=podreDoRecurso(pc,r);
+  const pct=neg? Math.min(100,at/r.min*100) : Math.max(0,Math.min(100,at/max*100));
+  return `<span class="bz${neg?' neg':''}${pod?' pod':''}" data-bz="${r.id}" title="${esc(r.nome)}: ${fmt(at).replace('-','−')} de ${fmt(max)}${neg?' (pode ir até '+fmt(r.min).replace('-','−')+')':''}${pod?' — '+fmt(pod)+' apodrecidos (ferida permanente)':''}">
+    <span class="bzn sr">${esc(r.nome)}</span><span class="bzv sr">${fmt(at).replace('-','−')}/${fmt(max)}</span>
+    <span class="bzt"><i style="width:${pct.toFixed(1)}%;${neg?'':'background:'+CORES_BARRINHA[i%CORES_BARRINHA.length]}"></i>${pod?`<b class="podre" style="width:${Math.min(100,pod/max*100).toFixed(1)}%"></b>`:''}</span></span>`;
+}
+const recursosComBarra=(pc,c)=>((c||calcular(pc)).recursos||[]).filter(r=>!r.err && r.val!=null && isFinite(r.val) && arred(r.val)>0);
+// as barras do resumo: o valor de agora de cada recurso (o campo), as barras especiais e a fadiga
+function htmlBarrinhas(pc, c){
+  const rs=recursosComBarra(pc,c), esp=especiaisDe(pc).filter(pw=>pw.max>0||pw.atual>0), fad=usaFadigaNaFicha(pc);
+  if(!rs.length && !esp.length && !fad) return '';
+  return `<div class="rsbarras" id="barrinhas" role="group" aria-label="Barras do personagem">${rs.map((r,i)=>{
+      const at=atualDoRecurso(pc,r), sob=FichasExtras.sobrevidaDe(pc,r);
+      return `<div class="rsb${at<0?' neg':''}" data-rsb="${r.id}">
+        <label class="rsbl"><span class="rsbn">${esc(r.nome)}</span>
+          <input class="inm" type="text" inputmode="decimal" autocomplete="off" data-resatual="${r.id}" value="${at}" aria-label="Valor atual de ${esc(r.nome)}" title="Digite o valor e Enter, ou -8 e +5 para tirar e pôr (o dano gasta primeiro a sobrevida); -10% tira 10% do máximo. Esc desfaz o que foi digitado.">
+          <span class="rsbm">/ ${fmt(arred(r.val))}</span></label>
+        <span class="rsx" data-rsx="${r.id}" title="Sobrevida: leva o dano antes"${sob>0?'':' hidden'}>+${fmt(sob)}</span>
+        ${htmlMedidor(pc,r,i)}
+      </div>`;}).join('')}
+    ${esp.map(pw=>`<div class="rsb rsesp" data-rsesp="${pw.id}">
+        <span class="rsbn">${esc(pw.nome)}</span>
+        <span class="pdctl"><button class="step" data-pdstep="${pw.id}|-1" ${pw.atual<=0?'disabled':''} aria-label="Gastar um de ${esc(pw.nome)}">−</button>
+          <span class="pdval">${pw.atual}<small>/ ${pw.max||'∞'}</small></span>
+          <button class="step" data-pdstep="${pw.id}|1" ${pw.max>0&&pw.atual>=pw.max?'disabled':''} aria-label="Devolver um de ${esc(pw.nome)}">+</button></span>
+        <span class="pips">${pips(pw)}</span>
+      </div>`).join('')}
+    ${fad? htmlFadiga(pc) : ''}</div>`;
+}
+// (depois de mexer num valor atual sem redesenhar a ficha inteira: os medidores, a sobrevida e o vermelho do negativo)
+function pintarBarrinhas(host, pc){
+  const c=calcular(pc);
+  recursosComBarra(pc,c).forEach((r,i)=>{
+    const el=host.querySelector('[data-bz="'+CSS.escape(r.id)+'"]'); if(!el) return;
+    const t=document.createElement('template'); t.innerHTML=htmlMedidor(pc,r,i).trim(); el.replaceWith(t.content.firstElementChild);
+    const box=host.querySelector('[data-rsb="'+CSS.escape(r.id)+'"]'); if(box) box.classList.toggle('neg', atualDoRecurso(pc,r)<0);
+    const x=host.querySelector('[data-rsx="'+CSS.escape(r.id)+'"]'); if(x){ const sob=FichasExtras.sobrevidaDe(pc,r); x.hidden=!(sob>0); x.textContent='+'+fmt(sob); }
+    const agora=host.querySelector('[data-resbox="'+CSS.escape(r.id)+'"] .de'); if(agora) agora.textContent=fmt(atualDoRecurso(pc,r)).replace('-','−')+' de '+fmt(arred(r.val))+(r.min<0?' · até '+fmt(r.min).replace('-','−'):'');
+  });
+}
+// os números do resumo: os atributos, os derivados e as defesas (com o equipamento)
+function htmlNumerosResumo(pc,c){
+  const chip=(k,rot,v,cls)=>`<span class="rsn${cls?' '+cls:''}" title="${esc(rot)}"><b>${esc(k)}</b>${v}</span>`;
+  return `<div class="rsnums" aria-label="Atributos, derivados e defesas">
+    <span class="rsgrupo">${ATRIBS.map(a=>chip(a.k,a.nome+' (com equipamento)',c.tot[a.k],'c-'+(COR_ATR[a.k]||''))).join('')}</span>
+    <span class="rsgrupo">${DERIV.map(d=>chip(d.k,d.nome,c.der[d.k])).join('')}</span>
+    <span class="rsgrupo">${DEFESAS.map(d=>chip(d.rot,d.nome,c.def[d.k])).join('')}</span>
+  </div>`;
+}
+// o estado de agora: os lapros (e a caixinha do grupo), os ferimentos abertos, a Sanidade e o Conforto
+function htmlEstadoResumo(pc){
+  const out=[FichasExtras.htmlLapros(pc), htmlCaixinhaResumo(pc)];
+  { const cal=calDaFicha(), R=window.TC&&TC.rules, ok=R&&R.anivOk? R.anivOk(anivDe(pc), cal.meses) : null, x=ok&&cal.hoje? R.aniversario(ok, cal.hoje, cal.meses) : null;
+    if(x&&x.hoje) out.push(`<button type="button" class="rschip festa" data-irpara="atributos|#anivBox" title="No calendário do mundo">Aniversário hoje${x.idade!=null?' · faz '+x.idade:''}</button>`); }
+  const fer=FichasQuadros.feridasAbertas? FichasQuadros.feridasAbertas(pc) : [];
+  if(fer.length) out.push(`<button type="button" class="rschip ruim" data-irpara="atributos|#painelCorpo" title="${esc(fer.join('\n'))}">${fer.length===1?'1 ferimento aberto':fer.length+' ferimentos abertos'}</button>`);
+  if(FichasExtras.usaMente(pc)) for(const k of ['san','conf']){ const v=FichasExtras.valorMente(pc,k), M=FichasExtras.MENTE[k];
+    out.push(`<button type="button" class="rschip mente-${k}" data-irpara="social|#painelMente" title="${esc(M.nome)}: ${v} de 100 (na aba Social)">${esc(M.nome)} <b>${v}</b></button>`); }
+  return `<div class="rsestado">${out.filter(Boolean).join('')}</div>`;
+}
+function htmlResumo(pc,c){
+  return `<div class="panel resumo" id="resumo" style="margin-bottom:10px">
+    <div class="hd">
+      <span class="eyebrow">${pc.petDe?'Ficha de pet':'Ficha'}</span>
+      <span class="mono" style="font-size:11.5px;color:var(--ink-soft);margin-left:6px">${c.total.toFixed(2)} pts${FichasMesa.deJogador(pc) && c.mult===1 ? '' : ' · ×'+c.mult}</span>
+      ${pc.petDe?`<span class="petde">${PATA_SVG} pet de <button type="button" class="linkbtn" data-abrirpc="${esc(pc.petDe)}" title="Abrir a ficha do dono">${esc(FichasMesa.nomeDoPetDe(pc))}</button></span>`:''}
+      <span style="margin-left:auto;display:flex;gap:6px">
+        ${!pc.petDe && FichasMesa.podeEditar(pc)?`<button class="mini" data-act="addpet" title="Uma ficha suplementar para o animal ou companheiro de ${esc(pc.nome||'este personagem')}: atributos à mão, barras e habilidades, sem bolsa. Quem controla ${esc(pc.nome||'o personagem')} controla o pet.">+ Pet</button>`:''}
+        <button class="mini" data-act="dup">Duplicar</button>
+        <button class="mini danger" data-act="del">Excluir</button>
+      </span>
     </div>
     <div class="bd">
-      ${sub0==='estaque'?`${htmlEstaqueOculto(pc)}
-        <div class="colunas">
-          <textarea class="entrada" rows="10" data-est="a" placeholder="Dificuldade de Visão - 0/100&#10;Sangramento - 2 turnos">${esc(pc.estaque.a||'')}</textarea>
-          <textarea class="entrada" rows="10" data-est="b" placeholder="Segunda coluna">${esc(pc.estaque.b||'')}</textarea>
-        </div>`
-      : sub0==='skills'? blocoSkills(pc)
-      : sub0==='missoes'? FichasQuadros.blocoMissoes(pc)
-      : sub0==='habs'?`
-        <div class="sitbar" style="margin-bottom:10px">
-          <span class="hint">${TIPOS_HAB.map(t=>{const n=(pc.habilidades||[]).filter(h=>(h.tipo||'Ativo')===t).length;
-            return n?`${n} ${t.toLowerCase()}${n>1?'s':''}`:''}).filter(Boolean).join(' · ')||'nenhuma habilidade'}</span>
-          <button class="mini primary" style="margin-left:auto" data-habadd="1">+ Habilidade</button>
+      <div class="idtopo">
+      ${FichasExtras.htmlRetrato(pc, '')}
+      <div class="idcorpo rscorpo">
+        <div class="rsnome">
+          <label class="f"><span class="eyebrow">Nome</span><input id="f_nome" value="${esc(pc.nome)}"></label>
+          <span class="rsmeta" id="rsmeta">${esc(metaDaFicha(pc))}</span>
         </div>
+        ${htmlBarrinhas(pc, c)}
+        ${htmlNumerosResumo(pc,c)}
+        ${htmlEstadoResumo(pc)}
+      </div>
+      </div>
+    </div>
+  </div>`;
+}
+// quem é (na aba Atributos): a raça, o lado, o tier, o level, o XP, o dono, o grupo, as tags e o resto da identidade
+function htmlQuemE(pc,optTier,optLvl){
+  return `<div class="panel" style="margin-bottom:18px" id="quemE">
+    <div class="hd"><span class="eyebrow">Quem é</span></div>
+    <div class="bd">
+      <div class="idcard idcardq">
+        <label class="f"><span class="eyebrow">Raça / classe</span><input id="f_raca" value="${esc(pc.raca||'')}"></label>
+        <label class="f"><span class="eyebrow">Lado</span><select id="f_lado">
+          ${['Aliado','Inimigo','Neutro'].map(l=>`<option ${(pc.lado||'Aliado')===l?'selected':''}>${l}</option>`).join('')}
+        </select></label>
+        ${FichasMesa.deJogador(pc) || pc.petDe? '' : `<label class="f"><span class="eyebrow">Tier</span><select id="f_tier">${optTier}</select></label>`}
+        <label class="f"><span class="eyebrow">Level</span><select id="f_level">${optLvl}</select></label>
+      </div>
+      ${FichasQuadros.htmlXp(pc)}
+      ${FichasMesa.htmlDono(pc)}
+      <div class="idcard2">
+        <label class="f"><span class="eyebrow">${FichasMesa.campanhas().length?'Campanha e grupo':'Grupo'}</span>
+          <select id="f_grupo">
+            ${opcoesDeGrupo(pc)}
+            <option value="__novo__">+ Criar grupo…</option>
+          </select></label>
+        <label class="f"><span class="eyebrow">Tags</span>
+          <input id="f_tags" value="${esc((pc.tags||[]).join(', '))}" placeholder="separadas por vírgula — ex: capítulo 3, boss, aliado do rei"></label>
+      </div>
+      ${htmlAniversario(pc)}
+      ${FichasExtras.htmlIdentidade(pc)}
+    </div>
+  </div>`;
+}
+/* (lote 16) A caixinha do grupo, na aba "Bolsas e itens": quanto o grupo guarda junto; pôr e pegar com os lapros desta
+   ficha — a conta aparece antes, e dá para desfazer —; e o extrato (quem pôs, quem pegou, para quê). Quem mestra também
+   põe e tira sem ficha nenhuma (um achado, uma despesa do grupo). Na mesa, quem confere e grava as duas pontas juntas
+   é o banco (ver FichasMesa.moverCaixa). */
+const CX={pc:null, q:'', nota:'', tudo:false, ocupada:false};      // o que foi digitado nesta ficha (um redesenho não perde) e se há um pedido no caminho
+function caixaDaFicha(pc){ const g=pc&&!pc.petDe? FichasMesa.nomeDoGrupo(pc.grupo) : ''; return g? {g, cx:FichasMesa.caixaDoGrupo(pc._camp||null, g)} : null; }
+function qtdCaixa(){ const t=String(CX.q||'').replace(/[\s.]/g,''); return /^\d{1,10}$/.test(t)? +t : null; }
+// a conta, antes: o que acontece com a ficha e com a caixinha em cada botão (e por que um botão não vale)
+function previaCaixa(pc,cx){
+  const q=qtdCaixa(), lap=FichasExtras.laprosDe(pc), nome=esc(pc.nome||'A ficha');
+  if(!String(CX.q||'').trim()) return '<span class="hint">Digite quantos lapros: a conta aparece aqui antes.</span>';
+  if(q==null||q<1) return '<span class="cxerro">Só um número inteiro, de 1 para cima.</span>';
+  const por = lap>=q? `<b>Pôr ${q}:</b> ${nome} fica com ${lap-q} (tem ${lap}) · a caixinha, com ${cx.q+q}.` : `<b>Pôr ${q}:</b> <span class="cxerro">${nome} tem só ${lap}.</span>`;
+  const pegar = cx.q>=q? `<b>Pegar ${q}:</b> a caixinha fica com ${cx.q-q} · ${nome}, com ${lap+q}.` : `<b>Pegar ${q}:</b> <span class="cxerro">a caixinha tem só ${cx.q}.</span>`;
+  return `<span>${por}</span><span>${pegar}</span>`;
+}
+function linhaDoExtrato(e){
+  const q=+e.q||0, dt=new Date(e.em), quando=isFinite(dt)? dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+  const quem=e.quem? esc(e.quem)+(q>0?' pôs ':' pegou ')+Math.abs(q) : (q>0?'Achado: +':'Despesa: −')+Math.abs(q);
+  return `<li class="${q>0?'entra':'sai'}"><span class="cxquando mono">${quando}</span><span class="cxoque">${quem}${e.m&&e.quem?' <i>(pelo mestre)</i>':''}${e.nota?' · <span class="cxnotatxt">'+esc(e.nota)+'</span>':''}</span><span class="cxsaldo mono" title="Na caixinha, depois">${+e.saldo||0}</span></li>`;
+}
+function htmlCaixinha(pc){
+  if(pc.petDe) return '';
+  if(CX.pc!==pc.id){ CX.pc=pc.id; CX.q=''; CX.nota=''; CX.tudo=false; }      // (outra ficha: começa limpo)
+  const d=caixaDaFicha(pc);
+  if(!d) return `<div class="panel caixa" id="painelCaixa"><div class="hd"><span class="eyebrow">Caixinha do grupo</span></div>
+    <div class="bd"><div class="hint">Esta ficha está sem grupo. A caixinha é do grupo: com a ficha num grupo (o campo “Grupo”, em Atributos), os lapros ficam guardados junto com os dos outros.</div></div></div>`;
+  const {g,cx}=d, pode=FichasMesa.mexeNaCaixa(pc), semFicha=pode && FichasMesa.caixaSemFicha(), q=qtdCaixa(), lap=FichasExtras.laprosDe(pc);
+  const ext=CX.tudo? cx.ext : cx.ext.slice(0,5);
+  return `<div class="panel caixa" id="painelCaixa">
+    <div class="hd"><span class="eyebrow">Caixinha do grupo</span><span class="cxg">${esc(g)}</span>
+      <span class="cxtot" title="Os lapros que o grupo guarda junto">${FichasExtras.MOEDA}<b id="cxTotal">${cx.q}</b> lapros</span></div>
+    <div class="bd">
+      ${pode?`<div class="cxacao">
+        <label class="f cxq"><span class="eyebrow">Quantos</span><input id="cx_q" type="text" inputmode="numeric" autocomplete="off" value="${esc(CX.q)}" placeholder="0"></label>
+        <label class="f cxnota"><span class="eyebrow">Para quê <i>(opcional)</i></span><input id="cx_nota" type="text" maxlength="120" autocomplete="off" value="${esc(CX.nota)}" placeholder="a pousada, o achado da cripta…"></label>
+        <div class="cxbts">
+          <button type="button" class="mini primary" data-cx="por" ${CX.ocupada||q==null||q<1||lap<q?'disabled':''} title="Os lapros saem desta ficha e vão para a caixinha">Pôr na caixinha</button>
+          <button type="button" class="mini" data-cx="pegar" ${CX.ocupada||q==null||q<1||cx.q<q?'disabled':''} title="Os lapros saem da caixinha e vêm para esta ficha">Pegar para a ficha</button>
+          ${semFicha?`<span class="cxsep" aria-hidden="true"></span>
+          <button type="button" class="mini" data-cx="achado" ${CX.ocupada||q==null||q<1?'disabled':''} title="Só a caixinha recebe (um achado, um pagamento ao grupo): nenhuma ficha perde lapros">+ Achado</button>
+          <button type="button" class="mini" data-cx="despesa" ${CX.ocupada||q==null||q<1||cx.q<q?'disabled':''} title="Só a caixinha paga (uma despesa do grupo): nenhuma ficha ganha lapros">− Despesa</button>`:''}
+        </div>
+      </div>
+      <div class="cxprev" id="cxPrev" aria-live="polite">${previaCaixa(pc,cx)}</div>`
+      : `<div class="hint">Só para consulta: quem põe e pega com esta ficha é quem a controla (e quem mestra).</div>`}
+      <div class="cxexthd"><span class="eyebrow">Extrato</span>${cx.ext.length>5?`<button type="button" class="linkbtn" data-cxtudo>${CX.tudo?'Só os últimos':'Ver tudo ('+cx.ext.length+')'}</button>`:''}</div>
+      ${cx.ext.length? `<ul class="cxext">${ext.map(linhaDoExtrato).join('')}</ul>` : '<div class="hint">Nada ainda: o que entrar e sair da caixinha aparece aqui, com quem fez.</div>'}
+    </div>
+  </div>`;
+}
+function htmlCaixinhaResumo(pc){
+  const d=caixaDaFicha(pc); if(!d) return '';
+  return `<button type="button" class="rschip cxchip" data-irpara="bolsas|#painelCaixa" title="A caixinha do grupo ${esc(d.g)} (na aba Bolsas e itens)">${FichasExtras.MOEDA}Caixinha <b>${d.cx.q}</b></button>`;
+}
+function ligarCaixinha(host,pc){
+  const box=host.querySelector('#painelCaixa'); if(!box) return;
+  const d=caixaDaFicha(pc);
+  const b=box.querySelector('[data-cxtudo]'); if(b) b.onclick=()=>{ CX.tudo=!CX.tudo; render(); };
+  const iq=box.querySelector('#cx_q'), inota=box.querySelector('#cx_nota');
+  if(!d||!iq) return;
+  // a prévia e os botões acompanham o que se digita (sem redesenhar a ficha: o cursor fica no campo)
+  const pintar=()=>{
+    const cx=FichasMesa.caixaDoGrupo(pc._camp||null, d.g), q=qtdCaixa(), lap=FichasExtras.laprosDe(pc), nada=CX.ocupada||q==null||q<1;
+    box.querySelector('#cxPrev').innerHTML=previaCaixa(pc,cx);
+    const bt=k=>box.querySelector('[data-cx="'+k+'"]');
+    if(bt('por')) bt('por').disabled=nada||lap<q;
+    if(bt('pegar')) bt('pegar').disabled=nada||cx.q<q;
+    if(bt('achado')) bt('achado').disabled=nada;
+    if(bt('despesa')) bt('despesa').disabled=nada||cx.q<q;
+  };
+  iq.oninput=()=>{ CX.q=iq.value; pintar(); };
+  iq.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); const p=box.querySelector('[data-cx="por"]'); if(p&&!p.disabled) p.focus(); } };
+  if(inota) inota.oninput=()=>{ CX.nota=inota.value; };
+  box.querySelectorAll('[data-cx]').forEach(bt=>bt.onclick=()=>{
+    const q=qtdCaixa(); if(q==null||q<1||CX.ocupada) return;
+    const k=bt.dataset.cx, comFicha=k==='por'||k==='pegar', delta=(k==='por'||k==='achado')? q : -q, nota=String(CX.nota||'').trim();
+    const camp=pc._camp||null, g=d.g, alvo=comFicha? pc : null;
+    CX.ocupada=true; pintar();
+    FichasMesa.moverCaixa(alvo, camp, g, delta, nota).then(r=>{
+      CX.ocupada=false; CX.q=''; CX.nota=''; render();
+      const total=r&&r.caixa!=null? r.caixa : FichasMesa.caixaDoGrupo(camp,g).q;
+      const txt = k==='por'? (pc.nome||'A ficha')+' pôs '+q+' lapros na caixinha do grupo (agora '+total+').'
+        : k==='pegar'? (pc.nome||'A ficha')+' pegou '+q+' lapros da caixinha do grupo (ficou com '+total+').'
+        : k==='achado'? 'A caixinha do grupo recebeu '+q+' lapros (agora '+total+').' : 'A caixinha do grupo pagou '+q+' lapros (ficou com '+total+').';
+      FichasExtras.aviso(txt, 'Desfazer', ()=>{
+        FichasMesa.moverCaixa(alvo, camp, g, -delta, 'desfeito').then(()=>render(), e=>{ toast('Não deu para desfazer: '+e.message); render(); });
+      }, 9000);
+    }, e=>{ CX.ocupada=false; render(); toast(e.message||'Não deu certo agora. Tente de novo.'); });
+  });
+}
+/* (lote 16) O aniversário, no calendário do mundo (o do Mapa-múndi de onde o Jornal tira a data; sem mapa, os meses de
+   começo): o dia, o mês e, se quiser, o ano de nascimento (para a idade). Escrevem o dono da ficha e o mestre. A ficha
+   guarda ficha.aniv = { d, m, a } — o que estiver escrito, mesmo pela metade; vale quando tem o dia e o mês. */
+function calDaFicha(){ try{ return FichasMesa.calendario(); }catch(e){ return { meses:[], hoje:null, mapa:null }; } }
+function anivDe(pc){ const a=pc&&pc.aniv; return a&&typeof a==='object'? a : null; }
+function infoAniversario(pc, cal){
+  const R=window.TC&&TC.rules, a=anivDe(pc); if(!a||!R||!R.anivOk) return '';
+  const ok=R.anivOk(a, cal.meses);
+  if(!ok) return a.d!=null&&a.m!=null&&cal.meses[a.m]? cal.meses[a.m].nome+' tem '+cal.meses[a.m].dias+' dias.' : '';
+  const x=cal.hoje? R.aniversario(ok, cal.hoje, cal.meses) : null;
+  if(!x) return ok.a!=null? 'nasceu no ano '+ok.a : '';
+  const idade=x.idade==null? '' : (x.hoje? 'faz '+x.idade+(x.idade===1?' ano':' anos') : x.idade+(x.idade===1?' ano':' anos'));
+  return [x.hoje? 'É hoje!' : x.faltam===1? 'É amanhã' : 'Faltam '+x.faltam+' dias', idade].filter(Boolean).join(' · ');
+}
+function htmlAniversario(pc){
+  const cal=calDaFicha(), a=anivDe(pc)||{}, ms=cal.meses.length? cal.meses : [];
+  const dias=a.m!=null&&ms[a.m]? ms[a.m].dias : 31;
+  return `<div class="aniv" id="anivBox">
+    <span class="eyebrow">Aniversário</span>
+    <div class="anivlin">
+      <input type="number" class="anivd" id="f_aniv_d" min="1" max="${dias}" step="1" value="${a.d!=null?a.d:''}" placeholder="dia" aria-label="Dia do aniversário">
+      <span class="hint">de</span>
+      <select id="f_aniv_m" aria-label="Mês do aniversário"><option value="">— mês —</option>${ms.map((m,i)=>`<option value="${i}" ${a.m===i?'selected':''}>${esc(m.nome)}</option>`).join('')}</select>
+      <input type="number" class="aniva" id="f_aniv_a" step="1" value="${a.a!=null?a.a:''}" placeholder="ano (opcional)" aria-label="Ano de nascimento (opcional, para a idade)" title="Opcional: com o ano de nascimento, a ficha mostra a idade">
+      <span class="hint anivinfo" id="anivInfo">${esc(infoAniversario(pc, cal))}</span>
+    </div>
+    <span class="hint">No calendário do mundo${cal.mapa?' ('+esc(cal.mapa)+')':''}.</span>
+  </div>`;
+}
+// a aba Skills: as da árvore, a Ascensão (os pontos) e as passivas e habilidades escritas à mão
+function htmlAbaSkills(pc){
+  return `<div class="panel" style="margin-bottom:18px" id="painelSkills">
+      <div class="hd"><span class="eyebrow">Skills</span></div>
+      <div class="bd">${blocoSkills(pc)}</div>
+    </div>
+    ${FichasQuadros.painelAscensao(pc)}
+    <div class="panel" style="margin-bottom:18px" id="painelHabs">
+      <div class="hd"><span class="eyebrow">Passivas e habilidades</span>
+        <span class="hint" style="margin-left:8px">${TIPOS_HAB.map(t=>{const n=(pc.habilidades||[]).filter(h=>(h.tipo||'Ativo')===t).length;
+            return n?`${n} ${t.toLowerCase()}${n>1?'s':''}`:''}).filter(Boolean).join(' · ')||'nenhuma escrita à mão'}</span>
+        <span style="margin-left:auto;display:flex;gap:6px">
+          ${(pc.habilidades||[]).length && podeCriarUnicaNaFicha(pc)?'<button class="mini" data-habunicas="1" title="Cada habilidade escrita à mão vira uma skill única (aparece nos cartões, em cima, e na Árvore). Mostra antes o que vai mudar; dá para desfazer.">Passar para skills únicas…</button>':''}
+          <button class="mini primary" data-habadd="1">+ Habilidade</button></span></div>
+      <div class="bd">
         ${(pc.habilidades||[]).length? (pc.habilidades||[]).map(h=>{const tp=h.tipo||'Ativo';return `
           <div class="habrow ${tp==='Inativo'?'off':''}">
             <select class="tipohab t-${tp.toLowerCase()}" data-habtipo="${h.id}">
@@ -2184,20 +2550,31 @@ function renderFicha(){
             <button class="mini danger" data-habdel="${h.id}">×</button>
             <textarea rows="2" data-habdesc="${h.id}" placeholder="O que faz, custo, condição de uso…">${esc(h.desc||'')}</textarea>
           </div>`}).join('')
-        : '<div class="hint">Nenhuma habilidade cadastrada. As inativas continuam na ficha, só ficam apagadas.</div>'}
-        ${htmlHabsDaArvore(pc)}
-        ${FichasExtras.htmlEfeitosEquipados(pc)}`
-      :`<textarea id="f_notas" rows="8" placeholder="O que mudou no último level up, dívidas, promessas, o que o personagem sabe e o que não sabe…">${esc(pc.notas||'')}</textarea>`}
-    </div>
-  </div>
-  `;
-  ligarFicha(pc);
+        : '<div class="hint">Nenhuma habilidade escrita à mão. As inativas continuam na ficha, só ficam apagadas.</div>'}
+        ${FichasExtras.htmlEfeitosEquipados(pc)}
+      </div>
+    </div>`;
 }
-/* (lote 15) O Estaque escondido: o mestre marca, ficha por ficha, e quem não mestra deixa de ver a aba (o texto nem
-   chega: mora com o mestre, no documento dos segredos — ver FichasMesa). A marca só aparece numa mesa, para o mestre,
-   nas fichas que algum jogador vê: a de um jogador, ou a de um NPC aberta aos jogadores. */
-const estaqueEscondido=pc=>!!(pc&&pc.estaqueOculto) && FichasMesa.ativo() && !FichasMesa.mestre();
-const abaDaFicha=pc=>{ const a=S.abaFicha||'estaque'; return a==='estaque' && estaqueEscondido(pc)? 'skills' : a; };
+// a aba Notas: o Estaque (para quem pode ver), as missões e as anotações gerais
+function htmlAbaNotas(pc){
+  return `${estaqueEscondido(pc)? '' : `<div class="panel" style="margin-bottom:18px" id="painelEstaque">
+      <div class="hd"><span class="eyebrow">Estaque</span></div>
+      <div class="bd">${htmlEstaqueOculto(pc)}
+        <div class="colunas">
+          <textarea class="entrada" rows="10" data-est="a" placeholder="Dificuldade de Visão - 0/100&#10;Sangramento - 2 turnos">${esc(pc.estaque.a||'')}</textarea>
+          <textarea class="entrada" rows="10" data-est="b" placeholder="Segunda coluna">${esc(pc.estaque.b||'')}</textarea>
+        </div></div>
+    </div>`}
+    <div class="panel" style="margin-bottom:18px" id="painelMissoes">
+      <div class="hd"><span class="eyebrow">Missões</span></div>
+      <div class="bd">${FichasQuadros.blocoMissoes(pc)}</div>
+    </div>
+    <div class="panel" style="margin-bottom:18px" id="painelNotas">
+      <div class="hd"><span class="eyebrow">Anotações gerais</span></div>
+      <div class="bd"><textarea id="f_notas" rows="8" placeholder="O que mudou no último level up, dívidas, promessas, o que o personagem sabe e o que não sabe…">${esc(pc.notas||'')}</textarea></div>
+    </div>`;
+}
+
 const podeEsconderEstaque=pc=>FichasMesa.ativo() && FichasMesa.mestre() && !!pc && !pc.petDe && (FichasMesa.deJogador(pc) || pc._vis==='mesa');
 function quemNaoVeEstaque(pc){ const d=FichasMesa.deJogador(pc)? FichasMesa.nomeDoDono(pc) : ''; return FichasMesa.deJogador(pc)? (d||'o jogador') : 'os jogadores'; }
 function htmlEstaqueOculto(pc){
@@ -2250,19 +2627,19 @@ function mudarFadigaNaFicha(pc,v){
   if(window.TC && TC.rules && TC.rules.mudarFadiga){ pc.estado=TC.rules.mudarFadiga(pc.estado||{}, v); return; }
   pc.estado=Object.assign({},pc.estado||{},{fad:Math.max(0,Math.min(5,Math.round(+v||0)))});
 }
+// (lote 16: a pilha fica no resumo, no alto da ficha; tirar a fadiga de um NPC é no quadro das barras especiais)
 function htmlFadiga(pc){
   const f=fadigaDe(pc), nome=FADIGA_NOMES[f];
-  return `<div class="pdrow fadrow n${f}" id="fadiga">
-    <span class="fadnome"><b>Fadiga</b> <span class="hint">o descanso longo enche · o curto devolve um</span></span>
-    <div class="pdctl">
+  return `<div class="rsb rsfad fadrow n${f}" id="fadiga">
+    <span class="rsbn" title="O descanso longo enche · o curto devolve um">Fadiga</span>
+    <span class="pdctl">
       <button class="step" data-fadstep="-1" ${f<=0?'disabled':''} aria-label="Fadiga: um a menos na pilha (mais cansado)">−</button>
       <span class="pdval">${f}<small>/ 5</small></span>
       <button class="step" data-fadstep="1" ${f>=5?'disabled':''} aria-label="Fadiga: um a mais na pilha (mais descansado)">+</button>
-    </div>
+    </span>
+    <span class="bateria" role="group" aria-label="Fadiga: ${f} de 5, ${nome}">${[1,2,3,4,5].map(i=>
+      `<button type="button" class="cel ${i<=f?'on':''}" data-fadcel="${i}" title="${i} de 5 · ${FADIGA_NOMES[i]}" aria-label="Pilha em ${i} de 5 (${FADIGA_NOMES[i]})"></button>`).join('')}<i class="ponta" aria-hidden="true"></i></span>
     <span class="fadfaixa">${nome}</span>
-    ${FichasMesa.deJogador(pc)?'<span></span>':'<button class="mini danger" data-faddel="1" title="Esta ficha deixa de usar a fadiga" aria-label="Tirar a fadiga desta ficha">×</button>'}
-    <div class="bateria" role="group" aria-label="Fadiga: ${f} de 5, ${nome}">${[1,2,3,4,5].map(i=>
-      `<button type="button" class="cel ${i<=f?'on':''}" data-fadcel="${i}" title="${i} de 5 · ${FADIGA_NOMES[i]}" aria-label="Pilha em ${i} de 5 (${FADIGA_NOMES[i]})"></button>`).join('')}<i class="ponta" aria-hidden="true"></i></div>
   </div>`;
 }
 function nomeCruDoEspecial(pc,id){ const pw=(pc.poderes||[]).find(x=>x.id===id); return pw? String(pw.nome==null?'':pw.nome) : ''; }
@@ -2295,6 +2672,7 @@ function ligarFicha(pc){
   FichasMesa.ligarDono(host, pc);
   FichasExtras.ligarRetrato(host, pc);
   FichasExtras.ligarLapros(host, pc);
+  ligarCaixinha(host, pc);
   FichasExtras.ligarAtributos(host, pc);
   FichasExtras.ligarMente(host, pc);
   FichasExtras.ligarEfeitos(host, pc);
@@ -2321,10 +2699,12 @@ function ligarFicha(pc){
   // valor atual de cada recurso (HP, SP...): vazio = no começo da barra (cheia, se ela não tem um começo próprio)
   const encher=id=>patch(()=>{ if(pc.estado&&pc.estado.rec) delete pc.estado.rec[id]; });
   // (o botão de voltar ao começo aparece assim que há um valor anotado, sem redesenhar a ficha: quem está digitando não perde o campo)
+  // (lote 16: o campo fica no resumo; o "Encher" e o resto da barra, no quadro dos recursos, na aba Atributos)
   const mostrarEncher=i=>{
-    const box=i.closest('.atual'), id=i.dataset.resatual;
-    if(!box) return;
+    const id=i.dataset.resatual, box=host.querySelector('[data-resbox="'+CSS.escape(id)+'"]');
     const r=(calcular(pc).recursos||[]).find(x=>x.id===id); if(!r) return;
+    const rsb=i.closest('.rsb'); if(rsb) rsb.classList.toggle('neg', atualDoRecurso(pc,r)<0);
+    if(!box) return;
     box.classList.toggle('neg', atualDoRecurso(pc,r)<0);
     let b=box.querySelector('[data-rescheio]');
     if(!temAtual(pc,r)){ if(b) b.remove(); return; }
@@ -2418,12 +2798,25 @@ function ligarFicha(pc){
   host.querySelector('#f_level').onchange=e=>patch(()=>pc.level=+e.target.value);
   const nt=host.querySelector('#f_notas');
   if(nt) nt.oninput=e=>patchLeve(()=>pc.notas=e.target.value);
-  host.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{S.abaFicha=b.dataset.sub; save(); renderFicha()});
-  if(abaDaFicha(pc)==='skills') ligarSkills(pc,host);
+  // (lote 16) as abas da ficha, e os atalhos do resumo para a parte de uma aba (os ferimentos, a Sanidade…)
+  host.querySelectorAll('[data-abaficha]').forEach(b=>b.onclick=()=>irParaAba(b.dataset.abaficha));
+  host.querySelectorAll('[data-irpara]').forEach(b=>b.onclick=()=>{ const [k,alvo]=b.dataset.irpara.split('|'); irParaAba(k, alvo); });
+  host.querySelector('#f_raca').addEventListener('input',()=>{ const m=host.querySelector('#rsmeta'); if(m) m.textContent=metaDaFicha(pc); });
+  host.querySelector('#f_lado').addEventListener('change',()=>{ const m=host.querySelector('#rsmeta'); if(m) m.textContent=metaDaFicha(pc); });
+  ligarSkills(pc,host);
+  // (lote 16) o aniversário: o que estiver escrito fica (mesmo pela metade); vazio sai
+  const anivCampo=()=>{
+    const num=sel=>{ const el=host.querySelector(sel); if(!el) return null; const v=String(el.value).trim(); return v===''||!isFinite(+v)? null : Math.round(+v); };
+    const o={}, d=num('#f_aniv_d'), m=num('#f_aniv_m'), a=num('#f_aniv_a');
+    if(d!=null) o.d=Math.max(1,Math.min(99,d)); if(m!=null) o.m=Math.max(0,m); if(a!=null) o.a=a;
+    patch(()=>{ if(Object.keys(o).length) pc.aniv=o; else delete pc.aniv; });
+  };
+  ['#f_aniv_d','#f_aniv_m','#f_aniv_a'].forEach(sl=>{ const el=host.querySelector(sl); if(el) el.onchange=anivCampo; });
   host.querySelectorAll('[data-est]').forEach(i=>i.oninput=e=>patchLeve(()=>{
     pc.estaque[e.target.dataset.est]=e.target.value;}));
   const eo=host.querySelector('#f_estoculto');
   if(eo) eo.onchange=e=>{ const on=e.target.checked; patch(()=>{ if(on) pc.estaqueOculto=true; else delete pc.estaqueOculto; }); toast(avisoEstaque(pc,on)); };
+  host.querySelectorAll('[data-habunicas]').forEach(b=>b.onclick=()=>abrirPassarParaUnicas(pc));
   host.querySelectorAll('[data-habadd]').forEach(b=>b.onclick=()=>patch(()=>
     pc.habilidades.push({id:uid(), nome:'', desc:'', tipo:'Ativo'})));
   host.querySelectorAll('[data-habtipo]').forEach(sl=>sl.onchange=e=>patch(()=>{
@@ -3213,23 +3606,92 @@ function htmlCustoUso(uso, k){
   return R.custoDeUso(uso, k&&k.vars, k&&k.cfg).map(c=>(c.conta? htmlConta(c) : esc(String(c.v)))+' '+esc(c.barra)).join(' · ');
 }
 function textoComContas(texto, k){ const R=window.TC&&TC.rules; return R&&R.textoComContas? R.textoComContas(texto, k&&k.vars, k&&k.cfg) : String(texto||''); }
-function htmlHabsDaArvore(pc){
-  const linhas=habsDaArvore(pc);
-  if(!linhas.length) return '';
+/* (lote 16) A aba Skills é um resumo: um cartão para cada coisa que o personagem aprendeu na árvore e para cada skill
+   única dele (as que o mestre cria só para ele, na Árvore: já vêm aprendidas) — o tipo de uso, o grau, o texto com as
+   contas no número dele, o bônus e o custo de usar. Só leitura: muda pela Árvore ("Abrir na Árvore"). */
+function unicasDaFicha(pc){ const R=window.TC&&TC.rules; try{ return R&&R.unicasDe? R.unicasDe(pc.skills) : []; }catch(e){ return []; } }
+const textoDoBonus=b=>b? Object.keys(b).map(k=>k+' '+(b[k]>=0?'+':'−')+Math.abs(b[k])).join(', ') : '';
+function htmlCartoesSkills(pc){
+  const linhas=habsDaArvore(pc), unicas=unicasDaFicha(pc);
+  if(!linhas.length && !unicas.length) return '';
   const k=contasDe(pc);
-  return `<div class="habarv" id="habsDaArvore">
-    <div class="sitbar"><span class="eyebrow">Da árvore de habilidades</span>
-      <span class="hint">${linhas.length===1?'1 aprendida':linhas.length+' aprendidas'} · entram aqui sozinhas; para mudar, use a aba Skills ou a Árvore</span></div>
+  return `<div class="skcards" id="habsDaArvore">
     ${linhas.map(({n,grau,arvore,texto,uso})=>{
-      const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean), gs=grausDe(n).length, custo=htmlCustoUso(uso, k);
-      return `<div class="habrow daarv" data-habarv="${esc(n.id)}">
+      const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean), gs=grausDe(n).length, custo=htmlCustoUso(uso, k), b=textoDoBonus((grausDe(n).slice(0,grau).reduce((o,g)=>{ Object.entries(g.bonus||{}).forEach(([x,v])=>{ o[x]=(o[x]||0)+(+v||0); }); return o; },{})));
+      return `<div class="habrow daarv skcard" data-habarv="${esc(n.id)}"${n.cor?` style="--skcor:${esc(n.cor)}"`:''}>
         <span class="habuso">${us.length? us.map(u=>esc(u.nome)).join(' · ') : 'Árvore'}</span>
         <span class="habnome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}${gs>1?`<span class="mono habgrau">grau ${grau}/${gs}</span>`:''}</span>
-        <span class="hint">${esc(arvore.nome)}</span>
+        <span class="hint skde">${esc(arvore.nome)}</span>
         ${(texto||n.desc)? `<div class="habtexto">${texto?`<strong>${htmlComContas(texto, k)}</strong>${n.desc?' · ':''}`:''}${htmlComContas(n.desc||'', k)}</div>`:''}
+        ${b? `<div class="habcusto skbonus">Na ficha: ${esc(b)}</div>`:''}
+        ${custo? `<div class="habcusto">Custo de uso: ${custo}</div>`:''}
+      </div>`}).join('')}
+    ${unicas.map(u=>{
+      const us=(u.usos||[]).map(x=>usoArv(x)).filter(Boolean), custo=htmlCustoUso(u.uso||null, k);
+      return `<div class="habrow daunica skcard unica" data-habunica="${esc(u.id)}">
+        <span class="habuso">${us.length? us.map(x=>esc(x.nome)).join(' · ') : 'Única'}</span>
+        <span class="habnome">${esc(u.nome)}</span>
+        <span class="hint skde">skill única</span>
+        ${u.desc? `<div class="habtexto">${htmlComContas(u.desc, k)}</div>`:''}
+        ${u.bonus? `<div class="habcusto skbonus">Na ficha: ${esc(textoDoBonus(u.bonus))}</div>`:''}
         ${custo? `<div class="habcusto">Custo de uso: ${custo}</div>`:''}
       </div>`}).join('')}
   </div>`;
+}
+/* (lote 16) As habilidades escritas à mão viram skills únicas (o que o mestre cria na Árvore, só para o personagem): a
+   janela mostra antes cada uma, com o tipo de uso que ela ganha — as inativas vêm desmarcadas —, e só muda o que
+   ficar marcado. Depois, dá para desfazer. Quem faz: quem mestra (sem mesa, quem usa a página). */
+const podeCriarUnicaNaFicha = pc => !FichasMesa.ativo() || (FichasMesa.mestre() && FichasMesa.podeEditar(pc));
+function usoDoTipoHab(tipo){
+  const us=(BIBX()?.usos||[]), alvo={Ativo:'ativ', Reativo:'rea', Passivo:'pass'}[tipo||'Ativo'];
+  if(!alvo) return null;
+  const n=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  return us.find(u=>n(u.nome).startsWith(alvo)||n(u.id).startsWith(alvo)) || null;
+}
+function abrirPassarParaUnicas(pc){
+  const habs=(pc.habilidades||[]).filter(h=>String(h.nome||'').trim()||String(h.desc||'').trim());
+  if(!habs.length){ toast('Nenhuma habilidade com nome ou texto para passar.'); return; }
+  const marcadas=new Set(habs.filter(h=>(h.tipo||'Ativo')!=='Inativo').map(h=>h.id));
+  const m=document.createElement('div'); m.className='modal';
+  const fechar=()=>m.remove();
+  const desenhar=()=>{
+    const n=marcadas.size;
+    m.innerHTML=`<div class="sheet" style="max-width:620px">
+      <div class="hd"><span class="eyebrow">Passar para skills únicas</span><button class="mini" data-pux style="margin-left:auto">Cancelar</button></div>
+      <div class="bd">
+        <p style="margin:0 0 10px;font-size:14px">Cada habilidade marcada sai de “Passivas e habilidades” e vira uma <strong>skill única</strong> de ${esc(pc.nome||'este personagem')}: aparece nos cartões da aba Skills e na Árvore, já aprendida. O nome e o texto vão como estão.</p>
+        <div class="puops">${habs.map(h=>{ const u=usoDoTipoHab(h.tipo), tp=h.tipo||'Ativo';
+          return `<label class="puop${marcadas.has(h.id)?' on':''}"><input type="checkbox" data-pu="${esc(h.id)}" ${marcadas.has(h.id)?'checked':''}>
+            <span class="pucorpo"><b>${esc(String(h.nome||'').trim()||'(sem nome)')}</b> <span class="hint">${esc(tp)} → ${u? 'uso “'+esc(u.nome)+'”' : 'sem tipo de uso'}</span>
+            ${h.desc?`<span class="pudesc">${esc(String(h.desc).slice(0,160))}${String(h.desc).length>160?'…':''}</span>`:''}</span></label>`; }).join('')}</div>
+        <p class="hint" style="margin:10px 0 0">${habs.some(h=>(h.tipo||'Ativo')==='Inativo')?'As inativas vêm desmarcadas (continuam escritas à mão, a não ser que você marque). ':''}Bônus e custo de uso, se houver, o mestre acrescenta depois, na Árvore (Editar).</p>
+        <div class="modalacts"><span style="margin-left:auto;display:flex;gap:8px">
+          <button data-pucancela>Cancelar</button>
+          <button class="primary" data-puok ${n?'':'disabled'}>${n? 'Passar '+(n===1?'1 habilidade':n+' habilidades') : 'Marque alguma'}</button></span></div>
+      </div></div>`;
+    m.querySelector('[data-pux]').onclick=fechar; m.querySelector('[data-pucancela]').onclick=fechar;
+    m.querySelectorAll('[data-pu]').forEach(c=>c.onchange=()=>{ if(c.checked) marcadas.add(c.dataset.pu); else marcadas.delete(c.dataset.pu); desenhar(); const x=m.querySelector('[data-pu="'+CSS.escape(c.dataset.pu)+'"]'); if(x) x.focus(); });
+    m.querySelector('[data-puok]').onclick=()=>{
+      if(!marcadas.size) return;
+      fechar();
+      const antesH=JSON.parse(JSON.stringify(pc.habilidades||[])), sk=skillsDe(pc), antesU=Array.isArray(sk.unicas)? JSON.parse(JSON.stringify(sk.unicas)) : null;
+      const novas=habs.filter(h=>marcadas.has(h.id)).map(h=>{ const u=usoDoTipoHab(h.tipo), x={id:'u'+uid(), nome:String(h.nome||'').trim().slice(0,80)||'Sem nome', desc:String(h.desc||'').slice(0,2000)}; if(u) x.usos=[u.id]; return x; });
+      sk.unicas=(Array.isArray(sk.unicas)? sk.unicas : []).concat(novas);
+      pc.habilidades=(pc.habilidades||[]).filter(h=>!marcadas.has(h.id));
+      save(); render();
+      FichasExtras.aviso((novas.length===1? '1 habilidade virou skill única' : novas.length+' habilidades viraram skills únicas')+' de '+(pc.nome||'este personagem')+'.', 'Desfazer', ()=>{
+        pc.habilidades=antesH; const k=skillsDe(pc); if(antesU) k.unicas=antesU; else delete k.unicas; save(); render();
+      }, 10000);
+    };
+  };
+  m.onclick=e=>{ if(e.target===m) fechar(); };
+  document.body.appendChild(m); desenhar();
+  const ok=m.querySelector('[data-puok]'); if(ok) ok.focus();
+}
+// (lote 16) o botão que leva ao personagem na Árvore (dentro do site; sem a casca, a Árvore é outro aplicativo)
+function botaoAbrirArvore(pc){
+  // (só na mesa: sem ela, a Árvore guarda os personagens dela, que não são os destas fichas)
+  return window.TC && TC.ponte && TC.ponte.naCasca && FichasMesa.ativo() && FichasMesa.podeEditar(pc) && !pc.petDe ? `<button class="mini primary" data-skabrir="${esc(pc.id)}" title="Abre a aba Árvore já neste personagem: lá ele distribui os pontos, e o mestre cria as skills únicas">Abrir na Árvore</button>` : '';
 }
 function perdidasDe(pc){
   arvPara(pc);
@@ -3424,7 +3886,9 @@ function abrirDisputa(pc){
 /* =================== ABA SKILLS DA FICHA =================== */
 function blocoSkills(pc){
   arvPara(pc);
-  if(!temBib()) return `
+  if(!temBib()) return (unicasDaFicha(pc).length? `<div class="skbloco"><div class="skhd estatico"><span class="eyebrow">Aprendidas</span>
+      <span class="hint">${unicasDaFicha(pc).length===1?'1 skill única':unicasDaFicha(pc).length+' skills únicas'}</span><span style="margin-left:auto;display:flex;gap:6px">${botaoAbrirArvore(pc)}</span></div>
+      <div class="skcorpo">${htmlCartoesSkills(pc)}</div></div>` : '') + `
     <div class="semarv">
       <h3>Nenhuma árvore carregada</h3>
       <p>Importe o arquivo que o mestre exporta no app de árvores — o backup completo ou o pacote. As árvores ficam disponíveis para todos os personagens; o que cada um equipa e aloca fica na ficha dele.</p>
@@ -3494,33 +3958,15 @@ function blocoSkills(pc){
     </div>`:''}
   </div>`;
 
-  const escolhidas=skillsEscolhidas(pc), kc=contasDe(pc);
+  const escolhidas=skillsEscolhidas(pc), unicas=unicasDaFicha(pc);
   const tabela = `<div class="skbloco">
     <div class="skhd estatico">
-      <span class="eyebrow">Tabela de skills</span>
-      <span class="hint">${escolhidas.length} escolhida(s)${perdidas?` · ${perdidas} de ramo trancado`:''}</span>
-      ${escolhidas.length?'<button class="mini" data-skcopiar="1" style="margin-left:auto">Copiar tabela</button>':''}
+      <span class="eyebrow">Aprendidas</span>
+      <span class="hint">${escolhidas.length===1?'1 da árvore':escolhidas.length+' da árvore'}${unicas.length?' · '+(unicas.length===1?'1 única':unicas.length+' únicas'):''}${perdidas?` · ${perdidas} de ramo trancado`:''}</span>
+      <span style="margin-left:auto;display:flex;gap:6px">${escolhidas.length||unicas.length?'<button class="mini" data-skcopiar="1">Copiar tabela</button>':''}${botaoAbrirArvore(pc)}</span>
     </div>
     <div class="skcorpo">
-      ${escolhidas.length? `<div class="scrollx"><table class="sktab">
-        <thead><tr><th>Skill</th><th>Uso</th><th>Natureza</th><th>Grau</th><th>Árvore</th></tr></thead>
-        <tbody>
-        ${escolhidas.map(({n,grau,arvore,texto,uso})=>{
-          const nat=natArv(n.natureza);
-          const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean);
-          const gs=grausDe(n).length;
-          return `<tr>
-            <td><span class="sknome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome)}</span>
-                <span class="sktipo">${esc(tipoArv(n).nome||'')}</span></td>
-            <td>${us.length? us.map(u=>`<span class="skuso u-${esc(u.id)}" title="${esc(u.nome)}">${esc(u.sigla||u.nome)}</span>`).join(' ') : '<span class="hint">—</span>'}</td>
-            <td>${nat?`<span class="sknat"><span class="skdot" style="background:${esc(nat.cor||'#888')}"></span>${esc(nat.nome)}</span>`:'<span class="hint">—</span>'}</td>
-            <td class="mono">${gs>1? grau+'/'+gs : '—'}</td>
-            <td class="hint">${esc(arvore.nome)}</td>
-          </tr>
-          ${(n.desc||texto||uso)? `<tr class="skdesc"><td colspan="5">${texto?`<strong>${htmlComContas(texto, kc)}</strong> · `:''}${htmlComContas(n.desc||'', kc)}${uso&&htmlCustoUso(uso, kc)?` <span class="habcusto">· Custo de uso: ${htmlCustoUso(uso, kc)}</span>`:''}</td></tr>`:''}`;
-        }).join('')}
-        </tbody></table></div>`
-      : '<div class="hint">Nada escolhido ainda. O que você pegar aqui embaixo aparece nesta tabela.</div>'}
+      ${htmlCartoesSkills(pc) || `<div class="hint">Nada aprendido ainda. ${botaoAbrirArvore(pc)? 'Na Árvore, escolha os nódulos (o que for pego aparece aqui, um cartão para cada).' : 'O que for pego em “Distribuir pontos”, aqui embaixo, aparece aqui, um cartão para cada.'}</div>`}
     </div>
   </div>`;
 
@@ -3556,15 +4002,15 @@ function linhaNo(pc,n,prof){
   </div>`;
 }
 function textoTabelaSkills(pc){
-  const linhas=skillsEscolhidas(pc), k=contasDe(pc);
-  const cab=`${pc.nome} — skills (${linhas.length})`;
+  const linhas=skillsEscolhidas(pc), k=contasDe(pc), unicas=unicasDaFicha(pc);
+  const cab=`${pc.nome} — skills (${linhas.length+unicas.length})`;
   const corpo=linhas.map(({n,grau,arvore,texto})=>{
     const us=(n.usos||[]).map(u=>(usoArv(u)||{}).nome).filter(Boolean).join('/');
     const gs=grausDe(n).length;
     return `• ${n.nome}${gs>1?` (grau ${grau}/${gs})`:''}${us?` [${us}]`:''} — ${arvore.nome}`
       + (texto?`\n    ${textoComContas(texto, k)}`:'')
       + (n.desc?`\n    ${textoComContas(n.desc, k)}`:'');
-  }).join('\n');
+  }).concat(unicas.map(u=>`• ${u.nome} — skill única`+(u.desc?`\n    ${textoComContas(u.desc, k)}`:'')+(u.bonus?`\n    Na ficha: ${textoDoBonus(u.bonus)}`:''))).join('\n');
   return cab+'\n'+corpo;
 }
 function ligarSkills(pc,host){
@@ -3589,6 +4035,7 @@ function ligarSkills(pc,host){
     (a.nodes||[]).forEach(n=>{ delete skillsDe(pc).alocados[n.id]; });
     podarSkills(pc); save(); renderFicha(); toast('Pontos devolvidos');
   });
+  host.querySelectorAll('[data-skabrir]').forEach(b=>b.onclick=()=>{ if(window.TC&&TC.ponte&&TC.ponte.ir) TC.ponte.ir('arvore', {personagem: b.dataset.skabrir}); });
   host.querySelectorAll('[data-skcopiar]').forEach(b=>b.onclick=()=>{
     const t=textoTabelaSkills(pc);
     navigator.clipboard?.writeText(t).then(()=>toast('Tabela copiada'),()=>toast('Não consegui copiar'));
@@ -3977,7 +4424,7 @@ function migrar(){
 document.getElementById('btnNew').onclick=()=>{
   const p=personagemPadrao('Novo personagem','','C',1);
   if(FichasMesa.ativo() && !FichasMesa.mestre()) FichasExtras.tornarLivre(p, true);
-  S.personagens.push(FichasMesa.nascer(p)); S.sel=p.id; save(); render();
+  S.personagens.push(FichasMesa.nascer(p)); S.sel=p.id; S.abaFicha='atributos'; save(); render();     // (a ficha nova abre em "Atributos": o "Quem é" vem logo)
   document.getElementById('f_nome')?.select();
 };
 document.getElementById('btnGrupo').onclick=()=>{
@@ -4015,6 +4462,8 @@ document.getElementById('fileIn').onchange=e=>{if(e.target.files[0])importar(e.t
     if(a.item||a.bolsa){ if(!FichasExtras.mostrarItem(pc,a)){ window.scrollTo({top:0}); toast('Este item não está mais na ficha de '+(pc.nome||'quem o tinha')+'.'); } }
     else window.scrollTo({top:0});
   }); }catch(e){}
+  // (lote 16) o guia da casca vai mostrar um lugar da ficha: antes, a aba da ficha em que ele fica
+  try{ if(window.TC && TC.ponte && TC.ponte.aoMostrar) TC.ponte.aoMostrar(o=>{ if(o && o.sub) irParaAba(o.sub); }); }catch(e){}
 })();
 </script>
 </body>

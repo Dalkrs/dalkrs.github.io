@@ -27,7 +27,9 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
   // (SO=estaque ou SO=descanso: só aquela parte — a mesa e as fichas, sempre)
   const SO = process.env.SO || '';
   const passo = async (nome, fn, parte) => { if (parte && SO && parte !== SO) return; try { await fn(); } catch (e) { ok(false, nome + ' — parou: ' + String((e && e.message) || e).split('\n')[0]); } };
-  const abas = async f => (await f.locator('.subtabs [data-sub]').allInnerTexts()).map(x => x.replace(/\s+/g, ' ').trim().replace(/ [•\d]+$/, '')).join('|');
+  // (lote 16: o Estaque é um quadro da aba Notas)
+  const temEstaque = async f => (await f.locator('#painelEstaque').count()) === 1;
+  const aba = async (f, k, p) => { await f.locator('[data-abaficha="' + k + '"]').click(); await w(200, p); };
   const foto = async (p, nome) => { if (process.env.TC_SCRATCH) { const pa = require('path'); require('fs').mkdirSync(pa.join(process.env.TC_SCRATCH, 'fotos'), { recursive: true }); await p.screenshot({ path: pa.join(process.env.TC_SCRATCH, 'fotos', nome + '.png') }); } };
   let F = null, G = null, nomeMesa = null;
 
@@ -53,7 +55,8 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
 
   await passo('o Estaque, antes', async () => {
     await G.locator('#lista .pc', { hasText: 'Dain X' }).click(); await w(400, J);
-    ok(/estaque/i.test(await abas(G)) && await G.locator('[data-est="a"]').inputValue() === 'Maldição do lobo - 3 dias', 'o jogador vê o Estaque do Dain X, com o texto: ' + await abas(G));
+    await aba(G, 'notas', J); await aba(F, 'notas');
+    ok(await temEstaque(G) && await G.locator('[data-est="a"]').inputValue() === 'Maldição do lobo - 3 dias', 'o jogador vê o Estaque do Dain X (na aba Notas), com o texto');
     ok(await G.locator('#f_estoculto').count() === 0, 'o jogador não tem a marca de esconder');
     ok(await F.locator('#f_estoculto').count() === 1 && /Esconder o Estaque de Dalmo/.test(await F.locator('.estoc').innerText()), 'o mestre tem, no Estaque da ficha do jogador: "Esconder o Estaque de Dalmo"');
     await F.locator('#lista .pc', { hasText: 'Capitão' }).click(); await w(300);
@@ -69,12 +72,12 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
     ok(await F.locator('[data-est="a"]').inputValue() === 'Maldição do lobo - 3 dias', 'o mestre continua vendo o texto');
     ok(await ate(async () => { const l = await linha(M, 'Dain X'), s = await segredos(M); return await parado(M) && l.ficha.estaqueOculto === true && l.ficha.estaque.a === '' && l.ficha.estaque.b === '' && s && s.est && s.est.pc_dain && s.est.pc_dain.a === 'Maldição do lobo - 3 dias' && s.est.pc_dain.b === 'Marcado pela Ordem'; }),
       'no banco: a ficha leva a marca e o Estaque vazio; o texto vai para os segredos do mestre');
-    ok(await ate(async () => !/estaque/i.test(await abas(G))), 'o jogador deixa de ver a aba Estaque: ' + await abas(G));
+    ok(await ate(async () => !(await temEstaque(G))), 'o jogador deixa de ver o Estaque');
     const lj = await linha(J, 'Dain X');
     ok(lj && lj.ficha.estaque.a === '' && lj.ficha.estaque.b === '' && !/Maldição/.test(JSON.stringify(lj)), 'e o texto nem chega a ele (a ficha que ele recebe vem com o Estaque vazio): ' + JSON.stringify(lj && lj.ficha.estaque) + ' ' + (JSON.stringify(lj).match(/.{60}Maldi.{40}/) || [''])[0]);
     ok(await J.evaluate(() => TC.dados.col('documentos').pegar('fichas:segredos')) === null, '(os segredos não chegam ao jogador)');
-    ok(/skills/i.test(await G.locator('.subtabs [data-sub].on').innerText()), 'a aba que estava aberta (o Estaque) dá lugar às Skills');
-    await G.locator('.subtabs [data-sub]').first().scrollIntoViewIfNeeded(); await F.locator('.estoc').scrollIntoViewIfNeeded(); await w(300);
+    ok(await G.locator('#painelMissoes').count() === 1 && await G.locator('[data-est]').count() === 0 && /notas/i.test(await G.locator('[data-abaficha].on').innerText()), 'na aba Notas do jogador ficam as missões e as anotações, sem o Estaque');
+    await G.locator('#painelMissoes').scrollIntoViewIfNeeded(); await F.locator('.estoc').scrollIntoViewIfNeeded(); await w(300);
     await foto(J, 'l15-estaque-jogador'); await foto(M, 'l15-estaque-mestre');
   }, 'estaque');
 
@@ -89,7 +92,7 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
     await M.reload({ waitUntil: 'load' }); await w(1500);
     ok(await ate(async () => { F = await fichas(M); return F && (await F.locator('#lista .pc').count()) === 3; }), '(o mestre recarrega o site)');
     await F.locator('#lista .pc', { hasText: 'Dain X' }).click(); await w(400);
-    if (!(await F.locator('[data-est="a"]').count())) { await F.locator('.subtabs .sub', { hasText: 'Estaque' }).click(); await w(300); }
+    await aba(F, 'notas');
     ok(await F.locator('#f_estoculto').isChecked() && await F.locator('[data-est="a"]').inputValue() === 'Maldição do lobo - 3 dias' && await F.locator('[data-est="b"]').inputValue() === 'Marcado pela Ordem; deve um favor', 'depois de recarregar, o mestre vê o Estaque escondido, com o texto (vem dos segredos)');
   }, 'estaque');
 
@@ -97,8 +100,8 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
     await F.locator('#f_estoculto').uncheck(); await w(500);
     ok(/voltou a aparecer para Dalmo/.test(await F.locator('.toast, .aviso').allInnerTexts().then(x => x.join(' | '))), 'desmarcada: o aviso diz que o Estaque voltou a aparecer para Dalmo');
     ok(await ate(async () => { const l = await linha(M, 'Dain X'), s = await segredos(M); return await parado(M) && !l.ficha.estaqueOculto && l.ficha.estaque.b === 'Marcado pela Ordem; deve um favor' && !(s && s.est && s.est.pc_dain); }), 'no banco: o texto volta para a ficha e sai dos segredos');
-    ok(await ate(async () => /estaque/i.test(await abas(G))), 'o jogador volta a ver a aba');
-    await G.locator('.subtabs .sub', { hasText: 'Estaque' }).click(); await w(400, J);
+    ok(await ate(async () => await temEstaque(G)), 'o jogador volta a ver o Estaque');
+    await aba(G, 'notas', J);
     ok(await G.locator('[data-est="b"]').inputValue() === 'Marcado pela Ordem; deve um favor', 'com o que o mestre escreveu enquanto estava escondido');
   }, 'estaque');
 
@@ -109,6 +112,7 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
   const marcadosNoDialogo = () => A.evaluate(() => [...document.querySelectorAll('dialog[open] input[type=checkbox][id^="ds-"]')].filter(i => /^ds-pc_/.test(i.id)).map(i => i.id.slice(3) + (i.checked ? '+' : '-')).join(' '));
   await passo('o descanso curto no acampamento', async () => {
     await F.locator('#lista .pc', { hasText: 'Espião' }).click(); await w(300);
+    await aba(F, 'atributos');
     await F.locator('#f_lado').selectOption('Inimigo'); await w(300);
     await F.locator('#lista .pc', { hasText: 'Capitão' }).click(); await w(300);
     await F.locator('[data-resatual="hppc_cap"]').fill('60'); await F.locator('[data-resatual="hppc_cap"]').press('Enter'); await w(400);

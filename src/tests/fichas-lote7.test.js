@@ -49,6 +49,8 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   const foto = async nome => { if (process.env.FOTOS) await P.screenshot({ path: process.env.FOTOS + '/' + nome + '.png' }); };
 
   await P.goto(t.base + 'fichas/', { waitUntil: 'load' }); await w(1200);
+  // (lote 16: os equipamentos ficam na aba Bolsas e itens; a ficha lembra a aba aberta)
+  await P.locator('[data-abaficha="bolsas"]').click(); await w(200);
   await passo('abrir', async () => {
     ok(await P.locator('#f_nome').inputValue() === 'Dain', 'a ficha abre');
     ok(await S0(() => new Promise(r => setTimeout(() => r(localStorage.getItem('urgm_calc_atributos_v1')), 700))).then(v => JSON.parse(v).personagens[0].itens.every(x => !('tipo' in x) && !('niveis' in x))),

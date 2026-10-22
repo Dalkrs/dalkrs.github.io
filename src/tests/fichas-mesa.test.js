@@ -167,7 +167,7 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   ok(await ate(async () => (await F.locator('[data-resatual="sppc_dain"]').inputValue()) === '7' && (await F.locator('[data-resatual="hppc_dain"]').inputValue()) === '111'), 'a tela do mestre fica com os dois valores');
   ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '111' && (await G.locator('[data-resatual="sppc_dain"]').inputValue()) === '7'), 'e a do jogador também');
   // o jogador está escrevendo nas anotações quando chega uma mudança do mestre: o que ele escreve depois não se perde
-  await G.locator('[data-sub="notas"]').click(); await w(300, J);
+  await G.locator('[data-abaficha="notas"]').click(); await w(300, J);
   await G.locator('#f_notas').click(); await G.locator('#f_notas').pressSequentially('Antes do golpe. ', { delay: 15 });
   await F.locator('[data-resatual="hppc_dain"]').fill('64'); await F.locator('#f_nome').click();
   ok(await ate(async () => (await J.evaluate(() => { const l = TC.dados.col('personagens').pegar('pc_dain'); return l && l.estado.rec.hppc_dain; })) === 64), '(a mudança do mestre chega ao aparelho do jogador enquanto ele escreve)');
@@ -178,7 +178,7 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   ok(await ate(async () => { const d = await estadoNoBanco(); return d.ficha.notas === 'Antes do golpe. Depois do golpe.' && d.estado.rec.hppc_dain === 64 && d.estado.rec.sppc_dain === 7; }), 'o que ele escreveu antes e depois do aviso fica guardado, junto com o HP que o mestre mudou: ' + JSON.stringify((await estadoNoBanco()).ficha.notas));
   await G.locator('#lista').click({ position: { x: 5, y: 5 } }).catch(() => {}); await G.evaluate(() => document.activeElement && document.activeElement.blur()); await w(500, J);
   ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '64' && (await G.locator('#f_notas').inputValue()) === 'Antes do golpe. Depois do golpe.'), 'saindo do campo, a ficha é redesenhada e continua com o texto e o HP novo');
-  await G.locator('[data-sub="estaque"]').click(); await w(200, J);
+  await G.locator('[data-abaficha="notas"]').click(); await w(200, J);
   await F.locator('[data-resatual="hppc_dain"]').fill('212'); await F.locator('#f_nome').click();
   ok(await ate(async () => (await G.locator('[data-resatual="hppc_dain"]').inputValue()) === '212'), '(o HP volta a 212)');
 

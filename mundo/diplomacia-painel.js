@@ -49,9 +49,31 @@
       botao('Tipos de tratado…', () => janelaTipos(), { c: 'sm', k: 'dp:tipos' })));
     if (filtroFac && !K.facDe(v, filtroFac)) filtroFac = '';
     out.push(campoEscolha('dp:fac', 'Facção', filtroFac, [['', 'Todas as facções']].concat(v.faccoes.map(f => [f.id, K.nomeFac(f)])), x => { filtroFac = x; return false; }));
-    out.push(secRelacoes(v, ed), secVassalagem(v, ed), secTratados(v, ed), ed ? secMotivosGuerra(v) : null);
+    out.push(secGovernantes(v, ed), secRelacoes(v, ed), secVassalagem(v, ed), secTratados(v, ed), ed ? secMotivosGuerra(v) : null);
     if (!ed) out.push(nota('Só o que vocês sabem: as relações, a vassalagem e os tratados públicos.'));
     return out;
+  }
+  /* (lote 16) Quem fala por cada facção: o governante (quem tem o maior título preso a ela, na aba Corte). Quando ele é
+     um personagem com ficha — o de um jogador, por exemplo —, "Abrir a ficha". Quem joga vê só os governantes que conhece. */
+  function secGovernantes(v, ed) {
+    const K = kit(), { h, secao, nota, botao } = K, RP = window.MundoReinoPainel || null, naCasca = !!(window.TC && window.TC.ponte && window.TC.ponte.naCasca);
+    const linhas = [];
+    for (const f of v.faccoes) {
+      if (filtroFac && f.id !== filtroFac) continue;
+      const g = C() ? C().governanteDe(v, f.id) : null;
+      if (!g && !ed) continue;
+      const nomeG = g ? (C().nomeComTitulo ? C().nomeComTitulo(v, g.pessoa) : g.pessoa.nome) : '';
+      const ficha = g && g.pessoa.ficha && RP && RP.nomeDaFicha ? RP.nomeDaFicha(g.pessoa.ficha) : '';
+      linhas.push(h('div', { class: 'dp-gov', 'data-k': 'gov:' + f.id },
+        h('span', { class: 'dp-par-nomes' }, bola(f), h('b', { text: K.nomeFac(f) })),
+        h('span', { class: 'dp-gov-quem' }, g ? h('span', { text: nomeG }) : h('i', { text: 'sem governante' }),
+          g && g.pessoa.ficha ? h('span', { class: 'tag jog', title: ficha ? 'A ficha de ' + ficha + ', nas Fichas' : 'Tem ficha nas Fichas', text: 'ficha' }) : null,
+          g && C().menorDeIdade && C().menorDeIdade(v, g.pessoa) ? h('span', { class: 'tag', text: 'menor' }) : null),
+        g && g.pessoa.ficha && naCasca && RP && RP.abrirFicha ? botao('Abrir a ficha', () => RP.abrirFicha(g.pessoa.ficha), { c: 'sm', k: 'gov:' + f.id + ':ficha' }) : null));
+    }
+    if (!linhas.length) return null;
+    return secao('Quem fala por cada facção', h('div', { class: 'dp-govs', 'data-k': 'dp:govs' }, linhas),
+      ed ? nota('O governante é quem tem o maior título preso à facção (aba Corte, em Títulos). Um personagem com ficha — o de um jogador — fala pela facção com a ficha dele.') : null);
   }
   // as relações de cada par de facções (quem joga: só as que não são neutras), com a opinião de cada lado
   function secRelacoes(v, ed) {

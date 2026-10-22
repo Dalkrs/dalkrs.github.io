@@ -27,6 +27,8 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   const w = ms => P.waitForTimeout(ms);
   const S0 = fn => P.evaluate(fn);
   const abrirFicha = async nome => { await P.locator('#lista .pc', { has: P.locator('.nm', { hasText: new RegExp('^' + nome + '$') }) }).click(); await w(250); };
+  // (lote 16) a ficha em abas: Atributos · Bolsas e itens · Social · Skills · Notas (o resumo fica em todas)
+  const aba = async k => { await P.locator('[data-abaficha="' + k + '"]').click(); await w(150); };
 
   await P.goto(t.base + 'fichas/', { waitUntil: 'load' }); await w(1200);
   ok(await P.locator('#f_nome').inputValue() === 'Dain X', 'a ficha abre');
@@ -88,6 +90,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   ok(await P.locator('#f_tier').count() === 1 && /^tier /i.test((await P.locator('#lista .pc .mt').first().innerText()).trim()), 'sem mesa, a ficha continua com o Tier (só as fichas de jogador, numa mesa, deixam de mostrá-lo): ' + await P.locator('#lista .pc .mt').first().innerText());
 
   // ---------- passivas e efeitos nos equipamentos ----------
+  await aba('bolsas');
   ok(await P.locator('[data-itemfx="it1"]').count() === 0 && await P.locator('[data-itcard="it1"] [data-itemed="it1"]').innerText() === 'Editar', '(lote 6) o equipamento é um cartão: os números e as passivas ficam em "Editar"');
   await P.locator('[data-itemed="it1"]').click(); await w(300);
   await P.locator('[data-itemfx="it1"]').fill('Serra: sangramento 2 por turno.\n1×/combate: arranca uma parte do inimigo.'); await w(500);
@@ -95,13 +98,14 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   ok(await P.locator('[data-itemfx="it1"]').evaluate(el => el.offsetHeight >= 40), 'o campo cresce para caber o texto');
   await P.locator('[data-itemed="it1"]').click(); await w(300);
   ok((await P.locator('[data-itcard="it1"] .itfxv').innerText()).startsWith('Serra: sangramento') && await P.locator('[data-itemfx="it1"]').count() === 0, 'fechado, o cartão mostra as passivas por extenso');
-  await P.locator('[data-sub="habs"]').click(); await w(250);
+  await aba('skills');
   ok((await P.locator('.fxequip').innerText()).includes('Espadão serra') && (await P.locator('.fxequip').innerText()).includes('sangramento'), 'a aba de Passivas mostra o que vem dos equipamentos em uso');
-  await P.locator('[data-itemon="it1"]').uncheck(); await w(300);
+  await aba('bolsas'); await P.locator('[data-itemon="it1"]').uncheck(); await w(300); await aba('skills');
   ok(await P.locator('.fxequip').count() === 0, 'item desmarcado deixa de aparecer ali');
-  await P.locator('[data-itemon="it1"]').check(); await w(300);
+  await aba('bolsas'); await P.locator('[data-itemon="it1"]').check(); await w(300);
 
   // ---------- distribuição livre ----------
+  await aba('atributos');
   const antes = await S0(() => { const c = calcular(S.personagens[0]); return { nat: c.nat, tot: c.tot, total: c.total }; });
   ok(await P.locator('[data-modo="livre"]').count() === 1 && await P.locator('[data-pts]').count() === 0, 'pela tabela, há o botão "Distribuição livre" e nenhum campo de pontos');
   await P.locator('[data-modo="livre"]').click(); await w(350);
@@ -126,6 +130,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   ok(await S0(() => calcular(S.personagens[0]).nat.DES) === 0, 'e a distribuição guardada volta ao religar');
 
   // ---------- Sanidade, Conforto e Relacionamentos ----------
+  await aba('social');
   ok(await P.locator('#painelMente .menteoff').count() === 1, 'por padrão (sem mesa), o painel de Sanidade e Conforto começa desligado');
   await P.locator('[data-mente="usar"]').click(); await w(250);
   ok(await S0(() => S.personagens[0].estado.san === 100 && S.personagens[0].estado.conf === 50), 'ligado, começa com Sanidade 100 e Conforto 50');
@@ -199,6 +204,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   ok(await S0(() => S.personagens[0].img) === img, 'arquivo que não é imagem é recusado');
 
   // ---------- disputa: os dados do alvo valem para todos ----------
+  await aba('atributos');
   await P.locator('#btnDisputa').click(); await w(250);
   await P.locator('#disAlvo').selectOption({ label: 'Capitão Orrin' }); await w(200);
   await P.locator('#disAtrB').selectOption('DFF'); await w(200);

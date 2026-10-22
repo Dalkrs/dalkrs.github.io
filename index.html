@@ -225,6 +225,20 @@ button { cursor: pointer; }
 .btn:disabled { opacity: .55; cursor: default; }
 
 /* ---- menu da conta ---- */
+/* (lote 16) o guia de cada aba: os assuntos, um aberto de cada vez, com "Mostrar onde fica" */
+.guia { position: fixed; z-index: 31; top: calc(var(--bar) + 4px + env(safe-area-inset-top, 0px)); right: 8px; width: min(340px, calc(100% - 16px)); max-height: calc(100% - var(--bar) - 16px); overflow: auto; padding: 10px 12px 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow); }
+.guia-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.guia-h strong { font-size: 14px; }
+.guia-papel { font-size: 11.5px; color: var(--fg-3); }
+.guia-h .ib { margin-left: auto; }
+.guia-l { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.guia-t { width: 100%; text-align: left; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--raised); font-weight: 600; font-size: 13.5px; color: var(--fg); cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.guia-t::after { content: '▸'; margin-left: auto; color: var(--fg-3); font-size: 11px; }
+.guia-i.aberto .guia-t { border-color: var(--lamp); }
+.guia-i.aberto .guia-t::after { content: '▾'; }
+.guia-c { padding: 6px 10px 4px; }
+.guia-c p { margin: 0 0 8px; font-size: 13px; line-height: 1.5; color: var(--fg-2); }
+.guia-vazio { margin: 6px 0 0; font-size: 13px; color: var(--fg-3); }
 .menu { position: fixed; z-index: 30; top: calc(var(--bar) + 4px + env(safe-area-inset-top, 0px)); right: 8px; width: 310px; max-height: calc(100% - var(--bar) - 16px); overflow: auto; padding: 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow); }
 .menu h3 { margin: 0; font: 600 18px/1.2 var(--display); }
 .menu .sub { color: var(--fg-3); font-size: 12.5px; }
@@ -359,6 +373,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   </a>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sistemas"></nav>
   <div class="bar-r">
+    <button type="button" class="ib" id="btnGuia" title="Guia desta aba" aria-label="Guia: como usar esta aba" aria-expanded="false" aria-controls="guia">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
+    </button>
     <button type="button" class="ib" id="btnBusca" hidden title="Buscar (Ctrl+K)" aria-label="Buscar fichas, cenas, lugares do mapa, receitas, itens e matérias" aria-keyshortcuts="Control+K Meta+K">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 20 20"/></svg>
     </button>
@@ -425,20 +442,22 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   </aside>
 </div>
 <div class="menu" id="menu" hidden role="dialog" aria-label="Conta e mesa"></div>
+<aside class="guia" id="guia" hidden role="dialog" aria-label="Guia desta aba"></aside>
 <dialog id="dlg"></dialog>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o Tiny Cats.</p></noscript>
 <script src="tc/supabase.js?v=1"></script>
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
-<script src="tc/rules.js?v=15"></script>
-<script src="tc/tc.js?v=25"></script>
+<script src="tc/rules.js?v=16"></script>
+<script src="tc/tc.js?v=26"></script>
 <script src="tc/busca.js?v=1"></script>
+<script src="tc/guia.js?v=1"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.22-3';
+  const VERSAO = '2026.10.22-4';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -554,6 +573,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     for (const k in frames) frames[k].hidden = k !== id;
     foco(f);
     aoAbrirAba(id);
+    if (typeof pintarGuia === 'function' && !$('guia').hidden) pintarGuia();          // (lote 16) o guia acompanha a aba
   }
   let aoAbrirAba = () => {};                   // (a parte da mesa, mais abaixo, troca: o Jornal lido apaga a bolinha)
   // A moldura de um sistema. Nasce escondida; quem a abre (abrir) é que a mostra.
@@ -574,6 +594,57 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   }
   window.addEventListener('hashchange', () => { const hs = daHash(); if (pode(hs) && hs !== atual) abrir(hs); });
   $('brand').addEventListener('click', ev => { ev.preventDefault(); if (atual) foco(frames[atual]); });
+
+  /* ================= (lote 16) o guia de cada aba =================
+     O "?" abre os assuntos da aba aberta (tc/guia.js): o do mestre para quem mestra a aba, o do jogador para quem joga.
+     Um assunto aberto de cada vez; "Mostrar onde fica" fecha o guia e pede ao sistema que destaque o lugar (o sistema
+     responde se achou; se não, um aviso diz por quê). Reabrir o "?" volta no mesmo assunto. Nada muda sozinho. */
+  const btnGuia = $('btnGuia'), guia = $('guia'), esperaGuia = {};
+  let guiaSeq = 0, guiaAberto = null, guiaDaAba = null;
+  const papelNoGuia = () => (mestraAba(atual) ? 'mestre' : 'jogador');
+  function assuntosDoGuia() { const G = window.TC_GUIA && window.TC_GUIA.abas, x = G && G[atual]; return x ? x[papelNoGuia()] || [] : []; }
+  function pintarGuia() {
+    if (guia.hidden) return;
+    if (guiaDaAba !== atual) { guiaDaAba = atual; guiaAberto = null; }
+    const a = ABAS.find(x => x.id === atual), lista = assuntosDoGuia();
+    const X = h('button', { type: 'button', class: 'ib', id: 'guiaX', title: 'Fechar o guia', 'aria-label': 'Fechar o guia', onclick: () => fecharGuia(true) });
+    X.innerHTML = X_SVG;
+    guia.replaceChildren(
+      h('div', { class: 'guia-h' }, h('strong', { text: 'Guia · ' + (a ? a.nome : '') }), h('span', { class: 'guia-papel', text: papelNoGuia() === 'mestre' ? 'para quem mestra' : 'para quem joga' }), X),
+      lista.length ? h('ol', { class: 'guia-l' }, lista.map((x, i) => h('li', { class: 'guia-i' + (guiaAberto === i ? ' aberto' : ''), 'data-guia': String(i) },
+        h('button', { type: 'button', class: 'guia-t', 'aria-expanded': String(guiaAberto === i), onclick: () => { guiaAberto = guiaAberto === i ? null : i; pintarGuia(); const b = guia.querySelector('[data-guia="' + i + '"] .guia-t'); if (b) b.focus(); } }, h('span', { text: x.t })),
+        guiaAberto === i ? h('div', { class: 'guia-c' }, h('p', { text: x.txt }),
+          x.onde ? h('button', { type: 'button', class: 'btn sm', 'data-guia-mostrar': String(i), onclick: () => mostrarNoSistema(x) }, 'Mostrar onde fica') : null) : null)))
+        : h('p', { class: 'guia-vazio', text: 'Ainda não há guia para esta aba.' }));
+  }
+  function abrirGuia() {
+    guia.hidden = false; btnGuia.setAttribute('aria-expanded', 'true'); btnGuia.setAttribute('aria-pressed', 'true');
+    pintarGuia();
+    const b = guia.querySelector('.guia-i.aberto .guia-t') || guia.querySelector('.guia-t') || $('guiaX'); if (b) b.focus();
+  }
+  function fecharGuia(voltar) {
+    if (guia.hidden) return;
+    guia.hidden = true; btnGuia.setAttribute('aria-expanded', 'false'); btnGuia.setAttribute('aria-pressed', 'false');
+    if (voltar) btnGuia.focus();
+  }
+  btnGuia.addEventListener('click', () => (guia.hidden ? abrirGuia() : fecharGuia(true)));
+  guia.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.preventDefault(); fecharGuia(true); } });
+  // (um clique fora fecha — menos nas abas: trocar de aba com o guia aberto mostra o guia da outra)
+  document.addEventListener('pointerdown', ev => { if (!guia.hidden && !guia.contains(ev.target) && !btnGuia.contains(ev.target) && !tabs.contains(ev.target)) fecharGuia(false); });
+  function mostrarNoSistema(x) {
+    const f = frames[atual], n = ++guiaSeq;
+    fecharGuia(false);
+    if (!f || !prontas.has(f)) { toast('A aba ainda está abrindo: tente de novo em um instante.'); return; }
+    esperaGuia[n] = x;
+    try { f.contentWindow.postMessage({ tinycats: { t: 'guia.mostrar', n, sel: x.onde.sel, sub: x.onde.sub || null } }, location.origin); } catch (e) { /* a moldura saiu */ }
+    setTimeout(() => { if (esperaGuia[n]) { delete esperaGuia[n]; toast('Esta aba não respondeu. Se o site foi atualizado há pouco, recarregue a página.'); } }, 2500);
+  }
+  window.addEventListener('message', ev => {
+    const m = ev.origin === location.origin && ev.data && ev.data.tinycats;
+    if (!m || m.t !== 'guia.res' || !esperaGuia[m.n]) return;
+    const x = esperaGuia[m.n]; delete esperaGuia[m.n];
+    if (m.ok) { const f = frames[atual]; if (f) foco(f); } else toast((x.onde && x.onde.nada) || 'Isso não está à vista agora.');
+  });
 
   /* ================= conta, mesas e mesa ao vivo ================= */
   const TC = window.TC || {};
@@ -661,6 +732,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       if (!mesas.atual || (m.mesa && m.mesa !== mesas.atual.id)) { responder({ t: 'cla.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
       if (typeof TC.dados.cla !== 'function') { responder({ t: 'cla.erro', n: m.n, erro: 'Esta página está desatualizada: recarregue o site.' }); return; }
       TC.dados.cla(m.op, m.args || {}).then(r => responder({ t: 'cla.ok', n: m.n, r }), e => responder({ t: 'cla.erro', n: m.n, erro: e.message }));
+    } else if (m.t === 'caixa') {
+      // (lote 16) a caixinha do grupo: pôr e pegar lapros, levar a caixinha de um grupo que mudou (ver TC.dados.caixa)
+      if (!mesas.atual || (m.mesa && m.mesa !== mesas.atual.id)) { responder({ t: 'caixa.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
+      if (typeof TC.dados.caixa !== 'function') { responder({ t: 'caixa.erro', n: m.n, erro: 'Esta página está desatualizada: recarregue o site.' }); return; }
+      TC.dados.caixa(m.op, m.args || {}).then(r => responder({ t: 'caixa.ok', n: m.n, r }), e => responder({ t: 'caixa.erro', n: m.n, erro: e.message }));
     }
   }
   /* Um sistema pede para abrir outro, com um alvo ("abra as Cenas na cena tal"). A aba abre; o alvo vai para a moldura

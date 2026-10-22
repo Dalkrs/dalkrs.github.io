@@ -2,6 +2,62 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.22-4",
+      "data": "2026-10-22",
+      "titulo": "Fichas, grupo e árvore",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Fichas: a ficha ficou em abas — Atributos, Bolsas e itens, Social, Skills e Notas —, com o resumo fixo em cima: as barras (que se editam ali), os atributos e as defesas, os lapros, a caixinha do grupo, os ferimentos, a Sanidade e o Conforto. Cada selo leva à parte da ficha em que a coisa fica, e a ficha lembra a aba."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: a caixinha do grupo, na aba Bolsas e itens — os lapros que o grupo guarda junto. Você põe e pega com os lapros da ficha (a conta aparece antes, e dá para desfazer), e o extrato mostra quem fez o quê."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas: na caixinha do grupo, o mestre também lança um achado ou uma despesa sem ficha."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: o aniversário do personagem, no calendário do mundo — o dia, o mês e, se quiser, o ano, para a idade. A ficha diz quanto falta e, no dia, avisa no resumo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Jornal: o rascunho sugere a nota dos aniversários da semana, já escrita. “Pôr como nota” põe, “Agora não” esconde; só sai se você publicar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas: na mesa, cada grupo do elenco mostra os ativos em cima e os inativos recolhidos embaixo, em “Inativos”. Arrastar de um bloco para o outro muda quem é ativo, com Desfazer."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: a aba Skills virou um resumo, com um cartão para cada coisa aprendida e para cada skill única do personagem (o texto com as contas, o bônus, o custo de uso), e “Abrir na Árvore”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Árvore: as skills únicas — uma skill só daquele personagem, já aprendida, com o texto, o bônus na ficha, o custo de uso e o tipo de uso (no modo Jogador, no personagem). Na ficha, as habilidades escritas à mão viram skills únicas, com a prévia antes."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: a busca acha também pelo texto de cada grau e lista o que achou em todas as árvores — um clique leva até lá. Em cima da árvore, o filtro dos tipos de uso (ativa, passiva…)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: o titular de um título pode ser uma das fichas da mesa — o personagem entra na corte com a ficha ligada. Na Diplomacia, quem fala por cada facção, com “Abrir a ficha”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Site: o “?” da barra de cima abre o guia da aba aberta, com os assuntos dela e “Mostrar onde fica”."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.22-3",
       "data": "2026-10-22",
       "titulo": "Barras, descanso e exércitos",

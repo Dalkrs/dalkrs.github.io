@@ -135,7 +135,8 @@ const FichasQuadros = (() => {
     const painel = U().q(host, '#painelAsc'); if (!painel) return;
     const sk = () => skillsDe(pc);
     // (com Skills aberta logo abaixo, os mesmos números aparecem lá: a ficha é redesenhada inteira)
-    const pintar = () => { if ((S.abaFicha || 'estaque') === 'skills') renderFicha(); else trocar('painelAsc', painelAscensao(pc), ligarAscensao, pc); };
+    // (lote 16: a Ascensão fica na aba Skills, junto das skills da árvore, que mostram os mesmos números: a ficha é redesenhada)
+    const pintar = () => renderFicha();
     const guardar = (focar, campo) => { save(); if (campo) U().desenhar(pintar, focar && '#painelAsc ' + focar); else { pintar(); if (focar) U().refocar('#painelAsc ' + focar); } };
     const por = (pid, n, focar, campo) => {
       const antes = Math.max(0, Math.round(+sk().pontos[pid] || 0)), depois = Math.max(0, Math.round(+n || 0));
@@ -146,11 +147,7 @@ const FichasQuadros = (() => {
     };
     U().qa(painel, '[data-ascstep]').forEach(b => b.onclick = () => { const [pid, d] = b.dataset.ascstep.split('|'); por(pid, (+sk().pontos[pid] || 0) + (+d), '[data-ascstep="' + b.dataset.ascstep + '"]'); });
     U().qa(painel, '[data-asctot]').forEach(i => i.onchange = () => por(i.dataset.asctot, i.value, '[data-asctot="' + i.dataset.asctot + '"]', true));
-    U().qa(painel, '[data-ascir]').forEach(b => b.onclick = () => {
-      S.abaFicha = 'skills'; save(); renderFicha();
-      const alvo = document.querySelector('#ficha .subtabs'); if (alvo) alvo.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-      U().refocar('#ficha [data-sub="skills"]');
-    });
+    U().qa(painel, '[data-ascir]').forEach(b => b.onclick = () => { irParaAba('skills', '#painelSkills'); U().refocar('#ficha [data-abaficha="skills"]'); });
   }
 
   /* ======================= Corpo e ferimentos ======================= */
@@ -526,7 +523,7 @@ const FichasQuadros = (() => {
   }
   // a marca da aba (quantas missões ativas), sem redesenhar a ficha
   function pintarMarca(pc) {
-    const b = document.querySelector('#ficha [data-sub="missoes"]'); if (!b) return;
+    const b = document.querySelector('#ficha [data-abaficha="notas"]'); if (!b) return;
     const n = contaAtivas(pc); let mk = b.querySelector('.mk');
     if (!n) { if (mk) mk.remove(); return; }
     if (!mk) { mk = document.createElement('span'); mk.className = 'mk'; b.append(' ', mk); }
@@ -543,6 +540,8 @@ const FichasQuadros = (() => {
     if (livre('blocoMissoes')) trocar('blocoMissoes', blocoMissoes(pc), ligarMissoes, pc);
     pintarMarca(pc);
   }
-  function ligar(host, pc) { ligarXp(host, pc); ligarAscensao(host, pc); ligarCorpo(host, pc); if ((S.abaFicha || 'estaque') === 'missoes') ligarMissoes(host, pc); }
-  return { htmlXp, painelAscensao, painelCorpo, htmlPenalidades, blocoMissoes, contaAtivas, ligar, aoVivo, usaCorpo, usaXp };
+  function ligar(host, pc) { ligarXp(host, pc); ligarAscensao(host, pc); ligarCorpo(host, pc); ligarMissoes(host, pc); }
+  // (lote 16) os ferimentos abertos, por extenso, para o resumo da ficha
+  const feridasAbertas = pc => feridasDe(pc).map(f => RR().textoDoFerimento(f));
+  return { htmlXp, painelAscensao, painelCorpo, htmlPenalidades, blocoMissoes, contaAtivas, ligar, aoVivo, usaCorpo, usaXp, feridasAbertas };
 })();

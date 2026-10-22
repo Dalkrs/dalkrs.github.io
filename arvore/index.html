@@ -289,6 +289,30 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 .arv.mais{justify-content:center;flex-direction:row;font-weight:600}
 #filtroNat{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 #filtroNat .chip{background:var(--fundo-2)}
+#filtroNat .filtro-sep{width:1px;align-self:stretch;background:var(--linha);margin:2px 2px}
+#filtroNat .chip.limpar{color:var(--texto-3);border-style:dashed}
+/* (lote 16) o que a busca achou */
+.busca-res{position:fixed;z-index:60;width:320px;max-height:min(60vh,440px);overflow-y:auto;background:var(--fundo-2);border:1px solid var(--linha-forte);border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.28);padding:6px}
+.busca-res[hidden]{display:none}
+.br-topo{font:600 10px/1.4 'Barlow';letter-spacing:.12em;text-transform:uppercase;color:var(--texto-3);padding:4px 6px 6px}
+.br-item{appearance:none;display:grid;grid-template-columns:10px 1fr;column-gap:8px;width:100%;text-align:left;border:0;background:transparent;color:var(--texto);border-radius:4px;padding:6px;cursor:pointer;font:500 13px/1.25 'Barlow'}
+.br-item i{width:9px;height:9px;border-radius:50%;margin-top:3px;grid-row:span 2;background:var(--linha-forte)}
+.br-item .br-onde{grid-column:2;font-size:11.5px;color:var(--texto-3)}
+.br-item:hover,.br-item:focus-visible{background:var(--acento-fundo);outline:none}
+.br-item.aqui .br-onde::after{content:' · à vista';color:var(--acento)}
+.br-item.unica i{background:var(--acento)}
+.br-mais{font-size:11.5px;color:var(--texto-3);padding:4px 6px}
+/* (lote 16) as skills únicas do personagem */
+.unicas{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}
+.unica{border:1px solid var(--linha);border-left:3px solid var(--acento);border-radius:3px;padding:8px 10px;background:var(--campo)}
+.unica.piscar{box-shadow:0 0 0 2px var(--acento-borda)}
+.un-topo{display:flex;align-items:center;gap:6px}
+.un-topo b{font:600 14px/1.2 'Barlow';color:var(--texto)}
+.un-topo em{font:600 9px/1 'Barlow';letter-spacing:.14em;text-transform:uppercase;color:var(--acento);font-style:normal}
+.un-topo .btn{margin-left:auto}
+.un-topo .btn + .btn{margin-left:0}
+.unica p{margin:4px 0 0;font-size:12.5px;line-height:1.5;color:var(--texto-2)}
+.unica .un-fx{font-size:12px;color:var(--texto-3)}
 #zoom{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;gap:6px;z-index:3}
 #zoom .btn{width:34px;height:34px;padding:0;font-size:15px;display:grid;place-items:center;background:var(--fundo-2)}
 #dica{
@@ -344,6 +368,8 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 }
 .modal.largo{width:min(920px,100%)}
 .modal.estreito{width:min(420px,100%)}
+.modal.medio{width:min(560px,100%)}
+.modal textarea.campo{width:100%;resize:vertical;min-height:72px;font:inherit;line-height:1.45}
 .modal h2{margin:0 0 4px;font:600 21px var(--titulo)}
 [data-tema="tinta"] .modal h2{font-size:25px}
 .modal p.sub{margin:0 0 16px;color:var(--texto-2);font-size:13px}
@@ -413,7 +439,7 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
     <div class="selo" aria-hidden="true">道</div>
     <input id="nomeBib" value="Árvores de Habilidade" aria-label="Nome da biblioteca">
     <div class="espaco"></div>
-    <input id="busca" class="campo" type="search" placeholder="Buscar nódulo…" aria-label="Buscar nódulo">
+    <input id="busca" class="campo" type="search" placeholder="Buscar skill…" aria-label="Buscar skill pelo nome ou pelo texto" autocomplete="off">
     <div class="seg" role="group" aria-label="Tema">
       <button id="btTinta" aria-pressed="false" title="Tinta sobre papel">Tinta</button>
       <button id="btPedra" aria-pressed="false" title="Pedra e ouro">Pedra</button>
@@ -468,13 +494,14 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 </div>
 
 <div id="dica2" role="tooltip"></div>
+<div id="buscaRes" class="busca-res" hidden></div>
 <div class="veu" id="veu"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div class="veu" id="veuDlg"><div class="modal estreito" id="dlg" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
-<script src="../tc/ponte.js?v=15"></script>
-<script src="../tc/rules.js?v=15"></script>
-<script src="mesa.js?v=7"></script>
+<script src="../tc/ponte.js?v=16"></script>
+<script src="../tc/rules.js?v=16"></script>
+<script src="mesa.js?v=8"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -554,6 +581,7 @@ const nomeCat = id => (CATEGORIAS.find(c=>c.id===id) || CATEGORIAS[3]).nome;
 let doc, ui, senhas = {};
 let selecionado = null, pairado = null, filtro = '';
 const filtroNat = new Set();
+const filtroUso = new Set();          // (lote 16) os tipos de uso que a busca destaca
 let migrado = false, danificado = false;
 
 /* A biblioteca da tela. No modo jogador, a do personagem escolhido (lote 6): sem os caminhos trancados que o mestre
@@ -783,6 +811,9 @@ function normalizarPersonagem(p, b, vistos){
     for(const k of Object.keys(p.ramos)){ const x = p.ramos[k]; if(idOk(k) && x && typeof x==='object' && typeof x.a==='string' && Array.isArray(x.nodes)) r[k] = x; }
     if(Object.keys(r).length) p.ramos = r; else delete p.ramos;
   }else delete p.ramos;
+  // (lote 16) as skills únicas, que o mestre cria só para este personagem e que já vêm aprendidas (ver TC.rules.unicasDe)
+  const un = (window.TC && TC.rules && TC.rules.unicasDe) ? TC.rules.unicasDe({unicas:p.unicas}) : [];
+  if(un.length) p.unicas = un; else delete p.unicas;
   // antes as árvores equipadas apareciam sempre por categoria; agora vale a ordem do jogador.
   // Quem vem de antes começa na ordem em que já aparecia na tela.
   if(p.ordemLivre!==true){ ordenarPorCategoria(p, b); p.ordemLivre = true; }
@@ -1699,8 +1730,7 @@ function desenhar(){
   const p = jogador ? personagemAtual() : null;
   const est = new Map(a.nodes.map(n=>[n.id, jogador ? estadoNo(p, n) : 'mestre']));
   const busca = norm(filtro);
-  const bate = n => (!busca || norm(n.nome).includes(busca) || norm(n.desc).includes(busca))
-                    && (!filtroNat.size || filtroNat.has(n.natureza));
+  const bate = n => casaBusca(n, busca) && (!filtroNat.size || filtroNat.has(n.natureza)) && (!filtroUso.size || n.usos.some(u=>filtroUso.has(u)));
 
   desenharFundo(g.f, a, tema);
   extrasLimite = [];
@@ -2247,15 +2277,71 @@ function pintarSeletor(){
   s.querySelectorAll('.arv[data-id]').forEach(b=>b.onclick = ()=>trocarArvoreJogador(b.dataset.id));
   $('#btEquiparChip').onclick = abrirEquipar;
 }
+// (lote 16) a busca acha pelo nome, pela descrição e pelo texto de cada grau
+function casaBusca(n, busca){
+  return !busca || norm(n.nome).includes(busca) || norm(n.desc).includes(busca) || n.graus.some(g=>norm(g.texto).includes(busca));
+}
 function pintarFiltroNat(a){
   const f = $('#filtroNat');
   const presentes = a ? bib().naturezas.filter(t=>a.nodes.some(n=>n.natureza===t.id)) : [];
   [...filtroNat].forEach(id=>{ if(!presentes.some(t=>t.id===id)) filtroNat.delete(id); });
-  f.innerHTML = presentes.length<1 ? '' : presentes.map(t=>
-    `<button class="chip" data-nat="${esc(t.id)}" aria-pressed="${filtroNat.has(t.id)}" title="Destacar ${esc(t.nome)}"><i style="background:${esc(t.cor)}"></i>${esc(t.nome)}</button>`).join('');
+  // (lote 16) e os tipos de uso (ativa, passiva, postura…) que aparecem nesta árvore
+  const usos = a ? bib().usos.filter(u=>a.nodes.some(n=>n.usos.includes(u.id))) : [];
+  [...filtroUso].forEach(id=>{ if(!usos.some(u=>u.id===id)) filtroUso.delete(id); });
+  f.innerHTML = (presentes.length<1 ? '' : presentes.map(t=>
+    `<button class="chip" data-nat="${esc(t.id)}" aria-pressed="${filtroNat.has(t.id)}" title="Destacar ${esc(t.nome)}"><i style="background:${esc(t.cor)}"></i>${esc(t.nome)}</button>`).join(''))
+    + (usos.length ? `${presentes.length ? '<span class="filtro-sep" aria-hidden="true"></span>' : ''}${usos.map(u=>
+    `<button class="chip uso" data-fuso="${esc(u.id)}" aria-pressed="${filtroUso.has(u.id)}" title="Destacar o que é de uso “${esc(u.nome)}”">${esc(u.nome)}</button>`).join('')}` : '')
+    + (filtroNat.size || filtroUso.size ? '<button class="chip limpar" data-flimpar title="Tirar os filtros">limpar</button>' : '');
   f.querySelectorAll('[data-nat]').forEach(b=>b.onclick = ()=>{
-    const id = b.dataset.nat; filtroNat.has(id) ? filtroNat.delete(id) : filtroNat.add(id); desenhar();
+    const id = b.dataset.nat; filtroNat.has(id) ? filtroNat.delete(id) : filtroNat.add(id); desenhar(); pintarBusca();
   });
+  f.querySelectorAll('[data-fuso]').forEach(b=>b.onclick = ()=>{
+    const id = b.dataset.fuso; filtroUso.has(id) ? filtroUso.delete(id) : filtroUso.add(id); desenhar(); pintarBusca();
+  });
+  const lp = f.querySelector('[data-flimpar]'); if(lp) lp.onclick = ()=>{ filtroNat.clear(); filtroUso.clear(); desenhar(); pintarBusca(); };
+}
+/* (lote 16) O que a busca achou, em todas as árvores que esta tela mostra (o mestre: a biblioteca; o jogador: as
+   equipadas no personagem), mais as skills únicas do personagem. Um clique leva até lá: troca de árvore, se for o
+   caso, escolhe o nódulo e põe ele no meio. Nada muda sozinho: a lista só leva. */
+function achadosDaBusca(){
+  const busca = norm(filtro); if(!busca) return null;
+  const jog = ui.modo==='jogador', p = jog ? personagemAtual() : null;
+  const arvs = jog ? (p ? p.arvores.map(arvorePorId).filter(Boolean) : []) : bib().arvores;
+  const vis = arvoreVisivel(), out = [];
+  for(const a of arvs) for(const n of a.nodes)
+    if(casaBusca(n, busca) && (!filtroNat.size || filtroNat.has(n.natureza)) && (!filtroUso.size || n.usos.some(u=>filtroUso.has(u)))) out.push({n, a, aqui: vis && vis.id===a.id});
+  const unicas = jog && p ? (p.unicas || []).filter(u=>(norm(u.nome).includes(busca) || norm(u.desc).includes(busca)) && (!filtroUso.size || (u.usos||[]).some(x=>filtroUso.has(x)))) : [];
+  out.sort((x,y)=>(y.aqui-x.aqui) || x.a.nome.localeCompare(y.a.nome, 'pt-BR') || x.n.nome.localeCompare(y.n.nome, 'pt-BR'));
+  return {nos: out, unicas};
+}
+function pintarBusca(){
+  const caixa = $('#buscaRes'), r = achadosDaBusca();
+  if(!caixa) return;
+  if(!r || document.activeElement!==$('#busca') && !caixa.matches(':hover') && !caixa.contains(document.activeElement)){ caixa.hidden = true; return; }
+  const aqui = r.nos.filter(x=>x.aqui).length, fora = r.nos.length - aqui, tot = r.nos.length + r.unicas.length;
+  const nomeUso = n => usosDe(n).map(u=>u.nome).join(' · ');
+  caixa.innerHTML = `<div class="br-topo">${tot ? `${plural(aqui,'nesta árvore','nesta árvore')}${fora ? ' · ' + fora + ' em outra' + (fora>1 ? 's' : '') : ''}${r.unicas.length ? ' · ' + plural(r.unicas.length,'skill única','skills únicas') : ''}` : 'Nada encontrado' + (filtroNat.size || filtroUso.size ? ' (com os filtros)' : '') + '.'}</div>
+    ${r.nos.slice(0, 30).map(x=>`<button type="button" class="br-item${x.aqui ? ' aqui' : ''}" data-brno="${esc(x.n.id)}" data-brarv="${esc(x.a.id)}">
+      <i style="background:${esc(corDoNo(x.n))}"></i><span class="br-nome">${esc(x.n.nome || '(sem nome)')}</span>
+      <span class="br-onde">${esc(x.a.nome)}${nomeUso(x.n) ? ' · ' + esc(nomeUso(x.n)) : ''}</span></button>`).join('')}
+    ${r.nos.length>30 ? `<div class="br-mais">e mais ${r.nos.length-30}: escreva mais para achar</div>` : ''}
+    ${r.unicas.map(u=>`<button type="button" class="br-item unica" data-brunica="${esc(u.id)}"><i></i><span class="br-nome">${esc(u.nome)}</span><span class="br-onde">skill única</span></button>`).join('')}`;
+  const t = $('#busca').getBoundingClientRect();
+  Object.assign(caixa.style, {top: (t.bottom + 6) + 'px', left: Math.max(8, Math.min(t.left, innerWidth - 328)) + 'px'});
+  caixa.hidden = false;
+  caixa.querySelectorAll('[data-brno]').forEach(b=>b.onclick = ()=>irParaAchado(b.dataset.brarv, b.dataset.brno));
+  caixa.querySelectorAll('[data-brunica]').forEach(b=>b.onclick = ()=>{
+    caixa.hidden = true;
+    const el = document.querySelector(`#blocoUnicas [data-unica="${CSS.escape(b.dataset.brunica)}"]`);
+    if(el){ el.scrollIntoView({block:'nearest'}); el.classList.add('piscar'); setTimeout(()=>el.classList.remove('piscar'), 1400); }
+  });
+}
+function irParaAchado(arvId, noId){
+  $('#buscaRes').hidden = true;
+  const vis = arvoreVisivel();
+  if(!vis || vis.id!==arvId){ if(ui.modo==='mestre') trocarArvoreMestre(arvId); else trocarArvoreJogador(arvId); }
+  selecionado = noId; desenhar(); pintarPainel(); focarNo(noId);
 }
 async function abrirEquipar(){
   const p = personagemAtual(); if(!p) return;
@@ -2775,7 +2861,70 @@ function painelJogador(){
       <div class="acoes" style="margin-top:4px">
         <button class="btn perigo" id="btZerar" ${nesta.length ? '' : 'disabled'}>Zerar esta árvore</button>
         <button class="btn" id="btDestrancar">Destrancar escola</button>
-      </div></div>` + detalhe + natHtml + caminho + equipadas;
+      </div></div>` + detalhe + natHtml + caminho + blocoUnicas(p) + equipadas;
+}
+/* (lote 16) As skills únicas: o mestre cria uma skill só para este personagem — nome, texto, bônus na ficha, custo de
+   uso e tipo de uso — e ela já vem aprendida (sem árvore e sem gastar pontos). O jogador vê; quem mexe é o mestre
+   (sem mesa, quem usa a página). Ficam nas skills do personagem (skills.unicas) e aparecem na ficha, na aba Skills. */
+const podeCriarUnica = () => !ArvoreMesa.ativo() || ArvoreMesa.mestre();
+function usoTexto(l){ return Array.isArray(l) ? l.map(x=>x.v + ' ' + x.b).join(', ') : ''; }
+// "10 SP, CAN/2 Energia" → [{ v: '10', b: 'SP' }, { v: 'CAN/2', b: 'Energia' }] (o nome da barra é a última palavra)
+function usoLer(t){
+  const out = [];
+  String(t || '').split(/[,;\n]+/).forEach(parte=>{
+    const m = /^\s*(.+?)\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9_]*)\s*$/.exec(parte);
+    if(m && out.length<4) out.push({v: m[1].replace(/[{}]/g, '').trim(), b: m[2]});
+  });
+  return usoLimpo(out);
+}
+function blocoUnicas(p){
+  const l = p.unicas || [], pode = podeCriarUnica();
+  return `<div class="bloco" id="blocoUnicas"><h2>Skills únicas${l.length ? ' · ' + l.length : ''}</h2>
+    ${l.length ? `<ul class="unicas">${l.map(u=>{
+      const us = (u.usos || []).map(usoPorId).filter(Boolean).map(x=>x.nome).join(' · ');
+      const fx = [u.bonus ? 'Na ficha: ' + esc(bonusTexto(u.bonus)) : '', u.uso ? 'Custo de uso: ' + htmlCusto(u.uso, p) : ''].filter(Boolean).join(' · ');
+      return `<li class="unica" data-unica="${esc(u.id)}">
+        <div class="un-topo"><b>${esc(u.nome)}</b>${us ? `<em>${esc(us)}</em>` : ''}
+          ${pode ? `<button class="btn mini" data-unied="${esc(u.id)}" title="Editar ${esc(u.nome)}">Editar</button><button class="btn mini perigo" data-unidel="${esc(u.id)}" title="Apagar ${esc(u.nome)}" aria-label="Apagar ${esc(u.nome)}">×</button>` : ''}</div>
+        ${u.desc ? `<p>${htmlTexto(u.desc, p)}</p>` : ''}
+        ${fx ? `<p class="un-fx">${fx}</p>` : ''}</li>`; }).join('')}</ul>`
+      : `<p class="vazio" style="margin-bottom:8px">${pode ? 'Nenhuma. Uma skill única é só deste personagem: você escreve, e ela já vem aprendida (sem árvore e sem gastar pontos).' : 'Nenhuma. Uma skill única é uma que o mestre cria só para este personagem.'}</p>`}
+    ${pode ? '<div class="acoes"><button class="btn" id="btUnica">+ Skill única</button></div>' : ''}
+  </div>`;
+}
+async function editarUnica(id){
+  const p = personagemAtual(); if(!p || !podeCriarUnica()) return;
+  const u = id ? (p.unicas || []).find(x=>x.id===id) : null;
+  if(id && !u) return;
+  const r = await dialogo({titulo: u ? 'Editar skill única' : 'Nova skill única', largura:'medio',
+    texto: u ? '' : `Só de ${esc(p.nome)}: já vem aprendida, sem árvore e sem gastar pontos. Aparece na ficha, na aba Skills.`,
+    campos:[
+      {nome:'nome', rotulo:'Nome', valor: u ? u.nome : '', dica:'Sangue do dragão'},
+      {nome:'desc', rotulo:'O que faz', valor: u ? u.desc : '', tipo:'area', dica:'Uma vez por cena, cura {VIT*2} de HP…', nota:'Contas entre chaves, como {FOR*2}, viram o número do personagem.'},
+      {nome:'bonus', rotulo:'Bônus na ficha (opcional)', valor: u && u.bonus ? bonusTexto(u.bonus) : '', dica:'FOR +2, HP +10', nota:'Siglas dos atributos (FOR DES VIT CAN AGI…) ou o nome de um recurso da ficha, separados por vírgula.'},
+      {nome:'uso', rotulo:'Custo de uso (opcional)', valor: u ? usoTexto(u.uso) : '', dica:'10 SP, CAN/2 Energia', nota:'Quanto gasta ao usar: o valor e a barra. Só aparece — quem usa desconta à mão.'},
+      {nome:'tipo', rotulo:'Tipo de uso', tipo:'chips', valor: u && u.usos ? u.usos[0] : '', opcoes:[{valor:'', rotulo:'Nenhum'}, ...bib().usos.map(x=>({valor:x.id, rotulo:x.nome}))]}],
+    botoes:[{rotulo:'Cancelar', valor:null}, {rotulo: u ? 'Salvar' : 'Criar', valor:true, classe:'ouro', validar:v=>!v.nome.trim() ? 'Dê um nome à skill.' : (v.uso.trim() && !usoLer(v.uso) ? 'O custo de uso fica assim: 10 SP, CAN/2 Energia.' : '')}]});
+  if(!r) return;
+  registrar(u ? 'editar ' + u.nome : 'criar skill única');
+  const nova = {id: u ? u.id : novoId('u'), nome: r.nome.trim().slice(0, 80), desc: r.desc.trim().slice(0, 2000)};
+  const b = bonusLer(r.bonus); if(b) nova.bonus = b;
+  const uso = usoLer(r.uso); if(uso) nova.uso = uso;
+  if(r.tipo) nova.usos = [r.tipo];
+  const l = (p.unicas || []).slice(), i = u ? l.findIndex(x=>x.id===u.id) : -1;
+  if(i>=0) l[i] = nova; else l.push(nova);
+  p.unicas = l;
+  salvar(); pintarPainel();
+  aviso(u ? '“' + nova.nome + '” salva.' : '“' + nova.nome + '” criada para ' + p.nome + ' (já aprendida). Para desfazer: ↺.', 'ok');
+}
+async function apagarUnica(id){
+  const p = personagemAtual(); if(!p || !podeCriarUnica()) return;
+  const u = (p.unicas || []).find(x=>x.id===id); if(!u) return;
+  if(!(await confirmar('Apagar skill única', `Apagar “${esc(u.nome)}” de ${esc(p.nome)}? Dá para desfazer com ↺ (Ctrl+Z).`, 'Apagar', true))) return;
+  registrar('apagar ' + u.nome);
+  p.unicas = p.unicas.filter(x=>x.id!==id); if(!p.unicas.length) delete p.unicas;
+  salvar(); pintarPainel();
+  aviso('“' + u.nome + '” apagada. Para desfazer: ↺.', 'ok');
 }
 function ligarJogador(){
   const p = personagemAtual(); if(!p) return;
@@ -2797,6 +2946,9 @@ function ligarJogador(){
   on('#btSubir', 'click', ()=>subirGrau(selecionado));
   on('#btDescer', 'click', ()=>descerGrau(selecionado));
   on('#btEquipar', 'click', abrirEquipar);
+  on('#btUnica', 'click', ()=>editarUnica(null));
+  $$('[data-unied]').forEach(b=>b.onclick = ()=>editarUnica(b.dataset.unied));
+  $$('[data-unidel]').forEach(b=>b.onclick = ()=>apagarUnica(b.dataset.unidel));
   $$('.desequipar').forEach(b=>b.onclick = ()=>desequipar(b.dataset.id));
   const lista = $('#listaEq');
   if(lista) tornarOrdenavel(lista, '.eqp', {eixo:'y', alca:'.alca', rolar:true, soltar:reordenarEquipada,
@@ -3023,8 +3175,11 @@ function dialogo(o){
     const campoHtml = (c, i) => c.tipo==='chips'
       ? `<div class="grupo"><span class="rot">${esc(c.rotulo)}</span><div class="chips" data-campo="${i}" data-valor="${esc(c.valor)}">
           ${c.opcoes.map(op=>`<button type="button" class="chip" data-v="${esc(op.valor)}" aria-pressed="${op.valor===c.valor}">${esc(op.rotulo)}</button>`).join('')}</div></div>`
+      : c.tipo==='area'
+      ? `<div class="grupo"><label class="rot" for="dlgc${i}">${esc(c.rotulo)}</label>
+          <textarea id="dlgc${i}" class="campo" data-campo="${i}" rows="${c.linhas || 4}" ${c.dica ? `placeholder="${esc(c.dica)}"` : ''}>${esc(c.valor || '')}</textarea>${c.nota ? `<p class="nota" style="margin:4px 0 0">${c.nota}</p>` : ''}</div>`
       : `<div class="grupo"><label class="rot" for="dlgc${i}">${esc(c.rotulo)}</label>
-          <input id="dlgc${i}" class="campo" data-campo="${i}" value="${esc(c.valor || '')}" ${c.tipo==='senha' ? 'autocomplete="off" spellcheck="false"' : ''} ${c.dica ? `placeholder="${esc(c.dica)}"` : ''}></div>`;
+          <input id="dlgc${i}" class="campo" data-campo="${i}" value="${esc(c.valor || '')}" ${c.tipo==='senha' ? 'autocomplete="off" spellcheck="false"' : ''} ${c.dica ? `placeholder="${esc(c.dica)}"` : ''} ${c.lista ? `list="${esc(c.lista)}"` : ''}>${c.nota ? `<p class="nota" style="margin:4px 0 0">${c.nota}</p>` : ''}</div>`;
     m.innerHTML = `<h2>${esc(o.titulo)}</h2>${o.texto ? `<p class="sub">${o.texto}</p>` : ''}${campos.map(campoHtml).join('')}${o.html || ''}
       <div class="aviso-linha err" id="dlgErro"></div>
       <div class="rodape">${(o.botoes || []).map((b,i)=>`<button type="button" class="btn ${b.classe || ''}" data-b="${i}">${esc(b.rotulo)}</button>`).join('')}</div>`;
@@ -3046,7 +3201,7 @@ function dialogo(o){
       if(b.validar){ const erro = b.validar(vals); if(erro){ m.querySelector('#dlgErro').textContent = erro; return; } }
       fim(campos.length ? vals : b.valor);
     });
-    m.querySelectorAll('input').forEach(i=>i.addEventListener('input', ()=>{ m.querySelector('#dlgErro').textContent = ''; }));
+    m.querySelectorAll('input, textarea').forEach(i=>i.addEventListener('input', ()=>{ m.querySelector('#dlgErro').textContent = ''; }));
     const tecla = e => {
       if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); fim(null); }
       else if(e.key==='Enter' && e.target.tagName==='INPUT'){ e.preventDefault(); const pri = m.querySelector('.rodape .btn.ouro'); if(pri) pri.click(); }
@@ -3649,7 +3804,7 @@ function trocarTema(t){
 }
 function trocarModo(m){
   if(ui.modo===m) return;
-  ui.modo = m; selecionado = null; filtroNat.clear();
+  ui.modo = m; selecionado = null; filtroNat.clear(); filtroUso.clear();
   salvar(); pintarTudo(); centralizar(); desenhar();
   if(!$('#dica').dataset.aviso) $('#dica').textContent = dicaPadrao();
 }
@@ -3663,7 +3818,21 @@ function iniciar(){
   gerarPapel();
   $('#nomeBib').addEventListener('input', e=>{ registrar('renomear biblioteca', 'bib'); bib().nome = e.target.value; salvar(); });
   $('#nomeBib').addEventListener('change', e=>{ if(!e.target.value.trim()){ bib().nome = 'Árvores de Habilidade'; e.target.value = bib().nome; salvar(); } });
-  $('#busca').addEventListener('input', e=>{ filtro = e.target.value; desenhar(); });
+  $('#busca').addEventListener('input', e=>{ filtro = e.target.value; desenhar(); pintarBusca(); });
+  $('#busca').addEventListener('focus', ()=>pintarBusca());
+  $('#busca').addEventListener('blur', ()=>setTimeout(pintarBusca, 150));
+  $('#busca').addEventListener('keydown', e=>{
+    if(e.key==='Escape'){ $('#buscaRes').hidden = true; }
+    else if(e.key==='ArrowDown'){ const b = $('#buscaRes .br-item'); if(b){ e.preventDefault(); b.focus(); } }
+    else if(e.key==='Enter'){ const b = $('#buscaRes .br-item'); if(b){ e.preventDefault(); b.click(); } }
+  });
+  $('#buscaRes').addEventListener('keydown', e=>{
+    const itens = [...$$('#buscaRes .br-item')], i = itens.indexOf(document.activeElement);
+    if(e.key==='ArrowDown' && i>=0){ e.preventDefault(); (itens[i+1] || itens[i]).focus(); }
+    else if(e.key==='ArrowUp' && i>=0){ e.preventDefault(); (i ? itens[i-1] : $('#busca')).focus(); }
+    else if(e.key==='Escape'){ $('#buscaRes').hidden = true; $('#busca').focus(); }
+  });
+  $('#buscaRes').addEventListener('focusout', ()=>setTimeout(pintarBusca, 150));
   $('#btTinta').onclick = ()=>trocarTema('tinta');
   $('#btPedra').onclick = ()=>trocarTema('pedra');
   $('#btMestre').onclick = ()=>trocarModo('mestre');
@@ -3700,6 +3869,13 @@ function iniciar(){
     focar:id=>$(`#seletor .arv[data-id="${CSS.escape(id)}"]`)?.focus()});
   indexar(); garantirSelecoes(); podarTodos();
   pintarTudo(); centralizar(); desenhar();
+  // (lote 16) aberta por outro sistema com um alvo — o "Abrir na Árvore" da ficha ({ personagem }): vai até ele
+  if(window.TC && TC.ponte && TC.ponte.aoIr) TC.ponte.aoIr(a=>{
+    if(!a || typeof a.personagem!=='string') return;
+    if(!doc.personagens.some(p=>p.id===a.personagem)){ aviso('Esse personagem não aparece nesta Árvore.', 'err'); return; }
+    if(ui.modo!=='jogador') trocarModo('jogador');
+    trocarPersonagem(a.personagem);
+  });
   let espera;
   addEventListener('resize', ()=>{ clearTimeout(espera); espera = setTimeout(desenhar, 80); });
   if(migrado){ salvarJa(); aviso('Seus dados foram convertidos: cada aba antiga virou um personagem com a árvore dela.', 'ok', 7000); }

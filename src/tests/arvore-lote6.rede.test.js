@@ -241,7 +241,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, avId) {
     const forNaFicha = () => F.evaluate(() => calcular(S.personagens.find(p => p.id === 'pc_selene')).tot.FOR);
     ok(await ate(async () => await forNaFicha() === FOR1), 'na ficha do mestre, a Força da Selene ganha o +2 do Membro (o nódulo do caminho aberto): ' + await forNaFicha());
     await F.locator('#lista .pc', { has: F.locator('.nm', { hasText: /^Selene$/ }) }).click(); await w(400);
-    await F.locator('#ficha [data-sub="habs"]').click(); await w(400);
+    await F.locator('#ficha [data-abaficha="skills"]').click(); await w(400);
     const habsEm = f => f.locator('#habsDaArvore .habrow.daarv').evaluateAll(l => l.map(e => e.innerText.replace(/\s+/g, ' ').trim()));
     const confereHabs = (habs, onde) => {
       const garra = habs.find(x => x.includes('Garra de Gelo')) || '';
@@ -256,7 +256,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, avId) {
     let FJ = null;
     ok(await ate(async () => { FJ = await quadro(J, /\/fichas\//); return FJ && (await FJ.locator('#lista .pc', { has: FJ.locator('.nm', { hasText: /^Selene$/ }) }).count()) === 1; }, 40000), '(o Dalmo abre as Fichas)');
     await FJ.locator('#lista .pc', { has: FJ.locator('.nm', { hasText: /^Selene$/ }) }).click(); await w(400, J);
-    await FJ.locator('#ficha [data-sub="habs"]').click(); await w(400, J);
+    await FJ.locator('#ficha [data-abaficha="skills"]').click(); await w(400, J);
     confereHabs(await habsEm(FJ), 'na ficha do Dalmo');
     ok(await FJ.evaluate(() => calcular(S.personagens.find(p => p.id === 'pc_selene')).tot.FOR) === FOR1, '(e a Força dele também tem o +2)');
     await J.locator('#tab-arvore').click(); await w(500, J);
@@ -278,7 +278,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, avId) {
     await M.locator('#tab-fichas').click(); await w(600);
     ok(await ate(async () => await forNaFicha() === FOR0), 'na ficha do mestre (que tem a biblioteca inteira, com o caminho), o +2 do Membro deixa de contar: ' + await forNaFicha());
     ok(await ate(async () => (await F.locator('#habsDaArvore .habrow.daarv').count()) === 1), '(e "Passivas e Habilidades" fica só com a Origem)');
-    await F.locator('#ficha [data-sub="skills"]').click(); await w(400);
+    await F.locator('#ficha [data-abaficha="skills"]').click(); await w(400);
     ok((await F.locator('#ficha').innerText()).includes('2 de ramo trancado'), 'a aba Skills diz que há 2 nódulos num caminho trancado');
 
     // ---------- abrir de novo: volta tudo ----------

@@ -1541,6 +1541,36 @@
     await Promise.race([buscarLinha('documentos', 'cla:pub:' + cla), new Promise(ok => setTimeout(ok, 3000))]);
     return data || null;
   };
+  /* (lote 16) A caixinha do grupo (ver supabase/migrations/0019_caixinha_do_grupo.sql): pôr lapros da ficha na caixinha
+     do grupo, ou pegar dela para a ficha — as duas pontas mudam juntas, pelo banco, que confere de quem é a ficha e se
+     há lapros que bastem. op 'mover': { camp, grupo, pc, q, nota } (pc nulo: quem mestra, sem ficha); op 'levar':
+     { camp, grupo, paraCamp, paraGrupo } (o grupo mudou de nome, ou de campanha). Depois, a caixinha e a ficha são
+     lidas de novo daqui, antes de responder. */
+  dados.caixa = async (op, args) => {
+    const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
+    args = args && typeof args === 'object' ? args : {};
+    const camp = typeof args.camp === 'string' && args.camp ? args.camp : null, grupo = String(args.grupo || '').slice(0, 120);
+    const doc = id => 'fichas:caixa' + (id ? '@' + id : '');
+    let res;
+    if (op === 'mover') {
+      const q = Math.trunc(Number(args.q)), pc = typeof args.pc === 'string' && args.pc ? args.pc : null;
+      if (!q) throw new Error('Diga quantos lapros (um número inteiro).');
+      await dados.esvaziar(4000);         // (o que esta tela ainda tem para subir da ficha vai antes: o banco parte do que está lá)
+      res = await cliente().rpc('caixa_mover', { p_mesa: a.id, p_camp: camp, p_grupo: grupo, p_pc: pc, p_qtd: q, p_nota: String(args.nota || '').slice(0, 120) });
+      if (!res.error) await Promise.race([Promise.all([buscarLinha('documentos', doc(camp)), pc ? buscarLinha('personagens', pc) : null]), new Promise(ok => setTimeout(ok, 3000))]);
+    } else if (op === 'levar') {
+      const para = typeof args.paraCamp === 'string' && args.paraCamp ? args.paraCamp : null;
+      res = await cliente().rpc('caixa_levar', { p_mesa: a.id, p_camp: camp, p_grupo: grupo, p_para_camp: para, p_para_grupo: String(args.paraGrupo || '').slice(0, 120) });
+      if (!res.error) await Promise.race([Promise.all([buscarLinha('documentos', doc(camp)), para !== camp ? buscarLinha('documentos', doc(para)) : null]), new Promise(ok => setTimeout(ok, 3000))]);
+    } else throw new Error('Pedido desconhecido.');
+    const { data, error } = res;
+    if (error) {
+      if (semEsquemaM(error)) throw new Error('O banco desta mesa ainda não tem a caixinha do grupo: falta aplicar a atualização do banco (o SQL desta versão).');
+      if (String(error.code || '') === 'P0001' && error.message) throw new Error(String(error.message).slice(0, 300));
+      throw falha(error, 'Não deu certo agora. Tente de novo.');
+    }
+    return data || null;
+  };
   /* Manda agora o que está na fila (ao fechar a página, por exemplo). */
   dados.descarregar = () => { for (const k in cols) for (const id of [...cols[k].sujos.keys()]) { clearTimeout(cols[k].tempo.get(id)); cols[k].tempo.delete(id); enviarLinha(cols[k], id); } };
   /* Manda agora e espera subir, até `ms` (antes de fechar ou trocar de mesa, ou de sair da conta). Devolve true se

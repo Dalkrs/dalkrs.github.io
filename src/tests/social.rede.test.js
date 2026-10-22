@@ -51,6 +51,8 @@ const bib = { nome: 'Árvores de teste', pools: [{ id: 'pr', nome: 'Raça', cor:
   ok(await ate(async () => (await G.locator('#lista .pc .nm').allInnerTexts()).join('|') === 'Dain X'), 'e recebe a ficha do Dain');
   await abrir(G, 'Dain X', J);
 
+  await F.locator('#ficha [data-abaficha="social"]').click(); await w(300);
+  await G.locator('#ficha [data-abaficha="social"]').click(); await w(300, J);
   // ---------- romance: a trilha de corações, mexida pelo jogador ----------
   await F.locator('#relNovo').selectOption({ label: 'Lia' }); await w(400);
   const rid = await F.evaluate(() => TC.rules.relacoes(S.personagens[0].estado)[0].id);
@@ -119,8 +121,8 @@ const bib = { nome: 'Árvores de teste', pools: [{ id: 'pr', nome: 'Raça', cor:
 
   // ---------- missões ----------
   await abrir(F, 'Dain X'); await abrir(G, 'Dain X', J);
-  await F.locator('#ficha [data-sub="missoes"]').click(); await w(300);
-  await G.locator('#ficha [data-sub="missoes"]').click(); await w(300, J);
+  await F.locator('#ficha [data-abaficha="notas"]').click(); await w(300);
+  await G.locator('#ficha [data-abaficha="notas"]').click(); await w(300, J);
   ok(await F.locator('[data-misnova="g"]').count() === 1 && await F.locator('[data-misnova="p"]').count() === 1 && await G.locator('[data-misnova="g"]').count() === 0 && (await G.locator('[data-misnova="p"]').innerText()).includes('Missão pessoal'), 'o mestre cria missões do grupo e do personagem; o jogador, só as pessoais dele');
   await F.locator('[data-misnova="g"]').click(); await w(300);
   const gid = await F.evaluate(() => Object.keys(S.segredos.mis.g)[0]);
@@ -165,7 +167,7 @@ const bib = { nome: 'Árvores de teste', pools: [{ id: 'pr', nome: 'Raça', cor:
   await w(700);
   ok(await ate(async () => { const b = await noBanco(M, 'personagens', 'pc_dain', mesa); return b.estado.mis[pid].e === 'feita' && b.estado.mis[jid].o[joid].ok === 1 && await parado(M) && await parado(J); }), 'o mestre conclui uma missão enquanto o jogador marca o objetivo de outra: as duas mudanças ficam no banco');
   ok(await ate(async () => (await G.locator(`[data-mis="p|${pid}"] .misest`).innerText()).toLowerCase() === 'concluída' && (await F.locator(`[data-mis="p|${jid}"] .misprog`).innerText()) === '1/1'), 'e cada um vê a do outro');
-  ok(await ate(async () => (await G.locator('#ficha [data-sub="missoes"] .mk').innerText()) === '2'), 'a aba mostra quantas missões ativas o personagem tem (a do grupo e a pessoal): 2');
+  ok(await ate(async () => (await G.locator('#ficha [data-abaficha="notas"] .mk').innerText()) === '2'), 'a aba mostra quantas missões ativas o personagem tem (a do grupo e a pessoal): 2');
 
   // o mestre copia uma missão para outro personagem (e pode desfazer); a cópia de uma escondida continua escondida
   const misDe = async id => Object.values(((await noBanco(M, 'personagens', id, mesa)).estado || {}).mis || {});
@@ -184,6 +186,8 @@ const bib = { nome: 'Árvores de teste', pools: [{ id: 'pr', nome: 'Raça', cor:
   await F.locator(`[data-misdel="p|${sid}"]`).click(); await w(400);
   ok(await ate(async () => { const v = (await noBanco(M, 'documentos', 'fichas:segredos', mesa)).dados.v.mis.p; return !Object.keys(v.pc_lia || {}).length && !(v.pc_dain || {})[sid] && await parado(M); }), '(desfeita a cópia e excluída a original, o mestre não guarda mais nenhuma das duas)');
 
+  await F.locator('#ficha [data-abaficha="atributos"]').click(); await w(300);
+  await G.locator('#ficha [data-abaficha="atributos"]').click(); await w(300, J);
   // ---------- ferimentos: os dois marcam ao mesmo tempo; a penalidade conta nos atributos ----------
   const desAntes = await F.evaluate(() => calcular(S.personagens.find(p => p.id === 'pc_dain')).tot.DES);
   ok(await G.locator('#painelCorpo svg .parte').count() === 12 && await F.locator('#painelCorpo svg .parte').count() === 12, 'a ficha do jogador já vem com o corpo: 12 partes');
@@ -208,6 +212,8 @@ const bib = { nome: 'Árvores de teste', pools: [{ id: 'pr', nome: 'Raça', cor:
   await F.locator('.toast.comacao button').click(); await w(600);
   ok(await ate(async () => { const b = await noBanco(M, 'personagens', 'pc_dain', mesa); return b.estado.fer[fJ] && b.estado.fer[fJ].v === -2; }), 'e o Desfazer o devolve');
 
+  await F.locator('#ficha [data-abaficha="skills"]').click(); await w(300);
+  await G.locator('#ficha [data-abaficha="skills"]').click(); await w(300, J);
   // ---------- Ascensão: o mestre dá pontos enquanto o jogador gasta os dele ----------
   await M.evaluate(b => { const D = TC.dados.col('documentos'); D.gravar('arvore:biblioteca', { dados: b, vis: 'mestre' }); D.gravar('arvore:pacote', { dados: b, vis: 'mesa' }); }, bib);
   ok(await ate(async () => (await F.locator('#painelAsc .ascrow').count()) === 2 && (await G.locator('#painelAsc .ascrow').count()) === 2, 20000), 'com as árvores da mesa, o quadro de Ascensão mostra os tipos de ponto (Raça e Classe) nas duas telas');
@@ -225,6 +231,8 @@ const bib = { nome: 'Árvores de teste', pools: [{ id: 'pr', nome: 'Raça', cor:
   await F.locator('.toast.comacao button').click(); await w(500);
   ok(await ate(async () => (await noBanco(M, 'personagens', 'pc_dain', mesa)).skills.pontos.pr === 4), 'e o Desfazer devolve');
 
+  await F.locator('#ficha [data-abaficha="atributos"]').click(); await w(300);
+  await G.locator('#ficha [data-abaficha="atributos"]').click(); await w(300, J);
   // ---------- XP: o mestre lança, o jogador sobe de nível ----------
   ok(await F.locator('#xpBox').count() === 1 && await G.locator('#xpBox').count() === 1 && (await G.locator('#f_xpmax').inputValue()) === '50', 'a ficha do jogador tem a barra de XP; no nível 5, o máximo de costume é 50');
   await F.locator('#f_xp').fill('+48'); await F.locator('#f_xp').press('Enter'); await w(600);

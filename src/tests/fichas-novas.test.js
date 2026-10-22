@@ -96,6 +96,7 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   await F.locator('#f_dono').selectOption({ label: 'Dalmo' }); await w(600);
   ok(await ate(async () => { const a = await linha(M, 'pc_dain'), b = await linha(M, 'pc_lia'); return R.relacoes(a.estado).some(e => e.alvo === 'pc_lia' && e.nome === 'Lia' && e.v === 0) && R.relacoes(b.estado).some(e => e.alvo === 'pc_dain' && e.v === 0) && !a.estado.rel && !b.estado.rel; }), 'com dois personagens de jogador, cada um ganha a barra de Relacionamento para o outro (guardada por linha, no formato novo)');
   await abrir(G, 'Dain X', J);
+  await G.locator('[data-abaficha="social"]').click(); await w(200, J);       // (lote 16: os relacionamentos ficam na aba Social)
   ok(await ate(async () => (await G.locator('.relrow').count()) === 1 && (await G.locator('.relrow .relnome').innerText()).includes('Lia')), 'o jogador vê, na ficha do Dain, o relacionamento com a Lia');
   const relId = await G.evaluate(() => TC.rules.relacoes(S.personagens.find(p => p.id === 'pc_dain').estado)[0].id);
   for (let i = 0; i < 4; i++) await G.locator(`[data-relstep="${relId}|5"]`).click();
@@ -122,6 +123,7 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   ok(await ate(async () => (await falaM.count()) === 1), 'a fala chega ao mestre');
   ok(await falaM.locator('img.av').getAttribute('src') === img && (await falaM.locator('.it-h b').innerText()) === 'Dalmo' && (await falaM.locator('.como').innerText()) === 'Dain X', 'com a imagem do personagem ao lado do nome do jogador');
   await abrir(G, 'Dain X', J);
+  await G.locator('[data-abaficha="atributos"]').click(); await w(200, J);
   await G.locator('[data-rolar]').first().click(); await w(400, J);
   const rolM = feed(M).locator('.rol', { hasText: 'Dain X' });
   ok(await ate(async () => (await rolM.count()) >= 1), 'a rolagem pela ficha chega ao mestre');

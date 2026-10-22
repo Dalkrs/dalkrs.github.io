@@ -126,6 +126,7 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     const G = await quadro(J, /\/fichas\//);
     ok(await ate(async () => (await G.locator('#lista .pc .nm').allInnerTexts()).sort().join('|') === 'Bia|Selene'), 'o jogador recebe a ficha dele e a da Bia (aberta a todos): ' + (await G.locator('#lista .pc .nm').allInnerTexts()).join('|'));
     await abrirFicha(G, 'Selene', J);
+    await F.locator('#ficha [data-abaficha="social"]').click(); await G.locator('#ficha [data-abaficha="social"]').click(); await w(300);
     // (as duas são personagens de jogadores na mesma mesa: a tela do mestre pode já ter criado a linha da Bia sozinha —
     //  aí ela não está mais no "+ Relacionamento com…", e não há o que acrescentar)
     await ate(async () => (await F.locator('#relNovo option', { hasText: 'Bia' }).count()) === 1 || (await F.locator('.relrow').count()) === 1);
@@ -141,6 +142,7 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     ok(await ate(async () => (await G.locator('.relrow.sovalor').count()) === 0 && (await G.locator('.relrow').count()) === 1), 'confirmado, o jogador volta a ver o valor');
     await F.locator('.toast button', { hasText: 'Desfazer' }).last().click(); await w(400);
     ok(await ate(async () => (await G.locator('.relrow.sovalor').count()) === 1), 'e o Desfazer esconde de novo, como estava');
+    await F.locator('#ficha [data-abaficha="atributos"]').click(); await G.locator('#ficha [data-abaficha="atributos"]').click(); await w(300);
     // o cadeado dos ferimentos
     ok(await ate(async () => (await F.locator('#painelCorpo [data-fertrava]').count()) === 1 && (await G.locator('#painelCorpo [data-fertrava]').count()) === 0), 'só o mestre tem o cadeado dos ferimentos');
     await F.locator('#painelCorpo [data-fertrava]').click(); await w(400);
@@ -160,6 +162,7 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     await F.locator('.toast button', { hasText: 'Desfazer' }).last().click(); await w(400);
     ok(await ate(async () => { const l = await linha(M, 'pc_selene'); return l.estado.ativo !== false && await parado(M); }) && await F.locator('#f_ativo').isChecked() && (await F.locator('#lista .inativo').count()) === 0, 'Desfazer: ativa de novo');
 
+    await F.locator('#ficha [data-abaficha="bolsas"]').click(); await G.locator('#ficha [data-abaficha="bolsas"]').click(); await w(300);
     // ---------- a poção em outra personagem (pelo caminho próprio do banco) ----------
     await G.locator('#painelBolsa [data-boluse="px"]').click(); await w(300, J);
     ok(await G.locator('[data-bolem="px"] option').count() === 2, 'na prévia, dá para escolher em quem: na Selene ou na Bia');

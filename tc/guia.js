@@ -1,0 +1,122 @@
+/* Tiny Cats · o guia de cada aba (lote 16).
+   O "?" da barra de cima abre o guia da aba aberta: os assuntos dela, cada um com um texto curto e, quando dá,
+   "Mostrar onde fica" — a casca pede ao sistema que destaque o lugar (ver TC.ponte, "guia.mostrar"). Quem mestra a aba
+   vê o guia do mestre; quem joga, o do jogador (sem mesa, cada um é o mestre de tudo).
+   Cada assunto: { t: o título, txt: o texto, onde?: { sel: o lugar (seletor CSS, dentro do sistema), sub?: a parte do
+   sistema em que ele fica (nas Fichas, a aba da ficha), nada?: o que dizer quando o lugar não está à vista } }.
+   Só texto: nada aqui muda nada. */
+(() => {
+  'use strict';
+  const fichaNada = 'Abra uma ficha primeiro (clique num personagem do elenco).';
+  const G = {
+    fichas: {
+      mestre: [
+        { t: 'O elenco e os grupos', txt: 'À esquerda, os personagens por grupo. Na mesa, cada grupo mostra os ativos em cima e os inativos recolhidos embaixo, em “Inativos”. Arraste pela alça ⠿ para mudar a ordem, trocar de grupo ou tirar alguém do grupo ativo (sempre com Desfazer).', onde: { sel: '#lista' } },
+        { t: 'O resumo de cima', txt: 'Fica fixo enquanto você troca de aba: o nome, as barras (digite −8 para tirar, +25% para pôr um quarto do máximo), os atributos e as defesas, os lapros, a caixinha do grupo, os ferimentos, a Sanidade e o Conforto. Os selos levam à parte da ficha em que cada coisa fica.', onde: { sel: '#resumo', nada: fichaNada } },
+        { t: 'As abas da ficha', txt: 'Atributos · Bolsas e itens · Social · Skills · Notas. A ficha lembra a aba em que você estava, também ao trocar de personagem.', onde: { sel: '#ficha .abasficha', nada: fichaNada } },
+        { t: 'A caixinha do grupo', txt: 'Na aba Bolsas e itens: os lapros que o grupo guarda junto. Põe e pega com os lapros da ficha (a conta aparece antes), e você também lança um achado ou uma despesa sem ficha. O extrato diz quem fez o quê.', onde: { sel: '#painelCaixa', sub: 'bolsas', nada: fichaNada } },
+        { t: 'Skills e skills únicas', txt: 'Na aba Skills, um cartão para cada coisa aprendida na árvore. As skills únicas — só daquele personagem, já aprendidas — você cria na Árvore (modo Jogador, no personagem). As habilidades escritas à mão viram skills únicas em “Passar para skills únicas…”.', onde: { sel: '#painelSkills', sub: 'skills', nada: fichaNada } },
+        { t: 'O aniversário', txt: 'Em Atributos, no “Quem é”: o dia e o mês no calendário do mundo (o ano é opcional, para a idade). No dia, o resumo avisa, e o Jornal sugere a nota no rascunho — só sai se você publicar.', onde: { sel: '#anivBox', sub: 'atributos', nada: fichaNada } },
+        { t: 'Quem vê e quem controla', txt: 'O olho no elenco abre ou esconde a ficha dos jogadores. Em “Quem é”, o dono diz qual jogador controla a ficha; “Personagem ativo” é o mesmo dos dois blocos do elenco (na cena, “Puxar o grupo” traz marcados os ativos).', onde: { sel: '#f_dono', sub: 'atributos', nada: 'Isso só existe numa mesa, com uma ficha aberta.' } },
+        { t: 'Estaque, missões e notas', txt: 'Na aba Notas. O Estaque pode ficar escondido do jogador, ficha por ficha (a marca no próprio Estaque).', onde: { sel: '#abafichac-notas', sub: 'notas', nada: fichaNada } },
+      ],
+      jogador: [
+        { t: 'A sua ficha', txt: 'Em cima, o resumo, que fica fixo: as barras (digite −8 para tirar, +25% para pôr um quarto do máximo), os atributos, os lapros, a caixinha do grupo e o que está machucado. Os selos levam à parte da ficha em que cada coisa fica.', onde: { sel: '#resumo', nada: fichaNada } },
+        { t: 'As abas da ficha', txt: 'Atributos · Bolsas e itens · Social · Skills · Notas. A ficha lembra a aba em que você estava.', onde: { sel: '#ficha .abasficha', nada: fichaNada } },
+        { t: 'A caixinha do grupo', txt: 'Na aba Bolsas e itens: os lapros que o grupo guarda junto. Você põe e pega com os lapros da sua ficha — a conta aparece antes, e dá para desfazer. O extrato mostra o que cada um fez.', onde: { sel: '#painelCaixa', sub: 'bolsas', nada: fichaNada } },
+        { t: 'Skills', txt: 'Na aba Skills, um cartão para cada coisa que o personagem aprendeu (e as skills únicas que o mestre criou para ele). Para pegar mais, “Abrir na Árvore”.', onde: { sel: '#painelSkills', sub: 'skills', nada: fichaNada } },
+        { t: 'O aniversário', txt: 'Em Atributos, no “Quem é”: o dia e o mês no calendário do mundo, e o ano se quiser (para a idade). No dia, a ficha avisa.', onde: { sel: '#anivBox', sub: 'atributos', nada: fichaNada } },
+        { t: 'As missões', txt: 'Na aba Notas: as do grupo e as suas, com o que falta fazer.', onde: { sel: '#painelMissoes', sub: 'notas', nada: fichaNada } },
+      ],
+    },
+    cenas: {
+      mestre: [
+        { t: 'Trocar de cena', txt: 'O nome da cena, em cima: abre a lista para trocar, criar ou renomear.', onde: { sel: '#sceneBtn' } },
+        { t: 'As ferramentas', txt: 'À esquerda: selecionar, desenhar, terreno, luz, névoa, régua… Passe o mouse em cada uma para ver o que faz.', onde: { sel: '#rail' } },
+        { t: 'O painel', txt: 'À direita: os tokens, a iniciativa, as condições e o que está selecionado. O botão do painel, em cima, mostra ou esconde.', onde: { sel: '#side' } },
+        { t: 'Os turnos', txt: 'Com o combate ligado, a faixa dos turnos mostra de quem é a vez, com o próximo e o anterior.', onde: { sel: '#turnb', nada: 'A faixa dos turnos aparece com o combate ligado.' } },
+      ],
+      jogador: [
+        { t: 'A cena', txt: 'O mapa que o mestre mostra. Seus tokens você move e usa; o resto, só vê.', onde: { sel: '#stage' } },
+        { t: 'O painel', txt: 'À direita: os seus personagens, as barras e o que está selecionado.', onde: { sel: '#side' } },
+        { t: 'Os turnos', txt: 'No combate, a faixa dos turnos mostra de quem é a vez.', onde: { sel: '#turnb', nada: 'A faixa dos turnos aparece quando o mestre liga o combate.' } },
+      ],
+    },
+    mundo: {
+      mestre: [
+        { t: 'Trocar de mapa', txt: 'O nome do mapa, em cima: trocar, criar ou renomear.', onde: { sel: '#btMapa' } },
+        { t: 'A data do mundo', txt: 'O dia, a hora e o clima. As setas passam o tempo — é a data que o Jornal, a corte e os aniversários usam.', onde: { sel: '#dataTxt' } },
+        { t: 'As ferramentas', txt: 'À esquerda: regiões, marcadores, rotas, grupos e exércitos. Shift + clique em dois exércitos oferece a batalha entre os dois.', onde: { sel: '#rail' } },
+        { t: 'O painel', txt: 'À direita, por abas: reinos, corte (gente, casas, títulos), diplomacia, guerra, economia… Na Corte, o titular de um título pode ser uma ficha da mesa; na Diplomacia, quem fala por cada facção.', onde: { sel: '#tabs' } },
+        { t: 'Ver como jogador', txt: 'Mostra o mapa como os jogadores veem: sem o que é só seu e com a névoa fechada.', onde: { sel: '#comoJogBox' } },
+      ],
+      jogador: [
+        { t: 'O mapa', txt: 'O que o mestre mostra do mundo: as regiões e os lugares que vocês conhecem.', onde: { sel: '#palco' } },
+        { t: 'A data do mundo', txt: 'O dia, a hora e o clima de agora.', onde: { sel: '#dataTxt' } },
+        { t: 'O painel', txt: 'À direita: o que vocês sabem dos reinos, da corte e da diplomacia.', onde: { sel: '#tabs' } },
+      ],
+    },
+    acampamento: {
+      mestre: [
+        { t: 'Os descansos', txt: 'Descanso curto (uma pausa, sem gastar provisões) e longo (a noite: recupera as barras, gasta rações e mexe em Conforto e Sanidade). Sempre com prévia antes.', onde: { sel: '#acoes' } },
+        { t: 'As rações', txt: 'A soma das provisões guardadas.', onde: { sel: '#chipRacoes' } },
+        { t: 'As áreas', txt: 'As partes do acampamento (a fogueira, as tendas…), com quem está em cada uma.', onde: { sel: '#areas' } },
+        { t: 'Momentos e todos de uma vez', txt: '“Momento…” mexe no relacionamento de dois personagens; “Mexer em todos…”, na Fadiga, no Conforto e na Sanidade de quem está no acampamento, com o antes e o depois.', onde: { sel: '#btMomento' } },
+      ],
+      jogador: [
+        { t: 'O acampamento', txt: 'Quem está em cada área e o que o grupo tem guardado. Com a permissão do mestre, você também mexe nas provisões e nas áreas.', onde: { sel: '#areas' } },
+        { t: 'As rações', txt: 'A soma das provisões guardadas.', onde: { sel: '#chipRacoes' } },
+      ],
+    },
+    arvore: {
+      mestre: [
+        { t: 'Mestre e Jogador', txt: 'Em cima: “Mestre” edita as árvores; “Jogador” mostra cada personagem — os pontos, o que ele pegou e as skills únicas dele.', onde: { sel: '.seg[aria-label="Modo"]' } },
+        { t: 'A busca', txt: 'Acha pelo nome e pelo texto dos nódulos (também o de cada grau), em todas as árvores: a lista leva até lá.', onde: { sel: '#busca' } },
+        { t: 'Os filtros', txt: 'Em cima da árvore: as naturezas e os tipos de uso (ativa, passiva…). Apagam o que não é daquele tipo.', onde: { sel: '#filtroNat', nada: 'Os filtros aparecem quando a árvore à vista tem naturezas ou tipos de uso.' } },
+        { t: 'As skills únicas', txt: 'No modo Jogador, no painel do personagem: “+ Skill única” cria uma skill só dele (o texto, o bônus na ficha, o custo de uso), já aprendida. Aparece na ficha, na aba Skills.', onde: { sel: '#blocoUnicas', nada: 'Passe para o modo Jogador e escolha o personagem.' } },
+      ],
+      jogador: [
+        { t: 'O seu personagem', txt: 'À esquerda: os pontos de cada tipo, o que você pegou e as árvores equipadas. Clique num nódulo liberado para aprender.', onde: { sel: '#painel' } },
+        { t: 'A busca', txt: 'Acha pelo nome e pelo texto, nas árvores equipadas: a lista leva até lá.', onde: { sel: '#busca' } },
+        { t: 'Os filtros', txt: 'Em cima da árvore: as naturezas e os tipos de uso (ativa, passiva…).', onde: { sel: '#filtroNat', nada: 'Os filtros aparecem quando a árvore à vista tem naturezas ou tipos de uso.' } },
+        { t: 'As skills únicas', txt: 'As que o mestre criou só para o seu personagem: já vêm aprendidas.', onde: { sel: '#blocoUnicas' } },
+      ],
+    },
+    jornal: {
+      mestre: [
+        { t: 'Ler e escrever', txt: 'Em cima, o que ver: o jornal publicado ou o rascunho, que só você vê até publicar.', onde: { sel: '#modos', nada: 'Os modos aparecem para quem mestra o Jornal, numa mesa.' } },
+        { t: 'Sugestões no rascunho', txt: 'O rascunho sugere notas prontas — os aniversários dos personagens da semana, por exemplo. “Pôr no rascunho” põe; nada sai sem você publicar.', onde: { sel: '#ed', nada: 'As sugestões aparecem no rascunho.' } },
+        { t: 'Publicar', txt: 'Mostra antes o que vai sair, e só então publica para a mesa.', onde: { sel: '#btPublicar', nada: 'O botão aparece no rascunho.' } },
+      ],
+      jogador: [
+        { t: 'O jornal', txt: 'O que o mestre publicou: as notícias, os boatos e os anúncios da semana.', onde: { sel: '#leitura' } },
+      ],
+    },
+    meditacao: {
+      mestre: [
+        { t: 'Os ambientes', txt: 'Onde os personagens meditam, cada um com o que pode ser achado lá.', onde: { sel: '#ambientes', nada: 'Os ambientes aparecem para quem mestra a Meditação.' } },
+        { t: 'O painel', txt: 'Quem está meditando, as tentativas liberadas e o que cada um já achou.', onde: { sel: '#painel' } },
+      ],
+      jogador: [
+        { t: 'Meditar', txt: 'No painel: entrar na meditação com o seu personagem e tentar uma combinação nos pilares quando o mestre liberar.', onde: { sel: '#painel' } },
+      ],
+    },
+    cla: {
+      mestre: [
+        { t: 'Os clãs da mesa', txt: 'O dos jogadores e os de NPC (rivais, aliados). Escolha um para abrir.', onde: { sel: '#mestre', nada: 'A lista dos clãs aparece fora de um clã aberto.' } },
+        { t: 'As partes do clã', txt: 'Cargos, construções, recursos, respeito, relações e o histórico. No clã de NPC, você marca o que os jogadores veem.', onde: { sel: '#abas', nada: 'Abra um clã primeiro.' } },
+      ],
+      jogador: [
+        { t: 'O clã', txt: 'As partes do clã que vocês veem: os cargos, as construções, os recursos e o histórico. O líder mexe nos outros cargos.', onde: { sel: '#abas', nada: 'O mestre ainda não mostrou um clã.' } },
+      ],
+    },
+    rolador: {
+      mestre: [
+        { t: 'Rolar', txt: 'Escreva a rolagem (2d6+3) ou monte pelo formulário: o resultado entra no histórico, com o título que você der.', onde: { sel: '#log' } },
+        { t: 'As tabelas', txt: 'Tabelas de eventos para sortear, com o histórico de cada uma.', onde: { sel: '#newTableBtn' } },
+      ],
+      jogador: [],
+    },
+  };
+  window.TC_GUIA = { abas: G };
+})();

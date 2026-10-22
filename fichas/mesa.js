@@ -257,6 +257,14 @@ const FichasMesa = (() => {
         guardarTela(); redesenhar();
         return;
       }
+      // (lote 16) a caixinha dos grupos (do mundo ou de uma campanha): quem escreve é o banco; aqui, só se mostra
+      if (/^fichas:caixa(@|$)/.test(l0.id || '')) {
+        const jv = l0.apagado || !l0.dados ? undefined : j(l0.dados);
+        if ((sombra.caixas || (sombra.caixas = {}))[l0.id] === jv) return;
+        sombra.caixas[l0.id] = jv;
+        redesenhar();
+        return;
+      }
       const k = Object.keys(DOCS).find(x => DOCS[x] === l0.id);
       if (!k) return;
       const v = l0.apagado || !l0.dados ? undefined : l0.dados.v, jv = v === undefined ? undefined : j(v);
@@ -477,7 +485,7 @@ const FichasMesa = (() => {
     /* Só consulta: nada se edita — mas dá para andar pela ficha. As abas de dentro dela (Atributos e Defesas; itens,
        poderes, missões…; as bolsas) continuam valendo: sem elas, "consultar" seria ver só a parte que estava aberta. */
     // (lote 7) os filtros, a busca e as seções dos equipamentos também: só mudam o que aparece nesta tela
-    alvo.querySelectorAll('input, select, textarea, button').forEach(el => { if (!el.matches('[data-sub], [data-abaatr], [data-ababolsa], [data-itfil], [data-itbusca], [data-itsecbt]')) el.disabled = true; });
+    alvo.querySelectorAll('input, select, textarea, button').forEach(el => { if (!el.matches('[data-abaficha], [data-irpara], [data-abaatr], [data-ababolsa], [data-itfil], [data-itbusca], [data-itsecbt]')) el.disabled = true; });
     const fechada = encerrada(pc._camp);
     if (!alvo.querySelector('.so-consulta')) alvo.insertAdjacentHTML('afterbegin', '<div class="so-consulta">' + (fechada ? 'Campanha encerrada: esta ficha é só para consulta.' + (st.cargo === 'mestre' ? ' Para mexer nela, reabra a campanha em Campanhas…, no menu da mesa.' : '') : 'Ficha de outra pessoa: só para consulta.') + '</div>');
   }
@@ -608,6 +616,35 @@ const FichasMesa = (() => {
     if (pc._vis === 'mesa') return (dono ? 'Os outros jogadores agora veem a ficha de ' : 'Os jogadores agora veem a ficha de ') + pc.nome + '.';
     return dono ? 'A ficha de ' + pc.nome + ' ficou escondida dos outros jogadores. ' + dono + ', que a controla, continua vendo.' : 'A ficha de ' + pc.nome + ' voltou a ficar escondida dos jogadores.';
   }
+  /* (lote 16) O calendário do mundo, para o aniversário: o do mapa do Mapa-múndi de onde o Jornal tira a data (o
+     publicado; para o mestre, também o rascunho), senão o primeiro mapa desta campanha (ou do mundo), senão o de começo.
+     → { meses: [{ nome, dias }], hoje: { a, m, d } | null, mapa: o nome do mapa | null } */
+  const MESES_PADRAO = ['Alvorada', 'Degelo', 'Semeadura', 'Florada', 'Verdor', 'Solar', 'Colheita', 'Âmbar', 'Brumas', 'Geada', 'Vigília', 'Noite Longa'].map(nome => ({ nome, dias: 30 }));
+  function calendario() {
+    const padrao = { meses: MESES_PADRAO, hoje: null, mapa: null };
+    if (!ativo || !D || typeof D.todas !== 'function') return padrao;
+    /* os mapas da mesa: o mestre lê os mapas (mundo:mapa:<id>); quem joga, o que eles veem de cada um (a projeção,
+       mundo:pub:<id>, que também tem o calendário) */
+    const mapas = [];
+    for (const l of D.todas()) {
+      if (l.apagado || typeof l.id !== 'string' || !l.dados || typeof l.dados !== 'object') continue;
+      const pub = l.id.startsWith('mundo:pub:');
+      if (!pub && !l.id.startsWith('mundo:mapa:')) continue;
+      const d = l.dados, id = typeof d.id === 'string' && d.id ? d.id : l.id.slice(pub ? 10 : 11);
+      if (!d.cal || typeof d.cal !== 'object' || !id) continue;
+      const x = { id, nome: String(d.nome || 'Mapa'), cal: d.cal, camps: Array.isArray(l.campanhas) ? l.campanhas : [] }, i = mapas.findIndex(y => y.id === id);
+      if (i < 0) mapas.push(Object.assign(x, { pub })); else if (mapas[i].pub && !pub) mapas[i] = Object.assign(x, { pub });      // (o mapa vale mais que a projeção dele)
+    }
+    if (!mapas.length) return padrao;
+    const jr = id => { const d = D.pegar(id); return d && !d.apagado && d.dados && typeof d.dados.mapa === 'string' ? d.dados.mapa : null; };
+    const cv = campEmVista(), daqui = m => !cv || !m.camps.length || m.camps.includes(cv);
+    const m = mapas.find(x => x.id === jr('jornal:pub')) || (mestre() ? mapas.find(x => x.id === jr('jornal:rascunho')) : null) || mapas.filter(daqui).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))[0] || mapas[0];
+    const meses = (Array.isArray(m.cal.meses) && m.cal.meses.length ? m.cal.meses : MESES_PADRAO).map((x, i) => ({ nome: String((x && x.nome) || 'Mês ' + (i + 1)), dias: Math.max(1, Math.min(99, Math.round(+(x && x.dias) || 30))) }));
+    const total = meses.reduce((s, x) => s + x.dias, 0), dia = Math.max(0, Math.floor(+m.cal.dia || 0)), ano0 = Number.isFinite(+m.cal.ano0) ? Math.round(+m.cal.ano0) : 1;
+    let r = dia % total, mes = 0;
+    while (mes < meses.length - 1 && r >= meses[mes].dias) { r -= meses[mes].dias; mes++; }
+    return { meses, hoje: { a: ano0 + Math.floor(dia / total), m: mes, d: r + 1 }, mapa: m.nome };
+  }
   function nomeDoDono(pc) {
     if (!ativo || !pc._dono) return '';
     const m = (st.membros || []).find(x => x.id === pc._dono);
@@ -660,7 +697,58 @@ const FichasMesa = (() => {
     lista.parentNode.insertBefore(box, lista);
   }
 
-  return { preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha,
+  /* (lote 16) A caixinha do grupo: os lapros que o grupo guarda junto — uma por grupo de cada bloco (o mundo ou uma
+     campanha). Na mesa, ficam em fichas:caixa (os grupos do mundo) e fichas:caixa@<campanha>, que só o banco escreve
+     (TC.ponte.caixa: as duas pontas, a ficha e a caixinha, mudam juntas). Sem mesa, ficam nesta tela (S.caixas).
+     Cada uma: { q: lapros, ext: [{ em, quem, pc, q, saldo, nota, m }] } (o extrato, do mais novo para o mais velho). */
+  const nomeDoGrupo = g => String(g || '').trim().replace(/\s+/g, ' ');
+  function caixaDoGrupo(camp, g) {
+    g = nomeDoGrupo(g);
+    if (!g) return null;
+    let x = null;
+    if (ativo) { const d = D && D.pegar('fichas:caixa' + (camp ? '@' + camp : '')); x = d && !d.apagado && d.dados && d.dados.v && d.dados.v.g ? d.dados.v.g[g] : null; }
+    else x = S.caixas && S.caixas.g ? S.caixas.g[g] : null;
+    return { q: x && Number.isFinite(+x.q) ? Math.max(0, Math.floor(+x.q)) : 0, ext: x && Array.isArray(x.ext) ? x.ext : [] };
+  }
+  // quem pode pôr e pegar com esta ficha (e quem mexe na caixinha sem ficha nenhuma: só quem mestra)
+  const mexeNaCaixa = pc => !!pc && !!nomeDoGrupo(pc.grupo) && podeEditar(pc);
+  const caixaSemFicha = () => !ativo || mestre();
+  /* q > 0: põe na caixinha (sai da ficha); q < 0: pega dela (vai para a ficha). pc nulo: só a caixinha (quem mestra).
+     Devolve uma promessa: { caixa, lapros }. Sem mesa, a mesma conta do banco, aqui. */
+  function moverCaixa(pc, camp, g, q, nota) {
+    g = nomeDoGrupo(g); q = Math.trunc(+q) || 0;
+    if (ativo) return TC.ponte.caixa('mover', { camp: camp || null, grupo: g, pc: pc ? pc.id : null, q, nota: nota || '' });
+    return new Promise((ok, falha) => {
+      if (!g) return falha(new Error('A caixinha é de um grupo: ponha a ficha num grupo primeiro.'));
+      if (!q || Math.abs(q) > 1e9) return falha(new Error('Diga quantos lapros (um número inteiro).'));
+      const cx = caixaDoGrupo(null, g), lap = pc ? FichasExtras.laprosDe(pc) : null;
+      if (pc && q > 0 && lap < q) return falha(new Error((pc.nome || 'A ficha') + ' tem só ' + lap + ' lapros.'));
+      if (q < 0 && cx.q < -q) return falha(new Error('A caixinha do grupo tem só ' + cx.q + ' lapros.'));
+      const saldo = cx.q + q, linha = { em: new Date().toISOString(), quem: pc ? String(pc.nome || 'Sem nome').slice(0, 60) : '', q, saldo };
+      if (pc) linha.pc = pc.id;
+      if (nota) linha.nota = String(nota).trim().replace(/\s+/g, ' ').slice(0, 120);
+      if (!pc) linha.m = true;
+      const raiz = S.caixas && typeof S.caixas === 'object' && S.caixas.g && typeof S.caixas.g === 'object' ? S.caixas : (S.caixas = { g: {} });
+      raiz.g[g] = { q: saldo, ext: [linha].concat(cx.ext).slice(0, 100) };
+      if (pc) (pc.estado || (pc.estado = {})).lapros = lap - q;
+      save();
+      ok({ ok: true, caixa: saldo, lapros: pc ? lap - q : null });
+    });
+  }
+  // o grupo mudou de nome (ou de campanha): a caixinha vai junto, somada ao que já houver lá
+  function levarCaixa(camp, g, paraCamp, paraG) {
+    g = nomeDoGrupo(g); paraG = nomeDoGrupo(paraG);
+    const cx = caixaDoGrupo(camp, g);
+    if (!g || !paraG || !cx || (!cx.q && !cx.ext.length) || ((camp || null) === (paraCamp || null) && g === paraG)) return Promise.resolve(null);
+    if (ativo) return TC.ponte.caixa('levar', { camp: camp || null, grupo: g, paraCamp: paraCamp || null, paraGrupo: paraG });
+    const dest = caixaDoGrupo(null, paraG);
+    S.caixas.g[paraG] = { q: cx.q + dest.q, ext: cx.ext.concat(dest.ext).sort((a, b) => String(b.em).localeCompare(String(a.em))).slice(0, 100) };
+    delete S.caixas.g[g];
+    save();
+    return Promise.resolve({ ok: true });
+  }
+  return { caixaDoGrupo, mexeNaCaixa, caixaSemFicha, moverCaixa, levarCaixa, nomeDoGrupo,
+    preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, calendario, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha,
     ehNpc, segDe, porSeg, mexerRel, relsDe, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
     campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza,
     ehPet, petsDe, nomeDoPetDe };

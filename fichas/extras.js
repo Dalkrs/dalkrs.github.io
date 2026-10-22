@@ -440,6 +440,7 @@ const FichasExtras = (() => {
       S.abaBolsa = it.t;
       sel = '[data-bolrow="' + CSS.escape(String(it.id)) + '"]';
     } else return false;
+    S.abaFicha = 'bolsas';                 // (lote 16) os itens e as bolsas ficam na aba "Bolsas e itens" da ficha
     render();
     const el = document.querySelector(sel);
     if (!el) return false;
@@ -1794,7 +1795,7 @@ const FichasExtras = (() => {
   return {
     aviso, imagemOk, iniciais, miniatura,
     htmlRetrato, ligarRetrato, guardarImagem,
-    htmlLapros, ligarLapros, laprosDe, lerLapros,
+    htmlLapros, ligarLapros, laprosDe, lerLapros, MOEDA,
     painelItens, ligarItens, abrirItem, mostrarItem, itemNovo, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,
     htmlSobrevida, ligarSobrevida, sobrevidaDe,
     ehLivre, tornarLivre, painelAtributosLivre, htmlBotaoModo, ligarAtributos,

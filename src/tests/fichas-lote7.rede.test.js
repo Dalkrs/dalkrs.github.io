@@ -55,6 +55,7 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   });
 
   await passo('o tipo novo, na mesa', async () => {
+    await F.locator('#ficha [data-abaficha="bolsas"]').click(); await w(300);
     await F.locator('[data-ittipos]').click(); await w(300);
     await F.locator('.itjanela [data-jnovo]').fill('Lâminas espirituais'); await F.locator('.itjanela [data-jnovo]').press('Enter'); await w(300);
     await F.locator('.itjanela [data-jcancela]').first().click(); await w(200);
@@ -69,6 +70,7 @@ const local = JSON.stringify({ v: 1, cfg: { niveis: Array.from({ length: 50 }, (
   await passo('o jogador vê e sobe o nível', async () => {
     ok(await ate(async () => { G = await fichas(J); return G && (await G.locator('#lista .pc .nm').allInnerTexts()).join('|').includes('Dain X'); }), '(o jogador vê o Dain X)');
     await G.locator('#lista .pc', { hasText: 'Dain X' }).click(); await w(500, J);
+    await G.locator('#ficha [data-abaficha="bolsas"]').click(); await w(300, J);
     ok(await ate(async () => (await G.locator('[data-itsec="' + tipoId + '"] [data-itcard="kat"]').count()) === 1 && /LÂMINAS ESPIRITUAIS/.test(await G.locator('[data-itsecbt="' + tipoId + '"]').innerText()), 15000),
       'para o jogador, a katana aparece na seção do tipo que o mestre criou ("Lâminas espirituais")');
     ok(await G.locator('[data-itarr="kat"]').count() === 1 && await G.locator('[data-ittipos]').count() === 0 && await G.locator('[data-itnv="kat"][data-d="1"]').isEnabled(), 'na ficha dele, o jogador arrasta e muda o nível (mas os tipos da mesa são com o mestre)');

@@ -794,6 +794,12 @@ dialog.mundo-dl.suc-dl { width: min(560px, calc(100% - 24px)); }
 .dp-par-nomes { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
 .dp-par-nomes b { font-size: 13.5px; color: var(--fg); }
 .dp-x { color: var(--fg-3); }
+/* (lote 16) quem fala por cada facção: o governante (com a ficha, quando tem) */
+.dp-govs { display: grid; gap: 6px; }
+.dp-gov { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.dp-gov .dp-par-nomes { flex: 0 0 auto; min-width: 120px; }
+.dp-gov-quem { flex: 1 1 160px; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; color: var(--fg-2); }
+.dp-gov-quem i { color: var(--fg-3); }
 .dp-par-cab .in { width: auto; flex: none; height: 32px; }
 .dp-op { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .dp-op small, .dp-trat { font-size: 12px; color: var(--fg-3); }
@@ -1356,12 +1362,12 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
-<script src="../tc/ponte.js?v=15"></script>
+<script src="../tc/ponte.js?v=16"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="../tc/rules.js?v=15"></script>
+<script src="../tc/rules.js?v=16"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
-<script src="../jornal/nucleo.js?v=1"></script>
+<script src="../jornal/nucleo.js?v=2"></script>
 <script src="nucleo.js?v=39"></script>
 <script src="guerra.js?v=5"></script>
 <script src="reino.js?v=13"></script>
@@ -1370,13 +1376,13 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="intrigas.js?v=2"></script>
 <script src="campanha.js?v=4"></script>
 <script src="camadas.js?v=3"></script>
-<script src="tela.js?v=24"></script>
-<script src="painel.js?v=40"></script>
-<script src="guerra-painel.js?v=10"></script>
+<script src="tela.js?v=25"></script>
+<script src="painel.js?v=41"></script>
+<script src="guerra-painel.js?v=11"></script>
 <script src="guerra-ajuda.js?v=4"></script>
 <script src="reino-painel.js?v=14"></script>
-<script src="corte-painel.js?v=5"></script>
-<script src="diplomacia-painel.js?v=6"></script>
+<script src="corte-painel.js?v=6"></script>
+<script src="diplomacia-painel.js?v=7"></script>
 <script src="intrigas-painel.js?v=2"></script>
 <script src="mundo.js?v=14"></script>
 </body>

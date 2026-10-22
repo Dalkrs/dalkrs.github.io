@@ -1273,6 +1273,60 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   "1,2 mil", "25 mil") e, quando há, os selinhos dos **magos** (a estrela) e das **máquinas de cerco** (a roda); o título
   diz por extenso. A fileira da marcha sobe para cima deles.
 
+### Fichas, grupo e árvore (lote 16)
+
+- **A ficha em abas, com o resumo fixo em cima** (fichas/index.html: `htmlResumo`, `htmlAbasFicha`, `irParaAba`): em
+  cima, sempre à vista, o nome, as barras (HP, SP e as especiais, que se editam ali: `-8`, `+25%`), os atributos e as
+  defesas, os lapros, a caixinha do grupo, o aniversário do dia, os ferimentos abertos, a Sanidade e o Conforto — cada
+  selo leva à aba em que a coisa fica. Embaixo, as abas **Atributos · Bolsas e itens · Social · Skills · Notas**; a
+  ficha lembra a aba (também ao recarregar e ao trocar de personagem), e a ficha nova abre em Atributos. Trocar de aba
+  não redesenha a ficha (quem digita noutra aba não perde nada).
+- **A equipe ativa e a inativa** (`renderLista`, `soltarArraste`): na mesa, o mestre vê cada grupo do elenco com os
+  ativos em cima e **Inativos (n)** recolhido embaixo (a tela lembra se está aberto). Arrastar uma ficha de um bloco para
+  o outro muda o ativo dela — o mesmo de "Personagem ativo" (`estado.ativo: false`), com aviso e Desfazer; soltar em cima
+  do "Inativos" recolhido também vale. Quem joga não vê os blocos.
+- **O aniversário no calendário do mundo** (`ficha.aniv = { d, m, a? }`; `TC.rules.anivOk` e `aniversario`;
+  `FichasMesa.calendario`): no "Quem é", o dia, o mês (os do mapa da mesa — o do Jornal publicado, o do rascunho para o
+  mestre, senão o primeiro mapa; sem mapa, os 12 meses de começo) e o ano, opcional, para a idade. Escrevem o dono e o
+  mestre. A ficha diz quanto falta ("É amanhã · 19 anos"; o dia que não cabe no mês avisa) e, no dia, o selo no resumo.
+  No **Jornal**, o rascunho do mestre sugere a nota pronta (`JornalNucleo.aniversarios`: hoje e nos próximos 7 dias,
+  com a idade); "Pôr como nota" põe (com Desfazer), "Agora não" esconde aquele dia do mundo neste aparelho, e nada sai
+  sem publicar.
+- **A caixinha do grupo** (supabase/migrations/0019_caixinha_do_grupo.sql; `TC.dados.caixa`, `TC.ponte.caixa`,
+  `FichasMesa.moverCaixa`): na aba Bolsas e itens, os lapros que o grupo guarda junto — uma por grupo de cada bloco
+  (`fichas:caixa`, os grupos do mundo; `fichas:caixa@<campanha>`). Com os lapros da ficha, **Pôr na caixinha** e
+  **Pegar para a ficha**, com a conta antes, botão por botão (o que não dá fica apagado, e diz por quê), e Desfazer. Quem
+  mestra também lança **+ Achado** e **− Despesa** sem ficha. O extrato (até 100 linhas) diz quem fez, quanto, para quê e
+  o saldo ("pelo mestre", quando foi ele com a ficha de outro). Na mesa, quem muda as duas pontas juntas é o banco
+  (`caixa_mover`: confere que a ficha é de quem pede e do grupo, que há lapros que bastem na ficha ou na caixinha, e que
+  a campanha está aberta); o grupo que muda de nome ou passa para outra campanha leva a caixinha (`caixa_levar`, somada
+  à de lá); o grupo desfeito deixa a caixinha guardada com o nome. Sem mesa, a mesma conta fica nesta tela (`S.caixas`).
+- **A aba Skills como resumo** (`htmlCartoesSkills`): um cartão para cada coisa aprendida na árvore (o tipo de uso, o
+  grau, o texto do grau e a descrição com as contas no número do personagem, o bônus na ficha, o custo de uso) e para
+  cada **skill única**; **Abrir na Árvore** (na mesa, na ficha que a pessoa controla) leva ao personagem na aba Árvore.
+  Distribuir pontos e equipar árvores continuam embaixo, recolhidos. As habilidades escritas à mão viram skills únicas em
+  **Passar para skills únicas…** (quem mestra; sem mesa, quem usa): a janela mostra cada uma com o tipo de uso que ela
+  ganha (as inativas desmarcadas), e o aviso tem Desfazer.
+- **As skills únicas** (`skills.unicas`; `TC.rules.unicasDe`; arvore/index.html: `blocoUnicas`, `editarUnica`): na
+  Árvore, no modo Jogador, o painel do personagem tem **Skills únicas** — o mestre cria uma skill só dele (o nome, o que
+  faz com as contas entre chaves, o bônus na ficha, o custo de uso e o tipo de uso), já aprendida, sem árvore e sem
+  gastar pontos; Editar e Apagar (pergunta antes), com o ↺/↻ da Árvore. O bônus conta nos atributos (`bonusDaArvore`
+  soma as únicas). Quem joga vê; quem escreve é o mestre (como os ramos trancados).
+- **A busca e os filtros da Árvore**: a busca acha também pelo texto de cada grau e lista o que achou em todas as
+  árvores que a tela mostra (o mestre: a biblioteca; o jogador: as equipadas), mais as skills únicas do personagem — um
+  clique troca de árvore e escolhe o nódulo (Esc fecha; ↑↓ e Enter andam). Em cima da árvore, ao lado das naturezas, o
+  filtro dos **tipos de uso** (ativa, passiva…), com "limpar".
+- **A Corte com as fichas** (mundo/corte-painel.js): no cartão do título, o titular pode ser uma das **fichas da mesa**
+  que ainda não estão na corte — ao salvar, o personagem entra na corte com a ficha ligada (o nascimento vem do
+  aniversário da ficha, quando ela tem o ano) e fica com o título; a nota diz isso antes. Na **Diplomacia**, **Quem fala
+  por cada facção**: o governante (o maior título preso a ela), com "ficha" e **Abrir a ficha** quando ele tem uma (quem
+  joga vê só os governantes que conhece).
+- **O guia de cada aba** (tc/guia.js, a casca e `TC.ponte.aoMostrar`): o **?** da barra de cima abre os assuntos da aba
+  aberta — o guia do mestre para quem mestra a aba, o do jogador para quem joga —, um aberto de cada vez. **Mostrar onde
+  fica** fecha o guia e destaca o lugar no sistema por uns instantes (nas Fichas, abrindo antes a aba da ficha); o lugar
+  que não está à vista dá o aviso do assunto. Trocar de aba com o guia aberto troca os assuntos. Nada muda sozinho.
+- (conserto) A busca rápida que leva a um item da bolsa abre a aba Bolsas e itens da ficha.
+
 ### A Guerra no Mapa-múndi (lote 8)
 
 - **A aba Guerra** (só do mestre; `mundo/guerra-painel.js`, `window.MundoGuerraPainel`, com as contas em
@@ -3141,3 +3195,21 @@ dois (Shift + clique, os lados, sem unidades, com outra coisa, com três); o `lo
 `SO=descanso`), o Estaque escondido entre o mestre e o jogador (o banco, os segredos, a aba, recarregar, mostrar de
 novo) e o Descanso curto (a equipe ativa longe da fogueira, o inativo, o longo, e o botão das Cenas abrindo o
 Acampamento com a cena marcada, até as fichas e as rações).
+
+**Lote 16 (fichas, grupo e árvore)**: o `fichas-lote16.test.js` (sem mesa) confere a ficha em abas (as cinco, o resumo
+com as barras que se editam ali, os selos que levam à aba certa, a aba lembrada ao recarregar e ao trocar de ficha, a
+ficha nova em Atributos), o aniversário (os meses de começo, o dia que não cabe, o ano, apagar), a caixinha nesta tela (a
+prévia, os botões apagados, pôr, pegar, o achado, a despesa, o extrato, o Desfazer, a ficha sem grupo) e a aba Skills
+(os cartões, o bônus da única que conta, sem "Abrir na Árvore" sem mesa, "Passar para skills únicas…" com a prévia e o
+Desfazer); o `arvore-lote16.test.js`, a busca (o texto dos graus, as outras árvores, levar até lá, Esc, nada
+encontrado), o filtro dos tipos de uso e as skills únicas (criar, o custo que não vale, o cartão, o ↺/↻, editar, a
+busca, apagar); o `guia.test.js`, o guia na casca (abrir, um assunto de cada vez, Esc e ×, reabrir no mesmo, "Mostrar
+onde fica" com a aba da ficha e o contorno, o aviso do que não está à vista, acompanhar a aba, e os assuntos de todas as
+abas com seletores que valem); o `lote16-nucleo.test.js`, as contas (o aniversário, as únicas no bônus, os aniversários
+do Jornal); o `lote16.rede.test.js` (com `SO=equipe` ou `SO=caixa`), os dois blocos do elenco (arrastar para os
+inativos e de volta, o Desfazer, a caixa da ficha, o jogador sem os blocos) e a caixinha pelo banco (o jogador põe e
+pega, o mestre vê ao vivo, o achado e a despesa, a ficha do jogador "pelo mestre", o que o banco recusa, o grupo que
+muda de nome levando a caixinha); e o `lote16b.rede.test.js` (com `SO=aniv`, `SO=corte`, `SO=unicas` ou `SO=guia`), o
+aniversário no calendário do mapa da mesa e no Jornal, o titular da Corte escolhido entre as fichas e o governante na
+Diplomacia com "Abrir a ficha", as skills únicas do mestre chegando ao jogador (a Árvore, a ficha, o bônus, "Abrir na
+Árvore") e o guia de cada papel.

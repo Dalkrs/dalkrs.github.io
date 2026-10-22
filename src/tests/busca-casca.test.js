@@ -116,10 +116,12 @@ const medit = j({ 'medit:receitas': { v: 1, lista: [{ id: 'rc_vento', nome: 'Ven
     const F = await quadro(/\/fichas\//);
     ok(!(await aberta()) && await abaAtual() === 'tab-fichas' && await ate(async () => (await F.evaluate(() => S.sel)) === 'pc_dain'), 'Enter abre a ficha escolhida na aba Fichas');
     // o item escondido pelo filtro "Guardados", com a seção dele recolhida
+    await F.locator('#ficha [data-abaficha="bolsas"]').click(); await espera(200);       // (lote 16: os itens ficam na aba Bolsas e itens)
     await F.locator('[data-itfil="e:off"]').click(); await espera(200);
     await F.evaluate(() => { S.itFechadas = ['-']; render(); }); await espera(200);
     ok(await F.locator('[data-itcard="i1"]').isHidden(), '(o item está escondido: o filtro e a seção recolhida)');
     await F.evaluate(() => window.scrollTo(0, 0)); await espera(150);         // (a ficha volta para o alto: o item fica bem abaixo)
+    await F.locator('#ficha [data-abaficha="atributos"]').click(); await espera(200);   // (e noutra aba: a busca abre a de Bolsas e itens)
     await escolher('escudo de carv', 'Escudo de carvalho');
     const card = F.locator('[data-itcard="i1"]');
     ok(await ate(async () => await card.isVisible()) && !(await F.evaluate(() => (S.itFechadas || []).includes('-'))) && (await F.locator('[data-itfil="e:off"]').getAttribute('aria-pressed')) === 'false',

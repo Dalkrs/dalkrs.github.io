@@ -142,6 +142,32 @@
     try { return MN.textoData(m.cal, m.cal.dia); } catch (e) { return ''; }
   }
 
+  /* (lote 16) Os aniversários do mundo, no dia do mundo do jornal: as fichas da campanha em vista (e as do mundo) com o
+     aniversário escrito. Para quem mestra, uma sugestão no rascunho — a nota pronta, que entra com um clique e só sai
+     se for publicada. "Agora não" guarda, neste aparelho, que aquele dia do mundo já foi visto. */
+  const L_ANIV = 'tinycats:jornal:anivVisto';
+  function aniversariosDe(jx) {
+    const m = jx.mapa ? mapas().find(x => x.id === jx.mapa) : null;
+    if (!m || !MN || !m.cal || typeof m.cal !== 'object' || !P) return null;
+    const cv = st && st.campanha ? st.campanha.id : null;
+    const pcs = P.todas().filter(l => !l.apagado && l.ficha && l.ficha.aniv && (!cv || !l.campanha || l.campanha === cv)).map(l => ({ nome: l.nome, aniv: l.ficha.aniv }));
+    const dia = Math.max(0, Math.floor(+m.cal.dia || 0));
+    let r = null;
+    try { r = N.aniversarios(pcs, k => MN.dataDe(m.cal, dia + k)); } catch (e) { r = null; }
+    return r ? Object.assign(r, { chave: m.id + ':' + dia }) : null;
+  }
+  function sugestaoAniversarios() {
+    const a = aniversariosDe(ras);
+    if (!a || guarda.ler(L_ANIV) === a.chave || ras.notas.some(n => n.txt.trim() === a.texto)) return null;
+    return h('div', { class: 'cartao sugestao', 'data-k': 'aniv' },
+      h('div', { class: 'cab' }, h('b', { text: 'Aniversários no mundo' }), h('span', { class: 'grow' })),
+      h('p', { class: 'ajuda', 'data-k': 'aniv:txt', text: a.texto }),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn sm pri', 'data-k': 'aniv:por', disabled: ras.notas.length >= N.MAX.notas, onclick: () => { if (mudar('pôr a nota dos aniversários', r => { r.notas.push({ id: N.novoId('nt'), txt: a.texto }); })) avisoDesfazer('A nota dos aniversários entrou no rascunho.'); } }, 'Pôr como nota'),
+        h('button', { type: 'button', class: 'btn sm', 'data-k': 'aniv:nao', onclick: () => { guarda.gravar(L_ANIV, a.chave); pintar(); } }, 'Agora não')),
+      h('small', { class: 'ajuda', text: 'Só sai no jornal se você publicar.' }));
+  }
+
   /* ---------------- a folha ---------------- */
   function paragrafos(txt, max) {
     const out = [];
@@ -255,6 +281,7 @@
         btnIcone('n:' + n.id + ':x', 'Tirar a nota', '×', () => { if (mudar('tirar a nota', r => { r.notas.splice(i, 1); })) avisoDesfazer('Nota tirada.'); })),
       campoTexto('n:' + n.id + ':txt', null, n.txt, (r, v) => { r.notas[i].txt = v; }, { area: true, linhas: 2, max: N.MAX.nota, ph: 'Dizem que… / Vende-se…', rotulo: 'Texto da nota', desfazer: 'mudar a nota' })));
     out.push(h('section', { class: 'sec' }, h('h2', null, 'Boatos e anúncios ', h('span', { class: 'n', text: String(ras.notas.length) })),
+      sugestaoAniversarios(),
       notas.length ? notas : h('p', { class: 'vazio-ed', text: 'Notas curtas, no pé da página.' }),
       h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'n:nova', disabled: ras.notas.length >= N.MAX.notas, onclick: () => novaNota() }, '+ Nota'))));
     out.push(secaoCartas());

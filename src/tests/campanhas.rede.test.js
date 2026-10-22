@@ -797,7 +797,7 @@ const { ok, end } = checker();
     ok(await F.locator('#f_nome').isDisabled() && /Campanha encerrada: esta ficha é só para consulta\. Para mexer nela, reabra a campanha/.test(await F.locator('.so-consulta').innerText()), 'e a ficha dela abre só para consulta, para o mestre também');
     ok(await F.locator(`#lista .bloco[data-bloco="${C1}"] [data-gcamp]`).count() === 0, 'os grupos dela não têm como ser passados adiante');
     // (as missões dela — as do grupo e as da ficha — também: sem botão de criar, e com o motivo)
-    await F.locator('#ficha [data-sub="missoes"]').click(); await w(300);
+    await F.locator('#ficha [data-abaficha="notas"]').click(); await w(300);
     const missoesFechadas = { novas: await F.locator('#blocoMissoes [data-misnova]').count(), texto: (await F.locator('#blocoMissoes').innerText()).replace(/\s+/g, ' ') };
     ok(missoesFechadas.novas === 0 && /campanha encerrada: só consulta/i.test(missoesFechadas.texto), 'as missões da campanha encerrada são só para consulta (não há como criar missão do grupo nem da ficha): ' + missoesFechadas.texto.slice(0, 160));
     // ("Apagar dados", com a campanha encerrada em vista, não leva ficha nenhuma — e diz por quê)

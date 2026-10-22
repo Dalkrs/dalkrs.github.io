@@ -14,6 +14,8 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   const t = await start();
   const { page: P } = await t.device({ name: 'fichas', w: 1320, h: 900, seed: { urgm_calc_atributos_v1: estado } });
   const w = ms => P.waitForTimeout(ms);
+  // (lote 16) a ficha em abas: Atributos · Bolsas e itens · Social · Skills · Notas (o resumo fica em todas)
+  const aba = async k => { await P.locator('[data-abaficha="' + k + '"]').click(); await w(150); };
   const S0 = (fn, a) => P.evaluate(fn, a);
   const sel = () => S0(() => JSON.parse(JSON.stringify(S.personagens.find(x => x.id === 'pc_sel'))));
   const calc = () => S0(() => { const c = calcular(S.personagens.find(x => x.id === 'pc_sel')); return { tot: c.tot, def: c.def, defEsp: c.defEsp, tmp: c.tmp, rec: c.recursos.map(r => ({ id: r.id, max: r.max, min: r.min, inicio: r.inicio, eq: r.eq })) }; });
@@ -73,6 +75,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   ok((await sel()).estado.rec.sp === 0, 'a barra sem piso continua parando em zero');
 
   // ---------- itens que somam numa barra e numa defesa ----------
+  await aba('bolsas');
   // (lote 6) o equipamento é um cartão: a chave, o nome e só os bônus que ele tem; os números ficam em "Editar"
   ok(await P.locator('table.items').count() === 0 && await P.locator('[data-itcard="it1"]').count() === 1 && (await P.locator('[data-itcard="it1"] .itbon').innerText()).replace(/\s+/g, ' ').trim() === 'CAN +2' && await P.locator('[data-itembon]').count() === 0,
     'o cartão do Manto mostra só o que ele soma ("CAN +2"), sem a tabela de números: ' + await P.locator('[data-itcard="it1"] .itbon').innerText());
@@ -192,6 +195,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   ok((await sel()).itens.length === 1 && (await calc()).def.DFF === dff0, '(de volta: só o Manto da Geada)');
 
   // ---------- a aba Defesas ----------
+  await aba('atributos');
   await P.locator('[data-abaatr="def"]').click(); await w(300);
   ok(await P.locator('table.defs tbody tr').count() === 13 && await P.locator('table.defs .icodef').count() === 13, 'a aba Defesas lista as 13 defesas específicas, cada uma com o ícone dela');
   const nomes = await P.locator('table.defs .aname').allInnerTexts();
@@ -253,6 +257,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.locator(`[data-tmpdel="${idT}"]`).click(); await w(300);
 
   // ---------- bolsas ----------
+  await aba('bolsas');
   ok(await P.locator('#painelBolsa [data-ababolsa]').count() === 5 && /Nenhuma poção/.test(await P.locator('#painelBolsa .bd').innerText()), 'o painel Bolsas tem as cinco abas (Poções, Bombas, Runas, Munições, Materiais), vazias');
   await P.locator('[data-boladd="pocao"]').click(); await w(300);
   const idP = await S0(() => S.personagens[0].bolsa[0].id);

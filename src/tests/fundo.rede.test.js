@@ -29,6 +29,8 @@ const selene = ficha('Selene', { recursos: [{ id: 'hp', nome: 'HP', fml: '100' }
   const escondida = (p, id) => p.evaluate(id => { const f = document.getElementById('f-' + id); return f ? f.hidden : null; }, id);
   const usarNaFicha = async p => {
     const F = await fichasDe(p);
+    // (lote 16: a bolsa fica na aba Bolsas e itens da ficha)
+    if (await F.locator('#ficha [data-abaficha="bolsas"]').count()) { await F.locator('#ficha [data-abaficha="bolsas"]').click(); await p.waitForTimeout(200); }
     const b = F.locator('#ficha [data-boluse="p1"]'); await b.scrollIntoViewIfNeeded(); await b.click(); await p.waitForTimeout(300);
     const sim = F.locator('#ficha [data-bolsim="p1"]'); if (await sim.count()) { await sim.click(); await p.waitForTimeout(300); }
   };

@@ -907,6 +907,44 @@
         }
       });
     });
+    // (lote 16) e as skills únicas do personagem, que vêm já aprendidas
+    unicasDe(sk).forEach(u => {
+      if (!u.bonus) return;
+      Object.keys(u.bonus).forEach(ch => {
+        const v = numFinito(u.bonus[ch]);
+        if (v == null) return;
+        const cod = codigoBonus(ch);
+        if (cod) { somar(out, cod, v); return; }
+        const nm = normNome(ch);
+        if (!nm) return;
+        if (!grafia.has(nm)) grafia.set(nm, String(ch).trim());
+        somar(out, grafia.get(nm), v);
+      });
+    });
+    return out;
+  }
+  /* (lote 16) As skills únicas de um personagem: o mestre cria só para ele, e elas vêm já aprendidas (sem árvore e sem
+     custo de pontos). skills.unicas: [{ id, nome, desc, bonus?: { FOR: 2, HP: 10 }, uso?: [{ b, v }] (o custo de usar),
+     usos?: [id do tipo de uso da biblioteca], cor? }]. Devolve a lista limpa (sem repetidos, sem as sem nome). */
+  const MAX_UNICAS = 60;
+  function unicasDe(skills) {
+    const l = skills && Array.isArray(skills.unicas) ? skills.unicas : [], out = [], vistos = new Set();
+    for (const u of l) {
+      if (out.length >= MAX_UNICAS || !ehObjeto(u)) continue;
+      const id = typeof u.id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(u.id) ? u.id : null, nome = String(u.nome == null ? '' : u.nome).replace(/\s+/g, ' ').trim().slice(0, 80);
+      if (!id || vistos.has(id) || !nome) continue;
+      vistos.add(id);
+      const x = { id, nome, desc: String(u.desc == null ? '' : u.desc).slice(0, 2000) };
+      if (ehObjeto(u.bonus)) {
+        const b = {};
+        for (const k of Object.keys(u.bonus)) { const v = numFinito(u.bonus[k]), nm = String(k).trim().slice(0, 30); if (nm && v != null && v !== 0) b[nm] = v; }
+        if (Object.keys(b).length) x.bonus = b;
+      }
+      const uso = usoLimpo(u.uso); if (uso) x.uso = uso;
+      if (Array.isArray(u.usos)) { const us = u.usos.filter(v => typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v)).slice(0, 4); if (us.length) x.usos = [...new Set(us)]; }
+      if (typeof u.cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(u.cor)) x.cor = u.cor;
+      out.push(x);
+    }
     return out;
   }
 
@@ -1693,6 +1731,33 @@
   }
   /* O estado depois de subir de nível (de `nivel` para o seguinte): o que passou do máximo fica, o mínimo não muda,
      o máximo ganha XP_PASSO (o digitado é somado; o de costume acompanha o nível sozinho). Não altera o que recebeu. */
+  /* (lote 16) O aniversário do personagem, no calendário do mundo. A ficha guarda ficha.aniv = { d (o dia do mês), m (o
+     mês, de 0), a (o ano de nascimento; opcional) }; meses: os do calendário ([{ nome, dias }]).
+     anivOk: o aniversário que vale (o dia preso ao tamanho do mês), ou null.
+     aniversario: → { hoje (é hoje), faltam (os dias até o próximo; 0 hoje), idade (os anos que tem — os que faz, se é
+     hoje; null sem o ano) } ou null (sem aniversário, ou sem o dia de hoje do mundo). */
+  function anivOk(v, meses) {
+    if (!ehObjeto(v)) return null;
+    const ms = Array.isArray(meses) && meses.length ? meses : null, m = numFinito(v.m), d = numFinito(v.d);
+    if (m == null || d == null) return null;
+    const mi = Math.round(m);
+    if (mi < 0 || (ms && mi >= ms.length) || mi > 99) return null;
+    const lim = ms ? Math.max(1, Math.round(numFinito(ms[mi] && ms[mi].dias) || 30)) : 99, di = Math.round(d);
+    if (di < 1 || di > lim) return null;
+    const o = { d: di, m: mi }, a = numFinito(v.a);
+    if (a != null && Math.abs(a) <= 1e6) o.a = Math.round(a);
+    return o;
+  }
+  function aniversario(aniv, hoje, meses) {
+    const ms = Array.isArray(meses) && meses.length ? meses : null, x = anivOk(aniv, ms);
+    if (!x || !ms || !ehObjeto(hoje)) return null;
+    const dias = ms.map(mm => Math.max(1, Math.round(numFinito(mm && mm.dias) || 30))), total = dias.reduce((s, n) => s + n, 0);
+    const pos = (m, d) => dias.slice(0, m).reduce((s, n) => s + n, 0) + d - 1;
+    const pa = pos(x.m, x.d), ph = pos(Math.max(0, Math.min(ms.length - 1, Math.round(+hoje.m || 0))), Math.max(1, Math.round(+hoje.d || 1)));
+    const faltam = ((pa - ph) % total + total) % total;
+    const idade = x.a == null || !Number.isFinite(+hoje.a) ? null : Math.round(+hoje.a) - x.a - (ph < pa ? 1 : 0);
+    return { hoje: faltam === 0, faltam, idade };
+  }
   function subirNivelXp(estado, nivel) {
     const x = xpDe(estado, nivel), e = Object.assign({}, estado), novo = Object.assign({}, estado && ehObjeto(estado.xp) ? estado.xp : {});
     novo.v = x.min + Math.max(0, x.v - x.max);
@@ -1729,7 +1794,7 @@
     ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, ehDerivado, ehDefesa,
     cfgPadrao, personagemPadrao,
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
-    bonusDaArvore, iniciativa, estadoRecursos, aplicarDelta, podreDe, resumo,
+    bonusDaArvore, unicasDe, iniciativa, estadoRecursos, aplicarDelta, podreDe, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
     FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,
@@ -1741,7 +1806,7 @@
     PARTES, TIPOS_FER, GRAVIDADES, ESTADOS_FER, ferimentos, textoDoFerimento, sinalDeFerido, AMPUTAVEIS, ABAIXO, amputados,
     ROM_MAX, relacoes, temRelacoes, relacoesDoMestre, mexerRelacao, relacaoCom,
     MIS_ESTADOS, missoes,
-    XP_PASSO, xpDe, subirNivelXp
+    XP_PASSO, xpDe, subirNivelXp, anivOk, aniversario
   };
 
   (root.TC || (root.TC = {})).rules = api;

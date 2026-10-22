@@ -118,16 +118,16 @@ const arvLocal = JSON.stringify({ formato: 'urgm-skilltree-doc', versao: 4,
   ok(await ate(async () => { F = await quadro(M, /\/fichas\//); return F && (await F.locator('#lista .pc').count()) > 0 && await F.evaluate(() => !!S.bib && S.bib.arvores[0].nodes[1].nome === 'Punho de Titânio'); }, 40000), '(o mestre abre as Fichas, já com a árvore de agora)');
   await F.locator('#lista .pc', { has: F.locator('.nm', { hasText: /^Li$/ }) }).click(); await w(300);
   // o que foi aprendido na árvore aparece sozinho em "Passivas e Habilidades"
-  await F.locator('#ficha [data-sub="habs"]').click(); await w(300);
+  await F.locator('#ficha [data-abaficha="skills"]').click(); await w(300);
   const habs = await F.locator('#habsDaArvore .habrow.daarv').evaluateAll(l => l.map(e => e.innerText.replace(/\s+/g, ' ').trim()));
-  ok(habs.length === 2 && habs.some(x => x.includes('Punho de Titânio') && x.includes('grau 2/2') && /passiva/i.test(x) && x.includes('+2 dano') && x.includes('Golpes desarmados.') && x.includes('Monge')) && habs.some(x => x.includes('Origem') && x.includes('Ponto de partida.')),
+  ok(habs.length === 2 && habs.some(x => x.includes('Punho de Titânio') && x.includes('grau 2/2') && /passiva/i.test(x) && x.includes('+2 dano') && x.includes('Golpes desarmados.') && /Monge/i.test(x)) && habs.some(x => x.includes('Origem') && x.includes('Ponto de partida.')),
     'na ficha, "Passivas e Habilidades" lista sozinha o que foi aprendido na árvore — uso, nome, grau, o texto do grau, a descrição e de que árvore veio: ' + JSON.stringify(habs));
-  ok((await F.locator('#ficha [data-sub="habs"] .mk').innerText()) === '2' && await F.locator('#habsDaArvore input, #habsDaArvore textarea, #habsDaArvore button').count() === 0, 'a aba conta essas habilidades, e elas são só leitura (mudam pela árvore)');
+  ok((await F.locator('#ficha [data-abaficha="skills"] .mk').innerText()) === '2' && await F.locator('#habsDaArvore input, #habsDaArvore textarea, #habsDaArvore button').count() === 0, 'a aba conta essas habilidades, e elas são só leitura (mudam pela árvore)');
   await B.evaluate(async () => { await descerGrau('n_punho'); }); await w(400, J);
   ok(await ate(async () => (await F.locator('#habsDaArvore .habrow.daarv', { hasText: 'Punho de Titânio' }).innerText()).replace(/\s+/g, ' ').includes('grau 1/2'), 15000), 'o jogador desce um grau na Árvore dele: a lista na ficha do mestre acompanha sozinha (grau 1/2)');
   // o cursor parado num campo da Árvore não segura o que vem da mesa
   await B.locator('#busca').click(); await w(200, J);
-  await F.locator('#ficha [data-sub="skills"]').click(); await w(300);
+  await F.locator('#ficha [data-abaficha="skills"]').click(); await w(300);
   if (!await F.locator('#ficha [data-skpegar]').count()) { await F.locator('#ficha [data-skui="distribuir"]').click(); await w(300); }
   await F.locator('#ficha [data-skpegar="n_punho"]').click(); await w(500);
   ok(await ate(async () => await B.evaluate(() => personagemAtual().alocados.n_punho === 2 && !!document.activeElement && document.activeElement.id === 'busca'), 15000), 'o mestre sobe o grau pela ficha (aba Skills): a Árvore do jogador acompanha mesmo com o cursor dele parado no campo de busca — e o cursor continua lá');
