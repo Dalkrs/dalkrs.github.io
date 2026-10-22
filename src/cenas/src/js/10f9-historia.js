@@ -75,8 +75,11 @@ const Historia = (() => {
         if (!l) { (P.historiaFora = P.historiaFora || []).push(NOME[k]); continue; }
         const [x, y] = l;
         limpar((px, py) => Math.hypot(px - x, py - y) <= R + 0.8);
-        FEITO[k](K, rH, x, y, R);
-        marca(P.historia, k, NOME[k], x + 1.2, y + 0.4, x, y, R);
+        // (lote 14, parte 14b: a batalha antiga de verdade — a do Mapa-múndi, com mais de 7 dias — dá o nome e as cores)
+        const bat = k === 'batalha' && op.bat ? op.bat : null;
+        FEITO[k](K, rH, x, y, R, bat);
+        marca(P.historia, k, bat ? 'Batalha antiga: ' + (bat.nome || bat.a.nome + ' × ' + bat.b.nome) + ' (há ' + bat.dias + ' dias)' : NOME[k], x + 1.2, y + 0.4, x, y, R);
+        if (bat) P.historia[P.historia.length - 1].txt = 'batalha antiga (' + (bat.nome || bat.a.nome + ' × ' + bat.b.nome) + ', há ' + bat.dias + ' dias)';
         evitar.push([x, y, R * 2 + 2]);
       }
       if (!P.historia.length) delete P.historia;
@@ -100,7 +103,7 @@ const Historia = (() => {
   /* ================= cada história ================= */
   const FEITO = {
     // as armas no chão, os ossos, o túmulo e o estandarte
-    batalha(K, rH, cx, cy, R) {
+    batalha(K, rH, cx, cy, R, bat) {
       const itens = [], tipos = ['espada', 'espada', 'espada', 'lanca', 'lanca', 'machado', 'escudo', 'elmo'];
       for (let k = 0, n = 7 + Math.floor(rH() * 4); k < 40 && itens.length < n; k++) {
         const an = rH() * TAU, d = Math.sqrt(rH()) * R, x = cx + Math.cos(an) * d, y = cy + Math.sin(an) * d;
@@ -109,7 +112,8 @@ const Historia = (() => {
       }
       K.pinta(2, 'armasVelhas', { itens });
       for (let k = 0; k < 3; k++) { const an = rH() * TAU, d = R * (0.3 + rH() * 0.6), x = cx + Math.cos(an) * d, y = cy + Math.sin(an) * d; if (K.at(Math.floor(x), Math.floor(y)) === 0) K.pinta(2, 'ossos', { x, y, r: 0.55 }); }
-      { const an = rH() * TAU, x = cx + Math.cos(an) * R * 0.6, y = cy + Math.sin(an) * R * 0.6; K.pinta(3, 'estandarteRasgado', { x, y, ang: rH() * TAU, cor: ['#7a2a22', '#2f4a6e', '#5a6a2e', '#6a4a7a'][Math.floor(rH() * 4) % 4] }); }
+      // (o estandarte de quem perdeu, na batalha de verdade; no empate, o do primeiro lado)
+      { const an = rH() * TAU, x = cx + Math.cos(an) * R * 0.6, y = cy + Math.sin(an) * R * 0.6, ang = rH() * TAU, ic = Math.floor(rH() * 4) % 4; K.pinta(3, 'estandarteRasgado', { x, y, ang, cor: bat ? (bat.vence === 'a' ? bat.b : bat.a).cores[0] : ['#7a2a22', '#2f4a6e', '#5a6a2e', '#6a4a7a'][ic] }); }
       K.marcaCirc(cx, cy, R, 5);
       K.objeto('tumulo', Math.floor(cx), Math.floor(cy), Math.floor(rH() * 4) * 90, v => v === 5);
     },
@@ -276,7 +280,7 @@ const Historia = (() => {
   // o que o resumo diz: a história e o achado (só o mestre vê o marcador)
   function texto(p) {
     const partes = [];
-    if (p.historia && p.historia.length) partes.push('a história: ' + juntar(p.historia.map(q => q.n.toLowerCase())));
+    if (p.historia && p.historia.length) partes.push('a história: ' + juntar(p.historia.map(q => q.txt || q.n.toLowerCase())));
     if (p.historiaFora && p.historiaFora.length) partes.push('sem lugar para ' + juntar(p.historiaFora.map(n => n.toLowerCase())) + ' (a situação ocupa o mapa)');
     if (p.achado) partes.push('um achado raro (' + p.achado.n.toLowerCase() + ')');
     return partes;

@@ -290,6 +290,8 @@ const Regiao = (() => {
     // (lote 14, parte 14a) o hexágono do Mapa-múndi: os vizinhos nas bordas (e a água deles), o rio e os caminhos do mapa
     // pelos pontos certos da borda (o que o mapa não tem fica à escolha: sem rio no mapa, a Água; sem caminho, o Caminho)
     const hex = HexCena.valida(o.hex), comHex = HexCena.aceita(hex), rioDoMapa = comHex && hex.rios.length > 0, camDoMapa = comHex && hex.caminhos.length > 0;
+    // (lote 14, parte 14b) a guerra do hexágono (as marcas escolhidas na janela; a batalha de mais de 7 dias vai para a história)
+    const GU = comHex && hex.guerra ? MarcasGuerra.escolha(hex.guerra, o.guerra) : null, hist = MarcasGuerra.comHistoria(Historia.valida(o.historia), GU);
     // a água: a Surpresa sorteia (escolher o rio na rosa garante o rio)
     let agua = aguaPedida, paraLago = false;
     if (rioDoMapa) agua = 'rio';
@@ -368,7 +370,7 @@ const Regiao = (() => {
     const clareiras = poePontos(K, F, escolhidos, estilo, tam, vau, chegada);
     proprios(K, F);
     // (lote 13, parte 13c) a história do lugar e o achado raro entram depois da vegetação: guardar o que havia antes
-    const comHist = Historia.valida(o.historia).length > 0 || o.achados === true, A13 = comHist ? Historia.antes(K) : null;
+    const comHist = hist.length > 0 || o.achados === true, A13 = comHist || GU ? Historia.antes(K) : null;
     // a mata (o relevo) onde o bosque fecha, nos biomas de mato; as árvores se juntam nos bosques
     const nb = Tracado.ruido(MO.sub(sT, 44)), EB = 1 / 6.5, bq = (x, y) => clamp((nb(x * EB, y * EB) - 0.42) / 0.22, 0, 1);
     const G = B.grupos(W, H, q => { const i = q % W, j = (q - i) / W; return K.at(i, j) === 0 && F.bioEm(i + 0.5, j + 0.5).mata && bq(i + 0.5, j + 0.5) > 0.62; });
@@ -397,7 +399,11 @@ const Regiao = (() => {
       if (rV() >= b.pedrinhas / 192 || K.at(Math.floor(x), Math.floor(y)) !== 0) continue;
       P.rochas.push({ x, y, r: 0.25 + rV() * 0.3, cores: Paisagem.pedraDe(b.pedra || palDe(b.id)) }); K.pos(Math.floor(x), Math.floor(y), 4);
     }
-    if (A13) Historia.noLugar(K, A13, { historia: o.historia, achados: o.achados === true, seed, sT, evitar: P.pontos.map(q => [q.cx, q.cy, 5]).concat([[chegada[0] + 0.5, chegada[1] + 0.5, 5]]) });
+    const ev13 = P.pontos.map(q => [q.cx, q.cy, 5]).concat([[chegada[0] + 0.5, chegada[1] + 0.5, 5]]);
+    // (lote 14, parte 14b) as marcas da guerra, antes da história (a história fica longe delas); elas chegam um pouco mais
+    // perto dos pontos de interesse (só vão nas casas livres)
+    const feitosG = GU ? MarcasGuerra.noLugar(K, A13, { g: GU, sT, evitar: ev13.map(([x, y, r]) => [x, y, r * 0.7]) }) : [];
+    if (comHist) Historia.noLugar(K, A13, { historia: hist, achados: o.achados === true, seed, sT, evitar: ev13.concat(feitosG), bat: GU && GU.velha });
     // (lote 13, parte 13c) a estação: no inverno, a água parada e rasa congela (o lago, as poças do pântano)
     Estacoes.noPlano(K, o.estacao);
     agLagos.forEach((a, i) => { if (a && a.tipo === 'gelo') P.lagos[i].tipo = 'gelo'; });
@@ -436,7 +442,8 @@ const Regiao = (() => {
     // (lote 13, parte 13c) a estação (no verão, nada), a história do lugar e o achado raro
     if (p.estacao) partes.push(Estacoes.texto(p));
     partes.push(...Historia.texto(p));
-    // (lote 14, parte 14a) o hexágono do Mapa-múndi
+    // (lote 14, parte 14b) as marcas da guerra; (14a) o hexágono do Mapa-múndi
+    partes.push(...MarcasGuerra.texto(p));
     if (p.hex) partes.push(HexCena.resumoTxt(p.hex));
     return partes.join(' · ') + '.';
   }

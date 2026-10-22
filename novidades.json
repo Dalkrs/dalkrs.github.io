@@ -2,6 +2,33 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.22-1",
+      "data": "2026-10-22",
+      "titulo": "As marcas da guerra na cena",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi e Cenas: a guerra do hexágono vai para a cena. “Gerar a cena aqui” leva a batalha mais nova que foi ali (com os dias desde ela e as cores dos dois lados), o hexágono destruído ou corrompido, os exércitos que estão nele e o cerco do lugar. Na janela, os botões das “Marcas da guerra” mostram cada uma e deixam desligar; o exército escondido no mapa começa desligado. Cada marca ganha um marcador oculto com o nome do que é."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a batalha de até 7 dias deixa o campo pisado com os caídos discretos (silhuetas e manchas escuras, sem sangue), as armas e os escudos nas cores dos lados, as flechas e os estandartes — o de quem venceu fincado, o de quem perdeu caído. No dia e no seguinte, as brasas ainda acesas; depois, os corvos e as covas, com menos caídos a cada dia. Com mais de 7 dias, ela vira a Batalha antiga da história do lugar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o acampamento cresce com o exército — mais tropas, mais tendas e fogueiras (até 16 tendas), nas cores e com o estandarte da facção, em roda da tenda do comando, com as provisões e as máquinas de cerco paradas; as tendas tapam a visão. No cerco, a trincheira com as estacas e as máquinas viradas para o lugar cercado, com o acampamento de quem cerca atrás. Quando a cena não comporta tudo, o resumo diz e sugere o tamanho Grande."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o hexágono destruído deixa a cinza por cima do chão (o caminho continua à mostra), as árvores carbonizadas, os tocos e a casa queimada; o corrompido, a terra roxa com os veios que brilham, as árvores mortas e os cristais negros. Sem guerra no hexágono, ou com as marcas desligadas, tudo continua como era."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.21-11",
       "data": "2026-10-21",
       "titulo": "A cena que nasce do hexágono",

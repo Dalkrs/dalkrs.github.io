@@ -1884,6 +1884,8 @@ const Encontro = (() => {
     // (lote 14, parte 14a) o hexágono do Mapa-múndi: o chão novo com os vizinhos do mapa nas bordas (e a água deles), o rio
     // e os caminhos do mapa pelos pontos certos da borda — onde o terreno tem chão de bioma (o pântano e a água cobrem tudo)
     const hex = HexCena.valida(o.hex), comHex = HexCena.aceita(hex) && !!BIOMA[terreno];
+    // (lote 14, parte 14b) a guerra do hexágono (as marcas escolhidas na janela; a batalha de mais de 7 dias vai para a história)
+    const GU = comHex && hex.guerra ? MarcasGuerra.escolha(hex.guerra, o.guerra) : null, hist = MarcasGuerra.comHistoria(Historia.valida(o.historia), GU);
     // (lote 13, parte 13b) o chão novo (chao 2: os modelos de antes não têm e ficam no de sempre) e a mistura dele
     const chao = comHex ? 2 : chaoDe(terreno, o.chao), mist = chao === 2 ? Biomas.mistura(o.mistura) : null;
     const trava = limparTrava(o.trava, { terreno, tamanho: tam, caminho, sitPedida, chao, mistura: mist });
@@ -1921,10 +1923,14 @@ const Encontro = (() => {
     if (novo) chaoDepois(K, F, sT, !!o.seco);
     const nat8 = T8.relevo && !F ? relevoNatural(K, seed) : null;
     // (lote 13, parte 13c) a história do lugar e o achado raro entram depois da vegetação: guardar o que havia antes
-    const comHist = Historia.valida(o.historia).length > 0 || o.achados === true, A13 = comHist ? Historia.antes(K) : null;
+    const comHist = hist.length > 0 || o.achados === true, A13 = comHist || GU ? Historia.antes(K) : null;
     if (novo) { vegetacaoNova(K, F, rV, sT); enfeitesNovos(K, F, rV); }
     else { vegetacao(K, rV); enfeites(K, rV); }
-    if (A13) Historia.noLugar(K, A13, { historia: o.historia, achados: o.achados === true, seed, sT, evitar: [[K.P.foco[0], K.P.foco[1], Math.hypot(W, H) * 0.22]] });
+    const ev13 = [[K.P.foco[0], K.P.foco[1], Math.hypot(W, H) * 0.22]];
+    // (lote 14, parte 14b) as marcas da guerra, antes da história (a história fica longe delas)
+    // (a guerra chega um pouco mais perto do meio da situação que a história: as tendas só vão nas casas livres)
+    const feitosG = GU ? MarcasGuerra.noLugar(K, A13, { g: GU, sT, evitar: [[K.P.foco[0], K.P.foco[1], Math.hypot(W, H) * 0.17]] }) : [];
+    if (comHist) Historia.noLugar(K, A13, { historia: hist, achados: o.achados === true, seed, sT, evitar: ev13.concat(feitosG), bat: GU && GU.velha });
     // (lote 13, parte 13c) a estação: no inverno, a água parada e rasa congela (antes dos marcadores: o gelo é chão)
     Estacoes.noPlano(K, o.estacao);
     if (o.marcas !== false) marcadores(K);
@@ -2106,6 +2112,8 @@ const Encontro = (() => {
     if (p.comMarcas !== false && Props.P.interesse) for (const q of p.pontos || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
     // (lote 13, parte 13c) as marcas da história do lugar e o achado raro: ocultos, com o nome do que é
     if (p.comMarcas !== false && Props.P.interesse) for (const q of p.historia || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
+    // (lote 14, parte 14b) as marcas da guerra: ocultas, com o nome do que é
+    if (p.comMarcas !== false && Props.P.interesse) for (const q of p.guerra || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
     if (p.comMarcas !== false && p.achado && Props.P.achado) { const t = Props.novo(sc, 'achado', p.achado.x * c, p.achado.y * c, 1, true); t.name = 'Achado: ' + p.achado.n.toLowerCase(); sc.tokens.push(t); }
     // as luzes (a lava, os cristais, a fenda)
     for (const l of p.luzes) sc.lights.push({ id: uid('lz'), name: 'Luz do lugar', x: l.x * c, y: l.y * c, bright: l.bright, dim: l.dim, c: l.c, on: true, fl: true });
@@ -2158,6 +2166,7 @@ const Encontro = (() => {
     // (lote 13, parte 13c) a estação (no verão, nada), a história do lugar e o achado raro
     if (p.estacao) partes.push(Estacoes.texto(p));
     partes.push(...Historia.texto(p));
+    partes.push(...MarcasGuerra.texto(p));                                    // (lote 14, parte 14b) as marcas da guerra
     if (p.predios.length) partes.push(p.predios.length === 1 ? '1 construção' : p.predios.length + ' construções');
     if (p.navios.length) partes.push(p.navios.length === 1 ? 'um navio' : p.navios.length + ' navios');
     if (p.visao.length) partes.push(p.visao.length + ' paredes de visão');

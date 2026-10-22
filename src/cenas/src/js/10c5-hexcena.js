@@ -45,7 +45,45 @@ const HexCena = (() => {
     if (comTipo) out.t = p.t === 'estrada' ? 'estrada' : 'trilha';
     return out;
   }
-  // → { k, q, r, orient, sem, ter, nome, viz: { direção: bioma | 'agua' | null }, rios, caminhos }, ou null
+  /* (lote 14, parte 14b) a guerra do hexágono (mundo/nucleo.js, guerraDoHex), conferida: { bat, marca, exes, maisExes,
+     dentro, cerco } — só o que veio; sem nada, null */
+  const okCor = v => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null);
+  const NEUTRAS = ['#8a7a5e', '#4e4434'];
+  const cores2 = v => { const a = Array.isArray(v) ? v.slice(0, 2).map(okCor) : []; return a[0] && a[1] ? [a[0], a[1]] : NEUTRAS.slice(); };
+  const txt = (v, n) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, n) : '');
+  const nInt = (v, a, b) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(a, Math.min(b, Math.round(v))) : null);
+  const maqs = v => { const out = {}; for (const k of ['catapulta', 'trabuco', 'ariete']) { const n = v && typeof v === 'object' ? nInt(v[k], 0, 1e4) : null; if (n) out[k] = n; } return Object.keys(out).length ? out : null; };
+  function validaGuerra(g) {
+    if (!g || typeof g !== 'object') return null;
+    const out = {};
+    if (g.bat && typeof g.bat === 'object') {
+      const b = g.bat, lado = l => ({ nome: txt(l && l.nome, 80) || 'Lado', cores: cores2(l && l.cores) });
+      out.bat = { nome: txt(b.nome, 120), dias: nInt(b.dias, 0, 1e6) || 0, tam: nInt(b.tam, 0, 4) || 0, vence: b.vence === 'a' || b.vence === 'b' ? b.vence : null, a: lado(b.a), b: lado(b.b) };
+      const t = nInt(b.tropas, 0, 1e7);
+      if (t != null) out.bat.tropas = t;
+    }
+    if (g.marca === 'd' || g.marca === 'c') out.marca = g.marca;
+    const exes = (Array.isArray(g.exes) ? g.exes : []).slice(0, 2).filter(e => e && typeof e === 'object' && typeof e.tropas === 'number' && e.tropas >= 1).map(e => {
+      const x = { nome: txt(e.nome, 80) || 'Exército', fac: txt(e.fac, 60), cores: cores2(e.cores), tropas: nInt(e.tropas, 1, 1e7), n: nInt(e.n, 1, 999) || 1 };
+      const mq = maqs(e.maq);
+      if (mq) x.maq = mq;
+      if (e.oculto === true) x.oculto = true;
+      if (e.lado === 'cerco') x.lado = 'cerco';
+      return x;
+    });
+    if (exes.length) out.exes = exes;
+    const mais = nInt(g.maisExes, 0, 999), dentro = nInt(g.dentro, 0, 999);
+    if (mais) out.maisExes = mais;
+    if (dentro) out.dentro = dentro;
+    if (g.cerco && typeof g.cerco === 'object') {
+      const c = g.cerco, u = n01(c.u), v = n01(c.v);
+      out.cerco = { nome: txt(c.nome, 80) || 'o lugar', fac: txt(c.fac, 60), cores: cores2(c.cores), dias: nInt(c.dias, 0, 1e6) || 0, u: u == null ? 0.5 : u, v: v == null ? 0.5 : v };
+      const mq = maqs(c.maq);
+      if (mq) out.cerco.maq = mq;
+    }
+    return Object.keys(out).length ? out : null;
+  }
+  // → { k, q, r, orient, sem, ter, nome, viz: { direção: bioma | 'agua' | null }, rios, caminhos, guerra }, ou null
   function valida(h) {
     if (!h || typeof h !== 'object') return null;
     const q = inteiro(h.q), r = inteiro(h.r);
@@ -55,7 +93,7 @@ const HexCena = (() => {
     const sem = (Math.round(Number(h.sem)) >>> 0) || 1;
     return { k: q + ',' + r, q, r, orient, sem, ter: okBio(h.ter) ? h.ter : null, nome: typeof h.nome === 'string' ? h.nome.trim().slice(0, 60) : '', viz,
       rios: (Array.isArray(h.rios) ? h.rios : []).slice(0, 3).map(p => peca(p, false)).filter(Boolean),
-      caminhos: (Array.isArray(h.caminhos) ? h.caminhos : []).slice(0, 6).map(p => peca(p, true)).filter(Boolean) };
+      caminhos: (Array.isArray(h.caminhos) ? h.caminhos : []).slice(0, 6).map(p => peca(p, true)).filter(Boolean), guerra: validaGuerra(h.guerra) };
   }
   // a cena aceita o hexágono quando ele é de terra (no mar e no lago, o Encontro fica como era)
   const aceita = hex => !!hex && !!hex.ter && hex.ter !== 'agua';
@@ -378,5 +416,5 @@ const HexCena = (() => {
     return (hex.nome || nomeBio(hex.ter) || 'Hexágono') + ' (hexágono ' + numTxt(hex.q) + ', ' + numTxt(hex.r) + '): ' + partes.join('; ') + '.';
   }
 
-  return { LADOS, PASSO, FUNDO, valida, aceita, centro, tijolo, doPar, lados, mapa, aguas, linhas, ponta, dirDe, vetorPara, distancia, naTerra, rioDoMapa, altura, campo, pontasDosCaminhos, prenderNaSituacao, vizinhosTxt, rioTxt, caminhosTxt, resumoTxt, texto, nomeBio };
+  return { LADOS, PASSO, FUNDO, valida, validaGuerra, aceita, centro, tijolo, doPar, lados, mapa, aguas, linhas, ponta, dirDe, vetorPara, distancia, naTerra, rioDoMapa, altura, campo, pontasDosCaminhos, prenderNaSituacao, vizinhosTxt, rioTxt, caminhosTxt, resumoTxt, texto, nomeBio };
 })();

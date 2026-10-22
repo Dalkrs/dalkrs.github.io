@@ -1132,6 +1132,64 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
 - **O que sai igual**: sem o hexágono (ou com um que não presta, de água ou sem terreno), os planos e os desenhos de
   todos os geradores de fora (conferidos contra a versão de antes: 312 planos e 50 desenhos).
 
+### As marcas da guerra na cena do hexágono (lote 14, parte 14b)
+
+- **O que vem do Mapa-múndi** (`guerraDoHex`, em `mundo/nucleo.js`, no pedido do hexágono só quando há guerra ali): a
+  batalha mais nova que foi nele (o nome, os dias desde ela, o tamanho da vitória, quem venceu, os dois lados com as
+  cores e as tropas que os exércitos dos dois lados ainda têm), a marca (destruído ou corrompido), os exércitos que estão
+  nele (juntos pela facção, os maiores primeiro, até dois — o resto conta; as tropas, as cores, as máquinas de cerco e se
+  todos estão escondidos no mapa) e o cerco do lugar que fica nele (o nome, quem cerca, os dias de cerco, onde o lugar
+  fica no tijolo e as máquinas dos exércitos que cercam, até um hexágono dele, com as aliadas). Com o cerco ali, os
+  exércitos do dono do lugar (quem o ocupa, se ocupado, ou o dono da região) e das aliadas dele estão dentro: não acampam
+  fora. As cores são as da bandeira (a do clã, senão a própria da facção), senão a cor da facção e um tom dela (a cor
+  escura ganha um tom claro); sem facção, a cor do grupo; sem nada, as neutras. As máquinas vão pelo desenho: as de
+  começo são elas mesmas; as do mestre, pelo que fazem (a que não atira é um aríete, a que bate forte na estrutura é um
+  trabuco, o resto uma catapulta; o tipo que não existe mais no mapa não conta).
+- **A janela**: na caixa do hexágono, embaixo da frase, os botões das **Marcas da guerra** (várias juntas, nas duas abas
+  que aceitam o hexágono): a batalha ("Batalha do Vau (há 2 dias)"; com mais de 7 dias, "…: vira a Batalha antiga"), o
+  hexágono destruído ou corrompido, cada acampamento ("Acampamento: Hoste de Ferro (1.500 tropas)") e o cerco. Todos
+  ligados de começo, menos o exército escondido no mapa ("· escondido no mapa": começa desligado). As notas dizem quando
+  há mais exércitos do que cabem e quando um exército está dentro do lugar cercado. A chave do hexágono desligada tira
+  as marcas também. A batalha antiga entra na História do lugar da cena sem mudar a História da janela (nem o que ela
+  lembra). As marcas desligadas dão o lugar de sempre (o mesmo plano de sem guerra).
+- **A batalha fresca** (até 7 dias; `MarcasGuerra`, 10fa-guerra.js): o chão pisado; os caídos discretos — as silhuetas
+  deitadas e as manchas escuras embaixo, sem sangue à mostra, com um pano na cor do lado (mais de quem perdeu, pelas
+  perdas da guerra) —; as armas e os escudos nas cores dos lados; as flechas fincadas; os cavalos (nas batalhas
+  grandes); os buracos das pedras (pelo tamanho da vitória); o estandarte de quem venceu fincado e o de quem perdeu
+  caído (no empate, os dois caídos). No dia e no seguinte, as brasas ainda acesas (a zona Brasas, a luz e o chão
+  chamuscado); do dia seguinte ao quinto, os corvos; do terceiro dia em diante, as covas (a terra fresca com a espada
+  fincada) — e menos caídos e menos armas a cada fase (os mortos enterrados, as armas recolhidas). O tamanho do campo e
+  quantos caídos, pelas perdas e pelas tropas. Com mais de 7 dias, ela vira a **Batalha antiga** da história do lugar,
+  com o nome e os dias dela no marcador e o estandarte rasgado na cor de quem perdeu.
+- **O hexágono destruído**: a cinza por cima do chão (das plantações também; o caminho continua à mostra), com os riscos
+  de carvão; as árvores carbonizadas; os arbustos, as flores e os cogumelos queimados; os tocos; a casa queimada (o
+  alicerce, as vigas, o entulho e a chaminé de pé, que é obstáculo); e a fuligem nos telhados das construções da
+  situação que ficam na cinza. **O corrompido**: a terra roxa, os veios que brilham, as árvores mortas e roxas e os
+  cristais negros com a luz roxa. As manchas ficam longe da borda, quase sem água; onde nada cabe (a encosta, o
+  desfiladeiro), uma menor.
+- **O acampamento** (de cada exército, até dois): a tenda do comando (redonda, nos gomos das duas cores, com a franja e a
+  flâmula) no meio, o estandarte fincado e a fogueira na frente; as tendas em roda (a primeira roda leva oito; a segunda,
+  mais quinze), com a lona puxando para a cor da facção, a faixa e a flâmula, a porta para dentro e a entrada aberta; as
+  outras fogueiras, os barris, os caixotes, as armas, a lenha; as estacas na frente do acampamento grande; e as máquinas
+  de cerco do exército paradas atrás. Mais tropas, mais tendas e fogueiras: 3 tendas com 50 tropas, 8 com 450, 11 com
+  1.500, até 16 (o teto). As tendas e a tenda do comando têm as paredes de visão (dá para se esgueirar entre elas); as
+  fogueiras são objetos com a luz. Só nas casas livres (nunca no caminho, na água ou no que a situação usa); quando o
+  acampamento inteiro não cabe, ele fica menor — e o resumo diz ("8 das 11 tendas; no tamanho Grande cabe mais"). Dois
+  de facções diferentes ficam um virado para o outro.
+- **O cerco**: no lado da cena que fica para o lugar (pelo eixo mais forte, medido no hexágono), a trincheira de ponta a
+  ponta, paralela a ele, com a terra tirada do lado de cá e as estacas do lado de lá; as máquinas (até duas de cada, e
+  um aríete na frente) atrás dela, viradas para o lugar, com as pedras de atirar; o estandarte de quem cerca; entre a
+  trincheira e a borda, as flechas e os buracos dos tiros de lá. O acampamento de quem cerca fica atrás das máquinas,
+  aberto para o lugar; sem o exército na cena (ou sem lugar para ele), o posto (duas tendas e a fogueira). O marcador
+  diz onde fica o lugar ("o lugar fica a nordeste"); o lugar em si é a cena dele (a parte 14c).
+- **Tudo** entra depois da vegetação, com o sorteio dele, longe da borda (dois quadrados e meio: a borda fica como a do
+  vizinho) e do meio da situação; a história do lugar fica longe da guerra. Cada coisa ganha o marcador oculto do
+  mestre, com o nome do que é ("Acampamento: Hoste de Ferro (1.500 tropas, Casa de Ferro)", "Campo de batalha: Batalha
+  do Vau (há 2 dias)", "Cerco de Pedravale (há 5 dias, Casa de Ferro): o lugar fica a nordeste", "Casa queimada"). O
+  resumo diz o que entrou e o que não coube (com a dica do tamanho Grande).
+- **O que sai igual**: sem guerra no hexágono, ou com as marcas desligadas, os planos são os de antes (conferidos: 312
+  planos e 50 desenhos dos geradores de fora e 1.200 planos de hexágono, com e sem a história e os achados).
+
 ### A Guerra no Mapa-múndi (lote 8)
 
 - **A aba Guerra** (só do mestre; `mundo/guerra-painel.js`, `window.MundoGuerraPainel`, com as contas em
@@ -2937,4 +2995,27 @@ todas as situações sem erro, a trava, o rio acabando na água, a rosa, as manc
 `SO=janela`, a caixa no alto e a frase, o Traçado, a Região preenchida sem mexer no que a janela lembra, as notas, a
 chave desligada e ligada, o pântano, o modelo sem o hexágono, a cena criada e os avisos do hexágono de água e do sem
 terreno; com `SO=robusto`, pedidos sorteados nos dois lugares (sem erro e rápido). O `mundo-cenas.test.js` confere o
-hexágono e a Região preenchida no pedido da cena — e, de ponta a ponta, a janela abrindo nas Cenas com ele.
+hexágono e a Região preenchida no pedido da cena — e, de ponta a ponta, a janela abrindo nas Cenas com ele. Na parte 14b,
+o `lote14-nucleo.test.js` confere também a guerra do hexágono: sem guerra, nada (o pedido fica como era); a batalha mais
+nova (no mesmo dia, a última do histórico; a de depois de hoje, com 0 dias), as cores dos lados (a bandeira da facção,
+a do clã antes dela, a cor escura com o tom claro, a do grupo, as neutras) e as tropas; a marca; os exércitos juntos
+pela facção (o nome do maior, os maiores primeiro, até dois e o resto contado, sem os que não têm tropas, a caravana e
+o de fora), as máquinas pelo desenho (com os tipos do mestre) e o escondido; o cerco (o lugar no tijolo, quem cerca, os
+dias, as máquinas a até um hexágono com as da aliada), quem está dentro (o dono e a aliada dele) e o lugar ocupado. O
+`src/cenas/test/lote14b.js` confere a cena: com `SO=dados`, a guerra conferida, os botões (o escondido desligado, a
+batalha antiga), a escolha, a história com a batalha antiga e as tendas pelas tropas; com `SO=igual`, as marcas
+desligadas dando o plano de sem guerra (nos dois lugares e nas duas orientações); com `SO=batalha`, as brasas (a zona, a
+luz e o chão) no dia e no seguinte, os corvos, as covas, menos caídos a cada fase, os caídos só nas casas do campo e
+longe da borda, mais de quem perdeu, os estandartes (e no empate), o marcador e o resumo, a Batalha antiga com 8 dias e,
+no Encontro, o campo longe do meio da situação; com `SO=marca`, o destruído (a cinza, as árvores carbonizadas, sem
+arbustos, a casa queimada com a chaminé, o marcador, a fuligem nas construções) e o corrompido (a terra roxa, os veios,
+as árvores mortas e roxas, os cristais com a luz); com `SO=acampamento`, dois acampamentos (as tendas, as tendas do
+comando, as fogueiras, as paredes de visão contadas; sem se encostar, longe da borda, fora do caminho; as cores; as
+provisões; as catapultas paradas; os marcadores; o resumo), mais tropas com mais tendas e fogueiras (até 16), o
+escondido só quando ligado e, no Encontro, as tendas fora do que a situação usa (e o resumo quando não cabe tudo); com
+`SO=cerco`, a trincheira no lado do lugar (leste, oeste, norte e sul), as máquinas atrás dela e viradas para ele (o
+aríete na frente), as estacas, o acampamento de quem cerca, quem está dentro sem acampar, o marcador, o posto, sem
+máquinas e o cerco desligado; com `SO=janela`, os botões no bloco do hexágono, desligar um nas duas abas, a chave
+desligada, a cena criada (os marcadores ocultos com o nome, as fogueiras acesas), a nota do cerco, a batalha antiga sem
+mexer na História e o escondido; com `SO=robusto`, guerras sorteadas nos dois lugares (sem erro e rápido). O
+`mundo-cenas.test.js` confere a guerra no pedido da cena e, de ponta a ponta, os botões das marcas nas Cenas.

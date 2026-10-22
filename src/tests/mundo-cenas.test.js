@@ -5,6 +5,7 @@
 //   · a hora do tempo de agora (o calendário diz quando escurece), o clima do evento que cobre o lugar (tempestade e
 //     inundação: chuva; incêndio: cinzas; magia: vaga-lumes), o estilo da região mais de dentro que tiver um e (lote 13,
 //     parte 13c) a estação do mês de hoje (com o Inverno rigoroso em cima, inverno);
+//   · (lote 14, parte 14b) a guerra do hexágono vai junto, e a janela das Cenas mostra os botões das marcas;
 //   · (lote 14, parte 14a) o hexágono do grupo (o terreno dele e dos vizinhos, os rios e os caminhos que passam ali, em
 //     pedaços) e a Região livre já preenchida com ele (o bioma, a água, o caminho); no mar, o hexágono sem a Região;
 //   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha, porto; as ruínas: ruína, templo, torre, castelo,
@@ -113,6 +114,11 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     const gp = await gerarAqui('planicie');
     ok(gp.hex.rios.length === 1 && gp.hex.rios[0].ini && gp.hex.rios[0].fim && gp.hex.rios[0].pts[0][1] === 0 && gp.ops.regiao.agua === 'rio', 'com um rio do mapa passando ali: o rio (entra por cima, sai por baixo) e a Região com o rio: ' + j(gp.hex.rios.map(r => [r.pts[0], r.pts[r.pts.length - 1]])));
     await F.evaluate(() => __mundo.App.mudar('sem o rio', m => { m.objs = m.objs.filter(o => o.nome !== 'Rio 14'); }));
+    // (lote 14, parte 14b) a guerra no hexágono do grupo: a batalha de dois dias atrás e o hexágono destruído vão junto
+    await F.evaluate(() => __mundo.App.mudar('a guerra', m => { m.guerra = { tipos: [], hexes: { '0,4': 'd' }, bats: [{ id: 'bt14b', d: m.cal.dia - 2, nome: 'Batalha da Mata', a: { nome: 'Azul' }, b: { nome: 'Verde' }, fim: { vence: 'a', tam: 2 }, hex: '0,4' }] }; }));
+    const gg = await gerarAqui('floresta-estrada');
+    ok(gg.hex && gg.hex.guerra && gg.hex.guerra.bat && gg.hex.guerra.bat.nome === 'Batalha da Mata' && gg.hex.guerra.bat.dias === 2 && gg.hex.guerra.marca === 'd', 'a guerra do hexágono vai junto (a batalha de dois dias atrás e o destruído): ' + j(gg.hex && gg.hex.guerra));
+    await F.evaluate(() => __mundo.App.mudar('sem a guerra', m => { delete m.guerra; }));
     // de ponta a ponta: o pedido chega às Cenas (a página do site, numa moldura da mesma casca) e a janela "Gerar um
     // lugar" abre no Encontro, com a chave do hexágono ligada e a Região livre já preenchida
     await P.evaluate(() => { const f = document.createElement('iframe'); f.id = 'cenasF'; f.src = '/cenas/?debug'; f.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2'; document.body.append(f); });
@@ -124,6 +130,13 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     await CF.waitForFunction(() => !!__tc.Gerador.vivo(), null, { timeout: 15000 }).catch(() => null);
     const nas = await CF.evaluate(() => { const V = __tc.Gerador.vivo(); if (!V) return null; const E = V.estado; return { lugar: V.lugar, comHex: V.comum.comHex, hex: E.plano && E.plano.hex ? E.plano.hex.k : null, chave: !!document.getElementById('ger-hex'), txt: (document.getElementById('ger-hex-txt') || {}).textContent || '' }; });
     ok(nas && nas.lugar === 'encontro' && nas.comHex === true && nas.hex === '0,4' && nas.chave && /^Floresta \(hexágono 0, 4\)/.test(nas.txt), 'de ponta a ponta: nas Cenas, a janela abre no Encontro, com o hexágono do grupo: ' + j(nas));
+    await CF.evaluate(() => __tc.UI.closeModal());
+    // (lote 14, parte 14b) a guerra no hexágono do grupo (pedida antes, com o mapa à mostra): a janela mostra os botões das
+    // marcas (ligados)
+    await P.evaluate(alvo => document.getElementById('cenasF').contentWindow.postMessage({ tinycats: { t: 'alvo', alvo } }, location.origin), { gerar: gg });
+    await CF.waitForFunction(() => !!__tc.Gerador.vivo() && !!document.getElementById('ger-guerra'), null, { timeout: 15000 }).catch(() => null);
+    const gu = await CF.evaluate(() => { const V = __tc.Gerador.vivo(); return V ? { bts: [...document.querySelectorAll('#ger-guerra button')].map(b => [b.dataset.guerra, b.getAttribute('aria-pressed')]), info: !!(V.estado.plano && V.estado.plano.guerraInfo) } : null; });
+    ok(gu && j(gu.bts) === j([['bat', 'true'], ['marca', 'true']]) && gu.info, 'de ponta a ponta: nas Cenas, os botões das marcas da guerra, ligados, e o lugar com elas: ' + j(gu));
     await CF.evaluate(() => __tc.UI.closeModal());
     await P.evaluate(() => document.getElementById('cenasF').remove());
   }

@@ -6,7 +6,11 @@
 //     terreno sem desenho conhecido); os rios e os caminhos recortados no tijolo, em (u, v), na ordem do mapa (o rio da
 //     nascente para a foz), com as pontas na borda ou dentro — e o encaixe: o ponto por onde a linha sai de um é o ponto
 //     por onde ela entra no vizinho; a rota em cima da estrada conta uma vez (a estrada vale mais); a rota selvagem, de
-//     rio e de mar não é caminho; o pedaço que só raspa o tijolo fica de fora; os limites; o número do mapa.
+//     rio e de mar não é caminho; o pedaço que só raspa o tijolo fica de fora; os limites; o número do mapa;
+//   · (14b) a guerra do hexágono (guerraDoHex): a batalha mais nova (os dias, os lados com as cores — a bandeira do clã,
+//     a da facção, a cor dela e um tom; sem facção, a do grupo; sem nada, as neutras — e as tropas que ainda têm), a marca,
+//     os exércitos juntos pela facção (até dois; as máquinas pelo desenho; o escondido), o cerco (o lugar no tijolo, quem
+//     cerca e as máquinas a até um hexágono; quem está dentro não acampa; o lugar ocupado).
 // Uso: node src/tests/lote14-nucleo.test.js
 'use strict';
 const path = require('path');
@@ -166,6 +170,81 @@ for (const orient of ['pe', 'deitado']) {
   ok(h.rios.concat(h.caminhos).every(pc => pc.pts.length <= 24 && pc.pts.length >= 2), 'até 24 pontos em cada pedaço');
   const zz = N.hexParaCena(N.normalizarMapa(Object.assign(mapa('pe'), { objs: [Object.assign(N.objNovo('l', { pts: zig }), { estilo: 'estrada' })] })), 0, 0).caminhos[0];
   ok(zz && zz.pts.length === 24 && zz.pts[0][0] === 0 && zz.pts[23][0] === 1, 'a linha comprida fica com 24 pontos, das duas pontas da borda');
+}
+
+// ---------------- (14b) a guerra no hexágono ----------------
+{
+  const mk = () => {
+    const m = mapa('pe', 'mp_guerra');
+    m.cal.dia = 50;
+    m.faccoes = [Object.assign(N.faccaoNova('Ferro', '#b03a2e'), { id: 'fc_a', band: { forma: 'escudo', div: 'partido', cores: ['#b03a2e', '#f2d16b'] } }),
+      Object.assign(N.faccaoNova('Corvos', '#101820'), { id: 'fc_b' }),
+      Object.assign(N.faccaoNova('Clã', '#2a8a4a'), { id: 'fc_c', br: { forma: 'escudo', div: 'partido', cores: ['#2a8a4a', '#ffffff'] }, band: { forma: 'escudo', div: 'partido', cores: ['#000000', '#111111'] } }),
+      Object.assign(N.faccaoNova('Aliados', '#7a3a9a'), { id: 'fc_d', rel: { fc_a: 'alianca' } }),
+      Object.assign(N.faccaoNova('Vizinhos', '#3a7a9a'), { id: 'fc_e', rel: { fc_b: 'alianca' } })];
+    return m;
+  };
+  const c = (m, q, r) => N.centroHex(m, q, r);
+  const exe = (m, id, nome, fac, q, r, tropas, maq, extra) => { const p = c(m, q, r); return Object.assign(N.objNovo('g', { x: p.x + 3, y: p.y - 2 }), { id, nome, fac, tipo: 'exercito', exe: { cmd: { nome: 'C' }, moral: 5, unid: [{ id: id + 'u', nome: 'U', tropas, maq: maq || {} }] } }, extra || {}); };
+  // sem guerra: nada
+  {
+    const m = N.normalizarMapa(mk());
+    ok(N.guerraDoHex(m, 0, 0, N.tijoloHex(m, 0, 0)) === null && !('guerra' in N.hexParaCena(m, 0, 0)), 'sem guerra no hexágono: nada (o pedido fica como era)');
+  }
+  // a batalha: a mais nova do hexágono, os dias, os lados com as cores, as tropas que os exércitos ainda têm
+  {
+    const m = mk();
+    m.objs.push(exe(m, 'g1', 'Hoste', 'fc_a', 0, 0, 800), exe(m, 'g2', 'Bando', 'fc_b', 3, 0, 150), Object.assign(N.objNovo('g', { x: 0, y: 0 }), { id: 'g3', nome: 'Sem facção', cor: '#336699' }));
+    m.guerra = { tipos: [], hexes: { '0,0': 'c' }, bats: [
+      { id: 'b1', d: 30, nome: 'Velha', a: { nome: 'A' }, b: { nome: 'B' }, fim: { vence: 'b', tam: 1 }, hex: '0,0' },
+      { id: 'b2', d: 44, nome: 'Do Vau', a: { nome: 'Hoste', g: 'g1', fac: 'fc_a' }, b: { nome: 'Bando', g: 'g2', fac: 'fc_b' }, fim: { vence: 'a', tam: 3 }, hex: '0,0' },
+      { id: 'b3', d: 49, nome: 'Outra', a: { nome: 'A' }, b: { nome: 'B' }, fim: { vence: 'a', tam: 2 }, hex: '1,0' },
+      { id: 'b4', d: 44, nome: 'Mesmo dia, depois', a: { nome: 'X', g: 'g3' }, b: { nome: 'Y', fac: 'fc_c' }, fim: { vence: null, tam: 0 }, hex: '2,0' }] };
+    const mm = N.normalizarMapa(m), g = N.hexParaCena(mm, 0, 0).guerra;
+    eq(g.bat, { nome: 'Do Vau', dias: 6, tam: 3, vence: 'a', a: { nome: 'Hoste', cores: ['#b03a2e', '#f2d16b'] }, b: { nome: 'Bando', cores: ['#101820', '#93979b'] }, tropas: 950 }, 'a batalha mais nova do hexágono, com as cores (a bandeira; a cor escura ganha um tom claro) e as tropas dos dois');
+    ok(g.marca === 'c', 'a marca do hexágono (corrompido)');
+    const g2 = N.guerraDoHex(mm, 2, 0, N.tijoloHex(mm, 2, 0));
+    eq([g2.bat.a.cores, g2.bat.b.cores, 'tropas' in g2.bat], [['#336699', '#1c3854'], ['#2a8a4a', '#ffffff'], false], 'sem facção, a cor do grupo; a bandeira do clã vale antes da da facção; sem exércitos, sem as tropas');
+    m.guerra.bats.push({ id: 'b5', d: 44, nome: 'No mesmo dia', a: { nome: 'P' }, b: { nome: 'Q' }, fim: {}, hex: '0,0' }, { id: 'b6', d: 60, nome: 'Adiante', a: { nome: 'P' }, b: { nome: 'Q' }, fim: {}, hex: '1,0' });
+    const m2 = N.normalizarMapa(m);
+    eq([N.guerraDoHex(m2, 0, 0, N.tijoloHex(m2, 0, 0)).bat.nome, N.guerraDoHex(m2, 1, 0, N.tijoloHex(m2, 1, 0)).bat.dias], ['No mesmo dia', 0], 'no mesmo dia, a última do histórico; a de depois de hoje fica com 0 dias');
+    eq(N.guerraDoHex(m2, 0, 0, N.tijoloHex(m2, 0, 0)).bat.a.cores, ['#8a7a5e', '#4e4434'], 'o lado sem facção nem grupo: as cores neutras');
+  }
+  // os exércitos: juntos pela facção (os maiores primeiro, até dois), as máquinas pelo desenho, o escondido
+  {
+    const m = mk();
+    m.guerra = { tipos: [], bats: [], hexes: {}, maqs: [{ id: 'ariete', nome: 'Aríete', est: 3, exe: 0, ac: null }, { id: 'balista', nome: 'Balista', est: 1, exe: 4, ac: 12 }, { id: 'torre', nome: 'Torre', est: 6, exe: 0, ac: 14 }, { id: 'carro', nome: 'Carro', est: 2, exe: 0, ac: null }] };
+    m.objs.push(exe(m, 'a1', 'Pequena', 'fc_a', 0, 0, 100, { balista: 2, torre: 1, catapulta: 5 }), exe(m, 'a2', 'Grande', 'fc_a', 0, 0, 900, { carro: 1, ariete: 2 }),
+      exe(m, 'b1', 'Corvos', 'fc_b', 0, 0, 600), exe(m, 's1', 'Solta', null, 0, 0, 50, {}, { cor: '#aa6600', oculto: true }), exe(m, 's2', 'Outra solta', null, 0, 0, 40),
+      exe(m, 'z1', 'Morta', 'fc_c', 0, 0, 0), exe(m, 'f1', 'Fora', 'fc_c', 1, 0, 999), Object.assign(N.objNovo('g', { x: c(m, 0, 0).x, y: c(m, 0, 0).y }), { id: 'cv', nome: 'Caravana', tipo: 'caravana' }));
+    const mm = N.normalizarMapa(m), g = N.guerraDoHex(mm, 0, 0, N.tijoloHex(mm, 0, 0));
+    eq(g.exes.map(e => [e.nome, e.fac, e.tropas, e.n]), [['Grande', 'Ferro', 1000, 2], ['Corvos', 'Corvos', 600, 1]], 'juntos pela facção (o nome do maior), os maiores primeiro');
+    eq(Object.entries(g.exes[0].maq).sort(), [['ariete', 3], ['catapulta', 2], ['trabuco', 1]], 'as máquinas pelo desenho (a que não atira é aríete, a que bate forte é trabuco; o tipo que não existe no mapa não conta)');
+    ok(g.maisExes === 2 && !('oculto' in g.exes[0]) && !('dentro' in g), 'até dois; o resto conta (os soltos, cada um por si; sem as tropas, a caravana e o de fora, nada)');
+    // (os maiores primeiro, mesmo quando o pequeno vem antes no mapa)
+    const m3 = mk();
+    m3.objs.push(exe(m3, 'p1', 'Pequeno', 'fc_c', 0, 0, 100), exe(m3, 'p2', 'Médio', 'fc_b', 0, 0, 400), exe(m3, 'p3', 'Grande', 'fc_a', 0, 0, 900));
+    const g3 = N.guerraDoHex(N.normalizarMapa(m3), 0, 0, N.tijoloHex(N.normalizarMapa(m3), 0, 0));
+    eq([g3.exes.map(e => e.nome), g3.maisExes], [['Grande', 'Médio'], 1], 'os maiores primeiro (o pequeno, que vem antes no mapa, fica no resto)');
+    m.objs = m.objs.filter(o => ['s1'].includes(o.id));
+    const g2 = N.guerraDoHex(N.normalizarMapa(m), 0, 0, N.tijoloHex(N.normalizarMapa(m), 0, 0));
+    eq(g2.exes, [{ nome: 'Solta', fac: '', cores: ['#aa6600', '#5e3800'], tropas: 50, n: 1, oculto: true }], 'o exército escondido no mapa leva oculto (e, sem facção, a cor do grupo)');
+  }
+  // o cerco: o lugar no hexágono, quem cerca (as máquinas dos exércitos a até um hexágono), quem está dentro não acampa
+  {
+    const m = mk(), p = c(m, 0, 0), T = N.tijoloHex(N.normalizarMapa(m), 0, 0);
+    m.objs.push(Object.assign(N.objNovo('r', { pts: [[p.x - 200, p.y - 200], [p.x + 200, p.y - 200], [p.x + 200, p.y + 200], [p.x - 200, p.y + 200]] }), { id: 'rg', nome: 'R', fac: 'fc_b' }));
+    m.objs.push(Object.assign(N.objNovo('m', { x: p.x + 15, y: p.y - 10 }), { id: 'mk', nome: 'Pedravale', ic: 'castelo', estr: { nome: 'Muro', def: 3, hp: 50, hpMax: 50 }, cerco: { fac: 'fc_a', d: 42 } }));
+    m.objs.push(exe(m, 'c1', 'Cerco', 'fc_a', 0, 0, 2000, { trabuco: 1 }), exe(m, 'c2', 'Reforço', 'fc_a', 1, 0, 500, { catapulta: 2 }), exe(m, 'c3', 'Longe', 'fc_a', 3, 0, 500, { catapulta: 9 }),
+      exe(m, 'al', 'Aliado', 'fc_d', 0, 0, 300, { ariete: 1 }), exe(m, 'd1', 'Guarda', 'fc_b', 0, 0, 200), exe(m, 'd2', 'Amigos de dentro', 'fc_e', 0, 0, 150), exe(m, 'n1', 'Neutro', 'fc_c', 0, 0, 100));
+    const mm = N.normalizarMapa(m), g = N.guerraDoHex(mm, 0, 0, T);
+    eq(g.cerco, { nome: 'Pedravale', fac: 'Ferro', cores: ['#b03a2e', '#f2d16b'], dias: 8, u: Math.round((p.x + 15 - T.x0) / T.w * 1e3) / 1e3, v: Math.round((p.y - 10 - T.y0) / T.h * 1e3) / 1e3, maq: { trabuco: 1, catapulta: 2, ariete: 1 } }, 'o cerco: o lugar (onde fica no tijolo), quem cerca, os dias e as máquinas de quem cerca a até um hexágono (com as da aliada)');
+    eq(g.exes.map(e => [e.nome, e.lado || null]), [['Cerco', 'cerco'], ['Aliado', 'cerco']], 'os que cercam (a facção e a aliada) acampam, com o lado do cerco');
+    ok(g.dentro === 2 && g.maisExes === 1, 'o dono do lugar e a aliada dele estão dentro (não acampam); o neutro acampa (fica no resto): ' + JSON.stringify([g.dentro, g.maisExes]));
+    m.objs.find(o => o.id === 'mk').ocup = { fac: 'fc_c', d: 30 };
+    const g2 = N.guerraDoHex(N.normalizarMapa(m), 0, 0, T);
+    ok(g2.dentro === 1 && g2.maisExes === 2, 'o lugar ocupado: quem ocupa é o dono (os de dentro são os dele; a guarda de antes e a aliada dela acampam fora): ' + JSON.stringify([g2.dentro, g2.maisExes]));
+  }
 }
 
 console.log((bad ? 'FALHOU: ' : 'ok: ') + (n - bad) + '/' + n + ' conferências da cena do hexágono (núcleo)');

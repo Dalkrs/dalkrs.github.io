@@ -91,9 +91,12 @@ const Gerador = (() => {
        o caminho do hexágono), sem mexer no que a janela lembra para a próxima vez. */
     const hexPedido = pre && typeof pre === 'object' ? HexCena.valida(pre.hex) : null;
     comum.comHex = !!hexPedido;
+    // (lote 14, parte 14b) as marcas da guerra do hexágono: os botões no bloco dele (de começo, todas — menos o exército
+    // escondido no mapa)
+    comum.guerra = hexPedido && hexPedido.guerra ? MarcasGuerra.padrao(hexPedido.guerra) : null;
     const hexDaAba = l => (hexPedido && l.aceitaHex && l.aceitaHex(estadoDe(l).op, hexPedido) ? hexPedido : null);
     const usaHex = l => (comum.comHex ? hexDaAba(l) : null);
-    const comHex = (l, o) => { const hx = usaHex(l); return hx ? Object.assign(o, { hex: hx }) : o; };
+    const comHex = (l, o) => { const hx = usaHex(l); return hx ? Object.assign(o, { hex: hx }, hx.guerra ? { guerra: comum.guerra } : null) : o; };
     if (pre && pre.ops && typeof pre.ops === 'object') {
       const lembrado = Object.assign({}, App.opt);
       for (const id of Object.keys(pre.ops)) { const l = lugar(id); if (l && l !== L && pre.ops[id] && typeof pre.ops[id] === 'object') l.aplicarOpcoes(estadoDe(l).op, pre.ops[id]); }
@@ -264,7 +267,8 @@ const Gerador = (() => {
       // (lote 14, parte 14a) o hexágono do Mapa-múndi, no alto: a chave e o que vem dele (na aba que não aceita, o porquê)
       const blocoHex = hexDaAba(L) ? h('div', { class: 'ger-hex', id: 'ger-hex-bloco' },
         K.toggle('ger-hex', comum.comHex, v => { comum.comHex = v; const E2 = estadoDe(L); E2.trava = null; E2.base = null; pintar(); refazer(); }, 'Com o hexágono do Mapa-múndi: os vizinhos nas bordas, o rio e os caminhos pelos lados certos'),
-        (n => { n.id = 'ger-hex-txt'; return n; })(note(HexCena.texto(hexPedido, L.biomaDe ? L.biomaDe(E.op) : null))))
+        (n => { n.id = 'ger-hex-txt'; return n; })(note(HexCena.texto(hexPedido, L.biomaDe ? L.biomaDe(E.op) : null))),
+        comum.comHex && hexPedido.guerra ? MarcasGuerra.campo(hexPedido.guerra, comum.guerra, K, v => { comum.guerra = v; const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }) : null)
         : hexPedido && L.aceitaHex ? h('div', { class: 'ger-hex', id: 'ger-hex-bloco' }, (n => { n.id = 'ger-hex-nao'; return n; })(note(!HexCena.aceita(hexPedido)
           ? (hexPedido.ter === 'agua' ? 'O hexágono do Mapa-múndi é de água: os vizinhos, o rio e os caminhos dele não entram aqui.' : 'O hexágono do Mapa-múndi não tem terreno: pinte o terreno dele (na aba Terreno do Mapa-múndi) para os vizinhos, o rio e os caminhos entrarem.')
           : 'O hexágono do Mapa-múndi não entra no pântano nem na água: eles cobrem a cena toda.'))) : null;

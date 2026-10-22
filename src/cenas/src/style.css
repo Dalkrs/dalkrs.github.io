@@ -845,6 +845,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 /* (lote 14, parte 14a) o hexágono do Mapa-múndi, no alto das escolhas */
 .ger-hex { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 8px 10px; }
 .ger-hex .note { margin: 4px 0 0; }
+.ger-hex .ger-guerra { margin-top: 8px; }
 .ger-tr > summary { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; cursor: pointer; list-style: none; }
 .ger-tr > summary::-webkit-details-marker { display: none; }
 .ger-tr > summary::before { content: '▸'; color: var(--fg-3); transition: transform .15s; }

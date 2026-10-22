@@ -849,7 +849,96 @@
     const compr = pc => { let s = 0; for (let i = 1; i < pc.pts.length; i++) s += Math.hypot(pc.pts[i][0] - pc.pts[i - 1][0], pc.pts[i][1] - pc.pts[i - 1][1]); return s; };
     rios.sort((a, b) => compr(b) - compr(a));
     const t0 = hexInfoBase(m, q, r).terreno;
-    return { k: q + ',' + r, q, r, orient: pe ? 'pe' : 'deitado', sem: semDoMapa(m), ter: biomaDoHex(m, q, r), nome: t0 ? texto(t0.nome, '', 60).trim() : '', viz, rios: rios.slice(0, 3), caminhos: cam.slice(0, 6) };
+    const out = { k: q + ',' + r, q, r, orient: pe ? 'pe' : 'deitado', sem: semDoMapa(m), ter: biomaDoHex(m, q, r), nome: t0 ? texto(t0.nome, '', 60).trim() : '', viz, rios: rios.slice(0, 3), caminhos: cam.slice(0, 6) };
+    const gu = guerraDoHex(m, q, r, T);                          // (lote 14, parte 14b: só quando há guerra ali)
+    if (gu) out.guerra = gu;
+    return out;
+  }
+  /* (lote 14, parte 14b) A guerra no hexágono, para a cena:
+     · bat: a batalha mais nova que foi nele — o nome, os dias desde ela (dias), o tamanho da vitória (tam, de 0 = empate
+       a 4), quem venceu (vence: 'a', 'b' ou null), os dois lados (a, b: o nome e as duas cores) e as tropas que os
+       exércitos dos dois lados ainda têm (tropas; sem eles no mapa, fica de fora);
+     · marca: 'd' (destruído) ou 'c' (corrompido);
+     · exes: os exércitos que estão nele, juntos pela facção (os sem facção, cada um), os maiores primeiro (até dois; o
+       resto conta em maisExes) — o nome, a facção, as cores, as tropas, quantos (n), as máquinas (maq) e oculto (todos
+       escondidos no mapa); com o cerco no hexágono, os do dono do lugar cercado (e os aliados dele) estão dentro
+       (dentro: quantos) e os de quem cerca ficam com lado: 'cerco';
+     · cerco: o do lugar que fica nele — o nome do lugar, quem cerca (a facção e as cores), os dias de cerco, onde o lugar
+       fica no tijolo (u, v: de 0 a 1) e as máquinas dos exércitos que cercam (até um hexágono do lugar).
+     As cores: as da bandeira (a do clã, senão a da facção), senão a cor da facção e um tom dela; sem facção, a do grupo.
+     Sem nada disso: null. */
+  const NEUTRAS = ['#8a7a5e', '#4e4434'];
+  const tomDe = c => { const v = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), l = (v[0] * 0.3 + v[1] * 0.59 + v[2] * 0.11) / 255; return '#' + v.map(x => Math.round(l < 0.3 ? x + (255 - x) * 0.55 : x * 0.55).toString(16).padStart(2, '0')).join(''); };
+  function coresDeGuerra(m, facId, corG) {
+    const f = facId && Array.isArray(m.faccoes) ? m.faccoes.find(x => x.id === facId) : null;
+    if (f) { const b = f.br || f.band; return b ? [b.cores[0], b.cores[1]] : [f.cor, tomDe(f.cor)]; }
+    const c = cor(corG, null);
+    return c ? [c, tomDe(c)] : NEUTRAS.slice();
+  }
+  const nomeFac = (m, id) => { const f = id && Array.isArray(m.faccoes) ? m.faccoes.find(x => x.id === id) : null; return f ? texto(f.nome, '', 60).trim() : ''; };
+  /* as máquinas, pelo desenho (a cena sabe desenhar três): o tipo de começo é ele mesmo; o do mestre, pelo que faz — o
+     que não atira é um aríete, o que bate forte na estrutura (4 ou mais) um trabuco, o resto uma catapulta (o tipo que
+     não existe mais no mapa não conta, como nas regras) */
+  function desenhoDaMaq(ts, id) {
+    const t = ts.find(x => x.id === id);
+    if (!t) return null;
+    return id === 'ariete' || id === 'trabuco' || id === 'catapulta' ? id : t.ac == null ? 'ariete' : t.est >= 4 ? 'trabuco' : 'catapulta';
+  }
+  const somaMaq = (ts, alvo, maq) => { for (const k of ehObj(maq) ? Object.keys(maq) : []) { const n = Number(maq[k]) || 0, d = n > 0 ? desenhoDaMaq(ts, k) : null; if (d) alvo[d] = Math.min(MAX_MAQ_N, (alvo[d] || 0) + n); } return alvo; };
+  const maqDoExe = (ts, g) => { const t = {}; for (const u of ehObj(g.exe) && Array.isArray(g.exe.unid) ? g.exe.unid : []) if ((u.tropas || 0) > 0) somaMaq(ts, t, u.maq); return t; };
+  // (junta as já desenhadas: sem desenhar de novo)
+  const juntaMaq = (alvo, t) => { for (const k of Object.keys(t)) alvo[k] = Math.min(MAX_MAQ_N, (alvo[k] || 0) + t[k]); return alvo; };
+  function guerraDoHex(m, q, r, T) {
+    const k = q + ',' + r, G = ehObj(m.guerra) ? m.guerra : null, dia = ehObj(m.cal) ? num(m.cal.dia, 0) : 0, out = {}, ts = maquinasDe(m);
+    const objs = Array.isArray(m.objs) ? m.objs : [], noHex = o => { const h = hexDe(m, o.x, o.y); return h.q === q && h.r === r; };
+    const exercitos = objs.filter(g => ehObj(g) && g.k === 'g' && g.tipo === 'exercito' && ehObj(g.exe) && !g.exe.pub && tropasDe(g.exe) > 0);
+    // a batalha mais nova (no mesmo dia, a última do histórico)
+    let bat = null;
+    for (const b of G && Array.isArray(G.bats) ? G.bats : []) if (ehObj(b) && b.hex === k && (!bat || b.d >= bat.d)) bat = b;
+    if (bat) {
+      const lado = l => { const g = l.g ? objs.find(o => ehObj(o) && o.id === l.g && o.k === 'g') : null; return { nome: texto(l.nome, '', 80).trim() || 'Lado', cores: coresDeGuerra(m, l.fac, g ? g.cor : null) }; };
+      const gs = [bat.a.g, bat.b.g].filter(Boolean).map(id => exercitos.find(g => g.id === id)).filter(Boolean);
+      out.bat = { nome: texto(bat.nome, '', 120).trim(), dias: Math.max(0, Math.round(dia - bat.d)), tam: bat.fim ? inteiro(bat.fim.tam, 0, 0, 4) : 0, vence: bat.fim && (bat.fim.vence === 'a' || bat.fim.vence === 'b') ? bat.fim.vence : null, a: lado(bat.a), b: lado(bat.b) };
+      if (gs.length) out.bat.tropas = gs.reduce((s, g) => s + tropasDe(g.exe), 0);
+    }
+    if (G && ehObj(G.hexes) && tem(HEX_GUERRA, G.hexes[k])) out.marca = G.hexes[k];
+    // o cerco do lugar que fica no hexágono (o primeiro)
+    const mk = objs.find(o => ehObj(o) && o.k === 'm' && ehObj(o.cerco) && o.cerco.fac && noHex(o));
+    const alia = (a, b) => { const f = a && Array.isArray(m.faccoes) ? m.faccoes.find(x => x.id === a) : null; return !!(f && ehObj(f.rel) && f.rel[b] === 'alianca'); };
+    const doLado = (a, b) => !!a && !!b && (a === b || alia(a, b));
+    let dono = null;
+    if (mk) {
+      dono = ehObj(mk.ocup) && mk.ocup.fac ? mk.ocup.fac : (rg => (rg ? facDaRegiao(m, rg) : null))(regiaoEm(m, mk.x, mk.y));
+      const cf = mk.cerco.fac, maq = {};
+      for (const g of exercitos) if (doLado(g.fac, cf) && distHex(hexDe(m, g.x, g.y), { q, r }) <= 1) juntaMaq(maq, maqDoExe(ts, g));
+      out.cerco = { nome: texto(mk.nome, '', 80).trim() || 'o lugar', fac: nomeFac(m, cf), cores: coresDeGuerra(m, cf, null), dias: Math.max(0, Math.round(dia - num(mk.cerco.d, dia))),
+        u: Math.round(limitar((mk.x - T.x0) / T.w, 0, 1) * 1e3) / 1e3, v: Math.round(limitar((mk.y - T.y0) / T.h, 0, 1) * 1e3) / 1e3 };
+      if (Object.keys(maq).length) out.cerco.maq = maq;
+    }
+    // os exércitos no hexágono, juntos pela facção (com o cerco ali, os do lado do dono estão dentro do lugar)
+    const grupos = new Map();
+    let dentro = 0;
+    for (const g of exercitos) {
+      if (!noHex(g)) continue;
+      const cerca = !!out.cerco && doLado(g.fac, mk.cerco.fac);
+      if (out.cerco && !cerca && doLado(g.fac, dono)) { dentro++; continue; }
+      const chave = g.fac || 'g:' + g.id, t = tropasDe(g.exe);
+      if (!grupos.has(chave)) grupos.set(chave, { nome: '', maior: -1, fac: nomeFac(m, g.fac), cores: coresDeGuerra(m, g.fac, g.cor), tropas: 0, n: 0, maq: {}, oculto: true, cerca });
+      const x = grupos.get(chave);
+      x.tropas += t; x.n++; juntaMaq(x.maq, maqDoExe(ts, g));
+      if (!g.oculto) x.oculto = false;
+      if (t > x.maior) { x.maior = t; x.nome = texto(g.nome, '', 80).trim() || 'Exército'; }
+    }
+    const exes = Array.from(grupos.values()).sort((a, b) => b.tropas - a.tropas).map(x => {
+      const e = { nome: x.nome, fac: x.fac, cores: x.cores, tropas: Math.min(MAX_TROPAS, x.tropas), n: x.n };
+      if (Object.keys(x.maq).length) e.maq = x.maq;
+      if (x.oculto) e.oculto = true;
+      if (x.cerca) e.lado = 'cerco';
+      return e;
+    });
+    if (exes.length) { out.exes = exes.slice(0, 2); if (exes.length > 2) out.maisExes = exes.length - 2; }
+    if (dentro) out.dentro = dentro;
+    return Object.keys(out).length ? out : null;
   }
 
   /* ---------------- viagem ---------------- */
@@ -3238,7 +3327,7 @@
     dist, compPolilinha, pontoNaPolilinha, maisPerto, dentroPoligono, centroide, suavizar, contornoRio,
     eventoAtivo, raioNoDia, eventosDoDia, faseNoDia, formaNoDia, zonaAtiva,
     temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,
-    terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, VIZINHOS_HEX, BIOMA_DA_TEX, tijoloHex, hexParaCena, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
+    terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, VIZINHOS_HEX, BIOMA_DA_TEX, tijoloHex, hexParaCena, guerraDoHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, controleDaRegiao, acimaDe,
     TIPOS_GRUPO, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
     CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
