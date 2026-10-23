@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-8",
+      "data": "2026-10-23",
+      "titulo": "O ponto de reforço e a tela das barrinhas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o “Ponto de reforço”, um marcador que os jogadores não veem. Guarde tokens dentro dele — arrastando do mapa para cima do ponto ou com “Cópias de um modelo” — e escolha quando chegam: agora, depois de X rodadas, em ondas ou numa fase da arena. Na hora, eles aparecem sozinhos em volta do ponto e entram na iniciativa, com Desfazer."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: os reforços das arenas agora vêm num Ponto de reforço, que você pode abrir e mudar antes da fase chegar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a tela das barrinhas — todos do combate com as barras de cada um e um campo de ± em cada; “Aplicar” faz tudo de uma vez, com Desfazer. Na aba Turnos você escolhe quando ela abre: no começo e no fim do combate, a cada rodada ou na vez de cada um (só esta vem ligada)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-7",
       "data": "2026-10-23",
       "titulo": "O bloco de notas do mestre e o HP das zonas",

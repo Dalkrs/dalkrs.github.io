@@ -126,6 +126,18 @@ const Props = (() => {
     c.fillStyle = '#c08a2e'; c.beginPath(); c.arc(0, 0, R * 0.09, 0, TAU); c.fill();
   }
 
+  // (lote 22) o ponto de reforço: o portão roxo com as setas que saem (os tokens guardados nascem dele)
+  function marcaReforco(c, R) {
+    sombra(c, R, 0.8, 0.8, 0.05, 0.08);
+    c.fillStyle = radial(c, -R * 0.2, -R * 0.25, R * 1.1, ['#9a74d6', '#6a46a8', '#3e2470']); c.beginPath(); c.arc(0, 0, R * 0.82, 0, TAU); c.fill();
+    c.lineWidth = R * 0.08; c.strokeStyle = '#f0e4ff'; c.stroke();
+    // o arco do portão
+    c.lineWidth = R * 0.09; c.lineCap = 'round'; c.strokeStyle = '#f0e4ff';
+    c.beginPath(); c.moveTo(-R * 0.3, R * 0.42); c.lineTo(-R * 0.3, -R * 0.05); c.arc(0, -R * 0.05, R * 0.3, Math.PI, 0); c.lineTo(R * 0.3, R * 0.42); c.stroke();
+    // as setas para fora
+    c.fillStyle = '#f0e4ff';
+    for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(sx * R * 0.62, R * 0.12); c.lineTo(sx * R * 0.44, -R * 0.02); c.lineTo(sx * R * 0.44, R * 0.26); c.closePath(); c.fill(); }
+  }
   // (lote 13, parte 13c) o achado raro: a moeda de ouro com o brilho de quatro pontas
   function marcaAchado(c, R) {
     sombra(c, R, 0.8, 0.8, 0.05, 0.08);
@@ -757,6 +769,8 @@ const Props = (() => {
     interesse: { n: 'Ponto de interesse', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaInteresse(c, R); } },
     // (lote 13, parte 13c) o achado raro (a Região livre e o Encontro): só do mestre (nasce oculto), com o nome do que é
     achado: { n: 'Achado raro', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaAchado(c, R); } },
+    // (lote 22) o ponto de reforço: só do mestre (nasce oculto); guarda tokens que nascem dele numa rodada, numa fase ou na hora
+    reforco: { n: 'Ponto de reforço', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaReforco(c, R); } },
   };
   const ORDER = Object.keys(P);
 

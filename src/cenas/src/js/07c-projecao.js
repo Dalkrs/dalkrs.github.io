@@ -109,6 +109,7 @@ const Proj = (() => {
     const o = clone(t);
     o.notes = '';                                                     // anotações são só do mestre
     delete o.cena; delete o.gera;                                     // (lote 7) aonde o objeto leva, também
+    delete o.ref;                                                     // (lote 22) o que o ponto de reforço guarda
     /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
        não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */
     delete o.clone;
@@ -557,6 +558,8 @@ const Proj = (() => {
     const pf = { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null, modelos: normModelos(prefs.modelos) };
     // (lote 18) a tabela do relevo da mesa (só quando o mestre mudou alguma coisa)
     if (ehObj(prefs.relevo) && typeof Relevo !== 'undefined') pf.relevo = Relevo.norm(prefs.relevo);
+    // (lote 22) quando a tela das barrinhas abre sozinha
+    if (ehObj(prefs.barrinhas)) pf.barrinhas = { combate: !!prefs.barrinhas.combate, rodada: !!prefs.barrinhas.rodada, vez: prefs.barrinhas.vez !== false };
     // (lote 20) os cortes dos Feridos (só quando o mestre mudou)
     if (ehObj(prefs.feridos) && Number(prefs.feridos.t1) > 0 && Number(prefs.feridos.t2) > Number(prefs.feridos.t1) && Number(prefs.feridos.t2) < 100) pf.feridos = { t1: Math.round(Number(prefs.feridos.t1)), t2: Math.round(Number(prefs.feridos.t2)) };
     return {

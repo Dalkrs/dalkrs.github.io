@@ -80,7 +80,7 @@ const Arena = (() => {
   }
   const proxima = sc => fases(sc).find(f => !f.feita) || null;
   // aplica uma mudança (dentro de um passo)
-  function aplicar(sc, m) {
+  function aplicar(sc, m, fi) {
     const c = sc.cell;
     if (m.k === 'zona' && FX.P[m.fx]) {
       // a zona escondida do mesmo tipo que já estava na cena (as runas do altar) aparece; sem ela, uma zona nova
@@ -100,6 +100,8 @@ const Arena = (() => {
       for (const w of sc.walls) { if (w.k !== 'door') continue; const d = Math.hypot((w.x1 + w.x2) / 2 - gx, (w.y1 + w.y2) / 2 - gy); if (!melhor || d < melhor[0]) melhor = [d, w]; }
       if (melhor && melhor[0] < c * 3) Store.upd('walls', melhor[1].id, { open: false, locked: true });
     } else if (m.k === 'reforcos') {
+      // (lote 22) os pontos de reforço com grupos marcados para esta fase soltam os deles; sem eles, os lacaios de sempre
+      if (typeof Reforco !== 'undefined' && fi != null && Reforco.naFase(fi).length) return;
       (m.pts || []).forEach((pt, i) => {
         const [x, y] = snapTok(sc, (Number(pt[0]) - 0.5) * c, (Number(pt[1]) - 0.5) * c, 1, false);
         Store.add('tokens', newToken(sc, x, y, { name: (m.nome || 'Lacaio') + ' ' + (i + 1), color: '#b87c7c' }));
@@ -116,7 +118,7 @@ const Arena = (() => {
       actions: [{ label: 'Cancelar' }, { label: 'Acionar a ' + f.nome.toLowerCase(), kind: 'primary', run: () => {
         Store.tx(f.nome + ' da arena', () => {
           const agora = Store.scene();
-          for (const m of f.m) aplicar(agora, m);
+          for (const m of f.m) aplicar(agora, m, i);
           Store.scn({ fases: agora.fases.map((x, k) => (k === i ? Object.assign({}, x, { feita: true }) : x)) });
         });
         UI.toast(f.nome + ': ' + f.m.map(textoDaMudanca).join('; ') + '.', { action: 'Desfazer', run: Tools.undo, long: true, key: 'arena-fase' });

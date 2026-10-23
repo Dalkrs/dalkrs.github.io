@@ -2279,7 +2279,17 @@ const Masmorra = (() => {
     if (p.tipo === 'arena') {
       const a = p.arena, ch = newToken(sc, a.chefe.x * c, a.chefe.y * c, { name: CHEFE_ARENA[a.tipo] || 'O chefe', size: 2, turns: 2, color: '#8f3d4a' });
       sc.tokens.push(ch);
-      a.reforcos.forEach((r, i) => { if (!Props.P.emboscada) return; const t = Props.novo(sc, 'emboscada', (r[0] - 0.5) * c, (r[1] - 0.5) * c, 1, true); t.name = 'Reforços (' + (a.fases[0] ? a.fases[0].nome.toLowerCase() : 'fase 2') + ') ' + (i + 1); sc.tokens.push(t); });
+      // (lote 22) os pontos de reforço: cada um guarda o lacaio da fase que tem "Reforços chegam" (nasce dele ao acionar)
+      const fasesOn = a.fases.map(f => Object.assign({}, f, { m: f.m.filter(x => x.on !== false) })).filter(f => f.m.length);
+      const fi = fasesOn.findIndex(f => f.m.some(x => x.k === 'reforcos')), mr = fi >= 0 ? fasesOn[fi].m.find(x => x.k === 'reforcos') : null;
+      a.reforcos.forEach((r, i) => {
+        const id = Props.P.reforco ? 'reforco' : 'emboscada';
+        if (!Props.P[id]) return;
+        const t = Props.novo(sc, id, (r[0] - 0.5) * c, (r[1] - 0.5) * c, 1, true);
+        t.name = 'Reforços (' + (fi >= 0 ? fasesOn[fi].nome.toLowerCase() : 'fase 2') + ') ' + (i + 1);
+        if (id === 'reforco' && mr) t.ref = [{ id: uid('rg'), tok: { name: (mr.nome || 'Lacaio') + ' ' + (i + 1), color: '#b87c7c', size: 1, shape: 'circ', bars: barDefaults(), barVis: 'bar', conds: [], cinfo: {}, auras: [], showName: true }, n: 1, quando: { k: 'fase', v: fi } }];
+        sc.tokens.push(t);
+      });
       if (a.entrada) {
         const id = fora ? 'saida' : 'chegada';
         if (Props.P[id]) { const t = Props.novo(sc, id, (a.entrada.x - 0.5) * c, (a.entrada.y - 0.5) * c, 1, true); if (fora) t.cena = fora.id; sc.tokens.push(t); }

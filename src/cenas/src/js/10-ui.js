@@ -2121,6 +2121,7 @@ const UI = (() => {
           btn('Ir para lá', () => passagemIr(alvo, false), { icon: 'map', id: 'pr-ir', disabled: !alvo || !Nuvem.naVista(alvo) }),
           !alvo ? btn('Uma cena nova, dentro desta…', () => novaCenaLigada(t), { icon: 'plus', id: 'pr-nova' }) : null),
         note(alvo ? `Dois cliques no objeto levam você (só você) até "${Store.S.scenes[alvo].name}". O que os jogadores veem só muda com "Mostrar aos jogadores".` : 'Com uma cena escolhida, dois cliques no objeto levam você até ela. "Uma cena nova" cria a cena dentro desta (na lista de cenas), já com a saída de volta.')) : null,
+      !many && t.prop === 'reforco' && typeof Reforco !== 'undefined' ? Reforco.secao(t, { sec, note, btn, field, inNum, modal }) : null,      // (lote 22)
       sec('s-gm', 'Só do mestre', true,
         toggle('pr-hidden', props.every(x => x.hidden), v => all({ hidden: v }, v ? 'Ocultar objeto' : 'Mostrar objeto'), 'Oculto dos jogadores'),
         toggle('pr-locked', props.every(x => x.locked), v => all({ locked: v }, v ? 'Travar objeto' : 'Destravar objeto'), 'Posição travada'),
@@ -2619,6 +2620,7 @@ const UI = (() => {
     Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; } }, 'Encerrar combate');
     App.iniRolls.clear();
     toast(tinha ? 'Combate encerrado: a iniciativa de todos foi zerada para o próximo.' : 'Combate encerrado.', { action: 'Desfazer', run: Tools.undo });
+    if (barrinhasPrefs().combate) telaBarrinhas('O combate acabou: as barrinhas', tokensDoCombate(Store.scene()));      // (lote 22)
   }
   function tabTurn() {
     const sc = Store.scene(), tn = sc.turn, gm = isGM();
@@ -2703,12 +2705,82 @@ const UI = (() => {
         btn('Entrada avulsa', looseBox, { id: 'turnLoose', title: 'Põe na ordem algo que não tem token no mapa: armadilha, reforço, evento' })) : null,
       gm && tn.list.length ? h('div', { class: 'row' },
         btn('Rolar iniciativa', rollAll, { icon: 'die', id: 'turnRoll', title: missing ? 'Rola 1d20 + Iniciativa para quem ainda não tem iniciativa e ordena a lista' : 'Todos já têm iniciativa: rolar de novo troca os valores (a mesa pergunta antes)' }),
-        btn(tn.on ? 'Encerrar' : 'Iniciar', () => (tn.on ? encerrarCombate() : Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list[0].id; x.back = 0; }, 'Iniciar combate')),
+        btn(tn.on ? 'Encerrar' : 'Iniciar', () => { if (tn.on) { encerrarCombate(); return; } const antes = vezAgora(); Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list[0].id; x.back = 0; }, 'Iniciar combate'); depoisDaVez(antes, 1); },
           { icon: tn.on ? 'stop' : 'play', id: 'turnOnOff', title: tn.on ? 'Encerra o combate e zera a iniciativa de todos, para o próximo começar do zero (dá para desfazer)' : null }),
         btn('Ordenar por iniciativa', () => Act.turnPatch(x => { turnSort(x.list); }, 'Ordenar turnos'), { icon: 'sort' }),
         btn('Limpar', () => Act.turnPatch(x => { x.list = []; x.on = false; x.round = 1; x.back = 0; }, 'Limpar turnos'), { icon: 'trash' })) : null,
       gm && tn.list.length ? note('Passar a vez desconta as durações de condições e efeitos e limpa as miras. Contadores só mudam na mão.') : null,
+      // (lote 22) a tela das barrinhas: quando ela abre sozinha (da mesa: vale em todas as cenas)
+      gm ? sec('t-barrinhas', 'Tela das barrinhas', false,
+        ...[['combate', 'Ao começar e ao encerrar o combate (todos)'], ['rodada', 'No começo de cada rodada (todos)'], ['vez', 'Na vez de cada um (só ele)']].map(([k, rot]) =>
+          toggle('bb-' + k, barrinhasPrefs()[k], v => { Store.S.prefs.barrinhas = Object.assign(barrinhasPrefs(), { [k]: v }); Persist.meta({ pub: false }); refresh(); }, rot)),
+        h('div', { class: 'row' }, btn('Abrir agora (todos)', () => telaBarrinhas('Barrinhas', tokensDoCombate(Store.scene())), { icon: 'sliders', id: 'bb-abrir' })),
+        note('A tela mostra as barras de cada um com um campo: −5 tira, +3 soma, 12 vira o valor. “Aplicar” faz tudo num passo, com Desfazer.')) : null,
     ];
+  }
+  /* (lote 22) A tela das barrinhas: o mestre dá e desconta as barras de quem está no combate, num passo só. Abre sozinha
+     nos momentos ligados na aba Turnos (de começo, só na vez de cada um), e pelo botão "Abrir agora". */
+  const BARRINHAS_PADRAO = { combate: false, rodada: false, vez: true };
+  function barrinhasPrefs() { let semTela = false; try { semTela = localStorage.getItem('tinycats:testes-sem-barrinhas') === '1'; } catch (e) { /* sem armazenamento */ } if (semTela) return { combate: false, rodada: false, vez: false }; const p = Store.S.prefs.barrinhas; return Object.assign({}, BARRINHAS_PADRAO, p && typeof p === 'object' ? p : {}); }
+  function tokensDe(sc, entradas) {
+    const ids = [];
+    for (const e of entradas) { if (e.token) ids.push(e.token); if (isBand(e)) ids.push(...e.toks); }
+    return [...new Set(ids)].map(id => Store.get('tokens', id)).filter(t => t && !t.prop && (t.bars || []).some(b => b && b.on !== false));
+  }
+  const tokensDoCombate = sc => tokensDe(sc, sc.turn.list);
+  function lerBarrinha(b, txt) {
+    const s = String(txt || '').trim().replace(/\s+/g, '').replace('−', '-').replace(',', '.');
+    if (!s) return null;
+    if (/^[+-]\d+(\.\d+)?%?$/.test(s)) { const d = s.endsWith('%') ? Math.round(b.m * Number(s.slice(0, -1)) / 100) : Number(s); return d ? barAfter(b, d) : null; }
+    if (/^\d+(\.\d+)?$/.test(s)) { const v = clamp(Math.round(Number(s) * 10) / 10, -barLo(b), barTeto(b)); return v === b.v ? null : { v }; }
+    return false;
+  }
+  function telaBarrinhas(titulo, toks) {
+    if (!isGM() || !toks.length) return;
+    const campos = [];
+    const linhas = toks.map(t => h('li', { class: 'bb-t', 'data-tok': t.id },
+      h('b', { class: 'bb-nome', text: tokName(t) }),
+      h('div', { class: 'bb-barras' }, (t.bars || []).map((b, i) => {
+        if (!b || b.on === false) return null;
+        const inp = h('input', { class: 'in bb-in', id: `bb-${t.id}-${i}`, inputmode: 'decimal', placeholder: '±', 'aria-label': `${b.n} de ${tokName(t)} (−5 tira, +3 soma, 12 vira o valor)`, autocomplete: 'off' });
+        campos.push({ t, i, inp });
+        return h('label', { class: 'bb-b' }, h('span', { class: 'bb-dot', style: { background: b.c } }), h('span', { class: 'bb-n', text: b.n }), h('span', { class: 'bb-v', text: `${fmtV(b.v)}/${fmt(b.m)}` }), inp);
+      }))));
+    modal({ title: titulo, wide: true, body: h('div', { class: 'bb-tela', id: 'bb-tela' }, h('ul', { class: 'bb-lista' }, linhas),
+      note('−5 tira, +3 soma, 12 vira o valor (−10% tira 10% do máximo). Em branco, nada muda.')),
+      actions: [{ label: 'Pular' }, { label: 'Aplicar', kind: 'primary', run: () => {
+        const mud = new Map(); let ruim = null;
+        for (const c of campos) {
+          const t = Store.get('tokens', c.t.id), b = t && t.bars[c.i];
+          if (!b) continue;
+          const p = lerBarrinha(b, c.inp.value);
+          if (p === false) { ruim = c.inp; break; }
+          if (!p) continue;
+          if (!mud.has(t.id)) mud.set(t.id, t.bars.slice());
+          mud.get(t.id)[c.i] = barWith(b, p);
+        }
+        if (ruim) { ruim.focus(); toast('Use −5, +3 ou um número.'); return false; }
+        if (!mud.size) return;
+        Store.tx('Barrinhas', () => { for (const [id, bars] of mud) Store.upd('tokens', id, { bars }); });
+        toast(`Barrinhas: ${mud.size === 1 ? tokName(Store.get('tokens', [...mud.keys()][0])) : mud.size + ' personagens'} ${mud.size === 1 ? 'mudou' : 'mudaram'}.`, { action: 'Desfazer', run: Tools.undo });
+      } }] });
+    const prim = campos[0] && document.getElementById(campos[0].inp.id); if (prim) setTimeout(() => prim.focus(), 30);
+  }
+  // o estado da ordem antes de passar a vez (para saber o que mudou depois)
+  const vezAgora = () => { const tn = Store.scene().turn; return { on: !!tn.on, round: tn.round || 1, cur: tn.cur }; };
+  /* (lote 22) Depois de passar a vez (ou de começar o combate): os reforços da rodada nascem, e a tela das barrinhas
+     abre no momento ligado (o mais largo: o começo do combate, a rodada, a vez). Só no aparelho de quem passou a vez. */
+  function depoisDaVez(antes, d) {
+    if (!isGM() || !(d > 0)) return;
+    const sc = Store.scene(), tn = sc.turn, P = barrinhasPrefs();
+    const comecou = !antes.on && tn.on, novaRodada = antes.on && tn.on && (tn.round || 1) > antes.round;
+    if (typeof Reforco !== 'undefined' && (comecou || novaRodada)) Reforco.naRodada(tn.round || 1);
+    if (comecou && P.combate) { telaBarrinhas('O combate começou: as barrinhas', tokensDoCombate(sc)); return; }
+    if (novaRodada && P.rodada) { telaBarrinhas(`${tn.round}ª rodada: as barrinhas`, tokensDoCombate(sc)); return; }
+    if (tn.on && P.vez && (tn.cur !== antes.cur || comecou)) {
+      const e = tn.list.find(x => x.id === tn.cur), toks = e ? tokensDe(sc, [e]) : [];
+      if (toks.length) telaBarrinhas(`A vez de ${toks.length === 1 ? tokName(toks[0]) : (e.name || 'grupo')}: as barrinhas`, toks);
+    }
   }
 
   /* ---- Aba Efeitos ---- */
@@ -3162,9 +3234,11 @@ const UI = (() => {
   function passarTurno(d) {
     const tn = Store.scene().turn;
     if (!tn.list.length) { toast('A ordem de turnos está vazia: adicione os tokens na aba Turnos.'); return; }
+    const antes = vezAgora(), voltou = (tn.back || 0) > 0;
     const ended = Act.turnStep(d);
     if (ended.length) toast('Acabou: ' + ended.join('; ') + '.', { action: 'Desfazer', run: Tools.undo });
     zonePrompt(d > 0);
+    if (!voltou) depoisDaVez(antes, d);                   // (lote 22: os reforços da rodada, a tela das barrinhas; refazer a vez que já passou não repete)
   }
   function turnBanner() {
     const sc = Store.scene(), tn = sc.turn;
