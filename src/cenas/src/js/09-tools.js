@@ -295,6 +295,8 @@ const Tools = (() => {
       }
     }
     Store.commit();
+    // (lote 22) o token que terminou em cima de um ponto de reforço é guardado nele (o mestre; com o Desfazer)
+    if (typeof Reforco !== 'undefined') Reforco.soltouEm(g.items.filter(it => it.c === 'tokens').map(it => it.id));
   }
   function nudge(dx, dy) {
     const sc = Store.scene(), toks = selOf('tokens').filter(t => can('moveToken', t));

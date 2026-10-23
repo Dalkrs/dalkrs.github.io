@@ -974,6 +974,24 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .cp-bloco .note { margin: 0; }
 .cp-leitura, .cp-perdas { display: grid; gap: 10px; }
 .cp-lado ul { margin: 4px 0 0 18px; display: grid; gap: 3px; }
+
+/* (lote 22) a tela das barrinhas */
+.bb-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-height: 60vh; overflow: auto; }
+.bb-t { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.bb-nome { font-weight: 700; }
+.bb-barras { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.bb-b { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.bb-dot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+.bb-v { font-family: var(--mono, monospace); color: var(--fg-2); font-size: 12px; }
+.bb-in { width: 66px !important; height: 28px; }
+/* (lote 22) o ponto de reforço */
+.rf-lista { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.rf-g { display: grid; gap: 6px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; }
+.rf-n { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.rf-n small { color: var(--fg-3); }
+.rf-g .row { flex-wrap: wrap; }
+.rf-g select.in { max-width: 170px; }
+.rf-g input.in { max-width: 70px; }
 </style>
 </head>
 <body>
@@ -4507,6 +4525,18 @@ const Props = (() => {
     c.fillStyle = '#c08a2e'; c.beginPath(); c.arc(0, 0, R * 0.09, 0, TAU); c.fill();
   }
 
+  // (lote 22) o ponto de reforço: o portão roxo com as setas que saem (os tokens guardados nascem dele)
+  function marcaReforco(c, R) {
+    sombra(c, R, 0.8, 0.8, 0.05, 0.08);
+    c.fillStyle = radial(c, -R * 0.2, -R * 0.25, R * 1.1, ['#9a74d6', '#6a46a8', '#3e2470']); c.beginPath(); c.arc(0, 0, R * 0.82, 0, TAU); c.fill();
+    c.lineWidth = R * 0.08; c.strokeStyle = '#f0e4ff'; c.stroke();
+    // o arco do portão
+    c.lineWidth = R * 0.09; c.lineCap = 'round'; c.strokeStyle = '#f0e4ff';
+    c.beginPath(); c.moveTo(-R * 0.3, R * 0.42); c.lineTo(-R * 0.3, -R * 0.05); c.arc(0, -R * 0.05, R * 0.3, Math.PI, 0); c.lineTo(R * 0.3, R * 0.42); c.stroke();
+    // as setas para fora
+    c.fillStyle = '#f0e4ff';
+    for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(sx * R * 0.62, R * 0.12); c.lineTo(sx * R * 0.44, -R * 0.02); c.lineTo(sx * R * 0.44, R * 0.26); c.closePath(); c.fill(); }
+  }
   // (lote 13, parte 13c) o achado raro: a moeda de ouro com o brilho de quatro pontas
   function marcaAchado(c, R) {
     sombra(c, R, 0.8, 0.8, 0.05, 0.08);
@@ -5138,6 +5168,8 @@ const Props = (() => {
     interesse: { n: 'Ponto de interesse', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaInteresse(c, R); } },
     // (lote 13, parte 13c) o achado raro (a Região livre e o Encontro): só do mestre (nasce oculto), com o nome do que é
     achado: { n: 'Achado raro', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaAchado(c, R); } },
+    // (lote 22) o ponto de reforço: só do mestre (nasce oculto); guarda tokens que nascem dele numa rodada, numa fase ou na hora
+    reforco: { n: 'Ponto de reforço', g: 'perigo', size: 1, marca: true, draw(c, R) { marcaReforco(c, R); } },
   };
   const ORDER = Object.keys(P);
 
@@ -8129,6 +8161,7 @@ const Proj = (() => {
     const o = clone(t);
     o.notes = '';                                                     // anotações são só do mestre
     delete o.cena; delete o.gera;                                     // (lote 7) aonde o objeto leva, também
+    delete o.ref;                                                     // (lote 22) o que o ponto de reforço guarda
     /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
        não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */
     delete o.clone;
@@ -8577,6 +8610,8 @@ const Proj = (() => {
     const pf = { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null, modelos: normModelos(prefs.modelos) };
     // (lote 18) a tabela do relevo da mesa (só quando o mestre mudou alguma coisa)
     if (ehObj(prefs.relevo) && typeof Relevo !== 'undefined') pf.relevo = Relevo.norm(prefs.relevo);
+    // (lote 22) quando a tela das barrinhas abre sozinha
+    if (ehObj(prefs.barrinhas)) pf.barrinhas = { combate: !!prefs.barrinhas.combate, rodada: !!prefs.barrinhas.rodada, vez: prefs.barrinhas.vez !== false };
     // (lote 20) os cortes dos Feridos (só quando o mestre mudou)
     if (ehObj(prefs.feridos) && Number(prefs.feridos.t1) > 0 && Number(prefs.feridos.t2) > Number(prefs.feridos.t1) && Number(prefs.feridos.t2) < 100) pf.feridos = { t1: Math.round(Number(prefs.feridos.t1)), t2: Math.round(Number(prefs.feridos.t2)) };
     return {
@@ -8843,6 +8878,7 @@ const Nuvem = (() => {
     S.prefs.modelos = idx.prefs.modelos;                   // (lote 7) os modelos do gerador de lugares
     S.prefs.relevo = idx.prefs.relevo || null;             // (lote 18) a tabela do relevo da mesa
     S.prefs.feridos = idx.prefs.feridos || null;           // (lote 20) os cortes dos Feridos
+    S.prefs.barrinhas = idx.prefs.barrinhas || null;       // (lote 22) a tela das barrinhas
     S.pastas = idx.pastas;
     /* Até onde os pedidos de cada jogador já valeram: a cena guardada diz (e o que eles pediram enquanto o mestre
        estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
@@ -8996,7 +9032,7 @@ const Nuvem = (() => {
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
       try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
-      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: Object.assign({ barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, S.prefs.relevo && typeof Relevo !== 'undefined' ? { relevo: Relevo.norm(S.prefs.relevo) } : {}, S.prefs.feridos ? { feridos: S.prefs.feridos } : {}), pastas: Proj.normPastas(S.pastas) };
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: Object.assign({ barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, S.prefs.relevo && typeof Relevo !== 'undefined' ? { relevo: Relevo.norm(S.prefs.relevo) } : {}, S.prefs.feridos ? { feridos: S.prefs.feridos } : {}, S.prefs.barrinhas ? { barrinhas: S.prefs.barrinhas } : {}), pastas: Proj.normPastas(S.pastas) };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
@@ -9090,6 +9126,7 @@ const Nuvem = (() => {
     S.prefs.modelos = n.prefs.modelos;
     S.prefs.relevo = n.prefs.relevo || null;
     S.prefs.feridos = n.prefs.feridos || null;
+    S.prefs.barrinhas = n.prefs.barrinhas || null;
     S.pastas = n.pastas;
     Store.meta();
   }
@@ -11360,6 +11397,8 @@ const Tools = (() => {
       }
     }
     Store.commit();
+    // (lote 22) o token que terminou em cima de um ponto de reforço é guardado nele (o mestre; com o Desfazer)
+    if (typeof Reforco !== 'undefined') Reforco.soltouEm(g.items.filter(it => it.c === 'tokens').map(it => it.id));
   }
   function nudge(dx, dy) {
     const sc = Store.scene(), toks = selOf('tokens').filter(t => can('moveToken', t));
@@ -14485,6 +14524,7 @@ const UI = (() => {
           btn('Ir para lá', () => passagemIr(alvo, false), { icon: 'map', id: 'pr-ir', disabled: !alvo || !Nuvem.naVista(alvo) }),
           !alvo ? btn('Uma cena nova, dentro desta…', () => novaCenaLigada(t), { icon: 'plus', id: 'pr-nova' }) : null),
         note(alvo ? `Dois cliques no objeto levam você (só você) até "${Store.S.scenes[alvo].name}". O que os jogadores veem só muda com "Mostrar aos jogadores".` : 'Com uma cena escolhida, dois cliques no objeto levam você até ela. "Uma cena nova" cria a cena dentro desta (na lista de cenas), já com a saída de volta.')) : null,
+      !many && t.prop === 'reforco' && typeof Reforco !== 'undefined' ? Reforco.secao(t, { sec, note, btn, field, inNum, modal }) : null,      // (lote 22)
       sec('s-gm', 'Só do mestre', true,
         toggle('pr-hidden', props.every(x => x.hidden), v => all({ hidden: v }, v ? 'Ocultar objeto' : 'Mostrar objeto'), 'Oculto dos jogadores'),
         toggle('pr-locked', props.every(x => x.locked), v => all({ locked: v }, v ? 'Travar objeto' : 'Destravar objeto'), 'Posição travada'),
@@ -14983,6 +15023,7 @@ const UI = (() => {
     Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; } }, 'Encerrar combate');
     App.iniRolls.clear();
     toast(tinha ? 'Combate encerrado: a iniciativa de todos foi zerada para o próximo.' : 'Combate encerrado.', { action: 'Desfazer', run: Tools.undo });
+    if (barrinhasPrefs().combate) telaBarrinhas('O combate acabou: as barrinhas', tokensDoCombate(Store.scene()));      // (lote 22)
   }
   function tabTurn() {
     const sc = Store.scene(), tn = sc.turn, gm = isGM();
@@ -15067,12 +15108,82 @@ const UI = (() => {
         btn('Entrada avulsa', looseBox, { id: 'turnLoose', title: 'Põe na ordem algo que não tem token no mapa: armadilha, reforço, evento' })) : null,
       gm && tn.list.length ? h('div', { class: 'row' },
         btn('Rolar iniciativa', rollAll, { icon: 'die', id: 'turnRoll', title: missing ? 'Rola 1d20 + Iniciativa para quem ainda não tem iniciativa e ordena a lista' : 'Todos já têm iniciativa: rolar de novo troca os valores (a mesa pergunta antes)' }),
-        btn(tn.on ? 'Encerrar' : 'Iniciar', () => (tn.on ? encerrarCombate() : Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list[0].id; x.back = 0; }, 'Iniciar combate')),
+        btn(tn.on ? 'Encerrar' : 'Iniciar', () => { if (tn.on) { encerrarCombate(); return; } const antes = vezAgora(); Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list[0].id; x.back = 0; }, 'Iniciar combate'); depoisDaVez(antes, 1); },
           { icon: tn.on ? 'stop' : 'play', id: 'turnOnOff', title: tn.on ? 'Encerra o combate e zera a iniciativa de todos, para o próximo começar do zero (dá para desfazer)' : null }),
         btn('Ordenar por iniciativa', () => Act.turnPatch(x => { turnSort(x.list); }, 'Ordenar turnos'), { icon: 'sort' }),
         btn('Limpar', () => Act.turnPatch(x => { x.list = []; x.on = false; x.round = 1; x.back = 0; }, 'Limpar turnos'), { icon: 'trash' })) : null,
       gm && tn.list.length ? note('Passar a vez desconta as durações de condições e efeitos e limpa as miras. Contadores só mudam na mão.') : null,
+      // (lote 22) a tela das barrinhas: quando ela abre sozinha (da mesa: vale em todas as cenas)
+      gm ? sec('t-barrinhas', 'Tela das barrinhas', false,
+        ...[['combate', 'Ao começar e ao encerrar o combate (todos)'], ['rodada', 'No começo de cada rodada (todos)'], ['vez', 'Na vez de cada um (só ele)']].map(([k, rot]) =>
+          toggle('bb-' + k, barrinhasPrefs()[k], v => { Store.S.prefs.barrinhas = Object.assign(barrinhasPrefs(), { [k]: v }); Persist.meta({ pub: false }); refresh(); }, rot)),
+        h('div', { class: 'row' }, btn('Abrir agora (todos)', () => telaBarrinhas('Barrinhas', tokensDoCombate(Store.scene())), { icon: 'sliders', id: 'bb-abrir' })),
+        note('A tela mostra as barras de cada um com um campo: −5 tira, +3 soma, 12 vira o valor. “Aplicar” faz tudo num passo, com Desfazer.')) : null,
     ];
+  }
+  /* (lote 22) A tela das barrinhas: o mestre dá e desconta as barras de quem está no combate, num passo só. Abre sozinha
+     nos momentos ligados na aba Turnos (de começo, só na vez de cada um), e pelo botão "Abrir agora". */
+  const BARRINHAS_PADRAO = { combate: false, rodada: false, vez: true };
+  function barrinhasPrefs() { const p = Store.S.prefs.barrinhas; return Object.assign({}, BARRINHAS_PADRAO, p && typeof p === 'object' ? p : {}); }
+  function tokensDe(sc, entradas) {
+    const ids = [];
+    for (const e of entradas) { if (e.token) ids.push(e.token); if (isBand(e)) ids.push(...e.toks); }
+    return [...new Set(ids)].map(id => Store.get('tokens', id)).filter(t => t && !t.prop && (t.bars || []).some(b => b && b.on !== false));
+  }
+  const tokensDoCombate = sc => tokensDe(sc, sc.turn.list);
+  function lerBarrinha(b, txt) {
+    const s = String(txt || '').trim().replace(/\s+/g, '').replace('−', '-').replace(',', '.');
+    if (!s) return null;
+    if (/^[+-]\d+(\.\d+)?%?$/.test(s)) { const d = s.endsWith('%') ? Math.round(b.m * Number(s.slice(0, -1)) / 100) : Number(s); return d ? barAfter(b, d) : null; }
+    if (/^\d+(\.\d+)?$/.test(s)) { const v = clamp(Math.round(Number(s) * 10) / 10, -barLo(b), barTeto(b)); return v === b.v ? null : { v }; }
+    return false;
+  }
+  function telaBarrinhas(titulo, toks) {
+    if (!isGM() || !toks.length) return;
+    const campos = [];
+    const linhas = toks.map(t => h('li', { class: 'bb-t', 'data-tok': t.id },
+      h('b', { class: 'bb-nome', text: tokName(t) }),
+      h('div', { class: 'bb-barras' }, (t.bars || []).map((b, i) => {
+        if (!b || b.on === false) return null;
+        const inp = h('input', { class: 'in bb-in', id: `bb-${t.id}-${i}`, inputmode: 'decimal', placeholder: '±', 'aria-label': `${b.n} de ${tokName(t)} (−5 tira, +3 soma, 12 vira o valor)`, autocomplete: 'off' });
+        campos.push({ t, i, inp });
+        return h('label', { class: 'bb-b' }, h('span', { class: 'bb-dot', style: { background: b.c } }), h('span', { class: 'bb-n', text: b.n }), h('span', { class: 'bb-v', text: `${fmtV(b.v)}/${fmt(b.m)}` }), inp);
+      }))));
+    modal({ title: titulo, wide: true, body: h('div', { class: 'bb-tela', id: 'bb-tela' }, h('ul', { class: 'bb-lista' }, linhas),
+      note('−5 tira, +3 soma, 12 vira o valor (−10% tira 10% do máximo). Em branco, nada muda.')),
+      actions: [{ label: 'Pular' }, { label: 'Aplicar', kind: 'primary', run: () => {
+        const mud = new Map(); let ruim = null;
+        for (const c of campos) {
+          const t = Store.get('tokens', c.t.id), b = t && t.bars[c.i];
+          if (!b) continue;
+          const p = lerBarrinha(b, c.inp.value);
+          if (p === false) { ruim = c.inp; break; }
+          if (!p) continue;
+          if (!mud.has(t.id)) mud.set(t.id, t.bars.slice());
+          mud.get(t.id)[c.i] = barWith(b, p);
+        }
+        if (ruim) { ruim.focus(); toast('Use −5, +3 ou um número.'); return false; }
+        if (!mud.size) return;
+        Store.tx('Barrinhas', () => { for (const [id, bars] of mud) Store.upd('tokens', id, { bars }); });
+        toast(`Barrinhas: ${mud.size === 1 ? tokName(Store.get('tokens', [...mud.keys()][0])) : mud.size + ' personagens'} ${mud.size === 1 ? 'mudou' : 'mudaram'}.`, { action: 'Desfazer', run: Tools.undo });
+      } }] });
+    const prim = campos[0] && document.getElementById(campos[0].inp.id); if (prim) setTimeout(() => prim.focus(), 30);
+  }
+  // o estado da ordem antes de passar a vez (para saber o que mudou depois)
+  const vezAgora = () => { const tn = Store.scene().turn; return { on: !!tn.on, round: tn.round || 1, cur: tn.cur }; };
+  /* (lote 22) Depois de passar a vez (ou de começar o combate): os reforços da rodada nascem, e a tela das barrinhas
+     abre no momento ligado (o mais largo: o começo do combate, a rodada, a vez). Só no aparelho de quem passou a vez. */
+  function depoisDaVez(antes, d) {
+    if (!isGM() || !(d > 0)) return;
+    const sc = Store.scene(), tn = sc.turn, P = barrinhasPrefs();
+    const comecou = !antes.on && tn.on, novaRodada = antes.on && tn.on && (tn.round || 1) > antes.round;
+    if (typeof Reforco !== 'undefined' && (comecou || novaRodada)) Reforco.naRodada(tn.round || 1);
+    if (comecou && P.combate) { telaBarrinhas('O combate começou: as barrinhas', tokensDoCombate(sc)); return; }
+    if (novaRodada && P.rodada) { telaBarrinhas(`${tn.round}ª rodada: as barrinhas`, tokensDoCombate(sc)); return; }
+    if (tn.on && P.vez && (tn.cur !== antes.cur || comecou)) {
+      const e = tn.list.find(x => x.id === tn.cur), toks = e ? tokensDe(sc, [e]) : [];
+      if (toks.length) telaBarrinhas(`A vez de ${toks.length === 1 ? tokName(toks[0]) : (e.name || 'grupo')}: as barrinhas`, toks);
+    }
   }
 
   /* ---- Aba Efeitos ---- */
@@ -15526,9 +15637,11 @@ const UI = (() => {
   function passarTurno(d) {
     const tn = Store.scene().turn;
     if (!tn.list.length) { toast('A ordem de turnos está vazia: adicione os tokens na aba Turnos.'); return; }
+    const antes = vezAgora(), voltou = (tn.back || 0) > 0;
     const ended = Act.turnStep(d);
     if (ended.length) toast('Acabou: ' + ended.join('; ') + '.', { action: 'Desfazer', run: Tools.undo });
     zonePrompt(d > 0);
+    if (!voltou) depoisDaVez(antes, d);                   // (lote 22: os reforços da rodada, a tela das barrinhas; refazer a vez que já passou não repete)
   }
   function turnBanner() {
     const sc = Store.scene(), tn = sc.turn;
@@ -33893,7 +34006,17 @@ const Masmorra = (() => {
     if (p.tipo === 'arena') {
       const a = p.arena, ch = newToken(sc, a.chefe.x * c, a.chefe.y * c, { name: CHEFE_ARENA[a.tipo] || 'O chefe', size: 2, turns: 2, color: '#8f3d4a' });
       sc.tokens.push(ch);
-      a.reforcos.forEach((r, i) => { if (!Props.P.emboscada) return; const t = Props.novo(sc, 'emboscada', (r[0] - 0.5) * c, (r[1] - 0.5) * c, 1, true); t.name = 'Reforços (' + (a.fases[0] ? a.fases[0].nome.toLowerCase() : 'fase 2') + ') ' + (i + 1); sc.tokens.push(t); });
+      // (lote 22) os pontos de reforço: cada um guarda o lacaio da fase que tem "Reforços chegam" (nasce dele ao acionar)
+      const fasesOn = a.fases.map(f => Object.assign({}, f, { m: f.m.filter(x => x.on !== false) })).filter(f => f.m.length);
+      const fi = fasesOn.findIndex(f => f.m.some(x => x.k === 'reforcos')), mr = fi >= 0 ? fasesOn[fi].m.find(x => x.k === 'reforcos') : null;
+      a.reforcos.forEach((r, i) => {
+        const id = Props.P.reforco ? 'reforco' : 'emboscada';
+        if (!Props.P[id]) return;
+        const t = Props.novo(sc, id, (r[0] - 0.5) * c, (r[1] - 0.5) * c, 1, true);
+        t.name = 'Reforços (' + (fi >= 0 ? fasesOn[fi].nome.toLowerCase() : 'fase 2') + ') ' + (i + 1);
+        if (id === 'reforco' && mr) t.ref = [{ id: uid('rg'), tok: { name: mr.nome || 'Lacaio', color: '#b87c7c', size: 1, shape: 'circ', bars: barDefaults(), barVis: 'bar', conds: [], cinfo: {}, auras: [], showName: true }, n: 1, quando: { k: 'fase', v: fi } }];
+        sc.tokens.push(t);
+      });
       if (a.entrada) {
         const id = fora ? 'saida' : 'chegada';
         if (Props.P[id]) { const t = Props.novo(sc, id, (a.entrada.x - 0.5) * c, (a.entrada.y - 0.5) * c, 1, true); if (fora) t.cena = fora.id; sc.tokens.push(t); }
@@ -34177,7 +34300,7 @@ const Arena = (() => {
   }
   const proxima = sc => fases(sc).find(f => !f.feita) || null;
   // aplica uma mudança (dentro de um passo)
-  function aplicar(sc, m) {
+  function aplicar(sc, m, fi) {
     const c = sc.cell;
     if (m.k === 'zona' && FX.P[m.fx]) {
       // a zona escondida do mesmo tipo que já estava na cena (as runas do altar) aparece; sem ela, uma zona nova
@@ -34197,6 +34320,8 @@ const Arena = (() => {
       for (const w of sc.walls) { if (w.k !== 'door') continue; const d = Math.hypot((w.x1 + w.x2) / 2 - gx, (w.y1 + w.y2) / 2 - gy); if (!melhor || d < melhor[0]) melhor = [d, w]; }
       if (melhor && melhor[0] < c * 3) Store.upd('walls', melhor[1].id, { open: false, locked: true });
     } else if (m.k === 'reforcos') {
+      // (lote 22) os pontos de reforço com grupos marcados para esta fase soltam os deles; sem eles, os lacaios de sempre
+      if (typeof Reforco !== 'undefined' && fi != null && Reforco.naFase(fi).length) return;
       (m.pts || []).forEach((pt, i) => {
         const [x, y] = snapTok(sc, (Number(pt[0]) - 0.5) * c, (Number(pt[1]) - 0.5) * c, 1, false);
         Store.add('tokens', newToken(sc, x, y, { name: (m.nome || 'Lacaio') + ' ' + (i + 1), color: '#b87c7c' }));
@@ -34213,7 +34338,7 @@ const Arena = (() => {
       actions: [{ label: 'Cancelar' }, { label: 'Acionar a ' + f.nome.toLowerCase(), kind: 'primary', run: () => {
         Store.tx(f.nome + ' da arena', () => {
           const agora = Store.scene();
-          for (const m of f.m) aplicar(agora, m);
+          for (const m of f.m) aplicar(agora, m, i);
           Store.scn({ fases: agora.fases.map((x, k) => (k === i ? Object.assign({}, x, { feita: true }) : x)) });
         });
         UI.toast(f.nome + ': ' + f.m.map(textoDaMudanca).join('; ') + '.', { action: 'Desfazer', run: Tools.undo, long: true, key: 'arena-fase' });
@@ -34485,6 +34610,170 @@ const Campo = (() => {
       note('A posição dos blocos sugere bônus na batalha do Mapa-múndi (lá você confirma). Depois da batalha, as perdas voltam aos blocos.'));
   }
   return { MAX_BLOCOS, valida, blocos, textoDoLado, quemMove, bloco, vagas, montar, feitoTxt, leitura, levarParaABatalha, repartir, previaDasPerdas, perdas, secao };
+})();
+/* ---------------------------------------------------------------
+   10g5. O PONTO DE REFORÇO (lote 22)
+   Um marcador do mestre (oculto dos jogadores) que guarda tokens: os arrastados até ele (saem do mapa e ficam lá
+   dentro) e as cópias de um modelo ("3 × Lacaio"). Cada grupo guardado diz quando chega: na hora que o mestre quiser
+   ("Chegar agora"), numa rodada do combate (em ondas: um grupo na 2ª, outro na 4ª…) ou numa fase da arena. Na hora,
+   nascem sozinhos em volta do ponto, entram na ordem de turnos rolando a iniciativa, e o aviso traz o Desfazer — tudo
+   num passo só. t.ref = [{ id, tok, n, quando: { k: 'mao' | 'rodada' | 'fase', v } }] (tok: o token, sem id e lugar).
+   --------------------------------------------------------------- */
+const Reforco = (() => {
+  const MAX_N = 20, MAX_GRUPOS = 12;
+  const eReforco = t => !!t && t.prop === 'reforco';
+  const grupos = t => (eReforco(t) && Array.isArray(t.ref) ? t.ref.filter(g => g && typeof g === 'object' && g.tok && typeof g.tok === 'object') : []);
+  const nomeDe = g => String((g.tok && g.tok.name) || 'Reforço');
+  function quandoTxt(g, sc) {
+    const q = g.quando || {};
+    if (q.k === 'rodada') return 'na ' + (Number(q.v) || 1) + 'ª rodada';
+    if (q.k === 'fase') { const f = (Arena.fases ? Arena.fases(sc) : []).find(x => x.i === Number(q.v)); return 'na ' + (f ? f.nome.toLowerCase() : 'fase ' + (Number(q.v) + 2)); }
+    return 'quando você mandar';
+  }
+  // o token guardado: tudo menos o id e o lugar (nasce oculto? não: aparece; o que era do mapa continua igual)
+  function foto(t) { const o = clone(t); delete o.id; delete o.x; delete o.y; delete o.ref; o.hidden = false; return o; }
+  // as cédulas livres em volta do ponto, da mais perto para a mais longe
+  function lugares(sc, ponto, n, size) {
+    const c = sc.cell, cx = Math.round(ponto.x / c), cy = Math.round(ponto.y / c), out = [];
+    const ocupado = (x, y) => sc.tokens.some(t => !t.prop && x * c < t.x + t.size * c && t.x < (x + size) * c && y * c < t.y + t.size * c && t.y < (y + size) * c)
+      || out.some(([ox, oy]) => x < ox + size && ox < x + size && y < oy + size && oy < y + size);
+    for (let r = 1; r <= 12 && out.length < n; r++) {
+      for (let dy = -r; dy <= r && out.length < n; dy++) for (let dx = -r; dx <= r && out.length < n; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x = cx + dx, y = cy + dy;
+        if (x < 0 || y < 0 || x + size > sc.cols || y + size > sc.rows || ocupado(x, y)) continue;
+        out.push([x, y]);
+      }
+    }
+    while (out.length < n) out.push([cx + 1, cy]);
+    return out.map(([x, y]) => [x * c, y * c]);
+  }
+  /* Solta os grupos (ids) do ponto: nascem, saem de dentro dele, entram na ordem e rolam a iniciativa. Num passo só
+     (dentro de um Store.tx de quem chama, ou num próprio). → [nomes] */
+  function soltar(pontoId, ids, rotulo) {
+    const sc = Store.scene(), p = Store.get('tokens', pontoId);
+    if (!p || !eReforco(p)) return [];
+    const quais = grupos(p).filter(g => !ids || ids.includes(g.id));
+    if (!quais.length) return [];
+    const nascidos = [], nomes = [];
+    Store.tx(rotulo || 'Reforços chegam', () => {
+      for (const g of quais) {
+        const n = clamp(Math.round(Number(g.n) || 1), 1, MAX_N), size = clamp(Number(g.tok.size) || 1, 0.5, 4);
+        const pos = lugares(Store.scene(), p, n, Math.max(1, Math.round(size)));
+        for (let k = 0; k < n; k++) {
+          const base = clone(g.tok), nome = n > 1 ? nomeDe(g) + ' ' + (k + 1) : nomeDe(g);
+          if (n > 1) delete base.char;                                    // (as cópias não ficam ligadas à mesma ficha)
+          const [x, y] = snapTok(Store.scene(), pos[k][0], pos[k][1], size, false);
+          const t = newToken(Store.scene(), x, y, Object.assign(base, { id: uid('tk'), name: nome, hidden: false }));
+          Store.add('tokens', t);
+          nascidos.push(t);
+        }
+        nomes.push((n > 1 ? n + ' × ' : '') + nomeDe(g));
+      }
+      Store.upd('tokens', p.id, { ref: grupos(p).filter(g => !quais.includes(g)) });
+      // na ordem de turnos: entram e rolam a iniciativa (com combate, ou com a ordem já montada)
+      const tn = Store.scene().turn;
+      if (tn.on || tn.list.length) {
+        const antes = new Set(tn.list.map(e => e.id));
+        Act.turnAdd(nascidos.map(t => Store.get('tokens', t.id)).filter(Boolean));
+        const novas = Store.scene().turn.list.filter(e => !antes.has(e.id)).map(e => e.id);
+        if (novas.length) Act.turnRoll(novas);
+      }
+    });
+    return nomes;
+  }
+  function avisar(nomes, onde) {
+    if (!nomes.length) return;
+    UI.toast('Reforços chegaram' + (onde ? ' ' + onde : '') + ': ' + nomes.join(', ') + '.', { action: 'Desfazer', run: Tools.undo, long: true, key: 'reforco' });
+  }
+  /* A rodada virou (ou o combate começou, na 1ª): os grupos marcados para ela, de todos os pontos. Um passo só. */
+  function naRodada(round) {
+    if (!isGM()) return [];
+    const sc = Store.scene(), out = [];
+    const pontos = sc.tokens.filter(t => eReforco(t) && grupos(t).some(g => g.quando && g.quando.k === 'rodada' && Number(g.quando.v) === round));
+    if (!pontos.length) return [];
+    Store.tx('Reforços da ' + round + 'ª rodada', () => {
+      for (const p of pontos) out.push(...soltar(p.id, grupos(p).filter(g => g.quando && g.quando.k === 'rodada' && Number(g.quando.v) === round).map(g => g.id)));
+    });
+    avisar(out, 'na ' + round + 'ª rodada');
+    return out;
+  }
+  // A fase i da arena: os grupos marcados para ela (dentro do passo da fase). → [nomes] (vazio: a fase usa os pontos dela)
+  function naFase(i) {
+    const sc = Store.scene(), out = [];
+    for (const p of sc.tokens.filter(eReforco)) {
+      const ids = grupos(p).filter(g => g.quando && g.quando.k === 'fase' && Number(g.quando.v) === i).map(g => g.id);
+      if (ids.length) out.push(...soltar(p.id, ids));
+    }
+    return out;
+  }
+  // Guarda o token t no ponto (o token sai do mapa). Um passo.
+  function guardar(pontoId, t) {
+    const p = Store.get('tokens', pontoId);
+    if (!p || !t || t.prop || grupos(p).length >= MAX_GRUPOS) return false;
+    Store.tx('Guardar no ponto de reforço', () => {
+      Store.upd('tokens', p.id, { ref: grupos(p).concat({ id: uid('rg'), tok: foto(t), n: 1, quando: { k: 'mao' } }) });
+      Store.del('tokens', t.id);
+      const tn = Store.scene().turn, fora = tn.list.filter(e => e.token === t.id).map(e => e.id);
+      if (fora.length) Act.turnPatch(x => { x.list = x.list.filter(e => !fora.includes(e.id)); if (fora.includes(x.cur)) x.cur = x.list.length ? x.list[0].id : null; }, 'Guardar no ponto de reforço');
+    });
+    return true;
+  }
+  // depois de arrastar: o token (não objeto) que terminou em cima de um ponto de reforço é guardado nele
+  function soltouEm(ids) {
+    if (!isGM() || !ids || ids.length !== 1) return;
+    const sc = Store.scene(), t = Store.get('tokens', ids[0]);
+    if (!t || t.prop) return;
+    const c = sc.cell, mx = t.x + t.size * c / 2, my = t.y + t.size * c / 2;
+    const p = sc.tokens.find(o => eReforco(o) && mx >= o.x && mx < o.x + o.size * c && my >= o.y && my < o.y + o.size * c);
+    if (!p) return;
+    if (guardar(p.id, t)) UI.toast(t.name + ' está guardado em ' + p.name + ': nasce de lá quando você mandar (ou na rodada que você marcar, no painel do ponto).', { action: 'Desfazer', run: Tools.undo, long: true, key: 'reforco-g' });
+  }
+  function mudarGrupo(p, gid, patch, rotulo) {
+    Store.tx(rotulo || 'Reforço', () => Store.upd('tokens', p.id, { ref: grupos(p).map(g => (g.id === gid ? Object.assign({}, g, patch) : g)) }));
+  }
+  /* A seção do painel do ponto (só o mestre). K: as peças da interface (sec, note, btn, field, inNum, modal, h). */
+  function secao(t, K) {
+    const { sec, note, btn } = K, sc = Store.scene(), gs = grupos(t), fases = Arena.fases ? Arena.fases(sc) : [];
+    const linha = g => {
+      const q = g.quando || { k: 'mao' };
+      const sel = h('select', { class: 'in', id: 'rf-q-' + g.id, 'aria-label': 'Quando ' + nomeDe(g) + ' chega', onchange: e => { const k = e.target.value; e.target.blur(); mudarGrupo(t, g.id, { quando: k === 'rodada' ? { k, v: Math.max(2, (Store.scene().turn.round || 1) + 1) } : k === 'fase' ? { k, v: fases.length ? fases[0].i : 0 } : { k: 'mao' } }, 'Quando o reforço chega'); } },
+        h('option', { value: 'mao', text: 'Quando eu mandar', selected: q.k === 'mao' }), h('option', { value: 'rodada', text: 'Numa rodada', selected: q.k === 'rodada' }),
+        fases.length ? h('option', { value: 'fase', text: 'Numa fase da arena', selected: q.k === 'fase' }) : null);
+      const extra = q.k === 'rodada' ? K.inNum('rf-r-' + g.id, Number(q.v) || 2, v => mudarGrupo(t, g.id, { quando: { k: 'rodada', v: clamp(Math.round(v), 1, 99) } }, 'Rodada do reforço'), { min: 1, max: 99, step: 1, label: 'Em que rodada ' + nomeDe(g) + ' chega' })
+        : q.k === 'fase' ? h('select', { class: 'in', id: 'rf-f-' + g.id, 'aria-label': 'Em que fase', onchange: e => { mudarGrupo(t, g.id, { quando: { k: 'fase', v: Number(e.target.value) } }, 'Fase do reforço'); e.target.blur(); } }, fases.map(f => h('option', { value: String(f.i), text: f.nome, selected: Number(q.v) === f.i }))) : null;
+      return h('li', { class: 'rf-g', 'data-g': g.id },
+        h('div', { class: 'rf-n' }, h('b', { text: (g.n > 1 ? g.n + ' × ' : '') + nomeDe(g) }), h('small', { text: quandoTxt(g, sc) })),
+        h('div', { class: 'row tight' }, sel, extra,
+          btn('Chegar agora', () => avisar(soltar(t.id, [g.id], 'Reforço chega')), { kind: 'small', id: 'rf-agora-' + g.id }),
+          btn('', () => { Store.tx('Tirar do ponto de reforço', () => Store.upd('tokens', t.id, { ref: grupos(t).filter(x => x.id !== g.id) })); UI.toast(nomeDe(g) + ' saiu do ponto de reforço.', { action: 'Desfazer', run: Tools.undo }); }, { icon: 'trash', kind: 'small', id: 'rf-x-' + g.id, title: 'Tirar este grupo do ponto' })));
+    };
+    return sec('s-reforco', 'Reforços guardados', true,
+      gs.length ? h('ul', { class: 'rf-lista', id: 'rf-lista' }, gs.map(linha)) : note('Nada guardado ainda. Arraste um token até este ponto (ele sai do mapa e fica guardado aqui), ou use “Cópias de um token…”.'),
+      h('div', { class: 'row' },
+        btn('Cópias de um token…', () => janelaCopias(t, K), { icon: 'copy', id: 'rf-copias' }),
+        gs.length > 1 ? btn('Chegar todos agora', () => avisar(soltar(t.id, null, 'Reforços chegam')), { id: 'rf-todos' }) : null),
+      note('Na rodada marcada (ou na fase), nascem sozinhos em volta do ponto e entram na ordem de turnos com a iniciativa rolada; o aviso traz o Desfazer.'));
+  }
+  // "3 × Lacaio": cópias de um token do mapa (o token fica onde está)
+  function janelaCopias(t, K) {
+    const sc = Store.scene(), modelos = sc.tokens.filter(o => !o.prop && !o.clone);
+    if (!modelos.length) { UI.toast('Não há token na cena para copiar.'); return; }
+    const sel = h('select', { class: 'in', id: 'rf-modelo' }, modelos.map(o => h('option', { value: o.id, text: o.name })));
+    const qtd = h('input', { class: 'in', id: 'rf-qtd', type: 'number', min: '1', max: String(MAX_N), step: '1', value: '3' });
+    const quando = h('select', { class: 'in', id: 'rf-quando' }, h('option', { value: 'mao', text: 'Quando eu mandar' }), h('option', { value: 'rodada', text: 'Numa rodada' }));
+    const rod = h('input', { class: 'in', id: 'rf-rod', type: 'number', min: '1', max: '99', step: '1', value: String(Math.max(2, (sc.turn.round || 1) + 1)) });
+    K.modal({ title: 'Cópias de um token', body: h('div', { class: 'grid2' }, K.field('Modelo', sel, 'stack'), K.field('Quantas', qtd, 'stack'), K.field('Chegam', quando, 'stack'), K.field('Na rodada', rod, 'stack')),
+      actions: [{ label: 'Cancelar' }, { label: 'Guardar', kind: 'primary', run: () => {
+        const m = Store.get('tokens', sel.value), n = clamp(Math.round(Number(qtd.value) || 1), 1, MAX_N);
+        if (!m) return false;
+        const g = { id: uid('rg'), tok: foto(m), n, quando: quando.value === 'rodada' ? { k: 'rodada', v: clamp(Math.round(Number(rod.value) || 2), 1, 99) } : { k: 'mao' } };
+        delete g.tok.char;
+        Store.tx('Guardar cópias no ponto de reforço', () => Store.upd('tokens', t.id, { ref: grupos(Store.get('tokens', t.id)).concat(g) }));
+        UI.toast(n + ' × ' + m.name + ' guardados em ' + t.name + '.', { action: 'Desfazer', run: Tools.undo });
+      } }] });
+  }
+  return { eReforco, grupos, soltar, naRodada, naFase, guardar, soltouEm, secao, foto };
 })();
 /* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
@@ -35111,7 +35400,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Relevo, Arena, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

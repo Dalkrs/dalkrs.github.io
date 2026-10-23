@@ -964,3 +964,21 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .cp-bloco .note { margin: 0; }
 .cp-leitura, .cp-perdas { display: grid; gap: 10px; }
 .cp-lado ul { margin: 4px 0 0 18px; display: grid; gap: 3px; }
+
+/* (lote 22) a tela das barrinhas */
+.bb-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-height: 60vh; overflow: auto; }
+.bb-t { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.bb-nome { font-weight: 700; }
+.bb-barras { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.bb-b { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.bb-dot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+.bb-v { font-family: var(--mono, monospace); color: var(--fg-2); font-size: 12px; }
+.bb-in { width: 66px !important; height: 28px; }
+/* (lote 22) o ponto de reforço */
+.rf-lista { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.rf-g { display: grid; gap: 6px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; }
+.rf-n { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.rf-n small { color: var(--fg-3); }
+.rf-g .row { flex-wrap: wrap; }
+.rf-g select.in { max-width: 170px; }
+.rf-g input.in { max-width: 70px; }

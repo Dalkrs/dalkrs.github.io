@@ -42,6 +42,8 @@ async function open(opt = {}) {
   }
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForTimeout(opt.wait || 900);
+  // (lote 22) a tela das barrinhas abre sozinha na vez de cada um: nos testes de antes, desligada (opt.barrinhas: a de começo)
+  if (!opt.barrinhas) await page.evaluate(() => { try { if (window.__tc && __tc.Store) __tc.Store.S.prefs.barrinhas = { combate: false, rodada: false, vez: false }; } catch (e) { /* (a página sem as Cenas) */ } }).catch(() => {});
   if (opt.arredores !== true) await page.evaluate(() => { try { if (window.__tc && __tc.App && __tc.App.opt && __tc.App.opt.genArr == null) __tc.App.opt.genArr = 'nenhum'; } catch (e) { /* (a página sem as Cenas) */ } }).catch(() => {});
   return { page, ctx, browser, errs, url, base, close: async () => { await browser.close(); srv.close(); } };
 }
