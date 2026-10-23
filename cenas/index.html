@@ -743,6 +743,10 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 /* os bônus só desta rolagem: uma linha baixa, discreta; o campo com valor ganha a borda acesa */
 .pop-m { display: flex; align-items: center; gap: 5px; }
 .pop-m > .pop-l:first-child { margin-right: auto; color: var(--fg-3); font-size: 11.5px; }
+/* (lote 18) o relevo na janelinha de atributos: mirando alguém de cima (ou de baixo), a sugestão de somar */
+.pop-rel { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-2); padding: 6px 8px; border-radius: 8px; background: var(--hover, rgba(255,255,255,.05)); }
+.pop-rel span { flex: 1; }
+.pop-rel .btn { height: 26px; padding: 0 10px; flex: none; }
 .pop-m .pop-l { font-size: 11.5px; }
 .pop-m .in.num { width: 46px; flex: none; padding-left: 4px; padding-right: 4px; }
 .pop-m .in.num.tem { border-color: var(--lamp); }
@@ -944,6 +948,28 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+/* (lote 18) a tabela do relevo */
+.rl-tab { display: grid; gap: 10px; }
+.rl-l { display: grid; grid-template-columns: minmax(150px, auto) 80px 1fr; align-items: center; gap: 10px; font-size: 13px; }
+.rl-l .in.num { width: 80px; }
+.rl-l .muted { font-size: 12px; }
+/* (lote 18) a arena: as fases na janela (cada mudança liga, desliga ou troca) e na aba Cena */
+.ar-fases { display: grid; gap: 10px; }
+.ar-fase { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--line, #3a3a44); border-radius: 8px; }
+.ar-fase > b { font-size: 13px; }
+.ar-mud { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; }
+.ar-mud .sw { margin: 0; }
+.ar-mud select:disabled { opacity: .45; }
+.ar-cena { padding: 6px 0 8px; border-bottom: 1px solid var(--line, #3a3a44); }
+.ar-cena:last-of-type { border-bottom: 0; }
+.ar-cena.feita .note { opacity: .6; }
+.ar-cena-t { font-size: 13px; }
+.ar-previa { margin: 6px 0 0 18px; display: grid; gap: 4px; }
+/* (lote 18) o campo de batalha */
+.cp-bloco { display: grid; gap: 6px; }
+.cp-bloco .note { margin: 0; }
+.cp-leitura, .cp-perdas { display: grid; gap: 10px; }
+.cp-lado ul { margin: 4px 0 0 18px; display: grid; gap: 3px; }
 </style>
 </head>
 <body>
@@ -1700,6 +1726,8 @@ function normalizeScene(sc) {
   for (const e of sc.turn.list) if (e.toks) { e.toks = e.toks.filter(id => !naFaixa.has(id)); e.toks.forEach(id => naFaixa.add(id)); }
   if (naFaixa.size) sc.turn.list = sc.turn.list.filter(e => !(e.token && naFaixa.has(e.token)));
   if (!Array.isArray(sc.targets)) sc.targets = [];
+  // (lote 18) as fases da arena (só do mestre): uma lista curta de { n, nome, feita, m: [as mudanças] }
+  if (Array.isArray(sc.fases)) { sc.fases = sc.fases.filter(f => f && typeof f === 'object' && Array.isArray(f.m)).slice(0, 6); if (!sc.fases.length) delete sc.fases; } else delete sc.fases;
   if (!TONES.some(x => x.id === sc.tone)) sc.tone = 'dia';
   for (const w of sc.walls) {
     if (!(w.k === 'door' && w.secret) && !['wall', 'door', 'window', 'veil', 'mureta'].includes(w.k)) w.k = 'wall';
@@ -1748,6 +1776,14 @@ function normalizeScene(sc) {
     if (gera && palavra(gera.b)) t.gera = { b: gera.b };
     // (parte 4b-3: a escada que desce — o tipo do nível de baixo, o número dele, o tamanho, o estilo e a semente)
     else if (gera && gera.t === 'masmorra') t.gera = { t: 'masmorra', m: ['pedra', 'caverna', 'cripta', 'mina'].includes(gera.m) ? gera.m : 'pedra', n: clamp(Math.round(Number(gera.n)) || 1, 1, 99), tam: ['pequeno', 'medio', 'grande'].includes(gera.tam) ? gera.tam : 'medio', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1 };
+    // (lote 18: a entrada de gruta — onde fica a boca, o bioma de baixo, a semente e o rio de cima, até 41 pontos)
+    else if (gera && gera.t === 'subsolo') {
+      const nu = v => (typeof v === 'number' && isFinite(v) ? Math.round(clamp(v, -1000, 1000) * 100) / 100 : null);
+      t.gera = { t: 'subsolo', x: nu(gera.x), y: nu(gera.y), bio: ['fungos', 'cristais', 'lava', 'gelo', 'raizes'].includes(gera.bio) ? gera.bio : 'fungos', s: (Math.round(Number(gera.s)) >>> 0) || 1 };
+      const rio = Array.isArray(gera.rio) ? gera.rio.filter(q => Array.isArray(q) && nu(q[0]) != null && nu(q[1]) != null).slice(0, 41).map(q => [nu(q[0]), nu(q[1])]) : [];
+      if (rio.length >= 2) t.gera.rio = rio;
+      if (t.gera.x == null || t.gera.y == null) { delete t.gera.x; delete t.gera.y; }
+    }
     // (parte 4b: o navio — o casco vai até 32 quadrados, e a forma 'navio' tem a proa do lado p)
     else if (gera && palavra(gera.t)) {
       t.gera = { t: gera.t, w: clamp(Math.round(Number(gera.w)) || 4, 2, 32), h: clamp(Math.round(Number(gera.h)) || 4, 2, 32), p: typeof gera.p === 'string' && gera.p.length === 1 && 'nsol'.includes(gera.p) ? gera.p : 's', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1, f: gera.f === 'oct' || gera.f === 'navio' ? gera.f : 'ret' };
@@ -2190,12 +2226,15 @@ const Walls = (() => {
   // não está encostado. É recalculado a cada pedido (depende de onde o token está), então nunca fica velho.
   function sightFor(sc, t) {
     const d = of(sc);
-    if (!d.curtains.length) return d.sight;
+    // (lote 18) a visão pelo relevo: o que é mais alto que o olho do token também barra (só com a chave da cena)
+    const rl = typeof Relevo !== 'undefined' ? Relevo.barreiras(sc, t) : [];
+    const com = base => (rl.length ? base.concat(rl) : base);
+    if (!d.curtains.length) return com(d.sight);
     const far = d.curtains.filter(c => !curtainNear(t, c, sc.cell));
-    if (far.length === d.curtains.length) return d.sightAll;
+    if (far.length === d.curtains.length) return com(d.sightAll);
     const s = d.sight.slice();
     for (const c of far) s.push(c.x1, c.y1, c.x2, c.y2);
-    return s;
+    return com(s);
   }
 
   // O caminho reto de (ax, ay) a (bx, by) cruza algo que barra a passagem?
@@ -2330,7 +2369,7 @@ const Persist = (() => {
     // O que cada um já explorou do mapa: na mesa, fica no aparelho de cada um (não vai para o banco).
     explored(id) { if (Nuvem.on()) { Nuvem.explorado(id); return; } if (id) { dScenes.add(id); dMeta = true; save(); } },
     asset(id) { if (Nuvem.on()) return; dAssets.add(id); save(); },
-    meta() { if (Nuvem.on()) { Nuvem.meta(); return; } dMeta = true; save(); },
+    meta(o) { if (Nuvem.on()) { Nuvem.meta(o); return; } dMeta = true; save(); },
     removeScene(id) { if (Nuvem.on()) { Nuvem.tirarCena(id); return; } removed.add('scene:' + id); dMeta = true; save(); },
   };
 })();
@@ -2575,7 +2614,8 @@ const Vision = (() => {
       if (!t.vis || !t.vis.on || !who(t)) continue;
       n++;
       const half = t.size * cell / 2, cx = t.x + half, cy = t.y + half;
-      const range = t.vis.range > 0 ? t.vis.range * cell + half : 0;
+      // (lote 18) de cima se vê mais longe: com a visão pelo relevo, o alcance cresce com a altura
+      const range = t.vis.range > 0 ? (t.vis.range + (typeof Relevo !== 'undefined' ? Relevo.alcanceExtra(sc, t) : 0)) * cell + half : 0;
       const bx = range ? [cx - range, cy - range, cx + range, cy + range] : B;
       const poly = Geo.visPoly(cx + 0.31, cy + 0.17, Walls.sightFor(sc, t), bx[0], bx[1], bx[2], bx[3]);
       const self = half + cell * 0.6;
@@ -2804,8 +2844,11 @@ const Vision = (() => {
       // Só o que muda luz, névoa ou o tamanho da cena pede recálculo; turnos, miras e clima, não.
       const p = op.p || {};
       if ('light' in p || 'fog' in p || 'cols' in p || 'rows' in p || 'cell' in p) { dirty = true; staticStale = true; }
+      if ('relevoVisao' in p || 'grid' in p) dirty = true;                 // (lote 18) a visão pelo relevo
       return;
     }
+    // (lote 18) com a visão pelo relevo, as áreas de terreno barram: mudar uma refaz a visão
+    if (op.c === 'shapes') { const sc = Store.scene(); if (sc && sc.relevoVisao) dirty = true; return; }
     if (op.c === 'fogOps') { manualStale = true; dirty = true; return; }
     if (op.c === 'walls' || op.c === 'lights') { dirty = true; staticStale = true; return; }
     if (op.c === 'tokens') {
@@ -5468,6 +5511,9 @@ Store.aoFechar(tx => {
     const t = Store.get('tokens', id), antes = antesDoToken(tx.inv, id, ['x', 'y']), v = atravessar(t, antes, sc);
     if (v) { Store.upd('tokens', id, { x: v.x, y: v.y }); Store.emit('portal', { tok: id, fx: v.portal }); continue; }
     for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+    // (lote 18) a queda de um penhasco: o aviso sugere o dano (nada muda sozinho)
+    const q = typeof Relevo !== 'undefined' ? Relevo.quedaDoPasso(sc, t, antes) : null;
+    if (q) Store.emit('queda', q);
   }
   // (lote 8) o Clone: depois de tudo do passo (o dano, a condição que saiu, o que mudou no real)
   aplicarRegrasDoClone(regrasDoClone(tx.fwd, tx.inv));
@@ -5487,7 +5533,11 @@ Store.on('commit', e => {
   for (const id of andou) {
     const t = Store.get('tokens', id), antes = antesDoToken(e.inv, id, ['x', 'y']);
     if (atravessar(t, antes, sc)) vao.push([id, antes]);
-    else for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+    else {
+      for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+      const q = typeof Relevo !== 'undefined' ? Relevo.quedaDoPasso(sc, t, antes) : null;              // (lote 18) a queda do token que um jogador moveu
+      if (q) Store.emit('queda', q);
+    }
   }
   if (vao.length) setTimeout(() => Store.tx('Atravessar o portal', () => {
     const agora = Store.scene();
@@ -7325,7 +7375,7 @@ const Proj = (() => {
     const tokens = sc.tokens.filter(t => !t.hidden).map(t => tokenPublico(t, jogadores, grupos));
     const nomes = new Map(tokens.map(t => [t.id, t.name]));
     const m = {};
-    for (const k in sc) if (k !== 'explored' && k !== 'gerado' && !VIVO.includes(k)) m[k] = sc[k];       // (com que semente o mapa de bairros foi feito: só do mestre)
+    for (const k in sc) if (k !== 'explored' && k !== 'gerado' && k !== 'fases' && k !== 'campo' && !VIVO.includes(k)) m[k] = sc[k];       // (com que semente o mapa de bairros foi feito: só do mestre)
     m.walls = sc.walls.map(paredePublica);
     m.lights = sc.lights.map(l => Object.assign({}, l, { name: '' }));           // o nome que o mestre deu à luz é dele
     m.shapes = sc.shapes.filter(s => !s.gm);
@@ -7715,10 +7765,13 @@ const Proj = (() => {
     d = ehObj(d) ? d : {};
     const ordem = Array.from(new Set((Array.isArray(d.ordem) ? d.ordem : []).filter(idCena)));
     const prefs = ehObj(d.prefs) ? d.prefs : {};
+    const pf = { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null, modelos: normModelos(prefs.modelos) };
+    // (lote 18) a tabela do relevo da mesa (só quando o mestre mudou alguma coisa)
+    if (ehObj(prefs.relevo) && typeof Relevo !== 'undefined') pf.relevo = Relevo.norm(prefs.relevo);
     return {
       v: 1, ordem, atual: idCena(d.atual) ? d.atual : null, noAr: idCena(d.noAr) ? d.noAr : null,
       tx: idOk(d.tx) ? d.tx : null,                         // qual aparelho do mestre está transmitindo a cena que está no ar
-      prefs: { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null, modelos: normModelos(prefs.modelos) },
+      prefs: pf,
       pastas: normPastas(d.pastas),
     };
   }
@@ -7977,6 +8030,7 @@ const Nuvem = (() => {
     S.prefs = prefsDaqui();
     if (idx.prefs.barDefaults) S.prefs.barDefaults = idx.prefs.barDefaults;
     S.prefs.modelos = idx.prefs.modelos;                   // (lote 7) os modelos do gerador de lugares
+    S.prefs.relevo = idx.prefs.relevo || null;             // (lote 18) a tabela do relevo da mesa
     S.pastas = idx.pastas;
     /* Até onde os pedidos de cada jogador já valeram: a cena guardada diz (e o que eles pediram enquanto o mestre
        estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
@@ -8130,7 +8184,7 @@ const Nuvem = (() => {
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
       try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
-      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, pastas: Proj.normPastas(S.pastas) };
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: Object.assign({ barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, S.prefs.relevo && typeof Relevo !== 'undefined' ? { relevo: Relevo.norm(S.prefs.relevo) } : {}), pastas: Proj.normPastas(S.pastas) };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
@@ -8150,6 +8204,8 @@ const Nuvem = (() => {
     const sc = S.scenes[idx.noAr];
     if (!sc) { despublicar(); return; }
     const { m, v } = Proj.projetar(sc, S.assets, new Set(S.players.map(p => p.id)));
+    // (lote 18) a tabela do relevo da mesa vai com a cena (sem ela, os jogadores usam a de começo)
+    if (S.prefs.relevo && typeof Relevo !== 'undefined' && !Relevo.igualAoPadrao(S.prefs.relevo)) m.relevoTab = Relevo.norm(S.prefs.relevo);
     m.ver = Proj.resumo(JSON.stringify(m));
     // (a projeção é da campanha da cena que está no ar: só quem participa dela a recebe; a de uma cena do mundo, todos)
     const cs = campanhasDaCena(sc.id);
@@ -8220,6 +8276,7 @@ const Nuvem = (() => {
     S.order = ordem;
     if (n.prefs.barDefaults) S.prefs.barDefaults = n.prefs.barDefaults;
     S.prefs.modelos = n.prefs.modelos;
+    S.prefs.relevo = n.prefs.relevo || null;
     S.pastas = n.pastas;
     Store.meta();
   }
@@ -8510,7 +8567,8 @@ const Nuvem = (() => {
   /* ---------------- o que o resto do programa chama ---------------- */
   function carregar() { return modo === 'mestre' ? carregarMestre() : carregarJogador(); }
   function cena(id) { if (modo === 'mestre' && id) { sujas.add(id); metaSuja = true; agendar(); } }
-  function meta() { if (modo === 'mestre') { metaSuja = true; agendar(); } else guardarPrefsDaqui(); }
+  // (o: { pub } — o que mudou também vai na projeção, como a tabela do relevo: lote 18)
+  function meta(o) { if (modo === 'mestre') { metaSuja = true; if (o && o.pub && idx.noAr && transmito()) pubSuja = true; agendar(); } else guardarPrefsDaqui(); }
   function tirarCena(id) {
     if (modo !== 'mestre') return;
     sujas.delete(id); feito.delete(id); campDe.delete(id);
@@ -8914,6 +8972,163 @@ const Combate = (() => {
     listaDefesas, nomeDasDefesas, defesaDe, danoFinal, barraDe, aplicarAtaque, barraAberta,
     vagas, elenco, trazer,
   };
+})();
+/* ---------------------------------------------------------------
+   7f. RELEVO (lote 18) — o relevo com regra: o sistema sugere, o mestre confirma
+   As áreas de terreno (Morro, Montanha, Plataforma, Fosso…) têm altura. Com a tabela do mestre (a da mesa: uma só
+   para todas as cenas, com valores de começo):
+     - subir custa movimento: cada quadrado de altura subido vale `sobe` quadrados a mais (a régua e o arrastar
+       mostram);
+     - `penhasco` quadrados de altura de uma vez é penhasco: subir só escalando; descer assim é uma queda;
+     - a queda sugere o dano: `queda`% da Vida máxima a cada `quedaCada` quadrados de queda (o aviso do mestre tem o
+       "Aplicar");
+     - de cima, `cima` no ataque; de baixo, `baixo` (a janelinha de atributos oferece somar, mirando alguém).
+   E a visão pelo relevo (uma chave por cena, sc.relevoVisao): o que é mais alto que o olho de quem olha esconde o que
+   está atrás; de dentro de um fosso, só se vê o fosso; de cima, o alcance da visão cresce com a altura.
+   Nada se aplica sozinho. A tabela mora nas preferências da mesa (Store.S.prefs.relevo, só do mestre); a cena que
+   vai para os jogadores leva uma cópia dela (relevoTab).
+   --------------------------------------------------------------- */
+const Relevo = (() => {
+  const PADRAO = Object.freeze({ on: true, sobe: 1, penhasco: 3, cima: 2, baixo: -2, queda: 10, quedaCada: 2 });
+  const numOk = (v, a, b, p) => { const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : NaN; return isFinite(n) ? clamp(Math.round(n * 10) / 10, a, b) : p; };
+  function norm(t) {
+    const o = t && typeof t === 'object' && !Array.isArray(t) ? t : {};
+    return {
+      on: o.on !== false,
+      sobe: numOk(o.sobe, 0, 20, PADRAO.sobe),
+      penhasco: numOk(o.penhasco, 1, 100, PADRAO.penhasco),
+      cima: numOk(o.cima, -999, 999, PADRAO.cima),
+      baixo: numOk(o.baixo, -999, 999, PADRAO.baixo),
+      queda: numOk(o.queda, 0, 100, PADRAO.queda),
+      quedaCada: numOk(o.quedaCada, 0.5, 100, PADRAO.quedaCada),
+    };
+  }
+  const igualAoPadrao = t => JSON.stringify(norm(t)) === JSON.stringify(norm(null));
+  // A tabela que vale: a da mesa (o mestre); para os jogadores, a cópia que veio com a cena; senão, a de começo.
+  function tabela(sc) {
+    const p = typeof Store !== 'undefined' && Store.S.prefs ? Store.S.prefs.relevo : null;
+    return norm(p || (sc && sc.relevoTab) || null);
+  }
+  const unidade = sc => (sc && sc.grid && sc.grid.unit > 0 ? sc.grid.unit : 1.5);
+  // a altura do chão num ponto, em quadrados (a área de terreno de cima manda; sem área, 0)
+  function alturaEm(sc, x, y) {
+    const s = Combate.terrainAt(sc, x, y);
+    return s ? (Number(s.ter.h) || 0) / unidade(sc) : 0;
+  }
+  // a altura em que o token está (pelo centro), em quadrados
+  function alturaDoToken(t, sc) {
+    const s = Combate.terrainOf(t, sc);
+    return s ? (Number(s.ter.h) || 0) / unidade(sc) : 0;
+  }
+  const temRelevo = sc => !!sc && Array.isArray(sc.shapes) && sc.shapes.some(s => isTer(s) && shapeShown(s) && Number(s.ter.h));
+
+  /* O que o caminho reto (ou a linha quebrada, pts = [x0, y0, x1, y1, …]) atravessa: soma das subidas e das descidas,
+     o maior degrau de subida e o de descida (em quadrados). Amostra a cada quarto de quadrado. */
+  function perfil(sc, pts) {
+    const out = { sobe: 0, desce: 0, maxSobe: 0, maxDesce: 0, de: 0, para: 0 };
+    if (!sc || !Array.isArray(pts) || pts.length < 4 || !temRelevo(sc)) return out;
+    const passo = Math.max(2, sc.cell / 4);
+    let ant = alturaEm(sc, pts[0], pts[1]);
+    out.de = ant;
+    for (let i = 2; i + 1 < pts.length; i += 2) {
+      const ax = pts[i - 2], ay = pts[i - 1], bx = pts[i], by = pts[i + 1], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / passo));
+      for (let k = 1; k <= n; k++) {
+        const h = alturaEm(sc, ax + (bx - ax) * k / n, ay + (by - ay) * k / n), d = h - ant;
+        if (d > 1e-6) { out.sobe += d; out.maxSobe = Math.max(out.maxSobe, d); }
+        else if (d < -1e-6) { out.desce -= d; out.maxDesce = Math.max(out.maxDesce, -d); }
+        ant = h;
+      }
+    }
+    out.para = ant;
+    for (const k of ['sobe', 'desce', 'maxSobe', 'maxDesce', 'de', 'para']) out[k] = Math.round(out[k] * 100) / 100;
+    return out;
+  }
+  /* O que o relevo diz de um caminho: { extra (quadrados a mais pela subida), escalar (há penhasco subindo), queda
+     (quadrados do maior degrau de descida que é penhasco; 0 sem queda) } — ou null, sem relevo ou com a regra desligada. */
+  function custo(sc, pts) {
+    const t = tabela(sc);
+    if (!t.on || !temRelevo(sc)) return null;
+    const p = perfil(sc, pts);
+    if (!p.sobe && !p.desce) return null;
+    return { extra: Math.round(p.sobe * t.sobe * 10) / 10, sobe: p.sobe, escalar: p.maxSobe >= t.penhasco, queda: p.maxDesce >= t.penhasco ? p.maxDesce : 0, perfil: p };
+  }
+  // o texto que a régua e o arrastar acrescentam: " · subida +2 q = 6 q · penhasco: só escalando · queda de 4,5 m"
+  function rotulo(sc, total, pts) {
+    const c = custo(sc, pts);
+    if (!c) return '';
+    const u = unidade(sc), un = (sc.grid && sc.grid.unitName) || '';
+    const p = [];
+    if (c.extra > 0) p.push('subida +' + fmt(c.extra) + ' q = ' + fmt(total + c.extra) + ' q');
+    if (c.escalar) p.push('penhasco: só escalando');
+    if (c.queda) p.push('queda de ' + fmt(c.queda * u) + (un ? ' ' + un : ''));
+    return p.length ? ' · ' + p.join(' · ') : '';
+  }
+  /* A queda sugere o dano: a porcentagem da Vida máxima (a cada `quedaCada` quadrados de queda, `queda`%) e quanto
+     isso é na barra da vida do token. → { q (quadrados), m (na unidade da cena), pct, dano, barra } | null */
+  function danoDaQueda(sc, t, q) {
+    const tb = tabela(sc);
+    if (!tb.on || !(q >= tb.penhasco)) return null;
+    const pct = Math.min(100, Math.floor(q / tb.quedaCada + 1e-9) * tb.queda);
+    const b = t ? barraDaVida(t.bars) : null;
+    return { q: Math.round(q * 100) / 100, m: Math.round(q * unidade(sc) * 100) / 100, pct, dano: b && pct ? Math.max(1, Math.floor(b.m * pct / 100 + 1e-9)) : 0, barra: b ? b.n : null };
+  }
+  /* A queda de um token neste passo (de onde estava — antes: { x, y } — até onde está): o maior degrau de descida do
+     caminho reto, se for penhasco. → o que danoDaQueda devolve, com o token, ou null. */
+  function quedaDoPasso(sc, t, antes) {
+    if (!sc || !t || t.prop || !antes || !('x' in antes || 'y' in antes)) return null;
+    const h = t.size * sc.cell / 2, ax = (antes.x == null ? t.x : antes.x) + h, ay = (antes.y == null ? t.y : antes.y) + h;
+    const c = custo(sc, [ax, ay, t.x + h, t.y + h]);
+    if (!c || !c.queda) return null;
+    const d = danoDaQueda(sc, t, c.queda);
+    return d ? Object.assign({ tok: t.id, nome: tokName(t) }, d) : null;
+  }
+  /* De cima ou de baixo: a diferença de altura entre quem ataca e o alvo (em quadrados). Um quadrado de diferença já
+     conta. → { lado: 'cima' | 'baixo', v (o bônus da tabela), dif } | null */
+  function vantagem(sc, atacante, alvo) {
+    const tb = tabela(sc);
+    if (!tb.on || !atacante || !alvo || !temRelevo(sc)) return null;
+    const dif = alturaDoToken(atacante, sc) - alturaDoToken(alvo, sc);
+    if (Math.abs(dif) < 1 - 1e-6) return null;
+    const lado = dif > 0 ? 'cima' : 'baixo', v = tb[lado];
+    return v ? { lado, v, dif: Math.round(dif * 100) / 100 } : null;
+  }
+
+  /* ---- a visão pelo relevo ----
+     O contorno de cada área mais alta que o olho de quem olha barra a visão (como uma parede); de dentro de um fosso, o
+     contorno dele também. O contorno do pincel livre é a linha do meio da pincelada. */
+  function contorno(s) {
+    const o = [];
+    const ligar = (pts, fecha) => { for (let i = 0; i + 3 < pts.length; i += 2) o.push(pts[i], pts[i + 1], pts[i + 2], pts[i + 3]); if (fecha && pts.length >= 6) o.push(pts[pts.length - 2], pts[pts.length - 1], pts[0], pts[1]); };
+    switch (s.k) {
+      case 'rect': ligar([s.x, s.y, s.x + s.w, s.y, s.x + s.w, s.y + s.h, s.x, s.y + s.h], true); break;
+      case 'ell': {
+        const rx = s.w / 2, ry = s.h / 2, cx = s.x + rx, cy = s.y + ry, p = [];
+        if (!(rx > 0 && ry > 0)) break;
+        for (let i = 0; i < 24; i++) { const a = i / 24 * TAU; p.push(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry); }
+        ligar(p, true); break;
+      }
+      case 'poly': if (Array.isArray(s.pts) && s.pts.length >= 6) ligar(s.pts, true); break;
+      case 'free': if (Array.isArray(s.pts) && s.pts.length >= 4) ligar(s.pts, false); break;
+    }
+    return o;
+  }
+  const ligada = sc => !!(sc && sc.relevoVisao && sc.fog && sc.fog.dynamic);
+  // os segmentos que o relevo põe na visão DESTE token ([] com a chave desligada ou sem relevo)
+  function barreiras(sc, t) {
+    if (!ligada(sc) || !t || !temRelevo(sc)) return [];
+    const olho = alturaDoToken(t, sc), u = unidade(sc), out = [];
+    const meu = Combate.terrainOf(t, sc);
+    for (const s of sc.shapes) {
+      if (!isTer(s) || !shapeShown(s)) continue;
+      const h = (Number(s.ter.h) || 0) / u;
+      if (h > olho + 1e-6 || (s === meu && h < -1e-6)) for (const v of contorno(s)) out.push(v);
+    }
+    return out;
+  }
+  // de cima se vê mais longe: o alcance da visão (quando tem) cresce um quadrado por quadrado de altura
+  const alcanceExtra = (sc, t) => (ligada(sc) ? Math.max(0, Math.floor(alturaDoToken(t, sc) + 1e-6)) : 0);
+
+  return { PADRAO, norm, igualAoPadrao, tabela, alturaEm, alturaDoToken, temRelevo, perfil, custo, rotulo, danoDaQueda, quedaDoPasso, vantagem, contorno, barreiras, alcanceExtra, ligada };
 })();
 /* ---------------------------------------------------------------
    8. RENDER — desenho da cena no canvas
@@ -9756,7 +9971,9 @@ const Render = (() => {
       ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 1.2 * px; ctx.stroke();
     }
     const n = pts.length;
-    label(ctx, distLabel(sc, total) + (extra || ''), pts[n - 2], pts[n - 1] - 22 * px, px, { stroke: color });
+    // (lote 18) o relevo: a subida que custa movimento, o penhasco que só se escala e a queda
+    const rel = typeof Relevo !== 'undefined' ? Relevo.rotulo(sc, total, pts) : '';
+    label(ctx, distLabel(sc, total) + rel + (extra || ''), pts[n - 2], pts[n - 1] - 22 * px, px, { stroke: color });
     ctx.restore();
   }
 
@@ -13438,9 +13655,11 @@ const UI = (() => {
       if (t.gera && t.gera.b) { if (aqui && aqui.gerado) items.push({ label: 'Gerar este bairro…', icon: 'map', run: () => Cidade.abrirBairro(t) }); }
       // (parte 4b-3) a escada que desce gera o nível de baixo
       else if (t.gera && t.gera.t === 'masmorra') items.push({ label: 'Gerar o nível ' + t.gera.n + '…', icon: 'down', run: () => Masmorra.abrir(t) });
+      // (lote 18) a entrada de gruta: a caverna embaixo da cena, alinhada com ela
+      else if (t.gera && t.gera.t === 'subsolo') items.push({ label: 'Gerar a caverna embaixo…', icon: 'down', run: () => Masmorra.abrirSubsolo(t) });
       else if (def && def.passagem === 'entra') {
         items.push({ label: 'Gerar o interior…', icon: 'house', run: () => Interior.abrir(t) });
-        if (!t.gera) items.push({ label: 'Gerar uma masmorra embaixo…', icon: 'down', run: () => Masmorra.abrir(t) });
+        if (!t.gera) items.push({ label: 'Gerar uma masmorra embaixo…', icon: 'down', run: () => Masmorra.abrir(t) }, { label: 'Gerar a caverna embaixo (alinhada com esta cena)…', icon: 'down', run: () => Masmorra.abrirSubsolo(t) });
       }
       items.push({ label: 'Escolher a cena…', icon: 'link', run: () => openTab('sel', 'pr-cena') }, { label: 'Uma cena nova, dentro desta…', icon: 'plus', run: () => novaCenaLigada(t) });
     }
@@ -14085,10 +14304,53 @@ const UI = (() => {
         f.manual ? h('div', { class: 'row' }, btn('Revelar tudo', () => fogAll('r'), { icon: 'eye' }), btn('Esconder tudo', () => fogAll('h'), { icon: 'eyeOff' })) : null,
         f.dynamic && f.explored ? btn('Esquecer áreas exploradas', () => confirmBox('Esquecer o que foi explorado?', 'Os jogadores voltam a ver só o que enxergam agora. Isso não pode ser desfeito.', 'Esquecer', true).then(ok => { if (ok) { Vision.resetExplored(sc); Nuvem.esquecerExplorado(sc); Render.request(); toast('Áreas exploradas esquecidas.'); } }), { icon: 'reset' }) : null,
         note('Para conferir o resultado, troque "Vendo como" no topo para um jogador.')),
+      // (lote 18) as fases da arena (só numa arena; só o mestre)
+      Arena.secao({ sec, note, btn }),
+      // (lote 18) o campo de batalha: a leitura do campo e levar para a batalha
+      Campo.secao({ sec, note, btn }),
+      // (lote 18) o relevo com regra: a visão pelo relevo (desta cena) e a tabela do mestre (da mesa)
+      sec('c-relevo', 'Relevo', false,
+        toggle('rl-visao', !!sc.relevoVisao, v => S({ relevoVisao: v || undefined }, 'Visão pelo relevo'), 'A altura esconde (visão pelo relevo)', { disabled: !f.dynamic }),
+        note(f.dynamic ? 'Ligada, a visão dos jogadores segue o relevo: morros e penhascos escondem o que está atrás, de dentro de um fosso só se vê o fosso, e de cima se vê mais longe.'
+          : 'A visão pelo relevo precisa da "Visão por paredes" (em Visão e névoa).'),
+        h('p', { class: 'note', id: 'rl-resumo', text: resumoDoRelevo(Relevo.tabela(sc)) }),
+        btn('Regras do relevo…', abrirRegrasDoRelevo, { icon: 'sliders', id: 'rl-regras' })),
       sec('c-perm', 'O que os jogadores podem', true,
         PERMS.map(([k, label]) => toggle('pm-' + k, !!sc.perms[k], v => S({ perms: Object.assign({}, sc.perms, { [k]: v }) }, 'Permissões'), label)),
         note('Paredes, luzes, névoa, cenas e tokens do mestre ficam sempre com o mestre.')),
     ];
+  }
+  /* (lote 18) A tabela do relevo (a da mesa: vale em todas as cenas). Só sugestões: a régua mostra a subida e o
+     penhasco, a queda sugere o dano ao mestre e a janelinha de atributos oferece o bônus de cima. */
+  const sinalR = n => (n < 0 ? '−' : '+') + fmt(Math.abs(n));
+  function resumoDoRelevo(t) {
+    if (!t.on) return 'As regras do relevo estão desligadas: a altura é só visual.';
+    return `Subir 1 de altura custa +${fmt(t.sobe)} q · penhasco a partir de ${fmt(t.penhasco)} q · de cima ${sinalR(t.cima)}, de baixo ${sinalR(t.baixo)} no ataque · queda: ${fmt(t.queda)}% da Vida a cada ${fmt(t.quedaCada)} q.`;
+  }
+  function abrirRegrasDoRelevo() {
+    if (!isGM()) return;
+    const antes = Store.S.prefs.relevo ? Relevo.norm(Store.S.prefs.relevo) : null, r = Relevo.norm(antes);
+    const num = (id, k, a, b, passo, rotulo) => inNum(id, r[k], v => { r[k] = v; }, { min: a, max: b, step: passo || 0.5, label: rotulo });
+    const linha = (rot, campo, depois) => h('div', { class: 'rl-l' }, h('span', { text: rot }), campo, depois ? h('span', { class: 'muted', text: depois }) : null);
+    const body = h('div', { class: 'rl-tab', id: 'rl-tab' },
+      toggle('rl-on', r.on, v => { r.on = v; }, 'Usar as regras do relevo (sugestões; nada se aplica sozinho)'),
+      linha('Subir 1 quadrado de altura custa', num('rl-sobe', 'sobe', 0, 20, 0.5, 'Quadrados de movimento a mais por quadrado de altura subido'), 'quadrado(s) a mais'),
+      linha('Penhasco: a partir de', num('rl-pen', 'penhasco', 1, 100, 0.5, 'Altura de uma vez que é penhasco'), 'quadrados de altura de uma vez (subir só escalando; descer é queda)'),
+      linha('Atacar de cima', num('rl-cima', 'cima', -999, 999, 1, 'Bônus no ataque de quem está mais alto'), 'no atributo'),
+      linha('Atacar de baixo', num('rl-baixo', 'baixo', -999, 999, 1, 'Bônus no ataque de quem está mais baixo'), 'no atributo'),
+      linha('A queda tira', num('rl-queda', 'queda', 0, 100, 1, 'Porcentagem da Vida máxima'), '% da Vida máxima'),
+      linha('a cada', num('rl-qcada', 'quedaCada', 0.5, 100, 0.5, 'Quadrados de queda'), 'quadrados de queda'),
+      note('Vale em todas as cenas desta mesa. A régua e o arrastar mostram a subida; a queda de um penhasco avisa você com o dano sugerido; mirando alguém, a janelinha de atributos (F) oferece o bônus de cima ou de baixo.'));
+    modal({ title: 'Regras do relevo', body, wide: true, actions: [
+      { label: 'Valores de começo', run: () => { Object.assign(r, Relevo.norm(null)); for (const [id, k] of [['rl-sobe', 'sobe'], ['rl-pen', 'penhasco'], ['rl-cima', 'cima'], ['rl-baixo', 'baixo'], ['rl-queda', 'queda'], ['rl-qcada', 'quedaCada']]) { const c = document.getElementById(id); if (c) c.value = r[k]; } const o = document.getElementById('rl-on'); if (o) o.checked = true; return false; }, keep: true },
+      { label: 'Cancelar' },
+      { label: 'Salvar', kind: 'primary', run: () => {
+        const novo = Relevo.igualAoPadrao(r) ? null : Relevo.norm(r);
+        if (JSON.stringify(novo) === JSON.stringify(antes)) return;
+        Store.S.prefs.relevo = novo; Persist.meta({ pub: true }); Render.request(); refresh();
+        toast('As regras do relevo estão salvas.', { action: 'Desfazer', key: 'relevo', run: () => { Store.S.prefs.relevo = antes; Persist.meta({ pub: true }); Render.request(); refresh(); toast('As regras do relevo voltaram.'); } });
+      } },
+    ] });
   }
   // Mudar o tamanho do quadrado reescala tudo o que está na cena.
   function resizeCell(n) {
@@ -14253,6 +14515,7 @@ const UI = (() => {
         Store.tx('Criar token', () => Store.add('tokens', t));
         setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); openTab('sel', 'tk-name');
       } });
+      { const f = gm ? Arena.proxima(sc) : null; if (f) items.push({ label: 'Acionar a ' + f.nome.toLowerCase() + ' da arena…', icon: 'next', run: () => Arena.acionar(f.i) }); }
       if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
       if (Luta.podeDescanso() && Store.scene().tokens.some(t => t.char && !t.clone)) items.push({ label: 'Descanso curto do grupo…', icon: 'rest', run: () => Luta.descansoCurto() });
       if (App.clip.length && (gm || can('draw') || can('fx'))) items.push({ label: 'Colar aqui', icon: 'copy', key: 'Ctrl+V', run: () => Act.pasteAt(p.x, p.y) });
@@ -14569,6 +14832,15 @@ const UI = (() => {
     if (!isGM() || d.k !== 'caiu') return;
     toast(`O gêmeo (Duplicado) de ${d.nome} caiu. Tirar da cena?`, { action: 'Tirar da cena', key: 'dup-' + d.id, long: true,
       run: () => { if (Act.duplicadoTirar(d.id)) toast('O gêmeo saiu da cena. A ficha dele continua nas Fichas.', { action: 'Desfazer', run: Tools.undo }); } });
+  });
+  // (lote 18) a queda de um penhasco: a regra sugere o dano; o mestre aplica (ou não)
+  Store.on('queda', d => {
+    const t = Store.get('tokens', d.tok), sc = Store.scene();
+    if (!t || !isGM()) return;
+    const un = (sc.grid && sc.grid.unitName) || '', alt = fmt(d.m) + (un ? ' ' + un : '');
+    if (!d.dano || !d.barra) { toast(`${tokName(t)} caiu ${alt}: a regra sugere ${d.pct}% da Vida máxima.`, { key: 'queda-' + d.tok, long: true }); return; }
+    toast(`${tokName(t)} caiu ${alt}: a regra sugere ${d.pct}% da Vida máxima (${fmt(d.dano)} de ${d.barra}).`, { action: 'Aplicar o dano', key: 'queda-' + d.tok, long: true,
+      run: () => { const tk = Store.get('tokens', d.tok); if (tk && Combate.aplicarAtaque([{ t: tk, final: d.dano }], d.barra, 'Dano da queda').length) toast(`${tokName(tk)}: −${fmt(d.dano)} de ${d.barra} (queda).`, { action: 'Desfazer', run: Tools.undo }); } });
   });
   Store.on('runas', d => {
     const t = Store.get('tokens', d.tok);
@@ -14958,7 +15230,7 @@ const Luta = (() => {
       if (r.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: '', attrNome: 'valor avulso', atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }); } catch (e) { console.error(e); } }
     } else { r = Fichas.rolar(t, k, fixa, mais); nome = r.nome || k; }
     pop.res = r.ok ? { ok: true, total: r.total, txt: nome, det: Combate.comoSaiu(r) + maisDet(r) } : { ok: false, txt: r.error };
-    if (r.ok) { pop.ma.value = ''; pop.mr.value = ''; }
+    if (r.ok) { pop.ma.value = ''; pop.mr.value = ''; pop.relSomado = false; }
     pintarPop();
   }
   function pintarPop() {
@@ -14967,6 +15239,7 @@ const Luta = (() => {
     if (!t || !modo || !tokShown(t, sc)) { fecharPop(); return; }
     const a = document.activeElement, fid = a && a.id && pop.el.contains(a) ? a.id : null;
     pop.nome.textContent = tokName(t);
+    pintarRelevo(t, sc);
     if (document.activeElement !== pop.fx) pop.fx.value = fixaAtual(t);
     const fixa = lerFixaDoPop(), mais = lerMaisDoPop();
     pop.ma.classList.toggle('tem', !!mais.atr); pop.mr.classList.toggle('tem', !!mais.res);
@@ -14994,6 +15267,24 @@ const Luta = (() => {
     pop.out.replaceChildren(...(r ? (r.ok ? [h('b', { class: 'pop-tot', id: 'fp-total', text: String(r.total) }), h('span', { text: r.txt }), h('small', { text: r.det })] : [h('span', { text: r.txt })]) : []));
     if (fid && fid !== 'fp-fixa' && fid !== 'fp-valor' && fid !== 'fp-ma' && fid !== 'fp-mr') { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); else pop.el.focus({ preventScroll: true }); }
   }
+  /* (lote 18) De cima ou de baixo: com o alvo da mira de quem está olhando (o primeiro), a janelinha diz a vantagem da
+     altura e oferece somar o bônus no atributo, só nesta rolagem. Nada entra sozinho. */
+  function alvoDaMira(t, sc) {
+    const eu = isGM() ? 'gm' : App.viewer, ids = (sc.targets || []).filter(x => x && x.by === eu && x.t !== t.id).map(x => x.t);
+    for (const id of ids) { const a = Store.get('tokens', id); if (a && tokShown(a, sc)) return a; }
+    return null;
+  }
+  function pintarRelevo(t, sc) {
+    if (!pop || !pop.rel) return;
+    const alvo = alvoDaMira(t, sc), v = alvo ? Relevo.vantagem(sc, t, alvo) : null;
+    pop.rel.hidden = !v;
+    if (!v) { pop.rel.replaceChildren(); return; }
+    const txt = 'Mirando ' + tokName(alvo) + (v.lado === 'cima' ? ', de cima: ' : ', de baixo: ') + sinalN(v.v) + ' no atributo';
+    pop.rel.replaceChildren(h('span', { text: txt }), btn(pop.relSomado ? 'Somado' : 'Somar', () => {
+      if (!pop || pop.relSomado) return;
+      pop.ma.value = String(clamp(int(pop.ma.value, 0) + v.v, -999, 999)); pop.relSomado = true; pintarPop();
+    }, { id: 'fp-rel-somar', disabled: pop.relSomado, title: 'Soma ' + sinalN(v.v) + ' no campo “+ atrib.”, só nesta rolagem (a regra do relevo)' }));
+  }
   function abrirPop(t) {
     fecharPop(); fecharEquip(); UI.closeMenus();
     const fx = h('input', { id: 'fp-fixa', type: 'number', class: 'in num', min: 0, max: 99999, step: 1, value: fixaAtual(t), 'aria-label': 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa',
@@ -15005,14 +15296,16 @@ const Luta = (() => {
       oninput: () => pintarPop(), onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); pop.el.focus({ preventScroll: true }); } } });
     const ma = campoMais('fp-ma', 'Bônus no atributo, só nesta rolagem', 'Soma no atributo antes de rolar (muda o dado: atributo 40 com +5, fixando 15, rola 1d30 + 15)');
     const mr = campoMais('fp-mr', 'Bônus no resultado, só nesta rolagem', 'Soma no resultado, depois de rolar');
+    // (lote 18) o relevo: mirando alguém mais baixo (ou mais alto), a sugestão de somar o bônus da tabela
+    const rel = h('div', { class: 'pop-rel', id: 'fp-rel', hidden: true });
     const el = h('div', { class: 'pop', id: 'fpop', role: 'dialog', 'aria-label': 'Rolar atributo de ' + tokName(t), tabindex: '-1' },
       h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou F)', fecharPop, { size: 15, id: 'fp-x' })),
       h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx),
       h('div', { class: 'pop-m', role: 'group', 'aria-label': 'Bônus só nesta rolagem', title: 'Valem só para a próxima rolagem' },
         h('span', { class: 'pop-l', text: 'Só nesta' }), h('label', { class: 'pop-l', for: 'fp-ma', text: '+ atrib.' }), ma, h('label', { class: 'pop-l', for: 'fp-mr', text: '+ result.' }), mr),
-      grid, out);
+      rel, grid, out);
     K.layer.append(el);
-    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr };
+    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr, rel, relSomado: false };
     pintarPop();
     if (!pop) return;
     // ao lado do token (à direita; se não couber, à esquerda), sem sair da tela — e ali fica, mesmo que o mapa ande
@@ -24161,6 +24454,15 @@ const Encontro = (() => {
     if (p.marcas && p.marcas.emboscada && Props.P.emboscada) sc.tokens.push(Props.novo(sc, 'emboscada', p.marcas.emboscada[0] * c, p.marcas.emboscada[1] * c, 1, true));
     // (lote 13) os pontos de interesse (a Região livre): um marcador oculto em cada um, com o nome do que há ali
     if (p.comMarcas !== false && Props.P.interesse) for (const q of p.pontos || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
+    // (lote 18) a entrada de gruta leva ao subsolo: a Entrada oculta na boca dela já sabe o rio e o bioma de cima
+    for (const q of p.pontos || []) if (q.k === 'gruta' && Props.P.entrada) {
+      const rios = (p.aguas || []).filter(a => a && a.k === 'rio' && Array.isArray(a.pts) && a.pts.length >= 2).sort((u, v) => (v.hw || 0) - (u.hw || 0));
+      const rp = rios.length ? rios[0].pts : null, passo = rp ? Math.max(1, Math.ceil(rp.length / 40)) : 1;
+      const rio = rp ? rp.filter((_, k) => k % passo === 0 || k === rp.length - 1).map(([x, y]) => [Math.round(x * 100) / 100, Math.round(y * 100) / 100]) : null;
+      const t = entrada(sc, q.cx - 0.5, q.cy - 0.5, Object.assign({ t: 'subsolo', x: q.cx, y: q.cy, bio: typeof Masmorra !== 'undefined' ? Masmorra.biomaDeBaixo(p.bioma) : 'fungos', s: (sub(p.seed, 91) % 2147483000) + 1 }, rio ? { rio } : {}), c);
+      t.name = 'Entrada de gruta';
+      sc.tokens.push(t);
+    }
     // (lote 13, parte 13c) as marcas da história do lugar e o achado raro: ocultos, com o nome do que é
     if (p.comMarcas !== false && Props.P.interesse) for (const q of p.historia || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
     // (lote 14, parte 14b) as marcas da guerra: ocultas, com o nome do que é
@@ -30390,7 +30692,7 @@ const Interior = (() => {
    --------------------------------------------------------------- */
 const Masmorra = (() => {
   const TIPOS = [['pedra', 'Masmorra de pedra'], ['caverna', 'Caverna'], ['cripta', 'Cripta'], ['mina', 'Mina abandonada']];
-  const NOME = { pedra: 'Masmorra', caverna: 'Caverna', cripta: 'Cripta', mina: 'Mina' };
+  const NOME = { pedra: 'Masmorra', caverna: 'Caverna', cripta: 'Cripta', mina: 'Mina', subsolo: 'Subsolo', arena: 'Arena' };
   const TAMANHOS = {
     pequeno: { n: 'Pequeno', W: 34, H: 26 },
     medio: { n: 'Médio', W: 46, H: 34 },
@@ -30398,7 +30700,7 @@ const Masmorra = (() => {
   };
   const sub = (seed, k) => (((Math.imul(seed ^ 0x5bd1e995, 0x01000193 + k * 0x9e3779b1) >>> 0) ^ (k * 0x85ebca6b)) >>> 0) || (k + 1);
   // as casas da grade: a rocha, o chão das salas, o dos corredores, a água, o abismo, o nicho, a ponte
-  const ROCHA = 0, SALA = 1, CORREDOR = 2, AGUA = 3, ABISMO = 4, NICHO = 5, PONTE = 6;
+  const ROCHA = 0, SALA = 1, CORREDOR = 2, AGUA = 3, ABISMO = 4, NICHO = 5, PONTE = 6, LAVA = 7, GELO = 8;     // (lote 18: a lava e o gelo do subsolo)
   const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 
   /* ================= a grade ================= */
@@ -31318,6 +31620,459 @@ const Masmorra = (() => {
     }
   }
 
+
+  /* ================= (lote 18) o subsolo: a caverna embaixo da cena =================
+     Do tamanho da cena de cima e alinhada com ela: a subida (a Saída) fica embaixo da entrada da gruta; o rio de cima
+     (quando a gruta veio de uma Região livre com rio) vira o rio de baixo, pelo mesmo traçado, numa galeria; o bioma de
+     baixo vem do terreno de cima (os fungos que brilham, os cristais, a lava, o gelo, as raízes); os achados e os ninhos
+     (marcadores ocultos, com o nome do que é); e, querendo, a passagem escondida para o nível de baixo. */
+  const BIOMAS_SUB = [['fungos', 'Fungos que brilham'], ['cristais', 'Cristais'], ['lava', 'Lava'], ['gelo', 'Gelo'], ['raizes', 'Raízes']];
+  const NOTA_SUB = {
+    fungos: 'Os cogumelos que brilham encostados nas paredes, as poças e o lago escuro.',
+    cristais: 'Os cristais que brilham em azul e lilás (os grandes tapam a visão), o veio de pedra clara.',
+    lava: 'O lago de lava (a zona de fogo, para o mestre aplicar), as rachaduras em brasa e o calor.',
+    gelo: 'O lago congelado (escorregadio), as estalagmites de gelo e a geada nas paredes.',
+    raizes: 'As raízes das árvores de cima descendo pelas paredes, os fungos e a terra úmida.',
+  };
+  // o bioma de baixo sugerido pelo de cima
+  function biomaDeBaixo(bio) {
+    const b = String(bio || '');
+    if (/lava|vulc/.test(b)) return 'lava';
+    if (/neve|tundra|gelo|geleira/.test(b)) return 'gelo';
+    if (/cristal|montanha|colina|pedra/.test(b)) return 'cristais';
+    if (/floresta|selva|mata|bosque|mangue/.test(b)) return 'raizes';
+    return 'fungos';
+  }
+  // a distância de um ponto a uma linha quebrada [[x, y], …]
+  function distLinha(pts, x, y) {
+    let d = Infinity;
+    for (let k = 1; k < pts.length; k++) { const [x1, y1] = pts[k - 1], [x2, y2] = pts[k], dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy || 1e-9, t = clamp(((x - x1) * dx + (y - y1) * dy) / L, 0, 1); d = Math.min(d, Math.hypot(x - x1 - dx * t, y - y1 - dy * t)); }
+    return d;
+  }
+  function nivelDeSubsolo(C) {
+    const { G, r, p, W, H } = C;
+    const e0 = { x: clamp(p.entradaEm.x, 4, W - 4), y: clamp(p.entradaEm.y, 4, H - 4) };
+    // 1) as câmaras: a da entrada (embaixo da gruta) e as outras numa grade grossa, mexida, longe dela
+    const nx = W > 50 ? 5 : W > 38 ? 4 : 3, ny = H > 38 ? 4 : H > 26 ? 3 : 2, cw = (W - 4) / nx, chh = (H - 4) / ny;
+    const cam = [{ i: 0, x: e0.x, y: e0.y, r: 2.8, rx: 3.1, ry: 2.6, liga: [], entrada: true }];
+    for (let b = 0; b < ny; b++) for (let a = 0; a < nx; a++) {
+      if (r() < 0.2) continue;
+      const rr = C.ent(2.3, Math.min(cw, chh) * 0.36), x = 2 + cw * (a + 0.5) + C.ent(-cw * 0.22, cw * 0.22), y = 2 + chh * (b + 0.5) + C.ent(-chh * 0.22, chh * 0.22);
+      if (Math.hypot(x - e0.x, y - e0.y) < rr + 4) continue;
+      cam.push({ i: cam.length, x: clamp(x, rr + 3, W - rr - 3), y: clamp(y, rr + 3, H - rr - 3), r: rr, rx: rr * C.ent(0.85, 1.3), ry: rr * C.ent(0.75, 1.15), liga: [] });
+    }
+    const aberto = new Uint8Array(W * H);
+    const cava = (x, y, rr) => { for (let j = Math.floor(y - rr); j <= Math.ceil(y + rr); j++) for (let i = Math.floor(x - rr); i <= Math.ceil(x + rr); i++) if (i >= 2 && j >= 2 && i < W - 2 && j < H - 2 && Math.hypot(i + 0.5 - x, j + 0.5 - y) <= rr) aberto[j * W + i] = 1; };
+    for (const q of cam) {
+      const ond = [C.ent(0, TAU), C.ent(0, TAU), C.ent(0.08, 0.2)];
+      for (let j = Math.floor(q.y - q.ry - 2); j <= q.y + q.ry + 2; j++) for (let i = Math.floor(q.x - q.rx - 2); i <= q.x + q.rx + 2; i++) {
+        if (i < 2 || j < 2 || i >= W - 2 || j >= H - 2) continue;
+        const dx = (i + 0.5 - q.x) / q.rx, dy = (j + 0.5 - q.y) / q.ry, a = Math.atan2(dy, dx), lim = 1 + ond[2] * Math.sin(3 * a + ond[0]) + ond[2] * 0.7 * Math.sin(5 * a + ond[1]);
+        if (Math.hypot(dx, dy) <= lim) aberto[j * W + i] = 1;
+      }
+    }
+    // 2) os túneis tortos (a árvore mínima e um laço)
+    const pares = [];
+    for (let a = 0; a < cam.length; a++) for (let b = a + 1; b < cam.length; b++) pares.push([Math.hypot(cam[a].x - cam[b].x, cam[a].y - cam[b].y), a, b]);
+    pares.sort((u, v) => u[0] - v[0]);
+    const pai = cam.map((_, i) => i), raiz = i => (pai[i] === i ? i : (pai[i] = raiz(pai[i])));
+    const andar = (A, B, larg) => {
+      let x = A.x, y = A.y, ang = Math.atan2(B.y - y, B.x - x);
+      for (let k = 0; k < 500 && Math.hypot(B.x - x, B.y - y) > 1; k++) {
+        const alvo = Math.atan2(B.y - y, B.x - x);
+        let d = alvo - ang; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU;
+        ang += d * 0.35 + C.ent(-0.55, 0.55);
+        x = clamp(x + Math.cos(ang) * 0.7, 2.5, W - 2.5); y = clamp(y + Math.sin(ang) * 0.7, 2.5, H - 2.5);
+        cava(x, y, larg + C.ent(-0.15, 0.3));
+      }
+    };
+    for (const [, a, b] of pares) if (raiz(a) !== raiz(b)) { andar(cam[a], cam[b], C.ent(0.75, 1.25)); cam[a].liga.push(b); cam[b].liga.push(a); pai[raiz(a)] = raiz(b); }
+    for (const [d, a, b] of pares) if (!cam[a].liga.includes(b) && d < 16 && r() < 0.4) { andar(cam[a], cam[b], C.ent(0.75, 1.1)); cam[a].liga.push(b); cam[b].liga.push(a); break; }
+    // 3) o rio de baixo: a galeria pelo traçado do rio de cima (e um túnel da câmara mais perto até ele)
+    const rio = Array.isArray(p.rioPts) && p.rioPts.length >= 2 ? p.rioPts.map(([x, y]) => [clamp(x, 0, W), clamp(y, 0, H)]) : null;
+    if (rio) {
+      for (let j = 1; j < H - 1; j++) for (let i = 1; i < W - 1; i++) if (distLinha(rio, i + 0.5, j + 0.5) <= 2.1) aberto[j * W + i] = 1;
+      let melhor = null;
+      for (const q of cam) { const d = distLinha(rio, q.x, q.y); if (!melhor || d < melhor[0]) melhor = [d, q]; }
+      if (melhor && melhor[0] > 2) {
+        // (o ponto do rio mais perto da câmara)
+        let alvo = null;
+        for (let k = 1; k < rio.length; k++) for (let t = 0; t <= 1; t += 0.1) { const x = rio[k - 1][0] + (rio[k][0] - rio[k - 1][0]) * t, y = rio[k - 1][1] + (rio[k][1] - rio[k - 1][1]) * t, d = Math.hypot(x - melhor[1].x, y - melhor[1].y); if (!alvo || d < alvo[0]) alvo = [d, x, y]; }
+        if (alvo) andar(melhor[1], { x: alvo[1], y: alvo[2] }, 1);
+      }
+    }
+    // 4) alisar e ficar só com a maior região aberta
+    for (let it = 0; it < 2; it++) {
+      const n = aberto.slice();
+      for (let j = 2; j < H - 2; j++) for (let i = 2; i < W - 2; i++) {
+        let ab = 0;
+        for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) if (a || b) ab += aberto[(j + b) * W + i + a];
+        if (aberto[j * W + i] && ab <= 2) n[j * W + i] = 0; else if (!aberto[j * W + i] && ab >= 6) n[j * W + i] = 1;
+      }
+      aberto.set(n);
+    }
+    if (rio) for (let j = 1; j < H - 1; j++) for (let i = 1; i < W - 1; i++) if (distLinha(rio, i + 0.5, j + 0.5) <= 1.6) aberto[j * W + i] = 1;     // (a galeria do rio vai até a borda)
+    const reg = regioes(W, H, (i, j) => aberto[j * W + i] === 1);
+    const ide = reg.id[Math.floor(e0.y) * W + Math.floor(e0.x)], maior = ide >= 0 ? ide : reg.lista.reduce((m, l, k) => (l.length > reg.lista[m].length ? k : m), 0);
+    for (let k = 0; k < W * H; k++) G.g[k] = reg.id[k] === maior ? SALA : ROCHA;
+    const vivas = cam.filter(q => G.at(Math.floor(q.x), Math.floor(q.y)) === SALA);
+    const ent0 = vivas.find(q => q.entrada) || vivas[0];
+    const dist = distancias(cam, ent0.i);
+    const desc0 = vivas.filter(q => q !== ent0).sort((a, b) => (dist[b.i] || 0) - (dist[a.i] || 0) || Math.hypot(b.x - ent0.x, b.y - ent0.y) - Math.hypot(a.x - ent0.x, a.y - ent0.y))[0];
+    const usadas = new Set([ent0, desc0]);
+    // a água do rio (o fio do meio da galeria)
+    if (rio) for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (G.at(i, j) === SALA && distLinha(rio, i + 0.5, j + 0.5) <= 0.9) G.pos(i, j, AGUA);
+    // 5) o lago (de água, de lava ou congelado): na maior câmara que sobrou
+    const lagoQ = vivas.filter(q => !usadas.has(q)).sort((a, b) => b.r - a.r)[0];
+    if (lagoQ && lagoQ.r >= 2.6) {
+      usadas.add(lagoQ);
+      const v = p.bioma === 'lava' ? LAVA : p.bioma === 'gelo' ? GELO : AGUA;
+      const a0 = C.ent(0, TAU), cx = lagoQ.x + Math.cos(a0) * lagoQ.r * 0.3, cy = lagoQ.y + Math.sin(a0) * lagoQ.r * 0.3, rx = lagoQ.rx * 0.75, ry = lagoQ.ry * 0.7;
+      for (let j = Math.floor(cy - ry - 1); j <= cy + ry + 1; j++) for (let i = Math.floor(cx - rx - 1); i <= cx + rx + 1; i++) {
+        const dd = Math.hypot((i + 0.5 - cx) / rx, (j + 0.5 - cy) / ry);
+        if (dd <= 1 + 0.12 * Math.sin(Math.atan2(j - cy, i - cx) * 4 + a0) && G.at(i, j) === SALA) G.pos(i, j, v);
+      }
+      p.lago = { x: cx, y: cy, rx, ry, k: v === LAVA ? 'lava' : v === GELO ? 'gelo' : 'agua' };
+      if (v === LAVA) { p.zonas.push({ fx: 'lava', k: 'circ', x: cx, y: cy, r: Math.max(1, Math.min(rx, ry) * 0.9), gm: false, leve: true }); luz(C, cx, cy, Math.round(Math.max(rx, ry) + 4), '#ff7a2a', 2); }
+      if (v === GELO) p.zonas.push({ fx: 'gelado', k: 'circ', x: cx, y: cy, r: Math.max(1, Math.min(rx, ry) * 0.9), gm: false, leve: true });
+    }
+    p.salas = vivas.map(q => ({ x: Math.round(q.x - q.r), y: Math.round(q.y - q.r), w: Math.round(q.r * 2), h: Math.round(q.r * 2), papel: q === ent0 ? 'entrada' : q === desc0 ? 'descida' : q === lagoQ ? 'lago' : 'camara' }));
+    // 6) a subida: a escada natural da câmara da entrada, o mais perto possível de embaixo da gruta
+    p.sobe = escadaPerto(C, ent0, e0.x, e0.y);
+    p.desce = p.descida && desc0 ? escadaNatural(C, desc0, null, false) : null;
+    // 7) o bioma: os detalhes de cada um (e os da caverna de sempre, menos ou mais)
+    detalhesDoSubsolo(C);
+    // 8) os achados e os ninhos (marcadores ocultos, com o nome do que é)
+    if (p.achados) achadosDoSubsolo(C, vivas.filter(q => !usadas.has(q)).concat(vivas.filter(q => q === desc0)));
+    // 9) as paredes: o contorno alisado do que não é rocha
+    p.contorno = contornoTremido(W, H, (i, j) => G.at(i, j) !== ROCHA, p.seed % 9973);
+    p.paredes = segmentosDe(p.contorno).concat(p.paredes);
+  }
+  // a escada natural (dois por dois, encostada na rocha) da câmara, a mais perto do ponto (x, y)
+  function escadaPerto(C, q, x0, y0) {
+    const { G } = C, cands = [];
+    for (let j = Math.floor(q.y - q.r - 3); j <= q.y + q.r + 3; j++) for (let i = Math.floor(q.x - q.r - 3); i <= q.x + q.r + 3; i++) {
+      if (!C.livreS(i, j, 2)) continue;
+      let enc = null;
+      if (G.at(i, j - 1) === ROCHA && G.at(i + 1, j - 1) === ROCHA) enc = 'n';
+      else if (G.at(i, j + 2) === ROCHA && G.at(i + 1, j + 2) === ROCHA) enc = 's';
+      else if (G.at(i - 1, j) === ROCHA && G.at(i - 1, j + 1) === ROCHA) enc = 'o';
+      else if (G.at(i + 2, j) === ROCHA && G.at(i + 2, j + 1) === ROCHA) enc = 'l';
+      cands.push([i, j, enc || 'n', Math.hypot(i + 1 - x0, j + 1 - y0) + (enc ? 0 : 2)]);
+    }
+    if (!cands.length) return escadaNatural(C, q, null, true);
+    cands.sort((a, b) => a[3] - b[3]);
+    const [x, y, enc] = cands[0];
+    C.ocupa(x, y, 2, 2);
+    const e = { x, y, w: 2, h: 2, lado: enc, sobe: true, natural: true };
+    C.pinta('escada', e);
+    return Object.assign(e, { mi: enc === 'o' ? x + 1 : x, mj: enc === 'n' ? y + 1 : y });
+  }
+  function detalhesDoSubsolo(C) {
+    const { G, W, H, p } = C, bio = p.bioma;
+    const longeDaRocha = (i, j, d) => { for (let b = -d; b <= d; b++) for (let a = -d; a <= d; a++) if (G.at(i + a, j + b) === ROCHA) return false; return true; };
+    const sorteia = (n, ok, fn) => { for (let t = 0, k = 0; t < n * 60 && k < n; t++) { const i = 2 + Math.floor(C.r() * (W - 4)), j = 2 + Math.floor(C.r() * (H - 4)); if (G.at(i, j) !== SALA || !C.livre(i, j) || !ok(i, j)) continue; if (fn(i, j) !== false) k++; } };
+    const longeDoLago = (i, j) => !p.lago || Math.hypot(i + 0.5 - p.lago.x, j + 0.5 - p.lago.y) > Math.max(p.lago.rx, p.lago.ry) + 1.5;
+    // as estalagmites (as de gelo no gelo; as grandes tapam a visão)
+    const nG = Math.round(W * H / 190);
+    sorteia(nG, (i, j) => longeDaRocha(i, j, 1) && longeDoLago(i, j), (i, j) => {
+      const x = i + 0.5 + C.ent(-0.1, 0.1), y = j + 0.5 + C.ent(-0.1, 0.1), rr = C.ent(0.45, 0.62);
+      C.pinta('estalagmite', { x, y, r: rr, grande: true, gelo: bio === 'gelo' });
+      C.ocupa(i, j, 1, 1);
+      const pts = [];
+      for (let k = 0; k < 6; k++) { const a = (k / 6) * TAU + 0.3; pts.push([x + Math.cos(a) * rr * 0.85, y + Math.sin(a) * rr * 0.85]); }
+      for (let k = 0; k < 6; k++) { const a = pts[k], b = pts[(k + 1) % 6]; p.visao.push([a[0], a[1], b[0], b[1]]); }
+    });
+    sorteia(nG * 2, (i, j) => !longeDaRocha(i, j, 1), (i, j) => { C.pinta('estalagmite', { x: i + 0.5, y: j + 0.5, r: C.ent(0.18, 0.3), n: 2 + Math.floor(C.r() * 3), gelo: bio === 'gelo' }); });
+    // os fungos (em todos, menos no gelo; muitos nos Fungos, alguns nas Raízes)
+    const nCog = bio === 'fungos' ? Math.max(4, Math.round(W * H / 220)) : bio === 'raizes' ? Math.max(2, Math.round(W * H / 500)) : bio === 'cristais' ? 1 : 0;
+    sorteia(nCog, (i, j) => !longeDaRocha(i, j, 1), (i, j) => {
+      if (!C.poe('cogumelos', i, j)) return false;
+      const cor = C.r() < 0.6 ? '#7fe9ff' : '#a8ff9a';
+      C.pinta('cogumelos', { x: i + 0.5, y: j + 0.5, r: 1.1, cor }); luz(C, i + 0.5, j + 0.5, 3, cor, 1);
+    });
+    if (bio === 'cristais') {
+      // os cristais: grupos encostados nas paredes (com a luz) e alguns grandes no meio (tapam a visão)
+      sorteia(Math.max(4, Math.round(W * H / 200)), (i, j) => !longeDaRocha(i, j, 1), (i, j) => {
+        const cor = C.r() < 0.55 ? '#8fd6ff' : '#c79bff';
+        C.pinta('cristal', { x: i + 0.5, y: j + 0.5, r: C.ent(0.5, 0.85), cor, n: 3 + Math.floor(C.r() * 3) }); C.ocupa(i, j, 1, 1);
+        luz(C, i + 0.5, j + 0.5, 3, cor, 1);
+      });
+      sorteia(Math.max(2, Math.round(W * H / 500)), (i, j) => longeDaRocha(i, j, 1) && longeDoLago(i, j), (i, j) => {
+        const cor = C.r() < 0.5 ? '#8fd6ff' : '#c79bff', x = i + 0.5, y = j + 0.5, rr = C.ent(0.55, 0.75);
+        C.pinta('cristal', { x, y, r: rr, cor, n: 5, grande: true }); C.ocupa(i, j, 1, 1); luz(C, x, y, 4, cor, 1.5);
+        for (let k = 0; k < 5; k++) { const a = (k / 5) * TAU, b = ((k + 1) / 5) * TAU; p.visao.push([x + Math.cos(a) * rr * 0.8, y + Math.sin(a) * rr * 0.8, x + Math.cos(b) * rr * 0.8, y + Math.sin(b) * rr * 0.8]); }
+      });
+    } else if (bio === 'lava') {
+      // as rachaduras em brasa no chão (com a luz fraca)
+      sorteia(Math.max(3, Math.round(W * H / 260)), (i, j) => longeDoLago(i, j), (i, j) => { C.pinta('brasa', { x: i + 0.5, y: j + 0.5, r: C.ent(0.6, 1.1) }); luz(C, i + 0.5, j + 0.5, 2, '#ff8a3a', 0.8); });
+    } else if (bio === 'gelo') {
+      // a geada: manchas claras no chão, perto das paredes
+      sorteia(Math.max(4, Math.round(W * H / 180)), (i, j) => !longeDaRocha(i, j, 1), (i, j) => { C.pinta('geada', { x: i + 0.5, y: j + 0.5, r: C.ent(0.7, 1.3) }); });
+      sorteia(2, (i, j) => true, (i, j) => { luz(C, i + 0.5, j + 0.5, 3, '#bfe6ff', 1); });
+    } else if (bio === 'raizes') {
+      // as raízes descendo pelas paredes
+      sorteia(Math.max(5, Math.round(W * H / 150)), (i, j) => !longeDaRocha(i, j, 1), (i, j) => {
+        let a = null;
+        for (const [dx, dy] of DIRS) if (G.at(i + dx, j + dy) === ROCHA) { a = Math.atan2(-dy, -dx); break; }
+        C.pinta('raizes', { x: i + 0.5, y: j + 0.5, ang: a == null ? C.ent(0, TAU) : a, n: 3 + Math.floor(C.r() * 3) });
+      });
+    }
+    // as poças e os ossos
+    sorteia(Math.round(W * H / 420), () => true, (i, j) => { C.pinta(C.r() < 0.6 && bio !== 'lava' ? 'poca' : 'ossos', { x: i + 0.5, y: j + 0.5, r: C.ent(0.5, 1), n: 2 }); });
+  }
+  const ACHADOS_SUB = {
+    fungos: ['Esqueleto com uma bolsa', 'Baú esquecido', 'Cogumelo raro (alquimia)'],
+    cristais: ['Cristal de mana', 'Geodo aberto', 'Esqueleto de minerador com a picareta'],
+    lava: ['Obsidiana', 'Ovo de salamandra', 'Armadura derretida'],
+    gelo: ['Criatura presa no gelo', 'Mochila congelada', 'Cristal de gelo eterno'],
+    raizes: ['Raiz que sangra seiva dourada', 'Ídolo enterrado', 'Baú entre as raízes'],
+  };
+  const NINHOS_SUB = { fungos: 'Ninho de aranhas', cristais: 'Toca de basilisco', lava: 'Ninho de salamandras', gelo: 'Toca do urso das cavernas', raizes: 'Ninho de vermes gigantes' };
+  function achadosDoSubsolo(C, cams) {
+    const { G, p } = C, bio = p.bioma;
+    const chaoPerto = q => { for (let d = 0; d < 4; d++) for (let t = 0; t < 30; t++) { const i = Math.floor(q.x + C.ent(-d - 1, d + 1)), j = Math.floor(q.y + C.ent(-d - 1, d + 1)); if (G.at(i, j) === SALA && C.livre(i, j)) return [i, j]; } return null; };
+    const [qa, qn] = cams;
+    const a = qa ? chaoPerto(qa) : null;
+    if (a) {
+      const n = C.pick(ACHADOS_SUB[bio] || ACHADOS_SUB.fungos);
+      p.marcadores.push({ id: 'achado', x: a[0], y: a[1], n: 'Achado: ' + n.toLowerCase() });
+      if (/baú/i.test(n)) C.poe('bau', a[0], a[1]); else C.pinta('ossos', { x: a[0] + 0.5, y: a[1] + 0.5, n: 3 });
+      C.ocupa(a[0], a[1], 1, 1);
+    }
+    const b = qn ? chaoPerto(qn) : null;
+    if (b) {
+      p.marcadores.push({ id: 'interesse', x: b[0], y: b[1], n: NINHOS_SUB[bio] || 'Ninho' });
+      C.pinta('ninho', { x: b[0] + 0.5, y: b[1] + 0.5, r: 1.1 });
+      C.ocupa(b[0], b[1], 1, 1);
+    }
+  }
+
+
+  /* ================= (lote 18) as arenas de boss =================
+     Um salão só, feito para a luta com o chefe: a entrada embaixo, o lugar do chefe no alto, de frente para ela (elevado,
+     com a altura do relevo), a cobertura e os obstáculos (as colunas, as estátuas, as pedras: tapam a visão), os perigos
+     no chão (as zonas com o efeito escrito: o mestre aplica), o chefe e os pontos de reforço (escondidos dos jogadores) e
+     as fases prontas (arena.fases), que o mestre aciona na cena. Tudo com as casas da masmorra (o desenho é o dela). */
+  const ARENAS = [
+    ['coliseu', 'Arena (coliseu)'], ['trono', 'Sala do trono'], ['mausoleu', 'Mausoléu'], ['covil', 'Covil do dragão'],
+    ['altar', 'Altar do ritual'], ['ponte', 'Ponte sobre o abismo'], ['topo', 'Topo da torre'], ['circulo', 'Círculo de pedras'],
+  ];
+  const TAM_ARENA = { pequeno: { n: 'Pequena', W: 24, H: 18 }, medio: { n: 'Média', W: 30, H: 22 }, grande: { n: 'Grande', W: 36, H: 26 } };
+  const NOME_ARENA = { coliseu: 'A arena', trono: 'A sala do trono', mausoleu: 'O mausoléu', covil: 'O covil do dragão', altar: 'O altar do ritual', ponte: 'A ponte sobre o abismo', topo: 'O topo da torre', circulo: 'O círculo de pedras' };
+  const CHEFE_ARENA = { coliseu: 'O campeão', trono: 'O rei', mausoleu: 'O senhor dos mortos', covil: 'O dragão', altar: 'O sumo-sacerdote', ponte: 'O guardião da ponte', topo: 'O feiticeiro da torre', circulo: 'O espírito antigo' };
+  const LACAIO_ARENA = { coliseu: 'Gladiador', trono: 'Guarda real', mausoleu: 'Morto-vivo', covil: 'Filhote', altar: 'Cultista', ponte: 'Sentinela', topo: 'Gárgula', circulo: 'Espírito' };
+  // as mudanças que uma fase pode ter (para trocar uma pela outra, na janela)
+  const MUDANCAS = [
+    ['reforcos', 'Reforços chegam'], ['desaba', 'O chão desaba'], ['luz', 'As luzes se apagam'], ['grade', 'A grade da entrada fecha'],
+    ['zona:lava', 'A lava sobe'], ['zona:espinhos', 'Espinhos saem do chão'], ['zona:toxica', 'Névoa venenosa'], ['zona:gelado', 'O chão congela'],
+    ['zona:runas', 'As runas se acendem'], ['zona:escuridao', 'A escuridão'], ['zona:tempestade', 'A tempestade'], ['zona:vento', 'Vento forte'], ['zona:chamasNegras', 'Chamas negras'],
+    ['zona:arcano', 'A magia antiga desperta'], ['zona:luaSangue', 'A lua de sangue'], ['zona:fumaca', 'A fumaça toma o salão'], ['zona:oleo', 'O óleo se espalha'],
+  ];
+  // as fases prontas de cada arena: a 2 e a 3, cada uma com as mudanças dela (o mestre liga, desliga ou troca na janela)
+  const FASES_ARENA = {
+    coliseu: [['reforcos', 'zona:espinhos'], ['desaba', 'grade']],
+    trono: [['reforcos', 'luz'], ['zona:chamasNegras', 'grade']],
+    mausoleu: [['reforcos', 'zona:toxica'], ['luz', 'grade']],
+    covil: [['reforcos', 'zona:lava'], ['desaba', 'zona:fumaca']],
+    altar: [['reforcos', 'zona:runas'], ['zona:escuridao', 'desaba']],
+    ponte: [['reforcos', 'desaba'], ['zona:vento', 'zona:tempestade']],
+    topo: [['reforcos', 'zona:tempestade'], ['desaba', 'luz']],
+    circulo: [['reforcos', 'zona:arcano'], ['zona:luaSangue', 'desaba']],
+  };
+  // (a sala do chefe do último nível da masmorra: a arena que combina com o tipo)
+  const ARENA_DO_TIPO = { pedra: 'trono', cripta: 'mausoleu', caverna: 'covil', mina: 'covil', subsolo: 'covil' };
+  const nomeMud = k => (MUDANCAS.find(x => x[0] === k) || [k, k])[1];
+  function nivelDeArena(C) {
+    const { G, p, W, H } = C, a = p.arena, cx = W / 2;
+    const enche = (dentro, v) => { for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (dentro(i + 0.5, j + 0.5)) G.pos(i, j, v); };
+    const elipse = (x, y, rx, ry) => (i, j) => Math.hypot((i - x) / rx, (j - y) / ry) <= 1;
+    const ret = (x0, y0, x1, y1) => (i, j) => i >= x0 && i <= x1 && j >= y0 && j <= y1;
+    a.reforcos = []; a.perigos = []; a.zonas = [];
+    const perigo = (fx, x, y, r, gm) => { p.zonas.push({ fx, k: 'circ', x, y, r, gm: !!gm, leve: true }); a.perigos.push(fx); };
+    const estatua = (x, y) => { if (C.poe('estatua', Math.floor(x), Math.floor(y))) { const pts = []; for (let k = 0; k < 6; k++) { const an = (k / 6) * TAU; pts.push([Math.floor(x) + 0.5 + Math.cos(an) * 0.38, Math.floor(y) + 0.5 + Math.sin(an) * 0.38]); } for (let k = 0; k < 6; k++) { const u = pts[k], v = pts[(k + 1) % 6]; p.visao.push([u[0], u[1], v[0], v[1]]); } } };
+    const estradoChefe = (x, y, w, h, alt) => {
+      const est = { x: Math.round(x), y: Math.round(y), w, h };
+      p.relevo.push({ t: 'plataforma', alt, k: 'rect', x: est.x + 0.05, y: est.y + 0.05, w: est.w - 0.1, h: est.h - 0.1 });
+      C.pinta('estrado', est); C.ocupaRet(est.x, est.y, est.w, est.h, 1);
+      a.chefe = { x: est.x + est.w / 2 - 1, y: est.y + est.h / 2 - 1 };
+      return est;
+    };
+    const entradaEmbaixo = (yTopo, larg) => {
+      const x0 = Math.floor(cx - larg / 2), x1 = x0 + larg - 1;
+      for (let j = Math.floor(yTopo); j < H; j++) for (let i = x0; i <= x1; i++) if (G.at(i, j) === ROCHA) G.pos(i, j, CORREDOR);
+      a.entrada = { x: cx, y: H - 1.5 };
+      return { x0, x1 };
+    };
+    if (a.tipo === 'coliseu') {
+      const cy = H / 2 - 0.5, rx = W / 2 - 2.5, ry = H / 2 - 2.2;
+      enche(elipse(cx, cy, rx, ry), SALA);
+      const yb = Math.ceil(cy + ry) - 0.5, { x0, x1 } = entradaEmbaixo(yb - 1, 3);
+      p.paredes.push({ x1: x0, y1: Math.floor(yb) + 1, x2: x1 + 1, y2: Math.floor(yb) + 1, k: 'door', grade: true });
+      a.grade = { x: cx, y: Math.floor(yb) + 1 };
+      estradoChefe(cx - 3, cy - ry + 0.6, 6, 2, 3);
+      for (const [dx, dy] of [[-0.55, -0.1], [0.55, -0.1], [-0.3, 0.35], [0.3, 0.35]]) estatua(cx + dx * rx, cy + dy * ry);
+      for (const [dx, dy] of [[-0.25, -0.05], [0.25, -0.05], [0, 0.2]]) { const i = Math.floor(cx + dx * rx), j = Math.floor(cy + dy * ry); C.poe(C.r() < 0.5 ? 'caixote' : 'barril', i, j); }
+      perigo('espinhos', cx - rx * 0.62, cy + ry * 0.2, 1.2); perigo('espinhos', cx + rx * 0.62, cy + ry * 0.2, 1.2);
+      a.reforcos.push([cx - rx * 0.85, cy], [cx + rx * 0.85, cy]);
+      C.pinta('arquibancada', { cx, cy, rx, ry });
+      a.zonas = [['zona:espinhos', cx, cy + ry * 0.1, Math.min(rx, ry) * 0.45]];
+      a.desaba = { x: cx - 2, y: cy - 1, w: 4, h: 3 };
+    } else if (a.tipo === 'trono' || a.tipo === 'mausoleu') {
+      const x0 = 2, y0 = 2, x1 = W - 3, y1 = H - 4;
+      enche(ret(x0, y0, x1 + 1, y1 + 1), SALA);
+      const { x0: e0, x1: e1 } = entradaEmbaixo(y1 + 1, 2);
+      p.paredes.push({ x1: e0, y1: y1 + 1, x2: e1 + 1, y2: y1 + 1, k: 'door', grade: true });
+      a.grade = { x: cx, y: y1 + 1 };
+      // as portas dos lados (por onde chegam os reforços)
+      const my = Math.round((y0 + y1) / 2);
+      for (const lx of [x0 - 1, x1 + 1]) { G.pos(lx, my, CORREDOR); G.pos(lx + (lx < cx ? -1 : 1), my, CORREDOR); p.paredes.push({ x1: lx < cx ? x0 : x1 + 1, y1: my, x2: lx < cx ? x0 : x1 + 1, y2: my + 1, k: 'door' }); a.reforcos.push([lx < cx ? x0 + 0.5 : x1 + 0.5, my + 0.5]); }
+      const est = estradoChefe(cx - 2, y0, 4, 2, 1.5);
+      if (a.tipo === 'trono') {
+        const tx = Math.floor(cx - 0.5), ty = est.y;
+        C.poe('cadeira', tx, ty, 1, ROT_FRENTE.s); C.pinta('trono', { x: tx + 0.5, y: ty + 0.5, rot: ROT_FRENTE.s });
+        for (const i of [est.x - 1, est.x + est.w]) C.poe('braseiro', i, est.y);
+        C.pinta('tapete', { x: cx - 1, y: est.y + est.h, w: 2, h: y1 - est.y - est.h + 1 });
+        for (let j = y0 + 3; j <= y1 - 1; j += 2) for (const i of [x0 + 2, x1 - 2]) if (C.livre(i, j)) coluna(C, i + 0.5, j + 0.5, 0.45);
+        estatua(x0 + 0.5, y0 + 0.5); estatua(x1 + 0.5, y0 + 0.5);
+        perigo('oleo', cx - 3.5, (y0 + y1) / 2 + 1, 1); perigo('oleo', cx + 3.5, (y0 + y1) / 2 + 1, 1);
+        a.zonas = [['luz'], ['zona:chamasNegras', cx, est.y + 3.5, 2]];
+      } else {
+        C.pinta('sarcofago', { x: cx - 1, y: est.y + 0.2, w: 2, h: 1.6 }); C.ocupaRet(Math.floor(cx - 1), est.y, 2, 2, 1);
+        for (const i of [est.x - 1, est.x + est.w]) C.poe('vela', i, est.y);
+        for (let j = y0 + 3; j <= y1 - 2; j += 3) for (const i of [x0 + 2, x1 - 2, x0 + 5, x1 - 5]) if (C.livre(i, j) && C.livre(i, j + 1)) { C.poe('tumulo', i, j); }
+        for (let j = y0 + 2; j <= y1 - 1; j += 3) for (const i of [x0, x1]) nichoEm(C, i, j, i === x0 ? 'o' : 'l');
+        for (let j = y0 + 4; j <= y1 - 2; j += 4) for (const i of [Math.floor(cx) - 3, Math.floor(cx) + 2]) if (C.livre(i, j)) coluna(C, i + 0.5, j + 0.5, 0.42);
+        perigo('toxica', cx - 4, (y0 + y1) / 2 + 2, 1.3); perigo('toxica', cx + 4, (y0 + y1) / 2 + 2, 1.3);
+        for (let j = y0 + 3; j <= y1 - 2; j += 3) a.reforcos.push([x0 + 2.5, j + 0.5], [x1 - 1.5, j + 0.5]);
+        a.reforcos = a.reforcos.slice(0, 4);
+        a.zonas = [['zona:toxica', cx, (y0 + y1) / 2 + 1, 3.2], ['luz']];
+      }
+      a.desaba = { x: cx - 2, y: est.y + est.h + 1, w: 4, h: 3 };
+    } else if (a.tipo === 'covil' || a.tipo === 'altar') {
+      // a câmara grande e torta (a do altar mais redonda)
+      const cy = H / 2 - 0.5, rx = W / 2 - 2.5, ry = H / 2 - 2.2, ond = [C.ent(0, TAU), C.ent(0, TAU)];
+      enche((i, j) => { const dx = (i - cx) / rx, dy = (j - cy) / ry, an = Math.atan2(dy, dx), lim = 1 + (a.tipo === 'covil' ? 0.12 : 0.04) * Math.sin(3 * an + ond[0]) + (a.tipo === 'covil' ? 0.08 : 0.02) * Math.sin(5 * an + ond[1]); return Math.hypot(dx, dy) <= lim; }, SALA);
+      entradaEmbaixo(Math.ceil(cy + ry) - 1, 3);
+      if (a.tipo === 'covil') {
+        // o rochedo do dragão no alto, por cima do tesouro; a lava pelos lados; as estalagmites como cobertura
+        estradoChefe(cx - 2.5, cy - ry + 1, 5, 3, 4.5);
+        C.pinta('moedas', { x: cx, y: cy - ry + 4.6, r: 2.2 }); C.pinta('moedas', { x: cx - 2.6, y: cy - ry + 3.6, r: 1.2 });
+        C.poe('bau', Math.floor(cx + 2.6), Math.floor(cy - ry + 3.5));
+        for (const sx of [-1, 1]) {
+          const lx = cx + sx * rx * 0.55, ly = cy + ry * 0.05;
+          for (let j = Math.floor(ly - 2); j <= ly + 2; j++) for (let i = Math.floor(lx - 2.4); i <= lx + 2.4; i++) if (Math.hypot((i + 0.5 - lx) / 2.3, (j + 0.5 - ly) / 1.8) <= 1 && G.at(i, j) === SALA) G.pos(i, j, LAVA);
+          p.zonas.push({ fx: 'lava', k: 'circ', x: lx, y: ly, r: 1.8, gm: false, leve: true }); a.perigos.push('lava');
+          p.luzes.push({ x: lx, y: ly, dim: 6, bright: 2, c: '#ff7a2a' });
+        }
+        for (let t = 0, n = 0; t < 300 && n < 6; t++) { const i = Math.floor(cx + C.ent(-rx * 0.8, rx * 0.8)), j = Math.floor(cy + C.ent(-ry * 0.3, ry * 0.7)); if (G.at(i, j) !== SALA || !C.livre(i, j)) continue; const x = i + 0.5, y = j + 0.5, rr = 0.55; C.pinta('estalagmite', { x, y, r: rr, grande: true }); C.ocupa(i, j, 1, 1); for (let k = 0; k < 6; k++) { const u = (k / 6) * TAU, v = ((k + 1) / 6) * TAU; p.visao.push([x + Math.cos(u) * rr * 0.85, y + Math.sin(u) * rr * 0.85, x + Math.cos(v) * rr * 0.85, y + Math.sin(v) * rr * 0.85]); } n++; }
+        C.pinta('ossos', { x: cx - rx * 0.3, y: cy + ry * 0.4, n: 4 }); C.pinta('ossos', { x: cx + rx * 0.35, y: cy - ry * 0.1, n: 3 });
+        a.reforcos.push([cx - rx * 0.6, cy - ry * 0.45], [cx + rx * 0.6, cy - ry * 0.45], [cx, cy + ry * 0.5]);
+        a.zonas = [['zona:lava', cx, cy + ry * 0.15, Math.min(rx, ry) * 0.4], ['desaba']];
+        a.desaba = { x: cx - 3, y: cy + 1, w: 6, h: 2 };
+      } else {
+        // o altar no estrado do alto; o círculo das runas no meio; as colunas com os braseiros em volta
+        const est = estradoChefe(cx - 2, cy - ry + 1, 4, 2, 1.5);
+        C.poe('altar', Math.floor(cx - 0.5), est.y);
+        C.pinta('circuloRunico', { x: cx, y: cy + 0.5, r: Math.min(rx, ry) * 0.42 });
+        for (let k = 0; k < 6; k++) { const an = -Math.PI / 2 + (k + 0.5) / 6 * TAU, x = cx + Math.cos(an) * rx * 0.7, y = cy + Math.sin(an) * ry * 0.7; if (Math.abs(x - cx) < 1.5 && y > cy) continue; coluna(C, Math.floor(x) + 0.5, Math.floor(y) + 0.5, 0.45); C.poe('braseiro', Math.floor(x) + (x < cx ? 1 : -1), Math.floor(y)); }
+        p.zonas.push({ fx: 'runas', k: 'circ', x: cx, y: cy + 0.5, r: Math.min(rx, ry) * 0.42, gm: true }); a.perigos.push('runas (escondidas)');
+        a.reforcos.push([cx - rx * 0.8, cy + ry * 0.2], [cx + rx * 0.8, cy + ry * 0.2]);
+        a.zonas = [['zona:runas', cx, cy + 0.5, Math.min(rx, ry) * 0.42], ['zona:escuridao', cx, cy, Math.min(rx, ry) * 0.7]];
+        a.desaba = { x: cx - 2, y: cy - 0.5, w: 4, h: 2 };
+      }
+    } else if (a.tipo === 'ponte') {
+      // o abismo inteiro; a beira da entrada embaixo, a do chefe no alto; a ponte (três de largura) com a plataforma no meio
+      enche(() => true, ABISMO);
+      enche(ret(2, H - 4, W - 3, H - 1), SALA); enche(ret(3, 0, W - 4, 3), SALA);
+      const px0 = Math.floor(cx - 1.5);
+      for (let j = 4; j < H - 4; j++) for (let i = px0; i < px0 + 3; i++) G.pos(i, j, PONTE);
+      const pm = Math.round(H / 2);
+      enche(ret(cx - 3.5, pm - 2, cx + 2.5, pm + 1), SALA);
+      a.entrada = { x: cx, y: H - 1.5 };
+      estradoChefe(cx - 2, 0, 4, 2, 1.5);
+      for (const [x, y] of [[cx - 3, pm - 1.5], [cx + 2, pm + 0.5]]) estatua(x, y);
+      C.pinta('entulho', { x: cx + 1.8, y: pm - 1.4, r: 0.8 });
+      perigo('vento', cx, pm - 0.5, 2.5);
+      a.reforcos.push([3.5, H - 2.5], [W - 3.5, H - 2.5]);
+      a.zonas = [['desaba'], ['zona:vento', cx, H / 2, Math.min(W, H) * 0.35]];
+      a.desaba = { x: px0, y: Math.round(H * 0.62), w: 3, h: 2, ponte: true };
+    } else if (a.tipo === 'topo') {
+      // o alto da torre: o disco de pedra cercado pelo vazio, com a mureta na beira (aberta na escada)
+      const cy = H / 2, R = Math.min(W, H) / 2 - 1.5;
+      enche(() => true, ABISMO);
+      enche((i, j) => Math.hypot(i - cx, j - cy) <= R, SALA);
+      const n = 28, abertura = [Math.PI / 2 - 0.18, Math.PI / 2 + 0.18];
+      for (let k = 0; k < n; k++) { const u = (k / n) * TAU, v = ((k + 1) / n) * TAU; if (u > abertura[0] - 0.12 && u < abertura[1]) continue; p.paredes.push({ x1: cx + Math.cos(u) * (R - 0.15), y1: cy + Math.sin(u) * (R - 0.15), x2: cx + Math.cos(v) * (R - 0.15), y2: cy + Math.sin(v) * (R - 0.15), k: 'mureta' }); }
+      C.pinta('ameias', { cx, cy, r: R - 0.15, ab: abertura });
+      a.entrada = { x: cx, y: cy + R - 1 };
+      // a escada que sobe pelo meio da beira de baixo
+      C.pinta('escada', { x: Math.floor(cx) - 1, y: Math.floor(cy + R) - 2, w: 2, h: 2, lado: 's', sobe: true, natural: false });
+      estradoChefe(cx - 2, cy - R + 1.2, 4, 2, 1.5);
+      C.poe('braseiro', Math.floor(cx - 0.5), Math.floor(cy - R + 1.2));
+      for (const an of [Math.PI * 0.85, Math.PI * 0.15, Math.PI * 1.25, Math.PI * 1.75]) estatua(cx + Math.cos(an) * R * 0.55, cy + Math.sin(an) * R * 0.55);
+      perigo('raio', cx + R * 0.35, cy + R * 0.1, 1.2);
+      a.reforcos.push([cx - R * 0.75, cy], [cx + R * 0.75, cy]);
+      a.zonas = [['zona:tempestade', cx, cy, R * 0.8], ['desaba']];
+      a.desaba = { x: cx + R * 0.35, y: cy - 2, w: 3, h: 4 };
+    } else {
+      // o círculo de pedras: a clareira, o anel das pedras de pé (com as passagens), a pedra do altar no meio
+      const cy = H / 2, R = Math.min(W, H) / 2 - 1.2, Rp = R * 0.68;
+      enche((i, j) => Math.hypot(i - cx, j - cy) <= R, SALA);
+      entradaEmbaixo(Math.ceil(cy + R) - 1, 4);
+      const n = 9;
+      for (let k = 0; k < n; k++) {
+        const an = -Math.PI / 2 + (k / n) * TAU;
+        if (Math.abs(Math.cos(an)) < 0.2 && Math.sin(an) > 0) continue;              // (a passagem da entrada)
+        const x = cx + Math.cos(an) * Rp, y = cy + Math.sin(an) * Rp;
+        C.pinta('menir', { x, y, r: 0.55, ang: an }); C.ocupa(Math.floor(x), Math.floor(y), 1, 1);
+        for (let q = 0; q < 6; q++) { const u = (q / 6) * TAU, v = ((q + 1) / 6) * TAU; p.visao.push([x + Math.cos(u) * 0.45, y + Math.sin(u) * 0.45, x + Math.cos(v) * 0.45, y + Math.sin(v) * 0.45]); }
+      }
+      const est = estradoChefe(cx - 1.5, cy - 1.5, 3, 3, 1.5);
+      C.pinta('menir', { x: cx, y: cy, r: 0.8, ang: 0, altar: true }); void est;
+      p.zonas.push({ fx: 'runas', k: 'circ', x: cx, y: cy, r: Rp * 0.8, gm: true }); a.perigos.push('runas (escondidas)');
+      perigo('nevoa', cx, cy + R * 0.55, 1.6);
+      C.pinta('floresta', { cx, cy, r: R });
+      a.reforcos.push([cx - R * 0.85, cy - R * 0.25], [cx + R * 0.85, cy - R * 0.25], [cx, cy - R * 0.85]);
+      a.zonas = [['zona:arcano', cx, cy, Rp * 0.9], ['zona:luaSangue', cx, cy, R * 0.9]];
+      a.desaba = { x: cx - 1.5, y: cy + 2, w: 3, h: 2 };
+    }
+    // o chefe (um token de dois quadrados no lugar dele) e os reforços
+    a.chefe = a.chefe || { x: cx - 1, y: 3 };
+    // (o ponto que caiu na rocha, no abismo ou na lava vai para a casa boa mais perto; sem nenhuma por perto, sai)
+    const pisavel = (i, j) => { const v = G.at(i, j); return v !== ROCHA && v !== ABISMO && v !== LAVA && v != null; };
+    a.reforcos = a.reforcos.map(([x, y]) => {
+      if (pisavel(Math.floor(x), Math.floor(y))) return [x, y];
+      for (let r = 1; r <= 3; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) if (Math.max(Math.abs(di), Math.abs(dj)) === r && pisavel(Math.floor(x) + di, Math.floor(y) + dj)) return [Math.floor(x) + di + 0.5, Math.floor(y) + dj + 0.5];
+      return null;
+    }).filter(Boolean).slice(0, 4);
+    // as fases prontas: duas (a 2 e a 3), cada uma com duas mudanças
+    a.fases = fasesDaArena(a);
+    p.salas = [{ x: 0, y: 0, w: W, h: H, papel: 'arena' }];
+    // as paredes: no salão reto, a beira das casas; nos outros, o contorno alisado do que não é rocha
+    if (a.tipo === 'trono' || a.tipo === 'mausoleu') p.paredes = paredesDaGrade(G, v => v !== ROCHA).map(w => Object.assign(w, { k: 'wall' })).concat(p.paredes);
+    else {
+      p.contorno = contornos(W, H, (i, j) => G.at(i, j) !== ROCHA).map(l => simplifica(l, 0.3)).filter(l => l.length > 3);
+      p.paredes = segmentosDe(p.contorno).concat(p.paredes);
+    }
+  }
+  /* as duas fases de cada arena (a tabela de cima), com o que o mestre mudou na janela: a.fk = [[{ k, on }, …], …] */
+  function fasesDaArena(a) {
+    const z = a.zonas || [];
+    const mud = k => {
+      if (k === 'reforcos') return { k, on: true, pts: a.reforcos.slice(), nome: LACAIO_ARENA[a.tipo] || 'Lacaio' };
+      if (k === 'desaba') return Object.assign({ k, on: true }, a.desaba);
+      if (k === 'luz' || k === 'grade') return Object.assign({ k, on: true }, k === 'grade' && a.grade ? { x: a.grade.x, y: a.grade.y } : {});
+      const e = z.find(x => x[0] === k) || [k, a.chefe.x + 1, a.chefe.y + 3, 2.5];
+      return { k: 'zona', fx: k.slice(5), on: true, x: e[1], y: e[2], r: e[3] };
+    };
+    const base = FASES_ARENA[a.tipo] || FASES_ARENA.coliseu, fk = Array.isArray(a.fk) ? a.fk : null, ok = k => MUDANCAS.some(x => x[0] === k) && (k !== 'grade' || !!a.grade);
+    return base.map((ks, i) => ({ n: i + 2, nome: 'Fase ' + (i + 2), m: ks.map((k0, j) => {
+      const o = fk && fk[i] && fk[i][j] ? fk[i][j] : null, k = o && ok(o.k) ? o.k : ok(k0) ? k0 : 'reforcos';
+      return Object.assign(mud(k), { on: !o || o.on !== false });
+    }) }));
+  }
+
   /* ================= a mina abandonada ================= */
   function nivelDeMina(C) {
     const { G, r, p, W, H } = C, T = TAMANHOS[p.tamanho];
@@ -31506,8 +32261,12 @@ const Masmorra = (() => {
      escadas (a de subida e a de descida). */
   function gerar(o) {
     o = o || {};
-    const tipo = TIPOS.some(t => t[0] === o.tipo) ? o.tipo : 'pedra';
-    const tamanho = TAMANHOS[o.tamanho] ? o.tamanho : 'medio', T = TAMANHOS[tamanho];
+    // (lote 18) o subsolo: do tamanho da cena de cima, com a entrada, o rio e o bioma de lá
+    const sob = o.tipo === 'subsolo', are = o.tipo === 'arena', tipo = sob ? 'subsolo' : are ? 'arena' : TIPOS.some(t => t[0] === o.tipo) ? o.tipo : 'pedra';
+    const tamanho = TAMANHOS[o.tamanho] ? o.tamanho : 'medio', T = are ? TAM_ARENA[tamanho] : sob ? { W: clamp(Math.round(Number(o.W)) || 40, 20, 80), H: clamp(Math.round(Number(o.H)) || 30, 16, 60) } : TAMANHOS[tamanho];
+    const ex = sob ? { entradaEm: { x: clamp(Number(o.x) || T.W / 2, 0, T.W), y: clamp(Number(o.y) || T.H / 2, 0, T.H) }, rioPts: Array.isArray(o.rio) && o.rio.length >= 2 ? o.rio.filter(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1])).slice(0, 80).map(q => [Number(q[0]), Number(q[1])]) : null,
+      bioma: BIOMAS_SUB.some(b => b[0] === o.bioma) ? o.bioma : 'fungos', achados: o.achados !== false, marcadores: [] }
+      : are ? { arena: Object.assign({ tipo: ARENAS.some(x => x[0] === o.arena) ? o.arena : 'coliseu' }, Array.isArray(o.fases) ? { fk: o.fases } : {}), marcadores: [] } : null;
     const nivel = clamp(Math.round(Number(o.nivel)) || 1, 1, 99), estilo = typeof Estilos !== 'undefined' ? Estilos.valido(o.estilo) : 'comum';
     const seed = (Math.round(Number(o.seed)) >>> 0) || 1, segredos = o.segredos !== false, descida = o.descida !== false;
     let p = null;
@@ -31516,17 +32275,20 @@ const Masmorra = (() => {
       const W = T.W, H = T.H, G = nova(W, H), r = mulberry((sub(seed, 1 + t * 17) % 2147483000) + 1);
       p = { v: 1, lugar: 'masmorra', tipo, tamanho, nivel, estilo, seed, segredos, descida, W, H,
         salas: [], paredes: [], visao: [], objetos: [], luzes: [], relevo: [], formas: [], zonas: [], pintados: [], sobe: null, desce: null };
+      if (ex) Object.assign(p, JSON.parse(JSON.stringify(ex)));
       const C = contexto(p, G, r);
-      if (tipo === 'caverna') nivelDeCaverna(C); else if (tipo === 'mina') nivelDeMina(C); else nivelDeSalas(C);
+      if (tipo === 'arena') nivelDeArena(C); else if (tipo === 'subsolo') nivelDeSubsolo(C); else if (tipo === 'caverna') nivelDeCaverna(C); else if (tipo === 'mina') nivelDeMina(C); else nivelDeSalas(C);
       p.grade = Array.from(G.g).join('');
       p.tentativa = t;
-      if (p.sobe && (!descida || p.desce) && p.salas.length >= (tipo === 'mina' && tamanho === 'pequeno' ? 2 : 3)) break;
+      if (tipo === 'arena') break;
+      if (p.sobe && (!descida || p.desce) && p.salas.length >= (tipo === 'subsolo' || (tipo === 'mina' && tamanho === 'pequeno') ? 2 : 3)) break;
     }
     // o relevo da água, do abismo e do poço (o contorno das casas deles)
     const { W, H } = p, g = p.grade, at = (i, j) => (i >= 0 && j >= 0 && i < W && j < H ? +g[j * W + i] : ROCHA);
-    const cav = tipo === 'caverna', borda = (dentro, k) => (cav ? contornoTremido(W, H, dentro, (seed + k) % 9973) : contornos(W, H, dentro).map(l => simplifica(l, 0.12))).filter(l => l.length > 3);
+    const cav = tipo === 'caverna' || tipo === 'subsolo', borda = (dentro, k) => (cav ? contornoTremido(W, H, dentro, (seed + k) % 9973) : contornos(W, H, dentro).map(l => simplifica(l, 0.12))).filter(l => l.length > 3);
     p.aguas = borda((i, j) => at(i, j) === AGUA, 5);
     p.abismos = borda((i, j) => at(i, j) === ABISMO, 9);
+    if (tipo === 'subsolo' || tipo === 'arena') { p.lavas = borda((i, j) => at(i, j) === LAVA, 11); p.gelos = borda((i, j) => at(i, j) === GELO, 13); }
     for (const l of p.aguas) p.relevo.unshift({ t: 'agua', alt: -1.5, k: 'poly', pts: l });
     for (const l of p.abismos) p.relevo.unshift({ t: 'fosso', alt: -10, k: 'poly', pts: l });
     return p;
@@ -31536,6 +32298,22 @@ const Masmorra = (() => {
     const portas = p.paredes.filter(w => w.k === 'door' && !w.secret).length, secretas = p.paredes.filter(w => w.secret).length;
     const partes = [(TIPOS.find(t => t[0] === p.tipo) || TIPOS[0])[1] + ' · nível ' + p.nivel, p.W + ' × ' + p.H + ' quadrados'];
     const salas = p.salas.length;
+    if (p.tipo === 'arena') {
+      const a = p.arena, q = [(ARENAS.find(x => x[0] === a.tipo) || ARENAS[0])[1], p.W + ' × ' + p.H + ' quadrados', 'o chefe e ' + (a.reforcos.length === 1 ? '1 ponto' : a.reforcos.length + ' pontos') + ' de reforço'];
+      const pg = Array.from(new Set(a.perigos.map(x => (FX.P[x] ? FX.P[x].n.toLowerCase() : x))));
+      if (pg.length) q.push('perigos: ' + pg.join(', '));
+      q.push(a.fases.length + ' fases prontas');
+      return q.join(' · ') + '.';
+    }
+    if (p.tipo === 'subsolo') {
+      const b = (BIOMAS_SUB.find(x => x[0] === p.bioma) || BIOMAS_SUB[0])[1].toLowerCase(), q = [ 'Subsolo · ' + b, p.W + ' × ' + p.H + ' quadrados', salas === 1 ? 'uma câmara' : salas + ' câmaras'];
+      if (p.rioPts) q.push('o rio de baixo');
+      if (p.lago) q.push(p.lago.k === 'lava' ? 'o lago de lava' : p.lago.k === 'gelo' ? 'o lago congelado' : 'o lago escuro');
+      const mk = (p.marcadores || []).length;
+      if (mk) q.push(mk === 1 ? 'um achado' : 'um achado e um ninho');
+      if (p.desce) q.push('a passagem escondida para o nível ' + (p.nivel + 1));
+      return q.join(' · ') + '.';
+    }
     partes.push(p.tipo === 'caverna' ? (salas === 1 ? 'uma câmara' : salas + ' câmaras') : p.tipo === 'mina' ? (salas === 1 ? 'uma galeria' : salas + ' galerias') : salas === 1 ? 'uma sala' : salas + ' salas');
     if (portas) partes.push(portas === 1 ? 'uma porta' : portas + ' portas');
     if (secretas) partes.push(secretas === 1 ? 'uma porta secreta' : secretas + ' portas secretas');
@@ -31551,13 +32329,31 @@ const Masmorra = (() => {
     caverna: { rocha: ['#2b2621', '#38312a', '#1b1714'], chao: ['#564c43', '#62574c', '#4a4139'], junta: '#3a332c', bloco: ['#4e453c', '#433b33', '#5a5045'] },
     mina: { rocha: ['#2c241f', '#3a2f28', '#1c1612'], chao: ['#5a4a3c', '#665443', '#4c3e32'], junta: '#3b3027', bloco: ['#4d3f33', '#43372d', '#58483a'] },
   };
+  // (lote 18) a pedra do subsolo, pelo bioma de baixo
+  const PAL_SUB = {
+    fungos: PAL_M.caverna,
+    cristais: { rocha: ['#26232f', '#322d3d', '#17151d'], chao: ['#55506a', '#615b77', '#48435c'], junta: '#3a3548', bloco: ['#4a4560', '#403b54', '#56506e'] },
+    lava: { rocha: ['#241716', '#33201d', '#140c0b'], chao: ['#4a3530', '#563d36', '#3e2c28'], junta: '#3a2420', bloco: ['#44302a', '#3a2823', '#503831'] },
+    gelo: { rocha: ['#1f2630', '#2a3340', '#141a22'], chao: ['#6b7c8c', '#7a8c9d', '#5e6e7d'], junta: '#3d4a58', bloco: ['#56687a', '#4b5c6d', '#627589'] },
+    raizes: { rocha: ['#2a2219', '#372d21', '#1a140e'], chao: ['#55452f', '#615038', '#4a3c29'], junta: '#3a2f20', bloco: ['#4d3f2c', '#433726', '#594932'] },
+  };
+  // (lote 18) a pedra e o chão de cada arena
+  const PAL_ARENA = {
+    coliseu: { rocha: ['#5a5046', '#665b4f', '#463e36'], chao: ['#c2a36b', '#b39360', '#d0b47c'], junta: '#4a4038', bloco: ['#7a6e60', '#6c6154', '#887b6b'] },
+    trono: { rocha: ['#232127', '#2e2b33', '#16151a'], chao: ['#8a8590', '#99939f', '#7b7681'], junta: '#4a4650', bloco: ['#6e6974', '#615c67', '#7b7681'] },
+    mausoleu: PAL_M.cripta, covil: PAL_SUB.lava, altar: { rocha: ['#221a1c', '#2e2326', '#151012'], chao: ['#5a4c4e', '#66575a', '#4c4042'], junta: '#3a2e30', bloco: ['#54464a', '#483c40', '#615256'] },
+    ponte: PAL_M.caverna, topo: { rocha: ['#2a2d33', '#353941', '#1b1d22'], chao: ['#76736e', '#83807a', '#68655f'], junta: '#45433f', bloco: ['#6a6762', '#5d5a55', '#77746e'] },
+    circulo: { rocha: ['#14200f', '#1b2a14', '#0d160a'], chao: ['#3f5a2e', '#4a6a35', '#34502a'], junta: '#2a3a20', bloco: ['#253620', '#1e2e19', '#2c4026'] },
+  };
+  const PISO_ARENA = { coliseu: 'areia', trono: 'marmore', mausoleu: 'lajes', covil: 'bruto', altar: 'lajes', ponte: 'bruto', topo: 'lajes', circulo: 'grama' };
   const tomM = (hex, f) => (typeof Estilos !== 'undefined' ? Estilos.tom(hex, f) : hex);
   function pintar(p, c) {
     const W = p.W, H = p.H, cv = document.createElement('canvas');
     cv.width = Math.round(W * c); cv.height = Math.round(H * c);
-    const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x2f6b13a7) >>> 0 || 7), P = PAL_M[p.tipo] || PAL_M.pedra;
+    const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x2f6b13a7) >>> 0 || 7), P = (p.tipo === 'subsolo' && PAL_SUB[p.bioma]) || (p.tipo === 'arena' && PAL_ARENA[p.arena.tipo]) || PAL_M[p.tipo] || PAL_M.pedra;
     const grade = p.grade, at = (i, j) => (i >= 0 && j >= 0 && i < W && j < H ? +grade[j * W + i] : ROCHA), aberto = (i, j) => at(i, j) !== ROCHA;
-    const reto = p.tipo !== 'caverna';
+    const reto = p.tipo === 'arena' ? p.arena.tipo === 'trono' || p.arena.tipo === 'mausoleu' : p.tipo !== 'caverna' && p.tipo !== 'subsolo';
+    const piso = p.tipo === 'arena' ? PISO_ARENA[p.arena.tipo] : null;          // (lote 18: o chão da arena)
     // 1) a rocha: o fundo escuro com manchas e rachaduras
     g.fillStyle = P.rocha[0]; g.fillRect(0, 0, cv.width, cv.height);
     for (let k = 0, n = Math.round(W * H * 1.3); k < n; k++) {
@@ -31577,7 +32373,16 @@ const Masmorra = (() => {
       } else for (const l of linhas) { l.forEach(([x, y], k) => (k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.closePath(); }
     };
     g.save(); caminhoDoChao(); g.fillStyle = P.chao[0]; g.fill('evenodd'); g.clip('evenodd');
-    if (p.tipo === 'pedra' || p.tipo === 'cripta') {
+    if (piso === 'areia' || piso === 'grama') {
+      // (lote 18) a areia da arena (com as marcas do rastelo) e a grama do círculo de pedras
+      const cor = piso === 'areia' ? ['#c2a36b', '#b39360', '#d0b47c'] : ['#3f5a2e', '#4a6a35', '#34502a'];
+      g.fillStyle = cor[0]; g.fillRect(0, 0, W * c, H * c);
+      for (let k = 0, n = Math.round(W * H * 1.2); k < n; k++) { const x = rnd() * W, y = rnd() * H, rr = (0.3 + rnd() * 1.2) * c; g.globalAlpha = 0.18 + rnd() * 0.2; g.fillStyle = rnd() < 0.5 ? cor[1] : cor[2]; g.beginPath(); g.ellipse(x * c, y * c, rr, rr * 0.7, rnd() * 3, 0, TAU); g.fill(); }
+      g.globalAlpha = piso === 'areia' ? 0.18 : 0.5; g.strokeStyle = piso === 'areia' ? '#8f7448' : '#6e8f4a'; g.lineWidth = Math.max(1, c * 0.03);
+      if (piso === 'areia') for (let j = 0; j < H * 3; j++) { g.beginPath(); g.moveTo(0, (j / 3) * c); for (let x = 0; x <= W; x += 0.5) g.lineTo(x * c, (j / 3 + Math.sin(x * 0.7 + j) * 0.04) * c); g.stroke(); }
+      else for (let k = 0, n = Math.round(W * H * 2); k < n; k++) { const x = rnd() * W, y = rnd() * H; g.beginPath(); g.moveTo(x * c, y * c); g.lineTo((x + (rnd() - 0.5) * 0.15) * c, (y - 0.18) * c); g.stroke(); }
+      g.globalAlpha = 1;
+    } else if (p.tipo === 'pedra' || p.tipo === 'cripta' || piso === 'lajes' || piso === 'marmore') {
       // as lajes: duas por casa, em fileiras desencontradas, cada uma de um tom
       for (let j = 0; j < H * 2; j++) {
         const des = (j % 2) * 0.5;
@@ -31605,6 +32410,8 @@ const Masmorra = (() => {
     g.restore();
     // 3) a água e o abismo (com a ponte de pedra)
     for (const l of p.aguas || []) lagoEscuro(g, l, c, rnd);
+    for (const l of p.lavas || []) lagoDeLava(g, l, c, rnd);          // (lote 18: o subsolo)
+    for (const l of p.gelos || []) lagoDeGelo(g, l, c, rnd);
     if (typeof Paisagem !== 'undefined') for (const l of p.abismos || []) Paisagem.abismo(g, l, c, rnd, [tomM(P.chao[0], 0.1), P.rocha[1], '#050404']);
     // a ponte de pedra: a faixa de rocha clara atravessando o abismo, com a beira escura dos dois lados
     const ponte = contornos(W, H, (i, j) => at(i, j) === PONTE).filter(l => l.length > 3);
@@ -31727,6 +32534,36 @@ const Masmorra = (() => {
     g.restore();
   }
 
+  // (lote 18) o lago de lava: o laranja que brilha, as crostas escuras e a beira em brasa
+  function lagoDeLava(g, l, c, rnd) {
+    const pts = simplifica(l, 0.1);
+    const caminho = () => { g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.closePath(); };
+    const [x0, y0, x1, y1] = pts.reduce((b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)], [1e9, 1e9, -1e9, -1e9]);
+    g.save();
+    caminho(); const gr = g.createRadialGradient((x0 + x1) / 2 * c, (y0 + y1) / 2 * c, 0, (x0 + x1) / 2 * c, (y0 + y1) / 2 * c, Math.max(x1 - x0, y1 - y0) / 2 * c);
+    gr.addColorStop(0, '#ffd35a'); gr.addColorStop(0.5, '#ff8a2a'); gr.addColorStop(1, '#c2361a');
+    g.fillStyle = gr; g.fill();
+    g.save(); caminho(); g.clip();
+    for (let k = 0, n = Math.round((x1 - x0) * (y1 - y0) * 0.5) + 3; k < n; k++) { const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0); g.globalAlpha = 0.55; g.fillStyle = '#3a1a12'; g.beginPath(); g.ellipse(x * c, y * c, c * (0.2 + rnd() * 0.5), c * (0.12 + rnd() * 0.25), rnd() * 3, 0, TAU); g.fill(); }
+    g.restore();
+    g.globalAlpha = 0.85; caminho(); g.strokeStyle = '#ff6a1f'; g.lineWidth = Math.max(1, c * 0.12); g.stroke();
+    g.restore();
+  }
+  // (lote 18) o lago congelado: o gelo claro, as rachaduras e a neve na beira
+  function lagoDeGelo(g, l, c, rnd) {
+    const pts = simplifica(l, 0.1);
+    const caminho = () => { g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.closePath(); };
+    const [x0, y0, x1, y1] = pts.reduce((b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)], [1e9, 1e9, -1e9, -1e9]);
+    g.save();
+    caminho(); g.fillStyle = '#a9cbe0'; g.fill();
+    g.save(); caminho(); g.clip();
+    g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = Math.max(1, c * 0.03);
+    for (let k = 0, n = Math.round((x1 - x0) * (y1 - y0) * 0.3) + 3; k < n; k++) { let x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0), a = rnd() * TAU; g.beginPath(); g.moveTo(x * c, y * c); for (let t = 0; t < 3; t++) { a += rnd() - 0.5; x += Math.cos(a) * 0.5; y += Math.sin(a) * 0.5; g.lineTo(x * c, y * c); } g.stroke(); }
+    g.restore();
+    caminho(); g.strokeStyle = '#eef6fb'; g.lineWidth = Math.max(1, c * 0.1); g.stroke();
+    g.restore();
+  }
+
   /* Os desenhos (z: 0 por baixo de tudo, dentro do chão; 1 no chão; 2 as coisas; 3 o que fica por cima). */
   const DESENHO = {
     tapete: { z: 0, f(g, o, c, rnd) { g.save(); g.fillStyle = '#6a1f22'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c); g.strokeStyle = '#c9a24a'; g.lineWidth = Math.max(1, c * 0.06); g.strokeRect((o.x + 0.08) * c, (o.y + 0.08) * c, (o.w - 0.16) * c, (o.h - 0.16) * c); g.globalAlpha = 0.25; g.fillStyle = '#000'; for (let k = 0; k < 6; k++) g.fillRect((o.x + rnd() * o.w) * c, (o.y + rnd() * o.h) * c, c * 0.3, c * 0.2); g.restore(); } },
@@ -31812,7 +32649,8 @@ const Masmorra = (() => {
         const x = (o.x + (n > 1 ? (rnd() - 0.5) * 0.7 : 0)) * c, y = (o.y + (n > 1 ? (rnd() - 0.5) * 0.7 : 0)) * c, rr = (o.grande ? o.r : o.r * (0.6 + rnd() * 0.6)) * c;
         g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x + rr * 0.3, y + rr * 0.35, rr, rr * 0.85, 0, 0, TAU); g.fill();
         const gr = g.createRadialGradient(x - rr * 0.3, y - rr * 0.3, rr * 0.05, x, y, rr);
-        gr.addColorStop(0, '#b3a894'); gr.addColorStop(0.5, '#7a6f60'); gr.addColorStop(1, '#3e372f');
+        if (o.gelo) { gr.addColorStop(0, '#f2fbff'); gr.addColorStop(0.5, '#a8cde3'); gr.addColorStop(1, '#4a6a82'); }       // (lote 18: a de gelo)
+        else { gr.addColorStop(0, '#b3a894'); gr.addColorStop(0.5, '#7a6f60'); gr.addColorStop(1, '#3e372f'); }
         g.fillStyle = gr; g.beginPath();
         for (let a = 0; a < 7; a++) { const an = (a / 7) * TAU, d = rr * (0.8 + rnd() * 0.25); a ? g.lineTo(x + Math.cos(an) * d, y + Math.sin(an) * d) : g.moveTo(x + Math.cos(an) * d, y + Math.sin(an) * d); }
         g.closePath(); g.fill();
@@ -31901,6 +32739,107 @@ const Masmorra = (() => {
       gr.addColorStop(0, o.cor + '55'); gr.addColorStop(1, o.cor + '00');
       g.fillStyle = gr; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, TAU); g.fill();
       for (let k = 0; k < 7; k++) { const a = rnd() * TAU, d = rnd() * 0.7, x = (o.x + Math.cos(a) * d) * c, y = (o.y + Math.sin(a) * d) * c, s = c * (0.06 + rnd() * 0.08); g.fillStyle = o.cor; g.globalAlpha = 0.85; g.beginPath(); g.arc(x, y, s, 0, TAU); g.fill(); g.globalAlpha = 1; g.fillStyle = '#ffffff'; g.beginPath(); g.arc(x - s * 0.3, y - s * 0.3, s * 0.3, 0, TAU); g.fill(); }
+      g.restore();
+    } },
+    // (lote 18) o subsolo: os cristais, a brasa nas rachaduras, a geada, as raízes e o ninho
+    cristal: { z: 3, f(g, o, c, rnd) {
+      g.save();
+      const gr = g.createRadialGradient(o.x * c, o.y * c, 0, o.x * c, o.y * c, o.r * 2.2 * c);
+      gr.addColorStop(0, o.cor + '66'); gr.addColorStop(1, o.cor + '00');
+      g.fillStyle = gr; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * 2.2 * c, 0, TAU); g.fill();
+      for (let k = 0; k < o.n; k++) {
+        const a = -Math.PI / 2 + (rnd() - 0.5) * 1.6, L = o.r * (o.grande ? 1.3 : 0.9) * (0.6 + rnd() * 0.6), w = o.r * 0.28 * (0.7 + rnd() * 0.5), bx = o.x + (rnd() - 0.5) * o.r * 0.8, by = o.y + (rnd() - 0.2) * o.r * 0.5;
+        const tx = bx + Math.cos(a) * L, ty = by + Math.sin(a) * L, px = -Math.sin(a) * w, py = Math.cos(a) * w;
+        g.beginPath(); g.moveTo((bx + px) * c, (by + py) * c); g.lineTo((tx + px * 0.4) * c, (ty + py * 0.4) * c); g.lineTo(tx * c, (ty - 0.08) * c); g.lineTo((tx - px * 0.4) * c, (ty - py * 0.4) * c); g.lineTo((bx - px) * c, (by - py) * c); g.closePath();
+        g.fillStyle = o.cor; g.globalAlpha = 0.85; g.fill();
+        g.strokeStyle = '#ffffff'; g.globalAlpha = 0.5; g.lineWidth = Math.max(1, c * 0.025); g.stroke();
+      }
+      g.restore();
+    } },
+    brasa: { z: 1, f(g, o, c, rnd) {
+      g.save(); g.lineCap = 'round';
+      for (let k = 0; k < 3; k++) { let x = o.x, y = o.y, a = rnd() * TAU; g.beginPath(); g.moveTo(x * c, y * c); for (let t = 0; t < 4; t++) { a += rnd() - 0.5; x += Math.cos(a) * o.r * 0.35; y += Math.sin(a) * o.r * 0.35; g.lineTo(x * c, y * c); }
+        g.strokeStyle = '#ff7a2a'; g.globalAlpha = 0.85; g.lineWidth = c * 0.09; g.stroke(); g.strokeStyle = '#ffd35a'; g.lineWidth = c * 0.035; g.stroke(); }
+      g.restore();
+    } },
+    geada: { z: 1, f(g, o, c) {
+      g.save(); const gr = g.createRadialGradient(o.x * c, o.y * c, 0, o.x * c, o.y * c, o.r * c);
+      gr.addColorStop(0, 'rgba(235,246,255,0.55)'); gr.addColorStop(1, 'rgba(235,246,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, TAU); g.fill(); g.restore();
+    } },
+    raizes: { z: 3, f(g, o, c, rnd) {
+      g.save(); g.lineCap = 'round';
+      for (let k = 0; k < o.n; k++) {
+        let x = o.x - Math.cos(o.ang) * 0.5 + (rnd() - 0.5) * 0.8, y = o.y - Math.sin(o.ang) * 0.5 + (rnd() - 0.5) * 0.8, a = o.ang + (rnd() - 0.5) * 0.9;
+        g.beginPath(); g.moveTo(x * c, y * c);
+        for (let t = 0; t < 4; t++) { a += (rnd() - 0.5) * 0.8; x += Math.cos(a) * 0.35; y += Math.sin(a) * 0.35; g.lineTo(x * c, y * c); }
+        g.strokeStyle = '#3a2a1a'; g.globalAlpha = 0.9; g.lineWidth = c * (0.08 + rnd() * 0.06); g.stroke();
+        g.strokeStyle = '#6b5236'; g.globalAlpha = 0.6; g.lineWidth = c * 0.03; g.stroke();
+      }
+      g.restore();
+    } },
+    ninho: { z: 2, f(g, o, c, rnd) { if (typeof Paisagem !== 'undefined' && Paisagem.ninho) Paisagem.ninho(g, o, c, rnd); } },
+    // (lote 18) as arenas: a arquibancada em volta da arena, o círculo das runas, as ameias da torre, as pedras de pé e a
+    // mata em volta do círculo
+    arquibancada: { z: 1, f(g, o, c, rnd) {
+      g.save();
+      for (let k = 0; k < 6; k++) {
+        const rx = (o.rx + 0.6 + k * 0.75) * c, ry = (o.ry + 0.6 + k * 0.75) * c;
+        g.strokeStyle = k % 2 ? '#7a6e60' : '#6a5f52'; g.lineWidth = c * 0.62; g.beginPath(); g.ellipse(o.cx * c, o.cy * c, rx, ry, 0, 0, TAU); g.stroke();
+        g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.ellipse(o.cx * c, o.cy * c, rx + c * 0.3, ry + c * 0.3, 0, 0, TAU); g.stroke();
+        // o público (pontinhos de cor)
+        const n = Math.round((rx + ry) / c * 2.2);
+        for (let q = 0; q < n; q++) { if (rnd() < 0.35) continue; const an = rnd() * TAU; g.fillStyle = ['#8f3d4a', '#3d6a8f', '#c7955a', '#6f8f3a', '#d6ccb8'][Math.floor(rnd() * 5)]; g.globalAlpha = 0.8; g.beginPath(); g.arc(o.cx * c + Math.cos(an) * rx, o.cy * c + Math.sin(an) * ry, c * 0.12, 0, TAU); g.fill(); }
+        g.globalAlpha = 1;
+      }
+      g.restore();
+    } },
+    circuloRunico: { z: 1, f(g, o, c) {
+      g.save(); g.strokeStyle = '#8a1f2a'; g.globalAlpha = 0.75; g.lineWidth = c * 0.12;
+      g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, TAU); g.stroke();
+      g.lineWidth = c * 0.06; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * 0.82 * c, 0, TAU); g.stroke();
+      g.beginPath(); for (let k = 0; k <= 5; k++) { const an = -Math.PI / 2 + (k * 2 / 5) * TAU, x = o.x + Math.cos(an) * o.r * 0.82, y = o.y + Math.sin(an) * o.r * 0.82; k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c); } g.stroke();
+      g.restore();
+    } },
+    ameias: { z: 3, f(g, o, c) {
+      g.save();
+      const n = 32;
+      for (let k = 0; k < n; k++) {
+        const an = (k + 0.5) / n * TAU; if (an > o.ab[0] - 0.15 && an < o.ab[1] + 0.05) continue;
+        const x = o.cx + Math.cos(an) * o.r, y = o.cy + Math.sin(an) * o.r;
+        g.save(); g.translate(x * c, y * c); g.rotate(an);
+        g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(-c * 0.2 + c * 0.06, -c * 0.32 + c * 0.06, c * 0.4, c * 0.64);
+        g.fillStyle = k % 2 ? '#8b8780' : '#77736d'; g.fillRect(-c * 0.2, -c * 0.32, c * 0.4, c * 0.64);
+        g.strokeStyle = '#3f3c38'; g.lineWidth = Math.max(1, c * 0.04); g.strokeRect(-c * 0.2, -c * 0.32, c * 0.4, c * 0.64);
+        g.restore();
+      }
+      g.restore();
+    } },
+    menir: { z: 2, f(g, o, c, rnd) {
+      g.save();
+      const x = o.x * c, y = o.y * c, rr = o.r * c;
+      g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(x + rr * 0.3, y + rr * 0.35, rr * 1.05, rr * 0.8, 0, 0, TAU); g.fill();
+      const gr = g.createRadialGradient(x - rr * 0.3, y - rr * 0.3, rr * 0.1, x, y, rr * 1.1);
+      gr.addColorStop(0, o.altar ? '#b8b2a6' : '#a7a196'); gr.addColorStop(1, '#4e4a44');
+      g.fillStyle = gr; g.beginPath();
+      for (let k = 0; k < 7; k++) { const an = (k / 7) * TAU + (o.ang || 0), d = rr * (0.78 + rnd() * 0.3); k ? g.lineTo(x + Math.cos(an) * d, y + Math.sin(an) * d * 0.8) : g.moveTo(x + Math.cos(an) * d, y + Math.sin(an) * d * 0.8); }
+      g.closePath(); g.fill();
+      g.strokeStyle = '#2f2c28'; g.lineWidth = Math.max(1, c * 0.04); g.stroke();
+      // as runas gastas (verde-musgo)
+      g.strokeStyle = 'rgba(120,170,110,0.55)'; g.lineWidth = Math.max(1, c * 0.035);
+      g.beginPath(); g.moveTo(x - rr * 0.25, y - rr * 0.2); g.lineTo(x, y + rr * 0.25); g.lineTo(x + rr * 0.25, y - rr * 0.2); g.stroke();
+      g.restore();
+    } },
+    floresta: { z: 3, f(g, o, c, rnd, p) {
+      g.save();
+      for (let k = 0, n = Math.round(p.W * p.H * 0.35); k < n; k++) {
+        const x = rnd() * p.W, y = rnd() * p.H;
+        if (Math.hypot(x - o.cx, y - o.cy) < o.r + 0.8) continue;
+        const rr = (0.9 + rnd() * 0.9) * c;
+        g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(x * c + rr * 0.2, y * c + rr * 0.25, rr, 0, TAU); g.fill();
+        g.fillStyle = ['#1f3a1a', '#28461f', '#173014'][Math.floor(rnd() * 3)]; g.beginPath(); g.arc(x * c, y * c, rr, 0, TAU); g.fill();
+        g.fillStyle = 'rgba(120,170,90,0.18)'; g.beginPath(); g.arc(x * c - rr * 0.3, y * c - rr * 0.3, rr * 0.45, 0, TAU); g.fill();
+      }
       g.restore();
     } },
     escora: { z: 3, f(g, o, c) {
@@ -31996,14 +32935,31 @@ const Masmorra = (() => {
       for (const f of p.formas) sc.shapes.push(Estilos.formaNaCena(f, c, 0, 0));
     }
     // as runas-armadilha: escondidas dos jogadores até o mestre revelar
-    for (const z of p.zonas) sc.effects.push({ id: uid('fx'), fx: z.fx, k: 'circ', x: z.x * c, y: z.y * c, r: z.r || 1, w: 1, rw: 2, rh: 2, ang: 0, dir: 0, pow: 0.8, token: null, gm: z.gm !== false, by: null, seed: 1 + (Math.floor(Math.abs(z.x * 7.3 + z.y * 13.1) * 97) % 997), dur: 0, dur0: 0, at: null, apply: null });
+    for (const z of p.zonas) sc.effects.push({ id: uid('fx'), fx: z.fx, k: 'circ', x: z.x * c, y: z.y * c, r: z.r || 1, w: 1, rw: 2, rh: 2, ang: 0, dir: 0, pow: 0.8, token: null, leve: !!z.leve, gm: z.gm !== false, by: null, seed: 1 + (Math.floor(Math.abs(z.x * 7.3 + z.y * 13.1) * 97) % 997), dur: 0, dur0: 0, at: null, apply: null });
     // a Saída (a escada de subida leva de volta) e a Entrada da escada de descida (o nível de baixo, quando o mestre quiser)
     if (p.sobe) { const s = Props.novo(sc, 'saida', p.sobe.mi * c, p.sobe.mj * c, 1, true); if (fora) s.cena = fora.id; sc.tokens.push(s); }
     if (p.desce) {
       const t = Props.novo(sc, 'entrada', p.desce.mi * c, p.desce.mj * c, 1, true);
       t.size = 0.75; t.x += c * 0.125; t.y += c * 0.125;
-      t.gera = { t: 'masmorra', m: p.tipo, n: Math.min(99, p.nivel + 1), tam: p.tamanho, e: p.estilo, s: (sub(p.seed, 77) % 2147483000) + 1 };
+      // (lote 18: do subsolo, o nível de baixo é a masmorra — a caverna, para começar; a janela deixa escolher)
+      t.gera = { t: 'masmorra', m: p.tipo === 'subsolo' ? 'caverna' : p.tipo, n: Math.min(99, p.nivel + 1), tam: p.tamanho, e: p.estilo, s: (sub(p.seed, 77) % 2147483000) + 1 };
       sc.tokens.push(t);
+    }
+    // (lote 18) os achados e os ninhos do subsolo: marcadores ocultos, com o nome do que é
+    for (const m of p.marcadores || []) if (Props.P[m.id]) { const t = Props.novo(sc, m.id, m.x * c, m.y * c, 1, true); t.name = m.n; sc.tokens.push(t); }
+    // (lote 18) a arena: o chefe no lugar dele (dois quadrados, dois turnos por rodada), os pontos de reforço (ocultos), a
+    // entrada (a Saída, quando a arena é a sala do chefe de uma masmorra) e as fases prontas, guardadas na cena
+    if (p.tipo === 'arena') {
+      const a = p.arena, ch = newToken(sc, a.chefe.x * c, a.chefe.y * c, { name: CHEFE_ARENA[a.tipo] || 'O chefe', size: 2, turns: 2, color: '#8f3d4a' });
+      sc.tokens.push(ch);
+      a.reforcos.forEach((r, i) => { if (!Props.P.emboscada) return; const t = Props.novo(sc, 'emboscada', (r[0] - 0.5) * c, (r[1] - 0.5) * c, 1, true); t.name = 'Reforços (' + (a.fases[0] ? a.fases[0].nome.toLowerCase() : 'fase 2') + ') ' + (i + 1); sc.tokens.push(t); });
+      if (a.entrada) {
+        const id = fora ? 'saida' : 'chegada';
+        if (Props.P[id]) { const t = Props.novo(sc, id, (a.entrada.x - 0.5) * c, (a.entrada.y - 0.5) * c, 1, true); if (fora) t.cena = fora.id; sc.tokens.push(t); }
+      }
+      sc.fases = JSON.parse(JSON.stringify(a.fases.map(f => Object.assign({}, f, { m: f.m.filter(x => x.on !== false) })).filter(f => f.m.length)));
+      sc.light = 'penumbra'; sc.tone = 'noite';
+      if (a.tipo === 'coliseu' || a.tipo === 'circulo' || a.tipo === 'topo') { sc.light = 'claro'; sc.tone = 'entardecer'; }
     }
     normalizeScene(sc);
     Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
@@ -32030,26 +32986,30 @@ const Masmorra = (() => {
       tipo: g0 && TIPOS.some(x => x[0] === g0.m) ? g0.m : TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra',
       tamanho: g0 && TAMANHOS[g0.tam] ? g0.tam : TAMANHOS[o.masTam] ? o.masTam : 'medio',
       nivel: g0 ? g0.n : 1, estilo: Estilos.valido(g0 ? g0.e : o.genEstilo), seed: g0 ? g0.s : novaSemente(),
-      segredos: o.masSeg !== false, descida: o.masDesce !== false, relevo: o.genRelevo !== false,
+      segredos: o.masSeg !== false, descida: o.masDesce !== false, relevo: o.genRelevo !== false, chefe: false,
     };
     let plano = null, nomeMexido = false;
     const cv = h('canvas', { class: 'ger-cv', id: 'mas-prev', width: 460, height: 330, 'aria-label': 'Prévia do nível' });
     const resumoEl = h('p', { class: 'note', id: 'mas-resumo', role: 'status' }), ctl = h('div', { class: 'ger-op' }), nota = note('');
     const inNome = h('input', { id: 'mas-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
     const refazer = () => {
-      plano = gerar({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: st.estilo, seed: st.seed, segredos: st.segredos, descida: st.descida });
+      // (lote 18) o último nível: a sala do chefe (a arena que combina com o tipo), com a Saída de volta na entrada
+      plano = st.chefe ? gerar({ tipo: 'arena', arena: ARENA_DO_TIPO[st.tipo] || 'trono', tamanho: st.tamanho === 'grande' ? 'grande' : st.tamanho === 'pequeno' ? 'pequeno' : 'medio', estilo: st.estilo, seed: st.seed })
+        : gerar({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: st.estilo, seed: st.seed, segredos: st.segredos, descida: st.descida });
       try { previa(cv, plano, 460, 330, { relevo: st.relevo }); } catch (e) { console.error(e); }
       resumoEl.textContent = resumo(plano);
-      if (!nomeMexido) inNome.value = nomePadrao(plano);
+      if (!nomeMexido) inNome.value = st.chefe ? NOME_ARENA[plano.arena.tipo] : nomePadrao(plano);
+      if (st.chefe) { nota.textContent = 'A sala do chefe: ' + (NOME_ARENA[plano.arena.tipo] || '').toLowerCase() + ', com o chefe no lugar dele, os pontos de reforço escondidos e as fases prontas (você aciona na aba Cena, com prévia e Desfazer). A Saída, na entrada, leva de volta. Nada sai escrito.'; return; }
       nota.textContent = NOTA[st.tipo] + ' Sai uma cena nova, dentro desta, no breu (só o fogo e os cogumelos iluminam), com a Saída na escada de subida levando de volta' + (st.descida ? ' e, na escada de descida, a Entrada do nível ' + (st.nivel + 1) + ' (dois cliques nela geram o nível de baixo quando você quiser)' : '') + (st.segredos ? '. As portas secretas e as runas-armadilha ficam escondidas dos jogadores até você revelar' : '') + '. O marcador fica ligado à cena nova. Nada sai escrito.';
     };
     const lembrar = () => { o.masTipo = st.tipo; o.masTam = st.tamanho; o.masSeg = st.segredos; o.masDesce = st.descida; };
-    const pintarC = () => ctl.replaceChildren(
+    const pintarC = () => ctl.replaceChildren(...[
       field('Tipo', seg('mas-tipo', st.tipo, TIPOS.map(([k, n]) => [k, n]), v => { st.tipo = v; lembrar(); pintarC(); refazer(); }), 'stack'),
       field('Tamanho', seg('mas-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, `${TAMANHOS[k].W} × ${TAMANHOS[k].H} quadrados`]), v => { st.tamanho = v; lembrar(); pintarC(); refazer(); }), 'stack'),
-      K.toggle('mas-seg', st.segredos, v => { st.segredos = v; lembrar(); pintarC(); refazer(); }, 'Com segredos (as portas secretas e as runas-armadilha, escondidas dos jogadores)'),
-      K.toggle('mas-desce', st.descida, v => { st.descida = v; lembrar(); pintarC(); refazer(); }, 'Com a escada para o nível de baixo'),
-      K.toggle('mas-relevo', st.relevo, v => { st.relevo = v; o.genRelevo = v; pintarC(); refazer(); }, 'Com relevo (os estrados, os sarcófagos, a água, o abismo)'));
+      K.toggle('mas-chefe', st.chefe, v => { st.chefe = v; nomeMexido = false; pintarC(); refazer(); }, 'O último nível: a sala do chefe (uma arena com as fases)'),
+      st.chefe ? null : K.toggle('mas-seg', st.segredos, v => { st.segredos = v; lembrar(); pintarC(); refazer(); }, 'Com segredos (as portas secretas e as runas-armadilha, escondidas dos jogadores)'),
+      st.chefe ? null : K.toggle('mas-desce', st.descida, v => { st.descida = v; lembrar(); pintarC(); refazer(); }, 'Com a escada para o nível de baixo'),
+      K.toggle('mas-relevo', st.relevo, v => { st.relevo = v; o.genRelevo = v; pintarC(); refazer(); }, 'Com relevo (os estrados, os sarcófagos, a água, o abismo)')].filter(Boolean));
     pintarC(); refazer();
     aberta = { st, get plano() { return plano; }, refazer };
     UI.modal({
@@ -32067,6 +33027,7 @@ const Masmorra = (() => {
             UI.closeModal();
             if (Store.S.current === fora.id && Store.get('tokens', t.id)) UI.ligarObjeto(t, sc.id);
             UI.switchScene(sc.id);
+            if (p.arena) { UI.toast(`"${sc.name}" criada, dentro de "${fora.name}": a sala do chefe. A Saída, na entrada, leva de volta; as fases ficam na aba Cena.`, { long: true }); return; }
             UI.toast(`"${sc.name}" criada, dentro de "${fora.name}". A Saída, na escada de subida, leva de volta` + (p.desce ? `; a Entrada da escada de descida gera o nível ${p.nivel + 1}.` : '.'), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
@@ -32074,7 +33035,65 @@ const Masmorra = (() => {
       }],
     });
   }
-  const vivo = () => (aberta && document.getElementById('mas-prev') ? aberta : null);
+  const vivo = () => (aberta && document.getElementById(aberta.subsolo ? 'sub-prev' : 'mas-prev') ? aberta : null);
+
+  /* (lote 18) "Gerar a caverna embaixo…": pela entrada de gruta (a da Região livre já sabe o rio e o bioma de cima) ou
+     por uma Entrada posta à mão. A caverna tem o tamanho desta cena e a subida embaixo da entrada; sai uma cena nova,
+     dentro desta, no breu, com a Saída levando de volta. */
+  function abrirSubsolo(t) {
+    const fora = Store.scene();
+    if (!isGM() || !t || !fora) return;
+    const K = UI.kit, { field, seg, btn, note } = K, g0 = t.gera && t.gera.t === 'subsolo' ? t.gera : {}, o = App.opt, c = fora.cell;
+    const x = isFinite(g0.x) ? g0.x : (t.x + t.size * c / 2) / c, y = isFinite(g0.y) ? g0.y : (t.y + t.size * c / 2) / c;
+    const rio = Array.isArray(g0.rio) && g0.rio.length >= 2 ? g0.rio : null;
+    const st = {
+      bioma: BIOMAS_SUB.some(b => b[0] === g0.bio) ? g0.bio : BIOMAS_SUB.some(b => b[0] === o.subBio) ? o.subBio : 'fungos',
+      rio: !!rio && o.subRio !== false, achados: o.subAch !== false, descida: o.subDesce !== false, relevo: o.genRelevo !== false,
+      seed: Number(g0.s) > 0 ? g0.s : novaSemente(), estilo: Estilos.valido(o.genEstilo),
+    };
+    const sugerido = BIOMAS_SUB.some(b => b[0] === g0.bio) ? g0.bio : null;
+    let plano = null, nomeMexido = false;
+    const cv = h('canvas', { class: 'ger-cv', id: 'sub-prev', width: 460, height: 330, 'aria-label': 'Prévia da caverna' });
+    const resumoEl = h('p', { class: 'note', id: 'sub-resumo', role: 'status' }), ctl = h('div', { class: 'ger-op' }), nota = note('');
+    const inNome = h('input', { id: 'sub-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
+    const refazer = () => {
+      plano = gerar({ tipo: 'subsolo', W: fora.cols, H: fora.rows, x, y, rio: st.rio ? rio : null, bioma: st.bioma, achados: st.achados, descida: st.descida, nivel: 1, estilo: st.estilo, seed: st.seed });
+      try { previa(cv, plano, 460, 330, { relevo: st.relevo }); } catch (e) { console.error(e); }
+      resumoEl.textContent = resumo(plano);
+      if (!nomeMexido) inNome.value = ('Subsolo de ' + fora.name).slice(0, 60);
+      nota.textContent = NOTA_SUB[st.bioma] + ' Do tamanho desta cena (' + fora.cols + ' × ' + fora.rows + '), com a subida embaixo da entrada: sai uma cena nova, dentro desta, no breu, com a Saída levando de volta' + (st.descida ? ' e a passagem escondida para o nível de baixo.' : '.');
+    };
+    const lembrar = () => { o.subBio = st.bioma; o.subRio = st.rio; o.subAch = st.achados; o.subDesce = st.descida; };
+    const pintarC = () => ctl.replaceChildren(
+      field('O bioma de baixo', seg('sub-bio', st.bioma, BIOMAS_SUB.map(([k, n]) => [k, n + (k === sugerido ? ' (de cima)' : ''), null, NOTA_SUB[k]]), v => { st.bioma = v; lembrar(); pintarC(); refazer(); }), 'stack'),
+      rio ? K.toggle('sub-rio', st.rio, v => { st.rio = v; lembrar(); pintarC(); refazer(); }, 'O rio de cima vira o rio de baixo (pelo mesmo traçado)') : note('Sem rio na cena de cima (ou a entrada foi posta à mão): a caverna não tem o rio de baixo.'),
+      K.toggle('sub-ach', st.achados, v => { st.achados = v; lembrar(); pintarC(); refazer(); }, 'Com um achado e um ninho (marcadores ocultos, com o nome do que é)'),
+      K.toggle('sub-desce', st.descida, v => { st.descida = v; lembrar(); pintarC(); refazer(); }, 'Descer mais (uma passagem escondida para o nível de baixo)'),
+      K.toggle('sub-relevo', st.relevo, v => { st.relevo = v; o.genRelevo = v; pintarC(); refazer(); }, 'Com relevo (a água e o lago)'));
+    pintarC(); refazer();
+    aberta = { st, get plano() { return plano; }, refazer, subsolo: true };
+    UI.modal({
+      title: 'Gerar a caverna embaixo', xl: true,
+      body: h('div', { class: 'ger' },
+        h('div', { class: 'ger-g' }, ctl, h('div', { class: 'ger-pv' }, cv, h('div', { class: 'row' }, btn('Gerar outra', () => { st.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'sub-outro', title: 'Sorteia outra caverna, com as mesmas escolhas' })), resumoEl)),
+        field('Nome da cena', inNome, 'stack'),
+        nota),
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
+          const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
+          if (b) { b.disabled = true; b.textContent = 'Criando…'; }
+          const p = plano;
+          criar(p, inNome.value, fora, { relevo: st.relevo }).then(sc => {
+            UI.closeModal();
+            if (Store.S.current === fora.id && Store.get('tokens', t.id)) UI.ligarObjeto(t, sc.id);
+            UI.switchScene(sc.id);
+            UI.toast(`"${sc.name}" criada, dentro de "${fora.name}". A Saída, embaixo da entrada, leva de volta` + (p.desce ? '; a passagem escondida gera o nível de baixo.' : '.'), { long: true });
+          }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
+          return false;
+        },
+      }],
+    });
+  }
 
   /* ================= a aba Masmorra do "Gerar um lugar…" (lote 7, parte 4b-3c) =================
      O mesmo nível da janela da Entrada, sem precisar de uma Entrada: o tipo, o tamanho, o nível (o nome acompanha), a
@@ -32133,7 +33152,398 @@ const Masmorra = (() => {
     dica: '"Gerar outro" sorteia outro nível, com as mesmas escolhas (a masmorra não tem partes para travar).',
     nota: 'Sai uma cena nova, no breu (só o fogo e os cogumelos iluminam): dentro da cena escolhida em "Embaixo de", com a Saída na escada de subida levando de volta — ou solta, com a Saída ainda sem destino (você escolhe a cena no painel dela). Na escada de descida, a Entrada do nível de baixo (dois cliques nela geram o próximo quando você quiser). As portas secretas e as runas-armadilha ficam escondidas dos jogadores até você revelar. Nada sai escrito.',
     feito: feitoL };
-  return { TIPOS, TAMANHOS, NOME, PAL_M, DESENHO, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LUGAR };
+  return { TIPOS, TAMANHOS, NOME, PAL_M, DESENHO, BIOMAS_SUB, biomaDeBaixo, ARENAS, TAM_ARENA, NOME_ARENA, MUDANCAS, FASES_ARENA, nomeMud, CHEFE_ARENA, LACAIO_ARENA, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, abrirSubsolo, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LUGAR };
+})();
+/* ---------------------------------------------------------------
+   10g4. ARENA — as arenas de boss (lote 18)
+   A aba "Arena" de "Gerar um lugar…" (o tipo, o tamanho e as fases prontas: cada mudança liga, desliga ou troca) e as
+   fases na cena: a cena da arena guarda as fases (sc.fases, só do mestre); a aba Cena mostra cada uma com o botão de
+   acionar, e o menu do mapa (botão direito no vazio) também. Acionar mostra antes o que vai mudar; tudo num passo só
+   (o Desfazer volta). O plano e o desenho são os da masmorra (Masmorra.gerar com tipo 'arena').
+   --------------------------------------------------------------- */
+const Arena = (() => {
+  const NOTA = {
+    coliseu: 'A arena de areia cercada pela arquibancada: o camarote do campeão, as estátuas e as barricadas como cobertura, os espinhos no chão e a grade da entrada.',
+    trono: 'O salão das colunas: o tapete até o estrado do trono, os braseiros, as portas dos lados (por onde chega a guarda) e o óleo no chão.',
+    mausoleu: 'Os túmulos em fileiras, os nichos dos mortos, o sarcófago do senhor no estrado, as velas e a névoa venenosa.',
+    covil: 'A caverna do dragão: o rochedo alto por cima do tesouro, a lava pelos lados, os ossos e as estalagmites como cobertura.',
+    altar: 'O altar no estrado, o círculo das runas no meio (escondidas até a fase delas) e as colunas com os braseiros em volta.',
+    ponte: 'A ponte estreita sobre o abismo, com a plataforma do meio: quem cai, cai fundo (o relevo sugere a queda).',
+    topo: 'O alto da torre cercado pelo vazio: a mureta com as ameias (aberta na escada), as estátuas e a tempestade.',
+    circulo: 'A clareira na mata, o anel das pedras de pé (com as passagens), a pedra do altar no meio e as runas escondidas.',
+  };
+  // a mudança por extenso (para a janela e para a prévia do acionar)
+  function textoDaMudanca(m) {
+    if (!m) return '';
+    if (m.k === 'reforcos') return (m.pts || []).length + ' ' + ((m.pts || []).length === 1 ? 'reforço' : 'reforços') + ' (' + (m.nome || 'Lacaio') + ') chegam nos pontos marcados';
+    if (m.k === 'desaba') return 'o chão desaba (um fosso de 6 m)';
+    if (m.k === 'luz') return 'as luzes e o fogo se apagam';
+    if (m.k === 'grade') return 'a grade da entrada fecha e tranca';
+    if (m.k === 'zona') { const n = Masmorra.nomeMud('zona:' + m.fx); return (n !== 'zona:' + m.fx ? n.charAt(0).toLowerCase() + n.slice(1) : 'a zona ' + ((FX.P[m.fx] || {}).n || m.fx).toLowerCase() + ' aparece') + ' (' + Math.round(m.r || 2) + ' q de raio)'; }
+    return m.k;
+  }
+  const chaveDe = m => (m.k === 'zona' ? 'zona:' + m.fx : m.k);
+
+  /* ================= a aba da janela "Gerar um lugar…" ================= */
+  function padrao() {
+    const o = App.opt;
+    return { tipo: Masmorra.ARENAS.some(x => x[0] === o.arTipo) ? o.arTipo : 'coliseu', tamanho: Masmorra.TAM_ARENA[o.arTam] ? o.arTam : 'medio', fases: null };
+  }
+  // as fases do tipo (a tabela), com o que o mestre mudou: [[{ k, on }]]
+  const fasesDe = st => (Masmorra.FASES_ARENA[st.tipo] || []).map((ks, i) => ks.map((k, j) => { const o = st.fases && st.fases[i] && st.fases[i][j]; return o ? { k: o.k, on: o.on !== false } : { k, on: true }; }));
+  function controles(st, K, mudou) {
+    const { field, seg, toggle } = K;
+    const muda = (campo, v) => { st[campo] = v; if (campo === 'tipo') st.fases = null; App.opt.arTipo = st.tipo; App.opt.arTam = st.tamanho; mudou(true); };
+    const fs = fasesDe(st);
+    const linhas = fs.map((ms, i) => h('div', { class: 'ar-fase', 'data-fase': i + 2 },
+      h('b', { text: 'Fase ' + (i + 2) }),
+      ...ms.map((m, j) => h('div', { class: 'ar-mud' },
+        toggle('ar-f' + (i + 2) + '-' + j, m.on, v => { const f = fasesDe(st); f[i][j].on = v; st.fases = f; mudou(true); }, ''),
+        h('select', { class: 'in', id: 'ar-f' + (i + 2) + '-' + j + '-k', 'aria-label': 'A mudança ' + (j + 1) + ' da fase ' + (i + 2), disabled: !m.on,
+          onchange: e => { const f = fasesDe(st); f[i][j].k = e.target.value; st.fases = f; e.target.blur(); mudou(true); } },
+          Masmorra.MUDANCAS.filter(([k]) => k !== 'grade' || st.tipo === 'coliseu' || st.tipo === 'trono' || st.tipo === 'mausoleu').map(([k, n]) => h('option', { value: k, text: n, selected: k === m.k })))))));
+    return h('div', { class: 'ger-c' },
+      field('Tipo', seg('ar-tipo', st.tipo, Masmorra.ARENAS.map(([k, n]) => [k, n, null, NOTA[k]]), v => muda('tipo', v)), 'stack'),
+      field('Tamanho', seg('ar-tam', st.tamanho, Object.keys(Masmorra.TAM_ARENA).map(k => [k, Masmorra.TAM_ARENA[k].n, null, Masmorra.TAM_ARENA[k].W + ' × ' + Masmorra.TAM_ARENA[k].H + ' quadrados']), v => muda('tamanho', v)), 'stack'),
+      field('As fases (você aciona na cena; cada mudança liga, desliga ou troca)', h('div', { class: 'ar-fases', id: 'ar-fases' }, linhas), 'stack'));
+  }
+  const opcoesDe = st => ({ tipo: st.tipo, tamanho: st.tamanho, fases: st.fases ? JSON.parse(JSON.stringify(st.fases)) : null });
+  function aplicarOpcoes(st, o) {
+    if (Masmorra.ARENAS.some(x => x[0] === o.tipo)) { st.tipo = o.tipo; st.fases = null; }
+    if (Masmorra.TAM_ARENA[o.tamanho]) st.tamanho = o.tamanho;
+    if (Array.isArray(o.fases)) st.fases = o.fases;
+    App.opt.arTipo = st.tipo; App.opt.arTam = st.tamanho;
+  }
+  const gerar = (st, comum) => Masmorra.gerar({ tipo: 'arena', arena: st.tipo, tamanho: st.tamanho, estilo: comum && comum.estilo, seed: comum && comum.seed, fases: fasesDe(st) });
+  const nomePadrao = p => Masmorra.NOME_ARENA[p.arena.tipo] || 'A arena';
+  const feito = (sc, p) => `"${sc.name}" criada: ${Masmorra.resumo(p).replace(/\.$/, '')}. O chefe já está no lugar dele; os pontos de reforço e a entrada estão ocultos (só você vê). As fases ficam na aba Cena (e no botão direito do mapa).`;
+  const LUGAR = { id: 'arena', n: 'Arena', padrao, controles, opcoesDe, aplicarOpcoes, gerar,
+    previa: (cv, p, mw, mh, op) => Masmorra.previa(cv, p, mw, mh, op), resumo: p => Masmorra.resumo(p),
+    partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava,
+    quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null, nomePadrao,
+    criar: (p, nome, ex) => { ex = ex || {}; return Masmorra.criar(p, nome, null, { relevo: ex.relevo !== false, id: ex.id }); },
+    semHora: true,
+    relevoTxt: 'Com relevo (o lugar do chefe, o abismo, a lava)',
+    dica: '"Gerar outro" sorteia outra arena do mesmo tipo, com as mesmas fases.',
+    nota: 'Sai uma cena nova, feita para a luta com o chefe: a entrada embaixo, o chefe no lugar dele (elevado, de frente para a entrada), a cobertura, os perigos no chão (as zonas: você aplica) e os pontos de reforço escondidos. As fases você aciona na cena, com prévia e Desfazer.',
+    feito };
+
+  /* ================= as fases na cena ================= */
+  // as fases que a cena guarda, arrumadas (só o que vale)
+  function fases(sc) {
+    const l = sc && Array.isArray(sc.fases) ? sc.fases : [];
+    return l.filter(f => f && typeof f === 'object' && Array.isArray(f.m)).map((f, i) => ({ i, n: Number(f.n) || i + 2, nome: String(f.nome || 'Fase ' + (i + 2)).slice(0, 40), feita: !!f.feita, m: f.m.filter(m => m && typeof m === 'object' && typeof m.k === 'string') }));
+  }
+  const proxima = sc => fases(sc).find(f => !f.feita) || null;
+  // aplica uma mudança (dentro de um passo)
+  function aplicar(sc, m) {
+    const c = sc.cell;
+    if (m.k === 'zona' && FX.P[m.fx]) {
+      // a zona escondida do mesmo tipo que já estava na cena (as runas do altar) aparece; sem ela, uma zona nova
+      const escondidas = sc.effects.filter(e => e.fx === m.fx && e.gm);
+      if (escondidas.length) for (const e of escondidas) Store.upd('effects', e.id, { gm: false });
+      else Store.add('effects', { id: uid('fx'), fx: m.fx, k: 'circ', x: (Number(m.x) || sc.cols / 2) * c, y: (Number(m.y) || sc.rows / 2) * c, r: clamp(Number(m.r) || 2, 0.5, 30), w: 1, rw: 2, rh: 2, ang: 0, dir: 0, pow: 0.8, token: null, leve: true, gm: false, by: null, seed: 1 + Math.floor(Math.random() * 997), dur: 0, dur0: 0, at: null, apply: null });
+    } else if (m.k === 'desaba') {
+      const x = (Number(m.x) || 0) * c, y = (Number(m.y) || 0) * c, w = Math.max(1, Number(m.w) || 3) * c, hh = Math.max(1, Number(m.h) || 2) * c;
+      Store.add('shapes', Combate.newTerrain({ k: 'rect', x, y, w, h: hh }, 'fosso', -6));
+    } else if (m.k === 'luz') {
+      for (const l of sc.lights) if (l.on) Store.upd('lights', l.id, { on: false });
+      for (const t of sc.tokens) if (t.light && t.light.on) Store.upd('tokens', t.id, { light: Object.assign({}, t.light, { on: false }) });
+      if (sc.light === 'claro') Store.scn({ light: 'penumbra' });
+    } else if (m.k === 'grade') {
+      const gx = (Number(m.x) || 0) * c, gy = (Number(m.y) || 0) * c;
+      let melhor = null;
+      for (const w of sc.walls) { if (w.k !== 'door') continue; const d = Math.hypot((w.x1 + w.x2) / 2 - gx, (w.y1 + w.y2) / 2 - gy); if (!melhor || d < melhor[0]) melhor = [d, w]; }
+      if (melhor && melhor[0] < c * 3) Store.upd('walls', melhor[1].id, { open: false, locked: true });
+    } else if (m.k === 'reforcos') {
+      (m.pts || []).forEach((pt, i) => {
+        const [x, y] = snapTok(sc, (Number(pt[0]) - 0.5) * c, (Number(pt[1]) - 0.5) * c, 1, false);
+        Store.add('tokens', newToken(sc, x, y, { name: (m.nome || 'Lacaio') + ' ' + (i + 1), color: '#b87c7c' }));
+      });
+    }
+  }
+  function acionar(i) {
+    const sc = Store.scene();
+    if (!isGM() || !sc) return;
+    const f = fases(sc).find(x => x.i === i);
+    if (!f) return;
+    UI.modal({ title: 'Acionar a ' + f.nome.toLowerCase() + '?', text: 'O que muda na arena (dá para desfazer):',
+      body: h('ul', { class: 'ar-previa', id: 'ar-previa' }, f.m.map(m => h('li', { text: textoDaMudanca(m) }))),
+      actions: [{ label: 'Cancelar' }, { label: 'Acionar a ' + f.nome.toLowerCase(), kind: 'primary', run: () => {
+        Store.tx(f.nome + ' da arena', () => {
+          const agora = Store.scene();
+          for (const m of f.m) aplicar(agora, m);
+          Store.scn({ fases: agora.fases.map((x, k) => (k === i ? Object.assign({}, x, { feita: true }) : x)) });
+        });
+        UI.toast(f.nome + ': ' + f.m.map(textoDaMudanca).join('; ') + '.', { action: 'Desfazer', run: Tools.undo, long: true, key: 'arena-fase' });
+      } }] });
+  }
+  // a seção da aba Cena (só o mestre; só numa arena)
+  function secao(K) {
+    const sc = Store.scene(), fs = fases(sc);
+    if (!isGM() || !fs.length) return null;
+    const { sec, note, btn } = K;
+    return sec('c-fases', 'Fases da arena', true,
+      ...fs.map(f => h('div', { class: 'ar-cena' + (f.feita ? ' feita' : ''), 'data-fase': f.n },
+        h('div', { class: 'ar-cena-t' }, h('b', { text: f.nome }), f.feita ? h('span', { class: 'muted', text: ' · acionada' }) : null),
+        h('p', { class: 'note', text: f.m.map(textoDaMudanca).join('; ') + '.' }),
+        f.feita ? null : btn('Acionar a ' + f.nome.toLowerCase() + '…', () => acionar(f.i), { id: 'ar-acionar-' + f.n, kind: proxima(sc) && proxima(sc).i === f.i ? 'primary' : null }))),
+      note('Os reforços chegam nos pontos marcados (ocultos para os jogadores). Cada fase é um passo: o Desfazer volta.'));
+  }
+  return { LUGAR, NOTA, fases, proxima, acionar, secao, textoDaMudanca, chaveDe };
+})();
+/* ---------------------------------------------------------------
+   10g5. CAMPO — o campo de batalha (lote 18)
+   Nasce da janela da Batalha do Mapa-múndi ("Abrir no campo de batalha…"): a janela "Gerar um lugar" abre com a cena do
+   hexágono da batalha (o terreno dele) e um bloco a mais, o do campo: os dois exércitos e quantos soldados vão em cada
+   bloco (de começo, 100). Ao criar, os dois exércitos ficam frente a frente, em blocos (os de soldados na frente; os
+   magos e as máquinas de cerco atrás), cada bloco um token com a barra dos soldados.
+   Quem move: o mestre move todos; o jogador cuja ficha é o comandante do exército (ou, sem ele, o governante da
+   facção) é o dono dos blocos daquele lado.
+   A leitura do campo (a aba Cena): o flanco, o terreno alto, a cobertura e a reserva viram bônus sugeridos — "Levar
+   para a batalha…" abre a batalha no Mapa-múndi com eles, e lá o mestre soma o que quiser. No "Depois" da batalha, as
+   perdas voltam para cá: a prévia mostra quanto cada bloco perde (os que estão na luta perdem mais); confirmar é um
+   passo só (o Desfazer volta).
+   --------------------------------------------------------------- */
+const Campo = (() => {
+  const MAX_BLOCOS = 40;                 // por lado (os de soldados, os magos e as máquinas, juntos)
+  const POR_MIN = 10, POR_MAX = 100000;
+  const txt = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const idOk = v => typeof v === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(v);
+  const corOk = v => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : null);
+  const inteiro = (v, a, b) => clamp(Math.round(Number(v) || 0), a, b);
+  // o pedido do Mapa-múndi, arrumado (ou null)
+  function valida(c) {
+    if (!c || typeof c !== 'object') return null;
+    const lado = (o, cor0) => (o && typeof o === 'object' && idOk(o.g) ? {
+      g: o.g, nome: txt(o.nome, 60) || 'Exército', fac: idOk(o.fac) ? o.fac : null, cor: corOk(o.cor) || cor0,
+      cmd: idOk(o.cmd) ? o.cmd : null, gov: idOk(o.gov) ? o.gov : null,
+      unid: (Array.isArray(o.unid) ? o.unid : []).filter(u => u && typeof u === 'object').slice(0, 30).map(u => ({ nome: txt(u.nome, 40) || 'Unidade', tipo: txt(u.tipo, 30), tropas: inteiro(u.tropas, 0, 1e7), magos: inteiro(u.magos, 0, 1e6), maq: inteiro(u.maq, 0, 1e4) })).filter(u => u.tropas > 0 || u.magos > 0 || u.maq > 0),
+    } : null);
+    const a = lado(c.a, '#b03a2e'), b = lado(c.b, '#2e6db0');
+    if (!a || !b || a.g === b.g) return null;
+    return { mapa: idOk(c.mapa) ? c.mapa : null, a, b, ladoA: ['o', 'l', 'n', 's'].includes(c.ladoA) ? c.ladoA : 'o', por: inteiro(c.por || 100, POR_MIN, POR_MAX) };
+  }
+  const OPOSTO = { o: 'l', l: 'o', n: 's', s: 'n' };
+  // os blocos de um lado: [{ k: 'sold' | 'mago' | 'cerco', nome, n, u (a unidade) }]
+  function blocos(L, por) {
+    const out = [];
+    for (const [ui, u] of L.unid.entries()) {
+      const nb = Math.ceil(u.tropas / por);
+      for (let i = 0; i < nb; i++) out.push({ k: 'sold', nome: u.nome + (nb > 1 ? ' ' + (i + 1) : ''), n: Math.min(por, u.tropas - i * por), u: ui });
+    }
+    for (const [ui, u] of L.unid.entries()) {
+      if (u.magos) out.push({ k: 'mago', nome: 'Magos de ' + u.nome, n: u.magos, u: ui });
+      if (u.maq) out.push({ k: 'cerco', nome: 'Cerco de ' + u.nome, n: u.maq, u: ui });
+    }
+    return out;
+  }
+  const plural = (n, um, varios) => n + ' ' + (n === 1 ? um : varios);
+  function textoDoLado(L, por) {
+    const bs = blocos(L, por), s = bs.filter(b => b.k === 'sold').length, mg = bs.filter(b => b.k === 'mago').length, mq = bs.filter(b => b.k === 'cerco').length;
+    return L.nome + ': ' + plural(s, 'bloco de soldados', 'blocos de soldados') + (mg ? ', ' + plural(mg, 'de magos', 'de magos') : '') + (mq ? ', ' + plural(mq, 'de cerco', 'de cerco') : '') + (bs.length > MAX_BLOCOS ? ' — passa de ' + MAX_BLOCOS + ': só os ' + MAX_BLOCOS + ' primeiros entram (ponha mais soldados por bloco)' : '');
+  }
+  // quem move um lado: o dono da ficha do comandante (ou, sem ela, a do governante da facção) → { id, nome, por } | null
+  function quemMove(L) {
+    if (typeof Fichas === 'undefined' || !Fichas.on()) return null;
+    for (const [f, por] of [[L.cmd, 'o comandante'], [L.gov, 'o governante da facção']]) {
+      const l = f ? Fichas.get(f) : null, j = l && l.dono_id ? playerById(l.dono_id) : null;
+      if (j) return { id: j.id, nome: j.name, por, ficha: l.nome || '' };
+    }
+    return null;
+  }
+  // o bloco da janela "Gerar um lugar" (só com o pedido do Mapa-múndi): os dois lados e os soldados por bloco
+  function bloco(c, comum, K, mudou) {
+    const { field, inNum, note } = K;
+    const quem = L => { const q = quemMove(L); return q ? ' Move: ' + q.nome + ' (' + q.por + ').' : ''; };
+    return h('div', { class: 'ger-hex cp-bloco', id: 'cp-bloco' },
+      h('b', { text: 'O campo de batalha' }),
+      field('Soldados por bloco', inNum('cp-por', comum.campoPor, v => { comum.campoPor = inteiro(v, POR_MIN, POR_MAX); mudou(); }, { min: POR_MIN, max: POR_MAX, step: 10, label: 'Quantos soldados vão em cada bloco (cada bloco é um token)' }), 'stack'),
+      h('p', { class: 'note', id: 'cp-a', text: textoDoLado(c.a, comum.campoPor) + '.' + quem(c.a) }),
+      h('p', { class: 'note', id: 'cp-b', text: textoDoLado(c.b, comum.campoPor) + '.' + quem(c.b) }),
+      note('Os dois exércitos ficam frente a frente, com os soldados na frente e os magos e as máquinas atrás. Você move todos; o comandante (ou o governante da facção) move os blocos dele.'));
+  }
+
+  /* ---- montar: os blocos na cena nova ---- */
+  // os lugares de um lado, linha por linha (da frente para trás; em cada linha, do meio para fora), em quadrados:
+  // [[[x, y] do canto do bloco de 2, …], …]
+  function vagas(sc, lado) {
+    const W = sc.cols, H = sc.rows, hor = lado === 'o' || lado === 'l', U = hor ? H : W, V = hor ? W : H;
+    const frente = Math.round(V * 0.3), out = [];
+    const porLinha = Math.max(1, Math.floor((U - 2) / 3)), meio = (U - 2) / 2;
+    for (let li = 0; frente - li * 3 >= 1; li++) {
+      const v = frente - li * 3, linha = [];
+      out.push(linha);
+      for (let k = 0; k < porLinha; k++) {
+        const off = k === 0 ? 0 : (k % 2 ? 1 : -1) * Math.ceil(k / 2), u = Math.round(meio + off * 3);
+        if (u < 1 || u > U - 3) continue;
+        const vv = lado === 'o' || lado === 'n' ? v - 1 : V - v - 1;
+        linha.push(hor ? [vv, u] : [u, vv]);
+      }
+    }
+    return out;
+  }
+  // o chão do bloco: não na água, nem na parede
+  function livre(sc, x, y, s) {
+    const c = sc.cell;
+    for (const [dx, dy] of [[0.5, 0.5], [s - 0.5, 0.5], [0.5, s - 0.5], [s - 0.5, s - 0.5], [s / 2, s / 2]]) {
+      const ter = Combate.terrainAt(sc, (x + dx) * c, (y + dy) * c);
+      if (ter && ter.ter.t === 'agua') return false;
+    }
+    return true;
+  }
+  function montar(sc, c, por) {
+    if (!sc || !c) return { a: 0, b: 0 };
+    por = inteiro(por || c.por, POR_MIN, POR_MAX);
+    const cel = sc.cell, conta = {};
+    for (const q of ['a', 'b']) {
+      const L = c[q], lado = q === 'a' ? c.ladoA : OPOSTO[c.ladoA], dono = quemMove(L);
+      const bs = blocos(L, por).slice(0, MAX_BLOCOS), linhas = vagas(sc, lado).map(l => l.filter(([x, y]) => livre(sc, x, y, 2))).filter(l => l.length);
+      // os soldados enchem as linhas da frente; os magos e as máquinas começam na linha de trás da última dos soldados
+      let li = 0, k = 0, i = 0, atras = false;
+      const proxima = () => { while (li < linhas.length && k >= linhas[li].length) { li++; k = 0; } return li < linhas.length ? linhas[li][k++] : null; };
+      for (const b of bs) {
+        if (b.k !== 'sold' && !atras) { atras = true; if (k > 0) { li++; k = 0; } }
+        const v = proxima();
+        if (!v) break;
+        i++;
+        const s = b.k === 'mago' ? 1 : 2, x = v[0] + (s === 1 ? 0.5 : 0), y = v[1] + (s === 1 ? 0.5 : 0);
+        const t = newToken(sc, x * cel, y * cel, { name: b.nome, color: L.cor, size: s });
+        t.bars = [cleanBar({ n: b.k === 'sold' ? 'Soldados' : b.k === 'mago' ? 'Magos' : 'Máquinas', c: '#c9a227', v: b.n, m: b.n, k: 'bar', on: true })];
+        t.bloco = { l: q, k: b.k, n0: b.n };
+        if (dono) t.owner = dono.id;
+        sc.tokens.push(t);
+      }
+      conta[q] = Math.min(i, bs.length);
+    }
+    sc.campo = { mapa: c.mapa, por, ladoA: c.ladoA, a: { g: c.a.g, nome: c.a.nome, cor: c.a.cor }, b: { g: c.b.g, nome: c.b.nome, cor: c.b.cor } };
+    sc.perms = Object.assign({}, sc.perms, { mover: true });
+    normalizeScene(sc); Persist.scene(sc.id);
+    return conta;
+  }
+  const feitoTxt = (c, conta) => `Os exércitos estão frente a frente: ${c.a.nome} (${plural(conta.a || 0, 'bloco', 'blocos')}) e ${c.b.nome} (${plural(conta.b || 0, 'bloco', 'blocos')}). A leitura do campo e "Levar para a batalha…" ficam na aba Cena.`;
+
+  /* ---- a leitura do campo: os bônus sugeridos ---- */
+  function blocosNaCena(sc) {
+    const c = sc.cell, out = { a: [], b: [] };
+    for (const t of sc.tokens) if (t.bloco && (t.bloco.l === 'a' || t.bloco.l === 'b') && !t.hidden) out[t.bloco.l].push({ t, x: (t.x + t.size * c / 2) / c, y: (t.y + t.size * c / 2) / c, n: (t.bars[0] && t.bars[0].v) || 0 });
+    return out;
+  }
+  const PERTO = 3.5;                    // a luta: os centros a até três quadrados e meio
+  function leitura(sc) {
+    const C = sc && sc.campo, out = { a: [], b: [] };
+    if (!C) return out;
+    const B = blocosNaCena(sc), dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+    for (const q of ['a', 'b']) {
+      const o = q === 'a' ? 'b' : 'a', meus = B[q], deles = B[o];
+      if (!meus.length || !deles.length) continue;
+      const naLuta = meus.filter(p => deles.some(e => dist(p, e) <= PERTO));
+      // o flanco: o bloco deles pego por dois dos meus de lados diferentes (90° ou mais entre eles) ou atacado por trás
+      // (do lado oposto ao do meu exército, para quem ele olha)
+      const cx = meus.reduce((s0, p) => s0 + p.x, 0) / meus.length, cy = meus.reduce((s0, p) => s0 + p.y, 0) / meus.length;
+      const flanq = deles.filter(e => {
+        const vs = meus.map(p => [p.x - e.x, p.y - e.y]).map(([dx, dy]) => [dx, dy, Math.hypot(dx, dy)]).filter(v => v[2] <= PERTO && v[2] > 1e-6).map(([dx, dy, d]) => [dx / d, dy / d]);
+        if (!vs.length) return false;
+        for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) if (vs[i][0] * vs[j][0] + vs[i][1] * vs[j][1] <= 1e-6) return true;
+        const fx = cx - e.x, fy = cy - e.y, fd = Math.hypot(fx, fy);
+        return fd > 1e-6 && vs.some(v => (v[0] * fx + v[1] * fy) / fd < -0.5);
+      }).length;
+      if (flanq) out[q].push({ k: 'flanco', v: Math.min(3, flanq), txt: plural(flanq, 'bloco inimigo atacado pelo lado ou por trás', 'blocos inimigos atacados pelo lado ou por trás') });
+      // o terreno alto: os meus, na luta, mais altos que o inimigo mais perto
+      if (Relevo.temRelevo(sc) && naLuta.length) {
+        const alto = naLuta.filter(p => { const e = deles.reduce((m0, x) => (!m0 || dist(p, x) < dist(p, m0) ? x : m0), null); return Relevo.alturaDoToken(p.t, sc) - Relevo.alturaDoToken(e.t, sc) >= 1 - 1e-6; }).length;
+        if (alto) out[q].push({ k: 'alto', v: alto * 2 >= naLuta.length ? 2 : 1, txt: plural(alto, 'bloco no alto', 'blocos no alto') + ' (de ' + naLuta.length + ' na luta)' });
+      }
+      // a cobertura: os meus na mata
+      const mata = meus.filter(p => { const s = Combate.terrainOf(p.t, sc); return !!s && s.ter.t === 'mata'; }).length;
+      if (mata && mata * 3 >= meus.length) out[q].push({ k: 'cobertura', v: mata * 3 >= meus.length * 2 ? 2 : 1, txt: plural(mata, 'bloco na mata', 'blocos na mata') });
+      // a reserva: os de soldados longe da luta, quando há luta
+      const res = meus.filter(p => p.t.bloco.k === 'sold' && !deles.some(e => dist(p, e) <= PERTO * 2)).length;
+      if (naLuta.length && res) out[q].push({ k: 'reserva', v: 1, txt: plural(res, 'bloco de soldados na reserva', 'blocos de soldados na reserva') });
+    }
+    return out;
+  }
+  const NOME_SUG = { flanco: 'Flanco', alto: 'Terreno alto', cobertura: 'Cobertura', reserva: 'Reserva' };
+  const sinal = n => (n < 0 ? '−' : '+') + Math.abs(n);
+  function levarParaABatalha() {
+    const sc = Store.scene();
+    if (!isGM() || !sc || !sc.campo) return;
+    const C = sc.campo, sug = leitura(sc), B = blocosNaCena(sc);
+    const linhas = q => (sug[q].length ? sug[q].map(x => h('li', { text: NOME_SUG[x.k] + ' ' + sinal(x.v) + ' — ' + x.txt })) : [h('li', { class: 'muted', text: 'nada a sugerir' })]);
+    const soma = q => B[q].filter(p => p.t.bloco.k === 'sold').reduce((s0, p) => s0 + p.n, 0);
+    const pode = !!(window.TC && window.TC.ponte && window.TC.ponte.ir && window.TC.ponte.naCasca && C.mapa);
+    UI.modal({ title: 'Levar o campo para a batalha?', text: 'O que o campo sugere (no Mapa-múndi, você soma o que quiser):',
+      body: h('div', { class: 'cp-leitura', id: 'cp-leitura' },
+        ...['a', 'b'].map(q => h('div', { class: 'cp-lado', 'data-lado': q }, h('b', { text: C[q].nome + ' · ' + soma(q) + ' soldados em campo' }), h('ul', null, linhas(q))))),
+      actions: [{ label: 'Cancelar' }, { label: pode ? 'Abrir a batalha no Mapa-múndi' : 'Fechar', kind: 'primary', run: () => {
+        if (!pode) return;
+        window.TC.ponte.ir('mundo', { mapa: C.mapa, campo: { cena: sc.id, a: C.a.g, b: C.b.g, sug } });
+      } }] });
+    if (!pode) UI.toast('A batalha abre no Mapa-múndi dentro do site, com a mesa aberta.');
+  }
+
+  /* ---- as perdas da batalha: { a: { g, t0, t1 }, b: … } ---- */
+  function repartir(blocos0, perda) {
+    // quem está na luta pesa o dobro; o arredondamento vai para os maiores
+    const w = blocos0.map(p => p.n * (p.luta ? 2 : 1)), W = w.reduce((s0, x) => s0 + x, 0) || 1, total = blocos0.reduce((s0, p) => s0 + p.n, 0);
+    let falta = Math.min(perda, total);
+    const tira = blocos0.map((p, i) => Math.min(p.n, Math.floor(falta * w[i] / W)));
+    falta -= tira.reduce((s0, x) => s0 + x, 0);
+    const ordem = blocos0.map((p, i) => i).sort((i, j) => w[j] - w[i]);
+    for (let k = 0; falta > 0 && k < ordem.length * 4; k++) { const i = ordem[k % ordem.length]; if (tira[i] < blocos0[i].n) { tira[i]++; falta--; } }
+    return tira;
+  }
+  function previaDasPerdas(sc, P) {
+    const B = blocosNaCena(sc), out = [];
+    for (const q of ['a', 'b']) {
+      const r = P && P[q];
+      if (!r || !(r.t0 > 0) || sc.campo[q].g !== r.g) continue;
+      const frac = clamp(1 - (Number(r.t1) || 0) / r.t0, 0, 1), sold = B[q].filter(p => p.t.bloco.k === 'sold');
+      const deles = B[q === 'a' ? 'b' : 'a'];
+      for (const p of sold) p.luta = deles.some(e => Math.hypot(p.x - e.x, p.y - e.y) <= PERTO);
+      const total = sold.reduce((s0, p) => s0 + p.n, 0), perda = Math.round(total * frac), tira = repartir(sold, perda);
+      out.push({ q, nome: sc.campo[q].nome, total, perda, frac, linhas: sold.map((p, i) => ({ id: p.t.id, nome: tokName(p.t), de: p.n, para: p.n - tira[i] })).filter(x => x.para !== x.de) });
+    }
+    return out;
+  }
+  function perdas(P) {
+    const sc = Store.scene();
+    if (!isGM() || !sc || !sc.campo) return;
+    const pv = previaDasPerdas(sc, P);
+    if (!pv.length) { UI.toast('As perdas dessa batalha não são dos exércitos deste campo.'); return; }
+    UI.modal({ title: 'As perdas da batalha', text: 'Quanto cada bloco perde (os que estão na luta perdem mais). O bloco que chega a zero sai do campo. Dá para desfazer.',
+      body: h('div', { class: 'cp-perdas', id: 'cp-perdas' }, ...pv.map(L => h('div', { class: 'cp-lado', 'data-lado': L.q },
+        h('b', { text: L.nome + ': ' + L.total + ' → ' + (L.total - L.perda) + ' soldados' + (Math.round(L.frac * 100) ? ' (−' + Math.round(L.frac * 100) + '%)' : ' (sem perdas)') }),
+        h('ul', null, L.linhas.length ? L.linhas.map(x => h('li', { text: x.nome + ': ' + x.de + ' → ' + x.para + (x.para <= 0 ? ' (sai do campo)' : '') })) : [h('li', { class: 'muted', text: 'nenhuma perda' })])))),
+      actions: [{ label: 'Cancelar' }, { label: 'Aplicar as perdas', kind: 'primary', run: () => {
+        const fora = [];
+        Store.tx('As perdas da batalha', () => {
+          for (const L of pv) for (const x of L.linhas) {
+            const t = Store.get('tokens', x.id);
+            if (!t) continue;
+            if (x.para <= 0) fora.push(t.id); else Store.upd('tokens', t.id, { bars: t.bars.map((b, i) => (i === 0 ? Object.assign({}, b, { v: x.para }) : b)) });
+          }
+          tirarTokens(Store.scene(), fora);
+        });
+        const saem = fora.length;
+        UI.toast('As perdas foram para os blocos: ' + pv.map(L => L.nome + ' −' + L.perda).join(', ') + (saem ? ' (' + plural(saem, 'bloco saiu', 'blocos saíram') + ' do campo)' : '') + '.', { action: 'Desfazer', run: Tools.undo, long: true });
+      } }] });
+  }
+
+  // a seção da aba Cena (só o mestre; só num campo de batalha)
+  function secao(K) {
+    const sc = Store.scene();
+    if (!isGM() || !sc || !sc.campo) return null;
+    const { sec, note, btn } = K, B = blocosNaCena(sc), C = sc.campo;
+    const linha = q => { const s = B[q].filter(p => p.t.bloco.k === 'sold'); return C[q].nome + ': ' + plural(B[q].length, 'bloco', 'blocos') + ', ' + s.reduce((s0, p) => s0 + p.n, 0) + ' soldados'; };
+    const sug = leitura(sc), n = sug.a.length + sug.b.length;
+    return sec('c-campo', 'Campo de batalha', true,
+      h('p', { class: 'note', id: 'cp-resumo', text: linha('a') + ' · ' + linha('b') + '.' }),
+      h('p', { class: 'note', id: 'cp-sug', text: n ? 'O campo sugere: ' + ['a', 'b'].flatMap(q => sug[q].map(x => C[q].nome + ' ' + NOME_SUG[x.k].toLowerCase() + ' ' + sinal(x.v))).join(' · ') + '.' : 'Nenhum bônus sugerido agora (ninguém flanqueado, no alto, na mata ou na reserva).' }),
+      btn('Levar para a batalha…', levarParaABatalha, { icon: 'next', id: 'cp-levar' }),
+      note('A posição dos blocos sugere bônus na batalha do Mapa-múndi (lá você confirma). Depois da batalha, as perdas voltam aos blocos.'));
+  }
+  return { MAX_BLOCOS, valida, blocos, textoDoLado, quemMove, bloco, vagas, montar, feitoTxt, leitura, levarParaABatalha, repartir, previaDasPerdas, perdas, secao };
 })();
 /* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
@@ -32148,7 +33558,7 @@ const Masmorra = (() => {
    --------------------------------------------------------------- */
 const Gerador = (() => {
   // (lote 14, parte 14c: o Vilarejo, a Cidade, a Tribo, as Ruínas e o Porto com os arredores — Arredores.envolver)
-  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Encontro.LUGAR, Regiao.LUGAR, Arredores.LUGARES.ruinas, Masmorra.LUGAR, Arredores.LUGARES.porto];
+  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Encontro.LUGAR, Regiao.LUGAR, Arredores.LUGARES.ruinas, Masmorra.LUGAR, Arena.LUGAR, Arredores.LUGARES.porto];
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
@@ -32228,6 +33638,9 @@ const Gerador = (() => {
        Região livre). Uma chave tira. As outras abas também vêm preenchidas (pre.ops: a Região livre com o bioma, a água e
        o caminho do hexágono), sem mexer no que a janela lembra para a próxima vez. */
     const hexPedido = pre && typeof pre === 'object' ? HexCena.valida(pre.hex) : null;
+    // (lote 18) o campo de batalha (da janela da Batalha do Mapa-múndi): os dois exércitos e os soldados por bloco
+    const campoPedido = pre && typeof pre === 'object' && pre.campo ? Campo.valida(pre.campo) : null;
+    comum.campoPor = campoPedido ? campoPedido.por : 100;
     comum.comHex = !!hexPedido;
     // (lote 14, parte 14b) as marcas da guerra do hexágono: os botões no bloco dele (de começo, todas — menos o exército
     // escondido no mapa)
@@ -32413,7 +33826,8 @@ const Gerador = (() => {
         : hexPedido && L.aceitaHex ? h('div', { class: 'ger-hex', id: 'ger-hex-bloco' }, (n => { n.id = 'ger-hex-nao'; return n; })(note(L.hexNaoTxt && L.hexNaoTxt(E.op, hexPedido) ? L.hexNaoTxt(E.op, hexPedido) : !HexCena.aceita(hexPedido)
           ? (hexPedido.ter === 'agua' ? 'O hexágono do Mapa-múndi é de água: os vizinhos, o rio e os caminhos dele não entram aqui.' : 'O hexágono do Mapa-múndi não tem terreno: pinte o terreno dele (na aba Terreno do Mapa-múndi) para os vizinhos, o rio e os caminhos entrarem.')
           : 'O hexágono do Mapa-múndi não entra no pântano nem na água: eles cobrem a cena toda.'))) : null;
-      ctl.replaceChildren(...[blocoHex,
+      const blocoCampo = campoPedido ? Campo.bloco(campoPedido, comum, K, () => pintar()) : null;
+      ctl.replaceChildren(...[blocoCampo, blocoHex,
         L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) }),
         h('div', { class: 'ger-cm' },
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
@@ -32446,9 +33860,10 @@ const Gerador = (() => {
           const E = estadoDe(L), p = E.plano, l = L;
           l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(sc => {
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
+            const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },
@@ -32688,6 +34103,23 @@ async function start(snap) {
   // existe, só abre a cena.
   if (window.TC && window.TC.ponte && window.TC.ponte.aoIr) window.TC.ponte.aoIr(alvo => {
     if (!alvo || !isGM()) return;
+    // (lote 18) o campo de batalha: a cena do hexágono da batalha, com os dois exércitos (a janela de gerar, preenchida),
+    // ou — já existindo — a cena; e as perdas da batalha, de volta aos blocos (com a prévia)
+    if (alvo.campoPerdas && typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena]) {
+      if (Store.S.current !== alvo.cena) UI.switchScene(alvo.cena);
+      if (UI.modalOpen()) { UI.toast('Há uma janela aberta aqui nas Cenas: feche-a e aplique a batalha de novo.'); return; }
+      Campo.perdas(alvo.campoPerdas);
+      return;
+    }
+    const campo = alvo.campo && typeof alvo.campo === 'object' ? Campo.valida(alvo.campo) : null;
+    if (campo && !(typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena])) {
+      if (UI.modalOpen()) { UI.toast('Há uma janela aberta aqui nas Cenas: feche-a e peça o campo de novo no Mapa-múndi.'); return; }
+      const ped = alvo.campo.pedido && typeof alvo.campo.pedido === 'object' ? alvo.campo.pedido : {};
+      const hex = ped.hex && typeof ped.hex === 'object' ? ped.hex : null, terra = hex && typeof hex.ter === 'string' && hex.ter && hex.ter !== 'agua';
+      Gerador.abrir(terra ? 'regiao' : 'encontro', { op: terra ? null : { terreno: 'campo', situacao: 'surpresa', caminho: 'nenhum' }, estilo: ped.estilo, hora: ped.hora, clima: ped.clima, estacao: ped.estacao,
+        nome: typeof alvo.campo.nome === 'string' ? alvo.campo.nome.slice(0, 60) : null, id: alvo.cena, hex, ops: ped.ops && typeof ped.ops === 'object' ? ped.ops : null, campo });
+      return;
+    }
     const ger = alvo.gerar && typeof alvo.gerar === 'object' ? alvo.gerar : null;
     if (ger && !(typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena])) {
       if (UI.modalOpen()) { UI.toast('Há uma janela aberta aqui nas Cenas: feche-a e peça o lugar de novo no Mapa-múndi.'); return; }
@@ -32738,7 +34170,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Relevo, Arena, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

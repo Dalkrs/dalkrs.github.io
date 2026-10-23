@@ -1388,6 +1388,51 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   que ficam ficam neste navegador. A caneta não mexe no mapa nem no Desfazer dele; a camada **Caneta** esconde os traços
   só neste aparelho.
 
+### As cenas e o acampamento (lote 18)
+
+- **O relevo com regra** (src/cenas/src/js/07f-relevo.js): as áreas de terreno com altura (Morro, Montanha, Plataforma,
+  Fosso…) passam a ter regra — sempre como sugestão, o mestre confirma. A **tabela do mestre** (a da mesa, uma para
+  todas as cenas: `prefs.relevo`; a cena que vai para os jogadores leva uma cópia, `relevoTab`) começa com: subir 1
+  quadrado de altura custa +1 quadrado; 3 quadrados de uma vez é **penhasco** (subir só escalando; descer é queda); de
+  cima +2 no ataque, de baixo −2; a **queda** sugere 10% da Vida máxima a cada 2 quadrados. A régua e o arrastar mostram
+  a subida e o penhasco; a queda mostra ao mestre o aviso com "Aplicar o dano" (e o Desfazer); a janelinha de atributos
+  oferece somar o bônus de cima ou de baixo, mirando alguém. A **visão pelo relevo** é uma chave por cena (aba Cena →
+  Relevo; precisa da visão por paredes): o mais alto que o olho esconde o que está atrás, de dentro de um fosso só se vê o
+  fosso e de cima se vê mais longe. "Regras do relevo…" muda a tabela.
+- **A caverna embaixo da cena** (10g2-masmorra.js: `abrirSubsolo`): a entrada de gruta da Região livre (e qualquer
+  Entrada, pelo menu dela) oferece "Gerar a caverna embaixo…": o subsolo do tamanho da cena de cima, com a subida embaixo
+  da entrada, o rio de cima virando o rio de baixo (pelo mesmo traçado), o bioma de baixo sugerido pelo de cima (fungos
+  que brilham, cristais, lava, gelo, raízes), um achado e um ninho (marcadores ocultos) e a passagem escondida para
+  descer mais (o nível de baixo é a masmorra).
+- **As arenas** (10g2-masmorra.js: `nivelDeArena`, `fasesDaArena`; 10g4-arena.js): a aba **Arena** de "Gerar um lugar…"
+  tem oito tipos (Arena/coliseu, Sala do trono, Mausoléu, Covil do dragão, Altar do ritual, Ponte sobre o abismo, Topo da
+  torre, Círculo de pedras) em três tamanhos: a entrada embaixo, o lugar do chefe elevado de frente para ela (com a altura
+  do relevo), a cobertura e os obstáculos (tapam a visão), os perigos no chão (zonas: o mestre aplica), o token do chefe
+  (dois quadrados, dois turnos por rodada) e os pontos de reforço ocultos. As **fases** vêm prontas (a 2 e a 3, cada uma
+  com duas mudanças: os reforços chegam, o chão desaba, as luzes se apagam, a grade fecha, uma zona aparece) e cada
+  mudança liga, desliga ou troca na janela. Ficam na cena (`fases`, só do mestre: a projeção não leva); a aba Cena mostra
+  cada fase com "Acionar…", e o botão direito no mapa também: acionar mostra antes o que muda e é um passo só (o
+  Desfazer volta). O último nível da masmorra pode ser a **sala do chefe** (a arena que combina com o tipo, com a Saída
+  de volta), e o ninho, a ruína e a masmorra do Mapa-múndi oferecem "Gerar a arena do chefe…".
+- **O campo de batalha** (10g5-campo.js; mundo/guerra-painel.js: `secCampo`, `abrirCampo`, `doCampo`): na janela da
+  Batalha do Mapa-múndi, "Abrir no campo de batalha…" manda para as Cenas a cena do hexágono da batalha e os dois
+  exércitos (as unidades, a cor da facção, o lado de cada um, a ficha do comandante e a do governante da facção). A
+  janela "Gerar um lugar" abre com o bloco do campo: quantos soldados vão em cada bloco (de começo, 100). Ao criar, os
+  dois exércitos ficam frente a frente — os blocos de soldados na frente, os magos e as máquinas atrás, cada bloco um
+  token com a barra dos soldados (até 40 por lado). **Quem move**: o mestre move todos; o jogador dono da ficha do
+  comandante (ou, sem ela, do governante da facção) é o dono dos blocos daquele lado. A **leitura do campo** (aba Cena →
+  Campo de batalha): o flanco (o bloco pego por dois lados, ou por trás), o terreno alto, a cobertura (a mata) e a
+  reserva viram **bônus sugeridos**; "Levar para a batalha…" abre a batalha no Mapa-múndi com eles, e lá "Somar" vira um
+  bônus do mestre (tática, terreno, reforço). No "Depois", "Levar as perdas aos blocos" manda as perdas de cada lado para
+  o campo: a prévia mostra quanto cada bloco perde (quem está na luta perde o dobro; o que chega a zero sai do campo), e
+  aplicar é um passo só.
+- **O acampamento**: as barracas com detalhe (a lona, as costuras, as cordas, a porta aberta, a luz de dentro), os
+  abrigos pelo que o grupo carrega (barraca, pavilhão, toldo, rede), os veículos pelo tipo (carroça, carruagem, barco,
+  montaria, animal de carga) e o estado no desenho (a roda quebrada, a carga demais). A quinta área, **Caça**, com o defumadouro: cada
+  caçador rola (a Percepção, de começo) contra a dificuldade do lugar, e o resultado sugere rações (Carne de caça) no
+  descanso longo — as regras ficam no Diário, em Regras do descanso. **Distribuir…** abre um quadro com uma coluna por
+  área: arraste os retratos (ou use as setas), com Desfazer.
+
 ### A Guerra no Mapa-múndi (lote 8)
 
 - **A aba Guerra** (só do mestre; `mundo/guerra-painel.js`, `window.MundoGuerraPainel`, com as contas em
@@ -3290,3 +3335,17 @@ guardada neste navegador); e o `lote17.rede.test.js`, numa mesa com dois jogador
 zona pronta, as setas da facção dele, a do Vale só depois de mostrada) e a caneta entre as contas (o documento de
 cada um, o que some sumindo para todos, o outro jogador que não apaga — nem pelo banco —, "Limpar os meus", "Limpar
 desenhos" com Desfazer).
+
+**Lote 18 (cenas e acampamento)**: nas Cenas, o `lote18.js` (por partes: `SO=relevo`, `subsolo`, `arena`, `campo`) confere
+o relevo (a tabela e os limites, a subida e o penhasco na régua e no arrastar, a queda que sugere o dano com Aplicar e
+Desfazer, o bônus de cima e de baixo, a visão pelo relevo), a caverna embaixo da cena (o tamanho, a subida embaixo da
+entrada, o rio de baixo, os biomas, o achado e o ninho, descer mais), as arenas (a aba Arena: os tipos, o tamanho, as
+fases que ligam, desligam e trocam; a cena com o chefe, os reforços ocultos e as fases só do mestre; acionar com a
+prévia, o Desfazer, a aba Cena e o menu do mapa; o coliseu com os reforços, os espinhos, o chão que desaba e a grade; a
+sala do chefe da masmorra) e o campo de batalha (o bloco na janela, os soldados por bloco, quem move, os blocos frente
+a frente na cor de cada facção, a leitura — flanco, terreno alto, cobertura, reserva — e as perdas que voltam aos blocos);
+o `mundo-lote18.test.js` (numa moldura que faz a casca) a janela da Batalha — o pedido do campo para as Cenas, a
+leitura que volta como bônus sugeridos ("Somar", "Somar todas") e as perdas que vão para o campo ao aplicar; o
+`mundo-cenas.test.js` também confere o "Gerar a arena do chefe…"; e o `acampamento-lote18.test.js` as barracas, os
+abrigos, os veículos e o estado no desenho, a caça (as rolagens, as rações sugeridas, as regras) e o quadro de
+distribuir (arrastar, as setas, o Desfazer).

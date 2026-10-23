@@ -229,6 +229,23 @@ async function start(snap) {
   // existe, só abre a cena.
   if (window.TC && window.TC.ponte && window.TC.ponte.aoIr) window.TC.ponte.aoIr(alvo => {
     if (!alvo || !isGM()) return;
+    // (lote 18) o campo de batalha: a cena do hexágono da batalha, com os dois exércitos (a janela de gerar, preenchida),
+    // ou — já existindo — a cena; e as perdas da batalha, de volta aos blocos (com a prévia)
+    if (alvo.campoPerdas && typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena]) {
+      if (Store.S.current !== alvo.cena) UI.switchScene(alvo.cena);
+      if (UI.modalOpen()) { UI.toast('Há uma janela aberta aqui nas Cenas: feche-a e aplique a batalha de novo.'); return; }
+      Campo.perdas(alvo.campoPerdas);
+      return;
+    }
+    const campo = alvo.campo && typeof alvo.campo === 'object' ? Campo.valida(alvo.campo) : null;
+    if (campo && !(typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena])) {
+      if (UI.modalOpen()) { UI.toast('Há uma janela aberta aqui nas Cenas: feche-a e peça o campo de novo no Mapa-múndi.'); return; }
+      const ped = alvo.campo.pedido && typeof alvo.campo.pedido === 'object' ? alvo.campo.pedido : {};
+      const hex = ped.hex && typeof ped.hex === 'object' ? ped.hex : null, terra = hex && typeof hex.ter === 'string' && hex.ter && hex.ter !== 'agua';
+      Gerador.abrir(terra ? 'regiao' : 'encontro', { op: terra ? null : { terreno: 'campo', situacao: 'surpresa', caminho: 'nenhum' }, estilo: ped.estilo, hora: ped.hora, clima: ped.clima, estacao: ped.estacao,
+        nome: typeof alvo.campo.nome === 'string' ? alvo.campo.nome.slice(0, 60) : null, id: alvo.cena, hex, ops: ped.ops && typeof ped.ops === 'object' ? ped.ops : null, campo });
+      return;
+    }
     const ger = alvo.gerar && typeof alvo.gerar === 'object' ? alvo.gerar : null;
     if (ger && !(typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena])) {
       if (UI.modalOpen()) { UI.toast('Há uma janela aberta aqui nas Cenas: feche-a e peça o lugar de novo no Mapa-múndi.'); return; }
@@ -279,7 +296,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Relevo, Arena, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

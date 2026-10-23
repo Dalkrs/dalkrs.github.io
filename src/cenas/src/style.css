@@ -733,6 +733,10 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 /* os bônus só desta rolagem: uma linha baixa, discreta; o campo com valor ganha a borda acesa */
 .pop-m { display: flex; align-items: center; gap: 5px; }
 .pop-m > .pop-l:first-child { margin-right: auto; color: var(--fg-3); font-size: 11.5px; }
+/* (lote 18) o relevo na janelinha de atributos: mirando alguém de cima (ou de baixo), a sugestão de somar */
+.pop-rel { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-2); padding: 6px 8px; border-radius: 8px; background: var(--hover, rgba(255,255,255,.05)); }
+.pop-rel span { flex: 1; }
+.pop-rel .btn { height: 26px; padding: 0 10px; flex: none; }
 .pop-m .pop-l { font-size: 11.5px; }
 .pop-m .in.num { width: 46px; flex: none; padding-left: 4px; padding-right: 4px; }
 .pop-m .in.num.tem { border-color: var(--lamp); }
@@ -934,3 +938,25 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+/* (lote 18) a tabela do relevo */
+.rl-tab { display: grid; gap: 10px; }
+.rl-l { display: grid; grid-template-columns: minmax(150px, auto) 80px 1fr; align-items: center; gap: 10px; font-size: 13px; }
+.rl-l .in.num { width: 80px; }
+.rl-l .muted { font-size: 12px; }
+/* (lote 18) a arena: as fases na janela (cada mudança liga, desliga ou troca) e na aba Cena */
+.ar-fases { display: grid; gap: 10px; }
+.ar-fase { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--line, #3a3a44); border-radius: 8px; }
+.ar-fase > b { font-size: 13px; }
+.ar-mud { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; }
+.ar-mud .sw { margin: 0; }
+.ar-mud select:disabled { opacity: .45; }
+.ar-cena { padding: 6px 0 8px; border-bottom: 1px solid var(--line, #3a3a44); }
+.ar-cena:last-of-type { border-bottom: 0; }
+.ar-cena.feita .note { opacity: .6; }
+.ar-cena-t { font-size: 13px; }
+.ar-previa { margin: 6px 0 0 18px; display: grid; gap: 4px; }
+/* (lote 18) o campo de batalha */
+.cp-bloco { display: grid; gap: 6px; }
+.cp-bloco .note { margin: 0; }
+.cp-leitura, .cp-perdas { display: grid; gap: 10px; }
+.cp-lado ul { margin: 4px 0 0 18px; display: grid; gap: 3px; }

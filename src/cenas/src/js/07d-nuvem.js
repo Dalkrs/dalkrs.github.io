@@ -226,6 +226,7 @@ const Nuvem = (() => {
     S.prefs = prefsDaqui();
     if (idx.prefs.barDefaults) S.prefs.barDefaults = idx.prefs.barDefaults;
     S.prefs.modelos = idx.prefs.modelos;                   // (lote 7) os modelos do gerador de lugares
+    S.prefs.relevo = idx.prefs.relevo || null;             // (lote 18) a tabela do relevo da mesa
     S.pastas = idx.pastas;
     /* Até onde os pedidos de cada jogador já valeram: a cena guardada diz (e o que eles pediram enquanto o mestre
        estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
@@ -379,7 +380,7 @@ const Nuvem = (() => {
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
       try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
-      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: { barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, pastas: Proj.normPastas(S.pastas) };
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: Object.assign({ barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, S.prefs.relevo && typeof Relevo !== 'undefined' ? { relevo: Relevo.norm(S.prefs.relevo) } : {}), pastas: Proj.normPastas(S.pastas) };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
@@ -399,6 +400,8 @@ const Nuvem = (() => {
     const sc = S.scenes[idx.noAr];
     if (!sc) { despublicar(); return; }
     const { m, v } = Proj.projetar(sc, S.assets, new Set(S.players.map(p => p.id)));
+    // (lote 18) a tabela do relevo da mesa vai com a cena (sem ela, os jogadores usam a de começo)
+    if (S.prefs.relevo && typeof Relevo !== 'undefined' && !Relevo.igualAoPadrao(S.prefs.relevo)) m.relevoTab = Relevo.norm(S.prefs.relevo);
     m.ver = Proj.resumo(JSON.stringify(m));
     // (a projeção é da campanha da cena que está no ar: só quem participa dela a recebe; a de uma cena do mundo, todos)
     const cs = campanhasDaCena(sc.id);
@@ -469,6 +472,7 @@ const Nuvem = (() => {
     S.order = ordem;
     if (n.prefs.barDefaults) S.prefs.barDefaults = n.prefs.barDefaults;
     S.prefs.modelos = n.prefs.modelos;
+    S.prefs.relevo = n.prefs.relevo || null;
     S.pastas = n.pastas;
     Store.meta();
   }
@@ -759,7 +763,8 @@ const Nuvem = (() => {
   /* ---------------- o que o resto do programa chama ---------------- */
   function carregar() { return modo === 'mestre' ? carregarMestre() : carregarJogador(); }
   function cena(id) { if (modo === 'mestre' && id) { sujas.add(id); metaSuja = true; agendar(); } }
-  function meta() { if (modo === 'mestre') { metaSuja = true; agendar(); } else guardarPrefsDaqui(); }
+  // (o: { pub } — o que mudou também vai na projeção, como a tabela do relevo: lote 18)
+  function meta(o) { if (modo === 'mestre') { metaSuja = true; if (o && o.pub && idx.noAr && transmito()) pubSuja = true; agendar(); } else guardarPrefsDaqui(); }
   function tirarCena(id) {
     if (modo !== 'mestre') return;
     sujas.delete(id); feito.delete(id); campDe.delete(id);

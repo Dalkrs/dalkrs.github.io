@@ -1530,6 +1530,8 @@
     if (!P) return;
     if (typeof a.obj === 'string' && P.mostrar) P.mostrar(a.obj);
     else if (typeof a.fac === 'string' && P.mostrarFaccao) P.mostrarFaccao(a.fac);
+    // (lote 18) o campo de batalha das Cenas mandou a leitura dele: a batalha abre com os bônus sugeridos
+    else if (a.campo && typeof a.campo === 'object' && App.podeEditar() && window.MundoGuerraPainel && MundoGuerraPainel.doCampo) MundoGuerraPainel.doCampo(a.campo);
   }
 
   /* ---------------- atalhos e saída ---------------- */

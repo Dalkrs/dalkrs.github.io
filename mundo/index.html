@@ -1235,6 +1235,9 @@ dialog.mundo-dl.gb { width: min(720px, calc(100% - 24px)); max-height: calc(100%
 .gb-bonus { display: grid; gap: 4px; }
 .gb-bonus small, .gb-res small, .gb-mom small { color: var(--fg-3); }
 .gb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* (lote 18) o que o campo de batalha sugere: cada sugestão numa linha, com o Somar à direita */
+.gb-campo-s { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); }
+.gb-campo-s.usada > span:first-child { opacity: .6; }
 .gb-chip { height: auto; min-height: 28px; padding: 2px 4px 2px 10px; box-shadow: none; white-space: normal; }
 .gb-chip .ib { width: 22px; height: 22px; }
 .gb-chip.sem-x { padding-right: 10px; }
@@ -1409,13 +1412,13 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="campanha.js?v=5"></script>
 <script src="camadas.js?v=4"></script>
 <script src="tela.js?v=26"></script>
-<script src="painel.js?v=42"></script>
-<script src="guerra-painel.js?v=12"></script>
+<script src="painel.js?v=43"></script>
+<script src="guerra-painel.js?v=13"></script>
 <script src="guerra-ajuda.js?v=5"></script>
 <script src="reino-painel.js?v=15"></script>
 <script src="corte-painel.js?v=6"></script>
 <script src="diplomacia-painel.js?v=7"></script>
 <script src="intrigas-painel.js?v=2"></script>
-<script src="mundo.js?v=15"></script>
+<script src="mundo.js?v=16"></script>
 </body>
 </html>

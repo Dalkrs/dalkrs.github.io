@@ -713,6 +713,8 @@ function normalizeScene(sc) {
   for (const e of sc.turn.list) if (e.toks) { e.toks = e.toks.filter(id => !naFaixa.has(id)); e.toks.forEach(id => naFaixa.add(id)); }
   if (naFaixa.size) sc.turn.list = sc.turn.list.filter(e => !(e.token && naFaixa.has(e.token)));
   if (!Array.isArray(sc.targets)) sc.targets = [];
+  // (lote 18) as fases da arena (só do mestre): uma lista curta de { n, nome, feita, m: [as mudanças] }
+  if (Array.isArray(sc.fases)) { sc.fases = sc.fases.filter(f => f && typeof f === 'object' && Array.isArray(f.m)).slice(0, 6); if (!sc.fases.length) delete sc.fases; } else delete sc.fases;
   if (!TONES.some(x => x.id === sc.tone)) sc.tone = 'dia';
   for (const w of sc.walls) {
     if (!(w.k === 'door' && w.secret) && !['wall', 'door', 'window', 'veil', 'mureta'].includes(w.k)) w.k = 'wall';
@@ -761,6 +763,14 @@ function normalizeScene(sc) {
     if (gera && palavra(gera.b)) t.gera = { b: gera.b };
     // (parte 4b-3: a escada que desce — o tipo do nível de baixo, o número dele, o tamanho, o estilo e a semente)
     else if (gera && gera.t === 'masmorra') t.gera = { t: 'masmorra', m: ['pedra', 'caverna', 'cripta', 'mina'].includes(gera.m) ? gera.m : 'pedra', n: clamp(Math.round(Number(gera.n)) || 1, 1, 99), tam: ['pequeno', 'medio', 'grande'].includes(gera.tam) ? gera.tam : 'medio', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1 };
+    // (lote 18: a entrada de gruta — onde fica a boca, o bioma de baixo, a semente e o rio de cima, até 41 pontos)
+    else if (gera && gera.t === 'subsolo') {
+      const nu = v => (typeof v === 'number' && isFinite(v) ? Math.round(clamp(v, -1000, 1000) * 100) / 100 : null);
+      t.gera = { t: 'subsolo', x: nu(gera.x), y: nu(gera.y), bio: ['fungos', 'cristais', 'lava', 'gelo', 'raizes'].includes(gera.bio) ? gera.bio : 'fungos', s: (Math.round(Number(gera.s)) >>> 0) || 1 };
+      const rio = Array.isArray(gera.rio) ? gera.rio.filter(q => Array.isArray(q) && nu(q[0]) != null && nu(q[1]) != null).slice(0, 41).map(q => [nu(q[0]), nu(q[1])]) : [];
+      if (rio.length >= 2) t.gera.rio = rio;
+      if (t.gera.x == null || t.gera.y == null) { delete t.gera.x; delete t.gera.y; }
+    }
     // (parte 4b: o navio — o casco vai até 32 quadrados, e a forma 'navio' tem a proa do lado p)
     else if (gera && palavra(gera.t)) {
       t.gera = { t: gera.t, w: clamp(Math.round(Number(gera.w)) || 4, 2, 32), h: clamp(Math.round(Number(gera.h)) || 4, 2, 32), p: typeof gera.p === 'string' && gera.p.length === 1 && 'nsol'.includes(gera.p) ? gera.p : 's', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1, f: gera.f === 'oct' || gera.f === 'navio' ? gera.f : 'ret' };

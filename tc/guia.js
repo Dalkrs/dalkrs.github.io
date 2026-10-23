@@ -35,6 +35,10 @@
         { t: 'As ferramentas', txt: 'À esquerda: selecionar, desenhar, terreno, luz, névoa, régua… Passe o mouse em cada uma para ver o que faz.', onde: { sel: '#rail' } },
         { t: 'O painel', txt: 'À direita: os tokens, a iniciativa, as condições e o que está selecionado. O botão do painel, em cima, mostra ou esconde.', onde: { sel: '#side' } },
         { t: 'Os turnos', txt: 'Com o combate ligado, a faixa dos turnos mostra de quem é a vez, com o próximo e o anterior.', onde: { sel: '#turnb', nada: 'A faixa dos turnos aparece com o combate ligado.' } },
+        { t: 'O relevo', txt: 'Na aba Cena, em Relevo: as regras da altura (subir custa movimento, o penhasco só escalando, a queda sugere o dano, de cima dá bônus) e a chave da visão pelo relevo. Tudo é sugestão: você confirma.', onde: { sel: '#tab-scene' } },
+        { t: 'A caverna embaixo', txt: 'Dois cliques numa Entrada (ou na entrada de gruta da Região livre): “Gerar a caverna embaixo…” faz o subsolo alinhado com esta cena, com o rio de cima, o bioma de baixo, um achado e um ninho.', onde: { sel: '#stage' } },
+        { t: 'A arena do chefe', txt: 'Em “Gerar um lugar…”, a aba Arena faz a sala da luta com o chefe, com as fases prontas (cada mudança liga, desliga ou troca). Na cena, a aba Cena mostra as fases: acionar mostra antes o que muda, e o Desfazer volta.', onde: { sel: '#tab-scene' } },
+        { t: 'O campo de batalha', txt: 'Na janela da Batalha do Mapa-múndi, “Abrir no campo de batalha…” faz a cena do hexágono com os dois exércitos em blocos de soldados. O comandante move os blocos dele; na aba Cena, “Levar para a batalha…” leva o flanco, o terreno alto, a cobertura e a reserva como bônus sugeridos.', onde: { sel: '#tab-scene' } },
       ],
       jogador: [
         { t: 'A cena', txt: 'O mapa que o mestre mostra. Seus tokens você move e usa; o resto, só vê.', onde: { sel: '#stage' } },
@@ -64,11 +68,14 @@
       mestre: [
         { t: 'Os descansos', txt: 'Descanso curto (uma pausa, sem gastar provisões) e longo (a noite: recupera as barras, gasta rações e mexe em Conforto e Sanidade). Sempre com prévia antes.', onde: { sel: '#acoes' } },
         { t: 'As rações', txt: 'A soma das provisões guardadas.', onde: { sel: '#chipRacoes' } },
-        { t: 'As áreas', txt: 'As partes do acampamento (a fogueira, as tendas…), com quem está em cada uma.', onde: { sel: '#areas' } },
+        { t: 'As áreas', txt: 'As partes do acampamento (a fogueira, as oficinas, o convívio, a guarda e a caça), com quem está em cada uma.', onde: { sel: '#areas' } },
+        { t: 'Distribuir pelas áreas', txt: '“Distribuir…” abre um quadro com uma coluna por área: arraste cada retrato para onde o personagem fica (ou use as setas do teclado). Tem Desfazer.', onde: { sel: '#btDistribuir', nada: 'O botão aparece quando há alguém no acampamento.' } },
+        { t: 'A caça', txt: 'Quem fica na área Caça caça no descanso longo: cada um rola (a Percepção, de começo) contra a dificuldade do lugar, e o resultado sugere rações. Você confirma; as regras ficam no Diário, em Regras do descanso.', onde: { sel: '#area-tab-caca' } },
         { t: 'Momentos e todos de uma vez', txt: '“Momento…” mexe no relacionamento de dois personagens; “Mexer em todos…”, na Fadiga, no Conforto e na Sanidade de quem está no acampamento, com o antes e o depois.', onde: { sel: '#btMomento' } },
       ],
       jogador: [
-        { t: 'O acampamento', txt: 'Quem está em cada área e o que o grupo tem guardado. Com a permissão do mestre, você também mexe nas provisões e nas áreas.', onde: { sel: '#areas' } },
+        { t: 'O acampamento', txt: 'Quem está em cada área e o que o grupo tem guardado. Com a permissão do mestre, você também mexe nas provisões e nas áreas (“Distribuir…” arruma todos de uma vez).', onde: { sel: '#areas' } },
+        { t: 'A caça', txt: 'Quem fica na área Caça sai para caçar no descanso longo: o resultado vira Carne de caça nas provisões.', onde: { sel: '#area-tab-caca' } },
         { t: 'As rações', txt: 'A soma das provisões guardadas.', onde: { sel: '#chipRacoes' } },
       ],
     },

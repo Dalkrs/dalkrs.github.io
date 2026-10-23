@@ -504,6 +504,9 @@ Store.aoFechar(tx => {
     const t = Store.get('tokens', id), antes = antesDoToken(tx.inv, id, ['x', 'y']), v = atravessar(t, antes, sc);
     if (v) { Store.upd('tokens', id, { x: v.x, y: v.y }); Store.emit('portal', { tok: id, fx: v.portal }); continue; }
     for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+    // (lote 18) a queda de um penhasco: o aviso sugere o dano (nada muda sozinho)
+    const q = typeof Relevo !== 'undefined' ? Relevo.quedaDoPasso(sc, t, antes) : null;
+    if (q) Store.emit('queda', q);
   }
   // (lote 8) o Clone: depois de tudo do passo (o dano, a condição que saiu, o que mudou no real)
   aplicarRegrasDoClone(regrasDoClone(tx.fwd, tx.inv));
@@ -523,7 +526,11 @@ Store.on('commit', e => {
   for (const id of andou) {
     const t = Store.get('tokens', id), antes = antesDoToken(e.inv, id, ['x', 'y']);
     if (atravessar(t, antes, sc)) vao.push([id, antes]);
-    else for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+    else {
+      for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+      const q = typeof Relevo !== 'undefined' ? Relevo.quedaDoPasso(sc, t, antes) : null;              // (lote 18) a queda do token que um jogador moveu
+      if (q) Store.emit('queda', q);
+    }
   }
   if (vao.length) setTimeout(() => Store.tx('Atravessar o portal', () => {
     const agora = Store.scene();

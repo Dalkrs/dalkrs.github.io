@@ -158,7 +158,7 @@ const Proj = (() => {
     const tokens = sc.tokens.filter(t => !t.hidden).map(t => tokenPublico(t, jogadores, grupos));
     const nomes = new Map(tokens.map(t => [t.id, t.name]));
     const m = {};
-    for (const k in sc) if (k !== 'explored' && k !== 'gerado' && !VIVO.includes(k)) m[k] = sc[k];       // (com que semente o mapa de bairros foi feito: só do mestre)
+    for (const k in sc) if (k !== 'explored' && k !== 'gerado' && k !== 'fases' && k !== 'campo' && !VIVO.includes(k)) m[k] = sc[k];       // (com que semente o mapa de bairros foi feito: só do mestre)
     m.walls = sc.walls.map(paredePublica);
     m.lights = sc.lights.map(l => Object.assign({}, l, { name: '' }));           // o nome que o mestre deu à luz é dele
     m.shapes = sc.shapes.filter(s => !s.gm);
@@ -548,10 +548,13 @@ const Proj = (() => {
     d = ehObj(d) ? d : {};
     const ordem = Array.from(new Set((Array.isArray(d.ordem) ? d.ordem : []).filter(idCena)));
     const prefs = ehObj(d.prefs) ? d.prefs : {};
+    const pf = { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null, modelos: normModelos(prefs.modelos) };
+    // (lote 18) a tabela do relevo da mesa (só quando o mestre mudou alguma coisa)
+    if (ehObj(prefs.relevo) && typeof Relevo !== 'undefined') pf.relevo = Relevo.norm(prefs.relevo);
     return {
       v: 1, ordem, atual: idCena(d.atual) ? d.atual : null, noAr: idCena(d.noAr) ? d.noAr : null,
       tx: idOk(d.tx) ? d.tx : null,                         // qual aparelho do mestre está transmitindo a cena que está no ar
-      prefs: { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null, modelos: normModelos(prefs.modelos) },
+      prefs: pf,
       pastas: normPastas(d.pastas),
     };
   }

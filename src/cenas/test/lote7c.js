@@ -138,7 +138,7 @@ const SHOTS = process.env.FOTOS;
     ok(!(await ev(id => __tc.Store.get('tokens', id).cena, ent.id)), 'Ctrl+Z desfaz a ligação');
     await page.mouse.dblclick(px, py); await w(300);
     lista = (await page.locator('.menu').innerText()).replace(/\n/g, ' | ');
-    ok(/AINDA NÃO LEVA A NENHUMA CENA \| Gerar o interior… \| Gerar uma masmorra embaixo… \| Escolher a cena… \| Uma cena nova, dentro desta…/i.test(lista), 'sem cena, o menu oferece gerar o interior (parte 4a-2), uma masmorra embaixo (parte 4b-3), escolher uma cena ou criar uma nova dentro desta: ' + lista);
+    ok(/AINDA NÃO LEVA A NENHUMA CENA \| Gerar o interior… \| Gerar uma masmorra embaixo… \| Gerar a caverna embaixo \(alinhada com esta cena\)… \| Escolher a cena… \| Uma cena nova, dentro desta…/i.test(lista), 'sem cena, o menu oferece gerar o interior (parte 4a-2), uma masmorra embaixo (parte 4b-3), escolher uma cena ou criar uma nova dentro desta: ' + lista);
     await clearToasts();
     await page.locator('.menu-i', { hasText: 'Uma cena nova, dentro desta' }).click(); await w(300);
     ok(await page.locator('#dlg-in').inputValue() === 'Taverna · dentro', 'a janela sugere o nome "Taverna · dentro"');
@@ -172,7 +172,7 @@ const SHOTS = process.env.FOTOS;
   if (parte('gerador')) {
     await page.locator('#sceneBtn').click(); await w(200);
     await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(700);
-    ok(await page.locator('.modal-t').innerText() === 'Gerar um lugar' && await page.locator('#ger-prev').count() === 1 && j(await page.locator('#ger-lugar button').allTextContents()) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Região livre', 'Ruínas', 'Masmorra', 'Porto']) && await page.locator('#ger-lugar .seg-b.on').innerText() === 'Vilarejo', 'a janela "Gerar um lugar" abre na aba Vilarejo (a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra e o Porto são as outras abas)');
+    ok(await page.locator('.modal-t').innerText() === 'Gerar um lugar' && await page.locator('#ger-prev').count() === 1 && j(await page.locator('#ger-lugar button').allTextContents()) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Região livre', 'Ruínas', 'Masmorra', 'Arena', 'Porto']) && await page.locator('#ger-lugar .seg-b.on').innerText() === 'Vilarejo', 'a janela "Gerar um lugar" abre na aba Vilarejo (a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra, a Arena e o Porto são as outras abas)');
     ok(/nada escrito: os nomes ficam com você/.test(await page.locator('.modal').innerText()), 'a nota diz que nada sai escrito');
     const G = () => ev(() => JSON.parse(JSON.stringify(__tc.Gerador.vivo().estado)));
     const assinatura = () => ev(() => {

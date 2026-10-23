@@ -334,7 +334,7 @@ const SHOTS = process.env.FOTOS;
     const semente = async v => { const f = page.locator('#ger-semente'); await f.fill(String(v)); await f.press('Enter'); await w(500); };
     await page.locator('#sceneBtn').click(); await w(200); await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(700);
     const abas = await page.locator('#ger-lugar button').allTextContents();
-    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Região livre', 'Ruínas', 'Masmorra', 'Porto']), 'a aba Região livre, entre o Encontro e as Ruínas: ' + j(abas));
+    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Região livre', 'Ruínas', 'Masmorra', 'Arena', 'Porto']), 'a aba Região livre, entre o Encontro e as Ruínas: ' + j(abas));
     await page.locator('#ger-lugar button', { hasText: 'Região livre' }).click(); await w(800);
     let g = await G();
     ok(await ev(() => __tc.Gerador.vivo().lugar) === 'regiao' && g.plano.lugar === 'regiao' && g.op.bioma === 'floresta' && g.op.mistura === 'media' && g.op.agua === 'surpresa' && g.op.caminho === 'trilha' && g.op.tamanho === 'medio' && g.op.marcas === true, 'de começo: a floresta, a mistura média, a água na Surpresa, a trilha, o médio e os marcadores: ' + j(g.op));

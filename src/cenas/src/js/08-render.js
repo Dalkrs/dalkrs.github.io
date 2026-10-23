@@ -839,7 +839,9 @@ const Render = (() => {
       ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 1.2 * px; ctx.stroke();
     }
     const n = pts.length;
-    label(ctx, distLabel(sc, total) + (extra || ''), pts[n - 2], pts[n - 1] - 22 * px, px, { stroke: color });
+    // (lote 18) o relevo: a subida que custa movimento, o penhasco que só se escala e a queda
+    const rel = typeof Relevo !== 'undefined' ? Relevo.rotulo(sc, total, pts) : '';
+    label(ctx, distLabel(sc, total) + rel + (extra || ''), pts[n - 2], pts[n - 1] - 22 * px, px, { stroke: color });
     ctx.restore();
   }
 

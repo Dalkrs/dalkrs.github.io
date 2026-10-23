@@ -112,7 +112,7 @@ const Persist = (() => {
     // O que cada um já explorou do mapa: na mesa, fica no aparelho de cada um (não vai para o banco).
     explored(id) { if (Nuvem.on()) { Nuvem.explorado(id); return; } if (id) { dScenes.add(id); dMeta = true; save(); } },
     asset(id) { if (Nuvem.on()) return; dAssets.add(id); save(); },
-    meta() { if (Nuvem.on()) { Nuvem.meta(); return; } dMeta = true; save(); },
+    meta(o) { if (Nuvem.on()) { Nuvem.meta(o); return; } dMeta = true; save(); },
     removeScene(id) { if (Nuvem.on()) { Nuvem.tirarCena(id); return; } removed.add('scene:' + id); dMeta = true; save(); },
   };
 })();

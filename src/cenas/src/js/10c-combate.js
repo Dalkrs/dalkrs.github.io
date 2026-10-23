@@ -108,7 +108,7 @@ const Luta = (() => {
       if (r.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: '', attrNome: 'valor avulso', atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }); } catch (e) { console.error(e); } }
     } else { r = Fichas.rolar(t, k, fixa, mais); nome = r.nome || k; }
     pop.res = r.ok ? { ok: true, total: r.total, txt: nome, det: Combate.comoSaiu(r) + maisDet(r) } : { ok: false, txt: r.error };
-    if (r.ok) { pop.ma.value = ''; pop.mr.value = ''; }
+    if (r.ok) { pop.ma.value = ''; pop.mr.value = ''; pop.relSomado = false; }
     pintarPop();
   }
   function pintarPop() {
@@ -117,6 +117,7 @@ const Luta = (() => {
     if (!t || !modo || !tokShown(t, sc)) { fecharPop(); return; }
     const a = document.activeElement, fid = a && a.id && pop.el.contains(a) ? a.id : null;
     pop.nome.textContent = tokName(t);
+    pintarRelevo(t, sc);
     if (document.activeElement !== pop.fx) pop.fx.value = fixaAtual(t);
     const fixa = lerFixaDoPop(), mais = lerMaisDoPop();
     pop.ma.classList.toggle('tem', !!mais.atr); pop.mr.classList.toggle('tem', !!mais.res);
@@ -144,6 +145,24 @@ const Luta = (() => {
     pop.out.replaceChildren(...(r ? (r.ok ? [h('b', { class: 'pop-tot', id: 'fp-total', text: String(r.total) }), h('span', { text: r.txt }), h('small', { text: r.det })] : [h('span', { text: r.txt })]) : []));
     if (fid && fid !== 'fp-fixa' && fid !== 'fp-valor' && fid !== 'fp-ma' && fid !== 'fp-mr') { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); else pop.el.focus({ preventScroll: true }); }
   }
+  /* (lote 18) De cima ou de baixo: com o alvo da mira de quem está olhando (o primeiro), a janelinha diz a vantagem da
+     altura e oferece somar o bônus no atributo, só nesta rolagem. Nada entra sozinho. */
+  function alvoDaMira(t, sc) {
+    const eu = isGM() ? 'gm' : App.viewer, ids = (sc.targets || []).filter(x => x && x.by === eu && x.t !== t.id).map(x => x.t);
+    for (const id of ids) { const a = Store.get('tokens', id); if (a && tokShown(a, sc)) return a; }
+    return null;
+  }
+  function pintarRelevo(t, sc) {
+    if (!pop || !pop.rel) return;
+    const alvo = alvoDaMira(t, sc), v = alvo ? Relevo.vantagem(sc, t, alvo) : null;
+    pop.rel.hidden = !v;
+    if (!v) { pop.rel.replaceChildren(); return; }
+    const txt = 'Mirando ' + tokName(alvo) + (v.lado === 'cima' ? ', de cima: ' : ', de baixo: ') + sinalN(v.v) + ' no atributo';
+    pop.rel.replaceChildren(h('span', { text: txt }), btn(pop.relSomado ? 'Somado' : 'Somar', () => {
+      if (!pop || pop.relSomado) return;
+      pop.ma.value = String(clamp(int(pop.ma.value, 0) + v.v, -999, 999)); pop.relSomado = true; pintarPop();
+    }, { id: 'fp-rel-somar', disabled: pop.relSomado, title: 'Soma ' + sinalN(v.v) + ' no campo “+ atrib.”, só nesta rolagem (a regra do relevo)' }));
+  }
   function abrirPop(t) {
     fecharPop(); fecharEquip(); UI.closeMenus();
     const fx = h('input', { id: 'fp-fixa', type: 'number', class: 'in num', min: 0, max: 99999, step: 1, value: fixaAtual(t), 'aria-label': 'Quanto fixar', title: 'Regra da fixa: rola um dado de (atributo − fixa) lados e soma a fixa',
@@ -155,14 +174,16 @@ const Luta = (() => {
       oninput: () => pintarPop(), onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); pop.el.focus({ preventScroll: true }); } } });
     const ma = campoMais('fp-ma', 'Bônus no atributo, só nesta rolagem', 'Soma no atributo antes de rolar (muda o dado: atributo 40 com +5, fixando 15, rola 1d30 + 15)');
     const mr = campoMais('fp-mr', 'Bônus no resultado, só nesta rolagem', 'Soma no resultado, depois de rolar');
+    // (lote 18) o relevo: mirando alguém mais baixo (ou mais alto), a sugestão de somar o bônus da tabela
+    const rel = h('div', { class: 'pop-rel', id: 'fp-rel', hidden: true });
     const el = h('div', { class: 'pop', id: 'fpop', role: 'dialog', 'aria-label': 'Rolar atributo de ' + tokName(t), tabindex: '-1' },
       h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou F)', fecharPop, { size: 15, id: 'fp-x' })),
       h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx),
       h('div', { class: 'pop-m', role: 'group', 'aria-label': 'Bônus só nesta rolagem', title: 'Valem só para a próxima rolagem' },
         h('span', { class: 'pop-l', text: 'Só nesta' }), h('label', { class: 'pop-l', for: 'fp-ma', text: '+ atrib.' }), ma, h('label', { class: 'pop-l', for: 'fp-mr', text: '+ result.' }), mr),
-      grid, out);
+      rel, grid, out);
     K.layer.append(el);
-    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr };
+    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr, rel, relSomado: false };
     pintarPop();
     if (!pop) return;
     // ao lado do token (à direita; se não couber, à esquerda), sem sair da tela — e ali fica, mesmo que o mapa ande

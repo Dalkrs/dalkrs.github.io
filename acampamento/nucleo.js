@@ -16,10 +16,11 @@
                                                 — prov — valem para o acampamento inteiro); fx: o que faz na ficha deles
      equipamentos [{ id, nome, desc, on, qtd, ef, alvo, fx }]
      bonus [{ id, nome, desc, ateDescanso }]    bônus declarados pela mesa (texto); os "até o descanso" saem ao descansar
-     regras { longo, curto, semProv }           longo/curto: { rec %, prov por personagem, conf, san, tiraBonus }
+     regras { longo, curto, semProv, caca }     longo/curto: { rec %, prov por personagem, conf, san, tiraBonus }
                                                 tiraBonus: o descanso tira os bônus "até o próximo descanso" (o padrão;
                                                 na janela do descanso o mestre muda só para aquele descanso)
                                                 semProv: { rec % do que recuperaria, conf } quando faltam rações
+                                                caca: { atr, dif: { [lugar]: n }, passo, max } — o teste da caça (lote 18)
                                                 (as barras especiais não estão aqui: cada uma tem a sua regra, na ficha)
      servir { longo, curto }                    a provisão que cada descanso serve primeiro (id, ou null: a ordem da lista)
      emo { [id]: emoção }                       a emoção de cada um, sem mesa (numa mesa ela fica na ficha: estado.emo)
@@ -27,7 +28,8 @@
      lugar ('floresta' | 'montanha' | 'deserto' | 'neve' | 'mar' | 'caverna')   onde o acampamento está (muda o desenho)
      clima ('limpo' | 'chuva' | 'tempestade' | 'neve' | 'neblina' | 'vento')     o tempo, animado na cena
      verCaravana (bool)                         os veículos e animais da caravana aparecem na cena
-     area { [id]: 'oficinas' | 'convivio' | 'guarda' }   em que área do acampamento cada um está (sem nada: na fogueira)
+     area { [id]: 'oficinas' | 'convivio' | 'guarda' | 'caca' }   em que área do acampamento cada um está (sem nada: na
+                                                fogueira); quem está na Caça faz o teste dela no descanso longo
      comer { racas: { [raça]: n }, pers: { [id]: n } }   quantas rações cada um come no descanso longo, por raça (o
                                                 campo "Raça / classe" da ficha) ou por personagem (vale mais que a raça)
      diario [{ id, t (ms), texto }]             os mais novos primeiro; no máximo 60
@@ -49,6 +51,9 @@
     longo: { rec: 100, prov: 1, conf: 10, san: 5, tiraBonus: true },
     curto: { rec: 25, prov: 0, conf: 0, san: 0, tiraBonus: true },
     semProv: { rec: 50, conf: -10 },
+    /* (lote 18) A caça: quem fica na área Caça rola o atributo (o da ficha, com a fixa dela) contra a dificuldade do
+       lugar; passou, traz 1 ração, e mais 1 a cada `passo` pontos acima da dificuldade, até `max`. */
+    caca: { atr: 'PER', dif: { floresta: 30, montanha: 40, deserto: 55, neve: 50, mar: 35, caverna: 60 }, passo: 10, max: 5 },
   };
   const EF_ZERO = { conf: 0, san: 0, rec: 0, prov: 0 };
   /* Onde as pessoas podem ficar, em % da cena. Os lados ficam de fora porque em telas estreitas a cena é cortada dos
@@ -72,6 +77,15 @@
   const normEfRacao = e => { e = ehObj(e) ? e : {}; return { conf: inteiro(e.conf, 0, -100, 100), san: inteiro(e.san, 0, -100, 100), rec: inteiro(e.rec, 0, -100, 100) }; };
   const normRegra = (r, p) => { r = ehObj(r) ? r : {}; return { rec: inteiro(r.rec, p.rec, 0, 100), prov: inteiro(r.prov, p.prov, 0, 99), conf: inteiro(r.conf, p.conf, -100, 100), san: inteiro(r.san, p.san, -100, 100), tiraBonus: r.tiraBonus === undefined ? p.tiraBonus : !!r.tiraBonus }; };
   const listaDe = (v, max) => (Array.isArray(v) ? v.filter(ehObj).slice(0, max) : []);
+  /* (lote 18) O teste da caça: o atributo (os mesmos que se rolam nas Cenas), a dificuldade de cada lugar, de quantos em
+     quantos pontos acima vem mais uma ração e o máximo de rações por caçador. */
+  const ATR_CACA = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  function normCaca(c) {
+    c = ehObj(c) ? c : {};
+    const p = REGRAS_PADRAO.caca, d = ehObj(c.dif) ? c.dif : {}, dif = {};
+    for (const k of Object.keys(p.dif)) dif[k] = inteiro(d[k], p.dif[k], 0, 99999);
+    return { atr: ATR_CACA.includes(c.atr) ? c.atr : p.atr, dif, passo: inteiro(c.passo, p.passo, 1, 9999), max: inteiro(c.max, p.max, 1, 99) };
+  }
   const r1d = v => Math.round(v * 10) / 10, r2d = v => Math.round(v * 100) / 100;
 
   /* ---- o que vai para a ficha (fx), e para quem vale a estrutura (alvo) ---- */
@@ -149,7 +163,7 @@
     tempestade: { nome: 'Tempestade', conf: -10, acamp: 'tempestade' }, neve: { nome: 'Neve', conf: -10, acamp: 'neve' }, nevoa: { nome: 'Névoa', conf: 0, acamp: 'neblina' },
     vento: { nome: 'Ventania', conf: -5, acamp: 'vento' }, calor: { nome: 'Calor', conf: -5, acamp: 'limpo' }, frio: { nome: 'Frio', conf: -10, acamp: 'limpo' },
   };
-  const AREAS = [['fogueira', 'Fogueira'], ['oficinas', 'Oficinas'], ['convivio', 'Convívio'], ['guarda', 'Guarda e Cuidado']];
+  const AREAS = [['fogueira', 'Fogueira'], ['oficinas', 'Oficinas'], ['convivio', 'Convívio'], ['guarda', 'Guarda e Cuidado'], ['caca', 'Caça']];
   const areaOk = a => (AREAS.some(x => x[0] === a) ? a : 'fogueira');
 
   /* ---- o catálogo das construções ----
@@ -188,6 +202,9 @@
       nv: [{ fx: [bon('CAN', 1)] }, { fx: [bon('CAN', 2)] }, { ef: ef4(0, 2, 0, 0), fx: [bon('CAN', 3)] }] },
     { k: 'santuario', nome: 'Santuário', cat: 'cuidado', area: 'guarda', desc: 'Um altar pequeno, flores e velas: paz para a cabeça.',
       nv: [{ ef: ef4(0, 3, 0, 0) }, { ef: ef4(0, 6, 0, 0) }, { ef: ef4(1, 10, 0, 0) }] },
+    // (lote 18) a da área Caça: a carne defumada dura mais
+    { k: 'defumadouro', nome: 'Defumadouro', cat: 'oficios', area: 'caca', desc: 'Varais de carne sobre a fumaça e peles esticadas: a caça dura mais e se gasta menos.',
+      nv: [{ ef: ef4(0, 0, 0, -1) }, { ef: ef4(2, 0, 0, -1) }, { ef: ef4(3, 0, 0, -2) }] },
     { k: 'horta', nome: 'Horta de ervas', cat: 'cuidado', area: 'guarda', desc: 'Canteiros de ervas e legumes: menos provisões gastas e chás que ajudam.',
       nv: [{ ef: ef4(0, 0, 0, -1) }, { ef: ef4(0, 0, 5, -1) }, { ef: ef4(1, 0, 5, -2) }] },
   ];
@@ -257,7 +274,8 @@
       melhorias: unicos(listaDe(a.melhorias, MAX_ITENS).map(normMelhoria), 'ml'),
       equipamentos: unicos(listaDe(a.equipamentos, MAX_ITENS).map(m => ({ id: m.id, nome: texto(m.nome, MAX_NOME), desc: texto(m.desc), on: m.on !== false, qtd: inteiro(m.qtd, 1, 0, 999), ef: normEf(m.ef), alvo: normAlvo(m.alvo), fx: normFx(m.fx) })), 'eq'),
       bonus: unicos(listaDe(a.bonus, MAX_ITENS).map(b => ({ id: b.id, nome: texto(b.nome, MAX_NOME), desc: texto(b.desc), ateDescanso: !!b.ateDescanso })), 'bn'),
-      regras: { longo: normRegra(reg.longo, REGRAS_PADRAO.longo), curto: normRegra(reg.curto, REGRAS_PADRAO.curto), semProv: { rec: inteiro(sp.rec, REGRAS_PADRAO.semProv.rec, 0, 100), conf: inteiro(sp.conf, REGRAS_PADRAO.semProv.conf, -100, 100) } },
+      regras: { longo: normRegra(reg.longo, REGRAS_PADRAO.longo), curto: normRegra(reg.curto, REGRAS_PADRAO.curto), semProv: { rec: inteiro(sp.rec, REGRAS_PADRAO.semProv.rec, 0, 100), conf: inteiro(sp.conf, REGRAS_PADRAO.semProv.conf, -100, 100) },
+        caca: normCaca(reg.caca) },
       servir: { longo: servida(sv.longo), curto: servida(sv.curto) },
       emo,
       caravana: normCaravana(a.caravana),
@@ -323,6 +341,8 @@
                      por pessoa), tiraBonus: bool (só neste descanso; sem vir, o da regra) } — sem porPessoa, no descanso
                      longo, vale o que o acampamento anotou por personagem ou por raça (comer); senão, prov. Cada linha do
                      plano diz quanto a pessoa ia comer (quer) e os bônus que acabam (saem).
+                     (lote 18) caca: { atr, dif, rolagens: [{ id, nome, total, det, on }] } — os caçadores que já rolaram,
+                     no descanso longo: plano.caca diz o que cada um trouxe e quantas rações vêm (as marcadas, on).
      Devolve o plano: o que cada um recupera, as rações gastas (de quais provisões) e os avisos.
      Só o descanso longo usa a estrutura (melhorias e equipamentos). As rações saem primeiro da provisão servida e
      depois da lista, de cima para baixo, em rodízio (uma para cada, depois mais uma para cada…); quem come uma ração
@@ -398,10 +418,33 @@
       const deTodos = banquete.includes(pv), k = deTodos ? n : porcoes.filter(c => c.some(x => x.p === pv)).length;
       if (k) comidas.push(Object.assign({ id: pv.id, nome: pv.nome, n: k }, deTodos ? { todos: true } : {}));
     }
+    const caca = longo && opt && ehObj(opt.caca) ? planoDaCaca(camp, opt.caca) : null;
     return { tipo: longo ? 'longo' : 'curto', n, custo, disponivel, gasto, falta, consumo, rec: Math.round(rec * 10) / 10, conf, san, linhas, efeitos: ef,
       servida: servida ? { id: servida.id, nome: servida.nome, qtd: servida.qtd, efeito: temEfeito(servida), todos: !!servida.todos } : null, comem, comidas, prov: regra.prov,
-      tiraBonus: tira, clima };
+      tiraBonus: tira, clima, caca };
   }
+  /* ---- (lote 18) a caça ----
+     Quem está na área Caça (e tem ficha) caça no descanso longo: rola o atributo da regra contra a dificuldade do lugar
+     do acampamento. O resultado só sugere: o mestre vê o que cada um trouxe e confirma (as marcadas entram). */
+  const cacadores = (camp, pessoas) => (pessoas || []).filter(p => p && !p.semFicha && areaDe(camp, p.id) === 'caca');
+  const difDaCaca = (camp, lugar) => { const d = camp.regras.caca.dif, l = lugar || camp.lugar; return Object.prototype.hasOwnProperty.call(d, l) ? d[l] : d.floresta; };
+  // o que um total traz: { passou, margem, racoes } (passou: o total chegou à dificuldade)
+  function racoesDaCaca(camp, total, dif, regra) {
+    const r = regra || camp.regras.caca, t = num(total, NaN), d = num(dif, difDaCaca(camp));
+    if (!Number.isFinite(t)) return { passou: false, margem: null, racoes: 0 };
+    const margem = Math.round(t - d);
+    return margem >= 0 ? { passou: true, margem, racoes: Math.min(r.max, 1 + Math.floor(margem / r.passo)) } : { passou: false, margem, racoes: 0 };
+  }
+  function planoDaCaca(camp, o) {
+    const r = camp.regras.caca, atr = ATR_CACA.includes(o.atr) ? o.atr : r.atr, dif = inteiro(o.dif, difDaCaca(camp), 0, 99999);
+    const linhas = listaDe(o.rolagens, 60).filter(x => idOk(x.id) && Number.isFinite(num(x.total, NaN))).map(x => {
+      const z = racoesDaCaca(camp, x.total, dif);
+      return { id: x.id, nome: texto(x.nome, MAX_NOME), total: Math.round(num(x.total, 0)), det: texto(x.det, 80), passou: z.passou, margem: z.margem, racoes: z.racoes, on: x.on !== false && z.racoes > 0 };
+    });
+    return { atr, dif, linhas, racoes: linhas.reduce((t, x) => t + (x.on ? x.racoes : 0), 0) };
+  }
+  // a provisão onde a caça entra (a primeira com o id "caca"; sem ela, uma nova no fim da lista)
+  const ID_CACA = 'caca';
   // o que uma pessoa recupera, com a recuperação, o Conforto e a Sanidade que valem para ela
   function linhaDoDescanso(p, longo, regra, rec, conf, san) {
     const recursos = (p.recursos || []).filter(r => r.max != null && Number.isFinite(r.max) && r.max > 0).map(r => {
@@ -462,6 +505,13 @@
   function aposDescanso(camp, plano, quando) {
     const c = copia(camp);
     for (const g of plano.consumo) { const p = c.provisoes.find(x => x.id === g.id); if (p) p.qtd = Math.max(0, p.qtd - g.qtd); }
+    // (lote 18) a caça confirmada entra depois do que se comeu: fica para os próximos descansos
+    const cc = plano.caca && plano.caca.racoes > 0 ? plano.caca.racoes : 0;
+    if (cc) {
+      const pv = c.provisoes.find(x => x.id === ID_CACA);
+      if (pv) pv.qtd = Math.min(9999, pv.qtd + cc);
+      else c.provisoes.push({ id: ID_CACA, nome: 'Carne de caça', qtd: cc, ef: { conf: 0, san: 0, rec: 0 }, fx: [], todos: false });
+    }
     if (plano.tiraBonus !== false) c.bonus = c.bonus.filter(b => !b.ateDescanso);
     c.diario.unshift({ id: novoId('di'), t: quando || Date.now(), texto: resumoDescanso(plano) });
     c.diario = c.diario.slice(0, MAX_DIARIO);
@@ -474,6 +524,7 @@
     for (const cm of plano.comidas || []) p.push(cm.todos ? 'banquete de ' + (cm.nome || 'uma ração com efeito') + ' para todos'
       : (cm.n === plano.n ? (plano.n === 1 ? 'comeu ' : 'comeram ') : cm.n + (cm.n === 1 ? ' comeu ' : ' comeram ')) + (cm.nome || 'uma ração com efeito'));
     if (plano.falta) p.push('faltaram ' + plano.falta + (plano.falta === 1 ? ' ração' : ' rações'));
+    if (plano.caca && plano.caca.racoes > 0) p.push('a caça trouxe ' + plano.caca.racoes + (plano.caca.racoes === 1 ? ' ração' : ' rações'));
     if (plano.rec) p.push('recuperação de ' + plano.rec + '%');
     if (plano.conf) p.push('Conforto ' + comSinal(plano.conf));
     if (plano.clima) p.push('noite de ' + plano.clima.nome.toLocaleLowerCase('pt-BR'));      // (lote 7, parte 5c)
@@ -542,7 +593,7 @@
   const AcampNucleo = { HORAS, REGRAS_PADRAO, normalizar: normalizarSeguro, efeitos, efeitosDe, alcanca, fxDe, temParaAlguns, temEfeito, racoes, textoEfeitos, comSinal, planejar, aposDescanso, resumoDescanso,
     textoFx, tmpDoFx, barraPeloNome, EMOCOES, emocao, emoOk, TIPOS_VEICULO, cargaDe, lugarPadrao, folga, AREA, item, novoId, copia, limitar,
     LUGARES, CLIMAS, CLIMA_MUNDO, AREAS, CATEGORIAS, NIVEIS, ESTRUTURAS, estrutura, areaDe, construcoes, chaveRaca, quantoCome, SO_MESTRE, mexeNoMestre, paraJogador,
-    FAD_MAX, paraDaEspecial };
+    FAD_MAX, paraDaEspecial, ATR_CACA, cacadores, difDaCaca, racoesDaCaca, ID_CACA };
   if (typeof module === 'object' && module && module.exports) module.exports = AcampNucleo;
   if (typeof window !== 'undefined') window.AcampNucleo = AcampNucleo;
 })();

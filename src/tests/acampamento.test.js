@@ -200,7 +200,7 @@ const fichas = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
 
     // ---------- lote 5: as áreas, as construções, as linhas de relação, o lugar, o clima e quanto cada um come ----------
     await P.setViewportSize({ width: 1440, height: 900 }); await gaveta(true); await w(350);
-    ok(await P.locator('#areas button').count() === 4 && await P.locator('#area-tab-fogueira[aria-pressed="true"]').count() === 1 && (await P.locator('#area-tab-fogueira .n').innerText()) === '3', 'as quatro áreas acima da cena; na fogueira, os três');
+    ok(await P.locator('#areas button[id^="area-tab-"]').count() === 5 && await P.locator('#area-tab-fogueira[aria-pressed="true"]').count() === 1 && (await P.locator('#area-tab-fogueira .n').innerText()) === '3', 'as cinco áreas acima da cena (com a Caça, lote 18); na fogueira, os três');
     await aba('estrutura');
     await P.locator('#ct-novo').click(); await w(300);
     ok(await P.locator('dialog .construir .opc').count() === await A(() => __acamp.N.ESTRUTURAS.length) && await P.locator('dialog .construir .opc .miniatura svg').count() > 10, 'a janela de construir mostra o catálogo inteiro, cada uma com o desenho');

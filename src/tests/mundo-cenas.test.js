@@ -11,6 +11,7 @@
 //   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha, porto; as ruínas: ruína, templo, torre, castelo,
 //     masmorra, caverna, mina), o terreno da vila e o nome; o atalho para a
 //     cena que vai nascer (um passo de Desfazer); outros ícones e fora da casca, sem o botão;
+//   · (lote 18) a arena do chefe: o ninho, a ruína e a masmorra oferecem "Gerar a arena do chefe…" (a aba Arena);
 //   · (lote 14, parte 14c) o marcador leva o hexágono dele (menos a masmorra), com o cerco do próprio lugar marcado; nas
 //     Cenas, a janela abre no lugar com os arredores (o Médio) e o bloco do hexágono.
 const { start, checker } = require('./lib');
@@ -231,6 +232,20 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   ok(ru['m:caverna:4'] === j({ tipo: 'circulo', terreno: 'areia' }) && ru['m:mina:13'] === j({ tipo: 'mina', terreno: 'areia' }) && ru['m:masmorra:10'] === null, 'a caverna (o círculo de pedras com a boca) e a mina (a boca da mina): ' + j(ru));
   // (4b-3c) a masmorra: a aba Masmorra (o nível 1), com o nome do marcador
   ok(gerou['m:masmorra:10'] && gerou['m:masmorra:10'].lugar === 'masmorra' && gerou['m:masmorra:10'].nome === 'Masmorra', 'o marcador Masmorra abre a aba Masmorra, com o nome do marcador: ' + j(gerou['m:masmorra:10']));
+  // (lote 18) a arena do chefe: o marcador da masmorra e o da ruína oferecem "Gerar a arena do chefe…" (a aba Arena, no
+  // tipo que combina; o marcador não muda); o castelo, não
+  const arena = async chave => {
+    await selecionar(ids[chave]);
+    const b = pane(`[data-k="o:${ids[chave]}:arena"]`);
+    if (!(await b.count())) return null;
+    const antes = await F.evaluate(id => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === id)), ids[chave]);
+    await b.click(); await espera(250);
+    const l = await pedidos(), depois = await F.evaluate(id => JSON.stringify(__mundo.App.mapa.objs.find(o => o.id === id)), ids[chave]);
+    return l.length === 1 ? Object.assign({ igual: antes === depois }, l[0].alvo) : { erro: l };
+  };
+  const am = await arena('m:masmorra:10'), ar = await arena('m:ruina:2'), ac = await arena('m:castelo:3');
+  ok(am && am.gerar.lugar === 'arena' && am.gerar.op.tipo === 'mausoleu' && am.gerar.nome === 'Masmorra — a arena do chefe' && !am.cena && am.igual, 'a masmorra: "Gerar a arena do chefe…" abre a aba Arena no mausoléu (o marcador não muda): ' + j(am));
+  ok(ar && ar.gerar.op.tipo === 'trono' && ac === null, 'a ruína: a sala do trono; o castelo não tem a arena: ' + j([ar && ar.gerar.op, ac]));
   const fo = gerou['m:castelo:3'] && gerou['m:castelo:3'].hex;
   ok(fo && fo.k === '3,14' && fo.guerra && fo.guerra.cerco && fo.guerra.cerco.nome === 'Forte' && fo.guerra.cerco.aqui === true && fo.guerra.cerco.dias === 3 && !('hex' in gerou['m:masmorra:10']), 'o forte cercado: o hexágono com o cerco dele, marcado (aqui); a masmorra, sem o hexágono: ' + j(fo && fo.guerra));
   await F.evaluate(id => __mundo.App.mudar('sem o cerco', m => { delete m.objs.find(o => o.id === id).cerco; m.faccoes = m.faccoes.filter(f => f.id !== 'fc_ferro14c'); }), ids['m:castelo:3']);

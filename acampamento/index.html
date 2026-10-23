@@ -152,7 +152,10 @@ button { cursor: pointer; }
 .nota { animation: flutua 3.2s ease-in-out infinite; }
 @keyframes flutua { 0%, 100% { transform: translateY(0); opacity: .9; } 50% { transform: translateY(-8px); opacity: .5; } }
 .orbe { animation: piscar 4s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .nota, .orbe { animation: none; } }
+.luz-lona { opacity: calc(.2 * var(--luz-fogo)); animation: lona 3.4s ease-in-out infinite; }      /* (lote 18) a luz da fogueira na lona */
+@keyframes lona { 0%, 100% { opacity: calc(.2 * var(--luz-fogo)); } 50% { opacity: calc(.12 * var(--luz-fogo)); } }
+.fumaca { animation: flutua 4.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .nota, .orbe, .luz-lona, .fumaca { animation: none; } }
 /* as linhas de relação (clicando num personagem): cada metade é o que um sente pelo outro */
 .cena16 > svg.linhas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
 .linhas .fundo-l { stroke: rgba(6, 8, 14, .7); stroke-width: 9; stroke-linecap: round; fill: none; }
@@ -309,6 +312,31 @@ dialog::backdrop { background: rgba(4, 6, 12, .6); }
 .dl-h h2 { margin: 0; font: 600 22px/1.15 var(--display); }
 .dl-b { padding: 0 16px 6px; display: grid; gap: 10px; overflow-y: auto; max-height: calc(100vh - 190px); }
 .dl-f { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px 14px; flex-wrap: wrap; }
+/* (lote 18) o quadro de distribuir pelas áreas, e a caça no descanso longo */
+dialog.largo { max-width: min(1080px, calc(100vw - 24px)); width: 100%; }
+.areas button.distribuir { border-style: dashed; color: var(--fg); margin-left: 10px; }
+.quadro { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 8px; overflow-x: auto; }
+.qd-col { display: flex; flex-direction: column; gap: 6px; min-height: 220px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--raised); transition: border-color .15s, background .15s; }
+.qd-col.alvo { border-color: var(--lamp); background: color-mix(in srgb, var(--lamp) 12%, var(--raised)); }
+.qd-col h3 { margin: 0 0 2px; display: flex; align-items: center; justify-content: space-between; font: 600 13px/1.2 var(--ui); color: var(--fg-2); }
+.qd-col h3 .n { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--hover); color: var(--fg); font: 700 11px/18px var(--mono); text-align: center; }
+.qd-p { display: flex; align-items: center; gap: 8px; padding: 5px 8px 5px 5px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: grab; user-select: none; }
+.qd-p:active { cursor: grabbing; }
+.qd-p:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.qd-p .rt { flex: none; width: 34px; height: 34px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: #2a3247; border: 2px solid #e9d7b0; font: 700 12px var(--ui); color: #e9d7b0; }
+.qd-p .rt img { width: 100%; height: 100%; object-fit: cover; object-position: top center; pointer-events: none; }
+.qd-p .nm { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 720px) { .quadro { grid-template-columns: repeat(5, 150px); } }
+.caca { display: grid; gap: 8px; }
+.caca-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--fg-2); }
+.caca-cab b { color: var(--fg); font-size: 14px; }
+.caca-cab select.in, .caca-cab .in.num { height: 30px; width: auto; }
+.caca-cab .grow { flex: 1; }
+.caca-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.caca-lista li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+.caca-nome { font-weight: 600; min-width: 110px; }
+.caca-res { font-family: var(--mono); font-size: 12.5px; color: var(--fg-2); flex: 1; }
+.caca-res.ok b { color: var(--ok); }
 .plano { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .plano th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; padding: 4px 8px 6px; border-bottom: 1px solid var(--line); }
 .plano td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -387,8 +415,8 @@ dialog::backdrop { background: rgba(4, 6, 12, .6); }
 <script src="../tc/ponte.js?v=16"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=16"></script>
-<script src="nucleo.js?v=9"></script>
-<script src="desenhos.js?v=1"></script>
-<script src="acampamento.js?v=17"></script>
+<script src="nucleo.js?v=10"></script>
+<script src="desenhos.js?v=2"></script>
+<script src="acampamento.js?v=18"></script>
 </body>
 </html>

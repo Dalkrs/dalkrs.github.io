@@ -119,12 +119,15 @@ const Walls = (() => {
   // não está encostado. É recalculado a cada pedido (depende de onde o token está), então nunca fica velho.
   function sightFor(sc, t) {
     const d = of(sc);
-    if (!d.curtains.length) return d.sight;
+    // (lote 18) a visão pelo relevo: o que é mais alto que o olho do token também barra (só com a chave da cena)
+    const rl = typeof Relevo !== 'undefined' ? Relevo.barreiras(sc, t) : [];
+    const com = base => (rl.length ? base.concat(rl) : base);
+    if (!d.curtains.length) return com(d.sight);
     const far = d.curtains.filter(c => !curtainNear(t, c, sc.cell));
-    if (far.length === d.curtains.length) return d.sightAll;
+    if (far.length === d.curtains.length) return com(d.sightAll);
     const s = d.sight.slice();
     for (const c of far) s.push(c.x1, c.y1, c.x2, c.y2);
-    return s;
+    return com(s);
   }
 
   // O caminho reto de (ax, ay) a (bx, by) cruza algo que barra a passagem?

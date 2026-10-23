@@ -1379,7 +1379,9 @@
         { dica: 'Para onde este marcador leva: dois cliques nele (ou o botão "Abrir") abrem a cena, o outro mapa ou o acampamento.' }),
       o.liga ? linha(botaoLiga(o)) : null,
       // (lote 7, parte 4b) sem atalho, o lugar que o ícone é (cidade, vila, ponte, floresta, montanha) pode ser gerado
-      !o.liga && naCasca() && LUGAR_DO_ICONE[o.ic] ? h('div', { class: 'row' }, botao('Gerar este lugar…', () => gerarLugar(o), { c: 'sm', k: 'o:' + id + ':gerar', title: 'Abre a janela "Gerar um lugar" das Cenas, já preenchida (o terreno, a hora, o clima e o estilo daqui); ao criar, este marcador fica ligado à cena' })) : null);
+      !o.liga && naCasca() && LUGAR_DO_ICONE[o.ic] ? h('div', { class: 'row' }, botao('Gerar este lugar…', () => gerarLugar(o), { c: 'sm', k: 'o:' + id + ':gerar', title: 'Abre a janela "Gerar um lugar" das Cenas, já preenchida (o terreno, a hora, o clima e o estilo daqui); ao criar, este marcador fica ligado à cena' })) : null,
+      // (lote 18) o ninho, a ruína e a masmorra: a arena do chefe (uma cena à parte; o marcador não muda)
+      naCasca() && ARENA_DO_ICONE[o.ic] && App.podeEditar() ? h('div', { class: 'row' }, botao('Gerar a arena do chefe…', () => gerarArena(o), { c: 'sm', k: 'o:' + id + ':arena', title: 'Abre a janela "Gerar um lugar" das Cenas na aba Arena: a luta com o chefe deste lugar, com as fases prontas' })) : null);
   }
   /* ---------------- (lote 17) a seta de ofensiva, a seta da marcha, o lugar que produz e o porto ---------------- */
   // a seta: a facção (a cor dela), a cor própria e quem vê — os jogadores da facção dela sempre; os outros, se o mestre mostrar
@@ -1593,6 +1595,14 @@
      (lote 14, parte 14c) com o hexágono do marcador: o Vilarejo, a Cidade, as Ruínas e o Porto ficam no meio da cena, com
      o chão do hexágono em volta (os arredores), e o encontro do marcador vem com o hexágono, como o "Gerar a cena aqui" —
      a masmorra, lá embaixo, não */
+  // (lote 18) a arena do chefe de cada lugar: o covil do ninho, o trono da ruína, o mausoléu da masmorra
+  const ARENA_DO_ICONE = { ninho: 'covil', ruina: 'trono', masmorra: 'mausoleu' };
+  function gerarArena(o) {
+    const m = App.mapa, tipo = ARENA_DO_ICONE[o.ic];
+    if (!m || !tipo || !naCasca() || !App.podeEditar()) return false;
+    const nome = (o.nome || '').trim();
+    return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'arena', op: { tipo } }, comum(m, o.x, o.y), nome ? { nome: nome + ' — a arena do chefe' } : null) });
+  }
   function gerarLugar(o) {
     const m = App.mapa, def = LUGAR_DO_ICONE[o.ic];
     if (!m || !def || !naCasca() || !App.podeEditar()) return false;
@@ -3372,7 +3382,9 @@
   }
 
   /* (lote 8, parte 6) as ferramentas do painel, para a guerra (mundo/guerra-painel.js) */
-  const kit = { app: () => App, h, glifo, botao, nota, secao, segredo, linha, campoTexto, campoNumero, campoEscolha, caixa, mudarObj, avisoDesfazer, achar, nomeDe, nomeFac, facDe,
+  // (lote 18) o que a janela das Cenas precisa para gerar a cena de um ponto (a hora, o clima, o estilo, o hexágono)
+  const pedidoDeCena = (m, x, y) => Object.assign({}, comum(m, x, y), doHexagono(m, x, y));
+  const kit = { app: () => App, pedidoDeCena, naCasca, h, glifo, botao, nota, secao, segredo, linha, campoTexto, campoNumero, campoEscolha, caixa, mudarObj, avisoDesfazer, achar, nomeDe, nomeFac, facDe,
     irPara, fmt, plural, dataTxt, janela, confirmar, icone, abrirAba, pintar, X_SVG, focar: k => { focarDepois = k; },
     campoCor, lerNum, fmtCampo, mesmoMapa, bandeiraFac,           // (lote 10) a economia e a bandeira (mundo/reino-painel.js)
     depoisDasPropostas };                                          // (lote 12) a semana espera o dia da campanha

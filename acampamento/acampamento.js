@@ -124,10 +124,13 @@
     const l = linha(id), r0 = camp.roda.find(x => x.id === id);
     if (!l) return r0 ? { id, nome: r0.nome || 'Sem nome', img: imagemOk(r0.img), dono: r0.dono, semFicha: true, recursos: [], san: null, conf: null, poderes: [], fad: null, tmp: [], grupo: '', raca: '', emo: emoDe(id, null) } : null;
     const est = l.estado || {}, ficha = l.ficha || {};
-    let recursos = [];
+    let recursos = [], atr = {}, fixa = 0;
     try {
       const pc = Object.assign({}, ficha, { id: l.id, nome: l.nome });
-      recursos = R().resumo(pc, cfgAtual(), { arvore: R().bonusDaArvore(l.skills, bibAtual()) }, est).recursos.filter(x => x.max != null && Number.isFinite(x.max) && x.max > 0);
+      const rs = R().resumo(pc, cfgAtual(), { arvore: R().bonusDaArvore(l.skills, bibAtual()) }, est);
+      recursos = rs.recursos.filter(x => x.max != null && Number.isFinite(x.max) && x.max > 0);
+      // (lote 18) os atributos e a fixa da ficha: o teste da caça
+      atr = Object.assign({}, rs.attrs, rs.der, rs.def); fixa = Math.max(0, Math.round(+rs.fixa || 0));
     } catch (e) { recursos = []; }
     // (o pet de um personagem — ficha.petDe — é como a ficha de um NPC: não liga sozinho o que a de jogador liga)
     const deJog = ehJogador(l.dono_id) && !ficha.petDe;
@@ -142,7 +145,7 @@
       fad: typeof R().usaFadiga === 'function' && R().usaFadiga(est, deJog) ? R().fadiga(est) : null,
       // os bônus "até o próximo descanso" que a ficha tem agora (o descanso tira, se o mestre deixar)
       tmp: est.tmp && typeof est.tmp === 'object' ? Object.keys(est.tmp).filter(k => est.tmp[k] && est.tmp[k].ate === 'descanso').map(k => ({ id: k, n: est.tmp[k].n, k: est.tmp[k].k, v: est.tmp[k].v })) : [],
-      grupo: String(ficha.grupo || '').trim(), raca: String(ficha.raca || '').trim().slice(0, 40), emo: emoDe(id, l),
+      grupo: String(ficha.grupo || '').trim(), raca: String(ficha.raca || '').trim().slice(0, 40), emo: emoDe(id, l), atr, fixa,
     };
   }
   // quem está no acampamento, na ordem da lista (só os que ainda existem para quem está olhando)
@@ -254,11 +257,15 @@
   function desenharCenario() {
     const AD = window.AcampDesenhos; if (!AD) return;
     const cs = N.construcoes(camp, areaVista).map(m => ({ tipo: m.tipo, nivel: m.nivel }));
-    const car = areaVista === 'fogueira' && camp.verCaravana ? camp.caravana.veiculos.map(v => ({ tipo: v.tipo })) : [];
-    const chave = j([camp.lugar, areaVista, cs, car]);
+    // (lote 18) o estado de cada veículo no desenho: a roda quebrada (escrita no Estado) e a carga demais
+    const peso = N.cargaDe(camp), quebrou = t => /quebrad|partid|sem roda/.test(String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
+    const car = areaVista === 'fogueira' && camp.verCaravana ? camp.caravana.veiculos.map(v => ({ tipo: v.tipo, quebrado: quebrou(v.estado), cheio: v.cap > 0 && (peso.por[v.id] || 0) > v.cap })) : [];
+    // os abrigos: quantos estão na fogueira e o que o grupo tem em uso no Equipamento (tenda, toldo, rede, barracas)
+    const ab = areaVista === 'fogueira' ? { n: camp.presentes.filter(id => N.areaDe(camp, id) === 'fogueira').length, tipos: [...AD.tiposDeAbrigo(camp.equipamentos.filter(e => e.on).map(e => e.nome))] } : null;
+    const chave = j([camp.lugar, areaVista, cs, car, ab]);
     if (chave === chaveCenario) return;
     chaveCenario = chave;
-    $('cenario').innerHTML = AD.cena({ lugar: camp.lugar, area: areaVista, construcoes: cs, caravana: car });
+    $('cenario').innerHTML = AD.cena({ lugar: camp.lugar, area: areaVista, construcoes: cs, caravana: car, abrigos: ab });
   }
   /* ---- a área em vista (cada um escolhe a sua; fica neste aparelho) ---- */
   let areaVista = (() => { const a = guarda.ler('tinycats:acampamento:area'); return N.AREAS.some(x => x[0] === a) ? a : 'fogueira'; })();
@@ -406,7 +413,9 @@
     const todos = presentes(), gente = todos.filter(p => N.areaDe(camp, p.id) === areaVista), n = gente.length;
     $('areas').replaceChildren(...N.AREAS.map(([k, nome]) => { const q = todos.filter(p => N.areaDe(camp, p.id) === k).length, cs = N.construcoes(camp, k).length;
       return h('button', { type: 'button', id: 'area-tab-' + k, 'aria-pressed': String(areaVista === k), title: nome + ': ' + (q === 1 ? '1 personagem' : q + ' personagens') + (cs ? ' · ' + (cs === 1 ? '1 construção' : cs + ' construções') : ''), onclick: () => verArea(k) },
-        nome, h('span', { class: 'n', text: String(q) })); }));
+        nome, h('span', { class: 'n', text: String(q) })); }),
+      // (lote 18) o quadro de distribuir: todos de uma vez, arrastando entre as áreas
+      ...(edita() && todos.length ? [h('button', { type: 'button', id: 'btDistribuir', class: 'distribuir', title: 'Distribuir os personagens pelas áreas', onclick: abrirDistribuir }, 'Distribuir…')] : []));
     const lugares = gente.map((p, i) => camp.lugares[p.id] || N.lugarPadrao(i, n));
     folgaDaRoda = N.folga(lugares);
     rodaAtual = { gente, lugares };
@@ -544,11 +553,53 @@
   }
   /* ---- as áreas do acampamento (a fogueira, as oficinas, o convívio, a guarda e o cuidado) ---- */
   const nomeDaArea = k => (N.AREAS.find(a => a[0] === k) || N.AREAS[0])[1];
+  const COM_ARTIGO = { fogueira: 'a fogueira', oficinas: 'as oficinas', convivio: 'o convívio', guarda: 'a guarda e o cuidado', caca: 'a caça' };
+  const paraAArea = k => COM_ARTIGO[k] || nomeDaArea(k).toLowerCase();
   function moverDeArea(p, area) {
     const de = N.areaDe(camp, p.id);
     if (area === de) return;
     if (mudar(p.nome + ' para ' + nomeDaArea(area), c => { if (area === 'fogueira') delete c.area[p.id]; else c.area[p.id] = area; delete c.lugares[p.id]; }) && area !== areaVista)
-      toast(p.nome + ' foi para ' + (area === 'fogueira' ? 'a fogueira' : area === 'guarda' ? 'a guarda e o cuidado' : area === 'convivio' ? 'o convívio' : 'as oficinas') + '.', 'Ver', () => verArea(area));
+      toast(p.nome + ' foi para ' + paraAArea(area) + '.', 'Ver', () => verArea(area));
+  }
+  /* (lote 18) O quadro de distribuir: uma coluna por área, com os retratos de quem está em cada uma. Arrastar um retrato
+     para outra coluna (ou ←/→ com ele em foco) muda a área — cada mudança é um passo de desfazer, e a janela tem o
+     Desfazer dela. */
+  function abrirDistribuir() {
+    if (!edita()) return;
+    let feitos = 0, arrastado = null, focoDepois2 = null;
+    const corpo = h('div', { class: 'quadro', id: 'quadro' });
+    const desf = h('button', { type: 'button', class: 'btn', id: 'qd-desfazer', text: 'Desfazer', disabled: true });
+    const mover = (p, area) => {
+      if (N.areaDe(camp, p.id) === area) return;
+      if (mudar(p.nome + ' para ' + nomeDaArea(area), c => { if (area === 'fogueira') delete c.area[p.id]; else c.area[p.id] = area; delete c.lugares[p.id]; })) { feitos++; focoDepois2 = 'qd-p-' + p.id; }
+      desenhar();
+    };
+    const desenhar = () => {
+      const gente = presentes();
+      corpo.replaceChildren(...N.AREAS.map(([k, nome], i) => {
+        const aqui = gente.filter(p => N.areaDe(camp, p.id) === k);
+        const col = h('section', { class: 'qd-col', 'data-area': k, 'aria-label': nome + ': ' + aqui.length,
+          ondragover: e => { if (arrastado) { e.preventDefault(); col.classList.add('alvo'); } }, ondragleave: () => col.classList.remove('alvo'),
+          ondrop: e => { e.preventDefault(); col.classList.remove('alvo'); const p = arrastado && gente.find(x => x.id === arrastado); arrastado = null; if (p) mover(p, k); } },
+          h('h3', {}, nome, h('span', { class: 'n', text: String(aqui.length) })),
+          ...(aqui.length ? [] : [h('p', { class: 'note', text: 'Ninguém.' })]),
+          ...aqui.map(p => h('div', { class: 'qd-p', id: 'qd-p-' + p.id, 'data-id': p.id, draggable: 'true', tabindex: '0', role: 'button',
+            'aria-label': p.nome + ', em ' + nome + '. Arraste para outra área, ou use as setas para os lados.', title: 'Arraste para outra área (ou ← →)',
+            ondragstart: e => { arrastado = p.id; try { e.dataTransfer.setData('text/plain', p.id); e.dataTransfer.effectAllowed = 'move'; } catch (x) { /* sem dados */ } },
+            ondragend: () => { arrastado = null; },
+            onkeydown: e => { if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; e.preventDefault(); const j0 = i + (e.key === 'ArrowLeft' ? -1 : 1); if (j0 >= 0 && j0 < N.AREAS.length) mover(p, N.AREAS[j0][0]); } },
+            h('span', { class: 'rt' }, p.img ? h('img', { src: p.img, alt: '' }) : iniciais(p.nome)), h('span', { class: 'nm', text: p.nome }))));
+        return col;
+      }));
+      desf.disabled = !feitos;
+      if (focoDepois2) { const c0 = document.getElementById(focoDepois2); focoDepois2 = null; if (c0) c0.focus(); }
+    };
+    desf.addEventListener('click', () => { if (!feitos) return; desfazer(); feitos--; desenhar(); });
+    desenhar();
+    abrirJanela('Distribuir pelas áreas', h('div', {}, h('p', { class: 'note', text: 'Arraste cada retrato para a área onde o personagem fica. Quem está na Caça caça no descanso longo.' }), corpo),
+      [desf, h('button', { type: 'button', class: 'btn pri', id: 'qd-ok', text: 'Pronto', onclick: fecharJanela })]);
+    dlg.classList.add('largo');
+    dlg.addEventListener('close', () => dlg.classList.remove('largo'), { once: true });
   }
   function seletorEmo(p) {
     return h('div', { class: 'emos', role: 'group', 'aria-label': 'Emoção de ' + p.nome },
@@ -944,6 +995,15 @@
         h('div', { class: 'regras' },
           h('span', { text: 'A recuperação fica em (% do normal)' }), campoNum('rg-sem-rec', rg.semProv.rec, 'Sem rações: a recuperação fica em % do normal', v => mudar('regras do descanso', c => { c.regras.semProv.rec = v; }), 0, 100), h('span'),
           h('span', { text: 'Conforto' }), campoNum('rg-sem-conf', rg.semProv.conf, 'Sem rações: Conforto', v => mudar('regras do descanso', c => { c.regras.semProv.conf = v; }), -100, 100), h('span')),
+        // (lote 18) a caça: o que rolam, a dificuldade de cada lugar e quanto rende
+        h('p', { class: 'note', id: 'rg-caca-nota', text: 'A caça (quem está na área Caça, no descanso longo): rola contra a dificuldade do lugar; passou, traz uma ração, e mais uma a cada tantos pontos acima.' }),
+        h('div', { class: 'regras', id: 'rg-caca' },
+          h('span', { text: 'Rola' }), h('select', { class: 'in', id: 'rg-caca-atr', 'aria-label': 'A caça rola', onchange: e => mudar('regras da caça', c => { c.regras.caca.atr = e.target.value; }) },
+            N.ATR_CACA.map(k => h('option', { value: k, text: (R() && R().NOMES && R().NOMES[k]) || k, selected: k === rg.caca.atr }))), h('span'),
+          h('span', { text: 'Mais uma ração a cada (pontos acima)' }), campoNum('rg-caca-passo', rg.caca.passo, 'A caça: mais uma ração a cada tantos pontos acima da dificuldade', v => mudar('regras da caça', c => { c.regras.caca.passo = v; }), 1, 9999), h('span'),
+          h('span', { text: 'Até (rações por caçador)' }), campoNum('rg-caca-max', rg.caca.max, 'A caça: no máximo, rações por caçador', v => mudar('regras da caça', c => { c.regras.caca.max = v; }), 1, 99), h('span'),
+          ...[].concat(...N.LUGARES.map(([k, nome]) => [h('span', { text: 'Dificuldade: ' + nome + (k === camp.lugar ? ' (aqui)' : '') }),
+            campoNum('rg-caca-dif-' + k, rg.caca.dif[k], 'A caça: dificuldade em ' + nome, v => mudar('regras da caça', c => { c.regras.caca.dif[k] = v; }), 0, 99999), h('span')]))),
         h('button', { type: 'button', class: 'btn sm', id: 'rg-padrao', text: 'Voltar às regras padrão', onclick: () => { if (mudar('voltar às regras padrão', c => { c.regras = N.copia(N.REGRAS_PADRAO); })) toast('Regras de volta ao padrão.', 'Desfazer', desfazer); } })) : null,
     ];
   }
@@ -985,11 +1045,60 @@
     const climaM = longo ? climaDoMundo() : null;
     escolha.clima = !!(climaM && climaM.conf);
     const txtTmp = b => (b.k || '?') + ' ' + N.comSinal(Math.round(b.v * 10) / 10) + (b.n ? ' (' + b.n + ')' : '');
+    /* (lote 18) A caça: quem está na área Caça rola (o mestre aperta, um por um ou todos); o resultado só sugere rações
+       — as marcadas entram na Carne de caça depois do descanso. A rolagem vai para a mesa ao vivo. */
+    const cacam = longo ? N.cacadores(camp, aqui) : [];
+    escolha.caca = { atr: camp.regras.caca.atr, dif: N.difDaCaca(camp), rolagens: [] };
+    const valorDaCaca = p => Math.max(0, Math.round(+((p.atr || {})[escolha.caca.atr]) || 0));
+    const rolarCaca = p => {
+      const v = valorDaCaca(p), D0 = window.TC && TC.dice;
+      if (!D0 || !D0.rollFixa) { toast('Sem o rolador de dados aqui.'); return false; }
+      const r = D0.rollFixa(v, Math.min(p.fixa || 0, v));
+      if (!r.ok) { toast(p.nome + ': ' + r.error); return false; }
+      const det = r.die ? r.dieValue + ' no d' + r.die + (r.fixa ? ' + ' + r.fixa : '') : 'fixa total';
+      escolha.caca.rolagens = escolha.caca.rolagens.filter(x => x.id !== p.id).concat([{ id: p.id, nome: p.nome, total: r.total, det, on: true }]);
+      const z = N.racoesDaCaca(camp, r.total, escolha.caca.dif);
+      publicar('A caça · ' + p.nome, (R() && R().NOMES && R().NOMES[escolha.caca.atr] || escolha.caca.atr) + ' ' + r.total + ' (' + det + ') contra ' + escolha.caca.dif + ': '
+        + (z.passou ? 'passou' + (z.margem ? ' por ' + z.margem : '') + ' — ' + z.racoes + (z.racoes === 1 ? ' ração' : ' rações') : 'não passou'));
+      return true;
+    };
+    const nomeAtr = k => (R() && R().NOMES && R().NOMES[k]) || k;
+    const blocoDaCaca = () => {
+      const pc = plano.caca || { linhas: [], racoes: 0 }, feito = new Map(pc.linhas.map(x => [x.id, x]));
+      const faltam = cacam.filter(p => !feito.has(p.id));
+      return h('div', { class: 'caca sec', id: 'ds-caca' },
+        h('div', { class: 'lin caca-cab' }, h('b', { text: 'A caça' }),
+          h('select', { class: 'in', id: 'ds-caca-atr', 'aria-label': 'O que os caçadores rolam', disabled: pc.linhas.length > 0, title: pc.linhas.length ? 'Já há rolagens: o atributo fica o mesmo para todos' : null,
+            onchange: e => { escolha.caca.atr = e.target.value; refazer('ds-caca-atr'); } }, N.ATR_CACA.map(k => h('option', { value: k, text: nomeAtr(k), selected: k === escolha.caca.atr }))),
+          h('span', { text: 'contra' }),
+          h('input', { class: 'in num', id: 'ds-caca-dif', type: 'number', min: 0, max: 99999, step: 1, value: escolha.caca.dif, 'aria-label': 'Dificuldade da caça neste descanso',
+            onchange: e => { escolha.caca.dif = N.limitar(Math.round(+e.target.value) || 0, 0, 99999); refazer('ds-caca-dif'); } }),
+          h('span', { class: 'grow' }),
+          faltam.length > 1 ? h('button', { type: 'button', class: 'btn sm', id: 'ds-caca-todos', text: 'Rolar todos (' + faltam.length + ')', onclick: () => { for (const p of faltam) rolarCaca(p); refazer('ds-caca-todos'); } }) : null),
+        h('ul', { class: 'caca-lista' }, cacam.map(p => {
+          const x = feito.get(p.id), v = valorDaCaca(p);
+          return h('li', { 'data-cacador': p.id }, h('span', { class: 'caca-nome', text: p.nome }),
+            x ? h('span', { class: 'caca-res' + (x.passou ? ' ok' : ''), id: 'ds-caca-r-' + p.id }, h('b', { text: String(x.total) }), ' (' + x.det + ') — ',
+              x.passou ? 'passou' + (x.margem ? ' por ' + x.margem : '') + ': ' : 'não passou')
+              : h('span', { class: 'note', text: nomeAtr(escolha.caca.atr) + ' ' + v + (p.fixa ? ', fixa ' + Math.min(p.fixa, v) : '') }),
+            x && x.racoes ? h('label', { class: 'sw' }, h('input', { type: 'checkbox', id: 'ds-caca-on-' + p.id, checked: x.on,
+              onchange: e => { const r0 = escolha.caca.rolagens.find(y => y.id === p.id); if (r0) r0.on = e.target.checked; refazer('ds-caca-on-' + p.id); } }),
+              '+' + x.racoes + (x.racoes === 1 ? ' ração' : ' rações')) : null,
+            x ? null : h('button', { type: 'button', class: 'btn sm', id: 'ds-caca-rolar-' + p.id, text: 'Rolar', disabled: !v, title: v ? null : 'O valor está em 0: não há o que rolar',
+              onclick: () => { if (rolarCaca(p)) refazer('ds-caca-r-' + p.id); } }));
+        })),
+        h('p', { class: 'note', id: 'ds-caca-nota', text: pc.racoes ? 'Só uma sugestão: ' + pc.racoes + (pc.racoes === 1 ? ' ração marcada entra' : ' rações marcadas entram') + ' na Carne de caça, depois do descanso (para os próximos).'
+          : 'Quem está na área Caça rola o atributo contra a dificuldade do lugar. Passou: uma ração, e mais uma a cada ' + camp.regras.caca.passo + ' pontos acima (até ' + camp.regras.caca.max + '). A rolagem vai para a mesa ao vivo.' }));
+    };
     const corpo = h('div', { style: 'display:grid;gap:10px' });
     const confirmar = h('button', { type: 'button', class: 'btn pri', id: 'ds-ok', text: 'Descansar' });
-    let plano = null;
-    const refazer = foco => {
-      plano = N.planejar(camp, tipo, todos.filter(p => marcados.has(p.id)), { servir: escolha.servir, prov: escolha.prov, porPessoa: escolha.porPessoa, tiraBonus: escolha.tiraBonus, clima: escolha.clima && climaM ? { k: climaM.k, conf: climaM.conf } : null });
+    let plano = null, refazendo = false;
+    /* (lote 18) Refazer a prévia troca os campos da janela; o campo que sai com um valor mudado ainda avisa a mudança
+       (ao perder o foco) no meio da troca: essa volta é ignorada (o valor já está na escolha). */
+    const refazer = foco => { if (refazendo) return; refazendo = true; try { refazer0(foco); } finally { refazendo = false; } };
+    const refazer0 = foco => {
+      plano = N.planejar(camp, tipo, todos.filter(p => marcados.has(p.id)), { servir: escolha.servir, prov: escolha.prov, porPessoa: escolha.porPessoa, tiraBonus: escolha.tiraBonus, clima: escolha.clima && climaM ? { k: climaM.k, conf: climaM.conf } : null,
+        caca: cacam.length ? escolha.caca : null });
       const sobra = plano.disponivel - plano.gasto;
       const avisos = [];
       // (lote 15) quem veio da cena, e quem descansa longe da fogueira
@@ -1041,7 +1150,8 @@
             ln.saem.length ? h('span', { class: 'saem', 'data-saem': p.id }, 'acaba: ', h('s', { text: ln.saem.map(txtTmp).join(', ') })) : null,
             ln.ficam.length ? h('span', { class: 'ficam', 'data-ficam': p.id }, 'continua: ' + ln.ficam.map(txtTmp).join(', ')) : null) : '—'));
       });
-      corpo.replaceChildren(...avisos, h('table', { class: 'plano' }, h('thead', {}, h('tr', {}, h('th', { text: 'Quem descansa' }), h('th', { text: 'Come', title: 'Rações de cada um neste descanso' }), h('th', { text: 'Barras' }), h('th', { text: 'Sanidade' }), h('th', { text: 'Conforto' }), h('th', { text: 'Come · na ficha' }))), h('tbody', {}, linhasT)));
+      corpo.replaceChildren(...avisos, h('table', { class: 'plano' }, h('thead', {}, h('tr', {}, h('th', { text: 'Quem descansa' }), h('th', { text: 'Come', title: 'Rações de cada um neste descanso' }), h('th', { text: 'Barras' }), h('th', { text: 'Sanidade' }), h('th', { text: 'Conforto' }), h('th', { text: 'Come · na ficha' }))), h('tbody', {}, linhasT)),
+        ...(cacam.length ? [blocoDaCaca()] : []));
       confirmar.disabled = !plano.n;
       if (foco) { const c0 = document.getElementById(foco); if (c0) c0.focus(); }
     };

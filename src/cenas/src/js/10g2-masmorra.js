@@ -19,7 +19,7 @@
    --------------------------------------------------------------- */
 const Masmorra = (() => {
   const TIPOS = [['pedra', 'Masmorra de pedra'], ['caverna', 'Caverna'], ['cripta', 'Cripta'], ['mina', 'Mina abandonada']];
-  const NOME = { pedra: 'Masmorra', caverna: 'Caverna', cripta: 'Cripta', mina: 'Mina' };
+  const NOME = { pedra: 'Masmorra', caverna: 'Caverna', cripta: 'Cripta', mina: 'Mina', subsolo: 'Subsolo', arena: 'Arena' };
   const TAMANHOS = {
     pequeno: { n: 'Pequeno', W: 34, H: 26 },
     medio: { n: 'Médio', W: 46, H: 34 },
@@ -27,7 +27,7 @@ const Masmorra = (() => {
   };
   const sub = (seed, k) => (((Math.imul(seed ^ 0x5bd1e995, 0x01000193 + k * 0x9e3779b1) >>> 0) ^ (k * 0x85ebca6b)) >>> 0) || (k + 1);
   // as casas da grade: a rocha, o chão das salas, o dos corredores, a água, o abismo, o nicho, a ponte
-  const ROCHA = 0, SALA = 1, CORREDOR = 2, AGUA = 3, ABISMO = 4, NICHO = 5, PONTE = 6;
+  const ROCHA = 0, SALA = 1, CORREDOR = 2, AGUA = 3, ABISMO = 4, NICHO = 5, PONTE = 6, LAVA = 7, GELO = 8;     // (lote 18: a lava e o gelo do subsolo)
   const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 
   /* ================= a grade ================= */
@@ -947,6 +947,459 @@ const Masmorra = (() => {
     }
   }
 
+
+  /* ================= (lote 18) o subsolo: a caverna embaixo da cena =================
+     Do tamanho da cena de cima e alinhada com ela: a subida (a Saída) fica embaixo da entrada da gruta; o rio de cima
+     (quando a gruta veio de uma Região livre com rio) vira o rio de baixo, pelo mesmo traçado, numa galeria; o bioma de
+     baixo vem do terreno de cima (os fungos que brilham, os cristais, a lava, o gelo, as raízes); os achados e os ninhos
+     (marcadores ocultos, com o nome do que é); e, querendo, a passagem escondida para o nível de baixo. */
+  const BIOMAS_SUB = [['fungos', 'Fungos que brilham'], ['cristais', 'Cristais'], ['lava', 'Lava'], ['gelo', 'Gelo'], ['raizes', 'Raízes']];
+  const NOTA_SUB = {
+    fungos: 'Os cogumelos que brilham encostados nas paredes, as poças e o lago escuro.',
+    cristais: 'Os cristais que brilham em azul e lilás (os grandes tapam a visão), o veio de pedra clara.',
+    lava: 'O lago de lava (a zona de fogo, para o mestre aplicar), as rachaduras em brasa e o calor.',
+    gelo: 'O lago congelado (escorregadio), as estalagmites de gelo e a geada nas paredes.',
+    raizes: 'As raízes das árvores de cima descendo pelas paredes, os fungos e a terra úmida.',
+  };
+  // o bioma de baixo sugerido pelo de cima
+  function biomaDeBaixo(bio) {
+    const b = String(bio || '');
+    if (/lava|vulc/.test(b)) return 'lava';
+    if (/neve|tundra|gelo|geleira/.test(b)) return 'gelo';
+    if (/cristal|montanha|colina|pedra/.test(b)) return 'cristais';
+    if (/floresta|selva|mata|bosque|mangue/.test(b)) return 'raizes';
+    return 'fungos';
+  }
+  // a distância de um ponto a uma linha quebrada [[x, y], …]
+  function distLinha(pts, x, y) {
+    let d = Infinity;
+    for (let k = 1; k < pts.length; k++) { const [x1, y1] = pts[k - 1], [x2, y2] = pts[k], dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy || 1e-9, t = clamp(((x - x1) * dx + (y - y1) * dy) / L, 0, 1); d = Math.min(d, Math.hypot(x - x1 - dx * t, y - y1 - dy * t)); }
+    return d;
+  }
+  function nivelDeSubsolo(C) {
+    const { G, r, p, W, H } = C;
+    const e0 = { x: clamp(p.entradaEm.x, 4, W - 4), y: clamp(p.entradaEm.y, 4, H - 4) };
+    // 1) as câmaras: a da entrada (embaixo da gruta) e as outras numa grade grossa, mexida, longe dela
+    const nx = W > 50 ? 5 : W > 38 ? 4 : 3, ny = H > 38 ? 4 : H > 26 ? 3 : 2, cw = (W - 4) / nx, chh = (H - 4) / ny;
+    const cam = [{ i: 0, x: e0.x, y: e0.y, r: 2.8, rx: 3.1, ry: 2.6, liga: [], entrada: true }];
+    for (let b = 0; b < ny; b++) for (let a = 0; a < nx; a++) {
+      if (r() < 0.2) continue;
+      const rr = C.ent(2.3, Math.min(cw, chh) * 0.36), x = 2 + cw * (a + 0.5) + C.ent(-cw * 0.22, cw * 0.22), y = 2 + chh * (b + 0.5) + C.ent(-chh * 0.22, chh * 0.22);
+      if (Math.hypot(x - e0.x, y - e0.y) < rr + 4) continue;
+      cam.push({ i: cam.length, x: clamp(x, rr + 3, W - rr - 3), y: clamp(y, rr + 3, H - rr - 3), r: rr, rx: rr * C.ent(0.85, 1.3), ry: rr * C.ent(0.75, 1.15), liga: [] });
+    }
+    const aberto = new Uint8Array(W * H);
+    const cava = (x, y, rr) => { for (let j = Math.floor(y - rr); j <= Math.ceil(y + rr); j++) for (let i = Math.floor(x - rr); i <= Math.ceil(x + rr); i++) if (i >= 2 && j >= 2 && i < W - 2 && j < H - 2 && Math.hypot(i + 0.5 - x, j + 0.5 - y) <= rr) aberto[j * W + i] = 1; };
+    for (const q of cam) {
+      const ond = [C.ent(0, TAU), C.ent(0, TAU), C.ent(0.08, 0.2)];
+      for (let j = Math.floor(q.y - q.ry - 2); j <= q.y + q.ry + 2; j++) for (let i = Math.floor(q.x - q.rx - 2); i <= q.x + q.rx + 2; i++) {
+        if (i < 2 || j < 2 || i >= W - 2 || j >= H - 2) continue;
+        const dx = (i + 0.5 - q.x) / q.rx, dy = (j + 0.5 - q.y) / q.ry, a = Math.atan2(dy, dx), lim = 1 + ond[2] * Math.sin(3 * a + ond[0]) + ond[2] * 0.7 * Math.sin(5 * a + ond[1]);
+        if (Math.hypot(dx, dy) <= lim) aberto[j * W + i] = 1;
+      }
+    }
+    // 2) os túneis tortos (a árvore mínima e um laço)
+    const pares = [];
+    for (let a = 0; a < cam.length; a++) for (let b = a + 1; b < cam.length; b++) pares.push([Math.hypot(cam[a].x - cam[b].x, cam[a].y - cam[b].y), a, b]);
+    pares.sort((u, v) => u[0] - v[0]);
+    const pai = cam.map((_, i) => i), raiz = i => (pai[i] === i ? i : (pai[i] = raiz(pai[i])));
+    const andar = (A, B, larg) => {
+      let x = A.x, y = A.y, ang = Math.atan2(B.y - y, B.x - x);
+      for (let k = 0; k < 500 && Math.hypot(B.x - x, B.y - y) > 1; k++) {
+        const alvo = Math.atan2(B.y - y, B.x - x);
+        let d = alvo - ang; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU;
+        ang += d * 0.35 + C.ent(-0.55, 0.55);
+        x = clamp(x + Math.cos(ang) * 0.7, 2.5, W - 2.5); y = clamp(y + Math.sin(ang) * 0.7, 2.5, H - 2.5);
+        cava(x, y, larg + C.ent(-0.15, 0.3));
+      }
+    };
+    for (const [, a, b] of pares) if (raiz(a) !== raiz(b)) { andar(cam[a], cam[b], C.ent(0.75, 1.25)); cam[a].liga.push(b); cam[b].liga.push(a); pai[raiz(a)] = raiz(b); }
+    for (const [d, a, b] of pares) if (!cam[a].liga.includes(b) && d < 16 && r() < 0.4) { andar(cam[a], cam[b], C.ent(0.75, 1.1)); cam[a].liga.push(b); cam[b].liga.push(a); break; }
+    // 3) o rio de baixo: a galeria pelo traçado do rio de cima (e um túnel da câmara mais perto até ele)
+    const rio = Array.isArray(p.rioPts) && p.rioPts.length >= 2 ? p.rioPts.map(([x, y]) => [clamp(x, 0, W), clamp(y, 0, H)]) : null;
+    if (rio) {
+      for (let j = 1; j < H - 1; j++) for (let i = 1; i < W - 1; i++) if (distLinha(rio, i + 0.5, j + 0.5) <= 2.1) aberto[j * W + i] = 1;
+      let melhor = null;
+      for (const q of cam) { const d = distLinha(rio, q.x, q.y); if (!melhor || d < melhor[0]) melhor = [d, q]; }
+      if (melhor && melhor[0] > 2) {
+        // (o ponto do rio mais perto da câmara)
+        let alvo = null;
+        for (let k = 1; k < rio.length; k++) for (let t = 0; t <= 1; t += 0.1) { const x = rio[k - 1][0] + (rio[k][0] - rio[k - 1][0]) * t, y = rio[k - 1][1] + (rio[k][1] - rio[k - 1][1]) * t, d = Math.hypot(x - melhor[1].x, y - melhor[1].y); if (!alvo || d < alvo[0]) alvo = [d, x, y]; }
+        if (alvo) andar(melhor[1], { x: alvo[1], y: alvo[2] }, 1);
+      }
+    }
+    // 4) alisar e ficar só com a maior região aberta
+    for (let it = 0; it < 2; it++) {
+      const n = aberto.slice();
+      for (let j = 2; j < H - 2; j++) for (let i = 2; i < W - 2; i++) {
+        let ab = 0;
+        for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) if (a || b) ab += aberto[(j + b) * W + i + a];
+        if (aberto[j * W + i] && ab <= 2) n[j * W + i] = 0; else if (!aberto[j * W + i] && ab >= 6) n[j * W + i] = 1;
+      }
+      aberto.set(n);
+    }
+    if (rio) for (let j = 1; j < H - 1; j++) for (let i = 1; i < W - 1; i++) if (distLinha(rio, i + 0.5, j + 0.5) <= 1.6) aberto[j * W + i] = 1;     // (a galeria do rio vai até a borda)
+    const reg = regioes(W, H, (i, j) => aberto[j * W + i] === 1);
+    const ide = reg.id[Math.floor(e0.y) * W + Math.floor(e0.x)], maior = ide >= 0 ? ide : reg.lista.reduce((m, l, k) => (l.length > reg.lista[m].length ? k : m), 0);
+    for (let k = 0; k < W * H; k++) G.g[k] = reg.id[k] === maior ? SALA : ROCHA;
+    const vivas = cam.filter(q => G.at(Math.floor(q.x), Math.floor(q.y)) === SALA);
+    const ent0 = vivas.find(q => q.entrada) || vivas[0];
+    const dist = distancias(cam, ent0.i);
+    const desc0 = vivas.filter(q => q !== ent0).sort((a, b) => (dist[b.i] || 0) - (dist[a.i] || 0) || Math.hypot(b.x - ent0.x, b.y - ent0.y) - Math.hypot(a.x - ent0.x, a.y - ent0.y))[0];
+    const usadas = new Set([ent0, desc0]);
+    // a água do rio (o fio do meio da galeria)
+    if (rio) for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (G.at(i, j) === SALA && distLinha(rio, i + 0.5, j + 0.5) <= 0.9) G.pos(i, j, AGUA);
+    // 5) o lago (de água, de lava ou congelado): na maior câmara que sobrou
+    const lagoQ = vivas.filter(q => !usadas.has(q)).sort((a, b) => b.r - a.r)[0];
+    if (lagoQ && lagoQ.r >= 2.6) {
+      usadas.add(lagoQ);
+      const v = p.bioma === 'lava' ? LAVA : p.bioma === 'gelo' ? GELO : AGUA;
+      const a0 = C.ent(0, TAU), cx = lagoQ.x + Math.cos(a0) * lagoQ.r * 0.3, cy = lagoQ.y + Math.sin(a0) * lagoQ.r * 0.3, rx = lagoQ.rx * 0.75, ry = lagoQ.ry * 0.7;
+      for (let j = Math.floor(cy - ry - 1); j <= cy + ry + 1; j++) for (let i = Math.floor(cx - rx - 1); i <= cx + rx + 1; i++) {
+        const dd = Math.hypot((i + 0.5 - cx) / rx, (j + 0.5 - cy) / ry);
+        if (dd <= 1 + 0.12 * Math.sin(Math.atan2(j - cy, i - cx) * 4 + a0) && G.at(i, j) === SALA) G.pos(i, j, v);
+      }
+      p.lago = { x: cx, y: cy, rx, ry, k: v === LAVA ? 'lava' : v === GELO ? 'gelo' : 'agua' };
+      if (v === LAVA) { p.zonas.push({ fx: 'lava', k: 'circ', x: cx, y: cy, r: Math.max(1, Math.min(rx, ry) * 0.9), gm: false, leve: true }); luz(C, cx, cy, Math.round(Math.max(rx, ry) + 4), '#ff7a2a', 2); }
+      if (v === GELO) p.zonas.push({ fx: 'gelado', k: 'circ', x: cx, y: cy, r: Math.max(1, Math.min(rx, ry) * 0.9), gm: false, leve: true });
+    }
+    p.salas = vivas.map(q => ({ x: Math.round(q.x - q.r), y: Math.round(q.y - q.r), w: Math.round(q.r * 2), h: Math.round(q.r * 2), papel: q === ent0 ? 'entrada' : q === desc0 ? 'descida' : q === lagoQ ? 'lago' : 'camara' }));
+    // 6) a subida: a escada natural da câmara da entrada, o mais perto possível de embaixo da gruta
+    p.sobe = escadaPerto(C, ent0, e0.x, e0.y);
+    p.desce = p.descida && desc0 ? escadaNatural(C, desc0, null, false) : null;
+    // 7) o bioma: os detalhes de cada um (e os da caverna de sempre, menos ou mais)
+    detalhesDoSubsolo(C);
+    // 8) os achados e os ninhos (marcadores ocultos, com o nome do que é)
+    if (p.achados) achadosDoSubsolo(C, vivas.filter(q => !usadas.has(q)).concat(vivas.filter(q => q === desc0)));
+    // 9) as paredes: o contorno alisado do que não é rocha
+    p.contorno = contornoTremido(W, H, (i, j) => G.at(i, j) !== ROCHA, p.seed % 9973);
+    p.paredes = segmentosDe(p.contorno).concat(p.paredes);
+  }
+  // a escada natural (dois por dois, encostada na rocha) da câmara, a mais perto do ponto (x, y)
+  function escadaPerto(C, q, x0, y0) {
+    const { G } = C, cands = [];
+    for (let j = Math.floor(q.y - q.r - 3); j <= q.y + q.r + 3; j++) for (let i = Math.floor(q.x - q.r - 3); i <= q.x + q.r + 3; i++) {
+      if (!C.livreS(i, j, 2)) continue;
+      let enc = null;
+      if (G.at(i, j - 1) === ROCHA && G.at(i + 1, j - 1) === ROCHA) enc = 'n';
+      else if (G.at(i, j + 2) === ROCHA && G.at(i + 1, j + 2) === ROCHA) enc = 's';
+      else if (G.at(i - 1, j) === ROCHA && G.at(i - 1, j + 1) === ROCHA) enc = 'o';
+      else if (G.at(i + 2, j) === ROCHA && G.at(i + 2, j + 1) === ROCHA) enc = 'l';
+      cands.push([i, j, enc || 'n', Math.hypot(i + 1 - x0, j + 1 - y0) + (enc ? 0 : 2)]);
+    }
+    if (!cands.length) return escadaNatural(C, q, null, true);
+    cands.sort((a, b) => a[3] - b[3]);
+    const [x, y, enc] = cands[0];
+    C.ocupa(x, y, 2, 2);
+    const e = { x, y, w: 2, h: 2, lado: enc, sobe: true, natural: true };
+    C.pinta('escada', e);
+    return Object.assign(e, { mi: enc === 'o' ? x + 1 : x, mj: enc === 'n' ? y + 1 : y });
+  }
+  function detalhesDoSubsolo(C) {
+    const { G, W, H, p } = C, bio = p.bioma;
+    const longeDaRocha = (i, j, d) => { for (let b = -d; b <= d; b++) for (let a = -d; a <= d; a++) if (G.at(i + a, j + b) === ROCHA) return false; return true; };
+    const sorteia = (n, ok, fn) => { for (let t = 0, k = 0; t < n * 60 && k < n; t++) { const i = 2 + Math.floor(C.r() * (W - 4)), j = 2 + Math.floor(C.r() * (H - 4)); if (G.at(i, j) !== SALA || !C.livre(i, j) || !ok(i, j)) continue; if (fn(i, j) !== false) k++; } };
+    const longeDoLago = (i, j) => !p.lago || Math.hypot(i + 0.5 - p.lago.x, j + 0.5 - p.lago.y) > Math.max(p.lago.rx, p.lago.ry) + 1.5;
+    // as estalagmites (as de gelo no gelo; as grandes tapam a visão)
+    const nG = Math.round(W * H / 190);
+    sorteia(nG, (i, j) => longeDaRocha(i, j, 1) && longeDoLago(i, j), (i, j) => {
+      const x = i + 0.5 + C.ent(-0.1, 0.1), y = j + 0.5 + C.ent(-0.1, 0.1), rr = C.ent(0.45, 0.62);
+      C.pinta('estalagmite', { x, y, r: rr, grande: true, gelo: bio === 'gelo' });
+      C.ocupa(i, j, 1, 1);
+      const pts = [];
+      for (let k = 0; k < 6; k++) { const a = (k / 6) * TAU + 0.3; pts.push([x + Math.cos(a) * rr * 0.85, y + Math.sin(a) * rr * 0.85]); }
+      for (let k = 0; k < 6; k++) { const a = pts[k], b = pts[(k + 1) % 6]; p.visao.push([a[0], a[1], b[0], b[1]]); }
+    });
+    sorteia(nG * 2, (i, j) => !longeDaRocha(i, j, 1), (i, j) => { C.pinta('estalagmite', { x: i + 0.5, y: j + 0.5, r: C.ent(0.18, 0.3), n: 2 + Math.floor(C.r() * 3), gelo: bio === 'gelo' }); });
+    // os fungos (em todos, menos no gelo; muitos nos Fungos, alguns nas Raízes)
+    const nCog = bio === 'fungos' ? Math.max(4, Math.round(W * H / 220)) : bio === 'raizes' ? Math.max(2, Math.round(W * H / 500)) : bio === 'cristais' ? 1 : 0;
+    sorteia(nCog, (i, j) => !longeDaRocha(i, j, 1), (i, j) => {
+      if (!C.poe('cogumelos', i, j)) return false;
+      const cor = C.r() < 0.6 ? '#7fe9ff' : '#a8ff9a';
+      C.pinta('cogumelos', { x: i + 0.5, y: j + 0.5, r: 1.1, cor }); luz(C, i + 0.5, j + 0.5, 3, cor, 1);
+    });
+    if (bio === 'cristais') {
+      // os cristais: grupos encostados nas paredes (com a luz) e alguns grandes no meio (tapam a visão)
+      sorteia(Math.max(4, Math.round(W * H / 200)), (i, j) => !longeDaRocha(i, j, 1), (i, j) => {
+        const cor = C.r() < 0.55 ? '#8fd6ff' : '#c79bff';
+        C.pinta('cristal', { x: i + 0.5, y: j + 0.5, r: C.ent(0.5, 0.85), cor, n: 3 + Math.floor(C.r() * 3) }); C.ocupa(i, j, 1, 1);
+        luz(C, i + 0.5, j + 0.5, 3, cor, 1);
+      });
+      sorteia(Math.max(2, Math.round(W * H / 500)), (i, j) => longeDaRocha(i, j, 1) && longeDoLago(i, j), (i, j) => {
+        const cor = C.r() < 0.5 ? '#8fd6ff' : '#c79bff', x = i + 0.5, y = j + 0.5, rr = C.ent(0.55, 0.75);
+        C.pinta('cristal', { x, y, r: rr, cor, n: 5, grande: true }); C.ocupa(i, j, 1, 1); luz(C, x, y, 4, cor, 1.5);
+        for (let k = 0; k < 5; k++) { const a = (k / 5) * TAU, b = ((k + 1) / 5) * TAU; p.visao.push([x + Math.cos(a) * rr * 0.8, y + Math.sin(a) * rr * 0.8, x + Math.cos(b) * rr * 0.8, y + Math.sin(b) * rr * 0.8]); }
+      });
+    } else if (bio === 'lava') {
+      // as rachaduras em brasa no chão (com a luz fraca)
+      sorteia(Math.max(3, Math.round(W * H / 260)), (i, j) => longeDoLago(i, j), (i, j) => { C.pinta('brasa', { x: i + 0.5, y: j + 0.5, r: C.ent(0.6, 1.1) }); luz(C, i + 0.5, j + 0.5, 2, '#ff8a3a', 0.8); });
+    } else if (bio === 'gelo') {
+      // a geada: manchas claras no chão, perto das paredes
+      sorteia(Math.max(4, Math.round(W * H / 180)), (i, j) => !longeDaRocha(i, j, 1), (i, j) => { C.pinta('geada', { x: i + 0.5, y: j + 0.5, r: C.ent(0.7, 1.3) }); });
+      sorteia(2, (i, j) => true, (i, j) => { luz(C, i + 0.5, j + 0.5, 3, '#bfe6ff', 1); });
+    } else if (bio === 'raizes') {
+      // as raízes descendo pelas paredes
+      sorteia(Math.max(5, Math.round(W * H / 150)), (i, j) => !longeDaRocha(i, j, 1), (i, j) => {
+        let a = null;
+        for (const [dx, dy] of DIRS) if (G.at(i + dx, j + dy) === ROCHA) { a = Math.atan2(-dy, -dx); break; }
+        C.pinta('raizes', { x: i + 0.5, y: j + 0.5, ang: a == null ? C.ent(0, TAU) : a, n: 3 + Math.floor(C.r() * 3) });
+      });
+    }
+    // as poças e os ossos
+    sorteia(Math.round(W * H / 420), () => true, (i, j) => { C.pinta(C.r() < 0.6 && bio !== 'lava' ? 'poca' : 'ossos', { x: i + 0.5, y: j + 0.5, r: C.ent(0.5, 1), n: 2 }); });
+  }
+  const ACHADOS_SUB = {
+    fungos: ['Esqueleto com uma bolsa', 'Baú esquecido', 'Cogumelo raro (alquimia)'],
+    cristais: ['Cristal de mana', 'Geodo aberto', 'Esqueleto de minerador com a picareta'],
+    lava: ['Obsidiana', 'Ovo de salamandra', 'Armadura derretida'],
+    gelo: ['Criatura presa no gelo', 'Mochila congelada', 'Cristal de gelo eterno'],
+    raizes: ['Raiz que sangra seiva dourada', 'Ídolo enterrado', 'Baú entre as raízes'],
+  };
+  const NINHOS_SUB = { fungos: 'Ninho de aranhas', cristais: 'Toca de basilisco', lava: 'Ninho de salamandras', gelo: 'Toca do urso das cavernas', raizes: 'Ninho de vermes gigantes' };
+  function achadosDoSubsolo(C, cams) {
+    const { G, p } = C, bio = p.bioma;
+    const chaoPerto = q => { for (let d = 0; d < 4; d++) for (let t = 0; t < 30; t++) { const i = Math.floor(q.x + C.ent(-d - 1, d + 1)), j = Math.floor(q.y + C.ent(-d - 1, d + 1)); if (G.at(i, j) === SALA && C.livre(i, j)) return [i, j]; } return null; };
+    const [qa, qn] = cams;
+    const a = qa ? chaoPerto(qa) : null;
+    if (a) {
+      const n = C.pick(ACHADOS_SUB[bio] || ACHADOS_SUB.fungos);
+      p.marcadores.push({ id: 'achado', x: a[0], y: a[1], n: 'Achado: ' + n.toLowerCase() });
+      if (/baú/i.test(n)) C.poe('bau', a[0], a[1]); else C.pinta('ossos', { x: a[0] + 0.5, y: a[1] + 0.5, n: 3 });
+      C.ocupa(a[0], a[1], 1, 1);
+    }
+    const b = qn ? chaoPerto(qn) : null;
+    if (b) {
+      p.marcadores.push({ id: 'interesse', x: b[0], y: b[1], n: NINHOS_SUB[bio] || 'Ninho' });
+      C.pinta('ninho', { x: b[0] + 0.5, y: b[1] + 0.5, r: 1.1 });
+      C.ocupa(b[0], b[1], 1, 1);
+    }
+  }
+
+
+  /* ================= (lote 18) as arenas de boss =================
+     Um salão só, feito para a luta com o chefe: a entrada embaixo, o lugar do chefe no alto, de frente para ela (elevado,
+     com a altura do relevo), a cobertura e os obstáculos (as colunas, as estátuas, as pedras: tapam a visão), os perigos
+     no chão (as zonas com o efeito escrito: o mestre aplica), o chefe e os pontos de reforço (escondidos dos jogadores) e
+     as fases prontas (arena.fases), que o mestre aciona na cena. Tudo com as casas da masmorra (o desenho é o dela). */
+  const ARENAS = [
+    ['coliseu', 'Arena (coliseu)'], ['trono', 'Sala do trono'], ['mausoleu', 'Mausoléu'], ['covil', 'Covil do dragão'],
+    ['altar', 'Altar do ritual'], ['ponte', 'Ponte sobre o abismo'], ['topo', 'Topo da torre'], ['circulo', 'Círculo de pedras'],
+  ];
+  const TAM_ARENA = { pequeno: { n: 'Pequena', W: 24, H: 18 }, medio: { n: 'Média', W: 30, H: 22 }, grande: { n: 'Grande', W: 36, H: 26 } };
+  const NOME_ARENA = { coliseu: 'A arena', trono: 'A sala do trono', mausoleu: 'O mausoléu', covil: 'O covil do dragão', altar: 'O altar do ritual', ponte: 'A ponte sobre o abismo', topo: 'O topo da torre', circulo: 'O círculo de pedras' };
+  const CHEFE_ARENA = { coliseu: 'O campeão', trono: 'O rei', mausoleu: 'O senhor dos mortos', covil: 'O dragão', altar: 'O sumo-sacerdote', ponte: 'O guardião da ponte', topo: 'O feiticeiro da torre', circulo: 'O espírito antigo' };
+  const LACAIO_ARENA = { coliseu: 'Gladiador', trono: 'Guarda real', mausoleu: 'Morto-vivo', covil: 'Filhote', altar: 'Cultista', ponte: 'Sentinela', topo: 'Gárgula', circulo: 'Espírito' };
+  // as mudanças que uma fase pode ter (para trocar uma pela outra, na janela)
+  const MUDANCAS = [
+    ['reforcos', 'Reforços chegam'], ['desaba', 'O chão desaba'], ['luz', 'As luzes se apagam'], ['grade', 'A grade da entrada fecha'],
+    ['zona:lava', 'A lava sobe'], ['zona:espinhos', 'Espinhos saem do chão'], ['zona:toxica', 'Névoa venenosa'], ['zona:gelado', 'O chão congela'],
+    ['zona:runas', 'As runas se acendem'], ['zona:escuridao', 'A escuridão'], ['zona:tempestade', 'A tempestade'], ['zona:vento', 'Vento forte'], ['zona:chamasNegras', 'Chamas negras'],
+    ['zona:arcano', 'A magia antiga desperta'], ['zona:luaSangue', 'A lua de sangue'], ['zona:fumaca', 'A fumaça toma o salão'], ['zona:oleo', 'O óleo se espalha'],
+  ];
+  // as fases prontas de cada arena: a 2 e a 3, cada uma com as mudanças dela (o mestre liga, desliga ou troca na janela)
+  const FASES_ARENA = {
+    coliseu: [['reforcos', 'zona:espinhos'], ['desaba', 'grade']],
+    trono: [['reforcos', 'luz'], ['zona:chamasNegras', 'grade']],
+    mausoleu: [['reforcos', 'zona:toxica'], ['luz', 'grade']],
+    covil: [['reforcos', 'zona:lava'], ['desaba', 'zona:fumaca']],
+    altar: [['reforcos', 'zona:runas'], ['zona:escuridao', 'desaba']],
+    ponte: [['reforcos', 'desaba'], ['zona:vento', 'zona:tempestade']],
+    topo: [['reforcos', 'zona:tempestade'], ['desaba', 'luz']],
+    circulo: [['reforcos', 'zona:arcano'], ['zona:luaSangue', 'desaba']],
+  };
+  // (a sala do chefe do último nível da masmorra: a arena que combina com o tipo)
+  const ARENA_DO_TIPO = { pedra: 'trono', cripta: 'mausoleu', caverna: 'covil', mina: 'covil', subsolo: 'covil' };
+  const nomeMud = k => (MUDANCAS.find(x => x[0] === k) || [k, k])[1];
+  function nivelDeArena(C) {
+    const { G, p, W, H } = C, a = p.arena, cx = W / 2;
+    const enche = (dentro, v) => { for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (dentro(i + 0.5, j + 0.5)) G.pos(i, j, v); };
+    const elipse = (x, y, rx, ry) => (i, j) => Math.hypot((i - x) / rx, (j - y) / ry) <= 1;
+    const ret = (x0, y0, x1, y1) => (i, j) => i >= x0 && i <= x1 && j >= y0 && j <= y1;
+    a.reforcos = []; a.perigos = []; a.zonas = [];
+    const perigo = (fx, x, y, r, gm) => { p.zonas.push({ fx, k: 'circ', x, y, r, gm: !!gm, leve: true }); a.perigos.push(fx); };
+    const estatua = (x, y) => { if (C.poe('estatua', Math.floor(x), Math.floor(y))) { const pts = []; for (let k = 0; k < 6; k++) { const an = (k / 6) * TAU; pts.push([Math.floor(x) + 0.5 + Math.cos(an) * 0.38, Math.floor(y) + 0.5 + Math.sin(an) * 0.38]); } for (let k = 0; k < 6; k++) { const u = pts[k], v = pts[(k + 1) % 6]; p.visao.push([u[0], u[1], v[0], v[1]]); } } };
+    const estradoChefe = (x, y, w, h, alt) => {
+      const est = { x: Math.round(x), y: Math.round(y), w, h };
+      p.relevo.push({ t: 'plataforma', alt, k: 'rect', x: est.x + 0.05, y: est.y + 0.05, w: est.w - 0.1, h: est.h - 0.1 });
+      C.pinta('estrado', est); C.ocupaRet(est.x, est.y, est.w, est.h, 1);
+      a.chefe = { x: est.x + est.w / 2 - 1, y: est.y + est.h / 2 - 1 };
+      return est;
+    };
+    const entradaEmbaixo = (yTopo, larg) => {
+      const x0 = Math.floor(cx - larg / 2), x1 = x0 + larg - 1;
+      for (let j = Math.floor(yTopo); j < H; j++) for (let i = x0; i <= x1; i++) if (G.at(i, j) === ROCHA) G.pos(i, j, CORREDOR);
+      a.entrada = { x: cx, y: H - 1.5 };
+      return { x0, x1 };
+    };
+    if (a.tipo === 'coliseu') {
+      const cy = H / 2 - 0.5, rx = W / 2 - 2.5, ry = H / 2 - 2.2;
+      enche(elipse(cx, cy, rx, ry), SALA);
+      const yb = Math.ceil(cy + ry) - 0.5, { x0, x1 } = entradaEmbaixo(yb - 1, 3);
+      p.paredes.push({ x1: x0, y1: Math.floor(yb) + 1, x2: x1 + 1, y2: Math.floor(yb) + 1, k: 'door', grade: true });
+      a.grade = { x: cx, y: Math.floor(yb) + 1 };
+      estradoChefe(cx - 3, cy - ry + 0.6, 6, 2, 3);
+      for (const [dx, dy] of [[-0.55, -0.1], [0.55, -0.1], [-0.3, 0.35], [0.3, 0.35]]) estatua(cx + dx * rx, cy + dy * ry);
+      for (const [dx, dy] of [[-0.25, -0.05], [0.25, -0.05], [0, 0.2]]) { const i = Math.floor(cx + dx * rx), j = Math.floor(cy + dy * ry); C.poe(C.r() < 0.5 ? 'caixote' : 'barril', i, j); }
+      perigo('espinhos', cx - rx * 0.62, cy + ry * 0.2, 1.2); perigo('espinhos', cx + rx * 0.62, cy + ry * 0.2, 1.2);
+      a.reforcos.push([cx - rx * 0.85, cy], [cx + rx * 0.85, cy]);
+      C.pinta('arquibancada', { cx, cy, rx, ry });
+      a.zonas = [['zona:espinhos', cx, cy + ry * 0.1, Math.min(rx, ry) * 0.45]];
+      a.desaba = { x: cx - 2, y: cy - 1, w: 4, h: 3 };
+    } else if (a.tipo === 'trono' || a.tipo === 'mausoleu') {
+      const x0 = 2, y0 = 2, x1 = W - 3, y1 = H - 4;
+      enche(ret(x0, y0, x1 + 1, y1 + 1), SALA);
+      const { x0: e0, x1: e1 } = entradaEmbaixo(y1 + 1, 2);
+      p.paredes.push({ x1: e0, y1: y1 + 1, x2: e1 + 1, y2: y1 + 1, k: 'door', grade: true });
+      a.grade = { x: cx, y: y1 + 1 };
+      // as portas dos lados (por onde chegam os reforços)
+      const my = Math.round((y0 + y1) / 2);
+      for (const lx of [x0 - 1, x1 + 1]) { G.pos(lx, my, CORREDOR); G.pos(lx + (lx < cx ? -1 : 1), my, CORREDOR); p.paredes.push({ x1: lx < cx ? x0 : x1 + 1, y1: my, x2: lx < cx ? x0 : x1 + 1, y2: my + 1, k: 'door' }); a.reforcos.push([lx < cx ? x0 + 0.5 : x1 + 0.5, my + 0.5]); }
+      const est = estradoChefe(cx - 2, y0, 4, 2, 1.5);
+      if (a.tipo === 'trono') {
+        const tx = Math.floor(cx - 0.5), ty = est.y;
+        C.poe('cadeira', tx, ty, 1, ROT_FRENTE.s); C.pinta('trono', { x: tx + 0.5, y: ty + 0.5, rot: ROT_FRENTE.s });
+        for (const i of [est.x - 1, est.x + est.w]) C.poe('braseiro', i, est.y);
+        C.pinta('tapete', { x: cx - 1, y: est.y + est.h, w: 2, h: y1 - est.y - est.h + 1 });
+        for (let j = y0 + 3; j <= y1 - 1; j += 2) for (const i of [x0 + 2, x1 - 2]) if (C.livre(i, j)) coluna(C, i + 0.5, j + 0.5, 0.45);
+        estatua(x0 + 0.5, y0 + 0.5); estatua(x1 + 0.5, y0 + 0.5);
+        perigo('oleo', cx - 3.5, (y0 + y1) / 2 + 1, 1); perigo('oleo', cx + 3.5, (y0 + y1) / 2 + 1, 1);
+        a.zonas = [['luz'], ['zona:chamasNegras', cx, est.y + 3.5, 2]];
+      } else {
+        C.pinta('sarcofago', { x: cx - 1, y: est.y + 0.2, w: 2, h: 1.6 }); C.ocupaRet(Math.floor(cx - 1), est.y, 2, 2, 1);
+        for (const i of [est.x - 1, est.x + est.w]) C.poe('vela', i, est.y);
+        for (let j = y0 + 3; j <= y1 - 2; j += 3) for (const i of [x0 + 2, x1 - 2, x0 + 5, x1 - 5]) if (C.livre(i, j) && C.livre(i, j + 1)) { C.poe('tumulo', i, j); }
+        for (let j = y0 + 2; j <= y1 - 1; j += 3) for (const i of [x0, x1]) nichoEm(C, i, j, i === x0 ? 'o' : 'l');
+        for (let j = y0 + 4; j <= y1 - 2; j += 4) for (const i of [Math.floor(cx) - 3, Math.floor(cx) + 2]) if (C.livre(i, j)) coluna(C, i + 0.5, j + 0.5, 0.42);
+        perigo('toxica', cx - 4, (y0 + y1) / 2 + 2, 1.3); perigo('toxica', cx + 4, (y0 + y1) / 2 + 2, 1.3);
+        for (let j = y0 + 3; j <= y1 - 2; j += 3) a.reforcos.push([x0 + 2.5, j + 0.5], [x1 - 1.5, j + 0.5]);
+        a.reforcos = a.reforcos.slice(0, 4);
+        a.zonas = [['zona:toxica', cx, (y0 + y1) / 2 + 1, 3.2], ['luz']];
+      }
+      a.desaba = { x: cx - 2, y: est.y + est.h + 1, w: 4, h: 3 };
+    } else if (a.tipo === 'covil' || a.tipo === 'altar') {
+      // a câmara grande e torta (a do altar mais redonda)
+      const cy = H / 2 - 0.5, rx = W / 2 - 2.5, ry = H / 2 - 2.2, ond = [C.ent(0, TAU), C.ent(0, TAU)];
+      enche((i, j) => { const dx = (i - cx) / rx, dy = (j - cy) / ry, an = Math.atan2(dy, dx), lim = 1 + (a.tipo === 'covil' ? 0.12 : 0.04) * Math.sin(3 * an + ond[0]) + (a.tipo === 'covil' ? 0.08 : 0.02) * Math.sin(5 * an + ond[1]); return Math.hypot(dx, dy) <= lim; }, SALA);
+      entradaEmbaixo(Math.ceil(cy + ry) - 1, 3);
+      if (a.tipo === 'covil') {
+        // o rochedo do dragão no alto, por cima do tesouro; a lava pelos lados; as estalagmites como cobertura
+        estradoChefe(cx - 2.5, cy - ry + 1, 5, 3, 4.5);
+        C.pinta('moedas', { x: cx, y: cy - ry + 4.6, r: 2.2 }); C.pinta('moedas', { x: cx - 2.6, y: cy - ry + 3.6, r: 1.2 });
+        C.poe('bau', Math.floor(cx + 2.6), Math.floor(cy - ry + 3.5));
+        for (const sx of [-1, 1]) {
+          const lx = cx + sx * rx * 0.55, ly = cy + ry * 0.05;
+          for (let j = Math.floor(ly - 2); j <= ly + 2; j++) for (let i = Math.floor(lx - 2.4); i <= lx + 2.4; i++) if (Math.hypot((i + 0.5 - lx) / 2.3, (j + 0.5 - ly) / 1.8) <= 1 && G.at(i, j) === SALA) G.pos(i, j, LAVA);
+          p.zonas.push({ fx: 'lava', k: 'circ', x: lx, y: ly, r: 1.8, gm: false, leve: true }); a.perigos.push('lava');
+          p.luzes.push({ x: lx, y: ly, dim: 6, bright: 2, c: '#ff7a2a' });
+        }
+        for (let t = 0, n = 0; t < 300 && n < 6; t++) { const i = Math.floor(cx + C.ent(-rx * 0.8, rx * 0.8)), j = Math.floor(cy + C.ent(-ry * 0.3, ry * 0.7)); if (G.at(i, j) !== SALA || !C.livre(i, j)) continue; const x = i + 0.5, y = j + 0.5, rr = 0.55; C.pinta('estalagmite', { x, y, r: rr, grande: true }); C.ocupa(i, j, 1, 1); for (let k = 0; k < 6; k++) { const u = (k / 6) * TAU, v = ((k + 1) / 6) * TAU; p.visao.push([x + Math.cos(u) * rr * 0.85, y + Math.sin(u) * rr * 0.85, x + Math.cos(v) * rr * 0.85, y + Math.sin(v) * rr * 0.85]); } n++; }
+        C.pinta('ossos', { x: cx - rx * 0.3, y: cy + ry * 0.4, n: 4 }); C.pinta('ossos', { x: cx + rx * 0.35, y: cy - ry * 0.1, n: 3 });
+        a.reforcos.push([cx - rx * 0.6, cy - ry * 0.45], [cx + rx * 0.6, cy - ry * 0.45], [cx, cy + ry * 0.5]);
+        a.zonas = [['zona:lava', cx, cy + ry * 0.15, Math.min(rx, ry) * 0.4], ['desaba']];
+        a.desaba = { x: cx - 3, y: cy + 1, w: 6, h: 2 };
+      } else {
+        // o altar no estrado do alto; o círculo das runas no meio; as colunas com os braseiros em volta
+        const est = estradoChefe(cx - 2, cy - ry + 1, 4, 2, 1.5);
+        C.poe('altar', Math.floor(cx - 0.5), est.y);
+        C.pinta('circuloRunico', { x: cx, y: cy + 0.5, r: Math.min(rx, ry) * 0.42 });
+        for (let k = 0; k < 6; k++) { const an = -Math.PI / 2 + (k + 0.5) / 6 * TAU, x = cx + Math.cos(an) * rx * 0.7, y = cy + Math.sin(an) * ry * 0.7; if (Math.abs(x - cx) < 1.5 && y > cy) continue; coluna(C, Math.floor(x) + 0.5, Math.floor(y) + 0.5, 0.45); C.poe('braseiro', Math.floor(x) + (x < cx ? 1 : -1), Math.floor(y)); }
+        p.zonas.push({ fx: 'runas', k: 'circ', x: cx, y: cy + 0.5, r: Math.min(rx, ry) * 0.42, gm: true }); a.perigos.push('runas (escondidas)');
+        a.reforcos.push([cx - rx * 0.8, cy + ry * 0.2], [cx + rx * 0.8, cy + ry * 0.2]);
+        a.zonas = [['zona:runas', cx, cy + 0.5, Math.min(rx, ry) * 0.42], ['zona:escuridao', cx, cy, Math.min(rx, ry) * 0.7]];
+        a.desaba = { x: cx - 2, y: cy - 0.5, w: 4, h: 2 };
+      }
+    } else if (a.tipo === 'ponte') {
+      // o abismo inteiro; a beira da entrada embaixo, a do chefe no alto; a ponte (três de largura) com a plataforma no meio
+      enche(() => true, ABISMO);
+      enche(ret(2, H - 4, W - 3, H - 1), SALA); enche(ret(3, 0, W - 4, 3), SALA);
+      const px0 = Math.floor(cx - 1.5);
+      for (let j = 4; j < H - 4; j++) for (let i = px0; i < px0 + 3; i++) G.pos(i, j, PONTE);
+      const pm = Math.round(H / 2);
+      enche(ret(cx - 3.5, pm - 2, cx + 2.5, pm + 1), SALA);
+      a.entrada = { x: cx, y: H - 1.5 };
+      estradoChefe(cx - 2, 0, 4, 2, 1.5);
+      for (const [x, y] of [[cx - 3, pm - 1.5], [cx + 2, pm + 0.5]]) estatua(x, y);
+      C.pinta('entulho', { x: cx + 1.8, y: pm - 1.4, r: 0.8 });
+      perigo('vento', cx, pm - 0.5, 2.5);
+      a.reforcos.push([3.5, H - 2.5], [W - 3.5, H - 2.5]);
+      a.zonas = [['desaba'], ['zona:vento', cx, H / 2, Math.min(W, H) * 0.35]];
+      a.desaba = { x: px0, y: Math.round(H * 0.62), w: 3, h: 2, ponte: true };
+    } else if (a.tipo === 'topo') {
+      // o alto da torre: o disco de pedra cercado pelo vazio, com a mureta na beira (aberta na escada)
+      const cy = H / 2, R = Math.min(W, H) / 2 - 1.5;
+      enche(() => true, ABISMO);
+      enche((i, j) => Math.hypot(i - cx, j - cy) <= R, SALA);
+      const n = 28, abertura = [Math.PI / 2 - 0.18, Math.PI / 2 + 0.18];
+      for (let k = 0; k < n; k++) { const u = (k / n) * TAU, v = ((k + 1) / n) * TAU; if (u > abertura[0] - 0.12 && u < abertura[1]) continue; p.paredes.push({ x1: cx + Math.cos(u) * (R - 0.15), y1: cy + Math.sin(u) * (R - 0.15), x2: cx + Math.cos(v) * (R - 0.15), y2: cy + Math.sin(v) * (R - 0.15), k: 'mureta' }); }
+      C.pinta('ameias', { cx, cy, r: R - 0.15, ab: abertura });
+      a.entrada = { x: cx, y: cy + R - 1 };
+      // a escada que sobe pelo meio da beira de baixo
+      C.pinta('escada', { x: Math.floor(cx) - 1, y: Math.floor(cy + R) - 2, w: 2, h: 2, lado: 's', sobe: true, natural: false });
+      estradoChefe(cx - 2, cy - R + 1.2, 4, 2, 1.5);
+      C.poe('braseiro', Math.floor(cx - 0.5), Math.floor(cy - R + 1.2));
+      for (const an of [Math.PI * 0.85, Math.PI * 0.15, Math.PI * 1.25, Math.PI * 1.75]) estatua(cx + Math.cos(an) * R * 0.55, cy + Math.sin(an) * R * 0.55);
+      perigo('raio', cx + R * 0.35, cy + R * 0.1, 1.2);
+      a.reforcos.push([cx - R * 0.75, cy], [cx + R * 0.75, cy]);
+      a.zonas = [['zona:tempestade', cx, cy, R * 0.8], ['desaba']];
+      a.desaba = { x: cx + R * 0.35, y: cy - 2, w: 3, h: 4 };
+    } else {
+      // o círculo de pedras: a clareira, o anel das pedras de pé (com as passagens), a pedra do altar no meio
+      const cy = H / 2, R = Math.min(W, H) / 2 - 1.2, Rp = R * 0.68;
+      enche((i, j) => Math.hypot(i - cx, j - cy) <= R, SALA);
+      entradaEmbaixo(Math.ceil(cy + R) - 1, 4);
+      const n = 9;
+      for (let k = 0; k < n; k++) {
+        const an = -Math.PI / 2 + (k / n) * TAU;
+        if (Math.abs(Math.cos(an)) < 0.2 && Math.sin(an) > 0) continue;              // (a passagem da entrada)
+        const x = cx + Math.cos(an) * Rp, y = cy + Math.sin(an) * Rp;
+        C.pinta('menir', { x, y, r: 0.55, ang: an }); C.ocupa(Math.floor(x), Math.floor(y), 1, 1);
+        for (let q = 0; q < 6; q++) { const u = (q / 6) * TAU, v = ((q + 1) / 6) * TAU; p.visao.push([x + Math.cos(u) * 0.45, y + Math.sin(u) * 0.45, x + Math.cos(v) * 0.45, y + Math.sin(v) * 0.45]); }
+      }
+      const est = estradoChefe(cx - 1.5, cy - 1.5, 3, 3, 1.5);
+      C.pinta('menir', { x: cx, y: cy, r: 0.8, ang: 0, altar: true }); void est;
+      p.zonas.push({ fx: 'runas', k: 'circ', x: cx, y: cy, r: Rp * 0.8, gm: true }); a.perigos.push('runas (escondidas)');
+      perigo('nevoa', cx, cy + R * 0.55, 1.6);
+      C.pinta('floresta', { cx, cy, r: R });
+      a.reforcos.push([cx - R * 0.85, cy - R * 0.25], [cx + R * 0.85, cy - R * 0.25], [cx, cy - R * 0.85]);
+      a.zonas = [['zona:arcano', cx, cy, Rp * 0.9], ['zona:luaSangue', cx, cy, R * 0.9]];
+      a.desaba = { x: cx - 1.5, y: cy + 2, w: 3, h: 2 };
+    }
+    // o chefe (um token de dois quadrados no lugar dele) e os reforços
+    a.chefe = a.chefe || { x: cx - 1, y: 3 };
+    // (o ponto que caiu na rocha, no abismo ou na lava vai para a casa boa mais perto; sem nenhuma por perto, sai)
+    const pisavel = (i, j) => { const v = G.at(i, j); return v !== ROCHA && v !== ABISMO && v !== LAVA && v != null; };
+    a.reforcos = a.reforcos.map(([x, y]) => {
+      if (pisavel(Math.floor(x), Math.floor(y))) return [x, y];
+      for (let r = 1; r <= 3; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) if (Math.max(Math.abs(di), Math.abs(dj)) === r && pisavel(Math.floor(x) + di, Math.floor(y) + dj)) return [Math.floor(x) + di + 0.5, Math.floor(y) + dj + 0.5];
+      return null;
+    }).filter(Boolean).slice(0, 4);
+    // as fases prontas: duas (a 2 e a 3), cada uma com duas mudanças
+    a.fases = fasesDaArena(a);
+    p.salas = [{ x: 0, y: 0, w: W, h: H, papel: 'arena' }];
+    // as paredes: no salão reto, a beira das casas; nos outros, o contorno alisado do que não é rocha
+    if (a.tipo === 'trono' || a.tipo === 'mausoleu') p.paredes = paredesDaGrade(G, v => v !== ROCHA).map(w => Object.assign(w, { k: 'wall' })).concat(p.paredes);
+    else {
+      p.contorno = contornos(W, H, (i, j) => G.at(i, j) !== ROCHA).map(l => simplifica(l, 0.3)).filter(l => l.length > 3);
+      p.paredes = segmentosDe(p.contorno).concat(p.paredes);
+    }
+  }
+  /* as duas fases de cada arena (a tabela de cima), com o que o mestre mudou na janela: a.fk = [[{ k, on }, …], …] */
+  function fasesDaArena(a) {
+    const z = a.zonas || [];
+    const mud = k => {
+      if (k === 'reforcos') return { k, on: true, pts: a.reforcos.slice(), nome: LACAIO_ARENA[a.tipo] || 'Lacaio' };
+      if (k === 'desaba') return Object.assign({ k, on: true }, a.desaba);
+      if (k === 'luz' || k === 'grade') return Object.assign({ k, on: true }, k === 'grade' && a.grade ? { x: a.grade.x, y: a.grade.y } : {});
+      const e = z.find(x => x[0] === k) || [k, a.chefe.x + 1, a.chefe.y + 3, 2.5];
+      return { k: 'zona', fx: k.slice(5), on: true, x: e[1], y: e[2], r: e[3] };
+    };
+    const base = FASES_ARENA[a.tipo] || FASES_ARENA.coliseu, fk = Array.isArray(a.fk) ? a.fk : null, ok = k => MUDANCAS.some(x => x[0] === k) && (k !== 'grade' || !!a.grade);
+    return base.map((ks, i) => ({ n: i + 2, nome: 'Fase ' + (i + 2), m: ks.map((k0, j) => {
+      const o = fk && fk[i] && fk[i][j] ? fk[i][j] : null, k = o && ok(o.k) ? o.k : ok(k0) ? k0 : 'reforcos';
+      return Object.assign(mud(k), { on: !o || o.on !== false });
+    }) }));
+  }
+
   /* ================= a mina abandonada ================= */
   function nivelDeMina(C) {
     const { G, r, p, W, H } = C, T = TAMANHOS[p.tamanho];
@@ -1135,8 +1588,12 @@ const Masmorra = (() => {
      escadas (a de subida e a de descida). */
   function gerar(o) {
     o = o || {};
-    const tipo = TIPOS.some(t => t[0] === o.tipo) ? o.tipo : 'pedra';
-    const tamanho = TAMANHOS[o.tamanho] ? o.tamanho : 'medio', T = TAMANHOS[tamanho];
+    // (lote 18) o subsolo: do tamanho da cena de cima, com a entrada, o rio e o bioma de lá
+    const sob = o.tipo === 'subsolo', are = o.tipo === 'arena', tipo = sob ? 'subsolo' : are ? 'arena' : TIPOS.some(t => t[0] === o.tipo) ? o.tipo : 'pedra';
+    const tamanho = TAMANHOS[o.tamanho] ? o.tamanho : 'medio', T = are ? TAM_ARENA[tamanho] : sob ? { W: clamp(Math.round(Number(o.W)) || 40, 20, 80), H: clamp(Math.round(Number(o.H)) || 30, 16, 60) } : TAMANHOS[tamanho];
+    const ex = sob ? { entradaEm: { x: clamp(Number(o.x) || T.W / 2, 0, T.W), y: clamp(Number(o.y) || T.H / 2, 0, T.H) }, rioPts: Array.isArray(o.rio) && o.rio.length >= 2 ? o.rio.filter(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1])).slice(0, 80).map(q => [Number(q[0]), Number(q[1])]) : null,
+      bioma: BIOMAS_SUB.some(b => b[0] === o.bioma) ? o.bioma : 'fungos', achados: o.achados !== false, marcadores: [] }
+      : are ? { arena: Object.assign({ tipo: ARENAS.some(x => x[0] === o.arena) ? o.arena : 'coliseu' }, Array.isArray(o.fases) ? { fk: o.fases } : {}), marcadores: [] } : null;
     const nivel = clamp(Math.round(Number(o.nivel)) || 1, 1, 99), estilo = typeof Estilos !== 'undefined' ? Estilos.valido(o.estilo) : 'comum';
     const seed = (Math.round(Number(o.seed)) >>> 0) || 1, segredos = o.segredos !== false, descida = o.descida !== false;
     let p = null;
@@ -1145,17 +1602,20 @@ const Masmorra = (() => {
       const W = T.W, H = T.H, G = nova(W, H), r = mulberry((sub(seed, 1 + t * 17) % 2147483000) + 1);
       p = { v: 1, lugar: 'masmorra', tipo, tamanho, nivel, estilo, seed, segredos, descida, W, H,
         salas: [], paredes: [], visao: [], objetos: [], luzes: [], relevo: [], formas: [], zonas: [], pintados: [], sobe: null, desce: null };
+      if (ex) Object.assign(p, JSON.parse(JSON.stringify(ex)));
       const C = contexto(p, G, r);
-      if (tipo === 'caverna') nivelDeCaverna(C); else if (tipo === 'mina') nivelDeMina(C); else nivelDeSalas(C);
+      if (tipo === 'arena') nivelDeArena(C); else if (tipo === 'subsolo') nivelDeSubsolo(C); else if (tipo === 'caverna') nivelDeCaverna(C); else if (tipo === 'mina') nivelDeMina(C); else nivelDeSalas(C);
       p.grade = Array.from(G.g).join('');
       p.tentativa = t;
-      if (p.sobe && (!descida || p.desce) && p.salas.length >= (tipo === 'mina' && tamanho === 'pequeno' ? 2 : 3)) break;
+      if (tipo === 'arena') break;
+      if (p.sobe && (!descida || p.desce) && p.salas.length >= (tipo === 'subsolo' || (tipo === 'mina' && tamanho === 'pequeno') ? 2 : 3)) break;
     }
     // o relevo da água, do abismo e do poço (o contorno das casas deles)
     const { W, H } = p, g = p.grade, at = (i, j) => (i >= 0 && j >= 0 && i < W && j < H ? +g[j * W + i] : ROCHA);
-    const cav = tipo === 'caverna', borda = (dentro, k) => (cav ? contornoTremido(W, H, dentro, (seed + k) % 9973) : contornos(W, H, dentro).map(l => simplifica(l, 0.12))).filter(l => l.length > 3);
+    const cav = tipo === 'caverna' || tipo === 'subsolo', borda = (dentro, k) => (cav ? contornoTremido(W, H, dentro, (seed + k) % 9973) : contornos(W, H, dentro).map(l => simplifica(l, 0.12))).filter(l => l.length > 3);
     p.aguas = borda((i, j) => at(i, j) === AGUA, 5);
     p.abismos = borda((i, j) => at(i, j) === ABISMO, 9);
+    if (tipo === 'subsolo' || tipo === 'arena') { p.lavas = borda((i, j) => at(i, j) === LAVA, 11); p.gelos = borda((i, j) => at(i, j) === GELO, 13); }
     for (const l of p.aguas) p.relevo.unshift({ t: 'agua', alt: -1.5, k: 'poly', pts: l });
     for (const l of p.abismos) p.relevo.unshift({ t: 'fosso', alt: -10, k: 'poly', pts: l });
     return p;
@@ -1165,6 +1625,22 @@ const Masmorra = (() => {
     const portas = p.paredes.filter(w => w.k === 'door' && !w.secret).length, secretas = p.paredes.filter(w => w.secret).length;
     const partes = [(TIPOS.find(t => t[0] === p.tipo) || TIPOS[0])[1] + ' · nível ' + p.nivel, p.W + ' × ' + p.H + ' quadrados'];
     const salas = p.salas.length;
+    if (p.tipo === 'arena') {
+      const a = p.arena, q = [(ARENAS.find(x => x[0] === a.tipo) || ARENAS[0])[1], p.W + ' × ' + p.H + ' quadrados', 'o chefe e ' + (a.reforcos.length === 1 ? '1 ponto' : a.reforcos.length + ' pontos') + ' de reforço'];
+      const pg = Array.from(new Set(a.perigos.map(x => (FX.P[x] ? FX.P[x].n.toLowerCase() : x))));
+      if (pg.length) q.push('perigos: ' + pg.join(', '));
+      q.push(a.fases.length + ' fases prontas');
+      return q.join(' · ') + '.';
+    }
+    if (p.tipo === 'subsolo') {
+      const b = (BIOMAS_SUB.find(x => x[0] === p.bioma) || BIOMAS_SUB[0])[1].toLowerCase(), q = [ 'Subsolo · ' + b, p.W + ' × ' + p.H + ' quadrados', salas === 1 ? 'uma câmara' : salas + ' câmaras'];
+      if (p.rioPts) q.push('o rio de baixo');
+      if (p.lago) q.push(p.lago.k === 'lava' ? 'o lago de lava' : p.lago.k === 'gelo' ? 'o lago congelado' : 'o lago escuro');
+      const mk = (p.marcadores || []).length;
+      if (mk) q.push(mk === 1 ? 'um achado' : 'um achado e um ninho');
+      if (p.desce) q.push('a passagem escondida para o nível ' + (p.nivel + 1));
+      return q.join(' · ') + '.';
+    }
     partes.push(p.tipo === 'caverna' ? (salas === 1 ? 'uma câmara' : salas + ' câmaras') : p.tipo === 'mina' ? (salas === 1 ? 'uma galeria' : salas + ' galerias') : salas === 1 ? 'uma sala' : salas + ' salas');
     if (portas) partes.push(portas === 1 ? 'uma porta' : portas + ' portas');
     if (secretas) partes.push(secretas === 1 ? 'uma porta secreta' : secretas + ' portas secretas');
@@ -1180,13 +1656,31 @@ const Masmorra = (() => {
     caverna: { rocha: ['#2b2621', '#38312a', '#1b1714'], chao: ['#564c43', '#62574c', '#4a4139'], junta: '#3a332c', bloco: ['#4e453c', '#433b33', '#5a5045'] },
     mina: { rocha: ['#2c241f', '#3a2f28', '#1c1612'], chao: ['#5a4a3c', '#665443', '#4c3e32'], junta: '#3b3027', bloco: ['#4d3f33', '#43372d', '#58483a'] },
   };
+  // (lote 18) a pedra do subsolo, pelo bioma de baixo
+  const PAL_SUB = {
+    fungos: PAL_M.caverna,
+    cristais: { rocha: ['#26232f', '#322d3d', '#17151d'], chao: ['#55506a', '#615b77', '#48435c'], junta: '#3a3548', bloco: ['#4a4560', '#403b54', '#56506e'] },
+    lava: { rocha: ['#241716', '#33201d', '#140c0b'], chao: ['#4a3530', '#563d36', '#3e2c28'], junta: '#3a2420', bloco: ['#44302a', '#3a2823', '#503831'] },
+    gelo: { rocha: ['#1f2630', '#2a3340', '#141a22'], chao: ['#6b7c8c', '#7a8c9d', '#5e6e7d'], junta: '#3d4a58', bloco: ['#56687a', '#4b5c6d', '#627589'] },
+    raizes: { rocha: ['#2a2219', '#372d21', '#1a140e'], chao: ['#55452f', '#615038', '#4a3c29'], junta: '#3a2f20', bloco: ['#4d3f2c', '#433726', '#594932'] },
+  };
+  // (lote 18) a pedra e o chão de cada arena
+  const PAL_ARENA = {
+    coliseu: { rocha: ['#5a5046', '#665b4f', '#463e36'], chao: ['#c2a36b', '#b39360', '#d0b47c'], junta: '#4a4038', bloco: ['#7a6e60', '#6c6154', '#887b6b'] },
+    trono: { rocha: ['#232127', '#2e2b33', '#16151a'], chao: ['#8a8590', '#99939f', '#7b7681'], junta: '#4a4650', bloco: ['#6e6974', '#615c67', '#7b7681'] },
+    mausoleu: PAL_M.cripta, covil: PAL_SUB.lava, altar: { rocha: ['#221a1c', '#2e2326', '#151012'], chao: ['#5a4c4e', '#66575a', '#4c4042'], junta: '#3a2e30', bloco: ['#54464a', '#483c40', '#615256'] },
+    ponte: PAL_M.caverna, topo: { rocha: ['#2a2d33', '#353941', '#1b1d22'], chao: ['#76736e', '#83807a', '#68655f'], junta: '#45433f', bloco: ['#6a6762', '#5d5a55', '#77746e'] },
+    circulo: { rocha: ['#14200f', '#1b2a14', '#0d160a'], chao: ['#3f5a2e', '#4a6a35', '#34502a'], junta: '#2a3a20', bloco: ['#253620', '#1e2e19', '#2c4026'] },
+  };
+  const PISO_ARENA = { coliseu: 'areia', trono: 'marmore', mausoleu: 'lajes', covil: 'bruto', altar: 'lajes', ponte: 'bruto', topo: 'lajes', circulo: 'grama' };
   const tomM = (hex, f) => (typeof Estilos !== 'undefined' ? Estilos.tom(hex, f) : hex);
   function pintar(p, c) {
     const W = p.W, H = p.H, cv = document.createElement('canvas');
     cv.width = Math.round(W * c); cv.height = Math.round(H * c);
-    const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x2f6b13a7) >>> 0 || 7), P = PAL_M[p.tipo] || PAL_M.pedra;
+    const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x2f6b13a7) >>> 0 || 7), P = (p.tipo === 'subsolo' && PAL_SUB[p.bioma]) || (p.tipo === 'arena' && PAL_ARENA[p.arena.tipo]) || PAL_M[p.tipo] || PAL_M.pedra;
     const grade = p.grade, at = (i, j) => (i >= 0 && j >= 0 && i < W && j < H ? +grade[j * W + i] : ROCHA), aberto = (i, j) => at(i, j) !== ROCHA;
-    const reto = p.tipo !== 'caverna';
+    const reto = p.tipo === 'arena' ? p.arena.tipo === 'trono' || p.arena.tipo === 'mausoleu' : p.tipo !== 'caverna' && p.tipo !== 'subsolo';
+    const piso = p.tipo === 'arena' ? PISO_ARENA[p.arena.tipo] : null;          // (lote 18: o chão da arena)
     // 1) a rocha: o fundo escuro com manchas e rachaduras
     g.fillStyle = P.rocha[0]; g.fillRect(0, 0, cv.width, cv.height);
     for (let k = 0, n = Math.round(W * H * 1.3); k < n; k++) {
@@ -1206,7 +1700,16 @@ const Masmorra = (() => {
       } else for (const l of linhas) { l.forEach(([x, y], k) => (k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.closePath(); }
     };
     g.save(); caminhoDoChao(); g.fillStyle = P.chao[0]; g.fill('evenodd'); g.clip('evenodd');
-    if (p.tipo === 'pedra' || p.tipo === 'cripta') {
+    if (piso === 'areia' || piso === 'grama') {
+      // (lote 18) a areia da arena (com as marcas do rastelo) e a grama do círculo de pedras
+      const cor = piso === 'areia' ? ['#c2a36b', '#b39360', '#d0b47c'] : ['#3f5a2e', '#4a6a35', '#34502a'];
+      g.fillStyle = cor[0]; g.fillRect(0, 0, W * c, H * c);
+      for (let k = 0, n = Math.round(W * H * 1.2); k < n; k++) { const x = rnd() * W, y = rnd() * H, rr = (0.3 + rnd() * 1.2) * c; g.globalAlpha = 0.18 + rnd() * 0.2; g.fillStyle = rnd() < 0.5 ? cor[1] : cor[2]; g.beginPath(); g.ellipse(x * c, y * c, rr, rr * 0.7, rnd() * 3, 0, TAU); g.fill(); }
+      g.globalAlpha = piso === 'areia' ? 0.18 : 0.5; g.strokeStyle = piso === 'areia' ? '#8f7448' : '#6e8f4a'; g.lineWidth = Math.max(1, c * 0.03);
+      if (piso === 'areia') for (let j = 0; j < H * 3; j++) { g.beginPath(); g.moveTo(0, (j / 3) * c); for (let x = 0; x <= W; x += 0.5) g.lineTo(x * c, (j / 3 + Math.sin(x * 0.7 + j) * 0.04) * c); g.stroke(); }
+      else for (let k = 0, n = Math.round(W * H * 2); k < n; k++) { const x = rnd() * W, y = rnd() * H; g.beginPath(); g.moveTo(x * c, y * c); g.lineTo((x + (rnd() - 0.5) * 0.15) * c, (y - 0.18) * c); g.stroke(); }
+      g.globalAlpha = 1;
+    } else if (p.tipo === 'pedra' || p.tipo === 'cripta' || piso === 'lajes' || piso === 'marmore') {
       // as lajes: duas por casa, em fileiras desencontradas, cada uma de um tom
       for (let j = 0; j < H * 2; j++) {
         const des = (j % 2) * 0.5;
@@ -1234,6 +1737,8 @@ const Masmorra = (() => {
     g.restore();
     // 3) a água e o abismo (com a ponte de pedra)
     for (const l of p.aguas || []) lagoEscuro(g, l, c, rnd);
+    for (const l of p.lavas || []) lagoDeLava(g, l, c, rnd);          // (lote 18: o subsolo)
+    for (const l of p.gelos || []) lagoDeGelo(g, l, c, rnd);
     if (typeof Paisagem !== 'undefined') for (const l of p.abismos || []) Paisagem.abismo(g, l, c, rnd, [tomM(P.chao[0], 0.1), P.rocha[1], '#050404']);
     // a ponte de pedra: a faixa de rocha clara atravessando o abismo, com a beira escura dos dois lados
     const ponte = contornos(W, H, (i, j) => at(i, j) === PONTE).filter(l => l.length > 3);
@@ -1356,6 +1861,36 @@ const Masmorra = (() => {
     g.restore();
   }
 
+  // (lote 18) o lago de lava: o laranja que brilha, as crostas escuras e a beira em brasa
+  function lagoDeLava(g, l, c, rnd) {
+    const pts = simplifica(l, 0.1);
+    const caminho = () => { g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.closePath(); };
+    const [x0, y0, x1, y1] = pts.reduce((b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)], [1e9, 1e9, -1e9, -1e9]);
+    g.save();
+    caminho(); const gr = g.createRadialGradient((x0 + x1) / 2 * c, (y0 + y1) / 2 * c, 0, (x0 + x1) / 2 * c, (y0 + y1) / 2 * c, Math.max(x1 - x0, y1 - y0) / 2 * c);
+    gr.addColorStop(0, '#ffd35a'); gr.addColorStop(0.5, '#ff8a2a'); gr.addColorStop(1, '#c2361a');
+    g.fillStyle = gr; g.fill();
+    g.save(); caminho(); g.clip();
+    for (let k = 0, n = Math.round((x1 - x0) * (y1 - y0) * 0.5) + 3; k < n; k++) { const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0); g.globalAlpha = 0.55; g.fillStyle = '#3a1a12'; g.beginPath(); g.ellipse(x * c, y * c, c * (0.2 + rnd() * 0.5), c * (0.12 + rnd() * 0.25), rnd() * 3, 0, TAU); g.fill(); }
+    g.restore();
+    g.globalAlpha = 0.85; caminho(); g.strokeStyle = '#ff6a1f'; g.lineWidth = Math.max(1, c * 0.12); g.stroke();
+    g.restore();
+  }
+  // (lote 18) o lago congelado: o gelo claro, as rachaduras e a neve na beira
+  function lagoDeGelo(g, l, c, rnd) {
+    const pts = simplifica(l, 0.1);
+    const caminho = () => { g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.closePath(); };
+    const [x0, y0, x1, y1] = pts.reduce((b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)], [1e9, 1e9, -1e9, -1e9]);
+    g.save();
+    caminho(); g.fillStyle = '#a9cbe0'; g.fill();
+    g.save(); caminho(); g.clip();
+    g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = Math.max(1, c * 0.03);
+    for (let k = 0, n = Math.round((x1 - x0) * (y1 - y0) * 0.3) + 3; k < n; k++) { let x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0), a = rnd() * TAU; g.beginPath(); g.moveTo(x * c, y * c); for (let t = 0; t < 3; t++) { a += rnd() - 0.5; x += Math.cos(a) * 0.5; y += Math.sin(a) * 0.5; g.lineTo(x * c, y * c); } g.stroke(); }
+    g.restore();
+    caminho(); g.strokeStyle = '#eef6fb'; g.lineWidth = Math.max(1, c * 0.1); g.stroke();
+    g.restore();
+  }
+
   /* Os desenhos (z: 0 por baixo de tudo, dentro do chão; 1 no chão; 2 as coisas; 3 o que fica por cima). */
   const DESENHO = {
     tapete: { z: 0, f(g, o, c, rnd) { g.save(); g.fillStyle = '#6a1f22'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c); g.strokeStyle = '#c9a24a'; g.lineWidth = Math.max(1, c * 0.06); g.strokeRect((o.x + 0.08) * c, (o.y + 0.08) * c, (o.w - 0.16) * c, (o.h - 0.16) * c); g.globalAlpha = 0.25; g.fillStyle = '#000'; for (let k = 0; k < 6; k++) g.fillRect((o.x + rnd() * o.w) * c, (o.y + rnd() * o.h) * c, c * 0.3, c * 0.2); g.restore(); } },
@@ -1441,7 +1976,8 @@ const Masmorra = (() => {
         const x = (o.x + (n > 1 ? (rnd() - 0.5) * 0.7 : 0)) * c, y = (o.y + (n > 1 ? (rnd() - 0.5) * 0.7 : 0)) * c, rr = (o.grande ? o.r : o.r * (0.6 + rnd() * 0.6)) * c;
         g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x + rr * 0.3, y + rr * 0.35, rr, rr * 0.85, 0, 0, TAU); g.fill();
         const gr = g.createRadialGradient(x - rr * 0.3, y - rr * 0.3, rr * 0.05, x, y, rr);
-        gr.addColorStop(0, '#b3a894'); gr.addColorStop(0.5, '#7a6f60'); gr.addColorStop(1, '#3e372f');
+        if (o.gelo) { gr.addColorStop(0, '#f2fbff'); gr.addColorStop(0.5, '#a8cde3'); gr.addColorStop(1, '#4a6a82'); }       // (lote 18: a de gelo)
+        else { gr.addColorStop(0, '#b3a894'); gr.addColorStop(0.5, '#7a6f60'); gr.addColorStop(1, '#3e372f'); }
         g.fillStyle = gr; g.beginPath();
         for (let a = 0; a < 7; a++) { const an = (a / 7) * TAU, d = rr * (0.8 + rnd() * 0.25); a ? g.lineTo(x + Math.cos(an) * d, y + Math.sin(an) * d) : g.moveTo(x + Math.cos(an) * d, y + Math.sin(an) * d); }
         g.closePath(); g.fill();
@@ -1530,6 +2066,107 @@ const Masmorra = (() => {
       gr.addColorStop(0, o.cor + '55'); gr.addColorStop(1, o.cor + '00');
       g.fillStyle = gr; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, TAU); g.fill();
       for (let k = 0; k < 7; k++) { const a = rnd() * TAU, d = rnd() * 0.7, x = (o.x + Math.cos(a) * d) * c, y = (o.y + Math.sin(a) * d) * c, s = c * (0.06 + rnd() * 0.08); g.fillStyle = o.cor; g.globalAlpha = 0.85; g.beginPath(); g.arc(x, y, s, 0, TAU); g.fill(); g.globalAlpha = 1; g.fillStyle = '#ffffff'; g.beginPath(); g.arc(x - s * 0.3, y - s * 0.3, s * 0.3, 0, TAU); g.fill(); }
+      g.restore();
+    } },
+    // (lote 18) o subsolo: os cristais, a brasa nas rachaduras, a geada, as raízes e o ninho
+    cristal: { z: 3, f(g, o, c, rnd) {
+      g.save();
+      const gr = g.createRadialGradient(o.x * c, o.y * c, 0, o.x * c, o.y * c, o.r * 2.2 * c);
+      gr.addColorStop(0, o.cor + '66'); gr.addColorStop(1, o.cor + '00');
+      g.fillStyle = gr; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * 2.2 * c, 0, TAU); g.fill();
+      for (let k = 0; k < o.n; k++) {
+        const a = -Math.PI / 2 + (rnd() - 0.5) * 1.6, L = o.r * (o.grande ? 1.3 : 0.9) * (0.6 + rnd() * 0.6), w = o.r * 0.28 * (0.7 + rnd() * 0.5), bx = o.x + (rnd() - 0.5) * o.r * 0.8, by = o.y + (rnd() - 0.2) * o.r * 0.5;
+        const tx = bx + Math.cos(a) * L, ty = by + Math.sin(a) * L, px = -Math.sin(a) * w, py = Math.cos(a) * w;
+        g.beginPath(); g.moveTo((bx + px) * c, (by + py) * c); g.lineTo((tx + px * 0.4) * c, (ty + py * 0.4) * c); g.lineTo(tx * c, (ty - 0.08) * c); g.lineTo((tx - px * 0.4) * c, (ty - py * 0.4) * c); g.lineTo((bx - px) * c, (by - py) * c); g.closePath();
+        g.fillStyle = o.cor; g.globalAlpha = 0.85; g.fill();
+        g.strokeStyle = '#ffffff'; g.globalAlpha = 0.5; g.lineWidth = Math.max(1, c * 0.025); g.stroke();
+      }
+      g.restore();
+    } },
+    brasa: { z: 1, f(g, o, c, rnd) {
+      g.save(); g.lineCap = 'round';
+      for (let k = 0; k < 3; k++) { let x = o.x, y = o.y, a = rnd() * TAU; g.beginPath(); g.moveTo(x * c, y * c); for (let t = 0; t < 4; t++) { a += rnd() - 0.5; x += Math.cos(a) * o.r * 0.35; y += Math.sin(a) * o.r * 0.35; g.lineTo(x * c, y * c); }
+        g.strokeStyle = '#ff7a2a'; g.globalAlpha = 0.85; g.lineWidth = c * 0.09; g.stroke(); g.strokeStyle = '#ffd35a'; g.lineWidth = c * 0.035; g.stroke(); }
+      g.restore();
+    } },
+    geada: { z: 1, f(g, o, c) {
+      g.save(); const gr = g.createRadialGradient(o.x * c, o.y * c, 0, o.x * c, o.y * c, o.r * c);
+      gr.addColorStop(0, 'rgba(235,246,255,0.55)'); gr.addColorStop(1, 'rgba(235,246,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, TAU); g.fill(); g.restore();
+    } },
+    raizes: { z: 3, f(g, o, c, rnd) {
+      g.save(); g.lineCap = 'round';
+      for (let k = 0; k < o.n; k++) {
+        let x = o.x - Math.cos(o.ang) * 0.5 + (rnd() - 0.5) * 0.8, y = o.y - Math.sin(o.ang) * 0.5 + (rnd() - 0.5) * 0.8, a = o.ang + (rnd() - 0.5) * 0.9;
+        g.beginPath(); g.moveTo(x * c, y * c);
+        for (let t = 0; t < 4; t++) { a += (rnd() - 0.5) * 0.8; x += Math.cos(a) * 0.35; y += Math.sin(a) * 0.35; g.lineTo(x * c, y * c); }
+        g.strokeStyle = '#3a2a1a'; g.globalAlpha = 0.9; g.lineWidth = c * (0.08 + rnd() * 0.06); g.stroke();
+        g.strokeStyle = '#6b5236'; g.globalAlpha = 0.6; g.lineWidth = c * 0.03; g.stroke();
+      }
+      g.restore();
+    } },
+    ninho: { z: 2, f(g, o, c, rnd) { if (typeof Paisagem !== 'undefined' && Paisagem.ninho) Paisagem.ninho(g, o, c, rnd); } },
+    // (lote 18) as arenas: a arquibancada em volta da arena, o círculo das runas, as ameias da torre, as pedras de pé e a
+    // mata em volta do círculo
+    arquibancada: { z: 1, f(g, o, c, rnd) {
+      g.save();
+      for (let k = 0; k < 6; k++) {
+        const rx = (o.rx + 0.6 + k * 0.75) * c, ry = (o.ry + 0.6 + k * 0.75) * c;
+        g.strokeStyle = k % 2 ? '#7a6e60' : '#6a5f52'; g.lineWidth = c * 0.62; g.beginPath(); g.ellipse(o.cx * c, o.cy * c, rx, ry, 0, 0, TAU); g.stroke();
+        g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.ellipse(o.cx * c, o.cy * c, rx + c * 0.3, ry + c * 0.3, 0, 0, TAU); g.stroke();
+        // o público (pontinhos de cor)
+        const n = Math.round((rx + ry) / c * 2.2);
+        for (let q = 0; q < n; q++) { if (rnd() < 0.35) continue; const an = rnd() * TAU; g.fillStyle = ['#8f3d4a', '#3d6a8f', '#c7955a', '#6f8f3a', '#d6ccb8'][Math.floor(rnd() * 5)]; g.globalAlpha = 0.8; g.beginPath(); g.arc(o.cx * c + Math.cos(an) * rx, o.cy * c + Math.sin(an) * ry, c * 0.12, 0, TAU); g.fill(); }
+        g.globalAlpha = 1;
+      }
+      g.restore();
+    } },
+    circuloRunico: { z: 1, f(g, o, c) {
+      g.save(); g.strokeStyle = '#8a1f2a'; g.globalAlpha = 0.75; g.lineWidth = c * 0.12;
+      g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, TAU); g.stroke();
+      g.lineWidth = c * 0.06; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * 0.82 * c, 0, TAU); g.stroke();
+      g.beginPath(); for (let k = 0; k <= 5; k++) { const an = -Math.PI / 2 + (k * 2 / 5) * TAU, x = o.x + Math.cos(an) * o.r * 0.82, y = o.y + Math.sin(an) * o.r * 0.82; k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c); } g.stroke();
+      g.restore();
+    } },
+    ameias: { z: 3, f(g, o, c) {
+      g.save();
+      const n = 32;
+      for (let k = 0; k < n; k++) {
+        const an = (k + 0.5) / n * TAU; if (an > o.ab[0] - 0.15 && an < o.ab[1] + 0.05) continue;
+        const x = o.cx + Math.cos(an) * o.r, y = o.cy + Math.sin(an) * o.r;
+        g.save(); g.translate(x * c, y * c); g.rotate(an);
+        g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(-c * 0.2 + c * 0.06, -c * 0.32 + c * 0.06, c * 0.4, c * 0.64);
+        g.fillStyle = k % 2 ? '#8b8780' : '#77736d'; g.fillRect(-c * 0.2, -c * 0.32, c * 0.4, c * 0.64);
+        g.strokeStyle = '#3f3c38'; g.lineWidth = Math.max(1, c * 0.04); g.strokeRect(-c * 0.2, -c * 0.32, c * 0.4, c * 0.64);
+        g.restore();
+      }
+      g.restore();
+    } },
+    menir: { z: 2, f(g, o, c, rnd) {
+      g.save();
+      const x = o.x * c, y = o.y * c, rr = o.r * c;
+      g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(x + rr * 0.3, y + rr * 0.35, rr * 1.05, rr * 0.8, 0, 0, TAU); g.fill();
+      const gr = g.createRadialGradient(x - rr * 0.3, y - rr * 0.3, rr * 0.1, x, y, rr * 1.1);
+      gr.addColorStop(0, o.altar ? '#b8b2a6' : '#a7a196'); gr.addColorStop(1, '#4e4a44');
+      g.fillStyle = gr; g.beginPath();
+      for (let k = 0; k < 7; k++) { const an = (k / 7) * TAU + (o.ang || 0), d = rr * (0.78 + rnd() * 0.3); k ? g.lineTo(x + Math.cos(an) * d, y + Math.sin(an) * d * 0.8) : g.moveTo(x + Math.cos(an) * d, y + Math.sin(an) * d * 0.8); }
+      g.closePath(); g.fill();
+      g.strokeStyle = '#2f2c28'; g.lineWidth = Math.max(1, c * 0.04); g.stroke();
+      // as runas gastas (verde-musgo)
+      g.strokeStyle = 'rgba(120,170,110,0.55)'; g.lineWidth = Math.max(1, c * 0.035);
+      g.beginPath(); g.moveTo(x - rr * 0.25, y - rr * 0.2); g.lineTo(x, y + rr * 0.25); g.lineTo(x + rr * 0.25, y - rr * 0.2); g.stroke();
+      g.restore();
+    } },
+    floresta: { z: 3, f(g, o, c, rnd, p) {
+      g.save();
+      for (let k = 0, n = Math.round(p.W * p.H * 0.35); k < n; k++) {
+        const x = rnd() * p.W, y = rnd() * p.H;
+        if (Math.hypot(x - o.cx, y - o.cy) < o.r + 0.8) continue;
+        const rr = (0.9 + rnd() * 0.9) * c;
+        g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(x * c + rr * 0.2, y * c + rr * 0.25, rr, 0, TAU); g.fill();
+        g.fillStyle = ['#1f3a1a', '#28461f', '#173014'][Math.floor(rnd() * 3)]; g.beginPath(); g.arc(x * c, y * c, rr, 0, TAU); g.fill();
+        g.fillStyle = 'rgba(120,170,90,0.18)'; g.beginPath(); g.arc(x * c - rr * 0.3, y * c - rr * 0.3, rr * 0.45, 0, TAU); g.fill();
+      }
       g.restore();
     } },
     escora: { z: 3, f(g, o, c) {
@@ -1625,14 +2262,31 @@ const Masmorra = (() => {
       for (const f of p.formas) sc.shapes.push(Estilos.formaNaCena(f, c, 0, 0));
     }
     // as runas-armadilha: escondidas dos jogadores até o mestre revelar
-    for (const z of p.zonas) sc.effects.push({ id: uid('fx'), fx: z.fx, k: 'circ', x: z.x * c, y: z.y * c, r: z.r || 1, w: 1, rw: 2, rh: 2, ang: 0, dir: 0, pow: 0.8, token: null, gm: z.gm !== false, by: null, seed: 1 + (Math.floor(Math.abs(z.x * 7.3 + z.y * 13.1) * 97) % 997), dur: 0, dur0: 0, at: null, apply: null });
+    for (const z of p.zonas) sc.effects.push({ id: uid('fx'), fx: z.fx, k: 'circ', x: z.x * c, y: z.y * c, r: z.r || 1, w: 1, rw: 2, rh: 2, ang: 0, dir: 0, pow: 0.8, token: null, leve: !!z.leve, gm: z.gm !== false, by: null, seed: 1 + (Math.floor(Math.abs(z.x * 7.3 + z.y * 13.1) * 97) % 997), dur: 0, dur0: 0, at: null, apply: null });
     // a Saída (a escada de subida leva de volta) e a Entrada da escada de descida (o nível de baixo, quando o mestre quiser)
     if (p.sobe) { const s = Props.novo(sc, 'saida', p.sobe.mi * c, p.sobe.mj * c, 1, true); if (fora) s.cena = fora.id; sc.tokens.push(s); }
     if (p.desce) {
       const t = Props.novo(sc, 'entrada', p.desce.mi * c, p.desce.mj * c, 1, true);
       t.size = 0.75; t.x += c * 0.125; t.y += c * 0.125;
-      t.gera = { t: 'masmorra', m: p.tipo, n: Math.min(99, p.nivel + 1), tam: p.tamanho, e: p.estilo, s: (sub(p.seed, 77) % 2147483000) + 1 };
+      // (lote 18: do subsolo, o nível de baixo é a masmorra — a caverna, para começar; a janela deixa escolher)
+      t.gera = { t: 'masmorra', m: p.tipo === 'subsolo' ? 'caverna' : p.tipo, n: Math.min(99, p.nivel + 1), tam: p.tamanho, e: p.estilo, s: (sub(p.seed, 77) % 2147483000) + 1 };
       sc.tokens.push(t);
+    }
+    // (lote 18) os achados e os ninhos do subsolo: marcadores ocultos, com o nome do que é
+    for (const m of p.marcadores || []) if (Props.P[m.id]) { const t = Props.novo(sc, m.id, m.x * c, m.y * c, 1, true); t.name = m.n; sc.tokens.push(t); }
+    // (lote 18) a arena: o chefe no lugar dele (dois quadrados, dois turnos por rodada), os pontos de reforço (ocultos), a
+    // entrada (a Saída, quando a arena é a sala do chefe de uma masmorra) e as fases prontas, guardadas na cena
+    if (p.tipo === 'arena') {
+      const a = p.arena, ch = newToken(sc, a.chefe.x * c, a.chefe.y * c, { name: CHEFE_ARENA[a.tipo] || 'O chefe', size: 2, turns: 2, color: '#8f3d4a' });
+      sc.tokens.push(ch);
+      a.reforcos.forEach((r, i) => { if (!Props.P.emboscada) return; const t = Props.novo(sc, 'emboscada', (r[0] - 0.5) * c, (r[1] - 0.5) * c, 1, true); t.name = 'Reforços (' + (a.fases[0] ? a.fases[0].nome.toLowerCase() : 'fase 2') + ') ' + (i + 1); sc.tokens.push(t); });
+      if (a.entrada) {
+        const id = fora ? 'saida' : 'chegada';
+        if (Props.P[id]) { const t = Props.novo(sc, id, (a.entrada.x - 0.5) * c, (a.entrada.y - 0.5) * c, 1, true); if (fora) t.cena = fora.id; sc.tokens.push(t); }
+      }
+      sc.fases = JSON.parse(JSON.stringify(a.fases.map(f => Object.assign({}, f, { m: f.m.filter(x => x.on !== false) })).filter(f => f.m.length)));
+      sc.light = 'penumbra'; sc.tone = 'noite';
+      if (a.tipo === 'coliseu' || a.tipo === 'circulo' || a.tipo === 'topo') { sc.light = 'claro'; sc.tone = 'entardecer'; }
     }
     normalizeScene(sc);
     Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
@@ -1659,26 +2313,30 @@ const Masmorra = (() => {
       tipo: g0 && TIPOS.some(x => x[0] === g0.m) ? g0.m : TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra',
       tamanho: g0 && TAMANHOS[g0.tam] ? g0.tam : TAMANHOS[o.masTam] ? o.masTam : 'medio',
       nivel: g0 ? g0.n : 1, estilo: Estilos.valido(g0 ? g0.e : o.genEstilo), seed: g0 ? g0.s : novaSemente(),
-      segredos: o.masSeg !== false, descida: o.masDesce !== false, relevo: o.genRelevo !== false,
+      segredos: o.masSeg !== false, descida: o.masDesce !== false, relevo: o.genRelevo !== false, chefe: false,
     };
     let plano = null, nomeMexido = false;
     const cv = h('canvas', { class: 'ger-cv', id: 'mas-prev', width: 460, height: 330, 'aria-label': 'Prévia do nível' });
     const resumoEl = h('p', { class: 'note', id: 'mas-resumo', role: 'status' }), ctl = h('div', { class: 'ger-op' }), nota = note('');
     const inNome = h('input', { id: 'mas-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
     const refazer = () => {
-      plano = gerar({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: st.estilo, seed: st.seed, segredos: st.segredos, descida: st.descida });
+      // (lote 18) o último nível: a sala do chefe (a arena que combina com o tipo), com a Saída de volta na entrada
+      plano = st.chefe ? gerar({ tipo: 'arena', arena: ARENA_DO_TIPO[st.tipo] || 'trono', tamanho: st.tamanho === 'grande' ? 'grande' : st.tamanho === 'pequeno' ? 'pequeno' : 'medio', estilo: st.estilo, seed: st.seed })
+        : gerar({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: st.estilo, seed: st.seed, segredos: st.segredos, descida: st.descida });
       try { previa(cv, plano, 460, 330, { relevo: st.relevo }); } catch (e) { console.error(e); }
       resumoEl.textContent = resumo(plano);
-      if (!nomeMexido) inNome.value = nomePadrao(plano);
+      if (!nomeMexido) inNome.value = st.chefe ? NOME_ARENA[plano.arena.tipo] : nomePadrao(plano);
+      if (st.chefe) { nota.textContent = 'A sala do chefe: ' + (NOME_ARENA[plano.arena.tipo] || '').toLowerCase() + ', com o chefe no lugar dele, os pontos de reforço escondidos e as fases prontas (você aciona na aba Cena, com prévia e Desfazer). A Saída, na entrada, leva de volta. Nada sai escrito.'; return; }
       nota.textContent = NOTA[st.tipo] + ' Sai uma cena nova, dentro desta, no breu (só o fogo e os cogumelos iluminam), com a Saída na escada de subida levando de volta' + (st.descida ? ' e, na escada de descida, a Entrada do nível ' + (st.nivel + 1) + ' (dois cliques nela geram o nível de baixo quando você quiser)' : '') + (st.segredos ? '. As portas secretas e as runas-armadilha ficam escondidas dos jogadores até você revelar' : '') + '. O marcador fica ligado à cena nova. Nada sai escrito.';
     };
     const lembrar = () => { o.masTipo = st.tipo; o.masTam = st.tamanho; o.masSeg = st.segredos; o.masDesce = st.descida; };
-    const pintarC = () => ctl.replaceChildren(
+    const pintarC = () => ctl.replaceChildren(...[
       field('Tipo', seg('mas-tipo', st.tipo, TIPOS.map(([k, n]) => [k, n]), v => { st.tipo = v; lembrar(); pintarC(); refazer(); }), 'stack'),
       field('Tamanho', seg('mas-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, `${TAMANHOS[k].W} × ${TAMANHOS[k].H} quadrados`]), v => { st.tamanho = v; lembrar(); pintarC(); refazer(); }), 'stack'),
-      K.toggle('mas-seg', st.segredos, v => { st.segredos = v; lembrar(); pintarC(); refazer(); }, 'Com segredos (as portas secretas e as runas-armadilha, escondidas dos jogadores)'),
-      K.toggle('mas-desce', st.descida, v => { st.descida = v; lembrar(); pintarC(); refazer(); }, 'Com a escada para o nível de baixo'),
-      K.toggle('mas-relevo', st.relevo, v => { st.relevo = v; o.genRelevo = v; pintarC(); refazer(); }, 'Com relevo (os estrados, os sarcófagos, a água, o abismo)'));
+      K.toggle('mas-chefe', st.chefe, v => { st.chefe = v; nomeMexido = false; pintarC(); refazer(); }, 'O último nível: a sala do chefe (uma arena com as fases)'),
+      st.chefe ? null : K.toggle('mas-seg', st.segredos, v => { st.segredos = v; lembrar(); pintarC(); refazer(); }, 'Com segredos (as portas secretas e as runas-armadilha, escondidas dos jogadores)'),
+      st.chefe ? null : K.toggle('mas-desce', st.descida, v => { st.descida = v; lembrar(); pintarC(); refazer(); }, 'Com a escada para o nível de baixo'),
+      K.toggle('mas-relevo', st.relevo, v => { st.relevo = v; o.genRelevo = v; pintarC(); refazer(); }, 'Com relevo (os estrados, os sarcófagos, a água, o abismo)')].filter(Boolean));
     pintarC(); refazer();
     aberta = { st, get plano() { return plano; }, refazer };
     UI.modal({
@@ -1696,6 +2354,7 @@ const Masmorra = (() => {
             UI.closeModal();
             if (Store.S.current === fora.id && Store.get('tokens', t.id)) UI.ligarObjeto(t, sc.id);
             UI.switchScene(sc.id);
+            if (p.arena) { UI.toast(`"${sc.name}" criada, dentro de "${fora.name}": a sala do chefe. A Saída, na entrada, leva de volta; as fases ficam na aba Cena.`, { long: true }); return; }
             UI.toast(`"${sc.name}" criada, dentro de "${fora.name}". A Saída, na escada de subida, leva de volta` + (p.desce ? `; a Entrada da escada de descida gera o nível ${p.nivel + 1}.` : '.'), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
@@ -1703,7 +2362,65 @@ const Masmorra = (() => {
       }],
     });
   }
-  const vivo = () => (aberta && document.getElementById('mas-prev') ? aberta : null);
+  const vivo = () => (aberta && document.getElementById(aberta.subsolo ? 'sub-prev' : 'mas-prev') ? aberta : null);
+
+  /* (lote 18) "Gerar a caverna embaixo…": pela entrada de gruta (a da Região livre já sabe o rio e o bioma de cima) ou
+     por uma Entrada posta à mão. A caverna tem o tamanho desta cena e a subida embaixo da entrada; sai uma cena nova,
+     dentro desta, no breu, com a Saída levando de volta. */
+  function abrirSubsolo(t) {
+    const fora = Store.scene();
+    if (!isGM() || !t || !fora) return;
+    const K = UI.kit, { field, seg, btn, note } = K, g0 = t.gera && t.gera.t === 'subsolo' ? t.gera : {}, o = App.opt, c = fora.cell;
+    const x = isFinite(g0.x) ? g0.x : (t.x + t.size * c / 2) / c, y = isFinite(g0.y) ? g0.y : (t.y + t.size * c / 2) / c;
+    const rio = Array.isArray(g0.rio) && g0.rio.length >= 2 ? g0.rio : null;
+    const st = {
+      bioma: BIOMAS_SUB.some(b => b[0] === g0.bio) ? g0.bio : BIOMAS_SUB.some(b => b[0] === o.subBio) ? o.subBio : 'fungos',
+      rio: !!rio && o.subRio !== false, achados: o.subAch !== false, descida: o.subDesce !== false, relevo: o.genRelevo !== false,
+      seed: Number(g0.s) > 0 ? g0.s : novaSemente(), estilo: Estilos.valido(o.genEstilo),
+    };
+    const sugerido = BIOMAS_SUB.some(b => b[0] === g0.bio) ? g0.bio : null;
+    let plano = null, nomeMexido = false;
+    const cv = h('canvas', { class: 'ger-cv', id: 'sub-prev', width: 460, height: 330, 'aria-label': 'Prévia da caverna' });
+    const resumoEl = h('p', { class: 'note', id: 'sub-resumo', role: 'status' }), ctl = h('div', { class: 'ger-op' }), nota = note('');
+    const inNome = h('input', { id: 'sub-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
+    const refazer = () => {
+      plano = gerar({ tipo: 'subsolo', W: fora.cols, H: fora.rows, x, y, rio: st.rio ? rio : null, bioma: st.bioma, achados: st.achados, descida: st.descida, nivel: 1, estilo: st.estilo, seed: st.seed });
+      try { previa(cv, plano, 460, 330, { relevo: st.relevo }); } catch (e) { console.error(e); }
+      resumoEl.textContent = resumo(plano);
+      if (!nomeMexido) inNome.value = ('Subsolo de ' + fora.name).slice(0, 60);
+      nota.textContent = NOTA_SUB[st.bioma] + ' Do tamanho desta cena (' + fora.cols + ' × ' + fora.rows + '), com a subida embaixo da entrada: sai uma cena nova, dentro desta, no breu, com a Saída levando de volta' + (st.descida ? ' e a passagem escondida para o nível de baixo.' : '.');
+    };
+    const lembrar = () => { o.subBio = st.bioma; o.subRio = st.rio; o.subAch = st.achados; o.subDesce = st.descida; };
+    const pintarC = () => ctl.replaceChildren(
+      field('O bioma de baixo', seg('sub-bio', st.bioma, BIOMAS_SUB.map(([k, n]) => [k, n + (k === sugerido ? ' (de cima)' : ''), null, NOTA_SUB[k]]), v => { st.bioma = v; lembrar(); pintarC(); refazer(); }), 'stack'),
+      rio ? K.toggle('sub-rio', st.rio, v => { st.rio = v; lembrar(); pintarC(); refazer(); }, 'O rio de cima vira o rio de baixo (pelo mesmo traçado)') : note('Sem rio na cena de cima (ou a entrada foi posta à mão): a caverna não tem o rio de baixo.'),
+      K.toggle('sub-ach', st.achados, v => { st.achados = v; lembrar(); pintarC(); refazer(); }, 'Com um achado e um ninho (marcadores ocultos, com o nome do que é)'),
+      K.toggle('sub-desce', st.descida, v => { st.descida = v; lembrar(); pintarC(); refazer(); }, 'Descer mais (uma passagem escondida para o nível de baixo)'),
+      K.toggle('sub-relevo', st.relevo, v => { st.relevo = v; o.genRelevo = v; pintarC(); refazer(); }, 'Com relevo (a água e o lago)'));
+    pintarC(); refazer();
+    aberta = { st, get plano() { return plano; }, refazer, subsolo: true };
+    UI.modal({
+      title: 'Gerar a caverna embaixo', xl: true,
+      body: h('div', { class: 'ger' },
+        h('div', { class: 'ger-g' }, ctl, h('div', { class: 'ger-pv' }, cv, h('div', { class: 'row' }, btn('Gerar outra', () => { st.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'sub-outro', title: 'Sorteia outra caverna, com as mesmas escolhas' })), resumoEl)),
+        field('Nome da cena', inNome, 'stack'),
+        nota),
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
+          const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
+          if (b) { b.disabled = true; b.textContent = 'Criando…'; }
+          const p = plano;
+          criar(p, inNome.value, fora, { relevo: st.relevo }).then(sc => {
+            UI.closeModal();
+            if (Store.S.current === fora.id && Store.get('tokens', t.id)) UI.ligarObjeto(t, sc.id);
+            UI.switchScene(sc.id);
+            UI.toast(`"${sc.name}" criada, dentro de "${fora.name}". A Saída, embaixo da entrada, leva de volta` + (p.desce ? '; a passagem escondida gera o nível de baixo.' : '.'), { long: true });
+          }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
+          return false;
+        },
+      }],
+    });
+  }
 
   /* ================= a aba Masmorra do "Gerar um lugar…" (lote 7, parte 4b-3c) =================
      O mesmo nível da janela da Entrada, sem precisar de uma Entrada: o tipo, o tamanho, o nível (o nome acompanha), a
@@ -1762,5 +2479,5 @@ const Masmorra = (() => {
     dica: '"Gerar outro" sorteia outro nível, com as mesmas escolhas (a masmorra não tem partes para travar).',
     nota: 'Sai uma cena nova, no breu (só o fogo e os cogumelos iluminam): dentro da cena escolhida em "Embaixo de", com a Saída na escada de subida levando de volta — ou solta, com a Saída ainda sem destino (você escolhe a cena no painel dela). Na escada de descida, a Entrada do nível de baixo (dois cliques nela geram o próximo quando você quiser). As portas secretas e as runas-armadilha ficam escondidas dos jogadores até você revelar. Nada sai escrito.',
     feito: feitoL };
-  return { TIPOS, TAMANHOS, NOME, PAL_M, DESENHO, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LUGAR };
+  return { TIPOS, TAMANHOS, NOME, PAL_M, DESENHO, BIOMAS_SUB, biomaDeBaixo, ARENAS, TAM_ARENA, NOME_ARENA, MUDANCAS, FASES_ARENA, nomeMud, CHEFE_ARENA, LACAIO_ARENA, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, abrirSubsolo, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LUGAR };
 })();

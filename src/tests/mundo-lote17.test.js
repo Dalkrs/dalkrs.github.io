@@ -280,6 +280,8 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
 
   await passo('a caneta', async () => {
     ok(await F.locator('#zCaneta').isVisible() && await F.locator('#rail [data-f="w"]').isVisible(), 'a caneta: no trilho e na caixa do zoom');
+    // (o aviso do dia da campanha, embaixo, cobre a caixa do zoom por alguns segundos: espera ele sair)
+    await A(() => new Promise(r => { const t0 = Date.now(), v = () => (!document.querySelector('.toast') || Date.now() - t0 > 15000 ? r() : setTimeout(v, 200)); v(); }));
     await F.locator('#zCaneta').click(); await espera(200);
     ok(await A(() => __mundo.App.ferramenta === 'w') && await F.locator('#zCaneta').getAttribute('aria-pressed') === 'true' && await chip('Some em segundos').getAttribute('aria-pressed') === 'true', 'o botão liga a caneta (a que some, de começo)');
     const id0 = await A(() => __mundo.App.mapa.id);

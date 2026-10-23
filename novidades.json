@@ -2,6 +2,73 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-1",
+      "data": "2026-10-23",
+      "titulo": "Cenas e acampamento",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o relevo agora tem regra — subir custa movimento, o penhasco só escalando, e de cima se ataca melhor. A régua mostra a subida e o penhasco."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: as regras do relevo (aba Cena → Relevo, “Regras do relevo…”): quanto custa subir, a altura do penhasco, o bônus de cima e de baixo e o dano da queda — já com os números de começo. A queda sugere o dano, com “Aplicar” e Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a visão pelo relevo, uma chave por cena — o morro esconde o que está atrás, do fosso só se vê o fosso e de cima se vê mais longe."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Gerar a caverna embaixo…” na entrada de gruta (ou em qualquer Entrada): o subsolo alinhado com a cena de cima, com o rio de baixo, o bioma (fungos, cristais, lava, gelo, raízes), um achado, um ninho e a passagem para descer mais."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: as arenas do chefe — a aba Arena em “Gerar um lugar…”, com oito lugares (coliseu, sala do trono, mausoléu, covil do dragão, altar, ponte sobre o abismo, topo da torre, círculo de pedras), o chefe no lugar dele, os reforços escondidos e as fases prontas, que você liga, desliga ou troca."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: acione as fases da arena pela aba Cena ou pelo botão direito no mapa: a prévia mostra o que muda (os reforços chegam, o chão desaba, a lava sobe…), e o Desfazer volta tudo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o último nível da masmorra pode ser a sala do chefe; no Mapa-múndi, o ninho, a ruína e a masmorra oferecem “Gerar a arena do chefe…”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o campo de batalha — os dois exércitos frente a frente, em blocos de soldados. Quem comanda o exército (ou governa a facção) move os blocos do seu lado."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Guerra: “Abrir no campo de batalha…”, na janela da Batalha, faz a cena do hexágono com os exércitos em blocos (você escolhe quantos soldados por bloco). O flanco, o terreno alto, a cobertura e a reserva voltam como bônus sugeridos, e as perdas da batalha voltam aos blocos, com prévia."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Acampamento: barracas com mais detalhe, abrigos pelo que o grupo carrega (barraca, pavilhão, toldo, rede), os veículos pelo tipo e o estado no desenho (a roda quebrada, a carga demais)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Acampamento: a área Caça, com o defumadouro — quem caça rola no descanso longo, e o resultado sugere a Carne de caça nas provisões."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Acampamento: “Distribuir…” abre um quadro com uma coluna por área: arraste cada retrato para onde o personagem fica, com Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Acampamento: as regras da caça (o atributo, a dificuldade de cada lugar, quantas rações no máximo) ficam no Diário, em Regras do descanso."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.22-5",
       "data": "2026-10-22",
       "titulo": "Mapa-múndi e guerra",

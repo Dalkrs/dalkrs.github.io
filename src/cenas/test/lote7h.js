@@ -153,7 +153,7 @@ const SHOTS = process.env.FOTOS;
     cenaMae = prep.id; ent = prep.ent;
     await doisCliques(ent);
     const m = await menuTxt();
-    ok(/AINDA NÃO LEVA A NENHUMA CENA \| Gerar o interior… \| Gerar uma masmorra embaixo… \| Escolher a cena…/i.test(m), 'os dois cliques na Entrada posta à mão: "Gerar uma masmorra embaixo…" — ' + m);
+    ok(/AINDA NÃO LEVA A NENHUMA CENA \| Gerar o interior… \| Gerar uma masmorra embaixo… \| Gerar a caverna embaixo \(alinhada com esta cena\)… \| Escolher a cena…/i.test(m), 'os dois cliques na Entrada posta à mão: "Gerar uma masmorra embaixo…" — ' + m);
     await page.locator('.menu-i', { hasText: 'Gerar uma masmorra embaixo' }).click(); await w(800);
     const jan = await ev(() => ({ titulo: document.querySelector('.modal h2, .modal .modal-t, .modal header') ? document.querySelector('.modal h2, .modal .modal-t, .modal header').innerText : '', tipos: [...document.querySelectorAll('#mas-tipo button')].map(b => b.textContent.trim()), tams: [...document.querySelectorAll('#mas-tam button')].map(b => b.textContent.trim() + '=' + (b.title || '')), resumo: document.getElementById('mas-resumo').innerText, nome: document.getElementById('mas-nome').value, txt: document.querySelector('.modal').innerText }));
     ok(j(jan.tipos) === j(['Masmorra de pedra', 'Caverna', 'Cripta', 'Mina abandonada']) && j(jan.tams) === j(['Pequeno=34 × 26 quadrados', 'Médio=46 × 34 quadrados', 'Grande=58 × 42 quadrados']), 'a janela: os quatro tipos e os três tamanhos (com as medidas): ' + j([jan.tipos, jan.tams]));
@@ -247,7 +247,7 @@ const SHOTS = process.env.FOTOS;
     await page.locator('#sceneBtn').click(); await w(200);
     await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(700);
     const abas = await ev(() => [...document.querySelectorAll('#ger-lugar button')].map(b => b.textContent.trim()));
-    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Região livre', 'Ruínas', 'Masmorra', 'Porto']), 'a aba Masmorra, entre as Ruínas e o Porto: ' + j(abas));
+    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Região livre', 'Ruínas', 'Masmorra', 'Arena', 'Porto']), 'a aba Masmorra, entre as Ruínas e o Porto: ' + j(abas));
     ok(await ev(() => !!document.getElementById('ger-hora') && !!document.getElementById('ger-clima')), '(nas outras abas, a hora e o clima)');
     await page.locator('#ger-lugar button', { hasText: 'Masmorra' }).click(); await w(700);
     const a0 = await ev(() => ({ lugar: __tc.Gerador.vivo().lugar, plano: __tc.Gerador.vivo().estado.plano.lugar, hora: !!document.getElementById('ger-hora'), clima: !!document.getElementById('ger-clima'), est: !!document.getElementById('ger-est'),

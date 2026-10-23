@@ -62,16 +62,105 @@
     return p.join('');
   }
 
-  /* ---------------- a fogueira: as barracas, os troncos e o fogo ---------------- */
+  /* ---------------- a fogueira: os abrigos, os troncos e o fogo ----------------
+     (lote 18) A barraca com lona de verdade: as costuras, a barra, as cordas até as estacas, a porta aberta (a aba
+     presa de lado) e a luz da fogueira no lado virado para ela. "vira": o lado claro é o da esquerda. */
+  const LONA_E = '#3d352b', LONA_C = '#6a5a41', COSTURA = '#2c261e', CORDA = '#9a8a68';
+  const estacaCorda = (x1, y1, x2, y2) => `<path d="M${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}" stroke="${CORDA}" stroke-width="2" opacity=".75"/><path d="M${f(x2)} ${f(y2 + 2)}l${x2 > x1 ? 5 : -5} -14" stroke="#2a1f16" stroke-width="5" stroke-linecap="round"/>`;
   const barraca = (cx, base, larg, alt, vira) => {
-    const e = cx - larg / 2, d = cx + larg / 2, t = base - alt, porta = larg * 0.16;
-    return `<path d="M${e} ${base}L${cx} ${t}L${d} ${base}Z" fill="#3d352b"/><path d="M${cx} ${t}L${vira ? e : d} ${base}H${cx}Z" fill="#6a5a41"/>`
-      + `<path d="M${cx} ${t + alt * 0.3}L${cx + porta} ${base}H${cx - porta}Z" fill="#15110d"/><path d="M${cx} ${t - 14}V${t + 6}" stroke="#2a221a" stroke-width="5" stroke-linecap="round"/>`;
+    const e = cx - larg / 2, d = cx + larg / 2, t = base - alt, porta = larg * 0.16, claro = vira ? e : d, lado = vira ? -1 : 1;
+    let s = `<g class="abrigo" data-abrigo="barraca"><ellipse cx="${f(cx)}" cy="${f(base + 4)}" rx="${f(larg * 0.6)}" ry="${f(larg * 0.08)}" fill="#000" opacity=".28"/>`
+      + estacaCorda(cx - lado * larg * 0.08, t + alt * 0.12, cx - lado * (larg * 0.5 + 42), base + 8) + estacaCorda(cx + lado * larg * 0.06, t + alt * 0.14, cx + lado * (larg * 0.5 + 38), base + 10)
+      + `<path d="M${f(e)} ${f(base)}L${f(cx)} ${f(t)}L${f(d)} ${f(base)}Z" fill="${LONA_E}"/><path d="M${f(cx)} ${f(t)}L${f(claro)} ${f(base)}H${f(cx)}Z" fill="${LONA_C}"/>`
+      // a luz da fogueira na lona (pulsa com o fogo)
+      + `<path class="luz-lona" d="M${f(cx)} ${f(t)}L${f(claro)} ${f(base)}H${f(cx)}Z" fill="#ff9a4a"/>`;
+    // as costuras (do alto até a barra) e a barra de baixo
+    for (const k of [0.33, 0.66]) s += `<path d="M${f(cx)} ${f(t + 4)}L${f(cx + (e - cx) * k)} ${f(base)}M${f(cx)} ${f(t + 4)}L${f(cx + (d - cx) * k)} ${f(base)}" stroke="${COSTURA}" stroke-width="2" opacity=".45"/>`;
+    s += `<path d="M${f(e + 6)} ${f(base - 7)}H${f(d - 6)}" stroke="${COSTURA}" stroke-width="3" opacity=".5"/>`
+      // a porta aberta: o escuro de dentro, a aba presa de lado e o laço
+      + `<path d="M${f(cx)} ${f(t + alt * 0.3)}L${f(cx + porta)} ${f(base)}H${f(cx - porta)}Z" fill="#15110d"/>`
+      + `<path d="M${f(cx)} ${f(t + alt * 0.3)}L${f(cx - lado * porta * 1.9)} ${f(base)}L${f(cx - lado * porta * 1.05)} ${f(base)}Z" fill="#8a7655"/>`
+      + `<path d="M${f(cx - lado * porta * 1.25)} ${f(base - alt * 0.32)}l${f(-lado * 10)} 4" stroke="${CORDA}" stroke-width="3" stroke-linecap="round"/>`
+      + `<path d="M${f(cx)} ${f(t - 14)}V${f(t + 6)}" stroke="#2a221a" stroke-width="5" stroke-linecap="round"/></g>`;
+    return s;
   };
-  function fogueira() {
+  // a tenda grande (o pavilhão): paredes retas, o teto em ponta, a faixa e a bandeirinha
+  const pavilhao = (cx, base, larg, alt, vira) => {
+    const e = cx - larg / 2, d = cx + larg / 2, parede = alt * 0.48, topo = base - alt, ombro = base - parede, lado = vira ? -1 : 1;
+    return `<g class="abrigo" data-abrigo="tenda"><ellipse cx="${f(cx)}" cy="${f(base + 4)}" rx="${f(larg * 0.62)}" ry="${f(larg * 0.08)}" fill="#000" opacity=".3"/>`
+      + estacaCorda(e + 6, ombro + 4, e - 46, base + 8) + estacaCorda(d - 6, ombro + 4, d + 46, base + 8)
+      + `<rect x="${f(e)}" y="${f(ombro)}" width="${f(larg)}" height="${f(parede)}" fill="${LONA_E}"/>`
+      + `<rect x="${f(vira ? e : cx)}" y="${f(ombro)}" width="${f(larg / 2)}" height="${f(parede)}" fill="${LONA_C}"/>`
+      + `<rect class="luz-lona" x="${f(vira ? e : cx)}" y="${f(ombro)}" width="${f(larg / 2)}" height="${f(parede)}" fill="#ff9a4a"/>`
+      + `<path d="M${f(e - 14)} ${f(ombro + 2)}L${f(cx)} ${f(topo)}L${f(d + 14)} ${f(ombro + 2)}Z" fill="#5a2f34"/><path d="M${f(cx)} ${f(topo)}L${f(lado > 0 ? d + 14 : e - 14)} ${f(ombro + 2)}H${f(cx)}Z" fill="#7a3d42"/>`
+      + `<path d="M${f(e - 14)} ${f(ombro + 2)}H${f(d + 14)}" stroke="#c7955a" stroke-width="4"/>`
+      + [0.25, 0.5, 0.75].map(k => `<path d="M${f(e + larg * k)} ${f(ombro)}V${f(base)}" stroke="${COSTURA}" stroke-width="2" opacity=".4"/>`).join('')
+      + `<path d="M${f(cx - larg * 0.12)} ${f(base)}V${f(ombro + parede * 0.18)}Q${f(cx)} ${f(ombro)} ${f(cx + larg * 0.12)} ${f(ombro + parede * 0.18)}V${f(base)}Z" fill="#15110d"/>`
+      + `<path d="M${f(cx)} ${f(topo)}v-34" stroke="#2a221a" stroke-width="4"/><path d="M${f(cx)} ${f(topo - 34)}h${f(lado * 30)}l${f(-lado * 6)} 8l${f(lado * 6)} 8h${f(-lado * 30)}" fill="#c7955a"/></g>`;
+  };
+  // o toldo aberto: a lona esticada em dois postes, uma mesa de caixotes embaixo e a lanterna
+  const toldo = (cx, base, larg, vira) => {
+    const e = cx - larg / 2, d = cx + larg / 2, alto = base - 150, baixo = base - 96, lado = vira ? -1 : 1, fr = lado > 0 ? d : e, tr = lado > 0 ? e : d;
+    return `<g class="abrigo" data-abrigo="toldo"><ellipse cx="${f(cx)}" cy="${f(base + 4)}" rx="${f(larg * 0.6)}" ry="${f(larg * 0.08)}" fill="#000" opacity=".26"/>`
+      + `<path d="M${f(fr)} ${f(base)}V${f(alto)}M${f(tr)} ${f(base)}V${f(baixo)}" stroke="#3a2a1d" stroke-width="7"/>`
+      + estacaCorda(fr, alto + 4, fr + lado * 50, base + 8) + estacaCorda(tr, baixo + 4, tr - lado * 44, base + 8)
+      + `<path d="M${f(tr - lado * 10)} ${f(baixo)}L${f(fr + lado * 14)} ${f(alto)}L${f(fr + lado * 14)} ${f(alto + 34)}L${f(tr - lado * 10)} ${f(baixo + 30)}Z" fill="${LONA_C}"/>`
+      + `<path class="luz-lona" d="M${f(tr - lado * 10)} ${f(baixo)}L${f(fr + lado * 14)} ${f(alto)}L${f(fr + lado * 14)} ${f(alto + 34)}L${f(tr - lado * 10)} ${f(baixo + 30)}Z" fill="#ff9a4a"/>`
+      + [0.25, 0.5, 0.75].map(k => { const x = tr - lado * 10 + (fr - tr + lado * 24) * k, y = baixo + (alto - baixo) * k; return `<path d="M${f(x)} ${f(y + 32)}q${f(lado * 6)} 10 ${f(lado * 14)} 0" stroke="${COSTURA}" stroke-width="2" fill="none" opacity=".5"/>`; }).join('')
+      + `<rect x="${f(cx - 46)}" y="${f(base - 40)}" width="40" height="40" fill="#5a4330" stroke="#3a2a1d" stroke-width="3"/><rect x="${f(cx + 2)}" y="${f(base - 30)}" width="34" height="30" fill="#7a5c3e" stroke="#3a2a1d" stroke-width="3"/>`
+      + `<rect x="${f(cx - 52)}" y="${f(base - 46)}" width="96" height="8" rx="2" fill="#7a5c3e"/><ellipse cx="${f(cx - 22)}" cy="${f(base - 50)}" rx="12" ry="4" fill="#c7955a"/><rect x="${f(cx + 14)}" y="${f(base - 62)}" width="10" height="16" rx="3" fill="#ffd27a"/>`
+      + `<circle cx="${f(cx + 19)}" cy="${f(base - 56)}" r="22" fill="url(#gLuz)" opacity=".7"/></g>`;
+  };
+  // a rede entre duas árvores (na mata) ou dois postes, com uma manta
+  const rede = (cx, base, larg, lugar) => {
+    const e = cx - larg / 2, d = cx + larg / 2, y0 = base - 92, arvore = lugar === 'floresta' || lugar === 'neve';
+    const tronco = x => (arvore ? `<path d="M${f(x - 10)} ${f(base)}V${f(base - 200)}h20V${f(base)}Z" fill="#2a1f16"/><path d="M${f(x)} ${f(base - 290)}l46 70h-22l34 50h-116l34-50h-22Z" fill="#0f1a14"/>` : `<path d="M${f(x)} ${f(base)}V${f(base - 120)}" stroke="#3a2a1d" stroke-width="8"/>`);
+    return `<g class="abrigo" data-abrigo="rede"><ellipse cx="${f(cx)}" cy="${f(base + 4)}" rx="${f(larg * 0.55)}" ry="${f(larg * 0.07)}" fill="#000" opacity=".22"/>`
+      + tronco(e) + tronco(d)
+      + `<path d="M${f(e + 8)} ${f(y0)}Q${f(cx)} ${f(y0 + 70)} ${f(d - 8)} ${f(y0)}" stroke="#c7b48a" stroke-width="12" fill="none"/>`
+      + `<path d="M${f(e + 8)} ${f(y0)}Q${f(cx)} ${f(y0 + 70)} ${f(d - 8)} ${f(y0)}" stroke="#8a7655" stroke-width="2" stroke-dasharray="6 5" fill="none"/>`
+      + `<path d="M${f(cx - 40)} ${f(y0 + 26)}q40 22 84 -4l-6 16q-36 16 -72 0Z" fill="#8f3d4a"/></g>`;
+  };
+  /* Os abrigos em volta do fogo: as duas barracas de sempre, mais uma ou duas com mais gente (5 e 7), e — pelo que o
+     grupo tem no Equipamento — a tenda grande, o toldo e a rede no lugar delas. o: { n (quantos estão na fogueira),
+     tipos (Set: 'tenda', 'toldo', 'rede', 'barraca'), lugar } */
+  function tiposDeAbrigo(nomes) {
+    const t = new Set();
+    for (const n of nomes || []) {
+      const k = String(n || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      if (/tenda|pavilh/.test(k)) t.add('tenda');
+      if (/toldo|lona/.test(k)) t.add('toldo');
+      if (/\brede/.test(k)) t.add('rede');
+      if (/barraca/.test(k)) t.add('barraca');
+    }
+    return t;
+  }
+  const tiposDe = x => (x.tipos instanceof Set ? x.tipos : new Set(Array.isArray(x.tipos) ? x.tipos : []));
+  // os dois da frente (a tenda grande no lugar da barraca da esquerda, quando o grupo tem uma)
+  function abrigos(o) {
+    const tipos = tiposDe(o || {});
+    return (tipos.has('tenda') ? pavilhao(300, 612, 330, 200, false) : barraca(300, 610, 320, 190, false)) + barraca(1310, 600, 280, 165, true);
+  }
+  // os de trás, menores (desenhados antes da caravana: o veículo da beirada fica na frente deles)
+  function abrigosTras(o) {
+    const x = o || {}, n = Math.max(0, +x.n || 0), tipos = tiposDe(x), lugar = x.lugar || 'floresta', p = [];
+    const tras = [];
+    if (tipos.has('toldo')) tras.push('toldo');
+    if (tipos.has('rede')) tras.push('rede');
+    if (n >= 5 || tipos.has('barraca')) tras.push('barraca');
+    if (n >= 7) tras.push('barraca');
+    // (lá atrás, dos dois lados do fogo: na tela estreita os lados da cena ficam cortados, e a frente é da caravana)
+    const VAGAS = [[680, 542, false], [925, 540, true]];
+    tras.slice(0, 2).forEach((t, i) => {
+      const [cx, base, vira] = VAGAS[i];
+      p.push(`<g transform="translate(${cx} ${base}) scale(.5) translate(${-cx} ${-base})">` + (t === 'toldo' ? toldo(cx, base, 230, vira) : t === 'rede' ? rede(cx, base, 230, lugar) : barraca(cx, base, 250, 150, vira)) + '</g>');
+    });
+    return p.join('');
+  }
+  function fogueira(o) {
     const r = sorte(7), p = [];
     p.push('<ellipse cx="800" cy="660" rx="520" ry="150" fill="url(#gChao)"/>');
-    p.push(barraca(300, 610, 320, 190, false), barraca(1310, 600, 280, 165, true));
+    p.push(abrigos(o));
     p.push('<rect x="520" y="668" width="170" height="30" rx="15" fill="#3a2a1d"/><circle cx="535" cy="683" r="15" fill="#6b5138"/><circle cx="535" cy="683" r="8" fill="#55402c"/>');
     p.push('<rect x="910" y="668" width="170" height="30" rx="15" fill="#3a2a1d"/><circle cx="1065" cy="683" r="15" fill="#6b5138"/><circle cx="1065" cy="683" r="8" fill="#55402c"/>');
     p.push('<circle class="brilho" cx="800" cy="600" r="430" fill="url(#gFogo)"/>');
@@ -91,6 +180,15 @@
     if (area === 'convivio') return '<ellipse cx="800" cy="660" rx="420" ry="110" fill="url(#gChao)" opacity=".7"/>'
       + '<ellipse cx="800" cy="676" rx="230" ry="46" fill="#5b2f3a" opacity=".55"/><ellipse cx="800" cy="676" rx="200" ry="36" fill="none" stroke="#c7955a" stroke-width="3" stroke-dasharray="10 8" opacity=".5"/>'
       + '<circle cx="800" cy="640" r="120" fill="url(#gLuz)" opacity=".5"/><path d="M780 650h40l-6 12h-28Z" fill="#4f4b46"/><path class="chama c" d="M800 612C810 626 814 636 810 646C806 652 794 652 790 646C786 636 790 626 800 612Z" fill="#ffc04d" style="transform-origin:800px 650px"/>';
+    // (lote 18) o canto dos caçadores: o toco com o arco e a aljava, a galhada no poste, as armadilhas e a trilha
+    if (area === 'caca') return '<ellipse cx="800" cy="660" rx="600" ry="120" fill="#000" opacity=".12"/>'
+      + '<path d="M1500 900C1380 760 1260 700 1120 640" stroke="#000" stroke-opacity=".12" stroke-width="70" fill="none"/>'
+      + '<ellipse cx="300" cy="648" rx="46" ry="12" fill="#000" opacity=".3"/><path d="M262 648v-46h76v46Z" fill="#5a4330"/><ellipse cx="300" cy="602" rx="38" ry="10" fill="#7a5c3e"/><ellipse cx="300" cy="602" rx="26" ry="6" fill="none" stroke="#5a4330" stroke-width="2"/>'
+      + '<path d="M332 600Q368 520 340 430" stroke="#7a4e2c" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M334 598L342 432" stroke="#d8ccb0" stroke-width="1.5"/>'
+      + '<path d="M252 604l-14-86h22l6 86Z" fill="#6b4a2e"/><path d="M242 520l-6-26M248 520l2-28M254 520l8-24" stroke="#c7955a" stroke-width="3"/><path d="M232 494l4 -8l4 8ZM248 490l3-8l4 8ZM260 494l5-7l3 9Z" fill="#e8dcc0"/>'
+      + '<path d="M460 652V470" stroke="#3a2a1d" stroke-width="9"/><path d="M460 478c-30-10-44-34-40-58M460 478c30-10 44-34 40-58M440 448l-14-10M480 448l14-10M430 430l-10-16M490 430l10-16" stroke="#e0d2b0" stroke-width="6" fill="none" stroke-linecap="round"/>'
+      + '<path d="M1180 668h70l-10 -14h-50Z" fill="#4f4b46"/><path d="M1186 654l58 0M1196 654l10 -26l10 26M1226 654l10 -26l10 26" stroke="#8a8f99" stroke-width="3" fill="none"/>'
+      + '<path d="M1360 676c18-10 40-10 58 0" stroke="#8a7655" stroke-width="3" fill="none"/><circle cx="1389" cy="672" r="5" fill="none" stroke="#8a7655" stroke-width="2"/>';
     if (area === 'guarda') return '<ellipse cx="800" cy="660" rx="600" ry="120" fill="#000" opacity=".1"/>'
       + '<path d="M760 900C780 760 790 700 800 640" stroke="#000" stroke-opacity=".12" stroke-width="80" fill="none"/>';
     return '';
@@ -262,6 +360,25 @@
         + [[-60, -130], [60, -140], [0, -170]].map(([dx, dy], i) => `<circle class="orbe" cx="${x + dx}" cy="${y + dy}" r="7" fill="#ffe9a8" style="animation-delay:-${i * 1.3}s"/>` + brilho(x + dx, y + dy, 26, 0.7)).join('');
       return s;
     },
+    // (lote 18) o defumadouro: o varal de carne sobre a fumaça; a armação com a pele (2); a cabana de defumar (3)
+    defumadouro(x, y, n) {
+      const tira = (px, py, a) => `<path d="M${px} ${py}v${a}l-5 6h10l-5 -6" stroke="#7a3a2a" stroke-width="7" stroke-linecap="round" fill="none"/>`;
+      const fumaca = (px, py) => `<path class="fumaca" d="M${px} ${py}c-10-18 12-26 0-46c-10-16 10-24 2-40" stroke="#c9ced6" stroke-width="7" fill="none" stroke-linecap="round" opacity=".35"/>`;
+      let s = sombra(x, y, 90) + `<path d="M${x - 70} ${y}l14 -110M${x + 70} ${y}l-14 -110M${x - 62} ${y - 104}h124" stroke="${madeiraE}" stroke-width="6"/>`
+        + [-40, -16, 8, 32].map((d, i) => tira(x + d, y - 100, 30 + (i % 2) * 10)).join('')
+        + `<ellipse cx="${x}" cy="${y - 6}" rx="26" ry="7" fill="#3a2a1d"/><path d="M${x - 10} ${y - 8}c4-10 10-4 10-14c4 8 8 6 10 14Z" fill="#c24a1e"/>` + fumaca(x - 4, y - 18);
+      if (n >= 2) s += `<path d="M${x + 110} ${y}V${y - 120}M${x + 190} ${y}V${y - 120}M${x + 104} ${y - 114}h92M${x + 104} ${y - 16}h92" stroke="${madeiraE}" stroke-width="5"/>`
+        + `<path d="M${x + 118} ${y - 108}q32 -6 64 0q6 40 -4 84q-28 6 -56 0q-10 -44 -4 -84Z" fill="#b08a5c" stroke="#7a5c3e" stroke-width="2"/>`
+        + `<path d="M${x + 118} ${y - 108}l-8 -6M${x + 182} ${y - 108}l8 -6M${x + 122} ${y - 24}l-10 6M${x + 178} ${y - 24}l10 6" stroke="${CORDA}" stroke-width="2"/>`
+        + `<path d="M${x - 130} ${y}h40l-6 -30h-28Z" fill="${madeira}"/><path d="M${x - 126} ${y - 22}h32" stroke="${madeiraE}" stroke-width="3"/>`;
+      if (n >= 3) s = sombra(x, y, 150) + `<path d="M${x - 90} ${y}V${y - 110}H${x + 50}V${y}Z" fill="#4f3a28"/><path d="M${x - 108} ${y - 106}L${x - 20} ${y - 176}L${x + 68} ${y - 106}Z" fill="#3a2a1d"/>`
+        + `<path d="M${x - 90} ${y - 36}h140M${x - 90} ${y - 72}h140" stroke="#3a2a1d" stroke-width="3"/><rect x="${x - 40}" y="${y - 64}" width="40" height="64" fill="#15110d"/>`
+        + [-70, -54, 22, 38].map((d, i) => tira(x + d, y - 102, 22 + (i % 2) * 8)).join('') + fumaca(x - 40, y - 180) + fumaca(x - 10, y - 170)
+        + `<path d="M${x + 110} ${y}V${y - 120}M${x + 190} ${y}V${y - 120}M${x + 104} ${y - 114}h92M${x + 104} ${y - 16}h92" stroke="${madeiraE}" stroke-width="5"/>`
+        + `<path d="M${x + 118} ${y - 108}q32 -6 64 0q6 40 -4 84q-28 6 -56 0q-10 -44 -4 -84Z" fill="#b08a5c" stroke="#7a5c3e" stroke-width="2"/>`
+        + `<path d="M${x - 150} ${y}h44v-30h-44Z" fill="${madeiraC}" stroke="${madeiraE}" stroke-width="2"/><path d="M${x - 140} ${y - 30}l6 -14h16l6 14" fill="#7a3a2a"/>`;
+      return s;
+    },
     horta(x, y, n) {
       const broto = (px, py, cor) => `<path d="M${px} ${py}c-6-10-14-10-16-6c6 4 10 6 16 6Zm0 0c4-12 12-14 16-10c-6 4-10 8-16 10Z" fill="${cor || '#6fbf6f'}"/>`;
       let s = `<ellipse cx="${x}" cy="${y - 6}" rx="80" ry="16" fill="#3b2a1d"/>` + [-50, -20, 10, 40].map(d => broto(x + d, y - 8)).join('');
@@ -282,7 +399,7 @@
     oficina: [[-70, 70], [-120, 156], [-170, 170]], bardo: [[-32, 66], [-110, 110], [-120, 120]], mesa: [[-140, 140], [-150, 150], [-190, 218]],
     banho: [[-56, 56], [-56, 150], [-148, 182]], torre: [[-44, 44], [-56, 56], [-56, 64]], alarmes: [[-70, 70], [-98, 98], [-152, 162]],
     enfermaria: [[-50, 82], [-110, 110], [-110, 190]], estudo: [[-50, 50], [-130, 142], [-150, 187]], santuario: [[-30, 30], [-90, 90], [-130, 130]],
-    horta: [[-80, 80], [-120, 182], [-150, 224]],
+    horta: [[-80, 80], [-120, 182], [-150, 224]], defumadouro: [[-70, 70], [-130, 196], [-150, 196]],
   };
   const ORDEM = Object.keys(EXT);
   const nivelOk = v => Math.max(1, Math.min(3, Math.round(+v) || 1));
@@ -318,20 +435,68 @@
      Até seis veículos e animais: atrás, entre as barracas e o fogo, e nas beiradas (o barco fica no mar, quando há
      mar; em terra, vai numa carreta). [x, chão, para que lado olha, escala] */
   const CANTOS = [[575, 556, 1, 0.72], [1040, 552, -1, 0.72], [60, 646, 1, 1], [1540, 646, -1, 1], [380, 540, 1, 0.55], [1240, 538, -1, 0.55]];
+  /* (lote 18) As rodas com raios; a quebrada: o aro aberto, raios faltando e um pedaço caído no chão. */
+  function roda(cx, cy, r, quebrada) {
+    const pt = (a, k) => f(cx + Math.cos(a) * r * k) + ' ' + f(cy + Math.sin(a) * r * k);
+    if (!quebrada) {
+      let s0 = `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="none" stroke="${madeiraE}" stroke-width="6"/><circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r - 4)}" fill="none" stroke="${madeiraC}" stroke-width="1.5" opacity=".6"/>`;
+      for (let i = 0; i < 8; i++) s0 += `<path d="M${pt(i * Math.PI / 4, 0.2)}L${pt(i * Math.PI / 4, 0.94)}" stroke="${madeiraE}" stroke-width="3"/>`;
+      return s0 + `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r * 0.22)}" fill="${madeiraC}" stroke="${madeiraE}" stroke-width="2"/>`;
+    }
+    const a0 = -0.2, a1 = a0 + Math.PI * 1.45;
+    let s0 = `<path class="roda-quebrada" d="M${pt(a0, 1)}A${f(r)} ${f(r)} 0 1 1 ${pt(a1, 1)}" fill="none" stroke="${madeiraE}" stroke-width="6" stroke-linecap="round"/>`;
+    for (const a of [a0 + 0.6, a0 + 1.9, a0 + 3.4]) s0 += `<path d="M${pt(a, 0.2)}L${pt(a, 0.94)}" stroke="${madeiraE}" stroke-width="3"/>`;
+    s0 += `<path d="M${pt(a0 + 4.1, 0.2)}L${pt(a0 + 4.1, 0.55)}" stroke="${madeiraE}" stroke-width="3"/>`;
+    // o pedaço do aro e um raio soltos no chão
+    return s0 + `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r * 0.22)}" fill="${madeiraC}" stroke="${madeiraE}" stroke-width="2"/>`
+      + `<path d="M${f(cx + r * 0.9)} ${f(cy + r + 2)}q${f(r * 0.5)} -8 ${f(r)} 0" stroke="${madeiraE}" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M${f(cx - r * 1.4)} ${f(cy + r + 1)}l${f(r * 0.8)} -3" stroke="${madeiraE}" stroke-width="3" stroke-linecap="round"/>`;
+  }
+  // a carga demais: sacos, um barril e caixotes empilhados acima do que cabe, amarrados com corda (em cima de y0)
+  function pilha(x, y0, larg) {
+    const k = larg / 120;
+    return `<g class="carga-demais"><rect x="${f(x - 52 * k)}" y="${f(y0 - 34)}" width="${f(40 * k)}" height="34" fill="${madeiraC}" stroke="${madeiraE}" stroke-width="2"/>`
+      + `<ellipse cx="${f(x + 6 * k)}" cy="${f(y0 - 20)}" rx="${f(22 * k)}" ry="20" fill="#c7b48a" stroke="#8a7655" stroke-width="2"/><path d="M${f(x + 6 * k)} ${f(y0 - 40)}v-8" stroke="#8a7655" stroke-width="3"/>`
+      + `<rect x="${f(x + 28 * k)}" y="${f(y0 - 40)}" width="${f(26 * k)}" height="40" rx="7" fill="#7a5c3e" stroke="${madeiraE}" stroke-width="2"/><path d="M${f(x + 28 * k)} ${f(y0 - 28)}h${f(26 * k)}M${f(x + 28 * k)} ${f(y0 - 12)}h${f(26 * k)}" stroke="#4f4b46" stroke-width="3"/>`
+      + `<ellipse cx="${f(x - 24 * k)}" cy="${f(y0 - 50)}" rx="${f(20 * k)}" ry="16" fill="#b8a27a" stroke="#8a7655" stroke-width="2"/>`
+      + `<path d="M${f(x - 58 * k)} ${f(y0 - 18)}Q${f(x)} ${f(y0 - 74)} ${f(x + 58 * k)} ${f(y0 - 18)}" stroke="${CORDA}" stroke-width="2.5" fill="none"/></g>`;
+  }
+  const inclina = (s0, q, cx, cy) => (q ? `<g transform="rotate(${q} ${f(cx)} ${f(cy)})">${s0}</g>` : s0);
   const veiculos = {
-    carroca: (x, y, o) => `${sombra(x, y, 80)}<path d="M${x - 70} ${y - 30}h140v-40h-140Z" fill="${madeira}"/><path d="M${x - 66} ${y - 70}Q${x} ${y - 140} ${x + 66} ${y - 70}Z" fill="#d8ccb0"/><path d="M${x - 30} ${y - 70}Q${x - 26} ${y - 120} ${x - 10} ${y - 126}M${x + 30} ${y - 70}Q${x + 26} ${y - 120} ${x + 10} ${y - 126}" stroke="#a89878" stroke-width="3" fill="none"/>`
-      + `<circle cx="${x - 40}" cy="${y - 18}" r="20" fill="none" stroke="${madeiraE}" stroke-width="6"/><circle cx="${x + 40}" cy="${y - 18}" r="20" fill="none" stroke="${madeiraE}" stroke-width="6"/><path d="M${x + 70 * o} ${y - 34}l${36 * o} 14" stroke="${madeiraE}" stroke-width="5"/>`,
-    carruagem: (x, y, o) => `${sombra(x, y, 80)}<rect x="${x - 60}" y="${y - 110}" width="120" height="76" rx="14" fill="#3d2f4f"/><rect x="${x - 40}" y="${y - 96}" width="32" height="28" rx="4" fill="#ffd27a" opacity=".7"/><rect x="${x + 8}" y="${y - 96}" width="32" height="28" rx="4" fill="#ffd27a" opacity=".7"/>`
-      + `<path d="M${x - 66} ${y - 112}h132" stroke="#c7955a" stroke-width="5"/><circle cx="${x - 40}" cy="${y - 20}" r="22" fill="none" stroke="${madeiraE}" stroke-width="6"/><circle cx="${x + 40}" cy="${y - 20}" r="22" fill="none" stroke="${madeiraE}" stroke-width="6"/>`,
-    barco: (x, y, o) => `<path d="M${x - 80} ${y - 40}h160l-24 34h-112Z" fill="${madeira}"/><path d="M${x - 70} ${y - 34}h140" stroke="${madeiraC}" stroke-width="4"/><path d="M${x} ${y - 40}v-110" stroke="${madeiraE}" stroke-width="5"/><path d="M${x + 4} ${y - 146}l${50 * o} 80h-${50 * o}Z" fill="#e8dcc0"/>`,
+    // (lote 18) e: { quebrado, cheio } — a roda quebrada inclina o veículo para ela; a carga demais vai empilhada em cima
+    carroca: (x, y, o, e) => {
+      const q = e && e.quebrado, rf = x + 40 * o, rt = x - 40 * o;
+      const corpo = `<path d="M${x - 70} ${y - 30}h140v-40h-140Z" fill="${madeira}"/><path d="M${x - 70} ${y - 50}h140M${x - 70} ${y - 40}h140" stroke="${madeiraE}" stroke-width="2" opacity=".6"/>`
+        + `<path d="M${x - 66} ${y - 70}Q${x} ${y - 140} ${x + 66} ${y - 70}Z" fill="#d8ccb0"/><path d="M${x - 30} ${y - 70}Q${x - 26} ${y - 120} ${x - 10} ${y - 126}M${x + 30} ${y - 70}Q${x + 26} ${y - 120} ${x + 10} ${y - 126}" stroke="#a89878" stroke-width="3" fill="none"/>`
+        + `<path d="M${x - 66} ${y - 70}Q${x} ${y - 140} ${x + 66} ${y - 70}" stroke="#8a7a5a" stroke-width="2" fill="none"/>`
+        + (e && e.cheio ? pilha(x, y - 112, 130) : '') + `<path d="M${x + 70 * o} ${y - 34}l${36 * o} 14" stroke="${madeiraE}" stroke-width="5"/>`;
+      return `${sombra(x, y, 80)}` + inclina(corpo + roda(rf, y - 18, 20, false), q ? 7 * o : 0, rf, y - 18) + roda(rt, y - (q ? 10 : 18), 20, q);
+    },
+    carruagem: (x, y, o, e) => {
+      const q = e && e.quebrado, rf = x + 42 * o, rt = x - 40 * o;
+      const corpo = `<rect x="${x - 60}" y="${y - 110}" width="120" height="76" rx="14" fill="#3d2f4f"/><rect x="${x - 40}" y="${y - 96}" width="32" height="28" rx="4" fill="#ffd27a" opacity=".7"/><rect x="${x + 8}" y="${y - 96}" width="32" height="28" rx="4" fill="#ffd27a" opacity=".7"/>`
+        + `<path d="M${x - 66} ${y - 112}h132" stroke="#c7955a" stroke-width="5"/><path d="M${x - 50} ${y - 112}v-8M${x + 50} ${y - 112}v-8M${x - 50} ${y - 120}h100" stroke="#c7955a" stroke-width="3"/>`
+        + `<path d="M${x - 2} ${y - 62}v26" stroke="#2a2036" stroke-width="3"/><path d="M${x + 62 * o} ${y - 92}h${16 * o}v-16h${-16 * o}Z" fill="#c7955a"/><circle cx="${x + 70 * o}" cy="${y - 112}" r="7" fill="#ffd27a"/>`
+        + (e && e.cheio ? pilha(x, y - 120, 110) : '');
+      return `${sombra(x, y, 80)}` + inclina(corpo + roda(rf, y - 18, 18, false), q ? 7 * o : 0, rf, y - 18) + roda(rt, y - (q ? 12 : 22), 22, q);
+    },
+    barco: (x, y, o, e) => `<path d="M${x - 80} ${y - 40}h160l-24 34h-112Z" fill="${madeira}"/><path d="M${x - 74} ${y - 30}h148M${x - 66} ${y - 18}h132" stroke="${madeiraE}" stroke-width="2" opacity=".6"/><path d="M${x - 70} ${y - 34}h140" stroke="${madeiraC}" stroke-width="4"/>`
+      + `<path d="M${x} ${y - 40}v-110" stroke="${madeiraE}" stroke-width="5"/><path d="M${x + 4} ${y - 146}l${50 * o} 80h-${50 * o}Z" fill="#e8dcc0"/><path d="M${x + 4} ${y - 118}l${f(32 * o)} 0" stroke="#8f3d4a" stroke-width="6"/>`
+      + `<path d="M${x - 60 * o} ${y - 34}l${-40 * o} 30M${x + 40 * o} ${y - 34}l${30 * o} 30" stroke="${madeiraC}" stroke-width="4"/>` + (e && e.cheio ? pilha(x - 30 * o, y - 40, 90) : ''),
     // o barco em terra: numa carreta de duas rodas, com a vela recolhida
-    barcoTerra: (x, y, o) => `${sombra(x, y, 80)}<path d="M${x - 76} ${y - 30}h152" stroke="${madeiraE}" stroke-width="6"/><circle cx="${x - 30}" cy="${y - 16}" r="16" fill="none" stroke="${madeiraE}" stroke-width="5"/><circle cx="${x + 30}" cy="${y - 16}" r="16" fill="none" stroke="${madeiraE}" stroke-width="5"/>`
-      + `<path d="M${x - 80} ${y - 70}h160l-24 36h-112Z" fill="${madeira}"/><path d="M${x - 70} ${y - 64}h140" stroke="${madeiraC}" stroke-width="4"/><path d="M${x} ${y - 70}v-80" stroke="${madeiraE}" stroke-width="5"/><path d="M${x - 4} ${y - 146}h8v70h-8Z" fill="#e8dcc0"/><path d="M${x + 76 * o} ${y - 30}l${30 * o} 10" stroke="${madeiraE}" stroke-width="5"/>`,
-    montaria: (x, y, o) => `${sombra(x, y, 50)}<path d="M${x - 40 * o} ${y - 60}q${40 * o} -14 ${70 * o} 0l${12 * o} -26q${10 * o} -6 ${16 * o} 4l${-8 * o} 34q${-6 * o} 10 ${-18 * o} 10h${-70 * o}Z" fill="#6b4a2e"/>`
-      + `<path d="M${x - 34 * o} ${y - 50}v50M${x - 18 * o} ${y - 50}v50M${x + 18 * o} ${y - 50}v50M${x + 30 * o} ${y - 50}v50" stroke="#4a3220" stroke-width="7"/><path d="M${x - 44 * o} ${y - 58}q${-14 * o} 10 ${-10 * o} 28" stroke="#2a1c12" stroke-width="5" fill="none"/><path d="M${x - 10 * o} ${y - 64}h${24 * o}v-8h${-24 * o}Z" fill="#8f3d4a"/>`,
-    animal: (x, y, o) => `${sombra(x, y, 50)}<path d="M${x - 36 * o} ${y - 54}q${36 * o} -12 ${60 * o} 0l${10 * o} -20q${10 * o} -6 ${14 * o} 4l${-6 * o} 30q${-6 * o} 8 ${-16 * o} 8h${-62 * o}Z" fill="#7d7468"/>`
-      + `<path d="M${x - 30 * o} ${y - 46}v46M${x - 16 * o} ${y - 46}v46M${x + 14 * o} ${y - 46}v46M${x + 26 * o} ${y - 46}v46" stroke="#5a5248" stroke-width="7"/><rect x="${x - 26 * o - (o < 0 ? 44 : 0)}" y="${y - 84}" width="44" height="30" rx="6" fill="${lona}"/><rect x="${x - 4 * o - (o < 0 ? 30 : 0)}" y="${y - 76}" width="30" height="22" rx="5" fill="${lonaE}"/>`,
-    outro: (x, y) => `${sombra(x, y, 60)}<rect x="${x - 50}" y="${y - 40}" width="44" height="40" fill="${madeiraC}" stroke="${madeiraE}" stroke-width="3"/><rect x="${x}" y="${y - 30}" width="40" height="30" fill="${madeira}" stroke="${madeiraE}" stroke-width="3"/><rect x="${x - 34}" y="${y - 72}" width="36" height="32" fill="${madeira}" stroke="${madeiraE}" stroke-width="3"/>`,
+    barcoTerra: (x, y, o, e) => `${sombra(x, y, 80)}<path d="M${x - 76} ${y - 30}h152" stroke="${madeiraE}" stroke-width="6"/>` + roda(x - 30, y - 16, 16, !!(e && e.quebrado)) + roda(x + 30, y - 16, 16, false)
+      + `<path d="M${x - 80} ${y - 70}h160l-24 36h-112Z" fill="${madeira}"/><path d="M${x - 70} ${y - 64}h140" stroke="${madeiraC}" stroke-width="4"/><path d="M${x} ${y - 70}v-80" stroke="${madeiraE}" stroke-width="5"/><path d="M${x - 4} ${y - 146}h8v70h-8Z" fill="#e8dcc0"/><path d="M${x + 76 * o} ${y - 30}l${30 * o} 10" stroke="${madeiraE}" stroke-width="5"/>`
+      + (e && e.cheio ? pilha(x - 30, y - 70, 90) : ''),
+    montaria: (x, y, o, e) => `${sombra(x, y, 50)}<path d="M${x - 40 * o} ${y - 60}q${40 * o} -14 ${70 * o} 0l${12 * o} -26q${10 * o} -6 ${16 * o} 4l${-8 * o} 34q${-6 * o} 10 ${-18 * o} 10h${-70 * o}Z" fill="#6b4a2e"/>`
+      + `<path d="M${x + 32 * o} ${y - 84}q${8 * o} 10 ${4 * o} 22" stroke="#2a1c12" stroke-width="6" fill="none"/><path d="M${x + 50 * o} ${y - 84}l${6 * o} -8" stroke="#6b4a2e" stroke-width="4"/>`
+      + `<path d="M${x - 34 * o} ${y - 50}v50M${x - 18 * o} ${y - 50}v50M${x + 18 * o} ${y - 50}v50M${x + 30 * o} ${y - 50}v50" stroke="#4a3220" stroke-width="7"/><path d="M${x - 44 * o} ${y - 58}q${-14 * o} 10 ${-10 * o} 28" stroke="#2a1c12" stroke-width="5" fill="none"/>`
+      + `<path d="M${x - 14 * o} ${y - 66}q${14 * o} -12 ${30 * o} 0v10h${-30 * o}Z" fill="#8f3d4a"/><path d="M${x} ${y - 56}v22" stroke="#c7955a" stroke-width="2"/><path d="M${x + 58 * o} ${y - 70}l${-26 * o} 6" stroke="#2a1c12" stroke-width="2"/>`
+      + (e && e.cheio ? `<ellipse cx="${x - 26 * o}" cy="${y - 50}" rx="16" ry="18" fill="#8a7655" stroke="#5f513b" stroke-width="2"/><ellipse cx="${x - 22 * o}" cy="${y - 86}" rx="20" ry="14" fill="#c7b48a" stroke="#8a7655" stroke-width="2"/>` : ''),
+    animal: (x, y, o, e) => `${sombra(x, y, 50)}<path d="M${x - 36 * o} ${y - 54}q${36 * o} -12 ${60 * o} 0l${10 * o} -20q${10 * o} -6 ${14 * o} 4l${-6 * o} 30q${-6 * o} 8 ${-16 * o} 8h${-62 * o}Z" fill="#7d7468"/>`
+      + `<path d="M${x + 30 * o} ${y - 76}l${2 * o} -16M${x + 38 * o} ${y - 76}l${8 * o} -14" stroke="#7d7468" stroke-width="5" stroke-linecap="round"/>`
+      + `<path d="M${x - 30 * o} ${y - 46}v46M${x - 16 * o} ${y - 46}v46M${x + 14 * o} ${y - 46}v46M${x + 26 * o} ${y - 46}v46" stroke="#5a5248" stroke-width="7"/><rect x="${x - 26 * o - (o < 0 ? 44 : 0)}" y="${y - 84}" width="44" height="30" rx="6" fill="${lona}"/><rect x="${x - 4 * o - (o < 0 ? 30 : 0)}" y="${y - 76}" width="30" height="22" rx="5" fill="${lonaE}"/>`
+      + (e && e.cheio ? `<rect x="${x - 22 * o - (o < 0 ? 40 : 0)}" y="${y - 112}" width="40" height="28" rx="6" fill="#b8a27a" stroke="#8a7655" stroke-width="2"/><ellipse cx="${x - 4 * o}" cy="${y - 120}" rx="16" ry="10" fill="#c7b48a" stroke="#8a7655" stroke-width="2"/>` : ''),
+    outro: (x, y, o, e) => `${sombra(x, y, 60)}<rect x="${x - 50}" y="${y - 40}" width="44" height="40" fill="${madeiraC}" stroke="${madeiraE}" stroke-width="3"/><rect x="${x}" y="${y - 30}" width="40" height="30" fill="${madeira}" stroke="${madeiraE}" stroke-width="3"/><rect x="${x - 34}" y="${y - 72}" width="36" height="32" fill="${madeira}" stroke="${madeiraE}" stroke-width="3"/>`
+      + (e && e.cheio ? pilha(x - 10, y - 72, 90) : ''),
   };
   function caravana(lista, lugar) {
     const out = [];
@@ -339,21 +504,26 @@
     let noMar = 0;
     for (const v of (lista || []).slice(0, 6)) {
       const tipo = veiculos[v.tipo] && v.tipo !== 'barcoTerra' ? v.tipo : 'outro';
-      if (tipo === 'barco' && lugar === 'mar') { out.push(`<g class="veiculo" data-tipo="barco">${veiculos.barco(1300 - noMar++ * 230, 500, 1)}</g>`); continue; }
+      // (lote 18) o estado no desenho: a roda quebrada e a carga demais
+      const est = { quebrado: !!v.quebrado, cheio: !!v.cheio }, marca = (est.quebrado ? ' data-quebrado=""' : '') + (est.cheio ? ' data-cheio=""' : '');
+      if (tipo === 'barco' && lugar === 'mar') { out.push(`<g class="veiculo" data-tipo="barco"${marca}>${veiculos.barco(1300 - noMar++ * 230, 500, 1, est)}</g>`); continue; }
       const [x, y, o, e] = CANTOS[k++ % CANTOS.length], desenho = tipo === 'barco' ? veiculos.barcoTerra : veiculos[tipo];
       // (cada um desenhado em volta da origem e posto no canto dele, na escala do canto: os de trás, menores)
-      out.push(`<g class="veiculo" data-tipo="${tipo}" transform="translate(${x} ${y}) scale(${e})">${desenho(0, 0, o)}</g>`);
+      out.push(`<g class="veiculo" data-tipo="${tipo}"${marca} transform="translate(${x} ${y}) scale(${e})">${desenho(0, 0, o, est)}</g>`);
     }
     return out.join('');
   }
 
-  /* A cena inteira: { lugar, area, construcoes: [{ tipo, nivel }], caravana: [{ tipo }] } → o conteúdo do SVG.
+  /* A cena inteira: { lugar, area, construcoes: [{ tipo, nivel }], caravana: [{ tipo, quebrado, cheio }], abrigos: { n, tipos } }
+     → o conteúdo do SVG.
      A paliçada e as lanternas ficam atrás das outras construções (são do fundo da área). */
   function cena(o) {
     const x = o || {}, area = x.area || 'fogueira', lugar = x.lugar || 'floresta', cs = Array.isArray(x.construcoes) ? x.construcoes : [];
     const p = [fundo(lugar)];
     for (const c of cs) if (FUNDO_DA_AREA.has(c.tipo)) p.push(construcao(c.tipo, c.nivel));
-    if (area === 'fogueira') { p.push(caravana(x.caravana, lugar)); p.push(fogueira()); }
+    // (lote 18) os abrigos: o — { n, tipos } — quantos estão na fogueira e o que o grupo tem no Equipamento
+    const ab = Object.assign({ lugar }, x.abrigos || {});
+    if (area === 'fogueira') { p.push(abrigosTras(ab)); p.push(caravana(x.caravana, lugar)); p.push(fogueira(ab)); }
     else p.push(decorDaArea(area));
     p.push(arrumar(cs.filter(c => !FUNDO_DA_AREA.has(c.tipo))));
     return p.join('');
@@ -365,7 +535,7 @@
     return `<svg viewBox="${vb}" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><defs><radialGradient id="gLuz" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffd27a" stop-opacity=".7"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>`
       + `<rect x="0" y="0" width="1600" height="900" fill="#111a2b"/><rect x="0" y="652" width="1600" height="250" fill="#1b2532"/>${construcao(tipo, nivel)}</svg>`;
   }
-  const AcampDesenhos = { cena, construcao, miniatura, caravana, tipos: Object.keys(desenhos) };
+  const AcampDesenhos = { cena, construcao, miniatura, caravana, tiposDeAbrigo, tipos: Object.keys(desenhos) };
   if (typeof module === 'object' && module && module.exports) module.exports = AcampDesenhos;
   if (typeof window !== 'undefined') window.AcampDesenhos = AcampDesenhos;
 })();

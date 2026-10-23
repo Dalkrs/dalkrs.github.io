@@ -1415,6 +1415,8 @@
     out.push(comparacao(m, A_, B_));
     // (lote 9) os heróis
     { const sh = secHeroisBatalha(m, nomeA, nomeB); if (sh) out.push(sh); }
+    // (lote 18) o campo de batalha (nas Cenas) e os bônus que ele sugere
+    { const sc = secCampo(m, nomeA, nomeB); if (sc) out.push(sc); }
     // os bônus do mestre
     out.push(secMestre(m, nomeA, nomeB));
     // a rolagem
@@ -1540,6 +1542,63 @@
       el('p', null, el('b', { text: A_.nome + ': ' + sinal(G().total(ba)) }), ' ', el('small', null, ...listaBonusEl(ba))),
       el('p', null, el('b', { text: B_.nome + ': ' + sinal(G().total(bb)) }), ' ', el('small', null, ...listaBonusEl(bb))),
       el('p', { class: 'note', text: 'Os bônus na escala do d20. Na resumida, cada ponto vale 5 no d100; na detalhada, cada momento soma só os dele.' }));
+  }
+  /* ---- (lote 18) o campo de batalha ----
+     "Abrir no campo de batalha…" manda para as Cenas a cena do hexágono da batalha e os dois exércitos (as unidades,
+     a cor da facção e quem move: a ficha do comandante e a do governante da facção); lá, os blocos de soldados se mexem.
+     A leitura do campo (o flanco, o terreno alto, a cobertura, a reserva) volta para cá como bônus sugeridos: o mestre
+     soma o que quiser (vira um bônus do mestre). No "Depois", as perdas voltam aos blocos do campo (lá, com a prévia). */
+  const fichaDoGovernante = (m, fac) => { const C = window.MundoCorte, g = C && fac && C.governanteDe ? C.governanteDe(m, fac) : null; return g && g.pessoa && g.pessoa.ficha ? g.pessoa.ficha : null; };
+  function ladoDoCampo(m, g) {
+    const tipos = (m.guerra && m.guerra.tipos) || [], fac = kit().facDe ? kit().facDe(m, g.fac) : null;
+    return { g: g.id, nome: kit().nomeDe(g, m), fac: g.fac || null, cor: (fac && fac.cor) || g.cor || null, x: g.x, y: g.y,
+      cmd: (g.exe.cmd && g.exe.cmd.ficha) || null, gov: fichaDoGovernante(m, g.fac),
+      unid: g.exe.unid.filter(u => u.tropas > 0).slice(0, 30).map(u => { const t = tipos.find(x => x.id === u.tipo); return { nome: String(u.nome || 'Unidade').slice(0, 40), tipo: t ? String(t.nome || '').slice(0, 30) : '', tropas: Math.round(u.tropas), magos: Math.round(u.magos || 0), maq: N().somaDasMaquinas(m, u.maq).n }; }) };
+  }
+  function abrirCampo(m) {
+    const ga = kit().achar(m, bat.a), gb = kit().achar(m, bat.b);
+    if (!ga || !gb || !kit().naCasca() || !window.TC || !TC.ponte || !TC.ponte.ir) return;
+    if (!bat.campo) bat.campo = { cena: 'cena_campo_' + Math.random().toString(36).slice(2, 10) };
+    const x = (ga.x + gb.x) / 2, y = (ga.y + gb.y) / 2, dx = gb.x - ga.x, dy = gb.y - ga.y;
+    const campo = { v: 1, mapa: m.id, a: ladoDoCampo(m, ga), b: ladoDoCampo(m, gb), ladoA: Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? 'o' : 'l') : (dy >= 0 ? 'n' : 's'), por: bat.campo.por || 100,
+      nome: 'Campo de batalha: ' + kit().nomeDe(ga, m) + ' × ' + kit().nomeDe(gb, m) };
+    const ped = kit().pedidoDeCena ? kit().pedidoDeCena(m, x, y) : {};
+    TC.ponte.ir('cenas', { cena: bat.campo.cena, campo: Object.assign(campo, { pedido: ped }) });
+    pintarBatalha();
+  }
+  // a leitura do campo chegou das Cenas: { cena, a, b (os grupos), sug: { a: [{ k, v, txt }], b: [...] } }
+  function doCampo(o) {
+    const m = app().mapa;
+    if (!o || !m || !kit().achar(m, o.a) || !kit().achar(m, o.b)) { app().toast('Os exércitos desse campo de batalha não estão neste mapa.'); return; }
+    abrirBatalha({ a: o.a, b: o.b }).then(() => {
+      if (!bat || bat.a !== o.a || bat.b !== o.b) return;
+      bat.campo = Object.assign({}, bat.campo, { cena: o.cena });
+      const lim = l => (Array.isArray(l) ? l : []).filter(x => x && BONUS_DO_CAMPO[x.k] && Number.isFinite(Number(x.v)) && Number(x.v)).slice(0, 8).map(x => ({ k: x.k, v: Math.max(-10, Math.min(10, Math.round(Number(x.v)))), txt: String(x.txt || '').slice(0, 80) }));
+      bat.campoSug = { a: lim(o.sug && o.sug.a), b: lim(o.sug && o.sug.b) };
+      bat.mostrar = 'gb:campo';
+      pintarBatalha();
+    });
+  }
+  // o que cada leitura do campo vira nos bônus do mestre
+  const BONUS_DO_CAMPO = { flanco: ['tatica', 'Flanco'], alto: ['terreno', 'Terreno alto'], cobertura: ['terreno', 'Cobertura'], reserva: ['reforco', 'Reserva'] };
+  function secCampo(m, nomeA, nomeB) {
+    const pode = kit().naCasca() && window.TC && TC.ponte && TC.ponte.ir;
+    const sug = bat.campoSug, kids = [];
+    if (sug) {
+      const somar = (q, x) => { if (x.usada) return; x.usada = true; bat.mestre.push({ lado: q, tipo: BONUS_DO_CAMPO[x.k][0], v: x.v, mom: null, txt: ('Campo: ' + BONUS_DO_CAMPO[x.k][1].toLowerCase() + (x.txt ? ' — ' + x.txt : '')).slice(0, 80) }); };
+      const todas = ['a', 'b'].flatMap(q => sug[q].filter(x => !x.usada).map(x => [q, x]));
+      for (const q of ['a', 'b']) for (const [i, x] of sug[q].entries())
+        kids.push(el('div', { class: 'gb-campo-s' + (x.usada ? ' usada' : ''), 'data-k': 'gb:campo-s:' + q + ':' + i },
+          el('span', { text: (q === 'a' ? nomeA : nomeB) + ': ' + BONUS_DO_CAMPO[x.k][1] + ' ' + sinal(x.v) + (x.txt ? ' — ' + x.txt : '') }),
+          x.usada ? el('span', { class: 'note', text: 'somado' }) : bt('Somar', () => { somar(q, x); recalcular(); }, { c: 'sm', k: 'gb:campo-somar:' + q + ':' + i })));
+      if (!sug.a.length && !sug.b.length) kids.push(el('p', { class: 'note', text: 'O campo não sugere nenhum bônus agora (ninguém flanqueado, no alto, na cobertura ou na reserva).' }));
+      if (todas.length > 1) kids.push(el('div', { class: 'row' }, bt('Somar todas', () => { for (const [q, x] of todas) somar(q, x); recalcular(); }, { c: 'sm', k: 'gb:campo-todas' })));
+    }
+    if (!pode && !sug) return null;
+    return el('div', { class: 'gb-sec', 'data-k': 'gb:campo' }, tit('O campo de batalha', 'b:mestre', 'O que são os bônus do mestre'),
+      el('p', { class: 'note', text: sug ? 'O que o campo sugere (você soma o que quiser: vira um bônus do mestre, que dá para tirar):' : 'Nas Cenas, a cena do hexágono da batalha com os dois exércitos frente a frente, em blocos de soldados. O comandante (ou o governante da facção) move os blocos dele; a posição sugere bônus aqui.' }),
+      ...kids,
+      pode ? el('div', { class: 'row' }, bt(bat.campo ? 'Ir ao campo de batalha' : 'Abrir no campo de batalha…', () => abrirCampo(m), { c: 'sm', k: 'gb:campo-abrir', title: 'Abre as Cenas: a cena do hexágono da batalha (se ainda não existe, a janela de gerar, já preenchida), com os blocos de soldados' })) : null);
   }
   // os bônus do mestre: tática, terreno, reforço, magia (e outro), de um lado, na batalha toda ou num momento
   function secMestre(m, nomeA, nomeB) {
@@ -1752,6 +1811,10 @@
         fer.map(f => f.sem ? el('div', null, el('span', { text: f.hr.nome }), el('b', { text: '—' }), el('b', { text: 'sem HP na ficha' }))
           : el('div', { 'data-k': 'gb:dep:heroi:' + f.hr.ficha }, el('span', { text: f.hr.nome + ' (' + (f.q === 'a' ? nA : nB) + ')' }), el('b', { text: f.antes + ' → ' + f.depois }), el('b', { text: '−' + f.dano + ' (' + f.pct + '%)' })))),
       el('p', { class: 'note', text: 'Quem perde: de 10% a 40% do HP máximo, pelo tamanho da derrota; quem vence, até 10%; empate ou trégua, 5%. Vai para a ficha de cada um ao aplicar (e o Desfazer volta).' })));
+    // (lote 18) as perdas voltam aos blocos do campo de batalha (nas Cenas, com a prévia)
+    if (bat.campo && kit().naCasca()) out.push(el('div', { class: 'gb-sec', 'data-k': 'gb:dep:campo' }, el('b', { text: 'O campo de batalha' }),
+      el('label', { class: 'op' }, el('input', { type: 'checkbox', 'data-k': 'gb:campo-perdas', checked: bat.campoPerdas !== false ? true : null, onchange: ev => { bat.campoPerdas = !!ev.target.checked; } }),
+        el('span', { text: 'Levar as perdas aos blocos de soldados do campo (nas Cenas, você confere antes)' }))));
     out.push(el('div', { class: 'row gb-pe' }, bt('Voltar', () => { bat.tela = 'montar'; pintarBatalha(); }, { k: 'gb:voltar' }), bt('Aplicar', aplicarBatalha, { c: 'pri', k: 'gb:aplicar' })));
     return out;
   }
@@ -1786,14 +1849,19 @@
       };
       A.foraDoPasso({ desfazer: () => { if (feitas.length) mexer(1)(); if (nj && nj.posto) nj.tirar(); }, refazer: () => { if (feitas.length) mexer(-1)(); if (nj && nj.posto) nj.por(); } });
     }
+    // (lote 18) as perdas, para os blocos do campo de batalha
+    const campo = bat.campo && bat.campoPerdas !== false && kit().naCasca() ? { cena: bat.campo.cena, perdas: {} } : null;
+    if (campo) for (const q of ['a', 'b']) { const L = prev.lados[q]; if (L) campo.perdas[q] = { g: q === 'a' ? ga.id : gb.id, t0: L.unid.reduce((s0, u) => s0 + (u.tropas0 || 0), 0), t1: L.unid.reduce((s0, u) => s0 + (u.tropas1 || 0), 0) }; }
     bat.tela = 'aplicada';
     bat = null;
     fecharJanela(true);
+    if (campo && window.TC && TC.ponte && TC.ponte.ir) setTimeout(() => TC.ponte.ir('cenas', { cena: campo.cena, campoPerdas: campo.perdas }), 0);
     kit().avisoDesfazer('Batalha aplicada: ' + texto + '.' + (feitas.length ? ' ' + (feitas.length === 1 ? 'Um herói ferido' : feitas.length + ' heróis feridos') + ' (na ficha).' : '')
       + (comCerco ? (sc.tipo === 'queda' ? ' ' + nL + ' caiu para ' + nomeFacDe(m, sc.fac) + '.' : ' O cerco de ' + nL + ' acabou.') : '') + ' Fica no histórico (aba Guerra).' + (nj ? nj.texto : ''));
   }
 
   window.MundoGuerraPainel = { abaGuerra, secExercito, secFortificacao, secFasesFrente, leituraExercito, ofertarBatalhas, proporMantimentos, menuHex, abrirBatalha, comUnidades,
     secOcupacao, janelaOcupacao,                                 // (lote 12, parte 12b) a ocupação da região
+    doCampo, BONUS_DO_CAMPO,                                     // (lote 18) a leitura do campo de batalha, das Cenas
     get batalha() { return bat; }, get encontros() { return encontros.slice(); } };
 })();

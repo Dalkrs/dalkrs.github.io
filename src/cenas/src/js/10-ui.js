@@ -2110,9 +2110,11 @@ const UI = (() => {
       if (t.gera && t.gera.b) { if (aqui && aqui.gerado) items.push({ label: 'Gerar este bairro…', icon: 'map', run: () => Cidade.abrirBairro(t) }); }
       // (parte 4b-3) a escada que desce gera o nível de baixo
       else if (t.gera && t.gera.t === 'masmorra') items.push({ label: 'Gerar o nível ' + t.gera.n + '…', icon: 'down', run: () => Masmorra.abrir(t) });
+      // (lote 18) a entrada de gruta: a caverna embaixo da cena, alinhada com ela
+      else if (t.gera && t.gera.t === 'subsolo') items.push({ label: 'Gerar a caverna embaixo…', icon: 'down', run: () => Masmorra.abrirSubsolo(t) });
       else if (def && def.passagem === 'entra') {
         items.push({ label: 'Gerar o interior…', icon: 'house', run: () => Interior.abrir(t) });
-        if (!t.gera) items.push({ label: 'Gerar uma masmorra embaixo…', icon: 'down', run: () => Masmorra.abrir(t) });
+        if (!t.gera) items.push({ label: 'Gerar uma masmorra embaixo…', icon: 'down', run: () => Masmorra.abrir(t) }, { label: 'Gerar a caverna embaixo (alinhada com esta cena)…', icon: 'down', run: () => Masmorra.abrirSubsolo(t) });
       }
       items.push({ label: 'Escolher a cena…', icon: 'link', run: () => openTab('sel', 'pr-cena') }, { label: 'Uma cena nova, dentro desta…', icon: 'plus', run: () => novaCenaLigada(t) });
     }
@@ -2757,10 +2759,53 @@ const UI = (() => {
         f.manual ? h('div', { class: 'row' }, btn('Revelar tudo', () => fogAll('r'), { icon: 'eye' }), btn('Esconder tudo', () => fogAll('h'), { icon: 'eyeOff' })) : null,
         f.dynamic && f.explored ? btn('Esquecer áreas exploradas', () => confirmBox('Esquecer o que foi explorado?', 'Os jogadores voltam a ver só o que enxergam agora. Isso não pode ser desfeito.', 'Esquecer', true).then(ok => { if (ok) { Vision.resetExplored(sc); Nuvem.esquecerExplorado(sc); Render.request(); toast('Áreas exploradas esquecidas.'); } }), { icon: 'reset' }) : null,
         note('Para conferir o resultado, troque "Vendo como" no topo para um jogador.')),
+      // (lote 18) as fases da arena (só numa arena; só o mestre)
+      Arena.secao({ sec, note, btn }),
+      // (lote 18) o campo de batalha: a leitura do campo e levar para a batalha
+      Campo.secao({ sec, note, btn }),
+      // (lote 18) o relevo com regra: a visão pelo relevo (desta cena) e a tabela do mestre (da mesa)
+      sec('c-relevo', 'Relevo', false,
+        toggle('rl-visao', !!sc.relevoVisao, v => S({ relevoVisao: v || undefined }, 'Visão pelo relevo'), 'A altura esconde (visão pelo relevo)', { disabled: !f.dynamic }),
+        note(f.dynamic ? 'Ligada, a visão dos jogadores segue o relevo: morros e penhascos escondem o que está atrás, de dentro de um fosso só se vê o fosso, e de cima se vê mais longe.'
+          : 'A visão pelo relevo precisa da "Visão por paredes" (em Visão e névoa).'),
+        h('p', { class: 'note', id: 'rl-resumo', text: resumoDoRelevo(Relevo.tabela(sc)) }),
+        btn('Regras do relevo…', abrirRegrasDoRelevo, { icon: 'sliders', id: 'rl-regras' })),
       sec('c-perm', 'O que os jogadores podem', true,
         PERMS.map(([k, label]) => toggle('pm-' + k, !!sc.perms[k], v => S({ perms: Object.assign({}, sc.perms, { [k]: v }) }, 'Permissões'), label)),
         note('Paredes, luzes, névoa, cenas e tokens do mestre ficam sempre com o mestre.')),
     ];
+  }
+  /* (lote 18) A tabela do relevo (a da mesa: vale em todas as cenas). Só sugestões: a régua mostra a subida e o
+     penhasco, a queda sugere o dano ao mestre e a janelinha de atributos oferece o bônus de cima. */
+  const sinalR = n => (n < 0 ? '−' : '+') + fmt(Math.abs(n));
+  function resumoDoRelevo(t) {
+    if (!t.on) return 'As regras do relevo estão desligadas: a altura é só visual.';
+    return `Subir 1 de altura custa +${fmt(t.sobe)} q · penhasco a partir de ${fmt(t.penhasco)} q · de cima ${sinalR(t.cima)}, de baixo ${sinalR(t.baixo)} no ataque · queda: ${fmt(t.queda)}% da Vida a cada ${fmt(t.quedaCada)} q.`;
+  }
+  function abrirRegrasDoRelevo() {
+    if (!isGM()) return;
+    const antes = Store.S.prefs.relevo ? Relevo.norm(Store.S.prefs.relevo) : null, r = Relevo.norm(antes);
+    const num = (id, k, a, b, passo, rotulo) => inNum(id, r[k], v => { r[k] = v; }, { min: a, max: b, step: passo || 0.5, label: rotulo });
+    const linha = (rot, campo, depois) => h('div', { class: 'rl-l' }, h('span', { text: rot }), campo, depois ? h('span', { class: 'muted', text: depois }) : null);
+    const body = h('div', { class: 'rl-tab', id: 'rl-tab' },
+      toggle('rl-on', r.on, v => { r.on = v; }, 'Usar as regras do relevo (sugestões; nada se aplica sozinho)'),
+      linha('Subir 1 quadrado de altura custa', num('rl-sobe', 'sobe', 0, 20, 0.5, 'Quadrados de movimento a mais por quadrado de altura subido'), 'quadrado(s) a mais'),
+      linha('Penhasco: a partir de', num('rl-pen', 'penhasco', 1, 100, 0.5, 'Altura de uma vez que é penhasco'), 'quadrados de altura de uma vez (subir só escalando; descer é queda)'),
+      linha('Atacar de cima', num('rl-cima', 'cima', -999, 999, 1, 'Bônus no ataque de quem está mais alto'), 'no atributo'),
+      linha('Atacar de baixo', num('rl-baixo', 'baixo', -999, 999, 1, 'Bônus no ataque de quem está mais baixo'), 'no atributo'),
+      linha('A queda tira', num('rl-queda', 'queda', 0, 100, 1, 'Porcentagem da Vida máxima'), '% da Vida máxima'),
+      linha('a cada', num('rl-qcada', 'quedaCada', 0.5, 100, 0.5, 'Quadrados de queda'), 'quadrados de queda'),
+      note('Vale em todas as cenas desta mesa. A régua e o arrastar mostram a subida; a queda de um penhasco avisa você com o dano sugerido; mirando alguém, a janelinha de atributos (F) oferece o bônus de cima ou de baixo.'));
+    modal({ title: 'Regras do relevo', body, wide: true, actions: [
+      { label: 'Valores de começo', run: () => { Object.assign(r, Relevo.norm(null)); for (const [id, k] of [['rl-sobe', 'sobe'], ['rl-pen', 'penhasco'], ['rl-cima', 'cima'], ['rl-baixo', 'baixo'], ['rl-queda', 'queda'], ['rl-qcada', 'quedaCada']]) { const c = document.getElementById(id); if (c) c.value = r[k]; } const o = document.getElementById('rl-on'); if (o) o.checked = true; return false; }, keep: true },
+      { label: 'Cancelar' },
+      { label: 'Salvar', kind: 'primary', run: () => {
+        const novo = Relevo.igualAoPadrao(r) ? null : Relevo.norm(r);
+        if (JSON.stringify(novo) === JSON.stringify(antes)) return;
+        Store.S.prefs.relevo = novo; Persist.meta({ pub: true }); Render.request(); refresh();
+        toast('As regras do relevo estão salvas.', { action: 'Desfazer', key: 'relevo', run: () => { Store.S.prefs.relevo = antes; Persist.meta({ pub: true }); Render.request(); refresh(); toast('As regras do relevo voltaram.'); } });
+      } },
+    ] });
   }
   // Mudar o tamanho do quadrado reescala tudo o que está na cena.
   function resizeCell(n) {
@@ -2925,6 +2970,7 @@ const UI = (() => {
         Store.tx('Criar token', () => Store.add('tokens', t));
         setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); openTab('sel', 'tk-name');
       } });
+      { const f = gm ? Arena.proxima(sc) : null; if (f) items.push({ label: 'Acionar a ' + f.nome.toLowerCase() + ' da arena…', icon: 'next', run: () => Arena.acionar(f.i) }); }
       if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
       if (Luta.podeDescanso() && Store.scene().tokens.some(t => t.char && !t.clone)) items.push({ label: 'Descanso curto do grupo…', icon: 'rest', run: () => Luta.descansoCurto() });
       if (App.clip.length && (gm || can('draw') || can('fx'))) items.push({ label: 'Colar aqui', icon: 'copy', key: 'Ctrl+V', run: () => Act.pasteAt(p.x, p.y) });
@@ -3241,6 +3287,15 @@ const UI = (() => {
     if (!isGM() || d.k !== 'caiu') return;
     toast(`O gêmeo (Duplicado) de ${d.nome} caiu. Tirar da cena?`, { action: 'Tirar da cena', key: 'dup-' + d.id, long: true,
       run: () => { if (Act.duplicadoTirar(d.id)) toast('O gêmeo saiu da cena. A ficha dele continua nas Fichas.', { action: 'Desfazer', run: Tools.undo }); } });
+  });
+  // (lote 18) a queda de um penhasco: a regra sugere o dano; o mestre aplica (ou não)
+  Store.on('queda', d => {
+    const t = Store.get('tokens', d.tok), sc = Store.scene();
+    if (!t || !isGM()) return;
+    const un = (sc.grid && sc.grid.unitName) || '', alt = fmt(d.m) + (un ? ' ' + un : '');
+    if (!d.dano || !d.barra) { toast(`${tokName(t)} caiu ${alt}: a regra sugere ${d.pct}% da Vida máxima.`, { key: 'queda-' + d.tok, long: true }); return; }
+    toast(`${tokName(t)} caiu ${alt}: a regra sugere ${d.pct}% da Vida máxima (${fmt(d.dano)} de ${d.barra}).`, { action: 'Aplicar o dano', key: 'queda-' + d.tok, long: true,
+      run: () => { const tk = Store.get('tokens', d.tok); if (tk && Combate.aplicarAtaque([{ t: tk, final: d.dano }], d.barra, 'Dano da queda').length) toast(`${tokName(tk)}: −${fmt(d.dano)} de ${d.barra} (queda).`, { action: 'Desfazer', run: Tools.undo }); } });
   });
   Store.on('runas', d => {
     const t = Store.get('tokens', d.tok);

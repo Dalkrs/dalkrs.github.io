@@ -158,7 +158,8 @@ const Vision = (() => {
       if (!t.vis || !t.vis.on || !who(t)) continue;
       n++;
       const half = t.size * cell / 2, cx = t.x + half, cy = t.y + half;
-      const range = t.vis.range > 0 ? t.vis.range * cell + half : 0;
+      // (lote 18) de cima se vê mais longe: com a visão pelo relevo, o alcance cresce com a altura
+      const range = t.vis.range > 0 ? (t.vis.range + (typeof Relevo !== 'undefined' ? Relevo.alcanceExtra(sc, t) : 0)) * cell + half : 0;
       const bx = range ? [cx - range, cy - range, cx + range, cy + range] : B;
       const poly = Geo.visPoly(cx + 0.31, cy + 0.17, Walls.sightFor(sc, t), bx[0], bx[1], bx[2], bx[3]);
       const self = half + cell * 0.6;
@@ -387,8 +388,11 @@ const Vision = (() => {
       // Só o que muda luz, névoa ou o tamanho da cena pede recálculo; turnos, miras e clima, não.
       const p = op.p || {};
       if ('light' in p || 'fog' in p || 'cols' in p || 'rows' in p || 'cell' in p) { dirty = true; staticStale = true; }
+      if ('relevoVisao' in p || 'grid' in p) dirty = true;                 // (lote 18) a visão pelo relevo
       return;
     }
+    // (lote 18) com a visão pelo relevo, as áreas de terreno barram: mudar uma refaz a visão
+    if (op.c === 'shapes') { const sc = Store.scene(); if (sc && sc.relevoVisao) dirty = true; return; }
     if (op.c === 'fogOps') { manualStale = true; dirty = true; return; }
     if (op.c === 'walls' || op.c === 'lights') { dirty = true; staticStale = true; return; }
     if (op.c === 'tokens') {

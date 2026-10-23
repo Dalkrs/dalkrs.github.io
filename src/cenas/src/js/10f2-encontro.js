@@ -2134,6 +2134,15 @@ const Encontro = (() => {
     if (p.marcas && p.marcas.emboscada && Props.P.emboscada) sc.tokens.push(Props.novo(sc, 'emboscada', p.marcas.emboscada[0] * c, p.marcas.emboscada[1] * c, 1, true));
     // (lote 13) os pontos de interesse (a Região livre): um marcador oculto em cada um, com o nome do que há ali
     if (p.comMarcas !== false && Props.P.interesse) for (const q of p.pontos || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
+    // (lote 18) a entrada de gruta leva ao subsolo: a Entrada oculta na boca dela já sabe o rio e o bioma de cima
+    for (const q of p.pontos || []) if (q.k === 'gruta' && Props.P.entrada) {
+      const rios = (p.aguas || []).filter(a => a && a.k === 'rio' && Array.isArray(a.pts) && a.pts.length >= 2).sort((u, v) => (v.hw || 0) - (u.hw || 0));
+      const rp = rios.length ? rios[0].pts : null, passo = rp ? Math.max(1, Math.ceil(rp.length / 40)) : 1;
+      const rio = rp ? rp.filter((_, k) => k % passo === 0 || k === rp.length - 1).map(([x, y]) => [Math.round(x * 100) / 100, Math.round(y * 100) / 100]) : null;
+      const t = entrada(sc, q.cx - 0.5, q.cy - 0.5, Object.assign({ t: 'subsolo', x: q.cx, y: q.cy, bio: typeof Masmorra !== 'undefined' ? Masmorra.biomaDeBaixo(p.bioma) : 'fungos', s: (sub(p.seed, 91) % 2147483000) + 1 }, rio ? { rio } : {}), c);
+      t.name = 'Entrada de gruta';
+      sc.tokens.push(t);
+    }
     // (lote 13, parte 13c) as marcas da história do lugar e o achado raro: ocultos, com o nome do que é
     if (p.comMarcas !== false && Props.P.interesse) for (const q of p.historia || []) { const t = Props.novo(sc, 'interesse', q.x * c, q.y * c, 1, true); t.name = q.n; sc.tokens.push(t); }
     // (lote 14, parte 14b) as marcas da guerra: ocultas, com o nome do que é
