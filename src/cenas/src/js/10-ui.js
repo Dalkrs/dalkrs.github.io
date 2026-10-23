@@ -127,6 +127,14 @@ const UI = (() => {
     const r = b.getBoundingClientRect();
     menu(right ? r.right : r.left, r.bottom + 6, items, { right, anchor: b });
   }
+  /* (lote 23) O botão direito nas Cenas nunca abre o menu do navegador: no Windows, o navegador pede o menu dele depois
+     de soltar o botão — e aí o menu das Cenas já está aberto embaixo do cursor (ou um aviso, a faixa de turno…), e o
+     pedido não chega ao mapa. Só os campos de texto ficam com o menu do navegador (copiar, colar). */
+  document.addEventListener('contextmenu', e => {
+    const t = e.target, campo = t && t.closest && t.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
+    if (campo) return;
+    if (t && t.closest && t.closest('#stage, #layer, #toastsTop')) e.preventDefault();
+  });
   document.addEventListener('pointerdown', e => {
     pressing = true;
     skipOpen = false;
@@ -1830,7 +1838,8 @@ const UI = (() => {
 
   /* Token ligado à ficha de um personagem da mesa (só dentro do site, com mesa aberta; ver 07b-fichas.js). */
   function fichaBox(t) {
-    const lista = Fichas.chars(), ligado = t.char ? Fichas.get(t.char) : null;
+    // (lote 23) quem está no Toldo não aparece na lista (só o que já está ligado a este token)
+    const lista = Fichas.chars().filter(c => !(c.estado && c.estado.toldo) || c.id === t.char), ligado = t.char ? Fichas.get(t.char) : null;
     // (a ficha ligada pode não chegar a quem olha: o mestre auxiliar sem a aba Fichas não recebe as escondidas)
     const escondida = Fichas.escondida(t);
     const out = [field('Personagem', inSelect('tk-char', t.char || '', [['', 'Sem ficha']].concat(lista.map(c => [c.id, Fichas.rotulo(c)])).concat(t.char && !ligado ? [[t.char, escondida ? '(ficha escondida)' : '(ficha que saiu da mesa)']] : []),

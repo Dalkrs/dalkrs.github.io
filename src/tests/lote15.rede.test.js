@@ -137,13 +137,13 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
     // o Dain X inativo (fica no acampamento, por exemplo): não entra sozinho
     await M.locator('#tab-fichas').click(); await w(500);
     await F.locator('#lista .pc', { hasText: 'Dain X' }).click(); await w(300);
-    await F.locator('#f_ativo').uncheck(); await w(500);
+    await F.locator('#lugarFicha [data-lugar="inativo"]').click(); await w(500);
     ok(await ate(async () => await parado(M) && (await linha(M, 'Dain X')).estado.ativo === false), '(o mestre deixa o Dain X inativo)');
     await M.locator('#tab-acampamento').click(); await w(600);
     await A.locator('#btCurto').click(); await w(400);
     ok(await dialogo() === null && /nem na equipe ativa/.test(await A.locator('.toast, #toast').allInnerTexts().then(x => x.join(' | '))), 'inativo e longe da fogueira, ninguém descansa: o aviso explica');
     await M.locator('#tab-fichas').click(); await w(500);
-    await F.locator('#f_ativo').check(); await w(500);
+    await F.locator('#lugarFicha [data-lugar="ativo"]').click(); await w(500);
     ok(await ate(async () => await parado(M) && (await linha(M, 'Dain X')).estado.ativo !== false), '(ativo de novo)');
   }, 'descanso');
 

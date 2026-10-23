@@ -2,6 +2,40 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-9",
+      "data": "2026-10-23",
+      "titulo": "Os filtros das skills e as abas do elenco",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Fichas: filtros na aba Skills. A busca acha pelo nome e pelo texto (sem precisar de acento), e o botão “Filtros” abre os chips: o tipo de uso (Ativa, Reação, Passiva…), a origem (cada árvore, a skill única, as escritas à mão) e a barra (▲ soma, ▼ gasta, com custo). Valem para os cartões e para as passivas e habilidades; cada ficha lembra o filtro dela."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: o elenco agora tem três abas — Ativos, Inativos e Toldo —, cada uma com o seu desenho e quantos tem. Quem está numa aba não aparece nas outras. Inativos são os do grupo que estão fora desta sessão; o Toldo guarda quem ficou longe da aventura."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas: para mudar alguém de aba, arraste a ficha até a aba, use o botão Ativo · Inativo · Toldo no alto da ficha, ou “Vários” para marcar e mover várias de uma vez. Os pets vão junto com o dono, e tudo tem Desfazer."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: quem está no Toldo fica de fora do “Puxar o grupo” e da lista de fichas do token."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Cenas: o botão direito no mapa às vezes abria o menu do navegador por cima do menu das Cenas (no Windows, sobretudo perto das bordas). Agora abre só o das Cenas; os campos de texto continuam com o copiar e colar."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: o botão da pata, ao lado do dono, esconde os pets dele no elenco (e a tela lembra)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-8",
       "data": "2026-10-23",
       "titulo": "O ponto de reforço e a tela das barrinhas",

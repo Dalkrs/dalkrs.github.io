@@ -163,6 +163,39 @@ label.f > span{display:block;margin-bottom:3px}
 .sec:hover .sechd .secacts{opacity:1}
 .sechd .secacts button{padding:1px 5px;font-size:10.5px;line-height:1.4}
 .secitens{min-height:8px}
+/* (lote 23) as abas do elenco: Ativos (dourado), Inativos (cinza) e Toldo (verde-lona) */
+.abasel{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:5px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.abasel[hidden]{display:none}
+.abael{--ab:var(--brass);display:grid;grid-template-columns:auto auto;justify-content:center;align-items:center;gap:1px 5px;min-width:0;padding:4px 4px 3px;border:1px solid var(--line);border-radius:var(--r);background:transparent;color:var(--ink-soft);cursor:pointer}
+.abael>span:not(.cnt){grid-column:1/-1;grid-row:2;font-size:11.5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.abael .cnt{font-size:11px}
+.abael-ativo{--ab:var(--brass)} .abael-inativo{--ab:#8a93a3} .abael-toldo{--ab:#5f8f6a}
+.abael svg{color:var(--ab)}
+.abael:hover{border-color:var(--ab);color:var(--ink)}
+.abael.on{border-color:var(--ab);background:color-mix(in srgb,var(--ab) 16%,transparent);color:var(--ink);font-weight:600}
+.abael.alvo{outline:2px dashed var(--ab);outline-offset:1px;background:color-mix(in srgb,var(--ab) 24%,transparent)}
+.abaelvarios{align-self:stretch;font-size:11.5px;padding:0 8px}
+.abaelvarios.on{border-color:var(--brass);color:var(--brass-ink)}
+.selel{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--line);background:var(--brass-fundo)}
+.selel .selnum{font-size:12.5px;font-weight:600}
+.selel .selbtns{display:flex;flex-wrap:wrap;gap:5px;margin-left:auto}
+.selel .selbtns button{display:inline-flex;align-items:center;gap:4px}
+.selel .selbtns svg{color:var(--ab)}
+.pcrow .selck{margin:0 2px 0 8px;width:16px;height:16px;flex:none;accent-color:var(--brass)}
+.pcrow.marcado .pc{background:var(--brass-fundo)}
+.vaziaba{text-align:center;line-height:1.6}
+/* os pets do dono: dá para esconder */
+.petmin{display:inline-flex;align-items:center;gap:3px;align-self:center;margin-right:4px;padding:2px 6px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-soft);font-size:11px;cursor:pointer;flex:none}
+.petmin:hover{color:var(--ink);border-color:var(--line-2)}
+.petmin .pata{width:11px;height:11px}
+.petmin.fechado{border-style:dashed}
+/* o botão Ativo · Inativo · Toldo no alto da ficha */
+.lugarseg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;align-self:center}
+.lugarseg button{--ab:var(--brass);display:inline-flex;align-items:center;gap:4px;border:0;border-radius:0;padding:4px 10px;background:transparent;color:var(--ink-soft);font-size:12px;cursor:pointer}
+.lugarseg button+button{border-left:1px solid var(--line)}
+.lugarseg button svg{color:var(--ab)}
+.lugarseg .abael-ativo{--ab:var(--brass)} .lugarseg .abael-inativo{--ab:#8a93a3} .lugarseg .abael-toldo{--ab:#5f8f6a}
+.lugarseg button.on{background:color-mix(in srgb,var(--ab) 18%,transparent);color:var(--ink);font-weight:600}
 /* (lote 16) os inativos de cada grupo, embaixo, recolhidos */
 .inat{border-top:1px dashed var(--linha-sut)}
 .inathd{display:flex;align-items:center;gap:6px;width:100%;border:0;border-radius:0;background:transparent;padding:3px 8px 3px 26px;text-align:left;color:var(--ink-soft);cursor:pointer}
@@ -807,6 +840,22 @@ button.apagar:disabled{background:var(--rubric-off);border-color:var(--rubric-bo
 .skcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
 .habrow.skcard{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;border:1px solid var(--line);border-left:3px solid var(--skcor,var(--line-2));border-radius:var(--r);padding:8px 10px;background:var(--campo-sut)}
 .habrow.skcard:last-child{border-bottom:1px solid var(--line)}
+/* (lote 23) os filtros da aba Skills */
+.habrow[hidden]{display:none!important}
+.skfiltro{margin:0 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--campo-sut)}
+.skf-linha{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.skf-linha #skf-busca{flex:1 1 200px;min-width:0}
+#skf-abrir.on{border-color:var(--brass);color:var(--brass-ink)}
+.skf-conta{font-size:12px}
+.skf-painel{display:flex;flex-direction:column;gap:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.skf-g{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.skf-g>.eyebrow{min-width:58px}
+.skf-chips{display:flex;flex-wrap:wrap;gap:5px}
+.skf-chip{border:1px solid var(--line-2);border-radius:999px;padding:2px 10px;font-size:12.5px;background:transparent;color:var(--ink);cursor:pointer}
+.skf-chip .mono{font-size:10.5px;color:var(--ink-soft);margin-left:2px}
+.skf-chip.on{background:var(--brass-fundo);border-color:var(--brass);color:var(--brass-ink)}
+.skf-chip.zero{opacity:.5}
+.skf-nada{margin:4px 0 8px}
 .habrow.skcard .habnome{flex:1 1 auto;font-weight:600}
 .habrow.skcard .skde{flex-basis:100%;order:-1;font-size:10.5px;font-family:"IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase}
 .habrow.skcard .habtexto,.habrow.skcard .habcusto{flex-basis:100%}
@@ -1149,6 +1198,8 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
       <input id="busca" placeholder="Buscar nome, raça, grupo ou tag">
       <div class="tagbar" id="tagbar"></div>
     </div>
+    <div class="abasel" id="abasElenco" role="tablist" aria-label="Quem está onde" hidden></div>
+    <div class="selel" id="selElenco" hidden></div>
     <ul id="lista"></ul>
   </aside>
 
@@ -1161,9 +1212,10 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 
 <script src="../tc/ponte.js?v=16"></script>
 <script src="../tc/rules.js?v=20"></script>
-<script src="mesa.js?v=12"></script>
+<script src="mesa.js?v=13"></script>
 <script src="extras.js?v=18"></script>
 <script src="quadros.js?v=5"></script>
+<script src="filtro-skills.js?v=2"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -1599,9 +1651,11 @@ function renderLista(){
      campanhas (recolhidos). Cada bloco tem os grupos dele. Sem campanhas, é um bloco só, sem nome: a lista de sempre. */
   const blocos=FichasMesa.blocos(), mestre=!FichasMesa.ativo()||FichasMesa.mestre(), comCamp=blocos.length>1 || !!blocos[0].nome;
   const organiza=FichasMesa.organiza();        // (passar ficha ou grupo de uma campanha para outra: só o mestre da mesa)
-  /* (lote 16) Na mesa, o mestre vê cada grupo em dois blocos: os ativos em cima e, embaixo, "Inativos (n)", recolhido.
-     Arrastar uma ficha de um bloco para o outro muda o ativo dela (o mesmo da caixinha "Personagem ativo"). */
-  const divide=FichasMesa.ativo() && FichasMesa.mestre();
+  /* (lote 23) Na mesa, o elenco tem três abas — Ativos, Inativos e Toldo — e cada uma mostra só os seus (para o mestre
+     e para os jogadores). Arrastar uma ficha até uma aba (ou o botão na ficha, ou "Vários") muda onde ela está. */
+  const comAbas=FichasMesa.ativo(), aba=abaDoElenco();
+  pintarAbasElenco(comAbas);
+  pintarSelecao();
   let html='';
   blocos.forEach(b=>{
     const doBloco=b.unico? S.personagens : S.personagens.filter(p=>FichasMesa.blocoDe(p)===b.camp);
@@ -1614,13 +1668,13 @@ function renderLista(){
     const secoes=[...gruposOrdenados(b.camp), ''];
     let dentro='';
     secoes.forEach(g=>{
-      const membros=doBloco.filter(p=>(p.grupo||'')===g && casaFiltro(p));
-      const total=doBloco.filter(p=>(p.grupo||'')===g).length;
-      if(g==='' && !total && !soltarAqui) return;        // "Sem grupo" só aparece se tiver alguém (ou para o bloco vazio ter onde soltar)
+      const naAba=p=>!comAbas || lugarDe(p)===aba;
+      const membros=doBloco.filter(p=>(p.grupo||'')===g && casaFiltro(p) && naAba(p));
+      const total=doBloco.filter(p=>(p.grupo||'')===g && naAba(p)).length;
+      if(g==='' && !total && !(soltarAqui && aba==='ativo')) return;        // "Sem grupo" só aparece se tiver alguém (ou para o bloco vazio ter onde soltar)
       if(filtroAtivo() && !membros.length) return;       // filtrando: esconde seção vazia
+      if(comAbas && aba!=='ativo' && !membros.length) return;     // (nas abas Inativos e Toldo, só os grupos com alguém)
       const chave=chaveSec(b.camp,g), fechado=(S.fechados||[]).includes(chave);
-      const ativos=divide? membros.filter(FichasMesa.ativoNaFicha) : membros, inativos=divide? membros.filter(p=>!FichasMesa.ativoNaFicha(p)) : [];
-      const abertoIn=inativos.length>0 && (filtroAtivo() || (S.abertos||[]).includes(chave+'\u0002in'));
       dentro+=`<li class="sec" data-sec="${esc(g||SEM)}" data-camp="${esc(b.camp)}">
         <div class="sechd">
           <button class="caret" data-toggle="${esc(g||SEM)}">${fechado?'▸':'▾'}</button>
@@ -1635,16 +1689,12 @@ function renderLista(){
           </span>`:''}
         </div>
         <ul class="secitens" data-lista="${esc(g||SEM)}" data-camp="${esc(b.camp)}" ${trancado?'data-trancado="1"':''} ${fechado?'hidden':''}>
-          ${linhasComPets(ativos) || (trancado?'<li class="vazio hint">'+(inativos.length?'ninguém ativo':'ninguém aqui')+'</li>':'<li class="vazio hint">'+(inativos.length?'ninguém ativo: arraste alguém pra cá':'arraste alguém pra cá'+(comCamp && !b.camp && soltarAqui?': quem é do mundo aparece em todas as campanhas':''))+'</li>')}
-        </ul>${divide?`
-        <div class="inat${inativos.length?'':' zero'}" data-inat="${esc(g||SEM)}" ${fechado?'hidden':''}>
-          <button class="inathd" data-inhd="${esc(g||SEM)}" aria-expanded="${abertoIn}" title="${inativos.length?(abertoIn?'Recolher':'Mostrar')+' quem está fora do grupo ativo. ':''}Arraste uma ficha para cá para tirá-la do grupo ativo (ao puxar o grupo na cena, ela vem desmarcada); arraste de volta para cima para ativá-la.">
-            <span class="caret" aria-hidden="true">${abertoIn?'▾':'▸'}</span><span class="inatnome">Inativos</span><span class="cnt mono">${inativos.length}</span></button>
-          <ul class="secitens inativas" data-lista="${esc(g||SEM)}" data-camp="${esc(b.camp)}" data-inativo="1" ${trancado?'data-trancado="1"':''} ${abertoIn?'':'hidden'}>${linhasComPets(inativos)}</ul>
-        </div>`:''}</li>`;
+          ${linhasComPets(membros) || (trancado?'<li class="vazio hint">ninguém aqui</li>':'<li class="vazio hint">'+(comAbas && doBloco.some(p=>(p.grupo||'')===g)?'ninguém ativo: arraste alguém pra cá':'arraste alguém pra cá'+(comCamp && !b.camp && soltarAqui?': quem é do mundo aparece em todas as campanhas':''))+'</li>')}
+        </ul></li>`;
     });
     if(!comCamp){ html+=dentro; return; }
     if(filtroAtivo() && !dentro) return;                 // filtrando: esconde o bloco sem ninguém
+    if(comAbas && aba!=='ativo' && !dentro) return;      // (nas abas Inativos e Toldo, só os blocos com alguém)
     // o bloco em vista começa aberto (dá para recolher); os outros começam recolhidos (dá para abrir)
     const kb=chaveBloco(b.camp), fechadoB = filtroAtivo()? false : b.vista ? (S.fechados||[]).includes(kb) : !(S.abertos||[]).includes(kb);
     html+=`<li class="bloco${b.vista?' vista':''}" data-bloco="${esc(b.camp)}">
@@ -1656,14 +1706,19 @@ function renderLista(){
       </div>
       <ul class="blocoitens" ${fechadoB?'hidden':''}>${dentro || '<li class="vazio hint">'+(b.camp?'nenhuma ficha nesta campanha ainda':'nenhuma ficha do mundo: o que estiver aqui aparece em todas as campanhas')+'</li>'}</ul></li>`;
   });
-  ul.innerHTML = html || '<li><div class="empty" style="padding:18px">Nada encontrado.</div></li>';
+  ul.innerHTML = html || (comAbas && aba!=='ativo' && !filtroAtivo()
+    ? `<li><div class="empty vaziaba" style="padding:18px">${aba==='toldo'?'Ninguém no toldo.':'Ninguém inativo.'}${FichasMesa.mestre()?`<br><span class="hint">Arraste uma ficha até a aba “${aba==='toldo'?'Toldo':'Inativos'}”, use o botão no alto da ficha ou “Vários”.</span>`:''}</div></li>`
+    : '<li><div class="empty" style="padding:18px">Nada encontrado.</div></li>');
   ligarElenco();
 }
 /* As linhas de uma seção do elenco: cada pet logo embaixo do dono (quando os dois estão nela); o pet cujo dono não está
    ali aparece no lugar dele, com o "pet de …" dizendo de quem é. */
 function linhasComPets(membros){
-  const ids=new Set(membros.map(p=>p.id));
-  return membros.filter(p=>!(p.petDe && ids.has(p.petDe))).map(p=>linhaElenco(p)+membros.filter(x=>x.petDe===p.id).map(x=>linhaElenco(x,true)).join('')).join('');
+  const ids=new Set(membros.map(p=>p.id)), min=S.petsMin||[];
+  return membros.filter(p=>!(p.petDe && ids.has(p.petDe))).map(p=>{
+    const pets=membros.filter(x=>x.petDe===p.id);
+    return linhaElenco(p,false,pets.length)+(min.includes(p.id)? '' : pets.map(x=>linhaElenco(x,true)).join(''));
+  }).join('');
 }
 // a chave com que a tela lembra se uma seção (ou um bloco) está recolhida; as do mundo ficam como sempre foram
 function chaveSec(camp,g){ return (camp? camp+'\u0001' : '')+(g||SEM); }
@@ -1715,11 +1770,12 @@ function pintarAoVivo(){
 }
 /* a pata do pet (lote 6): no elenco, embaixo do dono, e no alto da ficha */
 const PATA_SVG='<svg class="pata" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ellipse cx="6" cy="10" rx="2.2" ry="2.8"/><ellipse cx="10" cy="5.6" rx="2.2" ry="2.8"/><ellipse cx="14.4" cy="5.6" rx="2.2" ry="2.8"/><ellipse cx="18.4" cy="10" rx="2.2" ry="2.8"/><path d="M12.2 11.2c3.2 0 6.1 3.9 6.1 6.4 0 1.9-1.6 2.6-3.1 2.6-1.3 0-2-.7-3-.7s-1.7.7-3 .7c-1.5 0-3.1-.7-3.1-2.6 0-2.5 2.9-6.4 6.1-6.4z"/></svg>';
-function linhaElenco(p, embaixo){
+function linhaElenco(p, embaixo, nPets){
   // (ficha de campanha encerrada — ou de uma campanha que não aparece aqui — não se arrasta: fica onde está)
   const fixa=FichasMesa.encerrada(p._camp) || FichasMesa.blocoDe(p)==='?';
-  return `<li class="pcrow${p.petDe?' pet':''}${embaixo?' embaixo':''}" data-id="${p.id}">
-    ${fixa? '<span class="grab fixo" aria-hidden="true"></span>' : `<span class="grab" data-grab="${p.id}" title="Arraste para reordenar ou mudar de grupo${FichasMesa.campanhas().length && FichasMesa.organiza()?' (ou de campanha)':''}">⠿</span>`}
+  const marcado=selecao && selecao.has(p.id), minPets=nPets && (S.petsMin||[]).includes(p.id);
+  return `<li class="pcrow${p.petDe?' pet':''}${embaixo?' embaixo':''}${selecao?' selecionando':''}${marcado?' marcado':''}" data-id="${p.id}">
+    ${selecao? `<input type="checkbox" class="selck" data-selpc="${p.id}" ${marcado?'checked':''} aria-label="Marcar ${esc(p.nome)}">` : fixa? '<span class="grab fixo" aria-hidden="true"></span>' : `<span class="grab" data-grab="${p.id}" title="Arraste para reordenar ou mudar de grupo${FichasMesa.campanhas().length && FichasMesa.organiza()?' (ou de campanha)':''}">⠿</span>`}
     <button class="pc${p.id===S.sel?' on':''}" data-abrir="${p.id}">
       ${FichasExtras.miniatura(p)}
       <span class="pctx">
@@ -1727,16 +1783,25 @@ function linhaElenco(p, embaixo){
       <span class="mt">${p.petDe? PATA_SVG+' pet de '+esc(FichasMesa.nomeDoPetDe(p))+' · ' : FichasMesa.deJogador(p)? '' : 'Tier '+esc(p.tier)+' · '}Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}${FichasMesa.nomeDoDono(p)?' · de '+esc(FichasMesa.nomeDoDono(p)):''}</span>
       <span class="linhatags">
         <span class="lado ${(p.lado||'Aliado').toLowerCase()}">${esc(p.lado||'Aliado')}</span>
-        ${FichasMesa.ativo() && FichasMesa.mestre() && !FichasMesa.ativoNaFicha(p) ? '<span class="tag mini-tag inativo" title="Fora do grupo ativo: ao puxar o grupo na cena, vem desmarcado">inativo</span>' : ''}
         ${(p.tags||[]).slice(0,3).map(t=>`<span class="tag mini-tag">${esc(t)}</span>`).join('')}
         ${(p.tags||[]).length>3?`<span class="hint" style="font-size:10px">+${p.tags.length-3}</span>`:''}
       </span>
       </span>
-    </button>${FichasMesa.htmlOlho(p)}</li>`;
+    </button>${nPets? `<button type="button" class="petmin${minPets?' fechado':''}" data-petmin="${p.id}" aria-expanded="${!minPets}" title="${minPets?'Mostrar':'Esconder'} ${nPets===1?'o pet':'os '+nPets+' pets'} de ${esc(p.nome)}">${PATA_SVG}<span class="mono">${nPets}</span><span aria-hidden="true">${minPets?'▸':'▾'}</span></button>` : ''}${FichasMesa.htmlOlho(p)}</li>`;
 }
 function ligarElenco(){
   const ul=document.getElementById('lista');
-  ul.querySelectorAll('[data-abrir]').forEach(b=>b.onclick=()=>{S.sel=b.dataset.abrir; save(); render()});
+  ul.querySelectorAll('[data-abrir]').forEach(b=>b.onclick=()=>{
+    if(selecao){ marcarNaSelecao(b.dataset.abrir); return; }       // (lote 23) escolhendo vários: o clique marca
+    S.sel=b.dataset.abrir; save(); render();
+  });
+  ul.querySelectorAll('[data-selpc]').forEach(c=>c.onchange=()=>marcarNaSelecao(c.dataset.selpc));
+  ul.querySelectorAll('[data-petmin]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.petmin; S.petsMin=S.petsMin||[];
+    S.petsMin = S.petsMin.includes(id)? S.petsMin.filter(x=>x!==id) : [...S.petsMin,id];
+    save(); renderLista();
+    const de=document.querySelector('#lista [data-petmin="'+id+'"]'); if(de) de.focus();
+  });
   FichasMesa.ligarOlhos(ul);
   // (cada seção é de um bloco: o grupo "Heróis" da campanha em vista não é o "Heróis" de outra)
   const campDe=b=>{ const s=b.closest('[data-camp]'); return s? s.dataset.camp||'' : ''; };
@@ -1744,12 +1809,6 @@ function ligarElenco(){
   ul.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>{
     const g=chaveSec(campDe(b), b.dataset.toggle===SEM?'':b.dataset.toggle); S.fechados=S.fechados||[];
     S.fechados = S.fechados.includes(g)? S.fechados.filter(x=>x!==g) : [...S.fechados,g];
-    save(); renderLista();
-  });
-  ul.querySelectorAll('[data-inhd]').forEach(b=>b.onclick=()=>{
-    if(b.closest('.inat').classList.contains('zero') || filtroAtivo()) return;
-    const k=chaveSec(campDe(b), b.dataset.inhd===SEM?'':b.dataset.inhd)+'\u0002in'; S.abertos=S.abertos||[];
-    S.abertos = S.abertos.includes(k)? S.abertos.filter(x=>x!==k) : [...S.abertos,k];
     save(); renderLista();
   });
   ul.querySelectorAll('[data-btoggle]').forEach(b=>b.onclick=()=>{
@@ -1823,10 +1882,11 @@ function moverArraste(e){
   else if(e.clientY>rc.bottom-28) caixa.scrollTop+=8;
   const alvo=document.elementFromPoint(e.clientX,e.clientY);
   if(!alvo||!alvo.closest) return;
-  // (lote 16) em cima do "Inativos" de um grupo: a ficha vai para o fim da lista dos inativos dele (aberta ou não)
-  const hd=alvo.closest('[data-inhd]');
-  document.querySelectorAll('#lista .inathd.alvo').forEach(x=>{ if(x!==hd) x.classList.remove('alvo'); });
-  if(hd){ const l=hd.parentNode.querySelector('[data-inativo]'); hd.classList.add('alvo'); if(l && arrasto.li.parentNode!==l) l.appendChild(arrasto.li); return; }
+  // (lote 23) em cima de uma aba do elenco (Ativos, Inativos, Toldo): soltar ali muda onde a ficha está
+  const ab=alvo.closest('#abasElenco [data-abael]');
+  document.querySelectorAll('#abasElenco .alvo').forEach(x=>{ if(x!==ab) x.classList.remove('alvo'); });
+  if(ab && FichasMesa.mestre()){ ab.classList.add('alvo'); arrasto.aba=ab.dataset.abael; return; }
+  arrasto.aba=null;
   const linha=alvo.closest('.pcrow:not(.fantasma)');
   if(linha && linha!==arrasto.li){
     const rr=linha.getBoundingClientRect();
@@ -1843,11 +1903,18 @@ function soltarArraste(){
   arrasto.fantasma.remove();
   arrasto.li.classList.remove('arrastando');
   document.body.classList.remove('arrastando-agora');
-  const movido=arrasto.li.dataset.id;
+  const movido=arrasto.li.dataset.id, praAba=arrasto.aba;
   arrasto=null;
-  document.querySelectorAll('#lista .inathd.alvo').forEach(x=>x.classList.remove('alvo'));
-  const divide=FichasMesa.ativo() && FichasMesa.mestre();
-  let trocouAtivo=null;          // (lote 16) a ficha arrastada passou de ativa para inativa, ou o contrário
+  document.querySelectorAll('#abasElenco .alvo').forEach(x=>x.classList.remove('alvo'));
+  // (lote 23) soltou numa aba: muda onde a ficha está (com o pet) e a lista não se reordena
+  if(praAba){
+    const pc=S.personagens.find(p=>p.id===movido);
+    if(pc && lugarDe(pc)!==praAba){
+      if(FichasMesa.encerrada(pc._camp)){ renderLista(); toast('Campanha encerrada: só para consulta.'); return; }
+      mudarLugar([pc], praAba);
+    } else renderLista();
+    return;
+  }
   const mapa=new Map(S.personagens.map(p=>[p.id,p])), novos=[], antes=S.personagens.slice();
   let mudou=null, recusado=false;     // mudou: a ficha arrastada passou para outra campanha (dá para desfazer)
   document.querySelectorAll('#lista [data-lista]').forEach(ulSec=>{
@@ -1862,13 +1929,6 @@ function soltarArraste(){
       if(de!==camp && !FichasMesa.organiza()){ if(p.id===movido) recusado='papel'; novos.push(p); mapa.delete(li.dataset.id); return; }
       if(de!==camp && (trancado || FichasMesa.encerrada(p._camp) || de==='?')){ if(p.id===movido) recusado=true; novos.push(p); mapa.delete(li.dataset.id); return; }
       if(de!==camp){ if(p.id===movido) mudou={pc:p, camp:p._camp||null, grupo:p.grupo||''}; p._camp=camp||null; }
-      if(divide && p.id===movido){
-        const quer=!ulSec.dataset.inativo;
-        if(FichasMesa.ativoNaFicha(p)!==quer){
-          if(trancado) recusado='encerrada';
-          else { marcarAtivo(p,quer); trocouAtivo={pc:p, on:quer}; }
-        }
-      }
       p.grupo=g; novos.push(p); mapa.delete(li.dataset.id);
     });
   });
@@ -1887,20 +1947,11 @@ function soltarArraste(){
   for(const p of novos) if(!ja.has(p.id)) comPets.push(p);
   S.personagens=comPets; fixarGrupos(); save(); renderLista();
   if(recusado) toast(recusado==='papel'? 'Só o mestre da mesa passa fichas de uma campanha para outra.' : recusado==='encerrada'? 'Campanha encerrada: só para consulta.' : 'Campanha encerrada: as fichas dela não saem, e nenhuma entra.');
-  if(trocouAtivo && !mudou){
-    const {pc,on}=trocouAtivo;
-    if(S.sel===pc.id){ const x=document.querySelector('#f_ativo'); if(x) x.checked=on; }
-    FichasExtras.aviso(on? pc.nome+' está ativo: vem marcado ao puxar o grupo na cena.' : pc.nome+' ficou fora do grupo ativo: ao puxar o grupo na cena, vem desmarcado.', 'Desfazer', ()=>{
-      marcarAtivo(pc,!on); save(); renderLista();
-      if(S.sel===pc.id){ const x=document.querySelector('#f_ativo'); if(x) x.checked=!on; }
-    });
-  }
   if(mudou){
     const pc=mudou.pc;
     FichasMesa.garantirRelacoes(); save(); if(S.sel===pc.id) renderFicha();
     FichasExtras.aviso(pc.nome+' passou para '+(pc._camp? 'a campanha '+FichasMesa.nomeDaCampanha(pc._camp) : 'o mundo (aparece em todas as campanhas)')+'.', 'Desfazer', ()=>{
       pc._camp=mudou.camp; pc.grupo=mudou.grupo;
-      if(trocouAtivo) marcarAtivo(pc,!trocouAtivo.on);
       S.personagens=antes.filter(p=>S.personagens.includes(p)).concat(S.personagens.filter(p=>!antes.includes(p)));
       fixarGrupos(); save(); render();
     }, 9000);
@@ -1908,7 +1959,87 @@ function soltarArraste(){
   }
 }
 // (lote 16) ativo ou não: estado.ativo=false para quem está fora (sem o campo, está ativo)
-function marcarAtivo(pc,on){ const est=Object.assign({}, pc.estado||{}); if(on) delete est.ativo; else est.ativo=false; pc.estado=est; }
+function marcarAtivo(pc,on){ marcarLugar(pc, on? 'ativo' : 'inativo'); }
+/* (lote 23) Onde a ficha está: Ativos (na aventura), Inativos (do grupo, fora desta sessão) ou Toldo (guardados longe
+   da aventura). Fica no estado da ficha: estado.ativo=false para os dois de fora, e estado.toldo=true para o Toldo. O
+   Toldo fica de fora do "Puxar o grupo" e das listas das Cenas. */
+const LUGARES=[
+  {k:'ativo', n:'Ativos', um:'Ativo', svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l10.5 10.5M4 4h3.5L17 13.5M4 4v3.5L13.5 17"/><path d="M14 17l3 3M17 14l3 3M15.5 18.5l3-3"/><path d="M20 4l-6.5 6.5M20 4h-3.5l-3 3M20 4v3.5l-3 3"/><path d="M10 14l-3 3M7 14l3 3M5.5 18.5l3-3"/></svg>'},
+  {k:'inativo', n:'Inativos', um:'Inativo', svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>'},
+  {k:'toldo', n:'Toldo', um:'Toldo', svg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-5 9 5"/><path d="M3 9c1.5 2 3 2 4.5 0 1.5 2 3 2 4.5 0 1.5 2 3 2 4.5 0 1.5 2 3 2 4.5 0"/><path d="M5 10.5V20M19 10.5V20M3 20h18"/></svg>'}];
+const nomeDoLugar=k=>(LUGARES.find(l=>l.k===k)||LUGARES[0]);
+function lugarDe(pc){ return FichasMesa.lugarNaFicha? FichasMesa.lugarNaFicha(pc) : (FichasMesa.ativoNaFicha(pc)? 'ativo' : 'inativo'); }
+function marcarLugar(pc,lugar){
+  const est=Object.assign({}, pc.estado||{});
+  delete est.ativo; delete est.toldo;
+  if(lugar!=='ativo') est.ativo=false;
+  if(lugar==='toldo') est.toldo=true;
+  pc.estado=est;
+}
+/* muda o lugar de várias fichas de uma vez (os pets vão junto com o dono), com Desfazer */
+function mudarLugar(lista, lugar){
+  const ids=new Set(lista.map(p=>p.id));
+  S.personagens.forEach(x=>{ if(x.petDe && ids.has(x.petDe)) ids.add(x.id); });
+  const todas=S.personagens.filter(p=>ids.has(p.id) && !FichasMesa.encerrada(p._camp) && lugarDe(p)!==lugar);
+  if(!todas.length){ renderLista(); return; }
+  const antes=todas.map(p=>[p, lugarDe(p)]);
+  todas.forEach(p=>marcarLugar(p,lugar));
+  save(); renderLista(); pintarLugarNaFicha();
+  const donos=todas.filter(p=>!p.petDe || !ids.has(p.petDe) || !todas.some(d=>d.id===p.petDe)), pets=todas.length-donos.length;
+  const quem=donos.length===1? donos[0].nome : donos.length+' fichas';
+  const onde=lugar==='toldo'? 'foi para o Toldo' : lugar==='inativo'? 'ficou inativo' : 'voltou para os Ativos';
+  const ondeV=lugar==='toldo'? 'foram para o Toldo' : lugar==='inativo'? 'ficaram inativas' : 'voltaram para os Ativos';
+  const efeito=lugar==='toldo'? ' Fica de fora do “Puxar o grupo” e das listas das Cenas.' : lugar==='inativo'? ' Ao puxar o grupo na cena, vem desmarcado.' : '';
+  FichasExtras.aviso(quem+' '+(donos.length===1? onde : ondeV)+(pets? (pets===1? ' (o pet foi junto)' : ' (os '+pets+' pets foram junto)') : '')+'.'+efeito, 'Desfazer', ()=>{
+    antes.forEach(([p,l])=>marcarLugar(p,l)); save(); renderLista(); pintarLugarNaFicha();
+  }, 9000);
+}
+function abaDoElenco(){ const a=S.abaElenco; return LUGARES.some(l=>l.k===a)? a : 'ativo'; }
+function pintarAbasElenco(comAbas){
+  const box=document.getElementById('abasElenco'); if(!box) return;
+  box.hidden=!comAbas;
+  if(!comAbas){ box.innerHTML=''; return; }
+  const aba=abaDoElenco(), conta=k=>S.personagens.filter(p=>!p.petDe && lugarDe(p)===k && casaFiltro(p)).length;
+  box.innerHTML=LUGARES.map(l=>`<button type="button" role="tab" class="abael abael-${l.k}${l.k===aba?' on':''}" data-abael="${l.k}" aria-selected="${l.k===aba}" title="${l.k==='ativo'?'Quem está na aventura':l.k==='inativo'?'Do grupo, mas fora desta sessão':'Guardados longe da aventura: ficam de fora do “Puxar o grupo” e das listas das Cenas'}${FichasMesa.mestre()?' — arraste uma ficha até aqui para mudar':''}">${l.svg}<span>${l.n}</span><span class="cnt mono">${conta(l.k)}</span></button>`).join('')
+    + (FichasMesa.mestre()? `<button type="button" class="mini abaelvarios${selecao?' on':''}" id="btnVarios" aria-pressed="${!!selecao}" title="Marcar várias fichas e mudar todas de uma vez">Vários</button>` : '');
+  box.querySelectorAll('[data-abael]').forEach(b=>b.onclick=()=>{ S.abaElenco=b.dataset.abael; save(); renderLista(); const x=document.querySelector('#abasElenco [data-abael="'+b.dataset.abael+'"]'); if(x) x.focus(); });
+  const v=box.querySelector('#btnVarios'); if(v) v.onclick=()=>{ selecao=selecao? null : new Set(); renderLista(); };
+}
+/* (lote 23) "Vários": marcar fichas no elenco e mandar todas para outra aba */
+let selecao=null;
+function marcarNaSelecao(id){
+  if(!selecao) return;
+  if(selecao.has(id)) selecao.delete(id); else selecao.add(id);
+  renderLista();
+  const c=document.querySelector('#lista [data-selpc="'+id+'"]'); if(c) c.focus();
+}
+function pintarSelecao(){
+  const box=document.getElementById('selElenco'); if(!box) return;
+  if(!selecao || !FichasMesa.ativo() || !FichasMesa.mestre()){ box.hidden=true; box.innerHTML=''; selecao=FichasMesa.ativo() && FichasMesa.mestre()? selecao : null; return; }
+  // (quem saiu da lista sai da seleção)
+  for(const id of [...selecao]) if(!S.personagens.some(p=>p.id===id)) selecao.delete(id);
+  const n=selecao.size, aba=abaDoElenco();
+  box.hidden=false;
+  box.innerHTML=`<span class="selnum">${n? (n===1? '1 marcada' : n+' marcadas') : 'Marque as fichas'}</span>
+    <span class="selbtns">${LUGARES.filter(l=>l.k!==aba).map(l=>`<button type="button" class="mini abael-${l.k}" data-selpara="${l.k}" ${n?'':'disabled'}>${l.svg} ${l.k==='ativo'?'Para os Ativos':l.k==='inativo'?'Para os Inativos':'Para o Toldo'}</button>`).join('')}
+    <button type="button" class="mini" data-selfim="1">Cancelar</button></span>`;
+  box.querySelectorAll('[data-selpara]').forEach(b=>b.onclick=()=>{
+    const lista=S.personagens.filter(p=>selecao.has(p.id)); selecao=null; mudarLugar(lista, b.dataset.selpara);
+  });
+  box.querySelector('[data-selfim]').onclick=()=>{ selecao=null; renderLista(); };
+}
+/* (lote 23) o botão no alto da ficha (só o mestre, na mesa): Ativo · Inativo · Toldo */
+function htmlLugarNaFicha(pc){
+  if(!FichasMesa.ativo() || !FichasMesa.mestre()) return '';
+  const l=lugarDe(pc);
+  return `<span class="lugarseg" role="group" aria-label="Onde ${esc(pc.nome||'o personagem')} está" id="lugarFicha">${LUGARES.map(x=>`<button type="button" class="abael-${x.k}${x.k===l?' on':''}" data-lugar="${x.k}" aria-pressed="${x.k===l}" title="${x.k==='ativo'?'Trazer para os Ativos':x.k==='inativo'?'Deixar inativo (fora desta sessão)':'Mandar para o Toldo'}">${x.svg}<span>${x.um}</span></button>`).join('')}</span>`;
+}
+function pintarLugarNaFicha(){
+  const box=document.getElementById('lugarFicha'), pc=S.personagens.find(p=>p.id===S.sel);
+  if(!box||!pc) return;
+  const l=lugarDe(pc);
+  box.querySelectorAll('[data-lugar]').forEach(b=>{ const on=b.dataset.lugar===l; b.classList.toggle('on',on); b.setAttribute('aria-pressed',String(on)); });
+}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 const SEM='__sem__';
 /* Os grupos de um bloco da lista, na ordem do mestre: os do mundo ficam em S.grupos; os de cada campanha, em
@@ -2373,6 +2504,7 @@ function htmlResumo(pc,c){
         <div class="rsnome">
           <label class="f"><span class="eyebrow">Nome</span><input id="f_nome" value="${esc(pc.nome)}"></label>
           <span class="rsmeta" id="rsmeta">${esc(metaDaFicha(pc))}</span>
+          ${htmlLugarNaFicha(pc)}
         </div>
         ${htmlBarrinhas(pc, c)}
         ${htmlNumerosResumo(pc,c)}
@@ -2535,7 +2667,7 @@ function htmlAniversario(pc){
 function htmlAbaSkills(pc){
   return `<div class="panel" style="margin-bottom:18px" id="painelSkills">
       <div class="hd"><span class="eyebrow">Skills</span></div>
-      <div class="bd">${blocoSkills(pc)}</div>
+      <div class="bd">${window.FichasFiltroSk? FichasFiltroSk.html(pc) : ''}${blocoSkills(pc)}</div>
     </div>
     ${FichasQuadros.painelAscensao(pc)}
     <div class="panel" style="margin-bottom:18px" id="painelHabs">
@@ -2547,7 +2679,7 @@ function htmlAbaSkills(pc){
           <button class="mini primary" data-habadd="1">+ Habilidade</button></span></div>
       <div class="bd">
         ${(pc.habilidades||[]).length? (pc.habilidades||[]).map(h=>{const tp=h.tipo||'Ativo';return `
-          <div class="habrow ${tp==='Inativo'?'off':''}">
+          <div class="habrow ${tp==='Inativo'?'off':''}" data-habmao="${esc(h.id)}">
             <select class="tipohab t-${tp.toLowerCase()}" data-habtipo="${h.id}">
               ${TIPOS_HAB.map(t=>`<option ${tp===t?'selected':''}>${t}</option>`).join('')}
             </select>
@@ -2823,6 +2955,8 @@ function ligarFicha(pc){
   const eo=host.querySelector('#f_estoculto');
   if(eo) eo.onchange=e=>{ const on=e.target.checked; patch(()=>{ if(on) pc.estaqueOculto=true; else delete pc.estaqueOculto; }); toast(avisoEstaque(pc,on)); };
   host.querySelectorAll('[data-habunicas]').forEach(b=>b.onclick=()=>abrirPassarParaUnicas(pc));
+  if(window.FichasFiltroSk) FichasFiltroSk.ligar(host, pc);      // (lote 23) os filtros da aba Skills
+  host.querySelectorAll('#lugarFicha [data-lugar]').forEach(b=>b.onclick=()=>{ if(lugarDe(pc)!==b.dataset.lugar) mudarLugar([pc], b.dataset.lugar); });
   host.querySelectorAll('[data-habadd]').forEach(b=>b.onclick=()=>patch(()=>
     pc.habilidades.push({id:uid(), nome:'', desc:'', tipo:'Ativo'})));
   host.querySelectorAll('[data-habtipo]').forEach(sl=>sl.onchange=e=>patch(()=>{

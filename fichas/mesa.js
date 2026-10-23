@@ -123,7 +123,7 @@ const FichasMesa = (() => {
       bib: bibDaMesa() || tela.bib || null,
       sel: tela.sel || null, selSit: tela.selSit || null, aba: tela.aba || 'fichas',
       alvos: tela.alvos, ultimoAlvo: tela.ultimoAlvo,          // memória dos alvos de disputa: é desta tela
-      abaFicha: tela.abaFicha, abaAtr: tela.abaAtr, abaBolsa: tela.abaBolsa, skillsUI: tela.skillsUI, fechados: tela.fechados, abertos: tela.abertos, filtroTags: tela.filtroTags, ultimaExpr: tela.ultimaExpr,
+      abaFicha: tela.abaFicha, abaAtr: tela.abaAtr, abaBolsa: tela.abaBolsa, skillsUI: tela.skillsUI, fechados: tela.fechados, abertos: tela.abertos, abaElenco: tela.abaElenco, petsMin: tela.petsMin, filtroTags: tela.filtroTags, ultimaExpr: tela.ultimaExpr,
     };
     sombra = { pcs: new Map(), docs: {} };
     linhas.forEach(l => sombra.pcs.set(l.id, retrato({ nome: l.nome || '', ficha: l.ficha || {}, skills: l.skills || {}, estado: l.estado || {}, dono_id: l.dono_id || null, vis: l.vis || 'mestre', campanha: l.campanha || null }, l.ordem)));
@@ -537,7 +537,6 @@ const FichasMesa = (() => {
     if (ehPet(pc)) return `<div class="idmesa">
       <div class="f"><span class="eyebrow">Jogador que controla</span><span class="hint petcontrola">quem controla ${esc(nomeDoPetDe(pc))}${nomeDoDono(pc) ? ' (' + esc(nomeDoDono(pc)) + ')' : ' (só o mestre)'}</span></div>
       <label class="chk" title="Desmarcada, a ficha fica escondida dos outros jogadores. Quem a controla sempre vê a dela."><input type="checkbox" id="f_vis" ${pc._vis === 'mesa' ? 'checked' : ''}> <span>Os outros jogadores veem esta ficha <span class="hint">(o dono sempre vê a dele)</span></span></label>
-      <label class="chk" title="Só o mestre muda. Na cena, “Puxar o grupo” já traz marcados só os personagens ativos."><input type="checkbox" id="f_ativo" ${ativoNaFicha(pc) ? 'checked' : ''}> <span>Personagem ativo</span></label>
     </div>`;
     const jog = (st.membros || []).filter(jogadorDaMesa);
     // (quem não participa da campanha da ficha aparece marcado: se receber a ficha, só vê essa ficha da campanha)
@@ -549,13 +548,14 @@ const FichasMesa = (() => {
         ${pc._dono && !jog.some(m => m.id === pc._dono) ? `<option value="${esc(pc._dono)}" selected>(jogador que saiu da mesa)</option>` : ''}
       </select></label>
       <label class="chk" title="Desmarcada, a ficha fica escondida dos outros jogadores. Quem a controla sempre vê a dele."><input type="checkbox" id="f_vis" ${pc._vis === 'mesa' ? 'checked' : ''}> <span>Os outros jogadores veem esta ficha <span class="hint">(o dono sempre vê a dele)</span></span></label>
-      <label class="chk" title="Só o mestre muda. Na cena, “Puxar o grupo” já traz marcados só os personagens ativos (os outros — suportes que ficam no acampamento, por exemplo — vêm desmarcados, e dá para marcar na hora)."><input type="checkbox" id="f_ativo" ${ativoNaFicha(pc) ? 'checked' : ''}> <span>Personagem ativo</span></label>
     </div>`;
   }
   /* "Personagem ativo": o mestre marca quem está jogando agora (os suportes que ficam no acampamento, não). Só pesa em
      "Puxar o grupo", nas Cenas: os ativos já vêm marcados. Fica no estado da ficha (estado.ativo: false para quem não é),
      que se junta campo a campo — o que o jogador grava na ficha dele não desfaz a marca do mestre. */
   const ativoNaFicha = pc => !(pc && pc.estado && pc.estado.ativo === false);
+  // (lote 23) onde a ficha está: 'ativo', 'inativo' ou 'toldo' (estado.toldo, com estado.ativo=false)
+  const lugarNaFicha = pc => (pc && pc.estado && pc.estado.toldo ? 'toldo' : ativoNaFicha(pc) ? 'ativo' : 'inativo');
   // Entrou ou saiu alguém da mesa enquanto o mestre digita na ficha: a lista de jogadores se atualiza no lugar.
   function pintarDono() {
     const d = document.querySelector('#f_dono'), pc = S.personagens.find(p => p.id === S.sel);
@@ -580,13 +580,6 @@ const FichasMesa = (() => {
       avisarDeFora([pc]);
     };
     if (v) v.onchange = e => { pc._vis = e.target.checked ? 'mesa' : 'mestre'; const g = garantirRelacoes(); save(); if (g) render(); else renderLista(); toast(avisoVis(pc)); };
-    const at = host.querySelector('#f_ativo');
-    if (at) at.onchange = e => {
-      const marcar = on => { const est = Object.assign({}, pc.estado || {}); if (on) delete est.ativo; else est.ativo = false; pc.estado = est; save(); renderLista(); const x = document.querySelector('#f_ativo'); if (x) x.checked = on; };
-      const on = e.target.checked;
-      marcar(on);
-      FichasExtras.aviso(on ? pc.nome + ' está ativo: vem marcado ao puxar o grupo na cena.' : pc.nome + ' ficou fora do grupo ativo: ao puxar o grupo na cena, vem desmarcado.', 'Desfazer', () => marcar(!on));
-    };
   }
   /* No elenco, o mestre escolhe com um clique quais fichas os jogadores podem ver. */
   const OLHO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.6-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.6 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>';
@@ -748,7 +741,7 @@ const FichasMesa = (() => {
     return Promise.resolve({ ok: true });
   }
   return { caixaDoGrupo, mexeNaCaixa, caixaSemFicha, moverCaixa, levarCaixa, nomeDoGrupo,
-    preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, calendario, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha,
+    preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, calendario, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha, lugarNaFicha,
     ehNpc, segDe, porSeg, mexerRel, relsDe, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
     campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza,
     ehPet, petsDe, nomeDoPetDe };

@@ -174,7 +174,8 @@ const Combate = (() => {
      que fica no acampamento, por exemplo — vem desmarcado). */
   function elenco(sc) {
     const naCena = new Set(sc.tokens.map(t => t.char).filter(Boolean));
-    return Fichas.chars().filter(l => l.ficha != null).map(l => {
+    // (lote 23) quem está no Toldo (estado.toldo) fica de fora daqui
+    return Fichas.chars().filter(l => l.ficha != null && !(l.estado && l.estado.toldo)).map(l => {
       const dono = Fichas.donoDe(l);
       return { id: l.id, nome: l.nome || 'Sem nome', dono, grupo: String((l.ficha && l.ficha.grupo) || '').trim(), lado: String((l.ficha && l.ficha.lado) || ''), aqui: naCena.has(l.id), camp: Fichas.campDa(l) || '',      // (camp: a campanha da ficha; '' = do mundo)
         ativo: !(l.estado && l.estado.ativo === false) };

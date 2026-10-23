@@ -11,7 +11,7 @@
   const G = {
     fichas: {
       mestre: [
-        { t: 'O elenco e os grupos', txt: 'À esquerda, os personagens por grupo. Na mesa, cada grupo mostra os ativos em cima e os inativos recolhidos embaixo, em “Inativos”. Arraste pela alça ⠿ para mudar a ordem, trocar de grupo ou tirar alguém do grupo ativo (sempre com Desfazer).', onde: { sel: '#lista' } },
+        { t: 'O elenco e os grupos', txt: 'À esquerda, os personagens por grupo. Na mesa, três abas: Ativos (na aventura), Inativos (fora desta sessão) e Toldo (guardados longe da aventura, fora do “Puxar o grupo” e das listas das Cenas). Arraste pela alça ⠿ para mudar a ordem ou trocar de grupo; solte numa aba para mudar a ficha de lugar, ou use “Vários” para mover várias de uma vez (sempre com Desfazer). A pata ao lado do dono esconde os pets.', onde: { sel: '#lista' } },
         { t: 'O resumo de cima', txt: 'Fica fixo enquanto você troca de aba: o nome, as barras (digite −8 para tirar, +25% para pôr um quarto do máximo), os atributos e as defesas, os lapros, a caixinha do grupo, os ferimentos, a Sanidade e o Conforto. Os selos levam à parte da ficha em que cada coisa fica.', onde: { sel: '#resumo', nada: fichaNada } },
         { t: 'As abas da ficha', txt: 'Atributos · Bolsas e itens · Social · Skills · Notas. A ficha lembra a aba em que você estava, também ao trocar de personagem.', onde: { sel: '#ficha .abasficha', nada: fichaNada } },
         { t: 'A caixinha do grupo', txt: 'Na aba Bolsas e itens: os lapros que o grupo guarda junto. Põe e pega com os lapros da ficha (a conta aparece antes), e você também lança um achado ou uma despesa sem ficha. O extrato diz quem fez o quê.', onde: { sel: '#painelCaixa', sub: 'bolsas', nada: fichaNada } },

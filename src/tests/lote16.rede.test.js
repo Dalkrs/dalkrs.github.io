@@ -1,11 +1,10 @@
 // Lote 16 numa mesa (rede): o mestre e um jogador.
-//   · a equipe ativa e a inativa: no elenco do mestre, cada grupo com os ativos em cima e "Inativos (n)" embaixo,
-//     recolhido; arrastar uma ficha de um bloco para o outro muda o ativo dela (com Desfazer); o jogador não vê isso;
+//   (a equipe ativa e a inativa, que eram daqui, viraram as abas do elenco do lote 23: lote23.rede.test.js)
 //   · a caixinha do grupo: o jogador põe e pega com os lapros da ficha dele (as duas pontas mudam juntas, pelo banco);
 //     o mestre vê ao vivo, põe e tira sem ficha (achado, despesa) e com a ficha do jogador; o banco recusa o que não
 //     vale (ficha de outro, lapros que não bastam, a caixinha sem ficha para quem não mestra); o grupo muda de nome e a
 //     caixinha vai junto.
-// (SO=equipe ou SO=caixa: só aquela parte — a mesa e as fichas, sempre.)
+// (SO=caixa: só aquela parte — a mesa e as fichas, sempre.)
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
@@ -65,33 +64,6 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
     ok(await ate(async () => { G = await fichas(J); return G && (await G.locator('#lista .pc').count()) === 2; }), '(o jogador vê o Dain X e a Lia)');
   });
 
-  await passo('a equipe: dois blocos em cada grupo', async () => {
-    const hd = F.locator('#lista [data-inhd="Heróis"]');
-    ok(await hd.count() === 1 && /Inativos\s*0/i.test(await hd.innerText()) && await F.locator('#lista .inat.zero').count() === 1, 'no elenco do mestre, o grupo Heróis tem embaixo o "Inativos 0" (apagadinho: ninguém fora)');
-    ok(await G.locator('#lista [data-inhd]').count() === 0, 'o jogador não tem os dois blocos (ativo é coisa do mestre)');
-    await foto(M, 'l16-equipe-antes', F.locator('#lista'));
-    const erro = await arrastar(F, 'pc_ogro', '#lista [data-inhd="Heróis"]');
-    ok(!erro, '(arrastei o Ogro até o "Inativos") ' + (erro || ''));
-    ok(await ate(async () => { const l = await linha(M, 'Ogro do pântano'); return l.estado.ativo === false && await parado(M); }), 'solto no "Inativos": o Ogro fica fora do grupo ativo (estado.ativo: false, na mesa)');
-    ok(/Ogro do pântano ficou fora do grupo ativo/.test(await toasts(F)) && await F.locator('.toast button', { hasText: 'Desfazer' }).count() === 1, 'o aviso diz o que mudou, com Desfazer: ' + await toasts(F));
-    ok(/Inativos\s*1/i.test(await hd.innerText()) && await F.locator('#lista [data-inativo] .pcrow[data-id="pc_ogro"]').count() === 1 && await F.locator('#lista [data-inativo]').isHidden(), 'o "Inativos 1" continua recolhido, com o Ogro dentro');
-    ok(await F.locator('#lista .secitens:not([data-inativo]) .pcrow').count() === 2, 'em cima, os dois ativos (o Dain e a Lia)');
-    await hd.click(); await w(300);
-    ok(await F.locator('#lista .pcrow[data-id="pc_ogro"]').isVisible() && (await hd.getAttribute('aria-expanded')) === 'true', 'um clique no "Inativos" abre a lista');
-    await abrir(F, 'Ogro do pântano');
-    ok(await F.locator('#lista .pcrow[data-id="pc_ogro"]').isVisible() && !(await F.locator('#f_ativo').isChecked()), 'a tela lembra que o bloco está aberto; na ficha do Ogro, "Personagem ativo" desmarcado');
-    await foto(M, 'l16-equipe-inativos', F.locator('#lista'));
-    // de volta para cima
-    const erro2 = await arrastar(F, 'pc_ogro', '#lista .pcrow[data-id="pc_lia"]', 0.7);
-    ok(!erro2, '(arrastei o Ogro para baixo da Lia) ' + (erro2 || ''));
-    ok(await ate(async () => { const l = await linha(M, 'Ogro do pântano'); return l.estado.ativo === undefined && await parado(M); }) && /Ogro do pântano está ativo/.test(await toasts(F)), 'arrastado para os ativos: ativo de novo (sem o campo), e o aviso diz');
-    ok(await F.locator('#f_ativo').isChecked() && await F.evaluate(() => S.personagens.map(p => p.id).join(',')) === 'pc_dain,pc_lia,pc_ogro', 'a caixa da ficha acompanha, e a ordem é a de onde ele caiu');
-    await F.locator('.toast button', { hasText: 'Desfazer' }).click(); await w(500);
-    ok(await ate(async () => { const l = await linha(M, 'Ogro do pântano'); return l.estado.ativo === false && await parado(M); }) && !(await F.locator('#f_ativo').isChecked()), 'o Desfazer põe o Ogro de volta nos inativos');
-    // na cena, "Puxar o grupo" já sabe: o ativo é o mesmo da caixa da ficha (ver lote5.rede) — aqui, só a volta
-    await F.locator('#f_ativo').check(); await w(500);
-    ok(await ate(async () => (await linha(M, 'Ogro do pântano')).estado.ativo === undefined) && /Inativos\s*0/i.test(await hd.innerText()), 'marcando a caixa "Personagem ativo", ele sobe para os ativos');
-  }, 'equipe');
 
   await passo('a caixinha: o jogador põe e pega', async () => {
     await abrir(G, 'Dain X', J); await aba(G, 'bolsas', J);
