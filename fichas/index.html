@@ -532,6 +532,7 @@ table.roll .tot small{font-size:11px;font-weight:400;color:var(--ink-soft);displ
 .rolfix{display:flex;align-items:center;gap:5px;margin-left:auto}
 .rolfix input{width:62px;padding:3px 6px;text-align:right;font-family:"IBM Plex Mono",monospace}
 .rolhd select{width:auto;padding:3px 6px;font-size:12px}
+.skbarra{display:inline-flex;gap:1px;margin-left:6px;font-size:10.5px;vertical-align:1px}.skbarra .mbs{color:#3f9d5b}.skbarra .mbg{color:#c9473d}
 .rolmais{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-2px 0 8px;font-size:12px;color:var(--ink-soft)}
 .rolmais .eyebrow{margin-right:auto}
 .rolmais label{display:flex;align-items:center;gap:5px}
@@ -1159,7 +1160,7 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=16"></script>
-<script src="../tc/rules.js?v=18"></script>
+<script src="../tc/rules.js?v=19"></script>
 <script src="mesa.js?v=12"></script>
 <script src="extras.js?v=18"></script>
 <script src="quadros.js?v=5"></script>
@@ -2127,10 +2128,11 @@ function renderFicha(){
             <option value="base" ${rol.fonte==='base'?'selected':''}>base</option>
           </select>
         </div>
-        <div class="rolmais" role="group" aria-label="Bônus só nesta rolagem">
-          <span class="eyebrow" title="Valem só para a próxima rolagem: depois dela, voltam a zero (não ficam na ficha)">Só nesta rolagem</span>
-          <label title="Soma no atributo antes de rolar (muda o dado: atributo 40 com +5, fixando 15, rola 1d30 + 15)">+ atributo <input type="number" step="1" id="rolMaisA" value="${rolMaisDe(pc).atr||''}" placeholder="0" aria-label="Bônus no atributo, só nesta rolagem"></label>
-          <label title="Soma no resultado, depois de rolar (vale também para a iniciativa)">+ resultado <input type="number" step="1" id="rolMaisR" value="${rolMaisDe(pc).res||''}" placeholder="0" aria-label="Bônus no resultado, só nesta rolagem"></label>
+        <div class="rolmais" role="group" aria-label="Bônus das rolagens desta ficha">
+          <span class="eyebrow" title="Ficam para as próximas rolagens desta ficha, neste aparelho, até você apagar (não vão para a ficha)">Bônus (ficam até você apagar)</span>
+          <label title="Soma no atributo antes de rolar (muda o dado: atributo 40 com +5, fixando 15, rola 1d30 + 15)">+ atributo <input type="number" step="1" id="rolMaisA" value="${rolMaisDe(pc).atr||''}" placeholder="0" aria-label="Bônus no atributo"></label>
+          <label title="Soma no resultado, depois de rolar (vale também para a iniciativa)">+ resultado <input type="number" step="1" id="rolMaisR" value="${rolMaisDe(pc).res||''}" placeholder="0" aria-label="Bônus no resultado"></label>
+          <button type="button" class="mini rolmais-x" id="rolMaisX" title="Zerar os dois bônus" aria-label="Zerar os bônus" ${rolMaisDe(pc).atr||rolMaisDe(pc).res?'':'hidden'}>×</button>
         </div>
         <div class="rolbts">
           ${ATRIBS.map(a=>{const v=valorDoAtributo(pc,a.k,rol.fonte);
@@ -2690,14 +2692,15 @@ function ligarFicha(pc){
     const extra=m.res? ' · '+sinalMais(m.res)+' no resultado' : '';
     pc.ultRol={k:'INI', valor:r.val, base:false, total, texto:'1d20 '+(r.val<0?'− ':'+ ')+Math.abs(r.val)+extra, dado:20, bruto:d};
     logar({tipo:'livre', quem:pc.nome, pc:pc.id, det:'Iniciativa · 1d20 ('+d+') '+(r.val<0?'− ':'+ ')+Math.abs(r.val)+extra, total, dd:[[20,d]]});
-    rolMais.res=0;                                                   // (o bônus no resultado valeu só para esta)
     render();
   };
-  // os bônus "só nesta rolagem" (não vão para a ficha: ficam nesta tela até a próxima rolagem)
-  const rma=host.querySelector('#rolMaisA'), rmr=host.querySelector('#rolMaisR');
+  // os bônus da rolagem (não vão para a ficha; lote 21: ficam neste aparelho, para esta ficha, até apagar)
+  const rma=host.querySelector('#rolMaisA'), rmr=host.querySelector('#rolMaisR'), rmx=host.querySelector('#rolMaisX');
   const lerMais=el=>{ const n=Math.round(+String(el.value).replace(',','.')); return isFinite(n)? Math.max(-999,Math.min(999,n)) : 0; };
-  if(rma) rma.oninput=()=>{ rolMaisDe(pc).atr=lerMais(rma); rma.classList.toggle('tem',!!rolMais.atr); };
-  if(rmr) rmr.oninput=()=>{ rolMaisDe(pc).res=lerMais(rmr); rmr.classList.toggle('tem',!!rolMais.res); };
+  const pintaX=()=>{ if(rmx) rmx.hidden=!rolMais.atr&&!rolMais.res; };
+  if(rma) rma.oninput=()=>{ rolMaisDe(pc).atr=lerMais(rma); rma.classList.toggle('tem',!!rolMais.atr); rolMaisGuardar(); pintaX(); };
+  if(rmr) rmr.oninput=()=>{ rolMaisDe(pc).res=lerMais(rmr); rmr.classList.toggle('tem',!!rolMais.res); rolMaisGuardar(); pintaX(); };
+  if(rmx) rmx.onclick=()=>{ const m=rolMaisDe(pc); m.atr=0; m.res=0; rolMaisGuardar(); if(rma){ rma.value=''; rma.classList.remove('tem'); } if(rmr){ rmr.value=''; rmr.classList.remove('tem'); } pintaX(); if(rma) rma.focus(); };
   [rma,rmr].forEach(el=>{ if(el){ el.classList.toggle('tem',!!lerMais(el)); el.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); el.blur(); } }; } });
   // valor atual de cada recurso (HP, SP...): vazio = no começo da barra (cheia, se ela não tem um começo próprio)
   const encher=id=>patch(()=>{ if(pc.estado&&pc.estado.rec) delete pc.estado.rec[id]; });
@@ -3623,7 +3626,7 @@ function htmlCartoesSkills(pc){
       const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean), gs=grausDe(n).length, custo=htmlCustoUso(uso, k), b=textoDoBonus((grausDe(n).slice(0,grau).reduce((o,g)=>{ Object.entries(g.bonus||{}).forEach(([x,v])=>{ o[x]=(o[x]||0)+(+v||0); }); return o; },{})));
       return `<div class="habrow daarv skcard" data-habarv="${esc(n.id)}"${n.cor?` style="--skcor:${esc(n.cor)}"`:''}>
         <span class="habuso">${us.length? us.map(u=>esc(u.nome)).join(' · ') : 'Árvore'}</span>
-        <span class="habnome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}${gs>1?`<span class="mono habgrau">grau ${grau}/${gs}</span>`:''}</span>
+        <span class="habnome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}${marcaBarraHtml(n, arvore)}${gs>1?`<span class="mono habgrau">grau ${grau}/${gs}</span>`:''}</span>
         <span class="hint skde">${esc(arvore.nome)}</span>
         ${(texto||n.desc)? `<div class="habtexto">${texto?`<strong>${htmlComContas(texto, k)}</strong>${n.desc?' · ':''}`:''}${htmlComContas(n.desc||'', k)}</div>`:''}
         ${b? `<div class="habcusto skbonus">Na ficha: ${esc(b)}</div>`:''}
@@ -3702,10 +3705,21 @@ function perdidasDe(pc){
 }
 
 /* =================== ROLAGEM RÁPIDA NA FICHA =================== */
-/* Os bônus "só nesta rolagem" da rolagem rápida: +atributo (soma no atributo antes de rolar — muda o dado) e +resultado
-   (soma no total). Ficam nesta tela, para a ficha aberta, e voltam a zero depois da rolagem que os usou. */
-const rolMais={pc:null, atr:0, res:0};
-function rolMaisDe(pc){ if(rolMais.pc!==pc.id){ rolMais.pc=pc.id; rolMais.atr=0; rolMais.res=0; } return rolMais; }
+/* Os bônus da rolagem rápida: +atributo (soma no atributo antes de rolar — muda o dado) e +resultado (soma no total).
+   (lote 21) Ficam guardados para cada ficha, neste aparelho (não vão para a ficha), até a pessoa apagar (o × zera). */
+const ROLMAIS_KEY='tinycats:rolmais';
+let rolMais={pc:null, atr:0, res:0};
+function rolMaisTodos(){ try{ const o=JSON.parse(localStorage.getItem(ROLMAIS_KEY)||'{}'); return o&&typeof o==='object'&&!Array.isArray(o)? o : {}; }catch(e){ return {}; } }
+function rolMaisDe(pc){
+  if(rolMais.pc!==pc.id){ const g=rolMaisTodos()[pc.id]||{}; rolMais={pc:pc.id, atr:Number.isFinite(+g.a)? +g.a||0 : 0, res:Number.isFinite(+g.r)? +g.r||0 : 0}; }
+  return rolMais;
+}
+function rolMaisGuardar(){
+  if(!rolMais.pc) return;
+  const o=rolMaisTodos();
+  if(rolMais.atr||rolMais.res) o[rolMais.pc]=Object.assign({}, rolMais.atr?{a:rolMais.atr}:{}, rolMais.res?{r:rolMais.res}:{}); else delete o[rolMais.pc];
+  try{ localStorage.setItem(ROLMAIS_KEY, JSON.stringify(o)); }catch(e){}
+}
 const sinalMais=n=>(n<0?'−':'+')+Math.abs(n);
 function rolarNaFicha(pc,k){
   const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'}), m=rolMaisDe(pc);
@@ -3719,7 +3733,6 @@ function rolarNaFicha(pc,k){
   logar({tipo:'fixa', quem:pc.nome, pc:pc.id,
     det:rot+' '+valor+(usouBase?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:'')+extra,
     total, dd:ddDaFixa(r)});
-  m.atr=0; m.res=0;                                                // (valeram só para esta rolagem)
   save(); renderFicha();
 }
 
@@ -3975,6 +3988,12 @@ function blocoSkills(pc){
 
   return barra + tabela + distribuir + equipar;
 }
+/* (lote 21) ▲ soma / ▼ gasta da barra especial da árvore (lido do texto; o mestre corrige na Árvore) */
+function marcaBarraHtml(n, a){
+  const R=window.TC&&TC.rules; if(!R||!R.marcaDaBarra) return '';
+  const b=R.barraEspecial(a||arvoreDoNo(n.id)), m=R.marcaDaBarra(n,b); if(!m) return '';
+  return `<span class="skbarra" title="${esc(R.textoDaMarca(m,b))}" aria-label="${esc(R.textoDaMarca(m,b))}">${m.soma?'<b class="mbs">▲</b>':''}${m.gasta?'<b class="mbg">▼</b>':''}</span>`;
+}
 function linhaNo(pc,n,prof){
   const e=estadoDoNo(pc,n), al=skillsDe(pc).alocados;
   const grau=al[n.id]||0, gs=grausDe(n).length;
@@ -3990,7 +4009,7 @@ function linhaNo(pc,n,prof){
     </button>
     <div class="sknocorpo">
       <div class="sknolinha">
-        <span class="sknome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}</span>
+        <span class="sknome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}${marcaBarraHtml(n)}</span>
         <span class="sktipo">${esc(tipoArv(n).nome||'')}</span>
         ${us.map(u=>`<span class="skuso u-${esc(u.id)}" title="${esc(u.nome)}">${esc(u.sigla||u.nome)}</span>`).join('')}
         ${nat?`<span class="skdot" style="background:${esc(nat.cor||'#888')}" title="${esc(nat.nome)}"></span>`:''}

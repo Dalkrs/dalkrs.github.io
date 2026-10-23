@@ -194,17 +194,19 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     }
     await J.locator('#dadosBotoes button[data-k="FOR"]').click();
     ok(await ate(async () => (await feed(M, 'Selene · Força').count()) === 1) && /\+5 no atributo \(\d+ → \d+\) · \+2 no resultado/.test(await feed(M, 'Selene · Força').first().innerText()), 'a rolagem chega à mesa dizendo os dois bônus: ' + (await feed(M, 'Selene · Força').first().innerText()).replace(/\n/g, ' | '));
-    ok(await J.locator('#dadosMaisA').inputValue() === '' && await J.locator('#dadosMaisR').inputValue() === '', 'e os campos voltam a ficar vazios');
+    ok(await J.locator('#dadosMaisA').inputValue() === '5' && await J.locator('#dadosMaisR').inputValue() === '2', '(lote 21) e os bônus ficam nos campos, para a próxima');
     // a iniciativa usa só o "+ resultado"
-    await J.locator('#dadosMaisR').fill('3'); await w(200, J);
-    ok(/\+ 3 \(só nesta rolagem\)/.test(await J.locator('#dadosBotoes button[data-k="INI"]').getAttribute('title')), 'o botão da iniciativa já diz o +3: ' + await J.locator('#dadosBotoes button[data-k="INI"]').getAttribute('title'));
+    await J.locator('#dadosMaisA').fill(''); await J.locator('#dadosMaisR').fill('3'); await w(200, J);
+    ok(/\+ 3 \(o bônus no resultado\)/.test(await J.locator('#dadosBotoes button[data-k="INI"]').getAttribute('title')), 'o botão da iniciativa já diz o +3: ' + await J.locator('#dadosBotoes button[data-k="INI"]').getAttribute('title'));
     await J.locator('#dadosBotoes button[data-k="INI"]').click();
     {
       const ini = async () => { const u = await M.evaluate(() => TC.aoVivo.itens.filter(l => l.tipo === 'rolagem' && l.dados && l.dados.k === 'iniciativa').map(l => l.dados)); return u[u.length - 1] || null; };
       ok(await ate(async () => { const d = await ini(); if (!d) return false; const m = /^1d20 \((\d+)\)(?: ([+−]) (\d+))? · \+3 no resultado$/.exec(d.resumo || ''); return !!m && d.total === +m[1] + (m[2] === '−' ? -(+m[3]) : +(m[3] || 0)) + 3 && d.sis && d.sis.v === d.total; }),
         'a iniciativa chega à mesa com o +3 somado no total: ' + j(await ini()));
     }
-    ok(await J.locator('#dadosMaisR').inputValue() === '', 'e o campo volta a ficar vazio');
+    ok(await J.locator('#dadosMaisR').inputValue() === '3', '(lote 21) e o bônus fica');
+    await J.locator('#dadosMaisX').click(); await w(200, J);
+    ok(await J.locator('#dadosMaisR').inputValue() === '' && await J.locator('#dadosMaisX').isHidden(), 'o × zera os bônus');
 
     // ---------- a poção num token sem ficha, pela jogadora, na cena no ar ----------
     await M.locator('#tab-cenas').click(); await w(500);

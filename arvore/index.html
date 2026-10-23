@@ -191,6 +191,7 @@ input[type=color].livre{width:26px;height:22px;padding:0;border:1px solid var(--
 /* (lote 6) o custo de uso de cada grau, as contas entre chaves e a tranca */
 .usos{margin-top:6px}
 .rot-mini{display:block;font:600 10px/1.4 'Barlow';letter-spacing:.12em;text-transform:uppercase;color:var(--texto-3);margin:4px 0 4px}
+.marca-barra .mb-soma{color:#3f9d5b;font-weight:700}.marca-barra .mb-gasta{color:#c9473d;font-weight:700}.marca-barra small{color:var(--texto-suave,inherit);opacity:.75}
 .uso-l{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:center;margin-bottom:5px}
 .uso-l .guso-v{font-family:'JetBrains Mono',monospace;padding:5px 7px}
 .uso-l .guso-b{padding:5px 7px}
@@ -500,7 +501,7 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
 <script src="../tc/ponte.js?v=16"></script>
-<script src="../tc/rules.js?v=18"></script>
+<script src="../tc/rules.js?v=19"></script>
 <script src="mesa.js?v=8"></script>
 <script>
 'use strict';
@@ -713,6 +714,7 @@ function normalizarArvore(a, b, ids, vistasA){
   a.id = idUnico(a.id, 'a', vistasA || new Set()); a.nome = String(a.nome || 'Árvore');
   if(!CATEGORIAS.some(c=>c.id===a.categoria)) a.categoria = 'outra';
   a.secreta = !!a.secreta; a.senha = String(a.senha || '');
+  if(typeof a.barra==='string' && a.barra.trim()) a.barra = a.barra.trim().slice(0,30); else delete a.barra;    // (lote 21) o nome da barra especial, quando o texto não diz
   a.nodes = soObjetos(a.nodes);
   a.nodes.forEach(n=>normalizarNo(n, b, ids));
 }
@@ -733,6 +735,7 @@ function normalizarNo(n, b, ids){
   n.usos = [...new Set(usosOrig.filter(x=>ids.uso.has(x)))];
   delete n.uso;
   n.desc = String(n.desc || '');
+  if(!['soma','gasta','ambas','nada'].includes(n.barra)) delete n.barra;          // (lote 21) a marca da barra especial, corrigida pelo mestre
   n.exclusivo = String(n.exclusivo || '').trim();
   if(!Array.isArray(n.graus) || !n.graus.length){
     let c = n.custos;
@@ -1897,9 +1900,10 @@ function desenharNo(g, n, e, tema, p, bate, busca){
   const on = e==='on' || e==='mestre';
   if(tema==='tinta') noTinta(grp, n, e, r, on); else noPedra(grp, n, e, r, nat, on);
   selos(grp, n, r, tema);
+  setasBarra(grp, n, r, tema);
   // regra de liberação quando há mais de um requisito
   if(n.pais.length>1){
-    const t = el('text', {class:'regra-txt', y:f1(-(r + (n.tipo==='keystone' ? 22 : 13)))});
+    const t = el('text', {class:'regra-txt', y:f1(-(r + (n.tipo==='keystone' ? 22 : 13) + (marcaDoNo(n) ? 9 : 0)))});
     t.setAttribute('fill', n.regra==='ou' ? (tema==='tinta' ? '#2F7A55' : '#4E8C7D') : (tema==='tinta' ? COR_T.verm : COR_P.ouro));
     t.textContent = n.regra==='ou' ? 'OU' : 'E'; grp.appendChild(t);
   }
@@ -1974,6 +1978,31 @@ function noPedra(grp, n, e, r, nat, on){
     grp.appendChild(el('circle', {r:f1(r*.42), fill: nat ? nat.cor : P.ouro}));
   }
   if(e==='fechado') grp.appendChild(el('line', {x1:f1(-r*1.05), y1:f1(r*1.05), x2:f1(r*1.05), y2:f1(-r*1.05), stroke:P.verm, 'stroke-width':1.8, 'stroke-linecap':'round', opacity:.85}));
+}
+/* (lote 21) A barra especial: o nome (o do nó que a define, ou o que o mestre escreveu na árvore) e a marca do nó —
+   ▲ soma, ▼ gasta (lida do texto; o mestre corrige no nó). As contas ficam em tc/rules.js. */
+const RR = () => (window.TC && TC.rules && TC.rules.marcaDaBarra) ? TC.rules : null;
+function barraDaArvore(a){ return a && RR() ? RR().barraEspecial(a) : null; }
+function marcaDoNo(n){ const a = arvDe.get(n.id), b = barraDaArvore(a); return RR() ? RR().marcaDaBarra(n, b) : null; }
+const COR_SOMA = '#3f9d5b', COR_GASTA = '#c9473d';
+function setasBarra(grp, n, r, tema){
+  const m = marcaDoNo(n);
+  if(!m || (n.tipo==='pequeno' && cam.k<=.55)) return;
+  const fundo = tema==='tinta' ? COR_T.papelNo : COR_P.encaixe, y = -r - (n.tipo==='keystone' ? 15 : 8);
+  const quais = [m.soma ? 'soma' : null, m.gasta ? 'gasta' : null].filter(Boolean), esp = 11, x0 = -(quais.length-1)*esp/2;
+  quais.forEach((k, i)=>{
+    const x = x0 + i*esp, cor = k==='soma' ? COR_SOMA : COR_GASTA;
+    const c = el('circle', {cx:f1(x), cy:f1(y), r:5.2, fill:fundo, stroke:cor, 'stroke-width':1.1, class:'seta-barra ' + k});
+    grp.appendChild(c);
+    grp.appendChild(el('path', {d: k==='soma' ? `M${f1(x-2.8)},${f1(y+1.9)} L${f1(x)},${f1(y-2.4)} L${f1(x+2.8)},${f1(y+1.9)} Z` : `M${f1(x-2.8)},${f1(y-1.9)} L${f1(x)},${f1(y+2.4)} L${f1(x+2.8)},${f1(y-1.9)} Z`, fill:cor}));
+  });
+}
+// o "▲ Soma 1 Preparo" por extenso, para os painéis
+function htmlMarca(n, comFonte){
+  const m = marcaDoNo(n), b = barraDaArvore(arvDe.get(n.id));
+  if(!m) return '';
+  const partes = [m.soma ? `<span class="mb-soma">▲ soma</span>` : '', m.gasta ? `<span class="mb-gasta">▼ gasta</span>` : ''].filter(Boolean).join(' e ');
+  return `<p class="info marca-barra" id="marcaBarra">${partes} · barra ${esc(b || 'especial')}${comFonte ? `<small> (${m.mao ? 'marcado por você' : 'lido do texto'})</small>` : ''}</p>`;
 }
 // selinhos: tipo de uso (sup. dir.), caminho exclusivo (sup. esq.), requisito de outra árvore (inf. esq.)
 function selos(grp, n, r, tema){
@@ -2451,6 +2480,7 @@ function blocoNo(a, n){
     <div class="grupo"><span class="rot">Tipos de uso · pode marcar vários</span><div class="chips">
       <button class="chip" data-uso="" aria-pressed="${!n.usos.length}">Nenhum</button>
       ${bib().usos.map(u=>`<button class="chip" data-uso="${esc(u.id)}" aria-pressed="${n.usos.includes(u.id)}">${esc(u.nome)}</button>`).join('')}</div></div>
+    ${blocoMarcaBarra(a, n)}
     <div class="grupo">
       <div class="grau-topo"><span class="rot" style="margin:0">Graus</span>
         <div class="passo"><button class="btn" id="grauMenos" ${G<=1 ? 'disabled' : ''} aria-label="Menos um grau">−</button><b>${G}</b>
@@ -2505,6 +2535,24 @@ function blocoNo(a, n){
       <button class="btn perigo" id="btExcluirRamo">Excluir ramificação</button>
     </div></div>`;
 }
+// (lote 21) a marca do nó na barra especial: a leitura do texto (Automático) ou a do mestre
+function blocoMarcaBarra(a, n){
+  const b = barraDaArvore(a);
+  if(!RR()) return '';
+  const lido = RR().marcaDaBarra(Object.assign({}, n, {barra:undefined}), b);
+  const txtLido = !b ? 'sem barra' : !lido ? 'nada' : lido.soma && lido.gasta ? '▲▼' : lido.soma ? '▲' : '▼';
+  const op = [['', 'Automático (' + txtLido + ')'], ['soma', '▲ Soma'], ['gasta', '▼ Gasta'], ['ambas', '▲▼ As duas'], ['nada', 'Nenhum']];
+  return `<div class="grupo" id="grupoBarra"><span class="rot">Na barra especial${b ? ' · ' + esc(b) : ''}</span><div class="chips">
+    ${op.map(([v,t])=>`<button class="chip" data-barra="${v}" aria-pressed="${(n.barra||'')===v}">${esc(t)}</button>`).join('')}</div>
+    <p class="nota">${b ? 'O símbolo no nó mostra quando a habilidade soma (▲) ou gasta (▼) ' + esc(b) + '. “Automático” lê o texto; corrija aqui quando a leitura errar.' : 'Esta árvore não diz qual é a barra especial: escreva o nome dela no bloco Árvore, mais abaixo.'}</p></div>`;
+}
+function ligarMarcaBarra(n){
+  $$('[data-barra]').forEach(b=>b.onclick = ()=>{
+    const v = b.dataset.barra;
+    if((n.barra||'')===v) return;
+    registrar('marca da barra especial', null); if(v) n.barra = v; else delete n.barra; salvar(); desenhar(); pintarPainel();
+  });
+}
 function blocoArvore(a){
   const escolas = a.nodes.filter(n=>n.escola).length;
   return `<div class="bloco"><h2>Árvore</h2>
@@ -2515,6 +2563,9 @@ function blocoArvore(a){
     ${a.secreta ? `<div class="grupo recuo"><label class="rot" for="aSenha">Senha</label>
       <input id="aSenha" class="campo" value="${esc(a.senha)}" autocomplete="off" spellcheck="false">
       <p class="nota">Maiúsculas, acentos e espaços a mais não contam.</p></div>` : ''}
+    <div class="grupo"><label class="rot" for="aBarra">Barra especial</label>
+      <input id="aBarra" class="campo" value="${esc(a.barra || '')}" placeholder="${esc((RR() && RR().barraEspecial(Object.assign({}, a, {barra:undefined}))) || 'ex.: Preparo')}" autocomplete="off">
+      <p class="nota">Vazio: o nome vem do texto do nó que define a barra (“Preparo (barra): máximo 20…”).</p></div>
     <p class="nota">${plural(a.nodes.length,'nódulo','nódulos')} · ${plural(escolas,'escola-ramo','escolas-ramo')}</p>
     <div class="acoes" style="margin-top:10px"><button class="btn" id="btChecar">Checar biblioteca</button></div></div>`;
 }
@@ -2568,6 +2619,7 @@ function ligarMestre(){
   if(!a) return;
 
   // árvore
+  on('#aBarra', 'change', e=>{ registrar('barra especial da árvore', 'abarra'+a.id); const v = e.target.value.trim().slice(0,30); if(v) a.barra = v; else delete a.barra; salvar(); desenhar(); pintarPainel(); });
   on('#aNome', 'input', e=>{ registrar('renomear árvore', 'anome'+a.id); a.nome = e.target.value; salvar(); pintarAbas(); atualizarMarca(a); });
   on('#aNome', 'change', e=>{ if(!e.target.value.trim()){ a.nome = 'Árvore'; salvar(); pintarAbas(); pintarPainel(); } });
   $$('[data-cat]').forEach(b=>b.onclick = ()=>{ registrar('categoria da árvore'); a.categoria = b.dataset.cat; salvar(); pintarAbas(); desenhar(); pintarPainel(); });
@@ -2591,6 +2643,7 @@ function ligarMestre(){
   $$('.paleta [data-cor]:not(.esc-cor)').forEach(b=>b.onclick = ()=>muda('mudar cor', 'cor'+n.id, ()=>{ n.cor = b.dataset.cor; }, {painel:true}));
   on('#corLivre', 'input', e=>muda('mudar cor', 'cor'+n.id, ()=>{ n.cor = e.target.value; }));
   $$('[data-nat]').forEach(b=>{ if(b.closest('#painel')) b.onclick = ()=>muda('mudar natureza', null, ()=>{ n.natureza = b.dataset.nat; }, {painel:true}); });
+  ligarMarcaBarra(n);
   $$('[data-uso]').forEach(b=>b.onclick = ()=>muda('mudar tipo de uso', null, ()=>{
     const id = b.dataset.uso;
     if(!id) n.usos = [];
@@ -2629,6 +2682,7 @@ function ligarMestre(){
   });
   on('#eEscSenha', 'input', e=>muda('senha da escola', 'escsenha'+n.id, ()=>{ n.escola.senha = e.target.value; }, {semDesenho:true}));
   on('#eDesc', 'input', e=>muda('editar descrição', 'desc'+n.id, ()=>{ n.desc = e.target.value; }, {semDesenho:true}));
+  on('#eDesc', 'change', ()=>{ desenhar(); const gb = $('#grupoBarra'), a0 = arvDe.get(n.id); if(gb && a0) gb.outerHTML = blocoMarcaBarra(a0, n), ligarMarcaBarra(n); });     // (lote 21) a leitura da barra acompanha o texto
   // (lote 6) a tranca e "Aberto para"
   on('#eTranca', 'change', e=>muda(e.target.checked ? 'trancar o caminho' : 'destrancar o caminho', null, ()=>{ if(e.target.checked) n.tranca = true; else delete n.tranca; }, {painel:true}));
   $$('[data-abrir]').forEach(c=>c.onchange = e=>abrirCaminho(n, c.dataset.abrir, e.target.checked));
@@ -2824,6 +2878,7 @@ function painelJogador(){
       ${n.desc ? `<p class="info" style="color:var(--texto)" id="descJog">${htmlTexto(n.desc, p)}</p>` : ''}
       ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</span></li>`).join('')}</ul>`
              : `<p class="info">Custo: ${esc(custoTexto(n.graus[0].custos))}</p>${n.graus[0].uso ? `<p class="info" id="usoJog">Custo de uso: ${htmlCusto(n.graus[0].uso, p)}</p>` : ''}`}
+      ${htmlMarca(n, false)}
       ${n.pais.length ? `<p class="info acento">${esc(exigencia(n))}</p>` : ''}
       ${col.length ? `<p class="info">Caminho exclusivo com ${col.map(m=>'“'+esc(m.nome)+'”').join(', ')}.</p>` : ''}
       ${esc0 ? `<p class="info">Escola: ${esc(esc0.escola.nome)}</p>` : ''}

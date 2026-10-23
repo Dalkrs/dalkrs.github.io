@@ -290,11 +290,15 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
     const det3 = await S0(() => S.log[0].det), txt3 = await S0(() => S.personagens.find(p => p.nome === 'Dain X').ultRol.texto);
     ok(r3.dado === faces + 5 && r3.bruto === 1 && r3.total === 1 + 5 + 3 && /\+5 no atributo \(\d+ → \d+\) · \+3 no resultado$/.test(det3) && /\+3 no resultado$/.test(txt3),
       'com +5 no atributo e +3 no resultado: dado de ' + (faces + 5) + ' lados, total 1 + 5 + 3, e o registro diz os dois: ' + JSON.stringify(r3) + ' · ' + det3);
-    ok(await P.locator('#rolMaisA').inputValue() === '' && await P.locator('#rolMaisR').inputValue() === '' && (await rapida(0)).dado === faces, 'depois da rolagem, os bônus voltam a zero (valem só para uma)');
+    // (lote 21) os bônus ficam até apagar: na próxima rolagem continuam, e ficam guardados neste aparelho; o × zera
+    ok(await P.locator('#rolMaisA').inputValue() === '5' && await P.locator('#rolMaisR').inputValue() === '3' && (await rapida(0)).dado === faces + 5, 'depois da rolagem, os bônus ficam (valem na próxima também)');
+    ok(await P.evaluate(() => { const o = JSON.parse(localStorage.getItem('tinycats:rolmais') || '{}'), pc = S.personagens.find(p => p.nome === 'Dain X'); return !!o[pc.id] && o[pc.id].a === 5 && o[pc.id].r === 3; }), 'e ficam guardados neste aparelho, para esta ficha');
+    await P.locator('#rolMaisX').click(); await w(150);
+    ok(await P.locator('#rolMaisA').inputValue() === '' && await P.locator('#rolMaisR').inputValue() === '' && (await rapida(0)).dado === faces, 'o × zera os dois');
     await P.locator('#rolMaisR').fill('4'); await w(150);
     const i4 = await rolou(0);
-    ok(i4.total === 1 + i4.valor + 4 && await S0(() => /Iniciativa · 1d20 \(1\) [+−] \d+ · \+4 no resultado/.test(S.log[0].det)) && await P.locator('#rolMaisR').inputValue() === '',
-      'a iniciativa também soma o +resultado (e ele volta a zero): ' + JSON.stringify(i4) + ' · ' + await S0(() => S.log[0].det));
+    ok(i4.total === 1 + i4.valor + 4 && await S0(() => /Iniciativa · 1d20 \(1\) [+−] \d+ · \+4 no resultado/.test(S.log[0].det)) && await P.locator('#rolMaisR').inputValue() === '4',
+      'a iniciativa também soma o +resultado (e ele fica): ' + JSON.stringify(i4) + ' · ' + await S0(() => S.log[0].det));
     // os dados livres, pela mesma função
     ok(await S0(() => { window.__prox = 0; const a = rolarExpressao('1d6').total; window.__prox = 5; const b = rolarExpressao('1d6').total; window.__prox = 99; const c = rolarExpressao('1d100').total; return a === 1 && b === 6 && c === 100; }), 'dados livres: 1d6 vai de 1 a 6 e 1d100 chega a 100');
     await P.evaluate(() => { delete window.crypto.getRandomValues; });

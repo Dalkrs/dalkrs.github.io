@@ -2,6 +2,26 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-5",
+      "data": "2026-10-23",
+      "titulo": "O bônus da rolagem fica, e o símbolo da barra especial",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Rolagem: o “+ atributo” e o “+ resultado” agora ficam guardados depois de rolar — para cada ficha, neste aparelho, até você apagar (o × ao lado zera os dois). Vale na telinha de Dados, na rolagem rápida da ficha e no cartão da defesa."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Árvore: o símbolo da barra especial — ▲ verde no nó que soma (Preparo, Ira, Palco, Geada…) e ▼ vermelha no que gasta; as duas quando faz as duas coisas. Aparece também no painel do nó e nas skills da ficha."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Árvore: a marca é lida do texto do nó (“+1 de Preparo”, “gasta 3 de Ira”…); quando a leitura errar, corrija no nó em “Na barra especial” (Automático, ▲ Soma, ▼ Gasta, ▲▼ As duas, Nenhum). No bloco Árvore, dá para escrever o nome da barra quando o texto não diz."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-4",
       "data": "2026-10-23",
       "titulo": "O mundo compartilhado",

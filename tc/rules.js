@@ -868,6 +868,56 @@
      Em cada grau, uma lista de { b: nome da barra (SP, Energia, uma barra especial), v: quanto — um número ou uma conta
      como "CAN/2" }. Só aparece: quem usa desconta à mão. */
   const MAX_USO = 4;
+  /* (lote 21) A barra especial de uma árvore e a marca de cada nó nela (o símbolo ▲ soma / ▼ gasta, na Árvore e na
+     ficha). A barra vem do nó que a define ("Preparo (barra): máximo 20…", "Geada: máximo 20…"); a marca é lida do
+     texto do nó ("+1 de Preparo", "ganha 2 de Geada", "recupera…" somam; "gasta…", "custa 3 de Ira", "perde metade do
+     Preparo", "a Ira zera" gastam — "não gasta", "custa 1 a menos" não). O mestre corrige no nó: no.barra = 'soma',
+     'gasta', 'ambas' ou 'nada' (sem o campo, vale a leitura do texto). */
+  const LETRA = 'A-Za-zÀ-ÖØ-öø-ÿ';
+  const RE_DEF_BARRA = new RegExp('(?:^|\\n)\\s*([A-ZÀ-ÖØ-Þ][' + LETRA + "'’ ]{1,28}?)\\s*(?:\\([^)\\n]{0,90}\\))?\\s*:\\s*(?:m[áa]ximo\\s+\\d+|uma balança|de\\s+[−-]?\\d+\\s+a\\s+[+]?\\d+)");
+  const MARCAS_BARRA = ['soma', 'gasta', 'ambas', 'nada'];
+  const textoDoNo = n => [n && n.desc].concat(((n && n.graus) || []).map(g => g && g.texto)).filter(x => typeof x === 'string' && x).join('\n');
+  const defineBarra = n => { const m = RE_DEF_BARRA.exec(textoDoNo(n)); return m ? m[1].trim() : null; };
+  function barraEspecial(arvore) {
+    if (!arvore || !Array.isArray(arvore.nodes)) return null;
+    if (typeof arvore.barra === 'string' && arvore.barra.trim()) return arvore.barra.trim().slice(0, 30);
+    const raizes = arvore.nodes.filter(n => n && !(Array.isArray(n.pais) && n.pais.length));
+    for (const n of raizes.concat(arvore.nodes.slice(0, 3))) { const b = defineBarra(n); if (b) return b; }
+    return null;
+  }
+  const escRe = t => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const cacheMarca = new Map();
+  function lerMarcaDoTexto(txt, barra) {
+    const ch = barra + '\u0001' + txt;
+    if (cacheMarca.has(ch)) return cacheMarca.get(ch);
+    const r = lerMarcaDoTexto0(txt, barra);
+    if (cacheMarca.size > 6000) cacheMarca.clear();
+    cacheMarca.set(ch, r);
+    return r;
+  }
+  function lerMarcaDoTexto0(txt, barra) {
+    const B = '(?<![' + LETRA + '])' + escRe(barra) + '(?![' + LETRA + '])', tem = new RegExp(B);
+    const soma1 = new RegExp('\\+\\s*\\d+(?:d\\d+)?\\s*(?:de\\s+)?' + B);
+    const soma2 = new RegExp('(?<!não )(?<!nem )\\b(?:ganha|ganham|ganhar|ganhando|recupera|recuperam|recuperar|enche|enchem|encher|rende|rendem|render|soma|somam)\\b[^.;\\n]{0,30}?' + B, 'i');
+    const gasta1 = new RegExp('(?<!não )(?<!nem )\\b(?:gasta|gastam|gastar|gastando|paga|pagam|pagar|pagando|perde|perdem|perder|consome|consomem|custa|custam|custar)\\b[^.;\\n]{0,30}?' + B, 'i');
+    const gasta2 = new RegExp(B + '\\s+(?:zera|zeram|cai pela metade|volta a 0)', 'i'), gasta3 = new RegExp('[−-]\\s*\\d+\\s*(?:de\\s+)?' + B);
+    let soma = false, gasta = false;
+    for (const fr of String(txt).split(/[.;\n]+|\bEm troca\b/)) {
+      if (!tem.test(fr)) continue;
+      if (soma1.test(fr) || soma2.test(fr)) soma = true;
+      if (!/\ba menos\b|mais barat/i.test(fr) && (gasta1.test(fr) || gasta2.test(fr) || gasta3.test(fr))) gasta = true;
+    }
+    return soma || gasta ? { soma, gasta } : null;
+  }
+  // → { soma, gasta, mao } ou null. barra: o nome (barraEspecial da árvore do nó)
+  function marcaDaBarra(no, barra) {
+    if (!no) return null;
+    if (MARCAS_BARRA.includes(no.barra)) return no.barra === 'nada' ? null : { soma: no.barra !== 'gasta', gasta: no.barra !== 'soma', mao: true };
+    if (!barra || defineBarra(no)) return null;                                   // (o nó que define a barra não ganha marca)
+    const m = lerMarcaDoTexto(textoDoNo(no), barra);
+    return m ? { soma: m.soma, gasta: m.gasta, mao: false } : null;
+  }
+  const textoDaMarca = (m, barra) => (!m ? '' : m.soma && m.gasta ? 'Soma e gasta ' + barra : m.soma ? 'Soma na barra ' + barra : 'Gasta da barra ' + barra);
   function usoLimpo(lista) {
     if (!Array.isArray(lista)) return null;
     const out = [];
@@ -1829,6 +1879,7 @@
     FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,
     NIVEIS_MAX, temNiveis, nivelDoItem, niveisDoItem, itemNoNivel, espelharItem, itemComNivelNovo, itemSemNivel, textoDoNivel,
+    MARCAS_BARRA, barraEspecial, marcaDaBarra, textoDaMarca,
     temTranca, visiveis, bibVisivel, ramosDe, bibComRamos, partesComContas, textoComContas, explicarConta, MAX_USO, usoLimpo, custoDeUso, textoDoCusto,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,
