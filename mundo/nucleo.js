@@ -3341,6 +3341,8 @@
       if (!Object.keys(mapa.guerra.pres).length) delete mapa.guerra.pres;
       if (guerraVazia(mapa.guerra)) delete mapa.guerra;
     }
+    // (lote 20) a linha do tempo (só quando há: o mapa de antes fica igual)
+    { const ln = normLinha(m.linha, mapa.cal, new Set(mapa.objs.filter(o => o.k === 'g').map(o => o.id))); if (ln) mapa.linha = ln; }
     return mapa;
   }
   // Nunca lança: com qualquer coisa na entrada sai um mapa válido.
@@ -3440,6 +3442,149 @@
     return { ok: true, hexes: Object.keys(hexes).length };
   }
 
+
+  /* ---------------- (lote 20) a linha do tempo: o mundo compartilhado ----------------
+     O mundo é um só (o mapa, as facções, os eventos), mas cada campanha — e o grupo que se separa dela — está numa data
+     própria. m.linha = { ativa, lin: [{ id, nome, camp, sep, dia, tempo, grupos, paradas }] }: a ativa é a que o mapa
+     mostra (o calendário do mapa, m.cal, é o dela: a data guardada na ativa só vale quando ela deixa de ser a ativa); as
+     outras guardam onde pararam. camp: a campanha (null: a mesa sem campanha); sep: um grupo que se separou (anda com a
+     data própria até se juntar de novo); grupos: os grupos do mapa que andam com esta linha (o "+1 tempo" de uma linha
+     não leva os grupos das outras); paradas: as marcas do "Parou aqui" (a data, o tempo, quando foi marcada e a nota). */
+  const MAX_LINHAS = 40, MAX_PARADAS_LINHA = 60, MAX_NOTA_LINHA = 200;
+  function normLinha(x, cal, objIds) {
+    if (!ehObj(x) || !Array.isArray(x.lin)) return null;
+    const tpd = tpdDe(cal), vistos = new Set(), lin = [];
+    for (const l of x.lin) {
+      if (!ehObj(l) || lin.length >= MAX_LINHAS) continue;
+      const id = idOk(l.id);
+      if (!id || vistos.has(id)) continue;
+      vistos.add(id);
+      const camp = typeof l.camp === 'string' && /^[a-z0-9]{4,16}$/.test(l.camp) ? l.camp : null;
+      const grupos = Array.from(new Set((Array.isArray(l.grupos) ? l.grupos : []).map(idOk).filter(g => g && (!objIds || objIds.has(g))))).slice(0, 50);
+      const paradas = (Array.isArray(l.paradas) ? l.paradas : []).filter(ehObj).slice(-MAX_PARADAS_LINHA)
+        .map(p => ({ dia: inteiro(p.dia, 0, 0, 1e9), tempo: inteiro(p.tempo, 0, 0, tpd - 1), em: inteiro(p.em, 0, 0, 1e14), nota: texto(p.nota, '', MAX_NOTA_LINHA).trim() }));
+      lin.push({ id, nome: texto(l.nome, '', 80).trim() || 'Linha', camp, sep: !!l.sep, dia: inteiro(l.dia, 0, 0, 1e9), tempo: inteiro(l.tempo, 0, 0, tpd - 1), grupos, paradas });
+    }
+    if (!lin.length) return null;
+    // um grupo anda com uma linha só (fica com a primeira que o tem)
+    const donos = new Set();
+    for (const l of lin) { l.grupos = l.grupos.filter(g => !donos.has(g)); l.grupos.forEach(g => donos.add(g)); }
+    const ativa = lin.some(l => l.id === x.ativa) ? x.ativa : lin[0].id;
+    return { ativa, lin };
+  }
+  const linhaDe = (m, id) => (ehObj(m) && ehObj(m.linha) ? m.linha.lin.find(l => l.id === id) || null : null);
+  const linhaAtiva = m => (ehObj(m) && ehObj(m.linha) ? linhaDe(m, m.linha.ativa) : null);
+  // a data de uma linha: a ativa é o calendário do mapa
+  function dataDaLinha(m, l) {
+    if (!l) return null;
+    const at = linhaAtiva(m);
+    return at && at.id === l.id ? { dia: num(m.cal.dia, 0), tempo: num(m.cal.tempo, 0) } : { dia: l.dia, tempo: l.tempo };
+  }
+  // começa a linha do tempo do mapa: a primeira, na data de agora (o nome e a campanha de quem começa)
+  function linhaComecar(m, o) {
+    o = ehObj(o) ? o : {};
+    if (!ehObj(m) || ehObj(m.linha)) return null;
+    const l = { id: novoId('ln'), nome: texto(o.nome, '', 80).trim() || 'O grupo', camp: o.camp || null, sep: false, dia: m.cal.dia, tempo: m.cal.tempo || 0, grupos: [], paradas: [] };
+    m.linha = { ativa: l.id, lin: [l] };
+    return l.id;
+  }
+  // uma linha nova, na data de agora (sep: um grupo que se separou da ativa — leva a campanha dela e os grupos que saem)
+  function linhaNova(m, o) {
+    o = ehObj(o) ? o : {};
+    if (!ehObj(m) || !ehObj(m.linha) || m.linha.lin.length >= MAX_LINHAS) return null;
+    const at = linhaAtiva(m), grupos = (Array.isArray(o.grupos) ? o.grupos : []).filter(g => typeof g === 'string');
+    const l = { id: novoId('ln'), nome: texto(o.nome, '', 80).trim() || 'Linha', camp: o.sep ? (at ? at.camp : null) : (o.camp || null), sep: !!o.sep, dia: m.cal.dia, tempo: m.cal.tempo || 0, grupos, paradas: [] };
+    if (o.dia != null) { l.dia = inteiro(o.dia, m.cal.dia, 0, 1e9); l.tempo = 0; }
+    for (const x of m.linha.lin) x.grupos = x.grupos.filter(g => !grupos.includes(g));
+    m.linha.lin.push(l);
+    return l.id;
+  }
+  // trocar a linha que o mapa mostra: a de agora guarda onde parou; o calendário vai para a data da outra
+  function linhaTrocar(m, id) {
+    const at = linhaAtiva(m), alvo = linhaDe(m, id);
+    if (!alvo || !at || at.id === alvo.id) return false;
+    at.dia = num(m.cal.dia, 0); at.tempo = num(m.cal.tempo, 0);
+    m.cal.dia = alvo.dia; m.cal.tempo = alvo.tempo;
+    m.linha.ativa = alvo.id;
+    return true;
+  }
+  // "Parou aqui": a marca da linha (na data dela), com a hora em que foi marcada e a nota
+  function linhaParou(m, id, nota, em) {
+    const l = linhaDe(m, id);
+    if (!l) return false;
+    const d = dataDaLinha(m, l), ult = l.paradas[l.paradas.length - 1];
+    if (ult && ult.dia === d.dia && ult.tempo === d.tempo && !texto(nota).trim()) return false;      // (a mesma marca de novo: nada)
+    l.paradas.push({ dia: d.dia, tempo: d.tempo, em: num(em, 0), nota: texto(nota, '', MAX_NOTA_LINHA).trim() });
+    if (l.paradas.length > MAX_PARADAS_LINHA) l.paradas.splice(0, l.paradas.length - MAX_PARADAS_LINHA);
+    return true;
+  }
+  // a linha andou desde a última marca (ou nunca foi marcada)?
+  function linhaSemMarca(m, id) {
+    const l = linhaDe(m, id);
+    if (!l) return false;
+    const d = dataDaLinha(m, l), ult = l.paradas[l.paradas.length - 1];
+    return !ult || ult.dia !== d.dia || ult.tempo !== d.tempo;
+  }
+  // o grupo que se separou volta a seguir a linha de onde saiu (a da campanha dele): a linha dele sai, os grupos voltam
+  function linhaJuntar(m, id, paraId) {
+    const l = linhaDe(m, id);
+    if (!l || !l.sep) return false;
+    const para = linhaDe(m, paraId) || m.linha.lin.find(x => x.id !== l.id && !x.sep && x.camp === l.camp) || m.linha.lin.find(x => x.id !== l.id);
+    if (!para) return false;
+    if (m.linha.ativa === l.id) linhaTrocar(m, para.id);
+    para.grupos = Array.from(new Set(para.grupos.concat(l.grupos)));
+    m.linha.lin = m.linha.lin.filter(x => x.id !== l.id);
+    return true;
+  }
+  function linhaTirar(m, id) {
+    const l = linhaDe(m, id);
+    if (!l || m.linha.ativa === id) return false;
+    m.linha.lin = m.linha.lin.filter(x => x.id !== id);
+    return true;
+  }
+  // os grupos que andam com outra linha (não com a ativa): o "+1 tempo" e o "Próximo dia" não os levam
+  function gruposDeOutrasLinhas(m) {
+    const at = linhaAtiva(m), out = new Set();
+    if (!at) return out;
+    for (const l of m.linha.lin) if (l.id !== at.id) l.grupos.forEach(g => out.add(g));
+    return out;
+  }
+  // a data de cada campanha, para as projeções: a linha principal dela (a que não se separou)
+  function datasDasCampanhas(m) {
+    const out = {};
+    if (!ehObj(m) || !ehObj(m.linha)) return out;
+    for (const l of m.linha.lin) if (l.camp && !l.sep && !out[l.camp]) out[l.camp] = dataDaLinha(m, l);
+    return out;
+  }
+  /* O que o mundo já tem depois da data de uma linha: as outras que estão mais à frente (a mais adiantada) e os eventos e
+     as zonas de guerra que começam (ou acabam) entre a data dela e a da mais adiantada — o mestre confere que o que esta
+     linha vive não briga com o que as outras já viveram. → { ate, quem, dias, itens: [{ id, k, nome, dia, o }] } | null */
+  function depoisDaLinha(m, id) {
+    const l = linhaDe(m, id);
+    if (!l) return null;
+    const d = dataDaLinha(m, l).dia;
+    let ate = d, quem = null;
+    for (const x of m.linha.lin) { const dx = dataDaLinha(m, x).dia; if (x.id !== l.id && dx > ate) { ate = dx; quem = x; } }
+    if (!quem) return null;
+    const itens = [];
+    for (const o of m.objs) {
+      if (o.k !== 'e' && o.k !== 'z') continue;
+      const ini = o.ini == null ? null : num(o.ini, null), fim = o.fim == null || o.fim === '' ? null : num(o.fim, null);
+      if (ini != null && ini > d && ini <= ate) itens.push({ id: o.id, k: o.k, nome: o.nome || '', dia: ini, o: 'começa' });
+      else if (fim != null && fim >= d && fim < ate) itens.push({ id: o.id, k: o.k, nome: o.nome || '', dia: fim, o: 'acaba' });
+    }
+    itens.sort((a, b) => a.dia - b.dia);
+    return { ate, quem: { id: quem.id, nome: quem.nome }, dias: ate - d, itens };
+  }
+  // o mapa na data de uma campanha (para a projeção dos jogadores dela): uma cópia com o calendário da linha dela
+  function naDataDe(m, camp) {
+    const d = datasDasCampanhas(m)[camp];
+    if (!d) return null;
+    const c = copia(m);
+    c.cal.dia = d.dia; c.cal.tempo = d.tempo;
+    return c;
+  }
+
   /* ---------------- projeção pública ---------------- */
   /* O que os jogadores recebem. Tudo o que é só do mestre sai aqui — e nada além deste recorte vai para eles:
      notas, o "escondido" do mapa, objetos e facções escondidos, o "é falso" dos boatos, a tabela de encontros,
@@ -3454,6 +3599,7 @@
     const todoCoberto = pts => nevoa && pts.every(p => cobertoPor(ops, p[0], p[1]));
     delete m.oculto;
     delete m.ecoJ;
+    delete m.linha;                                          // (lote 20) a linha do tempo é do mestre
     // (lote 11, parte 2a) as terras dos títulos como o mestre as vê (o nome e o "escondido"), antes dos recortes
     const terrasAntes = new Map(m.objs.filter(o => o.k === 'r' || o.k === 'm').map(o => [o.id, o])), nomesFac = new Map(m.faccoes.map(f => [f.id, f.nome]));
     /* (lote 10, parte 6) o que os jogadores veem da economia, contado antes de tudo (no mapa inteiro, com o terreno de
@@ -3680,6 +3826,7 @@
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
     HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento, CAMPANHA_PADRAO, mesesDe, hpDaUnidade, tropasComHp, MAQUINAS_PADRAO, maquinasDe, somaDasMaquinas, RESERVA_PADRAO, MILICIA_PADRAO,
     normHerois,
+    normLinha, linhaDe, linhaAtiva, dataDaLinha, linhaComecar, linhaNova, linhaTrocar, linhaParou, linhaSemMarca, linhaJuntar, linhaTirar, gruposDeOutrasLinhas, datasDasCampanhas, depoisDaLinha, naDataDe,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,
     GENEROS, CARGOS_INICIAIS, normCorte, GRAUS_INICIAIS, MAIORIDADE, FORMAS_SUC, GENEROS_SUC, REGRA_PADRAO,
     TIPOS_TRATADO, normDipl, TIPOS_DONO, TIPOS_ALVO, ESTADOS_INTRIGA,

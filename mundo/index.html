@@ -1116,6 +1116,19 @@ button.bol-bt:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2p
 .cartao small { color: var(--fg-3); }
 .cartao .publico { color: var(--fg); }
 .aviso-jog { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 11px; border-radius: 9px; background: var(--lamp-soft); border: 1px solid var(--lamp); font-size: 13px; }
+/* (lote 20) a linha do tempo: cada campanha (ou quem se separou) na data dela */
+.linha-t { gap: 6px; }
+.linha-t.ativa { border-left: 3px solid var(--lamp); padding-left: 9px; }
+.linha-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.linha-cab > b { font-size: 14px; }
+.linha-cab .tag { color: var(--lamp-ink); border-color: var(--lamp); background: var(--lamp-soft); }
+.linha-data { margin: 0; font-variant-numeric: tabular-nums; }
+.linha-t > small.sub { color: var(--fg-3); }
+.linha-hist summary { cursor: pointer; font-size: 12.5px; color: var(--fg-2); }
+.linha-hist ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 3px; font-size: 12.5px; }
+.linha-hist small { color: var(--fg-3); }
+.aviso-linha { padding: 9px 11px; border-radius: 9px; background: var(--lamp-soft); border: 1px solid var(--lamp); }
+.aviso-linha p { margin: 0; }
 .aviso-jog span { flex: 1; min-width: 160px; }
 
 /* ---- menu de mapas ---- */
@@ -1403,7 +1416,7 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=40"></script>
+<script src="nucleo.js?v=41"></script>
 <script src="guerra.js?v=6"></script>
 <script src="reino.js?v=14"></script>
 <script src="corte.js?v=4"></script>
@@ -1412,13 +1425,13 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="campanha.js?v=5"></script>
 <script src="camadas.js?v=4"></script>
 <script src="tela.js?v=26"></script>
-<script src="painel.js?v=43"></script>
+<script src="painel.js?v=44"></script>
 <script src="guerra-painel.js?v=13"></script>
 <script src="guerra-ajuda.js?v=5"></script>
 <script src="reino-painel.js?v=15"></script>
 <script src="corte-painel.js?v=6"></script>
 <script src="diplomacia-painel.js?v=7"></script>
 <script src="intrigas-painel.js?v=2"></script>
-<script src="mundo.js?v=16"></script>
+<script src="mundo.js?v=17"></script>
 </body>
 </html>

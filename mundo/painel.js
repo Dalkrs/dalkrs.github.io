@@ -15,6 +15,7 @@
     { id: 'hoje', nome: 'Hoje', fila: 1 },
     { id: 'terreno', nome: 'Terreno', fila: 1, mestre: true },
     { id: 'mapa', nome: 'Mapa', fila: 1, mestre: true },
+    { id: 'linha', nome: 'Linha', titulo: 'Linha do tempo', fila: 1, mestre: true },  // (lote 20) o mundo compartilhado: a data de cada campanha
     { id: 'faccoes', nome: 'Reinos', fila: 2 },                    // (lote 10: era "Facções"; o id fica)
     { id: 'corte', nome: 'Corte', fila: 2 },                      // (lote 11) os personagens do mundo e as casas
     { id: 'diplomacia', nome: 'Diplomacia', fila: 2 },            // (lote 11, parte 3a) as relações, a opinião, os tratados
@@ -1033,7 +1034,7 @@
     const tabs = $('tabs');
     if (!tabs) return;
     tabs.setAttribute('aria-label', 'Painel do mapa');
-    const bt = a => h('button', { type: 'button', class: 'tab', role: 'tab', id: 'tab-' + a.id, 'aria-controls': 'pane', 'aria-selected': 'false', tabindex: '-1',
+    const bt = a => h('button', { type: 'button', class: 'tab', role: 'tab', id: 'tab-' + a.id, title: a.titulo || null, 'aria-controls': 'pane', 'aria-selected': 'false', tabindex: '-1',
       onclick: () => { aba = a.id; lembrar({ aba }); pintar(); } }, h('span', { text: a.nome }), h('span', { class: 'n', hidden: true, 'aria-hidden': 'true' }));
     tabs.replaceChildren(...[1, 2].map(n => h('div', { class: 'tabs-fila', role: 'none', 'data-fila': String(n) }, ABAS.filter(a => a.fila === n).map(bt))));
     tabs.addEventListener('keydown', ev => {
@@ -1093,7 +1094,7 @@
         botao('Voltar a editar', () => { App.comoJogador = false; pintar(); }, { c: 'sm', k: 'sair-como' })));
     }
     const a = abaVisivel();
-    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'corte' ? (CP() ? CP().abaCorte(v) : nota('A corte não carregou. Recarregue a página.')) : a === 'diplomacia' ? (DP() ? DP().abaDiplomacia(v) : nota('A diplomacia não carregou. Recarregue a página.')) : a === 'intrigas' ? (IP() ? IP().abaIntrigas(v) : nota('As intrigas não carregaram. Recarregue a página.')) : a === 'guerra' ? (GP() ? GP().abaGuerra(v) : nota('A guerra não carregou. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
+    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'corte' ? (CP() ? CP().abaCorte(v) : nota('A corte não carregou. Recarregue a página.')) : a === 'diplomacia' ? (DP() ? DP().abaDiplomacia(v) : nota('A diplomacia não carregou. Recarregue a página.')) : a === 'intrigas' ? (IP() ? IP().abaIntrigas(v) : nota('As intrigas não carregaram. Recarregue a página.')) : a === 'guerra' ? (GP() ? GP().abaGuerra(v) : nota('A guerra não carregou. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : a === 'linha' ? abaLinha(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
     return raiz;
   }
 
@@ -1980,7 +1981,8 @@
        anda um tempo — os eventos primeiro, porque mudam o caminho dos grupos —, e depois de cada tempo, os encontros no
        caminho (a caravana, a patrulha ou o exército a até 1 hexágono de um grupo comum, que antes não estavam assim) */
     const mm = JSON.parse(JSON.stringify(m0));
-    const andam = mm.objs.filter(o => o.rota && (o.k === 'g' || (o.k === 'e' && N_.eventoAtivo(o, dia0)))).sort((a, b) => (a.k === 'e' ? 0 : 1) - (b.k === 'e' ? 0 : 1));
+    const fora = N_.gruposDeOutrasLinhas ? N_.gruposDeOutrasLinhas(mm) : new Set();          // (lote 20) os grupos de outra linha do tempo ficam
+    const andam = mm.objs.filter(o => o.rota && !fora.has(o.id) && (o.k === 'g' || (o.k === 'e' && N_.eventoAtivo(o, dia0)))).sort((a, b) => (a.k === 'e' ? 0 : 1) - (b.k === 'e' ? 0 : 1));
     const feitos = new Map(), encontros = [], G_ = window.MundoGuerra, confrontos = [];
     const perto = new Set((N_.encontrosNoCaminho ? N_.encontrosNoCaminho(mm) : []).map(([a, b]) => a + '|' + b));
     // (lote 8, parte 6) os exércitos que já estavam perto um do outro não contam como encontro novo
@@ -2807,6 +2809,8 @@
   function abaHoje(v) {
     const N_ = N(), ed = App.podeEditar(), mestre = App.papel === 'mestre' && !App.comoJogador, dia = v.cal.dia, out = [];
     out.push(h('h3', { text: N_.textoDataSemana(v.cal, dia) }), h('p', { class: 'sub', 'data-k': 'hoje:tempo-txt', text: tempoTxt(v).replace(/^./, c => c.toUpperCase()) + '.' }));
+    // (lote 20) de quem é esta data (só quem edita: o jogador vê só a da campanha dele)
+    if (ed && v.linha) { const at = N_.linhaAtiva(v); if (at) out.push(h('p', { class: 'note', 'data-k': 'hoje:linha' }, 'A data de ' + at.nome + '. ', botao('Linha do tempo', () => abrirAba('linha'), { c: 'sm', k: 'hoje:ir-linha' }))); }
     if (ed) {
       out.push(h('div', { class: 'row' },
         botao('+1 tempo', () => passarTempoMundo('tempo'), { c: 'pri', k: 'hoje:tempo', title: 'Os grupos com rota andam um tempo de marcha, e o relógio avança' }),
@@ -2840,15 +2844,16 @@
     const gs = [];
     if (encontro && ed && (encontro.grupo ? !!achar(v, encontro.grupo) : true)) gs.push(cartaoEncontro());
     if (!grupos.length) gs.push(nota(ed ? 'Nenhum grupo no mapa. Use a ferramenta Grupo (G) para pôr os personagens.' : 'Nenhum grupo à vista.'));
+    const deOutra = ed && v.linha && N_.gruposDeOutrasLinhas ? N_.gruposDeOutrasLinhas(v) : new Set();     // (lote 20)
     for (const g of grupos) {
-      const p = progressoTxt(v, g);
+      const p = progressoTxt(v, g), outra = deOutra.has(g.id) ? v.linha.lin.find(l => l.grupos.includes(g.id)) : null;
       gs.push(h('div', { class: 'gr', 'data-k': 'gr:' + g.id },
         h('button', { type: 'button', class: 'li clic', 'data-k': 'gr-li:' + g.id, onclick: () => irPara(g.id) }, icone(g, v),
-          h('span', { class: 'tx' }, h('b', { text: nomeDe(g, v) }), h('small', { text: ondeEsta(v, g) }), p ? h('small', { class: 'linha2', text: p }) : null)),
+          h('span', { class: 'tx' }, h('b', { text: nomeDe(g, v) }), h('small', { text: ondeEsta(v, g) }), p ? h('small', { class: 'linha2', text: p }) : null, outra ? h('small', { class: 'linha2', 'data-k': 'gr-linha:' + g.id, text: 'Na linha ' + outra.nome + ' (' + dataDaLinhaTxt(v, outra) + ')' }) : null)),
         bolinhasNaLista(v, g),
         ed ? h('div', { class: 'row' },
-          botao('Andar 1 tempo', () => andar(g.id, 'tempo'), { c: 'sm', k: 'gr-andar:' + g.id, off: !g.rota, title: g.rota ? 'O grupo anda pela rota os cubos de um tempo de marcha' : 'Este grupo não tem rota' }),
-          botao('Andar 1 dia', () => andar(g.id, 'dia'), { c: 'sm', k: 'gr-andar-dia:' + g.id, off: !g.rota, title: g.rota ? 'Anda os tempos que faltam para acabar o dia, e o dia passa' : 'Este grupo não tem rota' }),
+          botao('Andar 1 tempo', () => andar(g.id, 'tempo'), { c: 'sm', k: 'gr-andar:' + g.id, off: !g.rota || !!outra, title: outra ? 'Este grupo anda com a linha ' + outra.nome + ' (aba Linha do tempo)' : g.rota ? 'O grupo anda pela rota os cubos de um tempo de marcha' : 'Este grupo não tem rota' }),
+          botao('Andar 1 dia', () => andar(g.id, 'dia'), { c: 'sm', k: 'gr-andar-dia:' + g.id, off: !g.rota || !!outra, title: outra ? 'Este grupo anda com a linha ' + outra.nome + ' (aba Linha do tempo)' : g.rota ? 'Anda os tempos que faltam para acabar o dia, e o dia passa' : 'Este grupo não tem rota' }),
           botao('Sortear encontro', () => sortearGrupo(g.id), { c: 'sm', k: 'gr-sortear:' + g.id })) : null));
     }
     // (cada "Andar" passa o tempo do mundo; "+1 tempo" e "Próximo dia", lá em cima, levam todos os grupos juntos)
@@ -2867,6 +2872,184 @@
       })), ed ? nota('Andam sozinhos com o tempo do mapa ("+1 tempo" e "Próximo dia"). Quando um passa a até 1 hexágono de um grupo, o aviso diz quem encontrou quem.') : null));
     }
     return out;
+  }
+
+
+  /* ---------------- (lote 20) aba Linha do tempo: o mundo compartilhado ----------------
+     O mundo é um só, mas cada campanha (e o grupo que se separa dela) está numa data. A linha que o mapa mostra é a
+     "agora no mapa": o calendário, o clima, a hora e os eventos são os da data dela. Trocar de linha é um clique (com
+     Desfazer): a de agora guarda onde parou. "Parou aqui" guarda a marca no histórico; "Terminar a sessão…" marca de
+     uma vez as que andaram. Os jogadores de cada campanha veem só a data da campanha deles. Nada muda sozinho. */
+  const quandoTxt = em => { if (!em) return ''; try { return new Date(em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+  const dataDaLinhaTxt = (m, l) => { const d = N().dataDaLinha(m, l); return dataTxt(m, d.dia) + ' · ' + (d.tempo + 1) + 'º tempo de ' + tpdDe(m); };
+  const nomeDaCamp = id => { const c = id && temCampanhas() ? App.campanhas().find(x => x.id === id) : null; return c ? c.nome : ''; };
+  function comecarLinha() {
+    const cv = campanhaEmVista(), outras = temCampanhas() ? App.campanhas().filter(c => !c.encerrada && (!cv || c.id !== cv.id)) : [];
+    const r = App.mudar('começar a linha do tempo', m => {
+      if (m.linha) return false;
+      N().linhaComecar(m, { nome: cv ? cv.nome : 'O grupo', camp: cv ? cv.id : null });
+      for (const c of outras) N().linhaNova(m, { nome: c.nome, camp: c.id });
+    });
+    if (r !== false) avisoDesfazer('A linha do tempo começou' + (outras.length ? ': cada campanha na data de hoje. Ajuste a data de cada uma indo até ela.' : '.'));
+  }
+  async function trocarLinha(id) {
+    const m0 = App.mapa, at = N().linhaAtiva(m0), alvo = N().linhaDe(m0, id);
+    if (!at || !alvo || at.id === alvo.id) return;
+    let marcar = false;
+    if (N().linhaSemMarca(m0, at.id)) {
+      const v = await janela({ titulo: 'Ir para ' + alvo.nome, texto: frase(at.nome + ' está em ' + dataDaLinhaTxt(m0, at)) + ' O mapa vai para ' + dataDaLinhaTxt(m0, alvo) + '.', ok: 'Ir',
+        campos: [{ id: 'marca', rotulo: 'Antes', tipo: 'caixas', opcoes: [['s', 'Marcar “Parou aqui” em ' + at.nome]], valor: ['s'] }] });
+      if (!v || !mesmoMapa(m0.id)) return;
+      marcar = Array.isArray(v.marca) && v.marca.includes('s');
+    }
+    const r = App.mudar('ir para ' + alvo.nome, m => { if (marcar) N().linhaParou(m, at.id, '', Date.now()); return N().linhaTrocar(m, id) ? undefined : false; });
+    if (r !== false) avisoDesfazer('O mapa está em ' + alvo.nome + ': ' + dataDaLinhaTxt(App.mapa, N().linhaDe(App.mapa, id)) + '.');
+  }
+  async function pararAqui(id) {
+    const l = N().linhaDe(App.mapa, id);
+    if (!l) return;
+    const v = await janela({ titulo: 'Parou aqui', texto: frase(l.nome + ': ' + dataDaLinhaTxt(App.mapa, l)) + ' A marca vai para o histórico da linha.', ok: 'Marcar',
+      campos: [{ id: 'nota', rotulo: 'Nota (opcional)', tipo: 'text', valor: '', max: 200, ph: 'ex.: acamparam antes da ponte' }] });
+    if (!v) return;
+    const r = App.mudar('parou aqui', m => (N().linhaParou(m, id, v.nota, Date.now()) ? undefined : false));
+    if (r !== false) avisoDesfazer('Marcado: ' + l.nome + ' parou em ' + dataDaLinhaTxt(App.mapa, l) + '.');
+    else App.toast('Esta linha já está marcada nesta data.');
+  }
+  async function terminarSessao() {
+    const m0 = App.mapa, andaram = m0.linha.lin.filter(l => N().linhaSemMarca(m0, l.id));
+    if (!andaram.length) { App.toast('Todas as linhas já estão marcadas onde pararam.'); return; }
+    const v = await janela({ titulo: 'Terminar a sessão', texto: 'Marcar “Parou aqui” nas linhas que andaram desde a última marca:', ok: 'Marcar',
+      campos: [{ id: 'quem', rotulo: 'Linhas', tipo: 'caixas', opcoes: andaram.map(l => [l.id, l.nome + ' — ' + dataDaLinhaTxt(m0, l)]), valor: andaram.map(l => l.id) },
+        { id: 'nota', rotulo: 'Nota (opcional)', tipo: 'text', valor: '', max: 200 }] });
+    if (!v || !mesmoMapa(m0.id)) return;
+    const quem = Array.isArray(v.quem) ? v.quem : [];
+    if (!quem.length) return;
+    const em = Date.now(), r = App.mudar('terminar a sessão', m => { let n = 0; for (const id of quem) if (N().linhaParou(m, id, v.nota, em)) n++; return n ? undefined : false; });
+    if (r !== false) avisoDesfazer(quem.length === 1 ? 'A linha está marcada.' : quem.length + ' linhas estão marcadas.');
+  }
+  function gruposComuns(m) { return m.objs.filter(o => o.k === 'g' && !grupoDoMundo(o)); }
+  async function separarGrupo() {
+    const m0 = App.mapa, at = N().linhaAtiva(m0), gs = gruposComuns(m0);
+    const campos = [{ id: 'nome', rotulo: 'Nome da linha', tipo: 'text', valor: '', max: 80, ph: 'ex.: Kairo, sozinho na floresta' }];
+    if (gs.length) campos.push({ id: 'grupos', rotulo: 'Os grupos do mapa que vão com ela', tipo: 'caixas', opcoes: gs.map(g => [g.id, nomeDe(g, m0)]), valor: [] });
+    const v = await janela({ titulo: 'Separar do grupo', texto: 'Quem se separa de ' + at.nome + ' ganha a data própria, a partir de ' + dataDaLinhaTxt(m0, at) + '. Para voltar a seguir o grupo, use “Juntar ao grupo”.', ok: 'Separar', campos,
+      ler: x => { if (!String(x.nome || '').trim()) throw new Error('Dê um nome à linha.'); return x; } });
+    if (!v || !mesmoMapa(m0.id)) return;
+    const r = App.mudar('separar ' + v.nome.trim(), m => (N().linhaNova(m, { nome: v.nome, sep: true, grupos: Array.isArray(v.grupos) ? v.grupos : [] }) ? undefined : false));
+    if (r !== false) avisoDesfazer(v.nome.trim() + ' agora tem a data própria. Para jogar com ela, use “Ir para esta linha”.');
+  }
+  async function novaLinha() {
+    const m0 = App.mapa, sem = temCampanhas() ? App.campanhas().filter(c => !c.encerrada && !m0.linha.lin.some(l => l.camp === c.id && !l.sep)) : [];
+    const campos = [];
+    if (sem.length) campos.push({ id: 'camp', rotulo: 'Campanha', tipo: 'select', valor: sem[0].id, opcoes: sem.map(c => [c.id, c.nome]).concat([['', 'Nenhuma (só um nome)']]) });
+    campos.push({ id: 'nome', rotulo: 'Nome (sem campanha)', tipo: 'text', valor: '', max: 80 });
+    const v = await janela({ titulo: 'Nova linha', texto: 'A linha começa na data de agora (' + dataDaLinhaTxt(m0, N().linhaAtiva(m0)) + '); depois de ir até ela, mude a data na aba Hoje.', ok: 'Criar', campos,
+      ler: x => { if (!x.camp && !String(x.nome || '').trim()) throw new Error('Escolha a campanha ou dê um nome.'); return x; } });
+    if (!v || !mesmoMapa(m0.id)) return;
+    const nome = v.camp ? nomeDaCamp(v.camp) : v.nome.trim();
+    const r = App.mudar('nova linha', m => (N().linhaNova(m, { nome, camp: v.camp || null }) ? undefined : false));
+    if (r !== false) avisoDesfazer('A linha ' + nome + ' está pronta.');
+  }
+  async function gruposDaLinha(id) {
+    const m0 = App.mapa, l = N().linhaDe(m0, id), gs = gruposComuns(m0);
+    if (!l || !gs.length) return;
+    const dono = g => m0.linha.lin.find(x => x.grupos.includes(g.id));
+    const v = await janela({ titulo: 'Os grupos de ' + l.nome, texto: 'O “+1 tempo” e o “Próximo dia” da linha que está no mapa só levam os grupos dela (e os que não são de linha nenhuma).', ok: 'Salvar',
+      campos: [{ id: 'g', rotulo: 'Grupos', tipo: 'caixas', opcoes: gs.map(g => { const d = dono(g); return [g.id, nomeDe(g, m0) + (d && d.id !== l.id ? ' (hoje com ' + d.nome + ')' : '')]; }), valor: l.grupos }] });
+    if (!v || !mesmoMapa(m0.id)) return;
+    const quer = Array.isArray(v.g) ? v.g : [];
+    const r = App.mudar('os grupos da linha', m => {
+      const x = N().linhaDe(m, id);
+      if (!x || JSON.stringify(x.grupos.slice().sort()) === JSON.stringify(quer.slice().sort())) return false;
+      for (const o of m.linha.lin) if (o.id !== id) o.grupos = o.grupos.filter(g => !quer.includes(g));
+      x.grupos = quer.slice();
+    });
+    if (r !== false) avisoDesfazer('Os grupos de ' + l.nome + ' mudaram.');
+  }
+  async function juntarLinha(id) {
+    const l = N().linhaDe(App.mapa, id);
+    if (!l) return;
+    const ok = await confirmar({ titulo: 'Juntar ao grupo', texto: l.nome + ' volta a seguir a data do grupo (a linha dele sai, com o histórico; os grupos dela passam para a do grupo).', ok: 'Juntar' });
+    if (!ok) return;
+    const r = App.mudar('juntar ' + l.nome, m => (N().linhaJuntar(m, id) ? undefined : false));
+    if (r !== false) avisoDesfazer(l.nome + ' voltou a seguir o grupo.');
+  }
+  async function tirarLinha(id) {
+    const l = N().linhaDe(App.mapa, id);
+    if (!l) return;
+    const ok = await confirmar({ titulo: 'Tirar a linha', texto: 'A linha ' + l.nome + ' sai, com o histórico das paradas.', ok: 'Tirar', perigo: true });
+    if (!ok) return;
+    const r = App.mudar('tirar a linha', m => (N().linhaTirar(m, id) ? undefined : false));
+    if (r !== false) avisoDesfazer('A linha ' + l.nome + ' saiu.');
+  }
+  // o aviso do que o mundo já tem depois da data da linha que está no mapa
+  function avisoDoDepois(m, l) {
+    const d = N().depoisDaLinha(m, l.id);
+    if (!d) return null;
+    const kids = [h('p', { 'data-k': 'ln:atras', text: l.nome + ' está ' + (d.dias === 1 ? '1 dia' : d.dias + ' dias') + ' atrás de ' + d.quem.nome + '. O mundo é um só: o que acontece aqui não pode brigar com o que ' + d.quem.nome + ' já viveu.' })];
+    if (d.itens.length) {
+      kids.push(h('p', { class: 'note', text: 'Entre ' + dataTxt(m, N().dataDaLinha(m, l).dia) + ' e ' + dataTxt(m, d.ate) + ', o mundo já tem:' }));
+      kids.push(h('div', { class: 'lista' }, d.itens.slice(0, 20).map(x => h('button', { type: 'button', class: 'li clic', 'data-k': 'ln:dep:' + x.id, onclick: () => irPara(x.id) },
+        icone(achar(m, x.id) || {}, m), h('span', { class: 'tx' }, h('b', { text: x.nome || TIPO[x.k] }), h('small', { text: (x.k === 'e' ? 'Evento' : 'Zona de guerra') + ' que ' + x.o + ' em ' + dataTxt(m, x.dia) + '.' }))))));
+    } else kids.push(nota('Nenhum evento nem zona de guerra começa ou acaba nesse meio-tempo.'));
+    return h('div', { class: 'sec aviso-linha', 'data-k': 'ln:depois' }, h('b', { text: 'Atrás de outra linha' }), kids);
+  }
+  function abaLinha(m) {
+    if (!m) return [nota('Nenhum mapa aberto.')];
+    const out = [];
+    if (!m.linha) {
+      out.push(h('h3', { text: 'Linha do tempo' }));
+      out.push(nota('Num mundo dividido por várias campanhas, cada uma pode estar numa data — uns dias à frente, outros atrás. A linha do tempo guarda a data e o tempo em que cada campanha (ou quem se separou do grupo) parou, com o histórico das paradas, e troca a data do mapa com um clique.'));
+      out.push(nota(temCampanhas() ? 'Começando, cada campanha da mesa ganha a linha dela, na data de hoje (' + dataTxt(m, m.cal.dia) + '). Os jogadores de cada uma veem só a data da campanha deles.' : 'Começando, o grupo ganha a linha dele, na data de hoje (' + dataTxt(m, m.cal.dia) + ').'));
+      out.push(linha(botao('Começar a linha do tempo', comecarLinha, { c: 'pri', k: 'ln:comecar' })));
+      return out;
+    }
+    const at = N().linhaAtiva(m), cv = campanhaEmVista();
+    out.push(h('h3', { text: 'Linha do tempo' }));
+    if (cv && at.camp !== cv.id) {
+      const dela = m.linha.lin.find(l => l.camp === cv.id && !l.sep);
+      out.push(h('div', { class: 'sec aviso-linha', 'data-k': 'ln:outra' }, h('p', { text: 'O mapa está na data de ' + at.nome + '; a campanha em vista é ' + cv.nome + '.' }),
+        dela ? linha(botao('Ir para ' + dela.nome, () => trocarLinha(dela.id), { c: 'pri', k: 'ln:ir-vista' })) : nota('A campanha em vista ainda não tem linha: use “Nova linha…”.')));
+    }
+    { const a = avisoDoDepois(m, at); if (a) out.push(a); }
+    const nomes = new Map(m.objs.filter(o => o.k === 'g').map(o => [o.id, nomeDe(o, m)]));
+    for (const l of m.linha.lin) {
+      const ehAt = l.id === at.id, sem = N().linhaSemMarca(m, l.id), ult = l.paradas[l.paradas.length - 1];
+      const sub = [l.camp ? 'campanha ' + (nomeDaCamp(l.camp) || '—') : '', l.sep ? 'separou-se do grupo' : ''].filter(Boolean).join(' · ');
+      const gs = l.grupos.map(g => nomes.get(g)).filter(Boolean);
+      out.push(h('div', { class: 'sec linha-t' + (ehAt ? ' ativa' : ''), 'data-k': 'ln:' + l.id },
+        h('div', { class: 'linha-cab' }, h('b', { text: l.nome }), ehAt ? h('span', { class: 'tag', 'data-k': 'ln-agora:' + l.id, text: 'agora no mapa' }) : null),
+        sub ? h('small', { class: 'sub', text: sub }) : null,
+        h('p', { class: 'linha-data', 'data-k': 'ln-data:' + l.id, text: dataDaLinhaTxt(m, l) }),
+        h('small', { class: 'note', 'data-k': 'ln-marca:' + l.id, text: ult ? (sem ? 'Andou desde a última marca (' + dataTxt(m, ult.dia) + ', ' + (ult.tempo + 1) + 'º tempo).' : 'Marcada aqui' + (ult.em ? ' em ' + quandoTxt(ult.em) : '') + '.') : 'Ainda sem marca.' }),
+        gs.length ? h('small', { class: 'note', text: 'Grupos: ' + gs.join(', ') }) : null,
+        linha(
+          ehAt ? botao('Parou aqui', () => pararAqui(l.id), { c: 'pri sm', k: 'ln-parou:' + l.id, title: 'Guarda a data e o tempo de agora no histórico desta linha' })
+            : botao('Ir para esta linha', () => trocarLinha(l.id), { c: 'pri sm', k: 'ln-ir:' + l.id, title: 'O mapa vai para a data desta linha (a de agora guarda onde parou)' }),
+          gruposComuns(m).length ? botao('Grupos…', () => gruposDaLinha(l.id), { c: 'sm', k: 'ln-grupos:' + l.id }) : null,
+          l.sep ? botao('Juntar ao grupo', () => juntarLinha(l.id), { c: 'sm', k: 'ln-juntar:' + l.id }) : null,
+          !ehAt && !l.sep ? botao('Tirar', () => tirarLinha(l.id), { c: 'sm', k: 'ln-tirar:' + l.id }) : null),
+        l.paradas.length ? h('details', { class: 'linha-hist', 'data-k': 'ln-hist:' + l.id }, h('summary', { text: 'Histórico (' + l.paradas.length + ')' }),
+          h('ol', null, l.paradas.slice().reverse().map(p => h('li', null, h('span', { text: dataTxt(m, p.dia) + ' · ' + (p.tempo + 1) + 'º tempo' }), p.em ? h('small', { text: ' — marcada em ' + quandoTxt(p.em) }) : null, p.nota ? h('small', { class: 'linha-nota', text: ' — ' + p.nota }) : null)))) : null));
+    }
+    out.push(linha(
+      botao('Terminar a sessão…', terminarSessao, { k: 'ln:fim', title: 'Marca “Parou aqui” nas linhas que andaram' }),
+      botao('Separar do grupo…', separarGrupo, { k: 'ln:separar' }),
+      botao('Nova linha…', novaLinha, { k: 'ln:nova' })));
+    out.push(nota('Só você vê esta aba. Os jogadores de cada campanha veem só a data da campanha deles; os grupos do mapa e o resto do mundo são um só para todos.'));
+    return out;
+  }
+  /* (lote 20) ao abrir o mapa: a linha que está no mapa andou desde a última marca (a sessão de antes terminou sem marcar),
+     ou a campanha em vista não é a da linha do mapa — o aviso oferece; nada muda sozinho. Uma vez por mapa aberto. */
+  const avisouLinha = new Set();
+  function avisoDaLinhaAoAbrir() {
+    const m = App.mapa;
+    if (!m || !m.linha || !App.podeEditar() || avisouLinha.has(m.id)) return;
+    avisouLinha.add(m.id);
+    const at = N().linhaAtiva(m), cv = campanhaEmVista(), dela = cv ? m.linha.lin.find(l => l.camp === cv.id && !l.sep) : null;
+    if (dela && dela.id !== at.id) { App.toast('O mapa está na data de ' + at.nome + '; a campanha em vista é ' + cv.nome + '.', 'Ir para ' + dela.nome, () => trocarLinha(dela.id), 12000); return; }
+    const ult = at.paradas[at.paradas.length - 1];
+    if (ult && N().linhaSemMarca(m, at.id)) App.toast(at.nome + ' está em ' + dataDaLinhaTxt(m, at) + ', e a última marca é de ' + dataTxt(m, ult.dia) + '.', 'Parou aqui', () => pararAqui(at.id), 12000);
   }
 
   /* ---------------- aba Reinos (até o lote 10, Facções) ---------------- */
@@ -3349,6 +3532,8 @@
     document.addEventListener('visibilitychange', () => { if (document.hidden) antesDeSair(); });
     for (const ev of ['muda', 'sel', 'papel', 'mapas', 'salvo', 'vista', 'camadas']) App.on(ev, agendar);
     App.on('mapas', () => { if (menu) abrirMenu(); });
+    App.on('mapas', () => setTimeout(avisoDaLinhaAoAbrir, 1200));      // (lote 20)
+    setTimeout(avisoDaLinhaAoAbrir, 1800);
     window.addEventListener('resize', () => fecharMenu());
     if (RP() && typeof RP().iniciar === 'function') RP().iniciar(App);       // (lote 10, parte 4) a prévia da semana abre sozinha
     pintar();

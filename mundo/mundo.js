@@ -19,6 +19,9 @@
   const $ = id => document.getElementById(id);
   const CHAVE = 'tinycats:mundo:v1';                 // { atual, mapas: { [id]: Mapa } } — sem mesa
   const PRE_MAPA = 'mundo:mapa:', PRE_PUB = 'mundo:pub:', INDICE = 'mundo:indice';
+  /* (lote 20) a projeção de um mapa na data de uma campanha (a linha do tempo): mundo:pubc:<mapa>@<campanha> — o "@" faz
+     o banco entregá-la só a quem participa daquela campanha; o jogador dela usa esta no lugar da projeção de sempre. */
+  const PRE_PUBC = 'mundo:pubc:';
   const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'h', 'p', 'n', 'd', 'w'];      // (lote 17: w, a caneta — de todos)
   const MAX_DESFAZER = 100;
   const ESPERA = { local: 400, fora: 900 };
@@ -546,7 +549,11 @@
   };
   function docsMapas() { return D ? D.todas().filter(l => typeof l.id === 'string' && l.id.startsWith(PRE_MAPA) && idValido(l.id.slice(PRE_MAPA.length)) && dadosDoc(l)) : []; }
   function docMapa(id) { const d = D ? dadosDoc(D.pegar(PRE_MAPA + id)) : null; return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null; }
-  function docPub(id) { const d = D ? dadosDoc(D.pegar(PRE_PUB + id)) : null; return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null; }
+  function docPub(id) {
+    const dc = D && camp && App.papel !== 'mestre' ? dadosDoc(D.pegar(PRE_PUBC + id + '@' + camp)) : null;      // (lote 20) a da data da campanha dele
+    const d = dc || (D ? dadosDoc(D.pegar(PRE_PUB + id)) : null);
+    return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null;
+  }
   /* O índice: os mapas do mundo que os jogadores podem abrir (com o nome) e o mapa que está sendo mostrado — que, numa
      mesa com campanhas, pode ser um mapa de campanha, que não está na lista do índice. */
   function normIndice(d) {
@@ -729,7 +736,7 @@
     if (modo !== 'mesa' || App.papel !== 'mestre') return;
     const m = App.mapa && App.mapa.id === id ? App.mapa : docMapa(id);
     const lp = D.pegar(PRE_PUB + id), tem = !!dadosDoc(lp);
-    if (!m || m.oculto || escondidoNaMesa(id)) { if (tem) apagarDocMesa(PRE_PUB + id); sombraPub.delete(id); return; }
+    if (!m || m.oculto || escondidoNaMesa(id)) { if (tem) apagarDocMesa(PRE_PUB + id); sombraPub.delete(id); if (D) for (const l of D.todas()) if (typeof l.id === 'string' && l.id.startsWith(PRE_PUBC + id + '@') && dadosDoc(l)) apagarDocMesa(l.id); return; }
     const p = comMissoes(comBrasoes(N.projetar(m, projOpts()), id)), cs = campsDoMapa(id);
     /* atalhos que os jogadores recebem: para mapa escondido, nenhum (nem o nome dele); para um mapa que nem todos os
        que veem este podem ver (é de outra campanha), também nenhum; para cena, sem o nome dela */
@@ -744,9 +751,31 @@
       else if (o.liga.t === 'cena') o.liga = { t: 'cena', id: o.liga.id, nome: '' };
     }
     const jp = j(p);
+    pubsDasCampanhas(m, p, cs);
     if (tem && sombraPub.get(id) === jp && mesmas(campsDoc(lp), cs)) return;
     gravarDocMesa(PRE_PUB + id, comColuna({ dados: p, vis: 'mesa' }, cs, PRE_PUB + id));
     sombraPub.set(id, jp);
+  }
+  /* (lote 20) as projeções nas datas das campanhas: uma para cada campanha com a linha do tempo dela neste mapa (que a
+     campanha vê: o mapa do mundo, ou um dela) — a de sempre, com o calendário daquela linha (os eventos, o clima e a hora
+     daquela data). A que não vale mais (a linha saiu, o mapa escondido) sai. base: a projeção de agora (com os atalhos
+     já conferidos), para copiar o que não muda com a data. */
+  const sombraPubC = new Map();
+  function pubsDasCampanhas(m, base, cs) {
+    const datas = m && !m.oculto ? N.datasDasCampanhas(m) : {}, quer = new Set();
+    for (const c of Object.keys(datas)) {
+      if (cs.length && !cs.includes(c)) continue;
+      const k = PRE_PUBC + m.id + '@' + c, nm = N.naDataDe(m, c);
+      if (!nm) continue;
+      quer.add(k);
+      const p = comMissoes(comBrasoes(N.projetar(nm, projOpts()), m.id));
+      p.objs.forEach((o, i) => { const b = base.objs.find(x => x.id === o.id); if (b && 'liga' in b) o.liga = b.liga; else if (o.liga) o.liga = null; });
+      const jp = j(p);
+      if (sombraPubC.get(k) === jp && dadosDoc(D.pegar(k))) continue;
+      gravarDocMesa(k, { dados: p, vis: 'mesa' });
+      sombraPubC.set(k, jp);
+    }
+    if (D) for (const l of D.todas()) if (typeof l.id === 'string' && l.id.startsWith(PRE_PUBC + (m ? m.id : '') + '@') && !quer.has(l.id) && dadosDoc(l)) { apagarDocMesa(l.id); sombraPubC.delete(l.id); }
   }
   /* No índice (que a mesa inteira recebe) só entram os nomes dos mapas do mundo. O mapa mostrado pode ser de uma
      campanha: quem não o recebe continua com o que tem aberto. */
@@ -1451,6 +1480,7 @@
       // a projeção que está na mesa acompanha os mapas como estão — os de todas as campanhas — (e some a de mapa que já não existe)
       for (const m of todosOsMapas()) sincronizarPub(m.id);
       for (const l of D.todas()) if (typeof l.id === 'string' && l.id.startsWith(PRE_PUB) && dadosDoc(l) && !docMapa(l.id.slice(PRE_PUB.length))) apagarDocMesa(l.id);
+      for (const l of D.todas()) if (typeof l.id === 'string' && l.id.startsWith(PRE_PUBC) && dadosDoc(l) && !docMapa(l.id.slice(PRE_PUBC.length).split('@')[0])) apagarDocMesa(l.id);     // (lote 20)
       sincronizarIndice();
       marcarSalvo('ok', 'Salvo na mesa');
       if (!docsMapas().length) oferecerLocais();                         // (a mesa não tem mapa nenhum, em campanha nenhuma)
@@ -1485,6 +1515,7 @@
       }
       if (!l || typeof l.id !== 'string' || !l.id.startsWith('mundo:')) return;
       if (l.id.startsWith(PRE_RAB)) { App.emit('rabiscos'); return; }          // (lote 17) a caneta: só redesenha (o mapa não mudou)
+      if (App.papel === 'mestre' && l.id.startsWith(PRE_PUBC)) { const d = dadosDoc(l); if (d) sombraPubC.set(l.id, j(d)); else sombraPubC.delete(l.id); return; }     // (lote 20)
       if (App.papel === 'mestre' && l.id.startsWith(PRE_PUB)) {           // outro aparelho do mestre publicou
         const id = l.id.slice(PRE_PUB.length), d = dadosDoc(l);
         if (d) sombraPub.set(id, j(N.normalizarMapa(Object.assign({}, d, { id })))); else sombraPub.delete(id);

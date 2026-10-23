@@ -2,6 +2,37 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-4",
+      "data": "2026-10-23",
+      "titulo": "O mundo compartilhado",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: o mundo compartilhado — cada campanha pode estar numa data própria, uns dias à frente, outros atrás. Os jogadores de cada campanha veem a data, a hora, o clima e os eventos da data da campanha deles."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a aba Linha do tempo — cada campanha (e quem se separou do grupo) com a data e o tempo em que parou e o histórico das paradas. “Ir para esta linha” troca a data do mapa num clique, com Desfazer, e pergunta se marca onde a de agora parou."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “Parou aqui” guarda a marca (com uma nota), e “Terminar a sessão…” marca de uma vez as linhas que andaram. Ao abrir o mapa, se a linha andou sem marca, o aviso oferece o “Parou aqui”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: quem está atrás vê o aviso do que o mundo já tem depois da data dele — os eventos e as zonas de guerra que começam ou acabam no meio-tempo —, para nada brigar com o que a outra campanha já viveu."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “Separar do grupo…” dá a data própria a quem se separa (com os grupos do mapa dele), e “Juntar ao grupo” o traz de volta. O “+1 tempo” e o “Próximo dia” só levam os grupos da linha que está no mapa."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-3",
       "data": "2026-10-23",
       "titulo": "As condições e as zonas das classes",

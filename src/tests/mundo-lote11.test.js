@@ -715,7 +715,7 @@ const dlg = s => 'dialog.mundo-dl[open] ' + s;
     });
     // as abas: duas fileiras, por assunto
     const filas = await A(L, () => [...document.querySelectorAll('#tabs .tabs-fila')].map(f => [...f.querySelectorAll('.tab:not([hidden])')].map(b => b.textContent.replace(/\d+$/, ''))));
-    ok(j(filas) === j([['Seleção', 'Hoje', 'Terreno', 'Mapa'], ['Reinos', 'Corte', 'Diplomacia', 'Intrigas', 'Guerra']]), 'as abas em duas fileiras: o mapa em cima, a política embaixo: ' + j(filas));
+    ok(j(filas) === j([['Seleção', 'Hoje', 'Terreno', 'Mapa', 'Linha'], ['Reinos', 'Corte', 'Diplomacia', 'Intrigas', 'Guerra']]), 'as abas em duas fileiras: o mapa em cima, a política embaixo: ' + j(filas));
     const cabe = () => A(L, () => [...document.querySelectorAll('#tabs, #tabs .tabs-fila')].every(e => e.scrollWidth <= e.clientWidth + 1));
     ok(await cabe(), 'as duas fileiras cabem no painel');
     await aba(L, 'diplomacia');
