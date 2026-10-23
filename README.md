@@ -1388,6 +1388,30 @@ que ainda não foi recarregada depois desta atualização avisa que a disputa n�
   que ficam ficam neste navegador. A caneta não mexe no mapa nem no Desfazer dele; a camada **Caneta** esconde os traços
   só neste aparelho.
 
+### As condições das raças (lote 19)
+
+- **As condições** (src/cenas/src/js/01-base.js: `CONDS` no grupo `racas`; tc/rules.js: `CONDICOES`, a mesma lista): as 53
+  das árvores de raça (Carga de trovão, Frio, Laço, Dor, Recusa da Morte, Coma, Contagem, Sentença, Endurecido, Exposto,
+  Rendido, Transe Rubro, Lição…), num grupo só, **Raças**, em ordem alfabética, cada uma com o ícone próprio e a raça e a
+  árvore de onde vem (aparece embaixo do nome, no seletor e nas ativas, e na dica do token). São marcadores, como as
+  outras: o efeito, quem aplica é o mestre. **A duração de começo** (`dur`) e **o contador de começo** (`ini`) vêm
+  preenchidos ao pôr; **o contador para no máximo** (`max`: Carga de trovão 3, Frio 5, Dor 5, Endurecido 5, Dívida
+  Espiritual 5, Perdido 3, Na Pança e Sobra 2). **No limite, a sugestão** (`lim`), com Aplicar e Desfazer: o Frio no 5
+  sugere Congelado por 1 rodada (e zera); a Contagem (começa em 3 e desce) no zero sugere a Sentença.
+- **Os membros perdidos** (Mão, Pé, Braço e Perna Perdida, Costelas Abertas; `lado`): só o mestre, num token de cada vez;
+  a janela pergunta o lado (esquerdo, direito, os dois). Num token ligado, a ficha marca a parte como amputada
+  (`estado.amp`; as Costelas, um ferimento no peito em `estado.fer`), com a condição de onde veio (`cond`): tirar a
+  condição (ou o Desfazer) desmarca; o que o mestre marcou à mão na ficha fica. Grava quem pode gravar a ficha (o mestre
+  ou o dono). Os itens e poções da ficha não põem estas (como a Ferida permanente e o Clone).
+- **As zonas e os objetos** (src/cenas/src/js/06c-fx-racas.js; o grupo **Raças** da aba Efeitos): o Chão Rachado, o Chão
+  Revirado, o Corredor de Vento, o Enxame de Varejeiras, o Foco de Doença, a Arapuca e a Grande Arapuca (nascem
+  escondidas dos jogadores, como as runas; quem entra avisa o mestre, com o Revelar), a Fumaça do Nistus'atach, a Terra
+  Morta, o Chão Quebradiço, a Nuvem de Cinza, o Chão Podre, o Círculo de Sangue, a Névoa Rubra, o Campo Aquático, a Água
+  do Odre, a Cerca de Espíritos (a linha entre dois totens), o **Totem** (12 de HP) e a **Parte Solta** (15 de HP; a mão,
+  6): cada uma com o desenho próprio, a regra escrita no painel (com a raça), a condição sugerida e o aviso do começo da
+  vez de quem está dentro. Escolher uma delas já põe na ferramenta a duração, a forma e o tamanho de começo (o Corredor
+  de Vento, a linha de 6). O Totem e a Parte Solta têm os pontos de vida no painel; em zero, somem (com Desfazer).
+
 ### As cenas e o acampamento (lote 18)
 
 - **O relevo com regra** (src/cenas/src/js/07f-relevo.js): as áreas de terreno com altura (Morro, Montanha, Plataforma,
@@ -3349,3 +3373,12 @@ leitura que volta como bônus sugeridos ("Somar", "Somar todas") e as perdas que
 `mundo-cenas.test.js` também confere o "Gerar a arena do chefe…"; e o `acampamento-lote18.test.js` as barracas, os
 abrigos, os veículos e o estado no desenho, a caça (as rolagens, as rações sugeridas, as regras) e o quadro de
 distribuir (arrastar, as setas, o Desfazer).
+
+**Lote 19 (as condições das raças)**: nas Cenas, o `lote19.js` confere a lista (as 53 no grupo Raças, em ordem, com o
+ícone e a raça), o seletor (a aba Raças, a raça embaixo do nome), o de começo ao pôr (o Frio com 1, o Selo de Ocre com 2
+rodadas), o contador que para no máximo e a sugestão no limite (o Frio no 5: Congelado e zera; a Contagem no zero: a
+Sentença), com Aplicar e Desfazer, a janela do lado dos membros perdidos e as zonas (as 19 no grupo Raças, a forma e a
+duração de começo na ferramenta, o painel com a raça e a regra, o Totem com os pontos de vida, a Arapuca escondida que
+avisa quem entra); o `lote19.rede.test.js`, numa mesa, os membros na ficha (a mão amputada do lado certo, as costelas no
+peito, desmarcar ao tirar, o Desfazer, a marca feita à mão que fica); e o `rules.test.js` confere que a lista de TC.rules
+continua igual à das Cenas (123).

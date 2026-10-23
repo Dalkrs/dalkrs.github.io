@@ -134,7 +134,8 @@
     {id:'mente', n:'Mente e magia'},
     {id:'corpo', n:'Corpo e sentidos'},
     {id:'ritmo', n:'Ritmo e movimento'},
-    {id:'bencao', n:'Bênçãos e cura'}
+    {id:'bencao', n:'Bênçãos e cura'},
+    {id:'racas', n:'Das raças'}
   ];
   const CONDICOES = [
     // (lote 7: as 20 novas no fim da categoria de cada uma, na mesma ordem das Cenas)
@@ -160,7 +161,26 @@
     {id:'voando', n:'Voando', g:'ritmo'}, {id:'oculto', n:'Oculto', g:'ritmo'}, {id:'invisivel', n:'Invisível', g:'ritmo'},
     {id:'etereo', n:'Etéreo', g:'ritmo'}, {id:'escudo', n:'Protegido', g:'bencao'}, {id:'bencao', n:'Abençoado', g:'bencao'},
     {id:'inspirado', n:'Inspirado', g:'bencao'}, {id:'regen', n:'Regeneração', g:'bencao'}, {id:'tratado', n:'Tratado', g:'bencao'},
-    {id:'escudado', n:'Escudado', g:'bencao'}
+    {id:'escudado', n:'Escudado', g:'bencao'},
+    // (lote 19) as das raças, num grupo só, em ordem alfabética (as mesmas das Cenas)
+    {id:'ancestralEncarnado', n:'Ancestral Encarnado', g:'racas'}, {id:'armaVitrine', n:'Arma de Vitrine', g:'racas'}, {id:'armaRachada', n:'Arma Rachada', g:'racas'},
+    {id:'armaduraGelo', n:'Armadura de Gelo', g:'racas'}, {id:'bracoPerdido', n:'Braço Perdido', g:'racas'}, {id:'cargaTrovao', n:'Carga de trovão', g:'racas'},
+    {id:'cercado', n:'Cercado', g:'racas'}, {id:'coma', n:'Coma', g:'racas'}, {id:'comprado', n:'Comprado', g:'racas'},
+    {id:'contagem', n:'Contagem', g:'racas'}, {id:'costelasAbertas', n:'Costelas Abertas', g:'racas'}, {id:'couracaGelo', n:'Couraça de Gelo', g:'racas'},
+    {id:'debaixoTerra', n:'Debaixo da Terra', g:'racas'}, {id:'descontrole', n:'Descontrole', g:'racas'}, {id:'dividaEspiritual', n:'Dívida Espiritual', g:'racas'},
+    {id:'domDevorado', n:'Dom Devorado', g:'racas'}, {id:'dor', n:'Dor', g:'racas'}, {id:'emBrasa', n:'Em Brasa', g:'racas'},
+    {id:'encanto', n:'Encanto', g:'racas'}, {id:'endurecido', n:'Endurecido', g:'racas'}, {id:'enxertado', n:'Enxertado', g:'racas'},
+    {id:'enxerto', n:'Enxerto', g:'racas'}, {id:'erguido', n:'Erguido', g:'racas'}, {id:'exposto', n:'Exposto', g:'racas'},
+    {id:'farejado', n:'Farejado', g:'racas'}, {id:'frio', n:'Frio', g:'racas'}, {id:'gosto', n:'Gosto', g:'racas'},
+    {id:'guardaNatural', n:'Guarda Natural', g:'racas'}, {id:'habilidadeEngolida', n:'Habilidade Engolida', g:'racas'}, {id:'jurado', n:'Jurado', g:'racas'},
+    {id:'laco', n:'Laço', g:'racas'}, {id:'licao', n:'Lição', g:'racas'}, {id:'magiaEngatilhada', n:'Magia Engatilhada', g:'racas'},
+    {id:'mandado', n:'Mandado', g:'racas'}, {id:'maoPerdida', n:'Mão Perdida', g:'racas'}, {id:'naPanca', n:'Na Pança', g:'racas'},
+    {id:'noOmbro', n:'No Ombro', g:'racas'}, {id:'pePerdido', n:'Pé Perdido', g:'racas'}, {id:'perdido', n:'Perdido', g:'racas'},
+    {id:'pernaPerdida', n:'Perna Perdida', g:'racas'}, {id:'praga', n:'Praga', g:'racas'}, {id:'procurado', n:'Procurado', g:'racas'},
+    {id:'reboteAdiado', n:'Rebote Adiado', g:'racas'}, {id:'recusaMorte', n:'Recusa da Morte', g:'racas'}, {id:'rendido', n:'Rendido', g:'racas'},
+    {id:'seloOcre', n:'Selo de Ocre', g:'racas'}, {id:'semeado', n:'Semeado', g:'racas'}, {id:'sentenca', n:'Sentença', g:'racas'},
+    {id:'sobra', n:'Sobra', g:'racas'}, {id:'transeRubro', n:'Transe Rubro', g:'racas'}, {id:'tregua', n:'Trégua', g:'racas'},
+    {id:'vinculoSangue', n:'Vínculo de Sangue', g:'racas'}, {id:'vozVolkhum', n:'Voz de Volkhum\'Pansar', g:'racas'}
   ];
 
   /* O corpo, em 12 partes (esquerda e direita são as do personagem), e o que se anota de um ferimento. */

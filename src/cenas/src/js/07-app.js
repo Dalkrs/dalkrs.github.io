@@ -260,6 +260,16 @@ function areaNext(b, amt, half) { return barAfter(b, areaDelta(amt, half)).v; }
 // (na tela do jogador, a barra de um token do mestre que vai só em proporção traz os pontos da sobrevida em xn)
 const sobrevidaTotal = t => Math.round(((t && t.bars) || []).reduce((s, b) => s + (Number(b && b.xn) > 0 ? Number(b.xn) : barX(b)), 0) * 10) / 10;
 // o número de uma condição no token: o contador — no Escudado, a sobrevida que ainda resta
+// (lote 19) o que uma condição traz ao entrar (as rodadas de começo e o contador de começo) e o máximo do contador
+function condInicio(id) {
+  const c = COND_BY_ID[id];
+  if (!c || !(c.dur > 0 || c.max > 0)) return null;
+  const o = {};
+  if (c.dur > 0) { o.d = c.dur; o.d0 = c.dur; }
+  if (c.max > 0 && c.ini > 0) o.n = Math.min(c.max, c.ini);
+  return o;
+}
+const condMax = id => { const c = COND_BY_ID[id]; return c && c.max > 0 ? c.max : 0; };
 function condNum(t, id) { return id === 'escudado' ? sobrevidaTotal(t) : ((((t && t.cinfo) || {})[id] || {}).n || 0); }
 const TAM_MIN = 0.25, TAM_MAX = 8;
 // → o remendo do token, ou null. antes: { bars, conds } como estavam antes da mudança (o que não mudou, não vem)
@@ -332,7 +342,7 @@ function atravessar(t, antes, sc) {
 function runasPisadas(t, antes, sc) {
   if (!t || t.prop || !antes || !('x' in antes || 'y' in antes)) return [];
   const [ax, ay] = centroTok(t, sc, antes.x, antes.y), [bx, by] = centroTok(t, sc);
-  return (sc.effects || []).filter(e => e.fx === 'runas' && e.gm && (() => { const p = FX.geom(e, sc).path; return areaCtx.isPointInPath(p, bx, by) && !areaCtx.isPointInPath(p, ax, ay); })());
+  return (sc.effects || []).filter(e => (e.fx === 'runas' || (FX.P[e.fx] && FX.P[e.fx].oculta)) && e.gm && (() => { const p = FX.geom(e, sc).path; return areaCtx.isPointInPath(p, bx, by) && !areaCtx.isPointInPath(p, ax, ay); })());
 }
 const mexeuNoLugar = op => op.t === 'upd' && op.c === 'tokens' && !!op.p && ('x' in op.p || 'y' in op.p);
 // A saída de um portal novo: ao lado da entrada, a um raio de folga (do outro lado, se não couber na cena).
@@ -746,7 +756,11 @@ const Act = {
         if (allOn && has) {
           const info = Object.assign({}, t.cinfo); delete info[id];
           Store.upd('tokens', t.id, { conds: t.conds.filter(c => c !== id), cinfo: info });
-        } else if (!allOn && !has) Store.upd('tokens', t.id, { conds: t.conds.concat(id) });
+        } else if (!allOn && !has) {
+          // (lote 19) a condição que tem duração de começo ou contador já entra com eles (o mestre muda depois)
+          const ini = condInicio(id);
+          Store.upd('tokens', t.id, ini ? { conds: t.conds.concat(id), cinfo: Object.assign({}, t.cinfo, { [id]: Object.assign({}, ini, (t.cinfo || {})[id]) }) } : { conds: t.conds.concat(id) });
+        }
       }
     });
   },
@@ -768,7 +782,8 @@ const Act = {
         if (!t || !t.conds.includes(id)) continue;
         const info = Object.assign({}, t.cinfo), cur = Object.assign({}, info[id]);
         if (op.delta != null) {
-          const n = (cur.n || 0) + op.delta;
+          const mx = condMax(id), n = mx ? Math.min(mx, (cur.n || 0) + op.delta) : (cur.n || 0) + op.delta;
+          if (n === (cur.n || 0)) continue;
           if (n <= 0) {
             if (!cur.n) continue;
             delete info[id];
@@ -790,7 +805,8 @@ const Act = {
   // + e − do contador. Descer de 1 encerra a condição; sem contador, − não faz nada.
   condStep(t, id, delta) {
     const cur = (t.cinfo || {})[id] || {};
-    const n = (cur.n || 0) + delta;
+    const n = (cur.n || 0) + delta, mx = condMax(id);
+    if (mx && n > mx) return 'max';                        // (lote 19) os acúmulos param no máximo
     if (n <= 0) {
       if (!cur.n) return 'none';
       Act.condToggle([t], id);

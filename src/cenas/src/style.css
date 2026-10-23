@@ -351,6 +351,10 @@ button { cursor: pointer; }
 .chip.on { border-color: var(--lamp); background: var(--lamp-soft); color: var(--fg); }
 .chip:disabled { cursor: default; }
 .chip-i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: #fff; }
+/* (lote 19) a condição das raças: o nome e, embaixo, de onde ela vem */
+.chip.chip-r { height: auto; min-height: 34px; padding-top: 3px; padding-bottom: 3px; }
+.chip-tt, .cact-tt { display: grid; line-height: 1.15; text-align: left; min-width: 0; }
+.chip-de { font-size: 10.5px; color: var(--fg-3); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* condições: abas por categoria e a busca */
 .cgrid { display: flex; flex-direction: column; gap: 8px; }
 .ctabs { display: flex; flex-wrap: wrap; gap: 4px; }

@@ -215,9 +215,38 @@ const Fichas = (() => {
     return true;
   }
   function onLive(op) {
-    if (!on || applying || op.t !== 'upd' || op.c !== 'tokens' || !op.p || !op.p.bars) return;
+    if (!on || applying || op.t !== 'upd' || op.c !== 'tokens' || !op.p) return;
+    if (op.p.conds || op.p.cinfo) { const t = Store.get('tokens', op.id); if (t) membrosParaFicha(t); }      // (lote 19)
+    if (!op.p.bars) return;
     const t = Store.get('tokens', op.id);
     if (t && paraFicha(t)) syncAll(t.char);            // outro token do mesmo personagem nesta cena acompanha
+  }
+  /* (lote 19) Os membros perdidos das condições das raças vão para a ficha: a Mão, o Pé, o Braço e a Perna Perdida
+     marcam a parte como amputada (do lado que a janela perguntou); as Costelas Abertas, um ferimento no peito. A marca
+     leva a condição de onde veio (cond): quando a condição sai do token (ou o Desfazer a tira), a marca sai junto. O que
+     o mestre marcou à mão na ficha fica como está. Grava quem pode gravar a ficha: o mestre, ou o dono do personagem. */
+  const MEMBRO_PARTE = { maoPerdida: 'mao', pePerdido: 'pe', bracoPerdido: 'braco', pernaPerdida: 'perna' };
+  const ladosDe = v => (v === 'ed' ? ['E', 'D'] : v === 'd' ? ['D'] : ['E']);
+  function membrosParaFicha(t) {
+    if (!on || !P || !t || !t.char || t.clone) return false;
+    const l = get(t.char);
+    if (!l || !(papel === 'mestre' || (!!eu && l.dono_id === eu))) return false;
+    const e = l.estado || {}, ob = v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+    const amp0 = ob(e.amp), fer0 = ob(e.fer), amp = {}, fer = {};
+    for (const k of Object.keys(amp0)) if (!(amp0[k] && amp0[k].cond)) amp[k] = amp0[k];
+    for (const k of Object.keys(fer0)) if (!(fer0[k] && fer0[k].cond)) fer[k] = fer0[k];
+    const info = t.cinfo || {}, agora = Date.now();
+    for (const id of t.conds) {
+      const lado = (info[id] || {}).lado, c = COND_BY_ID[id];
+      if (!lado || !c) continue;
+      for (const L of ladosDe(lado)) {
+        if (MEMBRO_PARTE[id]) { const k = MEMBRO_PARTE[id] + L; if (!amp[k]) amp[k] = amp0[k] && amp0[k].cond === id ? amp0[k] : { c: agora, n: c.n + ' (condição das Cenas)', cond: id }; }
+        else if (id === 'costelasAbertas') { const k = 'cond_costelas' + L; fer[k] = fer0[k] && fer0[k].cond === id ? fer0[k] : { p: 'peito', t: 'corte', g: 2, n: 'Costelas abertas, ' + (L === 'E' ? 'lado esquerdo' : 'lado direito') + ' (condição das Cenas)', c: agora, cond: id }; }
+      }
+    }
+    if (JSON.stringify(amp) === JSON.stringify(amp0) && JSON.stringify(fer) === JSON.stringify(fer0)) return false;
+    P.gravar(t.char, { estado: Object.assign({}, e, { amp, fer }) });
+    return true;
   }
   /* Liga (ou desliga) o token a uma ficha. Ligado, o token passa a ter o nome do personagem e só as barras da ficha;
      e, se ele não tinha dono e a ficha é de um jogador da mesa, o jogador passa a ser o dono do token. Tudo no mesmo
@@ -627,7 +656,11 @@ const Fichas = (() => {
     let cs = alvo.conds, info = null;
     for (const c of conds) {
       if (!COND_BY_ID[c.c]) continue;
-      if (!cs.includes(c.c)) cs = cs.concat(c.c);
+      const nova = !cs.includes(c.c);
+      if (nova) cs = cs.concat(c.c);
+      // (lote 19) a condição nova das raças entra com o de começo (as rodadas que o item diz valem mais)
+      const ini = nova && !(alvo.cinfo || {})[c.c] ? condInicio(c.c) : null;
+      if (ini) { info = info || Object.assign({}, alvo.cinfo); info[c.c] = Object.assign({}, ini); }
       if (c.r > 0) { info = info || Object.assign({}, alvo.cinfo); info[c.c] = Object.assign({}, info[c.c], { d: c.r, d0: c.r }); }
     }
     if (cs !== alvo.conds) p.conds = cs;
@@ -841,7 +874,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { start, on: () => on, chars, get, link, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)

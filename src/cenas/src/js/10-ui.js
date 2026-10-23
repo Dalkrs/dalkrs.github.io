@@ -1157,9 +1157,14 @@ const UI = (() => {
     const p = playerById(t.owner);
     return p ? 'De ' + p.name : 'Dono desconhecido';
   }
+  // (lote 19) a condição das raças diz de onde vem: "Orc Natuphas"; e a duração e o contador de começo
+  const condDe = c => (c && c.r ? c.r : '');
+  const condComeco = c => [c.dur > 0 ? c.dur + (c.dur === 1 ? ' rodada' : ' rodadas') : '', c.max > 0 ? 'até ' + c.max + (c.desce ? ', descendo' : '') : ''].filter(Boolean).join(' · ');
   function condChip(c, on, onClick, dica) {
-    return h('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), 'aria-pressed': onClick ? String(on) : null, disabled: !onClick, title: dica || c.n, onclick: onClick },
-      h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)), h('span', { text: c.n }));
+    const de = condDe(c), com = condComeco(c);
+    return h('button', { type: 'button', class: 'chip' + (on ? ' on' : '') + (de ? ' chip-r' : ''), 'aria-pressed': onClick ? String(on) : null, disabled: !onClick, title: (dica || c.n) + (de ? ' — ' + de : '') + (com ? ' (' + com + ')' : ''), onclick: onClick },
+      h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
+      de ? h('span', { class: 'chip-tt' }, h('span', { text: c.n }), h('small', { class: 'chip-de', text: de })) : h('span', { text: c.n }));
   }
   /* As condições para escolher, separadas por categoria: abas (Todas, Dano, Controle…) e uma busca pelo nome, que
      procura em todas. A aba e a busca ficam lembradas enquanto a página está aberta. A aba que tem alguma condição
@@ -1200,8 +1205,29 @@ const UI = (() => {
      O contador só muda na mão (+ e −); a duração, em rodadas, desconta sozinha na ordem de turnos. */
   function condStepToast(t, c, d) {
     const r = Act.condStep(t, c.id, d);
+    if (r === 'max') { toast(`${c.n} já está no máximo (${c.max}) em ${tokName(t)}.`); return r; }
+    // (lote 19) no limite (o máximo, ou zero na que desce), a sugestão do que vem, com Aplicar
+    const lim = c.lim, agora = Store.get('tokens', t.id), n = agora ? condNum(agora, c.id) : 0;
+    if (lim && ((lim.em === 'max' && r === 'ok' && d > 0 && n === c.max) || (lim.em === 0 && r === 'removed'))) { sugerirLimite(t.id, c); return r; }
     if (r === 'removed') toast(`${c.n} saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo });
     return r;
+  }
+  function sugerirLimite(tid, c) {
+    const t = Store.get('tokens', tid), s = COND_BY_ID[c.lim.sug];
+    if (!t || !s) return;
+    const quando = c.lim.em === 'max' ? `${c.n} chegou a ${c.max} em ${tokName(t)}` : `${c.n} de ${tokName(t)} chegou a zero`;
+    toast(`${quando}: ${c.lim.txt}.`, { action: `Aplicar: ${s.n}`, long: true, key: 'lim-' + tid + '-' + c.id, run: () => {
+      const tk = Store.get('tokens', tid);
+      if (!tk) return;
+      Store.tx(`${s.n} (${c.n})`, () => {
+        const info = Object.assign({}, tk.cinfo), conds = tk.conds.includes(s.id) ? tk.conds.slice() : tk.conds.concat(s.id);
+        info[s.id] = Object.assign({}, info[s.id], c.lim.d > 0 ? { d: c.lim.d, d0: c.lim.d } : {});
+        let cs = conds;
+        if (c.lim.zera) { cs = conds.filter(x => x !== c.id); delete info[c.id]; }
+        Store.upd('tokens', tk.id, { conds: cs, cinfo: info });
+      });
+      toast(`${tokName(tk)}: ${s.n}${c.lim.d > 0 ? ' por ' + c.lim.d + (c.lim.d === 1 ? ' rodada' : ' rodadas') : ''}${c.lim.zera ? ` (${c.n} zerou)` : ''}.`, { action: 'Desfazer', run: Tools.undo });
+    } });
   }
   /* (lote 8) A Ferida permanente e o Clone: só o mestre, num token de cada vez. → por que não dá (texto), ou '' */
   function condJanelaNao(id, ts, on) {
@@ -1212,6 +1238,7 @@ const UI = (() => {
     if (id === 'clone' && t.clone) return 'este já é uma cópia';
     if (id === 'clone' && t.prop) return 'só tokens';
     if (id === 'duplicado' && t.prop) return 'só tokens';
+    if (COND_LADO.has(id) && t.prop) return 'só tokens';
     if (id === 'ferida' && !t.bars.some(b => b.on && b.m > 0)) return 'o token não tem barra para apodrecer';
     if (id === 'ferida' && Fichas.escondida(t)) return 'a ferida de um token ligado fica na ficha, que não chega a você (precisa da aba Fichas)';
     return '';
@@ -1219,11 +1246,35 @@ const UI = (() => {
   // pôr (abre a janela) ou tirar (a condição sai: a ferida leva o podre das barras; o Clone, as cópias)
   function condJanela(id, t, on, depois) {
     if (!t) return;
+    if (COND_LADO.has(id)) { if (on) { Act.condToggle([t], id); toast(`${COND_BY_ID[id].n} saiu de ${tokName(t)}${t.char ? ' (a ficha desmarca a parte)' : ''}.`, { action: 'Desfazer', run: Tools.undo }); } else membroBox(t, id); if (depois) depois(); return; }
     if (!on) { if (id === 'ferida') feridaBox(t, null, depois); else if (id === 'duplicado') duplicadoBox(t, depois); else cloneBox(t, depois); return; }
     if (id === 'duplicado') { tirarMarcaDuplicado(t); if (depois) depois(); return; }
     if (id === 'clone' && !t.clone) { const n = Act.cloneDesfazer(t.id); toast(n ? `A condição Clone saiu de ${tokName(t)}: ${n === 1 ? 'a cópia sumiu' : `as ${n} cópias sumiram`}.` : `A condição Clone saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo }); }
     else { Act.condToggle([t], id); if (id === 'ferida') toast(`A ferida permanente saiu de ${tokName(t)}: a cura volta a ir até o máximo.`, { action: 'Desfazer', run: Tools.undo }); }     // (a cópia que perde o Clone some, e o aviso vem das regras dele)
     if (depois) depois();
+  }
+  /* (lote 19) Os membros perdidos (Mão, Pé, Braço e Perna Perdida, Costelas Abertas): de que lado? Os dois lados, também.
+     Num token com ficha, a parte fica marcada lá (amputada; as costelas, como ferimento no peito) e desmarca quando a
+     condição sai. */
+  const LADOS = [['e', 'Esquerdo'], ['d', 'Direito'], ['ed', 'Os dois']];
+  const textoLado = v => (v === 'ed' ? 'os dois lados' : v === 'd' ? 'lado direito' : 'lado esquerdo');
+  function membroBox(t, id) {
+    const c = COND_BY_ID[id];
+    let lado = 'e';
+    const op = (v, txt) => h('label', { class: 'cl-op' }, h('input', { type: 'radio', name: 'mb-lado', value: v, id: 'mb-lado-' + v, checked: v === lado, onchange: () => { lado = v; } }), h('span', { text: txt }));
+    const naFicha = !!t.char && Fichas.on() && !!Fichas.get(t.char);
+    modal({
+      title: c.n + ' em ' + tokName(t),
+      body: h('div', { class: 'cl-box' },
+        field('De que lado', h('div', { class: 'cl-quem', role: 'radiogroup', 'aria-label': 'De que lado' }, LADOS.map(([v, n]) => op(v, n))), 'stack'),
+        note(naFicha ? (id === 'costelasAbertas' ? 'A ficha marca as costelas abertas no peito (como um ferimento); quando a condição sair, a marca sai junto.' : 'A ficha marca a parte como amputada; quando a condição sair (o membro voltou), a ficha desmarca.')
+          : t.char ? 'A ficha deste token não chega até você aqui: a condição fica só no token.' : 'Este token não tem ficha: a condição fica só no token.')),
+      actions: [{ label: 'Cancelar' }, { label: 'Pôr ' + c.n, kind: 'primary', run: () => {
+        const tt = Store.get('tokens', t.id); if (!tt) return;
+        Store.tx(c.n, () => Store.upd('tokens', tt.id, { conds: tt.conds.includes(id) ? tt.conds : tt.conds.concat(id), cinfo: Object.assign({}, tt.cinfo, { [id]: { lado } }) }));
+        toast(`${tokName(tt)}: ${c.n} (${textoLado(lado)})${naFicha ? ', marcada na ficha' : ''}.`, { action: 'Desfazer', run: Tools.undo });
+      } }],
+    });
   }
   // "20 HP · 5 SP": o que apodreceu em cada barra
   const podresTexto = t => t.bars.filter(b => b.on && barPod(b) > 0).map(b => fmt(barPod(b)) + ' ' + b.n).join(' · ');
@@ -1391,7 +1442,8 @@ const UI = (() => {
       list.map(c => {
         const ci = info[c.id] || {}, n = condNum(t, c.id);
         return h('div', { class: 'cact-r' },
-          h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)), h('span', { class: 'cact-t', text: c.n })),
+          h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
+            c.r ? h('span', { class: 'cact-tt' }, h('span', { class: 'cact-t', text: c.n + (COND_LADO.has(c.id) && ci.lado ? ' (' + textoLado(ci.lado) + ')' : '') }), h('small', { class: 'chip-de', text: c.r })) : h('span', { class: 'cact-t', text: c.n })),
           // (lote 7) o Escudado: os pontos são a sobrevida do token — mudam na barra, não aqui
           c.id === 'escudado' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: 'Os pontos do escudo são a sobrevida do token (mude na barra). Quando ela acaba, o Escudado sai.', text: n ? String(n) : 'sem sobrevida' })
           // (lote 8) a Ferida permanente: o que apodreceu em cada barra (o mestre muda na janela); o Clone: as cópias
@@ -1403,7 +1455,7 @@ const UI = (() => {
           : edit ? h('span', { class: 'stp' },
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !n, title: n === 1 ? 'Tirar 1 (em zero, a condição sai)' : 'Tirar 1', 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => { condStepToast(t, c, -1); done(); } }, icon('minus', 13)),
             h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, text: n ? String(n) : '–' }),
-            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, title: 'Somar 1', 'aria-label': `Somar 1 em ${c.n}`, onclick: () => { condStepToast(t, c, 1); done(); } }, icon('plus', 13)))
+            h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, disabled: !!(c.max && n >= c.max), title: c.max && n >= c.max ? `No máximo (${c.max})` : 'Somar 1' + (c.max ? ` (até ${c.max})` : ''), 'aria-label': `Somar 1 em ${c.n}`, onclick: () => { condStepToast(t, c, 1); done(); } }, icon('plus', 13)))
             : h('span', { class: 'stp-v ro', text: n ? String(n) : '–' }),
           edit ? inCount(`${pre}-${c.id}-d`, ci.d || 0, v => { Act.condSet(t, c.id, { d: v, d0: v }, 'Duração da condição'); done(); },
             { label: `Rodadas de ${c.n}`, title: 'Quantas rodadas dura. Desconta sozinha quando o token termina a vez; em zero, a condição sai. Vazio: sem prazo.' })
@@ -2304,8 +2356,9 @@ const UI = (() => {
   const pvAgora = e => (Number.isFinite(e.pv) ? e.pv : pvMax(e));
   function quebrarMuralha(e, porDano) {
     if (!Store.get('effects', e.id)) return;
-    Store.tx('Quebrar a muralha', () => Store.del('effects', e.id));
-    toast(porDano ? 'Os pontos acabaram: a muralha quebrou.' : 'A muralha quebrou.', { action: 'Desfazer', run: Tools.undo });
+    const fim = (FX.P[e.fx] || {}).fimPv;                           // (lote 19: o Totem, a Parte Solta)
+    Store.tx(fim ? 'Tirar ' + (FX.P[e.fx] || {}).n : 'Quebrar a muralha', () => Store.del('effects', e.id));
+    toast(fim ? (porDano ? 'Os pontos acabaram: ' + fim[0].toLowerCase() + fim.slice(1) + '.' : fim + '.') : porDano ? 'Os pontos acabaram: a muralha quebrou.' : 'A muralha quebrou.', { action: 'Desfazer', run: Tools.undo });
   }
   function mudarPv(e, txt) {
     const s = String(txt).trim().replace(/\s+/g, '').replace('−', '-').replace(',', '.'), m = pvMax(e), p0 = pvAgora(e);
@@ -2321,8 +2374,8 @@ const UI = (() => {
       h('div', { class: 'grid2' },
         field('Agora', inText('fx-pv', String(pv), v => mudarPv(e, v), { inputmode: 'decimal', 'aria-label': 'Pontos de vida da muralha agora (−8 tira, +5 devolve)', title: 'Digite o dano com sinal (−8) ou o valor novo' })),
         field('Máximo', inNum('fx-pvm', m, v => { const n = Math.max(1, Math.round(v)); Store.tx('Pontos de vida da muralha', () => Store.upd('effects', e.id, { pvm: n, pv: Math.min(pv, n) })); }, { min: 1, max: 9999, step: 1, label: 'Pontos de vida máximos da muralha' }))),
-      note('O dano com sinal (−8) tira; o número sozinho vira o valor novo. Em zero, a muralha quebra.'),
-      h('div', { class: 'row' }, btn('Quebrar', () => quebrarMuralha(e), { icon: 'trash', kind: 'danger', id: 'fx-quebrar', title: 'Tira a muralha da cena (com Desfazer)' })));
+      note('O dano com sinal (−8) tira; o número sozinho vira o valor novo. Em zero, ' + ((FX.P[e.fx] || {}).fimPv ? 'some da cena.' : 'a muralha quebra.')),
+      h('div', { class: 'row' }, btn((FX.P[e.fx] || {}).fimPv ? 'Tirar' : 'Quebrar', () => quebrarMuralha(e), { icon: 'trash', kind: 'danger', id: 'fx-quebrar', title: 'Tira da cena (com Desfazer)' })));
   }
   function fxPanel(e) {
     const sc = Store.scene(), gm = isGM();
@@ -2331,7 +2384,7 @@ const UI = (() => {
     const tok = e.token ? Store.get('tokens', e.token) : null;
     return [
       h('div', { class: 'p-head' }, h('canvas', { class: 'fx-thumb big', width: 88, height: 88, data: { fx: e.fx } }),
-        h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: pr.n }), h('div', { class: 'p-sub', text: tok ? 'Preso a ' + tok.name : 'Solto no mapa' }))),
+        h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: pr.n }), h('div', { class: 'p-sub', text: (tok ? 'Preso a ' + tok.name : 'Solto no mapa') + (pr.r ? ' · ' + pr.r : '') }))),
       // aplicar e reaplicar ficam logo no alto do painel: são o que se usa a cada rodada
       gm ? h('div', { class: 'row' },
         e.apply ? btn('Reaplicar ' + applyLabel(e.apply), () => fxReapply(e), { icon: 'reset', kind: 'primary re', id: 'fx-reapply', title: reapplyTitle }) : null,
@@ -2651,6 +2704,16 @@ const UI = (() => {
   // A lista de efeitos para escolher, em grupos (Elementos, Magia, Natureza, Sagrado e sombrio)
   const fxSelect = (id, value, onChange) => h('select', { id, class: 'in', onchange: e => { const v = e.target.value; e.target.blur(); onChange(v); }, value },
     FX.TAGS.map(g => h('optgroup', { label: g.n }, FX.ORDER.filter(k => FX.P[k].g === g.id).map(k => h('option', { value: k, text: FX.P[k].n, selected: k === value })))));
+  /* (lote 19) a zona das raças já vem com a duração, a forma e o tamanho de começo (na barra de opções da ferramenta: o
+     mestre muda antes de soltar) */
+  function comecoDaZona(id) {
+    const pr = FX.P[id];
+    if (!pr || pr.g !== 'racas') return;
+    App.opt.fxDur = pr.dur > 0 ? pr.dur : 0;
+    if (pr.k) App.opt.fxShape = pr.k;
+    if (pr.rr > 0) App.opt.fxR = pr.rr;
+    if (pr.w > 0) App.opt.fxW = pr.w;
+  }
   // a aba da biblioteca de efeitos que está aberta (null: a do efeito escolhido)
   let fxTag = null;
   function tabFx() {
@@ -2661,7 +2724,7 @@ const UI = (() => {
     return [
       h('p', { class: 'muted', text: 'Escolha um efeito e clique no mapa. Ele fica na cena até alguém remover, ou pelo número de rodadas que você marcar.' }),
       h('div', { class: 'ctabs', role: 'group', 'aria-label': 'Tipos de efeito' }, [{ id: 'todos', n: 'Todos' }].concat(FX.TAGS).map(g => h('button', { type: 'button', class: 'ctab' + (tag === g.id ? ' on' : ''), id: 'fxt-' + g.id, 'aria-pressed': String(tag === g.id), onclick: () => { fxTag = g.id; refresh(); } }, g.n))),
-      h('div', { class: 'fx-grid' }, ids.map(id => h('button', { type: 'button', class: 'fx-card' + (App.tool === 'fx' && App.opt.fx === id ? ' on' : ''), id: 'fxc-' + id, title: 'Soltar ' + FX.P[id].n, onclick: () => { App.opt.fx = id; Tools.set('fx'); } },
+      h('div', { class: 'fx-grid' }, ids.map(id => h('button', { type: 'button', class: 'fx-card' + (App.tool === 'fx' && App.opt.fx === id ? ' on' : ''), id: 'fxc-' + id, title: 'Soltar ' + FX.P[id].n, onclick: () => { App.opt.fx = id; comecoDaZona(id); Tools.set('fx'); } },
         h('canvas', { class: 'fx-thumb', width: 112, height: 112, data: { fx: id } }), h('span', { class: 'fx-n', text: FX.P[id].n })))),
       sec('s-fxlist', `Na cena (${list.length})`, true,
         list.length ? h('ul', { class: 'list' }, list.map(e => {
@@ -3017,14 +3080,14 @@ const UI = (() => {
       const badge = h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12));
       // (lote 7) o Escudado mostra os pontos (a sobrevida), sem o − e o +: eles mudam na barra
       if (canCond && n && c.id !== 'escudado') {
-        kids.push(h('span', { class: 'hud-c', title: c.n + dur },
+        kids.push(h('span', { class: 'hud-c', title: c.n + (c.r ? ' — ' + c.r : '') + dur },
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-minus`, title: n === 1 ? `${c.n}: tirar 1 (em zero, a condição sai)` : `${c.n}: tirar 1`, 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => condStepToast(t, c, -1) }, icon('minus', 13)),
           badge, h('span', { class: 'stp-v', id: `hud-c-${c.id}-n`, text: String(n) }),
-          h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-plus`, title: `${c.n}: somar 1`, 'aria-label': `Somar 1 em ${c.n}`, onclick: () => condStepToast(t, c, 1) }, icon('plus', 13))));
+          h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-plus`, disabled: !!(c.max && n >= c.max), title: c.max && n >= c.max ? `${c.n}: no máximo (${c.max})` : `${c.n}: somar 1`, 'aria-label': `Somar 1 em ${c.n}`, onclick: () => condStepToast(t, c, 1) }, icon('plus', 13))));
       } else if (canCond) {
         kids.push(h('button', { type: 'button', class: 'hud-c one', id: `hud-c-${c.id}`, title: `${c.n}${n ? ' ' + n : ''}${dur}: abrir condições`, 'aria-label': `${c.n}${n ? ' ' + n : ''}${dur}`, onclick: () => condPicker([t]) }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       } else {
-        kids.push(h('span', { class: 'hud-c ro', title: c.n + dur }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
+        kids.push(h('span', { class: 'hud-c ro', title: c.n + (c.r ? ' — ' + c.r : '') + dur }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       }
     }
     if (conds.length > 6) kids.push(h('span', { class: 'hud-m', text: '+' + (conds.length - 6) }));
@@ -3300,7 +3363,8 @@ const UI = (() => {
   Store.on('runas', d => {
     const t = Store.get('tokens', d.tok);
     if (!t || !isGM()) return;
-    toast(`${tokName(t)} pisou nas Runas-armadilha.`, { action: 'Revelar', run: () => { if (Store.get('effects', d.fx)) Store.tx('Revelar as runas', () => Store.upd('effects', d.fx, { gm: false })); }, key: 'runas-' + d.fx, long: true });
+    const fx = Store.get('effects', d.fx), nome = fx && FX.P[fx.fx] ? FX.P[fx.fx].n : 'Runas-armadilha';        // (lote 19: e as arapucas)
+    toast(`${tokName(t)} ${fx && fx.fx !== 'runas' ? 'entrou na' : 'pisou nas'} ${nome}.`, { action: 'Revelar', run: () => { if (Store.get('effects', d.fx)) Store.tx(fx && fx.fx !== 'runas' ? 'Revelar a ' + nome : 'Revelar as runas', () => Store.upd('effects', d.fx, { gm: false })); }, key: 'runas-' + d.fx, long: true });
   });
 
   /* ================= Véu do mestre =================

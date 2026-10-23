@@ -2,6 +2,44 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-2",
+      "data": "2026-10-23",
+      "titulo": "As condições das raças",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Cenas: as condições das raças — 53 novas, numa aba Raças, cada uma com o ícone próprio e a raça e a árvore de onde vem (Frio, Carga de trovão, Laço, Contagem, Endurecido, Transe Rubro, Lição…)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: as condições já entram com as rodadas e o contador de começo, e os acúmulos param no máximo (o Frio vai até 5, a Dor até 5, a Carga de trovão até 3)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: no limite, a condição sugere o que vem, com Aplicar e Desfazer — o Frio no 5 sugere Congelado (e zera); a Contagem no zero sugere a Sentença."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a Mão, o Pé, o Braço e a Perna Perdida e as Costelas Abertas perguntam o lado e marcam a parte na ficha; quando a condição sai, a ficha desmarca."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: as zonas das raças na aba Efeitos, grupo Raças, cada uma com o desenho e a regra: Chão Rachado, Terra Morta, Enxame de Varejeiras, Névoa Rubra, Campo Aquático, Corredor de Vento, Círculo de Sangue e outras."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o Totem e a Parte Solta, com os pontos de vida; a Arapuca e a Grande Arapuca, escondidas dos jogadores até você revelar (quem entra avisa você)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: as condições das raças entram na lista dos efeitos de itens e poções."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-1",
       "data": "2026-10-23",
       "titulo": "Cenas e acampamento",

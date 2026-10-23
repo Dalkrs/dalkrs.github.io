@@ -234,7 +234,7 @@ const SHOTS = process.env.FOTOS;
     ok(await assinatura('int-prev') !== a0, 'Gerar outro: outra planta');
     await page.locator('#int-tipo button', { hasText: 'Templo' }).click(); await w(300);
     ok(/^2 salas · \d+ móveis/.test(await page.locator('#int-resumo').innerText()) && await page.locator('#int-nome').inputValue() === 'Templo — por dentro', 'trocar para Templo: a nave e a sacristia (2 salas); o nome acompanha');
-    await page.locator('#int-tipo button', { hasText: nomeTipo }).click(); await w(300);
+    await page.locator('#int-tipo button', { hasText: new RegExp('^' + nomeTipo + '$') }).click(); await w(300);
     await clearToasts();
     await criar();
     const it = await ev(([fora, mk]) => { const u = __tc, s = u.Store.scene(), m = u.Store.S.scenes[fora].tokens.find(t => t.id === mk); return JSON.parse(JSON.stringify({ id: s.id, nome: s.name, cols: s.cols, rows: s.rows, fog: s.fog.dynamic, mae: u.Store.S.pastas.mae[s.id], ligado: m && m.cena, saida: s.tokens.filter(t => t.prop === 'saida').map(t => ({ cena: t.cena, hidden: t.hidden })), portas: s.walls.filter(x => x.k === 'door').map(x => !!x.open), janelas: s.walls.filter(x => x.k === 'window').length, moveis: s.tokens.filter(t => t.prop && t.prop !== 'saida').map(t => t.prop), giradas: s.tokens.filter(t => t.prop === 'cadeira' && t.rot).length, cadeiras: s.tokens.filter(t => t.prop === 'cadeira').map(t => t.rot || 0), alvo: mk, feixes: s.shapes.filter(x => !x.ter && x.k === 'poly' && x.f === '#fff1c2').length, feixesOk: s.shapes.filter(x => !x.ter && x.k === 'poly' && x.f === '#fff1c2').every(x => x.a > 0.1 && x.a < 0.25 && x.lock), luzes: s.lights.length, tone: s.tone, textos: s.shapes.filter(x => x.k === 'text').length })); }, [bairroId, alvo.id]);

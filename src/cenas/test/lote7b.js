@@ -64,8 +64,8 @@ const SHOTS = process.env.FOTOS;
   // ================= a biblioteca =================
   await ev(() => { __tc.setSel([]); __tc.UI.openTab('fx'); }); await w(200);
   const contar = async tag => { await page.locator('#fxt-' + tag).click(); await w(120); return page.locator('#side .fx-card').count(); };
-  const nums = { elem: await contar('elem'), magia: await contar('magia'), natureza: await contar('natureza'), sagrado: await contar('sagrado'), todos: await contar('todos') };
-  ok(j(nums) === j({ elem: 18, magia: 14, natureza: 9, sagrado: 10, todos: 51 }), 'a biblioteca tem 51 efeitos: 18 de Elementos, 14 de Magia, 9 de Natureza e 10 de Sagrado e sombrio — ' + j(nums));
+  const nums = { elem: await contar('elem'), magia: await contar('magia'), natureza: await contar('natureza'), sagrado: await contar('sagrado'), racas: await contar('racas'), todos: await contar('todos') };
+  ok(j(nums) === j({ elem: 18, magia: 14, natureza: 9, sagrado: 10, racas: 19, todos: 70 }), 'a biblioteca tem 70 efeitos: 18 de Elementos, 14 de Magia, 9 de Natureza, 10 de Sagrado e sombrio e (lote 19) 19 das Raças — ' + j(nums));
   const regras = await ev(() => ['gelado', 'fumaca', 'brasas', 'cristais', 'cinzas', 'correnteza', 'aguaEletrica', 'vortice', 'gravidade', 'tempo', 'portal', 'runas', 'selos', 'oleo', 'lama', 'jardim', 'espiritos', 'santuario', 'luaSangue'].filter(id => !(__tc.FX.P[id] && __tc.FX.P[id].regra)));
   ok(!regras.length, 'cada zona nova diz a regra dela: ' + j(regras));
   await page.locator('#fxt-todos').click(); await w(100);
