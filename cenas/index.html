@@ -15124,7 +15124,7 @@ const UI = (() => {
   /* (lote 22) A tela das barrinhas: o mestre dá e desconta as barras de quem está no combate, num passo só. Abre sozinha
      nos momentos ligados na aba Turnos (de começo, só na vez de cada um), e pelo botão "Abrir agora". */
   const BARRINHAS_PADRAO = { combate: false, rodada: false, vez: true };
-  function barrinhasPrefs() { const p = Store.S.prefs.barrinhas; return Object.assign({}, BARRINHAS_PADRAO, p && typeof p === 'object' ? p : {}); }
+  function barrinhasPrefs() { let semTela = false; try { semTela = localStorage.getItem('tinycats:testes-sem-barrinhas') === '1'; } catch (e) { /* sem armazenamento */ } if (semTela) return { combate: false, rodada: false, vez: false }; const p = Store.S.prefs.barrinhas; return Object.assign({}, BARRINHAS_PADRAO, p && typeof p === 'object' ? p : {}); }
   function tokensDe(sc, entradas) {
     const ids = [];
     for (const e of entradas) { if (e.token) ids.push(e.token); if (isBand(e)) ids.push(...e.toks); }
