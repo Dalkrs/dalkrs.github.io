@@ -318,6 +318,31 @@ const ICONS = {
   c_ofuscado: 'M2.500 14s3.500-5.500 9.500-5.500 9.500 5.500 9.500 5.500-3.500 5.500-9.500 5.500S2.500 14 2.500 14zM12 14m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M12 2.500v3M5 4.500l1.700 2.300M19 4.500l-1.700 2.300',
   c_vulneravel: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800-4.500-1.500-7.500-5.200-7.500-9.800V5.800zM12 3l-1.500 6 3 3-2 5.500',
   c_escudado: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800-4.500-1.500-7.500-5.200-7.500-9.800V5.800zM8.500 11.500h7M12 8v7',
+  // (lote 20) as condições das classes
+  c_alvoDuelo: 'M4 4l10.500 10.500M20 4L9.500 14.500M6.500 17.500L4 20M17.500 17.500L20 20M7.500 14.500l2 2M16.500 14.500l-2 2',
+  c_armaduraRachada: 'M8 3.500l4 1.800 4-1.800 4 3.500-2.500 4V20.500h-11V11L4 7zM13 6.500l-2 4 3 2-2 4.500',
+  c_assombrado: 'M7 21V11a5 5 0 0 1 10 0v10l-2.500-2-2.500 2-2.500-2zM10 11h.01M14 11h.01',
+  c_clausula: 'M12 12m-8.500 0a8.500 8.500 0 1 0 17 0a8.500 8.500 0 1 0-17 0M6 6l12 12',
+  c_cobranca: 'M12.500 7.500a3 3 0 1 0 6 0 3 3 0 1 0-6 0M3 14h3.500l4 3h6a1.800 1.800 0 0 0 0-3.600H13M3 12v9',
+  c_dancando: 'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+  c_definhando: 'M5 19c0-8 5-13 14-14-1 9-6 14-14 14zM5 19l7-7M18 15v2M15.500 18.500v1.500',
+  c_desguarnecido: 'M11 13m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0M11 13m-2.500 0a2.500 2.500 0 1 0 5 0a2.500 2.500 0 1 0-5 0M21 3l-7.500 7.500M16.500 3H21v4.500',
+  c_devedor: 'M10 10m-6 0a6 6 0 1 0 12 0a6 6 0 1 0-12 0M7.500 10h5M18 13v8M15 18l3 3 3-3',
+  c_eloLuz: 'M3 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M17 7a2 2 0 1 0 4 0 2 2 0 1 0-4 0M6.600 15.600l10.800-7.200M10.500 6l1.500-2 1.500 2M10.500 18l1.500 2 1.500-2',
+  c_escudoPlantado: 'M6 3h12v10c0 3-2.500 5.500-6 7-3.500-1.500-6-4-6-7zM2.500 21h19M12 7v8',
+  c_escudoRachado: 'M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0M12 4l-1.500 4 3 2.500-2 4 1.500 5.500',
+  c_extremamenteFerido: 'M12 3c3.200 4.200 5.500 7 5.500 10a5.500 5.500 0 0 1-11 0c0-3 2.300-5.800 5.500-10zM12 11v5.500M9.300 13.700h5.400',
+  c_ginga: 'M12 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 6v7l-3 8M12 13l3 8M7 9l5 1 5-1M4 6c-1.500 2-1.500 5 0 7M20 6c1.500 2 1.500 5 0 7',
+  c_guardaQuebrada: 'M5 5l7-2 7 2v6c0 5-3.500 8-7 10-3.500-2-7-5-7-10zM2.500 12h18M17 9l3 3-3 3',
+  c_levementeFerido: 'M4 15L15 4a3 3 0 0 1 4.200 4.200L8.200 19.200A3 3 0 0 1 4 15zM9.500 9.500l5 5M11.500 11.500h.01M13 13h.01',
+  c_mortalmenteFerido: 'M2 12.500h5l2-5.500 3 11 2.300-5.500H22',
+  c_pacto: 'M6 3h9l3 3v15H6zM9 17c1-1.500 2-1.500 3 0s2 1.500 3 0M12 7c1 1.200 1.600 2 1.600 2.800a1.600 1.600 0 0 1-3.200 0c0-.800.600-1.600 1.600-2.800z',
+  c_perjuro: 'M7 3.500h10v7l-2 2 2 2v5.500H7v-5.500l2-2-2-2zM9.500 7.500h5M9.500 17h5',
+  c_portaAberta: 'M5 21V3h9v18M14 4.500l5 2v12.500l-5 2M11 12h.01M3 21h18',
+  c_seloLushmania: 'M12 12m-8.500 0a8.500 8.500 0 1 0 17 0a8.500 8.500 0 1 0-17 0M12 6.500l1.400 4.100 4.100 1.400-4.100 1.400L12 17.500l-1.400-4.100L6.500 12l4.100-1.400z',
+  c_sobEgide: 'M3 12.500a9 9 0 0 1 18 0zM12 12.500v8M9.500 20.500h5',
+  c_sobExorcismo: 'M8 15c0-3 1.800-5 4-5s4 2 4 5v5.500H8zM8.300 10.500L6.500 6.500M15.700 10.500l1.800-4M12 2v3M4.500 12.500H2M22 12.500h-2.500',
+  c_tutelado: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800-4.500-1.500-7.500-5.200-7.500-9.800V5.800zM12 10a1.700 1.700 0 1 0 0-3.400 1.700 1.700 0 0 0 0 3.400zM8.800 16c.500-2.200 1.600-3.300 3.200-3.300s2.700 1.100 3.200 3.300',
   // (lote 19) as condições das raças
   c_ancestralEncarnado: 'M5 4.500c4-2 10-2 14 0v6.500c0 5-3.500 9-7 10-3.500-1-7-5-7-10zM8 10.500l2.500 1.200M16 10.500l-2.500 1.200M9.500 16.500c1.500 1 3.500 1 5 0M12 2.500V1',
   c_armaVitrine: 'M4 20l9-9M13 11l3.500-7 3.500 3.500-7 3.500M6.500 15.500l2 2M18 14.500l2.500 2.500-2.500 2.500-2.500-2.500z',
@@ -544,6 +569,7 @@ const COND_TAGS = [
   { id: 'ritmo', n: 'Ritmo', t: 'Ritmo e movimento' },
   { id: 'bencao', n: 'Bênçãos', t: 'Bênçãos e cura' },
   { id: 'racas', n: 'Raças', t: 'Das raças' },               // (lote 19)
+  { id: 'classes', n: 'Classes', t: 'Das classes' },         // (lote 20)
 ];
 // (lote 7) As 20 condições novas ficam no fim da categoria de cada uma (a aba "Todas" mostra a lista nesta ordem).
 // São lembretes, como as outras; o Escudado mostra a sobrevida do token e sai quando ela acaba, e o Agigantado e o
@@ -677,6 +703,32 @@ const CONDS = [
   { id: 'tregua', n: 'Trégua', c: '#8fb8a8', i: 'c_tregua', g: 'racas', r: 'Anão Mercador', dur: 1 },
   { id: 'vinculoSangue', n: 'Vínculo de Sangue', c: '#a8202e', i: 'c_vinculoSangue', g: 'racas', r: 'Taekeir Zier\'Asurper', dur: 3 },
   { id: 'vozVolkhum', n: 'Voz de Volkhum\'Pansar', c: '#d4a017', i: 'c_vozVolkhum', g: 'racas', r: 'Konaito', dur: 2 },
+  /* (lote 20) As condições das classes: um grupo só, em ordem alfabética (r: a classe; dur: as rodadas de começo). Os
+     três Feridos (ferido) são as tags de ferimento do Bruno: o HP negativo sugere a de cada terço do limite. */
+  { id: 'alvoDuelo', n: 'Alvo do Duelo', c: '#c0392b', i: 'c_alvoDuelo', g: 'classes', r: 'Bárbaro' },
+  { id: 'armaduraRachada', n: 'Armadura Rachada', c: '#a5663a', i: 'c_armaduraRachada', g: 'classes', r: 'Bárbaro' },
+  { id: 'assombrado', n: 'Assombrado', c: '#8f9ac4', i: 'c_assombrado', g: 'classes', r: 'Bruxo', dur: 2 },
+  { id: 'clausula', n: 'Cláusula', c: '#7a2f9a', i: 'c_clausula', g: 'classes', r: 'Feiticeiro', dur: 2 },
+  { id: 'cobranca', n: 'Cobrança', c: '#b08a2a', i: 'c_cobranca', g: 'classes', r: 'Feiticeiro' },
+  { id: 'dancando', n: 'Dançando', c: '#c05aa8', i: 'c_dancando', g: 'classes', r: 'Bardo', dur: 1 },
+  { id: 'definhando', n: 'Definhando', c: '#76703a', i: 'c_definhando', g: 'classes', r: 'Bruxo', dur: 2 },
+  { id: 'desguarnecido', n: 'Desguarnecido', c: '#e0603a', i: 'c_desguarnecido', g: 'classes', r: 'Aégis', dur: 1 },
+  { id: 'devedor', n: 'Devedor', c: '#a04a2a', i: 'c_devedor', g: 'classes', r: 'Feiticeiro', dur: 1 },
+  { id: 'eloLuz', n: 'Elo de Luz', c: '#d8b84a', i: 'c_eloLuz', g: 'classes', r: 'Sacerdote' },
+  { id: 'escudoPlantado', n: 'Escudo Plantado', c: '#7a8aa8', i: 'c_escudoPlantado', g: 'classes', r: 'Aégis' },
+  { id: 'escudoRachado', n: 'Escudo Rachado', c: '#8d8f94', i: 'c_escudoRachado', g: 'classes', r: 'Espadachim' },
+  { id: 'extremamenteFerido', n: 'Extremamente Ferido', c: '#c8542f', i: 'c_extremamenteFerido', g: 'classes', r: 'Ferimento', ferido: true },
+  { id: 'ginga', n: 'Ginga', c: '#2f9d93', i: 'c_ginga', g: 'classes', r: 'Bardo', dur: 1 },
+  { id: 'guardaQuebrada', n: 'Guarda Quebrada', c: '#d98b2b', i: 'c_guardaQuebrada', g: 'classes', r: 'Espadachim', dur: 1 },
+  { id: 'levementeFerido', n: 'Levemente Ferido', c: '#d9a05a', i: 'c_levementeFerido', g: 'classes', r: 'Ferimento', ferido: true },
+  { id: 'mortalmenteFerido', n: 'Mortalmente Ferido', c: '#8f1d1d', i: 'c_mortalmenteFerido', g: 'classes', r: 'Ferimento', ferido: true },
+  { id: 'pacto', n: 'Pacto', c: '#9a2a4a', i: 'c_pacto', g: 'classes', r: 'Feiticeiro' },
+  { id: 'perjuro', n: 'Perjuro', c: '#6b4a7a', i: 'c_perjuro', g: 'classes', r: 'Aégis' },
+  { id: 'portaAberta', n: 'Porta Aberta', c: '#5a3a6a', i: 'c_portaAberta', g: 'classes', r: 'Feiticeiro', dur: 2 },
+  { id: 'seloLushmania', n: 'Selo de Lushmânia', c: '#e6c35a', i: 'c_seloLushmania', g: 'classes', r: 'Sacerdote', dur: 3 },
+  { id: 'sobEgide', n: 'Sob a Égide', c: '#c9a227', i: 'c_sobEgide', g: 'classes', r: 'Aégis', dur: 1 },
+  { id: 'sobExorcismo', n: 'Sob Exorcismo', c: '#e8b83a', i: 'c_sobExorcismo', g: 'classes', r: 'Sacerdote', dur: 2 },
+  { id: 'tutelado', n: 'Tutelado', c: '#5a8fd6', i: 'c_tutelado', g: 'classes', r: 'Aégis' },
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
 /* (lote 8) As condições que pedem uma janela antes (a Ferida permanente: qual barra e quanto apodrece; o Clone:

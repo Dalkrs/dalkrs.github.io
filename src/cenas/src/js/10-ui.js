@@ -2391,6 +2391,7 @@ const UI = (() => {
         btn('Aplicar a quem está dentro…', () => fxApply(e), { icon: 'area', id: 'fx-apply', title: 'Dano, cura ou condição em todos os tokens dentro deste efeito' })) : null,
       // (lote 7) a regra da zona, e o que ela pede: revelar as runas, a condição da Distorção do tempo, os pontos da muralha
       pr.regra ? h('p', { class: 'fx-regra', id: 'fx-regra', text: pr.regra[0].toUpperCase() + pr.regra.slice(1) + '.' }) : null,
+      pr.rc ? h('p', { class: 'fx-regra', id: 'fx-regra-classe', text: pr.rc + '.' }) : null,
       pr.oculta && gm ? h('div', { class: 'row' }, e.gm ? btn('Revelar aos jogadores', () => U({ gm: false }, 'Revelar as runas'), { icon: 'eye', kind: 'primary', id: 'fx-revelar' })
         : btn('Esconder de novo', () => U({ gm: true }, 'Esconder as runas'), { icon: 'eyeOff', id: 'fx-esconder' })) : null,
       pr.conds && gm ? field('Dentro dela', seg('fx-cond', (e.apply && e.apply.cond && e.apply.cond.id) || pr.cond, pr.conds.map(id => [id, (COND_BY_ID[id] || {}).n || id]),
@@ -2705,10 +2706,19 @@ const UI = (() => {
   const fxSelect = (id, value, onChange) => h('select', { id, class: 'in', onchange: e => { const v = e.target.value; e.target.blur(); onChange(v); }, value },
     FX.TAGS.map(g => h('optgroup', { label: g.n }, FX.ORDER.filter(k => FX.P[k].g === g.id).map(k => h('option', { value: k, text: FX.P[k].n, selected: k === value })))));
   /* (lote 19) a zona das raças já vem com a duração, a forma e o tamanho de começo (na barra de opções da ferramenta: o
-     mestre muda antes de soltar) */
+     mestre muda antes de soltar). (lote 20) as das classes também; e as que andam com o personagem (presa: a Luz da
+     Lanterna, o Círculo de Proteção, a Fermata, a Retaguarda) ligam o "Prender ao token clicado" — que volta a ser o de
+     antes quando o mestre escolhe outra zona. */
+  let presaAntes = null;
   function comecoDaZona(id) {
     const pr = FX.P[id];
-    if (!pr || pr.g !== 'racas') return;
+    if (!pr) return;
+    if (pr.presa) {
+      if (presaAntes === null) presaAntes = !!App.opt.fxAttach;
+      App.opt.fxAttach = true;
+      toast(`${pr.n}: clique no token de quem cria a zona — ela anda junto com ele.`, { key: 'fx-presa' });
+    } else if (presaAntes !== null) { App.opt.fxAttach = presaAntes; presaAntes = null; }
+    if (pr.g !== 'racas' && pr.g !== 'classes') return;
     App.opt.fxDur = pr.dur > 0 ? pr.dur : 0;
     if (pr.k) App.opt.fxShape = pr.k;
     if (pr.rr > 0) App.opt.fxR = pr.rr;
@@ -2720,7 +2730,7 @@ const UI = (() => {
     const sc = Store.scene(), gm = isGM();
     const list = sc.effects.filter(e => fxVisible(e));
     const tag = fxTag || (FX.P[App.opt.fx] || FX.P.fogo).g || 'elem';
-    const ids = tag === 'todos' ? FX.ORDER : FX.ORDER.filter(id => FX.P[id].g === tag);
+    const ids = tag === 'todos' ? FX.ORDER : FX.ORDER.filter(id => FX.P[id].g === tag || FX.P[id].g2 === tag);     // (lote 20) g2: a zona de hoje que a classe também usa
     return [
       h('p', { class: 'muted', text: 'Escolha um efeito e clique no mapa. Ele fica na cena até alguém remover, ou pelo número de rodadas que você marcar.' }),
       h('div', { class: 'ctabs', role: 'group', 'aria-label': 'Tipos de efeito' }, [{ id: 'todos', n: 'Todos' }].concat(FX.TAGS).map(g => h('button', { type: 'button', class: 'ctab' + (tag === g.id ? ' on' : ''), id: 'fxt-' + g.id, 'aria-pressed': String(tag === g.id), onclick: () => { fxTag = g.id; refresh(); } }, g.n))),
@@ -2833,6 +2843,10 @@ const UI = (() => {
           : 'A visão pelo relevo precisa da "Visão por paredes" (em Visão e névoa).'),
         h('p', { class: 'note', id: 'rl-resumo', text: resumoDoRelevo(Relevo.tabela(sc)) }),
         btn('Regras do relevo…', abrirRegrasDoRelevo, { icon: 'sliders', id: 'rl-regras' })),
+      // (lote 20) os Feridos: a tabela do mestre (da mesa)
+      sec('c-feridos', 'Feridos', false,
+        h('p', { class: 'note', id: 'fd-resumo', text: resumoDosFeridos(feridosCortes()) }),
+        btn('Cortes dos Feridos…', abrirFeridos, { icon: 'sliders', id: 'fd-regras' })),
       sec('c-perm', 'O que os jogadores podem', true,
         PERMS.map(([k, label]) => toggle('pm-' + k, !!sc.perms[k], v => S({ perms: Object.assign({}, sc.perms, { [k]: v }) }, 'Permissões'), label)),
         note('Paredes, luzes, névoa, cenas e tokens do mestre ficam sempre com o mestre.')),
@@ -2867,6 +2881,32 @@ const UI = (() => {
         if (JSON.stringify(novo) === JSON.stringify(antes)) return;
         Store.S.prefs.relevo = novo; Persist.meta({ pub: true }); Render.request(); refresh();
         toast('As regras do relevo estão salvas.', { action: 'Desfazer', key: 'relevo', run: () => { Store.S.prefs.relevo = antes; Persist.meta({ pub: true }); Render.request(); refresh(); toast('As regras do relevo voltaram.'); } });
+      } },
+    ] });
+  }
+  /* (lote 20) Os cortes dos Feridos (a tabela da mesa): em % do quanto a barra da vida pode ficar negativa. A cena só
+     sugere (com o Aplicar); a tag que o mestre aplica fica no token e na ficha até ele tirar. */
+  function resumoDosFeridos(c) {
+    return `Com a Vida abaixo de zero, a cena sugere: até ${c.t1}% do limite negativo, Levemente Ferido; até ${c.t2}%, Extremamente Ferido; além, Mortalmente Ferido.`;
+  }
+  function abrirFeridos() {
+    if (!isGM()) return;
+    const antes = Store.S.prefs.feridos ? Object.assign({}, Store.S.prefs.feridos) : null, r = feridosCortes();
+    const linha = (rot, campo, depois) => h('div', { class: 'rl-l' }, h('span', { text: rot }), campo, depois ? h('span', { class: 'muted', text: depois }) : null);
+    const body = h('div', { class: 'rl-tab', id: 'fd-tab' },
+      linha('Levemente Ferido: até', inNum('fd-t1', r.t1, v => { r.t1 = v; }, { min: 1, max: 98, step: 1, label: 'Até quantos % do limite negativo é Levemente Ferido' }), '% do limite negativo'),
+      linha('Extremamente Ferido: até', inNum('fd-t2', r.t2, v => { r.t2 = v; }, { min: 2, max: 99, step: 1, label: 'Até quantos % do limite negativo é Extremamente Ferido' }), '% (além disso, Mortalmente Ferido)'),
+      note('O limite negativo é o quanto a barra da Vida pode ficar abaixo de zero (vem da ficha, ou das opções da barra). Vale em todas as cenas desta mesa. Nada se aplica sozinho: quando o dano leva alguém a uma faixa pior, aparece a sugestão com o Aplicar.'));
+    modal({ title: 'Cortes dos Feridos', body, actions: [
+      { label: 'Valores de começo', run: () => { Object.assign(r, FERIDOS_PADRAO); for (const k of ['t1', 't2']) { const c = document.getElementById('fd-' + k); if (c) c.value = r[k]; } return false; }, keep: true },
+      { label: 'Cancelar' },
+      { label: 'Salvar', kind: 'primary', run: () => {
+        const t1 = Math.round(Number(r.t1)), t2 = Math.round(Number(r.t2));
+        if (!(t1 >= 1 && t2 <= 99 && t1 < t2)) { toast('O corte do Levemente precisa ser menor que o do Extremamente.'); return false; }
+        const novo = t1 === FERIDOS_PADRAO.t1 && t2 === FERIDOS_PADRAO.t2 ? null : { t1, t2 };
+        if (JSON.stringify(novo) === JSON.stringify(antes)) return;
+        Store.S.prefs.feridos = novo; Persist.meta({ pub: true }); refresh();
+        toast('Os cortes dos Feridos estão salvos.', { action: 'Desfazer', key: 'feridos', run: () => { Store.S.prefs.feridos = antes; Persist.meta({ pub: true }); refresh(); toast('Os cortes dos Feridos voltaram.'); } });
       } },
     ] });
   }
@@ -3359,6 +3399,14 @@ const UI = (() => {
     if (!d.dano || !d.barra) { toast(`${tokName(t)} caiu ${alt}: a regra sugere ${d.pct}% da Vida máxima.`, { key: 'queda-' + d.tok, long: true }); return; }
     toast(`${tokName(t)} caiu ${alt}: a regra sugere ${d.pct}% da Vida máxima (${fmt(d.dano)} de ${d.barra}).`, { action: 'Aplicar o dano', key: 'queda-' + d.tok, long: true,
       run: () => { const tk = Store.get('tokens', d.tok); if (tk && Combate.aplicarAtaque([{ t: tk, final: d.dano }], d.barra, 'Dano da queda').length) toast(`${tokName(tk)}: −${fmt(d.dano)} de ${d.barra} (queda).`, { action: 'Desfazer', run: Tools.undo }); } });
+  });
+  // (lote 20) o HP abaixo de zero: a regra sugere o Ferido; o mestre aplica (ou não)
+  Store.on('ferido', d => {
+    const t = Store.get('tokens', d.tok);
+    if (!t || !isGM()) return;
+    const nome = (COND_BY_ID[d.id] || {}).n || d.id;
+    toast(`${tokName(t)} está com ${fmtV(d.v)} de ${d.barra} (o limite é −${fmt(d.lo)}): a regra sugere ${nome}.`, { action: 'Aplicar', key: 'ferido-' + d.tok, long: true,
+      run: () => { const tk = Store.get('tokens', d.tok); if (tk && Act.feridoAplicar(tk, d.id)) toast(`${tokName(tk)}: ${nome}.`, { action: 'Desfazer', run: Tools.undo }); } });
   });
   Store.on('runas', d => {
     const t = Store.get('tokens', d.tok);

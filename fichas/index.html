@@ -1159,7 +1159,7 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=16"></script>
-<script src="../tc/rules.js?v=17"></script>
+<script src="../tc/rules.js?v=18"></script>
 <script src="mesa.js?v=12"></script>
 <script src="extras.js?v=18"></script>
 <script src="quadros.js?v=5"></script>
@@ -2344,6 +2344,9 @@ function htmlEstadoResumo(pc){
   { const cal=calDaFicha(), R=window.TC&&TC.rules, ok=R&&R.anivOk? R.anivOk(anivDe(pc), cal.meses) : null, x=ok&&cal.hoje? R.aniversario(ok, cal.hoje, cal.meses) : null;
     if(x&&x.hoje) out.push(`<button type="button" class="rschip festa" data-irpara="atributos|#anivBox" title="No calendário do mundo">Aniversário hoje${x.idade!=null?' · faz '+x.idade:''}</button>`); }
   const fer=FichasQuadros.feridasAbertas? FichasQuadros.feridasAbertas(pc) : [];
+  // (lote 20) o Ferido que a cena marcou (o HP negativo): fica na ficha até o mestre tirar na cena
+  { const fd=pc.estado&&pc.estado.ferido, R=window.TC&&TC.rules;
+    if(fd && /^(levemente|extremamente|mortalmente)Ferido$/.test(fd)) out.push(`<span class="rschip ruim" id="rsFerido" title="Marcado nas Cenas (o HP abaixo de zero). Sai quando o mestre tira a condição do token.">${esc(R&&R.nomeDaCondicao? R.nomeDaCondicao(fd) : fd)}</span>`); }
   if(fer.length) out.push(`<button type="button" class="rschip ruim" data-irpara="atributos|#painelCorpo" title="${esc(fer.join('\n'))}">${fer.length===1?'1 ferimento aberto':fer.length+' ferimentos abertos'}</button>`);
   if(FichasExtras.usaMente(pc)) for(const k of ['san','conf']){ const v=FichasExtras.valorMente(pc,k), M=FichasExtras.MENTE[k];
     out.push(`<button type="button" class="rschip mente-${k}" data-irpara="social|#painelMente" title="${esc(M.nome)}: ${v} de 100 (na aba Social)">${esc(M.nome)} <b>${v}</b></button>`); }

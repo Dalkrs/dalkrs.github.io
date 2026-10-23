@@ -2,6 +2,42 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-3",
+      "data": "2026-10-23",
+      "titulo": "As condições e as zonas das classes",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Cenas: as condições das classes — 24 novas, numa aba Classes, cada uma com o ícone próprio e a classe de onde vem (Alvo do Duelo, Escudo Plantado, Ginga, Cláusula, Devedor, Sob Exorcismo, Elo de Luz…)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: os Feridos — Levemente, Extremamente e Mortalmente Ferido. A tag fica no token e aparece no resumo da ficha."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: com a Vida abaixo de zero, a cena sugere o Ferido pelo terço do limite negativo, com Aplicar e Desfazer (nada se aplica sozinho, e a cura não tira a tag). Os cortes ficam na aba Cena, em “Cortes dos Feridos…”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: as zonas das classes na aba Efeitos, grupo Classes, cada uma com o desenho e a regra: Luz da Lanterna, Círculo de Proteção, Círculo de Ritual, Chão em Brasa, Inverno Eterno, Tornado Ardente, Rastro de Pólvora, Poço de Breu, Fermata e outras."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: a Luz da Lanterna, o Círculo de Proteção, a Fermata e a Retaguarda já vêm presas ao token clicado — andam junto com quem as criou."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: a Muralha de Natu e o Pilar de Pedra barram a passagem e a visão e têm os pontos de vida (36 na muralha de 3 cédulas, 15 no pilar)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: o Silêncio, a Lama, o Pântano e o Chão consagrado aparecem também no grupo Classes, com a regra da classe no painel."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-2",
       "data": "2026-10-23",
       "titulo": "As condições das raças",

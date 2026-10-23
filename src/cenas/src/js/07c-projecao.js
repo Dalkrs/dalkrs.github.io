@@ -551,6 +551,8 @@ const Proj = (() => {
     const pf = { barDefaults: Array.isArray(prefs.barDefaults) && prefs.barDefaults.length ? prefs.barDefaults.slice(0, MAX_BARS).map(cleanBar) : null, modelos: normModelos(prefs.modelos) };
     // (lote 18) a tabela do relevo da mesa (só quando o mestre mudou alguma coisa)
     if (ehObj(prefs.relevo) && typeof Relevo !== 'undefined') pf.relevo = Relevo.norm(prefs.relevo);
+    // (lote 20) os cortes dos Feridos (só quando o mestre mudou)
+    if (ehObj(prefs.feridos) && Number(prefs.feridos.t1) > 0 && Number(prefs.feridos.t2) > Number(prefs.feridos.t1) && Number(prefs.feridos.t2) < 100) pf.feridos = { t1: Math.round(Number(prefs.feridos.t1)), t2: Math.round(Number(prefs.feridos.t2)) };
     return {
       v: 1, ordem, atual: idCena(d.atual) ? d.atual : null, noAr: idCena(d.noAr) ? d.noAr : null,
       tx: idOk(d.tx) ? d.tx : null,                         // qual aparelho do mestre está transmitindo a cena que está no ar

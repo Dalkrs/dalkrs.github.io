@@ -253,7 +253,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   // ================= as condições novas, por categoria =================
   await ev(() => { const u = __tc, k = u.Store.scene().tokens.find(x => x.name === 'Ana'); u.setSel([{ c: 'tokens', id: k.id }]); u.UI.openTab('sel'); }); await w(200);
   const chipsNomes = () => page.locator('#cg-list .chip').allInnerTexts();
-  ok(await page.locator('#s-cond .ctab').count() === 9 && await page.locator('#cg-tab-dano.on').count() === 1, 'as condições do token vêm em abas: Todas e as oito categorias (lote 19: com as Raças); abre em "Dano"');
+  ok(await page.locator('#s-cond .ctab').count() === 10 && await page.locator('#cg-tab-dano.on').count() === 1, 'as condições do token vêm em abas: Todas e as nove categorias (lote 19: com as Raças; lote 20: as Classes); abre em "Dano"');
   ok((await chipsNomes()).join() === 'Envenenado,Sangrando,Hemorragia,Queimando,Congelado,Resfriado,Molhado,Óleo,Eletrizado,Corroído,Enregelado,Ventania', 'em Dano, as de dano e elementos (com o Resfriado e, do lote 7, Eletrizado, Corroído, Enregelado e Ventania): ' + (await chipsNomes()).join());
   await page.locator('#cg-tab-combate').click(); await w(120);
   ok((await chipsNomes()).join() === 'Fúria,Grito de Batalha,Provocado,Defendendo,Desarmado,Concentrando,Vulnerável,Determinado', 'em Combate (com Vulnerável e Determinado, do lote 7): ' + (await chipsNomes()).join());
@@ -266,7 +266,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await page.locator('#cg-busca').fill('xyz'); await w(120);
   ok(/Nenhuma condição com esse nome/.test(await page.locator('#cg-list').innerText()), 'sem resultado, a mesa diz');
   await page.locator('#cg-tab-todas').click(); await w(120);
-  ok(await page.locator('#cg-list .chip').count() === 123 && await page.locator('#cg-busca').inputValue() === '', 'a aba Todas mostra as 70 (47 + 20 do lote 7 + 2 do lote 8 + 1 do lote 9), e limpa a busca');
+  ok(await page.locator('#cg-list .chip').count() === 147 && await page.locator('#cg-busca').inputValue() === '', 'a aba Todas mostra as 147 (47 + 20 do lote 7 + 2 do lote 8 + 1 do lote 9), e limpa a busca');
   await page.locator('#cg-tab-mente').click(); await w(120);
   for (const nm of ['Artefato Ativado', 'Enfeitiçado', 'Marcado']) { await page.locator('#cg-list .chip', { hasText: nm }).click(); await w(150); }
   { const ana = await T('Ana'); ok(['artefato', 'enfeiticado', 'marcado'].every(id => ana.conds.includes(id)), '(mais três na Ana)'); }
@@ -280,7 +280,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await page.keyboard.press('Escape'); await w(100);
   // a janela de dano em área separa as condições por categoria
   await ev(() => { const u = __tc; u.UI.areaBox('Teste', u.Store.scene().tokens.slice(0, 2), null); }); await w(200);
-  ok(await page.locator('#ar-cond optgroup').count() === 8 && await page.locator('#ar-cond option').count() === 116, 'na janela de dano em área, a lista de condições vem em grupos (8 categorias, 115 + "Nenhuma"; as de janela ficam de fora)');
+  ok(await page.locator('#ar-cond optgroup').count() === 9 && await page.locator('#ar-cond option').count() === 140, 'na janela de dano em área, a lista de condições vem em grupos (9 categorias, 139 + "Nenhuma"; as de janela ficam de fora)');
   await page.keyboard.press('Escape'); await w(100);
 
   // ================= Força e defesas ao lado do nome =================
@@ -410,13 +410,13 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
 
   // ================= zonas de efeito novas e o aviso no começo da vez =================
   await ev(() => { __tc.setSel([]); __tc.UI.openTab('fx'); }); await w(200);
-  ok(await page.locator('#side .ctab').count() === 6 && await page.locator('#fxt-elem.on').count() === 1 && await page.locator('#side .fx-card').count() === 18, 'a aba Efeitos vem em categorias (Todos, Elementos, Magia, Natureza, Sagrado e sombrio); em Elementos, 18 (7 do lote 7)');
+  ok(await page.locator('#side .ctab').count() === 7 && await page.locator('#fxt-elem.on').count() === 1 && await page.locator('#side .fx-card').count() === 18, 'a aba Efeitos vem em categorias (Todos, Elementos, Magia, Natureza, Sagrado e sombrio); em Elementos, 18 (7 do lote 7)');
   await page.locator('#fxt-magia').click(); await w(150);
   ok((await page.locator('#side .fx-card .fx-n').allInnerTexts()).join() === 'Magia arcana,Antimagia,Tinta,Escuridão mágica,Teia,Barreira de força,Círculo arcano,Silêncio,Vórtice,Gravidade pesada,Distorção do tempo,Portal,Runas-armadilha,Formação de selos', 'em Magia (com as do lote 7): ' + (await page.locator('#side .fx-card .fx-n').allInnerTexts()).join());
   await page.locator('#fxt-todos').click(); await w(150);
-  ok(await page.locator('#side .fx-card').count() === 70, 'em Todos, os 70 efeitos (19 do lote 7, 19 das raças no lote 19)');
+  ok(await page.locator('#side .fx-card').count() === 91, 'em Todos, os 91 efeitos (19 do lote 7, 19 das raças no lote 19, 21 das classes no lote 20)');
   await page.locator('#fxc-teia').click(); await w(150);
-  ok(await ev(() => __tc.App.tool) === 'fx' && await page.locator('#o-fx optgroup').count() === 5 && await page.locator('#o-fx').inputValue() === 'teia', 'escolher a Teia liga a ferramenta; a lista da barra de cima também vem em grupos');
+  ok(await ev(() => __tc.App.tool) === 'fx' && await page.locator('#o-fx optgroup').count() === 6 && await page.locator('#o-fx').inputValue() === 'teia', 'escolher a Teia liga a ferramenta; a lista da barra de cima também vem em grupos');
   await page.keyboard.press('Escape'); await w(100);
   // uma zona de lava sobre a Ana, com dano guardado
   const fxIds = await ev(() => {

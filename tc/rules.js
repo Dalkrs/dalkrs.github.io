@@ -135,7 +135,8 @@
     {id:'corpo', n:'Corpo e sentidos'},
     {id:'ritmo', n:'Ritmo e movimento'},
     {id:'bencao', n:'Bênçãos e cura'},
-    {id:'racas', n:'Das raças'}
+    {id:'racas', n:'Das raças'},
+    {id:'classes', n:'Das classes'}
   ];
   const CONDICOES = [
     // (lote 7: as 20 novas no fim da categoria de cada uma, na mesma ordem das Cenas)
@@ -180,7 +181,16 @@
     {id:'reboteAdiado', n:'Rebote Adiado', g:'racas'}, {id:'recusaMorte', n:'Recusa da Morte', g:'racas'}, {id:'rendido', n:'Rendido', g:'racas'},
     {id:'seloOcre', n:'Selo de Ocre', g:'racas'}, {id:'semeado', n:'Semeado', g:'racas'}, {id:'sentenca', n:'Sentença', g:'racas'},
     {id:'sobra', n:'Sobra', g:'racas'}, {id:'transeRubro', n:'Transe Rubro', g:'racas'}, {id:'tregua', n:'Trégua', g:'racas'},
-    {id:'vinculoSangue', n:'Vínculo de Sangue', g:'racas'}, {id:'vozVolkhum', n:'Voz de Volkhum\'Pansar', g:'racas'}
+    {id:'vinculoSangue', n:'Vínculo de Sangue', g:'racas'}, {id:'vozVolkhum', n:'Voz de Volkhum\'Pansar', g:'racas'},
+    // (lote 20) as das classes, num grupo só, em ordem alfabética
+    {id:'alvoDuelo', n:'Alvo do Duelo', g:'classes'}, {id:'armaduraRachada', n:'Armadura Rachada', g:'classes'}, {id:'assombrado', n:'Assombrado', g:'classes'},
+    {id:'clausula', n:'Cláusula', g:'classes'}, {id:'cobranca', n:'Cobrança', g:'classes'}, {id:'dancando', n:'Dançando', g:'classes'},
+    {id:'definhando', n:'Definhando', g:'classes'}, {id:'desguarnecido', n:'Desguarnecido', g:'classes'}, {id:'devedor', n:'Devedor', g:'classes'},
+    {id:'eloLuz', n:'Elo de Luz', g:'classes'}, {id:'escudoPlantado', n:'Escudo Plantado', g:'classes'}, {id:'escudoRachado', n:'Escudo Rachado', g:'classes'},
+    {id:'extremamenteFerido', n:'Extremamente Ferido', g:'classes'}, {id:'ginga', n:'Ginga', g:'classes'}, {id:'guardaQuebrada', n:'Guarda Quebrada', g:'classes'},
+    {id:'levementeFerido', n:'Levemente Ferido', g:'classes'}, {id:'mortalmenteFerido', n:'Mortalmente Ferido', g:'classes'}, {id:'pacto', n:'Pacto', g:'classes'},
+    {id:'perjuro', n:'Perjuro', g:'classes'}, {id:'portaAberta', n:'Porta Aberta', g:'classes'}, {id:'seloLushmania', n:'Selo de Lushmânia', g:'classes'},
+    {id:'sobEgide', n:'Sob a Égide', g:'classes'}, {id:'sobExorcismo', n:'Sob Exorcismo', g:'classes'}, {id:'tutelado', n:'Tutelado', g:'classes'}
   ];
 
   /* O corpo, em 12 partes (esquerda e direita são as do personagem), e o que se anota de um ferimento. */

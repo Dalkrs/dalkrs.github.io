@@ -287,6 +287,12 @@ function acertarCondicoes(t, antes) {
     const sai = tinha('agigantado') ? 'agigantado' : 'encolhido';
     conds = conds.filter(c => c !== sai); delete info[sai]; mudou = true;
   }
+  // (lote 20) um Ferido de cada vez: fica o que acabou de entrar (ou o mais grave, se entraram juntos)
+  if (FERIDOS.filter(id => conds.includes(id)).length > 1) {
+    const tem = FERIDOS.filter(id => conds.includes(id)), novos = tem.filter(id => !tinha(id)), fica = (novos.length ? novos : tem)[(novos.length ? novos : tem).length - 1];
+    for (const id of tem) if (id !== fica) { conds = conds.filter(c => c !== id); delete info[id]; }
+    mudou = true;
+  }
   if (Array.isArray(a.conds) && ['agigantado', 'encolhido'].some(id => tinha(id) !== conds.includes(id))) {
     const fator = conds.includes('agigantado') ? 2 : conds.includes('encolhido') ? 0.5 : 1, base = t.tam0 > 0 ? t.tam0 : t.size;
     const tam = fator === 1 ? base : clamp(base * fator, TAM_MIN, TAM_MAX);
@@ -491,6 +497,39 @@ function gemeosQueCairam(ops, inv) {
   }
   return out;
 }
+/* (lote 20) Os Feridos (Levemente, Extremamente, Mortalmente Ferido): o HP abaixo de zero sugere a tag de cada terço
+   do piso da barra (o quanto ela pode ficar negativa). Os cortes ficam na tabela do mestre (Store.S.prefs.feridos, em %
+   do piso: até t1, Levemente; até t2, Extremamente; além, Mortalmente). Só sugere quando o passo piorou o token para
+   uma faixa acima da tag que ele já tem; nada se aplica sozinho, e a cura não tira a tag (o mestre tira). */
+const FERIDOS = ['levementeFerido', 'extremamenteFerido', 'mortalmenteFerido'];
+const FERIDOS_PADRAO = { t1: 33, t2: 67 };
+function feridosCortes() {
+  const p = Store.S.prefs && Store.S.prefs.feridos, n = (v, d) => (Number.isFinite(Number(v)) ? clamp(Math.round(Number(v)), 1, 99) : d);
+  if (!p || typeof p !== 'object') return Object.assign({}, FERIDOS_PADRAO);
+  const t1 = n(p.t1, FERIDOS_PADRAO.t1), t2 = n(p.t2, FERIDOS_PADRAO.t2);
+  return t1 < t2 ? { t1, t2 } : Object.assign({}, FERIDOS_PADRAO);
+}
+// a faixa da barra (0, 1, 2) ou -1 quando ela não está abaixo de zero (ou não pode ficar negativa)
+function feridoDaBarra(b, cortes) {
+  if (!b || !(b.v < 0) || !(barLo(b) > 0)) return -1;
+  const c = cortes || feridosCortes(), f = barNeg(b) * 100;
+  return f <= c.t1 ? 0 : f <= c.t2 ? 1 : 2;
+}
+const feridoDoToken = t => (t && Array.isArray(t.conds) ? FERIDOS.findIndex(id => t.conds.includes(id)) : -1);
+// → [{ tok, id, v, lo, barra }]: os tokens que o passo pôs numa faixa pior que a de antes e que a tag de agora
+function feridosQuePioraram(ops, inv) {
+  const out = [], cortes = feridosCortes();
+  const ids = new Set((ops || []).filter(op => op.t === 'upd' && op.c === 'tokens' && op.p && 'bars' in op.p).map(op => op.id));
+  for (const id of ids) {
+    const t = Store.get('tokens', id), antes = antesDoToken(inv, id, ['bars']);
+    if (!t || t.prop || t.clone || !('bars' in antes)) continue;
+    const d = barraDaVida(t.bars), a = d ? (antes.bars || []).find(b => b && b.n === d.n) : null;
+    const agora = feridoDaBarra(d, cortes), era = a ? feridoDaBarra(a, cortes) : -1;
+    if (agora < 0 || agora <= era || agora <= feridoDoToken(t)) continue;
+    out.push({ tok: id, id: FERIDOS[agora], v: d.v, lo: barLo(d), barra: d.n });
+  }
+  return out;
+}
 // aplica as regras (dentro de um passo) e avisa quem some
 function aplicarRegrasDoClone(regras) {
   const sc = Store.scene();
@@ -522,6 +561,8 @@ Store.aoFechar(tx => {
   aplicarRegrasDoClone(regrasDoClone(tx.fwd, tx.inv));
   // (lote 9) o gêmeo de um Duplicado que caiu: o aviso (nada muda sozinho)
   for (const g of gemeosQueCairam(tx.fwd, tx.inv)) Store.emit('duplicado', Object.assign({ k: 'caiu' }, g));
+  // (lote 20) o HP abaixo de zero: a sugestão do Ferido (nada muda sozinho)
+  for (const f of feridosQuePioraram(tx.fwd, tx.inv)) Store.emit('ferido', f);
 });
 Store.on('commit', e => {
   if (!e.remote || !acertaAqui() || e.sceneId !== Store.S.current) return;
@@ -550,6 +591,7 @@ Store.on('commit', e => {
   if (regrasDoClone(e.ops, e.inv).length) { const ops = e.ops, inv = e.inv; setTimeout(() => Store.tx('Clone', () => aplicarRegrasDoClone(regrasDoClone(ops, inv))), 0); }
   // (lote 9) o gêmeo que caiu pelo que chegou de fora (a ficha dele mudou nas Fichas)
   for (const g of gemeosQueCairam(e.ops, e.inv)) Store.emit('duplicado', Object.assign({ k: 'caiu' }, g));
+  for (const f of feridosQuePioraram(e.ops, e.inv)) Store.emit('ferido', f);          // (lote 20) o dano que veio de fora (a ficha, um jogador)
 });
 
 /* ---- Seleção ---- */
@@ -748,6 +790,16 @@ const Act = {
     Store.tx('Remover barra', () => Store.upd('tokens', t.id, { bars: t.bars.filter((_, j) => j !== i) }));
   },
 
+  // (lote 20) põe um dos Feridos no token, no lugar do que ele tinha (um passo; o Desfazer volta)
+  feridoAplicar(t, id) {
+    if (!t || !FERIDOS.includes(id) || t.conds.includes(id)) return false;
+    const info = Object.assign({}, t.cinfo);
+    for (const f of FERIDOS) delete info[f];
+    const ini = condInicio(id);
+    if (ini) info[id] = ini;
+    Store.tx('Ferimento', () => Store.upd('tokens', t.id, { conds: t.conds.filter(c => !FERIDOS.includes(c)).concat(id), cinfo: info }));
+    return true;
+  },
   condToggle(tokens, id) {
     const allOn = tokens.every(t => t.conds.includes(id));
     Store.tx('Condição', () => {

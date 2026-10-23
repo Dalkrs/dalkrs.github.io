@@ -227,6 +227,7 @@ const Nuvem = (() => {
     if (idx.prefs.barDefaults) S.prefs.barDefaults = idx.prefs.barDefaults;
     S.prefs.modelos = idx.prefs.modelos;                   // (lote 7) os modelos do gerador de lugares
     S.prefs.relevo = idx.prefs.relevo || null;             // (lote 18) a tabela do relevo da mesa
+    S.prefs.feridos = idx.prefs.feridos || null;           // (lote 20) os cortes dos Feridos
     S.pastas = idx.pastas;
     /* Até onde os pedidos de cada jogador já valeram: a cena guardada diz (e o que eles pediram enquanto o mestre
        estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
@@ -380,7 +381,7 @@ const Nuvem = (() => {
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
       try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
-      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: Object.assign({ barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, S.prefs.relevo && typeof Relevo !== 'undefined' ? { relevo: Relevo.norm(S.prefs.relevo) } : {}), pastas: Proj.normPastas(S.pastas) };
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: Object.assign({ barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, S.prefs.relevo && typeof Relevo !== 'undefined' ? { relevo: Relevo.norm(S.prefs.relevo) } : {}, S.prefs.feridos ? { feridos: S.prefs.feridos } : {}), pastas: Proj.normPastas(S.pastas) };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
@@ -473,6 +474,7 @@ const Nuvem = (() => {
     if (n.prefs.barDefaults) S.prefs.barDefaults = n.prefs.barDefaults;
     S.prefs.modelos = n.prefs.modelos;
     S.prefs.relevo = n.prefs.relevo || null;
+    S.prefs.feridos = n.prefs.feridos || null;
     S.pastas = n.pastas;
     Store.meta();
   }

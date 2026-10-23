@@ -244,8 +244,12 @@ const Fichas = (() => {
         else if (id === 'costelasAbertas') { const k = 'cond_costelas' + L; fer[k] = fer0[k] && fer0[k].cond === id ? fer0[k] : { p: 'peito', t: 'corte', g: 2, n: 'Costelas abertas, ' + (L === 'E' ? 'lado esquerdo' : 'lado direito') + ' (condição das Cenas)', c: agora, cond: id }; }
       }
     }
-    if (JSON.stringify(amp) === JSON.stringify(amp0) && JSON.stringify(fer) === JSON.stringify(fer0)) return false;
-    P.gravar(t.char, { estado: Object.assign({}, e, { amp, fer }) });
+    // (lote 20) o Ferido (Levemente, Extremamente, Mortalmente) também vai para a ficha (estado.ferido), e sai junto
+    const fd = t.conds.find(id => COND_BY_ID[id] && COND_BY_ID[id].ferido) || null, fd0 = typeof e.ferido === 'string' ? e.ferido : null;
+    if (JSON.stringify(amp) === JSON.stringify(amp0) && JSON.stringify(fer) === JSON.stringify(fer0) && fd === fd0) return false;
+    const est = Object.assign({}, e, { amp, fer });
+    if (fd) est.ferido = fd; else delete est.ferido;
+    P.gravar(t.char, { estado: est });
     return true;
   }
   /* Liga (ou desliga) o token a uma ficha. Ligado, o token passa a ter o nome do personagem e só as barras da ficha;
