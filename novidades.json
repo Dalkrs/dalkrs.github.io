@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-7",
+      "data": "2026-10-23",
+      "titulo": "O bloco de notas do mestre e o HP das zonas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Bloco de notas do mestre: o botão do caderno, na barra de cima, abre as suas notas em qualquer aba — só você vê (nem o mestre auxiliar). Capítulos ou assuntos para alternar num clique, com tags, a campanha de cada um, a busca e o texto com negrito, itálico, listas e títulos. Salva sozinho; apagar pergunta antes e tem Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: qualquer zona pode ganhar pontos de vida (“Dar pontos de vida”, no painel da zona): o dano com sinal tira, e em zero ela sai da cena, com Desfazer. “Sem pontos de vida” volta ao de antes."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: os pontos de vida das zonas aparecem para os jogadores como uma barrinha, sem os números."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-6",
       "data": "2026-10-23",
       "titulo": "A seta do custo de uso",

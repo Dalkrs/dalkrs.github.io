@@ -2356,7 +2356,7 @@ const UI = (() => {
   const pvAgora = e => (Number.isFinite(e.pv) ? e.pv : pvMax(e));
   function quebrarMuralha(e, porDano) {
     if (!Store.get('effects', e.id)) return;
-    const fim = (FX.P[e.fx] || {}).fimPv;                           // (lote 19: o Totem, a Parte Solta)
+    const pr0 = FX.P[e.fx] || {}, fim = pr0.fimPv || (!(pr0.pv > 0) ? (pr0.n || 'A zona') + ' saiu da cena' : null);      // (lote 19: o Totem, a Parte Solta; lote 22: a zona que ganhou HP do mestre)
     Store.tx(fim ? 'Tirar ' + (FX.P[e.fx] || {}).n : 'Quebrar a muralha', () => Store.del('effects', e.id));
     toast(fim ? (porDano ? 'Os pontos acabaram: ' + fim[0].toLowerCase() + fim.slice(1) + '.' : fim + '.') : porDano ? 'Os pontos acabaram: a muralha quebrou.' : 'A muralha quebrou.', { action: 'Desfazer', run: Tools.undo });
   }
@@ -2366,16 +2366,26 @@ const UI = (() => {
     if (pv == null) { renderSide(); return; }
     pv = clamp(Math.round(pv), 0, m);
     if (pv <= 0) { quebrarMuralha(e, true); return; }
-    if (pv !== p0) Store.tx('Pontos de vida da muralha', () => Store.upd('effects', e.id, { pv }));
+    if (pv !== p0) Store.tx('Pontos de vida da zona', () => Store.upd('effects', e.id, { pv }));
+  }
+  /* (lote 22) qualquer zona pode ganhar pontos de vida do mestre (a barreira, o altar, a fogueira…): os jogadores veem a
+     barrinha, sem os números. A que já nasce com pontos (a muralha, o Totem) não perde os dela. */
+  const temPv = e => !!e && (((FX.P[e.fx] || {}).pv > 0) || e.pvm > 0);
+  function darPv(e) {
+    return sec('s-fx-pv', 'Pontos de vida', true,
+      note('Esta zona não tem pontos de vida. Dê a ela, e o dano com sinal (−8) passa a tirar; em zero, ela sai da cena.'),
+      h('div', { class: 'row' }, inNum('fx-pv-novo', 20, () => {}, { min: 1, max: 9999, step: 1, label: 'Pontos de vida da zona' }),
+        btn('Dar pontos de vida', () => { const el = document.getElementById('fx-pv-novo'), n = clamp(Math.round(Number(el && el.value) || 20), 1, 9999); Store.tx('Dar pontos de vida à zona', () => Store.upd('effects', e.id, { pvm: n, pv: n })); toast(`${(FX.P[e.fx] || {}).n || 'A zona'} tem ${n} pontos de vida.`, { action: 'Desfazer', run: Tools.undo }); }, { icon: 'heart', id: 'fx-pv-dar' })));
   }
   function pvDaMuralha(e) {
-    const m = pvMax(e), pv = pvAgora(e);
+    const m = pvMax(e), pv = pvAgora(e), proprio = !((FX.P[e.fx] || {}).pv > 0);
     return sec('s-fx-pv', 'Pontos de vida', true,
       h('div', { class: 'grid2' },
         field('Agora', inText('fx-pv', String(pv), v => mudarPv(e, v), { inputmode: 'decimal', 'aria-label': 'Pontos de vida da muralha agora (−8 tira, +5 devolve)', title: 'Digite o dano com sinal (−8) ou o valor novo' })),
         field('Máximo', inNum('fx-pvm', m, v => { const n = Math.max(1, Math.round(v)); Store.tx('Pontos de vida da muralha', () => Store.upd('effects', e.id, { pvm: n, pv: Math.min(pv, n) })); }, { min: 1, max: 9999, step: 1, label: 'Pontos de vida máximos da muralha' }))),
-      note('O dano com sinal (−8) tira; o número sozinho vira o valor novo. Em zero, ' + ((FX.P[e.fx] || {}).fimPv ? 'some da cena.' : 'a muralha quebra.')),
-      h('div', { class: 'row' }, btn((FX.P[e.fx] || {}).fimPv ? 'Tirar' : 'Quebrar', () => quebrarMuralha(e), { icon: 'trash', kind: 'danger', id: 'fx-quebrar', title: 'Tira da cena (com Desfazer)' })));
+      note('O dano com sinal (−8) tira; o número sozinho vira o valor novo. Em zero, ' + ((FX.P[e.fx] || {}).fimPv || proprio ? 'some da cena.' : 'a muralha quebra.') + ' Os jogadores veem só a barrinha.'),
+      h('div', { class: 'row' }, btn((FX.P[e.fx] || {}).fimPv || proprio ? 'Tirar' : 'Quebrar', () => quebrarMuralha(e), { icon: 'trash', kind: 'danger', id: 'fx-quebrar', title: 'Tira da cena (com Desfazer)' }),
+        proprio ? btn('Sem pontos de vida', () => Store.tx('Tirar os pontos de vida da zona', () => Store.upd('effects', e.id, { pvm: null, pv: null })), { icon: 'reset', id: 'fx-pv-tirar', title: 'A zona volta a não ter pontos de vida (com Desfazer)' }) : null));
   }
   function fxPanel(e) {
     const sc = Store.scene(), gm = isGM();
@@ -2396,7 +2406,7 @@ const UI = (() => {
         : btn('Esconder de novo', () => U({ gm: true }, 'Esconder as runas'), { icon: 'eyeOff', id: 'fx-esconder' })) : null,
       pr.conds && gm ? field('Dentro dela', seg('fx-cond', (e.apply && e.apply.cond && e.apply.cond.id) || pr.cond, pr.conds.map(id => [id, (COND_BY_ID[id] || {}).n || id]),
         v => U({ apply: Object.assign({ bar: '', amt: '', skip: [] }, e.apply, { cond: Object.assign({ n: 0, d: 0 }, e.apply && e.apply.cond, { id: v }) }) }, 'Condição da zona')), 'stack tight') : null,
-      pr.pv > 0 && gm ? pvDaMuralha(e) : null,
+      gm ? (temPv(e) ? pvDaMuralha(e) : darPv(e)) : null,                    // (lote 22: qualquer zona)
       sec('s-fx', 'Efeito', true,
         field('Tipo', fxSelect('fx-id', e.fx, v => U(trocaDeZona(e, v, sc), 'Trocar efeito'))),
         // (um efeito que chegue sem as medidas do retângulo ganha, ao virar um, a caixa do que ele já era; o portal é sempre de círculos)

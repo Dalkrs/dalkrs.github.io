@@ -91,6 +91,44 @@ button { cursor: pointer; }
 .wait { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg-3); pointer-events: none; }
 .wait span { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
 
+.notas { flex: none; width: 400px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
+.notas[hidden] { display: none; }
+.notas input, .notas select { min-width: 0; height: 30px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); font: inherit; font-size: 13px; }
+.notas input:focus, .notas select:focus { outline: none; border-color: var(--lamp); }
+.nt-texto { background: var(--raised) !important; color: var(--fg); }
+.nt-h { flex: none; display: flex; align-items: center; gap: 8px; padding: 9px 8px 9px 14px; border-bottom: 1px solid var(--line); }
+.nt-h strong { font: 600 17px/1.1 var(--display); }
+.nt-so { font-size: 11.5px; color: var(--lamp-ink); background: var(--lamp-soft); border: 1px solid var(--lamp); border-radius: 999px; padding: 1px 8px; }
+.nt-fechar { margin-left: auto; font-size: 18px; }
+#nt-filtros { flex: none; padding: 10px 12px 0; border-bottom: 1px solid var(--line); }
+.nt-l { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+.nt-l input, .nt-l select { min-width: 0; height: 30px; }
+.nt-busca { flex: 1; }
+.nt-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.nt-tag { border: 1px solid var(--line-strong); background: transparent; color: var(--fg-2); border-radius: 999px; padding: 1px 9px; font-size: 12px; cursor: pointer; }
+.nt-tag.on { color: var(--lamp-ink); border-color: var(--lamp); background: var(--lamp-soft); }
+.nt-lista { list-style: none; margin: 0 -12px; padding: 0 6px 8px; max-height: 32vh; overflow: auto; }
+.nt-cap { width: 100%; text-align: left; display: grid; gap: 1px; padding: 6px 8px; border: 0; border-radius: 7px; background: transparent; color: var(--fg-1); cursor: pointer; }
+.nt-cap:hover { background: var(--hover); }
+.nt-cap.on { background: var(--lamp-soft); box-shadow: inset 3px 0 0 var(--lamp); }
+.nt-cap b { font-size: 13.5px; font-weight: 600; }
+.nt-cap small { font-size: 11.5px; color: var(--fg-3); }
+.nt-corpo { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 10px 12px 12px; }
+.nt-ed { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.notas .nt-tit { font: 600 16px/1.3 var(--display); height: 34px; margin-bottom: 8px; }
+.nt-tagsin { flex: 1; }
+.nt-bar { display: flex; align-items: center; gap: 3px; margin-bottom: 6px; flex-wrap: wrap; }
+.nt-b { min-width: 28px; height: 26px; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--fg-2); cursor: pointer; font-size: 12.5px; }
+.nt-b:hover { color: var(--fg-1); border-color: var(--line-strong); }
+.nt-b-bold { font-weight: 800; } .nt-b-italic { font-style: italic; }
+.nt-salvo { margin-left: auto; font-size: 11.5px; color: var(--fg-3); }
+.nt-x { color: var(--danger, #c9473d); }
+.nt-texto { flex: 1; min-height: 120px; overflow: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg, transparent); line-height: 1.5; font-size: 14px; outline: none; }
+.nt-texto:focus { border-color: var(--lamp); }
+.nt-texto h3 { font: 600 15.5px/1.3 var(--display); margin: 10px 0 4px; }
+.nt-texto p { margin: 0 0 6px; } .nt-texto ul, .nt-texto ol { margin: 0 0 6px; padding-left: 22px; }
+.nt-vazio { color: var(--fg-3); font-size: 13px; padding: 8px 2px; }
+@media (max-width: 900px) { .notas { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; width: min(400px, 100%); box-shadow: -10px 0 30px rgba(0,0,0,.3); } }
 .vivo { flex: none; width: 340px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
 .vivo-h { flex: none; display: flex; align-items: center; gap: 8px; padding: 9px 8px 9px 14px; border-bottom: 1px solid var(--line); }
 .vivo-h strong { font: 600 17px/1.1 var(--display); letter-spacing: .01em; }
@@ -385,6 +423,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
       <span>Versão nova</span>
     </button>
+    <button type="button" class="ib" id="btnNotas" hidden aria-pressed="false" title="Bloco de notas (só você vê)" aria-label="Bloco de notas do mestre" aria-controls="notas">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h10.5a1.5 1.5 0 0 1 1.5 1.5v14.5a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"/><path d="M8 3.5v17"/><path d="M11 8h4.5M11 11.5h4.5"/></svg>
+    </button>
     <button type="button" class="ib" id="btnVivo" hidden aria-pressed="false" title="Mesa ao vivo: rolagens e conversa" aria-label="Mesa ao vivo">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8"/><path d="M8 12.5h5"/></svg>
       <span class="selo" id="selo" hidden></span>
@@ -400,6 +441,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   <main class="stage" id="stage">
     <div class="wait" id="wait"><span>Carregando…</span></div>
   </main>
+  <aside class="notas" id="notas" hidden aria-label="Bloco de notas do mestre"></aside>
   <aside class="vivo" id="vivo" hidden aria-label="Mesa ao vivo">
     <div class="vivo-h">
       <strong>Mesa ao vivo</strong><span class="sinal" id="sinal"></span>
@@ -456,11 +498,12 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/tc.js?v=27"></script>
 <script src="tc/busca.js?v=1"></script>
 <script src="tc/guia.js?v=4"></script>
+<script src="tc/notas.js?v=2"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.23-6';
+  const VERSAO = '2026.10.23-7';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1429,6 +1472,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   }
   function pintarSelo() { const s = $('selo'); s.hidden = !naoLidas; s.textContent = naoLidas > 9 ? '9+' : String(naoLidas); }
   btnVivo.addEventListener('click', () => mostrarVivo(vivo.hidden, true));
+  // (lote 22) o bloco de notas do mestre da mesa: só ele (nem o auxiliar) vê o botão e as notas
+  if (TC.notas) TC.notas.iniciar({ mesas, dados: TC.dados, toast, confirmar, botao: $('btnNotas'), painel: $('notas'), guarda: { ler, gravar } });
   $('vivoX').addEventListener('click', () => { mostrarVivo(false, true); btnVivo.focus(); });
 
   function pintarQuem() {

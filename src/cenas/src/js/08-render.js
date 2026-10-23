@@ -936,16 +936,22 @@ const Render = (() => {
   }
 
   /* (lote 7) Os pontos de vida da Muralha de cristais, só para o mestre: uma barrinha com os números, no meio dela. */
+  // (lote 22) qualquer zona com pontos de vida; os jogadores veem a barrinha (pvp: a proporção, em %), sem os números
   function drawPvZonas(sc, px) {
-    if (!isGM()) return;
+    const gm = isGM();
     for (const e of sc.effects) {
       const pr = FX.P[e.fx];
-      if (!pr || !(pr.pv > 0) || !fxVisible(e)) continue;
-      const g = FX.geom(e, sc), m = e.pvm > 0 ? e.pvm : pr.pv, v = clamp(Number.isFinite(e.pv) ? e.pv : m, 0, m);
-      const w = 46 * px, hb = 6 * px, x = g.cx - w / 2, y = g.cy + 12 * px;
+      if (!pr || !fxVisible(e)) continue;
+      let f, txt = null;
+      if (gm || !Number.isFinite(e.pvp)) {
+        if (!(pr.pv > 0 || e.pvm > 0) || !gm) continue;
+        const m = e.pvm > 0 ? e.pvm : pr.pv, v = clamp(Number.isFinite(e.pv) ? e.pv : m, 0, m);
+        f = v / m; txt = `${fmt(v)}/${fmt(m)}`;
+      } else f = clamp(e.pvp, 0, 100) / 100;
+      const g = FX.geom(e, sc), w = 46 * px, hb = 6 * px, x = g.cx - w / 2, y = g.cy + 12 * px;
       ctx.fillStyle = 'rgba(8,10,16,0.82)'; rr(ctx, x - 2 * px, y - 2 * px, w + 4 * px, hb + 4 * px, 3 * px); ctx.fill();
-      ctx.fillStyle = '#9fdcff'; rr(ctx, x, y, Math.max(0, w * v / m), hb, 2 * px); ctx.fill();
-      label(ctx, `${fmt(v)}/${fmt(m)}`, g.cx, y + hb + 11 * px, px, { size: 10 });
+      ctx.fillStyle = '#9fdcff'; rr(ctx, x, y, Math.max(0, w * f), hb, 2 * px); ctx.fill();
+      if (txt) label(ctx, txt, g.cx, y + hb + 11 * px, px, { size: 10 });
     }
   }
 

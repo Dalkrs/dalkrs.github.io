@@ -165,7 +165,13 @@ const Proj = (() => {
     m.imgs = imgsDe([sc.bg && sc.bg.asset], assets, true);
     const v = {
       id: sc.id, tokens,
-      effects: sc.effects.filter(e => !e.gm && !(e.token && fora.has(e.token))).map(e => Object.assign({}, e, { apply: null })),
+      effects: sc.effects.filter(e => !e.gm && !(e.token && fora.has(e.token))).map(e => {
+        const o = Object.assign({}, e, { apply: null }), pr = FX.P[e.fx] || {};
+        // (lote 22) os pontos de vida da zona vão só em proporção (a barrinha, sem os números)
+        if (pr.pv > 0 || e.pvm > 0) { const m = e.pvm > 0 ? e.pvm : pr.pv, v = Number.isFinite(e.pv) ? e.pv : m; o.pvp = Math.round(clamp(v / m, 0, 1) * 100); }
+        delete o.pv; delete o.pvm;
+        return o;
+      }),
       turn: turnoPublico(sc, fora, nomes),
       targets: (sc.targets || []).filter(x => !fora.has(x.t)),
       imgs: imgsDe(tokens.map(t => t.img), assets, true),
