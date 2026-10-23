@@ -22,6 +22,8 @@ const casos = [
 ];
 for (const [t, e] of casos) ok(M(t) === e, 'lê "' + t + '": ' + M(t) + ' (esperado ' + e + ')');
 ok(R.marcaDaBarra(def, 'Preparo') === null, 'o nó que define a barra fica sem marca');
+ok(j(R.marcaDaBarra({ desc: 'Um corte gélido.', graus: [{ uso: [{ b: 'Geada de Selene', v: '2' }] }] }, 'Geada')) === j({ soma: false, gasta: true, mao: false }) && R.marcaDaBarra({ desc: 'x', graus: [{ uso: [{ b: 'SP', v: '3' }] }] }, 'Preparo') === null,
+  'o custo de uso na barra também é gastar ("Geada de Selene: 2" vale para a Geada); só SP, não');
 ok(j(R.marcaDaBarra({ desc: 'ganha 1 de Preparo', barra: 'gasta' }, 'Preparo')) === j({ soma: false, gasta: true, mao: true }) && R.marcaDaBarra({ desc: 'ganha 1 de Preparo', barra: 'nada' }, 'Preparo') === null, 'a marca do mestre vence a leitura (▼ Gasta; Nenhum)');
 
 // ---------- a tela ----------

@@ -915,8 +915,13 @@
     if (MARCAS_BARRA.includes(no.barra)) return no.barra === 'nada' ? null : { soma: no.barra !== 'gasta', gasta: no.barra !== 'soma', mao: true };
     if (!barra || defineBarra(no)) return null;                                   // (o nó que define a barra não ganha marca)
     const m = lerMarcaDoTexto(textoDoNo(no), barra);
-    return m ? { soma: m.soma, gasta: m.gasta, mao: false } : null;
+    // o custo de uso na barra ("Geada de Selene: 2" vale para a Geada) também é gastar
+    const nb = normBarraNome(barra), daBarra = b => { const x = normBarraNome(b); return !!x && (x === nb || x.startsWith(nb + ' ') || nb.startsWith(x + ' ')); };
+    const pelaConta = ((no && no.graus) || []).some(g => g && Array.isArray(g.uso) && g.uso.some(u => u && daBarra(u.b) && String(u.v).trim() !== '0' && String(u.v).trim() !== ''));
+    if (!m && !pelaConta) return null;
+    return { soma: !!(m && m.soma), gasta: !!(m && m.gasta) || pelaConta, mao: false };
   }
+  function normBarraNome(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
   const textoDaMarca = (m, barra) => (!m ? '' : m.soma && m.gasta ? 'Soma e gasta ' + barra : m.soma ? 'Soma na barra ' + barra : 'Gasta da barra ' + barra);
   function usoLimpo(lista) {
     if (!Array.isArray(lista)) return null;

@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-6",
+      "data": "2026-10-23",
+      "titulo": "A seta do custo de uso",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: a ▼ vermelha também aparece nas técnicas que têm a barra especial no custo de uso (como “2 de Geada de Selene”), mesmo quando o texto não fala em gastar."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-5",
       "data": "2026-10-23",
       "titulo": "O bônus da rolagem fica, e o símbolo da barra especial",
