@@ -2287,7 +2287,7 @@ const Masmorra = (() => {
         if (!Props.P[id]) return;
         const t = Props.novo(sc, id, (r[0] - 0.5) * c, (r[1] - 0.5) * c, 1, true);
         t.name = 'Reforços (' + (fi >= 0 ? fasesOn[fi].nome.toLowerCase() : 'fase 2') + ') ' + (i + 1);
-        if (id === 'reforco' && mr) t.ref = [{ id: uid('rg'), tok: { name: mr.nome || 'Lacaio', color: '#b87c7c', size: 1, shape: 'circ', bars: barDefaults(), barVis: 'bar', conds: [], cinfo: {}, auras: [], showName: true }, n: 1, quando: { k: 'fase', v: fi } }];
+        if (id === 'reforco' && mr) t.ref = [{ id: uid('rg'), tok: { name: (mr.nome || 'Lacaio') + ' ' + (i + 1), color: '#b87c7c', size: 1, shape: 'circ', bars: barDefaults(), barVis: 'bar', conds: [], cinfo: {}, auras: [], showName: true }, n: 1, quando: { k: 'fase', v: fi } }];
         sc.tokens.push(t);
       });
       if (a.entrada) {
