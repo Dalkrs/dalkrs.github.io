@@ -44,6 +44,11 @@
     { id: 'w', nome: 'Caneta', tecla: 'W' },                    // (lote 17) o desenho de agora, que todos veem (também quem joga)
   ];
   const SEPARA_DEPOIS = new Set(['sel', 'f', 'd']);
+  /* (lote 26) Para quem mestra, o trilho em grupos com nome: o que se usa na sessão (mexer nos grupos, eventos, os
+     ícones no mapa, a régua e a caneta), o que se traça (regiões, rotas, frentes) e o preparo (terreno, desenho, névoa).
+     As teclas são as de sempre. */
+  const GRUPOS_TRILHO = [['Sessão', ['sel', 'g', 'e', 'm', 'd', 'w']], ['Traçar', ['r', 't', 'f']], ['Preparar', ['h', 'p', 'n']]];
+  const COMO_ANTES = (() => { try { return localStorage.getItem('tinycats:testes-tudo-aberto') === '1'; } catch (e) { return false; } })();
   const POR_TECLA = Object.fromEntries(FERRAMENTAS.map(f => [f.tecla.toLowerCase(), f.id]));
   const VALIDAS = new Set(FERRAMENTAS.map(f => f.id));
   // ícones do trilho: traço simples numa caixa 24×24, na cor do botão
@@ -2566,14 +2571,16 @@
   /* ---- trilho, opções e dica ---- */
   function montarTrilho() {
     railEl.replaceChildren();
-    for (const f of FERRAMENTAS) {
+    const ordem = COMO_ANTES ? FERRAMENTAS.map(f => [null, f]) : GRUPOS_TRILHO.flatMap(([g, ids]) => ids.map((id, i) => [i === 0 ? g : null, FERRAMENTAS.find(f => f.id === id)]));
+    for (const [grupo, f] of ordem) {
+      if (grupo) { if (railEl.childNodes.length) railEl.append(h('hr')); railEl.append(h('span', { class: 'rail-g', 'aria-hidden': 'true', texto: grupo })); }
       const b = h('button', { type: 'button', class: 'tool', 'data-f': f.id, 'aria-pressed': 'false', title: `${f.nome} (${f.tecla})`, 'aria-label': f.nome, 'aria-keyshortcuts': f.tecla });
       const ic = s('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.9, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
       ic.innerHTML = ICONE_FERRAMENTA[f.id];                 // desenho fixo, sem texto de ninguém
       b.append(ic);
       b.addEventListener('click', () => { if (App && (podeEditar() || (f.id === 'w' && podeRabiscar()))) App.usarFerramenta(f.id); });
       railEl.append(b);
-      if (SEPARA_DEPOIS.has(f.id)) railEl.append(h('hr'));
+      if (COMO_ANTES && SEPARA_DEPOIS.has(f.id)) railEl.append(h('hr'));
     }
   }
   function pintarTrilho() {
@@ -3561,6 +3568,7 @@
     if (k === '+' || k === '=') { zoomNoMeio(1.25); return; }
     if (k === '-' || k === '_') { zoomNoMeio(1 / 1.25); return; }
     if (k === '0') { caber(); return; }
+    if (/^[1-9]$/.test(k) && window.MundoPainel && MundoPainel.abaPorNumero) { e.preventDefault(); MundoPainel.abaPorNumero(+k); return; }   // (lote 26) as abas do painel
     if (lk === 'c' && !e.repeat && Cam()) { e.preventDefault(); Cam().alternar(true); return; }    // (lote 8) as camadas (para todos)
     if ((editar || (POR_TECLA[lk] === 'w' && podeRabiscar())) && POR_TECLA[lk] && !e.repeat) { e.preventDefault(); App.usarFerramenta(POR_TECLA[lk]); }
   }

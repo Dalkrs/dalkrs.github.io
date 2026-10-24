@@ -11,17 +11,22 @@
   const NS = 'http://www.w3.org/2000/svg';
   /* (lote 11, parte 3a) as abas em duas fileiras, por assunto: na de cima, o mapa; na de baixo, a política */
   const ABAS = [
-    { id: 'selecao', nome: 'Seleção', fila: 1 },
-    { id: 'hoje', nome: 'Hoje', fila: 1 },
-    { id: 'terreno', nome: 'Terreno', fila: 1, mestre: true },
-    { id: 'mapa', nome: 'Mapa', fila: 1, mestre: true },
-    { id: 'linha', nome: 'Linha', titulo: 'Linha do tempo', fila: 1, mestre: true },  // (lote 20) o mundo compartilhado: a data de cada campanha
-    { id: 'faccoes', nome: 'Reinos', fila: 2 },                    // (lote 10: era "Facções"; o id fica)
-    { id: 'corte', nome: 'Corte', fila: 2 },                      // (lote 11) os personagens do mundo e as casas
-    { id: 'diplomacia', nome: 'Diplomacia', fila: 2 },            // (lote 11, parte 3a) as relações, a opinião, os tratados
-    { id: 'intrigas', nome: 'Intrigas', fila: 2 },                // (lote 11, parte 4a) os segredos (4b: as intrigas)
-    { id: 'guerra', nome: 'Guerra', fila: 2, mestre: true },      // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
+    { id: 'selecao', nome: 'Seleção', fila: 1, grupo: 'sessao' },
+    { id: 'hoje', nome: 'Hoje', fila: 1, grupo: 'sessao' },
+    { id: 'terreno', nome: 'Terreno', fila: 1, mestre: true, grupo: 'preparar' },
+    { id: 'mapa', nome: 'Mapa', fila: 1, mestre: true, grupo: 'preparar' },
+    { id: 'linha', nome: 'Linha', titulo: 'Linha do tempo', fila: 1, mestre: true, grupo: 'sessao' },  // (lote 20) o mundo compartilhado: a data de cada campanha
+    { id: 'faccoes', nome: 'Reinos', fila: 2, grupo: 'politica' },                    // (lote 10: era "Facções"; o id fica)
+    { id: 'corte', nome: 'Corte', fila: 2, grupo: 'politica' },                      // (lote 11) os personagens do mundo e as casas
+    { id: 'diplomacia', nome: 'Diplomacia', fila: 2, grupo: 'politica' },            // (lote 11, parte 3a) as relações, a opinião, os tratados
+    { id: 'intrigas', nome: 'Intrigas', fila: 2, grupo: 'politica' },                // (lote 11, parte 4a) os segredos (4b: as intrigas)
+    { id: 'guerra', nome: 'Guerra', fila: 2, mestre: true, grupo: 'politica' },      // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
   ];
+  /* (lote 26) Para quem mestra, as abas ficam numa fileira só, em três grupos com nome: Sessão (o que se usa jogando),
+     Política (um botão que abre as cinco) e Preparar. Quem joga continua com as duas fileiras de sempre. Os testes de
+     antes (a marca tinycats:testes-tudo-aberto) também: lá, as fileiras e os blocos abertos, como eram. */
+  const GRUPOS_ABAS = [{ id: 'sessao', nome: 'Sessão' }, { id: 'politica', nome: 'Política' }, { id: 'preparar', nome: 'Preparar' }];
+  const COMO_ANTES = (() => { try { return localStorage.getItem('tinycats:testes-tudo-aberto') === '1'; } catch (e) { return false; } })();
   const TIPO = { m: 'Marcador', g: 'Grupo', r: 'Região', e: 'Evento', t: 'Rota', f: 'Frente', z: 'Zona de guerra', l: 'Linha', c: 'Carimbo', x: 'Texto', a: 'Seta' };
   const APAGADO = { m: 'Marcador apagado.', g: 'Grupo apagado.', r: 'Região apagada.', e: 'Evento apagado.', t: 'Rota apagada.', f: 'Frente apagada.',
     z: 'Zona de guerra apagada.', l: 'Linha apagada.', c: 'Carimbo apagado.', x: 'Texto apagado.', a: 'Seta apagada.' };
@@ -276,7 +281,7 @@
   }
 
   /* ---------------- re-render por cima (morph) ---------------- */
-  const PROPS = ['onclick', 'onchange', 'oninput', 'onkeydown', '_gravar', '_commit', '_modelo'];
+  const PROPS = ['onclick', 'onchange', 'oninput', 'onkeydown', 'ontoggle', '_gravar', '_commit', '_modelo'];
   // campo onde se digita: enquanto tem o foco, o que está escrito nele não é trocado
   const textual = el => el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|file|range)$/i.test(el.type || ''));
   const seletor = k => '[data-k="' + (window.CSS && CSS.escape ? CSS.escape(k) : String(k).replace(/["\\]/g, '\\$&')) + '"]';
@@ -418,7 +423,17 @@
   }
   const linha = (...kids) => h('div', { class: 'row' }, kids);
   const nota = (texto, c) => h('p', { class: 'note' + (c ? ' ' + c : ''), text: texto });
-  const secao = (titulo, ...kids) => h('div', { class: 'sec' }, h('b', { text: titulo }), kids);
+  /* (lote 26) Os blocos das abas abrem e fecham (o título é o botão). Nas abas da sessão (Seleção, Hoje, Linha)
+     começam abertos; nas da Política e do Preparar, fechados — o que a pessoa abre ou fecha fica lembrado enquanto a
+     página está aberta. Um resumo ({ resumo: '…' } no lugar do primeiro filho) aparece no título do bloco fechado. */
+  const blocosAbertos = new Map();
+  const secao = (titulo, ...kids) => {
+    const r = kids.length && kids[0] && typeof kids[0] === 'object' && !kids[0].nodeType && !Array.isArray(kids[0]) && 'resumo' in kids[0] ? kids.shift().resumo : '';
+    const vis = abaVisivel(), chave = vis + '|' + titulo, grupo = (ABAS.find(a => a.id === vis) || {}).grupo;
+    const aberto = COMO_ANTES || !App || !App.podeEditar() ? true : blocosAbertos.has(chave) ? blocosAbertos.get(chave) : grupo === 'sessao';
+    return h('details', { class: 'sec dobra', open: aberto, 'data-k': 'sec:' + titulo, ontoggle: e => { blocosAbertos.set(chave, e.target.open); } },
+      h('summary', null, h('b', { text: titulo }), r ? h('span', { class: 'sec-res', text: r }) : null), kids);
+  };
   const segredo = (titulo, ...kids) => h('div', { class: 'sec segredo' }, h('b', { text: titulo }), kids);
 
   /* ---------------- mudanças (sempre por App.mudar) ---------------- */
@@ -672,8 +687,10 @@
     }
     const dt = $('dataTxt');
     if (dt) {
-      dt.addEventListener('click', () => { if (App.podeEditar()) irParaData(); });
-      dt.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && App.podeEditar()) { ev.preventDefault(); ev.stopPropagation(); irParaData(); } });
+      // (lote 26) a data abre a sanfona da linha do tempo (ir para uma data, a data de cada campanha); nos testes de antes, direto "Ir para a data"
+      const abrirData = () => { if (!App.podeEditar()) return; if (COMO_ANTES) irParaData(); else alternarSanfona(); };
+      dt.addEventListener('click', abrirData);
+      dt.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && App.podeEditar()) { ev.preventDefault(); ev.stopPropagation(); abrirData(); } });
     }
     const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', fn); };
     on('diaMenos', () => passarDias(-1));
@@ -694,6 +711,35 @@
       glifo(OLHO_SVG, 14), 'Jogador', glifo(X_SVG, 11));
     if (c && c.parentNode) c.after(comoChip);
   }
+
+  /* (lote 26) A sanfona embaixo da data: ir para uma data e, com a linha do tempo, a data de cada campanha (com a que está
+     agora no mapa marcada); "Linha do tempo" abre a aba. Fecha com Esc, com um clique fora ou ao escolher. */
+  let sanfona = null;
+  function fecharSanfona() { if (!sanfona) return; sanfona.remove(); sanfona = null; const dt = $('dataTxt'); if (dt) dt.setAttribute('aria-expanded', 'false'); }
+  function alternarSanfona() {
+    if (sanfona) { fecharSanfona(); return; }
+    const m = App.mapa, dt = $('dataTxt'), cal = dt && dt.closest('.cal'); if (!m || !cal) return;
+    const linhas = [];
+    if (m.linha) {
+      const at = N().linhaAtiva(m);
+      for (const l of m.linha.lin) {
+        const ult = l.paradas[l.paradas.length - 1];
+        linhas.push(h('div', { class: 'sf-lin' + (l.id === at.id ? ' agora' : '') }, h('b', { text: l.nome }),
+          h('span', { text: ult ? dataTxt(m, ult.dia) : '' }), l.id === at.id ? h('span', { class: 'tag', text: 'agora no mapa' }) : null));
+      }
+    }
+    sanfona = h('div', { class: 'sanfona-data', id: 'sanfonaData', role: 'dialog', 'aria-label': 'A data do mundo' },
+      h('div', { class: 'sf-cab' }, h('b', { text: dataTxt(m, m.cal.dia) }),
+        botao('Ir para a data…', () => { fecharSanfona(); irParaData(); }, { c: 'sm', k: 'sf:ir' })),
+      h('div', { class: 'sf-titulo', text: 'Linha do tempo' }),
+      linhas.length ? h('div', { class: 'sf-lista' }, linhas) : h('p', { class: 'note', text: 'Ainda sem linha do tempo: com ela, cada campanha guarda a própria data.' }),
+      h('div', { class: 'sf-pe' }, botao(m.linha ? 'Abrir a Linha do tempo' : 'Começar a linha do tempo…', () => { fecharSanfona(); abrirAba('linha'); }, { c: 'pri sm', k: 'sf:linha' })));
+    cal.append(sanfona);
+    dt.setAttribute('aria-expanded', 'true');
+    const b = sanfona.querySelector('button'); if (b) b.focus();
+  }
+  document.addEventListener('pointerdown', e => { if (sanfona && !(e.target.closest && (e.target.closest('#sanfonaData') || e.target.closest('#dataTxt')))) fecharSanfona(); }, true);
+  document.addEventListener('keydown', e => { if (sanfona && e.key === 'Escape') { e.stopPropagation(); fecharSanfona(); const dt = $('dataTxt'); if (dt) dt.focus(); } }, true);
 
   /* ---------------- menu de mapas ---------------- */
   function abrirMenu() {
@@ -1035,7 +1081,8 @@
     if (!tabs) return;
     tabs.setAttribute('aria-label', 'Painel do mapa');
     const bt = a => h('button', { type: 'button', class: 'tab', role: 'tab', id: 'tab-' + a.id, title: a.titulo || null, 'aria-controls': 'pane', 'aria-selected': 'false', tabindex: '-1',
-      onclick: () => { aba = a.id; lembrar({ aba }); pintar(); } }, h('span', { text: a.nome }), h('span', { class: 'n', hidden: true, 'aria-hidden': 'true' }));
+      onclick: () => { aba = a.id; lembrar({ aba }); politicaAberta = false; pintar(); } }, h('span', { text: a.nome }), h('span', { class: 'n', hidden: true, 'aria-hidden': 'true' }));
+    tabs.dataset.modo = 'filas';
     tabs.replaceChildren(...[1, 2].map(n => h('div', { class: 'tabs-fila', role: 'none', 'data-fila': String(n) }, ABAS.filter(a => a.fila === n).map(bt))));
     tabs.addEventListener('keydown', ev => {
       const vis = [...tabs.querySelectorAll('.tab:not([hidden])')], i = vis.indexOf(document.activeElement);
@@ -1052,10 +1099,49 @@
     const pane = $('pane');
     if (pane) pane.setAttribute('role', 'tabpanel');
   }
+  // (lote 26) as abas em grupos (para quem mestra) ou nas duas fileiras de sempre: troca quando o papel muda
+  let politicaAberta = false, ultimaPolitica = 'faccoes';
+  function arrumarAbas(tabs) {
+    const modo = App.podeEditar() && !COMO_ANTES ? 'grupos' : 'filas';
+    if (tabs.dataset.modo === modo) return;
+    const bts = new Map(ABAS.map(a => [a.id, $('tab-' + a.id)]));
+    tabs.dataset.modo = modo;
+    if (modo === 'filas') { tabs.replaceChildren(...[1, 2].map(n => h('div', { class: 'tabs-fila', role: 'none', 'data-fila': String(n) }, ABAS.filter(a => a.fila === n).map(a => bts.get(a.id))))); return; }
+    const grupo = g => h('div', { class: 'tabs-grupo', role: 'none', 'data-grupo': g.id }, h('span', { class: 'tabs-g', 'aria-hidden': 'true', text: g.nome }),
+      h('div', { class: 'tabs-gb', role: 'none' }, g.id === 'politica'
+        ? [h('button', { type: 'button', class: 'tab tab-pol', id: 'tab-politica', 'aria-haspopup': 'true', 'aria-expanded': 'false', title: 'Reinos, Corte, Diplomacia, Intrigas e Guerra',
+            onclick: () => { politicaAberta = !politicaAberta; pintarAbas(); const p = politicaAberta && tabs.querySelector('.pol-lista .tab:not([hidden])'); if (p) p.focus(); } },
+            h('span', { class: 'pol-nome', text: 'Reinos' }), h('span', { class: 'pol-seta', 'aria-hidden': 'true', text: '▾' })),
+           h('div', { class: 'pol-lista', role: 'menu', hidden: true }, ABAS.filter(a => a.grupo === 'politica').map(a => bts.get(a.id)))]
+        : ABAS.filter(a => a.grupo === g.id).map(a => bts.get(a.id))));
+    tabs.replaceChildren(...GRUPOS_ABAS.map(grupo));
+  }
+  document.addEventListener('pointerdown', e => { if (politicaAberta && !(e.target.closest && e.target.closest('[data-grupo="politica"]'))) { politicaAberta = false; pintarAbas(); } }, true);
+  document.addEventListener('keydown', e => { if (politicaAberta && e.key === 'Escape') { e.stopPropagation(); politicaAberta = false; pintarAbas(); const b = $('tab-politica'); if (b) b.focus(); } }, true);
+  // (lote 26) as teclas 1 a 6: as abas na ordem em que aparecem (a Política: a última aberta dela)
+  function abaPorNumero(n) {
+    if (!App || !App.mapa) return;
+    const lista = $('tabs') && $('tabs').dataset.modo === 'grupos'
+      ? ['selecao', 'hoje', 'linha', ultimaPolitica, 'terreno', 'mapa'].filter(id => abasDisponiveis().some(a => a.id === id))
+      : abasDisponiveis().map(a => a.id);
+    const id = lista[n - 1]; if (id) abrirAba(id);
+  }
   function pintarAbas() {
     const vis = abaVisivel(), disp = abasDisponiveis(), tabs = $('tabs');
     if (!tabs) return;
+    arrumarAbas(tabs);
     tabs.hidden = !App.mapa;
+    if (tabs.dataset.modo === 'grupos') {
+      const naPol = (ABAS.find(a => a.id === vis) || {}).grupo === 'politica';
+      if (naPol) ultimaPolitica = vis;
+      const bp = $('tab-politica'), lista = tabs.querySelector('.pol-lista');
+      if (bp) {
+        bp.setAttribute('aria-selected', String(naPol)); bp.setAttribute('aria-expanded', String(politicaAberta));
+        // (o nome do grupo já está em cima: o botão diz a aba da Política em uso, ou a última aberta)
+        trocarTexto(bp.querySelector('.pol-nome'), (ABAS.find(a => a.id === ultimaPolitica) || {}).nome || 'Reinos');
+      }
+      if (lista) lista.hidden = !politicaAberta;
+    }
     for (const a of ABAS) {
       const b = $('tab-' + a.id);
       if (!b) continue;
@@ -3239,11 +3325,11 @@
         campoNumero('mapa:alt', 'Altura', m.alt, n => App.mudar('mudar o tamanho do papel', mm => { mm.alt = n; }), { min: 100, max: 30000 })));
       img.push(nota('Em unidades do mapa (de 100 a 30.000).'));
     }
-    out.push(secao('Imagem', img));
+    out.push(secao('Imagem', { resumo: m.img ? 'com imagem' : 'papel em branco' }, img));
     out.push(nota('A escala do mapa é a grade de hexágonos (um hexágono = 5 cubos): fica na aba Terreno.'));
     // calendário
     const cal = m.cal, d = N_.dataDe(cal, cal.dia);
-    out.push(secao('Calendário',
+    out.push(secao('Calendário', { resumo: N_.textoData(cal, cal.dia) },
       nota(frase('Hoje: ' + N_.textoData(cal, cal.dia)) + ' O ano tem ' + fmt(N_.diasNoAno(cal), 0) + ' dias.'),
       h('div', { class: 'row' },
         campoNumero('mapa:ano', 'Ano de hoje', d.ano, n => App.mudar('mudar o ano', mm => { mm.cal.ano0 = n - Math.floor(mm.cal.dia / N().diasNoAno(mm.cal)); }), { min: -1e6, max: 1e6 }),
@@ -3284,7 +3370,7 @@
     // (lote 7, parte 5c) a tabela do clima
     out.push(secTabelaClima(m));
     // névoa
-    out.push(secao('Névoa',
+    out.push(secao('Névoa', { resumo: m.nevoa.on ? 'ligada' : 'desligada' },
       caixa('mapa:nevoa', 'Névoa ligada', m.nevoa.on, ligarNevoa,
         { dica: 'Os jogadores só veem o que você revelar com o pincel (N). Os grupos aparecem sempre.' }),
       h('div', { class: 'row' },
@@ -3354,7 +3440,7 @@
       gs.push(campoEscolha('ter:alfa', 'Linhas da grade', perto, forcas, v => App.mudar('mudar as linhas da grade', mm => { mm.grade.alfa = Number(v); }), { off: !gr.on }));
       gs.push(nota('O mapa tem cerca de ' + fmt(m.larg / gr.tam, 0) + ' × ' + fmt(m.alt / gr.tam, 0) + ' hexágonos (' + fmt(cubos(m, m.larg), 0) + ' × ' + fmt(cubos(m, m.alt), 0) + ' cubos).'));
     } else gs.push(nota('Sem grade, o mapa não tem escala: a viagem e a régua falam em unidades do mapa. Com ela, tudo passa a ser em cubos.'));
-    out.push(secao('Grade de hexágonos', gs));
+    out.push(secao('Grade de hexágonos', { resumo: !tem ? 'sem grade' : gr.on ? 'à mostra' : 'escondida' }, gs));
     // os tipos de terreno
     const uso = new Map(), TX = N().TEXTURAS || { liso: { nome: 'Lisa' } };
     for (const k of Object.keys(m.hexes || {})) { const v = m.hexes[k], t = typeof v === 'string' ? v : v[0]; if (t) uso.set(t, (uso.get(t) || 0) + 1); }
@@ -3573,5 +3659,5 @@
     irPara, fmt, plural, dataTxt, janela, confirmar, icone, abrirAba, pintar, X_SVG, focar: k => { focarDepois = k; },
     campoCor, lerNum, fmtCampo, mesmoMapa, bandeiraFac,           // (lote 10) a economia e a bandeira (mundo/reino-painel.js)
     depoisDasPropostas };                                          // (lote 12) a semana espera o dia da campanha
-  window.MundoPainel = { iniciar, abrirAba, redesenhar: pintar, seguirLiga, novoTexto, mostrar, mostrarFaccao, kit };
+  window.MundoPainel = { iniciar, abrirAba, abaPorNumero, redesenhar: pintar, seguirLiga, novoTexto, mostrar, mostrarFaccao, kit };
 })();

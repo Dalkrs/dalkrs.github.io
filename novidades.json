@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-14",
+      "data": "2026-10-24",
+      "titulo": "O menu do Mapa-múndi mais fácil para o mestre",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: as abas numa fileira só, em três grupos — Sessão (Seleção, Hoje, Linha), Política (um botão com Reinos, Corte, Diplomacia, Intrigas e Guerra) e Preparar (Terreno, Mapa). As teclas 1 a 6 abrem as abas."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: as ferramentas da esquerda em grupos com nome (Sessão, Traçar, Preparar), e os blocos das abas abrem e fecham — fechados no Preparar e na Política, com um resumo no título."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: clicar na data abre a linha do tempo numa sanfona, com a data de cada campanha e o “Ir para a data…”."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-13",
       "data": "2026-10-24",
       "titulo": "As árvores sem nódulos por cima uns dos outros",

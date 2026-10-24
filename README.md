@@ -201,6 +201,23 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
   quando não há nada.
 
+### O menu do Mapa-múndi para quem mestra (lote 26)
+
+- **As abas** (`mundo/painel.js`): para quem mestra, uma fileira só, em três grupos com nome (`GRUPOS_ABAS`):
+  **Sessão** (Seleção, Hoje, Linha), **Política** — um botão (`#tab-politica`) que abre a lista com Reinos, Corte,
+  Diplomacia, Intrigas e Guerra e mostra o nome da aba dela em uso — e **Preparar** (Terreno, Mapa). Quem joga (e o
+  mestre em "Ver como jogador") continua com as duas fileiras de sempre (`arrumarAbas` troca quando o papel muda). As
+  teclas **1 a 6** abrem as abas na ordem (a 4 é a última aberta da Política).
+- **Os blocos** (`secao`) abrem e fecham pelo título: nas abas da Sessão começam abertos; nas da Política e do Preparar,
+  fechados, alguns com o resumo no título ("papel em branco", a data de hoje, "névoa ligada"). O que se abre ou fecha
+  fica lembrado enquanto a página está aberta.
+- **O trilho** em grupos com nome (`GRUPOS_TRILHO`, em `tela.js`): Sessão (selecionar, grupo, evento, marcador, régua,
+  caneta), Traçar (região, rota, frente) e Preparar (terreno, desenho, névoa). As teclas são as de sempre.
+- **A data** (na barra de cima) abre a sanfona: "Ir para a data…" e a linha do tempo (a data de cada campanha, a que
+  está no mapa marcada), com o botão para a aba Linha.
+- Os testes de antes abrem com a marca `tinycats:testes-tudo-aberto` (as fileiras, os blocos abertos, a data indo
+  direto para "Ir para a data"); `src/tests/mundo-lote26.test.js` confere o menu como o mestre encontra.
+
 ### A Árvore sem sobreposição (lote 26)
 
 O desenho em anéis (`calcularLayout`) ganhou dois passos no fim. **`juntarPontas`**: a folha com pais em ramos

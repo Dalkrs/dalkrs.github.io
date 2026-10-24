@@ -324,6 +324,43 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 .note { margin: 0; color: var(--fg-3); font-size: 12.5px; }
 .sec { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
 .sec > b { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+.sec.dobra { gap: 0; }
+.sec.dobra[open] { gap: 10px; }
+.sec.dobra > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; padding: 2px 0; }
+.sec.dobra > summary::-webkit-details-marker { display: none; }
+.sec.dobra > summary::after { content: ""; flex: none; width: 7px; height: 7px; margin-left: auto; border-right: 2px solid var(--fg-3); border-bottom: 2px solid var(--fg-3); transform: rotate(-45deg); transition: transform .15s; }
+.sec.dobra[open] > summary::after { transform: rotate(45deg); }
+.sec.dobra > summary > b { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; }
+.sec.dobra > summary .sec-res { flex: 1 1 auto; min-width: 0; text-align: right; font-size: 12px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec.dobra[open] > summary .sec-res { display: none; }
+/* (lote 26) as abas de quem mestra em grupos, e o botão da Política com a lista */
+.tabs[data-modo="grupos"] { flex-direction: row; align-items: stretch; gap: 2px; padding: 4px 6px 0; overflow: visible; }
+.tabs-grupo { display: flex; flex-direction: column; min-width: 0; }
+.tabs-grupo + .tabs-grupo { border-left: 1px solid var(--line); padding-left: 4px; }
+.tabs-g { font-size: 10px; font-weight: 600; color: var(--fg-3); padding: 0 6px; letter-spacing: .02em; }
+.tabs-gb { display: flex; position: relative; }
+.tabs[data-modo="grupos"] .tab { flex: 0 0 auto; }
+.tab-pol .pol-seta { margin-left: 4px; font-size: 10px; opacity: .7; }
+.pol-lista { position: absolute; top: 100%; left: 0; z-index: 40; min-width: 180px; padding: 6px; display: flex; flex-direction: column; gap: 2px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.pol-lista[hidden] { display: none; }
+.pol-lista .tab { height: 34px; text-align: left; padding: 0 10px; border-radius: 7px; }
+.pol-lista .tab:hover { background: var(--hover); }
+.pol-lista .tab[aria-selected="true"] { background: var(--lamp); color: var(--on-lamp); }
+.pol-lista .tab[aria-selected="true"]::after { display: none; }
+.rail-g { flex: none; align-self: center; font-size: 9.5px; font-weight: 600; color: var(--fg-3); margin: 2px 0 0; user-select: none; }
+/* (lote 26) a sanfona da data */
+.cal { position: relative; }
+#dataTxt { cursor: pointer; }
+.sanfona-data { position: absolute; top: calc(100% + 8px); left: 0; z-index: 60; width: 320px; max-width: calc(100vw - 24px); padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 34px rgba(0,0,0,.4); font-weight: 400; }
+.sanfona-data .sf-cab { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.sanfona-data .sf-titulo { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; border-top: 1px solid var(--line); padding-top: 8px; }
+.sanfona-data .sf-lista { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.sanfona-data .sf-lin { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: var(--hover); font-size: 13px; }
+.sanfona-data .sf-lin span:first-of-type { margin-left: auto; color: var(--fg-2); }
+.sanfona-data .sf-lin.agora { outline: 1px solid var(--lamp); }
+.sanfona-data .sf-pe { display: flex; justify-content: flex-end; }
 .segredo { border-left: 3px solid var(--secret); padding-left: 9px; }
 .grade { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .grade button { display: grid; place-items: center; height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--raised); color: var(--fg-2); }
@@ -1425,8 +1462,8 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="intrigas.js?v=2"></script>
 <script src="campanha.js?v=5"></script>
 <script src="camadas.js?v=4"></script>
-<script src="tela.js?v=26"></script>
-<script src="painel.js?v=44"></script>
+<script src="tela.js?v=27"></script>
+<script src="painel.js?v=45"></script>
 <script src="guerra-painel.js?v=13"></script>
 <script src="guerra-ajuda.js?v=5"></script>
 <script src="reino-painel.js?v=15"></script>
