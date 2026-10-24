@@ -218,16 +218,11 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
 - Os testes de antes abrem com a marca `tinycats:testes-tudo-aberto` (as fileiras, os blocos abertos, a data indo
   direto para "Ir para a data"); `src/tests/mundo-lote26.test.js` confere o menu como o mestre encontra.
 
-### A Árvore sem sobreposição (lote 26)
+### A Árvore: os nomes pelo zoom (lote 26)
 
-O desenho em anéis (`calcularLayout`) ganhou dois passos no fim. **`juntarPontas`**: a folha com pais em ramos
-diferentes (os keystones do fim, que juntam caminhos) vai para entre os pais, um anel depois do mais de fora — a não ser
-que os pais estejam espalhados em volta da raiz. **`afastar`**: cada nó ocupa uma caixa (`caixaDoNo`: a largura do nome
-ou da bolinha, de cima da bolinha até embaixo do nome); onde duas se cruzam, as duas se afastam pelo lado em que se
-cruzam menos, com uma mola que puxa de volta para o lugar do desenho em anéis e some na metade das voltas. A raiz única
-fica parada; não há sorteio. Como o desenho se refaz a cada passo do zoom, as posições ficam guardadas até a árvore
-mudar (`layoutGuardado`). Afastado (zoom até 0,85), aparecem só os nomes dos nós grandes, dos escolhidos e do
-selecionado.
+O desenho continua em anéis (`calcularLayout`), do jeito de sempre. Afastado (zoom até 0,85), aparecem só os nomes dos
+nós grandes, dos escolhidos e do selecionado; de perto, todos. (Houve uma tentativa de afastar os nós uns dos outros e
+outra de desenhar símbolos com as estrelas; as duas tiravam a cara das árvores e saíram.)
 
 ### A criação de personagem, o background e as Profissões (lote 26)
 

@@ -24,6 +24,10 @@
         {
           "tipo": "novo",
           "texto": "Fichas: quando o level de um personagem sobe, o dono dele e o mestre ouvem uma fanfarra (com o som ligado na mesa ao vivo) e veem o aviso “subiu para o level…”."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: os nódulos voltam ao lugar de antes (a cara de cada árvore volta); fica só o novo dos nomes — afastado, aparecem os dos nós grandes e dos escolhidos; de perto, todos."
         }
       ]
     },

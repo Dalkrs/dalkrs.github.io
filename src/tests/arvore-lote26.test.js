@@ -96,26 +96,16 @@ const doc = JSON.stringify({ formato: 'urgm-skilltree-doc', versao: 4,
     await P.keyboard.press('Escape'); await w(80);
   });
 
-  await passo('os nós não se sobrepõem', async () => {
-    // uma árvore cheia: a raiz com 9 filhos, cada um com 5 de nome comprido, e uma ponta que junta dois ramos
-    const r = await E(() => {
+  await passo('os nomes pelo zoom', async () => {
+    // uma árvore cheia: a raiz com 9 filhos, cada um com 5 de nome comprido (a distribuição é a de sempre, em anéis)
+    await E(() => {
       const mk = (id, pais, tipo, nome) => ({ id, pais, regra: 'e', nome, tipo, forma: 'circulo', glifo: '', cor: '', natureza: '', usos: [], desc: '', exclusivo: '', escola: null, graus: [{ custos: {}, texto: '' }] });
       const nodes = [mk('r0', [], 'keystone', 'Raiz')];
       for (let i = 0; i < 9; i++) { nodes.push(mk('f' + i, ['r0'], 'notavel', 'Ramo de número ' + i)); for (let k = 0; k < 5; k++) nodes.push(mk('f' + i + 'n' + k, ['f' + i], 'pequeno', 'Uma habilidade de nome bem comprido ' + i + k)); }
-      nodes.push(mk('ponta', ['f0n4', 'f1n4'], 'keystone', 'A Ponta que Junta'));
       bib().arvores.push({ id: 'a_cheia', nome: 'Cheia', categoria: 'outra', secreta: false, senha: '', nodes });
       indexar(); ui.arvoreMestre = 'a_cheia'; pintarTudo(); centralizar();
-      const a = arvorePorId('a_cheia'), p = calcularLayout(a); let ov = 0;
-      for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
-        const A = nodes[i], B = nodes[j], pa = p.get(A.id), pb = p.get(B.id), ca = caixaDoNo(A), cb = caixaDoNo(B);
-        if (Math.abs(pb.x - pa.x) < ca.w + cb.w && (pb.y >= pa.y ? pa.y + ca.baixo > pb.y - cb.cima : pb.y + cb.baixo > pa.y - ca.cima)) ov++;
-      }
-      const ang = id => Math.atan2(p.get(id).y, p.get(id).x), pt = ang('ponta'), a0 = ang('f0n4'), a1 = ang('f1n4');
-      const entre = Math.min(a0, a1) - .2 <= pt && pt <= Math.max(a0, a1) + .2;
-      return { ov, entre, n: nodes.length };
     });
-    ok(r.ov === 0, 'com ' + r.n + ' nós de nome comprido, nenhuma caixa (a bolinha e o nome) encosta em outra: ' + r.ov);
-    ok(r.entre, 'a ponta que junta dois ramos fica entre os pais');
+    ok(await E(() => typeof afastar === 'undefined' && typeof juntarPontas === 'undefined'), 'a distribuição voltou à de antes (sem afastar os nós)');
     const nomes = async () => E(() => [...document.querySelectorAll('#nos .rotulo')].map(t => t.textContent));
     await E(() => { zoomPara(.5); desenhar(); }); await w(120);
     const longe = await nomes();
