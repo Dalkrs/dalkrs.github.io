@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-10",
+      "data": "2026-10-24",
+      "titulo": "As ferramentas das Cenas em grupos",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: a barra de ferramentas da esquerda ficou em quatro grupos com nome — Jogo, Peças, Desenho e Mapa. As seis de desenhar ficam num botão só, que abre a lista com os nomes e as teclas. Os atalhos de teclado continuam os mesmos."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-9",
       "data": "2026-10-24",
       "titulo": "Selecionar árvore, na Oficina",
