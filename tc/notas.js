@@ -4,7 +4,12 @@
    privado.mestra(m, null): sem aba, só o mestre). Os capítulos têm título, tags e a campanha (ou "do mundo"); a lista
    filtra pela busca, pela tag e pela campanha, e mostra primeiro os da campanha em vista. O texto tem o básico
    (negrito, itálico, listas e títulos) e salva sozinho. Apagar um capítulo pergunta antes e tem o Desfazer.
-   Usa TC.dados (a coleção documentos) e TC.mesas; a casca liga o botão e o painel. */
+   Usa TC.dados (a coleção documentos) e TC.mesas; a casca liga o botão e o painel.
+   (lote 27) @ e #: digitar @ abre a lista das fichas e dos NPCs; # abre a de lugares e coisas (as cenas, o que tem nome
+   no Mapa-múndi, as habilidades, as tags, os outros capítulos…) — o índice da busca rápida (tc/busca.js). Escolher
+   põe no texto um link (<a data-aba data-alvo data-k>) que guarda para onde ir, não o nome: ao abrir o capítulo, o
+   nome é o de agora (se mudou, acompanha); o que não existe mais fica cinza, com o nome antigo. Clicar leva até lá, e
+   o bloco de notas continua aberto do lado. */
 (() => {
   'use strict';
   const PRE = 'notas:';
@@ -32,7 +37,8 @@
       for (const n of [...de.childNodes]) {
         if (n.nodeType === 3) para.append(document.createTextNode(n.textContent));
         else if (n.nodeType === 1) {
-          if (PERMITIDAS.has(n.tagName)) { const e = document.createElement(n.tagName === 'DIV' ? 'p' : n.tagName.toLowerCase()); passar(n, e); para.append(e); }
+          if (n.tagName === 'A' && refValida(n)) para.append(refDe(n.getAttribute('data-k'), n.getAttribute('data-aba'), JSON.parse(n.getAttribute('data-alvo')), n.textContent));
+          else if (PERMITIDAS.has(n.tagName)) { const e = document.createElement(n.tagName === 'DIV' ? 'p' : n.tagName.toLowerCase()); passar(n, e); para.append(e); }
           else passar(n, para);
         }
       }
@@ -41,6 +47,20 @@
     passar(t.content, out);
     return out.innerHTML.slice(0, MAX_HTML);
   }
+  // (lote 27) os links do @ e do #: para onde vão (a aba e o alvo, como na busca rápida)
+  function refValida(n) {
+    const aba = n.getAttribute('data-aba') || '', k = n.getAttribute('data-k') || '';
+    if (!/^[a-z]{3,20}$/.test(aba) || (k !== '@' && k !== '#')) return false;
+    try { const a = JSON.parse(n.getAttribute('data-alvo') || ''); return !!a && typeof a === 'object' && !Array.isArray(a) && Object.keys(a).length <= 4 && Object.values(a).every(v => (typeof v === 'string' && v.length <= 120) || typeof v === 'boolean'); } catch (e) { return false; }
+  }
+  const chaveAlvo = (aba, alvo) => aba + '|' + JSON.stringify(Object.keys(alvo).sort().map(k => [k, alvo[k]]));
+  function refDe(k, aba, alvo, nome) {
+    const a = document.createElement('a');
+    a.className = 'nt-ref'; a.setAttribute('contenteditable', 'false');
+    a.setAttribute('data-k', k); a.setAttribute('data-aba', aba); a.setAttribute('data-alvo', JSON.stringify(alvo));
+    a.textContent = String(nome || '').slice(0, 90);
+    return a;
+  }
   const textoDe = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   const lerTags = t => [...new Set(String(t || '').split(/[,;]+/).map(x => x.trim().replace(/\s+/g, ' ').slice(0, 30)).filter(Boolean))].slice(0, MAX_TAGS);
@@ -48,6 +68,7 @@
 
   function iniciar(o) {
     const { mesas, dados, toast, confirmar, botao, painel, guarda } = o;
+    const ir = typeof o.ir === 'function' ? o.ir : () => {};
     let atual = null, filtro = { q: '', tag: '', camp: '*' }, tSalvar = 0, pendente = null;
     const D = () => { try { return mesas.atual ? dados.col('documentos') : null; } catch (e) { return null; } };
     const eMestre = () => !!(mesas.atual && mesas.atual.cargo === 'mestre');
@@ -149,9 +170,10 @@
           h('span', { class: 'nt-salvo', id: 'nt-salvo', text: 'salva sozinho' }),
           h('button', { type: 'button', class: 'nt-b nt-x', id: 'nt-apagar', title: 'Apagar este capítulo', 'aria-label': 'Apagar este capítulo', text: 'Apagar', onclick: () => apagar(c) })),
         h('div', { class: 'nt-texto', id: 'nt-texto', contenteditable: 'true', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Texto do capítulo',
-          oninput: e => agendar(c.id, { html: limpar(e.target.innerHTML) }),
+          oninput: e => { agendar(c.id, { html: limpar(e.target.innerHTML) }); conferirGatilho(e.target); },
+          onkeydown: teclaLista, onclick: e => { const a = e.target.closest && e.target.closest('a.nt-ref'); if (a) { e.preventDefault(); seguir(a); } else fecharLista(); },
           onpaste: e => { const t = e.clipboardData && e.clipboardData.getData('text/html'); if (t) { e.preventDefault(); document.execCommand('insertHTML', false, limpar(t)); } },
-          onblur: salvarJa }))
+          onblur: () => { salvarJa(); setTimeout(() => { if (!lista || !lista.contains(document.activeElement)) fecharLista(); }, 150); } }))
         : h('div', { class: 'nt-vazio' }, h('p', { text: todas.length ? 'Nenhum capítulo com este filtro.' : 'O bloco de notas está vazio. Crie o primeiro capítulo (ou assunto): os planos da sessão, os segredos, os NPCs…' }));
       const mesmo = ed0 && painel.querySelector('.nt-ed') && painel.querySelector('.nt-ed').dataset.cap === (c && c.id);
       const corpoVelho = painel.querySelector('#nt-corpo');
@@ -163,6 +185,7 @@
         const sc = corpoVelho.querySelector('#nt-capcamp'); if (sc && c) sc.value = c.camp || '';
       }
       const fc = painel.querySelector('#nt-camp'); if (fc) fc.value = filtro.camp;
+      const edAgora = painel.querySelector('#nt-texto'); if (edAgora) renomearRefs(edAgora);      // (lote 27) os nomes de agora nos links
       pintarLista();
     }
     function pintarLista() {
@@ -174,6 +197,97 @@
         return h('li', null, h('button', { type: 'button', class: 'nt-cap' + (c.id === atual ? ' on' : ''), 'data-cap': c.id, 'aria-current': c.id === atual ? 'true' : null, onclick: () => { salvarJa(); atual = c.id; gravarUi(); pintar(); } },
           h('b', { text: t }), h('small', { text: [c.camp ? (c.camp === cv ? nomeCamp(c.camp) + ' (em vista)' : nomeCamp(c.camp)) : 'do mundo', c.tags.join(' · ')].filter(Boolean).join(' · ') })));
       }));
+    }
+    /* ---- (lote 27) o @ e o # ---- */
+    let ind = null, pedidoInd = null, lista = null, gat = null;      // gat: { no, ini, fim, k, q, res, sel }
+    function obterIndice() {
+      if (ind) return Promise.resolve(ind);
+      if (!pedidoInd) pedidoInd = Promise.resolve(typeof o.indice === 'function' ? o.indice() : []).then(l => { ind = Array.isArray(l) ? l : []; pedidoInd = null; return ind; }, () => { pedidoInd = null; return []; });
+      return pedidoInd;
+    }
+    let tInd = 0;
+    dados.on('muda', () => { clearTimeout(tInd); tInd = setTimeout(() => { ind = null; }, 300); });
+    // o nome de agora em cada link do texto (o que não existe mais fica cinza, com o nome antigo)
+    function renomearRefs(ed) {
+      if (!ed.querySelector('a.nt-ref')) return;
+      obterIndice().then(l => {
+        const por = new Map(l.map(it => [chaveAlvo(it.aba, it.alvo), it]));
+        for (const a of ed.querySelectorAll('a.nt-ref')) {
+          let alvo = null; try { alvo = JSON.parse(a.getAttribute('data-alvo')); } catch (e) { /* inválido */ }
+          const it = alvo && por.get(chaveAlvo(a.getAttribute('data-aba'), alvo)), k = a.getAttribute('data-k');
+          a.classList.toggle('morta', !it);
+          a.title = it ? 'Ir para ' + it.nome + ' (' + it.sub + ')' : 'Não existe mais (ou não dá para abrir daqui)';
+          if (it && a.textContent !== k + it.nome) a.textContent = k + it.nome;
+        }
+      });
+    }
+    function seguir(a) {
+      if (a.classList.contains('morta')) { toast('Isso não existe mais (ou não dá para abrir daqui).'); return; }
+      let alvo = null; try { alvo = JSON.parse(a.getAttribute('data-alvo')); } catch (e) { return; }
+      salvarJa();
+      ir(a.getAttribute('data-aba'), alvo);
+    }
+    // o @ ou o # logo antes do cursor (no começo ou depois de um espaço), com o que veio depois dele
+    function conferirGatilho(ed) {
+      const s = window.getSelection();
+      if (!s || !s.rangeCount || !s.isCollapsed) { fecharLista(); return; }
+      const no = s.anchorNode, off = s.anchorOffset;
+      if (!no || no.nodeType !== 3 || !ed.contains(no)) { fecharLista(); return; }
+      const antes = no.nodeValue.slice(0, off), m = /(^|[\s(\u00a0])([@#])([^@#\n]{0,40})$/u.exec(antes);
+      if (!m || /\s{2}|^\s/.test(m[3])) { fecharLista(); return; }
+      const ini = m.index + m[1].length;
+      gat = { no, ini, fim: off, k: m[2], q: m[3], res: [], sel: 0 };
+      obterIndice().then(l => {
+        if (!gat || gat.no !== no) return;
+        const doTipo = it => (gat.k === '@' ? it.tipo === 'ficha' : it.tipo !== 'ficha' && it.tipo !== 'item' && !(it.tipo === 'nota' && it.alvo.cap === atual));
+        const base = l.filter(doTipo);
+        gat.res = gat.q.trim() ? (typeof o.buscar === 'function' ? o.buscar(base, gat.q, 8) : []) : base.slice(0, 8);
+        if (!gat.res.length && /\s$/.test(gat.q)) { fecharLista(); return; }
+        gat.sel = 0; pintarListaRef();
+      });
+    }
+    function pintarListaRef() {
+      if (!gat) return;
+      if (!lista) { lista = h('div', { class: 'nt-sug', role: 'listbox', 'aria-label': 'Ligar a…' }); document.body.append(lista); }
+      lista.replaceChildren(...(gat.res.length ? gat.res.map((it, i) => h('button', { type: 'button', class: 'nt-sug-i' + (i === gat.sel ? ' on' : ''), role: 'option', 'aria-selected': String(i === gat.sel),
+        onmousedown: e => e.preventDefault(), onclick: () => escolher(i) }, h('b', { text: it.nome }), h('small', { text: it.sub })))
+        : [h('p', { class: 'nt-sug-v', text: gat.k === '@' ? 'Nenhuma ficha com esse nome.' : 'Nada com esse nome.' })]),
+        h('p', { class: 'nt-sug-p', text: gat.k === '@' ? '@ fichas e NPCs · ↑↓ e Enter' : '# cenas, lugares, habilidades, tags, capítulos · ↑↓ e Enter' }));
+      const r = document.createRange(); r.setStart(gat.no, gat.ini); r.setEnd(gat.no, gat.fim);
+      const q = r.getBoundingClientRect(), alt = lista.offsetHeight;
+      lista.style.left = Math.max(8, Math.min(innerWidth - lista.offsetWidth - 8, q.left)) + 'px';
+      lista.style.top = (q.bottom + 6 + alt > innerHeight ? Math.max(8, q.top - alt - 6) : q.bottom + 6) + 'px';
+    }
+    function fecharLista() { gat = null; if (lista) { lista.remove(); lista = null; } }
+    function teclaLista(e) {
+      if (!gat || !lista) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (gat.res.length) { gat.sel = (gat.sel + (e.key === 'ArrowDown' ? 1 : gat.res.length - 1)) % gat.res.length; pintarListaRef(); } }
+      else if ((e.key === 'Enter' || e.key === 'Tab') && gat.res.length) { e.preventDefault(); escolher(gat.sel); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fecharLista(); }
+    }
+    function escolher(i) {
+      const g = gat, it = g && g.res[i], ed = painel.querySelector('#nt-texto');
+      if (!it || !ed || !g.no.isConnected) { fecharLista(); return; }
+      const r = document.createRange(); r.setStart(g.no, g.ini); r.setEnd(g.no, Math.min(g.fim, g.no.nodeValue.length));
+      r.deleteContents();
+      const a = refDe(g.k, it.aba, it.alvo, g.k + it.nome), esp = document.createTextNode('\u00a0');
+      a.title = 'Ir para ' + it.nome + ' (' + it.sub + ')';
+      r.insertNode(esp); r.insertNode(a);
+      const s = window.getSelection(), c = document.createRange(); c.setStart(esp, 1); c.collapse(true); s.removeAllRanges(); s.addRange(c);
+      fecharLista();
+      ed.focus();
+      ed.dispatchEvent(new Event('input'));
+    }
+    // (lote 27) a busca rápida e os links levam a um capítulo
+    function abrirCap(id) {
+      if (!eMestre()) return;
+      salvarJa();
+      if (!capitulos().some(c => c.id === id)) { toast('Esse capítulo não existe mais.'); return; }
+      atual = id;
+      if (!visiveis().some(c => c.id === id)) filtro = { q: '', tag: '', camp: '*' };
+      gravarUi();
+      if (painel.hidden) abrir(true); else pintar();
+      const ed = painel.querySelector('#nt-texto'); if (ed) ed.focus();
     }
     function abrir(v) {
       if (v && !eMestre()) return;
@@ -205,7 +319,7 @@
     window.addEventListener('pagehide', salvarJa);
     document.addEventListener('visibilitychange', () => { if (document.hidden) salvarJa(); });
     mesaMudou();
-    return { abrir, salvarJa, limpar };
+    return { abrir, salvarJa, limpar, abrirCap };
   }
   (window.TC || (window.TC = {})).notas = { iniciar, limpar };
 })();

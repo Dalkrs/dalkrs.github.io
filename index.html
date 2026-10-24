@@ -142,6 +142,17 @@ button { cursor: pointer; }
 .nt-texto h3 { font: 600 15.5px/1.3 var(--display); margin: 10px 0 4px; }
 .nt-texto p { margin: 0 0 6px; } .nt-texto ul, .nt-texto ol { margin: 0 0 6px; padding-left: 22px; }
 .nt-vazio { color: var(--fg-3); font-size: 13px; padding: 8px 2px; }
+/* (lote 27) os links do @ e do # no texto, e a lista que abre ao digitar */
+.nt-texto a.nt-ref { color: var(--lamp-ink); background: var(--lamp-soft); border-radius: 5px; padding: 0 4px; text-decoration: none; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.nt-texto a.nt-ref:hover { text-decoration: underline; }
+.nt-texto a.nt-ref.morta { color: var(--fg-3); background: var(--hover); font-weight: 500; cursor: default; text-decoration: none; }
+.nt-sug { position: fixed; z-index: 120; width: 300px; max-width: calc(100vw - 16px); padding: 5px; display: flex; flex-direction: column; gap: 2px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,.35); }
+.nt-sug-i { display: grid; gap: 1px; text-align: left; padding: 6px 9px; border: 0; border-radius: 7px; background: transparent; color: var(--fg); cursor: pointer; }
+.nt-sug-i b { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nt-sug-i small { font-size: 11.5px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nt-sug-i.on, .nt-sug-i:hover { background: var(--lamp-soft); }
+.nt-sug-v { margin: 6px 9px; font-size: 13px; color: var(--fg-3); }
+.nt-sug-p { margin: 4px 9px 2px; font-size: 11px; color: var(--fg-3); border-top: 1px solid var(--line); padding-top: 5px; }
 @media (max-width: 900px) { .notas { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; width: min(400px, 100%); box-shadow: -10px 0 30px rgba(0,0,0,.3); } }
 .vivo { flex: none; width: 340px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
 .vivo-h { flex: none; display: flex; align-items: center; gap: 8px; padding: 9px 8px 9px 14px; border-bottom: 1px solid var(--line); }
@@ -518,9 +529,10 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=21"></script>
 <script src="tc/tc.js?v=28"></script>
-<script src="tc/busca.js?v=1"></script>
+<script src="tc/busca.js?v=2"></script>
 <script src="tc/guia.js?v=5"></script>
-<script src="tc/notas.js?v=2"></script>
+<script src="tc/notas.js?v=3"></script>
+<script src="tc/tags.js?v=1"></script>
 <script>
 (() => {
   'use strict';
@@ -827,7 +839,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   /* Um sistema pede para abrir outro, com um alvo ("abra as Cenas na cena tal"). A aba abre; o alvo vai para a moldura
      dela — já, se ela estiver carregada, ou assim que ela disser "olá". */
   const alvos = {};
+  let notasApi = null;                           // (lote 27) o bloco de notas do mestre (TC.notas.iniciar, mais abaixo)
   function irPara(aba, alvo) {
+    if (aba === 'notas') { if (notasApi && alvo && alvo.cap) notasApi.abrirCap(alvo.cap); return; }     // (lote 27) um capítulo das notas
     const jaTinha = !!frames[aba];
     abrir(aba);
     if (!alvo) return;
@@ -859,7 +873,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   // o que a busca lê: os dados da mesa aberta, ou (sem mesa) o que os sistemas guardaram neste navegador
   function fonteDaBusca() {
     const a = mesas.atual;
-    if (!a) return Promise.resolve(TC.busca.fonteLocal(ler));
+    if (!a) return Promise.resolve(Object.assign(TC.busca.fonteLocal(ler), { tags: TC.tags ? TC.tags.lista() : [] }));
     const P = TC.dados.col('personagens'), D = TC.dados.col('documentos');
     return Promise.all([P.pronta, D.pronta]).then(() => {
       const docs = new Map(), nomes = {};
@@ -868,7 +882,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       return { personagens: P.todas(), docIds: [...docs.keys()], nomes, eu: conta.usuario ? conta.usuario.id : null,
         doc: id => { const l = docs.get(id); return l && l.dados && typeof l.dados === 'object' ? l.dados : null; },
         campsDoc: id => { const l = docs.get(id); return l && Array.isArray(l.campanhas) ? l.campanhas : []; },
-        mestra: { cenas: mesas.mestra('cenas'), mundo: mesas.mestra('mundo'), meditacao: mesas.mestra('meditacao'), jornal: mesas.mestra('jornal') },
+        mestra: { cenas: mesas.mestra('cenas'), mundo: mesas.mestra('mundo'), meditacao: mesas.mestra('meditacao'), jornal: mesas.mestra('jornal'), arvore: mesas.mestra('arvore'), notas: a.cargo === 'mestre' },
+        tags: TC.tags ? TC.tags.lista() : [],
         vista: a.campanha || null, campanhas: (a.campanhas || []).map(c => ({ id: c.id, nome: c.nome })) };
     });
   }
@@ -1565,7 +1580,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   function pintarSelo() { const s = $('selo'); s.hidden = !naoLidas; s.textContent = naoLidas > 9 ? '9+' : String(naoLidas); }
   btnVivo.addEventListener('click', () => mostrarVivo(vivo.hidden, true));
   // (lote 22) o bloco de notas do mestre da mesa: só ele (nem o auxiliar) vê o botão e as notas
-  if (TC.notas) TC.notas.iniciar({ mesas, dados: TC.dados, toast, confirmar, botao: $('btnNotas'), painel: $('notas'), guarda: { ler, gravar } });
+  // (lote 27) com @ e # o mestre liga o texto a uma ficha, uma cena, um lugar, uma habilidade, uma tag ou outro capítulo
+  notasApi = TC.notas ? TC.notas.iniciar({ mesas, dados: TC.dados, toast, confirmar, botao: $('btnNotas'), painel: $('notas'), guarda: { ler, gravar },
+    ir: (aba, alvo) => irPara(aba, alvo), indice: () => fonteDaBusca().then(f => TC.busca.indexar(f)), buscar: (ind, q, n) => TC.busca.buscar(ind, q, n) }) : null;
   $('vivoX').addEventListener('click', () => { mostrarVivo(false, true); btnVivo.focus(); });
 
   function pintarQuem() {
