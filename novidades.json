@@ -2,6 +2,47 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-15",
+      "data": "2026-10-24",
+      "titulo": "Tags com explicação, links nas notas e nas árvores, e o Mapa-múndi com cores",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Tags: as condições, os efeitos (as áreas no chão) e os recursos de raça e classe ganham um sublinhado pontilhado onde aparecem escritos — nas árvores, nas fichas, no acampamento e nas notas. Passar o mouse mostra o que aquilo é, numa telinha. Nas Cenas, os ícones das condições dos tokens também."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Oficina: o botão Tags abre a lista das tags (Condições, Efeitos, Recursos). O mestre muda a explicação, cria tags novas, apaga e traz de volta."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Bloco de notas: digite @ para ligar a uma ficha ou NPC, e # para uma cena, um lugar do mapa, uma habilidade, uma tag ou outro capítulo. Clicar no link leva até lá; se a coisa mudar de nome, o link acompanha."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Mesa ao vivo: depois da fanfarra de subir de level, o som das rolagens de dados parava de sair. Voltou."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Árvore: o nome de outra habilidade escrito no texto (ou no “Exige…”) vira um link que leva até ela, também em outra árvore; o “← Voltar”, no canto, volta para onde você estava. Para o jogador, só o que ele pode ver."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: cada grupo de abas com a sua cor (Sessão, Política, Preparar), no nome do grupo e no alto do painel."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: os jogadores também veem as abas em grupos e os blocos que abrem e fecham; clicar na data mostra a campanha que está no mapa."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Mapa-múndi: a sanfona da data arrumada — cada campanha em duas linhas (o nome e a data) e o “no mapa” numa etiqueta."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-14",
       "data": "2026-10-24",
       "titulo": "O menu do Mapa-múndi mais fácil para o mestre",

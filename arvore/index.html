@@ -142,6 +142,29 @@ label.rot, .rot{display:block;font:600 12px/1.35 var(--ui);letter-spacing:normal
 #atualArv b{font:600 15px/1.15 var(--titulo);color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #listaAbas .recentes-rot{flex:none;align-self:center;font:600 11.5px var(--ui);color:var(--texto-3);margin-right:2px}
 #veuSel{z-index:85;place-items:start center;padding-top:6vh}
+/* (lote 27) a tela das tags (condições, efeitos, recursos) */
+#btTags{display:flex;align-items:center;gap:7px;font-weight:600}
+#btTags[hidden]{display:none}
+#veuTags{z-index:85;place-items:start center;padding-top:5vh}
+#tagsTela{width:min(1040px,100%);max-height:88vh}
+#tagsTela .sel-topo, #tagsTela .sel-abas, #tagsTela .sel-rodape{flex:none}
+#tagsTela{height:88vh}
+.tg-corpo{display:grid;grid-template-columns:300px 1fr;min-height:0;flex:1 1 auto;overflow:hidden}
+.tg-lista{overflow-y:auto;border-right:1px solid var(--linha);padding:8px}
+.tg-item{appearance:none;width:100%;text-align:left;border:1px solid transparent;background:none;color:var(--texto);border-radius:6px;padding:7px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;font:500 14px var(--ui)}
+.tg-item:hover{background:var(--acento-fundo)}
+.tg-item[aria-selected="true"]{border-color:var(--acento-borda);background:var(--acento-fundo);font-weight:600}
+.tg-item i{flex:none;width:9px;height:9px;border-radius:50%}
+.tg-item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tg-item em{flex:none;font:600 10.5px var(--ui);font-style:normal;color:var(--acento);text-transform:uppercase;letter-spacing:.04em}
+.tg-ed{overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.tg-ed label{display:flex;flex-direction:column;gap:5px;font:600 12.5px var(--ui);color:var(--texto-2)}
+.tg-ed .linha2{display:grid;grid-template-columns:1fr 140px 90px;gap:10px}
+.tg-ed input[type=color]{height:36px;padding:2px;width:100%}
+.tg-prev{border:1px dashed var(--linha-forte);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--texto-2)}
+.tg-prev b{color:var(--texto)}
+.tg-acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tg-acoes .espaco{flex:1}
 .modal.sel{width:min(980px,100%);max-height:86vh;display:flex;flex-direction:column;padding:0;overflow:hidden}
 .sel-topo{display:flex;align-items:center;gap:12px;padding:18px 20px 12px}
 .sel-topo h2{margin:0;flex:none}
@@ -360,6 +383,11 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 .unica p{margin:4px 0 0;font-size:12.5px;line-height:1.5;color:var(--texto-2)}
 .unica .un-fx{font-size:12px;color:var(--texto-3)}
 #zoom{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;gap:6px;z-index:3}
+/* (lote 27) as habilidades citadas, como links, e o "← Voltar" depois de um pulo */
+a.lk-no{color:var(--acento);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;cursor:pointer;font-weight:600}
+a.lk-no:hover{text-decoration-thickness:2px}
+.citados a.lk-no{font-weight:600}
+#btVoltarNo{position:absolute;left:14px;bottom:14px;z-index:3;background:var(--fundo-2);box-shadow:0 6px 18px rgba(0,0,0,.25);max-width:min(360px,calc(100% - 80px));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #zoom .btn{width:34px;height:34px;padding:0;font-size:15px;display:grid;place-items:center;background:var(--fundo-2)}
 #dica{
   position:absolute;left:14px;bottom:14px;z-index:3;font:400 11.5px var(--ui);color:var(--texto-3);
@@ -503,6 +531,7 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 
   <nav id="abas" aria-label="Abas">
     <button class="btn" id="btSelArv" title="Selecionar árvore (tecla A)" hidden><span class="ico-sel" aria-hidden="true">▤</span><span class="longo">Selecionar árvore</span></button>
+    <button class="btn" id="btTags" title="As tags: as condições, os efeitos e os recursos, com a explicação de cada um" hidden><span class="ico-sel" aria-hidden="true">#</span><span class="longo">Tags</span></button>
     <div id="atualArv" hidden></div>
     <div id="listaAbas" role="tablist"></div>
     <button class="btn ico" id="btNovaAba" title="Nova">+</button>
@@ -531,6 +560,7 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
       </svg>
       <div id="topoTela"><div id="seletor"></div><div id="filtroNat"></div></div>
       <div id="nada"><p></p><button class="btn ouro" id="btNada"></button></div>
+      <button class="btn" id="btVoltarNo" hidden title="Volta para a habilidade de onde você veio"></button>
       <div id="zoom">
         <button class="btn" id="btMais" title="Aproximar">+</button>
         <button class="btn" id="btMenos" title="Afastar">−</button>
@@ -545,11 +575,13 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 <div id="buscaRes" class="busca-res" hidden></div>
 <div class="veu" id="veu"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div class="veu" id="veuSel"><div class="modal sel" id="selArv" role="dialog" aria-modal="true" aria-labelledby="selTit"></div></div>
+<div class="veu" id="veuTags" data-sem-tags><div class="modal sel" id="tagsTela" role="dialog" aria-modal="true" aria-labelledby="tagsTit"></div></div>
 <div class="veu" id="veuDlg"><div class="modal estreito" id="dlg" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
 <script src="../tc/ponte.js?v=17"></script>
 <script src="../tc/rules.js?v=21"></script>
+<script src="../tc/tags.js?v=1"></script>
 <script src="mesa.js?v=8"></script>
 <script>
 'use strict';
@@ -1585,14 +1617,16 @@ function podarPersonagem(p){
 function podarTodos(){ indexar(); doc.personagens.forEach(podarPersonagem); }
 
 // "Exige Corpo e Mente." — com a árvore de origem quando vem de fora
-function exigencia(n){
+// (lote 27) comLink: em HTML, cada requisito é um link até ele
+function exigencia(n, comLink){
   if(!n.pais.length) return '';
   const a = arvDe.get(n.id);
   const nomes = n.pais.map(pid=>{
     const m = porId.get(pid);
     if(!m) return 'um requisito desconhecido';
     const am = arvDe.get(pid);
-    return am===a ? m.nome : `${m.nome} (${nomeCat(am.categoria)} · ${am.nome})`;
+    const t = am===a ? m.nome : `${m.nome} (${nomeCat(am.categoria)} · ${am.nome})`;
+    return !comLink ? t : podeIrAoNo(pid) ? linkNo(m, t) : esc(t);
   });
   if(nomes.length===1) return 'Exige ' + nomes[0] + '.';
   const lig = n.regra==='ou' ? ' ou ' : ' e ';
@@ -2194,6 +2228,7 @@ const ICONE_ALCA = '<svg viewBox="0 0 8 12" aria-hidden="true">' + [2,6,10].map(
 function pintarAbas(){
   const cx = $('#listaAbas');
   $('#btSelArv').hidden = ui.modo!=='mestre';
+  $('#btTags').hidden = !(ui.modo==='mestre' && window.TC && TC.tags && TC.tags.podeEditar());
   $('#atualArv').hidden = true;
   if(ui.modo==='mestre'){
     /* (lote 26) No lugar da fileira de todas as árvores: o botão "Selecionar árvore", a que está aberta e as últimas
@@ -2328,6 +2363,120 @@ function abrirSelecao(){
   $('#veuSel').classList.add('on');
   pintarSelecao();
   $('#selBusca').focus();
+}
+/* ---------- (lote 27) as tags: a tela do mestre ----------
+   A lista vem de TC.tags (tc/tags.js): as que vêm prontas, com o que o mestre mudou por cima, e as que ele criou. As
+   abas separam por tipo (Condições, Efeitos, Recursos); à esquerda, a lista (com a busca); à direita, a tag escolhida.
+   Mudar uma pronta guarda só o que mudou; "Voltar ao original" desfaz. Apagar uma pronta a esconde (dá para trazer de
+   volta); apagar uma criada a tira de vez. As que o mestre cria aqui não entram na lista de condições dos tokens. */
+const tg = {tipo:'condicao', busca:'', atual:null};
+const tagsAberto = () => $('#veuTags').classList.contains('on');
+// quem mestra pode ir ao modo Mestre (sem mesa, todos)
+function trocarModoSePode(){
+  if(ui.modo==='mestre') return true;
+  if(ArvoreMesa.ativo() && !ArvoreMesa.mestre()) return false;
+  trocarModo('mestre'); return true;
+}
+function abrirTags(){
+  if(!window.TC || !TC.tags || !TC.tags.podeEditar()) return;
+  tg.busca = '';
+  const m = $('#tagsTela');
+  m.innerHTML = `<div class="sel-topo"><h2 id="tagsTit">Tags</h2>
+      <input class="campo" id="tgBusca" type="search" placeholder="Procurar tag…" aria-label="Procurar tag pelo nome" autocomplete="off">
+      <button type="button" class="btn ico" id="tgFechar" aria-label="Fechar" title="Fechar (Esc)">✕</button></div>
+    <div class="sel-abas" role="tablist" aria-label="Tipos"></div>
+    <div class="tg-corpo"><div class="tg-lista" id="tgLista" role="listbox" aria-label="Tags"></div><div class="tg-ed" id="tgEd"></div></div>
+    <div class="sel-rodape"><p class="nota" id="tgNota"></p><button type="button" class="btn ouro" id="tgNova">+ Nova tag</button></div>`;
+  $('#tgBusca').oninput = e=>{ tg.busca = e.target.value; pintarTags(); };
+  $('#tgFechar').onclick = fecharTags;
+  $('#tgNova').onclick = novaTag;
+  $('#veuTags').onclick = e=>{ if(e.target===$('#veuTags')) fecharTags(); };
+  document.addEventListener('keydown', teclaTags, true);
+  $('#veuTags').classList.add('on');
+  TC.tags.pronto.then(()=>{ if(tagsAberto()) pintarTags(); });
+  pintarTags();
+  $('#tgBusca').focus();
+}
+function fecharTags(){
+  $('#veuTags').classList.remove('on');
+  document.removeEventListener('keydown', teclaTags, true);
+  $('#btTags').focus();
+}
+function teclaTags(e){
+  if(!tagsAberto() || dialogoAberto()) return;
+  if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); fecharTags(); }
+}
+function pintarTags(){
+  const T = TC.tags, todas = T.lista(), q = norm(tg.busca);
+  const abas = Object.entries(T.TIPOS).map(([id, t])=>`<button type="button" class="sel-aba" role="tab" data-tipo="${id}" aria-selected="${tg.tipo===id}">${esc(t.nome === 'Condição' ? 'Condições' : t.nome + 's')} <b>${todas.filter(x=>x.tipo===id).length}</b></button>`).join('');
+  $('#tagsTela .sel-abas').innerHTML = abas;
+  $$('#tagsTela .sel-aba').forEach(b=>b.onclick = ()=>{ tg.tipo = b.dataset.tipo; tg.atual = null; pintarTags(); });
+  const l = todas.filter(x=>x.tipo===tg.tipo && (!q || norm(x.nome).includes(q) || x.formas.some(f=>norm(f).includes(q)) || norm(x.de).includes(q)))
+    .sort((a, b)=>a.nome.localeCompare(b.nome, 'pt'));
+  const ed = T.mudancas().ed;
+  if(!l.some(x=>x.id===tg.atual)) tg.atual = l[0] ? l[0].id : null;
+  $('#tgLista').innerHTML = l.length ? l.map(x=>`<button type="button" class="tg-item" role="option" data-tag="${esc(x.id)}" aria-selected="${x.id===tg.atual}">
+      <i style="background:${esc(x.cor || T.TIPOS[x.tipo].cor)}"></i><span>${esc(x.nome)}</span>${x.nova ? '<em>nova</em>' : ed[x.id] ? '<em>mudada</em>' : ''}</button>`).join('')
+    : '<p class="vazio" style="padding:10px">Nenhuma tag aqui.</p>';
+  $$('#tgLista .tg-item').forEach(b=>b.onclick = ()=>{ tg.atual = b.dataset.tag; pintarTags(); });
+  const fora = T.mudancas().fora.length;
+  $('#tgNota').innerHTML = `Passar o mouse sobre o nome de uma tag (nas árvores, nas fichas, nas cenas, no acampamento e nas notas) mostra a explicação.${fora ? ` <button type="button" class="btn mini" id="tgVoltarApagadas">Trazer de volta ${plural(fora, 'apagada', 'apagadas')}</button>` : ''}`;
+  if($('#tgVoltarApagadas')) $('#tgVoltarApagadas').onclick = ()=>{ const m = T.mudancas(); m.fora = []; T.gravar(m); pintarTags(); aviso('As tags apagadas voltaram.', 'ok'); };
+  pintarEditorTag(todas.find(x=>x.id===tg.atual));
+}
+function pintarEditorTag(t){
+  const box = $('#tgEd'), T = TC.tags;
+  if(!t){ box.innerHTML = '<p class="vazio">Escolha uma tag na lista, ou crie uma nova.</p>'; return; }
+  const pronta = T.prontas().find(x=>x.id===t.id), mudada = !!T.mudancas().ed[t.id];
+  box.innerHTML = `<label>Nome<input class="campo" id="tgNome" maxlength="60" value="${esc(t.nome)}"></label>
+    <div class="linha2">
+      <label>Outras formas da palavra<input class="campo" id="tgFormas" maxlength="300" value="${esc(t.formas.join(', '))}" placeholder="Ex.: Atordoada, Atordoados"></label>
+      <label>Tipo<select class="campo" id="tgTipo">${Object.entries(T.TIPOS).map(([id, x])=>`<option value="${id}"${id===t.tipo ? ' selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></label>
+      <label>Cor<input type="color" id="tgCor" value="${esc(t.cor || T.TIPOS[t.tipo].cor)}"></label>
+    </div>
+    <label>Explicação (o conceito, sem números)<textarea class="campo" id="tgTexto" rows="4" maxlength="400">${esc(t.texto)}</textarea></label>
+    <label>De onde vem (opcional)<input class="campo" id="tgDe" maxlength="80" value="${esc(t.de)}" placeholder="Ex.: Kitsune Selene"></label>
+    <div class="tg-prev" id="tgPrev"></div>
+    <div class="tg-acoes">
+      <button type="button" class="btn ouro" id="tgSalvar">Salvar</button>
+      ${pronta && mudada ? '<button type="button" class="btn" id="tgOriginal">Voltar ao original</button>' : ''}
+      <span class="espaco"></span>
+      <button type="button" class="btn perigo" id="tgApagar">Apagar</button>
+    </div>`;
+  const ler = ()=>({nome:$('#tgNome').value.trim(), tipo:$('#tgTipo').value, cor:$('#tgCor').value, texto:$('#tgTexto').value.trim(),
+    de:$('#tgDe').value.trim(), formas:$('#tgFormas').value.split(',').map(x=>x.trim()).filter(Boolean)});
+  const prev = ()=>{ const v = ler(); $('#tgPrev').innerHTML = `<b>Como aparece:</b> o nome sublinhado com pontinhos; passando o mouse — <b>${esc(v.nome || '…')}</b>: ${esc(v.texto || '(sem explicação: a tag não mostra nada)')}`; };
+  ['#tgNome', '#tgTexto', '#tgFormas', '#tgDe', '#tgTipo', '#tgCor'].forEach(s=>$(s).addEventListener('input', prev));
+  prev();
+  $('#tgSalvar').onclick = ()=>{
+    const v = ler();
+    if(!v.nome){ aviso('A tag precisa de um nome.', 'err'); $('#tgNome').focus(); return; }
+    const outra = T.lista().find(x=>x.id!==t.id && (norm(x.nome)===norm(v.nome)));
+    if(outra){ aviso('Já existe uma tag com esse nome.', 'err'); return; }
+    if(v.cor===T.TIPOS[v.tipo].cor && !(pronta && pronta.cor)) v.cor = '';
+    const m = T.mudancas();
+    if(t.nova){ m.novas = m.novas.map(x=>x.id===t.id ? Object.assign({id:t.id}, v) : x); }
+    else{
+      const d = {};
+      for(const k of ['nome', 'tipo', 'cor', 'texto', 'de']) if((v[k] || '')!==(pronta[k] || '')) d[k] = v[k];
+      if(v.formas.join('|')!==(pronta.formas || []).join('|')) d.formas = v.formas;
+      if(Object.keys(d).length) m.ed[t.id] = d; else delete m.ed[t.id];
+    }
+    T.gravar(m); tg.tipo = v.tipo; pintarTags(); aviso('Tag salva.', 'ok');
+  };
+  if($('#tgOriginal')) $('#tgOriginal').onclick = ()=>{ const m = T.mudancas(); delete m.ed[t.id]; T.gravar(m); pintarTags(); aviso('A tag voltou ao original.', 'ok'); };
+  $('#tgApagar').onclick = async ()=>{
+    if(!await confirmar('Apagar tag', t.nova ? `Apagar “${t.nome}”? Ela foi criada aqui e não volta.` : `Apagar “${t.nome}”? Ela vem pronta: dá para trazer de volta depois, no rodapé.`, 'Apagar', true)) return;
+    const m = T.mudancas();
+    if(t.nova) m.novas = m.novas.filter(x=>x.id!==t.id); else{ delete m.ed[t.id]; if(!m.fora.includes(t.id)) m.fora.push(t.id); }
+    T.gravar(m); tg.atual = null; pintarTags();
+  };
+}
+function novaTag(){
+  const T = TC.tags, m = T.mudancas(), id = 'n:' + Date.now().toString(36);
+  m.novas.push({id, nome:'Nova tag', tipo:tg.tipo, texto:'', formas:[], de:'', cor:''});
+  T.gravar(m); tg.busca = ''; $('#tgBusca').value = ''; tg.atual = id; pintarTags();
+  $('#tgNome').focus(); $('#tgNome').select();
 }
 function fecharSelecao(){
   $('#veuSel').classList.remove('on');
@@ -2744,7 +2893,7 @@ function blocoNo(a, n){
     <div class="grupo"><span class="rot">Pré-requisitos</span>
       ${n.pais.length ? n.pais.map(pid=>{
         const m = porId.get(pid), am = arvDe.get(pid);
-        return `<div class="pre" data-pid="${esc(pid)}"><i style="background:${esc(corDoNo(m))}"></i><span>${m ? esc(m.nome) : '(requisito que não existe mais)'}</span>
+        return `<div class="pre" data-pid="${esc(pid)}"><i style="background:${esc(corDoNo(m))}"></i><span>${m ? linkNo(m) : '(requisito que não existe mais)'}</span>
           ${am && am!==a ? `<em>${esc(nomeCat(am.categoria))} · ${esc(am.nome)}</em>` : ''}<button class="btn mini pre-x" title="Remover requisito" aria-label="Remover requisito">×</button></div>`;
       }).join('') : `<p class="vazio" style="margin:0 0 8px">Sem requisitos: é uma raiz, sempre liberada.</p>`}
       <select class="campo" id="addPre" aria-label="Adicionar pré-requisito">
@@ -2777,7 +2926,8 @@ function blocoNo(a, n){
     </div>
     ${blocoTranca(n)}
     <div class="grupo"><label class="rot" for="eDesc">Descrição</label><textarea id="eDesc" class="campo" placeholder="O que esta habilidade faz… (contas entre chaves: {FOR*2 + 10})">${esc(n.desc)}</textarea>
-      <p class="nota">Contas entre chaves viram o número do personagem: <code>{FOR*2 + 10}</code>. Valem FOR, DES, AGI, VIT, CAN, as defesas (DFF, DFM, BLQ), os derivados (ESQ, FUR, PER, EMB) e LVL.</p></div>
+      <p class="nota">Contas entre chaves viram o número do personagem: <code>{FOR*2 + 10}</code>. Valem FOR, DES, AGI, VIT, CAN, as defesas (DFF, DFM, BLQ), os derivados (ESQ, FUR, PER, EMB) e LVL.</p>
+      ${(()=>{ const c = citadosEm(n); return c.length ? `<p class="nota citados">Cita: ${c.map(m=>linkNo(m)).join(', ')}</p>` : ''; })()}</div>
     <div class="acoes">
       <button class="btn" id="btDuplicar">Duplicar</button>
       <button class="btn perigo" id="btExcluir">Excluir nódulo</button>
@@ -3124,11 +3274,11 @@ function painelJogador(){
       : est==='disp' ? 'Disponível' : est==='caro' ? faltaTexto(p, n, 1) : est==='fechado' ? `Fechado por “${fech.nome}”` : 'Bloqueado';
     detalhe = `<div class="bloco"><h2>${esc(n.nome)}</h2>
       <p class="info">${[esc(bib().tipos[n.tipo]?.nome || ''), nat ? `<span style="color:${esc(nat.cor)}">●</span> ${esc(nat.nome)}` : '', nomesUso].filter(Boolean).join(' · ')}</p>
-      ${n.desc ? `<p class="info" style="color:var(--texto)" id="descJog">${htmlTexto(n.desc, p)}</p>` : ''}
-      ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</span></li>`).join('')}</ul>`
+      ${n.desc ? `<p class="info" style="color:var(--texto)" id="descJog">${htmlTexto(n.desc, p, n)}</p>` : ''}
+      ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p, n) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</span></li>`).join('')}</ul>`
              : `<p class="info">Custo: ${esc(custoTexto(n.graus[0].custos))}</p>${n.graus[0].uso ? `<p class="info" id="usoJog">Custo de uso: ${htmlCusto(n.graus[0].uso, p)}</p>` : ''}`}
       ${htmlMarca(n, false)}
-      ${n.pais.length ? `<p class="info acento">${esc(exigencia(n))}</p>` : ''}
+      ${n.pais.length ? `<p class="info acento">${exigencia(n, true)}</p>` : ''}
       ${col.length ? `<p class="info">Caminho exclusivo com ${col.map(m=>'“'+esc(m.nome)+'”').join(', ')}.</p>` : ''}
       ${esc0 ? `<p class="info">Escola: ${esc(esc0.escola.nome)}</p>` : ''}
       <p class="info" style="font-weight:600">${esc(txtEstado)}</p>
@@ -3827,7 +3977,7 @@ function mostrarDica(n){
   const trancaTxt = !jog && n.tranca ? (()=>{ const ab = doc.personagens.filter(x=>abertoPara(x, n.id)).map(x=>x.nome); return 'Trancado · ' + (ab.length ? 'aberto para ' + ab.join(', ') : 'ainda não aberto para ninguém'); })() : '';
   $('#dica2').innerHTML = `<h3 style="color:${nat ? nat.cor : 'var(--texto)'}">${esc(n.nome)}</h3>
     <div class="meta">${esc(meta)}</div>
-    ${n.desc ? `<p>${htmlTexto(n.desc, p)}</p>` : ''}
+    ${n.desc ? `<p>${htmlTexto(n.desc, p, n)}</p>` : ''}
     ${G===1 && n.graus[0].uso ? `<p class="uso">Custo de uso: ${htmlCusto(n.graus[0].uso, p)}</p>` : ''}
     ${G>1 ? `<ul class="gr">${n.graus.map((g,i)=>`<li style="opacity:${!jog || i<=g0 ? 1 : .55}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</li>`).join('')}</ul>` : ''}
     ${trancaTxt ? `<p class="tranca">${esc(trancaTxt)}</p>` : ''}
@@ -3845,12 +3995,95 @@ function htmlConta(c){
   return c.v!=null ? `<span class="conta" title="${esc(R.explicarConta(c))}">${esc(String(c.v))}</span>`
     : `<span class="conta sem" title="${esc(c.erro ? R.explicarConta(c) : 'Conta: o número sai da ficha do personagem')}">${esc(c.expr)}</span>`;
 }
-function htmlTexto(texto, p){
+function htmlTexto(texto, p, dono){
   const R = window.TC && TC.rules;
-  if(!R || !R.partesComContas) return esc(texto);
+  if(!R || !R.partesComContas) return comLinks(texto, dono);
   const k = contaDe(p);
-  return R.partesComContas(texto, k && k.vars, k && k.cfg).map(x=>x.t==='txt' ? esc(x.s) : htmlConta(x)).join('');
+  return R.partesComContas(texto, k && k.vars, k && k.cfg).map(x=>x.t==='txt' ? comLinks(x.s, dono) : htmlConta(x)).join('');
 }
+/* (lote 27) As habilidades citadas viram links: o nome de outro nódulo escrito no texto (ou nos requisitos) leva até
+   ele — na mesma árvore ou em outra. O nome tem que estar escrito como na árvore (com a maiúscula), inteiro, e ter
+   4 letras ou mais. Nome repetido em árvores diferentes: vale o da árvore do texto. Quem joga só vê link para o que
+   está à vista dele (a biblioteca do personagem já vem sem os caminhos trancados e as escolas secretas) e numa árvore
+   que o personagem tem equipada; o resto fica texto. "← Voltar" (no canto da árvore) desfaz os pulos, um por vez. */
+let nomesCache = {ger:-1, re:null, por:null};
+function indiceDeNomes(){
+  if(nomesCache.ger===geracaoBib) return nomesCache;
+  const por = new Map();
+  for(const a of bib().arvores) for(const n of a.nodes){
+    const nm = String(n.nome || '').trim();
+    if(nm.length<4) continue;
+    if(!por.has(nm)) por.set(nm, []);
+    por.get(nm).push(n);
+  }
+  const lista = [...por.keys()].sort((x, y)=>y.length - x.length).map(x=>x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  let re = null;
+  try{ re = lista.length ? new RegExp('(?<![\\p{L}\\p{N}])(' + lista.join('|') + ')(?![\\p{L}\\p{N}])', 'gu') : null; }catch(e){ re = null; }
+  nomesCache = {ger:geracaoBib, re, por};
+  return nomesCache;
+}
+// o nódulo que um nome cita (do ponto de vista de dono), se quem está vendo pode ir até ele
+function alvoDoNome(nome, dono){
+  const l = indiceDeNomes().por.get(nome); if(!l) return null;
+  const aDono = dono ? arvDe.get(dono.id) : arvoreVisivel();
+  const n = l.find(m=>arvDe.get(m.id)===aDono) || l[0];
+  if(!n || (dono && n.id===dono.id)) return null;
+  return podeIrAoNo(n.id) ? n : null;
+}
+function podeIrAoNo(id){
+  const a = arvDe.get(id); if(!a) return false;
+  if(ui.modo==='mestre') return true;
+  const p = personagemAtual(); return !!(p && p.arvores.includes(a.id));
+}
+function linkNo(m, texto){
+  const a = arvDe.get(m.id), fora = a && a!==arvoreVisivel();
+  return `<a href="#" class="lk-no" data-no="${esc(m.id)}" title="Ir até ${esc(m.nome)}${fora ? ' (' + esc(nomeCat(a.categoria)) + ' · ' + esc(a.nome) + ')' : ''}">${esc(texto ?? m.nome)}</a>`;
+}
+function comLinks(txt, dono){
+  const s = String(txt ?? ''), {re} = indiceDeNomes();
+  if(!re || !s) return esc(s);
+  let out = '', i = 0;
+  re.lastIndex = 0;
+  for(let m; (m = re.exec(s)); ){
+    const alvo = alvoDoNome(m[1], dono);
+    if(!alvo) continue;
+    out += esc(s.slice(i, m.index)) + linkNo(alvo, m[1]); i = m.index + m[1].length;
+  }
+  return out + esc(s.slice(i));
+}
+// os nódulos citados no texto de um nódulo (a descrição e os graus), sem repetir
+function citadosEm(n){
+  const {re} = indiceDeNomes(), vistos = new Map();
+  if(!re) return [];
+  for(const t of [n.desc, ...n.graus.map(g=>g.texto)]){
+    re.lastIndex = 0;
+    for(let m; (m = re.exec(String(t || ''))); ){ const alvo = alvoDoNome(m[1], n); if(alvo && !vistos.has(alvo.id)) vistos.set(alvo.id, alvo); }
+  }
+  return [...vistos.values()];
+}
+const pulosNo = [];          // de onde se veio: [{no, arv}]
+function irParaNo(id, voltando){
+  if(!porId.has(id) || !podeIrAoNo(id)) return;
+  const a = arvDe.get(id), vis = arvoreVisivel();
+  if(!voltando && selecionado && selecionado!==id) pulosNo.push({no:selecionado});
+  if(pulosNo.length>30) pulosNo.shift();
+  if(!vis || vis.id!==a.id){ if(ui.modo==='mestre') trocarArvoreMestre(a.id); else trocarArvoreJogador(a.id); }
+  selecionado = id; desenhar(); pintarPainel(); focarNo(id); pintarVoltarNo();
+}
+function voltarNo(){
+  while(pulosNo.length){ const v = pulosNo.pop(); if(porId.has(v.no) && podeIrAoNo(v.no)){ irParaNo(v.no, true); return; } }
+  pintarVoltarNo();
+}
+function pintarVoltarNo(){
+  const b = $('#btVoltarNo'); if(!b) return;
+  const v = pulosNo[pulosNo.length - 1], m = v && porId.get(v.no);
+  b.hidden = !m;
+  if(m) b.textContent = '← Voltar para “' + m.nome + '”';
+}
+document.addEventListener('click', e=>{
+  const l = e.target.closest && e.target.closest('.lk-no'); if(!l) return;
+  e.preventDefault(); irParaNo(l.dataset.no);
+});
 function htmlCusto(uso, p){
   const R = window.TC && TC.rules;
   if(!R || !R.custoDeUso) return '';
@@ -3951,6 +4184,7 @@ function ligarTela(){
     desenhar();
   }, {passive:false});
   $('#btMais').onclick = ()=>{ zoomPara(cam.k*1.25); desenhar(); };
+  $('#btVoltarNo').onclick = voltarNo;                  // (lote 27)
   $('#btMenos').onclick = ()=>{ zoomPara(cam.k/1.25); desenhar(); };
   $('#btCentro').onclick = ()=>{ centralizar(); desenhar(); };
 }
@@ -4146,6 +4380,7 @@ function iniciar(){
   $('#btTroca').onclick = abrirTroca;
   $('#btNovaAba').onclick = novaAba;
   $('#btSelArv').onclick = abrirSelecao;
+  $('#btTags').onclick = abrirTags;                     // (lote 27)
   $('#btRenomearAba').onclick = renomearAba;
   $('#btDuplicarAba').onclick = duplicarAba;
   $('#btExcluirAba').onclick = excluirAba;
@@ -4174,6 +4409,18 @@ function iniciar(){
   pintarTudo(); centralizar(); desenhar();
   // (lote 16) aberta por outro sistema com um alvo — o "Abrir na Árvore" da ficha ({ personagem }): vai até ele
   if(window.TC && TC.ponte && TC.ponte.aoIr) TC.ponte.aoIr(a=>{
+    // (lote 27) das notas do mestre (e da busca rápida): uma habilidade, ou uma tag (abre a tela das tags nela)
+    if(a && typeof a.no==='string' && trocarModoSePode()){
+      if(!porId.has(a.no)){ aviso('Essa habilidade não existe mais.', 'err'); return; }
+      irParaNo(a.no, true); zoomPara(Math.max(cam.k, 1)); focarNo(a.no); desenhar(); return;
+    }
+    if(a && typeof a.tag==='string'){
+      if(ui.modo!=='mestre') trocarModoSePode();
+      if(!window.TC || !TC.tags || !TC.tags.podeEditar()) return;
+      TC.tags.pronto.then(()=>{ const t = TC.tags.lista().find(x=>x.id===a.tag); if(!t){ aviso('Essa tag não existe mais.', 'err'); return; }
+        tg.tipo = t.tipo; tg.atual = t.id; if(tagsAberto()){ tg.busca = ''; $('#tgBusca').value = ''; pintarTags(); } else abrirTags(); });
+      return;
+    }
     if(!a || typeof a.personagem!=='string') return;
     if(!doc.personagens.some(p=>p.id===a.personagem)){ aviso('Esse personagem não aparece nesta Árvore.', 'err'); return; }
     if(ui.modo!=='jogador') trocarModo('jogador');

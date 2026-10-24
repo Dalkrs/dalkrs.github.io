@@ -3,7 +3,8 @@
 //     Reinos, Corte, Diplomacia, Intrigas, Guerra) e Preparar (Terreno, Mapa); as teclas 1 a 6;
 //   · o trilho em grupos com nome: Sessão, Traçar, Preparar;
 //   · os blocos: abertos nas abas da sessão, fechados (com o resumo) no Preparar;
-//   · a data abre a sanfona da linha do tempo; quem joga continua com as duas fileiras.
+//   · a data abre a sanfona da linha do tempo; quem joga também vê os grupos (sem o Preparar) e a sanfona só para ler;
+//   · cada grupo com a sua cor (no nome do grupo e no alto do painel).
 const { start, checker } = require('./lib');
 const { ok, end } = checker();
 const j = JSON.stringify;
@@ -67,11 +68,41 @@ const j = JSON.stringify;
     ok(await ativa() === 'tab-linha' && await P.locator('#sanfonaData').count() === 0, 'o botão da sanfona abre a aba Linha e fecha a sanfona');
   });
 
+  await passo('a sanfona com a linha do tempo', async () => {
+    await E(() => { const N = window.MundoNucleo; Mundo.mudar('linha', m => { N.linhaComecar(m, { nome: 'Sangue, Ouro e Cinzas — a campanha de nome bem comprido' }); N.linhaNova(m, { nome: '???' }); }); });
+    await w(200);
+    await P.locator('#dataTxt').click(); await w(200);
+    const r = await E(() => { const s = document.getElementById('sanfonaData'), b = s.getBoundingClientRect();
+      const lins = [...s.querySelectorAll('.sf-lin')].map(l => { const n = l.querySelector('.sf-nome'), d = l.querySelector('.sf-dt'), a = l.querySelector('.sf-agora');
+        return { alt: l.getBoundingClientRect().height, dAlt: d.getBoundingClientRect().height, aAlt: a ? a.getBoundingClientRect().height : 0, cabe: l.scrollWidth <= l.clientWidth + 1 }; });
+      return { larg: b.width, lins }; });
+    ok(r.lins.length === 2 && r.lins.every(l => l.cabe && l.dAlt < 20 && l.aAlt < 22 && l.alt < 56), 'cada campanha em duas linhas (nome e data), o "no mapa" numa pílula, nada vazando: ' + j(r));
+    await P.screenshot({ path: __dirname + '/shot-mundo26-sanfona.png', clip: { x: 0, y: 0, width: 760, height: 360 } });
+    await P.keyboard.press('Escape'); await w(80);
+  });
+
+  await passo('as cores dos grupos', async () => {
+    await P.locator('#mundo').click({ position: { x: 400, y: 400 } }); await w(80);
+    await P.keyboard.press('2'); await w(150);
+    const c1 = await E(() => [document.getElementById('pane').dataset.grupo, getComputedStyle(document.querySelector('[data-grupo="sessao"] .tabs-g')).color, getComputedStyle(document.querySelector('[data-grupo="preparar"] .tabs-g')).color]);
+    ok(c1[0] === 'sessao' && c1[1] !== c1[2], 'na Hoje, o painel tem a cor da Sessão, e cada grupo a sua: ' + j(c1));
+    await P.keyboard.press('6'); await w(150);
+    ok(await E(() => document.getElementById('pane').dataset.grupo) === 'preparar', 'no Mapa, a do Preparar');
+    await P.screenshot({ path: __dirname + '/shot-mundo26-cores.png', clip: { x: 1440 - 360, y: 40, width: 360, height: 420 } });
+  });
+
   await passo('ver como jogador', async () => {
     await P.locator('#comoJog').check(); await w(250);
-    ok(await E(() => document.getElementById('tabs').dataset.modo) === 'filas', 'vendo como jogador: as duas fileiras de sempre');
+    const r = await E(() => ({ modo: document.getElementById('tabs').dataset.modo, grupos: [...document.querySelectorAll('.tabs-grupo')].filter(g => !g.hidden).map(g => g.dataset.grupo) }));
+    ok(r.modo === 'grupos' && j(r.grupos) === j(['sessao', 'politica']), 'vendo como jogador: os grupos também, sem o Preparar: ' + j(r));
+    await P.locator('#tab-hoje').click(); await w(200);
+    ok(await E(() => [...document.querySelectorAll('#pane details.sec')].length > 0), 'e os blocos que fecham (na Hoje)');
+    await P.locator('#dataTxt').click(); await w(200);
+    const s = await E(() => { const el = document.getElementById('sanfonaData'); return el ? { lins: el.querySelectorAll('.sf-lin').length, bts: el.querySelectorAll('button').length } : null; });
+    ok(s && s.lins === 1 && s.bts === 0, 'a sanfona só para ler: a campanha do mapa, sem botões: ' + j(s));
+    await P.keyboard.press('Escape'); await w(80);
     await P.locator('#comoJog').uncheck(); await w(250);
-    ok(await E(() => document.getElementById('tabs').dataset.modo) === 'grupos', 'de volta: os grupos');
+    ok(await E(() => [...document.querySelectorAll('.tabs-grupo')].filter(g => !g.hidden).length) === 3, 'de volta: os três grupos');
   });
 
   if (t.errs.length) console.log(t.errs.slice(0, 10).join('\n'));

@@ -215,8 +215,44 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   caneta), Traçar (região, rota, frente) e Preparar (terreno, desenho, névoa). As teclas são as de sempre.
 - **A data** (na barra de cima) abre a sanfona: "Ir para a data…" e a linha do tempo (a data de cada campanha, a que
   está no mapa marcada), com o botão para a aba Linha.
+- **Cores** (lote 27): Sessão verde-água, Política rosa, Preparar azul (`--g-sessao`, `--g-politica`, `--g-preparar`),
+  no nome e no fundo de cada grupo, no traço da aba aberta e no alto do painel (`#pane[data-grupo]`).
+- **Quem joga** (lote 27) também vê os grupos (o Preparar some: não tem aba para ele) e os blocos que fecham; a data
+  abre a sanfona só para ler (a data e a campanha que está no mapa, sem botões).
 - Os testes de antes abrem com a marca `tinycats:testes-tudo-aberto` (as fileiras, os blocos abertos, a data indo
   direto para "Ir para a data"); `src/tests/mundo-lote26.test.js` confere o menu como o mestre encontra.
+
+### As tags (lote 27)
+
+`tc/tags.js` (em todas as páginas: casca, Árvore, Fichas, Acampamento e Cenas, pelo `src/cenas/build.sh`): as
+condições, os efeitos (as áreas no chão das Cenas) e os recursos de raça e classe, cada um com uma explicação curta — o
+conceito, sem números. As prontas ficam em `tc/tags.json` (`c:`, `e:` e `r:` no id); o mestre muda, apaga e cria na
+tela **Tags** da Oficina (o botão ao lado de "Selecionar árvore"), e o que ele muda vai para o documento da mesa
+`arvore:tags` (vis `mesa`: todos leem, quem mestra a Árvore escreve; sem mesa, `tinycats:tags` no navegador) como
+`{ ed, novas, fora }` por cima das prontas. O nome escrito na página (e as outras formas: Atordoada, Atordoados) ganha o
+sublinhado pontilhado pelos destaques do navegador (`CSS.highlights`, que não mexem no HTML — por isso vale também no
+editor das notas); passar o mouse mostra a telinha. Um elemento com `data-tag-nome` (os ícones das condições nos tokens
+das Cenas) mostra a da tag dele. `[data-sem-tags]` desliga o sublinhado num pedaço da página. As tags criadas na
+Oficina não entram na lista de condições dos tokens.
+
+### As notas do mestre: @ e # (lote 27)
+
+No editor do bloco de notas (`tc/notas.js`), **@** abre a lista das fichas e dos NPCs e **#** a de lugares e coisas
+(cenas, o Mapa-múndi, habilidades, tags e os outros capítulos) — o índice da busca rápida (`tc/busca.js`, que agora
+também acha as habilidades, as tags e os capítulos das notas, para quem mestra). Escolher põe no texto
+`<a class="nt-ref" data-k data-aba data-alvo contenteditable="false">`: guarda para onde ir, não o nome, e o `limpar`
+só deixa passar esses três atributos. Ao pintar, o nome é o de agora; o que não existe mais fica cinza (`.morta`).
+Clicar chama `irPara(aba, alvo)` da casca (`aba 'notas'` abre outro capítulo) e o bloco continua aberto. A Árvore
+recebe `{ arvore, no }` (vai até a habilidade, no modo Mestre) e `{ tag }` (abre a tela Tags nela).
+
+### A Árvore: as habilidades citadas viram links (lote 27)
+
+`htmlTexto(texto, p, dono)` passa cada pedaço de texto por `comLinks`: o nome de outro nódulo (escrito como na árvore,
+inteiro, com 4 letras ou mais; `indiceDeNomes`, refeito a cada `indexar`) vira `<a class="lk-no" data-no>`. Nome
+repetido: vale o da árvore do texto. O "Exige…" do jogador (`exigencia(n, true)`) e os requisitos do editor do mestre
+também são links, e o editor ganha a linha "Cita:" (`citadosEm`). `irParaNo` troca de árvore se precisar, seleciona e
+centraliza; `pulosNo` guarda de onde se veio e o botão `#btVoltarNo` volta um pulo por vez. Quem joga só tem link para o
+que a biblioteca do personagem mostra (sem os caminhos trancados e as escolas secretas) numa árvore equipada.
 
 ### A Árvore: os nomes pelo zoom (lote 26)
 

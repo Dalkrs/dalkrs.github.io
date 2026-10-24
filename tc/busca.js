@@ -8,11 +8,12 @@
    mapa inteiro, as receitas, o rascunho do Jornal). */
 (function (raiz) {
   'use strict';
-  const GRUPOS = [['ficha', 'Fichas e NPCs'], ['cena', 'Cenas'], ['mundo', 'Mapa-múndi'], ['receita', 'Receitas'], ['item', 'Itens'], ['jornal', 'Jornal']];
+  const GRUPOS = [['ficha', 'Fichas e NPCs'], ['cena', 'Cenas'], ['mundo', 'Mapa-múndi'], ['receita', 'Receitas'], ['item', 'Itens'], ['jornal', 'Jornal'],
+    ['habilidade', 'Habilidades'], ['tag', 'Tags'], ['nota', 'Notas']];       // (lote 27) as três últimas: só quem mestra (a Árvore; as notas, o mestre)
   const ORDEM = Object.fromEntries(GRUPOS.map(([k], i) => [k, i]));
   // o que tem nome no Mapa-múndi (os carimbos também, quando o mestre dá nome a um)
   const TIPO_MUNDO = { m: 'Marcador', g: 'Grupo', r: 'Região', e: 'Evento', z: 'Zona', f: 'Frente', t: 'Rota', l: 'Linha', x: 'Texto', c: 'Carimbo' };
-  const MAX_ITENS = 6000;
+  const MAX_ITENS = 12000;
   const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const txt = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max || 120) : '');
   // sem acento e sem maiúscula: "Dáin" acha "dain"
@@ -22,7 +23,8 @@
        personagens: [{ id, nome, dono_id, campanha, ficha }]   — as linhas que este aparelho tem
        doc(id) → os dados do documento, ou null · docIds: os ids dos documentos que este aparelho tem
        eu: o id de quem busca · nomes: { [id de usuário]: nome } (os participantes, para "Personagem de Ana")
-       mestra: { cenas, mundo, meditacao, jornal } — o que quem busca mestra, aba por aba
+       mestra: { cenas, mundo, meditacao, jornal, arvore, notas } — o que quem busca mestra, aba por aba
+       tags: [{ id, nome, tipo }] — (lote 27) as tags (tc/tags.js), para quem mestra a Árvore
        vista: a campanha em vista (id) ou null · campanhas: [{ id, nome }] · campsDoc(id) → as campanhas do documento
        semMesa: tudo deste navegador (cada um é o próprio mestre; as fichas não têm dono)
      } → [{ tipo, grupo, nome, sub, aba, alvo, k, ks, outra }]
@@ -102,6 +104,20 @@
       const ras = doc('jornal:rascunho');
       for (const x of ehObj(ras) && Array.isArray(ras.materias) ? ras.materias : []) if (ehObj(x) && typeof x.id === 'string' && !vistas.has(x.id)) por('jornal', txt(x.tit) || 'Matéria sem título', 'No rascunho do Jornal', 'jornal', { materia: x.id, rascunho: true });
     }
+    // (lote 27) as habilidades das árvores e as tags (quem mestra a Árvore), e os capítulos das notas (o mestre)
+    if (ms.arvore) {
+      const b = doc('arvore:biblioteca');
+      for (const a of ehObj(b) && Array.isArray(b.arvores) ? b.arvores : []) {
+        if (!ehObj(a) || typeof a.id !== 'string') continue;
+        for (const n of Array.isArray(a.nodes) ? a.nodes : []) if (ehObj(n) && typeof n.id === 'string') por('habilidade', txt(n.nome), 'Habilidade · ' + (txt(a.nome) || 'Árvore'), 'arvore', { arvore: a.id, no: n.id });
+      }
+      const NOME_TAG = { condicao: 'Condição', efeito: 'Efeito', recurso: 'Recurso' };
+      for (const t of Array.isArray(f.tags) ? f.tags : []) if (ehObj(t) && typeof t.id === 'string') por('tag', txt(t.nome), 'Tag · ' + (NOME_TAG[t.tipo] || 'Tag'), 'arvore', { tag: t.id });
+    }
+    if (ms.notas) for (const id of ids) {
+      if (typeof id !== 'string' || !id.startsWith('notas:')) continue;
+      const d = doc(id); if (ehObj(d)) por('nota', txt(d.t) || 'Sem título', 'Capítulo das notas', 'notas', { cap: id });
+    }
     return out;
   }
   /* Sem mesa: o que cada sistema guardou neste navegador, no mesmo formato da mesa (ler(chave) → o texto guardado).
@@ -116,9 +132,11 @@
     const mu = json('tinycats:mundo:v1');
     for (const [id, m] of Object.entries(mu && ehObj(mu.mapas) ? mu.mapas : {})) docs.set('mundo:mapa:' + id, m);
     for (const [k, d] of [['jornal:pub', json('tinycats:jornal:pub')], ['jornal:rascunho', json('tinycats:jornal:rascunho')]]) if (d) docs.set(k, d);
+    const av = json('urgm.arvore.v4');                         // (lote 27) a biblioteca da Árvore deste navegador
+    if (av && ehObj(av.biblioteca)) docs.set('arvore:biblioteca', av.biblioteca);
     const md = json('tinycats:meditacao:local');
     if (md && ehObj(md['medit:receitas'])) docs.set('medit:receitas', md['medit:receitas']);
-    return { personagens, doc: id => docs.get(id) || null, docIds: [...docs.keys()], eu: null, semMesa: true, mestra: { cenas: true, mundo: true, meditacao: true, jornal: true } };
+    return { personagens, doc: id => docs.get(id) || null, docIds: [...docs.keys()], eu: null, semMesa: true, mestra: { cenas: true, mundo: true, meditacao: true, jornal: true, arvore: true } };
   }
   /* A busca: todas as palavras precisam aparecer (no nome ou na linha de baixo). Antes, o nome que começa com a
      primeira palavra; depois, uma palavra do nome que começa com ela; depois, o nome que a contém; por fim, só a linha
