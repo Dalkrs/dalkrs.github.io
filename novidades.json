@@ -2,6 +2,23 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-9",
+      "data": "2026-10-24",
+      "titulo": "Selecionar árvore, na Oficina",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Oficina: no lugar da fileira com todas as árvores, o botão “Selecionar árvore” (ou a tecla A) abre um painel com Raças, Classes, Escolas, Profissões e Outros. As raças ficam em pastas (Kitsune › Karê › Dançarina), há uma busca pelo nome e as últimas abertas ficam à mão."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Árvores: a categoria nova Profissão, com o tipo de ponto “Profissão”. Em Renomear, o campo Família agrupa no painel as árvores com nome fora do padrão."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-8",
       "data": "2026-10-24",
       "titulo": "O que está valendo agora, no alto da ficha",

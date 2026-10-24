@@ -133,6 +133,46 @@ label.rot, .rot{display:block;font:600 12px/1.35 var(--ui);letter-spacing:normal
 .aba b{font:600 10px var(--monof);opacity:.7}
 .aba .lacre{font:13px/1 var(--glifo);color:var(--acento)}
 
+/* ================= (lote 26) o painel "Selecionar árvore" (Oficina) ================= */
+#btSelArv{display:flex;align-items:center;gap:7px;font-weight:600;border-color:var(--acento-borda);color:var(--acento);background:var(--acento-fundo)}
+#btSelArv[hidden], #atualArv[hidden]{display:none}
+#btSelArv .ico-sel{font-size:15px;line-height:1}
+#atualArv{flex:none;display:flex;flex-direction:column;gap:2px;padding:0 10px;border-right:1px solid var(--linha);min-width:0;max-width:280px}
+#atualArv small{font:600 11.5px/1 var(--ui);color:var(--texto-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#atualArv b{font:600 15px/1.15 var(--titulo);color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#listaAbas .recentes-rot{flex:none;align-self:center;font:600 11.5px var(--ui);color:var(--texto-3);margin-right:2px}
+#veuSel{z-index:85;place-items:start center;padding-top:6vh}
+.modal.sel{width:min(980px,100%);max-height:86vh;display:flex;flex-direction:column;padding:0;overflow:hidden}
+.sel-topo{display:flex;align-items:center;gap:12px;padding:18px 20px 12px}
+.sel-topo h2{margin:0;flex:none}
+.sel-topo .campo{flex:1 1 auto;max-width:340px;margin-left:auto}
+.sel-abas{display:flex;gap:4px;padding:0 20px;border-bottom:1px solid var(--linha);overflow-x:auto}
+.sel-aba{appearance:none;border:0;border-bottom:2px solid transparent;background:none;color:var(--texto-2);padding:9px 12px;cursor:pointer;font:600 14px var(--ui);display:flex;gap:7px;align-items:center;white-space:nowrap}
+.sel-aba b{font:600 11px var(--monof);color:var(--texto-3)}
+.sel-aba:hover{color:var(--texto)}
+.sel-aba[aria-selected="true"]{color:var(--acento);border-bottom-color:var(--acento)}
+.sel-corpo{overflow-y:auto;padding:14px 20px 20px;flex:1 1 auto}
+.sel-rot{font:600 12px var(--ui);color:var(--texto-3);margin:0 0 8px}
+.sel-recentes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.sel-trilha{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;font:600 14px var(--ui)}
+.sel-trilha button{appearance:none;border:0;background:none;color:var(--acento);cursor:pointer;padding:2px 0;font:inherit}
+.sel-trilha button:hover{text-decoration:underline}
+.sel-trilha span{color:var(--texto-3)}
+.sel-trilha b{color:var(--texto)}
+.sel-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:10px}
+.sel-card{appearance:none;text-align:left;cursor:pointer;border:1px solid var(--linha);background:var(--fundo);color:var(--texto);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:5px;min-height:76px;transition:.12s}
+.sel-card:hover, .sel-card:focus-visible{border-color:var(--acento-borda);background:var(--acento-fundo)}
+.sel-card b{font:600 16px/1.2 var(--titulo)}
+.sel-card small{font:500 12px/1.3 var(--ui);color:var(--texto-3)}
+.sel-card.pasta{border-style:solid;border-left:4px solid var(--acento-borda)}
+.sel-card.pasta b::after{content:' ›';color:var(--texto-3)}
+.sel-card.atual{border-color:var(--acento);box-shadow:inset 0 0 0 1px var(--acento)}
+.sel-card small.previa{color:var(--texto-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sel-card .lacre{font:13px/1 var(--glifo);color:var(--acento);margin-left:4px}
+.sel-vazio{color:var(--texto-3);font-style:italic;font-size:13.5px;padding:18px 0}
+.sel-rodape{display:flex;gap:8px;align-items:center;padding:12px 20px;border-top:1px solid var(--linha);background:var(--fundo-2)}
+.sel-rodape .nota{margin:0 auto 0 0}
+
 /* ================= palco ================= */
 #palco{display:grid;grid-template-columns:340px 1fr;min-height:0}
 #painel{border-right:1px solid var(--linha);background:var(--fundo-2);overflow-y:auto;overscroll-behavior:contain;padding:16px}
@@ -456,6 +496,8 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
   </header>
 
   <nav id="abas" aria-label="Abas">
+    <button class="btn" id="btSelArv" title="Selecionar árvore (tecla A)" hidden><span class="ico-sel" aria-hidden="true">▤</span><span class="longo">Selecionar árvore</span></button>
+    <div id="atualArv" hidden></div>
     <div id="listaAbas" role="tablist"></div>
     <button class="btn ico" id="btNovaAba" title="Nova">+</button>
     <button class="btn mini" id="btRenomearAba" title="Renomear"><span class="longo">Renomear</span><span class="curto" aria-hidden="true">✎</span></button>
@@ -496,6 +538,7 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 <div id="dica2" role="tooltip"></div>
 <div id="buscaRes" class="busca-res" hidden></div>
 <div class="veu" id="veu"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="veu" id="veuSel"><div class="modal sel" id="selArv" role="dialog" aria-modal="true" aria-labelledby="selTit"></div></div>
 <div class="veu" id="veuDlg"><div class="modal estreito" id="dlg" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
@@ -538,7 +581,7 @@ const USOS_PADRAO = [
   {id:'postura', nome:'Postura', sigla:'Po'}
 ];
 const CATEGORIAS = [
-  {id:'raca', nome:'Raça'}, {id:'classe', nome:'Classe'}, {id:'escola', nome:'Escola'}, {id:'outra', nome:'Outra'}
+  {id:'raca', nome:'Raça'}, {id:'classe', nome:'Classe'}, {id:'escola', nome:'Escola'}, {id:'profissao', nome:'Profissão'}, {id:'outra', nome:'Outra'}
 ];
 const FORMAS = [
   {id:'circulo', nome:'Círculo'}, {id:'losango', nome:'Losango'}, {id:'hexagono', nome:'Hexágono'},
@@ -621,7 +664,7 @@ function garantirSelecoes(){
    O tipo de ponto padrão de uma árvore vem da categoria dela: árvore de Raça gasta pontos de "Raça"; de Classe,
    pontos de "Classe". Nas outras categorias (e enquanto esses tipos não existirem), é o primeiro tipo da lista.
    O tipo é criado quando a primeira árvore da categoria aparece; cada personagem começa com 0 dele (é o mestre quem dá). */
-const POOL_DA_CATEGORIA = {raca:{nome:'Raça', cor:'#5FA37A'}, classe:{nome:'Classe', cor:'#6F8FD6'}};
+const POOL_DA_CATEGORIA = {raca:{nome:'Raça', cor:'#5FA37A'}, classe:{nome:'Classe', cor:'#6F8FD6'}, profissao:{nome:'Profissão', cor:'#C9894B'}};
 function poolPadrao(a){
   const b = bib(), alvo = a && POOL_DA_CATEGORIA[a.categoria];
   return (alvo && b.pools.find(p=>norm(p.nome)===norm(alvo.nome))) || b.pools[0] || null;
@@ -713,7 +756,8 @@ function normalizarArvore(a, b, ids, vistasA){
   a.id = idUnico(a.id, 'a', vistasA || new Set()); a.nome = String(a.nome || 'Árvore');
   if(!CATEGORIAS.some(c=>c.id===a.categoria)) a.categoria = 'outra';
   a.secreta = !!a.secreta; a.senha = String(a.senha || '');
-  if(typeof a.barra==='string' && a.barra.trim()) a.barra = a.barra.trim().slice(0,30); else delete a.barra;    // (lote 21) o nome da barra especial, quando o texto não diz
+  if(typeof a.barra==='string' && a.barra.trim()) a.barra = a.barra.trim().slice(0,30); else delete a.barra;
+  if(typeof a.familia==='string' && a.familia.trim()) a.familia = a.familia.trim().slice(0,40); else delete a.familia;   // (lote 26) o grupo no painel    // (lote 21) o nome da barra especial, quando o texto não diz
   a.nodes = soObjetos(a.nodes);
   a.nodes.forEach(n=>normalizarNo(n, b, ids));
 }
@@ -2142,15 +2186,26 @@ const ICONE_ALCA = '<svg viewBox="0 0 8 12" aria-hidden="true">' + [2,6,10].map(
 /* ---------- abas: árvores (mestre) ou personagens (jogador) ---------- */
 function pintarAbas(){
   const cx = $('#listaAbas');
+  $('#btSelArv').hidden = ui.modo!=='mestre';
+  $('#atualArv').hidden = true;
   if(ui.modo==='mestre'){
-    const lista = arvoresOrdenadas(bib().arvores);
-    cx.innerHTML = lista.length ? lista.map(a=>`
-      <button class="aba" role="tab" data-id="${esc(a.id)}" aria-selected="${a.id===ui.arvoreMestre}">
-        <small>${esc(nomeCat(a.categoria))}</small>${esc(a.nome)}${a.secreta ? '<span class="lacre" title="Secreta">秘</span>' : ''}<b>${a.nodes.length}</b>
-      </button>`).join('') : '<span class="vazio" style="padding:6px 4px">Nenhuma árvore ainda</span>';
+    /* (lote 26) No lugar da fileira de todas as árvores: o botão "Selecionar árvore", a que está aberta e as últimas
+       abertas (até quatro), para voltar rápido. */
+    const lista = bib().arvores, atual = arvorePorId(ui.arvoreMestre);
+    lembrarRecente(ui.arvoreMestre);
+    if(atual){
+      const c = caminhoDaArvore(atual), onde = [nomeCat(atual.categoria), ...(c.partes.length ? [c.fam, ...c.partes.slice(0,-1)] : [])];
+      $('#atualArv').innerHTML = `<small>${esc(onde.join(' › '))}</small><b>${esc(atual.nome)}${atual.secreta ? ' <span class="lacre" title="Secreta">秘</span>' : ''}</b>`;
+      $('#atualArv').hidden = false;
+    }
+    const rec = (ui.recentes || []).filter(id=>id!==ui.arvoreMestre).map(arvorePorId).filter(Boolean).slice(0,4);
+    cx.innerHTML = rec.length ? '<span class="recentes-rot">Recentes</span>' + rec.map(a=>`
+      <button class="aba" role="tab" data-id="${esc(a.id)}" aria-selected="false" title="${esc(nomeCat(a.categoria))} · ${esc(a.nome)}">
+        ${esc(a.nome)}${a.secreta ? '<span class="lacre" title="Secreta">秘</span>' : ''}
+      </button>`).join('') : (lista.length ? '' : '<span class="vazio" style="padding:6px 4px">Nenhuma árvore ainda</span>');
     $('#btNovaAba').title = 'Nova árvore';
     $('#btNovaAba').setAttribute('aria-label', 'Nova árvore');
-    $('#btRenomearAba').title = 'Renomear ou mudar a categoria';
+    $('#btRenomearAba').title = 'Renomear, mudar a categoria ou a família';
     $('#btRenomearAba').disabled = $('#btDuplicarAba').disabled = $('#btExcluirAba').disabled = !lista.length;
   }else{
     // (numa mesa com campanhas, a aba diz de onde é o personagem que não é da campanha em vista)
@@ -2183,15 +2238,164 @@ function trocarArvoreJogador(id){
   const p = personagemAtual(); if(!p || p.arvoreAtual===id) return;
   p.arvoreAtual = id; selecionado = null; salvar(); pintarTudo(); centralizar();
 }
-function novaAba(){ return ui.modo==='mestre' ? novaArvore() : novoPersonagem(); }
+function novaAba(){ return ui.modo==='mestre' ? novaArvore(sel.cat) : novoPersonagem(); }
+/* ---------- (lote 26) o painel "Selecionar árvore" (a Oficina do mestre) ----------
+   As árvores ficam em abas por categoria e, dentro delas, em pastas pela família: a primeira palavra do nome
+   ("Kitsune Ayto" → Kitsune), ou a família escrita em Renomear (a.familia), para as árvores que o mestre criar com
+   outro nome. O resto do nome se divide em mais passos no " - " ("Kitsune Karê - Dançarina" → Kitsune › Karê ›
+   Dançarina). Pasta com uma árvore só não vira pasta: a árvore aparece direto. Em cima, as abertas por último. */
+const ABAS_SEL = [{id:'raca', nome:'Raças'}, {id:'classe', nome:'Classes'}, {id:'escola', nome:'Escolas'}, {id:'profissao', nome:'Profissões'}, {id:'outra', nome:'Outros'}];
+const sel = {cat:'raca', trilha:[], busca:''};
+const porNomePt = (x, y) => x.localeCompare(y, 'pt', {sensitivity:'base', numeric:true});
+function caminhoDaArvore(a){
+  const nome = String(a.nome || '').trim();
+  let fam = String(a.familia || '').trim(), resto;
+  if(fam) resto = norm(nome).startsWith(norm(fam)) ? nome.slice(fam.length).replace(/^[\s\-–·:]+/, '') : nome;
+  else { const m = nome.match(/^(\S+)\s+(.+)$/); fam = m ? m[1] : nome; resto = m ? m[2] : ''; }
+  return {fam, partes: resto ? resto.split(/\s+[-–]\s+/).map(x=>x.trim()).filter(Boolean) : []};
+}
+function montarPastas(lista){
+  const raiz = {nome:'', pastas:new Map(), arvores:[]};
+  lista.forEach(a=>{
+    const c = caminhoDaArvore(a);
+    let p = raiz;
+    for(const nm of [c.fam, ...c.partes.slice(0,-1)]){
+      const k = norm(nm);
+      if(!p.pastas.has(k)) p.pastas.set(k, {nome:nm, pastas:new Map(), arvores:[]});
+      p = p.pastas.get(k);
+    }
+    p.arvores.push({a, rotulo: c.partes.length ? c.partes[c.partes.length-1] : c.fam});
+  });
+  return raiz;
+}
+const contarPasta = p => p.arvores.length + [...p.pastas.values()].reduce((s,q)=>s + contarPasta(q), 0);
+const unicaDaPasta = p => p.arvores.length ? p.arvores[0] : unicaDaPasta([...p.pastas.values()][0]);
+// o que uma pasta mostra: as pastas de dentro (as de uma árvore só viram a árvore) e as árvores dela
+function itensDaPasta(p, raiz){
+  const itens = [];
+  p.pastas.forEach((q, k)=>{
+    if(contarPasta(q) > 1) itens.push({pasta:q, k, nome:q.nome});
+    else { const u = unicaDaPasta(q); itens.push({a:u.a, nome: raiz || /^[a-zà-ú]/.test(u.rotulo) ? u.a.nome : (norm(u.rotulo)===norm(q.nome) ? q.nome : q.nome + ' ' + u.rotulo)}); }
+  });
+  // dentro da pasta, o nome sem a família ("Ayto"); se algum não fica bom assim ("da Forja"), todos com o nome inteiro
+  const inteiro = p.arvores.some(u=>/^[a-zà-ú]/.test(u.rotulo));
+  p.arvores.forEach(u=>itens.push({a:u.a, nome: inteiro ? u.a.nome : u.rotulo}));
+  return itens.sort((x,y)=>porNomePt(x.nome, y.nome));
+}
+function lembrarRecente(id){
+  if(!id) return;
+  const r = (ui.recentes || []).filter(x=>x!==id && arvorePorId(x));
+  r.unshift(id); ui.recentes = r.slice(0,8);
+}
+const selAberto = () => $('#veuSel').classList.contains('on');
+function cardArvore(a, nome, sub){
+  const n = a.nodes.length;
+  return `<button type="button" class="sel-card${a.id===ui.arvoreMestre ? ' atual' : ''}" data-arv="${esc(a.id)}">
+    <b>${esc(nome)}${a.secreta ? '<span class="lacre" title="Secreta">秘</span>' : ''}</b><small>${sub ? esc(sub) + ' · ' : ''}${plural(n,'nódulo','nódulos')}</small></button>`;
+}
+function abrirSelecao(){
+  if(ui.modo!=='mestre') return;
+  const a = arvorePorId(ui.arvoreMestre);
+  sel.busca = '';
+  sel.cat = a ? a.categoria : (ABAS_SEL.find(c=>bib().arvores.some(x=>x.categoria===c.id)) || ABAS_SEL[0]).id;
+  sel.trilha = [];
+  if(a){
+    // abre na pasta da árvore aberta (só nas pastas que existem como pasta: com mais de uma árvore)
+    const c = caminhoDaArvore(a);
+    let p = montarPastas(bib().arvores.filter(x=>x.categoria===a.categoria));
+    for(const nm of [c.fam, ...c.partes.slice(0,-1)]){ const q = p.pastas.get(norm(nm)); if(!q || contarPasta(q) < 2) break; sel.trilha.push(norm(nm)); p = q; }
+  }
+  const m = $('#selArv');
+  m.innerHTML = `<div class="sel-topo"><h2 id="selTit">Selecionar árvore</h2>
+      <input class="campo" id="selBusca" type="search" placeholder="Procurar pelo nome…" aria-label="Procurar árvore pelo nome" autocomplete="off">
+      <button type="button" class="btn ico" id="selFechar" aria-label="Fechar" title="Fechar (Esc)">✕</button></div>
+    <div class="sel-abas" role="tablist" aria-label="Categorias"></div>
+    <div class="sel-corpo" id="selCorpo"></div>
+    <div class="sel-rodape"><p class="nota">Nomes como “Kitsune Ayto” se agrupam sozinhos. Para outro grupo, use a Família em Renomear.</p>
+      <button type="button" class="btn ouro" id="selNova">+ Nova árvore</button></div>`;
+  $('#selBusca').oninput = e=>{ sel.busca = e.target.value; pintarSelecao(); };
+  $('#selFechar').onclick = fecharSelecao;
+  $('#selNova').onclick = ()=>{ fecharSelecao(); novaArvore(sel.cat); };
+  $('#veuSel').onclick = e=>{ if(e.target===$('#veuSel')) fecharSelecao(); };
+  document.addEventListener('keydown', teclaSelecao, true);
+  $('#veuSel').classList.add('on');
+  pintarSelecao();
+  $('#selBusca').focus();
+}
+function fecharSelecao(){
+  $('#veuSel').classList.remove('on');
+  document.removeEventListener('keydown', teclaSelecao, true);
+  $('#btSelArv').focus();
+}
+function escolherNaSelecao(id){
+  fecharSelecao();
+  if(id!==ui.arvoreMestre) trocarArvoreMestre(id);
+}
+function pintarSelecao(){
+  const arvs = bib().arvores, q = norm(sel.busca.trim());
+  const abas = $('#selArv .sel-abas');
+  abas.innerHTML = ABAS_SEL.map(c=>`<button type="button" class="sel-aba" role="tab" data-cat="${c.id}" aria-selected="${!q && c.id===sel.cat}">${c.nome}<b>${arvs.filter(a=>a.categoria===c.id).length}</b></button>`).join('');
+  abas.querySelectorAll('[data-cat]').forEach(b=>b.onclick = ()=>{ sel.cat = b.dataset.cat; sel.trilha = []; sel.busca = ''; $('#selBusca').value = ''; pintarSelecao(); });
+  let h = '';
+  if(q){
+    const achou = arvs.filter(a=>norm(a.nome).includes(q) || norm(a.familia || '').includes(q)).sort((x,y)=>porNomePt(x.nome, y.nome));
+    h = achou.length
+      ? `<p class="sel-rot">${plural(achou.length,'árvore encontrada','árvores encontradas')}</p><div class="sel-grade">${achou.map(a=>cardArvore(a, a.nome, nomeCat(a.categoria))).join('')}</div>`
+      : `<p class="sel-vazio">Nenhuma árvore com “${esc(sel.busca.trim())}” no nome.</p>`;
+  }else{
+    const rec = (ui.recentes || []).map(arvorePorId).filter(Boolean).slice(0,5);
+    if(rec.length) h += `<p class="sel-rot">Abertas por último</p><div class="sel-recentes">${rec.map(a=>`<button type="button" class="aba" data-arv="${esc(a.id)}" aria-selected="${a.id===ui.arvoreMestre}"><small>${esc(nomeCat(a.categoria))}</small>${esc(a.nome)}</button>`).join('')}</div>`;
+    const aba = ABAS_SEL.find(c=>c.id===sel.cat) || ABAS_SEL[0];
+    let p = montarPastas(arvs.filter(a=>a.categoria===aba.id));
+    const trilha = [];
+    for(const k of sel.trilha){ const q2 = p.pastas.get(k); if(!q2) break; trilha.push(q2); p = q2; }
+    sel.trilha = sel.trilha.slice(0, trilha.length);
+    if(trilha.length) h += `<nav class="sel-trilha" aria-label="Onde você está"><button type="button" data-nivel="0">${esc(aba.nome)}</button>${trilha.map((x,i)=>
+      i===trilha.length-1 ? `<span>›</span><b>${esc(x.nome)}</b>` : `<span>›</span><button type="button" data-nivel="${i+1}">${esc(x.nome)}</button>`).join('')}</nav>`;
+    const itens = itensDaPasta(p, !trilha.length);
+    h += itens.length ? `<div class="sel-grade">${itens.map(it=>it.pasta
+        ? `<button type="button" class="sel-card pasta" data-pasta="${esc(it.k)}"><b>${esc(it.nome)}</b><small>${plural(contarPasta(it.pasta),'árvore','árvores')}</small><small class="previa">${esc(itensDaPasta(it.pasta, false).map(x=>x.nome).join(', '))}</small></button>`
+        : cardArvore(it.a, it.nome)).join('')}</div>`
+      : `<p class="sel-vazio">Nenhuma árvore de ${esc(nomeCat(aba.id))} ainda. “+ Nova árvore” cria a primeira.</p>`;
+  }
+  const corpo = $('#selCorpo');
+  corpo.innerHTML = h;
+  corpo.querySelectorAll('[data-arv]').forEach(b=>b.onclick = ()=>escolherNaSelecao(b.dataset.arv));
+  corpo.querySelectorAll('[data-pasta]').forEach(b=>b.onclick = ()=>{ sel.trilha.push(b.dataset.pasta); pintarSelecao(); const pri = $('#selCorpo .sel-grade .sel-card'); if(pri) pri.focus(); });
+  corpo.querySelectorAll('[data-nivel]').forEach(b=>b.onclick = ()=>{ sel.trilha = sel.trilha.slice(0, +b.dataset.nivel); pintarSelecao(); const pri = $('#selCorpo .sel-grade .sel-card'); if(pri) pri.focus(); });
+}
+/* No painel: Esc fecha; Backspace (fora da busca com texto) volta uma pasta; as setas andam pelos cartões. */
+function teclaSelecao(e){
+  if(!selAberto() || dialogoAberto()) return;
+  const busca = $('#selBusca'), naBusca = document.activeElement===busca;
+  if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); fecharSelecao(); return; }
+  if(e.key==='Backspace' && !(naBusca && busca.value) && sel.trilha.length && !sel.busca){
+    e.preventDefault(); sel.trilha.pop(); pintarSelecao(); const pri = $('#selCorpo .sel-grade .sel-card'); (pri || busca).focus(); return;
+  }
+  if(!/^Arrow(Up|Down|Left|Right)$/.test(e.key)) return;
+  const cards = [...document.querySelectorAll('#selCorpo .sel-grade .sel-card')];
+  if(!cards.length) return;
+  const i = cards.indexOf(document.activeElement);
+  if(naBusca){ if(e.key==='ArrowDown'){ e.preventDefault(); cards[0].focus(); } return; }
+  if(i<0) return;
+  e.preventDefault();
+  const porLinha = cards.filter(c=>c.offsetTop===cards[0].offsetTop).length || 1;
+  let j = i;
+  if(e.key==='ArrowRight') j = Math.min(cards.length-1, i+1);
+  else if(e.key==='ArrowLeft') j = Math.max(0, i-1);
+  else if(e.key==='ArrowDown') j = Math.min(cards.length-1, i+porLinha);
+  else if(e.key==='ArrowUp'){ if(i<porLinha){ busca.focus(); return; } j = i-porLinha; }
+  cards[j].focus();
+}
+
 function renomearAba(){ return ui.modo==='mestre' ? renomearArvore() : renomearPersonagem(); }
 function duplicarAba(){ return ui.modo==='mestre' ? duplicarArvore() : duplicarPersonagem(); }
 function excluirAba(){ return ui.modo==='mestre' ? excluirArvore() : excluirPersonagem(); }
 
-async function novaArvore(){
+async function novaArvore(catPadrao){
   const r = await dialogo({titulo:'Nova árvore', campos:[
-      {nome:'nome', rotulo:'Nome', valor:'', dica:'Ex.: Humano, Monge, Escola da Garça Branca'},
-      {nome:'cat', rotulo:'Categoria', tipo:'chips', valor:'classe', opcoes:CATEGORIAS.map(c=>({valor:c.id, rotulo:c.nome}))}],
+      {nome:'nome', rotulo:'Nome', valor:'', dica:'Ex.: Kitsune Ayto, Monge, Ferreiro — “Raça Sub-raça” se agrupa sozinho'},
+      {nome:'cat', rotulo:'Categoria', tipo:'chips', valor:CATEGORIAS.some(c=>c.id===catPadrao) ? catPadrao : 'classe', opcoes:CATEGORIAS.map(c=>({valor:c.id, rotulo:c.nome}))}],
     botoes:[{rotulo:'Cancelar', valor:null}, {rotulo:'Criar árvore', valor:true, classe:'ouro', validar:v=>v.nome.trim() ? '' : 'Dê um nome à árvore.'}]});
   if(!r) return;
   registrar('nova árvore');
@@ -2207,12 +2411,16 @@ async function renomearArvore(){
   const a = arvoreVisivel(); if(!a) return;
   const r = await dialogo({titulo:'Renomear árvore', campos:[
       {nome:'nome', rotulo:'Nome', valor:a.nome},
-      {nome:'cat', rotulo:'Categoria', tipo:'chips', valor:a.categoria, opcoes:CATEGORIAS.map(c=>({valor:c.id, rotulo:c.nome}))}],
+      {nome:'cat', rotulo:'Categoria', tipo:'chips', valor:a.categoria, opcoes:CATEGORIAS.map(c=>({valor:c.id, rotulo:c.nome}))},
+      {nome:'familia', rotulo:'Família (para agrupar no painel)', valor:a.familia || '', dica:'Em branco: a primeira palavra do nome ('+caminhoDaArvore(Object.assign({}, a, {familia:''})).fam+')'}],
     botoes:[{rotulo:'Cancelar', valor:null}, {rotulo:'Salvar', valor:true, classe:'ouro', validar:v=>v.nome.trim() ? '' : 'Dê um nome à árvore.'}]});
   if(!r) return;
   const nome = r.nome.trim(), cat = CATEGORIAS.some(c=>c.id===r.cat) ? r.cat : a.categoria;
+  const fam = String(r.familia || '').trim().slice(0,40), mudouFam = fam!==(a.familia || '');
   const mudouNome = nome!==a.nome, mudouCat = cat!==a.categoria;
-  if(!mudouNome && !mudouCat) return;
+  if(!mudouNome && !mudouCat && !mudouFam) return;
+  if(mudouFam && !mudouNome && !mudouCat){ registrar('família da árvore'); if(fam) a.familia = fam; else delete a.familia; salvar(); pintarTudo(); return; }
+  if(mudouFam){ if(fam) a.familia = fam; else delete a.familia; }
   /* Mudou a categoria para Raça ou Classe: o tipo de ponto padrão da árvore muda junto (vale para os nódulos novos).
      Se todos os custos da árvore estão num tipo só, e não é o da categoria nova, eles podem passar para ele — mas
      isso mexe em custos já postos, então é perguntado. (Árvore que mistura tipos de ponto fica como está.) */
@@ -3897,14 +4105,17 @@ function iniciar(){
   $('#btRefazer').onclick = refazer;
   $('#btTroca').onclick = abrirTroca;
   $('#btNovaAba').onclick = novaAba;
+  $('#btSelArv').onclick = abrirSelecao;
   $('#btRenomearAba').onclick = renomearAba;
   $('#btDuplicarAba').onclick = duplicarAba;
   $('#btExcluirAba').onclick = excluirAba;
   $('#veu').addEventListener('click', e=>{ if(e.target.id==='veu') fecharModal(); });
   if(window.TinyTema) TinyTema.aoMudar(() => { if(ui.tema!=='tinta' && ui.tema!=='pedra'){ document.documentElement.setAttribute('data-tema', temaResolvido()); atualizarModoUI(); desenhar(); } });
   document.addEventListener('keydown', e=>{
-    if(dialogoAberto()) return;
+    if(dialogoAberto() || selAberto()) return;
     const emCampo = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+    // (lote 26) A: o painel "Selecionar árvore" (mestre)
+    if((e.key==='a' || e.key==='A') && !e.ctrlKey && !e.metaKey && !e.altKey && !emCampo && !modalAberto() && ui.modo==='mestre' && !document.activeElement?.isContentEditable){ e.preventDefault(); return abrirSelecao(); }
     if((e.ctrlKey || e.metaKey) && !emCampo && !modalAberto()){
       const k = e.key.toLowerCase();
       if(k==='z' && !e.shiftKey){ e.preventDefault(); return desfazer(); }
