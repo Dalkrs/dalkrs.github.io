@@ -10,7 +10,7 @@ const { ok, end } = checker();
 
 const MESA = 'mesa_camp';
 const PRE_MAPA = 'mundo:mapa:', PRE_PUB = 'mundo:pub:', INDICE = 'mundo:indice';
-const CAMPS = [{ id: 'ca', nome: 'Geração do Dain', encerrada: false }, { id: 'cb', nome: 'Geração da Lira', encerrada: false }];
+const CAMPS = [{ id: 'cam1', nome: 'Geração do Dain', encerrada: false }, { id: 'cam2', nome: 'Geração da Lira', encerrada: false }];
 const SEG_A = 'Q41ZA', SEG_B = 'Q41ZB';                 // vão no nome de mapas que são só da campanha A / só da B
 const espera = ms => new Promise(r => setTimeout(r, ms));
 const j = JSON.stringify;
@@ -79,17 +79,20 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
   const mostrarEste = a => A(a, () => __mundo.App.esconderMapa(__mundo.App.mapa.id, false));     // tira do esconderijo (sem "mostrar")
 
   /* ================= 1. o mestre, com a campanha A em vista ================= */
-  const M = await naCasca('mestre-A', 'mestre', 'u_mestre', { camp: 'ca' });
-  await passo('o mapa novo nasce na campanha em vista', async () => {
-    ok(await A(M, () => { const a = __mundo.App; return a.campanha() === 'ca' && a.campanhas().length === 2 && a.mapa === null; }), 'o mestre abre com a campanha A em vista e as duas campanhas da mesa');
+  const M = await naCasca('mestre-A', 'mestre', 'u_mestre', { camp: 'cam1' });
+  await passo('o mapa novo nasce do mundo (e vai para a campanha A pela janela)', async () => {
+    ok(await A(M, () => { const a = __mundo.App; return a.campanha() === 'cam1' && a.campanhas().length === 2 && a.mapa === null; }), 'o mestre abre com a campanha A em vista e as duas campanhas da mesa');
     await M.F.fill('#vazio [data-k="vz:nome"]', 'Reino ' + SEG_A);
     await M.F.click('#vazio [data-k="vz:papel"]'); await espera(300);
     id.reino = await A(M, () => __mundo.App.mapa && __mundo.App.mapa.id);
     ok(!!id.reino && await ate(() => !!doc(PRE_MAPA + id.reino)), 'mapa criado pelo estado vazio');
     const d = doc(PRE_MAPA + id.reino);
-    ok(d.vis === 'mestre' && mesmas(d.campanhas, ['ca']) && d.dados.oculto === true, 'o documento do mapa é da campanha A (e nasce escondido): ' + j(d.campanhas));
+    // (lote 27) o mapa novo nasce do mundo — compartilhado com todas as campanhas; o mestre o põe numa campanha pela janela
+    ok(d.vis === 'mestre' && !(d.campanhas || []).length && d.dados.oculto === true, 'o mapa novo nasce do mundo (e escondido): ' + j(d.campanhas));
+    await campanhasDoMapa(M, ['cam1']);
+    ok(await ate(() => mesmas(doc(PRE_MAPA + id.reino).campanhas, ['cam1'])), '"Campanhas deste mapa…" o põe na campanha A');
     ok(!doc(PRE_PUB + id.reino) && !doc(INDICE), 'escondido: sem projeção e sem índice');
-    ok(mesmas(await A(M, () => __mundo.App.campanhasDoMapa()), ['ca']) && j(await A(M, () => __mundo.App.mapas.map(x => x.camps))) === j([['ca']]), 'a lista do mestre diz de que campanha é cada mapa');
+    ok(mesmas(await A(M, () => __mundo.App.campanhasDoMapa()), ['cam1']) && j(await A(M, () => __mundo.App.mapas.map(x => x.camps))) === j([['cam1']]), 'a lista do mestre diz de que campanha é cada mapa');
     await M.F.click('#tab-mapa'); await espera(150);
     const p = await M.F.locator('#pane').innerText();
     ok(/Este mapa é da campanha Geração do Dain\./.test(p) && await M.F.locator('#pane [data-k="mapa:campanhas"]').isVisible(), 'a aba Mapa diz de que campanha é o mapa e oferece "Campanhas deste mapa…"');
@@ -100,15 +103,15 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
     await M.F.click('#pane [data-k="mapa:mostrar"]'); await espera(300);
     ok(await ate(() => !!doc(PRE_PUB + id.reino) && !!doc(INDICE)), 'mostrado: a projeção e o índice existem');
     const p = doc(PRE_PUB + id.reino), i = doc(INDICE);
-    ok(p.vis === 'mesa' && mesmas(p.campanhas, ['ca']), 'a projeção leva as campanhas do mapa: ' + j(p.campanhas));
+    ok(p.vis === 'mesa' && mesmas(p.campanhas, ['cam1']), 'a projeção leva as campanhas do mapa: ' + j(p.campanhas));
     ok(i.vis === 'mesa' && mesmas(i.campanhas || [], []) && j(i.dados) === j({ mapas: [], mostrado: id.reino }), 'o índice (da mesa inteira) não tem o nome do mapa de campanha, só diz qual está sendo mostrado: ' + j(i.dados));
     ok(/Os jogadores da campanha Geração do Dain agora veem: Reino/.test(await avisos(M)), 'o aviso diz quem passa a ver: ' + await avisos(M));
     ok(/Os jogadores da campanha Geração do Dain estão vendo este mapa agora\./.test(await M.F.locator('#pane').innerText()), 'a aba Mapa diz quem está vendo');
   });
 
   /* ================= 2. os jogadores ================= */
-  const JA = await naCasca('jog-A', 'jogador', 'u_a', { minhas: ['ca'], camp: 'ca' });
-  const JB = await naCasca('jog-B', 'jogador', 'u_b', { minhas: ['cb'], camp: 'cb' });
+  const JA = await naCasca('jog-A', 'jogador', 'u_a', { minhas: ['cam1'], camp: 'cam1' });
+  const JB = await naCasca('jog-B', 'jogador', 'u_b', { minhas: ['cam2'], camp: 'cam2' });
   const JN = await naCasca('jog-nenhuma', 'jogador', 'u_n', { minhas: [] });
   await passo('só quem é da campanha recebe o mapa dela', async () => {
     ok(await aberto(JA) === 'Reino ' + SEG_A && j(await lista(JA)) === j(['Reino ' + SEG_A]) && await A(JA, () => __mundo.App.mostrado === __mundo.App.mapa.id), 'o jogador da campanha A abre o mapa mostrado');
@@ -123,7 +126,8 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
   /* ================= 3. um mapa do mundo ================= */
   await passo('um mapa do mundo aparece em todas as campanhas (e é o único com nome no índice)', async () => {
     id.mundo = await novoMapa(M, 'Mundo conhecido');
-    ok(await ate(() => mesmas((doc(PRE_MAPA + id.mundo) || {}).campanhas, ['ca'])), 'o segundo mapa também nasce na campanha em vista');
+    ok(await ate(() => mesmas((doc(PRE_MAPA + id.mundo) || {}).campanhas || [], [])), 'o segundo mapa também nasce do mundo (lote 27)');
+    await campanhasDoMapa(M, ['cam1']); await ate(() => mesmas(doc(PRE_MAPA + id.mundo).campanhas, ['cam1']));
     await semAvisos(M);
     await campanhasDoMapa(M, []);
     ok(await ate(() => mesmas(doc(PRE_MAPA + id.mundo).campanhas, [])), 'desmarcadas todas as campanhas, o mapa passa a ser do mundo');
@@ -162,13 +166,13 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
     id.copia = await A(M, () => { const c = __mundo.App.duplicarMapa(); return c && c.id; });
     await espera(300);
     await A(M, n => __mundo.App.renomearMapa(n), 'Cópia ' + SEG_B);
-    ok(await ate(() => { const d = doc(PRE_MAPA + id.copia); return !!d && d.dados.nome === 'Cópia ' + SEG_B && mesmas(d.campanhas, ['ca']) && d.dados.oculto === true; }), 'a cópia de um mapa da campanha A é da campanha A, e nasce escondida');
+    ok(await ate(() => { const d = doc(PRE_MAPA + id.copia); return !!d && d.dados.nome === 'Cópia ' + SEG_B && mesmas(d.campanhas, ['cam1']) && d.dados.oculto === true; }), 'a cópia de um mapa da campanha A é da campanha A, e nasce escondida');
     await mostrarEste(M); await espera(300);
-    ok(mesmas((doc(PRE_PUB + id.copia) || {}).campanhas, ['ca']) && await ate(async () => (await lista(JA)).includes('Cópia ' + SEG_B)), 'à vista, a cópia chega ao jogador da A');
+    ok(mesmas((doc(PRE_PUB + id.copia) || {}).campanhas, ['cam1']) && await ate(async () => (await lista(JA)).includes('Cópia ' + SEG_B)), 'à vista, a cópia chega ao jogador da A');
     ok(!(await entregue(JB)).includes(SEG_B), 'e não ao da B');
     await semAvisos(M);
-    await campanhasDoMapa(M, ['cb']);
-    ok(await ate(() => mesmas(doc(PRE_MAPA + id.copia).campanhas, ['cb']) && mesmas(doc(PRE_PUB + id.copia).campanhas, ['cb'])), 'passada para a campanha B: o mapa e a projeção são da B');
+    await campanhasDoMapa(M, ['cam2']);
+    ok(await ate(() => mesmas(doc(PRE_MAPA + id.copia).campanhas, ['cam2']) && mesmas(doc(PRE_PUB + id.copia).campanhas, ['cam2'])), 'passada para a campanha B: o mapa e a projeção são da B');
     const av = await avisos(M);
     ok(/agora é da campanha Geração da Lira\. Saiu desta lista: está na daquela campanha\./.test(av), 'o aviso diz para onde foi e que saiu da lista: ' + av);
     ok(!(await lista(M)).includes('Cópia ' + SEG_B) && await aberto(M) !== 'Cópia ' + SEG_B && await aberto(M) !== null, 'saiu da lista do mestre (campanha A em vista) e outro mapa ficou aberto: ' + await aberto(M));
@@ -177,15 +181,15 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
     ok(!(await entregue(JN)).includes(SEG_B), 'quem não tem campanha continua sem receber');
     // desfazer pelo aviso: volta para a campanha A e reabre
     await M.F.locator('#toasts .toast button', { hasText: 'Desfazer' }).click(); await espera(400);
-    ok(mesmas(doc(PRE_MAPA + id.copia).campanhas, ['ca']) && mesmas(doc(PRE_PUB + id.copia).campanhas, ['ca']) && await aberto(M) === 'Cópia ' + SEG_B, '"Desfazer" devolve o mapa à campanha A e o reabre');
+    ok(mesmas(doc(PRE_MAPA + id.copia).campanhas, ['cam1']) && mesmas(doc(PRE_PUB + id.copia).campanhas, ['cam1']) && await aberto(M) === 'Cópia ' + SEG_B, '"Desfazer" devolve o mapa à campanha A e o reabre');
     ok(await ate(async () => (await lista(JA)).includes('Cópia ' + SEG_B) && !(await lista(JB)).includes('Cópia ' + SEG_B)), 'e os jogadores voltam a ver como antes');
     // de novo para a B, agora para ficar
-    await campanhasDoMapa(M, ['cb']);
-    ok(await ate(() => mesmas(doc(PRE_PUB + id.copia).campanhas, ['cb'])), 'de novo na campanha B');
+    await campanhasDoMapa(M, ['cam2']);
+    ok(await ate(() => mesmas(doc(PRE_PUB + id.copia).campanhas, ['cam2'])), 'de novo na campanha B');
   });
 
   /* ================= 6. o mestre com a campanha B em vista (outro aparelho) ================= */
-  const M2 = await naCasca('mestre-B', 'mestre', 'u_mestre', { camp: 'cb' });
+  const M2 = await naCasca('mestre-B', 'mestre', 'u_mestre', { camp: 'cam2' });
   await passo('cada campanha em vista tem a sua lista; mapa de outra campanha não se abre por atalho', async () => {
     ok(j(await lista(M2)) === j(['Cópia ' + SEG_B, 'Mundo conhecido']), 'com a B em vista: os mapas da B e os do mundo: ' + j(await lista(M2)));
     ok(j(await menu(M2)) === j(['# Mapas · Geração da Lira', '· Cópia ' + SEG_B, '# Do mundo', '· Mundo conhecido']), 'o menu com a B em vista: ' + j(await menu(M2)));
@@ -196,7 +200,8 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
     await semAvisos(M2);
     ok(await A(M2, r => __mundo.App.trocarMapa(r), id.reino) === false && /Este mapa é da campanha Geração do Dain: para abri-lo, troque de campanha no menu da mesa\./.test(await avisos(M2)), 'abrir (por um atalho) um mapa da campanha A com a B em vista: o aviso manda trocar de campanha: ' + await avisos(M2));
     id.lira = await novoMapa(M2, 'Vale ' + SEG_B);
-    ok(await ate(() => mesmas((doc(PRE_MAPA + id.lira) || {}).campanhas, ['cb'])), 'o mapa criado com a B em vista é da B');
+    await campanhasDoMapa(M2, ['cam2']);                                     // (lote 27: nasce do mundo; o mestre o põe na B)
+    ok(await ate(() => mesmas((doc(PRE_MAPA + id.lira) || {}).campanhas, ['cam2'])), 'o mapa criado com a B em vista, posto na B, é da B');
     ok(await ate(async () => !(await lista(M)).includes('Vale ' + SEG_B)) && !(await lista(M)).includes('Vale ' + SEG_B), 'e não entra na lista do mestre com a A em vista');
   });
 
@@ -216,8 +221,8 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
   await passo('um mapa pode ser de duas campanhas', async () => {
     await A(M, r => __mundo.App.trocarMapa(r), id.reino);
     await semAvisos(M);
-    await campanhasDoMapa(M, ['ca', 'cb']);
-    ok(await ate(() => mesmas(doc(PRE_MAPA + id.reino).campanhas, ['ca', 'cb']) && mesmas(doc(PRE_PUB + id.reino).campanhas, ['ca', 'cb'])), 'o mapa e a projeção passam a ser das duas');
+    await campanhasDoMapa(M, ['cam1', 'cam2']);
+    ok(await ate(() => mesmas(doc(PRE_MAPA + id.reino).campanhas, ['cam1', 'cam2']) && mesmas(doc(PRE_PUB + id.reino).campanhas, ['cam1', 'cam2'])), 'o mapa e a projeção passam a ser das duas');
     ok(/agora é das campanhas Geração do Dain e Geração da Lira\./.test(await avisos(M)), 'o aviso: ' + await avisos(M));
     ok((await menu(M)).includes('· Reino ' + SEG_A + ' [em 2 campanhas]'), 'o menu do mestre marca o mapa que está em duas campanhas: ' + j(await menu(M)));
     ok(await ate(async () => (await lista(JB)).includes('Reino ' + SEG_A)) && await aberto(JB) === 'Cópia ' + SEG_B, 'o jogador da B passa a ter o mapa na lista (e continua no que o mestre mostra)');
@@ -229,14 +234,14 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
     await A(M2, ([c, r]) => { __mundo.App.trocarMapa(c); const N = __mundo.N; __mundo.App.mudar('novo marcador', m => { m.objs.push(N.objNovo('m', { x: 150, y: 150, nome: 'Ponte', liga: { t: 'mapa', id: r, nome: 'Reino' } })); }); }, [id.copia, id.reino]);
     ok(await ate(() => { const s = doc(PRE_PUB + id.copia).dados.objs.find(x => x.nome === 'Ponte'); return !!s && !!s.liga && s.liga.id === id.reino; }), 'o atalho de um mapa da B para um mapa que é da A e da B vai na projeção');
     // tirado da B, o atalho some da projeção do mapa da B junto
-    await campanhasDoMapa(M, ['ca']);
-    ok(await ate(() => mesmas(doc(PRE_PUB + id.reino).campanhas, ['ca']) && doc(PRE_PUB + id.copia).dados.objs.find(x => x.nome === 'Ponte').liga === null), 'de volta só à A: o atalho do mapa da B para ele sai da projeção');
+    await campanhasDoMapa(M, ['cam1']);
+    ok(await ate(() => mesmas(doc(PRE_PUB + id.reino).campanhas, ['cam1']) && doc(PRE_PUB + id.copia).dados.objs.find(x => x.nome === 'Ponte').liga === null), 'de volta só à A: o atalho do mapa da B para ele sai da projeção');
     ok(await ate(async () => !(await lista(JB)).includes('Reino ' + SEG_A)), 'e ele sai da lista do jogador da B');
   });
 
-  const JAB = await naCasca('jog-AB', 'jogador', 'u_ab', { minhas: ['ca', 'cb'], camp: 'cb' });
+  const JAB = await naCasca('jog-AB', 'jogador', 'u_ab', { minhas: ['cam1', 'cam2'], camp: 'cam2' });
   await passo('quem joga nas duas vê os mapas da campanha em vista (e os do mundo)', async () => {
-    ok(await A(JAB, () => __mundo.App.campanha() === 'cb' && __mundo.App.campanhas().length === 2), 'ele participa das duas e está com a B em vista');
+    ok(await A(JAB, () => __mundo.App.campanha() === 'cam2' && __mundo.App.campanhas().length === 2), 'ele participa das duas e está com a B em vista');
     ok(j(await lista(JAB)) === j(['Cópia ' + SEG_B, 'Mundo conhecido']), 'a lista dele: os da B (à vista dos jogadores) e os do mundo: ' + j(await lista(JAB)));
     ok(await aberto(JAB) === 'Cópia ' + SEG_B, 'e abre no mapa que o mestre mostra (que é da B)');
     ok((await entregue(JAB)).includes(SEG_A), '(os mapas da A chegam ao aparelho dele — ele participa dela —, só não entram na lista da B)');
@@ -250,13 +255,13 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
     ok(await ate(() => !doc(PRE_MAPA + id.reino) && !doc(PRE_PUB + id.reino)), 'apagado: o mapa e a projeção saem da mesa');
     ok(await ate(async () => !(await lista(JA)).includes('Reino ' + SEG_A)), 'e ele sai da lista do jogador da A');
     await M.F.locator('#toasts .toast button', { hasText: 'Desfazer' }).click(); await espera(400);
-    ok(await ate(() => { const d = doc(PRE_MAPA + id.reino), p = doc(PRE_PUB + id.reino); return !!d && mesmas(d.campanhas, ['ca']) && !!p && mesmas(p.campanhas, ['ca']); }), '"Desfazer" traz o mapa de volta na campanha A (com a projeção dela)');
+    ok(await ate(() => { const d = doc(PRE_MAPA + id.reino), p = doc(PRE_PUB + id.reino); return !!d && mesmas(d.campanhas, ['cam1']) && !!p && mesmas(p.campanhas, ['cam1']); }), '"Desfazer" traz o mapa de volta na campanha A (com a projeção dela)');
     ok(await ate(async () => (await lista(JA)).includes('Reino ' + SEG_A)), 'e ele volta à lista do jogador da A');
   });
 
   /* ================= o mestre auxiliar: mestra os mapas da campanha, mas não diz de que campanha é cada um ================= */
   await passo('o mestre auxiliar não passa mapa de uma campanha para outra', async () => {
-    const X = await naCasca('auxiliar-A', 'mestre', 'u_aux', { camp: 'ca', cargo: 'auxiliar' });
+    const X = await naCasca('auxiliar-A', 'mestre', 'u_aux', { camp: 'cam1', cargo: 'auxiliar' });
     ok(await A(X, () => __mundo.App.papel === 'mestre' && __mundo.App.organizaCampanhas() === false && !!__mundo.App.mapa), 'no Mapa-múndi ele mestra (tem um mapa da campanha aberto), mas não organiza as campanhas');
     const k = await A(X, () => __mundo.App.mapa.id), nome0 = await aberto(X), campsAntes = j((doc(PRE_MAPA + k) || {}).campanhas || []);
     await X.F.click('#btMapa'); await espera(150);
@@ -264,7 +269,7 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
     await X.P.keyboard.press('Escape');
     await X.F.click('#tab-mapa'); await espera(150);
     ok(await X.F.locator('#pane [data-k="mapa:campanhas"]').count() === 0, 'nem a aba Mapa (que continua dizendo de que campanha o mapa é)');
-    ok(await A(X, () => __mundo.App.definirCampanhas(null, ['cb'])) === false && j(doc(PRE_MAPA + k).campanhas || []) === campsAntes, 'e, pedido por dentro, nada muda');
+    ok(await A(X, () => __mundo.App.definirCampanhas(null, ['cam2'])) === false && j(doc(PRE_MAPA + k).campanhas || []) === campsAntes, 'e, pedido por dentro, nada muda');
     // mexer num mapa que já existe: a gravação não diz a campanha (o banco recusaria a gravação inteira se ela viesse diferente)
     const n0 = await casca(X, () => window.__gravacoes.length);
     await A(X, n => __mundo.App.renomearMapa(n + ' (aux)'), nome0);
@@ -276,9 +281,25 @@ const mesmas = (x, y) => Array.isArray(x) && x.length === y.length && y.every(c 
     await A(X, n => __mundo.App.renomearMapa(n), nome0); await ate(() => (doc(PRE_MAPA + k).dados || {}).nome === nome0);
     // um mapa novo nasce na campanha em vista (criar é mestrar dentro dela)
     const novo = await A(X, () => __mundo.App.criarMapa('Do auxiliar', { larg: 800, alt: 600 }).id);
-    ok(await ate(() => mesmas((doc(PRE_MAPA + novo) || {}).campanhas, ['ca'])), 'o mapa que ele cria nasce na campanha em vista');
+    ok(await ate(() => mesmas((doc(PRE_MAPA + novo) || {}).campanhas, ['cam1'])), 'o mapa que ele cria nasce na campanha em vista');
     await A(X, id => __mundo.App.apagarMapa(id), novo); await espera(400);
     await X.P.close();
+  });
+
+  await passo('a campanha sem linha ganha a dela na linha do tempo (lote 27)', async () => {
+    await A(M, k => __mundo.App.trocarMapa(k), id.mundo); await espera(300);
+    ok(await A(M, () => !(__mundo.App.campanhasDoMapa(__mundo.App.mapa.id) || []).length), 'o "Mundo conhecido" é do mundo');
+    // a linha do tempo começou só com a campanha A (a B foi criada depois, por exemplo)
+    await A(M, () => __mundo.App.mudar('começar a linha', m => { m.linha = null; __mundo.N.linhaComecar(m, { nome: 'Geração do Dain', camp: 'cam1' }); }));
+    await espera(200);
+    // ao abrir o mapa de novo, a B ganha a linha dela, na data da linha que está no mapa
+    await A(M, k => __mundo.App.trocarMapa(__mundo.App.mapas.find(x => x.id !== k).id), id.mundo); await espera(250);
+    await A(M, k => __mundo.App.trocarMapa(k), id.mundo); await espera(400);
+    const r = await A(M, () => { const m = __mundo.App.mapa; return m.linha.lin.map(l => ({ camp: l.camp, nome: l.nome, d: __mundo.N.dataDaLinha(m, l).dia })); });
+    ok(r.length === 2 && r[0].camp === 'cam1' && r[1].camp === 'cam2' && r[1].nome === 'Geração da Lira' && r[1].d === r[0].d, 'a Geração da Lira ganhou a linha dela, na mesma data: ' + j(r));
+    await A(M, k => __mundo.App.trocarMapa(__mundo.App.mapas.find(x => x.id !== k).id), id.mundo); await espera(200);
+    await A(M, k => __mundo.App.trocarMapa(k), id.mundo); await espera(300);
+    ok(await A(M, () => __mundo.App.mapa.linha.lin.length) === 2, 'e não ganha outra ao abrir de novo');
   });
 
   await passo('fim: jogador nenhum gravou; o que é de uma campanha não chegou a quem não é dela', async () => {

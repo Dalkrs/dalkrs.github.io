@@ -259,6 +259,7 @@
     }
     if (m) lembrarAtual(m.id);
     atualizarLista();
+    if (m && modo === 'mesa') setTimeout(linhasDasCampanhas, 0);
     if (!emitir) return;
     if (tinhaSel) App.emit('sel', App.sel);
     App.emit('mapas', App.mapas);
@@ -274,6 +275,29 @@
     const existe = escolhiveis();
     const nova = App.sel.filter(id => existe.has(id));
     if (nova.length !== App.sel.length) { App.sel = nova; App.emit('sel', nova); }
+  }
+  /* (lote 27) A linha do tempo de cada campanha: no mapa que tem linha do tempo, a campanha que vê o mapa (do mundo, ou
+     marcada nele) e ainda não tem linha ganha a dela, na data da linha que está no mapa agora — a campanha criada depois
+     que a linha do tempo começou não fica sem data. Só quem organiza as campanhas (o mestre da mesa); dá para desfazer. */
+  function linhasDasCampanhas() {
+    const m = App.mapa;
+    if (modo !== 'mesa' || App.papel !== 'mestre' || !organiza || !m || !m.linha || !campsMesa.length) return;
+    const cs = campsDoMapa(m.id);
+    // (só ids que a linha do tempo aceita — os de campanha são assim; um id fora disso seria apagado da linha, e ela nasceria de novo a cada vez)
+    const faltam = campsMesa.filter(c => !c.encerrada && /^[a-z0-9]{4,16}$/.test(c.id) && (!cs.length || cs.includes(c.id)) && !m.linha.lin.some(l => l.camp === c.id));
+    if (!faltam.length) return;
+    const at = N.linhaAtiva(m), d = at ? N.dataDaLinha(m, at) : { dia: m.cal.dia, tempo: m.cal.tempo || 0 };
+    const r = App.mudar(faltam.length === 1 ? 'a linha da campanha ' + faltam[0].nome : 'as linhas das campanhas novas', mm => {
+      let fez = false;
+      for (const c of faltam) {
+        if (mm.linha.lin.some(l => l.camp === c.id)) continue;
+        const id = N.linhaNova(mm, { nome: c.nome, camp: c.id, dia: d.dia });
+        const l = id && N.linhaDe(mm, id);
+        if (l) { l.tempo = d.tempo || 0; fez = true; }
+      }
+      return fez ? undefined : false;
+    });
+    if (r !== false) App.toast((faltam.length === 1 ? 'A campanha ' + faltam[0].nome + ' ganhou a linha dela' : 'As campanhas ' + faltam.map(c => c.nome).join(', ') + ' ganharam as linhas delas') + ' na linha do tempo, na data de agora.');
   }
   function resumo(d, id) {
     const n = N.normalizarMapa({ nome: d && d.nome, oculto: d && d.oculto });       // só o nome e o "escondido", do jeito normalizado
@@ -369,8 +393,10 @@
   /* Põe um mapa novo na coleção (navegador ou mesa) e abre. Na mesa, o que entra (criado, importado, duplicado) começa
      escondido dos jogadores: só vai para eles com o clique em "Mostrar aos jogadores". O "Desfazer" de um mapa
      apagado (esconder = false) devolve o mapa como ele era. */
-  /* camps: as campanhas do mapa que entra. Sem dizer, ele nasce na campanha em vista (numa mesa sem campanhas, em
-     nenhuma); a cópia de um mapa fica nas do original, e o mapa que volta de um "Apagar", nas que tinha. */
+  /* camps: as campanhas do mapa que entra. Sem dizer, ele nasce do mundo — compartilhado com todas as campanhas (lote 27:
+     antes, nascia na campanha em vista). O mestre auxiliar, que não passa mapas de uma campanha para outra, continua
+     criando na campanha em vista. A cópia de um mapa fica nas do original, e o mapa que volta de um "Apagar", nas que
+     tinha. */
   function adicionarMapa(m, esconder = true, camps) {
     salvarJa();
     if (modo === 'mesa' && esconder) m.oculto = true;
@@ -381,7 +407,7 @@
       gravou = gravarEstado(est);
       if (!gravou) pendentes.set(m.id, m);                                      // fica na tela; o aviso de espaço já saiu
     } else {
-      gravarDocMesa(PRE_MAPA + m.id, comColuna({ dados: N.copia(m), vis: 'mestre' }, camps || (camp ? [camp] : []), PRE_MAPA + m.id));
+      gravarDocMesa(PRE_MAPA + m.id, comColuna({ dados: N.copia(m), vis: 'mestre' }, camps || (organiza || !camp ? [] : [camp]), PRE_MAPA + m.id));
       sombraDoc.set(m.id, j(m));
       tirarOferta();
     }
@@ -1102,8 +1128,8 @@
       prontos.push(N.normalizarMapa(m));
     }
     if (docsMapas().length) throw new Error('A mesa ganhou mapas enquanto isso. Nada foi trazido.');
-    // (numa mesa com campanhas, os mapas trazidos entram na campanha em vista)
-    for (const m of prontos) { gravarDocMesa(PRE_MAPA + m.id, comColuna({ dados: m, vis: 'mestre' }, camp ? [camp] : [], PRE_MAPA + m.id)); sombraDoc.set(m.id, j(m)); }
+    // (numa mesa com campanhas, os mapas trazidos entram do mundo, como os criados — lote 27)
+    for (const m of prontos) { gravarDocMesa(PRE_MAPA + m.id, comColuna({ dados: m, vis: 'mestre' }, organiza || !camp ? [] : [camp], PRE_MAPA + m.id)); sombraDoc.set(m.id, j(m)); }
     const primeiro = prontos.find(m => m.id === est.atual) || prontos[0];
     abrir(primeiro);
     for (const m of prontos) sincronizarPub(m.id);

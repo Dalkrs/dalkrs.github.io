@@ -2955,7 +2955,12 @@ const UI = (() => {
     const S = (p, label) => Store.tx(label || 'Ajustar cena', () => Store.scn(p));
     const a = bg.asset ? Store.S.assets[bg.asset] : null;
     const fogSet = (p, label) => S({ fog: Object.assign({}, f, p) }, label);
+    // (lote 27) de que campanha é a cena, sempre à vista no alto da aba (numa mesa com campanhas), com o "Trocar…"
+    const cs = Nuvem.comCampanhas() ? Nuvem.campanhasDaCena(sc.id) : null;
     return [
+      cs ? h('div', { class: 'sc-camp', id: 'sc-camp' }, h('span', { class: 'sc-camp-r', text: 'Campanha' }),
+        h('b', { id: 'sc-camp-nome', text: cs.length ? cs.map(nomeDaCampanha).join(', ') : 'Do mundo (todas as campanhas)' }),
+        Nuvem.podeOrganizar() ? h('button', { type: 'button', class: 'btn small', id: 'sc-camp-trocar', title: 'De que campanha é esta cena (ou do mundo, para todas)', onclick: sceneCampaignBox }, 'Trocar…') : null) : null,
       acc(secR('c-scene', 'Cena', false, `${sc.name} · ${sc.cols} × ${sc.rows} q`,
         field('Nome', inText('sc-name', sc.name, v => { if (v.trim()) S({ name: v.trim() }, 'Renomear cena'); })),
         Nuvem.mestre() ? note('Os jogadores veem este nome quando a cena está no ar.') : null,
