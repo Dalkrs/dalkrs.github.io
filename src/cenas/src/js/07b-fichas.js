@@ -53,7 +53,7 @@ const Fichas = (() => {
   function especiaisDe(l) {
     const R0 = R();
     if (!R0 || typeof R0.especiais !== 'function') return [];
-    return R0.especiais(l.ficha || {}, l.estado || {}).filter(x => x.max > 0).map(x => ({ id: PD + x.id, nome: x.nome, max: x.max, min: 0, inicio: null, atual: x.atual, sobre: 0, pts: true }));
+    return R0.especiais(l.ficha || {}, l.estado || {}).filter(x => x.max > 0).map(x => ({ id: PD + x.id, nome: x.nome, max: x.max, min: 0, inicio: x.inicio != null ? x.inicio : null, atual: x.atual, sobre: 0, pts: true }));
   }
   // os recursos da ficha que viram barra no token: os de sempre (com máximo) e, depois deles, as barras especiais
   const recursosDoToken = (l, r) => r.recursos.filter(rec => rec.max != null && isFinite(rec.max)).concat(especiaisDe(l));

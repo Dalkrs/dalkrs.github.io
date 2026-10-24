@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-11",
+      "data": "2026-10-23",
+      "titulo": "Restaurar as energias",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Restaurar energias…”, na aba Turnos. As barras que não são HP nem SP (pelo nome: HP, Vida, PV, SP) voltam ao estado natural — o “começa em” delas; sem ele, cheias. Com tokens selecionados, só eles; sem seleção, todos da cena. Mostra antes o que muda (Ki 3 → 0, Fé 2 → 10…), e tem Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: ao encerrar o combate, um aviso oferece “Restaurar” as energias de quem lutou. Nada acontece sozinho."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: cada barra especial ganhou o “Começa em” (ex.: Fúria em 0) — é o estado natural dela. Em branco, cheia."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-10",
       "data": "2026-10-23",
       "titulo": "A letra do atalho fica fora do campo",

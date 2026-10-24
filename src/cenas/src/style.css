@@ -982,3 +982,9 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .rf-g .row { flex-wrap: wrap; }
 .rf-g select.in { max-width: 170px; }
 .rf-g input.in { max-width: 70px; }
+
+/* (lote 23) a prévia do "Restaurar energias" */
+.rs-lista{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow:auto}
+.rs-t{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 8px;border:1px solid var(--line);border-radius:8px}
+.rs-bs{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12.5px;color:var(--fg-2)}
+.rs-b{display:inline-flex;align-items:center;gap:5px}

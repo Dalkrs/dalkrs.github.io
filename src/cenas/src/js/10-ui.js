@@ -2629,6 +2629,10 @@ const UI = (() => {
     Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; } }, 'Encerrar combate');
     App.iniRolls.clear();
     toast(tinha ? 'Combate encerrado: a iniciativa de todos foi zerada para o próximo.' : 'Combate encerrado.', { action: 'Desfazer', run: Tools.undo });
+    // (lote 23) o aviso que oferece restaurar as energias de quem lutou (nada acontece sozinho)
+    const lutaram = tokensDoCombate(Store.scene()).map(t => t.id);
+    if (restauroDe(lutaram.map(id => Store.get('tokens', id)).filter(Boolean)).length)
+      toast('Restaurar as energias de quem lutou? (o que não é HP nem SP volta ao natural)', { key: 'restaurar', long: true, action: 'Restaurar', run: () => aplicarRestauro(restauroDe(lutaram.map(id => Store.get('tokens', id)).filter(Boolean))) });
     if (barrinhasPrefs().combate) telaBarrinhas('O combate acabou: as barrinhas', tokensDoCombate(Store.scene()));      // (lote 22)
   }
   function tabTurn() {
@@ -2719,6 +2723,8 @@ const UI = (() => {
         btn('Ordenar por iniciativa', () => Act.turnPatch(x => { turnSort(x.list); }, 'Ordenar turnos'), { icon: 'sort' }),
         btn('Limpar', () => Act.turnPatch(x => { x.list = []; x.on = false; x.round = 1; x.back = 0; }, 'Limpar turnos'), { icon: 'trash' })) : null,
       gm && tn.list.length ? note('Passar a vez desconta as durações de condições e efeitos e limpa as miras. Contadores só mudam na mão.') : null,
+      // (lote 23) restaurar as energias: tudo que não é HP nem SP volta ao estado natural (o "começa em" da barra, ou cheia)
+      gm ? h('div', { class: 'row' }, btn('Restaurar energias…', janelaRestaurar, { icon: 'rest', id: 'turnRestaurar', title: 'As barras que não são HP nem SP voltam ao estado natural (o “começa em” delas; sem ele, cheias). Com tokens selecionados, só eles; sem seleção, todos da cena. Mostra antes o que muda.' })) : null,
       // (lote 22) a tela das barrinhas: quando ela abre sozinha (da mesa: vale em todas as cenas)
       gm ? sec('t-barrinhas', 'Tela das barrinhas', false,
         ...[['combate', 'Ao começar e ao encerrar o combate (todos)'], ['rodada', 'No começo de cada rodada (todos)'], ['vez', 'Na vez de cada um (só ele)']].map(([k, rot]) =>
@@ -2774,6 +2780,40 @@ const UI = (() => {
         toast(`Barrinhas: ${mud.size === 1 ? tokName(Store.get('tokens', [...mud.keys()][0])) : mud.size + ' personagens'} ${mud.size === 1 ? 'mudou' : 'mudaram'}.`, { action: 'Desfazer', run: Tools.undo });
       } }] });
     const prim = campos[0] && document.getElementById(campos[0].inp.id); if (prim) setTimeout(() => prim.focus(), 30);
+  }
+  /* (lote 23) Restaurar as energias: as barras que não são HP nem SP voltam ao estado natural — o "começa em" da barra
+     (na ficha, o das barras especiais também), ou cheia. As de HP e SP (pelo nome: HP, Vida, PV, SP) ficam como estão.
+     Pela aba Turnos (com a prévia) e pelo aviso do fim do combate. Num passo só, com Desfazer. */
+  const NOMES_VIDA_SP = new Set(['hp', 'vida', 'pv', 'sp', 'pontos de vida']);
+  const normNome = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  const ehVidaOuSp = b => NOMES_VIDA_SP.has(normNome(b.n));
+  function restauroDe(toks) {
+    return toks.map(t => ({ t, m: (t.bars || []).map((b, i) => ({ b, i })).filter(({ b }) => b && b.on !== false && !ehVidaOuSp(b) && Math.abs((Number(b.v) || 0) - barFull(b)) > 1e-9)
+      .map(({ b, i }) => ({ i, n: b.n, c: b.c, de: Number(b.v) || 0, para: barFull(b) })) })).filter(x => x.m.length);
+  }
+  function aplicarRestauro(lista) {
+    if (!lista.length) { toast('Nada a restaurar: as energias já estão no natural.'); return; }
+    Store.tx('Restaurar energias', () => {
+      for (const x of lista) {
+        const t = Store.get('tokens', x.t.id); if (!t) continue;
+        const bars = t.bars.slice();
+        for (const m of x.m) if (bars[m.i]) bars[m.i] = barWith(bars[m.i], { v: m.para });
+        Store.upd('tokens', t.id, { bars });
+      }
+    });
+    const n = lista.length;
+    toast(`Energias restauradas: ${n === 1 ? tokName(Store.get('tokens', lista[0].t.id) || lista[0].t) : n + ' tokens'}.`, { action: 'Desfazer', run: Tools.undo });
+  }
+  function janelaRestaurar() {
+    if (!isGM()) return;
+    const sel = selOf('tokens').filter(t => !t.prop), toks = sel.length ? sel : Store.scene().tokens.filter(t => !t.prop && (t.bars || []).length);
+    const lista = restauroDe(toks);
+    if (!lista.length) { toast(sel.length ? 'Nada a restaurar nos selecionados: as energias já estão no natural.' : 'Nada a restaurar: as energias de todos já estão no natural.'); return; }
+    modal({ title: 'Restaurar energias', wide: true, body: h('div', { class: 'rs-tela', id: 'rs-tela' },
+      note(sel.length ? `Só os ${sel.length === 1 ? 'selecionado' : sel.length + ' selecionados'}. O que não é HP nem SP volta ao estado natural (o “começa em” da barra; sem ele, cheia).` : 'Todos os tokens da cena. O que não é HP nem SP volta ao estado natural (o “começa em” da barra; sem ele, cheia).'),
+      h('ul', { class: 'rs-lista' }, lista.map(x => h('li', { class: 'rs-t', 'data-tok': x.t.id }, h('b', { text: tokName(x.t) }),
+        h('span', { class: 'rs-bs' }, x.m.map(m => h('span', { class: 'rs-b' }, h('span', { class: 'bb-dot', style: { background: m.c } }), `${m.n} ${fmtV(m.de)} → ${fmtV(m.para)}`))))))),
+      actions: [{ label: 'Cancelar' }, { label: 'Restaurar', kind: 'primary', run: () => aplicarRestauro(restauroDe(lista.map(x => Store.get('tokens', x.t.id)).filter(Boolean))) }] });
   }
   // o estado da ordem antes de passar a vez (para saber o que mudou depois)
   const vezAgora = () => { const tn = Store.scene().turn; return { on: !!tn.on, round: tn.round || 1, cur: tn.cur }; };

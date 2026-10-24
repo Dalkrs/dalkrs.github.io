@@ -5,14 +5,15 @@
 //   · o botão Ativo · Inativo · Toldo no alto da ficha; os pets vão junto com o dono;
 //   · "Vários": marcar fichas e mandar todas de uma vez;
 //   · os pets do dono podem ser escondidos (a tela lembra);
-//   · nas Cenas, quem está no Toldo fica de fora do "Puxar o grupo" e da lista de fichas do token.
+//   · nas Cenas, quem está no Toldo fica de fora do "Puxar o grupo" e da lista de fichas do token;
+//   · "Restaurar energias" num token ligado à ficha: as barras especiais voltam ao "começa em" (ou cheias), na ficha.
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
 const R = require('../../tc/rules.js');
 const pc = (id, nome, extra) => Object.assign(R.personagemPadrao(nome), { id, nome, level: 10, grupo: 'Heróis', recursos: [{ id: 'hp' + id, nome: 'HP', fml: '100' }], estado: {} }, extra);
 const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
-  personagens: [pc('pc_dain', 'Dain X'), pc('pc_lia', 'Lia'), pc('pc_lobo', 'Lobo', { petDe: 'pc_lia' }), pc('pc_ogro', 'Ogro do pântano')],
+  personagens: [pc('pc_dain', 'Dain X'), pc('pc_lia', 'Lia', { poderes: [{ id: 'pk', nome: 'Ki', max: 5, atual: 3, inicio: 0 }, { id: 'pf', nome: 'Fé', max: 4, atual: 1 }] }), pc('pc_lobo', 'Lobo', { petDe: 'pc_lia' }), pc('pc_ogro', 'Ogro do pântano')],
   situacoes: [], tabelas: [], log: [], bib: null, sel: 'pc_dain', selSit: null, aba: 'fichas', grupos: ['Heróis'] });
 
 (async () => {
@@ -140,6 +141,13 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
     const opcoes = await C.evaluate(() => [...document.querySelectorAll('#tk-char option')].map(o => o.textContent));
     ok(opcoes.length > 0 && !opcoes.some(x => /Dain X|Ogro/.test(x)) && opcoes.some(x => /Lia/.test(x)), 'na lista de fichas do token, quem está no Toldo também não aparece: ' + j(opcoes));
     await C.evaluate(id => { __tc.Store.tx('Tirar', () => __tc.Store.del('tokens', id)); }, op);
+    // o restaurar num token ligado à ficha: o Ki (começa em 0) e a Fé (cheia) voltam, na ficha
+    const tl = await C.evaluate(() => { const u = __tc, ids = u.Combate.trazer(['pc_lia'], u.Store.scene().cell * 5, u.Store.scene().cell * 5); u.setSel([{ c: 'tokens', id: ids[0] }]); u.UI.openTab('turn'); return ids[0]; });
+    ok(await ate(async () => (await C.evaluate(id => (__tc.Store.get('tokens', id).bars || []).map(b => b.n + ':' + b.v + (b.st != null ? '(começa ' + b.st + ')' : '')).join(' '), tl)).includes('Ki:3(começa 0)')), 'o token da Lia traz o Ki com o "começa em" da ficha: ' + await C.evaluate(id => (__tc.Store.get('tokens', id).bars || []).map(b => b.n + ':' + b.v + (b.st != null ? '(começa ' + b.st + ')' : '')).join(' '), tl));
+    await C.locator('#turnRestaurar').click(); await w(300);
+    ok(/Ki 3 → 0/.test(await C.locator('#rs-tela').innerText()) && /Fé 1 → 4/.test(await C.locator('#rs-tela').innerText()), 'a prévia: Ki 3 → 0 e Fé 1 → 4');
+    await C.locator('.modal .btn.primary', { hasText: 'Restaurar' }).click(); await w(500);
+    ok(await ate(async () => { const e = await est(M, 'pc_lia'); return e.pd && e.pd.pk === 0 && e.pd.pf === 4 && await parado(M); }), 'restaurado: a ficha da Lia fica com o Ki em 0 e a Fé em 4 (no banco)');
   });
 
   if (nomeMesa) { try { await apagarMesaTela(M, nomeMesa); } catch (e) { ok(false, 'apagar a mesa de teste: ' + e.message); } }

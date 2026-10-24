@@ -2,7 +2,8 @@
 //   · a busca (pelo nome e pelo texto, sem acento) e o botão "Filtros (n)", que abre os chips: Uso, Origem e Barra;
 //   · valem para os cartões de "Aprendidas" e para as "Passivas e habilidades" (escritas à mão);
 //   · dentro de um grupo, basta um chip bater; entre os grupos, todos; cada chip diz quantos aparecem;
-//   · cada ficha lembra o filtro dela (também ao recarregar); "Limpar" volta tudo; nada muda na ficha.
+//   · cada ficha lembra o filtro dela (também ao recarregar); "Limpar" volta tudo; nada muda na ficha;
+//   · a barra especial ganha o "Começa em" (o estado natural dela, para o "Restaurar energias" das Cenas).
 const { start, checker } = require('./lib');
 const { ok, end } = checker();
 const R = require('../../tc/rules.js');
@@ -16,7 +17,7 @@ const bib = { nome: 'Bib', pools: [{ id: 'p1', nome: 'Pontos', cor: '#D9A441', p
       { id: 'k1', nome: 'Raiz da raposa', tipo: 'keystone', pais: [], usos: [], desc: 'O começo.', graus: [{ custos: {}, texto: '' }] },
       { id: 'k2', nome: 'Esquiva lunar', tipo: 'notavel', pais: ['k1'], usos: ['reacao'], desc: 'Desvia de um golpe.', graus: [{ custos: { p1: 1 }, texto: '' }] }] }] };
 const pc = (id, nome, extra) => Object.assign(R.personagemPadrao(nome), { id, nome, level: 8, recursos: [{ id: 'hp' + id, nome: 'HP', fml: '100' }] }, extra);
-const dain = pc('pc_dain', 'Dain X', { grupo: 'Heróis',
+const dain = pc('pc_dain', 'Dain X', { grupo: 'Heróis', poderes: [{ id: 'pk', nome: 'Ki', max: 5, atual: 3 }],
   habilidades: [{ id: 'h1', nome: 'Faro aguçado', desc: 'Sente cheiros a 100 m.', tipo: 'Passivo' }, { id: 'h2', nome: 'Grito de guerra', desc: 'Aliados +1 de dano.', tipo: 'Ativo' }],
   skills: { arvores: ['a1', 'a2'], pontos: { p1: 10 }, alocados: { n1: 1, n2: 1, n3: 1, k1: 1, k2: 1 }, unicas: [{ id: 'u1', nome: 'Sangue do dragão', desc: 'Cura 10 de HP.', uso: [{ b: 'SP', v: '10' }], usos: ['ativa'] }] } });
 const lia = pc('pc_lia', 'Lia', { grupo: 'Heróis', habilidades: [{ id: 'h9', nome: 'Canção', desc: 'Acalma.', tipo: 'Ativo' }] });
@@ -90,6 +91,18 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [dain, li
     const v = await vis();
     ok(v.cartoes.length === 6 && v.mao.length === 2 && await P.locator('#skf-limpar').isHidden() && await P.evaluate(k => !(JSON.parse(localStorage.getItem(k) || '{}').pc_dain), 'tinycats:filtroSk'), '"Limpar" mostra tudo de novo (e esquece o filtro da ficha)');
     ok(await P.evaluate(() => S.personagens[0].habilidades.length === 2 && Object.keys(S.personagens[0].skills.alocados).length === 5), 'nada mudou na ficha');
+  });
+  await passo('o começa em da barra especial', async () => {
+    const aba = await P.evaluate(() => { const e = document.getElementById('especiais'); const c = e && e.closest('[data-abafichac]'); return c ? c.dataset.abafichac : null; });
+    await P.locator('#ficha [data-abaficha="' + aba + '"]').click(); await w(300);
+    const ini = P.locator('#especiais [data-pdini="pk"]');
+    ok(await ini.count() === 1 && await ini.inputValue() === '' && await ini.getAttribute('placeholder') === 'cheia', 'cada barra especial tem o "Começa em" (em branco: cheia)');
+    await ini.fill('0'); await ini.press('Tab'); await w(300);
+    ok(await P.evaluate(() => S.personagens[0].poderes[0].inicio) === 0 && await P.evaluate(() => TC.rules.especiais(S.personagens[0], S.personagens[0].estado)[0].inicio) === 0, 'Ki começa em 0: fica na ficha, e as regras o entregam (inicio: 0)');
+    await P.locator('#especiais [data-pdini="pk"]').fill('9'); await P.locator('#especiais [data-pdini="pk"]').press('Tab'); await w(300);
+    ok(await P.evaluate(() => S.personagens[0].poderes[0].inicio) === 5, 'acima do limite, fica no limite (5)');
+    await P.locator('#especiais [data-pdini="pk"]').fill(''); await P.locator('#especiais [data-pdini="pk"]').press('Tab'); await w(300);
+    ok(await P.evaluate(() => !('inicio' in S.personagens[0].poderes[0])), 'em branco: volta a "cheia" (e não fica anotado)');
   });
   ok(t.errs.length === 0, 'sem erros no console' + (t.errs.length ? ': ' + t.errs.slice(0, 3).join(' | ') : ''));
   await t.close();

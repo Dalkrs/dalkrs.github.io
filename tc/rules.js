@@ -1122,7 +1122,9 @@
     return (Array.isArray(ficha && ficha.poderes) ? ficha.poderes : []).filter(x => ehObjeto(x) && x.id != null && x.id !== '').map(x => {
       const id = String(x.id), max = Math.max(0, Math.round(numFinito(x.max) || 0));
       const g = numFinito(tem(pd, id) ? pd[id] : null), a = Math.max(0, Math.round(g != null ? g : numFinito(x.atual) || 0));
-      return { id, nome: String(x.nome == null ? '' : x.nome).trim().slice(0, 60) || ESPECIAL_PADRAO, atual: max > 0 ? Math.min(a, max) : a, max,
+      // (lote 23) inicio: onde a barra "começa" (o estado natural dela, para o "Restaurar energias" das Cenas); null = cheia
+      const ini = numFinito(x.inicio), inicio = ini == null ? null : Math.max(0, Math.min(max > 0 ? max : 999, Math.round(ini)));
+      return { id, nome: String(x.nome == null ? '' : x.nome).trim().slice(0, 60) || ESPECIAL_PADRAO, atual: max > 0 ? Math.min(a, max) : a, max, inicio,
         rec: recDoEspecial(x.rec), qc: inteiroEntre(x.qc == null ? QC_PADRAO : x.qc, 0, 999), ql: inteiroEntre(x.ql == null ? QL_PADRAO : x.ql, 0, 999) };
     });
   }

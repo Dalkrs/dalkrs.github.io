@@ -1211,7 +1211,7 @@ button.romadd{padding:2px 5px;display:inline-grid;place-items:center;color:var(-
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=16"></script>
-<script src="../tc/rules.js?v=20"></script>
+<script src="../tc/rules.js?v=21"></script>
 <script src="mesa.js?v=13"></script>
 <script src="extras.js?v=18"></script>
 <script src="quadros.js?v=5"></script>
@@ -2313,6 +2313,8 @@ function renderFicha(){
           <span class="pdval pdvalcfg" title="Agora (gaste e devolva no resumo)">${pw.atual}<small>/ ${pw.max||'∞'}</small></span>
           <label class="sitbar" style="gap:6px"><span class="eyebrow">Limite</span>
             <input type="number" min="0" data-pdmax="${pw.id}" value="${pw.max}" style="width:64px"></label>
+          <label class="sitbar" style="gap:6px" title="O estado natural da barra: é para onde ela volta no “Restaurar energias” das Cenas. Em branco, cheia."><span class="eyebrow">Começa em</span>
+            <input type="number" min="0" data-pdini="${pw.id}" value="${pw.inicio==null?'':pw.inicio}" placeholder="cheia" style="width:64px" aria-label="Onde ${esc(pw.nome)} começa (em branco: cheia)"></label>
           <button class="mini danger" data-pddel="${pw.id}" title="Tirar esta barra especial" aria-label="Tirar a barra especial ${esc(pw.nome)}">×</button>
           ${htmlRecEspecial(pw)}
         </div>`).join('')}</div>`
@@ -2729,7 +2731,7 @@ const avisoEstaque=(pc,on)=>on? 'O Estaque de '+(pc.nome||'Sem nome')+' ficou es
 function especiaisDe(pc){
   if(window.TC && TC.rules && TC.rules.especiais) return TC.rules.especiais(pc, pc.estado);
   return (Array.isArray(pc.poderes)?pc.poderes:[]).filter(x=>x&&x.id).map(x=>{ const max=Math.max(0,Math.round(+x.max||0)), a=Math.max(0,Math.round(+x.atual||0));
-    return {id:String(x.id), nome:String(x.nome||'').trim()||'Barra especial', atual:max>0?Math.min(a,max):a, max,
+    return {id:String(x.id), nome:String(x.nome||'').trim()||'Barra especial', atual:max>0?Math.min(a,max):a, max, inicio:x.inicio==null||!isFinite(+x.inicio)?null:Math.round(+x.inicio),
       rec:REC_ESPECIAL_LOCAL.some(r=>r.k===x.rec)?x.rec:'longo', qc:x.qc==null?1:Math.max(0,Math.round(+x.qc||0)), ql:x.ql==null?2:Math.max(0,Math.round(+x.ql||0))}; });
 }
 /* A regra de recuperação de cada barra especial (lote 6): o mestre escolhe — enche no descanso longo, em qualquer
@@ -3041,6 +3043,12 @@ function ligarFicha(pc){
     const id=e.target.dataset.pdmax, pw=acharPd(id); if(!pw) return;
     const a=valorPd(id);
     patch(()=>{ pw.max=Math.max(0,Math.round(+e.target.value||0)); mudarEspecialNaFicha(pc, id, a); });   // (o valor fica dentro do limite novo)
+  });
+  // (lote 23) o começo da barra especial: em branco, cheia (e não fica anotado)
+  host.querySelectorAll('[data-pdini]').forEach(i=>i.onchange=e=>{
+    const pw=acharPd(e.target.dataset.pdini); if(!pw) return;
+    const txt=String(e.target.value).trim();
+    patch(()=>{ if(txt===''||!isFinite(+txt)) delete pw.inicio; else pw.inicio=Math.max(0, Math.min(pw.max>0? pw.max : 999, Math.round(+txt))); });
   });
   // a regra de recuperação de cada barra (o mestre escolhe): 'longo' é o padrão e não fica anotado
   host.querySelectorAll('[data-pdrec]').forEach(s=>s.onchange=e=>{

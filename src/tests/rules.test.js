@@ -360,7 +360,9 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
 {
   const f = { poderes: [{ id: 'a', nome: 'Fé', max: 3, atual: 2 }, { id: 'b', nome: '', max: 0, atual: 7 }, { id: 'c', nome: 'X', max: '4', atual: 9 }, { nome: 'sem id' }, null] };
   const lg = { rec: 'longo', qc: 1, ql: 2 };
-  ok(j(R.especiais(f, {})) === j([Object.assign({ id: 'a', nome: 'Fé', atual: 2, max: 3 }, lg), Object.assign({ id: 'b', nome: 'Barra especial', atual: 7, max: 0 }, lg), Object.assign({ id: 'c', nome: 'X', atual: 4, max: 4 }, lg)]), 'sem nada no estado, vale o atual da ficha (preso no limite; sem nome, "Barra especial")');
+  ok(j(R.especiais(f, {})) === j([Object.assign({ id: 'a', nome: 'Fé', atual: 2, max: 3, inicio: null }, lg), Object.assign({ id: 'b', nome: 'Barra especial', atual: 7, max: 0, inicio: null }, lg), Object.assign({ id: 'c', nome: 'X', atual: 4, max: 4, inicio: null }, lg)]), 'sem nada no estado, vale o atual da ficha (preso no limite; sem nome, "Barra especial")');
+  // (lote 23) o "começa em" da barra especial: inteiro, entre 0 e o limite; sem ele, null (cheia)
+  ok(j(R.especiais({ poderes: [{ id: 'k', max: 5, inicio: 0 }, { id: 'f', max: 4, inicio: 9 }, { id: 'g', max: 4, inicio: '2.6' }, { id: 'h', max: 4, inicio: 'x' }] }, {}).map(x => x.inicio)) === j([0, 4, 3, null]), 'o "começa em" das barras especiais: 0 fica 0; acima do limite, o limite; arredonda; o que não é número, null');
   ok(R.especiais(f, { pd: { a: 0, b: 12 } })[0].atual === 0 && R.especiais(f, { pd: { a: 0, b: 12 } })[1].atual === 12, 'o estado manda quando tem o valor');
   const e1 = R.mudarEspecial({ rec: { hp: 3 } }, 'a', 9, 3), e2 = R.mudarEspecial(e1, 'b', -4, 0);
   ok(e1.pd.a === 3 && e1.rec.hp === 3 && e2.pd.b === 0 && e2.pd.a === 3, 'mudar: preso entre 0 e o limite (sem limite, só não fica negativo); o resto do estado fica');
