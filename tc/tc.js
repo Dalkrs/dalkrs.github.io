@@ -53,10 +53,26 @@
     const u = s && s.user;
     passe = u && s.access_token ? s.access_token : null;
     passeAte = passe ? Number(s.expires_at) || 0 : 0;
-    return u ? { id: u.id, email: u.email || '', nome: (u.user_metadata && u.user_metadata.nome) || (u.email || '').split('@')[0] } : null;
+    // (lote 27) trocar: o administrador trocou a senha (ou a pessoa veio pelo e-mail de "Esqueci minha senha"): o site pede uma nova
+    return u ? { id: u.id, email: u.email || '', nome: (u.user_metadata && u.user_metadata.nome) || (u.email || '').split('@')[0], trocar: !!(u.user_metadata && u.user_metadata.trocar_senha) || recuperando } : null;
   };
+  /* (lote 27) O link do e-mail de "Esqueci minha senha" volta ao site com a sessão no endereço (#access_token=…&type=recovery).
+     O site entra com ela, limpa o endereço e pede a senha nova (conta.usuario.trocar). Um link vencido chega como #error=…. */
+  let recuperando = false;
+  conta.erroDoLink = '';
+  function lerLinkDeSenha() {
+    const h = String(location.hash || '');
+    if (!/(^|[#&])(access_token|error_description)=/.test(h)) return null;
+    const q = new URLSearchParams(h.replace(/^#\/?/, ''));
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* sem histórico: fica no endereço */ }
+    if (q.get('error_description') || q.get('error')) { conta.erroDoLink = 'Esse link de troca de senha venceu ou já foi usado. Peça outro em “Esqueci minha senha”.'; return null; }
+    if (q.get('type') !== 'recovery' || !q.get('access_token') || !q.get('refresh_token')) return null;
+    return { access_token: q.get('access_token'), refresh_token: q.get('refresh_token') };
+  }
   conta.pronta = (async () => {
     if (!temNuvem()) return null;
+    const link = lerLinkDeSenha();
+    if (link) { try { const r = await cliente().auth.setSession(link); if (!r.error) recuperando = true; } catch (e) { /* o link não serviu: segue sem ele */ } }
     try {
       const { data } = await cliente().auth.getSession();
       conta.usuario = deSessao(data && data.session);
@@ -83,6 +99,41 @@
     } catch (e) { throw falha(e); }
     if (!r.ok) throw falha(corpo && corpo.erro, 'Não foi possível criar a conta agora. Tente de novo.');
     return conta.entrar(email, senha);
+  };
+  // (lote 27) a senha nova (depois de um reset do administrador ou do e-mail de recuperação): tira a marca de "trocar"
+  conta.trocarSenha = async nova => {
+    if (String(nova || '').length < 8) throw new Error('A senha precisa ter de 8 a 72 caracteres.');
+    const { data, error } = await cliente().auth.updateUser({ password: nova, data: { trocar_senha: false } });
+    if (error) throw falha(/same|different/i.test(error.message || '') ? 'A senha nova precisa ser diferente da provisória.' : error, 'Não deu para trocar a senha agora. Tente de novo.');
+    recuperando = false;
+    if (conta.usuario) conta.usuario.trocar = false;
+    return data;
+  };
+  // (lote 27) "Esqueci minha senha": o e-mail com o link de troca (volta para esta página)
+  conta.esqueci = async email => {
+    const e = String(email || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) throw new Error('Digite um e-mail válido.');
+    const { error } = await cliente().auth.resetPasswordForEmail(e, { redirectTo: location.origin + location.pathname });
+    if (error) throw falha(error, 'Não deu para mandar o e-mail agora. Tente de novo.');
+  };
+  /* (lote 27) A administração do site: conta.ehAdmin() lê a própria linha em public.admins (a regra do banco só deixa ler
+     a própria); conta.admin(acao, args) chama a função "admin", que confere de novo e age com a chave de serviço. */
+  let adminCache = { id: null, sim: false };
+  conta.ehAdmin = async () => {
+    const u = conta.usuario; if (!u || !temNuvem()) return false;
+    if (adminCache.id === u.id) return adminCache.sim;
+    const { data, error } = await cliente().from('admins').select('usuario_id').eq('usuario_id', u.id).maybeSingle();
+    adminCache = { id: u.id, sim: !error && !!data };
+    return adminCache.sim;
+  };
+  conta.admin = async (acao, args) => {
+    const { data, error } = await cliente().functions.invoke('admin', { body: Object.assign({ acao }, args || {}) });
+    if (error) {
+      let m = null;
+      try { const c = error.context; if (c && typeof c.json === 'function') { const j = await c.json(); m = j && j.erro; } } catch (e) { /* sem corpo */ }
+      const x = new Error(m || erroPt(error, 'Não deu certo agora. Tente de novo.')); x.original = error; throw x;
+    }
+    return data;
   };
   conta.sair = async () => {
     mesas.fechar();

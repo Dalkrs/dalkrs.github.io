@@ -2,6 +2,26 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-16",
+      "data": "2026-10-24",
+      "titulo": "Esqueci minha senha, e a Administração do site",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Entrar: “Esqueci minha senha” manda um link para o seu e-mail (só chega se o e-mail da conta for de verdade)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Quando quem cuida do site troca a sua senha por uma provisória, o site pede uma senha nova assim que você entra."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Administração (só para quem administra o site): as contas e as mesas, trocar a senha de alguém, mudar nome e e-mail, apagar uma conta, abrir ou fechar o cadastro e o registro de tudo o que foi feito."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-15",
       "data": "2026-10-24",
       "titulo": "Tags com explicação, links nas notas e nas árvores, e o Mapa-múndi com cores",
