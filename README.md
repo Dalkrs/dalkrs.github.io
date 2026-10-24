@@ -215,8 +215,21 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   caneta), Traçar (região, rota, frente) e Preparar (terreno, desenho, névoa). As teclas são as de sempre.
 - **A data** (na barra de cima) abre a sanfona: "Ir para a data…" e a linha do tempo (a data de cada campanha, a que
   está no mapa marcada), com o botão para a aba Linha.
+- **Cores** (lote 27): Sessão verde-água, Política rosa, Preparar azul (`--g-sessao`, `--g-politica`, `--g-preparar`),
+  no nome e no fundo de cada grupo, no traço da aba aberta e no alto do painel (`#pane[data-grupo]`).
+- **Quem joga** (lote 27) também vê os grupos (o Preparar some: não tem aba para ele) e os blocos que fecham; a data
+  abre a sanfona só para ler (a data e a campanha que está no mapa, sem botões).
 - Os testes de antes abrem com a marca `tinycats:testes-tudo-aberto` (as fileiras, os blocos abertos, a data indo
   direto para "Ir para a data"); `src/tests/mundo-lote26.test.js` confere o menu como o mestre encontra.
+
+### A Árvore: as habilidades citadas viram links (lote 27)
+
+`htmlTexto(texto, p, dono)` passa cada pedaço de texto por `comLinks`: o nome de outro nódulo (escrito como na árvore,
+inteiro, com 4 letras ou mais; `indiceDeNomes`, refeito a cada `indexar`) vira `<a class="lk-no" data-no>`. Nome
+repetido: vale o da árvore do texto. O "Exige…" do jogador (`exigencia(n, true)`) e os requisitos do editor do mestre
+também são links, e o editor ganha a linha "Cita:" (`citadosEm`). `irParaNo` troca de árvore se precisar, seleciona e
+centraliza; `pulosNo` guarda de onde se veio e o botão `#btVoltarNo` volta um pulo por vez. Quem joga só tem link para o
+que a biblioteca do personagem mostra (sem os caminhos trancados e as escolas secretas) numa árvore equipada.
 
 ### A Árvore: os nomes pelo zoom (lote 26)
 
