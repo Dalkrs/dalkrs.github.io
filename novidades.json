@@ -4,8 +4,22 @@
     {
       "versao": "2026.10.24-15",
       "data": "2026-10-24",
-      "titulo": "As habilidades citadas viram links, e o Mapa-múndi com cores",
+      "titulo": "Tags com explicação, links nas notas e nas árvores, e o Mapa-múndi com cores",
       "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Tags: as condições, os efeitos (as áreas no chão) e os recursos de raça e classe ganham um sublinhado pontilhado onde aparecem escritos — nas árvores, nas fichas, no acampamento e nas notas. Passar o mouse mostra o que aquilo é, numa telinha. Nas Cenas, os ícones das condições dos tokens também."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Oficina: o botão Tags abre a lista das tags (Condições, Efeitos, Recursos). O mestre muda a explicação, cria tags novas, apaga e traz de volta."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Bloco de notas: digite @ para ligar a uma ficha ou NPC, e # para uma cena, um lugar do mapa, uma habilidade, uma tag ou outro capítulo. Clicar no link leva até lá; se a coisa mudar de nome, o link acompanha."
+        },
         {
           "tipo": "consertado",
           "texto": "Mesa ao vivo: depois da fanfarra de subir de level, o som das rolagens de dados parava de sair. Voltou."
