@@ -360,6 +360,11 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 .unica p{margin:4px 0 0;font-size:12.5px;line-height:1.5;color:var(--texto-2)}
 .unica .un-fx{font-size:12px;color:var(--texto-3)}
 #zoom{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;gap:6px;z-index:3}
+/* (lote 27) as habilidades citadas, como links, e o "← Voltar" depois de um pulo */
+a.lk-no{color:var(--acento);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;cursor:pointer;font-weight:600}
+a.lk-no:hover{text-decoration-thickness:2px}
+.citados a.lk-no{font-weight:600}
+#btVoltarNo{position:absolute;left:14px;bottom:14px;z-index:3;background:var(--fundo-2);box-shadow:0 6px 18px rgba(0,0,0,.25);max-width:min(360px,calc(100% - 80px));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #zoom .btn{width:34px;height:34px;padding:0;font-size:15px;display:grid;place-items:center;background:var(--fundo-2)}
 #dica{
   position:absolute;left:14px;bottom:14px;z-index:3;font:400 11.5px var(--ui);color:var(--texto-3);
@@ -531,6 +536,7 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
       </svg>
       <div id="topoTela"><div id="seletor"></div><div id="filtroNat"></div></div>
       <div id="nada"><p></p><button class="btn ouro" id="btNada"></button></div>
+      <button class="btn" id="btVoltarNo" hidden title="Volta para a habilidade de onde você veio"></button>
       <div id="zoom">
         <button class="btn" id="btMais" title="Aproximar">+</button>
         <button class="btn" id="btMenos" title="Afastar">−</button>
@@ -1585,14 +1591,16 @@ function podarPersonagem(p){
 function podarTodos(){ indexar(); doc.personagens.forEach(podarPersonagem); }
 
 // "Exige Corpo e Mente." — com a árvore de origem quando vem de fora
-function exigencia(n){
+// (lote 27) comLink: em HTML, cada requisito é um link até ele
+function exigencia(n, comLink){
   if(!n.pais.length) return '';
   const a = arvDe.get(n.id);
   const nomes = n.pais.map(pid=>{
     const m = porId.get(pid);
     if(!m) return 'um requisito desconhecido';
     const am = arvDe.get(pid);
-    return am===a ? m.nome : `${m.nome} (${nomeCat(am.categoria)} · ${am.nome})`;
+    const t = am===a ? m.nome : `${m.nome} (${nomeCat(am.categoria)} · ${am.nome})`;
+    return !comLink ? t : podeIrAoNo(pid) ? linkNo(m, t) : esc(t);
   });
   if(nomes.length===1) return 'Exige ' + nomes[0] + '.';
   const lig = n.regra==='ou' ? ' ou ' : ' e ';
@@ -2744,7 +2752,7 @@ function blocoNo(a, n){
     <div class="grupo"><span class="rot">Pré-requisitos</span>
       ${n.pais.length ? n.pais.map(pid=>{
         const m = porId.get(pid), am = arvDe.get(pid);
-        return `<div class="pre" data-pid="${esc(pid)}"><i style="background:${esc(corDoNo(m))}"></i><span>${m ? esc(m.nome) : '(requisito que não existe mais)'}</span>
+        return `<div class="pre" data-pid="${esc(pid)}"><i style="background:${esc(corDoNo(m))}"></i><span>${m ? linkNo(m) : '(requisito que não existe mais)'}</span>
           ${am && am!==a ? `<em>${esc(nomeCat(am.categoria))} · ${esc(am.nome)}</em>` : ''}<button class="btn mini pre-x" title="Remover requisito" aria-label="Remover requisito">×</button></div>`;
       }).join('') : `<p class="vazio" style="margin:0 0 8px">Sem requisitos: é uma raiz, sempre liberada.</p>`}
       <select class="campo" id="addPre" aria-label="Adicionar pré-requisito">
@@ -2777,7 +2785,8 @@ function blocoNo(a, n){
     </div>
     ${blocoTranca(n)}
     <div class="grupo"><label class="rot" for="eDesc">Descrição</label><textarea id="eDesc" class="campo" placeholder="O que esta habilidade faz… (contas entre chaves: {FOR*2 + 10})">${esc(n.desc)}</textarea>
-      <p class="nota">Contas entre chaves viram o número do personagem: <code>{FOR*2 + 10}</code>. Valem FOR, DES, AGI, VIT, CAN, as defesas (DFF, DFM, BLQ), os derivados (ESQ, FUR, PER, EMB) e LVL.</p></div>
+      <p class="nota">Contas entre chaves viram o número do personagem: <code>{FOR*2 + 10}</code>. Valem FOR, DES, AGI, VIT, CAN, as defesas (DFF, DFM, BLQ), os derivados (ESQ, FUR, PER, EMB) e LVL.</p>
+      ${(()=>{ const c = citadosEm(n); return c.length ? `<p class="nota citados">Cita: ${c.map(m=>linkNo(m)).join(', ')}</p>` : ''; })()}</div>
     <div class="acoes">
       <button class="btn" id="btDuplicar">Duplicar</button>
       <button class="btn perigo" id="btExcluir">Excluir nódulo</button>
@@ -3124,11 +3133,11 @@ function painelJogador(){
       : est==='disp' ? 'Disponível' : est==='caro' ? faltaTexto(p, n, 1) : est==='fechado' ? `Fechado por “${fech.nome}”` : 'Bloqueado';
     detalhe = `<div class="bloco"><h2>${esc(n.nome)}</h2>
       <p class="info">${[esc(bib().tipos[n.tipo]?.nome || ''), nat ? `<span style="color:${esc(nat.cor)}">●</span> ${esc(nat.nome)}` : '', nomesUso].filter(Boolean).join(' · ')}</p>
-      ${n.desc ? `<p class="info" style="color:var(--texto)" id="descJog">${htmlTexto(n.desc, p)}</p>` : ''}
-      ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</span></li>`).join('')}</ul>`
+      ${n.desc ? `<p class="info" style="color:var(--texto)" id="descJog">${htmlTexto(n.desc, p, n)}</p>` : ''}
+      ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p, n) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</span></li>`).join('')}</ul>`
              : `<p class="info">Custo: ${esc(custoTexto(n.graus[0].custos))}</p>${n.graus[0].uso ? `<p class="info" id="usoJog">Custo de uso: ${htmlCusto(n.graus[0].uso, p)}</p>` : ''}`}
       ${htmlMarca(n, false)}
-      ${n.pais.length ? `<p class="info acento">${esc(exigencia(n))}</p>` : ''}
+      ${n.pais.length ? `<p class="info acento">${exigencia(n, true)}</p>` : ''}
       ${col.length ? `<p class="info">Caminho exclusivo com ${col.map(m=>'“'+esc(m.nome)+'”').join(', ')}.</p>` : ''}
       ${esc0 ? `<p class="info">Escola: ${esc(esc0.escola.nome)}</p>` : ''}
       <p class="info" style="font-weight:600">${esc(txtEstado)}</p>
@@ -3827,7 +3836,7 @@ function mostrarDica(n){
   const trancaTxt = !jog && n.tranca ? (()=>{ const ab = doc.personagens.filter(x=>abertoPara(x, n.id)).map(x=>x.nome); return 'Trancado · ' + (ab.length ? 'aberto para ' + ab.join(', ') : 'ainda não aberto para ninguém'); })() : '';
   $('#dica2').innerHTML = `<h3 style="color:${nat ? nat.cor : 'var(--texto)'}">${esc(n.nome)}</h3>
     <div class="meta">${esc(meta)}</div>
-    ${n.desc ? `<p>${htmlTexto(n.desc, p)}</p>` : ''}
+    ${n.desc ? `<p>${htmlTexto(n.desc, p, n)}</p>` : ''}
     ${G===1 && n.graus[0].uso ? `<p class="uso">Custo de uso: ${htmlCusto(n.graus[0].uso, p)}</p>` : ''}
     ${G>1 ? `<ul class="gr">${n.graus.map((g,i)=>`<li style="opacity:${!jog || i<=g0 ? 1 : .55}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</li>`).join('')}</ul>` : ''}
     ${trancaTxt ? `<p class="tranca">${esc(trancaTxt)}</p>` : ''}
@@ -3845,12 +3854,95 @@ function htmlConta(c){
   return c.v!=null ? `<span class="conta" title="${esc(R.explicarConta(c))}">${esc(String(c.v))}</span>`
     : `<span class="conta sem" title="${esc(c.erro ? R.explicarConta(c) : 'Conta: o número sai da ficha do personagem')}">${esc(c.expr)}</span>`;
 }
-function htmlTexto(texto, p){
+function htmlTexto(texto, p, dono){
   const R = window.TC && TC.rules;
-  if(!R || !R.partesComContas) return esc(texto);
+  if(!R || !R.partesComContas) return comLinks(texto, dono);
   const k = contaDe(p);
-  return R.partesComContas(texto, k && k.vars, k && k.cfg).map(x=>x.t==='txt' ? esc(x.s) : htmlConta(x)).join('');
+  return R.partesComContas(texto, k && k.vars, k && k.cfg).map(x=>x.t==='txt' ? comLinks(x.s, dono) : htmlConta(x)).join('');
 }
+/* (lote 27) As habilidades citadas viram links: o nome de outro nódulo escrito no texto (ou nos requisitos) leva até
+   ele — na mesma árvore ou em outra. O nome tem que estar escrito como na árvore (com a maiúscula), inteiro, e ter
+   4 letras ou mais. Nome repetido em árvores diferentes: vale o da árvore do texto. Quem joga só vê link para o que
+   está à vista dele (a biblioteca do personagem já vem sem os caminhos trancados e as escolas secretas) e numa árvore
+   que o personagem tem equipada; o resto fica texto. "← Voltar" (no canto da árvore) desfaz os pulos, um por vez. */
+let nomesCache = {ger:-1, re:null, por:null};
+function indiceDeNomes(){
+  if(nomesCache.ger===geracaoBib) return nomesCache;
+  const por = new Map();
+  for(const a of bib().arvores) for(const n of a.nodes){
+    const nm = String(n.nome || '').trim();
+    if(nm.length<4) continue;
+    if(!por.has(nm)) por.set(nm, []);
+    por.get(nm).push(n);
+  }
+  const lista = [...por.keys()].sort((x, y)=>y.length - x.length).map(x=>x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  let re = null;
+  try{ re = lista.length ? new RegExp('(?<![\\p{L}\\p{N}])(' + lista.join('|') + ')(?![\\p{L}\\p{N}])', 'gu') : null; }catch(e){ re = null; }
+  nomesCache = {ger:geracaoBib, re, por};
+  return nomesCache;
+}
+// o nódulo que um nome cita (do ponto de vista de dono), se quem está vendo pode ir até ele
+function alvoDoNome(nome, dono){
+  const l = indiceDeNomes().por.get(nome); if(!l) return null;
+  const aDono = dono ? arvDe.get(dono.id) : arvoreVisivel();
+  const n = l.find(m=>arvDe.get(m.id)===aDono) || l[0];
+  if(!n || (dono && n.id===dono.id)) return null;
+  return podeIrAoNo(n.id) ? n : null;
+}
+function podeIrAoNo(id){
+  const a = arvDe.get(id); if(!a) return false;
+  if(ui.modo==='mestre') return true;
+  const p = personagemAtual(); return !!(p && p.arvores.includes(a.id));
+}
+function linkNo(m, texto){
+  const a = arvDe.get(m.id), fora = a && a!==arvoreVisivel();
+  return `<a href="#" class="lk-no" data-no="${esc(m.id)}" title="Ir até ${esc(m.nome)}${fora ? ' (' + esc(nomeCat(a.categoria)) + ' · ' + esc(a.nome) + ')' : ''}">${esc(texto ?? m.nome)}</a>`;
+}
+function comLinks(txt, dono){
+  const s = String(txt ?? ''), {re} = indiceDeNomes();
+  if(!re || !s) return esc(s);
+  let out = '', i = 0;
+  re.lastIndex = 0;
+  for(let m; (m = re.exec(s)); ){
+    const alvo = alvoDoNome(m[1], dono);
+    if(!alvo) continue;
+    out += esc(s.slice(i, m.index)) + linkNo(alvo, m[1]); i = m.index + m[1].length;
+  }
+  return out + esc(s.slice(i));
+}
+// os nódulos citados no texto de um nódulo (a descrição e os graus), sem repetir
+function citadosEm(n){
+  const {re} = indiceDeNomes(), vistos = new Map();
+  if(!re) return [];
+  for(const t of [n.desc, ...n.graus.map(g=>g.texto)]){
+    re.lastIndex = 0;
+    for(let m; (m = re.exec(String(t || ''))); ){ const alvo = alvoDoNome(m[1], n); if(alvo && !vistos.has(alvo.id)) vistos.set(alvo.id, alvo); }
+  }
+  return [...vistos.values()];
+}
+const pulosNo = [];          // de onde se veio: [{no, arv}]
+function irParaNo(id, voltando){
+  if(!porId.has(id) || !podeIrAoNo(id)) return;
+  const a = arvDe.get(id), vis = arvoreVisivel();
+  if(!voltando && selecionado && selecionado!==id) pulosNo.push({no:selecionado});
+  if(pulosNo.length>30) pulosNo.shift();
+  if(!vis || vis.id!==a.id){ if(ui.modo==='mestre') trocarArvoreMestre(a.id); else trocarArvoreJogador(a.id); }
+  selecionado = id; desenhar(); pintarPainel(); focarNo(id); pintarVoltarNo();
+}
+function voltarNo(){
+  while(pulosNo.length){ const v = pulosNo.pop(); if(porId.has(v.no) && podeIrAoNo(v.no)){ irParaNo(v.no, true); return; } }
+  pintarVoltarNo();
+}
+function pintarVoltarNo(){
+  const b = $('#btVoltarNo'); if(!b) return;
+  const v = pulosNo[pulosNo.length - 1], m = v && porId.get(v.no);
+  b.hidden = !m;
+  if(m) b.textContent = '← Voltar para “' + m.nome + '”';
+}
+document.addEventListener('click', e=>{
+  const l = e.target.closest && e.target.closest('.lk-no'); if(!l) return;
+  e.preventDefault(); irParaNo(l.dataset.no);
+});
 function htmlCusto(uso, p){
   const R = window.TC && TC.rules;
   if(!R || !R.custoDeUso) return '';
@@ -3951,6 +4043,7 @@ function ligarTela(){
     desenhar();
   }, {passive:false});
   $('#btMais').onclick = ()=>{ zoomPara(cam.k*1.25); desenhar(); };
+  $('#btVoltarNo').onclick = voltarNo;                  // (lote 27)
   $('#btMenos').onclick = ()=>{ zoomPara(cam.k/1.25); desenhar(); };
   $('#btCentro').onclick = ()=>{ centralizar(); desenhar(); };
 }
