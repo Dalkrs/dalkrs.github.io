@@ -81,6 +81,21 @@ const doc = JSON.stringify({ formato: 'urgm-skilltree-doc', versao: 4,
     ok((await P.locator('#atualArv small').innerText()).trim() === 'Escola › Shaji', 'a barra diz a família nova: ' + (await P.locator('#atualArv small').innerText()).trim());
   });
 
+  await passo('as profissões prontas', async () => {
+    await P.keyboard.press('a'); await P.locator('.sel-aba[data-cat="profissao"]').click(); await w(120);
+    ok(/Profissões prontas/.test(await P.locator('.sel-prontas').innerText()), 'na aba Profissões, o quadro das prontas');
+    await P.locator('#selProntas').click(); await w(400);
+    ok(/14 árvores de Profissão: Alquimista, Caçador/.test(await P.locator('#dlg').innerText()), 'a confirmação diz quais entram');
+    await P.locator('#dlg .rodape .btn.ouro').click(); await w(500);
+    const r = await E(() => { const b = bib(), pool = b.pools.find(p => p.nome === 'Profissão'), ps = b.arvores.filter(a => a.categoria === 'profissao');
+      const nos = ps.flatMap(a => a.nodes), custos = new Set(nos.flatMap(n => n.graus.flatMap(g => Object.keys(g.custos))));
+      return { n: ps.length, pool: pool && pool.padrao, custos: [...custos], pp: pool && pool.id, nos: nos.length, tranca: nos.filter(n => n.tranca).length, hp: nos.some(n => n.graus.some(g => g.bonus && g.bonus.HP)), vida: nos.some(n => n.graus.some(g => g.bonus && g.bonus.Vida)) }; });
+    ok(r.n === 14 && r.pool === 3 && r.custos.length === 1 && r.custos[0] === r.pp, 'as 14 entram, com o tipo de ponto "Profissão" (3 de começo) em todos os custos: ' + JSON.stringify({ n: r.n, pool: r.pool, custos: r.custos }));
+    ok(r.nos > 14 * 60 && r.tranca >= 14 * 2 && r.hp && !r.vida, 'de 60 a 70 nódulos cada, os caminhos de toldo trancados e os bônus na barra HP');
+    ok(await P.locator('.sel-prontas').count() === 0 && await P.locator('#selCorpo .sel-card').count() === 14, 'depois, o quadro some e as 14 aparecem');
+    await P.keyboard.press('Escape'); await w(80);
+  });
+
   await passo('o jogador não vê', async () => {
     await E(() => trocarModo('jogador')); await w(200);
     ok(!(await P.locator('#btSelArv').isVisible()), 'no modo Jogador, o botão some (as abas são os personagens)');

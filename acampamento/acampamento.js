@@ -244,7 +244,9 @@
     const todas = linhas(), ids = new Set(todas.map(l => l.id));
     mudar('roda', c => {
       // (numa mesa com campanhas, entram sozinhos os personagens de jogador DESTA campanha; os do mundo e os das outras, só chamados)
-      for (const l of todas) if (ehJogador(l.dono_id) && (!campId || l.campanha === campId) && !c.autoVistos.includes(l.id)) { c.autoVistos.push(l.id); if (!c.presentes.includes(l.id)) c.presentes.push(l.id); }
+      // (lote 26) os NPCs do background de um jogador (ficha.fundo) também entram; a ficha que o jogador ainda vai criar, só depois de criada
+      const entra = l => (ehJogador(l.dono_id) || !!(l.ficha && l.ficha.fundo)) && !(l.ficha && l.ficha.criacao && l.ficha.criacao.pendente);
+      for (const l of todas) if (entra(l) && (!campId || l.campanha === campId) && !c.autoVistos.includes(l.id)) { c.autoVistos.push(l.id); if (!c.presentes.includes(l.id)) c.presentes.push(l.id); }
       // (a roda leva também a emoção de cada um: assim quem não vê a ficha de alguém vê a aura dele)
       c.roda = c.presentes.filter(id => ids.has(id)).map(id => { const l = todas.find(x => x.id === id), img = l.ficha && l.ficha.img, emo = N.emoOk(l.estado && l.estado.emo); return Object.assign({ id, nome: l.nome || 'Sem nome', img: typeof img === 'string' && /^https:\/\//.test(img) ? img : null, dono: l.dono_id || null }, emo ? { emo } : {}); });
     }, { silencioso: true });

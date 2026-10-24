@@ -279,6 +279,16 @@ button { cursor: pointer; }
 .sec > summary .ic { transition: transform .15s; }
 .sec:not([open]) > summary .ic { transform: rotate(-90deg); }
 .sec-body { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+/* (lote 26) o resumo no título do bloco fechado, a divisa entre o que se usa na sessão e os ajustes, e a aba Cena
+   separada das outras (é de preparo) */
+.sec-res { flex: 1 1 auto; min-width: 0; margin: 0 8px 0 10px; text-align: right; color: var(--fg-3); font-size: 12px; font-weight: 500;
+  letter-spacing: normal; text-transform: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec[open] > summary .sec-res { display: none; }
+.sec-divisa { margin-top: 6px; padding-top: 12px; border-top: 2px solid var(--line-strong); color: var(--fg-3); font-size: 12px; font-weight: 600; }
+.sec-divisa + .sec { border-top: 0; padding-top: 4px; }
+.tab.prep { margin-left: auto; }
+.cond-mais-w { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.cond-mais-w > .cgrid { align-self: stretch; }
 
 .field { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 8px; }
 .field.stack, .grid2 .field, .grid3 .field { grid-template-columns: minmax(0, 1fr); gap: 4px; }

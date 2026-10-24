@@ -1216,6 +1216,90 @@ html:not(.modo-simples) .so-simples{display:none!important}
 .rsagt{font-size:13px;font-weight:700;color:var(--ink-2);margin-right:2px}
 .rschip.agora-tmp{border-color:var(--teal-borda);background:var(--teal-fundo);color:var(--ink)}
 .rschip.agora-item{color:var(--ink)}
+
+/* (lote 26) a criação de personagem e o background */
+.cria-veu{position:fixed;inset:0;z-index:200;background:rgba(8,10,16,.62);display:grid;place-items:center;padding:16px}
+.cria-caixa{width:min(1020px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sombra);overflow:hidden}
+.cria-topo{display:flex;align-items:center;gap:12px;padding:16px 20px 8px}
+.cria-topo h2{margin:0;font:700 26px/1.1 var(--display)}
+.cria-topo button{margin-left:auto}
+.cria-passos{display:flex;flex-wrap:wrap;gap:6px 14px;list-style:none;margin:0;padding:4px 20px 12px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-soft)}
+.cria-passos li{display:flex;align-items:center;gap:6px}
+.cria-passos span{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);font:600 12px var(--monof)}
+.cria-passos li.feito{color:var(--ink-2)} .cria-passos li.feito span{background:var(--teal-fundo);border-color:var(--teal-borda);color:var(--teal)}
+.cria-passos li.agora{color:var(--ink);font-weight:700} .cria-passos li.agora span{background:var(--forte);border-color:var(--forte);color:var(--forte-txt)}
+.cria-corpo{overflow-y:auto;padding:18px 20px;flex:1 1 auto;display:flex;flex-direction:column;gap:14px}
+.cria-dica{margin:0;color:var(--ink-2);font-size:15px;line-height:1.5}
+.cria-sub{margin:6px 0 0;font:600 15px var(--ui);color:var(--ink-2);display:flex;gap:6px;align-items:center}
+.cria-vazio{color:var(--ink-soft);font-style:italic}
+.cria-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.cria-grade.tres{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.cria-card{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;padding:14px;border-radius:12px;background:var(--campo-sut);min-height:84px}
+.cria-card b{font:700 19px/1.15 var(--display)}
+.cria-card small{color:var(--ink-soft);font-size:12.5px;line-height:1.35}
+.cria-card.on{border-color:var(--forte);box-shadow:inset 0 0 0 1px var(--forte);background:var(--brass-fundo)}
+.cria-txt{color:var(--ink-2);font-size:13px;line-height:1.45}
+.cria-detalhe{border:1px solid var(--line);border-left:4px solid var(--forte);border-radius:10px;padding:12px 16px;background:var(--campo)}
+.cria-detalhe h3{margin:0 0 4px;font:700 21px var(--display)} .cria-detalhe p{margin:6px 0 0;line-height:1.55;font-size:14px}
+.cria-detalhe .cria-raiz{color:var(--brass-ink);font-weight:600}
+.cria-chips{display:flex;flex-wrap:wrap;gap:6px}
+.cria-chip{border-radius:999px;padding:6px 12px}
+.cria-chip.on{background:var(--forte);color:var(--forte-txt);border-color:var(--forte)}
+.cria-chk{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;cursor:pointer}
+.cria-chk input{width:auto}
+.cria-fams{display:flex;flex-direction:column;gap:6px}
+.cria-fam{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.cria-fam > b{min-width:90px;font-size:13.5px}
+.cria-nome{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.cria-foto{display:grid;gap:6px;justify-items:center}
+.cria-quadro{width:140px;height:140px;padding:0;border-radius:14px;overflow:hidden;display:grid;place-items:center;background:var(--campo-sut);color:var(--ink-soft);font-size:14px}
+.cria-quadro img, .cria-fim .cria-foto img{width:100%;height:100%;object-fit:cover;object-position:top center}
+.cria-campos{flex:1 1 320px;display:flex;flex-direction:column;gap:12px}
+.cria-campos #criaNome{font:700 24px var(--display);padding:8px 10px}
+.cria-lvl input{max-width:120px}
+.cria-sobra{align-self:flex-start;padding:8px 14px;border-radius:10px;background:var(--brass-fundo);border:1px solid var(--brass-soft);font-size:15px}
+.cria-sobra b{font:700 20px var(--monof)}
+.cria-sobra.ok{background:var(--teal-fundo);border-color:var(--teal-borda)} .cria-sobra.passou{background:var(--rubric-fundo);border-color:var(--rubric-borda)}
+.cria-atrs{display:flex;flex-direction:column;gap:8px}
+.cria-atr{display:grid;grid-template-columns:minmax(0,1fr) auto auto 84px auto auto;gap:6px;align-items:center;padding:8px 12px;border-radius:10px;background:var(--campo-sut)}
+.cria-atr b{display:block;font-size:15px} .cria-atr small{color:var(--ink-soft);font-size:12.5px}
+.cria-atr input{text-align:center;font:600 19px var(--monof)}
+.cria-atr.c-for b{color:var(--a-for)} .cria-atr.c-des b{color:var(--a-des)} .cria-atr.c-vit b{color:var(--a-vit)} .cria-atr.c-can b{color:var(--a-can)} .cria-atr.c-agi b{color:var(--a-agi)}
+.cria-linha{display:flex;gap:8px}
+.cria-pontos{display:flex;flex-wrap:wrap;gap:8px}
+.cria-pontos span{padding:6px 12px;border-radius:999px;border:1px solid var(--line);border-left:4px solid var(--c);font-size:13.5px}
+.cria-pontos b{font:700 16px var(--monof)}
+.cria-arvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;align-items:start}
+.cria-arv{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--campo)}
+.cria-arv h3{margin:0 0 4px;font:700 20px var(--display)}
+.cria-arv ul{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.cria-no{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:9px;background:var(--campo-sut)}
+.cria-no.on{background:var(--teal-fundo);box-shadow:inset 3px 0 0 var(--teal)}
+.cria-no details{flex:1 1 auto;min-width:0}
+.cria-no summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.cria-no summary small{color:var(--ink-soft);font-size:12px}
+.cria-no details p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--ink-2);white-space:pre-line}
+.cria-graus{margin:6px 0 0;padding-left:20px;font-size:12.5px;color:var(--ink-soft)} .cria-graus li.tem{color:var(--teal);font-weight:600}
+.cria-pm{display:flex;gap:4px;flex:none}
+.cria-pm button{min-width:34px}
+.cria-pm button:disabled{opacity:.4;cursor:not-allowed}
+.cria-fim{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.cria-fim .cria-foto{width:140px;height:140px;border-radius:14px;overflow:hidden;background:var(--campo-sut);display:grid;place-items:center}
+.cria-ini{font:700 44px var(--display);color:var(--ink-fraco)}
+.cria-fim h3{margin:0;font:700 30px var(--display)} .cria-fim p{margin:6px 0 0;line-height:1.5}
+.cria-fimatr{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px}
+.cria-fimatr .c-for b{color:var(--a-for)} .cria-fimatr .c-des b{color:var(--a-des)} .cria-fimatr .c-vit b{color:var(--a-vit)} .cria-fimatr .c-can b{color:var(--a-can)} .cria-fimatr .c-agi b{color:var(--a-agi)}
+.cria-pe{display:flex;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--line);background:var(--campo-sut)}
+.cria-pe button{padding:9px 16px;font-size:14.5px}
+.cria-pe [aria-disabled="true"]{opacity:.55}
+.cria-falta{flex:1 1 auto;text-align:right;color:var(--ink-soft);font-size:13.5px}
+.cria-selo{margin-left:6px;padding:1px 7px;border-radius:999px;font:600 11px var(--ui);background:var(--forte);color:var(--forte-txt);vertical-align:middle}
+.cria-selo.esp{background:var(--campo-sut);color:var(--ink-2);border:1px solid var(--line)}
+.cria-aviso{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 18px;margin-bottom:10px;border-radius:12px;border:1px solid var(--forte);background:var(--brass-fundo)}
+.cria-aviso div{flex:1 1 280px;display:flex;flex-direction:column;gap:3px} .cria-aviso b{font-size:16px} .cria-aviso span{color:var(--ink-2);font-size:13.5px}
+.cria-aviso.esp{border-color:var(--line);background:var(--campo-sut)}
+.cria-aviso.conf{border-color:var(--teal-borda);background:var(--teal-fundo)}
+.cria-aviso button{padding:9px 16px;font-size:14.5px}
 </style>
 </head>
 <body>
@@ -1283,6 +1367,7 @@ html:not(.modo-simples) .so-simples{display:none!important}
 <script src="extras.js?v=18"></script>
 <script src="quadros.js?v=5"></script>
 <script src="filtro-skills.js?v=2"></script>
+<script src="criacao.js?v=1"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -1846,7 +1931,7 @@ function linhaElenco(p, embaixo, nPets){
     <button class="pc${p.id===S.sel?' on':''}" data-abrir="${p.id}">
       ${FichasExtras.miniatura(p)}
       <span class="pctx">
-      <span class="nm">${esc(p.nome)}</span>
+      <span class="nm">${esc(p.nome)}${FichasCriacao.selo(p)}</span>
       <span class="mt">${p.petDe? PATA_SVG+' pet de '+esc(FichasMesa.nomeDoPetDe(p))+' · ' : FichasMesa.deJogador(p)? '' : 'Tier '+esc(p.tier)+' · '}Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}${FichasMesa.nomeDoDono(p)?' · de '+esc(FichasMesa.nomeDoDono(p)):''}</span>
       <span class="linhatags">
         <span class="lado ${(p.lado||'Aliado').toLowerCase()}">${esc(p.lado||'Aliado')}</span>
@@ -2241,6 +2326,7 @@ function renderFicha(){
   // (lote 16) cada aba fica na página (as que não estão abertas, escondidas): trocar de aba não redesenha a ficha
   const parte=(k,html)=>`<div class="abaficha" id="abafichac-${k}" data-abafichac="${k}" role="tabpanel" aria-labelledby="abaficha-${k}"${aba===k?'':' hidden'}>${html}</div>`;
   host.innerHTML=`
+  ${FichasCriacao.htmlAviso(pc)}
   ${htmlResumo(pc,c)}
   ${htmlAbasFicha(pc,aba)}
   ${parte('atributos', `
@@ -2899,6 +2985,7 @@ function ligarFicha(pc){
   host.querySelector('#f_lado').onchange=e=>{pc.lado=e.target.value; save(); renderLista()};
   FichasMesa.ligarDono(host, pc);
   FichasExtras.ligarRetrato(host, pc);
+  FichasCriacao.ligarAviso(host, pc);     // (lote 26) a criação de personagem
   FichasExtras.ligarLapros(host, pc);
   ligarCaixinha(host, pc);
   FichasExtras.ligarAtributos(host, pc);
@@ -4719,6 +4806,7 @@ document.getElementById('fileIn').onchange=e=>{if(e.target.files[0])importar(e.t
   // outro sistema do site pediu para abrir uma ficha ("Abrir a ficha", no Acampamento)
   // (lote 7, parte 6) a busca rápida do site também pede um item: { pc, item } nos equipamentos, { pc, bolsa } na bolsa
   try{ if(window.TC && TC.ponte && TC.ponte.aoIr) TC.ponte.aoIr(a=>{
+    if(FichasCriacao.pedido(a)) return;          // (lote 26) dar ficha, criar o personagem, o background
     if(!a || !a.pc) return;
     const pc=S.personagens.find(p=>p.id===a.pc);
     if(!pc){ toast('Esta ficha não está mais aqui (ou não chegou a este aparelho).'); return; }

@@ -30,6 +30,8 @@ async function open(opt = {}) {
   const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: opt.w || 1440, height: opt.h || 900 }, colorScheme: opt.theme || 'dark', deviceScaleFactor: opt.dpr || 1, reducedMotion: opt.reduce ? 'reduce' : 'no-preference' });
   // o tema do site (tc/tema.js) é escuro por padrão; nos testes ele segue o aparelho (opt.theme)
   await ctx.addInitScript(() => { try { if (!localStorage.getItem('tinycats:tema')) localStorage.setItem('tinycats:tema', 'aparelho'); } catch (e) { /* página sem armazenamento */ } });
+  // (lote 26) os blocos do painel e a lista de condições começam abertos nos testes (opt.fechado: como o mestre encontra)
+  if (!opt.fechado) await ctx.addInitScript(() => { try { localStorage.setItem('tinycats:testes-tudo-aberto', '1'); } catch (e) { /* página sem armazenamento */ } });
   // (lote 15) opt.init: um código que roda antes da página (por exemplo, um site de mentira em window.TC)
   if (opt.init) await ctx.addInitScript({ content: opt.init });
   const page = await ctx.newPage();

@@ -2,6 +2,54 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-12",
+      "data": "2026-10-24",
+      "titulo": "As abas da direita das Cenas, para a sessão",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: no token, primeiro o que se usa jogando (barras, condições, números); os ajustes do token ficam embaixo, fechados, com um resumo no título. As condições mostram só as ativas — a lista fica no botão “Condição”."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: na aba Cena, cada bloco começa fechado com um resumo (“Dia · penumbra · sem clima”). As teclas 1 a 5 abrem as abas do painel."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Oficina: no painel Selecionar árvore, as sub-raças de cada raça aparecem como etiquetas pequenas, e não mais numa caixa comprida."
+        }
+      ]
+    },
+    {
+      "versao": "2026.10.24-11",
+      "data": "2026-10-24",
+      "titulo": "Criar o personagem passo a passo, o background e as Profissões",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Criação de personagem: quando o mestre dá uma ficha, chega um aviso com som. Você escolhe a raça, a sub-raça, a classe, o nome e a foto, distribui os atributos e escolhe as primeiras habilidades, passo a passo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Menu da mesa: “Ficha…” ao lado de cada jogador dá uma ficha nesta campanha ou numa campanha nova (com o nome na hora). Nas Fichas você escolhe o level e as raças e classes que valem, e depois confere o que o jogador criou."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Criar background: os NPCs da história de um jogador (família, companheiros e o pessoal do toldo) num passo a passo curto. Vão para um grupo com o nome dele e entram no acampamento; o jogador vê, mas não controla."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Profissões: 14 árvores prontas (Alquimista, Caçador, Coletor, Construtor, Cozinheiro, Curandeiro, Empregado, Escriba, Esfolador, Ferreiro, Menestrel, Mercador, Tropeiro e Vigia), com itens por tier de I a VI. Na Oficina, em Selecionar árvore › Profissões. Os caminhos de mestre vêm trancados, para abrir a quem é do toldo."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-10",
       "data": "2026-10-24",
       "titulo": "As ferramentas das Cenas em grupos",

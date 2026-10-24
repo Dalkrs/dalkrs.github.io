@@ -55,6 +55,8 @@ async function start(opt = {}) {
     });
     // (lote 22) a tela das barrinhas abre sozinha na vez de cada um; nos testes antigos ela fica desligada (o.barrinhas liga)
     if (!o.barrinhas) await ctx.addInitScript(() => { try { localStorage.setItem('tinycats:testes-sem-barrinhas', '1'); } catch (e) {} });
+    // (lote 26) nas Cenas, os blocos do painel e a lista de condições começam abertos nos testes (o.fechado: como o mestre encontra)
+    if (!o.fechado) await ctx.addInitScript(() => { try { localStorage.setItem('tinycats:testes-tudo-aberto', '1'); } catch (e) {} });
     if (o.seed) await ctx.addInitScript(seed => { try { for (const k in seed) if (localStorage.getItem(k) === null) localStorage.setItem(k, seed[k]); } catch (e) {} }, o.seed);
     // o tema do site (tc/tema.js) é escuro por padrão; nos testes ele segue o aparelho (o.theme), a não ser que o teste escolha outro (o.seed, que vem antes)
     await ctx.addInitScript(() => { try { if (!localStorage.getItem('tinycats:tema')) localStorage.setItem('tinycats:tema', 'aparelho'); } catch (e) { /* página sem armazenamento */ } });
