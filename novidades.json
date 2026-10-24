@@ -2,6 +2,23 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-12",
+      "data": "2026-10-24",
+      "titulo": "As abas da direita das Cenas, para a sessão",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: no token, primeiro o que se usa jogando (barras, condições, números); os ajustes do token ficam embaixo, fechados, com um resumo no título. As condições mostram só as ativas — a lista fica no botão “Condição”."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: na aba Cena, cada bloco começa fechado com um resumo (“Dia · penumbra · sem clima”). As teclas 1 a 5 abrem as abas do painel."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-11",
       "data": "2026-10-24",
       "titulo": "Criar o personagem passo a passo, o background e as Profissões",
