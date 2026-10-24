@@ -1258,6 +1258,9 @@ const Tools = (() => {
       if (nudge(k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0, k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0)) e.preventDefault();
       return;
     }
+    /* (lote 23) As letras são atalhos: a tecla não segue adiante. Senão, quando o atalho abre uma janela que já põe o
+       cursor num campo (o N com a tela das barrinhas, o K com o ataque, o F…), a própria letra cai escrita no campo. */
+    if (k.length === 1 && /\p{L}/u.test(k)) e.preventDefault();
     if (k === '+' || k === '=') { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z * 1.25); UI.status(); return; }
     if (k === '-') { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z / 1.25); UI.status(); return; }
     if (k === '0' || k === 'Home') { Render.fit(); UI.status(); return; }

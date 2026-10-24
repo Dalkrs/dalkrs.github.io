@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.23-10",
+      "data": "2026-10-23",
+      "titulo": "A letra do atalho fica fora do campo",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Cenas: apertar N (passar a vez) ou K (ataque com defesa) não escreve mais a letra no campo da tela que abre — o cursor já fica pronto para o número. Vale para todas as letras de atalho."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-9",
       "data": "2026-10-23",
       "titulo": "Os filtros das skills e as abas do elenco",
