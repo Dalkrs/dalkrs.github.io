@@ -78,6 +78,11 @@ input.in:focus { outline: none; border-color: var(--lamp); }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
 .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
 .card h3 { margin: 0; font: 600 18px/1.2 var(--display); }
+.card.on { border-color: var(--lamp); box-shadow: inset 0 0 0 1px var(--lamp); }
+.part { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-top: 1px solid var(--line); }
+.part b { margin-right: 6px; }
+.part-acoes { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+select.in.sm, .in.sm { height: 28px; width: auto; font-size: 13px; padding: 0 6px; }
 .vazio { color: var(--fg-3); padding: 20px 4px; }
 .msg { margin: 0; font-size: 12.5px; min-height: 17px; }
 .msg.ok { color: var(--ok); } .msg.err { color: var(--danger); }
@@ -118,7 +123,8 @@ input.in:focus { outline: none; border-color: var(--lamp); }
   const quando = t => { if (!t) return '—'; const d = new Date(t); return isNaN(d) ? '—' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
   const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const PAPEL = { mestre: 'mestre', auxiliar: 'mestre auxiliar', jogador: 'jogador' };
-  const ACAO = { senha: 'Trocou a senha', editar: 'Editou a conta', apagar: 'Apagou a conta', cadastro: 'Mudou o cadastro' };
+  const ACAO = { senha: 'Trocou a senha', editar: 'Editou a conta', apagar: 'Apagou a conta', cadastro: 'Mudou o cadastro', 'entrar-ver': 'Auditou (só olhando)', 'entrar-mestre': 'Auditou (como mestre)',
+    copia: 'Baixou a cópia', 'apagar-mesa': 'Apagou a mesa', dono: 'Passou a mesa', tirar: 'Tirou da mesa', papel: 'Mudou o papel' };
 
   if (!conta || typeof conta.admin !== 'function') {
     app.append(h('div', { class: 'fora' }, h('p', { text: 'A Administração abre pelo site, na aba Administração (só para quem administra).' })));
@@ -214,16 +220,100 @@ input.in:focus { outline: none; border-color: var(--lamp); }
       h('div', { class: 'bloco' }, h('h3', { text: 'Apagar' }), h('p', { text: motivo || 'Some de vez com a conta. As fichas ficam nas mesas, sem dono.' }), bAp, mAp)];
   }
 
-  /* ---- Mesas ---- */
+  /* ---- Mesas ----
+     A lista à esquerda; à direita, a mesa escolhida: o que há nela, os participantes (passar a mesa, mudar o papel,
+     tirar) e a auditoria — entrar só para olhar ou como mestre, sem aparecer (fica só no Registro) —, a cópia e o apagar. */
+  let selMesa = null, det = null, detDe = null, detErro = '';
+  async function carregarMesa(id) {
+    detDe = id; det = null; detErro = ''; pintar();
+    try { const d = await conta.admin('mesa', { id }); if (detDe === id) det = d; } catch (e) { if (detDe === id) detErro = (e && e.message) || 'Não deu para abrir a mesa.'; }
+    if (detDe === id) pintar();
+  }
+  const tamanho = b => b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : b > 1024 ? Math.round(b / 1024) + ' KB' : b + ' bytes';
   function abaMesas() {
     const ms = dados.mesas.slice().sort((a, b) => String(b.visto || '').localeCompare(String(a.visto || '')));
-    return h('div', { class: 'corpo' }, h('div', { class: 'lista' },
-      ms.length ? h('div', { class: 'cards' }, ms.map(m => h('div', { class: 'card', 'data-mesa': m.id },
-        h('h3', { text: m.nome }),
-        h('div', { class: 'sub', text: 'Dono: ' + m.dono + (m.donoEmail ? ' (' + m.donoEmail + ')' : '') }),
-        h('div', { class: 'sub', text: 'Criada em ' + quando(m.criada) + ' · último uso ' + quando(m.visto) }),
-        h('div', null, m.membros.map(x => h('span', { class: 'chip' + (x.papel === 'mestre' ? ' mestre' : ''), text: x.nome + ' · ' + (PAPEL[x.papel] || x.papel) }))))))
-        : h('p', { class: 'vazio', text: 'Nenhuma mesa ainda.' })));
+    return h('div', { class: 'corpo' },
+      h('div', { class: 'lista' },
+        ms.length ? h('div', { class: 'cards' }, ms.map(m => h('button', { type: 'button', class: 'card' + (m.id === selMesa ? ' on' : ''), 'data-mesa': m.id, style: 'text-align:left;cursor:pointer;font:inherit;color:inherit',
+          onclick: () => { selMesa = m.id; recado = ''; carregarMesa(m.id); } },
+          h('h3', { text: m.nome }),
+          h('div', { class: 'sub', text: 'Dono: ' + m.dono + (m.donoEmail ? ' (' + m.donoEmail + ')' : '') }),
+          h('div', { class: 'sub', text: 'Criada em ' + quando(m.criada) + ' · último uso ' + quando(m.visto) }),
+          h('div', null, m.membros.map(x => h('span', { class: 'chip' + (x.papel === 'mestre' ? ' mestre' : ''), text: x.nome + ' · ' + (PAPEL[x.papel] || x.papel) }))))))
+          : h('p', { class: 'vazio', text: 'Nenhuma mesa ainda.' })),
+      h('aside', { class: 'lado' }, !selMesa ? h('p', { class: 'vazio', text: 'Clique numa mesa para ver o que há nela, auditar, passar para outro dono, baixar a cópia ou apagar.' })
+        : detErro ? h('p', { class: 'msg err', text: detErro }) : !det || det.id !== selMesa ? h('p', { class: 'vazio', text: 'Abrindo a mesa…' }) : ladoMesa(det)));
+  }
+  function ladoMesa(d) {
+    const docs = Object.entries(d.documentos || {}).sort((a, b) => b[1] - a[1]);
+    const nomeCamp = id => (d.campanhas.find(c => c.id === id) || {}).nome || id;
+    // a auditoria: entra na mesa pela casca, sem aparecer
+    const mAud = h('p', { class: 'msg' });
+    const entrar = async modo => {
+      if (modo === 'mestre' && !(await confirmar('Entrar como mestre?', 'Você entra em “' + d.nome + '” podendo mexer em tudo, como o mestre. Ninguém vê você na mesa; a entrada fica no Registro. O que você fizer aparece como seu (as falas e rolagens levam o seu nome).', 'Entrar como mestre'))) return;
+      mAud.className = 'msg'; mAud.textContent = 'Entrando…';
+      try {
+        await conta.admin('entrar', { id: d.id, modo });
+        await P.mesas.abrir(d.id, { auditoria: modo });
+        try { window.parent.location.hash = '#/cenas'; } catch (e) { /* fica aqui */ }
+      } catch (e) { mAud.className = 'msg err'; mAud.textContent = (e && e.message) || 'Não deu para entrar.'; }
+    };
+    const bVer = h('button', { type: 'button', class: 'btn pri', id: 'm-ver', text: 'Entrar só para olhar', onclick: () => entrar('ver') });
+    const bMestre = h('button', { type: 'button', class: 'btn', id: 'm-mestre', text: 'Entrar como mestre', onclick: () => entrar('mestre') });
+    // a cópia
+    const mCop = h('p', { class: 'msg' }), bCop = h('button', { type: 'button', class: 'btn', id: 'm-copia', text: 'Baixar a cópia da mesa' });
+    bCop.onclick = async () => {
+      mCop.className = 'msg'; mCop.textContent = 'Juntando tudo…'; bCop.disabled = true;
+      try {
+        const c = await conta.admin('copia', { id: d.id });
+        const blob = new Blob([JSON.stringify(c, null, 1)], { type: 'application/json' }), url = URL.createObjectURL(blob);
+        const a = h('a', { href: url, download: 'mesa-' + d.nome.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').toLowerCase() + '-' + new Date().toISOString().slice(0, 10) + '.json' });
+        document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+        mCop.className = 'msg ok'; mCop.textContent = 'Cópia baixada (as imagens não vão no arquivo: só a lista delas).';
+      } catch (e) { mCop.className = 'msg err'; mCop.textContent = (e && e.message) || 'Não deu para baixar.'; }
+      bCop.disabled = false;
+    };
+    // apagar: digita o nome
+    const nomeConf = h('input', { class: 'in', id: 'm-apagar-nome', placeholder: d.nome, autocomplete: 'off' });
+    const mAp = h('p', { class: 'msg' }), bAp = h('button', { type: 'button', class: 'btn per', id: 'm-apagar', text: 'Apagar a mesa de vez', disabled: true });
+    nomeConf.addEventListener('input', () => { bAp.disabled = nomeConf.value.trim() !== d.nome.trim(); });
+    bAp.onclick = async () => {
+      if (!(await confirmar('Apagar “' + d.nome + '” de vez?', 'Somem as fichas, cenas, mapas, documentos, imagens, a mesa ao vivo e as campanhas, e todos saem da mesa. As contas continuam. Não dá para desfazer — baixe a cópia antes, se quiser.', 'Apagar de vez', true))) return;
+      pedir(mAp, bAp, async () => { await conta.admin('apagar-mesa', { id: d.id, nome: nomeConf.value }); selMesa = null; det = null; }, 'Mesa apagada.');
+    };
+    // os participantes
+    const mPart = h('p', { class: 'msg' });
+    const acaoPart = async (acao, x, extra, pergunta) => {
+      if (pergunta && !(await confirmar(pergunta[0], pergunta[1], pergunta[2], pergunta[3]))) return;
+      mPart.className = 'msg'; mPart.textContent = 'Salvando…';
+      try { await conta.admin(acao, Object.assign({ id: d.id, usuario: x.usuario_id }, extra || {})); recado = 'Feito.'; await carregar(); await carregarMesa(d.id); }
+      catch (e) { mPart.className = 'msg err'; mPart.textContent = (e && e.message) || 'Não deu certo.'; }
+    };
+    const linhaPart = x => {
+      const dono = x.usuario_id === d.dono_id;
+      return h('div', { class: 'part', 'data-usuario': x.usuario_id },
+        h('div', null, h('b', { text: x.nome }), dono ? h('span', { class: 'chip mestre', text: 'dono' }) : null,
+          h('div', { class: 'sub', text: (x.email || '') + ' · ' + (PAPEL[x.papel] || x.papel) + (x.campanhas.length ? ' · ' + x.campanhas.map(nomeCamp).join(', ') : '') + ' · visto ' + quando(x.visto_em) })),
+        dono ? null : h('div', { class: 'part-acoes' },
+          h('select', { class: 'in sm', 'aria-label': 'Papel de ' + x.nome, onchange: e => acaoPart('papel', x, { papel: e.target.value }) },
+            h('option', { value: 'jogador', text: 'Jogador', selected: x.papel === 'jogador' || null }), h('option', { value: 'auxiliar', text: 'Mestre auxiliar', selected: x.papel === 'auxiliar' || null })),
+          h('button', { type: 'button', class: 'btn sm', text: 'Passar a mesa', onclick: () => acaoPart('dono', x, null, ['Passar “' + d.nome + '” para ' + x.nome + '?', x.nome + ' vira o mestre e dono da mesa; o mestre de agora vira jogador.', 'Passar a mesa']) }),
+          h('button', { type: 'button', class: 'btn sm per', text: 'Tirar', onclick: () => acaoPart('tirar', x, null, ['Tirar ' + x.nome + ' da mesa?', 'A pessoa sai da mesa e das campanhas dela. As fichas dela continuam na mesa.', 'Tirar', true]) })));
+    };
+    return [h('h2', { text: d.nome }),
+      h('div', { class: 'sub', text: 'Criada em ' + quando(d.criada) + (d.codigo ? ' · convite ' + d.codigo : '') }),
+      h('div', { class: 'bloco' }, h('h3', { text: 'Auditoria' }),
+        h('p', { text: 'Entre na mesa sem aparecer para ninguém: você não entra na lista de participantes nem aparece online. A entrada fica só no Registro desta aba. Vale por 12 horas, ou até "Sair da auditoria".' }),
+        d.auditoria ? h('p', { text: 'Você tem uma auditoria aberta aqui (' + (d.auditoria.modo === 'ver' ? 'só olhando' : 'como mestre') + ') até ' + quando(d.auditoria.ate) + '.' }) : null,
+        h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, bVer, bMestre), mAud),
+      h('div', { class: 'bloco' }, h('h3', { text: 'O que há nela' }),
+        h('p', { text: d.fichas.total + ' fichas (' + d.fichas.deJogadores + ' de jogadores, ' + d.fichas.npcs + ' NPCs) · ' + d.registro + ' linhas na mesa ao vivo · ' + d.arquivos.total + ' arquivos (' + tamanho(d.arquivos.bytes) + ')' }),
+        docs.length ? h('div', null, docs.map(([k, n]) => h('span', { class: 'chip', text: k + ' · ' + n }))) : null,
+        d.campanhas.length ? h('p', { text: 'Campanhas: ' + d.campanhas.map(c => c.nome + (c.encerrada ? ' (encerrada)' : '')).join(', ') }) : null,
+        h('p', { text: 'Última fala na mesa ao vivo: ' + quando(d.ultimaFala) + ' · última mudança: ' + quando(d.ultimaMudanca) })),
+      h('div', { class: 'bloco' }, h('h3', { text: 'Participantes' }), d.membros.map(linhaPart), mPart),
+      h('div', { class: 'bloco' }, h('h3', { text: 'Cópia' }), h('p', { text: 'Um arquivo .json com tudo da mesa (as fichas, os documentos, a mesa ao vivo, as campanhas e a lista das imagens).' }), bCop, mCop),
+      h('div', { class: 'bloco' }, h('h3', { text: 'Apagar a mesa' }), h('p', { text: 'Para apagar, digite o nome da mesa: ' + d.nome }), nomeConf, bAp, mAp)];
   }
 
   /* ---- Cadastro ---- */
@@ -248,6 +338,10 @@ input.in:focus { outline: none; border-color: var(--lamp); }
       if (r.acao === 'editar') return [d.nome ? 'nome: ' + d.nome.de + ' → ' + d.nome.para : '', d.email ? 'e-mail: ' + d.email.de + ' → ' + d.email.para : ''].filter(Boolean).join(' · ');
       if (r.acao === 'cadastro' && d.para) return (d.para.aberto ? 'aberto' : 'fechado') + ', teto ' + d.para.teto;
       if (r.acao === 'senha') return 'pede uma senha nova no próximo login';
+      if (r.acao === 'dono') return 'para ' + (d.novoDono || '?');
+      if (r.acao === 'tirar') return d.quem || '';
+      if (r.acao === 'papel') return (d.quem || '') + ': ' + (PAPEL[d.de] || d.de) + ' → ' + (PAPEL[d.para] || d.para);
+      if (r.acao === 'apagar-mesa') return (d.arquivos || 0) + ' arquivos apagados';
       return '';
     };
     return h('div', { class: 'corpo' }, h('div', { class: 'lista' },
