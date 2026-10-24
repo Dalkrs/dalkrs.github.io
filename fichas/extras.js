@@ -1034,6 +1034,7 @@ const FichasExtras = (() => {
   }
 
   /* ======================= Sanidade, Conforto e Relacionamentos ======================= */
+  let relOutras = null;          // (lote 27) a ficha em que a pessoa pediu os personagens das outras campanhas
   const MENTE = {
     san: { nome: 'Sanidade', padrao: 100, faixas: [[80, 'Lúcido'], [50, 'Estável'], [25, 'Abalado'], [1, 'Perturbado'], [0, 'Em colapso']],
       svg: '<path d="M2.5 12s3.6-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.6 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>' },
@@ -1132,6 +1133,14 @@ const FichasExtras = (() => {
     }
     const rels = relsDe(pc), ja = new Set(rels.map(e => e.alvo).filter(Boolean));
     const outros = S.personagens.filter(p => p.id !== pc.id && !ja.has(p.id));
+    /* (lote 27) Numa mesa com campanhas, a lista para acrescentar mostra só os da campanha desta ficha e os do mundo
+       (sem campanha); os das outras campanhas ficam atrás de "Mostrar os de outras campanhas", que abre a lista inteira,
+       em grupos por campanha. */
+    const comCamps = FichasMesa.campanhas().length > 0, campDaFicha = pc._camp || FichasMesa.campEmVista() || null;
+    const perto = p => !comCamps || !p._camp || p._camp === campDaFicha;
+    const longe = outros.filter(p => !perto(p)).length;
+    const opcoesRel = relOutras === pc.id && longe ? FichasMesa.opcoesDePcs(outros, null)
+      : outros.filter(perto).map(p => `<option value="${esc(p.id)}">${esc(p.nome)}</option>`).join('') + (longe ? `<option value="__outras__">Mostrar os de outras campanhas (${longe})…</option>` : '');
     /* Revelar tudo / esconder tudo (só o mestre, numa mesa): todas as linhas desta ficha de uma vez. Esconder é na hora
        (com Desfazer); revelar pergunta antes. */
     const todos = comoMestre() && rels.length ? (() => {
@@ -1158,7 +1167,7 @@ const FichasExtras = (() => {
         <div class="relnovo">
           <select id="relNovo" aria-label="Acrescentar um relacionamento">
             <option value="">+ Relacionamento com…</option>
-            ${outros.map(p => `<option value="${esc(p.id)}">${esc(p.nome)}</option>`).join('')}
+            ${opcoesRel}
             <option value="__nome__">Outro (escrever o nome)…</option>
           </select>
         </div>
@@ -1264,6 +1273,7 @@ const FichasExtras = (() => {
     const novo = q(painel, '#relNovo');
     if (novo) novo.onchange = () => {
       const v = novo.value; if (!v) return;
+      if (v === '__outras__') { relOutras = pc.id; pintarMente(pc); const s2 = q(document, '#relNovo'); if (s2) s2.focus(); return; }
       let entrada = null;
       if (v === '__nome__') { const n = (prompt('Relacionamento com quem? (um nome)', '') || '').trim(); if (n) entrada = { id: uid(), alvo: null, nome: n.slice(0, 80) }; }
       else { const p = S.personagens.find(x => x.id === v); if (p) entrada = { id: uid(), alvo: p.id, nome: p.nome }; }

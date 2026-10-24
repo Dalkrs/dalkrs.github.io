@@ -126,7 +126,9 @@ const FichasCriacao = (() => {
     const ps = passos(), i = Math.max(0, ps.indexOf(w.passo)), passo = ps[i], falta = pronto(passo);
     const titulo = w.modo === 'fundo' ? 'Background de ' + e(w.jogadorNome) + ' · NPC ' + (w.feitos + 1) : 'Criar personagem';
     veu.querySelector('.cria-caixa').innerHTML = `
-      <header class="cria-topo"><h2>${titulo}</h2><button type="button" class="ghost" data-cr="fechar" aria-label="Fechar" title="Fechar (Esc)">✕</button></header>
+      <header class="cria-topo"><h2>${titulo}</h2>${w.modo === 'fundo' && FichasMesa.campanhas().length ? `<label class="cria-camp">Campanha
+        <select data-cr-camp aria-label="Campanha do background">${FichasMesa.campanhas().filter(c => !c.encerrada || c.id === w.camp).map(c => `<option value="${e(c.id)}" ${c.id === w.camp ? 'selected' : ''}>${e(c.nome)}</option>`).join('')}
+          <option value="" ${!w.camp ? 'selected' : ''}>Do mundo (sem campanha)</option></select></label>` : ''}<button type="button" class="ghost" data-cr="fechar" aria-label="Fechar" title="Fechar (Esc)">✕</button></header>
       <ol class="cria-passos">${ps.map((p, j) => `<li class="${j < i ? 'feito' : j === i ? 'agora' : ''}"><span>${j + 1}</span>${NOMES[p]}</li>`).join('')}</ol>
       <div class="cria-corpo" data-passo="${passo}">${corpo(passo)}</div>
       <footer class="cria-pe">
@@ -239,6 +241,8 @@ const FichasCriacao = (() => {
   function ligar(passo) {
     const cx = veu.querySelector('.cria-caixa'), qa = s => cx.querySelectorAll(s);
     cx.querySelector('[data-cr="fechar"]').onclick = pedirFechar;
+    const sc = cx.querySelector('[data-cr-camp]');
+    if (sc) sc.onchange = () => { w.camp = sc.value || null; const pc = pcDoJogadorEm(w.jogador, w.camp); w.pcDoJogador = pc ? pc.nome : ''; pintar(); };
     const v = cx.querySelector('[data-cr="voltar"]'); if (v) v.onclick = () => irPasso(-1);
     const p = cx.querySelector('[data-cr="proximo"]'); if (p) p.onclick = () => { const f = pronto(w.passo); if (f) { toast(f); return; } irPasso(1); };
     const c = cx.querySelector('[data-cr="criar"]'); if (c) c.onclick = () => concluir(false);
@@ -383,11 +387,27 @@ const FichasCriacao = (() => {
   }
 
   /* ---------- o mestre: o background (os NPCs da história de um jogador) ---------- */
+  /* (lote 27) A campanha do background: a que o mestre está vendo, se o jogador participa dela (ou tem ficha nela — também
+     a ficha ainda por criar); senão, a da ficha do jogador; senão, a única campanha de que ele participa; por fim, a em
+     vista. (Antes, a ficha ainda por criar não contava e o background ia para a campanha de uma ficha antiga do jogador.)
+     O mestre vê a campanha no alto da janela e pode trocar. */
   function campDoJogador(jogador) {
-    const vista = FichasMesa.campEmVista(), dele = S.personagens.filter(p => p._dono === jogador && !p.petDe && !pendente(p));
-    const naVista = dele.find(p => (p._camp || null) === (vista || null));
-    const pc = naVista || dele[dele.length - 1];
-    return { camp: pc ? (pc._camp || null) : (FichasMesa.encerrada(vista) ? null : vista), pc };
+    const vista = FichasMesa.campEmVista(), abertas = new Set(FichasMesa.campanhas().filter(c => !c.encerrada).map(c => c.id));
+    const dele = S.personagens.filter(p => p._dono === jogador && !p.petDe);
+    const m = ((window.TC && TC.ponte && TC.ponte.estado && TC.ponte.estado.membros) || []).find(x => x.id === jogador);
+    const participa = (m && Array.isArray(m.campanhas) ? m.campanhas : []).filter(id => abertas.has(id));
+    let camp;
+    if (vista && abertas.has(vista) && (participa.includes(vista) || dele.some(p => p._camp === vista))) camp = vista;
+    else {
+      const pc0 = dele.find(p => !pendente(p) && (!p._camp || abertas.has(p._camp))) || dele[0];
+      camp = pc0 ? (pc0._camp || null) : participa.length === 1 ? participa[0] : (FichasMesa.encerrada(vista) ? null : vista);
+    }
+    return { camp, pc: pcDoJogadorEm(jogador, camp) };
+  }
+  // a ficha do jogador numa campanha (a que já foi criada, de preferência): o nome dela vai nas notas do NPC
+  function pcDoJogadorEm(jogador, camp) {
+    const l = S.personagens.filter(p => p._dono === jogador && !p.petDe && (p._camp || null) === (camp || null));
+    return l.find(p => !pendente(p)) || l[0] || null;
   }
   function fundo(o) {
     if (!FichasMesa.mestre()) { toast('O background é do mestre.'); return; }

@@ -232,7 +232,15 @@ Quem está em `public.admins` (migração `0021_administracao.sql`; o primeiro �
   `user_metadata.trocar_senha`: no próximo login a casca abre "Crie a sua senha nova", que não fecha sem a senha ou sem
   sair da conta), mudar nome (também nas mesas) e e-mail, apagar — nunca a própria conta, a de um administrador ou a de
   quem é dono de mesa (apagar a conta apagaria a mesa inteira, pelo `on delete cascade`).
-- **Mesas**: todas, com o dono e os participantes. **Cadastro**: aberto ou fechado e o teto (`public.site_cfg`, que a
+- **Mesas**: todas, com o dono e os participantes. Escolhendo uma: o que há nela (fichas, documentos por aba, a mesa
+  ao vivo, os arquivos e o espaço), os participantes (passar a mesa — o dono antigo vira jogador —, mudar o papel entre
+  jogador e mestre auxiliar, tirar), a **cópia** (um .json com tudo, menos as imagens: só a lista delas) e **apagar** (o
+  nome da mesa precisa ser digitado; os arquivos vão junto). A **auditoria** (`0022_auditoria_de_mesa.sql`): a função
+  grava em `public.admin_auditoria` uma sessão de 12 horas (`ver` ou `mestre`), e as quatro perguntas das regras de
+  acesso (`e_membro`, `e_mestre`, `mestra`, `mestrando`) respondem sim para o administrador naquela mesa. A casca a abre
+  com `mesas.abrir(id, { auditoria })`: ele entra como mestre sem estar em `mesa_membros` (não aparece na lista nem
+  online, não marca presença, a mesa não fica como a última aberta) e uma faixa embaixo diz que é auditoria, com
+  "Sair da auditoria". No modo `ver`, `tc/tc.js` segura toda gravação (as tabelas, as funções do banco e os arquivos). **Cadastro**: aberto ou fechado e o teto (`public.site_cfg`, que a
   função `criar-conta` lê). **Registro**: `public.admin_registro`, o que cada administrador fez.
 - **Esqueci minha senha** (na janela de entrar): `resetPasswordForEmail` com a volta para a própria página; ao voltar,
   `tc/tc.js` lê a sessão do endereço (`#access_token…&type=recovery`), limpa o endereço e a casca pede a senha nova. O

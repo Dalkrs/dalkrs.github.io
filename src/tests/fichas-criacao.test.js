@@ -125,6 +125,43 @@ const BIB = { nome: 'x', pools: [{ id: 'p1', nome: 'Raça', cor: '#90b800', padr
     ok(await P.locator('.cria-aviso').count() === 0 && await E(() => !S.personagens.find(x => x.id === 'pc_novo').criacao.conferir), '"Conferido" tira a marca');
   });
 
+  await passo('a campanha do background (lote 27)', async () => {
+    // o caso do Bruno: o Hen tem a ficha ainda por criar na campanha dele (c2) e uma antiga em outra (c1); o mestre está vendo a c2
+    await E(() => {
+      FichasMesa.campanhas = () => [{ id: 'c1', nome: 'A do Dalmo' }, { id: 'c2', nome: 'A do Hen' }, { id: 'c3', nome: 'Outra' }];
+      FichasMesa.encerrada = () => false; FichasMesa.nomeDaCampanha = id => ({ c1: 'A do Dalmo', c2: 'A do Hen', c3: 'Outra' })[id] || '';
+      window.__vista = 'c2'; FichasMesa.campEmVista = () => window.__vista;
+      TC.ponte.estado.membros = [{ id: 'u9', nome: 'Hen', campanhas: ['c2'] }];
+      const velha = personagemPadrao('Velho do Hen', '', 'C', 1); velha.id = 'pc_hen_velho'; velha._dono = 'u9'; velha._camp = 'c1';
+      const nova = personagemPadrao('Ficha para Hen', '', 'C', 1); nova.id = 'pc_hen_novo'; nova._dono = 'u9'; nova._camp = 'c2'; nova.criacao = { pendente: true, level: 1, racas: [], classes: [] };
+      S.personagens.push(velha, nova);
+    });
+    P.once('dialog', d => d.accept());
+    await E(() => { const b = document.querySelector('[data-cr="fechar"]'); if (b) b.click(); }); await w(100);
+    await E(() => FichasCriacao.fundo({ jogador: 'u9', nome: 'Hen' })); await w(150);
+    ok(await P.locator('[data-cr-camp]').inputValue() === 'c2', 'vendo a campanha do Hen (a ficha dele ainda por criar está nela): o background vai para ela, não para a da ficha antiga');
+    await E(() => document.querySelector('[data-cr="fechar"]').click()); await w(100);
+    await E(() => { window.__vista = 'c3'; S.personagens = S.personagens.filter(p => p._dono !== 'u9'); FichasCriacao.fundo({ jogador: 'u9', nome: 'Hen' }); }); await w(150);
+    ok(await P.locator('[data-cr-camp]').inputValue() === 'c2', 'vendo outra campanha, sem ficha do Hen: a campanha de que ele participa');
+    await P.locator('[data-cr-camp]').selectOption('c3'); await w(100);
+    ok(await P.locator('[data-cr-camp]').inputValue() === 'c3', 'o mestre pode trocar a campanha no alto da janela');
+    await E(() => document.querySelector('[data-cr="fechar"]').click()); await w(100);
+  });
+
+  await passo('os relacionamentos: só a campanha da ficha (lote 27)', async () => {
+    await E(() => {
+      const mk = (id, nome, camp) => { const p = personagemPadrao(nome, '', 'C', 1); p.id = id; p._camp = camp; return p; };
+      const eu = mk('pc_r1', 'Rel Um', 'c1'); eu.estado = Object.assign(eu.estado || {}, { san: 50 });
+      S.personagens.push(eu, mk('pc_r2', 'Rel Dois', 'c1'), mk('pc_r3', 'Rel Tres', 'c2'), mk('pc_r4', 'Rel Mundo', null));
+      window.__vista = 'c1'; S.sel = 'pc_r1'; render();
+    }); await w(250);
+    const ops = () => E(() => [...document.querySelectorAll('#relNovo option')].map(o => o.textContent));
+    const o1 = await ops();
+    ok(o1.includes('Rel Dois') && o1.includes('Rel Mundo') && !o1.includes('Rel Tres') && o1.some(x => /outras campanhas \(\d+\)/.test(x)), 'a lista mostra os da campanha da ficha e os do mundo; os outros ficam atrás de "Mostrar os de outras campanhas": ' + JSON.stringify(o1.slice(0, 6)));
+    await E(() => { const s = document.getElementById('relNovo'); s.value = '__outras__'; s.dispatchEvent(new Event('change')); }); await w(200);
+    ok((await ops()).includes('Rel Tres'), '"Mostrar os de outras campanhas" abre a lista inteira');
+  });
+
   if (t.errs.length) console.log(t.errs.slice(0, 10).join('\n'));
   ok(t.errs.length === 0, 'sem erros no console');
   await t.close();
