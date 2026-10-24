@@ -955,16 +955,34 @@ const UI = (() => {
       btn('Voltar ao mestre', () => setViewer('gm'), { kind: 'primary small', id: 'backGm' }));
   }
 
-  /* ================= Trilho de ferramentas ================= */
+  /* ================= Trilho de ferramentas =================
+     (lote 26) Em grupos com nome (Tools.GRUPOS). O grupo do desenho fica num botão só — o do desenho em uso, ou o
+     último — que abre a lista com os nomes e as teclas; com a lista aberta, Esc ou um clique fora fecha. */
+  let ultDesenho = 'free', listaDesenho = false;
+  const fecharDesenho = () => { if (!listaDesenho) return; listaDesenho = false; renderRail(); };
+  document.addEventListener('pointerdown', e => { if (listaDesenho && !e.target.closest('.rail-junto')) fecharDesenho(); }, true);
+  document.addEventListener('keydown', e => { if (listaDesenho && e.key === 'Escape') { e.stopPropagation(); fecharDesenho(); } }, true);
   function renderRail() {
     const kids = [];
-    let grp = -1;
-    for (const t of Tools.LIST) {
-      if (!Tools.allowed(t.id)) continue;
-      if (grp !== -1 && t.grp !== grp) kids.push(h('span', { class: 'rail-sep' }));
-      grp = t.grp;
-      kids.push(h('button', { type: 'button', class: 'tool' + (App.tool === t.id ? ' on' : ''), id: 'tool-' + t.id, title: `${t.n} (${t.k})`, 'aria-label': t.n, 'aria-pressed': String(App.tool === t.id), onclick: () => Tools.set(t.id) }, icon(t.i, 20)));
-    }
+    const toolBtn = t => h('button', { type: 'button', class: 'tool' + (App.tool === t.id ? ' on' : ''), id: 'tool-' + t.id, title: `${t.n} (${t.k})`, 'aria-label': t.n, 'aria-pressed': String(App.tool === t.id), onclick: () => { listaDesenho = false; Tools.set(t.id); } }, icon(t.i, 20));
+    Tools.GRUPOS.forEach((g, gi) => {
+      const ts = Tools.LIST.filter(t => t.grp === gi && Tools.allowed(t.id));
+      if (!ts.length) return;
+      if (kids.length) kids.push(h('span', { class: 'rail-sep' }));
+      kids.push(h('span', { class: 'rail-g', text: g.n, 'aria-hidden': 'true' }));
+      if (!g.junto || ts.length < 3) { ts.forEach(t => kids.push(toolBtn(t))); return; }
+      const ativo = ts.find(t => t.id === App.tool);
+      if (ativo) ultDesenho = ativo.id;
+      const mostra = ts.find(t => t.id === ultDesenho) || ts[0];
+      const lista = h('div', { class: 'rail-lista', role: 'menu', 'aria-label': g.n, hidden: !listaDesenho },
+        h('span', { class: 'rail-lista-t', text: g.n }),
+        ts.map(t => h('button', { type: 'button', role: 'menuitemradio', 'aria-checked': String(App.tool === t.id), class: 'rail-item' + (App.tool === t.id ? ' on' : ''), id: 'tool-' + t.id, title: `${t.n} (${t.k})`,
+          onclick: () => { listaDesenho = false; ultDesenho = t.id; Tools.set(t.id); renderRail(); } }, icon(t.i, 18), h('span', { text: t.n }), h('kbd', { text: t.k }))));
+      kids.push(h('div', { class: 'rail-junto' },
+        h('button', { type: 'button', class: 'tool junto' + (ativo ? ' on' : ''), id: 'tool-grupo-desenho', title: `${g.n}: ${ts.map(t => t.n + ' (' + t.k + ')').join(', ')}`, 'aria-label': g.n + ' — ' + mostra.n, 'aria-haspopup': 'menu', 'aria-expanded': String(listaDesenho),
+          onclick: () => { listaDesenho = !listaDesenho; renderRail(); if (listaDesenho) { const b = el.rail.querySelector('.rail-item.on') || el.rail.querySelector('.rail-item'); if (b) b.focus(); } } }, icon(mostra.i, 20), h('span', { class: 'junto-seta', 'aria-hidden': 'true' })),
+        lista));
+    });
     el.rail.replaceChildren(...kids);
   }
 

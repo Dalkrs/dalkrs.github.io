@@ -15,11 +15,17 @@ const Tools = (() => {
 
   // (lote 6: E passou a ser os equipamentos do token e N, passar o turno; a Névoa foi para U e os Efeitos, para Y)
   const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', u: 'fog', q: 'terrain', y: 'fx', m: 'ruler' };
+  /* (lote 26) Os grupos do trilho, com nome: o que se usa jogando, as peças, o desenho (recolhido num botão só, que
+     abre a lista) e o mapa. Os atalhos de teclado são os de sempre. */
+  const GRUPOS = [{ n: 'Jogo' }, { n: 'Peças' }, { n: 'Desenho', junto: true, i: 'pen' }, { n: 'Mapa' }];
   const LIST = [
     { id: 'select', n: 'Selecionar', k: 'V', i: 'select', grp: 0 },
     { id: 'pan', n: 'Mover a câmera', k: 'H', i: 'pan', grp: 0 },
+    { id: 'ruler', n: 'Régua', k: 'M', i: 'ruler', grp: 0, perm: 'ruler' },
+    { id: 'ping', n: 'Ping (ou tecla G sobre o mapa)', k: 'G', i: 'ping', grp: 0, perm: 'ping' },
     { id: 'token', n: 'Novo token', k: 'T', i: 'token', grp: 1, gm: true },
     { id: 'obj', n: 'Objetos de cenário', k: 'J', i: 'obj', grp: 1, gm: true },
+    { id: 'fx', n: 'Efeito de magia', k: 'Y', i: 'fx', grp: 1, perm: 'fx' },
     { id: 'free', n: 'Desenho livre', k: 'B', i: 'pen', grp: 2, perm: 'draw' },
     { id: 'line', n: 'Linha', k: 'L', i: 'line', grp: 2, perm: 'draw' },
     { id: 'rect', n: 'Retângulo', k: 'R', i: 'rect', grp: 2, perm: 'draw' },
@@ -30,9 +36,6 @@ const Tools = (() => {
     { id: 'light', n: 'Luz', k: 'I', i: 'light', grp: 3, gm: true },
     { id: 'fog', n: 'Névoa manual', k: 'U', i: 'fog', grp: 3, gm: true },
     { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
-    { id: 'fx', n: 'Efeito de magia', k: 'Y', i: 'fx', grp: 4, perm: 'fx' },
-    { id: 'ruler', n: 'Régua', k: 'M', i: 'ruler', grp: 5, perm: 'ruler' },
-    { id: 'ping', n: 'Ping (ou tecla G sobre o mapa)', k: 'G', i: 'ping', grp: 5, perm: 'ping' },
   ];
   const allowed = id => {
     const d = LIST.find(x => x.id === id);
@@ -1300,5 +1303,5 @@ const Tools = (() => {
     if (t.preview) t.preview(ctx, px, sc);
   }
 
-  return { LIST, set, allowed, handles, drawPreview, hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
+  return { LIST, GRUPOS, set, allowed, handles, drawPreview, hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
 })();
