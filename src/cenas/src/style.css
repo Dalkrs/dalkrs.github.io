@@ -1014,3 +1014,8 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .rs-t{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 8px;border:1px solid var(--line);border-radius:8px}
 .rs-bs{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12.5px;color:var(--fg-2)}
 .rs-b{display:inline-flex;align-items:center;gap:5px}
+
+/* (lote 27) a campanha da cena, no alto da aba Cena */
+.sc-camp { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); font-size: 13px; }
+.sc-camp .sc-camp-r { color: var(--fg-3); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.sc-camp b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

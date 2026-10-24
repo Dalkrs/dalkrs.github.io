@@ -222,6 +222,17 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
 - Os testes de antes abrem com a marca `tinycats:testes-tudo-aberto` (as fileiras, os blocos abertos, a data indo
   direto para "Ir para a data"); `src/tests/mundo-lote26.test.js` confere o menu como o mestre encontra.
 
+### O mundo compartilhado entre as campanhas (lote 27)
+
+- **Mapa-múndi**: o mapa novo (criado ou trazido) nasce **do mundo** (`campanhas` vazia: todas as campanhas o veem); o
+  mestre auxiliar, que não passa mapas de uma campanha para outra, continua criando na campanha em vista. "Campanhas
+  deste mapa…" deixa um mapa só de uma ou mais campanhas.
+- **A linha do tempo**: ao abrir um mapa que tem linha do tempo, o mestre da mesa (`linhasDasCampanhas`, em
+  `mundo/mundo.js`) dá uma linha a cada campanha aberta que vê o mapa e ainda não tem — na data da linha que está no mapa
+  (a campanha criada depois que a linha começou não fica sem data). Só ids que a linha aceita (`^[a-z0-9]{4,16}$`).
+- **Cenas**: a cena nova continua nascendo na campanha em vista; no alto da aba Cena, a campanha dela (ou "Do mundo")
+  com o "Trocar…" (a mesma janela de "Campanha desta cena…").
+
 ### A Administração do site (lote 27)
 
 Quem está em `public.admins` (migração `0021_administracao.sql`; o primeiro é o dono do site) vê a aba

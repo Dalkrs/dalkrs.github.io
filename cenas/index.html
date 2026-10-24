@@ -1059,6 +1059,11 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .rs-t{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 8px;border:1px solid var(--line);border-radius:8px}
 .rs-bs{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12.5px;color:var(--fg-2)}
 .rs-b{display:inline-flex;align-items:center;gap:5px}
+
+/* (lote 27) a campanha da cena, no alto da aba Cena */
+.sc-camp { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); font-size: 13px; }
+.sc-camp .sc-camp-r { color: var(--fg-3); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.sc-camp b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -15452,7 +15457,12 @@ const UI = (() => {
     const S = (p, label) => Store.tx(label || 'Ajustar cena', () => Store.scn(p));
     const a = bg.asset ? Store.S.assets[bg.asset] : null;
     const fogSet = (p, label) => S({ fog: Object.assign({}, f, p) }, label);
+    // (lote 27) de que campanha é a cena, sempre à vista no alto da aba (numa mesa com campanhas), com o "Trocar…"
+    const cs = Nuvem.comCampanhas() ? Nuvem.campanhasDaCena(sc.id) : null;
     return [
+      cs ? h('div', { class: 'sc-camp', id: 'sc-camp' }, h('span', { class: 'sc-camp-r', text: 'Campanha' }),
+        h('b', { id: 'sc-camp-nome', text: cs.length ? cs.map(nomeDaCampanha).join(', ') : 'Do mundo (todas as campanhas)' }),
+        Nuvem.podeOrganizar() ? h('button', { type: 'button', class: 'btn small', id: 'sc-camp-trocar', title: 'De que campanha é esta cena (ou do mundo, para todas)', onclick: sceneCampaignBox }, 'Trocar…') : null) : null,
       acc(secR('c-scene', 'Cena', false, `${sc.name} · ${sc.cols} × ${sc.rows} q`,
         field('Nome', inText('sc-name', sc.name, v => { if (v.trim()) S({ name: v.trim() }, 'Renomear cena'); })),
         Nuvem.mestre() ? note('Os jogadores veem este nome quando a cena está no ar.') : null,

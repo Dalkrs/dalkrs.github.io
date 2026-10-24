@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-18",
+      "data": "2026-10-24",
+      "titulo": "O mundo compartilhado entre as campanhas",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: o mapa novo nasce do mundo — compartilhado com todas as campanhas. Para deixar um mapa só de uma campanha, use “Campanhas deste mapa…” no menu do mapa."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Linha do tempo: a campanha que ainda não tem linha (criada depois) ganha a dela sozinha quando o mestre abre o mapa, na data de agora."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: no alto da aba Cena, de que campanha é a cena (ou “do mundo”), com o botão “Trocar…”. As cenas novas continuam nascendo na campanha em vista."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-17",
       "data": "2026-10-24",
       "titulo": "O background na campanha certa, e as mesas na Administração",
