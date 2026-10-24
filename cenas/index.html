@@ -12571,8 +12571,11 @@ const UI = (() => {
     return h('button', { type: 'button', id: p.id, class: 'btn' + (p.kind ? ' ' + p.kind : ''), title: p.title, disabled: p.disabled, onclick: onClick }, p.icon ? icon(p.icon, 16) : null, label ? h('span', { text: label }) : null);
   }
   const iconBtn = (ic, title, onClick, o) => h('button', Object.assign({ type: 'button', class: 'ib' + (o && o.on ? ' on' : '') + (o && o.cls ? ' ' + o.cls : ''), title, 'aria-label': title, disabled: o && o.disabled, onclick: onClick }, o && o.id ? { id: o.id } : {}), icon(ic, o && o.size ? o.size : 18));
+  /* (lote 26) Os testes de antes contam com os blocos abertos e com a lista de condições à vista: com a marca
+     tinycats:testes-tudo-aberto (que os testes põem, a não ser que peçam o contrário), tudo começa aberto como antes. */
+  const tudoAberto = (() => { try { return localStorage.getItem('tinycats:testes-tudo-aberto') === '1'; } catch (e) { return false; } })();
   function sec(id, title, open, ...kids) {
-    return h('details', { class: 'sec', id, open: secOpen[id] == null ? open : secOpen[id], ontoggle: e => { secOpen[id] = e.target.open; } },
+    return h('details', { class: 'sec', id, open: secOpen[id] == null ? (open || tudoAberto) : secOpen[id], ontoggle: e => { secOpen[id] = e.target.open; } },
       h('summary', null, h('span', { text: title }), icon('down', 14)), h('div', { class: 'sec-body' }, kids));
   }
   /* (lote 26) O bloco que começa fechado e diz, no título, o que tem dentro ("Dalmo · tamanho 1"): dá para saber sem
@@ -13736,10 +13739,10 @@ const UI = (() => {
      Aberta, fica aberta (enquanto o painel mostra os mesmos tokens) até "Fechar a lista". */
   let condAberta = '';
   function condMais(toks, after, idp) {
-    const pre = idp || 'cg', chave = toks.map(t => t.id).join(','), aberta = condAberta === chave;
+    const pre = idp || 'cg', chave = toks.map(t => t.id).join(','), aberta = condAberta === chave || (tudoAberto && condAberta !== '!' + chave);
     const bt = h('button', { type: 'button', class: 'btn small cond-mais' + (aberta ? ' on' : ''), id: pre + '-abrir', 'aria-expanded': String(aberta),
       title: aberta ? 'Recolher a lista de condições' : 'Pôr uma condição (a lista, com as categorias e a busca)',
-      onclick: () => { condAberta = aberta ? '' : chave; renderSide(); const q = document.getElementById(pre + (aberta ? '-abrir' : '-busca')); if (q) q.focus({ preventScroll: true }); } },
+      onclick: () => { condAberta = aberta ? '!' + chave : chave; renderSide(); const q = document.getElementById(pre + (aberta ? '-abrir' : '-busca')); if (q) q.focus({ preventScroll: true }); } },
       icon(aberta ? 'x' : 'plus', 14), h('span', { text: aberta ? 'Fechar a lista' : 'Condição' }));
     return h('div', { class: 'cond-mais-w' }, bt, aberta ? condGrid(toks, after, idp) : null);
   }
