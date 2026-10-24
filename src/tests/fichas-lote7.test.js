@@ -57,7 +57,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
       'abrir não acrescenta nada aos itens (nenhum tipo gravado à toa)');
     ok(await secoes() === '-:k1/co/an/ba/k2/ar/xx', 'sem tipo nenhum, uma seção só ("Sem tipo"), com os equipados primeiro: ' + await secoes());
     ok(await S0(() => S.personagens[1].itens[0].bonus.FOR) === 5, 'um item com níveis cujo espelho não conferia é acertado ao abrir (FOR +5, o do Nv 2)');
-    ok(j(await cabecalhos()) === j(['▾ SEM TIPO 7 itens, 4 equipados']), 'o título da seção diz quantos itens e quantos equipados: ' + j(await cabecalhos()));
+    ok(j(await cabecalhos()) === j(['▾ Sem tipo 7 itens, 4 equipados']), 'o título da seção diz quantos itens e quantos equipados: ' + j(await cabecalhos()));
     ok(await P.locator('[data-itseparar]').isVisible() && await P.locator('[data-ittipos]').isVisible(), '"Separar por tipo…" (há itens sem tipo) e "Tipos…" (fora de uma mesa, quem usa é quem mestra)');
   });
 
@@ -72,7 +72,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
     await P.locator('.itjanela [data-jok]').click(); await w(400);
     ok(j((await dain()).itens.map(x => x.tipo || '')) === j(['arma', 'arma', 'arma', 'armadura', 'acessorio', 'acessorio', '']) && /6 itens separados por tipo\./.test(await toast()), 'aplicar põe os tipos (e avisa, com Desfazer): ' + await toast());
     ok(await secoes() === 'arma:k1/k2/ar armadura:co acessorio:an/ba -:xx', 'as seções na ordem dos tipos, os equipados primeiro: ' + await secoes());
-    ok(j(await cabecalhos()) === j(['▾ ARMAS 3 itens, 1 equipado', '▾ ARMADURAS 1 item, 1 equipado', '▾ ACESSÓRIOS 2 itens, 2 equipados', '▾ SEM TIPO 1 item, nenhum equipado']), 'os títulos: ' + j(await cabecalhos()));
+    ok(j(await cabecalhos()) === j(['▾ Armas 3 itens, 1 equipado', '▾ Armaduras 1 item, 1 equipado', '▾ Acessórios 2 itens, 2 equipados', '▾ Sem tipo 1 item, nenhum equipado']), 'os títulos: ' + j(await cabecalhos()));
     await desfazerAviso();
     ok((await dain()).itens.every(x => !x.tipo) && await secoes() === '-:k1/co/an/ba/k2/ar/xx', 'Desfazer: todos sem tipo de novo');
     await P.locator('[data-itseparar]').click(); await w(300);
@@ -137,7 +137,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
     await P.locator('.itjanela [data-jnome]').fill('Talismã'); await P.locator('.itjanela [data-jnome]').press('Enter'); await w(400);
     const tps = await S0(() => S.cfg.tiposItem);
     ok(tps && tps.length === 1 && /^tp_[a-z0-9]+$/.test(tps[0].id) && tps[0].nome === 'Talismã' && (await item('ba')).tipo === tps[0].id, 'o tipo novo fica na configuração (S.cfg.tiposItem) e o item já é dele: ' + j(tps));
-    ok((await secoes()).startsWith('arma:k1/k2/ar armadura:co acessorio:an ' + tps[0].id + ':ba outro:xx') && (await cabecalhos()).includes('▾ TALISMÃ 1 item, 1 equipado'), 'a seção nova vem depois das prontas e antes de Outros: ' + await secoes());
+    ok((await secoes()).startsWith('arma:k1/k2/ar armadura:co acessorio:an ' + tps[0].id + ':ba outro:xx') && (await cabecalhos()).includes('▾ Talismã 1 item, 1 equipado'), 'a seção nova vem depois das prontas e antes de Outros: ' + await secoes());
     await desfazerAviso();
     ok(!(await S0(() => S.cfg.tiposItem)) && (await item('ba')).tipo === 'acessorio', 'Desfazer tira o tipo novo e devolve o item');
     // a janela "Tipos…"
@@ -151,7 +151,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
     await w(200);
     const ren = P.locator('.itjanela [data-jren]').first();
     await ren.fill('Talismãs'); await ren.press('Enter'); await w(300);
-    ok((await S0(() => S.cfg.tiposItem[0].nome)) === 'Talismãs' && (await cabecalhos()).some(x => x.startsWith('▾ TALISMÃS')), 'renomeia (a seção acompanha)');
+    ok((await S0(() => S.cfg.tiposItem[0].nome)) === 'Talismãs' && (await cabecalhos()).some(x => x.startsWith('▾ Talismãs')), 'renomeia (a seção acompanha)');
     await P.locator('.itjanela [data-jtira]').first().click(); await w(200);
     ok(/1 item deste tipo vai para “Sem tipo”/.test(await P.locator('.itjanela [data-jerro]').innerText()) && (await S0(() => S.cfg.tiposItem.length)) === 2, 'tirar um tipo com item pede a confirmação (e diz quantos itens)');
     await P.locator('.itjanela [data-jtira]').first().click(); await w(300);

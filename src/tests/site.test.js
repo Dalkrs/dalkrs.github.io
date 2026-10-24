@@ -14,15 +14,20 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
     await page.goto(t.base, { waitUntil: 'load' }); await w(page, 1500);
     ok(await page.title() === 'Cenas · Tiny Cats', 'visitante novo abre em Cenas: ' + await page.title());
     ok((await page.locator('.brand').innerText()).trim() === 'Tiny Cats', 'marca Tiny Cats na barra');
-    ok(await page.locator('.tab').count() === 9, 'nove abas');
-    const nomes = await page.locator('.tab').allInnerTexts();
-    ok(nomes.join('|') === 'Jornal|Cenas|Mapa-múndi|Acampamento|Fichas|Árvore|Meditação|Clã|Rolador', 'nomes das abas: ' + nomes.join('|'));
-    const esperado = { jornal: /Jornal · Tiny Cats/, cenas: /Cenas · Tiny Cats/, mundo: /Mapa-múndi · Tiny Cats/, acampamento: /Acampamento · Tiny Cats/, fichas: /Fichas · Tiny Cats/, arvore: /Árvore de Habilidades · Tiny Cats/, meditacao: /Meditação · Tiny Cats/, cla: /Clã · Tiny Cats/, rolador: /Rolador · Tiny Cats/ };
-    for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'meditacao', 'cla', 'rolador']) {
+    ok(await page.locator('.tab:visible').count() === 9, 'nove abas à mostra');
+    const nomes = await page.locator('.tab:visible').allInnerTexts();
+    ok(nomes.join('|') === 'Cenas|Fichas|Rolador|Mapa-múndi|Jornal|Clã|Acampamento|Meditação|Oficina', 'nomes das abas (sem mesa, cada um mestra: a Oficina no lugar da Árvore): ' + nomes.join('|'));
+    // as abas em três grupos, cada um com o nome em cima e a sua cor
+    const grupos = await page.evaluate(() => [...document.querySelectorAll('.grupo')].filter(g => !g.hidden).map(g => g.querySelector('.grupo-t').textContent + ':' + [...g.querySelectorAll('.tab')].filter(x => !x.hidden).map(x => x.id.slice(4)).join(',')));
+    ok(grupos.join(' ') === 'Jogar:cenas,fichas,rolador Mundo:mundo,jornal,cla Descanso:acampamento,meditacao Mestre:oficina', 'os grupos da barra: ' + grupos.join(' '));
+    const cores = await page.evaluate(() => [...document.querySelectorAll('.grupo-t')].map(x => getComputedStyle(x).color));
+    ok(new Set(cores).size === 4, 'cada grupo com uma cor: ' + cores.join(' '));
+    const esperado = { jornal: /Jornal · Tiny Cats/, cenas: /Cenas · Tiny Cats/, mundo: /Mapa-múndi · Tiny Cats/, acampamento: /Acampamento · Tiny Cats/, fichas: /Fichas · Tiny Cats/, oficina: /Árvore de Habilidades · Tiny Cats/, meditacao: /Meditação · Tiny Cats/, cla: /Clã · Tiny Cats/, rolador: /Rolador · Tiny Cats/ };
+    for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'oficina', 'meditacao', 'cla', 'rolador']) {
       await page.locator('#tab-' + id).click(); await w(page, 1300);
       ok(page.url().endsWith('#/' + id), `aba ${id}: endereço com #/${id}`);
       ok(await page.locator('#tab-' + id).getAttribute('aria-selected') === 'true', `aba ${id} marcada`);
-      const f = page.frame({ url: new RegExp('/' + id + '/') });
+      const f = page.frame({ url: new RegExp('/' + (id === 'oficina' ? 'arvore/\\?oficina' : id + '/')) });
       ok(!!f, `aba ${id}: moldura criada`);
       if (!f) continue;
       ok(esperado[id].test(await f.title()), `aba ${id}: título da página — ${await f.title()}`);
@@ -46,7 +51,34 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
     ok((await page.locator('#pop').getAttribute('href')) === 'rolador/', 'o botão de outra janela aponta para o sistema aberto');
     // endereço direto de um sistema
     await page.goto(t.base + '#/arvore', { waitUntil: 'load' }); await w(page, 1200);
-    ok(await page.title() === 'Árvore · Tiny Cats', 'endereço com #/arvore abre a Árvore');
+    ok(await page.title() === 'Oficina · Tiny Cats', 'endereço com #/arvore, para quem mestra, abre a Oficina');
+    const of = page.frame({ url: /\/arvore\/\?oficina/ });
+    ok(!!of && await of.evaluate(() => document.getElementById('btMestre').getAttribute('aria-pressed')) === 'true', 'a Oficina abre a Árvore no modo de quem mestra');
+    await page.context().close();
+  }
+
+  // 1b. o tema: escuro por padrão, mesmo num aparelho de tema claro; a escolha muda a casca e os sistemas abertos
+  {
+    const { page } = await t.device({ name: 'tema', theme: 'light', seed: { 'tinycats:tema': 'escuro' } });
+    await page.goto(t.base + '#/jornal', { waitUntil: 'load' }); await w(page, 1500);
+    const fundo = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const claroNa = async f => f.evaluate(() => document.documentElement.hasAttribute('data-claro'));
+    const jornal = page.frame({ url: /\/jornal\// });
+    ok(await fundo() === 'rgb(13, 16, 23)' && !(await claroNa(page.mainFrame())), 'num aparelho claro, o site abre escuro: ' + await fundo());
+    ok(!!jornal && !(await claroNa(jornal)), 'e o sistema aberto também');
+    await page.locator('#btnConta').click(); await w(page, 400);
+    ok(await page.locator('#c-tema-seg [data-tema="escuro"]').getAttribute('aria-pressed') === 'true', 'a janela de entrar mostra o tema escolhido');
+    await page.locator('#c-tema-seg [data-tema="claro"]').click(); await w(page, 400);
+    ok(await claroNa(page.mainFrame()) && await fundo() === 'rgb(199, 206, 217)', 'tema claro: a casca muda na hora');
+    ok(await claroNa(jornal), 'tema claro: o sistema aberto muda junto');
+    await page.locator('#c-tema-seg [data-tema="aparelho"]').click(); await w(page, 400);
+    ok(await claroNa(jornal) && await page.evaluate(() => localStorage.getItem('tinycats:tema')) === 'aparelho', 'do aparelho: segue o tema claro do aparelho');
+    await page.locator('#c-tema-seg [data-tema="escuro"]').click(); await w(page, 400);
+    ok(!(await claroNa(page.mainFrame())) && !(await claroNa(jornal)), 'de volta ao escuro, nos dois');
+    await page.keyboard.press('Escape'); await w(page, 300);
+    await page.locator('#tab-cenas').click(); await w(page, 1500);
+    const cenas = page.frame({ url: /\/cenas\// });
+    ok(!!cenas && !(await claroNa(cenas)) && (await cenas.evaluate(() => getComputedStyle(document.body).backgroundColor)) !== 'rgb(199, 206, 217)', 'as Cenas (que levam o tema dentro delas) abrem escuras');
     await page.context().close();
   }
 

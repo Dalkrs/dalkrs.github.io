@@ -56,6 +56,10 @@ async function start(opt = {}) {
     // (lote 22) a tela das barrinhas abre sozinha na vez de cada um; nos testes antigos ela fica desligada (o.barrinhas liga)
     if (!o.barrinhas) await ctx.addInitScript(() => { try { localStorage.setItem('tinycats:testes-sem-barrinhas', '1'); } catch (e) {} });
     if (o.seed) await ctx.addInitScript(seed => { try { for (const k in seed) if (localStorage.getItem(k) === null) localStorage.setItem(k, seed[k]); } catch (e) {} }, o.seed);
+    // o tema do site (tc/tema.js) é escuro por padrão; nos testes ele segue o aparelho (o.theme), a não ser que o teste escolha outro (o.seed, que vem antes)
+    await ctx.addInitScript(() => { try { if (!localStorage.getItem('tinycats:tema')) localStorage.setItem('tinycats:tema', 'aparelho'); } catch (e) { /* página sem armazenamento */ } });
+    // as Fichas abrem no modo Simples (o padrão); os testes, que mexem em todos os campos, no Completo — a não ser que escolham (o.seed)
+    await ctx.addInitScript(() => { try { if (!localStorage.getItem('tinycats:fichas:modo')) localStorage.setItem('tinycats:fichas:modo', 'completo'); } catch (e) { /* página sem armazenamento */ } });
     /* Texto solto que denuncia um valor vazio escrito na tela: "null", "undefined", "NaN" ou "[object Object]" como o
        texto inteiro de um pedaço da página (é o que o navegador escreve quando um desses vai parar num append). Fica
        conferindo o tempo todo, em toda página e moldura que o teste abrir; quem acha avisa pelo console — e os testes

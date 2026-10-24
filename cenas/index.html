@@ -7,6 +7,41 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze:wght@500;600;700&display=swap">
+<script>
+/* O tema do site: escuro (o padrão), claro, ou igual ao do aparelho. A escolha fica neste navegador (localStorage) e
+   vale para a casca e para todos os sistemas — todos são páginas do mesmo site: quando muda numa, as outras ficam
+   sabendo pelo evento "storage". No tema claro a raiz do documento ganha o atributo data-claro, e as regras de cor do
+   tema claro de cada página são escritas para ele (`:root[data-claro]`). Roda no <head>, antes da página aparecer,
+   para ela já nascer com as cores certas. As Cenas trazem uma cópia deste arquivo dentro delas (src/cenas/build.sh). */
+(function () {
+  if (window.TinyTema) return;
+  var CHAVE = 'tinycats:tema';
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+  var ouvintes = [];
+  function pref() {
+    var v = null;
+    try { v = localStorage.getItem(CHAVE); } catch (e) { /* sem armazenamento: vale o padrão */ }
+    return v === 'claro' || v === 'aparelho' ? v : 'escuro';
+  }
+  function claro() { var p = pref(); return p === 'claro' || (p === 'aparelho' && !!(mq && mq.matches)); }
+  var antes = null;
+  function aplicar() {
+    var c = claro(), r = document.documentElement;
+    if (c) r.setAttribute('data-claro', ''); else r.removeAttribute('data-claro');
+    if (antes !== null && antes !== c) for (var i = 0; i < ouvintes.length; i++) { try { ouvintes[i](c); } catch (e) { console.error(e); } }
+    antes = c;
+  }
+  aplicar();
+  window.addEventListener('storage', function (e) { if (e.key === CHAVE || e.key === null) aplicar(); });
+  if (mq) { var seguir = function () { if (pref() === 'aparelho') aplicar(); }; if (mq.addEventListener) mq.addEventListener('change', seguir); else if (mq.addListener) mq.addListener(seguir); }
+  window.TinyTema = {
+    pref: pref,
+    claro: claro,
+    definir: function (v) { try { localStorage.setItem(CHAVE, v); } catch (e) { /* só nesta página */ } aplicar(); },
+    aoMudar: function (fn) { if (typeof fn === 'function') ouvintes.push(fn); },
+  };
+})();
+</script>
 <style>
 /* Layout: mesa em tela cheia. Trilho de ferramentas à esquerda, mapa no centro e
    painel contextual à direita; a barra do topo guarda a cena e quem está olhando. */
@@ -37,21 +72,21 @@
   --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --mono: "Atkinson Hyperlegible Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    color-scheme: light;
-    --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
-    --line: #d2d8e2; --line-strong: #aeb8c9;
-    --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
-    --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
-    --danger: #b9342a;
-    --scrim: rgba(30, 38, 54, .42);
-    --veil: rgba(16, 24, 48, .5);
-    --sobre: #1f7fa3;
-    --reac: #7a55c9; --reac-ink: #5a34a8; --reac-soft: rgba(122, 85, 201, .12);
-    --shadow: 0 12px 34px rgba(40, 50, 72, .24);
-  }
+/* tema claro (tc/tema.js) */
+:root:where([data-claro]):not([data-theme="dark"]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+  --danger: #b9342a;
+  --scrim: rgba(30, 38, 54, .42);
+  --veil: rgba(16, 24, 48, .5);
+  --sobre: #1f7fa3;
+  --reac: #7a55c9; --reac-ink: #5a34a8; --reac-soft: rgba(122, 85, 201, .12);
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
 }
+
 :root[data-theme="light"] {
   color-scheme: light;
   --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
@@ -1001,7 +1036,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 </style>
 </head>
 <body>
-<script src="../tc/ponte.js?v=16"></script>
+<script src="../tc/ponte.js?v=17"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=21"></script>
 <div class="app" id="app">
@@ -8711,7 +8746,7 @@ const Nuvem = (() => {
   let idx = Proj.normIndice(null);
   const sombra = new Map();                                // documento → o JSON que foi gravado por último (para não regravar igual)
   const sujas = new Set(), expSujas = new Set();
-  let metaSuja = false, pubSuja = false, arSujo = false, tGravar = 0, tExp = 0;      // arSujo: este aparelho acabou de mudar o que está no ar (ou quem transmite)
+  let metaSuja = false, pubSuja = false, arSujo = false, tGravar = 0, tExp = 0, tPub = 0;      // arSujo: este aparelho acabou de mudar o que está no ar (ou quem transmite)
   let estado = 'ok', ouvinte = () => {};
   const banco = makeDB('tinycats-cenas-mesa');             // deste aparelho: o que já foi explorado em cada cena de cada mesa
   const expAqui = new Map();                               // cena → { seq, mapa } lido do aparelho
@@ -8759,6 +8794,9 @@ const Nuvem = (() => {
      uma cena que não está aqui). Cada documento viaja sozinho até o banco: outro aparelho do mestre pode ter acabado
      de pôr a cena no ar, com uma parte já lá e a outra a caminho. */
   const ESPERA_LIMPAR = 5000;
+  /* Quanto a casca espera para mandar ao banco o que os outros estão esperando ver (a projeção, os pedidos dos
+     jogadores). O resto espera o meio segundo de sempre. */
+  const PRESSA = 30;
   const relogio = () => performance.now();
   const esquecer = id => { sombra.delete(id); visto.delete(id); };
   // O documento como está no banco agora passa a ser o ponto de partida deste aparelho.
@@ -8985,21 +9023,24 @@ const Nuvem = (() => {
   /* camps: as campanhas do documento. Para a projeção, sempre as da cena que está no ar (o documento é o mesmo de
      uma cena para a outra). Para os documentos de uma cena, só vão quando ela é criada: depois, quem muda a campanha
      de uma cena é definirCampanhas (e o que outro aparelho mudou chega por doBanco). */
-  function escrever(id, dados, vis, cas, camps) {
+  /* pressa: o documento sobe quase em seguida, sem a espera de meio segundo da casca (a projeção: os jogadores estão
+     esperando por ela). */
+  function escrever(id, dados, vis, cas, camps, pressa) {
     const j = JSON.stringify(dados), l = D.pegar(id);
+    const opt = cas || pressa ? Object.assign(cas ? { cas: true } : {}, pressa ? { pressa: PRESSA } : {}) : undefined;
     const outras = !!camps && (!l || !iguais(listaDe(l), camps));        // a campanha (ainda) não está assim no banco
     if (l && sombra.get(id) === j && visto.get(id) === l && !outras) return true;        // igual ao que foi gravado daqui, e ninguém mexeu lá desde então
     if (j.length > LIMITE / 3 && pesoNoBanco(j) > LIMITE) return false;
     sombra.set(id, j);
     if (l && !l.apagado && doMestre(l) && l.vis === vis && Proj.igual(l.dados, dados) && !outras) { visto.set(id, l); return true; }      // já está assim no banco
     if (outras && camps.length + listaDe(l).length > 0) {      // (numa mesa sem campanhas não há o que dizer: a coluna nem vai)
-      visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j), campanhas: camps.slice() }, undefined, cas ? { cas: true } : undefined) || D.pegar(id));
+      visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j), campanhas: camps.slice() }, undefined, opt) || D.pegar(id));
       return true;
     }
     /* cas: as cenas e o índice são gravados conferindo a versão. Com o mestre e o mestre auxiliar (ou o mestre em dois
        aparelhos) mexendo na mesma cena no mesmo instante, a gravação de um não passa por cima da do outro: a casca
        junta as duas e devolve a cena juntada (que chega por doBanco, como qualquer mudança de fora). */
-    visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j) }, undefined, cas ? { cas: true } : undefined) || D.pegar(id));       // sem dono: é do mestre
+    visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j) }, undefined, opt) || D.pegar(id));       // sem dono: é do mestre
     return true;
   }
   function avisarGrande(sc) {
@@ -9046,7 +9087,19 @@ const Nuvem = (() => {
     }
     marcar(falhou ? 'erro' : 'ok');
   }
-  const agendar = () => { marcar('saving'); if (!tGravar) tGravar = setTimeout(gravar, 450); };
+  /* A cena que está no ar vai aos jogadores logo (publicarLogo); guardar a cena inteira no banco pode esperar um
+     pouco mais (gravar), juntando o que muda em sequência. */
+  const agendar = () => {
+    marcar('saving');
+    if (!tGravar) tGravar = setTimeout(gravar, 450);
+    if (!tPub && idx.noAr && (pubSuja || sujas.has(idx.noAr)) && transmito()) tPub = setTimeout(publicarLogo, 40);
+  };
+  function publicarLogo() {
+    tPub = 0;
+    if (modo !== 'mestre' || !idx.noAr || !transmito()) return;
+    if (Store.inTx()) { tPub = setTimeout(publicarLogo, 150); return; }      // (no meio de um gesto do mestre: vai quando ele soltar)
+    publicar();
+  }
   const daParteViva = op => (op.t === 'scn' ? Object.keys(op.p || {}).every(k => Proj.VIVO.includes(k)) : Proj.VIVO.includes(op.c));
 
   /* A projeção vai em dois documentos, que chegam aos jogadores um de cada vez. Para ninguém montar o mapa novo com
@@ -9063,11 +9116,11 @@ const Nuvem = (() => {
     m.ver = Proj.resumo(JSON.stringify(m));
     // (a projeção é da campanha da cena que está no ar: só quem participa dela a recebe; a de uma cena do mundo, todos)
     const cs = campanhasDaCena(sc.id);
-    const coube = escrever(PUB_M, m, 'mesa', false, cs), la = dadosMestre(PUB_M);
+    const coube = escrever(PUB_M, m, 'mesa', false, cs, true), la = dadosMestre(PUB_M);
     // se o mapa novo não coube no banco, os jogadores continuam com o mapa que está lá — e com os tokens ao vivo
     v.mv = coube || !la || la.id !== sc.id ? m.ver : la.ver;
     v.ack = Object.assign({}, acks); v.pings = pings;
-    if (!(escrever(PUB_V, v, 'mesa', false, cs) & coube)) avisarGrande(sc);
+    if (!(escrever(PUB_V, v, 'mesa', false, cs, true) & coube)) avisarGrande(sc);
   }
   function despublicar() {
     for (const id of [PUB_M, PUB_V]) { if (D.pegar(id)) D.apagar(id); esquecer(id); }
@@ -9408,7 +9461,7 @@ const Nuvem = (() => {
        que passam da conta dele. (O documento é do próprio jogador: o banco só aceita que ele crie o que é dele.) */
     let lote = confirmados.map(b => ({ n: b.n, ops: b.ops })).concat(caixa);
     while (lote.length > caixa.length && JSON.stringify(lote).length > 120000) lote = lote.slice(1);
-    D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: JSON.parse(JSON.stringify({ cena: vazia ? null : S.current, lote })) });
+    D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: JSON.parse(JSON.stringify({ cena: vazia ? null : S.current, lote })) }, undefined, { pressa: PRESSA });
   }
   // "Ao vivo" quando não há nada na fila; "enviando" enquanto o mestre não confirma; depois de um tempo, "esperando o mestre".
   function situacao() {
@@ -17468,6 +17521,9 @@ const Estilos = (() => {
   }
   /* As árvores pintadas no fundo, de cada tipo: folhosa, pinheiro, palmeira, oriental (cerejeira ou bambu), élfica (com
      luzinhas) e rocha (os anões: pedras grandes no lugar das árvores). */
+  // (lote 25) clarear e escurecer uma cor #rrggbb (para o volume das copas)
+  const misturar = (hex, alvo, k) => { const h = String(hex || '#000000').replace('#', ''); if (h.length !== 6) return hex; const n = parseInt(h, 16); return '#' + [16, 8, 0].map(s => Math.round(((n >> s) & 255) * (1 - k) + alvo * k).toString(16).padStart(2, '0')).join(''); };
+  const clarear = (hex, k) => misturar(hex, 255, k), escurecer = (hex, k) => misturar(hex, 0, k);
   function arvore(g, a, c, rnd, especie, pal, neve) {
     const x = a.x * c, y = a.y * c, R = a.r * c;
     if (especie === 'oriental') especie = rnd() < 0.45 ? 'bambu' : 'cerejeira';
@@ -17476,10 +17532,15 @@ const Estilos = (() => {
       const cores = ['#2f4a3c', '#3a5a49', '#456a56'];
       for (let camada = 0; camada < 3; camada++) {
         const rr = R * (1 - camada * 0.28);
-        g.globalAlpha = 0.95; g.fillStyle = cores[camada];
+        g.globalAlpha = 0.95;
+        // (lote 25) cada camada de galhos com volume (clara do lado da luz) e, a de baixo, com o contorno escuro
+        const gr = g.createRadialGradient(x - rr * 0.35, y - rr * 0.35, rr * 0.1, x, y, rr);
+        gr.addColorStop(0, clarear(cores[camada], 0.2)); gr.addColorStop(1, escurecer(cores[camada], 0.18));
+        g.fillStyle = gr;
         g.beginPath();
         for (let i = 0; i <= 16; i++) { const an = (i / 16) * TAU2 + camada * 0.2, d = i % 2 ? rr * 0.55 : rr; const px = x + Math.cos(an) * d, py = y + Math.sin(an) * d; if (i) g.lineTo(px, py); else g.moveTo(px, py); }
         g.fill();
+        if (!camada) { g.strokeStyle = escurecer(cores[0], 0.55); g.lineWidth = Math.max(1, R * 0.05); g.lineJoin = 'round'; g.stroke(); }
       }
       if (neve) { g.globalAlpha = 0.85; g.fillStyle = '#f4f8fb'; for (let i = 0; i < 6; i++) { const an = rnd() * TAU2, d = R * (0.3 + rnd() * 0.6); g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * 0.1, 0, TAU2); g.fill(); } }
     } else if (especie === 'palmeira') {
@@ -17511,13 +17572,26 @@ const Estilos = (() => {
       g.strokeStyle = 'rgba(40,40,46,0.45)'; g.lineWidth = Math.max(1, R * 0.05); g.beginPath(); g.moveTo(x - R * 0.2, y - R * 0.3); g.lineTo(x + R * 0.1, y + R * 0.2); g.stroke();
     } else {
       // folhosa (e a élfica, maior, com luzinhas)
+      // (lote 25) no jeito de ilustração: as bolotas da copa com o contorno escuro por fora, cada uma com volume (clara
+      // do lado da luz, em cima à esquerda; escura do outro), e os tufos de folha acesos e na sombra
       const elfica = especie === 'elfica', cores = elfica ? ['#2f5a3a', '#3d7048', '#4f8a57'] : (pal && pal.copa) || ['#2c4629', '#355432', '#3f6239'];
-      for (let i = 0; i < (elfica ? 12 : 9); i++) {
-        const an = rnd() * TAU2, d = rnd() * R * 0.55;
-        g.globalAlpha = 0.92; g.fillStyle = cores[i % 3];
-        g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.42 + rnd() * 0.25), 0, TAU2); g.fill();
+      const luz = elfica ? '#8fc47a' : (pal && pal.luz) || '#56794a', bolas = [];
+      for (let i = 0; i < (elfica ? 12 : 9); i++) { const an = rnd() * TAU2, d = rnd() * R * 0.55; bolas.push([x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.42 + rnd() * 0.25), cores[i % 3]]); }
+      g.globalAlpha = 0.9; g.fillStyle = escurecer(cores[0], 0.55);
+      for (const [bx, by, br] of bolas) { g.beginPath(); g.arc(bx, by, br + Math.max(1, R * 0.06), 0, TAU2); g.fill(); }
+      g.globalAlpha = 1;
+      for (const [bx, by, br, cor] of bolas) {
+        const gr = g.createRadialGradient(bx - br * 0.35, by - br * 0.4, br * 0.1, bx, by, br);
+        gr.addColorStop(0, clarear(cor, 0.22)); gr.addColorStop(0.65, cor); gr.addColorStop(1, escurecer(cor, 0.25));
+        g.fillStyle = gr; g.beginPath(); g.arc(bx, by, br, 0, TAU2); g.fill();
       }
-      g.globalAlpha = 0.5; g.fillStyle = elfica ? '#8fc47a' : (pal && pal.luz) || '#56794a'; g.beginPath(); g.arc(x - R * 0.2, y - R * 0.25, R * 0.3, 0, TAU2); g.fill();
+      // os tufos: pequenos arcos de folha, claros do lado da luz e escuros do lado da sombra
+      for (let i = 0; i < 14; i++) {
+        const an = rnd() * TAU2, d = rnd() * R * 0.7, tx = x + Math.cos(an) * d, ty = y + Math.sin(an) * d, lado = Math.cos(an - 3.93);
+        g.globalAlpha = 0.5; g.fillStyle = lado > 0 ? clarear(luz, 0.15) : escurecer(cores[0], 0.3);
+        g.beginPath(); g.arc(tx, ty, R * (0.1 + rnd() * 0.08), Math.PI, TAU2); g.fill();
+      }
+      g.globalAlpha = 0.5; g.fillStyle = luz; g.beginPath(); g.arc(x - R * 0.2, y - R * 0.25, R * 0.3, 0, TAU2); g.fill();
       if (elfica) { g.globalAlpha = 0.95; for (let i = 0; i < 7; i++) { const an = rnd() * TAU2, d = rnd() * R * 0.75; g.fillStyle = i % 2 ? '#e9fbff' : '#b9f0d8'; g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, Math.max(1, R * 0.05), 0, TAU2); g.fill(); } }
     }
     g.globalAlpha = 1;
@@ -20259,6 +20333,7 @@ const Vila = (() => {
     g.globalAlpha = 1;
     // um escurecido de leve nas bordas
     if (!op.semVinheta) {
+      Paisagem.acabamento(g, W, H, { seed: p.seed, cor: !op.g });      // (lote 25) a luz e as cores de ilustração
       const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
       vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.22)');
       g.fillStyle = vg; g.fillRect(0, 0, W, H);
@@ -21585,6 +21660,7 @@ const Cidade = (() => {
     }
     // um escurecido de leve nas bordas
     if (!op.semVinheta) {
+      Paisagem.acabamento(g, W, H, { seed: p.seed, cor: !op.g });      // (lote 25) a luz e as cores de ilustração
       const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
       vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.24)');
       g.fillStyle = vg; g.fillRect(0, 0, W, H);
@@ -23420,6 +23496,38 @@ const Paisagem = (() => {
     g.restore();
   }
   // escurece de leve as bordas (o mesmo dos outros geradores)
+  /* (lote 25) O acabamento de ilustração dos lugares de fora, antes da vinheta: a luz do sol vindo de cima à esquerda
+     (morna) e a sombra do lado de lá (fria), as manchas de sol que passam pelas copas (op.sol: na mata) e, com a tela
+     inteira (op.cor), as cores um pouco mais vivas. w, h: o tamanho em pixels. */
+  function acabamento(g, w, h, op) {
+    op = op || {};
+    g.save();
+    g.globalCompositeOperation = op.semLuz ? 'source-over' : 'soft-light';
+    if (op.semLuz) g.globalAlpha = 0;
+    const lz = g.createLinearGradient(0, 0, w, h);
+    lz.addColorStop(0, 'rgba(255,224,160,.55)'); lz.addColorStop(0.45, 'rgba(255,240,210,.08)'); lz.addColorStop(1, 'rgba(24,44,96,.5)');
+    g.fillStyle = lz; g.fillRect(0, 0, w, h);
+    g.globalAlpha = 1;
+    if (op.sol && !op.semLuz) {
+      // as manchas de sol: borrões mornos, mais no lado da luz
+      g.globalCompositeOperation = 'screen';
+      const r = mulberry(((op.seed || 7) ^ 0x51d7c3a1) >>> 0 || 3), n = Math.round(Math.min(40, (w * h) / 90000));
+      for (let i = 0; i < n; i++) {
+        const x = Math.pow(r(), 1.3) * w, y = Math.pow(r(), 1.3) * h, rr = Math.min(w, h) * (0.04 + r() * 0.07);
+        const sg = g.createRadialGradient(x, y, 0, x, y, rr); sg.addColorStop(0, 'rgba(255,236,170,.16)'); sg.addColorStop(1, 'rgba(255,236,170,0)');
+        g.fillStyle = sg; g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+      }
+    }
+    g.restore();
+    // as cores mais vivas: a tela redesenhada nela mesma com o filtro (onde o navegador sabe)
+    if (op.cor && g.canvas && typeof g.filter === 'string' && typeof document !== 'undefined') {
+      try {
+        const cv = g.canvas, t = document.createElement('canvas'); t.width = cv.width; t.height = cv.height;
+        t.getContext('2d').drawImage(cv, 0, 0);
+        g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'copy'; g.filter = 'saturate(1.16) contrast(1.05)'; g.drawImage(t, 0, 0); g.restore();
+      } catch (e) { /* sem filtro: fica como estava */ }
+    }
+  }
   function vinheta(g, W, H, c, forte) {
     const w = W * c, h = H * c, vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.72);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${forte || 0.22})`);
@@ -23427,7 +23535,7 @@ const Paisagem = (() => {
   }
   return { PAL, FIOS, PEDRA, pedraDe, poli, suave, caixa, centro, encolher, aoLongo, compr, chao, mancha, rio, lago, praia, espuma, cachoeira, caminho, penhasco, pedra, arvore, cristais,
     tabuas, carroca, tenda, fogueiraApagada, ossada, pasDoMoinho, plantacao, cerca, feno, espantalho, ponte, passarela, pedrasDePassar, fenda, basalto, raiz, troncoGigante, troncoColossal,
-    luzSalpicada, cratera, barco, pier, destrocos, santuario, abismo, planalto, duna, lenha, varal, aguaRasa, vinheta, MAD,
+    luzSalpicada, cratera, barco, pier, destrocos, santuario, abismo, planalto, duna, lenha, varal, aguaRasa, vinheta, acabamento, MAD,
     cais, molhe, quebraMar, farol, prancha, guindaste, carga, redes, peixes, barracaPeixe, gelo, chaoMisto, morroMacio, bocaGruta, ninho, toca, ossinho,
     pegadas, cupinzeiro, baoba, ossos, mamute, falesia, escadaPedra, poca };
 })();
@@ -25447,6 +25555,7 @@ const Encontro = (() => {
      pinta noutra tela (g), deslocado dx, dy quadrados, sem o chão de base (o sorteio dele corre do mesmo jeito numa tela
      de um pixel: o resto do desenho sai igual) e sem a vinheta; o chão da estação só dentro (estacaoEm) ou só fora
      (estacaoFora) do retângulo [x0, y0, x1, y1] (em quadrados) — sem op, tudo como sempre. */
+  const MATAS = new Set(['floresta', 'selva', 'pantano', 'corrompida']);      // (lote 25) onde o sol passa pelas copas
   function pintar(p, c, op) {
     op = op || {};
     const W = p.W * c, H = p.H * c, est = p.estilo, P = Paisagem;
@@ -25504,7 +25613,10 @@ const Encontro = (() => {
       if (EST) EST.naArvore(g, a, pa, nv);
     }
     for (const o of p.pintados) if (o.z === 3) pintaObjeto(g, o, c, rnd, p);
-    if (!op.semVinheta) P.vinheta(g, p.W, p.H, c, p.terreno === 'cristais' && p.sit === 'gruta' ? 0.4 : 0.22);
+    // (lote 25) o acabamento de ilustração: a luz, as manchas de sol na mata e as cores (na gruta, só as cores)
+    const gruta = p.terreno === 'cristais' && p.sit === 'gruta';
+    if (!op.semVinheta) P.acabamento(g, p.W * c, p.H * c, { sol: !gruta && MATAS.has(p.terreno), semLuz: gruta, seed: p.seed, cor: !op.g });
+    if (!op.semVinheta) P.vinheta(g, p.W, p.H, c, gruta ? 0.4 : 0.22);
     if (op.g) g.restore();
     return cv;
   }
@@ -31024,6 +31136,7 @@ const Arredores = (() => {
     g.globalAlpha = 1;
     ad.pintar(g, pL, c, a);
     if (pA.sobreLugar && pA.sobreLugar.length) { const rnd = mulberry((pA.seed ^ 0x3a5f19c7) >>> 0 || 5); for (const o of pA.sobreLugar) MO.pintaObjeto(g, o, c, rnd, pA); }
+    Paisagem.acabamento(g, p.W * c, p.H * c, { sol: ['floresta', 'selva', 'pantano', 'corrompida'].includes(pA.terreno), seed: pA.seed, cor: true });      // (lote 25)
     Paisagem.vinheta(g, p.W, p.H, c, 0.22);
     return cv;
   }
@@ -35362,9 +35475,8 @@ async function start(snap) {
   if (window.ResizeObserver) new ResizeObserver(() => { Render.resize(); if (first) { first = false; Render.fit(); UI.status(); } }).observe(stage);
   else window.addEventListener('resize', Render.resize);
 
-  const mq = window.matchMedia('(prefers-color-scheme: dark)');
-  if (mq.addEventListener) mq.addEventListener('change', Render.readTheme);
-  new MutationObserver(Render.readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+  // o tema do site (tc/tema.js) muda o atributo data-claro da raiz
+  new MutationObserver(Render.readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-claro', 'data-theme', 'class', 'style'] });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { Render.request(); UI.refresh(); });
 
   const flush = () => { try { Vision.flushExplored(); Fichas.flush(); Persist.flush(); } catch (e) { /* nada a fazer */ } };

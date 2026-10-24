@@ -411,6 +411,7 @@ const Arredores = (() => {
     g.globalAlpha = 1;
     ad.pintar(g, pL, c, a);
     if (pA.sobreLugar && pA.sobreLugar.length) { const rnd = mulberry((pA.seed ^ 0x3a5f19c7) >>> 0 || 5); for (const o of pA.sobreLugar) MO.pintaObjeto(g, o, c, rnd, pA); }
+    Paisagem.acabamento(g, p.W * c, p.H * c, { sol: ['floresta', 'selva', 'pantano', 'corrompida'].includes(pA.terreno), seed: pA.seed, cor: true });      // (lote 25)
     Paisagem.vinheta(g, p.W, p.H, c, 0.22);
     return cv;
   }

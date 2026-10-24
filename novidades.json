@@ -2,6 +2,121 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-8",
+      "data": "2026-10-24",
+      "titulo": "O que está valendo agora, no alto da ficha",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Fichas: no alto da ficha, o quadro “Agora” mostra o que está mexendo nos números neste momento — os bônus temporários ligados (com as rodadas que faltam) e os itens equipados que dão bônus. Clicar num deles leva até onde ele está."
+        }
+      ]
+    },
+    {
+      "versao": "2026.10.24-7",
+      "data": "2026-10-24",
+      "titulo": "Os lugares gerados com luz de ilustração",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: os lugares gerados (encontros, vilas, cidades, a região) ganharam luz de ilustração — sol morno de um lado e sombra fria do outro, manchas de sol na mata e cores mais vivas — e as árvores ganharam contorno e volume."
+        }
+      ]
+    },
+    {
+      "versao": "2026.10.24-6",
+      "data": "2026-10-24",
+      "titulo": "A Meditação com cara de ilustração",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Meditação: os ambientes ganharam luz e profundidade — nuvens, o sol e a lua com halo, raios de luz, pó dourado e vaga-lumes no ar, pétalas caindo no jardim, cerejeiras e pinheiros com volume, montanhas com luz e sombra, a cachoeira com pedra, musgo e espuma, e as lanternas acesas de noite."
+        }
+      ]
+    },
+    {
+      "versao": "2026.10.24-5",
+      "data": "2026-10-24",
+      "titulo": "O Acampamento com cara de ilustração",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Acampamento: o cenário ganhou profundidade e luz — céu com nuvens e via láctea, a lua com halo, montanhas e matas em camadas com névoa, árvores grandes emoldurando a floresta, vaga-lumes, raios de luz no amanhecer e no entardecer, e a fogueira com pedras, brasas e fumaça."
+        }
+      ]
+    },
+    {
+      "versao": "2026.10.24-4",
+      "data": "2026-10-24",
+      "titulo": "A Oficina de árvores do mestre",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A Oficina, no grupo Mestre da barra: é onde o mestre monta e edita as árvores de habilidade. A aba Árvore fica para os jogadores."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: as mesmas cores e letras do resto do site, com o desenho dos nós de sempre."
+        }
+      ]
+    },
+    {
+      "versao": "2026.10.24-3",
+      "data": "2026-10-24",
+      "titulo": "Fichas com a cara nova e o modo Simples",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: as mesmas cores e letras do resto do site, sem os rótulos em caixa alta. O nome do personagem fica em destaque, as barras estão maiores, e cada atributo aparece com o nome inteiro (Força, Destreza…)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: o modo Simples (o padrão) mostra só o que se usa durante a sessão; o Completo, no alto à direita, traz de volta as tags, o aniversário e os outros campos."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Fichas: no celular, a página não passa mais da largura da tela."
+        }
+      ]
+    },
+    {
+      "versao": "2026.10.24-2",
+      "data": "2026-10-24",
+      "titulo": "Cara nova: a Dora, a barra em grupos e o tema escuro",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "A marca do site agora é a Dora, a gatinha preta do mestre."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "As abas ficam em três grupos, cada um com a sua cor: Jogar (Cenas, Fichas, Árvore e Rolador), Mundo (Mapa-múndi, Jornal e Clã) e Descanso (Acampamento e Meditação)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "O site abre no tema escuro. Quem preferir escolhe Claro ou Do aparelho no menu da conta (ou na janela de entrar), e todas as abas mudam juntas."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "O Rolador ganhou as mesmas cores e letras do resto do site, e o tema claro."
+        }
+      ]
+    },
+    {
+      "versao": "2026.10.24-1",
+      "data": "2026-10-24",
+      "titulo": "Cenas mais rápidas ao vivo",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: o que cada um faz na cena chega bem mais rápido aos outros: um token movido ou uma barra mudada aparece em menos de um segundo, mesmo com várias pessoas mexendo ao mesmo tempo (antes levava de 2 a 3 segundos, e às vezes mais)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-11",
       "data": "2026-10-23",
       "titulo": "Restaurar as energias",

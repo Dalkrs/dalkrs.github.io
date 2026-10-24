@@ -160,6 +160,84 @@ lugares, a mesma barra) fica uma só — a de quem gravou por último —, igual
 A projeção que os jogadores recebem (`cena:pub:*`) não passa por isso: só o aparelho que transmite a escreve,
 inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais quem receba um documento juntado).
 
+### O visual: o tema, a barra e a marca
+
+- **O tema** (`tc/tema.js`) é escuro por padrão, mesmo num aparelho de tema claro. No menu da conta (e na janela de
+  entrar) a pessoa escolhe Escuro, Claro ou Do aparelho; a escolha fica neste navegador (`tinycats:tema`) e vale para a
+  casca e para todos os sistemas, que mudam na hora (pelo evento `storage`). Cada página carrega o `tema.js` no
+  `<head>`, e as Cenas trazem uma cópia dele dentro delas (`src/cenas/build.sh`). No tema claro a raiz ganha
+  `data-claro`, e as regras de cor do tema claro de cada página são escritas como `:root:where([data-claro])` e
+  `:where(:root[data-claro]) …` — o `:where` mantém o peso de cada seletor igual ao que era antes. O "automático" das
+  Fichas e da Árvore segue o tema do site. Nos testes, o tema segue o aparelho (`o.theme`), a não ser que o teste
+  escolha outro.
+- **A barra** tem as abas em três grupos, cada um com o nome em cima e a sua cor: **Jogar** (verde: Cenas, Fichas,
+  Árvore, Rolador), **Mundo** (azul: Mapa-múndi, Jornal, Clã) e **Descanso** (lilás: Acampamento, Meditação). O ícone
+  e a marca da aba aberta levam a cor do grupo; o âmbar fica para o botão principal de cada tela.
+- **A marca** é a Dora, a gatinha preta do mestre, num quadrado âmbar — também o ícone da aba do navegador.
+- **A Oficina** (grupo **Mestre**, só para quem mestra a Árvore) é a página da Árvore aberta com `?oficina`, no modo de
+  quem mestra: montar e editar as árvores (o botão Jogador continua lá, para ver como o jogador vê). A aba **Árvore**
+  passa a ser só de quem joga. As duas são a mesma página: quem pede uma e só pode a outra vai para a outra
+  (`abaPossivel`, na casca — o endereço, o "ir" dos sistemas, o guia e o papel na ponte usam a permissão da Árvore,
+  `permDe`). A Árvore também ganhou as cores e as letras do site; o desenho dos nós é o de sempre.
+- **O Rolador** usa as mesmas cores e letras do resto do site, e tem o tema claro.
+- **As Fichas** usam as cores e as letras do site (as variáveis de sempre das Fichas, com os valores da casca), sem
+  rótulos em caixa alta espaçada. Dentro do site, a marca e o título somem: as abas Fichas/Mesa/Eventos e as ações
+  ficam numa barra só. No alto da ficha, o nome em destaque e cada número com o nome inteiro (a sigla fica na dica).
+  **Simples ou Completo** (no alto, à direita; fica neste navegador em `tinycats:fichas:modo`): o Simples, que é o
+  padrão, esconde o que não se usa durante a sessão — os pontos da ficha, as tags, o aniversário e a identidade
+  (`.so-completo`, `#anivBox`, `.idcard3`), com um aviso de onde estão. Os testes abrem no Completo, a não ser que
+  escolham outro. O tema das Fichas é sempre o do site (o botão de tema delas sumiu).
+  **O quadro "Agora"** (no resumo do alto, logo abaixo do estado; `htmlAgoraResumo`): o que mexe nos números neste
+  momento — os bônus temporários ligados (com as rodadas que faltam ou "até o descanso") e os itens equipados que dão
+  bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
+  quando não há nada.
+
+### Os desenhos das cenas no jeito das ilustrações (lote 25)
+
+Os fundos são desenhados em código (SVG), e vão ganhando o jeito das ilustrações dos personagens: a profundidade em
+camadas (cada uma mais apagada pela névoa quanto mais longe), a luz (o halo da lua, o brilho do horizonte, a luz de
+recorte na beira do que está do lado da lua, o fogo que acende o que está perto), as partículas (vaga-lumes, fagulhas)
+e o contorno escuro nas coisas da frente. Começou pelo **Acampamento** (`acampamento/desenhos.js`): o céu com a via
+láctea (só de noite: `--via`), nuvens macias e estrelas em cruz; o horizonte de cada lugar em camadas com névoa entre
+elas; pinheiros de galhos caídos; as árvores grandes que emolduram a floresta e a neve; o chão com textura; a fogueira
+com as pedras em roda, os tições e a fumaça; as barracas com contorno e sombra; os raios de luz do amanhecer e do
+entardecer (`--raios`) e a vinheta nas bordas (`atmosfera`). As classes que a página e os testes usam (`estrela`,
+`chama` — só três —, `fagulha`, `brilho`, `luz-lona`, `data-abrigo`) continuam as mesmas. Uma imagem de fundo do
+mestre continua valendo por cima de tudo isso ("Usar uma imagem de fundo").
+
+Na **Meditação** (`meditacao/desenhos.js`): o céu de todos os ambientes ganhou o brilho do horizonte, nuvens macias, as
+estrelas em cruz e o astro com halo e volume; por cima de tudo (`atmosfera`), os raios de luz que vêm do astro
+(`--raios`, pela hora), o pó dourado no ar (`--poeira`; de noite, os vaga-lumes), as pétalas caindo no jardim e a
+vinheta. A floresta tem pinheiros de galhos caídos; o jardim, cerejeiras em tufos de flor com volume; a montanha, as
+faces dos picos acesas e na sombra; a cachoeira, os paredões em camadas com musgo e a espuma; as lanternas brilham de
+noite. Os nomes dos degradês e desfoques novos entram no sufixo de cada desenho (as miniaturas ficam na mesma página).
+
+Nos **lugares gerados das Cenas** (vistos de cima, num canvas): `Paisagem.acabamento` passa por cima de tudo, antes da
+vinheta — a luz morna vindo de cima à esquerda e a sombra fria do lado de lá (`soft-light`), as manchas de sol que
+passam pelas copas na mata (`op.sol`) e, com a tela inteira (`op.cor`), as cores um pouco mais vivas (o filtro do
+canvas, onde o navegador sabe). Vale no Encontro (e no que usa o motor dele: a Região, os arredores), na Vila e na
+Cidade; na gruta, só as cores. As copas das árvores (`Estilos.arvore`: a folhosa e o pinheiro) ganharam o contorno
+escuro e o volume (cada bolota clara do lado da luz), e os tufos de folha acesos e na sombra.
+
+### A cena ao vivo: o que demora quanto
+
+Um token que um jogador move (ou uma barra que ele muda) faz este caminho: o pedido dele sobe ao banco, o aparelho do
+mestre que transmite o aplica e publica a projeção, e a projeção chega aos outros. Desde a versão 2026.10.24-1:
+
+- **A fila da casca não adia o que já estava marcado** (`agendar`, em `tc/tc.js`). Uma linha sobe meio segundo depois
+  da primeira mudança dela que ainda não subiu — e não meio segundo depois da última. Antes, cada mudança recomeçava
+  a espera: com duas ou três pessoas mexendo, a projeção podia ficar parada até todo mundo dar uma pausa.
+- **O que os outros estão esperando sobe com pressa** (`opt.pressa`, levado pela ponte): a projeção (`cena:pub:m` e
+  `cena:pub:v`) e os pedidos dos jogadores (`cena:pedido:*`) sobem 30 ms depois, sem o meio segundo. O resto (as
+  fichas, a cena guardada inteira, o índice) continua juntando o que muda em sequência.
+- **A projeção sai antes de a cena ser guardada** (`publicarLogo`, em `07d-nuvem.js`): 40 ms depois de uma mudança na
+  cena que está no ar, e não junto com a gravação da cena inteira (450 ms). No meio de um gesto do mestre, ela espera
+  ele soltar.
+
+Com isso, do jogador que solta o token até a tela dos outros fica perto de 0,7 s (antes, 2 a 3 s, e mais com várias
+pessoas mexendo); do mestre até os jogadores, perto de 0,3 s. Enquanto o mestre arrasta alguma coisa, os pedidos dos
+jogadores ainda esperam ele soltar.
+
 ### As rolagens e o auditor
 
 Toda rolagem do site é sorteada no aparelho de quem rolou, com o gerador de números do navegador

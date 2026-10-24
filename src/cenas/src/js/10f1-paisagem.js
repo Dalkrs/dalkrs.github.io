@@ -1477,6 +1477,38 @@ const Paisagem = (() => {
     g.restore();
   }
   // escurece de leve as bordas (o mesmo dos outros geradores)
+  /* (lote 25) O acabamento de ilustração dos lugares de fora, antes da vinheta: a luz do sol vindo de cima à esquerda
+     (morna) e a sombra do lado de lá (fria), as manchas de sol que passam pelas copas (op.sol: na mata) e, com a tela
+     inteira (op.cor), as cores um pouco mais vivas. w, h: o tamanho em pixels. */
+  function acabamento(g, w, h, op) {
+    op = op || {};
+    g.save();
+    g.globalCompositeOperation = op.semLuz ? 'source-over' : 'soft-light';
+    if (op.semLuz) g.globalAlpha = 0;
+    const lz = g.createLinearGradient(0, 0, w, h);
+    lz.addColorStop(0, 'rgba(255,224,160,.55)'); lz.addColorStop(0.45, 'rgba(255,240,210,.08)'); lz.addColorStop(1, 'rgba(24,44,96,.5)');
+    g.fillStyle = lz; g.fillRect(0, 0, w, h);
+    g.globalAlpha = 1;
+    if (op.sol && !op.semLuz) {
+      // as manchas de sol: borrões mornos, mais no lado da luz
+      g.globalCompositeOperation = 'screen';
+      const r = mulberry(((op.seed || 7) ^ 0x51d7c3a1) >>> 0 || 3), n = Math.round(Math.min(40, (w * h) / 90000));
+      for (let i = 0; i < n; i++) {
+        const x = Math.pow(r(), 1.3) * w, y = Math.pow(r(), 1.3) * h, rr = Math.min(w, h) * (0.04 + r() * 0.07);
+        const sg = g.createRadialGradient(x, y, 0, x, y, rr); sg.addColorStop(0, 'rgba(255,236,170,.16)'); sg.addColorStop(1, 'rgba(255,236,170,0)');
+        g.fillStyle = sg; g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+      }
+    }
+    g.restore();
+    // as cores mais vivas: a tela redesenhada nela mesma com o filtro (onde o navegador sabe)
+    if (op.cor && g.canvas && typeof g.filter === 'string' && typeof document !== 'undefined') {
+      try {
+        const cv = g.canvas, t = document.createElement('canvas'); t.width = cv.width; t.height = cv.height;
+        t.getContext('2d').drawImage(cv, 0, 0);
+        g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'copy'; g.filter = 'saturate(1.16) contrast(1.05)'; g.drawImage(t, 0, 0); g.restore();
+      } catch (e) { /* sem filtro: fica como estava */ }
+    }
+  }
   function vinheta(g, W, H, c, forte) {
     const w = W * c, h = H * c, vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.72);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${forte || 0.22})`);
@@ -1484,7 +1516,7 @@ const Paisagem = (() => {
   }
   return { PAL, FIOS, PEDRA, pedraDe, poli, suave, caixa, centro, encolher, aoLongo, compr, chao, mancha, rio, lago, praia, espuma, cachoeira, caminho, penhasco, pedra, arvore, cristais,
     tabuas, carroca, tenda, fogueiraApagada, ossada, pasDoMoinho, plantacao, cerca, feno, espantalho, ponte, passarela, pedrasDePassar, fenda, basalto, raiz, troncoGigante, troncoColossal,
-    luzSalpicada, cratera, barco, pier, destrocos, santuario, abismo, planalto, duna, lenha, varal, aguaRasa, vinheta, MAD,
+    luzSalpicada, cratera, barco, pier, destrocos, santuario, abismo, planalto, duna, lenha, varal, aguaRasa, vinheta, acabamento, MAD,
     cais, molhe, quebraMar, farol, prancha, guindaste, carga, redes, peixes, barracaPeixe, gelo, chaoMisto, morroMacio, bocaGruta, ninho, toca, ossinho,
     pegadas, cupinzeiro, baoba, ossos, mamute, falesia, escadaPedra, poca };
 })();

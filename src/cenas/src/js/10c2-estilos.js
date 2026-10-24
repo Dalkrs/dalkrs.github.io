@@ -278,6 +278,9 @@ const Estilos = (() => {
   }
   /* As árvores pintadas no fundo, de cada tipo: folhosa, pinheiro, palmeira, oriental (cerejeira ou bambu), élfica (com
      luzinhas) e rocha (os anões: pedras grandes no lugar das árvores). */
+  // (lote 25) clarear e escurecer uma cor #rrggbb (para o volume das copas)
+  const misturar = (hex, alvo, k) => { const h = String(hex || '#000000').replace('#', ''); if (h.length !== 6) return hex; const n = parseInt(h, 16); return '#' + [16, 8, 0].map(s => Math.round(((n >> s) & 255) * (1 - k) + alvo * k).toString(16).padStart(2, '0')).join(''); };
+  const clarear = (hex, k) => misturar(hex, 255, k), escurecer = (hex, k) => misturar(hex, 0, k);
   function arvore(g, a, c, rnd, especie, pal, neve) {
     const x = a.x * c, y = a.y * c, R = a.r * c;
     if (especie === 'oriental') especie = rnd() < 0.45 ? 'bambu' : 'cerejeira';
@@ -286,10 +289,15 @@ const Estilos = (() => {
       const cores = ['#2f4a3c', '#3a5a49', '#456a56'];
       for (let camada = 0; camada < 3; camada++) {
         const rr = R * (1 - camada * 0.28);
-        g.globalAlpha = 0.95; g.fillStyle = cores[camada];
+        g.globalAlpha = 0.95;
+        // (lote 25) cada camada de galhos com volume (clara do lado da luz) e, a de baixo, com o contorno escuro
+        const gr = g.createRadialGradient(x - rr * 0.35, y - rr * 0.35, rr * 0.1, x, y, rr);
+        gr.addColorStop(0, clarear(cores[camada], 0.2)); gr.addColorStop(1, escurecer(cores[camada], 0.18));
+        g.fillStyle = gr;
         g.beginPath();
         for (let i = 0; i <= 16; i++) { const an = (i / 16) * TAU2 + camada * 0.2, d = i % 2 ? rr * 0.55 : rr; const px = x + Math.cos(an) * d, py = y + Math.sin(an) * d; if (i) g.lineTo(px, py); else g.moveTo(px, py); }
         g.fill();
+        if (!camada) { g.strokeStyle = escurecer(cores[0], 0.55); g.lineWidth = Math.max(1, R * 0.05); g.lineJoin = 'round'; g.stroke(); }
       }
       if (neve) { g.globalAlpha = 0.85; g.fillStyle = '#f4f8fb'; for (let i = 0; i < 6; i++) { const an = rnd() * TAU2, d = R * (0.3 + rnd() * 0.6); g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * 0.1, 0, TAU2); g.fill(); } }
     } else if (especie === 'palmeira') {
@@ -321,13 +329,26 @@ const Estilos = (() => {
       g.strokeStyle = 'rgba(40,40,46,0.45)'; g.lineWidth = Math.max(1, R * 0.05); g.beginPath(); g.moveTo(x - R * 0.2, y - R * 0.3); g.lineTo(x + R * 0.1, y + R * 0.2); g.stroke();
     } else {
       // folhosa (e a élfica, maior, com luzinhas)
+      // (lote 25) no jeito de ilustração: as bolotas da copa com o contorno escuro por fora, cada uma com volume (clara
+      // do lado da luz, em cima à esquerda; escura do outro), e os tufos de folha acesos e na sombra
       const elfica = especie === 'elfica', cores = elfica ? ['#2f5a3a', '#3d7048', '#4f8a57'] : (pal && pal.copa) || ['#2c4629', '#355432', '#3f6239'];
-      for (let i = 0; i < (elfica ? 12 : 9); i++) {
-        const an = rnd() * TAU2, d = rnd() * R * 0.55;
-        g.globalAlpha = 0.92; g.fillStyle = cores[i % 3];
-        g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.42 + rnd() * 0.25), 0, TAU2); g.fill();
+      const luz = elfica ? '#8fc47a' : (pal && pal.luz) || '#56794a', bolas = [];
+      for (let i = 0; i < (elfica ? 12 : 9); i++) { const an = rnd() * TAU2, d = rnd() * R * 0.55; bolas.push([x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.42 + rnd() * 0.25), cores[i % 3]]); }
+      g.globalAlpha = 0.9; g.fillStyle = escurecer(cores[0], 0.55);
+      for (const [bx, by, br] of bolas) { g.beginPath(); g.arc(bx, by, br + Math.max(1, R * 0.06), 0, TAU2); g.fill(); }
+      g.globalAlpha = 1;
+      for (const [bx, by, br, cor] of bolas) {
+        const gr = g.createRadialGradient(bx - br * 0.35, by - br * 0.4, br * 0.1, bx, by, br);
+        gr.addColorStop(0, clarear(cor, 0.22)); gr.addColorStop(0.65, cor); gr.addColorStop(1, escurecer(cor, 0.25));
+        g.fillStyle = gr; g.beginPath(); g.arc(bx, by, br, 0, TAU2); g.fill();
       }
-      g.globalAlpha = 0.5; g.fillStyle = elfica ? '#8fc47a' : (pal && pal.luz) || '#56794a'; g.beginPath(); g.arc(x - R * 0.2, y - R * 0.25, R * 0.3, 0, TAU2); g.fill();
+      // os tufos: pequenos arcos de folha, claros do lado da luz e escuros do lado da sombra
+      for (let i = 0; i < 14; i++) {
+        const an = rnd() * TAU2, d = rnd() * R * 0.7, tx = x + Math.cos(an) * d, ty = y + Math.sin(an) * d, lado = Math.cos(an - 3.93);
+        g.globalAlpha = 0.5; g.fillStyle = lado > 0 ? clarear(luz, 0.15) : escurecer(cores[0], 0.3);
+        g.beginPath(); g.arc(tx, ty, R * (0.1 + rnd() * 0.08), Math.PI, TAU2); g.fill();
+      }
+      g.globalAlpha = 0.5; g.fillStyle = luz; g.beginPath(); g.arc(x - R * 0.2, y - R * 0.25, R * 0.3, 0, TAU2); g.fill();
       if (elfica) { g.globalAlpha = 0.95; for (let i = 0; i < 7; i++) { const an = rnd() * TAU2, d = rnd() * R * 0.75; g.fillStyle = i % 2 ? '#e9fbff' : '#b9f0d8'; g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, Math.max(1, R * 0.05), 0, TAU2); g.fill(); } }
     }
     g.globalAlpha = 1;
