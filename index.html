@@ -525,7 +525,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.24-14';
+  const VERSAO = '2026.10.24-15';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1852,19 +1852,25 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   const ehSorteio = l => { const d = l.dados || {}; return l.tipo === 'rolagem' && (d.total != null || (Array.isArray(d.dd) && d.dd.length > 0) || (d.k === 'tabela' && (l.origem === 'rolador' || l.origem === 'mundo'))); };
   function pulsar(b) { b.classList.remove('pulso'); void b.offsetWidth; b.classList.add('pulso'); setTimeout(() => b.classList.remove('pulso'), 1000); }
   let audio = null, ruido = null, saidaSom = null, ultimoSom = 0;
+  /* O som da página, um só para todos (os dados, o aviso da ficha nova e a fanfarra do level): quem tocar primeiro cria
+     tudo — também a saída e o ruído das batidas dos dados. (Antes, a fanfarra criava só o som, e os dados ficavam mudos.) */
+  function garantirAudio() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audio) audio = new AC();
+    if (!saidaSom) { saidaSom = audio.createGain(); saidaSom.gain.value = 0.32; saidaSom.connect(audio.destination); }
+    if (!ruido) {
+      ruido = audio.createBuffer(1, Math.floor(audio.sampleRate * 0.25), audio.sampleRate);
+      const b = ruido.getChannelData(0); for (let i = 0; i < b.length; i++) b[i] = Math.random() * 2 - 1;
+    }
+    return audio;
+  }
   function tocarDados(agora) {
     const t = Date.now();
     if (!agora && t - ultimoSom < 350) return;            // várias rolagens juntas (a iniciativa de todos): um som só
     ultimoSom = t;
     try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      if (!audio) {
-        audio = new AC();
-        saidaSom = audio.createGain(); saidaSom.gain.value = 0.32; saidaSom.connect(audio.destination);
-        ruido = audio.createBuffer(1, Math.floor(audio.sampleRate * 0.25), audio.sampleRate);
-        const b = ruido.getChannelData(0); for (let i = 0; i < b.length; i++) b[i] = Math.random() * 2 - 1;
-      }
+      if (!garantirAudio()) return;
       const soar = () => {
         const t0 = audio.currentTime + 0.01;
         const batida = (quando, freq, forca, dura) => {
@@ -2041,8 +2047,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   const criacaoAvisada = new Set();
   function tocarAviso() {
     try {
-      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-      if (!audio) audio = new AC();
+      if (!garantirAudio()) return;
       const soar = () => {
         const t0 = audio.currentTime + 0.02, g = audio.createGain();
         g.gain.value = 0.18; g.connect(audio.destination);
@@ -2076,8 +2081,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   const levelVisto = new Map();
   function tocarNivel() {
     try {
-      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-      if (!audio) audio = new AC();
+      if (!garantirAudio()) return;
       const soar = () => {
         const t0 = audio.currentTime + 0.03, saida = audio.createGain();
         saida.gain.value = 0.22; saida.connect(audio.destination);
