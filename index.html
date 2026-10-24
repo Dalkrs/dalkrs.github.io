@@ -525,7 +525,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.24-13';
+  const VERSAO = '2026.10.24-14';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1960,7 +1960,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (!a || !TC.rules) return;
     let P, D;
     try { P = TC.dados.col('personagens'); D = TC.dados.col('documentos'); } catch (e) { return; }
-    Promise.all([P.pronta, D.pronta]).then(() => { if (mesas.atual === a) { dadosProntos = true; pintarDados(); repintarPedidosAbertos(); } }, () => { /* sem os dados da mesa, a telinha não aparece */ });
+    Promise.all([P.pronta, D.pronta]).then(() => { if (mesas.atual === a) { dadosProntos = true; conferirLevels(); pintarDados(); repintarPedidosAbertos(); } }, () => { /* sem os dados da mesa, a telinha não aparece */ });
   }
   function pintarDados() {
     const a = mesas.atual;
@@ -2068,6 +2068,52 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     }
   }
   TC.dados.on('muda', col => { if (col === 'personagens') setTimeout(conferirCriacao, 300); });
+
+  /* (lote 26) Subiu de nível: quando o level de uma ficha aumenta, o dono dela e quem mestra veem o aviso e, com o som
+     ligado neste aparelho (a chave da mesa ao vivo), ouvem a fanfarra — curta e brilhante, no jeito do Ragnarok: um
+     arpejo que sobe, um acorde que fica e um brilho por cima. O level que cada ficha tinha fica guardado desde que a
+     página abriu: abrir a mesa não toca nada. */
+  const levelVisto = new Map();
+  function tocarNivel() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      if (!audio) audio = new AC();
+      const soar = () => {
+        const t0 = audio.currentTime + 0.03, saida = audio.createGain();
+        saida.gain.value = 0.22; saida.connect(audio.destination);
+        const nota = (fq, quando, dura, tipo, vol) => {
+          const o = audio.createOscillator(), e = audio.createGain();
+          o.type = tipo; o.frequency.value = fq;
+          e.gain.setValueAtTime(0.0001, quando); e.gain.exponentialRampToValueAtTime(vol, quando + 0.015); e.gain.exponentialRampToValueAtTime(0.0001, quando + dura);
+          o.connect(e); e.connect(saida); o.start(quando); o.stop(quando + dura + 0.05);
+        };
+        // o arpejo que sobe (dó, mi, sol, dó, mi), em onda quadrada suave com um triângulo por baixo
+        [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((fq, i) => { nota(fq, t0 + i * 0.085, 0.22, 'square', 0.35); nota(fq / 2, t0 + i * 0.085, 0.22, 'triangle', 0.45); });
+        // o acorde que fica
+        const ac = t0 + 5 * 0.085 + 0.02;
+        [1046.5, 1318.5, 1567.98, 2093].forEach(fq => nota(fq, ac, 0.9, 'triangle', 0.5));
+        nota(523.25, ac, 0.9, 'square', 0.18);
+        // o brilho: notas agudas bem rápidas por cima
+        [3135.96, 2637, 3520, 4186].forEach((fq, i) => nota(fq, ac + 0.08 + i * 0.07, 0.18, 'sine', 0.25));
+      };
+      if (audio.state === 'suspended') audio.resume().then(soar, () => {}); else soar();
+    } catch (e) { /* sem som neste aparelho */ }
+  }
+  function conferirLevels() {
+    const a = mesas.atual, eu = conta.usuario ? conta.usuario.id : null;
+    if (!a || !eu) return;
+    const mestra = a.papel === 'mestre';
+    for (const l of TC.dados.col('personagens').todas()) {
+      const lv = Math.floor(+(l.ficha && l.ficha.level) || 0), antes = levelVisto.get(l.id);
+      levelVisto.set(l.id, lv);
+      if (antes == null || lv <= antes || l.apagado) continue;
+      if (l.ficha && l.ficha.criacao && l.ficha.criacao.pendente) continue;       // (a ficha em branco ganha o level na criação)
+      if (!mestra && l.dono_id !== eu) continue;
+      if (prefs.som) tocarNivel();
+      toast((l.nome || 'Personagem') + ' subiu para o level ' + lv + '!', null, null, 6000);
+    }
+  }
+  TC.dados.on('muda', col => { if (col === 'personagens') conferirLevels(); });
   TC.dados.on('muda', col => { if ((col === 'personagens' || col === 'documentos') && dadosProntos) { clearTimeout(tDados); tDados = setTimeout(() => { pintarDados(); repintarPedidosAbertos(); }, 200); } });
   aoVivo.on('estado', c => { const s = $('sinal'); s.classList.toggle('on', c); s.title = c ? 'Ao vivo' : 'Atualizando a cada poucos segundos'; });
   aoVivo.on('segredo', () => { pintarCompor(); difundir(); });

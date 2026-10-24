@@ -201,16 +201,28 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
   quando não há nada.
 
-### A Árvore sem sobreposição (lote 26)
+### O menu do Mapa-múndi para quem mestra (lote 26)
 
-O desenho em anéis (`calcularLayout`) ganhou dois passos no fim. **`juntarPontas`**: a folha com pais em ramos
-diferentes (os keystones do fim, que juntam caminhos) vai para entre os pais, um anel depois do mais de fora — a não ser
-que os pais estejam espalhados em volta da raiz. **`afastar`**: cada nó ocupa uma caixa (`caixaDoNo`: a largura do nome
-ou da bolinha, de cima da bolinha até embaixo do nome); onde duas se cruzam, as duas se afastam pelo lado em que se
-cruzam menos, com uma mola que puxa de volta para o lugar do desenho em anéis e some na metade das voltas. A raiz única
-fica parada; não há sorteio. Como o desenho se refaz a cada passo do zoom, as posições ficam guardadas até a árvore
-mudar (`layoutGuardado`). Afastado (zoom até 0,85), aparecem só os nomes dos nós grandes, dos escolhidos e do
-selecionado.
+- **As abas** (`mundo/painel.js`): para quem mestra, uma fileira só, em três grupos com nome (`GRUPOS_ABAS`):
+  **Sessão** (Seleção, Hoje, Linha), **Política** — um botão (`#tab-politica`) que abre a lista com Reinos, Corte,
+  Diplomacia, Intrigas e Guerra e mostra o nome da aba dela em uso — e **Preparar** (Terreno, Mapa). Quem joga (e o
+  mestre em "Ver como jogador") continua com as duas fileiras de sempre (`arrumarAbas` troca quando o papel muda). As
+  teclas **1 a 6** abrem as abas na ordem (a 4 é a última aberta da Política).
+- **Os blocos** (`secao`) abrem e fecham pelo título: nas abas da Sessão começam abertos; nas da Política e do Preparar,
+  fechados, alguns com o resumo no título ("papel em branco", a data de hoje, "névoa ligada"). O que se abre ou fecha
+  fica lembrado enquanto a página está aberta.
+- **O trilho** em grupos com nome (`GRUPOS_TRILHO`, em `tela.js`): Sessão (selecionar, grupo, evento, marcador, régua,
+  caneta), Traçar (região, rota, frente) e Preparar (terreno, desenho, névoa). As teclas são as de sempre.
+- **A data** (na barra de cima) abre a sanfona: "Ir para a data…" e a linha do tempo (a data de cada campanha, a que
+  está no mapa marcada), com o botão para a aba Linha.
+- Os testes de antes abrem com a marca `tinycats:testes-tudo-aberto` (as fileiras, os blocos abertos, a data indo
+  direto para "Ir para a data"); `src/tests/mundo-lote26.test.js` confere o menu como o mestre encontra.
+
+### A Árvore: os nomes pelo zoom (lote 26)
+
+O desenho continua em anéis (`calcularLayout`), do jeito de sempre. Afastado (zoom até 0,85), aparecem só os nomes dos
+nós grandes, dos escolhidos e do selecionado; de perto, todos. (Houve uma tentativa de afastar os nós uns dos outros e
+outra de desenhar símbolos com as estrelas; as duas tiravam a cara das árvores e saíram.)
 
 ### A criação de personagem, o background e as Profissões (lote 26)
 
@@ -221,6 +233,9 @@ selecionado.
   level e as raças e classes que valem, e a ficha nasce do jogador, em branco, com `ficha.criacao = { pendente, level,
   racas, classes }` (listas vazias: todas valem), a distribuição livre e os pontos de começo de cada tipo de ponto da
   Árvore (`skills.pontos`, o padrão de cada um: quem dá ponto é o mestre).
+- **Subiu de nível** (`conferirLevels`, na casca): o level de cada ficha fica guardado desde que a mesa abre; quando
+  ele aumenta, o dono e quem mestra veem o aviso e, com o som da mesa ao vivo ligado, ouvem a fanfarra (`tocarNivel`:
+  um arpejo que sobe, um acorde e um brilho, feitos ali mesmo, sem arquivo). A ficha ainda pendente de criação não conta.
 - **O aviso.** A casca do jogador olha as fichas dele que chegam: a que tem a criação pendente toca um som (três notas,
   `tocarAviso`) e mostra o aviso com "Criar agora" (`irPara('fichas', { criar })`). Nas Fichas, a ficha pendente tem o
   quadro "Esta ficha está esperando você criar o personagem" e, na lista, "a criar".
