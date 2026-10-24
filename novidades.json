@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-7",
+      "data": "2026-10-24",
+      "titulo": "Os lugares gerados com luz de ilustração",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: os lugares gerados (encontros, vilas, cidades, a região) ganharam luz de ilustração — sol morno de um lado e sombra fria do outro, manchas de sol na mata e cores mais vivas — e as árvores ganharam contorno e volume."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-6",
       "data": "2026-10-24",
       "titulo": "A Meditação com cara de ilustração",

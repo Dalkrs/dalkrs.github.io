@@ -208,6 +208,13 @@ vinheta. A floresta tem pinheiros de galhos caídos; o jardim, cerejeiras em tuf
 faces dos picos acesas e na sombra; a cachoeira, os paredões em camadas com musgo e a espuma; as lanternas brilham de
 noite. Os nomes dos degradês e desfoques novos entram no sufixo de cada desenho (as miniaturas ficam na mesma página).
 
+Nos **lugares gerados das Cenas** (vistos de cima, num canvas): `Paisagem.acabamento` passa por cima de tudo, antes da
+vinheta — a luz morna vindo de cima à esquerda e a sombra fria do lado de lá (`soft-light`), as manchas de sol que
+passam pelas copas na mata (`op.sol`) e, com a tela inteira (`op.cor`), as cores um pouco mais vivas (o filtro do
+canvas, onde o navegador sabe). Vale no Encontro (e no que usa o motor dele: a Região, os arredores), na Vila e na
+Cidade; na gruta, só as cores. As copas das árvores (`Estilos.arvore`: a folhosa e o pinheiro) ganharam o contorno
+escuro e o volume (cada bolota clara do lado da luz), e os tufos de folha acesos e na sombra.
+
 ### A cena ao vivo: o que demora quanto
 
 Um token que um jogador move (ou uma barra que ele muda) faz este caminho: o pedido dele sobe ao banco, o aparelho do

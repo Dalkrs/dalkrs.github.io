@@ -1120,6 +1120,7 @@ const Cidade = (() => {
     }
     // um escurecido de leve nas bordas
     if (!op.semVinheta) {
+      Paisagem.acabamento(g, W, H, { seed: p.seed, cor: !op.g });      // (lote 25) a luz e as cores de ilustração
       const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
       vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.24)');
       g.fillStyle = vg; g.fillRect(0, 0, W, H);

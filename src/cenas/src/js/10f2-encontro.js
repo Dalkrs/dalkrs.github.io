@@ -2014,6 +2014,7 @@ const Encontro = (() => {
      pinta noutra tela (g), deslocado dx, dy quadrados, sem o chão de base (o sorteio dele corre do mesmo jeito numa tela
      de um pixel: o resto do desenho sai igual) e sem a vinheta; o chão da estação só dentro (estacaoEm) ou só fora
      (estacaoFora) do retângulo [x0, y0, x1, y1] (em quadrados) — sem op, tudo como sempre. */
+  const MATAS = new Set(['floresta', 'selva', 'pantano', 'corrompida']);      // (lote 25) onde o sol passa pelas copas
   function pintar(p, c, op) {
     op = op || {};
     const W = p.W * c, H = p.H * c, est = p.estilo, P = Paisagem;
@@ -2071,7 +2072,10 @@ const Encontro = (() => {
       if (EST) EST.naArvore(g, a, pa, nv);
     }
     for (const o of p.pintados) if (o.z === 3) pintaObjeto(g, o, c, rnd, p);
-    if (!op.semVinheta) P.vinheta(g, p.W, p.H, c, p.terreno === 'cristais' && p.sit === 'gruta' ? 0.4 : 0.22);
+    // (lote 25) o acabamento de ilustração: a luz, as manchas de sol na mata e as cores (na gruta, só as cores)
+    const gruta = p.terreno === 'cristais' && p.sit === 'gruta';
+    if (!op.semVinheta) P.acabamento(g, p.W * c, p.H * c, { sol: !gruta && MATAS.has(p.terreno), semLuz: gruta, seed: p.seed, cor: !op.g });
+    if (!op.semVinheta) P.vinheta(g, p.W, p.H, c, gruta ? 0.4 : 0.22);
     if (op.g) g.restore();
     return cv;
   }
