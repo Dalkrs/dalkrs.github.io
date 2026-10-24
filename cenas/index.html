@@ -185,6 +185,22 @@ button { cursor: pointer; }
 .tool:hover { background: var(--hover); color: var(--fg); }
 .tool.on { background: var(--lamp); color: var(--on-lamp); }
 .rail-sep { flex: none; width: 22px; height: 1px; margin: 3px 0; background: var(--line); }
+/* (lote 26) os grupos com nome e o grupo do desenho num botão só, com a lista ao lado */
+.rail { overflow: visible; }
+.rail-g { flex: none; font: 600 9.5px/1 var(--ui, inherit); color: var(--fg-3); letter-spacing: .02em; margin: 4px 0 2px; user-select: none; }
+.rail-junto { position: relative; flex: none; }
+.tool.junto { position: relative; }
+.junto-seta { position: absolute; right: 3px; bottom: 3px; width: 0; height: 0; border-left: 5px solid transparent; border-bottom: 5px solid currentColor; opacity: .7; }
+.rail-lista { position: absolute; left: 44px; top: -8px; z-index: 30; min-width: 196px; padding: 6px; display: flex; flex-direction: column; gap: 2px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.rail-lista[hidden] { display: none; }
+.rail-lista-t { font: 600 11.5px var(--ui, inherit); color: var(--fg-3); padding: 4px 8px 6px; }
+.rail-item { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font: 500 13.5px var(--ui, inherit); text-align: left; cursor: pointer; }
+.rail-item span { flex: 1 1 auto; }
+.rail-item kbd { font: 600 11px var(--mono); color: var(--fg-3); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+.rail-item:hover, .rail-item:focus-visible { background: var(--hover); color: var(--fg); }
+.rail-item.on { background: var(--lamp); color: var(--on-lamp); }
+.rail-item.on kbd { color: inherit; border-color: currentColor; }
 
 .stage { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
 #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
@@ -11177,11 +11193,17 @@ const Tools = (() => {
 
   // (lote 6: E passou a ser os equipamentos do token e N, passar o turno; a Névoa foi para U e os Efeitos, para Y)
   const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', u: 'fog', q: 'terrain', y: 'fx', m: 'ruler' };
+  /* (lote 26) Os grupos do trilho, com nome: o que se usa jogando, as peças, o desenho (recolhido num botão só, que
+     abre a lista) e o mapa. Os atalhos de teclado são os de sempre. */
+  const GRUPOS = [{ n: 'Jogo' }, { n: 'Peças' }, { n: 'Desenho', junto: true, i: 'pen' }, { n: 'Mapa' }];
   const LIST = [
     { id: 'select', n: 'Selecionar', k: 'V', i: 'select', grp: 0 },
     { id: 'pan', n: 'Mover a câmera', k: 'H', i: 'pan', grp: 0 },
+    { id: 'ruler', n: 'Régua', k: 'M', i: 'ruler', grp: 0, perm: 'ruler' },
+    { id: 'ping', n: 'Ping (ou tecla G sobre o mapa)', k: 'G', i: 'ping', grp: 0, perm: 'ping' },
     { id: 'token', n: 'Novo token', k: 'T', i: 'token', grp: 1, gm: true },
     { id: 'obj', n: 'Objetos de cenário', k: 'J', i: 'obj', grp: 1, gm: true },
+    { id: 'fx', n: 'Efeito de magia', k: 'Y', i: 'fx', grp: 1, perm: 'fx' },
     { id: 'free', n: 'Desenho livre', k: 'B', i: 'pen', grp: 2, perm: 'draw' },
     { id: 'line', n: 'Linha', k: 'L', i: 'line', grp: 2, perm: 'draw' },
     { id: 'rect', n: 'Retângulo', k: 'R', i: 'rect', grp: 2, perm: 'draw' },
@@ -11192,9 +11214,6 @@ const Tools = (() => {
     { id: 'light', n: 'Luz', k: 'I', i: 'light', grp: 3, gm: true },
     { id: 'fog', n: 'Névoa manual', k: 'U', i: 'fog', grp: 3, gm: true },
     { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
-    { id: 'fx', n: 'Efeito de magia', k: 'Y', i: 'fx', grp: 4, perm: 'fx' },
-    { id: 'ruler', n: 'Régua', k: 'M', i: 'ruler', grp: 5, perm: 'ruler' },
-    { id: 'ping', n: 'Ping (ou tecla G sobre o mapa)', k: 'G', i: 'ping', grp: 5, perm: 'ping' },
   ];
   const allowed = id => {
     const d = LIST.find(x => x.id === id);
@@ -12462,7 +12481,7 @@ const Tools = (() => {
     if (t.preview) t.preview(ctx, px, sc);
   }
 
-  return { LIST, set, allowed, handles, drawPreview, hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
+  return { LIST, GRUPOS, set, allowed, handles, drawPreview, hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
 })();
 /* ---------------------------------------------------------------
    10. UI — barra do topo, trilho de ferramentas, painel, menus e janelas
@@ -13421,16 +13440,34 @@ const UI = (() => {
       btn('Voltar ao mestre', () => setViewer('gm'), { kind: 'primary small', id: 'backGm' }));
   }
 
-  /* ================= Trilho de ferramentas ================= */
+  /* ================= Trilho de ferramentas =================
+     (lote 26) Em grupos com nome (Tools.GRUPOS). O grupo do desenho fica num botão só — o do desenho em uso, ou o
+     último — que abre a lista com os nomes e as teclas; com a lista aberta, Esc ou um clique fora fecha. */
+  let ultDesenho = 'free', listaDesenho = false;
+  const fecharDesenho = () => { if (!listaDesenho) return; listaDesenho = false; renderRail(); };
+  document.addEventListener('pointerdown', e => { if (listaDesenho && !e.target.closest('.rail-junto')) fecharDesenho(); }, true);
+  document.addEventListener('keydown', e => { if (listaDesenho && e.key === 'Escape') { e.stopPropagation(); fecharDesenho(); } }, true);
   function renderRail() {
     const kids = [];
-    let grp = -1;
-    for (const t of Tools.LIST) {
-      if (!Tools.allowed(t.id)) continue;
-      if (grp !== -1 && t.grp !== grp) kids.push(h('span', { class: 'rail-sep' }));
-      grp = t.grp;
-      kids.push(h('button', { type: 'button', class: 'tool' + (App.tool === t.id ? ' on' : ''), id: 'tool-' + t.id, title: `${t.n} (${t.k})`, 'aria-label': t.n, 'aria-pressed': String(App.tool === t.id), onclick: () => Tools.set(t.id) }, icon(t.i, 20)));
-    }
+    const toolBtn = t => h('button', { type: 'button', class: 'tool' + (App.tool === t.id ? ' on' : ''), id: 'tool-' + t.id, title: `${t.n} (${t.k})`, 'aria-label': t.n, 'aria-pressed': String(App.tool === t.id), onclick: () => { listaDesenho = false; Tools.set(t.id); } }, icon(t.i, 20));
+    Tools.GRUPOS.forEach((g, gi) => {
+      const ts = Tools.LIST.filter(t => t.grp === gi && Tools.allowed(t.id));
+      if (!ts.length) return;
+      if (kids.length) kids.push(h('span', { class: 'rail-sep' }));
+      kids.push(h('span', { class: 'rail-g', text: g.n, 'aria-hidden': 'true' }));
+      if (!g.junto || ts.length < 3) { ts.forEach(t => kids.push(toolBtn(t))); return; }
+      const ativo = ts.find(t => t.id === App.tool);
+      if (ativo) ultDesenho = ativo.id;
+      const mostra = ts.find(t => t.id === ultDesenho) || ts[0];
+      const lista = h('div', { class: 'rail-lista', role: 'menu', 'aria-label': g.n, hidden: !listaDesenho },
+        h('span', { class: 'rail-lista-t', text: g.n }),
+        ts.map(t => h('button', { type: 'button', role: 'menuitemradio', 'aria-checked': String(App.tool === t.id), class: 'rail-item' + (App.tool === t.id ? ' on' : ''), id: 'tool-' + t.id, title: `${t.n} (${t.k})`,
+          onclick: () => { listaDesenho = false; ultDesenho = t.id; Tools.set(t.id); renderRail(); } }, icon(t.i, 18), h('span', { text: t.n }), h('kbd', { text: t.k }))));
+      kids.push(h('div', { class: 'rail-junto' },
+        h('button', { type: 'button', class: 'tool junto' + (ativo ? ' on' : ''), id: 'tool-grupo-desenho', title: `${g.n}: ${ts.map(t => t.n + ' (' + t.k + ')').join(', ')}`, 'aria-label': g.n + ' — ' + mostra.n, 'aria-haspopup': 'menu', 'aria-expanded': String(listaDesenho),
+          onclick: () => { listaDesenho = !listaDesenho; renderRail(); if (listaDesenho) { const b = el.rail.querySelector('.rail-item.on') || el.rail.querySelector('.rail-item'); if (b) b.focus(); } } }, icon(mostra.i, 20), h('span', { class: 'junto-seta', 'aria-hidden': 'true' })),
+        lista));
+    });
     el.rail.replaceChildren(...kids);
   }
 

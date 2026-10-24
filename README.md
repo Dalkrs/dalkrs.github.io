@@ -201,6 +201,14 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
   quando não há nada.
 
+### As ferramentas das Cenas em grupos (lote 26)
+
+O trilho da esquerda segue `Tools.GRUPOS` (em `09-tools.js`): **Jogo** (selecionar, câmera, régua, ping), **Peças**
+(token, objetos, efeito de magia), **Desenho** e **Mapa** (paredes, luz, névoa, terreno), cada grupo com o nome em
+cima. O grupo do Desenho (`junto`) é um botão só (`#tool-grupo-desenho`), com o ícone da ferramenta de desenho em uso
+(ou da última): ele abre a lista com os nomes e as teclas (`.rail-item`, com os ids de sempre, `#tool-free`…). Esc ou
+um clique fora fecham a lista. As teclas não mudaram.
+
 ### Os desenhos das cenas no jeito das ilustrações (lote 25)
 
 Os fundos são desenhados em código (SVG), e vão ganhando o jeito das ilustrações dos personagens: a profundidade em
