@@ -1,0 +1,2603 @@
+{
+ "_leia": "As tags que vêm prontas (lote 27): condições (c:), efeitos — as áreas no chão — (e:) e recursos de raça e classe (r:). O mestre muda, apaga e cria na aba Tags da Oficina; o que ele muda fica na mesa (arvore:tags), por cima destas. Ver tc/tags.js.",
+ "versao": 1,
+ "tags": [
+  {
+   "id": "c:veneno",
+   "nome": "Envenenado",
+   "tipo": "condicao",
+   "texto": "O veneno corre no sangue: a vítima vai perdendo vida e força aos poucos.",
+   "formas": [
+    "Envenenada",
+    "Envenenados",
+    "Envenenadas"
+   ],
+   "de": "",
+   "cor": "#4ea84a"
+  },
+  {
+   "id": "c:sangue",
+   "nome": "Sangrando",
+   "tipo": "condicao",
+   "texto": "Uma ferida aberta que não fecha: perde sangue e vida a cada momento.",
+   "formas": [],
+   "de": "",
+   "cor": "#c93a3a"
+  },
+  {
+   "id": "c:hemorragia",
+   "nome": "Hemorragia",
+   "tipo": "condicao",
+   "texto": "Sangramento grave e profundo, difícil de estancar; a vida escorre depressa.",
+   "formas": [],
+   "de": "",
+   "cor": "#8f1d1d"
+  },
+  {
+   "id": "c:fogo",
+   "nome": "Queimando",
+   "tipo": "condicao",
+   "texto": "Em chamas: o fogo segue queimando até ser apagado ou se extinguir.",
+   "formas": [],
+   "de": "",
+   "cor": "#e8792b"
+  },
+  {
+   "id": "c:gelo",
+   "nome": "Congelado",
+   "tipo": "condicao",
+   "texto": "Preso no gelo: não consegue se mover nem agir até o gelo quebrar ou derreter.",
+   "formas": [
+    "Congelada",
+    "Congelados",
+    "Congeladas"
+   ],
+   "de": "",
+   "cor": "#5fb6e0"
+  },
+  {
+   "id": "c:resfriado",
+   "nome": "Resfriado",
+   "tipo": "condicao",
+   "texto": "Gelado até os ossos: os movimentos ficam duros e mais lentos.",
+   "formas": [
+    "Resfriada",
+    "Resfriados",
+    "Resfriadas"
+   ],
+   "de": "",
+   "cor": "#6aa3c4"
+  },
+  {
+   "id": "c:molhado",
+   "nome": "Molhado",
+   "tipo": "condicao",
+   "texto": "Encharcado de água: o corpo pesa e fica mais exposto a raio e frio.",
+   "formas": [
+    "Molhada",
+    "Molhados",
+    "Molhadas"
+   ],
+   "de": "",
+   "cor": "#3b8fd1"
+  },
+  {
+   "id": "c:oleo",
+   "nome": "Óleo",
+   "tipo": "condicao",
+   "texto": "Coberto de óleo: escorrega com facilidade e pega fogo num instante.",
+   "formas": [],
+   "de": "",
+   "cor": "#6b5b2a"
+  },
+  {
+   "id": "c:eletrizado",
+   "nome": "Eletrizado",
+   "tipo": "condicao",
+   "texto": "O raio corre pelo corpo: os músculos se contraem e falham nos piores momentos.",
+   "formas": [
+    "Eletrizada",
+    "Eletrizados",
+    "Eletrizadas"
+   ],
+   "de": "",
+   "cor": "#d9b51f"
+  },
+  {
+   "id": "c:corroido",
+   "nome": "Corroído",
+   "tipo": "condicao",
+   "texto": "Ácido ou ferrugem devora armadura e carne: a proteção vai se desfazendo.",
+   "formas": [
+    "Corroída",
+    "Corroídos",
+    "Corroídas"
+   ],
+   "de": "",
+   "cor": "#93ad2c"
+  },
+  {
+   "id": "c:enregelado",
+   "nome": "Enregelado",
+   "tipo": "condicao",
+   "texto": "Tomado por um frio profundo, quase congelado: mal consegue se mexer.",
+   "formas": [
+    "Enregelada",
+    "Enregelados",
+    "Enregeladas"
+   ],
+   "de": "",
+   "cor": "#7fbfdf"
+  },
+  {
+   "id": "c:ventania",
+   "nome": "Ventania",
+   "tipo": "condicao",
+   "texto": "Vento forte que empurra e atrapalha: difícil manter o equilíbrio e a mira.",
+   "formas": [],
+   "de": "",
+   "cor": "#5fa9bf"
+  },
+  {
+   "id": "c:atordoado",
+   "nome": "Atordoado",
+   "tipo": "condicao",
+   "texto": "Zonzo depois de um golpe forte: não consegue agir direito por um instante.",
+   "formas": [
+    "Atordoada",
+    "Atordoados",
+    "Atordoadas"
+   ],
+   "de": "",
+   "cor": "#d9a821"
+  },
+  {
+   "id": "c:paralisia",
+   "nome": "Paralisado",
+   "tipo": "condicao",
+   "texto": "O corpo não obedece: fica travado, sem conseguir se mover nem agir.",
+   "formas": [
+    "Paralisada",
+    "Paralisados",
+    "Paralisadas"
+   ],
+   "de": "",
+   "cor": "#9a9f2e"
+  },
+  {
+   "id": "c:emaranhado",
+   "nome": "Emaranhado",
+   "tipo": "condicao",
+   "texto": "Preso em teias, cipós ou redes: se move com dificuldade até se soltar.",
+   "formas": [
+    "Emaranhada",
+    "Emaranhados",
+    "Emaranhadas"
+   ],
+   "de": "",
+   "cor": "#5a8f3c"
+  },
+  {
+   "id": "c:agarrado",
+   "nome": "Agarrado",
+   "tipo": "condicao",
+   "texto": "Seguro por alguém: não consegue se afastar até se soltar.",
+   "formas": [
+    "Agarrada",
+    "Agarrados",
+    "Agarradas"
+   ],
+   "de": "",
+   "cor": "#a0673a"
+  },
+  {
+   "id": "c:caido",
+   "nome": "Caído",
+   "tipo": "condicao",
+   "texto": "No chão: fica fácil de acertar de perto e precisa de um tempo para levantar.",
+   "formas": [
+    "Caída",
+    "Caídos",
+    "Caídas"
+   ],
+   "de": "",
+   "cor": "#8a6a4c"
+  },
+  {
+   "id": "c:inconsciente",
+   "nome": "Inconsciente",
+   "tipo": "condicao",
+   "texto": "Desmaiado: não percebe nada à volta e não pode agir.",
+   "formas": [
+    "Inconscientes"
+   ],
+   "de": "",
+   "cor": "#4b5568"
+  },
+  {
+   "id": "c:petrificado",
+   "nome": "Petrificado",
+   "tipo": "condicao",
+   "texto": "Virou pedra: fica imóvel e sem reação, mas duro de ferir.",
+   "formas": [
+    "Petrificada",
+    "Petrificados",
+    "Petrificadas"
+   ],
+   "de": "",
+   "cor": "#8d8f94"
+  },
+  {
+   "id": "c:adormecido",
+   "nome": "Adormecido",
+   "tipo": "condicao",
+   "texto": "Dormindo pesado: não age, mas um golpe ou barulho forte pode acordá-lo.",
+   "formas": [
+    "Adormecida",
+    "Adormecidos",
+    "Adormecidas"
+   ],
+   "de": "",
+   "cor": "#6b7fc4"
+  },
+  {
+   "id": "c:enraizado",
+   "nome": "Enraizado",
+   "tipo": "condicao",
+   "texto": "Os pés estão presos ao chão: não sai do lugar, mas ainda pode lutar.",
+   "formas": [
+    "Enraizada",
+    "Enraizados",
+    "Enraizadas"
+   ],
+   "de": "",
+   "cor": "#7a6a3a"
+  },
+  {
+   "id": "c:furia",
+   "nome": "Fúria",
+   "tipo": "condicao",
+   "texto": "Tomado pela raiva: bate mais forte, mas pensa menos e se defende pior.",
+   "formas": [],
+   "de": "",
+   "cor": "#c8242c"
+  },
+  {
+   "id": "c:grito",
+   "nome": "Grito de Batalha",
+   "tipo": "condicao",
+   "texto": "Um brado que acende a coragem do grupo: os aliados lutam com mais ânimo.",
+   "formas": [],
+   "de": "",
+   "cor": "#d9572b"
+  },
+  {
+   "id": "c:provocado",
+   "nome": "Provocado",
+   "tipo": "condicao",
+   "texto": "Foi desafiado e não consegue ignorar: só pensa em atacar quem o provocou.",
+   "formas": [
+    "Provocada",
+    "Provocados",
+    "Provocadas"
+   ],
+   "de": "",
+   "cor": "#d4782a"
+  },
+  {
+   "id": "c:defendendo",
+   "nome": "Defendendo",
+   "tipo": "condicao",
+   "texto": "Postura de guarda: abre mão do ataque para se proteger melhor.",
+   "formas": [],
+   "de": "",
+   "cor": "#4f7fa8"
+  },
+  {
+   "id": "c:desarmado",
+   "nome": "Desarmado",
+   "tipo": "condicao",
+   "texto": "Perdeu a arma: precisa lutar com as mãos ou ir buscá-la.",
+   "formas": [
+    "Desarmada",
+    "Desarmados",
+    "Desarmadas"
+   ],
+   "de": "",
+   "cor": "#7d838f"
+  },
+  {
+   "id": "c:foco",
+   "nome": "Concentrando",
+   "tipo": "condicao",
+   "texto": "Mente presa numa tarefa ou magia: um golpe forte pode quebrar o foco.",
+   "formas": [],
+   "de": "",
+   "cor": "#2f9d93"
+  },
+  {
+   "id": "c:vulneravel",
+   "nome": "Vulnerável",
+   "tipo": "condicao",
+   "texto": "Exposto e sem defesa: os golpes que o atingem machucam mais.",
+   "formas": [
+    "Vulneráveis"
+   ],
+   "de": "",
+   "cor": "#d0583c"
+  },
+  {
+   "id": "c:determinado",
+   "nome": "Determinado",
+   "tipo": "condicao",
+   "texto": "Firme no propósito: resiste melhor ao medo, à dor e ao que tenta pará-lo.",
+   "formas": [
+    "Determinada",
+    "Determinados",
+    "Determinadas"
+   ],
+   "de": "",
+   "cor": "#d98f24"
+  },
+  {
+   "id": "c:medo",
+   "nome": "Amedrontado",
+   "tipo": "condicao",
+   "texto": "Dominado pelo medo: hesita, foge do que o assusta e luta pior.",
+   "formas": [
+    "Amedrontada",
+    "Amedrontados",
+    "Amedrontadas"
+   ],
+   "de": "",
+   "cor": "#b0559f"
+  },
+  {
+   "id": "c:paranoico",
+   "nome": "Paranoico",
+   "tipo": "condicao",
+   "texto": "Desconfia de todos, até dos aliados: vê ameaça em cada movimento.",
+   "formas": [
+    "Paranoica",
+    "Paranoicos",
+    "Paranoicas"
+   ],
+   "de": "",
+   "cor": "#a13d63"
+  },
+  {
+   "id": "c:confuso",
+   "nome": "Confuso",
+   "tipo": "condicao",
+   "texto": "A mente embaralhada: não sabe bem quem é amigo ou inimigo e age sem rumo.",
+   "formas": [
+    "Confusa",
+    "Confusos",
+    "Confusas"
+   ],
+   "de": "",
+   "cor": "#b77ad0"
+  },
+  {
+   "id": "c:enfeiticado",
+   "nome": "Enfeitiçado",
+   "tipo": "condicao",
+   "texto": "Sob um encanto: vê quem o enfeitiçou como amigo e não quer feri-lo.",
+   "formas": [
+    "Enfeitiçada",
+    "Enfeitiçados",
+    "Enfeitiçadas"
+   ],
+   "de": "",
+   "cor": "#e0609a"
+  },
+  {
+   "id": "c:silencio",
+   "nome": "Silenciado",
+   "tipo": "condicao",
+   "texto": "Sem voz: não consegue falar, cantar nem conjurar magias que pedem palavras.",
+   "formas": [
+    "Silenciada",
+    "Silenciados",
+    "Silenciadas"
+   ],
+   "de": "",
+   "cor": "#8b62c9"
+  },
+  {
+   "id": "c:maldicao",
+   "nome": "Amaldiçoado",
+   "tipo": "condicao",
+   "texto": "Carrega uma maldição: a sorte vira contra ele até que ela seja quebrada.",
+   "formas": [
+    "Amaldiçoada",
+    "Amaldiçoados",
+    "Amaldiçoadas"
+   ],
+   "de": "",
+   "cor": "#5b3f8f"
+  },
+  {
+   "id": "c:marcado",
+   "nome": "Marcado",
+   "tipo": "condicao",
+   "texto": "Foi escolhido como alvo: fica mais fácil de achar e de acertar.",
+   "formas": [
+    "Marcada",
+    "Marcados",
+    "Marcadas"
+   ],
+   "de": "",
+   "cor": "#d94545"
+  },
+  {
+   "id": "c:transformado",
+   "nome": "Transformado",
+   "tipo": "condicao",
+   "texto": "O corpo mudou de forma por magia: age e luta como a nova criatura.",
+   "formas": [
+    "Transformada",
+    "Transformados",
+    "Transformadas"
+   ],
+   "de": "",
+   "cor": "#3fa58c"
+  },
+  {
+   "id": "c:artefato",
+   "nome": "Artefato Ativado",
+   "tipo": "condicao",
+   "texto": "O poder de um artefato despertou e está agindo através de quem o carrega.",
+   "formas": [],
+   "de": "",
+   "cor": "#9a5fd6"
+  },
+  {
+   "id": "c:possuido",
+   "nome": "Possuído",
+   "tipo": "condicao",
+   "texto": "Outra presença tomou o corpo: ele age pela vontade de quem o possui.",
+   "formas": [
+    "Possuída",
+    "Possuídos",
+    "Possuídas"
+   ],
+   "de": "",
+   "cor": "#7a3b8f"
+  },
+  {
+   "id": "c:refletindo",
+   "nome": "Refletindo",
+   "tipo": "condicao",
+   "texto": "Envolto numa defesa espelhada: o que o atinge pode voltar contra quem lançou.",
+   "formas": [],
+   "de": "",
+   "cor": "#56aec2"
+  },
+  {
+   "id": "c:enlouquecido",
+   "nome": "Enlouquecido",
+   "tipo": "condicao",
+   "texto": "A razão se quebrou: age de forma imprevisível e perigosa, até para os aliados.",
+   "formas": [
+    "Enlouquecida",
+    "Enlouquecidos",
+    "Enlouquecidas"
+   ],
+   "de": "",
+   "cor": "#c4488c"
+  },
+  {
+   "id": "c:qibloq",
+   "nome": "Qi bloqueado",
+   "tipo": "condicao",
+   "texto": "A energia interior travou: não consegue usar as técnicas que dependem do Qi.",
+   "formas": [],
+   "de": "",
+   "cor": "#5b6b80"
+  },
+  {
+   "id": "c:qidesvio",
+   "nome": "Desvio de Qi",
+   "tipo": "condicao",
+   "texto": "A energia interior sai do rumo: as técnicas de Qi falham ou saem tortas.",
+   "formas": [],
+   "de": "",
+   "cor": "#d4643a"
+  },
+  {
+   "id": "c:clone",
+   "nome": "Clone",
+   "tipo": "condicao",
+   "texto": "Uma cópia criada por magia ou técnica: imita o original, mas é frágil.",
+   "formas": [],
+   "de": "",
+   "cor": "#7f8fd6"
+  },
+  {
+   "id": "c:duplicado",
+   "nome": "Duplicado",
+   "tipo": "condicao",
+   "texto": "Existe em dobro: uma cópia age junto do original e confunde os inimigos.",
+   "formas": [
+    "Duplicada",
+    "Duplicados",
+    "Duplicadas"
+   ],
+   "de": "",
+   "cor": "#a0447a"
+  },
+  {
+   "id": "c:cego",
+   "nome": "Cego",
+   "tipo": "condicao",
+   "texto": "Não enxerga: ataca às cegas e não vê o que vem na sua direção.",
+   "formas": [
+    "Cega",
+    "Cegos",
+    "Cegas"
+   ],
+   "de": "",
+   "cor": "#5a6072"
+  },
+  {
+   "id": "c:surdo",
+   "nome": "Surdo",
+   "tipo": "condicao",
+   "texto": "Não ouve nada: não escuta avisos, ordens nem o que se aproxima.",
+   "formas": [
+    "Surda",
+    "Surdos",
+    "Surdas"
+   ],
+   "de": "",
+   "cor": "#667085"
+  },
+  {
+   "id": "c:fraco",
+   "nome": "Fraquejado",
+   "tipo": "condicao",
+   "texto": "O corpo perdeu a força: golpes e esforços saem mais fracos.",
+   "formas": [
+    "Fraquejada",
+    "Fraquejados",
+    "Fraquejadas"
+   ],
+   "de": "",
+   "cor": "#9a8266"
+  },
+  {
+   "id": "c:exausto",
+   "nome": "Exausto",
+   "tipo": "condicao",
+   "texto": "Sem fôlego nem força: tudo fica mais difícil até descansar.",
+   "formas": [
+    "Exausta",
+    "Exaustos",
+    "Exaustas"
+   ],
+   "de": "",
+   "cor": "#7a6a8f"
+  },
+  {
+   "id": "c:doente",
+   "nome": "Doente",
+   "tipo": "condicao",
+   "texto": "Uma doença enfraquece o corpo e pode piorar se não for tratada.",
+   "formas": [
+    "Doentes"
+   ],
+   "de": "",
+   "cor": "#82a03a"
+  },
+  {
+   "id": "c:faminto",
+   "nome": "Faminto",
+   "tipo": "condicao",
+   "texto": "Fome demais: o corpo enfraquece e a mente perde o foco.",
+   "formas": [
+    "Faminta",
+    "Famintos",
+    "Famintas"
+   ],
+   "de": "",
+   "cor": "#b8893a"
+  },
+  {
+   "id": "c:bebado",
+   "nome": "Bêbado",
+   "tipo": "condicao",
+   "texto": "Álcool demais: fica mais corajoso, mas trôpego e com a mira ruim.",
+   "formas": [
+    "Bêbada",
+    "Bêbados",
+    "Bêbadas"
+   ],
+   "de": "",
+   "cor": "#c0902a"
+  },
+  {
+   "id": "c:morto",
+   "nome": "Morto",
+   "tipo": "condicao",
+   "texto": "A vida deixou o corpo: está fora da luta e da história, salvo um milagre.",
+   "formas": [
+    "Morta",
+    "Mortos",
+    "Mortas"
+   ],
+   "de": "",
+   "cor": "#1c1c22"
+  },
+  {
+   "id": "c:sufocando",
+   "nome": "Sufocando",
+   "tipo": "condicao",
+   "texto": "Sem ar: perde as forças depressa e precisa respirar logo.",
+   "formas": [],
+   "de": "",
+   "cor": "#4f7fb0"
+  },
+  {
+   "id": "c:ofuscado",
+   "nome": "Ofuscado",
+   "tipo": "condicao",
+   "texto": "A vista falhou por um clarão: enxerga mal e erra mais.",
+   "formas": [
+    "Ofuscada",
+    "Ofuscados",
+    "Ofuscadas"
+   ],
+   "de": "",
+   "cor": "#cfa83c"
+  },
+  {
+   "id": "c:agigantado",
+   "nome": "Agigantado",
+   "tipo": "condicao",
+   "texto": "Cresceu por magia: fica maior, mais forte e mais fácil de acertar.",
+   "formas": [
+    "Agigantada",
+    "Agigantados",
+    "Agigantadas"
+   ],
+   "de": "",
+   "cor": "#b8743c"
+  },
+  {
+   "id": "c:encolhido",
+   "nome": "Encolhido",
+   "tipo": "condicao",
+   "texto": "Diminuiu de tamanho: fica mais fraco, mas difícil de acertar.",
+   "formas": [
+    "Encolhida",
+    "Encolhidos",
+    "Encolhidas"
+   ],
+   "de": "",
+   "cor": "#5f9ab4"
+  },
+  {
+   "id": "c:ferida",
+   "nome": "Ferida permanente",
+   "tipo": "condicao",
+   "texto": "Uma marca que nunca sara de todo: cicatriz, membro fraco ou dor que fica.",
+   "formas": [],
+   "de": "",
+   "cor": "#7a8a3a"
+  },
+  {
+   "id": "c:lento",
+   "nome": "Lento",
+   "tipo": "condicao",
+   "texto": "Movimentos arrastados: anda menos e faz menos coisas no turno.",
+   "formas": [
+    "Lenta",
+    "Lentos",
+    "Lentas"
+   ],
+   "de": "",
+   "cor": "#6f8f6a"
+  },
+  {
+   "id": "c:acelerado",
+   "nome": "Acelerado",
+   "tipo": "condicao",
+   "texto": "Rápido como o vento: anda mais e age mais depressa que o normal.",
+   "formas": [
+    "Acelerada",
+    "Acelerados",
+    "Aceleradas"
+   ],
+   "de": "",
+   "cor": "#2ea6c9"
+  },
+  {
+   "id": "c:voando",
+   "nome": "Voando",
+   "tipo": "condicao",
+   "texto": "No ar: passa por cima de obstáculos e fica longe de golpes vindos do chão.",
+   "formas": [],
+   "de": "",
+   "cor": "#6aa8d8"
+  },
+  {
+   "id": "c:oculto",
+   "nome": "Oculto",
+   "tipo": "condicao",
+   "texto": "Escondido: os inimigos não sabem onde ele está até o encontrarem.",
+   "formas": [
+    "Oculta",
+    "Ocultos",
+    "Ocultas"
+   ],
+   "de": "",
+   "cor": "#4b4f63"
+  },
+  {
+   "id": "c:invisivel",
+   "nome": "Invisível",
+   "tipo": "condicao",
+   "texto": "Ninguém o vê: difícil de achar, de mirar e de prever.",
+   "formas": [
+    "Invisíveis"
+   ],
+   "de": "",
+   "cor": "#6f8aa6"
+  },
+  {
+   "id": "c:etereo",
+   "nome": "Etéreo",
+   "tipo": "condicao",
+   "texto": "Meio fora deste mundo: atravessa coisas e é difícil de tocar com armas comuns.",
+   "formas": [
+    "Etérea",
+    "Etéreos",
+    "Etéreas"
+   ],
+   "de": "",
+   "cor": "#8a9cc4"
+  },
+  {
+   "id": "c:escudo",
+   "nome": "Protegido",
+   "tipo": "condicao",
+   "texto": "Envolto por uma proteção: golpes e magias o ferem menos.",
+   "formas": [
+    "Protegida",
+    "Protegidos",
+    "Protegidas"
+   ],
+   "de": "",
+   "cor": "#3f7fc0"
+  },
+  {
+   "id": "c:bencao",
+   "nome": "Abençoado",
+   "tipo": "condicao",
+   "texto": "Tocado pela graça de um deus: a sorte e a força estão a seu favor.",
+   "formas": [
+    "Abençoada",
+    "Abençoados",
+    "Abençoadas"
+   ],
+   "de": "",
+   "cor": "#c9a227"
+  },
+  {
+   "id": "c:inspirado",
+   "nome": "Inspirado",
+   "tipo": "condicao",
+   "texto": "Com o ânimo nas alturas: confiante, faz tudo com mais acerto.",
+   "formas": [
+    "Inspirada",
+    "Inspirados",
+    "Inspiradas"
+   ],
+   "de": "",
+   "cor": "#e6a700"
+  },
+  {
+   "id": "c:regen",
+   "nome": "Regeneração",
+   "tipo": "condicao",
+   "texto": "O corpo se cura sozinho: as feridas fecham pouco a pouco.",
+   "formas": [],
+   "de": "",
+   "cor": "#58b368"
+  },
+  {
+   "id": "c:tratado",
+   "nome": "Tratado",
+   "tipo": "condicao",
+   "texto": "Os ferimentos já foram cuidados: curativo feito, a recuperação está a caminho.",
+   "formas": [
+    "Tratada",
+    "Tratados",
+    "Tratadas"
+   ],
+   "de": "",
+   "cor": "#d06a5a"
+  },
+  {
+   "id": "c:escudado",
+   "nome": "Escudado",
+   "tipo": "condicao",
+   "texto": "Uma barreira extra absorve o dano antes que ele chegue ao corpo.",
+   "formas": [
+    "Escudada",
+    "Escudados",
+    "Escudadas"
+   ],
+   "de": "",
+   "cor": "#3f97d6"
+  },
+  {
+   "id": "c:ancestralEncarnado",
+   "nome": "Ancestral Encarnado",
+   "tipo": "condicao",
+   "texto": "O espírito ancestral entra no corpo do Magi'Ritu: golpeia com força de antepassado, mas fica esgotado depois.",
+   "formas": [],
+   "de": "Orc Magi'Ritu",
+   "cor": "#c9752e"
+  },
+  {
+   "id": "c:armaVitrine",
+   "nome": "Arma de Vitrine",
+   "tipo": "condicao",
+   "texto": "Uma arma fina emprestada da banca do Anão Mercador: corta melhor, até voltar para o dono.",
+   "formas": [],
+   "de": "Anão Mercador",
+   "cor": "#4fb0cf"
+  },
+  {
+   "id": "c:armaRachada",
+   "nome": "Arma Rachada",
+   "tipo": "condicao",
+   "texto": "A arma do Anão da Forja rachou: bate mais fraco até ele parar para consertá-la.",
+   "formas": [],
+   "de": "Anão da Forja",
+   "cor": "#8d8f94"
+  },
+  {
+   "id": "c:armaduraGelo",
+   "nome": "Armadura de Gelo",
+   "tipo": "condicao",
+   "texto": "O Natuphas se cobre de gelo grosso: quem o golpeia de perto sai gelado.",
+   "formas": [],
+   "de": "Humano Natuphas",
+   "cor": "#8fd4f2"
+  },
+  {
+   "id": "c:bracoPerdido",
+   "nome": "Braço Perdido",
+   "tipo": "condicao",
+   "texto": "O Mãzier'na perdeu um braço: luta com menos até devorar alguém e repor o membro.",
+   "formas": [],
+   "de": "Ghoul Mãzier'na",
+   "cor": "#7a8a52"
+  },
+  {
+   "id": "c:cargaTrovao",
+   "nome": "Carga de trovão",
+   "tipo": "condicao",
+   "texto": "O Samurai Proto acumula a força do trovão no corpo, pronta para ser solta num golpe.",
+   "formas": [],
+   "de": "Samurai Proto",
+   "cor": "#d9b51f"
+  },
+  {
+   "id": "c:cercado",
+   "nome": "Cercado",
+   "tipo": "condicao",
+   "texto": "Encurralado pelo Canino e seus aliados: fica difícil se esquivar e escapar.",
+   "formas": [
+    "Cercada",
+    "Cercados",
+    "Cercadas"
+   ],
+   "de": "Antro Canino",
+   "cor": "#c0563a"
+  },
+  {
+   "id": "c:coma",
+   "nome": "Coma",
+   "tipo": "condicao",
+   "texto": "O Vas desaba de vez: inconsciente e sem volta até a luta acabar.",
+   "formas": [],
+   "de": "Humano Vas",
+   "cor": "#56627e"
+  },
+  {
+   "id": "c:comprado",
+   "nome": "Comprado",
+   "tipo": "condicao",
+   "texto": "Aceitou o suborno do Anão Mercador: não ataca quem pagou enquanto o trato valer.",
+   "formas": [
+    "Comprada",
+    "Comprados",
+    "Compradas"
+   ],
+   "de": "Anão Mercador",
+   "cor": "#d9b23a"
+  },
+  {
+   "id": "c:contagem",
+   "nome": "Contagem",
+   "tipo": "condicao",
+   "texto": "Uma oração do Konaito conta para trás no alvo: a condição piora a cada passo até vir a Sentença.",
+   "formas": [],
+   "de": "Konaito",
+   "cor": "#9b6bd1"
+  },
+  {
+   "id": "c:costelasAbertas",
+   "nome": "Costelas Abertas",
+   "tipo": "condicao",
+   "texto": "Faltam costelas ao Mãzier'na: o peito fica exposto e ele se defende pior.",
+   "formas": [],
+   "de": "Ghoul Mãzier'na",
+   "cor": "#9a7a6a"
+  },
+  {
+   "id": "c:couracaGelo",
+   "nome": "Couraça de Gelo",
+   "tipo": "condicao",
+   "texto": "O Orc Natuphas está coberto de gelo: quem o golpeia de perto leva parte do frio de volta.",
+   "formas": [],
+   "de": "Orc Natuphas",
+   "cor": "#5fbfe6"
+  },
+  {
+   "id": "c:debaixoTerra",
+   "nome": "Debaixo da Terra",
+   "tipo": "condicao",
+   "texto": "O Anão da Rocha mergulha no chão: some dos golpes e só se move por baixo da terra.",
+   "formas": [],
+   "de": "Anão da Rocha",
+   "cor": "#8a6a3c"
+  },
+  {
+   "id": "c:descontrole",
+   "nome": "Descontrole",
+   "tipo": "condicao",
+   "texto": "O Frenesi do Rastoroni transborda: ataca quem estiver mais perto, amigo ou inimigo.",
+   "formas": [],
+   "de": "Orc Rastoroni",
+   "cor": "#d9342b"
+  },
+  {
+   "id": "c:dividaEspiritual",
+   "nome": "Dívida Espiritual",
+   "tipo": "condicao",
+   "texto": "O Magi'Ritu pediu Favor fiado aos espíritos: até pagar, eles atendem de má vontade.",
+   "formas": [],
+   "de": "Orc Magi'Ritu",
+   "cor": "#7c8fd6"
+  },
+  {
+   "id": "c:domDevorado",
+   "nome": "Dom Devorado",
+   "tipo": "condicao",
+   "texto": "O Panso'na devorou um inimigo e tomou um poder dele: usa como se fosse seu, à custa de Fome.",
+   "formas": [],
+   "de": "Ghoul Panso'na",
+   "cor": "#b8478f"
+  },
+  {
+   "id": "c:dor",
+   "nome": "Dor",
+   "tipo": "condicao",
+   "texto": "Uma dor forte que atrapalha: cada movimento custa caro e tira o foco.",
+   "formas": [],
+   "de": "Karê Oradora · Rast",
+   "cor": "#b3364a"
+  },
+  {
+   "id": "c:emBrasa",
+   "nome": "Em Brasa",
+   "tipo": "condicao",
+   "texto": "A arma do Anão da Forja arde em brasa: os golpes queimam e deixam o alvo em chamas.",
+   "formas": [],
+   "de": "Anão da Forja",
+   "cor": "#e8562b"
+  },
+  {
+   "id": "c:encanto",
+   "nome": "Encanto",
+   "tipo": "condicao",
+   "texto": "A arma do Sarep leva uma essência: o próximo golpe que acertar solta o efeito dela.",
+   "formas": [],
+   "de": "Humano Sarep",
+   "cor": "#e08a3c"
+  },
+  {
+   "id": "c:endurecido",
+   "nome": "Endurecido",
+   "tipo": "condicao",
+   "texto": "O Orc Natuphas endurece a cada golpe que aguenta firme: os próximos doem menos.",
+   "formas": [
+    "Endurecida",
+    "Endurecidos",
+    "Endurecidas"
+   ],
+   "de": "Orc Natuphas",
+   "cor": "#8b7d6b"
+  },
+  {
+   "id": "c:enxertado",
+   "nome": "Enxertado",
+   "tipo": "condicao",
+   "texto": "O Mãzier'na costurou em si um pedaço de um inimigo devorado e ganha a força dele.",
+   "formas": [
+    "Enxertada",
+    "Enxertados",
+    "Enxertadas"
+   ],
+   "de": "Ghoul Mãzier'na",
+   "cor": "#8f5a6b"
+  },
+  {
+   "id": "c:enxerto",
+   "nome": "Enxerto",
+   "tipo": "condicao",
+   "texto": "Uma lasca de seiva do Sarep na ferida do inimigo: quem o acerta recupera vida.",
+   "formas": [],
+   "de": "Humano Sarep",
+   "cor": "#6fae4f"
+  },
+  {
+   "id": "c:erguido",
+   "nome": "Erguido",
+   "tipo": "condicao",
+   "texto": "Levantado pelo Antro Bovino: sem pé no chão, pode ser arremessado ou usado de escudo.",
+   "formas": [
+    "Erguida",
+    "Erguidos",
+    "Erguidas"
+   ],
+   "de": "Antro Bovino",
+   "cor": "#a66b3a"
+  },
+  {
+   "id": "c:exposto",
+   "nome": "Exposto",
+   "tipo": "condicao",
+   "texto": "Depois de uma investida, o Antro Equino fica com a guarda aberta por um instante.",
+   "formas": [
+    "Exposta",
+    "Expostos",
+    "Expostas"
+   ],
+   "de": "Antro Equino",
+   "cor": "#d67a3c"
+  },
+  {
+   "id": "c:farejado",
+   "nome": "Farejado",
+   "tipo": "condicao",
+   "texto": "O Antro Canino achou pelo cheiro o inimigo escondido: sabe onde ele está.",
+   "formas": [
+    "Farejada",
+    "Farejados",
+    "Farejadas"
+   ],
+   "de": "Antro Canino",
+   "cor": "#a08a5c"
+  },
+  {
+   "id": "c:frio",
+   "nome": "Frio",
+   "tipo": "condicao",
+   "texto": "O frio entra no corpo e endurece os movimentos; acumulado, pode congelar.",
+   "formas": [],
+   "de": "Kitsune Selene",
+   "cor": "#7fc8ee"
+  },
+  {
+   "id": "c:gosto",
+   "nome": "Gosto",
+   "tipo": "condicao",
+   "texto": "O último sabor que o Panso'na provou: diz a que tipo de dano o corpo dele se adapta.",
+   "formas": [],
+   "de": "Ghoul Panso'na",
+   "cor": "#c2588c"
+  },
+  {
+   "id": "c:guardaNatural",
+   "nome": "Guarda Natural",
+   "tipo": "condicao",
+   "texto": "Uma casca de madeira e areia posta pelo Sarep absorve os golpes até se quebrar.",
+   "formas": [],
+   "de": "Humano Sarep",
+   "cor": "#8a9a4a"
+  },
+  {
+   "id": "c:habilidadeEngolida",
+   "nome": "Habilidade Engolida",
+   "tipo": "condicao",
+   "texto": "O Panso'na engoliu de vez uma habilidade: quem a lançou não consegue usá-la de novo.",
+   "formas": [],
+   "de": "Ghoul Panso'na",
+   "cor": "#6b4a7a"
+  },
+  {
+   "id": "c:jurado",
+   "nome": "Jurado",
+   "tipo": "condicao",
+   "texto": "O aliado que o Natuphas jurou proteger: defendê-lo deixa o guardião ainda mais firme.",
+   "formas": [
+    "Jurada",
+    "Jurados",
+    "Juradas"
+   ],
+   "de": "Humano Natuphas",
+   "cor": "#6f9fd6"
+  },
+  {
+   "id": "c:laco",
+   "nome": "Laço",
+   "tipo": "condicao",
+   "texto": "O fio de luar da Merunê a liga a alguém ou a algo; várias técnicas dela agem por esse laço.",
+   "formas": [],
+   "de": "Kitsune Merunê",
+   "cor": "#c9b8f2"
+  },
+  {
+   "id": "c:licao",
+   "nome": "Lição",
+   "tipo": "condicao",
+   "texto": "Uma magia alheia que o Silk estudou: ele a conjura como se fosse dele, só que mais fraca.",
+   "formas": [],
+   "de": "Silk",
+   "cor": "#4f8fb0"
+  },
+  {
+   "id": "c:magiaEngatilhada",
+   "nome": "Magia Engatilhada",
+   "tipo": "condicao",
+   "texto": "O Silk segura uma magia pronta, presa a um gatilho dito em voz alta; se não soltar, ela estoura nele.",
+   "formas": [],
+   "de": "Silk",
+   "cor": "#7d5fd6"
+  },
+  {
+   "id": "c:mandado",
+   "nome": "Mandado",
+   "tipo": "condicao",
+   "texto": "Volkhum'Pansar cobra o Konaito com uma ordem a cumprir; desobedecer cala a voz do deus.",
+   "formas": [],
+   "de": "Konaito",
+   "cor": "#a07b45"
+  },
+  {
+   "id": "c:maoPerdida",
+   "nome": "Mão Perdida",
+   "tipo": "condicao",
+   "texto": "O Mãzier'na perdeu uma mão: segura menos coisas até devorar alguém e repô-la.",
+   "formas": [],
+   "de": "Ghoul Mãzier'na",
+   "cor": "#7a8a52"
+  },
+  {
+   "id": "c:naPanca",
+   "nome": "Na Pança",
+   "tipo": "condicao",
+   "texto": "Uma habilidade que o Panso'na engoliu e guarda na barriga, pronta para cuspir ou digerir.",
+   "formas": [],
+   "de": "Ghoul Panso'na",
+   "cor": "#9a6a3a"
+  },
+  {
+   "id": "c:noOmbro",
+   "nome": "No Ombro",
+   "tipo": "condicao",
+   "texto": "O aliado vai carregado no ombro do Antro Bovino: anda com ele, mas age normalmente.",
+   "formas": [],
+   "de": "Antro Bovino",
+   "cor": "#8f7a54"
+  },
+  {
+   "id": "c:pePerdido",
+   "nome": "Pé Perdido",
+   "tipo": "condicao",
+   "texto": "O Mãzier'na perdeu um pé: anda menos até devorar alguém e repô-lo.",
+   "formas": [],
+   "de": "Ghoul Mãzier'na",
+   "cor": "#7a8a52"
+  },
+  {
+   "id": "c:perdido",
+   "nome": "Perdido",
+   "tipo": "condicao",
+   "texto": "Errou o Antro Felino e se perdeu: cada novo erro o deixa mais desnorteado.",
+   "formas": [
+    "Perdida",
+    "Perdidos",
+    "Perdidas"
+   ],
+   "de": "Antro Felino",
+   "cor": "#8a6ab8"
+  },
+  {
+   "id": "c:pernaPerdida",
+   "nome": "Perna Perdida",
+   "tipo": "condicao",
+   "texto": "O Mãzier'na perdeu uma perna: fica lento e manco até devorar alguém e repô-la.",
+   "formas": [],
+   "de": "Ghoul Mãzier'na",
+   "cor": "#7a8a52"
+  },
+  {
+   "id": "c:praga",
+   "nome": "Praga",
+   "tipo": "condicao",
+   "texto": "Marca de que a doença ou o veneno veio do Necrosado: as técnicas dele podem espalhá-la.",
+   "formas": [],
+   "de": "Ghoul Necrosado",
+   "cor": "#6e8f2c"
+  },
+  {
+   "id": "c:procurado",
+   "nome": "Procurado",
+   "tipo": "condicao",
+   "texto": "A cabeça dele está a prêmio pelo Anão Mercador: os aliados caem em cima com vontade.",
+   "formas": [
+    "Procurada",
+    "Procurados",
+    "Procuradas"
+   ],
+   "de": "Anão Mercador",
+   "cor": "#c9402e"
+  },
+  {
+   "id": "c:reboteAdiado",
+   "nome": "Rebote Adiado",
+   "tipo": "condicao",
+   "texto": "O Silk empurrou para depois o preço de uma magia, mas a conta vai chegar de qualquer jeito.",
+   "formas": [],
+   "de": "Silk",
+   "cor": "#6c8ad1"
+  },
+  {
+   "id": "c:recusaMorte",
+   "nome": "Recusa da Morte",
+   "tipo": "condicao",
+   "texto": "O Vas se recusa a cair: segue de pé por um tempo, mesmo quase morto, e depois desaba.",
+   "formas": [],
+   "de": "Humano Vas",
+   "cor": "#c0392b"
+  },
+  {
+   "id": "c:rendido",
+   "nome": "Rendido",
+   "tipo": "condicao",
+   "texto": "Convencido pelo Anão Mercador, o inimigo larga a arma e para de lutar, até alguém atacá-lo.",
+   "formas": [
+    "Rendida",
+    "Rendidos",
+    "Rendidas"
+   ],
+   "de": "Anão Mercador",
+   "cor": "#a89f84"
+  },
+  {
+   "id": "c:seloOcre",
+   "nome": "Selo de Ocre",
+   "tipo": "condicao",
+   "texto": "Um selo pintado na pele pelo Sarep protege contra magia.",
+   "formas": [],
+   "de": "Humano Sarep",
+   "cor": "#c47a2c"
+  },
+  {
+   "id": "c:semeado",
+   "nome": "Semeado",
+   "tipo": "condicao",
+   "texto": "Uma semente do Magi'atach está na carne do alvo e logo brota, prendendo-o ao chão.",
+   "formas": [
+    "Semeada",
+    "Semeados",
+    "Semeadas"
+   ],
+   "de": "Taekeir Magi'atach",
+   "cor": "#8c7a3a"
+  },
+  {
+   "id": "c:sentenca",
+   "nome": "Sentença",
+   "tipo": "condicao",
+   "texto": "Quando a Contagem do Konaito chega ao fim, a oração se cumpre e a condição explode com força.",
+   "formas": [],
+   "de": "Konaito",
+   "cor": "#7a3a9a"
+  },
+  {
+   "id": "c:sobra",
+   "nome": "Sobra",
+   "tipo": "condicao",
+   "texto": "Um pedaço de inimigo que o Panso'na guardou na despensa para comer depois e se recuperar.",
+   "formas": [],
+   "de": "Ghoul Panso'na",
+   "cor": "#b39c6a"
+  },
+  {
+   "id": "c:transeRubro",
+   "nome": "Transe Rubro",
+   "tipo": "condicao",
+   "texto": "Postura do Zier'Asurper: as técnicas de sangue saem mais baratas, mas cobram da própria vida.",
+   "formas": [],
+   "de": "Taekeir Zier'Asurper",
+   "cor": "#c2263a"
+  },
+  {
+   "id": "c:tregua",
+   "nome": "Trégua",
+   "tipo": "condicao",
+   "texto": "O Anão Mercador faz todos baixarem as armas: ninguém ataca, e talvez dê para negociar.",
+   "formas": [],
+   "de": "Anão Mercador",
+   "cor": "#8fb8a8"
+  },
+  {
+   "id": "c:vinculoSangue",
+   "nome": "Vínculo de Sangue",
+   "tipo": "condicao",
+   "texto": "Uma gota do sangue do Zier'Asurper num aliado: ele sente onde o aliado está e o fortalece.",
+   "formas": [],
+   "de": "Taekeir Zier'Asurper",
+   "cor": "#a8202e"
+  },
+  {
+   "id": "c:vozVolkhum",
+   "nome": "Voz de Volkhum'Pansar",
+   "tipo": "condicao",
+   "texto": "O deus fala pela boca do Konaito, que por um tempo pode dar ordens de comando.",
+   "formas": [],
+   "de": "Konaito",
+   "cor": "#d4a017"
+  },
+  {
+   "id": "c:alvoDuelo",
+   "nome": "Alvo do Duelo",
+   "tipo": "condicao",
+   "texto": "O inimigo que o bárbaro desafiou: luta melhor contra ele e pior contra os outros.",
+   "formas": [],
+   "de": "Bárbaro",
+   "cor": "#c0392b"
+  },
+  {
+   "id": "c:armaduraRachada",
+   "nome": "Armadura Rachada",
+   "tipo": "condicao",
+   "texto": "O bárbaro rachou a armadura do alvo: todos passam a feri-lo com mais facilidade.",
+   "formas": [],
+   "de": "Bárbaro",
+   "cor": "#a5663a"
+  },
+  {
+   "id": "c:assombrado",
+   "nome": "Assombrado",
+   "tipo": "condicao",
+   "texto": "O Bruxo plantou uma alma presa no alvo: ela sussurra e atrapalha a mente e as magias.",
+   "formas": [
+    "Assombrada",
+    "Assombrados",
+    "Assombradas"
+   ],
+   "de": "Bruxo",
+   "cor": "#8f9ac4"
+  },
+  {
+   "id": "c:clausula",
+   "nome": "Cláusula",
+   "tipo": "condicao",
+   "texto": "Uma proibição escrita pelo imp de Kramuvech: se o alvo a quebrar, paga caro.",
+   "formas": [],
+   "de": "Feiticeiro",
+   "cor": "#7a2f9a"
+  },
+  {
+   "id": "c:cobranca",
+   "nome": "Cobrança",
+   "tipo": "condicao",
+   "texto": "O demônio vem cobrar o pacto: o feiticeiro deve cumprir uma pequena missão.",
+   "formas": [],
+   "de": "Feiticeiro",
+   "cor": "#b08a2a"
+  },
+  {
+   "id": "c:dancando",
+   "nome": "Dançando",
+   "tipo": "condicao",
+   "texto": "Obrigado a dançar pela música do bardo: não anda por conta própria e reage mal.",
+   "formas": [],
+   "de": "Bardo",
+   "cor": "#c05aa8"
+  },
+  {
+   "id": "c:definhando",
+   "nome": "Definhando",
+   "tipo": "condicao",
+   "texto": "Um fio escuro do Bruxo bebe a vida do alvo e não deixa a energia voltar.",
+   "formas": [],
+   "de": "Bruxo",
+   "cor": "#76703a"
+  },
+  {
+   "id": "c:desguarnecido",
+   "nome": "Desguarnecido",
+   "tipo": "condicao",
+   "texto": "A guarda está aberta: o próximo ataque contra ele entra fácil e ele não reage.",
+   "formas": [
+    "Desguarnecida",
+    "Desguarnecidos",
+    "Desguarnecidas"
+   ],
+   "de": "Aégis",
+   "cor": "#e0603a"
+  },
+  {
+   "id": "c:devedor",
+   "nome": "Devedor",
+   "tipo": "condicao",
+   "texto": "Quebrou uma Cláusula do feiticeiro: agora deve, e as técnicas de cobrança pegam nele.",
+   "formas": [
+    "Devedora",
+    "Devedores",
+    "Devedoras"
+   ],
+   "de": "Feiticeiro",
+   "cor": "#a04a2a"
+  },
+  {
+   "id": "c:eloLuz",
+   "nome": "Elo de Luz",
+   "tipo": "condicao",
+   "texto": "Um fio de luz liga o sacerdote a um aliado: ele sente como o aliado está e cura de mais longe.",
+   "formas": [],
+   "de": "Sacerdote",
+   "cor": "#d8b84a"
+  },
+  {
+   "id": "c:escudoPlantado",
+   "nome": "Escudo Plantado",
+   "tipo": "condicao",
+   "texto": "O Aégis crava o escudo no chão: fica firme pela frente e protege quem está atrás.",
+   "formas": [],
+   "de": "Aégis",
+   "cor": "#7a8aa8"
+  },
+  {
+   "id": "c:escudoRachado",
+   "nome": "Escudo Rachado",
+   "tipo": "condicao",
+   "texto": "O escudo do alvo trincou: protege pela metade e pode se partir de vez.",
+   "formas": [],
+   "de": "Espadachim",
+   "cor": "#8d8f94"
+  },
+  {
+   "id": "c:extremamenteFerido",
+   "nome": "Extremamente Ferido",
+   "tipo": "condicao",
+   "texto": "Ferimento grave: precisa de horas de cuidado no acampamento para sarar.",
+   "formas": [
+    "Extremamente Ferida",
+    "Extremamente Feridos",
+    "Extremamente Feridas"
+   ],
+   "de": "Ferimento",
+   "cor": "#c8542f"
+  },
+  {
+   "id": "c:ginga",
+   "nome": "Ginga",
+   "tipo": "condicao",
+   "texto": "O bardo balança sem parar: fica difícil de acertar e libera passos especiais.",
+   "formas": [],
+   "de": "Bardo",
+   "cor": "#2f9d93"
+  },
+  {
+   "id": "c:guardaQuebrada",
+   "nome": "Guarda Quebrada",
+   "tipo": "condicao",
+   "texto": "A defesa foi aberta: não consegue bloquear nem aparar, só esquivar.",
+   "formas": [],
+   "de": "Espadachim",
+   "cor": "#d98b2b"
+  },
+  {
+   "id": "c:levementeFerido",
+   "nome": "Levemente Ferido",
+   "tipo": "condicao",
+   "texto": "Ferimento leve: um bom descanso ou uma prece de campo resolve.",
+   "formas": [
+    "Levemente Ferida",
+    "Levemente Feridos",
+    "Levemente Feridas"
+   ],
+   "de": "Ferimento",
+   "cor": "#d9a05a"
+  },
+  {
+   "id": "c:mortalmenteFerido",
+   "nome": "Mortalmente Ferido",
+   "tipo": "condicao",
+   "texto": "Entre a vida e a morte: precisa de dias de tratamento, sem garantia de sarar.",
+   "formas": [
+    "Mortalmente Ferida",
+    "Mortalmente Feridos",
+    "Mortalmente Feridas"
+   ],
+   "de": "Ferimento",
+   "cor": "#8f1d1d"
+  },
+  {
+   "id": "c:pacto",
+   "nome": "Pacto",
+   "tipo": "condicao",
+   "texto": "O feiticeiro está ligado a um patrono: recebe um dom, paga um preço e deve uma exigência.",
+   "formas": [],
+   "de": "Feiticeiro",
+   "cor": "#9a2a4a"
+  },
+  {
+   "id": "c:perjuro",
+   "nome": "Perjuro",
+   "tipo": "condicao",
+   "texto": "O Aégis quebrou o juramento: perde a força dele até cumprir a penitência.",
+   "formas": [
+    "Perjura",
+    "Perjuros",
+    "Perjuras"
+   ],
+   "de": "Aégis",
+   "cor": "#6b4a7a"
+  },
+  {
+   "id": "c:portaAberta",
+   "nome": "Porta Aberta",
+   "tipo": "condicao",
+   "texto": "A entidade Ayto está dentro do feiticeiro: dá poder, mas pode tomar o controle.",
+   "formas": [],
+   "de": "Feiticeiro",
+   "cor": "#5a3a6a"
+  },
+  {
+   "id": "c:seloLushmania",
+   "nome": "Selo de Lushmânia",
+   "tipo": "condicao",
+   "texto": "Um selo de luz na testa do aliado barra a próxima condição ruim que o pegaria.",
+   "formas": [],
+   "de": "Sacerdote",
+   "cor": "#e6c35a"
+  },
+  {
+   "id": "c:sobEgide",
+   "nome": "Sob a Égide",
+   "tipo": "condicao",
+   "texto": "O aliado que o Aégis decidiu defender: protegê-lo custa menos ao guardião.",
+   "formas": [],
+   "de": "Aégis",
+   "cor": "#c9a227"
+  },
+  {
+   "id": "c:sobExorcismo",
+   "nome": "Sob Exorcismo",
+   "tipo": "condicao",
+   "texto": "Presa no rito do sacerdote, a força sombria enfraquece e pode ser expulsa.",
+   "formas": [],
+   "de": "Sacerdote",
+   "cor": "#e8b83a"
+  },
+  {
+   "id": "c:tutelado",
+   "nome": "Tutelado",
+   "tipo": "condicao",
+   "texto": "O aliado sob a guarda jurada do Aégis: protegê-lo é a missão dele no combate.",
+   "formas": [
+    "Tutelada",
+    "Tutelados",
+    "Tuteladas"
+   ],
+   "de": "Aégis",
+   "cor": "#5a8fd6"
+  },
+  {
+   "id": "e:sagrado",
+   "nome": "Luz sagrada",
+   "tipo": "efeito",
+   "texto": "Luz divina que banha o lugar: fortalece os fiéis e queima as criaturas das trevas.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:arcano",
+   "nome": "Magia arcana",
+   "tipo": "efeito",
+   "texto": "Energia mágica pura pairando no ar: o lugar inteiro pulsa de poder arcano.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:antimagia",
+   "nome": "Antimagia",
+   "tipo": "efeito",
+   "texto": "Área onde a magia se apaga: feitiços falham e encantos perdem a força.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:lava",
+   "nome": "Lava",
+   "tipo": "efeito",
+   "texto": "Rocha derretida e incandescente: queima com força quem pisa ou cai nela.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:areia",
+   "nome": "Areia movediça",
+   "tipo": "efeito",
+   "texto": "Chão que engole quem pisa: quanto mais se debate, mais afunda.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:tempestade",
+   "nome": "Tempestade de raios",
+   "tipo": "efeito",
+   "texto": "Céu carregado despejando raios: quem fica embaixo pode ser atingido a qualquer momento.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:nevasca",
+   "nome": "Nevasca",
+   "tipo": "efeito",
+   "texto": "Neve e vento gelado que cegam e congelam: difícil de enxergar e de se mover.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:acida",
+   "nome": "Chuva ácida",
+   "tipo": "efeito",
+   "texto": "Chuva que corrói pele, couro e metal: ficar debaixo dela machuca.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:escuridao",
+   "nome": "Escuridão mágica",
+   "tipo": "efeito",
+   "texto": "Trevas criadas por magia: nem tocha nem olho comum enxergam ali dentro.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:teia",
+   "nome": "Teia",
+   "tipo": "efeito",
+   "texto": "Fios grudentos que prendem quem passa: soltar-se exige força ou lâmina.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:barreira",
+   "nome": "Barreira de força",
+   "tipo": "efeito",
+   "texto": "Parede invisível de pura força mágica: barra a passagem até se desfazer.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:circulo",
+   "nome": "Círculo arcano",
+   "tipo": "efeito",
+   "texto": "Círculo de runas traçado no chão: concentra o poder mágico de quem o fez.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:silencio",
+   "nome": "Silêncio",
+   "tipo": "efeito",
+   "texto": "Nenhum som existe ali dentro: ninguém fala, canta nem conjura com a voz.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:toxica",
+   "nome": "Nuvem tóxica",
+   "tipo": "efeito",
+   "texto": "Gás venenoso pairando no ar: respirar ali envenena.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:espinhos",
+   "nome": "Espinhos e raízes",
+   "tipo": "efeito",
+   "texto": "Raízes e espinhos brotam do chão: prendem os pés e rasgam quem tenta passar.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:esporos",
+   "nome": "Esporos",
+   "tipo": "efeito",
+   "texto": "Nuvem de esporos de fungo: entra pelo nariz e adoece quem respira.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:pantano",
+   "nome": "Pântano",
+   "tipo": "efeito",
+   "texto": "Água parada e lodo fundo: os pés afundam e cada passo custa caro.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:aura",
+   "nome": "Aura sagrada",
+   "tipo": "efeito",
+   "texto": "Presença sagrada que envolve os aliados: protege e dá coragem a quem está dentro.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:consagrado",
+   "nome": "Chão consagrado",
+   "tipo": "efeito",
+   "texto": "Terra abençoada pelos deuses: as criaturas das trevas sofrem e hesitam ao pisar nela.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:chamasNegras",
+   "nome": "Chamas negras",
+   "tipo": "efeito",
+   "texto": "Fogo sombrio que não ilumina: queima a carne e a alma de quem toca.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:maldicao",
+   "nome": "Maldição",
+   "tipo": "efeito",
+   "texto": "Chão amaldiçoado: quem está dentro sente o azar e a força minguarem.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:gelado",
+   "nome": "Chão congelado",
+   "tipo": "efeito",
+   "texto": "Gelo liso cobrindo o chão: quem corre escorrega e pode cair.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:fumaca",
+   "nome": "Fumaça",
+   "tipo": "efeito",
+   "texto": "Fumaça espessa que tapa a visão de todos: ninguém enxerga através dela.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:brasas",
+   "nome": "Brasas",
+   "tipo": "efeito",
+   "texto": "Carvões em brasa espalhados pelo chão: queimam quem pisa.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:cristais",
+   "nome": "Muralha de cristais de gelo",
+   "tipo": "efeito",
+   "texto": "Muralha de cristais de gelo: barra a passagem e a visão até ser quebrada.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:cinzas",
+   "nome": "Cinzas vulcânicas",
+   "tipo": "efeito",
+   "texto": "Cinza vulcânica no ar: arde nos olhos e na garganta, difícil de ver e de respirar.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:correnteza",
+   "nome": "Correnteza",
+   "tipo": "efeito",
+   "texto": "Água que corre forte numa direção: arrasta quem está dentro para o lado da seta.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:aguaEletrica",
+   "nome": "Água eletrificada",
+   "tipo": "efeito",
+   "texto": "Água carregada de raios: dá choque em quem está dentro.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:vortice",
+   "nome": "Vórtice",
+   "tipo": "efeito",
+   "texto": "Redemoinho que gira sem parar: puxa tudo para o centro.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:gravidade",
+   "nome": "Gravidade pesada",
+   "tipo": "efeito",
+   "texto": "O ar fica pesado como chumbo: anda-se devagar e ninguém pula nem voa.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:tempo",
+   "nome": "Distorção do tempo",
+   "tipo": "efeito",
+   "texto": "O tempo se dobra ali dentro: quem começa a vez nele pode ficar lento ou acelerado.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:runas",
+   "nome": "Runas-armadilha",
+   "tipo": "efeito",
+   "texto": "Runas-armadilha escondidas no chão, ocultas até serem reveladas: quem pisa nelas as desperta.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:selos",
+   "nome": "Formação de selos",
+   "tipo": "efeito",
+   "texto": "Selos mágicos traçados em formação: prendem ou protegem quem está dentro.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:oleo",
+   "nome": "Óleo derramado",
+   "tipo": "efeito",
+   "texto": "Poça de óleo no chão: escorrega, e pega fogo com uma faísca.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:lama",
+   "nome": "Lama",
+   "tipo": "efeito",
+   "texto": "Lama grossa que gruda nas botas: cada passo rende pouco.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:jardim",
+   "nome": "Jardim florescendo",
+   "tipo": "efeito",
+   "texto": "Flores e brotos que nascem do chão: a vida dali cura quem está dentro.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:espiritos",
+   "nome": "Névoa de espíritos",
+   "tipo": "efeito",
+   "texto": "Névoa cheia de espíritos inquietos: quem começa a vez nela pode ser tomado pelo medo.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:santuario",
+   "nome": "Santuário",
+   "tipo": "efeito",
+   "texto": "Lugar sagrado de trégua: ninguém ataca ali dentro.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:luaSangue",
+   "nome": "Lua de sangue",
+   "tipo": "efeito",
+   "texto": "A lua vermelha desperta a fera em cada um: quem começa a vez sob ela pode entrar em fúria.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:chaoRachado",
+   "nome": "Chão Rachado",
+   "tipo": "efeito",
+   "texto": "Chão partido pelo orc: os inimigos tropeçam nas fendas, ele e os aliados passam normalmente, e várias habilidades dele batem mais forte ali.",
+   "formas": [],
+   "de": "Orc Natuphas"
+  },
+  {
+   "id": "e:chaoRevirado",
+   "nome": "Chão Revirado",
+   "tipo": "efeito",
+   "texto": "O rastro de terra que o Equino revira na corrida: atrapalha só os inimigos e logo se assenta.",
+   "formas": [],
+   "de": "Antro Equino"
+  },
+  {
+   "id": "e:corredorVento",
+   "nome": "Corredor de Vento",
+   "tipo": "efeito",
+   "texto": "Faixa de vento guiada pelo Aviário: leva os aliados mais longe, joga os inimigos para fora e não deixa fumaça nem gás parar nela.",
+   "formas": [],
+   "de": "Antro Aviário"
+  },
+  {
+   "id": "e:enxameVarejeiras",
+   "nome": "Enxame de Varejeiras",
+   "tipo": "efeito",
+   "texto": "Nuvem de moscas do Necrosado que só ataca inimigos: quem fica no meio dela pode adoecer.",
+   "formas": [],
+   "de": "Ghoul Necrosado"
+  },
+  {
+   "id": "e:focoDoenca",
+   "nome": "Foco de Doença",
+   "tipo": "efeito",
+   "texto": "O corpo de quem caiu com uma praga do Necrosado: a doença escapa dele e pega os inimigos que ficam por perto.",
+   "formas": [],
+   "de": "Ghoul Necrosado"
+  },
+  {
+   "id": "e:arapuca",
+   "nome": "Arapuca",
+   "tipo": "efeito",
+   "texto": "Armadilha escondida que se revela quando o primeiro inimigo pisa nela: prende, derruba, fere ou morde, conforme o tipo.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:grandeArapuca",
+   "nome": "Grande Arapuca",
+   "tipo": "efeito",
+   "texto": "Grande armadilha escondida do Taekeir: quando dispara, as estacas ferem, fazem sangrar e prendem os inimigos dentro.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:terraMorta",
+   "nome": "Terra Morta",
+   "tipo": "efeito",
+   "texto": "Chão que o Magi'atach secou até virar pó cinzento: enfraquece os inimigos dele e a cura rende menos ali.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:chaoQuebradico",
+   "nome": "Chão Quebradiço",
+   "tipo": "efeito",
+   "texto": "Crosta seca que afunda sob os pés: atrapalha e deixa lentos os inimigos que param nela; também é Terra Morta.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:nuvemCinza",
+   "nome": "Nuvem de Cinza",
+   "tipo": "efeito",
+   "texto": "O pó da terra morta erguido no ar: ofusca os inimigos e atrapalha os tiros que o atravessam; também é Terra Morta.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:chaoPodre",
+   "nome": "Chão Podre",
+   "tipo": "efeito",
+   "texto": "Terra apodrecida que adoece os inimigos que ficam nela; também é Terra Morta.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:circuloSangue",
+   "nome": "Círculo de Sangue",
+   "tipo": "efeito",
+   "texto": "O círculo de rito do Taekeir: de dentro, as habilidades dele ficam mais fortes e saem os Ritos; com o ramo Ritual, protege aliados e faz inimigos sangrarem.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:nevoaRubra",
+   "nome": "Névoa Rubra",
+   "tipo": "efeito",
+   "texto": "Névoa de sangue que ofusca só os inimigos; continua no ar mesmo depois que o círculo se apaga.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:campoAquatico",
+   "nome": "Campo Aquático",
+   "tipo": "efeito",
+   "texto": "Água chamada pelo Taekeir Marítimo: molha os inimigos e atrasa quem não nada; para ele, conta como estar na água.",
+   "formas": [],
+   "de": "Taekeir Marítimo"
+  },
+  {
+   "id": "e:aguaOdre",
+   "nome": "Água do Odre",
+   "tipo": "efeito",
+   "texto": "Poça de água do mar tirada do odre: só serve para alimentar a Maré do Taekeir.",
+   "formas": [],
+   "de": "Taekeir Marítimo"
+  },
+  {
+   "id": "e:cercaEspiritos",
+   "nome": "Cerca de Espíritos",
+   "tipo": "efeito",
+   "texto": "Linha de espíritos entre dois totens: o inimigo que a cruza pode ficar preso nela; dura enquanto os totens existirem.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:totem",
+   "nome": "Totem",
+   "tipo": "efeito",
+   "texto": "Totem fincado pelo xamã: não anda, lança uma aura espiritual sobre os inimigos em volta e cai se for destruído.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:parteSolta",
+   "nome": "Parte Solta",
+   "tipo": "efeito",
+   "texto": "Uma parte do corpo da Mãzier'na agindo longe dele: rasteja, luta ou estoura, até ser destruída ou voltar ao corpo.",
+   "formas": [],
+   "de": ""
+  },
+  {
+   "id": "e:retaguarda",
+   "nome": "Retaguarda",
+   "tipo": "efeito",
+   "texto": "O abrigo atrás do escudo plantado do Aégis: tiros e magias vindos da frente custam a acertar os aliados ali.",
+   "formas": [],
+   "de": "Aégis"
+  },
+  {
+   "id": "e:luzLanterna",
+   "nome": "Luz da Lanterna",
+   "tipo": "efeito",
+   "texto": "A luz sagrada em volta do sacerdote: desfaz a escuridão mágica, revela as forças Ayto e dá coragem aos aliados.",
+   "formas": [],
+   "de": "Sacerdote"
+  },
+  {
+   "id": "e:circuloProtecao",
+   "nome": "Círculo de Proteção",
+   "tipo": "efeito",
+   "texto": "Círculo sagrado em volta do sacerdote: barra as forças Ayto e impede que os aliados dentro sejam possuídos.",
+   "formas": [],
+   "de": "Sacerdote"
+  },
+  {
+   "id": "e:seloMaior",
+   "nome": "Selo Maior",
+   "tipo": "efeito",
+   "texto": "O círculo de luz do Selo de Abso'yana: poupa cada aliado dentro da primeira condição ruim que o pegaria.",
+   "formas": [],
+   "de": "Sacerdote"
+  },
+  {
+   "id": "e:circuloRitual",
+   "nome": "Círculo de Ritual",
+   "tipo": "efeito",
+   "texto": "O círculo que o mago traça para preparar um ritual: se mantiver a concentração, solta a magia daqui no turno seguinte.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:chaoBrasa",
+   "nome": "Chão em Brasa",
+   "tipo": "efeito",
+   "texto": "Chão em chamas deixado pela magia do mago: queima os inimigos que pisam nele; água apaga.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:campoNapha",
+   "nome": "Campo de Napha-ni",
+   "tipo": "efeito",
+   "texto": "Geada mágica do ritual do mago: resfria e atrasa os inimigos, e pode congelá-los de vez.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:bosqueNirus",
+   "nome": "Bosque de Nirus-ni",
+   "tipo": "efeito",
+   "texto": "Bosque mágico que brota do ritual do mago: enrosca os inimigos e esconde os aliados que não atacam.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:seloYana",
+   "nome": "Selo de Yana",
+   "tipo": "efeito",
+   "texto": "Círculo de luz do ritual do mago: envolve os aliados num escudo e ofusca os inimigos que entram.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:raizesNirus",
+   "nome": "Raízes de Nirus",
+   "tipo": "efeito",
+   "texto": "Raízes mágicas que brotam do chão: atrasam os inimigos e podem prendê-los no lugar.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:noiteAyto",
+   "nome": "Noite de Ayto-ni",
+   "tipo": "efeito",
+   "texto": "Escuridão mágica do mago: ofusca e pode cegar os inimigos, esconde os aliados que não atacam, e só ele enxerga ali.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:invernoEterno",
+   "nome": "Inverno Eterno",
+   "tipo": "efeito",
+   "texto": "O inverno do grande ritual do mago: resfria, atrasa e congela os inimigos, mas também pesa nos aliados e no próprio mago.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:tornadoArdente",
+   "nome": "Tornado Ardente",
+   "tipo": "efeito",
+   "texto": "Redemoinho de fogo que o mago conduz: queima os inimigos dentro e os puxa para o centro.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:sarcaArdente",
+   "nome": "Sarça Ardente",
+   "tipo": "efeito",
+   "texto": "Moita de espinhos em brasa: queima quem passa e atrasa os inimigos; água apaga.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:muralhaNatu",
+   "nome": "Muralha de Natu",
+   "tipo": "efeito",
+   "texto": "Parede de pedra erguida pelo mago: dá cobertura e barra a passagem e a visão até ruir.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:pilarPedra",
+   "nome": "Pilar de Pedra",
+   "tipo": "efeito",
+   "texto": "Pilar de pedra que a montanha ergue: dá cobertura, barra a passagem e a visão e só cai se for quebrado.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "e:rastroPolvora",
+   "nome": "Rastro de Pólvora",
+   "tipo": "efeito",
+   "texto": "Linha de pólvora que o Bruxo deixa no chão: nada faz até ele acender, e então explode em fogo nos inimigos; água apaga.",
+   "formas": [],
+   "de": "Bruxo"
+  },
+  {
+   "id": "e:chaoEspinhos",
+   "nome": "Chão de Espinhos",
+   "tipo": "efeito",
+   "texto": "Espinhos malignos do pacto do Feiticeiro: ferem e fazem sangrar os inimigos que andam ali; fogo grande limpa.",
+   "formas": [],
+   "de": "Feiticeiro"
+  },
+  {
+   "id": "e:nirusSombrio",
+   "nome": "Nirus-ni Sombrio",
+   "tipo": "efeito",
+   "texto": "Bosque maligno do Feiticeiro: as raízes prendem os inimigos e as árvores protegem os aliados dos tiros; fogo grande limpa.",
+   "formas": [],
+   "de": "Feiticeiro"
+  },
+  {
+   "id": "e:pocoBreu",
+   "nome": "Poço de Breu",
+   "tipo": "efeito",
+   "texto": "Poço de escuridão do Feiticeiro: cega os inimigos, mas quem tem pacto com a sombra vê; luz forte o desfaz.",
+   "formas": [],
+   "de": "Feiticeiro"
+  },
+  {
+   "id": "e:fermata",
+   "nome": "Fermata",
+   "tipo": "efeito",
+   "texto": "A pausa de silêncio que anda com o bardo: cala e ensurdece os inimigos, mas o bardo também só pode dançar.",
+   "formas": [],
+   "de": "Bardo"
+  },
+  {
+   "id": "r:palavras",
+   "nome": "Palavras",
+   "tipo": "recurso",
+   "texto": "A força da reza da Oradora: volta a cada palavra dita e cresce no Amém; cada palavra da reza a gasta.",
+   "formas": [],
+   "de": "Kitsune Karê - Oradora"
+  },
+  {
+   "id": "r:noite-escura",
+   "nome": "Noite Escura",
+   "tipo": "recurso",
+   "texto": "O poder da lua nova da Hayune: cresce quando os inimigos caem nos enganos e ilusões dela, e alimenta os seus truques.",
+   "formas": [],
+   "de": "Kitsune Hayune"
+  },
+  {
+   "id": "r:preparo",
+   "nome": "Preparo",
+   "tipo": "recurso",
+   "texto": "A magia que o mago junta turno a turno, estudando e se concentrando; é gasta para lançar as magias.",
+   "formas": [],
+   "de": "Mago"
+  },
+  {
+   "id": "r:palco",
+   "nome": "Palco",
+   "tipo": "recurso",
+   "texto": "A atenção do público que o bardo conquista se apresentando; é gasta nas técnicas mais fortes de voz, música e dança.",
+   "formas": [],
+   "de": "Bardo"
+  },
+  {
+   "id": "r:postura",
+   "nome": "Postura",
+   "tipo": "recurso",
+   "texto": "A firmeza da postura do samurai: cresce enquanto ele a mantém e cumpre o que ela pede; é gasta nas técnicas e na troca de postura.",
+   "formas": [],
+   "de": "Samurai"
+  },
+  {
+   "id": "r:mae-natureza",
+   "nome": "Mãe Natureza",
+   "tipo": "recurso",
+   "texto": "A bênção da natureza para a Nirus: cresce quando ela cura e protege os seus e em lugares selvagens; é gasta nas habilidades da raça.",
+   "formas": [],
+   "de": "Kitsune Nirus"
+  },
+  {
+   "id": "r:compasso",
+   "nome": "Compasso",
+   "tipo": "recurso",
+   "texto": "A balança da dança da Dançarina: giros a puxam para um lado, passos para o outro, e o fôlego a recentra; longe demais do centro, ela cai.",
+   "formas": [],
+   "de": "Kitsune Karê - Dançarina"
+  },
+  {
+   "id": "r:divida",
+   "nome": "Dívida",
+   "tipo": "recurso",
+   "texto": "O que o patrono deve ao Feiticeiro: cresce com o pacto ativo e os preços pagos; é cobrada nas técnicas e zera se o pacto se romper.",
+   "formas": [],
+   "de": "Feiticeiro"
+  },
+  {
+   "id": "r:qi",
+   "nome": "Qi",
+   "tipo": "recurso",
+   "texto": "A força de dentro do monge: cresce na postura, nos golpes de mão nua e nas esquivas; é gasta nas técnicas.",
+   "formas": [],
+   "de": "Monge"
+  },
+  {
+   "id": "r:graca",
+   "nome": "Graça",
+   "tipo": "recurso",
+   "texto": "A luz que Lushmânia concede ao sacerdote quando ele cura, protege, reza e fere as trevas; é gasta nas preces.",
+   "formas": [],
+   "de": "Sacerdote"
+  },
+  {
+   "id": "r:geada-de-selene",
+   "nome": "Geada de Selene",
+   "tipo": "recurso",
+   "texto": "O frio da lua guardado no corpo da Kitsune Lunar: cresce quando ela luta com calma e congela inimigos; perder a calma corta esse ganho.",
+   "formas": [
+    "Geada"
+   ],
+   "de": "Kitsune Selene, Bênção de Selene"
+  },
+  {
+   "id": "r:desgaste",
+   "nome": "Desgaste",
+   "tipo": "recurso",
+   "texto": "A força que o Magi'atach arranca da terra: cresce quando ele mata o chão e suga a vida do lugar; é gasta nas habilidades dele.",
+   "formas": [],
+   "de": "Taekeir Magi'atach"
+  },
+  {
+   "id": "r:engenho",
+   "nome": "Engenho",
+   "tipo": "recurso",
+   "texto": "O esforço do humano comum: cresce quando ele varia o que faz, alternando golpe, item, manobra e ajuda; é gasto nas habilidades da raça.",
+   "formas": [],
+   "de": "Humano Espenas"
+  },
+  {
+   "id": "r:forca-das-sombras",
+   "nome": "Força das Sombras",
+   "tipo": "recurso",
+   "texto": "A sombra que o Humano Ayto usa como matéria: cresce nos ataques furtivos e quando age escondido; luz forte a enfraquece.",
+   "formas": [],
+   "de": "Humano Ayto"
+  },
+  {
+   "id": "r:sombras-de-razier",
+   "nome": "Sombras de Razier",
+   "tipo": "recurso",
+   "texto": "A bênção ninja de Razier: cresce quando a kitsune age escondida e acerta brechas; vista de perto, fica frágil e as sombras param de encher.",
+   "formas": [],
+   "de": "Kitsune Ayto"
+  },
+  {
+   "id": "r:malicia",
+   "nome": "Malícia",
+   "tipo": "recurso",
+   "texto": "A malandragem do Shaji: cresce quando ele age escondido, furta e engana; armadura pesada a trava; é gasta nas técnicas.",
+   "formas": [],
+   "de": "Shaji"
+  },
+  {
+   "id": "r:gelo-firme",
+   "nome": "Gelo Firme",
+   "tipo": "recurso",
+   "texto": "A resistência do Natuphas: cresce quando ele protege aliados, se defende e aguenta golpes pesados; é gasto nas habilidades da raça.",
+   "formas": [],
+   "de": "Humano Natuphas"
+  },
+  {
+   "id": "r:dreno",
+   "nome": "Dreno",
+   "tipo": "recurso",
+   "texto": "A força que o Bruxo tira dos componentes que esmaga na mão: cresce ao drenar e quando as nulificações pegam; é gasta nas magias.",
+   "formas": [],
+   "de": "Bruxo"
+  },
+  {
+   "id": "r:veio",
+   "nome": "Veio",
+   "tipo": "recurso",
+   "texto": "A firmeza da pedra no anão: cresce quando ele resiste, fica plantado no lugar e luta na rocha; ser empurrado o faz perder.",
+   "formas": [],
+   "de": "Anão da Rocha"
+  },
+  {
+   "id": "r:guarda",
+   "nome": "Guarda",
+   "tipo": "recurso",
+   "texto": "A defesa de pé do espadachim: cresce com a arma em punho, bloqueios e guardas inimigas quebradas; cada golpe que passa a abala.",
+   "formas": [],
+   "de": "Espadachim"
+  },
+  {
+   "id": "r:membros",
+   "nome": "Membros",
+   "tipo": "recurso",
+   "texto": "O próprio corpo do Mãzier'na: começa inteiro e é gasto arrancando partes para lutar; devorar devolve a carne.",
+   "formas": [],
+   "de": "Ghoul Mãzier'na"
+  },
+  {
+   "id": "r:sangue",
+   "nome": "Sangue",
+   "tipo": "recurso",
+   "texto": "O rito de sangue do Zier'Asurper: cresce quando ele faz sangrar, fere com sangue ou se corta de propósito; o rito cobra vida.",
+   "formas": [],
+   "de": "Taekeir Zier'Asurper"
+  },
+  {
+   "id": "r:trama",
+   "nome": "Trama",
+   "tipo": "recurso",
+   "texto": "A magia que o Silk força além do limite: cresce quando ele conjura, resiste a magias e sofre o rebote.",
+   "formas": [],
+   "de": "Silk"
+  },
+  {
+   "id": "r:mira",
+   "nome": "Mira",
+   "tipo": "recurso",
+   "texto": "A calma e a precisão do arqueiro: cresce quando ele fica parado e acerta tiros longos ou críticos; é gasta nas técnicas de arco.",
+   "formas": [],
+   "de": "Arqueiro"
+  },
+  {
+   "id": "r:egide",
+   "nome": "Égide",
+   "tipo": "recurso",
+   "texto": "A proteção que o Aégis acumula cumprindo o juramento e guardando os aliados; é gasta nas técnicas de escudo.",
+   "formas": [],
+   "de": "Aégis"
+  },
+  {
+   "id": "r:barganha",
+   "nome": "Barganha",
+   "tipo": "recurso",
+   "texto": "O jogo do anão mercador: cresce com truques, trocas de itens e inimigos enrolados; é gasta nas habilidades da raça.",
+   "formas": [],
+   "de": "Anão Mercador"
+  },
+  {
+   "id": "r:foco-espiritual",
+   "nome": "Foco Espiritual",
+   "tipo": "recurso",
+   "texto": "A emoção que a Lótus colhe ao provocar sensações nos outros ou tirá-las dos aliados; é gasta para chamar espíritos e usar habilidades.",
+   "formas": [
+    "Foco"
+   ],
+   "de": "Kitsune Lótus"
+  },
+  {
+   "id": "r:carga",
+   "nome": "Carga",
+   "tipo": "recurso",
+   "texto": "A força bruta do Bovino: cresce com golpes de arma grande, levantando peso, arremessando inimigos e aguentando pancadas.",
+   "formas": [],
+   "de": "Antro Bovino"
+  },
+  {
+   "id": "r:contagio",
+   "nome": "Contágio",
+   "tipo": "recurso",
+   "texto": "A doença que o Necrosado carrega: cresce com as condições ruins nele e com as pragas que espalha; curá-lo a diminui.",
+   "formas": [],
+   "de": "Ghoul Necrosado"
+  },
+  {
+   "id": "r:ressonancia",
+   "nome": "Ressonância",
+   "tipo": "recurso",
+   "texto": "A harmonia entre lâmina e magia do Sarep: cresce quando ele alterna golpe e feitiço; repetir o mesmo não rende.",
+   "formas": [],
+   "de": "Humano Sarep"
+  },
+  {
+   "id": "r:essencia",
+   "nome": "Essência",
+   "tipo": "recurso",
+   "texto": "O rito de caça do Nistus'atach: cresce quando ele acerta a presa marcada, dispara armadilhas e colhe o que abateu.",
+   "formas": [],
+   "de": "Taekeir Nistus'atach"
+  },
+  {
+   "id": "r:corrente",
+   "nome": "Corrente",
+   "tipo": "recurso",
+   "texto": "O vento que o Aviário lê: cresce quando ele termina o movimento no alto, mergulha sobre um alvo e usa rajadas.",
+   "formas": [],
+   "de": "Antro Aviário"
+  },
+  {
+   "id": "r:danca-crescente",
+   "nome": "Dança Crescente",
+   "tipo": "recurso",
+   "texto": "A lua crescente da Merunê: cresce enquanto ela dança e cumpre o que a postura pede; quebrar a postura ou o laço a faz perder.",
+   "formas": [],
+   "de": "Kitsune Merunê"
+  },
+  {
+   "id": "r:faro",
+   "nome": "Faro",
+   "tipo": "recurso",
+   "texto": "O nariz do Canino: cresce quando ele marca uma presa, acha o que está escondido e vence o duelo; cheiro forte o atrapalha.",
+   "formas": [],
+   "de": "Antro Canino"
+  },
+  {
+   "id": "r:mare",
+   "nome": "Maré",
+   "tipo": "recurso",
+   "texto": "O mar que responde ao Taekeir: cresce com os cantos e perto da água, e sobe e desce com a enchente e a vazante.",
+   "formas": [],
+   "de": "Taekeir Marítimo"
+  },
+  {
+   "id": "r:impeto",
+   "nome": "Ímpeto",
+   "tipo": "recurso",
+   "texto": "O embalo do Equino: cresce com investidas e derrubadas; se ele para de correr, perde o ímpeto.",
+   "formas": [],
+   "de": "Antro Equino"
+  },
+  {
+   "id": "r:ira",
+   "nome": "Ira",
+   "tipo": "recurso",
+   "texto": "A raiva do bárbaro: cresce quando ele bate, apanha e abre feridas; é gasta nas técnicas.",
+   "formas": [],
+   "de": "Bárbaro"
+  },
+  {
+   "id": "r:voz-manipuladora",
+   "nome": "Voz Manipuladora",
+   "tipo": "recurso",
+   "texto": "A voz de Volkhum'Pansar no Konaitos: cresce a cada oração e sentença; cheia, o deus fala por ele, e desobedecê-lo a zera.",
+   "formas": [
+    "Voz"
+   ],
+   "de": "Konaitos"
+  },
+  {
+   "id": "r:frenesi",
+   "nome": "Frenesi",
+   "tipo": "recurso",
+   "texto": "O furor de máquina do Rastoroni: cresce a cada golpe dado ou sofrido; cheio, ele perde o controle e ataca qualquer um.",
+   "formas": [],
+   "de": "Orc Rastoroni"
+  },
+  {
+   "id": "r:permafrost",
+   "nome": "Permafrost",
+   "tipo": "recurso",
+   "texto": "A dureza de gelo e terra do Orc Natuphas: cresce quando ele aguenta golpes sem sair do lugar e revida em quem o atacou.",
+   "formas": [],
+   "de": "Orc Natuphas"
+  },
+  {
+   "id": "r:favor-espiritual",
+   "nome": "Favor Espiritual",
+   "tipo": "recurso",
+   "texto": "A boa vontade dos espíritos com o xamã: cresce com oferendas de itens, de vida e de inimigos caídos; com pouco, o espírito pode recusar.",
+   "formas": [
+    "Favor"
+   ],
+   "de": "Orc Magi'Ritu"
+  },
+  {
+   "id": "r:calor-da-forja",
+   "nome": "Calor da Forja",
+   "tipo": "recurso",
+   "texto": "O fogo da forja no anão: cresce lutando com as armas que ele mesmo fez e consertando equipamentos no meio da luta.",
+   "formas": [
+    "Calor"
+   ],
+   "de": "Anão da Forja"
+  },
+  {
+   "id": "r:astucia",
+   "nome": "Astúcia",
+   "tipo": "recurso",
+   "texto": "A malandragem do Felino: cresce com esquivas, roubos e acrobacias que mudam a luta.",
+   "formas": [],
+   "de": "Antro Felino"
+  },
+  {
+   "id": "r:brasa",
+   "nome": "Brasa",
+   "tipo": "recurso",
+   "texto": "O fogo de batalha do Vas: cresce ao bater e ao apanhar; esfria se ele fica parado e apaga se ele foge.",
+   "formas": [],
+   "de": "Humano Vas"
+  },
+  {
+   "id": "r:fome",
+   "nome": "Fome",
+   "tipo": "recurso",
+   "texto": "O que o Panso'na devora: cresce com mordidas, habilidades engolidas e corpos comidos; quanto mais guarda, mais pesado fica.",
+   "formas": [],
+   "de": "Ghoul Panso'na"
+  }
+ ]
+}

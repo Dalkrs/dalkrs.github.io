@@ -142,6 +142,29 @@ label.rot, .rot{display:block;font:600 12px/1.35 var(--ui);letter-spacing:normal
 #atualArv b{font:600 15px/1.15 var(--titulo);color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #listaAbas .recentes-rot{flex:none;align-self:center;font:600 11.5px var(--ui);color:var(--texto-3);margin-right:2px}
 #veuSel{z-index:85;place-items:start center;padding-top:6vh}
+/* (lote 27) a tela das tags (condições, efeitos, recursos) */
+#btTags{display:flex;align-items:center;gap:7px;font-weight:600}
+#btTags[hidden]{display:none}
+#veuTags{z-index:85;place-items:start center;padding-top:5vh}
+#tagsTela{width:min(1040px,100%);max-height:88vh}
+#tagsTela .sel-topo, #tagsTela .sel-abas, #tagsTela .sel-rodape{flex:none}
+#tagsTela{height:88vh}
+.tg-corpo{display:grid;grid-template-columns:300px 1fr;min-height:0;flex:1 1 auto;overflow:hidden}
+.tg-lista{overflow-y:auto;border-right:1px solid var(--linha);padding:8px}
+.tg-item{appearance:none;width:100%;text-align:left;border:1px solid transparent;background:none;color:var(--texto);border-radius:6px;padding:7px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;font:500 14px var(--ui)}
+.tg-item:hover{background:var(--acento-fundo)}
+.tg-item[aria-selected="true"]{border-color:var(--acento-borda);background:var(--acento-fundo);font-weight:600}
+.tg-item i{flex:none;width:9px;height:9px;border-radius:50%}
+.tg-item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tg-item em{flex:none;font:600 10.5px var(--ui);font-style:normal;color:var(--acento);text-transform:uppercase;letter-spacing:.04em}
+.tg-ed{overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.tg-ed label{display:flex;flex-direction:column;gap:5px;font:600 12.5px var(--ui);color:var(--texto-2)}
+.tg-ed .linha2{display:grid;grid-template-columns:1fr 140px 90px;gap:10px}
+.tg-ed input[type=color]{height:36px;padding:2px;width:100%}
+.tg-prev{border:1px dashed var(--linha-forte);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--texto-2)}
+.tg-prev b{color:var(--texto)}
+.tg-acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tg-acoes .espaco{flex:1}
 .modal.sel{width:min(980px,100%);max-height:86vh;display:flex;flex-direction:column;padding:0;overflow:hidden}
 .sel-topo{display:flex;align-items:center;gap:12px;padding:18px 20px 12px}
 .sel-topo h2{margin:0;flex:none}
@@ -508,6 +531,7 @@ a.lk-no:hover{text-decoration-thickness:2px}
 
   <nav id="abas" aria-label="Abas">
     <button class="btn" id="btSelArv" title="Selecionar árvore (tecla A)" hidden><span class="ico-sel" aria-hidden="true">▤</span><span class="longo">Selecionar árvore</span></button>
+    <button class="btn" id="btTags" title="As tags: as condições, os efeitos e os recursos, com a explicação de cada um" hidden><span class="ico-sel" aria-hidden="true">#</span><span class="longo">Tags</span></button>
     <div id="atualArv" hidden></div>
     <div id="listaAbas" role="tablist"></div>
     <button class="btn ico" id="btNovaAba" title="Nova">+</button>
@@ -551,11 +575,13 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <div id="buscaRes" class="busca-res" hidden></div>
 <div class="veu" id="veu"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div class="veu" id="veuSel"><div class="modal sel" id="selArv" role="dialog" aria-modal="true" aria-labelledby="selTit"></div></div>
+<div class="veu" id="veuTags" data-sem-tags><div class="modal sel" id="tagsTela" role="dialog" aria-modal="true" aria-labelledby="tagsTit"></div></div>
 <div class="veu" id="veuDlg"><div class="modal estreito" id="dlg" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
 <script src="../tc/ponte.js?v=17"></script>
 <script src="../tc/rules.js?v=21"></script>
+<script src="../tc/tags.js?v=1"></script>
 <script src="mesa.js?v=8"></script>
 <script>
 'use strict';
@@ -2202,6 +2228,7 @@ const ICONE_ALCA = '<svg viewBox="0 0 8 12" aria-hidden="true">' + [2,6,10].map(
 function pintarAbas(){
   const cx = $('#listaAbas');
   $('#btSelArv').hidden = ui.modo!=='mestre';
+  $('#btTags').hidden = !(ui.modo==='mestre' && window.TC && TC.tags && TC.tags.podeEditar());
   $('#atualArv').hidden = true;
   if(ui.modo==='mestre'){
     /* (lote 26) No lugar da fileira de todas as árvores: o botão "Selecionar árvore", a que está aberta e as últimas
@@ -2336,6 +2363,120 @@ function abrirSelecao(){
   $('#veuSel').classList.add('on');
   pintarSelecao();
   $('#selBusca').focus();
+}
+/* ---------- (lote 27) as tags: a tela do mestre ----------
+   A lista vem de TC.tags (tc/tags.js): as que vêm prontas, com o que o mestre mudou por cima, e as que ele criou. As
+   abas separam por tipo (Condições, Efeitos, Recursos); à esquerda, a lista (com a busca); à direita, a tag escolhida.
+   Mudar uma pronta guarda só o que mudou; "Voltar ao original" desfaz. Apagar uma pronta a esconde (dá para trazer de
+   volta); apagar uma criada a tira de vez. As que o mestre cria aqui não entram na lista de condições dos tokens. */
+const tg = {tipo:'condicao', busca:'', atual:null};
+const tagsAberto = () => $('#veuTags').classList.contains('on');
+// quem mestra pode ir ao modo Mestre (sem mesa, todos)
+function trocarModoSePode(){
+  if(ui.modo==='mestre') return true;
+  if(ArvoreMesa.ativo() && !ArvoreMesa.mestre()) return false;
+  trocarModo('mestre'); return true;
+}
+function abrirTags(){
+  if(!window.TC || !TC.tags || !TC.tags.podeEditar()) return;
+  tg.busca = '';
+  const m = $('#tagsTela');
+  m.innerHTML = `<div class="sel-topo"><h2 id="tagsTit">Tags</h2>
+      <input class="campo" id="tgBusca" type="search" placeholder="Procurar tag…" aria-label="Procurar tag pelo nome" autocomplete="off">
+      <button type="button" class="btn ico" id="tgFechar" aria-label="Fechar" title="Fechar (Esc)">✕</button></div>
+    <div class="sel-abas" role="tablist" aria-label="Tipos"></div>
+    <div class="tg-corpo"><div class="tg-lista" id="tgLista" role="listbox" aria-label="Tags"></div><div class="tg-ed" id="tgEd"></div></div>
+    <div class="sel-rodape"><p class="nota" id="tgNota"></p><button type="button" class="btn ouro" id="tgNova">+ Nova tag</button></div>`;
+  $('#tgBusca').oninput = e=>{ tg.busca = e.target.value; pintarTags(); };
+  $('#tgFechar').onclick = fecharTags;
+  $('#tgNova').onclick = novaTag;
+  $('#veuTags').onclick = e=>{ if(e.target===$('#veuTags')) fecharTags(); };
+  document.addEventListener('keydown', teclaTags, true);
+  $('#veuTags').classList.add('on');
+  TC.tags.pronto.then(()=>{ if(tagsAberto()) pintarTags(); });
+  pintarTags();
+  $('#tgBusca').focus();
+}
+function fecharTags(){
+  $('#veuTags').classList.remove('on');
+  document.removeEventListener('keydown', teclaTags, true);
+  $('#btTags').focus();
+}
+function teclaTags(e){
+  if(!tagsAberto() || dialogoAberto()) return;
+  if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); fecharTags(); }
+}
+function pintarTags(){
+  const T = TC.tags, todas = T.lista(), q = norm(tg.busca);
+  const abas = Object.entries(T.TIPOS).map(([id, t])=>`<button type="button" class="sel-aba" role="tab" data-tipo="${id}" aria-selected="${tg.tipo===id}">${esc(t.nome === 'Condição' ? 'Condições' : t.nome + 's')} <b>${todas.filter(x=>x.tipo===id).length}</b></button>`).join('');
+  $('#tagsTela .sel-abas').innerHTML = abas;
+  $$('#tagsTela .sel-aba').forEach(b=>b.onclick = ()=>{ tg.tipo = b.dataset.tipo; tg.atual = null; pintarTags(); });
+  const l = todas.filter(x=>x.tipo===tg.tipo && (!q || norm(x.nome).includes(q) || x.formas.some(f=>norm(f).includes(q)) || norm(x.de).includes(q)))
+    .sort((a, b)=>a.nome.localeCompare(b.nome, 'pt'));
+  const ed = T.mudancas().ed;
+  if(!l.some(x=>x.id===tg.atual)) tg.atual = l[0] ? l[0].id : null;
+  $('#tgLista').innerHTML = l.length ? l.map(x=>`<button type="button" class="tg-item" role="option" data-tag="${esc(x.id)}" aria-selected="${x.id===tg.atual}">
+      <i style="background:${esc(x.cor || T.TIPOS[x.tipo].cor)}"></i><span>${esc(x.nome)}</span>${x.nova ? '<em>nova</em>' : ed[x.id] ? '<em>mudada</em>' : ''}</button>`).join('')
+    : '<p class="vazio" style="padding:10px">Nenhuma tag aqui.</p>';
+  $$('#tgLista .tg-item').forEach(b=>b.onclick = ()=>{ tg.atual = b.dataset.tag; pintarTags(); });
+  const fora = T.mudancas().fora.length;
+  $('#tgNota').innerHTML = `Passar o mouse sobre o nome de uma tag (nas árvores, nas fichas, nas cenas, no acampamento e nas notas) mostra a explicação.${fora ? ` <button type="button" class="btn mini" id="tgVoltarApagadas">Trazer de volta ${plural(fora, 'apagada', 'apagadas')}</button>` : ''}`;
+  if($('#tgVoltarApagadas')) $('#tgVoltarApagadas').onclick = ()=>{ const m = T.mudancas(); m.fora = []; T.gravar(m); pintarTags(); aviso('As tags apagadas voltaram.', 'ok'); };
+  pintarEditorTag(todas.find(x=>x.id===tg.atual));
+}
+function pintarEditorTag(t){
+  const box = $('#tgEd'), T = TC.tags;
+  if(!t){ box.innerHTML = '<p class="vazio">Escolha uma tag na lista, ou crie uma nova.</p>'; return; }
+  const pronta = T.prontas().find(x=>x.id===t.id), mudada = !!T.mudancas().ed[t.id];
+  box.innerHTML = `<label>Nome<input class="campo" id="tgNome" maxlength="60" value="${esc(t.nome)}"></label>
+    <div class="linha2">
+      <label>Outras formas da palavra<input class="campo" id="tgFormas" maxlength="300" value="${esc(t.formas.join(', '))}" placeholder="Ex.: Atordoada, Atordoados"></label>
+      <label>Tipo<select class="campo" id="tgTipo">${Object.entries(T.TIPOS).map(([id, x])=>`<option value="${id}"${id===t.tipo ? ' selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></label>
+      <label>Cor<input type="color" id="tgCor" value="${esc(t.cor || T.TIPOS[t.tipo].cor)}"></label>
+    </div>
+    <label>Explicação (o conceito, sem números)<textarea class="campo" id="tgTexto" rows="4" maxlength="400">${esc(t.texto)}</textarea></label>
+    <label>De onde vem (opcional)<input class="campo" id="tgDe" maxlength="80" value="${esc(t.de)}" placeholder="Ex.: Kitsune Selene"></label>
+    <div class="tg-prev" id="tgPrev"></div>
+    <div class="tg-acoes">
+      <button type="button" class="btn ouro" id="tgSalvar">Salvar</button>
+      ${pronta && mudada ? '<button type="button" class="btn" id="tgOriginal">Voltar ao original</button>' : ''}
+      <span class="espaco"></span>
+      <button type="button" class="btn perigo" id="tgApagar">Apagar</button>
+    </div>`;
+  const ler = ()=>({nome:$('#tgNome').value.trim(), tipo:$('#tgTipo').value, cor:$('#tgCor').value, texto:$('#tgTexto').value.trim(),
+    de:$('#tgDe').value.trim(), formas:$('#tgFormas').value.split(',').map(x=>x.trim()).filter(Boolean)});
+  const prev = ()=>{ const v = ler(); $('#tgPrev').innerHTML = `<b>Como aparece:</b> o nome sublinhado com pontinhos; passando o mouse — <b>${esc(v.nome || '…')}</b>: ${esc(v.texto || '(sem explicação: a tag não mostra nada)')}`; };
+  ['#tgNome', '#tgTexto', '#tgFormas', '#tgDe', '#tgTipo', '#tgCor'].forEach(s=>$(s).addEventListener('input', prev));
+  prev();
+  $('#tgSalvar').onclick = ()=>{
+    const v = ler();
+    if(!v.nome){ aviso('A tag precisa de um nome.', 'err'); $('#tgNome').focus(); return; }
+    const outra = T.lista().find(x=>x.id!==t.id && (norm(x.nome)===norm(v.nome)));
+    if(outra){ aviso('Já existe uma tag com esse nome.', 'err'); return; }
+    if(v.cor===T.TIPOS[v.tipo].cor && !(pronta && pronta.cor)) v.cor = '';
+    const m = T.mudancas();
+    if(t.nova){ m.novas = m.novas.map(x=>x.id===t.id ? Object.assign({id:t.id}, v) : x); }
+    else{
+      const d = {};
+      for(const k of ['nome', 'tipo', 'cor', 'texto', 'de']) if((v[k] || '')!==(pronta[k] || '')) d[k] = v[k];
+      if(v.formas.join('|')!==(pronta.formas || []).join('|')) d.formas = v.formas;
+      if(Object.keys(d).length) m.ed[t.id] = d; else delete m.ed[t.id];
+    }
+    T.gravar(m); tg.tipo = v.tipo; pintarTags(); aviso('Tag salva.', 'ok');
+  };
+  if($('#tgOriginal')) $('#tgOriginal').onclick = ()=>{ const m = T.mudancas(); delete m.ed[t.id]; T.gravar(m); pintarTags(); aviso('A tag voltou ao original.', 'ok'); };
+  $('#tgApagar').onclick = async ()=>{
+    if(!await confirmar('Apagar tag', t.nova ? `Apagar “${t.nome}”? Ela foi criada aqui e não volta.` : `Apagar “${t.nome}”? Ela vem pronta: dá para trazer de volta depois, no rodapé.`, 'Apagar', true)) return;
+    const m = T.mudancas();
+    if(t.nova) m.novas = m.novas.filter(x=>x.id!==t.id); else{ delete m.ed[t.id]; if(!m.fora.includes(t.id)) m.fora.push(t.id); }
+    T.gravar(m); tg.atual = null; pintarTags();
+  };
+}
+function novaTag(){
+  const T = TC.tags, m = T.mudancas(), id = 'n:' + Date.now().toString(36);
+  m.novas.push({id, nome:'Nova tag', tipo:tg.tipo, texto:'', formas:[], de:'', cor:''});
+  T.gravar(m); tg.busca = ''; $('#tgBusca').value = ''; tg.atual = id; pintarTags();
+  $('#tgNome').focus(); $('#tgNome').select();
 }
 function fecharSelecao(){
   $('#veuSel').classList.remove('on');
@@ -4239,6 +4380,7 @@ function iniciar(){
   $('#btTroca').onclick = abrirTroca;
   $('#btNovaAba').onclick = novaAba;
   $('#btSelArv').onclick = abrirSelecao;
+  $('#btTags').onclick = abrirTags;                     // (lote 27)
   $('#btRenomearAba').onclick = renomearAba;
   $('#btDuplicarAba').onclick = duplicarAba;
   $('#btExcluirAba').onclick = excluirAba;
@@ -4267,6 +4409,18 @@ function iniciar(){
   pintarTudo(); centralizar(); desenhar();
   // (lote 16) aberta por outro sistema com um alvo — o "Abrir na Árvore" da ficha ({ personagem }): vai até ele
   if(window.TC && TC.ponte && TC.ponte.aoIr) TC.ponte.aoIr(a=>{
+    // (lote 27) das notas do mestre (e da busca rápida): uma habilidade, ou uma tag (abre a tela das tags nela)
+    if(a && typeof a.no==='string' && trocarModoSePode()){
+      if(!porId.has(a.no)){ aviso('Essa habilidade não existe mais.', 'err'); return; }
+      irParaNo(a.no, true); zoomPara(Math.max(cam.k, 1)); focarNo(a.no); desenhar(); return;
+    }
+    if(a && typeof a.tag==='string'){
+      if(ui.modo!=='mestre') trocarModoSePode();
+      if(!window.TC || !TC.tags || !TC.tags.podeEditar()) return;
+      TC.tags.pronto.then(()=>{ const t = TC.tags.lista().find(x=>x.id===a.tag); if(!t){ aviso('Essa tag não existe mais.', 'err'); return; }
+        tg.tipo = t.tipo; tg.atual = t.id; if(tagsAberto()){ tg.busca = ''; $('#tgBusca').value = ''; pintarTags(); } else abrirTags(); });
+      return;
+    }
     if(!a || typeof a.personagem!=='string') return;
     if(!doc.personagens.some(p=>p.id===a.personagem)){ aviso('Esse personagem não aparece nesta Árvore.', 'err'); return; }
     if(ui.modo!=='jogador') trocarModo('jogador');

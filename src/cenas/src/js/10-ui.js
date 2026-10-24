@@ -1202,7 +1202,8 @@ const UI = (() => {
   const condComeco = c => [c.dur > 0 ? c.dur + (c.dur === 1 ? ' rodada' : ' rodadas') : '', c.max > 0 ? 'até ' + c.max + (c.desce ? ', descendo' : '') : ''].filter(Boolean).join(' · ');
   function condChip(c, on, onClick, dica) {
     const de = condDe(c), com = condComeco(c);
-    return h('button', { type: 'button', class: 'chip' + (on ? ' on' : '') + (de ? ' chip-r' : ''), 'aria-pressed': onClick ? String(on) : null, disabled: !onClick, title: (dica || c.n) + (de ? ' — ' + de : '') + (com ? ' (' + com + ')' : ''), onclick: onClick },
+    // (lote 27) data-tag-nome: passar o mouse mostra a explicação da condição (tc/tags.js), no lugar do título
+    return h('button', { type: 'button', class: 'chip' + (on ? ' on' : '') + (de ? ' chip-r' : ''), 'data-tag-nome': c.n, 'aria-pressed': onClick ? String(on) : null, disabled: !onClick, title: (dica || c.n) + (de ? ' — ' + de : '') + (com ? ' (' + com + ')' : ''), onclick: onClick },
       h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
       de ? h('span', { class: 'chip-tt' }, h('span', { text: c.n }), h('small', { class: 'chip-de', text: de })) : h('span', { text: c.n }));
   }
@@ -1494,7 +1495,7 @@ const UI = (() => {
       list.map(c => {
         const ci = info[c.id] || {}, n = condNum(t, c.id);
         return h('div', { class: 'cact-r' },
-          h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
+          h('span', { class: 'cact-n', 'data-tag-nome': c.n }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
             c.r ? h('span', { class: 'cact-tt' }, h('span', { class: 'cact-t', text: c.n + (COND_LADO.has(c.id) && ci.lado ? ' (' + textoLado(ci.lado) + ')' : '') }), h('small', { class: 'chip-de', text: c.r })) : h('span', { class: 'cact-t', text: c.n })),
           // (lote 7) o Escudado: os pontos são a sobrevida do token — mudam na barra, não aqui
           c.id === 'escudado' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: 'Os pontos do escudo são a sobrevida do token (mude na barra). Quando ela acaba, o Escudado sai.', text: n ? String(n) : 'sem sobrevida' })
@@ -1536,7 +1537,7 @@ const UI = (() => {
         const faixa = a => { const lo = Math.min(...a), hi = Math.max(...a); return lo === hi ? (lo ? String(lo) : '–') : (lo || '–') + ' a ' + hi; };
         const cada = a => com.map((t, i) => tokName(t) + ': ' + (a[i] || '–')).join(' · ');
         return h('div', { class: 'cact-r' },
-          h('span', { class: 'cact-n' }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
+          h('span', { class: 'cact-n', 'data-tag-nome': c.n }, h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12)),
             h('span', { class: 'cm-tt' }, h('span', { class: 'cact-t', text: c.n }), h('span', { class: 'cm-q', text: qual }))),
           h('span', { class: 'stp' },
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: escudo || !ns.some(n => n > 0), title: escudo ? 'Os pontos do escudo são a sobrevida de cada token' : 'Tirar 1 de cada um (quem chega a zero perde a condição)', 'aria-label': `Tirar 1 de ${c.n} em todos`,
@@ -3298,14 +3299,14 @@ const UI = (() => {
       const badge = h('span', { class: 'chip-i', style: { background: c.c } }, icon(c.i, 12));
       // (lote 7) o Escudado mostra os pontos (a sobrevida), sem o − e o +: eles mudam na barra
       if (canCond && n && c.id !== 'escudado') {
-        kids.push(h('span', { class: 'hud-c', title: c.n + (c.r ? ' — ' + c.r : '') + dur },
+        kids.push(h('span', { class: 'hud-c', 'data-tag-nome': c.n, title: c.n + (c.r ? ' — ' + c.r : '') + dur },
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-minus`, title: n === 1 ? `${c.n}: tirar 1 (em zero, a condição sai)` : `${c.n}: tirar 1`, 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => condStepToast(t, c, -1) }, icon('minus', 13)),
           badge, h('span', { class: 'stp-v', id: `hud-c-${c.id}-n`, text: String(n) }),
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-plus`, disabled: !!(c.max && n >= c.max), title: c.max && n >= c.max ? `${c.n}: no máximo (${c.max})` : `${c.n}: somar 1`, 'aria-label': `Somar 1 em ${c.n}`, onclick: () => condStepToast(t, c, 1) }, icon('plus', 13))));
       } else if (canCond) {
-        kids.push(h('button', { type: 'button', class: 'hud-c one', id: `hud-c-${c.id}`, title: `${c.n}${n ? ' ' + n : ''}${dur}: abrir condições`, 'aria-label': `${c.n}${n ? ' ' + n : ''}${dur}`, onclick: () => condPicker([t]) }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
+        kids.push(h('button', { type: 'button', class: 'hud-c one', id: `hud-c-${c.id}`, 'data-tag-nome': c.n, title: `${c.n}${n ? ' ' + n : ''}${dur}: abrir condições`, 'aria-label': `${c.n}${n ? ' ' + n : ''}${dur}`, onclick: () => condPicker([t]) }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       } else {
-        kids.push(h('span', { class: 'hud-c ro', title: c.n + (c.r ? ' — ' + c.r : '') + dur }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
+        kids.push(h('span', { class: 'hud-c ro', 'data-tag-nome': c.n, title: c.n + (c.r ? ' — ' + c.r : '') + dur }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       }
     }
     if (conds.length > 6) kids.push(h('span', { class: 'hud-m', text: '+' + (conds.length - 6) }));
