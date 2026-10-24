@@ -2,6 +2,21 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-13",
+      "data": "2026-10-24",
+      "titulo": "As árvores sem nódulos por cima uns dos outros",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Árvore: os nódulos se afastam até os nomes não se encostarem, e as pontas que juntam ramos (como os keystones do fim) ficam entre os pais delas, não empilhadas."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: com a árvore afastada, aparecem só os nomes dos nódulos grandes e dos que você escolheu; aproximando, aparecem todos."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-12",
       "data": "2026-10-24",
       "titulo": "As abas da direita das Cenas, para a sessão",

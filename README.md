@@ -201,6 +201,17 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
   quando não há nada.
 
+### A Árvore sem sobreposição (lote 26)
+
+O desenho em anéis (`calcularLayout`) ganhou dois passos no fim. **`juntarPontas`**: a folha com pais em ramos
+diferentes (os keystones do fim, que juntam caminhos) vai para entre os pais, um anel depois do mais de fora — a não ser
+que os pais estejam espalhados em volta da raiz. **`afastar`**: cada nó ocupa uma caixa (`caixaDoNo`: a largura do nome
+ou da bolinha, de cima da bolinha até embaixo do nome); onde duas se cruzam, as duas se afastam pelo lado em que se
+cruzam menos, com uma mola que puxa de volta para o lugar do desenho em anéis e some na metade das voltas. A raiz única
+fica parada; não há sorteio. Como o desenho se refaz a cada passo do zoom, as posições ficam guardadas até a árvore
+mudar (`layoutGuardado`). Afastado (zoom até 0,85), aparecem só os nomes dos nós grandes, dos escolhidos e do
+selecionado.
+
 ### A criação de personagem, o background e as Profissões (lote 26)
 
 - **Dar ficha.** No menu da mesa, ao lado de cada jogador, **"Ficha…"** (só o mestre da mesa) abre a janela
