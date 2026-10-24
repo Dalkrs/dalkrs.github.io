@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-8",
+      "data": "2026-10-24",
+      "titulo": "O que está valendo agora, no alto da ficha",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Fichas: no alto da ficha, o quadro “Agora” mostra o que está mexendo nos números neste momento — os bônus temporários ligados (com as rodadas que faltam) e os itens equipados que dão bônus. Clicar num deles leva até onde ele está."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-7",
       "data": "2026-10-24",
       "titulo": "Os lugares gerados com luz de ilustração",

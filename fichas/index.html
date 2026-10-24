@@ -1211,6 +1211,11 @@ html:not(.modo-simples) .so-simples{display:none!important}
 .modoseg{display:inline-flex;padding:3px;border-radius:10px;border:1px solid var(--topo-borda);background:var(--paper);margin-right:6px}
 .modoseg button{border:0;background:none;color:var(--topo-btn);padding:5px 12px;border-radius:7px;font-weight:600}
 .modoseg button[aria-pressed="true"]{background:var(--hover);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+/* (lote 24) o "Agora" no alto da ficha */
+.rsagora{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding-top:4px}
+.rsagt{font-size:13px;font-weight:700;color:var(--ink-2);margin-right:2px}
+.rschip.agora-tmp{border-color:var(--teal-borda);background:var(--teal-fundo);color:var(--ink)}
+.rschip.agora-item{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -2537,6 +2542,25 @@ function htmlNumerosResumo(pc,c){
   </div>`;
 }
 // o estado de agora: os lapros (e a caixinha do grupo), os ferimentos abertos, a Sanidade e o Conforto
+/* (lote 24) "Agora", no alto da ficha: o que está valendo neste momento — os bônus temporários ligados (com quanto
+   tempo falta) e os itens equipados que somam alguma coisa. Cada um leva à parte da ficha onde se mexe nele. */
+function htmlAgoraResumo(pc){
+  const c=calcular(pc), out=[], todos=ATRIBS.concat(DERIV,DEFESAS);
+  const rot=k=>{ const x=todos.find(y=>y.k===k); if(x) return x.rot||x.k; const r=(pc.recursos||[]).find(y=>y.id===k); return r? r.nome||'Barra' : k; };
+  const sinal=v=>(v>0?'+':v<0?'−':'')+Math.abs(v);
+  for(const b of (c.temporarios||[])){
+    if(b.off||!b.k||!b.v||b.r===0) continue;
+    const dur=b.r!=null? ' · '+b.r+(b.r===1?' rodada':' rodadas') : b.ate? ' · até o descanso' : b.d? ' · '+b.d : '';
+    out.push(`<button type="button" class="rschip agora-tmp" data-irpara="atributos|#painelTmp" title="Bônus temporário — na aba Atributos">${esc(b.n||'Bônus')} <b>${esc(rot(b.k))} ${sinal(b.v)}</b>${esc(dur)}</button>`);
+  }
+  for(const it of (pc.itens||[])){
+    if(!it||it.equipado===false) continue;
+    const bs=FichasExtras.bonusDoItem(it,pc); if(!bs.length) continue;
+    out.push(`<button type="button" class="rschip agora-item" data-irpara="bolsas|#painelItens" title="Equipado — na aba Bolsas e itens">${esc(it.nome||'Item')} <b>${bs.slice(0,2).map(x=>esc(x.rot)+' '+sinal(x.v)).join(' · ')}${bs.length>2?' …':''}</b></button>`);
+  }
+  if(!out.length) return '';
+  return `<div class="rsagora" aria-label="O que está valendo agora"><span class="rsagt">Agora</span>${out.join('')}</div>`;
+}
 function htmlEstadoResumo(pc){
   const out=[FichasExtras.htmlLapros(pc), htmlCaixinhaResumo(pc)];
   { const cal=calDaFicha(), R=window.TC&&TC.rules, ok=R&&R.anivOk? R.anivOk(anivDe(pc), cal.meses) : null, x=ok&&cal.hoje? R.aniversario(ok, cal.hoje, cal.meses) : null;
@@ -2574,6 +2598,7 @@ function htmlResumo(pc,c){
         ${htmlBarrinhas(pc, c)}
         ${htmlNumerosResumo(pc,c)}
         ${htmlEstadoResumo(pc)}
+        ${htmlAgoraResumo(pc)}
       </div>
       </div>
     </div>

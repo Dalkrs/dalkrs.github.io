@@ -187,6 +187,10 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   padrão, esconde o que não se usa durante a sessão — os pontos da ficha, as tags, o aniversário e a identidade
   (`.so-completo`, `#anivBox`, `.idcard3`), com um aviso de onde estão. Os testes abrem no Completo, a não ser que
   escolham outro. O tema das Fichas é sempre o do site (o botão de tema delas sumiu).
+  **O quadro "Agora"** (no resumo do alto, logo abaixo do estado; `htmlAgoraResumo`): o que mexe nos números neste
+  momento — os bônus temporários ligados (com as rodadas que faltam ou "até o descanso") e os itens equipados que dão
+  bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
+  quando não há nada.
 
 ### Os desenhos das cenas no jeito das ilustrações (lote 25)
 
