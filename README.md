@@ -179,6 +179,15 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   passa a ser só de quem joga. As duas são a mesma página: quem pede uma e só pode a outra vai para a outra
   (`abaPossivel`, na casca — o endereço, o "ir" dos sistemas, o guia e o papel na ponte usam a permissão da Árvore,
   `permDe`). A Árvore também ganhou as cores e as letras do site; o desenho dos nós é o de sempre.
+  **O painel "Selecionar árvore" (lote 26).** No modo de quem mestra, a fileira com todas as árvores deu lugar ao botão
+  "Selecionar árvore" (ou a tecla **A**), à árvore aberta (com onde ela fica: "Raça › Kitsune › Karê") e às últimas
+  abertas (`ui.recentes`, neste navegador). O painel tem uma aba por categoria — Raças, Classes, Escolas, Profissões
+  (categoria nova, `profissao`, com o tipo de ponto "Profissão") e Outros — e, dentro dela, pastas pela **família**:
+  a primeira palavra do nome ("Kitsune Ayto" → Kitsune) ou, quando o nome não segue esse jeito, a Família escrita em
+  Renomear (`a.familia`). O resto do nome vira mais um passo no " - " ("Kitsune Karê - Dançarina" → Kitsune › Karê).
+  Pasta com uma árvore só não é pasta: a árvore aparece direto (Konaitos, Silk, as classes). A busca acha pelo nome em
+  qualquer categoria. Esc fecha, Backspace volta uma pasta, as setas andam pelos cartões. Abre já na pasta da árvore
+  aberta. O jogador continua com as abas dos personagens. Teste: `src/tests/arvore-lote26.test.js`.
 - **O Rolador** usa as mesmas cores e letras do resto do site, e tem o tema claro.
 - **As Fichas** usam as cores e as letras do site (as variáveis de sempre das Fichas, com os valores da casca), sem
   rótulos em caixa alta espaçada. Dentro do site, a marca e o título somem: as abas Fichas/Mesa/Eventos e as ações
