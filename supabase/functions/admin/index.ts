@@ -6,6 +6,16 @@
 //   { acao: 'editar', id, nome?, email? }           → o nome (na conta e nas mesas) e o e-mail (já confirmado)
 //   { acao: 'apagar', id }                          → apaga a conta (nunca a de um administrador nem a de dono de mesa)
 //   { acao: 'cadastro', aberto, teto }              → abre ou fecha o cadastro de contas novas e muda o teto
+//   As mesas (a auditoria: o administrador entra sem aparecer — ver 0022_auditoria_de_mesa.sql):
+//   { acao: 'mesa', id }                            → os detalhes: participantes, campanhas, o que há nela, os arquivos
+//   { acao: 'entrar', id, modo: 'ver'|'mestre' }    → abre a sessão de auditoria (12 horas) e anota no registro
+//   { acao: 'sair', id }                            → fecha a sessão
+//   { acao: 'copia', id }                           → a cópia da mesa (JSON: a mesa, participantes, campanhas, fichas,
+//                                                      documentos, a mesa ao vivo e a lista dos arquivos)
+//   { acao: 'apagar-mesa', id, nome }               → apaga a mesa inteira e os arquivos dela (o nome confere)
+//   { acao: 'dono', id, usuario }                   → passa a mesa para outro participante (o antigo vira jogador)
+//   { acao: 'tirar', id, usuario }                  → tira alguém da mesa (não o dono)
+//   { acao: 'papel', id, usuario, papel }           → jogador ou mestre auxiliar (com todas as abas)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -18,6 +28,8 @@ const json = (corpo: unknown, status = 200) =>
   new Response(JSON.stringify(corpo), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const ABAS = ["cenas", "mundo", "acampamento", "fichas", "arvore", "rolador", "jornal", "meditacao", "cla"];
+const HORAS_DE_AUDITORIA = 12;
 type Obj = Record<string, unknown>;
 
 Deno.serve(async (req: Request) => {
@@ -136,6 +148,158 @@ Deno.serve(async (req: Request) => {
       const r = await sb.from("site_cfg").upsert({ chave: "cadastro", valor: { aberto, teto }, em: new Date().toISOString() });
       if (r.error) throw r.error;
       await registrar("cadastro", null, "o cadastro do site", { de: antes.data?.valor ?? null, para: { aberto, teto } });
+      return json({ ok: true });
+    }
+
+    /* ---- as mesas ---- */
+    const mesaDe = async (id: unknown) => {
+      if (typeof id !== "string" || !UUID.test(id)) return null;
+      const r = await sb.from("mesas").select("*").eq("id", id).maybeSingle();
+      return r.data ?? null;
+    };
+    // os arquivos da mesa (a pasta com o id dela, com as subpastas)
+    const arquivos = async (pasta: string): Promise<{ nome: string; tam: number }[]> => {
+      const out: { nome: string; tam: number }[] = [];
+      for (let off = 0; ; off += 1000) {
+        const r = await sb.storage.from("mesas").list(pasta, { limit: 1000, offset: off });
+        if (r.error) throw r.error;
+        for (const x of r.data ?? []) {
+          if (x.id) out.push({ nome: pasta + "/" + x.name, tam: Number((x.metadata as Obj | null)?.size ?? 0) });
+          else out.push(...await arquivos(pasta + "/" + x.name));
+        }
+        if ((r.data ?? []).length < 1000) break;
+      }
+      return out;
+    };
+    const membro = async (mesa: string, usuario: unknown) => {
+      if (typeof usuario !== "string" || !UUID.test(usuario)) return null;
+      const r = await sb.from("mesa_membros").select("*").eq("mesa_id", mesa).eq("usuario_id", usuario).maybeSingle();
+      return r.data ?? null;
+    };
+
+    if (acao === "mesa") {
+      const m = await mesaDe(c.id);
+      if (!m) return json({ erro: "Essa mesa não existe mais." }, 404);
+      const [mm, cs, cm, pcs, docs, reg, ult, cv, aud] = await Promise.all([
+        sb.from("mesa_membros").select("usuario_id, papel, nome, jogando, abas, visto_em, entrou_em").eq("mesa_id", m.id).order("entrou_em"),
+        sb.from("campanhas").select("id, nome, encerrada, ordem").eq("mesa_id", m.id).order("ordem"),
+        sb.from("campanha_membros").select("campanha_id, usuario_id").eq("mesa_id", m.id),
+        sb.from("personagens").select("id, dono_id, apagado").eq("mesa_id", m.id),
+        sb.from("documentos").select("id, apagado, atualizado_em").eq("mesa_id", m.id),
+        sb.from("registro").select("id", { count: "exact", head: true }).eq("mesa_id", m.id),
+        sb.from("registro").select("criado_em").eq("mesa_id", m.id).order("criado_em", { ascending: false }).limit(1),
+        sb.from("mesa_convites").select("codigo").eq("mesa_id", m.id).maybeSingle(),
+        sb.from("admin_auditoria").select("modo, ate").eq("mesa_id", m.id).eq("admin_id", eu.id).maybeSingle(),
+      ]);
+      for (const r of [mm, cs, cm, pcs, docs, reg, ult]) if (r.error) throw r.error;
+      const emails = new Map<string, string>();
+      for (const x of mm.data ?? []) { const u = await conta(x.usuario_id); if (u) emails.set(x.usuario_id, u.email ?? ""); }
+      const tipo = (id: string) => /^cenas?:/.test(id) ? "Cenas" : id.startsWith("mundo:") ? "Mapa-múndi" : id.startsWith("acampamento") ? "Acampamento"
+        : id.startsWith("fichas:") ? "Fichas" : id.startsWith("arvore:") ? "Árvore" : id.startsWith("rol:") ? "Rolador" : id.startsWith("jornal:") ? "Jornal"
+        : id.startsWith("medit:") ? "Meditação" : id.startsWith("cla:") ? "Clã" : id.startsWith("notas:") ? "Notas do mestre" : "Outros";
+      const porTipo: Record<string, number> = {};
+      for (const d of docs.data ?? []) if (!d.apagado) porTipo[tipo(d.id)] = (porTipo[tipo(d.id)] ?? 0) + 1;
+      let arqs: { nome: string; tam: number }[] = [];
+      try { arqs = await arquivos(m.id); } catch (_e) { /* sem a lista dos arquivos: segue sem */ }
+      const vivos = (pcs.data ?? []).filter((p) => !p.apagado);
+      const ultimoDoc = (docs.data ?? []).map((d) => d.atualizado_em).filter(Boolean).sort().pop() ?? null;
+      return json({
+        id: m.id, nome: m.nome, dono_id: m.dono_id, criada: m.criada_em, codigo: cv.data?.codigo ?? null,
+        membros: (mm.data ?? []).map((x) => ({ ...x, email: emails.get(x.usuario_id) ?? "", campanhas: (cm.data ?? []).filter((y) => y.usuario_id === x.usuario_id).map((y) => y.campanha_id) })),
+        campanhas: cs.data ?? [],
+        fichas: { total: vivos.length, deJogadores: vivos.filter((p) => p.dono_id).length, npcs: vivos.filter((p) => !p.dono_id).length },
+        documentos: porTipo, registro: reg.count ?? 0, ultimaFala: ult.data?.[0]?.criado_em ?? null, ultimaMudanca: ultimoDoc,
+        arquivos: { total: arqs.length, bytes: arqs.reduce((t, a) => t + a.tam, 0) },
+        auditoria: aud.data && new Date(aud.data.ate) > new Date() ? aud.data : null,
+      });
+    }
+
+    if (acao === "entrar") {
+      const m = await mesaDe(c.id);
+      if (!m) return json({ erro: "Essa mesa não existe mais." }, 404);
+      const modo = c.modo === "mestre" ? "mestre" : "ver";
+      const ate = new Date(Date.now() + HORAS_DE_AUDITORIA * 3600_000).toISOString();
+      const r = await sb.from("admin_auditoria").upsert({ admin_id: eu.id, mesa_id: m.id, modo, ate });
+      if (r.error) throw r.error;
+      await registrar(modo === "mestre" ? "entrar-mestre" : "entrar-ver", null, m.nome, { mesa: m.id, ate });
+      return json({ ok: true, modo, ate });
+    }
+
+    if (acao === "sair") {
+      if (typeof c.id === "string" && UUID.test(c.id)) await sb.from("admin_auditoria").delete().eq("admin_id", eu.id).eq("mesa_id", c.id);
+      return json({ ok: true });
+    }
+
+    if (acao === "copia") {
+      const m = await mesaDe(c.id);
+      if (!m) return json({ erro: "Essa mesa não existe mais." }, 404);
+      const tudo = async (tabela: string, ordem: string) => {
+        const out: Obj[] = [];
+        for (let off = 0; ; off += 1000) {
+          const r = await sb.from(tabela).select("*").eq("mesa_id", m.id).order(ordem).range(off, off + 999);
+          if (r.error) throw r.error;
+          out.push(...(r.data ?? []));
+          if ((r.data ?? []).length < 1000) break;
+        }
+        return out;
+      };
+      const [membros, campanhas, campanhaMembros, personagens, documentos, registro] = await Promise.all([
+        tudo("mesa_membros", "entrou_em"), tudo("campanhas", "id"), tudo("campanha_membros", "campanha_id"),
+        tudo("personagens", "id"), tudo("documentos", "id"), tudo("registro", "criado_em"),
+      ]);
+      let arqs: { nome: string; tam: number }[] = [];
+      try { arqs = await arquivos(m.id); } catch (_e) { /* sem a lista */ }
+      await registrar("copia", null, m.nome, { mesa: m.id });
+      return json({ formato: "tinycats-mesa", versao: 1, em: new Date().toISOString(), mesa: m, membros, campanhas, campanhaMembros, personagens, documentos, registro,
+        arquivos: arqs.map((a) => ({ caminho: a.nome, bytes: a.tam })) });
+    }
+
+    if (acao === "apagar-mesa") {
+      const m = await mesaDe(c.id);
+      if (!m) return json({ erro: "Essa mesa não existe mais." }, 404);
+      if (String(c.nome ?? "").trim() !== String(m.nome).trim()) return json({ erro: "O nome digitado não é o da mesa." }, 400);
+      let apagados = 0;
+      try {
+        const arqs = await arquivos(m.id);
+        for (let i = 0; i < arqs.length; i += 100) {
+          const r = await sb.storage.from("mesas").remove(arqs.slice(i, i + 100).map((a) => a.nome));
+          if (!r.error) apagados += Math.min(100, arqs.length - i);
+        }
+      } catch (_e) { /* o que sobrar, a faxina leva depois */ }
+      const r = await sb.from("mesas").delete().eq("id", m.id);
+      if (r.error) throw r.error;
+      await registrar("apagar-mesa", null, m.nome, { mesa: m.id, arquivos: apagados });
+      return json({ ok: true });
+    }
+
+    if (acao === "dono" || acao === "tirar" || acao === "papel") {
+      const m = await mesaDe(c.id);
+      if (!m) return json({ erro: "Essa mesa não existe mais." }, 404);
+      const x = await membro(m.id, c.usuario);
+      if (!x) return json({ erro: "Essa pessoa não participa desta mesa." }, 404);
+      if (acao === "dono") {
+        if (x.usuario_id === m.dono_id) return json({ ok: true, nada: true });
+        const r1 = await sb.from("mesas").update({ dono_id: x.usuario_id }).eq("id", m.id);
+        if (r1.error) throw r1.error;
+        await sb.from("mesa_membros").update({ papel: "jogador", abas: [], jogando: false }).eq("mesa_id", m.id).eq("papel", "mestre");
+        const r2 = await sb.from("mesa_membros").update({ papel: "mestre", abas: [], jogando: false }).eq("mesa_id", m.id).eq("usuario_id", x.usuario_id);
+        if (r2.error) throw r2.error;
+        await registrar("dono", x.usuario_id, m.nome, { mesa: m.id, novoDono: x.nome });
+        return json({ ok: true });
+      }
+      if (x.usuario_id === m.dono_id || x.papel === "mestre") return json({ erro: "Essa pessoa é o mestre da mesa: passe a mesa para outra pessoa antes." }, 400);
+      if (acao === "tirar") {
+        await sb.from("campanha_membros").delete().eq("mesa_id", m.id).eq("usuario_id", x.usuario_id);
+        const r = await sb.from("mesa_membros").delete().eq("mesa_id", m.id).eq("usuario_id", x.usuario_id);
+        if (r.error) throw r.error;
+        await registrar("tirar", x.usuario_id, m.nome, { mesa: m.id, quem: x.nome });
+        return json({ ok: true });
+      }
+      const papel = c.papel === "auxiliar" ? "auxiliar" : "jogador";
+      const r = await sb.from("mesa_membros").update(papel === "auxiliar" ? { papel, abas: ABAS, jogando: false } : { papel, abas: [], jogando: false })
+        .eq("mesa_id", m.id).eq("usuario_id", x.usuario_id);
+      if (r.error) throw r.error;
+      await registrar("papel", x.usuario_id, m.nome, { mesa: m.id, quem: x.nome, de: x.papel, para: papel });
       return json({ ok: true });
     }
 

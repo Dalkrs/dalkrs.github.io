@@ -89,6 +89,11 @@ button { cursor: pointer; }
 .conta.com-camp { max-width: 340px; }
 .conta.com-camp .nm { flex: 0 2 auto; min-width: 28px; }
 .conta.entrar { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+/* (lote 27) a faixa da auditoria: o administrador do site está numa mesa sem aparecer */
+.faixa-aud { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 14px; border-radius: 999px;
+  background: var(--secret, #b39cf0); color: #140d24; font-weight: 600; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.faixa-aud button { height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: rgba(0,0,0,.18); color: inherit; font: inherit; cursor: pointer; }
+.faixa-aud button:hover { background: rgba(0,0,0,.28); }
 .versao { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid var(--lamp); background: var(--lamp-soft); color: var(--lamp-ink); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
 .versao:hover { filter: brightness(1.08); }
 /* a bolinha das novidades que a pessoa ainda não abriu: no canto do botão da conta (por cima, sem empurrar nada) e no item do menu */
@@ -528,7 +533,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=21"></script>
-<script src="tc/tc.js?v=29"></script>
+<script src="tc/tc.js?v=30"></script>
 <script src="tc/busca.js?v=2"></script>
 <script src="tc/guia.js?v=5"></script>
 <script src="tc/notas.js?v=3"></script>
@@ -537,7 +542,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.24-16';
+  const VERSAO = '2026.10.24-17';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1012,8 +1017,15 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   if (canal) canal.onmessage = ev => { if (ev.data && (ev.data.t === 'ola' || ev.data.t === 'rolagem')) daPonte(ev.data, r => canal.postMessage(r), null); };
 
   /* ---- botão da conta ---- */
+  // (lote 27) a faixa da auditoria (aparece só quando o administrador do site está numa mesa sem participar dela)
+  const faixaAud = h('div', { class: 'faixa-aud', id: 'faixaAud', role: 'status', hidden: true }, h('span', { id: 'faixaAudTxt' }),
+    h('button', { type: 'button', id: 'faixaAudSair', text: 'Sair da auditoria', onclick: async () => { await mesas.sairDaAuditoria(); pintarConta(); toast('Você saiu da auditoria.'); } }));
+  document.body.append(faixaAud);
   function pintarConta() {
     btnConta.hidden = false;
+    const aud = mesas.atual && mesas.atual.auditoria;
+    faixaAud.hidden = !aud;
+    if (aud) $('faixaAudTxt').textContent = 'Auditoria · ' + mesas.atual.nome + (aud === 'ver' ? ' · só olhando (nada é salvo)' : ' · como mestre') + ' · ninguém vê você';
     btnConta.className = 'conta';
     btnConta.replaceChildren();
     const a = mesas.atual;

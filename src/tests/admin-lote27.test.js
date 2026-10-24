@@ -21,7 +21,12 @@ const { ok, end } = checker();
       { id: 'u4', email: 'dravenezac@gmail.com', nome: 'hen', criada: '2026-10-24T10:00:00Z', acesso: '2026-10-24T19:00:00Z', trocar: false, admin: false, donoDe: 0, mesas: [] }];
     const resumo = { contas, mesas: [{ id: 'm1', nome: 'Urgm', criada: '2026-01-01', dono: 'Dalmo', donoEmail: 'dono@x.com', membros: [{ nome: 'Dalmo', papel: 'mestre' }, { nome: 'HEN RAZOR', papel: 'jogador' }], visto: '2026-10-24' }],
       cadastro: { aberto: true, teto: 300 }, registro: [{ em: '2026-10-24T12:00:00Z', admin_email: 'dono@x.com', acao: 'senha', alvo: 'HEN RAZOR <hydradraven@gmail.com>', detalhe: {} }], eu: 'u1' };
-    window.TC = { conta: { admin: async (acao, a) => { window.__ped.push([acao, a]); if (acao === 'resumo') return JSON.parse(JSON.stringify(resumo)); if (acao === 'apagar' && a.id === 'u3') throw new Error('Essa conta é dona de 2 mesas.'); return { ok: true }; } } };
+    const mesa = { id: 'm1', nome: 'Urgm', dono_id: 'u1', criada: '2026-01-01', codigo: 'ABC-DEF', campanhas: [{ id: 'c1', nome: 'Sangue e Cinzas', encerrada: false }],
+      membros: [{ usuario_id: 'u1', nome: 'Dalmo', papel: 'mestre', email: 'dono@x.com', campanhas: [], visto_em: null }, { usuario_id: 'u2', nome: 'HEN RAZOR', papel: 'jogador', email: 'hydradraven@gmail.com', campanhas: ['c1'], visto_em: null }],
+      fichas: { total: 5, deJogadores: 2, npcs: 3 }, documentos: { Cenas: 10, 'Mapa-múndi': 2 }, registro: 300, ultimaFala: null, ultimaMudanca: null, arquivos: { total: 4, bytes: 2048000 }, auditoria: null };
+    window.__abriu = null;
+    window.TC = { mesas: { abrir: async (id, o) => { window.__abriu = [id, o]; } },
+      conta: { admin: async (acao, a) => { window.__ped.push([acao, a]); if (acao === 'resumo') return JSON.parse(JSON.stringify(resumo)); if (acao === 'mesa') return JSON.parse(JSON.stringify(mesa)); if (acao === 'copia') return { formato: 'tinycats-mesa', mesa: { nome: 'Urgm' } }; if (acao === 'apagar' && a.id === 'u3') throw new Error('Essa conta é dona de 2 mesas.'); return { ok: true }; } } };
     const f = document.createElement('iframe'); f.src = base + 'admin/'; f.style.cssText = 'width:1280px;height:820px;border:0';
     document.body.replaceChildren(f);
   }, t.base);
@@ -60,10 +65,33 @@ const { ok, end } = checker();
     ok(await E(() => window.__ped.some(p => p[0] === 'apagar' && p[1].id === 'u4')), 'apagar a conta extra (com a confirmação)');
   });
 
-  await passo('mesas, cadastro e registro', async () => {
+  await passo('mesas: detalhes, participantes, cópia, auditoria e apagar', async () => {
     const f = F();
     await f.locator('#aba-mesas').click(); await w(150);
     ok(await f.locator('.card').count() === 1 && /HEN RAZOR · jogador/.test(await f.locator('.card').innerText()), 'as mesas com os participantes');
+    await f.locator('.card[data-mesa="m1"]').click(); await w(300);
+    const lado = await f.locator('.lado').innerText();
+    ok(/5 fichas/.test(lado) && /2,0 MB/.test(lado) && /Cenas · 10/.test(lado) && /Sangue e Cinzas/.test(lado), 'o que há na mesa: fichas, arquivos, documentos e campanhas');
+    ok(await f.locator('.part[data-usuario="u1"] .part-acoes').count() === 0 && await f.locator('.part[data-usuario="u2"] .part-acoes').count() === 1, 'o dono não tem as ações; os outros, sim');
+    await f.locator('.part[data-usuario="u2"] select').selectOption('auxiliar'); await w(300);
+    ok(await E(() => window.__ped.some(p => p[0] === 'papel' && p[1].usuario === 'u2' && p[1].papel === 'auxiliar')), 'mudar o papel para mestre auxiliar');
+    await f.locator('.part[data-usuario="u2"] button', { hasText: 'Passar a mesa' }).click(); await w(100); await f.locator('#dlg-ok').click(); await w(300);
+    ok(await E(() => window.__ped.some(p => p[0] === 'dono' && p[1].usuario === 'u2')), 'passar a mesa (com a pergunta)');
+    await f.locator('.part[data-usuario="u2"] button', { hasText: 'Tirar' }).click(); await w(100); await f.locator('#dlg-ok').click(); await w(300);
+    ok(await E(() => window.__ped.some(p => p[0] === 'tirar' && p[1].usuario === 'u2')), 'tirar da mesa');
+    const [baixa] = await Promise.all([P.waitForEvent('download', { timeout: 5000 }), f.locator('#m-copia').click()]);
+    ok(/^mesa-urgm-\d{4}-\d\d-\d\d\.json$/.test(baixa.suggestedFilename()), 'a cópia baixa um .json: ' + baixa.suggestedFilename());
+    ok(await f.locator('#m-apagar').isDisabled(), 'apagar só libera com o nome da mesa');
+    await f.locator('#m-apagar-nome').fill('Urgm'); await w(80);
+    await f.locator('#m-apagar').click(); await w(100); await f.locator('#dlg-ok').click(); await w(300);
+    ok(await E(() => window.__ped.some(p => p[0] === 'apagar-mesa' && p[1].nome === 'Urgm')), 'apagar a mesa (o nome vai junto, e o servidor confere)');
+    await f.locator('.card[data-mesa="m1"]').click(); await w(300);
+    await f.locator('#m-ver').click(); await w(300);
+    ok(await E(() => window.__ped.some(p => p[0] === 'entrar' && p[1].modo === 'ver')) && JSON.stringify(await E(() => window.__abriu)) === JSON.stringify(['m1', { auditoria: 'ver' }]), 'entrar só para olhar: abre a sessão e a mesa na casca, em modo auditoria');
+  });
+
+  await passo('cadastro e registro', async () => {
+    const f = F();
     await f.locator('#aba-cadastro').click(); await w(150);
     await f.locator('#cad-aberto').uncheck(); await f.locator('#cad-teto').fill('50'); await f.locator('#cad-salvar').click(); await w(300);
     ok(await E(() => { const p = window.__ped.find(x => x[0] === 'cadastro'); return p && p[1].aberto === false && p[1].teto === 50; }), 'fechar o cadastro e mudar o teto');

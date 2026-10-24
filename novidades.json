@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-17",
+      "data": "2026-10-24",
+      "titulo": "O background na campanha certa, e as mesas na Administração",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Criar background: os NPCs iam para a campanha de uma ficha antiga do jogador (quando a ficha nova dele ainda estava por criar). Agora vão para a campanha que você está vendo, se o jogador participa dela — e a campanha aparece no alto da janela, para trocar."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Relacionamentos: a lista para acrescentar mostra só os personagens da campanha da ficha (e os do mundo); os das outras campanhas ficam em “Mostrar os de outras campanhas”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Administração → Mesas: o que há em cada mesa, entrar sem aparecer (só olhando ou como mestre; fica só no registro), baixar a cópia, apagar a mesa, passar para outro dono, tirar alguém e mudar o papel."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-16",
       "data": "2026-10-24",
       "titulo": "Esqueci minha senha, e a Administração do site",

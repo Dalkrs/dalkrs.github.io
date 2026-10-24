@@ -28,8 +28,29 @@
   let sb = null;
   const temNuvem = () => !!(window.supabase && CFG.url && CFG.chave);
   function cliente() {
-    if (!sb) sb = window.supabase.createClient(CFG.url, CFG.chave, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
+    if (!sb) { sb = window.supabase.createClient(CFG.url, CFG.chave, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }); vigiarEscrita(sb); }
     return sb;
+  }
+  /* (lote 27) A auditoria "só olhando": o administrador do site entrou numa mesa para ver, sem mexer. Nada que grave passa
+     — nem as tabelas, nem as funções do banco, nem os arquivos: a resposta é um erro que diz isso (o banco deixaria,
+     porque a sessão de auditoria vale para os dois modos; quem segura é o site). */
+  const soOlhando = () => !!(mesas && mesas.atual && mesas.atual.auditoria === 'ver');
+  const MSG_OLHANDO = 'Você está só olhando esta mesa (auditoria): nada é salvo.';
+  function negado() {
+    const erro = { message: MSG_OLHANDO, code: 'auditoria' };
+    const p = new Proxy(function () {}, { get: (t, k) => (k === 'then' ? (ok, nao) => Promise.resolve({ data: null, error: erro, count: 0 }).then(ok, nao) : () => p) });
+    return p;
+  }
+  function vigiarEscrita(c) {
+    const from0 = c.from.bind(c), rpc0 = c.rpc.bind(c), st0 = c.storage.from.bind(c.storage);
+    c.from = t => {
+      const q = from0(t);
+      if (!soOlhando()) return q;
+      for (const k of ['insert', 'update', 'upsert', 'delete']) q[k] = () => negado();
+      return q;
+    };
+    c.rpc = (fn, args, o) => (soOlhando() && fn !== 'marcar_presenca' ? negado() : rpc0(fn, args, o));
+    c.storage.from = b => { const x = st0(b); if (soOlhando()) { x.upload = () => negado(); x.remove = () => negado(); } return x; };
   }
 
   /* Erros em português. O que o banco escreve (código errado, mesa cheia…) já chega em português e passa inteiro. */
@@ -217,15 +238,20 @@
     const c = l.find(x => x.id === salva) || l.find(x => !x.encerrada) || l[0];
     return c ? c.id : null;
   }
-  mesas.abrir = async id => {
+  /* (lote 27) opt.auditoria ('ver' | 'mestre'): o administrador do site abre uma mesa de que não participa, sem aparecer
+     (a função "admin" já abriu a sessão de auditoria no banco). Ele entra como mestre, mas não está na lista de
+     participantes, não marca presença e a mesa não fica guardada como a última aberta. */
+  const euAuditor = u => ({ usuario_id: u.id, nome: u.nome, cor: null, visto_em: null, cargo: 'mestre', jogando: false, semVivo: false, acamp: false, abas: ABAS_DE_MESTRE.slice(), papel: 'mestre', campanhas: [] });
+  mesas.abrir = async (id, opt) => {
     const u = exigir();
+    const auditoria = opt && (opt.auditoria === 'ver' || opt.auditoria === 'mestre') ? opt.auditoria : null;
     // (a linha inteira: num banco que já tem as campanhas ela traz `campanhas`, a conta de quantas a mesa tem)
     const { data: m, error } = await cliente().from('mesas').select('*').eq('id', id).maybeSingle();
     if (error) throw falha(error);
     if (!m) { guarda.gravar(CHAVE_MESA, null); throw new Error('Esta mesa não existe mais, ou você saiu dela.'); }
     const [membros, camps] = await Promise.all([lerMembros(id), lerCampanhas(id, 'campanhas' in m)]).catch(e => { throw falha(e); });
     comCampanhas(membros, camps);
-    const eu = membros.find(x => x.usuario_id === u.id);
+    const eu = auditoria ? euAuditor(u) : membros.find(x => x.usuario_id === u.id);
     if (!eu) throw new Error('Você não participa desta mesa.');
     let codigo = null;
     if (eu.cargo === 'mestre') {                             // (o código de convite é de quem administra a mesa)
@@ -236,9 +262,9 @@
     /* campanhas: as que vejo ([{ id, nome, ordem, encerrada }]) · campanha: a em vista (id) · temCampanhas: a mesa tem
        campanhas, mesmo que eu não participe de nenhuma (aí só vejo o que é do mundo) */
     mesas.atual = { id: m.id, nome: m.nome, dono: m.dono_id === u.id, papel: eu.papel, cargo: eu.cargo, jogando: eu.jogando, abas: eu.abas.slice(), meuNome: eu.nome, minhaCor: eu.cor, codigo, membros, semVivo: eu.papel !== 'mestre' && eu.semVivo,
-      campanhas: camps.lista, campanha: null, temCampanhas: camps.lista.length > 0 || (Number(m.campanhas) || 0) > 0, campanhasLigadas: camps.ligadas, jeito: meuJeito(eu) };      // (campanhasLigadas: o banco desta mesa já tem as campanhas)
+      campanhas: camps.lista, campanha: null, temCampanhas: camps.lista.length > 0 || (Number(m.campanhas) || 0) > 0, campanhasLigadas: camps.ligadas, jeito: meuJeito(eu), auditoria };      // (campanhasLigadas: o banco desta mesa já tem as campanhas)
     mesas.atual.campanha = escolherVista(mesas.atual);
-    guarda.gravar(CHAVE_MESA, id);
+    if (!auditoria) guarda.gravar(CHAVE_MESA, id);
     mesas.emit('muda', mesas.atual);
     aoVivo.iniciar(id);      // o registro carrega em segundo plano: a mesa já está aberta e a janela pode fechar
     return mesas.atual;
@@ -246,6 +272,14 @@
   mesas.fechar = () => {
     aoVivo.parar(); dadosZerar();
     if (mesas.atual) { mesas.atual = null; mesas.emit('muda', null); }
+  };
+  // (lote 27) sair da auditoria: fecha a sessão no banco e volta para a última mesa da pessoa (se houver)
+  mesas.sairDaAuditoria = async () => {
+    const a = mesas.atual; if (!a || !a.auditoria) return;
+    try { await conta.admin('sair', { id: a.id }); } catch (e) { /* a sessão vence sozinha em 12 horas */ }
+    mesas.fechar();
+    const ultima = mesas.ultima();
+    if (ultima) { try { await mesas.abrir(ultima); } catch (e) { /* fica sem mesa */ } }
   };
   mesas.esquecer = () => { guarda.gravar(CHAVE_MESA, null); mesas.fechar(); };
   mesas.ultima = () => guarda.ler(CHAVE_MESA);
@@ -423,7 +457,7 @@
       const [membros, camps] = await Promise.all([lerMembros(a.id), lerCampanhas(a.id, a.campanhasLigadas)]);
       if (mesas.atual !== a) return;
       comCampanhas(membros, camps);
-      const eu = membros.find(x => x.usuario_id === (conta.usuario && conta.usuario.id));
+      const eu = a.auditoria ? euAuditor(conta.usuario) : membros.find(x => x.usuario_id === (conta.usuario && conta.usuario.id));
       if (!eu) { mesas.esquecer(); mesas.emit('removido'); return; }
       /* O meu papel mudou — o mestre me nomeou auxiliar, mexeu nas minhas abas ou me devolveu a jogador; ou eu mesmo
          alternei entre mestrar e jogar em outro aparelho —, ou mudaram as campanhas de que participo. O que posso ver é
@@ -529,6 +563,7 @@
   }
   async function presenca() {
     if (!mesaId || document.hidden) return;
+    if (mesas.atual && mesas.atual.auditoria) { recarregarMembros(); conferirNome(); return; }     // (lote 27) quem audita não aparece online
     try {
       const { data } = await cliente().rpc('marcar_presenca', { p_mesa: mesaId });
       if (data) folga = Date.parse(data) - Date.now();
@@ -1486,6 +1521,11 @@
     campos = campos || {};
     // (num banco de antes das campanhas essas colunas não existem: o que viesse nelas faria a gravação inteira falhar)
     if (!mesas.atual.campanhasLigadas && OPCIONAIS.some(k => campos[k] !== undefined)) { campos = Object.assign({}, campos); for (const k of OPCIONAIS) delete campos[k]; }
+    if (soOlhando()) {                                       // (lote 27) a auditoria "só olhando": nada é salvo
+      dados.emit('recusado', nome, id, MSG_OLHANDO);
+      dados.emit('muda', nome, l || { id, apagado: true }, 'remota', null);
+      return l || null;
+    }
     if (trancada(nome, id, l, campos)) {
       dados.emit('recusado', nome, id, ENCERRADA);
       dados.emit('muda', nome, l || { id, apagado: true }, 'remota', null);
