@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../tc/tema.js?v=1"></script>
 <title>Mapa-múndi · Tiny Cats</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&family=IM+Fell+English:ital@0;1&family=Cinzel:wght@600;700&display=swap">
 <style>
@@ -22,18 +23,18 @@
   --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
   --mapa: "Cinzel", "Grenze", Georgia, serif;           /* os nomes do mapa (lote 6) */
 }
-@media (prefers-color-scheme: light) {
-  :root {
-    color-scheme: light;
-    --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
-    --line: #d2d8e2; --line-strong: #aeb8c9;
-    --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
-    --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
-    --ok: #2f7a55; --danger: #b9342a; --secret: #5b3fb5;
-    --paper: #e9e2cf; --ink-map: #2a2418;
-    --shadow: 0 12px 34px rgba(40, 50, 72, .24);
-  }
+/* tema claro (tc/tema.js) */
+:root:where([data-claro]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+  --ok: #2f7a55; --danger: #b9342a; --secret: #5b3fb5;
+  --paper: #e9e2cf; --ink-map: #2a2418;
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
 }
+
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
@@ -493,15 +494,15 @@ svg text.forca-n { font-family: var(--ui); font-weight: 800; fill: #fff3d6; stro
 .menu .grade button { display: grid; place-items: center; width: auto; padding: 0; border: 1px solid var(--line); }
 
 /* tema claro: letra escura com halo claro lê melhor sobre o papel claro (e continua legível sobre a imagem) */
-@media (prefers-color-scheme: light) {
-  svg text { fill: #1c1a16; stroke: rgba(250, 247, 238, .9); }      /* (os nomes do mapa ficam claros: a regra deles é mais específica) */
-  svg text.rotulo.regua-txt { fill: #4a2f00; stroke: rgba(250, 247, 238, .9); }
-  .reg.semfac { fill: #7d869a; stroke: #59627a; }        /* o cinza claro sumia no papel claro */
-  .regua-txt { fill: #4a2f00; }
-  .sigla { fill: #fff; stroke: rgba(20, 23, 31, .75); }
-  .sigla.escura { fill: #14171f; stroke: none; }
-  .interroga { fill: #f3ead2; stroke-width: 0; }
-}
+/* tema claro (tc/tema.js) */
+:where(:root[data-claro]) svg text { fill: #1c1a16; stroke: rgba(250, 247, 238, .9); }      /* (os nomes do mapa ficam claros: a regra deles é mais específica) */
+:where(:root[data-claro]) svg text.rotulo.regua-txt { fill: #4a2f00; stroke: rgba(250, 247, 238, .9); }
+:where(:root[data-claro]) .reg.semfac { fill: #7d869a; stroke: #59627a; }        /* o cinza claro sumia no papel claro */
+:where(:root[data-claro]) .regua-txt { fill: #4a2f00; }
+:where(:root[data-claro]) .sigla { fill: #fff; stroke: rgba(20, 23, 31, .75); }
+:where(:root[data-claro]) .sigla.escura { fill: #14171f; stroke: none; }
+:where(:root[data-claro]) .interroga { fill: #f3ead2; stroke-width: 0; }
+
 
 /* celular: a dica ocupa a largura toda, logo acima do zoom */
 @media (max-width: 520px) {
@@ -1357,10 +1358,10 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
   .salvo.ruim { max-width: 90px; }
   .toasts { bottom: 100px; }
 }
-@media (prefers-color-scheme: light) {
-  dialog.mundo-dl::backdrop { background: rgba(40, 50, 72, .38); }
-  .ico.rumor { border-color: var(--fg-3); }
-}
+/* tema claro (tc/tema.js) */
+:where(:root[data-claro]) dialog.mundo-dl::backdrop { background: rgba(40, 50, 72, .38); }
+:where(:root[data-claro]) .ico.rumor { border-color: var(--fg-3); }
+
 .row > .field.curto { flex: 0 0 72px; min-width: 0; }
 </style>
 </head>

@@ -27,21 +27,21 @@
   --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --mono: "Atkinson Hyperlegible Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    color-scheme: light;
-    --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
-    --line: #d2d8e2; --line-strong: #aeb8c9;
-    --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
-    --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
-    --danger: #b9342a;
-    --scrim: rgba(30, 38, 54, .42);
-    --veil: rgba(16, 24, 48, .5);
-    --sobre: #1f7fa3;
-    --reac: #7a55c9; --reac-ink: #5a34a8; --reac-soft: rgba(122, 85, 201, .12);
-    --shadow: 0 12px 34px rgba(40, 50, 72, .24);
-  }
+/* tema claro (tc/tema.js) */
+:root:where([data-claro]):not([data-theme="dark"]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+  --danger: #b9342a;
+  --scrim: rgba(30, 38, 54, .42);
+  --veil: rgba(16, 24, 48, .5);
+  --sobre: #1f7fa3;
+  --reac: #7a55c9; --reac-ink: #5a34a8; --reac-soft: rgba(122, 85, 201, .12);
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
 }
+
 :root[data-theme="light"] {
   color-scheme: light;
   --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;

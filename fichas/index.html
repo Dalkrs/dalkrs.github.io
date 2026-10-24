@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../tc/tema.js?v=1"></script>
 <title>Fichas · Tiny Cats</title>
 <script>
 /* aplica o tema antes de desenhar a página, para não piscar branco */
 (function(){
   var t='auto';
   try{ t = localStorage.getItem('urgm_calc_tema') || 'auto'; }catch(e){}
-  var escuro = t==='pedra' || (t==='auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  // (no automático vale o tema do site: tc/tema.js)
+  var escuro = t==='pedra' || (t==='auto' && !(window.TinyTema && TinyTema.claro()));
   document.documentElement.setAttribute('data-tema', escuro ? 'pedra' : 'claro');
   document.documentElement.setAttribute('data-tema-escolha', t);
 })();
@@ -4481,8 +4483,7 @@ const TEMAS=[
 ];
 function temaEscolhido(){ return document.documentElement.getAttribute('data-tema-escolha')||'auto'; }
 function aplicarTema(k){
-  const mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');
-  const escuro = k==='pedra' || (k==='auto' && mq && mq.matches);
+  const escuro = k==='pedra' || (k==='auto' && !(window.TinyTema && TinyTema.claro()));      // (automático: o tema do site)
   document.documentElement.setAttribute('data-tema', escuro?'pedra':'claro');
   document.documentElement.setAttribute('data-tema-escolha', k);
   try{ localStorage.setItem('urgm_calc_tema', k); }catch(e){}
@@ -4495,8 +4496,7 @@ function aplicarTema(k){
     const i=TEMAS.findIndex(x=>x.k===temaEscolhido());
     aplicarTema(TEMAS[(i+1)%TEMAS.length].k);
   };
-  const mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');
-  if(mq&&mq.addEventListener) mq.addEventListener('change',()=>{ if(temaEscolhido()==='auto') aplicarTema('auto'); });
+  if(window.TinyTema) TinyTema.aoMudar(()=>{ if(temaEscolhido()==='auto') aplicarTema('auto'); });
 })();
 
 /* ---------- header que some ao descer e volta ao subir ---------- */

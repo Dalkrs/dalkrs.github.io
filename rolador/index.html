@@ -3,17 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<script src="../tc/tema.js?v=1"></script>
 <title>Rolador · Tiny Cats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&display=swap">
 <style>
 :root{
-  --ink:#0c1320;--ink-top:#09101b;--panel:#131c2c;--panel-2:#1b263a;--field:#0e1623;
-  --line:#233049;--line-strong:#34435f;--parchment:#ede5d1;--muted:#a3acc0;--faint:#7a869e;
-  --gold:#d7a94b;--gold-hover:#e6bb63;--gold-ink:#1d1505;--warn:#f2a65a;--error:#ff7b7b;--focus:#f3d28a;
-  --serif:"Palatino Linotype","Book Antiqua",Palatino,"URW Palladio L","P052",Georgia,serif;
-  --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  /* as cores e as letras do site (as mesmas da casca e das Cenas); o tema claro vem logo abaixo */
+  --ink:#0d1017;--ink-top:#0b0e14;--panel:#161a24;--panel-2:#1f2431;--field:#111520;
+  --line:#2b3243;--line-strong:#40495f;--parchment:#e8eaf0;--muted:#a6aec0;--faint:#7d879c;
+  --gold:#e6ab4f;--gold-hover:#edb960;--gold-ink:#1d1503;--warn:#f2a65a;--error:#f0786e;--focus:#e6ab4f;
+  --serif:"Grenze","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:"Atkinson Hyperlegible Next","Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --mono:"Atkinson Hyperlegible Mono",ui-monospace,Menlo,Consolas,monospace;
   color-scheme:dark;
 }
+/* tema claro (tc/tema.js) */
+:root:where([data-claro]){
+  --ink:#c7ced9;--ink-top:#bcc4d1;--panel:#f2f4f8;--panel-2:#ffffff;--field:#ffffff;
+  --line:#d2d8e2;--line-strong:#aeb8c9;--parchment:#1a1f2c;--muted:#4a5468;--faint:#68738a;
+  --gold:#e2a13a;--gold-hover:#d0912c;--gold-ink:#241a04;--warn:#a85a10;--error:#b9342a;--focus:#855605;
+  color-scheme:light;
+}
+/* os números (o resultado, os campos) com dígitos alinhados e fáceis de ler */
+.num-input,.last-num{font-family:var(--mono)!important;font-weight:600}
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0}
 body{height:100vh;display:flex;flex-direction:column;overflow:hidden;background:var(--ink);color:var(--parchment);font:16px/1.45 var(--sans)}

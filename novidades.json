@@ -2,6 +2,30 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-2",
+      "data": "2026-10-24",
+      "titulo": "Cara nova: a Dora, a barra em grupos e o tema escuro",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "A marca do site agora é a Dora, a gatinha preta do mestre."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "As abas ficam em três grupos, cada um com a sua cor: Jogar (Cenas, Fichas, Árvore e Rolador), Mundo (Mapa-múndi, Jornal e Clã) e Descanso (Acampamento e Meditação)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "O site abre no tema escuro. Quem preferir escolhe Claro ou Do aparelho no menu da conta (ou na janela de entrar), e todas as abas mudam juntas."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "O Rolador ganhou as mesmas cores e letras do resto do site, e o tema claro."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-1",
       "data": "2026-10-24",
       "titulo": "Cenas mais rápidas ao vivo",

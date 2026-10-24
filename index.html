@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="tc/tema.js?v=1"></script>
 <title>Tiny Cats · Sistema de RPG</title>
 <meta name="description" content="Tiny Cats, sistema de RPG: cenas, fichas, árvore de habilidades e rolador de dados em um só lugar.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23161a24'/%3E%3Cpath d='M7 12 9.5 5.5 14 10.2c1.3-.3 2.7-.3 4 0L22.5 5.5 25 12c1.1 1.7 1.6 3.6 1.4 5.6C25.9 22.6 21.6 26 16 26s-9.9-3.4-10.4-8.4C5.4 15.6 5.9 13.7 7 12z' fill='%23e6ab4f'/%3E%3Ccircle cx='12.2' cy='16.5' r='1.5' fill='%23161a24'/%3E%3Ccircle cx='19.8' cy='16.5' r='1.5' fill='%23161a24'/%3E%3Cpath d='M14.8 20.2h2.4L16 21.6z' fill='%23161a24'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='26' fill='%23e6ab4f'/%3E%3Cpath d='M17 52 21 16Q23 10 28 14L46 32ZM83 52 79 16Q77 10 72 14L54 32Z' fill='%2315171c'/%3E%3Cellipse cx='50' cy='61' rx='35' ry='29' fill='%2315171c'/%3E%3Ccircle cx='36' cy='58' r='11' fill='%23ffd25e'/%3E%3Ccircle cx='64' cy='58' r='11' fill='%23ffd25e'/%3E%3Cellipse cx='37' cy='59' rx='5' ry='8' fill='%2315171c'/%3E%3Cellipse cx='65' cy='59' rx='5' ry='8' fill='%2315171c'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@600;700&display=swap">
@@ -23,19 +24,19 @@
   --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
-  --bar: 44px;
+  --bar: 54px;
 }
-@media (prefers-color-scheme: light) {
-  :root {
-    color-scheme: light;
-    --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
-    --line: #d2d8e2; --line-strong: #aeb8c9;
-    --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
-    --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
-    --ok: #2f7a55; --danger: #b9342a; --secret: #5b3fb5; --secret-soft: rgba(91, 63, 181, .1);
-    --scrim: rgba(30, 38, 54, .42); --shadow: 0 12px 34px rgba(40, 50, 72, .24);
-  }
+/* tema claro (tc/tema.js) */
+:root:where([data-claro]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+  --ok: #2f7a55; --danger: #b9342a; --secret: #5b3fb5; --secret-soft: rgba(91, 63, 181, .1);
+  --scrim: rgba(30, 38, 54, .42); --shadow: 0 12px 34px rgba(40, 50, 72, .24);
 }
+
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
@@ -51,15 +52,26 @@ button { cursor: pointer; }
 
 /* ---- barra ---- */
 .bar { flex: none; height: var(--bar); display: flex; align-items: stretch; gap: 6px; padding: 0 10px 0 12px; background: var(--surface); border-bottom: 1px solid var(--line); min-width: 0; }
-.brand { display: flex; align-items: center; gap: 8px; padding-right: 10px; margin-right: 2px; color: var(--lamp-ink); text-decoration: none; font: 700 21px/1 var(--display); letter-spacing: .01em; white-space: nowrap; border-radius: 6px; }
+.brand { display: flex; align-items: center; gap: 9px; padding-right: 12px; margin-right: 4px; color: var(--fg); text-decoration: none; font: 700 23px/1 var(--display); letter-spacing: .01em; white-space: nowrap; border-radius: 6px; }
 .brand svg { flex: none; }
-.tabs { display: flex; align-items: stretch; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+/* As abas em três grupos, cada um com a sua cor: Jogar (verde), Mundo (azul) e Descanso (lilás). A cor diz onde a
+   pessoa está antes de ela ler. O nome do grupo fica em cima das abas dele. */
+.tabs { display: flex; align-items: stretch; gap: 14px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
-.tab { position: relative; display: flex; align-items: center; gap: 7px; padding: 0 13px; color: var(--fg-2); text-decoration: none; font-weight: 600; white-space: nowrap; border-radius: 6px 6px 0 0; }
-.tab svg { flex: none; opacity: .85; }
+.grupo { --grupo: #74c28e; flex: none; display: flex; flex-direction: column; justify-content: flex-end; }
+.grupo[data-g="mundo"] { --grupo: #6fa8f0; }
+.grupo[data-g="descanso"] { --grupo: #b39cf0; }
+:where(:root[data-claro]) .grupo { --grupo: #2f7a55; }
+:where(:root[data-claro]) .grupo[data-g="mundo"] { --grupo: #2563b0; }
+:where(:root[data-claro]) .grupo[data-g="descanso"] { --grupo: #6a4fc2; }
+.grupo-t { padding: 0 10px; font-size: 10.5px; line-height: 14px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--grupo); white-space: nowrap; }
+.grupo-abas { display: flex; align-items: stretch; gap: 2px; height: 36px; }
+.grupo[hidden] { display: none; }
+.tab { position: relative; display: flex; align-items: center; gap: 7px; padding: 0 11px; color: var(--fg-2); text-decoration: none; font-weight: 600; font-size: 14.5px; white-space: nowrap; border-radius: 7px 7px 0 0; }
+.tab svg { flex: none; color: var(--grupo); }
 .tab:hover { color: var(--fg); background: var(--hover); }
-.tab[aria-selected="true"] { color: var(--lamp-ink); }
-.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 9px; right: 9px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--lamp); }
+.tab[aria-selected="true"] { color: var(--fg); background: var(--hover); }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 2px 2px 0 0; background: var(--grupo); }
 /* (lote 6) a edição do Jornal que a pessoa ainda não leu */
 .tab.novo::before { content: ""; position: absolute; top: 6px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 0 2px var(--surface); }
 .bar-r { margin-left: auto; display: flex; align-items: center; gap: 6px; padding-left: 8px; flex: none; }
@@ -359,6 +371,10 @@ dialog::backdrop { background: var(--scrim); }
 .seg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 3px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line); }
 .seg2 button { height: 32px; border: 0; border-radius: 7px; background: none; font-weight: 600; color: var(--fg-2); }
 .seg2 button[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+.c-tema { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: var(--fg-3); }
+.c-tema .seg2 { flex: 1; }
+.seg2.tres { grid-template-columns: 1fr 1fr 1fr; }
+.seg2.tema button[aria-pressed="true"] { background: var(--hover); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .ms { display: grid; gap: 6px; }
 .ms button { display: flex; align-items: center; gap: 8px; width: 100%; height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; text-align: left; }
 .ms button:hover { border-color: var(--lamp); }
@@ -395,6 +411,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   .brand span { display: none; }
   .tab { padding: 0 10px; }
   .tab svg { display: none; }
+  .tabs { gap: 6px; }
+  .grupo-t { display: none; }
+  .grupo-abas { height: 100%; }
   .conta .pp { display: none; }
   .conta, .conta.com-camp { max-width: 130px; }
   /* numa mesa com campanhas, na tela estreita fica a campanha em vista (é nela que a pessoa está); o nome da mesa está no menu */
@@ -408,7 +427,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <body>
 <header class="bar">
   <a class="brand" href="./" id="brand" title="Tiny Cats · Sistema de RPG">
-    <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><path d="M7 12 9.5 5.5 14 10.2c1.3-.3 2.7-.3 4 0L22.5 5.5 25 12c1.1 1.7 1.6 3.6 1.4 5.6C25.9 22.6 21.6 26 16 26s-9.9-3.4-10.4-8.4C5.4 15.6 5.9 13.7 7 12z" fill="currentColor"/><circle cx="12.2" cy="16.5" r="1.5" fill="var(--surface)"/><circle cx="19.8" cy="16.5" r="1.5" fill="var(--surface)"/><path d="M14.8 20.2h2.4L16 21.6z" fill="var(--surface)"/></svg>
+    <!-- Dora, a gatinha preta do mestre: a marca do Tiny Cats -->
+    <svg width="30" height="30" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="26" fill="#e6ab4f"/><path d="M17 52 21 16Q23 10 28 14L46 32ZM83 52 79 16Q77 10 72 14L54 32Z" fill="#15171c"/><ellipse cx="50" cy="61" rx="35" ry="29" fill="#15171c"/><circle cx="36" cy="58" r="9.5" fill="#ffd25e"/><circle cx="64" cy="58" r="9.5" fill="#ffd25e"/><ellipse cx="37" cy="59" rx="4.2" ry="7" fill="#15171c"/><ellipse cx="65" cy="59" rx="4.2" ry="7" fill="#15171c"/><circle cx="39.5" cy="54.5" r="2.6" fill="#fff"/><circle cx="67.5" cy="54.5" r="2.6" fill="#fff"/><path d="M46.5 69h7L50 73.5z" fill="#f29bb0"/></svg>
     <span>Tiny Cats</span>
   </a>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sistemas"></nav>
@@ -503,7 +523,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.24-1';
+  const VERSAO = '2026.10.24-2';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -515,17 +535,19 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     cla: '<path d="M12 3 4 6v6c0 4.5 3.4 7.8 8 9 4.6-1.2 8-4.5 8-9V6z"/><path d="M12 3v18"/><path d="M4 11.5h16"/>',
     rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
   };
+  /* As abas, na ordem da barra, em três grupos (ver GRUPOS). */
   const ABAS = [
-    { id: 'jornal', nome: 'Jornal', src: 'jornal/', dados: true },                         // (lote 6) o jornal da mesa: a primeira aba
-    { id: 'cenas', nome: 'Cenas', src: 'cenas/', dados: true },
-    { id: 'mundo', nome: 'Mapa-múndi', src: 'mundo/', dados: true },
-    { id: 'acampamento', nome: 'Acampamento', src: 'acampamento/', dados: true },
-    { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true },
-    { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true },
-    { id: 'meditacao', nome: 'Meditação', src: 'meditacao/', dados: true },                // (lote 6) a meditação dos personagens
-    { id: 'cla', nome: 'Clã', src: 'cla/', dados: true },                                  // (lote 6) os clãs da mesa
-    { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true, dados: true },      // ferramenta do mestre: numa mesa, os jogadores não a veem (e os históricos ficam na mesa)
+    { id: 'cenas', nome: 'Cenas', src: 'cenas/', dados: true, grupo: 'jogar' },
+    { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true, grupo: 'jogar' },
+    { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true, grupo: 'jogar' },
+    { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true, dados: true, grupo: 'jogar' },      // ferramenta do mestre: numa mesa, os jogadores não a veem (e os históricos ficam na mesa)
+    { id: 'mundo', nome: 'Mapa-múndi', src: 'mundo/', dados: true, grupo: 'mundo' },
+    { id: 'jornal', nome: 'Jornal', src: 'jornal/', dados: true, grupo: 'mundo' },          // (lote 6) o jornal da mesa
+    { id: 'cla', nome: 'Clã', src: 'cla/', dados: true, grupo: 'mundo' },                   // (lote 6) os clãs da mesa
+    { id: 'acampamento', nome: 'Acampamento', src: 'acampamento/', dados: true, grupo: 'descanso' },
+    { id: 'meditacao', nome: 'Meditação', src: 'meditacao/', dados: true, grupo: 'descanso' },      // (lote 6) a meditação dos personagens
   ];
+  const GRUPOS = [{ id: 'jogar', nome: 'Jogar' }, { id: 'mundo', nome: 'Mundo' }, { id: 'descanso', nome: 'Descanso' }];
   const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento', meditacao: 'Meditação' };
   const CHAVE = 'tinycats:aba';
   const $ = id => document.getElementById(id);
@@ -588,12 +610,16 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (pode(salvo)) return salvo;
     return ler('rolador-urgm:dados:v1') && pode('rolador') ? 'rolador' : 'cenas';
   }
-  for (const a of ABAS) {
-    const el = h('a', { class: 'tab', id: 'tab-' + a.id, href: '#/' + a.id, role: 'tab', 'aria-selected': 'false' });
-    el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[a.id] + '</svg>';
-    el.append(h('span', { text: a.nome }));
-    el.addEventListener('click', ev => { ev.preventDefault(); abrir(a.id); });
-    tabs.append(el);
+  for (const g of GRUPOS) {
+    const abas = h('div', { class: 'grupo-abas', role: 'presentation' });
+    tabs.append(h('div', { class: 'grupo', 'data-g': g.id, id: 'grupo-' + g.id, role: 'presentation' }, h('span', { class: 'grupo-t', 'aria-hidden': 'true', text: g.nome }), abas));
+    for (const a of ABAS.filter(x => x.grupo === g.id)) {
+      const el = h('a', { class: 'tab', id: 'tab-' + a.id, href: '#/' + a.id, role: 'tab', 'aria-selected': 'false' });
+      el.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[a.id] + '</svg>';
+      el.append(h('span', { text: a.nome }));
+      el.addEventListener('click', ev => { ev.preventDefault(); abrir(a.id); });
+      abas.append(el);
+    }
   }
   function pintarAbas() {
     for (const a of ABAS) {
@@ -601,6 +627,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       $('tab-' + a.id).hidden = !ok;
       if (!ok && frames[a.id]) { frames[a.id].remove(); delete frames[a.id]; }
     }
+    for (const g of GRUPOS) $('grupo-' + g.id).hidden = !ABAS.some(a => a.grupo === g.id && pode(a.id));
     if (atual && !pode(atual)) abrir('cenas');
   }
   function abrir(id) {
@@ -983,6 +1010,17 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 
   /* ---- menu ---- */
   function fecharMenu() { menu.hidden = true; }
+  /* O tema do site, neste navegador (tc/tema.js): escuro (o padrão), claro ou o do aparelho. Os sistemas abertos
+     mudam junto. */
+  function seletorTema(id) {
+    const g = h('div', { class: 'seg2 tres tema', role: 'group', 'aria-label': 'Tema do site', id });
+    const pintar = () => { for (const b of g.children) b.setAttribute('aria-pressed', String(b.dataset.tema === TinyTema.pref())); };
+    for (const [k, nome] of [['escuro', 'Escuro'], ['claro', 'Claro'], ['aparelho', 'Do aparelho']]) {
+      g.append(h('button', { type: 'button', 'data-tema': k, text: nome, title: k === 'aparelho' ? 'Segue o tema claro ou escuro do computador ou do celular' : 'Tema ' + nome.toLowerCase(), onclick: () => { TinyTema.definir(k); pintar(); } }));
+    }
+    pintar();
+    return g;
+  }
   function abrirMenu() {
     const a = mesas.atual, u = conta.usuario;
     menu.replaceChildren();
@@ -1048,6 +1086,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (a && a.cargo !== 'mestre') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await assentar(); await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
     if (a && a.dono) sec.append(h('button', { type: 'button', class: 'lk per', text: 'Apagar esta mesa…', onclick: () => { fecharMenu(); janelaApagar(a); } }));
     if (a) sec.append(h('button', { type: 'button', class: 'lk', text: 'Fechar a mesa neste navegador', onclick: async () => { fecharMenu(); await assentar(); mesas.esquecer(); } }));
+    menu.append(h('div', { class: 'sec', id: 'mn-tema' }, h('div', { class: 'rot', text: 'Tema' }), seletorTema('mn-tema-seg')));
     sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-novidades', onclick: () => { fecharMenu(); janelaNovidades(); } },
       'Novidades', naoVistas().length ? h('i', { class: 'pt', 'aria-hidden': 'true', title: 'Há novidade que você ainda não viu' }) : null));
     sec.append(h('button', { type: 'button', class: 'lk', text: 'Sair da conta', onclick: async () => { fecharMenu(); if (mesas.atual) await assentar(); await conta.sair(); toast('Você saiu da conta.'); } }));
@@ -1112,7 +1151,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       err,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok),
       h('div', { class: 'nt', text: criar ? 'Não há e-mail de confirmação: a conta já sai pronta. Guarde a senha; por enquanto, quem redefine é quem cuida do site.' : 'Sem entrar, o site continua funcionando só neste navegador, como sempre.' }),
-      h('button', { type: 'button', class: 'lkn', id: 'c-novidades', text: 'Novidades do site', onclick: () => janelaNovidades() }));
+      h('button', { type: 'button', class: 'lkn', id: 'c-novidades', text: 'Novidades do site', onclick: () => janelaNovidades() }),
+      h('div', { class: 'c-tema' }, h('span', { text: 'Tema' }), seletorTema('c-tema-seg')));
     enviarCom(f, err, ok, async () => {
       if (criar) await conta.criar(email.value, senha.value, nome.value.trim());
       else await conta.entrar(email.value, senha.value);

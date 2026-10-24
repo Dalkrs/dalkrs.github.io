@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../tc/tema.js?v=1"></script>
 <title>Clã · Tiny Cats</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&display=swap">
 <style>
@@ -20,17 +21,17 @@
   --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
 }
-@media (prefers-color-scheme: light) {
-  :root {
-    color-scheme: light;
-    --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
-    --line: #d2d8e2; --line-strong: #aeb8c9;
-    --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #5d6880;
-    --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .13); --on-lamp: #241a04;
-    --ok: #2f7a55; --ok-ink: #2a6e4c; --danger: #b9342a; --secret: #5b3fb5; --ouro: #7a5410;
-    --shadow: 0 12px 34px rgba(40, 50, 72, .24);
-  }
+/* tema claro (tc/tema.js) */
+:root:where([data-claro]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #5d6880;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .13); --on-lamp: #241a04;
+  --ok: #2f7a55; --ok-ink: #2a6e4c; --danger: #b9342a; --secret: #5b3fb5; --ouro: #7a5410;
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
 }
+
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }

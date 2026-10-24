@@ -7,6 +7,41 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze:wght@500;600;700&display=swap">
+<script>
+/* O tema do site: escuro (o padrão), claro, ou igual ao do aparelho. A escolha fica neste navegador (localStorage) e
+   vale para a casca e para todos os sistemas — todos são páginas do mesmo site: quando muda numa, as outras ficam
+   sabendo pelo evento "storage". No tema claro a raiz do documento ganha o atributo data-claro, e as regras de cor do
+   tema claro de cada página são escritas para ele (`:root[data-claro]`). Roda no <head>, antes da página aparecer,
+   para ela já nascer com as cores certas. As Cenas trazem uma cópia deste arquivo dentro delas (src/cenas/build.sh). */
+(function () {
+  if (window.TinyTema) return;
+  var CHAVE = 'tinycats:tema';
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+  var ouvintes = [];
+  function pref() {
+    var v = null;
+    try { v = localStorage.getItem(CHAVE); } catch (e) { /* sem armazenamento: vale o padrão */ }
+    return v === 'claro' || v === 'aparelho' ? v : 'escuro';
+  }
+  function claro() { var p = pref(); return p === 'claro' || (p === 'aparelho' && !!(mq && mq.matches)); }
+  var antes = null;
+  function aplicar() {
+    var c = claro(), r = document.documentElement;
+    if (c) r.setAttribute('data-claro', ''); else r.removeAttribute('data-claro');
+    if (antes !== null && antes !== c) for (var i = 0; i < ouvintes.length; i++) { try { ouvintes[i](c); } catch (e) { console.error(e); } }
+    antes = c;
+  }
+  aplicar();
+  window.addEventListener('storage', function (e) { if (e.key === CHAVE || e.key === null) aplicar(); });
+  if (mq) { var seguir = function () { if (pref() === 'aparelho') aplicar(); }; if (mq.addEventListener) mq.addEventListener('change', seguir); else if (mq.addListener) mq.addListener(seguir); }
+  window.TinyTema = {
+    pref: pref,
+    claro: claro,
+    definir: function (v) { try { localStorage.setItem(CHAVE, v); } catch (e) { /* só nesta página */ } aplicar(); },
+    aoMudar: function (fn) { if (typeof fn === 'function') ouvintes.push(fn); },
+  };
+})();
+</script>
 <style>
 /* Layout: mesa em tela cheia. Trilho de ferramentas à esquerda, mapa no centro e
    painel contextual à direita; a barra do topo guarda a cena e quem está olhando. */
@@ -37,21 +72,21 @@
   --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --mono: "Atkinson Hyperlegible Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    color-scheme: light;
-    --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
-    --line: #d2d8e2; --line-strong: #aeb8c9;
-    --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
-    --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
-    --danger: #b9342a;
-    --scrim: rgba(30, 38, 54, .42);
-    --veil: rgba(16, 24, 48, .5);
-    --sobre: #1f7fa3;
-    --reac: #7a55c9; --reac-ink: #5a34a8; --reac-soft: rgba(122, 85, 201, .12);
-    --shadow: 0 12px 34px rgba(40, 50, 72, .24);
-  }
+/* tema claro (tc/tema.js) */
+:root:where([data-claro]):not([data-theme="dark"]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+  --danger: #b9342a;
+  --scrim: rgba(30, 38, 54, .42);
+  --veil: rgba(16, 24, 48, .5);
+  --sobre: #1f7fa3;
+  --reac: #7a55c9; --reac-ink: #5a34a8; --reac-soft: rgba(122, 85, 201, .12);
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
 }
+
 :root[data-theme="light"] {
   color-scheme: light;
   --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
@@ -35380,9 +35415,8 @@ async function start(snap) {
   if (window.ResizeObserver) new ResizeObserver(() => { Render.resize(); if (first) { first = false; Render.fit(); UI.status(); } }).observe(stage);
   else window.addEventListener('resize', Render.resize);
 
-  const mq = window.matchMedia('(prefers-color-scheme: dark)');
-  if (mq.addEventListener) mq.addEventListener('change', Render.readTheme);
-  new MutationObserver(Render.readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+  // o tema do site (tc/tema.js) muda o atributo data-claro da raiz
+  new MutationObserver(Render.readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-claro', 'data-theme', 'class', 'style'] });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { Render.request(); UI.refresh(); });
 
   const flush = () => { try { Vision.flushExplored(); Fichas.flush(); Persist.flush(); } catch (e) { /* nada a fazer */ } };

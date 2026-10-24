@@ -160,6 +160,22 @@ lugares, a mesma barra) fica uma só — a de quem gravou por último —, igual
 A projeção que os jogadores recebem (`cena:pub:*`) não passa por isso: só o aparelho que transmite a escreve,
 inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais quem receba um documento juntado).
 
+### O visual: o tema, a barra e a marca
+
+- **O tema** (`tc/tema.js`) é escuro por padrão, mesmo num aparelho de tema claro. No menu da conta (e na janela de
+  entrar) a pessoa escolhe Escuro, Claro ou Do aparelho; a escolha fica neste navegador (`tinycats:tema`) e vale para a
+  casca e para todos os sistemas, que mudam na hora (pelo evento `storage`). Cada página carrega o `tema.js` no
+  `<head>`, e as Cenas trazem uma cópia dele dentro delas (`src/cenas/build.sh`). No tema claro a raiz ganha
+  `data-claro`, e as regras de cor do tema claro de cada página são escritas como `:root:where([data-claro])` e
+  `:where(:root[data-claro]) …` — o `:where` mantém o peso de cada seletor igual ao que era antes. O "automático" das
+  Fichas e da Árvore segue o tema do site. Nos testes, o tema segue o aparelho (`o.theme`), a não ser que o teste
+  escolha outro.
+- **A barra** tem as abas em três grupos, cada um com o nome em cima e a sua cor: **Jogar** (verde: Cenas, Fichas,
+  Árvore, Rolador), **Mundo** (azul: Mapa-múndi, Jornal, Clã) e **Descanso** (lilás: Acampamento, Meditação). O ícone
+  e a marca da aba aberta levam a cor do grupo; o âmbar fica para o botão principal de cada tela.
+- **A marca** é a Dora, a gatinha preta do mestre, num quadrado âmbar — também o ícone da aba do navegador.
+- **O Rolador** usa as mesmas cores e letras do resto do site, e tem o tema claro.
+
 ### A cena ao vivo: o que demora quanto
 
 Um token que um jogador move (ou uma barra que ele muda) faz este caminho: o pedido dele sobe ao banco, o aparelho do

@@ -15,6 +15,10 @@ head_parts() {
   echo '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&display=swap">'
   echo '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600&display=swap">'
   echo '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze:wght@500;600;700&display=swap">'
+  # o tema do site (escuro, claro ou o do aparelho): a mesma escolha da casca e dos outros sistemas
+  echo '<script>'
+  cat ../../tc/tema.js
+  echo '</script>'
   echo '<style>'
   cat src/style.css
   echo '</style>'

@@ -199,9 +199,8 @@ async function start(snap) {
   if (window.ResizeObserver) new ResizeObserver(() => { Render.resize(); if (first) { first = false; Render.fit(); UI.status(); } }).observe(stage);
   else window.addEventListener('resize', Render.resize);
 
-  const mq = window.matchMedia('(prefers-color-scheme: dark)');
-  if (mq.addEventListener) mq.addEventListener('change', Render.readTheme);
-  new MutationObserver(Render.readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+  // o tema do site (tc/tema.js) muda o atributo data-claro da raiz
+  new MutationObserver(Render.readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-claro', 'data-theme', 'class', 'style'] });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { Render.request(); UI.refresh(); });
 
   const flush = () => { try { Vision.flushExplored(); Fichas.flush(); Persist.flush(); } catch (e) { /* nada a fazer */ } };

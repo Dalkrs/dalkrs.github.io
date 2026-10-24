@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<script src="../tc/tema.js?v=1"></script>
 <title>Árvore de Habilidades · Tiny Cats</title>
 <script>
 /* aplica o tema antes de desenhar a página, para não piscar */
 (function(){
   var t = 'auto';
   try{ var u = JSON.parse(localStorage.getItem('urgm.arvore.ui.v4')); if(u && u.tema) t = u.tema; }catch(e){}
-  if(t!=='tinta' && t!=='pedra') t = (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'tinta' : 'pedra';
+  if(t!=='tinta' && t!=='pedra') t = (window.TinyTema && TinyTema.claro()) ? 'tinta' : 'pedra';      // (automático: o tema do site, tc/tema.js)
   document.documentElement.setAttribute('data-tema', t);
 })();
 </script>
@@ -1609,7 +1610,7 @@ const COR_P = {ouro:'#E3B55E', ouroEsc:'#C99A45', ouroClaro:'#F6E2AE', bronze:'#
 const temaAtual = () => document.documentElement.getAttribute('data-tema')==='tinta' ? 'tinta' : 'pedra';
 function temaResolvido(){
   if(ui.tema==='tinta' || ui.tema==='pedra') return ui.tema;
-  return (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'tinta' : 'pedra';
+  return (window.TinyTema && TinyTema.claro()) ? 'tinta' : 'pedra';          // (automático: o tema do site, tc/tema.js)
 }
 
 /* ---------- cor ---------- */
@@ -3900,11 +3901,7 @@ function iniciar(){
   $('#btDuplicarAba').onclick = duplicarAba;
   $('#btExcluirAba').onclick = excluirAba;
   $('#veu').addEventListener('click', e=>{ if(e.target.id==='veu') fecharModal(); });
-  if(window.matchMedia){
-    const mq = matchMedia('(prefers-color-scheme: light)');
-    const seguir = () => { if(ui.tema!=='tinta' && ui.tema!=='pedra'){ document.documentElement.setAttribute('data-tema', temaResolvido()); atualizarModoUI(); desenhar(); } };
-    if(mq.addEventListener) mq.addEventListener('change', seguir); else if(mq.addListener) mq.addListener(seguir);
-  }
+  if(window.TinyTema) TinyTema.aoMudar(() => { if(ui.tema!=='tinta' && ui.tema!=='pedra'){ document.documentElement.setAttribute('data-tema', temaResolvido()); atualizarModoUI(); desenhar(); } });
   document.addEventListener('keydown', e=>{
     if(dialogoAberto()) return;
     const emCampo = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
