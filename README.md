@@ -201,6 +201,13 @@ entardecer (`--raios`) e a vinheta nas bordas (`atmosfera`). As classes que a p�
 `chama` — só três —, `fagulha`, `brilho`, `luz-lona`, `data-abrigo`) continuam as mesmas. Uma imagem de fundo do
 mestre continua valendo por cima de tudo isso ("Usar uma imagem de fundo").
 
+Na **Meditação** (`meditacao/desenhos.js`): o céu de todos os ambientes ganhou o brilho do horizonte, nuvens macias, as
+estrelas em cruz e o astro com halo e volume; por cima de tudo (`atmosfera`), os raios de luz que vêm do astro
+(`--raios`, pela hora), o pó dourado no ar (`--poeira`; de noite, os vaga-lumes), as pétalas caindo no jardim e a
+vinheta. A floresta tem pinheiros de galhos caídos; o jardim, cerejeiras em tufos de flor com volume; a montanha, as
+faces dos picos acesas e na sombra; a cachoeira, os paredões em camadas com musgo e a espuma; as lanternas brilham de
+noite. Os nomes dos degradês e desfoques novos entram no sufixo de cada desenho (as miniaturas ficam na mesma página).
+
 ### A cena ao vivo: o que demora quanto
 
 Um token que um jogador move (ou uma barra que ele muda) faz este caminho: o pedido dele sobe ao banco, o aparelho do

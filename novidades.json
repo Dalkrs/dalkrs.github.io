@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-6",
+      "data": "2026-10-24",
+      "titulo": "A Meditação com cara de ilustração",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Meditação: os ambientes ganharam luz e profundidade — nuvens, o sol e a lua com halo, raios de luz, pó dourado e vaga-lumes no ar, pétalas caindo no jardim, cerejeiras e pinheiros com volume, montanhas com luz e sombra, a cachoeira com pedra, musgo e espuma, e as lanternas acesas de noite."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-5",
       "data": "2026-10-24",
       "titulo": "O Acampamento com cara de ilustração",

@@ -95,16 +95,21 @@ select.in { padding: 0 6px; width: auto; }
 
 /* ---- a cena ---- */
 .palco { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--ceu1, #070a14); isolation: isolate; }
-.hora-manha { --ceu1: #7fb6e6; --ceu2: #b9dcf2; --ceu3: #f6e3bf; --astro: #fff6d8; --brilho: .55; --estrelas: 0; --longe: #7d93a8; --meio: #5c7488; --perto: #34434f; --chao: #5d6b4c; --mata: #2f5238; --pedra: #8a8578; --agua: #5f9cc4; --janela: .15; --nevoa: #eef3f7; --areia: #e2c48f; --vaga: 0; --tinta-noite: rgba(0, 0, 0, 0); --tinta: rgba(255, 238, 205, .08); }
-.hora-tarde { --ceu1: #4f97d9; --ceu2: #9fcff0; --ceu3: #e9f1f5; --astro: #fffbe8; --brilho: .45; --estrelas: 0; --longe: #7f95ab; --meio: #5a7389; --perto: #33444f; --chao: #66734f; --mata: #2e5536; --pedra: #938d80; --agua: #4f93c4; --janela: .1; --nevoa: #f2f5f8; --areia: #e8cb94; --vaga: 0; --tinta-noite: rgba(0, 0, 0, 0); --tinta: rgba(0, 0, 0, 0); }
-.hora-por { --ceu1: #2a1f44; --ceu2: #b4596a; --ceu3: #f4ae66; --astro: #ffd892; --brilho: .85; --estrelas: .15; --longe: #5a3d5e; --meio: #3a2a44; --perto: #221a2b; --chao: #3b2d36; --mata: #231a28; --pedra: #5b4a55; --agua: #7a5a78; --janela: .95; --nevoa: #f6d9c4; --areia: #c98f5a; --vaga: .25; --tinta-noite: rgba(60, 20, 40, .22); --tinta: rgba(255, 130, 80, .16); }
-.hora-noite { --ceu1: #060a18; --ceu2: #121b3c; --ceu3: #253058; --astro: #f2efe0; --brilho: .35; --estrelas: 1; --longe: #1c2440; --meio: #141a30; --perto: #0c1020; --chao: #121826; --mata: #0a0f1c; --pedra: #2a3040; --agua: #1c2c4c; --janela: 1; --nevoa: #9fb0cc; --areia: #3b3a48; --vaga: 1; --tinta-noite: rgba(5, 10, 30, .62); --tinta: rgba(8, 16, 50, .52); }
-.hora-madrugada { --ceu1: #151a3a; --ceu2: #3a3d6c; --ceu3: #c08aa0; --astro: #f6e7d8; --brilho: .45; --estrelas: .55; --longe: #3a3a5e; --meio: #2a2a48; --perto: #181a30; --chao: #22243a; --mata: #161a2a; --pedra: #45465e; --agua: #3a4a70; --janela: .8; --nevoa: #d9c6d6; --areia: #7a6a78; --vaga: .6; --tinta-noite: rgba(30, 25, 60, .45); --tinta: rgba(50, 40, 100, .34); }
+.hora-manha { --ceu1: #7fb6e6; --ceu2: #b9dcf2; --ceu3: #f6e3bf; --astro: #fff6d8; --brilho: .55; --estrelas: 0; --longe: #7d93a8; --meio: #5c7488; --perto: #34434f; --chao: #5d6b4c; --mata: #2f5238; --pedra: #8a8578; --agua: #5f9cc4; --janela: .15; --nevoa: #eef3f7; --areia: #e2c48f; --vaga: 0; --tinta-noite: rgba(0, 0, 0, 0); --tinta: rgba(255, 238, 205, .08); --raios: .75; --poeira: .8; }
+.hora-tarde { --ceu1: #4f97d9; --ceu2: #9fcff0; --ceu3: #e9f1f5; --astro: #fffbe8; --brilho: .45; --estrelas: 0; --longe: #7f95ab; --meio: #5a7389; --perto: #33444f; --chao: #66734f; --mata: #2e5536; --pedra: #938d80; --agua: #4f93c4; --janela: .1; --nevoa: #f2f5f8; --areia: #e8cb94; --vaga: 0; --tinta-noite: rgba(0, 0, 0, 0); --tinta: rgba(0, 0, 0, 0); --raios: .45; --poeira: .55; }
+.hora-por { --ceu1: #2a1f44; --ceu2: #b4596a; --ceu3: #f4ae66; --astro: #ffd892; --brilho: .85; --estrelas: .15; --longe: #5a3d5e; --meio: #3a2a44; --perto: #221a2b; --chao: #3b2d36; --mata: #231a28; --pedra: #5b4a55; --agua: #7a5a78; --janela: .95; --nevoa: #f6d9c4; --areia: #c98f5a; --vaga: .25; --tinta-noite: rgba(60, 20, 40, .22); --tinta: rgba(255, 130, 80, .16); --raios: 1; --poeira: .7; }
+.hora-noite { --ceu1: #060a18; --ceu2: #121b3c; --ceu3: #253058; --astro: #f2efe0; --brilho: .35; --estrelas: 1; --longe: #1c2440; --meio: #141a30; --perto: #0c1020; --chao: #121826; --mata: #0a0f1c; --pedra: #2a3040; --agua: #1c2c4c; --janela: 1; --nevoa: #9fb0cc; --areia: #3b3a48; --vaga: 1; --tinta-noite: rgba(5, 10, 30, .62); --tinta: rgba(8, 16, 50, .52); --raios: .25; --poeira: 0; }
+.hora-madrugada { --ceu1: #151a3a; --ceu2: #3a3d6c; --ceu3: #c08aa0; --astro: #f6e7d8; --brilho: .45; --estrelas: .55; --longe: #3a3a5e; --meio: #2a2a48; --perto: #181a30; --chao: #22243a; --mata: #161a2a; --pedra: #45465e; --agua: #3a4a70; --janela: .8; --nevoa: #d9c6d6; --areia: #7a6a78; --vaga: .6; --tinta-noite: rgba(30, 25, 60, .45); --tinta: rgba(50, 40, 100, .34); --raios: .45; --poeira: .2; }
 .palco > .fundo { position: absolute; inset: 0; }
 .palco > .fundo > svg, .palco > .fundo > img { display: block; width: 100%; height: 100%; }
 .palco > .fundo > img { object-fit: cover; }
 .palco > .tinta { position: absolute; inset: 0; background: var(--tinta); pointer-events: none; }
 .estrelas circle { animation: piscar 4s ease-in-out infinite; }
+/* (lote 25) o que flutua no ar e as pétalas que caem no jardim */
+.poeira { animation: vagar 7s ease-in-out infinite; }
+@keyframes vagar { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(var(--vx, 20px), var(--vy, -30px)); } }
+.petala { animation: petala 9s linear infinite; }
+@keyframes petala { 0% { transform: translate(0, -40px) rotate(0deg); opacity: 0; } 10% { opacity: .9; } 100% { transform: translate(var(--px, -100px), 320px) rotate(260deg); opacity: 0; } }
 .estrelas circle:nth-child(3n) { animation-delay: -1.3s; } .estrelas circle:nth-child(3n+1) { animation-delay: -2.6s; }
 @keyframes piscar { 0%, 100% { opacity: .95; } 50% { opacity: .4; } }
 .vagalume { animation: flutua 6s ease-in-out infinite; }
@@ -113,7 +118,7 @@ select.in { padding: 0 6px; width: auto; }
 @keyframes cair { from { stroke-dashoffset: 70; } to { stroke-dashoffset: 0; } }
 .cristais { animation: luzir 5s ease-in-out infinite; }
 @keyframes luzir { 0%, 100% { opacity: .85; } 50% { opacity: 1; filter: brightness(1.25); } }
-@media (prefers-reduced-motion: reduce) { .estrelas circle, .vagalume, .queda, .cristais, .aura { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .estrelas circle, .vagalume, .queda, .cristais, .aura, .poeira, .petala { animation: none !important; } }
 
 /* o clima: por cima da cena (só enfeite: os cliques passam) */
 .clima { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -298,7 +303,7 @@ dialog.dl #ns-des { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
 <script src="../tc/ponte.js?v=17"></script>
 <script src="../jornal/nucleo.js?v=2"></script>
 <script src="nucleo.js?v=1"></script>
-<script src="desenhos.js?v=1"></script>
+<script src="desenhos.js?v=2"></script>
 <script src="meditacao.js?v=4"></script>
 </body>
 </html>
