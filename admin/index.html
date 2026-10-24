@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../tc/tema.js?v=1"></script>
+<title>Administração · Tiny Cats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&display=swap">
+<style>
+/* Administração do site (lote 27): as contas, as mesas, o cadastro e o registro do que o administrador fez. Só abre
+   dentro da casca, para quem está em public.admins: os pedidos vão pela conta da casca (TC.conta.admin), que chama a
+   função "admin" do Supabase — ela confere de novo quem pediu e age com a chave de serviço. */
+:root {
+  color-scheme: dark;
+  --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
+  --line: #2b3243; --line-strong: #40495f;
+  --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #7d879c;
+  --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .16); --on-lamp: #1d1503;
+  --ok: #6fbf8f; --danger: #f0786e; --secret: #b39cf0;
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+:root:where([data-claro]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+  --ok: #2f7a55; --danger: #b9342a; --secret: #5b3fb5;
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--table); color: var(--fg); font: 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.app { height: 100%; display: flex; flex-direction: column; min-width: 0; }
+.top { flex: none; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.top h1 { margin: 0; font: 600 22px/1 var(--display); color: var(--lamp-ink); }
+.abas { display: flex; gap: 4px; }
+.aba { appearance: none; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--fg-2); padding: 8px 12px; font-weight: 600; display: flex; gap: 7px; align-items: center; }
+.aba b { font: 600 11px var(--mono); color: var(--fg-3); }
+.aba[aria-selected="true"] { color: var(--lamp-ink); border-bottom-color: var(--lamp); }
+.grow { flex: 1; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.per { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+.btn.sm { height: 28px; padding: 0 9px; font-size: 13px; }
+input.in { height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); min-width: 0; width: 100%; }
+input.in:focus { outline: none; border-color: var(--lamp); }
+.corpo { flex: 1; min-height: 0; display: flex; }
+.lista { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding: 14px 16px 24px; }
+.lado { flex: 0 0 380px; overflow-y: auto; border-left: 1px solid var(--line); background: var(--surface); padding: 16px 18px 24px; display: flex; flex-direction: column; gap: 14px; }
+.busca { max-width: 360px; margin-bottom: 12px; }
+.tab { width: 100%; border-collapse: collapse; }
+.tab th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-3); font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--line); position: sticky; top: -14px; background: var(--table); }
+.tab td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tab tr.linha { cursor: pointer; }
+.tab tr.linha:hover td { background: var(--hover); }
+.tab tr.on td { background: var(--lamp-soft); }
+.nm { font-weight: 600; }
+.sub { color: var(--fg-3); font-size: 12.5px; }
+.chip { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--fg-2); margin: 0 4px 3px 0; white-space: nowrap; }
+.chip.mestre { color: var(--lamp-ink); border-color: var(--lamp); }
+.chip.adm { color: var(--secret); border-color: var(--secret); }
+.chip.aviso { color: var(--danger); border-color: var(--danger); }
+.bloco { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--raised); }
+.bloco h3 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-3); }
+.bloco label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--fg-2); }
+.bloco p { margin: 0; font-size: 12.5px; color: var(--fg-3); }
+.lado h2 { margin: 0; font: 600 21px/1.15 var(--display); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
+.card h3 { margin: 0; font: 600 18px/1.2 var(--display); }
+.vazio { color: var(--fg-3); padding: 20px 4px; }
+.msg { margin: 0; font-size: 12.5px; min-height: 17px; }
+.msg.ok { color: var(--ok); } .msg.err { color: var(--danger); }
+.toggle { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--lamp); }
+.fora { display: grid; place-items: center; height: 100%; padding: 30px; text-align: center; color: var(--fg-2); }
+.veu { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: grid; place-items: center; z-index: 50; padding: 20px; }
+.dlg { width: min(440px, 100%); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; padding: 18px 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; }
+.dlg h2 { margin: 0; font: 600 20px var(--display); }
+.dlg p { margin: 0; color: var(--fg-2); }
+.dlg .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+@media (max-width: 900px) { .corpo { flex-direction: column; } .lado { flex: none; border-left: 0; border-top: 1px solid var(--line); max-height: 55vh; } }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+(() => {
+  'use strict';
+  const app = document.getElementById('app');
+  const P = (() => { try { return window.parent !== window && window.parent.TC ? window.parent.TC : null; } catch (e) { return null; } })();
+  const conta = P && P.conta;
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const k in attrs || {}) {
+      const v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if (k === 'class') el.className = v;
+      else if (k === 'text') el.textContent = v;
+      else if (k === 'value') el.value = v;
+      else if (k === 'checked' || k === 'disabled') el[k] = !!v;
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of kids.flat()) if (c != null && c !== false) el.append(c);
+    return el;
+  }
+  const quando = t => { if (!t) return '—'; const d = new Date(t); return isNaN(d) ? '—' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
+  const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const PAPEL = { mestre: 'mestre', auxiliar: 'mestre auxiliar', jogador: 'jogador' };
+  const ACAO = { senha: 'Trocou a senha', editar: 'Editou a conta', apagar: 'Apagou a conta', cadastro: 'Mudou o cadastro' };
+
+  if (!conta || typeof conta.admin !== 'function') {
+    app.append(h('div', { class: 'fora' }, h('p', { text: 'A Administração abre pelo site, na aba Administração (só para quem administra).' })));
+    return;
+  }
+
+  let dados = null, aba = 'contas', sel = null, busca = '', carregando = false, erro = '', recado = '';      // recado: o que deu certo (fica no alto depois de recarregar)
+  async function carregar() {
+    carregando = true; erro = ''; pintar();
+    try { dados = await conta.admin('resumo'); } catch (e) { erro = (e && e.message) || 'Não deu para carregar agora.'; }
+    carregando = false; pintar();
+  }
+  function confirmar(titulo, texto, rotulo, perigo) {
+    return new Promise(ok => {
+      const fim = v => { veu.remove(); ok(v); };
+      const veu = h('div', { class: 'veu', onclick: e => { if (e.target === veu) fim(false); } },
+        h('div', { class: 'dlg', role: 'dialog', 'aria-modal': 'true' }, h('h2', { text: titulo }), h('p', { text: texto }),
+          h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: () => fim(false) }),
+            h('button', { type: 'button', class: 'btn ' + (perigo ? 'per' : 'pri'), id: 'dlg-ok', text: rotulo, onclick: () => fim(true) }))));
+      document.body.append(veu);
+      veu.querySelector('#dlg-ok').focus();
+      veu.addEventListener('keydown', e => { if (e.key === 'Escape') fim(false); });
+    });
+  }
+  // um formulário do lado: faz o pedido, mostra o resultado embaixo e recarrega
+  async function pedir(msg, botao, fn, okTxt) {
+    msg.className = 'msg'; msg.textContent = 'Salvando…'; botao.disabled = true;
+    try { await fn(); recado = okTxt; await carregar(); }
+    catch (e) { msg.className = 'msg err'; msg.textContent = (e && e.message) || 'Não deu certo agora.'; botao.disabled = false; }
+  }
+
+  function pintar() {
+    const n = dados ? { contas: dados.contas.length, mesas: dados.mesas.length } : {};
+    const abas = [['contas', 'Contas', n.contas], ['mesas', 'Mesas', n.mesas], ['cadastro', 'Cadastro'], ['registro', 'Registro']];
+    const top = h('header', { class: 'top' }, h('h1', { text: 'Administração' }),
+      h('nav', { class: 'abas', role: 'tablist' }, abas.map(([id, nome, c]) => h('button', { type: 'button', class: 'aba', role: 'tab', id: 'aba-' + id, 'aria-selected': String(aba === id),
+        onclick: () => { aba = id; recado = ''; pintar(); } }, nome, c != null ? h('b', { text: String(c) }) : null))),
+      recado ? h('span', { class: 'msg ok', id: 'recado', role: 'status', text: recado }) : null,
+      h('span', { class: 'grow' }),
+      h('button', { type: 'button', class: 'btn sm', id: 'atualizar', text: carregando ? 'Carregando…' : 'Atualizar', disabled: carregando, onclick: carregar }));
+    let corpo;
+    if (erro) corpo = h('div', { class: 'fora' }, h('p', { text: erro }));
+    else if (!dados) corpo = h('div', { class: 'fora' }, h('p', { text: 'Carregando…' }));
+    else corpo = aba === 'contas' ? abaContas() : aba === 'mesas' ? abaMesas() : aba === 'cadastro' ? abaCadastro() : abaRegistro();
+    const foco = document.activeElement && document.activeElement.id;
+    app.replaceChildren(top, corpo);
+    if (foco) { const el = document.getElementById(foco); if (el) el.focus(); }
+  }
+
+  /* ---- Contas ---- */
+  function abaContas() {
+    const q = semAcento(busca);
+    const lista = dados.contas.filter(c => !q || semAcento(c.nome + ' ' + c.email + ' ' + c.mesas.map(m => m.nome + ' ' + m.nomeNaMesa).join(' ')).includes(q))
+      .sort((a, b) => String(b.acesso || '').localeCompare(String(a.acesso || '')));
+    const c = dados.contas.find(x => x.id === sel) || null;
+    return h('div', { class: 'corpo' },
+      h('div', { class: 'lista' },
+        h('input', { class: 'in busca', id: 'busca', type: 'search', placeholder: 'Procurar por nome, e-mail ou mesa…', value: busca, oninput: e => { busca = e.target.value; pintar(); } }),
+        lista.length ? h('table', { class: 'tab' },
+          h('thead', null, h('tr', null, ['Conta', 'Mesas', 'Último acesso', 'Criada'].map(t => h('th', { text: t })))),
+          h('tbody', null, lista.map(x => h('tr', { class: 'linha' + (x.id === sel ? ' on' : ''), 'data-conta': x.id, onclick: () => { sel = x.id; recado = ''; pintar(); } },
+            h('td', null, h('div', { class: 'nm', text: x.nome }), h('div', { class: 'sub', text: x.email }),
+              x.admin ? h('span', { class: 'chip adm', text: 'administrador' }) : null, x.trocar ? h('span', { class: 'chip aviso', text: 'trocar a senha' }) : null),
+            h('td', null, x.mesas.length ? x.mesas.map(m => h('span', { class: 'chip' + (m.papel === 'mestre' ? ' mestre' : ''), title: 'Na mesa como ' + m.nomeNaMesa, text: m.nome + ' · ' + (PAPEL[m.papel] || m.papel) })) : h('span', { class: 'sub', text: 'nenhuma' })),
+            h('td', { class: 'sub', text: quando(x.acesso) }), h('td', { class: 'sub', text: quando(x.criada) })))))
+          : h('p', { class: 'vazio', text: 'Nenhuma conta com isso.' })),
+      h('aside', { class: 'lado' }, c ? ladoConta(c) : h('p', { class: 'vazio', text: 'Clique numa conta para trocar a senha, mudar o nome ou o e-mail, ou apagar.' })));
+  }
+  function ladoConta(c) {
+    const eu = c.id === dados.eu;
+    const nome = h('input', { class: 'in', id: 'c-nome', maxlength: 40, value: c.nome });
+    const email = h('input', { class: 'in', id: 'c-email', type: 'email', maxlength: 120, value: c.email });
+    const mEd = h('p', { class: 'msg' }), bEd = h('button', { type: 'button', class: 'btn pri', id: 'c-salvar', text: 'Salvar' });
+    bEd.onclick = () => pedir(mEd, bEd, () => conta.admin('editar', { id: c.id, nome: nome.value, email: email.value }), 'Salvo.');
+    const senha = h('input', { class: 'in', id: 'c-senha', type: 'text', maxlength: 72, placeholder: 'Ex.: rpg1234', autocomplete: 'off' });
+    const mSe = h('p', { class: 'msg' }), bSe = h('button', { type: 'button', class: 'btn pri', id: 'c-trocar', text: 'Trocar a senha' });
+    bSe.onclick = async () => {
+      if (senha.value.length < 6) { mSe.className = 'msg err'; mSe.textContent = 'A senha provisória precisa ter 6 caracteres ou mais.'; return; }
+      if (!(await confirmar('Trocar a senha de ' + c.nome + '?', 'A senha passa a ser “' + senha.value + '”. Quando ' + c.nome + ' entrar com ela, o site pede uma senha nova.', 'Trocar a senha'))) return;
+      pedir(mSe, bSe, () => conta.admin('senha', { id: c.id, senha: senha.value }), 'Senha trocada. Passe a senha provisória para ' + c.nome + '.');
+    };
+    const motivo = eu ? 'É a sua conta.' : c.admin ? 'É a conta de um administrador.' : c.donoDe ? 'É dona de ' + c.donoDe + (c.donoDe === 1 ? ' mesa' : ' mesas') + ': apagar a conta apagaria a mesa inteira.' : '';
+    const mAp = h('p', { class: 'msg' }), bAp = h('button', { type: 'button', class: 'btn per', id: 'c-apagar', text: 'Apagar a conta', disabled: !!motivo });
+    bAp.onclick = async () => {
+      if (!(await confirmar('Apagar a conta de ' + c.nome + '?', 'A conta (' + c.email + ') some de vez e sai de todas as mesas. As fichas dela ficam nas mesas, sem dono. Não dá para desfazer.', 'Apagar de vez', true))) return;
+      pedir(mAp, bAp, async () => { await conta.admin('apagar', { id: c.id }); sel = null; }, 'Conta apagada.');
+    };
+    return [h('h2', { text: c.nome }), h('div', { class: 'sub', text: c.email + (c.admin ? ' · administrador' : '') }),
+      h('div', { class: 'bloco' }, h('h3', { text: 'Senha' }), h('p', { text: 'Digite uma senha provisória e passe para a pessoa. No próximo login, o site pede para ela criar uma senha nova.' }),
+        h('label', null, 'Senha provisória', senha), bSe, mSe),
+      h('div', { class: 'bloco' }, h('h3', { text: 'Nome e e-mail' }), h('label', null, 'Nome', nome), h('label', null, 'E-mail', email),
+        h('p', { text: 'O nome muda também nas mesas. O e-mail novo já vale para entrar (sem confirmação).' }), bEd, mEd),
+      h('div', { class: 'bloco' }, h('h3', { text: 'Apagar' }), h('p', { text: motivo || 'Some de vez com a conta. As fichas ficam nas mesas, sem dono.' }), bAp, mAp)];
+  }
+
+  /* ---- Mesas ---- */
+  function abaMesas() {
+    const ms = dados.mesas.slice().sort((a, b) => String(b.visto || '').localeCompare(String(a.visto || '')));
+    return h('div', { class: 'corpo' }, h('div', { class: 'lista' },
+      ms.length ? h('div', { class: 'cards' }, ms.map(m => h('div', { class: 'card', 'data-mesa': m.id },
+        h('h3', { text: m.nome }),
+        h('div', { class: 'sub', text: 'Dono: ' + m.dono + (m.donoEmail ? ' (' + m.donoEmail + ')' : '') }),
+        h('div', { class: 'sub', text: 'Criada em ' + quando(m.criada) + ' · último uso ' + quando(m.visto) }),
+        h('div', null, m.membros.map(x => h('span', { class: 'chip' + (x.papel === 'mestre' ? ' mestre' : ''), text: x.nome + ' · ' + (PAPEL[x.papel] || x.papel) }))))))
+        : h('p', { class: 'vazio', text: 'Nenhuma mesa ainda.' })));
+  }
+
+  /* ---- Cadastro ---- */
+  function abaCadastro() {
+    const cfg = dados.cadastro || { aberto: true, teto: 300 };
+    const aberto = h('input', { type: 'checkbox', id: 'cad-aberto', checked: cfg.aberto !== false });
+    const teto = h('input', { class: 'in', id: 'cad-teto', type: 'number', min: 1, max: 100000, value: String(cfg.teto || 300), style: 'max-width:140px' });
+    const m = h('p', { class: 'msg' }), b = h('button', { type: 'button', class: 'btn pri', id: 'cad-salvar', text: 'Salvar' });
+    b.onclick = () => pedir(m, b, () => conta.admin('cadastro', { aberto: aberto.checked, teto: Number(teto.value) }), 'Salvo.');
+    return h('div', { class: 'corpo' }, h('div', { class: 'lista' }, h('div', { class: 'bloco', style: 'max-width:520px' },
+      h('h3', { text: 'Contas novas' }),
+      h('label', { class: 'toggle' }, aberto, 'Cadastro aberto (qualquer pessoa pode criar uma conta)'),
+      h('label', null, 'Teto de contas no site', teto),
+      h('p', { text: 'Hoje há ' + dados.contas.length + ' contas. Com o cadastro fechado (ou no teto), o botão "Criar conta" avisa que o cadastro está fechado; quem já tem conta continua entrando normalmente.' }),
+      b, m)));
+  }
+
+  /* ---- Registro ---- */
+  function abaRegistro() {
+    const detalhe = r => {
+      const d = r.detalhe || {};
+      if (r.acao === 'editar') return [d.nome ? 'nome: ' + d.nome.de + ' → ' + d.nome.para : '', d.email ? 'e-mail: ' + d.email.de + ' → ' + d.email.para : ''].filter(Boolean).join(' · ');
+      if (r.acao === 'cadastro' && d.para) return (d.para.aberto ? 'aberto' : 'fechado') + ', teto ' + d.para.teto;
+      if (r.acao === 'senha') return 'pede uma senha nova no próximo login';
+      return '';
+    };
+    return h('div', { class: 'corpo' }, h('div', { class: 'lista' },
+      dados.registro.length ? h('table', { class: 'tab' },
+        h('thead', null, h('tr', null, ['Quando', 'Quem', 'O quê', 'Em', 'Detalhe'].map(t => h('th', { text: t })))),
+        h('tbody', null, dados.registro.map(r => h('tr', null, h('td', { class: 'sub', text: quando(r.em) }), h('td', { text: r.admin_email }),
+          h('td', { class: 'nm', text: ACAO[r.acao] || r.acao }), h('td', { text: r.alvo || '' }), h('td', { class: 'sub', text: detalhe(r) })))))
+        : h('p', { class: 'vazio', text: 'Nada ainda. Cada senha trocada, conta editada ou apagada e mudança no cadastro aparece aqui.' })));
+  }
+
+  pintar();
+  carregar();
+})();
+</script>
+</body>
+</html>

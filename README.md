@@ -222,6 +222,22 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
 - Os testes de antes abrem com a marca `tinycats:testes-tudo-aberto` (as fileiras, os blocos abertos, a data indo
   direto para "Ir para a data"); `src/tests/mundo-lote26.test.js` confere o menu como o mestre encontra.
 
+### A Administração do site (lote 27)
+
+Quem está em `public.admins` (migração `0021_administracao.sql`; o primeiro é o dono do site) vê a aba
+**Administração** (grupo "Site" da barra; `admin/index.html`). A página fala pela conta da casca
+(`TC.conta.admin(acao, args)`), que chama a função `supabase/functions/admin` — ela confere o JWT, procura a pessoa em
+`public.admins` e só então age com a chave de serviço:
+- **Contas**: a lista (nome, e-mail, mesas e papel, último acesso), trocar a senha por uma provisória (marca
+  `user_metadata.trocar_senha`: no próximo login a casca abre "Crie a sua senha nova", que não fecha sem a senha ou sem
+  sair da conta), mudar nome (também nas mesas) e e-mail, apagar — nunca a própria conta, a de um administrador ou a de
+  quem é dono de mesa (apagar a conta apagaria a mesa inteira, pelo `on delete cascade`).
+- **Mesas**: todas, com o dono e os participantes. **Cadastro**: aberto ou fechado e o teto (`public.site_cfg`, que a
+  função `criar-conta` lê). **Registro**: `public.admin_registro`, o que cada administrador fez.
+- **Esqueci minha senha** (na janela de entrar): `resetPasswordForEmail` com a volta para a própria página; ao voltar,
+  `tc/tc.js` lê a sessão do endereço (`#access_token…&type=recovery`), limpa o endereço e a casca pede a senha nova. O
+  endereço do site precisa estar nas URLs permitidas do Supabase (Authentication → URL Configuration).
+
 ### As tags (lote 27)
 
 `tc/tags.js` (em todas as páginas: casca, Árvore, Fichas, Acampamento e Cenas, pelo `src/cenas/build.sh`): as

@@ -2,13 +2,15 @@
 // Cria a conta já confirmada (e-mail + senha), sem depender de e-mail de confirmação.
 // É um endereço público, como o cadastro normal: por isso a verificação de JWT fica desligada e a função
 // confere, ela mesma, a chave pública do projeto, valida os campos e respeita um teto de contas.
+// (lote 27) O cadastro aberto ou fechado e o teto vêm de public.site_cfg ('cadastro': { aberto, teto }), que o
+// administrador muda no painel de Administração; sem a linha, vale aberto com 300.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const CHAVES = new Set(
   ["sb_publishable_hEcYx7tSwvR1jw-6CVf6Vw_g_btjpDW", Deno.env.get("SUPABASE_ANON_KEY") ?? ""].filter(Boolean),
 );
-const TETO_DE_CONTAS = 300;
+const TETO_PADRAO = 300;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -37,10 +39,17 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  let teto = TETO_PADRAO;
+  try {
+    const cfg = await admin.from("site_cfg").select("valor").eq("chave", "cadastro").maybeSingle();
+    const v = cfg.data?.valor as { aberto?: boolean; teto?: number } | undefined;
+    if (v && v.aberto === false) return json({ erro: "O cadastro de contas novas está fechado. Fale com quem cuida do site." }, 403);
+    if (v && Number.isFinite(Number(v.teto))) teto = Number(v.teto);
+  } catch (_e) { /* sem a configuração: vale o padrão */ }
   try {
     const lista = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
     const total = (lista.data as { total?: number } | null)?.total;
-    if (typeof total === "number" && total >= TETO_DE_CONTAS) {
+    if (typeof total === "number" && total >= teto) {
       return json({ erro: "O cadastro está fechado no momento. Fale com quem cuida do site." }, 403);
     }
   } catch (_e) { /* se não der para contar, segue: o teto é só uma trava contra abuso */ }

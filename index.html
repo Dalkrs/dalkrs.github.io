@@ -528,7 +528,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=21"></script>
-<script src="tc/tc.js?v=28"></script>
+<script src="tc/tc.js?v=29"></script>
 <script src="tc/busca.js?v=2"></script>
 <script src="tc/guia.js?v=5"></script>
 <script src="tc/notas.js?v=3"></script>
@@ -537,7 +537,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.24-15';
+  const VERSAO = '2026.10.24-16';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -548,6 +548,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     meditacao: '<circle cx="12" cy="5" r="2"/><path d="M12 7.5v5"/><path d="M12 9.6c-1.6 1.6-3.6 2.6-6 3M12 9.6c1.6 1.6 3.6 2.6 6 3"/><path d="M4.5 18c2.4-1.9 4.9-2.8 7.5-2.8s5.1.9 7.5 2.8"/><path d="M8 20.5h8"/>',
     cla: '<path d="M12 3 4 6v6c0 4.5 3.4 7.8 8 9 4.6-1.2 8-4.5 8-9V6z"/><path d="M12 3v18"/><path d="M4 11.5h16"/>',
     oficina: '<path d="M14.5 5.5a3.5 3.5 0 0 0 4.6 4.6l1.4 1.4-9 9a2 2 0 0 1-2.8-2.8l9-9z"/><path d="M5 3v4M3 5h4M19 15v4M17 17h4"/>',
+    admin: '<path d="M12 3 4.5 6v5.5c0 4.4 3.1 8 7.5 9.5 4.4-1.5 7.5-5.1 7.5-9.5V6z"/><circle cx="12" cy="10.5" r="2.2"/><path d="M12 12.7V16"/>',
     rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
   };
   /* As abas, na ordem da barra, em três grupos (ver GRUPOS). */
@@ -563,8 +564,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     { id: 'meditacao', nome: 'Meditação', src: 'meditacao/', dados: true, grupo: 'descanso' },      // (lote 6) a meditação dos personagens
     // (lote 24) a Oficina de árvores: a mesma página da Árvore, aberta no modo de quem mestra (montar e editar as árvores)
     { id: 'oficina', nome: 'Oficina', src: 'arvore/?oficina', dados: true, grupo: 'mestre', soMestre: true, permissao: 'arvore' },
+    // (lote 27) a administração do site inteiro (as contas, as mesas, o cadastro): só quem está em public.admins a vê
+    { id: 'admin', nome: 'Administração', src: 'admin/', grupo: 'site', soAdmin: true },
   ];
-  const GRUPOS = [{ id: 'jogar', nome: 'Jogar' }, { id: 'mundo', nome: 'Mundo' }, { id: 'descanso', nome: 'Descanso' }, { id: 'mestre', nome: 'Mestre' }];
+  const GRUPOS = [{ id: 'jogar', nome: 'Jogar' }, { id: 'mundo', nome: 'Mundo' }, { id: 'descanso', nome: 'Descanso' }, { id: 'mestre', nome: 'Mestre' }, { id: 'site', nome: 'Site' }];
+  let souAdmin = false;                           // (lote 27) conta.ehAdmin(), conferido ao entrar
   const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento', meditacao: 'Meditação' };
   const CHAVE = 'tinycats:aba';
   const $ = id => document.getElementById(id);
@@ -584,7 +588,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   let mestraAba = () => true;                     // (a parte da mesa, mais abaixo, troca por quem sabe)
   // (a permissão de uma aba: a Oficina é a Árvore de quem mestra — vale o que vale para a Árvore)
   const permDe = id => { const a = ABAS.find(x => x.id === id); return (a && a.permissao) || id; };
-  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && !(a.soMestre && !mestraAba(permDe(id))) && !(a.soJogador && mestraAba(permDe(id))); };
+  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && (a.soAdmin ? souAdmin : !(a.soMestre && !mestraAba(permDe(id))) && !(a.soJogador && mestraAba(permDe(id)))); };
   // a Árvore e a Oficina são a mesma página: quem pede uma e só pode a outra vai para a outra
   const abaPossivel = id => (pode(id) ? id : id === 'arvore' && pode('oficina') ? 'oficina' : id === 'oficina' && pode('arvore') ? 'arvore' : id);
   const daHash = () => (location.hash || '').replace(/^#\/?/, '').split(/[/?]/)[0];
@@ -1132,7 +1136,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   const avisosNaPagina = () => { if (caixaDeAvisos.parentNode !== document.body) document.body.append(caixaDeAvisos); };
   function abrirJanela(conteudo) { avisosNaPagina(); dlg.classList.toggle('busca', conteudo.classList.contains('busca')); dlg.replaceChildren(conteudo); if (!dlg.open) dlg.showModal(); dlg.append(caixaDeAvisos); }
   function fecharJanela() { avisosNaPagina(); if (dlg.open) dlg.close(); dlg.replaceChildren(); }
-  dlg.addEventListener('click', ev => { if (ev.target === dlg) fecharJanela(); });
+  dlg.addEventListener('click', ev => { if (ev.target === dlg && !senhaTravada) fecharJanela(); });
   // o aviso de "fechou" chega atrasado: se outra janela já abriu no lugar (entrar → mesas), não é para esvaziá-la
   dlg.addEventListener('close', () => { if (!dlg.open) { avisosNaPagina(); dlg.replaceChildren(); } });
   /* Um formulário que trava o botão enquanto envia e mostra o erro logo acima dele. */
@@ -1176,7 +1180,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       h('label', {}, criar ? 'Senha (8 caracteres ou mais)' : 'Senha', senha),
       err,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok),
-      h('div', { class: 'nt', text: criar ? 'Não há e-mail de confirmação: a conta já sai pronta. Guarde a senha; por enquanto, quem redefine é quem cuida do site.' : 'Sem entrar, o site continua funcionando só neste navegador, como sempre.' }),
+      criar ? null : h('button', { type: 'button', class: 'lkn', id: 'c-esqueci', text: 'Esqueci minha senha', onclick: () => janelaEsqueci(email.value) }),
+      h('div', { class: 'nt', text: criar ? 'Não há e-mail de confirmação: a conta já sai pronta. Use um e-mail de verdade: é para ele que vai o link se você esquecer a senha.' : 'Sem entrar, o site continua funcionando só neste navegador, como sempre.' }),
       h('button', { type: 'button', class: 'lkn', id: 'c-novidades', text: 'Novidades do site', onclick: () => janelaNovidades() }),
       h('div', { class: 'c-tema' }, h('span', { text: 'Tema' }), seletorTema('c-tema-seg')));
     enviarCom(f, err, ok, async () => {
@@ -1188,6 +1193,50 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     abrirJanela(f);
     (criar ? nome : email).focus();
   }
+  /* (lote 27) "Esqueci minha senha": manda o e-mail com o link; o link volta ao site, que pede a senha nova. */
+  function janelaEsqueci(emailAntes) {
+    const email = h('input', { id: 'e-email', type: 'email', maxlength: 120, autocomplete: 'email', required: true, value: emailAntes || '' });
+    const err = h('div', { class: 'err', role: 'alert', id: 'e-erro' });
+    const ok = h('button', { type: 'submit', class: 'btn pri', id: 'e-ok', text: 'Mandar o link' });
+    const f = h('form', { class: 'dl', id: 'f-esqueci' },
+      h('h2', { text: 'Esqueci minha senha' }),
+      h('p', { text: 'Digite o e-mail da sua conta. Vai chegar um link para criar uma senha nova (olhe também o spam).' }),
+      h('label', {}, 'E-mail', email), err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Voltar', onclick: () => janelaConta('entrar') }), ok),
+      h('div', { class: 'nt', text: 'Se o e-mail da conta não for de verdade, o link não chega: aí, peça para quem cuida do site trocar a senha.' }));
+    enviarCom(f, err, ok, async () => { await conta.esqueci(email.value); if (aberta(f)) fecharJanela(); toast('Se existir uma conta com esse e-mail, o link já está a caminho.', null, null, 8000); });
+    abrirJanela(f);
+    email.focus();
+  }
+  /* (lote 27) A senha nova, obrigatória: depois que o administrador trocou a senha (a provisória) ou quando a pessoa
+     chega pelo link do e-mail. A janela não fecha com Esc nem com clique fora: ou cria a senha, ou sai da conta. */
+  let senhaTravada = false;
+  function janelaSenhaNova() {
+    return new Promise(pronto => {
+      const s1 = h('input', { id: 's-nova', type: 'password', minlength: 8, maxlength: 72, autocomplete: 'new-password', required: true });
+      const s2 = h('input', { id: 's-repete', type: 'password', minlength: 8, maxlength: 72, autocomplete: 'new-password', required: true });
+      const err = h('div', { class: 'err', role: 'alert', id: 's-erro' });
+      const ok = h('button', { type: 'submit', class: 'btn pri', id: 's-ok', text: 'Salvar a senha nova' });
+      const f = h('form', { class: 'dl', id: 'f-senha-nova' },
+        h('h2', { text: 'Crie a sua senha nova' }),
+        h('p', { text: 'Você entrou com uma senha provisória (ou pelo link do e-mail). Antes de seguir, escolha uma senha só sua.' }),
+        h('label', {}, 'Senha nova (8 caracteres ou mais)', s1), h('label', {}, 'Repita a senha nova', s2), err,
+        h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Sair da conta', onclick: async () => { senhaTravada = false; fecharJanela(); await conta.sair(); pintarConta(); pronto(false); } }), ok));
+      enviarCom(f, err, ok, async () => {
+        if (s1.value !== s2.value) throw new Error('As duas senhas não são iguais.');
+        await conta.trocarSenha(s1.value);
+        senhaTravada = false;
+        if (aberta(f)) fecharJanela();
+        toast('Senha nova salva. Use ela das próximas vezes.');
+        pronto(true);
+      });
+      senhaTravada = true;
+      abrirJanela(f);
+      s1.focus();
+    });
+  }
+  dlg.addEventListener('cancel', ev => { if (senhaTravada) ev.preventDefault(); });
+  async function conferirAdmin() { const antes = souAdmin; souAdmin = conta.usuario ? await conta.ehAdmin().catch(() => false) : false; if (souAdmin !== antes) pintarAbas(); }
   async function janelaMesas() {
     const u = conta.usuario; if (!u) { janelaConta(); return; }
     const err = h('div', { class: 'err', role: 'alert', id: 'm-erro' });
@@ -2262,7 +2311,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       try { TC.dados.col('personagens').pronta.then(() => { if (mesas.atual && mesas.atual.id === a.id) pintarCompor(); }, () => { /* sem os personagens, só não há o que escolher */ }); } catch (e) { /* idem */ }
     }
   });
-  conta.on('muda', u => { if (!u) mesas.fechar(); pintarConta(); });
+  conta.on('muda', u => { if (!u) mesas.fechar(); pintarConta(); conferirAdmin(); });
 
   /* ================= versão nova do site =================
      A página aberta fica na versão em que foi carregada. De tempos em tempos, e quando a pessoa volta para a aba, a
@@ -2360,6 +2409,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 
   async function aoEntrar() {
     pintarConta();
+    conferirAdmin();
+    if (conta.usuario && conta.usuario.trocar && !(await janelaSenhaNova())) return;
     const ultima = mesas.ultima();
     if (ultima) { try { await mesas.abrir(ultima); return; } catch (e) { /* a mesa sumiu ou a pessoa saiu dela: escolhe outra */ } }
     janelaMesas();
@@ -2368,6 +2419,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   const prazo = new Promise(ok => setTimeout(ok, 8000));
   Promise.race([prazo, conta.pronta.then(async u => {
     pintarConta();
+    if (conta.erroDoLink) toast(conta.erroDoLink, null, null, 10000);
+    if (u) { await conferirAdmin(); if (u.trocar) janelaSenhaNova(); }
     const ultima = u ? mesas.ultima() : null;
     if (ultima) { try { await mesas.abrir(ultima); } catch (e) { pintarConta(); } }
   })]).then(() => { mesaDasMolduras = assinatura(); pintarAbas(); abrir(inicial()); cenasEmSegundoPlano(); });
