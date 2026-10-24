@@ -11,74 +11,228 @@
   function sorte(semente) { let a = semente >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   const f = n => (Math.round(n * 10) / 10).toString();
   // (os tons de cada lugar: o chão e o mato puxam para eles)
-  const TINTA = { floresta: null, montanha: '#7a7f8a', deserto: '#c9a063', neve: '#dfe8f2', mar: '#c8b48a', caverna: '#4a4440' };
+  const TINTA = { floresta: null, montanha: '#7a7f8a', deserto: '#c9a063', neve: '#dfe8f2', mar: '#c8b48a', caverna: '#4d3f33' };
 
-  /* ---------------- o fundo: céu, horizonte do lugar, chão ---------------- */
+  /* ---------------- o fundo: céu, horizonte do lugar, chão ----------------
+     (lote 25) No jeito das ilustrações dos personagens: o céu com o brilho do horizonte, nuvens macias e a lua com halo;
+     o horizonte em camadas, cada uma mais apagada pela névoa quanto mais longe (a perspectiva do ar); árvores grandes
+     emoldurando os lados; o chão com textura; a luz da lua contornando as bordas do lado dela. As cores continuam
+     vindo das variáveis da página (a hora do dia); o lugar só tinge. */
+  const cm = (a, pct, b) => `color-mix(in srgb, ${a} ${pct}%, ${b})`;
+  function defsFundo() {
+    return '<defs><linearGradient id="gCeu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--ceu1)"/><stop offset=".6" style="stop-color:var(--ceu2)"/><stop offset="1" style="stop-color:var(--ceu3)"/></linearGradient>'
+      + '<radialGradient id="gFogo" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffb04a" stop-opacity=".85"/><stop offset=".45" stop-color="#ff7a2a" stop-opacity=".28"/><stop offset="1" stop-color="#ff7a2a" stop-opacity="0"/></radialGradient>'
+      + '<radialGradient id="gLuz" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffd27a" stop-opacity=".7"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>'
+      + '<radialGradient id="gChao" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff9a4a" stop-opacity=".5"/><stop offset=".55" stop-color="#c8763a" stop-opacity=".18"/><stop offset="1" stop-color="#c8763a" stop-opacity="0"/></radialGradient>'
+      + '<linearGradient id="gMar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:color-mix(in srgb, var(--ceu3) 30%, #1d3a5c)"/><stop offset=".35" stop-color="#16304e"/><stop offset="1" stop-color="#0a1a2c"/></linearGradient>'
+      + '<radialGradient id="gHalo" cx=".5" cy=".5" r=".5"><stop offset="0" style="stop-color:var(--astro)" stop-opacity=".55"/><stop offset=".25" style="stop-color:var(--astro)" stop-opacity=".2"/><stop offset="1" style="stop-color:var(--astro)" stop-opacity="0"/></radialGradient>'
+      + '<radialGradient id="gAstro" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#fff"/><stop offset=".55" style="stop-color:var(--astro)"/><stop offset="1" style="stop-color:color-mix(in srgb, var(--astro) 70%, var(--ceu3))"/></radialGradient>'
+      + '<radialGradient id="gHorizonte" cx=".5" cy=".5" r=".5"><stop offset="0" style="stop-color:var(--ceu3)" stop-opacity=".9"/><stop offset="1" style="stop-color:var(--ceu3)" stop-opacity="0"/></radialGradient>'
+      + '<linearGradient id="gNevoa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--ceu3)" stop-opacity="0"/><stop offset=".5" style="stop-color:var(--ceu3)" stop-opacity=".55"/><stop offset="1" style="stop-color:var(--ceu3)" stop-opacity="0"/></linearGradient>'
+      + '<linearGradient id="gChaoT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:color-mix(in srgb, var(--chao2) 70%, var(--ceu3))"/><stop offset=".18" style="stop-color:var(--chao2)"/><stop offset="1" style="stop-color:var(--chao)"/></linearGradient>'
+      + '<linearGradient id="gRaio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--astro)" stop-opacity=".9"/><stop offset="1" style="stop-color:var(--astro)" stop-opacity="0"/></linearGradient>'
+      + '<radialGradient id="gVinheta" cx=".5" cy=".55" r=".75"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient>'
+      + '<radialGradient id="gVaga" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff6c8"/><stop offset=".3" stop-color="#ffd86a" stop-opacity=".75"/><stop offset="1" stop-color="#ffb84a" stop-opacity="0"/></radialGradient>'
+      + '<filter id="fMacio" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="10"/></filter>'
+      + '<filter id="fNevoa" x="-10%" y="-80%" width="120%" height="260%"><feGaussianBlur stdDeviation="22"/></filter>'
+      + '<filter id="fBrilho" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter></defs>';
+  }
+  // a estrela grande que cintila em cruz (como nos céus das ilustrações)
+  const cruz = (x, y, t) => `<path class="estrela" d="M${f(x)} ${f(y - t)}Q${f(x + t * 0.16)} ${f(y - t * 0.16)} ${f(x + t)} ${f(y)}Q${f(x + t * 0.16)} ${f(y + t * 0.16)} ${f(x)} ${f(y + t)}Q${f(x - t * 0.16)} ${f(y + t * 0.16)} ${f(x - t)} ${f(y)}Q${f(x - t * 0.16)} ${f(y - t * 0.16)} ${f(x)} ${f(y - t)}Z" style="animation-delay:-${f((x * 7) % 4)}s"/>`;
+  // uma nuvem macia: bolotas borradas, com a barriga acesa pela cor do horizonte
+  const nuvem = (x, y, l, r) => {
+    let s = `<g class="nuvem" filter="url(#fMacio)" opacity=".55">`;
+    for (let i = 0; i < 6; i++) { const dx = (i - 2.5) * l * 0.17 + (r() - 0.5) * l * 0.1, ry = l * (0.09 + r() * 0.07); s += `<ellipse cx="${f(x + dx)}" cy="${f(y - ry * 0.4)}" rx="${f(l * (0.14 + r() * 0.08))}" ry="${f(ry)}" style="fill:${cm('var(--ceu2)', 70, 'var(--astro)')}"/>`; }
+    return s + `<ellipse cx="${f(x)}" cy="${f(y + l * 0.03)}" rx="${f(l * 0.5)}" ry="${f(l * 0.05)}" style="fill:var(--ceu3)" opacity=".8"/></g>`;
+  };
+  // o pinheiro em camadas de galhos caídos (a beira de baixo de cada camada em pontas), com a beira do lado da lua
+  // acesa (luz de recorte) e, na neve, a neve por cima de cada camada
+  const pinheiro = (x, y, a, l, cor, neve, luz, r) => {
+    const n = 5, camadas = [], lit = [], nv = [], j = () => (r ? (r() - 0.5) * 0.12 : 0);
+    for (let i = 0; i < n; i++) {
+      const t0 = i / n, t1 = (i + 1.25) / n, w = l * (0.3 + Math.min(1, t1) * 0.85), y0 = y - a + a * t0 * 0.86, y1 = Math.min(y, y - a + a * t1 * 0.86), h = y1 - y0;
+      camadas.push(`M${f(x)} ${f(y0)}Q${f(x + w * 0.3)} ${f(y0 + h * 0.6)} ${f(x + w)} ${f(y1)}L${f(x + w * (0.62 + j()))} ${f(y1 - h * 0.14)}L${f(x + w * 0.32)} ${f(y1 + h * 0.04)}L${f(x)} ${f(y1 - h * 0.12)}L${f(x - w * 0.32)} ${f(y1 + h * 0.04)}L${f(x - w * (0.62 + j()))} ${f(y1 - h * 0.14)}L${f(x - w)} ${f(y1)}Q${f(x - w * 0.3)} ${f(y0 + h * 0.6)} ${f(x)} ${f(y0)}Z`);
+      if (luz) lit.push(`M${f(x + 1)} ${f(y0 + 2)}Q${f(x + w * 0.3)} ${f(y0 + h * 0.6)} ${f(x + w)} ${f(y1)}L${f(x + w * 0.7)} ${f(y1 - h * 0.12)}Q${f(x + w * 0.2)} ${f(y0 + h * 0.62)} ${f(x + 1)} ${f(y0 + 2)}Z`);
+      if (neve) nv.push(`M${f(x - w * 0.15)} ${f(y0 + h * 0.18)}Q${f(x - w * 0.5)} ${f(y0 + h * 0.62)} ${f(x - w * 0.86)} ${f(y1 - h * 0.1)}Q${f(x - w * 0.4)} ${f(y0 + h * 0.6)} ${f(x)} ${f(y0 + h * 0.08)}Q${f(x + w * 0.4)} ${f(y0 + h * 0.6)} ${f(x + w * 0.86)} ${f(y1 - h * 0.1)}Q${f(x + w * 0.5)} ${f(y0 + h * 0.62)} ${f(x + w * 0.15)} ${f(y0 + h * 0.18)}Z`);
+    }
+    let s = `<path d="M${f(x - l * 0.1)} ${f(y)}h${f(l * 0.2)}v-${f(a * 0.2)}h-${f(l * 0.2)}Z" style="fill:${cor}"/><path d="${camadas.join('')}" style="fill:${cor}"/>`;
+    if (luz) s += `<path d="${lit.join('')}" style="fill:var(--astro)" opacity="${luz}"/>`;
+    if (neve) s += `<path d="${nv.join('')}" fill="#eef3f8" opacity=".85"/>`;
+    return s;
+  };
+  // uma fileira de pinheiros de ponta a ponta, numa altura do horizonte
+  const fileira = (r, y, a0, a1, passo, cor, neve, luz) => {
+    let s = '';
+    for (let x = -40; x < 1660; x += passo * (0.6 + r() * 0.8)) { const a = a0 + r() * (a1 - a0); s += pinheiro(x, y + r() * 10, a, a * (0.22 + r() * 0.07), cor, neve, luz, r); }
+    return s;
+  };
+  // a faixa de névoa entre duas camadas do horizonte
+  const nevoa = (y, alt, op) => `<rect x="-60" y="${f(y - alt / 2)}" width="1720" height="${f(alt)}" fill="url(#gNevoa)" opacity="${op}" filter="url(#fNevoa)"/>`;
+  // a serra: a face da sombra e a face acesa pela lua, com a neve nos picos
+  const serra = (pts, cor, luz, neve) => {
+    const d = 'M' + pts.map(p => f(p[0]) + ' ' + f(p[1])).join('L') + 'V620H-60Z';
+    let s = `<path d="${d}" style="fill:${cor}"/>`;
+    let acesa = '';
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [x, y] = pts[i], [x2, y2] = pts[i + 1];
+      if (y < pts[i - 1][1] && y < y2) acesa += `M${f(x)} ${f(y)}L${f(x2)} ${f(y2)}L${f(x + (x2 - x) * 0.35)} ${f(y2 + 40)}Z`;
+    }
+    if (luz && acesa) s += `<path d="${acesa}" style="fill:var(--astro)" opacity="${luz}"/>`;
+    if (neve) for (let i = 1; i < pts.length - 1; i++) {
+      const [x, y] = pts[i]; if (!(y < pts[i - 1][1] && y < pts[i + 1][1]) || y > 330) continue;
+      const w = (330 - y) * 0.42 + 26;
+      s += `<path d="M${f(x)} ${f(y)}L${f(x - w * 0.55)} ${f(y + w * 0.6)}l${f(w * 0.18)} -${f(w * 0.1)}l${f(w * 0.14)} ${f(w * 0.16)}l${f(w * 0.2)} -${f(w * 0.2)}l${f(w * 0.18)} ${f(w * 0.12)}l${f(w * 0.2)} -${f(w * 0.08)}Z" fill="#e9eef5" opacity=".88"/>`
+        + `<path d="M${f(x)} ${f(y)}L${f(x + w * 0.4)} ${f(y + w * 0.48)}l-${f(w * 0.12)} -${f(w * 0.04)}l-${f(w * 0.12)} ${f(w * 0.1)}Z" fill="#fff" opacity=".9"/>`;
+    }
+    return s;
+  };
+  // um tufo de folhas de beira recortada (a borda não é um círculo liso: são pontas de folha)
+  const tufo = (cx, cy, rr, r) => {
+    const n = 22, pts = [];
+    for (let i = 0; i < n; i++) { const ang = (i / n) * Math.PI * 2, k = i % 2 ? 0.8 + r() * 0.1 : 0.96 + r() * 0.12; pts.push(f(cx + Math.cos(ang) * rr * k) + ' ' + f(cy + Math.sin(ang) * rr * k * 0.72)); }
+    return 'M' + pts.join('L') + 'Z';
+  };
+  // a árvore grande que emoldura um lado da cena: a copa em tufos (a beira de cima acesa pela lua), o tronco com a
+  // luz de recorte, as listras da casca, o musgo e os galhos — baixos, para não tapar a lua
+  const moldura = (lado, lugar, r) => {
+    const x = lado < 0 ? 40 : 1560, dir = -lado, cor = cm('var(--mata)', 78, '#000'), meio = cm('var(--mata)', 88, 'var(--ceu3)'), neve = lugar === 'neve';
+    let s = `<g class="moldura" data-lado="${lado < 0 ? 'e' : 'd'}">`;
+    if (lugar !== 'floresta' && lugar !== 'neve') return '';
+    // o tronco e os galhos
+    s += `<path d="M${f(x - 74)} 900C${f(x - 62)} 700 ${f(x - 44)} 420 ${f(x - 30)} 80L${f(x + 40)} 70C${f(x + 52)} 420 ${f(x + 72)} 700 ${f(x + 94)} 900Z" style="fill:${cor}" stroke="#000" stroke-width="3" stroke-opacity=".5"/>`
+      + `<path d="M${f(x + dir * 30)} 360C${f(x + dir * 120)} 340 ${f(x + dir * 180)} 300 ${f(x + dir * 240)} 300" style="stroke:${cor}" stroke-width="20" stroke-linecap="round" fill="none"/>`
+      + `<path d="M${f(x + dir * 130)} 336C${f(x + dir * 160)} 360 ${f(x + dir * 190)} 366 ${f(x + dir * 214)} 396" style="stroke:${cor}" stroke-width="8" stroke-linecap="round" fill="none"/>`
+      + `<path d="M${f(x + 40)} 70C${f(x + 52)} 420 ${f(x + 72)} 700 ${f(x + 94)} 900" stroke="var(--astro)" stroke-width="4" fill="none" opacity="${lado < 0 ? '.24' : '.07'}"/>`
+      + `<path d="M${f(x - 20)} 860C${f(x - 14)} 700 ${f(x - 6)} 520 ${f(x)} 360M${f(x + 22)} 880C${f(x + 26)} 720 ${f(x + 24)} 560 ${f(x + 18)} 400M${f(x - 44)} 640c8-30 10-60 6-90" stroke="#000" stroke-width="3" fill="none" opacity=".4"/>`;
+    if (!neve) s += `<path d="M${f(x - 66)} 780C${f(x - 52)} 700 ${f(x - 34)} 690 ${f(x - 22)} 630C${f(x - 42)} 690 ${f(x - 58)} 704 ${f(x - 70)} 820Z" fill="#6f8a3e" opacity=".55"/><path d="M${f(x + 30)} 520c10 30 30 40 26 80" stroke="#6f8a3e" stroke-width="5" fill="none" opacity=".4"/>`;
+    // a copa: de trás (mais clara, perto da névoa) para a frente (escura), saindo pela borda de cima
+    for (const [cam, cc, k] of [[0, meio, 1.1], [1, cor, 1]]) {
+      for (let i = 0; i < 9; i++) {
+        const cx = x + dir * (r() * 210 - 50), cy = -30 + r() * 250, rr = (50 + r() * 50) * k;
+        s += `<path d="${tufo(cx, cy, rr, r)}" style="fill:${cc}"/>`;
+        if (cam) s += neve ? `<path d="M${f(cx - rr * 0.75)} ${f(cy - rr * 0.3)}Q${f(cx)} ${f(cy - rr * 0.92)} ${f(cx + rr * 0.75)} ${f(cy - rr * 0.3)}Q${f(cx)} ${f(cy - rr * 0.58)} ${f(cx - rr * 0.75)} ${f(cy - rr * 0.3)}Z" fill="#e7edf5" opacity=".75"/>`
+          : `<path d="M${f(cx - rr * 0.6)} ${f(cy - rr * 0.42)}Q${f(cx)} ${f(cy - rr * 0.78)} ${f(cx + rr * 0.6)} ${f(cy - rr * 0.42)}" stroke="var(--astro)" stroke-width="2.5" fill="none" opacity=".16"/>`;
+      }
+    }
+    return s + '</g>';
+  };
   function fundo(lugar) {
     const r = sorte(20261003), p = [], tinta = TINTA[lugar] || null;
     const mix = (v, pct) => (tinta ? `color-mix(in srgb, var(${v}) ${pct}%, ${tinta})` : `var(${v})`);
-    p.push('<defs><linearGradient id="gCeu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--ceu1)"/><stop offset=".6" style="stop-color:var(--ceu2)"/><stop offset="1" style="stop-color:var(--ceu3)"/></linearGradient>'
-      + '<radialGradient id="gFogo" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffb04a" stop-opacity=".85"/><stop offset=".45" stop-color="#ff7a2a" stop-opacity=".28"/><stop offset="1" stop-color="#ff7a2a" stop-opacity="0"/></radialGradient>'
-      + '<radialGradient id="gLuz" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffd27a" stop-opacity=".7"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>'
-      + '<radialGradient id="gChao" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#c8763a" stop-opacity=".42"/><stop offset="1" stop-color="#c8763a" stop-opacity="0"/></radialGradient>'
-      + '<linearGradient id="gMar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d3a5c"/><stop offset="1" stop-color="#0e2238"/></linearGradient></defs>');
+    // as cores de cada camada do horizonte: a de longe quase some na névoa; a de perto é a mata cheia
+    const longe = cm('var(--mata)', 45, 'var(--ceu3)'), meio = cm('var(--mata)', 72, 'var(--ceu2)'), perto = 'var(--mata)';
+    p.push(defsFundo());
     // o céu continua para cima da cena: em tela estreita é ele que aparece no alto do palco
     p.push('<rect x="0" y="-1100" width="1600" height="1101" style="fill:var(--ceu1)"/><rect x="0" y="0" width="1600" height="570" fill="url(#gCeu)"/>');
     if (lugar !== 'caverna') {
+      // o brilho do horizonte, a via láctea (só de noite: --via) e as estrelas
+      p.push('<ellipse cx="800" cy="560" rx="1150" ry="280" fill="url(#gHorizonte)" opacity=".75"/>');
+      p.push('<g style="opacity:var(--via, 0)"><ellipse cx="760" cy="150" rx="900" ry="70" transform="rotate(-14 760 150)" fill="#cfd8ff" opacity=".13" filter="url(#fNevoa)"/><ellipse cx="760" cy="150" rx="700" ry="26" transform="rotate(-14 760 150)" fill="#e8ecff" opacity=".12" filter="url(#fMacio)"/></g>');
       for (let i = 0; i < 70; i++) p.push(`<circle class="estrela" cx="${(r() * 1600).toFixed(0)}" cy="${(r() * 400).toFixed(0)}" r="${(0.7 + r() * 1.4).toFixed(1)}" style="animation-delay:-${(r() * 4).toFixed(1)}s"/>`);
       for (let i = 0; i < 150; i++) p.push(`<circle class="estrela" cx="${(r() * 1600).toFixed(0)}" cy="${(-r() * 1050).toFixed(0)}" r="${(0.7 + r() * 1.4).toFixed(1)}" style="animation-delay:-${(r() * 4).toFixed(1)}s"/>`);
-      p.push('<circle cx="1240" cy="150" r="96" style="fill:var(--astro)" opacity=".1"/><circle cx="1240" cy="150" r="44" style="fill:var(--astro)"/>');
+      for (let i = 0; i < 60; i++) { const t = r(); p.push(`<circle class="estrela" cx="${f(60 + t * 1400)}" cy="${f(330 - t * 360 + (r() - 0.5) * 70)}" r="${f(0.5 + r() * 0.9)}" style="animation-delay:-${(r() * 4).toFixed(1)}s"/>`); }
+      for (const [x, y, t] of [[180, 70, 9], [520, 40, 7], [690, 190, 6], [1010, 60, 10], [1460, 110, 7], [380, 240, 5]]) p.push(cruz(x, y, t));
+      // a lua (ou o sol baixo): o halo largo, o brilho e o disco com as manchas
+      p.push('<circle cx="1240" cy="150" r="260" fill="url(#gHalo)"/><circle cx="1240" cy="150" r="70" style="fill:var(--astro)" opacity=".18" filter="url(#fBrilho)"/>'
+        + '<circle cx="1240" cy="150" r="46" fill="url(#gAstro)"/><g style="fill:var(--ceu3)" opacity=".16"><circle cx="1228" cy="140" r="9"/><circle cx="1254" cy="164" r="6"/><circle cx="1250" cy="134" r="4"/><circle cx="1222" cy="166" r="5"/></g>');
+      // as nuvens, finas e macias
+      const rn = sorte(77);
+      for (const [x, y, l] of [[260, 250, 420], [880, 300, 520], [1450, 330, 380], [600, 120, 300]]) p.push(nuvem(x, y, l, rn));
     }
-    const pinheiro = (x, y, a, l, neve) => `<path d="M${f(x)} ${f(y - a)}l${f(l)} ${f(a * 0.42)}h-${f(l * 0.45)}l${f(l * 0.75)} ${f(a * 0.32)}h-${f(l * 0.5)}l${f(l * 0.8)} ${f(a * 0.26)}h-${f(l * 3.2)}l${f(l * 0.8)} -${f(a * 0.26)}h-${f(l * 0.5)}l${f(l * 0.75)} -${f(a * 0.32)}h-${f(l * 0.45)}Z" style="fill:var(--mata)"/>`
-      + (neve ? `<path d="M${f(x)} ${f(y - a)}l${f(l * 0.55)} ${f(a * 0.23)}l-${f(l * 0.3)} ${f(a * 0.05)}l-${f(l * 0.25)} -${f(a * 0.06)}l-${f(l * 0.25)} ${f(a * 0.06)}l-${f(l * 0.3)} -${f(a * 0.05)}Z" fill="#eef3f8" opacity=".85"/>` : '');
     if (lugar === 'floresta' || lugar === 'neve') {
-      p.push(`<path d="M0 470C200 400 400 440 620 420S1000 380 1200 430s300-30 400 10V570H0Z" style="fill:${mix('--mata', 80)}" opacity=".55"/>`);
-      for (let x = -30; x < 1640; x += 30 + r() * 34) { const a = 90 + r() * 120, l = 26 + r() * 22, y = 548 + r() * 14; p.push(pinheiro(x, y, a, l, lugar === 'neve')); }
+      const neve = lugar === 'neve';
+      p.push(serra([[-60, 430], [120, 360], [260, 400], [420, 330], [600, 390], [760, 340], [930, 400], [1080, 350], [1260, 380], [1420, 320], [1660, 400]], longe, 0, neve));
+      p.push(nevoa(470, 120, 0.8));
+      p.push(fileira(r, 500, 60, 100, 26, cm('var(--mata)', 58, 'var(--ceu3)'), neve, 0));
+      p.push(nevoa(520, 90, 0.7));
+      p.push(fileira(r, 552, 100, 200, 32, perto, neve, 0.1));
     } else if (lugar === 'montanha') {
-      p.push('<path d="M-40 560L180 250L300 360L470 170L640 380L760 300L930 120L1110 360L1240 260L1420 200L1640 470V570H-40Z" fill="#2a3040" opacity=".9"/>');
-      p.push('<path d="M470 170L420 240L455 232L480 258L505 228L530 246ZM930 120L870 200L905 196L935 226L960 190L990 206ZM1420 200L1370 262L1402 256L1425 280L1450 252L1474 262Z" fill="#dfe6ee" opacity=".8"/>');
-      p.push('<path d="M-20 560L140 420L260 500L380 400L520 520L660 440L820 530L980 430L1140 520L1300 420L1460 510L1620 450V570H-20Z" style="fill:var(--mata)" opacity=".85"/>');
-      for (let x = 20; x < 1600; x += 90 + r() * 120) { const a = 60 + r() * 50, l = 18 + r() * 12; p.push(pinheiro(x, 556 + r() * 8, a, l, false)); }
+      p.push(serra([[-60, 520], [180, 250], [300, 360], [470, 170], [640, 380], [760, 300], [930, 120], [1110, 360], [1240, 260], [1420, 200], [1660, 470]], cm('#2a3040', 60, 'var(--ceu3)'), 0.12, true));
+      p.push(nevoa(430, 160, 0.9));
+      p.push(serra([[-60, 560], [140, 420], [260, 500], [380, 400], [520, 520], [660, 440], [820, 530], [980, 430], [1140, 520], [1300, 420], [1460, 510], [1660, 450]], meio, 0.08, false));
+      p.push(nevoa(530, 80, 0.6));
+      p.push(fileira(r, 558, 50, 110, 60, perto, false, 0.08));
     } else if (lugar === 'deserto') {
-      p.push('<path d="M0 500C180 450 330 470 520 440S860 470 1040 430 1380 470 1600 445V570H0Z" fill="#6b5236" opacity=".55"/>');
-      p.push('<path d="M0 540C220 500 420 520 640 505S1060 530 1260 500 1500 520 1600 512V570H0Z" fill="#4e3b27" opacity=".9"/>');
-      const cacto = (x, y, a) => `<path d="M${x - 9} ${y}V${y - a}a9 9 0 0 1 18 0V${y}Z" fill="#2f3b25"/><path d="M${x - 9} ${y - a * 0.45}h-14v-${f(a * 0.3)}a7 7 0 0 1 14 0ZM${x + 9} ${y - a * 0.6}h14v-${f(a * 0.25)}a7 7 0 0 0-14 0Z" fill="#2f3b25"/>`;
+      // as mesas de pedra lá longe, as dunas em camadas com a crista acesa, e os cactos
+      p.push(`<path d="M120 470V410l30-10h140l26 14V470ZM1180 470V380l24-12h110l30 18V470Z" style="fill:${cm('#6b5236', 55, 'var(--ceu3)')}"/>`);
+      p.push(nevoa(470, 90, 0.6));
+      p.push('<path d="M0 500C180 450 330 470 520 440S860 470 1040 430 1380 470 1600 445V570H0Z" style="fill:' + cm('#6b5236', 75, 'var(--ceu3)') + '"/>');
+      p.push('<path d="M0 500C180 450 330 470 520 440S860 470 1040 430" style="stroke:var(--astro)" stroke-width="3" fill="none" opacity=".25"/>');
+      p.push('<path d="M0 540C220 500 420 520 640 505S1060 530 1260 500 1500 520 1600 512V570H0Z" fill="#4e3b27"/>');
+      p.push('<path d="M640 505S1060 530 1260 500 1500 520 1600 512" style="stroke:var(--astro)" stroke-width="2.5" fill="none" opacity=".2"/>');
+      const cacto = (x, y, a) => `<g stroke="#141a10" stroke-width="2.5" stroke-linejoin="round"><path d="M${x - 9} ${y}V${y - a}a9 9 0 0 1 18 0V${y}Z" fill="#2f3b25"/><path d="M${x - 9} ${y - a * 0.45}h-14v-${f(a * 0.3)}a7 7 0 0 1 14 0ZM${x + 9} ${y - a * 0.6}h14v-${f(a * 0.25)}a7 7 0 0 0-14 0Z" fill="#2f3b25"/></g><path d="M${x + 4} ${y - a + 2}V${y - 4}" style="stroke:var(--astro)" stroke-width="2" opacity=".25"/>`;
       p.push(cacto(230, 560, 90), cacto(1420, 556, 70), cacto(1090, 552, 50));
     } else if (lugar === 'mar') {
+      // ilhas no horizonte, o mar com o caminho de luz da lua e as ondas acesas
+      p.push(`<path d="M1300 432c40-30 90-36 150-8 30-14 60-12 90 8ZM90 434c30-22 70-26 120-4Z" style="fill:${longe}"/>`);
       p.push('<rect x="0" y="430" width="1600" height="140" fill="url(#gMar)"/>');
-      p.push('<path d="M1180 440h120M1150 462h180M1200 486h80M1120 512h240" style="stroke:var(--astro)" stroke-width="3" stroke-linecap="round" opacity=".35"/>');
-      for (let i = 0; i < 9; i++) { const y = 448 + i * 13, x = (r() * 1400) | 0; p.push(`<path d="M${x} ${y}h${(40 + r() * 80).toFixed(0)}" stroke="#7fa6c9" stroke-width="2" stroke-linecap="round" opacity=".25"/>`); }
-      // um píer de madeira entrando no mar
-      p.push('<path d="M60 552L140 470H210L150 552Z" fill="#3a2a1d"/><path d="M140 470v26M175 470v30M205 470v22" stroke="#2a1f16" stroke-width="5"/>');
+      p.push(nevoa(436, 30, 0.6));
+      for (let i = 0; i < 16; i++) { const y = 440 + i * 8, w = 30 + i * 9 + r() * 30; p.push(`<path d="M${f(1240 - w / 2 + (r() - 0.5) * 30)} ${y}h${f(w)}" style="stroke:var(--astro)" stroke-width="${f(1.5 + i * 0.12)}" stroke-linecap="round" opacity="${f(0.5 - i * 0.022)}"/>`); }
+      for (let i = 0; i < 14; i++) { const y = 448 + i * 9, x = (r() * 1400) | 0; p.push(`<path d="M${x} ${y}q${f(20 + r() * 20)} -5 ${(40 + r() * 80).toFixed(0)} 0" stroke="#9fc2e2" stroke-width="2" fill="none" stroke-linecap="round" opacity=".28"/>`); }
+      // um píer de madeira entrando no mar, com o contorno
+      p.push('<g stroke="#120c08" stroke-width="2.5" stroke-linejoin="round"><path d="M60 552L140 470H210L150 552Z" fill="#3a2a1d"/><path d="M140 470v26M175 470v30M205 470v22" stroke-width="5"/></g><path d="M140 470H210" style="stroke:var(--astro)" stroke-width="2" opacity=".3"/>');
     } else if (lugar === 'caverna') {
-      // a parede da caverna por cima, com estalactites, e o fundo de pedra
+      // a parede da caverna por cima, com estalactites, o fundo de pedra e os cristais que brilham
       p.push('<rect x="0" y="-1100" width="1600" height="1670" fill="#15120f"/>');
       p.push('<path d="M0 -1100H1600V300C1480 260 1440 330 1320 290S1120 240 1000 280 760 230 640 270 420 230 300 280 120 250 0 300Z" fill="#221d18"/>');
-      for (let x = 60; x < 1600; x += 70 + r() * 90) { const a = 40 + r() * 110; p.push(`<path d="M${(x - 14).toFixed(0)} ${(260 + r() * 30).toFixed(0)}L${x.toFixed(0)} ${(290 + a).toFixed(0)}L${(x + 14).toFixed(0)} ${(262 + r() * 30).toFixed(0)}Z" fill="#2c2620"/>`); }
+      for (let x = 60; x < 1600; x += 70 + r() * 90) { const a = 40 + r() * 110, y0 = 260 + r() * 30; p.push(`<path d="M${(x - 14).toFixed(0)} ${y0.toFixed(0)}L${x.toFixed(0)} ${(290 + a).toFixed(0)}L${(x + 14).toFixed(0)} ${(262 + r() * 30).toFixed(0)}Z" fill="#2c2620" stroke="#0e0b09" stroke-width="2"/><path d="M${x.toFixed(0)} ${(y0 + 6).toFixed(0)}L${(x + 2).toFixed(0)} ${(280 + a).toFixed(0)}" stroke="#6a5f52" stroke-width="2" opacity=".35"/>`); }
       p.push('<path d="M0 560C120 470 240 520 380 470S640 520 800 480 1100 520 1240 470 1480 520 1600 480V570H0Z" fill="#2a241e"/>');
+      const cristal = (x, y, a, cor) => `<circle cx="${x}" cy="${y - a / 2}" r="${a * 1.4}" fill="${cor}" opacity=".16" filter="url(#fMacio)"/><path d="M${x} ${y}l-${f(a * 0.25)} -${f(a * 0.7)}l${f(a * 0.25)} -${f(a * 0.3)}l${f(a * 0.25)} ${f(a * 0.3)}Z" fill="${cor}" opacity=".85" stroke="#0e0b09" stroke-width="1.5"/><path d="M${x} ${y}V${f(y - a)}" stroke="#fff" stroke-width="1.5" opacity=".5"/>`;
+      p.push(cristal(110, 540, 46, '#7fd4ff'), cristal(150, 546, 30, '#a68bff'), cristal(1470, 520, 52, '#7fd4ff'), cristal(1512, 528, 34, '#7fffd0'), cristal(560, 500, 26, '#a68bff'), cristal(1060, 496, 30, '#7fd4ff'));
+      // a luz da fogueira batendo na parede e no teto
+      p.push('<ellipse cx="800" cy="420" rx="520" ry="200" fill="#ff8a30" opacity=".1" filter="url(#fNevoa)"/>');
     }
-    p.push(`<rect x="0" y="545" width="1600" height="1155" style="fill:${mix('--chao', 55)}"/>`);           // o chão continua para baixo da cena
-    p.push(`<ellipse cx="800" cy="690" rx="640" ry="190" style="fill:${mix('--chao2', 55)}"/>`);
+    // o chão: o degradê (claro junto do horizonte), a clareira e a textura (capim, pedrinhas, neve ou areia)
+    p.push(`<rect x="0" y="545" width="1600" height="1155" fill="url(#gChaoT)"/>`);           // o chão continua para baixo da cena
+    if (tinta) p.push(`<rect x="0" y="545" width="1600" height="1155" style="fill:${tinta}" opacity="${lugar === 'caverna' ? '.62' : lugar === 'deserto' ? '.45' : '.35'}"/>`);
+    p.push(`<ellipse cx="800" cy="690" rx="640" ry="190" style="fill:${mix('--chao2', 55)}" opacity=".85"/>`);
+    const rc = sorte(3101), capim = lugar === 'floresta' || lugar === 'montanha', textura = [];
+    for (let i = 0; i < 90; i++) {
+      const x = rc() * 1600, y = 560 + Math.pow(rc(), 0.8) * 330, e = 0.5 + (y - 560) / 330;
+      if (Math.abs(x - 800) < 200 && y > 600 && y < 700) continue;      // (a roda da fogueira fica limpa)
+      if (capim) textura.push(`<path d="M${f(x)} ${f(y)}q-${f(3 * e)} -${f(12 * e)} -${f(8 * e)} -${f(16 * e)}M${f(x)} ${f(y)}q0 -${f(14 * e)} ${f(2 * e)} -${f(20 * e)}M${f(x)} ${f(y)}q${f(4 * e)} -${f(10 * e)} ${f(9 * e)} -${f(14 * e)}" style="stroke:${cm('var(--mata)', 60, 'var(--chao2)')}" stroke-width="${f(1.6 * e)}" fill="none" stroke-linecap="round"/>`);
+      else if (lugar === 'neve') textura.push(`<ellipse cx="${f(x)}" cy="${f(y)}" rx="${f(22 * e)}" ry="${f(4 * e)}" fill="#eef3f8" opacity=".14"/>`);
+      else if (lugar === 'deserto' || lugar === 'mar') textura.push(`<path d="M${f(x - 18 * e)} ${f(y)}q${f(18 * e)} -${f(5 * e)} ${f(36 * e)} 0" stroke="#000" stroke-width="${f(1.5 * e)}" fill="none" opacity=".14"/>`);
+      if (rc() < 0.25) textura.push(`<ellipse cx="${f(x + 20)}" cy="${f(y + 3)}" rx="${f(5 * e)}" ry="${f(3 * e)}" fill="#000" opacity=".22"/><ellipse cx="${f(x + 19)}" cy="${f(y + 1.5)}" rx="${f(4 * e)}" ry="${f(2.2 * e)}" style="fill:${cm('var(--chao2)', 60, 'var(--astro)')}" opacity=".45"/>`);
+    }
+    p.push(`<g class="textura">${textura.join('')}</g>`);
+    return p.join('');
+  }
+  // por cima de tudo (menos dos personagens, que a página põe por cima do desenho): as árvores da moldura, os vaga-lumes,
+  // os raios de luz do amanhecer e do entardecer e a vinheta que fecha as bordas
+  function atmosfera(lugar) {
+    const r = sorte(4401), p = [];
+    if (lugar === 'floresta' || lugar === 'neve') p.push(moldura(-1, lugar, r), moldura(1, lugar, r));
+    if (lugar !== 'caverna') p.push('<g style="opacity:var(--raios, 0)">' + [[1240, 150, 300, 900, 140], [1240, 150, 820, 900, 90], [1240, 150, 1500, 900, 110]].map(([x, y, x2, y2, w]) => `<path d="M${x} ${y}L${x2 - w} ${y2}H${x2 + w}Z" fill="url(#gRaio)" opacity=".18" filter="url(#fMacio)"/>`).join('') + '</g>');
+    const n = lugar === 'deserto' ? 6 : lugar === 'caverna' ? 10 : 16;
+    for (let i = 0; i < n; i++) {
+      const x = 120 + r() * 1360, y = 380 + r() * 300, rr = 2 + r() * 3.5;
+      p.push(`<g class="vagalume" style="--vx:${f((r() - 0.5) * 60)}px;--vy:${f(-20 - r() * 40)}px;animation-delay:-${f(r() * 6)}s"><circle cx="${f(x)}" cy="${f(y)}" r="${f(rr * 5)}" fill="url(#gVaga)" opacity=".55"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(rr * 0.6)}" fill="#fff8d8"/></g>`);
+    }
+    p.push('<rect x="-10" y="-10" width="1620" height="920" fill="url(#gVinheta)" pointer-events="none"/>');
     return p.join('');
   }
 
   /* ---------------- a fogueira: os abrigos, os troncos e o fogo ----------------
      (lote 18) A barraca com lona de verdade: as costuras, a barra, as cordas até as estacas, a porta aberta (a aba
      presa de lado) e a luz da fogueira no lado virado para ela. "vira": o lado claro é o da esquerda. */
-  const LONA_E = '#3d352b', LONA_C = '#6a5a41', COSTURA = '#2c261e', CORDA = '#9a8a68';
+  const LONA_E = '#3d352b', LONA_C = '#6a5a41', COSTURA = '#2c261e', CORDA = '#9a8a68', TRACO = '#120d09';      // (TRACO: o contorno de nanquim, lote 25)
   const estacaCorda = (x1, y1, x2, y2) => `<path d="M${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}" stroke="${CORDA}" stroke-width="2" opacity=".75"/><path d="M${f(x2)} ${f(y2 + 2)}l${x2 > x1 ? 5 : -5} -14" stroke="#2a1f16" stroke-width="5" stroke-linecap="round"/>`;
   const barraca = (cx, base, larg, alt, vira) => {
     const e = cx - larg / 2, d = cx + larg / 2, t = base - alt, porta = larg * 0.16, claro = vira ? e : d, lado = vira ? -1 : 1;
     let s = `<g class="abrigo" data-abrigo="barraca"><ellipse cx="${f(cx)}" cy="${f(base + 4)}" rx="${f(larg * 0.6)}" ry="${f(larg * 0.08)}" fill="#000" opacity=".28"/>`
       + estacaCorda(cx - lado * larg * 0.08, t + alt * 0.12, cx - lado * (larg * 0.5 + 42), base + 8) + estacaCorda(cx + lado * larg * 0.06, t + alt * 0.14, cx + lado * (larg * 0.5 + 38), base + 10)
-      + `<path d="M${f(e)} ${f(base)}L${f(cx)} ${f(t)}L${f(d)} ${f(base)}Z" fill="${LONA_E}"/><path d="M${f(cx)} ${f(t)}L${f(claro)} ${f(base)}H${f(cx)}Z" fill="${LONA_C}"/>`
+      + `<path d="M${f(e)} ${f(base)}L${f(cx)} ${f(t)}L${f(d)} ${f(base)}Z" fill="${LONA_E}" stroke="${TRACO}" stroke-width="3" stroke-linejoin="round"/><path d="M${f(cx)} ${f(t)}L${f(claro)} ${f(base)}H${f(cx)}Z" fill="${LONA_C}"/>`
+      // (lote 25) a sombra que a lona faz em si mesma, perto do chão, e a crista acesa pela lua
+      + `<path d="M${f(e)} ${f(base)}L${f(e + (cx - e) * 0.18)} ${f(base - alt * 0.18)}H${f(d - (d - cx) * 0.18)}L${f(d)} ${f(base)}Z" fill="#000" opacity=".22"/>`
+      + `<path d="M${f(cx)} ${f(t)}L${f(d)} ${f(base)}" style="stroke:var(--astro)" stroke-width="2.5" opacity=".28"/>`
       // a luz da fogueira na lona (pulsa com o fogo)
       + `<path class="luz-lona" d="M${f(cx)} ${f(t)}L${f(claro)} ${f(base)}H${f(cx)}Z" fill="#ff9a4a"/>`;
     // as costuras (do alto até a barra) e a barra de baixo
     for (const k of [0.33, 0.66]) s += `<path d="M${f(cx)} ${f(t + 4)}L${f(cx + (e - cx) * k)} ${f(base)}M${f(cx)} ${f(t + 4)}L${f(cx + (d - cx) * k)} ${f(base)}" stroke="${COSTURA}" stroke-width="2" opacity=".45"/>`;
     s += `<path d="M${f(e + 6)} ${f(base - 7)}H${f(d - 6)}" stroke="${COSTURA}" stroke-width="3" opacity=".5"/>`
       // a porta aberta: o escuro de dentro, a aba presa de lado e o laço
-      + `<path d="M${f(cx)} ${f(t + alt * 0.3)}L${f(cx + porta)} ${f(base)}H${f(cx - porta)}Z" fill="#15110d"/>`
+      + `<path d="M${f(cx)} ${f(t + alt * 0.3)}L${f(cx + porta)} ${f(base)}H${f(cx - porta)}Z" fill="#15110d" stroke="${TRACO}" stroke-width="2"/><path d="M${f(cx - porta * 0.6)} ${f(base)}L${f(cx)} ${f(t + alt * 0.42)}L${f(cx + porta * 0.6)} ${f(base)}Z" fill="#ff9a4a" opacity=".08"/>`
       + `<path d="M${f(cx)} ${f(t + alt * 0.3)}L${f(cx - lado * porta * 1.9)} ${f(base)}L${f(cx - lado * porta * 1.05)} ${f(base)}Z" fill="#8a7655"/>`
       + `<path d="M${f(cx - lado * porta * 1.25)} ${f(base - alt * 0.32)}l${f(-lado * 10)} 4" stroke="${CORDA}" stroke-width="3" stroke-linecap="round"/>`
       + `<path d="M${f(cx)} ${f(t - 14)}V${f(t + 6)}" stroke="#2a221a" stroke-width="5" stroke-linecap="round"/></g>`;
@@ -157,18 +311,33 @@
     });
     return p.join('');
   }
+  const tronco = (x, y, l, cor) => `<g><rect x="${x}" y="${y}" width="${l}" height="30" rx="15" fill="${cor}" stroke="${TRACO}" stroke-width="2.5"/><path d="M${x + 24} ${y + 9}h${l - 60}M${x + 40} ${y + 19}h${l - 80}" stroke="#000" stroke-width="2" opacity=".3" stroke-linecap="round"/><path d="M${x + 18} ${y + 3}h${l - 36}" stroke="#ff9a4a" stroke-width="2" opacity=".3" stroke-linecap="round"/></g>`;
+  const ponta = (cx, cy) => `<circle cx="${cx}" cy="${cy}" r="15" fill="#6b5138" stroke="${TRACO}" stroke-width="2.5"/><circle cx="${cx}" cy="${cy}" r="9" fill="none" stroke="#3a2a1d" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="3.5" fill="#3a2a1d"/>`;
   function fogueira(o) {
     const r = sorte(7), p = [];
-    p.push('<ellipse cx="800" cy="660" rx="520" ry="150" fill="url(#gChao)"/>');
+    p.push('<ellipse cx="800" cy="660" rx="560" ry="170" fill="url(#gChao)"/>');
     p.push(abrigos(o));
-    p.push('<rect x="520" y="668" width="170" height="30" rx="15" fill="#3a2a1d"/><circle cx="535" cy="683" r="15" fill="#6b5138"/><circle cx="535" cy="683" r="8" fill="#55402c"/>');
-    p.push('<rect x="910" y="668" width="170" height="30" rx="15" fill="#3a2a1d"/><circle cx="1065" cy="683" r="15" fill="#6b5138"/><circle cx="1065" cy="683" r="8" fill="#55402c"/>');
+    p.push(tronco(520, 668, 170, '#3a2a1d') + ponta(535, 683));
+    p.push(tronco(910, 668, 170, '#3a2a1d') + ponta(1065, 683));
     p.push('<circle class="brilho" cx="800" cy="600" r="430" fill="url(#gFogo)"/>');
-    p.push('<g transform="rotate(16 800 628)"><rect x="716" y="619" width="168" height="18" rx="9" fill="#2a1c13"/></g><g transform="rotate(-16 800 628)"><rect x="716" y="619" width="168" height="18" rx="9" fill="#36241a"/></g>');
-    p.push('<ellipse cx="800" cy="626" rx="62" ry="12" fill="#c24a1e" opacity=".85"/>');
+    p.push('<circle cx="800" cy="575" r="120" fill="#ff8a30" opacity=".22" filter="url(#fMacio)"/>');
+    // as pedras em roda (as de trás primeiro), acesas do lado do fogo
+    for (let i = 0; i < 11; i++) {
+      const ang = Math.PI * (1.08 + i * 0.084), x = 800 + Math.cos(ang) * 92, y = 630 + Math.sin(ang) * 22;
+      p.push(`<ellipse cx="${f(x)}" cy="${f(y)}" rx="16" ry="10" fill="#4f4b46" stroke="${TRACO}" stroke-width="2"/><ellipse cx="${f(x + (800 - x) * 0.08)}" cy="${f(y - 3)}" rx="9" ry="4" fill="#ff9a4a" opacity=".35"/>`);
+    }
+    p.push('<g transform="rotate(16 800 628)"><rect x="716" y="619" width="168" height="18" rx="9" fill="#2a1c13" stroke="#0d0907" stroke-width="2"/><path d="M730 624h140" stroke="#ff7a2a" stroke-width="2" opacity=".55"/></g><g transform="rotate(-16 800 628)"><rect x="716" y="619" width="168" height="18" rx="9" fill="#36241a" stroke="#0d0907" stroke-width="2"/><path d="M730 624h140" stroke="#ff7a2a" stroke-width="2" opacity=".5"/></g>');
+    p.push('<ellipse cx="800" cy="626" rx="62" ry="12" fill="#c24a1e" opacity=".85"/><ellipse cx="800" cy="624" rx="40" ry="6" fill="#ffb04a" opacity=".7" filter="url(#fBrilho)"/>');
+    for (let i = 0; i < 9; i++) for (const k of [0]) p.push(`<circle cx="${f(752 + r() * 96)}" cy="${f(620 + r() * 12)}" r="${f(2 + r() * 2.5)}" fill="${k ? '' : ['#ff6a1a', '#ffb04a', '#ffd27a'][i % 3]}" opacity=".9"/>`);
+    // as línguas de fogo de fora (mais finas, balançando em outro ritmo) e as três de sempre
+    p.push('<path class="lingua" d="M770 610C744 580 748 552 764 520C768 552 784 570 790 600Z" fill="#e8642a" opacity=".85"/>');
+    p.push('<path class="lingua b" d="M832 608C856 584 856 556 842 528C838 556 820 574 812 600Z" fill="#e8642a" opacity=".85"/>');
     p.push('<path class="chama" d="M800 470C850 540 882 570 860 614C845 640 755 640 740 614C720 570 770 548 800 470Z" fill="#f08a2b"/>');
     p.push('<path class="chama b" d="M800 520C832 565 850 586 838 614C826 632 774 632 762 614C750 586 782 570 800 520Z" fill="#ffc04d"/>');
     p.push('<path class="chama c" d="M800 566C815 588 824 600 817 616C810 626 790 626 783 616C776 600 790 590 800 566Z" fill="#fff1b8"/>');
+    p.push('<path d="M800 470C850 540 882 570 860 614" stroke="#fff1b8" stroke-width="3" fill="none" opacity=".35" class="lingua"/>');
+    // a fumaça subindo, macia
+    p.push('<g opacity=".14" filter="url(#fMacio)"><g class="fumaca"><ellipse cx="806" cy="440" rx="22" ry="44" fill="#c9c2b8"/><ellipse cx="822" cy="360" rx="30" ry="52" fill="#a9a29a"/><ellipse cx="804" cy="270" rx="40" ry="60" fill="#8a847e"/></g></g>');      // (a transparência fica fora: a animação mexe na de dentro)
     for (let i = 0; i < 8; i++) p.push(`<circle class="fagulha" cx="${(778 + r() * 44).toFixed(0)}" cy="${(548 + r() * 20).toFixed(0)}" r="${(1.6 + r() * 1.6).toFixed(1)}" style="--dx:${(-40 + r() * 80).toFixed(0)}px;animation-delay:-${(r() * 3.6).toFixed(1)}s"/>`);
     return p.join('');
   }
@@ -526,6 +695,7 @@
     if (area === 'fogueira') { p.push(abrigosTras(ab)); p.push(caravana(x.caravana, lugar)); p.push(fogueira(ab)); }
     else p.push(decorDaArea(area));
     p.push(arrumar(cs.filter(c => !FUNDO_DA_AREA.has(c.tipo))));
+    p.push(atmosfera(lugar));
     return p.join('');
   }
   /* Uma construção sozinha, num quadrinho (o cartão da aba Estrutura e a janela de construir): um svg inteiro. */

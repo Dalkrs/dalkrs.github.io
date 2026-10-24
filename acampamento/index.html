@@ -75,9 +75,9 @@ button { cursor: pointer; }
 .work { flex: 1; min-height: 0; display: flex; position: relative; }
 .palco-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .palco { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--ceu1, #070a14); }
-.palco.hora-noite { --ceu1: #070a18; --ceu2: #131b3a; --ceu3: #27305a; --chao: #0c1420; --chao2: #16212c; --mata: #060a12; --astro: #f2f0e0; --luz-fogo: 1; }
-.palco.hora-entardecer { --ceu1: #1b1f48; --ceu2: #6b3a5c; --ceu3: #d9774a; --chao: #1a1c22; --chao2: #2a2826; --mata: #120f18; --astro: #ffd9a0; --luz-fogo: .8; }
-.palco.hora-amanhecer { --ceu1: #25365e; --ceu2: #6f86a8; --ceu3: #f0c6a0; --chao: #1c2622; --chao2: #2b3830; --mata: #131c1c; --astro: #fff2cf; --luz-fogo: .6; }
+.palco.hora-noite { --ceu1: #070a18; --ceu2: #131b3a; --ceu3: #27305a; --chao: #0c1420; --chao2: #16212c; --mata: #060a12; --astro: #f2f0e0; --luz-fogo: 1; --via: 1; --raios: 0; }
+.palco.hora-entardecer { --ceu1: #1b1f48; --ceu2: #6b3a5c; --ceu3: #d9774a; --chao: #1a1c22; --chao2: #2a2826; --mata: #120f18; --astro: #ffd9a0; --luz-fogo: .8; --via: 0; --raios: .8; }
+.palco.hora-amanhecer { --ceu1: #25365e; --ceu2: #6f86a8; --ceu3: #f0c6a0; --chao: #1c2622; --chao2: #2b3830; --mata: #131c1c; --astro: #fff2cf; --luz-fogo: .6; --via: 0; --raios: 1; }
 .cena16 { position: absolute; left: 50%; bottom: 0; width: 1600px; height: 900px; transform-origin: bottom center; }
 .cena16 > svg, .cena16 > img.fundo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .cena16 > svg { overflow: visible; }
@@ -108,7 +108,13 @@ button { cursor: pointer; }
 @keyframes chama { 0% { transform: scale(1, 1) skewX(0deg); } 50% { transform: scale(.94, 1.07) skewX(-3deg); } 100% { transform: scale(1.05, .95) skewX(3deg); } }
 .fagulha { fill: #ffd27a; opacity: 0; animation: subir 3.6s linear infinite; }
 @keyframes subir { 0% { transform: translate(0, 0); opacity: 0; } 12% { opacity: .95; } 100% { transform: translate(var(--dx, 20px), -230px); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .estrela, .brilho, .chama, .fagulha { animation: none; } .fagulha { opacity: 0; } }
+/* (lote 25) os vaga-lumes (de dia, o pó na luz) e as línguas de fogo de fora */
+.vagalume { animation: vagar 7s ease-in-out infinite; opacity: calc(.35 + .65 * var(--via, 0)); }
+@keyframes vagar { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(var(--vx, 20px), var(--vy, -30px)); } }
+.vagalume circle:last-child { animation: piscar 2.6s ease-in-out infinite; }
+.lingua { transform-origin: 800px 606px; animation: chama .9s ease-in-out infinite alternate; }
+.lingua.b { animation-duration: 1.3s; animation-delay: -.4s; }
+@media (prefers-reduced-motion: reduce) { .estrela, .brilho, .chama, .fagulha, .vagalume, .vagalume circle, .lingua { animation: none; } .fagulha { opacity: 0; } }
 
 /* quem está em volta da fogueira */
 .roda { position: absolute; inset: 0; }
@@ -417,7 +423,7 @@ dialog.largo { max-width: min(1080px, calc(100vw - 24px)); width: 100%; }
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=21"></script>
 <script src="nucleo.js?v=10"></script>
-<script src="desenhos.js?v=2"></script>
+<script src="desenhos.js?v=3"></script>
 <script src="acampamento.js?v=18"></script>
 </body>
 </html>

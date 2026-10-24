@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-5",
+      "data": "2026-10-24",
+      "titulo": "O Acampamento com cara de ilustração",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Acampamento: o cenário ganhou profundidade e luz — céu com nuvens e via láctea, a lua com halo, montanhas e matas em camadas com névoa, árvores grandes emoldurando a floresta, vaga-lumes, raios de luz no amanhecer e no entardecer, e a fogueira com pedras, brasas e fumaça."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-4",
       "data": "2026-10-24",
       "titulo": "A Oficina de árvores do mestre",

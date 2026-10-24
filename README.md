@@ -188,6 +188,19 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   (`.so-completo`, `#anivBox`, `.idcard3`), com um aviso de onde estão. Os testes abrem no Completo, a não ser que
   escolham outro. O tema das Fichas é sempre o do site (o botão de tema delas sumiu).
 
+### Os desenhos das cenas no jeito das ilustrações (lote 25)
+
+Os fundos são desenhados em código (SVG), e vão ganhando o jeito das ilustrações dos personagens: a profundidade em
+camadas (cada uma mais apagada pela névoa quanto mais longe), a luz (o halo da lua, o brilho do horizonte, a luz de
+recorte na beira do que está do lado da lua, o fogo que acende o que está perto), as partículas (vaga-lumes, fagulhas)
+e o contorno escuro nas coisas da frente. Começou pelo **Acampamento** (`acampamento/desenhos.js`): o céu com a via
+láctea (só de noite: `--via`), nuvens macias e estrelas em cruz; o horizonte de cada lugar em camadas com névoa entre
+elas; pinheiros de galhos caídos; as árvores grandes que emolduram a floresta e a neve; o chão com textura; a fogueira
+com as pedras em roda, os tições e a fumaça; as barracas com contorno e sombra; os raios de luz do amanhecer e do
+entardecer (`--raios`) e a vinheta nas bordas (`atmosfera`). As classes que a página e os testes usam (`estrela`,
+`chama` — só três —, `fagulha`, `brilho`, `luz-lona`, `data-abrigo`) continuam as mesmas. Uma imagem de fundo do
+mestre continua valendo por cima de tudo isso ("Usar uma imagem de fundo").
+
 ### A cena ao vivo: o que demora quanto
 
 Um token que um jogador move (ou uma barra que ele muda) faz este caminho: o pedido dele sobe ao banco, o aparelho do
