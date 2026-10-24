@@ -12575,13 +12575,15 @@ const UI = (() => {
      tinycats:testes-tudo-aberto (que os testes põem, a não ser que peçam o contrário), tudo começa aberto como antes. */
   const tudoAberto = (() => { try { return localStorage.getItem('tinycats:testes-tudo-aberto') === '1'; } catch (e) { return false; } })();
   function sec(id, title, open, ...kids) {
-    return h('details', { class: 'sec', id, open: secOpen[id] == null ? (open || tudoAberto) : secOpen[id], ontoggle: e => { secOpen[id] = e.target.open; } },
+    return h('details', { class: 'sec', id, open: secOpen[id] == null ? open : secOpen[id], ontoggle: e => { secOpen[id] = e.target.open; } },
       h('summary', null, h('span', { text: title }), icon('down', 14)), h('div', { class: 'sec-body' }, kids));
   }
   /* (lote 26) O bloco que começa fechado e diz, no título, o que tem dentro ("Dalmo · tamanho 1"): dá para saber sem
      abrir. Aberto, o resumo some. */
+  // (com a marca dos testes, cada bloco começa como começava antes do lote 26)
+  const ANTES = { 's-id': true, 's-turn': true, 's-gm': true, 'c-scene': true, 'c-bg': true, 'c-light': true, 'c-perm': true };
   function secR(id, title, open, resumo, ...kids) {
-    const d = sec(id, title, open, ...kids), sm = d.querySelector('summary');
+    const d = sec(id, title, tudoAberto && ANTES[id] ? true : open, ...kids), sm = d.querySelector('summary');
     if (resumo) sm.insertBefore(h('span', { class: 'sec-res', text: resumo }), sm.lastChild);
     return d;
   }
@@ -14530,7 +14532,7 @@ const UI = (() => {
         Luta.inisBox(t),
         note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
         h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
-      Fichas.on() ? secR('s-ficha', 'Ficha do personagem', false, t.char ? 'ligado a uma ficha' : 'sem ficha', fichaBox(t)) : null,
+      Fichas.on() ? secR('s-ficha', 'Ficha do personagem', tudoAberto && !!t.char, t.char ? 'ligado a uma ficha' : 'sem ficha', fichaBox(t)) : null,
       cloneSec(t),
       dupSec(t),
       secDivisa('Ajustes do token'),
@@ -14542,7 +14544,7 @@ const UI = (() => {
         field('Cor', inColor('tk-color', t.color, v => Store.upd('tokens', t.id, { color: v }), 'Cor do token')),
         imageField(t),
         toggle('tk-showname', t.showName, v => U({ showName: v }), 'Jogadores veem o nome')),
-      secR('s-aura', 'Auras', false, t.auras.length ? t.auras.length + (t.auras.length === 1 ? ' aura' : ' auras') : 'nenhuma', auraEditor(t)),
+      secR('s-aura', 'Auras', tudoAberto && t.auras.length > 0, t.auras.length ? t.auras.length + (t.auras.length === 1 ? ' aura' : ' auras') : 'nenhuma', auraEditor(t)),
       secR('s-vis', 'Visão e luz', false, (V.on ? 'enxerga' : 'não enxerga') + (L.on ? ' · carrega luz' : ''),
         toggle('tk-vis', V.on, v => U({ vis: Object.assign({}, V, { on: v }) }), 'Enxerga (quando tem um jogador como dono)'),
         V.on ? h('div', { class: 'grid2' },
