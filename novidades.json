@@ -2,6 +2,25 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-3",
+      "data": "2026-10-24",
+      "titulo": "Fichas com a cara nova e o modo Simples",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: as mesmas cores e letras do resto do site, sem os rótulos em caixa alta. O nome do personagem fica em destaque, as barras estão maiores, e cada atributo aparece com o nome inteiro (Força, Destreza…)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: o modo Simples (o padrão) mostra só o que se usa durante a sessão; o Completo, no alto à direita, traz de volta as tags, o aniversário e os outros campos."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Fichas: no celular, a página não passa mais da largura da tela."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-2",
       "data": "2026-10-24",
       "titulo": "Cara nova: a Dora, a barra em grupos e o tema escuro",

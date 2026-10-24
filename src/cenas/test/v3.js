@@ -1371,7 +1371,8 @@ section('13 página do site', async ({ ok }) => {
   ok(cut(head, '<style>', '</style>') === cut(frag, '<style>', '</style>') && cut(head, '<style>', '</style>').length > 20000, 'o CSS inteiro está no <head> (o mesmo do fragmento)');
   // A página do site carrega, antes do programa, as três bibliotecas compartilhadas do site (ponte com a casca, dados, regras da ficha).
   const libs = (html.match(/<script src="[^"]+"><\/script>/g) || []).map(x => x.replace(/\?v=\d+/, ''));
-  ok(cut(body, '<script>', '</script>') === cut(frag, '<script>', '</script>') && (html.match(/<script>/g) || []).length === 1 && body.includes('<div class="app" id="app">'), 'no <body>: a marcação e o mesmo programa do fragmento, num <script> só');
+  ok(cut(body, '<script>', '</script>') === cut(frag, '<script>', '</script>') && (body.match(/<script>/g) || []).length === 1 && body.includes('<div class="app" id="app">'), 'no <body>: a marcação e o mesmo programa do fragmento, num <script> só');
+  ok((head.match(/<script>/g) || []).length === 1 && head.includes('window.TinyTema') && head.indexOf('TinyTema') < head.indexOf('<style>'), 'no <head>, antes do CSS: o tema do site (tc/tema.js), para a página já nascer com as cores certas');
   ok(libs.join() === '<script src="../tc/ponte.js"></script>,<script src="../tc/dice.js"></script>,<script src="../tc/rules.js"></script>' && body.indexOf('../tc/rules.js') < body.indexOf('<script>'), 'antes do programa, só as três bibliotecas compartilhadas do site: ' + libs.join(' '));
   ok(!/<script[^>]+src="(?!\.\.\/tc\/)|<link(?![^>]+fonts\.googleapis\.com)|@import|url\(\s*["']?https?:/i.test(html), 'nada de fora além das fontes e das bibliotecas do próprio site');
 

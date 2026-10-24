@@ -175,6 +175,13 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   e a marca da aba aberta levam a cor do grupo; o âmbar fica para o botão principal de cada tela.
 - **A marca** é a Dora, a gatinha preta do mestre, num quadrado âmbar — também o ícone da aba do navegador.
 - **O Rolador** usa as mesmas cores e letras do resto do site, e tem o tema claro.
+- **As Fichas** usam as cores e as letras do site (as variáveis de sempre das Fichas, com os valores da casca), sem
+  rótulos em caixa alta espaçada. Dentro do site, a marca e o título somem: as abas Fichas/Mesa/Eventos e as ações
+  ficam numa barra só. No alto da ficha, o nome em destaque e cada número com o nome inteiro (a sigla fica na dica).
+  **Simples ou Completo** (no alto, à direita; fica neste navegador em `tinycats:fichas:modo`): o Simples, que é o
+  padrão, esconde o que não se usa durante a sessão — os pontos da ficha, as tags, o aniversário e a identidade
+  (`.so-completo`, `#anivBox`, `.idcard3`), com um aviso de onde estão. Os testes abrem no Completo, a não ser que
+  escolham outro. O tema das Fichas é sempre o do site (o botão de tema delas sumiu).
 
 ### A cena ao vivo: o que demora quanto
 
