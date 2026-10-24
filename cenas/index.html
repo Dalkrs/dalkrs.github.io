@@ -1001,7 +1001,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 </style>
 </head>
 <body>
-<script src="../tc/ponte.js?v=16"></script>
+<script src="../tc/ponte.js?v=17"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=21"></script>
 <div class="app" id="app">
@@ -8711,7 +8711,7 @@ const Nuvem = (() => {
   let idx = Proj.normIndice(null);
   const sombra = new Map();                                // documento → o JSON que foi gravado por último (para não regravar igual)
   const sujas = new Set(), expSujas = new Set();
-  let metaSuja = false, pubSuja = false, arSujo = false, tGravar = 0, tExp = 0;      // arSujo: este aparelho acabou de mudar o que está no ar (ou quem transmite)
+  let metaSuja = false, pubSuja = false, arSujo = false, tGravar = 0, tExp = 0, tPub = 0;      // arSujo: este aparelho acabou de mudar o que está no ar (ou quem transmite)
   let estado = 'ok', ouvinte = () => {};
   const banco = makeDB('tinycats-cenas-mesa');             // deste aparelho: o que já foi explorado em cada cena de cada mesa
   const expAqui = new Map();                               // cena → { seq, mapa } lido do aparelho
@@ -8759,6 +8759,9 @@ const Nuvem = (() => {
      uma cena que não está aqui). Cada documento viaja sozinho até o banco: outro aparelho do mestre pode ter acabado
      de pôr a cena no ar, com uma parte já lá e a outra a caminho. */
   const ESPERA_LIMPAR = 5000;
+  /* Quanto a casca espera para mandar ao banco o que os outros estão esperando ver (a projeção, os pedidos dos
+     jogadores). O resto espera o meio segundo de sempre. */
+  const PRESSA = 30;
   const relogio = () => performance.now();
   const esquecer = id => { sombra.delete(id); visto.delete(id); };
   // O documento como está no banco agora passa a ser o ponto de partida deste aparelho.
@@ -8985,21 +8988,24 @@ const Nuvem = (() => {
   /* camps: as campanhas do documento. Para a projeção, sempre as da cena que está no ar (o documento é o mesmo de
      uma cena para a outra). Para os documentos de uma cena, só vão quando ela é criada: depois, quem muda a campanha
      de uma cena é definirCampanhas (e o que outro aparelho mudou chega por doBanco). */
-  function escrever(id, dados, vis, cas, camps) {
+  /* pressa: o documento sobe quase em seguida, sem a espera de meio segundo da casca (a projeção: os jogadores estão
+     esperando por ela). */
+  function escrever(id, dados, vis, cas, camps, pressa) {
     const j = JSON.stringify(dados), l = D.pegar(id);
+    const opt = cas || pressa ? Object.assign(cas ? { cas: true } : {}, pressa ? { pressa: PRESSA } : {}) : undefined;
     const outras = !!camps && (!l || !iguais(listaDe(l), camps));        // a campanha (ainda) não está assim no banco
     if (l && sombra.get(id) === j && visto.get(id) === l && !outras) return true;        // igual ao que foi gravado daqui, e ninguém mexeu lá desde então
     if (j.length > LIMITE / 3 && pesoNoBanco(j) > LIMITE) return false;
     sombra.set(id, j);
     if (l && !l.apagado && doMestre(l) && l.vis === vis && Proj.igual(l.dados, dados) && !outras) { visto.set(id, l); return true; }      // já está assim no banco
     if (outras && camps.length + listaDe(l).length > 0) {      // (numa mesa sem campanhas não há o que dizer: a coluna nem vai)
-      visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j), campanhas: camps.slice() }, undefined, cas ? { cas: true } : undefined) || D.pegar(id));
+      visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j), campanhas: camps.slice() }, undefined, opt) || D.pegar(id));
       return true;
     }
     /* cas: as cenas e o índice são gravados conferindo a versão. Com o mestre e o mestre auxiliar (ou o mestre em dois
        aparelhos) mexendo na mesma cena no mesmo instante, a gravação de um não passa por cima da do outro: a casca
        junta as duas e devolve a cena juntada (que chega por doBanco, como qualquer mudança de fora). */
-    visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j) }, undefined, cas ? { cas: true } : undefined) || D.pegar(id));       // sem dono: é do mestre
+    visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j) }, undefined, opt) || D.pegar(id));       // sem dono: é do mestre
     return true;
   }
   function avisarGrande(sc) {
@@ -9046,7 +9052,19 @@ const Nuvem = (() => {
     }
     marcar(falhou ? 'erro' : 'ok');
   }
-  const agendar = () => { marcar('saving'); if (!tGravar) tGravar = setTimeout(gravar, 450); };
+  /* A cena que está no ar vai aos jogadores logo (publicarLogo); guardar a cena inteira no banco pode esperar um
+     pouco mais (gravar), juntando o que muda em sequência. */
+  const agendar = () => {
+    marcar('saving');
+    if (!tGravar) tGravar = setTimeout(gravar, 450);
+    if (!tPub && idx.noAr && (pubSuja || sujas.has(idx.noAr)) && transmito()) tPub = setTimeout(publicarLogo, 40);
+  };
+  function publicarLogo() {
+    tPub = 0;
+    if (modo !== 'mestre' || !idx.noAr || !transmito()) return;
+    if (Store.inTx()) { tPub = setTimeout(publicarLogo, 150); return; }      // (no meio de um gesto do mestre: vai quando ele soltar)
+    publicar();
+  }
   const daParteViva = op => (op.t === 'scn' ? Object.keys(op.p || {}).every(k => Proj.VIVO.includes(k)) : Proj.VIVO.includes(op.c));
 
   /* A projeção vai em dois documentos, que chegam aos jogadores um de cada vez. Para ninguém montar o mapa novo com
@@ -9063,11 +9081,11 @@ const Nuvem = (() => {
     m.ver = Proj.resumo(JSON.stringify(m));
     // (a projeção é da campanha da cena que está no ar: só quem participa dela a recebe; a de uma cena do mundo, todos)
     const cs = campanhasDaCena(sc.id);
-    const coube = escrever(PUB_M, m, 'mesa', false, cs), la = dadosMestre(PUB_M);
+    const coube = escrever(PUB_M, m, 'mesa', false, cs, true), la = dadosMestre(PUB_M);
     // se o mapa novo não coube no banco, os jogadores continuam com o mapa que está lá — e com os tokens ao vivo
     v.mv = coube || !la || la.id !== sc.id ? m.ver : la.ver;
     v.ack = Object.assign({}, acks); v.pings = pings;
-    if (!(escrever(PUB_V, v, 'mesa', false, cs) & coube)) avisarGrande(sc);
+    if (!(escrever(PUB_V, v, 'mesa', false, cs, true) & coube)) avisarGrande(sc);
   }
   function despublicar() {
     for (const id of [PUB_M, PUB_V]) { if (D.pegar(id)) D.apagar(id); esquecer(id); }
@@ -9408,7 +9426,7 @@ const Nuvem = (() => {
        que passam da conta dele. (O documento é do próprio jogador: o banco só aceita que ele crie o que é dele.) */
     let lote = confirmados.map(b => ({ n: b.n, ops: b.ops })).concat(caixa);
     while (lote.length > caixa.length && JSON.stringify(lote).length > 120000) lote = lote.slice(1);
-    D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: JSON.parse(JSON.stringify({ cena: vazia ? null : S.current, lote })) });
+    D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: JSON.parse(JSON.stringify({ cena: vazia ? null : S.current, lote })) }, undefined, { pressa: PRESSA });
   }
   // "Ao vivo" quando não há nada na fila; "enviando" enquanto o mestre não confirma; depois de um tempo, "esperando o mestre".
   function situacao() {

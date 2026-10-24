@@ -1119,7 +1119,7 @@
     // (rems / remsVoo: as mudanças do estado e das skills de cada personagem que ainda vão subir / que estão subindo agora)
     // (reler: as linhas a ler de novo, inteiras, porque outra pessoa mexeu nelas junto com uma gravação daqui)
     // (apagadas: a revisão em que cada linha foi apagada — ver enterrar)
-    const c = cols[nome] = { nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), cas: new Set(), bases: new Map(), tempo: new Map(), falhas: 0, morta: false, buscando: false };
+    const c = cols[nome] = { nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), cas: new Set(), bases: new Map(), tempo: new Map(), prazo: new Map(), falhas: 0, morta: false, buscando: false };
     c.pronta = (async () => {
       for (let de = 0; ; de += 1000) {
         const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).order('rev').range(de, de + 999);
@@ -1239,9 +1239,15 @@
       c.conferindo = false;
     }
   }
+  /* A linha sobe `ms` depois da mudança — ou antes, se já estava marcada para antes. Uma mudança nova nunca adia a
+     subida que já estava marcada: com várias pessoas mexendo ao mesmo tempo (as cenas), a espera que recomeçasse a
+     cada mudança deixaria a linha parada até todo mundo dar uma pausa. */
   function agendar(c, id, ms) {
+    const ate = performance.now() + ms, ja = c.prazo.get(id);
+    if (c.tempo.has(id) && ja != null && ja <= ate) return;
     clearTimeout(c.tempo.get(id));
-    c.tempo.set(id, setTimeout(() => { c.tempo.delete(id); enviarLinha(c, id); }, ms));
+    c.prazo.set(id, ate);
+    c.tempo.set(id, setTimeout(() => { c.tempo.delete(id); c.prazo.delete(id); enviarLinha(c, id); }, ms));
   }
   /* A linha inteira, como vai para o banco. Um documento escrito pelo mestre vai sempre sem dono: se já existir no
      banco um documento com esse nome e com dono (que nenhum sistema lê), ele volta a ser do mestre. */
@@ -1468,7 +1474,10 @@
       c.linhas.set(id, l); c.sujos.set(id, suj);
       dados.emit('muda', nome, l, 'local', de);
     }
-    agendar(c, id, 500);
+    /* opt.pressa: o que os outros esperam ver na hora (a cena no ar, o pedido de um jogador) sobe quase em seguida;
+       o resto espera meio segundo, para juntar numa gravação só o que muda em sequência (quem digita, por exemplo). */
+    const pressa = opt && typeof opt.pressa === 'number' && opt.pressa >= 0 ? Math.min(opt.pressa, 500) : 500;
+    agendar(c, id, pressa);
     contarPendentes();
     return l;
   }
@@ -1654,7 +1663,7 @@
     for (const c of Object.values(cols)) {
       for (const id of c.emVoo.keys()) if (!c.naSaida.has(id)) semGarantia++;
       for (const id of [...c.sujos.keys()]) {
-        clearTimeout(c.tempo.get(id)); c.tempo.delete(id);
+        clearTimeout(c.tempo.get(id)); c.tempo.delete(id); c.prazo.delete(id);
         if (c.emVoo.has(id)) continue;                       // (já contada: a parte dela que está indo não tem garantia)
         if (!enviarNaSaida(c, id)) { semGarantia++; enviarLinha(c, id); }
       }

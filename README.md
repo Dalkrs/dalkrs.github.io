@@ -160,6 +160,25 @@ lugares, a mesma barra) fica uma só — a de quem gravou por último —, igual
 A projeção que os jogadores recebem (`cena:pub:*`) não passa por isso: só o aparelho que transmite a escreve,
 inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais quem receba um documento juntado).
 
+### A cena ao vivo: o que demora quanto
+
+Um token que um jogador move (ou uma barra que ele muda) faz este caminho: o pedido dele sobe ao banco, o aparelho do
+mestre que transmite o aplica e publica a projeção, e a projeção chega aos outros. Desde a versão 2026.10.24-1:
+
+- **A fila da casca não adia o que já estava marcado** (`agendar`, em `tc/tc.js`). Uma linha sobe meio segundo depois
+  da primeira mudança dela que ainda não subiu — e não meio segundo depois da última. Antes, cada mudança recomeçava
+  a espera: com duas ou três pessoas mexendo, a projeção podia ficar parada até todo mundo dar uma pausa.
+- **O que os outros estão esperando sobe com pressa** (`opt.pressa`, levado pela ponte): a projeção (`cena:pub:m` e
+  `cena:pub:v`) e os pedidos dos jogadores (`cena:pedido:*`) sobem 30 ms depois, sem o meio segundo. O resto (as
+  fichas, a cena guardada inteira, o índice) continua juntando o que muda em sequência.
+- **A projeção sai antes de a cena ser guardada** (`publicarLogo`, em `07d-nuvem.js`): 40 ms depois de uma mudança na
+  cena que está no ar, e não junto com a gravação da cena inteira (450 ms). No meio de um gesto do mestre, ela espera
+  ele soltar.
+
+Com isso, do jogador que solta o token até a tela dos outros fica perto de 0,7 s (antes, 2 a 3 s, e mais com várias
+pessoas mexendo); do mestre até os jogadores, perto de 0,3 s. Enquanto o mestre arrasta alguma coisa, os pedidos dos
+jogadores ainda esperam ele soltar.
+
 ### As rolagens e o auditor
 
 Toda rolagem do site é sorteada no aparelho de quem rolou, com o gerador de números do navegador

@@ -209,7 +209,10 @@
             if (Object.keys(mudas).length || Object.keys(resto).length) enviar({ t: 'dados.gravar', col: nome, id, campos: resto, mudas, muda: mudas.estado || null, mesa: c.mesa });
             return l;
           }
-          const l = Object.assign({}, atual || { id }, campos); c.linhas.set(id, l); enviar({ t: 'dados.gravar', col: nome, id, campos, mesa: c.mesa, cas: !!(opt && opt.cas) }); return l;
+          const l = Object.assign({}, atual || { id }, campos); c.linhas.set(id, l);
+          const msg = { t: 'dados.gravar', col: nome, id, campos, mesa: c.mesa, cas: !!(opt && opt.cas) };
+          if (opt && typeof opt.pressa === 'number') msg.pressa = opt.pressa;     // (opt.pressa: sobe quase em seguida — ver dadosGravar, na casca)
+          enviar(msg); return l;
         },
         apagar(id) { c.linhas.delete(id); enviar({ t: 'dados.gravar', col: nome, id, campos: { apagado: true }, mesa: c.mesa }); },
         aoMudar(fn) { c.ouvintes.push(fn); },

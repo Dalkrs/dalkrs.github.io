@@ -44,15 +44,16 @@ function banco() {
 }
 
 /* ---- um aparelho: o programa das Cenas, com a ponte da mesa ligada ao banco de mentira ----
-   No meio do caminho fica o que a casca (tc.js) faz: junta as gravações de cada documento por meio segundo, manda
+   No meio do caminho fica o que a casca (tc.js) faz: junta as gravações de cada documento por meio segundo (ou quase
+   nada, com opt.pressa: a projeção e os pedidos dos jogadores) — contados da primeira mudança que ainda não subiu —, manda
    uma de cada vez, e — enquanto um documento tem algo daqui por subir — o que chega dele do banco não é entregue ao
    programa (vale o daqui, que vai por cima). O que chega mais velho do que o que já se tem também não. */
 function aparelho(DB, { nome, papel, eu, membros, atrasoTx = 30, atrasoRx = 5, fundo = false, navegador = null }) {
   const ap = { nome, papel, eu, atrasoRx, morto: false, surdo: false, perdidos: new Set(), bloqueado: new Set(), segura: new Set(), avisos: [], alertas: [], acertos: 0 };
   const espelho = new Map(DB.visiveis(ap).map(l => [l.id, l])), ouvintes = [];
-  const fila = new Map(), emVoo = new Set(), tempo = new Map();
+  const fila = new Map(), emVoo = new Set(), tempo = new Map(), prazo = new Map();
   const mandar = id => {
-    tempo.delete(id);
+    tempo.delete(id); prazo.delete(id);
     if (ap.morto || emVoo.has(id) || !fila.has(id)) return;
     if (ap.segura.has(id)) { tempo.set(id, setTimeout(() => mandar(id), 10)); return; }      // a gravação deste documento está demorando a sair
     const campos = fila.get(id); fila.delete(id); emVoo.add(id);
@@ -65,7 +66,13 @@ function aparelho(DB, { nome, papel, eu, membros, atrasoTx = 30, atrasoRx = 5, f
       if (fila.has(id)) agendarEnvio(id);
     }, atrasoTx);
   };
-  const agendarEnvio = id => { if (!tempo.has(id)) tempo.set(id, setTimeout(() => mandar(id), 500 / ESCALA)); };
+  // (como agendar, em tc.js: uma mudança nova nunca adia o envio já marcado; a pressa só adianta)
+  const agendarEnvio = (id, ms = 500) => {
+    const ate_ = Date.now() + ms / ESCALA;
+    if (tempo.has(id) && prazo.get(id) <= ate_) return;
+    clearTimeout(tempo.get(id)); prazo.set(id, ate_);
+    tempo.set(id, setTimeout(() => mandar(id), ms / ESCALA));
+  };
   ap.receber = l => {
     if (fila.has(l.id) || emVoo.has(l.id)) return;           // há algo daqui por subir neste documento: vale o daqui
     const tenho = espelho.get(l.id);
@@ -77,7 +84,7 @@ function aparelho(DB, { nome, papel, eu, membros, atrasoTx = 30, atrasoRx = 5, f
     pronta: Promise.resolve(true),
     todas: () => [...espelho.values()],
     pegar: id => espelho.get(id) || null,
-    gravar(id, campos) { const l = Object.assign({}, espelho.get(id) || { id, rev: 0 }, campos); espelho.set(id, l); fila.set(id, Object.assign(fila.get(id) || {}, campos, { apagado: false })); agendarEnvio(id); return l; },
+    gravar(id, campos, base, opt) { const l = Object.assign({}, espelho.get(id) || { id, rev: 0 }, campos); espelho.set(id, l); fila.set(id, Object.assign(fila.get(id) || {}, campos, { apagado: false })); agendarEnvio(id, opt && typeof opt.pressa === 'number' ? Math.min(opt.pressa, 500) : 500); return l; },
     apagar(id) { espelho.delete(id); fila.set(id, { apagado: true }); agendarEnvio(id); },
     aoMudar(fn) { ouvintes.push(fn); },
   };
@@ -581,6 +588,30 @@ const soTransmite = async (DB, quem, outro, msg) => {
     A.fechar();
     P.Store.tx('mover', () => P.Store.upd('tokens', P.tok('Dain').id, { x: 448 }));
     ok(await ate(() => B.Nuvem.transmito() && B.tok('Dain').x === 448 && P.Nuvem.pendentes() === 0, 6000), 'o pedido do jogador fica sem resposta: passada a espera, a página em segundo plano assume sozinha e aplica');
+    for (const ap of DB.aparelhos) ap.fechar();
+  }
+
+  cenario = 'a cena ao vivo: o que um jogador faz chega logo ao outro, e o que o mestre faz também';
+  {
+    const { DB, A, J } = await mesa(['u-ana', 'u-beto']);
+    const P = J['u-ana'], Q = J['u-beto'];
+    await quieto(DB, 100);
+    // (o relógio do programa anda 10 vezes mais rápido: 150 ms aqui são 1,5 s no site)
+    let t0 = Date.now();
+    P.Store.tx('mover', () => P.Store.upd('tokens', P.tok('Dain').id, { x: 448 }));
+    Q.Store.tx('mover', () => Q.Store.upd('tokens', Q.tok('Lia').id, { x: 512 }));
+    ok(await ate(() => Q.tok('Dain').x === 448 && P.tok('Lia').x === 512, 3000), 'os dois movimentos, feitos ao mesmo tempo, chegam aos dois jogadores');
+    const jogador = Date.now() - t0;
+    ok(jogador < 150, `do jogador ao outro jogador em menos de 1,5 s do site (levou ${jogador * ESCALA} ms)`);
+    t0 = Date.now();
+    dano(A, 'Dain', 5);
+    ok(await ate(() => vida(P, 'Dain') === 15 && vida(Q, 'Dain') === 15, 3000), 'o dano do mestre chega aos dois');
+    const mestre = Date.now() - t0;
+    ok(mestre < 90, `do mestre aos jogadores em menos de 0,9 s do site (levou ${mestre * ESCALA} ms)`);
+    const subiu = DB.gravacoes.length;
+    for (let i = 0; i < 6; i++) { dano(A, 'Orc', 0); P.Store.tx('mover', () => P.Store.upd('tokens', P.tok('Dain').id, { x: 448 + 64 * (i + 1) })); await espera(20); }
+    ok(await ate(() => Q.tok('Dain').x === 448 + 64 * 6, 3000), 'com o jogador mexendo sem parar, o outro acompanha até o fim');
+    ok(DB.gravacoes.length - subiu < 60, `sem gravar demais no banco (${DB.gravacoes.length - subiu} gravações para 6 movimentos)`);
     for (const ap of DB.aparelhos) ap.fechar();
   }
 

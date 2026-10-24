@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-1",
+      "data": "2026-10-24",
+      "titulo": "Cenas mais rápidas ao vivo",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: o que cada um faz na cena chega bem mais rápido aos outros: um token movido ou uma barra mudada aparece em menos de um segundo, mesmo com várias pessoas mexendo ao mesmo tempo (antes levava de 2 a 3 segundos, e às vezes mais)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.23-11",
       "data": "2026-10-23",
       "titulo": "Restaurar as energias",

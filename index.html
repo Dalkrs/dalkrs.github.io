@@ -495,7 +495,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=21"></script>
-<script src="tc/tc.js?v=27"></script>
+<script src="tc/tc.js?v=28"></script>
 <script src="tc/busca.js?v=1"></script>
 <script src="tc/guia.js?v=5"></script>
 <script src="tc/notas.js?v=2"></script>
@@ -503,7 +503,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.23-11';
+  const VERSAO = '2026.10.24-1';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -743,7 +743,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       if (m.mesa && m.mesa !== mesas.atual.id) return;        // gravação de uma mesa que já não é a aberta (chegou atrasada): não entra nesta
       // (m.mudas: o estado e as skills como diferença, por coluna; m.muda: só o estado — é o que uma página antiga manda)
       // (m.cas: o documento é gravado conferindo a versão — se outra pessoa gravou antes, as duas mudanças se juntam)
-      try { TC.dados.col(m.col).gravar(m.id, m.campos || {}, fonte, m.mudas || (m.muda ? { estado: m.muda } : null), m.cas ? { cas: true } : null); } catch (e) { toast(e.message); }
+      // (m.pressa: sobe quase em seguida, sem a espera de meio segundo — a cena no ar e os pedidos dos jogadores)
+      const opt = m.cas || typeof m.pressa === 'number' ? Object.assign(m.cas ? { cas: true } : {}, typeof m.pressa === 'number' ? { pressa: m.pressa } : {}) : null;
+      try { TC.dados.col(m.col).gravar(m.id, m.campos || {}, fonte, m.mudas || (m.muda ? { estado: m.muda } : null), opt); } catch (e) { toast(e.message); }
     } else if (m.t === 'ficha.barras' && mesas.atual) {
       // as Cenas levam à ficha as barras de um token cuja ficha não chega a quem mexeu (ver TC.dados.barrasDoToken)
       if (m.mesa && m.mesa !== mesas.atual.id) return;
