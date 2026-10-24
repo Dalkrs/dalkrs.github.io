@@ -525,7 +525,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.24-10';
+  const VERSAO = '2026.10.24-11';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1077,6 +1077,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
           h('div', { class: 'nm' }, h('span', { text: m.nome }), h('small', { text: [m.cargo === 'mestre' ? 'mestre' : m.cargo === 'auxiliar' ? (m.jogando ? 'auxiliar · jogando' : 'auxiliar') : '', semCamp ? 'sem campanha' : '', m.semVivo && a.cargo === 'mestre' ? 'sem mesa ao vivo' : '', m.acamp && a.cargo === 'mestre' ? 'mexe no acampamento' : ''].filter(Boolean).join(' · ') })));
         // só o mestre mexe em quem participa: o papel de cada um (jogador ou mestre auxiliar), a mesa ao vivo dele e tirar da mesa
         if (a.cargo === 'mestre' && m.cargo !== 'mestre') lin.append(h('div', { class: 'ac' },
+          h('button', { type: 'button', class: 'btn sm', text: 'Ficha…', 'data-ficha': m.usuario_id, title: 'Dar uma ficha para ' + m.nome + ' criar o personagem, ou criar os NPCs da história dele', onclick: () => { fecharMenu(); janelaFicha(m); } }),
           h('button', { type: 'button', class: 'btn sm', text: 'Permissões…', title: 'Jogador ou mestre auxiliar, se vê a mesa ao vivo e se mexe no acampamento', onclick: () => { fecharMenu(); janelaPapel(m); } }),
           h('button', { type: 'button', class: 'btn sm', text: 'Tirar', onclick: () => confirmar('Tirar ' + m.nome + ' da mesa?', 'A pessoa deixa de ver esta mesa. Ela pode voltar com o código de convite' + (m.cargo === 'auxiliar' ? ' — como jogador.' : '.'), 'Tirar', async () => { await mesas.tirar(m.usuario_id); toast(m.nome + ' saiu da mesa.'); }) })));
         lista.append(lin);
@@ -1202,6 +1203,45 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   }
   /* O mestre escolhe o papel de um participante: jogador ou mestre auxiliar — e, para o auxiliar, as abas que ele
      mestra. Nada muda antes de "Salvar"; depois, dá para desfazer pelo aviso. */
+  /* (lote 26) A ficha que o mestre dá a um jogador: nesta campanha ou numa campanha nova (o nome é dado aqui, e o
+     jogador passa a participar dela). As Fichas abrem já com o pedido — lá ficam o level e as raças e classes que
+     valem — e o jogador recebe um aviso, com som, para criar o personagem. "Criar background" leva às Fichas, para o
+     mestre criar os NPCs da história desse jogador (família, companheiros, o pessoal do toldo). */
+  function janelaFicha(m) {
+    const a = mesas.atual, camp = mesas.campanha(), aqui = camp && !camp.encerrada ? camp : null;
+    const rAqui = h('input', { type: 'radio', name: 'df', id: 'df-aqui', checked: true }), rNova = h('input', { type: 'radio', name: 'df', id: 'df-nova' });
+    const rFundo = h('input', { type: 'radio', name: 'df', id: 'df-fundo' });
+    const nome = h('input', { id: 'df-nome', maxlength: 60, autocomplete: 'off', placeholder: 'Ex.: A geração de ' + m.nome });
+    const pintar = () => { nome.disabled = !rNova.checked; if (rNova.checked) nome.focus(); };
+    [rAqui, rNova, rFundo].forEach(r => r.addEventListener('change', pintar));
+    const err = h('div', { class: 'err', role: 'alert' });
+    const ok = h('button', { type: 'submit', class: 'btn pri', id: 'df-ok', text: 'Continuar' });
+    const f = h('form', { class: 'dl', id: 'f-ficha' }, h('h2', { text: 'Ficha para ' + m.nome }),
+      h('label', { class: 'op' }, rAqui, h('span', {}, h('b', { text: aqui ? 'Dar ficha nesta campanha' : 'Dar ficha nesta mesa' }),
+        h('small', { text: aqui ? 'A ficha nasce na campanha ' + aqui.nome + '.' : a.campanhas.length ? 'A ficha nasce no mundo (a campanha em vista está encerrada).' : 'A mesa não tem campanhas: a ficha é da mesa.' }))),
+      h('label', { class: 'op' }, rNova, h('span', {}, h('b', { text: 'Dar ficha numa campanha nova' }),
+        h('small', { text: 'Você dá o nome agora e ' + m.nome + ' passa a participar dela. Os personagens antigos continuam nas campanhas deles.' }), nome)),
+      h('label', { class: 'op' }, rFundo, h('span', {}, h('b', { text: 'Criar background' }),
+        h('small', { text: 'Os NPCs iniciais da história de ' + m.nome + ': família, companheiros e o pessoal do toldo. Vão para um grupo com o nome dele e entram no acampamento; ' + m.nome + ' vê, mas não controla.' }))),
+      h('div', { class: 'nt', text: 'Nas Fichas você escolhe o level e as raças e classes que valem. ' + m.nome + ' recebe um aviso para criar o personagem.' }),
+      err, h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
+    pintar();
+    enviarCom(f, err, ok, async () => {
+      if (rFundo.checked) { fecharJanela(); irPara('fichas', { fundo: { jogador: m.usuario_id, nome: m.nome } }); return; }
+      let campId = aqui ? aqui.id : null;
+      if (rNova.checked) {
+        const n = nome.value.trim();
+        if (!n) throw new Error('Dê um nome à campanha nova.');
+        const c = await mesas.criarCampanha(n, false);
+        await mesas.participar(c.id, m.usuario_id, true);
+        campId = c.id;
+      } else if (campId && !(m.campanhas || []).includes(campId)) await mesas.participar(campId, m.usuario_id, true);
+      fecharJanela();
+      irPara('fichas', { darFicha: { jogador: m.usuario_id, nome: m.nome, camp: campId } });
+    });
+    abrirJanela(f);
+  }
+
   function janelaPapel(m) {
     const eraAux = m.cargo === 'auxiliar', abasAntes = m.abas.slice(), viaAntes = !m.semVivo, acampAntes = !!m.acamp;
     const rJog = h('input', { type: 'radio', name: 'pp', id: 'pp-jog', checked: !eraAux }), rAux = h('input', { type: 'radio', name: 'pp', id: 'pp-aux', checked: eraAux });
@@ -1996,6 +2036,38 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     el.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); } });
   }
   // a ficha, as tabelas da mesa ou a árvore mudaram: os números da telinha acompanham
+  /* (lote 26) A ficha para criar: quando chega ao jogador uma ficha dele com a criação pendente, um aviso com som.
+     "Criar agora" abre as Fichas na criação. Uma vez por ficha neste aparelho, a cada vez que a página abre. */
+  const criacaoAvisada = new Set();
+  function tocarAviso() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      if (!audio) audio = new AC();
+      const soar = () => {
+        const t0 = audio.currentTime + 0.02, g = audio.createGain();
+        g.gain.value = 0.18; g.connect(audio.destination);
+        [[660, 0], [880, 0.14], [1320, 0.28]].forEach(([fq, dt]) => {
+          const o = audio.createOscillator(), e = audio.createGain();
+          o.type = 'sine'; o.frequency.value = fq;
+          e.gain.setValueAtTime(0.0001, t0 + dt); e.gain.exponentialRampToValueAtTime(1, t0 + dt + 0.02); e.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.5);
+          o.connect(e); e.connect(g); o.start(t0 + dt); o.stop(t0 + dt + 0.55);
+        });
+      };
+      if (audio.state === 'suspended') audio.resume().then(soar, () => {}); else soar();
+    } catch (e) { /* sem som neste aparelho */ }
+  }
+  function conferirCriacao() {
+    const a = mesas.atual, eu = conta.usuario ? conta.usuario.id : null;
+    if (!a || !eu || a.papel === 'mestre') return;
+    for (const l of TC.dados.col('personagens').todas()) {
+      const c = l.ficha && l.ficha.criacao;
+      if (l.dono_id !== eu || !c || !c.pendente || criacaoAvisada.has(l.id)) continue;
+      criacaoAvisada.add(l.id);
+      tocarAviso();
+      toast('O mestre te deu uma ficha nova: é hora de criar o seu personagem!', 'Criar agora', () => irPara('fichas', { criar: l.id }), 60000);
+    }
+  }
+  TC.dados.on('muda', col => { if (col === 'personagens') setTimeout(conferirCriacao, 300); });
   TC.dados.on('muda', col => { if ((col === 'personagens' || col === 'documentos') && dadosProntos) { clearTimeout(tDados); tDados = setTimeout(() => { pintarDados(); repintarPedidosAbertos(); }, 200); } });
   aoVivo.on('estado', c => { const s = $('sinal'); s.classList.toggle('on', c); s.title = c ? 'Ao vivo' : 'Atualizando a cada poucos segundos'; });
   aoVivo.on('segredo', () => { pintarCompor(); difundir(); });

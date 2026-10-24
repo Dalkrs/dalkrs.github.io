@@ -201,6 +201,39 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
   quando não há nada.
 
+### A criação de personagem, o background e as Profissões (lote 26)
+
+- **Dar ficha.** No menu da mesa, ao lado de cada jogador, **"Ficha…"** (só o mestre da mesa) abre a janela
+  `janelaFicha`: **dar ficha nesta campanha**, **numa campanha nova** (o nome é dado ali; `mesas.criarCampanha` e
+  `mesas.participar` põem o jogador nela — os personagens antigos dele continuam nas campanhas deles) ou **criar
+  background**. A casca leva às Fichas com o pedido (`irPara('fichas', { darFicha | fundo })`); lá o mestre escolhe o
+  level e as raças e classes que valem, e a ficha nasce do jogador, em branco, com `ficha.criacao = { pendente, level,
+  racas, classes }` (listas vazias: todas valem), a distribuição livre e os pontos de começo de cada tipo de ponto da
+  Árvore (`skills.pontos`, o padrão de cada um: quem dá ponto é o mestre).
+- **O aviso.** A casca do jogador olha as fichas dele que chegam: a que tem a criação pendente toca um som (três notas,
+  `tocarAviso`) e mostra o aviso com "Criar agora" (`irPara('fichas', { criar })`). Nas Fichas, a ficha pendente tem o
+  quadro "Esta ficha está esperando você criar o personagem" e, na lista, "a criar".
+- **A criação** (`fichas/criacao.js`, `FichasCriacao`): raça (as famílias, como na Oficina), sub-raça (pulada quando a
+  família tem uma só), classe — cada uma com o texto da raiz da árvore —, nome e foto, atributos (os pontos do level, da
+  tabela das Fichas; no mínimo 1 em cada; "Dividir igual") e habilidades (os pontos iniciais nas árvores da raça e da
+  classe, com as regras da Árvore: só o que já se alcança, "e"/"ou", os exclusivos, sem passar dos pontos; as raízes de
+  graça já vêm escolhidas). Ao criar: o nome, a foto, "Raça · Classe", `modoAtr: 'livre'` com os pontos, as duas
+  árvores equipadas e o que foi escolhido, e `criacao.conferir` — o mestre vê "nova · conferir" na lista e no alto da
+  ficha, e "Conferido" tira a marca. Escola e profissão o mestre dá depois.
+- **O background** (o mestre): raça, sub-raça, **papel** (Família, Companheiro — com uma classe — ou Toldo — com uma
+  profissão), nome, foto, relação com o personagem do jogador, tier e level; "Criar e fazer outro" segue para o
+  próximo. Os NPCs vão para um grupo com o nome do jogador, na campanha do personagem dele, à vista dos jogadores e sem
+  dono (o jogador vê, não controla), com `ficha.fundo = { de, papel, relacao }`. O Acampamento põe sozinho na roda os
+  NPCs do background, como faz com os personagens dos jogadores; a ficha que ainda espera ser criada só entra depois.
+- **As Profissões.** Categoria nova de árvore (`profissao`), com o tipo de ponto "Profissão". Na Oficina, "Selecionar
+  árvore" › Profissões tem o quadro **"Profissões prontas"**: as 14 árvores de `arvore/profissoes.json` (Alquimista,
+  Caçador, Coletor, Construtor, Cozinheiro, Curandeiro, Empregado, Escriba, Esfolador, Ferreiro, Menestrel, Mercador,
+  Tropeiro e Vigia), de 63 a 69 nódulos cada, fora da luta, com os itens por tier (I a VI: "Poção de Cura I"…). Os
+  caminhos de mestria — os tiers V e VI e o trabalho de oficina grande — vêm **trancados**: o mestre abre para quem é do
+  toldo ("Aberto para…"). Os custos vêm na chave `PROF`, que vira o tipo de ponto "Profissão" (criado com 3 pontos de
+  começo para os personagens novos); a que já está na biblioteca (pelo id ou pelo nome) fica como está.
+- Testes: `src/tests/fichas-criacao.test.js` e `src/tests/arvore-lote26.test.js`.
+
 ### As ferramentas das Cenas em grupos (lote 26)
 
 O trilho da esquerda segue `Tools.GRUPOS` (em `09-tools.js`): **Jogo** (selecionar, câmera, régua, ping), **Peças**

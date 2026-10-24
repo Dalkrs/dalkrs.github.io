@@ -169,6 +169,10 @@ label.rot, .rot{display:block;font:600 12px/1.35 var(--ui);letter-spacing:normal
 .sel-card.atual{border-color:var(--acento);box-shadow:inset 0 0 0 1px var(--acento)}
 .sel-card small.previa{color:var(--texto-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sel-card .lacre{font:13px/1 var(--glifo);color:var(--acento);margin-left:4px}
+.sel-prontas{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:0 0 14px;padding:12px 14px;border:1px solid var(--acento-borda);border-radius:6px;background:var(--acento-fundo)}
+.sel-prontas div{flex:1 1 320px;display:flex;flex-direction:column;gap:3px}
+.sel-prontas b{font:600 15px var(--ui)}
+.sel-prontas span{font-size:13px;color:var(--texto-2);line-height:1.45}
 .sel-vazio{color:var(--texto-3);font-style:italic;font-size:13.5px;padding:18px 0}
 .sel-rodape{display:flex;gap:8px;align-items:center;padding:12px 20px;border-top:1px solid var(--linha);background:var(--fundo-2)}
 .sel-rodape .nota{margin:0 auto 0 0}
@@ -2352,6 +2356,10 @@ function pintarSelecao(){
     sel.trilha = sel.trilha.slice(0, trilha.length);
     if(trilha.length) h += `<nav class="sel-trilha" aria-label="Onde você está"><button type="button" data-nivel="0">${esc(aba.nome)}</button>${trilha.map((x,i)=>
       i===trilha.length-1 ? `<span>›</span><b>${esc(x.nome)}</b>` : `<span>›</span><button type="button" data-nivel="${i+1}">${esc(x.nome)}</button>`).join('')}</nav>`;
+    // (lote 26) na aba Profissões: as árvores prontas (arvore/profissoes.json), para pôr na biblioteca com um clique
+    const PRONTAS = ['Alquimista','Caçador','Coletor','Construtor','Cozinheiro','Curandeiro','Empregado','Escriba','Esfolador','Ferreiro','Menestrel','Mercador','Tropeiro','Vigia'];
+    const faltam = PRONTAS.filter(n=>!arvs.some(a=>norm(a.nome)===norm(n)));
+    if(aba.id==='profissao' && !trilha.length && faltam.length) h += `<div class="sel-prontas"><div><b>Profissões prontas</b><span>${faltam.length===PRONTAS.length ? '14 árvores' : 'Faltam ' + faltam.length} — ${faltam.join(', ')}. Feitas para o pessoal de toldo (a árvore principal) e para os aventureiros (uma secundária). Os caminhos de toldo vêm trancados: abra para quem é do toldo.</span></div><button type="button" class="btn ouro" id="selProntas">Adicionar à biblioteca…</button></div>`;
     const itens = itensDaPasta(p, !trilha.length);
     h += itens.length ? `<div class="sel-grade">${itens.map(it=>it.pasta
         ? `<button type="button" class="sel-card pasta" data-pasta="${esc(it.k)}"><b>${esc(it.nome)}</b><small>${plural(contarPasta(it.pasta),'árvore','árvores')}</small><small class="previa">${esc(itensDaPasta(it.pasta, false).map(x=>x.nome).join(', '))}</small></button>`
@@ -2361,8 +2369,37 @@ function pintarSelecao(){
   const corpo = $('#selCorpo');
   corpo.innerHTML = h;
   corpo.querySelectorAll('[data-arv]').forEach(b=>b.onclick = ()=>escolherNaSelecao(b.dataset.arv));
+  const pr = $('#selProntas'); if(pr) pr.onclick = instalarProfissoes;
   corpo.querySelectorAll('[data-pasta]').forEach(b=>b.onclick = ()=>{ sel.trilha.push(b.dataset.pasta); pintarSelecao(); const pri = $('#selCorpo .sel-grade .sel-card'); if(pri) pri.focus(); });
   corpo.querySelectorAll('[data-nivel]').forEach(b=>b.onclick = ()=>{ sel.trilha = sel.trilha.slice(0, +b.dataset.nivel); pintarSelecao(); const pri = $('#selCorpo .sel-grade .sel-card'); if(pri) pri.focus(); });
+}
+/* (lote 26) As profissões prontas: as árvores de arvore/profissoes.json entram na biblioteca (as que já estão — pelo id
+   ou pelo nome — ficam como estão). Os custos vêm na chave PROF, que vira o tipo de ponto "Profissão" (criado aqui,
+   se ainda não existe, com 3 pontos de começo para os personagens novos). */
+async function instalarProfissoes(){
+  let pacote;
+  try{ const r = await fetch('profissoes.json?v=1', {cache:'no-cache'}); if(!r.ok) throw new Error(); pacote = await r.json(); }
+  catch(e){ aviso('Não deu para carregar as profissões prontas agora. Tente de novo.', 'err'); return; }
+  const b = bib(), lista = Array.isArray(pacote && pacote.arvores) ? pacote.arvores : [];
+  const nomes = new Set(b.arvores.map(a=>norm(a.nome))), ids = new Set(b.arvores.map(a=>a.id));
+  const novas = lista.filter(a=>a && !nomes.has(norm(a.nome)) && !ids.has(a.id));
+  if(!novas.length){ aviso('As profissões prontas já estão todas na biblioteca.', 'ok'); return; }
+  const ok = await confirmar('Profissões prontas', `Pôr na biblioteca ${plural(novas.length,'árvore','árvores')} de Profissão: ${novas.map(a=>esc(a.nome)).join(', ')}. Os nódulos custam pontos de “Profissão”.`, 'Adicionar');
+  if(!ok) return;
+  registrar('profissões prontas');
+  let pool = b.pools.find(p=>norm(p.nome)===norm(POOL_DA_CATEGORIA.profissao.nome)), criado = '';
+  if(!pool){ criado = garantirPoolDaCategoria('profissao'); pool = b.pools.find(p=>norm(p.nome)===norm(POOL_DA_CATEGORIA.profissao.nome)); if(pool) pool.padrao = 3; }
+  const conj = {pool:new Set(b.pools.map(p=>p.id)), nat:new Set(b.naturezas.map(n=>n.id)), uso:new Set(b.usos.map(u=>u.id)), nos:new Set(b.arvores.flatMap(a=>a.nodes.map(n=>n.id)))};
+  const vistasA = new Set(b.arvores.map(a=>a.id));
+  for(const orig of novas){
+    const a = clone(orig);
+    a.nodes.forEach(n=>(n.graus || []).forEach(g=>{ const c = {}; for(const k in g.custos || {}) c[k==='PROF' && pool ? pool.id : k] = g.custos[k]; g.custos = c; }));
+    normalizarArvore(a, b, conj, vistasA);
+    b.arvores.push(a);
+  }
+  indexar(); salvar(); pintarTudo();
+  if(selAberto()){ sel.cat = 'profissao'; sel.trilha = []; pintarSelecao(); }
+  aviso(`${plural(novas.length,'profissão entrou','profissões entraram')} na biblioteca.` + (criado ? ` Criei o tipo de ponto “${criado}”, com 3 pontos de começo para os personagens novos (ajuste em Tipos de ponto).` : ''), 'ok', 9000);
 }
 /* No painel: Esc fecha; Backspace (fora da busca com texto) volta uma pasta; as setas andam pelos cartões. */
 function teclaSelecao(e){
