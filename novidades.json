@@ -2,6 +2,22 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.24-4",
+      "data": "2026-10-24",
+      "titulo": "A Oficina de árvores do mestre",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A Oficina, no grupo Mestre da barra: é onde o mestre monta e edita as árvores de habilidade. A aba Árvore fica para os jogadores."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: as mesmas cores e letras do resto do site, com o desenho dos nós de sempre."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-3",
       "data": "2026-10-24",
       "titulo": "Fichas com a cara nova e o modo Simples",

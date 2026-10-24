@@ -62,8 +62,8 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
 
   await passo('o guia acompanha a aba', async () => {
     await P.locator('#btnGuia').click(); await w(150);
-    await P.locator('#tab-arvore').click(); await w(1400);
-    ok(/Guia · Árvore/.test(await P.locator('#guia .guia-h').innerText()) && (await P.locator('#guia .guia-t').allInnerTexts()).includes('As skills únicas'), 'com o guia aberto, trocar de aba troca os assuntos (a Árvore)');
+    await P.locator('#tab-oficina').click(); await w(1400);      // (sem mesa, cada um mestra: a Árvore de quem mestra é a Oficina, com o guia da Árvore)
+    ok(/Guia · Oficina/.test(await P.locator('#guia .guia-h').innerText()) && (await P.locator('#guia .guia-t').allInnerTexts()).includes('As skills únicas'), 'com o guia aberto, trocar de aba troca os assuntos (a Oficina, com os da Árvore)');
     await P.locator('#guiaX').click(); await w(150);
     ok(await P.locator('#guia').isHidden(), 'o × fecha');
     // o lugar que existe mas está escondido (nas Cenas, a faixa dos turnos, sem combate): também dá o aviso

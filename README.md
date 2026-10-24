@@ -174,6 +174,11 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   Árvore, Rolador), **Mundo** (azul: Mapa-múndi, Jornal, Clã) e **Descanso** (lilás: Acampamento, Meditação). O ícone
   e a marca da aba aberta levam a cor do grupo; o âmbar fica para o botão principal de cada tela.
 - **A marca** é a Dora, a gatinha preta do mestre, num quadrado âmbar — também o ícone da aba do navegador.
+- **A Oficina** (grupo **Mestre**, só para quem mestra a Árvore) é a página da Árvore aberta com `?oficina`, no modo de
+  quem mestra: montar e editar as árvores (o botão Jogador continua lá, para ver como o jogador vê). A aba **Árvore**
+  passa a ser só de quem joga. As duas são a mesma página: quem pede uma e só pode a outra vai para a outra
+  (`abaPossivel`, na casca — o endereço, o "ir" dos sistemas, o guia e o papel na ponte usam a permissão da Árvore,
+  `permDe`). A Árvore também ganhou as cores e as letras do site; o desenho dos nós é o de sempre.
 - **O Rolador** usa as mesmas cores e letras do resto do site, e tem o tema claro.
 - **As Fichas** usam as cores e as letras do site (as variáveis de sempre das Fichas, com os valores da casca), sem
   rótulos em caixa alta espaçada. Dentro do site, a marca e o título somem: as abas Fichas/Mesa/Eventos e as ações

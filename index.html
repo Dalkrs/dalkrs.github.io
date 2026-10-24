@@ -61,9 +61,11 @@ button { cursor: pointer; }
 .grupo { --grupo: #74c28e; flex: none; display: flex; flex-direction: column; justify-content: flex-end; }
 .grupo[data-g="mundo"] { --grupo: #6fa8f0; }
 .grupo[data-g="descanso"] { --grupo: #b39cf0; }
+.grupo[data-g="mestre"] { --grupo: #d9dde6; }
 :where(:root[data-claro]) .grupo { --grupo: #2f7a55; }
 :where(:root[data-claro]) .grupo[data-g="mundo"] { --grupo: #2563b0; }
 :where(:root[data-claro]) .grupo[data-g="descanso"] { --grupo: #6a4fc2; }
+:where(:root[data-claro]) .grupo[data-g="mestre"] { --grupo: #4a5468; }
 .grupo-t { padding: 0 10px; font-size: 10.5px; line-height: 14px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--grupo); white-space: nowrap; }
 .grupo-abas { display: flex; align-items: stretch; gap: 2px; height: 36px; }
 .grupo[hidden] { display: none; }
@@ -523,7 +525,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.24-3';
+  const VERSAO = '2026.10.24-4';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -533,21 +535,24 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     jornal: '<path d="M4 5h13v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v9a2 2 0 0 1-2 2h-3"/><path d="M7 9h7M7 12.5h7M7 16h4"/>',
     meditacao: '<circle cx="12" cy="5" r="2"/><path d="M12 7.5v5"/><path d="M12 9.6c-1.6 1.6-3.6 2.6-6 3M12 9.6c1.6 1.6 3.6 2.6 6 3"/><path d="M4.5 18c2.4-1.9 4.9-2.8 7.5-2.8s5.1.9 7.5 2.8"/><path d="M8 20.5h8"/>',
     cla: '<path d="M12 3 4 6v6c0 4.5 3.4 7.8 8 9 4.6-1.2 8-4.5 8-9V6z"/><path d="M12 3v18"/><path d="M4 11.5h16"/>',
+    oficina: '<path d="M14.5 5.5a3.5 3.5 0 0 0 4.6 4.6l1.4 1.4-9 9a2 2 0 0 1-2.8-2.8l9-9z"/><path d="M5 3v4M3 5h4M19 15v4M17 17h4"/>',
     rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
   };
   /* As abas, na ordem da barra, em três grupos (ver GRUPOS). */
   const ABAS = [
     { id: 'cenas', nome: 'Cenas', src: 'cenas/', dados: true, grupo: 'jogar' },
     { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true, grupo: 'jogar' },
-    { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true, grupo: 'jogar' },
+    { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true, grupo: 'jogar', soJogador: true },     // (lote 24) a árvore de quem joga; quem mestra usa a Oficina
     { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true, dados: true, grupo: 'jogar' },      // ferramenta do mestre: numa mesa, os jogadores não a veem (e os históricos ficam na mesa)
     { id: 'mundo', nome: 'Mapa-múndi', src: 'mundo/', dados: true, grupo: 'mundo' },
     { id: 'jornal', nome: 'Jornal', src: 'jornal/', dados: true, grupo: 'mundo' },          // (lote 6) o jornal da mesa
     { id: 'cla', nome: 'Clã', src: 'cla/', dados: true, grupo: 'mundo' },                   // (lote 6) os clãs da mesa
     { id: 'acampamento', nome: 'Acampamento', src: 'acampamento/', dados: true, grupo: 'descanso' },
     { id: 'meditacao', nome: 'Meditação', src: 'meditacao/', dados: true, grupo: 'descanso' },      // (lote 6) a meditação dos personagens
+    // (lote 24) a Oficina de árvores: a mesma página da Árvore, aberta no modo de quem mestra (montar e editar as árvores)
+    { id: 'oficina', nome: 'Oficina', src: 'arvore/?oficina', dados: true, grupo: 'mestre', soMestre: true, permissao: 'arvore' },
   ];
-  const GRUPOS = [{ id: 'jogar', nome: 'Jogar' }, { id: 'mundo', nome: 'Mundo' }, { id: 'descanso', nome: 'Descanso' }];
+  const GRUPOS = [{ id: 'jogar', nome: 'Jogar' }, { id: 'mundo', nome: 'Mundo' }, { id: 'descanso', nome: 'Descanso' }, { id: 'mestre', nome: 'Mestre' }];
   const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento', meditacao: 'Meditação' };
   const CHAVE = 'tinycats:aba';
   const $ = id => document.getElementById(id);
@@ -565,7 +570,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   // Numa mesa, quem não mestra uma aba que é só do mestre não a vê (o jogador; o auxiliar sem essa aba, ou jogando
   // como jogador). Sem mesa, cada um é o próprio mestre e vê todas.
   let mestraAba = () => true;                     // (a parte da mesa, mais abaixo, troca por quem sabe)
-  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && !(a.soMestre && !mestraAba(id)); };
+  // (a permissão de uma aba: a Oficina é a Árvore de quem mestra — vale o que vale para a Árvore)
+  const permDe = id => { const a = ABAS.find(x => x.id === id); return (a && a.permissao) || id; };
+  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && !(a.soMestre && !mestraAba(permDe(id))) && !(a.soJogador && mestraAba(permDe(id))); };
+  // a Árvore e a Oficina são a mesma página: quem pede uma e só pode a outra vai para a outra
+  const abaPossivel = id => (pode(id) ? id : id === 'arvore' && pode('oficina') ? 'oficina' : id === 'oficina' && pode('arvore') ? 'arvore' : id);
   const daHash = () => (location.hash || '').replace(/^#\/?/, '').split(/[/?]/)[0];
 
   /* Monta um elemento: h('button', { class: 'btn', onclick }, 'texto', outroElemento). Texto sempre entra como texto. */
@@ -604,9 +613,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   /* ================= abas e molduras ================= */
   // Primeira visita: quem já usava o Rolador neste endereço cai direto nele.
   function inicial() {
-    const hs = daHash();
+    const hs = abaPossivel(daHash());
     if (pode(hs)) return hs;
-    const salvo = ler(CHAVE);
+    const salvo = abaPossivel(ler(CHAVE));
     if (pode(salvo)) return salvo;
     return ler('rolador-urgm:dados:v1') && pode('rolador') ? 'rolador' : 'cenas';
   }
@@ -628,9 +637,10 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       if (!ok && frames[a.id]) { frames[a.id].remove(); delete frames[a.id]; }
     }
     for (const g of GRUPOS) $('grupo-' + g.id).hidden = !ABAS.some(a => a.grupo === g.id && pode(a.id));
-    if (atual && !pode(atual)) abrir('cenas');
+    if (atual && !pode(atual)) abrir(abaPossivel(atual));
   }
   function abrir(id) {
+    id = abaPossivel(id);
     if (!pode(id)) id = 'cenas';
     const a = ABAS.find(x => x.id === id);
     if (atual !== id) {
@@ -655,7 +665,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     const f = frames[a.id] = h('iframe', { title: a.nome, id: 'f-' + a.id, allow: 'clipboard-read; clipboard-write; fullscreen' });
     f.hidden = true;
     f.addEventListener('load', () => { prontas.add(f); if (atual === a.id && frames[a.id] === f) { wait.hidden = true; foco(f); } });
-    f.src = a.src + '?casca=1&v=' + encodeURIComponent(VERSAO) + (/[?&]debug\b/.test(location.search) ? '&debug' : '');   // ?debug na casca passa adiante (testes)
+    f.src = a.src + (a.src.includes('?') ? '&' : '?') + 'casca=1&v=' + encodeURIComponent(VERSAO) + (/[?&]debug\b/.test(location.search) ? '&debug' : '');   // ?debug na casca passa adiante (testes)
     stage.append(f);
     return f;
   }
@@ -665,7 +675,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if ((document.activeElement && $('vivo').contains(document.activeElement)) || !$('menu').hidden || $('dlg').open) return;
     try { f.contentWindow.focus(); } catch (e) { /* ainda carregando */ }
   }
-  window.addEventListener('hashchange', () => { const hs = daHash(); if (pode(hs) && hs !== atual) abrir(hs); });
+  window.addEventListener('hashchange', () => { const hs = abaPossivel(daHash()); if (pode(hs) && hs !== atual) abrir(hs); });
   $('brand').addEventListener('click', ev => { ev.preventDefault(); if (atual) foco(frames[atual]); });
 
   /* ================= (lote 16) o guia de cada aba =================
@@ -674,8 +684,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
      responde se achou; se não, um aviso diz por quê). Reabrir o "?" volta no mesmo assunto. Nada muda sozinho. */
   const btnGuia = $('btnGuia'), guia = $('guia'), esperaGuia = {};
   let guiaSeq = 0, guiaAberto = null, guiaDaAba = null;
-  const papelNoGuia = () => (mestraAba(atual) ? 'mestre' : 'jogador');
-  function assuntosDoGuia() { const G = window.TC_GUIA && window.TC_GUIA.abas, x = G && G[atual]; return x ? x[papelNoGuia()] || [] : []; }
+  const papelNoGuia = () => (mestraAba(permDe(atual)) ? 'mestre' : 'jogador');
+  function assuntosDoGuia() { const G = window.TC_GUIA && window.TC_GUIA.abas, x = G && G[permDe(atual)]; return x ? x[papelNoGuia()] || [] : []; }
   function pintarGuia() {
     if (guia.hidden) return;
     if (guiaDaAba !== atual) { guiaDaAba = atual; guiaAberto = null; }
@@ -746,7 +756,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     /* campanha: a que está em vista neste aparelho · campanhas: as que a pessoa vê, na ordem do mestre · de cada
        participante, as campanhas de que participa. (Quando a campanha em vista muda, os sistemas são abertos de novo.) */
     const camp = a ? mesas.campanha() : null;
-    return { t: 'estado', v: 4, mesa: a ? { id: a.id, nome: a.nome } : null, papel: a ? (aba ? (mesas.mestra(aba) ? 'mestre' : 'jogador') : a.papel) : null,
+    return { t: 'estado', v: 4, mesa: a ? { id: a.id, nome: a.nome } : null, papel: a ? (aba ? (mesas.mestra(permDe(aba)) ? 'mestre' : 'jogador') : a.papel) : null,
       cargo: a ? a.cargo : null, jogando: !!(a && a.jogando), mestra: a ? mestra : null,
       segredo: !!aoVivo.segredo, eu: conta.usuario ? conta.usuario.id : null,
       campanha: camp ? { id: camp.id, nome: camp.nome, encerrada: camp.encerrada } : null,
@@ -760,7 +770,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   function daPonte(m, responder, fonte) {
     if (!m || typeof m !== 'object') return;
     if (m.t === 'ola') { responder(estadoPonte(abaDaMoldura(fonte))); entregarAlvo(fonte, responder); }
-    else if (m.t === 'ir') { if (typeof m.aba === 'string' && pode(m.aba)) irPara(m.aba, m.alvo); }
+    else if (m.t === 'ir') { if (typeof m.aba === 'string' && pode(abaPossivel(m.aba))) irPara(abaPossivel(m.aba), m.alvo); }
     else if (m.t === 'busca') abrirBusca();                // (lote 7, parte 6) Ctrl+K de dentro de um sistema
     else if (m.t === 'rolagem' && mesas.atual) aoVivo.deSistema(m.origem, m.dados).catch(e => toast((m.origem === 'arvore' ? 'O aviso para o jogador não foi: ' : 'A rolagem não chegou à mesa: ') + e.message));
     else if (m.t === 'dados.abrir') {
