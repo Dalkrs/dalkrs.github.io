@@ -22,9 +22,10 @@
     { id: 'intrigas', nome: 'Intrigas', fila: 2, grupo: 'politica' },                // (lote 11, parte 4a) os segredos (4b: as intrigas)
     { id: 'guerra', nome: 'Guerra', fila: 2, mestre: true, grupo: 'politica' },      // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
   ];
-  /* (lote 26) Para quem mestra, as abas ficam numa fileira só, em três grupos com nome: Sessão (o que se usa jogando),
-     Política (um botão que abre as cinco) e Preparar. Quem joga continua com as duas fileiras de sempre. Os testes de
-     antes (a marca tinycats:testes-tudo-aberto) também: lá, as fileiras e os blocos abertos, como eram. */
+  /* (lote 26) As abas ficam numa fileira só, em três grupos com nome e cor: Sessão (o que se usa jogando), Política (um
+     botão que abre as cinco) e Preparar. Vale para quem mestra e para quem joga (o grupo sem nenhuma aba some: o
+     Preparar, para os jogadores). Os testes de antes (a marca tinycats:testes-tudo-aberto): as fileiras e os blocos
+     abertos, como eram. */
   const GRUPOS_ABAS = [{ id: 'sessao', nome: 'Sessão' }, { id: 'politica', nome: 'Política' }, { id: 'preparar', nome: 'Preparar' }];
   const COMO_ANTES = (() => { try { return localStorage.getItem('tinycats:testes-tudo-aberto') === '1'; } catch (e) { return false; } })();
   const TIPO = { m: 'Marcador', g: 'Grupo', r: 'Região', e: 'Evento', t: 'Rota', f: 'Frente', z: 'Zona de guerra', l: 'Linha', c: 'Carimbo', x: 'Texto', a: 'Seta' };
@@ -423,14 +424,14 @@
   }
   const linha = (...kids) => h('div', { class: 'row' }, kids);
   const nota = (texto, c) => h('p', { class: 'note' + (c ? ' ' + c : ''), text: texto });
-  /* (lote 26) Os blocos das abas abrem e fecham (o título é o botão). Nas abas da sessão (Seleção, Hoje, Linha)
+  /* (lote 26) Os blocos das abas abrem e fecham (o título é o botão), para quem mestra e para quem joga. Nas abas da sessão (Seleção, Hoje, Linha)
      começam abertos; nas da Política e do Preparar, fechados — o que a pessoa abre ou fecha fica lembrado enquanto a
      página está aberta. Um resumo ({ resumo: '…' } no lugar do primeiro filho) aparece no título do bloco fechado. */
   const blocosAbertos = new Map();
   const secao = (titulo, ...kids) => {
     const r = kids.length && kids[0] && typeof kids[0] === 'object' && !kids[0].nodeType && !Array.isArray(kids[0]) && 'resumo' in kids[0] ? kids.shift().resumo : '';
     const vis = abaVisivel(), chave = vis + '|' + titulo, grupo = (ABAS.find(a => a.id === vis) || {}).grupo;
-    const aberto = COMO_ANTES || !App || !App.podeEditar() ? true : blocosAbertos.has(chave) ? blocosAbertos.get(chave) : grupo === 'sessao';
+    const aberto = COMO_ANTES || !App ? true : blocosAbertos.has(chave) ? blocosAbertos.get(chave) : grupo === 'sessao';
     return h('details', { class: 'sec dobra', open: aberto, 'data-k': 'sec:' + titulo, ontoggle: e => { blocosAbertos.set(chave, e.target.open); } },
       h('summary', null, h('b', { text: titulo }), r ? h('span', { class: 'sec-res', text: r }) : null), kids);
   };
@@ -606,8 +607,9 @@
         dt.dataset.t = longa + '|' + curta;
         dt.replaceChildren(h('span', { class: 'dt-longa', text: longa }), h('span', { class: 'dt-curta', text: curta }));
       }
-      dt.title = ed ? longa + '. Clique para ir a outra data.' : longa;
-      if (ed) { dt.setAttribute('role', 'button'); dt.tabIndex = 0; dt.setAttribute('aria-label', 'Data do mundo: ' + longa + '. Ir para outra data'); }
+      const abre = ed || !COMO_ANTES;      // (lote 26) quem joga também abre a sanfona (só para ler)
+      dt.title = ed ? longa + '. Clique para ir a outra data.' : abre ? longa + '. Clique para ver a campanha.' : longa;
+      if (abre) { dt.setAttribute('role', 'button'); dt.tabIndex = 0; dt.setAttribute('aria-label', 'Data do mundo: ' + longa + (ed ? '. Ir para outra data' : '. Ver a campanha')); }
       else { dt.removeAttribute('role'); dt.removeAttribute('tabindex'); dt.removeAttribute('aria-label'); }
       const tt = $('tempoTxt');
       if (tt) {
@@ -688,9 +690,9 @@
     const dt = $('dataTxt');
     if (dt) {
       // (lote 26) a data abre a sanfona da linha do tempo (ir para uma data, a data de cada campanha); nos testes de antes, direto "Ir para a data"
-      const abrirData = () => { if (!App.podeEditar()) return; if (COMO_ANTES) irParaData(); else alternarSanfona(); };
+      const abrirData = () => { if (COMO_ANTES) { if (App.podeEditar()) irParaData(); } else alternarSanfona(); };
       dt.addEventListener('click', abrirData);
-      dt.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && App.podeEditar()) { ev.preventDefault(); ev.stopPropagation(); abrirData(); } });
+      dt.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && (App.podeEditar() || !COMO_ANTES)) { ev.preventDefault(); ev.stopPropagation(); abrirData(); } });
     }
     const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', fn); };
     on('diaMenos', () => passarDias(-1));
@@ -713,27 +715,29 @@
   }
 
   /* (lote 26) A sanfona embaixo da data: ir para uma data e, com a linha do tempo, a data de cada campanha (com a que está
-     agora no mapa marcada); "Linha do tempo" abre a aba. Fecha com Esc, com um clique fora ou ao escolher. */
+     agora no mapa marcada); "Linha do tempo" abre a aba. Fecha com Esc, com um clique fora ou ao escolher. Quem joga vê
+     só a data e a campanha que está no mapa, sem os botões. */
   let sanfona = null;
   function fecharSanfona() { if (!sanfona) return; sanfona.remove(); sanfona = null; const dt = $('dataTxt'); if (dt) dt.setAttribute('aria-expanded', 'false'); }
   function alternarSanfona() {
     if (sanfona) { fecharSanfona(); return; }
-    const m = App.mapa, dt = $('dataTxt'), cal = dt && dt.closest('.cal'); if (!m || !cal) return;
+    const m = App.mapa, v = App.vista(), ed = App.podeEditar(), dt = $('dataTxt'), cal = dt && dt.closest('.cal'); if (!m || !v || !cal) return;
     const linhas = [];
     if (m.linha) {
       const at = N().linhaAtiva(m);
       for (const l of m.linha.lin) {
-        const ult = l.paradas[l.paradas.length - 1];
-        linhas.push(h('div', { class: 'sf-lin' + (l.id === at.id ? ' agora' : '') }, h('b', { text: l.nome }),
-          h('span', { text: ult ? dataTxt(m, ult.dia) : '' }), l.id === at.id ? h('span', { class: 'tag', text: 'agora no mapa' }) : null));
+        if (!ed && l.id !== at.id) continue;
+        const d = N().dataDaLinha ? N().dataDaLinha(m, l) : null;
+        linhas.push(h('div', { class: 'sf-lin' + (l.id === at.id ? ' agora' : '') }, h('b', { class: 'sf-nome', text: l.nome, title: l.nome }),
+          h('span', { class: 'sf-dt', text: d ? dataTxt(m, d.dia) : '' }), l.id === at.id ? h('span', { class: 'sf-agora', text: 'no mapa' }) : null));
       }
     }
     sanfona = h('div', { class: 'sanfona-data', id: 'sanfonaData', role: 'dialog', 'aria-label': 'A data do mundo' },
-      h('div', { class: 'sf-cab' }, h('b', { text: dataTxt(m, m.cal.dia) }),
-        botao('Ir para a data…', () => { fecharSanfona(); irParaData(); }, { c: 'sm', k: 'sf:ir' })),
-      h('div', { class: 'sf-titulo', text: 'Linha do tempo' }),
-      linhas.length ? h('div', { class: 'sf-lista' }, linhas) : h('p', { class: 'note', text: 'Ainda sem linha do tempo: com ela, cada campanha guarda a própria data.' }),
-      h('div', { class: 'sf-pe' }, botao(m.linha ? 'Abrir a Linha do tempo' : 'Começar a linha do tempo…', () => { fecharSanfona(); abrirAba('linha'); }, { c: 'pri sm', k: 'sf:linha' })));
+      h('div', { class: 'sf-cab' }, h('div', { class: 'sf-hoje' }, h('span', { class: 'sf-rot', text: 'Hoje no mundo' }), h('b', { text: dataTxt(m, v.cal.dia) })),
+        ed ? botao('Ir para a data…', () => { fecharSanfona(); irParaData(); }, { c: 'sm', k: 'sf:ir' }) : null),
+      linhas.length ? h('div', { class: 'sf-titulo', text: ed ? 'Linha do tempo' : 'A campanha' }) : null,
+      linhas.length ? h('div', { class: 'sf-lista' }, linhas) : ed ? h('p', { class: 'note', text: 'Ainda sem linha do tempo: com ela, cada campanha guarda a própria data.' }) : null,
+      ed ? h('div', { class: 'sf-pe' }, botao(m.linha ? 'Abrir a Linha do tempo' : 'Começar a linha do tempo…', () => { fecharSanfona(); abrirAba('linha'); }, { c: 'pri sm', k: 'sf:linha' })) : null);
     cal.append(sanfona);
     dt.setAttribute('aria-expanded', 'true');
     const b = sanfona.querySelector('button'); if (b) b.focus();
@@ -1099,10 +1103,10 @@
     const pane = $('pane');
     if (pane) pane.setAttribute('role', 'tabpanel');
   }
-  // (lote 26) as abas em grupos (para quem mestra) ou nas duas fileiras de sempre: troca quando o papel muda
+  // (lote 26) as abas em grupos (as duas fileiras de sempre só nos testes de antes)
   let politicaAberta = false, ultimaPolitica = 'faccoes';
   function arrumarAbas(tabs) {
-    const modo = App.podeEditar() && !COMO_ANTES ? 'grupos' : 'filas';
+    const modo = COMO_ANTES ? 'filas' : 'grupos';
     if (tabs.dataset.modo === modo) return;
     const bts = new Map(ABAS.map(a => [a.id, $('tab-' + a.id)]));
     tabs.dataset.modo = modo;
@@ -1141,7 +1145,10 @@
         trocarTexto(bp.querySelector('.pol-nome'), (ABAS.find(a => a.id === ultimaPolitica) || {}).nome || 'Reinos');
       }
       if (lista) lista.hidden = !politicaAberta;
+      // o grupo sem aba para esta pessoa some (o Preparar, para quem joga); a cor do painel é a do grupo da aba aberta
+      for (const g of tabs.querySelectorAll('.tabs-grupo')) g.hidden = !ABAS.some(a => a.grupo === g.dataset.grupo && disp.includes(a));
     }
+    const side = $('pane'); if (side) side.dataset.grupo = COMO_ANTES ? '' : (ABAS.find(a => a.id === vis) || {}).grupo || '';
     for (const a of ABAS) {
       const b = $('tab-' + a.id);
       if (!b) continue;

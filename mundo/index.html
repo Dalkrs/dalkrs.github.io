@@ -355,12 +355,41 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 .sanfona-data { position: absolute; top: calc(100% + 8px); left: 0; z-index: 60; width: 320px; max-width: calc(100vw - 24px); padding: 12px; display: flex; flex-direction: column; gap: 8px;
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 34px rgba(0,0,0,.4); font-weight: 400; }
 .sanfona-data .sf-cab { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.sanfona-data .sf-hoje { display: flex; flex-direction: column; min-width: 0; }
+.sanfona-data .sf-rot { font-size: 11px; color: var(--fg-3); }
+.sanfona-data b { padding: 0; }
+.sanfona-data .sf-hoje b { font-size: 14.5px; white-space: normal; }
+.sanfona-data .sf-cab .btn { flex: none; }
 .sanfona-data .sf-titulo { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 600; border-top: 1px solid var(--line); padding-top: 8px; }
 .sanfona-data .sf-lista { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
-.sanfona-data .sf-lin { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: var(--hover); font-size: 13px; }
-.sanfona-data .sf-lin span:first-of-type { margin-left: auto; color: var(--fg-2); }
-.sanfona-data .sf-lin.agora { outline: 1px solid var(--lamp); }
+.sanfona-data .sf-lin { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 1px; align-items: center; padding: 7px 10px; border-radius: 8px; background: var(--hover); border: 1px solid transparent; }
+.sanfona-data .sf-lin .sf-nome { grid-column: 1; font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sanfona-data .sf-lin .sf-dt { grid-column: 1; font-size: 12px; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sanfona-data .sf-lin .sf-agora { grid-column: 2; grid-row: 1 / span 2; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--lamp-ink); background: var(--lamp-soft); }
+.sanfona-data .sf-lin.agora { border-color: var(--lamp); }
 .sanfona-data .sf-pe { display: flex; justify-content: flex-end; }
+/* (lote 26) a cor de cada grupo das abas: o nome do grupo, o traço da aba aberta e a faixa no alto do painel */
+:root { --g-sessao: #5fb9a6; --g-politica: #d57f8f; --g-preparar: #8ba3e0; }
+:root:where([data-claro]) { --g-sessao: #1f7a68; --g-politica: #a83c52; --g-preparar: #3d5bb0; }
+.tabs-grupo[data-grupo="sessao"] { --gc: var(--g-sessao); }
+.tabs-grupo[data-grupo="politica"] { --gc: var(--g-politica); }
+.tabs-grupo[data-grupo="preparar"] { --gc: var(--g-preparar); }
+.tabs[data-modo="grupos"] .tabs-g { color: var(--gc); display: flex; align-items: center; gap: 5px; }
+.tabs[data-modo="grupos"] .tabs-g::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gc); }
+.tabs[data-modo="grupos"] .tabs-grupo .tab[aria-selected="true"] { color: var(--gc); }
+.tabs[data-modo="grupos"] .tabs-grupo .tab[aria-selected="true"]::after { background: var(--gc); }
+.tabs[data-modo="grupos"] .pol-lista .tab[aria-selected="true"] { background: var(--gc); color: var(--surface); }
+.pane[data-grupo="sessao"] { --gc: var(--g-sessao); }
+.pane[data-grupo="politica"] { --gc: var(--g-politica); }
+.pane[data-grupo="preparar"] { --gc: var(--g-preparar); }
+.pane[data-grupo]:not([data-grupo=""]) { box-shadow: inset 0 3px 0 var(--gc); }
+.pane[data-grupo]:not([data-grupo=""]) h3 { color: var(--gc); }
+.pane[data-grupo]:not([data-grupo=""]) .sec.dobra > summary::after { border-color: var(--gc); }
+.tabs[data-modo="grupos"] .tabs-grupo { background: color-mix(in srgb, var(--gc) 9%, transparent); border-radius: 8px 8px 0 0; padding-top: 3px; }
+.tabs[data-modo="grupos"] .tabs-grupo + .tabs-grupo { border-left: 0; padding-left: 0; margin-left: 3px; }
+.tabs[data-modo="grupos"] .tabs-grupo:has(.tab[aria-selected="true"]) { background: color-mix(in srgb, var(--gc) 18%, transparent); }
+.pane[data-grupo]:not([data-grupo=""]) { background: linear-gradient(color-mix(in srgb, var(--gc) 8%, transparent), transparent 140px); }
+.pane[data-grupo]:not([data-grupo=""]) .sec.dobra > summary > b, .pane[data-grupo]:not([data-grupo=""]) .sec > b { color: var(--gc); }
 .segredo { border-left: 3px solid var(--secret); padding-left: 9px; }
 .grade { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .grade button { display: grid; place-items: center; height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--raised); color: var(--fg-2); }
@@ -1463,7 +1492,7 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="campanha.js?v=5"></script>
 <script src="camadas.js?v=4"></script>
 <script src="tela.js?v=27"></script>
-<script src="painel.js?v=45"></script>
+<script src="painel.js?v=46"></script>
 <script src="guerra-painel.js?v=13"></script>
 <script src="guerra-ajuda.js?v=5"></script>
 <script src="reino-painel.js?v=15"></script>
