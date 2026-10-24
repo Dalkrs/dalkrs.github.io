@@ -215,7 +215,10 @@ const { open } = require('./lib');
   /* Jogador com permissões novas */
   await page.locator('#viewerSel').selectOption({ label: 'Dalmo' }); await w(250);
   const tools = await ev(() => Array.from(document.querySelectorAll('.tool')).map(b => b.id.replace('tool-', '')).join());
-  ok(tools === 'select,pan,free,line,rect,ell,poly,text,fx,ruler,ping', 'ferramentas liberadas ao jogador: ' + tools);
+  // (lote 26) em grupos: o desenho fica num botão só, que abre a lista com as seis
+  ok(tools === 'select,pan,ruler,ping,fx,grupo-desenho', 'ferramentas liberadas ao jogador: ' + tools);
+  const desenho = await ev(() => Array.from(document.querySelectorAll('.rail-item')).map(b => b.id.replace('tool-', '')).join());
+  ok(desenho === 'free,line,rect,ell,poly,text', 'e, na lista do Desenho, as seis de desenhar: ' + desenho);
   d = await T('Dain X');
   await drag(d.x / 64 + 0.5, d.y / 64 + 0.5, d.x / 64 + 2.5, d.y / 64 + 0.5); await w(100);
   ok((await T('Dain X')).x === d.x, 'sem permissão de mover, o token do jogador não sai');
