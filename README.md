@@ -242,6 +242,18 @@ cima. O grupo do Desenho (`junto`) é um botão só (`#tool-grupo-desenho`), com
 (ou da última): ele abre a lista com os nomes e as teclas (`.rail-item`, com os ids de sempre, `#tool-free`…). Esc ou
 um clique fora fecham a lista. As teclas não mudaram.
 
+**As abas da direita (lote 26).** Pensadas para quem mestra durante a sessão:
+- **No token** (`tokenPanel`), primeiro o que se mexe jogando — as barras, as condições, a Sanidade e o Conforto, a
+  Fadiga, a força e as defesas, os ferimentos —, depois os Turnos e a Ficha, e, sob a divisa "Ajustes do token", a
+  Identidade, as Auras, a Visão e luz e o Só do mestre. Esses começam fechados, com o que têm dentro escrito no título
+  (`secR`: "De Dalmo · tamanho 1", "oculto · travado"); aberto, o resumo some. O que a pessoa abre ou fecha fica
+  lembrado enquanto a página está aberta.
+- **As condições**: à vista, só as ativas; a lista para escolher (as categorias e a busca) fica no botão "Condição"
+  (`condMais`, `#cg-abrir`), que a abre até "Fechar a lista" ou até o painel mostrar outro token.
+- **Na aba Cena**, todos os blocos começam fechados com o resumo ("Dia · penumbra · sem clima", "8 de 11 ligados"),
+  menos o Ambiente, o mais usado na sessão; vários podem ficar abertos.
+- **As teclas 1 a 5** abrem as abas, na ordem em que aparecem (`UI.abaPorNumero`); estão na lista de atalhos.
+
 ### Os desenhos das cenas no jeito das ilustrações (lote 25)
 
 Os fundos são desenhados em código (SVG), e vão ganhando o jeito das ilustrações dos personagens: a profundidade em

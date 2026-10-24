@@ -324,6 +324,16 @@ button { cursor: pointer; }
 .sec > summary .ic { transition: transform .15s; }
 .sec:not([open]) > summary .ic { transform: rotate(-90deg); }
 .sec-body { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+/* (lote 26) o resumo no título do bloco fechado, a divisa entre o que se usa na sessão e os ajustes, e a aba Cena
+   separada das outras (é de preparo) */
+.sec-res { flex: 1 1 auto; min-width: 0; margin: 0 8px 0 10px; text-align: right; color: var(--fg-3); font-size: 12px; font-weight: 500;
+  letter-spacing: normal; text-transform: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec[open] > summary .sec-res { display: none; }
+.sec-divisa { margin-top: 6px; padding-top: 12px; border-top: 2px solid var(--line-strong); color: var(--fg-3); font-size: 12px; font-weight: 600; }
+.sec-divisa + .sec { border-top: 0; padding-top: 4px; }
+.tab.prep { margin-left: auto; }
+.cond-mais-w { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.cond-mais-w > .cgrid { align-self: stretch; }
 
 .field { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 8px; }
 .field.stack, .grid2 .field, .grid3 .field { grid-template-columns: minmax(0, 1fr); gap: 4px; }
@@ -12445,6 +12455,7 @@ const Tools = (() => {
     if (k === '+' || k === '=') { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z * 1.25); UI.status(); return; }
     if (k === '-') { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z / 1.25); UI.status(); return; }
     if (k === '0' || k === 'Home') { Render.fit(); UI.status(); return; }
+    if (/^[1-9]$/.test(k)) { UI.abaPorNumero(+k); return; }                 // (lote 26) as abas do painel
     if (lk === 'g') { if (App.mouse.inside) Act.ping(App.mouse.x, App.mouse.y); return; }
     if (lk === 'f') { if (e.shiftKey) Luta.rolagemGeral(); else Luta.atributos(); return; }   // F: os atributos do token sob o cursor (ou do selecionado); Shift+F: a rolagem geral
     if (lk === 'e') { Luta.equipamentos(); return; }       // os equipamentos do token sob o cursor (ou do selecionado): um clique equipa
@@ -12564,6 +12575,15 @@ const UI = (() => {
     return h('details', { class: 'sec', id, open: secOpen[id] == null ? open : secOpen[id], ontoggle: e => { secOpen[id] = e.target.open; } },
       h('summary', null, h('span', { text: title }), icon('down', 14)), h('div', { class: 'sec-body' }, kids));
   }
+  /* (lote 26) O bloco que começa fechado e diz, no título, o que tem dentro ("Dalmo · tamanho 1"): dá para saber sem
+     abrir. Aberto, o resumo some. */
+  function secR(id, title, open, resumo, ...kids) {
+    const d = sec(id, title, open, ...kids), sm = d.querySelector('summary');
+    if (resumo) sm.insertBefore(h('span', { class: 'sec-res', text: resumo }), sm.lastChild);
+    return d;
+  }
+  const secDivisa = text => h('div', { class: 'sec-divisa', text });
+  const acc = d => d;      // (lote 26) na aba Cena, os blocos começam fechados (com o resumo); vários podem ficar abertos
   const note = text => h('p', { class: 'note', text });
 
   /* ================= Toasts, menus e janelas ================= */
@@ -13399,7 +13419,7 @@ const UI = (() => {
       ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
       ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Solta da grade'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
-      ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
+      ['1 a 5', 'As abas do painel da direita (Seleção, Turnos, Efeitos, Cena, Jogadores)'], ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
     modal({
       title: 'Atalhos de teclado', wide: true,
@@ -13629,7 +13649,7 @@ const UI = (() => {
     const bodyEl = h('div', { class: 'tab-body', data: { tab: App.tab } }, body);
     trocandoPainel = true;
     try { el.side.replaceChildren(
-      h('div', { class: 'tabs', role: 'tablist' }, tabs.map(([id, n]) => h('button', { type: 'button', class: 'tab' + (id === App.tab ? ' on' : ''), role: 'tab', id: 'tab-' + id, 'aria-selected': String(id === App.tab), onclick: () => { App.tab = id; renderSide(); } }, n))),
+      h('div', { class: 'tabs', role: 'tablist' }, tabs.map(([id, n], i) => h('button', { type: 'button', class: 'tab' + (id === App.tab ? ' on' : '') + (id === 'scene' ? ' prep' : ''), role: 'tab', id: 'tab-' + id, title: n + ' (tecla ' + (i + 1) + ')', 'aria-keyshortcuts': String(i + 1), 'aria-selected': String(id === App.tab), onclick: () => { App.tab = id; renderSide(); } }, n))),
       bodyEl); } finally { trocandoPainel = false; }
     if (oldTab === App.tab) bodyEl.scrollTop = scroll;
     if (fid) {
@@ -13710,6 +13730,18 @@ const UI = (() => {
     };
     paint();
     return h('div', { class: 'cgrid' }, tabs, busca, chips);
+  }
+
+  /* (lote 26) No painel do token, a grade para escolher fica recolhida no botão "Condição": à vista ficam só as ativas.
+     Aberta, fica aberta (enquanto o painel mostra os mesmos tokens) até "Fechar a lista". */
+  let condAberta = '';
+  function condMais(toks, after, idp) {
+    const pre = idp || 'cg', chave = toks.map(t => t.id).join(','), aberta = condAberta === chave;
+    const bt = h('button', { type: 'button', class: 'btn small cond-mais' + (aberta ? ' on' : ''), id: pre + '-abrir', 'aria-expanded': String(aberta),
+      title: aberta ? 'Recolher a lista de condições' : 'Pôr uma condição (a lista, com as categorias e a busca)',
+      onclick: () => { condAberta = aberta ? '' : chave; renderSide(); const q = document.getElementById(pre + (aberta ? '-abrir' : '-busca')); if (q) q.focus({ preventScroll: true }); } },
+      icon(aberta ? 'x' : 'plus', 14), h('span', { text: aberta ? 'Fechar a lista' : 'Condição' }));
+    return h('div', { class: 'cond-mais-w' }, bt, aberta ? condGrid(toks, after, idp) : null);
   }
 
   /* Condições ativas de um token, com contador e duração.
@@ -14468,7 +14500,7 @@ const UI = (() => {
       const mine = ownsTok(t), canC = mine && can('conds', t);
       return [head,
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
-        sec('s-cond', 'Condições', true, canC ? postToggle(t) : t.post ? note('Em postura.') : null, condActive(t, canC), canC ? condGrid([t]) : t.conds.length || t.post ? null : note('Nenhuma condição.')),
+        sec('s-cond', 'Condições', true, canC ? postToggle(t) : t.post ? note('Em postura.') : null, condActive(t, canC), canC ? condMais([t]) : t.conds.length || t.post ? null : note('Nenhuma condição.')),
         mine ? numsBox(t, false) : null,
         mine ? fadigaBox(t) : null,
         feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
@@ -14477,8 +14509,29 @@ const UI = (() => {
         can('target') ? h('div', { class: 'row' }, btn(isTargeted([t]) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle([t]), { icon: 'center', id: 'tk-mira', title: 'Marca este token como seu alvo, para a mesa toda ver (tecla A)' })) : null];
     }
     const L = t.light, V = t.vis;
+    /* (lote 26) Na ordem de quem joga: primeiro o que se mexe durante a sessão (barras, condições, números, ferimentos),
+       depois, fechados e com o resumo no título, os ajustes do token. */
     return [head,
-      sec('s-id', 'Identidade', true,
+      sec('s-bars', 'Barras', true, barsEditor(t, true),
+        h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche todas as barras em uso deste token (Vida, SP…). Dá para desfazer.' }),
+          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque([t]), { icon: 'shield', id: 'tk-ataque', title: 'Um ataque contra este token: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null),
+        field('Quem não é dono vê', seg('tk-barvis', t.barVis, [['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => U({ barVis: v })), 'stack')),
+      sec('s-cond', 'Condições', true, postToggle(t), condActive(t, true), condMais([t])),
+      menteBox(t),
+      fadigaBox(t),
+      numsBox(t, true),
+      feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
+      secR('s-turn', 'Turnos', false, 'Iniciativa ' + (clampIni(t.ini) >= 0 ? '+' : '') + clampIni(t.ini) + ' · ' + clampTurns(t.turns) + (clampTurns(t.turns) === 1 ? ' turno' : ' turnos') + ' por rodada',
+        field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
+        field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
+        Luta.inisBox(t),
+        note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
+        h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
+      Fichas.on() ? secR('s-ficha', 'Ficha do personagem', false, t.char ? 'ligado a uma ficha' : 'sem ficha', fichaBox(t)) : null,
+      cloneSec(t),
+      dupSec(t),
+      secDivisa('Ajustes do token'),
+      secR('s-id', 'Identidade', false, ownerLabel(t) + ' · tamanho ' + fmt(t.size),
         field('Nome', inText('tk-name', t.name, v => U({ name: v.trim() || t.name }, 'Renomear token'))),
         field('Dono', inSelect('tk-owner', t.owner || '', [['', 'Mestre (NPC)'], ['*', 'Todos os jogadores']].concat(Store.S.players.map(p => [p.id, p.name])), v => U({ owner: v || null }, 'Trocar dono'))),
         field('Tamanho', seg('tk-size', t.size, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => { const [x, y] = snapTok(sc, t.x, t.y, v, false); U({ size: v, x, y }, 'Tamanho do token'); })),
@@ -14486,26 +14539,8 @@ const UI = (() => {
         field('Cor', inColor('tk-color', t.color, v => Store.upd('tokens', t.id, { color: v }), 'Cor do token')),
         imageField(t),
         toggle('tk-showname', t.showName, v => U({ showName: v }), 'Jogadores veem o nome')),
-      sec('s-bars', 'Barras', true, barsEditor(t, true),
-        h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche todas as barras em uso deste token (Vida, SP…). Dá para desfazer.' }),
-          Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque([t]), { icon: 'shield', id: 'tk-ataque', title: 'Um ataque contra este token: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null),
-        field('Quem não é dono vê', seg('tk-barvis', t.barVis, [['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => U({ barVis: v })), 'stack')),
-      menteBox(t),
-      fadigaBox(t),
-      numsBox(t, true),
-      sec('s-cond', 'Condições', true, postToggle(t), condActive(t, true), condGrid([t])),
-      cloneSec(t),
-      dupSec(t),
-      sec('s-turn', 'Turnos', true,
-        field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
-        field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
-        Luta.inisBox(t),
-        note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
-        h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
-      Fichas.on() ? sec('s-ficha', 'Ficha do personagem', !!t.char, fichaBox(t)) : null,
-      feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
-      sec('s-aura', 'Auras', t.auras.length > 0, auraEditor(t)),
-      sec('s-vis', 'Visão e luz', false,
+      secR('s-aura', 'Auras', false, t.auras.length ? t.auras.length + (t.auras.length === 1 ? ' aura' : ' auras') : 'nenhuma', auraEditor(t)),
+      secR('s-vis', 'Visão e luz', false, (V.on ? 'enxerga' : 'não enxerga') + (L.on ? ' · carrega luz' : ''),
         toggle('tk-vis', V.on, v => U({ vis: Object.assign({}, V, { on: v }) }), 'Enxerga (quando tem um jogador como dono)'),
         V.on ? h('div', { class: 'grid2' },
           field('Alcance (q)', inNum('tk-vr', V.range, v => U({ vis: Object.assign({}, V, { range: v }) }), { min: 0, max: 200, step: 1 })),
@@ -14520,7 +14555,7 @@ const UI = (() => {
             field('Até (q)', inNum('tk-ld', L.dim, v => U({ light: Object.assign({}, L, { dim: v, bright: Math.min(L.bright, v) }) }), { min: 0.5, max: 60, step: 0.5 }))),
           field('Cor da luz', inColor('tk-lc', L.c, v => Store.upd('tokens', t.id, { light: Object.assign({}, t.light, { c: v }) }), 'Cor da luz')),
         ] : null),
-      sec('s-gm', 'Só do mestre', true,
+      secR('s-gm', 'Só do mestre', false, [t.hidden ? 'oculto' : 'visível', t.locked ? 'travado' : '', t.notes ? 'com anotações' : ''].filter(Boolean).join(' · '),
         toggle('tk-hidden', t.hidden, v => U({ hidden: v }, v ? 'Ocultar token' : 'Mostrar token'), 'Oculto dos jogadores'),
         toggle('tk-locked', t.locked, v => U({ locked: v }, v ? 'Travar token' : 'Destravar token'), 'Posição travada'),
         field('Anotações', h('textarea', { id: 'tk-notes', class: 'in area', rows: 3, value: t.notes || '', placeholder: 'Só você vê isto.', onchange: e => U({ notes: e.target.value }, 'Anotações') }), 'stack'),
@@ -14809,7 +14844,7 @@ const UI = (() => {
           btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', kind: 'small', id: 'mt-geral', title: 'O mesmo atributo para todos os selecionados: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' }),
           Luta.podeDescanso() && toks.some(t => t.char && !t.clone) ? btn('Descanso curto…', () => Luta.descansoCurto(toks), { icon: 'rest', kind: 'small', id: 'mt-curto', title: 'Abre o Descanso curto do Acampamento com estes tokens já marcados (os ligados a uma ficha). Lá você confere e confirma.' }) : null,
           toks.some(t => t.char && (Fichas.mente(t) || Fichas.fadiga(t))) ? btn('Fadiga, Conforto e Sanidade…', () => menteTodosBox(toks), { icon: 'heart', kind: 'small', id: 'mt-mente', title: 'Para menos ou para mais, nas fichas dos tokens selecionados, de uma vez (com o antes e o depois de cada um)' }) : null) : null) : null,
-      condToks.length ? sec('s-cond', 'Condições', true, condActiveMulti(condToks), condGrid(condToks)) : null,
+      condToks.length ? sec('s-cond', 'Condições', true, condActiveMulti(condToks), condMais(condToks)) : null,
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,
         gm ? btn('Aos turnos', () => { const n = Act.turnAdd(toks); toast(n ? `${n} ${n === 1 ? 'token entrou' : 'tokens entraram'} na ordem de turnos.` : 'Todos já estavam na ordem de turnos.'); }, { icon: 'turns' }) : null,
@@ -15411,15 +15446,15 @@ const UI = (() => {
     const a = bg.asset ? Store.S.assets[bg.asset] : null;
     const fogSet = (p, label) => S({ fog: Object.assign({}, f, p) }, label);
     return [
-      sec('c-scene', 'Cena', true,
+      acc(secR('c-scene', 'Cena', false, `${sc.name} · ${sc.cols} × ${sc.rows} q`,
         field('Nome', inText('sc-name', sc.name, v => { if (v.trim()) S({ name: v.trim() }, 'Renomear cena'); })),
         Nuvem.mestre() ? note('Os jogadores veem este nome quando a cena está no ar.') : null,
         h('div', { class: 'grid2' },
           field('Largura (q)', inNum('sc-cols', sc.cols, v => S({ cols: Math.round(v) }, 'Tamanho da cena'), { min: 2, max: 300 })),
           field('Altura (q)', inNum('sc-rows', sc.rows, v => S({ rows: Math.round(v) }, 'Tamanho da cena'), { min: 2, max: 300 }))),
         field('Quadrado (px)', inNum('sc-cell', sc.cell, v => resizeCell(Math.round(v)), { min: 16, max: 256, step: 2 })),
-        note('O tamanho do quadrado em pixels só importa para a nitidez de desenhos e imagens; os tokens e as medidas acompanham.')),
-      sec('c-bg', 'Fundo', true,
+        note('O tamanho do quadrado em pixels só importa para a nitidez de desenhos e imagens; os tokens e as medidas acompanham.'))),
+      acc(secR('c-bg', 'Fundo', false, a ? 'imagem' + (bg.stretch ? ' esticada' : bg.scale !== 1 ? ' · ' + fmt(Math.round(bg.scale * 100)) + '%' : '') : 'sem imagem',
         h('div', { class: 'row' },
           a ? h('span', { class: 'bg-prev', style: { backgroundImage: `url("${a.url}")` } }) : null,
           btn(a ? 'Trocar imagem' : 'Escolher imagem', () => pickImage(fl => bgFromFile(fl[0])), { icon: 'image' }),
@@ -15439,23 +15474,23 @@ const UI = (() => {
             });
           }, { icon: 'fit' }),
         ] : note('Também dá para arrastar um arquivo de imagem para o mapa ou colar com Ctrl+V.'),
-        field('Cor de fundo', inColor('sc-bgc', sc.bgColor, v => Store.scn({ bgColor: v }), 'Cor de fundo'))),
-      sec('c-grid', 'Grade e medidas', false,
+        field('Cor de fundo', inColor('sc-bgc', sc.bgColor, v => Store.scn({ bgColor: v }), 'Cor de fundo')))),
+      acc(secR('c-grid', 'Grade e medidas', false, (g.on ? 'grade à mostra' : 'sem grade') + ' · 1 q = ' + fmt(g.unit) + ' ' + g.unitName,
         toggle('gr-on', g.on, v => S({ grid: Object.assign({}, g, { on: v }) }), 'Mostrar a grade'),
         field('Cor', inColor('gr-c', g.color, v => Store.scn({ grid: Object.assign({}, sc.grid, { color: v }) }), 'Cor da grade')),
         field('Opacidade', inRange('gr-a', g.alpha, 0.05, 1, 0.05, v => Store.scn({ grid: Object.assign({}, sc.grid, { alpha: v }) }), 'Opacidade da grade')),
         h('div', { class: 'grid2' },
           field('Cada quadrado vale', inNum('gr-u', g.unit, v => S({ grid: Object.assign({}, g, { unit: v }) }), { min: 0, step: 0.5 })),
           field('Unidade', inText('gr-un', g.unitName, v => S({ grid: Object.assign({}, g, { unitName: v.trim() || 'm' }) }), { maxlength: 8 }))),
-        field('Na diagonal', seg('gr-d', g.diag, [['cheb', 'Conta 1 quadrado'], ['eucl', 'Distância real']], v => S({ grid: Object.assign({}, g, { diag: v }) })), 'stack')),
-      sec('c-amb', 'Ambiente', true,
+        field('Na diagonal', seg('gr-d', g.diag, [['cheb', 'Conta 1 quadrado'], ['eucl', 'Distância real']], v => S({ grid: Object.assign({}, g, { diag: v }) })), 'stack'))),
+      acc(secR('c-amb', 'Ambiente', true, [(TONES.find(x => x.id === sc.tone) || TONES[0]).n, { claro: 'claro', penumbra: 'penumbra', escuro: 'escuro' }[sc.light] || '', sc.weather.k ? (WEATHERS.find(x => x[0] === sc.weather.k) || ['', ''])[1].toLowerCase() : 'sem clima'].filter(Boolean).join(' · '),
         field('Hora do dia', seg('sc-tone', sc.tone, TONES.map(x => [x.id, x.n]), v => S({ tone: v, light: TONES.find(x => x.id === v).light }, 'Hora do dia')), 'stack'),
         field('Luz ambiente', seg('sc-light', sc.light, [['claro', 'Claro'], ['penumbra', 'Penumbra'], ['escuro', 'Escuro']], v => S({ light: v }, 'Luz ambiente')), 'stack'),
         note((sc.light === 'claro' ? 'Tudo iluminado. As fontes de luz não fazem diferença.' : sc.light === 'penumbra' ? 'Dá para enxergar, mas escuro. As fontes de luz clareiam ao redor.' : 'Os jogadores só enxergam o que alguma luz alcança, ou o que a visão no escuro deles permite.') + ' A hora do dia colore o mapa e já escolhe a luz; dá para trocar a luz depois.'),
         field('Clima', inSelect('sc-wk', sc.weather.k || '', WEATHERS, v => S({ weather: Object.assign({}, sc.weather, { k: v }) }, 'Clima'))),
         sc.weather.k ? field('Intensidade', inRange('sc-wp', sc.weather.pow, 0.2, 1, 0.05, v => Store.scn({ weather: Object.assign({}, Store.scene().weather, { pow: v }) }), 'Intensidade do clima')) : null,
-        sc.weather.k && !App.anim ? note('As animações estão desligadas no menu ⋯, então o clima aparece parado.') : null),
-      sec('c-light', 'Visão e névoa', true,
+        sc.weather.k && !App.anim ? note('As animações estão desligadas no menu ⋯, então o clima aparece parado.') : null)),
+      acc(secR('c-light', 'Visão e névoa', false, [f.dynamic ? 'visão por paredes' : 'sem visão por paredes', f.manual ? 'névoa manual' : ''].filter(Boolean).join(' · '),
         toggle('fg-dyn', f.dynamic, v => fogSet({ dynamic: v }, 'Visão por paredes'), 'Visão por paredes'),
         f.dynamic ? toggle('sc-showvis', App.showVision, setVeil, 'Escurecer o que os jogadores não veem') : null,
         f.dynamic && App.showVision ? note('Só você vê esse véu. Com um token selecionado, ele mostra o que esse token enxerga.') : null,
@@ -15465,25 +15500,25 @@ const UI = (() => {
         toggle('sc-block', sc.blockMove, v => S({ blockMove: v }), 'Paredes barram o movimento dos jogadores'),
         f.manual ? h('div', { class: 'row' }, btn('Revelar tudo', () => fogAll('r'), { icon: 'eye' }), btn('Esconder tudo', () => fogAll('h'), { icon: 'eyeOff' })) : null,
         f.dynamic && f.explored ? btn('Esquecer áreas exploradas', () => confirmBox('Esquecer o que foi explorado?', 'Os jogadores voltam a ver só o que enxergam agora. Isso não pode ser desfeito.', 'Esquecer', true).then(ok => { if (ok) { Vision.resetExplored(sc); Nuvem.esquecerExplorado(sc); Render.request(); toast('Áreas exploradas esquecidas.'); } }), { icon: 'reset' }) : null,
-        note('Para conferir o resultado, troque "Vendo como" no topo para um jogador.')),
+        note('Para conferir o resultado, troque "Vendo como" no topo para um jogador.'))),
       // (lote 18) as fases da arena (só numa arena; só o mestre)
       Arena.secao({ sec, note, btn }),
       // (lote 18) o campo de batalha: a leitura do campo e levar para a batalha
       Campo.secao({ sec, note, btn }),
       // (lote 18) o relevo com regra: a visão pelo relevo (desta cena) e a tabela do mestre (da mesa)
-      sec('c-relevo', 'Relevo', false,
+      acc(secR('c-relevo', 'Relevo', false, sc.relevoVisao ? 'a altura esconde' : '',
         toggle('rl-visao', !!sc.relevoVisao, v => S({ relevoVisao: v || undefined }, 'Visão pelo relevo'), 'A altura esconde (visão pelo relevo)', { disabled: !f.dynamic }),
         note(f.dynamic ? 'Ligada, a visão dos jogadores segue o relevo: morros e penhascos escondem o que está atrás, de dentro de um fosso só se vê o fosso, e de cima se vê mais longe.'
           : 'A visão pelo relevo precisa da "Visão por paredes" (em Visão e névoa).'),
         h('p', { class: 'note', id: 'rl-resumo', text: resumoDoRelevo(Relevo.tabela(sc)) }),
-        btn('Regras do relevo…', abrirRegrasDoRelevo, { icon: 'sliders', id: 'rl-regras' })),
+        btn('Regras do relevo…', abrirRegrasDoRelevo, { icon: 'sliders', id: 'rl-regras' }))),
       // (lote 20) os Feridos: a tabela do mestre (da mesa)
-      sec('c-feridos', 'Feridos', false,
+      acc(secR('c-feridos', 'Feridos', false, '',
         h('p', { class: 'note', id: 'fd-resumo', text: resumoDosFeridos(feridosCortes()) }),
-        btn('Cortes dos Feridos…', abrirFeridos, { icon: 'sliders', id: 'fd-regras' })),
-      sec('c-perm', 'O que os jogadores podem', true,
+        btn('Cortes dos Feridos…', abrirFeridos, { icon: 'sliders', id: 'fd-regras' }))),
+      acc(secR('c-perm', 'O que os jogadores podem', false, PERMS.filter(([k]) => sc.perms[k]).length + ' de ' + PERMS.length + ' ligados',
         PERMS.map(([k, label]) => toggle('pm-' + k, !!sc.perms[k], v => S({ perms: Object.assign({}, sc.perms, { [k]: v }) }, 'Permissões'), label)),
-        note('Paredes, luzes, névoa, cenas e tokens do mestre ficam sempre com o mestre.')),
+        note('Paredes, luzes, névoa, cenas e tokens do mestre ficam sempre com o mestre.'))),
     ];
   }
   /* (lote 18) A tabela do relevo (a da mesa: vale em todas as cenas). Só sugestões: a régua mostra a subida e o
@@ -16110,8 +16145,10 @@ const UI = (() => {
     }, 0);
   }
 
+  // (lote 26) as teclas 1 a 5: as abas do painel, na ordem em que aparecem
+  function abaPorNumero(n) { const t = tabsFor()[n - 1]; if (t) openTab(t[0]); }
   return {
-    refresh, renderAll, toast, modal, closeMenus, contextMenu, openTab, editText, status,
+    refresh, renderAll, toast, modal, closeMenus, contextMenu, openTab, abaPorNumero, editText, status,
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
     closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
