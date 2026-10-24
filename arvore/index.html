@@ -167,7 +167,9 @@ label.rot, .rot{display:block;font:600 12px/1.35 var(--ui);letter-spacing:normal
 .sel-card.pasta{border-style:solid;border-left:4px solid var(--acento-borda)}
 .sel-card.pasta b::after{content:' ›';color:var(--texto-3)}
 .sel-card.atual{border-color:var(--acento);box-shadow:inset 0 0 0 1px var(--acento)}
-.sel-card small.previa{color:var(--texto-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sel-subs{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.sel-subs span{font:500 11.5px/1 var(--ui);color:var(--texto-2);background:var(--fundo-2);border:1px solid var(--linha);border-radius:999px;padding:4px 8px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.sel-subs span.mais{color:var(--texto-3);border-style:dashed}
 .sel-card .lacre{font:13px/1 var(--glifo);color:var(--acento);margin-left:4px}
 .sel-prontas{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:0 0 14px;padding:12px 14px;border:1px solid var(--acento-borda);border-radius:6px;background:var(--acento-fundo)}
 .sel-prontas div{flex:1 1 320px;display:flex;flex-direction:column;gap:3px}
@@ -2362,7 +2364,7 @@ function pintarSelecao(){
     if(aba.id==='profissao' && !trilha.length && faltam.length) h += `<div class="sel-prontas"><div><b>Profissões prontas</b><span>${faltam.length===PRONTAS.length ? '14 árvores' : 'Faltam ' + faltam.length} — ${faltam.join(', ')}. Feitas para o pessoal de toldo (a árvore principal) e para os aventureiros (uma secundária). Os caminhos de toldo vêm trancados: abra para quem é do toldo.</span></div><button type="button" class="btn ouro" id="selProntas">Adicionar à biblioteca…</button></div>`;
     const itens = itensDaPasta(p, !trilha.length);
     h += itens.length ? `<div class="sel-grade">${itens.map(it=>it.pasta
-        ? `<button type="button" class="sel-card pasta" data-pasta="${esc(it.k)}"><b>${esc(it.nome)}</b><small>${plural(contarPasta(it.pasta),'árvore','árvores')}</small><small class="previa">${esc(itensDaPasta(it.pasta, false).map(x=>x.nome).join(', '))}</small></button>`
+        ? `<button type="button" class="sel-card pasta" data-pasta="${esc(it.k)}"><b>${esc(it.nome)}</b><small>${plural(contarPasta(it.pasta),'árvore','árvores')}</small>${(()=>{ const ns = itensDaPasta(it.pasta, false).map(x=>x.nome), max = 6; return `<span class="sel-subs">${ns.slice(0, max).map(n=>`<span>${esc(n)}</span>`).join('')}${ns.length > max ? `<span class="mais">+${ns.length - max}</span>` : ''}</span>`; })()}</button>`
         : cardArvore(it.a, it.nome)).join('')}</div>`
       : `<p class="sel-vazio">Nenhuma árvore de ${esc(nomeCat(aba.id))} ainda. “+ Nova árvore” cria a primeira.</p>`;
   }

@@ -15,6 +15,11 @@
           "tipo": "melhorou",
           "mestre": true,
           "texto": "Cenas: na aba Cena, cada bloco começa fechado com um resumo (“Dia · penumbra · sem clima”). As teclas 1 a 5 abrem as abas do painel."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Oficina: no painel Selecionar árvore, as sub-raças de cada raça aparecem como etiquetas pequenas, e não mais numa caixa comprida."
         }
       ]
     },
