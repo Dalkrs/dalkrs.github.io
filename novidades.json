@@ -20,6 +20,10 @@
           "tipo": "novo",
           "mestre": true,
           "texto": "Mapa-múndi: clicar na data abre a linha do tempo numa sanfona, com a data de cada campanha e o “Ir para a data…”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: quando o level de um personagem sobe, o dono dele e o mestre ouvem uma fanfarra (com o som ligado na mesa ao vivo) e veem o aviso “subiu para o level…”."
         }
       ]
     },

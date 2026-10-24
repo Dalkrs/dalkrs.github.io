@@ -238,6 +238,9 @@ selecionado.
   level e as raças e classes que valem, e a ficha nasce do jogador, em branco, com `ficha.criacao = { pendente, level,
   racas, classes }` (listas vazias: todas valem), a distribuição livre e os pontos de começo de cada tipo de ponto da
   Árvore (`skills.pontos`, o padrão de cada um: quem dá ponto é o mestre).
+- **Subiu de nível** (`conferirLevels`, na casca): o level de cada ficha fica guardado desde que a mesa abre; quando
+  ele aumenta, o dono e quem mestra veem o aviso e, com o som da mesa ao vivo ligado, ouvem a fanfarra (`tocarNivel`:
+  um arpejo que sobe, um acorde e um brilho, feitos ali mesmo, sem arquivo). A ficha ainda pendente de criação não conta.
 - **O aviso.** A casca do jogador olha as fichas dele que chegam: a que tem a criação pendente toca um som (três notas,
   `tocarAviso`) e mostra o aviso com "Criar agora" (`irPara('fichas', { criar })`). Nas Fichas, a ficha pendente tem o
   quadro "Esta ficha está esperando você criar o personagem" e, na lista, "a criar".
