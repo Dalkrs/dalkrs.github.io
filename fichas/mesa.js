@@ -485,7 +485,8 @@ const FichasMesa = (() => {
     /* Só consulta: nada se edita — mas dá para andar pela ficha. As abas de dentro dela (Atributos e Defesas; itens,
        poderes, missões…; as bolsas) continuam valendo: sem elas, "consultar" seria ver só a parte que estava aberta. */
     // (lote 7) os filtros, a busca e as seções dos equipamentos também: só mudam o que aparece nesta tela
-    alvo.querySelectorAll('input, select, textarea, button').forEach(el => { if (!el.matches('[data-abaficha], [data-irpara], [data-abaatr], [data-ababolsa], [data-itfil], [data-itbusca], [data-itsecbt]')) el.disabled = true; });
+    // (lote 27) e o Ativo · Inativo · Toldo, que só aparece na ficha do grupo de quem joga (quem confere é o banco)
+    alvo.querySelectorAll('input, select, textarea, button').forEach(el => { if (!el.matches('[data-abaficha], [data-irpara], [data-abaatr], [data-ababolsa], [data-itfil], [data-itbusca], [data-itsecbt], #lugarFicha [data-lugar]')) el.disabled = true; });
     const fechada = encerrada(pc._camp);
     if (!alvo.querySelector('.so-consulta')) alvo.insertAdjacentHTML('afterbegin', '<div class="so-consulta">' + (fechada ? 'Campanha encerrada: esta ficha é só para consulta.' + (st.cargo === 'mestre' ? ' Para mexer nela, reabra a campanha em Campanhas…, no menu da mesa.' : '') : 'Ficha de outra pessoa: só para consulta.') + '</div>');
   }
