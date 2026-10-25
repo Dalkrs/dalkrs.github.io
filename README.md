@@ -222,6 +222,14 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
 - Os testes de antes abrem com a marca `tinycats:testes-tudo-aberto` (as fileiras, os blocos abertos, a data indo
   direto para "Ir para a data"); `src/tests/mundo-lote26.test.js` confere o menu como o mestre encontra.
 
+### O jogador muda o lugar das fichas do grupo dele (lote 27)
+
+Ativos, Inativos ou Toldo (`estado.ativo` / `estado.toldo`): o botão no alto da ficha aparece também para quem joga, nas
+fichas do grupo dele — a dele, as que estão no mesmo grupo que uma ficha dele na mesma campanha, os NPCs do background
+dele (`ficha.fundo.de`) e os pets dessas (`doMeuGrupo`, em `fichas/index.html`). A mudança vai pela casca
+(`TC.ponte.lugar` → `TC.dados.lugar`) para a função do banco `lugar_no_grupo` (`0023_lugar_no_grupo.sql`), que confere a
+mesma regra (`privado.do_meu_grupo`) e muda só o lugar. Sem aviso, a qualquer hora (não numa campanha encerrada).
+
 ### O mundo compartilhado entre as campanhas (lote 27)
 
 - **Mapa-múndi**: o mapa novo (criado ou trazido) nasce **do mundo** (`campanhas` vazia: todas as campanhas o veem); o

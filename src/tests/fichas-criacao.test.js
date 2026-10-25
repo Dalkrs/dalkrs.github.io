@@ -162,6 +162,24 @@ const BIB = { nome: 'x', pools: [{ id: 'p1', nome: 'Raça', cor: '#90b800', padr
     ok((await ops()).includes('Rel Tres'), '"Mostrar os de outras campanhas" abre a lista inteira');
   });
 
+  await passo('o jogador muda o lugar das fichas do grupo dele (lote 27)', async () => {
+    await E(() => {
+      FichasMesa.ativo = () => true; FichasMesa.mestre = () => false; TC.ponte.estado.eu = 'u9';
+      window.__lugar = []; TC.ponte.lugar = async (id, l) => { window.__lugar.push([id, l]); if (id === 'pc_g_x') throw new Error('Essa ficha não é do seu grupo.'); return {}; };
+      const mk = (id, nome, o) => Object.assign(personagemPadrao(nome, '', 'C', 1), { id, _camp: 'c2' }, o);
+      S.personagens.push(mk('pc_g_meu', 'Razor', { _dono: 'u9', grupo: 'Grupo do Hen' }), mk('pc_g_npc', 'Hovrick', { _dono: null, grupo: 'Grupo do Hen' }),
+        mk('pc_g_pet', 'Lobo', { _dono: null, petDe: 'pc_g_npc' }), mk('pc_g_fundo', 'Tia', { _dono: null, grupo: 'Outro', fundo: { de: 'u9', papel: 'familia' } }),
+        mk('pc_g_x', 'Caleck', { _dono: null, grupo: 'Grupo do Dain' }), mk('pc_g_x2', 'Hovrick 2', { _dono: null, grupo: 'Grupo do Hen', _camp: 'c1' }));
+    });
+    const temBotao = id => E(i => { S.sel = i; render(); return !!document.getElementById('lugarFicha'); }, id);
+    ok(await temBotao('pc_g_meu') && await temBotao('pc_g_npc') && await temBotao('pc_g_pet') && await temBotao('pc_g_fundo'), 'o botão aparece na ficha dele, nas do grupo dele, no pet e no NPC do background');
+    ok(!(await temBotao('pc_g_x')) && !(await temBotao('pc_g_x2')), 'e não nas de outro grupo (nem no grupo de mesmo nome em outra campanha)');
+    await E(() => { S.sel = 'pc_g_npc'; render(); }); await w(100);
+    await P.locator('#lugarFicha [data-lugar="toldo"]').click(); await w(200);
+    ok(JSON.stringify(await E(() => window.__lugar)) === JSON.stringify([['pc_g_npc', 'toldo'], ['pc_g_pet', 'toldo']]) && await E(() => lugarDe(S.personagens.find(p => p.id === 'pc_g_npc'))) === 'toldo',
+      'mandar para o Toldo: vai pela mesa (a ficha e o pet), e a tela já mostra');
+  });
+
   if (t.errs.length) console.log(t.errs.slice(0, 10).join('\n'));
   ok(t.errs.length === 0, 'sem erros no console');
   await t.close();

@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.25-1",
+      "data": "2026-10-25",
+      "titulo": "O jogador arruma o próprio grupo",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Fichas: o jogador agora muda onde ficam as fichas do grupo dele — Ativo, Inativo ou Toldo, no botão no alto da ficha. Vale para a ficha dele, as fichas do mesmo grupo (na mesma campanha), os NPCs do background dele e os pets."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.24-18",
       "data": "2026-10-24",
       "titulo": "O mundo compartilhado entre as campanhas",
