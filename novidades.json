@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.25-2",
+      "data": "2026-10-25",
+      "titulo": "O botão do lugar nas fichas dos NPCs do grupo",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Fichas: nas fichas dos NPCs do seu grupo (que são só para consulta), o Ativo · Inativo · Toldo aparecia desligado. Agora funciona."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.25-1",
       "data": "2026-10-25",
       "titulo": "O jogador arruma o próprio grupo",
