@@ -1643,6 +1643,20 @@
     await Promise.race([buscarLinha('documentos', 'cla:pub:' + cla), new Promise(ok => setTimeout(ok, 3000))]);
     return data || null;
   };
+  /* (lote 27) Onde a ficha está — Ativos, Inativos ou Toldo — mudado por quem joga, nas fichas do grupo dele (ver
+     supabase/migrations/0023_lugar_no_grupo.sql: quem confere é o banco). Depois, a ficha é lida de novo daqui. */
+  dados.lugar = async (pc, lugar) => {
+    const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
+    if (typeof pc !== 'string' || !pc || !['ativo', 'inativo', 'toldo'].includes(lugar)) throw new Error('Pedido desconhecido.');
+    const { data, error } = await cliente().rpc('lugar_no_grupo', { p_mesa: a.id, p_id: pc, p_lugar: lugar });
+    if (error) {
+      if (semEsquemaM(error)) throw new Error('O banco desta mesa ainda não tem esta opção: falta aplicar a atualização do banco (o SQL desta versão).');
+      if (String(error.code || '') === 'P0001' && error.message) throw new Error(String(error.message).slice(0, 300));
+      throw falha(error, 'Não deu para mudar agora. Tente de novo.');
+    }
+    await Promise.race([buscarLinha('personagens', pc), new Promise(ok => setTimeout(ok, 3000))]);
+    return data || null;
+  };
   /* (lote 16) A caixinha do grupo (ver supabase/migrations/0019_caixinha_do_grupo.sql): pôr lapros da ficha na caixinha
      do grupo, ou pegar dela para a ficha — as duas pontas mudam juntas, pelo banco, que confere de quem é a ficha e se
      há lapros que bastem. op 'mover': { camp, grupo, pc, q, nota } (pc nulo: quem mestra, sem ficha); op 'levar':

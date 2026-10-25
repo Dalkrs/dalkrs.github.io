@@ -1363,7 +1363,7 @@ html:not(.modo-simples) .so-simples{display:none!important}
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=17"></script>
+<script src="../tc/ponte.js?v=18"></script>
 <script src="../tc/rules.js?v=21"></script>
 <script src="../tc/tags.js?v=1"></script>
 <script src="mesa.js?v=13"></script>
@@ -2183,9 +2183,29 @@ function pintarSelecao(){
   });
   box.querySelector('[data-selfim]').onclick=()=>{ selecao=null; renderLista(); };
 }
-/* (lote 23) o botão no alto da ficha (só o mestre, na mesa): Ativo · Inativo · Toldo */
+/* (lote 27) Quem joga também muda o lugar das fichas do grupo dele: a dele, as que estão no mesmo grupo que uma ficha
+   dele (na mesma campanha), os NPCs do background dele e os pets dessas (a mesma regra do banco: privado.do_meu_grupo). */
+function doMeuGrupo(pc, fundo){
+  const eu=window.TC && TC.ponte && TC.ponte.estado ? TC.ponte.estado.eu : null;
+  if(!pc || !eu || (fundo||0)>2) return false;
+  if(pc._dono===eu || (pc.fundo && pc.fundo.de===eu)) return true;
+  if(pc.grupo && S.personagens.some(y=>y._dono===eu && (y._camp||null)===(pc._camp||null) && y.grupo===pc.grupo)) return true;
+  if(pc.petDe){ const d=S.personagens.find(x=>x.id===pc.petDe); return doMeuGrupo(d, (fundo||0)+1); }
+  return false;
+}
+const podeMudarLugar=pc=>FichasMesa.ativo() && (FichasMesa.mestre() || doMeuGrupo(pc)) && !FichasMesa.encerrada(pc._camp);
+/* o jogador: muda pela mesa (o banco confere), a ficha e os pets dela; na tela, já, e volta se o banco recusar */
+async function lugarPeloJogador(pc, lugar){
+  const lista=[pc, ...S.personagens.filter(x=>x.petDe===pc.id)].filter(x=>lugarDe(x)!==lugar);
+  if(!lista.length) return;
+  const antes=lista.map(p=>[p, lugarDe(p)]);
+  lista.forEach(p=>marcarLugar(p,lugar)); renderLista(); pintarLugarNaFicha();
+  try{ for(const p of lista) await TC.ponte.lugar(p.id, lugar); }
+  catch(e){ antes.forEach(([p,l])=>marcarLugar(p,l)); renderLista(); pintarLugarNaFicha(); FichasExtras.aviso((e && e.message) || 'Não deu para mudar agora.'); }
+}
+/* (lote 23) o botão no alto da ficha (o mestre e, lote 27, quem joga, nas fichas do grupo dele): Ativo · Inativo · Toldo */
 function htmlLugarNaFicha(pc){
-  if(!FichasMesa.ativo() || !FichasMesa.mestre()) return '';
+  if(!podeMudarLugar(pc)) return '';
   const l=lugarDe(pc);
   return `<span class="lugarseg" role="group" aria-label="Onde ${esc(pc.nome||'o personagem')} está" id="lugarFicha">${LUGARES.map(x=>`<button type="button" class="abael-${x.k}${x.k===l?' on':''}" data-lugar="${x.k}" aria-pressed="${x.k===l}" title="${x.k==='ativo'?'Trazer para os Ativos':x.k==='inativo'?'Deixar inativo (fora desta sessão)':'Mandar para o Toldo'}">${x.svg}<span>${x.um}</span></button>`).join('')}</span>`;
 }
@@ -3137,7 +3157,7 @@ function ligarFicha(pc){
   if(eo) eo.onchange=e=>{ const on=e.target.checked; patch(()=>{ if(on) pc.estaqueOculto=true; else delete pc.estaqueOculto; }); toast(avisoEstaque(pc,on)); };
   host.querySelectorAll('[data-habunicas]').forEach(b=>b.onclick=()=>abrirPassarParaUnicas(pc));
   if(window.FichasFiltroSk) FichasFiltroSk.ligar(host, pc);      // (lote 23) os filtros da aba Skills
-  host.querySelectorAll('#lugarFicha [data-lugar]').forEach(b=>b.onclick=()=>{ if(lugarDe(pc)!==b.dataset.lugar) mudarLugar([pc], b.dataset.lugar); });
+  host.querySelectorAll('#lugarFicha [data-lugar]').forEach(b=>b.onclick=()=>{ if(lugarDe(pc)===b.dataset.lugar) return; if(FichasMesa.mestre()) mudarLugar([pc], b.dataset.lugar); else lugarPeloJogador(pc, b.dataset.lugar); });
   host.querySelectorAll('[data-habadd]').forEach(b=>b.onclick=()=>patch(()=>
     pc.habilidades.push({id:uid(), nome:'', desc:'', tipo:'Ativo'})));
   host.querySelectorAll('[data-habtipo]').forEach(sl=>sl.onchange=e=>patch(()=>{
