@@ -56,8 +56,18 @@ button { cursor: pointer; }
 .brand svg { flex: none; }
 /* As abas em três grupos, cada um com a sua cor: Jogar (verde), Mundo (azul) e Descanso (lilás). A cor diz onde a
    pessoa está antes de ela ler. O nome do grupo fica em cima das abas dele. */
-.tabs { display: flex; align-items: stretch; gap: 14px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.tabs::-webkit-scrollbar { display: none; }
+.tabs-wrap { position: relative; flex: 0 1 auto; min-width: 0; display: flex; }
+/* (barra de cima, 28/10) quando as abas não cabem: uma barra de rolagem fina embaixo delas e as setas ‹ › nas pontas */
+.tabs { flex: 1 1 auto; display: flex; align-items: stretch; gap: 14px; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.tabs::-webkit-scrollbar { height: 4px; }
+.tabs::-webkit-scrollbar-track { background: transparent; }
+.tabs::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+.tabs-seta { position: absolute; top: 0; bottom: 4px; z-index: 3; width: 30px; display: grid; place-items: center; padding: 0; border: 0; color: var(--fg); cursor: pointer; pointer-events: none; }
+.tabs-seta span { pointer-events: auto; }        /* (só a bolinha recebe o clique: a sombra da ponta não cobre a aba) */
+.tabs-seta.esq { left: 0; justify-content: start; padding-left: 2px; background: linear-gradient(90deg, var(--surface) 55%, transparent); }
+.tabs-seta.dir { right: 0; justify-content: end; padding-right: 2px; background: linear-gradient(270deg, var(--surface) 55%, transparent); }
+.tabs-seta span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+.tabs-seta:hover span { border-color: var(--lamp); color: var(--lamp-ink); }
 .grupo { --grupo: #74c28e; flex: none; display: flex; flex-direction: column; justify-content: flex-end; }
 .grupo[data-g="mundo"] { --grupo: #6fa8f0; }
 .grupo[data-g="descanso"] { --grupo: #b39cf0; }
@@ -67,11 +77,31 @@ button { cursor: pointer; }
 :where(:root[data-claro]) .grupo[data-g="descanso"] { --grupo: #6a4fc2; }
 :where(:root[data-claro]) .grupo[data-g="mestre"] { --grupo: #4a5468; }
 .grupo-t { padding: 0 10px; font-size: 10.5px; line-height: 14px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--grupo); white-space: nowrap; }
+/* (barra de cima, 28/10) o nome da categoria recolhe e abre as abas dela */
+button.grupo-t { display: flex; align-items: center; gap: 4px; align-self: flex-start; border: 0; border-radius: 4px; background: none; cursor: pointer; font-family: inherit; }
+button.grupo-t:hover { background: var(--hover); }
+.grupo-t .gt-seta { flex: none; transition: transform .15s; }
+.grupo.recolhido .grupo-t .gt-seta { transform: rotate(-90deg); }
 .grupo-abas { display: flex; align-items: stretch; gap: 2px; height: 36px; }
+.grupo.recolhido .grupo-abas { display: none; }
+.grupo-menu { display: none; height: 36px; border: 0; background: none; font-family: var(--ui); cursor: pointer; }
+.grupo.recolhido .grupo-menu { display: flex; }
+.grupo-menu .gm-car { flex: none; display: flex; color: var(--fg-3); }
+.grupo-menu .gm-car svg { color: inherit; }
+.grupo-menu.ativo { color: var(--fg); background: var(--hover); }
+.grupo-menu.ativo::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 2px 2px 0 0; background: var(--grupo); }
+.menu-grupo { position: fixed; z-index: 31; min-width: 200px; padding: 6px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: var(--shadow); }
+.menu-grupo .mg-it { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 10px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font: 600 14px/1.2 var(--ui); text-align: left; cursor: pointer; }
+.menu-grupo .mg-it svg { flex: none; color: var(--grupo); }
+.menu-grupo .mg-it:hover, .menu-grupo .mg-it:focus-visible { background: var(--hover); color: var(--fg); }
+.menu-grupo .mg-it[aria-current="page"] { color: var(--fg); background: var(--hover); box-shadow: inset 3px 0 0 var(--grupo); }
+.menu-grupo .mg-mostrar { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
+.menu-grupo .mg-mostrar .mg-it { font-weight: 500; font-size: 13px; color: var(--fg-3); }
 .grupo[hidden] { display: none; }
-.tab { position: relative; display: flex; align-items: center; gap: 7px; padding: 0 11px; color: var(--fg-2); text-decoration: none; font-weight: 600; font-size: 14.5px; white-space: nowrap; border-radius: 7px 7px 0 0; }
-.tab svg { flex: none; color: var(--grupo); }
-.tab:hover { color: var(--fg); background: var(--hover); }
+.tab, .grupo-menu { position: relative; align-items: center; gap: 7px; padding: 0 11px; color: var(--fg-2); text-decoration: none; font-weight: 600; font-size: 14.5px; white-space: nowrap; border-radius: 7px 7px 0 0; }
+.tab { display: flex; }
+.tab svg, .grupo-menu svg { flex: none; color: var(--grupo); }
+.tab:hover, .grupo-menu:hover { color: var(--fg); background: var(--hover); }
 .tab[aria-selected="true"] { color: var(--fg); background: var(--hover); }
 .tab[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 2px 2px 0 0; background: var(--grupo); }
 /* (lote 6) a edição do Jornal que a pessoa ainda não leu */
@@ -427,11 +457,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 }
 @media (max-width: 620px) {
   .brand span { display: none; }
-  .tab { padding: 0 10px; }
+  .tab, .grupo-menu { padding: 0 10px; }
   .tab svg { display: none; }
   .tabs { gap: 6px; }
-  .grupo-t { display: none; }
-  .grupo-abas { height: 100%; }
+  .grupo-t { font-size: 9.5px; line-height: 13px; padding: 0 6px; }
+  .grupo-abas, .grupo-menu { height: 36px; }
   .conta .pp { display: none; }
   .conta, .conta.com-camp { max-width: 130px; }
   /* numa mesa com campanhas, na tela estreita fica a campanha em vista (é nela que a pessoa está); o nome da mesa está no menu */
@@ -449,7 +479,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     <svg width="30" height="30" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="26" fill="#e6ab4f"/><path d="M17 52 21 16Q23 10 28 14L46 32ZM83 52 79 16Q77 10 72 14L54 32Z" fill="#15171c"/><ellipse cx="50" cy="61" rx="35" ry="29" fill="#15171c"/><circle cx="36" cy="58" r="9.5" fill="#ffd25e"/><circle cx="64" cy="58" r="9.5" fill="#ffd25e"/><ellipse cx="37" cy="59" rx="4.2" ry="7" fill="#15171c"/><ellipse cx="65" cy="59" rx="4.2" ry="7" fill="#15171c"/><circle cx="39.5" cy="54.5" r="2.6" fill="#fff"/><circle cx="67.5" cy="54.5" r="2.6" fill="#fff"/><path d="M46.5 69h7L50 73.5z" fill="#f29bb0"/></svg>
     <span>Tiny Cats</span>
   </a>
-  <nav class="tabs" id="tabs" role="tablist" aria-label="Sistemas"></nav>
+  <div class="tabs-wrap">
+    <button type="button" class="tabs-seta esq" id="tabsEsq" hidden title="Rolar as abas para a esquerda" aria-label="Rolar as abas para a esquerda"><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span></button>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Sistemas"></nav>
+    <button type="button" class="tabs-seta dir" id="tabsDir" hidden title="Rolar as abas para a direita" aria-label="Rolar as abas para a direita"><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span></button>
+  </div>
   <div class="bar-r">
     <button type="button" class="ib" id="btnGuia" title="Guia desta aba" aria-label="Guia: como usar esta aba" aria-expanded="false" aria-controls="guia">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
@@ -542,7 +576,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.28-3';
+  const VERSAO = '2026.10.28-4';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -580,7 +614,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     // (lote 27) a administração do site inteiro (as contas, as mesas, o cadastro): só quem está em public.admins a vê
     { id: 'admin', nome: 'Administração', src: 'admin/', grupo: 'site', soAdmin: true },
   ];
-  const GRUPOS = [{ id: 'jogar', nome: 'Jogar' }, { id: 'mundo', nome: 'Mundo' }, { id: 'descanso', nome: 'Descanso' }, { id: 'mestre', nome: 'Mestre' }, { id: 'site', nome: 'Site' }];
+  const GRUPOS = [{ id: 'jogar', nome: 'Jogar' }, { id: 'mundo', nome: 'Mundo' }, { id: 'descanso', nome: 'Descanso' }, { id: 'mestre', nome: 'Mestre' }, { id: 'site', nome: 'Administração' }];
   let souAdmin = false;                           // (lote 27) conta.ehAdmin(), conferido ao entrar
   const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento', meditacao: 'Meditação' };
   const CHAVE = 'tinycats:aba';
@@ -649,9 +683,18 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (pode(salvo)) return salvo;
     return ler('rolador-urgm:dados:v1') && pode('rolador') ? 'rolador' : 'cenas';
   }
+  /* (barra de cima, 28/10) Cada categoria recolhe e abre pelo nome dela (lembrado neste aparelho). Recolhida, fica um
+     botão com o nome da aba aberta (ou o da categoria) que abre o menu com as abas dela. */
+  const CHAVE_RECOLHIDAS = 'tinycats:abas-recolhidas';
+  let recolhidas = new Set();
+  try { const v = JSON.parse(ler(CHAVE_RECOLHIDAS) || '[]'); if (Array.isArray(v)) recolhidas = new Set(v.filter(x => GRUPOS.some(g => g.id === x))); } catch (e) { /* lista estragada: tudo aberto */ }
+  const SETA_GT = '<svg class="gt-seta" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
   for (const g of GRUPOS) {
     const abas = h('div', { class: 'grupo-abas', role: 'presentation' });
-    tabs.append(h('div', { class: 'grupo', 'data-g': g.id, id: 'grupo-' + g.id, role: 'presentation' }, h('span', { class: 'grupo-t', 'aria-hidden': 'true', text: g.nome }), abas));
+    const gt = h('button', { type: 'button', class: 'grupo-t', id: 'gt-' + g.id, 'aria-expanded': 'true', title: 'Recolher ou mostrar as abas de ' + g.nome, onclick: () => recolher(g.id, !recolhidas.has(g.id)) });
+    gt.innerHTML = SETA_GT; gt.append(h('span', { text: g.nome }));
+    const gm = h('button', { type: 'button', class: 'grupo-menu', id: 'gm-' + g.id, 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: ev => { ev.stopPropagation(); menuDoGrupo(g.id); } });
+    tabs.append(h('div', { class: 'grupo' + (recolhidas.has(g.id) ? ' recolhido' : ''), 'data-g': g.id, id: 'grupo-' + g.id, role: 'presentation' }, gt, abas, gm));
     for (const a of ABAS.filter(x => x.grupo === g.id)) {
       const el = h('a', { class: 'tab', id: 'tab-' + a.id, href: '#/' + a.id, role: 'tab', 'aria-selected': 'false' });
       el.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[a.id] + '</svg>';
@@ -667,7 +710,98 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       if (!ok && frames[a.id]) { frames[a.id].remove(); delete frames[a.id]; }
     }
     for (const g of GRUPOS) $('grupo-' + g.id).hidden = !ABAS.some(a => a.grupo === g.id && pode(a.id));
+    pintarGrupos();
     if (atual && !pode(atual)) abrir(abaPossivel(atual));
+  }
+  // (barra de cima) o nome de cada categoria (aberta ou recolhida) e o botão da recolhida: a aba aberta, se é dela
+  function pintarGrupos() {
+    for (const g of GRUPOS) {
+      const el = $('grupo-' + g.id), rec = recolhidas.has(g.id), gm = $('gm-' + g.id);
+      el.classList.toggle('recolhido', rec);
+      $('gt-' + g.id).setAttribute('aria-expanded', String(!rec));
+      const aberta = ABAS.find(a => a.id === atual && a.grupo === g.id), n = ABAS.filter(a => a.grupo === g.id && pode(a.id)).length;
+      gm.classList.toggle('ativo', !!aberta);
+      gm.title = aberta ? aberta.nome + ' · as abas de ' + g.nome : 'As abas de ' + g.nome + ' (' + n + ')';
+      gm.setAttribute('aria-label', gm.title);
+      gm.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (aberta ? ICO[aberta.id] : '<path d="M4 6h16M4 12h16M4 18h16"/>') + '</svg>';
+      gm.append(h('span', { text: aberta ? aberta.nome : g.nome }));
+      const car = h('span', { class: 'gm-car', 'aria-hidden': 'true' }); car.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+      gm.append(car);
+    }
+    pintarSetas();
+  }
+  function recolher(id, sim) {
+    if (sim) recolhidas.add(id); else recolhidas.delete(id);
+    gravar(CHAVE_RECOLHIDAS, JSON.stringify([...recolhidas]));
+    fecharMenuGrupo();
+    pintarGrupos();
+    mostrarAbaAberta();
+  }
+  // o menu da categoria recolhida: as abas dela (a aberta, marcada) e "Mostrar as abas na barra"
+  let menuGrupo = null;
+  function fecharMenuGrupo(voltar) {
+    if (!menuGrupo) return;
+    const { el, g } = menuGrupo;
+    menuGrupo = null; el.remove();
+    const gm = $('gm-' + g); gm.setAttribute('aria-expanded', 'false');
+    if (voltar) gm.focus();
+  }
+  function menuDoGrupo(id) {
+    const era = menuGrupo && menuGrupo.g;
+    fecharMenuGrupo();
+    if (era === id) return;
+    const g = GRUPOS.find(x => x.id === id), gm = $('gm-' + id), r = gm.getBoundingClientRect();
+    const itens = ABAS.filter(a => a.grupo === id && pode(a.id)).map(a => {
+      const b = h('button', { type: 'button', class: 'mg-it', role: 'menuitem', 'data-aba': a.id, 'aria-current': a.id === atual ? 'page' : null, onclick: () => { fecharMenuGrupo(); abrir(a.id); } });
+      b.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[a.id] + '</svg>';
+      b.append(h('span', { text: a.nome }));
+      return b;
+    });
+    const el = h('div', { class: 'menu-grupo', id: 'menuGrupo', role: 'menu', 'aria-label': 'As abas de ' + g.nome, 'data-g': id, style: '--grupo:' + getComputedStyle($('grupo-' + id)).getPropertyValue('--grupo') },
+      itens, h('div', { class: 'mg-mostrar' }, h('button', { type: 'button', class: 'mg-it', role: 'menuitem', id: 'mg-mostrar', onclick: () => recolher(id, false) }, 'Mostrar as abas de ' + g.nome + ' na barra')));
+    el.addEventListener('keydown', ev => {
+      const bs = [...el.querySelectorAll('.mg-it')], i = bs.indexOf(document.activeElement);
+      if (ev.key === 'Escape') { ev.preventDefault(); fecharMenuGrupo(true); }
+      else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); const k = (i + (ev.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length; bs[k].focus(); }
+    });
+    document.body.append(el);
+    const w = el.offsetWidth;
+    el.style.left = Math.max(6, Math.min(r.left, innerWidth - w - 6)) + 'px';
+    el.style.top = (r.bottom + 4) + 'px';
+    menuGrupo = { el, g: id };
+    gm.setAttribute('aria-expanded', 'true');
+    (el.querySelector('[aria-current="page"]') || el.querySelector('.mg-it')).focus();
+  }
+  document.addEventListener('pointerdown', ev => { if (menuGrupo && !menuGrupo.el.contains(ev.target) && !ev.target.closest('.grupo-menu')) fecharMenuGrupo(); }, true);
+  window.addEventListener('blur', () => fecharMenuGrupo());
+  // a rolagem: as setas aparecem quando há aba escondida daquele lado; a roda do mouse rola para os lados
+  const setaE = $('tabsEsq'), setaD = $('tabsDir');
+  function pintarSetas() {
+    const max = tabs.scrollWidth - tabs.clientWidth;
+    setaE.hidden = !(max > 1 && tabs.scrollLeft > 2);
+    setaD.hidden = !(max > 1 && tabs.scrollLeft < max - 2);
+  }
+  const rolar = sinal => tabs.scrollBy({ left: sinal * Math.max(160, Math.round(tabs.clientWidth * 0.6)), behavior: 'smooth' });
+  setaE.addEventListener('click', () => rolar(-1));
+  setaD.addEventListener('click', () => rolar(1));
+  tabs.addEventListener('scroll', () => { pintarSetas(); if (menuGrupo) fecharMenuGrupo(); }, { passive: true });
+  tabs.addEventListener('wheel', ev => {
+    if (tabs.scrollWidth - tabs.clientWidth < 2 || Math.abs(ev.deltaX) >= Math.abs(ev.deltaY)) return;
+    ev.preventDefault();
+    tabs.scrollLeft += ev.deltaY;
+  }, { passive: false });
+  if (window.ResizeObserver) new ResizeObserver(pintarSetas).observe(tabs);
+  window.addEventListener('resize', pintarSetas);
+  // a aba aberta (ou o botão da categoria recolhida) sempre à vista na barra
+  function mostrarAbaAberta() {
+    const a = ABAS.find(x => x.id === atual);
+    if (!a) return;
+    const el = recolhidas.has(a.grupo) ? $('gm-' + a.grupo) : $('tab-' + a.id);
+    if (!el || el.hidden || !el.offsetParent) return;
+    const r = el.getBoundingClientRect(), t = tabs.getBoundingClientRect(), folga = 34;
+    if (r.left < t.left + folga) tabs.scrollLeft -= (t.left + folga - r.left);
+    else if (r.right > t.right - folga) tabs.scrollLeft += (r.right - (t.right - folga));
+    pintarSetas();
   }
   function abrir(id) {
     id = abaPossivel(id);
@@ -680,6 +814,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       document.title = a.nome + ' · Tiny Cats';
       for (const x of ABAS) $('tab-' + x.id).setAttribute('aria-selected', x.id === id ? 'true' : 'false');
       pop.href = a.src;
+      pintarGrupos();
+      mostrarAbaAberta();
     }
     const f = frames[id] || moldura(a);
     wait.hidden = prontas.has(f);              // (uma moldura aberta em segundo plano pode ainda estar carregando)

@@ -2,6 +2,21 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.28-4",
+      "data": "2026-10-28",
+      "titulo": "A barra de cima arrumada",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Barra de cima: clique no nome de uma categoria (Jogar, Mundo, Descanso, Mestre, Administração) para recolher as abas dela num botão só, e de novo para abrir. Recolhida, o botão mostra a aba aberta e abre o menu com as abas da categoria. Fica lembrado neste aparelho."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Barra de cima: quando as abas não cabem, uma barra de rolagem fina e as setas ‹ › nas pontas; a roda do mouse rola as abas para os lados, e a aba aberta fica sempre à vista."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.28-3",
       "data": "2026-10-28",
       "titulo": "O Bestiário, os Itens e a Loja",
