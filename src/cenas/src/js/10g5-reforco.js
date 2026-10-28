@@ -72,6 +72,7 @@ const Reforco = (() => {
   function avisar(nomes, onde) {
     if (!nomes.length) return;
     UI.toast('Reforços chegaram' + (onde ? ' ' + onde : '') + ': ' + nomes.join(', ') + '.', { action: 'Desfazer', run: Tools.undo, long: true, key: 'reforco' });
+    UI.somAviso('urgente');                              // (lote 28: o som do aviso, no aparelho do mestre)
   }
   /* A rodada virou (ou o combate começou, na 1ª): os grupos marcados para ela, de todos os pontos. Um passo só. */
   function naRodada(round) {

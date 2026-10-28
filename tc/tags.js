@@ -21,7 +21,7 @@
   const TC = (window.TC = window.TC || {});
   if (TC.tags) return;
   const DOC = 'arvore:tags', LOCAL = 'tinycats:tags';
-  const URL_PRONTAS = (() => { try { return new URL('tags.json?v=1', document.currentScript.src).href; } catch (e) { return 'tc/tags.json?v=1'; } })();
+  const URL_PRONTAS = (() => { try { return new URL('tags.json?v=2', document.currentScript.src).href; } catch (e) { return 'tc/tags.json?v=2'; } })();
   const TIPOS = { condicao: { nome: 'Condição', cor: '#d08a3c' }, efeito: { nome: 'Efeito', cor: '#3f9bbf' }, recurso: { nome: 'Recurso', cor: '#8c74d6' } };
   let prontas = [], mud = { ed: {}, novas: [], fora: [] }, lista = [], porNomeM = new Map(), re = null;
   const ouvintes = [];

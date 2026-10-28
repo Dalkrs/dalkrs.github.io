@@ -16,10 +16,24 @@
    mestre revelar). Escuro como deve ser: só as tochas, os braseiros, as velas e os cogumelos iluminam. Nada sai escrito.
    (lote 7, parte 4b-3c) A janela "Gerar um lugar…" tem a aba Masmorra: o mesmo nível, sem precisar de uma Entrada — o
    nível escolhido e a cena de cima ("Embaixo de"; sem ela, a cena sai solta, com a Saída ainda sem destino).
+   (lote 28) A largura dos corredores (1, 2 ou 3 quadrados, escolhida antes de gerar) e oito estilos novos: o templo,
+   o esgoto, a torre de mago, o laboratório, a fortaleza anã, as ruínas élficas, o covil e o navio naufragado.
    --------------------------------------------------------------- */
 const Masmorra = (() => {
-  const TIPOS = [['pedra', 'Masmorra de pedra'], ['caverna', 'Caverna'], ['cripta', 'Cripta'], ['mina', 'Mina abandonada']];
-  const NOME = { pedra: 'Masmorra', caverna: 'Caverna', cripta: 'Cripta', mina: 'Mina', subsolo: 'Subsolo', arena: 'Arena' };
+  const TIPOS = [['pedra', 'Masmorra de pedra'], ['caverna', 'Caverna'], ['cripta', 'Cripta'], ['mina', 'Mina abandonada'],
+    // (lote 28) os estilos novos
+    ['templo', 'Templo'], ['esgoto', 'Esgoto'], ['torre', 'Torre de mago'], ['laboratorio', 'Laboratório'],
+    ['fortaleza', 'Fortaleza anã'], ['ruinas', 'Ruínas élficas'], ['covil', 'Covil'], ['navio', 'Navio naufragado']];
+  const NOME = { pedra: 'Masmorra', caverna: 'Caverna', cripta: 'Cripta', mina: 'Mina', subsolo: 'Subsolo', arena: 'Arena',
+    templo: 'Templo', esgoto: 'Esgoto', torre: 'Torre', laboratorio: 'Laboratório', fortaleza: 'Fortaleza', ruinas: 'Ruínas', covil: 'Covil', navio: 'Navio naufragado' };
+  // (lote 28) a largura dos corredores, em quadrados
+  const LARGURAS = [[1, '1 quadrado'], [2, '2 quadrados'], [3, '3 quadrados']];
+  const largDe = v => (v === 2 || v === 3 || v === '2' || v === '3' ? Number(v) : 1);
+  // (sem escolha: a caverna e o covil com os túneis de sempre, uns dois quadrados; o resto, de um)
+  const largPadrao = tipo => (tipo === 'caverna' || tipo === 'covil' ? 2 : 1);
+  const largEscolhida = v => (v === 1 || v === 2 || v === 3 || v === '1' || v === '2' || v === '3' ? Number(v) : null);
+  // os que são de cavar (contorno alisado, sem salas retas)
+  const CAVADO = new Set(['caverna', 'subsolo', 'covil']);
   const TAMANHOS = {
     pequeno: { n: 'Pequeno', W: 34, H: 26 },
     medio: { n: 'Médio', W: 46, H: 34 },
@@ -111,12 +125,16 @@ const Masmorra = (() => {
      corredor a mais entre salas vizinhas) }. Devolve as salas (com as portas de cada uma) e as ligações. */
   function salasECorredores(G, r, op) {
     const { W, H, at, pos } = G, ri = (a, b) => a + Math.floor(r() * (b - a + 1));
+    // (lote 28) dentro: a forma do lugar (a torre é redonda: a sala inteira dentro, o corredor também); larg: os
+    // corredores com 1, 2 ou 3 quadrados de largura (a boca, junto da porta, fica de um)
+    const dentro = op.dentro || null, larg = largDe(op.larg);
     const fs = folhas(r, W, H, op.min);
     const salas = [];
     for (const f of fs) {
       const w = Math.min(f.w - 2, ri(op.salaMin, op.salaMax)), h = Math.min(f.h - 2, ri(op.salaMin, Math.max(op.salaMin, op.salaMax - 1)));
       if (w < op.salaMin - 1 || h < op.salaMin - 1) continue;
       const x = f.x + 1 + Math.floor(r() * (f.w - 2 - w + 1)), y = f.y + 1 + Math.floor(r() * (f.h - 2 - h + 1));
+      if (dentro && !(dentro(x - 1, y - 1) && dentro(x + w, y - 1) && dentro(x - 1, y + h) && dentro(x + w, y + h))) continue;
       salas.push({ i: salas.length, x, y, w, h, portas: [], liga: [] });
     }
     for (const s of salas) for (let j = s.y; j < s.y + s.h; j++) for (let i = s.x; i < s.x + s.w; i++) pos(i, j, SALA);
@@ -164,14 +182,23 @@ const Masmorra = (() => {
       const A = salas[a], B = salas[b], pa = portaPara(A, B), pb = portaPara(B, A);
       if (!pa || !pb) return false;
       portaLivre[pa.fy * W + pa.fx] = 1; portaLivre[pb.fy * W + pb.fx] = 1;
-      const proibido = (i, j) => { const k = j * W + i; return salaDe[k] >= 0 || (anel[k] && !portaLivre[k]); };
-      const pts = caminho(G, [pa.fx, pa.fy], [pb.fx, pb.fy], proibido);
+      const proibido = (i, j) => { const k = j * W + i; return salaDe[k] >= 0 || (anel[k] && !portaLivre[k]) || (dentro && !dentro(i, j)); };
+      const pts = caminho(G, [pa.fx, pa.fy], [pb.fx, pb.fy], proibido, op.curva ? { curva: op.curva } : null);
       if (!pts || (laco && pts.length > 26)) {
         // (sem corredor: a porta que ninguém usa sai, e a casa dela volta a ser proibida)
         for (const pt of [pa, pb]) if (!pt.usada) portaLivre[pt.fy * W + pt.fx] = 0;
         return false;
       }
       for (const [i, j] of pts) if (at(i, j) === ROCHA) pos(i, j, CORREDOR);
+      if (larg > 1) {
+        // (o corredor largo: a casa do caminho e as do lado, sem encostar nas salas — o anel delas continua rocha)
+        const o0 = Math.floor((larg - 1) / 2);
+        for (const [i, j] of pts) for (let b = 0; b < larg; b++) for (let a = 0; a < larg; a++) {
+          const x = i + a - o0, y = j + b - o0, k = y * W + x;
+          if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1 || salaDe[k] >= 0 || anel[k] || at(x, y) !== ROCHA || (dentro && !dentro(x, y))) continue;
+          pos(x, y, CORREDOR);
+        }
+      }
       pa.usada = true; pb.usada = true;
       A.liga.push(b); B.liga.push(a);
       ligacoes.push({ a, b, pts, laco: !!laco, pa, pb });
@@ -259,15 +286,63 @@ const Masmorra = (() => {
     return null;
   }
 
-  /* A masmorra de pedra e a cripta. */
+  /* (lote 28) Os estilos de salas e corredores: o tamanho das salas, o que cada uma vira, a chance de arco (a passagem
+     sem porta) e de porta trancada, e o que vem depois dos móveis. A masmorra de pedra e a cripta são as de sempre. */
+  const BIG = T => T.W > 50;
+  const ESTILOS_SALAS = {
+    pedra: { op: T => ({ min: BIG(T) ? 11 : 10, salaMin: 4, salaMax: 9, lacos: BIG(T) ? 3 : 2 }), principal: C => (C.r() < 0.6 ? 'trono' : 'salao'), resto: restoDaPedra, arco: 0.22, tranca: 0.12 },
+    cripta: { op: T => ({ min: BIG(T) ? 9 : 8, salaMin: 3, salaMax: 7, lacos: BIG(T) ? 3 : 2 }), principal: () => 'jazigo', resto: restoDaCripta, arco: 0.12, tranca: 0.12, depois: C => nichosDosCorredores(C) },
+    templo: { op: T => ({ min: BIG(T) ? 12 : 11, salaMin: 5, salaMax: 10, lacos: 2 }), principal: () => 'nave',
+      resto: (C, resto) => fila(C, resto, ['claustro', 'capela', 'sacristia', 'dormitorio', 'biblioteca', 'capela', 'dormitorio', 'vazia'], { claustro: q => q.w >= 5 && q.h >= 5 }), arco: 0.45, tranca: 0.06 },
+    esgoto: { op: T => ({ min: BIG(T) ? 10 : 9, salaMin: 3, salaMax: 7, lacos: BIG(T) ? 4 : 3, curva: 1.2 }), principal: () => 'cisterna',
+      resto: (C, resto) => fila(C, resto, ['juncao', 'ratos', 'esconderijo', 'juncao', 'deposito', 'ratos', 'vazia']), arco: 0.6, tranca: 0.05, depois: canaisDoEsgoto, semTochas: true },
+    torre: { op: (T, W, H) => (T.W < 40 ? { min: 6, salaMin: 3, salaMax: 5, lacos: 1, dentro: dentroDaTorre(W, H) } : { min: 7, salaMin: 3, salaMax: 6, lacos: 2, dentro: dentroDaTorre(W, H) }), principal: () => 'circulo',
+      resto: (C, resto) => fila(C, resto, ['biblioteca', 'alquimia', 'observatorio', 'quarto', 'deposito', 'biblioteca']), arco: 0.15, tranca: 0.2, depois: anelDaTorre },
+    laboratorio: { op: T => ({ min: BIG(T) ? 11 : 10, salaMin: 4, salaMax: 8, lacos: 2 }), principal: () => 'bancada',
+      resto: (C, resto) => { const j = resto.filter(q => !q.papel && Math.min(q.w, q.h) >= 5 && (q.celas = ladoDasCelas(q))).sort((a, b) => b.w * b.h - a.w * a.h)[0]; if (j) j.papel = 'jaulas'; fila(C, resto, ['tanques', 'caldeirao', 'biblioteca', 'deposito', 'tanques', 'incinerador', 'vazia']); }, arco: 0.1, tranca: 0.25 },
+    fortaleza: { op: T => ({ min: BIG(T) ? 13 : 12, salaMin: 5, salaMax: 11, lacos: BIG(T) ? 3 : 2, curva: 5 }), principal: () => 'trono',
+      resto: (C, resto, x) => { const perto = resto.filter(q => !q.papel && (q.liga.includes(x.entrada.i) || (x.principal && q.liga.includes(x.principal.i)))); if (perto.length) perto[0].papel = 'guarda'; fila(C, resto, ['forja', 'quartel', 'salao', 'cervejaria', 'arsenal', 'deposito', 'quartel', 'forja']); }, arco: 0.2, tranca: 0.18 },
+    ruinas: { op: T => ({ min: BIG(T) ? 11 : 10, salaMin: 4, salaMax: 9, lacos: 3 }), principal: () => 'salaoRuido',
+      resto: (C, resto) => fila(C, resto, ['jardim', 'fonte', 'biblioteca', 'altar', 'jardim', 'vazia', 'vazia']), arco: 0.55, tranca: 0, antesDasParedes: ruirAsParedes },
+  };
+  // os papéis das salas que sobraram, na ordem embaralhada; o que pede tamanho (cond) só vai para quem cabe
+  function fila(C, resto, lista, cond) {
+    const f = C.embaralha(lista);
+    for (const q of resto) {
+      if (q.papel) continue;
+      const k = f.findIndex(papel => !(cond && cond[papel]) || cond[papel](q));
+      q.papel = k >= 0 ? f.splice(k, 1)[0] : 'vazia';
+    }
+  }
+  function restoDaCripta(C, resto) {
+    const area = q => q.w * q.h;
+    const capela = resto.filter(q => !q.papel && q.w >= 4 && q.h >= 4).sort((a, b) => area(b) - area(a))[0];
+    if (capela) capela.papel = 'capela';
+    const fila = C.embaralha(['ossario', 'sarcofagos', 'sarcofagos', 'nichos', 'ossario', 'nichos']);
+    for (const q of resto) if (!q.papel) q.papel = q.w >= 4 && q.h >= 4 && fila.length ? fila.shift() : 'nichos';
+  }
+  function restoDaPedra(C, resto, x) {
+    const { r } = C, area = q => q.w * q.h;
+    // as celas: uma sala com as portas todas de um lado comprido (o corredor das grades corre por ele)
+    const celas = resto.filter(q => !q.papel && Math.min(q.w, q.h) >= 5 && (q.celas = ladoDasCelas(q))).sort((a, b) => area(b) - area(a))[0];
+    if (celas && r() < 0.85) celas.papel = 'celas';
+    // a guarda: perto da entrada ou da sala principal
+    const perto = resto.filter(q => !q.papel && (q.liga.includes(x.entrada.i) || (x.principal && q.liga.includes(x.principal.i))));
+    if (perto.length) perto[0].papel = 'guarda';
+    const fila = C.embaralha(['deposito', 'arsenal', 'biblioteca', 'altar', 'poco', 'deposito', 'vazia', 'biblioteca', 'vazia']);
+    for (const q of resto) if (!q.papel) q.papel = fila.length ? fila.shift() : 'vazia';
+  }
+
+  /* A masmorra de pedra, a cripta e os estilos de salas (lote 28). */
   function nivelDeSalas(C) {
-    const { G, r, p, W, H } = C, cripta = p.tipo === 'cripta';
+    const { G, r, p, W, H } = C, E = ESTILOS_SALAS[p.tipo] || ESTILOS_SALAS.pedra;
     const T = TAMANHOS[p.tamanho];
-    const op = cripta ? { min: T.W > 50 ? 9 : 8, salaMin: 3, salaMax: 7, lacos: T.W > 50 ? 3 : 2 } : { min: T.W > 50 ? 11 : 10, salaMin: 4, salaMax: 9, lacos: T.W > 50 ? 3 : 2 };
+    const op = Object.assign(E.op(T, W, H), { larg: p.larg });
     const { salas, ligacoes } = salasECorredores(G, r, op);
     // a entrada: a sala mais perto de um lado sorteado; a descida: a mais longe dela (em passos de sala)
     const lado0 = C.pick(['n', 's', 'o', 'l']), daBorda = q => (lado0 === 'n' ? q.y : lado0 === 's' ? H - q.y - q.h : lado0 === 'o' ? q.x : W - q.x - q.w);
     const entrada = salas.slice().sort((a, b) => daBorda(a) - daBorda(b))[0];
+    if (!entrada) return;                                  // (nenhuma sala coube: o sorteio tenta de novo)
     const dist = distancias(salas, entrada.i);
     // (as salas que ficaram fora da rede voltam a ser rocha)
     for (const q of salas) if (dist[q.i] === Infinity) { for (let j = q.y; j < q.y + q.h; j++) for (let i = q.x; i < q.x + q.w; i++) G.pos(i, j, ROCHA); q.fora = true; }
@@ -281,24 +356,11 @@ const Masmorra = (() => {
     // o tesouro: uma sala sem saída (uma porta só), a menor; atrás de porta secreta quando há segredos
     const tesouro = resto.filter(q => grau(q) === 1 && q.portas.length === 1).sort((a, b) => area(a) - area(b))[0] || null;
     if (tesouro) tesouro.papel = 'tesouro';
-    // a sala principal: a maior (o trono ou o salão das colunas; na cripta, o jazigo do senhor)
+    // a sala principal: a maior (o trono ou o salão das colunas; na cripta, o jazigo do senhor; nos estilos do lote 28,
+    // a nave do templo, a cisterna, o círculo da torre, a bancada, o trono anão, o salão em ruínas)
     const principal = resto.filter(q => !q.papel && q.w >= 5 && q.h >= 5).sort((a, b) => area(b) - area(a))[0] || null;
-    if (principal) principal.papel = cripta ? 'jazigo' : r() < 0.6 ? 'trono' : 'salao';
-    if (cripta) {
-      const capela = resto.filter(q => !q.papel && q.w >= 4 && q.h >= 4).sort((a, b) => area(b) - area(a))[0];
-      if (capela) capela.papel = 'capela';
-      const fila = C.embaralha(['ossario', 'sarcofagos', 'sarcofagos', 'nichos', 'ossario', 'nichos']);
-      for (const q of resto) if (!q.papel) q.papel = q.w >= 4 && q.h >= 4 && fila.length ? fila.shift() : 'nichos';
-    } else {
-      // as celas: uma sala com as portas todas de um lado comprido (o corredor das grades corre por ele)
-      const celas = resto.filter(q => !q.papel && Math.min(q.w, q.h) >= 5 && (q.celas = ladoDasCelas(q))).sort((a, b) => area(b) - area(a))[0];
-      if (celas && r() < 0.85) celas.papel = 'celas';
-      // a guarda: perto da entrada ou da sala principal
-      const perto = resto.filter(q => !q.papel && (q.liga.includes(entrada.i) || (principal && q.liga.includes(principal.i))));
-      if (perto.length) perto[0].papel = 'guarda';
-      const fila = C.embaralha(['deposito', 'arsenal', 'biblioteca', 'altar', 'poco', 'deposito', 'vazia', 'biblioteca', 'vazia']);
-      for (const q of resto) if (!q.papel) q.papel = fila.length ? fila.shift() : 'vazia';
-    }
+    if (principal) principal.papel = E.principal(C);
+    E.resto(C, resto, { entrada, principal });
     p.salas = vivas.map(q => ({ x: q.x, y: q.y, w: q.w, h: q.h, papel: q.papel }));
     // as escadas (antes dos móveis: a frente delas fica livre)
     p.sobe = escada(C, entrada, true);
@@ -317,8 +379,8 @@ const Masmorra = (() => {
     }
     for (const pt of portas) {
       if (pt.arco) continue;
-      if (r() < (cripta ? 0.12 : 0.22)) { pt.arco = true; continue; }
-      if (r() < 0.12) pt.trancada = true;
+      if (r() < E.arco) { pt.arco = true; continue; }
+      if (r() < E.tranca) pt.trancada = true;
     }
     if (p.segredos && tesouro) { const pt = tesouro.portas[0]; pt.arco = false; pt.secreta = true; pt.trancada = false; }
     // (uma porta secreta a mais num laço, quando há: um atalho que ninguém conhece)
@@ -326,6 +388,8 @@ const Masmorra = (() => {
       const lacos = ligacoes.filter(lg => lg.laco && !salas[lg.a].fora && !salas[lg.b].fora && lg.pts.length > 3);
       if (lacos.length && r() < 0.7) { const lg = C.pick(lacos), pt = r() < 0.5 ? lg.pa : lg.pb; pt.arco = false; pt.secreta = true; pt.trancada = false; }
     }
+    // (lote 28) as ruínas: as paredes que caíram, antes de as paredes saírem da grade
+    if (E.antesDasParedes) E.antesDasParedes(C);
     // as paredes: a beira da rocha; as portas por cima das bocas dos corredores
     p.paredes = paredesDaGrade(G).map(s => Object.assign(s, { k: 'wall' }));
     const vistas = new Set();
@@ -337,11 +401,11 @@ const Masmorra = (() => {
     }
     // o que tem em cada sala
     for (const q of vivas) MOBILIA[q.papel] && MOBILIA[q.papel](C, q);
-    if (cripta) nichosDosCorredores(C);
+    if (E.depois) E.depois(C, { ligacoes: ligacoes.filter(lg => !salas[lg.a].fora && !salas[lg.b].fora), vivas });
     // as runas-armadilha (escondidas): na frente do tesouro, num cruzamento de corredores, na frente do trono/jazigo
     if (p.segredos) runas(C, tesouro, principal);
     // as tochas dos corredores (poucas: a masmorra é escura)
-    tochasDosCorredores(C);
+    if (!E.semTochas) tochasDosCorredores(C);
     // enfeites: as teias nos cantos, o entulho e os ossos espalhados
     enfeites(C);
   }
@@ -559,7 +623,203 @@ const Masmorra = (() => {
       noCanto(C, q, 'vela');
     },
     nichos(C, q) { nichosDaSala(C, q, 0.7); if (C.r() < 0.5) C.pinta('ossos', { x: q.x + q.w / 2, y: q.y + q.h / 2, n: 3 }); },
+    // ---- (lote 28) o templo ----
+    nave(C, q) {
+      // o altar no estrado do fundo, entre os braseiros; as duas fileiras de colunas; os bancos de frente para o altar,
+      // dos dois lados do corredor do meio; o tapete do altar até a porta
+      const lp = ladoDasPortas(q), fundo = OPOSTO[lp], horiz = fundo === 'n' || fundo === 's';
+      const ew = Math.min((horiz ? q.w : q.h) - 2, 4);
+      const est = horiz ? { x: Math.round(q.x + q.w / 2 - ew / 2), y: fundo === 'n' ? q.y : q.y + q.h - 2, w: ew, h: 2 } : { x: fundo === 'o' ? q.x : q.x + q.w - 2, y: Math.round(q.y + q.h / 2 - ew / 2), w: 2, h: ew };
+      C.p.relevo.push({ t: 'plataforma', alt: 0.5, k: 'rect', x: est.x + 0.05, y: est.y + 0.05, w: est.w - 0.1, h: est.h - 0.1 });
+      C.pinta('estrado', est);
+      const ax = horiz ? Math.floor(est.x + est.w / 2 - 0.5) : fundo === 'o' ? est.x : est.x + 1, ay = horiz ? (fundo === 'n' ? est.y : est.y + 1) : Math.floor(est.y + est.h / 2 - 0.5);
+      C.poe('altar', ax, ay, 1, ROT_FRENTE[lp]);
+      C.ocupaRet(est.x, est.y, est.w, est.h, 1);
+      for (const [i, j] of horiz ? [[est.x - 1, ay], [est.x + est.w, ay]] : [[ax, est.y - 1], [ax, est.y + est.h]]) C.poe('braseiro', i, j);
+      if (q.w >= 7 && q.h >= 6) {
+        if (horiz) { for (let j = q.y + (fundo === 'n' ? 3 : 1); j < q.y + q.h - (fundo === 's' ? 3 : 1); j += 2) for (const i of [q.x + 1, q.x + q.w - 2]) if (C.livre(i, j)) coluna(C, i + 0.5, j + 0.5, 0.4); }
+        else { for (let i = q.x + (fundo === 'o' ? 3 : 1); i < q.x + q.w - (fundo === 'l' ? 3 : 1); i += 2) for (const j of [q.y + 1, q.y + q.h - 2]) if (C.livre(i, j)) coluna(C, i + 0.5, j + 0.5, 0.4); }
+      }
+      const meio = horiz ? ax : ay, fundoU = horiz ? q.h : q.w;
+      for (let k = 3; k < fundoU - 1; k += 2) for (const d of [-2, -1, 1, 2]) {
+        const i = horiz ? meio + d : fundo === 'o' ? q.x + k : q.x + q.w - 1 - k, j = horiz ? (fundo === 'n' ? q.y + k : q.y + q.h - 1 - k) : meio + d;
+        if (i > q.x && j > q.y && i < q.x + q.w - 1 && j < q.y + q.h - 1) C.poe('banco', i, j, 1, ROT_FRENTE[fundo]);
+      }
+      const pt = q.portas.find(k => k.lado === lp) || q.portas[0];
+      if (pt) C.pinta('tapete', horiz ? { x: ax - 0.1, y: Math.min(ay, pt.fy) + 0.5, w: 1.2, h: Math.abs(ay - pt.fy) } : { x: Math.min(ax, pt.fx) + 0.5, y: ay - 0.1, w: Math.abs(ax - pt.fx), h: 1.2 });
+      noCanto(C, q, 'estatua'); noCanto(C, q, 'estatua');
+    },
+    claustro(C, q) {
+      // o pátio: o poço no meio, a grama, as colunas em volta e as plantas nos cantos
+      C.pinta('grama', { x: q.x + 1, y: q.y + 1, w: q.w - 2, h: q.h - 2 });
+      C.poe('poco', Math.floor(q.x + q.w / 2), Math.floor(q.y + q.h / 2));
+      for (let i = q.x + 1; i < q.x + q.w - 1; i += 2) for (const j of [q.y + 1, q.y + q.h - 2]) if (C.livre(i, j)) coluna(C, i + 0.5, j + 0.5, 0.33);
+      noCanto(C, q, 'arbusto'); noCanto(C, q, 'flores'); if (C.r() < 0.6) noCanto(C, q, 'arbusto');
+    },
+    sacristia(C, q) { encosta(C, q, 'estante', 1, 2); noCanto(C, q, 'bau'); noCanto(C, q, 'jarro'); encosta(C, q, 'vela', 1); if (C.r() < 0.5) noCanto(C, q, 'caixote'); },
+    dormitorio(C, q) { encosta(C, q, 'cama', Math.min(4, 1 + Math.floor(q.w * q.h / 14)), 2); noCanto(C, q, 'bau'); encosta(C, q, 'vela', 1); },
+    // ---- (lote 28) o esgoto ----
+    cisterna(C, q) {
+      // o tanque no meio (água funda), com a beirada para andar em volta; a grade do escoamento; os ossos de quem caiu
+      const m = Math.min(q.w, q.h) >= 7 ? 2 : 1;
+      for (let j = q.y + m; j < q.y + q.h - m; j++) for (let i = q.x + m; i < q.x + q.w - m; i++) if (C.livre(i, j)) { C.G.pos(i, j, AGUA); C.ocupa(i, j, 1, 1); }
+      C.pinta('grade', { x: q.x + 0.5, y: q.y + 0.5 });
+      if (C.r() < 0.6) C.pinta('ossos', { x: q.x + q.w - 0.8, y: q.y + q.h - 0.8, n: 3 });
+    },
+    juncao(C, q) { C.pinta('grade', { x: q.x + q.w / 2, y: q.y + q.h / 2 }); C.pinta('poca', { x: q.x + C.ent(1, q.w - 1), y: q.y + C.ent(1, q.h - 1), r: 1 }); if (C.r() < 0.5) noCanto(C, q, 'barril'); },
+    ratos(C, q) {
+      // o ninho dos ratos: o monte de trapos e ossos, os restos em volta
+      C.pinta('ninho', { x: q.x + q.w / 2, y: q.y + q.h / 2, r: Math.min(1.4, Math.min(q.w, q.h) * 0.3), ratos: true });
+      C.ocupa(Math.floor(q.x + q.w / 2 - 1), Math.floor(q.y + q.h / 2 - 1), 2, 1);
+      for (let k = 0; k < 3; k++) C.pinta('ossos', { x: q.x + C.ent(0.6, q.w - 0.6), y: q.y + C.ent(0.6, q.h - 0.6), n: 2 });
+      C.pinta('entulho', { x: q.x + C.ent(0.8, q.w - 0.8), y: q.y + C.ent(0.8, q.h - 0.8), r: 0.8 });
+    },
+    esconderijo(C, q) {
+      // o esconderijo dos ladrões: a fogueira apagada, as peles, os caixotes, o baú
+      C.pinta('fogueiraApagada', { x: q.x + q.w / 2, y: q.y + q.h / 2 });
+      C.ocupa(Math.floor(q.x + q.w / 2), Math.floor(q.y + q.h / 2), 1, 1);
+      encosta(C, q, 'pele', 2); noCanto(C, q, 'caixote'); noCanto(C, q, 'bau'); encosta(C, q, 'lampiao', 1);
+    },
+    // ---- (lote 28) a torre de mago ----
+    circulo(C, q) {
+      // o círculo de invocação no meio, com as velas em volta; as estantes; o cristal que brilha
+      const cx = q.x + q.w / 2, cy = q.y + q.h / 2, rr = Math.min(q.w, q.h) / 2 - 1.1;
+      C.pinta('circuloRunico', { x: cx, y: cy, r: rr, cor: '#7d5fd6' });
+      for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + k * TAU / 5, i = Math.floor(cx + Math.cos(a) * (rr + 0.4)), j = Math.floor(cy + Math.sin(a) * (rr + 0.4)); C.poe('vela', i, j); }
+      luz(C, cx, cy, 4, '#b48cff', 1.5);
+      encosta(C, q, 'estante', 1, 2);
+    },
+    alquimia(C, q) {
+      const mx = Math.floor(q.x + q.w / 2 - 1), my = Math.floor(q.y + q.h / 2 - 1);
+      C.poe('mesa', mx, my, 2);
+      C.pinta('frascos', { x: mx + 1, y: my + 1, cor: C.pick(['#7fe0a0', '#b48cff', '#ff9a6a']) });
+      encosta(C, q, 'balcao', 2); noCanto(C, q, 'jarro'); noCanto(C, q, 'braseiro'); encosta(C, q, 'estante', 1, 2);
+    },
+    observatorio(C, q) {
+      // o mapa das estrelas no chão, a mesa com os pergaminhos, a luneta (o lampião) na janela
+      C.pinta('estrelas', { x: q.x + q.w / 2, y: q.y + q.h / 2, r: Math.min(q.w, q.h) / 2 - 0.8 });
+      encosta(C, q, 'mesa', 1, 2); encosta(C, q, 'lampiao', 1); noCanto(C, q, 'cadeira');
+    },
+    quarto(C, q) { encosta(C, q, 'cama', 1, 2); noCanto(C, q, 'bau'); encosta(C, q, 'estante', 1, 2); noCanto(C, q, 'vela'); if (C.r() < 0.6) C.pinta('tapete', { x: q.x + 1, y: q.y + 1, w: Math.min(2, q.w - 2), h: Math.min(2, q.h - 2) }); },
+    // ---- (lote 28) o laboratório ----
+    bancada(C, q) {
+      // as bancadas em fileiras (balcões), os frascos que borbulham, as velas
+      const horiz = q.w >= q.h;
+      for (let k = 1; k < (horiz ? q.h : q.w) - 1; k += 3) for (let u = 1; u < (horiz ? q.w : q.h) - 1; u++) {
+        const i = horiz ? q.x + u : q.x + k, j = horiz ? q.y + k : q.y + u;
+        if ((u % 4) !== 0) C.poe('balcao', i, j, 1, horiz ? 0 : 90);
+      }
+      for (let k = 0; k < 3; k++) C.pinta('frascos', { x: q.x + C.ent(1, q.w - 1), y: q.y + C.ent(1, q.h - 1), cor: C.pick(['#7fe0a0', '#9fd4ff', '#ff9a6a', '#e3ff7a']) });
+      noCanto(C, q, 'vela'); noCanto(C, q, 'jarro');
+    },
+    jaulas(C, q) { MOBILIA.celas(C, q); },
+    tanques(C, q) {
+      // os tanques de vidro com o líquido que brilha (um ou dois), os canos no chão
+      const n = q.w * q.h >= 30 ? 2 : 1, cor = C.pick(['#58e0a0', '#7fd1ff', '#d9ff7a']);
+      for (let k = 0; k < n; k++) {
+        const e = naBeira(C, q, C.pick(['n', 's', 'o', 'l']), 2);
+        if (!e) continue;
+        C.ocupa(e[0], e[1], 2, 1);
+        C.pinta('tanque', { x: e[0] + 0.1, y: e[1] + 0.1, w: 1.8, h: 1.8, cor });
+        C.p.relevo.push({ t: 'plataforma', alt: 1.5, k: 'rect', x: e[0] + 0.1, y: e[1] + 0.1, w: 1.8, h: 1.8 });
+        luz(C, e[0] + 1, e[1] + 1, 3, cor, 1);
+      }
+      noCanto(C, q, 'balcao');
+    },
+    caldeirao(C, q) { C.poe('braseiro', Math.floor(q.x + q.w / 2), Math.floor(q.y + q.h / 2)); C.pinta('frascos', { x: q.x + q.w / 2 + 1, y: q.y + q.h / 2, cor: '#7fe0a0' }); noCanto(C, q, 'jarro'); noCanto(C, q, 'barril'); encosta(C, q, 'estante', 1, 2); },
+    incinerador(C, q) { C.poe('braseiro', Math.floor(q.x + q.w / 2), Math.floor(q.y + q.h / 2)); C.pinta('brasa', { x: q.x + q.w / 2, y: q.y + q.h / 2, r: 1.2 }); for (let k = 0; k < 2; k++) C.pinta('ossos', { x: q.x + C.ent(0.6, q.w - 0.6), y: q.y + C.ent(0.6, q.h - 0.6), n: 2 }); noCanto(C, q, 'caixote'); },
+    // ---- (lote 28) a fortaleza anã ----
+    forja(C, q) {
+      // a fornalha (o braseiro grande) no fundo, as bigornas na frente, o barril de água, as armas na parede
+      const lp = ladoDasPortas(q), fundo = OPOSTO[lp], e = naBeira(C, q, fundo, 1, true);
+      if (e) { C.poe('braseiro', e[0], e[1]); C.pinta('brasa', { x: e[0] + 0.5, y: e[1] + 0.5, r: 1.1 }); }
+      let n = 0;
+      for (let t = 0; t < 12 && n < 2; t++) { const i = q.x + 1 + Math.floor(C.r() * Math.max(1, q.w - 2)), j = q.y + 1 + Math.floor(C.r() * Math.max(1, q.h - 2)); if (C.poe('bigorna', i, j)) n++; }
+      noCanto(C, q, 'barril'); encosta(C, q, 'armas', 2); C.pinta('ferramentas', { x: q.x + q.w / 2, y: q.y + q.h / 2 + 0.6 });
+    },
+    quartel(C, q) { encosta(C, q, 'cama', Math.min(5, 1 + Math.floor(q.w * q.h / 12)), 2); noCanto(C, q, 'bau'); noCanto(C, q, 'bau'); encosta(C, q, 'armas', 1); },
+    cervejaria(C, q) {
+      const n = Math.min(7, 3 + Math.floor(q.w * q.h / 10));
+      for (let k = 0; k < n; k++) if (!noCanto(C, q, 'barril')) encosta(C, q, 'barril', 1);
+      const mx = Math.floor(q.x + q.w / 2 - 1), my = Math.floor(q.y + q.h / 2 - 1);
+      if (C.poe('mesa', mx, my, 2)) { C.poe('banco', mx - 1, my, 1, 270); C.poe('banco', mx + 2, my + 1, 1, 90); }
+      encosta(C, q, 'lampiao', 1);
+    },
+    // ---- (lote 28) as ruínas élficas ----
+    salaoRuido(C, q) {
+      // o salão das colunas, com metade delas no chão (os pedaços espalhados); as raízes entrando pelas frestas
+      for (let j = q.y + 1; j < q.y + q.h - 1; j += 2) for (let i = q.x + 1; i < q.x + q.w - 1; i += 2) {
+        if (!C.livre(i, j) || (i - q.x) % 2 !== 1) continue;
+        if (C.r() < 0.55) coluna(C, i + 0.5, j + 0.5, 0.4);
+        else { C.pinta('colunaCaida', { x: i + 0.5, y: j + 0.5, ang: C.ent(0, TAU) }); C.ocupa(i, j, 1, 1); }
+      }
+      C.pinta('raizes', { x: q.x + C.ent(0.8, q.w - 0.8), y: q.y + 0.6, n: 3, ang: Math.PI / 2 });
+      noCanto(C, q, 'estatua');
+    },
+    jardim(C, q) {
+      // o jardim que tomou a sala: a árvore no meio, os arbustos, as flores, a grama
+      C.pinta('grama', { x: q.x, y: q.y, w: q.w, h: q.h });
+      if (!C.poe('arvore', Math.floor(q.x + q.w / 2 - 1), Math.floor(q.y + q.h / 2 - 1), 2)) noCanto(C, q, 'arbusto');
+      noCanto(C, q, 'arbusto'); noCanto(C, q, 'flores'); noCanto(C, q, 'flores');
+      if (C.r() < 0.5) noCanto(C, q, 'cogumelos');
+    },
+    fonte(C, q) {
+      // a fonte seca (o poço) no meio, as poças, os bancos de pedra
+      C.poe('poco', Math.floor(q.x + q.w / 2), Math.floor(q.y + q.h / 2));
+      C.pinta('poca', { x: q.x + q.w / 2 + 1, y: q.y + q.h / 2 + 1, r: 0.9 });
+      encosta(C, q, 'banco', 2); noCanto(C, q, 'flores');
+    },
   };
+  /* (lote 28) O esgoto: o canal raso de água suja correndo pelo meio de cada corredor (pintado; dá para andar). */
+  function canaisDoEsgoto(C, x) {
+    for (const lg of x.ligacoes) {
+      const pts = lg.pts.filter(([i, j]) => C.G.at(i, j) === CORREDOR).map(([i, j]) => [i + 0.5, j + 0.5]);
+      if (pts.length >= 2) C.pinta('canal', { pts });
+    }
+    // os ratos e o lodo nos corredores
+    const { G, W, H } = C;
+    for (let k = 0, n = Math.round(W * H / 220); k < n; k++) {
+      const i = 1 + Math.floor(C.r() * (W - 2)), j = 1 + Math.floor(C.r() * (H - 2));
+      if (G.at(i, j) === CORREDOR && C.livre(i, j)) C.pinta(C.r() < 0.6 ? 'poca' : 'ossos', { x: i + 0.5, y: j + 0.5, r: 0.6, n: 2 });
+    }
+    // as grades de luz que vêm da rua (as poucas luzes do esgoto)
+    for (let k = 0, n = 0; k < 400 && n < Math.max(2, Math.round(W * H / 500)); k++) {
+      const i = 1 + Math.floor(C.r() * (W - 2)), j = 1 + Math.floor(C.r() * (H - 2));
+      if (G.at(i, j) !== CORREDOR || !C.livre(i, j)) continue;
+      C.pinta('grade', { x: i + 0.5, y: j + 0.5, luz: true }); luz(C, i + 0.5, j + 0.5, 3, '#c9d8e8', 1); C.ocupa(i, j, 1, 1); n++;
+    }
+  }
+  /* (lote 28) A torre: redonda (as salas e os corredores ficam dentro da parede), e por fora o céu da noite. */
+  function dentroDaTorre(W, H) {
+    const cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 1.5;
+    return (i, j) => Math.hypot(i + 0.5 - cx, j + 0.5 - cy) <= R;
+  }
+  function anelDaTorre(C) { const { W, H } = C; C.pinta('anelTorre', { x: W / 2, y: H / 2, r: Math.min(W, H) / 2 - 1.5 }); }
+  /* (lote 28) As ruínas: paredes que caíram (a rocha fina entre uma sala e um corredor, ou entre duas salas, vira passagem
+     cheia de pedra) e o mato tomando conta. */
+  function ruirAsParedes(C) {
+    const { G, W, H } = C;
+    const cands = [];
+    for (let j = 2; j < H - 2; j++) for (let i = 2; i < W - 2; i++) {
+      if (G.at(i, j) !== ROCHA) continue;
+      const lr = G.at(i - 1, j) !== ROCHA && G.at(i + 1, j) !== ROCHA && G.at(i, j - 1) === ROCHA && G.at(i, j + 1) === ROCHA;
+      const ns = G.at(i, j - 1) !== ROCHA && G.at(i, j + 1) !== ROCHA && G.at(i - 1, j) === ROCHA && G.at(i + 1, j) === ROCHA;
+      if (lr || ns) cands.push([i, j]);
+    }
+    const n = Math.min(cands.length, Math.max(2, Math.round(W * H / 260)));
+    for (const [i, j] of C.embaralha(cands).slice(0, n)) {
+      if (G.at(i, j) !== ROCHA) continue;
+      G.pos(i, j, CORREDOR);
+      C.pinta('entulho', { x: i + 0.5, y: j + 0.5, r: 0.9 });
+    }
+    // o musgo e as raízes pelos cantos; os cristais que ainda brilham (a luz das ruínas)
+    for (const q of C.p.salas) if (C.r() < 0.5) C.pinta('raizes', { x: q.x + C.ent(0.5, q.w - 0.5), y: q.y + C.ent(0.5, q.h - 0.5), n: 2 + Math.floor(C.r() * 2), ang: C.ent(0, TAU) });
+    for (let k = 0, m = 0; k < 300 && m < Math.max(2, Math.round(W * H / 450)); k++) {
+      const i = 1 + Math.floor(C.r() * (W - 2)), j = 1 + Math.floor(C.r() * (H - 2));
+      if (!C.livre(i, j)) continue;
+      C.pinta('cristal', { x: i + 0.5, y: j + 0.5, r: 0.5, cor: '#9fffd8' }); luz(C, i + 0.5, j + 0.5, 3, '#9fffd8', 1); C.ocupa(i, j, 1, 1); m++;
+    }
+  }
 
   /* Os nichos: as covas na rocha, de uma casa, ao longo das paredes (de duas em duas casas), cada uma com o seu morto. */
   function nichoEm(C, i, j, de) {
@@ -759,7 +1019,8 @@ const Masmorra = (() => {
     const pai = cam.map((_, i) => i), raiz = i => (pai[i] === i ? i : (pai[i] = raiz(pai[i])));
     const tunel = (A, B) => {
       let x = A.x, y = A.y, ang = Math.atan2(B.y - y, B.x - x);
-      const larg = C.ent(0.75, 1.25);
+      // (lote 28) o raio do túnel pela largura escolhida (1, 2 ou 3 quadrados); sem escolha, o de antes
+      const lc = p.larg, larg = lc === 3 ? C.ent(1.45, 1.7) : lc === 2 ? C.ent(0.95, 1.2) : lc === 1 ? C.ent(0.72, 0.9) : C.ent(0.75, 1.25);
       for (let k = 0; k < 400 && Math.hypot(B.x - x, B.y - y) > 1; k++) {
         const alvo = Math.atan2(B.y - y, B.x - x);
         let d = alvo - ang; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU;
@@ -838,6 +1099,8 @@ const Masmorra = (() => {
     if (p.segredos) grutaEscondida(C, vivas.filter(q => !usadas.has(q)).concat(vivas.filter(q => usadas.has(q) && q !== ent0)));
     // 9) as estalagmites (as grandes tapam a visão), os cogumelos que brilham, as poças, os ossos
     detalhesDaCaverna(C);
+    // (lote 28) o covil: o ninho da fera na maior câmara que sobrou, o tesouro dela, os ossos de quem entrou
+    if (p.tipo === 'covil') detalhesDoCovil(C, vivas, usadas, ent0, desc0);
     // 10) as paredes: o contorno alisado do que não é rocha; a porta secreta da gruta por cima
     p.contorno = contornoTremido(W, H, (i, j) => G.at(i, j) !== ROCHA, p.seed % 9973);
     p.paredes = segmentosDe(p.contorno).concat(p.paredes);
@@ -903,6 +1166,41 @@ const Masmorra = (() => {
       return true;
     }
     return false;
+  }
+  /* (lote 28) O covil: a câmara do ninho (o ninho grande, os ovos, o monte de moedas e ossos), os ninhos menores pelas
+     câmaras, as carcaças, as marcas de garra; a luz é pouca (só os cogumelos). */
+  function detalhesDoCovil(C, vivas, usadas, ent0, desc0) {
+    const { G, p } = C;
+    const livres = vivas.filter(q => q !== ent0 && q !== desc0);
+    const q = vivas.filter(x => x !== ent0 && x !== desc0).sort((a, b) => b.r - a.r)[0] || vivas[0];
+    if (!q) return;
+    // (o chão de verdade mais perto do meio da câmara)
+    let c0 = null;
+    for (let j = Math.floor(q.y - 3); j <= q.y + 3; j++) for (let i = Math.floor(q.x - 3); i <= q.x + 3; i++) if (C.livreS(i - 1, j - 1, 3)) { const d = Math.hypot(i + 0.5 - q.x, j + 0.5 - q.y); if (!c0 || d < c0[2]) c0 = [i, j, d]; }
+    if (c0) {
+      const [i, j] = c0;
+      C.pinta('ninho', { x: i + 0.5, y: j + 0.5, r: 1.4 });
+      C.ocupa(i - 1, j - 1, 3, 1);
+      C.pinta('moedas', { x: i + 2, y: j + 1.5, r: 1.1 });
+      for (let k = 0; k < 3; k++) C.pinta('ossos', { x: i + 0.5 + C.ent(-2.5, 2.5), y: j + 0.5 + C.ent(-2.5, 2.5), n: 4, pilha: k === 0 });
+      const ps = p.salas.find(s2 => s2.cx === q.x && s2.cy === q.y);
+      if (ps) ps.papel = 'ninho';
+    }
+    // os ninhos pequenos e as carcaças pelas outras câmaras
+    for (const o of livres) {
+      if (o === q || C.r() > 0.55) continue;
+      const i = Math.floor(o.x), j = Math.floor(o.y);
+      if (!C.livre(i, j) || G.at(i, j) !== SALA) continue;
+      C.pinta(C.r() < 0.5 ? 'ninho' : 'ossos', { x: i + 0.5, y: j + 0.5, r: 0.8, n: 5, pilha: true }); C.ocupa(i, j, 1, 1);
+    }
+    // as marcas de garra nas paredes (perto das bocas dos túneis)
+    for (let k = 0, n = 0; k < 300 && n < 6; k++) {
+      const i = 2 + Math.floor(C.r() * (C.W - 4)), j = 2 + Math.floor(C.r() * (C.H - 4));
+      if (G.at(i, j) !== SALA || !C.livre(i, j)) continue;
+      const rocha = DIRS.find(([a, b]) => G.at(i + a, j + b) === ROCHA);
+      if (!rocha) continue;
+      C.pinta('garras', { x: i + 0.5 + rocha[0] * 0.42, y: j + 0.5 + rocha[1] * 0.42, ang: Math.atan2(rocha[1], rocha[0]) }); n++;
+    }
   }
   function detalhesDaCaverna(C) {
     const { G, W, H, p } = C;
@@ -1208,7 +1506,8 @@ const Masmorra = (() => {
     circulo: [['reforcos', 'zona:arcano'], ['zona:luaSangue', 'desaba']],
   };
   // (a sala do chefe do último nível da masmorra: a arena que combina com o tipo)
-  const ARENA_DO_TIPO = { pedra: 'trono', cripta: 'mausoleu', caverna: 'covil', mina: 'covil', subsolo: 'covil' };
+  const ARENA_DO_TIPO = { pedra: 'trono', cripta: 'mausoleu', caverna: 'covil', mina: 'covil', subsolo: 'covil',
+    templo: 'altar', esgoto: 'covil', torre: 'topo', laboratorio: 'altar', fortaleza: 'trono', ruinas: 'circulo', covil: 'covil', navio: 'ponte' };
   const nomeMud = k => (MUDANCAS.find(x => x[0] === k) || [k, k])[1];
   function nivelDeArena(C) {
     const { G, p, W, H } = C, a = p.arena, cx = W / 2;
@@ -1416,13 +1715,13 @@ const Masmorra = (() => {
     for (let k = 1; k <= nCur; k++) { const u = Math.round(u0 + (u1 - u0) * k / (nCur + 1)); pts.push([u, v]); v = clamp(Math.round(v + C.ent(-V * 0.28, V * 0.28)), 4, V - 6); pts.push([u, v]); }
     pts.push([u1, v]);
     const XY = ([u, vv]) => (horiz ? [u, vv] : [vv, u]);
-    const trilho = [];
+    const trilho = [], lp = Math.max(2, largDe(p.larg));          // (lote 28: o principal tem 2 de largura; com 3, fica com 3)
     for (let k = 1; k < pts.length; k++) {
       const [a0, b0] = XY(pts[k - 1]), [a1, b1] = XY(pts[k]);
-      caixa(Math.min(a0, a1), Math.min(b0, b1), Math.abs(a1 - a0) + 2, Math.abs(b1 - b0) + 2, CORREDOR);
-      trilho.push([a0 + 1, b0 + 1]);
+      caixa(Math.min(a0, a1), Math.min(b0, b1), Math.abs(a1 - a0) + lp, Math.abs(b1 - b0) + lp, CORREDOR);
+      trilho.push([a0 + lp / 2, b0 + lp / 2]);
     }
-    { const [a1, b1] = XY(pts[pts.length - 1]); trilho.push([a1 + 1, b1 + 1]); }
+    { const [a1, b1] = XY(pts[pts.length - 1]); trilho.push([a1 + lp / 2, b1 + lp / 2]); }
     // a câmara do poço, no fim (seis por seis), com o poço de descida no meio (dois por dois)
     const [fx, fy] = XY(pts[pts.length - 1]);
     const cam = { x: clamp(fx - 2, 2, W - 8), y: clamp(fy - 2, 2, H - 8), w: 6, h: 6 };
@@ -1471,7 +1770,7 @@ const Masmorra = (() => {
     const nT = T.W > 50 ? 10 : T.W > 40 ? 7 : 5;
     const passo = Math.max(3, Math.floor(principal.length / (nT * 2.2)));
     const origens = C.embaralha(principal.filter((_, k) => k % passo === 0));
-    const ramos = [];
+    const ramos = [], largos = [];                          // (lote 28: os túneis do lado alargam depois de cavados todos)
     for (const [i0, j0] of origens) {
       if (ramos.length >= nT * 1.6) break;
       for (const [dx, dy] of C.embaralha(DIRS)) {
@@ -1479,6 +1778,7 @@ const Masmorra = (() => {
         const t = tunelLado(i0, j0, dx, dy, T.W > 40 ? 4 + Math.floor(r() * 10) : 3 + Math.floor(r() * 5));
         if (!t) continue;
         for (const [i, j] of t.cel) G.pos(i, j, CORREDOR);
+        largos.push(t.cel);
         const [ei, ej] = t.cel[t.cel.length - 1];
         const fim = r() < 0.85 ? galeriaEm(ei + t.dx, ej + t.dy, t.dx, t.dy) : null;
         if (!fim) C.pinta('desabamento', { x: ei + 0.5, y: ej + 0.5, r: 1.1 });
@@ -1487,11 +1787,12 @@ const Masmorra = (() => {
         if (r() < 0.5 && t.cel.length > 4) {
           const [bi, bj] = t.cel[Math.floor(t.cel.length / 2)], pd = C.pick([[t.dy, t.dx], [-t.dy, -t.dx]]);
           const t2 = tunelLado(bi, bj, pd[0], pd[1], 3 + Math.floor(r() * 5));
-          if (t2) { for (const [i, j] of t2.cel) G.pos(i, j, CORREDOR); const [fi, fj] = t2.cel[t2.cel.length - 1]; if (!(r() < 0.75 && galeriaEm(fi + t2.dx, fj + t2.dy, t2.dx, t2.dy))) C.pinta('desabamento', { x: fi + 0.5, y: fj + 0.5, r: 1 }); }
+          if (t2) { for (const [i, j] of t2.cel) G.pos(i, j, CORREDOR); largos.push(t2.cel); const [fi, fj] = t2.cel[t2.cel.length - 1]; if (!(r() < 0.75 && galeriaEm(fi + t2.dx, fj + t2.dy, t2.dx, t2.dy))) C.pinta('desabamento', { x: fi + 0.5, y: fj + 0.5, r: 1 }); }
         }
         break;
       }
     }
+    for (const cel of largos) alargarTunel(C, cel);
     // 3) as escadas: a de subida (a escada de madeira) no começo do túnel; a de descida é o poço
     const [sx, sy] = XY(pts[0]);
     const sobeLado = lado0;
@@ -1552,6 +1853,16 @@ const Masmorra = (() => {
       if (p.poco) p.zonas.push({ fx: 'runas', k: 'circ', x: p.poco.x + 1, y: p.poco.y - 0.5, r: 1, gm: true });
     }
   }
+  // (lote 28) o túnel do lado da mina com a largura escolhida (o de um continua de um)
+  function alargarTunel(C, cel) {
+    const L = largDe(C.p.larg);
+    if (L < 2) return;
+    const o0 = Math.floor((L - 1) / 2);
+    for (const [i, j] of cel) for (let b = 0; b < L; b++) for (let a = 0; a < L; a++) {
+      const x = i + a - o0, y = j + b - o0;
+      if (x >= 2 && y >= 2 && x < C.W - 2 && y < C.H - 2 && C.G.at(x, y) === ROCHA) C.G.pos(x, y, CORREDOR);
+    }
+  }
   const distSeg = (px, py, x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy || 1e-9, t = clamp(((px - x1) * dx + (py - y1) * dy) / L, 0, 1); return Math.hypot(px - x1 - t * dx, py - y1 - t * dy); };
   function galeriaEscondida(C, principal) {
     const { G, W, H, p } = C;
@@ -1581,6 +1892,133 @@ const Masmorra = (() => {
     }
     return false;
   }
+  /* ================= (lote 28) o navio naufragado =================
+     O casco deitado no fundo, com a proa de um lado e a popa do outro: o corredor do meio, de ponta a ponta (da largura
+     escolhida), e os compartimentos dos dois lados, separados pelas anteparas — o porão, os beliches, a cozinha, o
+     paiol, o arsenal, a enfermaria —, a cabine do capitão na popa e o porão da proa, afinando com o casco. A água
+     entrou: poças fundas espalhadas, com as algas que brilham. A escotilha para o convés (a subida) num compartimento do
+     meio; a descida, no porão de baixo, longe dela. */
+  function nivelDeNavio(C) {
+    const { G, r, p, W, H } = C, larg = largDe(p.larg);
+    const proaDir = r() < 0.5, x0 = 3, x1 = W - 4, L = x1 - x0 + 1, cy = H / 2;
+    const B = Math.min(H - 6, Math.max(11, Math.round(L * 0.38)));
+    const colDe = u => (proaDir ? x0 + u : x1 - u);                          // a coluna, contando da popa
+    const meia = u => { const t = u / (L - 1); let f = 1; if (t > 0.7) f = Math.sqrt(Math.max(0, 1 - Math.pow((t - 0.7) / 0.32, 2))); else if (t < 0.05) f = 0.88 + (t / 0.05) * 0.12; return (B / 2) * f; };
+    const noCasco = (u, j) => u >= 0 && u < L && Math.abs(j + 0.5 - cy) <= meia(u) - 0.25;
+    const c0 = Math.round(cy - larg / 2), c1 = c0 + larg - 1;              // as linhas do corredor
+    const sL = TAMANHOS[p.tamanho].W > 50 ? 7 : 6, bL = Math.max(6, Math.round(L * 0.27));
+    const salas = [], portas = [];
+    const nova = (papel, us, js) => { const xs = us.map(colDe); return { i: salas.length, x: Math.min(...xs), y: js[0], w: Math.max(...xs) - Math.min(...xs) + 1, h: js[js.length - 1] - js[0] + 1, papel, portas: [], liga: [] }; };
+    const cavaSala = (q, u0, u1, ok) => { for (let u = u0; u <= u1; u++) for (let j = 0; j < H; j++) if (noCasco(u, j) && ok(j)) G.pos(colDe(u), j, SALA); };
+    // a popa (a cabine do capitão) e a proa: o casco inteiro naquelas colunas
+    const popa = nova('capitao', [0, sL - 1], (() => { const a = []; for (let j = 0; j < H; j++) if (noCasco(1, j)) a.push(j); return a; })());
+    cavaSala(popa, 0, sL - 1, () => true); salas.push(popa);
+    const uProa = L - bL;
+    const proa = nova('proa', [uProa, L - 1], (() => { const a = []; for (let j = 0; j < H; j++) if (noCasco(uProa, j)) a.push(j); return a; })());
+    cavaSala(proa, uProa, L - 1, () => true); salas.push(proa);
+    // o corredor do meio, da antepara da popa à da proa
+    for (let u = sL; u <= uProa - 1; u++) for (let j = c0; j <= c1; j++) G.pos(colDe(u), j, CORREDOR);
+    // as portas das pontas (da largura do corredor): na beira da popa e na da proa
+    const bordaX = (uA, uB) => Math.max(colDe(uA), colDe(uB));               // a linha entre duas colunas vizinhas
+    for (const [q, uA, uB] of [[popa, sL - 1, sL], [proa, uProa, uProa - 1]]) {
+      const x = bordaX(uA, uB);
+      const d = { x1: x, y1: c0, x2: x, y2: c1 + 1, k: 'door' };
+      portas.push(d);
+      q.portas.push({ lado: colDe(uB) > colDe(uA) ? 'l' : 'o', fx: colDe(uB), fy: c0 });
+    }
+    // os compartimentos do meio: de 4 a 7 colunas, com uma antepara entre eles; uma sala em cima e outra embaixo
+    let u = sL + 1;
+    const meio = [];
+    while (u + 3 <= uProa - 2) {
+      let n = 4 + Math.floor(r() * 4);
+      if (u + n > uProa - 2) n = uProa - 2 - u + 1;
+      if (n < 3) break;
+      for (const lado of ['n', 's']) {
+        const ok = lado === 'n' ? j => j <= c0 - 2 : j => j >= c1 + 2;
+        const js = []; for (let j = 0; j < H; j++) if (ok(j) && noCasco(u, j) && noCasco(u + n - 1, j)) js.push(j);
+        if (js.length < 2) continue;
+        const q = nova('', [u, u + n - 1], js);
+        for (let uu = u; uu < u + n; uu++) for (const j of js) G.pos(colDe(uu), j, SALA);
+        // a porta: a casa da parede entre a sala e o corredor vira passagem; a porta fica na beira da sala
+        const ud = u + 1 + Math.floor(r() * Math.max(1, n - 2)), fx = colDe(ud), fy = lado === 'n' ? c0 - 1 : c1 + 1;
+        G.pos(fx, fy, CORREDOR);
+        const y = lado === 'n' ? fy : fy;
+        portas.push({ x1: fx, y1: lado === 'n' ? fy : fy, x2: fx + 1, y2: y, k: 'door', yb: lado === 'n' ? fy : fy + 1 });
+        q.portas.push({ lado: lado === 'n' ? 's' : 'n', fx, fy });
+        salas.push(q); meio.push(q);
+      }
+      u += n + 1;
+    }
+    // (a porta de cima fica na beira de baixo da sala: y = a linha da parede; a de baixo, na beira de cima da sala)
+    for (const d of portas) if (d.yb != null) { d.y1 = d.y2 = d.yb; delete d.yb; }
+    // os papéis do meio
+    const fila = C.embaralha(['porao', 'beliches', 'cozinha', 'paiol', 'arsenal', 'enfermaria', 'porao', 'beliches', 'porao', 'vazia']);
+    for (const q of meio) q.papel = fila.length ? fila.shift() : 'porao';
+    p.salas = salas.map(q => ({ x: q.x, y: q.y, w: q.w, h: q.h, papel: q.papel }));
+    // a escotilha (a subida) num compartimento do meio; a descida, no porão de baixo — o mais longe dela
+    const sobeQ = meio.length ? meio[Math.floor(meio.length / 2)] : popa;
+    p.sobe = escada(C, sobeQ, true) || escada(C, popa, true);
+    if (p.descida) {
+      const longe = salas.filter(q => q !== sobeQ).sort((a, b) => Math.abs(b.x - sobeQ.x) - Math.abs(a.x - sobeQ.x));
+      for (const q of longe) { p.desce = escada(C, q, false); if (p.desce) break; }
+    }
+    // a frente das portas fica livre
+    for (const q of salas) for (const pt of q.portas) { const [i, j] = dentroDaPorta(pt); if (C.livre(i, j)) C.ocupa(i, j, 1, 2); if (C.livre(pt.fx, pt.fy)) C.ocupa(pt.fx, pt.fy, 1, 2); }
+    // a água que entrou: poças fundas pelo casco (fora das escadas e da frente das portas), com as algas que brilham
+    const nAg = 2 + Math.floor(r() * 3);
+    for (let k = 0, feitas = 0; k < 60 && feitas < nAg; k++) {
+      const i = 2 + Math.floor(r() * (W - 4)), j = 2 + Math.floor(r() * (H - 4));
+      if (G.at(i, j) === ROCHA || !C.livre(i, j)) continue;
+      const rr = C.ent(1.2, 2.4);
+      for (let b = Math.floor(j - rr); b <= j + rr; b++) for (let a = Math.floor(i - rr); a <= i + rr; a++) {
+        const v = G.at(a, b);
+        if ((v === SALA || v === CORREDOR) && C.livre(a, b) && Math.hypot(a - i, b - j) <= rr) { G.pos(a, b, AGUA); C.ocupa(a, b, 1, 1); }
+      }
+      C.pinta('alga', { x: i + 0.5, y: j + 0.5, r: rr + 0.6 });
+      luz(C, i + 0.5, j + 0.5, 3, '#7fe9d0', 1);
+      feitas++;
+    }
+    // as paredes (as do casco e as anteparas) e as portas
+    p.paredes = paredesDaGrade(G).map(s2 => Object.assign(s2, { k: 'wall' }));
+    for (const d of portas) p.paredes.push({ x1: d.x1, y1: d.y1, x2: d.x2, y2: d.y2, k: 'door' });
+    // o casco furado: os rombos na beira (o mar escuro aparece pelas tábuas quebradas)
+    for (let k = 0, n = 0; k < 80 && n < 3; k++) {
+      const uu = 2 + Math.floor(r() * (L - 4)), lado = r() < 0.5 ? -1 : 1, i = colDe(uu);
+      let j = Math.round(cy);
+      while (G.at(i, j + lado) !== ROCHA && Math.abs(j - cy) < H) j += lado;
+      if (!C.livre(i, j)) continue;
+      C.pinta('rombo', { x: i + 0.5, y: j + 0.5 + lado * 0.5, lado }); n++;
+    }
+    // o que tem em cada compartimento
+    for (const q of salas) MOBILIA[q.papel] && MOBILIA[q.papel](C, q);
+    // os lampiões no corredor (poucos)
+    for (let uu = sL + 2, n = 0; uu < uProa - 1 && n < 2; uu += Math.max(5, Math.floor((uProa - sL) / 2))) { if (C.poe('lampiao', colDe(uu), c0)) n++; }
+    if (p.segredos) {
+      // o baú escondido do capitão (uma runa na frente) e uma runa na proa
+      p.zonas.push({ fx: 'runas', k: 'circ', x: popa.x + popa.w / 2, y: cy, r: 1, gm: true });
+      p.zonas.push({ fx: 'runas', k: 'circ', x: proa.x + proa.w / 2, y: cy, r: 1.2, gm: true });
+    }
+    enfeites(C);
+  }
+  Object.assign(MOBILIA, {
+    capitao(C, q) {
+      const mx = Math.floor(q.x + q.w / 2 - 1), my = Math.floor(q.y + q.h / 2 - 1);
+      if (C.poe('mesa', mx, my, 2)) { C.poe('cadeira', mx - 1, my, 1, 270) || C.poe('cadeira', mx + 2, my, 1, 90); C.pinta('mapa', { x: mx + 1, y: my + 1 }); }
+      encosta(C, q, 'cama', 1, 2); noCanto(C, q, 'bau'); noCanto(C, q, 'bau'); encosta(C, q, 'estante', 1, 2); encosta(C, q, 'lampiao', 1);
+      C.pinta('moedas', { x: q.x + q.w / 2, y: q.y + 1.2, r: 0.6 });
+    },
+    proa(C, q) {
+      for (let k = 0, n = Math.min(8, 3 + Math.floor(q.w * q.h / 14)); k < n; k++) { const id = C.r() < 0.5 ? 'barril' : 'caixote'; if (!noCanto(C, q, id)) encosta(C, q, id, 1); }
+      C.pinta('corda', { x: q.x + q.w / 2, y: q.y + q.h / 2, r: 0.9 });
+      if (C.r() < 0.6) C.pinta('entulho', { x: q.x + C.ent(1, q.w - 1), y: q.y + C.ent(1, q.h - 1), r: 0.9 });
+    },
+    porao(C, q) { MOBILIA.deposito(C, q); if (C.r() < 0.5) C.pinta('corda', { x: q.x + C.ent(1, q.w - 1), y: q.y + C.ent(1, q.h - 1), r: 0.6 }); },
+    beliches(C, q) { encosta(C, q, 'cama', Math.min(3, 1 + Math.floor(q.w * q.h / 10)), 2); noCanto(C, q, 'bau'); if (C.r() < 0.6) noCanto(C, q, 'pele'); },
+    cozinha(C, q) { noCanto(C, q, 'braseiro'); noCanto(C, q, 'barril'); noCanto(C, q, 'jarro'); encosta(C, q, 'balcao', 2); if (C.r() < 0.5) noCanto(C, q, 'jarro'); },
+    paiol(C, q) { const n = Math.min(7, 3 + Math.floor(q.w * q.h / 8)); for (let k = 0; k < n; k++) if (!noCanto(C, q, 'barril')) encosta(C, q, 'barril', 1); noCanto(C, q, 'caixote'); },
+    enfermaria(C, q) { encosta(C, q, 'cama', 2, 2); noCanto(C, q, 'jarro'); noCanto(C, q, 'balcao'); encosta(C, q, 'vela', 1); },
+  });
+
   /* ================= o plano de um nível ================= */
   /* o: { tipo, tamanho, nivel, estilo, seed, segredos (portas secretas e runas), descida (a escada para o nível de
      baixo) }. Devolve o plano: a grade (em texto: 0 rocha, 1 sala, 2 corredor, 3 água, 4 abismo, 5 nicho, 6 ponte), as
@@ -1600,11 +2038,11 @@ const Masmorra = (() => {
     // (se o sorteio sair ruim — poucas salas, sem lugar para as escadas —, tenta outra vez, com outra semente derivada)
     for (let t = 0; t < 8; t++) {
       const W = T.W, H = T.H, G = nova(W, H), r = mulberry((sub(seed, 1 + t * 17) % 2147483000) + 1);
-      p = { v: 1, lugar: 'masmorra', tipo, tamanho, nivel, estilo, seed, segredos, descida, W, H,
+      p = { v: 1, lugar: 'masmorra', tipo, tamanho, nivel, estilo, seed, segredos, descida, W, H, larg: largEscolhida(o.larg),
         salas: [], paredes: [], visao: [], objetos: [], luzes: [], relevo: [], formas: [], zonas: [], pintados: [], sobe: null, desce: null };
       if (ex) Object.assign(p, JSON.parse(JSON.stringify(ex)));
       const C = contexto(p, G, r);
-      if (tipo === 'arena') nivelDeArena(C); else if (tipo === 'subsolo') nivelDeSubsolo(C); else if (tipo === 'caverna') nivelDeCaverna(C); else if (tipo === 'mina') nivelDeMina(C); else nivelDeSalas(C);
+      if (tipo === 'arena') nivelDeArena(C); else if (tipo === 'subsolo') nivelDeSubsolo(C); else if (tipo === 'caverna' || tipo === 'covil') nivelDeCaverna(C); else if (tipo === 'mina') nivelDeMina(C); else if (tipo === 'navio') nivelDeNavio(C); else nivelDeSalas(C);
       p.grade = Array.from(G.g).join('');
       p.tentativa = t;
       if (tipo === 'arena') break;
@@ -1612,7 +2050,7 @@ const Masmorra = (() => {
     }
     // o relevo da água, do abismo e do poço (o contorno das casas deles)
     const { W, H } = p, g = p.grade, at = (i, j) => (i >= 0 && j >= 0 && i < W && j < H ? +g[j * W + i] : ROCHA);
-    const cav = tipo === 'caverna' || tipo === 'subsolo', borda = (dentro, k) => (cav ? contornoTremido(W, H, dentro, (seed + k) % 9973) : contornos(W, H, dentro).map(l => simplifica(l, 0.12))).filter(l => l.length > 3);
+    const cav = CAVADO.has(tipo), borda = (dentro, k) => (cav ? contornoTremido(W, H, dentro, (seed + k) % 9973) : contornos(W, H, dentro).map(l => simplifica(l, 0.12))).filter(l => l.length > 3);
     p.aguas = borda((i, j) => at(i, j) === AGUA, 5);
     p.abismos = borda((i, j) => at(i, j) === ABISMO, 9);
     if (tipo === 'subsolo' || tipo === 'arena') { p.lavas = borda((i, j) => at(i, j) === LAVA, 11); p.gelos = borda((i, j) => at(i, j) === GELO, 13); }
@@ -1641,7 +2079,8 @@ const Masmorra = (() => {
       if (p.desce) q.push('a passagem escondida para o nível ' + (p.nivel + 1));
       return q.join(' · ') + '.';
     }
-    partes.push(p.tipo === 'caverna' ? (salas === 1 ? 'uma câmara' : salas + ' câmaras') : p.tipo === 'mina' ? (salas === 1 ? 'uma galeria' : salas + ' galerias') : salas === 1 ? 'uma sala' : salas + ' salas');
+    partes.push(CAVADO.has(p.tipo) ? (salas === 1 ? 'uma câmara' : salas + ' câmaras') : p.tipo === 'mina' ? (salas === 1 ? 'uma galeria' : salas + ' galerias') : p.tipo === 'navio' ? salas + ' compartimentos' : salas === 1 ? 'uma sala' : salas + ' salas');
+    if (p.larg > 1 && p.tipo !== 'arena') partes.push((CAVADO.has(p.tipo) ? 'túneis de ' : 'corredores de ') + p.larg + ' quadrados');
     if (portas) partes.push(portas === 1 ? 'uma porta' : portas + ' portas');
     if (secretas) partes.push(secretas === 1 ? 'uma porta secreta' : secretas + ' portas secretas');
     const runas = p.zonas.filter(z => z.fx === 'runas').length;
@@ -1655,7 +2094,19 @@ const Masmorra = (() => {
     cripta: { rocha: ['#221f1c', '#2e2a26', '#151311'], chao: ['#5c574f', '#686259', '#4f4a43'], junta: '#35312b', bloco: ['#57524a', '#48443d', '#625c53'] },
     caverna: { rocha: ['#2b2621', '#38312a', '#1b1714'], chao: ['#564c43', '#62574c', '#4a4139'], junta: '#3a332c', bloco: ['#4e453c', '#433b33', '#5a5045'] },
     mina: { rocha: ['#2c241f', '#3a2f28', '#1c1612'], chao: ['#5a4a3c', '#665443', '#4c3e32'], junta: '#3b3027', bloco: ['#4d3f33', '#43372d', '#58483a'] },
+    // (lote 28) os estilos novos
+    templo: { rocha: ['#28262a', '#343137', '#19181b'], chao: ['#8d877c', '#9a948a', '#807a70'], junta: '#55504a', bloco: ['#8a8378', '#7a746a', '#968f84'] },
+    esgoto: { rocha: ['#1d211c', '#262c25', '#131612'], chao: ['#4f4a3c', '#5a5444', '#454034'], junta: '#2e2b22', bloco: ['#5a3f32', '#4e372b', '#664838'] },
+    torre: { rocha: ['#1d1c26', '#272533', '#121119'], chao: ['#5f5a6e', '#6b657b', '#545063'], junta: '#3a3646', bloco: ['#57526a', '#4a465c', '#635d77'] },
+    laboratorio: { rocha: ['#1c1f22', '#25292d', '#121416'], chao: ['#6f7d7b', '#7c8b88', '#64716f'], junta: '#3d4644', bloco: ['#5d6866', '#525c5a', '#697573'] },
+    fortaleza: { rocha: ['#2a2420', '#36302a', '#1a1613'], chao: ['#6e6256', '#7a6d60', '#62574c'], junta: '#3e352d', bloco: ['#6a5d50', '#5c5045', '#776a5c'] },
+    ruinas: { rocha: ['#1c241c', '#253025', '#121812'], chao: ['#7a8070', '#868c7b', '#6d7364'], junta: '#454a3e', bloco: ['#767c6c', '#686e5f', '#838a78'] },
+    covil: { rocha: ['#271c18', '#33241f', '#17100e'], chao: ['#4f3d33', '#5b473b', '#43342b'], junta: '#3a2a22', bloco: ['#4a382e', '#3f3027', '#56423a'] },
+    navio: { rocha: ['#0f1a1e', '#152429', '#0a1214'], chao: ['#5a4330', '#664c37', '#4e3a2a'], junta: '#2e2218', bloco: ['#4a3524', '#3f2d1f', '#56402b'] },
   };
+  // (lote 28) o chão de cada estilo novo e os que têm parede de cantaria (os blocos do lado da rocha)
+  const PISO_M = { templo: 'marmore', esgoto: 'tijolo', torre: 'lajes', laboratorio: 'ladrilho', fortaleza: 'lajes', ruinas: 'lajes', navio: 'madeira' };
+  const CANTARIA = new Set(['pedra', 'cripta', 'templo', 'esgoto', 'torre', 'laboratorio', 'fortaleza', 'ruinas']);
   // (lote 18) a pedra do subsolo, pelo bioma de baixo
   const PAL_SUB = {
     fungos: PAL_M.caverna,
@@ -1679,8 +2130,8 @@ const Masmorra = (() => {
     cv.width = Math.round(W * c); cv.height = Math.round(H * c);
     const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x2f6b13a7) >>> 0 || 7), P = (p.tipo === 'subsolo' && PAL_SUB[p.bioma]) || (p.tipo === 'arena' && PAL_ARENA[p.arena.tipo]) || PAL_M[p.tipo] || PAL_M.pedra;
     const grade = p.grade, at = (i, j) => (i >= 0 && j >= 0 && i < W && j < H ? +grade[j * W + i] : ROCHA), aberto = (i, j) => at(i, j) !== ROCHA;
-    const reto = p.tipo === 'arena' ? p.arena.tipo === 'trono' || p.arena.tipo === 'mausoleu' : p.tipo !== 'caverna' && p.tipo !== 'subsolo';
-    const piso = p.tipo === 'arena' ? PISO_ARENA[p.arena.tipo] : null;          // (lote 18: o chão da arena)
+    const reto = p.tipo === 'arena' ? p.arena.tipo === 'trono' || p.arena.tipo === 'mausoleu' : !CAVADO.has(p.tipo);
+    const piso = p.tipo === 'arena' ? PISO_ARENA[p.arena.tipo] : PISO_M[p.tipo] || null;          // (lote 18: o chão da arena; lote 28: o dos estilos novos)
     // 1) a rocha: o fundo escuro com manchas e rachaduras
     g.fillStyle = P.rocha[0]; g.fillRect(0, 0, cv.width, cv.height);
     for (let k = 0, n = Math.round(W * H * 1.3); k < n; k++) {
@@ -1723,9 +2174,44 @@ const Masmorra = (() => {
           if (rnd() < 0.12) { g.strokeStyle = 'rgba(20,18,16,0.45)'; g.lineWidth = Math.max(1, c * 0.02); g.beginPath(); g.moveTo(x + q * rnd(), y + q * 0.1); g.lineTo(x + q * rnd(), y + q * 0.9); g.stroke(); }
         }
       }
-      // a sujeira nos cantos e o musgo (na cripta, mais escuro)
-      for (let k = 0, n = Math.round(W * H * 0.6); k < n; k++) { const x = rnd() * W, y = rnd() * H, rr = (0.3 + rnd() * 0.9) * c; g.globalAlpha = 0.06 + rnd() * 0.08; g.fillStyle = rnd() < 0.7 ? '#1a1612' : '#3f4a2c'; g.beginPath(); g.arc(x * c, y * c, rr, 0, TAU); g.fill(); }
+      // a sujeira nos cantos e o musgo (na cripta, mais escuro; nas ruínas, o musgo toma conta)
+      const musgo = p.tipo === 'ruinas' ? 0.45 : 0.3;
+      for (let k = 0, n = Math.round(W * H * (p.tipo === 'ruinas' ? 1.1 : 0.6)); k < n; k++) { const x = rnd() * W, y = rnd() * H, rr = (0.3 + rnd() * 0.9) * c; g.globalAlpha = 0.06 + rnd() * 0.08; g.fillStyle = rnd() < 1 - musgo ? '#1a1612' : '#3f4a2c'; g.beginPath(); g.arc(x * c, y * c, rr, 0, TAU); g.fill(); }
       g.globalAlpha = 1;
+    } else if (piso === 'tijolo' || piso === 'ladrilho' || piso === 'madeira') {
+      // (lote 28) os tijolos do esgoto, os ladrilhos do laboratório e as tábuas do navio
+      if (piso === 'tijolo') {
+        for (let j = 0; j < H * 3; j++) for (let i = -1; i < W * 2; i++) {
+          const q = c / 2, h3 = c / 3, x = (i + (j % 2) * 0.5) * q, y = j * h3;
+          if (!aberto(Math.floor(x / c), Math.floor(y / c))) continue;
+          g.fillStyle = tomM(P.chao[1], (Math.floor(rnd() * 24) - 12) / 160); g.fillRect(x + 1, y + 1, q - 2, h3 - 2);
+        }
+        for (let k = 0, n = Math.round(W * H * 0.5); k < n; k++) { const x = rnd() * W, y = rnd() * H, rr = (0.3 + rnd() * 1) * c; g.globalAlpha = 0.08 + rnd() * 0.1; g.fillStyle = rnd() < 0.6 ? '#2a3a22' : '#15130f'; g.beginPath(); g.arc(x * c, y * c, rr, 0, TAU); g.fill(); }
+        g.globalAlpha = 1;
+      } else if (piso === 'ladrilho') {
+        for (let j = 0; j < H * 2; j++) for (let i = 0; i < W * 2; i++) {
+          if (!aberto(Math.floor(i / 2), Math.floor(j / 2))) continue;
+          const q = c / 2; g.fillStyle = (i + j) % 2 ? tomM(P.chao[1], 0.06) : tomM(P.chao[2], -0.04); g.fillRect(i * q + 0.5, j * q + 0.5, q - 1, q - 1);
+          if (rnd() < 0.05) { g.strokeStyle = 'rgba(20,24,24,0.4)'; g.lineWidth = 1; g.beginPath(); g.moveTo(i * q + q * rnd(), j * q); g.lineTo(i * q + q * rnd(), j * q + q); g.stroke(); }
+        }
+        for (let k = 0, n = Math.round(W * H * 0.25); k < n; k++) { const x = rnd() * W, y = rnd() * H, rr = (0.2 + rnd() * 0.6) * c; g.globalAlpha = 0.07 + rnd() * 0.08; g.fillStyle = rnd() < 0.5 ? '#1a2620' : '#2f4a3a'; g.beginPath(); g.arc(x * c, y * c, rr, 0, TAU); g.fill(); }
+        g.globalAlpha = 1;
+      } else {
+        // as tábuas, no comprimento do casco, de tamanhos sortidos, com as emendas e os pregos
+        for (let j = 0; j < H * 3; j++) {
+          let x = -rnd() * 2;
+          while (x < W) {
+            const l = 1.5 + rnd() * 2.5, y = j / 3;
+            if (aberto(Math.floor(Math.max(0, x + l / 2)), Math.floor(y))) {
+              g.fillStyle = tomM(P.chao[1], (Math.floor(rnd() * 30) - 15) / 140); g.fillRect(x * c, y * c + 0.5, l * c - 1, c / 3 - 1);
+              g.fillStyle = 'rgba(30,20,12,0.6)'; g.fillRect((x + 0.12) * c, y * c + c / 6 - 1, 1.5, 1.5); g.fillRect((x + l - 0.15) * c, y * c + c / 6 - 1, 1.5, 1.5);
+            }
+            x += l;
+          }
+        }
+        for (let k = 0, n = Math.round(W * H * 0.35); k < n; k++) { const x = rnd() * W, y = rnd() * H, rr = (0.3 + rnd() * 1.1) * c; g.globalAlpha = 0.1 + rnd() * 0.12; g.fillStyle = rnd() < 0.5 ? '#1f2a28' : '#3a4a3a'; g.beginPath(); g.arc(x * c, y * c, rr, 0, TAU); g.fill(); }
+        g.globalAlpha = 1;
+      }
     } else {
       // a terra e a pedra do chão da caverna e da mina: manchas grandes, cascalho, as marcas
       for (let k = 0, n = Math.round(W * H * 0.9); k < n; k++) { const x = rnd() * W, y = rnd() * H, rr = (0.3 + rnd() * 1.4) * c; g.globalAlpha = 0.12 + rnd() * 0.18; g.fillStyle = rnd() < 0.5 ? P.chao[1] : P.chao[2]; g.beginPath(); g.ellipse(x * c, y * c, rr, rr * (0.5 + rnd() * 0.5), rnd() * 3, 0, TAU); g.fill(); }
@@ -1758,7 +2244,7 @@ const Masmorra = (() => {
     g.restore();
     // a parede: na pedra e na cripta, os blocos de cantaria do lado da rocha; na caverna e na mina, a rocha bruta
     g.save(); g.globalAlpha = 1;
-    if (reto && (p.tipo === 'pedra' || p.tipo === 'cripta')) {
+    if (reto && CANTARIA.has(p.tipo)) {
       for (const s of bordas) {
         const horiz = s.y1 === s.y2, L = horiz ? s.x2 - s.x1 : s.y2 - s.y1;
         // (de que lado fica a rocha: a casa de cima/da esquerda é rocha?)
@@ -2106,6 +2592,115 @@ const Masmorra = (() => {
       g.restore();
     } },
     ninho: { z: 2, f(g, o, c, rnd) { if (typeof Paisagem !== 'undefined' && Paisagem.ninho) Paisagem.ninho(g, o, c, rnd); } },
+    // ---- (lote 28) ----
+    grama: { z: 0, f(g, o, c, rnd) {
+      g.save(); g.globalAlpha = 0.8; g.fillStyle = '#3f5a2e'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c);
+      g.strokeStyle = '#6e8f4a'; g.globalAlpha = 0.5; g.lineWidth = Math.max(1, c * 0.03);
+      for (let k = 0, n = Math.round(o.w * o.h * 6); k < n; k++) { const x = o.x + rnd() * o.w, y = o.y + rnd() * o.h; g.beginPath(); g.moveTo(x * c, y * c); g.lineTo((x + (rnd() - 0.5) * 0.15) * c, (y - 0.18) * c); g.stroke(); }
+      g.restore();
+    } },
+    canal: { z: 0, f(g, o, c) {
+      g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+      const tr = () => { g.beginPath(); o.pts.forEach(([x, y], k) => (k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); };
+      g.strokeStyle = '#1d2a22'; g.lineWidth = c * 0.62; tr(); g.stroke();
+      g.strokeStyle = '#33473a'; g.lineWidth = c * 0.42; tr(); g.stroke();
+      g.strokeStyle = 'rgba(160,190,150,0.25)'; g.lineWidth = Math.max(1, c * 0.05); g.setLineDash([c * 0.3, c * 0.5]); tr(); g.stroke();
+      g.restore();
+    } },
+    grade: { z: 1, f(g, o, c) {
+      const X = o.x * c, Y = o.y * c, R = c * 0.36;
+      g.save();
+      if (o.luz) { const gr = g.createRadialGradient(X, Y, 0, X, Y, c * 1.4); gr.addColorStop(0, 'rgba(200,215,230,0.35)'); gr.addColorStop(1, 'rgba(200,215,230,0)'); g.fillStyle = gr; g.beginPath(); g.arc(X, Y, c * 1.4, 0, TAU); g.fill(); }
+      g.fillStyle = '#0d0f0e'; g.fillRect(X - R, Y - R, R * 2, R * 2);
+      g.strokeStyle = '#5a5e5c'; g.lineWidth = Math.max(1, c * 0.06); g.strokeRect(X - R, Y - R, R * 2, R * 2);
+      g.lineWidth = Math.max(1, c * 0.04); g.beginPath(); for (let k = 1; k < 4; k++) { g.moveTo(X - R + (k * R) / 2, Y - R); g.lineTo(X - R + (k * R) / 2, Y + R); } g.stroke();
+      g.restore();
+    } },
+    frascos: { z: 2, f(g, o, c, rnd) {
+      g.save();
+      for (let k = 0; k < 4; k++) {
+        const x = (o.x + (rnd() - 0.5) * 0.8) * c, y = (o.y + (rnd() - 0.5) * 0.6) * c, rr = c * (0.08 + rnd() * 0.06);
+        const gr = g.createRadialGradient(x, y, 0, x, y, rr * 3); gr.addColorStop(0, o.cor + '55'); gr.addColorStop(1, o.cor + '00'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr * 3, 0, TAU); g.fill();
+        g.fillStyle = o.cor; g.beginPath(); g.arc(x, y, rr, 0, TAU); g.fill(); g.strokeStyle = 'rgba(230,240,255,0.7)'; g.lineWidth = Math.max(1, c * 0.02); g.stroke();
+      }
+      g.restore();
+    } },
+    estrelas: { z: 1, f(g, o, c, rnd) {
+      g.save(); g.strokeStyle = 'rgba(170,190,255,0.55)'; g.fillStyle = 'rgba(220,230,255,0.9)'; g.lineWidth = Math.max(1, c * 0.04);
+      g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, TAU); g.stroke();
+      const pts = [];
+      for (let k = 0; k < 14; k++) { const a = rnd() * TAU, d = Math.sqrt(rnd()) * o.r * 0.9; pts.push([o.x + Math.cos(a) * d, o.y + Math.sin(a) * d]); }
+      g.globalAlpha = 0.5; g.beginPath(); for (let k = 1; k < pts.length; k += 2) { g.moveTo(pts[k - 1][0] * c, pts[k - 1][1] * c); g.lineTo(pts[k][0] * c, pts[k][1] * c); } g.stroke();
+      g.globalAlpha = 1; for (const [x, y] of pts) { g.beginPath(); g.arc(x * c, y * c, Math.max(1, c * 0.05), 0, TAU); g.fill(); }
+      g.restore();
+    } },
+    tanque: { z: 2, f(g, o, c, rnd) {
+      g.save();
+      g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect((o.x + 0.1) * c, (o.y + 0.12) * c, o.w * c, o.h * c);
+      g.fillStyle = o.cor + '99'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c);
+      for (let k = 0; k < 6; k++) { g.fillStyle = 'rgba(255,255,255,0.45)'; g.beginPath(); g.arc((o.x + 0.2 + rnd() * (o.w - 0.4)) * c, (o.y + 0.2 + rnd() * (o.h - 0.4)) * c, Math.max(1, c * (0.03 + rnd() * 0.04)), 0, TAU); g.fill(); }
+      g.strokeStyle = '#cfe6f0'; g.lineWidth = Math.max(1.5, c * 0.07); g.strokeRect(o.x * c, o.y * c, o.w * c, o.h * c);
+      g.strokeStyle = '#4a5658'; g.lineWidth = Math.max(1, c * 0.03); g.strokeRect((o.x + 0.06) * c, (o.y + 0.06) * c, (o.w - 0.12) * c, (o.h - 0.12) * c);
+      g.restore();
+    } },
+    anelTorre: { z: 3, f(g, o, c, rnd, p) {
+      // por fora da torre, o céu da noite; a parede redonda de pedra
+      const X = o.x * c, Y = o.y * c, R = (o.r + 0.55) * c;
+      g.save();
+      g.beginPath(); g.rect(0, 0, p.W * c, p.H * c); g.arc(X, Y, R, 0, TAU, true);
+      g.fillStyle = '#0a0d18'; g.fill('evenodd');
+      g.clip('evenodd');
+      for (let k = 0, n = Math.round(p.W * p.H * 0.25); k < n; k++) { g.fillStyle = rnd() < 0.8 ? 'rgba(220,230,255,0.75)' : 'rgba(255,230,180,0.8)'; g.beginPath(); g.arc(rnd() * p.W * c, rnd() * p.H * c, Math.max(0.6, c * 0.03 * rnd() + 0.4), 0, TAU); g.fill(); }
+      g.restore();
+      g.save();
+      g.strokeStyle = '#57526a'; g.lineWidth = c * 0.9; g.beginPath(); g.arc(X, Y, R, 0, TAU); g.stroke();
+      g.strokeStyle = '#3a3646'; g.lineWidth = Math.max(1, c * 0.05); g.setLineDash([c * 0.5, c * 0.08]);
+      g.beginPath(); g.arc(X, Y, R, 0, TAU); g.stroke(); g.setLineDash([]);
+      g.strokeStyle = 'rgba(0,0,0,0.6)'; g.lineWidth = Math.max(1, c * 0.06); for (const d of [-0.45, 0.45]) { g.beginPath(); g.arc(X, Y, R + d * c, 0, TAU); g.stroke(); }
+      g.restore();
+    } },
+    colunaCaida: { z: 2, f(g, o, c, rnd) {
+      g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.ang || 0);
+      g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(-c * 0.75 + 3, -c * 0.2 + 3, c * 1.5, c * 0.4);
+      const gr = g.createLinearGradient(0, -c * 0.2, 0, c * 0.2); gr.addColorStop(0, '#a49e93'); gr.addColorStop(1, '#55514b');
+      g.fillStyle = gr; g.fillRect(-c * 0.75, -c * 0.2, c * 1.5, c * 0.4);
+      g.strokeStyle = '#2f2c28'; g.lineWidth = Math.max(1, c * 0.03); g.strokeRect(-c * 0.75, -c * 0.2, c * 1.5, c * 0.4);
+      g.beginPath(); g.moveTo(-c * 0.1, -c * 0.2); g.lineTo(c * 0.05, c * 0.2); g.moveTo(c * 0.35, -c * 0.2); g.lineTo(c * 0.28, c * 0.2); g.stroke();
+      g.restore();
+    } },
+    garras: { z: 2, f(g, o, c) {
+      g.save(); g.translate(o.x * c, o.y * c); g.rotate((o.ang || 0) + Math.PI / 2);
+      g.strokeStyle = 'rgba(15,10,8,0.8)'; g.lineWidth = Math.max(1, c * 0.05); g.lineCap = 'round';
+      for (const d of [-0.16, 0, 0.16]) { g.beginPath(); g.moveTo((d - 0.06) * c, -c * 0.3); g.lineTo((d + 0.06) * c, c * 0.3); g.stroke(); }
+      g.restore();
+    } },
+    alga: { z: 1, f(g, o, c, rnd) {
+      g.save();
+      for (let k = 0; k < 8; k++) { const a = rnd() * TAU, d = o.r * (0.7 + rnd() * 0.35), x = (o.x + Math.cos(a) * d) * c, y = (o.y + Math.sin(a) * d) * c, rr = c * (0.12 + rnd() * 0.14); const gr = g.createRadialGradient(x, y, 0, x, y, rr * 2.2); gr.addColorStop(0, 'rgba(127,233,208,0.5)'); gr.addColorStop(1, 'rgba(127,233,208,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr * 2.2, 0, TAU); g.fill(); g.fillStyle = '#2f6a5a'; g.beginPath(); g.arc(x, y, rr, 0, TAU); g.fill(); }
+      g.restore();
+    } },
+    rombo: { z: 3, f(g, o, c, rnd) {
+      // as tábuas quebradas do casco, com o mar escuro aparecendo
+      const X = o.x * c, Y = o.y * c;
+      g.save(); g.fillStyle = '#071014'; g.beginPath();
+      for (let k = 0; k < 9; k++) { const a = (k / 9) * TAU, d = c * (0.35 + rnd() * 0.25); k ? g.lineTo(X + Math.cos(a) * d, Y + Math.sin(a) * d * 0.7) : g.moveTo(X + Math.cos(a) * d, Y + Math.sin(a) * d * 0.7); }
+      g.closePath(); g.fill();
+      g.strokeStyle = '#6b4c32'; g.lineWidth = Math.max(1, c * 0.06); g.lineCap = 'round';
+      for (let k = 0; k < 4; k++) { const a = rnd() * TAU; g.beginPath(); g.moveTo(X + Math.cos(a) * c * 0.2, Y + Math.sin(a) * c * 0.2); g.lineTo(X + Math.cos(a) * c * 0.6, Y + Math.sin(a) * c * 0.5); g.stroke(); }
+      g.restore();
+    } },
+    corda: { z: 2, f(g, o, c) {
+      g.save(); g.strokeStyle = '#a08a5c'; g.lineWidth = Math.max(1, c * 0.07);
+      for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(o.x * c, o.y * c, (o.r - k * 0.18) * c, 0, TAU); g.stroke(); }
+      g.restore();
+    } },
+    mapa: { z: 3, f(g, o, c) {
+      g.save(); g.translate(o.x * c, o.y * c); g.rotate(0.15);
+      g.fillStyle = '#d9c9a0'; g.fillRect(-c * 0.45, -c * 0.32, c * 0.9, c * 0.64);
+      g.strokeStyle = '#8a6a3a'; g.lineWidth = Math.max(1, c * 0.03); g.strokeRect(-c * 0.45, -c * 0.32, c * 0.9, c * 0.64);
+      g.beginPath(); g.moveTo(-c * 0.3, c * 0.1); g.bezierCurveTo(-c * 0.1, -c * 0.2, c * 0.1, c * 0.2, c * 0.3, -c * 0.1); g.stroke();
+      g.restore();
+    } },
     // (lote 18) as arenas: a arquibancada em volta da arena, o círculo das runas, as ameias da torre, as pedras de pé e a
     // mata em volta do círculo
     arquibancada: { z: 1, f(g, o, c, rnd) {
@@ -2122,7 +2717,7 @@ const Masmorra = (() => {
       g.restore();
     } },
     circuloRunico: { z: 1, f(g, o, c) {
-      g.save(); g.strokeStyle = '#8a1f2a'; g.globalAlpha = 0.75; g.lineWidth = c * 0.12;
+      g.save(); g.strokeStyle = o.cor || '#8a1f2a'; g.globalAlpha = 0.75; g.lineWidth = c * 0.12;
       g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, TAU); g.stroke();
       g.lineWidth = c * 0.06; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * 0.82 * c, 0, TAU); g.stroke();
       g.beginPath(); for (let k = 0; k <= 5; k++) { const an = -Math.PI / 2 + (k * 2 / 5) * TAU, x = o.x + Math.cos(an) * o.r * 0.82, y = o.y + Math.sin(an) * o.r * 0.82; k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c); } g.stroke();
@@ -2270,6 +2865,7 @@ const Masmorra = (() => {
       t.size = 0.75; t.x += c * 0.125; t.y += c * 0.125;
       // (lote 18: do subsolo, o nível de baixo é a masmorra — a caverna, para começar; a janela deixa escolher)
       t.gera = { t: 'masmorra', m: p.tipo === 'subsolo' ? 'caverna' : p.tipo, n: Math.min(99, p.nivel + 1), tam: p.tamanho, e: p.estilo, s: (sub(p.seed, 77) % 2147483000) + 1 };
+      if (p.larg) t.gera.lc = p.larg;
       sc.tokens.push(t);
     }
     // (lote 18) os achados e os ninhos do subsolo: marcadores ocultos, com o nome do que é
@@ -2312,6 +2908,14 @@ const Masmorra = (() => {
     caverna: 'Os túneis tortos ligando as câmaras, o lago de baixo da terra, os cogumelos que brilham, as estalagmites (as grandes tapam a visão) e o abismo, com a ponte de pedra.',
     cripta: 'Os corredores estreitos com os nichos dos mortos, as salas dos sarcófagos, o ossário, a capela e o jazigo do senhor no estrado, entre os braseiros.',
     mina: 'O túnel dos trilhos com os vagonetes, as escoras, as galerias com os veios, os túneis desabados, o acampamento abandonado e o poço de descida.',
+    templo: 'A nave com o altar no estrado, as colunas e os bancos; o claustro com o poço, as capelas, a sacristia, os dormitórios e a biblioteca. Muitos arcos, poucas portas trancadas.',
+    esgoto: 'Os corredores com o canal de água suja no meio, a cisterna funda, as junções com as grades, o ninho dos ratos e o esconderijo dos ladrões. A luz é a das grades da rua.',
+    torre: 'A torre redonda, por dentro: o círculo de invocação com as velas, a biblioteca, a sala de alquimia, o observatório com o mapa das estrelas e o quarto do mago. Por fora, o céu.',
+    laboratorio: 'As bancadas com os frascos, as jaulas, os tanques de vidro com o líquido que brilha, o caldeirão, o incinerador, a biblioteca e o depósito. Muitas portas trancadas.',
+    fortaleza: 'Salas grandes e corredores retos: o trono anão entre as colunas, as forjas com as bigornas, os quartéis, a cervejaria, o arsenal, a guarda e o tesouro.',
+    ruinas: 'As paredes caídas abrindo passagens, as colunas tombadas, o jardim que tomou as salas, a fonte seca, o musgo e as raízes, e os cristais que ainda brilham.',
+    covil: 'Os túneis tortos da caverna até a câmara do ninho, com os ovos, as moedas e os ossos; os ninhos menores, as carcaças e as marcas de garra.',
+    navio: 'O casco deitado no fundo: o corredor do meio, os compartimentos dos dois lados (porão, beliches, cozinha, paiol, arsenal, enfermaria), a cabine do capitão na popa, a água que entrou e os rombos.',
   };
   /* Abre a janela pelo marcador: a Entrada da escada que desce (já sabe o tipo, o nível e o tamanho) ou uma Entrada
      posta à mão (o nível 1, com as últimas escolhas). */
@@ -2321,6 +2925,7 @@ const Masmorra = (() => {
     const K = UI.kit, { field, seg, btn, note } = K, g0 = t.gera && t.gera.t === 'masmorra' ? t.gera : null, o = App.opt;
     const st = {
       tipo: g0 && TIPOS.some(x => x[0] === g0.m) ? g0.m : TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra',
+      larg: g0 && g0.lc ? largDe(g0.lc) : largEscolhida(o.masLarg),
       tamanho: g0 && TAMANHOS[g0.tam] ? g0.tam : TAMANHOS[o.masTam] ? o.masTam : 'medio',
       nivel: g0 ? g0.n : 1, estilo: Estilos.valido(g0 ? g0.e : o.genEstilo), seed: g0 ? g0.s : novaSemente(),
       segredos: o.masSeg !== false, descida: o.masDesce !== false, relevo: o.genRelevo !== false, chefe: false,
@@ -2332,16 +2937,17 @@ const Masmorra = (() => {
     const refazer = () => {
       // (lote 18) o último nível: a sala do chefe (a arena que combina com o tipo), com a Saída de volta na entrada
       plano = st.chefe ? gerar({ tipo: 'arena', arena: ARENA_DO_TIPO[st.tipo] || 'trono', tamanho: st.tamanho === 'grande' ? 'grande' : st.tamanho === 'pequeno' ? 'pequeno' : 'medio', estilo: st.estilo, seed: st.seed })
-        : gerar({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: st.estilo, seed: st.seed, segredos: st.segredos, descida: st.descida });
+        : gerar({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: st.estilo, seed: st.seed, segredos: st.segredos, descida: st.descida, larg: st.larg || largPadrao(st.tipo) });
       try { previa(cv, plano, 460, 330, { relevo: st.relevo }); } catch (e) { console.error(e); }
       resumoEl.textContent = resumo(plano);
       if (!nomeMexido) inNome.value = st.chefe ? NOME_ARENA[plano.arena.tipo] : nomePadrao(plano);
       if (st.chefe) { nota.textContent = 'A sala do chefe: ' + (NOME_ARENA[plano.arena.tipo] || '').toLowerCase() + ', com o chefe no lugar dele, os pontos de reforço escondidos e as fases prontas (você aciona na aba Cena, com prévia e Desfazer). A Saída, na entrada, leva de volta. Nada sai escrito.'; return; }
       nota.textContent = NOTA[st.tipo] + ' Sai uma cena nova, dentro desta, no breu (só o fogo e os cogumelos iluminam), com a Saída na escada de subida levando de volta' + (st.descida ? ' e, na escada de descida, a Entrada do nível ' + (st.nivel + 1) + ' (dois cliques nela geram o nível de baixo quando você quiser)' : '') + (st.segredos ? '. As portas secretas e as runas-armadilha ficam escondidas dos jogadores até você revelar' : '') + '. O marcador fica ligado à cena nova. Nada sai escrito.';
     };
-    const lembrar = () => { o.masTipo = st.tipo; o.masTam = st.tamanho; o.masSeg = st.segredos; o.masDesce = st.descida; };
+    const lembrar = () => { o.masTipo = st.tipo; o.masTam = st.tamanho; o.masSeg = st.segredos; o.masDesce = st.descida; o.masLarg = st.larg; };
     const pintarC = () => ctl.replaceChildren(...[
-      field('Tipo', seg('mas-tipo', st.tipo, TIPOS.map(([k, n]) => [k, n]), v => { st.tipo = v; lembrar(); pintarC(); refazer(); }), 'stack'),
+      field('Tipo', seg('mas-tipo', st.tipo, TIPOS.map(([k, n]) => [k, n, null, NOTA[k]]), v => { st.tipo = v; lembrar(); pintarC(); refazer(); }), 'stack'),
+      st.chefe ? null : field('Largura dos corredores', seg('mas-larg', st.larg || largPadrao(st.tipo), LARGURAS.map(([k, n]) => [k, n]), v => { st.larg = v; lembrar(); pintarC(); refazer(); }), 'stack'),
       field('Tamanho', seg('mas-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, `${TAMANHOS[k].W} × ${TAMANHOS[k].H} quadrados`]), v => { st.tamanho = v; lembrar(); pintarC(); refazer(); }), 'stack'),
       K.toggle('mas-chefe', st.chefe, v => { st.chefe = v; nomeMexido = false; pintarC(); refazer(); }, 'O último nível: a sala do chefe (uma arena com as fases)'),
       st.chefe ? null : K.toggle('mas-seg', st.segredos, v => { st.segredos = v; lembrar(); pintarC(); refazer(); }, 'Com segredos (as portas secretas e as runas-armadilha, escondidas dos jogadores)'),
@@ -2441,9 +3047,9 @@ const Masmorra = (() => {
   const cenaDeCima = id => (typeof id === 'string' && id && Store.S.scenes[id] && (!Nuvem.comCampanhas() || Nuvem.naVista(id)) ? id : '');
   function padraoL() {
     const o = App.opt;
-    return { tipo: TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra', tamanho: TAMANHOS[o.masTam] ? o.masTam : 'medio', nivel: 1, segredos: o.masSeg !== false, descida: o.masDesce !== false, sob: '' };
+    return { tipo: TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra', tamanho: TAMANHOS[o.masTam] ? o.masTam : 'medio', nivel: 1, segredos: o.masSeg !== false, descida: o.masDesce !== false, sob: '', larg: largEscolhida(o.masLarg) };
   }
-  const lembrarL = st => { App.opt.masTipo = st.tipo; App.opt.masTam = st.tamanho; App.opt.masSeg = st.segredos; App.opt.masDesce = st.descida; };
+  const lembrarL = st => { App.opt.masTipo = st.tipo; App.opt.masTam = st.tamanho; App.opt.masSeg = st.segredos; App.opt.masDesce = st.descida; App.opt.masLarg = largEscolhida(st.larg); };
   // as cenas na ordem das famílias (as de dentro recuadas), como na lista "Leva para outra cena"
   function cenasEmFamilia() {
     const comCamp = Nuvem.comCampanhas(), vis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id))), F = UI.familiasVistas(vis), arv = [];
@@ -2459,6 +3065,7 @@ const Masmorra = (() => {
     sel.value = cenaDeCima(st.sob);
     return h('div', { class: 'ger-c' },
       field('Tipo', seg('mas-tipo', st.tipo, TIPOS.map(([k, n]) => [k, n, null, NOTA[k]]), v => muda('tipo', v)), 'stack'),
+      field('Largura dos corredores', seg('mas-larg', st.larg || largPadrao(st.tipo), LARGURAS.map(([k, n]) => [k, n]), v => muda('larg', v)), 'stack'),
       h('div', { class: 'ger-l' },
         field('Tamanho', seg('mas-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, `${TAMANHOS[k].W} × ${TAMANHOS[k].H} quadrados`]), v => muda('tamanho', v)), 'stack'),
         field('Nível', inNum('mas-nivel', st.nivel, v => muda('nivel', clamp(Math.round(v) || 1, 1, 99)), { min: 1, max: 99, step: 1, label: 'O nível: 1 é o primeiro embaixo da superfície', title: 'O nível: 1 é o primeiro embaixo da superfície' }), 'stack')),
@@ -2466,13 +3073,14 @@ const Masmorra = (() => {
       toggle('mas-seg', st.segredos, v => muda('segredos', v), 'Com segredos (as portas secretas e as runas-armadilha, escondidas dos jogadores)'),
       toggle('mas-desce', st.descida, v => muda('descida', v), 'Com a escada para o nível de baixo'));
   }
-  const opcoesDeL = st => ({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, segredos: !!st.segredos, descida: !!st.descida });
+  const opcoesDeL = st => ({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, segredos: !!st.segredos, descida: !!st.descida, larg: st.larg || largPadrao(st.tipo) });
   function aplicarOpcoesL(st, o) {
     if (TIPOS.some(x => x[0] === o.tipo)) st.tipo = o.tipo;
     if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
     if (o.nivel != null && Number.isFinite(Number(o.nivel))) st.nivel = clamp(Math.round(Number(o.nivel)) || 1, 1, 99);
     for (const k of ['segredos', 'descida']) if (typeof o[k] === 'boolean') st[k] = o[k];
     if (typeof o.sob === 'string') st.sob = cenaDeCima(o.sob);
+    if (o.larg != null) st.larg = largEscolhida(o.larg);
     lembrarL(st);
   }
   function feitoL(sc, p) {
@@ -2480,7 +3088,7 @@ const Masmorra = (() => {
     return `"${sc.name}" criada` + (m ? `, dentro de "${m.name}": a Saída, na escada de subida, leva de volta` : ': uma cena solta — a Saída, na escada de subida, ainda não leva a lugar nenhum (escolha a cena no painel dela)') + (p.desce ? `; a Entrada da escada de descida gera o nível ${p.nivel + 1}.` : '.');
   }
   const LUGAR = { id: 'masmorra', n: 'Masmorra', padrao: padraoL, controles: controlesL, opcoesDe: opcoesDeL, aplicarOpcoes: aplicarOpcoesL,
-    gerar: (st, comum) => gerar({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: comum && comum.estilo, seed: comum && comum.seed, segredos: st.segredos, descida: st.descida }),
+    gerar: (st, comum) => gerar({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: comum && comum.estilo, seed: comum && comum.seed, segredos: st.segredos, descida: st.descida, larg: st.larg || largPadrao(st.tipo) }),
     previa, resumo, partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava,
     quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null, nomePadrao,
     criar: (p, nome, ex) => { ex = ex || {}; const sob = cenaDeCima(ex.op && ex.op.sob); return criar(p, nome, sob ? Store.S.scenes[sob] : null, { relevo: ex.relevo !== false, id: ex.id }); },
@@ -2489,5 +3097,5 @@ const Masmorra = (() => {
     dica: '"Gerar outro" sorteia outro nível, com as mesmas escolhas (a masmorra não tem partes para travar).',
     nota: 'Sai uma cena nova, no breu (só o fogo e os cogumelos iluminam): dentro da cena escolhida em "Embaixo de", com a Saída na escada de subida levando de volta — ou solta, com a Saída ainda sem destino (você escolhe a cena no painel dela). Na escada de descida, a Entrada do nível de baixo (dois cliques nela geram o próximo quando você quiser). As portas secretas e as runas-armadilha ficam escondidas dos jogadores até você revelar. Nada sai escrito.',
     feito: feitoL };
-  return { TIPOS, TAMANHOS, NOME, PAL_M, DESENHO, BIOMAS_SUB, biomaDeBaixo, ARENAS, TAM_ARENA, NOME_ARENA, MUDANCAS, FASES_ARENA, nomeMud, CHEFE_ARENA, LACAIO_ARENA, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, abrirSubsolo, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LUGAR };
+  return { TIPOS, TAMANHOS, NOME, LARGURAS, PAL_M, DESENHO, BIOMAS_SUB, biomaDeBaixo, ARENAS, TAM_ARENA, NOME_ARENA, MUDANCAS, FASES_ARENA, nomeMud, CHEFE_ARENA, LACAIO_ARENA, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, abrirSubsolo, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LUGAR };
 })();

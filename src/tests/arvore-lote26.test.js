@@ -37,7 +37,7 @@ const doc = JSON.stringify({ formato: 'urgm-skilltree-doc', versao: 4,
   await passo('o painel abre onde a árvore está', async () => {
     await P.keyboard.press('a'); await w(200);
     ok(await P.locator('#veuSel.on').count() === 1 && await E(() => document.activeElement.id) === 'selBusca', 'a tecla A abre o painel, com o cursor na busca');
-    ok(j(await E(() => [...document.querySelectorAll('.sel-aba')].map(b => b.textContent))) === j(['Raças8', 'Classes2', 'Escolas1', 'Profissões0', 'Outros1']), 'as abas, com Profissões, e quantas há em cada');
+    ok(j(await E(() => [...document.querySelectorAll('.sel-aba')].map(b => b.textContent))) === j(['Raças8', 'Linhagens0', 'Classes2', 'Escolas1', 'Profissões0', 'Outros1']), 'as abas, com Linhagens e Profissões, e quantas há em cada');
     ok((await P.locator('.sel-trilha').innerText()).replace(/\s+/g, ' ') === 'Raças › Kitsune › Karê' && j(await cartoes()) === j(['Dançarina', 'Oradora · Rast']), 'abre na pasta da árvore aberta: Raças › Kitsune › Karê');
     ok(await P.locator('.sel-card.atual').innerText().then(x => x.startsWith('Dançarina')), 'a aberta fica marcada');
   });

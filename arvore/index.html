@@ -580,8 +580,8 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
 <script src="../tc/ponte.js?v=18"></script>
-<script src="../tc/rules.js?v=23"></script>
-<script src="../tc/tags.js?v=1"></script>
+<script src="../tc/rules.js?v=24"></script>
+<script src="../tc/tags.js?v=2"></script>
 <script src="mesa.js?v=8"></script>
 <script>
 'use strict';
@@ -619,7 +619,7 @@ const USOS_PADRAO = [
   {id:'postura', nome:'Postura', sigla:'Po'}
 ];
 const CATEGORIAS = [
-  {id:'raca', nome:'Raça'}, {id:'classe', nome:'Classe'}, {id:'escola', nome:'Escola'}, {id:'profissao', nome:'Profissão'}, {id:'outra', nome:'Outra'}
+  {id:'raca', nome:'Raça'}, {id:'linhagem', nome:'Linhagem'}, {id:'classe', nome:'Classe'}, {id:'escola', nome:'Escola'}, {id:'profissao', nome:'Profissão'}, {id:'outra', nome:'Outra'}
 ];
 const FORMAS = [
   {id:'circulo', nome:'Círculo'}, {id:'losango', nome:'Losango'}, {id:'hexagono', nome:'Hexágono'},
@@ -700,9 +700,9 @@ function garantirSelecoes(){
 
 /* ---------- o tipo de ponto de cada árvore ----------
    O tipo de ponto padrão de uma árvore vem da categoria dela: árvore de Raça gasta pontos de "Raça"; de Classe,
-   pontos de "Classe". Nas outras categorias (e enquanto esses tipos não existirem), é o primeiro tipo da lista.
+   pontos de "Classe" (e assim a Profissão e, desde o lote 28, a Linhagem). Nas outras categorias (e enquanto esses tipos não existirem), é o primeiro tipo da lista.
    O tipo é criado quando a primeira árvore da categoria aparece; cada personagem começa com 0 dele (é o mestre quem dá). */
-const POOL_DA_CATEGORIA = {raca:{nome:'Raça', cor:'#5FA37A'}, classe:{nome:'Classe', cor:'#6F8FD6'}, profissao:{nome:'Profissão', cor:'#C9894B'}};
+const POOL_DA_CATEGORIA = {raca:{nome:'Raça', cor:'#5FA37A'}, linhagem:{nome:'Linhagem', cor:'#A779C4'}, classe:{nome:'Classe', cor:'#6F8FD6'}, profissao:{nome:'Profissão', cor:'#C9894B'}};
 function poolPadrao(a){
   const b = bib(), alvo = a && POOL_DA_CATEGORIA[a.categoria];
   return (alvo && b.pools.find(p=>norm(p.nome)===norm(alvo.nome))) || b.pools[0] || null;
@@ -2286,7 +2286,7 @@ function novaAba(){ return ui.modo==='mestre' ? novaArvore(sel.cat) : novoPerson
    ("Kitsune Ayto" → Kitsune), ou a família escrita em Renomear (a.familia), para as árvores que o mestre criar com
    outro nome. O resto do nome se divide em mais passos no " - " ("Kitsune Karê - Dançarina" → Kitsune › Karê ›
    Dançarina). Pasta com uma árvore só não vira pasta: a árvore aparece direto. Em cima, as abertas por último. */
-const ABAS_SEL = [{id:'raca', nome:'Raças'}, {id:'classe', nome:'Classes'}, {id:'escola', nome:'Escolas'}, {id:'profissao', nome:'Profissões'}, {id:'outra', nome:'Outros'}];
+const ABAS_SEL = [{id:'raca', nome:'Raças'}, {id:'linhagem', nome:'Linhagens'}, {id:'classe', nome:'Classes'}, {id:'escola', nome:'Escolas'}, {id:'profissao', nome:'Profissões'}, {id:'outra', nome:'Outros'}];
 const sel = {cat:'raca', trilha:[], busca:''};
 const porNomePt = (x, y) => x.localeCompare(y, 'pt', {sensitivity:'base', numeric:true});
 function caminhoDaArvore(a){
@@ -2610,7 +2610,7 @@ async function renomearArvore(){
   if(!mudouNome && !mudouCat && !mudouFam) return;
   if(mudouFam && !mudouNome && !mudouCat){ registrar('família da árvore'); if(fam) a.familia = fam; else delete a.familia; salvar(); pintarTudo(); return; }
   if(mudouFam){ if(fam) a.familia = fam; else delete a.familia; }
-  /* Mudou a categoria para Raça ou Classe: o tipo de ponto padrão da árvore muda junto (vale para os nódulos novos).
+  /* Mudou a categoria para uma que tem tipo de ponto (Raça, Linhagem, Classe, Profissão): o tipo de ponto padrão da árvore muda junto (vale para os nódulos novos).
      Se todos os custos da árvore estão num tipo só, e não é o da categoria nova, eles podem passar para ele — mas
      isso mexe em custos já postos, então é perguntado. (Árvore que mistura tipos de ponto fica como está.) */
   let trocar = false, depoisNome = '', de = null;

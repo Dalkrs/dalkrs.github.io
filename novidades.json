@@ -2,6 +2,40 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.28-2",
+      "data": "2026-10-28",
+      "titulo": "Imbuído de Mana, os sons dos avisos, oito masmorras novas e a Linhagem",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Cenas: a condição Imbuído de Mana. O mestre põe no token e escolhe o custo de cada ataque, a barra que paga (a Mana) e o atributo de quando falta mana. O botão “Atacar com mana” — no painel do token e na janelinha F — rola com a Canalização Mágica e gasta a mana (com Desfazer); sem mana, rola com o atributo normal e avisa."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: os avisos da cena tocam um som, só no aparelho do mestre — um para as zonas, um para as condições e um urgente (HP abaixo de zero, queda, armadilha, reforços). O sino no alto das Cenas liga e desliga; segurando, abre o volume, com “Ouvir” de cada som."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: equipar a classe ou a raça já cria a barra especial dela, com o nome, o limite e o começo lidos do texto da árvore. Quando o texto não diz o limite, a barra vem sem limite e o campo fica marcado para pôr à mão. A ficha que já tem a barra fica com a dela."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Masmorras: oito estilos novos — Templo, Esgoto, Torre de mago, Laboratório, Fortaleza anã, Ruínas élficas, Covil e Navio naufragado —, cada um com as salas, os móveis, a luz e o chão dele."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Masmorras: a largura dos corredores (1, 2 ou 3 quadrados), escolhida antes de gerar, na janela da Entrada e no “Gerar um lugar…”. A Entrada do nível de baixo lembra a largura."
+        },
+    {
+      "tipo": "novo",
+      "texto": "Árvore: a categoria Linhagem, logo depois de Raça. No “Selecionar árvore” ela tem a aba Linhagens; as árvores dela gastam pontos do tipo “Linhagem”, que nasce com a primeira árvore da categoria (cada personagem começa com 0). Nas Fichas, as árvores de Linhagem aparecem no grupo delas."
+    }
+      ]
+    },
+    {
       "versao": "2026.10.28-1",
       "data": "2026-10-28",
       "titulo": "Os valores que não voltam e o mapa-múndi mais leve",

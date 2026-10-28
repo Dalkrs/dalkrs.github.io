@@ -154,7 +154,7 @@
     {id:'silencio', n:'Silenciado', g:'mente'}, {id:'maldicao', n:'Amaldiçoado', g:'mente'}, {id:'marcado', n:'Marcado', g:'mente'},
     {id:'transformado', n:'Transformado', g:'mente'}, {id:'artefato', n:'Artefato Ativado', g:'mente'}, {id:'possuido', n:'Possuído', g:'mente'},
     {id:'refletindo', n:'Refletindo', g:'mente'}, {id:'enlouquecido', n:'Enlouquecido', g:'mente'}, {id:'qibloq', n:'Qi bloqueado', g:'mente'},
-    {id:'qidesvio', n:'Desvio de Qi', g:'mente'}, {id:'clone', n:'Clone', g:'mente'}, {id:'duplicado', n:'Duplicado', g:'mente'}, {id:'cego', n:'Cego', g:'corpo'}, {id:'surdo', n:'Surdo', g:'corpo'},
+    {id:'qidesvio', n:'Desvio de Qi', g:'mente'}, {id:'clone', n:'Clone', g:'mente'}, {id:'duplicado', n:'Duplicado', g:'mente'}, {id:'imbuidoMana', n:'Imbuído de Mana', g:'mente'}, {id:'cego', n:'Cego', g:'corpo'}, {id:'surdo', n:'Surdo', g:'corpo'},
     {id:'fraco', n:'Fraquejado', g:'corpo'}, {id:'exausto', n:'Exausto', g:'corpo'}, {id:'doente', n:'Doente', g:'corpo'},
     {id:'faminto', n:'Faminto', g:'corpo'}, {id:'bebado', n:'Bêbado', g:'corpo'}, {id:'morto', n:'Morto', g:'corpo'},
     {id:'sufocando', n:'Sufocando', g:'corpo'}, {id:'ofuscado', n:'Ofuscado', g:'corpo'}, {id:'agigantado', n:'Agigantado', g:'corpo'},
@@ -884,6 +884,28 @@
     const raizes = arvore.nodes.filter(n => n && !(Array.isArray(n.pais) && n.pais.length));
     for (const n of raizes.concat(arvore.nodes.slice(0, 3))) { const b = defineBarra(n); if (b) return b; }
     return null;
+  }
+  /* (lote 28) A barra que a árvore define, com o limite e o começo lidos do texto ("Preparo (barra): máximo 20; começa
+     em 0."): → { nome, max (null se o texto não diz um número), inicio (null: cheia), faixa ('balança' ou 'de A a B',
+     quando é isso que o texto diz) } ou null (a árvore não tem barra). O nome escrito pelo mestre na árvore vale; o
+     limite, então, vem do nó que a define (se houver). */
+  const RE_LIM_MAX = /m[áa]ximo\s+(\d{1,4})/i, RE_LIM_FAIXA = /de\s+([−-]?\d{1,4})\s+a\s+\+?(\d{1,4})/i, RE_LIM_INI = /come[çc]a\s+(?:em|com)\s+(\d{1,4})/i;
+  function defBarraEspecial(arvore) {
+    const nome = barraEspecial(arvore);
+    if (!nome) return null;
+    const out = { nome, max: null, inicio: null, faixa: null };
+    const raizes = arvore.nodes.filter(n => n && !(Array.isArray(n.pais) && n.pais.length));
+    const no = raizes.concat(arvore.nodes.slice(0, 3)).find(n => defineBarra(n));
+    if (!no) return out;
+    const m = RE_DEF_BARRA.exec(textoDoNo(no));
+    // (a frase que define, do nome até o fim da linha)
+    const linha = m ? textoDoNo(no).slice(m.index).replace(/^\s*\n/, '').split('\n')[0] : '';
+    const mx = RE_LIM_MAX.exec(linha), fx = RE_LIM_FAIXA.exec(linha), ini = RE_LIM_INI.exec(linha);
+    if (mx) out.max = Number(mx[1]);
+    else if (fx) { const a = Number(fx[1].replace('−', '-')), b = Number(fx[2]); if (a >= 0) out.max = b; else out.faixa = 'de ' + fx[1].replace('-', '−') + ' a +' + b; }
+    else if (/uma balan[çc]a/i.test(linha)) out.faixa = 'balança';
+    if (ini && out.max != null) out.inicio = Math.min(out.max, Number(ini[1]));
+    return out;
   }
   const escRe = t => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const cacheMarca = new Map();
@@ -1887,7 +1909,7 @@
     FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,
     NIVEIS_MAX, temNiveis, nivelDoItem, niveisDoItem, itemNoNivel, espelharItem, itemComNivelNovo, itemSemNivel, textoDoNivel,
-    MARCAS_BARRA, barraEspecial, marcaDaBarra, textoDaMarca,
+    MARCAS_BARRA, barraEspecial, defBarraEspecial, marcaDaBarra, textoDaMarca,
     temTranca, visiveis, bibVisivel, ramosDe, bibComRamos, partesComContas, textoComContas, explicarConta, MAX_USO, usoLimpo, custoDeUso, textoDoCusto,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,
