@@ -50,7 +50,7 @@ const ficha = (nome, extra) => Object.assign({ nome, raca: 'Kitsune', lado: 'Ali
     await Lp.goto(t.base + '?debug', { waitUntil: 'load' }); await w(1200, Lp);
     await loginTela(Lp, c.jog2, c.senha); await entrarMesaTela(Lp, codigo, 'Lia');
     const lia = await Lp.evaluate(() => TC.conta.usuario.id);
-    ok(/,oficina,bestiario,itens$/.test(await abas(M)) && !/bestiario/.test(await abas(Dp)), 'a aba Bestiário, só do mestre, depois da Oficina — ' + await abas(M));
+    ok(/,oficina,bestiario,itens,escudo$/.test(await abas(M)) && !/bestiario/.test(await abas(Dp)), 'a aba Bestiário, só do mestre, depois da Oficina — ' + await abas(M));
     await M.evaluate(([f, uid]) => { TC.dados.col('personagens').gravar('pc_selene', { nome: 'Selene', ficha: f, skills: { arvores: [], pontos: {}, alocados: {} }, estado: { qtd: { b1: 1 }, lapros: 10 }, dono_id: uid, vis: 'mesa', ordem: 0 }); }, [ficha('Selene'), dalmo]);
     ok(await ate(() => parado(M)), '(a ficha da Selene, do Dalmo, sobe para a mesa)');
 

@@ -2181,6 +2181,8 @@
     const andou = gruposQueAndaram.length ? ' ' + (gruposQueAndaram.length === 1 ? '1 grupo andou: ' + nomeDe(achar(m, gruposQueAndaram[0]) || {}, m) + '.' : gruposQueAndaram.length + ' grupos andaram.') : '';
     const av = avisos.length ? ' ' + avisos.slice(0, 3).join(' ') + (avisos.length > 3 ? ' (E mais ' + (avisos.length - 3) + ' na aba Hoje.)' : '') : '';
     avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N_.textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou + av);
+    // (lote 31) os relógios do Escudo do mestre marcados para andar com os dias: a sugestão (quem mestra confirma)
+    if (t.dias > 0) setTimeout(() => sugerirRelogios(t.dias), 400);
     // (lote 9) quem chegou ao fim da rota (só ida): o aviso oferece voltar pela mesma rota
     avisarChegada([...feitos].filter(([, f]) => f.chegou).map(([gid]) => gid));
     // (lote 7, parte 5c) quem terminou o dia dentro de uma zona de perigo: a proposta de mexer na ficha (pelo dia que acabou)
@@ -2201,6 +2203,30 @@
       if (t.dias > 0) fila.push(() => GP().proporMantimentos(t.dias));
     }
     if (fila.length) propostas = (async () => { for (const f of fila) { try { await f(); } catch (e) { console.error(e); } } })().finally(() => { propostas = null; });
+  }
+  /* (lote 31) Passou um dia (ou mais): os relógios do Escudo do mestre que andam com os dias (os do mundo e os da
+     campanha em vista, ainda não cheios) — o aviso diz quais e quanto, e "Avançar" faz (com Desfazer). Quem mestra o
+     Escudo vê; quem não mestra, nada. */
+  function sugerirRelogios(dias) {
+    const T = window.TC;
+    if (!App.naMesa || !T || !T.dados || !T.dados.disponivel || !T.dados.disponivel() || !T.ponte || !T.ponte.mestra || !T.ponte.mestra('escudo')) return;
+    let D; try { D = T.dados.col('documentos'); } catch (e) { return; }
+    const camp = T.ponte.estado && T.ponte.estado.campanha ? T.ponte.estado.campanha.id : null;
+    const gomos = d => Math.max(2, Math.min(12, Math.round(Number(d.gomos) || 6))), cheio = d => Math.max(0, Math.round(Number(d.cheio) || 0));
+    const vivos = D.todas().filter(l => l && !l.apagado && typeof l.id === 'string' && l.id.startsWith('escudo:relogio:') && l.dados && typeof l.dados === 'object'
+      && Number(l.dados.porDia) > 0 && (!l.dados.camp || l.dados.camp === camp) && cheio(l.dados) < gomos(l.dados));
+    if (!vivos.length) return;
+    const passo = d => Math.min(12, Math.round(Number(d.porDia)) * dias);
+    toast('Os relógios do Escudo andam com os dias: ' + vivos.map(l => String(l.dados.nome || 'Relógio') + ' (+' + passo(l.dados) + ')').join(', ') + '.', 'Avançar', () => {
+      const antes = vivos.map(l => ({ id: l.id, dados: JSON.parse(JSON.stringify(l.dados)) })), encheram = [];
+      for (const l of vivos) {
+        const d = Object.assign({}, l.dados), g = gomos(d), c0 = cheio(d);
+        d.cheio = Math.min(g, c0 + passo(d));
+        if (d.cheio >= g && c0 < g) encheram.push(String(d.nome || 'Relógio') + (d.consequencia ? ': ' + d.consequencia : ''));
+        D.gravar(l.id, { dados: d });
+      }
+      toast('Os relógios andaram.' + (encheram.length ? ' Encheu: ' + encheram.join(' · ') : ''), 'Desfazer', () => { for (const a of antes) D.gravar(a.id, { dados: a.dados }); toast('Os relógios voltaram como estavam.'); }, encheram.length ? 16000 : 9000);
+    }, 15000);
   }
   // "4º tempo de 10": o tempo de marcha de agora (o tempo guardado conta os que já passaram hoje)
   function tempoTxt(m) { const n = tpdDe(m), t = Math.min(n - 1, Math.max(0, (m.cal && m.cal.tempo) || 0)); return (t + 1) + 'º tempo de ' + n; }

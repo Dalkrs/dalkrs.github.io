@@ -190,7 +190,7 @@
      o que a pessoa está fazendo agora: o auxiliar que está mestrando conta como 'mestre'; o que está jogando como
      jogador, como 'jogador'. É pelo `papel` que os sistemas decidem o que mostrar; pelo `cargo`, quem administra.
      `abas`: as abas que o auxiliar mestra (o mestre mestra todas; o jogador, nenhuma). */
-  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador', 'jornal', 'meditacao', 'cla', 'bestiario', 'itens'];      // (lote 29: o Bestiário e os Itens)
+  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador', 'jornal', 'meditacao', 'cla', 'bestiario', 'itens', 'escudo'];      // (lote 29: o Bestiário e os Itens; lote 31: o Escudo)
   function membroDe(x) {
     const cargo = x.papel === 'mestre' || x.papel === 'auxiliar' ? x.papel : 'jogador', jogando = cargo === 'auxiliar' && !!x.jogando;
     // semVivo: o mestre fechou a mesa ao vivo para esta pessoa (ela só vê as próprias linhas, até ele liberar)
@@ -1024,11 +1024,14 @@
      se a rede cair, tenta de novo sozinho. Cada linha: { id, ...campos, rev }. */
   const TABELAS = {
     personagens: ['nome', 'dono_id', 'vis', 'ordem', 'ficha', 'skills', 'estado', 'campanha'],
-    documentos: ['dono_id', 'vis', 'dados', 'campanhas'],
+    documentos: ['dono_id', 'vis', 'dados', 'campanhas', 'para'],
   };
   /* A campanha de um personagem (uma, ou nenhuma: do mundo) e as de um documento (uma lista; vazia: do mundo). Num banco
      de antes das campanhas essas colunas não existem — a linha que chega sem elas não "chegou incompleta". */
   const OPCIONAIS = ['campanha', 'campanhas'];
+  // (lote 31) "para": o documento só para algumas pessoas (o handout do Escudo). Num banco de antes da 0025 a coluna não
+  // existe; quem grava com ela é só o Escudo, que pergunta antes ao banco (escudo_versao).
+  const SEM_FALTA = OPCIONAIS.concat(['para']);
   /* Campanha encerrada: as fichas dela e os documentos "dela" (nome@campanha: o acampamento, as missões do grupo) são só
      para consulta — o banco recusa, do mestre também. Aqui a gravação nem sai: quem pediu recebe um aviso e a linha de
      volta, como está, para a tela dele voltar atrás. */
@@ -1227,7 +1230,7 @@
     const r = p && p.new;
     if (!r || !r.id) return;
     const c = cols[nome], l = c ? c.linhas.get(r.id) : null;
-    const falta = k => !OPCIONAIS.includes(k) && (r[k] === undefined || (r[k] === null && !!l && l[k] != null));
+    const falta = k => !SEM_FALTA.includes(k) && (r[k] === undefined || (r[k] === null && !!l && l[k] != null));
     if ((p.errors && p.errors.length) || TABELAS[nome].some(falta)) { buscarLinha(nome, r.id); return; }
     dadosRemoto(nome, r);
   }
@@ -1669,6 +1672,28 @@
     await Promise.race([Promise.all(reler), new Promise(ok => setTimeout(ok, 3000))]);
     return r.data || null;
   };
+  /* (lote 31) O Escudo do mestre (ver supabase/migrations/0025_escudo.sql): 'versao' — o banco tem o Escudo? (1, ou
+     o erro de que falta a atualização); 'jogar' — um lance num puzzle entregue (args = { id, op: 'jogar' | 'errar' |
+     'acertar', mudas, prova }): quem confere se a pessoa recebeu o puzzle, e a resposta, é o banco. Depois, o
+     documento do puzzle é lido de novo daqui (sem esperar o aviso do tempo real). */
+  dados.escudo = async (op, args) => {
+    const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
+    let r;
+    if (op === 'versao') r = await cliente().rpc('escudo_versao');
+    else if (op === 'jogar') {
+      const id = String(args.id || '');
+      if (!/^pista:jogo:[A-Za-z0-9_-]{1,40}(@[A-Za-z0-9_-]{1,60})?$/.test(id) || !['jogar', 'errar', 'acertar'].includes(args.op)) throw new Error('Pedido desconhecido.');
+      const mudas = args.mudas && typeof args.mudas === 'object' && !Array.isArray(args.mudas) ? args.mudas : {};
+      r = await cliente().rpc('pista_jogar', { p_mesa: a.id, p_id: id, p_op: args.op, p_mudas: mudas, p_prova: typeof args.prova === 'string' ? args.prova.slice(0, 600) : null });
+      if (!r.error) await Promise.race([buscarLinha('documentos', id), new Promise(ok => setTimeout(ok, 3000))]);
+    } else throw new Error('Pedido desconhecido.');
+    if (r.error) {
+      if (semEsquemaM(r.error)) throw new Error('O banco desta mesa ainda não tem o Escudo do mestre: falta aplicar a atualização do banco (o SQL 0025).');
+      if (String(r.error.code || '') === 'P0001' && r.error.message) throw new Error(String(r.error.message).slice(0, 300));
+      throw falha(r.error, 'Não deu certo agora. Tente de novo.');
+    }
+    return r.data == null ? null : r.data;
+  };
   /* (lote 27) Onde a ficha está — Ativos, Inativos ou Toldo — mudado por quem joga, nas fichas do grupo dele (ver
      supabase/migrations/0023_lugar_no_grupo.sql: quem confere é o banco). Depois, a ficha é lida de novo daqui. */
   dados.lugar = async (pc, lugar) => {
@@ -1861,14 +1886,14 @@
   const deSistemaAntes = aoVivo.deSistema;
   aoVivo.deSistema = async (origem, d) => {
     // O Mapa-múndi (encontros sorteados) e o Acampamento (descansos, momentos) mandam um título e um resumo.
-    if ((origem === 'mundo' || origem === 'acampamento') && d && typeof d === 'object' && mesas.atual) {
-      const padrao = origem === 'mundo' ? 'Mapa-múndi' : 'Acampamento';
+    if ((origem === 'mundo' || origem === 'acampamento' || origem === 'escudo' || origem === 'pistas') && d && typeof d === 'object' && mesas.atual) {
+      const padrao = { mundo: 'Mapa-múndi', acampamento: 'Acampamento', escudo: 'Escudo do mestre', pistas: 'Pistas' }[origem];
       // (o encontro do Mapa-múndi acompanha o "em segredo" do mestre; descanso e momento do Acampamento são da mesa toda)
       const dados = { k: 'tabela', titulo: String(d.titulo || padrao).slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null };
       // (lote 29) a bancada: a receita que falhou com condições — quem mestra as Cenas põe no token do personagem
       if (origem === 'acampamento' && typeof d.pc === 'string' && d.pc && Array.isArray(d.conds) && d.conds.length)
         dados.sis = { t: 'bc', c: d.pc.slice(0, 64), cs: d.conds.slice(0, 6).filter(x => x && typeof x.c === 'string').map(x => ({ c: x.c.slice(0, 40), r: Math.max(0, Math.min(99, Math.round(+x.r) || 0)) })) };
-      return aoVivo.rolagem(dados, { origem, quem: origem === 'acampamento' && typeof d.pc === 'string' && d.pc ? aoVivo.personagem(d.pc) : null, secreta: d.secreta ? true : origem === 'acampamento' ? false : undefined });
+      return aoVivo.rolagem(dados, { origem, quem: origem === 'acampamento' && typeof d.pc === 'string' && d.pc ? aoVivo.personagem(d.pc) : null, secreta: d.secreta ? true : origem === 'acampamento' || origem === 'pistas' ? false : undefined });
     }
     // A Árvore avisa o dono de um personagem que o mestre abriu para ele um caminho trancado (lote 6): uma linha em
     // segredo, endereçada a ele — só os dois a veem.

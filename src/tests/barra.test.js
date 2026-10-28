@@ -29,7 +29,7 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
     ok(j(g) === j(['jogar:true', 'mundo:true', 'descanso:true', 'mestre:true']), 'as quatro categorias, abertas, com o nome em botão: ' + j(g));
     ok(await P.evaluate(() => document.querySelectorAll('.grupo-menu').length === 5 && [...document.querySelectorAll('.grupo-menu')].every(b => !b.offsetParent)), 'o botão da categoria recolhida não aparece com ela aberta');
     ok(j(await setas()) === j({ e: false, d: true }), 'com as onze abas abertas, nem a tela larga cabe tudo: a seta da direita aparece');
-    ok(await P.evaluate(() => [...document.querySelectorAll('.tab')].filter(x => !x.hidden).map(x => x.id.slice(4)).join(',')) === 'cenas,fichas,rolador,mundo,jornal,cla,acampamento,meditacao,oficina,bestiario,itens', 'as abas de sempre (o botão da categoria não é uma aba)');
+    ok(await P.evaluate(() => [...document.querySelectorAll('.tab')].filter(x => !x.hidden).map(x => x.id.slice(4)).join(',')) === 'cenas,fichas,rolador,mundo,jornal,cla,acampamento,meditacao,oficina,bestiario,itens,escudo', 'as abas de sempre (o botão da categoria não é uma aba; lote 31: o Escudo do mestre)');
   });
 
   await passo('recolher uma categoria', async () => {
@@ -38,7 +38,9 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
     ok(!(await visivel('#tab-mundo')) && !(await visivel('#tab-jornal')) && await visivel('#gm-mundo'), 'no lugar das abas, o botão da categoria');
     ok((await P.locator('#gm-mundo').innerText()).trim() === 'Mundo', 'o botão diz o nome da categoria (a aba aberta é de outra)');
     ok(await guardadas() === '["mundo"]', 'lembrado neste aparelho: ' + await guardadas());
-    ok(j(await setas()) === j({ e: false, d: false }), 'com Mundo recolhida, tudo cabe: as setas somem');
+    // (lote 31: com o Escudo do mestre, a barra cresceu — as setas acompanham se ainda sobra aba ou não)
+    const sobra = await P.evaluate(() => { const t = document.getElementById('tabs'); return t.scrollWidth > t.clientWidth + 1; });
+    ok(j(await setas()) === j({ e: false, d: sobra }), 'com Mundo recolhida, a barra encolhe: as setas só aparecem se ainda sobra aba (' + (sobra ? 'sobra' : 'tudo cabe') + ')');
     await foto('barra-recolhida');
   });
 

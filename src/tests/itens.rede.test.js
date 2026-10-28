@@ -48,7 +48,7 @@ const mapa = (gx, gy) => ({ v: 1, id: 'mp_teste', nome: 'Mundo de teste', grade:
     await Dp.goto(t.base + '?debug', { waitUntil: 'load' }); await w(1200, Dp);
     await loginTela(Dp, c.jog1, c.senha); await entrarMesaTela(Dp, codigo, 'Dalmo');
     const dalmo = await Dp.evaluate(() => TC.conta.usuario.id);
-    ok(/,bestiario,itens$/.test(await abas(M)) && !/itens|loja/.test(await abas(Dp)), 'a aba Itens, do mestre (depois do Bestiário); o Dalmo não vê nem a Itens nem a Loja — ' + await abas(M));
+    ok(/,bestiario,itens,escudo$/.test(await abas(M)) && !/itens|loja/.test(await abas(Dp)), 'a aba Itens, do mestre (depois do Bestiário); o Dalmo não vê nem a Itens nem a Loja — ' + await abas(M));
     await M.evaluate(([f, uid]) => { TC.dados.col('personagens').gravar('pc_selene', { nome: 'Selene', ficha: f, skills: { arvores: [], pontos: {}, alocados: {} }, estado: { qtd: { b1: 7 }, lapros: 100 }, dono_id: uid, vis: 'mesa', ordem: 0 }); }, [ficha('Selene'), dalmo]);
     await moverGrupo(300, 300);
     ok(await ate(() => parado(M)), '(a ficha da Selene, do Dalmo, e o mapa, com o grupo dela longe de Vashka)');

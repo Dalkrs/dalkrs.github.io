@@ -1093,10 +1093,23 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .sq-i input { width: 16px; height: 16px; accent-color: var(--lamp); }
 .sq-n { flex: 1; min-width: 0; }
 .sq-t { color: var(--fg-3); font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* ---- (lote 31) os relógios do Escudo do mestre, num cantinho do mapa ---- */
+.relcanto { position: absolute; right: 10px; top: 10px; z-index: 2; display: grid; gap: 6px; justify-items: end; max-width: min(260px, calc(100% - 20px)); pointer-events: none; }
+.relcanto > * { pointer-events: auto; }
+.relcanto-h { display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg-2); font-weight: 600; font-size: 12.5px; box-shadow: var(--shadow); }
+.relcanto-n { min-width: 18px; height: 18px; border-radius: 999px; background: var(--raised); display: inline-grid; place-items: center; font-size: 11px; color: var(--fg); }
+.relcanto-l { display: grid; gap: 6px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
+.relcanto-r { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.relcanto-r svg { flex: none; }
+.relcanto-t { display: grid; min-width: 0; }
+.relcanto-t b { font: 600 14px/1.15 var(--display); overflow-wrap: anywhere; }
+.relcanto-t small { font: 11.5px var(--mono); color: var(--fg-2); }
+.relcanto-r.cheio b { color: var(--danger); }
 </style>
 </head>
 <body>
-<script src="../tc/ponte.js?v=19"></script>
+<script src="../tc/ponte.js?v=20"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=24"></script>
 <script src="../tc/tags.js?v=2"></script>
@@ -15405,6 +15418,10 @@ const UI = (() => {
         opens ? toggle('wl-open', nOpen === walls.length, v => all({ open: v }, (v ? 'Abrir ' : 'Fechar ') + OPENING_NAMES[kind][0]), openLabel) : null,
         opens ? toggle('wl-lock', walls.every(x => x.locked), v => all({ locked: v }, (v ? 'Trancar ' : 'Destrancar ') + OPENING_NAMES[kind][0]), 'Trancada (jogadores não abrem)') : null,
         kind === 'secret' ? h('div', { class: 'row' }, btn('Revelar aos jogadores', () => all({ secret: false }, 'Revelar porta secreta'), { icon: 'eye', id: 'wl-reveal' })) : null,
+        // (lote 31) a porta que abre quando os jogadores resolvem um puzzle do Escudo do mestre
+        kind === 'door' && Nuvem.mestre() && (EscudoCenas.puzzles().length || w.pz) ? field('Abre com um puzzle', inSelect('wl-pz', many && !walls.every(x => (x.pz || '') === (w.pz || '')) ? '' : (w.pz || ''),
+          [['', 'Nenhum']].concat(EscudoCenas.puzzles().map(p => [p.id, p.nome])), v => all({ pz: v || undefined, pzOk: undefined }, v ? 'Ligar a porta a um puzzle' : 'Desligar a porta do puzzle'))) : null,
+        kind === 'door' && Nuvem.mestre() && w.pz ? note(EscudoCenas.resolvido(w.pz) ? (w.pzOk ? 'Resolveram o puzzle e a porta abriu.' : 'O puzzle já foi resolvido.') : 'Quando os jogadores resolverem “' + EscudoCenas.nomeDoPuzzle(w.pz) + '”, a porta abre e destranca sozinha (você recebe um aviso com Desfazer).') : null,
         note(kind ? WALL_NOTES[kind] : 'Trechos de tipos diferentes. Escolher um tipo acima vale para todos.')),
       h('div', { class: 'row' }, btn('Apagar', deleteSelToast, { icon: 'trash', kind: 'danger' })),
     ];
@@ -36686,6 +36703,136 @@ const SedeCenas = (() => {
   return { aplicar, pintarAndar, pintarFora, paredesDoAndar, conteudoDoAndar, conteudoDeFora, plano, cortar, M };
 })();
 /* ---------------------------------------------------------------
+   10g8. O ESCUDO DO MESTRE NAS CENAS (lote 31)
+   · Os relógios de ameaça que o mestre mostra (o documento escudo:vista — o do mundo e o da campanha em vista): num
+     cantinho do mapa, para todo mundo; o cantinho recolhe com um clique (lembrado neste aparelho).
+   · A porta que abre com um puzzle: no painel da porta, o mestre a liga a um puzzle do Escudo; quando os jogadores
+     resolvem o puzzle (pista:jogo:<id> com "resolvido"), o programa do mestre abre e destranca a porta — em qualquer
+     cena dele —, uma vez só (pzOk), com um aviso que tem Desfazer.
+   --------------------------------------------------------------- */
+const EscudoCenas = (() => {
+  const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
+  const CORES = { vermelho: '#d4574e', ambar: '#e6ab4f', verde: '#5aa469', azul: '#5b8fd9', roxo: '#9a6ad8' };
+  const NSV = 'http://www.w3.org/2000/svg';
+  let D = null, el = null;
+  let aberto = (() => { try { return localStorage.getItem('tinycats:cenas:relogios') !== '0'; } catch (e) { return true; } })();
+  const ponteEstado = () => (window.TC && TC.ponte && TC.ponte.estado) || null;
+  function vistas() {
+    if (!D) return [];
+    const est = ponteEstado(), camp = est && est.campanha ? est.campanha.id : null;
+    const out = [];
+    for (const id of ['escudo:vista'].concat(camp ? ['escudo:vista@' + camp] : [])) {
+      const l = D.pegar(id);
+      if (!l || l.apagado || !ehObj(l.dados) || !Array.isArray(l.dados.relogios)) continue;
+      for (const r of l.dados.relogios.slice(0, 20)) {
+        if (!ehObj(r) || typeof r.nome !== 'string') continue;
+        const g = Math.max(2, Math.min(12, Math.round(Number(r.gomos) || 6)));
+        out.push({ id: String(r.id || ''), nome: r.nome.slice(0, 60), gomos: g, cheio: Math.max(0, Math.min(g, Math.round(Number(r.cheio) || 0))), cor: CORES[r.cor] || CORES.vermelho, progresso: r.tipo === 'progresso' });
+      }
+    }
+    return out;
+  }
+  function pizza(r, tam) {
+    const s = document.createElementNS(NSV, 'svg');
+    s.setAttribute('width', tam); s.setAttribute('height', tam); s.setAttribute('viewBox', '-26 -26 52 52'); s.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < r.gomos; i++) {
+      const a0 = (i / r.gomos) * Math.PI * 2 - Math.PI / 2, a1 = ((i + 1) / r.gomos) * Math.PI * 2 - Math.PI / 2, R = 23;
+      const p = document.createElementNS(NSV, 'path');
+      p.setAttribute('d', 'M0 0L' + (R * Math.cos(a0)).toFixed(2) + ' ' + (R * Math.sin(a0)).toFixed(2) + 'A' + R + ' ' + R + ' 0 0 1 ' + (R * Math.cos(a1)).toFixed(2) + ' ' + (R * Math.sin(a1)).toFixed(2) + 'Z');
+      p.setAttribute('fill', i < r.cheio ? r.cor : 'rgba(150,158,178,.22)'); p.setAttribute('stroke', '#12151c'); p.setAttribute('stroke-width', '1.6');
+      s.append(p);
+    }
+    const c = document.createElementNS(NSV, 'circle');
+    c.setAttribute('r', '23'); c.setAttribute('fill', 'none'); c.setAttribute('stroke', r.cor); c.setAttribute('stroke-width', '1.6');
+    s.append(c);
+    return s;
+  }
+  function pintarCanto() {
+    const stage = document.getElementById('stage');
+    if (!stage) return;
+    if (!el) { el = document.createElement('div'); el.className = 'relcanto'; el.id = 'relCanto'; stage.append(el); }
+    const rs = vistas();
+    el.hidden = !rs.length;
+    if (!rs.length) { el.replaceChildren(); return; }
+    const cab = h('button', { type: 'button', class: 'relcanto-h', id: 'relCantoAbre', 'aria-expanded': String(aberto), title: aberto ? 'Recolher os relógios' : 'Mostrar os relógios',
+      onclick: () => { aberto = !aberto; try { localStorage.setItem('tinycats:cenas:relogios', aberto ? '1' : '0'); } catch (e) { /* sem armazenamento */ } pintarCanto(); } },
+      'Relógios', h('span', { class: 'relcanto-n', text: String(rs.length) }));
+    el.replaceChildren(cab, aberto ? h('div', { class: 'relcanto-l' }, rs.map(r => h('div', { class: 'relcanto-r' + (r.cheio >= r.gomos ? ' cheio' : ''), title: r.nome + ': ' + r.cheio + ' de ' + r.gomos, 'data-rel': r.id },
+      pizza(r, 34), h('span', { class: 'relcanto-t' }, h('b', { text: r.nome }), h('small', { text: r.cheio + ' de ' + r.gomos }))))) : null);
+  }
+
+  /* ---- as portas que abrem com um puzzle ---- */
+  // os puzzles do Escudo (para o painel da porta): [{ id, nome }]
+  function puzzles() {
+    if (!D) return [];
+    const out = [];
+    for (const l of D.todas()) {
+      if (!l || l.apagado || typeof l.id !== 'string' || !l.id.startsWith('escudo:handout:') || !ehObj(l.dados) || l.dados.tipo !== 'puzzle') continue;
+      out.push({ id: l.id.slice('escudo:handout:'.length), nome: String(l.dados.nome || 'Puzzle').slice(0, 80) });
+    }
+    return out.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+  function nomeDoPuzzle(id) { const l = D && D.pegar('escudo:handout:' + id); return l && !l.apagado && ehObj(l.dados) ? String(l.dados.nome || 'Puzzle') : 'um puzzle'; }
+  // os puzzles resolvidos: id do handout → { por, em }
+  function resolvidos() {
+    const out = {};
+    if (!D) return out;
+    for (const l of D.todas()) {
+      if (!l || l.apagado || typeof l.id !== 'string' || !l.id.startsWith('pista:jogo:') || !ehObj(l.dados) || !ehObj(l.dados.resolvido)) continue;
+      out[l.id.slice('pista:jogo:'.length).split('@')[0]] = l.dados.resolvido;
+    }
+    return out;
+  }
+  function resolvido(id) { return !!resolvidos()[id]; }
+  let aplicando = false;
+  function aplicarPortas() {
+    if (aplicando || !D || !Nuvem.mestre()) return;
+    const res = resolvidos();
+    if (!Object.keys(res).length) return;
+    const achadas = [];
+    for (const id of Store.S.order) {
+      const sc = Store.S.scenes[id];
+      if (!sc || !Array.isArray(sc.walls)) continue;
+      for (const w of sc.walls) if (w.pz && res[w.pz] && !w.pzOk) achadas.push({ sc: id, w: w.id, pz: w.pz, antes: { open: !!w.open, locked: !!w.locked } });
+    }
+    if (!achadas.length) return;
+    aplicando = true;
+    try {
+      const cenas = [...new Set(achadas.map(a => a.sc))];
+      for (const sid of cenas) {
+        const daqui = achadas.filter(a => a.sc === sid);
+        if (sid === Store.S.current) Store.tx('Porta aberta pelo puzzle', () => { for (const a of daqui) Store.upd('walls', a.w, { open: true, locked: false, pzOk: 1 }); });
+        else { const sc = Store.S.scenes[sid]; for (const a of daqui) { const w = sc.walls.find(x => x.id === a.w); if (w) Object.assign(w, { open: true, locked: false, pzOk: 1 }); } Persist.scene(sid); }
+      }
+      UI.renderAll();
+      const nomes = [...new Set(achadas.map(a => nomeDoPuzzle(a.pz)))];
+      UI.toast((achadas.length === 1 ? 'A porta abriu' : achadas.length + ' portas abriram') + ': resolveram “' + nomes.join('”, “') + '”.', {
+        long: true, action: 'Desfazer', run: () => {
+          for (const sid of cenas) {
+            const daqui = achadas.filter(a => a.sc === sid);
+            if (sid === Store.S.current) Store.tx('Fechar a porta de novo', () => { for (const a of daqui) Store.upd('walls', a.w, a.antes); });
+            else { const sc = Store.S.scenes[sid]; if (!sc) continue; for (const a of daqui) { const w = sc.walls.find(x => x.id === a.w); if (w) Object.assign(w, a.antes); } Persist.scene(sid); }
+          }
+          UI.renderAll();
+        } });
+    } finally { aplicando = false; }
+  }
+
+  function iniciar() {
+    if (!(window.TC && TC.dados && TC.dados.disponivel && TC.dados.disponivel())) return;
+    D = TC.dados.col('documentos');
+    D.pronta.then(() => { pintarCanto(); aplicarPortas(); }, () => { /* sem os documentos */ });
+    let tP = 0;
+    D.aoMudar(l => {
+      if (!l || typeof l.id !== 'string') return;
+      if (l.id.startsWith('escudo:vista')) pintarCanto();
+      if (l.id.startsWith('pista:jogo:')) { clearTimeout(tP); tP = setTimeout(aplicarPortas, 200); }
+    });
+    if (TC.ponte && TC.ponte.aoMudar) TC.ponte.aoMudar(() => pintarCanto());
+  }
+  return { iniciar, vistas, pintarCanto, puzzles, resolvido, aplicarPortas, nomeDoPuzzle };
+})();
+/* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
    Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra e o Porto), as escolhas de cada um e, embaixo, o que vale
    para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena, a estação
@@ -37166,6 +37313,7 @@ function aoAparecer(fn) {
 async function start(snap) {
   Render.readTheme();
   await Nuvem.iniciar();                 // dentro do site, com uma mesa aberta, as cenas são as da mesa
+  EscudoCenas.iniciar();                 // (lote 31) os relógios que o mestre mostra e as portas que abrem com um puzzle
   const had = await Persist.load();
   if (!had && !Nuvem.on()) await buildSample();
   // (numa mesa que ainda não tem cenas, o mestre começa com uma cena vazia; a de exemplo fica no menu de cenas)
@@ -37318,7 +37466,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Best, SedeCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

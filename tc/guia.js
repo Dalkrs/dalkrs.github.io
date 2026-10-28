@@ -163,6 +163,27 @@
         { t: 'Comprar', txt: 'Escolha a quantidade e “Comprar”: os lapros saem da ficha e o item vai para a bolsa. Cada compra tem Desfazer por 15 minutos.', onde: { sel: '#meio' } },
       ],
     },
+    // (lote 31) o Escudo do mestre e as Pistas
+    escudo: {
+      mestre: [
+        { t: 'O roteiro', txt: 'Cada sessão é uma lista de passos. Ligue um passo a uma cena, a um lugar do Mapa-múndi, a um encontro do Bestiário, a um handout ou a um relógio: o botão do passo faz a ação.', onde: { sel: '[data-k="aba:roteiro"]' } },
+        { t: 'Abrir e fechar a sessão', txt: '“Abrir a sessão” marca o começo. O botão do roteiro, na barra de cima, mostra os passos ao lado em qualquer aba. Ao fechar, você escolhe os passos que passam para a próxima e sai o resumo, que pode ir para o rascunho do Jornal.', onde: { sel: '[data-k="aba:roteiro"]' } },
+        { t: 'Os relógios', txt: 'Um círculo com gomos que enchem conforme a ameaça avança. Clique num gomo para encher até ali. Os que você mostrar aparecem num cantinho das Cenas para os jogadores. Marcado “quando passa um dia”, o Mapa-múndi sugere avançar e você confirma.', onde: { sel: '[data-k="aba:relogios"]' } },
+        { t: 'Handouts', txt: 'Imagem, carta ou puzzle. Na carta, escreva {{assim}} (ou selecione e “Esconder o trecho”) para um trecho que os jogadores veem como mancha; na imagem, arraste para esconder uma área. “Revelar” mostra aos poucos.', onde: { sel: '[data-k="aba:handouts"]' } },
+        { t: 'Os puzzles', txt: 'Cifras, charadas, mecanismos (runas, alavancas, cadeado e placas) e o quebra-cabeça de imagem, sorteados com solução garantida, em fácil, médio ou difícil. A prévia é um teste jogável, com a resposta para você.', onde: { sel: '[data-k="aba:handouts"]' } },
+        { t: 'Acertar e errar', txt: 'No puzzle, “Ao acertar” revela parte de outro handout ou entrega outro; “Ao errar” faz um relógio andar. Uma porta das Cenas pode abrir com o puzzle: escolha a porta e ligue-a no painel dela.', onde: { sel: '[data-k="aba:handouts"]' } },
+        { t: 'Entregar', txt: 'À mesa toda ou só a alguns. Quem recebe vê uma janela, e o handout fica guardado na aba Pistas dele. Depois de entregar: mandar a versão nova, dar uma dica, recomeçar o puzzle ou tirar dos jogadores.', onde: { sel: '#meio' } },
+      ],
+      jogador: [],
+    },
+    pistas: {
+      mestre: [],
+      jogador: [
+        { t: 'As pistas', txt: 'O que o mestre entregou: imagens, cartas e puzzles, a mais nova primeiro. As manchas são trechos que o mestre ainda não revelou.', onde: { sel: '#meio' } },
+        { t: 'Os puzzles', txt: 'Quem recebeu resolve junto: cada lance aparece para os outros na hora. Na charada, no cadeado e nas placas, errar conta (e o mestre pode ter ligado alguma coisa a isso).', onde: { sel: '#meio' } },
+        { t: 'Achar', txt: 'A busca e os filtros (Novas, Puzzles), no alto.', onde: { sel: '#busca' } },
+      ],
+    },
   };
   // (lote 29) a Bancada do Acampamento, nas receitas
   G.acampamento.mestre.push({ t: 'A bancada', txt: 'Na aba Bancada, as receitas que você criou na aba Itens. Os ingredientes saem da bolsa e o resultado entra; com teste, você pode dispensar o teste na hora. Tem Desfazer.', onde: { sel: '#tab-bancada' } });

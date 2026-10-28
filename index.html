@@ -9,7 +9,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='26' fill='%23e6ab4f'/%3E%3Cpath d='M17 52 21 16Q23 10 28 14L46 32ZM83 52 79 16Q77 10 72 14L54 32Z' fill='%2315171c'/%3E%3Cellipse cx='50' cy='61' rx='35' ry='29' fill='%2315171c'/%3E%3Ccircle cx='36' cy='58' r='11' fill='%23ffd25e'/%3E%3Ccircle cx='64' cy='58' r='11' fill='%23ffd25e'/%3E%3Cellipse cx='37' cy='59' rx='5' ry='8' fill='%2315171c'/%3E%3Cellipse cx='65' cy='59' rx='5' ry='8' fill='%2315171c'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@600;700&family=IM+Fell+English:ital@0;1&family=UnifrakturMaguntia&family=Noto+Sans+Runic&display=swap">
+<link rel="stylesheet" href="tc/pistas.css?v=1">
 <style>
 /* Casca do site: uma barra fina com a marca, as abas e a mesa; cada sistema roda na própria página, dentro de uma
    moldura; à direita, o painel da mesa ao vivo. Cores iguais às da mesa de cenas (escuro por padrão). */
@@ -188,6 +189,50 @@ button.grupo-t:hover { background: var(--hover); }
 .nt-sug-i.on, .nt-sug-i:hover { background: var(--lamp-soft); }
 .nt-sug-v { margin: 6px 9px; font-size: 13px; color: var(--fg-3); }
 .nt-sug-p { margin: 4px 9px 2px; font-size: 11px; color: var(--fg-3); border-top: 1px solid var(--line); padding-top: 5px; }
+/* (lote 31) o painel do roteiro (o Escudo do mestre, em qualquer aba) */
+.roteiro { flex: none; width: 330px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: auto; padding: 10px 12px 16px; background: var(--surface); border-left: 1px solid var(--line); }
+.roteiro[hidden] { display: none; }
+.roteiro .rt-h { display: flex; align-items: center; gap: 8px; }
+.roteiro .rt-h strong { font: 600 17px/1.1 var(--display); }
+.roteiro .rt-h .esp { margin-left: auto; display: flex; gap: 4px; }
+.roteiro .rt-sel { min-width: 0; flex: 1; height: 30px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); font: inherit; font-size: 13px; }
+.roteiro .rt-sessao { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.roteiro .rt-sessao b { font: 600 15px/1.2 var(--display); color: var(--lamp-ink); }
+.roteiro .rt-est { font-size: 11.5px; font-weight: 700; border: 1px solid var(--line-strong); border-radius: 999px; padding: 1px 8px; color: var(--fg-2); }
+.roteiro .rt-est.em { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.roteiro .rt-sessao .btn { margin-left: auto; }
+.roteiro .rt-passos { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.roteiro .rt-p { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 7px 8px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
+.roteiro .rt-p input { width: 17px; height: 17px; margin: 1px 0 0; accent-color: var(--lamp); }
+.roteiro .rt-p.feito { opacity: .58; }
+.roteiro .rt-p.feito .rt-t > span { text-decoration: line-through; }
+.roteiro .rt-t { display: grid; gap: 2px; font-size: 13.5px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.roteiro .rt-t small { display: flex; align-items: center; gap: 4px; font-weight: 500; font-size: 12px; color: var(--fg-3); }
+.roteiro .rt-t small.rt-nota { display: block; font-style: italic; white-space: pre-wrap; }
+.roteiro .btn.xs { min-height: 26px; padding: 0 8px; font-size: 12px; border-radius: 7px; }
+.roteiro .rt-novo { display: flex; gap: 6px; }
+.roteiro .rt-novo .in { flex: 1; min-width: 0; height: 32px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); font: inherit; font-size: 13px; }
+.roteiro .rt-vazio { display: grid; gap: 8px; justify-items: start; color: var(--fg-2); font-size: 13px; }
+.roteiro .rt-vazio p { margin: 0; }
+.roteiro .rt-rels { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }
+.roteiro .rt-sub { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--fg-3); }
+.roteiro .rt-rel { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: "g g g g" "n m c p"; gap: 4px 6px; align-items: center; font-size: 13px; }
+.roteiro .rt-rel.cheio .rt-rn { color: var(--danger); font-weight: 700; }
+.roteiro .rt-gomos { grid-area: g; display: flex; gap: 2px; }
+.roteiro .rt-gomos i { flex: 1; height: 6px; border-radius: 2px; background: var(--hover); }
+.roteiro .rt-rn { grid-area: n; min-width: 0; overflow-wrap: anywhere; }
+.roteiro .rt-n { font: 12px var(--mono); color: var(--fg-2); }
+.roteiro .ib { width: 26px; height: 26px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--raised); }
+.roteiro .ib:disabled { opacity: .4; cursor: default; }
+@media (max-width: 900px) { .roteiro { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; width: min(340px, 100%); box-shadow: -10px 0 30px rgba(0,0,0,.3); } }
+/* (lote 31) a janela de uma pista nova */
+dialog.pista { width: min(760px, calc(100% - 24px)); }
+.pista-janela { padding: 16px 18px; display: grid; gap: 12px; }
+.pista-janela .pj-sobre { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--fg-3); }
+.pista-janela .pj-pz { display: grid; gap: 8px; justify-items: center; text-align: center; }
+.pista-janela .pj-pz h2 { margin: 0; font: 600 22px/1.2 var(--display); color: var(--lamp-ink); }
+.pista-janela .pj-pz p { margin: 0; color: var(--fg-2); }
+.pista-janela .pe { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 900px) { .notas { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; width: min(400px, 100%); box-shadow: -10px 0 30px rgba(0,0,0,.3); } }
 .vivo { flex: none; width: 340px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
 .vivo-h { flex: none; display: flex; align-items: center; gap: 8px; padding: 9px 8px 9px 14px; border-bottom: 1px solid var(--line); }
@@ -495,6 +540,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
       <span>Versão nova</span>
     </button>
+    <button type="button" class="ib" id="btnRoteiro" hidden aria-pressed="false" title="O roteiro da sessão (Escudo do mestre)" aria-label="O roteiro da sessão" aria-controls="roteiro">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M3.5 5.5l1 1 2-2M3.5 11.5l1 1 2-2"/><circle cx="4.5" cy="18" r="1"/></svg>
+    </button>
     <button type="button" class="ib" id="btnNotas" hidden aria-pressed="false" title="Bloco de notas (só você vê)" aria-label="Bloco de notas do mestre" aria-controls="notas">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h10.5a1.5 1.5 0 0 1 1.5 1.5v14.5a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"/><path d="M8 3.5v17"/><path d="M11 8h4.5M11 11.5h4.5"/></svg>
     </button>
@@ -514,6 +562,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     <div class="wait" id="wait"><span>Carregando…</span></div>
   </main>
   <aside class="notas" id="notas" hidden aria-label="Bloco de notas do mestre"></aside>
+  <aside class="roteiro" id="roteiro" hidden aria-label="O roteiro da sessão"></aside>
   <aside class="vivo" id="vivo" hidden aria-label="Mesa ao vivo">
     <div class="vivo-h">
       <strong>Mesa ao vivo</strong><span class="sinal" id="sinal"></span>
@@ -567,16 +616,21 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=24"></script>
-<script src="tc/tc.js?v=32"></script>
+<script src="tc/tc.js?v=33"></script>
 <script src="tc/busca.js?v=2"></script>
-<script src="tc/guia.js?v=7"></script>
+<script src="tc/guia.js?v=8"></script>
 <script src="tc/notas.js?v=4"></script>
+<script src="tc/dom.js?v=1"></script>
+<script src="tc/escudo.js?v=1"></script>
+<script src="tc/escudo-acoes.js?v=1"></script>
+<script src="tc/pistas-ui.js?v=1"></script>
+<script src="tc/escudo-casca.js?v=1"></script>
 <script src="tc/tags.js?v=2"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.28-5';
+  const VERSAO = '2026.10.28-6';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -590,6 +644,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     // (lote 29) o Bestiário: a caveira com as presas
     bestiario: '<path d="M12 3c-4.4 0-8 3.1-8 7 0 2.4 1.3 4.5 3.3 5.8V19a1 1 0 0 0 1 1h7.4a1 1 0 0 0 1-1v-3.2c2-1.3 3.3-3.4 3.3-5.8 0-3.9-3.6-7-8-7z"/><circle cx="9" cy="10.5" r="1.6"/><circle cx="15" cy="10.5" r="1.6"/><path d="M10.5 20v-2.5M13.5 20v-2.5"/>',
     itens: '<path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/><path d="M10 12h4"/>',
+    // (lote 31) o Escudo do mestre (o escudo de papelão, dobrado em três) e as Pistas (a carta e a lupa)
+    escudo: '<path d="M3 5.5 9 4v15l-6 1.5z"/><path d="M9 4l6 1.5v15L9 19z"/><path d="M15 5.5 21 4v15l-6 1.5z"/>',
+    pistas: '<path d="M5 3.5h9.5l4 4V20.5H5z"/><path d="M14.5 3.5v4h4"/><circle cx="11" cy="13" r="2.7"/><path d="M13 15l2.6 2.6"/>',
     loja: '<path d="M4 9l1.5-5h13L20 9"/><path d="M4 9h16v2a2.7 2.7 0 0 1-5.3 0 2.7 2.7 0 0 1-5.4 0A2.7 2.7 0 0 1 4 11z"/><path d="M5.5 13v7h13v-7"/><path d="M10 20v-4h4v4"/>',
     admin: '<path d="M12 3 4.5 6v5.5c0 4.4 3.1 8 7.5 9.5 4.4-1.5 7.5-5.1 7.5-9.5V6z"/><circle cx="12" cy="10.5" r="2.2"/><path d="M12 12.7V16"/>',
     rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
@@ -601,6 +658,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true, grupo: 'jogar', soJogador: true },     // (lote 24) a árvore de quem joga; quem mestra usa a Oficina
     { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true, dados: true, grupo: 'jogar' },      // ferramenta do mestre: numa mesa, os jogadores não a veem (e os históricos ficam na mesa)
     { id: 'loja', nome: 'Loja', src: 'loja/', dados: true, grupo: 'jogar', soPerto: true },                 // (lote 29) aparece quando um personagem seu está no hexágono de uma loja
+    { id: 'pistas', nome: 'Pistas', src: 'pistas/', dados: true, grupo: 'jogar', soPistas: true },           // (lote 31) o que o mestre entregou (aparece quando há alguma)
     { id: 'mundo', nome: 'Mapa-múndi', src: 'mundo/', dados: true, grupo: 'mundo' },
     { id: 'jornal', nome: 'Jornal', src: 'jornal/', dados: true, grupo: 'mundo' },          // (lote 6) o jornal da mesa
     { id: 'cla', nome: 'Clã', src: 'cla/', dados: true, grupo: 'mundo' },                   // (lote 6) os clãs da mesa
@@ -611,12 +669,13 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     // (lote 29) o Bestiário: os inimigos do mestre, prontos para puxar para a cena (só quem mestra)
     { id: 'bestiario', nome: 'Bestiário', src: 'bestiario/', dados: true, grupo: 'mestre', soMestre: true },
     { id: 'itens', nome: 'Itens', src: 'itens/', dados: true, grupo: 'mestre', soMestre: true },          // (lote 29) o catálogo, as lojas e as receitas
+    { id: 'escudo', nome: 'Escudo do mestre', src: 'escudo/', dados: true, grupo: 'mestre', soMestre: true }, // (lote 31) o roteiro, os relógios, os handouts e os puzzles
     // (lote 27) a administração do site inteiro (as contas, as mesas, o cadastro): só quem está em public.admins a vê
     { id: 'admin', nome: 'Administração', src: 'admin/', grupo: 'site', soAdmin: true },
   ];
   const GRUPOS = [{ id: 'jogar', nome: 'Jogar' }, { id: 'mundo', nome: 'Mundo' }, { id: 'descanso', nome: 'Descanso' }, { id: 'mestre', nome: 'Mestre' }, { id: 'site', nome: 'Administração' }];
   let souAdmin = false;                           // (lote 27) conta.ehAdmin(), conferido ao entrar
-  const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento', meditacao: 'Meditação' };
+  const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento', meditacao: 'Meditação', escudo: 'Escudo do mestre', pistas: 'Pistas' };
   const CHAVE = 'tinycats:aba';
   const $ = id => document.getElementById(id);
   const stage = $('stage'), tabs = $('tabs'), wait = $('wait'), pop = $('pop');
@@ -634,9 +693,10 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   // como jogador). Sem mesa, cada um é o próprio mestre e vê todas.
   let mestraAba = () => true;                     // (a parte da mesa, mais abaixo, troca por quem sabe)
   let lojaPerto = () => false;                    // (lote 29) a parte da mesa troca: há uma loja aberta perto de um personagem seu?
+  let temPistas = () => false;                    // (lote 31) a parte da mesa troca: o mestre entregou alguma pista a esta pessoa?
   // (a permissão de uma aba: a Oficina é a Árvore de quem mestra — vale o que vale para a Árvore)
   const permDe = id => { const a = ABAS.find(x => x.id === id); return (a && a.permissao) || id; };
-  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && (a.soAdmin ? souAdmin : a.soPerto ? lojaPerto() : !(a.soMestre && !mestraAba(permDe(id))) && !(a.soJogador && mestraAba(permDe(id)))); };
+  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && (a.soAdmin ? souAdmin : a.soPerto ? lojaPerto() : a.soPistas ? temPistas() : !(a.soMestre && !mestraAba(permDe(id))) && !(a.soJogador && mestraAba(permDe(id)))); };
   // a Árvore e a Oficina são a mesma página: quem pede uma e só pode a outra vai para a outra
   const abaPossivel = id => (pode(id) ? id : id === 'arvore' && pode('oficina') ? 'oficina' : id === 'oficina' && pode('arvore') ? 'arvore' : id);
   const daHash = () => (location.hash || '').replace(/^#\/?/, '').split(/[/?]/)[0];
@@ -988,6 +1048,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       if (!mesas.atual || (m.mesa && m.mesa !== mesas.atual.id)) { responder({ t: 'itens.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
       if (typeof TC.dados.itens !== 'function') { responder({ t: 'itens.erro', n: m.n, erro: 'Esta página está desatualizada: recarregue o site.' }); return; }
       TC.dados.itens(m.op, m.args || {}).then(r => responder({ t: 'itens.ok', n: m.n, r }), e => responder({ t: 'itens.erro', n: m.n, erro: e.message }));
+    } else if (m.t === 'escudo') {
+      // (lote 31) o Escudo do mestre e as Pistas: a versão do Escudo no banco e os lances dos puzzles (ver TC.dados.escudo)
+      if (!mesas.atual || (m.mesa && m.mesa !== mesas.atual.id)) { responder({ t: 'escudo.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
+      if (typeof TC.dados.escudo !== 'function') { responder({ t: 'escudo.erro', n: m.n, erro: 'Esta página está desatualizada: recarregue o site.' }); return; }
+      TC.dados.escudo(m.op, m.args || {}).then(r => responder({ t: 'escudo.ok', n: m.n, r }), e => responder({ t: 'escudo.erro', n: m.n, erro: e.message }));
     } else if (m.t === 'lugar') {
       // (lote 27) quem joga muda o lugar (Ativos, Inativos, Toldo) de uma ficha do grupo dele (ver TC.dados.lugar)
       if (!mesas.atual || (m.mesa && m.mesa !== mesas.atual.id)) { responder({ t: 'lugar.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
@@ -1302,7 +1367,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
      fecha ou troca de conteúdo, voltam para a página, sem sumir. */
   const caixaDeAvisos = $('toasts');
   const avisosNaPagina = () => { if (caixaDeAvisos.parentNode !== document.body) document.body.append(caixaDeAvisos); };
-  function abrirJanela(conteudo) { avisosNaPagina(); dlg.classList.toggle('busca', conteudo.classList.contains('busca')); dlg.replaceChildren(conteudo); if (!dlg.open) dlg.showModal(); dlg.append(caixaDeAvisos); }
+  function abrirJanela(conteudo) { avisosNaPagina(); dlg.classList.toggle('busca', conteudo.classList.contains('busca')); dlg.classList.toggle('pista', conteudo.classList.contains('pista-janela')); dlg.replaceChildren(conteudo); if (!dlg.open) dlg.showModal(); dlg.append(caixaDeAvisos); }
   function fecharJanela() { avisosNaPagina(); if (dlg.open) dlg.close(); dlg.replaceChildren(); }
   dlg.addEventListener('click', ev => { if (ev.target === dlg && !senhaTravada) fecharJanela(); });
   // o aviso de "fechou" chega atrasado: se outra janela já abriu no lugar (entrar → mesas), não é para esvaziá-la
@@ -1477,7 +1542,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   function janelaPapel(m) {
     const eraAux = m.cargo === 'auxiliar', abasAntes = m.abas.slice(), viaAntes = !m.semVivo, acampAntes = !!m.acamp;
     const rJog = h('input', { type: 'radio', name: 'pp', id: 'pp-jog', checked: !eraAux }), rAux = h('input', { type: 'radio', name: 'pp', id: 'pp-aux', checked: eraAux });
-    const PERM = ABAS.filter(x => !x.soPerto);          // (a Loja não é aba de mestrar: aparece sozinha, de perto)
+    const PERM = ABAS.filter(x => !x.soPerto && !x.soPistas);          // (a Loja e as Pistas não são abas de mestrar: aparecem sozinhas)
     const caixas = PERM.map(x => h('input', { type: 'checkbox', id: 'pp-' + x.id, checked: eraAux ? m.abas.includes(x.id) : true }));
     const grupo = h('fieldset', { class: 'abas', id: 'pp-abas' }, h('legend', { text: 'Abas que ' + m.nome + ' mestra' }),
       h('div', { class: 'cxs' }, PERM.map((x, i) => h('label', { class: 'cx' }, caixas[i], h('span', { text: x.nome })))),
@@ -1801,6 +1866,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   // (lote 27) com @ e # o mestre liga o texto a uma ficha, uma cena, um lugar, uma habilidade, uma tag ou outro capítulo
   notasApi = TC.notas ? TC.notas.iniciar({ mesas, dados: TC.dados, toast, confirmar, botao: $('btnNotas'), painel: $('notas'), guarda: { ler, gravar },
     ir: (aba, alvo) => irPara(aba, alvo), indice: () => fonteDaBusca().then(f => TC.busca.indexar(f)), buscar: (ind, q, n) => TC.busca.buscar(ind, q, n) }) : null;
+  // (lote 31) o Escudo do mestre na casca: as pistas de quem joga (a aba e a janela quando chega uma), o vigia do mestre
+  // (o que acontece quando resolvem ou erram um puzzle; os relógios que a mesa vê) e o painel do roteiro
+  const escudoCasca = TC.escudoCasca ? TC.escudoCasca.iniciar({ mesas, conta, dados: TC.dados, toast, irPara: (aba, alvo) => irPara(aba, alvo), pintarAbas, abrirJanela, fecharJanela,
+    ocupadoAgora: () => ocupadoAgora(), atual: () => atual, botao: $('btnRoteiro'), painel: $('roteiro'), guarda: { ler, gravar } }) : null;
+  if (escudoCasca) temPistas = escudoCasca.temPistas;
   $('vivoX').addEventListener('click', () => { mostrarVivo(false, true); btnVivo.focus(); });
 
   function pintarQuem() {

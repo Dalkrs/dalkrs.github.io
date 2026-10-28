@@ -21,6 +21,8 @@
      TC.ponte.registro.encerrar(id, fim) — o pedido acabou: 'aplicado' ou 'cancelado'
      TC.ponte.meditacao(op, args) — promessa: a Meditação pede ao banco (op 'entrar' | 'liberar' | 'tentar')
      TC.ponte.cla(op, args)       — promessa: o líder de um clã pede ao banco (op 'cargos': { cla, mudar, txt })
+     TC.ponte.escudo(op, args)    — promessa: (lote 31) o Escudo pede ao banco: 'versao' (o banco tem o Escudo?) e 'jogar' (um
+                                   lance num puzzle entregue: { id, op: 'jogar' | 'errar' | 'acertar', mudas, prova })
      TC.ponte.itens(op, args)     — promessa: (lote 29) a loja pede ao banco (op 'comprar': { loja, item, qtd, pc };
                                    op 'desfazer': { compra })
      TC.ponte.caixa(op, args)     — promessa: a caixinha do grupo (op 'mover': { camp, grupo, pc, q, nota } | 'levar')
@@ -114,6 +116,16 @@
     },
     /* (lote 29) A loja: comprar e desfazer a compra. Passa pelo banco, que confere quem compra (o dono do personagem),
        se ele está perto da loja (no hexágono dela, no Mapa-múndi), o estoque e os lapros, e muda tudo junto. */
+    /* (lote 31) O Escudo do mestre e as Pistas: a versão do Escudo no banco e os lances dos puzzles (quem confere se a
+       pessoa recebeu o puzzle, e a resposta, é o banco). */
+    escudo(op, args) {
+      if (!naCasca || !ponte.estado.mesa) return Promise.reject(new Error('Os puzzles só funcionam dentro do site, com uma mesa aberta.'));
+      const n = ++seq;
+      const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
+      enviar({ t: 'escudo', n, mesa: ponte.estado.mesa.id, op, args: args || {} });
+      setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
+      return p;
+    },
     itens(op, args) {
       if (!naCasca || !ponte.estado.mesa) return Promise.reject(new Error('A loja só funciona dentro do site, com uma mesa aberta.'));
       const n = ++seq;
@@ -294,9 +306,9 @@
       if (m.t === 'item.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu para usar o item agora.'));
       return;
     }
-    if ((m.t === 'medit.ok' || m.t === 'medit.erro' || m.t === 'cla.ok' || m.t === 'cla.erro' || m.t === 'caixa.ok' || m.t === 'caixa.erro' || m.t === 'lugar.ok' || m.t === 'lugar.erro' || m.t === 'itens.ok' || m.t === 'itens.erro') && esperas[m.n]) {
+    if ((m.t === 'medit.ok' || m.t === 'medit.erro' || m.t === 'cla.ok' || m.t === 'cla.erro' || m.t === 'caixa.ok' || m.t === 'caixa.erro' || m.t === 'lugar.ok' || m.t === 'lugar.erro' || m.t === 'itens.ok' || m.t === 'itens.erro' || m.t === 'escudo.ok' || m.t === 'escudo.erro') && esperas[m.n]) {
       const e = esperas[m.n]; delete esperas[m.n];
-      if (m.t === 'medit.ok' || m.t === 'cla.ok' || m.t === 'caixa.ok' || m.t === 'lugar.ok' || m.t === 'itens.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu certo agora. Tente de novo.'));
+      if (m.t === 'medit.ok' || m.t === 'cla.ok' || m.t === 'caixa.ok' || m.t === 'lugar.ok' || m.t === 'itens.ok' || m.t === 'escudo.ok') e.ok(m.r == null ? null : m.r); else e.falha(new Error(m.erro || 'Não deu certo agora. Tente de novo.'));
       return;
     }
     if (m.t === 'registro.pedido' && esperas[m.n]) {

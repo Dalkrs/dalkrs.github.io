@@ -2654,6 +2654,10 @@ const UI = (() => {
         opens ? toggle('wl-open', nOpen === walls.length, v => all({ open: v }, (v ? 'Abrir ' : 'Fechar ') + OPENING_NAMES[kind][0]), openLabel) : null,
         opens ? toggle('wl-lock', walls.every(x => x.locked), v => all({ locked: v }, (v ? 'Trancar ' : 'Destrancar ') + OPENING_NAMES[kind][0]), 'Trancada (jogadores não abrem)') : null,
         kind === 'secret' ? h('div', { class: 'row' }, btn('Revelar aos jogadores', () => all({ secret: false }, 'Revelar porta secreta'), { icon: 'eye', id: 'wl-reveal' })) : null,
+        // (lote 31) a porta que abre quando os jogadores resolvem um puzzle do Escudo do mestre
+        kind === 'door' && Nuvem.mestre() && (EscudoCenas.puzzles().length || w.pz) ? field('Abre com um puzzle', inSelect('wl-pz', many && !walls.every(x => (x.pz || '') === (w.pz || '')) ? '' : (w.pz || ''),
+          [['', 'Nenhum']].concat(EscudoCenas.puzzles().map(p => [p.id, p.nome])), v => all({ pz: v || undefined, pzOk: undefined }, v ? 'Ligar a porta a um puzzle' : 'Desligar a porta do puzzle'))) : null,
+        kind === 'door' && Nuvem.mestre() && w.pz ? note(EscudoCenas.resolvido(w.pz) ? (w.pzOk ? 'Resolveram o puzzle e a porta abriu.' : 'O puzzle já foi resolvido.') : 'Quando os jogadores resolverem “' + EscudoCenas.nomeDoPuzzle(w.pz) + '”, a porta abre e destranca sozinha (você recebe um aviso com Desfazer).') : null,
         note(kind ? WALL_NOTES[kind] : 'Trechos de tipos diferentes. Escolher um tipo acima vale para todos.')),
       h('div', { class: 'row' }, btn('Apagar', deleteSelToast, { icon: 'trash', kind: 'danger' })),
     ];

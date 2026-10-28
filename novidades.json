@@ -2,6 +2,50 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.28-6",
+      "data": "2026-10-28",
+      "titulo": "O Escudo do mestre",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Escudo do mestre: uma aba nova, no grupo Mestre, com o Roteiro, os Relógios e os Handouts e puzzles."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Roteiro: cada sessão é uma lista de passos, que podem se ligar a uma cena, a um lugar do Mapa-múndi, a um encontro do Bestiário, a um handout ou a um relógio — o botão do passo faz a ação. O botão do roteiro, na barra de cima, mostra a sessão ao lado em qualquer aba. Ao fechar a sessão, os passos que sobraram vão para a próxima e sai o resumo, que pode ir para o rascunho do Jornal."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Relógios de ameaça: os gomos, a consequência quando enche (só você vê), os que os jogadores veem num cantinho das Cenas e a sugestão de avançar quando passa um dia no Mapa-múndi (você confirma)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Handouts: imagens e cartas (pergaminho, carta, bilhete, página de livro) com trechos e áreas escondidas, que você revela aos poucos. Entregue à mesa toda ou só a alguns."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Puzzles sorteados com solução garantida, em fácil, médio ou difícil: cifras (runas, troca de letras, César), charadas (do banco ou suas), runas que acendem, alavancas, cadeado de símbolos, placas de pressão e quebra-cabeça de imagem. A prévia é um teste jogável, com a resposta. Ao acertar: revelar parte de outro handout, entregar outro ou abrir uma porta das Cenas; ao errar: um relógio anda."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Pistas: uma aba nova, que aparece quando você recebe uma imagem, uma carta ou um puzzle. Quando chega uma pista, abre uma janela; tudo fica guardado ali, com busca."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Puzzles: quem recebeu resolve junto — cada lance aparece para os outros na hora, e a Mesa ao vivo avisa quando resolvem."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: os relógios à vista aparecem num cantinho do mapa (recolhe com um clique)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.28-5",
       "data": "2026-10-28",
       "titulo": "A Casa do clã",

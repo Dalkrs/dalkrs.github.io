@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../tc/tema.js?v=1"></script>
+<title>Pistas · Tiny Cats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&family=IM+Fell+English:ital@0;1&family=UnifrakturMaguntia&family=Noto+Sans+Runic&display=swap">
+<link rel="stylesheet" href="../tc/pistas.css?v=1">
+<style>
+/* Pistas: o que o mestre entregou a quem joga — as imagens, as cartas e os puzzles (que se resolvem juntos). */
+:root {
+  color-scheme: dark;
+  --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
+  --line: #2b3243; --line-strong: #40495f;
+  --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #8a93a8;
+  --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .12); --on-lamp: #1d1503;
+  --ok: #6fbf8f; --ok-ink: #8fd6ab; --danger: #f0786e; --ouro: #f3d9a4;
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+:root:where([data-claro]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #5d6880;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .13); --on-lamp: #241a04;
+  --ok: #2f7a55; --ok-ink: #2a6e4c; --danger: #b9342a; --ouro: #7a5410;
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--table); color: var(--fg); font: 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.app { min-height: 100%; display: flex; flex-direction: column; min-width: 0; }
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px 10px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.brand { font: 600 20px/1 var(--display); color: var(--lamp-ink); white-space: nowrap; }
+.na-casca .brand { display: none; }
+.grow { flex: 1; }
+.seg { display: inline-flex; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); gap: 2px; flex-wrap: wrap; }
+.seg button { min-height: 28px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font-weight: 600; font-size: 13px; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.sm { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.ib { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--hover); color: var(--fg); flex: none; padding: 0; }
+.ib.leve { background: none; border-color: transparent; color: var(--fg-2); }
+.in { width: 100%; min-width: 0; min-height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
+.in:focus { outline: none; border-color: var(--lamp); }
+.busca { width: min(260px, 100%); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ajuda { font-size: 12.5px; color: var(--fg-3); margin: 0; line-height: 1.45; }
+.vazio { margin: 60px auto; max-width: 520px; text-align: center; color: var(--fg-2); padding: 0 16px; display: grid; gap: 10px; justify-items: center; }
+.vazio .tit { margin: 0; font: 600 22px/1.2 var(--display); color: var(--fg); }
+.badge { display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; border: 1px solid var(--line-strong); color: var(--fg-2); }
+.badge.nova { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.badge.ok { color: var(--ok-ink); border-color: var(--ok); }
+.cols { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; padding: 16px; align-items: start; }
+@media (max-width: 860px) { .cols { grid-template-columns: minmax(0, 1fr); padding: 12px; } }
+.lista { display: grid; gap: 6px; align-content: start; position: sticky; top: 58px; max-height: calc(100vh - 74px); overflow: auto; }
+@media (max-width: 860px) { .lista { position: static; max-height: none; } }
+.item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); min-width: 0; }
+.item:hover { border-color: var(--line-strong); }
+.item[aria-current="true"] { border-color: var(--lamp); box-shadow: 0 0 0 1px var(--lamp); }
+.item .ico { color: var(--ouro); flex: none; display: grid; }
+.item .nm { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.item .nm b { font-weight: 600; overflow-wrap: anywhere; }
+.item .nm small { color: var(--fg-3); font-size: 12px; }
+.det { display: grid; gap: 18px; min-width: 0; justify-items: center; padding-bottom: 60px; }
+.det > * { width: min(100%, 860px); }
+.voltar { justify-self: start; }
+.toasts { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 50; width: min(560px, calc(100vw - 24px)); }
+.toast { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow); font-size: 13.5px; }
+.toast span { flex: 1; }
+.toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 4px 6px; }
+dialog.dl { border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--fg); padding: 14px; width: min(1200px, calc(100vw - 24px)); box-shadow: var(--shadow); max-height: calc(100vh - 24px); overflow: auto; }
+dialog.dl::backdrop { background: rgba(5, 7, 12, .7); }
+dialog.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+dialog.dl img { display: block; max-width: 100%; max-height: calc(100vh - 110px); margin: 0 auto; border-radius: 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <span class="brand">Pistas</span>
+    <input class="in busca" id="busca" type="search" placeholder="Buscar…" aria-label="Buscar nas pistas">
+    <span class="seg" role="group" aria-label="Mostrar" id="filtro">
+      <button type="button" data-f="todas" aria-pressed="true">Todas</button>
+      <button type="button" data-f="novas" aria-pressed="false">Novas</button>
+      <button type="button" data-f="puzzles" aria-pressed="false">Puzzles</button>
+    </span>
+    <span class="grow"></span>
+  </header>
+  <main id="meio" aria-live="polite"></main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<dialog class="dl" id="dlg"></dialog>
+<script src="../tc/ponte.js?v=20"></script>
+<script src="../tc/dom.js?v=1"></script>
+<script src="../tc/escudo.js?v=1"></script>
+<script src="../tc/pistas-ui.js?v=1"></script>
+<script src="pistas.js?v=1"></script>
+</body>
+</html>

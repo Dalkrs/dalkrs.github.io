@@ -1,0 +1,103 @@
+/* Tiny Cats · as pistas na tela (lote 31): o handout (a imagem, a carta) e os puzzles. Usa as cores da página
+   (--raised, --line, --fg…); o papel das cartas tem cores próprias, iguais nos dois temas. */
+.ho { display: grid; gap: 12px; justify-items: center; min-width: 0; }
+.ho-tit { margin: 0; font: 600 20px/1.2 var(--display); color: var(--lamp-ink); text-align: center; overflow-wrap: anywhere; }
+.ho-fig { margin: 0; display: grid; gap: 6px; justify-items: center; max-width: 100%; }
+.ho-fig img { max-width: 100%; max-height: 62vh; border-radius: 6px; box-shadow: 0 6px 22px rgba(0, 0, 0, .45); background: #222; }
+.ho.grande .ho-fig img { max-height: 76vh; }
+.ho-fig img.ampliavel { cursor: zoom-in; }
+.ho-fig figcaption { font-size: 13px; color: var(--fg-2); text-align: center; max-width: 60ch; }
+.ho-nota { font-size: 13.5px; color: var(--fg-2); max-width: 60ch; text-align: center; }
+/* o papel */
+.ho-txt, .ho-ass { width: min(100%, 640px); color: #33261a; font: 17px/1.62 "IM Fell English", "Libre Caslon Text", Georgia, serif; }
+.ho-txt { padding: 26px 30px 18px; white-space: normal; overflow-wrap: anywhere; position: relative;
+  background: radial-gradient(ellipse at 30% 20%, #f2e6c9 0%, #e7d6b1 55%, #d6c094 100%); border-radius: 4px; box-shadow: 0 8px 26px rgba(0, 0, 0, .45), inset 0 0 40px rgba(120, 84, 40, .25); }
+.ho-ass { margin-top: -12px; padding: 0 30px 22px; text-align: right; font-style: italic; background: #e2cfa6; border-radius: 0 0 4px 4px; box-shadow: 0 10px 22px rgba(0, 0, 0, .35), inset 0 -20px 30px rgba(120, 84, 40, .22); }
+.ho-pergaminho .ho-txt { border-radius: 2px; padding: 34px 34px 24px; border-top: 10px solid #c9b183; border-bottom: 10px solid #c9b183; }
+.ho-carta .ho-txt { background: linear-gradient(#f4ecda, #ebdfc4); border: 1px solid #cdb98f; }
+.ho-carta .ho-ass { background: #ebdfc4; border: 1px solid #cdb98f; border-top: 0; }
+.ho-bilhete .ho-txt { width: min(100%, 420px); font-size: 16px; background: repeating-linear-gradient(#f3ead2, #f3ead2 25px, #d9c8a2 26px); transform: rotate(-1deg); }
+.ho-bilhete .ho-ass { width: min(100%, 420px); background: #f3ead2; transform: rotate(-1deg); }
+.ho-tomo .ho-txt { background: linear-gradient(90deg, #d9c69b, #efe2c3 8%, #efe2c3 92%, #d9c69b); font-size: 16.5px; }
+.ho-tomo .ho-txt::first-letter { float: left; font: 600 3.1em/0.9 "UnifrakturMaguntia", "IM Fell English", Georgia, serif; color: #7a2e1f; margin: 4px 8px 0 0; }
+.ho-tomo .ho-ass { background: #e8d9b6; }
+.mancha { display: inline-block; height: 1.05em; vertical-align: -0.16em; margin: 0 .12em; border-radius: 40% 55% 45% 60% / 60% 40% 60% 40%; background: radial-gradient(ellipse at 40% 45%, #2a1d10, #3b2a17 70%, rgba(59, 42, 23, .6)); }
+
+/* ---- os puzzles ---- */
+.pz { display: grid; gap: 14px; padding: 16px; border-radius: 14px; border: 1px solid var(--line-strong); background: linear-gradient(160deg, #262a33, #1b1e25); color: #e8eaf0; min-width: 0; }
+:root:where([data-claro]) .pz { background: linear-gradient(160deg, #3a3f4b, #2a2e37); }
+.pz.resolvido { border-color: #6fbf8f; box-shadow: 0 0 0 2px rgba(111, 191, 143, .25); }
+.pz-cab { display: grid; gap: 4px; }
+.pz-tipo { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.pz-tipo b { font: 600 19px/1.2 var(--display); color: #f3d9a4; }
+.pz-dif { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #a6aec0; border: 1px solid #40495f; border-radius: 999px; padding: 1px 8px; }
+.pz-desc { margin: 0; font-size: 13px; color: #b8bfcd; }
+.pz-ok { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: #8fd6ab; font-size: 13.5px; }
+.pz-ult { font-size: 12.5px; color: #c9cfdb; font-style: italic; }
+.pz-erros { font-size: 12.5px; color: #f0a49c; }
+.pz-corpo { display: grid; gap: 14px; justify-items: center; min-width: 0; }
+.pz-conta { margin: 0; font-size: 12.5px; color: #a6aec0; text-align: center; }
+.pz-dica { margin: 0; font-size: 13px; color: #f3d9a4; text-align: center; }
+.pz-resp { font-size: 13px; color: #f3d9a4; border-top: 1px dashed #40495f; padding-top: 10px; }
+.pz .runa, .cf-s.runa { font-family: "Noto Sans Runic", "Segoe UI Historic", "Segoe UI Symbol", serif; }
+.pz .btn { color: var(--fg); }
+.pz .btn.pri { color: var(--on-lamp); }
+.pz .in { color: var(--fg); }
+/* cifra */
+.cf-msg { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; max-width: 720px; }
+.cf-pal { display: inline-flex; gap: 3px; }
+.cf-l { display: grid; justify-items: center; min-width: 20px; }
+.cf-s { font: 600 20px/1.2 var(--mono); color: #f3d9a4; }
+.cf-s.runa { font-size: 23px; font-weight: 400; }
+.cf-c { font: 700 14px/1.2 var(--mono); color: #e8eaf0; border-top: 1px solid #5a6378; min-width: 16px; text-align: center; }
+.cf-l.dada .cf-c { color: #8fd6ab; }
+.cf-p { font: 600 20px/1.2 var(--mono); color: #a6aec0; align-self: start; }
+.cf-chave { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 720px; }
+.cf-k { display: grid; justify-items: center; gap: 2px; padding: 4px 6px; border-radius: 8px; background: rgba(255, 255, 255, .05); border: 1px solid #3a4152; }
+.cf-k.dada { border-color: #2f6b4b; }
+.cf-in { width: 30px; height: 30px; text-align: center; text-transform: uppercase; font: 700 15px var(--mono); border-radius: 6px; border: 1px solid #5a6378; background: #12151c; color: #e8eaf0; padding: 0; }
+.cf-in:disabled { color: #8fd6ab; background: transparent; border-color: transparent; }
+/* charada */
+.ch-p { margin: 0; max-width: 560px; text-align: center; font: italic 19px/1.5 "IM Fell English", "Libre Caslon Text", Georgia, serif; color: #f6efe2; }
+.ch-dicas { margin: 0; padding: 0 0 0 18px; color: #f3d9a4; font-size: 13.5px; }
+.ch-form { display: flex; gap: 8px; width: min(100%, 420px); }
+.ch-tent { font-size: 12.5px; color: #a6aec0; text-align: center; }
+/* luzes */
+.lz { display: grid; gap: 8px; width: min(100%, 330px); }
+.lz-r { aspect-ratio: 1; border-radius: 12px; border: 1px solid #3a4152; background: #151820; color: #4a5268; font-size: 24px; display: grid; place-items: center; transition: background .15s, color .15s, box-shadow .15s; }
+.lz-r.acesa { background: radial-gradient(circle, #f6d17a, #c0861f); color: #3a2405; box-shadow: 0 0 14px rgba(246, 209, 122, .55); border-color: #f6d17a; }
+.lz-r:disabled { cursor: default; }
+/* alavancas */
+.al-grades, .al-al { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.al-g { display: grid; justify-items: center; gap: 2px; color: #8a93a8; }
+.al-g.aberta { color: #8fd6ab; }
+.al-g small, .al-a small { font-size: 11px; color: #a6aec0; }
+.al-a { display: grid; justify-items: center; gap: 2px; padding: 6px 8px; border-radius: 10px; border: 1px solid #3a4152; background: #151820; color: #c9cfdb; }
+.al-a.cima { color: #f3d9a4; border-color: #8a6a2a; }
+/* cadeado */
+.cd-pistas, .pl-pistas { display: grid; gap: 6px; width: min(100%, 560px); }
+.cd-rot { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #a6aec0; }
+.cd-p { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, .04); }
+.cd-c { display: inline-flex; gap: 4px; }
+.cd-s { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; background: #12151c; border: 1px solid #3a4152; color: #f3d9a4; }
+.cd-s.mini { width: 24px; height: 24px; }
+.cd-s.mini svg { width: 16px; height: 16px; }
+.cd-t { font-size: 13px; color: #d7dbe5; }
+.cd-discos { display: flex; gap: 10px; justify-content: center; }
+.cd-d { display: grid; justify-items: center; gap: 4px; }
+.cd-v { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 12px; background: linear-gradient(#3a3226, #231e17); border: 1px solid #8a6a2a; color: #f6d17a; }
+.cd-v svg { width: 32px; height: 32px; }
+.cd-tent { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; font-size: 12.5px; color: #a6aec0; }
+.pz .ib.leve { color: #c9cfdb; }
+/* placas */
+.pl-pistas ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: 13.5px; color: #d7dbe5; }
+.pl-placas { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.pl-p { display: grid; justify-items: center; gap: 4px; width: 78px; padding: 10px 4px 6px; border-radius: 10px; border: 1px solid #4a4336; background: linear-gradient(#3a352c, #26231d); color: #e9d9b5; }
+.pl-p svg { width: 34px; height: 34px; }
+.pl-p small { font-size: 11.5px; }
+.pl-p.pisada { transform: translateY(3px); background: #1d1b17; color: #f6d17a; border-color: #8a6a2a; box-shadow: inset 0 3px 8px rgba(0, 0, 0, .6); }
+/* quebra-cabeça */
+.qc { display: grid; gap: 2px; width: min(100%, 520px); aspect-ratio: 1; background: #0d1017; padding: 2px; border-radius: 8px; }
+.qc-p { border: 0; padding: 0; border-radius: 3px; background-repeat: no-repeat; outline-offset: -3px; }
+.qc-p.sel { outline: 3px solid #f6d17a; }
+.pz.resolvido .qc { gap: 0; }
