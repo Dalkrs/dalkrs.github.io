@@ -143,9 +143,9 @@
     function pintar() {
       if (painel.hidden) return;
       const ed0 = painel.querySelector('#nt-texto'), focoNoTexto = ed0 && document.activeElement === ed0;
-      const lista = visiveis(), todas = capitulos();
+      const vistos = visiveis(), todas = capitulos();       // (não "lista": esse nome é o da lista do @ e do #, que o blur do texto confere)
       if (atual && !todas.some(c => c.id === atual)) atual = null;
-      if (!atual && lista.length) atual = lista[0].id;
+      if (!atual && vistos.length) atual = vistos[0].id;
       const c = todas.find(x => x.id === atual) || null;
       const tags = [...new Set(todas.flatMap(x => x.tags))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
       const camps = campanhas();

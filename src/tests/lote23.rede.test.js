@@ -70,7 +70,7 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(),
     ok(await F.locator('#lista [data-inhd]').count() === 0 && await F.locator('#lista .inativo').count() === 0, 'a subseção "Inativos (n)" embaixo de cada grupo saiu');
     ok(await ate(async () => j(await abas(G)) === j(['Ativos 2', 'Inativos 0', 'Toldo 0'])) && await G.locator('#btnVarios').count() === 0, 'o jogador também vê as abas (com o que ele enxerga), sem o "Vários": ' + j(await abas(G)));
     await abrir(G, 'Dain X', J);
-    ok(await G.locator('#lugarFicha').count() === 0, 'e sem o botão Ativo · Inativo · Toldo na ficha');
+    ok(await G.locator('#lugarFicha').count() === 1, 'e com o botão Ativo · Inativo · Toldo na ficha (lote 27: quem joga muda o lugar das fichas do grupo dele)');
     await foto(M, 'l23-elenco-abas', F.locator('aside'));
   });
 

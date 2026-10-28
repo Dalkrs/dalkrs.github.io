@@ -155,7 +155,7 @@ const bia = ficha('Bia', { recursos: [{ id: 'vidaB', nome: 'hp', fml: '80' }] })
     await F.locator('#painelCorpo [data-fertrava]').click(); await w(400);
     ok(await ate(async () => (await G.locator('#painelCorpo [data-fernovo]').count()) === 1), 'destravado, o jogador volta a poder marcar ferimentos');
     // (lote 23) Ativo · Inativo · Toldo, no alto da ficha: só o mestre marca; fica no estado da ficha
-    ok(await F.locator('#lugarFicha [data-lugar="ativo"]').getAttribute('aria-pressed') === 'true' && await G.locator('#lugarFicha').count() === 0, 'a ficha começa ativa; só o mestre tem o botão Ativo · Inativo · Toldo');
+    ok(await F.locator('#lugarFicha [data-lugar="ativo"]').getAttribute('aria-pressed') === 'true' && await G.locator('#lugarFicha').count() === 1, 'a ficha começa ativa; o mestre e (lote 27) o jogador dela têm o botão Ativo · Inativo · Toldo');
     await F.locator('#lugarFicha [data-lugar="inativo"]').click(); await w(400);
     ok(await ate(async () => { const l = await linha(M, 'pc_selene'); return l.estado.ativo === false && await parado(M); }) && (await F.locator('#lista .pcrow[data-id="pc_selene"]').count()) === 0 && /Inativos\s*1/.test(await F.locator('#abasElenco [data-abael="inativo"]').innerText()),
       'Inativo: fica no estado da ficha (ativo: false), e a Selene sai da aba Ativos do elenco (vai para Inativos)');

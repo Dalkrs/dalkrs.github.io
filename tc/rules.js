@@ -1102,10 +1102,10 @@
      (estado.pd: { id: n }): a ficha, o token e o acampamento mexem nele sem um desfazer o do outro (o estado se junta
      campo a campo). Sem nada anotado no estado, vale o `atual` que a ficha guardava antes.
      Cada barra tem a sua regra de recuperação (lote 6), que o mestre escolhe (rec):
-       longo     enche no descanso longo (o padrão: era o que valia para todas antes)
+       longo     enche no descanso longo (era o padrão até o lote 24)
        qualquer  enche em qualquer descanso, longo ou curto
        quantia   recupera uma quantia: qc no descanso curto e ql no longo, sem passar do limite
-       manual    só à mão: o descanso não mexe nela
+       manual    só à mão: o descanso não mexe nela (o padrão, desde o lote 24: o descanso não enche o Ki, a Fúria…)
      → [{ id, nome, atual, max, rec, qc, ql }] na ordem da ficha — max 0 é "sem limite"; atual fica entre 0 e o máximo */
   const ESPECIAL_PADRAO = 'Barra especial';
   const REC_ESPECIAL = [
@@ -1116,7 +1116,7 @@
   ];
   REC_ESPECIAL.forEach(Object.freeze); Object.freeze(REC_ESPECIAL);
   const QC_PADRAO = 1, QL_PADRAO = 2;          // a quantia que vem escrita quando o mestre escolhe "Recupera uma quantia"
-  const recDoEspecial = k => (REC_ESPECIAL.some(r => r.k === k) ? k : 'longo');
+  const recDoEspecial = k => (REC_ESPECIAL.some(r => r.k === k) ? k : 'manual');
   function especiais(ficha, estado) {
     const pd = ehObjeto(estado && estado.pd) ? estado.pd : {};
     return (Array.isArray(ficha && ficha.poderes) ? ficha.poderes : []).filter(x => ehObjeto(x) && x.id != null && x.id !== '').map(x => {
@@ -1140,7 +1140,8 @@
       if (ql) p.push('+' + ql + (qc ? ' no longo' : ' no descanso longo'));
       return p.length ? p.join(' · ') : 'o descanso não devolve nada';
     }
-    return 'enche no descanso longo';
+    if (rec === 'longo') return 'enche no descanso longo';
+    return 'só à mão (o descanso não mexe nela)';
   }
   /* → um estado NOVO com a barra especial `id` valendo `v` (presa entre 0 e o máximo, quando ele existe). O recebido não muda. */
   function mudarEspecial(estado, id, v, max) {

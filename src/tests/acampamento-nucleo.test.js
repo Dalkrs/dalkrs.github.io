@@ -38,7 +38,7 @@ eq(N.textoEfeitos(N.efeitos(camp)), 'Conforto +15 · Sanidade +5 · 1 ração a 
 eq(N.textoEfeitos({ conf: -3, san: 0, rec: 20, prov: 2 }), 'Conforto −3 · recuperação +20% · 2 rações a mais por descanso', 'com sinal de menos de verdade e plural');
 
 /* ---- descanso ---- */
-const dain = { id: 'd', nome: 'Dain', recursos: [{ id: 'hp', nome: 'HP', max: 200, atual: 50 }, { id: 'sp', nome: 'SP', max: 39, atual: 39 }, { id: 'x', nome: 'Sem fórmula', max: null, atual: 3 }], san: 60, conf: 40, poderes: [{ id: 'p1', nome: 'Cura', atual: 0, max: 2 }, { id: 'p2', nome: 'Luz', atual: 1, max: 1 }] };
+const dain = { id: 'd', nome: 'Dain', recursos: [{ id: 'hp', nome: 'HP', max: 200, atual: 50 }, { id: 'sp', nome: 'SP', max: 39, atual: 39 }, { id: 'x', nome: 'Sem fórmula', max: null, atual: 3 }], san: 60, conf: 40, poderes: [{ id: 'p1', nome: 'Cura', atual: 0, max: 2, rec: 'longo' }, { id: 'p2', nome: 'Luz', atual: 1, max: 1 }, { id: 'p3', nome: 'Fúria', atual: 1, max: 6 }] };
 const lia = { id: 'l', nome: 'Lia', recursos: [{ id: 'hp', nome: 'HP', max: 90, atual: 0 }], san: 98, conf: 95, poderes: [] };
 const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 300, atual: 299 }], san: null, conf: null, poderes: [] };
 {
@@ -49,7 +49,7 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
   eq([p.linhas[0].san, p.linhas[0].conf], [{ de: 60, para: 70 }, { de: 40, para: 65 }], 'Sanidade e Conforto sobem');
   eq([p.linhas[1].san, p.linhas[1].conf], [{ de: 98, para: 100 }, { de: 95, para: 100 }], 'e não passam de 100');
   eq([p.linhas[2].san, p.linhas[2].conf], [null, null], 'ficha que não usa Sanidade e Conforto fica sem eles');
-  eq(p.linhas[0].poderes, [{ id: 'p1', nome: 'Cura', de: 0, para: 2 }], 'os poderes gastos voltam (os cheios não entram na lista)');
+  eq(p.linhas[0].poderes, [{ id: 'p1', nome: 'Cura', de: 0, para: 2 }], 'os poderes gastos voltam (os cheios não entram na lista) — e a Fúria, sem regra anotada, fica como está (lote 24: o padrão é só à mão)');
   eq(N.resumoDescanso(p), 'Descanso longo: 3 descansaram · 2 rações gastas · recuperação de 100% · Conforto +25 · Sanidade +10', 'o resumo por extenso');
   const depois = N.aposDescanso(camp, p, 1000);
   eq(depois.provisoes.map(x => x.qtd), [1, 5, 0], 'depois do descanso as rações gastas saem');
@@ -67,7 +67,7 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
 /* ---- (lote 6) cada barra especial com a sua regra; a fadiga; tirar ou não os bônus ---- */
 {
   eq([N.REGRAS_PADRAO.longo.tiraBonus, N.REGRAS_PADRAO.curto.tiraBonus, 'poderes' in N.REGRAS_PADRAO.longo], [true, true, false], 'o descanso tira os bônus “até o próximo descanso” (longo e curto) — e a regra geral das barras especiais saiu (cada barra tem a sua)');
-  const pw = [{ id: 'lg', nome: 'Longo', atual: 1, max: 3 }, { id: 'qq', nome: 'Qualquer', atual: 0, max: 2, rec: 'qualquer' }, { id: 'qt', nome: 'Quantia', atual: 1, max: 9, rec: 'quantia', qc: 2, ql: 5 },
+  const pw = [{ id: 'lg', nome: 'Longo', atual: 1, max: 3, rec: 'longo' }, { id: 'qq', nome: 'Qualquer', atual: 0, max: 2, rec: 'qualquer' }, { id: 'qt', nome: 'Quantia', atual: 1, max: 9, rec: 'quantia', qc: 2, ql: 5 },
     { id: 'mn', nome: 'Manual', atual: 0, max: 4, rec: 'manual' }, { id: 'inf', nome: 'Sem limite', atual: 3, max: 0, rec: 'quantia', qc: 1, ql: 4 }, { id: 'inf2', nome: 'Sem limite 2', atual: 3, max: 0 },
     { id: 'qt2', nome: 'Quase cheia', atual: 8, max: 9, rec: 'quantia', qc: 2, ql: 5 }, { id: 'pad', nome: 'Padrão', atual: 0, max: 9, rec: 'quantia' }];
   const ana = { id: 'a', nome: 'Ana', recursos: [], san: null, conf: null, poderes: pw, fad: 2, tmp: [{ id: 't1', n: 'Poção de força', k: 'FOR', v: 2 }] };
@@ -77,8 +77,8 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
     { id: 'qt2', nome: 'Quase cheia', de: 8, para: 9 }, { id: 'pad', nome: 'Padrão', de: 0, para: 2 }], 'no longo: enche a de "longo" e a de "qualquer", soma a quantia do longo (sem passar do limite); a manual e a sem limite que só enche ficam');
   eq(C.linhas[0].poderes, [{ id: 'qq', nome: 'Qualquer', de: 0, para: 2 }, { id: 'qt', nome: 'Quantia', de: 1, para: 3 }, { id: 'inf', nome: 'Sem limite', de: 3, para: 4 }, { id: 'qt2', nome: 'Quase cheia', de: 8, para: 9 }, { id: 'pad', nome: 'Padrão', de: 0, para: 1 }],
     'no curto: só a de "qualquer" enche; a quantia soma a do curto (sem quantia escrita: +1 no curto, +2 no longo)');
-  eq([N.paraDaEspecial({ atual: 2, max: 3, rec: 'xyz' }, false), N.paraDaEspecial({ atual: 2, max: 3, rec: 'xyz' }, true), N.paraDaEspecial({ atual: '1', max: '4', rec: 'quantia', qc: '2' }, false), N.paraDaEspecial({ atual: 5, max: 3, rec: 'quantia', qc: 1 }, false)], [2, 3, 3, 5],
-    'regra desconhecida é "longo"; números escritos como texto valem; quantia nunca diminui uma barra acima do limite');
+  eq([N.paraDaEspecial({ atual: 2, max: 3, rec: 'xyz' }, false), N.paraDaEspecial({ atual: 2, max: 3, rec: 'xyz' }, true), N.paraDaEspecial({ atual: '1', max: '4', rec: 'quantia', qc: '2' }, false), N.paraDaEspecial({ atual: 5, max: 3, rec: 'quantia', qc: 1 }, false)], [2, 2, 3, 5],
+    'regra desconhecida é "só à mão" (lote 24: o descanso não mexe nela); números escritos como texto valem; quantia nunca diminui uma barra acima do limite');
   eq([L.linhas[0].fad, C.linhas[0].fad, L.linhas[1].fad, C.linhas[1].fad], [{ de: 2, para: 5 }, { de: 2, para: 3 }, null, null], 'a fadiga: o longo enche a pilha (5), o curto devolve um; a ficha que não usa fica sem');
   eq(N.planejar(camp, 'curto', [Object.assign({}, ana, { fad: 5 })]).linhas[0].fad, { de: 5, para: 5 }, 'a pilha cheia não passa de 5');
   eq(N.planejar(camp, 'longo', [Object.assign({}, ana, { fad: 'x' })]).linhas[0].fad, null, 'fadiga que não é número: a ficha não usa');

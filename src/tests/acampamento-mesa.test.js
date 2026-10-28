@@ -6,7 +6,7 @@ const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela
 const { ok, end } = checker();
 const R = require('../../tc/rules.js');
 const pc = (id, nome, lvl, estado) => ({ id, nome, raca: 'Humano', lado: 'Aliado', grupo: '', tags: [], tier: 'C', level: lvl, tiers: { FOR: 'A', DES: 'C', AGI: 'D', VIT: 'B', CAN: 'E' }, pctProprio: null,
-  poderes: [{ id: 'pw' + id, nome: 'Cura', atual: 0, max: 2 }], skills: { arvores: [], pontos: {}, alocados: {} }, defesas: { DFF: 10, DFM: 4 }, rol: { fixa: 20, fonte: 'total' }, ultRol: null,
+  poderes: [{ id: 'pw' + id, nome: 'Cura', atual: 0, max: 2, rec: 'longo' }]      /* (lote 24: sem regra seria só à mão) */, skills: { arvores: [], pontos: {}, alocados: {} }, defesas: { DFF: 10, DFM: 4 }, rol: { fixa: 20, fonte: 'total' }, ultRol: null,
   disputa: { atrA: 'FOR', alvoId: '', atrB: 'FOR', fixaB: 0, valorB: 40 }, estaque: { a: '', b: '' }, habilidades: [], itens: [],
   recursos: [{ id: 'hp' + id, nome: 'HP', fml: 'VIT*8 + LVL*5' }, { id: 'sp' + id, nome: 'SP', fml: 'CAN*6 + LVL*3' }], notas: '', estado });
 const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_dain', 'Dain X', 5, { rec: { hppc_dain: 40 }, san: 60, conf: 30 }), pc('pc_lia', 'Lia', 3, {}), pc('pc_ogro', 'Ogro', 6, { rec: { hppc_ogro: 10 } })], situacoes: [], tabelas: [], log: [], bib: null, sel: 'pc_dain', selSit: null, aba: 'fichas', grupos: [] });
@@ -216,8 +216,8 @@ const local = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_da
   ok(!(await A.locator('#ds-tira').isChecked()) && !/só neste descanso/.test(await A.locator('dialog[open]').innerText()), 'e a janela do descanso curto já vem com a chave desmarcada');
   await A.locator('dialog[open] .dl-f .btn', { hasText: 'Cancelar' }).click(); await w(300);
   await A.locator('#rg-curto-tira').check(); await w(400);
-  await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_dain'), f = JSON.parse(JSON.stringify(l.ficha)), e = Object.assign({}, l.estado); delete f.poderes[0].rec; delete f.poderes[0].qc; delete f.poderes[0].ql; delete e.fad; delete e.tmp; P.gravar('pc_dain', { ficha: f, estado: e }); });
-  ok(await ate(async () => { const l = await linha(M, 'pc_dain'), d = await doc(M); return l.estado.fad === undefined && !l.ficha.poderes[0].rec && d.dados.regras.curto.tiraBonus === true && await semPendencia(M); }), '(tudo de volta como era)');
+  await M.evaluate(() => { const P = TC.dados.col('personagens'), l = P.pegar('pc_dain'), f = JSON.parse(JSON.stringify(l.ficha)), e = Object.assign({}, l.estado); f.poderes[0].rec = 'longo'; delete f.poderes[0].qc; delete f.poderes[0].ql; delete e.fad; delete e.tmp; P.gravar('pc_dain', { ficha: f, estado: e }); });
+  ok(await ate(async () => { const l = await linha(M, 'pc_dain'), d = await doc(M); return l.estado.fad === undefined && l.ficha.poderes[0].rec === 'longo' && d.dados.regras.curto.tiraBonus === true && await semPendencia(M); }), '(tudo de volta como era)');
 
   // ---------- a aura: o jogador escolhe a emoção do personagem dele; todos veem ----------
   await B.locator('#tab-grupo').click(); await w(300, J);
