@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../tc/tema.js?v=1"></script>
+<title>Bestiário · Tiny Cats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&display=swap">
+<style>
+/* Bestiário (lote 29): os inimigos do mestre, prontos para puxar para a cena. As cartas no meio, a lista de nomes à
+   esquerda (abre e fecha: com muitos inimigos, é o caminho rápido), a gaveta à direita com tudo de um inimigo e a
+   bandeja do encontro embaixo. As cores da interface são as das outras abas. */
+:root {
+  color-scheme: dark;
+  --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
+  --line: #2b3243; --line-strong: #40495f;
+  --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #8a93a8;
+  --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .12); --on-lamp: #1d1503;
+  --ok: #6fbf8f; --ok-ink: #8fd6ab; --danger: #f0786e; --teal: #5fb3a8; --roxo: #a98ee8;
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+:root:where([data-claro]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #5d6880;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .13); --on-lamp: #241a04;
+  --ok: #2f7a55; --ok-ink: #2a6e4c; --danger: #b9342a; --teal: #2f7a72; --roxo: #5b3fb5;
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--table); color: var(--fg); font: 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.app { height: 100%; display: flex; flex-direction: column; min-width: 0; }
+
+/* ---- a barra de cima ---- */
+.top { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; min-width: 0; }
+.brand { font: 600 20px/1 var(--display); color: var(--lamp-ink); white-space: nowrap; }
+.na-casca .brand { display: none; }
+.grow { flex: 1; }
+.busca { width: 260px; max-width: 100%; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.pri:hover:not(:disabled) { background: var(--lamp); filter: brightness(1.08); }
+.btn.per { color: var(--danger); }
+.btn.sm { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.btn.on { border-color: var(--lamp); color: var(--lamp-ink); background: var(--lamp-soft); }
+.ib { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); flex: none; padding: 0; font-weight: 700; }
+.ib:hover:not(:disabled) { border-color: var(--lamp); }
+.ib:disabled { opacity: .4; cursor: default; }
+.ib.leve { background: none; border-color: transparent; color: var(--fg-2); }
+.ib.leve:hover:not(:disabled) { background: var(--hover); border-color: var(--line); color: var(--fg); }
+.in { width: 100%; min-width: 0; min-height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
+textarea.in { min-height: 0; padding: 8px 10px; line-height: 1.45; resize: vertical; }
+select.in { padding: 0 6px; width: auto; }
+.in.num { width: 76px; text-align: right; font-family: var(--mono); }
+.salvo { font: 12px var(--mono); color: var(--fg-3); white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--raised); font-size: 12.5px; font-weight: 600; color: var(--fg-2); white-space: nowrap; }
+button.chip:hover { border-color: var(--lamp); color: var(--fg); }
+.chip.on { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); }
+.chip small { font: 11px var(--mono); color: var(--fg-3); }
+.chip .x { border: 0; background: none; padding: 0 0 0 2px; color: inherit; font-weight: 700; }
+.ajuda { font-size: 12.5px; color: var(--fg-3); margin: 0; line-height: 1.45; }
+.eyebrow { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--fg-3); }
+.tagsel { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 0 12px 8px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.tagsel:empty { display: none; }
+
+/* ---- o corpo: a lista, as cartas e a gaveta ---- */
+.corpo { flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr auto; }
+.lista { width: 250px; border-right: 1px solid var(--line); background: var(--surface); overflow: auto; min-height: 0; }
+.lista[hidden] { display: none; }
+.lista .letra { position: sticky; top: 0; background: var(--surface); padding: 6px 12px 3px; font: 600 11px var(--mono); color: var(--fg-3); letter-spacing: .1em; border-bottom: 1px solid var(--line); z-index: 1; }
+.lista button.li { display: flex; width: 100%; align-items: center; gap: 8px; padding: 6px 12px; border: 0; background: none; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, .03); }
+.lista button.li:hover { background: var(--hover); }
+.lista button.li.on { background: var(--lamp-soft); box-shadow: inset 3px 0 0 var(--lamp); }
+.lista .pt { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.lista .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
+.lista .tl { font: 11.5px var(--mono); color: var(--fg-3); }
+.meio { overflow: auto; min-height: 0; padding: 14px 16px 120px; }
+.grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.carta { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; min-width: 0; text-align: left; padding: 0; }
+.carta:hover { border-color: var(--line-strong); }
+.carta.on { outline: 2px solid var(--lamp); outline-offset: -1px; }
+.carta .arte { height: 104px; display: grid; place-items: center; font: 600 38px var(--display); color: rgba(255, 255, 255, .85); background-size: cover; background-position: center; }
+.carta .tier { position: absolute; top: 8px; left: 8px; font: 600 11px var(--mono); padding: 2px 7px; border-radius: 6px; background: rgba(13, 16, 23, .8); color: #f3ead2; }
+.carta .qtd { position: absolute; top: 6px; right: 6px; }
+.carta .qtd .chip { background: var(--lamp); color: var(--on-lamp); border-color: var(--lamp); }
+.carta .mais { position: absolute; top: 72px; right: 8px; width: 28px; height: 28px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .25); background: rgba(13, 16, 23, .75); color: #fff; font-weight: 700; display: grid; place-items: center; }
+.carta .mais:hover { background: var(--lamp); color: var(--on-lamp); }
+.carta .cb { padding: 9px 11px 10px; display: grid; gap: 4px; min-width: 0; }
+.carta h3 { margin: 0; font: 600 16px/1.15 var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.carta .sub { font-size: 12px; color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 1.4em; }
+.mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center; font: 600 13px var(--mono); margin-top: 2px; }
+.mini span { display: block; font: 500 9.5px var(--mono); color: var(--fg-3); letter-spacing: .08em; }
+.mais-cartas { margin: 16px auto 0; display: flex; justify-content: center; }
+.vazio { margin: 40px auto; max-width: 520px; text-align: center; color: var(--fg-2); padding: 0 16px; display: grid; gap: 10px; justify-items: center; }
+.gaveta { width: 380px; border-left: 1px solid var(--line); background: var(--surface); overflow: auto; min-height: 0; padding: 14px 16px 120px; display: grid; gap: 12px; align-content: start; }
+.gaveta[hidden] { display: none; }
+.gaveta h2 { margin: 2px 0 0; font: 600 24px/1.1 var(--display); }
+.gaveta .arte { height: 120px; border-radius: 10px; display: grid; place-items: center; font: 600 44px var(--display); color: rgba(255, 255, 255, .85); background-size: cover; background-position: center; }
+.sec { display: grid; gap: 6px; }
+.lin { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding: 5px 0; font-size: 13px; }
+.lin .mono { font-family: var(--mono); color: var(--fg); text-align: right; }
+.atrs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.atrs div { background: var(--raised); border: 1px solid var(--line); border-radius: 8px; text-align: center; padding: 5px 2px; font: 600 15px var(--mono); }
+.atrs span { display: block; font: 500 10px var(--mono); color: var(--fg-3); }
+.sk { border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; background: var(--raised); display: grid; gap: 2px; }
+.sk b { font-size: 13.5px; }
+.sk .u { font: 600 10.5px var(--mono); color: var(--teal); margin-left: 6px; }
+.sk p { margin: 0; font-size: 12.5px; color: var(--fg-2); line-height: 1.4; white-space: pre-line; }
+.texto { margin: 0; color: var(--fg-2); white-space: pre-line; line-height: 1.5; font-size: 13.5px; }
+.lembrete { border-left: 3px solid var(--lamp); padding: 4px 0 4px 10px; color: var(--fg); font-size: 13.5px; }
+.acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---- a bandeja do encontro ---- */
+.bandeja { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 6; background: var(--surface); border: 1px solid var(--lamp); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; box-shadow: var(--shadow); }
+.bandeja .itens { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.bt { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 13px; background: var(--raised); }
+.bt b { font-weight: 600; }
+.bt button { width: 24px; height: 24px; border-radius: 999px; border: 0; background: var(--hover); font-weight: 700; padding: 0; }
+.bt button:hover { background: var(--lamp); color: var(--on-lamp); }
+.dif { font-size: 13px; color: var(--fg-2); }
+.dif b.facil { color: var(--ok-ink); } .dif b.medio { color: var(--lamp-ink); } .dif b.duro { color: #f0a46e; } .dif b.mortal { color: var(--danger); }
+.chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.chk input { width: 16px; height: 16px; margin: 0; accent-color: var(--lamp); }
+
+/* ---- o painel das tags e os menus ---- */
+.pop { position: fixed; z-index: 20; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow); padding: 12px; width: min(560px, calc(100vw - 24px)); max-height: 70vh; overflow: auto; display: grid; gap: 10px; }
+.pop .grupo { display: grid; gap: 6px; }
+.pop .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.menu { position: fixed; z-index: 20; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: var(--shadow); padding: 6px; min-width: 240px; max-height: 60vh; overflow: auto; }
+.menu button { display: flex; width: 100%; align-items: center; gap: 8px; padding: 7px 9px; border: 0; background: none; border-radius: 7px; text-align: left; }
+.menu button:hover { background: var(--hover); }
+.menu .mh { padding: 4px 9px; font: 600 11px var(--mono); color: var(--fg-3); letter-spacing: .08em; text-transform: uppercase; }
+.menu small { margin-left: auto; color: var(--fg-3); font: 11.5px var(--mono); }
+
+/* ---- a janela de editar ---- */
+dialog.dl { border: 1px solid var(--line-strong); border-radius: 14px; padding: 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); width: min(900px, calc(100vw - 24px)); max-height: calc(100vh - 24px); }
+dialog.dl::backdrop { background: rgba(5, 7, 12, .62); }
+.dl-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+.dl-h h2 { margin: 0; font: 600 22px var(--display); flex: 1; }
+.dl-abas { display: flex; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.dl-abas button { border: 0; border-bottom: 3px solid transparent; background: none; padding: 9px 11px; font-weight: 600; color: var(--fg-2); }
+.dl-abas button[aria-selected="true"] { border-bottom-color: var(--lamp); color: var(--lamp-ink); }
+.dl-c { padding: 14px 16px; overflow: auto; max-height: calc(100vh - 210px); display: grid; gap: 12px; align-content: start; }
+.dl-a { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 16px 14px; border-top: 1px solid var(--line); align-items: center; }
+.dl-a .ajuda { margin-right: auto; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span { font-size: 12.5px; font-weight: 600; color: var(--fg-2); }
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.g5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.cores { display: flex; gap: 6px; flex-wrap: wrap; }
+.cores button { width: 28px; height: 28px; border-radius: 7px; border: 2px solid transparent; }
+.cores button.on { border-color: var(--fg); }
+.previa { font: 13px var(--mono); color: var(--fg-2); background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; line-height: 1.6; }
+.linhas { display: grid; gap: 6px; }
+.linha { display: grid; gap: 6px; align-items: center; }
+.linha.rec { grid-template-columns: 120px 1fr 110px 30px; }
+.linha.sq { grid-template-columns: 1fr 80px 80px 130px 30px; }
+.nos { display: grid; gap: 8px; }
+.arvb { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; }
+.arvb .nosl { display: flex; gap: 5px; flex-wrap: wrap; }
+.no { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 9px; font-size: 12.5px; background: var(--raised); }
+.no.al { border-color: var(--teal); color: var(--teal); }
+.no.pri { border-color: var(--lamp); color: var(--lamp-ink); background: var(--lamp-soft); }
+.no b { font: 600 11px var(--mono); }
+.aviso { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; color: var(--fg-2); font-size: 13px; background: var(--raised); }
+.aviso.ruim { border-color: #8a4a3a; color: var(--fg); }
+
+.toasts { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 30; display: grid; gap: 8px; justify-items: center; pointer-events: none; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; background: #0b0e14; color: #eef0f5; border: 1px solid #333c52; border-radius: 10px; padding: 9px 12px; box-shadow: var(--shadow); max-width: min(560px, calc(100vw - 24px)); font-size: 13.5px; }
+.toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 2px 4px; }
+
+@media (max-width: 900px) {
+  .corpo { grid-template-columns: 1fr; }
+  .lista { position: fixed; left: 0; top: 50px; bottom: 0; z-index: 8; box-shadow: var(--shadow); }
+  .gaveta { position: fixed; right: 0; top: 50px; bottom: 0; z-index: 8; width: min(380px, 100vw); box-shadow: var(--shadow); }
+  .linha.rec, .linha.sq { grid-template-columns: 1fr 1fr; }
+  .g5 { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <span class="brand">Bestiário</span>
+    <button type="button" class="ib leve" id="btLista" title="Mostrar ou esconder a lista de nomes" aria-label="Mostrar ou esconder a lista de nomes" aria-pressed="true">☰</button>
+    <input class="in busca" id="busca" type="search" placeholder="Buscar inimigo…" autocomplete="off" aria-label="Buscar inimigo pelo nome, pelas tags ou pelo lembrete">
+    <button type="button" class="btn sm" id="btTags" aria-haspopup="true">Tags ▾</button>
+    <span class="grow"></span>
+    <span class="salvo" id="salvo" aria-live="polite"></span>
+    <button type="button" class="btn sm" id="btDesfazer" disabled title="Desfazer (Ctrl+Z)">Desfazer</button>
+    <button type="button" class="btn sm" id="btEncontros" aria-haspopup="true">Encontros ▾</button>
+    <button type="button" class="btn sm pri" id="btNovo">+ Inimigo</button>
+  </header>
+  <div class="tagsel" id="tagsel"></div>
+  <div class="corpo">
+    <nav class="lista" id="lista" aria-label="Os inimigos, por nome"></nav>
+    <main class="meio" id="meio" aria-label="As cartas dos inimigos"></main>
+    <aside class="gaveta" id="gaveta" hidden aria-label="O inimigo escolhido"></aside>
+  </div>
+  <section class="bandeja" id="bandeja" hidden aria-label="O encontro"></section>
+</div>
+<input type="file" id="arquivo" accept="image/png,image/jpeg,image/webp" hidden>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<dialog class="dl" id="dlg"></dialog>
+<script src="../tc/ponte.js?v=18"></script>
+<script src="../tc/rules.js?v=24"></script>
+<script src="../tc/dice.js?v=3"></script>
+<script src="../tc/bestiario.js?v=1"></script>
+<script src="bestiario.js?v=1"></script>
+</body>
+</html>
