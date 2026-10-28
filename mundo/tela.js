@@ -404,7 +404,8 @@
       else { clearTimeout(tAssentar); tAssentar = setTimeout(() => aplicarVista(true), 140); }
     }
     if (zTxt) zTxt.textContent = (V.z < 0.1 ? num(V.z * 100, 1) : Math.round(V.z * 100)) + '%';
-    if (hexDados && V.z === zAplicado) pintarHexVista();         // (no meio do zoom, o canvas escala como imagem)
+    // (no meio do zoom, o canvas escala como imagem; lote 24: no meio do arrasto também — repinta quando a mão para)
+    if (hexDados && V.z === zAplicado) { if (mundoEl.classList.contains('movendo')) hexDepois = true; else pintarHexVista(); }
   }
   function aplicarEscala() {
     clearTimeout(tAssentar); tAssentar = 0;
@@ -475,7 +476,7 @@
   }
   function soltarMovendo() {
     clearTimeout(tMovendo);
-    tMovendo = setTimeout(() => { if (!g && !pinca && mundoEl) { mundoEl.classList.remove('movendo'); if (!tAssentar) quieto(false); } }, 180);
+    tMovendo = setTimeout(() => { if (!g && !pinca && mundoEl) { mundoEl.classList.remove('movendo'); if (!tAssentar) quieto(false); if (hexDepois) { hexDepois = false; pintarHexVista(); } } }, 180);
   }
   // animações em pausa enquanto a pessoa mexe no mapa: o quadro sai só com o que ela está fazendo
   function quieto(sim) { if (svg) svg.classList.toggle('quieto', !!sim); }
@@ -802,11 +803,11 @@
      um ganha o desenho do terreno — as árvores da floresta, os picos da montanha, as fileiras da lavoura… —, variado
      de um hexágono para o outro (a semente é o lugar dele: o mesmo hexágono sai sempre igual). Não são carimbos: não
      contam como objetos. Refeito só quando o terreno, a grade ou o tamanho do mapa mudam. */
-  let hexCv = null, hexCtx = null, hexDados = null, hexFeito = null, hexVersao = 0;
+  let hexCv = null, hexCtx = null, hexDados = null, hexFeito = null, hexVersao = 0, hexDepois = false;
   // O desenho dos hexágonos é feito na resolução da tela (como o resto do mapa fica nítido em qualquer zoom): o
   // canvas cobre só a parte à vista do terreno pintado, com uma margem, e é refeito quando o zoom para ou quando a
   // vista sai do que já foi desenhado. Um teto de pixels guarda a memória (o celular de tela muito densa conta 2).
-  const MAX_PX_HEX = 12e6;
+  const MAX_PX_HEX = 6e6;          // (lote 24: era 12 milhões — pesado demais para o aparelho dos jogadores)
   const dprHex = () => Math.min(2, Math.max(1, window.devicePixelRatio || 1));
   function garantirHexCanvas() {
     if (!hexCv) {
@@ -821,6 +822,12 @@
   const FILTRO_OK = typeof CanvasRenderingContext2D !== 'undefined' && 'filter' in CanvasRenderingContext2D.prototype;
   let mascaraCv = null;
   const texturasHex = new Map();
+  let trabalhoCv = null;
+  function trabalhoHex(w, hh) {
+    if (!trabalhoCv) trabalhoCv = document.createElement('canvas');
+    if (trabalhoCv.width !== w || trabalhoCv.height !== hh) { trabalhoCv.width = w; trabalhoCv.height = hh; }
+    return trabalhoCv;
+  }
   function mascaraHex(w, hh) {
     if (!mascaraCv) mascaraCv = document.createElement('canvas');
     if (mascaraCv.width !== w || mascaraCv.height !== hh) { mascaraCv.width = w; mascaraCv.height = hh; }
@@ -869,82 +876,159 @@
     hexCv.dataset.ters = lista.map(x => x.t.id + ':' + x.hs.length).join(',');
     hexCv.dataset.des = hexDados.des ? '1' : '0';
   }
+  /* (lote 24) O desenho dos hexágonos, mais leve:
+     · numa escala "de degrau" (de √2 em √2) e, quando cabe (e sem os desenhos de cada hexágono), cobrindo todo o terreno
+       pintado — dar zoom dentro do mesmo degrau ou arrastar o mapa não repinta nada (o canvas acompanha o mapa);
+     · a máscara de cada terreno numa resolução menor (o desfoque da borda macia era o que mais pesava) e a textura num
+       canvas de trabalho, só no retângulo em que aquele terreno aparece;
+     · um desenho grande é feito em partes, alguns milissegundos por quadro, num canvas fora da tela: o mapa continua
+       respondendo, e o desenho novo entra inteiro quando fica pronto (o de antes fica à vista até lá). */
+  let hexTrabalho = 0, hexPedido = null;
+  const HEX_GRANDE = 2500;                 // hexágonos à vista a partir dos quais o desenho é feito em partes
   function pintarHexVista() {
     const d = hexDados;
     if (!d || !hexCv || hexCv.hidden || !palco) return;
-    const z = zAplicado || V.z, t = tamanho();
-    if (!t.w || !t.h || !(z > 0)) return;
+    const zv = zAplicado || V.z, t = tamanho();
+    if (!t.w || !t.h || !(zv > 0)) return;
+    const z = Math.pow(2, Math.ceil(Math.log2(zv) * 2 - 1e-9) / 2);
     const [bx0, by0, bx1, by1] = d.caixa;
     // a parte à vista do terreno pintado (nada à vista: o que já está desenhado fica como está)
     const vx0 = Math.max(bx0, -V.x / V.z), vy0 = Math.max(by0, -V.y / V.z), vx1 = Math.min(bx1, (t.w - V.x) / V.z), vy1 = Math.min(by1, (t.h - V.y) / V.z);
     if (!(vx1 > vx0 && vy1 > vy0)) return;
-    const dpr = dprHex(), f = hexFeito;
-    if (f && f.n === d.n && f.z === z && f.dpr === dpr && vx0 >= f.x0 - 1e-6 && vy0 >= f.y0 - 1e-6 && vx1 <= f.x1 + 1e-6 && vy1 <= f.y1 + 1e-6) return;
-    const mw = (t.w / z) * 0.25, mh = (t.h / z) * 0.25;
-    const x0 = Math.max(bx0, vx0 - mw), y0 = Math.max(by0, vy0 - mh), x1 = Math.min(bx1, vx1 + mw), y1 = Math.min(by1, vy1 + mh);
+    const dpr = dprHex(), cobre = f => f && f.n === d.n && f.z === z && f.dpr === dpr && vx0 >= f.x0 - 1e-6 && vy0 >= f.y0 - 1e-6 && vx1 <= f.x1 + 1e-6 && vy1 <= f.y1 + 1e-6;
+    if (cobre(hexFeito) || cobre(hexPedido)) return;
+    const comDesenhos = d.des && d.m.grade.tam * z >= 12;          // (de perto, cada hexágono ganha o seu desenho)
+    const tudo = !comDesenhos && (bx1 - bx0) * (by1 - by0) * (z * dpr) * (z * dpr) <= MAX_PX_HEX;
+    const mw = (t.w / zv) * 0.4, mh = (t.h / zv) * 0.4;
+    const x0 = tudo ? bx0 : Math.max(bx0, vx0 - mw), y0 = tudo ? by0 : Math.max(by0, vy0 - mh), x1 = tudo ? bx1 : Math.min(bx1, vx1 + mw), y1 = tudo ? by1 : Math.min(by1, vy1 + mh);
     let k = z * dpr;
     if ((x1 - x0) * (y1 - y0) * k * k > MAX_PX_HEX) k = Math.sqrt(MAX_PX_HEX / ((x1 - x0) * (y1 - y0)));
     const w = Math.max(1, Math.ceil((x1 - x0) * k)), hh = Math.max(1, Math.ceil((y1 - y0) * k));
-    if (hexCv.width !== w || hexCv.height !== hh) { hexCv.width = w; hexCv.height = hh; }
-    const st = hexCv.style;
-    st.left = x0 + 'px'; st.top = y0 + 'px'; st.width = (w / k) + 'px'; st.height = (hh / k) + 'px';
-    const c = hexCtx, R = d.R, perto = p => p.x > x0 - R && p.x < x1 + R && p.y > y0 - R && p.y < y1 + R;
+    const R = d.R, perto = p => p.x > x0 - R && p.x < x1 + R && p.y > y0 - R && p.y < y1 + R;
+    let nVista = 0; for (const { hs } of d.lista) for (const p of hs) if (perto(p)) nVista++;
+    const grande = nVista > (comDesenhos ? HEX_GRANDE / 3 : HEX_GRANDE);
+    const job = ++hexTrabalho, feito = { n: d.n, z, dpr, x0, y0, x1, y1 };
+    hexPedido = grande ? feito : null;
+    // o canvas em que se desenha: o da tela (desenho pequeno, de uma vez) ou um fora da tela (o grande, em partes)
+    const alvo = grande ? foraHex(w, hh) : hexCv;
+    const mostrar = () => {
+      if (hexCv.width !== w || hexCv.height !== hh) { hexCv.width = w; hexCv.height = hh; }
+      const st = hexCv.style;
+      st.left = x0 + 'px'; st.top = y0 + 'px'; st.width = (w / k) + 'px'; st.height = (hh / k) + 'px';
+    };
+    if (!grande) mostrar();
+    const passos = passosHex(d, alvo.getContext('2d'), { x0, y0, k, w, hh, R, perto, comDesenhos });
+    const fim = () => {
+      if (grande) { mostrar(); hexCtx.setTransform(1, 0, 0, 1, 0, 0); hexCtx.globalCompositeOperation = 'source-over'; hexCtx.globalAlpha = 1; hexCtx.clearRect(0, 0, w, hh); hexCtx.drawImage(alvo, 0, 0); }
+      hexFeito = feito; hexPedido = null;
+      hexCv.dataset.x0 = String(x0); hexCv.dataset.y0 = String(y0); hexCv.dataset.k = String(k);
+      hexCv.dataset.liso = comDesenhos ? '1' : '0';                     // (lote 8) de perto, a tinta sem os desenhos da textura
+    };
+    if (!grande) { while (!passos.next().done) { /* tudo de uma vez */ } fim(); return; }
+    const tique = () => {
+      if (job !== hexTrabalho || hexDados !== d) return;             // outro desenho foi pedido: este para
+      const t0 = performance.now();
+      while (performance.now() - t0 < 12) { if (passos.next().done) { fim(); return; } }
+      requestAnimationFrame(tique);
+    };
+    requestAnimationFrame(tique);
+  }
+  let foraCv = null;
+  function foraHex(w, hh) {
+    if (!foraCv) foraCv = document.createElement('canvas');
+    if (foraCv.width !== w || foraCv.height !== hh) { foraCv.width = w; foraCv.height = hh; }
+    return foraCv;
+  }
+  // os passos do desenho (um gerador: o desenho pequeno roda todos de uma vez; o grande, alguns por quadro)
+  function* passosHex(d, c, o) {
+    const { x0, y0, k, w, hh, R, perto, comDesenhos } = o;
     c.setTransform(1, 0, 0, 1, 0, 0);
-    c.globalAlpha = 1;
+    c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     c.clearRect(0, 0, w, hh);
-    // (lote 7) a tinta: para cada tipo de terreno, os hexágonos dele numa máscara bem maior e desfocada, cheia com a
-    // textura do terreno — a do Pincel livre: onde dois terrenos se encontram, um se mistura com o outro (a borda macia),
-    // sem fresta. Depois, a volta de toda a área pintada recorta a tinta (com a borda macia dela, mais curta): por fora,
-    // a tinta não avança sobre os hexágonos sem pintura.
-    const mc = mascaraHex(w, hh), mx = mc.getContext('2d');
+    // (lote 7) a tinta: para cada tipo de terreno, os hexágonos dele numa máscara maior e desfocada, cheia com a textura
+    // do terreno — onde dois terrenos se encontram, um se mistura com o outro (a borda macia), sem fresta. Depois, a volta
+    // de toda a área pintada recorta a tinta (com a borda macia dela, mais curta): por fora, a tinta não avança.
     const macio = FILTRO_OK ? limitar(d.m.grade.tam * k * 0.3, 0, 14) : 0, comBorda = macio >= 0.75;
-    const limpar = () => { mx.setTransform(1, 0, 0, 1, 0, 0); mx.globalCompositeOperation = 'source-over'; mx.filter = 'none'; mx.globalAlpha = 1; mx.clearRect(0, 0, w, hh); mx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k); };
+    const sm = comBorda ? limitar(1.25 / macio, 0.12, 1) : 1, ks = k * sm;
+    const mw2 = Math.max(1, Math.ceil(w * sm)), mh2 = Math.max(1, Math.ceil(hh * sm));
+    const mc = mascaraHex(mw2, mh2), mx = mc.getContext('2d'), tc = trabalhoHex(w, hh), tx = tc.getContext('2d');
+    const limpar = () => { mx.setTransform(1, 0, 0, 1, 0, 0); mx.globalCompositeOperation = 'source-over'; mx.filter = 'none'; mx.globalAlpha = 1; mx.clearRect(0, 0, mw2, mh2); mx.setTransform(ks, 0, 0, ks, -x0 * ks, -y0 * ks); };
+    // enche a máscara com os hexágonos à vista (a borda alargada e o desfoque em pixels da resolução cheia);
+    // devolve a caixa deles (unidades do mapa) ou null
     const encher = (lista, alarga, desfoque) => {
-      if (desfoque >= 0.5) mx.filter = 'blur(' + desfoque.toFixed(2) + 'px)';
-      mx.fillStyle = '#fff'; mx.strokeStyle = '#fff'; mx.lineJoin = 'round'; mx.lineWidth = (alarga * 2) / k;
+      if (desfoque >= 0.5) mx.filter = 'blur(' + Math.max(0.3, desfoque * sm).toFixed(2) + 'px)';
+      mx.fillStyle = '#fff'; mx.strokeStyle = '#fff'; mx.lineJoin = 'round'; mx.lineCap = 'round'; mx.lineWidth = (alarga * 2) / k;
       mx.beginPath();
-      let algum = false;
-      for (const p of lista) if (perto(p)) { hexNoCaminho(mx, d.m, p.q, p.r); algum = true; }
+      let bx = Infinity, by = Infinity, bX = -Infinity, bY = -Infinity;
+      for (const p of lista) if (perto(p)) { hexNoCaminho(mx, d.m, p.q, p.r, p.x, p.y); if (p.x < bx) bx = p.x; if (p.y < by) by = p.y; if (p.x > bX) bX = p.x; if (p.y > bY) bY = p.y; }
+      const algum = bx !== Infinity;
       if (algum) { mx.fill(); if (alarga > 0) mx.stroke(); }
       mx.filter = 'none';
-      return algum;
+      if (!algum) return null;
+      const folga = R + (alarga + desfoque * 2 + 2) / k;
+      return [bx - folga, by - folga, bX + folga, bY + folga];
     };
+    // a caixa (unidades do mapa) em pixels do canvas, presa a ele
+    const emPx = cx => { const px0 = limitar(Math.floor((cx[0] - x0) * k), 0, w), py0 = limitar(Math.floor((cx[1] - y0) * k), 0, hh), px1 = limitar(Math.ceil((cx[2] - x0) * k), 0, w), py1 = limitar(Math.ceil((cx[3] - y0) * k), 0, hh); return px1 > px0 && py1 > py0 ? [px0, py0, px1 - px0, py1 - py0] : null; };
     let algumTer = false;
-    const comDesenhos = d.des && d.m.grade.tam * z >= 12;          // (de perto, cada hexágono ganha o seu desenho)
     for (const { t, hs } of d.lista) {
+      if (!hs.some(perto)) continue;
       limpar();
-      if (!encher(hs, comBorda ? macio * 1.6 : 0, comBorda ? macio : 0)) continue;
+      const cx = encher(hs, comBorda ? macio * 1.6 : 0, comBorda ? macio : 0), r = cx && emPx(cx);
+      if (!r) continue;
       algumTer = true;
-      mx.globalCompositeOperation = 'source-in';
-      mx.fillStyle = texturaHex(mx, t, k, comDesenhos);
-      mx.fillRect(x0 - R, y0 - R, x1 - x0 + 2 * R, y1 - y0 + 2 * R);
+      const [px, py, pw, ph] = r;
+      tx.setTransform(1, 0, 0, 1, 0, 0); tx.globalCompositeOperation = 'source-over'; tx.globalAlpha = 1; tx.imageSmoothingEnabled = true;
+      tx.clearRect(px, py, pw, ph);
+      tx.drawImage(mc, px * sm, py * sm, pw * sm, ph * sm, px, py, pw, ph);
+      tx.globalCompositeOperation = 'source-in';
+      tx.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+      tx.fillStyle = texturaHex(tx, t, k, comDesenhos);
+      tx.fillRect(cx[0], cx[1], cx[2] - cx[0], cx[3] - cx[1]);
+      tx.setTransform(1, 0, 0, 1, 0, 0); tx.globalCompositeOperation = 'source-over';
       c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1;
-      c.drawImage(mc, 0, 0);
+      c.drawImage(tc, px, py, pw, ph, px, py, pw, ph);
+      yield;
     }
     if (algumTer && comBorda) {
       limpar();
       encher(d.lista.flatMap(x => x.hs), 0, macio * 0.55);
-      c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'destination-in';
-      c.drawImage(mc, 0, 0);
+      c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'destination-in'; c.imageSmoothingEnabled = true;
+      c.drawImage(mc, 0, 0, mw2, mh2, 0, 0, mw2 / sm, mh2 / sm);
       c.globalCompositeOperation = 'source-over';
+      yield;
     }
-    c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
     // o desenho de cada um (de longe, com os hexágonos miúdos na tela, fica só a textura)
     if (comDesenhos) {
+      let n = 0;
       for (const { t, semT, hs } of d.lista) for (const p of hs) {
-        if (perto(p)) desenhoDoHex(c, d.m, p, p.x, p.y, d.u, t.tex || 'liso', t.cor, ((p.q * 73856093) ^ (p.r * 19349663) ^ semT) >>> 0);
+        if (!perto(p)) continue;
+        c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+        desenhoDoHex(c, d.m, p, p.x, p.y, d.u, t.tex || 'liso', t.cor, ((p.q * 73856093) ^ (p.r * 19349663) ^ semT) >>> 0);
+        if (++n % 150 === 0) yield;
       }
     }
     c.globalAlpha = 1;
-    hexFeito = { n: d.n, z, dpr, x0, y0, x1, y1 };
-    hexCv.dataset.x0 = String(x0); hexCv.dataset.y0 = String(y0); hexCv.dataset.k = String(k);
-    hexCv.dataset.liso = comDesenhos ? '1' : '0';                     // (lote 8) de perto, a tinta sem os desenhos da textura
   }
-  function hexNoCaminho(c, m, q, r) {
-    const cs = N().cantosHex(m, q, r);
-    c.moveTo(cs[0][0], cs[0][1]);
-    for (let i = 1; i < cs.length; i++) c.lineTo(cs[i][0], cs[i][1]);
-    c.closePath();
+  /* (lote 24) O hexágono no caminho: os cantos saem do centro já guardado (p.x, p.y) e de seis deslocamentos iguais para
+     todos (feitos uma vez por grade), e o caminho volta ao primeiro canto com uma linha — sem o closePath, que num caminho
+     de milhares de hexágonos deixava o navegador muito lento. */
+  let cantosGrade = null, cantosChave = '';
+  function deslocamentosHex(m) {
+    const g = m.grade || {}, ch = g.tam + '|' + g.orient;
+    if (ch !== cantosChave) {
+      const s0 = (Number(g.tam) || 0) / Math.sqrt(3), a0 = g.orient === 'deitado' ? 0 : -30;
+      cantosGrade = []; for (let i = 0; i < 6; i++) { const a = (a0 + 60 * i) * Math.PI / 180; cantosGrade.push([s0 * Math.cos(a), s0 * Math.sin(a)]); }
+      cantosChave = ch;
+    }
+    return cantosGrade;
+  }
+  function hexNoCaminho(c, m, q, r, cx, cy) {
+    if (cx == null) { const cs = N().cantosHex(m, q, r); c.moveTo(cs[0][0], cs[0][1]); for (let i = 1; i < cs.length; i++) c.lineTo(cs[i][0], cs[i][1]); c.lineTo(cs[0][0], cs[0][1]); return; }
+    const d = deslocamentosHex(m);
+    c.moveTo(cx + d[0][0], cy + d[0][1]);
+    for (let i = 1; i < 6; i++) c.lineTo(cx + d[i][0], cy + d[i][1]);
+    c.lineTo(cx + d[0][0], cy + d[0][1]);
   }
   /* A composição do terreno num hexágono (centro cx, cy; u = o raio de dentro dele). Tudo cabe num círculo de 0,8 u
      (a lavoura, que vai de borda a borda, fica presa ao hexágono). */

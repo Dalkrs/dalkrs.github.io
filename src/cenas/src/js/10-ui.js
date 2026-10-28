@@ -1104,12 +1104,32 @@ const UI = (() => {
   const campoDeTexto = n => !!n && (n.tagName === 'TEXTAREA' || (n.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|range|color|file)$/i.test(n.type || '')));
   document.addEventListener('input', e => { if (campoDeTexto(e.target)) e.target.__digitado = true; }, true);
   document.addEventListener('change', e => { if (!trocandoPainel && e.target) e.target.__digitado = false; }, true);
+  /* (lote 24) Digitando num campo do painel (o nome, o valor de uma barra…), o painel não é redesenhado: espera o campo
+     ser confirmado (Enter, Tab, clicar fora). Com jogadores na mesa e o combate andando, o painel se redesenha o tempo
+     todo — e o campo novo, com o texto copiado do velho, não avisava a mudança ao confirmar: o valor voltava ao antigo. */
+  let painelAdiado = false, ultimaChavePainel = '';
+  const digitandoNoPainel = () => { const a = document.activeElement; return !!a && el.side.contains(a) && campoDeTexto(a) && !!a.__digitado; };
+  // (o mesmo para as janelas que acompanham a cena: condições, bolsa, ataque)
+  let janelaAdiada = false;
+  // (na janela, basta o cursor estar num campo dela: ela é curta, e redesenhar com alguém prestes a digitar perdia o que vinha)
+  const digitandoNaJanela = () => { const a = document.activeElement; return !!modalEl && !!a && modalEl.contains(a) && campoDeTexto(a); };
+  const depoisDoCampo = () => {
+    if (painelAdiado) { painelAdiado = false; setTimeout(() => { if (!digitandoNoPainel()) renderSide(); else painelAdiado = true; }, 0); }
+    if (janelaAdiada) { janelaAdiada = false; setTimeout(() => { if (!modalEl || !modalLive) return; if (!digitandoNaJanela()) modalLive(); else janelaAdiada = true; }, 0); }
+  };
+  document.addEventListener('change', depoisDoCampo);
+  document.addEventListener('focusout', e => { if ((painelAdiado && el.side.contains(e.target)) || (janelaAdiada && modalEl && modalEl.contains(e.target))) depoisDoCampo(); });
   function renderSide() {
     el.side.hidden = !App.sideOpen;
     if (!App.sideOpen) { trocandoPainel = true; try { el.side.replaceChildren(); } finally { trocandoPainel = false; } return; }
+    // (o que o painel mostra — a aba e o que está escolhido — mudou: aí redesenha mesmo assim)
+    const chavePainel = App.tab + '|' + App.sideOpen + '|' + App.sel.map(x => x.c + ':' + x.id).join(',');
+    const mesmoPainel = chavePainel === ultimaChavePainel;
+    if (digitandoNoPainel() && mesmoPainel) { painelAdiado = true; return; }
+    ultimaChavePainel = chavePainel;
     const a = document.activeElement;
     const fid = a && a.id && el.side.contains(a) ? a.id : null;
-    const pendente = fid && campoDeTexto(a) && a.__digitado ? a.value : null;     // digitado e ainda não confirmado
+    const pendente = mesmoPainel && fid && campoDeTexto(a) && a.__digitado ? a.value : null;     // digitado e ainda não confirmado (no mesmo painel)
     let ss = null, se = null;
     try { if (fid && a.type !== 'number' && a.setSelectionRange) { ss = a.selectionStart; se = a.selectionEnd; } } catch (e) { ss = null; }
     const old = el.side.querySelector('.tab-body'), scroll = old ? old.scrollTop : 0, oldTab = old ? old.dataset.tab : null;
@@ -1574,7 +1594,7 @@ const UI = (() => {
       if (!full && !b.on) return;
       const key = t.id + ':' + i, open = full && !!barOpen[key], m = Math.round(b.m);
       const xAberta = barX(b) > 0 || !!barXOpen[key];
-      const setBars = p => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, p) : x)) });
+      const setBars = p => { const k = Store.get('tokens', t.id) || t; Store.upd('tokens', t.id, { bars: k.bars.map((x, j) => (j === i ? Object.assign({}, x, p) : x)) }); };
       const val = h('input', {
         id: `tk-b${i}-v`, class: 'in bar-v' + (b.v < 0 ? ' neg' : ''), type: 'text', inputmode: 'decimal', value: b.v, autocomplete: 'off',
         'aria-label': b.n + ' atual', title: 'Digite um valor, ou +5 e -8 para somar e subtrair (-10% tira 10% do máximo)' + (barLo(b) > 0 ? `. Esta barra pode ficar negativa até −${fmt(barLo(b))}.` : ''),
@@ -1984,7 +2004,7 @@ const UI = (() => {
         imageField(t),
         toggle('tk-showname', t.showName, v => U({ showName: v }), 'Jogadores veem o nome')),
       sec('s-bars', 'Barras', true, barsEditor(t, true),
-        h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche todas as barras em uso deste token (Vida, SP…). Dá para desfazer.' }),
+        h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche as barras em uso deste token (Vida, SP…). As barras especiais da ficha (Ki, Fúria…) ficam como estão: elas voltam pelo “Restaurar energias”, na aba Turnos. Dá para desfazer.' }),
           Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque([t]), { icon: 'shield', id: 'tk-ataque', title: 'Um ataque contra este token: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null),
         field('Quem não é dono vê', seg('tk-barvis', t.barVis, [['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => U({ barVis: v })), 'stack')),
       menteBox(t),
@@ -3594,7 +3614,7 @@ const UI = (() => {
     try { if (Vision.isDirty()) Vision.update(sc, App.viewer); }   // a faixa do jogador depende do que ele enxerga
     catch (err) { /* a visão fica pendente; quem avisa do problema é o desenho do mapa */ }
     renderTop(); renderBanner(); renderRail(); renderOpts(); renderSide(); renderHud(); renderVeil(); turnBanner(); status();
-    if (modalEl && modalLive) modalLive();
+    if (modalEl && modalLive) { if (digitandoNaJanela()) janelaAdiada = true; else modalLive(); }      // (lote 24: digitando, espera)
     Luta.refresh();
     document.title = 'Cenas · Tiny Cats';
   }

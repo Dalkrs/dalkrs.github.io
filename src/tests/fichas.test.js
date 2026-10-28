@@ -311,15 +311,15 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   const pdId = await S0(() => { const p = S.personagens.find(x => x.id === 'pc_dain'); return p.poderes[p.poderes.length - 1].id; });
   await P.locator('[data-pdnome="' + pdId + '"]').fill('Fé'); await P.locator('[data-pdmax="' + pdId + '"]').fill('3'); await P.locator('[data-pdmax="' + pdId + '"]').press('Tab'); await w(300);
   const pdDe = () => S0(() => JSON.parse(JSON.stringify(S.personagens.find(x => x.id === 'pc_dain').poderes.slice(-1)[0])));
-  ok(await P.locator('[data-pdrec="' + pdId + '"]').inputValue() === 'longo' && !('rec' in await pdDe()) && await P.locator('[data-pdqc="' + pdId + '"]').count() === 0, 'a barra nova enche no descanso longo (o padrão, que nem fica anotado)');
+  ok(await P.locator('[data-pdrec="' + pdId + '"]').inputValue() === 'manual' && !('rec' in await pdDe()) && await P.locator('[data-pdqc="' + pdId + '"]').count() === 0, 'a barra nova é "Só à mão" (lote 24: o padrão, que nem fica anotado — o descanso não mexe nela)');
   await P.locator('[data-pdrec="' + pdId + '"]').selectOption('quantia'); await w(300);
   ok(JSON.stringify(await pdDe()).includes('"rec":"quantia","qc":1,"ql":2') && await P.evaluate(id => document.activeElement && document.activeElement.dataset.pdqc === id, pdId), '"Recupera uma quantia": aparecem o curto (+1) e o longo (+2), com o cursor no curto');
   await P.locator('[data-pdqc="' + pdId + '"]').fill('2'); await P.locator('[data-pdql="' + pdId + '"]').fill('5'); await P.locator('[data-pdql="' + pdId + '"]').press('Tab'); await w(300);
   ok((await pdDe()).qc === 2 && (await pdDe()).ql === 5, 'as quantias ficam guardadas (+2 no curto, +5 no longo)');
-  await P.locator('[data-pdrec="' + pdId + '"]').selectOption('manual'); await w(300);
-  ok((await pdDe()).rec === 'manual' && await P.locator('[data-pdqc="' + pdId + '"]').count() === 0, '"Só à mão"');
   await P.locator('[data-pdrec="' + pdId + '"]').selectOption('longo'); await w(300);
-  ok(!('rec' in await pdDe()), 'de volta ao padrão, a anotação sai');
+  ok((await pdDe()).rec === 'longo' && await P.locator('[data-pdqc="' + pdId + '"]').count() === 0, '"Enche no descanso longo" fica anotado');
+  await P.locator('[data-pdrec="' + pdId + '"]').selectOption('manual'); await w(300);
+  ok(!('rec' in await pdDe()), 'de volta ao padrão ("Só à mão"), a anotação sai');
 
   // ---------- (lote 6) a fadiga: a pilha de 5 a 0 ----------
   ok(await P.locator('#fadiga').count() === 0 && await P.locator('[data-fadusar]').count() === 1, 'sem mesa (a ficha não é de jogador), a fadiga começa desligada, com "+ Fadiga" nas barras especiais');
