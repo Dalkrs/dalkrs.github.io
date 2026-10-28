@@ -186,6 +186,9 @@ const ICONS = {
   pen: 'M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19zM14.5 6.5l3 3',
   line: 'M6.2 17.8L17.8 6.2M5 19m-1.7 0a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0-3.4 0M19 5m-1.7 0a1.7 1.7 0 1 0 3.4 0a1.7 1.7 0 1 0-3.4 0',
   rect: 'M4 6h16v12H4z',
+  // (lote 28) o sino dos sons dos avisos (ligado e desligado)
+  bell: 'M6 16.500V11a6 6 0 0 1 12 0v5.500l1.500 2h-15zM10 20.500a2 2 0 0 0 4 0',
+  bellOff: 'M6 16.500V11a6 6 0 0 1 12 0v5.500l1.500 2h-15zM10 20.500a2 2 0 0 0 4 0M3.500 3.500l17 17',
   ell: 'M12 19c4.4 0 8-3.1 8-7s-3.6-7-8-7-8 3.1-8 7 3.6 7 8 7z',
   poly: 'M12 3l8.5 6.2-3.2 10H6.7l-3.2-10z',
   text: 'M5 7V4h14v3M12 4v16M9 20h6',
@@ -411,6 +414,8 @@ const ICONS = {
   c_clone: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3.500 19.500c0-3.200 2.400-5.500 5.500-5.500s5.500 2.300 5.500 5.500M15 5.300a3 3 0 0 1 0 5.400M17 14.300c2.100.7 3.500 2.600 3.500 5.200',
   // (lote 9) o duplicado (a figura e o gêmeo dela, dos dois lados de um espelho)
   c_duplicado: 'M7 10.500a2.700 2.700 0 1 0 0-5.400 2.700 2.700 0 0 0 0 5.400zM2.500 19.500c0-2.900 2-5 4.500-5s4.500 2.100 4.500 5M17 10.500a2.700 2.700 0 1 0 0-5.400 2.700 2.700 0 0 0 0 5.400zM12.500 19.500c0-2.900 2-5 4.500-5s4.500 2.100 4.500 5M12 3v2.200M12 8v2.200M12 13v2.200',
+  // (lote 28) Imbuído de Mana: a lâmina e a gota de mana
+  c_imbuidoMana: 'M4.500 19.500L15 9M15 9l1-4.500 4.500-1-1 4.500zM6.300 14.700l3 3M18.500 12.500c1.300 1.700 2 2.700 2 3.600a2 2 0 0 1-4 0c0-.900.700-1.900 2-3.600z',
   real: 'M4 17.500L3 7.500l5 4 4-6.500 4 6.500 5-4-1 10zM4.500 20.500h15',     // (lote 8) a coroa do real de um Clone (só o mestre vê)
   // os números do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica, Esquiva)
   st_for: 'M14.500 4H20v5.500L10 19.500 4.500 14zM6.500 16L3.500 19l1.500 1.500 3-3M8 12.500l3.500 3.500',
@@ -620,6 +625,8 @@ const CONDS = [
   { id: 'qidesvio', n: 'Desvio de Qi', c: '#d4643a', i: 'c_qidesvio', g: 'mente' },
   { id: 'clone', n: 'Clone', c: '#7f8fd6', i: 'c_clone', g: 'mente' },
   { id: 'duplicado', n: 'Duplicado', c: '#a0447a', i: 'c_duplicado', g: 'mente' },
+  // (lote 28) o ataque que gasta mana e rola com a Canalização Mágica (a janela pergunta o custo, a barra e o plano B)
+  { id: 'imbuidoMana', n: 'Imbuído de Mana', c: '#3f7fe0', i: 'c_imbuidoMana', g: 'mente' },
   { id: 'cego', n: 'Cego', c: '#5a6072', i: 'c_cego', g: 'corpo' },
   { id: 'surdo', n: 'Surdo', c: '#667085', i: 'c_surdo', g: 'corpo' },
   { id: 'fraco', n: 'Fraquejado', c: '#9a8266', i: 'c_fraco', g: 'corpo' },
@@ -737,7 +744,7 @@ const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
    nelas. */
 // (lote 19) os membros perdidos das raças: a janela pergunta o lado (e a ficha marca a parte)
 const COND_LADO = new Set(CONDS.filter(c => c.lado).map(c => c.id));
-const COND_JANELA = new Set(['ferida', 'clone', 'duplicado', ...COND_LADO]);
+const COND_JANELA = new Set(['ferida', 'clone', 'duplicado', 'imbuidoMana', ...COND_LADO]);
 
 // (fl: a luz tremula, como chama; a mágica, não)
 const LIGHT_PRESETS = [
@@ -929,7 +936,8 @@ function normalizeScene(sc) {
     const gera = t.prop && t.gera && typeof t.gera === 'object' ? t.gera : null, palavra = v => typeof v === 'string' && /^[a-z]{1,12}$/.test(v);
     if (gera && palavra(gera.b)) t.gera = { b: gera.b };
     // (parte 4b-3: a escada que desce — o tipo do nível de baixo, o número dele, o tamanho, o estilo e a semente)
-    else if (gera && gera.t === 'masmorra') t.gera = { t: 'masmorra', m: ['pedra', 'caverna', 'cripta', 'mina'].includes(gera.m) ? gera.m : 'pedra', n: clamp(Math.round(Number(gera.n)) || 1, 1, 99), tam: ['pequeno', 'medio', 'grande'].includes(gera.tam) ? gera.tam : 'medio', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1 };
+    // (lote 28: os oito estilos novos e a largura dos corredores, lc)
+    else if (gera && gera.t === 'masmorra') t.gera = Object.assign({ t: 'masmorra', m: ['pedra', 'caverna', 'cripta', 'mina', 'templo', 'esgoto', 'torre', 'laboratorio', 'fortaleza', 'ruinas', 'covil', 'navio'].includes(gera.m) ? gera.m : 'pedra', n: clamp(Math.round(Number(gera.n)) || 1, 1, 99), tam: ['pequeno', 'medio', 'grande'].includes(gera.tam) ? gera.tam : 'medio', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1 }, [1, 2, 3].includes(gera.lc) ? { lc: gera.lc } : null);
     // (lote 18: a entrada de gruta — onde fica a boca, o bioma de baixo, a semente e o rio de cima, até 41 pontos)
     else if (gera && gera.t === 'subsolo') {
       const nu = v => (typeof v === 'number' && isFinite(v) ? Math.round(clamp(v, -1000, 1000) * 100) / 100 : null);

@@ -56,5 +56,45 @@ const Som = (() => {
     ultimo = qual; vezes++;
     return true;
   }
-  return { tocar, ligado, get ultimo() { return ultimo; }, get vezes() { return vezes; } };
+  /* (lote 28) Os sons dos avisos da cena, só no aparelho do mestre (quem chama confere): um por tipo, curtos e
+     baixos — a zona (um sino duplo, suave), a condição (dois toques de madeira) e o urgente (três batidas, para o HP
+     abaixo de zero, a queda, a armadilha, os reforços). Valem a chave e o volume deste aparelho (o ícone do sino, no
+     alto das Cenas: um clique liga e desliga; segurar abre o volume). O mesmo tipo não toca de novo antes de um
+     segundo (vários avisos juntos fazem um som só). */
+  const AV_KEY = 'tinycats:som-avisos', AV_VOL = 'tinycats:som-avisos-vol', TIPOS_AV = ['zona', 'condicao', 'urgente'];
+  let ultimoAviso = null, vezesAviso = 0;
+  const ultimoDe = {};
+  const avisosLigados = () => { try { return localStorage.getItem(AV_KEY) !== '0'; } catch (e) { return true; } };
+  function volumeAvisos() {
+    try { const v = localStorage.getItem(AV_VOL); return v == null || v === '' || !isFinite(Number(v)) ? 70 : Math.max(0, Math.min(100, Math.round(Number(v)))); } catch (e) { return 70; }
+  }
+  function ligarAvisos(on) { try { localStorage.setItem(AV_KEY, on ? '1' : '0'); } catch (e) { /* sem armazenamento: vale até recarregar */ } }
+  function volumeDosAvisos(v) { try { localStorage.setItem(AV_VOL, String(Math.max(0, Math.min(100, Math.round(Number(v) || 0))))); } catch (e) { /* idem */ } }
+  // a batida de madeira: um triângulo que cai depressa, com o corpo uma oitava abaixo
+  function madeira(a, t0, f, vol) { tom(a, t0, f, 'triangle', vol, 0.28, 0.004); tom(a, t0, f / 2, 'sine', vol * 0.6, 0.22, 0.004); }
+  // o sino pequeno: dois parciais claros
+  function sino(a, t0, f, vol) { tom(a, t0, f, 'sine', vol, 1.1, 0.008); tom(a, t0, f * 2.76, 'sine', vol * 0.25, 0.6, 0.008); }
+  // tipo: 'zona' | 'condicao' | 'urgente'. teste: toca mesmo desligado e sem esperar (o "Ouvir" do volume) → tocou?
+  function aviso(tipo, teste) {
+    if (!TIPOS_AV.includes(tipo)) tipo = 'condicao';
+    if (!teste && !avisosLigados()) return false;
+    const vol = volumeAvisos() / 100;
+    if (!(vol > 0)) return false;
+    const agora = Date.now();
+    if (!teste && ultimoDe[tipo] && agora - ultimoDe[tipo] < 1000) return false;
+    ultimoDe[tipo] = agora;
+    ultimoAviso = tipo; vezesAviso++;
+    const a = contexto();
+    if (!a) return true;
+    try { if (a.state === 'suspended') a.resume(); } catch (e) { /* o navegador ainda não deixou tocar */ }
+    try {
+      const t0 = a.currentTime + 0.02, v = 0.5 * vol;
+      if (tipo === 'zona') { sino(a, t0, 784, v * 0.45); sino(a, t0 + 0.15, 1046, v * 0.35); }
+      else if (tipo === 'urgente') { for (let k = 0; k < 3; k++) madeira(a, t0 + k * 0.15, 880, v * 0.7); }
+      else { madeira(a, t0, 587, v * 0.6); madeira(a, t0 + 0.1, 440, v * 0.5); }
+    } catch (e) { /* sem som: o aviso escrito continua */ }
+    return true;
+  }
+  return { tocar, ligado, aviso, avisosLigados, ligarAvisos, volumeAvisos, volumeDosAvisos, get ultimo() { return ultimo; }, get vezes() { return vezes; },
+    get ultimoAviso() { return ultimoAviso; }, get vezesAviso() { return vezesAviso; } };
 })();

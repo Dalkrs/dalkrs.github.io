@@ -96,6 +96,8 @@ const UI = (() => {
   const note = text => h('p', { class: 'note', text });
 
   /* ================= Toasts, menus e janelas ================= */
+  // (lote 28) o som de um aviso da cena: só no aparelho do mestre (a chave e o volume são deste aparelho)
+  const somAviso = tipo => { if (isGM() && typeof Som !== 'undefined' && Som.aviso) Som.aviso(tipo); };
   function toast(text, o) {
     const t = h('div', { class: 'toast', data: o && o.key ? { k: o.key } : null }, h('span', { text }),
       o && o.action ? h('button', { type: 'button', class: 'toast-a', text: o.action, onclick: () => { t.remove(); o.run(); } }) : null);
@@ -106,7 +108,49 @@ const UI = (() => {
     setTimeout(() => t.remove(), o && o.long ? 12000 : o && o.action ? 6500 : 3400);
   }
 
-  function closeMenus() { if (menuEl) { menuEl.remove(); menuEl = null; menuAnchor = null; } }
+  function closeMenus() { fecharVolume(); if (menuEl) { menuEl.remove(); menuEl = null; menuAnchor = null; } }
+  /* (lote 28) O sino dos sons dos avisos, no alto das Cenas (só o mestre): um clique liga e desliga; segurar (ou o botão
+     direito) abre o volume, com "Ouvir" de cada tipo. Tudo deste aparelho. */
+  let volEl = null;
+  const foraDoVolume = e => { if (volEl && !volEl.contains(e.target) && !(e.target.closest && e.target.closest('#somAvBtn'))) fecharVolume(); };
+  function fecharVolume() { if (!volEl) return; volEl.remove(); volEl = null; document.removeEventListener('pointerdown', foraDoVolume, true); }
+  function janelaVolume(b) {
+    fecharVolume();
+    const v = Som.volumeAvisos(), rotulo = h('span', { class: 'somv-n', id: 'somv-n', text: v + '%' });
+    const range = h('input', { type: 'range', class: 'somv-r', id: 'somv-vol', min: 0, max: 100, step: 5, value: v, 'aria-label': 'Volume dos sons dos avisos',
+      oninput: e => { Som.volumeDosAvisos(e.target.value); rotulo.textContent = Som.volumeAvisos() + '%'; }, onchange: () => Som.aviso('condicao', true) });
+    const ouvir = (tipo, nome) => btn(nome, () => Som.aviso(tipo, true), { kind: 'small', id: 'somv-' + tipo, title: 'Ouvir o som de ' + nome.toLowerCase() });
+    volEl = h('div', { class: 'menu somv', id: 'somv', role: 'dialog', 'aria-label': 'Sons dos avisos' },
+      h('div', { class: 'menu-h', text: 'Sons dos avisos · só neste aparelho' }),
+      toggle('somv-on', Som.avisosLigados(), on => { Som.ligarAvisos(on); renderTop(); }, 'Tocar quando a cena avisa'),
+      h('div', { class: 'somv-l' }, icon('bell', 15), range, rotulo),
+      h('div', { class: 'somv-o' }, h('span', { class: 'somv-t', text: 'Ouvir' }), ouvir('zona', 'Zona'), ouvir('condicao', 'Condição'), ouvir('urgente', 'Urgente')),
+      h('p', { class: 'somv-d', text: 'Zona: alguém começa a vez numa zona, ou duas zonas se combinam. Condição: uma acaba ou chega ao limite. Urgente: HP abaixo de zero, queda, armadilha, reforços.' }));
+    el.layer.append(volEl);
+    const r = b.getBoundingClientRect(), w = volEl.offsetWidth;
+    volEl.style.left = clamp(r.right - w, 8, Math.max(8, window.innerWidth - w - 8)) + 'px';
+    volEl.style.top = (r.bottom + 6) + 'px';
+    document.addEventListener('pointerdown', foraDoVolume, true);
+    range.focus({ preventScroll: true });
+  }
+  function somAvisosBtn() {
+    const on = Som.avisosLigados();
+    const b = iconBtn(on ? 'bell' : 'bellOff', on ? 'Sons dos avisos: ligados (clique desliga · segure para o volume)' : 'Sons dos avisos: desligados (clique liga · segure para o volume)', null, { id: 'somAvBtn', on, cls: 'somav' });
+    let timer = 0, longo = false;
+    const cancela = () => clearTimeout(timer);
+    b.addEventListener('pointerdown', e => { if (e.button !== 0) return; longo = false; cancela(); timer = setTimeout(() => { longo = true; janelaVolume(b); }, 450); });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, cancela);
+    b.addEventListener('contextmenu', e => { e.preventDefault(); cancela(); janelaVolume(b); });
+    b.onclick = () => {
+      if (longo) { longo = false; return; }
+      const novo = !Som.avisosLigados();
+      Som.ligarAvisos(novo);
+      if (novo) Som.aviso('zona', true);
+      toast(novo ? 'Sons dos avisos ligados (só neste aparelho).' : 'Sons dos avisos desligados (só neste aparelho).', { key: 'som-av' });
+      renderTop();
+    };
+    return b;
+  }
   function menu(x, y, items, o) {
     closeMenus();
     menuEl = h('div', { class: 'menu', role: 'menu' }, items.filter(Boolean).map(it => {
@@ -607,6 +651,7 @@ const UI = (() => {
       Nuvem.jogador() ? null : h('label', { class: 'viewer' }, h('span', { class: 'viewer-l', text: 'Vendo como' }),
         inSelect('viewerSel', App.viewer, [['gm', 'Mestre']].concat(Store.S.players.map(p => [p.id, p.name])), setViewer, { title: 'Testar a cena como o mestre ou como um jogador' })),
       h('div', { class: 'grp zoom' }, iconBtn('minus', 'Afastar (-)', () => zoomBy(1 / 1.25), { size: 16 }), zoomLabel, iconBtn('plus', 'Aproximar (+)', () => zoomBy(1.25), { size: 16 })),
+      gm && typeof Som !== 'undefined' && Som.aviso ? somAvisosBtn() : null,
       more,
       iconBtn('panel', App.sideOpen ? 'Esconder o painel' : 'Mostrar o painel', () => { App.sideOpen = !App.sideOpen; refresh(); }, { on: App.sideOpen, id: 'panelBtn' }),
     ].filter(Boolean));          // (o que não se aplica a quem está olhando fica de fora)
@@ -1289,6 +1334,7 @@ const UI = (() => {
     const t = Store.get('tokens', tid), s = COND_BY_ID[c.lim.sug];
     if (!t || !s) return;
     const quando = c.lim.em === 'max' ? `${c.n} chegou a ${c.max} em ${tokName(t)}` : `${c.n} de ${tokName(t)} chegou a zero`;
+    somAviso('condicao');
     toast(`${quando}: ${c.lim.txt}.`, { action: `Aplicar: ${s.n}`, long: true, key: 'lim-' + tid + '-' + c.id, run: () => {
       const tk = Store.get('tokens', tid);
       if (!tk) return;
@@ -1314,17 +1360,66 @@ const UI = (() => {
     if (COND_LADO.has(id) && t.prop) return 'só tokens';
     if (id === 'ferida' && !t.bars.some(b => b.on && b.m > 0)) return 'o token não tem barra para apodrecer';
     if (id === 'ferida' && Fichas.escondida(t)) return 'a ferida de um token ligado fica na ficha, que não chega a você (precisa da aba Fichas)';
+    if (id === 'imbuidoMana' && t.prop) return 'só tokens';
+    if (id === 'imbuidoMana' && !t.bars.some(b => b.on)) return 'o token não tem barra para pagar a mana';
     return '';
   }
   // pôr (abre a janela) ou tirar (a condição sai: a ferida leva o podre das barras; o Clone, as cópias)
   function condJanela(id, t, on, depois) {
     if (!t) return;
+    if (id === 'imbuidoMana') { if (on) { Act.condToggle([t], id); toast(`Imbuído de Mana saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo }); if (depois) depois(); } else manaBox(t, depois); return; }
     if (COND_LADO.has(id)) { if (on) { Act.condToggle([t], id); toast(`${COND_BY_ID[id].n} saiu de ${tokName(t)}${t.char ? ' (a ficha desmarca a parte)' : ''}.`, { action: 'Desfazer', run: Tools.undo }); } else membroBox(t, id); if (depois) depois(); return; }
     if (!on) { if (id === 'ferida') feridaBox(t, null, depois); else if (id === 'duplicado') duplicadoBox(t, depois); else cloneBox(t, depois); return; }
     if (id === 'duplicado') { tirarMarcaDuplicado(t); if (depois) depois(); return; }
     if (id === 'clone' && !t.clone) { const n = Act.cloneDesfazer(t.id); toast(n ? `A condição Clone saiu de ${tokName(t)}: ${n === 1 ? 'a cópia sumiu' : `as ${n} cópias sumiram`}.` : `A condição Clone saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo }); }
     else { Act.condToggle([t], id); if (id === 'ferida') toast(`A ferida permanente saiu de ${tokName(t)}: a cura volta a ir até o máximo.`, { action: 'Desfazer', run: Tools.undo }); }     // (a cópia que perde o Clone some, e o aviso vem das regras dele)
     if (depois) depois();
+  }
+  /* (lote 28) Imbuído de Mana: o custo fixo de cada ataque, a barra que paga (a Mana: o mestre escolhe) e com o que o
+     ataque rola quando não há mana (o atributo normal). Num token sem ficha, os dois valores são digitados aqui. Pôr
+     ou mudar é um passo de desfazer; o botão "Atacar com mana" aparece no painel do token e na janelinha F. */
+  function manaBox(t, depois) {
+    const tem = t.conds.includes('imbuidoMana'), ci = (t.cinfo || {}).imbuidoMana || {}, M = Luta.MANA_ATR;
+    const barras = t.bars.map((b, i) => [b, i]).filter(([b]) => b.on);
+    if (!barras.length) { toast('Este token não tem barra para pagar a mana.'); return; }
+    const ehMana = b => /\b(mana|mp|pm)\b/.test(semAcento(b.n));
+    const vida = barraDaVida(t.bars);
+    let bi = (barras.find(([b]) => b.n === ci.barra) || barras.find(([b]) => ehMana(b)) || barras.find(([b]) => b !== vida) || barras[0])[1];
+    let atr = M.some(x => x[0] === ci.atr) ? ci.atr : 'FOR';
+    const comFicha = !!(t.char && Fichas.get(t.char));
+    const custo = h('input', { id: 'mana-custo', class: 'in num', type: 'number', min: 1, max: 9999, step: 1, value: ci.custo > 0 ? ci.custo : 1, autocomplete: 'off', 'data-focus': '', 'aria-label': 'Custo de cada ataque' });
+    const can = comFicha ? null : h('input', { id: 'mana-can', class: 'in num', type: 'number', min: 1, max: 100000, step: 1, value: ci.can > 0 ? ci.can : '', placeholder: '0', autocomplete: 'off', 'aria-label': 'Canalização Mágica do token' });
+    const val = comFicha ? null : h('input', { id: 'mana-val', class: 'in num', type: 'number', min: 1, max: 100000, step: 1, value: ci.val > 0 ? ci.val : '', placeholder: '0', autocomplete: 'off', 'aria-label': 'O valor do ataque normal' });
+    const previa = h('p', { class: 'note mana-previa', id: 'mana-previa' });
+    const lerN = (el, lo, hi) => clamp(Math.round(parseFloat(String(el.value).replace(',', '.')) || 0), lo, hi);
+    const valorDe = k => { if (!comFicha) return null; const x = Fichas.rolaveis(t).find(r => r[0] === k); return x ? x[2] : null; };
+    const pinta = () => {
+      const b = t.bars[bi], c = lerN(custo, 1, 9999), n = Math.floor(b.v / c), vc = valorDe('CAN'), va = valorDe(atr);
+      previa.textContent = `Cada ataque com mana rola Canalização Mágica${vc != null ? ' (' + vc + ')' : can && lerN(can, 0, 100000) ? ' (' + lerN(can, 0, 100000) + ')' : ''} e gasta ${c} de ${b.n} — agora ${fmtV(b.v)}${b.m > 0 ? ' de ' + fmt(b.m) : ''}: ${n > 0 ? 'dá para ' + (n === 1 ? '1 ataque' : n + ' ataques') : 'não dá para nenhum'}. Sem mana, rola ${Luta.nomeAtrMana(atr)}${va != null ? ' (' + va + ')' : val && lerN(val, 0, 100000) ? ' (' + lerN(val, 0, 100000) + ')' : ''} e avisa.`;
+    };
+    const selB = inSelect('mana-bar', String(bi), barras.map(([b, k]) => [String(k), `${b.n} (${fmtV(b.v)}${b.m > 0 ? ' de ' + fmt(b.m) : ''})`]), v => { bi = Number(v); pinta(); });
+    const selA = inSelect('mana-atr', atr, M.filter(x => x[0] !== 'CAN').map(([k, n]) => [k, n]), v => { atr = v; pinta(); });
+    for (const el of [custo, can, val]) if (el) el.addEventListener('input', pinta);
+    pinta();
+    modal({
+      title: 'Imbuído de Mana em ' + tokName(t),
+      body: h('div', { class: 'mana-box' },
+        note('Enquanto durar, o ataque gasta mana e rola com a Canalização Mágica (o botão “Atacar com mana”, no painel do token e na janelinha F). Sem mana suficiente, rola com o atributo normal e avisa.'),
+        h('div', { class: 'grid2' }, field('A barra que paga', selB), field('Custo de cada ataque', custo)),
+        field('Sem mana, rola com', selA, 'stack'),
+        comFicha ? null : h('div', { class: 'grid2' }, field('Canalização Mágica do token', can), field('O valor do ataque normal', val)),
+        comFicha ? null : note('Este token não tem ficha: os dois valores ficam guardados aqui.'),
+        previa),
+      actions: [{ label: 'Cancelar' }, { label: tem ? 'Guardar' : 'Pôr Imbuído de Mana', kind: 'primary', run: () => {
+        const tt = Store.get('tokens', t.id); if (!tt) return;
+        const b = tt.bars[bi]; if (!b) { toast('Essa barra não existe mais: escolha outra.'); return false; }
+        const novo = Object.assign({}, (tt.cinfo || {}).imbuidoMana, { custo: lerN(custo, 1, 9999), barra: b.n, atr });
+        if (!comFicha) { const a = lerN(can, 0, 100000), z = lerN(val, 0, 100000); if (!a || !z) { toast('Digite a Canalização Mágica e o valor do ataque normal do token (o token não tem ficha).'); return false; } novo.can = a; novo.val = z; }
+        Store.tx('Imbuído de Mana', () => Store.upd('tokens', tt.id, { conds: tt.conds.includes('imbuidoMana') ? tt.conds : tt.conds.concat('imbuidoMana'), cinfo: Object.assign({}, tt.cinfo, { imbuidoMana: novo }) }));
+        toast(`${tokName(tt)}: Imbuído de Mana (${novo.custo} de ${b.n} por ataque; sem mana, ${Luta.nomeAtrMana(atr)}).`, { action: 'Desfazer', run: Tools.undo });
+        if (depois) depois();
+      } }],
+    });
   }
   /* (lote 19) Os membros perdidos (Mão, Pé, Braço e Perna Perdida, Costelas Abertas): de que lado? Os dois lados, também.
      Num token com ficha, a parte fica marcada lá (amputada; as costelas, como ferimento no peito) e desmarca quando a
@@ -1504,6 +1599,8 @@ const UI = (() => {
         btn('Desfazer os clones', () => { const k = Act.cloneDesfazer(rid); toast(`Os clones sumiram${k ? ` (${k})` : ''} e a condição saiu de ${real ? tokName(real) : 'quem era o real'}.`, { action: 'Desfazer', run: Tools.undo }); }, { icon: 'trash', id: 'tk-cl-fim' })),
       note('Dano numa cópia: só ela some. Dano no real: todas somem.'));
   }
+  // (lote 28) "2 de Mana" (a barra que paga a mana de cada ataque)
+  const manaTexto = t => { const m = Luta.manaDe(t); return m.b ? `${fmt(m.custo)} de ${m.b.n}` : m.barra ? `${fmt(m.custo)} de ${m.barra} (a barra sumiu)` : 'escolha a barra'; };
   function condActive(t, edit, after, idp) {
     const info = t.cinfo || {}, pre = idp || 'cd';
     const list = t.conds.map(id => COND_BY_ID[id]).filter(Boolean);
@@ -1523,6 +1620,9 @@ const UI = (() => {
           : c.id === 'ferida' ? h('span', { class: 'stp-v ro cact-pod', id: `${pre}-${c.id}-n`, title: 'O que apodreceu na ponta de cada barra: a cura não passa dali até a ferida sair' },
             h('span', { text: podresTexto(t) || 'nenhuma barra' }), edit && isGM() ? h('button', { type: 'button', class: 'lnk', id: `${pre}-${c.id}-mudar`, text: 'Mudar…', onclick: () => feridaBox(t, null, done) }) : null)
           : c.id === 'clone' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: isGM() ? 'Só você sabe quem é o real (a coroa)' : 'Os clones são iguais', text: cloneTexto(t) })
+          // (lote 28) Imbuído de Mana: o custo e a barra que paga (o mestre muda na janela)
+          : c.id === 'imbuidoMana' ? h('span', { class: 'stp-v ro cact-pod', id: `${pre}-${c.id}-n`, title: 'O custo de cada ataque com mana e a barra que paga' },
+            h('span', { text: manaTexto(t) }), edit && isGM() ? h('button', { type: 'button', class: 'lnk', id: `${pre}-${c.id}-mudar`, text: 'Mudar…', onclick: () => manaBox(t, done) }) : null)
           // (lote 9) o Duplicado: de quem o gêmeo é cópia (só o mestre vê a condição)
           : c.id === 'duplicado' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: 'Para os jogadores, o gêmeo é igual ao original', text: dupTexto(t) })
           : edit ? h('span', { class: 'stp' },
@@ -2021,6 +2121,8 @@ const UI = (() => {
       note('Os ferimentos são marcados e tratados na ficha, no quadro “Corpo” (dois cliques no token abrem a ficha).')];
   }
 
+  // (lote 28) o botão "Atacar com mana", embaixo das condições ativas (quando o token está Imbuído de Mana)
+  const manaLinha = t => { const b = Luta.botaoMana(t, 'tk-mana'); return b ? h('div', { class: 'row mana-row' }, b) : null; };
   function tokenPanel(t) {
     const gm = isGM(), sc = Store.scene(), feridas = feridasLista(t);
     const U = (p, label) => Store.tx(label || 'Editar token', () => Store.upd('tokens', t.id, p));
@@ -2030,7 +2132,7 @@ const UI = (() => {
       const mine = ownsTok(t), canC = mine && can('conds', t);
       return [head,
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
-        sec('s-cond', 'Condições', true, canC ? postToggle(t) : t.post ? note('Em postura.') : null, condActive(t, canC), canC ? condMais([t]) : t.conds.length || t.post ? null : note('Nenhuma condição.')),
+        sec('s-cond', 'Condições', true, canC ? postToggle(t) : t.post ? note('Em postura.') : null, condActive(t, canC), manaLinha(t), canC ? condMais([t]) : t.conds.length || t.post ? null : note('Nenhuma condição.')),
         mine ? numsBox(t, false) : null,
         mine ? fadigaBox(t) : null,
         feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
@@ -2046,7 +2148,7 @@ const UI = (() => {
         h('div', { class: 'row' }, btn('Cura total', () => healToast([t]), { icon: 'heart', id: 'tk-heal', title: 'Enche as barras em uso deste token (Vida, SP…). As barras especiais da ficha (Ki, Fúria…) ficam como estão: elas voltam pelo “Restaurar energias”, na aba Turnos. Dá para desfazer.' }),
           Luta.podeAtaque() ? btn('Ataque com defesa…', () => Luta.ataque([t]), { icon: 'shield', id: 'tk-ataque', title: 'Um ataque contra este token: você diz o dano e qual defesa desconta; quem defende pode rolar (tecla K)' }) : null),
         field('Quem não é dono vê', seg('tk-barvis', t.barVis, [['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => U({ barVis: v })), 'stack')),
-      sec('s-cond', 'Condições', true, postToggle(t), condActive(t, true), condMais([t])),
+      sec('s-cond', 'Condições', true, postToggle(t), condActive(t, true), manaLinha(t), condMais([t])),
       menteBox(t),
       fadigaBox(t),
       numsBox(t, true),
@@ -3360,6 +3462,7 @@ const UI = (() => {
     const ended = Act.turnStep(d);
     if (ended.length) toast('Acabou: ' + ended.join('; ') + '.', { action: 'Desfazer', run: Tools.undo });
     zonePrompt(d > 0);
+    if (ended.length && el.zonas.hidden) somAviso('condicao');          // (lote 28: com aviso de zona junto, toca só o da zona)
     if (!voltou) depoisDaVez(antes, d);                   // (lote 22: os reforços da rodada, a tela das barrinhas; refazer a vez que já passou não repete)
   }
   function turnBanner() {
@@ -3507,6 +3610,7 @@ const UI = (() => {
     if (!cards.length) return;
     box.append(...cards);
     box.hidden = false;
+    somAviso('zona');
   }
   /* (lote 7) A zona que é só lembrete (Lama, Vórtice, Santuário…): quem começa a vez dentro dela gera um cartão para o
      mestre, com a regra — "Dain começa a vez dentro de Lama: só se anda a metade." Ok fecha; nada muda sozinho. */
@@ -3538,14 +3642,16 @@ const UI = (() => {
       const a = Store.get('effects', card.dataset.gat), b = Store.get('effects', card.dataset.base), r = FX.COMBOS[+card.dataset.r];
       if (!a || !b || !r || !r.gat.includes(a.fx) || !r.base.includes(b.fx) || !FX.seTocam(a, b, sc)) card.remove();
     }
+    let novos = 0;
     if (ids && ids.length) {
       for (const c of FX.combinacoes(sc, ids)) {
         const k = parDe(c.gat.id, c.base.id);
         if (combosPulados.has(k) || [...box.children].some(x => x.dataset.par === k)) continue;
-        box.append(cartaoCombo(c, k));
+        box.append(cartaoCombo(c, k)); novos++;
       }
     }
     box.hidden = !box.children.length;
+    if (novos) somAviso('zona');
   }
   function cartaoCombo(c, k) {
     const r = c.regra, fecha = () => { card.remove(); el.combos.hidden = !el.combos.children.length; };
@@ -3590,10 +3696,12 @@ const UI = (() => {
       : d.parte ? `${q(d.n, 'Uma cópia', 'cópias')} de ${d.nome} sem a condição Clone ${d.n === 1 ? 'sumiu' : 'sumiram'}.`
       : `A condição Clone de ${d.nome} acabou: ${d.n === 1 ? 'a cópia sumiu' : `as ${d.n} cópias sumiram`}.`;
     toast(txt, { action: 'Desfazer', run: Tools.undo, key: 'clone' });
+    somAviso('condicao');
   });
   // (lote 9) o gêmeo de um Duplicado caiu: o aviso oferece tirá-lo da cena (nada muda sozinho)
   Store.on('duplicado', d => {
     if (!isGM() || d.k !== 'caiu') return;
+    somAviso('urgente');
     toast(`O gêmeo (Duplicado) de ${d.nome} caiu. Tirar da cena?`, { action: 'Tirar da cena', key: 'dup-' + d.id, long: true,
       run: () => { if (Act.duplicadoTirar(d.id)) toast('O gêmeo saiu da cena. A ficha dele continua nas Fichas.', { action: 'Desfazer', run: Tools.undo }); } });
   });
@@ -3602,6 +3710,7 @@ const UI = (() => {
     const t = Store.get('tokens', d.tok), sc = Store.scene();
     if (!t || !isGM()) return;
     const un = (sc.grid && sc.grid.unitName) || '', alt = fmt(d.m) + (un ? ' ' + un : '');
+    somAviso('urgente');
     if (!d.dano || !d.barra) { toast(`${tokName(t)} caiu ${alt}: a regra sugere ${d.pct}% da Vida máxima.`, { key: 'queda-' + d.tok, long: true }); return; }
     toast(`${tokName(t)} caiu ${alt}: a regra sugere ${d.pct}% da Vida máxima (${fmt(d.dano)} de ${d.barra}).`, { action: 'Aplicar o dano', key: 'queda-' + d.tok, long: true,
       run: () => { const tk = Store.get('tokens', d.tok); if (tk && Combate.aplicarAtaque([{ t: tk, final: d.dano }], d.barra, 'Dano da queda').length) toast(`${tokName(tk)}: −${fmt(d.dano)} de ${d.barra} (queda).`, { action: 'Desfazer', run: Tools.undo }); } });
@@ -3611,6 +3720,7 @@ const UI = (() => {
     const t = Store.get('tokens', d.tok);
     if (!t || !isGM()) return;
     const nome = (COND_BY_ID[d.id] || {}).n || d.id;
+    somAviso('urgente');
     toast(`${tokName(t)} está com ${fmtV(d.v)} de ${d.barra} (o limite é −${fmt(d.lo)}): a regra sugere ${nome}.`, { action: 'Aplicar', key: 'ferido-' + d.tok, long: true,
       run: () => { const tk = Store.get('tokens', d.tok); if (tk && Act.feridoAplicar(tk, d.id)) toast(`${tokName(tk)}: ${nome}.`, { action: 'Desfazer', run: Tools.undo }); } });
   });
@@ -3618,6 +3728,7 @@ const UI = (() => {
     const t = Store.get('tokens', d.tok);
     if (!t || !isGM()) return;
     const fx = Store.get('effects', d.fx), nome = fx && FX.P[fx.fx] ? FX.P[fx.fx].n : 'Runas-armadilha';        // (lote 19: e as arapucas)
+    somAviso('urgente');
     toast(`${tokName(t)} ${fx && fx.fx !== 'runas' ? 'entrou na' : 'pisou nas'} ${nome}.`, { action: 'Revelar', run: () => { if (Store.get('effects', d.fx)) Store.tx(fx && fx.fx !== 'runas' ? 'Revelar a ' + nome : 'Revelar as runas', () => Store.upd('effects', d.fx, { gm: false })); }, key: 'runas-' + d.fx, long: true });
   });
 
@@ -3683,7 +3794,7 @@ const UI = (() => {
   // (lote 26) as teclas 1 a 5: as abas do painel, na ordem em que aparecem
   function abaPorNumero(n) { const t = tabsFor()[n - 1]; if (t) openTab(t[0]); }
   return {
-    refresh, renderAll, toast, modal, closeMenus, contextMenu, openTab, abaPorNumero, editText, status,
+    refresh, renderAll, toast, somAviso, modal, closeMenus, contextMenu, openTab, abaPorNumero, editText, status,
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
     closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,

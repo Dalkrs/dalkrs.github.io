@@ -111,6 +111,61 @@ const Luta = (() => {
     if (r.ok) { pop.ma.value = ''; pop.mr.value = ''; pop.relSomado = false; }
     pintarPop();
   }
+  /* ================= (lote 28) Atacar com mana (Imbuído de Mana) =================
+     Com mana na barra que o mestre escolheu: rola a Canalização Mágica e gasta o custo fixo (a barra muda num passo de
+     desfazer; a rolagem vai para a mesa como as outras). Sem mana: rola com o atributo normal do ataque e avisa. Num
+     token sem ficha, os dois valores são os digitados na janela da condição. → { r, tem, custo, barra } ou null */
+  const MANA_ATR = [['FOR', 'Força'], ['DES', 'Destreza'], ['AGI', 'Agilidade'], ['VIT', 'Vitalidade'], ['CAN', 'Canalização Mágica']];
+  const nomeAtrMana = k => (MANA_ATR.find(x => x[0] === k) || MANA_ATR[0])[1];
+  function manaDe(t) {
+    const ci = (t && t.cinfo && t.cinfo.imbuidoMana) || {};
+    const custo = Math.max(1, Math.round(Number(ci.custo) || 1)), atr = MANA_ATR.some(x => x[0] === ci.atr) ? ci.atr : 'FOR';
+    const i = t ? t.bars.findIndex(b => b.on && b.n === ci.barra) : -1;
+    return { custo, atr, barra: ci.barra || '', i, b: i >= 0 ? t.bars[i] : null, can: Math.round(Number(ci.can) || 0), val: Math.round(Number(ci.val) || 0) };
+  }
+  const podeMana = t => !!t && t.conds.includes('imbuidoMana') && !!modoDoF(t);
+  function rolarAvulso(t, v, nome, fixa) {
+    const r0 = Combate.rolarFixa(v, fixa);
+    if (!r0.ok) return r0;
+    const r = Object.assign({}, r0, { base: v, nome });
+    if (Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: '', attrNome: nome, atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base }); } catch (e) { console.error(e); } }
+    return r;
+  }
+  function atacarComMana(t0) {
+    const t = t0 && Store.get('tokens', t0.id);
+    if (!t || !t.conds.includes('imbuidoMana')) return null;
+    const modo = modoDoF(t);
+    if (!modo) { toast(isGM() ? 'Não dá para rolar por este token.' : 'Você ataca pelos tokens do seu personagem.'); return null; }
+    const m = manaDe(t);
+    if (!m.b) { toast(`A barra que paga a mana${m.barra ? ' (' + m.barra + ')' : ''} não está em ${tokName(t)}: escolha outra em Imbuído de Mana.`, { long: true, key: 'mana-' + t.id }); return null; }
+    const tem = m.b.v >= m.custo, fixa = fixaAtual(t), k = tem ? 'CAN' : m.atr;
+    let r;
+    if (modo === 'ficha') { r = Fichas.rolar(t, k, fixa); if (r.ok) r.nome = r.nome || nomeAtrMana(k); }
+    else {
+      const v = tem ? m.can : m.val;
+      if (!(v > 0)) { toast(`Falta o valor de ${tem ? 'Canalização Mágica' : nomeAtrMana(m.atr)} de ${tokName(t)} (o token não tem ficha): ponha em Imbuído de Mana.`, { long: true, key: 'mana-' + t.id }); return null; }
+      r = rolarAvulso(t, v, nomeAtrMana(k), fixa);
+    }
+    if (!r.ok) { toast(r.error, { key: 'mana-' + t.id }); return null; }
+    mesaEntende();
+    const como = r.nome + ' · ' + Combate.comoSaiu(r);
+    if (tem) {
+      const fica = m.b.v - m.custo;
+      Act.barSet(t, m.i, String(fica));
+      toast(`${tokName(t)} atacou com mana: ${r.total} (${como}). Gastou ${fmt(m.custo)} de ${m.b.n}: fica ${fmtV(fica)}.`, { action: 'Desfazer', run: Tools.undo, long: true, key: 'mana-' + t.id });
+    } else toast(`Sem mana: ${m.b.n} está em ${fmtV(m.b.v)} e o ataque custa ${fmt(m.custo)}. ${tokName(t)} rolou com ${nomeAtrMana(m.atr)}: ${r.total} (${Combate.comoSaiu(r)}).`, { long: true, key: 'mana-' + t.id });
+    if (pop && pop.tokId === t.id) { pop.res = { ok: true, total: r.total, txt: tem ? 'Ataque com mana' : 'Sem mana: ' + nomeAtrMana(m.atr), det: como }; pintarPop(); }
+    return { r, tem, custo: m.custo, barra: m.b.n };
+  }
+  // o botão (no painel do token e na janelinha F): "Atacar com mana · 2 de Mana", ou o aviso de que não há mana
+  function botaoMana(t, id) {
+    if (!podeMana(t)) return null;
+    const m = manaDe(t), tem = !!m.b && m.b.v >= m.custo;
+    return h('button', { type: 'button', class: 'btn mana-b' + (tem ? ' primary' : ' sem'), id: id || 'tk-mana',
+      title: !m.b ? 'Escolha a barra que paga a mana em Imbuído de Mana' : tem ? `Rola Canalização Mágica e gasta ${fmt(m.custo)} de ${m.b.n} (tem ${fmtV(m.b.v)})` : `Sem mana (${m.b.n} em ${fmtV(m.b.v)}, custa ${fmt(m.custo)}): rola com ${nomeAtrMana(m.atr)} e avisa`,
+      onclick: () => atacarComMana(t) },
+    icon('c_imbuidoMana', 15), h('span', { text: 'Atacar com mana' }), h('small', { class: 'mana-c', text: m.b ? `${fmt(m.custo)} de ${m.b.n}` + (tem ? '' : ' · sem mana') : 'sem barra' }));
+  }
   function pintarPop() {
     if (!pop) return;
     const sc = Store.scene(), t = Store.get('tokens', pop.tokId), modo = t ? modoDoF(t) : null;
@@ -118,6 +173,8 @@ const Luta = (() => {
     const a = document.activeElement, fid = a && a.id && pop.el.contains(a) ? a.id : null;
     pop.nome.textContent = tokName(t);
     pintarRelevo(t, sc);
+    const bm = botaoMana(t, 'fp-mana');
+    pop.mana.replaceChildren(...(bm ? [bm] : [])); pop.mana.hidden = !bm;
     if (document.activeElement !== pop.fx) pop.fx.value = fixaAtual(t);
     const fixa = lerFixaDoPop(), mais = lerMaisDoPop();
     pop.ma.classList.toggle('tem', !!mais.atr); pop.mr.classList.toggle('tem', !!mais.res);
@@ -176,14 +233,15 @@ const Luta = (() => {
     const mr = campoMais('fp-mr', 'Bônus no resultado, só nesta rolagem', 'Soma no resultado, depois de rolar');
     // (lote 18) o relevo: mirando alguém mais baixo (ou mais alto), a sugestão de somar o bônus da tabela
     const rel = h('div', { class: 'pop-rel', id: 'fp-rel', hidden: true });
+    const mana = h('div', { class: 'pop-mana', id: 'fp-mana-w', hidden: true });        // (lote 28) Imbuído de Mana
     const el = h('div', { class: 'pop', id: 'fpop', role: 'dialog', 'aria-label': 'Rolar atributo de ' + tokName(t), tabindex: '-1' },
       h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou F)', fecharPop, { size: 15, id: 'fp-x' })),
       h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx),
       h('div', { class: 'pop-m', role: 'group', 'aria-label': 'Bônus só nesta rolagem', title: 'Valem só para a próxima rolagem' },
         h('span', { class: 'pop-l', text: 'Só nesta' }), h('label', { class: 'pop-l', for: 'fp-ma', text: '+ atrib.' }), ma, h('label', { class: 'pop-l', for: 'fp-mr', text: '+ result.' }), mr),
-      rel, grid, out);
+      rel, mana, grid, out);
     K.layer.append(el);
-    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr, rel, relSomado: false };
+    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr, rel, mana, relSomado: false };
     pintarPop();
     if (!pop) return;
     // ao lado do token (à direita; se não couber, à esquerda), sem sair da tela — e ali fica, mesmo que o mapa ande
@@ -950,6 +1008,6 @@ const Luta = (() => {
     if (epop) { try { pintarEquip(); } catch (e) { console.error(e); fecharEquip(); } }
   }
 
-  return { atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop,
+  return { atacarComMana, botaoMana, manaDe, podeMana, MANA_ATR, nomeAtrMana, atributos, alternar, podeAtributos, disputa, grupo, ataque, podeAtaque, terrainPanel, inisBox, fixaAtual, guardarFixa, daMesa, refresh, fechar: fecharPop, aberto: () => !!pop,
     equipamentos, fecharEquip, equipAberto: () => !!epop, rolagemGeral, quemDescansa, podeDescanso, descansoCurto };
 })();

@@ -767,6 +767,24 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .pop-rel { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-2); padding: 6px 8px; border-radius: 8px; background: var(--hover, rgba(255,255,255,.05)); }
 .pop-rel span { flex: 1; }
 .pop-rel .btn { height: 26px; padding: 0 10px; flex: none; }
+/* (lote 28) Imbuído de Mana: o botão "Atacar com mana" (no painel do token e na janelinha F) e a janela da condição */
+.mana-b { gap: 7px; }
+.mana-b .mana-c { font-size: 11px; opacity: .85; font-weight: 500; }
+.mana-b.sem { border-style: dashed; }
+.mana-row { margin-top: 6px; }
+.pop-mana { display: flex; }
+.pop-mana .mana-b { flex: 1; justify-content: center; height: 30px; }
+.mana-previa { min-height: 2.6em; color: var(--fg); }
+/* (lote 28) o sino dos sons dos avisos e a janelinha do volume */
+.ib.somav:not(.on) { color: var(--fg-3); }
+.somv { width: 290px; padding: 8px 10px 10px; display: grid; gap: 8px; }
+.somv .menu-h { padding: 2px 0; }
+.somv-l { display: flex; align-items: center; gap: 8px; color: var(--fg-2); }
+.somv-r { flex: 1; accent-color: var(--lamp); }
+.somv-n { font-family: var(--mono); font-size: 12px; min-width: 3.2em; text-align: right; color: var(--fg); }
+.somv-o { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.somv-t { font-size: 12px; color: var(--fg-3); margin-right: 2px; }
+.somv-d { margin: 0; font-size: 11.5px; line-height: 1.45; color: var(--fg-3); }
 .pop-m .pop-l { font-size: 11.5px; }
 .pop-m .in.num { width: 46px; flex: none; padding-left: 4px; padding-right: 4px; }
 .pop-m .in.num.tem { border-color: var(--lamp); }

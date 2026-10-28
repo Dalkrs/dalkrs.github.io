@@ -528,6 +528,19 @@
    "cor": "#a0447a"
   },
   {
+   "id": "c:imbuidoMana",
+   "nome": "Imbuído de Mana",
+   "tipo": "condicao",
+   "texto": "A arma está carregada de mana: cada ataque gasta mana e usa a Canalização Mágica no lugar do atributo de sempre. Sem mana, o ataque volta a ser o comum.",
+   "formas": [
+    "Imbuída de Mana",
+    "Imbuídos de Mana",
+    "Imbuídas de Mana"
+   ],
+   "de": "",
+   "cor": "#3f7fe0"
+  },
+  {
    "id": "c:cego",
    "nome": "Cego",
    "tipo": "condicao",
