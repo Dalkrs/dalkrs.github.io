@@ -3746,7 +3746,7 @@ function ligarRegistro(){
    ÁRVORES DE HABILIDADE — mesma regra do app de árvores do mestre:
    pais com regra E/OU, grupos exclusivos, graus com custo por pool.
    ======================================================================= */
-const CAT_ARV=[{id:'raca',nome:'Raça'},{id:'classe',nome:'Classe'},{id:'escola',nome:'Escola'},{id:'profissao',nome:'Profissão'},{id:'outra',nome:'Outra'}];
+const CAT_ARV=[{id:'raca',nome:'Raça'},{id:'linhagem',nome:'Linhagem'},{id:'classe',nome:'Classe'},{id:'escola',nome:'Escola'},{id:'profissao',nome:'Profissão'},{id:'outra',nome:'Outra'}];
 const nomeCatArv = id => (CAT_ARV.find(c=>c.id===id)||CAT_ARV[CAT_ARV.length-1]).nome;
 const ARV={porId:new Map(), arvDe:new Map(), filhos:new Map(), bib:null, base:null, pc:null, ramos:null};
 
