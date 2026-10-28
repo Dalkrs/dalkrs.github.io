@@ -359,7 +359,7 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
 // ---------- barras especiais (os antigos poderes divinos), no estado ----------
 {
   const f = { poderes: [{ id: 'a', nome: 'Fé', max: 3, atual: 2 }, { id: 'b', nome: '', max: 0, atual: 7 }, { id: 'c', nome: 'X', max: '4', atual: 9 }, { nome: 'sem id' }, null] };
-  const lg = { rec: 'longo', qc: 1, ql: 2 };
+  const lg = { rec: 'manual', qc: 1, ql: 2 };      // (lote 24: sem regra anotada, só à mão)
   ok(j(R.especiais(f, {})) === j([Object.assign({ id: 'a', nome: 'Fé', atual: 2, max: 3, inicio: null }, lg), Object.assign({ id: 'b', nome: 'Barra especial', atual: 7, max: 0, inicio: null }, lg), Object.assign({ id: 'c', nome: 'X', atual: 4, max: 4, inicio: null }, lg)]), 'sem nada no estado, vale o atual da ficha (preso no limite; sem nome, "Barra especial")');
   // (lote 23) o "começa em" da barra especial: inteiro, entre 0 e o limite; sem ele, null (cheia)
   ok(j(R.especiais({ poderes: [{ id: 'k', max: 5, inicio: 0 }, { id: 'f', max: 4, inicio: 9 }, { id: 'g', max: 4, inicio: '2.6' }, { id: 'h', max: 4, inicio: 'x' }] }, {}).map(x => x.inicio)) === j([0, 4, 3, null]), 'o "começa em" das barras especiais: 0 fica 0; acima do limite, o limite; arredonda; o que não é número, null');
@@ -370,10 +370,10 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   ok(R.especiais(f, { pd: { a: -2 } })[0].atual === 0 && R.especiais({ poderes: [{ id: 'z', max: 0, atual: -5 }] }, {})[0].atual === 0, 'valor negativo (no estado ou na ficha) fica em 0');
   // (lote 6) a regra de recuperação de cada barra: o padrão é encher no descanso longo (o que valia antes para todas)
   const rg = R.especiais({ poderes: [{ id: 'q', max: 9, rec: 'quantia', qc: '3', ql: 5.6 }, { id: 'w', max: 2, rec: 'qualquer' }, { id: 'm', max: 2, rec: 'manual' }, { id: 'x', max: 2, rec: 'toString' }, { id: 'n', max: 2, rec: 'quantia', qc: -4, ql: 'a' }] }, {});
-  ok(j(rg.map(b => [b.rec, b.qc, b.ql])) === j([['quantia', 3, 6], ['qualquer', 1, 2], ['manual', 1, 2], ['longo', 1, 2], ['quantia', 0, 0]]), 'rec, qc e ql saem arrumados (regra desconhecida vira "longo"; quantia inteira, de 0 a 999): ' + j(rg.map(b => [b.rec, b.qc, b.ql])));
+  ok(j(rg.map(b => [b.rec, b.qc, b.ql])) === j([['quantia', 3, 6], ['qualquer', 1, 2], ['manual', 1, 2], ['manual', 1, 2], ['quantia', 0, 0]]), 'rec, qc e ql saem arrumados (lote 24: regra desconhecida vira "manual", só à mão; quantia inteira, de 0 a 999): ' + j(rg.map(b => [b.rec, b.qc, b.ql])));
   ok(R.REC_ESPECIAL.map(r => r.k).join() === 'longo,qualquer,quantia,manual' && Object.isFrozen(R.REC_ESPECIAL) && Object.isFrozen(R.REC_ESPECIAL[0]), 'as quatro regras, nesta ordem (e ninguém as altera por engano)');
-  ok(j(rg.map(R.textoRecEspecial)) === j(['+3 no descanso curto · +6 no longo', 'enche em qualquer descanso', 'só à mão (o descanso não mexe nela)', 'enche no descanso longo', 'o descanso não devolve nada'])
-    && R.textoRecEspecial({ rec: 'quantia', qc: 0, ql: 4 }) === '+4 no descanso longo' && R.textoRecEspecial({ rec: 'quantia', qc: 2, ql: 0 }) === '+2 no descanso curto' && R.textoRecEspecial({}) === 'enche no descanso longo', 'cada regra por extenso');
+  ok(j(rg.map(R.textoRecEspecial)) === j(['+3 no descanso curto · +6 no longo', 'enche em qualquer descanso', 'só à mão (o descanso não mexe nela)', 'só à mão (o descanso não mexe nela)', 'o descanso não devolve nada'])
+    && R.textoRecEspecial({ rec: 'quantia', qc: 0, ql: 4 }) === '+4 no descanso longo' && R.textoRecEspecial({ rec: 'quantia', qc: 2, ql: 0 }) === '+2 no descanso curto' && R.textoRecEspecial({}) === 'só à mão (o descanso não mexe nela)' && R.textoRecEspecial({ rec: 'longo' }) === 'enche no descanso longo', 'cada regra por extenso (lote 24: sem regra, só à mão)');
 }
 // ---------- a amputação (lote 6): um estado permanente do membro, à parte dos ferimentos ----------
 {

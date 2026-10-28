@@ -2,6 +2,30 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.28-1",
+      "data": "2026-10-28",
+      "titulo": "Os valores que não voltam e o mapa-múndi mais leve",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Cenas: o nome do token e o valor das barras não voltam mais ao antigo. Com jogadores na mesa e o combate andando, o painel se redesenhava enquanto alguém digitava, e o Enter (ou o Tab) não gravava — o valor sumia, também ao recarregar. Agora, digitando, o painel espera você confirmar."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Descanso: as barras especiais não enchem mais sozinhas. Sem regra escolhida, a barra é “Só à mão”; quem deve encher no descanso precisa ter a regra marcada na ficha (Barras especiais)."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: a Cura total enche HP e SP, mas deixa as barras especiais da ficha (Ki, Fúria…) como estão — elas voltam pelo “Restaurar energias”, na aba Turnos."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi muito mais leve num mapa grande de hexágonos pintados: o terreno não repinta enquanto você arrasta, e o desenho grande é feito em partes — o mapa não congela no zoom (num teste com 15 mil hexágonos, o travamento de vários segundos virou uma fração de segundo). Vale também no aparelho dos jogadores."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.25-2",
       "data": "2026-10-25",
       "titulo": "O botão do lugar nas fichas dos NPCs do grupo",

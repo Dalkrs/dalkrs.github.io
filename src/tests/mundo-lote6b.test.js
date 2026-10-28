@@ -117,12 +117,13 @@ const selo = (a, id) => A(a, id => {
     ok(new Set(todos).size === 16, 'os dezesseis terrenos com desenhos diferentes');
     // nítido em qualquer zoom: o canvas é desenhado na resolução da tela, só a parte à vista (refeito quando o zoom para)
     const vista0 = await A(L, () => { const c = document.querySelector('#mundo canvas.hex-desenho'); return { k: Number(c.dataset.k), z: __mundo.Tela.zoom, dpr: Math.min(2, Math.max(1, devicePixelRatio || 1)) }; });
-    ok(Math.abs(vista0.k - vista0.z * vista0.dpr) < 1e-6, 'na vista do mapa inteiro, o desenho dos hexágonos tem a resolução da tela: ' + j(vista0));
+    // (lote 24) a resolução vai de degrau em degrau (√2): pelo menos a da tela, e no máximo √2 vezes ela
+    ok(vista0.k >= vista0.z * vista0.dpr - 1e-6 && vista0.k <= vista0.z * vista0.dpr * Math.SQRT2 + 1e-6, 'na vista do mapa inteiro, o desenho dos hexágonos tem (pelo menos) a resolução da tela: ' + j(vista0));
     await A(L, () => { __mundo.Tela.zoom = 4; }); await espera(500);
     await A(L, () => { const N = __mundo.N, m = __mundo.App.vista(), c = N.centroHex(m, 6, 10); __mundo.Tela.centrar({ k: 'm', x: c.x, y: c.y }); }); await espera(900);
     const perto = await A(L, () => { const c = document.querySelector('#mundo canvas.hex-desenho'); return { k: Number(c.dataset.k), z: __mundo.Tela.zoom, dpr: Math.min(2, Math.max(1, devicePixelRatio || 1)), larg: parseFloat(c.style.width) }; });
     const p6 = await pixels(L, 6, 10);
-    ok(perto.z > 3.9 && Math.abs(perto.k - perto.z * perto.dpr) < 1e-6 && perto.larg < 700 && p6 && p6.cheios === p6.total && p6.total > 40000,
+    ok(perto.z > 3.9 && perto.k >= perto.z * perto.dpr - 1e-6 && perto.k <= perto.z * perto.dpr * Math.SQRT2 + 1e-6 && perto.larg < 700 && p6 && p6.cheios === p6.total && p6.total > 40000,
       'de perto (zoom 4), refeito na resolução da tela: um hexágono com ' + (p6 && p6.total) + ' pixels (só a parte à vista é desenhada): ' + j(perto));
     await foto('lote6b-hexagono-perto');
     await A(L, () => __mundo.Tela.caber()); await espera(700);

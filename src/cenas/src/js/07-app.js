@@ -236,6 +236,8 @@ function applyLabel(a) {
 // Valor da barra depois de aplicar amt (metade arredonda para baixo). Nunca passa do máximo nem desce do piso
 // (zero, ou o quanto a barra pode ficar negativa).
 // Uma barra com um remendo por cima; a sobrevida zerada sai do objeto (não fica guardada à toa).
+// (lote 24) o token como está agora na cena (o painel pode ter sido desenhado antes de uma mudança que chegou)
+function tokAgora(t) { return (t && t.id && Store.get('tokens', t.id)) || t; }
 function barWith(b, p) { const o = Object.assign({}, b, p); if (!(o.x > 0)) delete o.x; return o; }
 /* Uma variação numa barra. O dano (delta negativo) gasta primeiro a sobrevida; a cura não mexe nela.
    Devolve o remendo { v } ou { v, x }. */
@@ -703,6 +705,7 @@ function turnKeepCur(tn, before) {
 /* ---- Ações usadas por ferramentas, menus e painéis ---- */
 const Act = {
   barSet(t, i, text) {
+    t = tokAgora(t);                                     // (lote 24: o token como está agora, não como estava quando o painel foi desenhado)
     const b = t.bars[i];
     const s = String(text).trim().replace(/\s+/g, '').replace(',', '.');
     let p;
@@ -736,6 +739,7 @@ const Act = {
   },
   // Sobrevida de uma barra: pontos por cima dela, que absorvem o dano primeiro. Zero tira.
   barExtra(t, i, value) {
+    t = tokAgora(t);                                     // (lote 24: o token como está agora, não como estava quando o painel foi desenhado)
     const b = t.bars[i]; if (!b) return false;
     const x = Math.max(0, Math.round((Number(value) || 0) * 10) / 10);
     if (x === barX(b)) return false;
@@ -767,6 +771,7 @@ const Act = {
         let mudou = false;
         const bars = t.bars.map(b => {
           if (!b.on || !(b.m > 0)) return b;
+          if (typeof b.ref === 'string' && b.ref.startsWith('pd:')) return b;     // (lote 24) as barras especiais da ficha ficam (Ki, Fúria…: "Restaurar energias")
           const alvo = barFull(b);
           if (b.st != null ? b.v === alvo : b.v >= alvo) return b;
           mudou = true; return Object.assign({}, b, { v: alvo });
@@ -777,6 +782,7 @@ const Act = {
     return n;
   },
   barPatch(t, i, patch) {
+    t = tokAgora(t);                                     // (lote 24: o token como está agora, não como estava quando o painel foi desenhado)
     Store.tx('Alterar barra', () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, patch) : x)) }));
   },
   barAdd(t) {
@@ -787,6 +793,7 @@ const Act = {
     return true;
   },
   barDel(t, i) {
+    t = tokAgora(t);                                     // (lote 24: o token como está agora, não como estava quando o painel foi desenhado)
     Store.tx('Remover barra', () => Store.upd('tokens', t.id, { bars: t.bars.filter((_, j) => j !== i) }));
   },
 

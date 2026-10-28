@@ -470,13 +470,13 @@
       fad: fad == null ? null : { de: fad, para: longo ? FAD_MAX : Math.min(FAD_MAX, fad + 1) } };
   }
   /* Quanto uma barra especial fica depois do descanso, pela regra dela (rec, como em TC.rules.especiais):
-       longo     enche no descanso longo (o padrão)       qualquer  enche em qualquer descanso
-       quantia   soma qc no curto e ql no longo           manual    o descanso não mexe nela
+       longo     enche no descanso longo                  qualquer  enche em qualquer descanso
+       quantia   soma qc no curto e ql no longo           manual    o descanso não mexe nela (o padrão, desde o lote 24)
      Encher é ir até o limite: a barra sem limite (max 0) não tem o que encher — só a quantia soma nela. */
   const REC_ESPECIAIS = ['longo', 'qualquer', 'quantia', 'manual'];
   function paraDaEspecial(x, longo) {
     const a = Math.max(0, Math.round(num(x.atual, 0))), m = Math.max(0, Math.round(num(x.max, 0)));
-    const rec = REC_ESPECIAIS.includes(x.rec) ? x.rec : 'longo';
+    const rec = REC_ESPECIAIS.includes(x.rec) ? x.rec : 'manual';
     if (rec === 'manual' || (rec === 'longo' && !longo)) return a;
     if (rec === 'quantia') { const n = a + inteiro(longo ? x.ql : x.qc, longo ? 2 : 1, 0, 999); return m > 0 ? Math.max(a, Math.min(n, m)) : n; }
     return m > 0 ? Math.max(a, m) : a;
