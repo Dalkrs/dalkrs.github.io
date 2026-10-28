@@ -25,7 +25,7 @@ const SHOTS = process.env.FOTOS;
 
   // ---------- a lista ----------
   const L = await ev(() => { const { CONDS, ICONS } = __tc; const r = CONDS.filter(c => c.g === 'classes'); return { n: r.length, total: CONDS.length, nomes: r.map(c => c.n), sem: r.filter(c => !ICONS[c.i] || !c.r).map(c => c.id), ids: new Set(CONDS.map(c => c.id)).size, fer: r.filter(c => c.ferido).map(c => c.id) }; });
-  ok(L.n === 24 && L.total === 147 && L.ids === 147, 'as 24 condições das classes no grupo novo (147 ao todo, sem repetir): ' + L.n + '/' + L.total);
+  ok(L.n === 24 && L.total === 148 && L.ids === 148, 'as 24 condições das classes no grupo novo (148 ao todo com o Imbuído de Mana do lote 28, sem repetir): ' + L.n + '/' + L.total);
   const ord = L.nomes.slice().sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
   ok(JSON.stringify(ord) === JSON.stringify(L.nomes), 'em ordem alfabética: ' + L.nomes.slice(0, 6).join(', ') + '…');
   ok(L.sem.length === 0, 'cada uma com o ícone próprio e a classe: ' + JSON.stringify(L.sem));

@@ -154,7 +154,7 @@
     {id:'silencio', n:'Silenciado', g:'mente'}, {id:'maldicao', n:'Amaldiçoado', g:'mente'}, {id:'marcado', n:'Marcado', g:'mente'},
     {id:'transformado', n:'Transformado', g:'mente'}, {id:'artefato', n:'Artefato Ativado', g:'mente'}, {id:'possuido', n:'Possuído', g:'mente'},
     {id:'refletindo', n:'Refletindo', g:'mente'}, {id:'enlouquecido', n:'Enlouquecido', g:'mente'}, {id:'qibloq', n:'Qi bloqueado', g:'mente'},
-    {id:'qidesvio', n:'Desvio de Qi', g:'mente'}, {id:'clone', n:'Clone', g:'mente'}, {id:'duplicado', n:'Duplicado', g:'mente'}, {id:'cego', n:'Cego', g:'corpo'}, {id:'surdo', n:'Surdo', g:'corpo'},
+    {id:'qidesvio', n:'Desvio de Qi', g:'mente'}, {id:'clone', n:'Clone', g:'mente'}, {id:'duplicado', n:'Duplicado', g:'mente'}, {id:'imbuidoMana', n:'Imbuído de Mana', g:'mente'}, {id:'cego', n:'Cego', g:'corpo'}, {id:'surdo', n:'Surdo', g:'corpo'},
     {id:'fraco', n:'Fraquejado', g:'corpo'}, {id:'exausto', n:'Exausto', g:'corpo'}, {id:'doente', n:'Doente', g:'corpo'},
     {id:'faminto', n:'Faminto', g:'corpo'}, {id:'bebado', n:'Bêbado', g:'corpo'}, {id:'morto', n:'Morto', g:'corpo'},
     {id:'sufocando', n:'Sufocando', g:'corpo'}, {id:'ofuscado', n:'Ofuscado', g:'corpo'}, {id:'agigantado', n:'Agigantado', g:'corpo'},

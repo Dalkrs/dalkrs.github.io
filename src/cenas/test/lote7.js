@@ -62,10 +62,10 @@ const NOVAS = ['petrificado', 'adormecido', 'eletrizado', 'corroido', 'enregelad
   ok(dados.every(x => !x.falta && x.d && /^#[0-9a-f]{6}$/.test(x.c)), 'as 20 condições novas existem, cada uma com ícone próprio e cor: ' + j(dados.filter(x => x.falta || !x.d).map(x => x.id)));
   ok(new Set(dados.map(x => x.d)).size === 20 && new Set(dados.map(x => x.c)).size === 20, 'os ícones e as cores não se repetem entre elas');
   ok(j(dados.filter(x => ['agigantado', 'encolhido', 'qibloq', 'qidesvio', 'ventania'].includes(x.id)).map(x => x.n)) === j(['Qi bloqueado', 'Desvio de Qi', 'Agigantado', 'Encolhido', 'Ventania']), 'os nomes: "Qi bloqueado", "Desvio de Qi", Agigantado e Encolhido separados, Ventania');
-  ok(await ev(() => __tc.CONDS.length) === 147, 'a lista das Cenas tem 147 condições (47 + 20 do lote 7 + 2 do lote 8 + 1 do lote 9 + 53 das raças no lote 19 + 24 das classes no lote 20)');
+  ok(await ev(() => __tc.CONDS.length) === 148, 'a lista das Cenas tem 148 condições (47 + 20 do lote 7 + 2 do lote 8 + 1 do lote 9 + 53 das raças no lote 19 + 24 das classes no lote 20 + o Imbuído de Mana do lote 28)');
   await ev(i => __tc.UI.condPicker([__tc.Store.get('tokens', i)]), ids.Dain); await w(200);
   await page.locator('#cgm-tab-todas').click(); await w();
-  ok(await page.locator('#cgm-list .chip').count() === 147, 'na janela, a aba "Todas" mostra as 147');
+  ok(await page.locator('#cgm-list .chip').count() === 148, 'na janela, a aba "Todas" mostra as 148');
   await page.locator('#cgm-busca').fill('qi'); await w();
   ok(j(await page.locator('#cgm-list .chip').allInnerTexts()) === j(['Qi bloqueado', 'Desvio de Qi']), 'a busca "qi" acha as duas de Qi: ' + j(await page.locator('#cgm-list .chip').allInnerTexts()));
   await page.locator('#cgm-busca').fill(''); await w();
