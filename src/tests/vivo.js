@@ -23,9 +23,12 @@ const { contas } = require('./contas');
     const b = document.getElementById('versaoNova');
     return 'casca ' + casca + (simples !== casca ? ' (sem ?t: ' + simples + ')' : '') + ' · versao.json ' + arq + ' · aviso ' + (b ? (b.hidden ? 'escondido' : 'À MOSTRA') : 'não existe');
   });
-  for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'meditacao', 'cla', 'rolador']) {
-    await page.locator('#tab-' + id).click(); await page.waitForTimeout(2000);
-    const f = page.frame({ url: new RegExp('/' + id + '/') });
+  // (as abas por grupo: quem mestra tem a Oficina — a Árvore dela — no lugar da Árvore; a aba escondida é pulada)
+  for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'oficina', 'meditacao', 'cla', 'rolador']) {
+    const aba = page.locator('#tab-' + id);
+    if (!(await aba.count()) || !(await aba.isVisible())) { out[id] = 'aba escondida'; continue; }
+    await aba.click(); await page.waitForTimeout(2000);
+    const f = page.frame({ url: new RegExp('/' + (id === 'oficina' ? 'arvore' : id) + '/') });
     out[id] = f ? await f.title() : 'SEM MOLDURA';
   }
   out.botao = (await page.locator('#btnConta').innerText()).trim();

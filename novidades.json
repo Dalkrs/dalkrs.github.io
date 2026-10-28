@@ -52,6 +52,11 @@
         {
           "tipo": "melhorou",
           "texto": "Mapa-múndi muito mais leve num mapa grande de hexágonos pintados: o terreno não repinta enquanto você arrasta, e o desenho grande é feito em partes — o mapa não congela no zoom (num teste com 15 mil hexágonos, o travamento de vários segundos virou uma fração de segundo). Vale também no aparelho dos jogadores."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Notas do mestre: sair do texto de um capítulo não dá mais erro (a lista do @ e do # fechava errado)."
         }
       ]
     },
