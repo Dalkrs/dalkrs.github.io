@@ -110,6 +110,7 @@ const Proj = (() => {
     o.notes = '';                                                     // anotações são só do mestre
     delete o.cena; delete o.gera;                                     // (lote 7) aonde o objeto leva, também
     delete o.ref;                                                     // (lote 22) o que o ponto de reforço guarda
+    delete o.best; delete o.saque;                                    // (lote 29) o inimigo do Bestiário e o saque no chão
     /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
        não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */
     delete o.clone;

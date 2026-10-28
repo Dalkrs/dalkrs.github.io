@@ -1386,7 +1386,7 @@ const UI = (() => {
     const vida = barraDaVida(t.bars);
     let bi = (barras.find(([b]) => b.n === ci.barra) || barras.find(([b]) => ehMana(b)) || barras.find(([b]) => b !== vida) || barras[0])[1];
     let atr = M.some(x => x[0] === ci.atr) ? ci.atr : 'FOR';
-    const comFicha = !!(t.char && Fichas.get(t.char));
+    const comFicha = Fichas.ligado(t);
     const custo = h('input', { id: 'mana-custo', class: 'in num', type: 'number', min: 1, max: 9999, step: 1, value: ci.custo > 0 ? ci.custo : 1, autocomplete: 'off', 'data-focus': '', 'aria-label': 'Custo de cada ataque' });
     const can = comFicha ? null : h('input', { id: 'mana-can', class: 'in num', type: 'number', min: 1, max: 100000, step: 1, value: ci.can > 0 ? ci.can : '', placeholder: '0', autocomplete: 'off', 'aria-label': 'Canalização Mágica do token' });
     const val = comFicha ? null : h('input', { id: 'mana-val', class: 'in num', type: 'number', min: 1, max: 100000, step: 1, value: ci.val > 0 ? ci.val : '', placeholder: '0', autocomplete: 'off', 'aria-label': 'O valor do ataque normal' });
@@ -2153,13 +2153,14 @@ const UI = (() => {
       fadigaBox(t),
       numsBox(t, true),
       feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
+      Best.secao(t, UI.kit),                                                 // (lote 29) o inimigo do Bestiário: o lembrete e o saque
       secR('s-turn', 'Turnos', false, 'Iniciativa ' + (clampIni(t.ini) >= 0 ? '+' : '') + clampIni(t.ini) + ' · ' + clampTurns(t.turns) + (clampTurns(t.turns) === 1 ? ' turno' : ' turnos') + ' por rodada',
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
         Luta.inisBox(t),
         note('Na aba Turnos, a iniciativa é rolada com 1d20 + Iniciativa. Quem tem mais de um turno por rodada entra mais de uma vez na ordem.'),
         h('div', { class: 'row' }, btn('Aos turnos', () => { const n = Act.turnAdd([t]); toast(n ? `${t.name} entrou na ordem de turnos.` : `${t.name} já está na ordem de turnos.`); }, { icon: 'turns', id: 'tk-toturn' }))),
-      Fichas.on() ? secR('s-ficha', 'Ficha do personagem', tudoAberto && !!t.char, t.char ? 'ligado a uma ficha' : 'sem ficha', fichaBox(t)) : null,
+      Fichas.on() && !t.best ? secR('s-ficha', 'Ficha do personagem', tudoAberto && !!t.char, t.char ? 'ligado a uma ficha' : 'sem ficha', fichaBox(t)) : null,
       cloneSec(t),
       dupSec(t),
       secDivisa('Ajustes do token'),
@@ -2199,7 +2200,7 @@ const UI = (() => {
   /* Os números que aparecem ao lado do nome do token (Força, Canalização Mágica, Defesa Física, Defesa Mágica e
      Esquiva). Com ficha, vêm dela (só para ler); sem ficha, o mestre preenche os que quiser. */
   function numsBox(t, gm) {
-    const daFicha = t.char ? Fichas.numeros(t) : null, v = tokNums(t), st = cleanSt(t.st) || {};
+    const daFicha = t.char || t.best ? Fichas.numeros(t) : null, v = tokNums(t), st = cleanSt(t.st) || {};
     if (!gm && !v) return null;
     const rot = (K, nome) => h('span', { class: 'num-l', title: nome }, h('span', { class: 'num-i', style: { color: NUM_CORES[K] } }, icon('st_' + K.toLowerCase(), 15)), h('span', { text: K }));
     const corpo = daFicha || !gm
@@ -2209,7 +2210,8 @@ const UI = (() => {
           onchange: e => { const raw = String(e.target.value).trim(), o = Object.assign({}, st); if (raw === '') delete o[k]; else o[k] = Number(raw); const novo = cleanSt(o); Store.tx('Números do token', () => Store.upd('tokens', t.id, { st: novo || undefined })); } }))));
     return sec('s-nums', 'Força e defesas', !!v || gm,
       corpo,
-      note(daFicha ? 'Vêm da ficha, com equipamentos, árvore e bônus. Aparecem ao lado do nome quando você aponta para o token ou o escolhe — só para o mestre e o dono.'
+      note(daFicha && !t.char ? 'Vêm do Bestiário (o tier, o level e a árvore do inimigo). Aparecem ao lado do nome quando você aponta para o token ou o escolhe — só para o mestre.'
+        : daFicha ? 'Vêm da ficha, com equipamentos, árvore e bônus. Aparecem ao lado do nome quando você aponta para o token ou o escolhe — só para o mestre e o dono.'
         : gm ? 'Preencha só os que quiser. Aparecem ao lado do nome quando você aponta para o token ou o escolhe — só para o mestre e o dono.'
         : 'Aparecem ao lado do nome quando você aponta para o token ou o escolhe. Só você e o mestre veem.'));
   }
@@ -2301,6 +2303,7 @@ const UI = (() => {
           !alvo ? btn('Uma cena nova, dentro desta…', () => novaCenaLigada(t), { icon: 'plus', id: 'pr-nova' }) : null),
         note(alvo ? `Dois cliques no objeto levam você (só você) até "${Store.S.scenes[alvo].name}". O que os jogadores veem só muda com "Mostrar aos jogadores".` : 'Com uma cena escolhida, dois cliques no objeto levam você até ela. "Uma cena nova" cria a cena dentro desta (na lista de cenas), já com a saída de volta.')) : null,
       !many && t.prop === 'reforco' && typeof Reforco !== 'undefined' ? Reforco.secao(t, { sec, note, btn, field, inNum, modal }) : null,      // (lote 22)
+      !many && t.saque ? Best.secaoBau(t, UI.kit) : null,                                                                                 // (lote 29) o saque no chão
       sec('s-gm', 'Só do mestre', true,
         toggle('pr-hidden', props.every(x => x.hidden), v => all({ hidden: v }, v ? 'Ocultar objeto' : 'Mostrar objeto'), 'Oculto dos jogadores'),
         toggle('pr-locked', props.every(x => x.locked), v => all({ locked: v }, v ? 'Travar objeto' : 'Destravar objeto'), 'Posição travada'),
@@ -3607,6 +3610,7 @@ const UI = (() => {
         btn('Pular', () => { card.remove(); if (!box.children.length) box.hidden = true; }, { kind: 'small', id: 'zona-no-' + fx.id }));
       cards.push(card);
     }
+    cards.push(...Best.lembretes(toks, box));             // (lote 29) o comportamento do inimigo do Bestiário, na vez dele
     if (!cards.length) return;
     box.append(...cards);
     box.hidden = false;
@@ -3806,6 +3810,6 @@ const UI = (() => {
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
     // as peças de formulário e as janelas, para as telas de combate (10c-combate.js)
-    kit: { field, inText, inNum, inSelect, toggle, seg, btn, iconBtn, sec, note, tokenAvatar, stepper, deleteSelToast, layer: el.layer, live(fn) { modalLive = fn; }, card: () => modalEl },
+    kit: { field, inText, inNum, inSelect, toggle, seg, btn, iconBtn, sec, secR, note, tokenAvatar, stepper, deleteSelToast, layer: el.layer, live(fn) { modalLive = fn; }, card: () => modalEl },
   };
 })();
