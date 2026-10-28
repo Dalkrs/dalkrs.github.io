@@ -59,7 +59,7 @@
   const tom = v => (v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero');
 
   /* ---------------- pintar por cima (morph): o campo em que se escreve não sai do lugar ---------------- */
-  const PROPS = ['onclick', 'onchange', 'oninput', 'onkeydown', 'ondragstart', 'ondragend', 'ondragover', 'ondragleave', 'ondrop'];
+  const PROPS = ['onclick', 'onchange', 'oninput', 'onkeydown', 'ondragstart', 'ondragend', 'ondragover', 'ondragleave', 'ondrop', 'onpointerdown'];
   const textual = el => el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|file|range|color)$/i.test(el.type || ''));
   const seletor = k => '[data-k="' + (window.CSS && CSS.escape ? CSS.escape(k) : String(k).replace(/["\\]/g, '\\$&')) + '"]';
   function mesmo(a, b) {
@@ -108,12 +108,14 @@
 
   /* ---------------- os documentos ---------------- */
   const PRE_C = 'cla:c:', PRE_P = 'cla:pub:', NOMES = 'cla:nomes', L_DOCS = 'tinycats:cla:local', PC_TESTE = 'pc_teste';
+  const PRE_SEDE = 'cla:sede:';                                     // (lote 30) a sede de um clã
   let st = null, D = null, P = null, naMesa = false, mestre = true, eu = null, pronto = false;
   let vista = guarda.ler('tinycats:cla:vista') === 'salao' ? 'salao' : 'mestre';
   let sel = null, aba = 'hier', ocupado = false, verTudo = false;
   const motivos = { rec: '', resp: '', rel: '', membro: '' };     // o motivo da próxima mudança, em cada parte do painel
   let pilha = [];                                                   // o desfazer: { rotulo, desfazer() }
   let pintando = false, pendente = false, local = {}, tSalvo = 0, arrasto = null;
+  let sedeAberta = null;                                            // (lote 30) o clã com a Sede aberta (quem mestra)
 
   function lerLocal() { try { const d = JSON.parse(guarda.ler(L_DOCS) || 'null'); local = ehObj(d) ? d : {}; } catch (e) { local = {}; } }
   function salvarLocal() { if (!guarda.gravar(L_DOCS, j(local))) toast('Não deu para guardar neste navegador (a imagem pode ser grande demais para ele).'); }
@@ -123,10 +125,17 @@
     return l && !l.apagado ? l.dados : null;
   }
   // (a visibilidade vai só quando o documento nasce: o clã inteiro é só de quem mestra; os nomes dos níveis, da mesa)
+  // (lote 30) a sede: da mesa no clã dos jogadores e no de NPC que o mestre mostrou; senão, só de quem mestra — e muda
+  // quando isso muda
+  function visDe(id, dados) {
+    if (id === NOMES) return 'mesa';
+    if (id.startsWith(PRE_SEDE)) { const x = clasMestre().find(y => y.id === id.slice(PRE_SEDE.length)); return (x && x.c.jogadores) || (dados && dados.mostrar === true) ? 'mesa' : 'mestre'; }
+    return 'mestre';
+  }
   function gravarDoc(id, dados) {
     if (naMesa) {
-      const campos = { dados: copia(dados) };
-      if (!D.pegar(id)) campos.vis = id === NOMES ? 'mesa' : 'mestre';
+      const campos = { dados: copia(dados) }, l = D.pegar(id), vis = visDe(id, dados);
+      if (!l || (id.startsWith(PRE_SEDE) && l.vis !== vis)) campos.vis = vis;
       D.gravar(id, campos, null, { cas: true });
     } else { local[id] = copia(dados); salvarLocal(); }
     marcarSalvo();
@@ -323,8 +332,15 @@
   function escolher(id) { if (sel !== id) { sel = id; aba = 'hier'; verTudo = false; } pintar(); }
 
   /* ---------------- o salão: as partes ---------------- */
-  const ABAS = [['hier', 'Hierarquia', ['cargos']], ['cons', 'Construções', ['construcoes']], ['rec', 'Cofre', ['recursos']], ['resp', 'Respeito e relações', ['respeito', 'relacoes']], ['hist', 'Histórico', ['hist']]];
-  const abaVisivel = (c, a) => ABAS.find(x => x[0] === a)[2].some(k => c.ver[k]);
+  const ABAS = [['hier', 'Hierarquia', ['cargos']], ['cons', 'Construções', ['construcoes']], ['sede', 'Sede', []], ['rec', 'Cofre', ['recursos']], ['resp', 'Respeito e relações', ['respeito', 'relacoes']], ['hist', 'Histórico', ['hist']]];
+  // (lote 30) a Sede: à vista quando o clã tem sede e os jogadores a veem (quem joga só recebe a que pode ver)
+  function sedeVisivel(c) {
+    if (!SedeUI || !c || !c.id || !SedeUI.temSede(c.id)) return false;
+    if (!mestre) return true;
+    const sd = doc(PRE_SEDE + c.id), x = clasMestre().find(y => y.id === c.id);
+    return !!(x && x.c.jogadores) || !!(sd && sd.mostrar === true);
+  }
+  const abaVisivel = (c, a) => (a === 'sede' ? sedeVisivel(c) : ABAS.find(x => x[0] === a)[2].some(k => c.ver[k]));
   function escondida(c) { return h('div', { class: 'aviso', 'data-k': 'escondida', text: 'O mestre ainda não mostrou esta parte de ' + c.nome + '.' }); }
   function linhaHist(e, i, txt) { return h('div', { class: 'linha-h', 'data-h': String(i) }, h('time', { text: dia(e.em) }), h('span', { text: txt })); }
 
@@ -460,7 +476,7 @@
     morphEm($('nomeCla'), [h('h1', { text: c.nome }), c.lema ? h('p', { text: c.lema }) : null]);
     $('abas').hidden = !!oculto;
     if (!oculto && !abaVisivel(c, aba) && ABAS.every(([id]) => !abaVisivel(c, id))) aba = 'hier';
-    morphEm($('abas'), oculto ? [] : ABAS.map(([id, nome]) => {
+    morphEm($('abas'), oculto ? [] : ABAS.filter(([id]) => id !== 'sede' || abaVisivel(c, id)).map(([id, nome]) => {
       const ve = abaVisivel(c, id);
       return h('button', { type: 'button', role: 'tab', class: ve ? null : 'tranca', 'data-aba': id, 'aria-selected': String(aba === id), 'aria-label': ve ? nome : nome + ' (o mestre ainda não mostrou)', onclick: () => { aba = id; pintar(); } },
         nome, ve ? null : icone(ICO.tranca, 13, '2'));
@@ -476,6 +492,7 @@
       hierarquia(c, pode),
       h('p', { class: 'ajuda', text: 'Cada pessoa pode ser um personagem da mesa ou só um nome.' + (c.jogadores ? ' O número ao lado é o respeito dela dentro do clã (de −10 a +10): todos do clã veem; quem muda é o mestre.' : '') })];
     } else if (aba === 'cons') corpo = [construcoesVer(c)];
+    else if (aba === 'sede') corpo = [SedeUI.parteDoSalao(c.id, c.nome)];
     else if (aba === 'rec') corpo = [recursosVer(c)];
     else if (aba === 'resp') corpo = [respeitoVer(c)];
     else corpo = [historicoVer(c)];
@@ -525,6 +542,7 @@
         h('small', { class: 'ajuda', text: c.jogadores ? 'O líder (o dono do personagem no cargo de líder) também mexe nos cargos abaixo do dele.' : 'Os jogadores veem os cargos se você marcar “Cargos e quem ocupa”.' })),
         hierarquia(V, true)),
       h('div', { class: 'lado-a-lado' }, secConstrucoes(x), secRecursos(x)),
+      SedeUI ? SedeUI.cartao(x) : null,
       h('div', { class: 'lado-a-lado' }, secRespeito(x), secRelacoes(x), secMembros(x)),
       secHistorico(x));
   }
@@ -543,7 +561,7 @@
             onchange: function () { const v = this.value, f = facs.find(y => y.id === v); mudarCla(id, 'mudar a facção do clã', y => { y.faccao = v ? (f ? { id: f.id, nome: f.nome, cor: f.cor } : y.faccao) : null; }); } },
             h('option', { value: '', text: opcFac.length ? 'Nenhuma' : 'Nenhuma facção nos mapas ainda' }), opcFac)),
         h('label', { class: 'chk' }, h('input', { type: 'checkbox', 'data-k': 'c:jog', checked: c.jogadores,
-          onchange: function () { const sim = this.checked; if (mudarCla(id, sim ? 'marcar como o clã dos jogadores' : 'desmarcar o clã dos jogadores', y => { y.jogadores = sim; })) avisoDesfazer(sim ? 'Agora os jogadores veem tudo de ' + c.nome + '.' : c.nome + ' virou um clã de NPC: os jogadores veem só o que você marcar.'); } }),
+          onchange: function () { const sim = this.checked; if (mudarCla(id, sim ? 'marcar como o clã dos jogadores' : 'desmarcar o clã dos jogadores', y => { y.jogadores = sim; })) { const sd = doc(PRE_SEDE + id); if (sd && naMesa) gravarDoc(PRE_SEDE + id, sd); avisoDesfazer(sim ? 'Agora os jogadores veem tudo de ' + c.nome + '.' : c.nome + ' virou um clã de NPC: os jogadores veem só o que você marcar.'); } } }),
           'Clã dos jogadores (eles veem tudo; o líder mexe nos cargos)'),
         h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'c:brasao', onclick: () => brasaoDlg(id) }, 'Brasão…'),
@@ -573,8 +591,13 @@
   function subir(id, k) {
     let feito = false;
     mudarCla(id, 'subir ' + k.nome + ' de nível', y => { const r = N.subirNivel(y, k.id, agora()); if (!r.ok) { toast(r.falta.length ? 'Faltam recursos para subir ' + k.nome + '.' : 'Não deu para subir de nível.'); return false; } feito = trocar(y, r.cla); });
-    if (feito) avisoDesfazer(k.nome + (k.nivel === 0 ? ' foi construída.' : ' subiu para o nível ' + (k.nivel + 1) + '.'));
+    if (!feito) return;
+    // (lote 30) o prédio dela na Sede: a planta do nível novo fica sugerida lá (o mestre confirma)
+    const sd = window.TC && TC.sede ? TC.sede.normSede(doc(PRE_SEDE + id)) : null, pr = sd ? sd.predios.find(p => p.cons === k.id) : null;
+    const nv = Math.max(1, Math.min(3, k.nivel + 1)), sug = pr && pr.nivel !== nv && S_PREDIO(pr) ? ' Na Sede, ' + pr.nome + ' pode passar para a planta do nível ' + nv + '.' : '';
+    avisoDesfazer(k.nome + (k.nivel === 0 ? ' foi construída.' : ' subiu para o nível ' + (k.nivel + 1) + '.') + sug);
   }
+  const S_PREDIO = pr => !!(window.TC && TC.sede && TC.sede.PREDIOS[pr.tipo]);
   /* (lote 10, pente fino) O estoque da facção ligada ao clã, no Mapa-múndi (com a economia ligada), só para ler: o cofre
      do clã é outra coisa. → { fac, mapa, linhas: [{ nome, n }] } ou null */
   function estoqueDaFaccao(c) {
@@ -1100,15 +1123,37 @@
   /* ---------------- pintar ---------------- */
   function pintar() {
     if (!pronto) return;
+    if (SedeUI && SedeUI.ui.arrasto) return;                   // (no meio de um arrasto na Sede: ela pinta ao soltar)
+    if (Construtor && Construtor.st.arrasto) return;          // (idem no construtor)
     if (pintando) { pendente = true; return; }
     pintando = true; pendente = false;
     try { pintarJa(); } finally { pintando = false; }
     if (pendente) setTimeout(pintar, 0);
   }
+  // (lote 30) a visibilidade de cada sede acompanha o clã (também depois de um Desfazer)
+  function sincronizarSedes() {
+    if (!naMesa || !mestre) return;
+    for (const l of D.todas()) {
+      if (typeof l.id !== 'string' || !l.id.startsWith(PRE_SEDE) || l.apagado || !ehObj(l.dados)) continue;
+      if (l.vis !== visDe(l.id, l.dados)) D.gravar(l.id, { vis: visDe(l.id, l.dados) });
+    }
+  }
   function pintarJa() {
+    sincronizarSedes();
     const bt = $('btDesfazer');
     bt.disabled = !pilha.length;
     bt.title = pilha.length ? 'Desfazer: ' + pilha[pilha.length - 1].rotulo + ' (Ctrl+Z)' : 'Nada para desfazer';
+    const xSede = mestre && vista === 'mestre' && sedeAberta && SedeUI ? clasMestre().find(y => y.id === sedeAberta) : null;
+    if (!xSede) { sedeAberta = null; if ($('sede').firstChild) $('sede').replaceChildren(); }
+    $('sede').hidden = !xSede;
+    if (xSede) {
+      morphEm($('barra'), barra());
+      $('salao').hidden = true; $('nada').hidden = true; $('mestre').hidden = true;
+      morphEm($('sede'), [SedeUI.tela(xSede)]);
+      if (Construtor && Construtor.aberto()) Construtor.pintar();
+      return;
+    }
+    if (Construtor && Construtor.aberto()) Construtor.fechar();
     if (mestre && vista === 'mestre') {
       morphEm($('barra'), barra());
       $('salao').hidden = true; $('nada').hidden = true; $('mestre').hidden = false;
@@ -1153,6 +1198,30 @@
   }
   function avisoDesfazer(texto) { const passo = pilha[pilha.length - 1]; toast(texto, 'Desfazer', () => desfazer(passo)); }
 
+  /* ---------------- (lote 30) a Sede ---------------- */
+  function abrirSede(id) { sedeAberta = id; pintar(); try { window.scrollTo(0, 0); } catch (e) { /* sem rolagem */ } }
+  function fecharSede() { sedeAberta = null; pintar(); }
+  const naCasca = () => !!(window.TC && TC.ponte && TC.ponte.ir && TC.ponte.naCasca);
+  // escolher um andar (a escada do construtor, quando há mais de um outro andar)
+  function escolherAndar(opcoes) {
+    return new Promise(resolve => {
+      let feito = false;
+      const fim = v => { if (feito) return; feito = true; $('dlg').onclose = null; fechar(); resolve(v); };
+      abrir('', [h('h2', { text: 'A escada leva a qual andar?' }), h('div', { class: 'row' }, opcoes.map(([v, t]) => h('button', { type: 'button', class: 'btn', 'data-k': 'dl:andar:' + v, onclick: () => fim(v) }, t))),
+        pe(h('button', { type: 'button', class: 'btn', 'data-k': 'dl:nao', onclick: () => fim(null) }, 'Cancelar'))], () => fim(null));
+    });
+  }
+  const kitSede = {
+    h, toast, avisoDesfazer, doc, mudarDoc, clasMestre, pintar, N, icone, confirmar, abrirSede, fecharSede, naCasca, escolherAndar,
+    docs: () => (naMesa ? D.todas() : Object.keys(local).map(id => ({ id, dados: local[id] }))),
+    naMesa: () => naMesa, sedeAberta: () => !!sedeAberta, podeDesfazer: () => pilha.length > 0, desfazer: () => desfazer(),
+    pedirTexto: (titulo, rotulo, valor) => new Promise(res => pedirNome(titulo, rotulo, valor, 'Salvar', res)),
+  };
+  const SedeUI = window.ClaSedeUI && window.TC && window.TC.sede ? window.ClaSedeUI(kitSede) : null;
+  const Construtor = SedeUI && window.ClaConstrutor ? window.ClaConstrutor(kitSede) : null;
+  if (Construtor) { kitSede.construtor = (cla, pr) => Construtor.abrir(cla, pr); kitSede.plantasSalvas = () => Construtor.normPlantas(doc(Construtor.PLANTAS)); kitSede.PLANTAS = Construtor.PLANTAS; kitSede.normPlantas = Construtor.normPlantas; }
+  if (SedeUI) kitSede.verNasCenas = (cla, pr) => { const x = clasMestre().find(y => y.id === cla); if (x) SedeUI.verNasCenas(cla, x.c, pr); };
+
   /* ---------------- teclas ---------------- */
   $('btDesfazer').addEventListener('click', () => desfazer());
   const escrevendo = () => { const a = document.activeElement; return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable); };
@@ -1177,7 +1246,7 @@
       TCx.ponte.aoMudar(e => { const antes = j((st && st.membros) || []); st = e; if (pronto && antes !== j(e.membros || [])) pintar(); });
     }
     if (naMesa) {
-      D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith('cla:') || l.id.startsWith('mundo:mapa:'))) pintar(); });
+      D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith('cla:') || l.id.startsWith('mundo:mapa:'))) pintar(); });     // (cla:sede: também)
       P.aoMudar(() => pintar());
     } else $('salvo').textContent = 'Neste navegador';
     if (!mestre) vista = 'salao';
@@ -1185,7 +1254,7 @@
     pintar();
   }
   if (DEBUG) window.__cla = { N, get naMesa() { return naMesa; }, get mestre() { return mestre; }, get pronto() { return pronto; }, get pilha() { return pilha.map(p => p.rotulo); },
-    get sel() { return sel; }, get vista() { return vista; }, get aba() { return aba; }, get ocupado() { return ocupado; }, doc: id => copia(doc(id)), pub: id => copia(pubDe(id)), pintar, desfazer: () => desfazer() };
+    get sel() { return sel; }, get vista() { return vista; }, get sedeAberta() { return sedeAberta; }, get sedeUI() { return SedeUI; }, abrirSede, get aba() { return aba; }, get ocupado() { return ocupado; }, doc: id => copia(doc(id)), pub: id => copia(pubDe(id)), pintar, desfazer: () => desfazer() };
   partida().catch(e => {
     console.error(e);
     $('nada').hidden = false;

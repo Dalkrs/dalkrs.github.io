@@ -2,6 +2,36 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.28-5",
+      "data": "2026-10-28",
+      "titulo": "A Casa do clã",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã: a Sede de cada clã. Arraste as plantas prontas (Salão, Quartel, Forja, Templo, Estábulo e Torre, nos níveis 1, 2 e 3) para o terreno: elas encaixam nos quadrados e não ficam uma em cima da outra. Cada prédio se liga a uma construção do clã; quando ela sobe de nível, a Sede sugere a planta nova. Em volta: a muralha, os portões, as estradas, o poço e os jardins. O chão vem do lugar do clã no Mapa-múndi."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã: o construtor. Num prédio da Sede, “Editar no construtor”: cômodos (arrastando), portas e janelas (clique na parede), pisos, móveis, escadas e andares (e o porão). “Salvar como planta” guarda a planta para usar de novo, em “Minhas plantas”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Ver nas Cenas” (na Sede) cria a cena da sede — os telhados, a muralha, o portão, uma Entrada na porta de cada prédio — e a de cada andar de cada prédio, com as paredes, as portas, as janelas, os móveis, a Saída e as escadas entre os andares. Pedir de novo atualiza: os tokens, a névoa e as luzes ficam; tem Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Clã: a parte Sede no salão, com a planta da sede do clã (no clã de vocês, e nos que o mestre mostrar)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: móveis novos — a lareira e a fornalha (com fogo), o estandarte, o feno, o cocho e a escada."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.28-4",
       "data": "2026-10-28",
       "titulo": "A barra de cima arrumada",

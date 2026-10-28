@@ -490,6 +490,89 @@ const Props = (() => {
         c.fillStyle = FER.cla; c.beginPath(); c.arc(R * 0.52, R * 0.5, R * 0.1, 0, TAU); c.fill(); linha(c, R * 0.025);
       },
     },
+    /* (lote 30) os da Casa do clã: a lareira e a fornalha (com fogo e luz), o estandarte, o feno, o cocho e a escada.
+       Como os outros móveis de encostar, a frente fica para baixo (a parede, em cima). */
+    lareira: {
+      n: 'Lareira', g: 'luz', size: 2, fogo: true, luz: { bright: 4, dim: 9, c: '#ff9a48' },
+      draw(c, R, t, s, ang) {
+        sombra(c, R, 0.98, 0.5, 0.04, -0.2);
+        // a chaminé de pedra (encostada na parede, em cima) e a boca do fogo, para baixo
+        caixa(c, -R * 0.96, -R * 0.96, R * 1.92, R * 0.86, R * 0.06); c.fillStyle = grad(c, 0, -R * 0.96, 0, -R * 0.1, [PED.cla, PED.med]); c.fill(); linha(c, R * 0.05);
+        for (let j = 0; j < 3; j++) for (let i = 0; i < 5; i++) { c.fillStyle = `rgba(30,30,36,${0.12 + hsh(s, i, j) * 0.18})`; c.fillRect(-R * 0.92 + i * R * 0.37 + (j % 2) * R * 0.18, -R * 0.92 + j * R * 0.27, R * 0.33, R * 0.23); }
+        caixa(c, -R * 0.62, -R * 0.12, R * 1.24, R * 0.62, R * 0.08); c.fillStyle = PED.esc; c.fill(); linha(c, R * 0.05);
+        c.fillStyle = '#160b05'; caixa(c, -R * 0.48, -R * 0.06, R * 0.96, R * 0.46, R * 0.06); c.fill();
+        for (let i = 0; i < 10; i++) brasa(c, -R * 0.38 + hsh(s, i, 2) * R * 0.76, R * 0.08 + hsh(s, i, 3) * R * 0.26, R * (0.04 + hsh(s, i, 4) * 0.04), t, i);
+        chama(c, -R * 0.15, R * 0.32, R * 0.38, t, s + 1, ang);
+        chama(c, R * 0.16, R * 0.3, R * 0.42, t, s + 2, ang);
+        // a pedra da frente (o borralho)
+        caixa(c, -R * 0.78, R * 0.5, R * 1.56, R * 0.2, R * 0.06); c.fillStyle = PED.med; c.fill(); linha(c, R * 0.04);
+      },
+    },
+    fornalha: {
+      n: 'Fornalha', g: 'luz', size: 2, fogo: true, luz: { bright: 4, dim: 8, c: '#ff7a2e' },
+      draw(c, R, t, s, ang) {
+        sombra(c, R, 0.92, 0.84, 0.06, 0.08);
+        // o forno de tijolos, redondo, com a boca para baixo e o fole ao lado
+        c.fillStyle = radial(c, -R * 0.2, -R * 0.25, R * 1.0, ['#9a5a3a', '#7a3f26', '#4e2716']); c.beginPath(); c.arc(0, -R * 0.08, R * 0.8, 0, TAU); c.fill(); linha(c, R * 0.06);
+        c.strokeStyle = 'rgba(40,16,6,0.45)'; c.lineWidth = R * 0.03; for (const k of [0.32, 0.55]) { c.beginPath(); c.arc(0, -R * 0.08, R * k, 0, TAU); c.stroke(); }
+        c.fillStyle = '#140804'; c.beginPath(); c.arc(0, -R * 0.08, R * 0.3, 0, TAU); c.fill();
+        for (let i = 0; i < 8; i++) { const a = hsh(s, i, 5) * TAU, d = R * 0.22 * Math.sqrt(hsh(s, i, 6)); brasa(c, Math.cos(a) * d, -R * 0.08 + Math.sin(a) * d, R * 0.05, t, i); }
+        chama(c, 0, R * 0.02, R * 0.36, t, s + 3, ang);
+        caixa(c, -R * 0.3, R * 0.6, R * 0.6, R * 0.26, R * 0.05); c.fillStyle = '#3a1e10'; c.fill(); linha(c, R * 0.04);
+        c.save(); c.translate(R * 0.82, R * 0.55); c.rotate(-0.5);
+        caixa(c, -R * 0.14, -R * 0.3, R * 0.28, R * 0.6, R * 0.08); c.fillStyle = MAD.cla; c.fill(); linha(c, R * 0.03);
+        c.restore();
+      },
+    },
+    estandarte: {
+      n: 'Estandarte', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.62, 0.5, 0.06, 0.12);
+        // o pano pendurado (visto de cima, um pouco inclinado), a trave e o pé de pedra
+        const cores = [['#8a2a2a', '#d9a441'], ['#24305e', '#c9ccd4'], ['#2f6b45', '#d9a441'], ['#5b3f8a', '#e8eaf0']][s % 4];
+        c.beginPath(); c.moveTo(-R * 0.62, -R * 0.62); c.lineTo(R * 0.62, -R * 0.62); c.lineTo(R * 0.62, R * 0.5); c.lineTo(0, R * 0.78); c.lineTo(-R * 0.62, R * 0.5); c.closePath();
+        c.fillStyle = cores[0]; c.fill(); linha(c, R * 0.05);
+        c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(-R * 0.18, -R * 0.6, R * 0.22, R * 1.2);
+        c.strokeStyle = cores[1]; c.lineWidth = R * 0.07; c.beginPath(); c.moveTo(-R * 0.5, -R * 0.46); c.lineTo(R * 0.5, -R * 0.46); c.stroke();
+        c.fillStyle = cores[1]; c.beginPath(); c.arc(0, R * 0.06, R * 0.22, 0, TAU); c.fill(); linha(c, R * 0.03, 'rgba(20,12,6,0.6)');
+        caixa(c, -R * 0.76, -R * 0.74, R * 1.52, R * 0.14, R * 0.05); c.fillStyle = MAD.esc; c.fill(); linha(c, R * 0.03);
+      },
+    },
+    feno: {
+      n: 'Feno', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.86, 0.66, 0.08, 0.1);
+        caixa(c, -R * 0.84, -R * 0.62, R * 1.68, R * 1.24, R * 0.18); c.fillStyle = grad(c, 0, -R * 0.62, 0, R * 0.62, ['#e6c46a', '#c9a24a', '#a8822f']); c.fill(); linha(c, R * 0.05);
+        c.strokeStyle = 'rgba(120,88,30,0.6)'; c.lineWidth = Math.max(0.6, R * 0.025);
+        for (let i = 0; i < 24; i++) { const x = -R * 0.76 + hsh(s, i, 1) * R * 1.52, y = -R * 0.54 + hsh(s, i, 2) * R * 1.08, a = (hsh(s, i, 3) - 0.5) * 0.8; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * R * 0.28, y + Math.sin(a) * R * 0.28); c.stroke(); }
+        // as duas cordas
+        c.strokeStyle = '#6b4a22'; c.lineWidth = R * 0.07; for (const x of [-0.36, 0.36]) { c.beginPath(); c.moveTo(x * R, -R * 0.62); c.lineTo(x * R, R * 0.62); c.stroke(); }
+      },
+    },
+    cocho: {
+      n: 'Cocho', g: 'movel', size: 2,
+      draw(c, R, t, s) {
+        sombra(c, R, 0.96, 0.42, 0.04, 0.06);
+        // o cocho de madeira, comprido, com água (ou ração) dentro
+        caixa(c, -R * 0.94, -R * 0.36, R * 1.88, R * 0.72, R * 0.1); c.fillStyle = MAD.med; c.fill(); linha(c, R * 0.05);
+        const agua = s % 2 === 0;
+        caixa(c, -R * 0.82, -R * 0.24, R * 1.64, R * 0.48, R * 0.06);
+        c.fillStyle = agua ? grad(c, 0, -R * 0.24, 0, R * 0.24, ['#5d93b8', '#3a6a8c']) : grad(c, 0, -R * 0.24, 0, R * 0.24, ['#d8b65a', '#a8862f']); c.fill();
+        if (agua) { c.strokeStyle = 'rgba(230,245,255,0.45)'; c.lineWidth = R * 0.03; c.beginPath(); c.moveTo(-R * 0.5, -R * 0.06); c.lineTo(-R * 0.2, -R * 0.06); c.moveTo(R * 0.2, R * 0.08); c.lineTo(R * 0.55, R * 0.08); c.stroke(); }
+      },
+    },
+    escada: {
+      n: 'Escada', g: 'movel', size: 1,
+      draw(c, R, t, s) {
+        // os degraus, do mais claro (em cima) ao mais escuro (embaixo): a escada que desce ou sobe para o outro andar
+        c.save(); c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(-R * 0.9, -R * 0.9, R * 1.8, R * 1.8); c.restore();
+        for (let i = 0; i < 5; i++) {
+          const y = -R * 0.9 + i * R * 0.36, k = 1 - i * 0.15;
+          caixa(c, -R * 0.84, y, R * 1.68, R * 0.32, R * 0.04); c.fillStyle = `rgb(${Math.round(150 * k)},${Math.round(104 * k)},${Math.round(62 * k)})`; c.fill(); linha(c, R * 0.03);
+        }
+        c.strokeStyle = MAD.esc; c.lineWidth = R * 0.08; c.beginPath(); c.moveTo(-R * 0.9, -R * 0.9); c.lineTo(-R * 0.9, R * 0.9); c.moveTo(R * 0.9, -R * 0.9); c.lineTo(R * 0.9, R * 0.9); c.stroke();
+      },
+    },
     /* ---------- Natureza ---------- */
     arvore: {
       n: 'Árvore', g: 'natureza', size: 2,

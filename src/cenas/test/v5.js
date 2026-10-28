@@ -334,7 +334,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await w(250);
   await page.keyboard.press('j'); await w(200);
   ok(await ev(() => __tc.App.tool) === 'obj' && await page.locator('#tool-obj.on').count() === 1 && (await page.locator('#tool-obj').getAttribute('title')) === 'Objetos de cenário (J)', 'a tecla J abre a ferramenta Objetos de cenário (também no trilho)');
-  ok(await page.locator('#o-oc .seg-b').count() === 4 && await page.locator('.o-obj').count() === 6 && await page.locator('#o-obj-fogueira.on').count() === 1, 'a barra de cima tem as quatro categorias e, em Luzes, as seis luzes (a fogueira escolhida; a lanterna de papel veio no lote 7)');
+  ok(await page.locator('#o-oc .seg-b').count() === 4 && await page.locator('.o-obj').count() === 8 && await page.locator('#o-obj-fogueira.on').count() === 1, 'a barra de cima tem as quatro categorias e, em Luzes, as oito luzes (a fogueira escolhida; a lanterna de papel veio no lote 7; a lareira e a fornalha, no lote 30)');
   await page.locator('#o-obj-tocha').click(); await w(120);
   { const p = await tela(3.5 * C, 2.5 * C); await page.mouse.click(p[0], p[1]); await w(200); }
   let objs = await ev(() => __tc.Store.scene().tokens.filter(k => k.prop).map(k => JSON.parse(JSON.stringify(k))));
@@ -344,7 +344,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await page.locator('#o-obj-fogueira').click(); await w(80);
   { const p = await tela(10.5 * C, 4.5 * C); await page.mouse.click(p[0], p[1]); await w(200); }
   await page.locator('#o-oc .seg-b', { hasText: 'Móveis' }).click(); await w(120);
-  ok(await page.locator('.o-obj').count() === 15 && await page.locator('#o-obj-bau.on').count() === 1, 'em Móveis e baús, quinze móveis (o baú já escolhido; almofada, tapete, jarro, bigorna, banco e balcão vieram no lote 7; a pele e as armas, das moradias da tribo, na parte 4b)');
+  ok(await page.locator('.o-obj').count() === 19 && await page.locator('#o-obj-bau.on').count() === 1, 'em Móveis e baús, dezenove móveis (o baú já escolhido; almofada, tapete, jarro, bigorna, banco e balcão vieram no lote 7; a pele e as armas, das moradias da tribo, na parte 4b; o estandarte, o feno, o cocho e a escada, da Casa do clã, no lote 30)');
   await page.locator('#o-obj-mesa').click(); await w(80);
   { const p = await tela(4 * C, 6 * C); await page.mouse.click(p[0], p[1]); await w(200); }
   for (const [cat, id, x, y] of [['Natureza', 'arvore', 12, 1], ['Natureza', 'pedra', 9.5, 7.5], ['Perigos', 'armadilha', 5.5, 4.5], ['Perigos', 'estatua', 12.5, 7.5]]) {

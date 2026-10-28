@@ -229,6 +229,102 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 /* (lote 8) o recurso novo no custo: o nome escrito, com a etiqueta "novo" */
 .custo-l .row input.nome-novo { width: auto; flex: 1 1 140px; }
 .custo-l .tag-novo { font-size: 11px; font-weight: 700; color: var(--lamp-ink, #1d1405); background: var(--lamp); border-radius: 999px; padding: 1px 8px; }
+/* ---- (lote 30) a Sede ---- */
+.sede { padding: 12px 14px 40px; }
+.sede-ed { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.sede-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sede-top .tit { margin: 0; }
+.sede-corpo { display: grid; grid-template-columns: 230px minmax(0, 1fr) 300px; gap: 12px; align-items: start; }
+.sede-plantas, .sede-lado { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sede-lado .tit { margin: 2px 0 0; font-size: 18px; }
+.sede-lado .field { display: flex; flex-direction: column; gap: 4px; }
+.sede-lado .field > span { font-size: 12.5px; color: var(--fg-2); font-weight: 600; }
+.sede-lado .row { display: flex; gap: 6px; flex-wrap: wrap; }
+.rot-sec { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--fg-3); font-weight: 700; margin-top: 4px; }
+.planta-card { border: 1px solid var(--line); border-radius: 10px; background: var(--raised); }
+.planta-card.ativo { border-color: var(--lamp); border-style: dashed; }
+.pc-pegar { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 9px 6px; border: 0; background: none; text-align: left; cursor: grab; touch-action: none; color: var(--lamp-ink); }
+.pc-pegar:active { cursor: grabbing; }
+.pc-tx { display: flex; flex-direction: column; min-width: 0; color: var(--fg); }
+.pc-tx small { color: var(--fg-3); font-size: 12px; }
+.pc-niveis { display: flex; gap: 4px; padding: 0 9px 8px 44px; }
+.pc-niveis button { min-width: 28px; height: 24px; border-radius: 6px; border: 1px solid var(--line-strong); background: none; color: var(--fg-2); font-size: 12px; font-weight: 700; }
+.pc-niveis button[aria-pressed="true"] { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.pc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-b { height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg-2); font-size: 12.5px; font-weight: 600; touch-action: none; }
+.chip-b.ativo { border-color: var(--lamp); color: var(--lamp-ink); }
+.sede-mapa { position: relative; background: #11141b; border: 1px solid var(--line); border-radius: 12px; padding: 8px; min-width: 0; }
+.sede-svg { display: block; width: 100%; height: auto; max-height: calc(100vh - 150px); border-radius: 6px; user-select: none; touch-action: none; }
+.sede-svg .piso { opacity: .92; }
+.sede-svg .movel { fill: rgba(30, 20, 10, .35); }
+.sede-svg .escada { stroke: rgba(255, 240, 210, .7); stroke-width: 2; fill: none; }
+.sede-svg .parede { stroke: #2a1e14; stroke-width: 2; stroke-linecap: square; }
+.sede-svg .parede.fora { stroke: #1a120b; stroke-width: 4; }
+.sede-svg .parede.porta { stroke: #e6ab4f; stroke-width: 3; }
+.sede-svg .parede.janela { stroke: #9fd4ea; stroke-width: 3; }
+.sede-svg .parede.entrada { stroke: #ffd27a; stroke-width: 5; }
+.sede-svg .rot { font: 700 13px var(--ui); fill: #f3ead2; text-anchor: middle; paint-order: stroke; stroke: rgba(10, 8, 6, .85); stroke-width: 3px; pointer-events: none; }
+.sede-svg .rot-peca { font: 600 11px var(--ui); fill: #f3ead2; text-anchor: middle; paint-order: stroke; stroke: rgba(10, 8, 6, .8); stroke-width: 3px; pointer-events: none; }
+.sede-svg .peca { cursor: grab; }
+.so-ver .sede-svg .peca { cursor: default; }
+.sede-svg .peca.ruim { opacity: .55; }
+.sede-svg .peca.ruim .anel { stroke: #f0786e; }
+.sede-svg .anel { fill: none; stroke: #e6ab4f; stroke-width: 3; stroke-dasharray: 8 5; pointer-events: none; }
+.sede-svg .fantasma { fill: rgba(230, 171, 79, .22); stroke: #e6ab4f; stroke-width: 2.5; stroke-dasharray: 8 5; pointer-events: none; }
+.sede-svg .fantasma.ruim { fill: rgba(240, 120, 110, .22); stroke: #f0786e; }
+.sede-svg .linha-previa { fill: none; stroke: #e6ab4f; stroke-width: 6; stroke-dasharray: 10 6; pointer-events: none; }
+.sede-svg .sobe circle { fill: #e6ab4f; stroke: #1d1503; stroke-width: 1.5; }
+.sede-svg .sobe path { stroke: #1d1503; stroke-width: 2; fill: none; stroke-linecap: round; }
+.sede-dica { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: calc(100% - 24px); padding: 8px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--lamp); box-shadow: var(--shadow); font-size: 13px; }
+.aviso-sobe { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 9px; background: var(--lamp-soft); border: 1px solid var(--lamp); font-size: 13px; }
+.sede-mini { cursor: pointer; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); max-width: 420px; }
+.sede-mini .sede-svg { max-height: 220px; }
+.sede-ver .sede-mapa { max-width: 980px; }
+.sede-lista { margin: 8px 0 0; padding-left: 18px; color: var(--fg-2); }
+/* o construtor (por cima de tudo) */
+.com-construtor body { overflow: hidden; }
+.construtor { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; background: var(--table); }
+.cs-top { flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.cs-tit { font: 600 18px/1 var(--display); margin-right: 6px; }
+.cs-corpo { flex: 1; min-height: 0; display: grid; grid-template-columns: 96px minmax(0, 1fr) 300px; }
+.cs-rail { display: flex; flex-direction: column; gap: 4px; padding: 8px; border-right: 1px solid var(--line); background: var(--surface); overflow: auto; }
+.cs-rail button { min-height: 38px; padding: 0 6px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--fg-2); font-size: 12.5px; font-weight: 700; text-align: left; }
+.cs-rail button:hover { background: var(--hover); color: var(--fg); }
+.cs-rail button[aria-pressed="true"] { border-color: var(--lamp); background: var(--lamp-soft); color: var(--lamp-ink); }
+.cs-mapa { min-width: 0; min-height: 0; overflow: auto; display: grid; place-items: center; padding: 12px; }
+.cs-svg { display: block; width: 100%; height: 100%; max-height: calc(100vh - 90px); user-select: none; touch-action: none; }
+.cs-lado { border-left: 1px solid var(--line); background: var(--surface); padding: 12px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.cs-lado .tit { margin: 0; font-size: 18px; }
+.cs-lado .field { display: flex; flex-direction: column; gap: 4px; }
+.cs-lado .field > span { font-size: 12.5px; color: var(--fg-2); font-weight: 600; }
+.cs-lado .row { display: flex; gap: 6px; flex-wrap: wrap; }
+.cs-pisos { display: flex; gap: 6px; flex-wrap: wrap; }
+.cs-pisos button { width: 38px; height: 38px; border-radius: 8px; border: 2px solid transparent; }
+.cs-pisos button[aria-pressed="true"] { border-color: var(--lamp); box-shadow: 0 0 0 2px var(--surface) inset; }
+.cs-moveis { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.cs-moveis button { display: flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); color: var(--fg-2); font-size: 12.5px; font-weight: 600; text-align: left; }
+.cs-moveis button[aria-pressed="true"] { border-color: var(--lamp); color: var(--lamp-ink); }
+.cs-mcor { flex: none; width: 12px; height: 12px; border-radius: 3px; }
+.cs-svg .cs-nome { font: 700 12px var(--ui); fill: rgba(255, 248, 230, .85); text-anchor: middle; paint-order: stroke; stroke: rgba(10, 8, 6, .7); stroke-width: 3px; pointer-events: none; }
+.cs-svg .cs-mtx { font: 600 9.5px var(--ui); fill: #fff6e0; text-anchor: middle; pointer-events: none; }
+.cs-svg .cs-esc { font: 600 9px var(--ui); fill: #e8d2a8; text-anchor: middle; pointer-events: none; }
+.cs-svg .cs-entrada { font: 700 11px var(--ui); fill: #ffd27a; text-anchor: middle; pointer-events: none; }
+.cs-svg .cs-frente { stroke: #ffe6a8; stroke-width: 2.4; stroke-linecap: round; pointer-events: none; }
+.cs-svg .cs-parede { stroke: #2a1e14; stroke-width: 3; stroke-linecap: square; }
+.cs-svg .cs-parede.fora { stroke: #0f0a06; stroke-width: 6; }
+.cs-svg .cs-parede.porta { stroke: #e6ab4f; stroke-width: 4; }
+.cs-svg .cs-parede.janela { stroke: #9fd4ea; stroke-width: 4; }
+.cs-svg .cs-parede.entrada { stroke: #ffd27a; stroke-width: 7; }
+.cs-svg .sel rect:first-of-type, .cs-svg .cs-sala.sel rect { stroke: #e6ab4f; stroke-width: 3; stroke-dasharray: 7 4; }
+.cs-svg .cs-fantasma { fill: rgba(230, 171, 79, .25); stroke: #e6ab4f; stroke-width: 2.5; stroke-dasharray: 7 4; pointer-events: none; }
+.cs-svg .cs-fantasma.ruim { fill: rgba(240, 120, 110, .25); stroke: #f0786e; }
+.cs-svg .cs-medida { font: 700 14px var(--ui); fill: #fff; text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,.7); stroke-width: 3px; pointer-events: none; }
+.cs-svg .cs-mira { stroke-width: 8; stroke-linecap: round; opacity: .8; pointer-events: none; }
+.cs-svg .cs-mira.porta { stroke: #e6ab4f; }
+.cs-svg .cs-mira.janela { stroke: #9fd4ea; }
+.cs-svg .cs-mira-cel { fill: rgba(230, 171, 79, .18); stroke: rgba(230, 171, 79, .6); stroke-width: 1.5; pointer-events: none; }
+@media (max-width: 1100px) { .cs-corpo { grid-template-columns: 80px minmax(0, 1fr); } .cs-lado { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); max-height: 40vh; } }
+@media (max-width: 1100px) { .sede-corpo { grid-template-columns: 1fr; } .sede-plantas { flex-direction: row; flex-wrap: wrap; } .planta-card { flex: 1 1 200px; } }
 </style>
 </head>
 <body>
@@ -250,6 +346,7 @@ dialog.dl .corpo { display: grid; gap: 12px; }
     <main class="parte" id="parte"></main>
   </div>
   <main class="mestre" id="mestre" hidden aria-label="Os clãs da mesa"></main>
+  <main class="sede" id="sede" hidden aria-label="A Sede do clã"></main>
   <main id="nada" hidden></main>
 </div>
 <input type="file" id="arquivo" accept="image/png,image/jpeg,image/webp" hidden>
@@ -258,6 +355,10 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <script src="../tc/ponte.js?v=19"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="nucleo.js?v=3"></script>
-<script src="cla.js?v=3"></script>
+<script src="../mundo/nucleo.js?v=43"></script>
+<script src="../tc/sede.js?v=1"></script>
+<script src="sede-ui.js?v=1"></script>
+<script src="construtor.js?v=1"></script>
+<script src="cla.js?v=4"></script>
 </body>
 </html>

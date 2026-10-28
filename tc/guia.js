@@ -117,9 +117,13 @@
       mestre: [
         { t: 'Os clãs da mesa', txt: 'O dos jogadores e os de NPC (rivais, aliados). Escolha um para abrir.', onde: { sel: '#mestre', nada: 'A lista dos clãs aparece fora de um clã aberto.' } },
         { t: 'As partes do clã', txt: 'Cargos, construções, recursos, respeito, relações e o histórico. No clã de NPC, você marca o que os jogadores veem.', onde: { sel: '#abas', nada: 'Abra um clã primeiro.' } },
+        // (lote 30) a Sede e o construtor
+        { t: 'A Sede', txt: 'No painel do clã, “Montar a Sede” (ou “Abrir a Sede”): arraste as plantas prontas (Salão, Quartel, Forja, Templo, Estábulo e Torre, nos níveis 1 a 3) para o terreno, ligue cada prédio a uma construção do clã e ponha a muralha, os portões, as estradas, o poço e os jardins. O chão vem do lugar do clã no Mapa-múndi. “Ver nas Cenas” cria a cena da sede e a de cada andar; pedir de novo atualiza (os tokens, a névoa e as luzes ficam).', onde: { sel: '[data-k="sec:sede"]', nada: 'Abra um clã no painel (Mestre) primeiro.' } },
+        { t: 'O construtor', txt: 'Na Sede, escolha um prédio e “Editar no construtor”: faça cômodos (arrastando), ponha portas e janelas (clique na parede), troque o piso, ponha móveis e escadas, e mais andares (ou o porão). “Salvar como planta” guarda para usar de novo, em “Minhas plantas”.' },
       ],
       jogador: [
         { t: 'O clã', txt: 'As partes do clã que vocês veem: os cargos, as construções, os recursos e o histórico. O líder mexe nos outros cargos.', onde: { sel: '#abas', nada: 'O mestre ainda não mostrou um clã.' } },
+        { t: 'A sede', txt: 'Na parte Sede do salão, a planta da sede do clã: os prédios, a muralha, as estradas. Quem monta é o mestre; nas sessões, ela vira cena.', onde: { sel: '#abas [data-aba="sede"]', nada: 'O mestre ainda não mostrou a sede deste clã.' } },
       ],
     },
     rolador: {
