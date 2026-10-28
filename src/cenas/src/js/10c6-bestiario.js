@@ -27,7 +27,8 @@ const Best = (() => {
     }
     if (!quer.length) { toast(faltou ? 'Os inimigos do encontro não chegaram aqui ainda. Tente de novo em um instante.' : 'O encontro está vazio.', { long: !!faltou }); return []; }
     const sc = Store.scene(), [cw, ch] = Render.size();
-    const cx = App.view.x + cw / (2 * App.view.z), cy = App.view.y + ch / (2 * App.view.z);
+    const visivel = cw > 0 && ch > 0;      // (a tela ainda sem tamanho: o meio do mapa)
+    const cx = visivel ? App.view.x + cw / (2 * App.view.z) : sc.cols * sc.cell / 2, cy = visivel ? App.view.y + ch / (2 * App.view.z) : sc.rows * sc.cell / 2;
     const feitos = [], vaga = vagas(sc, cx, cy);
     // o número no nome: quando o mesmo inimigo vem mais de uma vez (contando os que já estão na cena)
     const vem = new Map(), ja = new Map(), num = new Map();

@@ -317,7 +317,7 @@ const { ok, end } = checker();
     ok(linhas0.length === 3 && linhas0[0].papel === 'mestre' && linhas0[0].botoes === '' && linhas0[1].botoes === 'Ficha…|Permissões…|Tirar' && linhas0[2].botoes === 'Ficha…|Permissões…|Tirar', 'no menu do mestre, cada jogador tem "Ficha…", "Permissões…" e "Tirar"; o próprio mestre, nada — ' + JSON.stringify(linhas0));
     await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Permissões' }).click(); await w(350);
     const jan0 = await TM.evaluate(() => ({ titulo: document.querySelector('#f-papel h2').textContent, jog: document.getElementById('pp-jog').checked, aux: document.getElementById('pp-aux').checked, travado: document.getElementById('pp-abas').disabled, marcadas: [...document.querySelectorAll('#pp-abas input')].filter(x => x.checked).length }));
-    ok(jan0.titulo === 'Permissões de Dalmo' && jan0.jog && !jan0.aux && jan0.travado && jan0.marcadas === 11, 'a janela abre em "Jogador", com as abas esperando (todas marcadas, travadas) — ' + JSON.stringify(jan0));
+    ok(jan0.titulo === 'Permissões de Dalmo' && jan0.jog && !jan0.aux && jan0.travado && jan0.marcadas === 12, 'a janela abre em "Jogador", com as abas esperando (todas marcadas, travadas) — ' + JSON.stringify(jan0));
     await TM.locator('#pp-aux').check(); await w(150);
     ok(await TM.evaluate(() => !document.getElementById('pp-abas').disabled), 'ao escolher "Mestre auxiliar", as abas destravam');
     await TM.locator('dialog .btn', { hasText: 'Cancelar' }).click(); await w(300);

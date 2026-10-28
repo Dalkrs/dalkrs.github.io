@@ -229,7 +229,8 @@ async function start(snap) {
   if (window.TC && window.TC.ponte && window.TC.ponte.aoIr) window.TC.ponte.aoIr(alvo => {
     if (!alvo || !isGM()) return;
     // (lote 29) o encontro montado no Bestiário: os tokens perto do meio da tela
-    if (alvo.bestiario && typeof alvo.bestiario === 'object') { Best.trazer(alvo.bestiario); return; }
+    // (a aba das Cenas pode ainda estar escondida: espera aparecer, para os tokens nascerem no meio da tela)
+    if (alvo.bestiario && typeof alvo.bestiario === 'object') { const ped = alvo.bestiario; aoAparecer(() => setTimeout(() => Best.trazer(ped), 80)); return; }
     // (lote 18) o campo de batalha: a cena do hexágono da batalha, com os dois exércitos (a janela de gerar, preenchida),
     // ou — já existindo — a cena; e as perdas da batalha, de volta aos blocos (com a prévia)
     if (alvo.campoPerdas && typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena]) {

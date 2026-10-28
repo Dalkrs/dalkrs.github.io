@@ -14,16 +14,16 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
     await page.goto(t.base, { waitUntil: 'load' }); await w(page, 1500);
     ok(await page.title() === 'Cenas · Tiny Cats', 'visitante novo abre em Cenas: ' + await page.title());
     ok((await page.locator('.brand').innerText()).trim() === 'Tiny Cats', 'marca Tiny Cats na barra');
-    ok(await page.locator('.tab:visible').count() === 9, 'nove abas à mostra');
+    ok(await page.locator('.tab:visible').count() === 10, 'dez abas à mostra');
     const nomes = await page.locator('.tab:visible').allInnerTexts();
-    ok(nomes.join('|') === 'Cenas|Fichas|Rolador|Mapa-múndi|Jornal|Clã|Acampamento|Meditação|Oficina', 'nomes das abas (sem mesa, cada um mestra: a Oficina no lugar da Árvore): ' + nomes.join('|'));
+    ok(nomes.join('|') === 'Cenas|Fichas|Rolador|Mapa-múndi|Jornal|Clã|Acampamento|Meditação|Oficina|Bestiário', 'nomes das abas (sem mesa, cada um mestra: a Oficina no lugar da Árvore): ' + nomes.join('|'));
     // as abas em três grupos, cada um com o nome em cima e a sua cor
     const grupos = await page.evaluate(() => [...document.querySelectorAll('.grupo')].filter(g => !g.hidden).map(g => g.querySelector('.grupo-t').textContent + ':' + [...g.querySelectorAll('.tab')].filter(x => !x.hidden).map(x => x.id.slice(4)).join(',')));
-    ok(grupos.join(' ') === 'Jogar:cenas,fichas,rolador Mundo:mundo,jornal,cla Descanso:acampamento,meditacao Mestre:oficina', 'os grupos da barra: ' + grupos.join(' '));
+    ok(grupos.join(' ') === 'Jogar:cenas,fichas,rolador Mundo:mundo,jornal,cla Descanso:acampamento,meditacao Mestre:oficina,bestiario', 'os grupos da barra: ' + grupos.join(' '));
     const cores = await page.evaluate(() => [...document.querySelectorAll('.grupo-t')].map(x => getComputedStyle(x).color));
     ok(new Set(cores).size === 4, 'cada grupo com uma cor: ' + cores.join(' '));
-    const esperado = { jornal: /Jornal · Tiny Cats/, cenas: /Cenas · Tiny Cats/, mundo: /Mapa-múndi · Tiny Cats/, acampamento: /Acampamento · Tiny Cats/, fichas: /Fichas · Tiny Cats/, oficina: /Árvore de Habilidades · Tiny Cats/, meditacao: /Meditação · Tiny Cats/, cla: /Clã · Tiny Cats/, rolador: /Rolador · Tiny Cats/ };
-    for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'oficina', 'meditacao', 'cla', 'rolador']) {
+    const esperado = { jornal: /Jornal · Tiny Cats/, cenas: /Cenas · Tiny Cats/, mundo: /Mapa-múndi · Tiny Cats/, acampamento: /Acampamento · Tiny Cats/, fichas: /Fichas · Tiny Cats/, oficina: /Árvore de Habilidades · Tiny Cats/, meditacao: /Meditação · Tiny Cats/, cla: /Clã · Tiny Cats/, rolador: /Rolador · Tiny Cats/, bestiario: /Bestiário · Tiny Cats/ };
+    for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'oficina', 'meditacao', 'cla', 'bestiario', 'rolador']) {
       await page.locator('#tab-' + id).click(); await w(page, 1300);
       ok(page.url().endsWith('#/' + id), `aba ${id}: endereço com #/${id}`);
       ok(await page.locator('#tab-' + id).getAttribute('aria-selected') === 'true', `aba ${id} marcada`);
@@ -38,7 +38,7 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
       ok(!/urgm|lirian/i.test(texto), `aba ${id}: sem o nome antigo no que aparece`);
       ok(texto.length > 80, `aba ${id}: a página desenhou conteúdo`);
     }
-    ok(await page.locator('iframe').count() === 9, 'as nove molduras continuam vivas depois de visitadas');
+    ok(await page.locator('iframe').count() === 10, 'as dez molduras continuam vivas depois de visitadas');
     // estado preservado ao trocar de aba: escreve no Rolador, sai e volta
     const fr = page.frame({ url: /\/rolador\// });
     await fr.locator('#fTitle').fill('Teste de permanência');
