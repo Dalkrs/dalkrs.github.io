@@ -4,7 +4,7 @@
     {
       "versao": "2026.10.28-2",
       "data": "2026-10-28",
-      "titulo": "Imbuído de Mana, os sons dos avisos e oito masmorras novas",
+      "titulo": "Imbuído de Mana, os sons dos avisos, oito masmorras novas e a Linhagem",
       "itens": [
         {
           "tipo": "novo",
@@ -28,7 +28,11 @@
           "tipo": "melhorou",
           "mestre": true,
           "texto": "Masmorras: a largura dos corredores (1, 2 ou 3 quadrados), escolhida antes de gerar, na janela da Entrada e no “Gerar um lugar…”. A Entrada do nível de baixo lembra a largura."
-        }
+        },
+    {
+      "tipo": "novo",
+      "texto": "Árvore: a categoria Linhagem, logo depois de Raça. No “Selecionar árvore” ela tem a aba Linhagens; as árvores dela gastam pontos do tipo “Linhagem”, que nasce com a primeira árvore da categoria (cada personagem começa com 0). Nas Fichas, as árvores de Linhagem aparecem no grupo delas."
+    }
       ]
     },
     {
