@@ -187,5 +187,36 @@ const Best = (() => {
     });
   }
 
-  return { trazer, secao, secaoBau, rolarSaque, janela, lembretes, textoSaque };
+  /* ---------- (lote 29) a receita que falhou na bancada do Acampamento ----------
+     A linha da mesa ao vivo traz as condições (sis: { t: 'bc', c: a ficha, cs: [{ c, r }] }). Quem mestra põe no token do
+     personagem: o da cena aberta (com Desfazer) ou o da cena que está no ar; sem token, fica o aviso. Só vale a linha
+     escrita pelo dono da ficha (ou por quem mestra). */
+  const bancadasVistas = new Set();
+  function daMesa(l) {
+    const s = l && l.dados && l.dados.sis;
+    if (!s || typeof s !== 'object' || s.t !== 'bc' || !isGM()) return;
+    if (l.id && bancadasVistas.has(l.id)) return;
+    if (l.id) bancadasVistas.add(l.id);
+    const pc = typeof s.c === 'string' ? s.c : null, cs = (Array.isArray(s.cs) ? s.cs : []).filter(x => x && typeof x.c === 'string' && COND_BY_ID[x.c]).slice(0, 6);
+    if (!pc || !cs.length) return;
+    const ficha = Fichas.get(pc);
+    if (!ficha || !(l.autor_id === Fichas.eu() || (ficha.dono_id && ficha.dono_id === l.autor_id))) return;
+    const nome = String(ficha.nome || 'O personagem'), nomes = cs.map(x => COND_BY_ID[x.c].n + (x.r > 0 ? ' (' + x.r + (x.r === 1 ? ' rodada' : ' rodadas') + ')' : '')).join(', ');
+    const patch = t => {
+      const conds = t.conds.slice(), cinfo = Object.assign({}, t.cinfo);
+      for (const x of cs) { if (!conds.includes(x.c)) conds.push(x.c); const r = Math.max(0, Math.round(+x.r || 0)); if (r) cinfo[x.c] = Object.assign({}, cinfo[x.c], { d: r, d0: r }); }
+      return { conds, cinfo };
+    };
+    const sc = Store.scene(), aqui = sc.tokens.find(k => k.char === pc && !k.clone && !k.prop);
+    if (aqui) {
+      Store.tx('Condição da bancada', () => Store.upd('tokens', aqui.id, patch(aqui)));
+      UI.toast(`${nome} falhou na bancada: ${nomes} no token.`, { action: 'Desfazer', run: Tools.undo, long: true, key: 'bc-' + pc });
+      return;
+    }
+    const ar = Nuvem.noAr && Nuvem.noAr(), sa = ar && ar !== Store.S.current ? Store.S.scenes[ar] : null, la = sa ? sa.tokens.find(k => k.char === pc && !k.clone && !k.prop) : null;
+    if (la) { Store.remoteIn(ar, [{ t: 'upd', c: 'tokens', id: la.id, p: patch(la) }]); UI.toast(`${nome} falhou na bancada: ${nomes} no token, na cena que está no ar.`, { long: true, key: 'bc-' + pc }); return; }
+    UI.toast(`${nome} falhou na bancada: ${nomes}. Sem token na cena — ponha quando ${nome} entrar.`, { long: true, key: 'bc-' + pc });
+  }
+
+  return { trazer, secao, secaoBau, rolarSaque, janela, lembretes, textoSaque, daMesa };
 })();

@@ -1083,6 +1083,8 @@ dialog.mundo-dl.ce-dl { width: min(520px, calc(100% - 24px)); }
 /* ---- campos ---- */
 .ajuda { font-size: 12px; color: var(--fg-3); }
 .chk { display: flex; align-items: flex-start; gap: 9px; font-weight: 600; font-size: 13.5px; cursor: pointer; }
+/* (lote 29) os personagens do grupo */
+.pcs-grupo { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px 12px; margin: 4px 0 2px; }
 .chk input { width: 17px; height: 17px; margin: 1px 0 0; flex: none; accent-color: var(--lamp); }
 .chk small { display: block; font-weight: 400; font-size: 12px; color: var(--fg-3); }
 .chk:has(input:disabled) { opacity: .55; cursor: default; }
@@ -1477,13 +1479,13 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o mapa-múndi.</p></noscript>
-<script src="../tc/ponte.js?v=18"></script>
+<script src="../tc/ponte.js?v=19"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=24"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=41"></script>
+<script src="nucleo.js?v=42"></script>
 <script src="guerra.js?v=6"></script>
 <script src="reino.js?v=14"></script>
 <script src="corte.js?v=4"></script>
@@ -1492,7 +1494,7 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="campanha.js?v=5"></script>
 <script src="camadas.js?v=4"></script>
 <script src="tela.js?v=28"></script>
-<script src="painel.js?v=46"></script>
+<script src="painel.js?v=47"></script>
 <script src="guerra-painel.js?v=13"></script>
 <script src="guerra-ajuda.js?v=5"></script>
 <script src="reino-painel.js?v=15"></script>

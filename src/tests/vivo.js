@@ -24,7 +24,7 @@ const { contas } = require('./contas');
     return 'casca ' + casca + (simples !== casca ? ' (sem ?t: ' + simples + ')' : '') + ' · versao.json ' + arq + ' · aviso ' + (b ? (b.hidden ? 'escondido' : 'À MOSTRA') : 'não existe');
   });
   // (as abas por grupo: quem mestra tem a Oficina — a Árvore dela — no lugar da Árvore; a aba escondida é pulada)
-  for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'oficina', 'meditacao', 'cla', 'rolador', 'bestiario']) {
+  for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'oficina', 'meditacao', 'cla', 'rolador', 'bestiario', 'itens', 'loja']) {
     const aba = page.locator('#tab-' + id);
     if (!(await aba.count()) || !(await aba.isVisible())) { out[id] = 'aba escondida'; continue; }
     await aba.click(); await page.waitForTimeout(2000);

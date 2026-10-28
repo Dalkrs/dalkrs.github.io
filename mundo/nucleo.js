@@ -1972,6 +1972,9 @@
         // pontos da seta, prontos
         if (ehObj(o.seta)) g.seta = { ver: sim(o.seta.ver) };
         { const sp = pontos(o.sp, 2); if (sp) g.sp = sp; }
+        // (lote 29) os personagens (as fichas dos jogadores) que andam com este grupo: as lojas do lugar onde ele está
+        // aparecem para eles (o banco confere o hexágono)
+        if (!g.tipo && Array.isArray(o.pcs)) { const pcs = [...new Set(o.pcs.filter(x => typeof x === 'string' && /^[^\s:@]{1,64}$/.test(x)))].slice(0, 12); if (pcs.length) g.pcs = pcs; }
         return normAndar(o, g, true);
       case 'r': {
         const pts = pontos(o.pts, leve ? 0 : 3);

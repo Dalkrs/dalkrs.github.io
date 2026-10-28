@@ -128,7 +128,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
   let apagada = false;
   try {
     // ---------- a aba: a primeira; o mestre abre o editor ----------
-    ok(await abas(M) === 'cenas,fichas,rolador,mundo,jornal,cla,acampamento,meditacao,oficina,bestiario' && await abaAtiva(M) === 'jornal', 'as abas na ordem dos grupos (Jogar, Mestre; a outra conversa, lotes 24–27), com o mestre no Jornal: ' + await abas(M));
+    ok(await abas(M) === 'cenas,fichas,rolador,mundo,jornal,cla,acampamento,meditacao,oficina,bestiario,itens' && await abaAtiva(M) === 'jornal', 'as abas na ordem dos grupos (Jogar, Mestre; a outra conversa, lotes 24–27), com o mestre no Jornal: ' + await abas(M));
     let JM = null;
     ok(await ate(async () => { JM = await quadro(M, /\/jornal\//); return JM && await jornalPronto(JM) && await JM.evaluate(() => __jornal.mestre); }, 40000), '(na mesa, o mestre abre o Jornal como quem mestra)');
     ok(await JM.locator('#ed').isVisible() && await JM.locator('#btPublicar').isVisible() && /ainda não publicado/.test(await JM.locator('#salvo').innerText()) && /a mesa ainda não tem mapa/.test(await JM.locator('[data-k="j:mapa"]').innerText()),

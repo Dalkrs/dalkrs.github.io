@@ -190,7 +190,7 @@
      o que a pessoa está fazendo agora: o auxiliar que está mestrando conta como 'mestre'; o que está jogando como
      jogador, como 'jogador'. É pelo `papel` que os sistemas decidem o que mostrar; pelo `cargo`, quem administra.
      `abas`: as abas que o auxiliar mestra (o mestre mestra todas; o jogador, nenhuma). */
-  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador', 'jornal', 'meditacao', 'cla', 'bestiario'];      // (lote 29: o Bestiário)
+  const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador', 'jornal', 'meditacao', 'cla', 'bestiario', 'itens'];      // (lote 29: o Bestiário e os Itens)
   function membroDe(x) {
     const cargo = x.papel === 'mestre' || x.papel === 'auxiliar' ? x.papel : 'jogador', jogando = cargo === 'auxiliar' && !!x.jogando;
     // semVivo: o mestre fechou a mesa ao vivo para esta pessoa (ela só vê as próprias linhas, até ele liberar)
@@ -1643,6 +1643,32 @@
     await Promise.race([buscarLinha('documentos', 'cla:pub:' + cla), new Promise(ok => setTimeout(ok, 3000))]);
     return data || null;
   };
+  /* (lote 29) A loja (ver supabase/migrations/0024_bestiario_e_itens.sql): comprar (args = { loja, item, qtd, pc }) e
+     desfazer a compra (args = { compra }). Quem confere tudo — o dono, a distância, o estoque, os lapros — é o banco;
+     depois, a ficha e a loja são lidas de novo daqui, antes de responder. */
+  dados.itens = async (op, args) => {
+    const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
+    const ok = v => typeof v === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(v);
+    let r;
+    if (op === 'comprar') {
+      if (!ok(args.loja) || !ok(args.item) || typeof args.pc !== 'string' || !args.pc) throw new Error('Pedido desconhecido.');
+      r = await cliente().rpc('itens_comprar', { p_mesa: a.id, p_loja: args.loja, p_item: args.item, p_qtd: Math.max(1, Math.min(99, Math.round(+args.qtd) || 1)), p_pc: args.pc });
+    } else if (op === 'desfazer') {
+      if (!ok(args.compra)) throw new Error('Pedido desconhecido.');
+      r = await cliente().rpc('itens_desfazer_compra', { p_mesa: a.id, p_compra: args.compra });
+    } else throw new Error('Pedido desconhecido.');
+    if (r.error) {
+      if (semEsquemaM(r.error)) throw new Error('O banco desta mesa ainda não tem a loja: falta aplicar a atualização do banco (o SQL desta versão).');
+      if (String(r.error.code || '') === 'P0001' && r.error.message) throw new Error(String(r.error.message).slice(0, 300));
+      throw falha(r.error, 'Não deu certo agora. Tente de novo.');
+    }
+    const reler = [];
+    if (args.pc) reler.push(buscarLinha('personagens', args.pc));
+    if (args.loja) reler.push(buscarLinha('documentos', 'itens:loja:' + args.loja));
+    if (op === 'desfazer') reler.push(buscarLinha('documentos', 'jornal:compras'));
+    await Promise.race([Promise.all(reler), new Promise(ok => setTimeout(ok, 3000))]);
+    return r.data || null;
+  };
   /* (lote 27) Onde a ficha está — Ativos, Inativos ou Toldo — mudado por quem joga, nas fichas do grupo dele (ver
      supabase/migrations/0023_lugar_no_grupo.sql: quem confere é o banco). Depois, a ficha é lida de novo daqui. */
   dados.lugar = async (pc, lugar) => {
@@ -1838,7 +1864,11 @@
     if ((origem === 'mundo' || origem === 'acampamento') && d && typeof d === 'object' && mesas.atual) {
       const padrao = origem === 'mundo' ? 'Mapa-múndi' : 'Acampamento';
       // (o encontro do Mapa-múndi acompanha o "em segredo" do mestre; descanso e momento do Acampamento são da mesa toda)
-      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || padrao).slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null, secreta: d.secreta ? true : origem === 'acampamento' ? false : undefined });
+      const dados = { k: 'tabela', titulo: String(d.titulo || padrao).slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null };
+      // (lote 29) a bancada: a receita que falhou com condições — quem mestra as Cenas põe no token do personagem
+      if (origem === 'acampamento' && typeof d.pc === 'string' && d.pc && Array.isArray(d.conds) && d.conds.length)
+        dados.sis = { t: 'bc', c: d.pc.slice(0, 64), cs: d.conds.slice(0, 6).filter(x => x && typeof x.c === 'string').map(x => ({ c: x.c.slice(0, 40), r: Math.max(0, Math.min(99, Math.round(+x.r) || 0)) })) };
+      return aoVivo.rolagem(dados, { origem, quem: origem === 'acampamento' && typeof d.pc === 'string' && d.pc ? aoVivo.personagem(d.pc) : null, secreta: d.secreta ? true : origem === 'acampamento' ? false : undefined });
     }
     // A Árvore avisa o dono de um personagem que o mestre abriu para ele um caminho trancado (lote 6): uma linha em
     // segredo, endereçada a ele — só os dois a veem.

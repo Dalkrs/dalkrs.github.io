@@ -542,7 +542,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.28-2';
+  const VERSAO = '2026.10.28-3';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -555,6 +555,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     oficina: '<path d="M14.5 5.5a3.5 3.5 0 0 0 4.6 4.6l1.4 1.4-9 9a2 2 0 0 1-2.8-2.8l9-9z"/><path d="M5 3v4M3 5h4M19 15v4M17 17h4"/>',
     // (lote 29) o Bestiário: a caveira com as presas
     bestiario: '<path d="M12 3c-4.4 0-8 3.1-8 7 0 2.4 1.3 4.5 3.3 5.8V19a1 1 0 0 0 1 1h7.4a1 1 0 0 0 1-1v-3.2c2-1.3 3.3-3.4 3.3-5.8 0-3.9-3.6-7-8-7z"/><circle cx="9" cy="10.5" r="1.6"/><circle cx="15" cy="10.5" r="1.6"/><path d="M10.5 20v-2.5M13.5 20v-2.5"/>',
+    itens: '<path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/><path d="M10 12h4"/>',
+    loja: '<path d="M4 9l1.5-5h13L20 9"/><path d="M4 9h16v2a2.7 2.7 0 0 1-5.3 0 2.7 2.7 0 0 1-5.4 0A2.7 2.7 0 0 1 4 11z"/><path d="M5.5 13v7h13v-7"/><path d="M10 20v-4h4v4"/>',
     admin: '<path d="M12 3 4.5 6v5.5c0 4.4 3.1 8 7.5 9.5 4.4-1.5 7.5-5.1 7.5-9.5V6z"/><circle cx="12" cy="10.5" r="2.2"/><path d="M12 12.7V16"/>',
     rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
   };
@@ -564,6 +566,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true, grupo: 'jogar' },
     { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true, grupo: 'jogar', soJogador: true },     // (lote 24) a árvore de quem joga; quem mestra usa a Oficina
     { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true, dados: true, grupo: 'jogar' },      // ferramenta do mestre: numa mesa, os jogadores não a veem (e os históricos ficam na mesa)
+    { id: 'loja', nome: 'Loja', src: 'loja/', dados: true, grupo: 'jogar', soPerto: true },                 // (lote 29) aparece quando um personagem seu está no hexágono de uma loja
     { id: 'mundo', nome: 'Mapa-múndi', src: 'mundo/', dados: true, grupo: 'mundo' },
     { id: 'jornal', nome: 'Jornal', src: 'jornal/', dados: true, grupo: 'mundo' },          // (lote 6) o jornal da mesa
     { id: 'cla', nome: 'Clã', src: 'cla/', dados: true, grupo: 'mundo' },                   // (lote 6) os clãs da mesa
@@ -573,6 +576,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     { id: 'oficina', nome: 'Oficina', src: 'arvore/?oficina', dados: true, grupo: 'mestre', soMestre: true, permissao: 'arvore' },
     // (lote 29) o Bestiário: os inimigos do mestre, prontos para puxar para a cena (só quem mestra)
     { id: 'bestiario', nome: 'Bestiário', src: 'bestiario/', dados: true, grupo: 'mestre', soMestre: true },
+    { id: 'itens', nome: 'Itens', src: 'itens/', dados: true, grupo: 'mestre', soMestre: true },          // (lote 29) o catálogo, as lojas e as receitas
     // (lote 27) a administração do site inteiro (as contas, as mesas, o cadastro): só quem está em public.admins a vê
     { id: 'admin', nome: 'Administração', src: 'admin/', grupo: 'site', soAdmin: true },
   ];
@@ -595,9 +599,10 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   // Numa mesa, quem não mestra uma aba que é só do mestre não a vê (o jogador; o auxiliar sem essa aba, ou jogando
   // como jogador). Sem mesa, cada um é o próprio mestre e vê todas.
   let mestraAba = () => true;                     // (a parte da mesa, mais abaixo, troca por quem sabe)
+  let lojaPerto = () => false;                    // (lote 29) a parte da mesa troca: há uma loja aberta perto de um personagem seu?
   // (a permissão de uma aba: a Oficina é a Árvore de quem mestra — vale o que vale para a Árvore)
   const permDe = id => { const a = ABAS.find(x => x.id === id); return (a && a.permissao) || id; };
-  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && (a.soAdmin ? souAdmin : !(a.soMestre && !mestraAba(permDe(id))) && !(a.soJogador && mestraAba(permDe(id)))); };
+  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && (a.soAdmin ? souAdmin : a.soPerto ? lojaPerto() : !(a.soMestre && !mestraAba(permDe(id))) && !(a.soJogador && mestraAba(permDe(id)))); };
   // a Árvore e a Oficina são a mesma página: quem pede uma e só pode a outra vai para a outra
   const abaPossivel = id => (pode(id) ? id : id === 'arvore' && pode('oficina') ? 'oficina' : id === 'oficina' && pode('arvore') ? 'arvore' : id);
   const daHash = () => (location.hash || '').replace(/^#\/?/, '').split(/[/?]/)[0];
@@ -842,6 +847,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       if (!mesas.atual || (m.mesa && m.mesa !== mesas.atual.id)) { responder({ t: 'cla.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
       if (typeof TC.dados.cla !== 'function') { responder({ t: 'cla.erro', n: m.n, erro: 'Esta página está desatualizada: recarregue o site.' }); return; }
       TC.dados.cla(m.op, m.args || {}).then(r => responder({ t: 'cla.ok', n: m.n, r }), e => responder({ t: 'cla.erro', n: m.n, erro: e.message }));
+    } else if (m.t === 'itens') {
+      // (lote 29) a loja: comprar e desfazer a compra (ver TC.dados.itens)
+      if (!mesas.atual || (m.mesa && m.mesa !== mesas.atual.id)) { responder({ t: 'itens.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
+      if (typeof TC.dados.itens !== 'function') { responder({ t: 'itens.erro', n: m.n, erro: 'Esta página está desatualizada: recarregue o site.' }); return; }
+      TC.dados.itens(m.op, m.args || {}).then(r => responder({ t: 'itens.ok', n: m.n, r }), e => responder({ t: 'itens.erro', n: m.n, erro: e.message }));
     } else if (m.t === 'lugar') {
       // (lote 27) quem joga muda o lugar (Ativos, Inativos, Toldo) de uma ficha do grupo dele (ver TC.dados.lugar)
       if (!mesas.atual || (m.mesa && m.mesa !== mesas.atual.id)) { responder({ t: 'lugar.erro', n: m.n, erro: 'A mesa mudou: tente de novo.' }); return; }
@@ -1331,9 +1341,10 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   function janelaPapel(m) {
     const eraAux = m.cargo === 'auxiliar', abasAntes = m.abas.slice(), viaAntes = !m.semVivo, acampAntes = !!m.acamp;
     const rJog = h('input', { type: 'radio', name: 'pp', id: 'pp-jog', checked: !eraAux }), rAux = h('input', { type: 'radio', name: 'pp', id: 'pp-aux', checked: eraAux });
-    const caixas = ABAS.map(x => h('input', { type: 'checkbox', id: 'pp-' + x.id, checked: eraAux ? m.abas.includes(x.id) : true }));
+    const PERM = ABAS.filter(x => !x.soPerto);          // (a Loja não é aba de mestrar: aparece sozinha, de perto)
+    const caixas = PERM.map(x => h('input', { type: 'checkbox', id: 'pp-' + x.id, checked: eraAux ? m.abas.includes(x.id) : true }));
     const grupo = h('fieldset', { class: 'abas', id: 'pp-abas' }, h('legend', { text: 'Abas que ' + m.nome + ' mestra' }),
-      h('div', { class: 'cxs' }, ABAS.map((x, i) => h('label', { class: 'cx' }, caixas[i], h('span', { text: x.nome })))),
+      h('div', { class: 'cxs' }, PERM.map((x, i) => h('label', { class: 'cx' }, caixas[i], h('span', { text: x.nome })))),
       h('div', { class: 'nt', text: 'Sem uma aba, ' + m.nome + ' a vê como os jogadores veem (o Rolador some). Sem a aba Fichas, não recebe as fichas escondidas nem os segredos; nas fichas que os jogadores veem, mexe enquanto mestra.' }));
     const pintar = () => { grupo.disabled = !rAux.checked; };
     rJog.addEventListener('change', pintar); rAux.addEventListener('change', pintar); pintar();
@@ -1355,7 +1366,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       grupo, vivo, acamp, err,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
     enviarCom(f, err, ok, async () => {
-      const sim = rAux.checked, abas = ABAS.filter((x, i) => caixas[i].checked).map(x => x.id), ve = cVivo.checked, mexe = cAcamp.checked;
+      const sim = rAux.checked, abas = PERM.filter((x, i) => caixas[i].checked).map(x => x.id), ve = cVivo.checked, mexe = cAcamp.checked;
       const papelMudou = !(sim === eraAux && (!sim || abas.join() === abasAntes.join())), vivoMudou = ve !== viaAntes, acampMudou = mexe !== acampAntes;
       if (!papelMudou && !vivoMudou && !acampMudou) { fecharJanela(); return; }      // nada mudou
       if (papelMudou) await mesas.definirAuxiliar(m.usuario_id, sim, abas);
@@ -2305,6 +2316,28 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     } catch (e) { return false; }
   }
   aoAbrirAba = id => { if (id === 'jornal') jornalLido(); };
+  /* (lote 29) A aba Loja: aparece quando uma loja aberta tem um personagem seu por perto (o banco monta a lista de quem
+     está no hexágono do lugar dela: aqui) e some quando ele sai. Ao aparecer, um aviso com "Abrir". */
+  const lojasPerto = () => {
+    if (!mesas.atual) return [];
+    let D, P;
+    try { D = TC.dados.col('documentos'); P = TC.dados.col('personagens'); } catch (e) { return []; }
+    const eu = conta.usuario && conta.usuario.id, meus = new Set(P.todas().filter(l => l && !l.apagado && eu && l.dono_id === eu).map(l => l.id));
+    if (!meus.size) return [];
+    return D.todas().filter(l => l && typeof l.id === 'string' && l.id.startsWith('itens:loja:') && !l.apagado && l.dados && typeof l.dados === 'object' && l.dados.aberta !== false
+      && Array.isArray(l.dados.aqui) && l.dados.aqui.some(id => meus.has(id))).map(l => String(l.dados.nome || 'Loja'));
+  };
+  lojaPerto = () => lojasPerto().length > 0;
+  let lojasAntes = '', tLojas = 0;
+  const conferirLojas = () => {
+    const ls = lojasPerto(), k = ls.join('|');
+    if (k === lojasAntes) return;
+    const novas = ls.filter(n => !lojasAntes.split('|').includes(n));
+    lojasAntes = k;
+    pintarAbas();
+    if (novas.length && atual !== 'loja') toast('Uma loja por perto: ' + novas.join(', ') + '.', 'Abrir a Loja', () => abrir('loja'), 9000);
+  };
+  TC.dados.on('muda', (col, linha) => { if (col === 'personagens' || (col === 'documentos' && linha && typeof linha.id === 'string' && linha.id.startsWith('itens:loja:'))) { clearTimeout(tLojas); tLojas = setTimeout(conferirLojas, 250); } });
   TC.dados.on('muda', (col, linha) => { if (col === 'documentos' && linha && linha.id === 'jornal:pub') pintarJornal(true); });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;

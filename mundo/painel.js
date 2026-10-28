@@ -1971,6 +1971,28 @@
       historicoFac(f, v, false)));
     return out;
   }
+  /* (lote 29) Os personagens do grupo: as fichas dos jogadores (da campanha em vista), uma caixa para cada. Quando o
+     grupo para no hexágono de um lugar com loja (aba Itens), a aba Loja aparece para os donos deles. */
+  function secPersonagensDoGrupo(o, grava) {
+    const TC_ = window.TC;
+    if (!App.naMesa || !TC_ || !TC_.dados || !TC_.dados.disponivel()) return null;
+    let P = null;
+    try { P = TC_.dados.col('personagens'); } catch (e) { return null; }
+    const st = (TC_.ponte && TC_.ponte.estado) || {}, camp = st.campanha ? st.campanha.id : null, pcs = Array.isArray(o.pcs) ? o.pcs : [];
+    const ehJog = id => !!id && (st.membros || []).some(x => x.id === id && (x.cargo ? x.cargo !== 'mestre' : x.papel === 'jogador'));
+    const lista = P.todas().filter(l => l && !l.apagado && l.ficha && !l.ficha.petDe && (pcs.includes(l.id) || (ehJog(l.dono_id) && (!camp || !l.campanha || l.campanha === camp))))
+      .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+    const id = o.id;
+    const caixas = lista.map(l => caixa('o:' + id + ':pc:' + l.id, l.nome || 'Sem nome', pcs.includes(l.id),
+      grava(pcs.includes(l.id) ? 'tirar ' + (l.nome || 'o personagem') + ' do grupo' : 'pôr ' + (l.nome || 'o personagem') + ' no grupo', (x, v) => {
+        const atual = Array.isArray(x.pcs) ? x.pcs.filter(p => p !== l.id) : [];
+        if (v) atual.push(l.id);
+        if (atual.length) x.pcs = atual; else delete x.pcs;
+      })));
+    return h('div', { class: 'field', 'data-k': 'o:' + id + ':pcs' }, h('span', { text: 'Personagens deste grupo' }),
+      caixas.length ? h('div', { class: 'pcs-grupo' }, caixas) : h('p', { class: 'note', text: 'Ainda não há fichas de jogadores nesta campanha.' }),
+      h('small', { class: 'note', text: 'Quando o grupo para no hexágono de um lugar com loja (aba Itens), a aba Loja aparece para os donos destes personagens.' }));
+  }
   function secGrupo(o, m, grava) {
     const N_ = N(), id = o.id, rotas = m.objs.filter(x => x.k === 't'), rota = achar(m, o.rota), out = [], pt = passoDoGrupo(m, o), tpd = tpdDe(m);
     // (lote 7, parte 5b) o tipo: o grupo de sempre, ou um do mundo (a caravana, a patrulha, o exército), que anda sozinho
@@ -1990,6 +2012,8 @@
       campoTexto('o:' + id + ':sigla', 'Sigla', o.sigla, grava('mudar a sigla', (x, v) => { x.sigla = v.trim().toUpperCase(); }), { max: 3, ph: 'GR', classe: 'curto' }),
       campoNumero('o:' + id + ':pt', 'Anda por tempo (cubos)', pt, grava('mudar quanto o grupo anda', (x, n) => { x.pt = n; }),
         { decimal: true, min: 0.1, max: 9999, erro: 'Use um número de cubos por tempo de marcha, de 0,1 a 9999.', dica: 'Por dia (' + tpd + ' tempos): ' + fmt(pt * tpd, 1) + ' cubos.' })));
+    // (lote 29) os personagens dos jogadores que andam com o grupo (as lojas do lugar onde ele para aparecem para eles)
+    if (!mundo) { const ps = secPersonagensDoGrupo(o, grava); if (ps) out.push(ps); }
     out.push(campoEscolha('o:' + id + ':rota', 'Rota', o.rota || '', [['', rotas.length ? 'Sem rota' : 'Sem rota (desenhe uma com a ferramenta Rota)']].concat(rotas.map(t => [t.id, nomeDe(t, m) + ' · ' + (N_.VIAS[t.via] || N_.VIAS.trilha).nome])),
       grava('mudar a rota', (x, v) => { if ((x.rota || '') === v) return false; x.rota = v || null; x.prog = 0; delete x.sentido; delete x.espera; })));
     // (lote 7, parte 5b) os dois jeitos de fazer a rota: desenhar (clicando os pontos) ou traçar de um marcador a outro

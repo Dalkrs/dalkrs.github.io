@@ -280,7 +280,7 @@ async function start(snap) {
   };
   // A iniciativa que alguém rolou pela telinha de dados da mesa ao vivo: o mestre pode anotá-la na ordem de turnos.
   // …e a defesa que um jogador rolou a pedido entra na janela do ataque que o mestre tem aberta.
-  if (window.TC && window.TC.ponte && window.TC.ponte.registro) window.TC.ponte.registro.aoChegar(l => { try { UI.iniFromTable(l); } catch (e) { console.error(e); } try { Luta.daMesa(l); } catch (e) { console.error(e); } });
+  if (window.TC && window.TC.ponte && window.TC.ponte.registro) window.TC.ponte.registro.aoChegar(l => { try { UI.iniFromTable(l); } catch (e) { console.error(e); } try { Luta.daMesa(l); } catch (e) { console.error(e); } try { Best.daMesa(l); } catch (e) { console.error(e); } });
   const dbg = /[?&]debug\b/.test(location.search);
   // (o tutorial que abre sozinho espera o menu ou a janela da casca fechar: não aparece no meio do que o mestre faz)
   const abrirTour = () => { if (UI.modalOpen() || Tour.seen() || Tour.active()) return; if (cascaOcupada()) { setTimeout(abrirTour, 1200); return; } Tour.start(); };
