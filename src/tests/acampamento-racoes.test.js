@@ -22,7 +22,7 @@ const fichas = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
   await P.goto(t.base + 'acampamento/?debug', { waitUntil: 'load' }); await w(900);
   for (const nome of ['Dain X', 'Lia', 'Ogro']) { await P.locator('#chamar').selectOption({ label: nome }); await w(); }
   ok(await P.locator('#roda .pers').count() === 3, '(os três em volta da fogueira)');
-  ok(await P.locator('#tabs .tab').allInnerTexts().then(x => x.join('|')) === 'Grupo|Provisões|Estrutura|Caravana|Diário', 'o painel ganha a aba Caravana, antes do Diário');
+  ok(await P.locator('#tabs .tab').allInnerTexts().then(x => x.join('|')) === 'Grupo|Provisões|Estrutura|Bancada|Caravana|Diário', 'o painel ganha a aba Caravana, antes do Diário');
 
   // ================= rações: o que cada descanso serve, e o que a comida faz =================
   await aba('provisoes');

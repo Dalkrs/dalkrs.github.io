@@ -285,7 +285,29 @@
       notas.length ? notas : h('p', { class: 'vazio-ed', text: 'Notas curtas, no pé da página.' }),
       h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'n:nova', disabled: ras.notas.length >= N.MAX.notas, onclick: () => novaNota() }, '+ Nota'))));
     out.push(secaoCartas());
+    const cp = secaoCompras(); if (cp) out.push(cp);
     return out;
+  }
+  /* (lote 29) As compras nas lojas (aba Loja): quem comprou o quê, onde, por quanto e quando — só para quem mestra. O
+     banco anota (jornal:compras); "Desfazer" devolve os lapros e o estoque e tira o item da ficha. */
+  let comprasTodas = false;
+  function secaoCompras() {
+    if (!naMesa) return null;
+    const d = docDados('jornal:compras'), lista = d && Array.isArray(d.lista) ? d.lista.filter(x => x && typeof x === 'object' && typeof x.id === 'string') : [];
+    if (!lista.length) return null;
+    const vistas = comprasTodas ? lista : lista.slice(0, 12);
+    return h('section', { class: 'sec', id: 'sec-compras' }, h('h2', null, 'Compras nas lojas ', h('span', { class: 'n', text: String(lista.length) })),
+      h('div', { class: 'lista' }, vistas.map(c => h('div', { class: 'carta-ch' + (c.desfeita ? ' desfeita' : ''), 'data-compra': c.id },
+        h('div', { class: 'de' }, h('span', null, h('b', { text: String(c.pcNome || 'Alguém') }), ' · ' + String(c.lojaNome || 'Loja')), h('span', { text: quando(c.em) + (c.desfeita ? ' · desfeita' : '') })),
+        h('div', { class: 'txt', text: 'Comprou ' + (c.qtd > 1 ? c.qtd + ' × ' : '') + String(c.item || 'um item') + ' por ' + (+c.total || 0) + ' lapros.' }),
+        c.desfeita ? null : h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'cp:' + c.id + ':desfazer', onclick: () => desfazerCompra(c) }, 'Desfazer a compra'))))),
+      lista.length > vistas.length ? h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'cp:todas', onclick: () => { comprasTodas = true; pintar(); } }, 'Mostrar todas (' + lista.length + ')')) : null);
+  }
+  async function desfazerCompra(c) {
+    if (!(await confirmar('Desfazer a compra?', String(c.pcNome || 'O personagem') + ' devolve ' + (c.qtd > 1 ? c.qtd + ' × ' : '') + String(c.item || 'o item') + ' e recebe de volta ' + (+c.total || 0) + ' lapros (o que ele já gastou do item não volta duas vezes).', 'Desfazer a compra'))) return;
+    try { await window.TC.ponte.itens('desfazer', { compra: c.id, pc: c.pc, loja: c.loja }); toast('Compra desfeita: ' + String(c.item || 'o item') + ' voltou para a loja.'); }
+    catch (e) { toast((e && e.message) || 'Não deu para desfazer a compra.'); }
+    pintar();
   }
   function novaMateria() {
     let id = null;
@@ -580,7 +602,7 @@
         if (!l || typeof l.id !== 'string') return;
         if (l.id === PUB) { pub = N.normPub(l.apagado ? null : l.dados); pintar(); }
         else if (l.id === RAS) { if (mestre && !sujo && !escrevendo()) { ras = N.normJornal(l.apagado ? null : l.dados); pintar(); } }
-        else if (l.id.startsWith(PRE_C) || l.id.startsWith(PRE_R) || l.id.startsWith('mundo:mapa:')) pintar();
+        else if (l.id.startsWith(PRE_C) || l.id.startsWith(PRE_R) || l.id.startsWith('mundo:mapa:') || l.id === 'jornal:compras') pintar();
       });
       P.aoMudar(() => { if (!mestre) pintar(); });
     }

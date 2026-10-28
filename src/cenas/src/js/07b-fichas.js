@@ -102,6 +102,59 @@ const Fichas = (() => {
   }
   // A ficha inteira deste token, se ela está aqui (uma linha que chegou incompleta não serve para acertar nada).
   const fichaDe = t => { const l = get(t.char); return l && l.ficha != null ? l : null; };
+  /* (lote 29) O token ligado ao Bestiário (t.best: o id do inimigo): os números, as defesas e as rolagens vêm do
+     Bestiário (uma linha "de mentira", como a de uma ficha, sem estado); as barras moram no token. Numa mesa, o
+     documento best:i:<id> (só o mestre o recebe); fora de uma mesa, o Bestiário deste navegador. */
+  const BEST_LOCAL = 'tinycats:bestiario:local';
+  let bestLocal = null;                  // { docs } — lido uma vez e de novo quando o Bestiário (outra aba) muda
+  const bestCache = new Map();           // id → { src, l }
+  function bestDados(id) {
+    if (D) { const d = D.pegar('best:i:' + id); return d && !d.apagado && d.dados && typeof d.dados === 'object' ? d.dados : null; }
+    if (!bestLocal) {
+      let docs = {};
+      try { const o = JSON.parse(localStorage.getItem(BEST_LOCAL) || 'null'); if (o && o.docs && typeof o.docs === 'object') docs = o.docs; } catch (e) { /* sem armazenamento */ }
+      bestLocal = { docs };
+    }
+    const x = bestLocal.docs['best:i:' + id];
+    return x && typeof x === 'object' ? x : null;
+  }
+  try { window.addEventListener('storage', ev => { if (ev.key === BEST_LOCAL || ev.key === null) { bestLocal = null; bestCache.clear(); } }); } catch (e) { /* sem janela */ }
+  // → a linha do inimigo ({ id, nome, ficha, skills, estado: {}, best: true, e: o inimigo arrumado }) ou null
+  function linhaBest(id) {
+    const B = window.TC && window.TC.bestiario;
+    if (!B || !R() || typeof id !== 'string' || !id) return null;
+    const src = bestDados(id);
+    if (!src) return null;
+    const g = bestCache.get(id);
+    if (g && g.src === src) return g.l;
+    let l = null;
+    try { const e = B.normalizar(src); l = Object.assign(B.linhaDe(e, id), { e }); } catch (er) { console.error(er); l = null; }
+    bestCache.set(id, { src, l });
+    return l;
+  }
+  // a linha que responde por este token: a ficha (t.char) ou o inimigo do Bestiário (t.best)
+  const linhaDoTok = t => (!t ? null : t.char ? get(t.char) : t.best ? linhaBest(t.best) : null);
+  // o token tem de onde tirar os números aqui? (a ficha que chegou, ou o inimigo do Bestiário)
+  const ligado = t => { const l = linhaDoTok(t); return !!l && l.ficha != null; };
+  // as contas do inimigo (as barras, a iniciativa…) com as regras e a árvore desta mesa
+  function contasBest(id) {
+    const l = linhaBest(id), B = window.TC && window.TC.bestiario;
+    if (!l || !B) return null;
+    try { return B.contas(l.e, cfg(), bib()); } catch (e) { console.error(e); return null; }
+  }
+  /* Um token novo para um inimigo do Bestiário: o nome, o tamanho, a cor, a imagem, as barras (cheias, ou no começo de
+     cada uma) e a iniciativa. Não entra na cena aqui (quem chama é que o inclui). */
+  function novoTokenBest(sc, id, x, y, extra) {
+    const l = linhaBest(id), c = contasBest(id);
+    if (!l || !c) return null;
+    const e = l.e;
+    const t = newToken(sc, x, y, Object.assign({ name: String(e.nome || 'Inimigo').trim().slice(0, 60) || 'Inimigo', best: id, size: [0.5, 1, 2, 3, 4].includes(e.tam) ? e.tam : 1 }, e.cor ? { color: e.cor } : null, extra || {}));
+    const bars = c.barras.slice(0, MAX_BARS).map((b, i) => cleanBar({ n: String(b.n || 'Barra').slice(0, 24), c: BAR_COLORS[i % BAR_COLORS.length], v: b.v, m: b.m, on: true, vis: '', lo: b.lo || 0, st: b.st }));
+    if (bars.length) t.bars = bars;
+    if (String(e.ficha.ini || '').trim() !== '') t.ini = clampIni(c.ini);
+    if (typeof e.img === 'string' && /^(https:\/\/|data:image\/)/.test(e.img)) { const a = Assets.register(e.img, 0, 0, 'token', e.nome || ''); t.img = a.id; }
+    return t;
+  }
   // O token ligado tem barras que não são da ficha, ou falta alguma dela?
   function foraDaFicha(t) {
     const l = fichaDe(t), alvo = l ? soDaFicha(t, resumo(l), l) : null;
@@ -310,8 +363,8 @@ const Fichas = (() => {
   }
   // O que dá para rolar pela ficha deste token: [chave, nome, valor]
   function rolaveis(t) {
-    const l = get(t.char);
-    if (!l) return [];
+    const l = linhaDoTok(t);
+    if (!l || l.ficha == null) return [];
     const pc = pcDe(l), c = R().calcular(pc, cfg(), extra(l)), fonte = (pc.rol && pc.rol.fonte) || 'total';
     return ROLAVEIS.map(k => [k, R().NOMES[k] || k, Math.max(0, Math.round(R().valorDoAtributo(c, k, fonte) || 0))]);
   }
@@ -321,7 +374,7 @@ const Fichas = (() => {
   const NUMEROS = ['FOR', 'CAN', 'DFF', 'DFM', 'ESQ'];
   const numGuardados = new WeakMap();
   function numeros(t) {
-    const l = t && t.char ? get(t.char) : null;
+    const l = linhaDoTok(t);
     if (!l || l.ficha == null || !R()) return null;
     const cf = cfg(), bi = bib(), g = numGuardados.get(l);
     if (g && g.cf === cf && g.bi === bi) return g.v;
@@ -547,7 +600,7 @@ const Fichas = (() => {
       } };
     } };
   }
-  const fixaPadrao = t => { const l = get(t.char); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
+  const fixaPadrao = t => { const l = linhaDoTok(t); return l && l.ficha && l.ficha.rol ? Math.max(0, Math.round(+l.ficha.rol.fixa || 0)) : 0; };
   /* Rola um atributo da ficha com a regra da fixa: um dado de (atributo − fixa) lados, mais a fixa. `mais`: os bônus só
      desta rolagem — { atr: soma no atributo antes de rolar (muda o dado), res: soma no resultado }. */
   // (ped: { pedido, alvo } — a rolagem geral, quando o mestre rola no lugar de um jogador com o pedido em aberto:
@@ -567,13 +620,15 @@ const Fichas = (() => {
   /* Quem pode rolar pela ficha deste token: o mestre, em qualquer token ligado; o jogador, no token do personagem
      que é dele (a ficha chega a ele pela mesa, e a rolagem sai no nome dele). */
   function podeRolar(t) {
+    // (o inimigo do Bestiário: quem mestra — ou, fora de uma mesa, quem está aqui)
+    if (t && !t.char && t.best) return !!linhaBest(t.best) && (papel === 'mestre' ? on : papel == null);
     const l = t && t.char ? get(t.char) : null;
     return !!l && l.ficha != null && !!R() && (papel === 'mestre' ? on : !!eu && l.dono_id === eu);
   }
   /* As defesas da ficha deste token, pela chave: as duas gerais (DFF, DFM) e as 13 específicas (FOGO, CORTE…), já com
      equipamentos, árvore, bônus temporários e ferimentos. null se o token não tem ficha aqui. */
   function defesas(t) {
-    const l = t && t.char ? fichaDe(t) : null;
+    const l = t && t.char ? fichaDe(t) : t && t.best ? linhaBest(t.best) : null;
     if (!l) return null;
     const r = resumo(l), out = {};
     for (const k in r.def) out[k] = Math.round(Number(r.def[k]) || 0);
@@ -737,6 +792,52 @@ const Fichas = (() => {
     return { ok: true, u, q, nome: nomeIt, desfazer };
   }
 
+  /* (lote 29) O saque de um inimigo do Bestiário vai para a ficha de alguém (só o mestre): os itens de bolsa (poção,
+     bomba, runa, munição, material) somam no item de mesmo nome e tipo que a bolsa já tem — ou entram como novos —; o
+     equipamento entra nos itens da ficha, guardado; os lapros somam. O Desfazer tira o que entrou (o resto da ficha
+     fica como estiver). → { ok: true, nome, desfazer() } ou { ok: false, error } */
+  const TIPOS_BOLSA = ['pocao', 'bomba', 'runa', 'municao', 'material'];
+  const tipoNaBolsa = x => (TIPOS_BOLSA.includes(x && x.t) ? x.t : 'material');
+  function quemRecebeSaque() {
+    if (!on || papel !== 'mestre') return [];
+    const naCena = new Set(Store.scene().tokens.map(t => t.char).filter(Boolean));
+    return chars().filter(l => l.ficha != null && !ehPet(l) && pesoDa(l) < 2 && !(l.estado && l.estado.toldo))
+      .map(l => ({ id: l.id, nome: String(l.nome || 'Sem nome'), naCena: naCena.has(l.id), jog: deJogador(l) }))
+      .sort((a, b) => (b.naCena - a.naCena) || (b.jog - a.jog));
+  }
+  function entregarSaque(charId, saque) {
+    const l = get(charId);
+    if (!on || papel !== 'mestre' || !l || l.ficha == null) return { ok: false, error: 'A ficha de quem recebe não está aqui.' };
+    const itens = Array.isArray(saque && saque.itens) ? saque.itens : [], lapros = Math.max(0, Math.round(Number(saque && saque.lapros) || 0));
+    if (!itens.length && !lapros) return { ok: false, error: 'Não há nada para entregar.' };
+    const f0 = l.ficha, e0 = l.estado || {};
+    const bolsa = Array.isArray(f0.bolsa) ? f0.bolsa.slice() : [], equip = Array.isArray(f0.itens) ? f0.itens.slice() : [], qtd = Object.assign({}, e0.qtd || {});
+    const somou = new Map(), novosB = new Set(), novosI = new Set();
+    for (const it of itens) {
+      const nome = String(it.nome == null ? 'Item' : it.nome).trim().slice(0, 80) || 'Item', q = clamp(Math.round(Number(it.qtd) || 1), 1, 9999);
+      if (it.tipo === 'equip') { for (let i = 0; i < Math.min(q, 20); i++) { const x = { id: uid('it'), nome, equipado: false }; equip.push(x); novosI.add(x.id); } continue; }
+      const tp = TIPOS_BOLSA.includes(it.tipo) ? it.tipo : 'material';
+      let b = bolsa.find(x => x && x.id != null && tipoNaBolsa(x) === tp && norm(x.nome) === norm(nome));
+      if (!b) { b = { id: uid('bo'), t: tp, nome }; bolsa.push(b); novosB.add(b.id); }
+      const id = String(b.id);
+      qtd[id] = Math.max(0, Math.floor(Number(qtd[id]) || 0)) + q;
+      somou.set(id, (somou.get(id) || 0) + q);
+    }
+    const lap0 = Math.max(0, Math.round(Number(e0.lapros) || 0));
+    P.gravar(charId, { ficha: Object.assign({}, f0, { bolsa, itens: equip }), estado: Object.assign({}, e0, { qtd }, lapros ? { lapros: lap0 + lapros } : {}) });
+    return { ok: true, nome: String(l.nome || 'Sem nome'), desfazer: () => {
+      const a = get(charId);
+      if (!a || a.ficha == null) return false;
+      const e1 = a.estado || {}, q1 = Object.assign({}, e1.qtd || {});
+      for (const [id, n] of somou) { const v = Math.max(0, Math.floor(Number(q1[id]) || 0) - n); if (v > 0 || !novosB.has(id)) q1[id] = v; else delete q1[id]; }
+      const b1 = (Array.isArray(a.ficha.bolsa) ? a.ficha.bolsa : []).filter(x => !(x && novosB.has(String(x.id)) && !(q1[String(x.id)] > 0)));
+      const i1 = (Array.isArray(a.ficha.itens) ? a.ficha.itens : []).filter(x => !(x && novosI.has(x.id)));
+      const est = Object.assign({}, e1, { qtd: q1 });
+      if (lapros) est.lapros = Math.max(0, Math.round(Number(e1.lapros) || 0) - lapros);
+      P.gravar(charId, { ficha: Object.assign({}, a.ficha, { bolsa: b1, itens: i1 }), estado: est });
+      return true;
+    } };
+  }
   /* ---- as bolsas do personagem, usadas pelo token ----
      Quem pode: o mestre, em qualquer token ligado a uma ficha; o jogador, no token do personagem que é dele. */
   function podeBolsa(t) {
@@ -878,7 +979,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { start, on: () => on, chars, get, link, linhaBest, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)

@@ -1971,6 +1971,42 @@
       historicoFac(f, v, false)));
     return out;
   }
+  /* (lote 29) Os personagens do grupo: as fichas dos jogadores (da campanha em vista), uma caixa para cada. Quando o
+     grupo para no hexágono de um lugar com loja (aba Itens), a aba Loja aparece para os donos deles. */
+  /* (lote 29) As fichas chegam depois do mapa (e mudam): quando chegam, ou quando muda quem existe, o nome, o dono ou a
+     campanha de alguma, o painel se pinta de novo (só nessas mudanças: as barras de combate não repintam nada). */
+  let ouvePcs = false, assinaturaPcs = '';
+  function ouvirPersonagens(P) {
+    if (ouvePcs || !P) return;
+    ouvePcs = true;
+    const sig = () => P.todas().map(l => l ? [l.id, l.nome, l.dono_id, l.campanha, !!l.apagado, !!(l.ficha && l.ficha.petDe)].join('|') : '').join(';');
+    let t = 0;
+    const depois = () => { clearTimeout(t); t = setTimeout(() => { const s0 = sig(); if (s0 !== assinaturaPcs) { assinaturaPcs = s0; agendar(); } }, 150); };
+    assinaturaPcs = sig();
+    if (P.pronta && typeof P.pronta.then === 'function') P.pronta.then(depois, () => {});
+    if (typeof P.aoMudar === 'function') P.aoMudar(depois);
+  }
+  function secPersonagensDoGrupo(o, grava) {
+    const TC_ = window.TC;
+    if (!App.naMesa || !TC_ || !TC_.dados || !TC_.dados.disponivel()) return null;
+    let P = null;
+    try { P = TC_.dados.col('personagens'); } catch (e) { return null; }
+    ouvirPersonagens(P);
+    const st = (TC_.ponte && TC_.ponte.estado) || {}, camp = st.campanha ? st.campanha.id : null, pcs = Array.isArray(o.pcs) ? o.pcs : [];
+    const ehJog = id => !!id && (st.membros || []).some(x => x.id === id && (x.cargo ? x.cargo !== 'mestre' : x.papel === 'jogador'));
+    const lista = P.todas().filter(l => l && !l.apagado && l.ficha && !l.ficha.petDe && (pcs.includes(l.id) || (ehJog(l.dono_id) && (!camp || !l.campanha || l.campanha === camp))))
+      .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+    const id = o.id;
+    const caixas = lista.map(l => caixa('o:' + id + ':pc:' + l.id, l.nome || 'Sem nome', pcs.includes(l.id),
+      grava(pcs.includes(l.id) ? 'tirar ' + (l.nome || 'o personagem') + ' do grupo' : 'pôr ' + (l.nome || 'o personagem') + ' no grupo', (x, v) => {
+        const atual = Array.isArray(x.pcs) ? x.pcs.filter(p => p !== l.id) : [];
+        if (v) atual.push(l.id);
+        if (atual.length) x.pcs = atual; else delete x.pcs;
+      })));
+    return h('div', { class: 'field', 'data-k': 'o:' + id + ':pcs' }, h('span', { text: 'Personagens deste grupo' }),
+      caixas.length ? h('div', { class: 'pcs-grupo' }, caixas) : h('p', { class: 'note', text: 'Ainda não há fichas de jogadores nesta campanha.' }),
+      h('small', { class: 'note', text: 'Quando o grupo para no hexágono de um lugar com loja (aba Itens), a aba Loja aparece para os donos destes personagens.' }));
+  }
   function secGrupo(o, m, grava) {
     const N_ = N(), id = o.id, rotas = m.objs.filter(x => x.k === 't'), rota = achar(m, o.rota), out = [], pt = passoDoGrupo(m, o), tpd = tpdDe(m);
     // (lote 7, parte 5b) o tipo: o grupo de sempre, ou um do mundo (a caravana, a patrulha, o exército), que anda sozinho
@@ -1990,6 +2026,8 @@
       campoTexto('o:' + id + ':sigla', 'Sigla', o.sigla, grava('mudar a sigla', (x, v) => { x.sigla = v.trim().toUpperCase(); }), { max: 3, ph: 'GR', classe: 'curto' }),
       campoNumero('o:' + id + ':pt', 'Anda por tempo (cubos)', pt, grava('mudar quanto o grupo anda', (x, n) => { x.pt = n; }),
         { decimal: true, min: 0.1, max: 9999, erro: 'Use um número de cubos por tempo de marcha, de 0,1 a 9999.', dica: 'Por dia (' + tpd + ' tempos): ' + fmt(pt * tpd, 1) + ' cubos.' })));
+    // (lote 29) os personagens dos jogadores que andam com o grupo (as lojas do lugar onde ele para aparecem para eles)
+    if (!mundo) { const ps = secPersonagensDoGrupo(o, grava); if (ps) out.push(ps); }
     out.push(campoEscolha('o:' + id + ':rota', 'Rota', o.rota || '', [['', rotas.length ? 'Sem rota' : 'Sem rota (desenhe uma com a ferramenta Rota)']].concat(rotas.map(t => [t.id, nomeDe(t, m) + ' · ' + (N_.VIAS[t.via] || N_.VIAS.trilha).nome])),
       grava('mudar a rota', (x, v) => { if ((x.rota || '') === v) return false; x.rota = v || null; x.prog = 0; delete x.sentido; delete x.espera; })));
     // (lote 7, parte 5b) os dois jeitos de fazer a rota: desenhar (clicando os pontos) ou traçar de um marcador a outro
@@ -2851,13 +2889,17 @@
     if (o.estilo === 'rio') out.push(linha(botao('Inverter o sentido', () => mudarObj(id, 'inverter o rio', x => { x.pts.reverse(); }), { c: 'sm', k: 'o:' + id + ':inverter', title: 'O rio corre do primeiro ponto (a nascente) ao último (a foz)' })));
     return secao(def.nome, out);
   }
+  const TAM_CARIMBO = [[16, 'Pequeno'], [22, 'Médio'], [30, 'Grande'], [40, 'Enorme']];      // (lote 29) px na tela
   function secCarimbo(o, grava) {
     const C0 = N().CARIMBOS || {}, id = o.id, def = C0[o.ic] || { cor: '#5d9a4e' };
     return secao('Carimbo',
       h('div', { class: 'grade carimbos', role: 'group', 'aria-label': 'Desenho do carimbo', onkeydown: setasNaGrade }, Object.keys(C0).map(k => h('button', { type: 'button', 'data-k': 'cb:' + id + ':' + k,
         'aria-pressed': String(o.ic === k), tabindex: o.ic === k ? '0' : '-1', title: C0[k].nome, 'aria-label': C0[k].nome, style: { color: C0[k].cor },
         onclick: () => mudarObj(id, 'trocar o carimbo', x => { x.ic = k; }) }, glifoCarimbo(C0[k].svg, 24)))),
-      campoNumero('o:' + id + ':tam', 'Tamanho (unidades do mapa)', o.tam, grava('mudar o tamanho', (x, n) => { x.tam = n; }), { decimal: true, min: 1, max: 100000, erro: 'Use um tamanho maior que zero.' }),
+      // (lote 29) o carimbo tem o mesmo tamanho na tela em qualquer zoom: Pequeno, Médio, Grande ou Enorme (px)
+      campoEscolha('o:' + id + ':px', 'Tamanho na tela', o.px > 0 ? String(TAM_CARIMBO.reduce((a, b) => (Math.abs(b[0] - o.px) < Math.abs(a[0] - o.px) ? b : a))[0]) : '',
+        (o.px > 0 ? [] : [['', 'Como no mapa']]).concat(TAM_CARIMBO.map(([v, t]) => [String(v), t])),
+        grava('mudar o tamanho', (x, v) => { if (Number(v) > 0) x.px = Number(v); else delete x.px; })),
       h('div', { class: 'linha-cor' }, campoCor('o:' + id + ':cor', 'Cor do carimbo', o.cor || def.cor, grava('mudar a cor', (x, v) => { x.cor = v; })),
         h('span', { class: 'note', text: o.cor ? 'Cor própria' : 'Cor do desenho' }),
         o.cor ? botao('Usar a cor do desenho', () => mudarObj(id, 'mudar a cor', x => { x.cor = ''; }), { c: 'sm', k: 'o:' + id + ':cor0' }) : null),

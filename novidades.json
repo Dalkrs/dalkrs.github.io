@@ -2,6 +2,49 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.28-3",
+      "data": "2026-10-28",
+      "titulo": "O Bestiário, os Itens e a Loja",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Bestiário: a aba nova do mestre, com os inimigos em cartas, as tags (bioma, tipo de criatura, papel no combate, facção), os números pela regra das fichas e a árvore distribuída pelas prioridades. A bandeja monta o encontro, mostra a dificuldade contra o grupo e puxa os inimigos para a cena."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: os tokens do Bestiário rolam e defendem com os números de lá (a tecla F, o ataque com defesa). No painel, o lembrete de comportamento e “Rolar o saque” — para a bolsa de alguém ou num baú no chão. Na vez do inimigo, o lembrete aparece para o mestre."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Itens: a aba nova do mestre, com o catálogo (os itens da bolsa e os equipamentos, com o preço; “Dar a…” põe um item na ficha de alguém), as lojas (cada uma num lugar do Mapa-múndi, com o preço e o estoque) e as receitas da bancada."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Loja: quando o grupo do seu personagem para no lugar de uma loja do Mapa-múndi, a aba Loja aparece em cima. Os lapros saem da ficha, o item vai para a bolsa, e cada compra tem Desfazer por 15 minutos."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Acampamento: a aba Bancada, com as receitas. Os ingredientes saem da bolsa e o resultado entra; com teste, se ele falhar, acontece o que a receita diz (perder os ingredientes, dano numa barra, uma condição no token)."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: no painel do grupo, os personagens que andam com ele (é por eles que a aba Loja aparece). Jornal: as compras nas lojas, com “Desfazer a compra”."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: os ícones menores — o marcador, o grupo e o selo do evento (os nomes continuam do mesmo tamanho). Os carimbos agora têm o mesmo tamanho na tela em qualquer zoom (Pequeno, Médio, Grande ou Enorme); de longe, os que cairiam um em cima do outro saem da vista e voltam ao aproximar."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "O guia (o “?” no alto) explica as abas novas: a Loja e a Bancada do Acampamento."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.28-2",
       "data": "2026-10-28",
       "titulo": "Imbuído de Mana, os sons dos avisos, oito masmorras novas e a Linhagem",

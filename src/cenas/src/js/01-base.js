@@ -860,6 +860,19 @@ function newToken(scene, x, y, extra) {
   }, extra || {});
 }
 
+/* (lote 29) O saque no chão: { itens: [{ nome, qtd, tipo }], lapros, de: de quem caiu }. null se não sobrou nada. */
+const TIPOS_SAQUE = ['material', 'pocao', 'bomba', 'runa', 'municao', 'equip'];
+function cleanSaque(o) {
+  if (!o || typeof o !== 'object') return null;
+  const itens = (Array.isArray(o.itens) ? o.itens : []).filter(x => x && typeof x === 'object').slice(0, 40)
+    .map(x => ({ nome: String(x.nome == null ? 'Item' : x.nome).trim().slice(0, 80) || 'Item', qtd: clamp(Math.round(Number(x.qtd) || 1), 1, 9999), tipo: TIPOS_SAQUE.includes(x.tipo) ? x.tipo : 'material' }));
+  const lapros = clamp(Math.round(Number(o.lapros) || 0), 0, 9999999);
+  if (!itens.length && !lapros) return null;
+  const out = { itens, lapros };
+  if (typeof o.de === 'string' && o.de.trim()) out.de = o.de.trim().slice(0, 60);
+  return out;
+}
+
 // Completa campos que possam faltar em dados importados de versões antigas.
 function normalizeScene(sc) {
   const base = newScene(sc.name);
@@ -929,6 +942,11 @@ function normalizeScene(sc) {
     // objeto de cenário: só os do catálogo, sempre quadrado; gira de 0 a 359 graus
     if (t.prop && Props.P[t.prop]) { t.rot = ((Math.round(Number(t.rot) || 0) % 360) + 360) % 360; t.shape = 'quad'; t.char = null; }
     else { delete t.prop; delete t.rot; }
+    // (lote 29) o inimigo do Bestiário ligado a este token (só o id: os números vêm de lá; as barras ficam no token);
+    // e, no objeto de cenário, o saque que ficou no chão (o que caiu de um inimigo, até alguém pegar)
+    if (!(typeof t.best === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.best)) || t.char || t.prop) delete t.best;
+    const sq = t.prop ? cleanSaque(t.saque) : null;
+    if (sq) t.saque = sq; else delete t.saque;
     // (lote 7) o objeto que leva a outra cena (a entrada de uma casa, a saída, uma escada): o id da cena
     if (!(t.prop && typeof t.cena === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.cena))) delete t.cena;
     // (lote 7) o que o marcador sabe para gerar a cena de dentro: o prédio (tipo, medidas, porta, estilo, semente,

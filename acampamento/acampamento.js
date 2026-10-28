@@ -22,7 +22,7 @@
   const DEBUG = /[?&]debug(?:[=&]|$)/.test(location.search);
   const NS = 'http://www.w3.org/2000/svg';
   const HORA_NOME = { entardecer: 'Entardecer', noite: 'Noite', amanhecer: 'Amanhecer' };
-  const ABAS = [['grupo', 'Grupo'], ['provisoes', 'Provisões'], ['estrutura', 'Estrutura'], ['caravana', 'Caravana'], ['diario', 'Diário']];
+  const ABAS = [['grupo', 'Grupo'], ['provisoes', 'Provisões'], ['estrutura', 'Estrutura'], ['bancada', 'Bancada'], ['caravana', 'Caravana'], ['diario', 'Diário']];      // (lote 29: a Bancada)
 
   /* Monta um elemento: h('button', { class: 'btn', onclick }, 'texto', outro). Texto sempre entra como texto. */
   function h(tag, attrs, ...kids) {
@@ -499,7 +499,7 @@
     podeAqui = aba === 'grupo' ? mestre() : edita();
     const esperando = naMesa() && !mestre() && !encerrada && !!(meuMembro() && meuMembro().acamp) && !docExiste();
     pane.replaceChildren(...[esperando ? h('p', { class: 'aviso', id: 'acamp-espera', text: 'O mestre deixou você mexer no acampamento, mas ele ainda não foi aberto nesta mesa. Quando o mestre abrir o Acampamento uma vez, você poderá mexer aqui.' }) : null,
-      ...({ grupo: abaGrupo, provisoes: abaProvisoes, estrutura: abaEstrutura, caravana: abaCaravana, diario: abaDiario }[aba])()].flat(Infinity).filter(Boolean));
+      ...({ grupo: abaGrupo, provisoes: abaProvisoes, estrutura: abaEstrutura, bancada: abaBancada, caravana: abaCaravana, diario: abaDiario }[aba])()].flat(Infinity).filter(Boolean));
     pane.scrollTop = rolagem;
     const alvo = focoDepois || ativo; focoDepois = null;
     if (alvo) { const el = document.getElementById(alvo); if (el && !el.disabled) el.focus({ preventScroll: true }); }
@@ -913,6 +913,107 @@
     return h('div', { class: 'peso' + (demais ? ' demais' : ''), id: id || null },
       h('span', { text: cap > 0 ? (demais ? 'Carga demais' : 'Carga') : 'Carga (sem capacidade anotada)' }), h('b', { text: cap > 0 ? kg(usado) + ' de ' + kg(cap) : kg(usado) }),
       cap > 0 ? h('div', { class: 'tr' }, h('i', { style: `width:${N.limitar(usado / cap * 100, 0, 100)}%` })) : null);
+  }
+  /* ---- (lote 29) a bancada: as receitas da aba Itens do mestre ----
+     Quem joga faz com um personagem seu que está no acampamento (quem mestra, com qualquer um): os ingredientes saem da
+     bolsa da ficha, o resultado entra. Com teste, rola o atributo (a regra da fixa da ficha) contra a dificuldade — quem
+     mestra pode dispensar. Se falha, faz o que a receita diz: por padrão perde os ingredientes; pode dar dano numa barra
+     da ficha e condições (essas vão para o token do personagem nas Cenas, pela mesa ao vivo). Cada vez tem Desfazer. */
+  let bancadaPc = null;
+  const IT = () => window.TC && window.TC.itens;
+  function receitasDaMesa() {
+    if (!naMesa() || !IT()) return [];
+    return D.todas().filter(l => l && typeof l.id === 'string' && l.id.startsWith(IT().PRE_REC) && !l.apagado && l.dados && typeof l.dados === 'object')
+      .map(l => ({ id: l.id.slice(IT().PRE_REC.length), r: IT().receita(l.dados), oculta: l.vis === 'mestre' })).sort((a, b) => a.r.nome.localeCompare(b.r.nome, 'pt-BR'));
+  }
+  const NOME_ATR = k => ((IT() && IT().ATR_TESTE.find(a => a[0] === k)) || [k, k])[1];
+  function falhaTexto(r) {
+    const p = [];
+    if (r.falha.perde) p.push('perde os ingredientes'); else p.push('os ingredientes ficam');
+    for (const d of r.falha.dano) p.push(d.barra + ' −' + String(d.val).replace(/^[-−+]/, ''));
+    for (const c of r.falha.conds) p.push((R().nomeDaCondicao ? R().nomeDaCondicao(c.c) : c.c) + (c.r ? ' (' + c.r + (c.r === 1 ? ' rodada)' : ' rodadas)') : ''));
+    return p.join(', ');
+  }
+  function abaBancada() {
+    if (!naMesa() || !IT()) return [h('p', { class: 'aviso', id: 'banc-fora', text: 'A bancada funciona numa mesa: as receitas vêm da aba Itens de quem mestra.' })];
+    const quem = presentes().filter(p => !p.semFicha && (mestre() || (p.dono && p.dono === st.eu)));
+    if (!quem.length) return [h('p', { class: 'aviso', id: 'banc-ninguem', text: mestre() ? 'Ninguém com ficha está no acampamento.' : 'Nenhum personagem seu está no acampamento: a bancada é para quem está aqui.' })];
+    if (!quem.some(p => p.id === bancadaPc)) bancadaPc = quem[0].id;
+    const p = quem.find(x => x.id === bancadaPc), l = linha(p.id), rs = receitasDaMesa().filter(x => mestre() || !x.oculta);
+    const out = [h('div', { class: 'cartao', id: 'banc-quem' }, h('div', { class: 'lin' }, h('span', { class: 'note', text: 'Fazendo como' }),
+      quem.length > 1 ? h('select', { class: 'in', id: 'banc-pc', 'aria-label': 'Quem faz', onchange: e => { bancadaPc = e.target.value; focoDepois = 'banc-pc'; pintarPainel(); } }, quem.map(x => h('option', { value: x.id, text: x.nome, selected: x.id === p.id })))
+        : h('b', { text: p.nome })))];
+    if (!rs.length) { out.push(h('p', { class: 'note', id: 'banc-vazia', text: 'Nenhuma receita ainda: quem mestra cria na aba Itens.' })); return out; }
+    for (const x of rs) {
+      const r = x.r, pf = IT().podeFazer(r, l.ficha, l.estado || {}), te = r.teste;
+      const v = te ? Math.round(+(p.atr && p.atr[te.atr]) || 0) : 0;
+      out.push(h('div', { class: 'cartao receita', 'data-rec': x.id },
+        h('div', { class: 'lin' }, h('b', { text: r.nome }), x.oculta ? h('span', { class: 'note', text: '· só quem mestra vê' }) : null),
+        r.nota ? h('p', { class: 'note', text: r.nota }) : null,
+        h('ul', { class: 'ing' }, pf.lista.map(g => h('li', { class: g.tem >= g.precisa ? 'tem' : 'falta' }, g.precisa + ' × ' + g.nome, h('span', { class: 'note', text: ' · tem ' + g.tem })))),
+        h('p', { class: 'note' }, 'Faz ', h('b', { text: (r.resultado.qtd > 1 ? r.resultado.qtd + ' × ' : '') + r.resultado.item.nome }), te ? ' · teste de ' + NOME_ATR(te.atr) + ' (' + v + ') contra ' + te.dif : ' · sem teste'),
+        te ? h('p', { class: 'note', text: 'Se falhar: ' + falhaTexto(r) + '.' }) : null,
+        h('div', { class: 'lin' }, h('button', { type: 'button', class: 'btn sm pri', id: 'banc-fazer-' + x.id, disabled: !pf.ok || encerrada, title: pf.ok ? '' : 'Faltam ingredientes', onclick: () => abrirFazer(x, p) }, 'Fazer'),
+          pf.ok ? null : h('span', { class: 'note', text: 'Faltam: ' + pf.faltam.map(g => (g.precisa - g.tem) + ' × ' + g.nome).join(', ') + '.' }))));
+    }
+    return out;
+  }
+  function abrirFazer(x, p) {
+    const r = x.r, te = r.teste, v = te ? Math.round(+(p.atr && p.atr[te.atr]) || 0) : 0;
+    let dispensa = false;
+    const cx = mestre() && te ? h('label', { class: 'sw' }, h('input', { type: 'checkbox', id: 'banc-dispensa', onchange: e => { dispensa = e.target.checked; } }), 'Dispensar o teste (dá certo)') : null;
+    abrirJanela('Fazer ' + r.nome, h('div', { class: 'cartao' },
+      h('p', { text: p.nome + ' gasta ' + r.ingredientes.map(g => g.qtd + ' × ' + g.nome).join(', ') + ' e faz ' + (r.resultado.qtd > 1 ? r.resultado.qtd + ' × ' : '') + r.resultado.item.nome + '.' }),
+      te ? h('p', { class: 'note', text: 'Teste: ' + NOME_ATR(te.atr) + ' ' + v + (p.fixa ? ' (fixa ' + Math.min(p.fixa, v) + ')' : '') + ' contra ' + te.dif + '. Se falhar: ' + falhaTexto(r) + '.' }) : null, cx),
+      [h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), h('button', { type: 'button', class: 'btn pri', id: 'banc-ok', text: te ? 'Rolar e fazer' : 'Fazer', onclick: () => { fecharJanela(); fazerReceita(x, p, dispensa); } })]);
+  }
+  // o dano da falha: como uma poção que tira da barra (as barras são achadas pelo nome); → { estado, txt: ['HP 40 → 33'] }
+  function danoDaFalha(l, dano) {
+    const est0 = l.estado || {};
+    if (!dano.length) return { estado: est0, txt: [], barras: [] };
+    try {
+      const pc = Object.assign({}, l.ficha, { id: l.id, nome: l.nome }), calc = R().calcular(pc, cfgAtual(), { arvore: R().bonusDaArvore(l.skills, bibAtual()), temp: est0.tmp, fer: est0.fer });
+      const fx = dano.map(d => ({ k: 'barra', rec: IT().recDaFicha(l.ficha, d.barra), val: '-' + String(d.val).replace(/^[-−+]/, '') }));
+      const rolados = fx.map(e => { const ef = R().lerEfeito(e.val); if (!ef || ef.erro || !ef.dados) return null; const rr = TC.dice.rollExpr(ef.dados); return rr && rr.ok ? rr.total : 0; });
+      const id = '__bancada', pc2 = Object.assign({}, pc, { bolsa: (Array.isArray(pc.bolsa) ? pc.bolsa : []).concat([{ id, t: 'pocao', nome: 'A falha', fx }]) });
+      const r = R().usarItem(pc2, calc, Object.assign({}, est0, { qtd: Object.assign({}, est0.qtd || {}, { [id]: 1 }) }), id, rolados, Date.now());
+      if (!r.ok) return { estado: est0, txt: [], barras: [] };
+      const est = Object.assign({}, r.estado, { qtd: Object.assign({}, r.estado.qtd || {}) }); delete est.qtd[id];
+      return { estado: est, txt: r.efeitos.filter(e => e.k === 'barra').map(e => e.nome + ' ' + e.de + ' → ' + e.para), barras: r.efeitos.filter(e => e.k === 'barra').map(e => ({ tipo: e.tipo, id: e.id })) };
+    } catch (e) { console.error(e); return { estado: est0, txt: [], barras: [] }; }
+  }
+  function fazerReceita(x, p, dispensa) {
+    const l = P.pegar(p.id);
+    if (!l || !l.ficha) { toast('A ficha de ' + p.nome + ' não está aqui.'); return; }
+    const r = x.r, antes = { ficha: l.ficha, estado: l.estado || {} };
+    const t = r.teste && !dispensa ? IT().testar(r, p.atr && p.atr[r.teste.atr], p.fixa) : { sucesso: true, total: null, texto: r.teste ? 'teste dispensado' : '' };
+    const f = IT().fazer(r, l.ficha, l.estado || {}, t.sucesso);
+    if (!f.ok) { toast(f.erro); return; }
+    let est = f.estado, danos = [], barras = [];
+    if (!f.sucesso && f.dano.length) { const d = danoDaFalha(Object.assign({}, l, { ficha: f.ficha, estado: est }), f.dano); est = d.estado; danos = d.txt; barras = d.barras; }
+    P.gravar(l.id, { ficha: f.ficha, estado: est });
+    const conds = f.sucesso ? [] : f.conds, nomesC = conds.map(c => (R().nomeDaCondicao ? R().nomeDaCondicao(c.c) : c.c) + (c.r ? ' (' + c.r + (c.r === 1 ? ' rodada)' : ' rodadas)') : ''));
+    const oque = (r.resultado.qtd > 1 ? r.resultado.qtd + ' × ' : '') + r.resultado.item.nome;
+    const texto = f.sucesso ? p.nome + ' fez ' + oque + (t.texto ? ' (' + t.texto + ')' : '') + '.'
+      : p.nome + ' tentou fazer ' + oque + ' e falhou (' + t.texto + ')' + [r.falha.perde ? 'perdeu os ingredientes' : 'os ingredientes ficaram', ...danos, ...nomesC].map((s, i) => (i ? ', ' : ': ') + s).join('') + '.';
+    try { if (TC.ponte) TC.ponte.publicar('acampamento', Object.assign({ titulo: 'Bancada · ' + r.nome, resumo: texto }, conds.length ? { pc: l.id, conds } : {})); } catch (e) { /* a mesa ao vivo é opcional */ }
+    pintarPainel();
+    toast(texto + (conds.length ? ' As condições vão para o token (quem mestra as Cenas põe).' : ''), 'Desfazer', () => {
+      const a = P.pegar(l.id); if (!a || !a.ficha) { toast('A ficha não está mais aqui.'); return; }
+      const v = IT().desfazer(a.ficha, a.estado || {}, f.desfazer);
+      // (as barras que a falha mexeu voltam ao valor de antes — ou a "cheia", se antes não havia valor guardado; o resto
+      //  do estado fica como está agora)
+      const est2 = Object.assign({}, v.estado);
+      for (const b of barras) {
+        const k = b.tipo === 'pd' ? 'pd' : 'rec', ant = (antes.estado || {})[k] || {}, m = Object.assign({}, est2[k] || {});
+        if (Object.prototype.hasOwnProperty.call(ant, b.id)) m[b.id] = ant[b.id]; else delete m[b.id];
+        est2[k] = m;
+      }
+      P.gravar(l.id, { ficha: v.ficha, estado: est2 });
+      try { if (TC.ponte) TC.ponte.publicar('acampamento', { titulo: 'Bancada · ' + r.nome, resumo: 'Desfeito: ' + p.nome + (f.sucesso ? ' não fez ' : ' não tentou fazer ') + oque + '.' }); } catch (e) { /* opcional */ }
+      pintarPainel();
+      toast('Desfeito.');
+    }, 12000);
   }
   function abaCaravana() {
     const cv = camp.caravana, peso = N.cargaDe(camp);
@@ -1546,7 +1647,7 @@
       camp = N.normalizar(d && !d.apagado ? d.dados : null);
       jCamp = j(camp);
       marcarSalvo(encerrada ? 'Campanha encerrada: só consulta' : st.temCampanhas && !campId ? 'Você ainda não está numa campanha' : 'Salvo na mesa');
-      D.aoMudar(l => { if (!l) return; if (l.id === DOC) deFora(); else if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote' || l.id === 'mundo:indice' || String(l.id).startsWith('mundo:pub:')) pintar(); });
+      D.aoMudar(l => { if (!l) return; if (l.id === DOC) deFora(); else if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote' || l.id === 'mundo:indice' || String(l.id).startsWith('mundo:pub:') || String(l.id).startsWith('itens:rec:')) pintar(); });
       P.aoMudar(() => { if (arrasto) return; manterRoda(); if (!digitando() && !dlg.open) pintar(); else pintarCena(); });
     } else {
       camp = N.normalizar(lerLocal());

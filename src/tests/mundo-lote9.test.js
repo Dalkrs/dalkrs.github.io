@@ -104,7 +104,7 @@ async function janela(a, f) {
       const [gx] = tr(gb), gw = Number(gb.querySelector('svg').getAttribute('width'));
       return { baseReg: Math.round((ry + rh) * 10) / 10, dirGrupo: Math.round((gx + gw) * 10) / 10, rx };
     });
-    ok(pos.baseReg === -7 && pos.dirGrupo <= -21.4, 'a bandeira da região continua em cima do nome (a base no mesmo lugar) e a do grupo não encosta no token: ' + j(pos));
+    ok(pos.baseReg === -7 && pos.dirGrupo <= -15.4, 'a bandeira da região continua em cima do nome (a base no mesmo lugar) e a do grupo não encosta no token (lote 29: o token menor, de raio 14): ' + j(pos));
     ok(await A(L, () => JSON.stringify(__mundo.App.mapa)) === jMapa && !(await A(L, () => __mundo.App.podeDesfazer() && /bandeira/i.test(__mundo.App.rotuloDesfazer()))), 'o tamanho não mexe no mapa (nem vira um passo de desfazer)');
     ok(/"band":"g"/.test(await A(L, () => localStorage.getItem('tinycats:mundo:painel'))), 'fica guardado neste aparelho');
     await L.P.reload({ waitUntil: 'load' });

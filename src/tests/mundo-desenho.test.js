@@ -165,17 +165,30 @@ const desfazer = async a => { await a.F.click('#btDesfazer'); await a.F.waitForT
     cs = await doTipo(L, 'c');
     const novos = cs.filter(c => c.ic === 'montanha');
     ok(novos.length >= 4 && /^espalhar \d+ carimbos$/.test(await rotulo(L)) && (await sel(L)).length === novos.length, 'arrastar espalha montanhas pelo caminho (um passo de desfazer): ' + novos.length);
+    // (lote 29) o tamanho na tela: o Médio, 22 px; o Grande, 30 (espalhados, um pouco maiores ou menores)
+    ok(cs[0].px === 22 && novos.every(c => c.px >= 25 && c.px <= 35), 'o carimbo guarda o tamanho na tela (Médio 22 px; as montanhas, Grande, perto de 30): ' + j([cs[0].px, novos.map(c => c.px)]));
     await foto('desenho-carimbos');
+    // (lote 29) o mesmo tamanho na tela em qualquer zoom; de longe, os que cairiam um em cima do outro saem da vista
+    const tamNaTela = () => A(L, i => { const r = document.querySelector('#mundo svg .c-car .obj[data-id="' + i + '"] rect.alvo').getBoundingClientRect(); return Math.round(r.width); }, cs[0].id);
+    await A(L, () => __mundo.App.selecionar([])); await espera(200);          // (o escolhido nunca sai da vista)
+    const w1 = await tamNaTela(), z1 = await A(L, () => __mundo.Tela.zoom);
+    await A(L, () => { __mundo.Tela.zoom = __mundo.Tela.zoom * 3; }); await espera(600);
+    const w2 = await tamNaTela(), z2c = await A(L, () => __mundo.Tela.zoom);
+    ok(z2c > z1 * 2.5 && Math.abs(w1 - w2) <= 1 && w1 >= 20 && w1 <= 24, 'de perto, o carimbo continua do mesmo tamanho na tela: ' + j({ w1, w2, z1, z2: z2c }));
+    await A(L, () => { __mundo.Tela.zoom = __mundo.Tela.zoom / 12; }); await espera(600);
+    const juntos = await A(L, () => document.querySelectorAll('#mundo svg .c-car .obj.car-junto').length);
+    ok(juntos >= 1, 'de longe, os carimbos que cairiam um em cima do outro saem da vista: ' + juntos);
+    await A(L, () => __mundo.Tela.caber()); await espera(600);
     await ferramenta(L, 'sel');
     id.c = cs[0].id;
     await A(L, i => __mundo.App.selecionar([i]), id.c);
     await espera(150);
-    ok(await L.F.locator('#pane').innerText().then(x => /Carimbo/.test(x) && /Tamanho \(unidades do mapa\)/.test(x)), 'o painel do carimbo: o desenho, o tamanho, a cor e espelhar');
+    ok(await L.F.locator('#pane').innerText().then(x => /Carimbo/.test(x) && /Tamanho na tela/.test(x)), 'o painel do carimbo: o desenho, o tamanho (na tela), a cor e espelhar');
     await botao(L, 'cb:' + id.c + ':pinheiro');
-    await escrever(L, 'o:' + id.c + ':tam', '90');
+    await campo(L, 'o:' + id.c + ':px').selectOption('30'); await espera(150);
     await campo(L, 'o:' + id.c + ':vira').check(); await espera(150);
     const c = await obj(L, id.c);
-    ok(c.ic === 'pinheiro' && c.tam === 90 && c.vira === true, 'trocar o desenho, o tamanho e espelhar: ' + j(c));
+    ok(c.ic === 'pinheiro' && c.px === 30 && c.vira === true, 'trocar o desenho, o tamanho (Grande) e espelhar: ' + j(c));
   });
 
   await passo('textos', async () => {

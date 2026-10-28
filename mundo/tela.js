@@ -11,6 +11,12 @@
   const MASCARA = 'mundoNevoaMascara';
   const Z_MAX = 8;
   const RAIO_EVENTO = 80;                         // raio de um evento posto com um clique (unidades do mapa)
+  // (lote 29) os ícones do mapa, menores: o desenho do marcador, do grupo e do selo do evento a 72% (o marcador, de 28 para
+  // uns 20 px na tela); os nomes continuam do mesmo tamanho. E os carimbos também ficam do mesmo tamanho na tela em
+  // qualquer zoom (PX_CARIMBO: Pequeno, Médio, Grande, Enorme, em px).
+  const ICO = 0.72;
+  const PX_CARIMBO = { 24: 16, 40: 22, 64: 30, 100: 40 };
+  const pxDoTam = t => PX_CARIMBO[t] || Math.round(limitar(Number(t) || 40, 8, 400) * 0.55);
   const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0,
     terPincel: '', pinTer: 'fl', pinRaio: 24, freModo: 'linha', des: 'carimbo', carimbo: 'arvore', carTam: 40, fonte: 'mapa', txtTam: 28, estilo: 'rio', linNivel: 2,
     tipoGrupo: '', zonaTipo: 'tempestade',                                  // (lote 7, parte 5b) o tipo do grupo novo: '' (grupo), caravana, patrulha, exército
@@ -431,9 +437,29 @@
   // Rótulos que se cobrem ficam ilegíveis. Com o zoom afastado, mostra os mais importantes (o que está escolhido,
   // grupos, marcadores, eventos, regiões, linhas) e esconde os que cairiam em cima deles; ao aproximar, voltam.
   // O nome escondido continua no painel e na dica do mouse.
+  /* (lote 29) Os carimbos têm o mesmo tamanho na tela em qualquer zoom: com o zoom afastado, os que cairiam um em cima do
+     outro (a floresta espalhada vira um borrão) saem da vista — os maiores ficam, e o escolhido nunca sai. Ao aproximar,
+     voltam. */
+  function arrumarCarimbos(z, escolhidos) {
+    const lista = [];
+    for (const o of C.car.children) { const f = o.lastElementChild; if (f && f.__x !== undefined && f.__px) lista.push([o, f, escolhidos.has(o.getAttribute('data-id'))]); }
+    lista.sort((a, b) => (b[2] - a[2]) || (b[1].__px - a[1].__px));
+    const CEL = 48, grade = new Map();
+    for (const [o, f, sel] of lista) {
+      const x = f.__x * z, y = f.__y * z, r = f.__px / 2, cx = Math.floor(x / CEL), cy = Math.floor(y / CEL);
+      let bate = false;
+      if (!sel) for (let i = cx - 1; i <= cx + 1 && !bate; i++) for (let j = cy - 1; j <= cy + 1 && !bate; j++) {
+        const l = grade.get(i + ':' + j);
+        if (l) for (const b of l) if (Math.hypot(b[0] - x, b[1] - y) < (b[2] + r) * 0.55) { bate = true; break; }
+      }
+      if (bate !== !!o.__junto) { o.__junto = bate; o.classList.toggle('car-junto', bate); }
+      if (!bate) { const k = cx + ':' + cy; if (!grade.has(k)) grade.set(k, []); grade.get(k).push([x, y, r]); }
+    }
+  }
   function arrumarRotulos() {
     if (!svg || !M) return;
     const escolhidos = new Set((App && App.sel) || []), z = zAplicado || V.z, CEL = 96, grade = new Map();
+    if (C.car) arrumarCarimbos(z, escolhidos);
     const ocupar = (caixa) => {
       for (let cx = Math.floor(caixa[0] / CEL); cx <= Math.floor(caixa[2] / CEL); cx++) for (let cy = Math.floor(caixa[1] / CEL); cy <= Math.floor(caixa[3] / CEL); cy++) {
         const k = cx + ':' + cy;
@@ -444,7 +470,7 @@
     // os ícones (marcador, grupo, selo de evento) vêm antes: nome nenhum se escreve por cima de um ícone
     for (const cam of ['gru', 'mar', 'eve']) for (const o of C[cam].children) {
       const f = o.lastElementChild;
-      if (f && f.__x !== undefined) ocupar([f.__x * z - 15, f.__y * z - 15, f.__x * z + 15, f.__y * z + 15]);
+      if (f && f.__x !== undefined) ocupar([f.__x * z - 11, f.__y * z - 11, f.__x * z + 11, f.__y * z + 11]);    // (lote 29: os ícones menores)
     }
     const primeiro = [], resto = [];
     for (const cam of ['gru', 'mar', 'eve', 'reg', 'rot', 'fre']) {
@@ -519,7 +545,7 @@
     desenharPintura(m);
     desenharGrade(m);
     const fac = new Map((m.faccoes || []).map(f => [f.id, f]));
-    ctxAtual = { m, dia: (m.cal && m.cal.dia) || 0, fac, mestre: mestreVe(), fb: escalaBandeira(), marHex: marDoMapa(m) };
+    ctxAtual = { m, dia: (m.cal && m.cal.dia) || 0, fac, mestre: mestreVe(), fb: escalaBandeira(), marHex: marDoMapa(m), refCar: refCarimbos(m) };
     desenharObjetos(m, ctxAtual);
     desenharHexGuerra(m);
     // (lote 17) a zona de guerra automática, as rotas por mar, as setas das marchas, os recursos dos hexágonos e a caneta
@@ -1379,6 +1405,7 @@
     else if (o.k === 't') extra += '|' + andadoDe(ctx.m, o) + '|mar' + trechosDeMar(ctx, o.pts).join(',');
     else if (o.k === 'a') { const f = o.fac && ctx.fac.get(o.fac); extra += (f ? f.cor : ''); }
     else if (o.k === 'e') extra += '|' + eventoAtivo(o, ctx.dia) + '|' + raioNoDia(o, ctx.dia);
+    else if (o.k === 'c' && !(o.px > 0)) extra += '|rc' + ctx.refCar;
     else if (o.k === 'z') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + zonaAtiva(o, ctx.dia) + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
     return JSON.stringify(o) + extra;
   }
@@ -1442,7 +1469,7 @@
       case 'g': grupo(g0, o, ctx); break;
       case 'z': zona(g0, o, ctx); break;
       case 'l': linhaGeo(g0, o); break;
-      case 'c': carimbo(g0, o); break;
+      case 'c': carimbo(g0, o, ctx); break;
       case 'x': textoLivre(g0, o); break;
       case 'a': seta(g0, o, ctx); break;
     }
@@ -1708,13 +1735,13 @@
     // por cima dela, e um evento perto da borda de uma clareira não aparece meio coberto. A área fica embaixo.
     const g1 = s('g', { class: g0.getAttribute('class'), 'data-id': o.id });
     const fx = fixo(o.x, o.y);
+    const arte = s('g', { class: 'ico-arte', transform: 'scale(' + ICO + ')' });          // (lote 29) o desenho, menor
     fx.append(
       s('title', { texto: (o.nome ? o.nome + ' · ' : '') + def.nome + (ativo ? '' : ' (fora da data de hoje)') }),
-      s('circle', { class: 'alvo', r: 20, fill: 'transparent' }),
-      s('path', { class: 'selo', d: 'M0 -17L17 0L0 17L-17 0Z', fill: cor, 'stroke-linejoin': 'round' }),
-      glifo(def, 17));
-    { const mk = marcaMissao(o, ctx, -13, -13); if (mk) fx.append(mk); }     // (lote 9) a missão
-    fx.append(rotulo(o.nome || def.nome, 31));
+      s('circle', { class: 'alvo', r: 16, fill: 'transparent' }), arte);
+    arte.append(s('path', { class: 'selo', d: 'M0 -17L17 0L0 17L-17 0Z', fill: cor, 'stroke-linejoin': 'round' }), glifo(def, 17));
+    { const mk = marcaMissao(o, ctx, -13, -13); if (mk) arte.append(mk); }     // (lote 9) a missão
+    fx.append(rotulo(o.nome || def.nome, 26));
     g1.append(fx);
     g0.__ico = g1;
   }
@@ -1726,20 +1753,22 @@
     const fx = fixo(o.x, o.y);
     // (lote 12, parte 12e) o lugar cercado: um anel tracejado na cor de quem cerca (cinza, se os jogadores não sabem quem)
     const cerc = o.cerco ? (o.cerco.fac ? corFac(ctx, o.cerco.fac) : '#6b7385') : null, nCerco = o.cerco ? (o.cerco.fac ? nomeFac(ctx, o.cerco.fac) : '') : '';
-    fx.append(...[
+    const arte = s('g', { class: 'ico-arte', transform: 'scale(' + ICO + ')' });          // (lote 29) o desenho, menor (os nomes não)
+    fx.append(
       s('title', { texto: (o.nome ? o.nome + ' · ' : '') + def.nome + (o.rumor ? ' (boato)' : '') + (o.cerco ? ' · cercado' + (nCerco ? ' por ' + nCerco : '') : '') }),
-      s('circle', { class: 'alvo', r: 20, fill: 'transparent' }),
+      s('circle', { class: 'alvo', r: 16, fill: 'transparent' }), arte);
+    arte.append(...[
       cerc ? s('circle', { class: 'cerco-anel', r: 18.5, stroke: cerc, 'data-cerco': o.cerco.fac || '' }) : null,
       s('circle', { class: 'selo', r: 14, fill: cor }),
       glifo(def, 19)].filter(Boolean));
-    if (o.rumor) fx.append(s('circle', { class: 'rumor-bola', cx: 12, cy: -12, r: 7.5, fill: '#2b3243', stroke: '#f3ead2' }), s('text', { class: 'interroga', x: 12, y: -8, 'text-anchor': 'middle', 'font-size': 11, texto: '?' }));
-    if (o.falso) fx.append(s('path', { class: 'risco', d: 'M-12 12L12 -12' }));
-    { const mk = marcaMissao(o, ctx, -12, -12); if (mk) fx.append(mk); }     // (lote 9) a missão, em cima à esquerda
-    if (o.desc) fx.append(s('g', { class: 'pdesc-selo', transform: 'translate(-12 12)' }, s('title', { texto: 'Ponto de descanso (os grupos do mundo dormem aqui)' }),
+    if (o.rumor) arte.append(s('circle', { class: 'rumor-bola', cx: 12, cy: -12, r: 7.5, fill: '#2b3243', stroke: '#f3ead2' }), s('text', { class: 'interroga', x: 12, y: -8, 'text-anchor': 'middle', 'font-size': 11, texto: '?' }));
+    if (o.falso) arte.append(s('path', { class: 'risco', d: 'M-12 12L12 -12' }));
+    { const mk = marcaMissao(o, ctx, -12, -12); if (mk) arte.append(mk); }     // (lote 9) a missão, em cima à esquerda
+    if (o.desc) arte.append(s('g', { class: 'pdesc-selo', transform: 'translate(-12 12)' }, s('title', { texto: 'Ponto de descanso (os grupos do mundo dormem aqui)' }),
       s('circle', { class: 'pdesc-bola', r: 7.5 }), s('path', { class: 'pdesc-lua', d: 'M1.6 -4.2a4.4 4.4 0 1 0 2.8 6.6 3.6 3.6 0 1 1-2.8-6.6z' })));     // (lote 9)
     // marcador com atalho (abre uma cena, outro mapa ou o acampamento): uma setinha no canto de baixo
-    if (o.liga) { g0.classList.add('com-liga'); fx.append(s('circle', { class: 'liga-bola', cx: 12, cy: 12, r: 7 }), s('path', { class: 'liga-seta', d: 'M9.5 14.5l5-5M11 9.5h3.5V13' })); }
-    if (o.nome) fx.append(rotulo(o.nome, 30));
+    if (o.liga) { g0.classList.add('com-liga'); arte.append(s('circle', { class: 'liga-bola', cx: 12, cy: 12, r: 7 }), s('path', { class: 'liga-seta', d: 'M9.5 14.5l5-5M11 9.5h3.5V13' })); }
+    if (o.nome) fx.append(rotulo(o.nome, 26));
     g0.append(fx);
   }
   /* (lote 6) As bolinhas da travessia: o hexágono seguinte custa mais do que o grupo anda num tempo — quantos tempos
@@ -1845,7 +1874,7 @@
     if (n < 1e6) return Math.floor(n / 1000).toLocaleString('pt-BR') + ' mil';
     return um1(n / 1e6) + ' mi';
   }
-  const FORCA_Y = -31;
+  const FORCA_Y = -25;                            // (lote 29: o token menor; era −31)
   function seloDaForca(o, f) {
     const nT = numCurto(f.tropas), itens = [{ k: 'tropas', t: nT, w: Math.max(14, nT.length * 5.1 + 8) }];
     if (f.magos > 0) itens.push({ k: 'magos', t: numCurto(f.magos), w: 0 });
@@ -1879,35 +1908,37 @@
       // uma fileira em cima do token: as cheias são os tempos andados; com muitas, as primeiras e a conta
       // (lote 15: com a força do exército em cima do token, a fileira sobe para acima dela)
       const [feitas, total] = bol, n = Math.min(total, MAX_BOL), passo = 8.5, x0 = -((n - 1) * passo) / 2, cor = o.cor || '#e6ab4f';
-      const gb = s('g', { class: 'bolinhas', transform: 'translate(0 ' + (forca ? FORCA_Y - 13 : -29) + ')' });
+      const gb = s('g', { class: 'bolinhas', transform: 'translate(0 ' + (forca ? FORCA_Y - 13 : -23) + ')' });
       gb.append(s('title', { texto: 'Atravessando: ' + feitas + ' de ' + total + ' tempos de marcha' }));
       for (let i = 0; i < n; i++) gb.append(s('circle', { class: 'bol' + (i < feitas ? ' feita' : ''), cx: d3(x0 + i * passo), cy: 0, r: 3.3, style: i < feitas ? 'fill:' + cor : 'stroke:' + cor }));
       if (total > MAX_BOL) gb.append(s('text', { class: 'bol-conta', x: d3(x0 + n * passo + 2), y: 3.5, 'font-size': 10, texto: feitas + '/' + total }));
       fx.append(gb);
     }
+    const arte = s('g', { class: 'ico-arte', transform: 'scale(' + ICO + ')' });          // (lote 29) o token, menor (o nome, a força e a bandeira não)
     fx.append(
       s('title', { texto: o.nome || 'Grupo' }),
-      s('circle', { class: 'alvo', r: 22, fill: 'transparent' }),
+      s('circle', { class: 'alvo', r: 17, fill: 'transparent' }), arte);
+    arte.append(
       s('circle', { class: 'grupo-anel', r: 19.5 }),
       s('circle', { class: 'grupo-base', r: 15, fill: o.cor || '#e6ab4f' }));
     // (lote 7, parte 5b) a caravana, a patrulha e o exército: o desenho do tipo no lugar da sigla
     const TG = o.tipo ? dicionario('TIPOS_GRUPO')[o.tipo] : null;
-    if (TG) { g0.classList.add('gru-mundo', 'gru-' + o.tipo); const gl = glifo(TG, 19); gl.classList.add('gru-glifo'); if (clara(o.cor || '#e6ab4f')) gl.classList.add('escura'); fx.append(gl); }
-    else fx.append(s('text', { class: 'sigla' + (clara(o.cor || '#e6ab4f') ? ' escura' : ''), y: 4.3, 'text-anchor': 'middle', 'font-size': 11.5, texto: String(o.sigla || '').slice(0, 3) }));
+    if (TG) { g0.classList.add('gru-mundo', 'gru-' + o.tipo); const gl = glifo(TG, 19); gl.classList.add('gru-glifo'); if (clara(o.cor || '#e6ab4f')) gl.classList.add('escura'); arte.append(gl); }
+    else arte.append(s('text', { class: 'sigla' + (clara(o.cor || '#e6ab4f') ? ' escura' : ''), y: 4.3, 'text-anchor': 'middle', 'font-size': 11.5, texto: String(o.sigla || '').slice(0, 3) }));
     const selo = seloDeHonra(o);
-    if (selo) fx.append(selo);
+    if (selo) { selo.setAttribute('transform', 'translate(' + d3(23 * ICO + 2) + ' ' + d3(-13 * ICO) + ') scale(0.85)'); fx.append(selo); }   // (lote 29: junto do token menor)
     // (lote 8) a bandeira do clã da facção do grupo, do lado esquerdo do token
-    const gw = 12 * ctx.fb, bg = bandeira(brasaoDaFac(ctx, o.fac), -(21.5 + gw / 2), -12 + (ctx.fb - 1) * 2.5, gw, nomeFac(ctx, o.fac));   // (lote 9: o tamanho deste aparelho)
+    const gw = 12 * ctx.fb, bg = bandeira(brasaoDaFac(ctx, o.fac), -(21.5 * ICO + gw / 2), -12 * ICO + (ctx.fb - 1) * 2.5, gw, nomeFac(ctx, o.fac));   // (lote 9: o tamanho deste aparelho)
     if (bg) fx.append(bg);
-    { const mk = marcaMissao(o, ctx, 15, 15); if (mk) fx.append(mk); }       // (lote 9) a missão, embaixo à direita
+    { const mk = marcaMissao(o, ctx, 15, 15); if (mk) arte.append(mk); }       // (lote 9) a missão, embaixo à direita
     // (lote 9) descansando (o próximo tempo cai no descanso dele): "zZ" embaixo à esquerda — só o mestre
     if (o.desc && ctx.mestre && N().descansandoAgora && N().descansandoAgora(ctx.m, o)) {
       const jn = N().janelaDeDescanso(o, (ctx.m.cal && ctx.m.cal.tpd) || 10);
-      fx.append(s('g', { class: 'dorme', transform: 'translate(-15 15) scale(1.15)' }, s('title', { texto: 'Descansando (do ' + jn.de + 'º ao ' + jn.ate + 'º tempo)' }),
+      arte.append(s('g', { class: 'dorme', transform: 'translate(-15 15) scale(1.15)' }, s('title', { texto: 'Descansando (do ' + jn.de + 'º ao ' + jn.ate + 'º tempo)' }),
         s('circle', { class: 'dorme-bola', r: 8.5 }), s('text', { class: 'dorme-z', x: -0.5, y: 3.6, 'text-anchor': 'middle', 'font-size': 9.5, texto: 'zZ' })));
     }
     if (forca) fx.append(seloDaForca(o, forca));
-    if (o.nome) fx.append(rotulo(o.nome, 35));
+    if (o.nome) fx.append(rotulo(o.nome, 29));
     g0.append(fx);
   }
   // id seguro para o SVG (o padrão das listras, o caminho do nome)
@@ -2002,16 +2033,31 @@
     if (!m0) { m0 = s('g'); m0.innerHTML = markup || ''; moldes.set(markup, m0); }     // markup fixo do núcleo
     return m0.cloneNode(true);
   }
-  // Carimbo: o desenho na caixa tam × tam, com o centro no ponto (virado, se pedido). Cresce e encolhe com o mapa.
-  function carimbo(g0, o) {
-    const def = defCarimbo(o.ic), t = Math.max(1, Number(o.tam) || 40), x0 = o.x - t / 2, y0 = o.y - t / 2, k = t / 24;
+  /* (lote 29) O tamanho do carimbo na tela, em px — o mesmo em qualquer zoom. O carimbo novo guarda o dele (px); o de antes
+     (só com o tamanho em unidades do mapa) fica em volta do Médio, maior ou menor conforme o tamanho dele perto dos outros
+     carimbos do mapa (ref: a mediana), para a montanha continuar maior que a árvore. */
+  function refCarimbos(m) {
+    const ts = (m.objs || []).filter(o => o.k === 'c' && !(o.px > 0)).map(o => Number(o.tam) || 40).sort((a, b) => a - b);
+    return ts.length ? ts[Math.floor(ts.length / 2)] : 40;
+  }
+  function pxCarimbo(o, ctx) {
+    if (o.px > 0) return limitar(Math.round(o.px), 8, 96);
+    const ref = (ctx && ctx.refCar) || 40;
+    return Math.round(PX_CARIMBO[40] * limitar((Number(o.tam) || 40) / ref, 0.7, 1.6));
+  }
+  // Carimbo: o desenho numa caixa de t × t px na tela, com o centro no ponto (virado, se pedido). Não cresce com o zoom.
+  function carimbo(g0, o, ctx) {
+    const def = defCarimbo(o.ic), t = pxCarimbo(o, ctx), k = t / 24;
     g0.classList.add('car');
+    const fx = fixo(o.x, o.y, 'car-fx');
+    fx.__px = t;
     const arte = molde(def.svg);
     arte.setAttribute('class', 'carimbo');
     arte.setAttribute('style', 'color:' + (o.cor || def.cor || '#5d9a4e'));
-    arte.setAttribute('transform', `translate(${um(o.vira ? x0 + t : x0)} ${um(y0)}) scale(${(o.vira ? -k : k).toFixed(5)} ${k.toFixed(5)})`);
-    g0.append(s('rect', { class: 'alvo', x: um(x0), y: um(y0), width: um(t), height: um(t), fill: 'transparent' }), arte);
-    if (o.nome) { const fx = fixo(o.x, o.y + t / 2); fx.append(rotulo(o.nome, 14)); g0.append(fx); }
+    arte.setAttribute('transform', `translate(${d3(o.vira ? t / 2 : -t / 2)} ${d3(-t / 2)}) scale(${(o.vira ? -k : k).toFixed(5)} ${k.toFixed(5)})`);
+    fx.append(s('rect', { class: 'alvo', x: d3(-t / 2), y: d3(-t / 2), width: t, height: t, fill: 'transparent' }), arte);
+    if (o.nome) fx.append(rotulo(o.nome, d3(t / 2 + 14)));
+    g0.append(fx);
   }
   /* Texto livre: as letras crescem e encolhem com o mapa (é parte do desenho). Cor escura de mapa, com um halo claro
      (ou o contrário, numa cor clara); pode girar e ter várias linhas. */
@@ -2076,7 +2122,7 @@
         C.sel.append(anelDoEnfeite(o));
       } else {
         const fx = fixo(o.x, o.y);
-        fx.append(s('circle', { class: 'sel-anel', r: o.k === 'g' ? 25 : 22 }));
+        fx.append(s('circle', { class: 'sel-anel', r: o.k === 'g' ? 19 : 17 }));          // (lote 29: os ícones menores)
         C.sel.append(fx);
         const rh = o.k === 'e' ? raioNoDia(o, diaDaVista()) : 0;           // a borda que aparece hoje, não a do primeiro dia
         if (rh > 0 && ids.length === 1) C.sel.append(s('circle', { class: 'sel-anel', cx: um(o.x), cy: um(o.y), r: um(rh) }));
@@ -2126,7 +2172,7 @@
   // O contorno de um carimbo ou de um texto escolhido: a caixa dele (o texto gira junto).
   function anelDoEnfeite(o) {
     const z = zAplicado || V.z, folga = 3 / z;
-    if (o.k === 'c') { const t = (Number(o.tam) || 40) / 2 + folga; return s('rect', { class: 'sel-anel', x: um(o.x - t), y: um(o.y - t), width: um(2 * t), height: um(2 * t) }); }
+    if (o.k === 'c') { const t = pxCarimbo(o, ctxAtual) / 2 + 3, fx = fixo(o.x, o.y); fx.append(s('rect', { class: 'sel-anel', x: d3(-t), y: d3(-t), width: d3(2 * t), height: d3(2 * t) })); return fx; }   // (lote 29: na tela)
     let b = null;
     try { const r = recs.get(o.id), el = r && r.el.querySelector('text'); if (el) b = el.getBBox(); } catch (e) { /* ainda não desenhado */ }
     if (!b || !(b.width > 0)) {
@@ -2187,7 +2233,7 @@
       c.append(s('circle', { class: 'pincel', cx: um(cursor.x), cy: um(cursor.y), r: um(raioLivre()) }));
     } else if (ferramenta() === 'p' && modoDesenho() === 'carimbo' && cursor && podeEditar() && !g && !toqueGrosso()) {
       const el = s('g', { class: 'car previa fantasma' });
-      carimbo(el, { id: 'fantasma', x: cursor.x, y: cursor.y, ic: opt('carimbo'), tam: tamCarimbo(), cor: '', vira: false, nome: '' });
+      carimbo(el, { id: 'fantasma', x: cursor.x, y: cursor.y, ic: opt('carimbo'), tam: tamCarimbo(), px: pxCarimboNovo(), cor: '', vira: false, nome: '' });
       c.append(el);
     }
     // a ferramenta Terreno: os hexágonos que o pincel pega, embaixo do cursor (lote 17: e o ajuste da zona de guerra)
@@ -2231,7 +2277,8 @@
   }
 
   /* ---- a ferramenta Desenho: carimbos, textos e linhas ---- */
-  const tamCarimbo = () => limitar(Number(opt('carTam')) || 40, 8, 400) / V.z;
+  const pxCarimboNovo = () => pxDoTam(Number(opt('carTam')) || 40);                    // (lote 29) o carimbo novo: px na tela
+  const tamCarimbo = () => pxCarimboNovo() / V.z;
   // arrastando: um carimbo a cada passo, um pouco fora da linha e de tamanhos um pouco diferentes (fica natural)
   function espalhar(p) {
     const tam = tamCarimbo(), passo = tam * 0.85;
@@ -2246,7 +2293,7 @@
   }
   function previaCarimbo(q, tam, vira) {
     if (!dentroDoMapa(q, 2)) return;
-    const c = { x: um(limitar(q.x, 0, L)), y: um(limitar(q.y, 0, A)), ic: opt('carimbo'), tam: um(tam), vira };
+    const c = { x: um(limitar(q.x, 0, L)), y: um(limitar(q.y, 0, A)), ic: opt('carimbo'), tam: um(tam), px: Math.round(tam * V.z), vira };
     g.lista.push(c);
     const el = s('g', { class: 'obj car previa' });
     carimbo(el, Object.assign({ id: 'previa', nome: '', cor: '' }, c));
@@ -3464,7 +3511,7 @@
         break;
       case 'carimbos':
         C.tra.replaceChildren();
-        if (!gg.moveu) { const q = preso(gg.p0); gg.lista = dentroDoMapa(gg.p0, 2) ? [{ x: q.x, y: q.y, ic: opt('carimbo'), tam: um(tamCarimbo()), vira: false }] : []; }
+        if (!gg.moveu) { const q = preso(gg.p0); gg.lista = dentroDoMapa(gg.p0, 2) ? [{ x: q.x, y: q.y, ic: opt('carimbo'), tam: um(tamCarimbo()), px: pxCarimboNovo(), vira: false }] : []; }
         if (editar && gg.lista.length) porCarimbos(gg.lista);
         break;
       case 'texto':

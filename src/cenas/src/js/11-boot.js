@@ -228,6 +228,9 @@ async function start(snap) {
   // existe, só abre a cena.
   if (window.TC && window.TC.ponte && window.TC.ponte.aoIr) window.TC.ponte.aoIr(alvo => {
     if (!alvo || !isGM()) return;
+    // (lote 29) o encontro montado no Bestiário: os tokens perto do meio da tela
+    // (a aba das Cenas pode ainda estar escondida: espera aparecer, para os tokens nascerem no meio da tela)
+    if (alvo.bestiario && typeof alvo.bestiario === 'object') { const ped = alvo.bestiario; aoAparecer(() => setTimeout(() => Best.trazer(ped), 80)); return; }
     // (lote 18) o campo de batalha: a cena do hexágono da batalha, com os dois exércitos (a janela de gerar, preenchida),
     // ou — já existindo — a cena; e as perdas da batalha, de volta aos blocos (com a prévia)
     if (alvo.campoPerdas && typeof alvo.cena === 'string' && Store.S.scenes[alvo.cena]) {
@@ -277,7 +280,7 @@ async function start(snap) {
   };
   // A iniciativa que alguém rolou pela telinha de dados da mesa ao vivo: o mestre pode anotá-la na ordem de turnos.
   // …e a defesa que um jogador rolou a pedido entra na janela do ataque que o mestre tem aberta.
-  if (window.TC && window.TC.ponte && window.TC.ponte.registro) window.TC.ponte.registro.aoChegar(l => { try { UI.iniFromTable(l); } catch (e) { console.error(e); } try { Luta.daMesa(l); } catch (e) { console.error(e); } });
+  if (window.TC && window.TC.ponte && window.TC.ponte.registro) window.TC.ponte.registro.aoChegar(l => { try { UI.iniFromTable(l); } catch (e) { console.error(e); } try { Luta.daMesa(l); } catch (e) { console.error(e); } try { Best.daMesa(l); } catch (e) { console.error(e); } });
   const dbg = /[?&]debug\b/.test(location.search);
   // (o tutorial que abre sozinho espera o menu ou a janela da casca fechar: não aparece no meio do que o mestre faz)
   const abrirTour = () => { if (UI.modalOpen() || Tour.seen() || Tour.active()) return; if (cascaOcupada()) { setTimeout(abrirTour, 1200); return; } Tour.start(); };
@@ -295,7 +298,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Best, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

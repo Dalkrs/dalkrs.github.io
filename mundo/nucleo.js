@@ -1972,6 +1972,9 @@
         // pontos da seta, prontos
         if (ehObj(o.seta)) g.seta = { ver: sim(o.seta.ver) };
         { const sp = pontos(o.sp, 2); if (sp) g.sp = sp; }
+        // (lote 29) os personagens (as fichas dos jogadores) que andam com este grupo: as lojas do lugar onde ele está
+        // aparecem para eles (o banco confere o hexágono)
+        if (!g.tipo && Array.isArray(o.pcs)) { const pcs = [...new Set(o.pcs.filter(x => typeof x === 'string' && /^[^\s:@]{1,64}$/.test(x)))].slice(0, 12); if (pcs.length) g.pcs = pcs; }
         return normAndar(o, g, true);
       case 'r': {
         const pts = pontos(o.pts, leve ? 0 : 3);
@@ -2045,7 +2048,10 @@
       }
       case 'c':
         if (!lugar()) return null;
-        return Object.assign(b, { ic: escolha(CARIMBOS, o.ic, 'arvore'), tam: arred(limitar(num(o.tam, 40), 1, MAX_COORD)), cor: cor(o.cor, ''), vira: sim(o.vira) });
+        // (lote 29) px: o tamanho na tela (o mesmo em qualquer zoom); sem ele, o carimbo de antes (a tela acha um tamanho)
+        Object.assign(b, { ic: escolha(CARIMBOS, o.ic, 'arvore'), tam: arred(limitar(num(o.tam, 40), 1, MAX_COORD)), cor: cor(o.cor, ''), vira: sim(o.vira) });
+        if (num(o.px, 0) >= 8) b.px = inteiro(o.px, 22, 8, 96);
+        return b;
       case 'x':
         if (!lugar()) return null;
         return Object.assign(b, { fonte: escolha(FONTES, o.fonte, 'mapa'), tam: arred(limitar(num(o.tam, 28), 1, MAX_COORD)), cor: cor(o.cor, ''),

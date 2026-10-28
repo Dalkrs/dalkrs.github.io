@@ -126,7 +126,7 @@ const tokName = t => (isGM() || ownsTok(t) || t.showName ? t.name : '???');
 // Os números do token (FOR, CAN, DFF, DFM, ESQ): os da ficha, quando ele tem uma aqui; senão, os que o mestre anotou
 // nele. null se não há nenhum. Quem vê: o mestre e o dono do token.
 function tokNums(t) {
-  const f = t.char ? Fichas.numeros(t) : null;
+  const f = t.char || t.best ? Fichas.numeros(t) : null;
   if (f) return f;
   const st = t.st ? cleanSt(t.st) : null;
   if (!st) return null;

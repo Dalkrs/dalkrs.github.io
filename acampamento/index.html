@@ -207,6 +207,10 @@ button { cursor: pointer; }
 textarea.in { height: auto; min-height: 52px; padding: 7px 9px; resize: vertical; line-height: 1.4; }
 .in[readonly], .in:disabled { border-color: var(--line); background: none; color: var(--fg-2); }
 .cartao { display: grid; gap: 7px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+/* (lote 29) a bancada */
+.receita .ing { margin: 0; padding: 0 0 0 18px; display: grid; gap: 2px; font-size: 13px; }
+.receita .ing li.tem { color: var(--fg); }
+.receita .ing li.falta { color: var(--danger, #f0786e); }
 .cartao.off { opacity: .6; }
 .cartao .lin { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .cartao .lin .in { flex: 1; }
@@ -419,12 +423,13 @@ dialog.largo { max-width: min(1080px, calc(100vw - 24px)); width: 100%; }
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o acampamento.</p></noscript>
-<script src="../tc/ponte.js?v=18"></script>
+<script src="../tc/ponte.js?v=19"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=24"></script>
 <script src="../tc/tags.js?v=2"></script>
+<script src="../tc/itens.js?v=1"></script>
 <script src="nucleo.js?v=12"></script>
 <script src="desenhos.js?v=3"></script>
-<script src="acampamento.js?v=19"></script>
+<script src="acampamento.js?v=20"></script>
 </body>
 </html>

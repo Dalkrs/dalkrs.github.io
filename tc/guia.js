@@ -129,6 +129,39 @@
       ],
       jogador: [],
     },
+    // (lote 29) as abas Bestiário e Itens, do mestre, e a Loja, de quem joga
+    bestiario: {
+      mestre: [
+        { t: 'A lista e as tags', txt: 'O ☰ abre e fecha a lista com o nome de todos os inimigos. A busca acha pelo nome; “Tags” separa por bioma, tipo de criatura, papel no combate e facção.', onde: { sel: '#btLista' } },
+        { t: 'Um inimigo novo', txt: '“+ Inimigo” cria e abre a gaveta. Os números saem pela regra das fichas (o tier, o level e onde os pontos caem) e dá para ajustar à mão. Tudo tem Desfazer.', onde: { sel: '#btNovo' } },
+        { t: 'A gaveta', txt: 'Clique numa carta: a gaveta mostra os números, a árvore (distribuída pelos nódulos de prioridade), o comportamento e o saque. “Duplicar” faz um parecido num clique.', onde: { sel: '#meio' } },
+        { t: 'O encontro', txt: 'O “+” das cartas põe o inimigo na bandeja, embaixo. Ela mostra a dificuldade contra os ativos do grupo (só uma sugestão) e “Puxar para a cena” traz as cópias para a cena aberta. “Guardar encontro” guarda para depois.', onde: { sel: '#bandeja', nada: 'A bandeja aparece quando um inimigo entra no encontro (o “+” da carta).' } },
+        { t: 'Os encontros guardados', txt: 'Abre um encontro guardado de volta na bandeja.', onde: { sel: '#btEncontros' } },
+        { t: 'Na cena', txt: 'O token puxado do Bestiário rola e defende com os números de lá (a tecla F, o ataque com defesa). No painel dele, o lembrete do comportamento e “Rolar o saque” — para a bolsa de alguém ou num baú no chão. Na vez do inimigo, o lembrete aparece só para você.' },
+      ],
+      jogador: [],
+    },
+    itens: {
+      mestre: [
+        { t: 'O catálogo', txt: 'Os itens da bolsa (poção, bomba, runa, munição, material) e os equipamentos, com o preço. “Dar a…” põe o item na ficha de alguém, com Desfazer.', onde: { sel: '#aba-catalogo' } },
+        { t: 'As lojas', txt: 'Cada loja fica num lugar do Mapa-múndi, com o preço e o estoque de cada item. Quando o grupo de um jogador para no hexágono desse lugar, a aba Loja aparece para ele. Quem anda com cada grupo você marca no painel do grupo, no Mapa-múndi.', onde: { sel: '#aba-lojas' } },
+        { t: 'As receitas', txt: 'O que entra (os ingredientes), o que sai e, se quiser, um teste. Na falha, o padrão é perder os ingredientes; você pode pôr dano numa barra ou uma condição. Com “Só você” marcado, a bancada não mostra a receita.', onde: { sel: '#aba-receitas' } },
+        { t: 'As compras', txt: 'Cada compra fica no Jornal, em “Compras nas lojas”, com “Desfazer a compra”.' },
+      ],
+      jogador: [],
+    },
+    loja: {
+      mestre: [
+        { t: 'A loja por perto', txt: 'As lojas no lugar em que o grupo está, com o que cada uma vende.', onde: { sel: '#meio' } },
+      ],
+      jogador: [
+        { t: 'A loja por perto', txt: 'Esta aba aparece quando o grupo do seu personagem para no lugar de uma loja do Mapa-múndi.', onde: { sel: '#meio' } },
+        { t: 'Comprar', txt: 'Escolha a quantidade e “Comprar”: os lapros saem da ficha e o item vai para a bolsa. Cada compra tem Desfazer por 15 minutos.', onde: { sel: '#meio' } },
+      ],
+    },
   };
+  // (lote 29) a Bancada do Acampamento, nas receitas
+  G.acampamento.mestre.push({ t: 'A bancada', txt: 'Na aba Bancada, as receitas que você criou na aba Itens. Os ingredientes saem da bolsa e o resultado entra; com teste, você pode dispensar o teste na hora. Tem Desfazer.', onde: { sel: '#tab-bancada' } });
+  G.acampamento.jogador.push({ t: 'A bancada', txt: 'Na aba Bancada, as receitas: escolha o personagem e “Fazer”. Os ingredientes saem da bolsa e o resultado entra. Se a receita tem teste e ele falhar, acontece o que ela diz.', onde: { sel: '#tab-bancada' } });
   window.TC_GUIA = { abas: G };
 })();

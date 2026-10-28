@@ -21,6 +21,8 @@
      TC.ponte.registro.encerrar(id, fim) — o pedido acabou: 'aplicado' ou 'cancelado'
      TC.ponte.meditacao(op, args) — promessa: a Meditação pede ao banco (op 'entrar' | 'liberar' | 'tentar')
      TC.ponte.cla(op, args)       — promessa: o líder de um clã pede ao banco (op 'cargos': { cla, mudar, txt })
+     TC.ponte.itens(op, args)     — promessa: (lote 29) a loja pede ao banco (op 'comprar': { loja, item, qtd, pc };
+                                   op 'desfazer': { compra })
      TC.ponte.caixa(op, args)     — promessa: a caixinha do grupo (op 'mover': { camp, grupo, pc, q, nota } | 'levar')
      TC.ponte.lugar(pc, lugar)    — promessa: (lote 27) quem joga muda o lugar ('ativo' | 'inativo' | 'toldo') de uma ficha do grupo dele
      TC.ponte.aoMostrar(fn)       — o guia da casca vai destacar um lugar deste sistema: fn({ sel, sub }) prepara (abre a
@@ -107,6 +109,16 @@
       const n = ++seq;
       const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
       enviar({ t: 'cla', n, mesa: ponte.estado.mesa.id, op, args: args || {} });
+      setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
+      return p;
+    },
+    /* (lote 29) A loja: comprar e desfazer a compra. Passa pelo banco, que confere quem compra (o dono do personagem),
+       se ele está perto da loja (no hexágono dela, no Mapa-múndi), o estoque e os lapros, e muda tudo junto. */
+    itens(op, args) {
+      if (!naCasca || !ponte.estado.mesa) return Promise.reject(new Error('A loja só funciona dentro do site, com uma mesa aberta.'));
+      const n = ++seq;
+      const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; });
+      enviar({ t: 'itens', n, mesa: ponte.estado.mesa.id, op, args: args || {} });
       setTimeout(() => { const e = esperas[n]; if (e) { delete esperas[n]; e.falha(new Error('A mesa não respondeu. Se o site foi atualizado há pouco, recarregue a página e tente de novo.')); } }, 20000);
       return p;
     },
@@ -282,9 +294,9 @@
       if (m.t === 'item.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu para usar o item agora.'));
       return;
     }
-    if ((m.t === 'medit.ok' || m.t === 'medit.erro' || m.t === 'cla.ok' || m.t === 'cla.erro' || m.t === 'caixa.ok' || m.t === 'caixa.erro' || m.t === 'lugar.ok' || m.t === 'lugar.erro') && esperas[m.n]) {
+    if ((m.t === 'medit.ok' || m.t === 'medit.erro' || m.t === 'cla.ok' || m.t === 'cla.erro' || m.t === 'caixa.ok' || m.t === 'caixa.erro' || m.t === 'lugar.ok' || m.t === 'lugar.erro' || m.t === 'itens.ok' || m.t === 'itens.erro') && esperas[m.n]) {
       const e = esperas[m.n]; delete esperas[m.n];
-      if (m.t === 'medit.ok' || m.t === 'cla.ok' || m.t === 'caixa.ok' || m.t === 'lugar.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu certo agora. Tente de novo.'));
+      if (m.t === 'medit.ok' || m.t === 'cla.ok' || m.t === 'caixa.ok' || m.t === 'lugar.ok' || m.t === 'itens.ok') e.ok(m.r || null); else e.falha(new Error(m.erro || 'Não deu certo agora. Tente de novo.'));
       return;
     }
     if (m.t === 'registro.pedido' && esperas[m.n]) {

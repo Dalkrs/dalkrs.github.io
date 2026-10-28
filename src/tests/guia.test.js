@@ -74,6 +74,29 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
     ok(/A faixa dos turnos aparece com o combate ligado/.test(await toasts()), 'o que existe mas está escondido (a faixa dos turnos, sem combate) também dá o aviso: ' + await toasts());
   });
 
+  await passo('o guia do Bestiário e o dos Itens (lote 29)', async () => {
+    await P.locator('#tab-bestiario').click(); await w(1500);
+    await P.locator('#btnGuia').click(); await w(200);
+    const tb = await P.locator('#guia .guia-t').allInnerTexts();
+    ok(/Guia · Bestiário/.test(await P.locator('#guia .guia-h').innerText()) && tb.includes('O encontro') && tb.includes('Na cena'), 'o Bestiário tem guia: ' + j(tb));
+    await P.locator('#guia .guia-t', { hasText: 'O encontro' }).click(); await w(150);
+    await P.locator('#guia [data-guia-mostrar]').click(); await w(600);
+    ok(/A bandeja aparece quando um inimigo entra no encontro/.test(await toasts()), 'a bandeja vazia (escondida) dá o aviso do assunto: ' + await toasts());
+    await P.locator('#tab-itens').click(); await w(1500);
+    await P.locator('#btnGuia').click(); await w(200);
+    const ti = await P.locator('#guia .guia-t').allInnerTexts();
+    ok(/Guia · Itens/.test(await P.locator('#guia .guia-h').innerText()) && j(ti) === j(['O catálogo', 'As lojas', 'As receitas', 'As compras']), 'os Itens têm guia: ' + j(ti));
+    await P.locator('#guia .guia-t', { hasText: 'As lojas' }).click(); await w(150);
+    await P.locator('#guia [data-guia-mostrar]').click(); await w(600);
+    const I = P.frame({ url: /\/itens\// });
+    ok(I && await I.evaluate(() => !!document.querySelector('.tc-guia-anel')), '“Mostrar onde fica” contorna a aba Lojas');
+    await w(3300);
+    await P.locator('#tab-acampamento').click(); await w(1500);
+    await P.locator('#btnGuia').click(); await w(200);
+    ok((await P.locator('#guia .guia-t').allInnerTexts()).includes('A bancada'), 'o guia do Acampamento ganhou a Bancada');
+    await P.locator('#guiaX').click(); await w(150);
+  });
+
   await passo('os assuntos de todas as abas', async () => {
     const G = await P.evaluate(() => window.TC_GUIA.abas);
     const ruins = [];
@@ -82,7 +105,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
       if (x.onde) { try { await P.evaluate(s => document.createDocumentFragment().querySelector(s), x.onde.sel); } catch (e) { ruins.push(aba + '/' + papel + ': seletor ' + x.onde.sel); } }
       if (x.onde && x.onde.sub && !['atributos', 'bolsas', 'social', 'skills', 'notas'].includes(x.onde.sub)) ruins.push(aba + '/' + papel + ': sub ' + x.onde.sub);
     }
-    ok(!ruins.length && j(Object.keys(G).sort()) === j(['acampamento', 'arvore', 'cenas', 'cla', 'fichas', 'jornal', 'meditacao', 'mundo', 'rolador']), 'as nove abas têm guia; cada assunto com título, texto e um lugar que é um seletor válido: ' + j(ruins));
+    ok(!ruins.length && j(Object.keys(G).sort()) === j(['acampamento', 'arvore', 'bestiario', 'cenas', 'cla', 'fichas', 'itens', 'jornal', 'loja', 'meditacao', 'mundo', 'rolador']), 'as doze abas têm guia (lote 29: Bestiário, Itens e Loja); cada assunto com título, texto e um lugar que é um seletor válido: ' + j(ruins));
     ok(G.fichas.jogador.length >= 5 && G.cenas.jogador.length >= 2 && G.mundo.jogador.length >= 2, 'quem joga também tem o guia dele');
   });
 

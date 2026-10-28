@@ -34,7 +34,7 @@ const Luta = (() => {
   const fixaMem = new Map();
   function fixaAtual(t) {
     if (fixaMem.has(t.id)) return fixaMem.get(t.id);
-    return t.char && Fichas.get(t.char) ? Fichas.fixaPadrao(t) : 0;
+    return Fichas.ligado(t) ? Fichas.fixaPadrao(t) : 0;
   }
   function guardarFixa(t, v) {
     if (fixaMem.size > 400) fixaMem.clear();
@@ -70,7 +70,7 @@ const Luta = (() => {
   const valorMem = new Map();            // token sem ficha: o último valor rolado por ele
   function modoDoF(t) {
     if (!t) return null;
-    if (t.char && Fichas.get(t.char)) return Fichas.podeRolar(t) ? 'ficha' : null;
+    if (Fichas.ligado(t)) return Fichas.podeRolar(t) ? 'ficha' : null;      // (lote 29: ou o inimigo do Bestiário)
     if (isGM()) return 'avulso';
     return ownsTok(t) && !t.char ? 'avulso' : null;
   }
@@ -347,7 +347,7 @@ const Luta = (() => {
   const atrMem = new Map();              // o último atributo usado por cada token numa disputa
   function ladoDe(t) {
     if (!t) return { tok: '', nome: 'NPC', valor: 40, fixa: 0, atr: '' };
-    const comFicha = !!(t.char && Fichas.get(t.char) && Fichas.podeRolar(t));
+    const comFicha = !!(Fichas.ligado(t) && Fichas.podeRolar(t));
     const itens = comFicha ? Fichas.rolaveis(t) : [];
     const atr = comFicha ? (itens.some(x => x[0] === atrMem.get(t.id)) ? atrMem.get(t.id) : itens[0][0]) : '';
     return { tok: t.id, nome: t.name, valor: valorMem.has(t.id) ? valorMem.get(t.id) : 40, fixa: fixaAtual(t), atr };
@@ -364,7 +364,7 @@ const Luta = (() => {
     const st = { a: ladoDe(a0), b: ladoDe(b0), res: null };
     const corpo = h('div', { class: 'dis' });
     const tokDe = L => (L.tok ? Store.get('tokens', L.tok) : null);
-    const comFicha = t => !!(t && t.char && Fichas.get(t.char) && Fichas.podeRolar(t));
+    const comFicha = t => !!(t && Fichas.ligado(t) && Fichas.podeRolar(t));
     // o que cada lado vai rolar agora: { nome, rotulo, valor, fixa, tok }
     const conta = L => {
       const t = tokDe(L);
@@ -832,7 +832,7 @@ const Luta = (() => {
     fecharPop(); fecharEquip(); fecharGeral();
     const sc = Store.scene(), sel = selOf('tokens').filter(x => !x.prop && tokShown(x, sc));
     const todos = () => Store.scene().tokens.filter(x => !x.prop);
-    const comFicha = t => !!(t && t.char && Fichas.get(t.char) && Fichas.podeRolar(t));
+    const comFicha = t => !!(t && Fichas.ligado(t) && Fichas.podeRolar(t));
     const deJogador = () => todos().filter(t => comFicha(t) && Fichas.donoQueJoga(t));
     const conjuntos = [sel.length ? ['sel', `Os selecionados (${sel.length})`] : null, ['jog', `Os personagens dos jogadores (${deJogador().length})`], ['todos', `Todos os tokens da cena (${todos().length})`]].filter(Boolean);
     const P = ponte();

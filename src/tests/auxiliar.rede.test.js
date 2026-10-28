@@ -195,7 +195,7 @@ const { ok, end } = checker();
 
     // ---------- todas as abas ----------
     n1 = await nomear(ea.uid, true);
-    ok(JSON.stringify(n1.abas) === '["cenas","mundo","acampamento","fichas","arvore","rolador","jornal","meditacao","cla"]', 'sem lista, o auxiliar fica com todas as abas: ' + JSON.stringify(n1.abas));
+    ok(JSON.stringify(n1.abas) === '["cenas","mundo","acampamento","fichas","arvore","rolador","jornal","meditacao","cla","bestiario","itens"]', 'sem lista, o auxiliar fica com todas as abas: ' + JSON.stringify(n1.abas));
     s = await sonda(A, { outro: ej.uid });
     ok(tem(s.docs, ...DA_MESA, 'cenas:indice', 'cena:c1:m', 'mundo:mapa:x', 'fichas:segredos', 'arvore:biblioteca', 'rol:h:1') && semNenhum(s.docs, 'outro:x'), 'com todas as abas, recebe tudo o que é de alguma aba (o que não é de aba nenhuma fica só com o mestre) — ' + JSON.stringify(s.docs));
     ok(abasDe(s, 'editar') === 'acampamento,arvore,cenas,fichas,mundo,rolador' && abasDe(s, 'criar') === 'acampamento,arvore,cenas,fichas,mundo,rolador', 'e edita e cria em todas — ' + JSON.stringify([s.editar, s.criar]));
@@ -317,7 +317,7 @@ const { ok, end } = checker();
     ok(linhas0.length === 3 && linhas0[0].papel === 'mestre' && linhas0[0].botoes === '' && linhas0[1].botoes === 'Ficha…|Permissões…|Tirar' && linhas0[2].botoes === 'Ficha…|Permissões…|Tirar', 'no menu do mestre, cada jogador tem "Ficha…", "Permissões…" e "Tirar"; o próprio mestre, nada — ' + JSON.stringify(linhas0));
     await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Permissões' }).click(); await w(350);
     const jan0 = await TM.evaluate(() => ({ titulo: document.querySelector('#f-papel h2').textContent, jog: document.getElementById('pp-jog').checked, aux: document.getElementById('pp-aux').checked, travado: document.getElementById('pp-abas').disabled, marcadas: [...document.querySelectorAll('#pp-abas input')].filter(x => x.checked).length }));
-    ok(jan0.titulo === 'Permissões de Dalmo' && jan0.jog && !jan0.aux && jan0.travado && jan0.marcadas === 11, 'a janela abre em "Jogador", com as abas esperando (todas marcadas, travadas) — ' + JSON.stringify(jan0));
+    ok(jan0.titulo === 'Permissões de Dalmo' && jan0.jog && !jan0.aux && jan0.travado && jan0.marcadas === 13, 'a janela abre em "Jogador", com as abas esperando (todas marcadas, travadas) — ' + JSON.stringify(jan0));
     await TM.locator('#pp-aux').check(); await w(150);
     ok(await TM.evaluate(() => !document.getElementById('pp-abas').disabled), 'ao escolher "Mestre auxiliar", as abas destravam');
     await TM.locator('dialog .btn', { hasText: 'Cancelar' }).click(); await w(300);
@@ -358,16 +358,16 @@ const { ok, end } = checker();
     // ---------- o auxiliar fica sabendo (sem recarregar a página) ----------
     ok(await ate(async () => (await eu(TA)).cargo === 'auxiliar'), 'o auxiliar percebe a nomeação em poucos segundos');
     let e1 = await eu(TA);
-    ok(e1.papel === 'mestre' && e1.abas === 'cenas,mundo,acampamento,arvore,jornal,meditacao,cla' && /Mestre auxiliar/.test(e1.chip), 'ele passa a mestrar as abas liberadas, e o botão da mesa diz "Mestre auxiliar" — ' + JSON.stringify(e1));
+    ok(e1.papel === 'mestre' && e1.abas === 'cenas,mundo,acampamento,arvore,jornal,meditacao,cla,bestiario,itens' && /Mestre auxiliar/.test(e1.chip), 'ele passa a mestrar as abas liberadas, e o botão da mesa diz "Mestre auxiliar" — ' + JSON.stringify(e1));
     ok(/Você agora é mestre auxiliar desta mesa/.test(await avisos(TA)), 'e recebe o aviso: "' + await avisos(TA) + '"');
-    ok(await abas(TA) === 'Cenas,Fichas,Mapa-múndi,Jornal,Clã,Acampamento,Meditação,Oficina', 'sem a aba Rolador liberada, ela não aparece para ele: ' + await abas(TA));
+    ok(await abas(TA) === 'Cenas,Fichas,Mapa-múndi,Jornal,Clã,Acampamento,Meditação,Oficina,Bestiário,Itens', 'sem a aba Rolador liberada, ela não aparece para ele: ' + await abas(TA));
     ok(await fichasQueVejo(TA) === 'npc_pub,pc_aux', 'sem a aba Fichas, a ficha escondida não chega ao aparelho dele: ' + await fichasQueVejo(TA));
     ok(await ate(() => TA.evaluate(() => !!document.getElementById('f-cenas')), 15000), 'com a aba Cenas, as Cenas dele abrem em segundo plano (ele está nas Fichas), como as do mestre');
     const auditor = await TA.evaluate(() => TC.aoVivo.historico().then(() => 'ABRIU', e => e.message));
     ok(/Só o mestre abre o auditor/.test(auditor), 'sem a aba Rolador, o auditor dos dados não abre para ele: "' + auditor + '"');
     ok(!/rol:h:teste/.test(await docsQueVejo(TA)), 'nem o documento do Rolador: ' + await docsQueVejo(TA));
     let pc = await papelNaAba(TA, 'cenas', /\/cenas\//);
-    ok(pc && pc.papel === 'mestre' && pc.cargo === 'auxiliar' && pc.v === 4 && pc.mestra === 'acampamento,arvore,cenas,cla,jornal,meditacao,mundo' && pc.fn[0] === true && pc.fn[1] === false, 'as Cenas o recebem como mestre (e sabem o que ele mestra, aba por aba) — ' + JSON.stringify(pc));
+    ok(pc && pc.papel === 'mestre' && pc.cargo === 'auxiliar' && pc.v === 4 && pc.mestra === 'acampamento,arvore,bestiario,cenas,cla,itens,jornal,meditacao,mundo' && pc.fn[0] === true && pc.fn[1] === false, 'as Cenas o recebem como mestre (e sabem o que ele mestra, aba por aba) — ' + JSON.stringify(pc));
     // o token ligado à ficha escondida: ele vê o token (é da cena), não a ficha — e o dano que dá vai para ela mesmo assim
     const CA = await quadro(TA, /\/cenas\//);
     ok(await ate(() => CA.evaluate(id => !!window.__tc && __tc.Nuvem.modo() === 'mestre' && !!__tc.Store.get('tokens', id), vilao), 30000), 'nas Cenas do auxiliar, o token do Vilão está lá');
@@ -446,19 +446,19 @@ const { ok, end } = checker();
     await menu(TM);
     await TM.locator('#membros .mb', { hasText: 'Dalmo' }).locator('button', { hasText: 'Permissões' }).click(); await w(350);
     const jan1 = await TM.evaluate(() => ({ aux: document.getElementById('pp-aux').checked, marcadas: [...document.querySelectorAll('#pp-abas input')].filter(x => x.checked).map(x => x.id.slice(3)).join(',') }));
-    ok(jan1.aux && jan1.marcadas === 'cenas,arvore,mundo,jornal,cla,acampamento,meditacao', 'a janela abre com o que ele é hoje: auxiliar, com as sete abas — ' + JSON.stringify(jan1));
+    ok(jan1.aux && jan1.marcadas === 'cenas,arvore,mundo,jornal,cla,acampamento,meditacao,bestiario,itens', 'a janela abre com o que ele é hoje: auxiliar, com as nove abas — ' + JSON.stringify(jan1));
     await TM.locator('#pp-rolador').check(); await TM.locator('#pp-fichas').check(); await w(150);
     await TM.locator('#pp-ok').click();
     ok(await ate(async () => /As abas de Dalmo foram atualizadas\./.test(await avisos(TM))), 'trocar as abas avisa: "' + await avisos(TM) + '"');
-    ok(await ate(async () => (await eu(TA)).abas === 'cenas,mundo,acampamento,fichas,arvore,rolador,jornal,meditacao,cla'), 'o auxiliar recebe as abas novas');
+    ok(await ate(async () => (await eu(TA)).abas === 'cenas,mundo,acampamento,fichas,arvore,rolador,jornal,meditacao,cla,bestiario,itens'), 'o auxiliar recebe as abas novas');
     ok(/O mestre mudou as abas que você mestra/.test(await avisos(TA)), '(aviso dele: "' + await avisos(TA) + '")');
-    ok(await abas(TA) === 'Cenas,Fichas,Rolador,Mapa-múndi,Jornal,Clã,Acampamento,Meditação,Oficina', 'o Rolador aparece para ele: ' + await abas(TA));
+    ok(await abas(TA) === 'Cenas,Fichas,Rolador,Mapa-múndi,Jornal,Clã,Acampamento,Meditação,Oficina,Bestiário,Itens', 'o Rolador aparece para ele: ' + await abas(TA));
     ok(await fichasQueVejo(TA) === 'npc_esc,npc_pub,pc_aux' && /rol:h:teste/.test(await docsQueVejo(TA)), 'e as fichas escondidas e o documento do Rolador passam a chegar: ' + await fichasQueVejo(TA));
     pf = await papelNaAba(TA, 'fichas', /\/fichas\//);
     ok(pf && pf.papel === 'mestre', 'as Fichas agora o recebem como mestre — ' + JSON.stringify(pf));
     await TM.locator('.toast button', { hasText: 'Desfazer' }).click();
-    ok(await ate(async () => (await eu(TA)).abas === 'cenas,mundo,acampamento,arvore,jornal,meditacao,cla'), '"Desfazer", no aviso do mestre, devolve as abas de antes');
-    ok(await ate(async () => await abas(TA) === 'Cenas,Fichas,Mapa-múndi,Jornal,Clã,Acampamento,Meditação,Oficina' && await fichasQueVejo(TA) === 'pc_aux'), 'e o que tinha passado a chegar deixa de chegar: ' + await abas(TA) + ' · ' + await fichasQueVejo(TA));
+    ok(await ate(async () => (await eu(TA)).abas === 'cenas,mundo,acampamento,arvore,jornal,meditacao,cla,bestiario,itens'), '"Desfazer", no aviso do mestre, devolve as abas de antes');
+    ok(await ate(async () => await abas(TA) === 'Cenas,Fichas,Mapa-múndi,Jornal,Clã,Acampamento,Meditação,Oficina,Bestiário,Itens' && await fichasQueVejo(TA) === 'pc_aux'), 'e o que tinha passado a chegar deixa de chegar: ' + await abas(TA) + ' · ' + await fichasQueVejo(TA));
 
     // ---------- o outro jogador: vê quem é auxiliar, e não tem botão nenhum ----------
     ok(await ate(() => TJ.evaluate(() => TC.mesas.atual.membros.some(m => m.cargo === 'auxiliar'))), '(o outro jogador também fica sabendo)');
