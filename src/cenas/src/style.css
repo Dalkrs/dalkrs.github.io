@@ -992,6 +992,12 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .rl-l .in.num { width: 80px; }
 .rl-l .muted { font-size: 12px; }
 /* (lote 18) a arena: as fases na janela (cada mudança liga, desliga ou troca) e na aba Cena */
+/* (lote 38) os tipos agrupados por tema: o nome do grupo à esquerda, os tipos dele à direita */
+.ar-grupos { display: grid; gap: 6px; }
+.ar-grupo { display: grid; grid-template-columns: 118px 1fr; align-items: center; gap: 8px; }
+.ar-gn { font-size: 12px; font-weight: 600; color: var(--fg-2); }
+.ar-nota { margin: 4px 0 0; max-width: 62ch; }
+@media (max-width: 560px) { .ar-grupo { grid-template-columns: 1fr; gap: 3px; } }
 .ar-fases { display: grid; gap: 10px; }
 .ar-fase { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--line, #3a3a44); border-radius: 8px; }
 .ar-fase > b { font-size: 13px; }

@@ -15,10 +15,23 @@ const Arena = (() => {
     ponte: 'A ponte estreita sobre o abismo, com a plataforma do meio: quem cai, cai fundo (o relevo sugere a queda).',
     topo: 'O alto da torre cercado pelo vazio: a mureta com as ameias (aberta na escada), as estátuas e a tempestade.',
     circulo: 'A clareira na mata, o anel das pedras de pé (com as passagens), a pedra do altar no meio e as runas escondidas.',
+    // (lote 38) as onze novas
+    vampiro: 'A cripta do conde: o sarcófago no estrado, o tapete vinho, os caixões em fileiras (de onde saem as crias), as colunas e a poça de sangue amaldiçoada.',
+    clareira: 'A clareira na mata sob a lua: o rochedo do alfa no alto, as árvores e as pedras como cobertura, os espinhos e a mata de onde a alcateia sai.',
+    fosso: 'As plataformas de pedra sobre a lava, ligadas por pontes estreitas: o senhor no alto, o portal escondido no meio e as chamas negras dos lados.',
+    ratos: 'A câmara do esgoto: o ninho de lixo e ossos do Rei Rato, o canal de água podre, os túneis dos lados (por onde vem o enxame) e o entulho.',
+    lago: 'A gruta com o lago congelado no meio (escorregadio), a margem de neve, o estrado da rainha entre os cristais de gelo; o gelo pode rachar.',
+    forja: 'O salão da forja: os dois canais de metal derretido (com a passagem no meio), as bigornas, as fornalhas nas paredes e o fole gigante.',
+    fantasma: 'O convés do navio no meio do mar, na tempestade: o capitão na proa, os mastros, a amurada (meia cobertura) e a prancha da entrada.',
+    biblioteca: 'As fileiras de estantes (tapam a visão), o lich no estrado com o livro aberto, o círculo das runas escondido no meio e as velas.',
+    pantano: 'As ilhas de lama no meio da água parada, ligadas por trilhas: a cabana da bruxa com o caldeirão no alto, as raízes e os cogumelos.',
+    espelhos: 'O chão em xadrez, os espelhos nas paredes (de onde saem os reflexos) e os espelhos de pé em volta do meio (tapam a visão).',
+    mina: 'A galeria da mina: os trilhos e os vagonetes, as escoras, os veios de cristal e o golem de cristal no alto, entre os cristais.',
   };
   // a mudança por extenso (para a janela e para a prévia do acionar)
   function textoDaMudanca(m) {
     if (!m) return '';
+    if (m.txt) return String(m.txt) + (m.k === 'zona' ? ' (' + Math.round(m.r || 2) + ' q de raio)' : '');          // (lote 38: as mudanças próprias das arenas novas)
     if (m.k === 'reforcos') return (m.pts || []).length + ' ' + ((m.pts || []).length === 1 ? 'reforço' : 'reforços') + ' (' + (m.nome || 'Lacaio') + ') chegam nos pontos marcados';
     if (m.k === 'desaba') return 'o chão desaba (um fosso de 6 m)';
     if (m.k === 'luz') return 'as luzes e o fogo se apagam';
@@ -45,9 +58,16 @@ const Arena = (() => {
         toggle('ar-f' + (i + 2) + '-' + j, m.on, v => { const f = fasesDe(st); f[i][j].on = v; st.fases = f; mudou(true); }, ''),
         h('select', { class: 'in', id: 'ar-f' + (i + 2) + '-' + j + '-k', 'aria-label': 'A mudança ' + (j + 1) + ' da fase ' + (i + 2), disabled: !m.on,
           onchange: e => { const f = fasesDe(st); f[i][j].k = e.target.value; st.fases = f; e.target.blur(); mudou(true); } },
-          Masmorra.MUDANCAS.filter(([k]) => k !== 'grade' || st.tipo === 'coliseu' || st.tipo === 'trono' || st.tipo === 'mausoleu').map(([k, n]) => h('option', { value: k, text: n, selected: k === m.k })))))));
+          Masmorra.mudancasDe(st.tipo).filter(([k]) => k !== 'grade' || Masmorra.COM_GRADE.has(st.tipo)).map(([k, n]) => h('option', { value: k, text: n, selected: k === m.k })))))));
+    // (lote 38) os tipos agrupados por tema; embaixo, o que a arena escolhida tem
+    const nomeTipo = k => (Masmorra.ARENAS.find(x => x[0] === k) || [k, k])[1];
+    const tipos = h('div', { class: 'ar-grupos', id: 'ar-tipo' },
+      ...Masmorra.GRUPOS_ARENA.map(([gid, gn, ks]) => h('div', { class: 'ar-grupo', 'data-grupo': gid },
+        h('span', { class: 'ar-gn', text: gn }),
+        seg('ar-tipo-' + gid, st.tipo, ks.map(k => [k, nomeTipo(k), null, NOTA[k]]), v => muda('tipo', v)))),
+      h('p', { class: 'note ar-nota', id: 'ar-nota', text: nomeTipo(st.tipo) + ': ' + (NOTA[st.tipo] || '') }));
     return h('div', { class: 'ger-c' },
-      field('Tipo', seg('ar-tipo', st.tipo, Masmorra.ARENAS.map(([k, n]) => [k, n, null, NOTA[k]]), v => muda('tipo', v)), 'stack'),
+      field('Tipo', tipos, 'stack'),
       field('Tamanho', seg('ar-tam', st.tamanho, Object.keys(Masmorra.TAM_ARENA).map(k => [k, Masmorra.TAM_ARENA[k].n, null, Masmorra.TAM_ARENA[k].W + ' × ' + Masmorra.TAM_ARENA[k].H + ' quadrados']), v => muda('tamanho', v)), 'stack'),
       field('As fases (você aciona na cena; cada mudança liga, desliga ou troca)', h('div', { class: 'ar-fases', id: 'ar-fases' }, linhas), 'stack'));
   }
@@ -82,14 +102,23 @@ const Arena = (() => {
   // aplica uma mudança (dentro de um passo)
   function aplicar(sc, m, fi) {
     const c = sc.cell;
+    if (Array.isArray(m.mais)) for (const x of m.mais) if (x && typeof x === 'object' && !x.mais) aplicar(sc, x, null);          // (lote 38: o que vem junto)
     if (m.k === 'zona' && FX.P[m.fx]) {
       // a zona escondida do mesmo tipo que já estava na cena (as runas do altar) aparece; sem ela, uma zona nova
       const escondidas = sc.effects.filter(e => e.fx === m.fx && e.gm);
       if (escondidas.length) for (const e of escondidas) Store.upd('effects', e.id, { gm: false });
       else Store.add('effects', { id: uid('fx'), fx: m.fx, k: 'circ', x: (Number(m.x) || sc.cols / 2) * c, y: (Number(m.y) || sc.rows / 2) * c, r: clamp(Number(m.r) || 2, 0.5, 30), w: 1, rw: 2, rh: 2, ang: 0, dir: 0, pow: 0.8, token: null, leve: true, gm: false, by: null, seed: 1 + Math.floor(Math.random() * 997), dur: 0, dur0: 0, at: null, apply: null });
     } else if (m.k === 'desaba') {
+      // (lote 38: o chão que muda pode ser outro terreno — o buraco de água do gelo, o monte de entulho da mina)
       const x = (Number(m.x) || 0) * c, y = (Number(m.y) || 0) * c, w = Math.max(1, Number(m.w) || 3) * c, hh = Math.max(1, Number(m.h) || 2) * c;
-      Store.add('shapes', Combate.newTerrain({ k: 'rect', x, y, w, h: hh }, 'fosso', -6));
+      const ter = TERRENO_POR_ID[m.ter] ? m.ter : 'fosso', alt = Number.isFinite(Number(m.alt)) && m.alt != null ? clamp(Number(m.alt), -30, 30) : -6;
+      Store.add('shapes', Combate.newTerrain({ k: 'rect', x, y, w, h: hh }, ter, alt));
+    } else if (m.k === 'muro') {
+      // (lote 38) as paredes que caem: as árvores, o mastro (meia cobertura), as estantes (parede)
+      for (const l of Array.isArray(m.linhas) ? m.linhas : []) {
+        if (!Array.isArray(l) || l.length < 4 || l.some(v => !Number.isFinite(Number(v)))) continue;
+        Store.add('walls', { id: uid('wl'), x1: l[0] * c, y1: l[1] * c, x2: l[2] * c, y2: l[3] * c, open: false, locked: false, k: m.tipo === 'mureta' ? 'mureta' : 'wall', secret: false });
+      }
     } else if (m.k === 'luz') {
       for (const l of sc.lights) if (l.on) Store.upd('lights', l.id, { on: false });
       for (const t of sc.tokens) if (t.light && t.light.on) Store.upd('tokens', t.id, { light: Object.assign({}, t.light, { on: false }) });

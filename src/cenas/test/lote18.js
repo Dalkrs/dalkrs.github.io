@@ -203,7 +203,7 @@ const SO = process.env.SO || '';
     await clearToasts();
     await ev(() => __tc.Gerador.abrir('arena')); await w(500);
     ok(await page.locator('#ger-lugar .seg-b', { hasText: 'Arena' }).count() === 1, 'a aba Arena em "Gerar um lugar…"');
-    ok(await page.locator('#ar-tipo .seg-b').count() === 8, 'os oito tipos de arena: ' + (await page.locator('#ar-tipo').innerText()).replace(/\s+/g, ' / '));
+    ok(await page.locator('#ar-tipo .seg-b').count() === 19, 'os 19 tipos de arena (lote 38: agrupados por tema): ' + (await page.locator('#ar-tipo').innerText()).replace(/\s+/g, ' / '));
     ok(await page.locator('#ar-fases .ar-fase').count() === 2 && await page.locator('#ar-fases .ar-mud').count() === 4, 'as fases prontas: a 2 e a 3, cada uma com duas mudanças');
     await page.locator('#ar-tipo .seg-b', { hasText: 'Covil do dragão' }).click(); await w(400);
     const pv = () => ev(() => { const p = __tc.Gerador.vivo().estado.plano; return p ? JSON.parse(JSON.stringify({ tipo: p.arena.tipo, W: p.W, H: p.H, chefe: p.arena.chefe, ref: p.arena.reforcos.length, fases: p.arena.fases.map(f => f.m.map(m => (m.k === 'zona' ? 'zona:' + m.fx : m.k) + (m.on ? '' : '(off)'))) })) : null; });

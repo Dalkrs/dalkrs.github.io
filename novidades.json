@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.29-4",
+      "data": "2026-10-29",
+      "titulo": "Onze arenas novas para as lutas contra chefes",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Onze lugares novos para as lutas contra chefes: a cripta do vampiro, a clareira da lua cheia, o fosso infernal, a toca do Rei Rato, o lago congelado, a forja anã em ruínas, o navio fantasma na tempestade, a biblioteca proibida, o pântano da bruxa, o salão dos espelhos e a mina abandonada, com o golem de cristal. Cada um muda do seu jeito no meio da luta."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas → Gerar um lugar → Arena: os 19 tipos agora vêm agrupados por tema (Mortos e sombras, Feras, Fogo e gelo, Pedra e metal, Magia), com o que a arena escolhida tem escrito embaixo. Cada arena nova traz as mudanças de fase dela: os caixões se abrem, o uivo chama a alcateia, o gelo racha, o portal do fosso se abre, o mastro cai, as estantes desabam, o teto da mina desmorona… Na lista de cada mudança aparecem só as da arena escolhida; acionar mostra a prévia e tem Desfazer, como antes."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "A sala do chefe do último nível da masmorra: a mina termina na mina abandonada (com o golem de cristal), o esgoto na toca do Rei Rato, o laboratório na biblioteca proibida e o navio no convés do navio fantasma."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.29-3",
       "data": "2026-10-29",
       "titulo": "A corrupção das fichas",

@@ -1482,17 +1482,44 @@ const Masmorra = (() => {
   const ARENAS = [
     ['coliseu', 'Arena (coliseu)'], ['trono', 'Sala do trono'], ['mausoleu', 'Mausoléu'], ['covil', 'Covil do dragão'],
     ['altar', 'Altar do ritual'], ['ponte', 'Ponte sobre o abismo'], ['topo', 'Topo da torre'], ['circulo', 'Círculo de pedras'],
+    // (lote 38) as onze novas
+    ['vampiro', 'Cripta do vampiro'], ['clareira', 'Clareira da lua cheia'], ['fosso', 'Fosso infernal'], ['ratos', 'Toca do Rei Rato'],
+    ['lago', 'Lago congelado'], ['forja', 'Forja anã em ruínas'], ['fantasma', 'Navio fantasma na tempestade'], ['biblioteca', 'Biblioteca proibida'],
+    ['pantano', 'Pântano da bruxa'], ['espelhos', 'Salão dos espelhos'], ['mina', 'Mina abandonada'],
+  ];
+  // (lote 38) os tipos agrupados por tema, para a escolha na janela
+  const GRUPOS_ARENA = [
+    ['mortos', 'Mortos e sombras', ['mausoleu', 'vampiro', 'fantasma']], ['feras', 'Feras', ['covil', 'clareira', 'ratos']],
+    ['fogo', 'Fogo e gelo', ['fosso', 'forja', 'lago']], ['pedra', 'Pedra e metal', ['coliseu', 'trono', 'ponte', 'topo', 'mina']],
+    ['magia', 'Magia', ['altar', 'circulo', 'biblioteca', 'pantano', 'espelhos']],
   ];
   const TAM_ARENA = { pequeno: { n: 'Pequena', W: 24, H: 18 }, medio: { n: 'Média', W: 30, H: 22 }, grande: { n: 'Grande', W: 36, H: 26 } };
-  const NOME_ARENA = { coliseu: 'A arena', trono: 'A sala do trono', mausoleu: 'O mausoléu', covil: 'O covil do dragão', altar: 'O altar do ritual', ponte: 'A ponte sobre o abismo', topo: 'O topo da torre', circulo: 'O círculo de pedras' };
-  const CHEFE_ARENA = { coliseu: 'O campeão', trono: 'O rei', mausoleu: 'O senhor dos mortos', covil: 'O dragão', altar: 'O sumo-sacerdote', ponte: 'O guardião da ponte', topo: 'O feiticeiro da torre', circulo: 'O espírito antigo' };
-  const LACAIO_ARENA = { coliseu: 'Gladiador', trono: 'Guarda real', mausoleu: 'Morto-vivo', covil: 'Filhote', altar: 'Cultista', ponte: 'Sentinela', topo: 'Gárgula', circulo: 'Espírito' };
+  const NOME_ARENA = { coliseu: 'A arena', trono: 'A sala do trono', mausoleu: 'O mausoléu', covil: 'O covil do dragão', altar: 'O altar do ritual', ponte: 'A ponte sobre o abismo', topo: 'O topo da torre', circulo: 'O círculo de pedras',
+    vampiro: 'A cripta do vampiro', clareira: 'A clareira da lua cheia', fosso: 'O fosso infernal', ratos: 'A toca do Rei Rato', lago: 'O lago congelado', forja: 'A forja anã em ruínas',
+    fantasma: 'O navio fantasma', biblioteca: 'A biblioteca proibida', pantano: 'O pântano da bruxa', espelhos: 'O salão dos espelhos', mina: 'A mina abandonada' };
+  const CHEFE_ARENA = { coliseu: 'O campeão', trono: 'O rei', mausoleu: 'O senhor dos mortos', covil: 'O dragão', altar: 'O sumo-sacerdote', ponte: 'O guardião da ponte', topo: 'O feiticeiro da torre', circulo: 'O espírito antigo',
+    vampiro: 'O conde vampiro', clareira: 'O lobisomem alfa', fosso: 'O senhor do fosso', ratos: 'O Rei Rato', lago: 'A rainha do inverno', forja: 'O golem da forja',
+    fantasma: 'O capitão fantasma', biblioteca: 'O bibliotecário lich', pantano: 'A bruxa do pântano', espelhos: 'O reflexo sem dono', mina: 'O golem de cristal' };
+  const LACAIO_ARENA = { coliseu: 'Gladiador', trono: 'Guarda real', mausoleu: 'Morto-vivo', covil: 'Filhote', altar: 'Cultista', ponte: 'Sentinela', topo: 'Gárgula', circulo: 'Espírito',
+    vampiro: 'Cria vampírica', clareira: 'Lobo', fosso: 'Diabrete', ratos: 'Rato gigante', lago: 'Lobo do gelo', forja: 'Autômato',
+    fantasma: 'Marujo afogado', biblioteca: 'Livro vivo', pantano: 'Afogado', espelhos: 'Reflexo', mina: 'Cristal vivo' };
+  // (lote 38) as arenas de paredes retas (o salão em quadrados; as outras têm o contorno alisado)
+  const ARENA_RETA = new Set(['trono', 'mausoleu', 'vampiro', 'biblioteca', 'espelhos', 'forja']);
+  const ARENAS_NOVAS = new Set(['vampiro', 'clareira', 'fosso', 'ratos', 'lago', 'forja', 'fantasma', 'biblioteca', 'pantano', 'espelhos', 'mina']);
+  // (as que têm a grade na entrada, que a fase pode fechar)
+  const COM_GRADE = new Set(['coliseu', 'trono', 'mausoleu', 'vampiro', 'forja', 'biblioteca', 'espelhos']);
   // as mudanças que uma fase pode ter (para trocar uma pela outra, na janela)
   const MUDANCAS = [
     ['reforcos', 'Reforços chegam'], ['desaba', 'O chão desaba'], ['luz', 'As luzes se apagam'], ['grade', 'A grade da entrada fecha'],
     ['zona:lava', 'A lava sobe'], ['zona:espinhos', 'Espinhos saem do chão'], ['zona:toxica', 'Névoa venenosa'], ['zona:gelado', 'O chão congela'],
     ['zona:runas', 'As runas se acendem'], ['zona:escuridao', 'A escuridão'], ['zona:tempestade', 'A tempestade'], ['zona:vento', 'Vento forte'], ['zona:chamasNegras', 'Chamas negras'],
     ['zona:arcano', 'A magia antiga desperta'], ['zona:luaSangue', 'A lua de sangue'], ['zona:fumaca', 'A fumaça toma o salão'], ['zona:oleo', 'O óleo se espalha'],
+    // (lote 38) as mudanças de cada arena nova (só aparecem na arena delas: ver ESPECIAIS)
+    ['caixoes', 'Os caixões se abrem'], ['morcegos', 'A nuvem de morcegos'], ['uivo', 'O uivo da alcateia'], ['lua', 'A lua cheia aparece'], ['arvores', 'As árvores caem'],
+    ['portal', 'O portal do fosso se abre'], ['enxame', 'O enxame sai dos túneis'], ['transborda', 'O esgoto transborda'], ['racha', 'O gelo racha'], ['nevasca', 'A nevasca'],
+    ['fole', 'O fole sopra brasas'], ['metal', 'O metal derretido transborda'], ['onda', 'A onda varre o convés'], ['mastro', 'O mastro cai'],
+    ['livros', 'Os livros ganham vida'], ['estantes', 'As estantes desabam'], ['agua', 'A água do pântano sobe'], ['raizes', 'As raízes prendem'],
+    ['reflexos', 'Os reflexos ganham vida'], ['estilhacos', 'Os espelhos se quebram'], ['desmorona', 'O teto desmorona'], ['gas', 'O gás da mina'], ['cristais', 'Os cristais pulsam'],
   ];
   // as fases prontas de cada arena: a 2 e a 3, cada uma com as mudanças dela (o mestre liga, desliga ou troca na janela)
   const FASES_ARENA = {
@@ -1504,17 +1531,340 @@ const Masmorra = (() => {
     ponte: [['reforcos', 'desaba'], ['zona:vento', 'zona:tempestade']],
     topo: [['reforcos', 'zona:tempestade'], ['desaba', 'luz']],
     circulo: [['reforcos', 'zona:arcano'], ['zona:luaSangue', 'desaba']],
+    vampiro: [['caixoes', 'morcegos'], ['luz', 'zona:luaSangue']],
+    clareira: [['uivo', 'lua'], ['arvores', 'zona:escuridao']],
+    fosso: [['portal', 'zona:lava'], ['zona:chamasNegras', 'desaba']],
+    ratos: [['enxame', 'transborda'], ['desaba', 'luz']],
+    lago: [['racha', 'nevasca'], ['reforcos', 'zona:gelado']],
+    forja: [['fole', 'reforcos'], ['metal', 'desaba']],
+    fantasma: [['onda', 'reforcos'], ['mastro', 'zona:tempestade']],
+    biblioteca: [['livros', 'zona:runas'], ['estantes', 'zona:escuridao']],
+    pantano: [['agua', 'reforcos'], ['zona:toxica', 'raizes']],
+    espelhos: [['reflexos', 'luz'], ['estilhacos', 'zona:arcano']],
+    mina: [['desmorona', 'gas'], ['cristais', 'reforcos']],
   };
+  /* (lote 38) As mudanças próprias das arenas novas: de qual arena é cada uma (de) e o que ela faz — uma das mudanças de
+     sempre (os reforços, uma zona, o chão que muda: desaba, com o terreno; ou as paredes que caem: muro), com os pontos
+     que o desenho da arena marcou (a.pt) e o texto da prévia (txt). */
+  const ESPECIAIS = {
+    caixoes: { de: ['vampiro'], faz: a => ({ k: 'reforcos', pts: (a.pt.caixoes || a.reforcos).slice(0, 4), nome: 'Cria vampírica', txt: 'os caixões se abrem: ' + Math.min(4, (a.pt.caixoes || a.reforcos).length) + ' crias vampíricas se levantam' }) },
+    morcegos: { de: ['vampiro'], faz: a => ({ k: 'zona', fx: 'sombra', x: a.chefe.x + 1, y: a.chefe.y + 4, r: 3, txt: 'a nuvem de morcegos cobre o meio da cripta (medo; tapa a visão)' }) },
+    uivo: { de: ['clareira'], faz: a => ({ k: 'reforcos', pts: (a.pt.mata || a.reforcos).slice(0, 4), nome: 'Lobo', txt: 'o uivo: ' + Math.min(4, (a.pt.mata || a.reforcos).length) + ' lobos saem da mata' }) },
+    lua: { de: ['clareira'], faz: a => ({ k: 'zona', fx: 'luaSangue', x: a.pt.centro[0], y: a.pt.centro[1], r: a.pt.raio || 4, txt: 'a lua cheia aparece sobre a clareira (as feras ficam mais fortes)' }) },
+    arvores: { de: ['clareira'], faz: a => ({ k: 'muro', tipo: 'mureta', linhas: a.pt.arvores || [], txt: 'as árvores velhas caem atravessadas (meia cobertura; fecham passagens)' }) },
+    portal: { de: ['fosso'], faz: a => ({ k: 'reforcos', pts: (a.pt.portal || a.reforcos).slice(0, 3), nome: 'Diabrete', txt: 'o portal do fosso se abre: 3 diabretes saem dele', mais: [{ k: 'zona', fx: 'portal', x: a.pt.centro[0], y: a.pt.centro[1], r: 1.5 }] }) },
+    enxame: { de: ['ratos'], faz: a => ({ k: 'reforcos', pts: (a.pt.tuneis || a.reforcos).slice(0, 4), nome: 'Rato gigante', txt: 'o enxame sai dos túneis: ' + Math.min(4, (a.pt.tuneis || a.reforcos).length) + ' ratos gigantes' }) },
+    transborda: { de: ['ratos'], faz: a => ({ k: 'zona', fx: 'toxica', x: a.pt.centro[0], y: a.pt.centro[1] + 2, r: 3.5, txt: 'o esgoto transborda: a água podre toma o chão (veneno)' }) },
+    racha: { de: ['lago'], faz: a => Object.assign({ k: 'desaba', ter: 'agua', alt: -1.5, txt: 'o gelo racha no meio do lago: um buraco de água gelada (quem cai, afunda e congela)' }, a.pt.racha || a.desaba) },
+    nevasca: { de: ['lago'], faz: a => ({ k: 'zona', fx: 'nevasca', x: a.pt.centro[0], y: a.pt.centro[1], r: a.pt.raio || 5, txt: 'a nevasca: o vento gelado e a neve tapam a visão' }) },
+    fole: { de: ['forja'], faz: a => ({ k: 'zona', fx: 'brasas', x: a.pt.centro[0], y: a.pt.centro[1], r: 3, txt: 'o fole gigante sopra brasas pelo salão (fogo)' }) },
+    metal: { de: ['forja'], faz: a => ({ k: 'zona', fx: 'lava', x: (a.pt.metal || a.pt.centro)[0], y: (a.pt.metal || a.pt.centro)[1], r: 2.2, txt: 'o metal derretido transborda dos canais' }) },
+    onda: { de: ['fantasma'], faz: a => ({ k: 'zona', fx: 'correnteza', x: a.pt.centro[0], y: a.pt.centro[1], r: 4, txt: 'a onda varre o convés (empurra 2 quadrados para a borda)' }) },
+    mastro: { de: ['fantasma'], faz: a => ({ k: 'muro', tipo: 'mureta', linhas: a.pt.mastro || [], txt: 'o mastro quebra e cai atravessado no convés (meia cobertura; fecha a passagem)' }) },
+    livros: { de: ['biblioteca'], faz: a => ({ k: 'reforcos', pts: (a.pt.estantes || a.reforcos).slice(0, 4), nome: 'Livro vivo', txt: 'os livros saltam das estantes: ' + Math.min(4, (a.pt.estantes || a.reforcos).length) + ' livros vivos' }) },
+    estantes: { de: ['biblioteca'], faz: a => ({ k: 'muro', tipo: 'wall', linhas: a.pt.queda || [], txt: 'as estantes desabam e fecham corredores' }) },
+    agua: { de: ['pantano'], faz: a => Object.assign({ k: 'desaba', ter: 'agua', alt: -0.5, txt: 'a água do pântano sobe e cobre a trilha do meio (terreno difícil)' }, a.pt.agua || a.desaba) },
+    raizes: { de: ['pantano'], faz: a => ({ k: 'zona', fx: 'teia', x: a.pt.centro[0], y: a.pt.centro[1], r: 3, txt: 'as raízes saem da lama e prendem quem está em volta da cabana' }) },
+    reflexos: { de: ['espelhos'], faz: a => ({ k: 'reforcos', pts: (a.pt.espelhos || a.reforcos).slice(0, 4), nome: 'Reflexo', txt: 'os reflexos saem dos espelhos: ' + Math.min(4, (a.pt.espelhos || a.reforcos).length) + ' cópias de quem está no salão' }) },
+    estilhacos: { de: ['espelhos'], faz: a => ({ k: 'zona', fx: 'espinhos', x: a.pt.centro[0], y: a.pt.centro[1], r: 3.5, txt: 'os espelhos se quebram: os estilhaços cobrem o chão (corta)' }) },
+    desmorona: { de: ['mina'], faz: a => Object.assign({ k: 'desaba', ter: 'morro', alt: 1.5, txt: 'o teto desmorona: um monte de entulho no meio da galeria (cobertura; terreno difícil)' }, a.desaba) },
+    gas: { de: ['mina'], faz: a => ({ k: 'zona', fx: 'toxica', x: a.pt.centro[0], y: a.pt.centro[1] + 2, r: 3.5, txt: 'o gás da mina se espalha pelo fundo (veneno)' }) },
+    cristais: { de: ['mina'], faz: a => ({ k: 'zona', fx: 'cristais', x: a.chefe.x + 1, y: a.chefe.y + 1, r: 3, txt: 'os cristais do veio pulsam em volta do golem' }) },
+  };
+  const mudancasDe = tipo => MUDANCAS.filter(([k]) => !ESPECIAIS[k] || ESPECIAIS[k].de.includes(tipo));
   // (a sala do chefe do último nível da masmorra: a arena que combina com o tipo)
-  const ARENA_DO_TIPO = { pedra: 'trono', cripta: 'mausoleu', caverna: 'covil', mina: 'covil', subsolo: 'covil',
-    templo: 'altar', esgoto: 'covil', torre: 'topo', laboratorio: 'altar', fortaleza: 'trono', ruinas: 'circulo', covil: 'covil', navio: 'ponte' };
+  const ARENA_DO_TIPO = { pedra: 'trono', cripta: 'mausoleu', caverna: 'covil', mina: 'mina', subsolo: 'covil',
+    templo: 'altar', esgoto: 'ratos', torre: 'topo', laboratorio: 'biblioteca', fortaleza: 'trono', ruinas: 'circulo', covil: 'covil', navio: 'fantasma' };          // (lote 38: a mina, o esgoto, o laboratório e o navio ganharam as deles)
   const nomeMud = k => (MUDANCAS.find(x => x[0] === k) || [k, k])[1];
+  /* (lote 38) As onze arenas novas. h: o que o nivelDeArena já tem (as casas, o estrado do chefe, a entrada de baixo, os
+     perigos, as estátuas). Cada uma deixa em a.pt os pontos das mudanças próprias dela (ver ESPECIAIS): a.pt.centro (o
+     meio da luta), e os da arena (os caixões, a mata, o portal, os túneis, a rachadura, o metal, o mastro, as estantes, a
+     água, os espelhos). */
+  function arenaNova(h) {
+    const { C, G, p, a, W, H, cx, enche, ret, perigo, estatua, estradoChefe, entradaEmbaixo } = h;
+    const t = a.tipo, pt = a.pt, cy = H / 2 - 0.5;
+    const luz = (x, y, c, dim, bright) => p.luzes.push({ x, y, dim: dim || 6, bright: bright || 2, c });
+    const caixa = (x0, y0, x1, y1, v) => enche(ret(x0, y0, x1 + 1, y1 + 1), v);           // as casas de x0..x1, y0..y1
+    const salaReta = () => {
+      const x0 = 2, y0 = 2, x1 = W - 3, y1 = H - 4;
+      caixa(x0, y0, x1, y1, SALA);
+      const { x0: e0, x1: e1 } = entradaEmbaixo(y1 + 1, 2);
+      p.paredes.push({ x1: e0, y1: y1 + 1, x2: e1 + 1, y2: y1 + 1, k: 'door', grade: true });
+      a.grade = { x: cx, y: y1 + 1 };
+      return { x0, y0, x1, y1, my: (y0 + y1) / 2 };
+    };
+    if (t === 'vampiro') {
+      // a cripta: o sarcófago do conde no estrado, o tapete vinho, os caixões em fileiras, a poça de sangue no meio
+      const s = salaReta(), est = estradoChefe(cx - 2, s.y0, 4, 2, 1.5);
+      C.pinta('sarcofago', { x: cx - 1, y: est.y + 0.2, w: 2, h: 1.6, grande: true, sangue: true });
+      for (const i of [est.x - 1, est.x + est.w]) C.poe('vela', i, est.y);
+      C.pinta('tapete', { x: cx - 1, y: est.y + est.h, w: 2, h: s.y1 - est.y - est.h + 1, cor: '#5a0f1c' });
+      pt.caixoes = [];
+      for (let j = s.y0 + 3; j <= s.y1 - 2; j += 3) for (const i of [s.x0 + 1, s.x1 - 2]) {
+        if (!C.livre(i, j) || !C.livre(i + 1, j)) continue;
+        C.pinta('caixao', { x: i, y: j, w: 2, h: 1 }); C.ocupaRet(i, j, 2, 1, 1);
+        pt.caixoes.push([i + (i < cx ? 0.5 : 1.5), j + 1.5]);
+      }
+      for (let j = s.y0 + 4; j <= s.y1 - 2; j += 4) for (const i of [Math.floor(cx) - 4, Math.floor(cx) + 3]) if (C.livre(i, j)) coluna(C, i + 0.5, j + 0.5, 0.42);
+      C.pinta('sangue', { x: cx, y: s.my + 1.5, r: 1.5 });
+      perigo('maldicao', cx, s.my + 1.5, 1.3);
+      estatua(s.x0 + 0.5, s.y0 + 0.5); estatua(s.x1 + 0.5, s.y0 + 0.5);
+      luz(cx, est.y + 1, '#b3122e', 7, 2);
+      a.reforcos.push(...(pt.caixoes.length >= 2 ? pt.caixoes.slice(0, 4) : [[s.x0 + 2.5, s.my], [s.x1 - 1.5, s.my]]));          // (os pontos de reforço são os caixões)
+      a.zonas = [['zona:luaSangue', cx, s.my + 1, 3.5]];
+      a.desaba = { x: cx - 2, y: est.y + est.h + 2, w: 4, h: 2 };
+      pt.centro = [cx, s.my + 1];
+    } else if (t === 'clareira') {
+      // a clareira da mata, a lua sobre o meio, o rochedo do alfa no alto, as árvores e as pedras como cobertura
+      const yc = H / 2, R = Math.min(W, H) / 2 - 1.2, ond = C.ent(0, TAU);
+      enche((i, j) => Math.hypot(i - cx, j - yc) <= R + 0.35 * Math.sin(Math.atan2(j - yc, i - cx) * 5 + ond), SALA);
+      entradaEmbaixo(Math.ceil(yc + R) - 1, 3);
+      const est = estradoChefe(cx - 2, yc - R + 1.4, 4, 2, 2);
+      C.pinta('entulho', { x: cx - 2.5, y: est.y + 1, r: 0.9 }); C.pinta('entulho', { x: cx + 2.5, y: est.y + 1.2, r: 0.8 });
+      C.pinta('luar', { x: cx, y: yc + 0.5, r: R * 0.55 });
+      C.pinta('floresta', { cx, cy: yc, r: R });
+      for (let k = 0; k < 9; k++) {
+        const an = -Math.PI / 2 + (k + 0.5) / 9 * TAU;
+        if (Math.sin(an) > 0.75) continue;                                         // (a trilha da entrada fica livre)
+        const x = cx + Math.cos(an) * R * 0.74, y = yc + Math.sin(an) * R * 0.74;
+        C.poe(k % 3 === 0 ? 'pedra' : 'arvore', Math.floor(x), Math.floor(y));
+      }
+      for (const [x, y] of [[cx - R * 0.38, yc + R * 0.32], [cx + R * 0.38, yc + R * 0.32]]) C.poe('tronco', Math.floor(x), Math.floor(y));
+      perigo('espinhos', cx - R * 0.58, yc + R * 0.42, 1); perigo('espinhos', cx + R * 0.58, yc + R * 0.42, 1);
+      pt.mata = [[cx - R * 0.9, yc - R * 0.15], [cx + R * 0.9, yc - R * 0.15], [cx - R * 0.62, yc - R * 0.62], [cx + R * 0.62, yc - R * 0.62]];
+      pt.arvores = [[cx - R * 0.62, yc - 0.6, cx - R * 0.2, yc + 1.1], [cx + R * 0.2, yc - 1.2, cx + R * 0.6, yc + 0.6]];
+      a.reforcos.push(...pt.mata);          // (os lobos saem da mata)
+      a.zonas = [['zona:escuridao', cx, yc, R * 0.7]];
+      a.desaba = { x: cx - 1.5, y: yc + 1, w: 3, h: 2 };
+      pt.centro = [cx, yc]; pt.raio = R * 0.6;
+      luz(cx, yc, '#c8d6ff', 11, 4);
+    } else if (t === 'fosso') {
+      // o fosso de lava: a plataforma da entrada, a do portal no meio, a do senhor no alto e as dos lados, ligadas por pontes
+      enche(() => true, LAVA);
+      const fx = Math.floor(cx), my = Math.floor(cy);
+      const pb = [fx - 4, H - 5, fx + 3, H - 1], pm = [fx - 3, my - 2, fx + 2, my + 2], pc = [fx - 3, 1, fx + 2, 4], pl = [2, my - 2, 5, my + 1], pr = [W - 6, my - 2, W - 3, my + 1];
+      for (const q of [pb, pm, pc, pl, pr]) caixa(q[0], q[1], q[2], q[3], SALA);
+      for (let j = pc[3] + 1; j < pm[1]; j++) for (let i = fx - 1; i <= fx; i++) G.pos(i, j, PONTE);
+      for (let j = pm[3] + 1; j < pb[1]; j++) for (let i = fx - 1; i <= fx; i++) G.pos(i, j, PONTE);
+      for (let i = pl[2] + 1; i < pm[0]; i++) G.pos(i, my, PONTE);
+      for (let i = pm[2] + 1; i < pr[0]; i++) G.pos(i, my, PONTE);
+      a.entrada = { x: cx, y: H - 1.5 };
+      estradoChefe(cx - 2, pc[1] + 0.5, 4, 2, 1.5);
+      C.pinta('portalInferno', { x: fx + 0.5 - 0.5, y: my + 0.5, r: 1.6 });
+      p.zonas.push({ fx: 'portal', k: 'circ', x: fx, y: my + 0.5, r: 1.5, gm: true }); a.perigos.push('o portal (escondido)');
+      pt.portal = [[fx - 2, my + 0.5], [fx + 2, my + 0.5], [fx, my + 2.5]];
+      for (const q of [pl, pr]) C.poe('braseiro', Math.floor((q[0] + q[2]) / 2), q[1]);
+      perigo('chamasNegras', (pl[0] + pl[2]) / 2 + 0.5, my + 0.5, 1); perigo('chamasNegras', (pr[0] + pr[2]) / 2 + 0.5, my + 0.5, 1);
+      for (const [x, y] of [[cx - 7, cy + 4], [cx + 7, cy - 4], [cx - 7, cy - 5], [cx + 7, cy + 5]]) luz(x, y, '#ff7a2a', 8, 3);
+      a.reforcos.push(...pt.portal);          // (os diabretes saem do portal)
+      a.zonas = [['zona:lava', cx, cy + 4, 2.5], ['zona:chamasNegras', cx, pc[3] + 3, 2]];
+      a.desaba = { x: fx - 1, y: pm[3] + 1, w: 2, h: 2, ponte: true };
+      pt.centro = [fx, my + 0.5];
+    } else if (t === 'ratos') {
+      // a toca: a câmara torta do esgoto, o canal de água podre, o trono de lixo do Rei Rato e os túneis dos lados
+      const rx = W / 2 - 3.2, ry = H / 2 - 2.6, ond = C.ent(0, TAU);
+      enche((i, j) => { const dx = (i - cx) / rx, dy = (j - cy) / ry, an = Math.atan2(dy, dx); return Math.hypot(dx, dy) <= 1 + 0.1 * Math.sin(4 * an + ond) + 0.06 * Math.sin(7 * an); }, SALA);
+      entradaEmbaixo(Math.ceil(cy + ry) - 1, 2);
+      const yc = cy + ry * 0.35;
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (G.at(i, j) === SALA && Math.abs(j + 0.5 - yc) < 0.9 && Math.abs(i + 0.5 - cx) > 1.6) G.pos(i, j, AGUA);
+      pt.tuneis = [];
+      for (const an of [Math.PI, 0, -Math.PI * 0.78, -Math.PI * 0.22]) {
+        let x = cx, y = cy, ult = null;
+        for (let k = 0; k < 60; k++) {
+          x += Math.cos(an) * 0.5; y += Math.sin(an) * 0.5;
+          const i = Math.floor(x), j = Math.floor(y);
+          if (i < 1 || j < 1 || i >= W - 1 || j >= H - 1) break;
+          if (G.at(i, j) === ROCHA) { for (let q = 0; q < 3; q++) { const ii = Math.floor(x + Math.cos(an) * q), jj = Math.floor(y + Math.sin(an) * q); if (ii >= 0 && jj >= 0 && ii < W && jj < H) G.pos(ii, jj, CORREDOR); } break; }
+          if (G.at(i, j) === SALA) ult = [i + 0.5, j + 0.5];
+        }
+        if (ult) { pt.tuneis.push(ult); C.pinta('grade', { x: ult[0], y: ult[1] }); }
+      }
+      const est = estradoChefe(cx - 2, cy - ry + 1, 4, 2, 1.5);
+      C.pinta('ninho', { x: cx, y: est.y + 1, r: 2, ratos: true });
+      C.pinta('ossos', { x: cx - 1.4, y: est.y + 0.7, n: 4, pilha: true }); C.pinta('moedas', { x: cx + 1.2, y: est.y + 1.2, r: 0.7 });
+      for (const i of [est.x - 1, est.x + est.w]) C.poe('tocha', i, est.y);
+      for (let k = 0, n = 0; k < 200 && n < 6; k++) {
+        const i = Math.floor(cx + C.ent(-rx * 0.85, rx * 0.85)), j = Math.floor(cy + C.ent(-ry * 0.5, ry * 0.15));
+        if (!C.livre(i, j)) continue;
+        if (n % 3 === 2) { C.pinta('entulho', { x: i + 0.5, y: j + 0.5, r: 0.7 }); C.ocupa(i, j, 1); } else C.poe(n % 2 ? 'barril' : 'caixote', i, j);
+        n++;
+      }
+      C.pinta('ossos', { x: cx - rx * 0.4, y: cy - ry * 0.1, n: 4 }); C.pinta('ossos', { x: cx + rx * 0.45, y: cy + ry * 0.05, n: 3 });
+      perigo('toxica', cx - rx * 0.55, yc, 1.2); perigo('toxica', cx + rx * 0.55, yc, 1.2);
+      a.reforcos.push(...(pt.tuneis.length >= 2 ? pt.tuneis : [[cx - rx * 0.7, cy], [cx + rx * 0.7, cy]]));          // (o enxame sai dos túneis)
+      a.zonas = [['zona:toxica', cx, yc, 3]];
+      a.desaba = { x: cx - 2, y: cy - 1, w: 4, h: 2 };
+      pt.centro = [cx, cy];
+    } else if (t === 'lago') {
+      // o lago congelado no meio da gruta, a margem de neve, o trono de gelo da rainha no alto, os espinhos de gelo
+      const rx = W / 2 - 1.5, ry = H / 2 - 1.5, lx = W * 0.3, ly = H * 0.24;
+      enche((i, j) => Math.hypot((i - cx) / rx, (j - cy) / ry) <= 1, SALA);
+      enche((i, j) => Math.hypot((i - cx) / lx, (j - cy - 0.5) / ly) <= 1, GELO);
+      entradaEmbaixo(Math.ceil(cy + ry) - 1, 3);
+      const est = estradoChefe(cx - 2, cy - ry + 1.2, 4, 2, 2);
+      for (const sx of [-1, 1]) C.pinta('cristal', { x: cx + sx * 2.7, y: est.y + 1, r: 0.7, n: 4, cor: '#bfe3ff', grande: true });
+      for (let k = 0; k < 8; k++) {
+        const an = (k / 8) * TAU + 0.35, x = cx + Math.cos(an) * (rx - 1.8), y = cy + Math.sin(an) * (ry - 1.6);
+        C.pinta('geada', { x, y, r: 1.8 });
+        if (k % 2 === 0 && Math.sin(an) < 0.7 && C.livre(Math.floor(x), Math.floor(y))) { C.pinta('cristal', { x: Math.floor(x) + 0.5, y: Math.floor(y) + 0.5, r: 0.45, n: 3, cor: '#d6efff' }); C.ocupa(Math.floor(x), Math.floor(y), 1); }
+      }
+      p.zonas.push({ fx: 'gelado', k: 'circ', x: cx, y: cy + 0.5, r: Math.min(lx, ly), gm: false, leve: true }); a.perigos.push('gelado');
+      pt.racha = { x: Math.floor(cx) - 2, y: Math.floor(cy), w: 4, h: 2 };
+      a.reforcos.push([cx - rx + 1.5, cy], [cx + rx - 1.5, cy], [cx - lx, cy - ly - 1]);
+      a.zonas = [['zona:gelado', cx, cy, Math.min(lx, ly)]];
+      a.desaba = pt.racha;
+      pt.centro = [cx, cy]; pt.raio = Math.min(lx, ly) + 1.5;
+      luz(cx, cy, '#cfe8ff', 10, 3);
+    } else if (t === 'forja') {
+      // a forja anã: os dois canais de metal derretido (com a passagem no meio), as bigornas, as fornalhas, o fole
+      const s = salaReta(), meio = Math.floor(s.my);
+      for (const c0 of [s.x0 + 4, s.x1 - 5]) for (let j = s.y0 + 3; j <= s.y1 - 3; j++) for (let i = c0; i < c0 + 2; i++) G.pos(i, j, j === meio || j === meio + 1 ? PONTE : LAVA);
+      const est = estradoChefe(cx - 2, s.y0, 4, 2, 1.5);
+      C.poe('bigorna', Math.floor(cx) - 1, est.y + est.h);
+      for (const [i, j] of [[cx - 3, s.y0 + 5], [cx + 2, s.y0 + 5], [cx - 3, s.y1 - 3], [cx + 2, s.y1 - 3]]) C.poe('bigorna', Math.floor(i), Math.floor(j));
+      for (const i of [s.x0 + 1, s.x1 - 1]) for (let j = s.y0 + 4; j <= s.y1 - 2; j += 4) C.poe('fornalha', i, j);
+      C.pinta('fole', { x: s.x0 + 1.7, y: s.y0 + 1.6, ang: 0.55 }); C.ocupaRet(s.x0, s.y0, 3, 3, 1);
+      C.pinta('colunaCaida', { x: cx - 2.5, y: s.my + 2.2, ang: 0.4 }); C.pinta('entulho', { x: cx + 3, y: s.my + 1, r: 1 });
+      for (const [i, j] of [[s.x0 + 2, s.y1 - 1], [s.x1 - 2, s.y1 - 1], [s.x0 + 2, s.y1 - 2]]) C.poe('barril', Math.floor(i), Math.floor(j));
+      perigo('brasas', cx, s.my + 2.5, 1.2);
+      for (const c0 of [s.x0 + 5, s.x1 - 4]) for (const yy of [s.y0 + 4, s.y1 - 4]) luz(c0, yy, '#ff8a3a', 7, 2);
+      pt.metal = [s.x0 + 5, s.my - 3];
+      a.reforcos.push([s.x0 + 1.5, s.y1 - 0.5], [s.x1 - 0.5, s.y1 - 0.5]);
+      a.zonas = [['zona:fumaca', cx, s.my, 3]];
+      a.desaba = { x: cx - 2, y: est.y + est.h + 2, w: 4, h: 2 };
+      pt.centro = [cx, s.my];
+    } else if (t === 'fantasma') {
+      // o navio na tempestade: o casco no meio do mar (a proa no alto, com o capitão), os mastros, a prancha embaixo
+      enche(() => true, AGUA);
+      const hw = Math.min(W * 0.22, 6), topo = 1.5, fundo = H - 3.5;
+      const larg = j => { const tt = (j - topo) / (fundo - topo); return tt < 0 || tt > 1 ? -1 : tt < 0.3 ? hw * Math.sin((tt / 0.3) * Math.PI / 2) : tt > 0.86 ? hw * (0.55 + 0.45 * Math.cos(((tt - 0.86) / 0.14) * Math.PI / 2)) : hw; };
+      enche((i, j) => Math.abs(i - cx) <= larg(j), SALA);
+      for (let j = Math.floor(fundo); j < H; j++) for (let i = Math.floor(cx) - 1; i <= Math.floor(cx); i++) if (G.at(i, j) === AGUA) G.pos(i, j, PONTE);
+      a.entrada = { x: cx, y: H - 1.5 };
+      estradoChefe(cx - 2, topo + 3, 4, 2, 1.5);
+      const mastros = [topo + (fundo - topo) * 0.42, topo + (fundo - topo) * 0.7];
+      for (const my of mastros) { C.pinta('mastro', { x: cx, y: my, larg: hw * 2 - 0.6 }); C.ocupa(Math.floor(cx - 0.5), Math.floor(my), 1); }
+      pt.mastro = [[cx - hw + 0.4, mastros[0] + 1.3, cx + hw - 0.4, mastros[0] + 1.8]];
+      for (let k = 0, n = 0; k < 200 && n < 6; k++) {
+        const sx = k % 2 ? -1 : 1, i = Math.floor(cx + sx * (hw - 1.2)), j = Math.floor(C.ent(topo + 6, fundo - 1));
+        if (!C.livre(i, j)) continue;
+        C.poe(n % 2 ? 'barril' : 'caixote', i, j); n++;
+      }
+      C.pinta('corda', { x: cx - hw + 1.5, y: fundo - 2, r: 0.5 }); C.pinta('corda', { x: cx + hw - 1.5, y: topo + 7, r: 0.45 });
+      for (const [x, y] of [[cx - hw + 0.8, mastros[0]], [cx + hw - 0.8, mastros[1]], [cx, topo + 2]]) luz(x, y, '#7fe9d0', 6, 2);
+      perigo('tempestade', cx, mastros[1] + 2.5, 1.3);
+      // a amurada: a mureta na beira do convés e da prancha (meia cobertura); a ponta da prancha fica na beira do mapa
+      const deck = (i, j) => { const v = G.at(i, j); return v === SALA || v === PONTE; };
+      const bordas = contornos(W, H, deck).map(l => simplifica(l, 0.3)).filter(l => l.length > 3);
+      for (const w of segmentosDe(bordas)) { if (w.y1 >= H - 0.01 && w.y2 >= H - 0.01) continue; p.paredes.push(Object.assign(w, { k: 'mureta' })); }
+      a.reforcos.push([cx - hw + 1, fundo - 2.5], [cx + hw - 1, fundo - 2.5], [cx - hw + 1, mastros[0] - 2], [cx + hw - 1, mastros[0] - 2]);
+      a.zonas = [['zona:tempestade', cx, (topo + fundo) / 2, hw + 3]];
+      a.desaba = { x: Math.floor(cx) - 1, y: Math.floor(mastros[1]) + 2, w: 2, h: 2 };
+      pt.centro = [cx, (topo + fundo) / 2];
+    } else if (t === 'biblioteca') {
+      // a biblioteca proibida: as fileiras de estantes (tapam a visão), o círculo das runas no meio (escondidas), a mesa
+      // de leitura do lich no estrado, as velas
+      const s = salaReta(), est = estradoChefe(cx - 2, s.y0, 4, 2, 1.5);
+      C.pinta('livrosAbertos', { x: cx, y: est.y + 0.9, grande: true });
+      for (const i of [est.x - 1, est.x + est.w]) C.poe('vela', i, est.y);
+      pt.estantes = []; pt.queda = [];
+      for (let j = s.y0 + 3; j <= s.y1 - 3; j += 3) for (const lado of [-1, 1]) {
+        const i0 = lado < 0 ? s.x0 + 1 : Math.floor(cx) + 3, i1 = lado < 0 ? Math.floor(cx) - 4 : s.x1 - 1;
+        if (i1 - i0 < 2) continue;
+        let n = 0;
+        for (let i = i0; i <= i1; i++) if (C.livre(i, j)) { C.poe('estante', i, j, 1, ROT_FRENTE.s); n++; }
+        if (n) { p.visao.push([i0, j + 0.5, i1 + 1, j + 0.5]); pt.estantes.push([(i0 + i1 + 1) / 2, j + 1.5]); }
+        if (j === s.y0 + 6) pt.queda.push([lado < 0 ? i1 + 1 : i0, j + 0.2, lado < 0 ? i1 + 2.6 : i0 - 1.6, j + 1.6]);
+      }
+      const ry0 = s.my + 1.5;
+      C.pinta('circuloRunico', { x: cx, y: ry0, r: 2.2, cor: '#6a3fb5' });
+      p.zonas.push({ fx: 'runas', k: 'circ', x: cx, y: ry0, r: 2.2, gm: true }); a.perigos.push('runas (escondidas)');
+      C.pinta('livrosAbertos', { x: cx - 1.8, y: s.y1 - 1.2 }); C.pinta('livrosAbertos', { x: cx + 2.2, y: s.y0 + 4.5 });
+      for (const [x, y] of [[s.x0 + 1, s.y1 - 1], [s.x1 - 1, s.y1 - 1]]) C.poe('vela', x, y);
+      luz(cx, est.y + 1.5, '#b39cf0', 7, 2); luz(cx, ry0, '#8a5cf0', 5, 1);
+      a.reforcos.push(...(pt.estantes.length >= 2 ? pt.estantes.slice(0, 4) : [[s.x0 + 1.5, s.my], [s.x1 - 0.5, s.my]]));          // (os livros saltam das estantes)
+      a.zonas = [['zona:runas', cx, ry0, 2.2], ['zona:escuridao', cx, s.my, 4]];
+      a.desaba = { x: cx - 2, y: ry0 + 2.5, w: 4, h: 2 };
+      pt.centro = [cx, ry0];
+    } else if (t === 'pantano') {
+      // o pântano: as ilhas de lama entre a água parada, a cabana da bruxa no alto (com o caldeirão), as raízes
+      const rx = W / 2 - 1.6, ry = H / 2 - 1.6;
+      enche((i, j) => Math.hypot((i - cx) / rx, (j - cy) / ry) <= 1, AGUA);
+      const ilhas = [[cx, cy - ry + 3.2, 4.2, 2.6], [cx, cy + ry - 2.6, 3.4, 2], [cx - rx * 0.5, cy, 2.8, 2.2], [cx + rx * 0.5, cy + 0.5, 2.8, 2.2], [cx, cy + 0.5, 2.6, 2]];
+      for (const [x, y, rrx, rry] of ilhas) enche((i, j) => Math.hypot((i - x) / rrx, (j - y) / rry) <= 1 + 0.12 * Math.sin(i * 1.7 + j), SALA);
+      // as trilhas (a lama firme) entre as ilhas
+      const trilha = (a0, b0) => { const n = Math.ceil(Math.hypot(b0[0] - a0[0], b0[1] - a0[1]) * 2); for (let k = 0; k <= n; k++) { const x = a0[0] + (b0[0] - a0[0]) * k / n, y = a0[1] + (b0[1] - a0[1]) * k / n; for (const [di, dj] of [[0, 0], [1, 0], [0, 1]]) { const i = Math.floor(x) + di - 0, j = Math.floor(y) + dj; if (G.at(i, j) === AGUA) G.pos(i, j, CORREDOR); } } };
+      const c = ilhas.map(q => [q[0], q[1]]);
+      trilha(c[1], c[4]); trilha(c[4], c[0]); trilha(c[4], c[2]); trilha(c[4], c[3]);
+      entradaEmbaixo(Math.ceil(cy + ry) - 1, 2);
+      const est = estradoChefe(cx - 1.5, c[0][1] - 1.5, 3, 2, 1);
+      C.pinta('cabana', { x: cx, y: est.y + 0.9, w: 3.2, h: 2.2 });
+      C.pinta('caldeirao', { x: cx + 2.6, y: c[0][1] + 0.6, r: 0.6 }); C.ocupa(Math.floor(cx + 2.6), Math.floor(c[0][1] + 0.6), 1);
+      for (const [x, y] of [[c[2][0] - 1, c[2][1] - 1], [c[3][0] + 1, c[3][1] - 1], [cx - 3, c[0][1] + 1]]) C.pinta('raizes', { x, y, n: 5, ang: C.ent(0, TAU) });
+      C.pinta('cogumelos', { x: c[2][0] + 0.8, y: c[2][1] + 0.6, r: 0.8, cor: '#9fdc6a' }); C.pinta('cogumelos', { x: c[3][0] - 0.6, y: c[3][1] + 0.8, r: 0.7, cor: '#c08af0' });
+      perigo('pantano', c[2][0], c[2][1] + 1.4, 1.1); perigo('pantano', c[3][0], c[3][1] + 1.4, 1.1);
+      luz(cx + 2.6, c[0][1] + 0.6, '#7fe07f', 6, 2);
+      pt.agua = { x: Math.floor(cx) - 2, y: Math.floor(c[4][1]) - 1, w: 4, h: 3 };
+      a.reforcos.push([c[2][0] - 1.5, c[2][1]], [c[3][0] + 1.5, c[3][1]], [cx - 3, c[1][1] - 1]);
+      a.zonas = [['zona:toxica', cx, cy + 1, 3]];
+      a.desaba = pt.agua;
+      pt.centro = [cx, c[0][1] + 1];
+    } else if (t === 'espelhos') {
+      // o salão dos espelhos: os espelhos nas paredes e os de pé em volta do meio (tapam a visão), o chão em xadrez
+      const s = salaReta(), est = estradoChefe(cx - 2, s.y0, 4, 2, 1.5);
+      C.pinta('espelho', { x: cx, y: est.y + 0.25, w: 2, rot: 0, grande: true });
+      pt.espelhos = [];
+      for (let j = s.y0 + 3; j <= s.y1 - 2; j += 3) for (const [i, rot] of [[s.x0 + 0.15, Math.PI / 2], [s.x1 + 0.85, -Math.PI / 2]]) {
+        C.pinta('espelho', { x: i + (i < cx ? 0.12 : -0.12), y: j + 0.5, w: 1.7, rot });
+        pt.espelhos.push([i < cx ? s.x0 + 1.5 : s.x1 - 0.5, j + 0.5]);
+      }
+      const rr = Math.min(s.x1 - s.x0, s.y1 - s.y0) * 0.28;
+      for (let k = 0; k < 6; k++) {
+        const an = (k + 0.5) / 6 * TAU, x = cx + Math.cos(an) * rr, y = s.my + 1 + Math.sin(an) * rr * 0.8;
+        if (Math.sin(an) > 0.85) continue;
+        const i = Math.floor(x), j = Math.floor(y);
+        if (!C.livre(i, j)) continue;
+        C.pinta('espelho', { x: i + 0.5, y: j + 0.5, w: 1.3, rot: an + Math.PI / 2, pe: true }); C.ocupa(i, j, 1);
+        const ux = Math.cos(an + Math.PI / 2) * 0.5, uy = Math.sin(an + Math.PI / 2) * 0.5;
+        p.visao.push([i + 0.5 - ux, j + 0.5 - uy, i + 0.5 + ux, j + 0.5 + uy]);
+      }
+      for (const [x, y] of [[s.x0 + 0.5, s.y0 + 0.5], [s.x1 + 0.5, s.y0 + 0.5]]) estatua(x, y);
+      luz(cx, s.my, '#e6f0ff', 9, 3);
+      a.reforcos.push(...pt.espelhos.slice(0, 4));          // (os reflexos saem dos espelhos)
+      a.zonas = [['zona:arcano', cx, s.my + 1, rr]];
+      a.desaba = { x: cx - 2, y: s.my + 1, w: 4, h: 2 };
+      pt.centro = [cx, s.my + 1];
+    } else if (t === 'mina') {
+      // a galeria da mina: os trilhos e os vagonetes, as escoras, os veios de cristal, o golem no alto, sobre o cristal
+      const rx = W / 2 - 2.4, ry = H / 2 - 2.2, ond = [C.ent(0, TAU), C.ent(0, TAU)];
+      enche((i, j) => { const dx = (i - cx) / rx, dy = (j - cy) / ry, an = Math.atan2(dy, dx); return Math.hypot(dx, dy) <= 1 + 0.1 * Math.sin(3 * an + ond[0]) + 0.07 * Math.sin(6 * an + ond[1]); }, SALA);
+      entradaEmbaixo(Math.ceil(cy + ry) - 1, 3);
+      const est = estradoChefe(cx - 2.5, cy - ry + 1, 5, 3, 3);
+      C.pinta('cristal', { x: cx - 2.6, y: est.y + 1.5, r: 1.1, n: 6, cor: '#8fd8ff', grande: true }); C.pinta('cristal', { x: cx + 2.7, y: est.y + 1.2, r: 1, n: 5, cor: '#c08af0', grande: true });
+      // os trilhos: da entrada até o pé do estrado, com uma curva para um lado
+      const tr = [[cx, H - 1], [cx, cy + 2], [cx - rx * 0.5, cy - 0.5], [cx - rx * 0.75, cy - ry * 0.4]];
+      C.pinta('trilho', { pts: tr });
+      C.pinta('vagonete', { x: cx + 0.5, y: cy + 3.5, ang: Math.PI / 2, cheio: true }); C.ocupa(Math.floor(cx), Math.floor(cy + 3.5), 1);
+      C.pinta('vagonete', { x: cx - rx * 0.62, y: cy - ry * 0.18, ang: 0.6, cheio: false });
+      for (const [x, y] of [[cx - rx * 0.6, cy + ry * 0.4], [cx + rx * 0.6, cy + ry * 0.4], [cx + rx * 0.7, cy - ry * 0.2], [cx - rx * 0.3, cy - ry * 0.55]]) { const i = Math.floor(x), j = Math.floor(y); if (C.livre(i, j)) { C.pinta('escora', { x: i + 0.5, y: j + 0.5, ang: 0 }); C.ocupa(i, j, 1); } }
+      for (const [x, y, w0, h0, cor] of [[cx + rx * 0.45, cy + ry * 0.05, 2.5, 1, '#9fd4ff'], [cx - rx * 0.85, cy + ry * 0.2, 1, 2.2, '#c08af0']]) C.pinta('veio', { x, y, w: w0, h: h0, cor });
+      for (const [x, y] of [[cx - rx * 0.4, cy + ry * 0.55], [cx + rx * 0.4, cy + ry * 0.55]]) C.poe('lampiao', Math.floor(x), Math.floor(y));
+      C.pinta('entulho', { x: cx + rx * 0.3, y: cy - ry * 0.4, r: 0.9 }); C.pinta('ferramentas', { x: cx - rx * 0.2, y: cy + ry * 0.3 });
+      perigo('toxica', cx - rx * 0.6, cy + ry * 0.45, 1.1);
+      for (const [x, y, c0] of [[cx - 2.6, est.y + 1.5, '#8fd8ff'], [cx + 2.7, est.y + 1.2, '#c08af0']]) luz(x, y, c0, 7, 2);
+      a.reforcos.push([cx - rx * 0.8, cy], [cx + rx * 0.8, cy], [cx + rx * 0.5, cy - ry * 0.5]);
+      a.zonas = [['zona:toxica', cx, cy + 2, 3]];
+      a.desaba = { x: cx - 2, y: cy, w: 4, h: 2 };
+      pt.centro = [cx, cy];
+    }
+    pt.centro = pt.centro || [cx, cy];
+  }
   function nivelDeArena(C) {
     const { G, p, W, H } = C, a = p.arena, cx = W / 2;
     const enche = (dentro, v) => { for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (dentro(i + 0.5, j + 0.5)) G.pos(i, j, v); };
     const elipse = (x, y, rx, ry) => (i, j) => Math.hypot((i - x) / rx, (j - y) / ry) <= 1;
     const ret = (x0, y0, x1, y1) => (i, j) => i >= x0 && i <= x1 && j >= y0 && j <= y1;
-    a.reforcos = []; a.perigos = []; a.zonas = [];
+    a.reforcos = []; a.perigos = []; a.zonas = []; a.pt = {};
     const perigo = (fx, x, y, r, gm) => { p.zonas.push({ fx, k: 'circ', x, y, r, gm: !!gm, leve: true }); a.perigos.push(fx); };
     const estatua = (x, y) => { if (C.poe('estatua', Math.floor(x), Math.floor(y))) { const pts = []; for (let k = 0; k < 6; k++) { const an = (k / 6) * TAU; pts.push([Math.floor(x) + 0.5 + Math.cos(an) * 0.38, Math.floor(y) + 0.5 + Math.sin(an) * 0.38]); } for (let k = 0; k < 6; k++) { const u = pts[k], v = pts[(k + 1) % 6]; p.visao.push([u[0], u[1], v[0], v[1]]); } } };
     const estradoChefe = (x, y, w, h, alt) => {
@@ -1530,7 +1880,8 @@ const Masmorra = (() => {
       a.entrada = { x: cx, y: H - 1.5 };
       return { x0, x1 };
     };
-    if (a.tipo === 'coliseu') {
+    if (ARENAS_NOVAS.has(a.tipo)) arenaNova({ C, G, p, a, W, H, cx, enche, ret, perigo, estatua, estradoChefe, entradaEmbaixo });          // (lote 38)
+    else if (a.tipo === 'coliseu') {
       const cy = H / 2 - 0.5, rx = W / 2 - 2.5, ry = H / 2 - 2.2;
       enche(elipse(cx, cy, rx, ry), SALA);
       const yb = Math.ceil(cy + ry) - 0.5, { x0, x1 } = entradaEmbaixo(yb - 1, 3);
@@ -1667,16 +2018,19 @@ const Masmorra = (() => {
     a.chefe = a.chefe || { x: cx - 1, y: 3 };
     // (o ponto que caiu na rocha, no abismo ou na lava vai para a casa boa mais perto; sem nenhuma por perto, sai)
     const pisavel = (i, j) => { const v = G.at(i, j); return v !== ROCHA && v !== ABISMO && v !== LAVA && v != null; };
-    a.reforcos = a.reforcos.map(([x, y]) => {
+    const perto = ([x, y]) => {
       if (pisavel(Math.floor(x), Math.floor(y))) return [x, y];
       for (let r = 1; r <= 3; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) if (Math.max(Math.abs(di), Math.abs(dj)) === r && pisavel(Math.floor(x) + di, Math.floor(y) + dj)) return [Math.floor(x) + di + 0.5, Math.floor(y) + dj + 0.5];
       return null;
-    }).filter(Boolean).slice(0, 4);
+    };
+    a.reforcos = a.reforcos.map(perto).filter(Boolean).slice(0, 4);
+    // (lote 38) os pontos das mudanças próprias, do mesmo jeito
+    for (const k of ['caixoes', 'mata', 'portal', 'tuneis', 'estantes', 'espelhos']) if (Array.isArray(a.pt[k])) a.pt[k] = a.pt[k].map(perto).filter(Boolean);
     // as fases prontas: duas (a 2 e a 3), cada uma com duas mudanças
     a.fases = fasesDaArena(a);
     p.salas = [{ x: 0, y: 0, w: W, h: H, papel: 'arena' }];
     // as paredes: no salão reto, a beira das casas; nos outros, o contorno alisado do que não é rocha
-    if (a.tipo === 'trono' || a.tipo === 'mausoleu') p.paredes = paredesDaGrade(G, v => v !== ROCHA).map(w => Object.assign(w, { k: 'wall' })).concat(p.paredes);
+    if (ARENA_RETA.has(a.tipo)) p.paredes = paredesDaGrade(G, v => v !== ROCHA).map(w => Object.assign(w, { k: 'wall' })).concat(p.paredes);
     else {
       p.contorno = contornos(W, H, (i, j) => G.at(i, j) !== ROCHA).map(l => simplifica(l, 0.3)).filter(l => l.length > 3);
       p.paredes = segmentosDe(p.contorno).concat(p.paredes);
@@ -1685,14 +2039,16 @@ const Masmorra = (() => {
   /* as duas fases de cada arena (a tabela de cima), com o que o mestre mudou na janela: a.fk = [[{ k, on }, …], …] */
   function fasesDaArena(a) {
     const z = a.zonas || [];
+    a.pt = a.pt || {}; a.pt.centro = a.pt.centro || [a.chefe.x + 1, a.chefe.y + 4];
     const mud = k => {
+      if (ESPECIAIS[k]) return Object.assign(ESPECIAIS[k].faz(a), { on: true, esp: k });          // (lote 38)
       if (k === 'reforcos') return { k, on: true, pts: a.reforcos.slice(), nome: LACAIO_ARENA[a.tipo] || 'Lacaio' };
       if (k === 'desaba') return Object.assign({ k, on: true }, a.desaba);
       if (k === 'luz' || k === 'grade') return Object.assign({ k, on: true }, k === 'grade' && a.grade ? { x: a.grade.x, y: a.grade.y } : {});
       const e = z.find(x => x[0] === k) || [k, a.chefe.x + 1, a.chefe.y + 3, 2.5];
       return { k: 'zona', fx: k.slice(5), on: true, x: e[1], y: e[2], r: e[3] };
     };
-    const base = FASES_ARENA[a.tipo] || FASES_ARENA.coliseu, fk = Array.isArray(a.fk) ? a.fk : null, ok = k => MUDANCAS.some(x => x[0] === k) && (k !== 'grade' || !!a.grade);
+    const base = FASES_ARENA[a.tipo] || FASES_ARENA.coliseu, fk = Array.isArray(a.fk) ? a.fk : null, ok = k => mudancasDe(a.tipo).some(x => x[0] === k) && (k !== 'grade' || !!a.grade);
     return base.map((ks, i) => ({ n: i + 2, nome: 'Fase ' + (i + 2), m: ks.map((k0, j) => {
       const o = fk && fk[i] && fk[i][j] ? fk[i][j] : null, k = o && ok(o.k) ? o.k : ok(k0) ? k0 : 'reforcos';
       return Object.assign(mud(k), { on: !o || o.on !== false });
@@ -2122,15 +2478,27 @@ const Masmorra = (() => {
     mausoleu: PAL_M.cripta, covil: PAL_SUB.lava, altar: { rocha: ['#221a1c', '#2e2326', '#151012'], chao: ['#5a4c4e', '#66575a', '#4c4042'], junta: '#3a2e30', bloco: ['#54464a', '#483c40', '#615256'] },
     ponte: PAL_M.caverna, topo: { rocha: ['#2a2d33', '#353941', '#1b1d22'], chao: ['#76736e', '#83807a', '#68655f'], junta: '#45433f', bloco: ['#6a6762', '#5d5a55', '#77746e'] },
     circulo: { rocha: ['#14200f', '#1b2a14', '#0d160a'], chao: ['#3f5a2e', '#4a6a35', '#34502a'], junta: '#2a3a20', bloco: ['#253620', '#1e2e19', '#2c4026'] },
+    // (lote 38) as onze novas
+    vampiro: { rocha: ['#1c1416', '#271b1e', '#100b0c'], chao: ['#4f4446', '#5b4f51', '#433a3c'], junta: '#2e2426', bloco: ['#4a3d40', '#3f3336', '#56484b'] },
+    clareira: { rocha: ['#0f1a10', '#162416', '#0a120a'], chao: ['#344a2c', '#3e5734', '#2c4025'], junta: '#233220', bloco: ['#1e2e1b', '#182616', '#243820'] },
+    fosso: { rocha: ['#1f1110', '#2b1714', '#120909'], chao: ['#3d2a26', '#48322d', '#33231f'], junta: '#2a1714', bloco: ['#3a2622', '#30201c', '#45302a'] },
+    ratos: PAL_M.esgoto, lago: PAL_SUB.gelo,
+    forja: { rocha: ['#231a15', '#30241d', '#15100c'], chao: ['#5e5148', '#6a5c52', '#52463e'], junta: '#3a2e26', bloco: ['#57493e', '#4b3f35', '#635447'] },
+    fantasma: PAL_M.navio,
+    biblioteca: { rocha: ['#1b1824', '#252131', '#110f17'], chao: ['#4a3628', '#56402f', '#3e2d21'], junta: '#2a1e16', bloco: ['#4a3f5c', '#3f3550', '#564a6a'] },
+    pantano: { rocha: ['#141a0e', '#1c2414', '#0c1008'], chao: ['#4a4630', '#555138', '#3f3c29'], junta: '#2a281a', bloco: ['#363b24', '#2d321e', '#40462b'] },
+    espelhos: { rocha: ['#18171c', '#222027', '#0e0d11'], chao: ['#5a5662', '#d6d2dc', '#2c2a32'], junta: '#3a3842', bloco: ['#5e5a68', '#524e5c', '#6a6676'] },
+    mina: PAL_M.mina,
   };
-  const PISO_ARENA = { coliseu: 'areia', trono: 'marmore', mausoleu: 'lajes', covil: 'bruto', altar: 'lajes', ponte: 'bruto', topo: 'lajes', circulo: 'grama' };
+  const PISO_ARENA = { coliseu: 'areia', trono: 'marmore', mausoleu: 'lajes', covil: 'bruto', altar: 'lajes', ponte: 'bruto', topo: 'lajes', circulo: 'grama',
+    vampiro: 'lajes', clareira: 'grama', fosso: 'bruto', ratos: 'tijolo', lago: 'bruto', forja: 'lajes', fantasma: 'madeira', biblioteca: 'madeira', pantano: 'bruto', espelhos: 'ladrilho', mina: 'bruto' };
   const tomM = (hex, f) => (typeof Estilos !== 'undefined' ? Estilos.tom(hex, f) : hex);
   function pintar(p, c) {
     const W = p.W, H = p.H, cv = document.createElement('canvas');
     cv.width = Math.round(W * c); cv.height = Math.round(H * c);
     const g = cv.getContext('2d'), rnd = mulberry((p.seed ^ 0x2f6b13a7) >>> 0 || 7), P = (p.tipo === 'subsolo' && PAL_SUB[p.bioma]) || (p.tipo === 'arena' && PAL_ARENA[p.arena.tipo]) || PAL_M[p.tipo] || PAL_M.pedra;
     const grade = p.grade, at = (i, j) => (i >= 0 && j >= 0 && i < W && j < H ? +grade[j * W + i] : ROCHA), aberto = (i, j) => at(i, j) !== ROCHA;
-    const reto = p.tipo === 'arena' ? p.arena.tipo === 'trono' || p.arena.tipo === 'mausoleu' : !CAVADO.has(p.tipo);
+    const reto = p.tipo === 'arena' ? ARENA_RETA.has(p.arena.tipo) : !CAVADO.has(p.tipo);
     const piso = p.tipo === 'arena' ? PISO_ARENA[p.arena.tipo] : PISO_M[p.tipo] || null;          // (lote 18: o chão da arena; lote 28: o dos estilos novos)
     // 1) a rocha: o fundo escuro com manchas e rachaduras
     g.fillStyle = P.rocha[0]; g.fillRect(0, 0, cv.width, cv.height);
@@ -2379,7 +2747,7 @@ const Masmorra = (() => {
 
   /* Os desenhos (z: 0 por baixo de tudo, dentro do chão; 1 no chão; 2 as coisas; 3 o que fica por cima). */
   const DESENHO = {
-    tapete: { z: 0, f(g, o, c, rnd) { g.save(); g.fillStyle = '#6a1f22'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c); g.strokeStyle = '#c9a24a'; g.lineWidth = Math.max(1, c * 0.06); g.strokeRect((o.x + 0.08) * c, (o.y + 0.08) * c, (o.w - 0.16) * c, (o.h - 0.16) * c); g.globalAlpha = 0.25; g.fillStyle = '#000'; for (let k = 0; k < 6; k++) g.fillRect((o.x + rnd() * o.w) * c, (o.y + rnd() * o.h) * c, c * 0.3, c * 0.2); g.restore(); } },
+    tapete: { z: 0, f(g, o, c, rnd) { g.save(); g.fillStyle = o.cor || '#6a1f22'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c); g.strokeStyle = '#c9a24a'; g.lineWidth = Math.max(1, c * 0.06); g.strokeRect((o.x + 0.08) * c, (o.y + 0.08) * c, (o.w - 0.16) * c, (o.h - 0.16) * c); g.globalAlpha = 0.25; g.fillStyle = '#000'; for (let k = 0; k < 6; k++) g.fillRect((o.x + rnd() * o.w) * c, (o.y + rnd() * o.h) * c, c * 0.3, c * 0.2); g.restore(); } },
     trilho: { z: 0, f(g, o, c) {
       const pts = o.pts; if (!pts || pts.length < 2) return;
       g.save(); g.lineCap = 'butt';
@@ -2806,6 +3174,130 @@ const Masmorra = (() => {
       if (typeof Paisagem !== 'undefined' && Paisagem.fogueiraApagada) { Paisagem.fogueiraApagada(g, o, c, rnd); return; }
       g.save(); g.fillStyle = '#2a2420'; g.beginPath(); g.arc(o.x * c, o.y * c, c * 0.4, 0, TAU); g.fill(); g.restore();
     } },
+    // ---- (lote 38) as arenas novas ----
+    caixao: { z: 2, f(g, o, c) {
+      // o caixão de madeira escura (mais largo nos ombros), a tampa e a placa de prata
+      const deitado = o.w >= o.h, L = (deitado ? o.w : o.h) * c, E = (deitado ? o.h : o.w) * c;
+      g.save(); g.translate((o.x + o.w / 2) * c, (o.y + o.h / 2) * c); if (!deitado) g.rotate(Math.PI / 2);
+      const forma = (k) => { const l = L / 2 * k, e = E / 2 * k; g.beginPath(); g.moveTo(-l, -e * 0.55); g.lineTo(-l * 0.55, -e); g.lineTo(l, -e * 0.62); g.lineTo(l, e * 0.62); g.lineTo(-l * 0.55, e); g.lineTo(-l, e * 0.55); g.closePath(); };
+      g.fillStyle = 'rgba(0,0,0,0.45)'; g.save(); g.translate(c * 0.08, c * 0.1); forma(0.94); g.fill(); g.restore();
+      forma(0.94); g.fillStyle = '#3a2418'; g.fill(); g.strokeStyle = '#1a0f0a'; g.lineWidth = Math.max(1, c * 0.04); g.stroke();
+      forma(0.78); g.fillStyle = '#4e3222'; g.fill(); g.strokeStyle = 'rgba(120,80,50,0.5)'; g.lineWidth = Math.max(1, c * 0.025); g.stroke();
+      g.strokeStyle = '#b8bcc4'; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.moveTo(-L * 0.18, 0); g.lineTo(L * 0.18, 0); g.moveTo(-L * 0.06, -E * 0.22); g.lineTo(-L * 0.06, E * 0.22); g.stroke();
+      g.restore();
+    } },
+    sangue: { z: 1, f(g, o, c, rnd) {
+      // a poça de sangue: o vermelho escuro, as gotas em volta e o brilho
+      g.save();
+      g.fillStyle = '#4a0a12'; g.globalAlpha = 0.85; g.beginPath();
+      for (let k = 0; k < 14; k++) { const a = (k / 14) * TAU, d = o.r * (0.7 + rnd() * 0.35); k ? g.lineTo((o.x + Math.cos(a) * d) * c, (o.y + Math.sin(a) * d * 0.75) * c) : g.moveTo((o.x + Math.cos(a) * d) * c, (o.y + Math.sin(a) * d * 0.75) * c); }
+      g.closePath(); g.fill();
+      g.fillStyle = '#6e0f1c'; g.globalAlpha = 0.7; g.beginPath(); g.ellipse((o.x - o.r * 0.1) * c, (o.y - o.r * 0.08) * c, o.r * 0.55 * c, o.r * 0.38 * c, 0.2, 0, TAU); g.fill();
+      for (let k = 0; k < 9; k++) { const a = rnd() * TAU, d = o.r * (1 + rnd() * 0.6); g.globalAlpha = 0.75; g.fillStyle = '#5a0b16'; g.beginPath(); g.arc((o.x + Math.cos(a) * d) * c, (o.y + Math.sin(a) * d * 0.75) * c, c * (0.04 + rnd() * 0.07), 0, TAU); g.fill(); }
+      g.globalAlpha = 0.35; g.fillStyle = '#ff9aa6'; g.beginPath(); g.ellipse((o.x - o.r * 0.3) * c, (o.y - o.r * 0.25) * c, o.r * 0.18 * c, o.r * 0.06 * c, 0.3, 0, TAU); g.fill();
+      g.restore();
+    } },
+    luar: { z: 1, f(g, o, c) {
+      // a luz da lua cheia no chão da clareira
+      g.save(); const gr = g.createRadialGradient(o.x * c, o.y * c, 0, o.x * c, o.y * c, o.r * c);
+      gr.addColorStop(0, 'rgba(214,226,255,0.38)'); gr.addColorStop(0.65, 'rgba(190,206,255,0.16)'); gr.addColorStop(1, 'rgba(190,206,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, TAU); g.fill(); g.restore();
+    } },
+    portalInferno: { z: 1, f(g, o, c, rnd) {
+      // o portal no chão do fosso: o poço escuro no meio, os anéis de fogo em espiral e as runas em volta
+      const X = o.x * c, Y = o.y * c, R = o.r * c;
+      g.save();
+      const gr = g.createRadialGradient(X, Y, 0, X, Y, R * 1.25); gr.addColorStop(0, '#0a0204'); gr.addColorStop(0.55, '#3a0806'); gr.addColorStop(0.8, 'rgba(255,90,30,0.55)'); gr.addColorStop(1, 'rgba(255,90,30,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(X, Y, R * 1.25, 0, TAU); g.fill();
+      g.lineCap = 'round';
+      for (let k = 0; k < 3; k++) { g.strokeStyle = k % 2 ? '#ffb347' : '#ff5a1f'; g.globalAlpha = 0.75; g.lineWidth = Math.max(1, c * (0.07 - k * 0.015)); g.beginPath(); for (let t = 0; t <= 1.001; t += 0.04) { const a = t * TAU * 1.4 + k * 2.1, d = R * (0.25 + t * 0.6); t ? g.lineTo(X + Math.cos(a) * d, Y + Math.sin(a) * d) : g.moveTo(X + Math.cos(a) * d, Y + Math.sin(a) * d); } g.stroke(); }
+      g.globalAlpha = 0.85; g.strokeStyle = '#c2361a'; g.lineWidth = Math.max(1, c * 0.06); g.beginPath(); g.arc(X, Y, R, 0, TAU); g.stroke();
+      g.fillStyle = '#ffcf7a';
+      for (let k = 0; k < 8; k++) { const a = (k / 8) * TAU, x = X + Math.cos(a) * R * 1.12, y = Y + Math.sin(a) * R * 1.12; g.save(); g.translate(x, y); g.rotate(a); g.fillRect(-c * 0.05, -c * 0.11, c * 0.1, c * 0.22); g.fillRect(-c * 0.1, -c * 0.03, c * 0.2, c * 0.06); g.restore(); }
+      g.restore();
+    } },
+    livrosAbertos: { z: 2, f(g, o, c, rnd) {
+      // o livro aberto (as duas páginas e a lombada) e os outros espalhados em volta
+      const X = o.x * c, Y = o.y * c, s = o.grande ? 1.4 : 1;
+      g.save();
+      for (let k = 0; k < (o.grande ? 2 : 3); k++) { const a = rnd() * TAU, d = c * (0.45 + rnd() * 0.35) * s; g.save(); g.translate(X + Math.cos(a) * d, Y + Math.sin(a) * d * 0.7); g.rotate(rnd() * 3); g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(-c * 0.16 + 2, -c * 0.11 + 2, c * 0.32, c * 0.22); g.fillStyle = ['#5a2a3a', '#2a3a5a', '#3a4a2a', '#5a4a2a'][Math.floor(rnd() * 4)]; g.fillRect(-c * 0.16, -c * 0.11, c * 0.32, c * 0.22); g.fillStyle = '#d8c9a0'; g.fillRect(-c * 0.16, c * 0.07, c * 0.32, c * 0.03); g.restore(); }
+      g.translate(X, Y); g.rotate(-0.12); g.scale(s, s);
+      g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(-c * 0.36 + 3, -c * 0.24 + 3, c * 0.72, c * 0.48);
+      g.fillStyle = '#4a2418'; g.fillRect(-c * 0.38, -c * 0.26, c * 0.76, c * 0.52);
+      for (const sx of [-1, 1]) { g.fillStyle = '#e8dcbc'; g.beginPath(); g.moveTo(0, -c * 0.22); g.quadraticCurveTo(sx * c * 0.18, -c * 0.26, sx * c * 0.34, -c * 0.21); g.lineTo(sx * c * 0.34, c * 0.21); g.quadraticCurveTo(sx * c * 0.18, c * 0.17, 0, c * 0.22); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(60,40,30,0.55)'; g.lineWidth = Math.max(1, c * 0.012); for (let l = 0; l < 5; l++) { const y = -c * 0.13 + l * c * 0.065; g.beginPath(); g.moveTo(sx * c * 0.05, y); g.lineTo(sx * c * 0.29, y); g.stroke(); } }
+      g.strokeStyle = '#2a140c'; g.lineWidth = Math.max(1, c * 0.03); g.beginPath(); g.moveTo(0, -c * 0.22); g.lineTo(0, c * 0.22); g.stroke();
+      if (o.grande) { g.strokeStyle = '#8a5cf0'; g.globalAlpha = 0.7; g.lineWidth = Math.max(1, c * 0.025); g.beginPath(); g.arc(c * 0.17, 0, c * 0.08, 0, TAU); g.stroke(); }
+      g.restore();
+    } },
+    fole: { z: 2, f(g, o, c) {
+      // o fole gigante da forja: o couro em gota, as tábuas e o bico de ferro apontando para o meio
+      g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.ang || 0.5);
+      g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(c * 0.1, c * 0.12, c * 0.8, c * 0.5, 0, 0, TAU); g.fill();
+      g.fillStyle = '#6a4a2c'; g.beginPath(); g.moveTo(-c * 0.8, -c * 0.45); g.quadraticCurveTo(c * 0.3, -c * 0.6, c * 0.65, 0); g.quadraticCurveTo(c * 0.3, c * 0.6, -c * 0.8, c * 0.45); g.closePath(); g.fill();
+      g.strokeStyle = '#3a2614'; g.lineWidth = Math.max(1, c * 0.04); g.stroke();
+      g.strokeStyle = 'rgba(30,18,10,0.55)'; g.lineWidth = Math.max(1, c * 0.03); for (const k of [-0.45, -0.1, 0.25]) { g.beginPath(); g.moveTo(k * c, -c * 0.48); g.quadraticCurveTo((k + 0.12) * c, 0, k * c, c * 0.48); g.stroke(); }
+      g.fillStyle = '#4a4c50'; g.fillRect(c * 0.6, -c * 0.08, c * 0.45, c * 0.16); g.strokeStyle = '#1c1c1e'; g.strokeRect(c * 0.6, -c * 0.08, c * 0.45, c * 0.16);
+      g.fillStyle = '#4e3520'; g.fillRect(-c * 1.05, -c * 0.32, c * 0.3, c * 0.12); g.fillRect(-c * 1.05, c * 0.2, c * 0.3, c * 0.12);
+      g.restore();
+    } },
+    mastro: { z: 3, f(g, o, c) {
+      // o mastro visto de cima: a base, a verga atravessada no convés com a vela enrolada, os cabos até a amurada
+      const X = o.x * c, Y = o.y * c, L = (o.larg || 6) * c;
+      g.save(); g.lineCap = 'round';
+      g.strokeStyle = 'rgba(200,190,160,0.45)'; g.lineWidth = Math.max(1, c * 0.025);
+      for (const s of [-1, 1]) for (const d of [0.35, 0.5]) { g.beginPath(); g.moveTo(X, Y); g.lineTo(X + s * L * d, Y + c * 1.2); g.stroke(); }
+      g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(X - L / 2 + 3, Y - c * 0.16 + 4, L, c * 0.32);
+      g.fillStyle = '#5a4030'; g.fillRect(X - L / 2, Y - c * 0.1, L, c * 0.2);
+      g.fillStyle = '#cfc2a0'; g.globalAlpha = 0.9; g.fillRect(X - L * 0.45, Y - c * 0.2, L * 0.9, c * 0.16);
+      g.globalAlpha = 1; g.strokeStyle = 'rgba(90,70,50,0.6)'; g.lineWidth = Math.max(1, c * 0.02); for (let k = 1; k < 8; k++) { const x = X - L * 0.45 + (k / 8) * L * 0.9; g.beginPath(); g.moveTo(x, Y - c * 0.2); g.lineTo(x, Y - c * 0.04); g.stroke(); }
+      const gr = g.createRadialGradient(X - c * 0.1, Y - c * 0.1, 0, X, Y, c * 0.34); gr.addColorStop(0, '#8a6a48'); gr.addColorStop(1, '#3a2818');
+      g.fillStyle = gr; g.beginPath(); g.arc(X, Y, c * 0.32, 0, TAU); g.fill(); g.strokeStyle = '#1e140c'; g.lineWidth = Math.max(1, c * 0.04); g.stroke();
+      g.restore();
+    } },
+    cabana: { z: 3, f(g, o, c, rnd) {
+      // a cabana da bruxa vista de cima: o telhado de palha (com o musgo e a cumeeira), o buraco da fumaça e a porta
+      const x = (o.x - o.w / 2) * c, y = (o.y - o.h / 2) * c, w = o.w * c, hh = o.h * c;
+      g.save();
+      g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(x + c * 0.12, y + c * 0.15, w, hh);
+      g.fillStyle = '#7a6a3a'; g.fillRect(x - c * 0.1, y - c * 0.05, w + c * 0.2, hh / 2 + c * 0.05);
+      g.fillStyle = '#655730'; g.fillRect(x - c * 0.1, y + hh / 2, w + c * 0.2, hh / 2 + c * 0.05);
+      g.strokeStyle = 'rgba(50,40,20,0.6)'; g.lineWidth = Math.max(1, c * 0.025);
+      for (let k = 0; k < Math.round(o.w * 9); k++) { const px = x + rnd() * w, py = y + rnd() * hh; g.beginPath(); g.moveTo(px, py); g.lineTo(px + (rnd() - 0.5) * c * 0.1, py + (py < y + hh / 2 ? -1 : 1) * c * 0.22); g.stroke(); }
+      for (let k = 0; k < 6; k++) { g.fillStyle = 'rgba(80,110,50,0.45)'; g.beginPath(); g.arc(x + rnd() * w, y + rnd() * hh, c * (0.12 + rnd() * 0.18), 0, TAU); g.fill(); }
+      g.strokeStyle = '#3a2e18'; g.lineWidth = Math.max(1.5, c * 0.07); g.beginPath(); g.moveTo(x, y + hh / 2); g.lineTo(x + w, y + hh / 2); g.stroke();
+      g.fillStyle = '#1a140c'; g.beginPath(); g.arc(x + w * 0.68, y + hh * 0.5, c * 0.16, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(160,220,140,0.35)'; g.beginPath(); g.arc(x + w * 0.68, y + hh * 0.5, c * 0.1, 0, TAU); g.fill();
+      g.fillStyle = '#3a2614'; g.fillRect(x + w / 2 - c * 0.25, y + hh - c * 0.02, c * 0.5, c * 0.14);
+      g.restore();
+    } },
+    caldeirao: { z: 2, f(g, o, c, rnd) {
+      // o caldeirão de ferro com a poção verde borbulhando
+      const X = o.x * c, Y = o.y * c, R = (o.r || 0.6) * c;
+      g.save();
+      const gl = g.createRadialGradient(X, Y, 0, X, Y, R * 2.4); gl.addColorStop(0, 'rgba(127,224,127,0.35)'); gl.addColorStop(1, 'rgba(127,224,127,0)'); g.fillStyle = gl; g.beginPath(); g.arc(X, Y, R * 2.4, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.arc(X + c * 0.08, Y + c * 0.1, R, 0, TAU); g.fill();
+      g.fillStyle = '#1e1e22'; g.beginPath(); g.arc(X, Y, R, 0, TAU); g.fill(); g.strokeStyle = '#4a4c52'; g.lineWidth = Math.max(1.5, c * 0.07); g.stroke();
+      g.fillStyle = '#5fc45a'; g.beginPath(); g.arc(X, Y, R * 0.74, 0, TAU); g.fill();
+      for (let k = 0; k < 6; k++) { const a = rnd() * TAU, d = rnd() * R * 0.55; g.fillStyle = 'rgba(210,255,190,0.75)'; g.beginPath(); g.arc(X + Math.cos(a) * d, Y + Math.sin(a) * d, c * (0.03 + rnd() * 0.05), 0, TAU); g.fill(); }
+      g.restore();
+    } },
+    espelho: { z: 2, f(g, o, c) {
+      // o espelho: a moldura dourada e o vidro com o reflexo (no chão, de pé, com os pezinhos; na parede, colado nela)
+      const L = (o.w || 1.4) * c, E = c * (o.grande ? 0.36 : o.pe ? 0.28 : 0.3);
+      g.save(); g.translate(o.x * c, o.y * c); g.rotate(o.rot || 0);
+      // (o brilho frio em volta: o espelho se vê de longe no chão escuro)
+      const gl = g.createRadialGradient(0, 0, 0, 0, 0, L * 0.9); gl.addColorStop(0, 'rgba(200,225,255,0.32)'); gl.addColorStop(1, 'rgba(200,225,255,0)');
+      g.fillStyle = gl; g.beginPath(); g.arc(0, 0, L * 0.9, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(-L / 2 + 2, -E / 2 + 3, L, E);
+      g.fillStyle = o.grande ? '#c9a24a' : '#a8873c'; g.fillRect(-L / 2, -E / 2, L, E);
+      const vg = g.createLinearGradient(-L / 2, 0, L / 2, 0); vg.addColorStop(0, '#9fb8cc'); vg.addColorStop(0.45, '#e8f2fb'); vg.addColorStop(0.55, '#b9cfe0'); vg.addColorStop(1, '#7f98ad');
+      g.fillStyle = vg; g.fillRect(-L / 2 + c * 0.06, -E / 2 + c * 0.05, L - c * 0.12, E - c * 0.1);
+      g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = Math.max(1, c * 0.025); g.beginPath(); g.moveTo(-L * 0.25, -E * 0.25); g.lineTo(-L * 0.08, E * 0.25); g.stroke();
+      if (o.grande) { g.fillStyle = '#e0bf6a'; for (const sx of [-1, 1]) { g.beginPath(); g.arc(sx * L / 2, 0, c * 0.1, 0, TAU); g.fill(); } }
+      if (o.pe) { g.fillStyle = '#6a5426'; for (const sx of [-0.35, 0.35]) g.fillRect(sx * L - c * 0.05, E / 2, c * 0.1, c * 0.12); }
+      g.restore();
+    } },
   };
 
   /* A prévia: o fundo, as paredes por cima (as portas em azul, as secretas em roxo, as grades em verde), as runas
@@ -3097,5 +3589,5 @@ const Masmorra = (() => {
     dica: '"Gerar outro" sorteia outro nível, com as mesmas escolhas (a masmorra não tem partes para travar).',
     nota: 'Sai uma cena nova, no breu (só o fogo e os cogumelos iluminam): dentro da cena escolhida em "Embaixo de", com a Saída na escada de subida levando de volta — ou solta, com a Saída ainda sem destino (você escolhe a cena no painel dela). Na escada de descida, a Entrada do nível de baixo (dois cliques nela geram o próximo quando você quiser). As portas secretas e as runas-armadilha ficam escondidas dos jogadores até você revelar. Nada sai escrito.',
     feito: feitoL };
-  return { TIPOS, TAMANHOS, NOME, LARGURAS, PAL_M, DESENHO, BIOMAS_SUB, biomaDeBaixo, ARENAS, TAM_ARENA, NOME_ARENA, MUDANCAS, FASES_ARENA, nomeMud, CHEFE_ARENA, LACAIO_ARENA, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, abrirSubsolo, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LUGAR };
+  return { TIPOS, TAMANHOS, NOME, LARGURAS, PAL_M, DESENHO, BIOMAS_SUB, biomaDeBaixo, ARENAS, TAM_ARENA, NOME_ARENA, MUDANCAS, FASES_ARENA, nomeMud, CHEFE_ARENA, LACAIO_ARENA, GRUPOS_ARENA, ESPECIAIS, mudancasDe, ARENA_RETA, ARENAS_NOVAS, COM_GRADE, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, abrirSubsolo, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LAVA, GELO, LUGAR };
 })();
