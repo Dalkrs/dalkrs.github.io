@@ -9,7 +9,7 @@ const { ok, end } = checker();
 const R = require('../../tc/rules.js');
 const bib = { nome: 'Bib', pools: [{ id: 'p1', nome: 'Pontos', cor: '#D9A441', padrao: 10 }], usos: [{ id: 'passiva', nome: 'Passiva', sigla: 'Pa' }, { id: 'ativa', nome: 'Ativa', sigla: 'At' }, { id: 'reacao', nome: 'Reação', sigla: 'Re' }], naturezas: [],
   arvores: [
-    { id: 'a1', nome: 'Monge', categoria: 'classe', barra: 'Ki', nodes: [
+    { id: 'a1', nome: 'Monge', categoria: 'outra', barra: 'Ki', nodes: [   // (lote 34: de classe, a barra seria comum; aqui é a especial)
       { id: 'n1', nome: 'Origem', tipo: 'keystone', pais: [], usos: [], desc: 'Ponto de partida.', graus: [{ custos: {}, texto: '' }] },
       { id: 'n2', nome: 'Respiro', tipo: 'notavel', pais: ['n1'], usos: ['passiva'], desc: 'Ganha 1 de Ki por turno.', graus: [{ custos: { p1: 1 }, texto: '' }] },
       { id: 'n3', nome: 'Palma explosiva', tipo: 'notavel', pais: ['n1'], usos: ['ativa'], desc: 'Gasta 2 de Ki: dano dobrado.', graus: [{ custos: { p1: 1 }, texto: '' }] }] },

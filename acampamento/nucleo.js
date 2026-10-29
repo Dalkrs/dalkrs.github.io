@@ -454,6 +454,8 @@
       const podre = Number.isFinite(r.podre) && r.podre > 0 ? r.podre : 0, teto = Math.max(min, r.max - podre), pd = podre ? { podre } : {};
       const inicio = r.inicio != null && Number.isFinite(r.inicio) ? limitar(r.inicio, min, teto) : null;
       const de = limitar(num(r.atual, inicio == null ? teto : inicio), min, teto);
+      // (lote 34) a barra da árvore que fica como está (a Fome do Vampiro): o descanso não mexe nela
+      if (r.fica) return Object.assign({ id: r.id, nome: r.nome, max: r.max, de, para: de, fica: true }, pd);
       /* A barra que tem um começo próprio (a que nasce em 4 de 20, por exemplo) não "recupera": o descanso longo a
          leva de volta ao começo, de onde ela estiver, e o curto não mexe nela. */
       if (inicio != null) return Object.assign({ id: r.id, nome: r.nome, max: r.max, de, para: longo ? inicio : de, inicio }, pd);

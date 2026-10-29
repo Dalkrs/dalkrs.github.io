@@ -167,19 +167,19 @@
     {id:'ancestralEncarnado', n:'Ancestral Encarnado', g:'racas'}, {id:'armaVitrine', n:'Arma de Vitrine', g:'racas'}, {id:'armaRachada', n:'Arma Rachada', g:'racas'},
     {id:'armaduraGelo', n:'Armadura de Gelo', g:'racas'}, {id:'bracoPerdido', n:'Braço Perdido', g:'racas'}, {id:'cargaTrovao', n:'Carga de trovão', g:'racas'},
     {id:'cercado', n:'Cercado', g:'racas'}, {id:'coma', n:'Coma', g:'racas'}, {id:'comprado', n:'Comprado', g:'racas'},
-    {id:'contagem', n:'Contagem', g:'racas'}, {id:'costelasAbertas', n:'Costelas Abertas', g:'racas'}, {id:'couracaGelo', n:'Couraça de Gelo', g:'racas'},
+    {id:'contagem', n:'Contagem', g:'racas'}, {id:'costelasAbertas', n:'Costelas Abertas', g:'racas'}, {id:'couracaGelo', n:'Couraça de Gelo', g:'racas'}, {id:'criaNoite', n:'Cria da Noite', g:'racas'},
     {id:'debaixoTerra', n:'Debaixo da Terra', g:'racas'}, {id:'descontrole', n:'Descontrole', g:'racas'}, {id:'dividaEspiritual', n:'Dívida Espiritual', g:'racas'},
     {id:'domDevorado', n:'Dom Devorado', g:'racas'}, {id:'dor', n:'Dor', g:'racas'}, {id:'emBrasa', n:'Em Brasa', g:'racas'},
     {id:'encanto', n:'Encanto', g:'racas'}, {id:'endurecido', n:'Endurecido', g:'racas'}, {id:'enxertado', n:'Enxertado', g:'racas'},
     {id:'enxerto', n:'Enxerto', g:'racas'}, {id:'erguido', n:'Erguido', g:'racas'}, {id:'exposto', n:'Exposto', g:'racas'},
-    {id:'farejado', n:'Farejado', g:'racas'}, {id:'frio', n:'Frio', g:'racas'}, {id:'gosto', n:'Gosto', g:'racas'},
+    {id:'farejado', n:'Farejado', g:'racas'}, {id:'feraSolta', n:'Fera Solta', g:'racas'}, {id:'frio', n:'Frio', g:'racas'}, {id:'gosto', n:'Gosto', g:'racas'},
     {id:'guardaNatural', n:'Guarda Natural', g:'racas'}, {id:'habilidadeEngolida', n:'Habilidade Engolida', g:'racas'}, {id:'jurado', n:'Jurado', g:'racas'},
     {id:'laco', n:'Laço', g:'racas'}, {id:'licao', n:'Lição', g:'racas'}, {id:'magiaEngatilhada', n:'Magia Engatilhada', g:'racas'},
-    {id:'mandado', n:'Mandado', g:'racas'}, {id:'maoPerdida', n:'Mão Perdida', g:'racas'}, {id:'naPanca', n:'Na Pança', g:'racas'},
+    {id:'mandado', n:'Mandado', g:'racas'}, {id:'maoPerdida', n:'Mão Perdida', g:'racas'}, {id:'naPanca', n:'Na Pança', g:'racas'}, {id:'naToca', n:'Na Toca', g:'racas'},
     {id:'noOmbro', n:'No Ombro', g:'racas'}, {id:'pePerdido', n:'Pé Perdido', g:'racas'}, {id:'perdido', n:'Perdido', g:'racas'},
-    {id:'pernaPerdida', n:'Perna Perdida', g:'racas'}, {id:'praga', n:'Praga', g:'racas'}, {id:'procurado', n:'Procurado', g:'racas'},
+    {id:'pernaPerdida', n:'Perna Perdida', g:'racas'}, {id:'pocaRoedor', n:'Poça do Roedor', g:'racas'}, {id:'praga', n:'Praga', g:'racas'}, {id:'procurado', n:'Procurado', g:'racas'},
     {id:'reboteAdiado', n:'Rebote Adiado', g:'racas'}, {id:'recusaMorte', n:'Recusa da Morte', g:'racas'}, {id:'rendido', n:'Rendido', g:'racas'},
-    {id:'seloOcre', n:'Selo de Ocre', g:'racas'}, {id:'semeado', n:'Semeado', g:'racas'}, {id:'sentenca', n:'Sentença', g:'racas'},
+    {id:'seloOcre', n:'Selo de Ocre', g:'racas'}, {id:'semeado', n:'Semeado', g:'racas'}, {id:'sementeSangue', n:'Semente de Sangue', g:'racas'}, {id:'sentenca', n:'Sentença', g:'racas'},
     {id:'sobra', n:'Sobra', g:'racas'}, {id:'transeRubro', n:'Transe Rubro', g:'racas'}, {id:'tregua', n:'Trégua', g:'racas'},
     {id:'vinculoSangue', n:'Vínculo de Sangue', g:'racas'}, {id:'vozVolkhum', n:'Voz de Volkhum\'Pansar', g:'racas'},
     // (lote 20) as das classes, num grupo só, em ordem alfabética
@@ -696,7 +696,14 @@
       const max=arred(cfg,val);
       const o={...r, val, err, arv:b, max:max===0?0:max};     // o teste com 0 tira o −0 (teto(-0.3))
       o.eq=q;
-      return Object.assign(o, limitesDoRecurso(r, o.max, vars, cfg));
+      Object.assign(o, limitesDoRecurso(r, o.max, vars, cfg));
+      // (lote 34) a barra de raça, classe ou linhagem: os nós da árvore somam ao início (o maior, se várias árvores
+      // dividem a barra), que não passa de 10 — a não ser que já comece acima disso
+      if(Array.isArray(r.arvs) && r.arvs.length && o.inicio!=null){
+        const bi=Math.max(0,...r.arvs.map(id=>{ const k=normNome(CHAVE_INI+String(id).toLowerCase()); return tem(arvRec,k)? arvRec[k] : 0; }));
+        if(bi>0){ o.inicio=Math.min(o.max, Math.max(o.inicio, Math.min(TETO_INICIO, o.inicio+bi))); o.iniArv=bi; }
+      }
+      return o;
     });
     const r={mult,total,totalAnt,base,ant,tot,eq,der,derAnt,def,vars,recursos,nat,arv,arvRec,
       tmp, temporarios:tp.lista, defEsp, baseEsp, eqEsp:ext.esp, tmpEsp:tp.esp, eqRec:ext.rec,
@@ -988,6 +995,20 @@
      de atributo sai em maiúsculas; nome de recurso sai na primeira grafia que
      aparecer, juntando as que só diferem em maiúsculas, acentos ou espaços nas
      pontas. Valor que não é número finito é ignorado. */
+  /* (lote 34) O que um grau soma ao início da barra da árvore ("+1 de Calor inicial", "+2 Palavras iniciais"): o
+     número que o mestre pôs no grau (g.ini; 0 vale "nada") ou, sem ele, o que o texto do grau diz. É o total naquele
+     grau (o 3º grau de "+1/+2/+4" dá 4, não 7). → número ou null */
+  const TETO_INICIO = 10;
+  const RE_INI_GRAU = /\+\s*(\d{1,2})\s+(?:de\s+)?[^.;\n()+]{0,40}?\binicia(?:l|is)\b/i;
+  function inicioDoGrau(g) {
+    if (!g || typeof g !== 'object') return null;
+    const v = numFinito(g.ini);
+    if (v != null) return Math.max(0, Math.round(v));
+    const m = RE_INI_GRAU.exec(String(g.texto || ''));
+    return m ? Number(m[1]) : null;
+  }
+  // a chave do que os nós de uma árvore somam ao início da barra dela, no mapa de bonusDaArvore
+  const CHAVE_INI = 'inicio@';
   function bonusDaArvore(skills, biblioteca) {
     const out = {};
     const sk = skills || {};
@@ -1008,6 +1029,8 @@
         if (!n || porId.get(n.id) !== n || arvDe.get(n.id) !== a || !tem(al, n.id)) return;
         const graus = Array.isArray(n.graus) ? n.graus : [];
         const g = Math.min(+al[n.id], graus.length);
+        // (lote 34) o início da barra: o do grau mais alto comprado que diz quanto
+        for (let k = g - 1; k >= 0; k--) { const ini = inicioDoGrau(graus[k]); if (ini == null) continue; if (ini) somar(out, CHAVE_INI + String(a.id).toLowerCase(), ini); break; }
         for (let k = 0; k < g; k++) {
           const b = graus[k] && graus[k].bonus;
           if (!b || typeof b !== 'object') continue;
@@ -1112,7 +1135,9 @@
       const c = calcs[i] && calcs[i].id === r.id ? calcs[i] : calcs.find(x => x.id === r.id);
       const max = c ? numFinito(c.max) : null, min = c ? Math.min(0, numFinito(c.min) || 0) : 0, inicio = c ? numFinito(c.inicio) : null;
       const podre = podreDe(estado, r.id, max), teto = max == null ? null : Math.max(min, max - podre);
-      return { id: r.id, nome: r.nome, max, min, inicio, atual: atualDe(tem(rec, r.id) ? rec[r.id] : null, teto, min, inicio), sobre: sobreDe(r.id), podre };
+      const o = { id: r.id, nome: r.nome, max, min, inicio, atual: atualDe(tem(rec, r.id) ? rec[r.id] : null, teto, min, inicio), sobre: sobreDe(r.id), podre };
+      if (r.comb === 'fica' && Array.isArray(r.arvs) && r.arvs.length) o.fica = true;     // (lote 34) a barra da árvore que o combate e o descanso não mexem (a Fome do Vampiro)
+      return o;
     });
   }
   /* → um estado NOVO com o recurso somado de delta (dano negativo, cura positiva),
@@ -1919,7 +1944,7 @@
     FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,
     NIVEIS_MAX, temNiveis, nivelDoItem, niveisDoItem, itemNoNivel, espelharItem, itemComNivelNovo, itemSemNivel, textoDoNivel,
-    MARCAS_BARRA, barraEspecial, defBarraEspecial, marcaDaBarra, textoDaMarca,
+    MARCAS_BARRA, barraEspecial, defBarraEspecial, marcaDaBarra, textoDaMarca, TETO_INICIO, inicioDoGrau,
     temTranca, visiveis, bibVisivel, ramosDe, bibComRamos, partesComContas, textoComContas, explicarConta, MAX_USO, usoLimpo, custoDeUso, textoDoCusto,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,

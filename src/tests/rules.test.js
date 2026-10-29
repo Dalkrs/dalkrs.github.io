@@ -345,7 +345,7 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   ok(j(R.previaDoUso(ana, ca, estA, B5[0], { pc: bia, calc: cbia, estado: estBia, nome: 'Bia' }, { semValores: true })) === j(['hp +30', 'SP: Bia não tem essa barra', 'Sobrevida 15 em hp', 'Força +3 (até o próximo descanso)', 'Defesa Física +2 (4 rodadas)', 'Condição: Abençoado (3 rodadas)', 'PODER DIVINO +2']),
     'a prévia sem os valores de quem recebe: ' + j(R.previaDoUso(ana, ca, estA, B5[0], { pc: bia, calc: cbia, estado: estBia, nome: 'Bia' }, { semValores: true })));
   ok(R.previaDoUso(ana, ca, estA, B5[0], null, { semValores: true })[1] === 'SP + 2d6, rolado na hora', 'e o efeito com dados diz que rola na hora: ' + R.previaDoUso(ana, ca, estA, B5[0], null, { semValores: true })[1]);
-  ok(R.CONDICOES.length === 148 && R.CONDICOES.some(c => c.id === 'imbuidoMana' && c.g === 'mente') && R.CONDICOES.some(c => c.id === 'grito' && c.n === 'Grito de Batalha') && R.CONDICOES.some(c => c.id === 'ventania' && c.n === 'Ventania' && c.g === 'dano') && R.CONDICOES.some(c => c.id === 'vozVolkhum' && c.n === "Voz de Volkhum'Pansar" && c.g === 'racas') && R.COND_GRUPOS.length === 9 && R.nomeDaCondicao('resfriado') === 'Resfriado' && Object.isFrozen(R.CONDICOES), 'a lista das condições (as mesmas das Cenas; lote 9: com o Duplicado; lote 28: com o Imbuído de Mana)');
+  ok(R.CONDICOES.length === 153 && R.CONDICOES.some(c => c.id === 'imbuidoMana' && c.g === 'mente') && R.CONDICOES.some(c => c.id === 'grito' && c.n === 'Grito de Batalha') && R.CONDICOES.some(c => c.id === 'ventania' && c.n === 'Ventania' && c.g === 'dano') && R.CONDICOES.some(c => c.id === 'vozVolkhum' && c.n === "Voz de Volkhum'Pansar" && c.g === 'racas') && R.COND_GRUPOS.length === 9 && R.nomeDaCondicao('resfriado') === 'Resfriado' && Object.isFrozen(R.CONDICOES), 'a lista das condições (as mesmas das Cenas; lote 9: com o Duplicado; lote 28: com o Imbuído de Mana; lote 34: as 5 do Vampiro, do Licantropo e do Antro Roedor)');
 }
 // as condições da ficha (para a poção pôr no token) são as mesmas das Cenas: mesmo id, nome e grupo, na mesma ordem
 {
@@ -354,7 +354,7 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   // (lote 19: as das raças têm mais campos depois do grupo, e o nome pode ter apóstrofo)
   const cenas = [...bloco('const CONDS = [').matchAll(/\{ id: '(\w+)', n: '((?:[^'\\]|\\.)+)', c: '[^']+', i: '[^']+', g: '(\w+)'/g)].map(m => ({ id: m[1], n: m[2].replace(/\\'/g, "'"), g: m[3] }));
   const grupos = [...bloco('const COND_TAGS = [').matchAll(/\{ id: '(\w+)', n: '[^']+', t: '([^']+)' \}/g)].map(m => ({ id: m[1], n: m[2] }));
-  ok(cenas.length === 148 && j(cenas) === j(R.CONDICOES) && j(grupos) === j(R.COND_GRUPOS), 'as condições de TC.rules batem com as das Cenas (' + cenas.length + ')');
+  ok(cenas.length === 153 && j(cenas) === j(R.CONDICOES) && j(grupos) === j(R.COND_GRUPOS), 'as condições de TC.rules batem com as das Cenas (' + cenas.length + ')');
 }
 // ---------- barras especiais (os antigos poderes divinos), no estado ----------
 {

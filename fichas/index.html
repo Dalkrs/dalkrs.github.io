@@ -1365,8 +1365,9 @@ html:not(.modo-simples) .so-simples{display:none!important}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=20"></script>
-<script src="../tc/rules.js?v=25"></script>
-<script src="../tc/tags.js?v=2"></script>
+<script src="../tc/rules.js?v=26"></script>
+<script src="../tc/barras.js?v=1"></script>
+<script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=14"></script>
 <script src="extras.js?v=19"></script>
 <script src="quadros.js?v=5"></script>
@@ -2340,9 +2341,10 @@ function renderFicha(){
     return;
   }
   // (lote 28) a árvore equipada há pouco traz a barra especial dela
-  const vistasAntes=JSON.stringify(pc.arvVistas||null), pdNovas=barrasDasArvores(pc);
-  if(pdNovas.length || JSON.stringify(pc.arvVistas||null)!==vistasAntes) save();
-  if(pdNovas.length) setTimeout(()=>avisarBarrasNovas(pc,pdNovas),0);
+  // (lote 34) a raça, a classe e a linhagem trazem barras comuns (antes das especiais: as duas leem as árvores novas)
+  const vistasAntes=JSON.stringify(pc.arvVistas||null), marcaAntes=pc.barrasArv, arvB=barrasDeArvore(pc), pdNovas=barrasDasArvores(pc);
+  if(arvB.mudou || pdNovas.length || JSON.stringify(pc.arvVistas||null)!==vistasAntes || pc.barrasArv!==marcaAntes) save();
+  if(pdNovas.length || arvB.itens.length) avisoDeBarras(pc,pdNovas,arvB);
   const c=calcular(pc);
   const pd=Array.isArray(pc.poderes)? pc.poderes : (pc.poderes=[]);
   const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'});
@@ -2529,6 +2531,7 @@ function renderFicha(){
             ${r.err?`<div class="fmlerr">${esc(r.err)}</div>`:''}
             ${r.arv?`<div class="hint">Inclui ${r.arv>0?'+':'−'}${Math.abs(r.arv)} dos nódulos da árvore.</div>`:''}
             ${r.eq?`<div class="hint">Inclui ${r.eq>0?'+':'−'}${Math.abs(r.eq)} dos equipamentos em uso.</div>`:''}
+            ${Array.isArray(r.arvs)&&r.arvs.length?`<div class="hint barra-arv" data-resarv="${r.id}">${esc(textoDaBarraArv(r))}</div>`:''}
             ${r.err||r.val==null?'':FichasExtras.htmlOpcoesBarra(pc,r)}
           </div>`).join('') || '<div class="hint">Nenhum recurso. Clique em “+ Recurso” para criar HP, SP, fé, sanidade, o que precisar.</div>'}
       </div>
@@ -3005,10 +3008,15 @@ function barrasDasArvores(pc){
   if(!Array.isArray(pc.arvVistas)){ pc.arvVistas=equipadas.slice(); return []; }      // (a primeira vez: o que já estava fica como está)
   const novas=[];
   pc.arvVistas=pc.arvVistas.filter(id=>equipadas.includes(id));                         // (a árvore que saiu: entrar de novo cria de novo)
+  const B=window.TC&&TC.barras;
   for(const id of equipadas){
     if(pc.arvVistas.includes(id)) continue;
     pc.arvVistas.push(id);
-    const a=arvPorId(id), d=a? R.defBarraEspecial(a) : null;
+    const a=arvPorId(id);
+    // (lote 34) a raça, a classe e a linhagem trazem barra comum (barrasDeArvore); a escola, a profissão, a Bênção de
+    // Selene e Dain e Karênie não trazem barra nenhuma; a árvore de outra categoria, a barra especial de antes
+    if(B && a && (B.CATS.includes(a.categoria) || a.categoria==='escola' || a.categoria==='profissao' || B.SEM_BARRA.includes(a.id))) continue;
+    const d=a? R.defBarraEspecial(a) : null;
     if(!d) continue;
     if(!Array.isArray(pc.poderes)) pc.poderes=[];
     if(pc.poderes.some(pw=>normNomePd(pw.nome)===normNomePd(d.nome))) continue;
@@ -3022,21 +3030,135 @@ function barrasDasArvores(pc){
   }
   return novas;
 }
+/* (lote 34) As barras de raça, classe e linhagem são barras comuns (recursos, depois do HP e do SP): a árvore que entra
+   cria a dela (TC.barras: o que o mestre definiu na Oficina; sem isso, o guia de barras). Uma vez por ficha
+   (pc.barrasArv), as que a ficha já devia ter entram também — e a barra especial que veio dessas árvores (do lote 28, ou
+   feita à mão com o mesmo nome) vira a barra comum, guardando o valor de agora. A barra comum com o mesmo nome fica (e
+   passa a ser a da árvore). Duas árvores com a mesma barra (as Oradoras: as Palavras) dividem uma. A barra que segue a
+   árvore acompanha o que o mestre muda nela na Oficina (o nome, a faixa, o início). → { mudou, itens: [{ tipo: 'nova' |
+   'convertida' | 'ja', b, rec, valor?, de? }], antes } — antes: o que o Desfazer devolve. */
+function assinaturaBarra(b){ return [b.nome,b.min,b.max,b.inicio==null?'':b.inicio,b.comb].join('|'); }
+function barrasDeArvore(pc){
+  const R=window.TC&&TC.rules, B=window.TC&&TC.barras, out={mudou:false, itens:[], antes:null};
+  if(!R||!B||!pc||pc.petDe||!FichasMesa.podeEditar(pc)) return out;
+  arvPara(pc);
+  const sk=skillsDe(pc), equipadas=(sk.arvores||[]).filter(id=>typeof id==='string');
+  const vistas=Array.isArray(pc.arvVistas)? pc.arvVistas : [], migrar=pc.barrasArv!==1;
+  const barras=B.doPersonagem(equipadas, arvPorId);
+  if(!Array.isArray(pc.recursos)) pc.recursos=[];
+  const antes={recursos:JSON.parse(JSON.stringify(pc.recursos)), poderes:JSON.parse(JSON.stringify(pc.poderes||[])), pd:Object.assign({},(pc.estado&&pc.estado.pd)||{}), rec:Object.assign({},(pc.estado&&pc.estado.rec)||{})};
+  const norm=B.normNome, idsRec=()=>new Set(pc.recursos.map(r=>r&&r.id).concat((pc.poderes||[]).map(p=>p&&p.id)));
+  for(const b of barras){
+    const nova=b.arvs.some(id=>!vistas.includes(id));
+    // a barra que já é desta árvore: acompanha a árvore (e ganha a outra árvore que divide a barra)
+    let r=pc.recursos.find(x=>B.ehDeArvore(x) && x.arvs.some(id=>b.arvs.includes(id)));
+    if(r){
+      const ass=assinaturaBarra(b);
+      if(r.arvDef!==ass){ const n=B.recurso(b,r.id); Object.assign(r,{nome:n.nome,fml:n.fml,comeca:n.comeca,cat:n.cat,comb:n.comb,arvDef:ass}); if(n.piso) r.piso=n.piso; else delete r.piso; out.mudou=true; }
+      const faltam=b.arvs.filter(id=>!r.arvs.includes(id)); if(faltam.length){ r.arvs=r.arvs.concat(faltam); out.mudou=true; }
+      continue;
+    }
+    if(!nova && !migrar) continue;                                   // (a barra que alguém tirou não volta sozinha)
+    // a barra comum de mesmo nome, feita à mão: passa a ser a da árvore (fica como está)
+    r=pc.recursos.find(x=>x && !B.ehDeArvore(x) && norm(x.nome)===norm(b.nome));
+    if(r){ Object.assign(r,{arvs:b.arvs.slice(), cat:b.cat, comb:b.comb, arvDef:assinaturaBarra(b)}); out.mudou=true; out.itens.push({tipo:'ja', b, rec:r}); continue; }
+    // a barra especial que veio da árvore (ou com o nome dela): vira a comum, com o valor de agora
+    const nomes=new Set([b.nome].concat(b.defs.map(x=>R.barraEspecial(x.a))).filter(Boolean).map(norm));
+    const pids=new Set(b.arvs.map(id=>('pa_'+id).replace(/[^\w-]/g,'').slice(0,60)));
+    const pw=(pc.poderes||[]).find(x=>x && (pids.has(x.id) || nomes.has(norm(x.nome))));
+    let id;
+    if(pw){ id=pw.id; if(pc.recursos.some(x=>x.id===id)) id=uid(); }
+    else{ id=('ba_'+b.arvs[0]).replace(/[^\w-]/g,'').slice(0,60); if(idsRec().has(id)) id=uid(); }
+    const rec=Object.assign(B.recurso(b,id),{arvDef:assinaturaBarra(b)});
+    pc.recursos.push(rec); out.mudou=true;
+    if(pw){
+      const e=R.especiais(pc,pc.estado||{}).find(x=>x.id===pw.id), v=e? e.atual : 0, valor=Math.max(b.min,Math.min(b.max,Math.round(v)));
+      pc.poderes=pc.poderes.filter(x=>x!==pw);
+      const est=Object.assign({},pc.estado||{}), pd=Object.assign({},est.pd||{}), rc=Object.assign({},est.rec||{});
+      delete pd[pw.id]; rc[id]=valor; est.pd=pd; est.rec=rc; pc.estado=est;
+      out.itens.push({tipo:'convertida', b, rec, valor, de:pw.nome});
+    }else out.itens.push({tipo:'nova', b, rec});
+  }
+  if(out.itens.some(x=>x.tipo!=='ja')) pc.recursos=B.ordenar(pc.recursos);
+  // (a troca de uma vez só fica feita quando todas as árvores equipadas estão aqui: a biblioteca pode chegar depois)
+  if(migrar && !equipadas.some(id=>!arvPorId(id))){ pc.barrasArv=1; out.mudou=true; }
+  if(out.itens.length) out.antes=antes;
+  return out;
+}
+// o nome da árvore de onde a barra vem: "da raça Anão da Forja", "das raças Kitsune Karê - Oradora · Paciência e …"
+function deOndeVem(b){
+  const B=TC.barras, nomes=b.defs.map(x=>x.a.nome), cat=B.NOME_CAT[b.cat]||'árvore';
+  return (nomes.length>1? 'das '+(cat==='raça'?'raças':cat==='classe'?'classes':'linhagens')+' ' : (cat==='raça'?'da raça ':cat==='classe'?'da classe ':'da linhagem '))+nomes.join(' e ');
+}
+function textoBarraDeArvore(x){
+  const B=TC.barras, b=x.b;
+  if(x.tipo==='convertida') return `A barra ${x.de} agora é uma barra comum (${b.nome}, ${B.faixaTexto(b)}), ${deOndeVem(b)}: o valor ${x.valor} ficou.`;
+  if(x.tipo==='ja') return `A barra ${b.nome} que já estava na ficha agora é a ${deOndeVem(b)}.`;
+  return `A barra ${b.nome} chegou ${deOndeVem(b)} (${B.faixaTexto(b)}).`;
+}
+// (lote 34) o que a ficha diz da barra da árvore, no quadro dos recursos
+function textoDaBarraArv(r){
+  const nomes=r.arvs.map(id=>{ const a=arvPorId(id); return a? a.nome : null; }).filter(Boolean);
+  const cat=(window.TC&&TC.barras&&TC.barras.NOME_CAT[r.cat])||'árvore';
+  const de=nomes.length? 'Barra '+(cat==='raça'?'da raça':cat==='classe'?'da classe':cat==='linhagem'?'da linhagem':'da árvore')+' '+nomes.join(' e ') : 'Barra de árvore';
+  if(r.comb==='fica') return de+'. O combate não mexe nela.';
+  if(r.comb==='pergunta') return de+'. Quando o combate começa, o mestre diz onde ela começa (Dia, 0, 5, 10 ou 15 na lua cheia)'+(r.iniArv? '; os nós somam +'+r.iniArv+' (até 10)' : '')+'.';
+  if(r.inicio==null) return de+'. Começa o combate cheia.';
+  const base=Number(r.comeca), teto=r.iniArv && Number.isFinite(base) && base+r.iniArv>r.inicio;
+  return de+'. Começa o combate em '+fmt(r.inicio).replace('-','−')+(r.iniArv && Number.isFinite(base)? ' ('+fmt(base)+' + '+r.iniArv+' dos nós'+(teto?'; o início não passa de 10':'')+')' : '')+'.';
+}
 function textoBarraNova(x){
   const {pw,d,a}=x;
   if(d.max==null) return `A árvore ${a.nome} trouxe a barra especial ${pw.nome}, sem limite: ${d.faixa==='balança'? 'o texto diz que é uma balança' : d.faixa? 'o texto diz que vai '+d.faixa : 'o texto não diz o máximo'}. Ponha o limite à mão (o campo está marcado).`;
   return `A árvore ${a.nome} trouxe a barra especial ${pw.nome} (máximo ${d.max}${d.inicio!=null? ', começa em '+d.inicio : ''}).`;
 }
-function avisarBarrasNovas(pc,novas){
-  if(!novas.length) return;
+/* (lote 34) As outras fichas que esta pessoa pode mexer também trocam as barras (uma vez só): o mestre abre as Fichas e
+   as de todos ficam prontas para as Cenas. O aviso junta tudo o que mudou de uma vez, com um Desfazer só. */
+function barrasDasOutras(){
+  if(!(window.TC&&TC.barras)) return;
+  const ids=new Set(((S.bib&&S.bib.arvores)||[]).map(a=>a&&a.id));
+  if(!ids.size) return;                                                      // (a biblioteca ainda não chegou)
+  let algum=false;
+  for(const p of S.personagens||[]){
+    if(!p || p.id===S.sel || p.petDe || p.barrasArv===1) continue;
+    if(((p.skills&&p.skills.arvores)||[]).some(id=>typeof id==='string' && !ids.has(id))) continue;   // (uma árvore dela não está aqui)
+    const r=barrasDeArvore(p);
+    if(r.mudou) algum=true;
+    if(r.itens.length) avisoDeBarras(p,[],r);
+  }
+  const atual=S.sel? (S.personagens||[]).find(x=>x.id===S.sel) : null;
+  if(atual) arvPara(atual);
+  if(algum) save();
+}
+let filaBarras=null;
+function avisoDeBarras(pc,novas,arvB){
+  if(!filaBarras){ filaBarras=[]; setTimeout(()=>{ const f=filaBarras; filaBarras=null; if(f.length===1) avisarBarrasNovas(f[0].pc,f[0].novas,f[0].arvB); else avisarBarrasDeVarias(f); },0); }
+  filaBarras.push({pc,novas,arvB});
+}
+function desfazerBarras(x){
+  const p=S.personagens.find(y=>y.id===x.pc.id); if(!p) return;
+  const ids=(x.novas||[]).map(n=>n.pw.id);
+  p.poderes=(p.poderes||[]).filter(pw=>!ids.includes(pw.id));
+  if(p.estado && p.estado.pd){ const pd=Object.assign({},p.estado.pd); ids.forEach(i=>delete pd[i]); p.estado=Object.assign({},p.estado,{pd}); }
+  // (lote 34) as barras das árvores: tudo como estava (a ficha lembra que já fez a troca: ela não volta sozinha)
+  if(x.arvB && x.arvB.antes){ const a=x.arvB.antes, pd=Object.assign({},a.pd); ids.forEach(i=>delete pd[i]); p.recursos=a.recursos; p.poderes=a.poderes.filter(pw=>!ids.includes(pw.id)); p.estado=Object.assign({},p.estado||{},{pd, rec:a.rec}); }
+}
+function avisarBarrasDeVarias(f){
+  const nomes=f.map(x=>(x.pc.nome||'Sem nome')+' ('+[].concat((x.arvB&&x.arvB.itens||[]).map(i=>i.b.nome),(x.novas||[]).map(n=>n.pw.nome)).join(', ')+')');
+  FichasExtras.aviso('As barras de raça, classe e linhagem agora são barras comuns, depois do HP e do SP, em '+f.length+' fichas (o valor de agora ficou): '+nomes.join('; ')+'.', 'Desfazer', ()=>{
+    f.forEach(desfazerBarras); save(); FichasExtras.desenhar(render);
+  }, 16000);
+}
+function avisarBarrasNovas(pc,novas,arvB){
+  const itens=(arvB&&arvB.itens)||[];
+  if(!novas.length && !itens.length) return;
   const ids=novas.map(x=>x.pw.id);
-  const texto=novas.length===1? textoBarraNova(novas[0]) : 'As árvores trouxeram '+novas.length+' barras especiais: '+novas.map(x=>x.pw.nome+(x.d.max==null? ' (sem limite: ponha à mão)' : ' (máximo '+x.d.max+')')).join(', ')+'.';
-  FichasExtras.aviso(texto, 'Desfazer', ()=>{
-    const p=S.personagens.find(x=>x.id===pc.id); if(!p) return;
-    p.poderes=(p.poderes||[]).filter(pw=>!ids.includes(pw.id));
-    if(p.estado && p.estado.pd){ const pd=Object.assign({},p.estado.pd); ids.forEach(i=>delete pd[i]); p.estado=Object.assign({},p.estado,{pd}); }
-    save(); FichasExtras.desenhar(render);
-  }, novas.some(x=>x.d.max==null)? 14000 : 9000);
+  const tEsp=!novas.length? '' : novas.length===1? textoBarraNova(novas[0]) : 'As árvores trouxeram '+novas.length+' barras especiais: '+novas.map(x=>x.pw.nome+(x.d.max==null? ' (sem limite: ponha à mão)' : ' (máximo '+x.d.max+')')).join(', ')+'.';
+  const tArv=!itens.length? '' : itens.length===1? textoBarraDeArvore(itens[0])
+    : 'As barras de raça, classe e linhagem agora são barras comuns, depois do HP e do SP: '+itens.map(x=>x.b.nome+(x.tipo==='convertida'? ' (era especial: o valor '+x.valor+' ficou)' : x.tipo==='ja'? ' (a que já estava)' : ' (nova, '+TC.barras.faixaTexto(x.b)+')')).join(', ')+'.';
+  FichasExtras.aviso([tArv,tEsp].filter(Boolean).join(' '), 'Desfazer', ()=>{
+    desfazerBarras({pc,novas,arvB}); save(); FichasExtras.desenhar(render);
+  }, novas.some(x=>x.d.max==null) || itens.length>1 || itens.some(x=>x.tipo==='convertida')? 14000 : 9000);
 }
 function pips(pw){
   const max=+pw.max||0;
@@ -4784,7 +4906,7 @@ function render(){
   const aba=S.aba||'fichas';
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===aba));
   ['fichas','mesa','eventos'].forEach(t=>{document.getElementById('tab-'+t).hidden = (t!==aba)});
-  if(aba==='fichas'){renderLista();renderFicha()}
+  if(aba==='fichas'){barrasDasOutras();renderLista();renderFicha()}
   else if(aba==='mesa') renderMesa();
   else renderEventos();
 }

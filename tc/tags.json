@@ -1371,6 +1371,51 @@
    "cor": "#d4a017"
   },
   {
+   "id": "c:sementeSangue",
+   "nome": "Semente de Sangue",
+   "tipo": "condicao",
+   "texto": "Uma gota do sangue do vampiro plantada no alvo: não faz nada sozinha, mas as habilidades do ramo Manipulador só pegam em quem a carrega. Some no fim do combate (fora dele, no fim do dia) ou com o Beijo do Esquecimento.",
+   "formas": [],
+   "de": "Vampiro",
+   "cor": "#9b1b30"
+  },
+  {
+   "id": "c:criaNoite",
+   "nome": "Cria da Noite",
+   "tipo": "condicao",
+   "texto": "Um inimigo derrotado que o vampiro levantou como servo: age no turno do vampiro, obedece a ele e conta como companheiro. Cai de novo no fim da cena.",
+   "formas": [],
+   "de": "Vampiro",
+   "cor": "#6a4a8a"
+  },
+  {
+   "id": "c:feraSolta",
+   "nome": "Fera Solta",
+   "tipo": "condicao",
+   "texto": "A Barra Bestial transbordou: o mestre conduz o licantropo, que ataca a criatura mais próxima, aliada ou inimiga, na forma Fera. Passa se ele comer, ou no fim do combate.",
+   "formas": [],
+   "de": "Licantropo",
+   "cor": "#b5462a"
+  },
+  {
+   "id": "c:pocaRoedor",
+   "nome": "Poça do Roedor",
+   "tipo": "condicao",
+   "texto": "Um frasco aberto no chão: o primeiro inimigo que entra ali ou começa o turno ali sofre o efeito do frasco; aliados pisam sem problema. Seca no fim da próxima rodada.",
+   "formas": [],
+   "de": "Antro Roedor",
+   "cor": "#7a9a3a"
+  },
+  {
+   "id": "c:naToca",
+   "nome": "Na Toca",
+   "tipo": "condicao",
+   "texto": "O Roedor está enterrado em terra solta: não pode ser alvo, mas o que atinge o chão (tremor, terra) o atinge. Sai como movimento, no próximo turno dele.",
+   "formas": [],
+   "de": "Antro Roedor",
+   "cor": "#8a6a4a"
+  },
+  {
    "id": "c:alvoDuelo",
    "nome": "Alvo do Duelo",
    "tipo": "condicao",

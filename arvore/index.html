@@ -218,6 +218,11 @@ details.bloco > summary::after{content:'+';font-size:13px;line-height:.8}
 details.bloco[open] > summary::after{content:'−'}
 .grupo{margin-bottom:12px}
 .linha2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.linha3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.gini-l{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12.5px;color:var(--texto-2)}
+.gini-l .gini{width:72px;flex:none}
+.gini-l em{font-style:normal;color:var(--texto-3);font-size:11.5px}
+.barra-arv .chip[disabled]{opacity:.5}
 .acoes{display:flex;gap:8px;flex-wrap:wrap}
 
 /* paleta, formas e escolhas */
@@ -580,8 +585,9 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
 <script src="../tc/ponte.js?v=20"></script>
-<script src="../tc/rules.js?v=25"></script>
-<script src="../tc/tags.js?v=2"></script>
+<script src="../tc/rules.js?v=26"></script>
+<script src="../tc/barras.js?v=1"></script>
+<script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=8"></script>
 <script>
 'use strict';
@@ -796,6 +802,8 @@ function normalizarArvore(a, b, ids, vistasA){
   a.secreta = !!a.secreta; a.senha = String(a.senha || '');
   if(typeof a.barra==='string' && a.barra.trim()) a.barra = a.barra.trim().slice(0,30); else delete a.barra;
   if(typeof a.familia==='string' && a.familia.trim()) a.familia = a.familia.trim().slice(0,40); else delete a.familia;   // (lote 26) o grupo no painel    // (lote 21) o nome da barra especial, quando o texto não diz
+  // (lote 34) a barra de raça, classe ou linhagem, definida aqui (sem isso, vale o guia de barras)
+  if(a.barraDef && window.TC && TC.barras){ const d = TC.barras.limpar(a.barraDef); if(d) a.barraDef = d; else delete a.barraDef; } else if(!a.barraDef) delete a.barraDef;
   a.nodes = soObjetos(a.nodes);
   a.nodes.forEach(n=>normalizarNo(n, b, ids));
 }
@@ -836,6 +844,7 @@ function normalizarNo(n, b, ids){
     const limpo = {custos, texto:String((g && g.texto) || '')};
     const bn = bonusLimpo(g && g.bonus); if(bn) limpo.bonus = bn;      // bônus que o grau dá na ficha (FOR +2, HP +10…)
     const us = usoLimpo(g && g.uso); if(us) limpo.uso = us;            // (lote 6) o custo de usar: [{ b: barra, v: quanto }]
+    if(g && g.ini!=null && g.ini!=='' && Number.isFinite(+g.ini)) limpo.ini = Math.max(0, Math.min(20, Math.round(+g.ini)));   // (lote 34) o que soma ao início da barra
     return limpo;
   });
   if(n.tranca) n.tranca = true; else delete n.tranca;                // (lote 6) caminho trancado: só para quem o mestre abrir
@@ -2193,6 +2202,16 @@ function blocoTranca(n){
     </div>` : ''}
   </div>`;
 }
+/* (lote 34) Quanto o grau soma ao início da barra da árvore (raça, classe, linhagem): o total naquele grau ("+1/+2/+4 de
+   Calor inicial" dá 1, 2 e 4). Vazio: vale o que o texto do grau diz; 0: nada. */
+function barraArvDe(a){ return a && window.TC && TC.barras ? TC.barras.defDaArvore(a) : null; }
+function campoIni(a, g, i){
+  const b = barraArvDe(a); if(!b || !RR() || !RR().inicioDoGrau) return '';
+  const mao = g.ini!=null, lido = mao ? null : RR().inicioDoGrau(g), v = mao ? g.ini : lido;
+  return `<label class="gini-l"><span>Soma ao início de ${esc(b.nome)}</span>
+    <input class="campo gini" data-g="${i}" type="number" min="0" max="20" step="1" value="${v==null ? '' : v}" placeholder="0" aria-label="Soma ao início da barra, grau ${i+1}">
+    <em>${mao ? 'posto aqui' : lido!=null ? 'lido do texto' : ''}</em></label>`;
+}
 function campoBonus(g, i){
   return `<input class="campo gbonus" data-g="${i}" value="${esc(bonusTexto(g.bonus))}" placeholder="Bônus na ficha (opcional): FOR +2, HP +10" style="margin-top:4px"
     title="O que este grau soma na ficha de quem o escolher. Siglas dos atributos (FOR DES VIT CAN AGI ESQ FUR PER EMB DFF DFM BLQ) ou o nome de um recurso da ficha (HP, SP…), separados por vírgula." aria-label="Bônus na ficha, grau ${i+1}">`;
@@ -2883,10 +2902,11 @@ function blocoNo(a, n){
       <div class="grau-topo"><span class="rot" style="margin:0">Graus</span>
         <div class="passo"><button class="btn" id="grauMenos" ${G<=1 ? 'disabled' : ''} aria-label="Menos um grau">−</button><b>${G}</b>
         <button class="btn" id="grauMais" ${G>=MAX_GRAUS ? 'disabled' : ''} aria-label="Mais um grau">+</button></div></div>
-      ${G===1 ? linhasCusto(n.graus[0], 0) + campoBonus(n.graus[0], 0) + campoUso(n.graus[0], 0) : n.graus.map((g,i)=>`<div class="grau"><div class="grau-topo"><span>Grau ${i+1}</span></div>
+      ${G===1 ? linhasCusto(n.graus[0], 0) + campoBonus(n.graus[0], 0) + campoIni(a, n.graus[0], 0) + campoUso(n.graus[0], 0) : n.graus.map((g,i)=>`<div class="grau"><div class="grau-topo"><span>Grau ${i+1}</span></div>
         ${linhasCusto(g, i)}
         <textarea class="campo gtexto" data-g="${i}" placeholder="O que o grau ${i+1} acrescenta…" style="min-height:46px;margin-top:4px">${esc(g.texto)}</textarea>
-        ${campoBonus(g, i)}${campoUso(g, i)}</div>`).join('')}
+        ${campoBonus(g, i)}${campoIni(a, g, i)}${campoUso(g, i)}</div>`).join('')}
+      ${barraArvDe(a) && n.graus.some(g=>g.ini!=null || (RR() && RR().inicioDoGrau && RR().inicioDoGrau(g)!=null)) ? `<p class="nota">Soma ao início: o total naquele grau. Vazio vale o texto do grau; 0, nada. O início da barra nunca passa de ${RR().TETO_INICIO || 10}.</p>` : ''}
       <datalist id="barrasDaMesa">${barrasDaMesa().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
       <p class="nota">${G===1 ? 'Zero num tipo de ponto = não consome aquele tipo.' : 'O jogador compra os graus em ordem; cada um tem custo e texto próprios.'}</p>
     </div>
@@ -2962,11 +2982,47 @@ function blocoArvore(a){
     ${a.secreta ? `<div class="grupo recuo"><label class="rot" for="aSenha">Senha</label>
       <input id="aSenha" class="campo" value="${esc(a.senha)}" autocomplete="off" spellcheck="false">
       <p class="nota">Maiúsculas, acentos e espaços a mais não contam.</p></div>` : ''}
-    <div class="grupo"><label class="rot" for="aBarra">Barra especial</label>
+    ${window.TC && TC.barras && TC.barras.CATS.includes(a.categoria) ? blocoBarraArv(a) : `<div class="grupo"><label class="rot" for="aBarra">Barra especial</label>
       <input id="aBarra" class="campo" value="${esc(a.barra || '')}" placeholder="${esc((RR() && RR().barraEspecial(Object.assign({}, a, {barra:undefined}))) || 'ex.: Preparo')}" autocomplete="off">
-      <p class="nota">Vazio: o nome vem do texto do nó que define a barra (“Preparo (barra): máximo 20…”).</p></div>
+      <p class="nota">Vazio: o nome vem do texto do nó que define a barra (“Preparo (barra): máximo 20…”).</p></div>`}
     <p class="nota">${plural(a.nodes.length,'nódulo','nódulos')} · ${plural(escolas,'escola-ramo','escolas-ramo')}</p>
     <div class="acoes" style="margin-top:10px"><button class="btn" id="btChecar">Checar biblioteca</button></div></div>`;
+}
+/* (lote 34) A barra da raça, da classe ou da linhagem: uma barra comum na ficha (depois do HP e do SP), que nasce
+   quando a árvore entra no personagem. Os campos vêm do guia de barras (pelo id da árvore); mudar aqui vale para esta
+   biblioteca (a.barraDef), e as fichas acompanham. */
+const COMB_NOMES = [['inicio','Vai para o início'], ['fica','Fica como está'], ['pergunta','O mestre escolhe (Dia, 0, 5, 10, 15)']];
+function efetivaBarraArv(a){
+  const B = TC.barras;
+  if(a.barraDef && !a.barraDef.nenhuma) return B.limpar(a.barraDef);
+  return B.doGuia(a) || B.doTexto(a) || B.limpar({nome:'', max:20});
+}
+function blocoBarraArv(a){
+  const B = TC.barras, nenhuma = !!(a.barraDef && a.barraDef.nenhuma), sem = B.SEM_BARRA.includes(a.id);
+  const d = efetivaBarraArv(a) || {nome:'', min:0, max:20, inicio:null, comb:'inicio', fim:'', teto:'', enche:'', obs:''};
+  const guia = B.doGuia(a), de = nenhuma ? 'Esta árvore não cria barra.' : a.barraDef ? 'Mudada aqui' + (guia ? ' (o guia de barras diz ' + esc(guia.nome) + ', ' + esc(B.faixaTexto(guia)) + ')' : '') + '.' : guia ? 'Do guia de barras (28/10).' : d.nome ? 'Lida do texto da árvore: confira.' : 'O texto não diz qual é a barra: escreva aqui.';
+  const cat = B.NOME_CAT[a.categoria], dis = nenhuma || sem ? 'disabled' : '';
+  if(sem) return `<div class="grupo" id="grupoBarraArv"><span class="rot">Barra da ${esc(cat)}</span><p class="nota">Esta árvore não cria barra (usa a de outra árvore).</p></div>`;
+  return `<div class="grupo barra-arv" id="grupoBarraArv"><span class="rot">Barra da ${esc(cat)}</span>
+    <p class="nota" style="margin-top:0">Uma barra comum na ficha, depois do HP e do SP, que nasce quando a ${esc(cat)} entra no personagem. ${de}</p>
+    <label class="caixa"><input type="checkbox" id="abNenhuma" ${nenhuma ? 'checked' : ''}> Esta árvore não cria barra</label>
+    <div class="grupo"><label class="rot" for="abNome">Nome</label><input id="abNome" class="campo ab-campo" data-k="nome" value="${esc(d.nome)}" maxlength="30" ${dis}></div>
+    <div class="grupo linha3">
+      <div><label class="rot" for="abMin">Mínimo</label><input id="abMin" class="campo ab-campo" data-k="min" type="number" max="0" step="1" value="${d.min}" ${dis}></div>
+      <div><label class="rot" for="abMax">Máximo</label><input id="abMax" class="campo ab-campo" data-k="max" type="number" min="1" step="1" value="${d.max}" ${dis}></div>
+      <div><label class="rot" for="abIni">Início</label><input id="abIni" class="campo ab-campo" data-k="inicio" type="number" step="1" value="${d.inicio==null ? '' : d.inicio}" placeholder="—" ${dis}></div>
+    </div>
+    <div class="grupo"><span class="rot">Quando o combate começa</span><div class="chips">
+      ${COMB_NOMES.map(([k,t])=>`<button class="chip" data-abcomb="${k}" aria-pressed="${d.comb===k}" ${dis}>${esc(t)}</button>`).join('')}</div></div>
+    <div class="grupo linha2">
+      <div><label class="rot" for="abFim">Fim do combate</label><input id="abFim" class="campo ab-campo" data-k="fim" value="${esc(d.fim)}" ${dis}></div>
+      <div><label class="rot" for="abTeto">Teto por rodada</label><input id="abTeto" class="campo ab-campo" data-k="teto" value="${esc(d.teto)}" ${dis}></div>
+    </div>
+    <div class="grupo"><label class="rot" for="abEnche">Como enche</label><textarea id="abEnche" class="campo ab-campo" data-k="enche" style="min-height:52px" ${dis}>${esc(d.enche)}</textarea></div>
+    <div class="grupo"><label class="rot" for="abObs">Observação</label><textarea id="abObs" class="campo ab-campo" data-k="obs" style="min-height:40px" ${dis}>${esc(d.obs)}</textarea></div>
+    <p class="nota">O início nunca passa de ${RR() && RR().TETO_INICIO || 10} com o que os nós somam (cada grau diz quanto, no nó). Início vazio: a barra começa cheia${d.comb==='fica' ? ' — e o combate não mexe nela' : ''}.</p>
+    ${a.barraDef && guia ? `<div class="acoes"><button class="btn mini" id="abGuia">Voltar ao guia</button></div>` : ''}
+  </div>`;
 }
 function blocosGlobais(){
   const b = bib();
@@ -3018,6 +3074,12 @@ function ligarMestre(){
   if(!a) return;
 
   // árvore
+  // (lote 34) a barra da raça, da classe ou da linhagem
+  const mudaBarra = (rot, chave, fn) => { registrar(rot, chave); const d = efetivaBarraArv(a) || {}; const x = Object.assign({}, d); delete x.cat; delete x.de; fn(x); const l = TC.barras.limpar(x); if(l) a.barraDef = l; salvar(); };
+  $$('.ab-campo').forEach(i=>i.onchange = e=>{ const k = i.dataset.k; mudaBarra('barra da árvore', 'abarradef'+a.id+k, x=>{ const v = e.target.value; x[k] = ['min','max','inicio'].includes(k) ? (v.trim()==='' ? (k==='inicio' ? null : x[k]) : +v) : v; if(k==='inicio' && v.trim()==='' && x.comb==='inicio') x.comb = 'fica'; }); pintarPainel(); });
+  $$('[data-abcomb]').forEach(b=>b.onclick = ()=>{ mudaBarra('barra da árvore: o começo do combate', null, x=>{ x.comb = b.dataset.abcomb; if(x.comb!=='fica' && x.inicio==null) x.inicio = 0; }); pintarPainel(); });
+  on('#abNenhuma', 'change', e=>{ registrar(e.target.checked ? 'a árvore não cria barra' : 'a árvore cria barra', null); if(e.target.checked) a.barraDef = {nenhuma:true}; else delete a.barraDef; salvar(); pintarPainel(); });
+  on('#abGuia', 'click', ()=>{ registrar('barra da árvore: voltar ao guia', null); delete a.barraDef; salvar(); pintarPainel(); aviso('A barra voltou a ser a do guia de barras.'); });
   on('#aBarra', 'change', e=>{ registrar('barra especial da árvore', 'abarra'+a.id); const v = e.target.value.trim().slice(0,30); if(v) a.barra = v; else delete a.barra; salvar(); desenhar(); pintarPainel(); });
   on('#aNome', 'input', e=>{ registrar('renomear árvore', 'anome'+a.id); a.nome = e.target.value; salvar(); pintarAbas(); atualizarMarca(a); });
   on('#aNome', 'change', e=>{ if(!e.target.value.trim()){ a.nome = 'Árvore'; salvar(); pintarAbas(); pintarPainel(); } });
@@ -3058,6 +3120,7 @@ function ligarMestre(){
     e.target.value = v;
   }, {semDesenho:true}));
   $$('.gtexto').forEach(t=>t.oninput = e=>muda('texto do grau', 'gtexto'+n.id+t.dataset.g, ()=>{ n.graus[+t.dataset.g].texto = e.target.value; }, {semDesenho:true}));
+  $$('.gini').forEach(t=>t.onchange = e=>{ muda('início da barra no grau', 'gini'+n.id+t.dataset.g, ()=>{ const g = n.graus[+t.dataset.g], v = e.target.value.trim(); if(v==='') delete g.ini; else g.ini = Math.max(0, Math.min(20, Math.round(+v || 0))); }, {semDesenho:true, painel:true}); });
   $$('.gbonus').forEach(t=>t.onchange = e=>{ muda('bônus do grau', 'gbonus'+n.id+t.dataset.g, ()=>{ const g = n.graus[+t.dataset.g], b = bonusLer(e.target.value); if(b) g.bonus = b; else delete g.bonus; }, {semDesenho:true}); e.target.value = bonusTexto(n.graus[+t.dataset.g].bonus); });
   on('#addPre', 'change', e=>{
     const alvo = e.target.value; if(!alvo) return;

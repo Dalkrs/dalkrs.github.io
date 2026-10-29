@@ -2,6 +2,35 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.28-9",
+      "data": "2026-10-28",
+      "titulo": "As barras de raça e classe viram barras comuns",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "A barra da raça, da classe e da linhagem (o Calor da Forja, o Veio, a Ira, o Preparo, a Fome do Vampiro, a Barra Bestial…) agora é uma barra comum da ficha, logo depois do HP e do SP — e não mais uma barra especial. A ficha que já tinha a barra especial troca sozinha, guardando o valor de agora (o aviso tem Desfazer)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Os nós que fazem a barra começar mais alta (“+1/+2/+4 de Calor inicial”) já contam: a ficha mostra onde a barra começa o combate, e o início nunca passa de 10. As Oradoras dividem uma barra Palavras só; o Mestiço e o Multiclasse ficam com as duas barras."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Oficina: a árvore de raça, de classe ou de linhagem mostra a barra que traz para a ficha — o nome, a faixa, o início, o que o combate faz com ela, o teto por rodada, como enche — já preenchida pelo guia de barras. Mudar aqui vale para a mesa (“Voltar ao guia” desfaz). Em cada grau do nó, “Soma ao início” vem lido do texto."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: ao iniciar o combate, as barras de raça, classe e linhagem de quem luta vão para o começo delas, num passo só, com Desfazer. A Fome do Vampiro fica como está; para a Barra Bestial do Licantropo, a mesa pergunta: Dia, 0, 5, 10 ou 15 (lua cheia)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Condições novas, na aba Raças: Semente de Sangue e Cria da Noite (Vampiro), Fera Solta (Licantropo), Poça do Roedor e Na Toca (Antro Roedor), cada uma com o texto e a duração de começo."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.28-8",
       "data": "2026-10-28",
       "titulo": "Bestiário: números à mão e equipamento",

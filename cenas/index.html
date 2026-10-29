@@ -1115,8 +1115,8 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 <body>
 <script src="../tc/ponte.js?v=20"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="../tc/rules.js?v=25"></script>
-<script src="../tc/tags.js?v=2"></script>
+<script src="../tc/rules.js?v=26"></script>
+<script src="../tc/tags.js?v=3"></script>
 <script src="../tc/bestiario.js?v=2"></script>
 <script src="../tc/sede.js?v=1"></script>
 <div class="app" id="app">
@@ -1503,6 +1503,12 @@ const ICONS = {
   c_sobExorcismo: 'M8 15c0-3 1.800-5 4-5s4 2 4 5v5.500H8zM8.300 10.500L6.500 6.500M15.700 10.500l1.800-4M12 2v3M4.500 12.500H2M22 12.500h-2.500',
   c_tutelado: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800-4.500-1.500-7.500-5.200-7.500-9.800V5.800zM12 10a1.700 1.700 0 1 0 0-3.400 1.700 1.700 0 0 0 0 3.400zM8.800 16c.500-2.200 1.600-3.300 3.200-3.300s2.700 1.100 3.200 3.300',
   // (lote 19) as condições das raças
+  // (lote 34) as do Vampiro, do Licantropo e do Antro Roedor
+  c_sementeSangue: 'M12 3c3 4.500 5 7.300 5 10a5 5 0 0 1-10 0c0-2.700 2-5.500 5-10zM12 17.500v-4M12 14.500c.900-1.300 2.200-1.900 3.300-1.900M12 15.300c-.900-.900-1.900-1.200-2.900-1.200',
+  c_criaNoite: 'M9 10a2.500 2.500 0 1 0 0-5 2.500 2.500 0 0 0 0 5zM4 21v-3.500a5 5 0 0 1 10 0V21M18 2.500a4 4 0 1 0 3.200 6.400A3.300 3.300 0 0 1 18 2.500zM7.700 13.800l1.300 1.400 1.300-1.400',
+  c_feraSolta: 'M5 4.500l4.500 15M10.300 3l3.700 15.500M15.500 4l3 11.500M3 12.500l3 1M20.500 9.500l-2 1.500',
+  c_pocaRoedor: 'M3 18.500c0-1.700 4-3 9-3s9 1.300 9 3-4 3-9 3-9-1.300-9-3zM10 3h4M11 3v4.500l-3 5h8l-3-5V3M8.500 18.500h2M14 19h1.500',
+  c_naToca: 'M2 19.500h20M4.500 19.500c1-5.500 4.200-8.500 7.500-8.500s6.500 3 7.500 8.500M9.300 19.500c.500-2.200 1.600-3.400 2.700-3.400s2.200 1.200 2.700 3.400M9.500 8l-1-3.500M14.500 8l1-3.500',
   c_ancestralEncarnado: 'M5 4.500c4-2 10-2 14 0v6.500c0 5-3.500 9-7 10-3.500-1-7-5-7-10zM8 10.500l2.500 1.200M16 10.500l-2.500 1.200M9.500 16.500c1.500 1 3.500 1 5 0M12 2.500V1',
   c_armaVitrine: 'M4 20l9-9M13 11l3.500-7 3.500 3.500-7 3.500M6.500 15.500l2 2M18 14.500l2.500 2.500-2.500 2.500-2.500-2.500z',
   c_armaRachada: 'M4 20l4-4M6.500 13.500l4 4M9.500 14.500L12 12l.800 1.800 2-2.300M15 9.500l5-5.500v3.200l-4.300 4.300',
@@ -1825,6 +1831,7 @@ const CONDS = [
   { id: 'contagem', n: 'Contagem', c: '#9b6bd1', i: 'c_contagem', g: 'racas', r: 'Konaito', max: 3, ini: 3, desce: true, lim: { em: 0, sug: 'sentenca', d: 1, txt: 'a oração se cumpre e vem a Sentença (dá 1 de Voz ao Konaito)' } },
   { id: 'costelasAbertas', n: 'Costelas Abertas', c: '#9a7a6a', i: 'c_costelasAbertas', g: 'racas', r: 'Ghoul Mãzier\'na', lado: 'costelas' },
   { id: 'couracaGelo', n: 'Couraça de Gelo', c: '#5fbfe6', i: 'c_couracaGelo', g: 'racas', r: 'Orc Natuphas', dur: 3 },
+  { id: 'criaNoite', n: 'Cria da Noite', c: '#6a4a8a', i: 'c_criaNoite', g: 'racas', r: 'Vampiro' },
   { id: 'debaixoTerra', n: 'Debaixo da Terra', c: '#8a6a3c', i: 'c_debaixoTerra', g: 'racas', r: 'Anão da Rocha', dur: 1 },
   { id: 'descontrole', n: 'Descontrole', c: '#d9342b', i: 'c_descontrole', g: 'racas', r: 'Orc Rastoroni', dur: 2 },
   { id: 'dividaEspiritual', n: 'Dívida Espiritual', c: '#7c8fd6', i: 'c_dividaEspiritual', g: 'racas', r: 'Orc Magi\'Ritu', max: 5, ini: 1 },
@@ -1838,6 +1845,7 @@ const CONDS = [
   { id: 'erguido', n: 'Erguido', c: '#a66b3a', i: 'c_erguido', g: 'racas', r: 'Antro Bovino' },
   { id: 'exposto', n: 'Exposto', c: '#d67a3c', i: 'c_exposto', g: 'racas', r: 'Antro Equino', dur: 1 },
   { id: 'farejado', n: 'Farejado', c: '#a08a5c', i: 'c_farejado', g: 'racas', r: 'Antro Canino', dur: 1 },
+  { id: 'feraSolta', n: 'Fera Solta', c: '#b5462a', i: 'c_feraSolta', g: 'racas', r: 'Licantropo' },
   { id: 'frio', n: 'Frio', c: '#7fc8ee', i: 'c_frio', g: 'racas', r: 'Kitsune Selene', max: 5, ini: 1, lim: { em: 'max', sug: 'gelo', d: 1, zera: true, txt: 'teste de VIT: se falhar, fica Congelado até o fim do próximo turno dele (o gelo tem 10 de HP) e os acúmulos zeram' } },
   { id: 'gosto', n: 'Gosto', c: '#c2588c', i: 'c_gosto', g: 'racas', r: 'Ghoul Panso\'na', dur: 3 },
   { id: 'guardaNatural', n: 'Guarda Natural', c: '#8a9a4a', i: 'c_guardaNatural', g: 'racas', r: 'Humano Sarep', dur: 2 },
@@ -1849,10 +1857,12 @@ const CONDS = [
   { id: 'mandado', n: 'Mandado', c: '#a07b45', i: 'c_mandado', g: 'racas', r: 'Konaito' },
   { id: 'maoPerdida', n: 'Mão Perdida', c: '#7a8a52', i: 'c_maoPerdida', g: 'racas', r: 'Ghoul Mãzier\'na', lado: 'mao' },
   { id: 'naPanca', n: 'Na Pança', c: '#9a6a3a', i: 'c_naPanca', g: 'racas', r: 'Ghoul Panso\'na', max: 2, ini: 1 },
+  { id: 'naToca', n: 'Na Toca', c: '#8a6a4a', i: 'c_naToca', g: 'racas', r: 'Antro Roedor', dur: 2 },
   { id: 'noOmbro', n: 'No Ombro', c: '#8f7a54', i: 'c_noOmbro', g: 'racas', r: 'Antro Bovino' },
   { id: 'pePerdido', n: 'Pé Perdido', c: '#7a8a52', i: 'c_pePerdido', g: 'racas', r: 'Ghoul Mãzier\'na', lado: 'pe' },
   { id: 'perdido', n: 'Perdido', c: '#8a6ab8', i: 'c_perdido', g: 'racas', r: 'Antro Felino', max: 3, ini: 1 },
   { id: 'pernaPerdida', n: 'Perna Perdida', c: '#7a8a52', i: 'c_pernaPerdida', g: 'racas', r: 'Ghoul Mãzier\'na', lado: 'perna' },
+  { id: 'pocaRoedor', n: 'Poça do Roedor', c: '#7a9a3a', i: 'c_pocaRoedor', g: 'racas', r: 'Antro Roedor', dur: 2 },
   { id: 'praga', n: 'Praga', c: '#6e8f2c', i: 'c_praga', g: 'racas', r: 'Ghoul Necrosado', dur: 2 },
   { id: 'procurado', n: 'Procurado', c: '#c9402e', i: 'c_procurado', g: 'racas', r: 'Anão Mercador' },
   { id: 'reboteAdiado', n: 'Rebote Adiado', c: '#6c8ad1', i: 'c_reboteAdiado', g: 'racas', r: 'Silk', dur: 1 },
@@ -1860,6 +1870,7 @@ const CONDS = [
   { id: 'rendido', n: 'Rendido', c: '#a89f84', i: 'c_rendido', g: 'racas', r: 'Anão Mercador', dur: 3 },
   { id: 'seloOcre', n: 'Selo de Ocre', c: '#c47a2c', i: 'c_seloOcre', g: 'racas', r: 'Humano Sarep', dur: 2 },
   { id: 'semeado', n: 'Semeado', c: '#8c7a3a', i: 'c_semeado', g: 'racas', r: 'Taekeir Magi\'atach', dur: 1 },
+  { id: 'sementeSangue', n: 'Semente de Sangue', c: '#9b1b30', i: 'c_sementeSangue', g: 'racas', r: 'Vampiro' },
   { id: 'sentenca', n: 'Sentença', c: '#7a3a9a', i: 'c_sentenca', g: 'racas', r: 'Konaito', dur: 1 },
   { id: 'sobra', n: 'Sobra', c: '#b39c6a', i: 'c_sobra', g: 'racas', r: 'Ghoul Panso\'na', max: 2, ini: 1 },
   { id: 'transeRubro', n: 'Transe Rubro', c: '#c2263a', i: 'c_transeRubro', g: 'racas', r: 'Taekeir Zier\'Asurper' },
@@ -7479,17 +7490,41 @@ const Fichas = (() => {
   }
   // os recursos da ficha que viram barra no token: os de sempre (com máximo) e, depois deles, as barras especiais
   const recursosDoToken = (l, r) => r.recursos.filter(rec => rec.max != null && isFinite(rec.max)).concat(especiaisDe(l));
+  /* (lote 34) A barra do token que serve a este recurso: a ligada a ele; ou a da barra especial que virou este recurso
+     (a raça e a classe trazem barra comum agora: a especial de antes, com o mesmo id, sai da ficha); ou uma solta com o
+     mesmo nome. */
+  const barraDoRec = (bars, rec, lista) => bars.find(x => x.ref === rec.id)
+    || (!ehPd(rec.id) && bars.find(x => x.ref === PD + rec.id && !lista.some(y => y.id === x.ref)))
+    || bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
+  /* (lote 34) A barra de raça, classe ou linhagem que chega ao token (nova, ou a especial que virou comum) entra no
+     lugar dela na ficha — logo depois da barra do recurso que vem antes (o HP e o SP) —, não no fim. */
+  function porNoLugar(bars, b, lista, rec) {
+    const i0 = bars.indexOf(b);
+    const k = lista.indexOf(rec);
+    let p = -1;
+    for (let j = k - 1; j >= 0 && p < 0; j--) p = bars.findIndex(x => x !== b && x.ref === lista[j].id);
+    const alvo = p >= 0 ? p + 1 : (k === 0 ? 0 : -1);
+    if (alvo < 0) return false;
+    if (i0 >= 0) bars.splice(i0, 1);
+    const pos = i0 >= 0 && i0 < alvo ? alvo - 1 : alvo;
+    if (i0 === pos) { bars.splice(i0, 0, b); return false; }
+    bars.splice(pos, 0, b);
+    return true;
+  }
+  const deArvore = (l, id) => !!l && !!l.ficha && Array.isArray(l.ficha.recursos) && l.ficha.recursos.some(x => x && x.id === id && Array.isArray(x.arvs) && x.arvs.length);
   // As barras do token, atualizadas pela ficha. Devolve null se nada muda.
   function barrasDe(t, r, l) {
     const bars = t.bars.map(b => Object.assign({}, b));
     let mudou = false;
     const lista = recursosDoToken(l, r);
     for (const rec of lista) {
-      let b = bars.find(x => x.ref === rec.id) || bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
+      let b = barraDoRec(bars, rec, lista);
+      if (b && b.ref === PD + rec.id) { b.k = rec.pts ? 'pts' : 'bar'; mudou = true; if (deArvore(l, rec.id)) porNoLugar(bars, b, lista, rec); }      // (a especial vira barra comum)
       if (!b) {
         if (bars.length >= MAX_BARS) continue;
         b = cleanBar({ n: rec.nome, c: BAR_COLORS[bars.length % BAR_COLORS.length], v: rec.atual, m: rec.max, k: rec.pts ? 'pts' : 'bar', on: true, vis: '' });
         bars.push(b); mudou = true;
+        if (deArvore(l, rec.id)) porNoLugar(bars, b, lista, rec);
       }
       const nome = String(rec.nome || 'Barra').slice(0, 24);
       if (b.ref !== rec.id) { b.ref = rec.id; mudou = true; }
@@ -7513,10 +7548,11 @@ const Fichas = (() => {
      (cor, estilo, quem vê); as outras saem (a "Vida" de fábrica, por exemplo). Devolve null se a ficha não tem
      recurso nenhum: aí o token fica como está. */
   function soDaFicha(t, r, l) {
-    const out = [];
-    for (const rec of recursosDoToken(l, r)) {
+    const out = [], lista = recursosDoToken(l, r);
+    for (const rec of lista) {
       if (out.length >= MAX_BARS) continue;
-      const velha = t.bars.find(x => x.ref === rec.id) || t.bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
+      let velha = barraDoRec(t.bars, rec, lista);
+      if (velha && velha.ref === PD + rec.id) velha = Object.assign({}, velha, { k: rec.pts ? 'pts' : 'bar' });
       out.push(cleanBar(Object.assign({ c: BAR_COLORS[out.length % BAR_COLORS.length], k: rec.pts ? 'pts' : 'bar' }, velha,
         { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0), lo: pisoDe(rec), st: comecoDe(rec), pod: Math.max(0, Number(rec.podre) || 0) })));
     }
@@ -7524,6 +7560,25 @@ const Fichas = (() => {
   }
   // A ficha inteira deste token, se ela está aqui (uma linha que chegou incompleta não serve para acertar nada).
   const fichaDe = t => { const l = get(t.char); return l && l.ficha != null ? l : null; };
+  /* (lote 34) As barras de raça, classe e linhagem do token (de uma ficha): [{ i (a barra no token), ref, nome, v (agora),
+     inicio (com o que os nós somam), iniArv, min, max, comb ('inicio' | 'fica' | 'pergunta'), arvs }]. */
+  function barrasDeArvore(t) {
+    const l = t && t.char ? fichaDe(t) : null;
+    if (!l || !R() || !Array.isArray(l.ficha.recursos)) return [];
+    let c = null;
+    try { c = R().calcular(pcDe(l), cfg(), extra(l)); } catch (e) { return []; }
+    const out = [];
+    (t.bars || []).forEach((b, i) => {
+      if (!b || !b.ref || ehPd(b.ref)) return;
+      const rec = l.ficha.recursos.find(x => x && x.id === b.ref);
+      if (!rec || !Array.isArray(rec.arvs) || !rec.arvs.length) return;
+      const k = (c.recursos || []).find(x => x.id === rec.id) || {};
+      if (k.max == null || !isFinite(k.max)) return;
+      out.push({ i, ref: rec.id, nome: b.n || rec.nome, v: Number(b.v) || 0, inicio: k.inicio == null ? k.max : k.inicio, iniArv: k.iniArv || 0, min: Math.min(0, Number(k.min) || 0), max: k.max,
+        comb: ['inicio', 'fica', 'pergunta'].includes(rec.comb) ? rec.comb : 'inicio', arvs: rec.arvs.slice(), base: k.inicio == null ? k.max : Math.max(Math.min(0, Number(k.min) || 0), Math.min(k.max, Number(rec.comeca) || 0)) });
+    });
+    return out;
+  }
   /* (lote 29) O token ligado ao Bestiário (t.best: o id do inimigo): os números, as defesas e as rolagens vêm do
      Bestiário (uma linha "de mentira", como a de uma ficha, sem estado); as barras moram no token. Numa mesa, o
      documento best:i:<id> (só o mestre o recebe); fora de uma mesa, o Bestiário deste navegador. */
@@ -8439,7 +8494,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { start, on: () => on, chars, get, link, barrasDeArvore, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
@@ -15823,15 +15878,68 @@ const UI = (() => {
      abre no momento ligado (o mais largo: o começo do combate, a rodada, a vez). Só no aparelho de quem passou a vez. */
   function depoisDaVez(antes, d) {
     if (!isGM() || !(d > 0)) return;
-    const sc = Store.scene(), tn = sc.turn, P = barrinhasPrefs();
-    const comecou = !antes.on && tn.on, novaRodada = antes.on && tn.on && (tn.round || 1) > antes.round;
-    if (typeof Reforco !== 'undefined' && (comecou || novaRodada)) Reforco.naRodada(tn.round || 1);
-    if (comecou && P.combate) { telaBarrinhas('O combate começou: as barrinhas', tokensDoCombate(sc)); return; }
-    if (novaRodada && P.rodada) { telaBarrinhas(`${tn.round}ª rodada: as barrinhas`, tokensDoCombate(sc)); return; }
-    if (tn.on && P.vez && (tn.cur !== antes.cur || comecou)) {
-      const e = tn.list.find(x => x.id === tn.cur), toks = e ? tokensDe(sc, [e]) : [];
-      if (toks.length) telaBarrinhas(`A vez de ${toks.length === 1 ? tokName(toks[0]) : (e.name || 'grupo')}: as barrinhas`, toks);
-    }
+    const sc0 = Store.scene(), tn0 = sc0.turn, P = barrinhasPrefs();
+    const comecou = !antes.on && tn0.on, novaRodada = antes.on && tn0.on && (tn0.round || 1) > antes.round;
+    if (typeof Reforco !== 'undefined' && (comecou || novaRodada)) Reforco.naRodada(tn0.round || 1);
+    const resto = () => {
+      const sc = Store.scene(), tn = sc.turn;
+      if (comecou && P.combate) { telaBarrinhas('O combate começou: as barrinhas', tokensDoCombate(sc)); return; }
+      if (novaRodada && P.rodada) { telaBarrinhas(`${tn.round}ª rodada: as barrinhas`, tokensDoCombate(sc)); return; }
+      if (tn.on && P.vez && (tn.cur !== antes.cur || comecou)) {
+        const e = tn.list.find(x => x.id === tn.cur), toks = e ? tokensDe(sc, [e]) : [];
+        if (toks.length) telaBarrinhas(`A vez de ${toks.length === 1 ? tokName(toks[0]) : (e.name || 'grupo')}: as barrinhas`, toks);
+      }
+    };
+    // (lote 34) o combate começou: as barras de raça, classe e linhagem vão para o início (a Barra Bestial, o mestre diz)
+    if (comecou) barrasAoComecar(tokensDoCombate(sc0), resto); else resto();
+  }
+  /* (lote 34) Ao começar o combate, as barras de raça, classe e linhagem de quem luta (das fichas) vão para o início delas
+     — com o que os nós somam (até 10) —, num passo de desfazer. A que o combate não mexe (a Fome do Vampiro) fica. A
+     Barra Bestial do Licantropo, o mestre diz onde começa: de dia não há barra (0); à noite, 0, 5 ou 10 (os nós somam,
+     até 10); na lua cheia, 15. Depois, o que vinha (a tela das barrinhas). */
+  const FASES_BESTIAL = [{ n: 'Dia', v: 0, nos: false, id: 'dia' }, { n: '0', v: 0, nos: true, id: '0' }, { n: '5', v: 5, nos: true, id: '5' }, { n: '10', v: 10, nos: true, id: '10' }, { n: '15 · lua cheia', v: 15, nos: false, id: '15' }];
+  const TETO_INICIO = () => (window.TC && TC.rules && TC.rules.TETO_INICIO) || 10;
+  function barrasPara(itens, rot) {
+    Store.tx(rot, () => {
+      for (const x of itens) {
+        const t = Store.get('tokens', x.t.id); if (!t) continue;
+        const bars = t.bars.slice();
+        for (const b of x.bs) if (bars[b.i] && bars[b.i].ref === b.ref) bars[b.i] = barWith(bars[b.i], { v: b.para });
+        Store.upd('tokens', t.id, { bars });
+      }
+    });
+  }
+  const resumoBarras = itens => { const l = itens.map(x => tokName(x.t) + ': ' + x.bs.map(b => b.nome + ' ' + fmtV(b.para)).join(', ')); return l.length > 4 ? l.slice(0, 4).join('; ') + `; e mais ${l.length - 4}` : l.join('; '); };
+  function barrasAoComecar(toks, depois) {
+    const F = typeof Fichas !== 'undefined' && Fichas.on() && Fichas.barrasDeArvore ? Fichas : null;
+    if (!F) { depois(); return; }
+    const lista = toks.map(t => ({ t, bs: F.barrasDeArvore(t).filter(b => b.comb !== 'fica') })).filter(x => x.bs.length);
+    const normais = lista.map(x => ({ t: x.t, bs: x.bs.filter(b => b.comb === 'inicio' && Math.abs(b.v - b.inicio) > 1e-9).map(b => Object.assign({}, b, { para: b.inicio })) })).filter(x => x.bs.length);
+    const perg = lista.map(x => ({ t: x.t, bs: x.bs.filter(b => b.comb === 'pergunta') })).filter(x => x.bs.length);
+    // tudo num passo só: as de sempre e, quando o mestre responde, a Barra Bestial
+    const aplicar = (extra, fase) => {
+      const muda = normais.concat(extra.map(x => ({ t: x.t, bs: x.bs.filter(b => Math.abs(b.v - b.para) > 1e-9) })).filter(x => x.bs.length));
+      if (!muda.length) { if (fase) toast(`${fase.nome}: ${resumoBarras(extra)} (já estava assim).`, { key: 'barras-inicio' }); return; }
+      barrasPara(muda, 'Barras no início do combate');
+      const partes = [];
+      if (normais.length) partes.push('as barras de raça e classe foram para o início — ' + resumoBarras(normais));
+      if (fase && extra.length) partes.push(`${fase.nome} (${fase.f.id === 'dia' ? 'de dia: sem barra' : fase.f.id === '15' ? 'lua cheia' : 'à noite'}) — ` + resumoBarras(extra));
+      toast('Combate: ' + partes.join('; ') + '.', { key: 'barras-inicio', long: true, action: 'Desfazer', run: Tools.undo });
+    };
+    if (!perg.length) { aplicar([], null); depois(); return; }
+    const nomeB = perg[0].bs[0].nome, depoisJa = () => setTimeout(depois, 0);
+    const semResposta = () => { aplicar([], null); depoisJa(); };
+    const escolher = f => {
+      const itens = perg.map(x => ({ t: x.t, bs: x.bs.map(b => Object.assign({}, b, { para: Math.max(b.min, Math.min(b.max, f.nos ? Math.max(f.v, Math.min(TETO_INICIO(), f.v + (b.iniArv || 0))) : f.v)) })) }));
+      aplicar(itens, { nome: nomeB, f });
+      depoisJa();
+    };
+    modal({ title: nomeB + ': onde ela começa?', body: h('div', { id: 'bestial-tela' },
+      note('O combate começou. De dia não há ' + nomeB + ' (fica em 0). À noite, você diz 0, 5 ou 10 — os nós do licantropo somam, até 10. Na lua cheia, 15.'),
+      h('ul', { class: 'rs-lista' }, perg.map(x => h('li', { class: 'rs-t' }, h('b', { text: tokName(x.t) }),
+        h('span', { class: 'rs-bs' }, x.bs.map(b => h('span', { class: 'rs-b', text: `${b.nome} agora ${fmtV(b.v)}${b.iniArv ? ` · os nós somam +${b.iniArv}` : ''}` }))))))),
+      actions: [{ label: 'Agora não', run: semResposta }].concat(FASES_BESTIAL.map(f => ({ label: f.n, kind: f.id === '0' ? 'primary' : 'ghost', run: () => escolher(f) }))),
+      onCancel: semResposta });
   }
 
   /* ---- Aba Efeitos ---- */

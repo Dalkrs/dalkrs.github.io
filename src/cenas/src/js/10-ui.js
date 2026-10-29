@@ -2998,15 +2998,68 @@ const UI = (() => {
      abre no momento ligado (o mais largo: o começo do combate, a rodada, a vez). Só no aparelho de quem passou a vez. */
   function depoisDaVez(antes, d) {
     if (!isGM() || !(d > 0)) return;
-    const sc = Store.scene(), tn = sc.turn, P = barrinhasPrefs();
-    const comecou = !antes.on && tn.on, novaRodada = antes.on && tn.on && (tn.round || 1) > antes.round;
-    if (typeof Reforco !== 'undefined' && (comecou || novaRodada)) Reforco.naRodada(tn.round || 1);
-    if (comecou && P.combate) { telaBarrinhas('O combate começou: as barrinhas', tokensDoCombate(sc)); return; }
-    if (novaRodada && P.rodada) { telaBarrinhas(`${tn.round}ª rodada: as barrinhas`, tokensDoCombate(sc)); return; }
-    if (tn.on && P.vez && (tn.cur !== antes.cur || comecou)) {
-      const e = tn.list.find(x => x.id === tn.cur), toks = e ? tokensDe(sc, [e]) : [];
-      if (toks.length) telaBarrinhas(`A vez de ${toks.length === 1 ? tokName(toks[0]) : (e.name || 'grupo')}: as barrinhas`, toks);
-    }
+    const sc0 = Store.scene(), tn0 = sc0.turn, P = barrinhasPrefs();
+    const comecou = !antes.on && tn0.on, novaRodada = antes.on && tn0.on && (tn0.round || 1) > antes.round;
+    if (typeof Reforco !== 'undefined' && (comecou || novaRodada)) Reforco.naRodada(tn0.round || 1);
+    const resto = () => {
+      const sc = Store.scene(), tn = sc.turn;
+      if (comecou && P.combate) { telaBarrinhas('O combate começou: as barrinhas', tokensDoCombate(sc)); return; }
+      if (novaRodada && P.rodada) { telaBarrinhas(`${tn.round}ª rodada: as barrinhas`, tokensDoCombate(sc)); return; }
+      if (tn.on && P.vez && (tn.cur !== antes.cur || comecou)) {
+        const e = tn.list.find(x => x.id === tn.cur), toks = e ? tokensDe(sc, [e]) : [];
+        if (toks.length) telaBarrinhas(`A vez de ${toks.length === 1 ? tokName(toks[0]) : (e.name || 'grupo')}: as barrinhas`, toks);
+      }
+    };
+    // (lote 34) o combate começou: as barras de raça, classe e linhagem vão para o início (a Barra Bestial, o mestre diz)
+    if (comecou) barrasAoComecar(tokensDoCombate(sc0), resto); else resto();
+  }
+  /* (lote 34) Ao começar o combate, as barras de raça, classe e linhagem de quem luta (das fichas) vão para o início delas
+     — com o que os nós somam (até 10) —, num passo de desfazer. A que o combate não mexe (a Fome do Vampiro) fica. A
+     Barra Bestial do Licantropo, o mestre diz onde começa: de dia não há barra (0); à noite, 0, 5 ou 10 (os nós somam,
+     até 10); na lua cheia, 15. Depois, o que vinha (a tela das barrinhas). */
+  const FASES_BESTIAL = [{ n: 'Dia', v: 0, nos: false, id: 'dia' }, { n: '0', v: 0, nos: true, id: '0' }, { n: '5', v: 5, nos: true, id: '5' }, { n: '10', v: 10, nos: true, id: '10' }, { n: '15 · lua cheia', v: 15, nos: false, id: '15' }];
+  const TETO_INICIO = () => (window.TC && TC.rules && TC.rules.TETO_INICIO) || 10;
+  function barrasPara(itens, rot) {
+    Store.tx(rot, () => {
+      for (const x of itens) {
+        const t = Store.get('tokens', x.t.id); if (!t) continue;
+        const bars = t.bars.slice();
+        for (const b of x.bs) if (bars[b.i] && bars[b.i].ref === b.ref) bars[b.i] = barWith(bars[b.i], { v: b.para });
+        Store.upd('tokens', t.id, { bars });
+      }
+    });
+  }
+  const resumoBarras = itens => { const l = itens.map(x => tokName(x.t) + ': ' + x.bs.map(b => b.nome + ' ' + fmtV(b.para)).join(', ')); return l.length > 4 ? l.slice(0, 4).join('; ') + `; e mais ${l.length - 4}` : l.join('; '); };
+  function barrasAoComecar(toks, depois) {
+    const F = typeof Fichas !== 'undefined' && Fichas.on() && Fichas.barrasDeArvore ? Fichas : null;
+    if (!F) { depois(); return; }
+    const lista = toks.map(t => ({ t, bs: F.barrasDeArvore(t).filter(b => b.comb !== 'fica') })).filter(x => x.bs.length);
+    const normais = lista.map(x => ({ t: x.t, bs: x.bs.filter(b => b.comb === 'inicio' && Math.abs(b.v - b.inicio) > 1e-9).map(b => Object.assign({}, b, { para: b.inicio })) })).filter(x => x.bs.length);
+    const perg = lista.map(x => ({ t: x.t, bs: x.bs.filter(b => b.comb === 'pergunta') })).filter(x => x.bs.length);
+    // tudo num passo só: as de sempre e, quando o mestre responde, a Barra Bestial
+    const aplicar = (extra, fase) => {
+      const muda = normais.concat(extra.map(x => ({ t: x.t, bs: x.bs.filter(b => Math.abs(b.v - b.para) > 1e-9) })).filter(x => x.bs.length));
+      if (!muda.length) { if (fase) toast(`${fase.nome}: ${resumoBarras(extra)} (já estava assim).`, { key: 'barras-inicio' }); return; }
+      barrasPara(muda, 'Barras no início do combate');
+      const partes = [];
+      if (normais.length) partes.push('as barras de raça e classe foram para o início — ' + resumoBarras(normais));
+      if (fase && extra.length) partes.push(`${fase.nome} (${fase.f.id === 'dia' ? 'de dia: sem barra' : fase.f.id === '15' ? 'lua cheia' : 'à noite'}) — ` + resumoBarras(extra));
+      toast('Combate: ' + partes.join('; ') + '.', { key: 'barras-inicio', long: true, action: 'Desfazer', run: Tools.undo });
+    };
+    if (!perg.length) { aplicar([], null); depois(); return; }
+    const nomeB = perg[0].bs[0].nome, depoisJa = () => setTimeout(depois, 0);
+    const semResposta = () => { aplicar([], null); depoisJa(); };
+    const escolher = f => {
+      const itens = perg.map(x => ({ t: x.t, bs: x.bs.map(b => Object.assign({}, b, { para: Math.max(b.min, Math.min(b.max, f.nos ? Math.max(f.v, Math.min(TETO_INICIO(), f.v + (b.iniArv || 0))) : f.v)) })) }));
+      aplicar(itens, { nome: nomeB, f });
+      depoisJa();
+    };
+    modal({ title: nomeB + ': onde ela começa?', body: h('div', { id: 'bestial-tela' },
+      note('O combate começou. De dia não há ' + nomeB + ' (fica em 0). À noite, você diz 0, 5 ou 10 — os nós do licantropo somam, até 10. Na lua cheia, 15.'),
+      h('ul', { class: 'rs-lista' }, perg.map(x => h('li', { class: 'rs-t' }, h('b', { text: tokName(x.t) }),
+        h('span', { class: 'rs-bs' }, x.bs.map(b => h('span', { class: 'rs-b', text: `${b.nome} agora ${fmtV(b.v)}${b.iniArv ? ` · os nós somam +${b.iniArv}` : ''}` }))))))),
+      actions: [{ label: 'Agora não', run: semResposta }].concat(FASES_BESTIAL.map(f => ({ label: f.n, kind: f.id === '0' ? 'primary' : 'ghost', run: () => escolher(f) }))),
+      onCancel: semResposta });
   }
 
   /* ---- Aba Efeitos ---- */

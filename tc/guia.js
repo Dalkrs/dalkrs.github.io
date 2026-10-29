@@ -19,6 +19,8 @@
         { t: 'O aniversário', txt: 'Em Atributos, no “Quem é”: o dia e o mês no calendário do mundo (o ano é opcional, para a idade). No dia, o resumo avisa, e o Jornal sugere a nota no rascunho — só sai se você publicar.', onde: { sel: '#anivBox', sub: 'atributos', nada: fichaNada } },
         { t: 'Quem vê e quem controla', txt: 'O olho no elenco abre ou esconde a ficha dos jogadores. Em “Quem é”, o dono diz qual jogador controla a ficha; “Personagem ativo” é o mesmo dos dois blocos do elenco (na cena, “Puxar o grupo” traz marcados os ativos).', onde: { sel: '#f_dono', sub: 'atributos', nada: 'Isso só existe numa mesa, com uma ficha aberta.' } },
         { t: 'Estaque, missões e notas', txt: 'Na aba Notas. O Estaque pode ficar escondido do jogador, ficha por ficha (a marca no próprio Estaque).', onde: { sel: '#abafichac-notas', sub: 'notas', nada: fichaNada } },
+        // (lote 34)
+        { t: 'As barras da raça e da classe', txt: 'A raça, a classe e a linhagem trazem a barra delas (o Calor da Forja, a Ira, a Fome…) como barra comum, logo depois do HP e do SP — com a faixa e o começo definidos na árvore, na Oficina. Os nós que somam ao início (“+1 de Calor inicial”) já entram; o início não passa de 10.', onde: { sel: '#ficha .res', sub: 'atributos', nada: fichaNada } },
       ],
       jogador: [
         { t: 'A sua ficha', txt: 'Em cima, o resumo, que fica fixo: as barras (digite −8 para tirar, +25% para pôr um quarto do máximo), os atributos, os lapros, a caixinha do grupo e o que está machucado. Os selos levam à parte da ficha em que cada coisa fica.', onde: { sel: '#resumo', nada: fichaNada } },
@@ -27,6 +29,7 @@
         { t: 'Skills', txt: 'Na aba Skills, um cartão para cada coisa que o personagem aprendeu (e as skills únicas que o mestre criou para ele). Para pegar mais, “Abrir na Árvore”.', onde: { sel: '#painelSkills', sub: 'skills', nada: fichaNada } },
         { t: 'O aniversário', txt: 'Em Atributos, no “Quem é”: o dia e o mês no calendário do mundo, e o ano se quiser (para a idade). No dia, a ficha avisa.', onde: { sel: '#anivBox', sub: 'atributos', nada: fichaNada } },
         { t: 'As missões', txt: 'Na aba Notas: as do grupo e as suas, com o que falta fazer.', onde: { sel: '#painelMissoes', sub: 'notas', nada: fichaNada } },
+        { t: 'A barra da raça e da classe', txt: 'Em Atributos, junto do HP e do SP: a barra que a sua raça, a sua classe ou a sua linhagem trazem, com onde ela começa o combate.', onde: { sel: '#ficha .res', sub: 'atributos', nada: fichaNada } },
       ],
     },
     cenas: {
@@ -39,6 +42,7 @@
         { t: 'A caverna embaixo', txt: 'Dois cliques numa Entrada (ou na entrada de gruta da Região livre): “Gerar a caverna embaixo…” faz o subsolo alinhado com esta cena, com o rio de cima, o bioma de baixo, um achado e um ninho.', onde: { sel: '#stage' } },
         { t: 'A arena do chefe', txt: 'Em “Gerar um lugar…”, a aba Arena faz a sala da luta com o chefe, com as fases prontas (cada mudança liga, desliga ou troca). Na cena, a aba Cena mostra as fases: acionar mostra antes o que muda, e o Desfazer volta.', onde: { sel: '#tab-scene' } },
         { t: 'As condições das raças', txt: 'Nas condições do token, a aba Raças: as das árvores de raça, com a raça junto do nome. Já entram com as rodadas e o contador de começo; o contador para no máximo e, no limite, sugere o que vem (o Frio no 5, Congelado). Os membros perdidos perguntam o lado e marcam a ficha. As zonas e os objetos (o Totem, a Arapuca, a Terra Morta…) ficam na aba Efeitos, no grupo Raças.', onde: { sel: '#tab-fx' } },
+        { t: 'O começo do combate', txt: '“Iniciar” (ou o primeiro “Próximo turno”) leva as barras de raça, classe e linhagem de quem luta para o começo delas, com o que os nós somam — num passo só, com Desfazer. A Fome do Vampiro fica como está; a Barra Bestial do Licantropo, a mesa pergunta: Dia, 0, 5, 10 ou 15 na lua cheia.', onde: { sel: '#turnOnOff', nada: 'O botão Iniciar fica na aba Turnos, quando há alguém na ordem.' } },
         { t: 'O campo de batalha', txt: 'Na janela da Batalha do Mapa-múndi, “Abrir no campo de batalha…” faz a cena do hexágono com os dois exércitos em blocos de soldados. O comandante move os blocos dele; na aba Cena, “Levar para a batalha…” leva o flanco, o terreno alto, a cobertura e a reserva como bônus sugeridos.', onde: { sel: '#tab-scene' } },
       ],
       jogador: [
@@ -86,6 +90,8 @@
         { t: 'A busca', txt: 'Acha pelo nome e pelo texto dos nódulos (também o de cada grau), em todas as árvores: a lista leva até lá.', onde: { sel: '#busca' } },
         { t: 'Os filtros', txt: 'Em cima da árvore: as naturezas e os tipos de uso (ativa, passiva…). Apagam o que não é daquele tipo.', onde: { sel: '#filtroNat', nada: 'Os filtros aparecem quando a árvore à vista tem naturezas ou tipos de uso.' } },
         { t: 'As skills únicas', txt: 'No modo Jogador, no painel do personagem: “+ Skill única” cria uma skill só dele (o texto, o bônus na ficha, o custo de uso), já aprendida. Aparece na ficha, na aba Skills.', onde: { sel: '#blocoUnicas', nada: 'Passe para o modo Jogador e escolha o personagem.' } },
+        // (lote 34)
+        { t: 'A barra da raça e da classe', txt: 'Na árvore de raça, de classe ou de linhagem, o bloco Árvore mostra a barra que ela traz para a ficha: o nome, a faixa, o início, o que o combate faz com ela e o resto do guia de barras. Mudar aqui vale para esta mesa (“Voltar ao guia” desfaz). No nó, cada grau diz quanto soma ao início (vem lido do texto).', onde: { sel: '#grupoBarraArv', nada: 'Abra uma árvore de raça, classe ou linhagem no modo Mestre: o bloco Árvore, no painel, mostra a barra dela.' } },
       ],
       jogador: [
         { t: 'O seu personagem', txt: 'À esquerda: os pontos de cada tipo, o que você pegou e as árvores equipadas. Clique num nódulo liberado para aprender.', onde: { sel: '#painel' } },

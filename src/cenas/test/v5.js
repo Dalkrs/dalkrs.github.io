@@ -266,7 +266,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await page.locator('#cg-busca').fill('xyz'); await w(120);
   ok(/Nenhuma condição com esse nome/.test(await page.locator('#cg-list').innerText()), 'sem resultado, a mesa diz');
   await page.locator('#cg-tab-todas').click(); await w(120);
-  ok(await page.locator('#cg-list .chip').count() === 148 && await page.locator('#cg-busca').inputValue() === '', 'a aba Todas mostra as 148 (47 + 20 do lote 7 + 2 do lote 8 + 1 do lote 9 + as das raças e das classes + o Imbuído de Mana), e limpa a busca');
+  ok(await page.locator('#cg-list .chip').count() === 153 && await page.locator('#cg-busca').inputValue() === '', 'a aba Todas mostra as 153 (47 + 20 do lote 7 + 2 do lote 8 + 1 do lote 9 + as das raças e das classes + o Imbuído de Mana), e limpa a busca');
   await page.locator('#cg-tab-mente').click(); await w(120);
   for (const nm of ['Artefato Ativado', 'Enfeitiçado', 'Marcado']) { await page.locator('#cg-list .chip', { hasText: nm }).click(); await w(150); }
   { const ana = await T('Ana'); ok(['artefato', 'enfeiticado', 'marcado'].every(id => ana.conds.includes(id)), '(mais três na Ana)'); }
@@ -280,7 +280,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await page.keyboard.press('Escape'); await w(100);
   // a janela de dano em área separa as condições por categoria
   await ev(() => { const u = __tc; u.UI.areaBox('Teste', u.Store.scene().tokens.slice(0, 2), null); }); await w(200);
-  ok(await page.locator('#ar-cond optgroup').count() === 9 && await page.locator('#ar-cond option').count() === 140, 'na janela de dano em área, a lista de condições vem em grupos (9 categorias, 139 + "Nenhuma"; as de janela ficam de fora)');
+  ok(await page.locator('#ar-cond optgroup').count() === 9 && await page.locator('#ar-cond option').count() === 145, 'na janela de dano em área, a lista de condições vem em grupos (9 categorias, 144 + "Nenhuma"; as de janela ficam de fora)');
   await page.keyboard.press('Escape'); await w(100);
 
   // ================= Força e defesas ao lado do nome =================

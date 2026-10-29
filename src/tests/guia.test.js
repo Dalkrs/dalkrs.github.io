@@ -27,7 +27,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
     await P.locator('#btnGuia').click(); await w(250);
     const tits = await P.locator('#guia .guia-t').allInnerTexts();
     ok(await P.locator('#guia').isVisible() && /Guia · Fichas/.test(await P.locator('#guia .guia-h').innerText()) && /para quem mestra/.test(await P.locator('#guia .guia-h').innerText()), 'abre o guia das Fichas, o de quem mestra (sem conta, cada um é o mestre)');
-    ok(tits.length === 8 && tits[0] === 'O elenco e os grupos' && tits.includes('A caixinha do grupo'), 'os assuntos da aba: ' + j(tits));
+    ok(tits.length === 9 && tits[0] === 'O elenco e os grupos' && tits.includes('A caixinha do grupo'), 'os assuntos da aba: ' + j(tits));
     ok(await P.locator('#guia .guia-c').count() === 0, 'todos começam fechados');
     await P.locator('#guia .guia-t', { hasText: 'A caixinha do grupo' }).click(); await w(200);
     ok(await P.locator('#guia .guia-c').count() === 1 && /lapros que o grupo guarda junto/.test(await P.locator('#guia .guia-c').innerText()) && await P.locator('#guia [data-guia-mostrar]').isVisible(), 'um clique abre o assunto: o texto e "Mostrar onde fica"');

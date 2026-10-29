@@ -57,17 +57,41 @@ const Fichas = (() => {
   }
   // os recursos da ficha que viram barra no token: os de sempre (com máximo) e, depois deles, as barras especiais
   const recursosDoToken = (l, r) => r.recursos.filter(rec => rec.max != null && isFinite(rec.max)).concat(especiaisDe(l));
+  /* (lote 34) A barra do token que serve a este recurso: a ligada a ele; ou a da barra especial que virou este recurso
+     (a raça e a classe trazem barra comum agora: a especial de antes, com o mesmo id, sai da ficha); ou uma solta com o
+     mesmo nome. */
+  const barraDoRec = (bars, rec, lista) => bars.find(x => x.ref === rec.id)
+    || (!ehPd(rec.id) && bars.find(x => x.ref === PD + rec.id && !lista.some(y => y.id === x.ref)))
+    || bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
+  /* (lote 34) A barra de raça, classe ou linhagem que chega ao token (nova, ou a especial que virou comum) entra no
+     lugar dela na ficha — logo depois da barra do recurso que vem antes (o HP e o SP) —, não no fim. */
+  function porNoLugar(bars, b, lista, rec) {
+    const i0 = bars.indexOf(b);
+    const k = lista.indexOf(rec);
+    let p = -1;
+    for (let j = k - 1; j >= 0 && p < 0; j--) p = bars.findIndex(x => x !== b && x.ref === lista[j].id);
+    const alvo = p >= 0 ? p + 1 : (k === 0 ? 0 : -1);
+    if (alvo < 0) return false;
+    if (i0 >= 0) bars.splice(i0, 1);
+    const pos = i0 >= 0 && i0 < alvo ? alvo - 1 : alvo;
+    if (i0 === pos) { bars.splice(i0, 0, b); return false; }
+    bars.splice(pos, 0, b);
+    return true;
+  }
+  const deArvore = (l, id) => !!l && !!l.ficha && Array.isArray(l.ficha.recursos) && l.ficha.recursos.some(x => x && x.id === id && Array.isArray(x.arvs) && x.arvs.length);
   // As barras do token, atualizadas pela ficha. Devolve null se nada muda.
   function barrasDe(t, r, l) {
     const bars = t.bars.map(b => Object.assign({}, b));
     let mudou = false;
     const lista = recursosDoToken(l, r);
     for (const rec of lista) {
-      let b = bars.find(x => x.ref === rec.id) || bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
+      let b = barraDoRec(bars, rec, lista);
+      if (b && b.ref === PD + rec.id) { b.k = rec.pts ? 'pts' : 'bar'; mudou = true; if (deArvore(l, rec.id)) porNoLugar(bars, b, lista, rec); }      // (a especial vira barra comum)
       if (!b) {
         if (bars.length >= MAX_BARS) continue;
         b = cleanBar({ n: rec.nome, c: BAR_COLORS[bars.length % BAR_COLORS.length], v: rec.atual, m: rec.max, k: rec.pts ? 'pts' : 'bar', on: true, vis: '' });
         bars.push(b); mudou = true;
+        if (deArvore(l, rec.id)) porNoLugar(bars, b, lista, rec);
       }
       const nome = String(rec.nome || 'Barra').slice(0, 24);
       if (b.ref !== rec.id) { b.ref = rec.id; mudou = true; }
@@ -91,10 +115,11 @@ const Fichas = (() => {
      (cor, estilo, quem vê); as outras saem (a "Vida" de fábrica, por exemplo). Devolve null se a ficha não tem
      recurso nenhum: aí o token fica como está. */
   function soDaFicha(t, r, l) {
-    const out = [];
-    for (const rec of recursosDoToken(l, r)) {
+    const out = [], lista = recursosDoToken(l, r);
+    for (const rec of lista) {
       if (out.length >= MAX_BARS) continue;
-      const velha = t.bars.find(x => x.ref === rec.id) || t.bars.find(x => !x.ref && norm(x.n) === norm(rec.nome));
+      let velha = barraDoRec(t.bars, rec, lista);
+      if (velha && velha.ref === PD + rec.id) velha = Object.assign({}, velha, { k: rec.pts ? 'pts' : 'bar' });
       out.push(cleanBar(Object.assign({ c: BAR_COLORS[out.length % BAR_COLORS.length], k: rec.pts ? 'pts' : 'bar' }, velha,
         { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0), lo: pisoDe(rec), st: comecoDe(rec), pod: Math.max(0, Number(rec.podre) || 0) })));
     }
@@ -102,6 +127,25 @@ const Fichas = (() => {
   }
   // A ficha inteira deste token, se ela está aqui (uma linha que chegou incompleta não serve para acertar nada).
   const fichaDe = t => { const l = get(t.char); return l && l.ficha != null ? l : null; };
+  /* (lote 34) As barras de raça, classe e linhagem do token (de uma ficha): [{ i (a barra no token), ref, nome, v (agora),
+     inicio (com o que os nós somam), iniArv, min, max, comb ('inicio' | 'fica' | 'pergunta'), arvs }]. */
+  function barrasDeArvore(t) {
+    const l = t && t.char ? fichaDe(t) : null;
+    if (!l || !R() || !Array.isArray(l.ficha.recursos)) return [];
+    let c = null;
+    try { c = R().calcular(pcDe(l), cfg(), extra(l)); } catch (e) { return []; }
+    const out = [];
+    (t.bars || []).forEach((b, i) => {
+      if (!b || !b.ref || ehPd(b.ref)) return;
+      const rec = l.ficha.recursos.find(x => x && x.id === b.ref);
+      if (!rec || !Array.isArray(rec.arvs) || !rec.arvs.length) return;
+      const k = (c.recursos || []).find(x => x.id === rec.id) || {};
+      if (k.max == null || !isFinite(k.max)) return;
+      out.push({ i, ref: rec.id, nome: b.n || rec.nome, v: Number(b.v) || 0, inicio: k.inicio == null ? k.max : k.inicio, iniArv: k.iniArv || 0, min: Math.min(0, Number(k.min) || 0), max: k.max,
+        comb: ['inicio', 'fica', 'pergunta'].includes(rec.comb) ? rec.comb : 'inicio', arvs: rec.arvs.slice(), base: k.inicio == null ? k.max : Math.max(Math.min(0, Number(k.min) || 0), Math.min(k.max, Number(rec.comeca) || 0)) });
+    });
+    return out;
+  }
   /* (lote 29) O token ligado ao Bestiário (t.best: o id do inimigo): os números, as defesas e as rolagens vêm do
      Bestiário (uma linha "de mentira", como a de uma ficha, sem estado); as barras moram no token. Numa mesa, o
      documento best:i:<id> (só o mestre o recebe); fora de uma mesa, o Bestiário deste navegador. */
@@ -1017,7 +1061,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { start, on: () => on, chars, get, link, barrasDeArvore, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)

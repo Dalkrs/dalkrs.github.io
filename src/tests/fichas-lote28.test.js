@@ -1,4 +1,5 @@
-// Fichas, lote 28 (sem mesa): equipar a classe ou a raça cria a barra especial dela na ficha.
+// Fichas, lote 28 (sem mesa): equipar uma árvore cria a barra especial dela na ficha. (Desde o lote 34, a raça, a classe e a
+// linhagem trazem barra comum — ver fichas-lote34 —: aqui as árvores são da categoria "outra", que ainda traz a especial.)
 //   · o nome, o limite e o começo lidos do texto da árvore ("Fúria (barra): máximo 10; começa em 0."), com o aviso e o
 //     Desfazer; a barra que saiu não volta sozinha (só se a árvore sair e entrar de novo);
 //   · sem o limite no texto (uma balança, "de −5 a +5"), a barra nasce sem limite, o aviso diz, e o campo Limite fica
@@ -21,10 +22,10 @@ ok(j(R.defBarraEspecial({ barra: 'Dívida', nodes: [{ pais: [], desc: 'Pacto: �
 const no = (id, nome, pais, desc) => ({ id, nome, tipo: pais.length ? 'notavel' : 'keystone', pais, usos: [], desc, graus: [{ custos: pais.length ? { p1: 1 } : {}, texto: '' }] });
 const bib = { nome: 'Bib', pools: [{ id: 'p1', nome: 'Pontos', cor: '#D9A441', padrao: 10 }], usos: [], naturezas: [],
   arvores: [
-    { id: 'a_barb', nome: 'Bárbaro', categoria: 'classe', nodes: [no('b1', 'Sangue quente', [], 'O bárbaro vive da raiva.\n\nFúria (barra): máximo 10; começa em 0.'), no('b2', 'Golpe brutal', ['b1'], 'Gasta 2 de Fúria.')] },
-    { id: 'a_selene', nome: 'Kitsune Selene', categoria: 'raca', nodes: [no('s1', 'Luar', [], 'x\n\nGeada: máximo 20; começa com 4.')] },
-    { id: 'a_voz', nome: 'Konaito', categoria: 'raca', nodes: [no('v1', 'A voz', [], 'x\n\nVoz: de −5 a +5.')] },
-    { id: 'a_nada', nome: 'Escriba', categoria: 'classe', nodes: [no('e1', 'Pena', [], 'Escreve bonito.')] }] };
+    { id: 'a_barb', nome: 'Bárbaro', categoria: 'outra', nodes: [no('b1', 'Sangue quente', [], 'O bárbaro vive da raiva.\n\nFúria (barra): máximo 10; começa em 0.'), no('b2', 'Golpe brutal', ['b1'], 'Gasta 2 de Fúria.')] },
+    { id: 'a_selene', nome: 'Kitsune Selene', categoria: 'outra', nodes: [no('s1', 'Luar', [], 'x\n\nGeada: máximo 20; começa com 4.')] },
+    { id: 'a_voz', nome: 'Konaito', categoria: 'outra', nodes: [no('v1', 'A voz', [], 'x\n\nVoz: de −5 a +5.')] },
+    { id: 'a_nada', nome: 'Escriba', categoria: 'outra', nodes: [no('e1', 'Pena', [], 'Escreve bonito.')] }] };
 const pc = (id, nome, extra) => Object.assign(R.personagemPadrao(nome), { id, nome, level: 8, recursos: [{ id: 'hp' + id, nome: 'HP', fml: '100' }] }, extra);
 const dain = pc('pc_dain', 'Dain', { arvVistas: [], skills: { arvores: [], pontos: { p1: 10 }, alocados: {} } });
 const lia = pc('pc_lia', 'Lia', { arvVistas: [], poderes: [{ id: 'pg', nome: 'Geada', max: 12, atual: 5 }], skills: { arvores: [], pontos: { p1: 10 }, alocados: {} } });
