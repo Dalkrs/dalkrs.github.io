@@ -2,6 +2,31 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.29-2",
+      "data": "2026-10-29",
+      "titulo": "O Bestiário do clã",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "A aba Bestiário, no grupo Mundo: o livro de caça do seu clã, escrito à mão, com o que o clã já descobriu de cada criatura — o desenho, a descrição, o que se sabe, as fraquezas e resistências e o que ela deixa cair. O que ainda não se sabe aparece borrado. A aba aparece quando o livro do seu clã é liberado."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Anotar na margem: cada página do livro aceita anotações de quem é do clã, assinadas com o nome do personagem. Você muda ou apaga a sua quando quiser."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Bestiário do clã (ao lado do Clã): monte o livro de cada clã página por página, revele parte por parte o que o clã descobriu e libere o livro quando quiser. “Como o clã vê” mostra exatamente o que chega a eles. Só quem tem personagem nos cargos do clã lê o livro."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Bestiário: as fraquezas e resistências de cada inimigo (na aba Comportamento) e “Enviar ao livro do clã”, na gaveta. Chega escondido do clã; enviar de novo atualiza os números, as fraquezas e o saque sem apagar o que você escreveu no livro."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.29-1",
       "data": "2026-10-29",
       "titulo": "A mesa mais leve para o banco",

@@ -192,6 +192,22 @@
       ],
       jogador: [],
     },
+    // (lote 36) o Bestiário do clã: o livro de caça de cada clã
+    livro: {
+      mestre: [
+        { t: 'O livro de cada clã', txt: 'Cada clã tem o livro dele: escolha o clã no alto. O livro começa trancado; com “Liberado para o clã”, quem tem personagem nos cargos do clã passa a ler.', onde: { sel: '#chLiberar', nada: 'Crie um clã na aba Clã: cada clã tem o livro dele.' } },
+        { t: 'Uma página nova', txt: '“+ Página” cria uma criatura à mão. Do seu Bestiário, “Enviar ao livro do clã” (na gaveta do inimigo) manda o nome, a imagem, os números aproximados, as fraquezas e o saque. Tudo chega escondido do clã.', onde: { sel: '#btNova', nada: 'Crie um clã na aba Clã: cada clã tem o livro dele.' } },
+        { t: 'Revelar o que o clã descobriu', txt: 'Na página, “Mostrar ao clã” mostra a página (o nome). Cada parte tem o botão dela: a ilustração, a descrição, o que sabemos, as fraquezas e o que deixa cair. O que não foi revelado aparece para o clã como tinta borrada, sem o conteúdo. Tudo tem Desfazer.', onde: { sel: '#pagEsq' } },
+        { t: 'Editar a página', txt: 'O nome, a ilustração (um desenho a mão, como os do Gemini), a legenda a lápis, a descrição (a primeira letra vira a capitular), os números, as fraquezas e o saque. O que você muda aqui fica, mesmo se enviar de novo do Bestiário.', onde: { sel: '#btEditar', nada: 'O botão aparece com uma página aberta.' } },
+        { t: 'Como o clã vê', txt: '“Como o clã vê” mostra o livro exatamente como chega a eles: só as páginas e as partes reveladas, com as anotações.', onde: { sel: '#vistas', nada: 'Crie um clã na aba Clã: cada clã tem o livro dele.' } },
+        { t: 'As anotações do clã', txt: 'Quem é do clã anota na margem, com o nome do personagem. Você pode apagar qualquer anotação.', onde: { sel: '#pagEsq' } },
+      ],
+      jogador: [
+        { t: 'O livro do clã', txt: 'O que o clã já descobriu de cada criatura. As partes borradas são o que ainda não se sabe: quando o clã descobrir, o mestre revela.', onde: { sel: '#livro' } },
+        { t: 'Folhear', txt: 'As letras na beira do livro, “Anterior” e “Próxima” (ou as setas do teclado). A busca acha pelo nome, pelo texto e pelas anotações.', onde: { sel: '#busca' } },
+        { t: 'Anotar na margem', txt: '“Anotar na margem…” deixa uma anotação na página, com o nome do seu personagem. Todo o clã lê; você muda ou apaga a sua quando quiser.', onde: { sel: '#btAnotar', nada: 'O botão aparece com uma página aberta.' } },
+      ],
+    },
     pistas: {
       mestre: [],
       jogador: [

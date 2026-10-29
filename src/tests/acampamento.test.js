@@ -287,7 +287,7 @@ const fichas = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d
     const abaAtiva = () => S.evaluate(() => (document.querySelector('.tab[aria-selected="true"]') || {}).id);
     await S.goto(t.base + '?debug', { waitUntil: 'load' });
     ok(await ate(async () => (await abaAtiva()) === 'tab-cenas', 15000), 'a casca abre nas Cenas');
-    ok(await S.locator('.tab:visible').count() === 12 && (await S.locator('#tab-acampamento').innerText()).trim() === 'Acampamento', 'a casca tem a aba Acampamento');
+    ok(await S.locator('.tab:visible').count() === 13 && (await S.locator('#tab-acampamento').innerText()).trim() === 'Acampamento', 'a casca tem a aba Acampamento');
     const C = await quadro(/\/cenas\//);
     ok(await ate(async () => await C.evaluate(() => !!window.__tc && __tc.Store.S.order.length >= 1)), 'as Cenas carregam');
     const idPonte = await C.evaluate(() => { const u = __tc, sc = u.newScene('Emboscada na ponte'); u.Store.addScene(sc); u.Persist.scene(sc.id); return sc.id; });

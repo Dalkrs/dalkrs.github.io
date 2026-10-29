@@ -14,12 +14,12 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
     await page.goto(t.base, { waitUntil: 'load' }); await w(page, 1500);
     ok(await page.title() === 'Cenas · Tiny Cats', 'visitante novo abre em Cenas: ' + await page.title());
     ok((await page.locator('.brand').innerText()).trim() === 'Tiny Cats', 'marca Tiny Cats na barra');
-    ok(await page.locator('.tab:visible').count() === 12, 'doze abas à mostra (lote 31: o Escudo do mestre)');
+    ok(await page.locator('.tab:visible').count() === 13, 'treze abas à mostra (lote 31: o Escudo do mestre; lote 36: o Bestiário do clã)');
     const nomes = await page.locator('.tab:visible').allInnerTexts();
-    ok(nomes.join('|') === 'Cenas|Fichas|Rolador|Mapa-múndi|Jornal|Clã|Acampamento|Meditação|Oficina|Bestiário|Itens|Escudo do mestre', 'nomes das abas (sem mesa, cada um mestra: a Oficina no lugar da Árvore): ' + nomes.join('|'));
+    ok(nomes.join('|') === 'Cenas|Fichas|Rolador|Mapa-múndi|Jornal|Clã|Bestiário do clã|Acampamento|Meditação|Oficina|Bestiário|Itens|Escudo do mestre', 'nomes das abas (sem mesa, cada um mestra: a Oficina no lugar da Árvore): ' + nomes.join('|'));
     // as abas em três grupos, cada um com o nome em cima e a sua cor
     const grupos = await page.evaluate(() => [...document.querySelectorAll('.grupo')].filter(g => !g.hidden).map(g => g.querySelector('.grupo-t').textContent + ':' + [...g.querySelectorAll('.tab')].filter(x => !x.hidden).map(x => x.id.slice(4)).join(',')));
-    ok(grupos.join(' ') === 'Jogar:cenas,fichas,rolador Mundo:mundo,jornal,cla Descanso:acampamento,meditacao Mestre:oficina,bestiario,itens,escudo', 'os grupos da barra: ' + grupos.join(' '));
+    ok(grupos.join(' ') === 'Jogar:cenas,fichas,rolador Mundo:mundo,jornal,cla,livro Descanso:acampamento,meditacao Mestre:oficina,bestiario,itens,escudo', 'os grupos da barra: ' + grupos.join(' '));
     const cores = await page.evaluate(() => [...document.querySelectorAll('.grupo-t')].map(x => getComputedStyle(x).color));
     ok(new Set(cores).size === 4, 'cada grupo com uma cor: ' + cores.join(' '));
     const esperado = { jornal: /Jornal · Tiny Cats/, cenas: /Cenas · Tiny Cats/, mundo: /Mapa-múndi · Tiny Cats/, acampamento: /Acampamento · Tiny Cats/, fichas: /Fichas · Tiny Cats/, oficina: /Árvore de Habilidades · Tiny Cats/, meditacao: /Meditação · Tiny Cats/, cla: /Clã · Tiny Cats/, rolador: /Rolador · Tiny Cats/, bestiario: /Bestiário · Tiny Cats/, itens: /Itens · Tiny Cats/ };

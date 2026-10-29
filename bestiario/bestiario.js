@@ -261,6 +261,7 @@
     const acoes = h('div', { class: 'acoes' },
       h('button', { type: 'button', class: 'btn sm', id: 'g-editar', text: 'Editar', onclick: () => editar(x.id) }),
       h('button', { type: 'button', class: 'btn sm', id: 'g-duplicar', text: 'Duplicar', onclick: () => duplicar(x.id) }),
+      h('button', { type: 'button', class: 'btn sm', id: 'g-livro', text: 'Enviar ao livro do clã…', title: 'A página dele no livro de caça de um clã (chega escondida: você revela na aba Bestiário do clã)', onclick: () => enviarAoLivro(x.id) }),
       h('button', { type: 'button', class: 'btn sm per', id: 'g-apagar', text: 'Apagar', onclick: () => apagar(x.id) }),
       h('button', { type: 'button', class: 'btn sm pri', id: 'g-mais', style: { marginLeft: 'auto' }, text: '+1 no encontro', onclick: () => mudarEncontro(x.id, 1) }));
     trocar(g,
@@ -279,6 +280,9 @@
       sks.length || e.skills.texto ? h('div', { class: 'sec', id: 'g-skills' }, h('span', { class: 'eyebrow', text: 'Skills' }),
         sks.map(s => h('div', { class: 'sk' }, h('b', null, s.nome + (s.graus > 1 ? ' (grau ' + s.grau + ')' : ''), s.usos.map(u => h('span', { class: 'u', text: u }))), s.texto ? h('p', { text: s.texto }) : null, h('p', { class: 'ajuda', text: s.arvore }))),
         e.skills.texto ? h('p', { class: 'texto', text: e.skills.texto }) : null) : null,
+      noLivro(x.id).length ? h('p', { class: 'ajuda', id: 'g-nolivro' }, 'No livro de ', noLivro(x.id).map((c, i) => [i ? ', ' : '', h('button', { type: 'button', class: 'lk', 'data-livro': c.id, onclick: () => abrirLivro(c.id, 'b' + x.id) }, c.nome)]), '.') : null,
+      e.fraq.length ? h('div', { class: 'sec', id: 'g-fraq' }, h('span', { class: 'eyebrow', text: 'Fraquezas e resistências' }),
+        h('div', { class: 'acoes' }, e.fraq.map(f => h('span', { class: 'chip fr-' + f.tipo, text: f.nome + ' (' + (B.TIPOS_FRAQ.find(t => t[0] === f.tipo) || ['', ''])[1].toLowerCase() + ')' })))) : null,
       e.comp.texto || e.comp.lembrete ? h('div', { class: 'sec' }, h('span', { class: 'eyebrow', text: 'Comportamento' }),
         e.comp.lembrete ? h('div', { class: 'lembrete', title: 'Aparece para você na vez dele, nas Cenas', text: e.comp.lembrete }) : null,
         e.comp.texto ? h('p', { class: 'texto', text: e.comp.texto }) : null) : null,
@@ -378,6 +382,83 @@
   $('busca').oninput = ev => { busca = ev.target.value; mostrar = 120; pintar(); };
   $('btNovo').onclick = () => editar(null);
   $('btDesfazer').onclick = () => desfazer();
+
+  /* ---------------- (lote 36) enviar ao livro do clã ---------------- */
+  /* A página do inimigo no livro de caça de um clã: cla:livro:<clã>:p:b<id> (ver livro/nucleo.js). Nasce com tudo
+     escondido do clã; se ele já está lá, recebe o nome, a imagem, os números aproximados, as fraquezas e o saque de
+     agora — menos o que o mestre mudou no próprio livro (a legenda, o que o clã vê e as anotações ficam). Fora de uma
+     mesa, o livro fica neste navegador (o mesmo que a aba Bestiário do clã lê). */
+  const LN = window.LivroNucleo, L_LIVRO = 'tinycats:livro:local';
+  function clasDaMesa() {
+    const out = [];
+    if (naMesa) { for (const l of D.todas()) if (!l.apagado && typeof l.id === 'string' && l.id.startsWith('cla:c:') && LN.idCla(l.id.slice(6)) && ehObj(l.dados)) out.push({ id: l.id.slice(6), nome: String(l.dados.nome || 'Clã').slice(0, 60), ordem: +l.dados.ordem || 0 }); }
+    else {
+      let d = {}; try { const x = JSON.parse(guarda.ler('tinycats:cla:local') || 'null'); d = ehObj(x) ? x : {}; } catch (e) { d = {}; }
+      for (const k in d) if (k.startsWith('cla:c:') && LN.idCla(k.slice(6)) && ehObj(d[k])) out.push({ id: k.slice(6), nome: String(d[k].nome || 'Clã').slice(0, 60), ordem: +d[k].ordem || 0 });
+    }
+    return out.sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+  function livroLocal() { try { const d = JSON.parse(guarda.ler(L_LIVRO) || 'null'); return ehObj(d) && ehObj(d.docs) ? d : { docs: {} }; } catch (e) { return { docs: {} }; } }
+  function docLivro(id) {
+    if (naMesa) { const l = D.pegar(id); return l && !l.apagado ? l.dados : null; }
+    const d = livroLocal().docs[id]; return d == null ? null : d;
+  }
+  function gravarLivro(id, dados) {
+    if (naMesa) { const campos = { dados: copia(dados) }; if (!D.pegar(id)) campos.vis = 'mestre'; D.gravar(id, campos); }
+    else { const d = livroLocal(); d.docs[id] = copia(dados); if (!guarda.gravar(L_LIVRO, j(d))) toast('Não deu para guardar neste navegador (a imagem pode ser grande demais).'); }
+    marcarSalvo();
+  }
+  function apagarLivro(id) {
+    if (naMesa) D.apagar(id); else { const d = livroLocal(); delete d.docs[id]; guarda.gravar(L_LIVRO, j(d)); }
+    marcarSalvo();
+  }
+  // os livros em que o inimigo já tem página
+  const noLivro = id => (LN ? clasDaMesa().filter(c => docLivro(LN.idPagina(c.id, 'b' + id))) : []);
+  function abrirLivro(cla, pag) {
+    const T = window.TC && window.TC.ponte;
+    if (!T || !T.naCasca || !T.ir('livro', { cla, pag })) toast('Abra o livro pela aba Bestiário do clã (no grupo Mundo, ao lado do Clã).');
+  }
+  function enviarAoLivro(id) {
+    const x = porId(id); if (!x || !LN) return;
+    const clas = clasDaMesa();
+    if (!clas.length) { toast('Ainda não há clã na mesa: crie um na aba Clã (cada clã tem o livro dele).'); return; }
+    const pag = 'b' + id;
+    if (!clas.some(c => c.id === ui.livro)) ui.livro = (clas.find(c => docLivro(LN.idPagina(c.id, pag))) || clas.find(c => LN.normCapa(docLivro(LN.idCapa(c.id))).on) || clas[0]).id;
+    const dl = $('dlg'), sel = h('select', { class: 'in', id: 'lv-cla' }, clas.map(c => h('option', { value: c.id, selected: c.id === ui.livro }, c.nome)));
+    const info = h('p', { class: 'ajuda', id: 'lv-info', style: { margin: '0' } });
+    const pintarInfo = () => {
+      const cla = sel.value, ja = docLivro(LN.idPagina(cla, pag)), aberto = LN.normCapa(docLivro(LN.idCapa(cla))).on;
+      info.textContent = (ja ? x.e.nome + ' já está neste livro: o nome, a imagem, os números, as fraquezas e o saque se atualizam; o que você mudou no próprio livro fica como está.'
+        : 'Chega escondido do clã: você revela parte por parte na aba Bestiário do clã.') + (aberto ? '' : ' (O livro deste clã ainda está trancado: só você o vê.)');
+    };
+    sel.onchange = pintarInfo; pintarInfo();
+    const veio = LN.deInimigo(x.e, contasDe(x), tagsDoGrupo(x.e, 'bioma'), tagsDoGrupo(x.e, 'tipo'));
+    const enviar = () => {
+      const cla = sel.value, nomeCla = (clas.find(c => c.id === cla) || { nome: 'o clã' }).nome, pid = LN.idPagina(cla, pag), antes = copia(docLivro(pid));
+      ui.livro = cla; salvarUi();
+      dl.close();
+      gravarLivro(pid, LN.receber(antes, veio, B.PRE + id));
+      empilhar('enviar ' + x.e.nome + ' ao livro de ' + nomeCla, () => { if (antes) gravarLivro(pid, antes); else apagarLivro(pid); });
+      pintar();
+      toast(antes ? x.e.nome + ' foi atualizado no livro de ' + nomeCla + '.' : x.e.nome + ' entrou no livro de ' + nomeCla + ', escondido do clã.', 'Desfazer', desfazer);
+    };
+    trocar(dl, h('div', { class: 'dl-h' }, h('h2', { text: 'Enviar ' + x.e.nome + ' ao livro do clã' }), h('button', { type: 'button', class: 'ib leve', 'aria-label': 'Fechar', onclick: () => dl.close() }, '×')),
+      h('div', { class: 'dl-c' }, campo('O livro de qual clã', sel), info,
+        h('div', { class: 'sec', id: 'lv-previa' }, h('span', { class: 'eyebrow', text: 'O que vai' }),
+          veio.nums.map(n => h('div', { class: 'lin' }, h('span', { text: n.n }), h('span', { class: 'mono', text: n.v }))),
+          h('div', { class: 'lin' }, h('span', { text: 'Fraquezas e resistências' }), h('span', { text: veio.fraq.length ? veio.fraq.map(f => f.nome).join(', ') : '—' })),
+          h('div', { class: 'lin' }, h('span', { text: 'Deixa cair' }), h('span', { text: veio.saque.length ? veio.saque.join(', ') : '—' })),
+          h('div', { class: 'lin' }, h('span', { text: 'Imagem e descrição' }), h('span', { text: (veio.img ? 'a imagem' : 'sem imagem') + (veio.desc ? ', o comportamento' : '') })))),
+      h('div', { class: 'dl-a' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: () => dl.close() }), h('button', { type: 'button', class: 'btn pri', id: 'lv-enviar', text: 'Enviar', onclick: enviar })));
+    dl.onclose = null; dl.onkeydown = null;
+    dl.showModal(); sel.focus();
+  }
+  // as tags de um inimigo que são de um grupo (bioma: o habitat; tipo: o tipo de criatura)
+  function tagsDoGrupo(e, gid) {
+    const g = grupos().find(y => y.id === gid);
+    const do_g = new Set((g ? g.tags : []).map(t => t.toLowerCase()));
+    return e.tags.filter(t => do_g.has(t.toLowerCase()));
+  }
 
   /* ---------------- criar, duplicar, apagar ---------------- */
   function duplicar(id) {
@@ -634,6 +715,13 @@
     return [
       campo('Lembrete na vez dele (curto: aparece para você nas Cenas, quando a vez chega)', h('input', { class: 'in', id: 'ed-lembrete', value: c.lembrete, maxlength: '160', placeholder: 'ex.: Fica atrás do capitão; foge com 25% de HP', oninput: muda(x => { c.lembrete = x; }, false) })),
       campo('Comportamento (como ele luta, o que quer, quando foge)', h('textarea', { class: 'in', id: 'ed-comp', rows: '8', oninput: muda(x => { c.texto = x; }, false) }, c.texto)),
+      // (lote 36) as fraquezas e resistências: vão junto quando você envia o inimigo ao livro do clã
+      h('div', { class: 'field' }, h('span', { text: 'Fraquezas e resistências (vão junto para o livro do clã)' }),
+        h('div', { class: 'linhas', id: 'ed-fraq' }, ed.e.fraq.map((f, i) => h('div', { class: 'linha fr' },
+          h('input', { class: 'in', id: 'ed-fr-n-' + i, value: f.nome, maxlength: '30', placeholder: 'Fogo', 'aria-label': 'Contra o quê', onchange: muda(x => { f.nome = x.trim(); }) }),
+          h('select', { class: 'in', id: 'ed-fr-t-' + i, 'aria-label': 'Fraqueza, resistência ou imunidade de ' + (f.nome || 'esta linha'), onchange: muda(x => { f.tipo = x; }) }, B.TIPOS_FRAQ.map(([k, n]) => h('option', { value: k, selected: k === f.tipo }, n))),
+          h('button', { type: 'button', class: 'ib leve', 'aria-label': 'Tirar ' + (f.nome || 'a linha'), onclick: () => { ed.e.fraq.splice(i, 1); pintarEd(); } }, '×')))),
+        ed.e.fraq.length < 12 ? h('div', { class: 'acoes' }, h('button', { type: 'button', class: 'btn sm', id: 'ed-fr-mais', text: '+ Fraqueza ou resistência', onclick: () => { ed.e.fraq.push({ nome: '', tipo: 'fraco' }); pintarEd(); const el = $('ed-fr-n-' + (ed.e.fraq.length - 1)); if (el) el.focus(); } })) : null),
     ];
   }
   function edSaque() {

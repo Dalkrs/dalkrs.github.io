@@ -131,7 +131,21 @@
         chance: inteiro(x.chance, 1, 100, 100), qtd: txt(x.qtd, 20) || '1', tipo: TIPOS_SAQUE.some(t => t[0] === x.tipo) ? x.tipo : 'material', cat: idOk(x.cat) ? x.cat : null })),
         lapros: txt(sq.lapros, 30) },
       notas: String(e.notas == null ? '' : e.notas).slice(0, 4000),
+      fraq: fraqLimpa(e.fraq),
     };
+  }
+  /* (lote 36) as fraquezas e resistências: [{ nome, tipo: 'fraco' | 'resiste' | 'imune' }] (vão junto para o livro do clã) */
+  const TIPOS_FRAQ = [['fraco', 'Fraqueza'], ['resiste', 'Resistência'], ['imune', 'Imunidade']];
+  function fraqLimpa(l) {
+    const out = [];
+    for (const x of Array.isArray(l) ? l : []) {
+      if (!ehObj(x)) continue;
+      const nome = txt(x.nome, 30);
+      if (!nome || out.some(y => y.nome.toLowerCase() === nome.toLowerCase())) continue;
+      out.push({ nome, tipo: TIPOS_FRAQ.some(t => t[0] === x.tipo) ? x.tipo : 'fraco' });
+      if (out.length >= 12) break;
+    }
+    return out;
   }
   function novo(nome, extra) { return normalizar(Object.assign({ nome: nome || 'Novo inimigo', cor: CORES[Math.floor(Math.random() * CORES.length)] }, extra || {})); }
 
@@ -357,7 +371,7 @@
   }
   const iniciais = nome => String(nome || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0] || '').join('').toUpperCase() || '?';
 
-  const api = { PRE, PRE_ENC, TAGS, L_LOCAL, TIERS, LETRAS, TAMANHOS, CORES, TAG_GRUPOS, TIPOS_SAQUE, DIFICULDADES, ROLAVEIS,
+  const api = { PRE, PRE_ENC, TAGS, L_LOCAL, TIERS, LETRAS, TAMANHOS, CORES, TAG_GRUPOS, TIPOS_SAQUE, TIPOS_FRAQ, DIFICULDADES, ROLAVEIS,
     normalizar, novo, recursosPadrao, pcDe, linhaDe, contas, pontosDe, distribuir, skills, poderDe, poderDaFicha, somaAtributos, FAIXAS, dificuldade, rolarSaque, equipLimpo, paraSaque, gruposDeTags, passa, iniciais, uid, idOk };
   (root.TC || (root.TC = {})).bestiario = api;
   if (typeof window !== 'undefined' && window && window !== root) (window.TC || (window.TC = root.TC)).bestiario = api;

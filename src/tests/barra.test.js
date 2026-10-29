@@ -28,8 +28,8 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
     const g = await P.evaluate(() => [...document.querySelectorAll('.grupo')].filter(x => !x.hidden).map(x => x.dataset.g + ':' + document.getElementById('gt-' + x.dataset.g).getAttribute('aria-expanded')));
     ok(j(g) === j(['jogar:true', 'mundo:true', 'descanso:true', 'mestre:true']), 'as quatro categorias, abertas, com o nome em botão: ' + j(g));
     ok(await P.evaluate(() => document.querySelectorAll('.grupo-menu').length === 5 && [...document.querySelectorAll('.grupo-menu')].every(b => !b.offsetParent)), 'o botão da categoria recolhida não aparece com ela aberta');
-    ok(j(await setas()) === j({ e: false, d: true }), 'com as onze abas abertas, nem a tela larga cabe tudo: a seta da direita aparece');
-    ok(await P.evaluate(() => [...document.querySelectorAll('.tab')].filter(x => !x.hidden).map(x => x.id.slice(4)).join(',')) === 'cenas,fichas,rolador,mundo,jornal,cla,acampamento,meditacao,oficina,bestiario,itens,escudo', 'as abas de sempre (o botão da categoria não é uma aba; lote 31: o Escudo do mestre)');
+    ok(j(await setas()) === j({ e: false, d: true }), 'com as treze abas abertas, nem a tela larga cabe tudo: a seta da direita aparece');
+    ok(await P.evaluate(() => [...document.querySelectorAll('.tab')].filter(x => !x.hidden).map(x => x.id.slice(4)).join(',')) === 'cenas,fichas,rolador,mundo,jornal,cla,livro,acampamento,meditacao,oficina,bestiario,itens,escudo', 'as abas de sempre (o botão da categoria não é uma aba; lote 31: o Escudo do mestre)');
   });
 
   await passo('recolher uma categoria', async () => {
@@ -48,7 +48,7 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
     await P.click('#gm-mundo'); await espera(200);
     ok(await P.evaluate(() => { const m = document.getElementById('menuGrupo'); return !!m && m.getBoundingClientRect().height > 40; }) && (await P.locator('#gm-mundo').getAttribute('aria-expanded')) === 'true', 'o botão abre o menu');
     const itens = await P.locator('#menuGrupo .mg-it[data-aba]').allInnerTexts();
-    ok(j(itens) === j(['Mapa-múndi', 'Jornal', 'Clã']) && /Mostrar as abas de Mundo na barra/.test(await P.locator('#mg-mostrar').innerText()), 'as abas dela e “Mostrar na barra”: ' + j(itens));
+    ok(j(itens) === j(['Mapa-múndi', 'Jornal', 'Clã', 'Bestiário do clã']) && /Mostrar as abas de Mundo na barra/.test(await P.locator('#mg-mostrar').innerText()), 'as abas dela e “Mostrar na barra”: ' + j(itens));
     await foto('barra-menu');
     await P.keyboard.press('Escape'); await espera(150);
     ok(!(await P.locator('#menuGrupo').count()) && await P.evaluate(() => document.activeElement && document.activeElement.id === 'gm-mundo'), 'Esc fecha e volta ao botão');

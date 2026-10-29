@@ -360,7 +360,7 @@ const { ok, end } = checker();
     let e1 = await eu(TA);
     ok(e1.papel === 'mestre' && e1.abas === 'cenas,mundo,acampamento,arvore,jornal,meditacao,cla,bestiario,itens,escudo' && /Mestre auxiliar/.test(e1.chip), 'ele passa a mestrar as abas liberadas, e o botão da mesa diz "Mestre auxiliar" — ' + JSON.stringify(e1));
     ok(/Você agora é mestre auxiliar desta mesa/.test(await avisos(TA)), 'e recebe o aviso: "' + await avisos(TA) + '"');
-    ok(await abas(TA) === 'Cenas,Fichas,Mapa-múndi,Jornal,Clã,Acampamento,Meditação,Oficina,Bestiário,Itens,Escudo do mestre', 'sem a aba Rolador liberada, ela não aparece para ele: ' + await abas(TA));
+    ok(await abas(TA) === 'Cenas,Fichas,Mapa-múndi,Jornal,Clã,Bestiário do clã,Acampamento,Meditação,Oficina,Bestiário,Itens,Escudo do mestre', 'sem a aba Rolador liberada, ela não aparece para ele: ' + await abas(TA));
     ok(await fichasQueVejo(TA) === 'npc_pub,pc_aux', 'sem a aba Fichas, a ficha escondida não chega ao aparelho dele: ' + await fichasQueVejo(TA));
     ok(await ate(() => TA.evaluate(() => !!document.getElementById('f-cenas')), 15000), 'com a aba Cenas, as Cenas dele abrem em segundo plano (ele está nas Fichas), como as do mestre');
     const auditor = await TA.evaluate(() => TC.aoVivo.historico().then(() => 'ABRIU', e => e.message));
@@ -452,13 +452,13 @@ const { ok, end } = checker();
     ok(await ate(async () => /As abas de Dalmo foram atualizadas\./.test(await avisos(TM))), 'trocar as abas avisa: "' + await avisos(TM) + '"');
     ok(await ate(async () => (await eu(TA)).abas === 'cenas,mundo,acampamento,fichas,arvore,rolador,jornal,meditacao,cla,bestiario,itens,escudo'), 'o auxiliar recebe as abas novas');
     ok(/O mestre mudou as abas que você mestra/.test(await avisos(TA)), '(aviso dele: "' + await avisos(TA) + '")');
-    ok(await abas(TA) === 'Cenas,Fichas,Rolador,Mapa-múndi,Jornal,Clã,Acampamento,Meditação,Oficina,Bestiário,Itens,Escudo do mestre', 'o Rolador aparece para ele: ' + await abas(TA));
+    ok(await abas(TA) === 'Cenas,Fichas,Rolador,Mapa-múndi,Jornal,Clã,Bestiário do clã,Acampamento,Meditação,Oficina,Bestiário,Itens,Escudo do mestre', 'o Rolador aparece para ele: ' + await abas(TA));
     ok(await fichasQueVejo(TA) === 'npc_esc,npc_pub,pc_aux' && /rol:h:teste/.test(await docsQueVejo(TA)), 'e as fichas escondidas e o documento do Rolador passam a chegar: ' + await fichasQueVejo(TA));
     pf = await papelNaAba(TA, 'fichas', /\/fichas\//);
     ok(pf && pf.papel === 'mestre', 'as Fichas agora o recebem como mestre — ' + JSON.stringify(pf));
     await TM.locator('.toast button', { hasText: 'Desfazer' }).click();
     ok(await ate(async () => (await eu(TA)).abas === 'cenas,mundo,acampamento,arvore,jornal,meditacao,cla,bestiario,itens,escudo'), '"Desfazer", no aviso do mestre, devolve as abas de antes');
-    ok(await ate(async () => await abas(TA) === 'Cenas,Fichas,Mapa-múndi,Jornal,Clã,Acampamento,Meditação,Oficina,Bestiário,Itens,Escudo do mestre' && await fichasQueVejo(TA) === 'pc_aux'), 'e o que tinha passado a chegar deixa de chegar: ' + await abas(TA) + ' · ' + await fichasQueVejo(TA));
+    ok(await ate(async () => await abas(TA) === 'Cenas,Fichas,Mapa-múndi,Jornal,Clã,Bestiário do clã,Acampamento,Meditação,Oficina,Bestiário,Itens,Escudo do mestre' && await fichasQueVejo(TA) === 'pc_aux'), 'e o que tinha passado a chegar deixa de chegar: ' + await abas(TA) + ' · ' + await fichasQueVejo(TA));
 
     // ---------- o outro jogador: vê quem é auxiliar, e não tem botão nenhum ----------
     ok(await ate(() => TJ.evaluate(() => TC.mesas.atual.membros.some(m => m.cargo === 'auxiliar'))), '(o outro jogador também fica sabendo)');

@@ -1641,6 +1641,22 @@
   dados.cla = async (op, args) => {
     const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
     const cla = args && typeof args.cla === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(args.cla) ? args.cla : '';
+    /* (lote 36) As anotações na margem do Bestiário do clã (ver supabase/migrations/0027_livro_do_cla.sql): criar, mudar
+       a sua e apagar (a sua; quem mestra o Clã, qualquer uma). Quem assina, e quem pode, é o banco que confere. */
+    if (op === 'nota') {
+      const pag = args && typeof args.pag === 'string' && /^[A-Za-z0-9_-]{1,61}$/.test(args.pag) ? args.pag : '';
+      const qual = args && ['criar', 'mudar', 'apagar'].includes(args.op) ? args.op : '';
+      if (!cla || !pag || !qual) throw new Error('Pedido desconhecido.');
+      const ok = v => (typeof v === 'string' && v ? v.slice(0, 64) : null);
+      const { data, error } = await cliente().rpc('livro_nota', { p_mesa: a.id, p_cla: cla, p_pag: pag, p_op: qual, p_nota: ok(args.nota), p_texto: typeof args.texto === 'string' ? args.texto.slice(0, 500) : null, p_pc: ok(args.pc) });
+      if (error) {
+        if (semEsquemaM(error)) throw new Error('O banco desta mesa ainda não tem o Bestiário do clã: falta aplicar a atualização do banco (o SQL desta versão).');
+        if (String(error.code || '') === 'P0001' && error.message) throw new Error(String(error.message).slice(0, 300));
+        throw falha(error, 'Não deu para anotar agora. Tente de novo.');
+      }
+      await Promise.race([buscarLinha('documentos', 'cla:lpub:' + cla + ':n:' + pag), new Promise(ok2 => setTimeout(ok2, 3000))]);
+      return data || null;
+    }
     const mudar = args && args.mudar && typeof args.mudar === 'object' && !Array.isArray(args.mudar) ? args.mudar : null;
     if (op !== 'cargos' || !cla || !mudar) throw new Error('Pedido desconhecido.');
     const { data, error } = await cliente().rpc('cla_cargos', { p_mesa: a.id, p_cla: cla, p_mudar: mudar, p_txt: String(args.txt || '').slice(0, 200) });

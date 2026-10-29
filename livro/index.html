@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../tc/tema.js?v=1"></script>
+<title>Bestiário do clã · Tiny Cats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=IM+Fell+English+SC&family=Kalam:wght@400;700&family=Patrick+Hand&family=Caveat:wght@500;700&family=Shadows+Into+Light&display=swap">
+<style>
+/* O Bestiário do clã (lote 36): o livro de caça que o clã vai preenchendo, aberto sobre a mesa escura do site. É a única
+   aba que sai da interface de sempre: o livro é de pergaminho, com letra de mão; os controles do site (virar a página,
+   o índice, o modo do mestre) ficam na mesa em volta, na interface de sempre. */
+:root {
+  color-scheme: dark;
+  --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
+  --line: #2b3243; --line-strong: #40495f;
+  --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #8a93a8;
+  --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .12); --on-lamp: #1d1503;
+  --secret: #b39cf0; --secret-soft: rgba(150, 120, 240, .14); --danger: #f0786e;
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  /* o livro */
+  --paper: #e3d5b8; --paper-2: #d9c9a6; --paper-edge: #c2b294; --scrap: #f4ebcf;
+  --ink: #2b2222; --ink-2: #4a3a32; --ink-blue: #1c2b3b; --pencil: #4a4d54; --blood: #6b1414; --rubric: #8e2a1f; --gold: #a8852f;
+  --leather: #36211d; --leather-2: #1a100e; --tape: rgba(210, 190, 131, .75);
+  --f-titulo: "IM Fell English SC", "Iowan Old Style", Georgia, serif;
+  --f-texto: "Kalam", "Segoe Print", "Bradley Hand", cursive;
+  --f-patrick: "Patrick Hand", "Segoe Print", cursive;
+  --f-caveat: "Caveat", "Segoe Script", cursive;
+  --f-sombras: "Shadows Into Light", "Segoe Print", cursive;
+}
+:root:where([data-claro]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #5d6880;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .13); --on-lamp: #241a04;
+  --secret: #5b3fb5; --secret-soft: rgba(91, 63, 181, .1); --danger: #b9342a;
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--table); color: var(--fg); font: 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; overflow: hidden; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- a interface de sempre, em volta do livro ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
+.btn:hover { background: var(--hover); }
+.btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.pri:hover { filter: brightness(1.07); }
+.btn.per { color: var(--danger); }
+.btn.sm { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.btn:disabled { opacity: .45; cursor: default; filter: none; }
+.ib { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
+.ib:hover { background: var(--hover); }
+.ib:disabled { opacity: .4; cursor: default; }
+.ib.leve { border-color: transparent; background: transparent; }
+.ajuda { color: var(--fg-3); font-size: 12.5px; }
+.in { width: 100%; min-height: 34px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); }
+textarea.in { resize: vertical; line-height: 1.45; }
+.in:focus { outline: none; border-color: var(--lamp); }
+
+#mesa { position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+#mesa::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% -10%, rgba(230, 171, 79, .1) 0%, transparent 65%); }
+#topo { position: relative; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 10px 16px; flex-wrap: wrap; }
+#topo .esq { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+#topo .dir { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#qual { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); font-weight: 600; max-width: 100%; }
+#qual select { border: 0; background: transparent; font-weight: 600; max-width: 260px; }
+#qual select:focus { outline: none; }
+#contagem { color: var(--fg-3); font-size: 12.5px; white-space: nowrap; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; font-size: 12.5px; font-weight: 700; color: var(--fg-2); }
+.seg button[aria-pressed="true"] { background: var(--secret-soft); color: var(--secret); }
+.seg button[data-vista="cla"][aria-pressed="true"] { background: var(--lamp-soft); color: var(--lamp-ink); }
+.chave { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 13px; font-weight: 600; cursor: pointer; }
+.chave input { accent-color: var(--lamp); width: 16px; height: 16px; margin: 0; }
+.chave.on { border-color: color-mix(in srgb, var(--lamp) 55%, var(--line-strong)); }
+#salvo { color: var(--fg-3); font-size: 12px; min-width: 70px; }
+#aviso { position: relative; z-index: 5; margin: 0 16px 6px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--fg-2); font-size: 13px; }
+
+#palco { position: relative; z-index: 1; flex: 1; min-height: 0; display: flex; align-items: stretch; justify-content: center; gap: 4px; padding: 6px 22px 0 10px; }
+#pe { position: relative; z-index: 5; display: flex; align-items: center; justify-content: center; gap: 18px; padding: 30px 16px 14px; }
+.busca { position: relative; width: min(300px, 46vw); }
+.busca .in { padding-left: 32px; background: var(--surface); }
+.busca svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--fg-3); pointer-events: none; }
+#achados { position: absolute; bottom: calc(100% + 6px); left: 0; right: 0; max-height: 280px; overflow: auto; padding: 4px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--raised); box-shadow: var(--shadow); }
+#achados button { display: flex; width: 100%; justify-content: space-between; gap: 8px; border: 0; background: transparent; text-align: left; padding: 7px 9px; border-radius: 7px; }
+#achados button:hover, #achados button:focus-visible { background: var(--hover); }
+#achados small { color: var(--fg-3); }
+
+/* o índice: abas de couro na beira do livro, uma por letra */
+#indice { width: 48px; flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 7px; padding-top: 48px; overflow-y: auto; scrollbar-width: none; }
+#indice::-webkit-scrollbar { display: none; }
+#indice button { width: 40px; height: 44px; flex: none; border: 1px solid var(--leather-2); border-right: 0; border-radius: 6px 0 0 6px; background: var(--leather); color: var(--paper); font: 19px/1 var(--f-titulo); opacity: .82; transition: width .15s; }
+#indice button:hover { width: 46px; opacity: 1; }
+#indice button[aria-current="true"] { width: 48px; background: var(--paper); color: var(--ink); border-color: #a89b7c; opacity: 1; box-shadow: -3px 0 8px rgba(0, 0, 0, .3); font-weight: 700; }
+
+/* ---------- o livro ---------- */
+.livro { position: relative; flex: 1; max-width: 1240px; max-height: 760px; display: flex; padding: 10px; border-radius: 6px; background: var(--leather);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, .9), inset 0 0 40px rgba(54, 33, 29, .6); }
+.fita { position: absolute; bottom: -34px; width: 26px; height: 62px; box-shadow: 0 6px 10px rgba(0, 0, 0, .35); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%); pointer-events: none; }
+.fita.f1 { left: 18%; background: var(--blood); opacity: .92; }
+.fita.f2 { left: 72%; width: 19px; height: 76px; bottom: -48px; background: var(--ink-blue); opacity: .85; }
+.fita.f3 { left: 82%; width: 15px; height: 52px; bottom: -24px; background: #b58133; opacity: .9; }
+.folhas { position: relative; flex: 1; min-width: 0; display: flex; border-radius: 3px; overflow: hidden; background: var(--paper); color: var(--ink);
+  box-shadow: inset 0 0 25px rgba(0, 0, 0, .25); }
+.folhas::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(circle at 12% 14%, rgba(80, 50, 20, .09) 0, transparent 16%), radial-gradient(circle at 78% 82%, rgba(50, 30, 20, .08) 0, transparent 12%), radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(110, 80, 40, .16) 100%); }
+.lombada { position: absolute; inset: 0 auto 0 50%; width: 60px; margin-left: -30px; z-index: 3; pointer-events: none;
+  background: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, .15) 30%, rgba(0, 0, 0, .5) 50%, rgba(0, 0, 0, .15) 70%, transparent 100%); }
+.caneca { position: absolute; border: 3px solid rgba(80, 50, 20, .15); border-radius: 50%; pointer-events: none; mix-blend-mode: multiply; z-index: 0; }
+.caneca::after { content: ""; position: absolute; inset: -5px; border: 1px solid rgba(80, 50, 20, .08); border-radius: 50%; }
+.pingo { position: absolute; border-radius: 50%; pointer-events: none; z-index: 0; }
+.pag { position: relative; z-index: 1; flex: 1; min-width: 0; padding: 30px 34px 40px; display: flex; flex-direction: column; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(43, 34, 34, .3) transparent; }
+.pag.esq { border-right: 1px solid var(--paper-edge); }
+.pag.dir { padding-left: 42px; }
+.num-pag { position: absolute; z-index: 2; bottom: 9px; width: 50%; text-align: center; font: 14px var(--f-titulo); color: #9a8c72; pointer-events: none; }
+#numEsq { left: 0; } #numDir { right: 0; }
+
+/* a página esquerda: a ilustração presa com fita e clipe, a legenda a lápis, a margem com as anotações */
+.ilus { position: relative; flex: 1 1 auto; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 14px; }
+.foto { position: relative; width: min(100%, 380px); max-height: 100%; aspect-ratio: 4 / 5; background: #dfd4ba; border: 1px solid rgba(0, 0, 0, .08); box-shadow: 0 3px 8px rgba(0, 0, 0, .18); transform: rotate(1.5deg); display: grid; place-items: center; padding: 12px; }
+.foto img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; filter: sepia(.18) contrast(1.02); }
+.fita-cola { position: absolute; background: var(--tape); box-shadow: 0 1px 2px rgba(0, 0, 0, .1); mix-blend-mode: multiply; border-radius: 1px; pointer-events: none; }
+.foto .fc1 { width: 52px; height: 16px; top: -8px; left: -12px; transform: rotate(-45deg); }
+.foto .fc2 { width: 52px; height: 16px; bottom: -8px; right: -12px; transform: rotate(-45deg); }
+.clipe { position: absolute; top: -22px; left: 50%; width: 30px; height: 46px; margin-left: -15px; z-index: 2; pointer-events: none; }
+.foto .sem { text-align: center; color: var(--pencil); font: 22px/1.25 var(--f-caveat); opacity: .8; }
+.foto .sem svg { display: block; margin: 0 auto 6px; opacity: .55; }
+.legenda { margin-top: 14px; text-align: center; font: 600 24px/1.2 var(--f-caveat); color: var(--pencil); transform: rotate(-1deg); max-width: 92%; overflow-wrap: anywhere; }
+.margem { position: relative; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; gap: 14px 18px; padding: 22px 4px 4px; }
+.nota { position: relative; max-width: 210px; min-width: 120px; padding: 12px 13px 9px; background: var(--scrap); box-shadow: 2px 3px 6px rgba(0, 0, 0, .2); border: 1px solid rgba(0, 0, 0, .05); color: var(--ink-blue); text-align: left; }
+.nota::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgba(255, 255, 255, .4) 0%, transparent 100%); }
+.nota:nth-child(3n+1) { transform: rotate(-3deg); }
+.nota:nth-child(3n+2) { transform: rotate(2.2deg); }
+.nota:nth-child(3n) { transform: rotate(-1deg); }
+.nota.rasgada { clip-path: polygon(0 0, 100% 0, 100% 94%, 95% 100%, 90% 93%, 85% 98%, 80% 92%, 75% 99%, 70% 94%, 65% 97%, 60% 93%, 55% 98%, 50% 92%, 45% 99%, 40% 94%, 35% 97%, 30% 92%, 25% 98%, 20% 93%, 15% 99%, 10% 94%, 5% 98%, 0 92%); padding-bottom: 16px; }
+.nota .fita-cola { width: 42px; height: 14px; top: -7px; left: 50%; margin-left: -21px; transform: rotate(2deg); }
+.nota .alfinete { position: absolute; top: -7px; left: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #8a2a2a; box-shadow: 1px 2px 3px rgba(0, 0, 0, .5); }
+.nota p { position: relative; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.nota .quem { position: relative; display: block; margin-top: 4px; text-align: right; opacity: .85; }
+.nota.patrick { font: 18px/1.2 var(--f-patrick); }
+.nota.patrick .quem { font-size: 15px; }
+.nota.caveat { font: 600 21px/1.1 var(--f-caveat); color: #24323f; }
+.nota.caveat .quem { font-size: 17px; }
+.nota.sombras { font: 20px/1.2 var(--f-sombras); color: #2b1f1f; }
+.nota.sombras .quem { font-size: 16px; }
+.nota .acoes-nota { position: relative; display: flex; justify-content: flex-end; gap: 4px; margin-top: 6px; font: 12px var(--ui); }
+.nota .acoes-nota button { border: 0; background: rgba(43, 34, 34, .08); color: var(--ink-2); border-radius: 5px; padding: 2px 7px; font-weight: 600; }
+.nota .acoes-nota button:hover { background: rgba(43, 34, 34, .16); }
+.mais-notas { align-self: center; border: 0; background: none; font: 19px var(--f-patrick); color: var(--pencil); text-decoration: underline dotted; text-underline-offset: 4px; }
+
+/* a página direita: o nome, a descrição com a capitular, o que sabemos, as fraquezas e o que deixa cair */
+.cab { text-align: center; margin-bottom: 18px; }
+.cab h1 { margin: 0; padding-top: 4px; font: 400 clamp(28px, 3.1vw, 38px)/1.05 var(--f-titulo); letter-spacing: .02em; color: var(--ink); overflow-wrap: anywhere; }
+.cab svg { display: block; margin: 8px auto 0; opacity: .6; }
+.texto { font: 20px/1.6 var(--f-texto); color: var(--ink); max-width: 36em; }
+.texto p { margin: 0 0 .45em; white-space: pre-wrap; }
+.texto p + p { text-indent: 1.5em; }
+.capitular { float: left; position: relative; width: 3.1em; height: 3.05em; margin: .18em .45em 0 0; display: grid; place-items: center; }
+.capitular svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.capitular b { position: relative; font: 400 2.75em/1 var(--f-titulo); color: var(--rubric); text-shadow: .6px .6px 0 #3b2a1a, -.4px -.4px 0 rgba(176, 136, 48, .85), 0 0 1px rgba(59, 42, 26, .6); padding-top: .06em; }
+.parte { position: relative; margin-top: 20px; }
+.parte h2 { display: flex; width: fit-content; max-width: 100%; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 0 0 8px; padding: 0 28px 2px 0; border-bottom: 1px solid rgba(43, 34, 34, .3); font: 400 22px/1.2 var(--f-titulo); color: var(--ink); }
+.quadro { display: inline-grid; grid-template-columns: auto 1fr auto 1fr; gap: 6px 20px; align-items: baseline; padding: 10px 14px; border: 1.5px solid var(--ink); border-radius: 2px; transform: rotate(-.5deg); box-shadow: 1px 1px 0 rgba(43, 34, 34, .1); font: 19px/1.35 var(--f-texto); color: var(--ink); }
+.quadro dt { font-weight: 700; text-align: right; opacity: .8; }
+.quadro dd { margin: 0; overflow-wrap: anywhere; }
+.fraqs { display: flex; flex-wrap: wrap; gap: 8px 22px; font: 20px/1.3 var(--f-texto); color: var(--ink); }
+.fr { display: inline-flex; align-items: center; gap: 6px; }
+.fr svg { flex: none; }
+.fr.fraco span { text-decoration: underline wavy var(--blood); text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.fr.imune { opacity: .6; }
+.fr.imune span { text-decoration: line-through; text-decoration-thickness: 2px; }
+.fr small { font: 13px var(--f-patrick); color: var(--pencil); }
+.saque { list-style: none; margin: 0; padding: 0; font: 20px/1.4 var(--f-texto); color: var(--ink); }
+.saque li { display: flex; gap: 8px; align-items: baseline; }
+.saque li::before { content: "▪"; font-size: 14px; }
+.borrado { color: transparent; text-shadow: 0 0 7px rgba(43, 34, 34, .62); user-select: none; font: 20px/1.4 var(--f-texto); }
+.nao-sabemos { display: block; margin-top: 2px; font: 18px var(--f-patrick); color: var(--pencil); opacity: .85; }
+.anotar { align-self: flex-end; margin-top: auto; padding-top: 22px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; font: 21px var(--f-patrick); color: var(--pencil); opacity: .75; }
+.anotar:hover { opacity: 1; color: #111; }
+
+/* o que só quem mestra vê: as partes escondidas, e o botão de revelar (o lilás de sempre do mestre) */
+.mestre .escondida > :not(h2) { opacity: .6; }
+.mestre .escondida { padding-left: 12px; border-left: 2px dashed var(--secret); }
+.tg { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(91, 63, 181, .45); background: rgba(91, 63, 181, .08); color: #4a3296; border-radius: 999px; padding: 1px 9px; font: 700 11.5px/1.6 var(--ui); vertical-align: middle; }
+.tg:hover { background: rgba(91, 63, 181, .16); }
+.tg.vendo { border-color: rgba(60, 110, 70, .45); background: rgba(60, 110, 70, .09); color: #2f5a36; }
+.vazia { font: 17px var(--f-patrick); color: var(--pencil); opacity: .6; }
+.faixa-mestre { position: relative; z-index: 2; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -10px -6px 12px; padding: 7px 10px; border-radius: 8px; background: rgba(91, 63, 181, .1); border: 1px dashed rgba(91, 63, 181, .5); color: #3c2a7a; font: 600 13px/1.35 var(--ui); }
+.faixa-mestre.vendo { background: rgba(60, 110, 70, .08); border-color: rgba(60, 110, 70, .4); color: #2f5a36; }
+.faixa-mestre .btn { min-height: 28px; font-size: 12.5px; background: rgba(255, 255, 255, .5); border-color: rgba(43, 34, 34, .25); color: var(--ink); }
+
+/* o livro em branco e a mesa sem livro */
+.branco { margin: auto; max-width: 30em; text-align: center; font: 21px/1.5 var(--f-texto); color: var(--ink-2); }
+.branco strong { display: block; margin-bottom: 8px; font: 400 28px/1.2 var(--f-titulo); color: var(--ink); }
+.vazio-mesa { margin: auto; max-width: 30em; text-align: center; color: var(--fg-2); font-size: 15px; }
+.vazio-mesa strong { display: block; font-size: 17px; color: var(--fg); margin-bottom: 6px; }
+
+/* ---------- as janelas (na interface de sempre) ---------- */
+dialog { padding: 0; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); width: min(640px, calc(100vw - 24px)); max-height: calc(100vh - 32px); }
+dialog::backdrop { background: rgba(5, 7, 12, .6); }
+dialog[open] { display: flex; flex-direction: column; }
+.dl-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+.dl-h h2 { flex: 1; margin: 0; font-size: 17px; }
+.dl-c { padding: 14px 16px; overflow: auto; display: grid; gap: 14px; }
+.dl-a { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.dl-a .esq { margin-right: auto; }
+.field { display: grid; gap: 5px; }
+.field > span:first-child { font-size: 12.5px; font-weight: 700; color: var(--fg-2); }
+.linhas { display: grid; gap: 6px; }
+.lin { display: flex; gap: 6px; align-items: center; }
+.lin .in { min-width: 0; }
+.lin select.in { width: auto; flex: none; }
+.revelar { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 14px; padding: 10px 12px; border-radius: 10px; border: 1px dashed color-mix(in srgb, var(--secret) 50%, transparent); background: var(--secret-soft); }
+.revelar label { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.revelar input { accent-color: var(--secret); width: 16px; height: 16px; margin: 0; }
+.img-ed { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.img-ed img { width: 72px; height: 90px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line-strong); background: #dfd4ba; }
+.veio { padding: 8px 11px; border-radius: 8px; background: var(--lamp-soft); color: var(--fg-2); font-size: 12.5px; }
+.nota-ed textarea { font: 20px/1.35 var(--f-patrick); background: #f4ebcf; color: var(--ink-blue); border-color: #c9b98f; }
+
+#toasts { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 50; width: min(520px, calc(100vw - 24px)); }
+.toast { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow); font-size: 13.5px; }
+.toast span { flex: 1; }
+.toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; }
+
+/* ---------- celular: uma página embaixo da outra ---------- */
+@media (max-width: 900px) {
+  body { overflow: auto; }
+  #mesa { height: auto; min-height: 100%; }
+  #palco { flex-direction: column; padding: 4px 10px 0; }
+  #indice { width: auto; flex-direction: row; align-items: flex-end; padding: 0 6px; overflow-x: auto; }
+  #indice button { width: 40px; height: 36px; border-right: 1px solid var(--leather-2); border-bottom: 0; border-radius: 6px 6px 0 0; }
+  #indice button:hover { width: 40px; }
+  #indice button[aria-current="true"] { width: 40px; height: 42px; }
+  .livro { max-height: none; }
+  .folhas { flex-direction: column; }
+  .lombada { display: none; }
+  .pag { overflow: visible; padding: 24px 20px 40px; }
+  .pag.esq { border-right: 0; border-bottom: 1px solid var(--paper-edge); }
+  .pag.dir { padding-left: 20px; }
+  .quadro { grid-template-columns: auto 1fr; }
+  .fita, .num-pag { display: none; }
+  #pe { padding-top: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { #indice button { transition: none; } }
+</style>
+</head>
+<body>
+<div id="mesa">
+  <header id="topo">
+    <div class="esq">
+      <label id="qual" hidden><span class="sr">O livro de qual clã</span><select id="escolha" aria-label="O livro de qual clã"></select></label>
+      <span id="contagem"></span>
+    </div>
+    <div class="dir" id="ctl" hidden>
+      <div class="seg" role="group" aria-label="Como ver o livro" id="vistas">
+        <button type="button" data-vista="mestre" aria-pressed="true">Modo do mestre</button>
+        <button type="button" data-vista="cla" aria-pressed="false">Como o clã vê</button>
+      </div>
+      <label class="chave" id="chLiberar" title="Com o livro liberado, quem tem personagem nos cargos do clã lê as páginas que você mostrou"><input type="checkbox" id="liberar">Liberado para o clã</label>
+      <button type="button" class="btn" id="btTitulo">Título…</button>
+      <button type="button" class="btn" id="btNova">+ Página</button>
+      <button type="button" class="btn pri" id="btEditar">Editar esta página</button>
+      <button type="button" class="ib" id="btDesfazer" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+      <span id="salvo" aria-live="polite"></span>
+    </div>
+  </header>
+  <div id="aviso" hidden></div>
+  <main id="palco">
+    <nav id="indice" aria-label="Índice do livro"></nav>
+    <div id="livro" class="livro" hidden>
+      <span class="fita f1" aria-hidden="true"></span><span class="fita f2" aria-hidden="true"></span><span class="fita f3" aria-hidden="true"></span>
+      <div class="folhas" id="folhas">
+        <span class="lombada" aria-hidden="true"></span>
+        <span class="caneca" aria-hidden="true" style="width:80px;height:80px;top:62%;left:22px"></span>
+        <span class="caneca" aria-hidden="true" style="width:96px;height:96px;top:-12px;right:9%;opacity:.5"></span>
+        <span class="pingo" aria-hidden="true" style="top:15%;left:45%;width:6px;height:6px;background:var(--ink);opacity:.55"></span>
+        <span class="pingo" aria-hidden="true" style="top:16.4%;left:46.1%;width:4px;height:4px;background:var(--ink);opacity:.4"></span>
+        <span class="pingo" aria-hidden="true" style="bottom:19%;right:12%;width:8px;height:8px;background:var(--blood);opacity:.65"></span>
+        <section class="pag esq" id="pagEsq" aria-label="A ilustração e as anotações"></section>
+        <section class="pag dir" id="pagDir" aria-label="O que o clã sabe"></section>
+        <span class="num-pag" id="numEsq" aria-hidden="true"></span><span class="num-pag" id="numDir" aria-hidden="true"></span>
+      </div>
+    </div>
+    <div id="semLivro" class="vazio-mesa" hidden></div>
+  </main>
+  <footer id="pe">
+    <button type="button" class="btn" id="btAnt">‹ Anterior</button>
+    <div class="busca">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input class="in" id="busca" type="search" placeholder="Buscar no livro e nas notas…" autocomplete="off" aria-label="Buscar no livro e nas anotações" aria-controls="achados">
+      <div id="achados" role="listbox" hidden></div>
+    </div>
+    <button type="button" class="btn" id="btProx">Próxima ›</button>
+  </footer>
+</div>
+<dialog id="dlg" aria-labelledby="dlg-tit"></dialog>
+<div id="toasts" aria-live="polite"></div>
+<input type="file" id="arquivo" accept="image/png,image/jpeg,image/webp" hidden>
+<script src="../tc/ponte.js?v=20"></script>
+<script src="nucleo.js?v=1"></script>
+<script src="livro.js?v=1"></script>
+</body>
+</html>

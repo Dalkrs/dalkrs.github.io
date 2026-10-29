@@ -105,7 +105,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
       if (x.onde) { try { await P.evaluate(s => document.createDocumentFragment().querySelector(s), x.onde.sel); } catch (e) { ruins.push(aba + '/' + papel + ': seletor ' + x.onde.sel); } }
       if (x.onde && x.onde.sub && !['atributos', 'bolsas', 'social', 'skills', 'notas'].includes(x.onde.sub)) ruins.push(aba + '/' + papel + ': sub ' + x.onde.sub);
     }
-    ok(!ruins.length && j(Object.keys(G).sort()) === j(['acampamento', 'arvore', 'bestiario', 'cenas', 'cla', 'escudo', 'fichas', 'itens', 'jornal', 'loja', 'meditacao', 'mundo', 'pistas', 'rolador']), 'as catorze abas têm guia (lote 29: Bestiário, Itens e Loja; lote 31: Escudo do mestre e Pistas); cada assunto com título, texto e um lugar que é um seletor válido: ' + j(ruins));
+    ok(!ruins.length && j(Object.keys(G).sort()) === j(['acampamento', 'arvore', 'bestiario', 'cenas', 'cla', 'escudo', 'fichas', 'itens', 'jornal', 'livro', 'loja', 'meditacao', 'mundo', 'pistas', 'rolador']), 'as quinze abas têm guia (lote 29: Bestiário, Itens e Loja; lote 31: Escudo do mestre e Pistas; lote 36: Bestiário do clã); cada assunto com título, texto e um lugar que é um seletor válido: ' + j(ruins));
     ok(G.fichas.jogador.length >= 5 && G.cenas.jogador.length >= 2 && G.mundo.jogador.length >= 2, 'quem joga também tem o guia dele');
   });
 
