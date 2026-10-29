@@ -860,12 +860,25 @@ function newToken(scene, x, y, extra) {
   }, extra || {});
 }
 
-/* (lote 29) O saque no chão: { itens: [{ nome, qtd, tipo }], lapros, de: de quem caiu }. null se não sobrou nada. */
+/* (lote 29) O saque no chão: { itens: [{ nome, qtd, tipo }], lapros, de: de quem caiu }. null se não sobrou nada.
+   (lote 33) A peça de equipamento que caiu de um inimigo vai inteira: eq { bonus, def, recN (as barras pelo nome), tipo,
+   efeito } — quem pega recebe o equipamento com os bônus. */
+function cleanEqSaque(e) {
+  if (!e || typeof e !== 'object') return null;
+  const nums = (o, max) => { const out = {}; if (o && typeof o === 'object' && !Array.isArray(o)) for (const k of Object.keys(o).slice(0, max)) { if (!/^[A-Za-z][A-Za-z0-9_ ]{0,29}$/.test(k)) continue; const v = Math.round(Number(o[k])); if (isFinite(v) && v) out[k] = clamp(v, -9999, 9999); } return out; };
+  const o = { bonus: nums(e.bonus, 20) };
+  const d = nums(e.def, 20), r = nums(e.recN, 8);
+  if (Object.keys(d).length) o.def = d;
+  if (Object.keys(r).length) o.recN = r;
+  if (typeof e.tipo === 'string' && /^[A-Za-z0-9_-]{1,44}$/.test(e.tipo)) o.tipo = e.tipo;
+  if (typeof e.efeito === 'string' && e.efeito.trim()) o.efeito = e.efeito.trim().slice(0, 300);
+  return o;
+}
 const TIPOS_SAQUE = ['material', 'pocao', 'bomba', 'runa', 'municao', 'equip'];
 function cleanSaque(o) {
   if (!o || typeof o !== 'object') return null;
   const itens = (Array.isArray(o.itens) ? o.itens : []).filter(x => x && typeof x === 'object').slice(0, 40)
-    .map(x => ({ nome: String(x.nome == null ? 'Item' : x.nome).trim().slice(0, 80) || 'Item', qtd: clamp(Math.round(Number(x.qtd) || 1), 1, 9999), tipo: TIPOS_SAQUE.includes(x.tipo) ? x.tipo : 'material' }));
+    .map(x => { const o = { nome: String(x.nome == null ? 'Item' : x.nome).trim().slice(0, 80) || 'Item', qtd: clamp(Math.round(Number(x.qtd) || 1), 1, 9999), tipo: TIPOS_SAQUE.includes(x.tipo) ? x.tipo : 'material' }; const eq = o.tipo === 'equip' ? cleanEqSaque(x.eq) : null; if (eq) o.eq = eq; return o; });
   const lapros = clamp(Math.round(Number(o.lapros) || 0), 0, 9999999);
   if (!itens.length && !lapros) return null;
   const out = { itens, lapros };
@@ -945,6 +958,12 @@ function normalizeScene(sc) {
     // (lote 29) o inimigo do Bestiário ligado a este token (só o id: os números vêm de lá; as barras ficam no token);
     // e, no objeto de cenário, o saque que ficou no chão (o que caiu de um inimigo, até alguém pegar)
     if (!(typeof t.best === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.best)) || t.char || t.prop) delete t.best;
+    // (lote 33) o equipamento deste inimigo, peça por peça, quando ele troca na cena: { idDaPeça: true | false }
+    if (t.best && t.bestEq && typeof t.bestEq === 'object' && !Array.isArray(t.bestEq)) {
+      const eq = {};
+      for (const k of Object.keys(t.bestEq).slice(0, 24)) if (/^[A-Za-z0-9_-]{1,60}$/.test(k)) eq[k] = !!t.bestEq[k];
+      if (Object.keys(eq).length) t.bestEq = eq; else delete t.bestEq;
+    } else delete t.bestEq;
     const sq = t.prop ? cleanSaque(t.saque) : null;
     if (sq) t.saque = sq; else delete t.saque;
     // (lote 7) o objeto que leva a outra cena (a entrada de uma casa, a saída, uma escada): o id da cena

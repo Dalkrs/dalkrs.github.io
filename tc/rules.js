@@ -620,6 +620,15 @@
     ATRIBS.forEach(a=>{ const v=numFinito(tem(pc.atrLivre,a.k)?pc.atrLivre[a.k]:null); o[a.k]=v==null?0:Math.max(0,Math.round(v)); });
     return o;
   }
+  /* (lote 33) Os números digitados à mão (os inimigos do Bestiário): pc.atrMan { FOR: 40 } — o atributo vale o número
+     (a base: o equipamento e a árvore somam por cima), sem tier nem level; pc.derMan { ESQ: 12 } — o derivado vale o
+     número em vez da conta (o equipamento, a árvore e os temporários ainda somam). Campo vazio: a conta de sempre. */
+  function manuais(o, lista){
+    if(!o || typeof o!=='object') return null;
+    const out={}; let algum=false;
+    lista.forEach(a=>{ const v=numFinito(tem(o,a.k)?o[a.k]:null); if(v!=null){ out[a.k]=Math.max(0,Math.round(v)); algum=true; } });
+    return algum? out : null;
+  }
   function calcular(pc,cfg,extra){
     cfg=cfg||CFG_PADRAO;
     const mult=multTier(cfg,pc.tier);
@@ -631,21 +640,22 @@
     if(fp.lista.length){ CHAVES_BONUS.forEach(k=>{ tmp[k]+=fp.soma[k]; }); CHAVES_ESP.forEach(k=>{ tp.esp[k]+=fp.esp[k]; }); }
     const {arv,arvRec}=separarArvore(extra&&extra.arvore);
     const tiers=pc.tiers||{};
-    const livres=pontosLivres(pc);
+    const livres=pontosLivres(pc), aMao=manuais(pc.atrMan,ATRIBS), dMao=manuais(pc.derMan,DERIV);
     const nat={},base={},ant={},tot={};
     ATRIBS.forEach(a=>{
-      const p=pctDe(pc,cfg,tiers[a.k]);
-      nat[a.k] =livres? livres[a.k] : arred(cfg,total*p);
+      const p=pctDe(pc,cfg,tiers[a.k]), m=aMao&&tem(aMao,a.k)?aMao[a.k]:null;
+      nat[a.k] =m!=null? m : livres? livres[a.k] : arred(cfg,total*p);
       base[a.k]=mais(nat[a.k],arv[a.k]);
-      ant[a.k] =livres? base[a.k] : mais(arred(cfg,totalAnt*p),arv[a.k]);
+      ant[a.k] =m!=null||livres? base[a.k] : mais(arred(cfg,totalAnt*p),arv[a.k]);
       tot[a.k] =mais(base[a.k]+eq[a.k],tmp[a.k]);
     });
     const def={};                                   // manual da ficha + equipamentos + árvore (+ temporários)
     DEFESAS.forEach(d=>{ def[d.k]=mais(mais((+((pc.defesas||{})[d.k])||0)+eq[d.k],arv[d.k]),tmp[d.k]); });
     const der={}, derAnt={};                       // sempre a partir dos valores BASE (o Embate usa também o Bloqueio)
+    const daConta=(d,b)=>(dMao&&tem(dMao,d.k)?dMao[d.k]:d.calc(b,def));   // (lote 33) o digitado vale no lugar da conta
     DERIV.forEach(d=>{
-      der[d.k]   =mais(mais(d.calc(base,def)+eq[d.k],arv[d.k]),tmp[d.k]);
-      derAnt[d.k]=mais(mais(d.calc(ant,def)+eq[d.k],arv[d.k]),tmp[d.k]);
+      der[d.k]   =mais(mais(daConta(d,base)+eq[d.k],arv[d.k]),tmp[d.k]);
+      derAnt[d.k]=mais(mais(daConta(d,ant)+eq[d.k],arv[d.k]),tmp[d.k]);
     });
     const defEsp={}, baseEsp={};                    // as 13 específicas: digitada + itens + temporários
     DEFESAS_ESP.forEach(d=>{
@@ -654,7 +664,7 @@
     });
     const vars={LVL:+pc.level, NIVEL:+pc.level, MULT:mult, PTS:arred(cfg,total), TOTAL:arred(cfg,total)};
     DERIV.forEach(d=>{
-      vars[d.k]=der[d.k]; vars[d.k+'_B']=d.calc(base,def); vars[d.k+'_EQ']=eq[d.k];
+      vars[d.k]=der[d.k]; vars[d.k+'_B']=daConta(d,base); vars[d.k+'_EQ']=eq[d.k];
       d.aliases.forEach(al=>{vars[al]=der[d.k]});
     });
     DEFESAS.forEach(d=>{

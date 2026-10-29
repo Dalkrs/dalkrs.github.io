@@ -14,7 +14,11 @@
    Formato de um inimigo (normalizar devolve sempre assim):
      { v: 1, nome, tags: [texto], cor: '#rrggbb', img: 'https://…' | null, tam: 0.5 | 1 | 2 | 3 | 4,
        ficha: { tier, level, tiers: { FOR: 'A'…'E', … }, defesas: { DFF, DFM, BLQ }, defEsp: { FOGO: n, … },
-                recursos: [{ id, nome, fml, comeca?, piso? }], ini: 'fórmula', lado: 'Inimigo' },
+                recursos: [{ id, nome, fml, comeca?, piso?, fixo? }], ini: 'fórmula', iniFixa?, lado: 'Inimigo',
+                (lote 33) atrMan: { FOR: 40 } — o atributo digitado (no lugar da letra); derMan: { ESQ: 12 } — o
+                derivado digitado; fixo (na barra) e iniFixa: a fórmula é só um número;
+                itens: [{ id, nome, equipado, bonus: { FOR: n … }, def: { FOGO: n … }, rec: { idDaBarra: n }, tipo?,
+                          efeito?, chance (no saque, 1–100), cat? (de que item do catálogo veio) }] — o equipamento },
        skills: { arvores: [id], pontos: { idDoTipo: n }, prioridade: [idDoNódulo], sobra: true/false, alocados: {…},
                  texto: 'as skills escritas à mão' },
        comp: { texto, lembrete }, saque: { itens: [{ id, nome, chance (1–100), qtd ('1', '1d3'), tipo, cat? }], lapros: '2d6' },
@@ -48,6 +52,7 @@
   function recursoLimpo(r) {
     if (!ehObj(r)) return null;
     const o = { id: idOk(r.id) ? r.id : uid(), nome: txt(r.nome, 30) || 'Barra', fml: txt(r.fml, 200) };
+    if (r.fixo === true && /^\d{1,6}$/.test(o.fml)) o.fixo = true;               // (lote 33) a barra com número fixo
     if (txt(r.comeca, 200)) o.comeca = txt(r.comeca, 200);
     if (txt(r.piso, 200)) o.piso = txt(r.piso, 200);
     return o;
@@ -55,6 +60,30 @@
   function recursosPadrao() {
     const p = R() ? R().personagemPadrao('x') : null;
     return (p ? p.recursos : [{ nome: 'HP', fml: 'VIT*8 + LVL*5' }, { nome: 'SP', fml: 'CAN*6 + LVL*3' }]).map(r => ({ id: uid(), nome: r.nome, fml: r.fml }));
+  }
+  /* (lote 33) o equipamento do inimigo: as peças no formato dos itens das fichas (as contas são as mesmas), com a chance
+     de cada uma cair no saque */
+  function equipLimpo(x, recIds) {
+    if (!ehObj(x)) return null;
+    const Rr = R(), chaves = Rr ? Rr.CHAVES_BONUS : ['FOR', 'DES', 'VIT', 'CAN', 'AGI'], esp = Rr && Rr.CHAVES_ESP ? Rr.CHAVES_ESP : [];
+    const bonus = {}, def = {}, rec = {};
+    for (const k of chaves) bonus[k] = inteiro(ehObj(x.bonus) ? x.bonus[k] : 0, -9999, 9999, 0);
+    if (ehObj(x.def)) for (const k of esp) { const v = inteiro(x.def[k], -9999, 9999, 0); if (v) def[k] = v; }
+    if (ehObj(x.rec)) for (const k in x.rec) { if (idOk(k) && (!recIds || recIds.has(k))) { const v = inteiro(x.rec[k], -9999, 9999, 0); if (v) rec[k] = v; } }
+    const o = { id: idOk(x.id) ? x.id : uid(), nome: txt(x.nome, 80) || 'Equipamento', equipado: x.equipado !== false, bonus, chance: inteiro(x.chance, 0, 100, 50) };
+    if (Object.keys(def).length) o.def = def;
+    if (Object.keys(rec).length) o.rec = rec;
+    if (typeof x.tipo === 'string' && /^[A-Za-z0-9_-]{1,44}$/.test(x.tipo)) o.tipo = x.tipo;
+    if (txt(x.efeito, 300)) o.efeito = txt(x.efeito, 300);
+    if (idOk(x.cat)) o.cat = x.cat;
+    return o;
+  }
+  // os números digitados: só os que são número (vazio: a conta de sempre)
+  function numerosAMao(o, chaves) {
+    const out = {};
+    if (!ehObj(o)) return out;
+    for (const k of chaves) { const v = typeof o[k] === 'string' && o[k].trim() === '' ? NaN : num(o[k], NaN); if (Number.isFinite(v)) out[k] = Math.max(0, Math.min(99999, Math.round(v))); }
+    return out;
   }
   function fichaLimpa(f) {
     f = ehObj(f) ? f : {};
@@ -66,8 +95,19 @@
     const defEsp = {};
     if (ehObj(f.defEsp)) for (const k in f.defEsp) { if (/^[A-Z]{2,10}$/.test(k)) { const v = inteiro(f.defEsp[k], -999, 9999, 0); if (v) defEsp[k] = v; } }
     const rec = Array.isArray(f.recursos) ? f.recursos.map(recursoLimpo).filter(Boolean).slice(0, 8) : null;
-    return { tier: TIERS.includes(f.tier) ? f.tier : 'C', level: inteiro(f.level, 1, 99, 1), tiers, defesas, defEsp,
-      recursos: rec || recursosPadrao(), ini: txt(f.ini, 200), lado: txt(f.lado, 20) || 'Inimigo' };
+    const recursos = rec || recursosPadrao(), recIds = new Set(recursos.map(r => r.id));
+    const o = { tier: TIERS.includes(f.tier) ? f.tier : 'C', level: inteiro(f.level, 1, 99, 1), tiers, defesas, defEsp,
+      recursos, ini: txt(f.ini, 200), lado: txt(f.lado, 20) || 'Inimigo' };
+    // (lote 33) os números à mão e o equipamento
+    const am = numerosAMao(f.atrMan, ['FOR', 'DES', 'VIT', 'CAN', 'AGI']), dm = numerosAMao(f.derMan, ['ESQ', 'FUR', 'PER', 'EMB']);
+    if (Object.keys(am).length) o.atrMan = am;
+    if (Object.keys(dm).length) o.derMan = dm;
+    if (f.iniFixa === true && /^-?\d{1,4}$/.test(o.ini.trim())) o.iniFixa = true;
+    const itens = (Array.isArray(f.itens) ? f.itens : []).map(x => equipLimpo(x, recIds)).filter(Boolean).slice(0, 24);
+    const vistos = new Set();
+    for (const it of itens) { while (vistos.has(it.id)) it.id = uid(); vistos.add(it.id); }
+    if (itens.length) o.itens = itens;
+    return o;
   }
   function normalizar(e) {
     e = ehObj(e) ? e : {};
@@ -119,7 +159,8 @@
     const defesas = {};
     for (const k in c.def) defesas[k] = Math.round(Number(c.def[k]) || 0);
     for (const k in c.defEsp) defesas[k] = Math.round(Number(c.defEsp[k]) || 0);
-    return { c, rolaveis, barras, ini, defesas, poder: Math.round(c.total || 0), numeros: { FOR: val('FOR'), CAN: val('CAN'), DFF: val('DFF'), DFM: val('DFM'), ESQ: val('ESQ') } };
+    // (lote 33) o poder, para a dificuldade: a soma dos cinco atributos finais (com o equipamento e a árvore)
+    return { c, rolaveis, barras, ini, defesas, poder: somaAtributos(c), pontos: Math.round(c.total || 0), numeros: { FOR: val('FOR'), CAN: val('CAN'), DFF: val('DFF'), DFM: val('DFM'), ESQ: val('ESQ') } };
   }
 
   /* ---------------- a árvore: o site distribui ----------------
@@ -213,21 +254,37 @@
   }
 
   /* ---------------- o encontro ----------------
-     A dificuldade é só uma sugestão: o poder dos inimigos (os pontos do level com o tier, somados, um por cópia) contra o
-     dos personagens do grupo (os mesmos pontos). Até 60%: Fácil; até 100%: Médio; até 150%: Duro; acima: Mortal.
-     inimigos: [{ e, n }]; grupo: [ficha] (tier e level). → { k, nome, inimigos, grupo, razao } ou null (sem grupo) */
+     A dificuldade é só uma sugestão: o poder dos inimigos contra o dos personagens do grupo. (lote 33) O poder de cada um
+     é a soma dos cinco atributos finais — Força, Destreza, Vitalidade, Canalização e Agilidade, com o equipamento
+     equipado e o que a árvore soma (os números digitados à mão contam como são) —; o dos inimigos, um por cópia. Até 60%
+     do grupo: Fácil; até 100%: Médio; até 150%: Duro; acima: Mortal.
+     inimigos: [{ e, n }]; grupo: [{ nome, ficha, skills }] (as fichas dos personagens; aceita também { tier, level }).
+     → { k, nome, inimigos, grupo, razao, faixas, detalhe: { inimigos: [{ nome, n, poder }], grupo: [{ nome, poder }] } }
+       ou null (sem grupo ou sem inimigo) */
+  const FAIXAS = [['facil', 60], ['medio', 100], ['duro', 150], ['mortal', Infinity]];
+  function somaAtributos(c) { return ['FOR', 'DES', 'VIT', 'CAN', 'AGI'].reduce((s, k) => s + Math.max(0, Math.round(num(c && c.tot ? c.tot[k] : 0, 0))), 0); }
+  function poderDaFicha(x, cfg, bib) {
+    const Rr = R(), cf = cfg || Rr.cfgPadrao();
+    if (!ehObj(x)) return 0;
+    const f = ehObj(x.ficha) ? x.ficha : { tier: x.tier, level: x.level };
+    const pc = Object.assign(Rr.personagemPadrao(x.nome || f.nome || 'x', 'pj'), JSON.parse(JSON.stringify(f)));
+    let extra = {};
+    try { if (x.skills && bib) extra = { arvore: Rr.bonusDaArvore(x.skills, bib) }; } catch (e) { extra = {}; }
+    try { return somaAtributos(Rr.calcular(pc, cf, extra)); } catch (e) { return 0; }
+  }
   function poderDe(ficha, cfg) {
     const cf = cfg || R().cfgPadrao(), tab = cf.niveis || [], lvl = Math.max(1, Math.round(num(ficha && ficha.level, 1)));
     const linha = tab.find(r => +r.lvl === lvl) || (tab.length ? (lvl > +tab[tab.length - 1].lvl ? tab[tab.length - 1] : tab[0]) : { pts: 0 });   // (como nas fichas: acima da tabela, o último)
     const mult = ((cf.tiersPersonagem || []).find(x => x.t === (ficha && ficha.tier)) || { m: 1 }).m;
     return Math.round(num(linha.pts, 0) * num(mult, 1));
   }
-  function dificuldade(inimigos, grupo, cfg) {
-    const pi = (inimigos || []).reduce((s, x) => s + poderDe(x.e.ficha, cfg) * Math.max(0, Math.round(num(x.n, 1))), 0);
-    const pg = (grupo || []).reduce((s, f) => s + poderDe(f, cfg), 0);
+  function dificuldade(inimigos, grupo, cfg, bib) {
+    const di = (inimigos || []).filter(x => x && x.e).map(x => { let p = 0; try { p = contas(normalizar(x.e), cfg, bib || null).poder; } catch (e) { p = 0; } return { nome: x.e.nome || 'Inimigo', n: Math.max(0, Math.round(num(x.n, 1))), poder: p }; });
+    const dg = (grupo || []).filter(ehObj).map(x => ({ nome: x.nome || (x.ficha && x.ficha.nome) || 'Personagem', poder: poderDaFicha(x, cfg, bib) }));
+    const pi = di.reduce((s, x) => s + x.poder * x.n, 0), pg = dg.reduce((s, x) => s + x.poder, 0);
     if (!(pg > 0) || !(pi > 0)) return null;
-    const r = pi / pg, k = r <= 0.6 ? 'facil' : r <= 1 ? 'medio' : r <= 1.5 ? 'duro' : 'mortal';
-    return { k, nome: DIFICULDADES.find(d => d[0] === k)[1], inimigos: pi, grupo: pg, razao: Math.round(r * 100) };
+    const r = pi / pg, k = FAIXAS.find(f => r * 100 <= f[1])[0];
+    return { k, nome: DIFICULDADES.find(d => d[0] === k)[1], inimigos: pi, grupo: pg, razao: Math.round(r * 100), faixas: FAIXAS.slice(0, 3).map(f => [f[0], f[1]]), detalhe: { inimigos: di, grupo: dg } };
   }
 
   /* ---------------- o saque ----------------
@@ -243,8 +300,30 @@
       const q = qtdDe(it.qtd);
       if (q > 0) out.itens.push({ nome: it.nome, qtd: q, tipo: it.tipo, cat: it.cat, chance: it.chance, d100: d });
     }
+    // (lote 33) o equipamento: cada peça pela chance dela (a peça vai inteira, com os bônus)
+    for (const it of (e.ficha && Array.isArray(e.ficha.itens) ? e.ficha.itens : [])) {
+      if (!(it.chance > 0)) continue;
+      const d = 1 + Math.floor(sorte() * 100);
+      out.rolagens.push(it.nome + ' (equipamento): ' + d + (d <= it.chance ? ' ≤ ' : ' > ') + it.chance + '%');
+      if (d <= it.chance) out.itens.push({ nome: it.nome, qtd: 1, tipo: 'equip', cat: it.cat || null, chance: it.chance, d100: d, eq: paraSaque(it, e) });
+    }
     if (e.saque.lapros) { const r = D ? D.rollExpr(e.saque.lapros) : null; out.lapros = r && r.ok ? Math.max(0, Math.round(r.total)) : Math.max(0, Math.round(num(e.saque.lapros, 0))); if (out.lapros) out.rolagens.push('Lapros: ' + out.lapros); }
     return out;
+  }
+
+  /* (lote 33) a peça de equipamento como ela cai: os bônus, as defesas específicas e as barras pelo nome (quem recebe tem
+     as barras dele, com outros ids), o tipo e o efeito */
+  function paraSaque(it, e) {
+    const o = { bonus: Object.assign({}, it.bonus || {}) };
+    if (it.def) o.def = Object.assign({}, it.def);
+    if (it.rec) {
+      const recN = {};
+      for (const id in it.rec) { const r = (e && e.ficha && e.ficha.recursos || []).find(x => x.id === id); if (r) recN[r.nome] = it.rec[id]; }
+      if (Object.keys(recN).length) o.recN = recN;
+    }
+    if (it.tipo) o.tipo = it.tipo;
+    if (it.efeito) o.efeito = it.efeito;
+    return o;
   }
 
   /* ---------------- as tags ---------------- */
@@ -279,7 +358,7 @@
   const iniciais = nome => String(nome || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0] || '').join('').toUpperCase() || '?';
 
   const api = { PRE, PRE_ENC, TAGS, L_LOCAL, TIERS, LETRAS, TAMANHOS, CORES, TAG_GRUPOS, TIPOS_SAQUE, DIFICULDADES, ROLAVEIS,
-    normalizar, novo, recursosPadrao, pcDe, linhaDe, contas, pontosDe, distribuir, skills, poderDe, dificuldade, rolarSaque, gruposDeTags, passa, iniciais, uid, idOk };
+    normalizar, novo, recursosPadrao, pcDe, linhaDe, contas, pontosDe, distribuir, skills, poderDe, poderDaFicha, somaAtributos, FAIXAS, dificuldade, rolarSaque, equipLimpo, paraSaque, gruposDeTags, passa, iniciais, uid, idOk };
   (root.TC || (root.TC = {})).bestiario = api;
   if (typeof window !== 'undefined' && window && window !== root) (window.TC || (window.TC = root.TC)).bestiario = api;
   if (typeof module !== 'undefined' && module && module.exports) module.exports = api;

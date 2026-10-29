@@ -2,6 +2,33 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.28-8",
+      "data": "2026-10-28",
+      "titulo": "Bestiário: números à mão e equipamento",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Bestiário → Números: cada atributo pode ter a letra (como antes) ou um número digitado — ele é a base, e o equipamento soma por cima. Os derivados (Esquiva, Furtividade, Percepção, Embate), a iniciativa e as barras também aceitam um número fixo no lugar da conta."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Bestiário → Equipamento: escreva as peças do inimigo (os bônus, as barras, as defesas específicas) ou traga do catálogo da aba Itens. O equipamento soma nos números, como nas fichas; cada peça diz se vem equipada e a chance de cair no saque."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Nas Cenas, o painel do token do Bestiário mostra o equipamento: cada token liga e desliga as peças dele (sacar a espada no segundo turno) sem mexer nos outros, e os números e as barras acompanham. A peça que cai no saque vai inteira, com os bônus, para quem pegar."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "A dificuldade do encontro agora compara os números de verdade — a soma dos cinco atributos finais, com o equipamento, de cada inimigo e de cada personagem —, no Bestiário e no sorteio do Mapa-múndi. No Bestiário, o “?” ao lado dela mostra a conta."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.28-7",
       "data": "2026-10-28",
       "titulo": "NPCs e encontros por bioma",

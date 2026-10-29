@@ -590,7 +590,7 @@
     const ehJog = id => !!id && (st.membros || []).some(x => x.id === id && (x.cargo ? x.cargo !== 'mestre' : x.papel === 'jogador'));
     const vivas = P.todas().filter(l => l && !l.apagado && l.ficha && !l.ficha.petDe && !(l.estado && l.estado.ativo === false));
     const lista = pcs.length ? vivas.filter(l => pcs.includes(l.id)) : vivas.filter(l => ehJog(l.dono_id) && (!camp || !l.campanha || l.campanha === camp));
-    return lista.map(l => ({ tier: l.ficha.tier || 'C', level: l.ficha.level || 1 }));
+    return lista.map(l => ({ nome: l.nome || 'Personagem', ficha: l.ficha, skills: l.skills || null }));     // (lote 33: a ficha inteira — os números de verdade)
   }
   function sortearBioma(b, tab, g, reg) {
     const EN = Enc(), m = App.mapa, pe = g ? N().pesoNoPonto(m, g.x, g.y) : null;
@@ -664,7 +664,7 @@
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'enc:l:' + i + ':mais', disabled: x.n >= 30, 'aria-label': 'Um a mais: ' + x.nome, onclick: () => { x.n = Math.min(30, x.n + 1); e.mesa = false; e.segredo = false; agendar(); } }, '+'),
           h('span', { text: '× ' + x.nome }), x.dados && /d/.test(x.dados) ? h('small', { text: '(' + x.dados + ')' }) : null))));
         const grupo = fichasDoGrupo(g0(e)), quem = e.linhas.filter(x => x.n > 0).map(x => { const y = inimigoDoBestiario(x.id); return y ? { e: y.e, n: x.n } : null; }).filter(Boolean);
-        const dif = B && grupo.length && quem.length ? B.dificuldade(quem, grupo, cfgFichas()) : null;
+        const dif = B && grupo.length && quem.length ? B.dificuldade(quem, grupo, cfgFichas(), docMesa('arvore:biblioteca')) : null;
         corpo.push(h('p', { class: 'enc-dif' + (dif ? ' d-' + dif.k : ''), 'data-k': 'enc:dif', text: dif ? 'Dificuldade: ' + dif.nome + ' (' + dif.razao + '% da força de ' + (grupo.length === 1 ? '1 personagem' : grupo.length + ' personagens') + ')' : App.naMesa ? 'A dificuldade aparece com os personagens do grupo (marque-os em Seleção → o grupo).' : 'Numa mesa, a dificuldade sai contra os personagens do grupo.' }));
         if (naCasca()) corpo.push(linha(
           caixaSimples('enc:ocultos', 'Entram ocultos', !!e.ocultos, v => { e.ocultos = v; }),

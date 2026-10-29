@@ -1040,6 +1040,10 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 
 /* (lote 29) o Bestiário nas Cenas: o lembrete de comportamento, o saque */
 .best-lembra { padding: 7px 10px; border-left: 3px solid var(--lamp); background: var(--lamp-soft); border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.4; }
+/* (lote 33) o equipamento do inimigo no painel do token: cada peça liga e desliga só neste token */
+.best-eq { display: grid; gap: 4px; }
+.best-eq-t { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-3, #8a93a8); }
+.best-eq .sw-label { overflow-wrap: anywhere; }
 .best-lembra b { color: var(--lamp-ink); font-weight: 600; }
 .best-sq { margin: 0; font-size: 13px; line-height: 1.45; }
 .zona.best { border-color: var(--lamp); }

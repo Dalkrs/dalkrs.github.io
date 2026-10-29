@@ -140,7 +140,7 @@
     if (!naMesa || !P) return [];
     const vista = st && st.campanha ? st.campanha.id : null;
     return P.todas().filter(l => !l.apagado && l.dono_id && ehObj(l.ficha) && !(l.ficha && l.ficha.petDe) && !(l.estado && (l.estado.ativo === false || l.estado.toldo)) && (!vista || !l.campanha || l.campanha === vista))
-      .map(l => ({ tier: l.ficha.tier || 'C', level: l.ficha.level || 1 }));
+      .map(l => ({ nome: l.nome || (l.ficha && l.ficha.nome) || 'Personagem', ficha: l.ficha, skills: l.skills || null }));      // (lote 33: a ficha inteira, para os números de verdade)
   }
 
   /* ---------------- o encontro (a bandeja) ---------------- */
@@ -270,7 +270,7 @@
       h('h2', { id: 'g-nome', text: e.nome }),
       e.tags.length ? h('div', { class: 'acoes' }, e.tags.map(t => h('span', { class: 'chip', text: t }))) : null,
       acoes,
-      h('div', { class: 'atrs', id: 'g-atrs' }, ['FOR', 'DES', 'VIT', 'CAN', 'AGI'].map(k => h('div', null, h('span', { text: k }), String(val(k))))),
+      h('div', { class: 'atrs', id: 'g-atrs' }, ['FOR', 'DES', 'VIT', 'CAN', 'AGI'].map(k => h('div', { title: e.ficha.atrMan && e.ficha.atrMan[k] != null ? 'Digitado à mão: ' + e.ficha.atrMan[k] + ' (mais o equipamento)' : 'Pela letra ' + e.ficha.tiers[k] }, h('span', { text: k + (e.ficha.atrMan && e.ficha.atrMan[k] != null ? ' ✎' : '') }), String(val(k))))),
       h('div', { class: 'sec' },
         c ? c.barras.map(b => h('div', { class: 'lin' }, h('span', { text: b.n }), h('span', { class: 'mono', text: (b.st != null ? b.st + ' de ' : '') + b.m }))) : null,
         h('div', { class: 'lin' }, h('span', { text: 'Defesas (física / mágica / bloqueio)' }), h('span', { class: 'mono', text: c ? c.defesas.DFF + ' / ' + c.defesas.DFM + ' / ' + c.defesas.BLQ : '–' })),
@@ -285,6 +285,9 @@
       e.saque.itens.length || e.saque.lapros ? h('div', { class: 'sec', id: 'g-saque' }, h('span', { class: 'eyebrow', text: 'Saque' }),
         e.saque.itens.map(s => h('div', { class: 'lin' }, h('span', { text: s.nome }), h('span', { class: 'mono', text: s.chance + '%' + (s.qtd !== '1' ? ' · ' + s.qtd : '') }))),
         e.saque.lapros ? h('div', { class: 'lin' }, h('span', { text: 'Lapros' }), h('span', { class: 'mono', text: e.saque.lapros })) : null) : null,
+      // (lote 33) o equipamento
+      e.ficha.itens && e.ficha.itens.length ? h('div', { class: 'sec', id: 'g-equip' }, h('span', { class: 'eyebrow', text: 'Equipamento' }),
+        e.ficha.itens.map(it => h('div', { class: 'lin' + (it.equipado === false ? ' guardada' : '') }, h('span', { text: it.nome + (it.equipado === false ? ' (guardado)' : '') }), h('span', { class: 'mono', text: resumoPeca(it, e.ficha.recursos) + (it.chance ? ' · saque ' + it.chance + '%' : '') })))) : null,
       e.notas ? h('div', { class: 'sec' }, h('span', { class: 'eyebrow', text: 'Notas' }), h('p', { class: 'texto', text: e.notas })) : null);
   }
   function pintarBandeja() {
@@ -293,7 +296,7 @@
     b.hidden = !itens.length;
     if (!itens.length) { trocar(b); return; }
     const total = itens.reduce((s, y) => s + y.x.n, 0), grupo = grupoDosJogadores();
-    const dif = B.dificuldade(itens.map(y => ({ e: y.i.e, n: y.x.n })), grupo, cfg());
+    const dif = B.dificuldade(itens.map(y => ({ e: y.i.e, n: y.x.n })), grupo, cfg(), bib());
     trocar(b,
       h('span', { class: 'eyebrow', text: 'Encontro · ' + total }),
       h('div', { class: 'itens', id: 'enc-itens' }, itens.map(y => h('span', { class: 'bt', 'data-enc': y.x.id }, h('b', { text: y.i.e.nome }),
@@ -301,18 +304,45 @@
         h('span', { class: 'mono', text: '×' + y.x.n }),
         h('button', { type: 'button', 'aria-label': 'Um a mais de ' + y.i.e.nome, onclick: () => mudarEncontro(y.x.id, 1) }, '+')))),
       h('span', { class: 'dif', id: 'enc-dif', title: dif ? 'O poder dos inimigos (' + dif.inimigos + ') contra o do grupo (' + dif.grupo + ', ' + grupo.length + ' personagens ativos): só uma sugestão' : 'A dificuldade aparece numa mesa, contra os personagens ativos do grupo' },
-        'Dificuldade: ', dif ? h('b', { class: dif.k, text: dif.nome }) : h('b', { text: '—' }), dif ? ' (' + dif.razao + '% do grupo)' : ''),
+        'Dificuldade: ', dif ? h('b', { class: dif.k, text: dif.nome }) : h('b', { text: '—' }), dif ? ' (' + dif.razao + '% do grupo)' : '',
+        h('button', { type: 'button', class: 'ajuda-dif', id: 'enc-dif-ajuda', title: 'Como a dificuldade é calculada', 'aria-label': 'Como a dificuldade é calculada', onclick: () => contaDaDificuldade(itens, grupo, dif) }, '?')),
       h('label', { class: 'chk', title: 'Os tokens entram escondidos dos jogadores (você revela na cena)' }, h('input', { type: 'checkbox', id: 'enc-ocultos', checked: !!ui.ocultos, onchange: ev => { ui.ocultos = ev.target.checked; salvarUi(); } }), 'Entram ocultos'),
       h('button', { type: 'button', class: 'btn sm', id: 'enc-limpar', text: 'Limpar', onclick: () => { const antes = copia(encontro); encontro = []; salvarEncontro(); pintar(); toast('O encontro foi limpo.', 'Desfazer', () => { encontro = antes; salvarEncontro(); pintar(); }); } }),
       h('button', { type: 'button', class: 'btn sm', id: 'enc-guardar', text: 'Guardar encontro', onclick: guardarEncontro }),
       h('button', { type: 'button', class: 'btn sm pri', id: 'enc-puxar', text: 'Puxar para a cena', onclick: puxar }));
   }
 
+  /* (lote 33) O "?" da dificuldade: a conta, com os números do encontro de agora — o poder de cada inimigo (vezes
+     quantos), o de cada personagem, a soma de cada lado, a porcentagem e as faixas. */
+  function contaDaDificuldade(itens, grupo, dif) {
+    const dl = $('dlgDif'), FX = B.DIFICULDADES;
+    const fx = (B.FAIXAS || []).slice(0, 3);
+    const linhaI = dif ? dif.detalhe.inimigos : itens.map(y => { let p = 0; try { p = B.contas(y.i.e, cfg(), bib()).poder; } catch (e) { p = 0; } return { nome: y.i.e.nome, n: y.x.n, poder: p }; });
+    const linhaG = dif ? dif.detalhe.grupo : [];
+    const somaI = linhaI.reduce((s, x) => s + x.poder * x.n, 0), somaG = linhaG.reduce((s, x) => s + x.poder, 0);
+    const faixaTxt = (k, i) => { const ate = fx[i] ? fx[i][1] : null, de = i > 0 && fx[i - 1] ? fx[i - 1][1] : null; return (FX.find(d => d[0] === k) || [k, k])[1] + (ate != null ? (de != null ? ': de ' + (de + 1) + '% a ' + ate + '%' : ': até ' + ate + '%') : ': acima de ' + fx[fx.length - 1][1] + '%'); };
+    trocar(dl,
+      h('div', { class: 'dl-h' }, h('h2', { id: 'dif-tit', text: 'Como a dificuldade é calculada' }), h('button', { type: 'button', class: 'ib leve', 'aria-label': 'Fechar', onclick: () => dl.close() }, '×')),
+      h('div', { class: 'dl-c conta-dif' },
+        h('p', { text: 'O poder de cada um é a soma dos cinco atributos finais — Força, Destreza, Vitalidade, Canalização e Agilidade —, já com o equipamento equipado e o que a árvore soma. Os números digitados à mão contam como estão. A dificuldade compara o poder dos inimigos (cada cópia conta) com o dos personagens ativos do grupo. É só uma sugestão: o terreno, as skills e a sorte não entram.' }),
+        h('table', null, h('thead', null, h('tr', null, h('th', { text: 'Inimigos' }), h('th', { class: 'n', text: 'Poder' }), h('th', { class: 'n', text: 'Quantos' }), h('th', { class: 'n', text: 'Total' }))),
+          h('tbody', null, linhaI.map(x => h('tr', null, h('td', { text: x.nome }), h('td', { class: 'n', text: String(x.poder) }), h('td', { class: 'n', text: '× ' + x.n }), h('td', { class: 'n', text: String(x.poder * x.n) })))),
+          h('tfoot', null, h('tr', null, h('td', { text: 'Os inimigos' }), h('td'), h('td'), h('td', { class: 'n', text: String(somaI) })))),
+        linhaG.length ? h('table', null, h('thead', null, h('tr', null, h('th', { text: 'Personagens' }), h('th', { class: 'n', text: 'Poder' }))),
+          h('tbody', null, linhaG.map(x => h('tr', null, h('td', { text: x.nome }), h('td', { class: 'n', text: String(x.poder) })))),
+          h('tfoot', null, h('tr', null, h('td', { text: 'O grupo' }), h('td', { class: 'n', text: String(somaG) })))) : h('p', { class: 'aviso', text: naMesa ? 'Nenhum personagem ativo de jogador na campanha em vista: sem o grupo, não há com o que comparar.' : 'Fora de uma mesa não há grupo: numa mesa, os personagens ativos da campanha em vista entram aqui.' }),
+        dif ? h('p', { id: 'dif-conta', text: somaI + ' ÷ ' + somaG + ' = ' + dif.razao + '% do grupo → ' + dif.nome + '.' }) : null,
+        h('div', { class: 'faixas' }, ['facil', 'medio', 'duro', 'mortal'].map((k, i) => h('span', { class: dif && dif.k === k ? 'on' : '', text: faixaTxt(k, i) })))),
+      h('div', { class: 'dl-a' }, h('button', { type: 'button', class: 'btn pri', text: 'Ok', onclick: () => dl.close() })));
+    dl.showModal();
+  }
+
   /* ---------------- os menus: as tags e os encontros ---------------- */
   let popEl = null;
   function fecharPop() { if (popEl) { popEl.remove(); popEl = null; } }
   function abrirPop(el, ancora) {
-    fecharPop(); popEl = el; document.body.append(el);
+    // (dentro de uma janela aberta, o menu vai junto dela: fora, a janela não deixa clicar)
+    fecharPop(); popEl = el; (ancora.closest('dialog[open]') || document.body).append(el);
     const r = ancora.getBoundingClientRect(), w = el.offsetWidth;
     el.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left)) + 'px';
     el.style.top = (r.bottom + 6) + 'px';
@@ -381,7 +411,7 @@
       dl.showModal(); inp.focus();
     });
   }
-  const ABAS_ED = [['basico', 'Básico'], ['numeros', 'Números'], ['arvore', 'Árvore'], ['comp', 'Comportamento'], ['saque', 'Saque e notas']];
+  const ABAS_ED = [['basico', 'Básico'], ['numeros', 'Números'], ['equip', 'Equipamento'], ['arvore', 'Árvore'], ['comp', 'Comportamento'], ['saque', 'Saque e notas']];
   let ed = null;            // { id (null: novo), e (o rascunho), aba }
   function editar(id) {
     const x = id ? porId(id) : null;
@@ -408,7 +438,7 @@
   function pintarEd() {
     if (!ed) return;
     const dl = $('dlg'), a = document.activeElement, foco = a && dl.contains(a) && a.id ? a.id : null, pos = foco && a.selectionStart != null ? [a.selectionStart, a.selectionEnd] : null;
-    const corpo = ed.aba === 'basico' ? edBasico() : ed.aba === 'numeros' ? edNumeros() : ed.aba === 'arvore' ? edArvore() : ed.aba === 'comp' ? edComp() : edSaque();
+    const corpo = ed.aba === 'basico' ? edBasico() : ed.aba === 'numeros' ? edNumeros() : ed.aba === 'equip' ? edEquip() : ed.aba === 'arvore' ? edArvore() : ed.aba === 'comp' ? edComp() : edSaque();
     const scroll = dl.querySelector('.dl-c') ? dl.querySelector('.dl-c').scrollTop : 0;
     trocar(dl,
       h('div', { class: 'dl-h' }, h('h2', { text: ed.id ? 'Editar ' + (ed.e.nome || 'inimigo') : 'Novo inimigo' }), h('button', { type: 'button', class: 'ib leve', 'aria-label': 'Fechar sem guardar', title: 'Fechar sem guardar', onclick: () => dl.close() }, '×')),
@@ -448,27 +478,127 @@
         h('span', { class: 'ajuda', text: 'A imagem aparece na carta e vira a do token na cena.' })),
     ];
   }
+  /* (lote 33) Os números: o tier e o level; cada atributo com a letra (A recebe mais, E menos — como nas fichas) ou um
+     número digitado (a base: o equipamento e a árvore somam por cima); os derivados (vazio: a conta de sempre); a
+     iniciativa e as barras com fórmula ou número fixo (o equipamento ainda soma). */
+  const ATR5 = ['FOR', 'DES', 'VIT', 'CAN', 'AGI'], DER4 = [['ESQ', 'Esquiva'], ['FUR', 'Furtividade'], ['PER', 'Percepção'], ['EMB', 'Embate']];
   function edNumeros() {
     const f = ed.e.ficha;
+    f.atrMan = ehObj(f.atrMan) ? f.atrMan : {};
+    f.derMan = ehObj(f.derMan) ? f.derMan : {};
     let c = null; try { c = B.contas(B.normalizar(ed.e), cfg(), bib()); } catch (er) { c = null; }
     const v = k => (c ? (c.rolaveis.find(r => r[0] === k) || [0, 0, 0])[2] : '–');
+    // o derivado pela conta (sem o digitado), para mostrar no campo vazio
+    let semMao = null; try { const e2 = copia(ed.e); e2.ficha.derMan = {}; semMao = B.contas(B.normalizar(e2), cfg(), bib()); } catch (er) { semMao = null; }
+    const vConta = k => (semMao ? (semMao.rolaveis.find(r => r[0] === k) || [0, 0, 0])[2] : '');
+    const manual = k => f.atrMan[k] != null && String(f.atrMan[k]).trim() !== '';
+    const fixaIni = f.iniFixa === true;
     return [
       h('div', { class: 'g3' },
         campo('Tier', h('select', { class: 'in', id: 'ed-tier', onchange: muda(x => { f.tier = x; }) }, B.TIERS.map(t => h('option', { value: t, selected: t === f.tier }, t)))),
         campo('Level', h('input', { class: 'in num', id: 'ed-level', type: 'number', min: '1', max: '99', value: String(f.level), onchange: muda(x => { f.level = Math.max(1, Math.min(99, Math.round(+x) || 1)); }) })),
-        campo('Iniciativa (fórmula)', h('input', { class: 'in', id: 'ed-ini', value: f.ini, placeholder: 'ex.: AGI/5 (vazio: 0)', onchange: muda(x => { f.ini = x; }) }))),
-      h('div', { class: 'field' }, h('span', { text: 'Onde os pontos caem (A recebe mais, E menos — como nas fichas)' }),
-        h('div', { class: 'g5' }, ['FOR', 'DES', 'VIT', 'CAN', 'AGI'].map(k => h('label', { class: 'field' }, h('span', { text: k + ' · ' + v(k) }),
-          h('select', { class: 'in', id: 'ed-t-' + k, onchange: muda(x => { f.tiers[k] = x; }) }, B.LETRAS.map(t => h('option', { value: t, selected: t === f.tiers[k] }, t))))))),
+        h('div', { class: 'field' }, h('span', { text: 'Iniciativa' }),
+          h('div', { class: 'acoes' },
+            h('select', { class: 'in', id: 'ed-ini-modo', style: { width: 'auto' }, 'aria-label': 'Iniciativa: fórmula ou número fixo', onchange: muda(x => { if (x === 'fixa') { f.iniFixa = true; f.ini = String(Math.round(c ? c.ini : 0)); } else { delete f.iniFixa; f.ini = ''; } }) },
+              h('option', { value: 'fml', selected: !fixaIni }, 'Fórmula'), h('option', { value: 'fixa', selected: fixaIni }, 'Número fixo')),
+            fixaIni ? h('input', { class: 'in num', id: 'ed-ini', type: 'number', value: f.ini, style: { flex: '1' }, 'aria-label': 'A iniciativa fixa', onchange: muda(x => { f.ini = String(Math.round(+x) || 0); }) })
+              : h('input', { class: 'in', id: 'ed-ini', value: f.ini, style: { flex: '1' }, placeholder: 'ex.: AGI/5 (vazio: 0)', 'aria-label': 'A fórmula da iniciativa', onchange: muda(x => { f.ini = x; }) })))),
+      h('div', { class: 'field' }, h('span', { text: 'Os atributos: a letra (onde os pontos do level caem — A recebe mais, E menos) ou um número seu' }),
+        h('div', { class: 'g5' }, ATR5.map(k => h('label', { class: 'field atr-m' + (manual(k) ? ' mao' : '') }, h('span', { text: k + ' · ' + v(k) }),
+          h('select', { class: 'in', id: 'ed-t-' + k, onchange: muda(x => { if (x === 'mao') { f.atrMan[k] = c ? Math.max(0, (c.c.nat || {})[k] || 0) : 0; } else { delete f.atrMan[k]; f.tiers[k] = x; } }) },
+            B.LETRAS.map(t => h('option', { value: t, selected: !manual(k) && t === f.tiers[k] }, t)), h('option', { value: 'mao', selected: manual(k) }, 'Número')),
+          manual(k) ? h('input', { class: 'in num', id: 'ed-m-' + k, type: 'number', min: '0', max: '99999', value: String(f.atrMan[k]), 'aria-label': k + ' digitado', onchange: muda(x => { f.atrMan[k] = Math.max(0, Math.round(+x) || 0); }) }) : null)))),
+      h('div', { class: 'field' }, h('span', { text: 'Os derivados: vazio é a conta de sempre; um número vale no lugar dela (o equipamento ainda soma)' }),
+        h('div', { class: 'g4' }, DER4.map(([k, n]) => campo(n + ' · ' + v(k), h('input', { class: 'in num', id: 'ed-dm-' + k, type: 'number', min: '0', max: '99999', value: f.derMan[k] != null ? String(f.derMan[k]) : '', placeholder: String(vConta(k)), title: 'Vazio: a conta de sempre (' + vConta(k) + ')',
+          onchange: muda(x => { if (String(x).trim() === '') delete f.derMan[k]; else f.derMan[k] = Math.max(0, Math.round(+x) || 0); }) }))))),
       h('div', { class: 'g3' }, [['DFF', 'Defesa física'], ['DFM', 'Defesa mágica'], ['BLQ', 'Bloqueio']].map(([k, n]) => campo(n, h('input', { class: 'in num', id: 'ed-d-' + k, type: 'number', value: String(f.defesas[k] || 0), onchange: muda(x => { f.defesas[k] = Math.round(+x) || 0; }) })))),
-      h('div', { class: 'field' }, h('span', { text: 'Barras (fórmulas das fichas: VIT, CAN, LVL…)' }),
+      h('div', { class: 'field' }, h('span', { text: 'Barras: a fórmula (VIT, CAN, LVL…) ou um número fixo (o equipamento ainda soma)' }),
         h('div', { class: 'linhas', id: 'ed-rec' }, f.recursos.map((r, i) => h('div', { class: 'linha rec' },
           h('input', { class: 'in', id: 'ed-r-n-' + i, value: r.nome, maxlength: '30', 'aria-label': 'Nome da barra', onchange: muda(x => { r.nome = x; }) }),
-          h('input', { class: 'in', id: 'ed-r-f-' + i, value: r.fml, 'aria-label': 'Fórmula de ' + r.nome, onchange: muda(x => { r.fml = x; }) }),
+          h('div', { class: 'acoes', style: { flexWrap: 'nowrap' } },
+            h('select', { class: 'in', id: 'ed-r-m-' + i, style: { width: 'auto' }, 'aria-label': 'Fórmula ou número fixo em ' + r.nome, onchange: muda(x => { const rr = c && c.c && Array.isArray(c.c.recursos) ? c.c.recursos.find(y => y.id === r.id) : null; if (x === 'fixo') { r.fixo = true; r.fml = String(Math.max(0, Math.round(rr && rr.max != null ? rr.max - (rr.eq || 0) - (rr.arv || 0) : 0))); } else { delete r.fixo; r.fml = 'VIT*8 + LVL*5'; } }) },
+              h('option', { value: 'fml', selected: !r.fixo }, 'Fórmula'), h('option', { value: 'fixo', selected: !!r.fixo }, 'Número')),
+            r.fixo ? h('input', { class: 'in num', id: 'ed-r-f-' + i, type: 'number', min: '0', value: r.fml, style: { flex: '1' }, 'aria-label': 'O número de ' + r.nome, onchange: muda(x => { r.fml = String(Math.max(0, Math.round(+x) || 0)); }) })
+              : h('input', { class: 'in', id: 'ed-r-f-' + i, value: r.fml, style: { flex: '1' }, 'aria-label': 'Fórmula de ' + r.nome, onchange: muda(x => { r.fml = x; }) })),
           h('span', { class: 'mono', style: { textAlign: 'right' }, text: c && c.barras.find(b => b.id === r.id) ? '= ' + c.barras.find(b => b.id === r.id).m : 'fórmula com erro' }),
           h('button', { type: 'button', class: 'ib leve', 'aria-label': 'Tirar a barra ' + r.nome, onclick: () => { f.recursos.splice(i, 1); pintarEd(); } }, '×')))),
         h('div', { class: 'acoes' }, h('button', { type: 'button', class: 'btn sm', text: '+ Barra', onclick: () => { f.recursos.push({ id: B.uid(), nome: 'Mana', fml: 'CAN*4' }); pintarEd(); } }))),
-      h('p', { class: 'previa', id: 'ed-num', text: c ? c.rolaveis.map(r => r[0] + ' ' + r[2]).join(' · ') : 'As contas aparecem aqui.' }),
+      h('p', { class: 'previa', id: 'ed-num', text: c ? c.rolaveis.map(r => r[0] + ' ' + r[2]).join(' · ') + (f.itens && f.itens.some(x => x.equipado !== false) ? ' (com o equipamento)' : '') : 'As contas aparecem aqui.' }),
+    ];
+  }
+
+  /* ---------------- (lote 33) o equipamento ----------------
+     As peças do inimigo, no formato dos itens das fichas: do catálogo da aba Itens (uma cópia: mudar o catálogo depois
+     não mexe aqui) ou escritas à mão. Cada uma: se vem equipada (nas Cenas, cada token troca a dele), os bônus (os
+     atributos, os derivados, as defesas, as defesas específicas e as barras) e a chance de cair no saque. */
+  let pecaAberta = null;
+  function catalogoEquip() {
+    let d = null;
+    if (naMesa) { const l = D.pegar('itens:catalogo'); d = l && !l.apagado ? l.dados : null; }
+    else { try { const o = JSON.parse(guarda.ler('tinycats:itens:local') || 'null'); d = o && ehObj(o.docs) ? o.docs['itens:catalogo'] : o && o['itens:catalogo'] ? o['itens:catalogo'] : null; if (d && d.dados) d = d.dados; } catch (e) { d = null; } }
+    return (ehObj(d) && Array.isArray(d.itens) ? d.itens : []).filter(x => ehObj(x) && x.t === 'equip' && x.nome).map(x => ({ id: String(x.id || ''), nome: String(x.nome), nota: String(x.nota || ''), equip: ehObj(x.equip) ? x.equip : {} }));
+  }
+  const NOMES_B = () => (R && R.NOMES_BONUS) || {};
+  function resumoPeca(it, recs) {
+    const p = [];
+    for (const k in it.bonus || {}) { const v = Math.round(+it.bonus[k] || 0); if (v) p.push(k + ' ' + (v > 0 ? '+' : '−') + Math.abs(v)); }
+    for (const k in it.def || {}) { const v = Math.round(+it.def[k] || 0); if (v) p.push((NOMES_B()[k] || k) + ' ' + (v > 0 ? '+' : '−') + Math.abs(v)); }
+    for (const k in it.rec || {}) { const v = Math.round(+it.rec[k] || 0), r = (recs || []).find(x => x.id === k); if (v) p.push((r ? r.nome : 'barra') + ' ' + (v > 0 ? '+' : '−') + Math.abs(v)); }
+    return p.join(', ') || 'sem bônus';
+  }
+  function novaPeca(base) {
+    const f = ed.e.ficha;
+    f.itens = Array.isArray(f.itens) ? f.itens : [];
+    if (f.itens.length >= 24) { toast('Até 24 peças por inimigo.'); return; }
+    const it = Object.assign({ id: B.uid(), nome: 'Equipamento', equipado: true, bonus: {}, chance: 50 }, base || {});
+    f.itens.push(it); pecaAberta = it.id; pintarEd();
+    const n = $('ed-eq-n-' + it.id); if (n) { n.focus(); n.select(); }
+  }
+  function doCatalogo(btn) {
+    const lista = catalogoEquip();
+    fecharPop();
+    const m = h('div', { class: 'menu', id: 'menu-cat' }, h('div', { class: 'mh', text: 'Equipamentos do catálogo' }),
+      lista.length ? lista.map(x => h('button', { type: 'button', 'data-cat': x.id, onclick: () => {
+        fecharPop();
+        const e = x.equip, base = { nome: x.nome.slice(0, 80), bonus: Object.assign({}, e.bonus || {}), cat: /^[A-Za-z0-9_-]{1,60}$/.test(x.id) ? x.id : undefined };
+        if (e.def && Object.keys(e.def).length) base.def = Object.assign({}, e.def);
+        if (typeof e.tipo === 'string' && e.tipo) base.tipo = e.tipo;
+        if (x.nota) base.efeito = x.nota.slice(0, 300);
+        novaPeca(base);
+      } }, x.nome, h('small', { text: resumoPeca({ bonus: x.equip.bonus, def: x.equip.def }) }))) : h('p', { class: 'ajuda', style: { padding: '6px 9px', margin: '0' }, text: naMesa ? 'O catálogo da aba Itens não tem equipamentos (ou você não mestra os Itens).' : 'O catálogo da aba Itens deste navegador não tem equipamentos.' }));
+    abrirPop(m, btn);
+  }
+  function edEquip() {
+    const f = ed.e.ficha, recs = f.recursos;
+    f.itens = Array.isArray(f.itens) ? f.itens : [];
+    const chaves = (R && R.CHAVES_BONUS) || ATR5, esp = (R && R.CHAVES_ESP) || [];
+    const peca = (it, i) => {
+      const aberta = pecaAberta === it.id;
+      return h('div', { class: 'peca' + (it.equipado === false ? ' guardada' : ''), id: 'ed-eq-' + it.id },
+        h('div', { class: 'peca-l' },
+          h('input', { class: 'in', id: 'ed-eq-n-' + it.id, value: it.nome, maxlength: '80', 'aria-label': 'O nome da peça', onchange: muda(x => { it.nome = x.trim() || 'Equipamento'; }) }),
+          h('label', { class: 'chk', title: 'Como ele vem: nas Cenas, cada token liga e desliga a dele' }, h('input', { type: 'checkbox', id: 'ed-eq-on-' + it.id, checked: it.equipado !== false, onchange: muda(x => { it.equipado = x; }) }), 'Vem equipado'),
+          h('label', { class: 'field sq-ch', title: 'A chance de cair no saque (0: não cai)' }, h('span', { text: 'Saque %' }), h('input', { class: 'in num', type: 'number', min: '0', max: '100', id: 'ed-eq-c-' + it.id, value: String(it.chance == null ? 50 : it.chance), onchange: muda(x => { it.chance = Math.max(0, Math.min(100, Math.round(+x) || 0)); }) })),
+          h('button', { type: 'button', class: 'btn sm', id: 'ed-eq-ed-' + it.id, 'aria-expanded': String(aberta), onclick: () => { pecaAberta = aberta ? null : it.id; pintarEd(); } }, aberta ? 'Fechar' : 'Bônus…'),
+          h('button', { type: 'button', class: 'ib leve', 'aria-label': 'Tirar ' + it.nome, onclick: () => { f.itens.splice(i, 1); pintarEd(); } }, '×')),
+        h('p', { class: 'ajuda', id: 'ed-eq-r-' + it.id, text: resumoPeca(it, recs) + (it.cat ? ' · do catálogo' : '') }),
+        aberta ? h('div', { class: 'peca-b' },
+          h('div', { class: 'g6' }, chaves.map(k => campo(k, h('input', { class: 'in num', type: 'number', id: 'ed-eq-b-' + it.id + '-' + k, value: it.bonus && it.bonus[k] ? String(it.bonus[k]) : '', placeholder: '0', title: NOMES_B()[k] || k,
+            onchange: muda(x => { it.bonus = it.bonus || {}; const n = Math.round(+x) || 0; if (n) it.bonus[k] = n; else delete it.bonus[k]; }) })))),
+          recs.length ? h('div', { class: 'field' }, h('span', { text: 'As barras (somam no máximo)' }), h('div', { class: 'g6' }, recs.map(r => campo(r.nome, h('input', { class: 'in num', type: 'number', id: 'ed-eq-r-' + it.id + '-' + r.id, value: it.rec && it.rec[r.id] ? String(it.rec[r.id]) : '', placeholder: '0',
+            onchange: muda(x => { it.rec = it.rec || {}; const n = Math.round(+x) || 0; if (n) it.rec[r.id] = n; else delete it.rec[r.id]; }) }))))) : null,
+          esp.length ? h('details', { class: 'esp', open: it.def && Object.keys(it.def).length ? true : null }, h('summary', { text: 'Defesas específicas (fogo, corte…)' }),
+            h('div', { class: 'g6' }, esp.map(k => campo((NOMES_B()[k] || k).replace(/^Defesa: /, ''), h('input', { class: 'in num', type: 'number', id: 'ed-eq-d-' + it.id + '-' + k, value: it.def && it.def[k] ? String(it.def[k]) : '', placeholder: '0',
+              onchange: muda(x => { it.def = it.def || {}; const n = Math.round(+x) || 0; if (n) it.def[k] = n; else delete it.def[k]; }) }))))) : null,
+          campo('Efeito (anotação)', h('input', { class: 'in', id: 'ed-eq-e-' + it.id, value: it.efeito || '', maxlength: '300', placeholder: 'ex.: envenena no acerto crítico', onchange: muda(x => { if (x.trim()) it.efeito = x.trim(); else delete it.efeito; }) }))) : null);
+    };
+    return [
+      h('p', { class: 'ajuda', text: 'O equipamento soma nos números do inimigo, como nas fichas. Nas Cenas, cada token liga e desliga as peças dele; no saque, cada peça cai pela chance dela, inteira (com os bônus).' }),
+      f.itens.length ? h('div', { class: 'linhas', id: 'ed-eq' }, f.itens.map(peca)) : h('p', { class: 'aviso', text: 'Sem equipamento.' }),
+      h('div', { class: 'acoes' },
+        h('button', { type: 'button', class: 'btn sm', id: 'ed-eq-cat', text: '+ Do catálogo…', onclick: ev => doCatalogo(ev.currentTarget) }),
+        h('button', { type: 'button', class: 'btn sm', id: 'ed-eq-mao', text: '+ Escrever uma peça', onclick: () => novaPeca() })),
+      h('p', { class: 'previa', id: 'ed-eq-previa', text: previaEd() }),
     ];
   }
   function edArvore() {

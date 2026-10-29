@@ -132,8 +132,28 @@ const Fichas = (() => {
     bestCache.set(id, { src, l });
     return l;
   }
+  /* (lote 33) O inimigo deste token, com o equipamento que ESTE token está usando: o Bestiário diz como ele vem; na cena,
+     cada token troca as peças sem mexer nos outros (t.bestEq: { idDaPeça: equipado }). */
+  const tokCache = new Map();            // id do token → { base, chave, l }
+  function linhaBestTok(t) {
+    const base = t && t.best ? linhaBest(t.best) : null;
+    const itens = base && Array.isArray(base.ficha.itens) ? base.ficha.itens : [];
+    if (!base || !t.bestEq || !itens.length) return base;
+    const chave = JSON.stringify(t.bestEq), g = tokCache.get(t.id);
+    if (g && g.base === base && g.chave === chave) return g.l;
+    const novos = itens.map(it => (Object.prototype.hasOwnProperty.call(t.bestEq, it.id) ? Object.assign({}, it, { equipado: !!t.bestEq[it.id] }) : it));
+    const l = Object.assign({}, base, { ficha: Object.assign({}, base.ficha, { itens: novos }), e: Object.assign({}, base.e, { ficha: Object.assign({}, base.e.ficha, { itens: novos }) }) });
+    tokCache.set(t.id, { base, chave, l });
+    return l;
+  }
+  // as contas deste token do Bestiário (com o equipamento dele)
+  function contasTok(t) {
+    const l = linhaBestTok(t), B = window.TC && window.TC.bestiario;
+    if (!l || !B) return null;
+    try { return B.contas(l.e, cfg(), bib()); } catch (e) { console.error(e); return null; }
+  }
   // a linha que responde por este token: a ficha (t.char) ou o inimigo do Bestiário (t.best)
-  const linhaDoTok = t => (!t ? null : t.char ? get(t.char) : t.best ? linhaBest(t.best) : null);
+  const linhaDoTok = t => (!t ? null : t.char ? get(t.char) : t.best ? linhaBestTok(t) : null);
   // o token tem de onde tirar os números aqui? (a ficha que chegou, ou o inimigo do Bestiário)
   const ligado = t => { const l = linhaDoTok(t); return !!l && l.ficha != null; };
   // as contas do inimigo (as barras, a iniciativa…) com as regras e a árvore desta mesa
@@ -628,7 +648,7 @@ const Fichas = (() => {
   /* As defesas da ficha deste token, pela chave: as duas gerais (DFF, DFM) e as 13 específicas (FOGO, CORTE…), já com
      equipamentos, árvore, bônus temporários e ferimentos. null se o token não tem ficha aqui. */
   function defesas(t) {
-    const l = t && t.char ? fichaDe(t) : t && t.best ? linhaBest(t.best) : null;
+    const l = t && t.char ? fichaDe(t) : t && t.best ? linhaBestTok(t) : null;
     if (!l) return null;
     const r = resumo(l), out = {};
     for (const k in r.def) out[k] = Math.round(Number(r.def[k]) || 0);
@@ -805,6 +825,24 @@ const Fichas = (() => {
       .map(l => ({ id: l.id, nome: String(l.nome || 'Sem nome'), naCena: naCena.has(l.id), jog: deJogador(l) }))
       .sort((a, b) => (b.naCena - a.naCena) || (b.jog - a.jog));
   }
+  /* (lote 33) a peça que caiu de um inimigo, como entra nos itens da ficha: os bônus, as defesas específicas e as barras
+     (pelo nome: o HP de quem recebe) */
+  function equipDoSaque(eq, ficha) {
+    const o = {};
+    if (!eq || typeof eq !== 'object') return o;
+    const chaves = R() ? R().CHAVES_BONUS : [];
+    const b = {}; for (const k of chaves) b[k] = Math.round(Number(eq.bonus && eq.bonus[k]) || 0);
+    o.bonus = b;
+    if (eq.def && typeof eq.def === 'object') o.def = Object.assign({}, eq.def);
+    if (eq.recN && typeof eq.recN === 'object') {
+      const recs = Array.isArray(ficha && ficha.recursos) ? ficha.recursos : [], rec = {};
+      for (const nome of Object.keys(eq.recN)) { const r = recs.find(x => x && x.id != null && norm(x.nome) === norm(nome)); if (r) rec[String(r.id)] = Math.round(Number(eq.recN[nome]) || 0); }
+      if (Object.keys(rec).length) o.rec = rec;
+    }
+    if (eq.tipo) o.tipo = eq.tipo;
+    if (eq.efeito) o.efeito = eq.efeito;
+    return o;
+  }
   function entregarSaque(charId, saque) {
     const l = get(charId);
     if (!on || papel !== 'mestre' || !l || l.ficha == null) return { ok: false, error: 'A ficha de quem recebe não está aqui.' };
@@ -815,7 +853,7 @@ const Fichas = (() => {
     const somou = new Map(), novosB = new Set(), novosI = new Set();
     for (const it of itens) {
       const nome = String(it.nome == null ? 'Item' : it.nome).trim().slice(0, 80) || 'Item', q = clamp(Math.round(Number(it.qtd) || 1), 1, 9999);
-      if (it.tipo === 'equip') { for (let i = 0; i < Math.min(q, 20); i++) { const x = { id: uid('it'), nome, equipado: false }; equip.push(x); novosI.add(x.id); } continue; }
+      if (it.tipo === 'equip') { for (let i = 0; i < Math.min(q, 20); i++) { const x = Object.assign(equipDoSaque(it.eq, f0), { id: uid('it'), nome, equipado: false }); equip.push(x); novosI.add(x.id); } continue; }
       const tp = TIPOS_BOLSA.includes(it.tipo) ? it.tipo : 'material';
       let b = bolsa.find(x => x && x.id != null && tipoNaBolsa(x) === tp && norm(x.nome) === norm(nome));
       if (!b) { b = { id: uid('bo'), t: tp, nome }; bolsa.push(b); novosB.add(b.id); }
@@ -979,7 +1017,7 @@ const Fichas = (() => {
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, linhaBest, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { start, on: () => on, chars, get, link, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)

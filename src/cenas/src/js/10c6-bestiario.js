@@ -6,6 +6,9 @@
    No painel do token (só o mestre): o resumo, o lembrete de comportamento, "Rolar o saque" e "Abrir no Bestiário".
    O saque rolado vai para a bolsa de alguém (as Fichas) ou fica no chão: um baú ao lado do token, com o saque dentro,
    que o mestre entrega depois pelo painel do baú. Na vez do inimigo, o lembrete aparece para o mestre (nada sozinho).
+   (lote 33) O equipamento do inimigo aparece no painel do token: cada token liga e desliga as peças dele (sacar a
+   espada no segundo turno), sem mexer nos outros — os números e as barras acompanham. As peças podem cair no saque,
+   inteiras, com os bônus.
    --------------------------------------------------------------- */
 const Best = (() => {
   const toast = (t, o) => UI.toast(t, o);
@@ -82,13 +85,41 @@ const Best = (() => {
     const l = Fichas.linhaBest(t.best);
     if (!l) return K.secR('s-best', 'Bestiário', true, 'o inimigo não está aqui',
       K.note('Este token veio do Bestiário, mas o inimigo não está mais lá (ou ainda não chegou aqui). O token fica com o nome e as barras; os números e as rolagens voltam quando o inimigo voltar.'));
-    const e = l.e, temSaque = e.saque.itens.length > 0 || !!e.saque.lapros;
+    const e = l.e, itens = Array.isArray(e.ficha.itens) ? e.ficha.itens : [], temSaque = e.saque.itens.length > 0 || !!e.saque.lapros || itens.some(x => x.chance > 0);
+    const lt = Fichas.linhaBestTok(t), usando = lt && Array.isArray(lt.ficha.itens) ? lt.ficha.itens : itens;
     return K.secR('s-best', 'Bestiário', true, 'Tier ' + e.ficha.tier + ' · Lvl ' + e.ficha.level,
       e.comp.lembrete ? h('div', { class: 'best-lembra', id: 'tk-best-lembrete' }, h('b', { text: 'Na vez dele: ' }), e.comp.lembrete) : null,
+      itens.length ? h('div', { class: 'best-eq', id: 'tk-best-eq' }, h('span', { class: 'best-eq-t', text: 'Equipamento' }),
+        usando.map(it => K.toggle('tk-eq-' + it.id, it.equipado !== false, v => trocarPeca(t, it.id, v), it.nome + (textoBonus(it, e.ficha.recursos) ? ' · ' + textoBonus(it, e.ficha.recursos) : '')))) : null,
       h('div', { class: 'row' },
         temSaque ? K.btn('Rolar o saque', () => rolarSaque(t), { icon: 'die', id: 'tk-saque', kind: caido(t) ? 'primary' : '', title: 'Rola o que cai deste inimigo (cada item pela chance dele) e mostra antes: você entrega a alguém ou deixa no chão' }) : null,
         K.btn('Abrir no Bestiário', () => abrir(t), { id: 'tk-best-abrir', title: 'Abre a ficha deste inimigo no Bestiário' })),
       K.note('Os números, as defesas e as rolagens (a tecla F, o ataque com defesa) vêm do Bestiário; as barras são só deste token.' + (temSaque ? '' : ' Este inimigo não tem saque.')));
+  }
+  // os bônus de uma peça, curtos: "FOR +5, HP +10"
+  function textoBonus(it, recs) {
+    const R = window.TC && window.TC.rules, nomes = (R && R.NOMES_BONUS) || {}, p = [];
+    for (const k in it.bonus || {}) { const v = Math.round(Number(it.bonus[k]) || 0); if (v) p.push(k + ' ' + (v > 0 ? '+' : '−') + Math.abs(v)); }
+    for (const k in it.def || {}) { const v = Math.round(Number(it.def[k]) || 0); if (v) p.push((nomes[k] || k) + ' ' + (v > 0 ? '+' : '−') + Math.abs(v)); }
+    for (const k in it.rec || {}) { const v = Math.round(Number(it.rec[k]) || 0), r = (recs || []).find(x => x.id === k); if (v) p.push((r ? r.nome : 'barra') + ' ' + (v > 0 ? '+' : '−') + Math.abs(v)); }
+    return p.slice(0, 4).join(', ');
+  }
+  /* (lote 33) liga ou desliga uma peça só neste token: as barras acompanham o máximo novo (a cheia continua cheia) — um
+     passo de desfazer */
+  function trocarPeca(t, pid, v) {
+    const tok = Store.get('tokens', t.id) || t, l = Fichas.linhaBest(tok.best);
+    if (!l) return;
+    const base = (l.ficha.itens || []).find(x => x.id === pid);
+    const eq = Object.assign({}, tok.bestEq || {});
+    if (base && (base.equipado !== false) === v) delete eq[pid]; else eq[pid] = !!v;
+    const antes = Fichas.contasTok(tok), depois = Fichas.contasTok(Object.assign({}, tok, { bestEq: Object.keys(eq).length ? eq : undefined }));
+    const bars = tok.bars.map(b => {
+      const a = antes && antes.barras.find(x => x.n === b.n), d = depois && depois.barras.find(x => x.n === b.n);
+      if (!a || !d || a.m === d.m || b.m !== a.m) return b;
+      return Object.assign({}, b, { m: d.m, v: b.v >= b.m ? d.m : Math.min(b.v, d.m) });
+    });
+    Store.tx(v ? 'Equipar' : 'Guardar a peça', () => Store.upd('tokens', tok.id, { bestEq: Object.keys(eq).length ? eq : null, bars }));
+    UI.renderAll();
   }
   function abrir(t) {
     const P = ponte();
@@ -97,10 +128,10 @@ const Best = (() => {
 
   /* ---------- o saque ---------- */
   function rolarSaque(t) {
-    const l = Fichas.linhaBest(t.best), B = window.TC && window.TC.bestiario;
+    const l = Fichas.linhaBestTok(t), B = window.TC && window.TC.bestiario;
     if (!l || !B) { toast('O inimigo deste token não está mais no Bestiário.'); return; }
     const r = B.rolarSaque(l.e);
-    janela({ itens: r.itens.map(x => ({ nome: x.nome, qtd: x.qtd, tipo: x.tipo })), lapros: r.lapros, de: tokName(t) }, r.rolagens, t, null);
+    janela({ itens: r.itens.map(x => Object.assign({ nome: x.nome, qtd: x.qtd, tipo: x.tipo }, x.eq ? { eq: x.eq } : null)), lapros: r.lapros, de: tokName(t) }, r.rolagens, t, null);
   }
   /* A janela do saque: o que caiu (cada item marcado; os lapros, editáveis) e para quem vai. Do token: "Deixar no chão"
      vem escolhido; do baú no chão: o primeiro personagem. */

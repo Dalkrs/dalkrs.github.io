@@ -142,6 +142,10 @@
         { t: 'O encontro', txt: 'O “+” das cartas põe o inimigo na bandeja, embaixo. Ela mostra a dificuldade contra os ativos do grupo (só uma sugestão) e “Puxar para a cena” traz as cópias para a cena aberta. “Guardar encontro” guarda para depois.', onde: { sel: '#bandeja', nada: 'A bandeja aparece quando um inimigo entra no encontro (o “+” da carta).' } },
         { t: 'Os encontros guardados', txt: 'Abre um encontro guardado de volta na bandeja.', onde: { sel: '#btEncontros' } },
         { t: 'Na cena', txt: 'O token puxado do Bestiário rola e defende com os números de lá (a tecla F, o ataque com defesa). No painel dele, o lembrete do comportamento e “Rolar o saque” — para a bolsa de alguém ou num baú no chão. Na vez do inimigo, o lembrete aparece só para você.' },
+        // (lote 33) os números à mão, o equipamento e a conta da dificuldade
+        { t: 'Números à mão', txt: 'Em Números, cada atributo pode ter a letra ou “Número”: o número digitado é a base, e o equipamento soma por cima. Os derivados (vazios: a conta de sempre), a iniciativa e as barras também aceitam um número fixo.', onde: { sel: '#btNovo' } },
+        { t: 'O equipamento', txt: 'Na aba Equipamento do inimigo: escreva uma peça (os bônus, as barras, as defesas específicas) ou traga do catálogo da aba Itens. Cada peça diz se vem equipada e a chance de cair no saque. Nas Cenas, cada token liga e desliga as peças dele, no painel.', onde: { sel: '#btNovo' } },
+        { t: 'A dificuldade', txt: 'O “?” ao lado da dificuldade, na bandeja, mostra a conta: o poder de cada inimigo e de cada personagem (a soma dos cinco atributos finais, com o equipamento), os totais, a porcentagem e as faixas.', onde: { sel: '#bandeja', nada: 'A bandeja aparece quando um inimigo entra no encontro (o “+” da carta).' } },
       ],
       jogador: [],
     },
