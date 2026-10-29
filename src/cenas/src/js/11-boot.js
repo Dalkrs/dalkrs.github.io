@@ -232,6 +232,8 @@ async function start(snap) {
     // (lote 29) o encontro montado no Bestiário: os tokens perto do meio da tela
     // (a aba das Cenas pode ainda estar escondida: espera aparecer, para os tokens nascerem no meio da tela)
     if (alvo.bestiario && typeof alvo.bestiario === 'object') { const ped = alvo.bestiario; aoAparecer(() => setTimeout(() => Best.trazer(ped), 80)); return; }
+    // (lote 32) o NPC do Escudo do mestre: um token perto do meio da tela (ligado à ficha dele, se tiver)
+    if (alvo.npc && typeof alvo.npc === 'object') { const ped = alvo.npc; aoAparecer(() => setTimeout(() => EscudoCenas.npc(ped), 80)); return; }
     // (lote 30) a Sede do clã: as cenas da sede (a de fora e a de cada andar), criadas ou atualizadas
     if (alvo.sede && typeof alvo.sede === 'object') {
       const ped = alvo.sede;

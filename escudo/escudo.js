@@ -1,4 +1,5 @@
 /* Tiny Cats · Escudo do mestre (lote 31): a página.
+   (lote 32: mais duas partes — os NPCs, escudo/npcs.js, e os encontros por bioma, escudo/encontros.js.)
    Três partes: o Roteiro (as sessões, cada uma com os passos — que podem se ligar a uma cena, a um lugar do Mapa-múndi,
    a um encontro do Bestiário, a um handout ou a um relógio, e o clique faz a ação —; abrir a sessão, fechar com o resumo
    e levar os passos que sobraram para a próxima; o resumo vai para o rascunho do Jornal), os Relógios de ameaça (os
@@ -25,11 +26,13 @@
     imagem: 'M4 5h16v14H4zM4 15l4.5-4.5 4 4 2.5-2.5L20 17M15.5 9.5a1.5 1.5 0 1 0 0-.01',
     carta: 'M4 6h16v12H4zM4 6l8 6.5L20 6',
     puzzle: 'M9 3.5h3a2 2 0 1 1 4 0h3v5a2 2 0 1 0 0 4v5h-5a2 2 0 1 1-4 0H5v-5a2 2 0 1 0 0-4v-5z',
+    npc: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20.5c.8-3.8 3.9-6 7.5-6s6.7 2.2 7.5 6',
   };
 
   /* ---------------- os documentos ---------------- */
   let st = null, D = null, A = null, naMesa = false, pronto = false, bancoOk = null, souMestreDaMesa = true;
-  let aba = ['roteiro', 'relogios', 'handouts'].includes(guarda.ler('tinycats:escudo:aba')) ? guarda.ler('tinycats:escudo:aba') : 'roteiro';
+  const ABAS = ['roteiro', 'relogios', 'handouts', 'npcs', 'encontros'];
+  let aba = ABAS.includes(guarda.ler('tinycats:escudo:aba')) ? guarda.ler('tinycats:escudo:aba') : 'roteiro';
   let selS = guarda.ler('tinycats:escudo:sessao') || null;
   const notas = new Set();                                           // os passos com a nota aberta
   let pilha = [], tSalvo = 0, ultimoTexto = null;
@@ -137,7 +140,7 @@
   }
 
   /* ---------------- o roteiro ---------------- */
-  const ROT_LIGA = { cena: 'Abrir a cena', lugar: 'Ver no mapa', encontro: 'Puxar para a cena', relogio: '+1 gomo' };
+  const ROT_LIGA = { cena: 'Abrir a cena', lugar: 'Ver no mapa', encontro: 'Puxar para a cena', relogio: '+1 gomo', npc: 'Ver o NPC' };
   function nomeDaLiga(l) {
     if (!l) return null;
     if (l.k === 'cena') { const d = A.dadosDe('cena:' + l.id + ':m'); return d ? (String(d.name || '') || 'Cena') : null; }
@@ -145,6 +148,7 @@
     if (l.k === 'encontro') { const d = A.dadosDe('best:enc:' + l.id); return d ? String(d.nome || 'Encontro') : null; }
     if (l.k === 'handout') { const x = A.handout(l.id); return x ? x.nome : null; }
     if (l.k === 'relogio') { const x = A.relogio(l.id); return x ? x.nome + ' (' + x.cheio + '/' + x.gomos + ')' : null; }
+    if (l.k === 'npc') { const x = NP.npc(l.id); return x ? x.nome : null; }
     return null;
   }
   async function irPasso(sid, p) {
@@ -167,6 +171,11 @@
       aba = 'handouts'; HO.selecionar(l.id); guarda.gravar('tinycats:escudo:aba', aba); pintar();
       return;
     }
+    if (l.k === 'npc') {
+      if (!NP.npc(l.id)) { toast('Este NPC não existe mais.'); return; }
+      aba = 'npcs'; NP.selecionar(l.id); guarda.gravar('tinycats:escudo:aba', aba); pintar();
+      return;
+    }
     if (!naCasca()) { toast('Para ir até lá, abra o Escudo pelo site (a aba Escudo do mestre).'); return; }
     if (l.k === 'cena') { if (!A.dadosDe('cena:' + l.id + ':m')) { toast('Esta cena não existe mais.'); return; } TC.ponte.ir('cenas', { cena: l.id }); }
     else if (l.k === 'lugar') TC.ponte.ir('mundo', { mapa: l.mapa, obj: l.obj });
@@ -181,7 +190,7 @@
   }
   // as coisas a que um passo pode se ligar
   function opcoesDeLiga() {
-    const out = { cena: [], lugar: [], encontro: [], handout: [], relogio: [] };
+    const out = { cena: [], lugar: [], encontro: [], handout: [], relogio: [], npc: [] };
     if (naMesa) {
       const idx = A.dadosDe('cenas:indice'), ordem = idx && Array.isArray(idx.ordem) ? idx.ordem : [];
       for (const l of D.todas()) {
@@ -200,6 +209,7 @@
     }
     for (const x of A.handouts()) out.handout.push({ liga: { k: 'handout', id: x.id }, nome: x.h.nome, sub: E.TIPOS_HANDOUT[x.h.tipo] + (x.h.entregue ? ' · já entregue' : '') });
     for (const x of A.relogios()) out.relogio.push({ liga: { k: 'relogio', id: x.id, n: 1 }, nome: x.r.nome, sub: 'Relógio · avança 1 gomo' });
+    for (const x of NP.npcs()) out.npc.push({ liga: { k: 'npc', id: x.id }, nome: x.n.nome, sub: window.TC.npc.descricao(x.n).quem });
     return out;
   }
   // escolher a que ligar (→ promessa: a ligação, null para tirar, undefined se cancelou)
@@ -219,7 +229,7 @@
             : h('p', { class: 'ajuda', text: !naMesa && ['cena', 'lugar', 'encontro'].includes(tipo) ? 'Numa mesa, aparecem aqui as cenas, os lugares do Mapa-múndi e os encontros guardados no Bestiário.' : 'Nada aqui ainda.' }));
       };
       pintarEsc();
-      J.abrir('largo', [h('h2', { text: 'Ligar o passo a…' }), h('p', { text: 'O clique no passo faz a ação: abre a cena, leva ao lugar no mapa, puxa o encontro para a cena, entrega o handout ou avança o relógio.' }), corpo,
+      J.abrir('largo', [h('h2', { text: 'Ligar o passo a…' }), h('p', { text: 'O clique no passo faz a ação: abre a cena, leva ao lugar no mapa, puxa o encontro para a cena, entrega o handout, avança o relógio ou mostra o NPC.' }), corpo,
         J.pe(atual ? h('button', { type: 'button', class: 'btn per', 'data-k': 'lg:tirar', onclick: () => fim(null) }, 'Tirar a ligação') : null, h('span', { class: 'grow' }), h('button', { type: 'button', class: 'btn', 'data-k': 'lg:cancelar', onclick: () => fim(undefined) }, 'Cancelar'))], () => fim(undefined));
     });
   }
@@ -412,8 +422,15 @@
         : h('div', { class: 'vazio' }, h('p', { class: 'tit', text: 'Relógios de ameaça' }), h('p', { text: 'Um círculo com gomos que enchem conforme a ameaça avança: o culto que desperta, o exército que marcha, a vela que acaba. Quando enche, acontece o que você escreveu.' })));
   }
 
-  /* ---------------- os handouts (escudo/handouts.js) ---------------- */
-  let HO = null;
+  /* ---------------- os handouts (escudo/handouts.js), os NPCs (escudo/npcs.js) e os encontros (escudo/encontros.js) ---------------- */
+  let HO = null, NP = null, EN = null, P = null;
+  // (as contas das fichas: a configuração da mesa, para os números dos NPCs)
+  function cfg() {
+    const R = window.TC.rules;
+    if (!R) return null;
+    const d = naMesa && A ? A.dadosDe('fichas:cfg') : null;
+    return (d && d.v) || R.cfgPadrao();
+  }
   async function subirImagem(arq) {
     const img = await new Promise((ok, falha) => { const u = URL.createObjectURL(arq); const i = new Image(); i.onload = () => { URL.revokeObjectURL(u); ok(i); }; i.onerror = () => { URL.revokeObjectURL(u); falha(new Error('Este arquivo não é uma imagem que dê para abrir.')); }; i.src = u; });
     const max = naMesa ? 1600 : 900, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
@@ -435,7 +452,7 @@
       const ban = $('banco');
       ban.hidden = !(naMesa && bancoOk === false);
       if (!ban.hidden && !ban.childNodes.length) ban.append(h('div', { class: 'aviso', style: { margin: '12px 16px 0' } }, 'Falta aplicar a atualização do banco desta versão (o SQL 0025): sem ela, os handouts vão só para a mesa toda, e os puzzles ainda não podem ser entregues. O roteiro e os relógios funcionam.'));
-      const conteudo = aba === 'roteiro' ? pintarRoteiro() : aba === 'relogios' ? pintarRelogios() : HO.pintar();
+      const conteudo = aba === 'roteiro' ? pintarRoteiro() : aba === 'relogios' ? pintarRelogios() : aba === 'npcs' ? NP.pintar() : aba === 'encontros' ? EN.pintar() : HO.pintar();
       morphEm($('meio'), [conteudo]);
     } finally { pintando = false; }
   }
@@ -463,6 +480,8 @@
         if (typeof alvo.sessao === 'string') { aba = 'roteiro'; selS = alvo.sessao; pintar(); }
         else if (typeof alvo.handout === 'string') { aba = 'handouts'; HO.selecionar(alvo.handout); pintar(); }
         else if (alvo.relogios) { aba = 'relogios'; pintar(); }
+        else if (typeof alvo.npc === 'string') { aba = 'npcs'; NP.selecionar(alvo.npc); pintar(); }
+        else if (alvo.encontros) { aba = 'encontros'; if (typeof alvo.encontros === 'string') EN.sel = alvo.encontros; pintar(); }
       });
     }
     if (!naMesa) { D = colLocal('tinycats:escudo:local'); bancoOk = true; $('salvo').textContent = 'Neste navegador'; }
@@ -474,15 +493,22 @@
     });
     HO = window.EscudoHandouts({ E, U, PUI, A, D, J, toast, mudar, mudarTexto, empilhar, avisoDesfazer, desfazer, pintar, subirImagem, relogioSvg, ultimoPasso: () => pilha[pilha.length - 1] || null,
       naMesa: () => naMesa, bancoOk: () => bancoOk, jogadores, nomeDe, campVista, nomeCamp, porCampanha, st: () => st, temCampanhas: () => !!(st && st.temCampanhas), campanhas: () => (st && st.campanhas) || [] });
+    // (lote 32) as fichas da mesa: as raças que estão nelas e a ficha que um NPC virou
+    if (naMesa) { try { P = TCx.dados.col('personagens'); P.aoMudar(() => { if (aba === 'npcs') depois(); }); } catch (e) { P = null; } }
+    const kitNovo = { E, U, A, D, J, toast, mudar, mudarTexto, empilhar, avisoDesfazer, desfazer, pintar, ICO, ultimoPasso: () => pilha[pilha.length - 1] || null,
+      N: TCx.npc, B: TCx.bestiario || null, cfg, P: () => P, naMesa: () => naMesa, naCasca, campVista, nomeCamp, porCampanha,
+      temCampanhas: () => !!(naMesa && st && st.temCampanhas), campanhas: () => (st && st.campanhas) || [] };
+    NP = window.EscudoNpcs(kitNovo);
+    EN = window.EscudoEncontros(kitNovo);
     if (!naMesa) D.aoMudar(() => depois());
     if (naMesa) {
-      D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith('escudo:') || l.id.startsWith('pista:') || l.id.startsWith('cena:') || l.id === 'cenas:indice' || l.id.startsWith('mundo:mapa:') || l.id.startsWith('best:enc:'))) depois(); });
+      D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith('escudo:') || l.id.startsWith('pista:') || l.id.startsWith('cena:') || l.id === 'cenas:indice' || l.id.startsWith('mundo:mapa:') || l.id.startsWith('best:') || l.id.startsWith('cla:') || l.id === 'fichas:cfg')) depois(); });
       TCx.ponte.escudo('versao').then(() => { bancoOk = true; pintar(); }, () => { bancoOk = false; pintar(); });
     }
     pronto = true;
     pintar();
   }
-  if (DEBUG) window.__escudo = { E, get A() { return A; }, get HO() { return HO; }, get naMesa() { return naMesa; }, get pronto() { return pronto; }, get bancoOk() { return bancoOk; }, get aba() { return aba; }, get selS() { return selS; },
+  if (DEBUG) window.__escudo = { E, get A() { return A; }, get HO() { return HO; }, get NP() { return NP; }, get EN() { return EN; }, get naMesa() { return naMesa; }, get pronto() { return pronto; }, get bancoOk() { return bancoOk; }, get aba() { return aba; }, get selS() { return selS; },
     pilha: () => pilha.map(p => p.rotulo), pintar, desfazer, irAba: a => { aba = a; pintar(); }, escolher: id => { selS = id; pintar(); } };
   partida().catch(e => {
     console.error(e);

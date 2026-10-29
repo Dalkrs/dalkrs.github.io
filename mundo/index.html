@@ -1186,6 +1186,17 @@ button.bol-bt:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2p
 .cartao > b { font: 600 17px/1.2 var(--display); }
 .cartao small { color: var(--fg-3); }
 .cartao .publico { color: var(--fg); }
+/* (lote 32) o encontro do bioma: os inimigos com − e +, a dificuldade */
+.cartao .publico { margin: 0; }
+.enc-linhas { display: grid; gap: 4px; }
+.enc-l { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.enc-l .btn.sm { min-width: 30px; padding: 0 8px; }
+.enc-l .enc-n { min-width: 22px; text-align: center; font: 600 15px/1 var(--ui); }
+.enc-l small { color: var(--fg-3); }
+.enc-dif { margin: 0; font-size: 13px; font-weight: 600; color: var(--fg-2); }
+.enc-dif.d-facil { color: var(--ok-ink, #8fd6ab); }
+.enc-dif.d-medio { color: var(--lamp-ink); }
+.enc-dif.d-duro, .enc-dif.d-mortal { color: var(--danger, #f0786e); }
 .aviso-jog { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 11px; border-radius: 9px; background: var(--lamp-soft); border: 1px solid var(--lamp); font-size: 13px; }
 /* (lote 20) a linha do tempo: cada campanha (ou quem se separou) na data dela */
 .linha-t { gap: 6px; }
@@ -1484,6 +1495,9 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../tc/ponte.js?v=20"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=24"></script>
+<script src="../tc/bestiario.js?v=1"></script>
+<script src="../tc/npc.js?v=1"></script>
+<script src="../tc/encontros.js?v=1"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
 <script src="../jornal/nucleo.js?v=2"></script>
@@ -1496,7 +1510,7 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="campanha.js?v=5"></script>
 <script src="camadas.js?v=4"></script>
 <script src="tela.js?v=29"></script>
-<script src="painel.js?v=49"></script>
+<script src="painel.js?v=50"></script>
 <script src="guerra-painel.js?v=13"></script>
 <script src="guerra-ajuda.js?v=5"></script>
 <script src="reino-painel.js?v=15"></script>

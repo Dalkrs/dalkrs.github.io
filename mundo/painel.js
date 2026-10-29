@@ -523,18 +523,219 @@
   function sortearGrupo(id) {
     const m = App.mapa, g = achar(m, id);
     if (!g) return;
-    const r = N().regiaoEm(m, g.x, g.y);
-    if (!r) { App.toast('O grupo não está dentro de nenhuma região. Desenhe uma região e preencha os encontros dela.'); return; }
-    sortearEm(r, g);
+    const r = N().regiaoEm(m, g.x, g.y), EN = Enc();
+    // (lote 32) a região manda: com a tabela dela preenchida, vale a dela; sem ela, a do bioma do hexágono (Escudo do mestre)
+    if (r && (!EN || EN.regiaoTemTabela(r))) { sortearEm(r, g); return; }
+    const b = EN ? biomaNoPonto(m, g.x, g.y) : null, doc = b ? docBiomas() : null, tab = doc ? EN.tabelaDe(doc, b) : null;
+    if (tab && (tab.chance > 0 || tab.itens.length)) { sortearBioma(b, tab, g, r); return; }
+    if (r) { sortearEm(r, g); return; }
+    const nomeB = b && EN.BIOMAS[b] ? EN.BIOMAS[b].nome : '';
+    App.toast(!b ? 'O grupo não está dentro de nenhuma região. Desenhe uma região e preencha os encontros dela' + (EN ? ' — ou, com a grade de hexágonos, monte as tabelas por bioma no Escudo do mestre (aba Encontros).' : '.')
+      : !podeEscudo() ? 'O grupo está em ' + nomeB + ', fora de uma região com tabela. As tabelas por bioma são do Escudo do mestre (quem mestra o Escudo sorteia por elas).'
+        : 'O grupo está em ' + nomeB + ', fora de uma região com tabela, e a tabela desse bioma está vazia: monte-a no Escudo do mestre (aba Encontros).', null, null, 8000);
   }
   function sortearEm(reg, g) {
     const m = App.mapa, pe = g ? N().pesoNoPonto(m, g.x, g.y) : null;          // (lote 7, parte 5a) os eventos onde o grupo está
     encontro = { grupo: g ? g.id : null, grupoNome: g ? nomeDe(g, m) : '', regiao: reg.id, regiaoNome: nomeDe(reg, m),
       r: N().sortearEncontro(reg, undefined, pe ? pe.enc : 0), causas: pe ? pe.eventos.filter(e => e.peso.enc).map(e => [N().nomeEvento(e), e.peso.enc]) : [],
-      mesa: false, segredo: false, n: encontro ? encontro.n + 1 : 1 };
+      mesa: false, segredo: false, n: encontro ? encontro.n + 1 : 1, fila: encontro && encontro.fila && g ? encontro.fila.filter(x => x !== g.id) : [] };
     agendar();
   }
+  /* ---------------- (lote 32) os encontros por bioma ----------------
+     A tabela do bioma é do Escudo do mestre (escudo:biomas; fora de uma mesa, a deste navegador). O resultado pode ser
+     inimigos do Bestiário (a quantidade rolada, com − e + antes de puxar, e a dificuldade contra os personagens do
+     grupo), um encontro guardado, um NPC sorteado na hora (que pode ser guardado nos NPCs, com o lugar), um evento. */
+  const Enc = () => (window.TC && window.TC.encontros) || null;
+  const Npc = () => (window.TC && window.TC.npc) || null;
+  const Best = () => (window.TC && window.TC.bestiario) || null;
+  const colDocs = () => { const T = window.TC; if (!App.naMesa || !T || !T.dados || !T.dados.disponivel || !T.dados.disponivel()) return null; try { return T.dados.col('documentos'); } catch (e) { return null; } };
+  const mestraAba = a => { const T = window.TC; return !App.naMesa || !!(T && T.ponte && T.ponte.mestra && T.ponte.mestra(a)); };
+  const podeEscudo = () => mestraAba('escudo');
+  function localDocs(chave, docs) { try { const d = JSON.parse(localStorage.getItem(chave) || 'null'); return d && typeof d === 'object' ? (docs ? (d.docs && typeof d.docs === 'object' ? d.docs : {}) : d) : {}; } catch (e) { return {}; } }
+  // um documento do Escudo ou do Bestiário: na mesa, o da mesa; fora dela, o deste navegador
+  function docMesa(id) {
+    const D = colDocs();
+    if (D) { const l = D.pegar(id); return l && !l.apagado && l.dados ? l.dados : null; }
+    if (App.naMesa) return null;
+    if (id.startsWith('escudo:')) { const l = localDocs('tinycats:escudo:local', false)[id]; return l && !l.apagado && l.dados ? l.dados : null; }
+    if (id.startsWith('best:')) { const d = localDocs('tinycats:bestiario:local', true)[id]; return d || null; }
+    return null;
+  }
+  const docBiomas = () => (podeEscudo() && Enc() ? docMesa(Enc().DOC) : null);
+  function biomaNoPonto(m, x, y) {
+    const hx = N().temGrade && N().temGrade(m) ? N().hexDe(m, x, y) : null, c = hx && N().hexParaCena ? N().hexParaCena(m, hx.q, hx.r) : null;
+    return c && c.ter ? c.ter : null;
+  }
+  function inimigoDoBestiario(id) {
+    const B = Best();
+    if (!B || !B.idOk(id) || !mestraAba('bestiario')) return null;
+    const d = docMesa(B.PRE + id);
+    if (!d) return null;
+    const e = B.normalizar(d);
+    return { nome: e.nome, e };
+  }
+  function encontroGuardado(id) {
+    const B = Best();
+    if (!B || !B.idOk(id) || !mestraAba('bestiario')) return null;
+    const d = docMesa(B.PRE_ENC + id);
+    return d ? { nome: String(d.nome || 'Encontro'), itens: (Array.isArray(d.itens) ? d.itens : []).filter(y => y && B.idOk(y.id) && y.n > 0) } : null;
+  }
+  function cfgFichas() { const R = window.TC && window.TC.rules, d = docMesa('fichas:cfg'); return (d && d.v) || (R ? R.cfgPadrao() : null); }
+  // os personagens do grupo (os marcados nele; sem nenhum, os dos jogadores da campanha em vista): para a dificuldade
+  function fichasDoGrupo(g) {
+    const T = window.TC;
+    if (!App.naMesa || !T || !T.dados || !T.dados.disponivel()) return [];
+    let P; try { P = T.dados.col('personagens'); } catch (e) { return []; }
+    const st = (T.ponte && T.ponte.estado) || {}, camp = st.campanha ? st.campanha.id : null, pcs = g && Array.isArray(g.pcs) ? g.pcs : [];
+    const ehJog = id => !!id && (st.membros || []).some(x => x.id === id && (x.cargo ? x.cargo !== 'mestre' : x.papel === 'jogador'));
+    const vivas = P.todas().filter(l => l && !l.apagado && l.ficha && !l.ficha.petDe && !(l.estado && l.estado.ativo === false));
+    const lista = pcs.length ? vivas.filter(l => pcs.includes(l.id)) : vivas.filter(l => ehJog(l.dono_id) && (!camp || !l.campanha || l.campanha === camp));
+    return lista.map(l => ({ tier: l.ficha.tier || 'C', level: l.ficha.level || 1 }));
+  }
+  function sortearBioma(b, tab, g, reg) {
+    const EN = Enc(), m = App.mapa, pe = g ? N().pesoNoPonto(m, g.x, g.y) : null;
+    const r = EN.sortear(tab, undefined, pe ? pe.enc : 0);
+    const lugar = reg ? { mapa: m.id, obj: reg.id, nome: nomeDe(reg, m) } : null;
+    const facId = reg && N().facDaRegiao ? N().facDaRegiao(m, reg) : reg ? reg.fac : null, fac0 = facId && Array.isArray(m.faccoes) ? m.faccoes.find(f => f.id === facId) : null;
+    const fac = fac0 ? { k: 'faccao', id: fac0.id, nome: String(fac0.nome || 'Facção'), mapa: m.id } : null;
+    const res = r.houve ? EN.resolver(r.item, { inimigo: inimigoDoBestiario, encontro: encontroGuardado, npc: Npc(), racas: docMesa('escudo:racas'), lugar, fac }) : null;
+    encontro = { grupo: g ? g.id : null, grupoNome: g ? nomeDe(g, m) : '', regiao: null, bioma: b, biomaNome: EN.BIOMAS[b] ? EN.BIOMAS[b].nome : b, lugar, fac,
+      r, res, linhas: res ? res.linhas.map(x => Object.assign({}, x)) : [], ocultos: false, guardado: null,
+      causas: pe ? pe.eventos.filter(e => e.peso.enc).map(e => [N().nomeEvento(e), e.peso.enc]) : [], mesa: false, segredo: false, n: encontro ? encontro.n + 1 : 1,
+      fila: encontro && encontro.fila && g ? encontro.fila.filter(x => x !== g.id) : [] };
+    agendar();
+  }
+  // o que saiu, numa linha (com as quantidades de agora: o mestre pode ter mexido no − e no +)
+  function textoDoBioma(e) {
+    const EN = Enc(), res = e.res;
+    if (!res) return 'nada acontece';
+    if (res.k === 'inimigos') { const t = EN.textoLinhas(e.linhas); return (res.nome ? res.nome + ': ' : '') + (t || 'ninguém'); }
+    return res.texto;
+  }
+  function puxarInimigos(e) {
+    const itens = e.linhas.filter(x => x.n > 0).map(x => ({ id: x.id, n: Math.min(30, x.n) }));
+    if (!itens.length) { App.toast('Ninguém para puxar: as quantidades estão em zero.'); return; }
+    if (!naCasca() || !TC.ponte.ir('cenas', { bestiario: { itens, ocultos: !!e.ocultos } })) App.toast('Os inimigos vão para a cena pelo site (a aba Cenas).');
+  }
+  function guardarNpc(e) {
+    const Nn = Npc(), npc = e.res && e.res.npc;
+    if (!Nn || !npc) return;
+    const id = Nn.novoId('np'), doc = Nn.PRE + id;
+    const st = window.TC && TC.ponte && TC.ponte.estado, camp = st && st.campanha ? st.campanha.id : null;
+    const d = Nn.normNpc(Object.assign({}, npc, { lugar: e.lugar, fac: e.fac, camp, em: new Date().toISOString() }));
+    const D = colDocs();
+    if (D) D.gravar(doc, { dados: d, vis: 'mestre' });
+    else {
+      if (App.naMesa) { App.toast('Não deu para guardar agora.'); return; }
+      const loc = localDocs('tinycats:escudo:local', false);
+      loc[doc] = { id: doc, vis: 'mestre', dados: d, apagado: false };
+      try { localStorage.setItem('tinycats:escudo:local', JSON.stringify(loc)); } catch (er) { App.toast('Não deu para guardar neste navegador.'); return; }
+    }
+    e.guardado = id;
+    agendar();
+    App.toast(d.nome + ' foi para os NPCs do Escudo' + (e.lugar ? ', em ' + e.lugar.nome : '') + '.', 'Desfazer', () => {
+      if (D) D.apagar(doc);
+      else { const loc = localDocs('tinycats:escudo:local', false); delete loc[doc]; try { localStorage.setItem('tinycats:escudo:local', JSON.stringify(loc)); } catch (er) { /* sem armazenamento */ } }
+      if (encontro === e) { e.guardado = null; agendar(); }
+    });
+  }
+  function outroNpc(e) {
+    const Nn = Npc();
+    if (!Nn || !e.res || !e.res.npc) return;
+    const raca = Nn.escolherRaca(docMesa('escudo:racas'), (e.r.item && e.r.item.raca) || null, '');
+    const npc = Nn.gerar({ papel: (e.r.item && e.r.item.papel) || null, raca, lugar: e.lugar, fac: e.fac }, Nn.novaSemente());
+    const q = Nn.descricao(npc).quem;
+    e.res = Object.assign({}, e.res, { npc, texto: 'Alguém no caminho: ' + npc.nome + ' (' + q.charAt(0).toLowerCase() + q.slice(1) + ')' });
+    e.guardado = null; e.mesa = false; e.segredo = false;
+    agendar();
+  }
+  function cartaoBioma(e) {
+    const r = e.r, res = e.res, B = Best(), Nn = Npc();
+    let titulo, corpo = [];
+    if (!r.chance) { titulo = 'Sem chance de encontro'; corpo.push(h('p', { class: 'publico', text: 'A tabela de ' + e.biomaNome + ' está com chance 0%. Ajuste no Escudo do mestre (aba Encontros).' })); }
+    else if (!r.houve) { titulo = 'Nada acontece'; corpo.push(h('p', { class: 'publico', text: 'O d100 deu ' + r.d100 + '; precisava de ' + r.chance + ' ou menos.' })); }
+    else {
+      titulo = 'Encontro!';
+      if (res.k === 'inimigos') {
+        if (res.nome) corpo.push(h('p', { class: 'publico', text: res.nome }));
+        corpo.push(h('div', { class: 'enc-linhas' }, e.linhas.map((x, i) => h('div', { class: 'enc-l', 'data-k': 'enc:l:' + i },
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'enc:l:' + i + ':menos', disabled: x.n <= 0, 'aria-label': 'Um a menos: ' + x.nome, onclick: () => { x.n = Math.max(0, x.n - 1); e.mesa = false; e.segredo = false; agendar(); } }, '−'),
+          h('b', { class: 'enc-n', text: String(x.n) }),
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'enc:l:' + i + ':mais', disabled: x.n >= 30, 'aria-label': 'Um a mais: ' + x.nome, onclick: () => { x.n = Math.min(30, x.n + 1); e.mesa = false; e.segredo = false; agendar(); } }, '+'),
+          h('span', { text: '× ' + x.nome }), x.dados && /d/.test(x.dados) ? h('small', { text: '(' + x.dados + ')' }) : null))));
+        const grupo = fichasDoGrupo(g0(e)), quem = e.linhas.filter(x => x.n > 0).map(x => { const y = inimigoDoBestiario(x.id); return y ? { e: y.e, n: x.n } : null; }).filter(Boolean);
+        const dif = B && grupo.length && quem.length ? B.dificuldade(quem, grupo, cfgFichas()) : null;
+        corpo.push(h('p', { class: 'enc-dif' + (dif ? ' d-' + dif.k : ''), 'data-k': 'enc:dif', text: dif ? 'Dificuldade: ' + dif.nome + ' (' + dif.razao + '% da força de ' + (grupo.length === 1 ? '1 personagem' : grupo.length + ' personagens') + ')' : App.naMesa ? 'A dificuldade aparece com os personagens do grupo (marque-os em Seleção → o grupo).' : 'Numa mesa, a dificuldade sai contra os personagens do grupo.' }));
+        if (naCasca()) corpo.push(linha(
+          caixaSimples('enc:ocultos', 'Entram ocultos', !!e.ocultos, v => { e.ocultos = v; }),
+          botao('Puxar para a cena', () => puxarInimigos(e), { c: 'sm pri', k: 'enc:puxar', title: 'Os inimigos nascem perto do meio da tela, na cena aberta das Cenas' })));
+      } else if (res.k === 'npc' && Nn) {
+        const ds = Nn.descricao(res.npc);
+        corpo.push(h('p', { class: 'publico', text: res.npc.nome + ' — ' + ds.quem.charAt(0).toLowerCase() + ds.quem.slice(1) }),
+          h('small', { text: ds.aparencia + ' ' + ds.jeito }),
+          h('small', { text: 'Quer: ' + res.npc.motivacao + '. Esconde: ' + res.npc.segredo + '.' }),
+          h('small', { text: 'Gancho: ' + res.npc.gancho }),
+          linha(e.guardado ? botao('Abrir nos NPCs', () => { if (!naCasca() || !TC.ponte.ir('escudo', { npc: e.guardado })) App.toast('O Escudo abre pelo site.'); }, { c: 'sm', k: 'enc:npc-abrir' })
+            : botao('Guardar nos NPCs', () => guardarNpc(e), { c: 'sm pri', k: 'enc:npc-guardar', title: 'Vai para os NPCs do Escudo do mestre' + (e.lugar ? ', em ' + e.lugar.nome : '') }),
+          botao('Outro NPC', () => outroNpc(e), { c: 'sm', k: 'enc:npc-outro' })));
+      } else corpo.push(h('p', { class: 'publico', text: res.texto.charAt(0).toUpperCase() + res.texto.slice(1) + '.' .slice(/[.!?]$/.test(res.texto) ? 1 : 0) }));
+      if (res.k === 'falta') corpo.push(h('small', { text: mestraAba('bestiario') ? 'Confira a tabela no Escudo do mestre (aba Encontros).' : 'Os inimigos são do Bestiário: quem mestra o Bestiário vê quem são.' }));
+      if (res.nota) corpo.push(h('small', { text: 'Nota: ' + res.nota }));
+      corpo.push(h('small', { text: 'd100: ' + r.d100 + ' (chance ' + r.chance + '%)' + (r.total ? ' · peso ' + r.peso + ' de ' + r.total : '') }));
+    }
+    const causas = e.causas && e.causas.length ? 'Com os eventos: ' + r.base + '% do bioma, ' + e.causas.map(([nm, v]) => '"' + nm + '" ' + (v > 0 ? '+' : '−') + Math.abs(v) + '%').join(', ') + ' = ' + r.chance + '%.' : null;
+    const pub = App.naMesa ? nomesPublicos(e) : null;
+    const prox = (e.fila || []).map(id => achar(App.mapa, id)).filter(Boolean);
+    return h('div', { class: 'cartao' + (r.houve ? ' houve' : ''), role: 'status', 'data-k': 'enc:' + e.n },
+      h('b', { text: titulo }),
+      h('small', { text: (e.grupoNome ? e.grupoNome + ' · ' : '') + e.biomaNome + ' (a tabela do bioma, no Escudo)' }),
+      corpo,
+      causas ? h('small', { text: causas }) : null,
+      pub && pub.grupoEscondido ? h('small', { text: 'O grupo está escondido dos jogadores: o nome dele não vai para a mesa.' }) : null,
+      App.naMesa && r.houve ? linha(
+        botao(e.mesa ? 'Foi para a mesa' : 'Mandar para a mesa', () => enviarEncontro(false), { c: 'sm', k: 'enc:mesa', off: e.mesa }),
+        botao(e.segredo ? 'Foi só para você' : 'Mandar só para mim (segredo)', () => enviarEncontro(true), { c: 'sm', k: 'enc:seg', off: e.segredo })) : null,
+      linha(
+        botao('Sortear de novo', () => { const g = achar(App.mapa, e.grupo); if (g) sortearGrupo(g.id); else { encontro = null; agendar(); } }, { c: 'sm', k: 'enc:de-novo' }),
+        prox.length ? botao('Próximo: ' + nomeDe(prox[0], App.mapa), () => sortearFila(prox.map(x => x.id)), { c: 'sm', k: 'enc:proximo' }) : null,
+        botao('Fechar', () => { encontro = null; agendar(); }, { c: 'sm', k: 'enc:fechar' })));
+  }
+  const g0 = e => (e && e.grupo ? achar(App.mapa, e.grupo) : null);
+  function caixaSimples(k, rotulo, marcado, fn) {
+    return h('label', { class: 'chk' }, h('input', { type: 'checkbox', 'data-k': k, checked: !!marcado, onchange: ev => fn(ev.target.checked) }), h('span', { text: rotulo }));
+  }
+  // (lote 32) sortear para vários grupos, um depois do outro (o cartão oferece o próximo)
+  function sortearFila(ids) {
+    const m = App.mapa, l = ids.filter(id => achar(m, id));
+    if (!l.length) return;
+    encontro = encontro ? Object.assign(encontro, { fila: l.slice(1) }) : { n: 0, fila: l.slice(1) };
+    sortearGrupo(l[0]);
+    if (encontro && !encontro.r) encontro = null;                       // (não deu para sortear: o aviso já disse por quê)
+    if (aba !== 'hoje' && aba !== 'selecao') abrirAba('hoje');
+  }
+  /* (lote 32) A sugestão de sortear quando os grupos andam (o Escudo diz quando: uma vez por dia, a cada tempo ou nunca).
+     Só os grupos dos jogadores (não os do mundo), onde há chance de encontro — a da região ou a do bioma. */
+  const andaramHoje = new Set();
+  function chanceOnde(m, g) {
+    const EN = Enc(), r = N().regiaoEm(m, g.x, g.y);
+    if (r && (!EN || EN.regiaoTemTabela(r))) return r.enc ? Number(r.enc.chance) || 0 : 0;
+    const b = EN ? biomaNoPonto(m, g.x, g.y) : null, doc = b ? docBiomas() : null;
+    return doc ? EN.tabelaDe(doc, b).chance : 0;
+  }
+  function sugerirEncontros(ids, virouDia) {
+    if (!App.podeEditar() || !Enc()) return;
+    const doc = docBiomas(), modo = doc ? Enc().normBiomas(doc).sugerir : 'dia';
+    if (modo === 'nunca') return;
+    const m = App.mapa;
+    let l = ids.filter(id => { const g = achar(m, id); return g && g.k === 'g' && !grupoDoMundo(g); });
+    if (modo === 'dia') { for (const id of l) andaramHoje.add(id); if (!virouDia) return; l = [...andaramHoje].filter(id => achar(m, id)); andaramHoje.clear(); }
+    l = l.filter(id => chanceOnde(m, achar(m, id)) > 0);
+    if (!l.length) return;
+    const nomes = l.map(id => nomeDe(achar(m, id), m));
+    setTimeout(() => toast((l.length === 1 ? nomes[0] + ' andou' : nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1] + ' andaram') + (modo === 'dia' ? ' hoje' : '') + ': sortear um encontro?', 'Sortear', () => sortearFila(l), 14000), 700);
+  }
   function textoEncontro(e, grupoNome) {
+    if (e.bioma) return (grupoNome ? grupoNome + ': ' : '') + (e.r.houve ? textoDoBioma(e) : 'nada acontece') + ' (d100 ' + e.r.d100 + ', chance ' + e.r.chance + '%)';
     const r = e.r;
     return (grupoNome ? grupoNome + ': ' : '') + (r.houve ? r.item || 'encontro (sem resultado escrito na tabela)' : 'nada acontece') +
       ' (d100 ' + r.d100 + ', chance ' + r.chance + '%)';
@@ -542,14 +743,15 @@
   /* Os nomes que podem ir para a mesa às claras: os da projeção pública. Região ou grupo escondido (ou coberto pela
      névoa) vai sem o nome — o que os jogadores não veem no mapa não aparece no registro da mesa. */
   function nomesPublicos(e) {
-    const P = N().projetar(App.mapa), reg = achar(P, e.regiao), g = e.grupo ? achar(P, e.grupo) : null;
+    const P = N().projetar(App.mapa), reg = e.regiao ? achar(P, e.regiao) : null, g = e.grupo ? achar(P, e.grupo) : null;
     return { regiao: reg ? nomeDe(reg, P) : null, grupo: g ? nomeDe(g, P) : e.grupo ? 'Grupo' : '', grupoEscondido: !!e.grupo && !g };
   }
   function enviarEncontro(secreta) {
     const e = encontro;
     if (!e || !App.naMesa) return;
     const pub = secreta ? { regiao: e.regiaoNome, grupo: e.grupoNome } : nomesPublicos(e);
-    const ok = App.publicarNaMesa(pub.regiao ? 'Encontro em ' + pub.regiao : 'Encontro', textoEncontro(e, pub.grupo), secreta);
+    const titulo = pub.regiao ? 'Encontro em ' + pub.regiao : e.bioma ? 'Encontro: ' + e.biomaNome : 'Encontro';       // (lote 32: o bioma)
+    const ok = App.publicarNaMesa(titulo, textoEncontro(e, pub.grupo), secreta);
     if (ok === false) { App.toast('Não deu para mandar agora. A mesa está aberta?'); return; }
     if (secreta) e.segredo = true; else e.mesa = true;
     App.toast(secreta ? 'Foi para o seu registro, em segredo.' : 'Foi para a mesa.');
@@ -557,9 +759,10 @@
   }
   function cartaoEncontro() {
     const e = encontro, r = e.r;
-    if (e.grupo && !achar(App.mapa, e.grupo)) return null;
+    if (!r || (e.grupo && !achar(App.mapa, e.grupo))) return null;
+    if (e.bioma) return cartaoBioma(e);                                   // (lote 32)
     let titulo, corpo, det = null;
-    if (!r.chance) { titulo = 'Sem chance de encontro'; corpo = 'Esta região está com chance 0%. Ajuste a chance e os resultados na região.'; }
+    if (!r.chance) { titulo = 'Sem chance de encontro'; corpo = 'Esta região está com chance 0%. Ajuste a chance e os resultados na região' + (Enc() ? ' (sem a tabela da região, vale a do bioma, no Escudo do mestre).' : '.'); }
     else if (!r.houve) { titulo = 'Nada acontece'; corpo = 'O d100 deu ' + r.d100 + '; precisava de ' + r.chance + ' ou menos.'; }
     else {
       titulo = 'Encontro!';
@@ -583,6 +786,7 @@
         botao(e.segredo ? 'Foi só para você' : 'Mandar só para mim (segredo)', () => enviarEncontro(true), { c: 'sm', k: 'enc:seg', off: e.segredo })) : null,
       linha(
         botao('Sortear de novo', () => { const reg = achar(App.mapa, e.regiao), g = achar(App.mapa, e.grupo); if (reg) sortearEm(reg, g); else encontro = null; agendar(); }, { c: 'sm', k: 'enc:de-novo' }),
+        (e.fila || []).some(id => achar(App.mapa, id)) ? botao('Próximo: ' + nomeDe(achar(App.mapa, e.fila.find(id => achar(App.mapa, id))), App.mapa), () => sortearFila(e.fila), { c: 'sm', k: 'enc:proximo' }) : null,
         botao('Fechar', () => { encontro = null; agendar(); }, { c: 'sm', k: 'enc:fechar' })));
   }
 
@@ -2183,6 +2387,8 @@
     avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N_.textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou + av);
     // (lote 31) os relógios do Escudo do mestre marcados para andar com os dias: a sugestão (quem mestra confirma)
     if (t.dias > 0) setTimeout(() => sugerirRelogios(t.dias), 400);
+    // (lote 32) os grupos que andaram: a sugestão de sortear um encontro (quem mestra confirma)
+    sugerirEncontros(gruposQueAndaram, t.dias > 0);
     // (lote 9) quem chegou ao fim da rota (só ida): o aviso oferece voltar pela mesma rota
     avisarChegada([...feitos].filter(([, f]) => f.chegou).map(([gid]) => gid));
     // (lote 7, parte 5c) quem terminou o dia dentro de uma zona de perigo: a proposta de mexer na ficha (pelo dia que acabou)
@@ -2246,6 +2452,7 @@
     });
     if (ok !== false) {
       avisoDesfazer(r.msg + '. ' + depoisDaMarcha(App.mapa, t, n));
+      sugerirEncontros(r.hexes > 0 || r.cubos > 0 ? [id] : [], !!(t && t.dias > 0));          // (lote 32)
       const g = achar(App.mapa, id);
       if (r.chegou && g && (g.modo || 'ida') === 'ida') avisarChegada([id]);           // (lote 9)
     }

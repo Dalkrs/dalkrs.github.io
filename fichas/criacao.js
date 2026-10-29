@@ -456,13 +456,45 @@ const FichasCriacao = (() => {
     const c = host.querySelector('[data-conferido]');
     if (c) c.onclick = () => { if (pc.criacao) delete pc.criacao.conferir; save(); render(); FichasExtras.aviso('Ficha conferida.', 'Desfazer', () => { pc.criacao = Object.assign(pc.criacao || {}, { conferir: true }); save(); render(); }); };
   }
-  // o pedido que veio de outra aba (a casca): { criar }, { darFicha }, { fundo }
+  /* (lote 32) o NPC do Escudo do mestre vira ficha: o nome, a raça, o tier, o level, onde os pontos caem, o lado, o grupo
+     (a facção ou o lugar dele) e, nas notas, quem é, a aparência, o jeito, o que quer e esconde. O id vem do Escudo
+     (assim ele sabe qual ficha é a do NPC); se a ficha já existe, só a abre. */
+  function deNpc(o) {
+    if (!o || typeof o !== 'object') return;
+    if (!FichasMesa.mestre()) { toast('Só quem mestra cria fichas de NPC.'); return; }
+    const id = typeof o.id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(o.id) ? o.id : null;
+    if (id && S.personagens.some(p => p.id === id)) { S.sel = id; S.aba = 'fichas'; save(); render(); window.scrollTo({ top: 0 }); return; }
+    const L = ['A', 'B', 'C', 'D', 'E'], t0 = o.tiers && typeof o.tiers === 'object' ? o.tiers : {}, tiers = {};
+    for (const k of ['FOR', 'DES', 'AGI', 'VIT', 'CAN']) tiers[k] = L.includes(t0[k]) ? t0[k] : 'C';
+    const nome = String(o.nome || '').trim().slice(0, 80) || 'NPC';
+    const p = personagemPadrao(nome, String(o.raca || '').slice(0, 80), ['S', 'A', 'B', 'C', 'D', 'E'].includes(o.tier) ? o.tier : 'C', Math.max(1, Math.min(50, Math.round(+o.level) || 1)), tiers);
+    if (id) p.id = id;
+    p._dono = null; p._vis = 'mestre';
+    if (typeof o.camp === 'string' && FichasMesa.campanhas().some(c => c.id === o.camp && !c.encerrada)) p._camp = o.camp;
+    p.lado = ['Aliado', 'Neutro', 'Inimigo'].includes(o.lado) ? o.lado : 'Aliado';
+    p.grupo = String(o.grupo || 'NPCs').trim().slice(0, 40) || 'NPCs';
+    p.notas = String(o.notas || '').slice(0, 4000);
+    if (typeof o.img === 'string' && /^https:\/\/[^\s"'<>]+$/.test(o.img)) p.img = o.img;
+    p.skills = { arvores: [], pontos: Object.fromEntries(pools().map(pl => [pl.id, +pl.padrao || 0])), alocados: {} };
+    S.personagens.push(FichasMesa.nascer(p));
+    fixarGrupos(); const l = gruposDe(p._camp || ''); if (!l.includes(p.grupo)) l.push(p.grupo);
+    S.sel = p.id; S.aba = 'fichas';
+    save(); render(); window.scrollTo({ top: 0 });
+    FichasExtras.aviso(nome + ' virou ficha (veio do Escudo do mestre).', 'Desfazer', () => {
+      S.personagens = S.personagens.filter(x => x.id !== p.id);
+      if (S.sel === p.id) S.sel = S.personagens[0] ? S.personagens[0].id : null;
+      save(); render();
+    });
+  }
+
+  // o pedido que veio de outra aba (a casca): { criar }, { darFicha }, { fundo }, (lote 32) { npc }
   function pedido(a) {
     if (!a) return false;
+    if (a.npc) { deNpc(a.npc); return true; }
     if (a.criar) { const pc = S.personagens.find(p => p.id === a.criar); if (!pc) { toast('Esta ficha ainda não chegou a este aparelho. Tente de novo em instantes.'); return true; } S.sel = pc.id; render(); abrir(pc); return true; }
     if (a.darFicha) { darFicha(a.darFicha); return true; }
     if (a.fundo) { fundo(a.fundo); return true; }
     return false;
   }
-  return { abrir, darFicha, fundo, pedido, selo, htmlAviso, ligarAviso, pendente, paraConferir, familias, caminho, aberto: () => !!w };
+  return { abrir, darFicha, fundo, deNpc, pedido, selo, htmlAviso, ligarAviso, pendente, paraConferir, familias, caminho, aberto: () => !!w };
 })();

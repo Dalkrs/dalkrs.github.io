@@ -2,6 +2,48 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.28-7",
+      "data": "2026-10-28",
+      "titulo": "NPCs e encontros por bioma",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Escudo do mestre → NPCs: “Gerar NPC” dá três opções para você escolher — o nome no estilo do povo dele (nórdico, oriental, élfico, anão, desértico, latino, eslavo, celta…), a aparência, o jeito, o que quer, o que esconde, um gancho e os números de ficha. Escolha a raça, o papel, onde vive e a facção ou o clã; depois, mude o que quiser (o ↻ sorteia de novo só aquele campo)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "As raças da mesa: uma lista que você monta, com o estilo dos nomes e a aparência típica de cada raça e sub-raça. Ela pode começar pelas raças que já estão nas fichas."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Do NPC, um clique: “Virar ficha” cria a ficha dele nas Fichas, “Token na cena” põe o token na cena aberta e “Pôr no roteiro” liga o NPC a um passo — no painel do roteiro, o cartão dele abre ali mesmo. A lista tem busca e filtros por lugar e por facção ou clã."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Escudo do mestre → Encontros: uma tabela para cada bioma do Mapa-múndi, com a chance e os resultados com peso — inimigos do Bestiário (com os dados da quantidade), um encontro guardado, um NPC sorteado na hora, um evento ou descoberta. “Sugerir do Bestiário” põe os inimigos com as tags do bioma; “Testar” sorteia sem mexer em nada."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: fora de uma região com tabela própria, “Sortear encontro” usa a tabela do bioma do hexágono. O resultado mostra a quantidade (com − e + antes de puxar) e a dificuldade contra os personagens do grupo; “Puxar para a cena” leva os inimigos às Cenas, e o NPC sorteado pode ir para a sua lista de NPCs, com o lugar."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Quando os grupos andam onde há chance de encontro, o Mapa-múndi pergunta se sorteia (uma vez por dia, a cada tempo de marcha ou nunca — você escolhe no Escudo). Mandar o resultado à mesa ou só para você continua sendo escolha sua, na hora."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Escudo do mestre: o “Apagar” da janela do relógio agora apaga — a confirmação sumia sozinha antes da resposta."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.28-6",
       "data": "2026-10-28",
       "titulo": "O Escudo do mestre",

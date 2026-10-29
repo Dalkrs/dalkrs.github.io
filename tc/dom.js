@@ -99,7 +99,10 @@
   /* ---- as janelas ---- */
   function janelas(dlg) {
     let aoFechar = null;
-    dlg.addEventListener('close', () => { const f = aoFechar; aoFechar = null; if (f) f(); });
+    /* O "close" do <dialog> chega depois (numa tarefa à parte): se nesse meio-tempo outra janela já abriu no mesmo
+       <dialog> (fechar uma e logo pedir a confirmação), esse aviso atrasado é da janela que já fechou — e não pode
+       cancelar a nova. (lote 32: era o que impedia de apagar o relógio pelo "Apagar" da janela dele.) */
+    dlg.addEventListener('close', () => { if (dlg.open) return; const f = aoFechar; aoFechar = null; if (f) f(); });
     const api = {
       abrir(classe, filhos, fechou) {
         dlg.className = 'dl' + (classe ? ' ' + classe : '');

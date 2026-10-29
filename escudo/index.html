@@ -159,6 +159,62 @@ main { flex: 1; min-width: 0; }
 .acerto .linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 7px 9px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; }
 .acerto .linha span { flex: 1; min-width: 0; }
 
+/* ---- NPCs (lote 32) ---- */
+.grade-ger { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .grade-ger { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) { .grade-ger { grid-template-columns: minmax(0, 1fr); } }
+.npc-ops { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.npc-op { display: grid; gap: 6px; align-content: start; padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--raised); }
+.npc-op h3 { margin: 0; font: 600 20px/1.15 var(--display); color: var(--fg); overflow-wrap: anywhere; }
+.npc-op p { margin: 0; font-size: 13px; color: var(--fg-2); line-height: 1.45; }
+.npc-op p b { color: var(--fg); font-weight: 600; }
+.npc-op .quem { color: var(--ouro); font-weight: 600; }
+.npc-op .nums { font: 12px var(--mono); color: var(--fg-3); }
+.npc-op .btn { justify-self: start; margin-top: 4px; }
+.quem-g { margin: -6px 0 0; color: var(--ouro); font-weight: 600; }
+.npc-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; align-items: start; }
+.npc-grade .larga { grid-column: 1 / -1; }
+.duas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.atrs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.atrs select.in { padding: 0 4px; }
+.field .rot { display: flex; align-items: center; gap: 4px; }
+.ib.mini { width: 22px; height: 22px; font-size: 13px; }
+.nomes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.racas { gap: 10px; }
+.raca { display: grid; gap: 6px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.raca-l { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 190px) auto; gap: 6px; align-items: center; }
+.sub-raca { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 160px) minmax(0, 1.4fr) auto; gap: 6px; align-items: center; padding-left: 18px; }
+@media (max-width: 640px) { .sub-raca { grid-template-columns: minmax(0, 1fr) auto; padding-left: 8px; } .raca-l { grid-template-columns: minmax(0, 1fr) auto; } .raca-l select, .sub-raca select { grid-column: 1; } }
+
+/* ---- encontros por bioma (lote 32) ---- */
+.chance { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
+.chance .in { width: 80px; }
+.tabela-res { display: grid; gap: 6px; }
+.res { display: grid; grid-template-columns: 74px 46px minmax(140px, 190px) minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+@media (max-width: 900px) { .res { grid-template-columns: 74px 46px minmax(0, 1fr) auto; } .res .campos { grid-column: 1 / -1; } }
+.res .peso { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px; font-size: 11.5px; color: var(--fg-3); font-weight: 600; }
+.res .peso .in { padding: 0 4px; min-height: 30px; }
+.res .pct { font: 12px var(--mono); color: var(--fg-2); text-align: right; }
+.res .campos { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.res .campos select.in { flex: 1 1 180px; width: auto; }
+.res .campos .in.dados { flex: 0 0 82px; width: 82px; font-family: var(--mono); }
+.res .campos .in.nota { flex: 1 1 140px; width: auto; }
+.res .campos .in.larga { flex: 1 1 100%; }
+.res .lado { display: flex; gap: 2px; }
+.res.k-nada { opacity: .8; }
+@media (max-width: 860px) {
+  .lista.biomas { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lista.biomas > .field { flex: 1 1 100%; }
+  .lista.biomas .item { width: auto; padding: 6px 10px; gap: 6px; }
+  .lista.biomas .item small { display: none; }
+  .lista.biomas .item .badge { min-height: 18px; padding: 0 6px; }
+}
+.cartao.teste { border-style: dashed; }
+.cartao.teste.houve { border-color: var(--lamp); }
+.cartao.teste p, .cartao.teste small { margin: 0; }
+.cartao.teste small { color: var(--fg-3); font-size: 12px; }
+.cartao.teste .publico { font-size: 15px; color: var(--fg); }
+
 /* ---- a escolha da ligação ---- */
 .escolha { display: grid; gap: 8px; }
 .escolha .opcoes { display: grid; gap: 4px; max-height: 50vh; overflow: auto; }
@@ -187,6 +243,8 @@ dialog.dl .corpo { display: grid; gap: 12px; }
       <button type="button" data-k="aba:roteiro" data-aba="roteiro">Roteiro</button>
       <button type="button" data-k="aba:relogios" data-aba="relogios">Relógios</button>
       <button type="button" data-k="aba:handouts" data-aba="handouts">Handouts e puzzles</button>
+      <button type="button" data-k="aba:npcs" data-aba="npcs">NPCs</button>
+      <button type="button" data-k="aba:encontros" data-aba="encontros">Encontros</button>
     </span>
     <span class="grow"></span>
     <span class="salvo" id="salvo" aria-live="polite"></span>
@@ -199,11 +257,18 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=20"></script>
-<script src="../tc/dom.js?v=1"></script>
-<script src="../tc/escudo.js?v=1"></script>
+<script src="../tc/dom.js?v=2"></script>
+<script src="../tc/rules.js?v=24"></script>
+<script src="../tc/dice.js?v=3"></script>
+<script src="../tc/bestiario.js?v=1"></script>
+<script src="../tc/escudo.js?v=2"></script>
 <script src="../tc/escudo-acoes.js?v=1"></script>
 <script src="../tc/pistas-ui.js?v=1"></script>
+<script src="../tc/npc.js?v=1"></script>
+<script src="../tc/encontros.js?v=1"></script>
 <script src="handouts.js?v=1"></script>
-<script src="escudo.js?v=1"></script>
+<script src="npcs.js?v=1"></script>
+<script src="encontros.js?v=1"></script>
+<script src="escudo.js?v=2"></script>
 </body>
 </html>

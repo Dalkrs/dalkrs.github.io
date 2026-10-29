@@ -18,6 +18,7 @@
   const ICO = {
     cena: 'M3 5h18v14H3zM3 9h18M8 5v4', lugar: 'M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5',
     encontro: 'M14.5 3.5H20.5v6L10 20l-6-6zM3.5 20.5l3-3M7.5 13.5l3 3', handout: 'M6 3.5h12v17H6zM9 8h6M9 11.5h6M9 15h3', relogio: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 3v9l6 4',
+    npc: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20.5c.8-3.8 3.9-6 7.5-6s6.7 2.2 7.5 6',
   };
   function iniciar(k) {
     const { mesas, dados, toast } = k;
@@ -123,6 +124,8 @@
       if (l.k === 'cena') k.irPara('cenas', { cena: l.id });
       else if (l.k === 'lugar') k.irPara('mundo', { mapa: l.mapa, obj: l.obj });
       else if (l.k === 'handout') k.irPara('escudo', { handout: l.id });
+      // (lote 32) o NPC: o cartão dele abre ali mesmo, embaixo do passo (quem é, o jeito, o que quer e esconde)
+      else if (l.k === 'npc') { if (npcAberto.has(p.id)) npcAberto.delete(p.id); else npcAberto.add(p.id); pintarPainel(); }
       else if (l.k === 'encontro') {
         const d = a.dadosDe('best:enc:' + l.id);
         const itens = d && Array.isArray(d.itens) ? d.itens.filter(x => x && typeof x.id === 'string' && x.n > 0).map(x => ({ id: x.id, n: Math.min(30, Math.round(x.n)) })) : [];
@@ -138,9 +141,22 @@
       if (l.k === 'encontro') { const d = a.dadosDe('best:enc:' + l.id); return d ? String(d.nome || 'Encontro') : ''; }
       if (l.k === 'handout') { const x = a.handout(l.id); return x ? x.nome : ''; }
       if (l.k === 'relogio') { const x = a.relogio(l.id); return x ? x.nome : ''; }
+      if (l.k === 'npc') { const d = a.dadosDe('escudo:npc:' + l.id); return d ? String(d.nome || 'NPC') : ''; }
       return '';
     }
-    const ROT = { cena: 'Abrir', lugar: 'Ver', encontro: 'Puxar', handout: 'Abrir', relogio: '+1' };
+    const ROT = { cena: 'Abrir', lugar: 'Ver', encontro: 'Puxar', handout: 'Abrir', relogio: '+1', npc: 'Ver' };
+    const npcAberto = new Set();
+    // (lote 32) o cartão do NPC no painel: o bastante para interpretar sem sair da aba
+    function cartaoNpc(a, l) {
+      const N = window.TC.npc, d = a.dadosDe('escudo:npc:' + l.id);
+      if (!N || !d) return null;
+      const n = N.normNpc(d), ds = N.descricao(n);
+      const lin = (rot, t) => (t ? h('p', null, h('b', { text: rot + ' ' }), t) : null);
+      return h('div', { class: 'rt-npc', 'data-k': 'rt:npc:' + l.id },
+        h('p', { class: 'rt-npc-q', text: ds.quem }),
+        lin('Aparência:', ds.aparencia), lin('Jeito:', ds.jeito), lin('Quer:', n.motivacao), lin('Esconde:', n.segredo), lin('Gancho:', n.gancho),
+        h('button', { type: 'button', class: 'link', 'data-k': 'rt:npc-abrir:' + l.id, onclick: () => k.irPara('escudo', { npc: l.id }) }, 'Abrir no Escudo'));
+    }
     function pintarPainel() {
       if (painel.hidden) return;
       const a = acoes();
@@ -171,7 +187,8 @@
             h('input', { type: 'checkbox', 'data-k': 'rt:p:' + p.id, checked: p.feito ? true : null, 'aria-label': 'Aconteceu: ' + (p.txt || 'passo'),
               onchange: ev => mudar('marcar', x => { const q = x.passos.find(y => y.id === p.id); if (q) q.feito = ev.target.checked; if (ev.target.checked && x.estado === 'aberta') x.log.push({ em: new Date().toISOString(), t: 'passo', txt: q ? q.txt : '' }); }) }),
             h('span', { class: 'rt-t' }, h('span', { text: p.txt || 'Passo sem nome' }), p.liga && nome ? h('small', null, icone(ICO[p.liga.k], 12), ' ' + nome) : null, p.nota ? h('small', { class: 'rt-nota', text: p.nota }) : null),
-            p.liga && nome ? h('button', { type: 'button', class: 'btn xs' + (p.liga.k === 'relogio' || p.liga.k === 'encontro' ? ' pri' : ''), 'data-k': 'rt:ir:' + p.id, onclick: () => irLiga(a, s, p) }, p.liga.k === 'relogio' ? (p.liga.n > 0 ? '+' : '') + p.liga.n : ROT[p.liga.k]) : null);
+            p.liga && nome ? h('button', { type: 'button', class: 'btn xs' + (p.liga.k === 'relogio' || p.liga.k === 'encontro' ? ' pri' : ''), 'data-k': 'rt:ir:' + p.id, 'aria-expanded': p.liga.k === 'npc' ? String(npcAberto.has(p.id)) : null, onclick: () => irLiga(a, s, p) }, p.liga.k === 'relogio' ? (p.liga.n > 0 ? '+' : '') + p.liga.n : ROT[p.liga.k]) : null,
+            p.liga && p.liga.k === 'npc' && nome && npcAberto.has(p.id) ? cartaoNpc(a, p.liga) : null);
         })));
         corpo.push(h('form', { class: 'rt-novo', onsubmit: ev => { ev.preventDefault(); const i = ev.target.querySelector('input'); const v = i.value.trim(); if (!v) return; i.value = ''; mudar('pôr', x => { x.passos.push(E.normPasso({ txt: v })); }); setTimeout(() => { const n = painel.querySelector('[data-k="rt:novo"]'); if (n) n.focus(); }, 10); } },
           h('input', { class: 'in', 'data-k': 'rt:novo', placeholder: 'Mais um passo…', maxlength: E.LIM.passo, 'aria-label': 'Um passo novo' }), h('button', { type: 'submit', class: 'btn sm', 'data-k': 'rt:por' }, 'Pôr')));

@@ -166,13 +166,19 @@
     // (lote 31) o Escudo do mestre e as Pistas
     escudo: {
       mestre: [
-        { t: 'O roteiro', txt: 'Cada sessão é uma lista de passos. Ligue um passo a uma cena, a um lugar do Mapa-múndi, a um encontro do Bestiário, a um handout ou a um relógio: o botão do passo faz a ação.', onde: { sel: '[data-k="aba:roteiro"]' } },
+        { t: 'O roteiro', txt: 'Cada sessão é uma lista de passos. Ligue um passo a uma cena, a um lugar do Mapa-múndi, a um encontro do Bestiário, a um handout, a um relógio ou a um NPC: o botão do passo faz a ação.', onde: { sel: '[data-k="aba:roteiro"]' } },
         { t: 'Abrir e fechar a sessão', txt: '“Abrir a sessão” marca o começo. O botão do roteiro, na barra de cima, mostra os passos ao lado em qualquer aba. Ao fechar, você escolhe os passos que passam para a próxima e sai o resumo, que pode ir para o rascunho do Jornal.', onde: { sel: '[data-k="aba:roteiro"]' } },
         { t: 'Os relógios', txt: 'Um círculo com gomos que enchem conforme a ameaça avança. Clique num gomo para encher até ali. Os que você mostrar aparecem num cantinho das Cenas para os jogadores. Marcado “quando passa um dia”, o Mapa-múndi sugere avançar e você confirma.', onde: { sel: '[data-k="aba:relogios"]' } },
         { t: 'Handouts', txt: 'Imagem, carta ou puzzle. Na carta, escreva {{assim}} (ou selecione e “Esconder o trecho”) para um trecho que os jogadores veem como mancha; na imagem, arraste para esconder uma área. “Revelar” mostra aos poucos.', onde: { sel: '[data-k="aba:handouts"]' } },
         { t: 'Os puzzles', txt: 'Cifras, charadas, mecanismos (runas, alavancas, cadeado e placas) e o quebra-cabeça de imagem, sorteados com solução garantida, em fácil, médio ou difícil. A prévia é um teste jogável, com a resposta para você.', onde: { sel: '[data-k="aba:handouts"]' } },
         { t: 'Acertar e errar', txt: 'No puzzle, “Ao acertar” revela parte de outro handout ou entrega outro; “Ao errar” faz um relógio andar. Uma porta das Cenas pode abrir com o puzzle: escolha a porta e ligue-a no painel dela.', onde: { sel: '[data-k="aba:handouts"]' } },
         { t: 'Entregar', txt: 'À mesa toda ou só a alguns. Quem recebe vê uma janela, e o handout fica guardado na aba Pistas dele. Depois de entregar: mandar a versão nova, dar uma dica, recomeçar o puzzle ou tirar dos jogadores.', onde: { sel: '#meio' } },
+        // (lote 32) os NPCs e os encontros por bioma
+        { t: 'Os NPCs', txt: '“Gerar NPC”: escolha a raça, o papel e onde ele vive, e saem três opções — o nome no estilo do povo dele, a aparência, o jeito, o que quer, o que esconde, o gancho e os números de ficha. Fique com uma e mude o que quiser; o ↻ sorteia outro só para aquele campo.', onde: { sel: '[data-k="aba:npcs"]' } },
+        { t: 'As raças', txt: 'O botão Raças monta a lista da mesa: o estilo dos nomes (nórdico, élfico, anão…) e a aparência típica de cada raça e sub-raça. “Trazer as raças das fichas” começa pelas que já estão nas fichas.', onde: { sel: '[data-k="aba:npcs"]' } },
+        { t: 'Ficha, token e roteiro', txt: 'No NPC aberto: “Virar ficha” cria a ficha dele nas Fichas; “Token na cena” põe o token na cena aberta; “Pôr no roteiro” liga o NPC a um passo da sessão (no painel do roteiro, o cartão dele abre ali mesmo).', onde: { sel: '#meio' } },
+        { t: 'Encontros por bioma', txt: 'Uma tabela para cada bioma do Mapa-múndi: a chance e os resultados com peso — inimigos do Bestiário (com os dados da quantidade), um encontro guardado, um NPC sorteado na hora, um evento ou “nada”. “Sugerir do Bestiário” põe os inimigos com as tags do bioma. Onde a região tem a tabela dela, vale a da região.', onde: { sel: '[data-k="aba:encontros"]' } },
+        { t: 'No Mapa-múndi', txt: 'O sorteio mostra a quantidade (com − e + antes de puxar) e a dificuldade contra os personagens do grupo; “Puxar para a cena” leva os inimigos às Cenas. Quando os grupos andam, o Mapa-múndi pergunta se sorteia — uma vez por dia, a cada tempo ou nunca, como você escolher aqui.', onde: { sel: '[data-k="aba:encontros"]' } },
       ],
       jogador: [],
     },

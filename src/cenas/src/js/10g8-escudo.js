@@ -5,6 +5,8 @@
    · A porta que abre com um puzzle: no painel da porta, o mestre a liga a um puzzle do Escudo; quando os jogadores
      resolvem o puzzle (pista:jogo:<id> com "resolvido"), o programa do mestre abre e destranca a porta — em qualquer
      cena dele —, uma vez só (pzOk), com um aviso que tem Desfazer.
+   · (lote 32) O NPC do Escudo vira um token na cena aberta: perto do meio da tela; ligado à ficha dele, se o NPC já
+     virou ficha (as barras e a imagem vêm dela), ou um token simples com o nome. Um Desfazer tira.
    --------------------------------------------------------------- */
 const EscudoCenas = (() => {
   const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -114,6 +116,34 @@ const EscudoCenas = (() => {
     } finally { aplicando = false; }
   }
 
+  /* ---- (lote 32) o NPC na cena ---- */
+  // ped: { nome, pc (a ficha, se o NPC virou uma), ocultos } → o id do token (ou null)
+  function npc(ped) {
+    if (!isGM() || !ehObj(ped)) return null;
+    if (UI.modalOpen()) { UI.toast('Há uma janela aberta aqui nas Cenas: feche-a e peça o NPC de novo no Escudo.'); return null; }
+    const nome = String(ped.nome == null ? '' : ped.nome).trim().slice(0, 60) || 'NPC';
+    const sc = Store.scene(), [cw, ch] = Render.size(), visivel = cw > 0 && ch > 0;
+    const cx = visivel ? App.view.x + cw / (2 * App.view.z) : sc.cols * sc.cell / 2, cy = visivel ? App.view.y + ch / (2 * App.view.z) : sc.rows * sc.cell / 2;
+    const extra = ped.ocultos ? { hidden: true } : null;
+    let id = null;
+    const pc = typeof ped.pc === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(ped.pc) ? ped.pc : null;
+    if (pc && Fichas.get(pc)) {
+      const ja = sc.tokens.find(t => t.char === pc);
+      if (ja) { setSel([{ c: 'tokens', id: ja.id }]); UI.toast(nome + ' já está nesta cena.'); return ja.id; }
+      id = Combate.trazer([pc], cx, cy, extra)[0] || null;
+    }
+    if (!id) {
+      const [x, y] = Combate.vagas(sc, 1, cx, cy)[0] || [0, 0];
+      const t = newToken(sc, x, y, Object.assign({ name: nome }, extra || {}));
+      Store.tx('Trazer ' + nome, () => Store.add('tokens', t));
+      id = t.id;
+    }
+    setSel([{ c: 'tokens', id }]);
+    if (App.tool !== 'select') Tools.set('select');
+    UI.toast(nome + ' na cena' + (ped.ocultos ? ', oculto dos jogadores' : '') + '.', { action: 'Desfazer', run: Tools.undo });
+    return id;
+  }
+
   function iniciar() {
     if (!(window.TC && TC.dados && TC.dados.disponivel && TC.dados.disponivel())) return;
     D = TC.dados.col('documentos');
@@ -126,5 +156,5 @@ const EscudoCenas = (() => {
     });
     if (TC.ponte && TC.ponte.aoMudar) TC.ponte.aoMudar(() => pintarCanto());
   }
-  return { iniciar, vistas, pintarCanto, puzzles, resolvido, aplicarPortas, nomeDoPuzzle };
+  return { iniciar, vistas, pintarCanto, puzzles, resolvido, aplicarPortas, nomeDoPuzzle, npc };
 })();

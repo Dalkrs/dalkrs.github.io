@@ -209,6 +209,11 @@ button.grupo-t:hover { background: var(--hover); }
 .roteiro .rt-t { display: grid; gap: 2px; font-size: 13.5px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .roteiro .rt-t small { display: flex; align-items: center; gap: 4px; font-weight: 500; font-size: 12px; color: var(--fg-3); }
 .roteiro .rt-t small.rt-nota { display: block; font-style: italic; white-space: pre-wrap; }
+.roteiro .rt-npc { grid-column: 1 / -1; display: grid; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; color: var(--fg-2); }
+.roteiro .rt-npc p { margin: 0; line-height: 1.4; }
+.roteiro .rt-npc b { color: var(--fg); font-weight: 600; }
+.roteiro .rt-npc .rt-npc-q { font-weight: 600; color: var(--fg); }
+.roteiro .rt-npc .link { justify-self: start; background: none; border: 0; padding: 0; color: var(--lamp-ink); font-weight: 600; font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .roteiro .btn.xs { min-height: 26px; padding: 0 8px; font-size: 12px; border-radius: 7px; }
 .roteiro .rt-novo { display: flex; gap: 6px; }
 .roteiro .rt-novo .in { flex: 1; min-width: 0; height: 32px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); font: inherit; font-size: 13px; }
@@ -618,19 +623,20 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/rules.js?v=24"></script>
 <script src="tc/tc.js?v=33"></script>
 <script src="tc/busca.js?v=2"></script>
-<script src="tc/guia.js?v=8"></script>
+<script src="tc/guia.js?v=9"></script>
 <script src="tc/notas.js?v=4"></script>
-<script src="tc/dom.js?v=1"></script>
-<script src="tc/escudo.js?v=1"></script>
+<script src="tc/dom.js?v=2"></script>
+<script src="tc/escudo.js?v=2"></script>
 <script src="tc/escudo-acoes.js?v=1"></script>
 <script src="tc/pistas-ui.js?v=1"></script>
-<script src="tc/escudo-casca.js?v=1"></script>
+<script src="tc/npc.js?v=1"></script>
+<script src="tc/escudo-casca.js?v=2"></script>
 <script src="tc/tags.js?v=2"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.28-6';
+  const VERSAO = '2026.10.28-7';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',

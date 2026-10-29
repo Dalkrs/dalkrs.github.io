@@ -76,6 +76,21 @@ function resolverLuzes(l, n) {
     ok(await p.locator('[data-k="r:' + rid + '"].cheio .cons').count() === 1, 'o relógio cheio mostra a consequência');
     await p.click('[data-k="desfazer"]'); await w(150);
     ok(await ev(id => __escudo.A.relogio(id).cheio, rid) === 3, 'o Desfazer esvazia de novo');
+    // (lote 32) apagar pela janela do relógio: a confirmação fica aberta até a resposta (antes, ela sumia sozinha)
+    await p.click('[data-k="relogio:novo"]'); await w(200);
+    await p.fill('[data-k="re:nome"]', 'A vela acaba'); await p.click('[data-k="re:ok"]'); await w(200);
+    const vela = await ev(() => __escudo.A.relogios().find(x => x.r.nome === 'A vela acaba').id);
+    await p.click('[data-k="r:' + vela + ':editar"]'); await w(200);
+    await p.click('[data-k="re:apagar"]'); await w(300);
+    ok(await p.locator('dialog[open] [data-k="dl:sim"]').count() === 1, '“Apagar” na janela do relógio pede a confirmação (e ela fica aberta)');
+    await p.click('dialog[open] [data-k="dl:sim"]'); await w(250);
+    ok(!(await ev(id => !!__escudo.A.relogio(id), vela)) && await ev(() => __escudo.A.relogios().length) === 1, 'confirmado: o relógio sai');
+    await p.click('[data-k="desfazer"]'); await w(200);
+    ok(await ev(id => !!__escudo.A.relogio(id), vela), 'o Desfazer devolve o relógio');
+    await p.click('[data-k="r:' + vela + ':editar"]'); await w(200);
+    await p.click('[data-k="re:apagar"]'); await w(300);
+    await p.click('dialog[open] [data-k="dl:sim"]'); await w(250);
+    ok(!(await ev(id => !!__escudo.A.relogio(id), vela)), '(e sai de novo, para seguir)');
   });
 
   await passo('ligar o passo ao relógio', async () => {
