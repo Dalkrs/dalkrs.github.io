@@ -58,7 +58,7 @@ mkdir -p "$(dirname "$SITE")"
   echo '<script src="../tc/rules.js?v=26"></script>'
   echo '<script src="../tc/tags.js?v=3"></script>'
   echo '<script src="../tc/bestiario.js?v=3"></script>'
-  echo '<script src="../tc/sede.js?v=1"></script>'
+  echo '<script src="../tc/sede.js?v=2"></script>'
   echo '<script src="../tc/corrupcao.js?v=1"></script>'
   body_parts
   echo '</body>'

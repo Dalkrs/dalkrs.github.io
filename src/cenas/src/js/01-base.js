@@ -966,6 +966,14 @@ function normalizeScene(sc) {
     // objeto de cenário: só os do catálogo, sempre quadrado; gira de 0 a 359 graus
     if (t.prop && Props.P[t.prop]) { t.rot = ((Math.round(Number(t.rot) || 0) % 360) + 360) % 360; t.shape = 'quad'; t.char = null; }
     else { delete t.prop; delete t.rot; }
+    // (lote 39) as duas cores do objeto que tem cores (o brasão, o estandarte, a mesa de guerra…) e o desenho do brasão do
+    // clã (a divisão, a forma e o símbolo: caminhos de SVG, só com os comandos e os números)
+    const hexOk = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v), caminhoOk = v => typeof v === 'string' && v.length <= 1500 && /^[MLHVCSQTAZmlhvcsqtaz0-9.,\s-]+$/.test(v);
+    if (t.prop && Props.P[t.prop] && Props.P[t.prop].cores && Array.isArray(t.cores) && t.cores.length === 2 && t.cores.every(hexOk)) t.cores = t.cores.map(v => v.toLowerCase()); else delete t.cores;
+    if ((t.prop === 'brasao' || t.prop === 'estandarte') && t.bras && typeof t.bras === 'object') {
+      const b = t.bras;
+      t.bras = { div: ['liso', 'partido', 'cortado', 'esquartelado', 'faixa'].includes(b.div) ? b.div : 'partido', f: caminhoOk(b.f) ? b.f : null, s: caminhoOk(b.s) ? b.s : null, fl: b.fl === true };
+    } else delete t.bras;
     // (lote 29) o inimigo do Bestiário ligado a este token (só o id: os números vêm de lá; as barras ficam no token);
     // e, no objeto de cenário, o saque que ficou no chão (o que caiu de um inimigo, até alguém pegar)
     if (!(typeof t.best === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.best)) || t.char || t.prop) delete t.best;

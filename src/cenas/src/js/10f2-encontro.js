@@ -345,7 +345,7 @@ const Encontro = (() => {
     K.marcaPoli(ret, 3, true); K.visaoPoli(ret); P.cobertura.push({ x: cx, y: cy, r: 1.8 });
     K.pinta(2, 'carroca', { x: cx, y: cy, ang });
     P.tracado.push({ k: 'poli', pts: ret });
-    for (const id of ['caixote', 'barril', 'caixote', 'barril', 'bau']) K.objetoPerto(id, cx + nx * 2.2, cy + ny * 2.2, 2.4);
+    for (const id of ['caixote', 'barril', 'caixote', 'barril', 'bau', 'mochila']) K.objetoPerto(id, cx + nx * 2.2, cy + ny * 2.2, 2.4);          // (lote 39: e a mochila de quem fugiu)
     K.foco(cx, cy);
   };
   SIT['estrada.ponte'] = K => {
@@ -438,6 +438,7 @@ const Encontro = (() => {
       K.marcaPoli(Estilos.retangulo(tx, ty, 2.4, 1.8, an + Math.PI / 2), 4, true);
     }
     for (const id of ['bau', 'caixote', 'caixote', 'barril', 'jarro']) K.objetoPerto(id, cx, cy, 4.2);
+    for (const id of ['sacoDormir', 'sacoDormir', 'mochila', 'lenha']) K.objetoPerto(id, cx, cy, 3.6);          // (lote 39: o que ficou para trás)
     for (let k = 0; k < 2; k++) { const an = r(0, TAU); K.objeto('tronco', Math.floor(cx + Math.cos(an) * 1.6 - 1), Math.floor(cy + Math.sin(an) * 1.6 - 1), Math.floor(r(0, 4)) * 90); }
     P.dens = (x, y) => (Math.hypot(x - cx, y - cy) < 6 ? 0.2 : 1.2);
     if (K.caminho !== 'nenhum') K.poeCaminho([[-1, cy + r(-4, 4)], [cx - 5, cy + (sorte(0.5) ? 4.5 : -4.5)], [cx + 5, cy + (sorte(0.5) ? 4.5 : -4.5)], [W + 1, cy + r(-4, 4)]]);
@@ -1290,6 +1291,7 @@ const Encontro = (() => {
     { const an = a0 + Math.PI / n, vx = cx + Math.cos(an) * 3.4, vy = cy + Math.sin(an) * 2.9; if (K.dentro(vx, vy, 1.5) && K.livreCirc(vx, vy, 1, v => v === 5 || v === 0)) { K.pinta(2, 'varal', { x: vx, y: vy, ang: an + Math.PI / 2 }); K.marcaCirc(vx, vy, 1.1, 4, true); } }
     { const an = a0 - Math.PI / n, lx = cx + Math.cos(an) * 3 - 1, ly = cy + Math.sin(an) * 2.6 - 0.45; if (K.livreCirc(lx + 1, ly + 0.45, 0.9, v => v === 5 || v === 0)) { K.pinta(2, 'lenha', { x: lx, y: ly, w: 2, h: 0.9 }); K.marcaPoli([[lx, ly], [lx + 2, ly], [lx + 2, ly + 0.9], [lx, ly + 0.9]], 4, true); } }
     for (const id of ['pele', 'pele', 'armas', 'caixote', 'barril']) K.objetoPerto(id, cx, cy, 4.2, v => v === 5);
+    for (const id of ['sacoDormir', 'sacoDormir', 'mochila']) K.objetoPerto(id, cx, cy, 3.8, v => v === 5);          // (lote 39)
     // as armadilhas de urso em volta, escondidas na neve (só o mestre vê)
     for (let k = 0, tent = 0, na = ri(2, 3); k < na && tent < 40; tent++) { const an = r(0, TAU), d = r(6, 8.5), x = cx + Math.cos(an) * d, y = cy + Math.sin(an) * d * 0.8; if (K.dentro(x, y, 1.5) && K.objeto('armadilha', Math.floor(x), Math.floor(y), 0, v => v === 0)) { P.objetos[P.objetos.length - 1].oculto = true; k++; } }
     P.dens = (x, y) => (Math.hypot(x - cx, y - cy) < 6 ? 0.1 : 1);

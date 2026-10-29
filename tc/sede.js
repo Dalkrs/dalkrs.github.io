@@ -43,20 +43,24 @@
     lareira: { n: 'Lareira', s: 2, parede: true }, estandarte: { n: 'Estandarte', s: 1, parede: true }, fornalha: { n: 'Fornalha', s: 2, parede: true },
     feno: { n: 'Feno', s: 1, parede: true }, cocho: { n: 'Cocho', s: 2, parede: true }, almofada: { n: 'Almofada', s: 1 },
     poco: { n: 'Poço', s: 1 }, flores: { n: 'Flores', s: 1 }, arbusto: { n: 'Arbusto', s: 1 }, arvore: { n: 'Árvore', s: 2 },
+    // (lote 39) os objetos novos do clã (nas Cenas, os de cor saem com as cores do brasão)
+    brasao: { n: 'Brasão na parede', s: 1, parede: true }, mesaGuerra: { n: 'Mesa de guerra', s: 2, meio: true }, quadroMissoes: { n: 'Quadro de missões', s: 1, parede: true },
+    cofre: { n: 'Cofre', s: 1, parede: true }, trofeu: { n: 'Troféu de caça', s: 1, parede: true }, boneco: { n: 'Boneco de treino', s: 1 }, alvo: { n: 'Alvo de arco', s: 1, parede: true },
+    atril: { n: 'Atril com o livro', s: 1, parede: true },
   };
   // perto de quê cada móvel gosta de ficar (o primeiro que já estiver no cômodo)
-  const PERTO = { cadeira: ['mesa'], banco: ['mesa'], vela: ['altar', 'cama', 'mesa'], bau: ['cama'], estatua: ['altar'], bigorna: ['fornalha'], estandarte: ['lareira'] };
+  const PERTO = { cadeira: ['mesa', 'mesaGuerra'], banco: ['mesa'], vela: ['altar', 'cama', 'mesa', 'atril'], bau: ['cama'], estatua: ['altar'], bigorna: ['fornalha'], estandarte: ['lareira'], brasao: ['lareira', 'estandarte'], alvo: ['boneco'] };
   // os papéis dos cômodos: o nome, o piso e os móveis (na ordem em que entram)
   const PAPEIS = {
-    salao: { n: 'Salão', piso: 'madeira', m: ['tapete', 'mesa', 'banco', 'banco', 'mesa', 'banco', 'banco', 'lareira', 'estandarte', 'estandarte', 'barril', 'tocha'] },
+    salao: { n: 'Salão', piso: 'madeira', m: ['tapete', 'mesa', 'banco', 'banco', 'mesa', 'banco', 'banco', 'lareira', 'estandarte', 'estandarte', 'brasao', 'trofeu', 'barril', 'tocha'] },
     cozinha: { n: 'Cozinha', piso: 'pedra', m: ['lareira', 'mesa', 'barril', 'caixote', 'jarro', 'jarro'] },
     quarto: { n: 'Quarto', piso: 'madeira', m: ['cama', 'bau', 'vela', 'tapete'] },
-    lider: { n: 'Sala do líder', piso: 'madeira', m: ['tapete', 'mesa', 'cadeira', 'estante', 'bau', 'estandarte', 'vela'] },
+    lider: { n: 'Sala do líder', piso: 'madeira', m: ['tapete', 'mesaGuerra', 'cadeira', 'cadeira', 'estante', 'cofre', 'estandarte', 'brasao', 'vela'] },
     arsenal: { n: 'Arsenal', piso: 'pedra', m: ['armas', 'armas', 'estante', 'caixote', 'bau'] },
-    biblioteca: { n: 'Biblioteca', piso: 'madeira', m: ['estante', 'estante', 'estante', 'mesa', 'cadeira', 'vela'] },
+    biblioteca: { n: 'Biblioteca', piso: 'madeira', m: ['estante', 'estante', 'estante', 'atril', 'mesa', 'cadeira', 'vela'] },
     dormitorio: { n: 'Dormitório', piso: 'madeira', m: ['cama', 'cama', 'cama', 'cama', 'bau', 'bau', 'cama', 'cama'] },
     refeitorio: { n: 'Refeitório', piso: 'pedra', m: ['mesa', 'banco', 'banco', 'mesa', 'banco', 'banco', 'barril'] },
-    treino: { n: 'Sala de treino', piso: 'terra', m: ['armas', 'armas', 'barril', 'caixote'] },
+    treino: { n: 'Sala de treino', piso: 'terra', m: ['boneco', 'boneco', 'alvo', 'armas', 'armas', 'barril', 'caixote'] },
     forja: { n: 'Forja', piso: 'pedra', m: ['fornalha', 'bigorna', 'bigorna', 'barril', 'caixote', 'armas'] },
     oficina: { n: 'Oficina', piso: 'madeira', m: ['mesa', 'estante', 'caixote', 'barril'] },
     deposito: { n: 'Depósito', piso: 'terra', m: ['caixote', 'barril', 'caixote', 'estante', 'barril', 'caixote'] },
@@ -68,9 +72,9 @@
     baias: { n: 'Baias', piso: 'terra', m: ['cocho', 'feno', 'feno', 'cocho', 'feno', 'barril'] },
     selaria: { n: 'Selaria', piso: 'madeira', m: ['estante', 'bau', 'caixote'] },
     palheiro: { n: 'Palheiro', piso: 'terra', m: ['feno', 'feno', 'feno', 'feno', 'feno'] },
-    guarda: { n: 'Sala da guarda', piso: 'pedra', m: ['mesa', 'cadeira', 'armas', 'braseiro', 'bau'] },
+    guarda: { n: 'Sala da guarda', piso: 'pedra', m: ['mesa', 'cadeira', 'quadroMissoes', 'armas', 'braseiro', 'bau'] },
     vigia: { n: 'Vigia', piso: 'pedra', m: ['braseiro', 'armas', 'caixote'] },
-    sala: { n: 'Sala', piso: 'madeira', m: ['tapete', 'mesa', 'cadeira', 'cadeira', 'estante', 'bau'] },
+    sala: { n: 'Sala', piso: 'madeira', m: ['tapete', 'mesa', 'cadeira', 'cadeira', 'estante', 'trofeu', 'bau'] },
     vazio: { n: 'Cômodo', piso: 'madeira', m: [] },
   };
   /* Os prédios prontos: o nome, o ícone (o das construções do Clã), a forma, e cada nível: as medidas e os andares, com

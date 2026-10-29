@@ -84,14 +84,27 @@ const SedeCenas = (() => {
     if (p.lado === 'o') return [-1, p.y1];
     return [p.x1, p.y1];
   }
+  /* (lote 39) os objetos com cores (o estandarte, o brasão na parede, o quadro de missões, o atril, a mesa de guerra) saem
+     com as cores do brasão do clã; o brasão e o estandarte, também com o desenho dele */
+  function vestir(t, br) {
+    if (!br || !t || !Props.P[t.prop] || !Props.P[t.prop].cores) return t;
+    t.cores = br.cores.slice();
+    if (t.prop === 'brasao' || t.prop === 'estandarte') t.bras = { div: br.div, f: br.f, s: br.s, fl: br.fl };
+    return t;
+  }
+  const hexOk = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v), caminhoOk = v => typeof v === 'string' && v.length <= 1500 && /^[MLHVCSQTAZmlhvcsqtaz0-9.,\s-]+$/.test(v);
+  function brasaoOk(b) {
+    if (!b || typeof b !== 'object' || !Array.isArray(b.cores) || b.cores.length !== 2 || !b.cores.every(hexOk)) return null;
+    return { cores: b.cores.map(v => v.toLowerCase()), div: ['liso', 'partido', 'cortado', 'esquartelado', 'faixa'].includes(b.div) ? b.div : 'partido', f: caminhoOk(b.f) ? b.f : null, s: caminhoOk(b.s) ? b.s : null, fl: b.fl === true };
+  }
   // o que a Sede põe na cena do andar: as paredes, os móveis, as escadas, a Saída (no térreo) e, à noite, a luz de cada cômodo
-  function conteudoDoAndar(sc, x, andar) {
+  function conteudoDoAndar(sc, x, andar, br) {
     const S = L(), pl = x.pr.planta, c = sc.cell, walls = paredesDoAndar(pl, andar, c), tokens = [], lights = [];
     for (const m of andar.moveis.slice().sort((a, b) => (a.id === 'tapete' ? 0 : 1) - (b.id === 'tapete' ? 0 : 1))) {
       if (!Props.P[m.id]) continue;
       const t = Props.novo(sc, m.id, (m.x + M) * c, (m.y + M) * c, m.s, false);
       if (m.rot) t.rot = m.rot;
-      tokens.push(marcar(t));
+      tokens.push(marcar(vestir(t, br)));
     }
     for (const e of andar.escadas) {
       const t = Props.novo(sc, 'escada', (e.x + M) * c, (e.y + M) * c, 1, false);
@@ -198,7 +211,7 @@ const SedeCenas = (() => {
     }
     return pedacos.filter(([u0, u1]) => u1 - u0 > 1e-6).map(([u0, u1]) => [[a[0] + (b[0] - a[0]) * u0, a[1] + (b[1] - a[1]) * u0], [a[0] + (b[0] - a[0]) * u1, a[1] + (b[1] - a[1]) * u1]]);
   }
-  function conteudoDeFora(sc, sede, cla) {
+  function conteudoDeFora(sc, sede, cla, br) {
     const S = L(), c = sc.cell, walls = [], tokens = [], lights = [];
     const add = (x1, y1, x2, y2, k) => walls.push(marcar({ id: uid('wl'), k, x1: x1 * c, y1: y1 * c, x2: x2 * c, y2: y2 * c, open: false, locked: false }));
     const rnd = mulberry((hashStr(cla) ^ 0x1b873593) >>> 0 || 5);
@@ -219,6 +232,11 @@ const SedeCenas = (() => {
     const cortes = portoes.map(b => ({ x: b.x - 0.5, y: b.y - 0.5, w: b.w + 1, h: b.h + 1 }));
     for (const e of sede.estruturas) if (e.k === 'muralha') for (let k = 1; k < e.pts.length; k++) for (const [a, b] of cortar(e.pts[k - 1], e.pts[k], cortes)) add(a[0], a[1], b[0], b[1], 'wall');
     for (const b of portoes) { if (b.w >= b.h) add(b.x + 1, b.y + b.h / 2, b.x + b.w - 1, b.y + b.h / 2, 'door'); else add(b.x + b.w / 2, b.y + 1, b.x + b.w / 2, b.y + b.h - 1, 'door'); }
+    // (lote 39) os dois estandartes do clã, um de cada lado de cada portão (nas cores do brasão)
+    if (Props.P.estandarte) for (const b of portoes) {
+      const lados = b.w >= b.h ? [[b.x, Math.floor(b.y + b.h / 2 - 0.5)], [b.x + b.w - 1, Math.floor(b.y + b.h / 2 - 0.5)]] : [[Math.floor(b.x + b.w / 2 - 0.5), b.y], [Math.floor(b.x + b.w / 2 - 0.5), b.y + b.h - 1]];
+      for (const [i, j] of lados) if (i >= 0 && j >= 0 && i < sede.W && j < sede.H) tokens.push(marcar(vestir(Props.novo(sc, 'estandarte', i * c, j * c, 1, false), br)));
+    }
     // o poço e as plantas dos jardins
     for (const e of sede.estruturas) {
       if (e.k === 'poco' && Props.P.poco) tokens.push(marcar(Props.novo(sc, 'poco', e.x * c, e.y * c, 2, false)));
@@ -252,7 +270,7 @@ const SedeCenas = (() => {
     if (!S || !p || typeof p !== 'object') return null;
     const cla = idOk(p.cla);
     if (!cla) return null;
-    return { cla, nome: String(p.nome || '').replace(/\s+/g, ' ').trim().slice(0, 50) || 'o clã', sede: S.normSede(p.sede), ir: typeof p.ir === 'string' ? p.ir : 'fora' };
+    return { cla, nome: String(p.nome || '').replace(/\s+/g, ' ').trim().slice(0, 50) || 'o clã', sede: S.normSede(p.sede), ir: typeof p.ir === 'string' ? p.ir : 'fora', brasao: brasaoOk(p.brasao) };
   }
   // as cenas da sede: [{ id, nome, fora? , pr?, andar? }]
   function plano(p) {
@@ -270,13 +288,13 @@ const SedeCenas = (() => {
       sc.bgColor = paleta(S.terrenoDe(p.sede)).base;
       const res = Math.max(16, Math.min(64, Math.floor(Math.sqrt(11e6 / (p.sede.W * p.sede.H)))));
       try { const cv = pintarFora(p.sede, res, hashStr(p.cla)); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
-      trocar(sc, conteudoDeFora(sc, p.sede, p.cla));
+      trocar(sc, conteudoDeFora(sc, p.sede, p.cla, p.brasao));
     } else {
       const pl = x.pr.planta;
       sc.cols = pl.W + 2 * M; sc.rows = pl.H + 2 * M;
       sc.bgColor = '#16130f';
       try { const cv = pintarAndar(pl, x.andar, sc.cell, p.sede.estilo, hashStr(x.id)); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
-      trocar(sc, conteudoDoAndar(sc, x, x.andar));
+      trocar(sc, conteudoDoAndar(sc, x, x.andar, p.brasao));
     }
     normalizeScene(sc);
     return sc;

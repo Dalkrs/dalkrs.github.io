@@ -2289,6 +2289,13 @@ const UI = (() => {
           btn('', () => girar(90), { icon: 'redo', kind: 'small', id: 'pr-rot-r', title: 'Girar 90° para a direita' }),
           !many ? inNum('pr-rot', t.rot || 0, v => all({ rot: ((Math.round(v) % 360) + 360) % 360 }, 'Girar objeto'), { min: 0, max: 359, step: 15, label: 'Rotação em graus' }) : null)),
         field('Tamanho', seg('pr-size', many ? null : t.size, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => all(x => { const sc = Store.scene(), [nx, ny] = snapTok(sc, x.x, x.y, v, false); return { size: v, x: nx, y: ny }; }, 'Tamanho do objeto')))),
+      // (lote 39) as cores do objeto (o estandarte, o brasão, a mesa de guerra, o quadro de missões, o atril): na sede, as do clã
+      props.every(x => (Props.P[x.prop] || {}).cores) ? sec('s-propcor', 'Cores', true,
+        h('div', { class: 'grid2' },
+          field('Cor principal', inColor('pr-c1', Props.coresDe(t)[0], v => props.forEach(x => Store.upd('tokens', x.id, { cores: [v, Props.coresDe(x)[1]] })), 'Cor principal')),
+          field('Segunda cor', inColor('pr-c2', Props.coresDe(t)[1], v => props.forEach(x => Store.upd('tokens', x.id, { cores: [Props.coresDe(x)[0], v] })), 'Segunda cor'))),
+        props.some(x => Array.isArray(x.cores)) ? h('div', { class: 'row' }, btn('Voltar às cores de sempre', () => all({ cores: null }, 'Cores do objeto'), { kind: 'small', id: 'pr-cor-0' })) : null,
+        note(!many && t.bras ? 'Este veio da sede: as cores e o desenho são os do brasão do clã. Trocar aqui muda só este objeto.' : 'As duas cores do objeto. Os que vêm da sede do clã já chegam com as cores do brasão.')) : null,
       luz ? sec('s-propluz', 'Luz', true,
         toggle('pr-luz', luz.on, v => all({ light: Object.assign({}, luz, { on: v }) }, v ? 'Acender' : 'Apagar'), 'Acesa'),
         toggle('pr-fl', !!luz.fl, v => all({ light: Object.assign({}, luz, v ? { fl: true } : { fl: undefined }) }, 'Luz que tremula'), 'Tremula, como chama'),

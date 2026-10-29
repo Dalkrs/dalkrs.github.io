@@ -427,11 +427,19 @@ window.ClaSedeUI = function (kit) {
     }
     kit.pintar();
   }
+  // (lote 39) o brasão do clã, para os objetos da sede nas Cenas (o estandarte, o brasão na parede, o quadro, o atril): as
+  // duas cores, a divisão e os desenhos da forma e do símbolo (os caminhos, que lá não tem a lista dos símbolos)
+  function brasaoParaCenas(c) {
+    const N = window.ClaNucleo;
+    if (!N || !c) return null;
+    const b = N.normBrasao(c.brasao), f = (N.FORMAS || []).find(x => x.id === b.forma), sm = b.simb && N.SIMBOLOS ? N.SIMBOLOS.get(b.simb) : null;
+    return { cores: b.cores.slice(), div: b.div, f: f ? f.d : null, s: sm ? sm.d : null, fl: b.forma === 'flamula' };
+  }
   function verNasCenas(id, c, ir) {
     const s = sedeDe(id);
     if (!(window.TC && TC.ponte && TC.ponte.ir)) { toast('As Cenas abrem dentro do site.'); return; }
     if (!existe(id)) mudar(id, 'criar a sede', () => {});
-    TC.ponte.ir('cenas', { sede: { cla: id, nome: c.nome, sede: s, ir } });
+    TC.ponte.ir('cenas', { sede: { cla: id, nome: c.nome, sede: s, ir, brasao: brasaoParaCenas(c) } });
   }
 
   /* ================= quem joga: a planta, para ver ================= */

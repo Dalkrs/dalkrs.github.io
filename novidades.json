@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.29-5",
+      "data": "2026-10-29",
+      "titulo": "Objetos novos para as cenas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Trinta e dois objetos novos nas cenas: jaulas, grilhões, o trono de ossos e o caldeirão das masmorras; o brasão, a mesa de guerra, o quadro de missões, os troféus e o boneco de treino da sede do clã; o caixão, o cálice de sangue, as marcas de garra, o totem do lobo e o círculo de invocação das linhagens; e a barraca, a carroça, o bote e o saco de dormir de quem viaja."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas → Objetos (J): quatro grupos novos (Masmorra e chefe, Clã e sede, Linhagens, Viagem e acampamento), com oito objetos cada. O estandarte, o brasão na parede, a mesa de guerra, o quadro de missões e o atril têm duas cores, que você troca no painel do objeto (com Desfazer e “Voltar às cores de sempre”)."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Os lugares gerados a partir de agora usam os objetos novos: a sede do clã põe os estandartes no portão e o brasão, a mesa de guerra, os troféus e os bonecos de treino nos cômodos, nas cores do brasão do clã; as masmorras ganham jaulas, grilhões, alavancas, crânios, cofres e caixões; as arenas novas, os candelabros, o totem, os ídolos e o caldeirão; o acampamento abandonado, os sacos de dormir, a mochila e a lenha. O que já estava pronto não muda."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.29-4",
       "data": "2026-10-29",
       "titulo": "Onze arenas novas para as lutas contra chefes",

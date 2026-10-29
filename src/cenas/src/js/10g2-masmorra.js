@@ -512,6 +512,7 @@ const Masmorra = (() => {
       }
       encosta(C, q, 'armas', 2); noCanto(C, q, 'barril'); encosta(C, q, 'tocha', 1);
       if (C.r() < 0.5) noCanto(C, q, 'bau');
+      if (C.r() < 0.4) noCanto(C, q, 'jaula');          // (lote 39)
     },
     arsenal(C, q) { encosta(C, q, 'armas', Math.min(5, 2 + Math.floor(q.w * q.h / 12))); encosta(C, q, 'estante', 1, 2); noCanto(C, q, 'caixote'); noCanto(C, q, 'caixote'); },
     deposito(C, q) {
@@ -537,18 +538,21 @@ const Masmorra = (() => {
         }
       }
       if (C.r() < 0.6) noCanto(C, q, 'estatua');
+      if (C.r() < 0.3) noCanto(C, q, 'caldeirao');          // (lote 39)
     },
     poco(C, q) { C.poe('poco', Math.floor(q.x + q.w / 2), Math.floor(q.y + q.h / 2)); noCanto(C, q, 'barril'); if (C.r() < 0.5) noCanto(C, q, 'jarro'); },
     vazia(C, q) {
       for (let k = 0, n = 1 + Math.floor(C.r() * 2); k < n; k++) C.pinta('entulho', { x: q.x + C.ent(0.8, q.w - 0.8), y: q.y + C.ent(0.8, q.h - 0.8), r: C.ent(0.6, 1.2) });
       if (C.r() < 0.6) C.pinta('ossos', { x: q.x + C.ent(0.8, q.w - 0.8), y: q.y + C.ent(0.8, q.h - 0.8), n: 3 });
       if (C.r() < 0.5) noCanto(C, q, 'caixote');
+      if (C.r() < 0.2) noCanto(C, q, 'cranios');          // (lote 39)
     },
     tesouro(C, q) {
       let n = 0;
       for (let t = 0; t < 8 && n < 3; t++) { const lado = C.pick(['n', 's', 'o', 'l']), e = naBeira(C, q, lado, 1); if (e && C.poe('bau', e[0], e[1], 1, ROT_FRENTE[OPOSTO[lado]])) n++; }
       noCanto(C, q, 'jarro'); noCanto(C, q, 'jarro');
       if (C.r() < 0.6) noCanto(C, q, 'estatua');
+      if (C.r() < 0.4) noCanto(C, q, 'cofre');          // (lote 39)
       C.pinta('moedas', { x: q.x + q.w / 2, y: q.y + q.h / 2, r: Math.min(q.w, q.h) * 0.3 });
     },
     celas(C, q) {
@@ -571,7 +575,8 @@ const Masmorra = (() => {
         for (let u = a; u < b; u++) for (let v = 0; v < d; v++) { const dd = S === 'n' || S === 'o' ? fundo + v : fundo - 1 - v; dentro.push(horiz ? [u, dd] : [dd, u]); }
         const noFundo = dentro.filter(([i, j]) => (horiz ? Math.abs(j - fundo) : Math.abs(i - fundo)) <= 1 && (S === 'n' || S === 'o' ? true : (horiz ? j === fundo - 1 : i === fundo - 1)));
         const e = noFundo[Math.floor(C.r() * noFundo.length) % Math.max(1, noFundo.length)];
-        if (e) { if (C.r() < 0.55) C.poe('pele', e[0], e[1]); else C.pinta('ossos', { x: e[0] + 0.5, y: e[1] + 0.5, n: 2 }); }
+        // (lote 39) às vezes, os grilhões na parede do fundo
+        if (e) { const r0 = C.r(); if (r0 < 0.3) C.poe('grilhoes', e[0], e[1], 1, ROT_FRENTE[OPOSTO[S]]); else if (r0 < 0.65) C.poe('pele', e[0], e[1]); else C.pinta('ossos', { x: e[0] + 0.5, y: e[1] + 0.5, n: 2 }); }
         C.pinta('correntes', { x: horiz ? (a + b) / 2 : fundo, y: horiz ? fundo : (a + b) / 2, lado: S });
         for (const [i, j] of dentro) C.ocupa(i, j, 1, 1);
         // (a frente da portinhola, do lado do corredor, fica livre)
@@ -580,6 +585,7 @@ const Masmorra = (() => {
       }
       encosta(C, q, 'tocha', 1);
       if (C.r() < 0.6) noCanto(C, q, 'mesa') || noCanto(C, q, 'banco');
+      if (C.r() < 0.5) encosta(C, q, 'alavanca', 1);          // (lote 39: a alavanca que abre as celas)
     },
     // ---- a cripta ----
     jazigo(C, q) {
@@ -603,7 +609,7 @@ const Masmorra = (() => {
       // os ossos empilhados ao longo das paredes, as caveiras arrumadas; uma vela
       for (const lado of ['n', 's', 'o', 'l']) for (const [i, j] of beira(q, lado, true)) if (C.livre(i, j) && C.r() < 0.6) { C.pinta('ossos', { x: i + 0.5, y: j + 0.5, n: 4, pilha: true }); C.ocupa(i, j, 1, 1); }
       if (q.w >= 5 && q.h >= 5) C.pinta('ossos', { x: q.x + q.w / 2, y: q.y + q.h / 2, n: 7, pilha: true });
-      noCanto(C, q, 'vela');
+      noCanto(C, q, 'vela'); noCanto(C, q, 'cranios');          // (lote 39: a pilha de crânios)
     },
     sarcofagos(C, q) {
       // em fileiras, de uma casa por duas, com o corredor do meio livre
@@ -622,7 +628,7 @@ const Masmorra = (() => {
       }
       noCanto(C, q, 'vela');
     },
-    nichos(C, q) { nichosDaSala(C, q, 0.7); if (C.r() < 0.5) C.pinta('ossos', { x: q.x + q.w / 2, y: q.y + q.h / 2, n: 3 }); },
+    nichos(C, q) { nichosDaSala(C, q, 0.7); if (C.r() < 0.5) C.pinta('ossos', { x: q.x + q.w / 2, y: q.y + q.h / 2, n: 3 }); if (C.r() < 0.5) encosta(C, q, 'caixao', 1, 2); },          // (lote 39: o caixão)
     // ---- (lote 28) o templo ----
     nave(C, q) {
       // o altar no estrado do fundo, entre os braseiros; as duas fileiras de colunas; os bancos de frente para o altar,
@@ -679,6 +685,7 @@ const Masmorra = (() => {
       C.pinta('fogueiraApagada', { x: q.x + q.w / 2, y: q.y + q.h / 2 });
       C.ocupa(Math.floor(q.x + q.w / 2), Math.floor(q.y + q.h / 2), 1, 1);
       encosta(C, q, 'pele', 2); noCanto(C, q, 'caixote'); noCanto(C, q, 'bau'); encosta(C, q, 'lampiao', 1);
+      encosta(C, q, 'sacoDormir', 1); if (C.r() < 0.6) noCanto(C, q, 'mochila');          // (lote 39)
     },
     // ---- (lote 28) a torre de mago ----
     circulo(C, q) {
@@ -1597,7 +1604,8 @@ const Masmorra = (() => {
       // a cripta: o sarcófago do conde no estrado, o tapete vinho, os caixões em fileiras, a poça de sangue no meio
       const s = salaReta(), est = estradoChefe(cx - 2, s.y0, 4, 2, 1.5);
       C.pinta('sarcofago', { x: cx - 1, y: est.y + 0.2, w: 2, h: 1.6, grande: true, sangue: true });
-      for (const i of [est.x - 1, est.x + est.w]) C.poe('vela', i, est.y);
+      for (const i of [est.x - 1, est.x + est.w]) C.poe('candelabro', i, est.y);          // (lote 39: os candelabros e o cálice)
+      C.poe('calice', est.x - 1, est.y + 1);
       C.pinta('tapete', { x: cx - 1, y: est.y + est.h, w: 2, h: s.y1 - est.y - est.h + 1, cor: '#5a0f1c' });
       pt.caixoes = [];
       for (let j = s.y0 + 3; j <= s.y1 - 2; j += 3) for (const i of [s.x0 + 1, s.x1 - 2]) {
@@ -1621,6 +1629,8 @@ const Masmorra = (() => {
       entradaEmbaixo(Math.ceil(yc + R) - 1, 3);
       const est = estradoChefe(cx - 2, yc - R + 1.4, 4, 2, 2);
       C.pinta('entulho', { x: cx - 2.5, y: est.y + 1, r: 0.9 }); C.pinta('entulho', { x: cx + 2.5, y: est.y + 1.2, r: 0.8 });
+      C.poe('totemLobo', est.x + est.w, est.y + 1);          // (lote 39: o totem do lobo, as ossadas e as marcas de garra)
+      for (let k = 0, n = 0; k < 60 && n < 4; k++) { const an = C.ent(0, TAU), d = C.ent(R * 0.3, R * 0.7), i = Math.floor(cx + Math.cos(an) * d), j = Math.floor(yc + Math.sin(an) * d); if (j > yc + R * 0.5) continue; if (C.poe(n < 2 ? 'ossada' : 'garras', i, j, 1, Math.floor(C.ent(0, 4)) * 90)) n++; }
       C.pinta('luar', { x: cx, y: yc + 0.5, r: R * 0.55 });
       C.pinta('floresta', { cx, cy: yc, r: R });
       for (let k = 0; k < 9; k++) {
@@ -1653,7 +1663,7 @@ const Masmorra = (() => {
       C.pinta('portalInferno', { x: fx + 0.5 - 0.5, y: my + 0.5, r: 1.6 });
       p.zonas.push({ fx: 'portal', k: 'circ', x: fx, y: my + 0.5, r: 1.5, gm: true }); a.perigos.push('o portal (escondido)');
       pt.portal = [[fx - 2, my + 0.5], [fx + 2, my + 0.5], [fx, my + 2.5]];
-      for (const q of [pl, pr]) C.poe('braseiro', Math.floor((q[0] + q[2]) / 2), q[1]);
+      for (const q of [pl, pr]) { C.poe('braseiro', Math.floor((q[0] + q[2]) / 2), q[1]); C.poe('idolo', q === pl ? q[0] : q[2], q[3]); }          // (lote 39: os ídolos)
       perigo('chamasNegras', (pl[0] + pl[2]) / 2 + 0.5, my + 0.5, 1); perigo('chamasNegras', (pr[0] + pr[2]) / 2 + 0.5, my + 0.5, 1);
       for (const [x, y] of [[cx - 7, cy + 4], [cx + 7, cy - 4], [cx - 7, cy - 5], [cx + 7, cy + 5]]) luz(x, y, '#ff7a2a', 8, 3);
       a.reforcos.push(...pt.portal);          // (os diabretes saem do portal)
@@ -1683,6 +1693,7 @@ const Masmorra = (() => {
       C.pinta('ninho', { x: cx, y: est.y + 1, r: 2, ratos: true });
       C.pinta('ossos', { x: cx - 1.4, y: est.y + 0.7, n: 4, pilha: true }); C.pinta('moedas', { x: cx + 1.2, y: est.y + 1.2, r: 0.7 });
       for (const i of [est.x - 1, est.x + est.w]) C.poe('tocha', i, est.y);
+      C.poe('cranios', est.x - 1, est.y + 1);          // (lote 39)
       for (let k = 0, n = 0; k < 200 && n < 6; k++) {
         const i = Math.floor(cx + C.ent(-rx * 0.85, rx * 0.85)), j = Math.floor(cy + C.ent(-ry * 0.5, ry * 0.15));
         if (!C.livre(i, j)) continue;
@@ -1799,7 +1810,7 @@ const Masmorra = (() => {
       entradaEmbaixo(Math.ceil(cy + ry) - 1, 2);
       const est = estradoChefe(cx - 1.5, c[0][1] - 1.5, 3, 2, 1);
       C.pinta('cabana', { x: cx, y: est.y + 0.9, w: 3.2, h: 2.2 });
-      C.pinta('caldeirao', { x: cx + 2.6, y: c[0][1] + 0.6, r: 0.6 }); C.ocupa(Math.floor(cx + 2.6), Math.floor(c[0][1] + 0.6), 1);
+      C.poe('caldeirao', Math.floor(cx + 2.6), Math.floor(c[0][1] + 0.6)) || C.pinta('caldeirao', { x: cx + 2.6, y: c[0][1] + 0.6, r: 0.6 });          // (lote 39: o caldeirão de verdade, que borbulha)
       for (const [x, y] of [[c[2][0] - 1, c[2][1] - 1], [c[3][0] + 1, c[3][1] - 1], [cx - 3, c[0][1] + 1]]) C.pinta('raizes', { x, y, n: 5, ang: C.ent(0, TAU) });
       C.pinta('cogumelos', { x: c[2][0] + 0.8, y: c[2][1] + 0.6, r: 0.8, cor: '#9fdc6a' }); C.pinta('cogumelos', { x: c[3][0] - 0.6, y: c[3][1] + 0.8, r: 0.7, cor: '#c08af0' });
       perigo('pantano', c[2][0], c[2][1] + 1.4, 1.1); perigo('pantano', c[3][0], c[3][1] + 1.4, 1.1);
