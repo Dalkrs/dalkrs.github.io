@@ -121,7 +121,7 @@ const ArvoreMesa = (() => {
         sombra.bib = jb;
         D.gravar('arvore:biblioteca', { dados: JSON.parse(jb), vis: 'mestre' });
         clearTimeout(publicar);
-        publicar = setTimeout(publicarPacote, 1200);
+        publicar = setTimeout(publicarPacote, 4000);      // (lote 35: 4 s depois da última mudança — o pacote tem uns 2,6 MB e vai para cada jogador)
       }
     }
     const vistos = new Set();

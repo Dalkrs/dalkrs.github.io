@@ -634,7 +634,9 @@
     relogio = setInterval(() => {
       volta++;
       if (!aoVivo.conectado || volta % 10 === 0) { buscarNovos(); dadosBuscar(); }
-      if (volta % 3 === 0) dadosConferir();
+      // (lote 35) a conferência do que deixou de ser visível lê a mesa inteira com as regras do banco: a cada 45 s com o
+      // tempo real (antes, a cada 9 s), a cada 15 s sem ele
+      if (volta % (aoVivo.conectado ? 15 : 5) === 0) dadosConferir();
       if (volta % 8 === 0) presenca();
       else if (!aoVivo.conectado && volta % 2 === 0) recarregarMembros();   // sem tempo real, quem entrou aparece em poucos segundos
     }, 3000);
@@ -1331,6 +1333,7 @@
   /* A linha sobe `ms` depois da mudança — ou antes, se já estava marcada para antes. Uma mudança nova nunca adia a
      subida que já estava marcada: com várias pessoas mexendo ao mesmo tempo (as cenas), a espera que recomeçasse a
      cada mudança deixaria a linha parada até todo mundo dar uma pausa. */
+  const DOCS_GRANDES = /^arvore:(biblioteca|pacote)(@|$)/;
   function agendar(c, id, ms) {
     const ate = performance.now() + ms, ja = c.prazo.get(id);
     if (c.tempo.has(id) && ja != null && ja <= ate) return;
@@ -1570,7 +1573,10 @@
     }
     /* opt.pressa: o que os outros esperam ver na hora (a cena no ar, o pedido de um jogador) sobe quase em seguida;
        o resto espera meio segundo, para juntar numa gravação só o que muda em sequência (quem digita, por exemplo). */
-    const pressa = opt && typeof opt.pressa === 'number' && opt.pressa >= 0 ? Math.min(opt.pressa, 500) : 500;
+    // (lote 35) os documentos grandes (a biblioteca das árvores e o pacote dos jogadores: uns 2,6 MB cada) juntam as
+    // mudanças por 2 s: cada gravação deles reescreve a linha inteira no banco e vai para todos
+    const grande = nome === 'documentos' && DOCS_GRANDES.test(String(id));
+    const pressa = opt && typeof opt.pressa === 'number' && opt.pressa >= 0 ? Math.min(opt.pressa, 500) : (grande ? 2000 : 500);
     agendar(c, id, pressa);
     contarPendentes();
     return l;

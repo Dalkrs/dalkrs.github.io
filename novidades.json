@@ -2,6 +2,22 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.29-1",
+      "data": "2026-10-29",
+      "titulo": "A mesa mais leve para o banco",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "A mesa confere com menos frequência o que deixou de estar à vista (a cada 45 segundos, com o tempo real ligado): menos leituras no banco, sem mudar o que cada um vê."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Oficina: as mudanças na biblioteca das árvores juntam por 2 segundos antes de subir, e o pacote dos jogadores sai 4 segundos depois da última mudança — a biblioteca tem uns 2,6 MB e cada gravação ia inteira para o banco e para cada jogador."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.28-9",
       "data": "2026-10-28",
       "titulo": "As barras de raça e classe viram barras comuns",
