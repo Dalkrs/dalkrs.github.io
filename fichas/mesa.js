@@ -257,6 +257,14 @@ const FichasMesa = (() => {
         guardarTela(); redesenhar();
         return;
       }
+      // (lote 37) a corrupção de um personagem (fichas:corr:<id>): só chega ao dono dele e a quem mestra
+      if (/^fichas:corr:/.test(l0.id || '')) {
+        const jv = l0.apagado || !l0.dados ? undefined : j(l0.dados);
+        if ((sombra.corr || (sombra.corr = {}))[l0.id] === jv) return;
+        sombra.corr[l0.id] = jv;
+        redesenhar();
+        return;
+      }
       // (lote 16) a caixinha dos grupos (do mundo ou de uma campanha): quem escreve é o banco; aqui, só se mostra
       if (/^fichas:caixa(@|$)/.test(l0.id || '')) {
         const jv = l0.apagado || !l0.dados ? undefined : j(l0.dados);
@@ -741,7 +749,23 @@ const FichasMesa = (() => {
     save();
     return Promise.resolve({ ok: true });
   }
-  return { caixaDoGrupo, mexeNaCaixa, caixaSemFicha, moverCaixa, levarCaixa, nomeDoGrupo,
+  /* (lote 37) A corrupção do personagem: numa mesa, o documento fichas:corr:<id> — só quem mestra escreve; o dono do
+     personagem é o dono do documento, e por isso só ele e quem mestra o recebem (ver tc/corrupcao.js); fora de uma
+     mesa, na própria ficha (pc.corr). */
+  function corrDe(pc) {
+    if (!pc) return null;
+    if (!ativo) return pc.corr && typeof pc.corr === 'object' ? pc.corr : null;
+    const l = D.pegar('fichas:corr:' + pc.id);
+    return l && !l.apagado && l.dados && typeof l.dados === 'object' ? l.dados : null;
+  }
+  function gravarCorr(pc, conf) {
+    if (!pc) return;
+    if (!ativo) { if (conf) pc.corr = conf; else delete pc.corr; return; }
+    const id = 'fichas:corr:' + pc.id, l = D.pegar(id);
+    if (!conf) { if (l && !l.apagado) D.apagar(id); return; }
+    D.gravar(id, { dados: conf, vis: 'mestre', dono_id: pc._dono || null });
+  }
+  return { corrDe, gravarCorr, caixaDoGrupo, mexeNaCaixa, caixaSemFicha, moverCaixa, levarCaixa, nomeDoGrupo,
     preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, calendario, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha, lugarNaFicha,
     ehNpc, segDe, porSeg, mexerRel, relsDe, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
     campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza,

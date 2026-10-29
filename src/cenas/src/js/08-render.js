@@ -339,6 +339,9 @@ const Render = (() => {
     const dead = t.conds.includes('morto');
     c.save();
     if (t.hidden) c.globalAlpha = 0.5;
+    // (lote 37) a aura da corrupção: só quem recebe a corrupção do personagem (o dono e quem mestra) a vê
+    const corr = !dead && typeof Fichas !== 'undefined' && Fichas.corrDoTok ? Fichas.corrDoTok(t) : null;
+    if (corr) auraDaCorrupcao(c, t, cx, cy, r, corr, px);
     c.fillStyle = 'rgba(0,0,0,0.38)';
     tokPath(c, t.shape, cx, cy + s * 0.04, r * 1.03); c.fill();
     c.save();
@@ -377,6 +380,23 @@ const Render = (() => {
       c.strokeStyle = 'rgba(214,52,46,0.85)'; c.lineWidth = s * 0.09; c.lineCap = 'round';
       const k = r * 0.6;
       c.beginPath(); c.moveTo(cx - k, cy - k); c.lineTo(cx + k, cy + k); c.moveTo(cx + k, cy - k); c.lineTo(cx - k, cy + k); c.stroke();
+    }
+    c.restore();
+  }
+
+  /* (lote 37) A aura da corrupção: um halo da cor do tipo (vinho, âmbar, brasa), que cresce com o estágio; do 3 em
+     diante, um aro aceso rente ao token. Discreta: fica por baixo do token e não pisca. */
+  function auraDaCorrupcao(c, t, cx, cy, r, k, px) {
+    const ext = r * (1.3 + k.n * 0.1), a = 0.2 + k.n * 0.09;
+    c.save();
+    const g = c.createRadialGradient(cx, cy, r, cx, cy, ext);
+    g.addColorStop(0, hexA(k.cor, a)); g.addColorStop(0.45, hexA(k.cor, a * 0.45)); g.addColorStop(1, hexA(k.cor, 0));
+    c.fillStyle = g; c.beginPath(); c.arc(cx, cy, ext, 0, TAU); c.fill();
+    if (k.n >= 2) {
+      tokPath(c, t.shape, cx, cy, r * 1.14);
+      c.lineWidth = Math.max(1.2 * px, r * (0.025 + k.n * 0.008)); c.strokeStyle = hexA(k.cor, 0.35 + k.n * 0.1);
+      c.shadowColor = k.cor; c.shadowBlur = (4 + k.n * 2) * px;
+      c.stroke();
     }
     c.restore();
   }

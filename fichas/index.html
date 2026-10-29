@@ -1303,6 +1303,91 @@ html:not(.modo-simples) .so-simples{display:none!important}
 .cria-aviso.esp{border-color:var(--line);background:var(--campo-sut)}
 .cria-aviso.conf{border-color:var(--teal-borda);background:var(--teal-fundo)}
 .cria-aviso button{padding:9px 16px;font-size:14.5px}
+
+/* (lote 37) A corrupção: o painel lilás de quem mestra, a etiqueta no resumo, o efeito (no resumo, no retrato e, nos
+   estágios 4 e 5, na ficha inteira) e o pulso de quando o estágio sobe. Os desenhos ficam por baixo do conteúdo. */
+.corr-barra{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;padding:9px 12px;margin-bottom:10px;border-radius:12px;border:1px dashed rgba(179,156,240,.5);background:rgba(150,120,240,.08)}
+.corr-so{padding:2px 8px;border-radius:999px;border:1px solid rgba(179,156,240,.45);color:#b39cf0;background:rgba(150,120,240,.14);font:700 11px var(--ui)}
+:root[data-claro] .corr-so{color:#5b3fb5}
+.corr-tit{font:600 14px var(--ui)}
+.corr-seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--campo-sut)}
+.corr-seg button{border:0;background:transparent;padding:5px 11px;font:600 12.5px var(--ui);color:var(--ink-2);cursor:pointer}
+.corr-seg button+button{border-left:1px solid var(--line)}
+.corr-seg button[aria-checked="true"]{background:var(--panel);color:var(--ink);box-shadow:inset 0 -2px 0 var(--corr,#b39cf0)}
+.corr-barra.corr-vamp{--corr:#b3122e} .corr-barra.corr-lica{--corr:#d08a3a} .corr-barra.corr-demo{--corr:#ff6a1a}
+.corr-arv select{max-width:240px}
+.corr-dir{display:flex;align-items:center;gap:10px;margin-left:auto}
+.corr-est{display:grid;gap:1px;text-align:right;line-height:1.25}
+.corr-est b{font:600 14px var(--ui)} .corr-est b small{font-weight:400;color:var(--ink-soft)}
+.corr-est span,.corr-dica{font-size:12px;color:var(--ink-soft)}
+.corr-dica{margin-left:auto}
+.corr-pm{display:inline-flex;gap:4px}
+.corr-chip{display:inline-flex;align-items:center;gap:5px;margin-left:8px;padding:1px 9px;border-radius:999px;font:600 11.5px var(--ui);border:1px solid var(--corr);color:var(--corr);background:color-mix(in srgb,var(--corr) 12%,transparent)}
+.corr-chip small{font-weight:400;opacity:.8}
+.corr-chip.corr-vamp{--corr:#e0405a} .corr-chip.corr-lica{--corr:#e0a050} .corr-chip.corr-demo{--corr:#ff7a2e}
+:root[data-claro] .corr-chip.corr-vamp{--corr:#8e1024} :root[data-claro] .corr-chip.corr-lica{--corr:#8a4f12} :root[data-claro] .corr-chip.corr-demo{--corr:#b03e00}
+.cfg.corr-cortes td{padding:2px 3px}
+/* o resumo: o desenho por baixo, o conteúdo por cima */
+#ficha[class*="corr-e"] .resumo{position:relative;isolation:isolate}
+#ficha[class*="corr-e"] .resumo>:not(.corr-fx){position:relative;z-index:1}
+.corr-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible}
+/* vampírica: as veias de sangue escuro, com o brilho carmesim; a borda vai tingindo */
+.corr-vamp .corr-fx .cv{fill:none;stroke:#5a0f1c;stroke-width:2.2;stroke-linecap:round;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 3px #b3122e)}
+.corr-vamp.corr-e1 .resumo{border-color:rgba(179,18,46,.35)}
+.corr-vamp.corr-e2 .resumo{border-color:rgba(179,18,46,.5)}
+.corr-vamp.corr-e3 .resumo{border-color:#8e1024;box-shadow:0 0 0 1px rgba(179,18,46,.35),0 0 18px rgba(179,18,46,.18)}
+.corr-vamp.corr-e4 .resumo,.corr-vamp.corr-e5 .resumo{border:2px solid #b3122e;box-shadow:0 0 0 1px rgba(179,18,46,.4),0 0 26px rgba(179,18,46,.3)}
+.corr-vamp.corr-e5 .corr-fx{animation:corrPulso 4.5s ease-in-out infinite}
+.corr-vamp.corr-e5 #f_nome{text-shadow:0 2px 10px rgba(179,18,46,.7)}
+/* licantropa: as garras rasgando a borda, o pelo, o âmbar da lua */
+.corr-lica .corr-fx .cg-f{stroke:var(--panel);stroke-width:7;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.corr-lica .corr-fx .cg{stroke:#a0561e;stroke-width:3;stroke-linecap:round;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 2px rgba(224,160,80,.6))}
+.corr-lica .corr-fx .cp{fill:#a0561e;opacity:.35}
+.corr-lica.corr-e1 .resumo{border-color:rgba(208,138,58,.35)}
+.corr-lica.corr-e2 .resumo{border-color:rgba(208,138,58,.5)}
+.corr-lica.corr-e3 .resumo{border-color:#a0561e;box-shadow:0 0 18px rgba(208,138,58,.16)}
+.corr-lica.corr-e4 .resumo,.corr-lica.corr-e5 .resumo{border:2px solid #b8692a;clip-path:polygon(0 0,100% 0,100% 14%,98% 22%,100% 32%,97.6% 45%,99.4% 57%,97.2% 70%,100% 84%,98% 100%,0 100%)}
+.corr-lica.corr-e5 .resumo{clip-path:polygon(0 0,100% 0,100% 14%,98% 22%,100% 32%,97.6% 45%,99.4% 57%,97.2% 70%,100% 84%,98% 100%,2% 100%,0 90%,1.8% 76%,0 62%,2.2% 46%,0 32%,1.4% 18%,0 14%);background-image:radial-gradient(circle at 22% 12%,rgba(246,224,94,.12),transparent 28%)}
+/* demoníaca: as rachaduras incandescentes, as brasas, as runas; o fundo vira carvão */
+.corr-demo .corr-fx .cr{fill:none;stroke:#ff6a1a;stroke-width:2;stroke-linejoin:round;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 4px #ff6a1a)}
+.corr-demo .corr-fx .cb{fill:#ffb347;animation:corrBrasa 3.4s ease-in infinite}
+.corr-demo .corr-fx .cu{fill:none;stroke:#c0391b;stroke-width:1.4;vector-effect:non-scaling-stroke;opacity:.75;filter:drop-shadow(0 0 2px #ff6a1a)}
+.corr-demo.corr-e1 .resumo{border-color:rgba(255,106,26,.3)}
+.corr-demo.corr-e2 .resumo{border-color:rgba(255,106,26,.45)}
+.corr-demo.corr-e3 .resumo{border-color:#c0391b;box-shadow:0 0 18px rgba(255,106,26,.16)}
+.corr-demo.corr-e4 .resumo,.corr-demo.corr-e5 .resumo{border:2px solid #ff6a1a;background-image:linear-gradient(180deg,rgba(8,4,2,.35),rgba(40,10,2,.25));box-shadow:0 0 28px rgba(255,106,26,.25)}
+.corr-demo.corr-e5 .corr-fx .cr{animation:corrBrilho 2.6s ease-in-out infinite}
+/* a ficha inteira, nos estágios 4 e 5: as bordas de todos os painéis no tom da corrupção */
+#ficha.corr-tomada .panel{border-color:color-mix(in srgb,var(--corr-t) 45%,var(--line))}
+#ficha.corr-tomada.corr-vamp{--corr-t:#b3122e} #ficha.corr-tomada.corr-lica{--corr-t:#b8692a} #ficha.corr-tomada.corr-demo{--corr-t:#ff6a1a}
+#ficha.corr-tomada.corr-e5 .abasficha{box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--corr-t) 60%,transparent)}
+/* o retrato */
+.retrato .quadro.corr-q{position:relative;border-width:2px}
+.retrato .quadro.corr-q::after{content:"";position:absolute;inset:0;pointer-events:none}
+.retrato .quadro.corr-vamp{border-color:#8e1024}
+.retrato .quadro.corr-vamp img{filter:saturate(calc(1 - var(--k,.2))) brightness(calc(1.04 - var(--k,.2) * .2)) contrast(1.05)}
+.retrato .quadro.corr-vamp::after{background:radial-gradient(circle at 50% 120%,rgba(90,15,28,.55),transparent 60%);opacity:var(--k,.2)}
+.retrato .quadro.corr-lica{border-color:#a0561e}
+.retrato .quadro.corr-lica img{filter:sepia(calc(var(--k,.2) * .7)) saturate(1.1)}
+.retrato .quadro.corr-lica::after{background:radial-gradient(circle at 50% 0,rgba(246,224,94,.25),transparent 55%);opacity:var(--k,.2)}
+.retrato .quadro.corr-demo{border-color:#ff6a1a}
+.retrato .quadro.corr-demo img{filter:contrast(1.08) brightness(calc(1 - var(--k,.2) * .25))}
+.retrato .quadro.corr-demo::after{background:linear-gradient(0deg,rgba(255,106,26,.55),transparent 55%);opacity:var(--k,.2)}
+.retrato .quadro.corr-e1{--k:.2} .retrato .quadro.corr-e2{--k:.35} .retrato .quadro.corr-e3{--k:.55} .retrato .quadro.corr-e4{--k:.75} .retrato .quadro.corr-e5{--k:.95}
+.retrato .quadro.corr-e4,.retrato .quadro.corr-e5{box-shadow:0 0 14px color-mix(in srgb,var(--corr-q,#b3122e) 60%,transparent)}
+.retrato .quadro.corr-vamp{--corr-q:#b3122e} .retrato .quadro.corr-lica{--corr-q:#e0a050} .retrato .quadro.corr-demo{--corr-q:#ff6a1a}
+/* os olhos (no retrato sem imagem, a partir do estágio 3) */
+.retrato .quadro.corr-q .olhos{position:absolute;left:50%;top:38%;width:40px;margin-left:-20px;display:flex;justify-content:space-between;pointer-events:none}
+.retrato .quadro.corr-q .olhos i{position:relative;width:5px;height:5px;border-radius:50%;background:var(--corr-q);box-shadow:0 0 8px var(--corr-q)}
+.retrato .quadro.corr-vamp .olhos i:last-child::after{content:"";position:absolute;margin:7px 0 0 2px;width:1.5px;height:10px;border-radius:0 0 2px 2px;background:#b3122e;opacity:.8}
+/* quando o estágio sobe */
+.resumo.corr-sobe{animation:corrSobe 2.2s ease-out}
+#ficha.corr-vamp .resumo.corr-sobe{--corr-s:#b3122e} #ficha.corr-lica .resumo.corr-sobe{--corr-s:#e0a050} #ficha.corr-demo .resumo.corr-sobe{--corr-s:#ff6a1a}
+@keyframes corrSobe{0%{box-shadow:0 0 0 0 var(--corr-s)}25%{box-shadow:0 0 0 6px color-mix(in srgb,var(--corr-s) 55%,transparent),0 0 40px var(--corr-s)}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes corrPulso{0%,100%{opacity:.75}50%{opacity:1}}
+@keyframes corrBrasa{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-60px);opacity:0}}
+@keyframes corrBrilho{0%,100%{opacity:.8}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.corr-fx,.corr-fx *,.resumo.corr-sobe{animation:none!important}}
 </style>
 </head>
 <body>
@@ -1368,11 +1453,13 @@ html:not(.modo-simples) .so-simples{display:none!important}
 <script src="../tc/rules.js?v=26"></script>
 <script src="../tc/barras.js?v=1"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="mesa.js?v=14"></script>
+<script src="mesa.js?v=15"></script>
 <script src="extras.js?v=19"></script>
 <script src="quadros.js?v=5"></script>
 <script src="filtro-skills.js?v=2"></script>
 <script src="criacao.js?v=3"></script>
+<script src="../tc/corrupcao.js?v=1"></script>
+<script src="corrupcao.js?v=1"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -2357,6 +2444,7 @@ function renderFicha(){
   const parte=(k,html)=>`<div class="abaficha" id="abafichac-${k}" data-abafichac="${k}" role="tabpanel" aria-labelledby="abaficha-${k}"${aba===k?'':' hidden'}>${html}</div>`;
   host.innerHTML=`
   ${FichasCriacao.htmlAviso(pc)}
+  ${FichasCorr.htmlBarra(pc)}
   ${htmlResumo(pc,c)}
   ${htmlAbasFicha(pc,aba)}
   ${parte('atributos', `
@@ -2569,6 +2657,7 @@ function renderFicha(){
   ${parte('notas', htmlAbaNotas(pc))}
   `;
   ligarFicha(pc);
+  FichasCorr.aplicar(host, pc);          // (lote 37) a corrupção: o painel do mestre, o efeito e o retrato
 }
 /* (lote 15) O Estaque escondido: o mestre marca, ficha por ficha, e quem não mestra deixa de ver a aba (o texto nem
    chega: mora com o mestre, no documento dos segredos — ver FichasMesa). A marca só aparece numa mesa, para o mestre,
@@ -2696,6 +2785,7 @@ function htmlResumo(pc,c){
     <div class="hd">
       <span class="eyebrow">${pc.petDe?'Ficha de pet':'Ficha'}</span>
       <span class="mono so-completo" style="font-size:11.5px;color:var(--ink-soft);margin-left:6px">${c.total.toFixed(2)} pts${FichasMesa.deJogador(pc) && c.mult===1 ? '' : ' · ×'+c.mult}</span>
+      ${FichasCorr.htmlEtiqueta(pc)}
       ${pc.petDe?`<span class="petde">${PATA_SVG} pet de <button type="button" class="linkbtn" data-abrirpc="${esc(pc.petDe)}" title="Abrir a ficha do dono">${esc(FichasMesa.nomeDoPetDe(pc))}</button></span>`:''}
       <span style="margin-left:auto;display:flex;gap:6px">
         ${!pc.petDe && FichasMesa.podeEditar(pc)?`<button class="mini" data-act="addpet" title="Uma ficha suplementar para o animal ou companheiro de ${esc(pc.nome||'este personagem')}: atributos à mão, barras e habilidades, sem bolsa. Quem controla ${esc(pc.nome||'o personagem')} controla o pet.">+ Pet</button>`:''}
@@ -4626,6 +4716,7 @@ function abrirCfg(){
           <button class="mini" id="addLvl" style="margin-top:6px">+ Level</button>
           <button class="mini" id="resetLvl" style="margin-top:6px">Restaurar padrão</button>
         </div>
+        ${FichasCorr.htmlCortes()}
       </div>
     </div></div>`;
   document.body.appendChild(m);
@@ -4638,6 +4729,7 @@ function abrirCfg(){
   m.querySelector('#addTier').onclick=()=>{S.cfg.tiersPersonagem.push({t:'X',m:1});save();m.remove();abrirCfg()};
   m.querySelectorAll('[data-cp]').forEach(i=>i.onchange=e=>{S.cfg.pct[e.target.dataset.cp]=+e.target.value||0;save();m.remove();abrirCfg()});
   m.querySelector('#cfgArred').onchange=e=>{S.cfg.arredondar=e.target.value;save()};
+  FichasCorr.ligarCortes(m);
   m.querySelectorAll('[data-cn]').forEach(i=>i.onchange=e=>{S.cfg.niveis[+e.target.dataset.cn].pts=+e.target.value||0;save()});
   m.querySelector('#addLvl').onclick=()=>{
     const last=S.cfg.niveis[S.cfg.niveis.length-1]||{lvl:0,pts:37};

@@ -2,6 +2,22 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.29-3",
+      "data": "2026-10-29",
+      "titulo": "A corrupção das fichas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "A corrupção: um personagem tocado por uma linhagem — vampírica, licantropa ou demoníaca — muda de cara aos poucos, em cinco estágios. As veias, as garras ou as rachaduras tomam o resumo da ficha, o retrato muda e, nas Cenas, o token ganha uma aura. Só você vê a corrupção do seu personagem; quando ela avança, a ficha pulsa e avisa."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas: o painel da corrupção, em cima de cada ficha (só você vê). Escolha o tipo e a árvore que conta: a vampírica e a licantropa crescem com os pontos gastos nela (os cortes dos estágios ficam nas Tabelas base, um jogo por tipo); − e + ajustam; a demoníaca é à mão. Tudo tem Desfazer."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.29-2",
       "data": "2026-10-29",
       "titulo": "O Bestiário do clã",

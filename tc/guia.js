@@ -21,6 +21,8 @@
         { t: 'Estaque, missões e notas', txt: 'Na aba Notas. O Estaque pode ficar escondido do jogador, ficha por ficha (a marca no próprio Estaque).', onde: { sel: '#abafichac-notas', sub: 'notas', nada: fichaNada } },
         // (lote 34)
         { t: 'As barras da raça e da classe', txt: 'A raça, a classe e a linhagem trazem a barra delas (o Calor da Forja, a Ira, a Fome…) como barra comum, logo depois do HP e do SP — com a faixa e o começo definidos na árvore, na Oficina. Os nós que somam ao início (“+1 de Calor inicial”) já entram; o início não passa de 10.', onde: { sel: '#ficha .res', sub: 'atributos', nada: fichaNada } },
+        // (lote 37)
+        { t: 'A corrupção', txt: 'No painel lilás em cima da ficha (só você vê): Vampírica, Licantropa ou Demoníaca. As duas primeiras crescem com os pontos gastos na árvore que você escolher, em cinco estágios (os cortes ficam nas Tabelas base); − e + ajustam; a demoníaca é à mão. Só o dono do personagem e você veem o efeito — na ficha, no retrato e na aura do token.', onde: { sel: '#corrBarra', nada: fichaNada } },
       ],
       jogador: [
         { t: 'A sua ficha', txt: 'Em cima, o resumo, que fica fixo: as barras (digite −8 para tirar, +25% para pôr um quarto do máximo), os atributos, os lapros, a caixinha do grupo e o que está machucado. Os selos levam à parte da ficha em que cada coisa fica.', onde: { sel: '#resumo', nada: fichaNada } },

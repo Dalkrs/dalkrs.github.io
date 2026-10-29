@@ -1046,6 +1046,7 @@ const Fichas = (() => {
       try { const p = T.dados.col('personagens'); await p.pronta; P = p; } catch (e) { P = null; }
       try { const d = T.dados.col('documentos'); await d.pronta; D = d; } catch (e) { D = null; }
       if (P) P.aoMudar(() => refresh());
+      if (D) D.aoMudar(l => { if (l && typeof l.id === 'string' && l.id.startsWith('fichas:corr:')) refresh(); });      // (lote 37) a aura da corrupção
       return false;
     }
     try {
@@ -1056,12 +1057,23 @@ const Fichas = (() => {
     Store.on('live', onLive);
     Store.on('scene', () => syncAll());
     P.aoMudar(l => { if (!l.apagado) syncAll(l.id); refresh(); });
-    D.aoMudar(l => { if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote') { syncAll(); refresh(); } });
+    D.aoMudar(l => { if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote') { syncAll(); refresh(); } else if (typeof l.id === 'string' && l.id.startsWith('fichas:corr:')) refresh(); });
     syncAll();
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, barrasDeArvore, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  /* (lote 37) A corrupção do personagem do token (ver tc/corrupcao.js): { tipo, n, cor } ou null. O documento dela tem o
+     dono do personagem como dono: só chega a quem mestra e a esse jogador — para os outros, nada (nem a aura). */
+  function corrDoTok(t) {
+    const Cx = window.TC && window.TC.corrupcao;
+    if (!Cx || !t || !t.char || !D) return null;
+    const d = D.pegar(Cx.docId(t.char));
+    if (!d || d.apagado || !d.dados) return null;
+    const l = get(t.char);
+    const e = Cx.estado(d.dados, (l && l.skills) || {}, bib(), cfg());
+    return e && e.n ? { tipo: e.tipo, n: e.n, cor: Cx.TIPOS[e.tipo].cor } : null;
+  }
+  return { corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)

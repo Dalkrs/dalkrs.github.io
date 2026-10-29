@@ -1119,6 +1119,7 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 <script src="../tc/tags.js?v=3"></script>
 <script src="../tc/bestiario.js?v=3"></script>
 <script src="../tc/sede.js?v=1"></script>
+<script src="../tc/corrupcao.js?v=1"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -8479,6 +8480,7 @@ const Fichas = (() => {
       try { const p = T.dados.col('personagens'); await p.pronta; P = p; } catch (e) { P = null; }
       try { const d = T.dados.col('documentos'); await d.pronta; D = d; } catch (e) { D = null; }
       if (P) P.aoMudar(() => refresh());
+      if (D) D.aoMudar(l => { if (l && typeof l.id === 'string' && l.id.startsWith('fichas:corr:')) refresh(); });      // (lote 37) a aura da corrupção
       return false;
     }
     try {
@@ -8489,12 +8491,23 @@ const Fichas = (() => {
     Store.on('live', onLive);
     Store.on('scene', () => syncAll());
     P.aoMudar(l => { if (!l.apagado) syncAll(l.id); refresh(); });
-    D.aoMudar(l => { if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote') { syncAll(); refresh(); } });
+    D.aoMudar(l => { if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote') { syncAll(); refresh(); } else if (typeof l.id === 'string' && l.id.startsWith('fichas:corr:')) refresh(); });
     syncAll();
     refresh();
     return true;
   }
-  return { start, on: () => on, chars, get, link, barrasDeArvore, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  /* (lote 37) A corrupção do personagem do token (ver tc/corrupcao.js): { tipo, n, cor } ou null. O documento dela tem o
+     dono do personagem como dono: só chega a quem mestra e a esse jogador — para os outros, nada (nem a aura). */
+  function corrDoTok(t) {
+    const Cx = window.TC && window.TC.corrupcao;
+    if (!Cx || !t || !t.char || !D) return null;
+    const d = D.pegar(Cx.docId(t.char));
+    if (!d || d.apagado || !d.dados) return null;
+    const l = get(t.char);
+    const e = Cx.estado(d.dados, (l && l.skills) || {}, bib(), cfg());
+    return e && e.n ? { tipo: e.tipo, n: e.n, cor: Cx.TIPOS[e.tipo].cor } : null;
+  }
+  return { corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
@@ -10791,6 +10804,9 @@ const Render = (() => {
     const dead = t.conds.includes('morto');
     c.save();
     if (t.hidden) c.globalAlpha = 0.5;
+    // (lote 37) a aura da corrupção: só quem recebe a corrupção do personagem (o dono e quem mestra) a vê
+    const corr = !dead && typeof Fichas !== 'undefined' && Fichas.corrDoTok ? Fichas.corrDoTok(t) : null;
+    if (corr) auraDaCorrupcao(c, t, cx, cy, r, corr, px);
     c.fillStyle = 'rgba(0,0,0,0.38)';
     tokPath(c, t.shape, cx, cy + s * 0.04, r * 1.03); c.fill();
     c.save();
@@ -10829,6 +10845,23 @@ const Render = (() => {
       c.strokeStyle = 'rgba(214,52,46,0.85)'; c.lineWidth = s * 0.09; c.lineCap = 'round';
       const k = r * 0.6;
       c.beginPath(); c.moveTo(cx - k, cy - k); c.lineTo(cx + k, cy + k); c.moveTo(cx + k, cy - k); c.lineTo(cx - k, cy + k); c.stroke();
+    }
+    c.restore();
+  }
+
+  /* (lote 37) A aura da corrupção: um halo da cor do tipo (vinho, âmbar, brasa), que cresce com o estágio; do 3 em
+     diante, um aro aceso rente ao token. Discreta: fica por baixo do token e não pisca. */
+  function auraDaCorrupcao(c, t, cx, cy, r, k, px) {
+    const ext = r * (1.3 + k.n * 0.1), a = 0.2 + k.n * 0.09;
+    c.save();
+    const g = c.createRadialGradient(cx, cy, r, cx, cy, ext);
+    g.addColorStop(0, hexA(k.cor, a)); g.addColorStop(0.45, hexA(k.cor, a * 0.45)); g.addColorStop(1, hexA(k.cor, 0));
+    c.fillStyle = g; c.beginPath(); c.arc(cx, cy, ext, 0, TAU); c.fill();
+    if (k.n >= 2) {
+      tokPath(c, t.shape, cx, cy, r * 1.14);
+      c.lineWidth = Math.max(1.2 * px, r * (0.025 + k.n * 0.008)); c.strokeStyle = hexA(k.cor, 0.35 + k.n * 0.1);
+      c.shadowColor = k.cor; c.shadowBlur = (4 + k.n * 2) * px;
+      c.stroke();
     }
     c.restore();
   }

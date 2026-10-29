@@ -1180,7 +1180,8 @@
   const aceita = (nome, r) => nome !== 'documentos' || r.dono_id == null || r.id === 'cena:pedido:' + r.dono_id
     || r.id === 'jornal:cartas:' + r.dono_id || r.id === 'jornal:resp:' + r.dono_id
     || r.id === 'mundo:rabisco:' + r.dono_id                       // (lote 17) a caneta de cada um no Mapa-múndi
-    || (typeof r.id === 'string' && (r.id.startsWith('medit:pratica:') || r.id.startsWith('medit:achados:')));
+    || (typeof r.id === 'string' && (r.id.startsWith('medit:pratica:') || r.id.startsWith('medit:achados:')))
+    || (typeof r.id === 'string' && r.id.startsWith('fichas:corr:'));      // (lote 37) a corrupção: o dono é o dono do personagem
   function dadosZerar() {
     for (const k in cols) {
       const c = cols[k];
