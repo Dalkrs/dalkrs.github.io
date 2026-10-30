@@ -1164,6 +1164,7 @@ const Tools = (() => {
     if (e.button !== 0) return;
     // (lote 8) escolhendo o real de um Clone: o clique escolhe (não seleciona nem arrasta)
     if (UI.escolhendoReal()) { const ht = hitTest(p, { tokensOnly: true, noProps: true }); UI.escolherReal(ht && ht.id); return; }
+    if (typeof PainelBarras !== 'undefined' && PainelBarras.cliqueNoSelo(p)) return;      // (lote 44) o selo do painel de barras
     const t = T[App.tool];
     if (t.down) t.down(p, e);
   });

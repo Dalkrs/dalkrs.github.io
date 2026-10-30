@@ -38,6 +38,10 @@ body_parts() {
 
 {
   printf '%s' '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif;background:#faf9f5}img{max-width:100%}[hidden]{display:none!important}</style></head><body>'
+  # (lote 44) o painel de barras, dentro da página de teste (no site ele vem por <script src>)
+  echo '<script>'
+  cat ../../tc/barras-painel.js
+  echo '</script>'
   cat "$OUT"
   printf '%s' '</body></html>'
 } > test/page.html
@@ -60,6 +64,7 @@ mkdir -p "$(dirname "$SITE")"
   echo '<script src="../tc/bestiario.js?v=3"></script>'
   echo '<script src="../tc/sede.js?v=2"></script>'
   echo '<script src="../tc/corrupcao.js?v=1"></script>'
+  echo '<script src="../tc/barras-painel.js?v=1"></script>'      # (lote 44) o painel de barras
   body_parts
   echo '</body>'
   echo '</html>'

@@ -1071,3 +1071,98 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .relcanto-t b { font: 600 14px/1.15 var(--display); overflow-wrap: anywhere; }
 .relcanto-t small { font: 11.5px var(--mono); color: var(--fg-2); }
 .relcanto-r.cheio b { color: var(--danger); }
+
+/* ---- (lote 44) O painel de barras: no canto de baixo, à direita, acima da linha de dica e estado. Sempre escuro
+   (o fundo do guia), nos dois temas; as letras são as do site. No celular, vira uma gaveta embaixo. ---- */
+.pb-host {
+  position: absolute; right: 10px; bottom: 64px; z-index: 5; max-height: calc(100% - 78px);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none;
+  --pb-fundo: #16191F; --pb-fundo2: #20242C; --pb-tinta: #ECE7DC; --pb-apoio: #9FA6B4; --pb-linha: #343A46;
+  --pb-gasta: #F08A55; --pb-enche: #4FC3D6;
+}
+.pb-host[hidden] { display: none; }
+.pb-host > * { pointer-events: auto; }
+.pb {
+  width: 304px; max-height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--pb-fundo); color: var(--pb-tinta); border: 1px solid var(--pb-linha); border-radius: 14px;
+  box-shadow: 0 10px 30px #0008; font: 400 14px/1.45 var(--ui); --c: #C8A24A; flex: 0 1 auto;
+}
+.pb[hidden] { display: none; }
+.pb button, .pb select { font: inherit; color: inherit; cursor: pointer; }
+.pb button:focus-visible, .pb select:focus-visible, .pb.moeda:focus-visible { outline: 3px solid var(--pb-enche); outline-offset: 2px; }
+.pb-ic { display: inline-block; vertical-align: -3px; flex: none; }
+.pb-cab { display: flex; align-items: center; gap: 4px; padding: 9px 8px 0 14px; }
+.pb-quem { flex: 1; min-width: 0; font: 600 18px/1.2 var(--display, "Grenze", Georgia, serif); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-quem em { font: 700 11px var(--ui); font-style: normal; color: #16191F; background: var(--pb-apoio); border-radius: 4px; padding: 1px 5px; vertical-align: 3px; }
+.pb-x { display: inline-grid; place-items: center; min-width: 28px; height: 28px; background: none; border: 0; color: var(--pb-apoio); font-size: 15px; padding: 0 6px; border-radius: 6px; }
+.pb-x:hover { color: var(--pb-tinta); background: #ffffff10; }
+.pb-abas { display: flex; gap: 4px; padding: 6px 10px 0; flex-wrap: wrap; }
+.pb-aba { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--pb-linha); background: transparent; color: var(--pb-apoio); border-radius: 8px; padding: 4px 9px; font-size: 13px; }
+.pb-aba .pb-ic { color: var(--ac); }
+.pb-aba b { color: var(--pb-tinta); }
+.pb-aba small { font-size: 11.5px; color: var(--pb-apoio); font-weight: 400; }
+.pb-aba[aria-selected="true"] { border-color: var(--ac); color: var(--pb-tinta); background: #ffffff0a; }
+.pb-abas .pb-aba:only-child { border-color: transparent; padding-left: 4px; color: var(--pb-tinta); cursor: default; font-weight: 700; }
+.pb-face { position: relative; display: grid; place-items: center; padding-top: 2px; }
+.pb-face svg { width: 200px; height: 200px; display: block; }
+.pb-face svg .clic { cursor: pointer; }
+.pb-face svg .clic:focus { outline: none; }
+.pb-face svg .clic:focus-visible > :first-child { stroke: var(--pb-enche); stroke-width: 3; }
+.pb-valor { position: absolute; right: 14px; top: 2px; text-align: right; font: 700 34px/1 var(--display, "Grenze", Georgia, serif); color: var(--c); }
+.pb-valor small { display: block; font: 500 12px var(--ui); color: var(--pb-apoio); margin-top: 3px; }
+.pb-estado { height: calc(3 * 1.4em + 10px); overflow: hidden; padding: 4px 14px 6px; font-size: 13.5px; line-height: 1.4; }
+.pb-estado em { font-style: normal; color: var(--pb-apoio); }
+.pb-estado .aviso { color: var(--pb-gasta); }
+.pb-caixa { border-top: 1px solid var(--pb-linha); padding: 10px 14px; }
+.pb-caixa h3 { margin: 0 0 7px; font: 700 12.5px var(--ui); color: var(--pb-apoio); }
+.pb-acoes { display: flex; flex-wrap: wrap; gap: 6px; }
+.pb-acoes button, .pb-acoes select { border: 1px solid var(--pb-linha); background: var(--pb-fundo2); color: var(--pb-tinta); border-radius: 8px; padding: 5px 9px; font-size: 13px; max-width: 100%; }
+.pb-acoes select option { background: var(--pb-fundo2); color: var(--pb-tinta); }
+.pb-acoes button[disabled] { opacity: .4; cursor: default; }
+.pb-acoes button.gasta { border-color: var(--pb-gasta); color: var(--pb-gasta); }
+.pb-acoes button[aria-pressed="true"] { border-color: var(--c); color: var(--c); }
+.pb-medidor { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--pb-apoio); margin-bottom: 8px; }
+.pb-trava { color: var(--pb-gasta); }
+.pb-pips { display: flex; gap: 3px; }
+.pb-pips i { width: 9px; height: 9px; border-radius: 2px; background: #ffffff1c; }
+.pb-pips i.on { background: var(--pb-enche); }
+.pb-grupo + .pb-grupo { margin-top: 10px; }
+.pb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pb-par { display: inline-flex; }
+.pb-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--pb-linha); border-radius: 999px; padding: 4px 10px; font-size: 13px; background: transparent; color: var(--pb-tinta); line-height: 1.2; height: auto; }
+.pb-chip b { font-weight: 800; color: var(--pb-enche); }
+.pb-chip i { font-style: normal; font-weight: 800; color: var(--pb-apoio); font-size: 12px; }
+.pb-chip.on { background: #4FC3D61F; border-color: var(--pb-enche); }
+.pb-chip.perda b { color: var(--pb-gasta); }
+.pb-chip.perda.on { background: #F08A551F; border-color: var(--pb-gasta); }
+.pb-chip.auto { cursor: default; }
+.pb-chip.off { opacity: .42; }
+.pb-par .pb-chip.on { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.pb-menos { border: 1px solid var(--pb-enche); border-left: 0; background: transparent; color: var(--pb-enche); border-radius: 0 999px 999px 0; padding: 0 9px; font-weight: 800; }
+.pb-menos.perda { border-color: var(--pb-gasta); color: var(--pb-gasta); }
+.pb-somar { margin-top: 8px; width: 100%; border: 0; border-radius: 8px; padding: 7px; background: var(--pb-enche); color: #0E1A1D; font-weight: 800; }
+.pb-somar[disabled] { opacity: .35; cursor: default; }
+.pb-rodape { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--pb-linha); padding: 8px 14px 10px; }
+.pb-mao { display: flex; align-items: center; gap: 4px; color: var(--pb-apoio); font-size: 12.5px; margin-right: auto; }
+.pb-mao button { width: 28px; height: 26px; border: 1px solid var(--pb-linha); background: transparent; color: var(--pb-tinta); border-radius: 6px; padding: 0; font-weight: 800; }
+.pb-fim { border: 0; background: none; color: var(--pb-apoio); text-decoration: underline; font-size: 12.5px; padding: 2px; white-space: nowrap; }
+.pb-fim:hover { color: var(--pb-tinta); }
+.pb.moeda { width: auto; max-width: 304px; border-radius: 999px; padding: 5px 16px 5px 5px; display: flex; align-items: center; gap: 10px; cursor: pointer; overflow: visible; flex: none; }
+.pb.moeda .pb-face { padding: 0; }
+.pb.moeda .pb-face svg { width: 54px; height: 54px; }
+.pb-mv { display: flex; flex-direction: column; gap: 1px; font: 700 15px/1.15 var(--display, "Grenze", Georgia, serif); min-width: 0; }
+.pb-mv span { display: flex; align-items: center; gap: 5px; }
+.pb-mv small { font: 500 12px var(--ui); color: var(--pb-apoio); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stage.pb-on .dock { right: var(--pb-w, 324px); }
+.stage.pb-on .foot-r { margin-right: calc(10px - var(--pb-w, 324px)); }
+@media (max-width: 700px) {
+  .stage.pb-on .dock { right: 10px; }
+  .stage.pb-on .foot-r { margin-right: 0; }
+  .pb-host { z-index: 2; }
+  .pb-host { left: 0; right: 0; bottom: 0; max-height: 62vh; align-items: stretch; padding: 0 8px; gap: 6px; }
+  .pb-host .pb:not(.moeda) { width: 100%; border-radius: 14px 14px 0 0; border-bottom: 0; }
+  .pb-host .pb.moeda { align-self: flex-end; margin-bottom: 8px; }
+  .pb-host.com-aberto .pb.moeda { margin-bottom: 0; }
+  /* (a gaveta aberta ocupa a base do mapa: a faixa do token e a dica saem; os avisos, com o Desfazer, ficam por cima) */
+  .stage.pb-aberto .dock .hud, .stage.pb-aberto .dock .foot { display: none; }
+}

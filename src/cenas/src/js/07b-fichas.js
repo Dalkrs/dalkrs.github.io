@@ -1062,6 +1062,20 @@ const Fichas = (() => {
     refresh();
     return true;
   }
+  /* (lote 44) O painel de barras: a árvore da biblioteca da mesa (pelo id; null se ela não chega aqui) e a gravação do
+     número das barras (estado.rec, o recurso da ficha) e do estado do painel (estado.pb: { idDaBarra: { s, c, u, g } }).
+     Grava quem pode gravar a ficha: o mestre, ou o dono do personagem. */
+  const arvore = id => { const b = bib(); return b && typeof id === 'string' ? b.arvores.find(a => a && a.id === id) || null : null; };
+  function gravarPainel(charId, rec, pb) {
+    const l = get(charId);
+    if (!P || !l || !(papel === 'mestre' || (!!eu && l.dono_id === eu))) return false;
+    const e = l.estado || {}, est = Object.assign({}, e);
+    if (rec && Object.keys(rec).length) est.rec = Object.assign({}, e.rec && typeof e.rec === 'object' ? e.rec : {}, rec);
+    if (pb && Object.keys(pb).length) est.pb = Object.assign({}, e.pb && typeof e.pb === 'object' ? e.pb : {}, pb);
+    P.gravar(charId, { estado: est });
+    if (on) syncAll(charId);                 // (o mestre: o token acompanha já, sem esperar a volta do banco)
+    return true;
+  }
   /* (lote 37) A corrupção do personagem do token (ver tc/corrupcao.js): { tipo, n, cor } ou null. O documento dela tem o
      dono do personagem como dono: só chega a quem mestra e a esse jogador — para os outros, nada (nem a aura). */
   function corrDoTok(t) {
@@ -1073,7 +1087,7 @@ const Fichas = (() => {
     const e = Cx.estado(d.dados, (l && l.skills) || {}, bib(), cfg());
     return e && e.n ? { tipo: e.tipo, n: e.n, cor: Cx.TIPOS[e.tipo].cor } : null;
   }
-  return { corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)

@@ -983,6 +983,12 @@ function normalizeScene(sc) {
       for (const k of Object.keys(t.bestEq).slice(0, 24)) if (/^[A-Za-z0-9_-]{1,60}$/.test(k)) eq[k] = !!t.bestEq[k];
       if (Object.keys(eq).length) t.bestEq = eq; else delete t.bestEq;
     } else delete t.bestEq;
+    // (lote 44) o painel de barras do NPC sem ficha: { idDaBarra: { s, c, u, g } } (o número fica numa barra do token)
+    if (t.pb && typeof t.pb === 'object' && !Array.isArray(t.pb) && !t.char && !t.prop) {
+      const o = {};
+      for (const k of Object.keys(t.pb).slice(0, 3)) { const x = t.pb[k]; if (/^[a-z][a-z-]{1,24}$/.test(k) && x && typeof x === 'object' && !Array.isArray(x) && JSON.stringify(x).length < 4000) o[k] = x; }
+      if (Object.keys(o).length) t.pb = o; else delete t.pb;
+    } else delete t.pb;
     const sq = t.prop ? cleanSaque(t.saque) : null;
     if (sq) t.saque = sq; else delete t.saque;
     // (lote 7) o objeto que leva a outra cena (a entrada de uma casa, a saída, uma escada): o id da cena

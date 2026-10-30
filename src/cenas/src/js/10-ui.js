@@ -2134,6 +2134,7 @@ const UI = (() => {
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
         sec('s-cond', 'Condições', true, canC ? postToggle(t) : t.post ? note('Em postura.') : null, condActive(t, canC), manaLinha(t), canC ? condMais([t]) : t.conds.length || t.post ? null : note('Nenhuma condição.')),
         mine ? numsBox(t, false) : null,
+        mine && typeof PainelBarras !== 'undefined' ? PainelBarras.secaoToken(t) : null,      // (lote 44) mostrar ou esconder o painel
         mine ? fadigaBox(t) : null,
         feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
         Fichas.podeBolsa(t) ? sec('s-bag', 'Bolsa', true, bagResumo(t)) : null,
@@ -2152,6 +2153,7 @@ const UI = (() => {
       menteBox(t),
       fadigaBox(t),
       numsBox(t, true),
+      typeof PainelBarras !== 'undefined' ? PainelBarras.secaoToken(t) : null,      // (lote 44) o painel de barras
       feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
       Best.secao(t, UI.kit),                                                 // (lote 29) o inimigo do Bestiário: o lembrete e o saque
       secR('s-turn', 'Turnos', false, 'Iniciativa ' + (clampIni(t.ini) >= 0 ? '+' : '') + clampIni(t.ini) + ' · ' + clampTurns(t.turns) + (clampTurns(t.turns) === 1 ? ' turno' : ' turnos') + ' por rodada',
@@ -2813,6 +2815,8 @@ const UI = (() => {
     Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; } }, 'Encerrar combate');
     App.iniRolls.clear();
     toast(tinha ? 'Combate encerrado: a iniciativa de todos foi zerada para o próximo.' : 'Combate encerrado.', { action: 'Desfazer', run: Tools.undo });
+    // (lote 44) o painel de barras: cada barra faz o fim dela (o aviso tem o Desfazer dele)
+    if (typeof PainelBarras !== 'undefined') PainelBarras.fimDoCombate(tokensDoCombate(Store.scene()));
     // (lote 23) o aviso que oferece restaurar as energias de quem lutou (nada acontece sozinho)
     const lutaram = tokensDoCombate(Store.scene()).map(t => t.id);
     if (restauroDe(lutaram.map(id => Store.get('tokens', id)).filter(Boolean)).length)
@@ -2909,6 +2913,8 @@ const UI = (() => {
       gm && tn.list.length ? note('Passar a vez desconta as durações de condições e efeitos e limpa as miras. Contadores só mudam na mão.') : null,
       // (lote 23) restaurar as energias: tudo que não é HP nem SP volta ao estado natural (o "começa em" da barra, ou cheia)
       gm ? h('div', { class: 'row' }, btn('Restaurar energias…', janelaRestaurar, { icon: 'rest', id: 'turnRestaurar', title: 'As barras que não são HP nem SP voltam ao estado natural (o “começa em” delas; sem ele, cheias). Com tokens selecionados, só eles; sem seleção, todos da cena. Mostra antes o que muda.' })) : null,
+      // (lote 44) o painel de barras: ligado ou desligado para a mesa
+      gm && typeof PainelBarras !== 'undefined' ? PainelBarras.secaoTurnos() : null,
       // (lote 22) a tela das barrinhas: quando ela abre sozinha (da mesa: vale em todas as cenas)
       gm ? sec('t-barrinhas', 'Tela das barrinhas', false,
         ...[['combate', 'Ao começar e ao encerrar o combate (todos)'], ['rodada', 'No começo de cada rodada (todos)'], ['vez', 'Na vez de cada um (só ele)']].map(([k, rot]) =>
@@ -2972,7 +2978,9 @@ const UI = (() => {
   const normNome = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
   const ehVidaOuSp = b => NOMES_VIDA_SP.has(normNome(b.n));
   function restauroDe(toks) {
-    return toks.map(t => ({ t, m: (t.bars || []).map((b, i) => ({ b, i })).filter(({ b }) => b && b.on !== false && !ehVidaOuSp(b) && Math.abs((Number(b.v) || 0) - barFull(b)) > 1e-9)
+    // (lote 44) as barras que o painel de barras cuida ficam de fora: o fim do combate delas é o do painel
+    const doPainel = (t, b) => typeof PainelBarras !== 'undefined' && PainelBarras.cuida(t, b);
+    return toks.map(t => ({ t, m: (t.bars || []).map((b, i) => ({ b, i })).filter(({ b }) => b && b.on !== false && !ehVidaOuSp(b) && !doPainel(t, b) && Math.abs((Number(b.v) || 0) - barFull(b)) > 1e-9)
       .map(({ b, i }) => ({ i, n: b.n, c: b.c, de: Number(b.v) || 0, para: barFull(b) })) })).filter(x => x.m.length);
   }
   function aplicarRestauro(lista) {
@@ -3010,10 +3018,12 @@ const UI = (() => {
     if (typeof Reforco !== 'undefined' && (comecou || novaRodada)) Reforco.naRodada(tn0.round || 1);
     const resto = () => {
       const sc = Store.scene(), tn = sc.turn;
+      if (typeof PainelBarras !== 'undefined') PainelBarras.depoisDaVez(antes);      // (lote 44) o fim e o começo do turno no painel de barras
       if (comecou && P.combate) { telaBarrinhas('O combate começou: as barrinhas', tokensDoCombate(sc)); return; }
       if (novaRodada && P.rodada) { telaBarrinhas(`${tn.round}ª rodada: as barrinhas`, tokensDoCombate(sc)); return; }
       if (tn.on && P.vez && (tn.cur !== antes.cur || comecou)) {
-        const e = tn.list.find(x => x.id === tn.cur), toks = e ? tokensDe(sc, [e]) : [];
+        // (lote 44) na vez de quem tem o painel de barras, a tela das barrinhas não abre (o painel já está lá)
+        const e = tn.list.find(x => x.id === tn.cur), toks = e ? tokensDe(sc, [e]).filter(t => !(typeof PainelBarras !== 'undefined' && PainelBarras.temPainel(t))) : [];
         if (toks.length) telaBarrinhas(`A vez de ${toks.length === 1 ? tokName(toks[0]) : (e.name || 'grupo')}: as barrinhas`, toks);
       }
     };
@@ -3846,6 +3856,7 @@ const UI = (() => {
     try { if (Vision.isDirty()) Vision.update(sc, App.viewer); }   // a faixa do jogador depende do que ele enxerga
     catch (err) { /* a visão fica pendente; quem avisa do problema é o desenho do mapa */ }
     renderTop(); renderBanner(); renderRail(); renderOpts(); renderSide(); renderHud(); renderVeil(); turnBanner(); status();
+    if (typeof PainelBarras !== 'undefined') PainelBarras.render();      // (lote 44) o painel de barras, no canto
     if (modalEl && modalLive) { if (digitandoNaJanela()) janelaAdiada = true; else modalLive(); }      // (lote 24: digitando, espera)
     Luta.refresh();
     document.title = 'Cenas · Tiny Cats';

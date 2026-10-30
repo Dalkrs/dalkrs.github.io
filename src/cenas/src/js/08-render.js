@@ -663,6 +663,8 @@ const Render = (() => {
       }
     }
     c.restore();
+    // (lote 44) o selo do painel de barras: só o mestre vê, em todo token com barra de classe, raça ou linhagem
+    if (isGM() && typeof PainelBarras !== 'undefined') PainelBarras.desenharSelo(c, t, sc, px);
   }
 
   // Ícone clicável de uma abertura, no ponto que doorSpots escolheu. O desenho diz sempre o tipo (porta, janela,
@@ -1040,6 +1042,7 @@ const Render = (() => {
   function draw(ts) {
     const sc = Store.scene();
     if (!sc || cw < 2) return;
+    if (typeof PainelBarras !== 'undefined') PainelBarras.novoQuadro();      // (lote 44) os alvos dos selos, de novo a cada quadro
     const z = App.view.z, px = 1 / z, W = sceneW(sc), H = sceneH(sc), gm = isGM();
     if (Vision.isDirty()) Vision.update(sc, App.viewer);
     const vo = Vision.out;

@@ -232,6 +232,7 @@ const Nuvem = (() => {
     S.prefs.relevo = idx.prefs.relevo || null;             // (lote 18) a tabela do relevo da mesa
     S.prefs.feridos = idx.prefs.feridos || null;           // (lote 20) os cortes dos Feridos
     S.prefs.barrinhas = idx.prefs.barrinhas || null;       // (lote 22) a tela das barrinhas
+    S.prefs.painelBarras = idx.prefs.painelBarras === false ? false : true;      // (lote 44) o painel de barras
     S.pastas = idx.pastas;
     /* Até onde os pedidos de cada jogador já valeram: a cena guardada diz (e o que eles pediram enquanto o mestre
        estava fora ainda entra). Sem cena no ar, o que estiver parado na fila é velho. */
@@ -388,7 +389,7 @@ const Nuvem = (() => {
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
       try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
-      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: Object.assign({ barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, S.prefs.relevo && typeof Relevo !== 'undefined' ? { relevo: Relevo.norm(S.prefs.relevo) } : {}, S.prefs.feridos ? { feridos: S.prefs.feridos } : {}, S.prefs.barrinhas ? { barrinhas: S.prefs.barrinhas } : {}), pastas: Proj.normPastas(S.pastas) };
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: Object.assign({ barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, S.prefs.relevo && typeof Relevo !== 'undefined' ? { relevo: Relevo.norm(S.prefs.relevo) } : {}, S.prefs.feridos ? { feridos: S.prefs.feridos } : {}, S.prefs.barrinhas ? { barrinhas: S.prefs.barrinhas } : {}, S.prefs.painelBarras === false ? { painelBarras: false } : {}), pastas: Proj.normPastas(S.pastas) };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
@@ -422,6 +423,7 @@ const Nuvem = (() => {
     const { m, v } = Proj.projetar(sc, S.assets, new Set(S.players.map(p => p.id)));
     // (lote 18) a tabela do relevo da mesa vai com a cena (sem ela, os jogadores usam a de começo)
     if (S.prefs.relevo && typeof Relevo !== 'undefined' && !Relevo.igualAoPadrao(S.prefs.relevo)) m.relevoTab = Relevo.norm(S.prefs.relevo);
+    if (S.prefs.painelBarras === false) m.pbOff = true;           // (lote 44) o painel de barras desligado pelo mestre
     m.ver = Proj.resumo(JSON.stringify(m));
     // (a projeção é da campanha da cena que está no ar: só quem participa dela a recebe; a de uma cena do mundo, todos)
     const cs = campanhasDaCena(sc.id);
@@ -495,6 +497,7 @@ const Nuvem = (() => {
     S.prefs.relevo = n.prefs.relevo || null;
     S.prefs.feridos = n.prefs.feridos || null;
     S.prefs.barrinhas = n.prefs.barrinhas || null;
+    S.prefs.painelBarras = n.prefs.painelBarras === false ? false : true;
     S.pastas = n.pastas;
     Store.meta();
   }

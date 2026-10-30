@@ -7,6 +7,8 @@
 //     Dain a 9 (5 + 4), a Fome fica — num passo só, que o Desfazer volta; a ficha acompanha;
 //   · "Agora não": só as de sempre vão para o início.
 // + as condições novas (Semente de Sangue, Cria da Noite, Fera Solta, Poça do Roedor, Na Toca) na aba Raças.
+// (O painel de barras do lote 44 fica desligado aqui: com ele, "Encerrar" também faz o fim de cada barra — o
+// painel-barras.rede.test.js confere isso.)
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
@@ -65,6 +67,9 @@ const j = JSON.stringify;
     let C = null;
     ok(await ate(async () => { C = await quadro(M, /\/cenas\//); return C && await C.evaluate(() => !!window.__tc && !!__tc.Store.scene() && __tc.Nuvem.modo() === 'mestre' && __tc.Fichas.on() && !!__tc.Fichas.get('pc_kai')); }, 40000), '(o mestre abre as Cenas da mesa)');
     if (await C.locator('.modal').count()) { await M.keyboard.press('Escape'); await w(300); }
+    await C.evaluate(() => __tc.UI.openTab('turn')); await w(300);
+    await C.locator('.sw', { has: C.locator('#pb-ligado') }).click(); await w(300);
+    ok(await C.evaluate(() => __tc.Store.S.prefs.painelBarras === false), '(o painel de barras desligado para esta mesa)');
     const ids = {};
     const bars = id => C.evaluate(id => __tc.Store.get('tokens', id).bars.map(b => b.n + ':' + b.v + '/' + b.m + (b.k === 'pts' ? '·pts' : '')), id);
     const linha = id => M.evaluate(id => { const l = TC.dados.col('personagens').pegar(id); return l ? JSON.parse(JSON.stringify(l.estado || {})) : null; }, id);

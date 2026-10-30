@@ -111,6 +111,7 @@ const Proj = (() => {
     delete o.cena; delete o.gera;                                     // (lote 7) aonde o objeto leva, também
     delete o.ref;                                                     // (lote 22) o que o ponto de reforço guarda
     delete o.best; delete o.saque; delete o.bestEq;                   // (lote 29) o inimigo do Bestiário e o saque no chão (lote 33: e o equipamento dele)
+    delete o.pb;                                                      // (lote 44) o painel de barras do NPC: só do mestre
     /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
        não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */
     delete o.clone;
@@ -561,6 +562,8 @@ const Proj = (() => {
     if (ehObj(prefs.relevo) && typeof Relevo !== 'undefined') pf.relevo = Relevo.norm(prefs.relevo);
     // (lote 22) quando a tela das barrinhas abre sozinha
     if (ehObj(prefs.barrinhas)) pf.barrinhas = { combate: !!prefs.barrinhas.combate, rodada: !!prefs.barrinhas.rodada, vez: prefs.barrinhas.vez !== false };
+    // (lote 44) o painel de barras desligado pelo mestre (ligado é o de começo: só vai quando está desligado)
+    if (prefs.painelBarras === false) pf.painelBarras = false;
     // (lote 20) os cortes dos Feridos (só quando o mestre mudou)
     if (ehObj(prefs.feridos) && Number(prefs.feridos.t1) > 0 && Number(prefs.feridos.t2) > Number(prefs.feridos.t1) && Number(prefs.feridos.t2) < 100) pf.feridos = { t1: Math.round(Number(prefs.feridos.t1)), t2: Math.round(Number(prefs.feridos.t2)) };
     return {

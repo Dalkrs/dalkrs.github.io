@@ -2,6 +2,57 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.30-4",
+      "data": "2026-10-30",
+      "titulo": "O painel de barras nas Cenas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "O painel de barras: no combate das Cenas, no seu turno, abre no canto do mapa o painel da barra de classe, raça ou linhagem do seu personagem — a face da barra, as escolhas (a postura, a forma, o compasso…) e os ganhos da rodada, com o teto. São as 49 barras do guia de barras."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cada toque no painel vai para a sua ficha e aparece na Mesa ao vivo (“Dain entrou na Postura Alta.”). “Desfazer”, no pé do painel, volta o último toque."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fora do seu turno, o painel vira uma moeda com o número: toque para abrir. Com vários personagens, só o da vez abre; os outros ficam em moeda."
+        },
+        {
+          "tipo": "novo",
+          "texto": "O olho cortado, no alto do painel, esconde o painel neste aparelho. Para mostrar de novo, selecione o seu token e ligue “Mostrar o painel neste aparelho”."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "No celular, o painel abre como uma gaveta embaixo do mapa, da largura da tela."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "No fim do combate, cada barra faz o fim dela: a Postura zera (e sai da postura), a Geada de Selene e o Frenesi voltam ao começo, a Fome fica como está."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Aba Turnos → “Painel de barras”: o interruptor liga e desliga o painel para a mesa toda (começa ligado). Desligado, ninguém vê painel nem selo, e a passagem de turno não mexe nas barras."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "O mestre vê o painel dos NPCs na vez deles e, em cada token com barra, um selo com o número (e o kanji da postura do Samurai). Um clique no selo de um NPC abre o painel dele a qualquer hora."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "NPC sem ficha: selecione o token e, em “Painel de barras”, escolha a “Barra especial” (uma das 49). O token ganha a barra e o painel com as regras dela; “Nenhuma” tira."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "“Encerrar” roda o fim de cada barra do painel, com Desfazer no aviso. A tela das barrinhas não abre mais na vez de quem tem painel. As linhas de um NPC escondido ou sem nome vão para a Mesa ao vivo só do mestre."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.30-3",
       "data": "2026-10-30",
       "titulo": "Ícones nas habilidades e as favoritas",
