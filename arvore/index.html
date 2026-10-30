@@ -246,6 +246,22 @@ input[type=color].livre{width:26px;height:22px;padding:0;border:1px solid var(--
 }
 .chip i{width:9px;height:9px;border-radius:50%;flex:none}
 .chip[aria-pressed="true"]{border-color:var(--acento-borda);color:var(--texto);background:var(--acento-fundo)}
+/* (lote 43) o papel do nódulo: os 8 ícones do guia e "Nenhum" */
+.no-topo{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.no-topo h2{margin:0;flex:1;min-width:0}
+.no-topo .tci-quadro{--tci-fundo:var(--fundo-3);--tci-papel:var(--fundo-2)}
+.btn.fav{display:inline-flex;align-items:center;gap:4px;flex:none}
+.btn.fav svg.tci{width:15px;height:15px}
+.btn.fav.on{color:var(--acento);border-color:var(--acento-borda)}
+.btn.fav.on svg.tci{fill:currentColor}
+.papeis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.papel-op{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 3px 5px;border:1px solid var(--campo-borda);border-radius:6px;background:var(--campo);color:var(--texto-2);font:600 11.5px/1.15 var(--ui);cursor:pointer;text-align:center;min-height:56px}
+.papel-op svg.tci{width:22px;height:22px}
+.papel-op .tci-quadro.vazio{width:22px;height:22px;padding:0;border-radius:5px}
+.papel-op:hover{color:var(--texto);border-color:var(--linha-forte)}
+.papel-op[aria-pressed="true"]{border-color:var(--acento-borda);color:var(--texto);background:var(--acento-fundo);box-shadow:inset 0 0 0 1px var(--acento-borda)}
+.papel-op:focus-visible{outline:2px solid var(--acento);outline-offset:1px}
+#grupoBarra .nota .tci-chips{vertical-align:middle}
 .chip:hover{border-color:var(--linha-forte)}
 
 /* graus */
@@ -417,6 +433,12 @@ a.lk-no:hover{text-decoration-thickness:2px}
 [data-tema="pedra"] .regra-txt{stroke:#101318}
 [data-tema="tinta"] .regra-txt{stroke:#ECE4D0}
 .sigla{font:700 8.5px var(--ui);text-anchor:middle;dominant-baseline:central;pointer-events:none;letter-spacing:.02em}
+/* (lote 43) as siglas do uso embaixo do nome e a etiqueta da barra embaixo do nó */
+.siglas-txt{font:700 9px var(--ui);text-anchor:middle;dominant-baseline:central;pointer-events:none;letter-spacing:.04em;paint-order:stroke;stroke-width:3px;stroke-linejoin:round}
+[data-tema="pedra"] .siglas-txt{fill:rgba(232,234,240,.6);stroke:#111520}
+[data-tema="tinta"] .siglas-txt{fill:rgba(31,27,22,.56);stroke:#ECE4D0}
+.etq-txt{font:700 9.5px var(--ui);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.icone-papel{pointer-events:none}
 .nomeesc{pointer-events:none;font-family:var(--titulo);font-weight:600;letter-spacing:.04em}
 .no.apagado{opacity:.16}
 
@@ -427,6 +449,9 @@ a.lk-no:hover{text-decoration-thickness:2px}
   border-radius:4px;padding:10px 12px;box-shadow:var(--sombra);
 }
 #dica2.on{opacity:1}
+#dica2 .dica-topo{display:flex;gap:12px;align-items:center}
+#dica2 .dica-topo .tci-quadro{--tci-fundo:var(--fundo-3);--tci-papel:var(--fundo-2);margin:2px 6px 6px 0}
+#dica2 .dica-etq{margin:6px 0 2px}
 #dica2 h3{margin:0 0 2px;font:600 15px/1.25 var(--titulo)}
 [data-tema="tinta"] #dica2 h3{font-size:18px}
 #dica2 .meta{font:600 12px/1.4 var(--ui);letter-spacing:normal;text-transform:none;color:var(--texto-3);margin-bottom:6px}
@@ -585,10 +610,11 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
 <script src="../tc/ponte.js?v=20"></script>
-<script src="../tc/rules.js?v=26"></script>
+<script src="../tc/rules.js?v=27"></script>
+<script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=1"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="mesa.js?v=9"></script>
+<script src="mesa.js?v=10"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -618,6 +644,9 @@ const NATUREZAS_PADRAO = [
   {id:'canalizacao', nome:'Canalização', cor:'#3F7FD6'},
   {id:'hibrida',     nome:'Híbrida',     cor:'#3FA366'}
 ];
+// (lote 43) os papéis (o ícone de cada nó) e o que o nó faz com a barra especial — ver TC.rules.PAPEIS
+const PAPEIS_IDS = ['ofensiva','defensiva','suporte','controle','movimento','invocacao','fora','utilidade'];
+const EFEITOS_IDS = ['gasta','enche','ambos','balanca','nenhum'];
 const USOS_PADRAO = [
   {id:'passiva', nome:'Passiva', sigla:'Pa'},
   {id:'ativa',   nome:'Ativa',   sigla:'At'},
@@ -824,7 +853,13 @@ function normalizarNo(n, b, ids){
   n.usos = [...new Set(usosOrig.filter(x=>ids.uso.has(x)))];
   delete n.uso;
   n.desc = String(n.desc || '');
-  if(!['soma','gasta','ambas','nada'].includes(n.barra)) delete n.barra;          // (lote 21) a marca da barra especial, corrigida pelo mestre
+  // (lote 43) o papel (o ícone do nó) e o efeito na barra especial (sem ele, vale o custo de uso); a marca antiga do
+  // lote 21 (n.barra: soma, gasta, ambas, nada) vira o efeito
+  const efAntigo = {soma:'enche', gasta:'gasta', ambas:'ambos', nada:'nenhum'}[n.barra];
+  if(efAntigo && !EFEITOS_IDS.includes(n.barraEfeito)) n.barraEfeito = efAntigo;
+  delete n.barra;
+  if(!PAPEIS_IDS.includes(n.papel)) delete n.papel;
+  if(!EFEITOS_IDS.includes(n.barraEfeito)) delete n.barraEfeito;
   n.exclusivo = String(n.exclusivo || '').trim();
   if(!Array.isArray(n.graus) || !n.graus.length){
     let c = n.custos;
@@ -907,6 +942,9 @@ function normalizarPersonagem(p, b, vistos){
   // (lote 16) as skills únicas, que o mestre cria só para este personagem e que já vêm aprendidas (ver TC.rules.unicasDe)
   const un = (window.TC && TC.rules && TC.rules.unicasDe) ? TC.rules.unicasDe({unicas:p.unicas}) : [];
   if(un.length) p.unicas = un; else delete p.unicas;
+  // (lote 43) as favoritas da ficha (os ids dos nós; das skills únicas, "u:" + o id)
+  const fav = (window.TC && TC.rules && TC.rules.favDe) ? TC.rules.favDe({fav:p.fav}) : [];
+  if(fav.length) p.fav = fav; else delete p.fav;
   // antes as árvores equipadas apareciam sempre por categoria; agora vale a ordem do jogador.
   // Quem vem de antes começa na ordem em que já aparecia na tela.
   if(p.ordemLivre!==true){ ordenarPorCategoria(p, b); p.ordemLivre = true; }
@@ -1994,10 +2032,11 @@ function desenharNo(g, n, e, tema, p, bate, busca){
   const on = e==='on' || e==='mestre';
   if(tema==='tinta') noTinta(grp, n, e, r, on); else noPedra(grp, n, e, r, nat, on);
   selos(grp, n, r, tema);
-  setasBarra(grp, n, r, tema);
+  const etq = etiquetasDoNo(n), fala = falaDoNo(n, etq);
+  grp.setAttribute('aria-label', n.nome + (fala ? ': ' + fala : ''));
   // regra de liberação quando há mais de um requisito
   if(n.pais.length>1){
-    const t = el('text', {class:'regra-txt', y:f1(-(r + (n.tipo==='keystone' ? 22 : 13) + (marcaDoNo(n) ? 9 : 0)))});
+    const t = el('text', {class:'regra-txt', y:f1(-(r + (n.tipo==='keystone' ? 22 : 13)))});
     t.setAttribute('fill', n.regra==='ou' ? (tema==='tinta' ? '#2F7A55' : '#4E8C7D') : (tema==='tinta' ? COR_T.verm : COR_P.ouro));
     t.textContent = n.regra==='ou' ? 'OU' : 'E'; grp.appendChild(t);
   }
@@ -2007,7 +2046,7 @@ function desenharNo(g, n, e, tema, p, bate, busca){
   const G = n.graus.length;
   if(G>1){
     const g0 = p ? Math.min(p.alocados[n.id]||0, G) : 0;
-    const esp = 7, x0 = -(G-1)*esp/2, yp = r + ext + 6;
+    const esp = 7, x0 = -(G-1)*esp/2, yp = r + ext + 6 + (etq.length && n.tipo!=='keystone' ? 4 : 0);
     const cor = tema==='tinta' ? COR_T.tinta : COR_P.ouro;
     for(let k=0;k<G;k++){
       const cheio = k < g0;
@@ -2022,9 +2061,14 @@ function desenharNo(g, n, e, tema, p, bate, busca){
   }
   // (lote 26) afastado, só os nomes dos nós grandes e dos escolhidos (e do selecionado); de perto, todos
   if(n.tipo!=='pequeno' || cam.k>.85 || busca || e==='on' || selecionado===n.id){
+    if(etq.length && G<=1 && n.tipo!=='keystone') yRot += 3;
     const t = el('text', {class:'rotulo' + (n.tipo==='keystone' ? ' forte' : ''), y:f1(yRot)});
     t.textContent = n.nome; grp.appendChild(t);
+    // (lote 43) as siglas do tipo de uso, pequenas, embaixo do nome (o canto de cima é da marca de tempo)
+    const siglas = usosDe(n).map(u=>u.sigla).filter(Boolean).join(' · ');
+    if(siglas){ const s2 = el('text', {class:'siglas-txt', y:f1(yRot + (n.tipo==='keystone' ? 14 : 12.5))}); s2.textContent = siglas; grp.appendChild(s2); }
   }
+  etiquetasNoNo(grp, n, r, tema, etq);
   grp.appendChild(el('circle', {r:Math.max(r+8, 18), class:'toque'}));
   g.appendChild(grp);
 }
@@ -2049,7 +2093,10 @@ function noTinta(grp, n, e, r, on){
   else if(e==='caro') at = {fill:T.papelNo, stroke:T.tinta, 'stroke-width':1.4, 'stroke-dasharray':'1 3', 'stroke-opacity':.55};
   else at = {fill:T.papelNo, stroke:T.tinta, 'stroke-width':1.1, 'stroke-opacity': e==='fechado' ? .2 : .32};
   grp.appendChild(formaEl(n.forma, r, at));
-  if(n.glifo){
+  if(papelNoCentro(n)){
+    const cor = on ? (claro(base) ? T.tinta : T.papel) : T.tinta;
+    grp.appendChild(iconeEl(n.papel, tamIcone(r), cor, on ? 1 : (e==='disp' || e==='caro') ? .7 : .38));
+  }else if(n.glifo){
     const cor = on ? (claro(base) ? T.tinta : T.papel) : T.tinta;
     grp.appendChild(glifoEl(n.glifo, r, cor, on ? 1 : (e==='disp' || e==='caro') ? .62 : .3));
   }
@@ -2066,7 +2113,10 @@ function noPedra(grp, n, e, r, nat, on){
     : n.cor ? mix(n.cor, '#000000', e==='on' ? .2 : .35)
     : nat ? mix(nat.cor, '#000000', .66) : '#3A2E18';
   grp.appendChild(formaEl(n.forma, Math.max(3, r-2), {fill:interno}));
-  if(n.glifo){
+  if(papelNoCentro(n)){
+    const cor = on ? (claro(interno) ? '#1B1813' : P.glifoOn) : (e==='disp' ? P.ouroClaro : P.glifoOff);
+    grp.appendChild(iconeEl(n.papel, tamIcone(r), cor, on || e==='disp' ? 1 : .85));
+  }else if(n.glifo){
     const cor = on ? (claro(interno) ? '#1B1813' : P.glifoOn) : P.glifoOff;
     grp.appendChild(glifoEl(n.glifo, r, cor, 1));
   }else if(r<=12 && e==='on'){
@@ -2074,42 +2124,71 @@ function noPedra(grp, n, e, r, nat, on){
   }
   if(e==='fechado') grp.appendChild(el('line', {x1:f1(-r*1.05), y1:f1(r*1.05), x2:f1(r*1.05), y2:f1(-r*1.05), stroke:P.verm, 'stroke-width':1.8, 'stroke-linecap':'round', opacity:.85}));
 }
-/* (lote 21) A barra especial: o nome (o do nó que a define, ou o que o mestre escreveu na árvore) e a marca do nó —
-   ▲ soma, ▼ gasta (lida do texto; o mestre corrige no nó). As contas ficam em tc/rules.js. */
-const RR = () => (window.TC && TC.rules && TC.rules.marcaDaBarra) ? TC.rules : null;
+/* (lote 21) A barra especial da árvore e (lote 43) o que cada nó faz com ela: as etiquetas ▼ gasta, ▲ enche, ⇄ balança
+   (pelo barraEfeito do nó ou, sem ele, pelo custo de uso do primeiro grau). As contas ficam em tc/rules.js; os
+   desenhos, em tc/icones.js. */
+const RR = () => (window.TC && TC.rules && TC.rules.etiquetasDaBarra) ? TC.rules : null;
+const ICONES = () => (window.TC && TC.icones) || null;
 function barraDaArvore(a){ return a && RR() ? RR().barraEspecial(a) : null; }
-function marcaDoNo(n){ const a = arvDe.get(n.id), b = barraDaArvore(a); return RR() ? RR().marcaDaBarra(n, b) : null; }
-const COR_SOMA = '#3f9d5b', COR_GASTA = '#c9473d';
-function setasBarra(grp, n, r, tema){
-  const m = marcaDoNo(n);
-  if(!m || (n.tipo==='pequeno' && cam.k<=.55)) return;
-  const fundo = tema==='tinta' ? COR_T.papelNo : COR_P.encaixe, y = -r - (n.tipo==='keystone' ? 15 : 8);
-  const quais = [m.soma ? 'soma' : null, m.gasta ? 'gasta' : null].filter(Boolean), esp = 11, x0 = -(quais.length-1)*esp/2;
-  quais.forEach((k, i)=>{
-    const x = x0 + i*esp, cor = k==='soma' ? COR_SOMA : COR_GASTA;
-    const c = el('circle', {cx:f1(x), cy:f1(y), r:5.2, fill:fundo, stroke:cor, 'stroke-width':1.1, class:'seta-barra ' + k});
-    grp.appendChild(c);
-    grp.appendChild(el('path', {d: k==='soma' ? `M${f1(x-2.8)},${f1(y+1.9)} L${f1(x)},${f1(y-2.4)} L${f1(x+2.8)},${f1(y+1.9)} Z` : `M${f1(x-2.8)},${f1(y-1.9)} L${f1(x)},${f1(y+2.4)} L${f1(x+2.8)},${f1(y-1.9)} Z`, fill:cor}));
-  });
+function barraEtqDe(a){ return a && RR() ? RR().barraDasEtiquetas(a) : null; }
+function etiquetasDoNo(n, opt){ const a = arvDe.get(n.id); return RR() ? RR().etiquetasDaBarra(n, Object.assign({grau:0, barra:barraEtqDe(a)}, opt || {})) : []; }
+function marcaDoNo(n){ const e = etiquetasDoNo(n); return e.length ? {soma:e.some(x=>x.k==='enche'), gasta:e.some(x=>x.k==='gasta'), balanca:e.some(x=>x.k==='balanca'), mao:!!(RR() && RR().efeitoDe(n))} : null; }
+const tempoDoNo = n => (RR() ? RR().tempoDe(n.usos, bib().usos) : null);
+const papelInfo = id => (RR() ? RR().papelInfo(id) : null);
+// o nome por extenso, para title e aria-label: "Suporte, reação, gasta 2 Geada"
+function falaDoNo(n, etq){ return RR() ? RR().textoDosIcones(n.papel, tempoDoNo(n), etq || etiquetasDoNo(n)) : ''; }
+// (lote 43) o ícone do papel no centro do nó — a Ponta (keystone) com glifo, como a Origem, fica com o glifo dela
+function papelNoCentro(n){ return !!(n.papel && PAPEIS_IDS.includes(n.papel) && ICONES() && !(n.tipo==='keystone' && n.glifo)); }
+const tamIcone = r => Math.max(11, Math.min(31, r*1.15));
+function iconeEl(id, tam, cor, op, x, y){
+  const u = el('use', {href:'#tci-' + id, x:f1((x||0) - tam/2), y:f1((y||0) - tam/2), width:f1(tam), height:f1(tam), fill:'none', stroke:cor,
+    'stroke-width':2, 'stroke-linecap':'round', 'stroke-linejoin':'round', opacity:op, class:'icone-papel', 'data-papel':id});
+  u.style.color = cor; return u;
 }
-// o "▲ Soma 1 Preparo" por extenso, para os painéis
+const COR_BARRA = {
+  tinta: {gasta:'#D9622B', enche:'#1F8FA6', balanca:'rgba(31,27,22,.6)', reacao:'#C9971C', tinta:'#1F1B16'},
+  pedra: {gasta:'#F08A55', enche:'#4FC3D6', balanca:'#B8B0A0', reacao:'#E8B93F', tinta:'#E8E2D2'}
+};
+// a etiqueta pequena embaixo do nó, cortando o anel: "▼2", "▲2", "▲", "⇄3"
+function etiquetasNoNo(grp, n, r, tema, etq){
+  if(!etq.length || (n.tipo==='pequeno' && cam.k<=.55)) return;
+  const C = COR_BARRA[tema==='tinta' ? 'tinta' : 'pedra'], fundo = tema==='tinta' ? COR_T.papelNo : COR_P.encaixe;
+  const txts = etq.map(e=>RR().textoCurtoDaEtiqueta(e)), larg = txts.map(t=>Math.max(15, t.length*6.4 + 8)), gap = 3;
+  const total = larg.reduce((s,w)=>s+w, 0) + gap*(larg.length-1);
+  let x = -total/2;
+  const y = r + (n.tipo==='keystone' ? 4 : 1);
+  const g = el('g', {class:'etq-barra'});
+  etq.forEach((e, i)=>{
+    const cor = C[e.k] || C.tinta, w = larg[i];
+    const ret = el('rect', {x:f1(x), y:f1(y-6.5), width:f1(w), height:13, rx:6.5, fill:fundo, stroke:cor, 'stroke-width':1.3, class:'etq ' + e.k});
+    if(e.k==='balanca') ret.setAttribute('stroke-dasharray', '2.5 2');
+    g.appendChild(ret);
+    const t = el('text', {class:'etq-txt', x:f1(x + w/2), y:f1(y + .5), fill: e.k==='balanca' ? C.tinta : cor});
+    t.textContent = txts[i]; g.appendChild(t);
+    x += w + gap;
+  });
+  grp.appendChild(g);
+}
+// as etiquetas por extenso ("▼ 2 Geada"), para os painéis e o cartão
+function htmlEtiquetas(n, opt){ const I = ICONES(); return I ? I.etiquetas(etiquetasDoNo(n, opt)) : ''; }
 function htmlMarca(n, comFonte){
-  const m = marcaDoNo(n), b = barraDaArvore(arvDe.get(n.id));
-  if(!m) return '';
-  const partes = [m.soma ? `<span class="mb-soma">▲ soma</span>` : '', m.gasta ? `<span class="mb-gasta">▼ gasta</span>` : ''].filter(Boolean).join(' e ');
-  return `<p class="info marca-barra" id="marcaBarra">${partes} · barra ${esc(b || 'especial')}${comFonte ? `<small> (${m.mao ? 'marcado por você' : 'lido do texto'})</small>` : ''}</p>`;
+  const etq = etiquetasDoNo(n);
+  if(!etq.length) return '';
+  return `<p class="info marca-barra" id="marcaBarra">${ICONES() ? ICONES().etiquetas(etq) : esc(etq.map(e=>RR().textoDaEtiqueta(e)).join(' · '))}${comFonte ? `<small> (${RR().efeitoDe(n) ? 'marcado no nó' : 'pelo custo de uso'})</small>` : ''}</p>`;
 }
 // selinhos: tipo de uso (sup. dir.), caminho exclusivo (sup. esq.), requisito de outra árvore (inf. esq.)
 function selos(grp, n, r, tema){
   const fundo = tema==='tinta' ? COR_T.papelNo : COR_P.encaixe;
-  // vários tipos de uso viram um selo só: "At·Re"
-  const siglas = usosDe(n).map(u=>u.sigla).filter(Boolean).join('·');
-  if(siglas && (n.tipo!=='pequeno' || cam.k>.7)){
-    const w = Math.max(16, siglas.length*5.9 + 8), x0 = r*.62 - 2, y = -r*.8 - 4;
-    grp.appendChild(el('rect', {x:f1(x0), y:f1(y-6.5), width:f1(w), height:13, rx:3, fill:fundo,
-      stroke: tema==='tinta' ? 'rgba(31,27,22,.55)' : COR_P.bronze, 'stroke-width':.8}));
-    const t = el('text', {class:'sigla', x:f1(x0 + w/2), y:f1(y+.5), fill: tema==='tinta' ? COR_T.tinta : COR_P.glifoOn});
-    t.textContent = siglas; grp.appendChild(t);
+  // (lote 43) a marca de tempo, num círculo no canto de cima, à direita: o raio dourado da reação, as pegadas da
+  // postura, o anel da passiva (Ativa fica sem; as siglas do uso vão embaixo do nome)
+  const tempo = tempoDoNo(n);
+  if(tempo && ICONES() && (n.tipo!=='pequeno' || cam.k>.55)){
+    const C = COR_BARRA[tema==='tinta' ? 'tinta' : 'pedra'], cor = tempo==='reacao' ? C.reacao : C.tinta;
+    const rr = Math.max(6.5, Math.min(12, r*.42)), cx = r*.82 + 1, cy = -r*.82 - 1;
+    const g = el('g', {class:'marca-tempo ' + tempo});
+    g.appendChild(el('circle', {cx:f1(cx), cy:f1(cy), r:f1(rr), fill:fundo, stroke:cor, 'stroke-width':1.3}));
+    g.appendChild(iconeEl(tempo, rr*1.35, cor, 1, cx, cy));
+    grp.appendChild(g);
   }
   if(n.exclusivo){
     const x = -r*.8 - 5, y = -r*.8 - 4, cor = tema==='tinta' ? COR_T.verm : COR_P.verm;
@@ -2897,6 +2976,7 @@ function blocoNo(a, n){
     <div class="grupo"><span class="rot">Tipos de uso · pode marcar vários</span><div class="chips">
       <button class="chip" data-uso="" aria-pressed="${!n.usos.length}">Nenhum</button>
       ${bib().usos.map(u=>`<button class="chip" data-uso="${esc(u.id)}" aria-pressed="${n.usos.includes(u.id)}">${esc(u.nome)}</button>`).join('')}</div></div>
+    ${blocoPapel(n)}
     ${blocoMarcaBarra(a, n)}
     <div class="grupo">
       <div class="grau-topo"><span class="rot" style="margin:0">Graus</span>
@@ -2954,24 +3034,41 @@ function blocoNo(a, n){
       <button class="btn perigo" id="btExcluirRamo">Excluir ramificação</button>
     </div></div>`;
 }
-// (lote 21) a marca do nó na barra especial: a leitura do texto (Automático) ou a do mestre
+/* (lote 43) O papel do nó (o ícone que aparece no centro dele e na ficha) e o efeito na barra especial: Automático (pelo
+   custo de uso do primeiro grau: barra especial com "+" enche, sem "+" gasta) ou o que o mestre marcar. */
+function blocoPapel(n){
+  const I = ICONES(); if(!RR()) return '';
+  return `<div class="grupo" id="grupoPapel"><span class="rot">Papel · o ícone do nódulo</span><div class="papeis" role="group" aria-label="Papel do nódulo">
+    ${RR().PAPEIS.map(p=>`<button type="button" class="papel-op" data-papel="${esc(p.id)}" aria-pressed="${n.papel===p.id}" title="${esc(p.nome)}: ${esc(p.dica)}">${I ? I.svg(p.id) : ''}<span>${esc(p.nome)}</span></button>`).join('')}
+    <button type="button" class="papel-op nenhum" data-papel="" aria-pressed="${!n.papel}" title="Sem ícone">${I ? '<span class="tci-quadro vazio" aria-hidden="true"></span>' : ''}<span>Nenhum</span></button></div>
+    <p class="nota">${n.papel ? 'O que a habilidade faz, num ícone: aparece no centro do nódulo e na ficha de quem aprender.' : 'Sem papel, o nódulo fica sem ícone (o site não chuta).'}${n.tipo==='keystone' && n.glifo ? ' Neste nódulo grande, o glifo continua no centro; o ícone vai para a ficha e para o cartão.' : ''}</p></div>`;
+}
 function blocoMarcaBarra(a, n){
-  const b = barraDaArvore(a);
   if(!RR()) return '';
-  const lido = RR().marcaDaBarra(Object.assign({}, n, {barra:undefined}), b);
-  const txtLido = !b ? 'sem barra' : !lido ? 'nada' : lido.soma && lido.gasta ? '▲▼' : lido.soma ? '▲' : '▼';
-  const op = [['', 'Automático (' + txtLido + ')'], ['soma', '▲ Soma'], ['gasta', '▼ Gasta'], ['ambas', '▲▼ As duas'], ['nada', 'Nenhum']];
-  return `<div class="grupo" id="grupoBarra"><span class="rot">Na barra especial${b ? ' · ' + esc(b) : ''}</span><div class="chips">
-    ${op.map(([v,t])=>`<button class="chip" data-barra="${v}" aria-pressed="${(n.barra||'')===v}">${esc(t)}</button>`).join('')}</div>
-    <p class="nota">${b ? 'O símbolo no nó mostra quando a habilidade soma (▲) ou gasta (▼) ' + esc(b) + '. “Automático” lê o texto; corrija aqui quando a leitura errar.' : 'Esta árvore não diz qual é a barra especial: escreva o nome dela no bloco Árvore, mais abaixo.'}</p></div>`;
+  const nome = barraEtqDe(a), I = ICONES();
+  const auto = RR().etiquetasDaBarra(Object.assign({}, n, {barraEfeito:undefined, barra:undefined}), {grau:0, barra:nome});
+  const txtAuto = auto.length ? auto.map(e=>RR().textoCurtoDaEtiqueta(e)).join(' ') : 'nada';
+  const ef = RR().efeitoDe(n) || '', agora = etiquetasDoNo(n);
+  const op = [['', 'Automático (' + txtAuto + ')'], ['gasta', '▼ Gasta'], ['enche', '▲ Enche'], ['ambos', '▼▲ Os dois'], ['balanca', '⇄ Balança'], ['nenhum', 'Nenhum']];
+  return `<div class="grupo" id="grupoBarra"><span class="rot">Efeito na barra${nome ? ' · ' + esc(nome) : ''}</span><div class="chips">
+    ${op.map(([v,t])=>`<button class="chip" data-barra="${v}" aria-pressed="${ef===v}">${esc(t)}</button>`).join('')}</div>
+    <p class="nota">${agora.length ? 'No nódulo e na ficha: ' + (I ? I.etiquetas(agora, true) : esc(agora.map(e=>RR().textoDaEtiqueta(e)).join(' '))) + '. ' : ''}“Automático” lê o custo de uso do 1º grau: barra especial com “+” enche (▲), sem “+” gasta (▼); SP e itens não contam. Marque quando não houver custo (a passiva que enche) ou quando a barra só balança.</p></div>`;
 }
 function ligarMarcaBarra(n){
-  $$('[data-barra]').forEach(b=>b.onclick = ()=>{
+  $$('#grupoBarra [data-barra]').forEach(b=>b.onclick = ()=>{
     const v = b.dataset.barra;
-    if((n.barra||'')===v) return;
-    registrar('marca da barra especial', null); if(v) n.barra = v; else delete n.barra; salvar(); desenhar(); pintarPainel();
+    if((RR() && RR().efeitoDe(n) || '')===v) return;
+    registrar('efeito na barra', null); delete n.barra; if(v) n.barraEfeito = v; else delete n.barraEfeito; salvar(); desenhar(); pintarPainel();
+  });
+  $$('#grupoPapel [data-papel]').forEach(b=>b.onclick = ()=>{
+    const v = b.dataset.papel;
+    if((n.papel||'')===v) return;
+    registrar('papel do nódulo', null); if(v) n.papel = v; else delete n.papel; salvar(); desenhar(); pintarPainel();
+    const de = $(`#grupoPapel [data-papel="${CSS.escape(v)}"]`); if(de) de.focus();
   });
 }
+// o "Automático" acompanha o custo de uso
+function refazerBarra(n){ const gb = $('#grupoBarra'), a0 = arvDe.get(n.id); if(gb && a0){ gb.outerHTML = blocoMarcaBarra(a0, n); ligarMarcaBarra(n); } }
 function blocoArvore(a){
   const escolas = a.nodes.filter(n=>n.escola).length;
   return `<div class="bloco"><h2>Árvore</h2>
@@ -3144,7 +3241,7 @@ function ligarMestre(){
   });
   on('#eEscSenha', 'input', e=>muda('senha da escola', 'escsenha'+n.id, ()=>{ n.escola.senha = e.target.value; }, {semDesenho:true}));
   on('#eDesc', 'input', e=>muda('editar descrição', 'desc'+n.id, ()=>{ n.desc = e.target.value; }, {semDesenho:true}));
-  on('#eDesc', 'change', ()=>{ desenhar(); const gb = $('#grupoBarra'), a0 = arvDe.get(n.id); if(gb && a0) gb.outerHTML = blocoMarcaBarra(a0, n), ligarMarcaBarra(n); });     // (lote 21) a leitura da barra acompanha o texto
+  on('#eDesc', 'change', ()=>desenhar());
   // (lote 6) a tranca e "Aberto para"
   on('#eTranca', 'change', e=>muda(e.target.checked ? 'trancar o caminho' : 'destrancar o caminho', null, ()=>{ if(e.target.checked) n.tranca = true; else delete n.tranca; }, {painel:true}));
   $$('[data-abrir]').forEach(c=>c.onchange = e=>abrirCaminho(n, c.dataset.abrir, e.target.checked));
@@ -3155,9 +3252,9 @@ function ligarMestre(){
     muda('custo de uso', null, ()=>{ usosDo(n.graus[i]).push({b:barrasDaMesa()[0], v:''}); }, {semDesenho:true, painel:true});
     const c = $(`.guso-v[data-g="${i}"][data-k="${k}"]`); if(c) c.focus();
   });
-  $$('.guso-v').forEach(c=>c.onchange = e=>muda('custo de uso', 'gusov'+n.id+c.dataset.g+c.dataset.k, ()=>{ const u = usosDo(n.graus[+c.dataset.g])[+c.dataset.k]; if(u) u.v = e.target.value.replace(/[{}]/g, '').trim().slice(0, 60); }, {semDesenho:true}));
-  $$('.guso-b').forEach(c=>c.onchange = e=>muda('custo de uso', 'gusob'+n.id+c.dataset.g+c.dataset.k, ()=>{ const u = usosDo(n.graus[+c.dataset.g])[+c.dataset.k]; if(u) u.b = e.target.value.replace(/\s+/g, ' ').trim().slice(0, 30); }, {semDesenho:true}));
-  $$('.guso-x').forEach(b=>b.onclick = ()=>muda('tirar custo de uso', null, ()=>{ const g = n.graus[+b.dataset.g]; usosDo(g).splice(+b.dataset.k, 1); if(!g.uso.length) delete g.uso; }, {semDesenho:true, painel:true}));
+  $$('.guso-v').forEach(c=>c.onchange = e=>{ muda('custo de uso', 'gusov'+n.id+c.dataset.g+c.dataset.k, ()=>{ const u = usosDo(n.graus[+c.dataset.g])[+c.dataset.k]; if(u) u.v = e.target.value.replace(/[{}]/g, '').trim().slice(0, 60); }); refazerBarra(n); });
+  $$('.guso-b').forEach(c=>c.onchange = e=>{ muda('custo de uso', 'gusob'+n.id+c.dataset.g+c.dataset.k, ()=>{ const u = usosDo(n.graus[+c.dataset.g])[+c.dataset.k]; if(u) u.b = e.target.value.replace(/\s+/g, ' ').trim().slice(0, 30); }); refazerBarra(n); });
+  $$('.guso-x').forEach(b=>b.onclick = ()=>muda('tirar custo de uso', null, ()=>{ const g = n.graus[+b.dataset.g]; usosDo(g).splice(+b.dataset.k, 1); if(!g.uso.length) delete g.uso; }, {painel:true}));
   on('#btDuplicar', 'click', ()=>{
     registrar('duplicar nódulo');
     const c = clone(n); c.id = novoId(); c.nome = n.nome + ' (cópia)'; c.escola = null;
@@ -3335,12 +3432,15 @@ function painelJogador(){
     const podeSubir = g0<G && (g0===0 ? est==='disp' : podePagarGrau(p, n, g0+1));
     const txtEstado = g0>0 ? (G>1 ? `Grau ${g0} de ${G}` : 'Alocado')
       : est==='disp' ? 'Disponível' : est==='caro' ? faltaTexto(p, n, 1) : est==='fechado' ? `Fechado por “${fech.nome}”` : 'Bloqueado';
-    detalhe = `<div class="bloco"><h2>${esc(n.nome)}</h2>
-      <p class="info">${[esc(bib().tipos[n.tipo]?.nome || ''), nat ? `<span style="color:${esc(nat.cor)}">●</span> ${esc(nat.nome)}` : '', nomesUso].filter(Boolean).join(' · ')}</p>
+    const I = ICONES(), tempo = tempoDoNo(n), pinfo = papelInfo(n.papel), etq = etiquetasDoNo(n);
+    const fav = podeFavoritar(p) && g0>0, eFav = (p.fav || []).includes(n.id);
+    detalhe = `<div class="bloco"><div class="no-topo">${I && (n.papel || tempo) ? I.quadro(n.papel, tempo, falaDoNo(n, etq)) : ''}<h2>${esc(n.nome)}</h2>
+        ${fav ? `<button type="button" class="btn mini fav${eFav ? ' on' : ''}" id="btFav" aria-pressed="${eFav}" title="${eFav ? 'Tirar das favoritas' : 'Favorita: fica no topo das skills, na ficha'}">${I ? I.svg('estrela') : ''}${eFav ? 'Favorita' : 'Favoritar'}</button>` : ''}</div>
+      ${etq.length && I ? `<p class="info marca-barra" id="marcaBarra">${I.etiquetas(etq)}</p>` : ''}
+      <p class="info">${[pinfo ? esc(pinfo.nome) : '', nomesUso, nat ? `<span style="color:${esc(nat.cor)}">●</span> ${esc(nat.nome)}` : '', esc(bib().tipos[n.tipo]?.nome || '')].filter(Boolean).join(' · ')}</p>
       ${n.desc ? `<p class="info" style="color:var(--texto)" id="descJog">${htmlTexto(n.desc, p, n)}</p>` : ''}
       ${G>1 ? `<ul class="graus-lista">${n.graus.map((g,i)=>`<li class="${i<g0 ? 'feito' : ''}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b><span>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p, n) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</span></li>`).join('')}</ul>`
              : `<p class="info">Custo: ${esc(custoTexto(n.graus[0].custos))}</p>${n.graus[0].uso ? `<p class="info" id="usoJog">Custo de uso: ${htmlCusto(n.graus[0].uso, p)}</p>` : ''}`}
-      ${htmlMarca(n, false)}
       ${n.pais.length ? `<p class="info acento">${exigencia(n, true)}</p>` : ''}
       ${col.length ? `<p class="info">Caminho exclusivo com ${col.map(m=>'“'+esc(m.nome)+'”').join(', ')}.</p>` : ''}
       ${esc0 ? `<p class="info">Escola: ${esc(esc0.escola.nome)}</p>` : ''}
@@ -3384,6 +3484,8 @@ function painelJogador(){
    uso e tipo de uso — e ela já vem aprendida (sem árvore e sem gastar pontos). O jogador vê; quem mexe é o mestre
    (sem mesa, quem usa a página). Ficam nas skills do personagem (skills.unicas) e aparecem na ficha, na aba Skills. */
 const podeCriarUnica = () => !ArvoreMesa.ativo() || ArvoreMesa.mestre();
+// (lote 43) a estrela das favoritas: só na mesa (sem ela, os personagens daqui não são os das Fichas)
+const podeFavoritar = p => !!p && ArvoreMesa.ativo();
 function usoTexto(l){ return Array.isArray(l) ? l.map(x=>x.v + ' ' + x.b).join(', ') : ''; }
 // "10 SP, CAN/2 Energia" → [{ v: '10', b: 'SP' }, { v: 'CAN/2', b: 'Energia' }] (o nome da barra é a última palavra)
 function usoLer(t){
@@ -3420,7 +3522,10 @@ async function editarUnica(id){
       {nome:'desc', rotulo:'O que faz', valor: u ? u.desc : '', tipo:'area', dica:'Uma vez por cena, cura {VIT*2} de HP…', nota:'Contas entre chaves, como {FOR*2}, viram o número do personagem.'},
       {nome:'bonus', rotulo:'Bônus na ficha (opcional)', valor: u && u.bonus ? bonusTexto(u.bonus) : '', dica:'FOR +2, HP +10', nota:'Siglas dos atributos (FOR DES VIT CAN AGI…) ou o nome de um recurso da ficha, separados por vírgula.'},
       {nome:'uso', rotulo:'Custo de uso (opcional)', valor: u ? usoTexto(u.uso) : '', dica:'10 SP, CAN/2 Energia', nota:'Quanto gasta ao usar: o valor e a barra. Só aparece — quem usa desconta à mão.'},
-      {nome:'tipo', rotulo:'Tipo de uso', tipo:'chips', valor: u && u.usos ? u.usos[0] : '', opcoes:[{valor:'', rotulo:'Nenhum'}, ...bib().usos.map(x=>({valor:x.id, rotulo:x.nome}))]}],
+      {nome:'tipo', rotulo:'Tipo de uso', tipo:'chips', valor: u && u.usos ? u.usos[0] : '', opcoes:[{valor:'', rotulo:'Nenhum'}, ...bib().usos.map(x=>({valor:x.id, rotulo:x.nome}))]},
+      // (lote 43) o ícone na ficha e o efeito na barra especial
+      {nome:'papel', rotulo:'Papel · o ícone na ficha', tipo:'chips', valor: u && u.papel || '', opcoes:[{valor:'', rotulo:'Nenhum'}, ...(RR() ? RR().PAPEIS : []).map(x=>({valor:x.id, rotulo:x.nome}))]},
+      {nome:'efeito', rotulo:'Efeito na barra especial', tipo:'chips', valor: u && u.barraEfeito || '', opcoes:[{valor:'', rotulo:'Automático (pelo custo)'}, {valor:'gasta', rotulo:'▼ Gasta'}, {valor:'enche', rotulo:'▲ Enche'}, {valor:'ambos', rotulo:'▼▲ Os dois'}, {valor:'balanca', rotulo:'⇄ Balança'}, {valor:'nenhum', rotulo:'Nenhum'}]}],
     botoes:[{rotulo:'Cancelar', valor:null}, {rotulo: u ? 'Salvar' : 'Criar', valor:true, classe:'ouro', validar:v=>!v.nome.trim() ? 'Dê um nome à skill.' : (v.uso.trim() && !usoLer(v.uso) ? 'O custo de uso fica assim: 10 SP, CAN/2 Energia.' : '')}]});
   if(!r) return;
   registrar(u ? 'editar ' + u.nome : 'criar skill única');
@@ -3428,6 +3533,8 @@ async function editarUnica(id){
   const b = bonusLer(r.bonus); if(b) nova.bonus = b;
   const uso = usoLer(r.uso); if(uso) nova.uso = uso;
   if(r.tipo) nova.usos = [r.tipo];
+  if(PAPEIS_IDS.includes(r.papel)) nova.papel = r.papel;
+  if(EFEITOS_IDS.includes(r.efeito)) nova.barraEfeito = r.efeito;
   const l = (p.unicas || []).slice(), i = u ? l.findIndex(x=>x.id===u.id) : -1;
   if(i>=0) l[i] = nova; else l.push(nova);
   p.unicas = l;
@@ -3461,6 +3568,17 @@ function ligarJogador(){
   });
   on('#btDestrancar', 'click', abrirDestrancar);
   on('#btSubir', 'click', ()=>subirGrau(selecionado));
+  // (lote 43) a favorita: vai para o topo das skills, na ficha (Desfazer: ↺)
+  on('#btFav', 'click', ()=>{
+    const id = selecionado; if(!id || !podeFavoritar(p)) return;
+    const l = (p.fav || []).slice(), i = l.indexOf(id), m = porId.get(id);
+    registrar(i>=0 ? 'tirar das favoritas' : 'favoritar');
+    if(i>=0) l.splice(i, 1); else l.push(id);
+    if(l.length) p.fav = l; else delete p.fav;
+    salvar(); pintarPainel();
+    aviso(i>=0 ? '“' + (m ? m.nome : 'A skill') + '” saiu das favoritas.' : '“' + (m ? m.nome : 'A skill') + '” é favorita: fica no topo das skills, na ficha.', 'ok');
+    const b = $('#btFav'); if(b) b.focus();
+  });
   on('#btDescer', 'click', ()=>descerGrau(selecionado));
   on('#btEquipar', 'click', abrirEquipar);
   on('#btUnica', 'click', ()=>editarUnica(null));
@@ -4027,7 +4145,9 @@ function mostrarDica(n){
   const t = bib().tipos[n.tipo] || {}, nat = naturezaPorId(n.natureza), nomesUso = usosDe(n).map(u=>u.nome).join(', ');
   const G = n.graus.length, jog = ui.modo==='jogador', p = jog ? personagemAtual() : null;
   const g0 = p ? Math.min(p.alocados[n.id] || 0, G) : 0;
-  const meta = [t.nome, nat ? nat.nome : '', nomesUso, G===1 ? custoTexto(n.graus[0].custos) : G + ' graus'].filter(Boolean).join(' · ');
+  // (lote 43) o ícone, as etiquetas da barra e a linha "Ofensiva · Ativa · Canalização"
+  const I = ICONES(), tempo = tempoDoNo(n), pinfo = papelInfo(n.papel), etq = etiquetasDoNo(n);
+  const meta = [pinfo ? pinfo.nome : '', usosDe(n).map(u=>u.nome).join(' · '), nat ? nat.nome : '', t.nome, G===1 ? custoTexto(n.graus[0].custos) : G + ' graus'].filter(Boolean).join(' · ');
   const esc0 = escolaDoNo(n.id), col = colegasExclusivos(n);
   let estado = '';
   if(jog && p){
@@ -4038,8 +4158,9 @@ function mostrarDica(n){
     estado = `<div class="estado" style="color:${esc(cor)}">${esc(txt)}</div>`;
   }
   const trancaTxt = !jog && n.tranca ? (()=>{ const ab = doc.personagens.filter(x=>abertoPara(x, n.id)).map(x=>x.nome); return 'Trancado · ' + (ab.length ? 'aberto para ' + ab.join(', ') : 'ainda não aberto para ninguém'); })() : '';
-  $('#dica2').innerHTML = `<h3 style="color:${nat ? nat.cor : 'var(--texto)'}">${esc(n.nome)}</h3>
-    <div class="meta">${esc(meta)}</div>
+  $('#dica2').innerHTML = `<div class="dica-topo">${I && (n.papel || tempo) ? I.quadro(n.papel, tempo, falaDoNo(n, etq)) : ''}<div><h3 style="color:${nat ? nat.cor : 'var(--texto)'}">${esc(n.nome)}</h3>
+    <div class="meta">${esc(meta)}</div></div></div>
+    ${etq.length && I ? `<div class="dica-etq">${I.etiquetas(etq)}</div>` : ''}
     ${n.desc ? `<p>${htmlTexto(n.desc, p, n)}</p>` : ''}
     ${G===1 && n.graus[0].uso ? `<p class="uso">Custo de uso: ${htmlCusto(n.graus[0].uso, p)}</p>` : ''}
     ${G>1 ? `<ul class="gr">${n.graus.map((g,i)=>`<li style="opacity:${!jog || i<=g0 ? 1 : .55}"><b>${i<g0 ? '✓' : (i+1) + 'º'}</b>${esc(custoTexto(g.custos))}${g.texto ? ' — ' + htmlTexto(g.texto, p) : ''}${g.bonus ? ' · na ficha: ' + esc(bonusTexto(g.bonus)) : ''}${g.uso ? ' · uso: ' + htmlCusto(g.uso, p) : ''}</li>`).join('')}</ul>` : ''}

@@ -11,8 +11,8 @@ const bib = { nome: 'Bib', pools: [{ id: 'p1', nome: 'Pontos', cor: '#D9A441', p
   arvores: [
     { id: 'a1', nome: 'Monge', categoria: 'outra', barra: 'Ki', nodes: [   // (lote 34: de classe, a barra seria comum; aqui é a especial)
       { id: 'n1', nome: 'Origem', tipo: 'keystone', pais: [], usos: [], desc: 'Ponto de partida.', graus: [{ custos: {}, texto: '' }] },
-      { id: 'n2', nome: 'Respiro', tipo: 'notavel', pais: ['n1'], usos: ['passiva'], desc: 'Ganha 1 de Ki por turno.', graus: [{ custos: { p1: 1 }, texto: '' }] },
-      { id: 'n3', nome: 'Palma explosiva', tipo: 'notavel', pais: ['n1'], usos: ['ativa'], desc: 'Gasta 2 de Ki: dano dobrado.', graus: [{ custos: { p1: 1 }, texto: '' }] }] },
+      { id: 'n2', nome: 'Respiro', tipo: 'notavel', pais: ['n1'], usos: ['passiva'], barraEfeito: 'enche', desc: 'Ganha 1 de Ki por turno.', graus: [{ custos: { p1: 1 }, texto: '' }] },
+      { id: 'n3', nome: 'Palma explosiva', tipo: 'notavel', pais: ['n1'], usos: ['ativa'], barraEfeito: 'gasta', desc: 'Gasta 2 de Ki: dano dobrado.', graus: [{ custos: { p1: 1 }, texto: '' }] }] },
     { id: 'a2', nome: 'Kitsune', categoria: 'raca', nodes: [
       { id: 'k1', nome: 'Raiz da raposa', tipo: 'keystone', pais: [], usos: [], desc: 'O começo.', graus: [{ custos: {}, texto: '' }] },
       { id: 'k2', nome: 'Esquiva lunar', tipo: 'notavel', pais: ['k1'], usos: ['reacao'], desc: 'Desvia de um golpe.', graus: [{ custos: { p1: 1 }, texto: '' }] }] }] };
@@ -32,7 +32,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [dain, li
   const passo = async (nome, fn) => { try { await fn(); } catch (e) { ok(false, nome + ' — parou: ' + String((e && e.message) || e).split('\n')[0]); } };
   // o que aparece: os cartões (nome) e as escritas à mão (nome)
   const vis = () => P.evaluate(() => ({
-    cartoes: [...document.querySelectorAll('#habsDaArvore .skcard')].filter(x => !x.hidden).map(x => x.querySelector('.habnome').textContent.replace(/grau.*/, '').replace(/[▲▼]/g, '').trim()),
+    cartoes: [...document.querySelectorAll('#habsDaArvore .skl')].filter(x => !x.hidden).map(x => x.querySelector('.skl-nome').firstChild.textContent.trim()),
     mao: [...document.querySelectorAll('#painelHabs [data-habmao]')].filter(x => !x.hidden).map(x => x.querySelector('[data-habnome]').value) }));
   const chip = (k, txt) => P.locator('#skFiltro [data-skf="' + k + '"]', { hasText: txt });
   await P.goto(t.base + 'fichas/', { waitUntil: 'load' }); await w(1200);
@@ -59,7 +59,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [dain, li
     ok(await P.locator('#skf-painel').isVisible() && j((await P.locator('#skf-painel .skf-g > .eyebrow').allInnerTexts()).map(x => x.toUpperCase())) === j(['USO', 'ORIGEM', 'BARRA']), 'Filtros abre os três grupos: Uso, Origem, Barra');
     const nomes = async k => (await P.locator('#skFiltro [data-skf="' + k + '"]').allInnerTexts()).map(x => x.replace(/\s+/g, ' ').trim());
     ok(j(await nomes('orig')) === j(['Monge 3', 'Kitsune 2', 'Skill única 1', 'À mão 2']), 'Origem: cada árvore, a única e as à mão, com quantos: ' + j(await nomes('orig')));
-    ok(j(await nomes('barra')) === j(['▲ soma 1', '▼ gasta 1', 'Com custo 1']), 'Barra: ▲ soma, ▼ gasta, com custo: ' + j(await nomes('barra')));
+    ok(j(await nomes('barra')) === j(['▲ enche 1', '▼ gasta 1', 'Com custo 1']), 'Barra: ▲ enche, ▼ gasta, com custo (lote 43: pelo barraEfeito ou pelo custo): ' + j(await nomes('barra')));
     await chip('uso', 'Ativa').click(); await w(200);
     let v = await vis();
     ok(j(v.cartoes) === j(['Palma explosiva', 'Sangue do dragão']) && j(v.mao) === j(['Grito de guerra']), 'o chip "Ativa": as ativas da árvore, a única ativa e a escrita à mão do tipo Ativo — ' + j(v));
@@ -71,9 +71,9 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [dain, li
     v = await vis();
     ok(j(v.cartoes) === j(['Palma explosiva']) && v.mao.length === 0, 'chips de grupos diferentes se cruzam (Ativa/Reação e Monge): ' + j(v));
     await chip('orig', 'Monge').click(); await chip('uso', 'Ativa').click(); await chip('uso', 'Reação').click(); await w(200);
-    await chip('barra', 'soma').click(); await w(200);
-    ok(j((await vis()).cartoes) === j(['Respiro']), '"▲ soma": só a que enche a barra especial (Respiro, +1 de Ki)');
-    await chip('barra', 'soma').click(); await chip('barra', 'Com custo').click(); await w(200);
+    await chip('barra', 'enche').click(); await w(200);
+    ok(j((await vis()).cartoes) === j(['Respiro']), '"▲ enche": só a que enche a barra especial (Respiro, +1 de Ki)');
+    await chip('barra', 'enche').click(); await chip('barra', 'Com custo').click(); await w(200);
     ok(j((await vis()).cartoes) === j(['Sangue do dragão']), '"Com custo": só a que tem custo de uso (10 SP)');
     await chip('barra', 'Com custo').click(); await chip('orig', 'À mão').click(); await w(200);
     v = await vis();

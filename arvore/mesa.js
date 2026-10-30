@@ -25,8 +25,9 @@ const ArvoreMesa = (() => {
   const dadosDe = id => { const d = D.pegar(id); return d && d.dados && typeof d.dados === 'object' ? d.dados : null; };
   // o que esta tela escreve nas skills (os ramos, só o mestre) e o que ela confere para saber se algo mudou (tudo)
   // (lote 16) as skills únicas (skills.unicas), como os ramos: quem escreve é o mestre; o jogador lê
-  const skillsDe = p => Object.assign({ arvores: p.arvores || [], pontos: p.pontos || {}, alocados: p.alocados || {} }, mestre() && p.ramos ? { ramos: p.ramos } : null, mestre() && p.unicas && p.unicas.length ? { unicas: p.unicas } : null);
-  const skillsTudo = p => Object.assign({ arvores: p.arvores || [], pontos: p.pontos || {}, alocados: p.alocados || {} }, p.ramos ? { ramos: p.ramos } : null, p.unicas && p.unicas.length ? { unicas: p.unicas } : null);
+  // (lote 43) as favoritas (skills.fav): quem mexe na ficha marca, aqui ou nas Fichas
+  const skillsDe = p => Object.assign({ arvores: p.arvores || [], pontos: p.pontos || {}, alocados: p.alocados || {} }, mestre() && p.ramos ? { ramos: p.ramos } : null, mestre() && p.unicas && p.unicas.length ? { unicas: p.unicas } : null, p.fav && p.fav.length ? { fav: p.fav } : null);
+  const skillsTudo = p => Object.assign({ arvores: p.arvores || [], pontos: p.pontos || {}, alocados: p.alocados || {} }, p.ramos ? { ramos: p.ramos } : null, p.unicas && p.unicas.length ? { unicas: p.unicas } : null, p.fav && p.fav.length ? { fav: p.fav } : null);
   /* Campanhas (numa mesa que as tem): os personagens da campanha em vista vêm primeiro, depois os do mundo e os das
      outras campanhas (a aba diz de qual). O personagem criado aqui nasce na campanha em vista. As árvores são do mundo:
      a biblioteca é uma só para a mesa inteira. */
@@ -54,6 +55,7 @@ const ArvoreMesa = (() => {
       pontos: Object.assign({}, s.pontos || {}), alocados: Object.assign({}, s.alocados || {}), ordemLivre: true };
     if (s.ramos && typeof s.ramos === 'object' && !Array.isArray(s.ramos) && Object.keys(s.ramos).length) p.ramos = JSON.parse(j(s.ramos));
     if (Array.isArray(s.unicas) && s.unicas.length) p.unicas = JSON.parse(j(s.unicas));
+    if (Array.isArray(s.fav) && s.fav.length) p.fav = s.fav.filter(x => typeof x === 'string').slice(0, 60);
     return p;
   }
   // A biblioteca que esta pessoa enxerga: o mestre, a original; o jogador, o pacote publicado.

@@ -2,6 +2,46 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.30-3",
+      "data": "2026-10-30",
+      "titulo": "Ícones nas habilidades e as favoritas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Cada habilidade ganha o ícone do que ela faz: espada (Ofensiva), escudo (Defensiva), cruz (Suporte), corrente (Controle), bota com asa (Movimento), espírito (Invocação), fogueira (Fora de combate) e chave (Utilidade). No canto do ícone vem quando ela entra: o raio dourado da reação, as pegadas da postura, o anel da passiva."
+        },
+        {
+          "tipo": "novo",
+          "texto": "As etiquetas da barra especial: “▼ 3 Geada” gasta, “▲ 2 Barra Bestial” enche, “⇄ 3 Compasso” balança. Na ficha, com o número do grau que você tem; na Árvore, embaixo de cada nó (▼2, ▲2, ▲)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "A aba Skills da ficha virou uma lista: uma linha por habilidade, com o texto em uma linha só. Toque na linha para ler o texto inteiro, ou use “Abrir todas”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Em cima da lista, o filtro de um toque: Todas · Reações · Ofensivas · Defensivas · Suporte · Controle… · Favoritas. Ele soma com a busca e com os filtros de antes, e cada ficha lembra o dela."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Habilidades favoritas: toque na estrela e a habilidade vai para o topo da lista. Para mudar a ordem, arraste a alça ⋮⋮ (ou use Alt e as setas). Na Árvore, o botão “Favoritar” aparece no painel da habilidade que você já tem."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Na Árvore, as siglas do tipo de uso (At, Pa, Re, Po) passaram para baixo do nome do nó; o canto de cima ficou com a marca de quando a habilidade entra."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "As habilidades que enchem a barra com “+” (como a Barra Bestial) apareciam como se gastassem: agora aparecem com ▲."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Árvore → nó → “Papel”: os 8 ícones ou Nenhum (sem papel, o nó fica sem ícone). “Efeito na barra”: Automático (lê o custo de uso do 1º grau: barra especial com “+” enche, sem “+” gasta; SP e itens não contam), Gasta, Enche, Os dois, Balança ou Nenhum. A skill única também ganha papel e efeito. O texto do nó não decide mais a marca da barra."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.30-2",
       "data": "2026-10-30",
       "titulo": "Soldados com nome e as tropas do clã",

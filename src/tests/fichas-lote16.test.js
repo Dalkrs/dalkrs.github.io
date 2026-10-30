@@ -106,11 +106,13 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [dain, li
 
   await passo('a aba Skills', async () => {
     await aba('skills');
-    const cards = await P.locator('#habsDaArvore .habrow').evaluateAll(l => l.map(e => e.innerText.replace(/\s+/g, ' ').trim()));
-    ok(cards.length === 3 && /Punho de Titânio grau 2\/2/.test(cards[0]) && /Golpes desarmados causam \d+ de dano/.test(cards[0]) && /Na ficha: FOR \+2/.test(cards[0]) && /Sangue do dragão SKILL ÚNICA Cura \d+ de HP\. Na ficha: VIT \+3 Custo de uso: 10 SP/i.test(cards[2]),
+    // (lote 43: uma linha por skill; "Abrir todas" mostra o texto inteiro de cada uma)
+    await P.locator('[data-sklabrirtodas]').click(); await w(200);
+    const cards = await P.locator('#habsDaArvore .skl').evaluateAll(l => l.map(e => e.innerText.replace(/\s+/g, ' ').trim()));
+    ok(cards.length === 3 && /Punho de Titânio grau 2\/2/.test(cards[0]) && /Golpes desarmados causam \d+ de dano/.test(cards[0]) && /Na ficha: FOR \+2/.test(cards[0]) && /Sangue do dragão Skill única (Ativa )?Cura \d+ de HP\. Na ficha: VIT \+3 Custo de uso: 10 SP/i.test(cards[2]),
       'um cartão para cada aprendida (o grau, o texto com a conta do personagem, o bônus) e para a skill única: ' + j(cards));
     ok(await S0(() => calcular(S.personagens[0]).tot.VIT - calcular(Object.assign({}, S.personagens[0], { skills: Object.assign({}, S.personagens[0].skills, { unicas: [] }) })).tot.VIT) === 3, 'o +3 de VIT da skill única conta nos atributos');
-    ok(await P.locator('[data-skabrir]').count() === 0 && await P.locator('#habsDaArvore button, #habsDaArvore input').count() === 0, 'sem mesa, sem o "Abrir na Árvore"; os cartões são só leitura');
+    ok(await P.locator('[data-skabrir]').count() === 0 && await P.locator('#habsDaArvore input, #habsDaArvore textarea, #habsDaArvore select').count() === 0 && await P.locator('#habsDaArvore button:not([data-sklabrir]):not([data-skfav])').count() === 0, 'sem mesa, sem o "Abrir na Árvore"; as linhas são só leitura (abrir e a estrela)');
     await foto('l16-ficha-skills');
     await P.locator('[data-habunicas]').click(); await w(300);
     ok(j(await P.locator('.puop input').evaluateAll(l => l.map(i => i.checked))) === j([true, true, false]) && /Passivo → uso “Passiva”/.test(await P.locator('.puops').innerText()) && /Inativo → sem tipo de uso/.test(await P.locator('.puops').innerText()), 'a prévia: cada uma com o tipo de uso que ganha; a inativa desmarcada');
@@ -119,7 +121,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [dain, li
     await P.locator('[data-puok]').click(); await w(400);
     let s = await S0(() => [S.personagens[0].habilidades.map(h => h.nome), S.personagens[0].skills.unicas.map(u => u.nome + ':' + (u.usos || []).join())]);
     ok(j(s) === j([['Grito de guerra', 'Velho truque'], ['Sangue do dragão:ativa', 'Faro aguçado:passiva']]) && /1 habilidade virou skill única de Dain X/.test(await toast()), 'o Faro vira skill única (Passiva); as outras continuam escritas à mão: ' + j(s));
-    ok((await P.locator('#habsDaArvore .habrow.daunica').count()) === 2, 'e já aparece nos cartões');
+    ok((await P.locator('#habsDaArvore .skl.unica').count()) === 2, 'e já aparece nas aprendidas');
     await P.locator('.toast button').click(); await w(300);
     s = await S0(() => [S.personagens[0].habilidades.map(h => h.nome), S.personagens[0].skills.unicas.map(u => u.nome)]);
     ok(j(s) === j([['Faro aguçado', 'Grito de guerra', 'Velho truque'], ['Sangue do dragão']]), 'o Desfazer põe tudo como estava');

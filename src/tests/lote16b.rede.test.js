@@ -152,7 +152,9 @@ const mapa = { id: 'mp_vale', nome: 'Vale de Brenn', cal: { dia: 1, ano0: 300 },
     // e na ficha, nos cartões da aba Skills
     await J.locator('#tab-fichas').click(); await w(400, J);
     await aba(G, 'skills', J);
-    ok(await ate(async () => (await G.locator('#habsDaArvore .habrow.daunica').count()) === 1 && /Sangue do dragão SKILL ÚNICA Cura \d+ de HP\. Na ficha: VIT \+3 Custo de uso: 10 SP/i.test((await G.locator('#habsDaArvore .habrow.daunica').innerText()).replace(/\s+/g, ' '))), 'na ficha do jogador, o cartão da skill única');
+    ok(await ate(async () => (await G.locator('#habsDaArvore .skl.unica').count()) === 1), '(na ficha do jogador, a linha da skill única)');
+    await G.locator('#habsDaArvore .skl.unica .skl-linha').click(); await w(200, J);
+    ok(/Sangue do dragão Skill única (Ativa )?Cura \d+ de HP\. Na ficha: VIT \+3 Custo de uso: 10 SP/i.test((await G.locator('#habsDaArvore .skl.unica').innerText()).replace(/\s+/g, ' ')), 'na ficha do jogador, a skill única (aberta: o texto, o bônus, o custo)');
     ok(await G.evaluate(() => { const p = S.personagens.find(x => x.id === 'pc_dain'); return calcular(p).tot.VIT - calcular(Object.assign({}, p, { skills: Object.assign({}, p.skills, { unicas: [] }) })).tot.VIT; }) === 3, 'e o +3 de VIT conta');
     ok(await G.locator('[data-skabrir="pc_dain"]').isVisible(), '"Abrir na Árvore", na ficha dele');
     await G.locator('[data-skabrir="pc_dain"]').click(); await w(800, J);

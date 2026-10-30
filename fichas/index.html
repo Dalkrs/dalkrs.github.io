@@ -853,6 +853,59 @@ button.apagar:disabled{background:var(--rubric-off);border-color:var(--rubric-bo
 /* (lote 23) os filtros da aba Skills */
 .habrow[hidden]{display:none!important}
 .skfiltro{margin:0 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--campo-sut)}
+/* (lote 43) o filtro de um toque: Todas · Reações · os papéis · Favoritas */
+.skf-rapido{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}
+.skf-rapido>.hint{margin-right:2px}
+.skf-rapido button{display:inline-flex;align-items:center;gap:6px;padding:4px 11px 4px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 13px/1.3 var(--ui);cursor:pointer}
+.skf-rapido button:hover{border-color:var(--ink-soft)}
+.skf-rapido button svg.tci{width:16px;height:16px}
+.skf-rapido button .ic-reacao{color:var(--tci-reacao)}
+.skf-rapido button .ic-fav{color:var(--brass)}
+.skf-rapido button .ic-fav svg.tci{fill:currentColor}
+.skf-rapido button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.skf-rapido button[aria-pressed="true"] .ic-reacao,.skf-rapido button[aria-pressed="true"] .ic-fav{color:inherit}
+.skf-rapido button:focus-visible{outline:2px solid var(--forte);outline-offset:2px}
+/* (lote 43) a lista das aprendidas: o ícone, o nome, uma linha de texto, a árvore; as etiquetas e a estrela à direita */
+.skl-lista{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);overflow:hidden;--tci-fundo:var(--paper);--tci-papel:var(--panel);--tci-vazio:var(--line)}
+.skl{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:10px;border-bottom:1px solid var(--line);border-left:3px solid var(--skcor,transparent);padding-right:8px}
+.skl:last-child{border-bottom:0}
+.skl[hidden]{display:none!important}
+.skl.fav{background:var(--brass-fundo)}
+.skl-linha{all:unset;box-sizing:border-box;display:grid;grid-template-columns:42px minmax(0,1fr);gap:14px;align-items:center;padding:11px 0 11px 12px;cursor:pointer;min-width:0;color:inherit;font:inherit}
+.skl-linha:focus-visible{outline:2px solid var(--forte);outline-offset:-3px;border-radius:6px}
+.skl-meio{display:flex;flex-direction:column;gap:1px;min-width:0}
+.skl-nome{font-weight:700;font-size:15px;line-height:1.3;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.skl-nome .habgrau{font-weight:400}
+.skl-desc{color:var(--ink-2);font-size:13px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.skl.aberta .skl-desc{display:none}
+.skl-de{color:var(--ink-soft);font-size:12px;line-height:1.3}
+.skl.unica .skl-de{color:var(--brass-ink)}
+.skl-dir{display:flex;align-items:center;gap:6px;justify-self:end;flex-wrap:wrap;justify-content:flex-end}
+.skl-fav{all:unset;box-sizing:border-box;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;color:var(--ink-fraco);cursor:pointer}
+.skl-fav svg.tci{width:19px;height:19px}
+.skl-fav:hover{color:var(--brass)}
+.skl-fav.on{color:var(--brass)}
+.skl-fav.on svg.tci{fill:currentColor}
+.skl-fav:focus-visible,.skl-alca:focus-visible{outline:2px solid var(--forte);outline-offset:1px}
+.skl-fav.fixa{cursor:default}
+.skl-alca{display:grid;place-items:center;width:18px;height:32px;color:var(--ink-soft);cursor:grab;touch-action:none;border-radius:4px}
+.skl-alca svg{width:8px;height:12px;fill:currentColor}
+.skl.arrastando{background:var(--sel);box-shadow:var(--sombra);position:relative;z-index:2}
+.skl.arrastando .skl-alca{cursor:grabbing}
+.skl-corpo{grid-column:1/-1;display:flex;flex-direction:column;gap:5px;padding:0 8px 12px 68px}
+.skl-tags{font-size:12px;font-weight:600;color:var(--ink-soft)}
+.skl-corpo .habtexto{font-size:13.5px;line-height:1.5}
+@media (max-width:560px){
+  .skl{grid-template-columns:minmax(0,1fr)}
+  .skl-dir{justify-self:stretch;justify-content:flex-start;padding:0 0 10px 68px}
+  .skl-corpo{padding-left:14px}
+}
+/* (lote 43) "Distribuir pontos": o ícone e a marca, pequenos */
+.sk-ic{display:inline-flex;align-items:center;gap:2px;margin-left:6px;color:var(--ink-2)}
+.sk-ic svg.tci{width:15px;height:15px}
+.sk-ic .sk-tempo{display:inline-flex}
+.sk-ic .sk-tempo.reacao{color:var(--tci-reacao)}
+.sknome .tci-chips{margin-left:6px}
 .skf-linha{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
 .skf-linha #skf-busca{flex:1 1 200px;min-width:0}
 #skf-abrir.on{border-color:var(--brass);color:var(--brass-ink)}
@@ -1601,13 +1654,15 @@ html:not(.modo-simples) .so-simples{display:none!important}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=20"></script>
-<script src="../tc/rules.js?v=26"></script>
+<script src="../tc/rules.js?v=27"></script>
+<script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=1"></script>
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=16"></script>
 <script src="extras.js?v=20"></script>
 <script src="quadros.js?v=5"></script>
-<script src="filtro-skills.js?v=2"></script>
+<script src="skills-lista.js?v=1"></script>
+<script src="filtro-skills.js?v=3"></script>
 <script src="criacao.js?v=3"></script>
 <script src="../tc/corrupcao.js?v=1"></script>
 <script src="corrupcao.js?v=1"></script>
@@ -4375,7 +4430,8 @@ function htmlComContas(texto, k){
 function htmlCustoUso(uso, k){
   const R=window.TC&&TC.rules;
   if(!uso||!R||!R.custoDeUso) return '';
-  return R.custoDeUso(uso, k&&k.vars, k&&k.cfg).map(c=>(c.conta? htmlConta(c) : esc(String(c.v)))+' '+esc(c.barra)).join(' · ');
+  // (lote 43) o "+" de quem enche a barra fica: "+2 Barra Bestial"
+  return R.custoDeUso(uso, k&&k.vars, k&&k.cfg).map(c=>(/^\s*\+/.test(c.expr)? '+' : '')+(c.conta? htmlConta(c) : esc(String(c.v)))+' '+esc(c.barra)).join(' · ');
 }
 function textoComContas(texto, k){ const R=window.TC&&TC.rules; return R&&R.textoComContas? R.textoComContas(texto, k&&k.vars, k&&k.cfg) : String(texto||''); }
 /* (lote 16) A aba Skills é um resumo: um cartão para cada coisa que o personagem aprendeu na árvore e para cada skill
@@ -4383,33 +4439,9 @@ function textoComContas(texto, k){ const R=window.TC&&TC.rules; return R&&R.text
    contas no número dele, o bônus e o custo de usar. Só leitura: muda pela Árvore ("Abrir na Árvore"). */
 function unicasDaFicha(pc){ const R=window.TC&&TC.rules; try{ return R&&R.unicasDe? R.unicasDe(pc.skills) : []; }catch(e){ return []; } }
 const textoDoBonus=b=>b? Object.keys(b).map(k=>k+' '+(b[k]>=0?'+':'−')+Math.abs(b[k])).join(', ') : '';
-function htmlCartoesSkills(pc){
-  const linhas=habsDaArvore(pc), unicas=unicasDaFicha(pc);
-  if(!linhas.length && !unicas.length) return '';
-  const k=contasDe(pc);
-  return `<div class="skcards" id="habsDaArvore">
-    ${linhas.map(({n,grau,arvore,texto,uso})=>{
-      const us=(n.usos||[]).map(u=>usoArv(u)).filter(Boolean), gs=grausDe(n).length, custo=htmlCustoUso(uso, k), b=textoDoBonus((grausDe(n).slice(0,grau).reduce((o,g)=>{ Object.entries(g.bonus||{}).forEach(([x,v])=>{ o[x]=(o[x]||0)+(+v||0); }); return o; },{})));
-      return `<div class="habrow daarv skcard" data-habarv="${esc(n.id)}"${n.cor?` style="--skcor:${esc(n.cor)}"`:''}>
-        <span class="habuso">${us.length? us.map(u=>esc(u.nome)).join(' · ') : 'Árvore'}</span>
-        <span class="habnome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}${marcaBarraHtml(n, arvore)}${gs>1?`<span class="mono habgrau">grau ${grau}/${gs}</span>`:''}</span>
-        <span class="hint skde">${esc(arvore.nome)}</span>
-        ${(texto||n.desc)? `<div class="habtexto">${texto?`<strong>${htmlComContas(texto, k)}</strong>${n.desc?' · ':''}`:''}${htmlComContas(n.desc||'', k)}</div>`:''}
-        ${b? `<div class="habcusto skbonus">Na ficha: ${esc(b)}</div>`:''}
-        ${custo? `<div class="habcusto">Custo de uso: ${custo}</div>`:''}
-      </div>`}).join('')}
-    ${unicas.map(u=>{
-      const us=(u.usos||[]).map(x=>usoArv(x)).filter(Boolean), custo=htmlCustoUso(u.uso||null, k);
-      return `<div class="habrow daunica skcard unica" data-habunica="${esc(u.id)}">
-        <span class="habuso">${us.length? us.map(x=>esc(x.nome)).join(' · ') : 'Única'}</span>
-        <span class="habnome">${esc(u.nome)}</span>
-        <span class="hint skde">skill única</span>
-        ${u.desc? `<div class="habtexto">${htmlComContas(u.desc, k)}</div>`:''}
-        ${u.bonus? `<div class="habcusto skbonus">Na ficha: ${esc(textoDoBonus(u.bonus))}</div>`:''}
-        ${custo? `<div class="habcusto">Custo de uso: ${custo}</div>`:''}
-      </div>`}).join('')}
-  </div>`;
-}
+/* (lote 43) As aprendidas: uma linha por skill, com o ícone do papel, a marca de tempo e as etiquetas da barra; as
+   favoritas no topo; tocar abre o texto inteiro (ver fichas/skills-lista.js). */
+function htmlCartoesSkills(pc){ return window.FichasSkLista? FichasSkLista.html(pc) : ''; }
 /* (lote 16) As habilidades escritas à mão viram skills únicas (o que o mestre cria na Árvore, só para o personagem): a
    janela mostra antes cada uma, com o tipo de uso que ela ganha — as inativas vêm desmarcadas —, e só muda o que
    ficar marcado. Depois, dá para desfazer. Quem faz: quem mestra (sem mesa, quem usa a página). */
@@ -4669,7 +4701,7 @@ function abrirDisputa(pc){
 function blocoSkills(pc){
   arvPara(pc);
   if(!temBib()) return (unicasDaFicha(pc).length? `<div class="skbloco"><div class="skhd estatico"><span class="eyebrow">Aprendidas</span>
-      <span class="hint">${unicasDaFicha(pc).length===1?'1 skill única':unicasDaFicha(pc).length+' skills únicas'}</span><span style="margin-left:auto;display:flex;gap:6px">${botaoAbrirArvore(pc)}</span></div>
+      <span class="hint">${unicasDaFicha(pc).length===1?'1 skill única':unicasDaFicha(pc).length+' skills únicas'}</span><span style="margin-left:auto;display:flex;gap:6px">${window.FichasSkLista? FichasSkLista.botaoAbrir(pc) : ''}${botaoAbrirArvore(pc)}</span></div>
       <div class="skcorpo">${htmlCartoesSkills(pc)}</div></div>` : '') + `
     <div class="semarv">
       <h3>Nenhuma árvore carregada</h3>
@@ -4745,7 +4777,7 @@ function blocoSkills(pc){
     <div class="skhd estatico">
       <span class="eyebrow">Aprendidas</span>
       <span class="hint">${escolhidas.length===1?'1 da árvore':escolhidas.length+' da árvore'}${unicas.length?' · '+(unicas.length===1?'1 única':unicas.length+' únicas'):''}${perdidas?` · ${perdidas} de ramo trancado`:''}</span>
-      <span style="margin-left:auto;display:flex;gap:6px">${escolhidas.length||unicas.length?'<button class="mini" data-skcopiar="1">Copiar tabela</button>':''}${botaoAbrirArvore(pc)}</span>
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${window.FichasSkLista? FichasSkLista.botaoAbrir(pc) : ''}${escolhidas.length||unicas.length?'<button class="mini" data-skcopiar="1">Copiar tabela</button>':''}${botaoAbrirArvore(pc)}</span>
     </div>
     <div class="skcorpo">
       ${htmlCartoesSkills(pc) || `<div class="hint">Nada aprendido ainda. ${botaoAbrirArvore(pc)? 'Na Árvore, escolha os nódulos (o que for pego aparece aqui, um cartão para cada).' : 'O que for pego em “Distribuir pontos”, aqui embaixo, aparece aqui, um cartão para cada.'}</div>`}
@@ -4754,11 +4786,14 @@ function blocoSkills(pc){
 
   return barra + tabela + distribuir + equipar;
 }
-/* (lote 21) ▲ soma / ▼ gasta da barra especial da árvore (lido do texto; o mestre corrige na Árvore) */
-function marcaBarraHtml(n, a){
-  const R=window.TC&&TC.rules; if(!R||!R.marcaDaBarra) return '';
-  const b=R.barraEspecial(a||arvoreDoNo(n.id)), m=R.marcaDaBarra(n,b); if(!m) return '';
-  return `<span class="skbarra" title="${esc(R.textoDaMarca(m,b))}" aria-label="${esc(R.textoDaMarca(m,b))}">${m.soma?'<b class="mbs">▲</b>':''}${m.gasta?'<b class="mbg">▼</b>':''}</span>`;
+/* (lote 43) Na lista "Distribuir pontos": o ícone do papel e a marca de tempo, pequenos, e as etiquetas da barra (do grau
+   comprado, ou do primeiro) — os mesmos da lista das aprendidas. */
+function marcaBarraHtml(n, a, grau){
+  const R=window.TC&&TC.rules, I=window.TC&&TC.icones; if(!R||!R.etiquetasDaBarra||!I) return '';
+  const arv=a||arvoreDoNo(n.id), etq=R.etiquetasDaBarra(n, {grau:Math.max(0,(grau||1)-1), barra:R.barraDasEtiquetas(arv)});
+  const papel=R.papelDe(n), tempo=R.tempoDe(n.usos, (BIBX()||{}).usos), fala=R.textoDosIcones(papel, tempo, etq);
+  const ic=(papel? I.svg(papel) : '')+(tempo? `<span class="sk-tempo ${tempo}">${I.svg(tempo)}</span>` : '');
+  return (ic? `<span class="sk-ic" role="img" aria-label="${esc(fala)}" title="${esc(fala)}">${ic}</span>` : '')+I.etiquetas(etq, true);
 }
 function linhaNo(pc,n,prof){
   const e=estadoDoNo(pc,n), al=skillsDe(pc).alocados;
@@ -4775,7 +4810,7 @@ function linhaNo(pc,n,prof){
     </button>
     <div class="sknocorpo">
       <div class="sknolinha">
-        <span class="sknome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}${marcaBarraHtml(n)}</span>
+        <span class="sknome">${n.cor?`<span class="skdot" style="background:${esc(n.cor)}"></span>`:''}${esc(n.nome||'(sem nome)')}${marcaBarraHtml(n, null, grau)}</span>
         <span class="sktipo">${esc(tipoArv(n).nome||'')}</span>
         ${us.map(u=>`<span class="skuso u-${esc(u.id)}" title="${esc(u.nome)}">${esc(u.sigla||u.nome)}</span>`).join('')}
         ${nat?`<span class="skdot" style="background:${esc(nat.cor||'#888')}" title="${esc(nat.nome)}"></span>`:''}
@@ -4824,6 +4859,7 @@ function ligarSkills(pc,host){
     podarSkills(pc); save(); renderFicha(); toast('Pontos devolvidos');
   });
   host.querySelectorAll('[data-skabrir]').forEach(b=>b.onclick=()=>{ if(window.TC&&TC.ponte&&TC.ponte.ir) TC.ponte.ir('arvore', {personagem: b.dataset.skabrir}); });
+  if(window.FichasSkLista) FichasSkLista.ligar(host, pc);        // (lote 43) abrir as linhas, as favoritas
   host.querySelectorAll('[data-skcopiar]').forEach(b=>b.onclick=()=>{
     const t=textoTabelaSkills(pc);
     navigator.clipboard?.writeText(t).then(()=>toast('Tabela copiada'),()=>toast('Não consegui copiar'));

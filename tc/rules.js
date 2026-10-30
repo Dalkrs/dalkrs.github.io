@@ -885,14 +885,12 @@
      Em cada grau, uma lista de { b: nome da barra (SP, Energia, uma barra especial), v: quanto — um número ou uma conta
      como "CAN/2" }. Só aparece: quem usa desconta à mão. */
   const MAX_USO = 4;
-  /* (lote 21) A barra especial de uma árvore e a marca de cada nó nela (o símbolo ▲ soma / ▼ gasta, na Árvore e na
-     ficha). A barra vem do nó que a define ("Preparo (barra): máximo 20…", "Geada: máximo 20…"); a marca é lida do
-     texto do nó ("+1 de Preparo", "ganha 2 de Geada", "recupera…" somam; "gasta…", "custa 3 de Ira", "perde metade do
-     Preparo", "a Ira zera" gastam — "não gasta", "custa 1 a menos" não). O mestre corrige no nó: no.barra = 'soma',
-     'gasta', 'ambas' ou 'nada' (sem o campo, vale a leitura do texto). */
+  /* (lote 21) A barra especial de uma árvore: vem do nó que a define ("Preparo (barra): máximo 20…", "Geada: máximo
+     20…") ou do nome que o mestre escreveu na árvore. (A marca de cada nó, que era lida do texto, agora sai do custo
+     de uso ou do barraEfeito: ver o lote 43, mais abaixo.) */
   const LETRA = 'A-Za-zÀ-ÖØ-öø-ÿ';
   const RE_DEF_BARRA = new RegExp('(?:^|\\n)\\s*([A-ZÀ-ÖØ-Þ][' + LETRA + "'’ ]{1,28}?)\\s*(?:\\([^)\\n]{0,90}\\))?\\s*:\\s*(?:m[áa]ximo\\s+\\d+|uma balança|de\\s+[−-]?\\d+\\s+a\\s+[+]?\\d+)");
-  const MARCAS_BARRA = ['soma', 'gasta', 'ambas', 'nada'];
+  const MARCAS_BARRA = ['soma', 'gasta', 'ambas', 'nada'];             // (a marca antiga, do lote 21: vale como barraEfeito)
   const textoDoNo = n => [n && n.desc].concat(((n && n.graus) || []).map(g => g && g.texto)).filter(x => typeof x === 'string' && x).join('\n');
   const defineBarra = n => { const m = RE_DEF_BARRA.exec(textoDoNo(n)); return m ? m[1].trim() : null; };
   function barraEspecial(arvore) {
@@ -924,44 +922,136 @@
     if (ini && out.max != null) out.inicio = Math.min(out.max, Number(ini[1]));
     return out;
   }
-  const escRe = t => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const cacheMarca = new Map();
-  function lerMarcaDoTexto(txt, barra) {
-    const ch = barra + '\u0001' + txt;
-    if (cacheMarca.has(ch)) return cacheMarca.get(ch);
-    const r = lerMarcaDoTexto0(txt, barra);
-    if (cacheMarca.size > 6000) cacheMarca.clear();
-    cacheMarca.set(ch, r);
-    return r;
-  }
-  function lerMarcaDoTexto0(txt, barra) {
-    const B = '(?<![' + LETRA + '])' + escRe(barra) + '(?![' + LETRA + '])', tem = new RegExp(B);
-    const soma1 = new RegExp('\\+\\s*\\d+(?:d\\d+)?\\s*(?:de\\s+)?' + B);
-    const soma2 = new RegExp('(?<!não )(?<!nem )\\b(?:ganha|ganham|ganhar|ganhando|recupera|recuperam|recuperar|enche|enchem|encher|rende|rendem|render|soma|somam)\\b[^.;\\n]{0,30}?' + B, 'i');
-    const gasta1 = new RegExp('(?<!não )(?<!nem )\\b(?:gasta|gastam|gastar|gastando|paga|pagam|pagar|pagando|perde|perdem|perder|consome|consomem|custa|custam|custar)\\b[^.;\\n]{0,30}?' + B, 'i');
-    const gasta2 = new RegExp(B + '\\s+(?:zera|zeram|cai pela metade|volta a 0)', 'i'), gasta3 = new RegExp('[−-]\\s*\\d+\\s*(?:de\\s+)?' + B);
-    let soma = false, gasta = false;
-    for (const fr of String(txt).split(/[.;\n]+|\bEm troca\b/)) {
-      if (!tem.test(fr)) continue;
-      if (soma1.test(fr) || soma2.test(fr)) soma = true;
-      if (!/\ba menos\b|mais barat/i.test(fr) && (gasta1.test(fr) || gasta2.test(fr) || gasta3.test(fr))) gasta = true;
-    }
-    return soma || gasta ? { soma, gasta } : null;
-  }
-  // → { soma, gasta, mao } ou null. barra: o nome (barraEspecial da árvore do nó)
-  function marcaDaBarra(no, barra) {
+  /* (lote 43) Os ícones das habilidades (o guia de 30/10): bater o olho e saber o que a habilidade faz (o papel), quando
+     ela entra (o tempo) e o que ela faz com a barra especial (as etiquetas ▼ gasta, ▲ enche, ⇄ balança).
+       no.papel        'ofensiva' | 'defensiva' | 'suporte' | 'controle' | 'movimento' | 'invocacao' | 'fora' |
+                       'utilidade' — sem ele, não há ícone (o site não chuta)
+       no.barraEfeito  'gasta' | 'enche' | 'ambos' | 'balanca' | 'nenhum' — sem ele, vale o custo de uso do grau:
+                       barra especial com "+" enche, sem "+" gasta; SP, HP, Energia e itens ficam de fora.
+     (A marca antiga, no.barra = 'soma'/'gasta'/'ambas'/'nada', do lote 21, vale como barraEfeito.) */
+  const PAPEIS = Object.freeze([
+    { id: 'ofensiva', nome: 'Ofensiva', plural: 'Ofensivas', dica: 'Dano e aumento de dano' },
+    { id: 'defensiva', nome: 'Defensiva', plural: 'Defensivas', dica: 'Protege a si mesmo' },
+    { id: 'suporte', nome: 'Suporte', plural: 'Suporte', dica: 'Cura e ajuda aliados' },
+    { id: 'controle', nome: 'Controle', plural: 'Controle', dica: 'Prende, derruba, assusta' },
+    { id: 'movimento', nome: 'Movimento', plural: 'Movimento', dica: 'Anda, salta, some' },
+    { id: 'invocacao', nome: 'Invocação', plural: 'Invocação', dica: 'Espíritos, servos, totens' },
+    { id: 'fora', nome: 'Fora de combate', plural: 'Fora de combate', dica: 'Acampamento, social, viagem' },
+    { id: 'utilidade', nome: 'Utilidade', plural: 'Utilidade', dica: 'Barra, sentidos, ficha' }]);
+  const EFEITOS_BARRA = Object.freeze(['gasta', 'enche', 'ambos', 'balanca', 'nenhum']);
+  const NOME_EFEITO = Object.freeze({ gasta: 'Gasta', enche: 'Enche', ambos: 'Os dois', balanca: 'Balança', nenhum: 'Nenhum' });
+  const MARCA_ANTIGA = { soma: 'enche', gasta: 'gasta', ambas: 'ambos', nada: 'nenhum' };
+  const TEMPOS = Object.freeze(['reacao', 'postura', 'passiva']);            // a ordem é a de quem aparece quando há mais de um
+  const NOME_TEMPO = Object.freeze({ reacao: 'Reação', postura: 'Postura', passiva: 'Passiva', ativa: 'Ativa' });
+  const papelDe = no => (no && PAPEIS.some(p => p.id === no.papel) ? no.papel : null);
+  const papelInfo = id => PAPEIS.find(p => p.id === id) || null;
+  // o efeito escrito no nó (pelo mestre ou pelo SQL do Dalmo), ou null: o automático
+  function efeitoDe(no) {
     if (!no) return null;
-    if (MARCAS_BARRA.includes(no.barra)) return no.barra === 'nada' ? null : { soma: no.barra !== 'gasta', gasta: no.barra !== 'soma', mao: true };
-    if (!barra || defineBarra(no)) return null;                                   // (o nó que define a barra não ganha marca)
-    const m = lerMarcaDoTexto(textoDoNo(no), barra);
-    // o custo de uso na barra ("Geada de Selene: 2" vale para a Geada) também é gastar
-    const nb = normBarraNome(barra), daBarra = b => { const x = normBarraNome(b); return !!x && (x === nb || x.startsWith(nb + ' ') || nb.startsWith(x + ' ')); };
-    const pelaConta = ((no && no.graus) || []).some(g => g && Array.isArray(g.uso) && g.uso.some(u => u && daBarra(u.b) && String(u.v).trim() !== '0' && String(u.v).trim() !== ''));
-    if (!m && !pelaConta) return null;
-    return { soma: !!(m && m.soma), gasta: !!(m && m.gasta) || pelaConta, mao: false };
+    if (EFEITOS_BARRA.includes(no.barraEfeito)) return no.barraEfeito;
+    return MARCA_ANTIGA[no.barra] || null;
   }
-  function normBarraNome(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
-  const textoDaMarca = (m, barra) => (!m ? '' : m.soma && m.gasta ? 'Soma e gasta ' + barra : m.soma ? 'Soma na barra ' + barra : 'Gasta da barra ' + barra);
+  /* O tempo que ganha marca: reação, postura ou passiva (Ativa é o comum e fica sem). usos: os ids do nó; lista: os
+     tipos de uso da biblioteca (para os de outra mesa, pelo nome: "Reação", "Postura", "Passiva"). */
+  function tempoDe(usos, lista) {
+    const l = Array.isArray(usos) ? usos : [], achados = new Set();
+    for (const id of l) {
+      if (TEMPOS.includes(id)) { achados.add(id); continue; }
+      const u = Array.isArray(lista) ? lista.find(x => x && x.id === id) : null, n = normNome(u && u.nome);
+      if (/^rea/.test(n)) achados.add('reacao'); else if (/^postur/.test(n)) achados.add('postura'); else if (/^passiv/.test(n)) achados.add('passiva');
+    }
+    return TEMPOS.find(t => achados.has(t)) || null;
+  }
+  // as barras que não são a barra especial (o custo nelas não ganha seta)
+  // (a Carga, que poderia ser de item, é a barra do Antro Bovino: fica especial)
+  const NAO_ESPECIAIS = ['hp', 'pv', 'sp', 'pm', 'energia', 'mana', 'frasco', 'frascos', 'componente', 'componentes', 'ingrediente', 'ingredientes', 'item', 'itens',
+    'municao', 'municoes', 'flecha', 'flechas', 'virote', 'virotes', 'moeda', 'moedas', 'ouro', 'prata', 'po', 'pocao', 'pocoes', 'erva', 'ervas', 'reagente', 'reagentes'];
+  function barraEhEspecial(nome) {
+    const x = normBarraNome(nome);
+    if (!x) return false;
+    return !NAO_ESPECIAIS.includes(x) && !NAO_ESPECIAIS.includes(x.split(' ')[0]);
+  }
+  /* O nome da barra especial da árvore, para a etiqueta sem custo (a passiva que enche: "▲ Malícia"): o que o mestre
+     escreveu na árvore; senão a barra especial que mais aparece nos custos dos nós dela; senão a que o texto define. */
+  function barraDasEtiquetas(arvore) {
+    if (!arvore) return null;
+    if (typeof arvore.barra === 'string' && arvore.barra.trim()) return arvore.barra.trim().slice(0, 30);
+    const conta = new Map();
+    for (const n of (Array.isArray(arvore.nodes) ? arvore.nodes : [])) for (const g of ((n && n.graus) || [])) for (const x of ((g && Array.isArray(g.uso)) ? g.uso : [])) {
+      const b = x && typeof x.b === 'string' ? x.b.replace(/\s+/g, ' ').trim() : '';
+      if (b && barraEhEspecial(b)) conta.set(b, (conta.get(b) || 0) + 1);
+    }
+    let melhor = null, n0 = 0;
+    for (const [b, n] of conta) if (n > n0) { melhor = b; n0 = n; }
+    if (melhor) return melhor.slice(0, 30);
+    const b = barraEspecial(arvore);
+    if (b) return b;
+    return arvore.barraDef && typeof arvore.barraDef.nome === 'string' && arvore.barraDef.nome.trim() ? arvore.barraDef.nome.trim().slice(0, 30) : null;
+  }
+  /* As etiquetas da barra de um nó → [{ k: 'gasta' | 'enche' | 'balanca', barra, n (o número, ou null), conta (a conta
+     escrita, quando não deu número), v (o que está escrito no custo) }].
+       opt.grau   o índice do grau que vale (na ficha, o comprado: grau − 1; na árvore e no editor, 0)
+       opt.uso    o custo de uso, se já estiver à mão (senão, o do grau)
+       opt.barra  o nome da barra da árvore (barraDasEtiquetas), para a etiqueta sem custo
+       opt.vars, opt.cfg   as contas do personagem ("CAN/2" vira número) */
+  function etiquetasDaBarra(no, opt) {
+    opt = opt || {};
+    const ef = efeitoDe(no);
+    if (!no || ef === 'nenhum') return [];
+    const graus = Array.isArray(no.graus) ? no.graus : [];
+    const gi = Number.isInteger(opt.grau) && opt.grau >= 0 ? Math.min(opt.grau, Math.max(0, graus.length - 1)) : 0;
+    const uso = opt.uso !== undefined ? opt.uso : (graus[gi] && graus[gi].uso);
+    const out = [];
+    for (const c of custoDeUso(uso, opt.vars || null, opt.cfg)) {
+      if (!barraEhEspecial(c.barra)) continue;
+      const mais = /^\s*\+/.test(c.expr);
+      const k = ef === 'gasta' || ef === 'enche' || ef === 'balanca' ? ef : (mais ? 'enche' : 'gasta');
+      let n = null, conta = null;
+      if (!c.conta) n = Math.abs(c.v);
+      else if (c.v != null && Number.isFinite(c.v)) n = Math.abs(Math.round(c.v * 100) / 100);
+      else { const m = /^\s*[+−-]?\s*(\d+(?:[.,]\d+)?)/.exec(c.expr); if (m) n = Number(m[1].replace(',', '.')); else if (/[A-Z]{2,}/.test(c.expr)) conta = c.expr.replace(/^\s*[+−-]\s*/, '').slice(0, 20); }
+      if (out.some(e => e.k === k && normBarraNome(e.barra) === normBarraNome(c.barra))) continue;
+      out.push({ k, barra: c.barra, n, conta, v: c.expr });
+    }
+    const precisa = ef === 'gasta' ? ['gasta'] : ef === 'enche' ? ['enche'] : ef === 'ambos' ? ['gasta', 'enche'] : ef === 'balanca' ? ['balanca'] : [];
+    const nome = opt.barra || (out[0] && out[0].barra) || null;
+    for (const k of precisa) if (!out.some(e => e.k === k) && nome) out.push({ k, barra: nome, n: null, conta: null, v: '' });
+    // gasta antes de enche (▼ 4 Dreno, ▲ Dreno)
+    const ordem = { gasta: 0, balanca: 1, enche: 2 };
+    return out.sort((a, b) => ordem[a.k] - ordem[b.k]);
+  }
+  const SETA = Object.freeze({ gasta: '▼', enche: '▲', balanca: '⇄' });
+  const VERBO = Object.freeze({ gasta: 'gasta', enche: 'enche', balanca: 'balança' });
+  // "▼ 2 Geada" / "▲ Malícia" / "⇄ 3 Compasso"
+  const textoDaEtiqueta = e => SETA[e.k] + ' ' + (e.n != null ? e.n + ' ' : e.conta ? e.conta + ' ' : '') + e.barra;
+  // a versão curta, embaixo do nó da árvore: "▼2", "▲", "⇄3"
+  const textoCurtoDaEtiqueta = e => SETA[e.k] + (e.n != null ? e.n : '');
+  // "gasta 2 Geada"
+  const falaDaEtiqueta = e => VERBO[e.k] + ' ' + (e.n != null ? e.n + ' ' : e.conta ? e.conta + ' ' : (e.v && !e.n ? e.v + ' de ' : '')) + e.barra;
+  // o nome por extenso, para title e aria-label: "Suporte, reação, gasta 2 Geada"
+  function textoDosIcones(papel, tempo, etiquetas) {
+    const p = papelInfo(papel), partes = [];
+    if (p) partes.push(p.nome);
+    if (tempo && NOME_TEMPO[tempo]) partes.push(partes.length ? NOME_TEMPO[tempo].toLowerCase() : NOME_TEMPO[tempo]);
+    for (const e of (etiquetas || [])) { const f = falaDaEtiqueta(e); partes.push(partes.length ? f : f.charAt(0).toUpperCase() + f.slice(1)); }
+    return partes.join(', ');
+  }
+  // → { soma, gasta, balanca, mao } ou null (o resumo de antes, para o filtro "Barra" da ficha). barra: o nome da barra da árvore
+  function marcaDaBarra(no, barra, opt) {
+    const e = etiquetasDaBarra(no, Object.assign({ barra }, opt || {}));
+    if (!e.length) return null;
+    return { soma: e.some(x => x.k === 'enche'), gasta: e.some(x => x.k === 'gasta'), balanca: e.some(x => x.k === 'balanca'), mao: !!efeitoDe(no) };
+  }
+  function normBarraNome(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+  const textoDaMarca = (m, barra) => (!m ? '' : m.balanca ? 'Balança ' + barra : m.soma && m.gasta ? 'Enche e gasta ' + barra : m.soma ? 'Enche ' + barra : 'Gasta ' + barra);
+  /* (lote 43) As favoritas da ficha (skills.fav): os ids dos nós e, das skills únicas, "u:" + o id. A ordem é a do
+     jogador (a primeira fica no topo). */
+  const MAX_FAV = 60;
+  function favDe(skills) {
+    const l = skills && Array.isArray(skills.fav) ? skills.fav : [], out = [];
+    for (const x of l) if (typeof x === 'string' && /^(u:)?[A-Za-z0-9_-]{1,40}$/.test(x) && !out.includes(x) && out.length < MAX_FAV) out.push(x);
+    return out;
+  }
   function usoLimpo(lista) {
     if (!Array.isArray(lista)) return null;
     const out = [];
@@ -1083,6 +1173,8 @@
       const uso = usoLimpo(u.uso); if (uso) x.uso = uso;
       if (Array.isArray(u.usos)) { const us = u.usos.filter(v => typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v)).slice(0, 4); if (us.length) x.usos = [...new Set(us)]; }
       if (typeof u.cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(u.cor)) x.cor = u.cor;
+      if (PAPEIS.some(p => p.id === u.papel)) x.papel = u.papel;                 // (lote 43) o ícone e o efeito na barra
+      if (EFEITOS_BARRA.includes(u.barraEfeito)) x.barraEfeito = u.barraEfeito;
       out.push(x);
     }
     return out;
@@ -1945,6 +2037,8 @@
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,
     NIVEIS_MAX, temNiveis, nivelDoItem, niveisDoItem, itemNoNivel, espelharItem, itemComNivelNovo, itemSemNivel, textoDoNivel,
     MARCAS_BARRA, barraEspecial, defBarraEspecial, marcaDaBarra, textoDaMarca, TETO_INICIO, inicioDoGrau,
+    PAPEIS, EFEITOS_BARRA, NOME_EFEITO, TEMPOS, NOME_TEMPO, papelDe, papelInfo, efeitoDe, tempoDe, barraEhEspecial, barraDasEtiquetas, etiquetasDaBarra,
+    SETA_BARRA: SETA, textoDaEtiqueta, textoCurtoDaEtiqueta, falaDaEtiqueta, textoDosIcones, MAX_FAV, favDe,
     temTranca, visiveis, bibVisivel, ramosDe, bibComRamos, partesComContas, textoComContas, explicarConta, MAX_USO, usoLimpo, custoDeUso, textoDoCusto,
     normNome,
     DEFESAS_ESP, CHAVES_ESP, ehDefesaEsp, NOMES_BONUS, CHAVE_TODOS, BOLSAS,
