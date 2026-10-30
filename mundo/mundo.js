@@ -495,6 +495,7 @@
     if (modo === 'local') { clearTimeout(tLocal); tLocal = setTimeout(gravarLocal, ESPERA.local); return; }
     gravarDoc();
     publicar();
+    tropasParaFichas(App.mapa);                          // (lote 41) as tropas das fichas ligadas acompanham
   }
   // Manda agora o que estava esperando (antes de trocar de mapa, ao sair da página…). Sem espaço no navegador,
   // tenta de novo: pode ter sobrado espaço.
@@ -1474,6 +1475,145 @@
     D = TC.dados.col('documentos');
     await D.pronta;
   }
+
+  /* ---------------- (lote 41) as tropas das Fichas ligadas aos exércitos ----------------
+     Um exército (g.exe.tropa = o id do personagem) é a mesma tropa que a da ficha (o documento fichas:tropas:<id>): o
+     que muda num lado muda no outro (o que é comum: ver tc/tropas.js). Quem faz isso é este Mapa-múndi, de quem mestra:
+       · o mapa mudou aqui (uma mudança, o desfazer, uma batalha, o dia que passou) → a ficha recebe (tropasParaFichas);
+       · a ficha mudou (o mestre nas Fichas, as escolhas do dono, as listas das tabelas base) ou o mapa abriu → os
+         exércitos recebem (fichasParaTropas): no mapa aberto, como uma mudança de fora (o desfazer recomeça); nos
+         outros, direto no documento; e a projeção dos jogadores acompanha.
+     Quem não mestra as Fichas não grava a tropa (o banco não deixa): aí só o mapa acompanha a ficha. */
+  const PRE_TROPA = 'fichas:tropas:';
+  const TT = () => (window.TC && window.TC.tropas) || null;
+  const mestraFichas = () => !!(window.TC && TC.ponte && (typeof TC.ponte.mestra !== 'function' || TC.ponte.mestra('fichas')));
+  const comTropas = () => modo === 'mesa' && App.papel === 'mestre' && !!D && !!TT();
+  const cfgFichas = () => { const d = D ? dadosDoc(D.pegar('fichas:cfg')) : null; return d && d.v && typeof d.v === 'object' ? d.v : null; };
+  const tropaCrua = pc => (D && pc ? dadosDoc(D.pegar(PRE_TROPA + pc)) : null);
+  const personagensDaMesa = () => { try { const P = TC.dados.col('personagens'); return P && typeof P.todas === 'function' ? P : null; } catch (e) { return null; } };
+  // o dono da tropa: o do documento (as Fichas cuidam dele) ou, para uma tropa nova, o do personagem
+  function donoDaTropa(pc) {
+    const l = D.pegar(PRE_TROPA + pc);
+    if (l && !l.apagado && l.dono_id !== undefined) return l.dono_id || null;
+    const P = personagensDaMesa(), x = P ? P.pegar(pc) : null;
+    return x && !x.apagado ? x.dono_id || null : null;
+  }
+  function gravarTropa(pc, dados) {
+    if (!comTropas() || !mestraFichas()) return false;
+    D.gravar(PRE_TROPA + pc, { dados, vis: 'mestre', dono_id: donoDaTropa(pc) }, null, { cas: true });
+    return true;
+  }
+  // a ligação que a ficha guarda (para mostrar "No Mapa-múndi: …" e o comandante)
+  const ligDe = (m, g) => ({ mapa: m.id, mn: m.nome || '', g: g.id, nome: g.nome || 'Exército', cmd: g.exe.cmd.ficha || undefined, auto: g.exe.cmd.auto === true || undefined });
+  const ligados = m => (m && Array.isArray(m.objs) ? m.objs.filter(o => o && o.k === 'g' && o.exe && !o.exe.pub && o.exe.tropa) : []);
+  // o mapa mudou aqui: cada tropa ligada nele recebe o que mudou (quando mudou de fato)
+  function tropasParaFichas(m) {
+    if (!comTropas() || !mestraFichas() || !m) return;
+    const T = TT(), cfg = cfgFichas();
+    for (const g of ligados(m)) {
+      const pc = g.exe.tropa, cru = tropaCrua(pc), lig = T.normLig(ligDe(m, g));
+      const atual = T.norm(cru);
+      if (atual && T.mesmaTropa(cru, g, cfg) && j(atual.lig || null) === j(lig)) continue;
+      const novo = T.tropaComExe(cru, g, lig, cfg);
+      if (!atual) novo.diario = T.normDiario([{ k: 'form', t: 'A tropa foi formada a partir de ' + (g.nome || 'um exército') + ', no Mapa-múndi.', em: new Date().toISOString() }]);
+      gravarTropa(pc, novo);
+    }
+  }
+  // a ficha mudou (ou o mapa abriu): os exércitos ligados recebem
+  let tropasAdiadas = 0;
+  function fichasParaTropasDepois(ms = 250) { clearTimeout(tropasAdiadas); tropasAdiadas = setTimeout(fichasParaTropas, ms); }
+  function fichasParaTropas() {
+    tropasAdiadas = 0;
+    if (!comTropas()) return;
+    if (ocupado()) { fichasParaTropasDepois(ESPERA.fora); return; }
+    const T = TT(), cfg = cfgFichas();
+    for (const l of docsMapas()) {
+      const id = l.id.slice(PRE_MAPA.length), aberto = !!App.mapa && App.mapa.id === id, cru = dadosDoc(l);
+      if (!aberto && !(cru && Array.isArray(cru.objs) && cru.objs.some(o => o && o.exe && o.exe.tropa))) continue;      // (sem tropa ligada: nem abre o mapa)
+      const base = aberto ? App.mapa : docMapa(id);
+      if (!base || !ligados(base).length) continue;
+      const rasc = N.copia(base);
+      let mudou = false, saiu = [];
+      rasc.objs = rasc.objs.map(g => {
+        if (!g || g.k !== 'g' || !g.exe || g.exe.pub || !g.exe.tropa) return g;
+        const cru = tropaCrua(g.exe.tropa);
+        // a tropa saiu da ficha (dispensada): o exército fica, sem a ligação
+        if (!cru) { if (D.pegar(PRE_TROPA + g.exe.tropa) || personagensDaMesa()) { mudou = true; saiu.push(g.nome || 'Exército'); const x = N.copia(g); delete x.exe.tropa; return x; } return g; }
+        if (T.mesmaTropa(cru, g, cfg)) return g;
+        mudou = true;
+        return T.exeComTropa(g, cru, cfg);
+      });
+      if (!mudou) continue;
+      const nm = N.normalizarMapa(rasc);
+      nm.id = id;
+      const jn = j(nm);
+      if (jn === j(base)) continue;                                      // (o que a ficha mudou o mapa não guarda: um tipo que saiu, por exemplo)
+      if (aberto) {
+        if (jn === jAtual) continue;
+        aplicarDeFora(nm, jn, 'Uma tropa mudou nas Fichas: o exército dela acompanhou.');
+        gravarDoc(); publicar();
+      } else {
+        gravarDocMesa(PRE_MAPA + id, comColuna({ dados: nm, vis: 'mestre' }, campsDoMapa(id), PRE_MAPA + id));
+        sombraDoc.set(id, jn);
+        sincronizarPub(id);
+      }
+      if (saiu.length) App.toast((saiu.length === 1 ? saiu[0] + ' deixou' : saiu.join(', ') + ' deixaram') + ' de ser a tropa de uma ficha (a tropa saiu das Fichas).');
+    }
+  }
+  // o bônus da veterania nas batalhas: o das tabelas base das Fichas
+  function lerVeterania() { const G = window.MundoGuerra, T = TT(); if (G && G.usarVeterania && T) G.usarVeterania(T.normCfg(cfgFichas()).vet); }
+  /* O que o painel usa: as fichas que dá para ligar, a tropa de uma, desligar e a batalha que entra no diário. */
+  App.tropas = {
+    disponivel: () => comTropas(),
+    gravaFichas: () => mestraFichas(),
+    cfg: () => cfgFichas(),
+    crua: pc => tropaCrua(pc),
+    // [{ id, nome, tem (tem tropa), lig ({ mapa, g, nome } | null: a que ela guarda) }] — os personagens da mesa (sem os pets)
+    fichas() {
+      const P = personagensDaMesa();
+      if (!comTropas() || !P) return [];
+      const T = TT();
+      return P.todas().filter(x => x && !x.apagado && !(x.ficha && x.ficha.petDe) && T.pcDoDoc(PRE_TROPA + x.id))
+        .map(x => { const cru = tropaCrua(x.id), n = cru ? T.norm(cru) : null; return { id: x.id, nome: x.nome || 'Sem nome', tem: !!n, unid: n ? n.unid.length : 0, lig: n && n.lig ? n.lig : null }; })
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    },
+    // a ficha deixou de ser a tropa deste exército: tira a ligação dela (os números ficam como estão)
+    desligar(pc) {
+      const cru = tropaCrua(pc), T = TT();
+      if (!cru || !T || !cru.lig) return;
+      const x = T.norm(cru); delete x.lig;
+      gravarTropa(pc, x);
+    },
+    /* (lote 41) Uma batalha aplicada (reg: o registro; prev: o depois, com as tropas de cada unidade antes e depois): a
+       tropa de cada lado que é de uma ficha ganha a linha no diário, as batalhas e as baixas. → { desfazer, refazer }
+       (o Desfazer da batalha leva junto) ou null */
+    depoisDaBatalha(reg, prev) {
+      if (!comTropas() || !mestraFichas() || !reg || !prev) return null;
+      const T = TT(), m = App.mapa, feitas = [];
+      for (const q of ['a', 'b']) {
+        const L = prev.lados && prev.lados[q], g = L && m ? m.objs.find(o => o.id === L.g) : null, pc = g && g.exe && !g.exe.pub ? g.exe.tropa : null;
+        if (!pc || !tropaCrua(pc)) continue;
+        const lutaram = L.unid.filter(u => u.tropas0 > 0).map(u => u.id), perdas = {};
+        for (const u of L.unid) if (u.tropas0 > u.tropas1) perdas[u.id] = u.tropas0 - u.tropas1;
+        const r = reg.fim && reg.fim.vence ? (reg.fim.vence === q ? 'v' : 'd') : 'e';
+        const b = { id: ('dr_' + reg.id + '_' + q).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64), t: reg.nome, r, lutaram, perdas, acabaram: L.unid.filter(u => u.acaba).map(u => u.nome) };
+        const fazer = () => { const cru = tropaCrua(pc); if (!cru || (T.norm(cru).diario || []).some(e => e.id === b.id)) return; gravarTropa(pc, T.comBatalhaDoMapa(cru, b, new Date().toISOString(), dataDoMapa(m))); };
+        const desfazer = () => {
+          const cru = tropaCrua(pc); if (!cru) return;
+          const x = T.norm(cru), n0 = x.diario.length;
+          x.diario = x.diario.filter(e => e.id !== b.id);
+          if (x.diario.length === n0) return;
+          for (const u of x.unid) if (lutaram.includes(u.id)) { u.bat = Math.max(0, u.bat - 1); u.baixas = Math.max(0, u.baixas - (perdas[u.id] || 0)); }
+          gravarTropa(pc, x);
+        };
+        fazer();
+        feitas.push({ fazer, desfazer });
+      }
+      return feitas.length ? { desfazer: () => feitas.forEach(f => f.desfazer()), refazer: () => feitas.forEach(f => f.fazer()) } : null;
+    },
+  };
+  // a data do mapa, no diário da tropa ("3 de Brumas, ano 412")
+  function dataDoMapa(m) { try { return m && m.cal && N.textoData ? N.textoData(m.cal, m.cal.dia) : ''; } catch (e) { return ''; } }
   function carregar() {
     if (modo === 'local') {
       const est = lerLocal();
@@ -1509,7 +1649,9 @@
       for (const l of D.todas()) if (typeof l.id === 'string' && l.id.startsWith(PRE_PUBC) && dadosDoc(l) && !docMapa(l.id.slice(PRE_PUBC.length).split('@')[0])) apagarDocMesa(l.id);     // (lote 20)
       sincronizarIndice();
       marcarSalvo('ok', 'Salvo na mesa');
-      if (!docsMapas().length) oferecerLocais();                         // (a mesa não tem mapa nenhum, em campanha nenhuma)
+      if (!docsMapas().length) oferecerLocais();
+      lerVeterania();                                                    // (lote 41) o bônus da veterania das Fichas
+      fichasParaTropasDepois(600);                                       // (lote 41) os exércitos ligados acompanham as fichas                         // (a mesa não tem mapa nenhum, em campanha nenhuma)
     } else {
       const idx = lerIndice();
       App.mapas = idx.mapas.map(itemDoJogador);
@@ -1537,6 +1679,12 @@
           if (App.papel === 'mestre') for (const d of docsMapas()) sincronizarPub(d.id.slice(PRE_MAPA.length));
           App.emit('muda', { origem: 'fora' });
         }
+        return;
+      }
+      // (lote 41) uma tropa das Fichas mudou (ou as listas das tabelas base): os exércitos ligados acompanham
+      if (l && typeof l.id === 'string' && (l.id.startsWith(PRE_TROPA) || l.id === 'fichas:cfg')) {
+        if (l.id === 'fichas:cfg') lerVeterania();
+        if (App.papel === 'mestre') fichasParaTropasDepois();
         return;
       }
       if (!l || typeof l.id !== 'string' || !l.id.startsWith('mundo:')) return;

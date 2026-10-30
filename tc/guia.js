@@ -24,7 +24,7 @@
         // (lote 37)
         { t: 'A corrupção', txt: 'No painel lilás em cima da ficha (só você vê): Vampírica, Licantropa ou Demoníaca. As duas primeiras crescem com os pontos gastos na árvore que você escolher, em cinco estágios (os cortes ficam nas Tabelas base); − e + ajustam; a demoníaca é à mão. Só o dono do personagem e você veem o efeito — na ficha, no retrato e na aura do token.', onde: { sel: '#corrBarra', nada: fichaNada } },
         // (lote 40)
-        { t: 'As tropas', txt: '“+ Tropas”, no fim das abas da ficha, dá uma tropa ao personagem: a guarda pessoal dele, numa aba nova, uma carta por unidade. Você muda os números (“Números…”, a veterania na própria carta, a moral e os mantimentos), põe e tira unidades e registra as batalhas — as baixas e as promoções vão para o diário da tropa. O dono escolhe o nome, a raça e a classe (das árvores), o brasão, os equipamentos e os suprimentos (das listas das Tabelas base). Os outros jogadores não veem a tropa.', onde: { sel: '#tropasAba, [data-trcriar]', sub: 'tropas', nada: fichaNada } },
+        { t: 'As tropas', txt: '“+ Tropas”, no fim das abas da ficha, dá uma tropa ao personagem: a guarda pessoal dele, numa aba nova, uma carta por unidade. Você muda os números (“Números…”, a veterania na própria carta, a moral e os mantimentos), põe e tira unidades e registra as batalhas — as baixas e as promoções vão para o diário da tropa. O dono escolhe o nome, a raça e a classe (das árvores), o brasão, os equipamentos e os suprimentos (das listas das Tabelas base). Os outros jogadores não veem a tropa. Ligada a um exército do Mapa-múndi, é a mesma tropa nos dois lugares (o comandante pela ficha fica nas Tabelas base).', onde: { sel: '#tropasAba, [data-trcriar]', sub: 'tropas', nada: fichaNada } },
       ],
       jogador: [
         { t: 'A sua ficha', txt: 'Em cima, o resumo, que fica fixo: as barras (digite −8 para tirar, +25% para pôr um quarto do máximo), os atributos, os lapros, a caixinha do grupo e o que está machucado. Os selos levam à parte da ficha em que cada coisa fica.', onde: { sel: '#resumo', nada: fichaNada } },
@@ -65,6 +65,8 @@
         { t: 'O painel', txt: 'À direita, por abas: reinos, corte (gente, casas, títulos), diplomacia, guerra, economia… Na Corte, o titular de um título pode ser uma ficha da mesa; na Diplomacia, quem fala por cada facção.', onde: { sel: '#tabs' } },
         { t: 'Ver como jogador', txt: 'Mostra o mapa como os jogadores veem: sem o que é só seu e com a névoa fechada.', onde: { sel: '#comoJogBox' } },
         { t: 'A guerra no mapa', txt: 'A zona de guerra aparece sozinha: as terras ocupadas e a fronteira entre facções em guerra, com a linha do front. A ferramenta Frente ajusta a zona e desenha setas de ofensiva; a tabela da defesa do terreno fica na aba Guerra.', onde: { sel: '#rail [data-f="f"]' } },
+        // (lote 41)
+        { t: 'A tropa de uma ficha', txt: 'No painel de um exército (aba Seleção), “Tropa da ficha” liga o exército à tropa de um personagem (a aba Tropas das Fichas): daí em diante são a mesma tropa — o que muda no mapa (uma batalha, a moral, as unidades) muda na ficha, e as escolhas do jogador (os nomes, os equipamentos) chegam ao mapa. A plaquinha em cima do token é a veterania média; a veterania soma no ATQ e na DEF, e o comandante pode tirar o bônus da ficha dele (o atributo fica nas tabelas base das Fichas). As batalhas entram no diário da tropa.', onde: { sel: '#pane', nada: 'Selecione um exército no mapa para ver o painel dele.' } },
         { t: 'A caneta', txt: 'No canto do mapa (ou a tecla W): desenhe para a mesa inteira ver na hora. A caneta que some apaga sozinha em segundos; a que fica, só com “Limpar desenhos”, que apaga a de todos.', onde: { sel: '#zCaneta' } },
       ],
       jogador: [
@@ -73,6 +75,7 @@
         { t: 'O painel', txt: 'À direita: o que vocês sabem dos reinos, da corte e da diplomacia.', onde: { sel: '#tabs' } },
         { t: 'A caneta', txt: 'No canto do mapa: desenhe para a mesa ver na hora (uma rota, um alvo). A caneta que some apaga sozinha em segundos; a que fica, até alguém limpar — você limpa os seus.', onde: { sel: '#zCaneta' } },
         { t: 'A guerra', txt: 'As listras são a zona de guerra, com a linha do front. As setas mostram as ofensivas da sua facção (e as que o mestre mostrar).', onde: { sel: '#palco' } },
+        { t: 'A veterania dos exércitos', txt: 'A plaquinha com as divisas em cima de um exército é a veterania média das unidades dele (Recruta 1, Veterana 2, Elite 3). Se é a tropa do seu personagem, as escolhas que você faz na aba Tropas das Fichas aparecem aqui.', onde: { sel: '#palco' } },
       ],
     },
     acampamento: {

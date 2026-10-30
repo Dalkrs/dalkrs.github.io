@@ -139,6 +139,7 @@ const FichasTropas = (() => {
             <small class="tr-fraco">${c.consumo ? num(c.consumo) + ' por dia' : 'ninguém para comer'}</small>
           </div>
         </div>
+        ${htmlLigacao(pc, d, M)}
         ${M ? '' : `<p class="tr-trava">${CADEADO}Os números são do mestre. Você escolhe o brasão, o nome, a raça, a classe, os equipamentos, os suprimentos e as informações de cada unidade.</p>`}
       </section>
       <div class="tr-corpo">
@@ -149,6 +150,28 @@ const FichasTropas = (() => {
         </div>
         <aside class="tr-lado">${htmlDiario(pc, d, M)}</aside>
       </div>
+    </div>`;
+  }
+  /* (lote 41) A tropa ligada a um exército do Mapa-múndi: onde ele está, o bônus de comando pela ficha do comandante
+     (o atributo das tabelas base) e "Ver no mapa". */
+  const MAPA_IC = '<svg class="tr-ic tr-icmapa" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>';
+  function comandoDe(d) {
+    const t = T(), l = d.lig, cf = t.normCfg(cfgAqui());
+    if (!l || !l.auto || !l.cmd || !cf.cmd.atr || typeof S === 'undefined') return null;
+    const cpc = (S.personagens || []).find(p => p.id === l.cmd);
+    if (!cpc || typeof valorDoAtributo !== 'function') return null;
+    let val = null;
+    try { val = Math.max(0, Math.round(valorDoAtributo(cpc, cf.cmd.atr, (cpc.rol && cpc.rol.fonte) || 'total') || 0)); } catch (e) { return null; }
+    return { v: t.bonusDeComando(val, cf.cmd), txt: t.peloAtr(cf.cmd.atr) + ' de ' + (cpc.nome || 'o comandante') + ' (' + val + (cf.cmd.div > 1 ? ' ÷ ' + cf.cmd.div : '') + ')' };
+  }
+  function htmlLigacao(pc, d, M) {
+    const l = d.lig;
+    if (!l) return '';
+    const cm = comandoDe(d);
+    return `<div class="tr-mapa">
+      <p>${MAPA_IC}No Mapa-múndi${l.nome && l.nome !== d.nome ? `, como <b>${esc(l.nome)}</b>` : ''}${l.mn ? `, em <b>${esc(l.mn)}</b>` : ''}${cm ? ` · Comando <b class="mono">${sinal(cm.v)}</b>, ${esc(cm.txt)}` : ''}</p>
+      <button type="button" class="mini" data-trvermapa>Ver no mapa</button>
+      ${M ? '<small class="tr-fraco">É a mesma tropa: o que muda aqui muda no exército, e o contrário.</small>' : ''}
     </div>`;
   }
   function htmlCarta(pc, k, c, M, E, bib) {
@@ -257,6 +280,12 @@ const FichasTropas = (() => {
       mudarMestre(pc, 'A linha saiu do diário.', d => { const n = d.diario.length; d.diario = d.diario.filter(e => e.id !== id); if (d.diario.length === n) return false; });
     });
     const dv = q1('[data-trdver]'); if (dv) dv.onclick = () => { qn('.tr-dmais').forEach(li => { li.hidden = false; }); dv.remove(); };
+    const vm = q1('[data-trvermapa]'); if (vm) vm.onclick = () => {
+      const d = cru(pc), l = d && d.lig;
+      if (!l) return;
+      if (window.TC && TC.ponte && TC.ponte.ir) TC.ponte.ir('mundo', { mapa: l.mapa, obj: l.g });
+      else FichasExtras.aviso('O Mapa-múndi abre dentro do site, numa mesa.');
+    };
   }
   // (os pequenos ajudantes de foco das Fichas)
   const U = { refocar: sel => { const n = document.querySelector(sel); if (n && !n.disabled) n.focus({ preventScroll: true }); } };
@@ -537,14 +566,22 @@ const FichasTropas = (() => {
         <tr><td>Veterana</td><td><input type="number" min="0" max="${t.MAX.bonus}" step="1" data-trcvet="2" value="${cf.vet[2]}" style="width:54px" aria-label="Bônus da Veterana"></td></tr>
         <tr><td>Elite</td><td><input type="number" min="0" max="${t.MAX.bonus}" step="1" data-trcvet="3" value="${cf.vet[3]}" style="width:54px" aria-label="Bônus da Elite"></td></tr>
       </tbody></table>
-      <div class="hint" style="margin-top:5px">O jogador escolhe os equipamentos e os suprimentos de cada unidade nestas listas; você põe as quantidades. Valem para a mesa toda.</div>
+      <span class="eyebrow" style="display:block;margin-top:12px">Tropas → comandante pela ficha</span>
+      <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+        <label class="f"><span class="hint">O atributo</span><select data-trccmd style="width:auto">
+          <option value="" ${!cf.cmd.atr ? 'selected' : ''}>Nenhum (você escreve o bônus)</option>
+          ${t.ATR_CMD.map(([k, nm]) => `<option value="${k}" ${cf.cmd.atr === k ? 'selected' : ''}>${esc(nm)}</option>`).join('')}</select></label>
+        <label class="f"><span class="hint">Dividido por</span><input type="number" min="1" max="10" step="1" data-trccmddiv value="${cf.cmd.div}" style="width:64px"></label>
+      </div>
+      <div class="hint" style="margin-top:5px">O bônus de comando do exército (no Mapa-múndi), quando o comandante é uma ficha e o exército tem a marca “Bônus pela ficha”: o atributo dividido, para baixo.</div>
+      <div class="hint" style="margin-top:8px">O jogador escolhe os equipamentos e os suprimentos de cada unidade nestas listas; você põe as quantidades. Valem para a mesa toda.</div>
     </div>`;
   }
   function ligarCfg(m, reabrir) {
     const t = T();
     if (!t) return;
-    const pegar = () => { const cf = t.normCfg(S.cfg); return (S.cfg.tropas = { equip: cf.equip, supr: cf.supr, vet: cf.vet, maxEquip: cf.maxEquip }); };
-    const salvar = () => { S.cfg.tropas = (({ equip, supr, vet, maxEquip }) => ({ equip, supr, vet, maxEquip }))(t.normCfg(S.cfg)); save(); };
+    const pegar = () => { const cf = t.normCfg(S.cfg); return (S.cfg.tropas = { equip: cf.equip, supr: cf.supr, vet: cf.vet, maxEquip: cf.maxEquip, cmd: cf.cmd }); };
+    const salvar = () => { S.cfg.tropas = (({ equip, supr, vet, maxEquip, cmd }) => ({ equip, supr, vet, maxEquip, cmd }))(t.normCfg(S.cfg)); save(); };
     const em = (sel, fn) => m.querySelectorAll(sel).forEach(i => i.onchange = () => fn(i));
     em('[data-trceqn]', i => { const e = pegar().equip.find(x => x.id === i.dataset.trceqn); if (e) { e.nome = i.value; salvar(); } });
     em('[data-trceqa]', i => { const e = pegar().equip.find(x => x.id === i.dataset.trceqa); if (e) { e.atq = +i.value || 0; salvar(); } });
@@ -552,6 +589,8 @@ const FichasTropas = (() => {
     em('[data-trcspn]', i => { const s = pegar().supr.find(x => x.id === i.dataset.trcspn); if (s) { s.nome = i.value; salvar(); } });
     em('[data-trcspd]', i => { const s = pegar().supr.find(x => x.id === i.dataset.trcspd); if (s) { s.desc = i.value; salvar(); } });
     em('[data-trcmax]', i => { pegar().maxEquip = +i.value || 1; salvar(); i.value = t.normCfg(S.cfg).maxEquip; });
+    em('[data-trccmd]', i => { pegar().cmd.atr = i.value; salvar(); });
+    em('[data-trccmddiv]', i => { pegar().cmd.div = +i.value || 1; salvar(); i.value = t.normCfg(S.cfg).cmd.div; });
     em('[data-trcvet]', i => { pegar().vet[i.dataset.trcvet] = +i.value || 0; salvar(); i.value = t.normCfg(S.cfg).vet[i.dataset.trcvet]; });
     const tirar = (lista, id, rot) => {
       const tp = pegar(), l = tp[lista], ix = l.findIndex(x => x.id === id);

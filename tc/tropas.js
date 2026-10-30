@@ -14,6 +14,8 @@
   const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const inteiro = (v, a, b, d) => { const n = Math.round(Number(v)); return v !== null && v !== '' && Number.isFinite(n) ? Math.max(a, Math.min(b, n)) : d; };
   const idOk = v => typeof v === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(v);
+  // (lote 41) os ids do Mapa-múndi (as unidades, os tipos de tropa, as máquinas, os mapas, os grupos): a regra de lá
+  const idMapa = v => typeof v === 'string' && v.length <= 80 && /^[A-Za-z0-9_:.-]+$/.test(v) && v !== '__proto__';
   // uma linha de texto (sem quebras nem caracteres de controle) e um texto de várias linhas
   const linha = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '');
   const textoLongo = (v, max) => (typeof v === 'string' ? v.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max) : '');
@@ -44,6 +46,14 @@
   ];
   const VET_BONUS_PADRAO = { 2: 1, 3: 2 };
   const MAX_EQUIP_PADRAO = 2;
+  /* (lote 41) o comandante pela ficha: o atributo que dá o bônus de comando do exército (no d20) e o divisor —
+     floor(valor ÷ divisor), até ±20. '' = sem conta (o mestre escreve o bônus no mapa). */
+  const ATR_CMD = [['FOR', 'Força'], ['DES', 'Destreza'], ['VIT', 'Vitalidade'], ['CAN', 'Canalização'], ['AGI', 'Agilidade'], ['ESQ', 'Esquiva'], ['FUR', 'Furtividade'],
+    ['PER', 'Percepção'], ['EMB', 'Embate'], ['DFF', 'Defesa Física'], ['DFM', 'Defesa Mágica'], ['BLQ', 'Bloqueio']];
+  const CMD_PADRAO = { atr: 'EMB', div: 3 };
+  const nomeAtr = k => (ATR_CMD.find(x => x[0] === k) || [k, k])[1];
+  const peloAtr = k => (k === 'EMB' || k === 'BLQ' ? 'pelo ' : 'pela ') + nomeAtr(k);
+  const bonusDeComando = (valor, cmd) => (cmd && cmd.atr && Number.isFinite(Number(valor)) ? Math.max(-20, Math.min(20, Math.floor(Number(valor) / Math.max(1, cmd.div || 1)))) : null);
   function normLista(l, comNumeros) {
     const out = [], vistos = new Set();
     for (const x of Array.isArray(l) ? l : []) {
@@ -58,11 +68,13 @@
   function normCfg(cfg) {
     const t = ehObj(cfg) && ehObj(cfg.tropas) ? cfg.tropas : {};
     const vb = ehObj(t.vet) ? t.vet : VET_BONUS_PADRAO;
+    const cm = ehObj(t.cmd) ? t.cmd : CMD_PADRAO;
     return {
       equip: Array.isArray(t.equip) ? normLista(t.equip, true) : EQUIP_PADRAO.map(x => Object.assign({}, x)),
       supr: Array.isArray(t.supr) ? normLista(t.supr, false) : SUPR_PADRAO.map(x => Object.assign({}, x)),
       vet: { 2: inteiro(vb[2], 0, MAX.bonus, VET_BONUS_PADRAO[2]), 3: inteiro(vb[3], 0, MAX.bonus, VET_BONUS_PADRAO[3]) },
       maxEquip: inteiro(t.maxEquip, 1, MAX.equipUnid, MAX_EQUIP_PADRAO),
+      cmd: { atr: cm.atr === '' ? '' : ATR_CMD.some(x => x[0] === cm.atr) ? cm.atr : CMD_PADRAO.atr, div: inteiro(cm.div, 1, 10, CMD_PADRAO.div) },
     };
   }
   let seq = 0;
@@ -96,9 +108,15 @@
     for (const k of ehObj(v) ? Object.keys(v).slice(0, MAX.lista * 2) : []) { const n = inteiro(v[k], 0, MAX.suprQ, 0); if (idOk(k) && n) out[k] = n; }
     return out;
   }
+  // as máquinas de cerco de uma unidade (do Mapa-múndi): { tipo: quantas }, sem os zeros
+  function normMaq(v) {
+    const out = {};
+    for (const k of ehObj(v) ? Object.keys(v).slice(0, 80) : []) { const n = inteiro(v[k], 0, 1e4, 0); if (idMapa(k) && n) out[k] = n; }
+    return out;
+  }
   function normUnid(u, i, vistos) {
     u = ehObj(u) ? u : {};
-    let id = idOk(u.id) ? u.id : 'un_' + i;
+    let id = idMapa(u.id) ? u.id : 'un_' + i;
     while (vistos.has(id)) id = novoId('un');
     vistos.add(id);
     const tropas = inteiro(u.tropas, 0, MAX.tropas, 100), hpT = inteiro(u.hpT, 1, MAX.hpT, 10);
@@ -114,8 +132,8 @@
       classe: idOk(u.classe) ? u.classe : null, classeN: linha(u.classeN, MAX.raca), bras: normBras(u.bras) || brasNovo(i),
       equip: listaDeIds(u.equip, MAX.equipUnid), supr: listaDeIds(u.supr, MAX.suprUnid), info: textoLongo(u.info, MAX.info),
     };
-    if (idOk(u.tipo)) out.tipo = u.tipo;                     // (o tipo de tropa do Mapa-múndi, quando ligada: guardado como veio)
-    if (ehObj(u.maq)) { const m = normSuprQ(u.maq); if (Object.keys(m).length) out.maq = m; }
+    if (idMapa(u.tipo)) out.tipo = u.tipo;                   // (o tipo de tropa do Mapa-múndi, quando ligada: guardado como veio)
+    if (ehObj(u.maq)) { const m = normMaq(u.maq); if (Object.keys(m).length) out.maq = m; }
     return out;
   }
   const RESULTADOS = { v: 'vitória', d: 'derrota', e: 'empate' };
@@ -144,12 +162,22 @@
   function norm(d) {
     if (!ehObj(d)) return null;
     const vistos = new Set();
-    return {
+    return Object.assign({
       v: 1, nome: linha(d.nome, MAX.nome) || 'Tropa', bras: normBras(d.bras) || brasNovo(0), info: textoLongo(d.info, MAX.info),
       moral: inteiro(d.moral, 0, 10, 5), mant: inteiro(d.mant, 0, MAX.mant, 0), cons: d.cons == null || d.cons === '' ? null : inteiro(d.cons, 1, MAX.tropas, null),
       unid: (Array.isArray(d.unid) ? d.unid : []).slice(0, MAX.unid).map((u, i) => normUnid(u, i, vistos)),
       diario: normDiario(d.diario),
-    };
+    }, ehObj(d.lig) && normLig(d.lig) ? { lig: normLig(d.lig) } : {});
+  }
+  /* (lote 41) A ligação com um exército do Mapa-múndi (quem escreve é o Mapa-múndi de quem mestra): { mapa (o id), mn
+     (o nome do mapa), g (o id do grupo), nome (o do exército), cmd (a ficha do comandante), auto (o bônus de comando
+     pela ficha) } */
+  function normLig(l) {
+    if (!ehObj(l) || !idMapa(l.mapa) || !idMapa(l.g)) return null;
+    const x = { mapa: l.mapa, g: l.g, nome: linha(l.nome, 80), mn: linha(l.mn, 80) };
+    if (idMapa(l.cmd)) x.cmd = l.cmd;
+    if (l.auto === true) x.auto = true;
+    return x;
   }
   /* A parte do mestre (o que o jogador não pode mudar): a tropa sem as chaves do jogador. É a mesma conta do banco. */
   function parteMestre(d) {
@@ -252,9 +280,81 @@
     return x;
   }
 
+  /* ---------------- (lote 41) a mesma tropa no Mapa-múndi ----------------
+     Ligada a um exército (o grupo do tipo Exército: g.exe), a tropa da ficha e o exército são a mesma: o que é comum —
+     o nome, a moral, os mantimentos, o consumo e, de cada unidade (pelo id), o nome, o tipo, as tropas, o HP de cada
+     soldado, a ferida, o ATQ, a DEF, os magos, a cura, as máquinas, a veterania e os equipamentos (os da ficha, que o
+     jogador escolhe, viram os do mapa) — muda nos dois. O que é só da ficha (a raça, a classe, o brasão, os
+     suprimentos e as quantidades, as informações, o efetivo completo, as batalhas e as baixas, o diário) e o que é só
+     do mapa (a fome, o comandante, os heróis, a unidade escondida) fica onde está. Quem faz as contas e grava é o
+     Mapa-múndi de quem mestra (mundo/mundo.js). */
+  const equipDoMapa = (ids, cf) => ids.map(id => cf.equip.find(e => e.id === id)).filter(Boolean).map(e => ({ nome: e.nome, atq: e.atq, def: e.def }));
+  const unidComum = u => ({ id: u.id, nome: u.nome, tipo: u.tipo || null, tropas: u.tropas, hpT: u.hpT, fer: u.fer, atq: u.atq, def: u.def, magos: u.magos, cura: u.cura, maq: u.maq || {}, vet: u.vet, equip: u.equip });
+  function comumDaTropa(d, cfg) {
+    const x = norm(d);
+    if (!x) return null;
+    const cf = normCfg(cfg);
+    return { nome: x.nome, moral: x.moral, mant: x.mant, cons: x.cons, unid: x.unid.map(u => unidComum(Object.assign({}, u, { equip: equipDoMapa(u.equip, cf) }))) };
+  }
+  function comumDoExe(g) {
+    const e = ehObj(g) && ehObj(g.exe) && !g.exe.pub ? g.exe : null;
+    if (!e) return null;
+    // (a mesma régua da ficha: o que ela não guarda não conta — o nome até 60 letras, os números nos limites dela)
+    const x = norm({ nome: g.nome, moral: e.moral, mant: e.mant, cons: e.cons, unid: (Array.isArray(e.unid) ? e.unid : []).map(u => Object.assign({}, u, { equip: [] })) });
+    return { nome: x.nome, moral: x.moral, mant: x.mant, cons: x.cons, unid: x.unid.map((u, i) => unidComum(Object.assign({}, u, {
+      equip: (Array.isArray(e.unid[i] && e.unid[i].equip) ? e.unid[i].equip : []).filter(ehObj).slice(0, 12).map(q => ({ nome: linha(q.nome, 80) || 'Equipamento', atq: inteiro(q.atq, -MAX.atr, MAX.atr, 0), def: inteiro(q.def, -MAX.atr, MAX.atr, 0) })) }))) };
+  }
+  const iguais = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  /* A tropa da ficha como o exército está agora (o mapa mudou): as unidades do mapa, na ordem dele; a unidade que já
+     existia guarda o que é só da ficha; a nova (criada no mapa) nasce com o efetivo cheio e com os equipamentos da lista
+     que têm o nome dos dela. lig: a ligação (o mapa, o exército). → a tropa nova (normalizada) */
+  function tropaComExe(cru, g, lig, cfg) {
+    const c = comumDoExe(g);
+    if (!c) return norm(cru);
+    const cf = normCfg(cfg), base = norm(cru) || norm({ nome: c.nome, unid: [], diario: [] }), velhas = new Map(base.unid.map(u => [u.id, u]));
+    const unid = c.unid.map((x, i) => {
+      const v = velhas.get(x.id), u = Object.assign({}, v || { cheio: x.tropas, bras: brasNovo(i), supr: [], info: '' }, x);
+      u.equip = v ? v.equip : x.equip.map(q => (cf.equip.find(e => e.nome === q.nome) || {}).id).filter(Boolean);
+      if (v) { u.raca = v.raca; u.racaN = v.racaN; u.classe = v.classe; u.classeN = v.classeN; }
+      return u;
+    });
+    return norm(Object.assign({}, base, { nome: c.nome, moral: c.moral, mant: c.mant, cons: c.cons, unid, lig: lig || base.lig }));
+  }
+  /* O exército como a tropa da ficha está agora (a ficha mudou): o nome, a moral, os mantimentos e as unidades (cada uma
+     guarda o que é só do mapa). → o grupo novo (o Mapa-múndi normaliza) */
+  function exeComTropa(g, cru, cfg) {
+    const c = comumDaTropa(cru, cfg);
+    if (!c || !ehObj(g) || !ehObj(g.exe) || g.exe.pub) return g;
+    const velhas = new Map((Array.isArray(g.exe.unid) ? g.exe.unid : []).filter(ehObj).map(u => [u.id, u]));
+    const unid = c.unid.map(x => { const u = Object.assign({}, velhas.get(x.id) || {}, x); if (!(u.vet > 1)) delete u.vet; return u; });
+    return Object.assign({}, g, { nome: c.nome, exe: Object.assign({}, g.exe, { moral: c.moral, mant: c.mant, cons: c.cons, unid }) });
+  }
+  // a ficha e o exército já são a mesma tropa?
+  const mesmaTropa = (cru, g, cfg) => { const a = comumDaTropa(cru, cfg), b = comumDoExe(g); return !!a && !!b && iguais(a, b); };
+  /* Uma batalha do Mapa-múndi na tropa ligada: { t (o nome), r ('v' | 'd' | 'e', para este lado), lutaram [ids],
+     perdas { id: quantas }, acabaram [nomes] }: cada unidade que lutou ganha uma batalha e as baixas; uma linha no diário. */
+  function comBatalhaDoMapa(cru, b, quando, dataJogo) {
+    const x = norm(cru);
+    if (!x || !ehObj(b)) return x;
+    const lutaram = Array.isArray(b.lutaram) ? b.lutaram : [], perdas = ehObj(b.perdas) ? b.perdas : {}, partes = [];
+    let total = 0;
+    for (const u of x.unid) {
+      if (!lutaram.includes(u.id)) continue;
+      u.bat = Math.min(MAX.bat, u.bat + 1);
+      const n = inteiro(perdas[u.id], 0, MAX.tropas, 0);
+      if (n) { u.baixas = Math.min(MAX.tropas, u.baixas + n); total += n; partes.push(u.nome + ' −' + n); }
+    }
+    for (const nome of Array.isArray(b.acabaram) ? b.acabaram : []) { const nm = linha(nome, MAX.nome); if (nm) partes.push(nm + ' foi destruída'); }
+    for (const id of Object.keys(perdas)) if (!x.unid.some(u => u.id === id) && lutaram.includes(id)) total += inteiro(perdas[id], 0, MAX.tropas, 0);
+    const id = typeof b.id === 'string' ? b.id.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64) : '';
+    x.diario = normDiario([{ id: id || undefined, k: 'bat', t: linha(b.t, MAX.titulo) || 'Batalha', r: RESULTADOS[b.r] ? b.r : undefined, b: total, x: partes.join(' · '), em: quando || new Date().toISOString(), dj: dataJogo || '' }].concat(x.diario.filter(e => !id || e.id !== id)));
+    return x;
+  }
+
   const api = { PRE, docId, pcDoDoc, MAX, VET, nomeVet, vetDaMedia, fmtMedia, EQUIP_PADRAO, SUPR_PADRAO, VET_BONUS_PADRAO, MAX_EQUIP_PADRAO, RESULTADOS,
     TOPO_JOGADOR, UNID_JOGADOR, normCfg, normLista, normBras, brasNovo, norm, normUnid, normDiario, parteMestre, comEscolhas, escolhasDaUnid, escolhasDaTropa,
-    nova, unidadeNova, novoId, racaDe, classeDe, arvoresDe, contaUnid, calc, registrarBatalha, noDiario };
+    nova, unidadeNova, novoId, racaDe, classeDe, arvoresDe, contaUnid, calc, registrarBatalha, noDiario,
+    ATR_CMD, CMD_PADRAO, nomeAtr, peloAtr, bonusDeComando, normLig, comumDaTropa, comumDoExe, tropaComExe, exeComTropa, mesmaTropa, comBatalhaDoMapa, idMapa };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.TC = window.TC || {}; window.TC.tropas = api; }
 })();

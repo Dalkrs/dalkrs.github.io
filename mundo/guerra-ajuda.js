@@ -98,7 +98,7 @@
       }
       itens.qualidade = [p('O ATQ médio de um lado (com os equipamentos) contra a DEF média do outro: quem bate mais forte do que o outro se defende ganha. Vai de −6 a +6.'),
         ex(lado2('ATQ ' + fmt(A.atq, 1) + ' contra DEF ' + fmt(B.def, 1) + ' → ' + sinal(vA('qualidade')), 'ATQ ' + fmt(B.atq, 1) + ' contra DEF ' + fmt(A.def, 1) + ' → ' + sinal(vB('qualidade')))),
-        conta('Bônus = ATQ médio − DEF média do outro lado, arredondado, de −6 a +6.', 'As médias pesam cada unidade pela força dela; os equipamentos somam no ATQ e na DEF da unidade.')];
+        conta('Bônus = ATQ médio − DEF média do outro lado, arredondado, de −6 a +6.', 'As médias pesam cada unidade pela força dela; os equipamentos e a veterania (Veterana e Elite: o bônus das tabelas base das Fichas) somam no ATQ e na DEF da unidade.')];
       {
         const temVant = (A.tipos || []).some(t => t.vant && Object.keys(t.vant).length);
         itens.tipos = [p('As vantagens entre os tipos de tropa (aba Guerra, Tipos de tropa: a cavalaria contra os arqueiros, os lanceiros contra a cavalaria…), pela parte que cada tipo tem em cada exército.'),
@@ -108,8 +108,9 @@
       itens.moral = [p('A moral vai de 0 (em fuga) a 10 (inabalável); 5 é o normal. Moral 7 dá +2; moral 3 dá −2.'),
         ex(lado2('moral ' + A.moral + ' (' + d.textoMoral(A.moral) + ') → ' + sinal(A.moral - 5), 'moral ' + B.moral + ' (' + d.textoMoral(B.moral) + ') → ' + sinal(B.moral - 5))),
         conta('Bônus = moral − 5.')];
-      itens.comandante = [p('O bônus que você escreveu no comandante do exército (no painel do exército, na aba Seleção).'),
-        ex(lado2((A.cmdNome || 'sem nome') + ' ' + sinal(A.cmd), (B.cmdNome || 'sem nome') + ' ' + sinal(B.cmd)))];
+      { const cA = d.ctx && d.ctx.cmd && Number.isFinite(d.ctx.cmd.a) ? d.ctx.cmd.a : A.cmd, cB = d.ctx && d.ctx.cmd && Number.isFinite(d.ctx.cmd.b) ? d.ctx.cmd.b : B.cmd;
+        itens.comandante = [p('O bônus que você escreveu no comandante do exército (no painel do exército, na aba Seleção) — ou, com a marca “Bônus pela ficha”, o atributo da ficha do comandante dividido (o atributo e o divisor ficam nas tabelas base das Fichas).'),
+          ex(lado2((A.cmdNome || 'sem nome') + ' ' + sinal(cA), (B.cmdNome || 'sem nome') + ' ' + sinal(cB)))]; }
       {
         const hs = q => (d.herois[q] || []), txtH = q => (hs(q).length ? hs(q).map(x => x.nome + ' ' + sinal(x.v)).join(', ') + ' → ' + sinal(q === 'a' ? vA('herois') : vB('herois')) : 'nenhum');
         itens.herois = [p('A soma dos bônus dos heróis do lado (o sugerido pela ficha, ou o que você escreveu), até +10. Vale na Virada e na resumida.'),

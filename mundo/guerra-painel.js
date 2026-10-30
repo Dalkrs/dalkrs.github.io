@@ -665,18 +665,26 @@
 
   /* ================= o grupo: a seção Exército ================= */
   function secExercito(o, m) {
-    const { h, botao, nota, secao, linha, campoTexto, campoNumero, fmt, plural, mudarObj } = kit(), id = o.id, e = o.exe && !o.exe.pub ? o.exe : null;
+    const { h, botao, nota, secao, linha, campoTexto, campoNumero, caixa, fmt, plural, mudarObj } = kit(), id = o.id, e = o.exe && !o.exe.pub ? o.exe : null;
     if (!e) return [secao('Exército', nota('Este exército ainda não tem unidades: as tropas, o HP, o ATQ e a DEF, os magos, as máquinas de cerco e os equipamentos.'),
       linha(botao('Pôr as unidades', () => { if (mudarObj(id, 'pôr as unidades', x => { x.exe = exeNovo(m); }) !== false) { const u = (kit().achar(app().mapa, id) || {}).exe; if (u && u.unid[0]) unidAbertas.add(u.unid[0].id); } }, { c: 'pri sm', k: 'o:' + id + ':exe' })))];
     const L = G().lado(m, o), tr = N().tropasDe(e), cons = N().consumoDe(e), dias = N().diasDeMantimento(e), out = [];
     out.push(h('p', { class: 'status' }, h('b', { text: plural(tr, 'tropa', 'tropas') }), ' · ATQ ' + fmt(L.atq, 1) + ' · DEF ' + fmt(L.def, 1)
       + (L.magos ? ' · ' + plural(L.magos, 'mago', 'magos') : '') + (L.maqN ? ' · ' + plural(L.maqN, 'máquina de cerco', 'máquinas de cerco') : '')));
     // o comandante
+    const cmdF = cmdDaFicha(e), cfT = cfgTropas();
     out.push(h('div', { class: 'row' },
       campoTexto('o:' + id + ':cmd', 'Comandante', e.cmd.nome, v => mudarObj(id, 'mudar o comandante', x => { x.exe.cmd.nome = v.trim(); }), { max: 80, ph: comandanteDaFicha(e) || 'Quem comanda' }),
-      campoNumero('o:' + id + ':cmdb', 'Bônus (d20)', e.cmd.b, n => mudarObj(id, 'mudar o bônus do comandante', x => { x.exe.cmd.b = n; }), { min: -20, max: 20 })));
+      campoNumero('o:' + id + ':cmdb', 'Bônus (d20)', cmdF ? cmdF.v : e.cmd.b, n => mudarObj(id, 'mudar o bônus do comandante', x => { x.exe.cmd.b = n; }), { min: -20, max: 20, off: !!cmdF })));
     const ficha = fichaDoComandante(o);
     if (ficha) out.push(ficha);
+    // (lote 41) o bônus pela ficha do comandante (o atributo das tabelas base das Fichas)
+    if (e.cmd.ficha && cfT && cfT.cmd.atr && personagens()) {
+      out.push(caixa('o:' + id + ':cmdauto', 'Bônus pela ficha (' + TRP().nomeAtr(cfT.cmd.atr) + (cfT.cmd.div > 1 ? ' ÷ ' + cfT.cmd.div : '') + ')', !!e.cmd.auto,
+        v => mudarObj(id, 'mudar o bônus do comandante', x => { if (v) x.exe.cmd.auto = true; else delete x.exe.cmd.auto; }), { dica: 'O atributo e o divisor ficam nas tabelas base das Fichas. Sobe sozinho quando a ficha sobe.' }));
+      if (cmdF) out.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':cmdauto-v', text: 'Comando ' + sinal(cmdF.v) + ', ' + cmdF.txt + '.' }));
+    }
+    { const tr = secTropaDaFicha(o, m); if (tr) out.push(tr); }
     // a moral e os mantimentos
     out.push(h('div', { class: 'row' },
       campoNumero('o:' + id + ':moral', 'Moral (0 a 10)', e.moral, n => mudarObj(id, 'mudar a moral', x => { x.exe.moral = n; }), { min: 0, max: 10, erro: 'A moral vai de 0 (em fuga) a 10 (inabalável); 5 é firme.' }),
@@ -798,6 +806,18 @@
     const st = (TC.ponte && TC.ponte.estado) || {}, camp = st.campanha ? st.campanha.id : null;
     return P.todas().filter(l => l && !l.apagado && !(l.ficha && l.ficha.petDe) && (!camp || !l.campanha || l.campanha === camp));
   }
+  /* (lote 41) O bônus do comandante pela ficha (marcado no exército): o atributo das tabelas base das Fichas ÷ o divisor.
+     → { v, val, txt ("pelo Embate de Selene (8 ÷ 3)") } | null (sem a marca, sem a ficha aqui, sem atributo escolhido) */
+  const TRP = () => (window.TC && window.TC.tropas) || null;
+  const cfgTropas = () => { const T = TRP(), d = docDados('fichas:cfg'); return T ? T.normCfg(d && d.v) : null; };
+  function cmdDaFicha(e) {
+    const T = TRP(), cf = cfgTropas();
+    if (!T || !cf || !e || e.pub || !e.cmd || !e.cmd.ficha || !e.cmd.auto || !cf.cmd.atr) return null;
+    const ps = personagens(), l = ps ? ps.find(x => x.id === e.cmd.ficha) : null, c = l ? contasDaFicha(l) : null;
+    if (!c) return null;
+    const val = c.valor(cf.cmd.atr), v = T.bonusDeComando(val, cf.cmd);
+    return { v, val, txt: T.peloAtr(cf.cmd.atr) + ' de ' + (l.nome || 'a ficha') + ' (' + val + (cf.cmd.div > 1 ? ' ÷ ' + cf.cmd.div : '') + ')' };
+  }
   function comandanteDaFicha(e) {
     const ps = e.cmd.ficha ? personagens() : null, l = ps ? ps.find(x => x.id === e.cmd.ficha) : null;
     return l ? l.nome || '' : '';
@@ -813,17 +833,69 @@
   }
 
   /* ---- as unidades ---- */
+  /* (lote 41) A tropa de uma ficha: este exército e a tropa da ficha são a mesma (o que muda num muda no outro — quem
+     faz é mundo.js). Ligar a uma ficha com tropa e com unidades aqui pergunta quais unidades ficam. */
+  function secTropaDaFicha(o, m) {
+    const A = app(), TR = A.tropas;
+    if (!TR || !TR.disponivel() || !personagens()) return null;
+    const { h, campoEscolha } = kit(), id = o.id, e = o.exe, fs = TR.fichas();
+    if (!fs.length && !e.tropa) return null;
+    const outro = f => f.lig && !(f.lig.mapa === m.id && f.lig.g === id);
+    const ops = [['', 'Nenhuma']].concat(fs.map(f => [f.id, f.nome + (outro(f) ? ' (é a tropa de ' + (f.lig.nome || 'outro exército') + ')' : f.tem ? ' (tem tropa: ' + f.unid + (f.unid === 1 ? ' unidade)' : ' unidades)') : '')]));
+    if (e.tropa && !fs.some(f => f.id === e.tropa)) ops.push([e.tropa, 'A ficha saiu da mesa']);
+    const atual = e.tropa ? fs.find(f => f.id === e.tropa) : null;
+    return h('div', { class: 'gu-tropa', 'data-k': 'o:' + id + ':tropa-sec' },
+      campoEscolha('o:' + id + ':tropa', 'Tropa da ficha', e.tropa || '', ops, v => { ligarTropa(id, v || null); }, { dica: 'A mesma tropa nos dois lugares: o que muda aqui muda na ficha, e o contrário.' }),
+      e.tropa ? h('p', { class: 'note', 'data-k': 'o:' + id + ':tropa-nota', text: 'É a tropa ' + (atual ? 'de ' + atual.nome : 'de uma ficha') + ' (aba Tropas, nas Fichas). Os números mudam aqui e lá; o nome, a raça, a classe, o brasão, os equipamentos e os suprimentos de cada unidade, o dono da ficha escolhe lá.'
+        + (TR.gravaFichas() ? '' : ' Você não mestra as Fichas: o que muda aqui não chega à ficha (só o que muda lá chega aqui).') }) : null);
+  }
+  async function ligarTropa(gid, pc) {
+    const A = app(), TR = A.tropas, T = TRP(), m = A.mapa, g = m && kit().achar(m, gid);
+    if (!TR || !T || !g || !g.exe || g.exe.pub) return;
+    const antes = g.exe.tropa || null;
+    if (antes === pc) return;
+    if (!pc) {
+      if (mudarObjT(gid, 'desligar a tropa da ficha', x => { delete x.exe.tropa; delete x.exe.cmd.auto; }) !== false) { TR.desligar(antes); kit().avisoDesfazer('O exército deixou de ser a tropa da ficha. Os números ficam como estão, nos dois lugares.'); }
+      return;
+    }
+    const f = TR.fichas().find(x => x.id === pc), cru = TR.crua(pc), nome = f ? f.nome : 'a ficha';
+    let usarFicha = !!cru && !g.exe.unid.length;
+    if (cru && g.exe.unid.length) {
+      const nu = T.norm(cru).unid.length;
+      const r = await kit().janela({ titulo: 'Ligar ' + (g.nome || 'o exército') + ' à tropa de ' + nome, texto: 'A tropa da ficha tem ' + nu + (nu === 1 ? ' unidade' : ' unidades') + ' e este exército tem ' + g.exe.unid.length + '. Daqui em diante são a mesma tropa: qual fica?',
+        campos: [{ id: 'qual', tipo: 'opcoes', rotulo: 'As unidades que ficam', valor: 'ficha', opcoes: [['ficha', 'As da ficha (com as escolhas do jogador)'], ['mapa', 'As deste exército (a ficha recebe estas; as de lá saem)']] }], ok: 'Ligar' });
+      if (!r) { kit().pintar(); return; }
+      usarFicha = r.qual === 'ficha';
+    }
+    const cfg = TR.cfg();
+    // a ficha que era a tropa de outro exército deste mapa deixa de ser
+    const ok = mudarObjT(gid, 'ligar à tropa de ' + nome, (x, d) => {
+      for (const o2 of d.objs) if (o2 !== x && o2.k === 'g' && o2.exe && !o2.exe.pub && o2.exe.tropa === pc) delete o2.exe.tropa;
+      if (usarFicha) Object.assign(x, T.exeComTropa(x, cru, cfg));
+      // (as unidades daqui: os equipamentos passam a ser os da lista das Fichas — o que não está nela sai)
+      else {
+        const lista = T.normCfg(cfg).equip;
+        for (const u of x.exe.unid) { const vistos = new Set(); u.equip = (u.equip || []).map(q => lista.find(e => e.nome === q.nome)).filter(e => e && !vistos.has(e.id) && vistos.add(e.id)).slice(0, T.MAX.equipUnid).map(e => ({ nome: e.nome, atq: e.atq, def: e.def })); }
+      }
+      x.exe.tropa = pc;
+      if (!x.exe.cmd.ficha) x.exe.cmd.ficha = pc;
+      if (x.exe.cmd.ficha === pc) x.exe.cmd.auto = true;
+    });
+    if (ok !== false) kit().avisoDesfazer((g.nome || 'O exército') + ' agora é a tropa de ' + nome + (cru ? (usarFicha ? ' (com as unidades da ficha).' : ' (a ficha recebeu as unidades daqui).') : ' (a ficha ganhou a aba Tropas).'));
+  }
+  const mudarObjT = (gid, rot, fn) => app().mudar(rot, d => { const x = kit().achar(d, gid); if (!x || !x.exe || x.exe.pub) return false; return fn(x, d); });
   function secUnidades(o, m) {
     const { h, botao, nota, secao, linha, campoTexto, campoNumero, campoEscolha, caixa, plural, mudarObj } = kit(), id = o.id, e = o.exe, tipos = tiposDe(m), out = [];
     const opsTipo = [['', 'Sem tipo']].concat(tipos.map(t => [t.id, t.nome]));
     const num = (u, campo, rot, o2) => campoNumero('o:' + id + ':u:' + u.id + ':' + campo, rot, u[campo], n => mudarUnid(id, u.id, 'mudar a unidade', x => { if (x[campo] === n) return false; x[campo] = n; if (campo === 'hpT') x.fer = 0; }), o2);
     for (const u of e.unid) {
-      const aberta = unidAbertas.has(u.id), tn = tipoNome(m, u.tipo), eqB = u.equip.reduce((s, q) => s + q.atq, 0), eqD = u.equip.reduce((s, q) => s + q.def, 0);
+      const aberta = unidAbertas.has(u.id), tn = tipoNome(m, u.tipo), vb = G().bonusVet ? G().bonusVet(u) : 0, eqB = u.equip.reduce((s, q) => s + q.atq, 0) + vb, eqD = u.equip.reduce((s, q) => s + q.def, 0) + vb;
+      const VETN = ['', 'Recruta', 'Veterana', 'Elite'];
       // (lote 12, parte 12c) o HP da unidade: a soma das tropas (a ferida, à parte)
       const H = N().hpDaUnidade(u);
       const maqN = N().somaDasMaquinas(m, u.maq).n;
       const resumo = plural(u.tropas, 'tropa', 'tropas') + (tn ? ' · ' + tn : '') + ' · ATQ ' + (u.atq + eqB) + ' · DEF ' + (u.def + eqD) + (u.hpT > 1 ? ' · ' + u.hpT + ' HP cada' : '') + (u.fer ? ' · 1 ferida' : '')
-        + (u.cura ? ' · cura ' + u.cura + '%' : '') + (maqN ? ' · ' + plural(maqN, 'máquina', 'máquinas') : '') + (u.oc ? ' · escondida' : '');
+        + (u.cura ? ' · cura ' + u.cura + '%' : '') + (maqN ? ' · ' + plural(maqN, 'máquina', 'máquinas') : '') + (u.vet > 1 ? ' · ' + VETN[u.vet] : '') + (u.oc ? ' · escondida' : '');
       const corpo = aberta ? h('div', { class: 'gu-unid-corpo' },
         h('div', { class: 'row' },
           campoTexto('o:' + id + ':u:' + u.id + ':nome', 'Nome', u.nome, v => mudarUnid(id, u.id, 'mudar o nome da unidade', x => { if (!v.trim()) return false; x.nome = v.trim(); }), { max: 80 }),
@@ -833,11 +905,15 @@
         h('p', { class: 'note gu-hp', 'data-k': 'o:' + id + ':u:' + u.id + ':hp' }, 'HP da unidade: ' + kit().fmt(H.hp, 0) + (u.fer ? ' de ' + kit().fmt(H.max, 0) + ' · uma tropa ferida (' + (u.hpT - u.fer) + ' de ' + u.hpT + ')' : '') + ' — a soma das tropas: o dano mata uma a uma.',
           u.fer ? ' ' : null, u.fer ? botao('Curar a ferida', () => mudarUnid(id, u.id, 'curar a ferida', x => { if (!x.fer) return false; x.fer = 0; }), { c: 'sm', k: 'o:' + id + ':u:' + u.id + ':curar' }) : null),
         h('div', { class: 'row gu-nums' },
-          num(u, 'atq', 'ATQ', { min: -99, max: 99 }), num(u, 'def', 'DEF', { min: -99, max: 99 })),
+          num(u, 'atq', 'ATQ', { min: -99, max: 99 }), num(u, 'def', 'DEF', { min: -99, max: 99 }),
+          // (lote 41) a veterania: soma no ATQ e na DEF (o bônus das tabelas base das Fichas)
+          campoEscolha('o:' + id + ':u:' + u.id + ':vet', 'Veterania', String(u.vet || 1), [['1', 'Recruta'], ['2', 'Veterana'], ['3', 'Elite']],
+            v => mudarUnid(id, u.id, 'mudar a veterania', x => { const n = Number(v) || 1; if ((x.vet || 1) === n) return false; if (n > 1) x.vet = n; else delete x.vet; }))),
+        vb ? h('p', { class: 'note', 'data-k': 'o:' + id + ':u:' + u.id + ':vetb', text: VETN[u.vet] + ': ' + sinal(vb) + ' no ATQ e na DEF nas batalhas.' }) : null,
         h('div', { class: 'row gu-nums' },
           num(u, 'magos', 'Magos', { min: 0, max: 1e7 }), num(u, 'cura', 'Cura (%)', { min: 0, max: 100 })),
         camposMaq('o:' + id + ':u:' + u.id + ':maq', u.maq, (tid, n) => mudarUnid(id, u.id, 'mudar as máquinas da unidade', x => { const t = porMaq(x.maq, tid, n); if (!t) return false; x.maq = t; }), m),
-        secEquip(o, u),
+        e.tropa ? equipDaFicha(o, u) : secEquip(o, u),
         caixa('o:' + id + ':u:' + u.id + ':oc', 'Escondida dos jogadores', !!u.oc, v => mudarUnid(id, u.id, 'esconder a unidade', x => { if (v) x.oc = true; else delete x.oc; }), { dica: 'Os jogadores veem o nome e o tipo das outras (nunca os números).' }),
         linha(
           botao('Duplicar', () => { const nid = novoId('un'); if (mudarObj(id, 'duplicar a unidade', x => { const i = x.exe.unid.findIndex(q => q.id === u.id); if (i < 0 || x.exe.unid.length >= ((N().LIMITES && N().LIMITES.unidades) || 40)) return false; x.exe.unid.splice(i + 1, 0, Object.assign(JSON.parse(JSON.stringify(u)), { id: nid, nome: u.nome + ' (cópia)' })); }) !== false) unidAbertas.add(nid); }, { c: 'sm', k: 'o:' + id + ':u:' + u.id + ':dup' }),
@@ -855,6 +931,12 @@
     }, { c: 'sm', k: 'o:' + id + ':u:nova', off: e.unid.length >= max })));
     if (!tipos.length) out.push(linha(nota('Sem tipos de tropa ainda: crie na aba Guerra (com as vantagens de um contra o outro).'), botao('Abrir a aba Guerra', () => kit().abrirAba('guerra'), { c: 'sm', k: 'o:' + id + ':ir-guerra' })));
     return secao('Unidades', out);
+  }
+  // (lote 41) a unidade da tropa de uma ficha: os equipamentos são os que o jogador escolheu lá (aqui, só para ver)
+  function equipDaFicha(o, u) {
+    const { h } = kit();
+    return h('div', { class: 'gu-eqs', 'data-k': 'o:' + o.id + ':u:' + u.id + ':eqficha' },
+      h('p', { class: 'note', text: 'Equipamentos (da ficha): ' + (u.equip.length ? u.equip.map(q => q.nome + (q.atq ? ' ATQ ' + sinal(q.atq) : '') + (q.def ? ' DEF ' + sinal(q.def) : '')).join(' · ') : 'nenhum') + '. O dono da ficha escolhe, na lista das tabelas base das Fichas.' }));
   }
   function secEquip(o, u) {
     const { h, campoTexto, campoNumero, botao } = kit(), id = o.id, base = 'o:' + id + ':u:' + u.id + ':eq';
@@ -1258,6 +1340,10 @@
     // (lote 9) os heróis (o bônus de cada um) e as ações heroicas
     const hv = q => heroisDoLado(m, q).map(x => ({ nome: x.nome, v: x.v }));
     const out = { estr, mestre: bat.mestre, herois: { a: hv('a'), b: hv('b') }, acoes: bat.acoes };
+    // (lote 41) o comandante pela ficha (o exército com a marca): o bônus vem do atributo dela
+    const cm = {};
+    for (const q of ['a', 'b']) { const g = kit().achar(m, bat[q]), c = g && g.exe ? cmdDaFicha(g.exe) : null; if (c) cm[q] = c.v; }
+    if (Object.keys(cm).length) out.cmd = cm;
     // (lote 17) o terreno do hexágono da batalha, para quem defende ali
     const t = terrenoDaBatalha(m);
     if (t && t.lado) out.terreno = { lado: t.lado, v: t.v, nome: t.terreno.nome || 'terreno' };
@@ -1841,13 +1927,15 @@
     // ficha depois (uma cura, um dano numa cena) fica.
     const P = feridas.length && window.TC && window.TC.dados ? window.TC.dados.col('personagens') : null, feitas = [];
     if (P) for (const f of feridas) { const l = P.pegar(f.hr.ficha); if (!l) continue; P.gravar(l.id, { estado: f.estado }); feitas.push({ id: l.id, hp: f.hp, tirou: Math.max(0, (f.antes || 0) - (f.depois || 0)) }); }
+    // (lote 41) as tropas das fichas que lutaram: a linha no diário, as batalhas e as baixas (o Desfazer leva junto)
+    const td = A.tropas && typeof A.tropas.depoisDaBatalha === 'function' ? A.tropas.depoisDaBatalha(reg, prev) : null;
     // (parte 12e: a notícia do cerco entra no mesmo "fora do passo" — um só por passo)
-    if ((feitas.length || (nj && nj.posto)) && typeof A.foraDoPasso === 'function') {
+    if ((feitas.length || (nj && nj.posto) || td) && typeof A.foraDoPasso === 'function') {
       const mexer = s => () => {
         const R = window.TC && window.TC.rules;
         if (R) for (const x of feitas) { const l = P.pegar(x.id); if (l) P.gravar(x.id, { estado: R.aplicarDelta(l.estado || {}, x.hp.id, x.hp.max, s * x.tirou, x.hp.min, x.hp.inicio) }); }
       };
-      A.foraDoPasso({ desfazer: () => { if (feitas.length) mexer(1)(); if (nj && nj.posto) nj.tirar(); }, refazer: () => { if (feitas.length) mexer(-1)(); if (nj && nj.posto) nj.por(); } });
+      A.foraDoPasso({ desfazer: () => { if (feitas.length) mexer(1)(); if (nj && nj.posto) nj.tirar(); if (td) td.desfazer(); }, refazer: () => { if (feitas.length) mexer(-1)(); if (nj && nj.posto) nj.por(); if (td) td.refazer(); } });
     }
     // (lote 18) as perdas, para os blocos do campo de batalha
     const campo = bat.campo && bat.campoPerdas !== false && kit().naCasca() ? { cena: bat.campo.cena, perdas: {} } : null;

@@ -1401,6 +1401,12 @@ html:not(.modo-simples) .so-simples{display:none!important}
 .tr-sub b{color:var(--ink);font-weight:600}
 .tr-info{margin:6px 0 0;font-size:13px;color:var(--ink-2);max-width:68ch}
 .tr-acoes{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tr-mapa{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding-top:11px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+.tr-mapa + .tr-trava{border-top:0;padding-top:0}
+.tr-mapa p{margin:0}
+.tr-mapa b{color:var(--ink)}
+.tr-mapa small{flex-basis:100%}
+.tr-icmapa{width:15px;height:15px;stroke:#6fa8f0;margin-right:5px;vertical-align:-3px}
 .tr-medidas{display:flex;flex-wrap:wrap;gap:10px}
 .tr-med{background:var(--campo);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-width:128px;display:grid;gap:3px;align-content:start}
 .tr-med b.mono{font-size:20px;font-weight:600}
@@ -1598,8 +1604,8 @@ html:not(.modo-simples) .so-simples{display:none!important}
 <script src="corrupcao.js?v=1"></script>
 <script src="../meditacao/nucleo.js?v=1"></script>
 <script src="../cla/nucleo.js?v=3"></script>
-<script src="../tc/tropas.js?v=1"></script>
-<script src="tropas.js?v=1"></script>
+<script src="../tc/tropas.js?v=2"></script>
+<script src="tropas.js?v=2"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS

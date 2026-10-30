@@ -2136,6 +2136,9 @@
       tropas, hpT, fer: tropas > 0 ? inteiro(u.fer, 0, 0, hpT - 1) : 0, atq: atr(u.atq), def: atr(u.def), magos: inteiro(u.magos, 0, 0, MAX_TROPAS),
       cura: inteiro(u.cura, 0, 0, 100), maq: normTabMaq(u.maq), equip: normEquip(u.equip) };
     if (sim(u.oc)) out.oc = true;                                // escondida dos jogadores (até o nome)
+    // (lote 40/41) a veterania: 1 Recruta (sem guardar), 2 Veterana, 3 Elite — soma no ATQ e na DEF (o bônus das Fichas)
+    const vet = inteiro(u.vet, 1, 1, 3);
+    if (vet > 1) out.vet = vet;
     return out;
   }
   /* (lote 12, parte 12d) As máquinas de cerco: os tipos (o mestre muda; sem a lista, os de começo) — o dano contra
@@ -2187,13 +2190,23 @@
     const cmd = ehObj(v.cmd) ? v.cmd : {}, vistos = new Set();
     const unid = (Array.isArray(v.unid) ? v.unid : []).filter(ehObj).slice(0, MAX_UNID);
     // (na projeção: só os nomes, sem os números)
-    if (v.pub) return { pub: true, cmd: { nome: texto(cmd.nome, '', 80).trim() }, unid: unid.map((u, i) => ({ id: unico(idOk(u.id) || 'un_' + i, vistos), nome: texto(u.nome, '', 80).trim() || 'Unidade ' + (i + 1), tipo: idRef(u.tipo) })) };
+    if (v.pub) {
+      const p = { pub: true, cmd: { nome: texto(cmd.nome, '', 80).trim() }, unid: unid.map((u, i) => ({ id: unico(idOk(u.id) || 'un_' + i, vistos), nome: texto(u.nome, '', 80).trim() || 'Unidade ' + (i + 1), tipo: idRef(u.tipo) })) };
+      const vm = num(v.vet, NaN);                                 // (lote 41) a veterania média, para a plaquinha do token
+      if (Number.isFinite(vm) && vm >= 1 && vm <= 3) p.vet = Math.round(vm * 10) / 10;
+      return p;
+    }
     const cons = v.cons == null || v.cons === '' ? null : inteiro(v.cons, null, 1, MAX_TROPAS);
     const out = { cmd: { nome: texto(cmd.nome, '', 80).trim(), b: inteiro(cmd.b, 0, -MAX_BONUS, MAX_BONUS), ficha: idRef(cmd.ficha) }, moral: inteiro(v.moral, 5, 0, 10),
       mant: inteiro(v.mant, 0, 0, 1e9), cons, fome: inteiro(v.fome, 0, 0, 1e4), unid: unid.map((u, i) => normUnid(u, i, vistos)) };
     // (lote 9) os heróis do exército: as fichas que lutam junto (o bônus do mestre, quando ele escreveu um)
     const hs = normHerois(v.herois);
     if (hs.length) out.herois = hs;
+    // (lote 41) o bônus do comandante pela ficha dele (o atributo das tabelas base das Fichas), e a tropa de uma ficha
+    // ligada a este exército (a mesma tropa nos dois lugares: ver tc/tropas.js)
+    if (out.cmd.ficha && sim(cmd.auto)) out.cmd.auto = true;
+    const tr = idRef(v.tropa);
+    if (tr) out.tropa = tr;
     return out;
   }
   // (lote 9) os heróis: { ficha, b? } — uma vez cada ficha; o b (o bônus do mestre) só quando escrito
@@ -3080,6 +3093,16 @@
   }
   // as tropas do exército, o consumo de mantimentos por dia (o escolhido, ou um por cem soldados) e quantos dias duram
   const tropasDe = exe => (exe && Array.isArray(exe.unid) ? exe.unid.reduce((s, u) => s + (u.tropas || 0), 0) : 0);
+  /* (lote 41) A veterania média de um exército (com uma casa): a das unidades com soldados (Recruta 1, Veterana 2, Elite
+     3) — só quando ele é a tropa de uma ficha ou alguma unidade já subiu (senão, null: nada a mostrar). semOcultas: sem
+     as unidades escondidas dos jogadores (para a projeção). O que os jogadores recebem já vem com a média pronta. */
+  function vetMediaDe(exe, semOcultas) {
+    if (!exe) return null;
+    if (exe.pub) return Number.isFinite(exe.vet) ? exe.vet : null;
+    const us = (Array.isArray(exe.unid) ? exe.unid : []).filter(u => u && u.tropas > 0 && !(semOcultas && u.oc));
+    if (!us.length || (!exe.tropa && !us.some(u => u.vet > 1))) return null;
+    return Math.round(us.reduce((s, u) => s + (u.vet || 1), 0) / us.length * 10) / 10;
+  }
   const consumoDe = exe => (!exe ? 0 : exe.cons != null ? exe.cons : Math.ceil(tropasDe(exe) / 100));
   const diasDeMantimento = exe => { const c = consumoDe(exe); return c > 0 ? Math.floor((exe.mant || 0) / c) : Infinity; };
 
@@ -3712,7 +3735,7 @@
         delete o.desc; delete o.pdesc;                           // (lote 9) o descanso e os pontos de descanso também
         if (escondidas.has(o.fac)) o.fac = null;                 // (lote 8) a facção escondida não vai
         // (lote 8, parte 6) o exército: os nomes (o comandante, as unidades que não estão escondidas e o tipo delas), sem os números
-        if (o.exe) o.exe = { pub: true, cmd: { nome: o.exe.cmd.nome }, unid: o.exe.unid.filter(u => !u.oc).map(u => ({ id: u.id, nome: u.nome, tipo: u.tipo })) };
+        if (o.exe) { const vm = vetMediaDe(o.exe, true); o.exe = Object.assign({ pub: true, cmd: { nome: o.exe.cmd.nome }, unid: o.exe.unid.filter(u => !u.oc).map(u => ({ id: u.id, nome: u.nome, tipo: u.tipo })) }, vm != null ? { vet: vm } : {}); }
 
         if (chGru.has(o.id)) o.ch = chGru.get(o.id);
       }
@@ -3830,7 +3853,7 @@
     MIS_E, situacaoDaMissao,
     CADA_CLIMA, VIZINHOS_CLIMA, cadaDe, trechoDoTempo, trechoAgora, trechosDoDia, comecoDoTrecho, climaDoTrecho, climaSorteadoDoTrecho, climasDoDia, passoDoClima,
     janelaDeDescanso, noDescanso, descansandoAgora, pontosDeDescanso, nomeDoDescanso,
-    HEX_GUERRA, MOMENTOS, FINS, tropasDe, consumoDe, diasDeMantimento, CAMPANHA_PADRAO, mesesDe, hpDaUnidade, tropasComHp, MAQUINAS_PADRAO, maquinasDe, somaDasMaquinas, RESERVA_PADRAO, MILICIA_PADRAO,
+    HEX_GUERRA, MOMENTOS, FINS, tropasDe, vetMediaDe, consumoDe, diasDeMantimento, CAMPANHA_PADRAO, mesesDe, hpDaUnidade, tropasComHp, MAQUINAS_PADRAO, maquinasDe, somaDasMaquinas, RESERVA_PADRAO, MILICIA_PADRAO,
     normHerois,
     normLinha, linhaDe, linhaAtiva, dataDaLinha, linhaComecar, linhaNova, linhaTrocar, linhaParou, linhaSemMarca, linhaJuntar, linhaTirar, gruposDeOutrasLinhas, datasDasCampanhas, depoisDaLinha, naDataDe,
     PAPEIS_REC, normEco, normAss, REGRAS_FALTA, ESTRATOS_INICIAIS, DIST_INICIAL, estratosDeComeco, distDeComeco, TIPOS_SERV, normGuilda,

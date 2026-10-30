@@ -623,7 +623,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/rules.js?v=26"></script>
 <script src="tc/tc.js?v=37"></script>
 <script src="tc/busca.js?v=2"></script>
-<script src="tc/guia.js?v=15"></script>
+<script src="tc/guia.js?v=16"></script>
 <script src="tc/notas.js?v=4"></script>
 <script src="tc/dom.js?v=2"></script>
 <script src="tc/escudo.js?v=2"></script>
@@ -636,7 +636,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.29-6';
+  const VERSAO = '2026.10.30-1';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -2475,6 +2475,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     for (const a of ABAS) if (a.dados && frames[a.id]) { frames[a.id].remove(); delete frames[a.id]; }
     if (atual && !frames[atual]) abrir(atual);
     cenasEmSegundoPlano();
+    mundoEmSegundoPlano();
   }
   /* O programa das Cenas do mestre é quem aplica na cena o que os jogadores fazem e acerta os tokens pelas fichas.
      Com a mesa aberta ele precisa estar rodando mesmo que o mestre esteja em outra aba (nas Fichas, por exemplo):
@@ -2495,6 +2496,25 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       } catch (e) { /* sem os dados da mesa, as Cenas abrem quando o mestre for até elas */ }
     }, 2500);
   }
+  /* (lote 41) A tropa de uma ficha ligada a um exército do Mapa-múndi: quem leva o que muda de um lado para o outro é o
+     Mapa-múndi de quem mestra. Com alguma tropa ligada, ele abre em segundo plano, escondido (como as Cenas), para os
+     dois lados — e o mapa que os jogadores veem — acompanharem mesmo com o mestre nas Fichas. */
+  let tFundoMundo = 0;
+  const temTropaLigada = () => { try { return TC.dados.col('documentos').todas().some(l => /^fichas:tropas:/.test(l.id || '') && !l.apagado && l.dados && l.dados.lig); } catch (e) { return false; } };
+  function mundoEmSegundoPlano() {
+    clearTimeout(tFundoMundo);
+    const mesa = mesas.atual;
+    if (!mesa || !mesas.mestra('mundo') || frames.mundo) return;
+    tFundoMundo = setTimeout(async () => {
+      try {
+        const D = TC.dados.col('documentos');
+        await D.pronta;
+        if (!mesas.atual || mesas.atual !== mesa || !mesas.mestra('mundo') || frames.mundo || !pode('mundo') || !temTropaLigada()) return;
+        moldura(ABAS.find(x => x.id === 'mundo'));
+      } catch (e) { /* sem os dados da mesa, o Mapa-múndi acompanha quando o mestre for até ele */ }
+    }, 4000);
+  }
+  TC.dados.on('muda', (col, linha) => { if (col === 'documentos' && linha && /^fichas:tropas:/.test(linha.id || '') && !frames.mundo && mesas.atual && mesas.mestra('mundo')) mundoEmSegundoPlano(); });
   /* (lote 6) O Jornal: quando sai uma edição que a pessoa ainda não leu, a aba ganha uma bolinha e o Jornal abre para
      ela — ao entrar na mesa ou já dentro dela (se ela está escrevendo na mesa ao vivo ou com uma janela aberta, só a
      bolinha e um aviso com "Ler"). Quem mestra o Jornal é quem publica: para ele, nada abre sozinho. A edição lida
@@ -2709,7 +2729,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (u) { await conferirAdmin(); if (u.trocar) janelaSenhaNova(); }
     const ultima = u ? mesas.ultima() : null;
     if (ultima) { try { await mesas.abrir(ultima); } catch (e) { pintarConta(); } }
-  })]).then(() => { mesaDasMolduras = assinatura(); pintarAbas(); abrir(inicial()); cenasEmSegundoPlano(); });
+  })]).then(() => { mesaDasMolduras = assinatura(); pintarAbas(); abrir(inicial()); cenasEmSegundoPlano(); mundoEmSegundoPlano(); });
 })();
 </script>
 </body>

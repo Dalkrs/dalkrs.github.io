@@ -2,6 +2,35 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.30-1",
+      "data": "2026-10-30",
+      "titulo": "As tropas no Mapa-múndi",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "A tropa do seu personagem pode estar no Mapa-múndi: quando ela é um exército de lá, as escolhas que você faz na aba Tropas (os nomes e os equipamentos das unidades) aparecem no mapa, e o que acontece com o exército (as batalhas, as baixas, a moral) volta para a ficha. A faixa da tropa mostra onde ela está, com “Ver no mapa”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Em cima do exército que é a sua tropa (e dos que já têm unidades veteranas), uma plaquinha no mapa com as divisas e a veterania média das unidades (Recruta 1, Veterana 2, Elite 3)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "As batalhas da tropa no Mapa-múndi entram sozinhas no diário da tropa, com o resultado e as baixas, e cada unidade que lutou conta mais uma batalha."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi → painel do exército → “Tropa da ficha”: liga o exército à tropa de um personagem (se os dois já têm unidades, você escolhe quais ficam). Daí em diante são a mesma tropa: o que muda no mapa muda na ficha, e o contrário — mesmo com o Mapa-múndi fechado (ele acompanha escondido)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A veterania de cada unidade também no mapa, somando no ATQ e na DEF nas batalhas (o bônus das tabelas base das Fichas). E o comandante pela ficha: com a marca “Bônus pela ficha”, o bônus de comando sai do atributo da ficha do comandante (nas tabelas base das Fichas: o Embate ÷ 3, de começo, ou o atributo que você escolher)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.29-6",
       "data": "2026-10-29",
       "titulo": "As tropas nas fichas",

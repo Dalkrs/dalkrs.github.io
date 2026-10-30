@@ -59,6 +59,16 @@
 
   // um dado de n lados (rng: de 0 a 1)
   const rolar = (n, rng) => 1 + Math.floor(limitar((rng || Math.random)(), 0, 0.999999) * n);
+  /* (lote 41) O bônus da veterania no ATQ e na DEF de cada unidade (Veterana e Elite): o das tabelas base das Fichas —
+     o Mapa-múndi da mesa avisa (usarVeterania) quando lê as Fichas; sem elas, o de começo (+1 e +2). */
+  const VET_PADRAO = { 2: 1, 3: 2 };
+  let VET = Object.assign({}, VET_PADRAO);
+  function usarVeterania(t) {
+    const n = (v, d) => { const x = Math.round(Number(v)); return Number.isFinite(x) ? limitar(x, 0, 10) : d; };
+    VET = t && typeof t === 'object' ? { 2: n(t[2], VET_PADRAO[2]), 3: n(t[3], VET_PADRAO[3]) } : Object.assign({}, VET_PADRAO);
+    return VET;
+  }
+  const bonusVet = u => (u && u.vet > 1 ? VET[u.vet] || 0 : 0);
   const log2 = x => Math.log(x) / Math.LN2;
 
   /* Um lado da batalha, a partir do grupo do Exército (o que entra na conta; o mapa não muda). As unidades sem tropas
@@ -70,7 +80,7 @@
     const tipoDe = id => tipos.find(t => t.id === id) || null;
     const unid = exe.unid.filter(u => u.tropas > 0);
     const forcaU = u => u.tropas;
-    const atqU = u => u.atq + soma(u.equip || [], e => e.atq), defU = u => u.def + soma(u.equip || [], e => e.def);
+    const atqU = u => u.atq + soma(u.equip || [], e => e.atq) + bonusVet(u), defU = u => u.def + soma(u.equip || [], e => e.def) + bonusVet(u);
     const F = soma(unid, forcaU);
     // (lote 12, parte 12d) as máquinas de cerco das unidades que lutam: { tipo: quantas } e a soma dos danos
     const maq = {};
@@ -106,7 +116,8 @@
         return Math.round(s);
       },
       moral: () => X.moral - 5,
-      comandante: () => X.cmd,
+      // (lote 41) o do comandante pela ficha (quem chama já fez a conta: ctx.cmd), senão o que o mestre escreveu
+      comandante: () => (ctx && ctx.cmd && Number.isFinite(ctx.cmd[quem]) ? ctx.cmd[quem] : X.cmd),
       magia: () => Math.min(6, Math.round(Math.sqrt(X.magos))),
       distancia: () => (X.dist > 0 && !(Y.dist > 0) ? 3 : Math.min(6, numeros(X.dist, Y.dist))),
       // (lote 12, parte 12d) as máquinas: a raiz da soma do dano contra exército (as da fortificação, para quem defende ali), até 6
@@ -344,7 +355,7 @@
 
   const MundoGuerra = {
     TAMANHOS, MOMENTOS: ORDEM_MOMENTOS, DO_MOMENTO, NOMES, BONUS_MESTRE, AVANCO, PERDA_PERDEDOR, PERDA_VENCEDOR,
-    rolar, lado, numeros, bonus, total, resumida, momento, fimDetalhada, parar, textoFim, tamanhoD100, tamanhoD20,
+    rolar, lado, numeros, bonus, usarVeterania, bonusVet, total, resumida, momento, fimDetalhada, parar, textoFim, tamanhoD100, tamanhoD20,
     perdas, moralDepois, frenteAnda, depois, aplicar, mantimentosDoDia, confrontos,
     MAX_HEROIS_BONUS, bonusSugerido, resultadoHeroico, feridaDoHeroi, FERIDA_PERDEDOR, FERIDA_VENCEDOR,
     MORAL_PERDEDOR, MORAL_VENCEDOR, DANO_ESTRUTURA,                // (a ajuda da batalha mostra as tabelas)

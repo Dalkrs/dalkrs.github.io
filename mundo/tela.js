@@ -1900,15 +1900,30 @@
     }
     return g;
   }
+  /* (lote 41) A veterania média do exército (a tropa de uma ficha, ou com alguma unidade que já subiu): as divisas e a
+     média ("2,1"), numa plaquinha em cima do token — o mestre e os jogadores veem (a projeção leva a média pronta). */
+  const VET_NOMES = ['', 'Recruta', 'Veterana', 'Elite'], DIVISAS = ['M5 23l10-6 10 6', 'M5 16l10-6 10 6', 'M5 9l10-6 10 6'];
+  function seloDaVeterania(v, y) {
+    const n = v < 1.5 ? 1 : v < 2.5 ? 2 : 3, t = v.toFixed(1).replace('.', ',');
+    const g = s('g', { class: 'veter veter-' + n, transform: 'translate(0 ' + y + ')' });
+    g.append(s('title', { texto: 'Veterania média: ' + VET_NOMES[n] + ' (' + t + ' de 3)' }));
+    g.append(s('rect', { class: 'veter-fundo', x: -15.5, y: -5.5, width: 31, height: 11, rx: 5.5 }));
+    const ch = s('g', { class: 'veter-div', transform: 'translate(-13.2 -4.6) scale(0.31)' });
+    DIVISAS.forEach((d, i) => ch.append(s('path', { class: i < n ? 'on' : 'off', d })));
+    g.append(ch, s('text', { class: 'veter-n', x: 6.6, y: 3.1, 'text-anchor': 'middle', 'font-size': 8.4, texto: t }));
+    return g;
+  }
   function grupo(g0, o, ctx) {
     g0.classList.add('gru');
     const fx = fixo(o.x, o.y), bol = ctx ? bolinhasDe(ctx, o) : null;
     const forca = ctx && ctx.mestre ? forcaDoExercito(o) : null;
+    const vet = o.tipo === 'exercito' && N().vetMediaDe ? N().vetMediaDe(o.exe) : null;
+    const yVet = forca ? FORCA_Y - 13 : FORCA_Y, topo = vet != null ? yVet : forca ? FORCA_Y : null;
     if (bol) {
       // uma fileira em cima do token: as cheias são os tempos andados; com muitas, as primeiras e a conta
       // (lote 15: com a força do exército em cima do token, a fileira sobe para acima dela)
       const [feitas, total] = bol, n = Math.min(total, MAX_BOL), passo = 8.5, x0 = -((n - 1) * passo) / 2, cor = o.cor || '#e6ab4f';
-      const gb = s('g', { class: 'bolinhas', transform: 'translate(0 ' + (forca ? FORCA_Y - 13 : -23) + ')' });
+      const gb = s('g', { class: 'bolinhas', transform: 'translate(0 ' + (topo != null ? topo - 13 : -23) + ')' });
       gb.append(s('title', { texto: 'Atravessando: ' + feitas + ' de ' + total + ' tempos de marcha' }));
       for (let i = 0; i < n; i++) gb.append(s('circle', { class: 'bol' + (i < feitas ? ' feita' : ''), cx: d3(x0 + i * passo), cy: 0, r: 3.3, style: i < feitas ? 'fill:' + cor : 'stroke:' + cor }));
       if (total > MAX_BOL) gb.append(s('text', { class: 'bol-conta', x: d3(x0 + n * passo + 2), y: 3.5, 'font-size': 10, texto: feitas + '/' + total }));
@@ -1938,6 +1953,7 @@
         s('circle', { class: 'dorme-bola', r: 8.5 }), s('text', { class: 'dorme-z', x: -0.5, y: 3.6, 'text-anchor': 'middle', 'font-size': 9.5, texto: 'zZ' })));
     }
     if (forca) fx.append(seloDaForca(o, forca));
+    if (vet != null) fx.append(seloDaVeterania(vet, yVet));
     if (o.nome) fx.append(rotulo(o.nome, 29));
     g0.append(fx);
   }
