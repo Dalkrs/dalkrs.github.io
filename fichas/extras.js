@@ -1805,7 +1805,7 @@ const FichasExtras = (() => {
   }
 
   return {
-    aviso, imagemOk, iniciais, miniatura,
+    aviso, janela, imagemOk, iniciais, miniatura,
     htmlRetrato, ligarRetrato, guardarImagem,
     htmlLapros, ligarLapros, laprosDe, lerLapros, MOEDA,
     painelItens, ligarItens, abrirItem, mostrarItem, itemNovo, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,

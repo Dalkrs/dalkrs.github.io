@@ -1388,6 +1388,142 @@ html:not(.modo-simples) .so-simples{display:none!important}
 @keyframes corrBrasa{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-60px);opacity:0}}
 @keyframes corrBrilho{0%,100%{opacity:.8}50%{opacity:1}}
 @media (prefers-reduced-motion: reduce){.corr-fx,.corr-fx *,.resumo.corr-sobe{animation:none!important}}
+/* ---------- (lote 40) a aba Tropas: a faixa da tropa, as cartas das unidades, o diário; o montador do brasão ---------- */
+.abasficha .abf.tr-mais{margin-left:auto;color:var(--brass-ink);font-weight:600}
+.tr-aba{display:grid;gap:18px}
+.tr-bras{display:inline-block;flex:none;line-height:0}
+.tr-bras svg{width:52px;height:62px;display:block}
+.tr-bras.tr-bras-g svg{width:64px;height:77px}
+.tr-bras.tr-bras-m svg{width:132px;height:158px}
+.tr-faixa{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:20px;align-items:center}
+.tr-nome{font-size:27px;line-height:1.1}
+.tr-sub{margin:3px 0 0;font-size:13.5px;color:var(--ink-2)}
+.tr-sub b{color:var(--ink);font-weight:600}
+.tr-info{margin:6px 0 0;font-size:13px;color:var(--ink-2);max-width:68ch}
+.tr-acoes{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tr-medidas{display:flex;flex-wrap:wrap;gap:10px}
+.tr-med{background:var(--campo);border:1px solid var(--line);border-radius:8px;padding:9px 14px;min-width:128px;display:grid;gap:3px;align-content:start}
+.tr-med b.mono{font-size:20px;font-weight:600}
+.tr-med small{color:var(--ink-soft)}
+.tr-med-vet{border-color:var(--brass-soft);min-width:168px}
+.tr-vetm{display:flex;align-items:center;gap:10px}
+.tr-vetm > div{display:grid}
+.tr-vetnome{font-family:var(--display);font-size:20px;font-weight:600;line-height:1;color:var(--brass-ink)}
+.tr-moral{display:flex;align-items:baseline;gap:4px}
+.tr-pm{display:inline-flex;gap:4px;margin-left:auto}
+.tr-pm .step{width:26px;height:26px;padding:0;font-size:15px;line-height:1;border-radius:50%}
+.tr-pips{display:flex;gap:3px;margin-top:2px}
+.tr-pips i{width:8px;height:6px;border-radius:2px;background:var(--line)}
+.tr-pips i.on{background:var(--teal)}
+.tr-div{width:24px;height:24px;flex:none}
+.tr-div.g{width:30px;height:30px}
+.tr-div path{fill:none;stroke:var(--line);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.tr-div path.on{stroke:var(--brass)}
+.tr-trava{grid-column:1/-1;display:flex;align-items:center;gap:7px;margin:0;padding-top:11px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-soft)}
+.tr-cad{width:13px;height:13px;flex:none;fill:none;stroke:var(--roxo);stroke-width:2.2;stroke-linecap:round}
+.tr-ic{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:5px}
+.tr-rot{display:block;font-size:11.5px;color:var(--ink-soft)}
+.tr-fraco{color:var(--ink-soft);font-size:12.5px}
+.tr-corpo{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+.tr-tit{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+.tr-tit h3{font-size:21px}
+.tr-tit span{font-size:12.5px;color:var(--ink-soft)}
+.tr-cartas{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.tr-vazio{border:1px dashed var(--line);border-radius:10px;padding:18px;color:var(--ink-soft);font-size:13.5px}
+.tr-carta{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.tr-carta.tr-v3{border-color:var(--brass-soft)}
+.tr-carta.tr-semtropa{opacity:.72}
+.tr-cab{padding:14px;display:flex;gap:12px}
+.tr-cabt{flex:1;min-width:0}
+.tr-cabl{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.tr-cabl h4{font-family:var(--display);font-size:20px;font-weight:600;line-height:1.15;margin:0;overflow-wrap:anywhere}
+.tr-vetb{display:flex;flex-direction:column;align-items:flex-end;flex:none;font-size:11.5px;font-weight:600;color:var(--ink-2)}
+.tr-v3 .tr-vetb{color:var(--brass-ink)}
+.tr-vetsel{display:inline-flex;align-items:center;gap:4px;flex:none}
+.tr-vetsel select{width:auto;padding:3px 6px;font-size:12.5px}
+.tr-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tr-tag{font-size:12px;padding:1px 9px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2)}
+.tr-num{margin:0 14px;background:var(--campo);border:1px solid var(--line);border-radius:8px;padding:9px 12px 10px}
+.tr-numcab{display:flex;align-items:center;margin-bottom:5px}
+.tr-pebt{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tr-trava-p{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-soft)}
+.tr-trava-p .tr-cad{width:11px;height:11px}
+.tr-ngrid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:10px;align-items:end}
+.tr-ngrid b.mono{font-size:18px;font-weight:600}
+.tr-ngrid small{font-size:11.5px}
+.tr-hp{margin-top:8px}
+.tr-hp .tr-rot{display:flex;justify-content:space-between;gap:6px}
+.tr-hp em{font-style:normal;color:var(--rubric)}
+.tr-barra{display:block;height:6px;border-radius:999px;background:var(--line);margin-top:7px;overflow:hidden}
+.tr-barra i{display:block;height:100%;border-radius:999px;background:var(--a-for)}
+.tr-extra{margin-top:6px;font-size:12px;color:var(--ink-2)}
+.tr-listas{padding:12px 14px 0;display:grid;gap:9px}
+.tr-listas .tr-rot{font-weight:600;margin-bottom:3px}
+.tr-chips{display:flex;flex-wrap:wrap;gap:5px}
+.tr-chip{font-size:12.5px;padding:2px 8px;border-radius:6px;background:var(--campo);border:1px solid var(--line)}
+.tr-chip b{font-weight:600;color:var(--brass-ink);font-size:12px}
+.tr-chip-s{background:transparent;color:var(--ink-2)}
+.tr-listas .tr-info{margin:0}
+.tr-pe{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-top:1px solid var(--line);margin-top:12px}
+.tr-bat{font-size:12.5px;color:var(--brass-ink)}
+.tr-semtropa .tr-bat{color:var(--ink-soft)}
+.tr-lado{display:grid;gap:16px}
+.tr-diario{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.tr-dcab{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.tr-dcab h3{font-size:19px;margin-right:auto}
+.tr-dlista{list-style:none;margin:0;padding:12px 14px 4px;max-width:720px}
+.tr-dlista li{position:relative;padding:0 22px 14px 18px;margin-left:5px;border-left:1px solid var(--line)}
+.tr-dlista li:last-child{border-left-color:transparent}
+.tr-dlista li::before{content:"";position:absolute;left:-5.5px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--ink-fraco)}
+.tr-dlista li.tr-dv::before{background:var(--teal)} .tr-dlista li.tr-dd::before{background:var(--rubric)} .tr-dlista li.tr-de::before,.tr-dlista li.tr-dvet::before{background:var(--brass)}
+.tr-dlista li.tr-dform::before,.tr-dlista li.tr-dunid::before{background:var(--roxo)}
+.tr-dq{display:block;font-size:11.5px;color:var(--ink-soft)}
+.tr-dlista b{display:block;font-weight:600;font-size:13.5px;line-height:1.3}
+.tr-dr{display:block;font-size:12.5px;color:var(--ink-2)}
+.tr-dv .tr-res{color:var(--teal)} .tr-dd .tr-res{color:var(--rubric)} .tr-de .tr-res{color:var(--brass-ink)}
+.tr-dx{display:block;font-size:12px;color:var(--ink-soft)}
+.tr-dtira{position:absolute;right:0;top:0;border:0;background:transparent;color:var(--ink-soft);padding:0 6px;font-size:15px;line-height:1.2;border-radius:6px;opacity:.35}
+.tr-dlista li:hover .tr-dtira,.tr-dtira:focus-visible{opacity:1}
+.tr-dtira:hover{color:var(--rubric);background:var(--rubric-fundo)}
+.tr-dver{margin:0 14px 12px}
+.tr-dvazio{margin:0;padding:12px 14px 14px}
+/* o montador do brasão e as janelas */
+.tr-janela .sheet .bd{display:block}
+.tr-mont{display:flex;flex-wrap:wrap;gap:14px;margin-top:4px}
+.tr-mprev{flex:0 0 150px;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,var(--campo),var(--campo-sut));border:1px solid var(--line);border-radius:12px;padding:12px;align-self:start}
+.tr-mcampos{flex:1 1 250px;display:grid;gap:10px;min-width:0}
+.tr-mcampos .eyebrow{display:block;margin-bottom:4px}
+.tr-escs{display:flex;flex-wrap:wrap;gap:5px}
+.tr-esc{min-width:34px;min-height:34px;padding:5px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:8px;background:var(--campo);color:var(--ink)}
+.tr-esc.tr-esct{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;font-size:12.5px}
+.tr-esc[aria-pressed="true"],.tr-esc[aria-checked="true"]{border-color:var(--brass);background:var(--brass-fundo);box-shadow:inset 0 0 0 1px var(--brass)}
+.tr-cor i{width:18px;height:18px;border-radius:5px;display:block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.tr-amostra{width:16px;height:16px;border-radius:4px;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.tr-outra{cursor:pointer}
+.tr-outra input[type=color]{width:28px;height:22px;padding:0;border:0;background:transparent}
+.tr-simbs{display:grid;grid-template-columns:repeat(auto-fill,36px);gap:5px;max-height:164px;overflow:auto;padding:2px}
+.tr-simbs .tr-nenhum{grid-column:span 2}
+.tr-jesc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.tr-jcol{display:grid;gap:10px;align-content:start}
+.tr-j2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tr-jlista{border:1px solid var(--line);border-radius:8px;padding:6px 10px 8px;margin:0;min-width:0}
+.tr-jlista legend{padding:0 4px}
+.tr-jop{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:4px 0;font-size:13.5px;cursor:pointer}
+.tr-jop input{width:auto;margin:0}
+.tr-jop small{color:var(--ink-soft);font-size:12px}
+.tr-jop span + small:not(.mono){grid-column:2/-1}
+.tr-jop input:disabled + span{color:var(--ink-soft)}
+.tr-jnum{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tr-jres{display:flex;gap:6px;margin:10px 0}
+.tr-jbx{width:100%;border-collapse:collapse;font-size:13.5px}
+.tr-jbx th{text-align:left;font-size:12px;color:var(--ink-soft);font-weight:600;padding:4px 6px}
+.tr-jbx td{padding:4px 6px;border-top:1px solid var(--linha-sut)}
+.tr-jbx input{width:96px}
+.tr-jmoral{margin-top:10px;max-width:200px}
+.tr-jprev{margin:10px 0 0;font-size:12.5px;color:var(--ink-2)}
+.tr-cfg .cfg input{min-width:0}
+@media (max-width:760px){ .tr-faixa{grid-template-columns:auto minmax(0,1fr)} .tr-medidas{grid-column:1/-1} .tr-jesc{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:420px){ .tr-cartas{grid-template-columns:minmax(0,1fr)} .tr-j2{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -1453,13 +1589,17 @@ html:not(.modo-simples) .so-simples{display:none!important}
 <script src="../tc/rules.js?v=26"></script>
 <script src="../tc/barras.js?v=1"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="mesa.js?v=15"></script>
-<script src="extras.js?v=19"></script>
+<script src="mesa.js?v=16"></script>
+<script src="extras.js?v=20"></script>
 <script src="quadros.js?v=5"></script>
 <script src="filtro-skills.js?v=2"></script>
 <script src="criacao.js?v=3"></script>
 <script src="../tc/corrupcao.js?v=1"></script>
 <script src="corrupcao.js?v=1"></script>
+<script src="../meditacao/nucleo.js?v=1"></script>
+<script src="../cla/nucleo.js?v=3"></script>
+<script src="../tc/tropas.js?v=1"></script>
+<script src="tropas.js?v=1"></script>
 <script>
 /* =======================================================================
    CALCULADORA DE ATRIBUTOS — TINY CATS
@@ -2654,10 +2794,12 @@ function renderFicha(){
   ${htmlCaixinha(pc)}`)}
   ${parte('social', `${FichasExtras.painelMente(pc)}`)}
   ${parte('skills', htmlAbaSkills(pc))}
+  ${FichasTropas.tem(pc)? parte('tropas', FichasTropas.htmlAba(pc)) : ''}
   ${parte('notas', htmlAbaNotas(pc))}
   `;
   ligarFicha(pc);
   FichasCorr.aplicar(host, pc);          // (lote 37) a corrupção: o painel do mestre, o efeito e o retrato
+  FichasTropas.ligar(host, pc);          // (lote 40) a aba das tropas (e o "+ Tropas" de quem mestra)
 }
 /* (lote 15) O Estaque escondido: o mestre marca, ficha por ficha, e quem não mestra deixa de ver a aba (o texto nem
    chega: mora com o mestre, no documento dos segredos — ver FichasMesa). A marca só aparece numa mesa, para o mestre,
@@ -2670,20 +2812,23 @@ const estaqueEscondido=pc=>!!(pc&&pc.estaqueOculto) && FichasMesa.ativo() && !Fi
    bônus temporários) · Bolsas e itens · Social · Skills · Notas (o Estaque, as missões e as anotações). A aba aberta
    fica lembrada nesta tela (S.abaFicha); a de antes do lote 16 (as abas de baixo) abre em Atributos. */
 const ABAS_FICHA=[['atributos','Atributos'],['bolsas','Bolsas e itens'],['social','Social'],['skills','Skills'],['notas','Notas']];
-const abaDaFicha=pc=>{ const a=S.abaFicha; return ABAS_FICHA.some(x=>x[0]===a)? a : 'atributos'; };
+// (lote 40) a aba Tropas: só nas fichas com tropa (entre Skills e Notas)
+const abasDaFicha=pc=>pc && FichasTropas.tem(pc)? ABAS_FICHA.slice(0,4).concat([['tropas','Tropas']], ABAS_FICHA.slice(4)) : ABAS_FICHA;
+const abaDaFicha=pc=>{ const a=S.abaFicha; return abasDaFicha(pc).some(x=>x[0]===a)? a : 'atributos'; };
 function marcaDaAba(pc,k){
+  if(k==='tropas') return FichasTropas.marca(pc);
   if(k==='skills'){ const n=(pc.habilidades||[]).length+habsDaArvore(pc).length+unicasDaFicha(pc).length; return n||''; }
   if(k==='bolsas'){ const n=(pc.itens||[]).length; return n||''; }
   if(k==='notas'){ const n=FichasQuadros.contaAtivas(pc); return n? n : ((!estaqueEscondido(pc)&&(pc.estaque?.a||pc.estaque?.b))||(pc.notas||'').trim())? '•' : ''; }
   return '';
 }
 function htmlAbasFicha(pc,aba){
-  return `<div class="abasficha" role="tablist" aria-label="Partes da ficha">${ABAS_FICHA.map(([k,rot])=>{ const mk=marcaDaAba(pc,k);
-    return `<button type="button" role="tab" class="abf${aba===k?' on':''}" id="abaficha-${k}" data-abaficha="${k}" aria-selected="${aba===k}" aria-controls="abafichac-${k}">${rot}${mk!==''?`<span class="mk">${mk}</span>`:''}</button>`; }).join('')}</div>`;
+  return `<div class="abasficha" role="tablist" aria-label="Partes da ficha">${abasDaFicha(pc).map(([k,rot])=>{ const mk=marcaDaAba(pc,k);
+    return `<button type="button" role="tab" class="abf${aba===k?' on':''}" id="abaficha-${k}" data-abaficha="${k}" aria-selected="${aba===k}" aria-controls="abafichac-${k}">${rot}${mk!==''?`<span class="mk">${mk}</span>`:''}</button>`; }).join('')}${FichasTropas.htmlMais(pc)}</div>`;
 }
 // troca de aba sem redesenhar a ficha (quem está digitando noutra aba não perde nada)
 function irParaAba(k, alvo){
-  if(!ABAS_FICHA.some(x=>x[0]===k)) return;
+  if(!abasDaFicha(S.personagens.find(p=>p.id===S.sel)).some(x=>x[0]===k)) return;
   S.abaFicha=k; save();
   const host=document.getElementById('ficha'); if(!host) return;
   host.querySelectorAll('[data-abafichac]').forEach(el=>{ el.hidden = el.dataset.abafichac!==k; });
@@ -4672,7 +4817,7 @@ function ligarSkills(pc,host){
 
 /* ---------- configurações (tabelas base) ---------- */
 function abrirCfg(){
-  const m=document.createElement('div'); m.className='modal';
+  const m=document.createElement('div'); m.className='modal'; m.dataset.cfg='1';
   m.innerHTML=`<div class="sheet">
     <div class="hd"><span class="eyebrow">Tabelas base</span>
       <span class="hint" style="margin-left:6px">Valem para todos os personagens</span>
@@ -4717,6 +4862,7 @@ function abrirCfg(){
           <button class="mini" id="resetLvl" style="margin-top:6px">Restaurar padrão</button>
         </div>
         ${FichasCorr.htmlCortes()}
+        ${FichasTropas.htmlCfg()}
       </div>
     </div></div>`;
   document.body.appendChild(m);
@@ -4730,6 +4876,7 @@ function abrirCfg(){
   m.querySelectorAll('[data-cp]').forEach(i=>i.onchange=e=>{S.cfg.pct[e.target.dataset.cp]=+e.target.value||0;save();m.remove();abrirCfg()});
   m.querySelector('#cfgArred').onchange=e=>{S.cfg.arredondar=e.target.value;save()};
   FichasCorr.ligarCortes(m);
+  FichasTropas.ligarCfg(m, ()=>{ const v=document.querySelector('.modal[data-cfg]'); if(!v){ render(); return; } v.remove(); abrirCfg(); });
   m.querySelectorAll('[data-cn]').forEach(i=>i.onchange=e=>{S.cfg.niveis[+e.target.dataset.cn].pts=+e.target.value||0;save()});
   m.querySelector('#addLvl').onclick=()=>{
     const last=S.cfg.niveis[S.cfg.niveis.length-1]||{lvl:0,pts:37};

@@ -93,6 +93,9 @@ const FichasMesa = (() => {
   function partes(pc) {
     const ficha = Object.assign({}, pc);
     for (const k of ['id', 'skills', 'estado', '_dono', '_vis', '_camp', 'ultRol']) delete ficha[k];
+    // (lote 40) a corrupção e a tropa de uma ficha de fora da mesa não vão para a linha do personagem (que outros podem
+    // ver): numa mesa, elas moram nos documentos delas, que só o dono e quem mestra recebem
+    delete ficha.corr; delete ficha.tropas;
     if (ficha.estaqueOculto) ficha.estaque = estaqueVazio();          // (lote 15) o texto fica com o mestre
     return { nome: String(pc.nome || '').slice(0, 120), ficha, skills: pc.skills || {}, estado: pc.estado || {}, dono_id: pc._dono || null, vis: pc._vis === 'mesa' ? 'mesa' : 'mestre', campanha: pc._camp || null };
   }
@@ -262,6 +265,14 @@ const FichasMesa = (() => {
         const jv = l0.apagado || !l0.dados ? undefined : j(l0.dados);
         if ((sombra.corr || (sombra.corr = {}))[l0.id] === jv) return;
         sombra.corr[l0.id] = jv;
+        redesenhar();
+        return;
+      }
+      // (lote 40) a tropa de um personagem (fichas:tropas:<id>): só chega ao dono dele e a quem mestra
+      if (/^fichas:tropas:/.test(l0.id || '')) {
+        const jv = l0.apagado || !l0.dados ? undefined : j(l0.dados);
+        if ((sombra.tropas || (sombra.tropas = {}))[l0.id] === jv) return;
+        sombra.tropas[l0.id] = jv;
         redesenhar();
         return;
       }
@@ -579,6 +590,7 @@ const FichasMesa = (() => {
       pc._dono = e.target.value || null;
       const pets = petsDe(pc);
       for (const pet of pets) pet._dono = pc._dono;                  // (quem controla o dono controla os pets dele)
+      passarAoDono([pc].concat(pets));
       // ficha entregue a um jogador: os atributos passam a ser distribuídos por ele (os valores de agora ficam como ponto de partida)
       const virou = deJogador(pc) && pc.modoAtr === undefined;
       if (virou) FichasExtras.tornarLivre(pc, false);
@@ -765,7 +777,33 @@ const FichasMesa = (() => {
     if (!conf) { if (l && !l.apagado) D.apagar(id); return; }
     D.gravar(id, { dados: conf, vis: 'mestre', dono_id: pc._dono || null });
   }
-  return { corrDe, gravarCorr, caixaDoGrupo, mexeNaCaixa, caixaSemFicha, moverCaixa, levarCaixa, nomeDoGrupo,
+  /* (lote 40) A tropa do personagem: numa mesa, o documento fichas:tropas:<id> — quem mestra cria e muda tudo; o dono
+     do personagem é o dono do documento (só ele e quem mestra o recebem) e muda só as escolhas dele (o banco confere:
+     ver tc/tropas.js). Fora de uma mesa, na própria ficha (pc.tropas). A gravação confere a versão: o que o mestre e o
+     jogador mudarem ao mesmo tempo se junta (unidade por unidade). */
+  function tropasDe(pc) {
+    if (!pc) return null;
+    if (!ativo) return pc.tropas && typeof pc.tropas === 'object' ? pc.tropas : null;
+    const l = D.pegar('fichas:tropas:' + pc.id);
+    return l && !l.apagado && l.dados && typeof l.dados === 'object' ? l.dados : null;
+  }
+  function gravarTropas(pc, dados) {
+    if (!pc) return;
+    if (!ativo) { if (dados) pc.tropas = dados; else delete pc.tropas; return; }
+    const id = 'fichas:tropas:' + pc.id, l = D.pegar(id);
+    if (!dados) { if (l && !l.apagado) D.apagar(id); return; }
+    if (mestre()) D.gravar(id, { dados, vis: 'mestre', dono_id: pc._dono || null }, null, { cas: true });
+    else if (l && !l.apagado) D.gravar(id, { dados }, null, { cas: true });      // (o dono: só as escolhas dele — e só o documento)
+  }
+  /* (lote 40) A ficha mudou de dono: a corrupção e a tropa (que têm o dono do personagem como dono) passam ao novo */
+  function passarAoDono(pcs) {
+    if (!ativo || !mestre()) return;
+    for (const pc of pcs) for (const pre of ['fichas:corr:', 'fichas:tropas:']) {
+      const l = D.pegar(pre + pc.id);
+      if (l && !l.apagado && (l.dono_id || null) !== (pc._dono || null)) D.gravar(pre + pc.id, { dono_id: pc._dono || null });
+    }
+  }
+  return { corrDe, gravarCorr, tropasDe, gravarTropas, caixaDoGrupo, mexeNaCaixa, caixaSemFicha, moverCaixa, levarCaixa, nomeDoGrupo,
     preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, calendario, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha, lugarNaFicha,
     ehNpc, segDe, porSeg, mexerRel, relsDe, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
     campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza,

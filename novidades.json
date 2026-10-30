@@ -2,6 +2,36 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.29-6",
+      "data": "2026-10-29",
+      "titulo": "As tropas nas fichas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "A aba Tropas nas fichas: quando o personagem tem uma tropa, a guarda dele aparece numa aba nova, uma carta por unidade — o brasão, a raça e a classe, a veterania (Recruta, Veterana ou Elite), as tropas e o HP, o ATQ e a DEF, os equipamentos e os suprimentos. Em cima, a veterania média da tropa, a moral e os mantimentos; embaixo, o diário com as batalhas e as promoções."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Em “Editar o que é seu”, você escolhe o nome, a raça e a classe (das árvores da mesa), o brasão (o mesmo montador do brasão do clã), os equipamentos, os suprimentos e as informações de cada unidade — e o nome e o brasão da tropa. Os números você vê, mas não muda."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas → “+ Tropas”, no fim das abas: dá uma tropa ao personagem. Em cada carta, “Números…” (as tropas, o efetivo completo, o HP de cada soldado, o ATQ, a DEF, as quantidades dos suprimentos) e a veterania; na faixa da tropa, a moral, os mantimentos, “+ Unidade” e “Registrar batalha…” (as baixas de cada unidade, o resultado e a moral depois). Tudo com Desfazer. Só o dono do personagem e você veem a tropa."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Tabelas base: as listas de equipamentos (com ATQ e DEF) e de suprimentos que os jogadores escolhem para as unidades, quantos equipamentos cada unidade leva e o bônus da veterania no ATQ e na DEF."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Quando uma ficha muda de dono, a corrupção e a tropa do personagem passam junto para o novo dono."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.29-5",
       "data": "2026-10-29",
       "titulo": "Objetos novos para as cenas",

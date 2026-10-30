@@ -27,7 +27,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
     await P.locator('#btnGuia').click(); await w(250);
     const tits = await P.locator('#guia .guia-t').allInnerTexts();
     ok(await P.locator('#guia').isVisible() && /Guia · Fichas/.test(await P.locator('#guia .guia-h').innerText()) && /para quem mestra/.test(await P.locator('#guia .guia-h').innerText()), 'abre o guia das Fichas, o de quem mestra (sem conta, cada um é o mestre)');
-    ok(tits.length === 10 && tits[0] === 'O elenco e os grupos' && tits.includes('A caixinha do grupo'), 'os assuntos da aba: ' + j(tits));
+    ok(tits.length === 11 && tits[0] === 'O elenco e os grupos' && tits.includes('A caixinha do grupo'), 'os assuntos da aba: ' + j(tits));
     ok(await P.locator('#guia .guia-c').count() === 0, 'todos começam fechados');
     await P.locator('#guia .guia-t', { hasText: 'A caixinha do grupo' }).click(); await w(200);
     ok(await P.locator('#guia .guia-c').count() === 1 && /lapros que o grupo guarda junto/.test(await P.locator('#guia .guia-c').innerText()) && await P.locator('#guia [data-guia-mostrar]').isVisible(), 'um clique abre o assunto: o texto e "Mostrar onde fica"');
@@ -103,7 +103,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
     for (const aba of Object.keys(G)) for (const papel of ['mestre', 'jogador']) for (const x of G[aba][papel] || []) {
       if (!x.t || !x.txt || x.txt.length < 20) ruins.push(aba + '/' + papel + ': ' + x.t);
       if (x.onde) { try { await P.evaluate(s => document.createDocumentFragment().querySelector(s), x.onde.sel); } catch (e) { ruins.push(aba + '/' + papel + ': seletor ' + x.onde.sel); } }
-      if (x.onde && x.onde.sub && !['atributos', 'bolsas', 'social', 'skills', 'notas'].includes(x.onde.sub)) ruins.push(aba + '/' + papel + ': sub ' + x.onde.sub);
+      if (x.onde && x.onde.sub && !['atributos', 'bolsas', 'social', 'skills', 'tropas', 'notas'].includes(x.onde.sub)) ruins.push(aba + '/' + papel + ': sub ' + x.onde.sub);
     }
     ok(!ruins.length && j(Object.keys(G).sort()) === j(['acampamento', 'arvore', 'bestiario', 'cenas', 'cla', 'escudo', 'fichas', 'itens', 'jornal', 'livro', 'loja', 'meditacao', 'mundo', 'pistas', 'rolador']), 'as quinze abas têm guia (lote 29: Bestiário, Itens e Loja; lote 31: Escudo do mestre e Pistas; lote 36: Bestiário do clã); cada assunto com título, texto e um lugar que é um seletor válido: ' + j(ruins));
     ok(G.fichas.jogador.length >= 5 && G.cenas.jogador.length >= 2 && G.mundo.jogador.length >= 2, 'quem joga também tem o guia dele');
