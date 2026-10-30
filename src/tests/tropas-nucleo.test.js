@@ -78,4 +78,12 @@ const nv = T.nova('Selene', '2026-10-29T12:00:00.000Z', '');
 ok(nv.nome === 'Guarda de Selene' && nv.unid.length === 1 && nv.unid[0].vet === 1 && nv.unid[0].tropas === 100 && nv.unid[0].hpT === 10 && nv.diario.length === 1 && nv.diario[0].k === 'form' && /^un_/.test(nv.unid[0].id),
   'a tropa nova: "Guarda de Selene", uma unidade de recrutas (100 soldados) e a primeira linha do diário');
 ok(T.pcDoDoc('fichas:tropas:pc_s') === 'pc_s' && T.pcDoDoc('fichas:corr:pc_s') === null && T.docId('pc_1') === 'fichas:tropas:pc_1', 'o documento: fichas:tropas:<id do personagem>');
+// ---- (lote 42) os soldados com nome e o clã
+const ds = T.norm({ cla: 'cl_garret', unid: [{ id: 'a', tropas: 10, sold: [{ nome: 'Aron', raca: 'ar_humano', racaN: 'Humano' }, {}, { classeN: 'Arqueiro' }].concat(Array.from({ length: 60 }, (_, i) => ({ nome: 'S' + i }))) }] });
+ok(ds.cla === 'cl_garret' && ds.unid[0].sold.length === 50 && ds.unid[0].sold[0].nome === 'Aron' && ds.unid[0].sold[1].nome === 'Soldado' && ds.unid[0].sold[1].classeN === 'Arqueiro' && /^sd_/.test(ds.unid[0].sold[0].id),
+  'os soldados com nome: até 50; a linha vazia sai; sem nome, "Soldado"; o clã da tropa fica (na parte do mestre)');
+ok(!('sold' in T.parteMestre(ds).unid[0]) && T.parteMestre(ds).cla === 'cl_garret', 'os soldados são do jogador (fora da parte do mestre); o clã, do mestre');
+const ds2 = T.comEscolhas(ds, 'a', { sold: [{ nome: 'Tomas', classe: 'cl_g', classeN: 'Guerreiro' }] });
+ok(ds2.unid[0].sold.length === 1 && ds2.unid[0].sold[0].nome === 'Tomas' && j(T.parteMestre(ds2)) === j(T.parteMestre(ds)) && T.quemESold(ds2.unid[0].sold[0], { arvores: [{ id: 'cl_g', nome: 'Guerreiro de Ferro', categoria: 'classe' }] }) === 'Guerreiro de Ferro',
+  'as escolhas trocam os soldados sem mexer no resto; a raça e a classe do soldado pelas árvores');
 end();

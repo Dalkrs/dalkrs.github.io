@@ -114,6 +114,7 @@ const FichasTropas = (() => {
         <div class="tr-id">
           <h2 class="tr-nome">${esc(d.nome)}</h2>
           <p class="tr-sub">${c.unidades ? `<b class="mono">${num(c.tropas)}</b> ${c.tropas === 1 ? 'soldado' : 'soldados'} em <b class="mono">${c.unidades}</b> ${c.unidades === 1 ? 'unidade' : 'unidades'}` : d.unid.length ? 'Nenhuma unidade com soldados agora.' : 'Ainda sem unidades.'}</p>
+          ${d.cla ? `<p class="tr-docla">Tropa do clã <b>${esc(nomeDoCla(d.cla))}</b></p>` : ''}
           ${d.info ? `<p class="tr-info">${multi(d.info)}</p>` : ''}
           <div class="tr-acoes">
             ${E ? `<button type="button" class="mini" data-trtropa>${LAPIS}Nome e brasão</button>` : ''}
@@ -164,6 +165,14 @@ const FichasTropas = (() => {
     try { val = Math.max(0, Math.round(valorDoAtributo(cpc, cf.cmd.atr, (cpc.rol && cpc.rol.fonte) || 'total') || 0)); } catch (e) { return null; }
     return { v: t.bonusDeComando(val, cf.cmd), txt: t.peloAtr(cf.cmd.atr) + ' de ' + (cpc.nome || 'o comandante') + ' (' + val + (cf.cmd.div > 1 ? ' ÷ ' + cf.cmd.div : '') + ')' };
   }
+  // (lote 42) o nome do clã da tropa (o clã inteiro, para quem mestra; o que a mesa vê dele, para quem joga)
+  function nomeDoCla(id) {
+    try {
+      const D = window.TC && TC.dados && TC.dados.col('documentos');
+      for (const pre of ['cla:c:', 'cla:pub:']) { const l = D && D.pegar(pre + id); if (l && !l.apagado && l.dados && typeof l.dados.nome === 'string' && l.dados.nome.trim()) return l.dados.nome.trim(); }
+    } catch (e) { /* fora da casca */ }
+    return 'do clã';
+  }
   function htmlLigacao(pc, d, M) {
     const l = d.lig;
     if (!l) return '';
@@ -208,6 +217,7 @@ const FichasTropas = (() => {
       <div class="tr-listas">
         <div><span class="tr-rot">Equipamentos</span><div class="tr-chips">${k.eqs.length ? k.eqs.map(eq).join('') : '<span class="tr-fraco">Nenhum</span>'}</div></div>
         <div><span class="tr-rot">Suprimentos</span><div class="tr-chips">${k.sps.length ? k.sps.map(sp).join('') : '<span class="tr-fraco">Nenhum</span>'}</div></div>
+        ${htmlSoldados(u, bib, E)}
         ${u.info ? `<p class="tr-info">${multi(u.info)}</p>` : ''}
       </div>
       <footer class="tr-pe">
@@ -215,6 +225,14 @@ const FichasTropas = (() => {
         <span class="tr-pebt">${M ? `<button type="button" class="mini" data-trnum="${esc(u.id)}">Números…</button>` : ''}${E ? `<button type="button" class="mini" data-tresc="${esc(u.id)}">${LAPIS}${M ? 'Escolhas' : 'Editar o que é seu'}</button>` : ''}</span>
       </footer>
     </article>`;
+  }
+  // (lote 42) os soldados com nome da unidade: os oito primeiros e "+N" (abre os outros)
+  function htmlSoldados(u, bib, E) {
+    const t = T(), l = u.sold || [];
+    if (!l.length) return E ? '<div><span class="tr-rot">Soldados</span><div class="tr-chips"><span class="tr-fraco">Nenhum com nome ainda</span></div></div>' : '';
+    const chip = (x, i) => { const q = t.quemESold(x, bib); return `<span class="tr-chip tr-chip-sd${i >= 8 ? ' tr-sdmais' : ''}"${i >= 8 ? ' hidden' : ''}>${esc(x.nome)}${q ? ` <small>${esc(q)}</small>` : ''}</span>`; };
+    return `<div><span class="tr-rot">Soldados <small class="tr-fraco">${l.length} com nome${u.tropas > 0 ? ' de ' + num(u.tropas) : ''}</small></span>
+      <div class="tr-chips">${l.map(chip).join('')}${l.length > 8 ? `<button type="button" class="mini" data-trsdver aria-label="Ver os outros ${l.length - 8} soldados">+${l.length - 8}</button>` : ''}</div></div>`;
   }
   function htmlDiario(pc, d, M) {
     const t = T(), l = d.diario, cor = { v: 'tr-dv', d: 'tr-dd', e: 'tr-de' };
@@ -280,6 +298,7 @@ const FichasTropas = (() => {
       mudarMestre(pc, 'A linha saiu do diário.', d => { const n = d.diario.length; d.diario = d.diario.filter(e => e.id !== id); if (d.diario.length === n) return false; });
     });
     const dv = q1('[data-trdver]'); if (dv) dv.onclick = () => { qn('.tr-dmais').forEach(li => { li.hidden = false; }); dv.remove(); };
+    qn('[data-trsdver]').forEach(b => b.onclick = () => { b.parentNode.querySelectorAll('.tr-sdmais').forEach(x => { x.hidden = false; }); b.remove(); });
     const vm = q1('[data-trvermapa]'); if (vm) vm.onclick = () => {
       const d = cru(pc), l = d && d.lig;
       if (!l) return;
@@ -346,6 +365,38 @@ const FichasTropas = (() => {
       ${!tem && nomeAtual ? `<option value="__fora" selected>${esc(nomeAtual)} (fora das árvores)</option>` : ''}
       ${l.map(a => `<option value="${esc(a.id)}" ${a.id === idAtual ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}</select></label>`;
   }
+  // (lote 42) uma linha de soldado: o nome, a raça e a classe (das árvores da mesa; sem árvores, escritas)
+  function campoSold(cat, rot, id, nomeN) {
+    const l = T().arvoresDe(bibAqui(), cat);
+    if (!l.length) return `<input data-sd${cat}n maxlength="40" value="${esc(nomeN || '')}" placeholder="${rot}" aria-label="${rot} do soldado" autocomplete="off">`;
+    const tem = l.some(a => a.id === id);
+    return `<select data-sd${cat} aria-label="${rot} do soldado"><option value="" ${!tem && !nomeN ? 'selected' : ''}>${rot}…</option>${!tem && nomeN ? `<option value="__fora" selected>${esc(nomeN)}</option>` : ''}${l.map(a => `<option value="${esc(a.id)}" ${a.id === id ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}</select>`;
+  }
+  function linhaSold(x) {
+    x = x || {};
+    return `<div class="tr-sd" data-trsd="${esc(x.id || '')}" data-racan="${esc(x.racaN || '')}" data-classen="${esc(x.classeN || '')}">
+      <input data-sdnome maxlength="60" value="${esc(x.nome || '')}" placeholder="Nome" aria-label="Nome do soldado" autocomplete="off">
+      ${campoSold('raca', 'Raça', x.raca, x.racaN)}${campoSold('classe', 'Classe', x.classe, x.classeN)}
+      <button type="button" class="mini tr-sdx" data-sdx aria-label="Tirar o soldado" title="Tirar o soldado">×</button></div>`;
+  }
+  function lerSoldados(m) {
+    const t = T(), out = [];
+    m.querySelectorAll('[data-trsd]').forEach(r => {
+      const pega = cat => {
+        const sel = r.querySelector('[data-sd' + cat + ']');
+        if (sel) {
+          if (sel.value === '__fora') return [null, r.dataset[cat + 'n'] || ''];
+          const a = sel.value ? t.arvoresDe(bibAqui(), cat).find(x => x.id === sel.value) : null;
+          return a ? [a.id, a.nome] : [null, ''];
+        }
+        const inp = r.querySelector('[data-sd' + cat + 'n]');
+        return [null, inp ? inp.value : ''];
+      };
+      const [raca, racaN] = pega('raca'), [classe, classeN] = pega('classe'), nome = r.querySelector('[data-sdnome]').value;
+      out.push({ id: r.dataset.trsd || undefined, nome, raca, racaN, classe, classeN });
+    });
+    return out;
+  }
   // as escolhas: da tropa (unidId null: o nome, o brasão e as informações) ou de uma unidade (tudo o que é do jogador)
   function janelaEscolhas(pc, unidId) {
     const t = T(), c = contas(pc);
@@ -369,7 +420,11 @@ const FichasTropas = (() => {
           <label class="f"><span class="eyebrow">Informações</span><textarea data-trinfo rows="3" maxlength="${t.MAX.info}" placeholder="De onde vieram, a quem juraram, o que fazem bem">${esc(u.info)}</textarea></label>
         </div>
         <div class="tr-jcol"><span class="eyebrow">Brasão da unidade</span>${htmlMontador(b)}</div>
-      </div>`
+      </div>
+      <fieldset class="tr-jlista tr-jsold"><legend class="eyebrow">Soldados com nome <span class="tr-fraco">(os que importam; até ${t.MAX.sold} — os outros ficam sem nome)</span></legend>
+        <div class="tr-sds" data-trsds>${u.sold.map(linhaSold).join('')}</div>
+        <button type="button" class="mini" data-trsdnovo ${u.sold.length >= t.MAX.sold ? 'disabled' : ''}>+ Soldado</button>
+      </fieldset>`
       : `<div class="tr-jesc">
         <div class="tr-jcol">
           <label class="f"><span class="eyebrow">Nome da tropa</span><input data-trnome maxlength="${t.MAX.nome}" value="${esc(c.d.nome)}" autocomplete="off"></label>
@@ -388,6 +443,13 @@ const FichasTropas = (() => {
     m.querySelectorAll('[data-trsp]').forEach(x => x.onchange = travarSp);
     travarSp();
     const val = s => { const e = m.querySelector(s); return e ? e.value : undefined; };
+    // (lote 42) os soldados: + Soldado, × tira (até o limite)
+    const caixaSd = m.querySelector('[data-trsds]'), novoSd = m.querySelector('[data-trsdnovo]');
+    const travarSd = () => { if (novoSd) novoSd.disabled = caixaSd.querySelectorAll('[data-trsd]').length >= t.MAX.sold; };
+    if (caixaSd) {
+      caixaSd.addEventListener('click', ev => { const x = ev.target.closest('[data-sdx]'); if (!x) return; x.closest('[data-trsd]').remove(); travarSd(); if (novoSd) novoSd.focus(); });
+      novoSd.onclick = () => { if (caixaSd.querySelectorAll('[data-trsd]').length >= t.MAX.sold) return; caixaSd.insertAdjacentHTML('beforeend', linhaSold({})); travarSd(); const ult = caixaSd.lastElementChild; if (ult) ult.querySelector('[data-sdnome]').focus(); };
+    }
     m.querySelector('[data-jok]').onclick = () => {
       const e = { nome: val('[data-trnome]'), info: val('[data-trinfo]'), bras: b };
       if (u) {
@@ -404,6 +466,7 @@ const FichasTropas = (() => {
         [e.classe, e.classeN] = arv('classe', 'classe');
         e.equip = [...m.querySelectorAll('[data-treq]:checked')].map(x => x.dataset.treq);
         e.supr = [...m.querySelectorAll('[data-trsp]:checked')].map(x => x.dataset.trsp);
+        e.sold = lerSoldados(m);
       }
       fechar();
       mudarEscolhas(pc, unidId, e, u ? 'As escolhas de ' + (String(e.nome || '').trim() || u.nome) + ' foram salvas.' : 'A tropa foi salva.');

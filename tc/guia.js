@@ -24,7 +24,7 @@
         // (lote 37)
         { t: 'A corrupção', txt: 'No painel lilás em cima da ficha (só você vê): Vampírica, Licantropa ou Demoníaca. As duas primeiras crescem com os pontos gastos na árvore que você escolher, em cinco estágios (os cortes ficam nas Tabelas base); − e + ajustam; a demoníaca é à mão. Só o dono do personagem e você veem o efeito — na ficha, no retrato e na aura do token.', onde: { sel: '#corrBarra', nada: fichaNada } },
         // (lote 40)
-        { t: 'As tropas', txt: '“+ Tropas”, no fim das abas da ficha, dá uma tropa ao personagem: a guarda pessoal dele, numa aba nova, uma carta por unidade. Você muda os números (“Números…”, a veterania na própria carta, a moral e os mantimentos), põe e tira unidades e registra as batalhas — as baixas e as promoções vão para o diário da tropa. O dono escolhe o nome, a raça e a classe (das árvores), o brasão, os equipamentos e os suprimentos (das listas das Tabelas base). Os outros jogadores não veem a tropa. Ligada a um exército do Mapa-múndi, é a mesma tropa nos dois lugares (o comandante pela ficha fica nas Tabelas base).', onde: { sel: '#tropasAba, [data-trcriar]', sub: 'tropas', nada: fichaNada } },
+        { t: 'As tropas', txt: '“+ Tropas”, no fim das abas da ficha, dá uma tropa ao personagem: a guarda pessoal dele, numa aba nova, uma carta por unidade. Você muda os números (“Números…”, a veterania na própria carta, a moral e os mantimentos), põe e tira unidades e registra as batalhas — as baixas e as promoções vão para o diário da tropa. O dono escolhe o nome, a raça e a classe (das árvores), o brasão, os equipamentos e os suprimentos (das listas das Tabelas base) e os soldados com nome de cada unidade. Os outros jogadores não veem a tropa. Ligada a um exército do Mapa-múndi, é a mesma tropa nos dois lugares (o comandante pela ficha fica nas Tabelas base).', onde: { sel: '#tropasAba, [data-trcriar]', sub: 'tropas', nada: fichaNada } },
       ],
       jogador: [
         { t: 'A sua ficha', txt: 'Em cima, o resumo, que fica fixo: as barras (digite −8 para tirar, +25% para pôr um quarto do máximo), os atributos, os lapros, a caixinha do grupo e o que está machucado. Os selos levam à parte da ficha em que cada coisa fica.', onde: { sel: '#resumo', nada: fichaNada } },
@@ -34,7 +34,7 @@
         { t: 'O aniversário', txt: 'Em Atributos, no “Quem é”: o dia e o mês no calendário do mundo, e o ano se quiser (para a idade). No dia, a ficha avisa.', onde: { sel: '#anivBox', sub: 'atributos', nada: fichaNada } },
         { t: 'As missões', txt: 'Na aba Notas: as do grupo e as suas, com o que falta fazer.', onde: { sel: '#painelMissoes', sub: 'notas', nada: fichaNada } },
         { t: 'A barra da raça e da classe', txt: 'Em Atributos, junto do HP e do SP: a barra que a sua raça, a sua classe ou a sua linhagem trazem, com onde ela começa o combate.', onde: { sel: '#ficha .res', sub: 'atributos', nada: fichaNada } },
-        { t: 'As tropas', txt: 'Quando o mestre dá uma tropa ao seu personagem, a ficha ganha a aba Tropas: a guarda dele, uma carta por unidade. Os números são do mestre; em “Editar o que é seu” você escolhe o nome, a raça, a classe, o brasão, os equipamentos e os suprimentos de cada unidade. O diário guarda as batalhas e as promoções.', onde: { sel: '#tropasAba', sub: 'tropas', nada: 'A aba Tropas só aparece quando o mestre dá uma tropa ao seu personagem.' } },
+        { t: 'As tropas', txt: 'Quando o mestre dá uma tropa ao seu personagem, a ficha ganha a aba Tropas: a guarda dele, uma carta por unidade. Os números são do mestre; em “Editar o que é seu” você escolhe o nome, a raça, a classe, o brasão, os equipamentos e os suprimentos de cada unidade, e os soldados com nome (nome, raça e classe dos que importam). O diário guarda as batalhas e as promoções.', onde: { sel: '#tropasAba', sub: 'tropas', nada: 'A aba Tropas só aparece quando o mestre dá uma tropa ao seu personagem.' } },
       ],
     },
     cenas: {
@@ -135,10 +135,13 @@
         // (lote 30) a Sede e o construtor
         { t: 'A Sede', txt: 'No painel do clã, “Montar a Sede” (ou “Abrir a Sede”): arraste as plantas prontas (Salão, Quartel, Forja, Templo, Estábulo e Torre, nos níveis 1 a 3) para o terreno, ligue cada prédio a uma construção do clã e ponha a muralha, os portões, as estradas, o poço e os jardins. O chão vem do lugar do clã no Mapa-múndi. “Ver nas Cenas” cria a cena da sede e a de cada andar; pedir de novo atualiza (os tokens, a névoa e as luzes ficam).', onde: { sel: '[data-k="sec:sede"]', nada: 'Abra um clã no painel (Mestre) primeiro.' } },
         { t: 'O construtor', txt: 'Na Sede, escolha um prédio e “Editar no construtor”: faça cômodos (arrastando), ponha portas e janelas (clique na parede), troque o piso, ponha móveis e escadas, e mais andares (ou o porão). “Salvar como planta” guarda para usar de novo, em “Minhas plantas”.' },
+        // (lote 42)
+        { t: 'As tropas do clã', txt: 'No painel do clã, “Tropas do clã” → “+ Tropa”: escolha quem lidera. A tropa mora na ficha dele (aba Tropas, nas Fichas): cada personagem lidera uma só, e quem já tem tropa entra com ela. O líder do clã vê todas, sem mudar os números; “Tirar do clã” deixa a tropa na ficha.', onde: { sel: '[data-k="sec:tropas"]', nada: 'Abra um clã no painel do mestre.' } },
       ],
       jogador: [
         { t: 'O clã', txt: 'As partes do clã que vocês veem: os cargos, as construções, os recursos e o histórico. O líder mexe nos outros cargos.', onde: { sel: '#abas', nada: 'O mestre ainda não mostrou um clã.' } },
         { t: 'A sede', txt: 'Na parte Sede do salão, a planta da sede do clã: os prédios, a muralha, as estradas. Quem monta é o mestre; nas sessões, ela vira cena.', onde: { sel: '#abas [data-aba="sede"]', nada: 'O mestre ainda não mostrou a sede deste clã.' } },
+        { t: 'As tropas do clã', txt: 'Na parte Tropas do salão (quando alguma tropa do clã é sua): quem lidera o clã vê todas as tropas do clã; quem lidera uma tropa vê a dela. Os números são do mestre; o que é seu (nomes, brasões, equipamentos, soldados) você escolhe na aba Tropas das Fichas.', onde: { sel: '#abas [data-aba="tropas"]', nada: 'A parte Tropas aparece quando o mestre põe a sua tropa no clã.' } },
       ],
     },
     rolador: {

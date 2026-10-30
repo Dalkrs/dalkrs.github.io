@@ -24,7 +24,7 @@
   const PRE = 'fichas:tropas:';
   const docId = pcId => PRE + pcId;
   const pcDoDoc = id => (typeof id === 'string' && id.startsWith(PRE) && idOk(id.slice(PRE.length)) ? id.slice(PRE.length) : null);
-  const MAX = { unid: 40, tropas: 1e7, hpT: 1e6, atr: 99, lista: 40, equipUnid: 6, suprUnid: 6, suprQ: 1e6, diario: 40, nome: 60, info: 400, titulo: 80, det: 200, raca: 40, magos: 1e7, mant: 1e9, bat: 9999, bonus: 10 };
+  const MAX = { unid: 40, tropas: 1e7, hpT: 1e6, atr: 99, lista: 40, equipUnid: 6, suprUnid: 6, suprQ: 1e6, diario: 40, nome: 60, info: 400, titulo: 80, det: 200, raca: 40, magos: 1e7, mant: 1e9, bat: 9999, bonus: 10, sold: 50 };
 
   /* ---------------- a veterania ---------------- */
   const VET = [null, { n: 1, nome: 'Recruta' }, { n: 2, nome: 'Veterana' }, { n: 3, nome: 'Elite' }];
@@ -101,11 +101,26 @@
   /* ---------------- a tropa ---------------- */
   // as chaves que são do jogador (o resto é do mestre). A conta do banco (privado.tropas_mestre) tira as mesmas.
   const TOPO_JOGADOR = ['nome', 'bras', 'info'];
-  const UNID_JOGADOR = ['nome', 'raca', 'racaN', 'classe', 'classeN', 'bras', 'equip', 'supr', 'info'];
+  const UNID_JOGADOR = ['nome', 'raca', 'racaN', 'classe', 'classeN', 'bras', 'equip', 'supr', 'info', 'sold'];
   const listaDeIds = (l, max) => { const out = []; for (const x of Array.isArray(l) ? l : []) if (idOk(x) && !out.includes(x) && out.length < max) out.push(x); return out; };
   function normSuprQ(v) {
     const out = {};
     for (const k of ehObj(v) ? Object.keys(v).slice(0, MAX.lista * 2) : []) { const n = inteiro(v[k], 0, MAX.suprQ, 0); if (idOk(k) && n) out[k] = n; }
+    return out;
+  }
+  /* (lote 42) os soldados com nome de uma unidade (os que importam: não precisa ser um por tropa), até 50: { id, nome,
+     raca, racaN, classe, classeN } — a raça e a classe como as da unidade (a árvore da mesa, ou o nome) */
+  function normSold(l) {
+    const out = [], vistos = new Set();
+    for (const x of Array.isArray(l) ? l : []) {
+      if (!ehObj(x) || out.length >= MAX.sold) continue;
+      const nome = linha(x.nome, MAX.nome), racaN = linha(x.racaN, MAX.raca), classeN = linha(x.classeN, MAX.raca), raca = idOk(x.raca) ? x.raca : null, classe = idOk(x.classe) ? x.classe : null;
+      if (!nome && !raca && !racaN && !classe && !classeN) continue;
+      let id = idOk(x.id) ? x.id : novoId('sd');
+      while (vistos.has(id)) id = novoId('sd');
+      vistos.add(id);
+      out.push({ id, nome: nome || 'Soldado', raca, racaN, classe, classeN });
+    }
     return out;
   }
   // as máquinas de cerco de uma unidade (do Mapa-múndi): { tipo: quantas }, sem os zeros
@@ -130,7 +145,7 @@
       // do jogador
       nome: linha(u.nome, MAX.nome) || 'Unidade ' + (i + 1), raca: idOk(u.raca) ? u.raca : null, racaN: linha(u.racaN, MAX.raca),
       classe: idOk(u.classe) ? u.classe : null, classeN: linha(u.classeN, MAX.raca), bras: normBras(u.bras) || brasNovo(i),
-      equip: listaDeIds(u.equip, MAX.equipUnid), supr: listaDeIds(u.supr, MAX.suprUnid), info: textoLongo(u.info, MAX.info),
+      equip: listaDeIds(u.equip, MAX.equipUnid), supr: listaDeIds(u.supr, MAX.suprUnid), info: textoLongo(u.info, MAX.info), sold: normSold(u.sold),
     };
     if (idMapa(u.tipo)) out.tipo = u.tipo;                   // (o tipo de tropa do Mapa-múndi, quando ligada: guardado como veio)
     if (ehObj(u.maq)) { const m = normMaq(u.maq); if (Object.keys(m).length) out.maq = m; }
@@ -167,7 +182,7 @@
       moral: inteiro(d.moral, 0, 10, 5), mant: inteiro(d.mant, 0, MAX.mant, 0), cons: d.cons == null || d.cons === '' ? null : inteiro(d.cons, 1, MAX.tropas, null),
       unid: (Array.isArray(d.unid) ? d.unid : []).slice(0, MAX.unid).map((u, i) => normUnid(u, i, vistos)),
       diario: normDiario(d.diario),
-    }, ehObj(d.lig) && normLig(d.lig) ? { lig: normLig(d.lig) } : {});
+    }, ehObj(d.lig) && normLig(d.lig) ? { lig: normLig(d.lig) } : {}, idOk(d.cla) ? { cla: d.cla } : {});      // (lote 42) cla: o clã da tropa
   }
   /* (lote 41) A ligação com um exército do Mapa-múndi (quem escreve é o Mapa-múndi de quem mestra): { mapa (o id), mn
      (o nome do mapa), g (o id do grupo), nome (o do exército), cmd (a ficha do comandante), auto (o bônus de comando
@@ -209,8 +224,11 @@
     if ('equip' in esc) u.equip = listaDeIds(esc.equip, MAX.equipUnid);
     if ('supr' in esc) u.supr = listaDeIds(esc.supr, MAX.suprUnid);
     if ('info' in esc) u.info = textoLongo(esc.info, MAX.info);
+    if ('sold' in esc) u.sold = normSold(esc.sold);
     return d;
   }
+  // (lote 42) a raça e a classe de um soldado ("Humano Guerreiro")
+  const quemESold = (x, bib) => [nomeDaArvore(bib, x.raca) || x.racaN || '', nomeDaArvore(bib, x.classe) || x.classeN || ''].filter(Boolean).join(' ');
   const escolhasDaUnid = u => { const o = {}; for (const k of UNID_JOGADOR) o[k] = JSON.parse(JSON.stringify(u[k] === undefined ? null : u[k])); return o; };
   const escolhasDaTropa = d => { const o = {}; for (const k of TOPO_JOGADOR) o[k] = JSON.parse(JSON.stringify(d[k] === undefined ? null : d[k])); return o; };
 
@@ -354,7 +372,7 @@
   const api = { PRE, docId, pcDoDoc, MAX, VET, nomeVet, vetDaMedia, fmtMedia, EQUIP_PADRAO, SUPR_PADRAO, VET_BONUS_PADRAO, MAX_EQUIP_PADRAO, RESULTADOS,
     TOPO_JOGADOR, UNID_JOGADOR, normCfg, normLista, normBras, brasNovo, norm, normUnid, normDiario, parteMestre, comEscolhas, escolhasDaUnid, escolhasDaTropa,
     nova, unidadeNova, novoId, racaDe, classeDe, arvoresDe, contaUnid, calc, registrarBatalha, noDiario,
-    ATR_CMD, CMD_PADRAO, nomeAtr, peloAtr, bonusDeComando, normLig, comumDaTropa, comumDoExe, tropaComExe, exeComTropa, mesmaTropa, comBatalhaDoMapa, idMapa };
+    normSold, quemESold, ATR_CMD, CMD_PADRAO, nomeAtr, peloAtr, bonusDeComando, normLig, comumDaTropa, comumDoExe, tropaComExe, exeComTropa, mesmaTropa, comBatalhaDoMapa, idMapa };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.TC = window.TC || {}; window.TC.tropas = api; }
 })();

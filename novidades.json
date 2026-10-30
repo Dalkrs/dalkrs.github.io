@@ -2,6 +2,26 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.30-2",
+      "data": "2026-10-30",
+      "titulo": "Soldados com nome e as tropas do clã",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Os soldados com nome: em “Editar o que é seu”, cada unidade da tropa ganha a lista “Soldados com nome” — o nome, a raça e a classe de cada um (os que importam, até 50). Na carta, eles aparecem com quantos têm nome."
+        },
+        {
+          "tipo": "novo",
+          "texto": "As tropas do clã: na aba Clã, a parte Tropas mostra as tropas do clã que chegam a você — quem lidera o clã vê todas, com as unidades; quem lidera uma tropa vê a dela. Cada personagem lidera uma tropa só, a da ficha dele, e a faixa da tropa mostra de que clã ela é."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã → painel do clã → “Tropas do clã” → “+ Tropa”: escolha quem lidera; a tropa mora na ficha dele (quem já tem tropa entra com ela). “Abrir na ficha” vai para a aba Tropas dele; “Tirar do clã” deixa a tropa na ficha. Quando a liderança do clã muda, as tropas passam a ir para o novo líder."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.30-1",
       "data": "2026-10-30",
       "titulo": "As tropas no Mapa-múndi",

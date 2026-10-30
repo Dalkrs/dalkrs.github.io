@@ -332,7 +332,7 @@
   function escolher(id) { if (sel !== id) { sel = id; aba = 'hier'; verTudo = false; } pintar(); }
 
   /* ---------------- o salão: as partes ---------------- */
-  const ABAS = [['hier', 'Hierarquia', ['cargos']], ['cons', 'Construções', ['construcoes']], ['sede', 'Sede', []], ['rec', 'Cofre', ['recursos']], ['resp', 'Respeito e relações', ['respeito', 'relacoes']], ['hist', 'Histórico', ['hist']]];
+  const ABAS = [['hier', 'Hierarquia', ['cargos']], ['tropas', 'Tropas', []], ['cons', 'Construções', ['construcoes']], ['sede', 'Sede', []], ['rec', 'Cofre', ['recursos']], ['resp', 'Respeito e relações', ['respeito', 'relacoes']], ['hist', 'Histórico', ['hist']]];
   // (lote 30) a Sede: à vista quando o clã tem sede e os jogadores a veem (quem joga só recebe a que pode ver)
   function sedeVisivel(c) {
     if (!SedeUI || !c || !c.id || !SedeUI.temSede(c.id)) return false;
@@ -340,7 +340,8 @@
     const sd = doc(PRE_SEDE + c.id), x = clasMestre().find(y => y.id === c.id);
     return !!(x && x.c.jogadores) || !!(sd && sd.mostrar === true);
   }
-  const abaVisivel = (c, a) => (a === 'sede' ? sedeVisivel(c) : ABAS.find(x => x[0] === a)[2].some(k => c.ver[k]));
+  // (lote 42) as Tropas: só quando alguma tropa do clã chega a quem vê
+  const abaVisivel = (c, a) => (a === 'sede' ? sedeVisivel(c) : a === 'tropas' ? !!c && !!c.id && tropasDoCla(c.id).length > 0 : ABAS.find(x => x[0] === a)[2].some(k => c.ver[k]));
   function escondida(c) { return h('div', { class: 'aviso', 'data-k': 'escondida', text: 'O mestre ainda não mostrou esta parte de ' + c.nome + '.' }); }
   function linhaHist(e, i, txt) { return h('div', { class: 'linha-h', 'data-h': String(i) }, h('time', { text: dia(e.em) }), h('span', { text: txt })); }
 
@@ -476,7 +477,7 @@
     morphEm($('nomeCla'), [h('h1', { text: c.nome }), c.lema ? h('p', { text: c.lema }) : null]);
     $('abas').hidden = !!oculto;
     if (!oculto && !abaVisivel(c, aba) && ABAS.every(([id]) => !abaVisivel(c, id))) aba = 'hier';
-    morphEm($('abas'), oculto ? [] : ABAS.filter(([id]) => id !== 'sede' || abaVisivel(c, id)).map(([id, nome]) => {
+    morphEm($('abas'), oculto ? [] : ABAS.filter(([id]) => (id !== 'sede' && id !== 'tropas') || abaVisivel(c, id)).map(([id, nome]) => {
       const ve = abaVisivel(c, id);
       return h('button', { type: 'button', role: 'tab', class: ve ? null : 'tranca', 'data-aba': id, 'aria-selected': String(aba === id), 'aria-label': ve ? nome : nome + ' (o mestre ainda não mostrou)', onclick: () => { aba = id; pintar(); } },
         nome, ve ? null : icone(ICO.tranca, 13, '2'));
@@ -491,7 +492,8 @@
         h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'novo-cargo', disabled: ocupado, onclick: () => novoCargoDlg(c, 'lider') }, '+ Cargo')) : null,
       hierarquia(c, pode),
       h('p', { class: 'ajuda', text: 'Cada pessoa pode ser um personagem da mesa ou só um nome.' + (c.jogadores ? ' O número ao lado é o respeito dela dentro do clã (de −10 a +10): todos do clã veem; quem muda é o mestre.' : '') })];
-    } else if (aba === 'cons') corpo = [construcoesVer(c)];
+    } else if (aba === 'tropas') corpo = [tropasVer(c)];
+    else if (aba === 'cons') corpo = [construcoesVer(c)];
     else if (aba === 'sede') corpo = [SedeUI.parteDoSalao(c.id, c.nome)];
     else if (aba === 'rec') corpo = [recursosVer(c)];
     else if (aba === 'resp') corpo = [respeitoVer(c)];
@@ -541,6 +543,7 @@
       h('div', { class: 'cartao', 'data-k': 'sec:hier' }, h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Hierarquia' }),
         h('small', { class: 'ajuda', text: c.jogadores ? 'O líder (o dono do personagem no cargo de líder) também mexe nos cargos abaixo do dele.' : 'Os jogadores veem os cargos se você marcar “Cargos e quem ocupa”.' })),
         hierarquia(V, true)),
+      secTropas(x),
       h('div', { class: 'lado-a-lado' }, secConstrucoes(x), secRecursos(x)),
       SedeUI ? SedeUI.cartao(x) : null,
       h('div', { class: 'lado-a-lado' }, secRespeito(x), secRelacoes(x), secMembros(x)),
@@ -686,6 +689,117 @@
       h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Histórico' }), h('small', { class: 'ajuda', text: c.hist.length ? String(c.hist.length) + (c.hist.length > 1 ? ' linhas' : ' linha') : '' })),
       l.length ? h('div', { class: 'linhas' }, l.map((e, i) => linhaHist(e, i, N.histTxt(e, nm)))) : h('p', { class: 'vazio-p', text: 'Nada ainda: as mudanças no clã aparecem aqui.' }),
       c.hist.length > 40 ? h('button', { type: 'button', class: 'link', 'data-k': 'hist:tudo', onclick: () => { verTudo = !verTudo; pintar(); } }, verTudo ? 'Mostrar menos' : 'Mostrar tudo') : null);
+  }
+
+
+  /* ---------------- (lote 42) as tropas do clã ----------------
+     A tropa do clã é a tropa da ficha de quem a lidera (o documento fichas:tropas:<id do personagem>, com cla = o id do
+     clã): cada personagem lidera uma só. Quem mestra cadastra (escolhendo quem lidera; quem já tem tropa entra com ela)
+     e tira do clã (a tropa fica na ficha). O líder do clã recebe todas para ver: quem mestra põe o dono do personagem no
+     cargo de líder na lista "para" de cada uma (ver supabase/migrations/0030). O líder de cada tropa vê a dele — e
+     escolhe nela pelas Fichas. Gravar a tropa é de quem mestra as Fichas (o banco confere). */
+  const PRE_TROPA = 'fichas:tropas:';
+  const TT = () => (window.TC && window.TC.tropas) || null;
+  const gravaFichas = () => naMesa && mestre && !!(window.TC && TC.ponte && (typeof TC.ponte.mestra !== 'function' || TC.ponte.mestra('fichas')));
+  const cfgFichas = () => { const l = D && D.pegar('fichas:cfg'); return l && !l.apagado && ehObj(l.dados) && ehObj(l.dados.v) ? l.dados.v : null; };
+  function tropasDoCla(claId) {
+    const T = TT();
+    if (!naMesa || !T || !D) return [];
+    const out = [];
+    for (const l of D.todas()) {
+      const pc = typeof l.id === 'string' ? T.pcDoDoc(l.id) : null;
+      if (!pc || l.apagado || !ehObj(l.dados) || l.dados.cla !== claId) continue;
+      const p = pcDe(pc);
+      out.push({ pc, d: T.norm(l.dados), c: T.calc(l.dados, cfgFichas()), nome: p ? p.nome : 'Um personagem', minha: !!eu && l.dono_id === eu });
+    }
+    return out.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+  // o dono do personagem no cargo de líder do clã: quem recebe as tropas do clã, para ver
+  function donoDoLider(claId) { const x = clasMestre().find(y => y.id === claId), l = x ? N.lider(x.c.cargos) : null, p = l && l.pc ? pcDe(l.pc) : null; return p && p.dono ? p.dono : null; }
+  const paraDe = claId => { const d = claId ? donoDoLider(claId) : null; return d ? [d] : null; };
+  // a lista "para" de cada tropa acompanha a liderança do clã (quem mestra as Fichas grava)
+  function sincronizarTropas() {
+    if (!gravaFichas() || !TT()) return;
+    for (const l of D.todas()) {
+      if (typeof l.id !== 'string' || !l.id.startsWith(PRE_TROPA) || l.apagado || !ehObj(l.dados)) continue;
+      const quer = paraDe(l.dados.cla || null);
+      if (j(l.para || null) !== j(quer)) D.gravar(l.id, { para: quer });
+    }
+  }
+  const nomeDoCla = id => { const k = clasMestre().find(y => y.id === id); return k ? k.c.nome : 'outro clã'; };
+  function resumoTropa(t) {
+    const T = TT(), c = t.c, n = c.tropas;
+    return (c.unidades ? n.toLocaleString('pt-BR') + (n === 1 ? ' soldado' : ' soldados') + ' em ' + c.unidades + (c.unidades === 1 ? ' unidade' : ' unidades') : 'sem soldados agora')
+      + (c.vetMedia != null ? ' · ' + c.vetNome + ' (' + T.fmtMedia(c.vetMedia) + ')' : '') + (t.d.lig ? ' · no Mapa-múndi' : '');
+  }
+  function linhaTropa(t, comoMestre) {
+    return h('div', { class: 'tropa-cla', 'data-tropa': t.pc },
+      brasaoEl(t.d.bras, 'tr' + t.pc, 'mini'),
+      h('span', { class: 'tx' }, h('b', { text: t.d.nome }), h('small', { text: 'liderada por ' + t.nome + (t.minha ? ' (você)' : '') + ' · ' + resumoTropa(t) })),
+      naCasca() && (comoMestre || t.minha) ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'tr:abrir:' + t.pc, onclick: () => TC.ponte.ir('fichas', { pc: t.pc, sub: 'tropas' }) }, 'Abrir na ficha') : null,
+      comoMestre ? h('button', { type: 'button', class: 'btn sm per', 'data-k': 'tr:tirar:' + t.pc, disabled: !gravaFichas(), onclick: () => tirarDoCla(t.pc) }, 'Tirar do clã') : null);
+  }
+  // as unidades de uma tropa, para ver (o líder do clã e o líder da tropa, no salão)
+  function unidadesDaTropa(t) {
+    const T = TT();
+    if (!t.c.cartas.length) return h('p', { class: 'vazio-p', text: 'Sem unidades.' });
+    return h('div', { class: 'unids-cla' }, t.c.cartas.map(k => h('div', { class: 'unid-cla', 'data-unid': k.u.id },
+      brasaoEl(k.u.bras, 'tu' + t.pc + k.u.id, 'mini'),
+      h('span', { class: 'tx' }, h('b', { text: k.u.nome }), h('small', { text: [T.racaDe(k.u, null) || '', T.classeDe(k.u, null) || '', k.nomeVet].filter(Boolean).join(' · ') })),
+      h('span', { class: 'nums', text: k.u.tropas.toLocaleString('pt-BR') + (k.u.tropas === 1 ? ' soldado' : ' soldados') + ' · ATQ ' + (k.atq >= 0 ? '+' : '−') + Math.abs(k.atq) + ' · DEF ' + (k.def >= 0 ? '+' : '−') + Math.abs(k.def) + (k.u.sold.length ? ' · ' + k.u.sold.length + ' com nome' : '') }))));
+  }
+  function secTropas(x) {
+    if (!naMesa || !TT()) return null;
+    const id = x.id, ts = tropasDoCla(id), pode = gravaFichas(), lider = donoDoLider(id);
+    return h('div', { class: 'cartao', 'data-k': 'sec:tropas' },
+      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Tropas do clã' }), h('small', { class: 'ajuda', text: ts.length ? ts.length + (ts.length === 1 ? ' tropa' : ' tropas') : '' }),
+        h('button', { type: 'button', class: 'btn sm', 'data-k': 'tr:nova', disabled: !pode, title: pode ? null : 'Quem mestra as Fichas cadastra as tropas', onclick: () => tropaDlg(id) }, '+ Tropa')),
+      ts.length ? h('div', { class: 'tropas-cla' }, ts.map(t => linhaTropa(t, true))) : h('p', { class: 'vazio-p', text: 'Nenhuma tropa ainda. Cadastre escolhendo quem lidera: a tropa mora na ficha dele (aba Tropas, nas Fichas).' }),
+      h('p', { class: 'ajuda', text: 'Cada personagem lidera uma tropa só (a da ficha dele). O líder do clã vê todas as tropas do clã, sem mudar os números; o líder de cada tropa escolhe nela, pelas Fichas.' + (lider ? '' : ' Este clã ainda não tem um jogador na liderança: só você vê a lista.') }));
+  }
+  function tropaDlg(claId) {
+    const T = TT(), x = clasMestre().find(y => y.id === claId);
+    if (!T || !x || !gravaFichas()) return;
+    const estado = p => { const l = D.pegar(PRE_TROPA + p.id), d = l && !l.apagado && ehObj(l.dados) ? l.dados : null; return { d, cla: d && d.cla ? d.cla : null }; };
+    const ps = personagens().filter(p => estado(p).cla !== claId);
+    if (!ps.length) { toast('Todos os personagens da mesa já lideram uma tropa deste clã.'); return; }
+    const sel = h('select', { class: 'in', 'data-k': 'tr:lider', 'aria-label': 'Quem lidera' }, h('option', { value: '', text: 'Escolha quem lidera…' }),
+      ps.map(p => { const e = estado(p); return h('option', { value: p.id, text: p.nome + (p.dono ? '' : ' (NPC)') + (e.cla ? ' — lidera uma tropa de ' + nomeDoCla(e.cla) + ' (ela passa para este clã)' : e.d ? ' — já tem uma tropa (ela entra no clã)' : '') }); }));
+    const ok = () => { const v = sel.value; if (!v) { toast('Escolha quem lidera a tropa.'); sel.focus(); return; } fechar(); cadastrarTropa(claId, v); };
+    abrir('', [h('h2', { text: 'Uma tropa para ' + x.c.nome }),
+      h('p', { class: 'ajuda', text: 'A tropa mora na ficha de quem a lidera (aba Tropas, nas Fichas): cada personagem lidera uma só. Quem já tem tropa entra com ela; quem não tem ganha uma, com uma unidade de recrutas.' }),
+      h('label', { class: 'field' }, h('span', { text: 'Quem lidera' }), sel), pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, 'Cadastrar'))]);
+    sel.focus();
+  }
+  function cadastrarTropa(claId, pc) {
+    const T = TT(), l = D.pegar(PRE_TROPA + pc), antes = l && !l.apagado && ehObj(l.dados) ? copia(l.dados) : null, p = pcDe(pc);
+    const x = antes ? T.norm(antes) : T.nova(p ? p.nome : '', agora(), '');
+    const deOutro = antes && antes.cla && antes.cla !== claId;
+    x.cla = claId;
+    D.gravar(PRE_TROPA + pc, { dados: x, vis: 'mestre', dono_id: l && !l.apagado ? l.dono_id || null : (p && p.dono) || null, para: paraDe(claId) }, null, { cas: true });
+    pintar();
+    const nome = p ? p.nome : 'o personagem';
+    toast(antes ? 'A tropa de ' + nome + (deOutro ? ' passou para este clã.' : ' entrou no clã.') : 'Tropa criada para ' + nome + ', no clã (a aba Tropas apareceu na ficha).', 'Desfazer', () => {
+      if (antes) D.gravar(PRE_TROPA + pc, { dados: antes, para: paraDe(antes.cla || null) }, null, { cas: true }); else D.apagar(PRE_TROPA + pc);
+      pintar();
+    });
+  }
+  function tirarDoCla(pc) {
+    const T = TT(), l = D.pegar(PRE_TROPA + pc);
+    if (!T || !l || l.apagado || !ehObj(l.dados) || !gravaFichas()) return;
+    const antes = copia(l.dados), x = T.norm(antes), p = pcDe(pc);
+    delete x.cla;
+    D.gravar(PRE_TROPA + pc, { dados: x, para: null }, null, { cas: true });
+    pintar();
+    toast('A tropa saiu do clã (continua na ficha de ' + (p ? p.nome : 'quem a lidera') + ').', 'Desfazer', () => { D.gravar(PRE_TROPA + pc, { dados: antes, para: paraDe(antes.cla || null) }, null, { cas: true }); pintar(); });
+  }
+  // o salão: as tropas do clã que chegam a quem vê (o líder do clã: todas; o líder de uma tropa: a dele)
+  function tropasVer(c) {
+    const ts = tropasDoCla(c.id), lider = souLider(c);
+    return h('div', { class: 'cartao', 'data-k': 'ver:tropas' },
+      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Tropas do clã' }), h('small', { class: 'ajuda', text: mestre ? 'Como o líder do clã vê' : lider ? 'Você lidera o clã: vê todas' : 'A sua tropa' })),
+      ts.map(t => h('div', { class: 'tropa-ver', 'data-k': 'ver:tropa:' + t.pc }, linhaTropa(t, false), unidadesDaTropa(t))),
+      h('p', { class: 'ajuda', text: 'Os números são do mestre. Quem lidera cada tropa escolhe nela (os nomes, os brasões, os equipamentos, os soldados), na aba Tropas das Fichas.' }));
   }
 
   /* ---------------- janelas ---------------- */
@@ -1140,6 +1254,7 @@
   }
   function pintarJa() {
     sincronizarSedes();
+    sincronizarTropas();                                        // (lote 42) quem recebe as tropas do clã acompanha a liderança
     const bt = $('btDesfazer');
     bt.disabled = !pilha.length;
     bt.title = pilha.length ? 'Desfazer: ' + pilha[pilha.length - 1].rotulo + ' (Ctrl+Z)' : 'Nada para desfazer';
@@ -1246,7 +1361,7 @@
       TCx.ponte.aoMudar(e => { const antes = j((st && st.membros) || []); st = e; if (pronto && antes !== j(e.membros || [])) pintar(); });
     }
     if (naMesa) {
-      D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith('cla:') || l.id.startsWith('mundo:mapa:'))) pintar(); });     // (cla:sede: também)
+      D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith('cla:') || l.id.startsWith('mundo:mapa:') || l.id.startsWith('fichas:tropas:') || l.id === 'fichas:cfg')) pintar(); });     // (cla:sede: também; lote 42: as tropas)
       P.aoMudar(() => pintar());
     } else $('salvo').textContent = 'Neste navegador';
     if (!mestre) vista = 'salao';
