@@ -991,8 +991,11 @@
               s.innerHTML = '<path d="' + f.d + '" fill="currentColor"/>';
               return h('button', { type: 'button', class: 'escolha', 'data-forma': f.id, title: f.nome, 'aria-label': f.nome, 'aria-pressed': String(b.forma === f.id), onclick: () => muda('mudar a forma do brasão', y => { if (y.forma === f.id) return false; y.forma = f.id; }) }, s);
             }))),
-            h('div', { class: 'field' }, h('span', { text: 'Divisão' }), h('div', { class: 'escolhas', role: 'group', 'aria-label': 'Divisão' }, N.DIVISOES.map(([d, nm]) =>
-              h('button', { type: 'button', class: 'escolha', style: 'color:var(--fg)', 'data-div': d, 'aria-pressed': String(b.div === d), onclick: () => muda('mudar a divisão do brasão', y => { if (y.div === d) return false; y.div = d; }) }, nm)))),
+            h('div', { class: 'field' }, h('span', { text: 'Divisão' }), h('div', { class: 'escolhas', role: 'group', 'aria-label': 'Divisão' }, N.DIVISOES.map(([d, nm]) => {
+              const bt = h('button', { type: 'button', class: 'escolha esc-div', style: 'color:var(--fg)', 'data-div': d, 'aria-pressed': String(b.div === d), onclick: () => muda('mudar a divisão do brasão', y => { if (y.div === d) return false; y.div = d; }) });
+              bt.innerHTML = (N.divAmostra ? N.divAmostra(d) : '') + '<span></span>'; bt.lastChild.textContent = nm;
+              return bt;
+            }))),
             h('div', { class: 'field' }, h('span', { text: 'Cores (escolha qual e depois a cor)' }),
               h('div', { class: 'escolhas', role: 'group', 'aria-label': 'Qual cor' }, [0, 1].map(i => h('button', { type: 'button', class: 'escolha', style: 'color:var(--fg);gap:6px;display:inline-flex', 'data-alvo': String(i), 'aria-pressed': String(corAlvo === i), onclick: () => { corAlvo = i; desenhar(); } },
                 h('span', { style: 'width:18px;height:18px;border-radius:5px;display:inline-block;background:' + b.cores[i] }), 'Cor ' + (i + 1)))),
@@ -1000,10 +1003,12 @@
                 onclick: () => muda('mudar a cor do brasão', y => { if (y.cores[corAlvo] === cor) return false; y.cores[corAlvo] = cor; }) }, h('span', { style: 'background:' + cor }))),
                 h('label', { class: 'escolha', style: 'color:var(--fg);gap:6px;display:inline-flex;cursor:pointer' }, 'Outra', h('input', { type: 'color', 'data-k': 'br:outra', value: b.cores[corAlvo], 'aria-label': 'Outra cor',
                   onchange: function () { const v = this.value.toLowerCase(); muda('mudar a cor do brasão', y => { y.cores[corAlvo] = v; }); } })))),
-            h('div', { class: 'field' }, h('span', { text: 'Símbolo (os da Meditação e mais alguns)' }), h('div', { class: 'simbolos', role: 'group', 'aria-label': 'Símbolo' },
+            h('div', { class: 'field' }, h('span', { text: 'Símbolo' }), h('div', { class: 'simbolos', role: 'group', 'aria-label': 'Símbolo' },
               h('button', { type: 'button', class: 'escolha', style: 'color:var(--fg-2);grid-column:span 2', 'data-simb': '', 'aria-pressed': String(!b.simb), onclick: () => muda('tirar o símbolo do brasão', y => { if (!y.simb) return false; y.simb = null; }) }, 'Nenhum'),
-              [...N.SIMBOLOS.values()].map(s => h('button', { type: 'button', class: 'escolha', 'data-simb': s.id, title: s.nome, 'aria-label': s.nome, 'aria-pressed': String(b.simb === s.id),
-                onclick: () => muda('mudar o símbolo do brasão', y => { if (y.simb === s.id) return false; y.simb = s.id; }) }, icone(s.d, 22))))),
+              // (lote 45) em grupos: os da Meditação, a heráldica, as classes e as raças
+              (N.simbolosEmGrupos ? N.simbolosEmGrupos() : [{ id: 'todos', nome: '', itens: [...N.SIMBOLOS.values()] }]).map(g => [g.nome ? h('small', { class: 'simb-grupo', 'data-sgrupo': g.id, text: g.nome }) : null,
+                g.itens.map(s => h('button', { type: 'button', class: 'escolha', 'data-simb': s.id, title: s.nome, 'aria-label': s.nome, 'aria-pressed': String(b.simb === s.id),
+                  onclick: () => muda('mudar o símbolo do brasão', y => { if (y.simb === s.id) return false; y.simb = s.id; }) }, icone(s.d, 22)))]))),
             h('div', { class: 'row' },
               h('button', { type: 'button', class: 'btn sm', 'data-k': 'br:img', onclick: () => escolherImagem({ para: 'brasao', id, depois: desenhar }) }, b.img ? 'Trocar a imagem…' : 'Usar uma imagem…'),
               b.img ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'br:sem-img', onclick: () => muda('voltar ao brasão desenhado', y => { y.img = null; }) }, 'Voltar ao desenho') : null,

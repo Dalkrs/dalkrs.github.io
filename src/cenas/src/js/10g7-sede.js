@@ -89,13 +89,14 @@ const SedeCenas = (() => {
   function vestir(t, br) {
     if (!br || !t || !Props.P[t.prop] || !Props.P[t.prop].cores) return t;
     t.cores = br.cores.slice();
-    if (t.prop === 'brasao' || t.prop === 'estandarte') t.bras = { div: br.div, f: br.f, s: br.s, fl: br.fl };
+    if (t.prop === 'brasao' || t.prop === 'estandarte') t.bras = { div: br.div, f: br.f, s: br.s, fl: br.fl, dp: br.dp, st: br.st };
     return t;
   }
   const hexOk = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v), caminhoOk = v => typeof v === 'string' && v.length <= 1500 && /^[MLHVCSQTAZmlhvcsqtaz0-9.,\s-]+$/.test(v);
+  const stOk = v => (Array.isArray(v) && v.length === 3 && v.every(n => typeof n === 'number' && Number.isFinite(n)) && v[0] >= 0 && v[0] <= 100 && v[1] >= 0 && v[1] <= 120 && v[2] > 0.3 && v[2] <= 4 ? v.slice() : null);
   function brasaoOk(b) {
     if (!b || typeof b !== 'object' || !Array.isArray(b.cores) || b.cores.length !== 2 || !b.cores.every(hexOk)) return null;
-    return { cores: b.cores.map(v => v.toLowerCase()), div: ['liso', 'partido', 'cortado', 'esquartelado', 'faixa'].includes(b.div) ? b.div : 'partido', f: caminhoOk(b.f) ? b.f : null, s: caminhoOk(b.s) ? b.s : null, fl: b.fl === true };
+    return Object.assign({ cores: b.cores.map(v => v.toLowerCase()) }, { div: /^[a-z]{2,20}$/.test(b.div) ? b.div : 'partido', f: caminhoOk(b.f) ? b.f : null, s: caminhoOk(b.s) ? b.s : null, fl: b.fl === true, dp: typeof b.dp === 'string' && (b.dp === '' || caminhoOk(b.dp)) ? b.dp : null, st: stOk(b.st) });
   }
   // o que a Sede põe na cena do andar: as paredes, os móveis, as escadas, a Saída (no térreo) e, à noite, a luz de cada cômodo
   function conteudoDoAndar(sc, x, andar, br) {

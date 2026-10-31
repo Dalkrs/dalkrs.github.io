@@ -44,7 +44,11 @@
   }
   const icone = (d, tam, larg) => svg(tam || 20, '<path d="' + d + '"/>', larg);
   // o desenho de um símbolo: o traço, ou a imagem do mestre
-  const desenhoDe = (s, tam) => (s.img ? h('img', { src: s.img, alt: '', width: tam || 28, height: tam || 28 }) : icone(s.d, tam || 28));
+  // (lote 45) uma palavra nos pilares: a primeira letra, entalhada na pedra (a palavra inteira vem embaixo, no nome)
+  const letraDe = nome => (Array.from(String(nome || '?').trim())[0] || '?').toLocaleUpperCase('pt-BR');
+  const desenhoDe = (s, tam) => (s.palavra
+    ? h('span', { class: 'pglifo', title: s.nome, 'aria-hidden': 'true', style: 'width:' + (tam || 28) + 'px;height:' + (tam || 28) + 'px;font-size:' + Math.round((tam || 28) * 0.8) + 'px' }, letraDe(s.nome))
+    : s.img ? h('img', { src: s.img, alt: '', width: tam || 28, height: tam || 28 }) : icone(s.d, tam || 28));
   const ICO = {
     amb: 'M3 19.5h18M4.5 19.5 10 10l3.2 5.2 2.1-3 4.2 7.3',
     hora: 'M3 18h18M7 18a5 5 0 0 1 10 0M12 4v3M4.9 9.9l2 1.4M19.1 9.9l-2 1.4',
@@ -111,12 +115,15 @@
 
   /* ---------------- os documentos ---------------- */
   const CENA = 'medit:cena', QUEM = 'medit:quem', SIMB = 'medit:simbolos', REC = 'medit:receitas', TREINO = 'medit:treino', PRE_P = 'medit:pratica:', PRE_A = 'medit:achados:';
+  const PRE_W = 'medit:palavras:';               // (lote 45) o dicionário de cada personagem
   const VIS = { [CENA]: 'mesa', [QUEM]: 'mesa', [SIMB]: 'mesa', [REC]: 'mestre', [TREINO]: 'mestre' };
   const L_DOCS = 'tinycats:meditacao:local', PC_TESTE = 'pc_teste', L_PANTEAO = 'teste:panteao', L_FIGURA = 'teste:imgMed';
   let st = null, D = null, P = null, naMesa = false, mestre = true, eu = null, pronto = false;
   let vista = guarda.ler('tinycats:meditacao:vista') === 'receitas' ? 'receitas' : 'cena';
   let sel = null, recSel = null, grupoVisto = 'el', seqAtual = [], resultado = null, ocupado = false, pilarEd = 0;
   let novaBarra = { nome: '', max: '10' };       // o rascunho da barra de treinamento nova
+  let dicBusca = '', dicOrdem = ['az', 'novas', 'usadas'].includes(guarda.ler('tinycats:meditacao:dic-ordem')) ? guarda.ler('tinycats:meditacao:dic-ordem') : 'az';
+  let outraPalavra = '';                          // (receitas) a palavra digitada que ainda ninguém tem
   let pilha = [];                                 // o desfazer: { rotulo, desfazer() }
   let pintando = false, pendente = false;
   let local = {};                                 // fora de uma mesa: os documentos, neste navegador
@@ -202,6 +209,12 @@
   const pratica = id => N.normPratica(doc(PRE_P + id));
   const achados = id => N.normAchados(doc(PRE_A + id));
   const quemMedita = () => N.normQuem(doc(QUEM)).quem;
+  /* (lote 45) As palavras: o dicionário de um personagem, o mapa chave → palavra dele (para os pilares, o registro e as
+     receitas descobertas) e o da mesa toda (para quem mestra, nas receitas). */
+  const palavrasDe = id => N.normPalavras(doc(PRE_W + id));
+  const mapaDe = id => N.mapaPalavras(doc(PRE_W + id));
+  const mapaTodos = () => N.mapaPalavras(...personagens().map(p => doc(PRE_W + p.id)));
+  const simbP = (id, pals) => N.simbolo(doc(SIMB), id, pals);
   const panteaoDe = p => (p && p.ficha && typeof p.ficha.panteao === 'string' ? p.ficha.panteao : '');
   // o panteão é o da ficha: muda quem pode mudar a ficha (o dono, ou quem mestra as Fichas)
   const podePanteao = p => !naMesa || meu(p) || !!(window.TC && TC.ponte && TC.ponte.mestra && TC.ponte.mestra('fichas'));
@@ -231,7 +244,7 @@
     }
     if (op === 'liberar') { const a = N.localLiberar(ach, args.mais); local[PRE_A + args.pc] = a; salvarLocal(); return { lib: a.lib, feitas: a.feitas }; }
     if (op === 'tentar') {
-      const r = N.localTentar(local[QUEM], local[CENA], ach, local[REC], args.pc, args.seq);
+      const r = N.localTentar(local[QUEM], local[CENA], ach, local[REC], args.pc, args.seq, null, local[PRE_W + args.pc]);
       if (!r.ok) throw new Error(r.msg);
       local[PRE_A + args.pc] = r.achados; salvarLocal();
       return r.res;
@@ -459,12 +472,16 @@
   }
   function secaoPilares(p) {
     const ach = achados(p.id), noAr = quemMedita().includes(p.id), lib = ach.lib > ach.feitas, livres = ach.lib - ach.feitas;
-    const simb = doc(SIMB), gs = N.grupos(simb, false);
+    const simb = doc(SIMB), gs = N.grupos(simb, false), pals = mapaDe(p.id);
+    // (lote 45) as palavras do dicionário: as favoritas primeiro, depois de A a Z
+    const pw = palavrasDe(p.id).lista, favs = N.normPratica(doc(PRE_P + p.id)).pal || {};
+    if (pw.length) gs.push({ id: 'pal', nome: 'Palavras', itens: pw.slice().sort((a, b) => (!!(favs[b.id] && favs[b.id].f) - !!(favs[a.id] && favs[a.id].f)) || a.p.localeCompare(b.p, 'pt-BR'))
+      .map(x => ({ id: N.PAL + x.k, nome: x.p, palavra: x.k, fav: !!(favs[x.id] && favs[x.id].f), sentido: x.s })) });
     if (!gs.some(g => g.id === grupoVisto)) grupoVisto = gs.length ? gs[0].id : 'el';
     const pode = noAr && lib && !ocupado;
     const pilares = h('div', { class: 'pilares', 'data-k': 'pilares' }, [0, 1, 2, 3, 4].map(i => {
-      const id = seqAtual[i], s = id ? N.simbolo(simb, id) : null;
-      return h('button', { type: 'button', class: 'pilar' + (s ? ' cheio' : ''), 'data-k': 'pilar:' + i, disabled: !s || !pode,
+      const id = seqAtual[i], s = id ? N.simbolo(simb, id, pals) : null;
+      return h('button', { type: 'button', class: 'pilar' + (s ? ' cheio' : '') + (s && s.palavra ? ' pal' : ''), 'data-k': 'pilar:' + i, disabled: !s || !pode,
         'aria-label': s ? 'Pilar ' + (i + 1) + ': ' + s.nome + ' (clique para tirar)' : 'Pilar ' + (i + 1) + ' vazio', onclick: () => { seqAtual.splice(i, 1); pintar(); } },
         h('span', { class: 'pedra' }, s ? desenhoDe(s, 30) : null), h('span', { class: 'coluna' }), h('small', { text: s ? s.nome : i < 2 ? 'vazio' : 'opcional' }));
     }));
@@ -472,27 +489,28 @@
     const txt = !noAr ? 'Entre na meditação para usar os pilares' : !lib ? 'Esperando o mestre liberar uma tentativa' : seqAtual.length < N.MAX.minPilares ? 'Ponha pelo menos 2 símbolos' : 'Meditar sobre os pilares';
     const res = resultado && resultado.pc === p.id ? resultado : null;
     return secao('Os pilares', h('span', { class: 'tag' + (lib ? ' ok' : ''), 'data-k': 'tent', text: lib ? (livres > 1 ? livres + ' tentativas liberadas' : 'O mestre liberou 1 tentativa') : 'Sem tentativa agora' }),
-      h('p', { class: 'ajuda', text: 'Ponha de 2 a 5 símbolos, na ordem — a ordem importa. Clique num pilar para tirar o símbolo dele.' }),
+      h('p', { class: 'ajuda', text: pw.length ? 'Ponha de 2 a 5 símbolos ou palavras, na ordem — a ordem importa. Clique num pilar para tirar o que está nele.' : 'Ponha de 2 a 5 símbolos, na ordem — a ordem importa. Clique num pilar para tirar o símbolo dele.' }),
       pilares,
       h('div', { class: 'seg', role: 'group', 'aria-label': 'Grupos de símbolos', 'data-k': 'grupos' },
         gs.map(x => h('button', { type: 'button', 'data-grupo': x.id, 'aria-pressed': String(x.id === grupoVisto), onclick: () => { grupoVisto = x.id; pintar(); } }, x.nome))),
-      h('div', { class: 'simbolos', 'data-k': 'simbolos' }, (g ? g.itens : []).map(s => h('button', { type: 'button', class: 'simb', 'data-simb': s.id, disabled: !pode || seqAtual.length >= N.MAX.pilares,
-        'aria-label': 'Pôr ' + s.nome + ' no próximo pilar', onclick: () => { if (seqAtual.length < N.MAX.pilares) { seqAtual.push(s.id); resultado = null; pintar(); } } }, desenhoDe(s, 24), h('span', { text: s.nome })))),
+      h('div', { class: 'simbolos' + (g && g.id === 'pal' ? ' palavras' : ''), 'data-k': 'simbolos' }, (g ? g.itens : []).map(s => h('button', { type: 'button', class: 'simb' + (s.palavra ? ' pal' : ''), 'data-simb': s.id, disabled: !pode || seqAtual.length >= N.MAX.pilares,
+        title: s.sentido || null, 'aria-label': 'Pôr ' + (s.palavra ? 'a palavra ' : '') + s.nome + ' no próximo pilar', onclick: () => { if (seqAtual.length < N.MAX.pilares) { seqAtual.push(s.id); resultado = null; pintar(); } } },
+        s.palavra ? null : desenhoDe(s, 24), h('span', { text: s.nome }), s.fav ? h('i', { class: 'estrela', 'aria-hidden': 'true', text: '★' }) : null))),
       h('button', { type: 'button', class: 'btn pri lg', 'data-k': 'tentar', disabled: !(pode && seqAtual.length >= N.MAX.minPilares), onclick: () => tentar(p.id) }, txt),
       res && res.res.res === 'achou'
         ? h('div', { class: 'res achou', role: 'status', 'data-k': 'res' }, h('b', { text: (res.res.nova ? 'Você descobriu: ' : 'Você já conhecia: ') + res.res.nome }),
           h('span', { class: 'txt', text: res.res.efeito || '' }), h('small', { class: 'ajuda', text: res.res.nova ? 'Só você vê esta receita (e o mestre, que recebeu um aviso).' : 'Ela já estava na sua lista.' }))
-        : res ? h('div', { class: 'res', role: 'status', 'data-k': 'res' }, h('b', { text: 'Nada aconteceu.' }), h('small', { class: 'ajuda', text: N.seqTxt(simb, res.seq) + ' · o mestre vê a tentativa.' })) : null);
+        : res ? h('div', { class: 'res', role: 'status', 'data-k': 'res' }, h('b', { text: 'Nada aconteceu.' }), h('small', { class: 'ajuda', text: N.seqTxt(simb, res.seq, pals) + ' · o mestre vê a tentativa.' })) : null);
   }
   function secaoAchadas(p, corrigir) {
-    const ach = achados(p.id), simbDoc = doc(SIMB), rec = mestre ? N.normReceitas(doc(REC)) : null;
+    const ach = achados(p.id), simbDoc = doc(SIMB), rec = mestre ? N.normReceitas(doc(REC)) : null, pals = mestre ? mapaTodos() : mapaDe(p.id);
     return secao('Receitas descobertas', h('small', { text: String(ach.achadas.length) }),
       ach.achadas.length ? ach.achadas.slice().reverse().map(a => {
         const r = rec && rec.lista.find(x => x.id === a.id), seq = r ? r.seq : null;
         return h('div', { class: 'receita', 'data-achada': a.id },
-          h('div', { class: 'cab' }, h('b', { text: a.nome }), seq ? h('span', { class: 'seq' }, seq.map(id => desenhoDe(N.simbolo(simbDoc, id), 20))) : null,
+          h('div', { class: 'cab' }, h('b', { text: a.nome }), seq ? h('span', { class: 'seq' }, seq.map(id => desenhoDe(N.simbolo(simbDoc, id, pals), 20))) : null,
             corrigir ? h('button', { type: 'button', class: 'ib leve', title: 'Tirar da lista', 'aria-label': 'Tirar ' + a.nome + ' da lista', onclick: () => tirarAchada(p, a) }, '×') : null),
-          seq ? h('small', { text: N.seqTxt(simbDoc, seq) }) : null,
+          seq ? h('small', { text: N.seqTxt(simbDoc, seq, pals) }) : null,
           h('span', { class: 'txt', text: a.efeito }),
           h('small', { text: 'Descoberta em ' + (quando(a.em) || '?') + (a.amb ? ', ' + N.AMB_NOME[a.amb] : '') }));
       }) : h('p', { class: 'vazio-p', text: 'Nenhuma ainda.' }));
@@ -513,14 +531,14 @@
       avisoDesfazer('O registro de ' + p.nome + ' foi limpo.');
   }
   function secaoRegistro(p) {
-    const ach = achados(p.id), simbDoc = doc(SIMB);
+    const ach = achados(p.id), simbDoc = doc(SIMB), pals = mapaDe(p.id);
     const cab = mestre && ach.reg.length ? h('span', { class: 'row', style: 'gap:8px' }, h('small', { text: 'As meditações e as tentativas' }),
       h('button', { type: 'button', class: 'btn sm', 'data-k': 'reg:limpar', onclick: () => limparRegistro(p) }, 'Limpar o registro')) : h('small', { text: 'As meditações e as tentativas' });
     return secao('Registro', cab, ach.reg.length ? ach.reg.slice(0, 40).map((r, i) => h('div', { class: 'reg', 'data-reg': String(i) },
       h('time', { text: quando(r.em) }),
       r.tipo === 'entrou'
         ? h('span', null, 'Meditou · ', [r.amb ? N.AMB_NOME[r.amb] : '', r.hora ? N.HORA_NOME[r.hora].toLowerCase() : '', r.clima ? climaNome(r.clima).toLowerCase() : ''].filter(Boolean).join(', '), r.por === 'mestre' ? ' (chamado pelo mestre)' : '')
-        : h('span', null, N.seqTxt(simbDoc, r.seq), ' · ', r.res ? h('b', { class: 'achou', text: 'descobriu ' + (r.nome || 'uma receita') }) : h('b', { text: 'nada aconteceu' }))))
+        : h('span', null, N.seqTxt(simbDoc, r.seq, pals), ' · ', r.res ? h('b', { class: 'achou', text: 'descobriu ' + (r.nome || 'uma receita') }) : h('b', { text: 'nada aconteceu' }))))
       : h('p', { class: 'vazio-p', text: 'Nenhuma meditação ainda.' }));
   }
   function secaoTreino(p) {
@@ -561,7 +579,7 @@
         lib ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'lib:' + p.id + ':menos', disabled: ocupado, onclick: () => liberar(p.id, -1) }, 'Tirar a tentativa') : null,
         h('button', { type: 'button', class: 'btn sm' + (lib ? '' : ' pri'), 'data-k': 'lib:' + p.id, disabled: ocupado || livres >= 5, onclick: () => liberar(p.id, 1) }, lib ? 'Mais uma' : 'Liberar tentativa'))
         : h('small', { class: 'ajuda', text: 'Sem dono: medita na cena, mas não tenta os pilares.' }),
-      ult ? h('span', { class: 'linha-ult', text: 'Última tentativa: ' + N.seqTxt(doc(SIMB), ult.seq) + ' · ' + (ult.res ? 'descobriu ' + (ult.nome || 'uma receita') : 'nada aconteceu') + (ult.em ? ' (' + quando(ult.em) + ')' : '') }) : null,
+      ult ? h('span', { class: 'linha-ult', text: 'Última tentativa: ' + N.seqTxt(doc(SIMB), ult.seq, mapaDe(p.id)) + ' · ' + (ult.res ? 'descobriu ' + (ult.nome || 'uma receita') : 'nada aconteceu') + (ult.em ? ' (' + quando(ult.em) + ')' : '') }) : null,
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn sm', 'data-k': 'ver:' + p.id, 'aria-pressed': String(sel === p.id), onclick: () => { sel = p.id; seqAtual = []; resultado = null; pintar(); } }, 'Ver a prática'),
         h('button', { type: 'button', class: 'btn sm', 'data-k': 'sair:' + p.id, disabled: ocupado, onclick: () => entrar(p.id, false) }, 'Tirar da meditação')));
@@ -581,9 +599,9 @@
           : pcs.map(p => h('option', { value: p.id, text: p.nome + (quem.includes(p.id) ? ' (meditando)' : '') })))));
     const p = pcs.find(x => x.id === sel);
     if (p) {
-      out.push(secaoPratica(p), secaoTreino(p));
+      out.push(secaoPratica(p), secaoPalavrasMestre(p), secaoTreino(p));
       if (p.dono) out.push(secaoAchadas(p, true), secaoRegistro(p));
-      if (!naMesa) out.push(secaoPilares(p));               // (a página sozinha: dá para experimentar os pilares)
+      if (!naMesa) out.push(secaoPilares(p), secaoDicionario(p));     // (a página sozinha: dá para experimentar os pilares)
     }
     return out;
   }
@@ -595,8 +613,135 @@
     return [
       h('button', { type: 'button', class: 'btn lg' + (noAr ? '' : ' pri'), 'data-k': noAr ? 'sair' : 'meditar', disabled: ocupado, onclick: () => entrar(p.id, !noAr) },
         icone(ICO.medita, 20), noAr ? 'Sair da meditação' : 'Meditar'),
-      secaoPratica(p), secaoPilares(p), secaoAchadas(p, false), secaoRegistro(p),
+      secaoPratica(p), secaoPilares(p), secaoDicionario(p), secaoAchadas(p, false), secaoRegistro(p),
     ];
+  }
+
+  /* ---------------- (lote 45) as palavras ---------------- */
+  const buscaDe = v => N.chavePalavra(v).replace(/-/g, ' ');
+  function usoTxt(u) {
+    if (u.receitas.length) return 'Usada em: ' + u.receitas.join(', ') + (u.tentativas > u.receitas.length ? ' (' + u.tentativas + ' tentativas)' : '');
+    return u.tentativas ? 'Usada em ' + u.tentativas + (u.tentativas === 1 ? ' tentativa' : ' tentativas') + ', sem receita ainda' : 'Ainda não usada nos pilares';
+  }
+  // a nota e a estrela do jogador moram na prática (pal: { id da palavra: { n, f } })
+  function mudarNotaPal(p, x, rotulo, fn) {
+    return mudarDoc(PRE_P + p.id, rotulo, N.normPratica, y => {
+      const pal = Object.assign({}, y.pal || {}), cur = Object.assign({ n: '' }, pal[x.id] || {});
+      if (fn(cur) === false) return false;
+      pal[x.id] = cur; y.pal = pal;
+    }, naMesa ? p.dono : null);
+  }
+  const anotarPal = (p, x, v) => mudarNotaPal(p, x, 'mudar a nota de “' + x.p + '”', c => { const n = String(v || '').trim(); if (n === (c.n || '')) return false; c.n = n; });
+  const favoritarPal = (p, x, sim) => mudarNotaPal(p, x, (sim ? 'favoritar' : 'desfavoritar') + ' “' + x.p + '”', c => { if (!!c.f === sim) return false; if (sim) c.f = true; else delete c.f; });
+  let vistoMarcado = '';
+  // O dicionário do personagem (quem joga): buscar, ordenar, favoritar, anotar e ver onde já usou cada palavra.
+  function secaoDicionario(p) {
+    const pw = palavrasDe(p.id).lista, notas = pratica(p.id).pal || {}, ach = doc(PRE_A + p.id), pode = meu(p);
+    const chaveVisto = 'tinycats:meditacao:pal-visto:' + p.id, visto = guarda.ler(chaveVisto) || '';
+    if (!pw.length) return secao('Dicionário', h('small', { text: '0 palavras' }), h('p', { class: 'vazio-p', text: 'Nenhuma palavra ainda. O mestre dá as palavras; elas aparecem aqui e nos pilares.' }));
+    const usos = new Map(pw.map(x => [x.id, N.usosDaPalavra(ach, x.k)]));
+    const b = buscaDe(dicBusca);
+    let l = pw.filter(x => !b || buscaDe(x.p + ' ' + x.s + ' ' + x.n + ' ' + ((notas[x.id] || {}).n || '')).includes(b));
+    const az = (a, c) => a.p.localeCompare(c.p, 'pt-BR');
+    l = l.sort(dicOrdem === 'novas' ? (a, c) => String(c.em || '').localeCompare(String(a.em || '')) || az(a, c)
+      : dicOrdem === 'usadas' ? (a, c) => usos.get(c.id).tentativas - usos.get(a.id).tentativas || az(a, c) : az);
+    // as que chegaram depois da última vez que o jogador olhou (neste aparelho) ganham "Nova"; depois de uns segundos, ficam vistas
+    const maisNova = pw.reduce((m, x) => (x.em && x.em > m ? x.em : m), '');
+    if (pode && maisNova > visto && vistoMarcado !== p.id + maisNova) { vistoMarcado = p.id + maisNova; setTimeout(() => guarda.gravar(chaveVisto, maisNova), 6000); }
+    return secao('Dicionário', h('small', { text: pw.length === 1 ? '1 palavra' : pw.length + ' palavras' }),
+      h('p', { class: 'ajuda', text: 'As palavras que o mestre deu a ' + p.nome + '. Elas entram nos pilares como os símbolos (o grupo Palavras). A estrela leva a palavra para o começo da lista dos pilares.' }),
+      pw.length > 1 ? h('div', { class: 'row dic-ctl' },
+        h('input', { class: 'in', type: 'search', 'data-k': 'dic:busca', value: dicBusca, placeholder: 'Buscar no dicionário', 'aria-label': 'Buscar no dicionário', autocomplete: 'off', style: 'flex:1 1 160px;width:auto',
+          oninput: function () { dicBusca = this.value; pintar(); } }),
+        h('label', { class: 'rot' }, 'Ordem', h('select', { class: 'in', 'data-k': 'dic:ordem', value: dicOrdem, onchange: function () { dicOrdem = this.value; guarda.gravar('tinycats:meditacao:dic-ordem', dicOrdem); pintar(); } },
+          [['az', 'De A a Z'], ['novas', 'As mais novas'], ['usadas', 'As mais usadas']].map(([v, t]) => h('option', { value: v, text: t }))))) : null,
+      l.length ? h('div', { class: 'dic' }, l.map(x => {
+        const nt = notas[x.id] || {}, fav = !!nt.f, nova = !!(x.em && x.em > visto);
+        return h('article', { class: 'verbete' + (nova ? ' nova' : ''), 'data-pal': x.id },
+          h('div', { class: 'vb-cab' }, h('b', { class: 'vb-p', lang: 'und', text: x.p }), nova ? h('span', { class: 'tag ok', text: 'Nova' }) : null,
+            h('span', { class: 'grow' }),
+            h('button', { type: 'button', class: 'ib leve estrela' + (fav ? ' on' : ''), 'data-k': 'pal:fav:' + x.id, 'aria-pressed': String(fav), disabled: !pode,
+              title: fav ? 'Tirar das favoritas' : 'Favoritar: aparece primeiro nos pilares', 'aria-label': (fav ? 'Tirar ' : 'Favoritar ') + x.p, onclick: () => favoritarPal(p, x, !fav) }, fav ? '★' : '☆')),
+          x.s ? h('p', { class: 'vb-s', text: x.s }) : null,
+          x.n ? h('p', { class: 'vb-n' }, h('span', { text: 'Do mestre: ' }), x.n) : null,
+          h('small', { class: 'vb-uso', text: usoTxt(usos.get(x.id)) }),
+          pode ? campoTexto('pal:nota:' + x.id, 'Sua nota', nt.n, v => anotarPal(p, x, v), { area: true, linhas: 2, max: N.MAX.notaPal, ph: 'O que você já sabe sobre ela' })
+            : nt.n ? h('p', { class: 'vb-nota' }, h('span', { text: 'Nota do jogador: ' }), nt.n) : null);
+      })) : h('p', { class: 'vazio-p', text: 'Nenhuma palavra com “' + dicBusca.trim() + '”.' }));
+  }
+  function mudarPalavra(p, x, rotulo, fn) {
+    return mudarDoc(PRE_W + p.id, rotulo, N.normPalavras, y => { const z = y.lista.find(w => w.id === x.id); if (!z) return false; return fn(z); }, naMesa ? p.dono : null);
+  }
+  function tirarPalavra(p, x) {
+    if (mudarDoc(PRE_W + p.id, 'tirar “' + x.p + '” do dicionário de ' + p.nome, N.normPalavras, y => { const n = y.lista.length; y.lista = y.lista.filter(w => w.id !== x.id); return y.lista.length !== n; }, naMesa ? p.dono : null))
+      avisoDesfazer('“' + x.p + '” saiu do dicionário de ' + p.nome + '.');
+  }
+  // As palavras de um personagem (quem mestra): dar, mudar o sentido e a nota, tirar; a nota e a estrela do jogador.
+  function secaoPalavrasMestre(p) {
+    const pw = palavrasDe(p.id).lista, notas = pratica(p.id).pal || {}, ach = doc(PRE_A + p.id);
+    const quemVe = !naMesa ? 'Fica neste navegador' : p.dono ? 'O dono e você veem' : 'Sem dono: só você vê';
+    return secao('Palavras de ' + p.nome, h('span', { class: 'row', style: 'gap:8px' }, h('small', { text: quemVe }),
+      h('button', { type: 'button', class: 'btn sm', 'data-k': 'pal:dar', onclick: () => darPalavra(p.id) }, 'Dar uma palavra…')),
+      pw.length ? h('div', { class: 'dic' }, pw.slice().sort((a, c) => String(c.em || '').localeCompare(String(a.em || '')) || a.p.localeCompare(c.p, 'pt-BR')).map(x => {
+        const nt = notas[x.id] || {};
+        return h('article', { class: 'verbete', 'data-pal': x.id },
+          h('div', { class: 'vb-cab' }, h('b', { class: 'vb-p', lang: 'und', text: x.p }), nt.f ? h('span', { class: 'estrela on', title: 'Favorita do jogador', 'aria-label': 'Favorita do jogador', text: '★' }) : null,
+            h('span', { class: 'grow' }), x.em ? h('small', { text: 'Dada em ' + quando(x.em) }) : null,
+            h('button', { type: 'button', class: 'ib leve', 'data-k': 'pal:x:' + x.id, title: 'Tirar a palavra', 'aria-label': 'Tirar a palavra ' + x.p, onclick: () => tirarPalavra(p, x) }, '×')),
+          campoTexto('pal:s:' + x.id, 'Sentido', x.s, v => mudarPalavra(p, x, 'mudar o sentido de “' + x.p + '”', z => { z.s = v; }), { area: true, linhas: 2, max: N.MAX.sentido }),
+          campoTexto('pal:n:' + x.id, 'Nota (o jogador também vê)', x.n, v => mudarPalavra(p, x, 'mudar a nota de “' + x.p + '”', z => { z.n = v; }), { area: true, linhas: 2, max: N.MAX.notaPal }),
+          nt.n ? h('p', { class: 'vb-nota' }, h('span', { text: 'Nota do jogador: ' }), nt.n) : null,
+          h('small', { class: 'vb-uso', text: usoTxt(N.usosDaPalavra(ach, x.k)) }));
+      })) : h('p', { class: 'vazio-p', text: 'Nenhuma palavra ainda. “Dar uma palavra…” põe uma no dicionário de ' + p.nome + '.' }));
+  }
+  // o aviso para o dono do personagem, na mesa ao vivo, em segredo (só ele e quem deu veem)
+  function avisarPalavra(pc, palavra, sentido) {
+    const T = window.TC && TC.ponte;
+    if (!naMesa || !pc || !pc.dono || pc.dono === eu || !T || typeof T.publicar !== 'function') return;
+    try { T.publicar('meditacao', { kind: 'palavra', para: pc.dono, titulo: 'Palavra nova: “' + palavra + '”', resumo: pc.nome + ' recebeu a palavra “' + palavra + '”' + (sentido ? ': ' + sentido : '') + '. Ela está no dicionário, na aba Meditação.' }); } catch (e) { /* sem a casca */ }
+  }
+  // Dar uma palavra a um ou mais personagens (um passo de desfazer para todos)
+  function darPalavra(preSel) {
+    const dlg = $('dlg'), pcs = personagens(), marcados = new Set(preSel ? [preSel] : []), f = { p: '', s: '', n: '' };
+    const aviso = h('p', { class: 'ajuda erro', 'data-k': 'dp:aviso', role: 'status' });
+    const caixa = p => h('label', { class: 'chk' }, h('input', { type: 'checkbox', 'data-pc': p.id, checked: marcados.has(p.id), onchange: function () { if (this.checked) marcados.add(p.id); else marcados.delete(p.id); } }), h('span', { text: p.nome + ' · ' + deQuem(p) }));
+    const dar = () => {
+      const palavra = f.p.replace(/\s+/g, ' ').trim().slice(0, N.MAX.palavra), k = N.chavePalavra(palavra), sentido = f.s.trim().slice(0, N.MAX.sentido), nota = f.n.trim().slice(0, N.MAX.notaPal);
+      if (!k) { aviso.textContent = 'Escreva a palavra (com pelo menos uma letra ou número).'; return; }
+      if (!marcados.size) { aviso.textContent = 'Marque pelo menos um personagem.'; return; }
+      const ja = [], alvos = [];
+      for (const id of marcados) { const pc = pcDe(id), l = palavrasDe(id).lista; if (!pc) continue; if (l.some(w => w.k === k)) ja.push(pc.nome); else if (l.length >= N.MAX.palavras) ja.push(pc.nome + ' (dicionário cheio)'); else alvos.push(pc); }
+      if (!alvos.length) { aviso.textContent = (ja.length === 1 ? ja[0] + ' já tem' : ja.join(', ') + ' já têm') + ' essa palavra.'; return; }
+      dlg.close();
+      const em = new Date().toISOString(), feitos = [];
+      for (const pc of alvos) {
+        const novo = N.normPalavras(doc(PRE_W + pc.id)), w = { id: N.novoId('pw'), p: palavra, k, s: sentido, n: nota, em };
+        novo.lista.push(w);
+        gravarDoc(PRE_W + pc.id, N.normPalavras(novo), naMesa ? pc.dono : null);
+        feitos.push([pc, w.id]);
+        avisarPalavra(pc, palavra, sentido);
+      }
+      const passo = empilhar('dar a palavra “' + palavra + '”', () => {
+        for (const [pc, wid] of feitos) { const cur = N.normPalavras(doc(PRE_W + pc.id)); cur.lista = cur.lista.filter(x => x.id !== wid); gravarDoc(PRE_W + pc.id, cur, naMesa ? pc.dono : null); }
+      });
+      pintar();
+      const nomes = feitos.map(([pc]) => pc.nome);
+      toast('“' + palavra + '” foi para o dicionário de ' + (nomes.length > 2 ? nomes.length + ' personagens' : nomes.join(' e ')) + '.' + (ja.length ? ' (' + ja.join(', ') + ' já tinha.)' : ''), 'Desfazer', () => desfazer(passo));
+    };
+    const grupos = porCampanha(pcs);
+    dlg.onclose = null;
+    dlg.replaceChildren(h('h2', { text: 'Dar uma palavra' }),
+      h('p', { text: 'A palavra vai para o dicionário de cada personagem marcado, e entra nos pilares dele. Só o dono de cada um recebe o aviso.' }),
+      h('label', { class: 'field' }, h('span', { text: 'Palavra' }), h('input', { class: 'in', type: 'text', 'data-k': 'dp:p', maxlength: N.MAX.palavra, autocomplete: 'off', placeholder: 'Aethra',
+        oninput: function () { f.p = this.value; aviso.textContent = ''; }, onkeydown: ev => { if (ev.key === 'Enter') { ev.preventDefault(); dar(); } } })),
+      h('label', { class: 'field' }, h('span', { text: 'Sentido' }), h('textarea', { class: 'in', 'data-k': 'dp:s', rows: 2, maxlength: N.MAX.sentido, placeholder: 'A luz que vem antes do sol', oninput: function () { f.s = this.value; } })),
+      h('label', { class: 'field' }, h('span', { text: 'Nota (opcional; o jogador também vê)' }), h('textarea', { class: 'in', 'data-k': 'dp:n', rows: 2, maxlength: N.MAX.notaPal, placeholder: 'Ouvida no templo de Selene', oninput: function () { f.n = this.value; } })),
+      h('div', { class: 'field' }, h('span', { text: 'Para quem' }), h('div', { class: 'lista-esc' }, grupos.map(g => [g.nome ? h('small', { class: 'ajuda', text: g.nome }) : null, g.itens.map(caixa)]))),
+      aviso,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', 'data-k': 'dp:nao', onclick: () => dlg.close() }, 'Cancelar'),
+        h('button', { type: 'button', class: 'btn pri', 'data-k': 'dp:sim', onclick: dar }, 'Dar a palavra')));
+    dlg.showModal();
+    setTimeout(() => { const el = dlg.querySelector('[data-k="dp:p"]'); if (el) el.focus(); }, 0);
   }
 
   /* ---------------- chamar vários de uma vez ---------------- */
@@ -626,7 +771,7 @@
 
   /* ---------------- receitas e símbolos (quem mestra) ---------------- */
   function telaReceitas() {
-    const rec = N.normReceitas(doc(REC)), simbDoc = doc(SIMB), dup = N.repetidas(rec), pcs = personagens(), ocultos = new Set(N.normSimbolos(simbDoc).ocultos);
+    const rec = N.normReceitas(doc(REC)), simbDoc = doc(SIMB), dup = N.repetidas(rec), pcs = personagens(), ocultos = new Set(N.normSimbolos(simbDoc).ocultos), todos = mapaTodos();
     if (recSel && !rec.lista.some(r => r.id === recSel)) recSel = null;
     const r = recSel ? rec.lista.find(x => x.id === recSel) : null;
     const nomePc = id => (pcs.find(p => p.id === id) || {}).nome || '?';
@@ -636,14 +781,16 @@
       h('p', { class: 'ajuda', text: 'Só você vê as receitas. O jogador descobre combinando os símbolos nos pilares — uma tentativa por vez, quando você libera.' }),
       rec.lista.length ? rec.lista.map(x => {
         const d = dup.find(y => y.id === x.id), antes = d ? rec.lista.find(y => y.id === d.antes) : null;
-        const escondido = x.seq.some(id => ocultos.has(id) || N.simbolo(simbDoc, id).sumiu);
+        const escondido = x.seq.some(id => !N.ehPalavra(id) && (ocultos.has(id) || N.simbolo(simbDoc, id).sumiu));
+        const semDono = x.seq.filter(N.ehPalavra).map(id => id.slice(N.PAL.length)).filter(k => !todos.has(k));
         return h('div', { class: 'receita' + (x.id === recSel ? ' sel' : ''), 'data-rc': x.id },
           h('button', { type: 'button', class: 'abrir', 'data-k': 'rc:' + x.id, onclick: () => { recSel = x.id; pilarEd = Math.min(x.seq.length, N.MAX.pilares - 1); pintar(); } },
-            h('div', { class: 'cab' }, h('b', { text: x.nome }), h('span', { class: 'seq' }, x.seq.map(id => desenhoDe(N.simbolo(simbDoc, id), 22)))),
-            h('small', { text: (x.seq.length ? N.seqTxt(simbDoc, x.seq) : 'sem símbolos ainda') + ' · ' + (x.onde ? 'só em ' + N.AMB_NOME[x.onde] : 'em qualquer ambiente') + ' · ' + (x.quem ? 'para ' + x.quem.map(nomePc).join(', ') : 'para todos') }),
+            h('div', { class: 'cab' }, h('b', { text: x.nome }), h('span', { class: 'seq' }, x.seq.map(id => desenhoDe(N.simbolo(simbDoc, id, todos), 22)))),
+            h('small', { text: (x.seq.length ? N.seqTxt(simbDoc, x.seq, todos) : 'sem símbolos ainda') + ' · ' + (x.onde ? 'só em ' + N.AMB_NOME[x.onde] : 'em qualquer ambiente') + ' · ' + (x.quem ? 'para ' + x.quem.map(nomePc).join(', ') : 'para todos') }),
             h('small', { text: descobridores(x.id) })),
           !N.receitaPronta(x) ? h('span', { class: 'aviso-dup', text: 'Com menos de 2 símbolos, ninguém a descobre.' }) : null,
           escondido ? h('span', { class: 'aviso-dup', text: 'Usa um símbolo escondido dos jogadores (ou que não existe mais): ninguém a descobre assim.' }) : null,
+          semDono.length ? h('span', { class: 'aviso-dup', text: 'Ninguém tem ' + (semDono.length === 1 ? 'a palavra “' + semDono[0] + '”' : 'as palavras ' + semDono.map(k => '“' + k + '”').join(', ')) + ' ainda: dê a palavra a quem deve descobrir a receita.' }) : null,
           antes ? h('span', { class: 'aviso-dup', text: 'A mesma sequência de "' + antes.nome + '", que vem antes na lista e também vale: esta nunca seria achada.' }) : null);
       }) : h('p', { class: 'vazio-p', text: 'Nenhuma receita ainda.' }));
     const ed = h('section', { class: 'rec-ed', 'aria-label': 'Editar a receita' }, r ? editorReceita(r, simbDoc, pcs) : h('p', { class: 'vazio-p', text: 'Escolha uma receita para editar, ou crie uma.' }));
@@ -662,27 +809,35 @@
   }
   function mudarReceita(r, rotulo, fn) { return mudarDoc(REC, rotulo, N.normReceitas, x => { const y = x.lista.find(z => z.id === r.id); if (!y) return false; return fn(y, x); }); }
   function editorReceita(r, simbDoc, pcs) {
-    const k = Math.min(pilarEd, r.seq.length, N.MAX.pilares - 1);
+    const k = Math.min(pilarEd, r.seq.length, N.MAX.pilares - 1), pals = mapaTodos();
     const pilares = h('div', { class: 'pilares', 'data-k': 'rp' }, [0, 1, 2, 3, 4].map(i => {
-      const id = r.seq[i], s = id ? N.simbolo(simbDoc, id) : null, alvo = i === k;
-      return h('button', { type: 'button', class: 'pilar' + (s ? ' cheio' : '') + (alvo ? ' alvo' : ''), 'data-k': 'rp:' + i, 'aria-pressed': String(alvo), disabled: i > r.seq.length,
+      const id = r.seq[i], s = id ? N.simbolo(simbDoc, id, pals) : null, alvo = i === k;
+      return h('button', { type: 'button', class: 'pilar' + (s ? ' cheio' : '') + (s && s.palavra ? ' pal' : '') + (alvo ? ' alvo' : ''), 'data-k': 'rp:' + i, 'aria-pressed': String(alvo), disabled: i > r.seq.length,
         'aria-label': s ? 'Pilar ' + (i + 1) + ': ' + s.nome + ' (escolha outro símbolo abaixo para trocar)' : 'Pilar ' + (i + 1) + ' vazio', onclick: () => { pilarEd = i; pintar(); } },
         h('span', { class: 'pedra' }, s ? desenhoDe(s, 28) : null), h('small', { text: s ? s.nome : i < 2 ? 'vazio' : 'opcional' }));
     }));
     const gs = N.grupos(simbDoc, true);
+    // (lote 45) as palavras que algum personagem tem (e, embaixo, uma que ainda ninguém tem)
+    gs.push({ id: 'pal', nome: 'Palavras', itens: [...pals].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')).map(([kk, t]) => ({ id: N.PAL + kk, nome: t, palavra: kk })) });
     if (!gs.some(g => g.id === grupoVisto)) grupoVisto = gs.length ? gs[0].id : 'el';
     const g = gs.find(x => x.id === grupoVisto);
+    const porOutra = () => { const kk = N.chavePalavra(outraPalavra); if (!kk) { toast('Escreva a palavra.'); return; } outraPalavra = ''; porSimbolo(N.PAL + kk); };
     const porSimbolo = id => mudarReceita(r, 'mudar os pilares da receita', y => { const i = Math.min(pilarEd, y.seq.length, N.MAX.pilares - 1); if (y.seq[i] === id) return false; y.seq[i] = id; pilarEd = Math.min(N.MAX.pilares - 1, i + 1); });
     const jogadores = pcs.filter(p => p.dono || (r.quem && r.quem.includes(p.id)));
     return [
       h('h2', { class: 'tit', text: r.nome }),
       campoTexto('rc:nome', 'Nome', r.nome, v => mudarReceita(r, 'mudar o nome da receita', y => { y.nome = v; }), { max: N.MAX.nomeReceita }),
       h('div', { class: 'field' }, h('span', { text: 'Os pilares, na ordem' }), pilares,
-        h('div', { class: 'row' }, h('small', { class: 'ajuda', style: 'flex:1 1 200px', text: 'De 2 a 5 símbolos; a ordem importa. Escolha o pilar e depois o símbolo, abaixo.' }),
+        h('div', { class: 'row' }, h('small', { class: 'ajuda', style: 'flex:1 1 200px', text: 'De 2 a 5 símbolos ou palavras; a ordem importa. Escolha o pilar e depois o símbolo (ou a palavra), abaixo.' }),
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'rp:tirar', disabled: k >= r.seq.length, onclick: () => mudarReceita(r, 'tirar um pilar da receita', y => { if (k >= y.seq.length) return false; y.seq.splice(k, 1); pilarEd = Math.min(k, y.seq.length); }) }, 'Tirar este pilar'))),
       h('div', { class: 'seg', role: 'group', 'aria-label': 'Grupos de símbolos', 'data-k': 'grupos-rc' }, gs.map(x => h('button', { type: 'button', 'data-grupo': x.id, 'aria-pressed': String(x.id === grupoVisto), onclick: () => { grupoVisto = x.id; pintar(); } }, x.nome))),
-      h('div', { class: 'simbolos', 'data-k': 'simbolos-rc' }, (g ? g.itens : []).map(s => h('button', { type: 'button', class: 'simb' + (s.oculto ? ' oculto' : ''), 'data-rsimb': s.id,
-        title: s.oculto ? 'Escondido dos jogadores: eles não o veem nos pilares' : null, 'aria-label': 'Pôr ' + s.nome + ' no pilar ' + (k + 1), onclick: () => porSimbolo(s.id) }, desenhoDe(s, 24), h('span', { text: s.nome })))),
+      h('div', { class: 'simbolos' + (g && g.id === 'pal' ? ' palavras' : ''), 'data-k': 'simbolos-rc' }, (g ? g.itens : []).map(s => h('button', { type: 'button', class: 'simb' + (s.oculto ? ' oculto' : '') + (s.palavra ? ' pal' : ''), 'data-rsimb': s.id,
+        title: s.oculto ? 'Escondido dos jogadores: eles não o veem nos pilares' : null, 'aria-label': 'Pôr ' + (s.palavra ? 'a palavra ' : '') + s.nome + ' no pilar ' + (k + 1), onclick: () => porSimbolo(s.id) }, s.palavra ? null : desenhoDe(s, 24), h('span', { text: s.nome })))),
+      g && g.id === 'pal' ? h('div', { class: 'row' },
+        !g.itens.length ? h('small', { class: 'ajuda', style: 'flex:1 1 100%', text: 'Nenhum personagem tem palavras ainda. Escreva uma aqui, ou dê palavras pela prática de cada personagem.' }) : null,
+        h('input', { class: 'in', type: 'text', 'data-k': 'rc:palavra', value: outraPalavra, maxlength: N.MAX.palavra, placeholder: 'Outra palavra', 'aria-label': 'Uma palavra que ainda ninguém tem', autocomplete: 'off', style: 'flex:1 1 160px;width:auto',
+          oninput: function () { outraPalavra = this.value; }, onkeydown: ev => { if (ev.key === 'Enter') { ev.preventDefault(); porOutra(); } } }),
+        h('button', { type: 'button', class: 'btn sm', 'data-k': 'rc:palavra-por', onclick: porOutra }, 'Pôr no pilar ' + (k + 1))) : null,
       campoTexto('rc:efeito', 'O efeito (o que o jogador passa a ver quando acerta)', r.efeito, v => mudarReceita(r, 'mudar o efeito da receita', y => { y.efeito = v; }), { area: true, linhas: 5, max: N.MAX.efeito, ph: 'Ao amanhecer, o calor do primeiro sol percorre o corpo de quem medita…' }),
       h('fieldset', { class: 'grupo' }, h('legend', { text: 'Onde vale' }),
         h('label', { class: 'chk' }, h('input', { type: 'radio', name: 'rc-onde', 'data-k': 'rc:onde-todos', checked: !r.onde, onchange: () => mudarReceita(r, 'a receita valer em qualquer ambiente', y => { y.onde = null; }) }), 'Em qualquer ambiente'),

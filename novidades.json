@@ -2,6 +2,48 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.31-1",
+      "data": "2026-10-31",
+      "titulo": "Palavras na Meditação e bandeiras novas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Meditação: o dicionário. Seu personagem passa a receber palavras, cada uma com o sentido e, às vezes, uma nota; elas ficam no dicionário, na aba Meditação, e o aviso de cada palavra nova chega para você na Mesa ao vivo."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Nos pilares, além dos símbolos, as palavras do dicionário (o grupo Palavras): cada pilar recebe um símbolo ou uma palavra. Na pedra fica a primeira letra; embaixo, a palavra inteira."
+        },
+        {
+          "tipo": "novo",
+          "texto": "No dicionário: busque, ordene (de A a Z, as mais novas, as mais usadas), escreva a sua nota em cada palavra e veja onde ela já foi usada. A estrela leva a palavra para o começo da lista dos pilares."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Bandeiras e brasões: 40 símbolos de heráldica (leão, águia, cervo, flor-de-lis, castelo, navio…), os símbolos das 12 classes e das 35 raças de Urgm, todos em grupos no seletor."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Sete formas novas (bandeira, cauda de andorinha, gonfalão, pendão, oval, hexágono, triangular) e onze divisões novas (contrafaixa, pala, travessa, cruz, aspa, asna, chefe, base, ondado, gironado, xadrez), cada divisão com a amostra do desenho. Valem no clã, nas bandeiras do Mapa-múndi e nos brasões das tropas."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Meditação → a prática do personagem → “Dar uma palavra…”: a palavra, o sentido e a nota, para um ou mais personagens de uma vez (com Desfazer). Ali mesmo o mestre muda o sentido e a nota, tira a palavra e vê a nota e a estrela do jogador."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Receitas com palavras: em Receitas e símbolos, o grupo Palavras traz as que algum personagem tem, e “Outra palavra” põe uma que ninguém tem ainda (a receita avisa). O banco confere: o jogador só usa as palavras do dicionário dele."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Para as palavras funcionarem numa mesa, o banco precisa da atualização desta versão (o SQL 0031)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.30-4",
       "data": "2026-10-30",
       "titulo": "O painel de barras nas Cenas",

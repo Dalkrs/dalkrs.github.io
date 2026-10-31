@@ -433,7 +433,9 @@ window.ClaSedeUI = function (kit) {
     const N = window.ClaNucleo;
     if (!N || !c) return null;
     const b = N.normBrasao(c.brasao), f = (N.FORMAS || []).find(x => x.id === b.forma), sm = b.simb && N.SIMBOLOS ? N.SIMBOLOS.get(b.simb) : null;
-    return { cores: b.cores.slice(), div: b.div, f: f ? f.d : null, s: sm ? sm.d : null, fl: b.forma === 'flamula' };
+    // (lote 45) o pedaço da segunda cor (dp) e onde o símbolo fica na forma (st): as divisões e as formas novas desenham igual lá
+    return { cores: b.cores.slice(), div: b.div, f: f ? f.d : null, s: sm ? sm.d : null, fl: b.forma === 'flamula',
+      dp: N.DIV_PATH && typeof N.DIV_PATH[b.div] === 'string' ? N.DIV_PATH[b.div] : null, st: f && Array.isArray(f.st) ? f.st.slice(0, 3) : null };
   }
   function verNasCenas(id, c, ir) {
     const s = sedeDe(id);

@@ -85,13 +85,13 @@ const BRASAO = { cores: ['#5b3f8a', '#e8eaf0'], div: 'cortado', f: 'M6 6H94V58C9
     // ao carregar: só as cores e o desenho que valem; no objeto sem cores, nada
     const norm = await ev(() => {
       const { Store, Props, normalizeScene } = __tc, sc = Store.scene(), c = sc.cell;
-      const a = Object.assign(Props.novo(sc, 'brasao', 0, 0, 1, false), { cores: ['#ABCDEF', '#000000'], bras: { div: 'xadrez', f: 'M0 0L10 10Z', s: 'javascript:alert(1)', fl: 'sim' } });
+      const a = Object.assign(Props.novo(sc, 'brasao', 0, 0, 1, false), { cores: ['#ABCDEF', '#000000'], bras: { div: 'Xadrez!', f: 'M0 0L10 10Z', s: 'javascript:alert(1)', fl: 'sim', dp: 'javascript:x', st: [1, 2] } });      // (lote 45: a divisão é um nome; dp e st conferidos)
       const b = Object.assign(Props.novo(sc, 'barril', c, 0, 1, false), { cores: ['#ffffff', '#000000'], bras: { div: 'liso' } });
       const d = Object.assign(Props.novo(sc, 'estandarte', 2 * c, 0, 1, false), { cores: ['red', '#000000'] });
       const x = normalizeScene(Object.assign(JSON.parse(JSON.stringify(sc)), { tokens: JSON.parse(JSON.stringify([a, b, d])) }));
       return x.tokens.map(k => [k.prop, k.cores || null, k.bras || null]);
     });
-    ok(j(norm) === j([['brasao', ['#abcdef', '#000000'], { div: 'partido', f: 'M0 0L10 10Z', s: null, fl: false }], ['barril', null, null], ['estandarte', null, null]]), 'ao carregar, o que não vale sai (a divisão, o símbolo que não é desenho, as cores do barril, a cor sem #): ' + j(norm));
+    ok(j(norm) === j([['brasao', ['#abcdef', '#000000'], { div: 'partido', f: 'M0 0L10 10Z', s: null, fl: false, dp: null, st: null }], ['barril', null, null], ['estandarte', null, null]]), 'ao carregar, o que não vale sai (a divisão, o símbolo que não é desenho, as cores do barril, a cor sem #): ' + j(norm));
   });
 
   // ---------- 3) a sede do clã ----------

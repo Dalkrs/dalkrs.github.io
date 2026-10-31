@@ -83,7 +83,9 @@
   /* ---------------- o brasão (o do montador do clã: forma, divisão, duas cores, símbolo — sem imagem) ---------------- */
   const CN = () => (typeof window !== 'undefined' && window.ClaNucleo) || CN_NODE;
   const CN_NODE = typeof module === 'object' && module && typeof require === 'function' ? (() => { try { return require('../cla/nucleo.js'); } catch (e) { return null; } })() : null;
-  const FORMAS_ID = ['escudo', 'redondo', 'losango', 'estandarte', 'flamula'], DIVS_ID = ['liso', 'partido', 'cortado', 'esquartelado', 'faixa'];
+  // (sem o ClaNucleo: as mesmas listas de lá — lote 45: mais formas e divisões)
+  const FORMAS_ID = ['escudo', 'redondo', 'losango', 'estandarte', 'flamula', 'bandeira', 'cauda', 'gonfalao', 'pendao', 'oval', 'hexagono', 'triangular'],
+    DIVS_ID = ['liso', 'partido', 'cortado', 'esquartelado', 'faixa', 'contrafaixa', 'pala', 'travessa', 'cruz', 'aspa', 'asna', 'chefe', 'base', 'ondado', 'gironado', 'xadrez'];
   function normBras(b) {
     if (!ehObj(b)) return null;
     const c = CN();

@@ -318,13 +318,13 @@ const FichasTropas = (() => {
       <div class="tr-mprev" data-mprev>${svgBras(b, 'tr-bras-m')}</div>
       <div class="tr-mcampos">
         <div><span class="eyebrow">Forma</span><div class="tr-escs" role="group" aria-label="Forma do brasão">${c.FORMAS.map(f => `<button type="button" class="tr-esc" data-mforma="${f.id}" aria-pressed="${b.forma === f.id}" title="${esc(f.nome)}" aria-label="${esc(f.nome)}"><svg viewBox="0 0 100 120" width="20" height="24" aria-hidden="true" focusable="false"><path d="${esc(f.d)}" fill="currentColor"/></svg></button>`).join('')}</div></div>
-        <div><span class="eyebrow">Divisão</span><div class="tr-escs" role="group" aria-label="Divisão do brasão">${c.DIVISOES.map(([d, nm]) => `<button type="button" class="tr-esc tr-esct" data-mdiv="${d}" aria-pressed="${b.div === d}">${esc(nm)}</button>`).join('')}</div></div>
+        <div><span class="eyebrow">Divisão</span><div class="tr-escs" role="group" aria-label="Divisão do brasão">${c.DIVISOES.map(([d, nm]) => `<button type="button" class="tr-esc tr-esct tr-escdiv" data-mdiv="${d}" aria-pressed="${b.div === d}">${c.divAmostra ? c.divAmostra(d, 14, 17) : ''}${esc(nm)}</button>`).join('')}</div></div>
         <div><span class="eyebrow">Cores (escolha qual e depois a cor)</span>
           <div class="tr-escs" role="group" aria-label="Qual cor">${[0, 1].map(i => `<button type="button" class="tr-esc tr-esct" data-malvo="${i}" aria-pressed="${i === 0}"><i class="tr-amostra" data-mamostra="${i}" style="background:${esc(b.cores[i])}"></i>Cor ${i + 1}</button>`).join('')}</div>
           <div class="tr-escs tr-cores" role="group" aria-label="A cor">${c.CORES.map(cor => `<button type="button" class="tr-esc tr-cor" data-mcor="${cor}" aria-pressed="${b.cores[0] === cor}" title="${cor}" aria-label="Cor ${cor}"><i style="background:${cor}"></i></button>`).join('')}
             <label class="tr-esc tr-esct tr-outra">Outra <input type="color" data-moutra value="${esc(b.cores[0])}" aria-label="Outra cor"></label></div></div>
         <div><span class="eyebrow">Símbolo</span><div class="tr-simbs" role="group" aria-label="Símbolo do brasão">
-          <button type="button" class="tr-esc tr-esct tr-nenhum" data-msimb="" aria-pressed="${!b.simb}">Nenhum</button>${[...c.SIMBOLOS.values()].map(s => `<button type="button" class="tr-esc" data-msimb="${esc(s.id)}" aria-pressed="${b.simb === s.id}" title="${esc(s.nome)}" aria-label="${esc(s.nome)}">${icone(s.d)}</button>`).join('')}</div></div>
+          <button type="button" class="tr-esc tr-esct tr-nenhum" data-msimb="" aria-pressed="${!b.simb}">Nenhum</button>${(c.simbolosEmGrupos ? c.simbolosEmGrupos() : [{ id: 'todos', nome: '', itens: [...c.SIMBOLOS.values()] }]).map(g => (g.nome ? `<small class="tr-sgrupo" data-sgrupo="${esc(g.id)}">${esc(g.nome)}</small>` : '') + g.itens.map(s => `<button type="button" class="tr-esc" data-msimb="${esc(s.id)}" aria-pressed="${b.simb === s.id}" title="${esc(s.nome)}" aria-label="${esc(s.nome)}">${icone(s.d)}</button>`).join('')).join('')}</div></div>
       </div>
     </div>`;
   }

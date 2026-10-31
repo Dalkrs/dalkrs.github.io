@@ -1036,15 +1036,20 @@ const Props = (() => {
           const div = (b && b.div) || 'partido';
           c.fillStyle = c1; c.fillRect(0, 0, 100, 120);
           c.fillStyle = c2;
-          if (div === 'partido') c.fillRect(50, 0, 50, 120);
+          // (lote 45) o pedaço da segunda cor vem pronto do Clã (bras.dp); sem ele, as cinco divisões de antes
+          let feito = false;
+          if (b && typeof b.dp === 'string') { feito = true; if (b.dp) { try { c.fill(new Path2D(b.dp)); } catch (e) { /* (não desenha: fica liso) */ } } }
+          if (feito) { /* já foi */ }
+          else if (div === 'partido') c.fillRect(50, 0, 50, 120);
           else if (div === 'cortado') c.fillRect(0, 60, 100, 60);
           else if (div === 'esquartelado') { c.fillRect(50, 0, 50, 60); c.fillRect(0, 60, 50, 60); }
           else if (div === 'faixa') { c.beginPath(); c.moveTo(-10, 18); c.lineTo(18, -10); c.lineTo(110, 92); c.lineTo(82, 120); c.closePath(); c.fill(); }
           if (b && b.s) {
             try {
               const sp = new Path2D(b.s);
-              c.save(); c.translate(b.fl ? 12 : 26, b.fl ? 36 : 28); c.scale(2, 2);
-              c.strokeStyle = claro(c1) && (div === 'liso' || claro(c2)) ? '#1b1b22' : '#f6efe2'; c.lineWidth = 1.8; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(sp);
+              const st = Array.isArray(b.st) ? b.st : b.fl ? [12, 36, 2] : [26, 28, 2];
+              c.save(); c.translate(st[0], st[1]); c.scale(st[2], st[2]);
+              c.strokeStyle = claro(c1) && (div === 'liso' || claro(c2)) ? '#1b1b22' : '#f6efe2'; c.lineWidth = 1.8 * 2 / st[2]; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(sp);
               c.restore();
             } catch (e) { /* (um símbolo que não desenha: fica sem) */ }
           }

@@ -1273,7 +1273,10 @@ dialog.mundo-dl.band-dl { width: min(720px, calc(100% - 24px)); }
 .band-am { width: 18px; height: 18px; border-radius: 5px; }
 .mundo-dl label.band-outra { display: inline-flex; gap: 6px; color: var(--fg); font-size: 12.5px; }
 dialog.mundo-dl .band-outra input[type="color"] { width: 30px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
-.band-simbolos { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 6px; max-height: 176px; overflow: auto; padding: 2px; }
+.band-simbolos { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 6px; max-height: 240px; overflow: auto; padding: 2px; }
+.band-sgrupo { grid-column: 1 / -1; font: 700 12px var(--ui); color: var(--fg-3); padding-top: 6px; }
+.band-divam { display: inline-flex; }
+.band-divam .div-am { border-radius: 3px; display: block; }
 .band-esc.nenhum { grid-column: span 2; }
 .band-img:not(:has(> button:not([hidden]))) { display: none; }
 .mundo-dl .band-cla { padding: 8px 10px; border-radius: 9px; border: 1px dashed var(--line-strong); font-size: 13px; }
@@ -1503,9 +1506,9 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../tc/bestiario.js?v=3"></script>
 <script src="../tc/npc.js?v=1"></script>
 <script src="../tc/encontros.js?v=1"></script>
-<script src="../meditacao/nucleo.js?v=1"></script>
-<script src="../cla/nucleo.js?v=3"></script>
-<script src="../tc/tropas.js?v=3"></script>
+<script src="../meditacao/nucleo.js?v=2"></script>
+<script src="../cla/nucleo.js?v=4"></script>
+<script src="../tc/tropas.js?v=4"></script>
 <script src="../jornal/nucleo.js?v=2"></script>
 <script src="nucleo.js?v=44"></script>
 <script src="guerra.js?v=7"></script>
@@ -1519,7 +1522,7 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="painel.js?v=51"></script>
 <script src="guerra-painel.js?v=14"></script>
 <script src="guerra-ajuda.js?v=6"></script>
-<script src="reino-painel.js?v=15"></script>
+<script src="reino-painel.js?v=16"></script>
 <script src="corte-painel.js?v=6"></script>
 <script src="diplomacia-painel.js?v=7"></script>
 <script src="intrigas-painel.js?v=2"></script>

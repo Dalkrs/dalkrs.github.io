@@ -231,7 +231,11 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 .brasao-ed .previa { flex: 0 0 200px; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #2a2f40, #161a24); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
 .brasao-ed .previa svg, .brasao-ed .previa img { width: 160px; height: 192px; display: block; object-fit: contain; }
 .brasao-ed .campos { flex: 1 1 320px; display: grid; gap: 12px; min-width: 0; }
-.simbolos { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; max-height: 210px; overflow: auto; }
+.simbolos { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; max-height: 280px; overflow: auto; }
+/* (lote 45) os grupos de símbolos e as amostras das divisões */
+.simb-grupo { grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--fg-3); padding-top: 6px; }
+.esc-div { display: inline-flex; align-items: center; gap: 6px; }
+.div-am { border-radius: 3px; flex: none; }
 .niveis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 10px; }
 .niveis label { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 6px; font: 12px var(--mono); color: var(--fg-2); }
 .lista-esc { display: grid; gap: 8px; max-height: 48vh; overflow: auto; }
@@ -365,13 +369,13 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=20"></script>
-<script src="../meditacao/nucleo.js?v=1"></script>
-<script src="nucleo.js?v=3"></script>
-<script src="../tc/tropas.js?v=3"></script>
+<script src="../meditacao/nucleo.js?v=2"></script>
+<script src="nucleo.js?v=4"></script>
+<script src="../tc/tropas.js?v=4"></script>
 <script src="../mundo/nucleo.js?v=44"></script>
 <script src="../tc/sede.js?v=2"></script>
-<script src="sede-ui.js?v=2"></script>
+<script src="sede-ui.js?v=3"></script>
 <script src="construtor.js?v=1"></script>
-<script src="cla.js?v=5"></script>
+<script src="cla.js?v=6"></script>
 </body>
 </html>

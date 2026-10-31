@@ -228,6 +228,28 @@ div.quem { cursor: default; }
 .res { display: grid; gap: 5px; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
 .res.achou { border-color: #8a6a2a; background: rgba(230, 171, 79, .1); }
 .res.achou b { color: var(--lamp-ink); }
+/* (lote 45) as palavras: nos pilares, a primeira letra entalhada, em tinta lilás (os símbolos são dourados); o dicionário,
+   como os verbetes de um léxico — a palavra grande, o sentido em itálico, as notas embaixo */
+.pglifo { display: inline-grid; place-items: center; font-family: var(--display); font-weight: 700; line-height: 1; color: var(--secret); }
+.pilar.pal .pedra { border-color: color-mix(in srgb, var(--secret) 55%, transparent); }
+.pilar.pal small { color: var(--secret); font-weight: 600; }
+.simbolos.palavras { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+.simb.pal { flex-direction: row; min-height: 42px; gap: 6px; font: 600 16px/1.1 var(--display); color: var(--fg); overflow-wrap: anywhere; text-align: center; }
+.simb.pal .estrela { font-style: normal; font-size: 12px; color: var(--lamp-ink); }
+.dic { display: grid; gap: 12px; }
+.verbete { display: grid; gap: 6px; padding: 2px 0 2px 14px; border-left: 3px solid color-mix(in srgb, var(--secret) 45%, var(--line)); }
+.verbete.nova { border-left-color: var(--ok); }
+.vb-cab { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.vb-cab small { font-size: 12px; color: var(--fg-3); }
+.vb-p { font: 600 23px/1.1 var(--display); color: var(--fg); overflow-wrap: anywhere; }
+.vb-s { margin: 0; font-style: italic; line-height: 1.45; color: var(--fg); max-width: 62ch; }
+.vb-n, .vb-nota { margin: 0; font-size: 13px; line-height: 1.45; color: var(--fg-2); max-width: 62ch; white-space: pre-line; }
+.vb-n span, .vb-nota span { font-weight: 700; }
+.vb-uso { font-size: 12px; color: var(--fg-3); }
+.estrela { color: var(--fg-3); font-size: 18px; }
+.estrela.on { color: var(--lamp-ink); }
+.dic-ctl .rot { white-space: nowrap; }
+.ajuda.erro { color: var(--danger); min-height: 1.2em; }
 .res .txt { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.5; }
 .receita { display: grid; gap: 6px; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
 .receita .cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -302,8 +324,8 @@ dialog.dl #ns-des { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=20"></script>
 <script src="../jornal/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=1"></script>
+<script src="nucleo.js?v=2"></script>
 <script src="desenhos.js?v=2"></script>
-<script src="meditacao.js?v=4"></script>
+<script src="meditacao.js?v=5"></script>
 </body>
 </html>

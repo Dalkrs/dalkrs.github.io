@@ -1180,7 +1180,7 @@
   const aceita = (nome, r) => nome !== 'documentos' || r.dono_id == null || r.id === 'cena:pedido:' + r.dono_id
     || r.id === 'jornal:cartas:' + r.dono_id || r.id === 'jornal:resp:' + r.dono_id
     || r.id === 'mundo:rabisco:' + r.dono_id                       // (lote 17) a caneta de cada um no Mapa-múndi
-    || (typeof r.id === 'string' && (r.id.startsWith('medit:pratica:') || r.id.startsWith('medit:achados:')))
+    || (typeof r.id === 'string' && (r.id.startsWith('medit:pratica:') || r.id.startsWith('medit:achados:') || r.id.startsWith('medit:palavras:')))     // (lote 45: o dicionário)
     || (typeof r.id === 'string' && r.id.startsWith('fichas:corr:'))       // (lote 37) a corrupção: o dono é o dono do personagem
     || (typeof r.id === 'string' && r.id.startsWith('fichas:tropas:'));    // (lote 40) a tropa: o dono é o dono do personagem
   function dadosZerar() {
@@ -1627,6 +1627,8 @@
     const { data, error } = await cliente().rpc(funcao, p);
     if (error) {
       if (semEsquemaM(error)) throw new Error('O banco desta mesa ainda não tem a Meditação: falta aplicar a atualização do banco (o SQL desta versão).');
+      // (lote 45) o banco de antes da 0031 não conhece as palavras nos pilares
+      if (op === 'tentar' && p.p_seq.some(x => /^w\./.test(x)) && /símbolo que não existe/.test(String(error.message || ''))) throw new Error('O banco desta mesa ainda não aceita palavras nos pilares: falta aplicar a atualização do banco (o SQL 0031).');
       if (String(error.code || '') === 'P0001' && error.message) throw new Error(String(error.message).slice(0, 300));
       throw falha(error, 'Não deu certo agora. Tente de novo.');
     }
@@ -1926,6 +1928,14 @@
       if (a.papel !== 'mestre' || !mesas.mestra('arvore') || typeof d.para !== 'string' || !d.para || d.para === conta.usuario.id) return null;
       if (!(a.membros || []).some(m => m.usuario_id === d.para)) return null;
       return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || 'Árvore').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null, secreta: true, para: d.para });
+    }
+    // (lote 45) A Meditação avisa o dono de um personagem que o mestre deu a ele uma palavra: uma linha em segredo,
+    // endereçada a ele (só os dois a veem). Só o mestre da mesa (a linha endereçada é dele).
+    if (origem === 'meditacao' && d && d.kind === 'palavra' && mesas.atual) {
+      const a = mesas.atual;
+      if (a.papel !== 'mestre' || !mesas.mestra('meditacao') || typeof d.para !== 'string' || !d.para || d.para === conta.usuario.id) return null;
+      if (!(a.membros || []).some(m => m.usuario_id === d.para)) return null;
+      return aoVivo.rolagem({ k: 'tabela', titulo: String(d.titulo || 'Meditação').slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null }, { origem, quem: null, secreta: true, para: d.para });
     }
     // As Cenas também avisam a mesa (o mestre pôs uma cena no ar): só o mestre pode.
     if (origem === 'cena' && d && d.kind === 'aviso' && mesas.atual) {

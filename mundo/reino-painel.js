@@ -1418,15 +1418,23 @@
       const esc = (attrs, conteudo, fn) => { const el = h('button', Object.assign({ type: 'button', class: 'band-esc' }, attrs), conteudo); el.addEventListener('click', () => { fn(); atualizar(); }); return el; };
       const svgForma = d => { const s0 = document.createElementNS(NS, 'svg'), p = document.createElementNS(NS, 'path'); s0.setAttribute('width', '24'); s0.setAttribute('height', '28'); s0.setAttribute('viewBox', '0 0 100 120'); s0.setAttribute('aria-hidden', 'true'); p.setAttribute('d', d); p.setAttribute('fill', 'currentColor'); s0.append(p); return s0; };
       const bFormas = C.FORMAS.map(fm => esc({ 'data-forma': fm.id, title: fm.nome, 'aria-label': fm.nome }, svgForma(fm.d), () => { b.forma = fm.id; }));
-      const bDivs = C.DIVISOES.map(([d, nm]) => esc({ 'data-div': d }, nm, () => { b.div = d; }));
+      // (lote 45) a divisão com a amostra do desenho
+      const amostraDiv = d => { const sp = h('span', { class: 'band-divam', 'aria-hidden': 'true' }); sp.innerHTML = C.divAmostra ? C.divAmostra(d) : ''; return sp; };
+      const bDivs = C.DIVISOES.map(([d, nm]) => esc({ 'data-div': d }, [amostraDiv(d), nm], () => { b.div = d; }));
       const amostras = [0, 1].map(() => h('span', { class: 'band-am' }));
       const bAlvos = [0, 1].map(i => esc({ 'data-alvo': String(i) }, [amostras[i], 'Cor ' + (i + 1)], () => { alvo = i; }));
       const paleta = (C.CORES.includes(f.cor) ? [] : [f.cor]).concat(C.CORES);
       const bCores = paleta.map(c => { const rot = c === f.cor ? 'A cor da facção' : 'Cor ' + c; return esc({ class: 'band-esc cor', 'data-cor': c, title: rot, 'aria-label': rot }, h('span', { style: { background: c } }), () => { b.cores[alvo] = c; }); });
       const outra = h('input', { type: 'color', 'data-k': 'band:outra', 'aria-label': 'Outra cor' });
       outra.addEventListener('change', () => { b.cores[alvo] = String(outra.value).toLowerCase(); atualizar(); });
-      const bSimbs = [esc({ class: 'band-esc nenhum', 'data-simb': '' }, 'Nenhum', () => { b.simb = null; })]
-        .concat([...C.SIMBOLOS.values()].map(s0 => esc({ 'data-simb': s0.id, title: s0.nome, 'aria-label': s0.nome }, glifo('<path d="' + s0.d + '"/>', 22), () => { b.simb = s0.id; })));
+      // (lote 45) os símbolos em grupos (os da Meditação, a heráldica, as classes e as raças): os títulos só na tela
+      const gruposS = C.simbolosEmGrupos ? C.simbolosEmGrupos() : [{ id: 'todos', nome: '', itens: [...C.SIMBOLOS.values()] }];
+      const bSimbs = [esc({ class: 'band-esc nenhum', 'data-simb': '' }, 'Nenhum', () => { b.simb = null; })];
+      const simbTela = [bSimbs[0]];
+      for (const g of gruposS) {
+        if (g.nome) simbTela.push(h('small', { class: 'band-sgrupo', 'data-sgrupo': g.id, text: g.nome }));
+        for (const s0 of g.itens) { const el = esc({ 'data-simb': s0.id, title: s0.nome, 'aria-label': s0.nome }, glifo('<path d="' + s0.d + '"/>', 22), () => { b.simb = s0.id; }); bSimbs.push(el); simbTela.push(el); }
+      }
       // a imagem (numa mesa): vai para o banco e volta o endereço; "Voltar ao desenho" tira
       const arquivo = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', 'data-k': 'band:arquivo', 'aria-label': 'A imagem da bandeira' });
       arquivo.hidden = true;
@@ -1468,7 +1476,7 @@
           h('div', { class: 'band-campos' },
             campo('Forma', grupo('Forma', bFormas)), campo('Divisão', grupo('Divisão', bDivs)),
             campo('Cores (escolha qual e depois a cor)', grupo('Qual cor', bAlvos), grupo('A cor', [bCores, h('label', { class: 'band-esc band-outra' }, 'Outra', outra)])),
-            campo('Símbolo', grupo('Símbolo', bSimbs, 'band-simbolos')),
+            campo('Símbolo', grupo('Símbolo', simbTela, 'band-simbolos')),
             h('div', { class: 'row band-img' }, bImg, bSemImg, arquivo), notaImg)),
         err, h('div', { class: 'pe' }, bNao, bOk));
       const dl = h('dialog', { class: 'mundo-dl band-dl', 'aria-labelledby': titulo.id }, form);

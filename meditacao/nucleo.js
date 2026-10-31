@@ -8,6 +8,9 @@
      medit:treino                as barras de treinamento de cada personagem (só quem mestra)
      medit:pratica:<personagem>  objeto, mantra, representação e a imagem meditando (o dono escreve; ele e quem mestra veem)
      medit:achados:<personagem>  tentativas liberadas e feitas, receitas descobertas e o registro (escrito pelo banco)
+     medit:palavras:<personagem> (lote 45) as palavras que o mestre deu ao personagem: o dicionário dele (quem mestra
+                                 escreve; o dono e quem mestra veem — ver a 0031). A nota e a estrela do jogador em cada
+                                 palavra moram na prática (pal).
    O panteão é o da ficha (ficha.panteao): um campo só, nos dois lugares. */
 (() => {
   'use strict';
@@ -83,6 +86,7 @@
   const MAX = {
     pilares: 5, minPilares: 2, quem: 40, receitas: 200, nomeReceita: 120, efeito: 4000, meus: 60, nomeSimbolo: 40,
     barras: 30, nomeBarra: 60, maxBarra: 999, objeto: 120, mantra: 300, rep: 1000, achadas: 500, registro: 200,
+    palavras: 300, palavra: 40, sentido: 300, notaPal: 600,
   };
 
   /* ---------------- apoio ---------------- */
@@ -97,6 +101,14 @@
   const linha = (v, max) => texto(v, max).replace(/\s+/g, ' ').trim();
   // o mesmo que o banco aceita num símbolo (e num id de personagem, de receita, de barra)
   const idOk = v => (typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v) && v !== '__proto__' ? v : '');
+  /* (lote 45) Uma palavra nos pilares vai como "w." + a chave dela: a palavra sem acento, em minúsculas, com hífen no
+     lugar do espaço (até 38 letras). O banco confere do mesmo jeito (meditacao_tentar, na 0031). */
+  const PAL = 'w.';
+  const chavePalavra = v => String(v == null ? '' : v).toLowerCase().replace(/æ/g, 'ae').replace(/œ/g, 'oe').replace(/ß/g, 'ss').replace(/[øð]/g, 'o').replace(/þ/g, 'th').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+/, '').slice(0, 38).replace(/-+$/, '');
+  const palOk = v => (typeof v === 'string' && /^w\.[a-z0-9-]{1,38}$/.test(v) ? v : '');
+  const itemOk = v => idOk(v) || palOk(v);
+  const ehPalavra = id => typeof id === 'string' && id.startsWith(PAL) && !!palOk(id);
   const pcOk = v => (typeof v === 'string' && v.length >= 1 && v.length <= 64 && !/[:@\s]/.test(v) && v !== '__proto__' ? v : '');
   // uma imagem: o endereço (https) de uma imagem enviada à mesa, ou, fora de uma mesa, a própria imagem embutida
   const urlOk = v => (typeof v === 'string' && ((v.length <= 600 && /^https:\/\/[^\s"'<>]+$/i.test(v))
@@ -144,7 +156,12 @@
     return { v: 1, ocultos, meus };
   }
   // Um símbolo pelo id (pronto ou do mestre): { id, nome, d } ou { id, nome, img }; um que não existe mais: '?'.
-  function simbolo(simb, id) {
+  // (lote 45) Uma palavra ("w.chave"): { id, nome (a palavra, como o mestre escreveu, se pals a tem), palavra: chave }.
+  function simbolo(simb, id, pals) {
+    if (ehPalavra(id)) {
+      const k = id.slice(PAL.length), t = pals instanceof Map ? pals.get(k) : ehObj(pals) && tem(pals, k) ? pals[k] : null;
+      return { id, nome: typeof t === 'string' && t ? t : k, palavra: k, grupo: 'pal' };
+    }
     const p = PRONTOS.get(id);
     if (p) return { id, nome: p.nome, d: p.d, grupo: p.grupo };
     const m = normSimbolos(simb).meus.find(x => x.id === id);
@@ -162,12 +179,49 @@
     if (s.meus.length) out.push({ id: 'meus', nome: 'Do mestre', itens: s.meus.map(m => simbolo(s, m.id)) });
     return out;
   }
-  const seqTxt = (simb, seq) => (Array.isArray(seq) ? seq : []).map(id => simbolo(simb, id).nome).join(' → ');
+  const seqTxt = (simb, seq, pals) => (Array.isArray(seq) ? seq : []).map(id => { const x = simbolo(simb, id, pals); return x.palavra ? '“' + x.nome + '”' : x.nome; }).join(' → ');
+
+  /* ---------------- (lote 45) as palavras ---------------- */
+  // O dicionário de um personagem: { v, lista: [{ id, p (a palavra), k (a chave), s (o sentido), n (a nota do mestre), em }] },
+  // sem duas com a mesma chave.
+  function normPalavras(d) {
+    d = ehObj(d) ? d : {};
+    const lista = [], vistos = new Set(), chaves = new Set();
+    for (const x of Array.isArray(d.lista) ? d.lista : []) {
+      if (!ehObj(x) || lista.length >= MAX.palavras) continue;
+      const p = linha(x.p, MAX.palavra), k = chavePalavra(p);
+      if (!k || chaves.has(k)) continue;
+      chaves.add(k);
+      lista.push({ id: unico(idOk(x.id), vistos, 'pw'), p, k, s: texto(x.s, MAX.sentido).trim(), n: texto(x.n, MAX.notaPal).trim(), em: instante(x.em) });
+    }
+    return { v: 1, lista };
+  }
+  // chave → a palavra, juntando vários dicionários (para mostrar as palavras dos pilares e das receitas)
+  function mapaPalavras(...docs) {
+    const m = new Map();
+    for (const d of docs) for (const x of normPalavras(d).lista) if (!m.has(x.k)) m.set(x.k, x.p);
+    return m;
+  }
+  const temPalavra = (pals, k) => normPalavras(pals).lista.some(x => x.k === k);
+  // As palavras de uma sequência que o dicionário não tem (chaves).
+  const palavrasFora = (pals, seq) => (Array.isArray(seq) ? seq : []).filter(ehPalavra).map(id => id.slice(PAL.length)).filter(k => !temPalavra(pals, k));
+  /* Onde uma palavra já foi usada (pelo registro do personagem): quantas tentativas a levaram e as receitas descobertas
+     com ela (os nomes, sem repetir). */
+  function usosDaPalavra(ach, k) {
+    const id = PAL + k, a = normAchados(ach), receitas = [];
+    let tentativas = 0;
+    for (const r of a.reg) {
+      if (r.tipo !== 'tentou' || !r.seq.includes(id)) continue;
+      tentativas++;
+      if (r.res && r.nome && !receitas.includes(r.nome)) receitas.push(r.nome);
+    }
+    return { tentativas, receitas };
+  }
 
   /* ---------------- as receitas ---------------- */
   function normSeq(v) {
     const out = [];
-    for (const id of Array.isArray(v) ? v : []) { const x = idOk(id); if (x && out.length < MAX.pilares) out.push(x); }
+    for (const id of Array.isArray(v) ? v : []) { const x = itemOk(id); if (x && out.length < MAX.pilares) out.push(x); }
     return out;
   }
   function normReceitas(d) {
@@ -240,7 +294,21 @@
   /* ---------------- a prática e o que a meditação guardou ---------------- */
   function normPratica(d) {
     d = ehObj(d) ? d : {};
-    return { v: 1, objeto: linha(d.objeto, MAX.objeto), mantra: linha(d.mantra, MAX.mantra), rep: texto(d.rep, MAX.rep), img: urlOk(d.img) };
+    const out = { v: 1, objeto: linha(d.objeto, MAX.objeto), mantra: linha(d.mantra, MAX.mantra), rep: texto(d.rep, MAX.rep), img: urlOk(d.img) };
+    // (lote 45) a nota e a estrela do jogador em cada palavra do dicionário: { id da palavra: { n, f } } (só as que têm algo)
+    if (ehObj(d.pal)) {
+      const pal = {};
+      let n = 0;
+      for (const k of Object.keys(d.pal)) {
+        const x = d.pal[k], id = idOk(k);
+        if (!id || !ehObj(x) || n >= MAX.palavras) continue;
+        const nota = texto(x.n, MAX.notaPal).trim(), f = x.f === true;
+        if (!nota && !f) continue;
+        pal[id] = f ? { n: nota, f: true } : { n: nota }; n++;
+      }
+      if (n) out.pal = pal;
+    }
+    return out;
   }
   function normAchados(d) {
     d = ehObj(d) ? d : {};
@@ -280,10 +348,11 @@
     a.lib = Math.max(a.feitas, Math.min(a.feitas + 5, a.lib + (Math.trunc(Number(mais)) || 1)));
     return a;
   }
-  function localTentar(quem, cena, ach, rec, pc, seq, quando) {
+  function localTentar(quem, cena, ach, rec, pc, seq, quando, pals) {
     const c = normCena(cena), a = normAchados(ach), s = normSeq(seq);
     if (!normQuem(quem).quem.includes(pc)) return { ok: false, msg: 'O personagem não está meditando.' };
-    if (s.length < MAX.minPilares || s.length !== (Array.isArray(seq) ? seq.length : 0)) return { ok: false, msg: 'Ponha de 2 a 5 símbolos nos pilares.' };
+    if (s.length < MAX.minPilares || s.length !== (Array.isArray(seq) ? seq.length : 0)) return { ok: false, msg: 'Ponha de 2 a 5 símbolos ou palavras nos pilares.' };
+    if (palavrasFora(pals, s).length) return { ok: false, msg: 'Uma das palavras não está no dicionário do personagem.' };
     if (a.lib <= a.feitas) return { ok: false, msg: 'O mestre ainda não liberou uma tentativa.' };
     const r = receitaQueCasa(rec, s, c.amb, pc), em = agora(quando);
     let nova = false;
@@ -297,6 +366,7 @@
   const MeditacaoNucleo = {
     AMBIENTES, HORAS, CLIMAS, AMB_NOME, HORA_NOME, GRUPOS, DESENHOS, MAX, novoId,
     normCena, normQuem, meditando, normSimbolos, simbolo, grupos, seqTxt,
+    PAL, chavePalavra, palOk, ehPalavra, normPalavras, mapaPalavras, temPalavra, palavrasFora, usosDaPalavra,
     normReceitas, receitaPronta, receitaQueCasa, repetidas,
     normTreino, somarTreino, normPratica, normAchados, liberada, ultimaTentativa,
     localEntrar, localLiberar, localTentar,

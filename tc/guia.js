@@ -138,9 +138,15 @@
       mestre: [
         { t: 'Os ambientes', txt: 'Onde os personagens meditam, cada um com o que pode ser achado lá.', onde: { sel: '#ambientes', nada: 'Os ambientes aparecem para quem mestra a Meditação.' } },
         { t: 'O painel', txt: 'Quem está meditando, as tentativas liberadas e o que cada um já achou.', onde: { sel: '#painel' } },
+        // (lote 45)
+        { t: 'As palavras', txt: 'Na prática de cada personagem, “Dar uma palavra…”: a palavra, o sentido e uma nota, para um ou mais personagens. Ela vai para o dicionário dele e entra nos pilares como os símbolos; só o dono recebe o aviso na Mesa ao vivo. Lá você muda o sentido, a nota, ou tira a palavra (com Desfazer), e vê a nota e a estrela do jogador.', onde: { sel: '[data-k="pal:dar"]', nada: 'Escolha um personagem em “Ver a prática de”.' } },
+        { t: 'Receitas com palavras', txt: 'Em Receitas e símbolos, o grupo Palavras traz as que algum personagem tem; “Outra palavra” põe uma que ninguém tem ainda (a receita avisa). Um pilar pode ter um símbolo ou uma palavra; o jogador só usa as do dicionário dele.', onde: { sel: '[data-vista="receitas"]' } },
       ],
       jogador: [
         { t: 'Meditar', txt: 'No painel: entrar na meditação com o seu personagem e tentar uma combinação nos pilares quando o mestre liberar.', onde: { sel: '#painel' } },
+        // (lote 45)
+        { t: 'O dicionário', txt: 'As palavras que o mestre deu ao seu personagem, com o sentido. Busque, ordene (de A a Z, as mais novas, as mais usadas), escreva a sua nota e veja onde cada palavra já foi usada. A estrela leva a palavra para o começo da lista dos pilares.', onde: { sel: '[data-k="dic:busca"], #painel', nada: 'O dicionário aparece quando o mestre der a primeira palavra.' } },
+        { t: 'Palavras nos pilares', txt: 'Nos pilares, o grupo Palavras: cada pilar recebe um símbolo ou uma palavra do seu dicionário. Na pedra fica a primeira letra; embaixo, a palavra inteira.', onde: { sel: '[data-k="pilares"]' } },
       ],
     },
     cla: {
@@ -150,6 +156,8 @@
         // (lote 30) a Sede e o construtor
         { t: 'A Sede', txt: 'No painel do clã, “Montar a Sede” (ou “Abrir a Sede”): arraste as plantas prontas (Salão, Quartel, Forja, Templo, Estábulo e Torre, nos níveis 1 a 3) para o terreno, ligue cada prédio a uma construção do clã e ponha a muralha, os portões, as estradas, o poço e os jardins. O chão vem do lugar do clã no Mapa-múndi. “Ver nas Cenas” cria a cena da sede e a de cada andar; pedir de novo atualiza (os tokens, a névoa e as luzes ficam).', onde: { sel: '[data-k="sec:sede"]', nada: 'Abra um clã no painel (Mestre) primeiro.' } },
         { t: 'O construtor', txt: 'Na Sede, escolha um prédio e “Editar no construtor”: faça cômodos (arrastando), ponha portas e janelas (clique na parede), troque o piso, ponha móveis e escadas, e mais andares (ou o porão). “Salvar como planta” guarda para usar de novo, em “Minhas plantas”.' },
+        // (lote 45)
+        { t: 'O brasão', txt: 'No painel do clã, “Brasão…”: 12 formas (escudo, bandeira, gonfalão, pendão…), 16 divisões (cruz, aspa, asna, xadrez…), duas cores e um símbolo — os da Meditação, a heráldica, as 12 classes e as raças de Urgm. O mesmo montador desenha as bandeiras do Mapa-múndi e os brasões das tropas.', onde: { sel: '[data-k="c:brasao"]', nada: 'Abra um clã primeiro.' } },
         // (lote 42)
         { t: 'As tropas do clã', txt: 'No painel do clã, “Tropas do clã” → “+ Tropa”: escolha quem lidera. A tropa mora na ficha dele (aba Tropas, nas Fichas): cada personagem lidera uma só, e quem já tem tropa entra com ela. O líder do clã vê todas, sem mudar os números; “Tirar do clã” deixa a tropa na ficha.', onde: { sel: '[data-k="sec:tropas"]', nada: 'Abra um clã no painel do mestre.' } },
       ],

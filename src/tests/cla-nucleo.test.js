@@ -15,7 +15,20 @@ ok(j(Object.keys(C.ESCALAS)) === j(['mundo', 'rel', 'membro']) && Object.values(
 ok(C.ESCALAS.mundo[0] === 'Inimigo do mundo' && C.ESCALAS.mundo[20] === 'Divino' && C.ESCALAS.rel[0] === 'Extermínio' && C.ESCALAS.rel[20] === 'Um só povo' && C.ESCALAS.membro[0] === 'Inimigo jurado' && C.ESCALAS.membro[20] === 'Alma do clã'
   && Object.values(C.ESCALAS).every(l => new Set(l).size === l.length), '(lote 8) os níveis novos (de −10 a −6 e de +6 a +10) têm nomes próprios, sem repetir na escala');
 ok(j(C.PARTES.map(p => p[0])) === j(['cargos', 'construcoes', 'recursos', 'respeito', 'relacoes', 'hist']) && C.PARTE_NOME.hist === 'Histórico', 'as seis partes que o mestre mostra (ou não) de um clã de NPC');
-ok(C.FORMAS.length === 5 && C.DIVISOES.length === 5 && C.CORES.every(c => /^#[0-9a-f]{6}$/.test(c)), 'cinco formas, cinco divisões e a paleta de cores');
+ok(C.FORMAS.length === 12 && C.DIVISOES.length === 16 && C.CORES.every(c => /^#[0-9a-f]{6}$/.test(c)), '(lote 45) doze formas, dezesseis divisões e a paleta de cores');
+{
+  // (lote 45) os símbolos novos: a heráldica, as classes e as raças, em grupos; os caminhos que o Cenas aceita
+  const caminhoOk = v => typeof v === 'string' && v.length <= 1500 && /^[MLHVCSQTAZmlhvcsqtaz0-9.,\s-]+$/.test(v);
+  const g = Object.fromEntries(C.SIMB_GRUPOS.map(x => [x.id, x.itens.length]));
+  ok(g.her >= 45 && g.cls === 12 && g.rac === 35 && C.SIMB_GRUPOS.reduce((t, x) => t + x.itens.length, 0) === C.SIMBOLOS.size, 'os símbolos em grupos: a heráldica, as 12 classes e as 35 raças, sem sobrar nenhum — ' + j(g));
+  ok([...C.SIMBOLOS.values()].every(x => caminhoOk(x.d) && x.nome), 'todo símbolo é um caminho só, que o Cenas desenha');
+  ok(C.DIVISOES.every(([id, nome, d]) => nome && (id === 'liso' ? d === '' : caminhoOk(d))) && C.FORMAS.every(f => caminhoOk(f.d) && f.st.length === 3), 'toda divisão tem o pedaço da segunda cor; toda forma, onde o símbolo fica');
+  ok(C.SIMBOLOS.get('u-samurai').nome === 'Samurai' && C.SIMBOLOS.get('u-selene').nome === 'Kitsune Selene' && C.SIMBOLOS.has('leao') && C.SIMBOLOS.has('flordelis'), 'o Samurai, a Kitsune Selene, o leão, a flor-de-lis');
+  const t = C.brasaoSvg({ forma: 'triangular', div: 'aspa', cores: ['#24305e', '#d9a441'], simb: 'u-samurai' }, 't');
+  ok(t.includes('translate(32 14) scale(1.5)') && t.includes(C.DIV_PATH.aspa) && t.includes('stroke-width="2.4"'), 'a forma triangular põe o símbolo menor e mais alto (com o mesmo traço); a aspa desenha');
+  ok(C.normBrasao({ forma: 'gonfalao', div: 'xadrez' }).forma === 'gonfalao' && C.normBrasao({ div: 'xadrez' }).div === 'xadrez' && C.normBrasao({ div: 'nada' }).div === 'partido', 'as formas e divisões novas valem; a desconhecida vira a de começo');
+  ok(/class="div-am"/.test(C.divAmostra('cruz')) && C.simbolosEmGrupos()[0].itens[0].d, 'a amostra da divisão e os grupos prontos para os seletores');
+}
 {
   const ids = C.ICONES.map(i => i.id);
   ok(new Set(ids).size === ids.length && C.ICONES.every(i => /^[a-z]+$/.test(i.id) && /^M[\d.]/.test(i.d) && !/[<>"]/.test(i.d)), 'os ícones das construções: ids simples, desenho só de traço');
@@ -47,8 +60,8 @@ ok(C.FORMAS.length === 5 && C.DIVISOES.length === 5 && C.CORES.every(c => /^#[0-
   const n0 = C.brasaoNovo(0), n1 = C.brasaoNovo(1);
   ok(j(n0.cores) !== j(n1.cores) && n0.div !== n1.div && C.SIMBOLOS.has(n0.simb) && C.SIMBOLOS.has(n1.simb), 'o brasão de um clã novo muda de um clã para o outro');
   const s = C.brasaoSvg({ div: 'esquartelado', cores: ['#8a2a2a', '#c9ccd4'], simb: 'lua' }, 'cl_1"><x');
-  ok(/^<svg viewBox="0 0 100 120"/.test(s) && s.includes('clipPath id="brcl_1x"') && s.includes('url(#brcl_1x)') && (s.match(/<rect /g) || []).length === 4
-    && s.includes('#8a2a2a') && s.includes('#c9ccd4') && s.includes(C.SIMBOLOS.get('lua').d) && !/<script|on\w+=/i.test(s), 'o brasão desenhado: o recorte com id único, as quatro partes, o símbolo (e nada além de números e cores)');
+  ok(/^<svg viewBox="0 0 100 120"/.test(s) && s.includes('clipPath id="brcl_1x"') && s.includes('url(#brcl_1x)') && (s.match(/<rect /g) || []).length === 1 && s.includes(C.DIV_PATH.esquartelado)
+    && s.includes('#8a2a2a') && s.includes('#c9ccd4') && s.includes(C.SIMBOLOS.get('lua').d) && !/<script|on\w+=/i.test(s), 'o brasão desenhado: o recorte com id único, o fundo e o pedaço da segunda cor, o símbolo (e nada além de números e cores)');
   ok((C.brasaoSvg({ div: 'liso' }, 'a').match(/<rect /g) || []).length === 1 && C.brasaoSvg({ div: 'faixa' }, 'a').includes('<path d="M-10 18') && !C.brasaoSvg({ simb: null }, 'a').includes('scale(2)'),
     'liso, faixa e sem símbolo');
   ok(C.brasaoSvg({ div: 'liso', cores: ['#e8eaf0', '#e8eaf0'], simb: 'lua' }, 'a').includes('stroke="#1b1b22"') && C.brasaoSvg({ div: 'liso', cores: ['#1b1b22', '#e8eaf0'], simb: 'lua' }, 'a').includes('stroke="#f6efe2"'),
