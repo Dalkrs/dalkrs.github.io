@@ -163,6 +163,16 @@ const Fichas = (() => {
     return x && typeof x === 'object' ? x : null;
   }
   try { window.addEventListener('storage', ev => { if (ev.key === BEST_LOCAL || ev.key === null) { bestLocal = null; bestCache.clear(); } }); } catch (e) { /* sem janela */ }
+  /* (lote 49) Os inimigos do Bestiário que chegam aqui: [{ id, nome, tags }] (numa mesa, os documentos best:i:*; fora,
+     os deste navegador). Para o "Povoar o lugar" sortear os que combinam. */
+  function listaBest() {
+    const out = [], ok = (id, d) => { if (!d || typeof d !== 'object') return; out.push({ id, nome: String(d.nome || 'Inimigo'), tags: Array.isArray(d.tags) ? d.tags.filter(x => typeof x === 'string') : [] }); };
+    try {
+      if (D && typeof D.todas === 'function') { for (const l of D.todas()) if (l && !l.apagado && typeof l.id === 'string' && l.id.startsWith('best:i:')) ok(l.id.slice(7), l.dados); }
+      else { bestDados('x'); for (const k of Object.keys((bestLocal && bestLocal.docs) || {})) if (k.startsWith('best:i:')) ok(k.slice(7), bestLocal.docs[k]); }
+    } catch (e) { /* sem o Bestiário: a lista fica vazia */ }
+    return out.slice(0, 500);
+  }
   // → a linha do inimigo ({ id, nome, ficha, skills, estado: {}, best: true, e: o inimigo arrumado }) ou null
   function linhaBest(id) {
     const B = window.TC && window.TC.bestiario;
@@ -1103,7 +1113,7 @@ const Fichas = (() => {
     }
     return false;
   }
-  return { soAMao, corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { listaBest, soAMao, corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)

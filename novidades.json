@@ -2,6 +2,47 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.31-5",
+      "data": "2026-10-31",
+      "titulo": "Lugares novos e o lugar povoado",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Gerar um lugar: a aba Castelo (inteiro, sitiado ou em ruínas, com ou sem fosso): as muralhas e as torres, a grade levadiça, a ponte levadiça que abre e fecha, a torre de menagem, o estábulo, a capela e o quartel com a forja; no sitiado, o acampamento de fora, as catapultas e o aríete."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A aba Cemitério: o muro baixo com o portão, os túmulos em fileiras, os mausoléus com o portão de ferro e o sarcófago, a igreja com os bancos, o altar e a luz do vitral, e a casa do coveiro."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A aba Catacumbas, em quatro jeitos: o ossuário antigo, a catacumba de culto, a inundada (a água corre nas salas alagadas) e a cripta nobre (com portões de ferro entre as câmaras)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "As entradas para baixo: a escada da cripta (na igreja ou num mausoléu) gera as catacumbas; a escada do castelo gera o calabouço; na vila povoada, o poço desce à cisterna e o alçapão de uma casa desce ao porão. São Entradas ocultas: dois cliques geram o nível."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "“Povoar o lugar” (embaixo da janela do gerador, e na janela do nível): as luzes como a hora pede, os inimigos sorteados no Bestiário da mesa entre os que combinam com o lugar (sem nenhum, um token com o nome), os moradores com o gerador de NPC (nome, raça, jeito e segredo nas notas) e o saque nos baús. Tudo oculto dos jogadores, no perigo escolhido."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "No Mapa-múndi, “Gerar este lugar…” no castelo abre a aba Castelo (já sitiado, se houver cerco), e no cemitério, a aba Cemitério."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Objetos novos: a ponte levadiça (baixada ou levantada), a catapulta e o aríete."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.31-4",
       "data": "2026-10-31",
       "titulo": "Objetos vivos nas cenas",

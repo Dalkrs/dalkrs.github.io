@@ -93,7 +93,7 @@ const j = JSON.stringify;
   /* ---------- os objetos novos ---------- */
   const cat = await ev(() => { const { Props } = __tc; const g = ['mercado', 'templo', 'forja', 'oriental', 'portao'];
     return g.map(id => [id, (Props.G.find(x => x.id === id) || {}).n, Props.ORDER.filter(k => Props.P[k].g === id).length]); });
-  ok(j(cat) === j([['mercado', 'Mercado e cidade', 6], ['templo', 'Templo e cripta', 6], ['forja', 'Forja e oficina', 6], ['oriental', 'Oriental', 6], ['portao', 'Portões e cortinas', 3]]), 'cinco grupos novos, com 27 objetos — ' + j(cat));
+  ok(j(cat) === j([['mercado', 'Mercado e cidade', 6], ['templo', 'Templo e cripta', 6], ['forja', 'Forja e oficina', 6], ['oriental', 'Oriental', 6], ['portao', 'Portões e cortinas', 6]]), 'cinco grupos novos, com 27 objetos — ' + j(cat));
   ok(await ev(() => { const { Props } = __tc; const cv = document.createElement('canvas'); cv.width = cv.height = 80; for (const k of Props.ORDER) Props.thumb(cv, k, 1.3); return true; }), 'todas as miniaturas se desenham sem erro');
   await ev(() => __tc.Tools.set('obj')); await w(300);
   for (const g of ['Mercado e cidade', 'Templo e cripta']) { const b = page.locator('#opts button, #opts .seg-b', { hasText: g }); if (await b.count()) { await b.first().click(); await w(250); } }

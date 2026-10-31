@@ -813,7 +813,7 @@ const Act = {
       if (def.alavanca && t.liga) {
         const w = Store.get('walls', t.liga), g = w ? null : Store.get('tokens', t.liga);
         if (w) { const era = !!w.open; Store.upd('walls', w.id, { open: !era }); ligado = (w.k === 'window' ? 'a janela' : w.k === 'veil' ? 'a cortina' : 'a porta') + (era ? ' fechou' : ' abriu'); }
-        else if (g && Props.estados(g.prop)) { const ab = Props.estado(g) === 'aberto'; Store.upd('tokens', g.id, { est: ab ? 'fechado' : 'aberto' }); ligado = g.name + (ab ? ' fechou' : ' abriu'); }
+        else if (g && Props.estados(g.prop)) { const l = Props.estados(g.prop), a = Props.estado(g), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; Store.upd('tokens', g.id, { est: nx[0] }); ligado = g.name + ': ' + nx[1].toLowerCase(); }
       }
     });
     return { nome: (lista.find(x => x[0] === novo) || [])[1], est: novo, ligado };

@@ -1830,7 +1830,8 @@
      estilo da região. Nada muda nas cenas até o mestre criar. */
   const LUGAR_DO_ICONE = { cidade: { lugar: 'cidade' }, vila: { lugar: 'vila' }, ponte: { lugar: 'encontro', op: { terreno: 'estrada', situacao: 'ponte' } }, floresta: { lugar: 'encontro', op: { terreno: 'floresta' } }, montanha: { lugar: 'encontro', op: { terreno: 'montanha' } }, porto: { lugar: 'porto' },
     // (lote 7, parte 4b-3) as ruínas: a aba Ruínas, já no lugar do ícone (a masmorra: a aba Masmorra, 4b-3c)
-    ruina: { lugar: 'ruinas' }, templo: { lugar: 'ruinas', op: { tipo: 'templo' } }, torre: { lugar: 'ruinas', op: { tipo: 'torre' } }, castelo: { lugar: 'ruinas', op: { tipo: 'forte' } },
+    ruina: { lugar: 'ruinas' }, templo: { lugar: 'ruinas', op: { tipo: 'templo' } }, torre: { lugar: 'ruinas', op: { tipo: 'torre' } }, castelo: { lugar: 'castelo' }, cemiterio: { lugar: 'cemiterio' },      // (lote 49) o castelo e o cemitério têm aba própria
+   
     masmorra: { lugar: 'masmorra' }, caverna: { lugar: 'ruinas', op: { tipo: 'circulo' } }, mina: { lugar: 'ruinas', op: { tipo: 'mina' } },
     ninho: { lugar: 'ruinas', op: { tipo: 'circulo' } } };     // (lote 17) o ninho de monstro: a boca da caverna, com o covil lá embaixo
   // (o desenho do hexágono → o terreno do encontro e, às vezes, a situação; lote 13: a savana e a tundra nos terrenos delas)
@@ -1912,6 +1913,8 @@
     const op = Object.assign({}, def.op || null);
     if (def.lugar === 'encontro') op.caminho = 'nenhum';
     else { const ter = terrenoNoPonto(m, o.x, o.y); op.terreno = VILA_DA_TEX[(ter && ter.tex) || ''] || 'campo'; }
+    // (lote 49) o castelo cercado no mapa já abre sitiado
+    if (def.lugar === 'castelo' && o.cerco) op.estado = 'sitiado';
     const nome = (o.nome || '').trim(), hx = def.lugar !== 'masmorra' ? doHexagono(m, o.x, o.y, { marcador: o.id }) : null;
     return TC.ponte.ir('cenas', { cena: id, gerar: Object.assign({ lugar: def.lugar, op }, nome ? { nome } : null, comum(m, o.x, o.y), hx) });
   }

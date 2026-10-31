@@ -1258,6 +1258,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <script src="../tc/sede.js?v=2"></script>
 <script src="../tc/corrupcao.js?v=1"></script>
 <script src="../tc/barras-painel.js?v=1"></script>
+<script src="../tc/npc.js?v=1"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -2334,7 +2335,7 @@ function normalizeScene(sc) {
     if (gera && palavra(gera.b)) t.gera = { b: gera.b };
     // (parte 4b-3: a escada que desce — o tipo do nível de baixo, o número dele, o tamanho, o estilo e a semente)
     // (lote 28: os oito estilos novos e a largura dos corredores, lc)
-    else if (gera && gera.t === 'masmorra') t.gera = Object.assign({ t: 'masmorra', m: ['pedra', 'caverna', 'cripta', 'mina', 'templo', 'esgoto', 'torre', 'laboratorio', 'fortaleza', 'ruinas', 'covil', 'navio'].includes(gera.m) ? gera.m : 'pedra', n: clamp(Math.round(Number(gera.n)) || 1, 1, 99), tam: ['pequeno', 'medio', 'grande'].includes(gera.tam) ? gera.tam : 'medio', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1 }, [1, 2, 3].includes(gera.lc) ? { lc: gera.lc } : null);
+    else if (gera && gera.t === 'masmorra') t.gera = Object.assign({ t: 'masmorra', m: ['pedra', 'caverna', 'cripta', 'mina', 'templo', 'esgoto', 'torre', 'laboratorio', 'fortaleza', 'ruinas', 'covil', 'navio', 'ossuario', 'culto', 'inundada', 'nobre', 'porao', 'cisterna', 'calabouco'].includes(gera.m) ? gera.m : 'pedra', n: clamp(Math.round(Number(gera.n)) || 1, 1, 99), tam: ['pequeno', 'medio', 'grande'].includes(gera.tam) ? gera.tam : 'medio', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1 }, [1, 2, 3].includes(gera.lc) ? { lc: gera.lc } : null);
     // (lote 18: a entrada de gruta — onde fica a boca, o bioma de baixo, a semente e o rio de cima, até 41 pontos)
     else if (gera && gera.t === 'subsolo') {
       const nu = v => (typeof v === 'number' && isFinite(v) ? Math.round(clamp(v, -1000, 1000) * 100) / 100 : null);
@@ -6697,6 +6698,43 @@ const Props = (() => {
     },
   });
 
+  // (lote 49) a ponte levadiça (baixada, passa; levantada, barra o passo como uma janela) e as máquinas de cerco
+  reg('ponteLevadica', {
+    n: 'Ponte levadiça', g: 'portao', size: 2, estados: [['baixada', 'Baixada'], ['levantada', 'Levantada']], parede: 'window', abertoEm: 'baixada',
+    draw(c, R, t, s) {
+      const baixa = est() !== 'levantada';
+      for (const x of [-1, 1]) { c.strokeStyle = FER.esc; c.lineWidth = R * 0.05; c.beginPath(); c.moveTo(x * R * 0.85, -R * 0.95); c.lineTo(x * R * 0.85, baixa ? R * 0.9 : -R * 0.55); c.stroke(); }
+      if (baixa) {
+        caixa(c, -R * 0.82, -R * 0.95, R * 1.64, R * 1.9, R * 0.04); c.fillStyle = grad(c, -R, 0, R, 0, [MAD.esc, MAD.cla, MAD.esc]); c.fill(); linha(c, R * 0.04);
+        c.strokeStyle = 'rgba(40,22,8,0.55)'; c.lineWidth = R * 0.02; for (let i = 1; i < 8; i++) { c.beginPath(); c.moveTo(-R * 0.82, -R * 0.95 + i * R * 0.237); c.lineTo(R * 0.82, -R * 0.95 + i * R * 0.237); c.stroke(); }
+      } else {
+        caixa(c, -R * 0.82, -R * 0.98, R * 1.64, R * 0.3, R * 0.04); c.fillStyle = grad(c, 0, -R, 0, -R * 0.68, [MAD.cla, MAD.esc]); c.fill(); linha(c, R * 0.04);
+        c.strokeStyle = 'rgba(230,171,79,0.5)'; c.setLineDash([R * 0.1, R * 0.08]); c.lineWidth = R * 0.03; c.strokeRect(-R * 0.82, -R * 0.95, R * 1.64, R * 1.9); c.setLineDash([]);
+      }
+    },
+  });
+  reg('catapulta', {
+    n: 'Catapulta', g: 'portao', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.8, 0.9, 0.06, 0.08);
+      for (const x of [-0.55, 0.55]) { caixa(c, x * R - R * 0.08, -R * 0.75, R * 0.16, R * 1.5, R * 0.04); c.fillStyle = MAD.esc; c.fill(); linha(c, R * 0.03); }
+      for (const y of [-0.6, 0.6]) { caixa(c, -R * 0.62, y * R - R * 0.07, R * 1.24, R * 0.14, R * 0.03); c.fillStyle = MAD.med; c.fill(); linha(c, R * 0.03); }
+      for (const [x, y] of [[-0.62, -0.75], [0.62, -0.75], [-0.62, 0.75], [0.62, 0.75]]) { c.fillStyle = '#2a1a0c'; c.beginPath(); c.arc(x * R, y * R, R * 0.14, 0, Math.PI * 2); c.fill(); }
+      c.strokeStyle = MAD.cla; c.lineWidth = R * 0.12; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, R * 0.4); c.lineTo(0, -R * 0.85); c.stroke();
+      c.fillStyle = MAD.esc; c.beginPath(); c.arc(0, -R * 0.85, R * 0.2, 0, Math.PI * 2); c.fill(); linha(c, R * 0.03);
+      pedrinha(c, 0, -R * 0.85, R * 0.12, s);
+    },
+  });
+  reg('ariete', {
+    n: 'Aríete', g: 'portao', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.55, 0.95, 0.06, 0.06);
+      caixa(c, -R * 0.5, -R * 0.85, R * 1.0, R * 1.7, R * 0.06); c.fillStyle = grad(c, -R * 0.5, 0, R * 0.5, 0, ['#5a3a20', '#7a5230', '#5a3a20']); c.fill(); linha(c, R * 0.04);
+      c.strokeStyle = 'rgba(30,16,6,0.5)'; c.lineWidth = R * 0.03; for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(-R * 0.5, -R * 0.85 + i * R * 0.28); c.lineTo(R * 0.5, -R * 0.85 + i * R * 0.28); c.stroke(); }
+      caixa(c, -R * 0.12, -R * 1.0, R * 0.24, R * 0.4, R * 0.08); c.fillStyle = FER.cla; c.fill(); linha(c, R * 0.03);
+    },
+  });
+
   /* Os trechos que os portões fechados (e abertos) põem na cena: { x1, y1, x2, y2, k, open, prop } — ao longo do
      objeto, pelo meio dele, girando com ele. */
   Props.paredes = sc => {
@@ -6705,7 +6743,7 @@ const Props = (() => {
       const d = t.prop ? Props.P[t.prop] : null;
       if (!d || !d.parede) continue;
       const s = t.size * sc.cell, R = s / 2, cx = t.x + R, cy = t.y + R, a = (t.rot || 0) * Math.PI / 180, ux = Math.cos(a) * R, uy = Math.sin(a) * R;
-      out.push({ id: 'pp_' + t.id, x1: cx - ux, y1: cy - uy, x2: cx + ux, y2: cy + uy, k: d.parede, open: Props.estado(t) === 'aberto', prop: t.id });
+      out.push({ id: 'pp_' + t.id, x1: cx - ux, y1: cy - uy, x2: cx + ux, y2: cy + uy, k: d.parede, open: Props.estado(t) === (d.abertoEm || 'aberto'), prop: t.id });
     }
     return out;
   };
@@ -8053,7 +8091,7 @@ const Act = {
       if (def.alavanca && t.liga) {
         const w = Store.get('walls', t.liga), g = w ? null : Store.get('tokens', t.liga);
         if (w) { const era = !!w.open; Store.upd('walls', w.id, { open: !era }); ligado = (w.k === 'window' ? 'a janela' : w.k === 'veil' ? 'a cortina' : 'a porta') + (era ? ' fechou' : ' abriu'); }
-        else if (g && Props.estados(g.prop)) { const ab = Props.estado(g) === 'aberto'; Store.upd('tokens', g.id, { est: ab ? 'fechado' : 'aberto' }); ligado = g.name + (ab ? ' fechou' : ' abriu'); }
+        else if (g && Props.estados(g.prop)) { const l = Props.estados(g.prop), a = Props.estado(g), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; Store.upd('tokens', g.id, { est: nx[0] }); ligado = g.name + ': ' + nx[1].toLowerCase(); }
       }
     });
     return { nome: (lista.find(x => x[0] === novo) || [])[1], est: novo, ligado };
@@ -8939,6 +8977,16 @@ const Fichas = (() => {
     return x && typeof x === 'object' ? x : null;
   }
   try { window.addEventListener('storage', ev => { if (ev.key === BEST_LOCAL || ev.key === null) { bestLocal = null; bestCache.clear(); } }); } catch (e) { /* sem janela */ }
+  /* (lote 49) Os inimigos do Bestiário que chegam aqui: [{ id, nome, tags }] (numa mesa, os documentos best:i:*; fora,
+     os deste navegador). Para o "Povoar o lugar" sortear os que combinam. */
+  function listaBest() {
+    const out = [], ok = (id, d) => { if (!d || typeof d !== 'object') return; out.push({ id, nome: String(d.nome || 'Inimigo'), tags: Array.isArray(d.tags) ? d.tags.filter(x => typeof x === 'string') : [] }); };
+    try {
+      if (D && typeof D.todas === 'function') { for (const l of D.todas()) if (l && !l.apagado && typeof l.id === 'string' && l.id.startsWith('best:i:')) ok(l.id.slice(7), l.dados); }
+      else { bestDados('x'); for (const k of Object.keys((bestLocal && bestLocal.docs) || {})) if (k.startsWith('best:i:')) ok(k.slice(7), bestLocal.docs[k]); }
+    } catch (e) { /* sem o Bestiário: a lista fica vazia */ }
+    return out.slice(0, 500);
+  }
   // → a linha do inimigo ({ id, nome, ficha, skills, estado: {}, best: true, e: o inimigo arrumado }) ou null
   function linhaBest(id) {
     const B = window.TC && window.TC.bestiario;
@@ -9879,7 +9927,7 @@ const Fichas = (() => {
     }
     return false;
   }
-  return { soAMao, corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { listaBest, soAMao, corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
@@ -34541,7 +34589,13 @@ const Masmorra = (() => {
     // (lote 28) os estilos novos
     ['templo', 'Templo'], ['esgoto', 'Esgoto'], ['torre', 'Torre de mago'], ['laboratorio', 'Laboratório'],
     ['fortaleza', 'Fortaleza anã'], ['ruinas', 'Ruínas élficas'], ['covil', 'Covil'], ['navio', 'Navio naufragado']];
-  const NOME = { pedra: 'Masmorra', caverna: 'Caverna', cripta: 'Cripta', mina: 'Mina', subsolo: 'Subsolo', arena: 'Arena',
+  /* (lote 49) os tipos que não aparecem na lista da aba Masmorra: as catacumbas (a aba Catacumbas), o porão, a cisterna e
+     o calabouço (as entradas dos lugares: o alçapão, o poço, a escada do castelo). Valem em tudo o mais. */
+  const TIPOS_MAIS = [['ossuario', 'Ossuário antigo'], ['culto', 'Catacumba de culto'], ['inundada', 'Catacumba inundada'], ['nobre', 'Cripta nobre'],
+    ['porao', 'Porão'], ['cisterna', 'Cisterna'], ['calabouco', 'Calabouço']];
+  const TODOS = TIPOS.concat(TIPOS_MAIS);
+  const CATACUMBAS = ['ossuario', 'culto', 'inundada', 'nobre'];
+  const NOME = { ossuario: 'Catacumbas', culto: 'Catacumbas do culto', inundada: 'Catacumbas inundadas', nobre: 'Cripta nobre', porao: 'Porão', cisterna: 'Cisterna', calabouco: 'Calabouço', pedra: 'Masmorra', caverna: 'Caverna', cripta: 'Cripta', mina: 'Mina', subsolo: 'Subsolo', arena: 'Arena',
     templo: 'Templo', esgoto: 'Esgoto', torre: 'Torre', laboratorio: 'Laboratório', fortaleza: 'Fortaleza', ruinas: 'Ruínas', covil: 'Covil', navio: 'Navio naufragado' };
   // (lote 28) a largura dos corredores, em quadrados
   const LARGURAS = [[1, '1 quadrado'], [2, '2 quadrados'], [3, '3 quadrados']];
@@ -34822,6 +34876,45 @@ const Masmorra = (() => {
     ruinas: { op: T => ({ min: BIG(T) ? 11 : 10, salaMin: 4, salaMax: 9, lacos: 3 }), principal: () => 'salaoRuido',
       resto: (C, resto) => fila(C, resto, ['jardim', 'fonte', 'biblioteca', 'altar', 'jardim', 'vazia', 'vazia']), arco: 0.55, tranca: 0, antesDasParedes: ruirAsParedes },
   };
+  // (lote 49) as catacumbas, o porão, a cisterna e o calabouço
+  Object.assign(ESTILOS_SALAS, {
+    ossuario: { op: T => ({ min: BIG(T) ? 11 : 9, salaMin: 3, salaMax: 6, lacos: BIG(T) ? 4 : 3, curva: 1.5 }), principal: () => 'ossario',
+      resto: (C, resto) => fila(C, resto, ['ossario', 'nichos', 'familia', 'desabado', 'nichos', 'ossario', 'familia', 'vazia'], { familia: q => q.w >= 4 && q.h >= 4 }), arco: 0.6, tranca: 0.04, depois: C => { nichosDosCorredores(C); desabamentos(C); } },
+    culto: { op: T => ({ min: BIG(T) ? 10 : 9, salaMin: 3, salaMax: 8, lacos: 2 }), principal: () => 'santuario',
+      resto: (C, resto) => fila(C, resto, ['ossario', 'nichos', 'sacrificio', 'celas', 'biblioteca', 'nichos', 'vazia'], { celas: q => Math.min(q.w, q.h) >= 5 && (q.celas = ladoDasCelas(q)), sacrificio: q => q.w >= 4 && q.h >= 4 }), arco: 0.35, tranca: 0.15, depois: C => nichosDosCorredores(C) },
+    inundada: { op: T => ({ min: BIG(T) ? 10 : 9, salaMin: 3, salaMax: 7, lacos: BIG(T) ? 3 : 2 }), principal: () => 'cisternaVelha',
+      resto: (C, resto) => fila(C, resto, ['alagada', 'nichos', 'ossario', 'alagada', 'familia', 'vazia'], { familia: q => q.w >= 4 && q.h >= 4 }), arco: 0.5, tranca: 0.05, depois: C => nichosDosCorredores(C), semTochas: true },
+    nobre: { op: T => ({ min: BIG(T) ? 10 : 9, salaMin: 4, salaMax: 8, lacos: 2 }), principal: () => 'jazigo',
+      resto: (C, resto) => fila(C, resto, ['familia', 'familia', 'capela', 'galeria', 'sarcofagos', 'familia', 'vazia'], { familia: q => q.w >= 4 && q.h >= 4 }), arco: 0.1, tranca: 0.25, depois: portoesNasPortas },
+    porao: { op: () => ({ min: 4, salaMin: 3, salaMax: 6, lacos: 1 }), principal: () => 'adega',
+      resto: (C, resto) => fila(C, resto, ['deposito', 'porao', 'escondPorao', 'deposito']), arco: 0.4, tranca: 0.2 },
+    cisterna: { op: () => ({ min: 5, salaMin: 3, salaMax: 7, lacos: 2, curva: 1.2 }), principal: () => 'cisterna',
+      resto: (C, resto) => fila(C, resto, ['juncao', 'alagada', 'ratos', 'vazia']), arco: 0.7, tranca: 0.05, depois: canaisDoEsgoto, semTochas: true },
+    calabouco: { op: T => ({ min: BIG(T) ? 9 : 7, salaMin: 4, salaMax: 8, lacos: 2 }), principal: C => 'celas',
+      resto: (C, resto, x) => { const perto = resto.filter(q => !q.papel && q.liga.includes(x.entrada.i)); if (perto.length) perto[0].papel = 'guarda';
+        fila(C, resto, ['celas', 'tortura', 'deposito', 'arsenal', 'celas', 'vazia'], { celas: q => Math.min(q.w, q.h) >= 5 && (q.celas = ladoDasCelas(q)) }); }, arco: 0.1, tranca: 0.35 },
+  });
+  // (o calabouço precisa do lado das celas na sala principal)
+  const principalCelas = ESTILOS_SALAS.calabouco;
+  principalCelas.principal = C => 'celasP';
+  // as portas de ferro da cripta nobre: algumas portas viram portões (o objeto, que abre e fecha e barra)
+  function portoesNasPortas(C) {
+    const p = C.p, novas = [];
+    for (const w of p.paredes) {
+      if (w.k !== 'door' || w.secret || C.r() > 0.55) { novas.push(w); continue; }
+      const horiz = Math.abs(w.y1 - w.y2) < 0.01;
+      p.objetos.push(horiz ? { id: 'portao', x: Math.min(w.x1, w.x2), y: w.y1 - 0.5, s: 1 } : { id: 'portao', x: w.x1 - 0.5, y: Math.min(w.y1, w.y2), s: 1, rot: 90 });
+    }
+    p.paredes = novas;
+  }
+  // os túneis desabados do ossuário: o entulho que fecha o fim de alguns corredores
+  function desabamentos(C) {
+    const { G, W, H } = C;
+    for (let j = 1, n = 0; j < H - 1 && n < 4; j++) for (let i = 1; i < W - 1 && n < 4; i++) {
+      if (G.at(i, j) !== CORREDOR || !C.livre(i, j) || C.r() > 0.012) continue;
+      C.pinta('entulho', { x: i + 0.5, y: j + 0.5, r: 1.1 }); C.ocupa(i, j, 1, 1); n++;
+    }
+  }
   // os papéis das salas que sobraram, na ordem embaralhada; o que pede tamanho (cond) só vai para quem cabe
   function fila(C, resto, lista, cond) {
     const f = C.embaralha(lista);
@@ -36903,6 +36996,46 @@ const Masmorra = (() => {
     enfermaria(C, q) { encosta(C, q, 'cama', 2, 2); noCanto(C, q, 'jarro'); noCanto(C, q, 'balcao'); encosta(C, q, 'vela', 1); },
   });
 
+  // (lote 49) as salas das catacumbas, do porão, da cisterna e do calabouço
+  Object.assign(MOBILIA, {
+    familia(C, q) {
+      // a câmara de uma família: os sarcófagos em fila, os nichos de ossos na parede, as velas
+      const lp = ladoDasPortas(q), fundo = OPOSTO[lp], horiz = fundo === 'n' || fundo === 's';
+      let n = 0;
+      for (let t = 0; t < 10 && n < Math.min(3, Math.floor((horiz ? q.w : q.h) / 2)); t++) { const e = naBeira(C, q, fundo, 2); if (e && C.poe('sarcofago', e[0], e[1], 2, horiz ? 0 : 90)) n++; }
+      encosta(C, q, 'nichoOssos', 2); encosta(C, q, 'vela', 2);
+      if (C.r() < 0.5) noCanto(C, q, 'estatua');
+    },
+    desabado(C, q) {
+      for (let k = 0; k < 3; k++) C.pinta('entulho', { x: q.x + C.ent(0.8, q.w - 0.8), y: q.y + C.ent(0.8, q.h - 0.8), r: C.ent(0.9, 1.6) });
+      C.pinta('ossos', { x: q.x + q.w / 2, y: q.y + q.h / 2, n: 5 });
+      if (C.r() < 0.5) noCanto(C, q, 'cranios');
+    },
+    santuario(C, q) {
+      // o templo escondido: o círculo de invocação no meio, o ídolo no fundo, as velas em volta, os braseiros
+      const cx = Math.floor(q.x + q.w / 2 - 1), cy = Math.floor(q.y + q.h / 2 - 1);
+      C.poe('circulo', cx, cy, 2);
+      const lp = ladoDasPortas(q), e = naBeira(C, q, OPOSTO[lp], 1, true);
+      if (e) C.poe('idolo', e[0], e[1], 1, ROT_FRENTE[lp]);
+      for (const [i, j] of [[cx - 1, cy - 1], [cx + 2, cy - 1], [cx - 1, cy + 2], [cx + 2, cy + 2]]) C.poe('vela', i, j);
+      noCanto(C, q, 'braseiro'); noCanto(C, q, 'braseiro'); encosta(C, q, 'incensario', 1);
+      C.pinta('tapete', { x: q.x + 1, y: q.y + q.h / 2 - 0.6, w: q.w - 2, h: 1.2 });
+    },
+    sacrificio(C, q) { MOBILIA.altar(C, q); noCanto(C, q, 'calice'); noCanto(C, q, 'grilhoes'); C.pinta('ossos', { x: q.x + q.w / 2, y: q.y + q.h / 2, n: 4 }); },
+    cisternaVelha(C, q) { alagar(C, q, 0.15); encosta(C, q, 'nichoOssos', 2); noCanto(C, q, 'cranios'); },
+    alagada(C, q) { alagar(C, q, 0.35); if (C.r() < 0.6) encosta(C, q, 'nichoOssos', 1); },
+    galeria(C, q) { encosta(C, q, 'estatua', Math.min(6, 2 + Math.floor((q.w + q.h) / 4))); noCanto(C, q, 'candelabro'); C.pinta('tapete', { x: q.x + 1, y: q.y + q.h / 2 - 0.6, w: q.w - 2, h: 1.2 }); },
+    adega(C, q) { const n = Math.min(10, 4 + Math.floor(q.w * q.h / 6)); for (let k = 0; k < n; k++) if (!encosta(C, q, 'barril', 1)) noCanto(C, q, 'barril'); encosta(C, q, 'estante', 1, 2); noCanto(C, q, 'jarro'); encosta(C, q, 'vela', 1); },
+    escondPorao(C, q) { noCanto(C, q, 'bau'); noCanto(C, q, 'caixote'); encosta(C, q, 'cama', 1, 2); if (C.r() < 0.6) noCanto(C, q, 'mesa', 2); encosta(C, q, 'lampiao', 1); },
+    celasP(C, q) { if (!q.celas) q.celas = ladoDasCelas(q); if (q.celas) MOBILIA.celas(C, q); else MOBILIA.guarda(C, q); },
+    tortura(C, q) { C.poe('mesaTortura', Math.floor(q.x + q.w / 2 - 1), Math.floor(q.y + q.h / 2 - 1), 2); encosta(C, q, 'grilhoes', 2); noCanto(C, q, 'braseiro'); noCanto(C, q, 'jaula'); encosta(C, q, 'tocha', 1); },
+  });
+  // a sala alagada: a água no chão (o relevo da água, que corre), menos uma beirada de cada lado
+  function alagar(C, q, beira) {
+    const b = Math.max(0.6, Math.min(q.w, q.h) * beira);
+    C.p.relevo.push({ t: 'agua', alt: -0.5, k: 'rect', x: q.x + b, y: q.y + b, w: Math.max(0.8, q.w - 2 * b), h: Math.max(0.8, q.h - 2 * b) });
+  }
+
   /* ================= o plano de um nível ================= */
   /* o: { tipo, tamanho, nivel, estilo, seed, segredos (portas secretas e runas), descida (a escada para o nível de
      baixo) }. Devolve o plano: a grade (em texto: 0 rocha, 1 sala, 2 corredor, 3 água, 4 abismo, 5 nicho, 6 ponte), as
@@ -36911,7 +37044,7 @@ const Masmorra = (() => {
   function gerar(o) {
     o = o || {};
     // (lote 18) o subsolo: do tamanho da cena de cima, com a entrada, o rio e o bioma de lá
-    const sob = o.tipo === 'subsolo', are = o.tipo === 'arena', tipo = sob ? 'subsolo' : are ? 'arena' : TIPOS.some(t => t[0] === o.tipo) ? o.tipo : 'pedra';
+    const sob = o.tipo === 'subsolo', are = o.tipo === 'arena', tipo = sob ? 'subsolo' : are ? 'arena' : TODOS.some(t => t[0] === o.tipo) ? o.tipo : 'pedra';
     const tamanho = TAMANHOS[o.tamanho] ? o.tamanho : 'medio', T = are ? TAM_ARENA[tamanho] : sob ? { W: clamp(Math.round(Number(o.W)) || 40, 20, 80), H: clamp(Math.round(Number(o.H)) || 30, 16, 60) } : TAMANHOS[tamanho];
     const ex = sob ? { entradaEm: { x: clamp(Number(o.x) || T.W / 2, 0, T.W), y: clamp(Number(o.y) || T.H / 2, 0, T.H) }, rioPts: Array.isArray(o.rio) && o.rio.length >= 2 ? o.rio.filter(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1])).slice(0, 80).map(q => [Number(q[0]), Number(q[1])]) : null,
       bioma: BIOMAS_SUB.some(b => b[0] === o.bioma) ? o.bioma : 'fungos', achados: o.achados !== false, marcadores: [] }
@@ -36945,7 +37078,7 @@ const Masmorra = (() => {
   const nomePadrao = p => NOME[p.tipo] + ' — nível ' + p.nivel;
   function resumo(p) {
     const portas = p.paredes.filter(w => w.k === 'door' && !w.secret).length, secretas = p.paredes.filter(w => w.secret).length;
-    const partes = [(TIPOS.find(t => t[0] === p.tipo) || TIPOS[0])[1] + ' · nível ' + p.nivel, p.W + ' × ' + p.H + ' quadrados'];
+    const partes = [(TODOS.find(t => t[0] === p.tipo) || TIPOS[0])[1] + ' · nível ' + p.nivel, p.W + ' × ' + p.H + ' quadrados'];
     const salas = p.salas.length;
     if (p.tipo === 'arena') {
       const a = p.arena, q = [(ARENAS.find(x => x[0] === a.tipo) || ARENAS[0])[1], p.W + ' × ' + p.H + ' quadrados', 'o chefe e ' + (a.reforcos.length === 1 ? '1 ponto' : a.reforcos.length + ' pontos') + ' de reforço'];
@@ -36987,10 +37120,18 @@ const Masmorra = (() => {
     ruinas: { rocha: ['#1c241c', '#253025', '#121812'], chao: ['#7a8070', '#868c7b', '#6d7364'], junta: '#454a3e', bloco: ['#767c6c', '#686e5f', '#838a78'] },
     covil: { rocha: ['#271c18', '#33241f', '#17100e'], chao: ['#4f3d33', '#5b473b', '#43342b'], junta: '#3a2a22', bloco: ['#4a382e', '#3f3027', '#56423a'] },
     navio: { rocha: ['#0f1a1e', '#152429', '#0a1214'], chao: ['#5a4330', '#664c37', '#4e3a2a'], junta: '#2e2218', bloco: ['#4a3524', '#3f2d1f', '#56402b'] },
+    // (lote 49) as catacumbas, o porão, a cisterna e o calabouço
+    ossuario: { rocha: ['#201d1a', '#2b2723', '#13110f'], chao: ['#5a554c', '#655f55', '#4d4840'], junta: '#332f29', bloco: ['#56514a', '#47433c', '#615b52'] },
+    culto: { rocha: ['#1f1a1c', '#2a2326', '#120f11'], chao: ['#55494b', '#605356', '#493e40'], junta: '#352b2d', bloco: ['#514546', '#443a3b', '#5c4f51'] },
+    inundada: { rocha: ['#1a1f1f', '#232a2a', '#101414'], chao: ['#4e5552', '#59615d', '#434a47'], junta: '#2c3230', bloco: ['#4b524f', '#3f4643', '#565e5a'] },
+    nobre: { rocha: ['#211e1d', '#2c2827', '#141211'], chao: ['#7a746c', '#878078', '#6d675f'], junta: '#45403a', bloco: ['#736d65', '#655f58', '#807970'] },
+    porao: { rocha: ['#241d18', '#30271f', '#16110d'], chao: ['#5e4a38', '#6a5440', '#523f30'], junta: '#3a2d22', bloco: ['#56432f', '#4a3a29', '#614b36'] },
+    cisterna: { rocha: ['#1b201c', '#242a25', '#111412'], chao: ['#545246', '#5f5d50', '#48463c'], junta: '#2f2e26', bloco: ['#5a4a3c', '#4e4034', '#665444'] },
+    calabouco: { rocha: ['#222124', '#2d2b30', '#151417'], chao: ['#5f5c58', '#6b6863', '#53504c'], junta: '#38363a', bloco: ['#57544f', '#4a4844', '#625f59'] },
   };
   // (lote 28) o chão de cada estilo novo e os que têm parede de cantaria (os blocos do lado da rocha)
-  const PISO_M = { templo: 'marmore', esgoto: 'tijolo', torre: 'lajes', laboratorio: 'ladrilho', fortaleza: 'lajes', ruinas: 'lajes', navio: 'madeira' };
-  const CANTARIA = new Set(['pedra', 'cripta', 'templo', 'esgoto', 'torre', 'laboratorio', 'fortaleza', 'ruinas']);
+  const PISO_M = { nobre: 'marmore', porao: 'madeira', cisterna: 'tijolo', calabouco: 'lajes', ossuario: 'lajes', culto: 'lajes', inundada: 'lajes', templo: 'marmore', esgoto: 'tijolo', torre: 'lajes', laboratorio: 'ladrilho', fortaleza: 'lajes', ruinas: 'lajes', navio: 'madeira' };
+  const CANTARIA = new Set(['ossuario', 'culto', 'inundada', 'nobre', 'cisterna', 'calabouco', 'pedra', 'cripta', 'templo', 'esgoto', 'torre', 'laboratorio', 'fortaleza', 'ruinas']);
   // (lote 18) a pedra do subsolo, pelo bioma de baixo
   const PAL_SUB = {
     fungos: PAL_M.caverna,
@@ -37926,6 +38067,13 @@ const Masmorra = (() => {
   const NOTA = {
     pedra: 'Salas e corredores retos, com as portas (algumas trancadas), as celas com as grades, a sala do trono ou o salão das colunas, a guarda, o arsenal, o depósito, a biblioteca, o altar, o poço e o tesouro.',
     caverna: 'Os túneis tortos ligando as câmaras, o lago de baixo da terra, os cogumelos que brilham, as estalagmites (as grandes tapam a visão) e o abismo, com a ponte de pedra.',
+    ossuario: 'As galerias estreitas cheias de nichos com ossos, as câmaras das famílias com os sarcófagos, os ossários e os túneis desabados.',
+    culto: 'Um templo escondido no meio dos mortos: o círculo de invocação, o ídolo, as velas, a sala dos sacrifícios e as celas dos prisioneiros.',
+    inundada: 'A água tomou as partes de baixo: salas alagadas (a água corre), a cisterna velha, os nichos acima da água.',
+    nobre: 'O jazigo do senhor no estrado, as câmaras das famílias com os sarcófagos, a galeria das estátuas e os portões de ferro entre as câmaras.',
+    porao: 'A adega com os barris, o depósito, o esconderijo (a cama, o baú, o lampião) e os cantos com as caixas.',
+    cisterna: 'A cisterna funda, os canais de água, as junções com as grades e o ninho dos ratos.',
+    calabouco: 'As celas com as grades, a guarda perto da escada, a sala de tortura, o arsenal e o depósito.',
     cripta: 'Os corredores estreitos com os nichos dos mortos, as salas dos sarcófagos, o ossário, a capela e o jazigo do senhor no estrado, entre os braseiros.',
     mina: 'O túnel dos trilhos com os vagonetes, as escoras, as galerias com os veios, os túneis desabados, o acampamento abandonado e o poço de descida.',
     templo: 'A nave com o altar no estrado, as colunas e os bancos; o claustro com o poço, as capelas, a sacristia, os dormitórios e a biblioteca. Muitos arcos, poucas portas trancadas.',
@@ -37944,7 +38092,7 @@ const Masmorra = (() => {
     if (!isGM() || !t || !fora) return;
     const K = UI.kit, { field, seg, btn, note } = K, g0 = t.gera && t.gera.t === 'masmorra' ? t.gera : null, o = App.opt;
     const st = {
-      tipo: g0 && TIPOS.some(x => x[0] === g0.m) ? g0.m : TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra',
+      tipo: g0 && TODOS.some(x => x[0] === g0.m) ? g0.m : TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra',
       larg: g0 && g0.lc ? largDe(g0.lc) : largEscolhida(o.masLarg),
       tamanho: g0 && TAMANHOS[g0.tam] ? g0.tam : TAMANHOS[o.masTam] ? o.masTam : 'medio',
       nivel: g0 ? g0.n : 1, estilo: Estilos.valido(g0 ? g0.e : o.genEstilo), seed: g0 ? g0.s : novaSemente(),
@@ -37966,13 +38114,14 @@ const Masmorra = (() => {
     };
     const lembrar = () => { o.masTipo = st.tipo; o.masTam = st.tamanho; o.masSeg = st.segredos; o.masDesce = st.descida; o.masLarg = st.larg; };
     const pintarC = () => ctl.replaceChildren(...[
-      field('Tipo', seg('mas-tipo', st.tipo, TIPOS.map(([k, n]) => [k, n, null, NOTA[k]]), v => { st.tipo = v; lembrar(); pintarC(); refazer(); }), 'stack'),
+      field('Tipo', seg('mas-tipo', st.tipo, TODOS.map(([k, n]) => [k, n, null, NOTA[k]]), v => { st.tipo = v; lembrar(); pintarC(); refazer(); }), 'stack'),
       st.chefe ? null : field('Largura dos corredores', seg('mas-larg', st.larg || largPadrao(st.tipo), LARGURAS.map(([k, n]) => [k, n]), v => { st.larg = v; lembrar(); pintarC(); refazer(); }), 'stack'),
       field('Tamanho', seg('mas-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, `${TAMANHOS[k].W} × ${TAMANHOS[k].H} quadrados`]), v => { st.tamanho = v; lembrar(); pintarC(); refazer(); }), 'stack'),
       K.toggle('mas-chefe', st.chefe, v => { st.chefe = v; nomeMexido = false; pintarC(); refazer(); }, 'O último nível: a sala do chefe (uma arena com as fases)'),
       st.chefe ? null : K.toggle('mas-seg', st.segredos, v => { st.segredos = v; lembrar(); pintarC(); refazer(); }, 'Com segredos (as portas secretas e as runas-armadilha, escondidas dos jogadores)'),
       st.chefe ? null : K.toggle('mas-desce', st.descida, v => { st.descida = v; lembrar(); pintarC(); refazer(); }, 'Com a escada para o nível de baixo'),
-      K.toggle('mas-relevo', st.relevo, v => { st.relevo = v; o.genRelevo = v; pintarC(); refazer(); }, 'Com relevo (os estrados, os sarcófagos, a água, o abismo)')].filter(Boolean));
+      K.toggle('mas-relevo', st.relevo, v => { st.relevo = v; o.genRelevo = v; pintarC(); refazer(); }, 'Com relevo (os estrados, os sarcófagos, a água, o abismo)'),
+      typeof Povoar !== 'undefined' ? Povoar.controles(K, () => pintarC()) : null].filter(Boolean));
     pintarC(); refazer();
     aberta = { st, get plano() { return plano; }, refazer };
     UI.modal({
@@ -37987,11 +38136,13 @@ const Masmorra = (() => {
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const p = plano;
           criar(p, inNome.value, fora, { relevo: st.relevo }).then(sc => {
+            // (lote 49) o nível povoado, com as escolhas da janela do gerador
+            const pv = typeof Povoar !== 'undefined' ? Povoar.prefs() : null, txtPov = pv && pv.on ? Povoar.aplicar(sc, 'masmorra', p, pv) : '';
             UI.closeModal();
             if (Store.S.current === fora.id && Store.get('tokens', t.id)) UI.ligarObjeto(t, sc.id);
             UI.switchScene(sc.id);
             if (p.arena) { UI.toast(`"${sc.name}" criada, dentro de "${fora.name}": a sala do chefe. A Saída, na entrada, leva de volta; as fases ficam na aba Cena.`, { long: true }); return; }
-            UI.toast(`"${sc.name}" criada, dentro de "${fora.name}". A Saída, na escada de subida, leva de volta` + (p.desce ? `; a Entrada da escada de descida gera o nível ${p.nivel + 1}.` : '.'), { long: true });
+            UI.toast(`"${sc.name}" criada, dentro de "${fora.name}". A Saída, na escada de subida, leva de volta` + (p.desce ? `; a Entrada da escada de descida gera o nível ${p.nivel + 1}.` : '.') + (txtPov ? ' ' + txtPov : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },
@@ -38069,7 +38220,7 @@ const Masmorra = (() => {
     const o = App.opt;
     return { tipo: TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra', tamanho: TAMANHOS[o.masTam] ? o.masTam : 'medio', nivel: 1, segredos: o.masSeg !== false, descida: o.masDesce !== false, sob: '', larg: largEscolhida(o.masLarg) };
   }
-  const lembrarL = st => { App.opt.masTipo = st.tipo; App.opt.masTam = st.tamanho; App.opt.masSeg = st.segredos; App.opt.masDesce = st.descida; App.opt.masLarg = largEscolhida(st.larg); };
+  const lembrarL = st => { if (TIPOS.some(x => x[0] === st.tipo)) App.opt.masTipo = st.tipo; if (CATACUMBAS.includes(st.tipo)) App.opt.catTipo = st.tipo; App.opt.masTam = st.tamanho; App.opt.masSeg = st.segredos; App.opt.masDesce = st.descida; App.opt.masLarg = largEscolhida(st.larg); };
   // as cenas na ordem das famílias (as de dentro recuadas), como na lista "Leva para outra cena"
   function cenasEmFamilia() {
     const comCamp = Nuvem.comCampanhas(), vis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id))), F = UI.familiasVistas(vis), arv = [];
@@ -38077,14 +38228,15 @@ const Masmorra = (() => {
     F.raizes.forEach(k => desce(k, 0));
     return arv;
   }
-  function controlesL(st, K, mudou) {
+  function controlesL(st, K, mudou, lista) {
+    if (!Array.isArray(lista)) lista = null;          // (a janela do gerador passa { hex } aqui: só a aba Catacumbas passa a lista)
     const { field, seg, inNum, toggle } = K;
     const muda = (campo, v) => { st[campo] = v; lembrarL(st); mudou(true); };
     const sel = h('select', { id: 'mas-sob', class: 'in', 'aria-label': 'A cena de cima: o nível nasce dentro dela', onchange: e => { st.sob = cenaDeCima(e.target.value); e.target.blur(); mudou(false); } },
       h('option', { value: '', text: 'Nenhuma (uma cena solta)' }), ...cenasEmFamilia().map(([k, n]) => h('option', { value: k, text: '\u00a0\u00a0\u00a0'.repeat(n) + Store.S.scenes[k].name })));
     sel.value = cenaDeCima(st.sob);
     return h('div', { class: 'ger-c' },
-      field('Tipo', seg('mas-tipo', st.tipo, TIPOS.map(([k, n]) => [k, n, null, NOTA[k]]), v => muda('tipo', v)), 'stack'),
+      field(lista ? 'Jeito' : 'Tipo', seg('mas-tipo', st.tipo, (lista ? TODOS.filter(x => lista.includes(x[0])) : TIPOS.concat(TIPOS_MAIS.filter(x => x[0] === st.tipo))).map(([k, n]) => [k, n, null, NOTA[k]]), v => muda('tipo', v)), 'stack'),
       field('Largura dos corredores', seg('mas-larg', st.larg || largPadrao(st.tipo), LARGURAS.map(([k, n]) => [k, n]), v => muda('larg', v)), 'stack'),
       h('div', { class: 'ger-l' },
         field('Tamanho', seg('mas-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, `${TAMANHOS[k].W} × ${TAMANHOS[k].H} quadrados`]), v => muda('tamanho', v)), 'stack'),
@@ -38095,7 +38247,7 @@ const Masmorra = (() => {
   }
   const opcoesDeL = st => ({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, segredos: !!st.segredos, descida: !!st.descida, larg: st.larg || largPadrao(st.tipo) });
   function aplicarOpcoesL(st, o) {
-    if (TIPOS.some(x => x[0] === o.tipo)) st.tipo = o.tipo;
+    if (TODOS.some(x => x[0] === o.tipo)) st.tipo = o.tipo;
     if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
     if (o.nivel != null && Number.isFinite(Number(o.nivel))) st.nivel = clamp(Math.round(Number(o.nivel)) || 1, 1, 99);
     for (const k of ['segredos', 'descida']) if (typeof o[k] === 'boolean') st[k] = o[k];
@@ -38117,7 +38269,16 @@ const Masmorra = (() => {
     dica: '"Gerar outro" sorteia outro nível, com as mesmas escolhas (a masmorra não tem partes para travar).',
     nota: 'Sai uma cena nova, no breu (só o fogo e os cogumelos iluminam): dentro da cena escolhida em "Embaixo de", com a Saída na escada de subida levando de volta — ou solta, com a Saída ainda sem destino (você escolhe a cena no painel dela). Na escada de descida, a Entrada do nível de baixo (dois cliques nela geram o próximo quando você quiser). As portas secretas e as runas-armadilha ficam escondidas dos jogadores até você revelar. Nada sai escrito.',
     feito: feitoL };
-  return { TIPOS, TAMANHOS, NOME, LARGURAS, PAL_M, DESENHO, BIOMAS_SUB, biomaDeBaixo, ARENAS, TAM_ARENA, NOME_ARENA, MUDANCAS, FASES_ARENA, nomeMud, CHEFE_ARENA, LACAIO_ARENA, GRUPOS_ARENA, ESPECIAIS, mudancasDe, ARENA_RETA, ARENAS_NOVAS, COM_GRADE, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, abrirSubsolo, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LAVA, GELO, LUGAR };
+  /* (lote 49) A aba Catacumbas: o mesmo nível, com os quatro jeitos (o ossuário antigo, a catacumba de culto, a
+     inundada e a cripta nobre). Embaixo de um cemitério ou de uma igreja, a Saída leva de volta. */
+  const LUGAR_CAT = Object.assign({}, LUGAR, { id: 'catacumbas', n: 'Catacumbas',
+    padrao: () => Object.assign(padraoL(), { tipo: CATACUMBAS.includes(App.opt.catTipo) ? App.opt.catTipo : 'ossuario' }),
+    controles: (st, K, mudou) => controlesL(st, K, mudou, CATACUMBAS),
+    aplicarOpcoes: (st, o) => { aplicarOpcoesL(st, o); if (!CATACUMBAS.includes(st.tipo)) st.tipo = 'ossuario'; },
+    relevoTxt: 'Com relevo (os estrados, os sarcófagos, a água)',
+    dica: '"Gerar outro" sorteia outras catacumbas, com as mesmas escolhas.',
+    nota: 'Sai uma cena nova, no breu: dentro da cena escolhida em "Embaixo de" (o cemitério, a igreja), com a Saída na escada de subida levando de volta — ou solta. Na escada de descida, a Entrada do nível de baixo.' });
+  return { LUGAR_CAT, TIPOS_MAIS, TODOS, CATACUMBAS, TIPOS, TAMANHOS, NOME, LARGURAS, PAL_M, DESENHO, BIOMAS_SUB, biomaDeBaixo, ARENAS, TAM_ARENA, NOME_ARENA, MUDANCAS, FASES_ARENA, nomeMud, CHEFE_ARENA, LACAIO_ARENA, GRUPOS_ARENA, ESPECIAIS, mudancasDe, ARENA_RETA, ARENAS_NOVAS, COM_GRADE, gerar, resumo, nomePadrao, pintar, previa, criar, abrir, abrirSubsolo, vivo, contornos, simplifica, paredesDaGrade, ROCHA, SALA, CORREDOR, AGUA, ABISMO, NICHO, PONTE, LAVA, GELO, LUGAR };
 })();
 /* ---------------------------------------------------------------
    10g4. ARENA — as arenas de boss (lote 18)
@@ -39220,6 +39381,558 @@ const EscudoCenas = (() => {
   return { iniciar, vistas, pintarCanto, puzzles, resolvido, aplicarPortas, nomeDoPuzzle, npc };
 })();
 /* ---------------------------------------------------------------
+   10g9. O CASTELO E O CEMITÉRIO (lote 49) — dois lugares de fora para "Gerar um lugar…".
+   · o castelo por fora: as muralhas com as torres dos cantos, o portão com a grade levadiça (e, com fosso, a ponte
+     levadiça que abre e fecha), o pátio, a torre de menagem (com a escada que desce ao calabouço: uma Entrada oculta), o
+     estábulo, a capela e o quartel com a forja. Inteiro, sitiado (o acampamento de fora, as catapultas, o aríete, a
+     muralha rompida) ou em ruínas (as muralhas caídas, o mato, o entulho, o fogo antigo);
+   · o cemitério e a igreja: o muro baixo com o portão, o caminho, os túmulos em fileiras, os mausoléus (com o portão de
+     ferro e o sarcófago), a igreja com os bancos, o altar e a luz do vitral, a casa do coveiro. A entrada da cripta
+     (oculta: atrás do altar, ou num mausoléu) gera as catacumbas embaixo.
+   O plano é como o dos outros lugares (as paredes, os objetos, as luzes, o relevo e o que se pinta no fundo); as salas
+   de dentro vão em p.salas, para o "Povoar" saber onde é dentro.
+   --------------------------------------------------------------- */
+const LugaresFora = (() => {
+  const sub = (seed, k) => (((Math.imul(seed ^ 0x5bd1e995, 0x01000193 + k * 0x9e3779b1) >>> 0) ^ (k * 0x85ebca6b)) >>> 0) || (k + 1);
+  const res = (W, H) => Math.max(16, Math.min(64, Math.floor(Math.sqrt(9e6 / (W * H)))));
+  const PAL = {
+    campo: { base: '#5d7a3e', manchas: ['#557236', '#66843f', '#4f6a33', '#6f8c48', '#4a6230'], terra: ['#7a6446', '#8a7352', '#6a563a'], pedra: ['#8d8a82', '#9b978e', '#7d7a73'], junta: '#5a5852' },
+    seco: { base: '#8a7d4e', manchas: ['#807246', '#958857', '#776a41', '#a09260', '#6d6140'], terra: ['#8a7050', '#9a805e', '#7a6244'], pedra: ['#9a958a', '#a8a397', '#8a857a'], junta: '#615d55' },
+    neve: { base: '#d8dde4', manchas: ['#cfd5dd', '#e3e7ec', '#c6ccd5', '#eceff3', '#bec5cf'], terra: ['#9a8d7a', '#aa9d8a', '#8a7d6a'], pedra: ['#8d8f94', '#9a9ca1', '#7d7f84'], junta: '#5a5c60' },
+  };
+  const palDe = (estilo, estacao) => (estacao === 'inverno' ? PAL.neve : estilo === 'desertico' ? PAL.seco : PAL.campo);
+
+  /* ---------------- o plano: as peças ---------------- */
+  function novoPlano(lugar, W, H, seed, extra) {
+    const r = mulberry(seed);
+    const p = Object.assign({ v: 1, lugar, W, H, seed, paredes: [], objetos: [], luzes: [], relevo: [], formas: [], zonas: [], pintados: [], salas: [], entradas: [] }, extra || {});
+    const ent = (a, b) => a + r() * (b - a), ri = (a, b) => a + Math.floor(r() * (b - a + 1)), pick = a => a[Math.floor(r() * a.length) % a.length];
+    const oc = new Uint8Array(W * H);
+    const livre = (x, y, s) => { s = s || 1; for (let j = 0; j < s; j++) for (let i = 0; i < s; i++) { const a = Math.floor(x) + i, b = Math.floor(y) + j; if (a < 0 || b < 0 || a >= W || b >= H || oc[b * W + a]) return false; } return true; };
+    const ocupa = (x, y, w, h) => { for (let j = Math.floor(y); j < Math.ceil(y + h); j++) for (let i = Math.floor(x); i < Math.ceil(x + w); i++) if (i >= 0 && j >= 0 && i < W && j < H) oc[j * W + i] = 1; };
+    const poe = (id, x, y, s, rot, o) => { s = s || 1; if (!livre(x, y, s)) return false; ocupa(x, y, s, s); p.objetos.push(Object.assign({ id, x: Math.floor(x), y: Math.floor(y), s }, rot ? { rot } : null, o || null)); return true; };
+    const parede = (x1, y1, x2, y2, k, o) => p.paredes.push(Object.assign({ x1, y1, x2, y2, k: k || 'wall' }, o || null));
+    const pinta = (k, o) => p.pintados.push(Object.assign({ k }, o));
+    return { p, r, ent, ri, pick, livre, ocupa, poe, parede, pinta, oc };
+  }
+  /* Uma construção: o piso, as quatro paredes (com a porta num lado, no meio — ou em pos) e o desenho da parede no fundo.
+     ruina: a chance de cada trecho de parede ter caído (vira entulho). → a sala { x, y, w, h, papel } */
+  function construcao(K, x, y, w, h, porta, piso, papel, o) {
+    o = o || {};
+    const { p, r } = K;
+    K.pinta('piso', { x, y, w, h, tipo: piso || 'laje' });
+    const lados = { n: [x, y, x + w, y], s: [x, y + h, x + w, y + h], o: [x, y, x, y + h], l: [x + w, y, x + w, y + h] };
+    for (const lado of ['n', 's', 'o', 'l']) {
+      const [ax, ay, bx, by] = lados[lado], horiz = ay === by, L = horiz ? bx - ax : by - ay;
+      const pp = porta && porta.lado === lado ? (porta.pos != null ? porta.pos : Math.floor(L / 2) - (porta.larg === 2 ? 1 : 0)) : -1, pl = porta && porta.larg ? porta.larg : 1;
+      // em trechos de um quadrado (as ruínas derrubam trechos; a porta é um deles)
+      for (let k = 0; k < L; k++) {
+        const s = horiz ? [ax + k, ay, ax + k + 1, ay] : [ax, ay + k, ax, ay + k + 1];
+        if (k >= pp && k < pp + pl && pp >= 0) { if (porta.k !== 'nada') { if (porta.k === 'portao') { if (k === pp) K.p.objetos.push(horiz ? { id: 'portao', x: ax + pp, y: ay - 0.5, s: 1 } : { id: 'portao', x: ax - 0.5, y: ay + pp, s: 1, rot: 90 }); } else K.parede(s[0], s[1], s[2], s[3], 'door'); } continue; }
+        if (o.ruina && r() < o.ruina) { K.pinta('entulho', { x: (s[0] + s[2]) / 2, y: (s[1] + s[3]) / 2, r: 0.7 }); continue; }
+        K.parede(s[0], s[1], s[2], s[3], o.k || 'wall');
+        K.pinta('paredeFina', { x1: s[0], y1: s[1], x2: s[2], y2: s[3] });
+      }
+    }
+    K.ocupa(x, y, w, h);
+    const sala = { x, y, w, h, papel: papel || 'sala' };
+    p.salas.push(sala);
+    return sala;
+  }
+  // os objetos de dentro: livres só dentro da sala (a sala inteira foi ocupada; aqui ela se libera aos poucos)
+  function dentro(K, q, fn) {
+    for (let j = q.y; j < q.y + q.h; j++) for (let i = q.x; i < q.x + q.w; i++) K.oc[j * K.p.W + i] = 0;
+    fn();
+    // a frente da porta fica como estava (livre); o resto que sobrou fica livre para o Povoar
+  }
+
+  /* ---------------- o castelo ---------------- */
+  const TAM_C = { pequeno: { n: 'Pequeno', W: 40, H: 36 }, medio: { n: 'Médio', W: 50, H: 44 }, grande: { n: 'Grande', W: 62, H: 52 } };
+  const ESTADOS_C = [['inteiro', 'Inteiro'], ['sitiado', 'Sitiado'], ['ruinas', 'Em ruínas']];
+  function gerarCastelo(o) {
+    o = o || {};
+    const tam = TAM_C[o.tamanho] ? o.tamanho : 'medio', T = TAM_C[tam], estado = ESTADOS_C.some(x => x[0] === o.estado) ? o.estado : 'inteiro', fosso = !!o.fosso;
+    const seed = (Math.round(Number(o.seed)) >>> 0) || 1, W = T.W, H = T.H + (estado === 'sitiado' ? 10 : 0);
+    const K = novoPlano('castelo', W, H, seed, { tamanho: tam, estado, fosso, estilo: o.estilo || 'comum', estacao: o.estacao || 'verao' });
+    const { p, r } = K, ru = estado === 'ruinas' ? 0.35 : 0;
+    const mg = fosso ? 6 : 4, x0 = mg, y0 = mg, x1 = W - mg, y1 = mg + T.H - 2 * mg, gx = Math.round((x0 + x1) / 2);
+    // o fosso: um anel de água em volta da muralha (um quadrado para fora até três)
+    if (fosso) {
+      const a = 1, b = 3;
+      const anel = [[x0 - b, y0 - b, x1 - x0 + 2 * b, b - a], [x0 - b, y1 + a, x1 - x0 + 2 * b, b - a], [x0 - b, y0 - a, b - a, y1 - y0 + 2 * a], [x1 + a, y0 - a, b - a, y1 - y0 + 2 * a]];
+      for (const [x, y, w, h] of anel) { p.relevo.push({ t: 'agua', alt: -1.5, k: 'rect', x, y, w, h }); K.pinta('agua', { x, y, w, h }); K.ocupa(x, y, w, h); }
+    }
+    // o caminho até o portão
+    K.pinta('caminho', { pts: [[gx, H - 0.5], [gx, y1 + 0.5]], w: 2.2, tipo: 'terra' });
+    // o pátio
+    K.pinta('piso', { x: x0, y: y0, w: x1 - x0, h: y1 - y0, tipo: 'calcada' });
+    // a muralha: em trechos de um quadrado (o portão no meio do lado de baixo; as ruínas e o cerco derrubam trechos)
+    const rompe = estado === 'sitiado' ? new Set([Math.round(x0 + (x1 - x0) * 0.25), Math.round(x0 + (x1 - x0) * 0.75)]) : new Set();
+    const muralha = (ax, ay, bx, by) => {
+      const horiz = ay === by, L = horiz ? bx - ax : by - ay;
+      for (let k = 0; k < L; k++) {
+        const s = horiz ? [ax + k, ay, ax + k + 1, ay] : [ax, ay + k, ax, ay + k + 1];
+        if (horiz && ay === y1 && ax + k >= gx - 1 && ax + k < gx + 1) continue;            // (o portão)
+        const caiu = (ru && r() < ru) || (horiz && ay === y1 && (rompe.has(ax + k) || rompe.has(ax + k - 1)));
+        if (caiu) { K.pinta('entulho', { x: (s[0] + s[2]) / 2, y: (s[1] + s[3]) / 2, r: 0.9 }); continue; }
+        K.parede(s[0], s[1], s[2], s[3]); K.pinta('muralha', { x1: s[0], y1: s[1], x2: s[2], y2: s[3] });
+      }
+    };
+    muralha(x0, y0, x1, y0); muralha(x0, y1, x1, y1); muralha(x0, y0, x0, y1); muralha(x1, y0, x1, y1);
+    // as torres dos cantos (e as duas do portão): o círculo de pedra, cercado de parede
+    const torre = (cx, cy, rr) => {
+      K.pinta('torre', { x: cx, y: cy, r: rr });
+      const n = 8;
+      for (let i = 0; i < n; i++) { if (ru && r() < ru * 0.6) continue; const a = i / n * Math.PI * 2, b = (i + 1) / n * Math.PI * 2; K.parede(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, cx + Math.cos(b) * rr, cy + Math.sin(b) * rr); }
+      K.ocupa(cx - rr, cy - rr, rr * 2, rr * 2);
+    };
+    for (const [cx, cy] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]) torre(cx, cy, 2.2);
+    torre(gx - 2.6, y1, 1.5); torre(gx + 2.6, y1, 1.5);
+    // o portão: a grade levadiça; com fosso, a ponte levadiça na frente
+    if (estado !== 'ruinas') p.objetos.push({ id: 'grade', x: gx - 1, y: y1 - 1, s: 2 });
+    if (fosso) p.objetos.push({ id: 'ponteLevadica', x: gx - 1, y: y1 + 1, s: 2 });
+    K.ocupa(gx - 1, y1 - 1, 2, 2);
+    // a torre de menagem: no fundo, no meio; a escada do calabouço (a Entrada oculta) num canto dela
+    const iw = x1 - x0, ih = y1 - y0;
+    const kw = Math.max(8, Math.min(14, Math.round(iw * 0.32))), kh = Math.max(7, Math.min(10, Math.round(ih * 0.3))), kx = Math.round(gx - kw / 2), ky = y0 + 3;
+    const keep = construcao(K, kx, ky, kw, kh, { lado: 's', larg: 2 }, 'laje', 'menagem', { ruina: ru });
+    dentro(K, keep, () => {
+      K.pinta('tapete', { x: gx - 0.6, y: ky + 1, w: 1.2, h: kh - 1 });
+      K.poe('cadeira', gx, ky + 1, 1, 0); K.poe('braseiro', gx - 2, ky + 1); K.poe('braseiro', gx + 2, ky + 1);
+      if (estado !== 'ruinas') { K.poe('mesaGuerra', kx + 1, ky + kh - 3, 2); K.poe('estandarte', kx + 1, ky); K.poe('estandarte', kx + kw - 2, ky); K.poe('lareira', kx + kw - 3, ky + Math.floor(kh / 2), 2, 270); }
+      else { K.pinta('entulho', { x: kx + kw / 2, y: ky + kh / 2, r: 1.4 }); K.pinta('queimado', { x: kx + 2, y: ky + 2, r: 1.5 }); }
+      p.entradas.push({ x: kx + kw - 2, y: ky + 1, n: 'A escada do calabouço', gera: { t: 'masmorra', m: 'calabouco', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (sub(seed, 41) % 2147483000) + 1 } });
+      K.ocupa(kx + kw - 2, ky + 1, 1, 1);
+    });
+    // o estábulo (à esquerda), a capela (à direita) e o quartel com a forja (embaixo, à direita)
+    const ew = Math.min(8, Math.max(6, Math.round(iw * 0.18))), eh = 5;
+    const est = construcao(K, x0 + 2, y0 + Math.round(ih * 0.48), ew, eh, { lado: 'l', larg: 2 }, 'madeira', 'estabulo', { ruina: ru });
+    dentro(K, est, () => { K.poe('feno', est.x + 1, est.y + 1); K.poe('feno', est.x + 1, est.y + 3); K.poe('cocho', est.x + 3, est.y + 1, 2); K.poe('barril', est.x + ew - 2, est.y + eh - 1); K.poe('carroca', est.x + 3, est.y + 3, 2); });
+    const cap = construcao(K, x1 - ew - 2, y0 + Math.round(ih * 0.4), ew, 6, { lado: 'o' }, 'laje', 'capela', { ruina: ru });
+    dentro(K, cap, () => { K.poe('altar', cap.x + cap.w - 1, cap.y + 2, 1, 90); K.poe('vela', cap.x + cap.w - 1, cap.y + 1); K.poe('vela', cap.x + cap.w - 1, cap.y + 4); K.poe('bancoIgreja', cap.x + 2, cap.y + 1, 2, 90); K.poe('bancoIgreja', cap.x + 2, cap.y + 3, 2, 90); if (estado !== 'ruinas') K.poe('vitral', cap.x + 4, cap.y + 2, 2); });
+    const qw = Math.min(9, Math.max(6, Math.round(iw * 0.2)));
+    const qt = construcao(K, x1 - qw - 2, y1 - 7, qw, 5, { lado: 'n' }, 'madeira', 'quartel', { ruina: ru });
+    dentro(K, qt, () => { K.poe('bigorna', qt.x + 1, qt.y + 1); K.poe('fole', qt.x + 2, qt.y + 1); K.poe('carvao', qt.x + 1, qt.y + 3); K.poe('armas', qt.x + qw - 2, qt.y + 1); K.poe('cama', qt.x + qw - 3, qt.y + 3, 2); K.poe('tina', qt.x + 3, qt.y + 3); });
+    // o pátio: o poço, os barris, as tochas do portão e da menagem
+    K.poe('poco', gx + 4, Math.round(y0 + ih * 0.62));
+    for (let k = 0; k < 6; k++) K.poe(K.pick(['barril', 'caixote', 'caixote', 'feno']), K.ri(x0 + 2, x1 - 3), K.ri(Math.round(y0 + ih * 0.55), y1 - 2));
+    if (estado !== 'ruinas') { for (const x of [gx - 2, gx + 1]) K.poe('tocha', x, y1 - 2); K.poe('tocha', gx - 2, ky + kh + 1); K.poe('tocha', gx + 1, ky + kh + 1); }
+    // em ruínas: o mato, as árvores, o fogo antigo
+    if (estado === 'ruinas') {
+      for (let k = 0; k < 14; k++) K.poe(K.pick(['arbusto', 'arbusto', 'flores', 'toco', 'pedra']), K.ri(x0 + 1, x1 - 2), K.ri(y0 + 1, y1 - 2));
+      for (let k = 0; k < 3; k++) K.poe('arvore', K.ri(x0 + 2, x1 - 4), K.ri(y0 + 2, y1 - 4), 2);
+      for (let k = 0; k < 4; k++) K.pinta('queimado', { x: K.ent(x0 + 2, x1 - 2), y: K.ent(y0 + 2, y1 - 2), r: K.ent(1, 2.2) });
+      for (let k = 0; k < 6; k++) K.pinta('entulho', { x: K.ent(x0 + 1, x1 - 1), y: K.ent(y0 + 1, y1 - 1), r: K.ent(0.6, 1.4) });
+    }
+    // sitiado: o acampamento de fora (embaixo), as catapultas, o aríete no portão, o fogo dentro
+    if (estado === 'sitiado') {
+      const cy0 = y1 + (fosso ? 4 : 2), cy1 = H - 1;
+      for (let k = 0; k < 6; k++) K.poe('barraca', K.ri(2, W - 4), K.ri(cy0 + 2, cy1 - 2), 2);
+      for (let k = 0; k < 3; k++) K.poe('fogueira', K.ri(2, W - 3), K.ri(cy0 + 1, cy1 - 1));
+      K.poe('catapulta', Math.round(x0 + iw * 0.2), cy0 + 1, 2); K.poe('catapulta', Math.round(x0 + iw * 0.7), cy0 + 1, 2);
+      K.poe('ariete', gx - 1, cy0, 2);
+      for (let k = 0; k < 2; k++) K.poe('carroca', K.ri(2, W - 4), K.ri(cy0 + 2, cy1 - 2), 2);
+      K.poe('estandarte', K.ri(3, W - 4), cy0 + 2);
+      for (let k = 0; k < 3; k++) K.pinta('queimado', { x: K.ent(x0 + 2, x1 - 2), y: K.ent(y0 + 2, y1 - 2), r: K.ent(0.8, 1.6) });
+    }
+    // fora da muralha: as árvores e as pedras (onde couber)
+    for (let k = 0; k < 10; k++) { const x = K.ri(0, W - 2), y = K.ri(0, H - 2); if (x > x0 - 4 && x < x1 + 3 && y > y0 - 4 && y < y1 + 3) continue; K.poe(r() < 0.5 ? 'arvore' : 'arbusto', x, y, r() < 0.5 ? 2 : 1); }
+    p.chegada = [gx, H - 1];
+    return p;
+  }
+  const nomeCastelo = p => (p.estado === 'ruinas' ? 'Castelo em ruínas' : p.estado === 'sitiado' ? 'Castelo sitiado' : 'Castelo');
+  function resumoCastelo(p) {
+    const q = [(ESTADOS_C.find(x => x[0] === p.estado) || ESTADOS_C[0])[1] + (p.fosso ? ', com fosso' : ''), p.W + ' × ' + p.H + ' quadrados', 'a menagem, o estábulo, a capela e o quartel', 'a escada do calabouço (oculta)'];
+    if (p.estado === 'sitiado') q.push('o acampamento de fora, as catapultas e o aríete');
+    return q.join(' · ') + '.';
+  }
+
+  /* ---------------- o cemitério e a igreja ---------------- */
+  const TAM_M = { pequeno: { n: 'Pequeno', W: 34, H: 30 }, medio: { n: 'Médio', W: 44, H: 38 }, grande: { n: 'Grande', W: 56, H: 46 } };
+  function gerarCemiterio(o) {
+    o = o || {};
+    const tam = TAM_M[o.tamanho] ? o.tamanho : 'medio', T = TAM_M[tam], igreja = o.igreja !== false, nm = Math.max(0, Math.min(3, Math.round(Number(o.mausoleus) || 2)));
+    const cat = Masmorra.CATACUMBAS.includes(o.cat) ? o.cat : 'ossuario';
+    const seed = (Math.round(Number(o.seed)) >>> 0) || 1, W = T.W, H = T.H;
+    const K = novoPlano('cemiterio', W, H, seed, { tamanho: tam, igreja, mausoleus: nm, cat, estilo: o.estilo || 'comum', estacao: o.estacao || 'verao' });
+    const { p, r } = K;
+    const x0 = 3, y0 = 3, x1 = W - 3, y1 = H - 3, gx = Math.round(W / 2);
+    const geraCat = k => ({ t: 'masmorra', m: cat, n: 1, tam: 'medio', e: o.estilo || 'comum', s: (sub(seed, 60 + k) % 2147483000) + 1 });
+    // o muro baixo (mureta: barra o passo, deixa ver) com o portão de ferro no meio de baixo
+    const muro = (ax, ay, bx, by) => { const horiz = ay === by, L = horiz ? bx - ax : by - ay; for (let k = 0; k < L; k++) { const s = horiz ? [ax + k, ay, ax + k + 1, ay] : [ax, ay + k, ax, ay + k + 1]; if (horiz && ay === y1 && ax + k >= gx - 1 && ax + k < gx + 1) continue; K.parede(s[0], s[1], s[2], s[3], 'mureta'); K.pinta('muro', { x1: s[0], y1: s[1], x2: s[2], y2: s[3] }); } };
+    muro(x0, y0, x1, y0); muro(x0, y1, x1, y1); muro(x0, y0, x0, y1); muro(x1, y0, x1, y1);
+    p.objetos.push({ id: 'portao', x: gx - 1, y: y1 - 1, s: 2 }); K.ocupa(gx - 1, y1 - 1, 2, 2);
+    // a igreja (no fundo, no meio) e o caminho do portão até ela
+    let topo = y0 + 1;
+    if (igreja) {
+      const iw = Math.min(14, Math.max(10, Math.round((x1 - x0) * 0.32))), ih = Math.min(11, Math.max(8, Math.round((y1 - y0) * 0.3))), ix = Math.round(gx - iw / 2), iy = y0 + 1;
+      const ig = construcao(K, ix, iy, iw, ih, { lado: 's', larg: 2 }, 'laje', 'igreja');
+      dentro(K, ig, () => {
+        K.poe('altar', gx, iy + 1, 1, 0); K.poe('vela', gx - 1, iy + 1); K.poe('vela', gx + 1, iy + 1); K.poe('incensario', ix + 1, iy + 1);
+        K.pinta('tapete', { x: gx - 0.6, y: iy + 2, w: 1.2, h: ih - 2 });
+        for (let j = iy + 3; j < iy + ih - 2; j += 2) { K.poe('bancoIgreja', ix + 1, j, 2); K.poe('bancoIgreja', ix + iw - 3, j, 2); }
+        K.poe('vitral', gx - 1, iy + 2, 2); K.poe('pia', gx + 2, iy + ih - 2);
+        p.entradas.push({ x: gx + 2, y: iy + 1, n: 'A escada da cripta', gera: geraCat(1) }); K.ocupa(gx + 2, iy + 1, 1, 1);
+      });
+      K.poe('lampiao', gx - 2, iy + ih); K.poe('lampiao', gx + 1, iy + ih);
+      topo = iy + ih + 2;
+      K.pinta('caminho', { pts: [[gx, y1 + 0.5], [gx, iy + ih]], w: 2, tipo: 'terra' });
+    } else K.pinta('caminho', { pts: [[gx, y1 + 0.5], [gx, y0 + 4]], w: 2, tipo: 'terra' });
+    K.ocupa(gx - 1, topo, 2, y1 - topo);            // (o caminho fica livre)
+    // os mausoléus (perto do muro, dos lados): o portão de ferro e o sarcófago; o primeiro, sem igreja, tem a cripta
+    const lugaresM = [[x0 + 2, topo], [x1 - 6, topo], [x0 + 2, Math.round((topo + y1) / 2)], [x1 - 6, Math.round((topo + y1) / 2)]];
+    for (let k = 0; k < nm; k++) {
+      const [mx, my] = lugaresM[k];
+      const m = construcao(K, mx, my, 4, 4, { lado: 's', k: 'portao' }, 'laje', 'mausoleu');
+      dentro(K, m, () => { K.poe('sarcofago', mx + 1, my, 2, 90); K.poe('vela', mx, my); K.poe('vela', mx + 3, my); if (k === 0 && !igreja) { p.entradas.push({ x: mx + 3, y: my + 2, n: 'A entrada da cripta', gera: geraCat(2) }); K.ocupa(mx + 3, my + 2, 1, 1); } });
+    }
+    // os túmulos em fileiras, dos dois lados do caminho (com flores, estátuas e um crânio aqui e ali)
+    for (let j = topo + 1; j < y1 - 2; j += 2) for (let i = x0 + 2; i < x1 - 1; i += 2) {
+      if (Math.abs(i - gx) < 2) continue;
+      if (r() < 0.12) continue;
+      const id = r() < 0.08 ? 'estatua' : 'tumulo';
+      if (K.poe(id, i, j) && r() < 0.25) K.poe('flores', i + (r() < 0.5 ? 1 : -1), j);
+    }
+    // as árvores dos cantos, as velas soltas, a casa do coveiro (embaixo, à esquerda)
+    for (const [x, y] of [[x0 + 1, y0 + 1], [x1 - 3, y0 + 1], [x0 + 1, y1 - 3], [x1 - 3, y1 - 3]]) K.poe('arvore', x, y, 2);
+    const cv = construcao(K, x0 + 1, y1 - 6, 4, 4, { lado: 'l' }, 'madeira', 'coveiro');
+    dentro(K, cv, () => { K.poe('cama', cv.x, cv.y, 2); K.poe('mesa', cv.x + 2, cv.y + 2, 1); K.poe('lampiao', cv.x + 3, cv.y); });
+    for (let k = 0; k < 4; k++) K.poe('vela', K.ri(x0 + 2, x1 - 2), K.ri(topo + 1, y1 - 2));
+    // fora do muro: o mato
+    for (let k = 0; k < 8; k++) { const x = K.ri(0, W - 2), y = K.ri(0, H - 2); if (x >= x0 - 1 && x <= x1 && y >= y0 - 1 && y <= y1) continue; K.poe(r() < 0.6 ? 'arbusto' : 'arvore', x, y, 1); }
+    p.chegada = [gx, H - 1];
+    return p;
+  }
+  const nomeCemiterio = p => (p.igreja ? 'Cemitério e igreja' : 'Cemitério');
+  function resumoCemiterio(p) {
+    const tumulos = p.objetos.filter(x => x.id === 'tumulo').length;
+    return [p.W + ' × ' + p.H + ' quadrados', p.igreja ? 'a igreja com a escada da cripta (oculta)' : 'sem igreja', p.mausoleus ? (p.mausoleus === 1 ? '1 mausoléu' : p.mausoleus + ' mausoléus') : 'sem mausoléus', tumulos + ' túmulos', 'as catacumbas embaixo: ' + (Masmorra.TODOS.find(x => x[0] === p.cat) || ['', ''])[1].toLowerCase()].join(' · ') + '.';
+  }
+
+  /* ---------------- o fundo ---------------- */
+  function pintar(p, c) {
+    const cv = document.createElement('canvas'); cv.width = p.W * c; cv.height = p.H * c;
+    const g = cv.getContext('2d'), P = palDe(p.estilo, p.estacao), r = mulberry((p.seed ^ 0x9e3779b9) >>> 0 || 3);
+    g.fillStyle = P.base; g.fillRect(0, 0, cv.width, cv.height);
+    for (let i = 0, n = Math.min(4000, p.W * p.H * 2); i < n; i++) { g.globalAlpha = 0.25 + r() * 0.3; g.fillStyle = P.manchas[Math.floor(r() * P.manchas.length)]; g.beginPath(); g.arc(r() * cv.width, r() * cv.height, c * (0.15 + r() * 0.6), 0, Math.PI * 2); g.fill(); }
+    g.globalAlpha = 1;
+    const blocos = (x, y, w, h, cores, junta, tam) => {
+      g.save(); g.beginPath(); g.rect(x * c, y * c, w * c, h * c); g.clip();
+      const s = c * tam;
+      for (let j = 0, yy = y * c; yy < (y + h) * c; j++, yy += s) for (let xx = x * c - (j % 2 ? s / 2 : 0); xx < (x + w) * c; xx += s) { g.fillStyle = cores[Math.floor(r() * cores.length)]; g.fillRect(xx + 1, yy + 1, s - 2, s - 2); }
+      g.strokeStyle = junta; g.lineWidth = Math.max(1, c * 0.03); g.restore();
+    };
+    for (const o of p.pintados) {
+      if (o.k === 'piso') {
+        if (o.tipo === 'madeira') { g.fillStyle = '#6e4e32'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c); g.strokeStyle = 'rgba(40,24,12,0.5)'; g.lineWidth = Math.max(1, c * 0.03); for (let y = o.y; y < o.y + o.h; y += 0.33) { g.beginPath(); g.moveTo(o.x * c, y * c); g.lineTo((o.x + o.w) * c, y * c); g.stroke(); } }
+        else if (o.tipo === 'calcada') blocos(o.x, o.y, o.w, o.h, P.pedra.map(x => x), P.junta, 0.5);
+        else blocos(o.x, o.y, o.w, o.h, ['#8f8a80', '#9a958a', '#857f76', '#a29c90'], '#5a5650', 1);
+      } else if (o.k === 'caminho') {
+        g.strokeStyle = P.terra[0]; g.lineWidth = o.w * c; g.lineCap = 'round'; g.beginPath(); o.pts.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.stroke();
+        g.strokeStyle = P.terra[1]; g.lineWidth = o.w * c * 0.6; g.stroke();
+      } else if (o.k === 'agua') {
+        const gr = g.createLinearGradient(o.x * c, o.y * c, (o.x + o.w) * c, (o.y + o.h) * c); gr.addColorStop(0, '#2f5e7d'); gr.addColorStop(1, '#3f7396');
+        g.fillStyle = gr; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c);
+      } else if (o.k === 'muralha' || o.k === 'muro' || o.k === 'paredeFina') {
+        const larg = o.k === 'muralha' ? 0.9 : o.k === 'muro' ? 0.35 : 0.22;
+        g.strokeStyle = o.k === 'muralha' ? '#6f6b64' : o.k === 'muro' ? '#7d786f' : '#4a4038'; g.lineWidth = larg * c; g.lineCap = 'square';
+        g.beginPath(); g.moveTo(o.x1 * c, o.y1 * c); g.lineTo(o.x2 * c, o.y2 * c); g.stroke();
+        if (o.k === 'muralha') { g.strokeStyle = '#8e8a82'; g.lineWidth = larg * c * 0.45; g.stroke(); g.fillStyle = '#5d5953'; const mx = (o.x1 + o.x2) / 2, my = (o.y1 + o.y2) / 2; g.fillRect(mx * c - c * 0.15, my * c - c * 0.15, c * 0.3, c * 0.3); }
+      } else if (o.k === 'torre') {
+        g.fillStyle = '#5f5b55'; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#8a857c'; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c * 0.82, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = 'rgba(40,38,34,0.6)'; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c * 0.55, 0, Math.PI * 2); g.stroke();
+      } else if (o.k === 'entulho') {
+        for (let i = 0; i < 9; i++) { const a = r() * Math.PI * 2, d = r() * o.r; g.fillStyle = ['#77736b', '#8a857c', '#5f5b55'][i % 3]; g.beginPath(); g.arc((o.x + Math.cos(a) * d) * c, (o.y + Math.sin(a) * d) * c, c * (0.12 + r() * 0.18), 0, Math.PI * 2); g.fill(); }
+      } else if (o.k === 'queimado') {
+        const gr = g.createRadialGradient(o.x * c, o.y * c, 0, o.x * c, o.y * c, o.r * c); gr.addColorStop(0, 'rgba(20,16,12,0.75)'); gr.addColorStop(1, 'rgba(20,16,12,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c, 0, Math.PI * 2); g.fill();
+      } else if (o.k === 'tapete') { g.fillStyle = '#7a1e24'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c); g.strokeStyle = '#c9a24a'; g.lineWidth = Math.max(1, c * 0.05); g.strokeRect(o.x * c + c * 0.08, o.y * c + c * 0.08, o.w * c - c * 0.16, o.h * c - c * 0.16); }
+    }
+    return cv;
+  }
+  function previa(cv, p, maxW, maxH) {
+    const cell = Math.max(5, Math.floor(Math.min((maxW || 460) / p.W, (maxH || 330) / p.H)));
+    const f = pintar(p, cell);
+    cv.width = f.width; cv.height = f.height;
+    const g = cv.getContext('2d'); g.drawImage(f, 0, 0);
+    g.lineCap = 'round';
+    for (const w of p.paredes) { g.strokeStyle = w.k === 'door' ? '#7fd1ff' : w.k === 'mureta' ? '#cfe9ff' : 'rgba(255,236,200,0.85)'; g.lineWidth = Math.max(1.5, cell * (w.k === 'door' ? 0.22 : 0.12)); g.beginPath(); g.moveTo(w.x1 * cell, w.y1 * cell); g.lineTo(w.x2 * cell, w.y2 * cell); g.stroke(); }
+    for (const o of p.objetos) { const s = o.s || 1; if (Props.P[o.id]) { g.save(); g.translate((o.x + s / 2) * cell, (o.y + s / 2) * cell); g.rotate((o.rot || 0) * Math.PI / 180); try { Props.P[o.id].draw(g, s * cell / 2, 1.3, 7, 0, null); } catch (e) { /* desenho sem token */ } g.restore(); } }
+    for (const e of p.entradas) { g.fillStyle = '#e6ab4f'; g.strokeStyle = '#3a2508'; g.lineWidth = 2; g.beginPath(); g.arc((e.x + 0.5) * cell, (e.y + 0.5) * cell, cell * 0.45, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    return { cell };
+  }
+
+  /* ---------------- a cena ---------------- */
+  async function criar(p, nome, ex, nomeDe) {
+    ex = ex || {};
+    const sc = newScene(String(nome || '').trim().slice(0, 60) || nomeDe(p));
+    if (typeof ex.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(ex.id) && !Store.S.scenes[ex.id]) sc.id = ex.id;
+    sc.cols = p.W; sc.rows = p.H;
+    const c = sc.cell;
+    sc.fog.dynamic = true; sc.fog.explored = true;
+    const tom = TONES.find(t => t.id === ex.hora) || TONES[0];
+    sc.tone = tom.id; sc.light = tom.light;
+    sc.weather = { k: WEATHERS.some(w => w[0] === ex.clima) ? ex.clima : '', pow: 0.6 };
+    sc.bgColor = palDe(p.estilo, p.estacao).base; sc.bg.stretch = true;
+    try { const cv = pintar(p, res(p.W, p.H)); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
+    for (const w of p.paredes) { if (Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.05) continue; sc.walls.push({ id: uid('wl'), k: w.k || 'wall', x1: w.x1 * c, y1: w.y1 * c, x2: w.x2 * c, y2: w.y2 * c, open: false, locked: false, secret: false }); }
+    for (const o of p.objetos) if (Props.P[o.id]) { const t = Props.novo(sc, o.id, o.x * c, o.y * c, o.s || 1, false); if (o.rot) t.rot = o.rot; sc.tokens.push(t); }
+    if (ex.relevo !== false) for (const rr of p.relevo) sc.shapes.push(Object.assign(Estilos.terrenoNaCena(rr, c, 0, 0), { a: 0.3 }));
+    // as entradas (ocultas): dois cliques geram o nível de baixo (o calabouço, as catacumbas)
+    for (const e of p.entradas) { const t = Props.novo(sc, 'entrada', e.x * c, e.y * c, 1, true); t.name = e.n; t.gera = Object.assign({}, e.gera); sc.tokens.push(t); }
+    if (p.chegada && Props.P.chegada) { const t = Props.novo(sc, 'chegada', p.chegada[0] * c, (p.chegada[1] - 1) * c, 1, true); sc.tokens.push(t); }
+    normalizeScene(sc);
+    Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
+    return sc;
+  }
+
+  /* ---------------- as abas da janela ---------------- */
+  const semPartes = { partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava, quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null };
+  const CASTELO = Object.assign({ id: 'castelo', n: 'Castelo', aceitaEstacao: true,
+    padrao: () => { const o = App.opt; return { tamanho: TAM_C[o.casTam] ? o.casTam : 'medio', estado: ESTADOS_C.some(x => x[0] === o.casEst) ? o.casEst : 'inteiro', fosso: !!o.casFosso }; },
+    controles(st, K, mudou) {
+      const muda = (k, v) => { st[k] = v; App.opt.casTam = st.tamanho; App.opt.casEst = st.estado; App.opt.casFosso = st.fosso; mudou(true); };
+      return h('div', { class: 'ger-c' },
+        K.field('Como está', K.seg('cas-est', st.estado, ESTADOS_C, v => muda('estado', v)), 'stack'),
+        K.field('Tamanho', K.seg('cas-tam', st.tamanho, Object.keys(TAM_C).map(k => [k, TAM_C[k].n, null, `${TAM_C[k].W} × ${TAM_C[k].H} quadrados`]), v => muda('tamanho', v)), 'stack'),
+        K.toggle('cas-fosso', st.fosso, v => muda('fosso', v), 'Com fosso (e a ponte levadiça, que abre e fecha)'));
+    },
+    opcoesDe: st => ({ tamanho: st.tamanho, estado: st.estado, fosso: !!st.fosso }),
+    aplicarOpcoes(st, o) { if (TAM_C[o.tamanho]) st.tamanho = o.tamanho; if (ESTADOS_C.some(x => x[0] === o.estado)) st.estado = o.estado; if (typeof o.fosso === 'boolean') st.fosso = o.fosso; },
+    gerar: (st, comum) => gerarCastelo(Object.assign({}, st, { seed: comum && comum.seed, estilo: comum && comum.estilo, estacao: comum && comum.estacao })),
+    previa, resumo: resumoCastelo, nomePadrao: nomeCastelo,
+    criar: (p, nome, ex) => criar(p, nome, ex, nomeCastelo),
+    relevoTxt: 'Com relevo (a água do fosso)',
+    dica: '"Gerar outro" sorteia outro castelo, com as mesmas escolhas.',
+    nota: 'Sai uma cena nova: as muralhas e as torres barram como paredes, a grade levadiça e a ponte (com fosso) abrem e fecham com dois cliques. Na torre de menagem, a escada do calabouço (uma Entrada oculta) gera o nível de baixo.',
+    feito: (sc) => `"${sc.name}" criada: dois cliques na grade (ou na ponte) abrem e fecham; a escada do calabouço está oculta na torre de menagem.` }, semPartes);
+  const CEMITERIO = Object.assign({ id: 'cemiterio', n: 'Cemitério', aceitaEstacao: true,
+    padrao: () => { const o = App.opt; return { tamanho: TAM_M[o.cemTam] ? o.cemTam : 'medio', igreja: o.cemIgreja !== false, mausoleus: o.cemMau == null ? 2 : o.cemMau, cat: Masmorra.CATACUMBAS.includes(o.cemCat) ? o.cemCat : 'ossuario' }; },
+    controles(st, K, mudou) {
+      const muda = (k, v) => { st[k] = v; App.opt.cemTam = st.tamanho; App.opt.cemIgreja = st.igreja; App.opt.cemMau = st.mausoleus; App.opt.cemCat = st.cat; mudou(true); };
+      return h('div', { class: 'ger-c' },
+        K.field('Tamanho', K.seg('cem-tam', st.tamanho, Object.keys(TAM_M).map(k => [k, TAM_M[k].n, null, `${TAM_M[k].W} × ${TAM_M[k].H} quadrados`]), v => muda('tamanho', v)), 'stack'),
+        K.toggle('cem-igreja', st.igreja, v => muda('igreja', v), 'Com a igreja'),
+        K.field('Mausoléus', K.seg('cem-mau', st.mausoleus, [[0, 'Nenhum'], [1, '1'], [2, '2'], [3, '3']], v => muda('mausoleus', v)), 'stack'),
+        K.field('As catacumbas embaixo', K.seg('cem-cat', st.cat, Masmorra.TODOS.filter(x => Masmorra.CATACUMBAS.includes(x[0])), v => muda('cat', v)), 'stack'));
+    },
+    opcoesDe: st => ({ tamanho: st.tamanho, igreja: !!st.igreja, mausoleus: st.mausoleus, cat: st.cat }),
+    aplicarOpcoes(st, o) { if (TAM_M[o.tamanho]) st.tamanho = o.tamanho; if (typeof o.igreja === 'boolean') st.igreja = o.igreja; if (o.mausoleus != null) st.mausoleus = Math.max(0, Math.min(3, Math.round(Number(o.mausoleus)) || 0)); if (Masmorra.CATACUMBAS.includes(o.cat)) st.cat = o.cat; },
+    gerar: (st, comum) => gerarCemiterio(Object.assign({}, st, { seed: comum && comum.seed, estilo: comum && comum.estilo, estacao: comum && comum.estacao })),
+    previa, resumo: resumoCemiterio, nomePadrao: nomeCemiterio,
+    criar: (p, nome, ex) => criar(p, nome, ex, nomeCemiterio),
+    relevoTxt: 'Com relevo',
+    dica: '"Gerar outro" sorteia outro cemitério, com as mesmas escolhas.',
+    nota: 'Sai uma cena nova: o muro baixo barra o passo e deixa ver; o portão e os portões dos mausoléus abrem com dois cliques. A escada da cripta (uma Entrada oculta, atrás do altar ou num mausoléu) gera as catacumbas embaixo.',
+    feito: (sc) => `"${sc.name}" criada: a escada da cripta está oculta (atrás do altar ou num mausoléu); dois cliques nela geram as catacumbas.` }, semPartes);
+
+  return { CASTELO, CEMITERIO, gerarCastelo, gerarCemiterio, pintar, TAM_C, TAM_M, ESTADOS_C };
+})();
+/* ---------------------------------------------------------------
+   10ga. POVOAR O LUGAR (lote 49) — depois de criar a cena pelo "Gerar um lugar…" (ou pela Entrada de um nível), com a
+   chave "Povoar o lugar" ligada, a cena ganha:
+   · as luzes como a hora pede (de dia, as tochas e as velas de fora apagadas; o fogo da lareira e da forja, aceso);
+   · as entradas para baixo nos lugares de gente: o poço desce à cisterna, o alçapão de uma casa desce ao porão (Entradas
+     ocultas, como as outras);
+   · os inimigos: sorteados no Bestiário da mesa entre os que combinam com o lugar (pelas tags: o tipo da criatura e o
+     bioma); sem nenhum que sirva, um token com o nome ("Esqueleto"), para o mestre ligar depois. Todos ocultos, longe
+     da chegada, quantos o perigo pede;
+   · os moradores (nos lugares de gente): pelo gerador de NPC do site, com nome, raça, o papel e um traço, nas notas do
+     token, ocultos até o mestre mostrar;
+   · os tesouros: o saque escondido nos baús, nos cofres e nos sarcófagos (o saque no chão: "Recolher o saque").
+   Tudo é um passo só: a cena acabou de nascer.
+   --------------------------------------------------------------- */
+const Povoar = (() => {
+  const PERIGOS = [['facil', 'Fácil'], ['medio', 'Médio'], ['dificil', 'Difícil']];
+  const QUANTOS = { facil: [2, 3], medio: [4, 6], dificil: [7, 10] };
+  const DE_GENTE = new Set(['vila', 'cidade', 'porto', 'tribo', 'castelo', 'cemiterio']);
+  const FORA = new Set(['vila', 'cidade', 'porto', 'tribo', 'castelo', 'cemiterio', 'encontro', 'regiao', 'ruinas']);
+  const FOGO_FICA = new Set(['fogueira', 'lareira', 'fornalha', 'braseiro', 'carvao', 'caldeirao', 'circulo', 'tripe', 'incensario']);
+  /* O que vive em cada lugar: as tags do Bestiário (tipo e bioma) e os nomes de reserva. */
+  const GENERICOS = {
+    'Morto-vivo': ['Esqueleto', 'Zumbi', 'Carniçal', 'Espectro'], Humanoide: ['Bandido', 'Mercenário', 'Cultista', 'Salteador'], Fera: ['Lobo', 'Rato gigante', 'Aranha gigante', 'Javali'],
+    'Aberração': ['Aberração', 'Coisa rastejante'], Constructo: ['Golem de pedra', 'Armadura animada'], 'Espírito': ['Fantasma', 'Aparição'], 'Demônio': ['Diabrete', 'Demônio menor'],
+  };
+  function quemVive(lugar, p) {
+    const t = p && p.tipo, est = p && p.estado;
+    if (lugar === 'cemiterio') return { tipos: ['Morto-vivo', 'Espírito'], biomas: ['Ruínas'] };
+    if (lugar === 'castelo') return est === 'ruinas' ? { tipos: ['Morto-vivo', 'Fera', 'Espírito'], biomas: ['Ruínas'] } : { tipos: ['Humanoide'], biomas: ['Cidade', 'Planície'] };
+    if (lugar === 'vila' || lugar === 'cidade' || lugar === 'porto' || lugar === 'tribo') return { tipos: ['Humanoide'], biomas: ['Cidade'] };
+    if (lugar === 'masmorra' || lugar === 'catacumbas' || lugar === 'arena') {
+      if (['ossuario', 'inundada', 'nobre', 'cripta', 'navio'].includes(t)) return { tipos: ['Morto-vivo'], biomas: ['Masmorra', 'Subterrâneo'] };
+      if (t === 'culto') return { tipos: ['Humanoide', 'Demônio', 'Morto-vivo'], biomas: ['Masmorra'] };
+      if (['caverna', 'covil', 'subsolo'].includes(t)) return { tipos: ['Fera', 'Aberração'], biomas: ['Caverna', 'Subterrâneo'] };
+      if (['esgoto', 'cisterna', 'porao'].includes(t)) return { tipos: ['Fera'], biomas: ['Subterrâneo', 'Cidade'] };
+      if (['torre', 'laboratorio', 'mina'].includes(t)) return { tipos: ['Constructo', 'Aberração'], biomas: ['Masmorra'] };
+      if (t === 'templo' || t === 'ruinas') return { tipos: ['Espírito', 'Morto-vivo'], biomas: ['Ruínas'] };
+      return { tipos: ['Humanoide', 'Fera'], biomas: ['Masmorra'] };
+    }
+    if (lugar === 'ruinas') return { tipos: ['Espírito', 'Fera'], biomas: ['Ruínas'] };
+    return { tipos: ['Fera', 'Humanoide'], biomas: ['Floresta', 'Planície'] };
+  }
+  const PAPEIS_DE = {
+    castelo: ['guarda', 'guarda', 'guarda', 'nobre', 'artesao', 'sacerdote', 'mercenario'], cemiterio: ['sacerdote', 'campones', 'mendigo', 'estudioso'],
+    vila: ['taverneiro', 'artesao', 'campones', 'campones', 'guarda', 'comerciante', 'curandeiro'], cidade: ['comerciante', 'guarda', 'nobre', 'artesao', 'ladrao', 'taverneiro', 'artista', 'mendigo'],
+    porto: ['marinheiro', 'marinheiro', 'comerciante', 'guarda', 'taverneiro', 'ladrao'], tribo: ['cacador', 'cacador', 'curandeiro', 'artesao', 'campones'],
+  };
+
+  /* ---- onde cabe alguém: um ponto de chão, longe das paredes, fora da água, sem token em cima ---- */
+  function lugaresLivres(sc, n, longeDe, dentroDe, r) {
+    const c = sc.cell, out = [], segs = [];
+    for (const w of sc.walls) segs.push([w.x1 / c, w.y1 / c, w.x2 / c, w.y2 / c]);
+    const ocup = new Set(sc.tokens.map(t => Math.floor(t.x / c) + ',' + Math.floor(t.y / c)));
+    const agua = sc.shapes.filter(s => s.ter && (s.ter.t === 'agua' || s.ter.t === 'fosso'));
+    const naAgua = (x, y) => agua.some(s => {
+      if (s.k === 'rect' || s.k === 'ell') return x * c >= Math.min(s.x, s.x + s.w) && x * c <= Math.max(s.x, s.x + s.w) && y * c >= Math.min(s.y, s.y + s.h) && y * c <= Math.max(s.y, s.y + s.h);
+      if (s.k === 'poly') { let d = false; const P = s.pts; for (let i = 0, j = P.length - 2; i < P.length; j = i, i += 2) { const xi = P[i] / c, yi = P[i + 1] / c, xj = P[j] / c, yj = P[j + 1] / c; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) d = !d; } return d; }
+      return false;
+    });
+    const perto = (x, y) => segs.some(([a, b, cc, d]) => Geo.distSeg(x, y, a, b, cc, d) < 0.75);
+    const area = dentroDe && dentroDe.length ? dentroDe : [{ x: 1, y: 1, w: sc.cols - 2, h: sc.rows - 2 }];
+    for (let t = 0; t < n * 60 && out.length < n; t++) {
+      const q = area[Math.floor(r() * area.length)];
+      const i = Math.floor(q.x + r() * q.w), j = Math.floor(q.y + r() * q.h), x = i + 0.5, y = j + 0.5;
+      if (i < 0 || j < 0 || i >= sc.cols || j >= sc.rows || ocup.has(i + ',' + j)) continue;
+      if (longeDe && Math.hypot(x - longeDe[0], y - longeDe[1]) < Math.min(10, Math.max(sc.cols, sc.rows) * 0.25)) continue;
+      if (perto(x, y) || naAgua(x, y)) continue;
+      ocup.add(i + ',' + j); out.push([i, j]);
+    }
+    return out;
+  }
+  // a chegada: o marcador de chegada, a Saída (a escada de subida) ou a borda de baixo
+  function chegadaDe(sc) {
+    const c = sc.cell, t = sc.tokens.find(k => k.prop === 'chegada' || k.prop === 'saida');
+    return t ? [t.x / c + 0.5, t.y / c + 0.5] : [sc.cols / 2, sc.rows - 1];
+  }
+
+  /* ---- as partes ---- */
+  function luzes(sc, lugar) {
+    const dia = sc.light === 'claro', fora = FORA.has(lugar);
+    let n = 0;
+    for (const t of sc.tokens) {
+      const d = t.prop ? Props.P[t.prop] : null;
+      if (!d || !d.luz || !t.light) continue;
+      const on = !(dia && fora && !FOGO_FICA.has(t.prop));
+      if ((t.light.on !== false) !== on) { t.light = Object.assign({}, t.light, { on }); n++; }
+    }
+    return n;
+  }
+  function entradas(sc, lugar, p, r) {
+    if (!['vila', 'cidade', 'porto'].includes(lugar)) return 0;
+    const c = sc.cell, novas = [];
+    const ent = (x, y, n, m) => { const t = Props.novo(sc, 'entrada', x, y, 1, true); t.size = 0.75; t.x += c * 0.125; t.y += c * 0.125; t.name = n; t.gera = { t: 'masmorra', m, n: 1, tam: 'pequeno', e: (p && p.estilo) || 'comum', s: 1 + Math.floor(r() * 2147483000) }; novas.push(t); };
+    const pocos = sc.tokens.filter(t => t.prop === 'poco').slice(0, 1);
+    for (const t of pocos) ent(t.x + c, t.y, 'O poço (desce à cisterna)', 'cisterna');
+    // o alçapão: ao lado de uma cama ou de uma mesa (dentro de casa), em até duas casas
+    const casas = sc.tokens.filter(t => t.prop === 'cama' || t.prop === 'mesa' || t.prop === 'balcao');
+    for (let k = 0; k < Math.min(2, casas.length); k++) { const t = casas.splice(Math.floor(r() * casas.length), 1)[0]; ent(t.x, t.y + t.size * c, 'O alçapão (desce ao porão)', 'porao'); }
+    for (const t of novas) sc.tokens.push(t);
+    return novas.length;
+  }
+  function inimigos(sc, lugar, p, perigo, r) {
+    const [a, b] = QUANTOS[perigo] || QUANTOS.medio, n = a + Math.floor(r() * (b - a + 1));
+    const quem = quemVive(lugar, p), lista = typeof Fichas !== 'undefined' && Fichas.listaBest ? Fichas.listaBest() : [];
+    const tagOk = (e, tags) => e.tags.some(t => tags.includes(t));
+    let bons = lista.filter(e => tagOk(e, quem.tipos) && (tagOk(e, quem.biomas) || !e.tags.some(t => ['Floresta', 'Caverna', 'Cidade', 'Pântano', 'Montanha', 'Deserto', 'Planície', 'Mar', 'Neve', 'Masmorra', 'Ruínas', 'Subterrâneo'].includes(t))));
+    if (!bons.length) bons = lista.filter(e => tagOk(e, quem.tipos));
+    const lacaios = bons.filter(e => !e.tags.some(t => ['Chefe', 'Elite'].includes(t))), elites = bons.filter(e => e.tags.some(t => ['Chefe', 'Elite'].includes(t)));
+    // onde: na masmorra, nas salas (menos a da entrada); no castelo sitiado, no acampamento de fora; no resto, em qualquer chão longe da chegada
+    let area = null;
+    if (p && Array.isArray(p.salas) && p.salas.length && (lugar === 'masmorra' || lugar === 'catacumbas')) area = p.salas.filter(q => q.papel !== 'entrada').map(q => ({ x: q.x + 1, y: q.y + 1, w: Math.max(1, q.w - 2), h: Math.max(1, q.h - 2) }));
+    if (lugar === 'castelo' && p && p.estado === 'sitiado') area = [{ x: 1, y: sc.rows - 9, w: sc.cols - 2, h: 7 }];
+    const pts = lugaresLivres(sc, n, chegadaDe(sc), area, r);
+    const conta = new Map(), feitos = [];
+    pts.forEach(([i, j], k) => {
+      const x = i * sc.cell, y = j * sc.cell;
+      const forte = perigo === 'dificil' && k === 0 && elites.length;
+      const pool = forte ? elites : lacaios.length ? lacaios : bons;
+      let t = null;
+      if (pool.length) { const e = pool[Math.floor(r() * pool.length)]; t = Fichas.novoTokenBest(sc, e.id, x, y, { hidden: true }); }
+      if (!t) {
+        const tipo = quem.tipos[Math.floor(r() * quem.tipos.length)], nomes = GENERICOS[tipo] || GENERICOS.Humanoide;
+        t = newToken(sc, x, y, { name: nomes[Math.floor(r() * nomes.length)], hidden: true, color: '#8f3d4a' });
+        t.notes = 'Inimigo do lugar povoado (' + tipo.toLowerCase() + '): ligue a um inimigo do Bestiário pelo painel, se quiser.';
+      }
+      const base = t.name; conta.set(base, (conta.get(base) || 0) + 1); t.name = (base.slice(0, 54) + ' ' + conta.get(base)).trim();
+      feitos.push(t);
+    });
+    for (const t of feitos) sc.tokens.push(t);
+    return { n: feitos.length, doBest: feitos.filter(t => t.best).length };
+  }
+  function moradores(sc, lugar, p, r) {
+    if (!DE_GENTE.has(lugar) || (lugar === 'castelo' && p && p.estado === 'ruinas')) return 0;
+    const N = window.TC && window.TC.npc;
+    const papeis = PAPEIS_DE[lugar] || PAPEIS_DE.vila, n = Math.min(papeis.length, 3 + Math.floor(r() * 4));
+    let racas = [];
+    try { const T = window.TC, d = T && T.ponte && T.dados && T.dados.col ? T.dados.col('documentos').pegar(N && N.RACAS) : null; if (N && d && d.dados) racas = N.normRacas(d.dados); } catch (e) { racas = []; }
+    const dentroDe = p && Array.isArray(p.salas) && p.salas.length ? null : null;
+    const pts = lugaresLivres(sc, n, null, dentroDe, r), feitos = [];
+    pts.forEach(([i, j], k) => {
+      const papel = papeis[k % papeis.length];
+      let nome = (N ? null : null), notas = '', cor = '#4a6a8f';
+      if (N) {
+        try {
+          const rr = mulberry(1 + Math.floor(r() * 2147483000));
+          const raca = racas.length && N.escolherRaca ? N.escolherRaca(racas, null, null, rr) : null;
+          const x = N.gerar(Object.assign({ papel, estilo: undefined }, raca ? { raca } : null), 1 + Math.floor(r() * 2147483000));
+          const ds = N.descricao(x);
+          nome = x.nome; notas = [ds.quem + '.', ds.aparencia, ds.jeito, x.motivacao ? 'Quer: ' + x.motivacao : '', x.segredo ? 'Esconde: ' + x.segredo : ''].filter(Boolean).join('\n');
+        } catch (e) { console.error(e); }
+      }
+      if (!nome) nome = papel.charAt(0).toUpperCase() + papel.slice(1);
+      const t = newToken(sc, i * sc.cell, j * sc.cell, { name: nome.slice(0, 60), hidden: true, color: cor });
+      t.notes = notas.slice(0, 2000);
+      feitos.push(t);
+    });
+    for (const t of feitos) sc.tokens.push(t);
+    return feitos.length;
+  }
+  function tesouros(sc, perigo, r) {
+    const guarda = sc.tokens.filter(t => ['bau', 'cofre', 'sarcofago', 'caixao'].includes(t.prop));
+    const mult = { facil: 1, medio: 2, dificil: 4 }[perigo] || 2;
+    const ITENS = [['Poção de cura', 'pocao'], ['Moedas antigas', 'material'], ['Joia de prata', 'material'], ['Pergaminho velho', 'material'], ['Runa gasta', 'runa'], ['Flechas', 'municao'], ['Bomba de fumaça', 'bomba']];
+    let n = 0;
+    for (const t of guarda) {
+      if (r() < 0.35) continue;
+      const itens = [];
+      for (let k = 0, m = 1 + Math.floor(r() * 2); k < m; k++) { const [nome, tipo] = ITENS[Math.floor(r() * ITENS.length)]; itens.push({ nome, qtd: 1 + Math.floor(r() * mult), tipo }); }
+      const s = cleanSaque({ itens, lapros: Math.round((5 + r() * 25) * mult), de: t.name });
+      if (s) { t.saque = s; n++; }
+    }
+    return n;
+  }
+
+  /* o: { perigo, inimigos, moradores, tesouros } → o texto do que entrou (para o aviso) */
+  function aplicar(sc, lugar, p, o) {
+    o = o || {};
+    const r = mulberry(((p && p.seed) || 7) ^ 0x2f6b9d1);
+    const perigo = PERIGOS.some(x => x[0] === o.perigo) ? o.perigo : 'medio';
+    const partes = [];
+    luzes(sc, lugar);
+    const ne = entradas(sc, lugar, p, r);
+    if (ne) partes.push(ne === 1 ? '1 entrada para baixo' : ne + ' entradas para baixo');
+    if (o.inimigos !== false) { const k = inimigos(sc, lugar, p, perigo, r); if (k.n) partes.push(`${k.n} ${k.n === 1 ? 'inimigo' : 'inimigos'}${k.doBest ? ` (${k.doBest} do Bestiário)` : ''}`); }
+    if (o.moradores !== false) { const k = moradores(sc, lugar, p, r); if (k) partes.push(k === 1 ? '1 morador' : k + ' moradores'); }
+    if (o.tesouros !== false) { const k = tesouros(sc, perigo, r); if (k) partes.push(k === 1 ? '1 baú com saque' : k + ' com saque'); }
+    Persist.scene(sc.id);
+    return partes.length ? 'Povoado: ' + partes.join(', ') + ' (ocultos dos jogadores).' : '';
+  }
+  // as escolhas da janela (lembradas neste navegador)
+  const prefs = () => { const o = App.opt; return { on: o.genPovoar === true, perigo: PERIGOS.some(x => x[0] === o.genPerigo) ? o.genPerigo : 'medio', inimigos: o.genPovInim !== false, moradores: o.genPovMor !== false, tesouros: o.genPovTes !== false }; };
+  function controles(K, mudou) {
+    const pr = prefs(), set = (k, v) => { App.opt[k] = v; if (mudou) mudou(); };
+    return h('div', { class: 'ger-pov', id: 'ger-pov' },
+      K.toggle('ger-povoar', pr.on, v => set('genPovoar', v), 'Povoar o lugar (luzes, inimigos, moradores e tesouros, ocultos)'),
+      pr.on ? h('div', { class: 'ger-pov-op' },
+        K.field('Perigo', K.seg('ger-perigo', pr.perigo, PERIGOS, v => set('genPerigo', v)), 'stack'),
+        K.toggle('ger-pov-inim', pr.inimigos, v => set('genPovInim', v), 'Inimigos (do Bestiário que combina)'),
+        K.toggle('ger-pov-mor', pr.moradores, v => set('genPovMor', v), 'Moradores (nos lugares de gente)'),
+        K.toggle('ger-pov-tes', pr.tesouros, v => set('genPovTes', v), 'Tesouros nos baús')) : null);
+  }
+  return { aplicar, controles, prefs, quemVive, PERIGOS, lugaresLivres };
+})();
+/* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
    Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra e o Porto), as escolhas de cada um e, embaixo, o que vale
    para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena, a estação
@@ -39232,7 +39945,9 @@ const EscudoCenas = (() => {
    --------------------------------------------------------------- */
 const Gerador = (() => {
   // (lote 14, parte 14c: o Vilarejo, a Cidade, a Tribo, as Ruínas e o Porto com os arredores — Arredores.envolver)
-  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Encontro.LUGAR, Regiao.LUGAR, Arredores.LUGARES.ruinas, Masmorra.LUGAR, Arena.LUGAR, Arredores.LUGARES.porto];
+  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Encontro.LUGAR, Regiao.LUGAR, Arredores.LUGARES.ruinas, Masmorra.LUGAR, Arena.LUGAR, Arredores.LUGARES.porto,
+    // (lote 49) as catacumbas, o castelo e o cemitério
+    Masmorra.LUGAR_CAT, LugaresFora.CASTELO, LugaresFora.CEMITERIO];
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
@@ -39514,6 +40229,7 @@ const Gerador = (() => {
           L.semHora ? null : field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
           L.aceitaEstacao ? field('Estação', seg('ger-estacao', comum.estacao, Estacoes.LISTA, v => { comum.estacao = v; lembrarComum(); pintar(); refazer(); }), 'stack') : null,
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
+          Povoar.controles(K, () => pintar()),                                         // (lote 49) povoar o lugar
           temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null)].filter(Boolean));
       nota.textContent = L.nota;
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
@@ -39539,10 +40255,11 @@ const Gerador = (() => {
           const E = estadoDe(L), p = E.plano, l = L;
           l.criar(p, inNome.value, { hora: comum.hora, clima: climaDe(l), relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(sc => {
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
+            const pv = Povoar.prefs(), txtPov = pv.on ? Povoar.aplicar(sc, l.id, p, pv) : '';      // (lote 49) o lugar povoado
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : ''), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },

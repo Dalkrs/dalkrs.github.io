@@ -337,6 +337,43 @@
     },
   });
 
+  // (lote 49) a ponte levadiça (baixada, passa; levantada, barra o passo como uma janela) e as máquinas de cerco
+  reg('ponteLevadica', {
+    n: 'Ponte levadiça', g: 'portao', size: 2, estados: [['baixada', 'Baixada'], ['levantada', 'Levantada']], parede: 'window', abertoEm: 'baixada',
+    draw(c, R, t, s) {
+      const baixa = est() !== 'levantada';
+      for (const x of [-1, 1]) { c.strokeStyle = FER.esc; c.lineWidth = R * 0.05; c.beginPath(); c.moveTo(x * R * 0.85, -R * 0.95); c.lineTo(x * R * 0.85, baixa ? R * 0.9 : -R * 0.55); c.stroke(); }
+      if (baixa) {
+        caixa(c, -R * 0.82, -R * 0.95, R * 1.64, R * 1.9, R * 0.04); c.fillStyle = grad(c, -R, 0, R, 0, [MAD.esc, MAD.cla, MAD.esc]); c.fill(); linha(c, R * 0.04);
+        c.strokeStyle = 'rgba(40,22,8,0.55)'; c.lineWidth = R * 0.02; for (let i = 1; i < 8; i++) { c.beginPath(); c.moveTo(-R * 0.82, -R * 0.95 + i * R * 0.237); c.lineTo(R * 0.82, -R * 0.95 + i * R * 0.237); c.stroke(); }
+      } else {
+        caixa(c, -R * 0.82, -R * 0.98, R * 1.64, R * 0.3, R * 0.04); c.fillStyle = grad(c, 0, -R, 0, -R * 0.68, [MAD.cla, MAD.esc]); c.fill(); linha(c, R * 0.04);
+        c.strokeStyle = 'rgba(230,171,79,0.5)'; c.setLineDash([R * 0.1, R * 0.08]); c.lineWidth = R * 0.03; c.strokeRect(-R * 0.82, -R * 0.95, R * 1.64, R * 1.9); c.setLineDash([]);
+      }
+    },
+  });
+  reg('catapulta', {
+    n: 'Catapulta', g: 'portao', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.8, 0.9, 0.06, 0.08);
+      for (const x of [-0.55, 0.55]) { caixa(c, x * R - R * 0.08, -R * 0.75, R * 0.16, R * 1.5, R * 0.04); c.fillStyle = MAD.esc; c.fill(); linha(c, R * 0.03); }
+      for (const y of [-0.6, 0.6]) { caixa(c, -R * 0.62, y * R - R * 0.07, R * 1.24, R * 0.14, R * 0.03); c.fillStyle = MAD.med; c.fill(); linha(c, R * 0.03); }
+      for (const [x, y] of [[-0.62, -0.75], [0.62, -0.75], [-0.62, 0.75], [0.62, 0.75]]) { c.fillStyle = '#2a1a0c'; c.beginPath(); c.arc(x * R, y * R, R * 0.14, 0, Math.PI * 2); c.fill(); }
+      c.strokeStyle = MAD.cla; c.lineWidth = R * 0.12; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, R * 0.4); c.lineTo(0, -R * 0.85); c.stroke();
+      c.fillStyle = MAD.esc; c.beginPath(); c.arc(0, -R * 0.85, R * 0.2, 0, Math.PI * 2); c.fill(); linha(c, R * 0.03);
+      pedrinha(c, 0, -R * 0.85, R * 0.12, s);
+    },
+  });
+  reg('ariete', {
+    n: 'Aríete', g: 'portao', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.55, 0.95, 0.06, 0.06);
+      caixa(c, -R * 0.5, -R * 0.85, R * 1.0, R * 1.7, R * 0.06); c.fillStyle = grad(c, -R * 0.5, 0, R * 0.5, 0, ['#5a3a20', '#7a5230', '#5a3a20']); c.fill(); linha(c, R * 0.04);
+      c.strokeStyle = 'rgba(30,16,6,0.5)'; c.lineWidth = R * 0.03; for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(-R * 0.5, -R * 0.85 + i * R * 0.28); c.lineTo(R * 0.5, -R * 0.85 + i * R * 0.28); c.stroke(); }
+      caixa(c, -R * 0.12, -R * 1.0, R * 0.24, R * 0.4, R * 0.08); c.fillStyle = FER.cla; c.fill(); linha(c, R * 0.03);
+    },
+  });
+
   /* Os trechos que os portões fechados (e abertos) põem na cena: { x1, y1, x2, y2, k, open, prop } — ao longo do
      objeto, pelo meio dele, girando com ele. */
   Props.paredes = sc => {
@@ -345,7 +382,7 @@
       const d = t.prop ? Props.P[t.prop] : null;
       if (!d || !d.parede) continue;
       const s = t.size * sc.cell, R = s / 2, cx = t.x + R, cy = t.y + R, a = (t.rot || 0) * Math.PI / 180, ux = Math.cos(a) * R, uy = Math.sin(a) * R;
-      out.push({ id: 'pp_' + t.id, x1: cx - ux, y1: cy - uy, x2: cx + ux, y2: cy + uy, k: d.parede, open: Props.estado(t) === 'aberto', prop: t.id });
+      out.push({ id: 'pp_' + t.id, x1: cx - ux, y1: cy - uy, x2: cx + ux, y2: cy + uy, k: d.parede, open: Props.estado(t) === (d.abertoEm || 'aberto'), prop: t.id });
     }
     return out;
   };

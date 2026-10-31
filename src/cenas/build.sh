@@ -41,6 +41,7 @@ body_parts() {
   # (lote 44) o painel de barras, dentro da página de teste (no site ele vem por <script src>)
   echo '<script>'
   cat ../../tc/barras-painel.js
+  cat ../../tc/npc.js
   echo '</script>'
   cat "$OUT"
   printf '%s' '</body></html>'
@@ -65,6 +66,7 @@ mkdir -p "$(dirname "$SITE")"
   echo '<script src="../tc/sede.js?v=2"></script>'
   echo '<script src="../tc/corrupcao.js?v=1"></script>'
   echo '<script src="../tc/barras-painel.js?v=1"></script>'      # (lote 44) o painel de barras
+  echo '<script src="../tc/npc.js?v=1"></script>'                # (lote 49) o gerador de NPC, para os moradores do lugar povoado
   body_parts
   echo '</body>'
   echo '</html>'

@@ -1039,7 +1039,7 @@ function normalizeScene(sc) {
     if (gera && palavra(gera.b)) t.gera = { b: gera.b };
     // (parte 4b-3: a escada que desce — o tipo do nível de baixo, o número dele, o tamanho, o estilo e a semente)
     // (lote 28: os oito estilos novos e a largura dos corredores, lc)
-    else if (gera && gera.t === 'masmorra') t.gera = Object.assign({ t: 'masmorra', m: ['pedra', 'caverna', 'cripta', 'mina', 'templo', 'esgoto', 'torre', 'laboratorio', 'fortaleza', 'ruinas', 'covil', 'navio'].includes(gera.m) ? gera.m : 'pedra', n: clamp(Math.round(Number(gera.n)) || 1, 1, 99), tam: ['pequeno', 'medio', 'grande'].includes(gera.tam) ? gera.tam : 'medio', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1 }, [1, 2, 3].includes(gera.lc) ? { lc: gera.lc } : null);
+    else if (gera && gera.t === 'masmorra') t.gera = Object.assign({ t: 'masmorra', m: ['pedra', 'caverna', 'cripta', 'mina', 'templo', 'esgoto', 'torre', 'laboratorio', 'fortaleza', 'ruinas', 'covil', 'navio', 'ossuario', 'culto', 'inundada', 'nobre', 'porao', 'cisterna', 'calabouco'].includes(gera.m) ? gera.m : 'pedra', n: clamp(Math.round(Number(gera.n)) || 1, 1, 99), tam: ['pequeno', 'medio', 'grande'].includes(gera.tam) ? gera.tam : 'medio', e: palavra(gera.e) ? gera.e : 'comum', s: (Math.round(Number(gera.s)) >>> 0) || 1 }, [1, 2, 3].includes(gera.lc) ? { lc: gera.lc } : null);
     // (lote 18: a entrada de gruta — onde fica a boca, o bioma de baixo, a semente e o rio de cima, até 41 pontos)
     else if (gera && gera.t === 'subsolo') {
       const nu = v => (typeof v === 'number' && isFinite(v) ? Math.round(clamp(v, -1000, 1000) * 100) / 100 : null);
