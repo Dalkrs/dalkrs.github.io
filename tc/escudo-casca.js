@@ -99,6 +99,14 @@
       pintarPainel();
     }
 
+    // (lote 46) o cronômetro dos puzzles: o vigia passa de tempos em tempos (só faz algo se um puzzle com tempo acabou)
+    setInterval(() => {
+      try {
+        const a = mestraEscudo() && mestreDaMesa() && acoes();
+        if (a && a.handouts().some(x => { if (x.h.tipo !== 'puzzle' || !x.h.entregue) return false; const jg = a.jogoDe(x.id, x.h); const pr = jg && E.prazo(jg); return !!(pr && pr.acabou && !jg.resolvido && jg.estado.fim !== 1); })) vigiar();
+      } catch (e) { /* (a mesa fechando) */ }
+    }, 4000);
+
     /* ---------------- o painel do roteiro ---------------- */
     const painel = k.painel, botao = k.botao;
     let aberto = k.guarda.ler('tinycats:roteiro') === '1', selS = null;

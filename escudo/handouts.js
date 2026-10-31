@@ -141,7 +141,7 @@
 
     /* ---------------- a prévia ---------------- */
     function previaHandout(hid, x) {
-      const p = E.projetarHandout(hid, x, x.tipo === 'puzzle' && x.puzzle.tipo === 'imagem' ? null : x.img, null);
+      const p = E.projetarHandout(hid, x, E.imagemEhPuzzle(x) ? null : x.img, null);
       const el = PUI.handout(p, {});
       // (na prévia, a imagem original com as áreas escondidas por cima; aos jogadores vai a imagem já coberta)
       const fig = el.querySelector('.ho-fig img');
@@ -178,7 +178,14 @@
           return Promise.resolve(t.jogo);
         },
       };
-      return [PUI.puzzle(t.jogo, ctx), h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'tst:recomecar', onclick: () => { delete testes[hid]; k.pintar(); } }, 'Recomeçar o teste'))];
+      // (lote 46) a dica, no teste: a mesma que você dá aos jogadores
+      const m = E.EXTRA[t.jogo.tipo] ? E.montarPuzzle(x.puzzle, x.img, x.imgAr) : null;
+      const dicaTeste = m && !t.jogo.resolvido ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'tst:dica', onclick: () => {
+        const d = E.dicaDe(t.jogo, m);
+        if (!d) { toast('Não há mais dica para dar neste puzzle.'); return; }
+        ctx.jogar('jogar', Object.assign({}, d.mudas, { _txt: 'o mestre deu uma dica' })).then(() => toast('Dica (no teste): ' + d.txt + '.'));
+      } }, 'Dar uma dica (no teste)') : null;
+      return [PUI.puzzle(t.jogo, ctx), h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'tst:recomecar', onclick: () => { delete testes[hid]; k.pintar(); } }, 'Recomeçar o teste'), dicaTeste)];
     }
 
     /* ---------------- o puzzle: o que é e o que acontece ---------------- */
@@ -206,6 +213,7 @@
         y.puzzle = Object.assign({}, y.puzzle, { tipo: t, seed: E.novaSemente() });
         if (t === 'cifra' && !y.puzzle.msg) y.puzzle.msg = E.MENSAGENS[Math.floor(Math.random() * E.MENSAGENS.length)];
         if (t === 'charada') y.puzzle.idx = E.sortearCharada(y.puzzle.dif, E.mulberry(E.novaSemente()));
+        if (['cruzadas', 'caca', 'anagrama'].includes(t) && !y.puzzle.tema) y.puzzle.tema = 'taverna';
       });
       const partes = [
         h('div', { class: 'tipos-pz' }, Object.keys(grupos).map(g => h('div', { class: 'grp' }, h('span', { text: g }),
@@ -240,6 +248,42 @@
         partes.push(x.img ? h('div', { class: 'row' }, h('img', { src: x.img, alt: '', style: { maxWidth: '160px', maxHeight: '110px', borderRadius: '6px' } }), h('button', { type: 'button', class: 'btn sm', 'data-k': 'h:img', onclick: () => escolherImagem(hid) }, 'Trocar a imagem'))
           : h('button', { type: 'button', class: 'btn pri', 'data-k': 'h:img', onclick: () => escolherImagem(hid) }, 'Escolher a imagem'));
       }
+      // (lote 46) as palavras: o tema do banco, ou as do mestre
+      if (['cruzadas', 'caca', 'anagrama'].includes(pz.tipo)) {
+        const temas = E.mais ? E.mais.TEMAS : {};
+        partes.push(h('label', { class: 'field' }, h('span', { text: 'O tema das palavras' }),
+          h('select', { class: 'in', 'data-k': 'pz:tema', value: pz.tema || 'taverna', disabled: !!pz.palavras, onchange: ev => { const v = ev.target.value; trocarPuzzle(hid, 'mudar o tema das palavras', y => { y.puzzle.tema = v; y.puzzle.seed = E.novaSemente(); }); } },
+            Object.keys(temas).map(t => h('option', { value: t, text: temas[t][0] })))));
+        if (!pz.palavras) {
+          const usadas = m && m.seg && m.seg.pals ? m.seg.pals : m && m.pub && m.pub.lista ? m.pub.lista : [];
+          partes.push(h('p', { class: 'ajuda', text: 'Sorteadas do tema: ' + usadas.join(', ') + '. “Sortear outro” troca as palavras.' }));
+          partes.push(h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:minhas', onclick: () => trocarPuzzle(hid, 'escrever as palavras', y => {
+            y.puzzle.palavras = E.mais.TEMAS[y.puzzle.tema || 'taverna'][1].map(([p, d]) => ({ p, d }));
+          }) }, 'Escrever as minhas palavras')));
+        } else {
+          partes.push(h('label', { class: 'field' }, h('span', { text: 'As palavras (uma por linha: a palavra, um traço e a dica)' }),
+            h('textarea', { class: 'in', rows: 8, 'data-k': 'pz:palavras', value: pz.palavras.map(x => x.p + (x.d ? ' — ' + x.d : '')).join('\n'),
+              onchange: ev => {
+                const l = ev.target.value.split('\n').map(s => s.trim()).filter(Boolean).map(s => { const k2 = s.search(/\s[—–-]\s/); return k2 > 0 ? { p: s.slice(0, k2).trim(), d: s.slice(k2 + 3).trim() } : { p: s, d: '' }; });
+                if (l.filter(x => E.mais.chaveP(x.p).length >= 3).length < 3) { toast('Escreva pelo menos três palavras (de 3 letras ou mais).'); k.pintar(); return; }
+                trocarPuzzle(hid, 'mudar as palavras', y => { y.puzzle.palavras = l; });
+              } })));
+          partes.push(h('p', { class: 'ajuda', text: 'Palavras de 3 a 11 letras (os acentos e os espaços somem na grade). O puzzle usa as que couberem; “Sortear outro” muda quais e onde.' }));
+          partes.push(h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:banco-pal', onclick: () => trocarPuzzle(hid, 'voltar ao banco de palavras', y => { y.puzzle.palavras = null; }) }, 'Voltar ao banco do tema')));
+        }
+      }
+      if (pz.tipo === 'deslizante') {
+        partes.push(h('div', { class: 'seg', role: 'group', 'aria-label': 'As peças' }, [['runas', 'Runas em ordem'], ['imagem', 'Uma imagem']].map(([v, nm]) =>
+          h('button', { type: 'button', 'data-k': 'pz:modo:' + v, 'aria-pressed': String((pz.modo || 'runas') === v), onclick: () => { if ((pz.modo || 'runas') !== v) trocarPuzzle(hid, 'mudar as peças do tabuleiro', y => { y.puzzle.modo = v; }); } }, nm))));
+        if (pz.modo === 'imagem') partes.push(x.img ? h('div', { class: 'row' }, h('img', { src: x.img, alt: '', style: { maxWidth: '160px', maxHeight: '110px', borderRadius: '6px' } }), h('button', { type: 'button', class: 'btn sm', 'data-k': 'h:img', onclick: () => escolherImagem(hid) }, 'Trocar a imagem'))
+          : h('button', { type: 'button', class: 'btn pri', 'data-k': 'h:img', onclick: () => escolherImagem(hid) }, 'Escolher a imagem'));
+        if (pz.modo === 'imagem' && !x.img) partes.push(h('p', { class: 'ajuda', text: 'Sem a imagem, as peças saem com runas.' }));
+      }
+      // (lote 46) o cronômetro: vale para todos os puzzles
+      partes.push(h('label', { class: 'field' }, h('span', { text: 'Cronômetro' }),
+        h('select', { class: 'in', 'data-k': 'pz:tempo', value: String(pz.tempo || 0), onchange: ev => { const v = Number(ev.target.value); trocarPuzzle(hid, 'mudar o cronômetro', y => { if (v) y.puzzle.tempo = v; else delete y.puzzle.tempo; }); } },
+          E.TEMPOS.map(v => h('option', { value: String(v), text: v ? v + (v === 1 ? ' minuto' : ' minutos') : 'Sem tempo' })))));
+      if (pz.tempo) partes.push(h('p', { class: 'ajuda', text: 'O tempo começa quando você entrega. Acabou, conta um erro e o puzzle trava até você dar mais tempo (em “Com os jogadores”).' }));
       return h('div', { class: 'cartao' }, h('span', { class: 'sub', text: 'O puzzle' }), partes);
     }
     function criarChave(hid) {
@@ -327,6 +371,12 @@
         const m = E.montarPuzzle(x.puzzle, x.img), ja = Array.isArray(jg.estado.dicas) ? jg.estado.dicas.length : 0;
         if (ja < m.dicas.length) botoes.push(h('button', { type: 'button', class: 'btn sm', 'data-k': 'h:dica', onclick: () => A.darDica(hid).then(d => { if (d) toast('Dica dada: “' + d + '”.'); k.pintar(); }, e => toast((e && e.message) || 'Não deu certo agora.')) }, 'Dar uma dica (' + (m.dicas.length - ja) + ')'));
       }
+      if (jg && !jg.resolvido && E.EXTRA[jg.tipo]) botoes.push(h('button', { type: 'button', class: 'btn sm', 'data-k': 'h:dica', onclick: () => A.darDica(hid).then(d => { toast(d ? 'Dica dada: ' + d + '.' : 'Não há mais dica para dar neste puzzle.'); k.pintar(); }, e => toast((e && e.message) || 'Não deu certo agora.')) }, 'Dar uma dica'));
+      if (jg && !jg.resolvido && jg.tempo) {
+        const pr = E.prazo(jg);
+        if (pr && pr.acabou) linhas.push(h('div', { class: 'aviso', text: 'O tempo acabou: o puzzle está travado para os jogadores.' }));
+        botoes.push(h('button', { type: 'button', class: 'btn sm' + (pr && pr.acabou ? ' pri' : ''), 'data-k': 'h:tempo', onclick: () => A.maisTempo(hid, 120).then(v => { if (v != null) toast('Mais 2 minutos para “' + x.nome + '”.'); k.pintar(); }, e => toast((e && e.message) || 'Não deu certo agora.')) }, 'Mais 2 minutos'));
+      }
       if (jg && !jg.resolvido && jg.tipo === 'cifra') botoes.push(h('button', { type: 'button', class: 'btn sm', 'data-k': 'h:letra', onclick: () => A.darDica(hid).then(l => { if (l) toast('Letra revelada: ' + l + '.'); else toast('Não há mais letras para revelar.'); k.pintar(); }, e => toast((e && e.message) || 'Não deu certo agora.')) }, 'Revelar uma letra'));
       botoes.push(h('button', { type: 'button', class: 'btn sm', 'data-k': 'h:mais', onclick: () => entregarDlg(hid) }, x.entregue.para === 'mesa' ? 'Para quem vai…' : 'Entregar a mais alguém…'));
       if (jg) botoes.push(h('button', { type: 'button', class: 'btn sm', 'data-k': 'h:reiniciar', onclick: async () => { if (await J.confirmar('Recomeçar o puzzle?', 'O puzzle volta ao começo para os jogadores (o mesmo puzzle; sem erros, sem ninguém ter resolvido).', 'Recomeçar')) { const f = A.reiniciar(hid); k.empilhar('recomeçar ' + x.nome, f); k.pintar(); k.avisoDesfazer('O puzzle voltou ao começo.'); } } }, 'Recomeçar o puzzle'));
@@ -348,7 +398,7 @@
         onchange: ev => mudarH(hid, 'mudar a campanha', y => { y.camp = ev.target.value || null; }) }, h('option', { value: '', text: 'Do mundo (todas)', selected: !x.camp ? true : null }), k.campanhas().map(c => h('option', { value: c.id, text: c.nome, selected: x.camp === c.id ? true : null })))));
       if (x.tipo === 'puzzle') form.push(configPuzzle(hid, x));
       // a imagem (a do handout de imagem; na carta e no puzzle, opcional — no quebra-cabeça, a imagem é o puzzle)
-      if (!(x.tipo === 'puzzle' && x.puzzle.tipo === 'imagem')) {
+      if (!E.imagemEhPuzzle(x)) {
         const temImg = !!x.img;
         form.push(h('div', { class: 'cartao' }, h('span', { class: 'sub', text: x.tipo === 'imagem' ? 'A imagem' : 'Uma imagem (opcional)' }),
           temImg ? [imagemComAreas(hid, x, true), h('p', { class: 'ajuda', text: 'Arraste sobre a imagem para esconder uma área: os jogadores a veem coberta até você revelar.' }),
@@ -382,7 +432,7 @@
       form.push(entregue(hid, x));
       const previa = h('aside', { class: 'previa', 'aria-label': 'Como os jogadores veem' },
         h('span', { class: 'sub', text: x.tipo === 'puzzle' ? 'Como os jogadores veem (teste à vontade)' : 'Como os jogadores veem' }),
-        x.tipo !== 'puzzle' || x.texto.trim() || (x.img && x.puzzle.tipo !== 'imagem') ? h('div', { class: 'moldura' }, previaHandout(hid, x)) : null,
+        x.tipo !== 'puzzle' || x.texto.trim() || (x.img && !E.imagemEhPuzzle(x)) ? h('div', { class: 'moldura' }, previaHandout(hid, x)) : null,
         x.tipo === 'puzzle' ? h('div', { style: { display: 'grid', gap: '8px' } }, teste(hid, x)) : null);
       return h('div', { class: 'ed' }, h('div', { class: 'form' }, form), previa);
     }

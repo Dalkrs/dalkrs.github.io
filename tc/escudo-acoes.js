@@ -206,7 +206,7 @@
       if (h.tipo === 'puzzle' && h.puzzle.tipo === 'imagem' && !h.img) throw new Error('O quebra-cabeça precisa de uma imagem.');
       const idP = E.idPista(id, h.camp), idJ = E.idJogo(id, h.camp);
       const antes = foto([E.PRE.handout + id, idP, idJ]);
-      const img = h.tipo === 'puzzle' && h.puzzle.tipo === 'imagem' ? null : await imagemPublica(id, h);
+      const img = E.imagemEhPuzzle(h) ? null : await imagemPublica(id, h);
       h = handout(id);                                             // (a imagem coberta ficou guardada nele)
       const p0 = pistaDoHandout(id, h);
       const em = p0 && p0.em ? p0.em : agora();
@@ -244,7 +244,7 @@
       else { h.revelados = [...new Set(h.revelados.concat(alvoT.filter(k => tr.includes(k))))]; for (const a of h.areas) if (alvoA.includes(a.id)) a.rev = true; }
       gravarHandout(id, h);
       if (h.entregue) {
-        const img = h.tipo === 'puzzle' && h.puzzle.tipo === 'imagem' ? null : await imagemPublica(id, h);
+        const img = E.imagemEhPuzzle(h) ? null : await imagemPublica(id, h);
         const h2 = handout(id), p0 = pistaDoHandout(id, h2);
         D.gravar(E.idPista(id, h2.camp), { dados: E.projetarHandout(id, h2, img, p0 && p0.em ? p0.em : agora()) });
         if (!esconder) logar('revelou', h2.nome + ': ' + (quais ? 'um pedaço revelado' : 'tudo revelado'), h2.camp);
@@ -294,7 +294,22 @@
         await kit.jogar(E.idJogo(id, h.camp), 'jogar', { ['d' + i]: letras[i], _txt: 'o mestre revelou uma letra' });
         return letras[i];
       }
+      // (lote 46) os puzzles novos: cada um sabe a dica que dá
+      const d = E.dicaDe && E.dicaDe(jg, m);
+      if (d) { await kit.jogar(E.idJogo(id, h.camp), 'jogar', Object.assign({}, d.mudas, { _txt: 'o mestre deu uma dica' })); return d.txt; }
       return null;
+    }
+    // (lote 46) o cronômetro: mais tempo (em segundos) — o puzzle destrava, se tinha acabado
+    async function maisTempo(id, seg) {
+      const h = handout(id), jg = jogoDe(id, h);
+      if (!h || !jg || jg.resolvido || !jg.tempo) return null;
+      const pr = E.prazo(jg), t0 = Date.parse(jg.estado.t0);
+      if (!pr || !Number.isFinite(t0)) return null;
+      // (acabado, o tempo novo conta de agora; senão, soma ao que falta)
+      const novoFim = (pr.acabou ? Date.now() : pr.fim) + Math.max(30, Math.round(seg || 120)) * 1000;
+      const mais = Math.min(36000, Math.max(0, Math.round((novoFim - t0) / 1000 - jg.tempo)));
+      await kit.jogar(E.idJogo(id, h.camp), 'jogar', { mais, fim: null, _txt: 'o mestre deu mais tempo' });
+      return mais;
     }
     function handoutNovo(tipo, campos) {
       const id = E.novoId('ho');
@@ -326,6 +341,12 @@
           if (h.tipo !== 'puzzle' || !h.entregue) continue;
           const jg = jogoDe(id, h);
           if (!jg) continue;
+          // (lote 46) o cronômetro acabou: conta um erro (uma vez) e o puzzle trava até o mestre dar mais tempo
+          const pr = E.prazo && E.prazo(jg);
+          if (pr && pr.acabou && !jg.resolvido && jg.estado.fim !== 1) {
+            try { await kit.jogar(E.idJogo(id, h.camp), 'errar', { fim: 1, _txt: 'deixou o tempo acabar' }); } catch (e) { /* (tenta de novo na próxima volta) */ }
+            continue;
+          }
           if (jg.erros > h.resultado.errosVistos) {
             const novos = jg.erros - h.resultado.errosVistos;
             const ids = [E.PRE.handout + id];
@@ -369,7 +390,7 @@
       gravar, gravarSessao, gravarRelogio, gravarHandout, foto, voltar,
       projetarVista, sincronizarVistas, avancarRelogio, relogioNovo, apagarRelogio,
       sessaoAberta, logar, sessaoNova, abrirSessao, fecharSessao,
-      quemRecebe, imagemPublica, versaoNova, pistaDoHandout, entregar, revelar, recolher, reiniciar, jogoDe, darDica, handoutNovo, apagarHandout,
+      quemRecebe, imagemPublica, versaoNova, pistaDoHandout, entregar, revelar, recolher, reiniciar, jogoDe, darDica, maisTempo, handoutNovo, apagarHandout,
       processar,
     };
   }

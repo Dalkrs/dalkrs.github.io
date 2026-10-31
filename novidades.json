@@ -2,6 +2,53 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.31-2",
+      "data": "2026-10-31",
+      "titulo": "Doze puzzles novos",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Puzzles de palavras: palavras cruzadas, caça-palavras (toque a primeira e a última letra) e anagrama."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Puzzles de caminhos: o labirinto (casa por casa; no difícil, na névoa), os espelhos de luz (girem até a luz chegar ao cristal) e ligar os fios (cada par de pontas, sem cruzar)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Puzzles de lógica: o sudoku de runas, a pedra falsa (poucas pesagens na balança), equilibrar os pratos (soltem a balança só com certeza) e o tabuleiro deslizante."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Puzzles de memória: os pares (errar um par que já tinham visto conta) e repetir a sequência, que cresce a cada rodada."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Alguns puzzles chegam com cronômetro: a conta aparece no alto e, quando o tempo acaba, o puzzle trava até chegar mais tempo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Escudo do mestre: os doze puzzles novos, em quatro grupos (Palavras, Caminhos, Lógica, Memória e sequência), em fácil, médio ou difícil, cada um jogável no teste da prévia, com a resposta e “Dar uma dica (no teste)”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Nos puzzles de palavras: o tema do banco (Taverna, Floresta, Masmorra, Mar, Magia, Guerra, Corte, Templo) ou as palavras do mestre, uma por linha, com a dica."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "O cronômetro (de 1 a 30 minutos) vale para todo puzzle: o tempo acabou, conta um erro e trava; “Mais 2 minutos” destrava. “Dar uma dica” agora funciona nos puzzles novos."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "O tabuleiro deslizante usa runas em ordem ou uma imagem do mestre."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.31-1",
       "data": "2026-10-31",
       "titulo": "Palavras na Meditação e bandeiras novas",

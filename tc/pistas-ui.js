@@ -51,9 +51,25 @@
     if (jg.resolvido) linhas.push(h('div', { class: 'pz-ok', 'data-k': ctx.chave + 'ok' }, svg(16, '<path d="M4 12.5l5 5L20 6.5"/>', '2.4'), ' Resolvido por ' + q(jg.resolvido.por) + ' às ' + U.hora(jg.resolvido.em) + '.'));
     else if (jg.ultimo && jg.ultimo.txt) linhas.push(h('div', { class: 'pz-ult', 'data-k': ctx.chave + 'ult' }, q(jg.ultimo.por) + ' ' + jg.ultimo.txt + ' · ' + U.hora(jg.ultimo.em)));
     if (E.PUZZLES[jg.tipo].erra && jg.erros) linhas.push(h('div', { class: 'pz-erros', text: jg.erros === 1 ? 'Uma tentativa errada.' : jg.erros + ' tentativas erradas.' }));
+    // (lote 46) o cronômetro: a conta anda sozinha (relogioPz, abaixo); acabado, o puzzle trava até o mestre decidir
+    const pr = E.prazo && E.prazo(jg);
+    if (pr && !jg.resolvido) linhas.push(h('div', { class: 'pz-tempo' + (pr.acabou ? ' acabou' : ''), 'data-pz-fim': String(pr.acabou ? 0 : pr.fim), 'data-k': ctx.chave + 'tempo', text: textoTempo(pr.acabou ? 0 : pr.resta) }));
     return h('div', { class: 'pz-cab' },
       h('div', { class: 'pz-tipo' }, h('b', { text: E.PUZZLES[jg.tipo].nome }), h('span', { class: 'pz-dif', text: E.DIF[jg.dif] })),
       h('p', { class: 'pz-desc', text: E.PUZZLES[jg.tipo].desc }), linhas);
+  }
+  const textoTempo = ms => (ms <= 0 ? 'O tempo acabou. O mestre decide se dá mais tempo.' : 'Falta ' + Math.floor(ms / 60000) + ':' + String(Math.floor((ms % 60000) / 1000)).padStart(2, '0'));
+  // (um relógio só, para todos os puzzles da página: a conta de cada cronômetro, e o puzzle trava quando acaba)
+  let relogioPz = 0;
+  function cuidarDoRelogio() {
+    if (relogioPz || typeof document === 'undefined') return;
+    relogioPz = setInterval(() => {
+      for (const el of document.querySelectorAll('[data-pz-fim]')) {
+        const fim = Number(el.getAttribute('data-pz-fim')), resta = fim ? fim - Date.now() : 0;
+        el.textContent = textoTempo(resta);
+        if (resta <= 0) { el.classList.add('acabou'); const pz = el.closest('.pz'); if (pz) pz.classList.add('esgotado'); }
+      }
+    }, 1000);
   }
   function erroDe(ctx, p) { return Promise.resolve(p).catch(e => { if (ctx.aviso) ctx.aviso((e && e.message) || 'Não deu certo agora.'); }); }
   // um lance; se o estado novo resolve, já vai como "acertar" (o banco confere)
@@ -69,7 +85,7 @@
     if (E.confere(jg, prova)) return erroDe(ctx, ctx.jogar('acertar', Object.assign({}, mudasCerto || {}, { _txt: txtCerto || 'acertou' }), prova));
     return erroDe(ctx, ctx.jogar('errar', Object.assign({}, mudasErro || {}, { _txt: txtErro })));
   }
-  const fechado = (jg, ctx) => !!jg.resolvido || ctx.soVer;
+  const fechado = (jg, ctx) => !!jg.resolvido || ctx.soVer || !!(E.prazo && (E.prazo(jg) || {}).acabou);
 
   function cifra(jg, ctx) {
     const p = jg.pub, e = jg.estado, f = fechado(jg, ctx);
@@ -207,13 +223,17 @@
   }
 
   const CORPO = { cifra, charada, luzes, alavancas, cadeado, placas, imagem };
+  // (lote 46) os puzzles de tc/pistas-puzzles.js se registram aqui
+  const registrarCorpo = (tipo, fn) => { CORPO[tipo] = fn; };
   function puzzle(jg, ctx) {
     jg = E.normJogo(jg);
     ctx = Object.assign({ chave: 'pz:' }, ctx || {});
     if (!jg) return h('div', { class: 'pz' }, h('p', { class: 'ajuda', text: 'Este puzzle não abriu.' }));
     let corpo;
+    if (E.prazo && E.prazo(jg)) cuidarDoRelogio();
     try { corpo = CORPO[jg.tipo](jg, ctx); } catch (e) { console.error(e); corpo = [h('p', { class: 'ajuda', text: 'Este puzzle não abriu.' })]; }
-    return h('div', { class: 'pz pz-' + jg.tipo + (jg.resolvido ? ' resolvido' : ''), 'data-k': ctx.chave + 'raiz' },
+    const esgotado = !jg.resolvido && !!(E.prazo && (E.prazo(jg) || {}).acabou);
+    return h('div', { class: 'pz pz-' + jg.tipo + (jg.resolvido ? ' resolvido' : '') + (esgotado ? ' esgotado' : ''), 'data-k': ctx.chave + 'raiz' },
       cabecalho(jg, ctx), h('div', { class: 'pz-corpo' }, corpo),
       ctx.resposta ? h('div', { class: 'pz-resp', 'data-k': ctx.chave + 'resposta' }, h('b', { text: 'Resposta (só você vê): ' }), ctx.resposta) : null);
   }
@@ -230,9 +250,10 @@
       case 'luzes': return 'acender todas as runas';
       case 'alavancas': return 'abrir todas as grades';
       case 'imagem': return 'cada peça no seu lugar';
+      default: { const x = E.EXTRA && E.EXTRA[m.tipo]; return x && x.resposta ? x.resposta(m, h_.puzzle) : ''; }
     }
     return '';
   }
 
-  window.TC.pistasUI = { handout, puzzle, respostaEmPalavras, textoComManchas, ehObj };
+  window.TC.pistasUI = { handout, puzzle, respostaEmPalavras, textoComManchas, ehObj, registrarCorpo, kit: { lance, tentativa, erroDe, fechado, SIMB, nomeSimb } };
 })();

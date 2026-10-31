@@ -100,6 +100,12 @@
     placas: { nome: 'Placas de pressão', grupo: 'Mecanismos', erra: true, desc: 'Pisem nas placas na ordem certa. As inscrições dão as pistas.' },
     imagem: { nome: 'Quebra-cabeça', grupo: 'Quebra-cabeça de imagem', erra: false, desc: 'A imagem em peças embaralhadas: troquem duas peças de lugar até montar.' },
   };
+  /* (lote 46) Os puzzles de fora deste arquivo (tc/escudo-puzzles.js) se registram aqui: o nome e o grupo vão para
+     PUZZLES; o resto — normDef (os campos próprios da definição), montar, prova, dica, resposta — fica em EXTRA. */
+  const EXTRA = {};
+  function registrar(tipo, x) { PUZZLES[tipo] = { nome: x.nome, grupo: x.grupo, erra: !!x.erra, desc: x.desc }; EXTRA[tipo] = x; }
+  // o cronômetro (em minutos; 0 = sem tempo): vale para todos os puzzles
+  const TEMPOS = [0, 1, 2, 3, 5, 10, 15, 20, 30];
   const LIGAS = { cena: 'Cena', lugar: 'Lugar do Mapa-múndi', encontro: 'Encontro do Bestiário', handout: 'Handout ou puzzle', relogio: 'Relógio', npc: 'NPC' };
   // os símbolos dos mecanismos (cadeado e placas): o nome, "de" (para as frases das pistas) e o desenho (24×24, traço)
   const SIMBOLOS = {
@@ -362,6 +368,8 @@
   function normPuzzleDef(p) {
     if (!ehObj(p) || !Object.prototype.hasOwnProperty.call(PUZZLES, p.tipo)) return null;
     const o = { tipo: p.tipo, dif: Object.prototype.hasOwnProperty.call(DIF, p.dif) ? p.dif : 'medio', seed: int(p.seed, 1, 1, 2147483646) };
+    if (TEMPOS.includes(p.tempo) && p.tempo) o.tempo = p.tempo;
+    if (EXTRA[p.tipo] && EXTRA[p.tipo].normDef) EXTRA[p.tipo].normDef(p, o);
     if (p.tipo === 'cifra') {
       o.msg = linha(p.msg, LIM.msg);
       o.metodo = ['cesar', 'troca', 'runas'].includes(p.metodo) ? p.metodo : 'runas';
@@ -733,16 +741,21 @@
       case 'cadeado': m = montarCadeado(def, r); break;
       case 'placas': m = montarPlacas(def, r); break;
       case 'imagem': m = montarImagem(def, r, img, ar); break;
+      default: m = EXTRA[def.tipo].montar(def, r, { img, ar, sal });
     }
     const certas = m.certas || [m.provaCerta];
-    return { tipo: def.tipo, dif: def.dif, pub: m.pub, estado: m.estado, sal, chk: certas.map(c => chkDe(sal, c)), dicas: m.dicas || [], unica: m.unica !== false, resposta: certas[0], letras: m.letras || null };
+    return { tipo: def.tipo, dif: def.dif, pub: m.pub, estado: m.estado, sal, chk: certas.map(c => chkDe(sal, c)), dicas: m.dicas || [], unica: m.unica !== false, resposta: certas[0], letras: m.letras || null,
+      seg: m.seg || null, tempo: (def.tempo || 0) * 60 };
   }
   // o documento do jogo, novo (o estado do começo, sem erros, sem ninguém ter resolvido)
   function jogoNovo(hid, h, img) {
     h = normHandout(h);
     const m = montarPuzzle(h.puzzle, img || h.img, h.imgAr);
     if (!m) return null;
-    return { v: 1, hid, tipo: m.tipo, dif: m.dif, nome: h.nome, pub: m.pub, sal: m.sal, chk: m.chk, estado: m.estado, erros: 0, resolvido: null, ultimo: null };
+    // (lote 46) o cronômetro: o tempo (em segundos) e quando começou (o estado t0; "mais" soma o tempo que o mestre deu)
+    const estado = Object.assign({}, m.estado);
+    if (m.tempo) estado.t0 = new Date().toISOString();
+    return { v: 1, hid, tipo: m.tipo, dif: m.dif, nome: h.nome, pub: m.pub, sal: m.sal, chk: m.chk, estado, erros: 0, resolvido: null, ultimo: null, tempo: m.tempo || 0 };
   }
   // o documento do jogo, como chegou (vindo de qualquer lugar: os jogadores mexem nele)
   function normJogo(d) {
@@ -752,8 +765,22 @@
     const ult = ehObj(d.ultimo) && instante(d.ultimo.em) ? { por: uidOk(d.ultimo.por), em: d.ultimo.em, txt: linha(d.ultimo.txt, 120) } : null;
     return { v: 1, hid: idOk(d.hid), tipo: d.tipo, dif: Object.prototype.hasOwnProperty.call(DIF, d.dif) ? d.dif : 'medio', nome: linha(d.nome, LIM.nome),
       pub: d.pub, sal: typeof d.sal === 'string' ? d.sal.slice(0, 20) : '', chk: Array.isArray(d.chk) ? d.chk.filter(c => typeof c === 'string' && /^[0-9a-f]{32}$/.test(c)).slice(0, 12) : [],
-      estado: ehObj(d.estado) ? d.estado : {}, erros: int(d.erros, 0, 0, 1e6), resolvido: res, ultimo: ult };
+      estado: ehObj(d.estado) ? d.estado : {}, erros: int(d.erros, 0, 0, 1e6), resolvido: res, ultimo: ult, tempo: int(d.tempo, 0, 0, 7200) };
   }
+  /* (lote 46) O cronômetro de um jogo: → null (sem tempo) ou { fim (o instante, em ms), resta (ms, nunca abaixo de 0),
+     acabou }. agora: o relógio de quem pergunta (ms). */
+  function prazo(jogo, agora) {
+    if (!jogo || !jogo.tempo) return null;
+    const t0 = Date.parse(jogo.estado && jogo.estado.t0);
+    if (!Number.isFinite(t0)) return null;
+    const fim = t0 + (jogo.tempo + int(jogo.estado.mais, 0, 0, 36000)) * 1000, a = Number.isFinite(agora) ? agora : Date.now();
+    return { fim, resta: Math.max(0, fim - a), acabou: a >= fim || jogo.estado.fim === 1 };
+  }
+  // a dica que o mestre dá (os puzzles do lote 46): → { mudas, txt } ou null (não há mais dica)
+  function dicaDe(jogo, m) { const x = jogo && EXTRA[jogo.tipo]; return x && x.dica ? x.dica(jogo, m) : null; }
+  // (lote 46) a imagem do handout é o próprio puzzle (o quebra-cabeça; o deslizante com imagem): não vai como figura da pista
+  const imagemEhPuzzle = h => !!h && h.tipo === 'puzzle' && !!h.puzzle && (h.puzzle.tipo === 'imagem' || (h.puzzle.tipo === 'deslizante' && h.puzzle.modo === 'imagem'));
+  const temDica = tipo => !!(EXTRA[tipo] && EXTRA[tipo].dica) || tipo === 'charada' || tipo === 'cifra';
   /* A prova que o estado de agora dá: a resposta a mandar (string), ou null (ainda não dá para conferir). Para a
      charada, o cadeado e as placas, a tentativa é o que a pessoa escreveu ou montou (vem de fora: "tentativa"). */
   function provaDoEstado(jogo, tentativa) {
@@ -766,6 +793,7 @@
       case 'charada': return tentativa == null ? null : normResposta(tentativa);
       case 'cadeado': return Array.isArray(tentativa) ? tentativa.join(',') : null;
       case 'placas': return Array.isArray(tentativa) ? tentativa.join(',') : null;
+      default: if (EXTRA[jogo.tipo]) return EXTRA[jogo.tipo].prova(jogo, tentativa);
     }
     return null;
   }
@@ -806,6 +834,8 @@
     idPista, idJogo, hidDaPista, hidDoJogo,
     montarPuzzle, jogoNovo, normJogo, provaDoEstado, confere, decifrar, tocarLuz, gradesDe, nota, textoPistaCadeado, textoPistaPlacas, sortearCharada, posDe, REGRAS,
     resumoDaSessao,
+    // (lote 46)
+    EXTRA, registrar, TEMPOS, prazo, dicaDe, temDica, imagemEhPuzzle,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.TC = window.TC || {}; window.TC.escudo = api; }
