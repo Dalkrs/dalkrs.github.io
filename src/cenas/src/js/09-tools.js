@@ -444,6 +444,8 @@ const Tools = (() => {
       if (hit.c === 'tokens' && isGM()) {
         const t = Store.get('tokens', hit.id), def = t && t.prop ? Props.P[t.prop] : null;
         if (t && (t.cena || (def && def.passagem))) { setSel([hit]); UI.passagem(t, e ? e.clientX : null, e ? e.clientY : null); return; }
+        // (lote 48) dois cliques num objeto com estado trocam o estado; num objeto de luz, acendem ou apagam
+        if (t && def && (Props.estados(t.prop) || (def.luz && t.light))) { setSel([hit]); UI.alternarObjeto(t); return; }
       }
       // Texto solto: dois cliques editam. Texto travado: dois cliques selecionam, como qualquer desenho travado
       // (é o caminho para destravar ou apagar; editar continua no painel e no botão direito).

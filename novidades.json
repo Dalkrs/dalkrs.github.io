@@ -2,6 +2,48 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.31-4",
+      "data": "2026-10-31",
+      "titulo": "Objetos vivos nas cenas",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Apagar a luz de uma tocha (ou de uma fogueira, lampião, velas, braseiro, lareira…) apaga também a chama dela; as brasas ficam escuras."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Objetos com estado: o baú, o caixote, o cofre, o caixão e o sarcófago abrem; a alavanca sobe e desce; a armadilha aparece quando dispara."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Portões, grades levadiças e cortinas: fechados, o portão barra como uma porta, a grade barra o passo mas deixa ver através, e a cortina tapa a vista."
+        },
+        {
+          "tipo": "novo",
+          "texto": "O ambiente se mexe: as chamas soltam fumaça e fagulhas, os rios e lagos correm e ondulam, e há três climas novos (folhas ao vento, pétalas ao vento e poeira no ar). Tudo segue o “Animar efeitos e clima” do menu ⋯."
+        },
+        {
+          "tipo": "novo",
+          "texto": "27 objetos novos em cinco grupos: Mercado e cidade, Templo e cripta, Forja e oficina, Oriental, e Portões e cortinas."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Dois cliques num objeto trocam o estado (abrir, fechar, disparar) ou acendem e apagam a luz, com Desfazer. O estado também fica no painel do objeto e no botão direito."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A alavanca pode ser ligada a uma porta, janela ou cortina da cena, ou a um portão: puxá-la abre ou fecha. A armadilha nova nasce armada e escondida dos jogadores."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Os momentos preparados também acendem e apagam a luz dos objetos (a tocha, a fogueira), e o gerador de lugares põe o clima da estação quando nenhum é escolhido (folhas no outono, pétalas na primavera, poeira na masmorra)."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.31-3",
       "data": "2026-10-31",
       "titulo": "Mais controle nas cenas",

@@ -16,7 +16,11 @@ const Gerador = (() => {
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
   const guardarModelos = lista => { Store.S.prefs.modelos = Proj.normModelos(lista); Persist.meta(); };
-  let aberta = null;                                       // (a janela aberta, para os testes: a aba, o estado e o plano)
+  let aberta = null;
+  /* (lote 48) sem clima escolhido, o lugar ganha o ambiente da estação (folhas secas no outono, pétalas na primavera) e a
+     masmorra, a poeira no ar. Escolher "Nenhum" depois, na aba Cena, tira. */
+  const climaDe = l => comumAtual.clima || (l.aceitaEstacao && comumAtual.estacao === 'outono' ? 'folhas' : l.aceitaEstacao && comumAtual.estacao === 'primavera' ? 'petalas' : l.id === 'masmorra' ? 'poeira' : '');
+  let comumAtual = { clima: '', estacao: 'verao' };                                       // (a janela aberta, para os testes: a aba, o estado e o plano)
 
   /* Desenha um cadeado pequeno em (x, y) (o canto de cima, à esquerda, da marca). */
   function cadeado(g, x, y, s) {
@@ -62,6 +66,7 @@ const Gerador = (() => {
     const K = UI.kit, { field, seg, btn, note, iconBtn } = K;
     let L = lugar(lugarId) || lugar(App.opt.genLugar) || LUGARES[0];
     const comum = { estilo: Estilos.valido(App.opt.genEstilo), hora: TONES.some(t => t.id === App.opt.genHora) ? App.opt.genHora : 'dia', clima: WEATHERS.some(w => w[0] === App.opt.genClima) ? App.opt.genClima : '', relevo: App.opt.genRelevo !== false, estacao: Estacoes.valida(App.opt.genEstacao) };
+    comumAtual = comum;
     const lembrarComum = () => { App.opt.genEstilo = comum.estilo; App.opt.genHora = comum.hora; App.opt.genClima = comum.clima; App.opt.genRelevo = comum.relevo; App.opt.genEstacao = comum.estacao; App.opt.genLugar = L.id; };
     // (lote 13, parte 13c) a estação vai só para os lugares de fora (os outros não a conhecem)
     const comEstacao = (l, o) => (l.aceitaEstacao ? Object.assign(o, { estacao: comum.estacao }) : o);
@@ -311,7 +316,7 @@ const Gerador = (() => {
           const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const E = estadoDe(L), p = E.plano, l = L;
-          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(sc => {
+          l.criar(p, inNome.value, { hora: comum.hora, clima: climaDe(l), relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(sc => {
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();

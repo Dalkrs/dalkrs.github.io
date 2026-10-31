@@ -2105,7 +2105,7 @@ const TONES = [
   { id: 'noite', n: 'Noite', light: 'penumbra', tint: 'rgba(70,100,190,0.40)' },
   { id: 'breu', n: 'Breu', light: 'escuro', tint: 'rgba(40,50,90,0.35)' },
 ];
-const WEATHERS = [['', 'Nenhum'], ['chuva', 'Chuva'], ['neve', 'Neve'], ['neblina', 'Neblina'], ['cinzas', 'Cinzas e brasas'], ['vagalumes', 'Vaga-lumes']];
+const WEATHERS = [['', 'Nenhum'], ['chuva', 'Chuva'], ['neve', 'Neve'], ['neblina', 'Neblina'], ['cinzas', 'Cinzas e brasas'], ['vagalumes', 'Vaga-lumes'], ['folhas', 'Folhas ao vento'], ['petalas', 'Pétalas ao vento'], ['poeira', 'Poeira no ar']];
 
 // Dano e cura em área. O que foi digitado: "12" ou "-12" tira, "+8" devolve; vazio vale 0 e texto inválido, null.
 function areaAmount(text) {
@@ -2760,6 +2760,13 @@ const Walls = (() => {
       const baixa = w.k === 'mureta';                            // (a mureta barra a passagem, mas não a visão)
       for (const q of pcs) { if (!baixa) d.sight.push(q[0], q[1], q[2], q[3]); d.move.push(q[0], q[1], q[2], q[3]); }
     }
+    // (lote 48) os portões, as grades e as cortinas que são objetos: fechados, barram como a porta, a janela e a cortina
+    if (typeof Props !== 'undefined' && Props.paredes) for (const w of Props.paredes(sc)) {
+      if (w.open) continue;
+      if (w.k !== 'veil') d.move.push(w.x1, w.y1, w.x2, w.y2);
+      if (w.k === 'door') d.sight.push(w.x1, w.y1, w.x2, w.y2);
+      else if (w.k === 'veil') d.curtains.push(w);
+    }
     // (lote 7) as zonas que tapam a visão e as que barram a passagem, como trechos de parede (não se desenham nem se clicam)
     const zb = FX.barreiras ? FX.barreiras(sc) : null;
     if (zb) {
@@ -2773,8 +2780,9 @@ const Walls = (() => {
 
   // As paredes efetivas da cena (guardadas até alguma parede mudar).
   function of(sc) {
-    if (cache && cache.sc === sc && cache.walls === sc.walls && cache.n === sc.walls.length && cache.ver === ver && cache.cell === sc.cell) return cache.data;
-    cache = { sc, walls: sc.walls, n: sc.walls.length, ver, cell: sc.cell, data: build(sc) };
+    const pp = typeof Props !== 'undefined' && Props.assinatura ? Props.assinatura(sc) : '';      // (lote 48: os portões que são objetos)
+    if (cache && cache.sc === sc && cache.walls === sc.walls && cache.n === sc.walls.length && cache.ver === ver && cache.cell === sc.cell && cache.pp === pp) return cache.data;
+    cache = { sc, walls: sc.walls, n: sc.walls.length, ver, cell: sc.cell, pp, data: build(sc) };
     return cache.data;
   }
 
@@ -3414,6 +3422,8 @@ const Vision = (() => {
       if (op.t !== 'upd') { dirty = true; return; }
       const p = op.p;
       if ('x' in p || 'y' in p || 'size' in p || 'vis' in p || 'light' in p || 'owner' in p || 'hidden' in p) dirty = true;
+      // (lote 48) o portão, a grade e a cortina que são objetos: mexer neles muda as paredes da cena
+      if ('est' in p || 'rot' in p || 'x' in p || 'y' in p || 'size' in p) { const t = Store.get('tokens', op.id), d = t && t.prop ? Props.P[t.prop] : null; if (d && d.parede) { dirty = true; staticStale = true; } }
     }
   }
 
@@ -4800,7 +4810,10 @@ const Props = (() => {
 
   /* Chama que tremula, desenhada sempre "de pé" na tela (desfaz a rotação do objeto). (x, y) é a base dela; a é o
      tamanho. k separa as chamas de um mesmo objeto, para não tremularem juntas. */
+  // (lote 47b) com a luz do objeto apagada, a chama some e as brasas ficam escuras (Props.draw liga e desliga)
+  let APAGADO = false, EST = '';
   function chama(c, x, y, a, t, k, ang) {
+    if (APAGADO) return;
     const f = Math.sin(t * 9.3 + k * 3.7) * 0.5 + Math.sin(t * 14.1 + k * 1.9) * 0.3 + Math.sin(t * 4.7 + k * 5.3) * 0.2;
     const alt = a * (1 + f * 0.14), larg = a * 0.5 * (1 - f * 0.05), bal = f * a * 0.1;
     c.save();
@@ -4817,6 +4830,7 @@ const Props = (() => {
     c.restore();
   }
   function brasa(c, x, y, r, t, k) {
+    if (APAGADO) { c.fillStyle = 'rgba(40,30,26,0.85)'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); return; }
     const p = 0.6 + 0.4 * Math.sin(t * (2 + hsh(k, 1, 3) * 3) + k * 2.1);
     c.fillStyle = `rgba(255,${Math.round(90 + 90 * p)},${Math.round(30 * p)},${0.55 + 0.45 * p})`;
     c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
@@ -4870,6 +4884,36 @@ const Props = (() => {
     c.beginPath(); c.moveTo(x, y + r * 0.32); c.lineTo(x - r * 0.1, y + r * 0.55); c.lineTo(x + r * 0.1, y + r * 0.55); c.closePath(); c.fill();
     c.strokeStyle = 'rgba(40,32,24,0.8)'; c.lineWidth = r * 0.06;
     for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(x + i * r * 0.14, y + r * 0.68); c.lineTo(x + i * r * 0.14, y + r * 0.92); c.stroke(); }
+    c.restore();
+  }
+  /* (lote 47b) os desenhos dos estados: a tampa aberta (o fundo escuro e o brilho do que há dentro), a porta do cofre
+     aberta, a armadilha de urso fechada e a armadilha coberta (o mestre a vê esmaecida; os jogadores, não). */
+  function ouro(c, r, rx, dy, k) {
+    for (let i = 0; i < 9; i++) { const x = (hsh(k, i, 7) - 0.5) * rx * 2, y = dy + (hsh(k, i, 8) - 0.5) * r; c.fillStyle = i % 3 ? '#e8c050' : '#fff0a8'; c.beginPath(); c.ellipse(x, y, r * 0.18, r * 0.12, 0, 0, TAU); c.fill(); }
+  }
+  function abertoPor(c, x, y, w, h, R, cores, caixote) {
+    c.fillStyle = 'rgba(14,8,4,0.92)'; caixa(c, x + R * 0.1, y + R * 0.1, w - R * 0.2, h - R * 0.2, R * 0.05); c.fill();
+    if (caixote) { c.strokeStyle = '#c9a85a'; c.lineWidth = R * 0.03; for (let i = 0; i < 10; i++) { const a = x + R * 0.15 + hsh(i, 2, 3) * (w - R * 0.3), b = y + R * 0.15 + hsh(i, 4, 5) * (h - R * 0.3); c.beginPath(); c.moveTo(a, b); c.lineTo(a + R * 0.18, b + R * 0.06); c.stroke(); } return; }
+    ouro(c, h * 0.4, w * 0.3, y + h * 0.55, 3);
+    // a tampa levantada: uma faixa por cima, vista de lado
+    caixa(c, x - R * 0.02, y - R * 0.34, w + R * 0.04, R * 0.32, R * 0.08); c.fillStyle = grad(c, 0, y - R * 0.34, 0, y, [cores.cla, cores.esc]); c.fill(); linha(c, R * 0.045);
+  }
+  function portinha(c, x, w, R) {
+    caixa(c, x - w * 0.62, x + R * 0.1, w * 0.6, w - R * 0.2, R * 0.06); c.fillStyle = grad(c, x - w * 0.62, 0, x, 0, [FER.esc, FER.cla]); c.fill(); linha(c, R * 0.04);
+  }
+  function ursoFechada(c, R) {
+    sombra(c, R, 0.5, 0.4);
+    c.strokeStyle = FER.med; c.lineWidth = R * 0.05; c.beginPath(); c.moveTo(R * 0.3, R * 0.1); c.bezierCurveTo(R * 0.7, R * 0.3, R * 0.6, R * 0.7, R * 0.9, R * 0.9); c.stroke();
+    for (const sgn of [-1, 1]) { c.beginPath(); c.ellipse(0, sgn * R * 0.07, R * 0.55, R * 0.12, 0, 0, TAU); c.fillStyle = grad(c, 0, -R * 0.2, 0, R * 0.2, [FER.luz, FER.med]); c.fill(); linha(c, R * 0.035); }
+    c.fillStyle = '#cfd6de'; for (let i = 0; i < 8; i++) { const x = -R * 0.42 + i * R * 0.12; c.beginPath(); c.moveTo(x, -R * 0.02); c.lineTo(x + R * 0.06, R * 0.06); c.lineTo(x + R * 0.12, -R * 0.02); c.fill(); }
+    c.fillStyle = 'rgba(120,20,16,0.55)'; c.beginPath(); c.ellipse(R * 0.1, R * 0.32, R * 0.28, R * 0.12, 0.3, 0, TAU); c.fill();
+  }
+  function coberta(c, R, k, raio) {
+    c.save(); c.globalAlpha *= 0.9;
+    c.fillStyle = 'rgba(92,72,40,0.55)'; c.beginPath(); c.ellipse(0, 0, R * raio, R * raio * 0.9, 0, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(150,120,70,0.7)'; c.lineWidth = R * 0.04;
+    for (let i = 0; i < 12; i++) { const a = hsh(k, i, 3) * TAU, d = hsh(k, i, 4) * R * raio * 0.8, x = Math.cos(a) * d, y = Math.sin(a) * d; c.beginPath(); c.moveTo(x - R * 0.15, y); c.lineTo(x + R * 0.15, y + R * 0.05); c.stroke(); }
+    c.setLineDash([R * 0.12, R * 0.08]); c.strokeStyle = 'rgba(230,171,79,0.8)'; c.lineWidth = R * 0.04; c.beginPath(); c.ellipse(0, 0, R * raio, R * raio * 0.9, 0, 0, TAU); c.stroke();
     c.restore();
   }
   const tom = (hex, f) => { const n = parseInt(hex.slice(1), 16), ch = k => { const v = (n >> k) & 255; return Math.max(0, Math.min(255, Math.round(f >= 0 ? v + (255 - v) * f : v * (1 + f)))); }; return '#' + [16, 8, 0].map(k => ch(k).toString(16).padStart(2, '0')).join(''); };
@@ -5073,6 +5117,7 @@ const Props = (() => {
         for (const fx of [0.18, 0.82]) { c.fillStyle = grad(c, x + w * fx - R * 0.08, 0, x + w * fx + R * 0.08, 0, [FER.cla, FER.esc]); c.fillRect(x + w * fx - R * 0.08, y, R * 0.16, h); }
         c.restore();
         caixa(c, x, y, w, h, R * 0.1); linha(c, R * 0.06);
+        if (EST === 'aberto') { abertoPor(c, x, y, w, h, R, MAD); return; }
         c.fillStyle = '#d6a64a'; caixa(c, -R * 0.12, y + h - R * 0.3, R * 0.24, R * 0.26, R * 0.04); c.fill(); linha(c, R * 0.03);
         c.fillStyle = '#3a2410'; c.beginPath(); c.arc(0, y + h - R * 0.19, R * 0.035, 0, TAU); c.fill();
       },
@@ -5149,6 +5194,7 @@ const Props = (() => {
         c.beginPath(); c.moveTo(-w / 2 + R * 0.12, -w / 2 + R * 0.12); c.lineTo(w / 2 - R * 0.12, w / 2 - R * 0.12); c.stroke();
         caixa(c, -w / 2, -w / 2, w, w, R * 0.06); linha(c, R * 0.05);
         for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { c.fillStyle = FER.cla; c.beginPath(); c.arc(x * (w / 2 - R * 0.07), y * (w / 2 - R * 0.07), R * 0.03, 0, TAU); c.fill(); }
+        if (EST === 'aberto') abertoPor(c, -w / 2, -w / 2, w, w, R, MAD, true);
       },
     },
     estante: {
@@ -5482,8 +5528,9 @@ const Props = (() => {
     },
     /* ---------- Perigos e marcos ---------- */
     armadilha: {
-      n: 'Armadilha de urso', g: 'perigo', size: 1,
+      n: 'Armadilha de urso', g: 'perigo', size: 1, armadilha: true,
       draw(c, R, t, s) {
+        if (EST === 'disparada') { ursoFechada(c, R); return; }
         sombra(c, R, 0.72, 0.62);
         c.strokeStyle = FER.med; c.lineWidth = R * 0.05; c.beginPath(); c.moveTo(R * 0.55, R * 0.1); c.bezierCurveTo(R * 0.85, R * 0.3, R * 0.7, R * 0.7, R * 0.9, R * 0.9); c.stroke();     // a corrente
         for (const sgn of [-1, 1]) {
@@ -5500,8 +5547,9 @@ const Props = (() => {
       },
     },
     estacas: {
-      n: 'Estacas', g: 'perigo', size: 1,
+      n: 'Estacas', g: 'perigo', size: 1, armadilha: true,
       draw(c, R, t, s) {
+        if (EST === 'armada') { coberta(c, R, s, 0.8); return; }
         sombra(c, R, 0.8, 0.72);
         c.fillStyle = 'rgba(60,40,20,0.55)'; c.beginPath(); c.ellipse(0, 0, R * 0.8, R * 0.72, 0, 0, TAU); c.fill();
         const pts = [];
@@ -5516,8 +5564,9 @@ const Props = (() => {
       },
     },
     buraco: {
-      n: 'Buraco', g: 'perigo', size: 2,
+      n: 'Buraco', g: 'perigo', size: 2, armadilha: true,
       draw(c, R, t, s) {
+        if (EST === 'armada') { coberta(c, R, s, 0.78); return; }
         const pts = [];
         for (let i = 0; i < 14; i++) { const a = i / 14 * TAU, r = R * (0.7 + hsh(s, i, 1) * 0.18); pts.push([Math.cos(a) * r, Math.sin(a) * r * 0.86]); }
         const contorno = k => { c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x * k, y * k) : c.moveTo(x * k, y * k))); c.closePath(); };
@@ -5718,14 +5767,14 @@ const Props = (() => {
       },
     },
     alavanca: {
-      n: 'Alavanca', g: 'masmorra', size: 1,
+      n: 'Alavanca', g: 'masmorra', size: 1, alavanca: true,
       draw(c, R, t, s) {
         sombra(c, R, 0.55, 0.62);
         caixa(c, -R * 0.42, -R * 0.58, R * 0.84, R * 1.16, R * 0.08); c.fillStyle = grad(c, 0, -R * 0.58, 0, R * 0.58, [PED.cla, PED.med, PED.esc]); c.fill(); linha(c, R * 0.05);
         for (const [a, b] of [[-0.3, -0.46], [0.3, -0.46], [-0.3, 0.46], [0.3, 0.46]]) { c.fillStyle = FER.luz; c.beginPath(); c.arc(a * R, b * R, R * 0.045, 0, TAU); c.fill(); }
         caixa(c, -R * 0.08, -R * 0.38, R * 0.16, R * 0.76, R * 0.06); c.fillStyle = '#121214'; c.fill();
         // a alavanca: puxada para cima ou para baixo (cada uma de um jeito)
-        const cima = s % 2 === 0, ey = cima ? -R * 0.78 : R * 0.78;
+        const cima = EST === 'cima', ey = cima ? -R * 0.78 : R * 0.78;
         c.strokeStyle = FER.esc; c.lineWidth = R * 0.15; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, cima ? -R * 0.12 : R * 0.12); c.lineTo(R * 0.1, ey); c.stroke();
         c.strokeStyle = FER.cla; c.lineWidth = R * 0.07; c.stroke();
         c.fillStyle = radial(c, R * 0.06, ey - R * 0.05, R * 0.2, ['#f08070', '#b0302a', '#5a1008']); c.beginPath(); c.arc(R * 0.1, ey, R * 0.16, 0, TAU); c.fill(); linha(c, R * 0.035);
@@ -5890,6 +5939,7 @@ const Props = (() => {
         c.fillStyle = radial(c, -R * 0.05, -R * 0.05, R * 0.3, ['#e8eaee', FER.cla, FER.esc]); c.beginPath(); c.arc(0, 0, R * 0.26, 0, TAU); c.fill(); linha(c, R * 0.03);
         c.strokeStyle = FER.esc; c.lineWidth = R * 0.02; for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; c.beginPath(); c.moveTo(Math.cos(a) * R * 0.2, Math.sin(a) * R * 0.2); c.lineTo(Math.cos(a) * R * 0.25, Math.sin(a) * R * 0.25); c.stroke(); }
         c.strokeStyle = '#c9a24a'; c.lineWidth = R * 0.07; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(R * 0.17, -R * 0.1); c.stroke();
+        if (EST === 'aberto') { c.fillStyle = 'rgba(8,8,10,0.9)'; caixa(c, x + R * 0.15, x + R * 0.15, w - R * 0.3, w - R * 0.3, R * 0.06); c.fill(); ouro(c, R * 0.28, R * 0.42, 0, s); portinha(c, x, w, R); }
       },
     },
     trofeu: {
@@ -5977,7 +6027,7 @@ const Props = (() => {
         const L = R * 1.84, E = R * 0.96;
         const forma = k => { c.beginPath(); c.moveTo(-E * 0.3 * k, -L / 2 * k); c.lineTo(E * 0.3 * k, -L / 2 * k); c.lineTo(E / 2 * k, -L * 0.24 * k); c.lineTo(E * 0.36 * k, L / 2 * k); c.lineTo(-E * 0.36 * k, L / 2 * k); c.lineTo(-E / 2 * k, -L * 0.24 * k); c.closePath(); };
         forma(1); c.fillStyle = grad(c, -E / 2, 0, E / 2, 0, ['#2a180e', '#3e2618', '#22140c']); c.fill(); linha(c, R * 0.05);
-        const aberto = s % 3 === 0;
+        const aberto = EST === 'aberto';
         if (aberto) {
           // aberto: o veludo vermelho lá dentro e a tampa empurrada de lado
           forma(0.84); c.fillStyle = radial(c, 0, -L * 0.15, L * 0.5, ['#8a1a2a', '#5a0f1c', '#2a060c']); c.fill();
@@ -6251,8 +6301,31 @@ const Props = (() => {
     const s = t.size * sc.cell, R = s / 2, ang = rad(t.rot || 0), semente = (hashStr(t.id) % 997) + 1;
     c.save();
     c.translate(t.x + R, t.y + R); c.rotate(ang);
-    def.draw(c, R, tm, semente, ang, t);
+    APAGADO = !!(def.luz && t.light && t.light.on === false);
+    EST = estado(t);
+    try { def.draw(c, R, tm, semente, ang, t); } finally { APAGADO = false; EST = ''; }
     c.restore();
+  }
+  /* (lote 47b) Os estados de um objeto: [id, nome] — o primeiro é o de quando nada foi escolhido. As armadilhas,
+     armada (escondida dos jogadores) ou disparada; as que vieram antes deste lote contam como disparadas (já se viam). */
+  function estados(id) {
+    const d = P[id];
+    if (!d) return null;
+    if (d.estados) return d.estados;
+    if (d.armadilha) return [['disparada', 'Disparada'], ['armada', 'Armada']];
+    if (d.alavanca) return [['baixo', 'Para baixo'], ['cima', 'Para cima']];
+    if (['bau', 'caixote', 'cofre', 'caixao'].includes(id)) return [['fechado', 'Fechado'], ['aberto', 'Aberto']];
+    return null;
+  }
+  function estado(t) {
+    const e = t && t.prop ? estados(t.prop) : null;
+    if (!e) return '';
+    if (e.some(x => x[0] === t.est)) return t.est;
+    // (o caixão e a alavanca de antes tinham o jeito sorteado pela semente: continuam assim até alguém mudar)
+    const sem = (hashStr(t.id) % 997) + 1;
+    if (t.prop === 'caixao') return sem % 3 === 0 ? 'aberto' : 'fechado';
+    if (t.prop === 'alavanca') return sem % 2 === 0 ? 'cima' : 'baixo';
+    return e[0][0];
   }
   // Miniatura para a escolha do objeto
   function thumb(cv, id, tm) {
@@ -6265,7 +6338,7 @@ const Props = (() => {
   }
   const isProp = t => !!t && !!t.prop && !!P[t.prop];
   // Algum objeto com fogo na cena? (o mapa fica se mexendo, para as chamas tremularem)
-  const temFogo = sc => sc.tokens.some(t => t.prop && P[t.prop] && P[t.prop].fogo && !t.hidden);
+  const temFogo = sc => sc.tokens.some(t => t.prop && P[t.prop] && P[t.prop].fogo && !t.hidden && !(t.light && t.light.on === false));
   /* Um token novo para o objeto `id`, em (x, y): sem barras, sem nome à mostra, sem visão; a luz, se o objeto tem
      uma, já acesa e tremulando. */
   function novo(sc, id, x, y, size, hidden) {
@@ -6274,10 +6347,369 @@ const Props = (() => {
     const t = newToken(sc, x, y, { name: def.n, size: size || def.size || 1, shape: 'quad', bars: [], barVis: 'none', showName: false, prop: id, rot: 0, hidden: !!hidden || !!def.passagem || !!def.marca });
     t.vis = { on: false, range: 0, dark: 0 };
     t.color = '#3a3226';
+    if (def.armadilha) { t.est = 'armada'; t.hidden = true; }          // (lote 47b: a armadilha nova nasce armada, escondida)
+    if (def.estados) t.est = def.estados[0][0];
     if (def.luz) t.light = Object.assign({ on: true, bright: def.luz.bright, dim: def.luz.dim, c: def.luz.c }, def.calma ? {} : { fl: true });          // (lote 39: o cristal brilha parado)
     return t;
   }
-  return { P, G, ORDER, draw, thumb, isProp, temFogo, novo, coresDe };
+  // (lote 47b) um objeto novo no catálogo (06b2: o mercado, o templo, a forja, o oriental, os portões)
+  function registrar(id, def) { P[id] = def; if (!ORDER.includes(id)) ORDER.push(id); }
+  function grupo(id, n) { if (!G.some(g => g.id === id)) G.push({ id, n }); }
+  const kit = { caixa, sombra, linha, grad, radial, hsh, MAD, PED, FER, chama, brasa, pedrinha, tabua, folhas, osso, cranio, tom, apagado: () => APAGADO, est: () => EST };
+  return { P, G, ORDER, draw, thumb, isProp, temFogo, novo, coresDe, estados, estado, registrar, grupo, kit };
+})();
+/* ---------------------------------------------------------------
+   6b2. OBJETOS NOVOS (lote 48) — o mercado e a cidade, o templo e a cripta, a forja e a oficina, o oriental e os
+   portões. Mesmo jeito dos de 6b: visto de cima, num quadrado de lado 2R centrado no token, com as peças de Props.kit.
+   Os portões (o portão de ferro, a grade levadiça e a cortina) têm estado (fechado, aberto) e, fechados, barram como
+   uma porta, uma janela ou uma cortina da cena: Props.paredes dá o trecho, e 03b-walls o junta às paredes.
+   --------------------------------------------------------------- */
+(() => {
+  const { caixa, sombra, linha, grad, radial, hsh, MAD, PED, FER, chama, brasa, pedrinha, tabua, folhas, osso, cranio, tom } = Props.kit;
+  const est = Props.kit.est;
+  const R_ = (P, id, def) => Props.registrar(id, def);
+  const reg = (id, def) => R_(null, id, def);
+  const PANO = ['#b8433a', '#e8d9b0', '#3e6fa8', '#5f8f4a', '#d39a2e'];
+  const listras = (c, x, y, w, h, cores, n) => { const lw = w / n; for (let i = 0; i < n; i++) { c.fillStyle = cores[i % cores.length]; c.fillRect(x + i * lw, y, lw + 0.5, h); } };
+
+  Props.grupo('mercado', 'Mercado e cidade');
+  Props.grupo('templo', 'Templo e cripta');
+  Props.grupo('forja', 'Forja e oficina');
+  Props.grupo('oriental', 'Oriental');
+  Props.grupo('portao', 'Portões e cortinas');
+
+  /* ---------- Mercado e cidade ---------- */
+  reg('barracaFeira', {
+    n: 'Barraca de feira', g: 'mercado', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.92, 0.78, 0.08, 0.1);
+      // o balcão com a mercadoria, embaixo do toldo
+      caixa(c, -R * 0.85, R * 0.1, R * 1.7, R * 0.6, R * 0.05); c.fillStyle = grad(c, 0, R * 0.1, 0, R * 0.7, [MAD.cla, MAD.esc]); c.fill(); linha(c, R * 0.04);
+      for (let i = 0; i < 7; i++) { const x = -R * 0.7 + i * R * 0.23; c.fillStyle = ['#d8452e', '#e6b23a', '#6aa84f', '#8a4fb0'][(i + s) % 4]; c.beginPath(); c.arc(x, R * 0.38, R * 0.09, 0, Math.PI * 2); c.fill(); }
+      // o toldo listrado
+      c.save(); caixa(c, -R * 0.95, -R * 0.9, R * 1.9, R * 0.95, R * 0.06); c.clip();
+      listras(c, -R * 0.95, -R * 0.9, R * 1.9, R * 0.95, [PANO[s % 5], '#f1e6c8'], 8);
+      c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(-R * 0.95, -R * 0.1, R * 1.9, R * 0.15);
+      c.restore();
+      caixa(c, -R * 0.95, -R * 0.9, R * 1.9, R * 0.95, R * 0.06); linha(c, R * 0.04);
+      for (const x of [-0.92, 0.92]) { c.fillStyle = MAD.esc; c.beginPath(); c.arc(x * R, R * 0.05, R * 0.06, 0, Math.PI * 2); c.fill(); }
+    },
+  });
+  reg('frutas', {
+    n: 'Caixote de frutas', g: 'mercado', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.72, 0.6, 0.08, 0.1);
+      const w = R * 1.4, h = R * 1.0;
+      caixa(c, -w / 2, -h / 2, w, h, R * 0.05); c.fillStyle = grad(c, 0, -h / 2, 0, h / 2, ['#c79b62', '#8a5f32']); c.fill(); linha(c, R * 0.05);
+      const cor = ['#d8452e', '#f0a32e', '#7cb342', '#9c3d8e'][s % 4];
+      for (let i = 0; i < 12; i++) { const x = -w / 2 + R * 0.18 + (i % 4) * (w - R * 0.36) / 3, y = -h / 2 + R * 0.2 + Math.floor(i / 4) * (h - R * 0.4) / 2;
+        c.fillStyle = radial(c, x - R * 0.04, y - R * 0.05, R * 0.18, [tom(cor, 0.35), cor, tom(cor, -0.35)]); c.beginPath(); c.arc(x, y, R * 0.15, 0, Math.PI * 2); c.fill(); }
+    },
+  });
+  reg('placaLoja', {
+    n: 'Placa de loja', g: 'mercado', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.6, 0.3, 0.06, -0.1);
+      c.strokeStyle = FER.esc; c.lineWidth = R * 0.08; c.lineCap = 'round'; c.beginPath(); c.moveTo(-R * 0.8, -R * 0.75); c.lineTo(R * 0.8, -R * 0.75); c.stroke();
+      for (const x of [-0.45, 0.45]) { c.lineWidth = R * 0.03; c.beginPath(); c.moveTo(x * R, -R * 0.75); c.lineTo(x * R, -R * 0.42); c.stroke(); }
+      caixa(c, -R * 0.62, -R * 0.45, R * 1.24, R * 0.9, R * 0.12); c.fillStyle = grad(c, 0, -R * 0.45, 0, R * 0.45, [MAD.luz, MAD.med]); c.fill(); linha(c, R * 0.05);
+      // o símbolo da loja: uma caneca, um pão ou uma espada
+      const k = s % 3; c.fillStyle = '#2a1a0c'; c.strokeStyle = '#2a1a0c'; c.lineWidth = R * 0.07;
+      if (k === 0) { caixa(c, -R * 0.2, -R * 0.2, R * 0.32, R * 0.42, R * 0.04); c.fill(); c.beginPath(); c.arc(R * 0.14, 0, R * 0.12, -1.3, 1.3); c.stroke(); }
+      else if (k === 1) { c.beginPath(); c.ellipse(0, 0, R * 0.36, R * 0.18, 0, 0, Math.PI * 2); c.fill(); }
+      else { c.beginPath(); c.moveTo(-R * 0.3, R * 0.25); c.lineTo(R * 0.3, -R * 0.25); c.stroke(); c.beginPath(); c.moveTo(-R * 0.25, R * 0.05); c.lineTo(-R * 0.05, R * 0.25); c.stroke(); }
+    },
+  });
+  reg('fonte', {
+    n: 'Fonte da praça', g: 'mercado', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.95, 0.95, 0.04, 0.06);
+      for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; pedrinha(c, Math.cos(a) * R * 0.82, Math.sin(a) * R * 0.82, R * 0.16, s + i); }
+      c.fillStyle = radial(c, 0, 0, R * 0.8, ['#6fb0d8', '#3f86c2', '#2a5f8f']); c.beginPath(); c.arc(0, 0, R * 0.72, 0, Math.PI * 2); c.fill();
+      // as ondinhas que se mexem
+      c.strokeStyle = 'rgba(220,240,255,0.55)'; c.lineWidth = R * 0.025;
+      for (let k = 0; k < 3; k++) { const r = R * (0.25 + ((t * 0.25 + k / 3) % 1) * 0.45); c.globalAlpha = 1 - (r / (R * 0.7)); c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.stroke(); }
+      c.globalAlpha = 1;
+      c.fillStyle = grad(c, -R * 0.2, 0, R * 0.2, 0, [PED.luz, PED.med]); c.beginPath(); c.arc(0, 0, R * 0.2, 0, Math.PI * 2); c.fill(); linha(c, R * 0.03);
+      c.fillStyle = '#cfe9ff'; c.beginPath(); c.arc(0, 0, R * 0.07, 0, Math.PI * 2); c.fill();
+    },
+  });
+  reg('carrinho', {
+    n: 'Carrinho de mão', g: 'mercado', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.6, 0.75, 0.06, 0.08);
+      for (const x of [-0.18, 0.18]) { c.strokeStyle = MAD.esc; c.lineWidth = R * 0.07; c.lineCap = 'round'; c.beginPath(); c.moveTo(x * R, R * 0.2); c.lineTo(x * R * 2.4, R * 0.9); c.stroke(); }
+      c.beginPath(); c.moveTo(-R * 0.5, -R * 0.55); c.lineTo(R * 0.5, -R * 0.55); c.lineTo(R * 0.36, R * 0.35); c.lineTo(-R * 0.36, R * 0.35); c.closePath();
+      c.fillStyle = grad(c, 0, -R * 0.55, 0, R * 0.35, [MAD.cla, MAD.esc]); c.fill(); linha(c, R * 0.05);
+      for (let i = 0; i < 5; i++) pedrinha(c, (hsh(s, i, 1) - 0.5) * R * 0.6, -R * 0.2 + (hsh(s, i, 2) - 0.5) * R * 0.4, R * 0.12, s + i);
+      c.fillStyle = FER.esc; caixa(c, -R * 0.1, -R * 0.85, R * 0.2, R * 0.32, R * 0.05); c.fill();
+    },
+  });
+  reg('sacos', {
+    n: 'Sacos de grãos', g: 'mercado', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.8, 0.7, 0.08, 0.1);
+      for (const [x, y, r] of [[-0.35, -0.25, 0.42], [0.35, -0.2, 0.4], [0, 0.35, 0.44]]) {
+        c.beginPath(); c.ellipse(x * R, y * R, r * R, r * R * 0.9, 0, 0, Math.PI * 2); c.fillStyle = radial(c, x * R - R * 0.1, y * R - R * 0.1, r * R * 1.3, ['#e2cc94', '#c4a668', '#8f7444']); c.fill(); linha(c, R * 0.035);
+        c.strokeStyle = '#6a5230'; c.lineWidth = R * 0.04; c.beginPath(); c.moveTo(x * R - R * 0.08, y * R - r * R * 0.6); c.lineTo(x * R + R * 0.08, y * R - r * R * 0.6); c.stroke();
+      }
+    },
+  });
+
+  /* ---------- Templo e cripta ---------- */
+  reg('sarcofago', {
+    n: 'Sarcófago', g: 'templo', size: 2, estados: [['fechado', 'Fechado'], ['aberto', 'Aberto']],
+    draw(c, R, t, s) {
+      sombra(c, R, 0.55, 0.95, 0.06, 0.06);
+      const w = R * 0.95, h = R * 1.8;
+      caixa(c, -w / 2, -h / 2, w, h, R * 0.08); c.fillStyle = grad(c, -w / 2, 0, w / 2, 0, [PED.med, PED.luz, PED.med]); c.fill(); linha(c, R * 0.05);
+      if (est() === 'aberto') {
+        c.fillStyle = 'rgba(10,8,8,0.92)'; caixa(c, -w / 2 + R * 0.1, -h / 2 + R * 0.1, w - R * 0.2, h - R * 0.2, R * 0.05); c.fill();
+        osso(c, -R * 0.1, -R * 0.4, R * 0.08, R * 0.3, R * 0.06); cranio(c, 0, -R * 0.62, R * 0.14);
+        c.save(); c.translate(w * 0.62, R * 0.15); c.rotate(0.25); caixa(c, -w / 2, -h / 2, w, h, R * 0.08); c.fillStyle = grad(c, -w / 2, 0, w / 2, 0, [PED.cla, PED.luz]); c.fill(); linha(c, R * 0.04); c.restore();
+      } else {
+        // a figura entalhada na tampa
+        c.fillStyle = 'rgba(60,60,70,0.35)'; c.beginPath(); c.arc(0, -h * 0.32, R * 0.16, 0, Math.PI * 2); c.fill();
+        caixa(c, -R * 0.2, -h * 0.22, R * 0.4, h * 0.62, R * 0.12); c.fill();
+        c.strokeStyle = 'rgba(40,40,46,0.55)'; c.lineWidth = R * 0.03; caixa(c, -w / 2 + R * 0.08, -h / 2 + R * 0.08, w - R * 0.16, h - R * 0.16, R * 0.05); c.stroke();
+      }
+    },
+  });
+  reg('bancoIgreja', {
+    n: 'Banco de igreja', g: 'templo', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.95, 0.4, 0.05, 0.1);
+      caixa(c, -R * 0.95, -R * 0.15, R * 1.9, R * 0.4, R * 0.05); c.fillStyle = grad(c, 0, -R * 0.15, 0, R * 0.25, [MAD.cla, MAD.esc]); c.fill(); linha(c, R * 0.04);
+      caixa(c, -R * 0.95, -R * 0.38, R * 1.9, R * 0.18, R * 0.04); c.fillStyle = MAD.med; c.fill(); linha(c, R * 0.04);
+      for (const x of [-0.95, 0.95]) { caixa(c, x * R - R * 0.06, -R * 0.42, R * 0.12, R * 0.72, R * 0.04); c.fillStyle = MAD.esc; c.fill(); }
+    },
+  });
+  reg('vitral', {
+    n: 'Luz do vitral', g: 'templo', size: 2,
+    draw(c, R, t, s) {
+      // a luz colorida que o vitral joga no chão
+      c.save(); c.globalCompositeOperation = 'lighter';
+      const cores = ['rgba(220,60,60,0.28)', 'rgba(60,120,230,0.28)', 'rgba(240,200,60,0.28)', 'rgba(80,190,110,0.28)'];
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) {
+        c.fillStyle = cores[(i + j + s) % 4];
+        c.beginPath(); const x = -R * 0.8 + i * R * 0.4, y = -R * 0.9 + j * R * 0.6;
+        c.moveTo(x, y); c.lineTo(x + R * 0.38, y + R * 0.05); c.lineTo(x + R * 0.48, y + R * 0.62); c.lineTo(x + R * 0.08, y + R * 0.58); c.closePath(); c.fill();
+      }
+      c.restore();
+      c.strokeStyle = 'rgba(20,16,10,0.35)'; c.lineWidth = R * 0.02; c.strokeRect(-R * 0.82, -R * 0.92, R * 1.7, R * 1.85);
+    },
+  });
+  reg('pia', {
+    n: 'Pia de água benta', g: 'templo', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.62, 0.62);
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; c.fillStyle = PED.cla; c.beginPath(); c.arc(Math.cos(a) * R * 0.52, Math.sin(a) * R * 0.52, R * 0.16, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = grad(c, -R * 0.6, -R * 0.6, R * 0.6, R * 0.6, [PED.luz, PED.med]); c.beginPath(); c.arc(0, 0, R * 0.6, 0, Math.PI * 2); c.fill(); linha(c, R * 0.04);
+      c.fillStyle = radial(c, 0, 0, R * 0.42, ['#cfe9ff', '#7fb6dc', '#4f86b0']); c.beginPath(); c.arc(0, 0, R * 0.42, 0, Math.PI * 2); c.fill();
+      c.globalAlpha = 0.5 + 0.3 * Math.sin(t * 1.6 + s); c.fillStyle = '#ffffff'; c.beginPath(); c.arc(-R * 0.12, -R * 0.12, R * 0.07, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1;
+    },
+  });
+  reg('nichoOssos', {
+    n: 'Nicho de ossos', g: 'templo', size: 1,
+    draw(c, R, t, s) {
+      caixa(c, -R * 0.95, -R * 0.95, R * 1.9, R * 0.6, R * 0.04); c.fillStyle = grad(c, 0, -R * 0.95, 0, -R * 0.35, [PED.esc, PED.med]); c.fill(); linha(c, R * 0.04);
+      for (let i = 0; i < 3; i++) { const x = -R * 0.62 + i * R * 0.62; c.fillStyle = '#121014'; caixa(c, x - R * 0.26, -R * 0.88, R * 0.52, R * 0.46, R * 0.18); c.fill(); cranio(c, x, -R * 0.62, R * 0.15); }
+      for (let i = 0; i < 6; i++) { const x = (hsh(s, i, 1) - 0.5) * R * 1.4, y = R * 0.1 + hsh(s, i, 2) * R * 0.6, a = hsh(s, i, 3) * Math.PI; osso(c, x - Math.cos(a) * R * 0.25, y - Math.sin(a) * R * 0.1, x + Math.cos(a) * R * 0.25, y + Math.sin(a) * R * 0.1, R * 0.07); }
+    },
+  });
+  reg('incensario', {
+    n: 'Incensário', g: 'templo', size: 1, fogo: true, luz: { bright: 1, dim: 3, c: '#ffcf8a' },
+    draw(c, R, t, s) {
+      sombra(c, R, 0.45, 0.45);
+      c.fillStyle = grad(c, -R * 0.4, -R * 0.4, R * 0.4, R * 0.4, ['#e0b45a', '#9a7228']); c.beginPath(); c.arc(0, 0, R * 0.4, 0, Math.PI * 2); c.fill(); linha(c, R * 0.04);
+      c.fillStyle = '#5a3e14'; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; c.beginPath(); c.arc(Math.cos(a) * R * 0.26, Math.sin(a) * R * 0.26, R * 0.04, 0, Math.PI * 2); c.fill(); }
+      brasa(c, 0, 0, R * 0.12, t, s);
+    },
+  });
+
+  /* ---------- Forja e oficina ---------- */
+  reg('fole', {
+    n: 'Fole', g: 'forja', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.55, 0.75);
+      const ab = 0.85 + 0.15 * Math.sin(t * 1.4 + s);
+      c.beginPath(); c.moveTo(0, -R * 0.85); c.lineTo(R * 0.5 * ab, R * 0.3); c.lineTo(-R * 0.5 * ab, R * 0.3); c.closePath(); c.fillStyle = grad(c, -R * 0.5, 0, R * 0.5, 0, ['#5a3420', '#8a5530', '#5a3420']); c.fill(); linha(c, R * 0.04);
+      c.strokeStyle = 'rgba(30,16,8,0.6)'; c.lineWidth = R * 0.025; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(-R * 0.5 * ab * i / 4, -R * 0.85 + R * 1.15 * i / 4); c.lineTo(R * 0.5 * ab * i / 4, -R * 0.85 + R * 1.15 * i / 4); c.stroke(); }
+      caixa(c, -R * 0.08, R * 0.3, R * 0.16, R * 0.55, R * 0.04); c.fillStyle = MAD.esc; c.fill(); linha(c, R * 0.03);
+      c.fillStyle = FER.med; caixa(c, -R * 0.06, -R * 0.98, R * 0.12, R * 0.2, R * 0.03); c.fill();
+    },
+  });
+  reg('tina', {
+    n: 'Tina de têmpera', g: 'forja', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.75, 0.75);
+      c.fillStyle = grad(c, -R, 0, R, 0, [MAD.esc, MAD.cla, MAD.esc]); c.beginPath(); c.arc(0, 0, R * 0.75, 0, Math.PI * 2); c.fill(); linha(c, R * 0.05);
+      for (const r of [0.75, 0.6]) { c.strokeStyle = FER.esc; c.lineWidth = R * 0.05; c.beginPath(); c.arc(0, 0, R * r, 0, Math.PI * 2); c.stroke(); }
+      c.fillStyle = radial(c, 0, 0, R * 0.58, ['#4f7a96', '#2f526a', '#1f3a4c']); c.beginPath(); c.arc(0, 0, R * 0.56, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(200,225,240,0.35)'; c.lineWidth = R * 0.02; const r = R * (0.15 + ((t * 0.2) % 1) * 0.38); c.beginPath(); c.arc(R * 0.1, -R * 0.05, r, 0, Math.PI * 2); c.stroke();
+      c.strokeStyle = FER.cla; c.lineWidth = R * 0.07; c.lineCap = 'round'; c.beginPath(); c.moveTo(R * 0.2, R * 0.1); c.lineTo(R * 0.95, -R * 0.4); c.stroke();
+    },
+  });
+  reg('bancada', {
+    n: 'Bancada de ferramentas', g: 'forja', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.95, 0.5, 0.05, 0.08);
+      caixa(c, -R * 0.95, -R * 0.45, R * 1.9, R * 0.9, R * 0.05); c.fillStyle = grad(c, 0, -R * 0.45, 0, R * 0.45, [MAD.luz, MAD.med]); c.fill(); linha(c, R * 0.04);
+      c.strokeStyle = 'rgba(60,35,12,0.4)'; c.lineWidth = R * 0.02; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(-R * 0.95, -R * 0.45 + i * R * 0.225); c.lineTo(R * 0.95, -R * 0.45 + i * R * 0.225); c.stroke(); }
+      // o martelo, as tenazes e a lima
+      c.strokeStyle = MAD.esc; c.lineWidth = R * 0.07; c.lineCap = 'round'; c.beginPath(); c.moveTo(-R * 0.7, R * 0.2); c.lineTo(-R * 0.3, -R * 0.15); c.stroke();
+      c.fillStyle = FER.cla; caixa(c, -R * 0.42, -R * 0.3, R * 0.28, R * 0.16, R * 0.03); c.fill(); linha(c, R * 0.02);
+      c.strokeStyle = FER.med; c.lineWidth = R * 0.04; c.beginPath(); c.moveTo(R * 0.1, R * 0.25); c.lineTo(R * 0.45, -R * 0.25); c.moveTo(R * 0.2, R * 0.28); c.lineTo(R * 0.5, -R * 0.2); c.stroke();
+      c.strokeStyle = FER.luz; c.lineWidth = R * 0.05; c.beginPath(); c.moveTo(R * 0.65, R * 0.25); c.lineTo(R * 0.85, -R * 0.25); c.stroke();
+    },
+  });
+  reg('rebolo', {
+    n: 'Pedra de amolar', g: 'forja', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.7, 0.55);
+      caixa(c, -R * 0.65, -R * 0.2, R * 1.3, R * 0.4, R * 0.05); c.fillStyle = MAD.med; c.fill(); linha(c, R * 0.04);
+      c.save(); c.translate(0, 0); c.rotate(t * 2.5 + s);
+      c.fillStyle = radial(c, 0, 0, R * 0.5, [PED.luz, PED.cla, PED.med]); c.beginPath(); c.ellipse(0, 0, R * 0.48, R * 0.48, 0, 0, Math.PI * 2); c.fill(); linha(c, R * 0.04);
+      c.strokeStyle = 'rgba(40,40,46,0.4)'; c.lineWidth = R * 0.03; c.beginPath(); c.moveTo(-R * 0.4, 0); c.lineTo(R * 0.4, 0); c.stroke();
+      c.restore();
+      c.fillStyle = FER.esc; c.beginPath(); c.arc(0, 0, R * 0.08, 0, Math.PI * 2); c.fill();
+    },
+  });
+  reg('lingotes', {
+    n: 'Lingotes', g: 'forja', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.7, 0.6);
+      const cor = ['#b8bcc4', '#d9a441', '#b87333'][s % 3];
+      const peca = (x, y) => { c.beginPath(); c.moveTo(x - R * 0.3, y + R * 0.12); c.lineTo(x - R * 0.22, y - R * 0.12); c.lineTo(x + R * 0.22, y - R * 0.12); c.lineTo(x + R * 0.3, y + R * 0.12); c.closePath(); c.fillStyle = grad(c, 0, y - R * 0.12, 0, y + R * 0.12, [tom(cor, 0.4), tom(cor, -0.25)]); c.fill(); linha(c, R * 0.03); };
+      for (const [x, y] of [[-0.32, 0.3], [0.32, 0.3], [0, 0.3], [-0.16, 0], [0.16, 0], [0, -0.3]]) peca(x * R, y * R);
+    },
+  });
+  reg('carvao', {
+    n: 'Monte de carvão', g: 'forja', size: 1, fogo: true, luz: { bright: 1.5, dim: 4, c: '#ff6a2a' },
+    draw(c, R, t, s) {
+      sombra(c, R, 0.75, 0.65);
+      for (let i = 0; i < 22; i++) { const a = hsh(s, i, 1) * Math.PI * 2, d = Math.sqrt(hsh(s, i, 2)) * R * 0.62; pedrinha(c, Math.cos(a) * d, Math.sin(a) * d * 0.85, R * 0.12, s + i, { luz: '#4a4a4e', cla: '#2c2c30', med: '#141416', esc: '#000' }); }
+      for (let i = 0; i < 8; i++) brasa(c, (hsh(s, i, 6) - 0.5) * R * 0.9, (hsh(s, i, 7) - 0.5) * R * 0.75, R * 0.06, t, i + s);
+    },
+  });
+
+  /* ---------- Oriental ---------- */
+  reg('torii', {
+    n: 'Torii', g: 'oriental', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.95, 0.3, 0.04, 0.08);
+      for (const x of [-0.65, 0.65]) { c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(x * R, 0, R * 0.14, 0, Math.PI * 2); c.fill(); c.fillStyle = '#c8302a'; c.beginPath(); c.arc(x * R, 0, R * 0.1, 0, Math.PI * 2); c.fill(); }
+      c.beginPath(); c.moveTo(-R * 1.0, -R * 0.2); c.quadraticCurveTo(0, -R * 0.08, R * 1.0, -R * 0.2); c.lineTo(R * 0.95, R * 0.02); c.quadraticCurveTo(0, R * 0.12, -R * 0.95, R * 0.02); c.closePath();
+      c.fillStyle = '#1e1a18'; c.fill(); linha(c, R * 0.03);
+      caixa(c, -R * 0.82, R * 0.12, R * 1.64, R * 0.14, R * 0.03); c.fillStyle = '#c8302a'; c.fill(); linha(c, R * 0.03);
+    },
+  });
+  reg('tatame', {
+    n: 'Tatame', g: 'oriental', size: 2,
+    draw(c, R, t, s) {
+      const meia = (x, y, w, h) => { caixa(c, x, y, w, h, R * 0.02); c.fillStyle = grad(c, x, y, x + w, y + h, ['#cdbb7a', '#b3a060']); c.fill(); c.strokeStyle = '#3e5a3a'; c.lineWidth = R * 0.06; c.stroke();
+        c.strokeStyle = 'rgba(90,80,40,0.25)'; c.lineWidth = R * 0.01; for (let i = 1; i < 10; i++) { c.beginPath(); c.moveTo(x + w * i / 10, y); c.lineTo(x + w * i / 10, y + h); c.stroke(); } };
+      meia(-R * 0.95, -R * 0.95, R * 0.95, R * 1.9); meia(0, -R * 0.95, R * 0.95, R * 0.95); meia(0, 0, R * 0.95, R * 0.95);
+    },
+  });
+  reg('bonsai', {
+    n: 'Bonsai', g: 'oriental', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.6, 0.5);
+      caixa(c, -R * 0.55, -R * 0.35, R * 1.1, R * 0.7, R * 0.08); c.fillStyle = grad(c, 0, -R * 0.35, 0, R * 0.35, ['#4a6a8a', '#2a4058']); c.fill(); linha(c, R * 0.04);
+      c.fillStyle = '#5a4030'; c.fillRect(-R * 0.45, -R * 0.25, R * 0.9, R * 0.5);
+      c.strokeStyle = '#4a2e1a'; c.lineWidth = R * 0.08; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, R * 0.1); c.quadraticCurveTo(-R * 0.3, -R * 0.1, R * 0.15, -R * 0.35); c.stroke();
+      const vd = ['#2f5a2a', '#4a7a3a', '#6a9a4a']; folhas(c, -R * 0.25, -R * 0.35, R * 0.3, s, vd, 6); folhas(c, R * 0.25, -R * 0.5, R * 0.28, s + 3, vd, 6);
+    },
+  });
+  reg('gongo', {
+    n: 'Gongo', g: 'oriental', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.85, 0.3, 0.04, 0.05);
+      c.strokeStyle = MAD.esc; c.lineWidth = R * 0.12; c.lineCap = 'round'; c.beginPath(); c.moveTo(-R * 0.85, R * 0.1); c.lineTo(-R * 0.85, -R * 0.75); c.lineTo(R * 0.85, -R * 0.75); c.lineTo(R * 0.85, R * 0.1); c.stroke();
+      c.fillStyle = radial(c, -R * 0.12, -R * 0.12, R * 0.6, ['#f6d27a', '#c8962e', '#7a5414']); c.beginPath(); c.arc(0, -R * 0.12, R * 0.52, 0, Math.PI * 2); c.fill(); linha(c, R * 0.04);
+      c.strokeStyle = 'rgba(90,60,10,0.6)'; c.lineWidth = R * 0.03; c.beginPath(); c.arc(0, -R * 0.12, R * 0.3, 0, Math.PI * 2); c.stroke();
+    },
+  });
+  reg('biombo', {
+    n: 'Biombo', g: 'oriental', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.95, 0.25, 0.04, 0.1);
+      const pts = [[-R * 0.95, R * 0.05], [-R * 0.48, -R * 0.12], [0, R * 0.05], [R * 0.48, -R * 0.12], [R * 0.95, R * 0.05]];
+      for (let i = 0; i < 4; i++) {
+        const [a, b] = [pts[i], pts[i + 1]];
+        c.beginPath(); c.moveTo(a[0], a[1] - R * 0.08); c.lineTo(b[0], b[1] - R * 0.08); c.lineTo(b[0], b[1] + R * 0.08); c.lineTo(a[0], a[1] + R * 0.08); c.closePath();
+        c.fillStyle = i % 2 ? '#efe4c8' : '#e2d4b0'; c.fill(); c.strokeStyle = '#2a1a10'; c.lineWidth = R * 0.04; c.stroke();
+      }
+    },
+  });
+  reg('lanternaPedra', {
+    n: 'Lanterna de pedra', g: 'oriental', size: 1, fogo: true, luz: { bright: 2, dim: 5, c: '#ffd59a' },
+    draw(c, R, t, s, ang) {
+      sombra(c, R, 0.6, 0.6);
+      c.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.PI / 6; c[i ? 'lineTo' : 'moveTo'](Math.cos(a) * R * 0.75, Math.sin(a) * R * 0.75); } c.closePath();
+      c.fillStyle = grad(c, -R, -R, R, R, [PED.luz, PED.med]); c.fill(); linha(c, R * 0.04);
+      c.fillStyle = '#1a1612'; caixa(c, -R * 0.3, -R * 0.3, R * 0.6, R * 0.6, R * 0.06); c.fill();
+      chama(c, 0, R * 0.12, R * 0.4, t, s, ang);
+      c.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.PI / 6; c[i ? 'lineTo' : 'moveTo'](Math.cos(a) * R * 0.3, Math.sin(a) * R * 0.3); } c.closePath(); c.fillStyle = PED.cla; c.globalAlpha = 0.35; c.fill(); c.globalAlpha = 1;
+    },
+  });
+
+  /* ---------- Portões e cortinas (com estado; fechados, barram) ---------- */
+  const ESTP = [['fechado', 'Fechado'], ['aberto', 'Aberto']];
+  reg('portao', {
+    n: 'Portão de ferro', g: 'portao', size: 1, estados: ESTP, parede: 'door',
+    draw(c, R, t, s) {
+      const ab = est() === 'aberto';
+      for (const x of [-1, 1]) { c.fillStyle = PED.med; caixa(c, x * R - R * 0.12, -R * 0.14, R * 0.24, R * 0.28, R * 0.04); c.fill(); linha(c, R * 0.03); }
+      const folha = (lado) => {
+        c.save(); c.translate(lado * R * 0.92, 0); if (ab) c.rotate(lado * -1.35);
+        const w = R * 0.92 * -lado;
+        c.strokeStyle = FER.esc; c.lineWidth = R * 0.08; c.beginPath(); c.moveTo(0, 0); c.lineTo(w, 0); c.stroke();
+        c.strokeStyle = FER.cla; c.lineWidth = R * 0.04; c.stroke();
+        for (let i = 1; i < 5; i++) { c.fillStyle = FER.esc; c.beginPath(); c.arc(w * i / 5, 0, R * 0.05, 0, Math.PI * 2); c.fill(); }
+        c.restore();
+      };
+      folha(-1); folha(1);
+    },
+  });
+  reg('grade', {
+    n: 'Grade levadiça', g: 'portao', size: 1, estados: ESTP, parede: 'window',
+    draw(c, R, t, s) {
+      const ab = est() === 'aberto';
+      for (const x of [-1, 1]) { c.fillStyle = PED.med; caixa(c, x * R - R * 0.14, -R * 0.2, R * 0.28, R * 0.4, R * 0.04); c.fill(); linha(c, R * 0.03); }
+      if (ab) { c.fillStyle = 'rgba(20,20,24,0.55)'; c.fillRect(-R * 0.86, -R * 0.06, R * 1.72, R * 0.12); c.strokeStyle = 'rgba(230,171,79,0.5)'; c.setLineDash([R * 0.1, R * 0.08]); c.lineWidth = R * 0.03; c.strokeRect(-R * 0.86, -R * 0.06, R * 1.72, R * 0.12); c.setLineDash([]); return; }
+      c.fillStyle = FER.esc; c.fillRect(-R * 0.86, -R * 0.1, R * 1.72, R * 0.2);
+      for (let i = 0; i < 8; i++) { const x = -R * 0.78 + i * R * 0.223; c.fillStyle = FER.cla; c.beginPath(); c.arc(x, 0, R * 0.065, 0, Math.PI * 2); c.fill(); linha(c, R * 0.02); }
+    },
+  });
+  reg('cortina', {
+    n: 'Cortina', g: 'portao', size: 1, estados: ESTP, parede: 'veil', cores: true,
+    draw(c, R, t, s, ang, tok) {
+      const ab = est() === 'aberto', cor = Props.coresDe(tok)[0];
+      c.strokeStyle = FER.esc; c.lineWidth = R * 0.05; c.beginPath(); c.moveTo(-R, -R * 0.12); c.lineTo(R, -R * 0.12); c.stroke();
+      const pano = (x0, x1) => {
+        c.beginPath(); c.moveTo(x0, -R * 0.12); const n = 6;
+        for (let i = 0; i <= n; i++) { const x = x0 + (x1 - x0) * i / n; c.lineTo(x, (i % 2 ? R * 0.12 : R * 0.02)); }
+        c.lineTo(x1, -R * 0.12); c.closePath(); c.fillStyle = grad(c, x0, 0, x1, 0, [tom(cor, 0.2), cor, tom(cor, -0.3)]); c.fill(); linha(c, R * 0.03);
+      };
+      if (ab) { pano(-R, -R * 0.62); pano(R * 0.62, R); } else pano(-R, R);
+    },
+  });
+
+  /* Os trechos que os portões fechados (e abertos) põem na cena: { x1, y1, x2, y2, k, open, prop } — ao longo do
+     objeto, pelo meio dele, girando com ele. */
+  Props.paredes = sc => {
+    const out = [];
+    for (const t of sc.tokens) {
+      const d = t.prop ? Props.P[t.prop] : null;
+      if (!d || !d.parede) continue;
+      const s = t.size * sc.cell, R = s / 2, cx = t.x + R, cy = t.y + R, a = (t.rot || 0) * Math.PI / 180, ux = Math.cos(a) * R, uy = Math.sin(a) * R;
+      out.push({ id: 'pp_' + t.id, x1: cx - ux, y1: cy - uy, x2: cx + ux, y2: cy + uy, k: d.parede, open: Props.estado(t) === 'aberto', prop: t.id });
+    }
+    return out;
+  };
+  Props.assinatura = sc => { let k = ''; for (const t of sc.tokens) { const d = t.prop ? Props.P[t.prop] : null; if (d && d.parede) k += t.id + ':' + t.x + ',' + t.y + ',' + (t.rot || 0) + ',' + t.size + ',' + (t.est || '') + ';'; } return k; };
 })();
 /* ---------------------------------------------------------------
    6c. AS ZONAS DAS RAÇAS (lote 19)
@@ -7601,6 +8033,38 @@ const Act = {
       }
     });
     return n;
+  },
+  /* (lote 48) O estado de um objeto de cenário (o baú aberto, a alavanca para cima, a armadilha disparada, o portão
+     aberto). A armadilha armada fica escondida dos jogadores; disparada, aparece. A alavanca leva junto o que está
+     ligado a ela (uma porta, janela ou cortina da cena, ou um portão que é objeto): abre ou fecha. Um passo de desfazer.
+     est: o estado novo (sem ele, o seguinte). → { nome, est, ligado } (o nome do estado e o que mudou junto), ou null. */
+  propEstado(t, est) {
+    t = Store.get('tokens', t.id) || t;
+    const lista = Props.estados(t.prop);
+    if (!lista) return null;
+    const atual = Props.estado(t), i = lista.findIndex(x => x[0] === atual);
+    const novo = est && lista.some(x => x[0] === est) ? est : lista[(i + 1) % lista.length][0];
+    if (novo === atual && est) return null;
+    const def = Props.P[t.prop], p = { est: novo };
+    if (def.armadilha) p.hidden = novo === 'armada';
+    let ligado = null;
+    Store.tx((lista.find(x => x[0] === novo) || [])[1] + ': ' + t.name, () => {
+      Store.upd('tokens', t.id, p);
+      if (def.alavanca && t.liga) {
+        const w = Store.get('walls', t.liga), g = w ? null : Store.get('tokens', t.liga);
+        if (w) { const era = !!w.open; Store.upd('walls', w.id, { open: !era }); ligado = (w.k === 'window' ? 'a janela' : w.k === 'veil' ? 'a cortina' : 'a porta') + (era ? ' fechou' : ' abriu'); }
+        else if (g && Props.estados(g.prop)) { const ab = Props.estado(g) === 'aberto'; Store.upd('tokens', g.id, { est: ab ? 'fechado' : 'aberto' }); ligado = g.name + (ab ? ' fechou' : ' abriu'); }
+      }
+    });
+    return { nome: (lista.find(x => x[0] === novo) || [])[1], est: novo, ligado };
+  },
+  // (lote 48) acender ou apagar a luz de um objeto (a tocha, a fogueira): apagada, a chama some
+  propLuz(t, on) {
+    t = Store.get('tokens', t.id) || t;
+    if (!t.light || !(Props.P[t.prop] || {}).luz) return null;
+    const v = on == null ? t.light.on === false : !!on;
+    Store.tx(v ? 'Acender: ' + t.name : 'Apagar: ' + t.name, () => Store.upd('tokens', t.id, { light: Object.assign({}, t.light, { on: v }) }));
+    return v;
   },
   barPatch(t, i, patch) {
     t = tokAgora(t);                                     // (lote 24: o token como está agora, não como estava quando o painel foi desenhado)
@@ -11418,8 +11882,68 @@ const Render = (() => {
     if (App.pings.length || App.floats.length) return true;
     const sc = Store.scene();
     // (chamas dos objetos e luzes que tremulam também mexem o mapa)
-    return !!sc && motion() && (sc.effects.length > 0 || !!(sc.weather && sc.weather.k) || Props.temFogo(sc) || (Vision.out.flick.length > 0 && sc.light !== 'claro'));
+    return !!sc && motion() && (sc.effects.length > 0 || !!(sc.weather && sc.weather.k) || Props.temFogo(sc) || temAgua(sc) || (Vision.out.flick.length > 0 && sc.light !== 'claro'));
   }
+  // (lote 48) a água das áreas de terreno corre (os rios, os riachos) e ondula (os lagos)
+  const temAgua = sc => sc.shapes.some(x => x.ter && x.ter.t === 'agua');
+  function drawAgua(sc, px, t) {
+    if (!motion() || !temAgua(sc)) return;
+    const cell = sc.cell;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const x of sc.shapes) {
+      if (!x.ter || x.ter.t !== 'agua' || !shapeShown(x)) continue;
+      if (x.k === 'free') {
+        // a corrente: traços claros que andam ao longo do rio, em duas velocidades
+        const w = Math.max(4, x.sw || cell);
+        terPath(ctx, x);
+        ctx.setLineDash([cell * 0.5, cell * 1.6]); ctx.lineDashOffset = -t * cell * 0.9;
+        ctx.lineWidth = Math.max(1.5 * px, w * 0.12); ctx.strokeStyle = 'rgba(225,242,255,0.22)'; ctx.stroke();
+        ctx.setLineDash([cell * 0.25, cell * 2.3]); ctx.lineDashOffset = -t * cell * 1.5 + cell;
+        ctx.lineWidth = Math.max(1 * px, w * 0.06); ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        // o lago: brilhos curtos que vão e voltam, dentro da área
+        ctx.save(); terPath(ctx, x); ctx.clip();
+        const b = x.k === 'poly' ? (() => { let a = Infinity, c = Infinity, d = -Infinity, e = -Infinity; for (let i = 0; i < x.pts.length; i += 2) { a = Math.min(a, x.pts[i]); d = Math.max(d, x.pts[i]); c = Math.min(c, x.pts[i + 1]); e = Math.max(e, x.pts[i + 1]); } return [a, c, d, e]; })() : [Math.min(x.x, x.x + x.w), Math.min(x.y, x.y + x.h), Math.max(x.x, x.x + x.w), Math.max(x.y, x.y + x.h)];
+        ctx.strokeStyle = 'rgba(225,242,255,0.2)'; ctx.lineWidth = Math.max(1 * px, cell * 0.04);
+        let n = 0;
+        for (let y = b[1] + cell * 0.4; y < b[3] && n < 400; y += cell * 0.7) for (let xx = b[0] + ((y / cell) % 2) * cell * 0.5; xx < b[2] && n < 400; xx += cell * 1.3, n++) {
+          const f = Math.sin(t * 0.9 + xx * 0.013 + y * 0.021), dx = f * cell * 0.15;
+          ctx.globalAlpha = 0.35 + 0.65 * Math.abs(f);
+          ctx.beginPath(); ctx.moveTo(xx + dx - cell * 0.18, y); ctx.quadraticCurveTo(xx + dx, y - cell * 0.06, xx + dx + cell * 0.18, y); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+  /* (lote 48) A fumaça das chamas e as fagulhas: só com o objeto aceso (e, para os jogadores, à vista). Sem estado:
+     cada fiapo é uma conta do tempo. */
+  function drawFumaca(c, sc, px, t) {
+    if (!motion()) return;
+    const gm = isGM();
+    for (const tk of sc.tokens) {
+      const d = tk.prop ? Props.P[tk.prop] : null;
+      if (!d || !d.fogo || (tk.light && tk.light.on === false) || (!gm && tk.hidden)) continue;
+      const R = tk.size * sc.cell / 2, x0 = tk.x + R, y0 = tk.y + R, k = hashStr(tk.id) % 97, grande = ['fogueira', 'lareira', 'fornalha', 'braseiro', 'carvao', 'circuloInvocacao'].includes(tk.prop);
+      const n = grande ? 6 : 3, sobe = R * (grande ? 3.4 : 2.2);
+      c.save();
+      for (let i = 0; i < n; i++) {
+        const f = ((t * 0.16 + i / n + k * 0.013) % 1), y = y0 - f * sobe, x = x0 + Math.sin(f * 5 + i * 1.7 + k) * R * 0.35 + f * R * 0.5;
+        const r = R * (0.18 + f * (grande ? 0.75 : 0.45));
+        c.globalAlpha = (1 - f) * (f < 0.1 ? f * 10 : 1) * (grande ? 0.22 : 0.16);
+        c.fillStyle = radial0(c, x, y, r); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+      }
+      c.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < (grande ? 6 : 2); i++) {
+        const f = ((t * 0.55 + i / 6 + k * 0.07) % 1), x = x0 + Math.sin(i * 2.3 + t * 3 + k) * R * 0.4 * f, y = y0 - f * R * 1.8;
+        c.globalAlpha = (1 - f) * 0.9; c.fillStyle = '#ffb04a'; c.beginPath(); c.arc(x, y, Math.max(0.8 * px, R * 0.035), 0, TAU); c.fill();
+      }
+      c.restore();
+    }
+  }
+  const radial0 = (c, x, y, r) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(150,150,150,0.9)'); g.addColorStop(1, 'rgba(120,120,120,0)'); return g; };
   function frame(ts) {
     raf = 0;
     const anim = animating();
@@ -12086,6 +12610,7 @@ const Render = (() => {
     drawFx(c, sc, px, t, true);
     // os objetos de cenário ficam por baixo dos tokens (o guerreiro fica em cima da mesa, não embaixo dela)
     for (const tk of sc.tokens) if (tk.prop && (gm || !tk.hidden)) drawProp(c, tk, sc, px, t);
+    drawFumaca(c, sc, px, t);                              // (lote 48) a fumaça e as fagulhas, por cima dos objetos
     for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenBody(c, tk, sc, px);
     for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenTop(c, tk, sc, px);
   }
@@ -12406,6 +12931,28 @@ const Render = (() => {
         const x = ox + wrap(h(i, 5, s) * T + Math.sin(t * 0.9 + i * 3) * cell * 0.6), y = oy + wrap(h(i, 6, s) * T - t * T * (0.06 + h(i, 7, s) * 0.05));
         FX.blob(ctx, x, y, cell * 0.11, '#ff8a3c', 0.5 + 0.4 * Math.sin(t * 3 + i));
       });
+    } else if (wz.k === 'folhas' || wz.k === 'petalas') {
+      // (lote 48) folhas secas ou pétalas ao vento: caem girando, puxadas para o lado
+      const cores = wz.k === 'folhas' ? ['#c8742a', '#a8521e', '#d9a03a', '#8a5a24'] : ['#f6c2d2', '#f0a8c0', '#fbe0ea', '#e98fb0'];
+      each(Math.max(2, Math.round(10 * pow)), (ox, oy, i, s) => {
+        const sp = 0.06 + h(i, 6, s) * 0.05, f = (t * sp + h(i, 1, s)) % 1;
+        const x = ox + wrap(h(i, 2, s) * T + f * T * 1.6 + Math.sin(t * 1.3 + i) * cell * 0.4), y = oy + wrap(f * T + h(i, 3, s) * T);
+        const r = cell * (wz.k === 'folhas' ? 0.17 : 0.12), a = t * (1.5 + h(i, 4, s) * 2) + i;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(1, 0.45 + 0.4 * Math.abs(Math.sin(a * 0.7)));
+        ctx.fillStyle = cores[i % 4]; ctx.globalAlpha = 0.85;
+        ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.55, 0, 0, TAU); ctx.fill();
+        ctx.restore();
+      });
+    } else if (wz.k === 'poeira') {
+      // (lote 48) poeira no ar: grãos que flutuam devagar e brilham de leve (a masmorra, o porão, a cripta)
+      each(Math.max(3, Math.round(14 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T + Math.sin(t * (0.12 + h(i, 3, s) * 0.1) + i) * cell * 1.5 + t * cell * 0.05);
+        const y = oy + wrap(h(i, 2, s) * T + Math.cos(t * (0.1 + h(i, 4, s) * 0.1) + i * 2) * cell * 1.2 - t * cell * 0.03);
+        const tw = 0.5 + 0.5 * Math.sin(t * (0.6 + h(i, 5, s)) + i);
+        ctx.globalAlpha = 0.25 + 0.45 * tw; ctx.fillStyle = '#e8dcc0';
+        ctx.beginPath(); ctx.arc(x, y, Math.max(0.8 * px, cell * (0.015 + h(i, 6, s) * 0.02)), 0, TAU); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
     } else if (wz.k === 'vagalumes') {
       ctx.globalCompositeOperation = 'lighter';
       each(Math.max(2, Math.round(7 * pow)), (ox, oy, i, s) => {
@@ -12445,6 +12992,7 @@ const Render = (() => {
       else { const w = W * (sc.bg.scale || 1); ctx.drawImage(bg, sc.bg.dx || 0, sc.bg.dy || 0, w, w * bg.naturalHeight / bg.naturalWidth); }
     }
     drawTerrain(sc, px, W, H);
+    drawAgua(sc, px, t);                                   // (lote 48) a água que corre
     drawGrid(sc, px);
     ctx.restore();
 
@@ -12966,6 +13514,8 @@ const Tools = (() => {
       if (hit.c === 'tokens' && isGM()) {
         const t = Store.get('tokens', hit.id), def = t && t.prop ? Props.P[t.prop] : null;
         if (t && (t.cena || (def && def.passagem))) { setSel([hit]); UI.passagem(t, e ? e.clientX : null, e ? e.clientY : null); return; }
+        // (lote 48) dois cliques num objeto com estado trocam o estado; num objeto de luz, acendem ou apagam
+        if (t && def && (Props.estados(t.prop) || (def.luz && t.light))) { setSel([hit]); UI.alternarObjeto(t); return; }
       }
       // Texto solto: dois cliques editam. Texto travado: dois cliques selecionam, como qualquer desenho travado
       // (é o caminho para destravar ou apagar; editar continua no painel e no botão direito).
@@ -16108,6 +16658,25 @@ const UI = (() => {
     const depois = (Fichas.fadiga(t) || {}).v;
     toast(`Fadiga de ${t.name}: ${base} → ${depois} de 5.`, { key: 'fad:' + t.id, action: 'Desfazer', run: () => { fadSerie.delete(t.id); Fichas.mudarFadiga(t, base); } });
   }
+  /* (lote 48) Trocar o estado de um objeto (dois cliques, o menu ou o painel): o aviso diz o que mudou, com Desfazer. */
+  function alternarObjeto(t, est) {
+    if (!isGM()) return;
+    if (Props.estados(t.prop)) {
+      const r = Act.propEstado(t, est);
+      if (r) toast(`${t.name}: ${r.nome.toLowerCase()}${r.ligado ? ` (e ${r.ligado})` : ''}.`, { key: 'obj-est', action: 'Desfazer', run: Tools.undo });
+      return;
+    }
+    const v = Act.propLuz(t);
+    if (v != null) toast(`${t.name}: ${v ? 'acesa' : 'apagada'}.`, { key: 'obj-est', action: 'Desfazer', run: Tools.undo });
+  }
+  // o que uma alavanca pode abrir e fechar: as portas, janelas e cortinas da cena e os portões que são objetos
+  function ligaveis(t) {
+    const sc = Store.scene(), cx = t.x + t.size * sc.cell / 2, cy = t.y + t.size * sc.cell / 2, q = v => Math.round(v / sc.cell);
+    const nome = { door: 'Porta', window: 'Janela', veil: 'Cortina' };
+    const ws = sc.walls.filter(isOpening).map(w => ({ id: w.id, d: Geo.distSeg(cx, cy, w.x1, w.y1, w.x2, w.y2), n: nome[w.k] || 'Porta' }));
+    const gs = sc.tokens.filter(x => x.prop && (Props.P[x.prop] || {}).parede).map(x => ({ id: x.id, d: Math.hypot(x.x - t.x, x.y - t.y), n: x.name }));
+    return ws.concat(gs).sort((a, b) => a.d - b.d).slice(0, 30).map(o => [o.id, `${o.n} a ${q(o.d)} ${q(o.d) === 1 ? 'quadrado' : 'quadrados'}`]);
+  }
   /* Objetos de cenário: o que é, girar, tamanho, a luz (se tem), esconder, travar. Para o jogador, só o nome. */
   function propPanel(props) {
     const gm = isGM(), t = props[0], many = props.length > 1, def = Props.P[t.prop] || {};
@@ -16144,6 +16713,11 @@ const UI = (() => {
           field('Segunda cor', inColor('pr-c2', Props.coresDe(t)[1], v => props.forEach(x => Store.upd('tokens', x.id, { cores: [Props.coresDe(x)[0], v] })), 'Segunda cor'))),
         props.some(x => Array.isArray(x.cores)) ? h('div', { class: 'row' }, btn('Voltar às cores de sempre', () => all({ cores: null }, 'Cores do objeto'), { kind: 'small', id: 'pr-cor-0' })) : null,
         note(!many && t.bras ? 'Este veio da sede: as cores e o desenho são os do brasão do clã. Trocar aqui muda só este objeto.' : 'As duas cores do objeto. Os que vêm da sede do clã já chegam com as cores do brasão.')) : null,
+      // (lote 48) o estado (o baú aberto, a armadilha armada, o portão fechado…) e, na alavanca, o que ela abre
+      !many && Props.estados(t.prop) ? sec('s-propest', 'Estado', true,
+        seg('pr-est', Props.estado(t), Props.estados(t.prop).map(([v, n]) => [v, n]), v => alternarObjeto(t, v)),
+        def.alavanca ? field('Abre e fecha', inSelect('pr-liga', t.liga || '', [['', 'Nada']].concat(ligaveis(t)), v => all({ liga: v || null }, 'Ligar a alavanca')), 'stack') : null,
+        note(def.armadilha ? 'Armada, os jogadores não a veem; disparada, ela aparece com o estrago. Dois cliques no objeto trocam.' : def.parede ? 'Fechado, barra a passagem como uma ' + (def.parede === 'window' ? 'janela (dá para ver através)' : def.parede === 'veil' ? 'cortina (barra a vista, não o passo)' : 'porta') + '. Dois cliques no objeto trocam.' : def.alavanca ? 'Puxar a alavanca (dois cliques) abre ou fecha o que está ligado a ela.' : 'Dois cliques no objeto trocam o estado.')) : null,
       luz ? sec('s-propluz', 'Luz', true,
         toggle('pr-luz', luz.on, v => all({ light: Object.assign({}, luz, { on: v }) }, v ? 'Acender' : 'Apagar'), 'Acesa'),
         toggle('pr-fl', !!luz.fl, v => all({ light: Object.assign({}, luz, v ? { fl: true } : { fl: undefined }) }, 'Luz que tremula'), 'Tremula, como chama'),
@@ -17247,6 +17821,9 @@ const UI = (() => {
         const allHidden = props.every(t => t.hidden), allLocked = props.every(t => t.locked);
         items.push({ label: 'Girar para a direita', icon: 'redo', run: () => all(x => ({ rot: ((x.rot || 0) + 90) % 360 }), 'Girar objeto') },
           { label: 'Girar para a esquerda', icon: 'undo', run: () => all(x => ({ rot: ((x.rot || 0) + 270) % 360 }), 'Girar objeto') });
+        // (lote 48) o estado e a luz do objeto
+        if (props.length === 1 && Props.estados(props[0].prop)) { const l = Props.estados(props[0].prop), a = Props.estado(props[0]), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; items.push({ label: nx[1], icon: 'reset', run: () => alternarObjeto(props[0], nx[0]) }); }
+        if (props.length === 1 && props[0].light && (Props.P[props[0].prop] || {}).luz) items.push({ label: props[0].light.on === false ? 'Acender' : 'Apagar', icon: 'light', run: () => alternarObjeto(props[0]) });
         items.push({ label: allHidden ? 'Mostrar aos jogadores' : 'Ocultar dos jogadores', icon: allHidden ? 'eye' : 'eyeOff', run: () => all({ hidden: !allHidden }, allHidden ? 'Mostrar objeto' : 'Ocultar objeto') });
         items.push({ label: allLocked ? 'Destravar posição' : 'Travar posição', icon: allLocked ? 'unlock' : 'lock', run: () => all({ locked: !allLocked }, allLocked ? 'Destravar objeto' : 'Travar objeto') });
         items.push('-', { label: 'Duplicar', icon: 'copy', key: 'Ctrl+D', run: Act.duplicateSel },
@@ -17737,7 +18314,7 @@ const UI = (() => {
     refresh, renderAll, toast, somAviso, modal, closeMenus, contextMenu, openTab, abaPorNumero, editText, status,
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
-    closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
+    alternarObjeto, closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
     // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
     feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
@@ -38660,7 +39237,11 @@ const Gerador = (() => {
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
   const guardarModelos = lista => { Store.S.prefs.modelos = Proj.normModelos(lista); Persist.meta(); };
-  let aberta = null;                                       // (a janela aberta, para os testes: a aba, o estado e o plano)
+  let aberta = null;
+  /* (lote 48) sem clima escolhido, o lugar ganha o ambiente da estação (folhas secas no outono, pétalas na primavera) e a
+     masmorra, a poeira no ar. Escolher "Nenhum" depois, na aba Cena, tira. */
+  const climaDe = l => comumAtual.clima || (l.aceitaEstacao && comumAtual.estacao === 'outono' ? 'folhas' : l.aceitaEstacao && comumAtual.estacao === 'primavera' ? 'petalas' : l.id === 'masmorra' ? 'poeira' : '');
+  let comumAtual = { clima: '', estacao: 'verao' };                                       // (a janela aberta, para os testes: a aba, o estado e o plano)
 
   /* Desenha um cadeado pequeno em (x, y) (o canto de cima, à esquerda, da marca). */
   function cadeado(g, x, y, s) {
@@ -38706,6 +39287,7 @@ const Gerador = (() => {
     const K = UI.kit, { field, seg, btn, note, iconBtn } = K;
     let L = lugar(lugarId) || lugar(App.opt.genLugar) || LUGARES[0];
     const comum = { estilo: Estilos.valido(App.opt.genEstilo), hora: TONES.some(t => t.id === App.opt.genHora) ? App.opt.genHora : 'dia', clima: WEATHERS.some(w => w[0] === App.opt.genClima) ? App.opt.genClima : '', relevo: App.opt.genRelevo !== false, estacao: Estacoes.valida(App.opt.genEstacao) };
+    comumAtual = comum;
     const lembrarComum = () => { App.opt.genEstilo = comum.estilo; App.opt.genHora = comum.hora; App.opt.genClima = comum.clima; App.opt.genRelevo = comum.relevo; App.opt.genEstacao = comum.estacao; App.opt.genLugar = L.id; };
     // (lote 13, parte 13c) a estação vai só para os lugares de fora (os outros não a conhecem)
     const comEstacao = (l, o) => (l.aceitaEstacao ? Object.assign(o, { estacao: comum.estacao }) : o);
@@ -38955,7 +39537,7 @@ const Gerador = (() => {
           const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const E = estadoDe(L), p = E.plano, l = L;
-          l.criar(p, inNome.value, { hora: comum.hora, clima: comum.clima, relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(sc => {
+          l.criar(p, inNome.value, { hora: comum.hora, clima: climaDe(l), relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(sc => {
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
@@ -39645,7 +40227,7 @@ const Mestre = (() => {
         K.field('Hora do dia', sel('mo-tone', tone, [['', 'Como estiver']].concat(TONES.map(x => [x.id, x.n])), v => { tone = v; }), 'stack'),
         K.field('Névoa', sel('mo-nevoa', nevoa, [['', 'Como estiver'], ['revelar', 'Revelar tudo'], ['esconder', 'Cobrir tudo']], v => { nevoa = v; }), 'stack'),
         K.field('Som para todos', sel('mo-som', som, [['', 'Nenhum']].concat(SONS_MOMENTO.map(x => [x.id, x.n])), v => { som = v; }), 'stack')),
-      sc.lights.length ? K.field('Luzes', h('ul', { class: 'mt-lista mt-cols' }, sc.lights.map(l => h('li', { class: 'mt-luz' }, h('span', { text: l.name || 'Luz' }),
+      luzesDa(sc).length ? K.field('Luzes', h('ul', { class: 'mt-lista mt-cols' }, luzesDa(sc).map(l => h('li', { class: 'mt-luz' }, h('span', { text: l.name || 'Luz' }),
         sel('mo-l-' + l.id, luzes[l.id] === true ? 'on' : luzes[l.id] === false ? 'off' : '', [['', 'Como estiver'], ['on', 'Acender'], ['off', 'Apagar']], v => { if (v === 'on') luzes[l.id] = true; else if (v === 'off') luzes[l.id] = false; else delete luzes[l.id]; })))), 'stack') : null,
       zs.length ? K.field('Zonas que aparecem (escondidas agora)', h('ul', { class: 'mt-lista mt-cols' }, zs.map(e => ck('mo-z-' + e.id, zonas.has(e.id), v => { if (v) zonas.add(e.id); else zonas.delete(e.id); }, [h('span', { text: (FX.P[e.fx] || FX.P.fogo).n })]))), 'stack') : null,
       K.field('Narração à mesa', txt, 'stack'),
@@ -39658,6 +40240,8 @@ const Mestre = (() => {
         toast(novo ? `Momento “${c.nome}” pronto: ${resumoMomento(c)}.` : 'Momento salvo.', { action: 'Desfazer', run: Tools.undo });
       } }] });
   }
+  // as luzes que um momento pode acender ou apagar: as luzes soltas e os objetos que têm luz (a tocha, a fogueira…)
+  const luzesDa = sc => sc.lights.map(l => ({ id: l.id, name: l.name || 'Luz' })).concat(sc.tokens.filter(t => t.prop && t.light && (Props.P[t.prop] || {}).luz).map(t => ({ id: t.id, name: t.name })));
   function soltar(m) {
     const sc = Store.scene();
     const toks = (m.toks || []).map(id => Store.get('tokens', id)).filter(t => t && t.hidden);
@@ -39668,6 +40252,8 @@ const Mestre = (() => {
       if (m.som) p.momSom = { k: m.som, n: ((sc.momSom && sc.momSom.n) || 0) + 1 };
       if (Object.keys(p).length) Store.scn(p);
       for (const l of sc.lights.slice()) if (m.luzes && typeof m.luzes[l.id] === 'boolean' && !!l.on !== m.luzes[l.id]) Store.upd('lights', l.id, { on: m.luzes[l.id] });
+      // (lote 48) as luzes dos objetos (a tocha, a fogueira): apagadas, a chama some
+      for (const t of sc.tokens.slice()) if (m.luzes && typeof m.luzes[t.id] === 'boolean' && t.light && (t.light.on !== false) !== m.luzes[t.id]) Store.upd('tokens', t.id, { light: Object.assign({}, t.light, { on: m.luzes[t.id] }) });
       for (const e of sc.effects.slice()) if (m.zonas && m.zonas.includes(e.id) && e.gm) Store.upd('effects', e.id, { gm: false });
       if (m.nevoa) { for (const op of sc.fogOps.slice()) Store.del('fogOps', op.id); Store.add('fogOps', { id: uid('fg'), m: m.nevoa === 'revelar' ? 'r' : 'h', k: 'all' }); }
       if (toks.length && Store.scene().turn.on) Act.turnEntrar(toks.map(t => Store.get('tokens', t.id)));      // (no mesmo passo de desfazer)

@@ -334,7 +334,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await w(250);
   await page.keyboard.press('j'); await w(200);
   ok(await ev(() => __tc.App.tool) === 'obj' && await page.locator('#tool-obj.on').count() === 1 && (await page.locator('#tool-obj').getAttribute('title')) === 'Objetos de cenário (J)', 'a tecla J abre a ferramenta Objetos de cenário (também no trilho)');
-  ok(await page.locator('#o-oc .seg-b').count() === 8 && await page.locator('.o-obj').count() === 8 && await page.locator('#o-obj-fogueira.on').count() === 1, 'a barra de cima tem as oito categorias (as quatro novas no lote 39) e, em Luzes, as oito luzes (a fogueira escolhida; a lanterna de papel veio no lote 7; a lareira e a fornalha, no lote 30)');
+  ok(await page.locator('#o-oc .seg-b').count() === 13 && await page.locator('.o-obj').count() === 8 && await page.locator('#o-obj-fogueira.on').count() === 1, 'a barra de cima tem as oito categorias (as quatro novas no lote 39) e, em Luzes, as oito luzes (a fogueira escolhida; a lanterna de papel veio no lote 7; a lareira e a fornalha, no lote 30)');
   await page.locator('#o-obj-tocha').click(); await w(120);
   { const p = await tela(3.5 * C, 2.5 * C); await page.mouse.click(p[0], p[1]); await w(200); }
   let objs = await ev(() => __tc.Store.scene().tokens.filter(k => k.prop).map(k => JSON.parse(JSON.stringify(k))));
@@ -371,7 +371,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await ev(() => __tc.Tools.undo()); await w(150);
   await page.locator('#pr-hidden').check({ force: true }); await w(150);
   const pub = await ev(() => { const u = __tc, sc = JSON.parse(JSON.stringify(u.Store.scene())); return u.Proj.projetar(sc, {}, new Set(['p1'])).v.tokens.filter(k => k.prop).map(k => k.prop + (k.rot ? ':' + k.rot : '') + (k.light && k.light.fl ? ':fl' : '')); });
-  ok(!pub.includes('tocha') && !pub.some(x => x.startsWith('tocha')) && pub.includes('fogueira:fl') && pub.length === 6, 'para os jogadores: a tocha oculta não vai; os outros vão, com a luz tremulando: ' + JSON.stringify(pub));
+  ok(!pub.includes('tocha') && !pub.some(x => x.startsWith('tocha')) && pub.includes('fogueira:fl') && pub.length === 5 && !pub.includes('armadilha'), 'para os jogadores: a tocha oculta não vai, nem a armadilha (desde o lote 48 ela nasce armada, escondida); os outros vão, com a luz tremulando: ' + JSON.stringify(pub));
   await ev(() => __tc.Tools.undo()); await w(100);
   // fora das contas: turnos, áreas, mira, ataque
   const fora = await ev(() => {

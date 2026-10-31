@@ -31,7 +31,10 @@ const Props = (() => {
 
   /* Chama que tremula, desenhada sempre "de pé" na tela (desfaz a rotação do objeto). (x, y) é a base dela; a é o
      tamanho. k separa as chamas de um mesmo objeto, para não tremularem juntas. */
+  // (lote 47b) com a luz do objeto apagada, a chama some e as brasas ficam escuras (Props.draw liga e desliga)
+  let APAGADO = false, EST = '';
   function chama(c, x, y, a, t, k, ang) {
+    if (APAGADO) return;
     const f = Math.sin(t * 9.3 + k * 3.7) * 0.5 + Math.sin(t * 14.1 + k * 1.9) * 0.3 + Math.sin(t * 4.7 + k * 5.3) * 0.2;
     const alt = a * (1 + f * 0.14), larg = a * 0.5 * (1 - f * 0.05), bal = f * a * 0.1;
     c.save();
@@ -48,6 +51,7 @@ const Props = (() => {
     c.restore();
   }
   function brasa(c, x, y, r, t, k) {
+    if (APAGADO) { c.fillStyle = 'rgba(40,30,26,0.85)'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); return; }
     const p = 0.6 + 0.4 * Math.sin(t * (2 + hsh(k, 1, 3) * 3) + k * 2.1);
     c.fillStyle = `rgba(255,${Math.round(90 + 90 * p)},${Math.round(30 * p)},${0.55 + 0.45 * p})`;
     c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
@@ -101,6 +105,36 @@ const Props = (() => {
     c.beginPath(); c.moveTo(x, y + r * 0.32); c.lineTo(x - r * 0.1, y + r * 0.55); c.lineTo(x + r * 0.1, y + r * 0.55); c.closePath(); c.fill();
     c.strokeStyle = 'rgba(40,32,24,0.8)'; c.lineWidth = r * 0.06;
     for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(x + i * r * 0.14, y + r * 0.68); c.lineTo(x + i * r * 0.14, y + r * 0.92); c.stroke(); }
+    c.restore();
+  }
+  /* (lote 47b) os desenhos dos estados: a tampa aberta (o fundo escuro e o brilho do que há dentro), a porta do cofre
+     aberta, a armadilha de urso fechada e a armadilha coberta (o mestre a vê esmaecida; os jogadores, não). */
+  function ouro(c, r, rx, dy, k) {
+    for (let i = 0; i < 9; i++) { const x = (hsh(k, i, 7) - 0.5) * rx * 2, y = dy + (hsh(k, i, 8) - 0.5) * r; c.fillStyle = i % 3 ? '#e8c050' : '#fff0a8'; c.beginPath(); c.ellipse(x, y, r * 0.18, r * 0.12, 0, 0, TAU); c.fill(); }
+  }
+  function abertoPor(c, x, y, w, h, R, cores, caixote) {
+    c.fillStyle = 'rgba(14,8,4,0.92)'; caixa(c, x + R * 0.1, y + R * 0.1, w - R * 0.2, h - R * 0.2, R * 0.05); c.fill();
+    if (caixote) { c.strokeStyle = '#c9a85a'; c.lineWidth = R * 0.03; for (let i = 0; i < 10; i++) { const a = x + R * 0.15 + hsh(i, 2, 3) * (w - R * 0.3), b = y + R * 0.15 + hsh(i, 4, 5) * (h - R * 0.3); c.beginPath(); c.moveTo(a, b); c.lineTo(a + R * 0.18, b + R * 0.06); c.stroke(); } return; }
+    ouro(c, h * 0.4, w * 0.3, y + h * 0.55, 3);
+    // a tampa levantada: uma faixa por cima, vista de lado
+    caixa(c, x - R * 0.02, y - R * 0.34, w + R * 0.04, R * 0.32, R * 0.08); c.fillStyle = grad(c, 0, y - R * 0.34, 0, y, [cores.cla, cores.esc]); c.fill(); linha(c, R * 0.045);
+  }
+  function portinha(c, x, w, R) {
+    caixa(c, x - w * 0.62, x + R * 0.1, w * 0.6, w - R * 0.2, R * 0.06); c.fillStyle = grad(c, x - w * 0.62, 0, x, 0, [FER.esc, FER.cla]); c.fill(); linha(c, R * 0.04);
+  }
+  function ursoFechada(c, R) {
+    sombra(c, R, 0.5, 0.4);
+    c.strokeStyle = FER.med; c.lineWidth = R * 0.05; c.beginPath(); c.moveTo(R * 0.3, R * 0.1); c.bezierCurveTo(R * 0.7, R * 0.3, R * 0.6, R * 0.7, R * 0.9, R * 0.9); c.stroke();
+    for (const sgn of [-1, 1]) { c.beginPath(); c.ellipse(0, sgn * R * 0.07, R * 0.55, R * 0.12, 0, 0, TAU); c.fillStyle = grad(c, 0, -R * 0.2, 0, R * 0.2, [FER.luz, FER.med]); c.fill(); linha(c, R * 0.035); }
+    c.fillStyle = '#cfd6de'; for (let i = 0; i < 8; i++) { const x = -R * 0.42 + i * R * 0.12; c.beginPath(); c.moveTo(x, -R * 0.02); c.lineTo(x + R * 0.06, R * 0.06); c.lineTo(x + R * 0.12, -R * 0.02); c.fill(); }
+    c.fillStyle = 'rgba(120,20,16,0.55)'; c.beginPath(); c.ellipse(R * 0.1, R * 0.32, R * 0.28, R * 0.12, 0.3, 0, TAU); c.fill();
+  }
+  function coberta(c, R, k, raio) {
+    c.save(); c.globalAlpha *= 0.9;
+    c.fillStyle = 'rgba(92,72,40,0.55)'; c.beginPath(); c.ellipse(0, 0, R * raio, R * raio * 0.9, 0, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(150,120,70,0.7)'; c.lineWidth = R * 0.04;
+    for (let i = 0; i < 12; i++) { const a = hsh(k, i, 3) * TAU, d = hsh(k, i, 4) * R * raio * 0.8, x = Math.cos(a) * d, y = Math.sin(a) * d; c.beginPath(); c.moveTo(x - R * 0.15, y); c.lineTo(x + R * 0.15, y + R * 0.05); c.stroke(); }
+    c.setLineDash([R * 0.12, R * 0.08]); c.strokeStyle = 'rgba(230,171,79,0.8)'; c.lineWidth = R * 0.04; c.beginPath(); c.ellipse(0, 0, R * raio, R * raio * 0.9, 0, 0, TAU); c.stroke();
     c.restore();
   }
   const tom = (hex, f) => { const n = parseInt(hex.slice(1), 16), ch = k => { const v = (n >> k) & 255; return Math.max(0, Math.min(255, Math.round(f >= 0 ? v + (255 - v) * f : v * (1 + f)))); }; return '#' + [16, 8, 0].map(k => ch(k).toString(16).padStart(2, '0')).join(''); };
@@ -304,6 +338,7 @@ const Props = (() => {
         for (const fx of [0.18, 0.82]) { c.fillStyle = grad(c, x + w * fx - R * 0.08, 0, x + w * fx + R * 0.08, 0, [FER.cla, FER.esc]); c.fillRect(x + w * fx - R * 0.08, y, R * 0.16, h); }
         c.restore();
         caixa(c, x, y, w, h, R * 0.1); linha(c, R * 0.06);
+        if (EST === 'aberto') { abertoPor(c, x, y, w, h, R, MAD); return; }
         c.fillStyle = '#d6a64a'; caixa(c, -R * 0.12, y + h - R * 0.3, R * 0.24, R * 0.26, R * 0.04); c.fill(); linha(c, R * 0.03);
         c.fillStyle = '#3a2410'; c.beginPath(); c.arc(0, y + h - R * 0.19, R * 0.035, 0, TAU); c.fill();
       },
@@ -380,6 +415,7 @@ const Props = (() => {
         c.beginPath(); c.moveTo(-w / 2 + R * 0.12, -w / 2 + R * 0.12); c.lineTo(w / 2 - R * 0.12, w / 2 - R * 0.12); c.stroke();
         caixa(c, -w / 2, -w / 2, w, w, R * 0.06); linha(c, R * 0.05);
         for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { c.fillStyle = FER.cla; c.beginPath(); c.arc(x * (w / 2 - R * 0.07), y * (w / 2 - R * 0.07), R * 0.03, 0, TAU); c.fill(); }
+        if (EST === 'aberto') abertoPor(c, -w / 2, -w / 2, w, w, R, MAD, true);
       },
     },
     estante: {
@@ -713,8 +749,9 @@ const Props = (() => {
     },
     /* ---------- Perigos e marcos ---------- */
     armadilha: {
-      n: 'Armadilha de urso', g: 'perigo', size: 1,
+      n: 'Armadilha de urso', g: 'perigo', size: 1, armadilha: true,
       draw(c, R, t, s) {
+        if (EST === 'disparada') { ursoFechada(c, R); return; }
         sombra(c, R, 0.72, 0.62);
         c.strokeStyle = FER.med; c.lineWidth = R * 0.05; c.beginPath(); c.moveTo(R * 0.55, R * 0.1); c.bezierCurveTo(R * 0.85, R * 0.3, R * 0.7, R * 0.7, R * 0.9, R * 0.9); c.stroke();     // a corrente
         for (const sgn of [-1, 1]) {
@@ -731,8 +768,9 @@ const Props = (() => {
       },
     },
     estacas: {
-      n: 'Estacas', g: 'perigo', size: 1,
+      n: 'Estacas', g: 'perigo', size: 1, armadilha: true,
       draw(c, R, t, s) {
+        if (EST === 'armada') { coberta(c, R, s, 0.8); return; }
         sombra(c, R, 0.8, 0.72);
         c.fillStyle = 'rgba(60,40,20,0.55)'; c.beginPath(); c.ellipse(0, 0, R * 0.8, R * 0.72, 0, 0, TAU); c.fill();
         const pts = [];
@@ -747,8 +785,9 @@ const Props = (() => {
       },
     },
     buraco: {
-      n: 'Buraco', g: 'perigo', size: 2,
+      n: 'Buraco', g: 'perigo', size: 2, armadilha: true,
       draw(c, R, t, s) {
+        if (EST === 'armada') { coberta(c, R, s, 0.78); return; }
         const pts = [];
         for (let i = 0; i < 14; i++) { const a = i / 14 * TAU, r = R * (0.7 + hsh(s, i, 1) * 0.18); pts.push([Math.cos(a) * r, Math.sin(a) * r * 0.86]); }
         const contorno = k => { c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x * k, y * k) : c.moveTo(x * k, y * k))); c.closePath(); };
@@ -949,14 +988,14 @@ const Props = (() => {
       },
     },
     alavanca: {
-      n: 'Alavanca', g: 'masmorra', size: 1,
+      n: 'Alavanca', g: 'masmorra', size: 1, alavanca: true,
       draw(c, R, t, s) {
         sombra(c, R, 0.55, 0.62);
         caixa(c, -R * 0.42, -R * 0.58, R * 0.84, R * 1.16, R * 0.08); c.fillStyle = grad(c, 0, -R * 0.58, 0, R * 0.58, [PED.cla, PED.med, PED.esc]); c.fill(); linha(c, R * 0.05);
         for (const [a, b] of [[-0.3, -0.46], [0.3, -0.46], [-0.3, 0.46], [0.3, 0.46]]) { c.fillStyle = FER.luz; c.beginPath(); c.arc(a * R, b * R, R * 0.045, 0, TAU); c.fill(); }
         caixa(c, -R * 0.08, -R * 0.38, R * 0.16, R * 0.76, R * 0.06); c.fillStyle = '#121214'; c.fill();
         // a alavanca: puxada para cima ou para baixo (cada uma de um jeito)
-        const cima = s % 2 === 0, ey = cima ? -R * 0.78 : R * 0.78;
+        const cima = EST === 'cima', ey = cima ? -R * 0.78 : R * 0.78;
         c.strokeStyle = FER.esc; c.lineWidth = R * 0.15; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, cima ? -R * 0.12 : R * 0.12); c.lineTo(R * 0.1, ey); c.stroke();
         c.strokeStyle = FER.cla; c.lineWidth = R * 0.07; c.stroke();
         c.fillStyle = radial(c, R * 0.06, ey - R * 0.05, R * 0.2, ['#f08070', '#b0302a', '#5a1008']); c.beginPath(); c.arc(R * 0.1, ey, R * 0.16, 0, TAU); c.fill(); linha(c, R * 0.035);
@@ -1121,6 +1160,7 @@ const Props = (() => {
         c.fillStyle = radial(c, -R * 0.05, -R * 0.05, R * 0.3, ['#e8eaee', FER.cla, FER.esc]); c.beginPath(); c.arc(0, 0, R * 0.26, 0, TAU); c.fill(); linha(c, R * 0.03);
         c.strokeStyle = FER.esc; c.lineWidth = R * 0.02; for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; c.beginPath(); c.moveTo(Math.cos(a) * R * 0.2, Math.sin(a) * R * 0.2); c.lineTo(Math.cos(a) * R * 0.25, Math.sin(a) * R * 0.25); c.stroke(); }
         c.strokeStyle = '#c9a24a'; c.lineWidth = R * 0.07; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(R * 0.17, -R * 0.1); c.stroke();
+        if (EST === 'aberto') { c.fillStyle = 'rgba(8,8,10,0.9)'; caixa(c, x + R * 0.15, x + R * 0.15, w - R * 0.3, w - R * 0.3, R * 0.06); c.fill(); ouro(c, R * 0.28, R * 0.42, 0, s); portinha(c, x, w, R); }
       },
     },
     trofeu: {
@@ -1208,7 +1248,7 @@ const Props = (() => {
         const L = R * 1.84, E = R * 0.96;
         const forma = k => { c.beginPath(); c.moveTo(-E * 0.3 * k, -L / 2 * k); c.lineTo(E * 0.3 * k, -L / 2 * k); c.lineTo(E / 2 * k, -L * 0.24 * k); c.lineTo(E * 0.36 * k, L / 2 * k); c.lineTo(-E * 0.36 * k, L / 2 * k); c.lineTo(-E / 2 * k, -L * 0.24 * k); c.closePath(); };
         forma(1); c.fillStyle = grad(c, -E / 2, 0, E / 2, 0, ['#2a180e', '#3e2618', '#22140c']); c.fill(); linha(c, R * 0.05);
-        const aberto = s % 3 === 0;
+        const aberto = EST === 'aberto';
         if (aberto) {
           // aberto: o veludo vermelho lá dentro e a tampa empurrada de lado
           forma(0.84); c.fillStyle = radial(c, 0, -L * 0.15, L * 0.5, ['#8a1a2a', '#5a0f1c', '#2a060c']); c.fill();
@@ -1482,8 +1522,31 @@ const Props = (() => {
     const s = t.size * sc.cell, R = s / 2, ang = rad(t.rot || 0), semente = (hashStr(t.id) % 997) + 1;
     c.save();
     c.translate(t.x + R, t.y + R); c.rotate(ang);
-    def.draw(c, R, tm, semente, ang, t);
+    APAGADO = !!(def.luz && t.light && t.light.on === false);
+    EST = estado(t);
+    try { def.draw(c, R, tm, semente, ang, t); } finally { APAGADO = false; EST = ''; }
     c.restore();
+  }
+  /* (lote 47b) Os estados de um objeto: [id, nome] — o primeiro é o de quando nada foi escolhido. As armadilhas,
+     armada (escondida dos jogadores) ou disparada; as que vieram antes deste lote contam como disparadas (já se viam). */
+  function estados(id) {
+    const d = P[id];
+    if (!d) return null;
+    if (d.estados) return d.estados;
+    if (d.armadilha) return [['disparada', 'Disparada'], ['armada', 'Armada']];
+    if (d.alavanca) return [['baixo', 'Para baixo'], ['cima', 'Para cima']];
+    if (['bau', 'caixote', 'cofre', 'caixao'].includes(id)) return [['fechado', 'Fechado'], ['aberto', 'Aberto']];
+    return null;
+  }
+  function estado(t) {
+    const e = t && t.prop ? estados(t.prop) : null;
+    if (!e) return '';
+    if (e.some(x => x[0] === t.est)) return t.est;
+    // (o caixão e a alavanca de antes tinham o jeito sorteado pela semente: continuam assim até alguém mudar)
+    const sem = (hashStr(t.id) % 997) + 1;
+    if (t.prop === 'caixao') return sem % 3 === 0 ? 'aberto' : 'fechado';
+    if (t.prop === 'alavanca') return sem % 2 === 0 ? 'cima' : 'baixo';
+    return e[0][0];
   }
   // Miniatura para a escolha do objeto
   function thumb(cv, id, tm) {
@@ -1496,7 +1559,7 @@ const Props = (() => {
   }
   const isProp = t => !!t && !!t.prop && !!P[t.prop];
   // Algum objeto com fogo na cena? (o mapa fica se mexendo, para as chamas tremularem)
-  const temFogo = sc => sc.tokens.some(t => t.prop && P[t.prop] && P[t.prop].fogo && !t.hidden);
+  const temFogo = sc => sc.tokens.some(t => t.prop && P[t.prop] && P[t.prop].fogo && !t.hidden && !(t.light && t.light.on === false));
   /* Um token novo para o objeto `id`, em (x, y): sem barras, sem nome à mostra, sem visão; a luz, se o objeto tem
      uma, já acesa e tremulando. */
   function novo(sc, id, x, y, size, hidden) {
@@ -1505,8 +1568,14 @@ const Props = (() => {
     const t = newToken(sc, x, y, { name: def.n, size: size || def.size || 1, shape: 'quad', bars: [], barVis: 'none', showName: false, prop: id, rot: 0, hidden: !!hidden || !!def.passagem || !!def.marca });
     t.vis = { on: false, range: 0, dark: 0 };
     t.color = '#3a3226';
+    if (def.armadilha) { t.est = 'armada'; t.hidden = true; }          // (lote 47b: a armadilha nova nasce armada, escondida)
+    if (def.estados) t.est = def.estados[0][0];
     if (def.luz) t.light = Object.assign({ on: true, bright: def.luz.bright, dim: def.luz.dim, c: def.luz.c }, def.calma ? {} : { fl: true });          // (lote 39: o cristal brilha parado)
     return t;
   }
-  return { P, G, ORDER, draw, thumb, isProp, temFogo, novo, coresDe };
+  // (lote 47b) um objeto novo no catálogo (06b2: o mercado, o templo, a forja, o oriental, os portões)
+  function registrar(id, def) { P[id] = def; if (!ORDER.includes(id)) ORDER.push(id); }
+  function grupo(id, n) { if (!G.some(g => g.id === id)) G.push({ id, n }); }
+  const kit = { caixa, sombra, linha, grad, radial, hsh, MAD, PED, FER, chama, brasa, pedrinha, tabua, folhas, osso, cranio, tom, apagado: () => APAGADO, est: () => EST };
+  return { P, G, ORDER, draw, thumb, isProp, temFogo, novo, coresDe, estados, estado, registrar, grupo, kit };
 })();

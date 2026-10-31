@@ -2277,6 +2277,25 @@ const UI = (() => {
     const depois = (Fichas.fadiga(t) || {}).v;
     toast(`Fadiga de ${t.name}: ${base} → ${depois} de 5.`, { key: 'fad:' + t.id, action: 'Desfazer', run: () => { fadSerie.delete(t.id); Fichas.mudarFadiga(t, base); } });
   }
+  /* (lote 48) Trocar o estado de um objeto (dois cliques, o menu ou o painel): o aviso diz o que mudou, com Desfazer. */
+  function alternarObjeto(t, est) {
+    if (!isGM()) return;
+    if (Props.estados(t.prop)) {
+      const r = Act.propEstado(t, est);
+      if (r) toast(`${t.name}: ${r.nome.toLowerCase()}${r.ligado ? ` (e ${r.ligado})` : ''}.`, { key: 'obj-est', action: 'Desfazer', run: Tools.undo });
+      return;
+    }
+    const v = Act.propLuz(t);
+    if (v != null) toast(`${t.name}: ${v ? 'acesa' : 'apagada'}.`, { key: 'obj-est', action: 'Desfazer', run: Tools.undo });
+  }
+  // o que uma alavanca pode abrir e fechar: as portas, janelas e cortinas da cena e os portões que são objetos
+  function ligaveis(t) {
+    const sc = Store.scene(), cx = t.x + t.size * sc.cell / 2, cy = t.y + t.size * sc.cell / 2, q = v => Math.round(v / sc.cell);
+    const nome = { door: 'Porta', window: 'Janela', veil: 'Cortina' };
+    const ws = sc.walls.filter(isOpening).map(w => ({ id: w.id, d: Geo.distSeg(cx, cy, w.x1, w.y1, w.x2, w.y2), n: nome[w.k] || 'Porta' }));
+    const gs = sc.tokens.filter(x => x.prop && (Props.P[x.prop] || {}).parede).map(x => ({ id: x.id, d: Math.hypot(x.x - t.x, x.y - t.y), n: x.name }));
+    return ws.concat(gs).sort((a, b) => a.d - b.d).slice(0, 30).map(o => [o.id, `${o.n} a ${q(o.d)} ${q(o.d) === 1 ? 'quadrado' : 'quadrados'}`]);
+  }
   /* Objetos de cenário: o que é, girar, tamanho, a luz (se tem), esconder, travar. Para o jogador, só o nome. */
   function propPanel(props) {
     const gm = isGM(), t = props[0], many = props.length > 1, def = Props.P[t.prop] || {};
@@ -2313,6 +2332,11 @@ const UI = (() => {
           field('Segunda cor', inColor('pr-c2', Props.coresDe(t)[1], v => props.forEach(x => Store.upd('tokens', x.id, { cores: [Props.coresDe(x)[0], v] })), 'Segunda cor'))),
         props.some(x => Array.isArray(x.cores)) ? h('div', { class: 'row' }, btn('Voltar às cores de sempre', () => all({ cores: null }, 'Cores do objeto'), { kind: 'small', id: 'pr-cor-0' })) : null,
         note(!many && t.bras ? 'Este veio da sede: as cores e o desenho são os do brasão do clã. Trocar aqui muda só este objeto.' : 'As duas cores do objeto. Os que vêm da sede do clã já chegam com as cores do brasão.')) : null,
+      // (lote 48) o estado (o baú aberto, a armadilha armada, o portão fechado…) e, na alavanca, o que ela abre
+      !many && Props.estados(t.prop) ? sec('s-propest', 'Estado', true,
+        seg('pr-est', Props.estado(t), Props.estados(t.prop).map(([v, n]) => [v, n]), v => alternarObjeto(t, v)),
+        def.alavanca ? field('Abre e fecha', inSelect('pr-liga', t.liga || '', [['', 'Nada']].concat(ligaveis(t)), v => all({ liga: v || null }, 'Ligar a alavanca')), 'stack') : null,
+        note(def.armadilha ? 'Armada, os jogadores não a veem; disparada, ela aparece com o estrago. Dois cliques no objeto trocam.' : def.parede ? 'Fechado, barra a passagem como uma ' + (def.parede === 'window' ? 'janela (dá para ver através)' : def.parede === 'veil' ? 'cortina (barra a vista, não o passo)' : 'porta') + '. Dois cliques no objeto trocam.' : def.alavanca ? 'Puxar a alavanca (dois cliques) abre ou fecha o que está ligado a ela.' : 'Dois cliques no objeto trocam o estado.')) : null,
       luz ? sec('s-propluz', 'Luz', true,
         toggle('pr-luz', luz.on, v => all({ light: Object.assign({}, luz, { on: v }) }, v ? 'Acender' : 'Apagar'), 'Acesa'),
         toggle('pr-fl', !!luz.fl, v => all({ light: Object.assign({}, luz, v ? { fl: true } : { fl: undefined }) }, 'Luz que tremula'), 'Tremula, como chama'),
@@ -3416,6 +3440,9 @@ const UI = (() => {
         const allHidden = props.every(t => t.hidden), allLocked = props.every(t => t.locked);
         items.push({ label: 'Girar para a direita', icon: 'redo', run: () => all(x => ({ rot: ((x.rot || 0) + 90) % 360 }), 'Girar objeto') },
           { label: 'Girar para a esquerda', icon: 'undo', run: () => all(x => ({ rot: ((x.rot || 0) + 270) % 360 }), 'Girar objeto') });
+        // (lote 48) o estado e a luz do objeto
+        if (props.length === 1 && Props.estados(props[0].prop)) { const l = Props.estados(props[0].prop), a = Props.estado(props[0]), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; items.push({ label: nx[1], icon: 'reset', run: () => alternarObjeto(props[0], nx[0]) }); }
+        if (props.length === 1 && props[0].light && (Props.P[props[0].prop] || {}).luz) items.push({ label: props[0].light.on === false ? 'Acender' : 'Apagar', icon: 'light', run: () => alternarObjeto(props[0]) });
         items.push({ label: allHidden ? 'Mostrar aos jogadores' : 'Ocultar dos jogadores', icon: allHidden ? 'eye' : 'eyeOff', run: () => all({ hidden: !allHidden }, allHidden ? 'Mostrar objeto' : 'Ocultar objeto') });
         items.push({ label: allLocked ? 'Destravar posição' : 'Travar posição', icon: allLocked ? 'unlock' : 'lock', run: () => all({ locked: !allLocked }, allLocked ? 'Destravar objeto' : 'Travar objeto') });
         items.push('-', { label: 'Duplicar', icon: 'copy', key: 'Ctrl+D', run: Act.duplicateSel },
@@ -3906,7 +3933,7 @@ const UI = (() => {
     refresh, renderAll, toast, somAviso, modal, closeMenus, contextMenu, openTab, abaPorNumero, editText, status,
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
-    closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
+    alternarObjeto, closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
     // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
     feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares

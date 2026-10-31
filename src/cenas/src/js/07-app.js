@@ -794,6 +794,38 @@ const Act = {
     });
     return n;
   },
+  /* (lote 48) O estado de um objeto de cenário (o baú aberto, a alavanca para cima, a armadilha disparada, o portão
+     aberto). A armadilha armada fica escondida dos jogadores; disparada, aparece. A alavanca leva junto o que está
+     ligado a ela (uma porta, janela ou cortina da cena, ou um portão que é objeto): abre ou fecha. Um passo de desfazer.
+     est: o estado novo (sem ele, o seguinte). → { nome, est, ligado } (o nome do estado e o que mudou junto), ou null. */
+  propEstado(t, est) {
+    t = Store.get('tokens', t.id) || t;
+    const lista = Props.estados(t.prop);
+    if (!lista) return null;
+    const atual = Props.estado(t), i = lista.findIndex(x => x[0] === atual);
+    const novo = est && lista.some(x => x[0] === est) ? est : lista[(i + 1) % lista.length][0];
+    if (novo === atual && est) return null;
+    const def = Props.P[t.prop], p = { est: novo };
+    if (def.armadilha) p.hidden = novo === 'armada';
+    let ligado = null;
+    Store.tx((lista.find(x => x[0] === novo) || [])[1] + ': ' + t.name, () => {
+      Store.upd('tokens', t.id, p);
+      if (def.alavanca && t.liga) {
+        const w = Store.get('walls', t.liga), g = w ? null : Store.get('tokens', t.liga);
+        if (w) { const era = !!w.open; Store.upd('walls', w.id, { open: !era }); ligado = (w.k === 'window' ? 'a janela' : w.k === 'veil' ? 'a cortina' : 'a porta') + (era ? ' fechou' : ' abriu'); }
+        else if (g && Props.estados(g.prop)) { const ab = Props.estado(g) === 'aberto'; Store.upd('tokens', g.id, { est: ab ? 'fechado' : 'aberto' }); ligado = g.name + (ab ? ' fechou' : ' abriu'); }
+      }
+    });
+    return { nome: (lista.find(x => x[0] === novo) || [])[1], est: novo, ligado };
+  },
+  // (lote 48) acender ou apagar a luz de um objeto (a tocha, a fogueira): apagada, a chama some
+  propLuz(t, on) {
+    t = Store.get('tokens', t.id) || t;
+    if (!t.light || !(Props.P[t.prop] || {}).luz) return null;
+    const v = on == null ? t.light.on === false : !!on;
+    Store.tx(v ? 'Acender: ' + t.name : 'Apagar: ' + t.name, () => Store.upd('tokens', t.id, { light: Object.assign({}, t.light, { on: v }) }));
+    return v;
+  },
   barPatch(t, i, patch) {
     t = tokAgora(t);                                     // (lote 24: o token como está agora, não como estava quando o painel foi desenhado)
     Store.tx('Alterar barra', () => Store.upd('tokens', t.id, { bars: t.bars.map((x, j) => (j === i ? Object.assign({}, x, patch) : x)) }));

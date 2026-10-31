@@ -94,6 +94,13 @@ const Walls = (() => {
       const baixa = w.k === 'mureta';                            // (a mureta barra a passagem, mas não a visão)
       for (const q of pcs) { if (!baixa) d.sight.push(q[0], q[1], q[2], q[3]); d.move.push(q[0], q[1], q[2], q[3]); }
     }
+    // (lote 48) os portões, as grades e as cortinas que são objetos: fechados, barram como a porta, a janela e a cortina
+    if (typeof Props !== 'undefined' && Props.paredes) for (const w of Props.paredes(sc)) {
+      if (w.open) continue;
+      if (w.k !== 'veil') d.move.push(w.x1, w.y1, w.x2, w.y2);
+      if (w.k === 'door') d.sight.push(w.x1, w.y1, w.x2, w.y2);
+      else if (w.k === 'veil') d.curtains.push(w);
+    }
     // (lote 7) as zonas que tapam a visão e as que barram a passagem, como trechos de parede (não se desenham nem se clicam)
     const zb = FX.barreiras ? FX.barreiras(sc) : null;
     if (zb) {
@@ -107,8 +114,9 @@ const Walls = (() => {
 
   // As paredes efetivas da cena (guardadas até alguma parede mudar).
   function of(sc) {
-    if (cache && cache.sc === sc && cache.walls === sc.walls && cache.n === sc.walls.length && cache.ver === ver && cache.cell === sc.cell) return cache.data;
-    cache = { sc, walls: sc.walls, n: sc.walls.length, ver, cell: sc.cell, data: build(sc) };
+    const pp = typeof Props !== 'undefined' && Props.assinatura ? Props.assinatura(sc) : '';      // (lote 48: os portões que são objetos)
+    if (cache && cache.sc === sc && cache.walls === sc.walls && cache.n === sc.walls.length && cache.ver === ver && cache.cell === sc.cell && cache.pp === pp) return cache.data;
+    cache = { sc, walls: sc.walls, n: sc.walls.length, ver, cell: sc.cell, pp, data: build(sc) };
     return cache.data;
   }
 

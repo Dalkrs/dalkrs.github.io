@@ -399,6 +399,8 @@ const Vision = (() => {
       if (op.t !== 'upd') { dirty = true; return; }
       const p = op.p;
       if ('x' in p || 'y' in p || 'size' in p || 'vis' in p || 'light' in p || 'owner' in p || 'hidden' in p) dirty = true;
+      // (lote 48) o portão, a grade e a cortina que são objetos: mexer neles muda as paredes da cena
+      if ('est' in p || 'rot' in p || 'x' in p || 'y' in p || 'size' in p) { const t = Store.get('tokens', op.id), d = t && t.prop ? Props.P[t.prop] : null; if (d && d.parede) { dirty = true; staticStale = true; } }
     }
   }
 

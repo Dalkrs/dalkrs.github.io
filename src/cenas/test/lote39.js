@@ -47,7 +47,7 @@ const BRASAO = { cores: ['#5b3f8a', '#e8eaf0'], div: 'cortado', f: 'M6 6H94V58C9
     await ev(() => { const { Store, App, setSel } = __tc; Store.tx('preparar', () => Store.scn({ cols: 30, rows: 20, light: 'penumbra' })); setSel([]); App.view.z = 1; __tc.Render.fit(); });
     await page.keyboard.press('j'); await w(250);
     const cats = await page.locator('#o-oc .seg-b').allInnerTexts();
-    ok(cats.length === 8 && j(cats.slice(4)) === j(['Masmorra e chefe', 'Clã e sede', 'Linhagens', 'Viagem e acampamento']), 'a barra da ferramenta Objetos tem oito categorias: ' + cats.join(' / '));
+    ok(cats.length === 13 && j(cats.slice(4, 8)) === j(['Masmorra e chefe', 'Clã e sede', 'Linhagens', 'Viagem e acampamento']), 'a barra da ferramenta Objetos tem as categorias (13 desde o lote 48): ' + cats.join(' / '));
     for (const [g, nome] of [['masmorra', 'Masmorra e chefe'], ['cla', 'Clã e sede'], ['linhagem', 'Linhagens'], ['viagem', 'Viagem']]) {
       await page.locator('#o-oc .seg-b', { hasText: nome }).click(); await w(150);
       const ids = await page.locator('.o-obj').evaluateAll(l => l.map(b => b.id.replace('o-obj-', '')));

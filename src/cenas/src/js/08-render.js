@@ -39,8 +39,68 @@ const Render = (() => {
     if (App.pings.length || App.floats.length) return true;
     const sc = Store.scene();
     // (chamas dos objetos e luzes que tremulam também mexem o mapa)
-    return !!sc && motion() && (sc.effects.length > 0 || !!(sc.weather && sc.weather.k) || Props.temFogo(sc) || (Vision.out.flick.length > 0 && sc.light !== 'claro'));
+    return !!sc && motion() && (sc.effects.length > 0 || !!(sc.weather && sc.weather.k) || Props.temFogo(sc) || temAgua(sc) || (Vision.out.flick.length > 0 && sc.light !== 'claro'));
   }
+  // (lote 48) a água das áreas de terreno corre (os rios, os riachos) e ondula (os lagos)
+  const temAgua = sc => sc.shapes.some(x => x.ter && x.ter.t === 'agua');
+  function drawAgua(sc, px, t) {
+    if (!motion() || !temAgua(sc)) return;
+    const cell = sc.cell;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const x of sc.shapes) {
+      if (!x.ter || x.ter.t !== 'agua' || !shapeShown(x)) continue;
+      if (x.k === 'free') {
+        // a corrente: traços claros que andam ao longo do rio, em duas velocidades
+        const w = Math.max(4, x.sw || cell);
+        terPath(ctx, x);
+        ctx.setLineDash([cell * 0.5, cell * 1.6]); ctx.lineDashOffset = -t * cell * 0.9;
+        ctx.lineWidth = Math.max(1.5 * px, w * 0.12); ctx.strokeStyle = 'rgba(225,242,255,0.22)'; ctx.stroke();
+        ctx.setLineDash([cell * 0.25, cell * 2.3]); ctx.lineDashOffset = -t * cell * 1.5 + cell;
+        ctx.lineWidth = Math.max(1 * px, w * 0.06); ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        // o lago: brilhos curtos que vão e voltam, dentro da área
+        ctx.save(); terPath(ctx, x); ctx.clip();
+        const b = x.k === 'poly' ? (() => { let a = Infinity, c = Infinity, d = -Infinity, e = -Infinity; for (let i = 0; i < x.pts.length; i += 2) { a = Math.min(a, x.pts[i]); d = Math.max(d, x.pts[i]); c = Math.min(c, x.pts[i + 1]); e = Math.max(e, x.pts[i + 1]); } return [a, c, d, e]; })() : [Math.min(x.x, x.x + x.w), Math.min(x.y, x.y + x.h), Math.max(x.x, x.x + x.w), Math.max(x.y, x.y + x.h)];
+        ctx.strokeStyle = 'rgba(225,242,255,0.2)'; ctx.lineWidth = Math.max(1 * px, cell * 0.04);
+        let n = 0;
+        for (let y = b[1] + cell * 0.4; y < b[3] && n < 400; y += cell * 0.7) for (let xx = b[0] + ((y / cell) % 2) * cell * 0.5; xx < b[2] && n < 400; xx += cell * 1.3, n++) {
+          const f = Math.sin(t * 0.9 + xx * 0.013 + y * 0.021), dx = f * cell * 0.15;
+          ctx.globalAlpha = 0.35 + 0.65 * Math.abs(f);
+          ctx.beginPath(); ctx.moveTo(xx + dx - cell * 0.18, y); ctx.quadraticCurveTo(xx + dx, y - cell * 0.06, xx + dx + cell * 0.18, y); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+  /* (lote 48) A fumaça das chamas e as fagulhas: só com o objeto aceso (e, para os jogadores, à vista). Sem estado:
+     cada fiapo é uma conta do tempo. */
+  function drawFumaca(c, sc, px, t) {
+    if (!motion()) return;
+    const gm = isGM();
+    for (const tk of sc.tokens) {
+      const d = tk.prop ? Props.P[tk.prop] : null;
+      if (!d || !d.fogo || (tk.light && tk.light.on === false) || (!gm && tk.hidden)) continue;
+      const R = tk.size * sc.cell / 2, x0 = tk.x + R, y0 = tk.y + R, k = hashStr(tk.id) % 97, grande = ['fogueira', 'lareira', 'fornalha', 'braseiro', 'carvao', 'circuloInvocacao'].includes(tk.prop);
+      const n = grande ? 6 : 3, sobe = R * (grande ? 3.4 : 2.2);
+      c.save();
+      for (let i = 0; i < n; i++) {
+        const f = ((t * 0.16 + i / n + k * 0.013) % 1), y = y0 - f * sobe, x = x0 + Math.sin(f * 5 + i * 1.7 + k) * R * 0.35 + f * R * 0.5;
+        const r = R * (0.18 + f * (grande ? 0.75 : 0.45));
+        c.globalAlpha = (1 - f) * (f < 0.1 ? f * 10 : 1) * (grande ? 0.22 : 0.16);
+        c.fillStyle = radial0(c, x, y, r); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+      }
+      c.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < (grande ? 6 : 2); i++) {
+        const f = ((t * 0.55 + i / 6 + k * 0.07) % 1), x = x0 + Math.sin(i * 2.3 + t * 3 + k) * R * 0.4 * f, y = y0 - f * R * 1.8;
+        c.globalAlpha = (1 - f) * 0.9; c.fillStyle = '#ffb04a'; c.beginPath(); c.arc(x, y, Math.max(0.8 * px, R * 0.035), 0, TAU); c.fill();
+      }
+      c.restore();
+    }
+  }
+  const radial0 = (c, x, y, r) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(150,150,150,0.9)'); g.addColorStop(1, 'rgba(120,120,120,0)'); return g; };
   function frame(ts) {
     raf = 0;
     const anim = animating();
@@ -707,6 +767,7 @@ const Render = (() => {
     drawFx(c, sc, px, t, true);
     // os objetos de cenário ficam por baixo dos tokens (o guerreiro fica em cima da mesa, não embaixo dela)
     for (const tk of sc.tokens) if (tk.prop && (gm || !tk.hidden)) drawProp(c, tk, sc, px, t);
+    drawFumaca(c, sc, px, t);                              // (lote 48) a fumaça e as fagulhas, por cima dos objetos
     for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenBody(c, tk, sc, px);
     for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenTop(c, tk, sc, px);
   }
@@ -1027,6 +1088,28 @@ const Render = (() => {
         const x = ox + wrap(h(i, 5, s) * T + Math.sin(t * 0.9 + i * 3) * cell * 0.6), y = oy + wrap(h(i, 6, s) * T - t * T * (0.06 + h(i, 7, s) * 0.05));
         FX.blob(ctx, x, y, cell * 0.11, '#ff8a3c', 0.5 + 0.4 * Math.sin(t * 3 + i));
       });
+    } else if (wz.k === 'folhas' || wz.k === 'petalas') {
+      // (lote 48) folhas secas ou pétalas ao vento: caem girando, puxadas para o lado
+      const cores = wz.k === 'folhas' ? ['#c8742a', '#a8521e', '#d9a03a', '#8a5a24'] : ['#f6c2d2', '#f0a8c0', '#fbe0ea', '#e98fb0'];
+      each(Math.max(2, Math.round(10 * pow)), (ox, oy, i, s) => {
+        const sp = 0.06 + h(i, 6, s) * 0.05, f = (t * sp + h(i, 1, s)) % 1;
+        const x = ox + wrap(h(i, 2, s) * T + f * T * 1.6 + Math.sin(t * 1.3 + i) * cell * 0.4), y = oy + wrap(f * T + h(i, 3, s) * T);
+        const r = cell * (wz.k === 'folhas' ? 0.17 : 0.12), a = t * (1.5 + h(i, 4, s) * 2) + i;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(1, 0.45 + 0.4 * Math.abs(Math.sin(a * 0.7)));
+        ctx.fillStyle = cores[i % 4]; ctx.globalAlpha = 0.85;
+        ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.55, 0, 0, TAU); ctx.fill();
+        ctx.restore();
+      });
+    } else if (wz.k === 'poeira') {
+      // (lote 48) poeira no ar: grãos que flutuam devagar e brilham de leve (a masmorra, o porão, a cripta)
+      each(Math.max(3, Math.round(14 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T + Math.sin(t * (0.12 + h(i, 3, s) * 0.1) + i) * cell * 1.5 + t * cell * 0.05);
+        const y = oy + wrap(h(i, 2, s) * T + Math.cos(t * (0.1 + h(i, 4, s) * 0.1) + i * 2) * cell * 1.2 - t * cell * 0.03);
+        const tw = 0.5 + 0.5 * Math.sin(t * (0.6 + h(i, 5, s)) + i);
+        ctx.globalAlpha = 0.25 + 0.45 * tw; ctx.fillStyle = '#e8dcc0';
+        ctx.beginPath(); ctx.arc(x, y, Math.max(0.8 * px, cell * (0.015 + h(i, 6, s) * 0.02)), 0, TAU); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
     } else if (wz.k === 'vagalumes') {
       ctx.globalCompositeOperation = 'lighter';
       each(Math.max(2, Math.round(7 * pow)), (ox, oy, i, s) => {
@@ -1066,6 +1149,7 @@ const Render = (() => {
       else { const w = W * (sc.bg.scale || 1); ctx.drawImage(bg, sc.bg.dx || 0, sc.bg.dy || 0, w, w * bg.naturalHeight / bg.naturalWidth); }
     }
     drawTerrain(sc, px, W, H);
+    drawAgua(sc, px, t);                                   // (lote 48) a água que corre
     drawGrid(sc, px);
     ctx.restore();
 

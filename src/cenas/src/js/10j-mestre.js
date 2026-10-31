@@ -233,7 +233,7 @@ const Mestre = (() => {
         K.field('Hora do dia', sel('mo-tone', tone, [['', 'Como estiver']].concat(TONES.map(x => [x.id, x.n])), v => { tone = v; }), 'stack'),
         K.field('Névoa', sel('mo-nevoa', nevoa, [['', 'Como estiver'], ['revelar', 'Revelar tudo'], ['esconder', 'Cobrir tudo']], v => { nevoa = v; }), 'stack'),
         K.field('Som para todos', sel('mo-som', som, [['', 'Nenhum']].concat(SONS_MOMENTO.map(x => [x.id, x.n])), v => { som = v; }), 'stack')),
-      sc.lights.length ? K.field('Luzes', h('ul', { class: 'mt-lista mt-cols' }, sc.lights.map(l => h('li', { class: 'mt-luz' }, h('span', { text: l.name || 'Luz' }),
+      luzesDa(sc).length ? K.field('Luzes', h('ul', { class: 'mt-lista mt-cols' }, luzesDa(sc).map(l => h('li', { class: 'mt-luz' }, h('span', { text: l.name || 'Luz' }),
         sel('mo-l-' + l.id, luzes[l.id] === true ? 'on' : luzes[l.id] === false ? 'off' : '', [['', 'Como estiver'], ['on', 'Acender'], ['off', 'Apagar']], v => { if (v === 'on') luzes[l.id] = true; else if (v === 'off') luzes[l.id] = false; else delete luzes[l.id]; })))), 'stack') : null,
       zs.length ? K.field('Zonas que aparecem (escondidas agora)', h('ul', { class: 'mt-lista mt-cols' }, zs.map(e => ck('mo-z-' + e.id, zonas.has(e.id), v => { if (v) zonas.add(e.id); else zonas.delete(e.id); }, [h('span', { text: (FX.P[e.fx] || FX.P.fogo).n })]))), 'stack') : null,
       K.field('Narração à mesa', txt, 'stack'),
@@ -246,6 +246,8 @@ const Mestre = (() => {
         toast(novo ? `Momento “${c.nome}” pronto: ${resumoMomento(c)}.` : 'Momento salvo.', { action: 'Desfazer', run: Tools.undo });
       } }] });
   }
+  // as luzes que um momento pode acender ou apagar: as luzes soltas e os objetos que têm luz (a tocha, a fogueira…)
+  const luzesDa = sc => sc.lights.map(l => ({ id: l.id, name: l.name || 'Luz' })).concat(sc.tokens.filter(t => t.prop && t.light && (Props.P[t.prop] || {}).luz).map(t => ({ id: t.id, name: t.name })));
   function soltar(m) {
     const sc = Store.scene();
     const toks = (m.toks || []).map(id => Store.get('tokens', id)).filter(t => t && t.hidden);
@@ -256,6 +258,8 @@ const Mestre = (() => {
       if (m.som) p.momSom = { k: m.som, n: ((sc.momSom && sc.momSom.n) || 0) + 1 };
       if (Object.keys(p).length) Store.scn(p);
       for (const l of sc.lights.slice()) if (m.luzes && typeof m.luzes[l.id] === 'boolean' && !!l.on !== m.luzes[l.id]) Store.upd('lights', l.id, { on: m.luzes[l.id] });
+      // (lote 48) as luzes dos objetos (a tocha, a fogueira): apagadas, a chama some
+      for (const t of sc.tokens.slice()) if (m.luzes && typeof m.luzes[t.id] === 'boolean' && t.light && (t.light.on !== false) !== m.luzes[t.id]) Store.upd('tokens', t.id, { light: Object.assign({}, t.light, { on: m.luzes[t.id] }) });
       for (const e of sc.effects.slice()) if (m.zonas && m.zonas.includes(e.id) && e.gm) Store.upd('effects', e.id, { gm: false });
       if (m.nevoa) { for (const op of sc.fogOps.slice()) Store.del('fogOps', op.id); Store.add('fogOps', { id: uid('fg'), m: m.nevoa === 'revelar' ? 'r' : 'h', k: 'all' }); }
       if (toks.length && Store.scene().turn.on) Act.turnEntrar(toks.map(t => Store.get('tokens', t.id)));      // (no mesmo passo de desfazer)
