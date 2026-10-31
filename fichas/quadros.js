@@ -105,6 +105,17 @@ const FichasQuadros = (() => {
 
   /* ======================= Ascensão ======================= */
   const tiposDePonto = () => (S.bib && Array.isArray(S.bib.pools) ? S.bib.pools.filter(p => p && p.id) : []);
+  /* (lote 50) O teto do nível (TC.rules.contaDoTeto): Raça e Classe têm um teto que sobe com o nível; o que passa dele é o
+     extraordinário (a ficha mostra, não trava). Os tipos sem teto, o mestre distribui: no quadro de Ascensão aparecem
+     assim (comMestre); nos cartões da aba Skills, não aparecem. */
+  const CLS_TETO = { abaixo: 'falta', no: 'certo', acima: 'extra', mestre: 'mestre' };
+  function tetoHtml(pl, total, pc, comMestre) {
+    const R = window.TC && TC.rules && TC.rules.contaDoTeto ? TC.rules : null;
+    if (!R || !pl) return '';
+    const c = R.contaDoTeto(pl, total, pc && pc.level);
+    if (c.estado === 'mestre' && !comMestre) return '';
+    return `<span class="ptscont ascteto ${CLS_TETO[c.estado]}" data-teto="${esc(pl.id)}" title="${esc(c.dica)}">${esc(c.txt)}</span>`;
+  }
   function painelAscensao(pc) {
     const tipos = tiposDePonto();
     if (!tipos.length) {
@@ -119,6 +130,7 @@ const FichasQuadros = (() => {
       </div>
       <div class="bd"><div class="asclist">${tipos.map(pl => {
         const total = Math.max(0, Math.round(+sk.pontos[pl.id] || 0)), gasto = gastosPool(pc, pl.id), livre = total - gasto, id = esc(pl.id), nome = esc(pl.nome || pl.id);
+        const teto = tetoHtml(pl, total, pc, true);
         return `<div class="ascrow" data-asc="${id}">
           <span class="ascnome"><span class="pooldot" style="background:${esc(pl.cor || '#888')}"></span>${nome}</span>
           <span class="ascpts">
@@ -126,7 +138,7 @@ const FichasQuadros = (() => {
             <input type="number" min="0" step="1" data-asctot="${id}" value="${total}" aria-label="Pontos de ${nome} que o personagem tem">
             <button type="button" class="mini" data-ascstep="${id}|1" title="Dar 1 ponto" aria-label="Dar 1 ponto de ${nome}">+</button>
           </span>
-          <span class="ascconta ${livre < 0 ? 'warn' : ''}">${plural(gasto, 'gasto', 'gastos')} · <strong>${livre}</strong> ${livre === 1 ? 'livre' : 'livres'}${livre < 0 ? ' — gastou mais do que tem' : ''}</span>
+          <span class="ascconta ${livre < 0 ? 'warn' : ''}">${plural(gasto, 'gasto', 'gastos')} · <strong>${livre}</strong> ${livre === 1 ? 'livre' : 'livres'}${livre < 0 ? ' — gastou mais do que tem' : ''}</span>${teto}
         </div>`;
       }).join('')}</div></div>
     </div>`;
@@ -543,5 +555,5 @@ const FichasQuadros = (() => {
   function ligar(host, pc) { ligarXp(host, pc); ligarAscensao(host, pc); ligarCorpo(host, pc); ligarMissoes(host, pc); }
   // (lote 16) os ferimentos abertos, por extenso, para o resumo da ficha
   const feridasAbertas = pc => feridasDe(pc).map(f => RR().textoDoFerimento(f));
-  return { htmlXp, painelAscensao, painelCorpo, htmlPenalidades, blocoMissoes, contaAtivas, ligar, aoVivo, usaCorpo, usaXp, feridasAbertas };
+  return { htmlXp, painelAscensao, tetoHtml, painelCorpo, htmlPenalidades, blocoMissoes, contaAtivas, ligar, aoVivo, usaCorpo, usaXp, feridasAbertas };
 })();

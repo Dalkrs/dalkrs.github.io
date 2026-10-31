@@ -2,6 +2,26 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.31-6",
+      "data": "2026-10-31",
+      "titulo": "O teto de pontos por nível",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Na ficha, no quadro de Ascensão, cada tipo de ponto mostra o teto do nível: Raça e Classe sobem 3 a cada nível (Raça 4 no nível 1, 28 no 9, 91 no 30; Classe 6, 30 e 93). A etiqueta diz quanto falta, “no teto”, ou — acima dele — o extraordinário, numa cor própria: não é erro, são os pontos que o mestre dá por feitos fora do comum."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Escola, Linhagem, Vínculo e os outros tipos não têm teto: aparecem como “o mestre distribui”. Os cartões de pontos da aba Skills e a bolsa do personagem na Árvore também mostram o teto de Raça e Classe."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Na Árvore, em Tipos de ponto, a coluna “Por nível”: quanto o teto de cada tipo sobe a cada nível (3 em Raça e Classe). 0 tira o teto; dá para pôr teto em qualquer outro tipo. A ficha mostra o teto, mas não trava."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.31-5",
       "data": "2026-10-31",
       "titulo": "Lugares novos e o lugar povoado",

@@ -2027,6 +2027,47 @@
     };
   }
 
+
+  /* (lote 50) O teto de pontos por nível dos tipos de ponto da árvore. Raça e Classe sobem com o nível: no nível N, o
+     personagem pode ter até  padrao + porNivel × (N − 1)  pontos daquele tipo (padrao: o total de um personagem novo,
+     no nível 1). Os outros tipos (Escola, Linhagem, Vínculo, Bênção, Profissão…) o mestre distribui, sem teto.
+       pool.porNivel   quanto o teto sobe a cada nível (inteiro ≥ 0; 0 = sem teto). Sem o campo, vale o padrão pelo
+                       nome do tipo: Raça e Classe, POR_NIVEL_PADRAO; os outros, 0.
+       tetoDoTipo      → o teto no nível, ou null (o tipo não tem teto)
+       contaDoTeto     → { teto, total, nivel, porNivel, d (total − teto), estado }: estado 'abaixo', 'no' ou 'acima'
+                         (acima = o extraordinário: pontos dados por feitos fora do comum; a ficha mostra, não trava),
+                         ou 'mestre' (sem teto). Também txt (curto, para a etiqueta) e dica (a frase inteira).
+     A conta é sobre o total que o personagem TEM (o que o mestre deu), não sobre o que ele gastou. */
+  const POR_NIVEL_PADRAO = 3;
+  const TIPOS_COM_TETO = ['raca', 'classe'];
+  function porNivelDoTipo(pool) {
+    if (!ehObjeto(pool)) return 0;
+    const v = numFinito(pool.porNivel);
+    if (v != null) return Math.max(0, Math.floor(v));
+    return TIPOS_COM_TETO.indexOf(normNome(pool.nome)) >= 0 ? POR_NIVEL_PADRAO : 0;
+  }
+  function tetoDoTipo(pool, nivel) {
+    const pn = porNivelDoTipo(pool);
+    if (!pn) return null;
+    const n = Math.max(1, Math.floor(numFinito(nivel) || 1)), base = Math.max(0, Math.floor(numFinito(pool.padrao) || 0));
+    return base + pn * (n - 1);
+  }
+  function contaDoTeto(pool, total, nivel) {
+    const t = Math.max(0, Math.round(numFinito(total) || 0)), n = Math.max(1, Math.floor(numFinito(nivel) || 1));
+    const pn = porNivelDoTipo(pool), teto = tetoDoTipo(pool, n), nome = ehObjeto(pool) ? String(pool.nome || 'Pontos') : 'Pontos';
+    if (teto == null) return { teto: null, total: t, nivel: n, porNivel: 0, d: 0, estado: 'mestre', txt: 'o mestre distribui',
+      dica: nome + ': sem teto por nível — o mestre distribui.' };
+    const d = t - teto, estado = d < 0 ? 'abaixo' : d === 0 ? 'no' : 'acima';
+    const regra = 'teto do nível ' + n + ': ' + teto + ' (' + Math.max(0, Math.floor(numFinito(pool.padrao) || 0)) + ' no nível 1, +' + pn + ' por nível).';
+    const txt = estado === 'no' ? t + ' de ' + teto + ' · no teto'
+      : estado === 'abaixo' ? t + ' de ' + teto + ' · ' + (d === -1 ? 'falta 1' : 'faltam ' + (-d))
+      : t + ' · teto ' + teto + ' · +' + d + ' extraordinário';
+    const dica = nome + ': ' + regra + ' ' + (estado === 'no' ? 'Está no teto.'
+      : estado === 'abaixo' ? (d === -1 ? 'Falta 1 ponto' : 'Faltam ' + (-d) + ' pontos') + ' para chegar ao teto.'
+      : (d === 1 ? '1 ponto' : d + ' pontos') + ' acima do teto: o extraordinário, dado pelo mestre por feitos fora do comum.');
+    return { teto, total: t, nivel: n, porNivel: pn, d, estado, txt, dica };
+  }
+
   const api = {
     ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, ehDerivado, ehDefesa,
     cfgPadrao, personagemPadrao,
@@ -2046,7 +2087,8 @@
     PARTES, TIPOS_FER, GRAVIDADES, ESTADOS_FER, ferimentos, textoDoFerimento, sinalDeFerido, AMPUTAVEIS, ABAIXO, amputados,
     ROM_MAX, relacoes, temRelacoes, relacoesDoMestre, mexerRelacao, relacaoCom,
     MIS_ESTADOS, missoes,
-    XP_PASSO, xpDe, subirNivelXp, anivOk, aniversario
+    XP_PASSO, xpDe, subirNivelXp, anivOk, aniversario,
+    POR_NIVEL_PADRAO, porNivelDoTipo, tetoDoTipo, contaDoTeto
   };
 
   (root.TC || (root.TC = {})).rules = api;

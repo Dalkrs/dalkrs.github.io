@@ -28,7 +28,7 @@
   --texto:#e8eaf0; --texto-2:#a6aec0; --texto-3:#8a93a8;
   --acento:#e6ab4f; --acento-fundo:rgba(230,171,79,.13); --acento-borda:rgba(230,171,79,.5);
   --perigo:#f0786e; --perigo-fundo:rgba(240,120,110,.12); --perigo-borda:rgba(240,120,110,.5);
-  --ok:#6fbf8f; --campo:#1f2431; --campo-borda:#2b3243;
+  --ok:#6fbf8f; --campo:#1f2431; --campo-borda:#2b3243; --extra:#b39cf0; --extra-fundo:rgba(179,156,240,.13); --falta:#e6ab4f; --falta-fundo:rgba(230,171,79,.13);
   --dica-fundo:rgba(22,26,36,.98); --sombra:0 12px 34px rgba(0,0,0,.5);
   --titulo:'Grenze','Iowan Old Style',Georgia,serif; --glifo:'Ma Shan Zheng','Noto Serif CJK SC','Songti SC','SimSun',serif;
   --veu:rgba(6,8,12,.78);
@@ -40,7 +40,7 @@
   --texto:#1F1B16; --texto-2:rgba(31,27,22,.68); --texto-3:rgba(31,27,22,.46);
   --acento:#B23A2E; --acento-fundo:rgba(178,58,46,.09); --acento-borda:rgba(178,58,46,.5);
   --perigo:#7E2437; --perigo-fundo:rgba(126,36,55,.1); --perigo-borda:rgba(126,36,55,.55);
-  --ok:#2F7A55; --campo:rgba(255,252,244,.7); --campo-borda:rgba(31,27,22,.18);
+  --ok:#2F7A55; --campo:rgba(255,252,244,.7); --campo-borda:rgba(31,27,22,.18); --extra:#5b3fb5; --extra-fundo:rgba(91,63,181,.09); --falta:#855605; --falta-fundo:rgba(196,128,16,.1);
   --dica-fundo:rgba(246,241,229,.98); --sombra:0 12px 30px rgba(60,45,25,.22);
   --titulo:'Grenze','Iowan Old Style',Georgia,serif;
   --veu:rgba(40,32,22,.45);
@@ -289,7 +289,9 @@ input[type=color].livre{width:26px;height:22px;padding:0;border:1px solid var(--
 #dica2 .tranca{color:var(--acento)}
 code{font-family:var(--monof);font-size:.92em}
 .lista-ed{display:grid;gap:6px;align-items:center;margin-bottom:6px}
-.lista-ed.pool{grid-template-columns:26px 1fr 58px 28px}
+.lista-ed.pool{grid-template-columns:26px 1fr 58px 58px 28px}
+.pool-cab{display:grid;grid-template-columns:26px 1fr 58px 58px 28px;gap:6px;font:600 11px/1.2 var(--ui);color:var(--texto-3);margin-bottom:4px}
+.pool-cab span:nth-child(3),.pool-cab span:nth-child(4){text-align:center}
 .lista-ed.nat{grid-template-columns:26px 1fr 28px}
 .lista-ed.uso{grid-template-columns:1fr 52px 28px}
 .lista-ed input[type=color]{width:26px;height:30px;padding:0;border:1px solid var(--linha);background:none;border-radius:3px;cursor:pointer}
@@ -337,6 +339,11 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 .bolsa-pe{display:flex;align-items:center;gap:8px;margin-top:8px}
 .bolsa-pe label{font:600 12px/1 var(--ui);letter-spacing:normal;text-transform:none;color:var(--texto-3);white-space:nowrap}
 .bolsa-pe input{width:70px;padding:5px 7px;text-align:center;font-family:var(--monof)}
+/* (lote 50) o teto do nível: abaixo, no teto, acima (o extraordinário: cor própria, não é erro) */
+.bolsa-teto{margin-top:7px;font:600 11.5px/1.3 var(--monof);padding:3px 8px;border-radius:10px;border:1px solid var(--linha);display:inline-block}
+.bolsa-teto.abaixo{color:var(--falta);border-color:var(--falta);background:var(--falta-fundo)}
+.bolsa-teto.no{color:var(--ok);border-color:var(--ok);background:transparent}
+.bolsa-teto.acima{color:var(--extra);border-color:var(--extra);background:var(--extra-fundo)}
 .natcont{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
 .natcont span{display:inline-flex;align-items:center;gap:6px}
 .natcont i{width:9px;height:9px;border-radius:50%}
@@ -610,11 +617,11 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
 <script src="../tc/ponte.js?v=20"></script>
-<script src="../tc/rules.js?v=27"></script>
+<script src="../tc/rules.js?v=28"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=1"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="mesa.js?v=10"></script>
+<script src="mesa.js?v=11"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -812,6 +819,7 @@ function normalizarBiblioteca(b){
     p.id = idUnico(p.id, 'p', vistos); p.nome = String(p.nome || 'Pontos');
     p.cor = corOk(p.cor, TINTAS[i%TINTAS.length]);
     p.padrao = Number.isFinite(+p.padrao) ? Math.max(0, Math.floor(+p.padrao)) : 20;
+    if(p.porNivel != null){ if(Number.isFinite(+p.porNivel) && p.porNivel !== '') p.porNivel = Math.max(0, Math.floor(+p.porNivel)); else delete p.porNivel; }
   });
   b.naturezas = Array.isArray(b.naturezas) ? soObjetos(b.naturezas) : clone(NATUREZAS_PADRAO);
   b.naturezas.forEach((n,i)=>{ n.id = idUnico(n.id, 't', vistos); n.nome = String(n.nome || 'Natureza'); n.cor = corOk(n.cor, TINTAS[i%TINTAS.length]); });
@@ -3126,13 +3134,15 @@ function blocosGlobais(){
   const ab = k => ui.abertos[k] ? 'open' : '';
   return `
   <details class="bloco" data-chave="pools" ${ab('pools')}><summary>Tipos de ponto</summary>
+    <div class="pool-cab" aria-hidden="true"><span></span><span>Nome</span><span>Nível 1</span><span>Por nível</span><span></span></div>
     ${b.pools.map(p=>`<div class="lista-ed pool" data-id="${esc(p.id)}">
       <input type="color" class="pool-cor" value="${esc(p.cor)}" aria-label="Cor de ${esc(p.nome)}">
       <input class="campo pool-nome" value="${esc(p.nome)}" aria-label="Nome do tipo de ponto">
-      <input class="campo pool-padrao" type="number" min="0" step="1" value="${p.padrao}" title="Total de um personagem novo" aria-label="Total inicial">
+      <input class="campo pool-padrao" type="number" min="0" step="1" value="${p.padrao}" title="Total de um personagem novo (nível 1)" aria-label="Total inicial de ${esc(p.nome)}">
+      <input class="campo pool-nivel" type="number" min="0" step="1" value="${porNivelDe(p)}" title="Quanto o teto sobe a cada nível. 0: sem teto, o mestre distribui." aria-label="Teto de ${esc(p.nome)}: quanto sobe por nível">
       <button class="btn pool-x" title="Remover" aria-label="Remover" ${b.pools.length<=1 ? 'disabled' : ''}>×</button></div>`).join('')}
     <div class="acoes"><button class="btn mini" id="btNovoPool">+ Tipo de ponto</button></div>
-    <p class="nota">O número é o total que um personagem novo recebe. Os tipos valem para todas as árvores: se um tipo só aparece nas árvores de classe, os pontos ficam separados.</p>
+    <p class="nota">“Nível 1” é o total que um personagem novo recebe. “Por nível” é quanto o teto sobe a cada nível: no nível N, o personagem pode ter até Nível 1 + Por nível × (N − 1) pontos desse tipo (Raça e Classe: 3). Acima disso é o extraordinário — a ficha mostra, não trava. 0: sem teto, o mestre distribui (Escola, Linhagem, Vínculo…). Os tipos valem para todas as árvores: se um tipo só aparece nas árvores de classe, os pontos ficam separados.</p>
   </details>
   <details class="bloco" data-chave="nat" ${ab('nat')}><summary>Naturezas</summary>
     ${b.naturezas.map(t=>`<div class="lista-ed nat" data-id="${esc(t.id)}">
@@ -3349,6 +3359,7 @@ function ligarGlobais(){
     row.querySelector('.pool-nome').oninput = e=>{ registrar('renomear tipo de ponto', 'pn'+p.id); p.nome = e.target.value || 'Pontos'; salvar(); };
     row.querySelector('.pool-cor').oninput = e=>{ registrar('cor do tipo de ponto', 'pc'+p.id); p.cor = e.target.value; salvar(); };
     row.querySelector('.pool-padrao').onchange = e=>{ registrar('total inicial', 'pp'+p.id); p.padrao = Math.max(0, Math.floor(+e.target.value || 0)); salvar(); };
+    row.querySelector('.pool-nivel').onchange = e=>{ registrar('teto por nível', 'pv'+p.id); p.porNivel = Math.max(0, Math.floor(+e.target.value || 0)); salvar(); pintarPainel(); };
     row.querySelector('.pool-x').onclick = async ()=>{
       if(b.pools.length<=1) return aviso('É preciso ter ao menos um tipo de ponto.');
       const ok = await confirmar('Remover tipo de ponto', `Remover “${esc(p.nome)}”? Os custos e totais desse tipo somem de todas as árvores e personagens.`, 'Remover', true);
@@ -3406,6 +3417,17 @@ function ligarGlobais(){
   });
 }
 
+/* ---------- (lote 50) o teto de pontos por nível ----------
+   As contas são de TC.rules (porNivelDoTipo, contaDoTeto). Na bolsa do personagem aparece o teto do nível dele quando a
+   ficha diz o nível (numa mesa) e o tipo tem teto (Raça e Classe); os tipos sem teto, o mestre distribui. */
+function porNivelDe(p){ const R = window.TC && TC.rules; return R && R.porNivelDoTipo ? R.porNivelDoTipo(p) : Math.max(0, Math.floor(+p.porNivel || 0)); }
+function tetoNaBolsa(pl, tot, nivel){
+  const R = window.TC && TC.rules;
+  if(nivel == null || !R || !R.contaDoTeto) return '';
+  const c = R.contaDoTeto(pl, tot, nivel);
+  return c.estado === 'mestre' ? '' : `<div class="bolsa-teto ${c.estado}" data-teto="${esc(pl.id)}" title="${esc(c.dica)}">${esc(c.txt)}</div>`;
+}
+
 /* ---------- jogador ---------- */
 function painelJogador(){
   const p = personagemAtual(); if(!p) return '';
@@ -3414,13 +3436,14 @@ function painelJogador(){
   const usados = new Set();
   p.arvores.map(arvorePorId).filter(Boolean).forEach(x=>x.nodes.forEach(m=>m.graus.forEach(g=>Object.keys(g.custos).forEach(k=>usados.add(k)))));
   const pools = bib().pools.filter(pl=>!usados.size || usados.has(pl.id) || gastos(p, pl.id)>0);
+  const nivel = ArvoreMesa.ativo() && ArvoreMesa.nivelDe ? ArvoreMesa.nivelDe(p.id) : null;
   const carteira = pools.map(pl=>{
-    const g = gastos(p, pl.id), r = restantes(p, pl.id), tot = p.pontos[pl.id] || 0;
+    const g = gastos(p, pl.id), r = restantes(p, pl.id), tot = p.pontos[pl.id] || 0, teto = tetoNaBolsa(pl, tot, nivel);
     return `<div class="bolsa"><div class="bolsa-topo"><i style="background:${esc(pl.cor)}"></i><span>${esc(pl.nome)}</span>
         <em style="color:${r<0 ? 'var(--perigo)' : 'var(--texto)'}">${r}</em></div>
       <div class="bolsa-barra"><span style="width:${tot>0 ? Math.min(100, Math.max(0, g/tot*100)) : 0}%;background:${esc(pl.cor)}"></span></div>
       <div class="bolsa-pe"><label for="tot_${esc(pl.id)}">Gastos ${g} de</label>
-        <input class="campo pool-total" id="tot_${esc(pl.id)}" data-pool="${esc(pl.id)}" type="number" min="0" step="1" value="${tot}"></div></div>`;
+        <input class="campo pool-total" id="tot_${esc(pl.id)}" data-pool="${esc(pl.id)}" type="number" min="0" step="1" value="${tot}"></div>${teto}</div>`;
   }).join('');
 
   let detalhe = '';

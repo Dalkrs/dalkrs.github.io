@@ -349,8 +349,14 @@ const ArvoreMesa = (() => {
     const l = P.pegar(id), d = l && l.dono_id, e = (TC.ponte && TC.ponte.estado) || st;
     return d && d !== st.eu && (e.membros || []).some(m => m.id === d) ? d : null;
   }
+  // (lote 50) o nível do personagem, pela ficha dele (para o teto de pontos por nível), ou null (sem mesa, sem ficha)
+  function nivelDe(id) {
+    if (!ativo) return null;
+    const l = P.pegar(id), n = l && l.ficha && typeof l.ficha === 'object' ? +l.ficha.level : NaN;
+    return Number.isFinite(n) && n >= 1 ? Math.floor(n) : null;
+  }
   // de quem é cada ficha daqui (e a rev de cada uma): para saber se alguma mudou
   function revsDosMeus() { return P ? meus().map(l => l.id + ':' + (l.rev || 0)).join(',') + '|' + ((D && D.pegar('fichas:cfg') || {}).rev || 0) : ''; }
 
-  return { preparar, falhou, personagemInicial, depoisDeSalvar, depoisDeAbrir, restringir, ativo: () => ativo, mestre, etiqueta, calcDe, barras, donoDe };
+  return { preparar, falhou, personagemInicial, depoisDeSalvar, depoisDeAbrir, restringir, ativo: () => ativo, mestre, etiqueta, calcDe, barras, donoDe, nivelDe };
 })();

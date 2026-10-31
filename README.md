@@ -201,6 +201,27 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
   quando não há nada.
 
+### O teto de pontos por nível (lote 50)
+
+- **A regra** (`TC.rules`: `porNivelDoTipo`, `tetoDoTipo`, `contaDoTeto`): Raça e Classe têm um teto que sobe com o
+  nível. No nível N, o personagem pode ter até `padrao + porNivel × (N − 1)` pontos daquele tipo — `padrao` é o total
+  de um personagem novo (nível 1) e `porNivel` vem do tipo de ponto (`pool.porNivel`; sem o campo, 3 em Raça e Classe,
+  pelo nome do tipo, e 0 nos outros). Com os números da mesa: Raça 4, 22, 28, 31 e 91 nos níveis 1, 7, 9, 10 e 30;
+  Classe 6, 30 e 93 nos níveis 1, 9 e 30 — no nível 30 dá para ter ~60% de uma árvore de raça e ~50% de uma de classe,
+  então cada build continua sendo uma renúncia. Os outros tipos (Escola, Linhagem, Vínculo, Bênção, Profissão) o
+  mestre distribui: sem teto. A conta é sobre o total que o personagem **tem** (o que o mestre deu), não sobre o que
+  ele gastou.
+- **Na ficha** (`fichas/quadros.js`, `tetoHtml`): no quadro de Ascensão, debaixo de "gastos · livres", a etiqueta do
+  teto do nível do personagem — "27 de 28 · falta 1" (a cor de "falta"), "28 de 28 · no teto" (a de "certo") ou
+  "31 · teto 28 · +3 extraordinário" (`.ptscont.extra`, roxo: acima do teto não é erro, é o que o mestre dá por feitos
+  fora do comum); os tipos sem teto dizem "o mestre distribui". Os cartões de pontos da aba Skills mostram o teto só
+  dos tipos que têm. A ficha mostra, não trava — como os pontos de atributo da distribuição livre.
+- **Na Árvore**: em Tipos de ponto, a coluna "Por nível" (`.pool-nivel`, ao lado do total do nível 1); mudar grava
+  `porNivel` (0 tira o teto; pôr um número dá teto a qualquer tipo). Na bolsa do personagem, a mesma etiqueta
+  (`.bolsa-teto`), quando a ficha da mesa diz o nível (`ArvoreMesa.nivelDe`); sem mesa, a Árvore não sabe o nível e
+  não mostra o teto.
+- Testes: `teto-por-nivel`.
+
 ### O menu do Mapa-múndi para quem mestra (lote 26)
 
 - **As abas** (`mundo/painel.js`): para quem mestra, uma fileira só, em três grupos com nome (`GRUPOS_ABAS`):
@@ -3014,7 +3035,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas busca lote8-nucleo mundo-nucleo acampamento-nucleo site busca-casca fichas fichas-regras fichas-quadros fichas-lote8 arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d mundo-lote8 acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas busca lote8-nucleo mundo-nucleo acampamento-nucleo site busca-casca fichas fichas-regras fichas-quadros fichas-lote8 teto-por-nivel arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d mundo-lote8 acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada
