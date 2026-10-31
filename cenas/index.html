@@ -664,6 +664,13 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .hud-c { display: inline-flex; align-items: center; gap: 1px; padding: 2px; background: var(--raised); border: 1px solid var(--line); border-radius: 999px; }
 .hud-c.one, .hud-c.ro { padding: 3px; }
 .hud-c.one:hover { border-color: var(--fg-3); }
+/* (lote 47) a condição que sai num clique: o × aparece sobre o selo ao passar o mouse (ou no foco do teclado) */
+.hud-tira { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+button.hud-tira:not(.hud-c) { padding: 0; border: 0; background: none; border-radius: 50%; }
+.hud-x { position: absolute; left: 3px; top: 50%; width: 20px; height: 20px; margin-top: -10px; display: grid; place-items: center; border-radius: 50%; background: var(--danger, #c0392b); color: #fff; opacity: 0; transition: opacity .12s; pointer-events: none; }
+button.hud-tira:not(.hud-c) .hud-x { left: 0; }
+.hud-tira:hover .hud-x, .hud-tira:focus-visible .hud-x { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .hud-x { transition: none; } }
 .hud-c .stp-b { width: 22px; height: 22px; border-radius: 50%; }
 .hud-c .stp-v { min-width: 18px; padding: 0 1px 0 4px; }
 .hud-c.ro .stp-v { padding: 0 6px 0 5px; }
@@ -1211,6 +1218,35 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
   /* (a gaveta aberta ocupa a base do mapa: a faixa do token e a dica saem; os avisos, com o Desfazer, ficam por cima) */
   .stage.pb-aberto .dock .hud, .stage.pb-aberto .dock .foot { display: none; }
 }
+
+/* (lote 47) o cadeado "Só à mão" ao lado do nome da barra */
+.bar-lock { display: inline-grid; place-items: center; color: var(--fg-3); flex: none; }
+/* (lote 47) o controle do mestre: a vez, os lembretes e os momentos */
+.turn-sur { order: 4; flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; border: 1px dashed var(--line-strong); color: var(--fg-2); font: 700 10.5px var(--ui); letter-spacing: .06em; text-transform: uppercase; }
+.mt-vez { margin: 6px 0 2px; }
+.mt-lista { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; }
+.mt-lista.mt-cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); max-height: 30vh; }
+.mt-op { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); color: var(--fg); font: 500 14px var(--ui); text-align: left; cursor: pointer; }
+.mt-op:hover, .mt-op:focus-visible { border-color: var(--fg-3); }
+.mt-op-n { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--fg-2); }
+.mt-ck { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 3px 0; }
+.mt-lb { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-left: 3px solid var(--accent, var(--fg-3)); background: var(--raised); border-radius: 0 8px 8px 0; }
+.mt-lb-li, .mt-mo { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.mt-lb-li:last-child, .mt-mo:last-child { border-bottom: 0; }
+.mt-lb-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mt-lb-t .note { margin: 0; }
+.mt-luz { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.mt-luz .in { width: auto; }
+.mt-row { align-items: flex-end; }
+#momento-tela .row { align-items: flex-end; flex-wrap: wrap; }
+/* (lote 47) o grupo Mestre na barra da esquerda: o painel abre para cima (os botões ficam no pé da barra) */
+.mt-pop { top: auto; bottom: -8px; width: 290px; max-height: min(70vh, 560px); overflow-y: auto; gap: 6px; padding: 8px 10px 10px; }
+.mt-pop .rail-lista-t { padding: 2px 0 2px; }
+.mt-pop .note { margin: 0; }
+.mt-pop-s { margin: 0; font: 600 13.5px var(--ui); color: var(--fg); }
+.mt-pop-l { display: flex; flex-wrap: wrap; gap: 6px; }
+.mt-pop .mt-lista { max-height: 40vh; margin: 0; }
+@media (max-height: 820px) { .tool { height: 29px; } .rail-g { margin: 2px 0 1px; } .rail-sep { margin: 2px 0; } }
 </style>
 </head>
 <body>
@@ -1753,7 +1789,9 @@ const cleanBarRef = (b, o) => {
   if (o && o.st != null && o.st !== '' && isFinite(Number(o.st))) b.st = Math.min(b.m, Math.max(-(b.lo || 0), Math.round(Number(o.st) * 10) / 10));
   // (lote 8) a ferida permanente: quanto da ponta da barra apodreceu (a cura não passa de m − pod)
   if (o && Number(o.pod) > 0 && b.m > 0) b.pod = Math.round(Math.min(Number(o.pod), b.m) * 10) / 10;
-  if (o && (o.mapa === 'sempre' || o.mapa === 'passar')) b.mapa = o.mapa;         // (lote 15) quando ela aparece no mapa
+  if (o && (o.mapa === 'sempre' || o.mapa === 'passar')) b.mapa = o.mapa;
+  // (lote 47) o cadeado "Só à mão": true trancada, false aberta; sem ele, vale o padrão (Fichas.soAMao)
+  if (o && (o.mao === true || o.mao === false)) b.mao = o.mao;         // (lote 15) quando ela aparece no mapa
   return b;
 };
 /* (lote 15) Quando a barra aparece em cima do token, no mapa: 'sempre', ou 'passar' — só com o mouse por cima ou com o
@@ -2156,6 +2194,37 @@ function cleanSaque(o) {
   return out;
 }
 
+/* (lote 47) Lembrete por rodada: { id, txt, r (a rodada), cada (repete a cada N rodadas; 0 = uma vez), mesa (o texto vai
+   à mesa ao vivo), toks (os tokens ocultos que aparecem) }. Momento preparado: { id, nome, toks (aparecem), tone (a hora
+   do dia), luzes ({ id: true|false }: acender ou apagar), nevoa ('' | 'revelar' | 'esconder'), som (um dos SONS_MOMENTO),
+   zonas (as zonas escondidas que aparecem), txt (a narração à mesa) }. */
+const SONS_MOMENTO = [
+  { id: 'trovao', n: 'Trovão' }, { id: 'gongo', n: 'Gongo' }, { id: 'tambores', n: 'Tambores de guerra' },
+  { id: 'sino', n: 'Sino' }, { id: 'tremor', n: 'Tremor de terra' }, { id: 'misterio', n: 'Mistério' },
+];
+const idsOk = (a, max) => (Array.isArray(a) ? [...new Set(a.filter(x => typeof x === 'string' && x && x.length <= 40))].slice(0, max) : []);
+function cleanLembrete(o) {
+  if (!o || typeof o !== 'object') return null;
+  const txt = String(o.txt == null ? '' : o.txt).trim().slice(0, 200);
+  if (!txt) return null;
+  const out = { id: typeof o.id === 'string' && o.id ? o.id.slice(0, 40) : uid('lb'), txt, r: clamp(Math.round(Number(o.r) || 1), 1, 999), cada: clamp(Math.round(Number(o.cada) || 0), 0, 99) };
+  if (o.mesa === true) out.mesa = true;
+  const toks = idsOk(o.toks, 24); if (toks.length) out.toks = toks;
+  return out;
+}
+function cleanMomento(o) {
+  if (!o || typeof o !== 'object') return null;
+  const out = { id: typeof o.id === 'string' && o.id ? o.id.slice(0, 40) : uid('mo'), nome: String(o.nome == null ? '' : o.nome).trim().slice(0, 60) || 'Momento' };
+  const toks = idsOk(o.toks, 40); if (toks.length) out.toks = toks;
+  if (TONES.some(x => x.id === o.tone)) out.tone = o.tone;
+  if (o.luzes && typeof o.luzes === 'object' && !Array.isArray(o.luzes)) { const l = {}; for (const k of Object.keys(o.luzes).slice(0, 60)) if (k.length <= 40 && typeof o.luzes[k] === 'boolean') l[k] = o.luzes[k]; if (Object.keys(l).length) out.luzes = l; }
+  if (o.nevoa === 'revelar' || o.nevoa === 'esconder') out.nevoa = o.nevoa;
+  if (SONS_MOMENTO.some(x => x.id === o.som)) out.som = o.som;
+  const zonas = idsOk(o.zonas, 20); if (zonas.length) out.zonas = zonas;
+  const txt = String(o.txt == null ? '' : o.txt).trim().slice(0, 300); if (txt) out.txt = txt;
+  return out;
+}
+
 // Completa campos que possam faltar em dados importados de versões antigas.
 function normalizeScene(sc) {
   const base = newScene(sc.name);
@@ -2177,6 +2246,7 @@ function normalizeScene(sc) {
     else delete e.toks;
     if (e.reac === true) e.reac = true; else delete e.reac;            // "esperando para reagir"
     if (e.inv === true) e.inv = true; else delete e.inv;               // linha invisível: os jogadores não a veem
+    if (e.sur === true) e.sur = true; else delete e.sur;               // (lote 47) surpreendido: não joga na 1ª rodada
   }
   // um token fica numa faixa só, e quem está numa faixa não tem linha própria
   const naFaixa = new Set();
@@ -2185,6 +2255,10 @@ function normalizeScene(sc) {
   if (!Array.isArray(sc.targets)) sc.targets = [];
   // (lote 18) as fases da arena (só do mestre): uma lista curta de { n, nome, feita, m: [as mudanças] }
   if (Array.isArray(sc.fases)) { sc.fases = sc.fases.filter(f => f && typeof f === 'object' && Array.isArray(f.m)).slice(0, 6); if (!sc.fases.length) delete sc.fases; } else delete sc.fases;
+  // (lote 47) os lembretes por rodada e os momentos preparados (só do mestre)
+  if (Array.isArray(sc.lembretes)) { sc.lembretes = sc.lembretes.map(cleanLembrete).filter(Boolean).slice(0, 30); if (!sc.lembretes.length) delete sc.lembretes; } else delete sc.lembretes;
+  if (Array.isArray(sc.momentos)) { sc.momentos = sc.momentos.map(cleanMomento).filter(Boolean).slice(0, 20); if (!sc.momentos.length) delete sc.momentos; } else delete sc.momentos;
+  if (sc.momSom && !(typeof sc.momSom === 'object' && SONS_MOMENTO.some(x => x.id === sc.momSom.k) && Number.isFinite(sc.momSom.n))) delete sc.momSom;
   if (!TONES.some(x => x.id === sc.tone)) sc.tone = 'dia';
   for (const w of sc.walls) {
     if (!(w.k === 'door' && w.secret) && !['wall', 'door', 'window', 'veil', 'mureta'].includes(w.k)) w.k = 'wall';
@@ -7421,6 +7495,17 @@ function turnSort(list) {
   for (let i = 0; i < rows.length; i++) list[i] = rows[i].e;
   return list;
 }
+// (lote 47) Na 1ª rodada, a vez não fica com quem foi surpreendido: vai para o primeiro que pode jogar (se ninguém pode,
+// a 2ª rodada começa).
+function turnPularSurpresos(tn) {
+  if ((tn.round || 1) !== 1 || !tn.list.length) return;
+  let i = Math.max(0, tn.list.findIndex(e => e.id === tn.cur));
+  for (let n = 0; n < tn.list.length && tn.round === 1 && tn.list[i].sur; n++) {
+    i++;
+    if (i >= tn.list.length) { i = 0; tn.round = 2; }
+  }
+  tn.cur = tn.list[i].id;
+}
 // Renumera os turnos de cada combatente (1º, 2º…), mantendo a ordem em que já estavam numerados.
 function turnRenumber(list) {
   const groups = new Map();
@@ -7505,7 +7590,9 @@ const Act = {
         let mudou = false;
         const bars = t.bars.map(b => {
           if (!b.on || !(b.m > 0)) return b;
-          if (typeof b.ref === 'string' && b.ref.startsWith('pd:')) return b;     // (lote 24) as barras especiais da ficha ficam (Ki, Fúria…: "Restaurar energias")
+          if (typeof b.ref === 'string' && b.ref.startsWith('pd:') && b.mao !== false) return b;     // (lote 24) as barras especiais da ficha ficam (Ki, Fúria…: "Restaurar energias")
+          if (typeof Fichas !== 'undefined' && Fichas.soAMao(t, b)) return b;          // (lote 47) o cadeado "Só à mão"
+          if (typeof PainelBarras !== 'undefined' && PainelBarras.doPainel(t, b) && b.mao !== false) return b;     // (lote 47) a barra do painel segue as regras dela
           const alvo = barFull(b);
           if (b.st != null ? b.v === alvo : b.v >= alvo) return b;
           mudou = true; return Object.assign({}, b, { v: alvo });
@@ -8017,6 +8104,55 @@ const Act = {
     Act.turnPatch(x => { for (const y of x.list) if (muda.has(y.id)) { if (on) y.inv = true; else delete y.inv; } }, on ? 'Linha invisível' : 'Linha visível');
     return ids.length;
   },
+  /* (lote 47) Atrasar a vez: quem está jogando passa a jogar logo depois de outra entrada (que ainda vai jogar nesta
+     rodada) e fica nesse lugar daí em diante — a iniciativa dele vira a dessa entrada. A vez vai para quem vinha a
+     seguir. As durações não descontam agora: descontam quando ele terminar a vez no lugar novo. Um passo de desfazer.
+     → { quem, depois } (os nomes) ou null. */
+  turnAtrasar(depoisDe) {
+    const tn = clone(Store.scene().turn);
+    const i = tn.list.findIndex(e => e.id === tn.cur), j = tn.list.findIndex(e => e.id === depoisDe);
+    if (!tn.on || i < 0 || j <= i) return null;
+    const [e] = tn.list.splice(i, 1);
+    const alvo = tn.list[j - 1];
+    tn.list.splice(j, 0, e);
+    if (alvo.init != null) { e.init = alvo.init; e.roll = null; }
+    tn.cur = tn.list[i].id;                                   // quem vinha depois dele (o lugar dele agora é de outro)
+    if (tn.list[i].reac) delete tn.list[i].reac;
+    const out = { quem: turnName(e), depois: turnName(alvo) };
+    Store.tx('Atrasar a vez', () => Store.scn({ turn: tn }));
+    return out;
+  },
+  /* (lote 47) Entrar no meio do combate: os tokens ganham as linhas deles, rolam a iniciativa e entram no lugar que ela
+     dá, sem reordenar quem já está (o mestre pode ter mexido na ordem). Quem cai antes da vez de agora joga a partir da
+     rodada que vem. Um passo de desfazer. → [{ nome, total, jaNesta }] */
+  turnEntrar(tokens) {
+    const sc = Store.scene(), tn = clone(sc.turn), out = [], rolls = [];
+    const icur = () => tn.list.findIndex(e => e.id === tn.cur);
+    for (const t of tokens) {
+      if (!t || t.prop || inTurn(tn, t.id)) continue;
+      for (let k = 1, n = clampTurns(t.turns); k <= n; k++) {
+        const e = turnEntry(t, k), b = turnBonus(e), d = rollDie(20);
+        e.init = d + b; e.roll = { d, b };
+        let pos = tn.list.findIndex(x => x.init == null || x.init < e.init);
+        if (pos < 0) pos = tn.list.length;
+        const c = icur();
+        tn.list.splice(pos, 0, e);
+        out.push({ nome: turnName(e), total: e.init, jaNesta: !tn.on || c < 0 || pos > c });
+        rolls.push({ name: turnName(e), tokenId: t.id, d, bonus: b, total: e.init });
+      }
+    }
+    if (!out.length) return out;
+    turnRenumber(tn.list);
+    if (!tn.cur) tn.cur = tn.list[0].id;
+    Store.tx('Entrar no combate', () => Store.scn({ turn: tn }));
+    if (Ext.roll) for (const r of rolls) { try { Ext.roll(Object.assign({ kind: 'iniciativa' }, r)); } catch (err) { console.error(err); } }
+    return out;
+  },
+  // (lote 47) A rodada de surpresa: marca quem foi surpreendido (as entradas pedidas; as outras perdem a marca).
+  turnSurpresa(ids) {
+    const quer = new Set(ids);
+    Act.turnPatch(x => { for (const e of x.list) { if (quer.has(e.id)) e.sur = true; else delete e.sur; } if (x.on) turnPularSurpresos(x); }, 'Rodada de surpresa');
+  },
   turnPatch(fn, label) {
     const tn = clone(Store.scene().turn), before = tn.list.slice();
     fn(tn);
@@ -8119,6 +8255,7 @@ const Act = {
       // Combate parado: o primeiro "próximo turno" só começa o combate, na vez de quem já estava marcado.
       tn.on = true; tn.back = 0;
       if (!tn.list.some(e => e.id === tn.cur)) tn.cur = tn.list[0].id;
+      turnPularSurpresos(tn);
       Store.tx('Iniciar combate', () => Store.scn({ turn: tn }));
       return ended;
     }
@@ -8129,6 +8266,11 @@ const Act = {
     i += d;
     if (i >= tn.list.length) { i = 0; tn.round++; wrapped = true; }
     else if (i < 0) { if (tn.round > 1) { tn.round--; i = tn.list.length - 1; } else i = 0; }
+    // (lote 47) a rodada de surpresa: na 1ª rodada, quem foi surpreendido não joga (a vez passa por cima)
+    for (let n = 0; tn.round === 1 && tn.list[i] && tn.list[i].sur && n < tn.list.length; n++) {
+      if (d > 0) { i++; if (i >= tn.list.length) { i = 0; tn.round++; wrapped = true; } }
+      else if (i > 0) i--; else break;
+    }
     tn.cur = tn.list[i].id;
     if (d < 0 && i === from && tn.round === fromRound) return ended;     // já está no começo: nada a voltar
     if (d > 0 && tn.list[i].reac) delete tn.list[i].reac;               // a vez chegou: a espera pela reação acabou
@@ -8223,7 +8365,7 @@ const Fichas = (() => {
   function especiaisDe(l) {
     const R0 = R();
     if (!R0 || typeof R0.especiais !== 'function') return [];
-    return R0.especiais(l.ficha || {}, l.estado || {}).filter(x => x.max > 0).map(x => ({ id: PD + x.id, nome: x.nome, max: x.max, min: 0, inicio: x.inicio != null ? x.inicio : null, atual: x.atual, sobre: 0, pts: true }));
+    return R0.especiais(l.ficha || {}, l.estado || {}).filter(x => x.max > 0).map(x => ({ id: PD + x.id, nome: x.nome, max: x.max, min: 0, inicio: x.inicio != null ? x.inicio : null, atual: x.atual, sobre: 0, pts: true, rec: x.rec }));
   }
   // os recursos da ficha que viram barra no token: os de sempre (com máximo) e, depois deles, as barras especiais
   const recursosDoToken = (l, r) => r.recursos.filter(rec => rec.max != null && isFinite(rec.max)).concat(especiaisDe(l));
@@ -9257,7 +9399,23 @@ const Fichas = (() => {
     const e = Cx.estado(d.dados, (l && l.skills) || {}, bib(), cfg());
     return e && e.n ? { tipo: e.tipo, n: e.n, cor: Cx.TIPOS[e.tipo].cor } : null;
   }
-  return { corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  /* (lote 47) O cadeado "Só à mão": a barra trancada não muda por nada automático (a Cura total, o Restaurar energias).
+     O mestre tranca ou abre cada barra (b.mao); sem escolha, ficam trancadas as barras especiais da ficha com a regra
+     "Só à mão" (o Chamado de Selene, a Voz da Graça…). As do painel de barras seguem as regras delas (o começo e o fim
+     do combate), e a Cura total e o Restaurar já não mexem nelas. */
+  function soAMao(t, b) {
+    if (!b) return false;
+    if (b.mao === true) return true;
+    if (b.mao === false) return false;
+    if (ehPd(b.ref)) {
+      const l = t && t.char ? get(t.char) : null;
+      if (!l || l.ficha == null) return true;
+      const x = especiaisDe(l).find(y => y.id === b.ref);
+      return !x || x.rec === 'manual';
+    }
+    return false;
+  }
+  return { soAMao, corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
@@ -9426,7 +9584,7 @@ const Proj = (() => {
     const tokens = sc.tokens.filter(t => !t.hidden).map(t => tokenPublico(t, jogadores, grupos));
     const nomes = new Map(tokens.map(t => [t.id, t.name]));
     const m = {};
-    for (const k in sc) if (k !== 'explored' && k !== 'gerado' && k !== 'fases' && k !== 'campo' && !VIVO.includes(k)) m[k] = sc[k];       // (com que semente o mapa de bairros foi feito: só do mestre)
+    for (const k in sc) if (k !== 'explored' && k !== 'gerado' && k !== 'fases' && k !== 'campo' && k !== 'lembretes' && k !== 'momentos' && !VIVO.includes(k)) m[k] = sc[k];       // (com que semente o mapa de bairros foi feito: só do mestre)
     m.walls = sc.walls.map(paredePublica);
     m.lights = sc.lights.map(l => Object.assign({}, l, { name: '' }));           // o nome que o mestre deu à luz é dele
     m.shapes = sc.shapes.filter(s => !s.gm);
@@ -14715,6 +14873,8 @@ const UI = (() => {
           onclick: () => { listaDesenho = !listaDesenho; renderRail(); if (listaDesenho) { const b = el.rail.querySelector('.rail-item.on') || el.rail.querySelector('.rail-item'); if (b) b.focus(); } } }, icon(mostra.i, 20), h('span', { class: 'junto-seta', 'aria-hidden': 'true' })),
         lista));
     });
+    // (lote 47) o grupo Mestre: a vez, os momentos, os lembretes e a cura, num painel pequeno ao lado da barra
+    if (typeof Mestre !== 'undefined') kids.push(...Mestre.grupoDaBarra());
     el.rail.replaceChildren(...kids);
   }
 
@@ -15047,6 +15207,15 @@ const UI = (() => {
     if (id === 'clone' && !t.clone) { const n = Act.cloneDesfazer(t.id); toast(n ? `A condição Clone saiu de ${tokName(t)}: ${n === 1 ? 'a cópia sumiu' : `as ${n} cópias sumiram`}.` : `A condição Clone saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo }); }
     else { Act.condToggle([t], id); if (id === 'ferida') toast(`A ferida permanente saiu de ${tokName(t)}: a cura volta a ir até o máximo.`, { action: 'Desfazer', run: Tools.undo }); }     // (a cópia que perde o Clone some, e o aviso vem das regras dele)
     if (depois) depois();
+  }
+  /* (lote 47) Tirar uma condição pela faixa de baixo: um clique, com Desfazer. As que levam algo junto (a ferida, o
+     Clone, o Duplicado, as de lado, o Imbuído de Mana) saem pelo mesmo caminho da janela de condições. */
+  function tirarCondHud(t, c) {
+    t = Store.get('tokens', t.id) || t;
+    if (!t.conds.includes(c.id)) return;
+    if (['imbuidoMana', 'duplicado', 'clone', 'ferida'].includes(c.id) || COND_LADO.has(c.id)) { condJanela(c.id, t, true); return; }
+    Act.condToggle([t], c.id);
+    toast(`${c.n} saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo });
   }
   /* (lote 28) Imbuído de Mana: o custo fixo de cada ataque, a barra que paga (a Mana: o mestre escolhe) e com o que o
      ataque rola quando não há mana (o atributo normal). Num token sem ficha, os dois valores são digitados aqui. Pôr
@@ -15421,6 +15590,7 @@ const UI = (() => {
       rows.push(h('div', { class: 'bar-row' + (b.on ? '' : ' off') },
         full ? h('input', { type: 'checkbox', id: `tk-b${i}-on`, class: 'ck', checked: b.on, title: 'Usar esta barra', 'aria-label': 'Usar a barra ' + b.n, onchange: e => Act.barPatch(t, i, { on: e.target.checked }) }) : null,
         h('span', { class: 'bar-dot' + (b.k === 'pts' ? ' pt' : ''), style: { background: b.c } }),
+        Fichas.soAMao(t, b) ? h('span', { class: 'bar-lock', id: `tk-b${i}-lock`, title: `${b.n}: só à mão (a Cura total e o Restaurar energias não mexem nela)` }, icon('lock', 12)) : null,
         full ? inText(`tk-b${i}-n`, b.n, v => Act.barPatch(t, i, { n: v.trim().slice(0, 24) || b.n }), { class: 'in bar-n', 'aria-label': 'Nome da barra', maxlength: 24 }) : h('span', { class: 'bar-n ro', text: b.n }),
         val, h('span', { class: 'bar-sl', text: '/' }),
         full ? inNum(`tk-b${i}-m`, b.m, v => maxDaBarra(t, i, v), { min: 0, label: b.n + ' máximo', title: b.ref && t.char && !t.clone && Fichas.on() ? 'O máximo vem da ficha: mudar aqui muda também a ficha' : undefined }) : h('span', { class: 'bar-m', text: fmt(b.m) }),
@@ -15439,6 +15609,9 @@ const UI = (() => {
         full && isGM() ? h('button', { type: 'button', class: 'lnk', id: `tk-b${i}-podm`, text: 'Mudar…', onclick: () => feridaBox(t, i) }) : null));
       if (open) rows.push(h('div', { class: 'bar-opt' },
         field('Cor', inColor(`tk-b${i}-c`, b.c, v => setBars({ c: v }), 'Cor da barra ' + b.n)),
+        // (lote 47) o cadeado: nada automático mexe na barra trancada
+        toggle(`tk-b${i}-mao`, Fichas.soAMao(t, b), v => Act.barPatch(t, i, { mao: v }), 'Só à mão'),
+        note('Trancada, a Cura total e o Restaurar energias não mexem nela: muda só quando alguém digita ou usa o painel.'),
         field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
         field('Os outros veem', inSelect(`tk-b${i}-vis`, b.vis || '', [['', 'O mesmo que o token'], ['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => Act.barPatch(t, i, { vis: v }), { title: 'O que vê desta barra quem não é dono do token' })),
         // (lote 15) a barra que só aparece no token com o mouse por cima (as especiais da ficha começam assim)
@@ -16485,7 +16658,7 @@ const UI = (() => {
      rolagens da mesa ao vivo que ainda não foram anotadas —: o próximo combate começa do zero. Um passo de desfazer. */
   function encerrarCombate() {
     const tinha = Store.scene().turn.list.some(e => e.init != null) || App.iniRolls.size > 0;
-    Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; } }, 'Encerrar combate');
+    Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; delete e.sur; } }, 'Encerrar combate');
     App.iniRolls.clear();
     toast(tinha ? 'Combate encerrado: a iniciativa de todos foi zerada para o próximo.' : 'Combate encerrado.', { action: 'Desfazer', run: Tools.undo });
     // (lote 44) o painel de barras: cada barra faz o fim dela (o aviso tem o Desfazer dele)
@@ -16519,6 +16692,8 @@ const UI = (() => {
         const cs = vis.map(x => tokC(x, sc));
         Render.centerOn(cs.reduce((a, c) => a + c[0], 0) / cs.length, cs.reduce((a, c) => a + c[1], 0) / cs.length);
       };
+      // (lote 47) surpreendido: não joga na 1ª rodada
+      const sur = e.sur && (!tn.on || (tn.round || 1) === 1) ? h('span', { class: 'turn-sur', text: 'surpreso', title: 'Foi surpreendido: não joga na 1ª rodada' }) : null;
       const reac = e.reac ? h('span', { class: 'turn-reac', text: 'reação', title: 'Esperando para reagir: segurou a vez para agir fora de ordem' }) : null;
       const inv = gm && e.inv ? h('span', { class: 'turn-inv', text: 'invisível', title: 'Os jogadores não veem esta linha; na vez dela, só ficam sabendo que o turno está com o mestre' }) : null;
       rows.push(h('li', { class: 'turn' + (cur ? ' cur' : '') + (band ? ' band' : '') + (e.reac ? ' reac' : '') + (gm && e.inv ? ' inv' : ''), id: `tl-${e.id}` },
@@ -16533,7 +16708,7 @@ const UI = (() => {
             band ? h('span', { class: 'turn-g', text: `grupo · ${membros.length}`, title: membros.map(x => tokName(x)).join(', ') || 'Ninguém nesta faixa agora' }) : null,
             rolled ? h('span', { class: 'turn-r', text: `(${rolled})`, title: `Rolagem: ${e.init} = ${rolled}` }) : null,
             cur ? h('span', { class: 'turn-now', text: 'vez' }) : null,
-            reac, inv)),
+            sur, reac, inv)),
         gm ? inNum(`tn-${e.id}`, e.init == null ? '' : e.init, v => Act.turnPatch(x => { const y = x.list.find(z => z.id === e.id); if (y) { y.init = v; y.roll = null; } }, 'Iniciativa'),
           { step: 1, label: 'Iniciativa de ' + label, title: rolled ? `Iniciativa de ${label}: ${e.init} (${rolled})` : 'Iniciativa de ' + label })
           : h('span', { class: 'turn-i', text: e.init == null ? '–' : fmt(e.init) }),
@@ -16570,6 +16745,8 @@ const UI = (() => {
         gm ? h('div', { class: 'row tight' },
           iconBtn('prev', 'Turno anterior (o que já foi descontado não volta; para isso, use Desfazer)', () => step(-1), { disabled: !tn.list.length, id: 'turnPrev' }),
           btn('Próximo turno', () => step(1), { kind: 'primary', icon: 'next', disabled: !tn.list.length, id: 'turnNext' })) : null),
+      // (lote 47) atrasar e pular a vez de quem está jogando
+      Mestre.botoesDaVez(),
       // na vez de uma linha invisível, o jogador só fica sabendo que o turno está com o mestre
       !gm && vezDoMestre(tn) ? h('p', { class: 'turn-mestre', id: 'turnMestre' }, icon('eyeOff', 14), h('span', { text: 'O turno está com o mestre.' })) : null,
       rows.length ? h('ol', { class: 'turns' }, rows) : h('p', { class: 'muted', text: gm ? 'Ninguém na ordem ainda. Selecione tokens no mapa e adicione-os aqui.' : 'O mestre ainda não montou a ordem de turnos.' }),
@@ -16579,13 +16756,17 @@ const UI = (() => {
         btn('Entrada avulsa', looseBox, { id: 'turnLoose', title: 'Põe na ordem algo que não tem token no mapa: armadilha, reforço, evento' })) : null,
       gm && tn.list.length ? h('div', { class: 'row' },
         btn('Rolar iniciativa', rollAll, { icon: 'die', id: 'turnRoll', title: missing ? 'Rola 1d20 + Iniciativa para quem ainda não tem iniciativa e ordena a lista' : 'Todos já têm iniciativa: rolar de novo troca os valores (a mesa pergunta antes)' }),
-        btn(tn.on ? 'Encerrar' : 'Iniciar', () => { if (tn.on) { encerrarCombate(); return; } const antes = vezAgora(); Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list[0].id; x.back = 0; }, 'Iniciar combate'); depoisDaVez(antes, 1); },
+        btn(tn.on ? 'Encerrar' : 'Iniciar', () => { if (tn.on) { encerrarCombate(); return; } const antes = vezAgora(); Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list[0].id; x.back = 0; turnPularSurpresos(x); }, 'Iniciar combate'); depoisDaVez(antes, 1); },
           { icon: tn.on ? 'stop' : 'play', id: 'turnOnOff', title: tn.on ? 'Encerra o combate e zera a iniciativa de todos, para o próximo começar do zero (dá para desfazer)' : null }),
         btn('Ordenar por iniciativa', () => Act.turnPatch(x => { turnSort(x.list); }, 'Ordenar turnos'), { icon: 'sort' }),
         btn('Limpar', () => Act.turnPatch(x => { x.list = []; x.on = false; x.round = 1; x.back = 0; }, 'Limpar turnos'), { icon: 'trash' })) : null,
+      // (lote 47) entrar no combate no meio dele, e a rodada de surpresa
+      Mestre.botoesDoCombate(selToks),
       gm && tn.list.length ? note('Passar a vez desconta as durações de condições e efeitos e limpa as miras. Contadores só mudam na mão.') : null,
       // (lote 23) restaurar as energias: tudo que não é HP nem SP volta ao estado natural (o "começa em" da barra, ou cheia)
       gm ? h('div', { class: 'row' }, btn('Restaurar energias…', janelaRestaurar, { icon: 'rest', id: 'turnRestaurar', title: 'As barras que não são HP nem SP voltam ao estado natural (o “começa em” delas; sem ele, cheias). Com tokens selecionados, só eles; sem seleção, todos da cena. Mostra antes o que muda.' })) : null,
+      // (lote 47) os lembretes por rodada
+      Mestre.secaoLembretes(),
       // (lote 44) o painel de barras: ligado ou desligado para a mesa
       gm && typeof PainelBarras !== 'undefined' ? PainelBarras.secaoTurnos() : null,
       // (lote 22) a tela das barrinhas: quando ela abre sozinha (da mesa: vale em todas as cenas)
@@ -16653,7 +16834,7 @@ const UI = (() => {
   function restauroDe(toks) {
     // (lote 44) as barras que o painel de barras cuida ficam de fora: o fim do combate delas é o do painel
     const doPainel = (t, b) => typeof PainelBarras !== 'undefined' && PainelBarras.cuida(t, b);
-    return toks.map(t => ({ t, m: (t.bars || []).map((b, i) => ({ b, i })).filter(({ b }) => b && b.on !== false && !ehVidaOuSp(b) && !doPainel(t, b) && Math.abs((Number(b.v) || 0) - barFull(b)) > 1e-9)
+    return toks.map(t => ({ t, m: (t.bars || []).map((b, i) => ({ b, i })).filter(({ b }) => b && b.on !== false && !ehVidaOuSp(b) && !doPainel(t, b) && !Fichas.soAMao(t, b) && Math.abs((Number(b.v) || 0) - barFull(b)) > 1e-9)
       .map(({ b, i }) => ({ i, n: b.n, c: b.c, de: Number(b.v) || 0, para: barFull(b) })) })).filter(x => x.m.length);
   }
   function aplicarRestauro(lista) {
@@ -16692,6 +16873,8 @@ const UI = (() => {
     const resto = () => {
       const sc = Store.scene(), tn = sc.turn;
       if (typeof PainelBarras !== 'undefined') PainelBarras.depoisDaVez(antes);      // (lote 44) o fim e o começo do turno no painel de barras
+      Mestre.depoisDaVez();                                                          // (lote 47) na vez de quem está travado, o aviso de pular
+      if (comecou || novaRodada) setTimeout(() => Mestre.naRodada(Store.scene().turn.round || 1), 0);      // (lote 47) os lembretes da rodada
       if (comecou && P.combate) { telaBarrinhas('O combate começou: as barrinhas', tokensDoCombate(sc)); return; }
       if (novaRodada && P.rodada) { telaBarrinhas(`${tn.round}ª rodada: as barrinhas`, tokensDoCombate(sc)); return; }
       if (tn.on && P.vez && (tn.cur !== antes.cur || comecou)) {
@@ -16723,7 +16906,7 @@ const UI = (() => {
   function barrasAoComecar(toks, depois) {
     const F = typeof Fichas !== 'undefined' && Fichas.on() && Fichas.barrasDeArvore ? Fichas : null;
     if (!F) { depois(); return; }
-    const lista = toks.map(t => ({ t, bs: F.barrasDeArvore(t).filter(b => b.comb !== 'fica') })).filter(x => x.bs.length);
+    const lista = toks.map(t => ({ t, bs: F.barrasDeArvore(t).filter(b => b.comb !== 'fica' && !F.soAMao(t, t.bars[b.i])) }))      // (lote 47: a trancada fica).filter(x => x.bs.length);
     const normais = lista.map(x => ({ t: x.t, bs: x.bs.filter(b => b.comb === 'inicio' && Math.abs(b.v - b.inicio) > 1e-9).map(b => Object.assign({}, b, { para: b.inicio })) })).filter(x => x.bs.length);
     const perg = lista.map(x => ({ t: x.t, bs: x.bs.filter(b => b.comb === 'pergunta') })).filter(x => x.bs.length);
     // tudo num passo só: as de sempre e, quando o mestre responde, a Barra Bestial
@@ -16890,6 +17073,8 @@ const UI = (() => {
         note('Para conferir o resultado, troque "Vendo como" no topo para um jogador.'))),
       // (lote 18) as fases da arena (só numa arena; só o mestre)
       Arena.secao({ sec, note, btn }),
+      // (lote 47) os momentos preparados (só o mestre)
+      Mestre.secaoMomentos(),
       // (lote 18) o campo de batalha: a leitura do campo e levar para a batalha
       Campo.secao({ sec, note, btn }),
       // (lote 18) o relevo com regra: a visão pelo relevo (desta cena) e a tabela do mestre (da mesa)
@@ -17178,10 +17363,12 @@ const UI = (() => {
       if (canCond && n && c.id !== 'escudado') {
         kids.push(h('span', { class: 'hud-c', 'data-tag-nome': c.n, title: c.n + (c.r ? ' — ' + c.r : '') + dur },
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-minus`, title: n === 1 ? `${c.n}: tirar 1 (em zero, a condição sai)` : `${c.n}: tirar 1`, 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => condStepToast(t, c, -1) }, icon('minus', 13)),
-          badge, h('span', { class: 'stp-v', id: `hud-c-${c.id}-n`, text: String(n) }),
+          h('button', { type: 'button', class: 'hud-tira', id: `hud-c-${c.id}`, title: `${c.n}${dur}: clique para tirar`, 'aria-label': `Tirar ${c.n} de ${tokName(t)}`, onclick: () => tirarCondHud(t, c) }, badge, h('span', { class: 'hud-x', 'aria-hidden': 'true' }, icon('x', 11))),
+          h('span', { class: 'stp-v', id: `hud-c-${c.id}-n`, text: String(n) }),
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-plus`, disabled: !!(c.max && n >= c.max), title: c.max && n >= c.max ? `${c.n}: no máximo (${c.max})` : `${c.n}: somar 1`, 'aria-label': `Somar 1 em ${c.n}`, onclick: () => condStepToast(t, c, 1) }, icon('plus', 13))));
       } else if (canCond) {
-        kids.push(h('button', { type: 'button', class: 'hud-c one', id: `hud-c-${c.id}`, 'data-tag-nome': c.n, title: `${c.n}${n ? ' ' + n : ''}${dur}: abrir condições`, 'aria-label': `${c.n}${n ? ' ' + n : ''}${dur}`, onclick: () => condPicker([t]) }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
+        // (lote 47) um clique tira a condição (com Desfazer); a janela de condições continua no escudo do fim da faixa
+        kids.push(h('button', { type: 'button', class: 'hud-c one hud-tira', id: `hud-c-${c.id}`, 'data-tag-nome': c.n, title: `${c.n}${n ? ' ' + n : ''}${dur}: clique para tirar`, 'aria-label': `Tirar ${c.n}${n ? ' ' + n : ''} de ${tokName(t)}`, onclick: () => tirarCondHud(t, c) }, badge, h('span', { class: 'hud-x', 'aria-hidden': 'true' }, icon('x', 11)), n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       } else {
         kids.push(h('span', { class: 'hud-c ro', 'data-tag-nome': c.n, title: c.n + (c.r ? ' — ' + c.r : '') + dur }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       }
@@ -17530,6 +17717,7 @@ const UI = (() => {
     catch (err) { /* a visão fica pendente; quem avisa do problema é o desenho do mapa */ }
     renderTop(); renderBanner(); renderRail(); renderOpts(); renderSide(); renderHud(); renderVeil(); turnBanner(); status();
     if (typeof PainelBarras !== 'undefined') PainelBarras.render();      // (lote 44) o painel de barras, no canto
+    if (typeof Mestre !== 'undefined') Mestre.vigiar();                   // (lote 47) o som de um momento, em todos os aparelhos
     if (modalEl && modalLive) { if (digitandoNaJanela()) janelaAdiada = true; else modalLive(); }      // (lote 24: digitando, espera)
     Luta.refresh();
     document.title = 'Cenas · Tiny Cats';
@@ -17558,6 +17746,8 @@ const UI = (() => {
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
     // as peças de formulário e as janelas, para as telas de combate (10c-combate.js)
+    // (lote 47) para o grupo Mestre da barra da esquerda
+    mestreKit: { healToast, janelaRestaurar, telaBarrinhas: (t, l) => telaBarrinhas(t, l), tokensDoCombate },
     kit: { field, inText, inNum, inSelect, toggle, seg, btn, iconBtn, sec, secR, note, tokenAvatar, stepper, deleteSelToast, layer: el.layer, live(fn) { modalLive = fn; }, card: () => modalEl },
   };
 })();
@@ -22358,7 +22548,33 @@ const Som = (() => {
     } catch (e) { /* sem som: o aviso escrito continua */ }
     return true;
   }
-  return { tocar, ligado, aviso, avisosLigados, ligarAvisos, volumeAvisos, volumeDosAvisos, get ultimo() { return ultimo; }, get vezes() { return vezes; },
+  /* (lote 47) O som de um momento preparado: o mestre solta, e cada aparelho com o som da mesa ligado toca o seu. */
+  function ruido(a, t0, dur, freq, vol) {
+    const buf = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 1.6);
+    const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = buf; f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = vol;
+    s.connect(f); f.connect(g); g.connect(a.destination); s.start(t0);
+  }
+  let ultimoMomento = null, vezesMomento = 0;
+  function momento(k) {
+    ultimoMomento = k; vezesMomento++;
+    if (!ligado()) return false;
+    const a = contexto();
+    if (!a) return true;
+    try { if (a.state === 'suspended') a.resume(); } catch (e) { /* o navegador ainda não deixou tocar */ }
+    try {
+      const t0 = a.currentTime + 0.03;
+      if (k === 'trovao') { ruido(a, t0, 0.35, 2400, 0.5); ruido(a, t0 + 0.12, 2.8, 260, 0.9); }
+      else if (k === 'gongo') gongo(a, t0, 98, 0.32);
+      else if (k === 'tambores') { for (const [dt, v] of [[0, 0.7], [0.3, 0.5], [0.6, 0.7], [0.75, 0.5], [1.05, 0.8], [1.5, 0.7], [1.8, 0.5], [2.1, 0.9]]) tambor(a, t0 + dt, v * 0.6); }
+      else if (k === 'sino') { for (let n = 0; n < 3; n++) { tom(a, t0 + n * 0.9, 523, 'sine', 0.22, 2.2, 0.01); tom(a, t0 + n * 0.9, 523 * 2.76, 'sine', 0.06, 1.2, 0.01); } }
+      else if (k === 'tremor') { tom(a, t0, 38, 'sine', 0.5, 2.6, 0.4); tom(a, t0, 55, 'triangle', 0.25, 2.2, 0.3); ruido(a, t0, 2.6, 180, 0.6); }
+      else if (k === 'misterio') { tom(a, t0, 392, 'sine', 0.12, 2.4, 0.5); tom(a, t0, 395, 'sine', 0.12, 2.4, 0.5); tom(a, t0 + 0.8, 311, 'sine', 0.1, 2.2, 0.5); tom(a, t0 + 0.8, 466, 'sine', 0.07, 2.2, 0.5); }
+    } catch (e) { /* sem som */ }
+    return true;
+  }
+  return { momento, get ultimoMomento() { return ultimoMomento; }, get vezesMomento() { return vezesMomento; }, tocar, ligado, aviso, avisosLigados, ligarAvisos, volumeAvisos, volumeDosAvisos, get ultimo() { return ultimo; }, get vezes() { return vezes; },
     get ultimoAviso() { return ultimoAviso; }, get vezesAviso() { return vezesAviso; } };
 })();
 /* ---------------------------------------------------------------
@@ -39132,6 +39348,8 @@ const PainelBarras = (() => {
   }
   // as barras que o painel cuida (o "Restaurar energias" não mexe nelas)
   const cuida = (t, b) => ligado() && !!b && barrasDoToken(t).some(x => x.ref === b.ref);
+  // (lote 47) é uma barra do painel, ligado ou não (o cadeado "Só à mão" vem trancado nelas)
+  const doPainel = (t, b) => !!b && !!b.ref && barrasDoToken(t).some(x => x.ref === b.ref);
 
   /* ---------------- no painel do token e na aba Turnos ---------------- */
   // o mestre: o que o token tem (e, no NPC sem ficha, a barra escolhida); o jogador: mostrar/esconder o dele
@@ -39188,9 +39406,370 @@ const PainelBarras = (() => {
   }
 
   // as Cenas avisam quando mudam (o desenho geral e o mapa)
-  return { render, ligado, desenharSelo, novoQuadro, cliqueNoSelo, depoisDaVez, fimDoCombate, temPainel, cuida, secaoToken, secaoTurnos, abrirNpc,
+  return { render, ligado, desenharSelo, novoQuadro, cliqueNoSelo, depoisDaVez, fimDoCombate, temPainel, cuida, doPainel, secaoToken, secaoTurnos, abrirNpc,
     // para os testes
     _atorDe: atorDe, _barrasDoToken: barrasDoToken, _selos: () => selos, _hits: () => hits };
+})();
+/* ---------------------------------------------------------------
+   10j. O CONTROLE DO MESTRE (lote 47) — a vez, as rodadas e os momentos da cena, nas mãos de quem mestra.
+     · a vez: "Atrasar a vez…" (joga depois de quem o mestre escolher, e fica nesse lugar), "Pular a vez" (com o motivo
+       na mesa ao vivo; na vez de quem está Atordoado, Paralisado… o aviso oferece pular) e "Entrar no combate" (o token
+       rola e entra no lugar que a iniciativa dá, sem bagunçar a ordem);
+     · a rodada de surpresa: quem foi surpreendido não joga na 1ª rodada (07-app: turnStep pula a vez dele);
+     · os lembretes por rodada (sc.lembretes, só do mestre): "Rodada 3: reforços chegam". Quando a rodada chega, uma
+       janela mostra o lembrete; "Fazer" revela os tokens escolhidos (que entram na ordem) e manda o texto à mesa, se ele
+       pediu. Podem repetir a cada N rodadas;
+     · os momentos preparados (sc.momentos, só do mestre): tokens que aparecem, a hora do dia, luzes que acendem ou
+       apagam, a névoa, um som para todos (sc.momSom: cada aparelho toca o seu), zonas escondidas que aparecem e a
+       narração à mesa. "Soltar" faz tudo num passo, com Desfazer.
+   Nada acontece sozinho: tudo passa por um clique do mestre.
+   --------------------------------------------------------------- */
+const Mestre = (() => {
+  const K = UI.kit;
+  const toast = (t, o) => UI.toast(t, o);
+  const PERDE_VEZ = ['atordoado', 'paralisia', 'inconsciente', 'petrificado', 'adormecido'];
+
+  /* ---------------- a mesa ao vivo ---------------- */
+  // uma linha do mestre na mesa ao vivo (o aviso das Cenas); fora de uma mesa, só o aviso na tela
+  function mesa(titulo, resumo) {
+    const T = window.TC && window.TC.ponte;
+    if (T && T.estado && T.estado.mesa && typeof T.publicar === 'function') {
+      try { T.publicar('cena', { kind: 'aviso', titulo: String(titulo).slice(0, 120), resumo: String(resumo || '').slice(0, 600) }); return true; } catch (e) { /* sem a casca */ }
+    }
+    return false;
+  }
+  // a entrada é escondida dos jogadores? (a linha invisível, ou só tokens ocultos)
+  const escondida = e => !!e.inv || (e.token ? !!((Store.get('tokens', e.token) || {}).hidden) : false);
+
+  /* ---------------- a vez ---------------- */
+  const vezDe = tn => (tn.on ? tn.list.find(e => e.id === tn.cur) : null) || null;
+  // as condições que fazem perder a vez, nos tokens da entrada: [{ t, c }]
+  function travados(e) {
+    const out = [];
+    for (const t of turnToks(e)) for (const id of t.conds) if (PERDE_VEZ.includes(id) && COND_BY_ID[id]) out.push({ t, c: COND_BY_ID[id] });
+    return out;
+  }
+  const motivoDe = e => { const tr = travados(e); return tr.length ? [...new Set(tr.map(x => x.c.n))].join(', ') : ''; };
+
+  function pular(motivo) {
+    const tn = Store.scene().turn, e = vezDe(tn);
+    if (!e) return false;
+    const nome = turnName(e), m = motivo == null ? motivoDe(e) : motivo;
+    UI.passarTurno(1);
+    const txt = `${nome} perdeu a vez${m ? ' (' + m + ')' : ''}.`;
+    if (!escondida(e)) mesa(txt, '');
+    toast(txt, { key: 'pular-vez', action: 'Desfazer', run: Tools.undo });
+    return true;
+  }
+  function atrasarBox() {
+    const tn = Store.scene().turn, e = vezDe(tn);
+    if (!e) return;
+    const i = tn.list.indexOf(e), depois = tn.list.slice(i + 1);
+    const nome = turnName(e);
+    if (!depois.length) { toast(`${nome} é o último da rodada: não há depois de quem jogar.`); return; }
+    const escolher = alvo => {
+      const r = Act.turnAtrasar(alvo.id);
+      if (!r) return;
+      UI.closeModal();
+      const txt = `${r.quem} atrasou a vez: joga depois de ${r.depois}.`;
+      if (!escondida(e)) mesa(txt, '');
+      toast(txt, { key: 'atrasar-vez', action: 'Desfazer', run: Tools.undo });
+    };
+    UI.modal({ title: `Atrasar a vez de ${nome}`, body: h('div', { id: 'atrasar-tela' },
+      K.note('Escolha depois de quem ele joga. Ele fica nesse lugar nas próximas rodadas também.'),
+      h('ul', { class: 'mt-lista' }, depois.map(x => h('li', null, h('button', { type: 'button', class: 'mt-op', id: 'atr-' + x.id, onclick: () => escolher(x) },
+        h('span', { text: 'Depois de ' + turnName(x) }), x.init != null ? h('span', { class: 'mt-op-n', text: fmt(x.init) }) : null))))),
+      actions: [{ label: 'Cancelar' }] });
+  }
+  function surpresaBox() {
+    const tn = Store.scene().turn;
+    if (!tn.list.length) return;
+    const marc = new Set(tn.list.filter(e => e.sur).map(e => e.id));
+    const lista = h('ul', { class: 'mt-lista' }, tn.list.map(e => h('li', null, h('label', { class: 'mt-ck' },
+      h('input', { type: 'checkbox', id: 'sur-' + e.id, checked: marc.has(e.id), onchange: ev => { if (ev.target.checked) marc.add(e.id); else marc.delete(e.id); } }),
+      h('span', { text: turnName(e) })))));
+    UI.modal({ title: 'Rodada de surpresa', body: h('div', { id: 'surpresa-tela' },
+      K.note('Marque quem foi surpreendido: na 1ª rodada a vez passa por cima deles. Da 2ª em diante, todos jogam.'), lista),
+      actions: [{ label: 'Cancelar' }, { label: 'Confirmar', kind: 'primary', run: () => {
+        Act.turnSurpresa([...marc]);
+        toast(marc.size ? `${marc.size === 1 ? '1 surpreendido' : marc.size + ' surpreendidos'}: não jogam na 1ª rodada.` : 'Ninguém surpreendido.', { action: 'Desfazer', run: Tools.undo });
+      } }] });
+  }
+  function entrar(toks) {
+    const r = Act.turnEntrar(toks);
+    if (!r.length) { toast(toks.length === 1 ? 'Ele já está na ordem.' : 'Já estão todos na ordem.'); return; }
+    const ja = r.filter(x => x.jaNesta), prox = r.filter(x => !x.jaNesta);
+    const parte = (l, s) => l.map(x => `${x.nome} (${x.total})`).join(', ') + s;
+    toast('Entrou no combate: ' + [ja.length ? parte(ja, ja.length === 1 ? ', joga nesta rodada' : ', jogam nesta rodada') : '', prox.length ? parte(prox, ', a partir da rodada que vem') : ''].filter(Boolean).join('; ') + '.',
+      { long: true, action: 'Desfazer', run: Tools.undo });
+  }
+  // os botões da vez, no alto da aba Turnos (só o mestre, com o combate rodando)
+  function botoesDaVez() {
+    const tn = Store.scene().turn, e = vezDe(tn);
+    if (!isGM() || !e) return null;
+    const m = motivoDe(e);
+    return h('div', { class: 'row tight mt-vez', id: 'mt-vez' },
+      K.btn('Atrasar a vez…', atrasarBox, { icon: 'clock', kind: 'small', id: 'turnAtrasar', title: 'Quem está jogando passa a jogar depois de outro, e fica nesse lugar' }),
+      K.btn('Pular a vez', () => pular(), { icon: 'next', kind: 'small', id: 'turnPular', title: m ? `Pula a vez (${m}); a mesa ao vivo fica sabendo` : 'Pula a vez de quem está jogando; a mesa ao vivo fica sabendo' }));
+  }
+  // os botões de baixo: entrar no combate (os selecionados) e a rodada de surpresa
+  function botoesDoCombate(selToks) {
+    const tn = Store.scene().turn;
+    if (!isGM() || !tn.list.length) return null;
+    const fora = selToks.filter(t => !inTurn(tn, t.id));
+    return h('div', { class: 'row' },
+      tn.on ? K.btn(fora.length ? `Entrar no combate (${fora.length})` : 'Entrar no combate', () => entrar(fora), { icon: 'plus', id: 'turnEntrar', disabled: !fora.length, title: 'Os tokens selecionados rolam a iniciativa e entram no lugar que ela dá, sem reordenar quem já está' }) : null,
+      !tn.on || (tn.round || 1) === 1 ? K.btn('Rodada de surpresa…', surpresaBox, { icon: 'eyeOff', id: 'turnSurpresa', title: 'Quem foi surpreendido não joga na 1ª rodada' }) : null);
+  }
+  // depois de a vez passar (no aparelho do mestre): na vez de quem está travado, o aviso oferece pular
+  function depoisDaVez() {
+    const e = vezDe(Store.scene().turn);
+    if (!e) return;
+    const m = motivoDe(e);
+    // (o aviso só vale enquanto a vez for dele: depois, o "Pular" não pula outra pessoa)
+    if (m) toast(`Pular a vez de ${turnName(e)} (${m})?`, { key: 'pular-vez', long: true, action: 'Pular', run: () => {
+      const agora = vezDe(Store.scene().turn);
+      if (!agora || agora.id !== e.id) { toast(`A vez de ${turnName(e)} já passou.`, { key: 'pular-vez' }); return; }
+      pular(m);
+    } });
+  }
+
+  /* ---------------- os lembretes por rodada ---------------- */
+  const lembretes = () => Store.scene().lembretes || [];
+  const vale = (l, r) => r === l.r || (l.cada > 0 && r > l.r && (r - l.r) % l.cada === 0);
+  const ocultos = () => Store.scene().tokens.filter(t => t.hidden && !t.prop);
+  const textoQuando = l => `Rodada ${l.r}${l.cada > 0 ? `, depois a cada ${l.cada === 1 ? 'rodada' : l.cada + ' rodadas'}` : ''}`;
+  function gravarLembretes(lista, rot) { Store.tx(rot, () => Store.scn({ lembretes: lista.length ? lista : undefined })); }
+  function lembreteBox(l0) {
+    const sc = Store.scene(), novo = !l0;
+    const l = Object.assign({ txt: '', r: Math.max(1, (sc.turn.round || 1) + (sc.turn.on ? 1 : 0)), cada: 0, mesa: false, toks: [] }, l0 ? JSON.parse(JSON.stringify(l0)) : {});
+    const marc = new Set(l.toks || []);
+    const txt = h('textarea', { class: 'in', id: 'lb-txt', rows: 2, maxlength: 200, placeholder: 'Reforços chegam pela porta norte', text: l.txt });
+    const r = h('input', { type: 'number', class: 'in num', id: 'lb-r', min: 1, max: 999, value: l.r, 'aria-label': 'Rodada' });
+    const cada = h('input', { type: 'number', class: 'in num', id: 'lb-cada', min: 0, max: 99, value: l.cada || '', placeholder: '–', 'aria-label': 'Repetir a cada N rodadas' });
+    let naMesa = !!l.mesa;
+    const toks = ocultos();
+    UI.modal({ title: novo ? 'Novo lembrete' : 'Mudar o lembrete', body: h('div', { class: 'stack', id: 'lembrete-tela' },
+      K.field('O que lembrar', txt, 'stack'),
+      h('div', { class: 'row mt-row' }, K.field('Na rodada', r, 'stack'), K.field('Repetir a cada', cada, 'stack'), h('span', { class: 'note', text: 'rodadas (vazio: uma vez só)' })),
+      K.toggle('lb-mesa', naMesa, v => { naMesa = v; }, 'Mostrar o texto à mesa'),
+      toks.length ? K.field('Tokens que aparecem (ocultos agora)', h('ul', { class: 'mt-lista' }, toks.map(t => h('li', null, h('label', { class: 'mt-ck' },
+        h('input', { type: 'checkbox', id: 'lb-t-' + t.id, checked: marc.has(t.id), onchange: ev => { if (ev.target.checked) marc.add(t.id); else marc.delete(t.id); } }),
+        K.tokenAvatar(t, 20), h('span', { text: t.name }))))), 'stack')
+        : K.note('Para um lembrete trazer tokens à vista, deixe-os ocultos no mapa antes.'),
+      K.note('Na rodada certa, uma janela mostra o lembrete só para você; nada acontece sem o seu clique.')),
+      actions: [{ label: 'Cancelar' }, { label: novo ? 'Criar' : 'Salvar', kind: 'primary', run: () => {
+        const c = cleanLembrete({ id: l.id, txt: txt.value, r: r.value, cada: cada.value, mesa: naMesa, toks: [...marc] });
+        if (!c) { toast('Escreva o que lembrar.'); return false; }
+        const lista = lembretes().slice(), k = lista.findIndex(x => x.id === c.id);
+        if (k >= 0) lista[k] = c; else lista.push(c);
+        gravarLembretes(lista, novo ? 'Novo lembrete' : 'Mudar o lembrete');
+        toast(novo ? `Lembrete criado: ${textoQuando(c).toLowerCase()}.` : 'Lembrete salvo.', { action: 'Desfazer', run: Tools.undo });
+      } }] });
+  }
+  function revelar(ids) {
+    const sc = Store.scene(), toks = ids.map(id => Store.get('tokens', id)).filter(t => t && t.hidden);
+    if (!toks.length) return [];
+    Store.tx('Revelar tokens', () => {
+      for (const t of toks) Store.upd('tokens', t.id, { hidden: false });
+      if (sc.turn.on) Act.turnEntrar(toks.map(t => Store.get('tokens', t.id)));      // (no mesmo passo de desfazer)
+    });
+    return toks;
+  }
+  function fazerLembrete(l) {
+    const vistos = l.toks ? revelar(l.toks) : [];
+    if (l.mesa) mesa(l.txt, '');
+    return vistos.length;
+  }
+  // a rodada chegou (no aparelho do mestre, depois de passar a vez): os lembretes dela
+  function naRodada(r) {
+    const devidos = lembretes().filter(l => vale(l, r));
+    if (!devidos.length) return;
+    if (typeof Som !== 'undefined' && Som.aviso) Som.aviso('zona');
+    // (outra janela aberta, como a tela das barrinhas: o aviso espera um clique, sem fechá-la)
+    if (UI.modalOpen()) { toast(`Rodada ${r}: ${devidos.length === 1 ? '1 lembrete' : devidos.length + ' lembretes'}.`, { key: 'lembretes', long: true, action: 'Ver', run: () => naRodada(r) }); return; }
+    const acao = l => !!((l.toks && l.toks.length) || l.mesa);
+    UI.modal({ title: `Rodada ${r}: ${devidos.length === 1 ? 'lembrete' : devidos.length + ' lembretes'}`, body: h('div', { id: 'lembrete-aviso' },
+      h('ul', { class: 'mt-lista' }, devidos.map(l => h('li', { class: 'mt-lb' }, h('b', { text: l.txt }),
+        h('span', { class: 'note', text: [l.toks && l.toks.length ? `${l.toks.length === 1 ? '1 token aparece' : l.toks.length + ' tokens aparecem'}` : '', l.mesa ? 'o texto vai à mesa' : ''].filter(Boolean).join(' e ') || 'só um lembrete' }))))),
+      actions: [{ label: devidos.some(acao) ? 'Agora não' : 'Ok', kind: devidos.some(acao) ? 'ghost' : 'primary' },
+        devidos.some(acao) ? { label: 'Fazer', kind: 'primary', run: () => {
+          let n = 0;
+          for (const l of devidos) n += fazerLembrete(l);
+          toast(n ? `${n === 1 ? '1 token apareceu' : n + ' tokens apareceram'}${Store.scene().turn.on ? ' e entraram no combate' : ''}.` : 'Feito.', { action: n ? 'Desfazer' : null, run: n ? Tools.undo : null });
+        } } : null] });
+  }
+  function secaoLembretes() {
+    if (!isGM()) return null;
+    const lista = lembretes(), r = Store.scene().turn.round || 1;
+    return K.sec('t-lembretes', 'Lembretes por rodada', lista.length > 0,
+      lista.length ? h('ul', { class: 'mt-lista', id: 'lb-lista' }, lista.map(l => h('li', { class: 'mt-lb-li', id: 'lb-' + l.id },
+        h('div', { class: 'mt-lb-t' }, h('b', { text: l.txt }), h('span', { class: 'note', text: textoQuando(l) + (l.toks && l.toks.length ? ` · ${l.toks.length} aparece${l.toks.length > 1 ? 'm' : ''}` : '') + (l.mesa ? ' · vai à mesa' : '') })),
+        K.iconBtn('edit', 'Mudar o lembrete', () => lembreteBox(l), { size: 14, id: 'lb-ed-' + l.id }),
+        K.iconBtn('trash', 'Apagar o lembrete', () => { gravarLembretes(lembretes().filter(x => x.id !== l.id), 'Apagar lembrete'); toast('Lembrete apagado.', { action: 'Desfazer', run: Tools.undo }); }, { size: 14, id: 'lb-x-' + l.id }))))
+        : K.note('Nenhum lembrete. Ex.: “Rodada 3: reforços chegam”, “a cada 2 rodadas: o vulcão cospe fogo”.'),
+      h('div', { class: 'row' }, K.btn('Novo lembrete…', () => lembreteBox(null), { icon: 'plus', id: 'lb-novo' }),
+        lista.some(l => vale(l, r)) ? K.btn('Ver os desta rodada', () => naRodada(r), { id: 'lb-agora' }) : null));
+  }
+
+  /* ---------------- os momentos preparados ---------------- */
+  const momentos = () => Store.scene().momentos || [];
+  function gravarMomentos(lista, rot) { Store.tx(rot, () => Store.scn({ momentos: lista.length ? lista : undefined })); }
+  function resumoMomento(m) {
+    const p = [];
+    if (m.toks) p.push(`${m.toks.length} ${m.toks.length === 1 ? 'token aparece' : 'tokens aparecem'}`);
+    if (m.tone) p.push((TONES.find(x => x.id === m.tone) || {}).n.toLowerCase());
+    if (m.luzes) { const on = Object.values(m.luzes).filter(Boolean).length, off = Object.keys(m.luzes).length - on; if (on) p.push(`acende ${on} luz${on > 1 ? 'es' : ''}`); if (off) p.push(`apaga ${off} luz${off > 1 ? 'es' : ''}`); }
+    if (m.nevoa) p.push(m.nevoa === 'revelar' ? 'revela a névoa' : 'cobre com névoa');
+    if (m.som) p.push('som: ' + (SONS_MOMENTO.find(x => x.id === m.som) || {}).n.toLowerCase());
+    if (m.zonas) p.push(`${m.zonas.length} zona${m.zonas.length > 1 ? 's' : ''}`);
+    if (m.txt) p.push('narração');
+    return p.join(' · ') || 'nada ainda';
+  }
+  function momentoBox(m0) {
+    const sc = Store.scene(), novo = !m0;
+    const m = Object.assign({ nome: '', toks: [], luzes: {}, zonas: [] }, m0 ? JSON.parse(JSON.stringify(m0)) : {});
+    const toks = new Set(m.toks || []), zonas = new Set(m.zonas || []), luzes = Object.assign({}, m.luzes || {});
+    let tone = m.tone || '', nevoa = m.nevoa || '', som = m.som || '';
+    const nome = h('input', { type: 'text', class: 'in', id: 'mo-nome', maxlength: 60, value: m.nome, placeholder: 'A emboscada', autocomplete: 'off' });
+    const txt = h('textarea', { class: 'in', id: 'mo-txt', rows: 2, maxlength: 300, placeholder: 'O chão treme e as tochas se apagam…', text: m.txt || '' });
+    const ck = (id, on, fn, kids) => h('li', null, h('label', { class: 'mt-ck' }, h('input', { type: 'checkbox', id, checked: on, onchange: ev => fn(ev.target.checked) }), ...kids));
+    const ocs = sc.tokens.filter(t => (t.hidden || toks.has(t.id)) && !t.prop);
+    const zs = sc.effects.filter(e => e.gm || zonas.has(e.id));
+    const sel = (id, v, ops, fn) => K.inSelect(id, v, ops, fn);
+    UI.modal({ title: novo ? 'Novo momento' : 'Mudar o momento', wide: true, body: h('div', { class: 'stack', id: 'momento-tela' },
+      K.field('Nome', nome, 'stack'),
+      K.field('Tokens que aparecem', ocs.length ? h('ul', { class: 'mt-lista mt-cols' }, ocs.map(t => ck('mo-t-' + t.id, toks.has(t.id), v => { if (v) toks.add(t.id); else toks.delete(t.id); }, [K.tokenAvatar(t, 20), h('span', { text: t.name })])))
+        : K.note('Deixe os tokens ocultos no mapa para que eles apareçam no momento.'), 'stack'),
+      h('div', { class: 'row' },
+        K.field('Hora do dia', sel('mo-tone', tone, [['', 'Como estiver']].concat(TONES.map(x => [x.id, x.n])), v => { tone = v; }), 'stack'),
+        K.field('Névoa', sel('mo-nevoa', nevoa, [['', 'Como estiver'], ['revelar', 'Revelar tudo'], ['esconder', 'Cobrir tudo']], v => { nevoa = v; }), 'stack'),
+        K.field('Som para todos', sel('mo-som', som, [['', 'Nenhum']].concat(SONS_MOMENTO.map(x => [x.id, x.n])), v => { som = v; }), 'stack')),
+      sc.lights.length ? K.field('Luzes', h('ul', { class: 'mt-lista mt-cols' }, sc.lights.map(l => h('li', { class: 'mt-luz' }, h('span', { text: l.name || 'Luz' }),
+        sel('mo-l-' + l.id, luzes[l.id] === true ? 'on' : luzes[l.id] === false ? 'off' : '', [['', 'Como estiver'], ['on', 'Acender'], ['off', 'Apagar']], v => { if (v === 'on') luzes[l.id] = true; else if (v === 'off') luzes[l.id] = false; else delete luzes[l.id]; })))), 'stack') : null,
+      zs.length ? K.field('Zonas que aparecem (escondidas agora)', h('ul', { class: 'mt-lista mt-cols' }, zs.map(e => ck('mo-z-' + e.id, zonas.has(e.id), v => { if (v) zonas.add(e.id); else zonas.delete(e.id); }, [h('span', { text: (FX.P[e.fx] || FX.P.fogo).n })]))), 'stack') : null,
+      K.field('Narração à mesa', txt, 'stack'),
+      K.note('“Soltar” faz tudo de uma vez, com Desfazer. O som toca em quem estiver com o som da mesa ligado.')),
+      actions: [{ label: 'Cancelar' }, { label: novo ? 'Criar' : 'Salvar', kind: 'primary', run: () => {
+        const c = cleanMomento({ id: m.id, nome: nome.value, toks: [...toks], tone, luzes, nevoa, som, zonas: [...zonas], txt: txt.value });
+        const lista = momentos().slice(), k = lista.findIndex(x => x.id === c.id);
+        if (k >= 0) lista[k] = c; else lista.push(c);
+        gravarMomentos(lista, novo ? 'Novo momento' : 'Mudar o momento');
+        toast(novo ? `Momento “${c.nome}” pronto: ${resumoMomento(c)}.` : 'Momento salvo.', { action: 'Desfazer', run: Tools.undo });
+      } }] });
+  }
+  function soltar(m) {
+    const sc = Store.scene();
+    const toks = (m.toks || []).map(id => Store.get('tokens', id)).filter(t => t && t.hidden);
+    Store.tx('Soltar: ' + m.nome, () => {
+      for (const t of toks) Store.upd('tokens', t.id, { hidden: false });
+      const p = {};
+      if (m.tone && m.tone !== sc.tone) { p.tone = m.tone; p.light = TONES.find(x => x.id === m.tone).light; }
+      if (m.som) p.momSom = { k: m.som, n: ((sc.momSom && sc.momSom.n) || 0) + 1 };
+      if (Object.keys(p).length) Store.scn(p);
+      for (const l of sc.lights.slice()) if (m.luzes && typeof m.luzes[l.id] === 'boolean' && !!l.on !== m.luzes[l.id]) Store.upd('lights', l.id, { on: m.luzes[l.id] });
+      for (const e of sc.effects.slice()) if (m.zonas && m.zonas.includes(e.id) && e.gm) Store.upd('effects', e.id, { gm: false });
+      if (m.nevoa) { for (const op of sc.fogOps.slice()) Store.del('fogOps', op.id); Store.add('fogOps', { id: uid('fg'), m: m.nevoa === 'revelar' ? 'r' : 'h', k: 'all' }); }
+      if (toks.length && Store.scene().turn.on) Act.turnEntrar(toks.map(t => Store.get('tokens', t.id)));      // (no mesmo passo de desfazer)
+    });
+    if (m.som) tocarMomento(m.som);
+    if (m.txt) mesa(m.txt, '');
+    toast(`Momento “${m.nome}”: ${resumoMomento(m)}.`, { key: 'momento', long: true, action: 'Desfazer', run: Tools.undo });
+  }
+  function secaoMomentos() {
+    if (!isGM()) return null;
+    const lista = momentos();
+    return K.secR('c-momentos', 'Momentos preparados', lista.length > 0, lista.length ? `${lista.length} pronto${lista.length > 1 ? 's' : ''}` : '',
+      lista.length ? h('ul', { class: 'mt-lista', id: 'mo-lista' }, lista.map(m => h('li', { class: 'mt-mo', id: 'mo-' + m.id },
+        h('div', { class: 'mt-lb-t' }, h('b', { text: m.nome }), h('span', { class: 'note', text: resumoMomento(m) })),
+        K.btn('Soltar', () => soltar(m), { kind: 'primary small', icon: 'play', id: 'mo-soltar-' + m.id }),
+        K.iconBtn('edit', 'Mudar o momento', () => momentoBox(m), { size: 14, id: 'mo-ed-' + m.id }),
+        K.iconBtn('trash', 'Apagar o momento', () => { gravarMomentos(momentos().filter(x => x.id !== m.id), 'Apagar momento'); toast('Momento apagado.', { action: 'Desfazer', run: Tools.undo }); }, { size: 14, id: 'mo-x-' + m.id }))))
+        : K.note('Prepare antes da sessão o que vai acontecer de uma vez: tokens que aparecem, a luz, a névoa, um som e a narração.'),
+      h('div', { class: 'row' }, K.btn('Novo momento…', () => momentoBox(null), { icon: 'plus', id: 'mo-novo' })));
+  }
+
+  /* ---------------- o som do momento, em todos os aparelhos ---------------- */
+  let somVisto = null;                                       // "cena:n" do último som já tocado (ou visto ao chegar)
+  function tocarMomento(k) { if (typeof Som !== 'undefined' && Som.momento) Som.momento(k); }
+  function vigiar() {
+    const sc = Store.scene();
+    if (!sc) return;
+    const chave = sc.momSom ? sc.id + ':' + sc.momSom.n : sc.id + ':0';
+    if (somVisto === null || somVisto.split(':')[0] !== sc.id) { somVisto = chave; return; }      // (ao chegar na cena, não toca o que já passou)
+    if (chave === somVisto) return;
+    somVisto = chave;
+    if (sc.momSom && !isGM()) tocarMomento(sc.momSom.k);     // (o mestre já tocou ao soltar)
+  }
+  function marcarSomVisto() { const sc = Store.scene(); if (sc) somVisto = sc.momSom ? sc.id + ':' + sc.momSom.n : sc.id + ':0'; }
+
+  /* ---------------- o grupo Mestre na barra da esquerda ----------------
+     Quatro botões (só o mestre): a vez, os momentos, os lembretes e a cura. Cada um abre um painel pequeno ao lado da
+     barra, sem trocar de aba; um clique fora ou o Esc fecha. */
+  let aberto = null;
+  const GRUPO = [['vez', 'turns', 'Controle da vez'], ['momentos', 'play', 'Momentos preparados'], ['lembretes', 'clock', 'Lembretes por rodada'], ['cura', 'heart', 'Cura e energias']];
+  const fecharPainel = () => { if (!aberto) return; aberto = null; UI.refresh(); };
+  // um botão do painel: fecha o painel e faz
+  const acao = (rot, fn, o) => K.btn(rot, () => { aberto = null; UI.refresh(); fn(); }, Object.assign({ kind: 'small' }, o || {}));
+  const linha = (...kids) => h('div', { class: 'mt-pop-l' }, ...kids);
+  const selTokens = () => selOf('tokens').filter(t => !t.prop);
+  function painelVez() {
+    const tn = Store.scene().turn, e = vezDe(tn), sel = selTokens(), fora = sel.filter(t => !inTurn(tn, t.id));
+    if (!tn.list.length) return [K.note('Ninguém na ordem ainda.'), linha(acao('Abrir a aba Turnos', () => UI.openTab('turn'), { icon: 'turns', id: 'mtp-aba' }))];
+    return [
+      h('p', { class: 'mt-pop-s', id: 'mtp-vez-txt', text: tn.on ? `Rodada ${tn.round || 1}${e ? ' · vez de ' + turnName(e) : ''}` : 'Combate parado' }),
+      linha(K.btn(tn.on ? 'Próximo turno' : 'Iniciar o combate', () => UI.passarTurno(1), { kind: 'primary small', icon: 'next', id: 'mtp-prox' })),
+      e ? linha(acao('Atrasar a vez…', atrasarBox, { icon: 'clock', id: 'mtp-atrasar' }), K.btn('Pular a vez', () => pular(), { kind: 'small', id: 'mtp-pular' })) : null,
+      tn.on ? linha(acao(fora.length ? `Entrar no combate (${fora.length})` : 'Entrar no combate', () => entrar(fora), { icon: 'plus', id: 'mtp-entrar', disabled: !fora.length, title: 'Os tokens selecionados rolam e entram no lugar que a iniciativa dá' })) : null,
+      !tn.on || (tn.round || 1) === 1 ? linha(acao('Rodada de surpresa…', surpresaBox, { icon: 'eyeOff', id: 'mtp-surpresa' })) : null,
+      linha(acao('Abrir a aba Turnos', () => UI.openTab('turn'), { kind: 'small ghost', id: 'mtp-aba' })),
+    ];
+  }
+  function painelMomentos() {
+    const lista = momentos();
+    return [
+      lista.length ? h('ul', { class: 'mt-lista' }, lista.map(m => h('li', { class: 'mt-mo' }, h('div', { class: 'mt-lb-t' }, h('b', { text: m.nome }), h('span', { class: 'note', text: resumoMomento(m) })),
+        acao('Soltar', () => soltar(m), { kind: 'primary small', icon: 'play', id: 'mtp-soltar-' + m.id }))))
+        : K.note('Nenhum momento preparado nesta cena.'),
+      linha(acao('Novo momento…', () => momentoBox(null), { icon: 'plus', id: 'mtp-mo-novo' })),
+    ];
+  }
+  function painelLembretes() {
+    const lista = lembretes(), r = Store.scene().turn.round || 1;
+    return [
+      lista.length ? h('ul', { class: 'mt-lista' }, lista.map(l => h('li', { class: 'mt-lb-li' }, h('div', { class: 'mt-lb-t' }, h('b', { text: l.txt }), h('span', { class: 'note', text: textoQuando(l) })),
+        K.iconBtn('edit', 'Mudar o lembrete', () => { aberto = null; UI.refresh(); lembreteBox(l); }, { size: 14, id: 'mtp-lb-' + l.id }))))
+        : K.note('Nenhum lembrete nesta cena.'),
+      linha(acao('Novo lembrete…', () => lembreteBox(null), { icon: 'plus', id: 'mtp-lb-novo' }),
+        lista.some(l => vale(l, r)) ? acao('Ver os desta rodada', () => naRodada(r), { id: 'mtp-lb-agora' }) : null),
+    ];
+  }
+  function painelCura() {
+    const X = UI.mestreKit, sel = selTokens(), sc = Store.scene();
+    return [
+      linha(acao(sel.length ? `Cura total (${sel.length})` : 'Cura total', () => X.healToast(sel), { icon: 'heart', id: 'mtp-cura', disabled: !sel.length, title: sel.length ? 'Enche as barras dos selecionados (as trancadas ficam)' : 'Selecione os tokens no mapa' })),
+      linha(acao('Restaurar energias…', X.janelaRestaurar, { icon: 'rest', id: 'mtp-restaurar', title: 'Com tokens selecionados, só eles; sem seleção, todos da cena. Mostra antes o que muda.' })),
+      sc.turn.list.length ? linha(acao('Tela das barrinhas', () => X.telaBarrinhas('Barrinhas', X.tokensDoCombate(sc)), { icon: 'sliders', id: 'mtp-barrinhas' })) : null,
+      K.note(sel.length ? '' : 'A cura vale para os tokens selecionados no mapa.'),
+    ];
+  }
+  const PAINEIS = { vez: painelVez, momentos: painelMomentos, lembretes: painelLembretes, cura: painelCura };
+  function grupoDaBarra() {
+    if (!isGM()) return [];
+    const out = [h('span', { class: 'rail-sep' }), h('span', { class: 'rail-g', text: 'Mestre', 'aria-hidden': 'true' })];
+    for (const [id, ic, nome] of GRUPO) {
+      const on = aberto === id;
+      out.push(h('div', { class: 'rail-junto mt-rail' },
+        h('button', { type: 'button', class: 'tool' + (on ? ' on' : ''), id: 'mt-rail-' + id, title: nome, 'aria-label': nome, 'aria-expanded': String(on), onclick: () => { aberto = on ? null : id; UI.refresh(); } }, icon(ic, 20)),
+        on ? h('div', { class: 'rail-lista mt-pop', role: 'dialog', 'aria-label': nome, id: 'mt-pop-' + id }, h('span', { class: 'rail-lista-t', text: nome }), ...PAINEIS[id]().filter(Boolean)) : null));
+    }
+    return out;
+  }
+  // um clique fora do painel (ou o Esc) fecha
+  document.addEventListener('pointerdown', ev => { if (aberto && !ev.target.closest('.mt-rail') && !ev.target.closest('.modal, .scrim, .toast')) fecharPainel(); }, true);
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && aberto && !UI.modalOpen()) fecharPainel(); });
+
+  return { grupoDaBarra, fecharPainel, painelAberto: () => aberto, botoesDaVez, botoesDoCombate, depoisDaVez, pular, atrasarBox, surpresaBox, entrar, naRodada, secaoLembretes, lembreteBox, secaoMomentos, momentoBox, soltar, vigiar, marcarSomVisto, mesa, PERDE_VEZ };
 })();
 /* ---------------------------------------------------------------
    11. BOOT — cena de exemplo e inicialização
@@ -39501,7 +40080,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

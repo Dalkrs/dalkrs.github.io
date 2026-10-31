@@ -12,7 +12,7 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FALHOU: ' + m)
   const P = o.page, E = (f, a) => P.evaluate(f, a), w = ms => P.waitForTimeout(ms);
   const abertos = () => E(() => [...document.querySelectorAll('.tab-body > details.sec')].map(d => d.id + (d.open ? '+' : '-')).join(' '));
   try {
-    ok(await E(() => [...document.querySelectorAll('.rail-g')].map(x => x.textContent).join()) === 'Jogo,Peças,Desenho,Mapa', 'o trilho em quatro grupos com nome');
+    ok(await E(() => [...document.querySelectorAll('.rail-g')].map(x => x.textContent).join()) === 'Jogo,Peças,Desenho,Mapa,Mestre', 'o trilho em cinco grupos com nome (o Mestre, do lote 47)');
     ok(await E(() => [...document.querySelectorAll('.rail > .tool, .rail .tool.junto')].map(b => b.id.replace('tool-', '')).join()) === 'select,pan,ruler,ping,token,obj,fx,grupo-desenho,wall,light,fog,terrain', 'as ferramentas, com o desenho num botão só');
     await P.click('#tool-grupo-desenho'); await w(100);
     ok(await P.locator('.rail-lista').isVisible() && (await P.locator('.rail-lista').innerText()).replace(/\s+/g, ' ').includes('Retângulo R'), 'o botão do Desenho abre a lista com os nomes e as teclas');
@@ -40,7 +40,7 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FALHOU: ' + m)
     await E(() => { __tc.App.sel = []; document.activeElement.blur(); }); await P.click('#cv', { position: { x: 20, y: 20 } }).catch(() => {});
     await P.keyboard.press('4'); await w(200);
     ok(await E(() => __tc.App.tab) === 'scene', 'a tecla 4 abre a aba Cena');
-    ok(await abertos() === 'c-scene- c-bg- c-grid- c-amb+ c-light- c-relevo- c-feridos- c-perm-', 'na aba Cena, só o Ambiente aberto: ' + await abertos());
+    ok(await abertos() === 'c-scene- c-bg- c-grid- c-amb+ c-light- c-momentos- c-relevo- c-feridos- c-perm-', 'na aba Cena, só o Ambiente aberto: ' + await abertos());
     await P.click('#c-bg summary'); await P.click('#c-light summary'); await w(120);
     ok(/c-bg\+/.test(await abertos()) && /c-light\+/.test(await abertos()) && /c-amb\+/.test(await abertos()), 'vários blocos abertos ao mesmo tempo');
     await P.keyboard.press('2'); await w(150);

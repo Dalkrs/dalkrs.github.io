@@ -2,6 +2,55 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.10.31-3",
+      "data": "2026-10-31",
+      "titulo": "Mais controle nas cenas",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Barras que só mudam à mão (como o Chamado de Selene, a Voz da Graça e o Reforjar o Destino) não enchem mais quando as energias são restauradas no fim do combate."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Na faixa de baixo das Cenas, um clique na condição tira ela do token, com Desfazer. Vale para o seu token também."
+        },
+        {
+          "tipo": "novo",
+          "texto": "No combate, a ordem mostra quem foi surpreendido: na 1ª rodada a vez passa por cima dele."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cadeado “Só à mão” em cada barra (nas opções da barra): trancada, a Cura total, o Restaurar energias e o começo do combate não mexem nela. As barras especiais da ficha com a regra “Só à mão” já vêm trancadas; as do painel de barras seguem as regras delas e a Cura total não mexe nelas."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Aba Turnos: “Atrasar a vez…” (escolha depois de quem ele joga; ele fica nesse lugar), “Pular a vez” (a mesa ao vivo fica sabendo; na vez de quem está Atordoado, Paralisado ou Inconsciente, o aviso oferece pular) e “Entrar no combate” (o token rola e entra no lugar certo, sem bagunçar a ordem)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Rodada de surpresa: marque quem foi surpreendido e ele não joga na 1ª rodada."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Lembretes por rodada (aba Turnos): “Rodada 3: reforços chegam”, uma vez ou a cada N rodadas. Na rodada certa, uma janela só para o mestre mostra o lembrete; “Fazer” revela os tokens escolhidos (que entram na ordem) e manda o texto à mesa, se ele pediu."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Grupo “Mestre” na barra da esquerda das Cenas: o controle da vez, os momentos preparados, os lembretes por rodada e a cura e as energias, cada um num painel ao lado da barra, sem trocar de aba."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Momentos preparados (aba Cena): junte tokens que aparecem, a hora do dia, luzes que acendem ou apagam, a névoa, um som para todos (trovão, gongo, tambores, sino, tremor, mistério), zonas escondidas e uma narração à mesa. “Soltar” faz tudo de uma vez, com Desfazer."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.31-2",
       "data": "2026-10-31",
       "titulo": "Doze puzzles novos",

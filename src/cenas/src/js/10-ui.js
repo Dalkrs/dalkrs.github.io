@@ -1042,6 +1042,8 @@ const UI = (() => {
           onclick: () => { listaDesenho = !listaDesenho; renderRail(); if (listaDesenho) { const b = el.rail.querySelector('.rail-item.on') || el.rail.querySelector('.rail-item'); if (b) b.focus(); } } }, icon(mostra.i, 20), h('span', { class: 'junto-seta', 'aria-hidden': 'true' })),
         lista));
     });
+    // (lote 47) o grupo Mestre: a vez, os momentos, os lembretes e a cura, num painel pequeno ao lado da barra
+    if (typeof Mestre !== 'undefined') kids.push(...Mestre.grupoDaBarra());
     el.rail.replaceChildren(...kids);
   }
 
@@ -1374,6 +1376,15 @@ const UI = (() => {
     if (id === 'clone' && !t.clone) { const n = Act.cloneDesfazer(t.id); toast(n ? `A condição Clone saiu de ${tokName(t)}: ${n === 1 ? 'a cópia sumiu' : `as ${n} cópias sumiram`}.` : `A condição Clone saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo }); }
     else { Act.condToggle([t], id); if (id === 'ferida') toast(`A ferida permanente saiu de ${tokName(t)}: a cura volta a ir até o máximo.`, { action: 'Desfazer', run: Tools.undo }); }     // (a cópia que perde o Clone some, e o aviso vem das regras dele)
     if (depois) depois();
+  }
+  /* (lote 47) Tirar uma condição pela faixa de baixo: um clique, com Desfazer. As que levam algo junto (a ferida, o
+     Clone, o Duplicado, as de lado, o Imbuído de Mana) saem pelo mesmo caminho da janela de condições. */
+  function tirarCondHud(t, c) {
+    t = Store.get('tokens', t.id) || t;
+    if (!t.conds.includes(c.id)) return;
+    if (['imbuidoMana', 'duplicado', 'clone', 'ferida'].includes(c.id) || COND_LADO.has(c.id)) { condJanela(c.id, t, true); return; }
+    Act.condToggle([t], c.id);
+    toast(`${c.n} saiu de ${tokName(t)}.`, { action: 'Desfazer', run: Tools.undo });
   }
   /* (lote 28) Imbuído de Mana: o custo fixo de cada ataque, a barra que paga (a Mana: o mestre escolhe) e com o que o
      ataque rola quando não há mana (o atributo normal). Num token sem ficha, os dois valores são digitados aqui. Pôr
@@ -1748,6 +1759,7 @@ const UI = (() => {
       rows.push(h('div', { class: 'bar-row' + (b.on ? '' : ' off') },
         full ? h('input', { type: 'checkbox', id: `tk-b${i}-on`, class: 'ck', checked: b.on, title: 'Usar esta barra', 'aria-label': 'Usar a barra ' + b.n, onchange: e => Act.barPatch(t, i, { on: e.target.checked }) }) : null,
         h('span', { class: 'bar-dot' + (b.k === 'pts' ? ' pt' : ''), style: { background: b.c } }),
+        Fichas.soAMao(t, b) ? h('span', { class: 'bar-lock', id: `tk-b${i}-lock`, title: `${b.n}: só à mão (a Cura total e o Restaurar energias não mexem nela)` }, icon('lock', 12)) : null,
         full ? inText(`tk-b${i}-n`, b.n, v => Act.barPatch(t, i, { n: v.trim().slice(0, 24) || b.n }), { class: 'in bar-n', 'aria-label': 'Nome da barra', maxlength: 24 }) : h('span', { class: 'bar-n ro', text: b.n }),
         val, h('span', { class: 'bar-sl', text: '/' }),
         full ? inNum(`tk-b${i}-m`, b.m, v => maxDaBarra(t, i, v), { min: 0, label: b.n + ' máximo', title: b.ref && t.char && !t.clone && Fichas.on() ? 'O máximo vem da ficha: mudar aqui muda também a ficha' : undefined }) : h('span', { class: 'bar-m', text: fmt(b.m) }),
@@ -1766,6 +1778,9 @@ const UI = (() => {
         full && isGM() ? h('button', { type: 'button', class: 'lnk', id: `tk-b${i}-podm`, text: 'Mudar…', onclick: () => feridaBox(t, i) }) : null));
       if (open) rows.push(h('div', { class: 'bar-opt' },
         field('Cor', inColor(`tk-b${i}-c`, b.c, v => setBars({ c: v }), 'Cor da barra ' + b.n)),
+        // (lote 47) o cadeado: nada automático mexe na barra trancada
+        toggle(`tk-b${i}-mao`, Fichas.soAMao(t, b), v => Act.barPatch(t, i, { mao: v }), 'Só à mão'),
+        note('Trancada, a Cura total e o Restaurar energias não mexem nela: muda só quando alguém digita ou usa o painel.'),
         field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
         field('Os outros veem', inSelect(`tk-b${i}-vis`, b.vis || '', [['', 'O mesmo que o token'], ['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => Act.barPatch(t, i, { vis: v }), { title: 'O que vê desta barra quem não é dono do token' })),
         // (lote 15) a barra que só aparece no token com o mouse por cima (as especiais da ficha começam assim)
@@ -2812,7 +2827,7 @@ const UI = (() => {
      rolagens da mesa ao vivo que ainda não foram anotadas —: o próximo combate começa do zero. Um passo de desfazer. */
   function encerrarCombate() {
     const tinha = Store.scene().turn.list.some(e => e.init != null) || App.iniRolls.size > 0;
-    Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; } }, 'Encerrar combate');
+    Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; delete e.sur; } }, 'Encerrar combate');
     App.iniRolls.clear();
     toast(tinha ? 'Combate encerrado: a iniciativa de todos foi zerada para o próximo.' : 'Combate encerrado.', { action: 'Desfazer', run: Tools.undo });
     // (lote 44) o painel de barras: cada barra faz o fim dela (o aviso tem o Desfazer dele)
@@ -2846,6 +2861,8 @@ const UI = (() => {
         const cs = vis.map(x => tokC(x, sc));
         Render.centerOn(cs.reduce((a, c) => a + c[0], 0) / cs.length, cs.reduce((a, c) => a + c[1], 0) / cs.length);
       };
+      // (lote 47) surpreendido: não joga na 1ª rodada
+      const sur = e.sur && (!tn.on || (tn.round || 1) === 1) ? h('span', { class: 'turn-sur', text: 'surpreso', title: 'Foi surpreendido: não joga na 1ª rodada' }) : null;
       const reac = e.reac ? h('span', { class: 'turn-reac', text: 'reação', title: 'Esperando para reagir: segurou a vez para agir fora de ordem' }) : null;
       const inv = gm && e.inv ? h('span', { class: 'turn-inv', text: 'invisível', title: 'Os jogadores não veem esta linha; na vez dela, só ficam sabendo que o turno está com o mestre' }) : null;
       rows.push(h('li', { class: 'turn' + (cur ? ' cur' : '') + (band ? ' band' : '') + (e.reac ? ' reac' : '') + (gm && e.inv ? ' inv' : ''), id: `tl-${e.id}` },
@@ -2860,7 +2877,7 @@ const UI = (() => {
             band ? h('span', { class: 'turn-g', text: `grupo · ${membros.length}`, title: membros.map(x => tokName(x)).join(', ') || 'Ninguém nesta faixa agora' }) : null,
             rolled ? h('span', { class: 'turn-r', text: `(${rolled})`, title: `Rolagem: ${e.init} = ${rolled}` }) : null,
             cur ? h('span', { class: 'turn-now', text: 'vez' }) : null,
-            reac, inv)),
+            sur, reac, inv)),
         gm ? inNum(`tn-${e.id}`, e.init == null ? '' : e.init, v => Act.turnPatch(x => { const y = x.list.find(z => z.id === e.id); if (y) { y.init = v; y.roll = null; } }, 'Iniciativa'),
           { step: 1, label: 'Iniciativa de ' + label, title: rolled ? `Iniciativa de ${label}: ${e.init} (${rolled})` : 'Iniciativa de ' + label })
           : h('span', { class: 'turn-i', text: e.init == null ? '–' : fmt(e.init) }),
@@ -2897,6 +2914,8 @@ const UI = (() => {
         gm ? h('div', { class: 'row tight' },
           iconBtn('prev', 'Turno anterior (o que já foi descontado não volta; para isso, use Desfazer)', () => step(-1), { disabled: !tn.list.length, id: 'turnPrev' }),
           btn('Próximo turno', () => step(1), { kind: 'primary', icon: 'next', disabled: !tn.list.length, id: 'turnNext' })) : null),
+      // (lote 47) atrasar e pular a vez de quem está jogando
+      Mestre.botoesDaVez(),
       // na vez de uma linha invisível, o jogador só fica sabendo que o turno está com o mestre
       !gm && vezDoMestre(tn) ? h('p', { class: 'turn-mestre', id: 'turnMestre' }, icon('eyeOff', 14), h('span', { text: 'O turno está com o mestre.' })) : null,
       rows.length ? h('ol', { class: 'turns' }, rows) : h('p', { class: 'muted', text: gm ? 'Ninguém na ordem ainda. Selecione tokens no mapa e adicione-os aqui.' : 'O mestre ainda não montou a ordem de turnos.' }),
@@ -2906,13 +2925,17 @@ const UI = (() => {
         btn('Entrada avulsa', looseBox, { id: 'turnLoose', title: 'Põe na ordem algo que não tem token no mapa: armadilha, reforço, evento' })) : null,
       gm && tn.list.length ? h('div', { class: 'row' },
         btn('Rolar iniciativa', rollAll, { icon: 'die', id: 'turnRoll', title: missing ? 'Rola 1d20 + Iniciativa para quem ainda não tem iniciativa e ordena a lista' : 'Todos já têm iniciativa: rolar de novo troca os valores (a mesa pergunta antes)' }),
-        btn(tn.on ? 'Encerrar' : 'Iniciar', () => { if (tn.on) { encerrarCombate(); return; } const antes = vezAgora(); Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list[0].id; x.back = 0; }, 'Iniciar combate'); depoisDaVez(antes, 1); },
+        btn(tn.on ? 'Encerrar' : 'Iniciar', () => { if (tn.on) { encerrarCombate(); return; } const antes = vezAgora(); Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list[0].id; x.back = 0; turnPularSurpresos(x); }, 'Iniciar combate'); depoisDaVez(antes, 1); },
           { icon: tn.on ? 'stop' : 'play', id: 'turnOnOff', title: tn.on ? 'Encerra o combate e zera a iniciativa de todos, para o próximo começar do zero (dá para desfazer)' : null }),
         btn('Ordenar por iniciativa', () => Act.turnPatch(x => { turnSort(x.list); }, 'Ordenar turnos'), { icon: 'sort' }),
         btn('Limpar', () => Act.turnPatch(x => { x.list = []; x.on = false; x.round = 1; x.back = 0; }, 'Limpar turnos'), { icon: 'trash' })) : null,
+      // (lote 47) entrar no combate no meio dele, e a rodada de surpresa
+      Mestre.botoesDoCombate(selToks),
       gm && tn.list.length ? note('Passar a vez desconta as durações de condições e efeitos e limpa as miras. Contadores só mudam na mão.') : null,
       // (lote 23) restaurar as energias: tudo que não é HP nem SP volta ao estado natural (o "começa em" da barra, ou cheia)
       gm ? h('div', { class: 'row' }, btn('Restaurar energias…', janelaRestaurar, { icon: 'rest', id: 'turnRestaurar', title: 'As barras que não são HP nem SP voltam ao estado natural (o “começa em” delas; sem ele, cheias). Com tokens selecionados, só eles; sem seleção, todos da cena. Mostra antes o que muda.' })) : null,
+      // (lote 47) os lembretes por rodada
+      Mestre.secaoLembretes(),
       // (lote 44) o painel de barras: ligado ou desligado para a mesa
       gm && typeof PainelBarras !== 'undefined' ? PainelBarras.secaoTurnos() : null,
       // (lote 22) a tela das barrinhas: quando ela abre sozinha (da mesa: vale em todas as cenas)
@@ -2980,7 +3003,7 @@ const UI = (() => {
   function restauroDe(toks) {
     // (lote 44) as barras que o painel de barras cuida ficam de fora: o fim do combate delas é o do painel
     const doPainel = (t, b) => typeof PainelBarras !== 'undefined' && PainelBarras.cuida(t, b);
-    return toks.map(t => ({ t, m: (t.bars || []).map((b, i) => ({ b, i })).filter(({ b }) => b && b.on !== false && !ehVidaOuSp(b) && !doPainel(t, b) && Math.abs((Number(b.v) || 0) - barFull(b)) > 1e-9)
+    return toks.map(t => ({ t, m: (t.bars || []).map((b, i) => ({ b, i })).filter(({ b }) => b && b.on !== false && !ehVidaOuSp(b) && !doPainel(t, b) && !Fichas.soAMao(t, b) && Math.abs((Number(b.v) || 0) - barFull(b)) > 1e-9)
       .map(({ b, i }) => ({ i, n: b.n, c: b.c, de: Number(b.v) || 0, para: barFull(b) })) })).filter(x => x.m.length);
   }
   function aplicarRestauro(lista) {
@@ -3019,6 +3042,8 @@ const UI = (() => {
     const resto = () => {
       const sc = Store.scene(), tn = sc.turn;
       if (typeof PainelBarras !== 'undefined') PainelBarras.depoisDaVez(antes);      // (lote 44) o fim e o começo do turno no painel de barras
+      Mestre.depoisDaVez();                                                          // (lote 47) na vez de quem está travado, o aviso de pular
+      if (comecou || novaRodada) setTimeout(() => Mestre.naRodada(Store.scene().turn.round || 1), 0);      // (lote 47) os lembretes da rodada
       if (comecou && P.combate) { telaBarrinhas('O combate começou: as barrinhas', tokensDoCombate(sc)); return; }
       if (novaRodada && P.rodada) { telaBarrinhas(`${tn.round}ª rodada: as barrinhas`, tokensDoCombate(sc)); return; }
       if (tn.on && P.vez && (tn.cur !== antes.cur || comecou)) {
@@ -3050,7 +3075,7 @@ const UI = (() => {
   function barrasAoComecar(toks, depois) {
     const F = typeof Fichas !== 'undefined' && Fichas.on() && Fichas.barrasDeArvore ? Fichas : null;
     if (!F) { depois(); return; }
-    const lista = toks.map(t => ({ t, bs: F.barrasDeArvore(t).filter(b => b.comb !== 'fica') })).filter(x => x.bs.length);
+    const lista = toks.map(t => ({ t, bs: F.barrasDeArvore(t).filter(b => b.comb !== 'fica' && !F.soAMao(t, t.bars[b.i])) }))      // (lote 47: a trancada fica).filter(x => x.bs.length);
     const normais = lista.map(x => ({ t: x.t, bs: x.bs.filter(b => b.comb === 'inicio' && Math.abs(b.v - b.inicio) > 1e-9).map(b => Object.assign({}, b, { para: b.inicio })) })).filter(x => x.bs.length);
     const perg = lista.map(x => ({ t: x.t, bs: x.bs.filter(b => b.comb === 'pergunta') })).filter(x => x.bs.length);
     // tudo num passo só: as de sempre e, quando o mestre responde, a Barra Bestial
@@ -3217,6 +3242,8 @@ const UI = (() => {
         note('Para conferir o resultado, troque "Vendo como" no topo para um jogador.'))),
       // (lote 18) as fases da arena (só numa arena; só o mestre)
       Arena.secao({ sec, note, btn }),
+      // (lote 47) os momentos preparados (só o mestre)
+      Mestre.secaoMomentos(),
       // (lote 18) o campo de batalha: a leitura do campo e levar para a batalha
       Campo.secao({ sec, note, btn }),
       // (lote 18) o relevo com regra: a visão pelo relevo (desta cena) e a tabela do mestre (da mesa)
@@ -3505,10 +3532,12 @@ const UI = (() => {
       if (canCond && n && c.id !== 'escudado') {
         kids.push(h('span', { class: 'hud-c', 'data-tag-nome': c.n, title: c.n + (c.r ? ' — ' + c.r : '') + dur },
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-minus`, title: n === 1 ? `${c.n}: tirar 1 (em zero, a condição sai)` : `${c.n}: tirar 1`, 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => condStepToast(t, c, -1) }, icon('minus', 13)),
-          badge, h('span', { class: 'stp-v', id: `hud-c-${c.id}-n`, text: String(n) }),
+          h('button', { type: 'button', class: 'hud-tira', id: `hud-c-${c.id}`, title: `${c.n}${dur}: clique para tirar`, 'aria-label': `Tirar ${c.n} de ${tokName(t)}`, onclick: () => tirarCondHud(t, c) }, badge, h('span', { class: 'hud-x', 'aria-hidden': 'true' }, icon('x', 11))),
+          h('span', { class: 'stp-v', id: `hud-c-${c.id}-n`, text: String(n) }),
           h('button', { type: 'button', class: 'stp-b', id: `hud-c-${c.id}-plus`, disabled: !!(c.max && n >= c.max), title: c.max && n >= c.max ? `${c.n}: no máximo (${c.max})` : `${c.n}: somar 1`, 'aria-label': `Somar 1 em ${c.n}`, onclick: () => condStepToast(t, c, 1) }, icon('plus', 13))));
       } else if (canCond) {
-        kids.push(h('button', { type: 'button', class: 'hud-c one', id: `hud-c-${c.id}`, 'data-tag-nome': c.n, title: `${c.n}${n ? ' ' + n : ''}${dur}: abrir condições`, 'aria-label': `${c.n}${n ? ' ' + n : ''}${dur}`, onclick: () => condPicker([t]) }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
+        // (lote 47) um clique tira a condição (com Desfazer); a janela de condições continua no escudo do fim da faixa
+        kids.push(h('button', { type: 'button', class: 'hud-c one hud-tira', id: `hud-c-${c.id}`, 'data-tag-nome': c.n, title: `${c.n}${n ? ' ' + n : ''}${dur}: clique para tirar`, 'aria-label': `Tirar ${c.n}${n ? ' ' + n : ''} de ${tokName(t)}`, onclick: () => tirarCondHud(t, c) }, badge, h('span', { class: 'hud-x', 'aria-hidden': 'true' }, icon('x', 11)), n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       } else {
         kids.push(h('span', { class: 'hud-c ro', 'data-tag-nome': c.n, title: c.n + (c.r ? ' — ' + c.r : '') + dur }, badge, n ? h('span', { class: 'stp-v', text: String(n) }) : null));
       }
@@ -3857,6 +3886,7 @@ const UI = (() => {
     catch (err) { /* a visão fica pendente; quem avisa do problema é o desenho do mapa */ }
     renderTop(); renderBanner(); renderRail(); renderOpts(); renderSide(); renderHud(); renderVeil(); turnBanner(); status();
     if (typeof PainelBarras !== 'undefined') PainelBarras.render();      // (lote 44) o painel de barras, no canto
+    if (typeof Mestre !== 'undefined') Mestre.vigiar();                   // (lote 47) o som de um momento, em todos os aparelhos
     if (modalEl && modalLive) { if (digitandoNaJanela()) janelaAdiada = true; else modalLive(); }      // (lote 24: digitando, espera)
     Luta.refresh();
     document.title = 'Cenas · Tiny Cats';
@@ -3885,6 +3915,8 @@ const UI = (() => {
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)
     // as peças de formulário e as janelas, para as telas de combate (10c-combate.js)
+    // (lote 47) para o grupo Mestre da barra da esquerda
+    mestreKit: { healToast, janelaRestaurar, telaBarrinhas: (t, l) => telaBarrinhas(t, l), tokensDoCombate },
     kit: { field, inText, inNum, inSelect, toggle, seg, btn, iconBtn, sec, secR, note, tokenAvatar, stepper, deleteSelToast, layer: el.layer, live(fn) { modalLive = fn; }, card: () => modalEl },
   };
 })();

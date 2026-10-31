@@ -130,8 +130,12 @@ const { open } = require('./lib');
   ok(!(await T('Bandido')).cinfo.sangue, 'apagar o campo tira a duração');
   await page.locator('#hud-c-fogo-plus').click(); await w();
   ok((await T('Bandido')).cinfo.fogo.n === 2 && await ev(() => document.getElementById('hud-c-fogo-n').textContent) === '2', 'faixa: + no marcador com contador');
+  // (lote 47) um clique no marcador sem contador tira a condição (com Desfazer); a janela abre pelo escudo do fim da faixa
   await page.locator('#hud-c-sangue').click(); await w();
-  ok(await ev(() => /Condições de Bandido/.test(document.querySelector('.modal-t').textContent)), 'faixa: marcador sem contador abre a janela de condições');
+  ok(!(await T('Bandido')).conds.includes('sangue') && (await toastTexts()).some(x => /Sangrando saiu de Bandido/.test(x)), 'faixa: um clique no marcador sem contador tira a condição');
+  await page.locator('.toast', { hasText: 'Sangrando saiu de Bandido' }).locator('.toast-a', { hasText: 'Desfazer' }).click(); await w();
+  await page.locator('#hud-cond').click(); await w();
+  ok((await T('Bandido')).conds.includes('sangue') && await ev(() => /Condições de Bandido/.test(document.querySelector('.modal-t').textContent)), 'faixa: Desfazer devolve, e o escudo abre a janela de condições');
   await page.locator('#cdm-sangue-plus').click(); await w();
   ok((await T('Bandido')).cinfo.sangue.n === 1 && await ev(() => document.getElementById('cdm-sangue-n').textContent) === '1', 'janela: o contador começa e a lista se atualiza');
   ok(await ev(() => document.activeElement.id) === 'cdm-sangue-plus', 'janela: o foco continua no botão usado');

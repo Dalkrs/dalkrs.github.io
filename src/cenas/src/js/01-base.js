@@ -494,7 +494,9 @@ const cleanBarRef = (b, o) => {
   if (o && o.st != null && o.st !== '' && isFinite(Number(o.st))) b.st = Math.min(b.m, Math.max(-(b.lo || 0), Math.round(Number(o.st) * 10) / 10));
   // (lote 8) a ferida permanente: quanto da ponta da barra apodreceu (a cura não passa de m − pod)
   if (o && Number(o.pod) > 0 && b.m > 0) b.pod = Math.round(Math.min(Number(o.pod), b.m) * 10) / 10;
-  if (o && (o.mapa === 'sempre' || o.mapa === 'passar')) b.mapa = o.mapa;         // (lote 15) quando ela aparece no mapa
+  if (o && (o.mapa === 'sempre' || o.mapa === 'passar')) b.mapa = o.mapa;
+  // (lote 47) o cadeado "Só à mão": true trancada, false aberta; sem ele, vale o padrão (Fichas.soAMao)
+  if (o && (o.mao === true || o.mao === false)) b.mao = o.mao;         // (lote 15) quando ela aparece no mapa
   return b;
 };
 /* (lote 15) Quando a barra aparece em cima do token, no mapa: 'sempre', ou 'passar' — só com o mouse por cima ou com o
@@ -897,6 +899,37 @@ function cleanSaque(o) {
   return out;
 }
 
+/* (lote 47) Lembrete por rodada: { id, txt, r (a rodada), cada (repete a cada N rodadas; 0 = uma vez), mesa (o texto vai
+   à mesa ao vivo), toks (os tokens ocultos que aparecem) }. Momento preparado: { id, nome, toks (aparecem), tone (a hora
+   do dia), luzes ({ id: true|false }: acender ou apagar), nevoa ('' | 'revelar' | 'esconder'), som (um dos SONS_MOMENTO),
+   zonas (as zonas escondidas que aparecem), txt (a narração à mesa) }. */
+const SONS_MOMENTO = [
+  { id: 'trovao', n: 'Trovão' }, { id: 'gongo', n: 'Gongo' }, { id: 'tambores', n: 'Tambores de guerra' },
+  { id: 'sino', n: 'Sino' }, { id: 'tremor', n: 'Tremor de terra' }, { id: 'misterio', n: 'Mistério' },
+];
+const idsOk = (a, max) => (Array.isArray(a) ? [...new Set(a.filter(x => typeof x === 'string' && x && x.length <= 40))].slice(0, max) : []);
+function cleanLembrete(o) {
+  if (!o || typeof o !== 'object') return null;
+  const txt = String(o.txt == null ? '' : o.txt).trim().slice(0, 200);
+  if (!txt) return null;
+  const out = { id: typeof o.id === 'string' && o.id ? o.id.slice(0, 40) : uid('lb'), txt, r: clamp(Math.round(Number(o.r) || 1), 1, 999), cada: clamp(Math.round(Number(o.cada) || 0), 0, 99) };
+  if (o.mesa === true) out.mesa = true;
+  const toks = idsOk(o.toks, 24); if (toks.length) out.toks = toks;
+  return out;
+}
+function cleanMomento(o) {
+  if (!o || typeof o !== 'object') return null;
+  const out = { id: typeof o.id === 'string' && o.id ? o.id.slice(0, 40) : uid('mo'), nome: String(o.nome == null ? '' : o.nome).trim().slice(0, 60) || 'Momento' };
+  const toks = idsOk(o.toks, 40); if (toks.length) out.toks = toks;
+  if (TONES.some(x => x.id === o.tone)) out.tone = o.tone;
+  if (o.luzes && typeof o.luzes === 'object' && !Array.isArray(o.luzes)) { const l = {}; for (const k of Object.keys(o.luzes).slice(0, 60)) if (k.length <= 40 && typeof o.luzes[k] === 'boolean') l[k] = o.luzes[k]; if (Object.keys(l).length) out.luzes = l; }
+  if (o.nevoa === 'revelar' || o.nevoa === 'esconder') out.nevoa = o.nevoa;
+  if (SONS_MOMENTO.some(x => x.id === o.som)) out.som = o.som;
+  const zonas = idsOk(o.zonas, 20); if (zonas.length) out.zonas = zonas;
+  const txt = String(o.txt == null ? '' : o.txt).trim().slice(0, 300); if (txt) out.txt = txt;
+  return out;
+}
+
 // Completa campos que possam faltar em dados importados de versões antigas.
 function normalizeScene(sc) {
   const base = newScene(sc.name);
@@ -918,6 +951,7 @@ function normalizeScene(sc) {
     else delete e.toks;
     if (e.reac === true) e.reac = true; else delete e.reac;            // "esperando para reagir"
     if (e.inv === true) e.inv = true; else delete e.inv;               // linha invisível: os jogadores não a veem
+    if (e.sur === true) e.sur = true; else delete e.sur;               // (lote 47) surpreendido: não joga na 1ª rodada
   }
   // um token fica numa faixa só, e quem está numa faixa não tem linha própria
   const naFaixa = new Set();
@@ -926,6 +960,10 @@ function normalizeScene(sc) {
   if (!Array.isArray(sc.targets)) sc.targets = [];
   // (lote 18) as fases da arena (só do mestre): uma lista curta de { n, nome, feita, m: [as mudanças] }
   if (Array.isArray(sc.fases)) { sc.fases = sc.fases.filter(f => f && typeof f === 'object' && Array.isArray(f.m)).slice(0, 6); if (!sc.fases.length) delete sc.fases; } else delete sc.fases;
+  // (lote 47) os lembretes por rodada e os momentos preparados (só do mestre)
+  if (Array.isArray(sc.lembretes)) { sc.lembretes = sc.lembretes.map(cleanLembrete).filter(Boolean).slice(0, 30); if (!sc.lembretes.length) delete sc.lembretes; } else delete sc.lembretes;
+  if (Array.isArray(sc.momentos)) { sc.momentos = sc.momentos.map(cleanMomento).filter(Boolean).slice(0, 20); if (!sc.momentos.length) delete sc.momentos; } else delete sc.momentos;
+  if (sc.momSom && !(typeof sc.momSom === 'object' && SONS_MOMENTO.some(x => x.id === sc.momSom.k) && Number.isFinite(sc.momSom.n))) delete sc.momSom;
   if (!TONES.some(x => x.id === sc.tone)) sc.tone = 'dia';
   for (const w of sc.walls) {
     if (!(w.k === 'door' && w.secret) && !['wall', 'door', 'window', 'veil', 'mureta'].includes(w.k)) w.k = 'wall';

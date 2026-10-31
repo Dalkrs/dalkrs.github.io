@@ -377,6 +377,8 @@ const PainelBarras = (() => {
   }
   // as barras que o painel cuida (o "Restaurar energias" não mexe nelas)
   const cuida = (t, b) => ligado() && !!b && barrasDoToken(t).some(x => x.ref === b.ref);
+  // (lote 47) é uma barra do painel, ligado ou não (o cadeado "Só à mão" vem trancado nelas)
+  const doPainel = (t, b) => !!b && !!b.ref && barrasDoToken(t).some(x => x.ref === b.ref);
 
   /* ---------------- no painel do token e na aba Turnos ---------------- */
   // o mestre: o que o token tem (e, no NPC sem ficha, a barra escolhida); o jogador: mostrar/esconder o dele
@@ -433,7 +435,7 @@ const PainelBarras = (() => {
   }
 
   // as Cenas avisam quando mudam (o desenho geral e o mapa)
-  return { render, ligado, desenharSelo, novoQuadro, cliqueNoSelo, depoisDaVez, fimDoCombate, temPainel, cuida, secaoToken, secaoTurnos, abrirNpc,
+  return { render, ligado, desenharSelo, novoQuadro, cliqueNoSelo, depoisDaVez, fimDoCombate, temPainel, cuida, doPainel, secaoToken, secaoTurnos, abrirNpc,
     // para os testes
     _atorDe: atorDe, _barrasDoToken: barrasDoToken, _selos: () => selos, _hits: () => hits };
 })();

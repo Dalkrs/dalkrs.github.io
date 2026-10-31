@@ -53,7 +53,7 @@ const Fichas = (() => {
   function especiaisDe(l) {
     const R0 = R();
     if (!R0 || typeof R0.especiais !== 'function') return [];
-    return R0.especiais(l.ficha || {}, l.estado || {}).filter(x => x.max > 0).map(x => ({ id: PD + x.id, nome: x.nome, max: x.max, min: 0, inicio: x.inicio != null ? x.inicio : null, atual: x.atual, sobre: 0, pts: true }));
+    return R0.especiais(l.ficha || {}, l.estado || {}).filter(x => x.max > 0).map(x => ({ id: PD + x.id, nome: x.nome, max: x.max, min: 0, inicio: x.inicio != null ? x.inicio : null, atual: x.atual, sobre: 0, pts: true, rec: x.rec }));
   }
   // os recursos da ficha que viram barra no token: os de sempre (com máximo) e, depois deles, as barras especiais
   const recursosDoToken = (l, r) => r.recursos.filter(rec => rec.max != null && isFinite(rec.max)).concat(especiaisDe(l));
@@ -1087,7 +1087,23 @@ const Fichas = (() => {
     const e = Cx.estado(d.dados, (l && l.skills) || {}, bib(), cfg());
     return e && e.n ? { tipo: e.tipo, n: e.n, cor: Cx.TIPOS[e.tipo].cor } : null;
   }
-  return { corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  /* (lote 47) O cadeado "Só à mão": a barra trancada não muda por nada automático (a Cura total, o Restaurar energias).
+     O mestre tranca ou abre cada barra (b.mao); sem escolha, ficam trancadas as barras especiais da ficha com a regra
+     "Só à mão" (o Chamado de Selene, a Voz da Graça…). As do painel de barras seguem as regras delas (o começo e o fim
+     do combate), e a Cura total e o Restaurar já não mexem nelas. */
+  function soAMao(t, b) {
+    if (!b) return false;
+    if (b.mao === true) return true;
+    if (b.mao === false) return false;
+    if (ehPd(b.ref)) {
+      const l = t && t.char ? get(t.char) : null;
+      if (!l || l.ficha == null) return true;
+      const x = especiaisDe(l).find(y => y.id === b.ref);
+      return !x || x.rec === 'manual';
+    }
+    return false;
+  }
+  return { soAMao, corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)

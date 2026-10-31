@@ -619,6 +619,13 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
 .hud-c { display: inline-flex; align-items: center; gap: 1px; padding: 2px; background: var(--raised); border: 1px solid var(--line); border-radius: 999px; }
 .hud-c.one, .hud-c.ro { padding: 3px; }
 .hud-c.one:hover { border-color: var(--fg-3); }
+/* (lote 47) a condição que sai num clique: o × aparece sobre o selo ao passar o mouse (ou no foco do teclado) */
+.hud-tira { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+button.hud-tira:not(.hud-c) { padding: 0; border: 0; background: none; border-radius: 50%; }
+.hud-x { position: absolute; left: 3px; top: 50%; width: 20px; height: 20px; margin-top: -10px; display: grid; place-items: center; border-radius: 50%; background: var(--danger, #c0392b); color: #fff; opacity: 0; transition: opacity .12s; pointer-events: none; }
+button.hud-tira:not(.hud-c) .hud-x { left: 0; }
+.hud-tira:hover .hud-x, .hud-tira:focus-visible .hud-x { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .hud-x { transition: none; } }
 .hud-c .stp-b { width: 22px; height: 22px; border-radius: 50%; }
 .hud-c .stp-v { min-width: 18px; padding: 0 1px 0 4px; }
 .hud-c.ro .stp-v { padding: 0 6px 0 5px; }
@@ -1166,3 +1173,32 @@ button.pip:hover { outline: 2px solid var(--lamp); outline-offset: 1px; }
   /* (a gaveta aberta ocupa a base do mapa: a faixa do token e a dica saem; os avisos, com o Desfazer, ficam por cima) */
   .stage.pb-aberto .dock .hud, .stage.pb-aberto .dock .foot { display: none; }
 }
+
+/* (lote 47) o cadeado "Só à mão" ao lado do nome da barra */
+.bar-lock { display: inline-grid; place-items: center; color: var(--fg-3); flex: none; }
+/* (lote 47) o controle do mestre: a vez, os lembretes e os momentos */
+.turn-sur { order: 4; flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; border: 1px dashed var(--line-strong); color: var(--fg-2); font: 700 10.5px var(--ui); letter-spacing: .06em; text-transform: uppercase; }
+.mt-vez { margin: 6px 0 2px; }
+.mt-lista { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; }
+.mt-lista.mt-cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); max-height: 30vh; }
+.mt-op { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); color: var(--fg); font: 500 14px var(--ui); text-align: left; cursor: pointer; }
+.mt-op:hover, .mt-op:focus-visible { border-color: var(--fg-3); }
+.mt-op-n { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--fg-2); }
+.mt-ck { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 3px 0; }
+.mt-lb { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-left: 3px solid var(--accent, var(--fg-3)); background: var(--raised); border-radius: 0 8px 8px 0; }
+.mt-lb-li, .mt-mo { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.mt-lb-li:last-child, .mt-mo:last-child { border-bottom: 0; }
+.mt-lb-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mt-lb-t .note { margin: 0; }
+.mt-luz { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.mt-luz .in { width: auto; }
+.mt-row { align-items: flex-end; }
+#momento-tela .row { align-items: flex-end; flex-wrap: wrap; }
+/* (lote 47) o grupo Mestre na barra da esquerda: o painel abre para cima (os botões ficam no pé da barra) */
+.mt-pop { top: auto; bottom: -8px; width: 290px; max-height: min(70vh, 560px); overflow-y: auto; gap: 6px; padding: 8px 10px 10px; }
+.mt-pop .rail-lista-t { padding: 2px 0 2px; }
+.mt-pop .note { margin: 0; }
+.mt-pop-s { margin: 0; font: 600 13.5px var(--ui); color: var(--fg); }
+.mt-pop-l { display: flex; flex-wrap: wrap; gap: 6px; }
+.mt-pop .mt-lista { max-height: 40vh; margin: 0; }
+@media (max-height: 820px) { .tool { height: 29px; } .rail-g { margin: 2px 0 1px; } .rail-sep { margin: 2px 0; } }

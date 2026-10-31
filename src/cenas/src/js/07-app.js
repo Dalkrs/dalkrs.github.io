@@ -687,6 +687,17 @@ function turnSort(list) {
   for (let i = 0; i < rows.length; i++) list[i] = rows[i].e;
   return list;
 }
+// (lote 47) Na 1ª rodada, a vez não fica com quem foi surpreendido: vai para o primeiro que pode jogar (se ninguém pode,
+// a 2ª rodada começa).
+function turnPularSurpresos(tn) {
+  if ((tn.round || 1) !== 1 || !tn.list.length) return;
+  let i = Math.max(0, tn.list.findIndex(e => e.id === tn.cur));
+  for (let n = 0; n < tn.list.length && tn.round === 1 && tn.list[i].sur; n++) {
+    i++;
+    if (i >= tn.list.length) { i = 0; tn.round = 2; }
+  }
+  tn.cur = tn.list[i].id;
+}
 // Renumera os turnos de cada combatente (1º, 2º…), mantendo a ordem em que já estavam numerados.
 function turnRenumber(list) {
   const groups = new Map();
@@ -771,7 +782,9 @@ const Act = {
         let mudou = false;
         const bars = t.bars.map(b => {
           if (!b.on || !(b.m > 0)) return b;
-          if (typeof b.ref === 'string' && b.ref.startsWith('pd:')) return b;     // (lote 24) as barras especiais da ficha ficam (Ki, Fúria…: "Restaurar energias")
+          if (typeof b.ref === 'string' && b.ref.startsWith('pd:') && b.mao !== false) return b;     // (lote 24) as barras especiais da ficha ficam (Ki, Fúria…: "Restaurar energias")
+          if (typeof Fichas !== 'undefined' && Fichas.soAMao(t, b)) return b;          // (lote 47) o cadeado "Só à mão"
+          if (typeof PainelBarras !== 'undefined' && PainelBarras.doPainel(t, b) && b.mao !== false) return b;     // (lote 47) a barra do painel segue as regras dela
           const alvo = barFull(b);
           if (b.st != null ? b.v === alvo : b.v >= alvo) return b;
           mudou = true; return Object.assign({}, b, { v: alvo });
@@ -1283,6 +1296,55 @@ const Act = {
     Act.turnPatch(x => { for (const y of x.list) if (muda.has(y.id)) { if (on) y.inv = true; else delete y.inv; } }, on ? 'Linha invisível' : 'Linha visível');
     return ids.length;
   },
+  /* (lote 47) Atrasar a vez: quem está jogando passa a jogar logo depois de outra entrada (que ainda vai jogar nesta
+     rodada) e fica nesse lugar daí em diante — a iniciativa dele vira a dessa entrada. A vez vai para quem vinha a
+     seguir. As durações não descontam agora: descontam quando ele terminar a vez no lugar novo. Um passo de desfazer.
+     → { quem, depois } (os nomes) ou null. */
+  turnAtrasar(depoisDe) {
+    const tn = clone(Store.scene().turn);
+    const i = tn.list.findIndex(e => e.id === tn.cur), j = tn.list.findIndex(e => e.id === depoisDe);
+    if (!tn.on || i < 0 || j <= i) return null;
+    const [e] = tn.list.splice(i, 1);
+    const alvo = tn.list[j - 1];
+    tn.list.splice(j, 0, e);
+    if (alvo.init != null) { e.init = alvo.init; e.roll = null; }
+    tn.cur = tn.list[i].id;                                   // quem vinha depois dele (o lugar dele agora é de outro)
+    if (tn.list[i].reac) delete tn.list[i].reac;
+    const out = { quem: turnName(e), depois: turnName(alvo) };
+    Store.tx('Atrasar a vez', () => Store.scn({ turn: tn }));
+    return out;
+  },
+  /* (lote 47) Entrar no meio do combate: os tokens ganham as linhas deles, rolam a iniciativa e entram no lugar que ela
+     dá, sem reordenar quem já está (o mestre pode ter mexido na ordem). Quem cai antes da vez de agora joga a partir da
+     rodada que vem. Um passo de desfazer. → [{ nome, total, jaNesta }] */
+  turnEntrar(tokens) {
+    const sc = Store.scene(), tn = clone(sc.turn), out = [], rolls = [];
+    const icur = () => tn.list.findIndex(e => e.id === tn.cur);
+    for (const t of tokens) {
+      if (!t || t.prop || inTurn(tn, t.id)) continue;
+      for (let k = 1, n = clampTurns(t.turns); k <= n; k++) {
+        const e = turnEntry(t, k), b = turnBonus(e), d = rollDie(20);
+        e.init = d + b; e.roll = { d, b };
+        let pos = tn.list.findIndex(x => x.init == null || x.init < e.init);
+        if (pos < 0) pos = tn.list.length;
+        const c = icur();
+        tn.list.splice(pos, 0, e);
+        out.push({ nome: turnName(e), total: e.init, jaNesta: !tn.on || c < 0 || pos > c });
+        rolls.push({ name: turnName(e), tokenId: t.id, d, bonus: b, total: e.init });
+      }
+    }
+    if (!out.length) return out;
+    turnRenumber(tn.list);
+    if (!tn.cur) tn.cur = tn.list[0].id;
+    Store.tx('Entrar no combate', () => Store.scn({ turn: tn }));
+    if (Ext.roll) for (const r of rolls) { try { Ext.roll(Object.assign({ kind: 'iniciativa' }, r)); } catch (err) { console.error(err); } }
+    return out;
+  },
+  // (lote 47) A rodada de surpresa: marca quem foi surpreendido (as entradas pedidas; as outras perdem a marca).
+  turnSurpresa(ids) {
+    const quer = new Set(ids);
+    Act.turnPatch(x => { for (const e of x.list) { if (quer.has(e.id)) e.sur = true; else delete e.sur; } if (x.on) turnPularSurpresos(x); }, 'Rodada de surpresa');
+  },
   turnPatch(fn, label) {
     const tn = clone(Store.scene().turn), before = tn.list.slice();
     fn(tn);
@@ -1385,6 +1447,7 @@ const Act = {
       // Combate parado: o primeiro "próximo turno" só começa o combate, na vez de quem já estava marcado.
       tn.on = true; tn.back = 0;
       if (!tn.list.some(e => e.id === tn.cur)) tn.cur = tn.list[0].id;
+      turnPularSurpresos(tn);
       Store.tx('Iniciar combate', () => Store.scn({ turn: tn }));
       return ended;
     }
@@ -1395,6 +1458,11 @@ const Act = {
     i += d;
     if (i >= tn.list.length) { i = 0; tn.round++; wrapped = true; }
     else if (i < 0) { if (tn.round > 1) { tn.round--; i = tn.list.length - 1; } else i = 0; }
+    // (lote 47) a rodada de surpresa: na 1ª rodada, quem foi surpreendido não joga (a vez passa por cima)
+    for (let n = 0; tn.round === 1 && tn.list[i] && tn.list[i].sur && n < tn.list.length; n++) {
+      if (d > 0) { i++; if (i >= tn.list.length) { i = 0; tn.round++; wrapped = true; } }
+      else if (i > 0) i--; else break;
+    }
     tn.cur = tn.list[i].id;
     if (d < 0 && i === from && tn.round === fromRound) return ended;     // já está no começo: nada a voltar
     if (d > 0 && tn.list[i].reac) delete tn.list[i].reac;               // a vez chegou: a espera pela reação acabou

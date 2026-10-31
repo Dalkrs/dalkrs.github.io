@@ -95,6 +95,32 @@ const Som = (() => {
     } catch (e) { /* sem som: o aviso escrito continua */ }
     return true;
   }
-  return { tocar, ligado, aviso, avisosLigados, ligarAvisos, volumeAvisos, volumeDosAvisos, get ultimo() { return ultimo; }, get vezes() { return vezes; },
+  /* (lote 47) O som de um momento preparado: o mestre solta, e cada aparelho com o som da mesa ligado toca o seu. */
+  function ruido(a, t0, dur, freq, vol) {
+    const buf = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 1.6);
+    const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = buf; f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = vol;
+    s.connect(f); f.connect(g); g.connect(a.destination); s.start(t0);
+  }
+  let ultimoMomento = null, vezesMomento = 0;
+  function momento(k) {
+    ultimoMomento = k; vezesMomento++;
+    if (!ligado()) return false;
+    const a = contexto();
+    if (!a) return true;
+    try { if (a.state === 'suspended') a.resume(); } catch (e) { /* o navegador ainda não deixou tocar */ }
+    try {
+      const t0 = a.currentTime + 0.03;
+      if (k === 'trovao') { ruido(a, t0, 0.35, 2400, 0.5); ruido(a, t0 + 0.12, 2.8, 260, 0.9); }
+      else if (k === 'gongo') gongo(a, t0, 98, 0.32);
+      else if (k === 'tambores') { for (const [dt, v] of [[0, 0.7], [0.3, 0.5], [0.6, 0.7], [0.75, 0.5], [1.05, 0.8], [1.5, 0.7], [1.8, 0.5], [2.1, 0.9]]) tambor(a, t0 + dt, v * 0.6); }
+      else if (k === 'sino') { for (let n = 0; n < 3; n++) { tom(a, t0 + n * 0.9, 523, 'sine', 0.22, 2.2, 0.01); tom(a, t0 + n * 0.9, 523 * 2.76, 'sine', 0.06, 1.2, 0.01); } }
+      else if (k === 'tremor') { tom(a, t0, 38, 'sine', 0.5, 2.6, 0.4); tom(a, t0, 55, 'triangle', 0.25, 2.2, 0.3); ruido(a, t0, 2.6, 180, 0.6); }
+      else if (k === 'misterio') { tom(a, t0, 392, 'sine', 0.12, 2.4, 0.5); tom(a, t0, 395, 'sine', 0.12, 2.4, 0.5); tom(a, t0 + 0.8, 311, 'sine', 0.1, 2.2, 0.5); tom(a, t0 + 0.8, 466, 'sine', 0.07, 2.2, 0.5); }
+    } catch (e) { /* sem som */ }
+    return true;
+  }
+  return { momento, get ultimoMomento() { return ultimoMomento; }, get vezesMomento() { return vezesMomento; }, tocar, ligado, aviso, avisosLigados, ligarAvisos, volumeAvisos, volumeDosAvisos, get ultimo() { return ultimo; }, get vezes() { return vezes; },
     get ultimoAviso() { return ultimoAviso; }, get vezesAviso() { return vezesAviso; } };
 })();
