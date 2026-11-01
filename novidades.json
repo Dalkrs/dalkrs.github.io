@@ -2,6 +2,34 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.01-1",
+      "data": "2026-11-01",
+      "titulo": "O Manual do site",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "O Manual, no menu da conta: o guia completo do site — o que cada aba tem e como usar cada coisa, com capturas de tela e os botões marcados com números."
+        },
+        {
+          "tipo": "novo",
+          "texto": "No Manual: uma página para cada aba, “Como eu faço…” (o passo a passo das coisas mais comuns), o roteiro da sessão (antes, durante e depois) e “Você sabia?”, com o que quase ninguém usa."
+        },
+        {
+          "tipo": "novo",
+          "texto": "“Me leve até lá”, em cada assunto, fecha o Manual, abre a aba e mostra o botão com um contorno. A busca acha em todas as páginas, sem precisar de acento (Ctrl+K ou / lá dentro)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cada um vê o Manual do seu jeito: quem joga lê as partes de quem joga."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Quem mestra vê também as partes do mestre e as abas do grupo Mestre (Escudo, Bestiário, Itens, Oficina, Rolador). A chave “Como o jogador vê” mostra o Manual exatamente como a mesa o lê."
+        }
+      ]
+    },
+    {
       "versao": "2026.10.31-6",
       "data": "2026-10-31",
       "titulo": "O teto de pontos por nível",

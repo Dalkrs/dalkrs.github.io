@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../tc/tema.js?v=1"></script>
+<title>Manual · Tiny Cats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&display=swap">
+<style>
+/* O Manual (lote 51): a wiki do site — por aba, por tarefa, o roteiro da sessão e “Você sabia?”.
+   Abre pelo menu da conta, numa janela da casca (?casca=1&p=mestre|jogador). O conteúdo vem de conteudo.js. */
+:root {
+  color-scheme: dark;
+  --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
+  --line: #2b3243; --line-strong: #40495f;
+  --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #8a93a8;
+  --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .12); --on-lamp: #1d1503;
+  --jogar: #e6ab4f; --mundo: #6fb3d9; --descanso: #9fcf7a; --mestre: #c99be8; --site: #f0786e;
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+:root:where([data-claro]) {
+  color-scheme: light;
+  --table: #e9edf3; --surface: #f6f7fa; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #5d6880;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .13); --on-lamp: #241a04;
+  --jogar: #a86a0a; --mundo: #20709c; --descanso: #3f7a1f; --mestre: #7a3fa6; --site: #b9342a;
+  --shadow: 0 12px 34px rgba(40, 50, 72, .2);
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--table); color: var(--fg); font: 15.5px/1.55 var(--ui); -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--lamp-ink); }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+kbd { font: 600 12px/1 var(--mono); padding: 3px 6px; border-radius: 5px; border: 1px solid var(--line-strong); border-bottom-width: 2px; background: var(--raised); color: var(--fg); white-space: nowrap; }
+
+.app { display: grid; grid-template-columns: 268px minmax(0, 1fr); height: 100%; }
+/* ---- a coluna da esquerda: a busca e o sumário ---- */
+.nav { background: var(--surface); border-right: 1px solid var(--line); overflow: auto; padding: 14px 12px 24px; display: flex; flex-direction: column; gap: 14px; }
+.marca { display: flex; align-items: baseline; gap: 8px; padding: 0 6px; }
+.marca b { font: 700 26px/1 var(--display); color: var(--lamp-ink); letter-spacing: .01em; }
+.marca span { font-size: 12.5px; color: var(--fg-3); }
+.busca { position: relative; }
+.busca input { width: 100%; min-height: 38px; padding: 0 12px 0 34px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--raised); }
+.busca input:focus { outline: none; border-color: var(--lamp); }
+.busca svg { position: absolute; left: 11px; top: 11px; color: var(--fg-3); pointer-events: none; }
+.sum { display: grid; gap: 2px; }
+.sum h3 { margin: 10px 6px 4px; font: 600 12.5px/1.2 var(--ui); color: var(--fg-3); }
+.sum a { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 7px; color: var(--fg-2); text-decoration: none; font-weight: 500; }
+.sum a:hover { background: var(--hover); color: var(--fg); }
+.sum a[aria-current="page"] { background: var(--lamp-soft); color: var(--fg); box-shadow: inset 3px 0 0 var(--lamp); }
+.sum a i { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--cor, var(--fg-3)); }
+.papel { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--raised); font-size: 13px; color: var(--fg-2); }
+.seg { display: inline-flex; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); gap: 2px; }
+.seg button { flex: 1; min-height: 28px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font-weight: 600; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+
+/* ---- o texto ---- */
+.main { overflow: auto; scroll-behavior: smooth; }
+.top { position: sticky; top: 0; z-index: 3; display: none; align-items: center; gap: 10px; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.pag { max-width: 780px; margin: 0 auto; padding: 34px 32px 80px; }
+.pag > h1 { font: 700 44px/1.02 var(--display); margin: 0 0 10px; letter-spacing: .005em; }
+.pag > .lead { font-size: 18px; color: var(--fg-2); margin: 0 0 28px; max-width: 62ch; }
+.pag h2 { font: 700 27px/1.1 var(--display); margin: 40px 0 14px; }
+.pag h2 .quem { font: 600 12.5px/1 var(--ui); vertical-align: middle; margin-left: 10px; padding: 4px 9px; border-radius: 99px; background: var(--lamp-soft); color: var(--lamp-ink); }
+.pag h2.m .quem { background: color-mix(in srgb, var(--mestre) 16%, transparent); color: var(--mestre); }
+.migalha { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--fg-3); margin-bottom: 8px; }
+.migalha i { width: 9px; height: 9px; border-radius: 50%; background: var(--cor); }
+
+.sec { padding: 16px 0 18px; border-top: 1px solid var(--line); }
+.sec h3 { margin: 0 0 6px; font: 700 17px/1.3 var(--ui); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.sec p { margin: 0; max-width: 66ch; color: var(--fg); }
+.sec ol { margin: 8px 0 0; padding-left: 22px; display: grid; gap: 4px; max-width: 64ch; }
+.sec .dica { margin-top: 8px; font-size: 14px; color: var(--fg-2); }
+.ir { margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 13px 0 10px; border-radius: 99px; border: 1px solid var(--lamp); background: var(--lamp-soft); color: var(--lamp-ink); font-weight: 700; font-size: 14px; }
+.ir:hover { background: var(--lamp); color: var(--on-lamp); }
+.ir svg { flex: none; }
+
+figure { margin: 6px 0 22px; }
+figure .quadro { border-radius: 12px; overflow: hidden; border: 1px solid var(--line-strong); box-shadow: var(--shadow); background: var(--surface); }
+figure img { display: block; width: 100%; height: auto; }
+figure figcaption { margin-top: 10px; font-size: 14px; color: var(--fg-2); }
+.legenda { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 7px; }
+.legenda li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; font-size: 14.5px; }
+.legenda b { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--lamp); color: var(--on-lamp); font: 700 13px/1 var(--ui); }
+
+/* o início: o roteiro da sessão em três tempos */
+.tempos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 8px 0 10px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.tempo { padding: 18px 18px 20px; border-left: 1px solid var(--line); }
+.tempo:first-child { border-left: 0; }
+.tempo h3 { margin: 0 0 2px; font: 700 26px/1 var(--display); color: var(--lamp-ink); }
+.tempo > small { color: var(--fg-3); font-size: 13px; }
+.tempo ul { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 12px; }
+.tempo li b { display: block; font-weight: 700; font-size: 15px; }
+.tempo li span { display: block; font-size: 13.5px; color: var(--fg-2); line-height: 1.45; }
+.tempo li button { all: unset; cursor: pointer; display: block; border-radius: 6px; }
+.tempo li button:hover b { color: var(--lamp-ink); }
+.tempo li button:focus-visible { outline: 2px solid var(--lamp); outline-offset: 3px; }
+.atalhos { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; margin-top: 12px; }
+.atalhos a { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); text-decoration: none; font-weight: 600; }
+.atalhos a:hover { border-color: var(--line-strong); background: var(--raised); }
+.atalhos a i { width: 10px; height: 10px; border-radius: 50%; background: var(--cor); flex: none; }
+.atalhos a small { display: block; font-weight: 400; color: var(--fg-3); font-size: 12.5px; }
+
+.lista { list-style: none; margin: 0; padding: 0; }
+.lista li { border-top: 1px solid var(--line); }
+.lista a { display: flex; gap: 12px; align-items: baseline; padding: 11px 4px; color: var(--fg); text-decoration: none; }
+.lista a:hover b { color: var(--lamp-ink); }
+.lista a b { font-weight: 700; }
+.lista a span { color: var(--fg-3); font-size: 13.5px; margin-left: auto; white-space: nowrap; }
+.sabia { display: grid; gap: 0; }
+.sabia .sec h3 { font-size: 16.5px; }
+.res mark { background: var(--lamp-soft); color: var(--lamp-ink); border-radius: 3px; padding: 0 1px; }
+.res .onde { font-size: 12.5px; color: var(--fg-3); }
+.vazio { color: var(--fg-2); }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; }
+  .nav { position: fixed; inset: 0 auto 0 0; width: min(300px, 86vw); z-index: 10; box-shadow: var(--shadow); transform: translateX(-102%); transition: transform .18s ease; }
+  .app.menu .nav { transform: none; }
+  .top { display: flex; }
+  .pag { padding: 22px 16px 70px; }
+  .pag > h1 { font-size: 36px; }
+  .tempos { grid-template-columns: 1fr; }
+  .tempo { border-left: 0; border-top: 1px solid var(--line); }
+  .tempo:first-child { border-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .main { scroll-behavior: auto; } .nav { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <nav class="nav" id="nav" aria-label="Sumário do Manual">
+    <div class="marca"><b>Manual</b><span>do Tiny Cats</span></div>
+    <div class="busca">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+      <input id="q" type="search" placeholder="Buscar no Manual" aria-label="Buscar no Manual" autocomplete="off">
+    </div>
+    <div class="papel" id="papelBox" hidden>
+      <span>Ver as páginas</span>
+      <div class="seg" role="group" aria-label="Ver as páginas"><button type="button" id="verTudo" aria-pressed="true">Tudo</button><button type="button" id="verJog" aria-pressed="false">Como o jogador vê</button></div>
+    </div>
+    <div class="sum" id="sum"></div>
+  </nav>
+  <main class="main" id="main">
+    <div class="top"><button type="button" class="seg" id="btMenu" aria-expanded="false" aria-controls="nav" style="padding:0 12px;min-height:34px;font-weight:600">Sumário</button><b style="font:700 20px/1 var(--display);color:var(--lamp-ink)">Manual</b></div>
+    <article class="pag" id="pag" tabindex="-1"></article>
+  </main>
+</div>
+<script src="../tc/guia.js?v=24"></script>
+<script src="conteudo.js?v=1"></script>
+<script>
+(() => {
+  'use strict';
+  const M = window.TC_MANUAL, G = (window.TC_GUIA && window.TC_GUIA.abas) || {};
+  const qs = new URLSearchParams(location.search);
+  const naCasca = qs.has('casca') && window.parent !== window;
+  const ehMestre = qs.get('p') !== 'jogador';
+  const ehAdmin = qs.get('adm') === '1';
+  let soJogador = !ehMestre;                 // quem mestra pode ver "como o jogador vê"
+  const $ = id => document.getElementById(id);
+  const pag = $('pag'), sum = $('sum'), q = $('q');
+  const GRUPOS = [['comeco', 'Começar', '--fg-3'], ['jogar', 'Jogar', '--jogar'], ['mundo', 'Mundo', '--mundo'], ['descanso', 'Descanso', '--descanso'], ['mestre', 'Mestre', '--mestre'], ['site', 'Administração', '--site']];
+  const corDe = g => 'var(' + ((GRUPOS.find(x => x[0] === g) || [])[2] || '--fg-3') + ')';
+
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const k in attrs || {}) {
+      const v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === 'text') el.textContent = v; else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v); else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of kids.flat(Infinity)) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(String(c)));
+    return el;
+  }
+  const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  // ---- o que cada um vê ----
+  const sistemaVisivel = s => !(s.soAdmin && !ehAdmin) && !(soJogador && (s.soMestre || !s.jogador.length));
+  const papelOk = p => !soJogador || p !== 'mestre';
+  const sistemas = () => M.sistemas.filter(sistemaVisivel);
+  const tarefas = () => M.tarefas.filter(t => papelOk(t.papel));
+  const sabias = () => M.sabia.filter(t => papelOk(t.papel));
+  const sis = id => M.sistemas.find(s => s.id === id);
+
+  // ---- "Me leve até lá": o lugar vem do guia da aba (tc/guia.js) ou do próprio conteúdo ----
+  function resolver(ir) {
+    if (!ir) return null;
+    if (ir.casca) return { casca: ir.casca };
+    const r = { aba: ir.aba, sel: ir.sel || null, sub: ir.sub || null, nada: ir.nada || null };
+    if (ir.g) {
+      const L = G[ir.aba] || G[ir.aba === 'oficina' ? 'arvore' : ir.aba === 'livro' ? 'cla' : ir.aba] || {};
+      const ordem = soJogador ? ['jogador', 'mestre'] : ['mestre', 'jogador'];
+      for (const p of ordem) { const x = (L[p] || []).find(a => a.t === ir.g && a.onde); if (x) { r.sel = x.onde.sel || null; r.sub = x.onde.sub || null; r.nada = x.onde.nada || null; break; } }
+    }
+    return r;
+  }
+  const ALVO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>';
+  function botaoIr(ir, rot) {
+    const r = resolver(ir); if (!r) return null;
+    const b = h('button', { type: 'button', class: 'ir', 'data-ir': r.casca ? 'casca:' + r.casca : r.aba + (r.sel ? ' ' + r.sel : ''), onclick: () => irPara(r) });
+    b.innerHTML = ALVO; b.append(rot || 'Me leve até lá');
+    return b;
+  }
+  function irPara(r) {
+    if (naCasca) { window.parent.postMessage({ tinycats: { t: 'manual.ir', ir: r } }, location.origin); return; }
+    window.top.location.href = '../#/' + (r.aba || 'cenas');
+  }
+
+  // ---- o sumário ----
+  function pintarSumario() {
+    const atual = location.hash || '#/inicio';
+    const link = (href, txt, cor) => h('a', { href, 'aria-current': atual === href || (href !== '#/inicio' && atual.startsWith(href + '/')) ? 'page' : null, style: cor ? '--cor:' + cor : null }, cor ? h('i', { 'aria-hidden': 'true' }) : null, txt);
+    const blocos = [h('h3', { text: 'Começar' }), link('#/inicio', 'Início'), link('#/roteiro', 'Roteiro da sessão'), link('#/tarefas', 'Como eu faço…'), link('#/sabia', 'Você sabia?')];
+    for (const [g, nome] of GRUPOS) {
+      const ss = sistemas().filter(s => s.grupo === g); if (!ss.length) continue;
+      blocos.push(h('h3', { text: g === 'comeco' ? 'O site' : nome }), ss.map(s => link('#/aba/' + s.id, s.nome, corDe(g))));
+    }
+    sum.replaceChildren(...blocos.flat());
+  }
+
+  // ---- as páginas ----
+  const secao = (x, extra) => h('div', { class: 'sec', 'data-sec': x.t },
+    h('h3', {}, x.t, x.tecla ? x.tecla.split(' · ').map(k => h('kbd', { text: k })) : null),
+    h('p', { text: x.txt }), x.passos ? h('ol', {}, x.passos.map(p => h('li', { text: p }))) : null,
+    x.dica ? h('p', { class: 'dica', text: x.dica }) : null, extra || null, botaoIr(x.ir));
+
+  function figura(s) {
+    if (!s.img) return null;
+    return h('figure', {}, h('div', { class: 'quadro' }, h('img', { src: 'img/' + s.img.arq + '?v=' + M.versao, alt: s.img.legenda + ' ' + s.img.marcas.map((m, i) => (i + 1) + ': ' + m.t).join(' '), loading: 'lazy', width: 1366, height: 820 })),
+      h('figcaption', { text: s.img.legenda }),
+      h('ol', { class: 'legenda' }, s.img.marcas.map((m, i) => h('li', {}, h('b', { text: String(i + 1) }), h('span', { text: m.t })))));
+  }
+
+  function pgInicio() {
+    const R = M.roteiro[soJogador ? 'jogador' : 'mestre'];
+    const tempo = (k, nome, sub) => h('div', { class: 'tempo', 'data-tempo': k }, h('h3', { text: nome }), h('small', { text: sub }),
+      h('ul', {}, R[k].map(x => h('li', {}, h('button', { type: 'button', onclick: () => { location.hash = x.tarefa ? '#/t/' + x.tarefa : '#/roteiro'; } }, h('b', { text: x.t }), h('span', { text: x.txt }))))));
+    const forte = soJogador ? ['cenas', 'fichas', 'arvore', 'mundo', 'acampamento', 'jornal'] : ['escudo', 'cenas', 'bestiario', 'mundo', 'fichas', 'acampamento'];
+    return [
+      h('h1', { text: soJogador ? 'Jogar no Tiny Cats' : 'Mestrar no Tiny Cats' }),
+      h('p', { class: 'lead', text: soJogador ? 'O que cada aba faz e como usar cada coisa durante a sessão. Em cada página, “Me leve até lá” abre a aba e mostra o botão.' : 'O site faz muito por você — se você souber onde está. Comece pelo roteiro da sessão: o que preparar antes, o que usar durante e o que fazer depois. Em cada página, “Me leve até lá” abre a aba e mostra o botão.' }),
+      h('div', { class: 'tempos' }, tempo('antes', 'Antes', soJogador ? 'entre as sessões' : 'preparar'), tempo('durante', 'Durante', 'na mesa'), tempo('depois', 'Depois', 'fechar e continuar')),
+      h('h2', { text: 'Por onde começar' }),
+      h('div', { class: 'atalhos' }, forte.map(sis).filter(Boolean).filter(sistemaVisivel).map(s => h('a', { href: '#/aba/' + s.id, style: '--cor:' + corDe(s.grupo) }, h('i', { 'aria-hidden': 'true' }), h('span', {}, s.nome, h('small', { text: s.resumo.split(':')[0].split('.')[0] }))))),
+      h('h2', { text: 'Também aqui' }),
+      h('ul', { class: 'lista' },
+        h('li', {}, h('a', { href: '#/tarefas' }, h('b', { text: 'Como eu faço…' }), h('span', { text: tarefas().length + ' tarefas' }))),
+        h('li', {}, h('a', { href: '#/sabia' }, h('b', { text: 'Você sabia?' }), h('span', { text: sabias().length + ' coisas que pouca gente usa' }))),
+        h('li', {}, h('a', { href: '#/aba/mesa' }, h('b', { text: 'A mesa e a barra de cima' }), h('span', { text: 'busca, mesa ao vivo, menu' })))),
+    ];
+  }
+  function pgRoteiro() {
+    const R = M.roteiro[soJogador ? 'jogador' : 'mestre'];
+    const bloco = (k, nome) => [h('h2', { text: nome }), R[k].map(x => { const t = x.tarefa && M.tarefas.find(y => y.id === x.tarefa); return secao({ t: x.t, txt: x.txt, ir: x.ir }, t ? h('p', { class: 'dica' }, 'Passo a passo: ', h('a', { href: '#/t/' + t.id, text: t.t })) : null); })];
+    return [h('h1', { text: 'Roteiro da sessão' }), h('p', { class: 'lead', text: soJogador ? 'O que fazer antes, durante e depois de cada sessão.' : 'Uma sessão boa começa antes da mesa. Siga na ordem: o site guarda o que você preparou e lembra na hora certa.' }),
+      bloco('antes', 'Antes da sessão'), bloco('durante', 'Durante a sessão'), bloco('depois', 'Depois da sessão')];
+  }
+  function pgTarefas() {
+    const porSis = {};
+    for (const t of tarefas()) (porSis[t.sistema] = porSis[t.sistema] || []).push(t);
+    return [h('h1', { text: 'Como eu faço…' }), h('p', { class: 'lead', text: 'O passo a passo das coisas mais comuns.' }),
+      Object.keys(porSis).map(id => [h('h2', { text: (sis(id) || { nome: id }).nome }), h('ul', { class: 'lista' }, porSis[id].map(t => h('li', {}, h('a', { href: '#/t/' + t.id }, h('b', { text: t.t }), h('span', { text: t.papel === 'mestre' ? 'quem mestra' : t.papel === 'jogador' ? 'quem joga' : 'todos' })))))])];
+  }
+  function pgTarefa(id) {
+    const t = M.tarefas.find(x => x.id === id && papelOk(x.papel)); if (!t) return pgNada();
+    const s = sis(t.sistema);
+    return [h('div', { class: 'migalha', style: '--cor:' + corDe(s && s.grupo) }, h('a', { href: '#/tarefas', text: 'Como eu faço…' }), '›', s ? h('a', { href: '#/aba/' + s.id, text: s.nome }) : null),
+      h('h1', { text: t.t }), secao({ t: 'Passo a passo', txt: '', passos: t.passos, dica: t.dica, ir: t.ir })];
+  }
+  function pgSabia() {
+    return [h('h1', { text: 'Você sabia?' }), h('p', { class: 'lead', text: 'Coisas que o site faz e que quase ninguém usa. Experimente uma por sessão.' }),
+      h('div', { class: 'sabia' }, sabias().map(x => secao(x, h('p', { class: 'dica' }, h('a', { href: '#/aba/' + x.sistema, text: (sis(x.sistema) || {}).nome || '' })))))];
+  }
+  function pgSistema(id) {
+    const s = sis(id); if (!s || !sistemaVisivel(s)) return pgNada();
+    const g = GRUPOS.find(x => x[0] === s.grupo);
+    const out = [h('div', { class: 'migalha', style: '--cor:' + corDe(s.grupo) }, h('i', { 'aria-hidden': 'true' }), g ? g[1] : ''), h('h1', { text: s.nome }), h('p', { class: 'lead', text: s.resumo })];
+    if (s.id !== 'mesa' && s.id !== 'admin') out.push(botaoIr({ aba: s.id }, 'Abrir a aba ' + s.nome));
+    out.push(figura(s));
+    if (s.jogador.length) out.push(h('h2', { class: 'j' }, 'Para quem joga', ehMestre && !soJogador ? h('span', { class: 'quem', text: 'os jogadores veem' }) : null), s.jogador.map(x => secao(x)));
+    if (!soJogador && s.mestre.length) out.push(h('h2', { class: 'm' }, 'Para quem mestra', h('span', { class: 'quem', text: 'só quem mestra vê' })), s.mestre.map(x => secao(x)));
+    const ts = tarefas().filter(t => t.sistema === s.id);
+    if (ts.length) out.push(h('h2', { text: 'Como eu faço…' }), h('ul', { class: 'lista' }, ts.map(t => h('li', {}, h('a', { href: '#/t/' + t.id }, h('b', { text: t.t }))))));
+    return out;
+  }
+  const pgNada = () => [h('h1', { text: 'Página não encontrada' }), h('p', { class: 'lead' }, 'Volte ao ', h('a', { href: '#/inicio', text: 'início' }), '.')];
+
+  // ---- a busca ----
+  function indice() {
+    const L = [];
+    for (const s of sistemas()) {
+      L.push({ t: s.nome, txt: s.resumo, href: '#/aba/' + s.id, onde: 'Aba', peso: 3 });
+      for (const [p, lista] of [['jogador', s.jogador], ['mestre', s.mestre]]) if (p === 'jogador' || !soJogador) for (const x of lista) L.push({ t: x.t, txt: x.txt + (x.tecla ? ' ' + x.tecla : ''), href: '#/aba/' + s.id, sec: x.t, onde: s.nome + (p === 'mestre' ? ' · quem mestra' : ''), peso: 2 });
+    }
+    for (const t of tarefas()) L.push({ t: t.t, txt: t.passos.join(' '), href: '#/t/' + t.id, onde: 'Como eu faço…', peso: 2.5 });
+    for (const x of sabias()) L.push({ t: x.t, txt: x.txt, href: '#/sabia', sec: x.t, onde: 'Você sabia?', peso: 1.5 });
+    return L;
+  }
+  function buscar(termo) {
+    const pal = norm(termo).split(/\s+/).filter(w => w.length > 1); if (!pal.length) return [];
+    return indice().map(x => {
+      const tt = norm(x.t), tx = norm(x.txt); let n = 0;
+      for (const w of pal) { if (tt.includes(w)) n += 4; else if (tx.includes(w)) n += 1; else return null; }
+      return { x, n: n * x.peso };
+    }).filter(Boolean).sort((a, b) => b.n - a.n).slice(0, 40).map(r => r.x);
+  }
+  function marcar(txt, termo) {
+    const pal = norm(termo).split(/\s+/).filter(w => w.length > 1), N = norm(txt), frag = document.createDocumentFragment();
+    let i = 0; const marcas = [];
+    for (const w of pal) { let k = N.indexOf(w); while (k >= 0) { marcas.push([k, k + w.length]); k = N.indexOf(w, k + w.length); } }
+    marcas.sort((a, b) => a[0] - b[0]);
+    for (const [a, b] of marcas) { if (a < i) continue; frag.append(txt.slice(i, a), h('mark', { text: txt.slice(a, b) })); i = b; }
+    frag.append(txt.slice(i)); return frag;
+  }
+  function pgBusca(termo) {
+    const R = buscar(termo);
+    return [h('h1', { text: 'Busca' }), h('p', { class: 'lead', text: R.length ? R.length + (R.length === 1 ? ' resultado' : ' resultados') + ' para “' + termo + '”.' : 'Nada encontrado para “' + termo + '”. Tente outra palavra (sem acento também vale).' }),
+      h('div', { class: 'res' }, R.map(x => h('div', { class: 'sec' }, h('div', { class: 'onde', text: x.onde }), h('h3', {}, h('a', { href: x.href + (x.sec ? '?s=' + encodeURIComponent(x.sec) : '') }, marcar(x.t, termo))), h('p', {}, marcar(x.txt.length > 220 ? x.txt.slice(0, 220) + '…' : x.txt, termo)))))];
+  }
+
+  // ---- as rotas ----
+  function pintar() {
+    const hs = location.hash || '#/inicio';
+    const [rota, extra] = hs.split('?');
+    const s = new URLSearchParams(extra || '').get('s');
+    const p = rota.split('/');
+    let kids;
+    if (p[1] === 'busca') kids = pgBusca(decodeURIComponent(p.slice(2).join('/')));
+    else if (p[1] === 'roteiro') kids = pgRoteiro();
+    else if (p[1] === 'tarefas') kids = pgTarefas();
+    else if (p[1] === 't') kids = pgTarefa(p[2]);
+    else if (p[1] === 'sabia') kids = pgSabia();
+    else if (p[1] === 'aba') kids = pgSistema(p[2]);
+    else kids = pgInicio();
+    pag.replaceChildren(...kids.flat(Infinity).filter(Boolean));
+    pintarSumario();
+    $('app').classList.remove('menu'); $('btMenu').setAttribute('aria-expanded', 'false');
+    const alvo = s && [...pag.querySelectorAll('[data-sec]')].find(x => x.dataset.sec === s);
+    if (alvo) { alvo.scrollIntoView({ block: 'start' }); alvo.style.background = 'var(--lamp-soft)'; setTimeout(() => { alvo.style.background = ''; }, 1600); }
+    else $('main').scrollTop = 0;
+    if (p[1] !== 'busca' && document.activeElement !== q) pag.focus({ preventScroll: true });
+  }
+  window.addEventListener('hashchange', pintar);
+  let tq = 0;
+  q.addEventListener('input', () => { clearTimeout(tq); tq = setTimeout(() => { const v = q.value.trim(); if (v.length > 1) location.hash = '#/busca/' + encodeURIComponent(v); else if (!v && location.hash.startsWith('#/busca')) location.hash = '#/inicio'; }, 160); });
+  q.addEventListener('keydown', ev => { if (ev.key === 'Escape' && q.value) { ev.stopPropagation(); q.value = ''; location.hash = '#/inicio'; } if (ev.key === 'Enter') { const a = pag.querySelector('.res h3 a'); if (a) a.click(); } });
+  document.addEventListener('keydown', ev => {
+    const escrevendo = /^(INPUT|TEXTAREA)$/.test(document.activeElement && document.activeElement.tagName);
+    if ((ev.key === '/' && !escrevendo) || ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k')) { ev.preventDefault(); q.focus(); q.select(); return; }
+    if (ev.key === 'Escape' && naCasca && !ev.defaultPrevented) window.parent.postMessage({ tinycats: { t: 'manual.fechar' } }, location.origin);
+  });
+  $('btMenu').addEventListener('click', () => { const ab = $('app').classList.toggle('menu'); $('btMenu').setAttribute('aria-expanded', String(ab)); });
+  if (ehMestre) {
+    $('papelBox').hidden = false;
+    const pv = v => { soJogador = v; $('verTudo').setAttribute('aria-pressed', String(!v)); $('verJog').setAttribute('aria-pressed', String(v)); pintar(); };
+    $('verTudo').addEventListener('click', () => pv(false));
+    $('verJog').addEventListener('click', () => pv(true));
+  }
+  // a casca pode abrir o Manual numa página (?ir=#/aba/cenas)
+  if (qs.get('ir') && !location.hash) location.hash = qs.get('ir');
+  pintar();
+  window.TC_MANUAL_PAGINA = { buscar, resolver, sistemasVisiveis: () => sistemas().map(s => s.id) };
+})();
+</script>
+</body>
+</html>

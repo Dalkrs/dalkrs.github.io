@@ -376,6 +376,15 @@ dialog.pista { width: min(760px, calc(100% - 24px)); }
 
 /* ---- menu da conta ---- */
 /* (lote 16) o guia de cada aba: os assuntos, um aberto de cada vez, com "Mostrar onde fica" */
+/* (lote 51) o Manual: a wiki do site, numa janela grande por cima de tudo (manual/index.html numa moldura) */
+.manual { position: fixed; inset: 0; z-index: 35; display: grid; place-items: center; padding: 18px; background: var(--scrim); }
+.manual-c { position: relative; width: min(1180px, 100%); height: min(860px, 100%); border-radius: 14px; overflow: hidden; border: 1px solid var(--line-strong); background: var(--table); box-shadow: var(--shadow); }
+.manual-c iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--table); }
+.manual-x { position: absolute; top: 10px; right: 10px; z-index: 2; }
+@media (max-width: 760px) { .manual { padding: 0; } .manual-c { border-radius: 0; border: 0; height: 100%; } }
+.manual-alvo { outline: 3px solid var(--lamp) !important; outline-offset: 3px; border-radius: 8px; animation: manual-pulsa 1s ease-in-out 3; }
+@keyframes manual-pulsa { 50% { outline-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .manual-alvo { animation: none; } }
 .guia { position: fixed; z-index: 31; top: calc(var(--bar) + 4px + env(safe-area-inset-top, 0px)); right: 8px; width: min(340px, calc(100% - 16px)); max-height: calc(100% - var(--bar) - 16px); overflow: auto; padding: 10px 12px 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow); }
 .guia-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .guia-h strong { font-size: 14px; }
@@ -614,6 +623,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 </div>
 <div class="menu" id="menu" hidden role="dialog" aria-label="Conta e mesa"></div>
 <aside class="guia" id="guia" hidden role="dialog" aria-label="Guia desta aba"></aside>
+<div class="manual" id="manual" hidden role="dialog" aria-modal="true" aria-label="Manual do site"><div class="manual-c" id="manualC"></div></div>
 <dialog id="dlg"></dialog>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <noscript><p style="padding:20px">Ative o JavaScript do navegador para usar o Tiny Cats.</p></noscript>
@@ -638,7 +648,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.10.31-6';
+  const VERSAO = '2026.11.01-1';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -969,6 +979,61 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     const x = esperaGuia[m.n]; delete esperaGuia[m.n];
     if (m.ok) { const f = frames[atual]; if (f) foco(f); } else toast((x.onde && x.onde.nada) || 'Isso não está à vista agora.');
   });
+
+  /* ================= (lote 51) o Manual =================
+     A wiki do site (manual/index.html), aberta pelo menu da conta numa janela grande. Quem mestra alguma aba vê tudo;
+     quem joga, só as partes de quem joga. "Me leve até lá", lá dentro, fecha o Manual, abre a aba e destaca o lugar
+     (o mesmo "Mostrar onde fica" do guia); um botão da barra de cima ganha o contorno aqui mesmo. */
+  const manual = $('manual'), manualC = $('manualC');
+  let manualSrc = null, manualVoltar = null;
+  const papelManual = () => (ABAS.some(a => a.soMestre && !a.soAdmin && pode(a.id)) ? 'mestre' : 'jogador');
+  function abrirManual(pagina) {
+    const src = 'manual/?casca=1&p=' + papelManual() + (souAdmin ? '&adm=1' : '') + '&v=' + encodeURIComponent(VERSAO) + (pagina ? '&ir=' + encodeURIComponent(pagina) : '');
+    if (!manualC.firstChild || (manualSrc && manualSrc.split('&ir=')[0] !== src.split('&ir=')[0]) || pagina) {
+      const X = h('button', { type: 'button', class: 'ib manual-x', id: 'manualX', title: 'Fechar o Manual (Esc)', 'aria-label': 'Fechar o Manual', onclick: () => fecharManual(true) });
+      X.innerHTML = X_SVG;
+      manualC.replaceChildren(X, h('iframe', { id: 'f-manual', title: 'Manual', src }));
+      manualSrc = src;
+    }
+    manualVoltar = document.activeElement;
+    manual.hidden = false;
+    const f = $('f-manual');
+    const focar = () => { try { f.contentWindow.focus(); const q = f.contentDocument && f.contentDocument.getElementById('q'); if (q) q.focus({ preventScroll: true }); } catch (e) { /* carregando */ } };
+    f.addEventListener('load', focar, { once: true }); focar();
+  }
+  function fecharManual(voltar) {
+    if (manual.hidden) return;
+    manual.hidden = true;
+    if (voltar && manualVoltar && manualVoltar.focus) manualVoltar.focus();
+  }
+  manual.addEventListener('click', ev => { if (ev.target === manual) fecharManual(true); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !manual.hidden) { ev.preventDefault(); fecharManual(true); } });
+  function destacarNaCasca(sel) {
+    const el = document.querySelector(sel);
+    if (!el || el.hidden || !el.offsetParent) { toast('Esse botão aparece quando você está numa mesa.'); return; }
+    el.classList.remove('manual-alvo'); void el.offsetWidth; el.classList.add('manual-alvo');
+    setTimeout(() => el.classList.remove('manual-alvo'), 3200);
+  }
+  async function irPeloManual(ir) {
+    fecharManual(false);
+    if (!ir) return;
+    if (ir.casca) { destacarNaCasca(ir.casca); return; }
+    const id = abaPossivel(ir.aba);
+    if (!pode(id)) { const a = ABAS.find(x => x.id === ir.aba); toast((a ? 'A aba ' + a.nome : 'Essa aba') + ' não está à vista para você agora.'); return; }
+    abrir(id);
+    if (!ir.sel) return;
+    const f = frames[id];
+    for (let i = 0; i < 60 && !prontas.has(f); i++) await new Promise(r => setTimeout(r, 150));
+    await new Promise(r => setTimeout(r, 700));         // (o sistema acabou de abrir: espera ele se arrumar)
+    if (atual === id) mostrarNoSistema({ onde: { sel: ir.sel, sub: ir.sub || null, nada: ir.nada || 'Isso não está à vista agora. Abra o que a página do Manual diz primeiro.' } });
+  }
+  window.addEventListener('message', ev => {
+    const m = ev.origin === location.origin && ev.data && ev.data.tinycats;
+    if (!m || ev.source !== ($('f-manual') || {}).contentWindow) return;
+    if (m.t === 'manual.fechar') fecharManual(true);
+    else if (m.t === 'manual.ir') irPeloManual(m.ir);
+  });
+  window.TC_ABRIR_MANUAL = abrirManual;
 
   /* ================= conta, mesas e mesa ao vivo ================= */
   const TC = window.TC || {};
@@ -1367,6 +1432,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     menu.append(h('div', { class: 'sec', id: 'mn-tema' }, h('div', { class: 'rot', text: 'Tema' }), seletorTema('mn-tema-seg')));
     sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-novidades', onclick: () => { fecharMenu(); janelaNovidades(); } },
       'Novidades', naoVistas().length ? h('i', { class: 'pt', 'aria-hidden': 'true', title: 'Há novidade que você ainda não viu' }) : null));
+    sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-manual', text: 'Manual', title: 'O guia completo do site: o que cada aba faz e como usar', onclick: () => { fecharMenu(); abrirManual(); } }));
     sec.append(h('button', { type: 'button', class: 'lk', text: 'Sair da conta', onclick: async () => { fecharMenu(); if (mesas.atual) await assentar(); await conta.sair(); toast('Você saiu da conta.'); } }));
     sec.append(h('div', { class: 'sub', style: 'padding:4px 8px 0', text: u.email }));
     menu.append(sec);
@@ -1431,6 +1497,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       criar ? null : h('button', { type: 'button', class: 'lkn', id: 'c-esqueci', text: 'Esqueci minha senha', onclick: () => janelaEsqueci(email.value) }),
       h('div', { class: 'nt', text: criar ? 'Não há e-mail de confirmação: a conta já sai pronta. Use um e-mail de verdade: é para ele que vai o link se você esquecer a senha.' : 'Sem entrar, o site continua funcionando só neste navegador, como sempre.' }),
       h('button', { type: 'button', class: 'lkn', id: 'c-novidades', text: 'Novidades do site', onclick: () => janelaNovidades() }),
+      h('button', { type: 'button', class: 'lkn', id: 'c-manual', text: 'Manual do site', onclick: () => { fecharJanela(); abrirManual(); } }),
       h('div', { class: 'c-tema' }, h('span', { text: 'Tema' }), seletorTema('c-tema-seg')));
     enviarCom(f, err, ok, async () => {
       if (criar) await conta.criar(email.value, senha.value, nome.value.trim());

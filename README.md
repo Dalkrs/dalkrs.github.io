@@ -2915,6 +2915,24 @@ Fichas. Sem mesa, a busca lê o que cada sistema guardou neste navegador (cada u
 A conta — o índice e a busca — fica em `tc/busca.js`, sem navegador: `indexar(fonte)`, `fonteLocal(ler)` e
 `buscar(indice, consulta, max)`.
 
+### O Manual (lote 51)
+
+A wiki do site, em `manual/`: `index.html` desenha as páginas e `conteudo.js` (window.TC_MANUAL) guarda o texto —
+uma página por aba da barra (e a da mesa e da barra de cima), “Como eu faço…” (tarefas com passo a passo), o roteiro
+da sessão (antes, durante e depois; um para quem mestra e outro para quem joga) e “Você sabia?”. Abre pelo menu da
+conta ("Manual") ou pela janela de entrar ("Manual do site"), numa janela grande da casca (`abrirManual`, com
+`?casca=1&p=mestre|jogador`). Quem mestra alguma aba do grupo Mestre lê tudo e tem a chave “Como o jogador vê”; quem
+joga não recebe as páginas nem as partes do mestre. A busca é local, sem acento, e exige todas as palavras.
+
+“Me leve até lá” manda `{ t: 'manual.ir', ir }` à casca: com `aba` e um assunto do guia (`g`, o título em
+`tc/guia.js`, de onde vem o seletor), a casca fecha o Manual, abre a aba, espera a moldura e usa o mesmo
+`guia.mostrar` do “Mostrar onde fica”; com `casca`, o botão da barra de cima pisca ali mesmo.
+
+As capturas (`manual/img/*.jpg`) saem de `node src/tests/manual-fotos.js [abas…]`: abre o site sem conta, prepara
+o que precisa estar à vista e desenha os números das `marcas` de cada página. **A cada lote**, o Manual acompanha o
+que mudou; `manual.test.js` falha se uma aba da barra ficar sem página, se um “Me leve até lá” apontar para um assunto
+do guia que não existe ou se faltar uma imagem.
+
 ### Redesenhar sem atrapalhar quem está usando
 
 A ficha é redesenhada inteira quando algo muda — por quem a está usando, ou por outra pessoa da mesa. Três cuidados
