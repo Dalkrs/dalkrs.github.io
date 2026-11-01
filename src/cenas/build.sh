@@ -42,6 +42,7 @@ body_parts() {
   echo '<script>'
   cat ../../tc/barras-painel.js
   cat ../../tc/npc.js
+  cat ../../tc/misterio.js
   echo '</script>'
   cat "$OUT"
   printf '%s' '</body></html>'
@@ -67,6 +68,7 @@ mkdir -p "$(dirname "$SITE")"
   echo '<script src="../tc/corrupcao.js?v=1"></script>'
   echo '<script src="../tc/barras-painel.js?v=1"></script>'      # (lote 44) o painel de barras
   echo '<script src="../tc/npc.js?v=1"></script>'                # (lote 49) o gerador de NPC, para os moradores do lugar povoado
+  echo '<script src="../tc/misterio.js?v=1"></script>'           # (lote 53) os mistérios: a cena do crime e as marcas de pista
   body_parts
   echo '</body>'
   echo '</html>'

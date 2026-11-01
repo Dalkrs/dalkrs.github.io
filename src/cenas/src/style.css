@@ -899,6 +899,42 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .ger-mds { display: flex; flex-direction: column; gap: 4px; flex: 1 1 280px; min-width: 0; }
 .ger-md { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 34px; }
 .ger-md select.in, .ger-md input.in { flex: 1 1 170px; width: auto; min-width: 0; }
+/* (lote 53) a janela do gerador em três colunas: os lugares em grupos (com o desenho de cada um), a prévia grande no
+   meio (com o nome, a semente e os modelos) e as escolhas em blocos que abrem e fecham, com o resumo no título */
+.modal.ger-janela { width: min(1260px, 100%); }
+.ger2 { display: grid; grid-template-columns: 178px minmax(0, 1fr) minmax(300px, 360px); gap: 16px 18px; align-items: start; }
+.ger2 > .ger-ab { position: sticky; top: 0; }
+.ger-rail { display: flex; flex-direction: column; align-items: stretch; gap: 1px; padding: 0; border: 0; background: none; border-radius: 0; }
+.ger-rail-t { margin: 10px 8px 3px; font: 600 12px/1.2 var(--ui); color: var(--fg-3); }
+.ger-rail-t:first-child { margin-top: 0; }
+.ger-rail .seg-b { display: flex; align-items: center; justify-content: flex-start; gap: 9px; width: 100%; min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--fg-2); font-weight: 600; font-size: 13.5px; text-align: left; }
+.ger-rail .seg-b:hover { background: var(--hover); color: var(--fg); }
+.ger-rail .seg-b.on { background: var(--lamp-soft); color: var(--fg); box-shadow: inset 3px 0 0 var(--lamp); }
+.ger-rail .seg-b.on .ger-gl { color: var(--lamp-ink); }
+.ger-gl { flex: none; color: var(--fg-3); }
+.ger-centro { position: sticky; top: 0; }
+.ger-centro .ger-cv { aspect-ratio: 64 / 46; }
+.ger-acoes { gap: 8px; }
+.ger-acoes .ger-sem { margin-left: auto; }
+.ger-acoes .ger-sem .in.num { width: 132px; }
+.ger-lado { gap: 8px; }
+.ger-blocos { display: flex; flex-direction: column; gap: 8px; }
+.ger-bl { border: 1px solid var(--line); border-radius: 10px; background: var(--raised); }
+.ger-bl > summary { display: flex; align-items: baseline; gap: 10px; padding: 9px 12px; cursor: pointer; list-style: none; min-width: 0; }
+.ger-bl > summary::-webkit-details-marker { display: none; }
+.ger-bl > summary::before { content: '▸'; color: var(--fg-3); transition: transform .15s; }
+.ger-bl[open] > summary::before { transform: rotate(90deg); }
+.ger-bl > summary:focus-visible { outline: 2px solid var(--lamp); outline-offset: -2px; border-radius: 10px; }
+.ger-bl-t { font: 600 16px/1.2 var(--display); white-space: nowrap; }
+.ger-bl-r { flex: 1; min-width: 0; color: var(--fg-3); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ger-bl-c { display: flex; flex-direction: column; gap: 10px; padding: 2px 12px 12px; }
+.ger-bl-c .seg { flex-wrap: wrap; }
+@media (max-width: 1120px) { .ger2 { grid-template-columns: 160px minmax(0, 1fr); } .ger2 > .ger-lado { grid-column: 2; } .ger-centro { position: static; } }
+@media (max-width: 760px) {
+  .ger2 { grid-template-columns: minmax(0, 1fr); } .ger2 > .ger-lado { grid-column: auto; } .ger2 > .ger-ab { position: static; }
+  .ger-rail { flex-direction: row; flex-wrap: wrap; gap: 4px; } .ger-rail-t { display: none; } .ger-rail .seg-b { width: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .ger-bl > summary::before { transition: none; } }
 /* (lote 8, parte 5) a seção Traçado: abre e fecha; a rosa dos ventos (oito botões em volta de "Auto") */
 .ger-tr { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 /* (lote 14, parte 14a) o hexágono do Mapa-múndi, no alto das escolhas */

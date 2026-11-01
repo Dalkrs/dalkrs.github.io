@@ -65,7 +65,8 @@
       ],
       mestre: [
         { t: 'Trocar e organizar as cenas', txt: 'O botão da cena abre a lista: pastas (“Organizar em pastas…”), famílias (a cidade, o bairro, a casa — uma cena dentro da outra) e as cenas ligadas ao Mapa-múndi.', ir: { aba: 'cenas', g: 'Trocar de cena' } },
-        { t: 'Gerar um lugar', txt: 'No botão de cenas, “Gerar um lugar…”: Vilarejo, Cidade, Tribo, Porto, Ruínas, Masmorra, Castelo, Cemitério, Catacumbas, Encontro, Região livre e Arena. Escolha o estilo, a estação, o clima e o traçado; clique na prévia para travar uma parte e “Gerar outro” sorteia só o resto. Embaixo, “Povoar o lugar” põe luzes, inimigos do Bestiário, moradores e saque — tudo oculto.', ir: { aba: 'cenas', g: 'Povoar o lugar' } },
+        { t: 'Gerar um lugar', txt: 'No botão de cenas, “Gerar um lugar…”. À esquerda, os lugares em grupos: Povoados (Vilarejo, Cidade, Tribo, Porto), Natureza (Encontro, Região livre), Fortes e ruínas (Castelo, Ruínas, Cemitério), Subterrâneo (Masmorra, Catacumbas) e Especiais (Cena do crime, Arena). No meio, a prévia grande: clique numa parte para travar e “Gerar outro” sorteia só o resto. À direita, os blocos: o lugar, o Ambiente (estilo, hora, clima, estação), Povoar (luzes, inimigos do Bestiário, moradores, saque) e Mistério — tudo oculto até você revelar.', ir: { aba: 'cenas', g: 'Povoar o lugar' } },
+        { t: 'A cena do crime', txt: 'A aba Cena do crime gera a mansão, a taverna, o beco, a cripta ou a clareira da lua cheia. Em qualquer lugar, o bloco Mistério põe um caso do Escudo (ou um caso novo) na cena: o corpo coberto (ou o lugar revirado) e uma marca de pista oculta para cada vestígio e documento, perto de onde ela costuma ficar. Dois cliques numa marca a revelam e entregam a pista à mesa.', ir: { aba: 'cenas', g: 'A cena do crime e as pistas' } },
         { t: 'As ferramentas', txt: 'Na barra da esquerda: selecionar, mover, régua, tokens, objetos (J), desenho (paredes, portas, janelas, relevo), luz, névoa (U), efeitos de magia (Y) e o grupo Mestre (a vez, os momentos, os lembretes, a cura e as energias).', ir: { aba: 'cenas', g: 'As ferramentas' } },
         { t: 'Os turnos', txt: 'Na aba Turnos: puxe o grupo, role a iniciativa (com faixas de grupo para muitos inimigos), comece o combate. N passa a vez, Shift+N volta. Atrasar, pular, entrar no combate, surpresa e o olho que esconde um combatente dos jogadores.', tecla: 'N', ir: { aba: 'cenas', g: 'Atrasar, pular, entrar' } },
         { t: 'Ataque e rolagem geral', txt: 'K sobre um token abre o ataque com defesa (o jogador recebe o pedido de defesa na mesa ao vivo). Shift+F rola o mesmo atributo para vários tokens — a Percepção do grupo — pedindo aos jogadores ou rolando por todos.', tecla: 'K · Shift+F' },
@@ -163,13 +164,16 @@
     },
     {
       id: 'pistas', nome: 'Pistas', grupo: 'jogar',
-      resumo: 'O que o mestre entregou: imagens, cartas e puzzles. Aparece quando você recebe a primeira.',
+      resumo: 'O que o mestre entregou: imagens, cartas e puzzles — e os casos, com o mural do grupo. Aparece quando você recebe a primeira.',
       jogador: [
         { t: 'As pistas', txt: 'Quando chega uma pista, abre uma janela. Tudo fica guardado na aba, com busca.', ir: { aba: 'pistas', g: 'As pistas' } },
         { t: 'Resolver juntos', txt: 'Os puzzles são resolvidos em grupo: cada lance aparece para os outros na hora, e a mesa ao vivo avisa quando resolvem. Alguns têm cronômetro.', ir: { aba: 'pistas', g: 'Os puzzles' } },
+        { t: 'Os casos e o mural', txt: 'Quando o mestre abre um mistério, ele aparece em Casos. Cada pista é um cartão preso no mural do grupo: arrastem, liguem com fio o que se conecta (“Ligar com fio” e dois cartões) e colem notas. Tudo aparece para os outros na hora.', ir: { aba: 'pistas', g: 'Os casos e o mural' } },
+        { t: 'Interrogatório e acusação', txt: 'Ao lado do mural, os suspeitos que o mestre mostrou, com a aparência (os traços que as pistas apontam) e o que cada um disse no interrogatório. “Acusar…” aponta o culpado e diz por quê; o mestre confirma ou não, e o veredito aparece para o grupo.' },
       ],
       mestre: [
         { t: 'Entregar', txt: 'Handouts e puzzles são criados no Escudo do mestre → Handouts e puzzles, e entregues à mesa toda ou só a alguns. Você revela partes escondidas aos poucos.' },
+        { t: 'Os casos', txt: 'Os mistérios abertos à mesa no Escudo (aba Mistérios) aparecem em Casos, com o mural do grupo. Você entrega cada pista (no Escudo ou revelando a marca na cena do crime), mostra os suspeitos e confirma a acusação.' },
       ],
     },
     {
@@ -315,13 +319,14 @@
     },
     {
       id: 'escudo', nome: 'Escudo do mestre', grupo: 'mestre', soMestre: true,
-      resumo: 'A preparação da sessão: o roteiro, os relógios de ameaça, os handouts e puzzles, os NPCs e as tabelas de encontro.',
+      resumo: 'A preparação da sessão: o roteiro, os relógios de ameaça, os handouts e puzzles, os NPCs, as tabelas de encontro e os mistérios.',
       img: { arq: 'escudo.jpg', legenda: 'O Escudo, na aba Roteiro.', marcas: [
         { sel: '[data-k="aba:roteiro"]', t: 'O Roteiro: cada sessão é uma lista de passos que fazem a ação.' },
         { sel: '[data-k="aba:relogios"]', t: 'Os relógios de ameaça.' },
         { sel: '[data-k="aba:handouts"]', t: 'Handouts e puzzles.' },
         { sel: '[data-k="aba:npcs"]', t: 'O gerador de NPCs e as raças da mesa.' },
         { sel: '[data-k="aba:encontros"]', t: 'As tabelas de encontro por bioma.' },
+        { sel: '[data-k="aba:misterios"]', t: 'Os mistérios: o caso, os suspeitos e as pistas.' },
       ] },
       jogador: [],
       mestre: [
@@ -330,6 +335,8 @@
         { t: 'Handouts e puzzles', txt: 'Imagens e cartas com trechos escondidos, revelados aos poucos. Mais de 20 puzzles com solução garantida, em três dificuldades, testáveis na prévia; acertar pode revelar outro handout ou abrir uma porta das Cenas.', ir: { aba: 'escudo', g: 'Handouts' } },
         { t: 'NPCs', txt: '“Gerar NPC” dá três opções (nome no estilo do povo, aparência, jeito, segredo, gancho). Um clique: virar ficha, token na cena ou pôr no roteiro.', ir: { aba: 'escudo', g: 'Os NPCs' } },
         { t: 'Encontros por bioma', txt: 'Uma tabela por bioma, com chance e resultados com peso. O Mapa-múndi usa quando os grupos andam.', ir: { aba: 'escudo', g: 'Encontros por bioma' } },
+        { t: 'Os mistérios', txt: '“+ Caso” sorteia o mistério pelo tipo (assassinato, roubo ou sumiço, desaparecimento, maldição, licantropo, vampiro, íncubo ou súcubo, criaturas sombrias): a verdade (culpado, motivo, método), 3 a 5 suspeitos com álibi e segredo, e três pistas para cada conclusão — de jeitos diferentes, para o grupo não travar —, mais a pista falsa e a reviravolta. Tudo se edita.', ir: { aba: 'escudo', g: 'Os mistérios' } },
+        { t: 'Conduzir o caso', txt: '“Abrir à mesa” põe o caso nas Pistas, com o mural do grupo. Entregue cada pista quando o grupo a achar, mostre os suspeitos e anote as respostas do interrogatório. Quando o grupo acusar, o aviso chega e você responde “Acertaram” ou “Não foi”. “Gerar a cena do crime…” leva o caso para as Cenas.' },
       ],
     },
     {
@@ -352,6 +359,8 @@
     { id: 'encontro', t: 'Montar um encontro de combate', papel: 'mestre', sistema: 'bestiario', passos: ['No Bestiário, crie os inimigos (“+ Inimigo”).', 'Ponha na bandeja e confira a dificuldade contra o grupo.', 'Puxe para a cena.', 'Guarde o encontro para ligar a um passo do roteiro.'], ir: { aba: 'bestiario', g: 'O encontro' } },
     { id: 'momento', t: 'Preparar uma revelação dramática', papel: 'mestre', sistema: 'cenas', passos: ['Nas Cenas, aba Cena → Momentos preparados → novo.', 'Junte os tokens escondidos que vão aparecer, as luzes, a névoa, um som e a narração.', 'Na hora, “Soltar”. Tudo tem Desfazer.'], ir: { aba: 'cenas', g: 'Momentos preparados' } },
     { id: 'reforco', t: 'Fazer reforços chegarem no meio do combate', papel: 'mestre', sistema: 'cenas', passos: ['Ponha um Ponto de reforço no mapa (os jogadores não veem).', 'Arraste os tokens para dentro dele, ou “Cópias de um modelo”.', 'Escolha quando chegam: agora, depois de X rodadas ou em ondas.', 'Ou use um lembrete por rodada na aba Turnos.'], ir: { aba: 'cenas', g: 'Lembretes por rodada' } },
+    { id: 'misterio', t: 'Montar um mistério para o grupo', papel: 'mestre', sistema: 'escudo', passos: ['Escudo → Mistérios → “+ Caso”: escolha o tipo e quantos suspeitos.', 'Sorteie de novo até gostar; guarde o caso e ajuste os textos.', '“Gerar a cena do crime…”: as Cenas abrem com o caso no bloco Mistério.', 'Na sessão, “Abrir à mesa” e entregue as pistas conforme o grupo acha (dois cliques nas marcas da cena).', 'Mostre os suspeitos e anote o interrogatório; responda à acusação.'], ir: { aba: 'escudo', g: 'Os mistérios' }, dica: 'Cada conclusão tem três pistas de jeitos diferentes: se o grupo perder uma, ainda há duas.' },
+    { id: 'investigar', t: 'Investigar um caso no mural', papel: 'jogador', sistema: 'pistas', passos: ['Pistas → Casos.', 'Arraste os cartões para organizar; “Ligar com fio” e clique em dois cartões para ligar.', '“+ Nota” cola uma teoria no mural.', 'Leia os suspeitos ao lado e o que disseram.', '“Acusar…” quando o grupo tiver certeza.'], ir: { aba: 'pistas', g: 'Os casos e o mural' } },
     { id: 'npc', t: 'Criar um NPC na hora', papel: 'mestre', sistema: 'escudo', passos: ['Escudo → NPCs → “Gerar NPC”.', 'Escolha raça, papel e onde vive; das três opções, fique com uma.', '↻ sorteia de novo só um campo.', 'Virar ficha, token na cena ou pôr no roteiro.'], ir: { aba: 'escudo', g: 'Os NPCs' } },
     { id: 'handout', t: 'Entregar uma carta ou um puzzle', papel: 'mestre', sistema: 'escudo', passos: ['Escudo → Handouts e puzzles.', 'Crie a carta (com áreas escondidas) ou sorteie um puzzle e teste na prévia.', '“Entregar” à mesa toda ou a alguns.', 'Revele as partes escondidas quando quiser.'], ir: { aba: 'escudo', g: 'Entregar' } },
     { id: 'relogio', t: 'Usar um relógio de ameaça', papel: 'mestre', sistema: 'escudo', passos: ['Escudo → Relógios → novo: os gomos e a consequência.', 'Marque se os jogadores veem (aparece num canto das Cenas).', 'Avance quando a ameaça crescer; o Mapa-múndi sugere ao passar o dia.'], ir: { aba: 'escudo', g: 'Os relógios' } },
@@ -450,8 +459,10 @@
     { t: 'E abre os equipamentos', txt: 'Nas Cenas, a tecla E sobre o seu token troca a arma sem ir à ficha.', papel: 'jogador', sistema: 'cenas' },
     { t: 'A emoção no acampamento', txt: 'A aura da emoção aparece em volta do retrato para todos — dá para interpretar sem falar.', papel: 'jogador', sistema: 'acampamento' },
     { t: 'Encontros por bioma', txt: 'Com as tabelas do Escudo, o mapa sorteia o encontro quando o grupo anda.', papel: 'mestre', sistema: 'escudo', ir: { aba: 'escudo', g: 'Encontros por bioma' } },
+    { t: 'Mistérios prontos', txt: 'O Escudo sorteia um caso inteiro — culpado, suspeitos, pistas pela regra das três — e as Cenas põem o corpo e as marcas de pista no mapa.', papel: 'mestre', sistema: 'escudo', ir: { aba: 'escudo', g: 'Os mistérios' } },
+    { t: 'O mural do grupo', txt: 'Nos casos das Pistas, o grupo monta a teoria junto: cartões, fios vermelhos e notas, ao vivo para todos.', papel: 'jogador', sistema: 'pistas', ir: { aba: 'pistas', g: 'Os casos e o mural' } },
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 2, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 3, sistemas, tarefas, roteiro, sabia };
 })();

@@ -1031,6 +1031,10 @@ function normalizeScene(sc) {
     } else delete t.pb;
     const sq = t.prop ? cleanSaque(t.saque) : null;
     if (sq) t.saque = sq; else delete t.saque;
+    // (lote 53) a marca de pista de um caso do Escudo (e o corpo da cena do crime): { c: o caso, p: a pista }
+    const ms = t.mist;
+    if (t.prop && ms && typeof ms === 'object' && (ms.c == null || (typeof ms.c === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(ms.c))) && (ms.p == null || (typeof ms.p === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(ms.p)))) t.mist = { c: ms.c || null, p: ms.p || null };
+    else delete t.mist;
     // (lote 7) o objeto que leva a outra cena (a entrada de uma casa, a saída, uma escada): o id da cena
     if (!(t.prop && typeof t.cena === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.cena))) delete t.cena;
     // (lote 7) o que o marcador sabe para gerar a cena de dentro: o prédio (tipo, medidas, porta, estilo, semente,

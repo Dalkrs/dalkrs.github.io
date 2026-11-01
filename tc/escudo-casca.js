@@ -44,7 +44,14 @@
       if (!D || mestraEscudo()) return [];
       return D.todas().filter(l => l && !l.apagado && E.hidDaPista(l.id));
     }
-    const temPistas = () => minhasPistas().length > 0;
+    // (lote 53) os casos que o mestre abriu à mesa (escudo:mpub:…): também abrem a aba Pistas
+    const Mi = () => window.TC.misterio || null;
+    function meusCasos() {
+      const D = col(), M = Mi();
+      if (!D || !M || mestraEscudo()) return [];
+      return D.todas().filter(l => l && !l.apagado && typeof l.id === 'string' && l.id.startsWith(M.PRE.pub) && M.cidDe(l.id));
+    }
+    const temPistas = () => minhasPistas().length > 0 || meusCasos().length > 0;
     let tinha = false, tPistas = 0;
     function janelaDaPista(l) {
       const p = E.normPista(l.dados);
@@ -76,6 +83,42 @@
         const p = E.normPista(mudaram[0].dados);
         toast('“' + p.nome + '” mudou: o mestre revelou mais.', 'Ver', () => k.irPara('pistas', { pista: mudaram[0].id }), 10000);
       }
+      conferirCasos(naPistas);
+    }
+    // (lote 53) o caso novo, a pista nova num caso, o suspeito novo e o veredito: um aviso com "Ver" (fora da aba Pistas)
+    function conferirCasos(naPistas) {
+      const M = Mi(); if (!M) return;
+      const cA = chave('tinycats:casos:avisados:'), primeiraVez = !k.guarda.ler(cA), visto = lerMapa(cA), avisos = [];
+      for (const l of meusCasos()) {
+        const p = M.normPub(l.dados), cid = M.cidDe(l.id), antes = visto[l.id];
+        const agora = { p: p.pistas.length, s: p.suspeitos.length, v: p.veredito ? p.veredito.em : null };
+        if (!antes) avisos.push(['O mestre abriu um caso: “' + p.titulo + '”. O grupo tem um mural para investigar.', cid]);
+        else {
+          if (agora.p > antes.p) avisos.push([agora.p - antes.p === 1 ? 'Pista nova no caso “' + p.titulo + '”: ' + p.pistas[p.pistas.length - 1].txt : (agora.p - antes.p) + ' pistas novas no caso “' + p.titulo + '”.', cid]);
+          if (agora.s > antes.s) avisos.push(['Um suspeito novo no caso “' + p.titulo + '”.', cid]);
+          if (agora.v && agora.v !== antes.v) avisos.push([(p.veredito.ok ? 'Caso resolvido! ' : '') + p.veredito.txt, cid]);
+        }
+        visto[l.id] = agora;
+      }
+      k.guarda.gravar(cA, j(visto));
+      if (!naPistas && !primeiraVez) for (const [txt, cid] of avisos.slice(0, 3)) toast(txt, 'Ver', () => k.irPara('pistas', { caso: cid }), 12000);
+    }
+    // (lote 53) quem mestra o Escudo: a acusação que o grupo fez no mural de um caso
+    function conferirAcusacoes() {
+      const M = Mi(), D = col();
+      if (!M || !D || !mestraEscudo()) return;
+      const cA = chave('tinycats:casos:acusacoes:'), visto = lerMapa(cA);
+      for (const l of D.todas()) {
+        if (!l || l.apagado || typeof l.id !== 'string' || !l.id.startsWith(M.PRE.mural)) continue;
+        const m = M.normMural(l.dados), a = m.acusacao, cid = M.cidDe(l.id);
+        if (!a || !a.em || visto[l.id] === a.em) continue;
+        const primeira = !(l.id in visto);
+        visto[l.id] = a.em;
+        if (primeira && Date.now() - Date.parse(a.em) > 10 * 60 * 1000) continue;      // (a acusação velha, de antes deste aparelho abrir: sem aviso)
+        const c = D.pegar(M.PRE.caso + cid), caso = c && !c.apagado ? M.normCaso(c.dados) : null, s = caso && caso.suspeitos.find(x => x.id === a.sid);
+        toast((a.por || 'O grupo') + ' acusou ' + (s ? s.nome : 'um suspeito') + (caso ? ' no caso “' + caso.titulo + '”' : '') + '. Confirme no Escudo.', 'Ver', () => k.irPara('escudo', { caso: cid }), 16000);
+      }
+      k.guarda.gravar(cA, j(visto));
     }
 
     /* ---------------- o vigia (o mestre da mesa) ---------------- */
@@ -219,10 +262,11 @@
     }
 
     /* ---------------- ouvir ---------------- */
-    let tPainel = 0;
+    let tPainel = 0, tAcus = 0;
     dados.on('muda', (c, l) => {
       if (c !== 'documentos' || !l || typeof l.id !== 'string') return;
-      if (l.id.startsWith('pista:')) { clearTimeout(tPistas); tPistas = setTimeout(conferirPistas, 250); }
+      if (l.id.startsWith('pista:') || l.id.startsWith('escudo:mpub:')) { clearTimeout(tPistas); tPistas = setTimeout(conferirPistas, 250); }
+      if (l.id.startsWith('mural:')) { clearTimeout(tAcus); tAcus = setTimeout(conferirAcusacoes, 300); }
       if (l.id.startsWith('pista:jogo:') || l.id.startsWith('escudo:relogio:') || l.id.startsWith('escudo:handout:')) { clearTimeout(tVigia); tVigia = setTimeout(vigiar, 400); }
       if (l.id.startsWith('escudo:') || l.id.startsWith('cena:') || l.id.startsWith('best:enc:')) { clearTimeout(tPainel); tPainel = setTimeout(pintarPainel, 150); }
     });
@@ -232,7 +276,7 @@
       if (!a) return;
       try {
         const D = dados.col('documentos');
-        D.pronta.then(() => { if (mesas.atual !== a) return; conferirPistas(); pintarPainel(); }, () => { /* sem os documentos */ });
+        D.pronta.then(() => { if (mesas.atual !== a) return; conferirPistas(); conferirAcusacoes(); pintarPainel(); }, () => { /* sem os documentos */ });
       } catch (e) { /* sem os documentos */ }
       if (typeof dados.escudo === 'function') dados.escudo('versao').then(() => { if (mesas.atual === a) { bancoOk = true; vigiar(); } }, () => { if (mesas.atual === a) bancoOk = false; });
     });

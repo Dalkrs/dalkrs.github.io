@@ -172,7 +172,7 @@ const SHOTS = process.env.FOTOS;
   if (parte('gerador')) {
     await page.locator('#sceneBtn').click(); await w(200);
     await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(700);
-    ok(await page.locator('.modal-t').innerText() === 'Gerar um lugar' && await page.locator('#ger-prev').count() === 1 && j(await page.locator('#ger-lugar button').allTextContents()) === j(['Vilarejo', 'Cidade', 'Tribo', 'Encontro', 'Região livre', 'Ruínas', 'Masmorra', 'Arena', 'Porto', 'Catacumbas', 'Castelo', 'Cemitério']) && await page.locator('#ger-lugar .seg-b.on').innerText() === 'Vilarejo', 'a janela "Gerar um lugar" abre na aba Vilarejo (a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra, a Arena e o Porto são as outras abas)');
+    ok(await page.locator('.modal-t').innerText() === 'Gerar um lugar' && await page.locator('#ger-prev').count() === 1 && j(await page.locator('#ger-lugar button').allTextContents()) === j(['Vilarejo', 'Cidade', 'Tribo', 'Porto', 'Encontro', 'Região livre', 'Castelo', 'Ruínas', 'Cemitério', 'Masmorra', 'Catacumbas', 'Cena do crime', 'Arena']) && await page.locator('#ger-lugar .seg-b.on').innerText() === 'Vilarejo', 'a janela "Gerar um lugar" abre na aba Vilarejo (a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra, a Arena e o Porto são as outras abas)');
     ok(/nada escrito: os nomes ficam com você/.test(await page.locator('.modal').innerText()), 'a nota diz que nada sai escrito');
     const G = () => ev(() => JSON.parse(JSON.stringify(__tc.Gerador.vivo().estado)));
     const assinatura = () => ev(() => {

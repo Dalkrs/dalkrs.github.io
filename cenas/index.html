@@ -944,6 +944,42 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .ger-mds { display: flex; flex-direction: column; gap: 4px; flex: 1 1 280px; min-width: 0; }
 .ger-md { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 34px; }
 .ger-md select.in, .ger-md input.in { flex: 1 1 170px; width: auto; min-width: 0; }
+/* (lote 53) a janela do gerador em três colunas: os lugares em grupos (com o desenho de cada um), a prévia grande no
+   meio (com o nome, a semente e os modelos) e as escolhas em blocos que abrem e fecham, com o resumo no título */
+.modal.ger-janela { width: min(1260px, 100%); }
+.ger2 { display: grid; grid-template-columns: 178px minmax(0, 1fr) minmax(300px, 360px); gap: 16px 18px; align-items: start; }
+.ger2 > .ger-ab { position: sticky; top: 0; }
+.ger-rail { display: flex; flex-direction: column; align-items: stretch; gap: 1px; padding: 0; border: 0; background: none; border-radius: 0; }
+.ger-rail-t { margin: 10px 8px 3px; font: 600 12px/1.2 var(--ui); color: var(--fg-3); }
+.ger-rail-t:first-child { margin-top: 0; }
+.ger-rail .seg-b { display: flex; align-items: center; justify-content: flex-start; gap: 9px; width: 100%; min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--fg-2); font-weight: 600; font-size: 13.5px; text-align: left; }
+.ger-rail .seg-b:hover { background: var(--hover); color: var(--fg); }
+.ger-rail .seg-b.on { background: var(--lamp-soft); color: var(--fg); box-shadow: inset 3px 0 0 var(--lamp); }
+.ger-rail .seg-b.on .ger-gl { color: var(--lamp-ink); }
+.ger-gl { flex: none; color: var(--fg-3); }
+.ger-centro { position: sticky; top: 0; }
+.ger-centro .ger-cv { aspect-ratio: 64 / 46; }
+.ger-acoes { gap: 8px; }
+.ger-acoes .ger-sem { margin-left: auto; }
+.ger-acoes .ger-sem .in.num { width: 132px; }
+.ger-lado { gap: 8px; }
+.ger-blocos { display: flex; flex-direction: column; gap: 8px; }
+.ger-bl { border: 1px solid var(--line); border-radius: 10px; background: var(--raised); }
+.ger-bl > summary { display: flex; align-items: baseline; gap: 10px; padding: 9px 12px; cursor: pointer; list-style: none; min-width: 0; }
+.ger-bl > summary::-webkit-details-marker { display: none; }
+.ger-bl > summary::before { content: '▸'; color: var(--fg-3); transition: transform .15s; }
+.ger-bl[open] > summary::before { transform: rotate(90deg); }
+.ger-bl > summary:focus-visible { outline: 2px solid var(--lamp); outline-offset: -2px; border-radius: 10px; }
+.ger-bl-t { font: 600 16px/1.2 var(--display); white-space: nowrap; }
+.ger-bl-r { flex: 1; min-width: 0; color: var(--fg-3); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ger-bl-c { display: flex; flex-direction: column; gap: 10px; padding: 2px 12px 12px; }
+.ger-bl-c .seg { flex-wrap: wrap; }
+@media (max-width: 1120px) { .ger2 { grid-template-columns: 160px minmax(0, 1fr); } .ger2 > .ger-lado { grid-column: 2; } .ger-centro { position: static; } }
+@media (max-width: 760px) {
+  .ger2 { grid-template-columns: minmax(0, 1fr); } .ger2 > .ger-lado { grid-column: auto; } .ger2 > .ger-ab { position: static; }
+  .ger-rail { flex-direction: row; flex-wrap: wrap; gap: 4px; } .ger-rail-t { display: none; } .ger-rail .seg-b { width: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .ger-bl > summary::before { transition: none; } }
 /* (lote 8, parte 5) a seção Traçado: abre e fecha; a rosa dos ventos (oito botões em volta de "Auto") */
 .ger-tr { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 /* (lote 14, parte 14a) o hexágono do Mapa-múndi, no alto das escolhas */
@@ -1259,6 +1295,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <script src="../tc/corrupcao.js?v=1"></script>
 <script src="../tc/barras-painel.js?v=1"></script>
 <script src="../tc/npc.js?v=1"></script>
+<script src="../tc/misterio.js?v=1"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -2327,6 +2364,10 @@ function normalizeScene(sc) {
     } else delete t.pb;
     const sq = t.prop ? cleanSaque(t.saque) : null;
     if (sq) t.saque = sq; else delete t.saque;
+    // (lote 53) a marca de pista de um caso do Escudo (e o corpo da cena do crime): { c: o caso, p: a pista }
+    const ms = t.mist;
+    if (t.prop && ms && typeof ms === 'object' && (ms.c == null || (typeof ms.c === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(ms.c))) && (ms.p == null || (typeof ms.p === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(ms.p)))) t.mist = { c: ms.c || null, p: ms.p || null };
+    else delete t.mist;
     // (lote 7) o objeto que leva a outra cena (a entrada de uma casa, a saída, uma escada): o id da cena
     if (!(t.prop && typeof t.cena === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.cena))) delete t.cena;
     // (lote 7) o que o marcador sabe para gerar a cena de dentro: o prédio (tipo, medidas, porta, estilo, semente,
@@ -6748,6 +6789,63 @@ const Props = (() => {
     return out;
   };
   Props.assinatura = sc => { let k = ''; for (const t of sc.tokens) { const d = t.prop ? Props.P[t.prop] : null; if (d && d.parede) k += t.id + ':' + t.x + ',' + t.y + ',' + (t.rot || 0) + ',' + t.size + ',' + (t.est || '') + ';'; } return k; };
+})();
+/* ---------------------------------------------------------------
+   6b3. OS OBJETOS DO MISTÉRIO (lote 53) — a marca de pista (só do mestre: nasce oculta e leva a uma pista de um caso do
+   Escudo; dois cliques a revelam e entregam a pista à mesa), o corpo coberto e os papéis espalhados da cena do crime.
+   --------------------------------------------------------------- */
+(() => {
+  const { caixa, sombra, linha, grad, radial, MAD, tom } = Props.kit;
+  const TAU = Math.PI * 2;
+  Props.grupo('misterio', 'Mistério');
+
+  // a marca de pista: um selo de cera âmbar com a lupa (marca: só o mestre a vê até ser revelada)
+  Props.registrar('pista', {
+    n: 'Marca de pista', g: 'misterio', size: 1, marca: true,
+    draw(c, R) {
+      sombra(c, R, 0.8, 0.8, 0.05, 0.08);
+      c.fillStyle = radial(c, -R * 0.25, -R * 0.3, R * 1.1, ['#f2c46a', '#d8962e', '#8a5512']); c.beginPath();
+      for (let i = 0; i < 14; i++) { const a = i / 14 * TAU, rr = R * (i % 2 ? 0.78 : 0.86); c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+      c.closePath(); c.fill(); c.lineWidth = R * 0.05; c.strokeStyle = '#5a3608'; c.stroke();
+      c.lineCap = 'round';
+      c.strokeStyle = '#3a2204'; c.lineWidth = R * 0.12; c.beginPath(); c.arc(-R * 0.08, -R * 0.08, R * 0.3, 0, TAU); c.stroke();
+      c.lineWidth = R * 0.15; c.beginPath(); c.moveTo(R * 0.15, R * 0.15); c.lineTo(R * 0.42, R * 0.42); c.stroke();
+      c.fillStyle = 'rgba(255,248,220,0.55)'; c.beginPath(); c.arc(-R * 0.14, -R * 0.16, R * 0.1, 0, TAU); c.fill();
+    },
+  });
+  // o corpo coberto por um lençol (sem sangue: o vulto sob o pano, um braço e o pé à mostra)
+  Props.registrar('corpo', {
+    n: 'Corpo coberto', g: 'misterio', size: 2,
+    draw(c, R) {
+      sombra(c, R, 0.86, 0.5, 0.04, 0.1);
+      c.save(); c.rotate(-0.12);
+      c.fillStyle = '#5f4a3a'; c.beginPath(); c.ellipse(R * 0.62, R * 0.28, R * 0.16, R * 0.07, 0.4, 0, TAU); c.fill();     // a mão
+      c.fillStyle = '#3d2f26'; c.beginPath(); c.ellipse(-R * 0.86, R * 0.06, R * 0.1, R * 0.08, 0, 0, TAU); c.fill();        // o pé
+      c.beginPath();
+      c.moveTo(-R * 0.8, -R * 0.12); c.quadraticCurveTo(-R * 0.4, -R * 0.36, R * 0.1, -R * 0.3); c.quadraticCurveTo(R * 0.5, -R * 0.42, R * 0.8, -R * 0.2);
+      c.quadraticCurveTo(R * 0.92, 0, R * 0.8, R * 0.2); c.quadraticCurveTo(R * 0.4, R * 0.34, 0, R * 0.26); c.quadraticCurveTo(-R * 0.5, R * 0.32, -R * 0.8, R * 0.14); c.closePath();
+      c.fillStyle = grad(c, 0, -R * 0.4, 0, R * 0.34, ['#efe9dc', '#d6cebd', '#b9b09c']); c.fill(); linha(c, R * 0.03);
+      c.strokeStyle = 'rgba(90,80,64,0.45)'; c.lineWidth = R * 0.025;
+      for (const [a, b, d] of [[-0.5, -0.24, 0.42], [0.05, -0.22, 0.4], [0.45, -0.3, 0.44]]) { c.beginPath(); c.moveTo(a * R, b * R); c.quadraticCurveTo((a + 0.08) * R, (b + d / 2) * R, (a - 0.02) * R, (b + d) * R); c.stroke(); }
+      c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.ellipse(R * 0.62, -R * 0.12, R * 0.12, R * 0.07, -0.2, 0, TAU); c.fill();     // a cabeça sob o pano
+      c.restore();
+    },
+  });
+  // os papéis espalhados (a escrivaninha revirada, o baú esvaziado)
+  Props.registrar('papeis', {
+    n: 'Papéis espalhados', g: 'misterio', size: 1,
+    draw(c, R, t, s) {
+      for (let i = 0; i < 6; i++) {
+        const a = (i * 2.1 + (s || 0)) % TAU, d = R * (0.15 + (i % 3) * 0.22);
+        c.save(); c.translate(Math.cos(a) * d, Math.sin(a) * d); c.rotate(a * 1.7);
+        caixa(c, -R * 0.24, -R * 0.17, R * 0.48, R * 0.34, R * 0.02); c.fillStyle = i % 2 ? '#ece2c6' : '#e0d3b0'; c.fill(); linha(c, R * 0.015);
+        c.strokeStyle = 'rgba(70,52,30,0.45)'; c.lineWidth = R * 0.018;
+        for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(-R * 0.17, -R * 0.08 + k * R * 0.08); c.lineTo(R * 0.14, -R * 0.08 + k * R * 0.08); c.stroke(); }
+        c.restore();
+      }
+      c.fillStyle = tom(MAD.esc, -0.1); c.beginPath(); c.ellipse(R * 0.3, R * 0.42, R * 0.1, R * 0.05, 0.3, 0, TAU); c.fill();     // a tinta derramada
+    },
+  });
 })();
 /* ---------------------------------------------------------------
    6c. AS ZONAS DAS RAÇAS (lote 19)
@@ -13562,6 +13660,8 @@ const Tools = (() => {
       if (hit.c === 'tokens' && isGM()) {
         const t = Store.get('tokens', hit.id), def = t && t.prop ? Props.P[t.prop] : null;
         if (t && (t.cena || (def && def.passagem))) { setSel([hit]); UI.passagem(t, e ? e.clientX : null, e ? e.clientY : null); return; }
+        // (lote 53) dois cliques numa marca de pista: revelar e entregar a pista à mesa
+        if (t && Misterio.ehPista(t)) { setSel([hit]); Misterio.revelar(t); return; }
         // (lote 48) dois cliques num objeto com estado trocam o estado; num objeto de luz, acendem ou apagam
         if (t && def && (Props.estados(t.prop) || (def.luz && t.light))) { setSel([hit]); UI.alternarObjeto(t); return; }
       }
@@ -14646,7 +14746,7 @@ const UI = (() => {
   }
   function modal(o) {
     closeModal(); closeMenus();
-    const card = h('div', { class: 'modal' + (o.wide ? ' wide' : '') + (o.xl ? ' xl' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title },
+    const card = h('div', { class: 'modal' + (o.wide ? ' wide' : '') + (o.xl ? ' xl' : '') + (o.cls ? ' ' + o.cls : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title },
       h('h2', { class: 'modal-t', text: o.title }),
       o.text ? h('p', { class: 'modal-p', text: o.text }) : null,
       o.body || null,
@@ -16761,6 +16861,8 @@ const UI = (() => {
           field('Segunda cor', inColor('pr-c2', Props.coresDe(t)[1], v => props.forEach(x => Store.upd('tokens', x.id, { cores: [Props.coresDe(x)[0], v] })), 'Segunda cor'))),
         props.some(x => Array.isArray(x.cores)) ? h('div', { class: 'row' }, btn('Voltar às cores de sempre', () => all({ cores: null }, 'Cores do objeto'), { kind: 'small', id: 'pr-cor-0' })) : null,
         note(!many && t.bras ? 'Este veio da sede: as cores e o desenho são os do brasão do clã. Trocar aqui muda só este objeto.' : 'As duas cores do objeto. Os que vêm da sede do clã já chegam com as cores do brasão.')) : null,
+      // (lote 53) a marca de pista de um caso: revelar e entregar
+      !many && Misterio.ehPista(t) ? sec('s-pista', 'Pista do caso', true, note(t.notes ? t.notes.split('\n')[0] : 'Uma pista de um caso do Escudo.'), h('div', { class: 'row' }, btn(t.hidden ? 'Revelar e entregar à mesa' : 'Entregar à mesa', () => Misterio.revelar(t), { kind: 'small primary', id: 'pr-pista' }))) : null,
       // (lote 48) o estado (o baú aberto, a armadilha armada, o portão fechado…) e, na alavanca, o que ela abre
       !many && Props.estados(t.prop) ? sec('s-propest', 'Estado', true,
         seg('pr-est', Props.estado(t), Props.estados(t.prop).map(([v, n]) => [v, n]), v => alternarObjeto(t, v)),
@@ -17871,6 +17973,7 @@ const UI = (() => {
           { label: 'Girar para a esquerda', icon: 'undo', run: () => all(x => ({ rot: ((x.rot || 0) + 270) % 360 }), 'Girar objeto') });
         // (lote 48) o estado e a luz do objeto
         if (props.length === 1 && Props.estados(props[0].prop)) { const l = Props.estados(props[0].prop), a = Props.estado(props[0]), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; items.push({ label: nx[1], icon: 'reset', run: () => alternarObjeto(props[0], nx[0]) }); }
+        if (props.length === 1 && Misterio.ehPista(props[0])) items.push({ label: 'Revelar e entregar a pista', icon: 'eye', run: () => Misterio.revelar(props[0]) });     // (lote 53)
         if (props.length === 1 && props[0].light && (Props.P[props[0].prop] || {}).luz) items.push({ label: props[0].light.on === false ? 'Acender' : 'Apagar', icon: 'light', run: () => alternarObjeto(props[0]) });
         items.push({ label: allHidden ? 'Mostrar aos jogadores' : 'Ocultar dos jogadores', icon: allHidden ? 'eye' : 'eyeOff', run: () => all({ hidden: !allHidden }, allHidden ? 'Mostrar objeto' : 'Ocultar objeto') });
         items.push({ label: allLocked ? 'Destravar posição' : 'Travar posição', icon: allLocked ? 'unlock' : 'lock', run: () => all({ locked: !allLocked }, allLocked ? 'Destravar objeto' : 'Travar objeto') });
@@ -39609,6 +39712,90 @@ const LugaresFora = (() => {
     return [p.W + ' × ' + p.H + ' quadrados', p.igreja ? 'a igreja com a escada da cripta (oculta)' : 'sem igreja', p.mausoleus ? (p.mausoleus === 1 ? '1 mausoléu' : p.mausoleus + ' mausoléus') : 'sem mausoléus', tumulos + ' túmulos', 'as catacumbas embaixo: ' + (Masmorra.TODOS.find(x => x[0] === p.cat) || ['', ''])[1].toLowerCase()].join(' · ') + '.';
   }
 
+  /* ---------------- (lote 53) a cena do crime ----------------
+     Cinco lugares feitos para um mistério: a mansão (o salão, o escritório, a biblioteca, o quarto, a cozinha e o
+     jardim), a taverna (o salão com o balcão, a cozinha, a adega e os quartos de cima), o beco (os fundos das casas,
+     os caixotes, o portão de um quintal), a cripta (as câmaras de pedra com os sarcófagos) e a clareira da lua cheia (a
+     floresta, a clareira com as pedras e a cabana do lenhador). p.cena é onde aconteceu (o corpo, ou o vestígio); o
+     bloco "Mistério" do gerador põe ali o corpo e as marcas de pista. */
+  const CENARIOS = [['mansao', 'Mansão'], ['taverna', 'Taverna'], ['beco', 'Beco'], ['cripta', 'Cripta'], ['clareira', 'Clareira da lua cheia']];
+  function gerarCrime(o) {
+    o = o || {};
+    const cen = CENARIOS.some(x => x[0] === o.cenario) ? o.cenario : 'mansao';
+    const seed = (Math.round(Number(o.seed)) >>> 0) || 1;
+    const DIM = { mansao: [40, 32], taverna: [34, 28], beco: [30, 24], cripta: [32, 28], clareira: [40, 32] }[cen];
+    const W = DIM[0], H = DIM[1];
+    const K = novoPlano('crime', W, H, seed, { cenario: cen, estilo: o.estilo || 'comum', estacao: o.estacao || 'verao' });
+    const { p, r } = K;
+    if (cen === 'mansao') {
+      const x0 = 5, y0 = 3, w = W - 10, hh = H - 11;
+      K.pinta('caminho', { pts: [[W / 2, H - 0.5], [W / 2, y0 + hh]], w: 2, tipo: 'calcada' });
+      const metade = Math.round(w / 2);
+      const salao = construcao(K, x0, y0 + 7, w, hh - 7, { lado: 's', larg: 2 }, 'madeira', 'salao');
+      const escr = construcao(K, x0, y0, metade, 7, { lado: 's' }, 'madeira', 'escritorio');
+      const biblio = construcao(K, x0 + metade, y0, w - metade, 7, { lado: 's' }, 'madeira', 'biblioteca');
+      dentro(K, salao, () => { K.pinta('tapete', { x: salao.x + 3, y: salao.y + 2, w: salao.w - 6, h: salao.h - 4 }); K.poe('mesa', salao.x + Math.floor(salao.w / 2) - 1, salao.y + 3, 2); for (const dx of [-2, 2]) K.poe('cadeira', salao.x + Math.floor(salao.w / 2) + dx, salao.y + 3); K.poe('lareira', salao.x + 1, salao.y + 2, 2, 90); K.poe('candelabro', salao.x + salao.w - 2, salao.y + 1); K.poe('escada', salao.x + salao.w - 3, salao.y + salao.h - 3, 2); });
+      dentro(K, escr, () => { K.poe('mesa', escr.x + 2, escr.y + 2, 1); K.poe('cadeira', escr.x + 2, escr.y + 3); K.poe('estante', escr.x + 1, escr.y + 1); K.poe('cofre', escr.x + escr.w - 2, escr.y + 1); K.poe('vela', escr.x + 3, escr.y + 2); });
+      dentro(K, biblio, () => { for (let i = biblio.x + 1; i < biblio.x + biblio.w - 1; i += 2) K.poe('estante', i, biblio.y + 1); K.poe('mesa', biblio.x + 3, biblio.y + 4, 1); K.poe('lampiao', biblio.x + biblio.w - 2, biblio.y + 4); });
+      // o quarto e a cozinha, dos lados de fora do salão (anexos)
+      const q = construcao(K, 1, y0 + 8, 4, 6, { lado: 's' }, 'madeira', 'quarto');
+      dentro(K, q, () => { K.poe('cama', q.x, q.y + 1, 2); K.poe('bau', q.x + 2, q.y + 4); });
+      const coz = construcao(K, W - 5, y0 + 8, 4, 6, { lado: 's' }, 'laje', 'cozinha');
+      dentro(K, coz, () => { K.poe('lareira', coz.x + 1, coz.y, 2); K.poe('barril', coz.x + 3, coz.y + 4); K.poe('jarro', coz.x, coz.y + 4); });
+      // o jardim: as árvores, as flores e o poço
+      for (let k = 0; k < 10; k++) K.poe(K.pick(['arbusto', 'flores', 'flores', 'arvore']), K.ri(1, W - 2), K.ri(H - 7, H - 2));
+      K.poe('poco', W - 6, H - 5);
+      p.cena = [escr.x + 3, escr.y + 4];
+    } else if (cen === 'taverna') {
+      const x0 = 3, y0 = 3, w = W - 6, hh = H - 9;
+      K.pinta('caminho', { pts: [[W / 2, H - 0.5], [W / 2, y0 + hh]], w: 2, tipo: 'terra' });
+      const sal = construcao(K, x0, y0 + 6, w, hh - 6, { lado: 's', larg: 2 }, 'madeira', 'salao');
+      const coz = construcao(K, x0, y0, 8, 6, { lado: 's' }, 'laje', 'cozinha');
+      const adega = construcao(K, x0 + 8, y0, 7, 6, { lado: 's' }, 'laje', 'adega');
+      const qt = construcao(K, x0 + 15, y0, w - 15, 6, { lado: 's' }, 'madeira', 'quarto');
+      dentro(K, sal, () => { K.poe('balcao', sal.x + 1, sal.y + 1, 2); K.poe('barril', sal.x + 1, sal.y + 3); K.poe('lareira', sal.x + sal.w - 3, sal.y, 2); for (let i = 0; i < 4; i++) { const mx = sal.x + 4 + (i % 2) * 6, my = sal.y + 3 + Math.floor(i / 2) * 4; K.poe('mesa', mx, my, 1); K.poe('banco', mx - 1, my); K.poe('banco', mx + 1, my); } K.poe('lampiao', sal.x + 4, sal.y + 1); });
+      dentro(K, coz, () => { K.poe('lareira', coz.x + 1, coz.y, 2); K.poe('mesa', coz.x + 4, coz.y + 2, 1); K.poe('jarro', coz.x + 6, coz.y + 1); });
+      dentro(K, adega, () => { for (let i = 0; i < 4; i++) K.poe('barril', adega.x + 1 + i, adega.y + 1); K.poe('caixote', adega.x + 1, adega.y + 3); p.entradas.push({ x: adega.x + adega.w - 2, y: adega.y + adega.h - 2, n: 'O alçapão da adega', gera: { t: 'masmorra', m: 'porao', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (sub(seed, 70) % 2147483000) + 1 } }); K.ocupa(adega.x + adega.w - 2, adega.y + adega.h - 2, 1, 1); });
+      dentro(K, qt, () => { K.poe('cama', qt.x + 1, qt.y + 1, 2); K.poe('bau', qt.x + 3, qt.y + 1); K.poe('vela', qt.x + 4, qt.y + 3); });
+      K.poe('carroca', 2, H - 5, 2); K.poe('placa', W / 2 + 2, y0 + hh + 1);
+      p.cena = [qt.x + 2, qt.y + 4];
+    } else if (cen === 'beco') {
+      // as paredes dos fundos das casas, dos dois lados; o beco no meio, com uma curva
+      const mid = Math.round(W / 2);
+      K.pinta('piso', { x: 0, y: 0, w: W, h: H, tipo: 'calcada' });
+      const casa = (x, y, w, hh, lado) => { const q = construcao(K, x, y, w, hh, { lado }, 'madeira', 'casa'); dentro(K, q, () => { K.poe(K.pick(['mesa', 'cama', 'barril']), q.x + 1, q.y + 1, 1); K.poe('vela', q.x + q.w - 2, q.y + 1); }); return q; };
+      casa(1, 1, mid - 4, 7, 's'); casa(mid + 3, 1, W - mid - 4, 7, 's');
+      casa(1, H - 8, mid - 6, 7, 'n'); casa(mid + 5, H - 8, W - mid - 6, 7, 'n');
+      for (let k = 0; k < 12; k++) K.poe(K.pick(['caixote', 'caixote', 'barril', 'lenha']), K.ri(mid - 3, mid + 3), K.ri(8, H - 9));
+      K.poe('lampiao', mid - 3, 9); K.poe('placa', mid + 3, H - 10);
+      p.cena = [mid, Math.round(H / 2)];
+    } else if (cen === 'cripta') {
+      K.pinta('piso', { x: 0, y: 0, w: W, h: H, tipo: 'laje' });
+      const cam = [];
+      const lw = Math.floor((W - 4) / 3);
+      for (let i = 0; i < 3; i++) cam.push(construcao(K, 2 + i * lw, 2, lw, 9, { lado: 's' }, 'laje', 'camara'));
+      const nave = construcao(K, 2, 11, W - 4, H - 15, { lado: 's', larg: 2 }, 'laje', 'nave');
+      for (const q of cam) dentro(K, q, () => { K.poe('sarcofago', q.x + Math.floor(q.w / 2) - 1, q.y + 2, 2, 90); K.poe('vela', q.x + 1, q.y + 1); K.poe('vela', q.x + q.w - 2, q.y + 1); });
+      dentro(K, nave, () => { K.poe('altar', Math.round(W / 2), nave.y + 1); for (let i = 0; i < 4; i++) K.poe('caixao', nave.x + 2 + i * 5, nave.y + nave.h - 3, 2); K.poe('candelabro', nave.x + 1, nave.y + 1); K.poe('candelabro', nave.x + nave.w - 2, nave.y + 1); });
+      p.cena = [Math.round(W / 2), nave.y + 3];
+    } else {
+      // a clareira: a floresta em volta, a clareira com as pedras, a cabana do lenhador
+      const cx = Math.round(W / 2), cy = Math.round(H / 2);
+      for (let k = 0; k < 70; k++) { const x = K.ri(0, W - 2), y = K.ri(0, H - 2); if (Math.hypot(x - cx, y - cy) < 9) continue; K.poe(r() < 0.7 ? 'arvore' : 'arbusto', x, y, r() < 0.6 ? 2 : 1); }
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; K.poe('pedra', Math.round(cx + Math.cos(a) * 5), Math.round(cy + Math.sin(a) * 4)); }
+      K.poe('fogueira', cx, cy);
+      const cab = construcao(K, 3, 3, 6, 5, { lado: 'l' }, 'madeira', 'cabana');
+      dentro(K, cab, () => { K.poe('cama', cab.x, cab.y + 1, 2); K.poe('mesa', cab.x + 3, cab.y + 2, 1); K.poe('lenha', cab.x + 4, cab.y); });
+      for (let k = 0; k < 6; k++) K.poe(K.pick(['toco', 'cogumelos', 'flores']), K.ri(cx - 6, cx + 6), K.ri(cy - 5, cy + 5));
+      K.pinta('caminho', { pts: [[cx, H - 0.5], [cx, cy + 4]], w: 1.6, tipo: 'terra' });
+      p.cena = [cx + 2, cy + 1];
+    }
+    p.chegada = [Math.round(W / 2), H - 1];
+    return p;
+  }
+  const nomeCrime = p => (CENARIOS.find(x => x[0] === p.cenario) || CENARIOS[0])[1];
+  const resumoCrime = p => [nomeCrime(p), p.W + ' × ' + p.H + ' quadrados', p.salas.length ? p.salas.length + ' cômodos' : 'ao ar livre', 'o lugar do crime marcado (o bloco Mistério põe ali o corpo e as pistas)'].join(' · ') + '.';
+
   /* ---------------- o fundo ---------------- */
   function pintar(p, c) {
     const cv = document.createElement('canvas'); cv.width = p.W * c; cv.height = p.H * c;
@@ -39727,7 +39914,24 @@ const LugaresFora = (() => {
     nota: 'Sai uma cena nova: o muro baixo barra o passo e deixa ver; o portão e os portões dos mausoléus abrem com dois cliques. A escada da cripta (uma Entrada oculta, atrás do altar ou num mausoléu) gera as catacumbas embaixo.',
     feito: (sc) => `"${sc.name}" criada: a escada da cripta está oculta (atrás do altar ou num mausoléu); dois cliques nela geram as catacumbas.` }, semPartes);
 
-  return { CASTELO, CEMITERIO, gerarCastelo, gerarCemiterio, pintar, TAM_C, TAM_M, ESTADOS_C };
+  // (lote 53) a cena do crime
+  const CRIME = Object.assign({ id: 'crime', n: 'Cena do crime', aceitaEstacao: true,
+    padrao: () => ({ cenario: CENARIOS.some(x => x[0] === App.opt.crimeCen) ? App.opt.crimeCen : 'mansao' }),
+    controles(st, K, mudou) {
+      return h('div', { class: 'ger-c' },
+        K.field('O lugar', K.seg('crime-cen', st.cenario, CENARIOS, v => { st.cenario = v; App.opt.crimeCen = v; mudou(true); }), 'stack'));
+    },
+    opcoesDe: st => ({ cenario: st.cenario }),
+    aplicarOpcoes(st, o) { if (CENARIOS.some(x => x[0] === o.cenario)) st.cenario = o.cenario; },
+    gerar: (st, comum) => gerarCrime(Object.assign({}, st, { seed: comum && comum.seed, estilo: comum && comum.estilo, estacao: comum && comum.estacao })),
+    previa, resumo: resumoCrime, nomePadrao: nomeCrime,
+    criar: (p, nome, ex) => criar(p, nome, ex, nomeCrime),
+    relevoTxt: 'Com relevo',
+    dica: '"Gerar outro" sorteia outro lugar do mesmo tipo. Ligue o bloco "Mistério" para o corpo e as pistas entrarem escondidos.',
+    nota: 'Sai uma cena nova, com o lugar do crime marcado. Com o bloco "Mistério", o corpo (ou o vestígio) e as marcas de pista entram ocultos dos jogadores: dois cliques numa marca revelam a pista e a entregam à mesa.',
+    feito: sc => `"${sc.name}" criada.` }, semPartes);
+
+  return { CASTELO, CEMITERIO, CRIME, CENARIOS, gerarCastelo, gerarCemiterio, gerarCrime, pintar, TAM_C, TAM_M, ESTADOS_C };
 })();
 /* ---------------------------------------------------------------
    10ga. POVOAR O LUGAR (lote 49) — depois de criar a cena pelo "Gerar um lugar…" (ou pela Entrada de um nível), com a
@@ -39933,6 +40137,157 @@ const Povoar = (() => {
   return { aplicar, controles, prefs, quemVive, PERIGOS, lugaresLivres };
 })();
 /* ---------------------------------------------------------------
+   10gb. O MISTÉRIO NA CENA (lote 53) — o bloco "Mistério" do "Gerar um lugar…" (em qualquer lugar) e as marcas de pista.
+   · Com o bloco ligado, ao criar a cena: um caso do Escudo do mestre (ou um caso novo, sorteado na hora e guardado no
+     Escudo) entra na cena — o corpo coberto (ou os papéis revirados, quando não há corpo) no lugar do crime, e uma marca
+     de pista oculta para cada vestígio e cada documento do caso, perto de onde ele costuma ficar: o que é "na porta",
+     na porta mais perto; "sobre a mesa", na mesa; "na lareira", na lareira; "do lado de fora", longe dali. Os
+     testemunhos não viram marca (são dos suspeitos, no interrogatório).
+   · A marca de pista guarda o caso e a pista (t.mist). Dois cliques nela (ou o menu, ou o painel) revelam a marca e
+     entregam a pista à mesa — ela vai para as Pistas de quem joga, no caso. Se o caso ainda não está aberto à mesa, a
+     marca é revelada e o aviso diz como abrir. Tudo com Desfazer.
+   · Fora de uma mesa, o caso sorteado fica só nesta cena (a verdade nas notas do corpo; a pista nas notas da marca).
+   --------------------------------------------------------------- */
+const Misterio = (() => {
+  const M = () => (window.TC && window.TC.misterio) || null;
+  const D = () => { try { return window.TC && TC.dados && TC.dados.disponivel && TC.dados.disponivel() ? TC.dados.col('documentos') : null; } catch (e) { return null; } };
+  const vivo = (d, id) => { const l = d && d.pegar(id); return l && !l.apagado ? l : null; };
+  const SEM_CORPO = new Set(['roubo', 'desaparecimento', 'incubo', 'sombras']);
+
+  // os casos do Escudo que podem ir para uma cena (os em aberto primeiro, os mais novos antes)
+  function casos() {
+    const d = D(), m = M();
+    if (!d || !m) return [];
+    return d.todas().filter(l => !l.apagado && typeof l.id === 'string' && l.id.startsWith(m.PRE.caso)).map(l => ({ id: l.id.slice(m.PRE.caso.length), c: m.normCaso(l.dados) }))
+      .filter(x => m.idOk(x.id)).sort((a, b) => ((a.c.estado === 'resolvido') - (b.c.estado === 'resolvido')) || String(b.c.em || '').localeCompare(String(a.c.em || '')));
+  }
+  const prefs = () => { const o = App.opt; return { on: o.genMist === true, caso: typeof o.genMistCaso === 'string' ? o.genMistCaso : '', tipo: M() && M().TIPOS[o.genMistTipo] ? o.genMistTipo : 'assassinato' }; };
+  function controles(K, mudou) {
+    const m = M();
+    if (!m) return null;
+    const pr = prefs(), lista = casos(), set = (k, v) => { App.opt[k] = v; if (mudou) mudou(); };
+    if (pr.caso && !lista.some(x => x.id === pr.caso)) pr.caso = '';
+    const escolhido = pr.caso ? lista.find(x => x.id === pr.caso).c : null;
+    const marcas = escolhido ? escolhido.pistas.filter(p => p.jeito !== 'testemunho').length : 6;
+    return h('div', { class: 'ger-mist', id: 'ger-mist' },
+      K.toggle('ger-mist-on', pr.on, v => set('genMist', v), 'Pôr um mistério na cena (o corpo e as pistas, ocultos)'),
+      pr.on ? h('div', { class: 'ger-pov-op' },
+        K.field('O caso', K.inSelect('ger-mist-caso', pr.caso, [['', 'Sortear um caso novo']].concat(lista.map(x => [x.id, x.c.titulo + ' · ' + m.TIPOS[x.c.tipo].n + (x.c.estado === 'resolvido' ? ' (resolvido)' : '')])), v => set('genMistCaso', v)), 'stack'),
+        !pr.caso ? K.field('O tipo do caso novo', K.seg('ger-mist-tipo', pr.tipo, m.ORDEM_TIPOS.map(t => [t, m.TIPOS[t].n]), v => set('genMistTipo', v)), 'stack') : null,
+        K.note(escolhido ? `${marcas} ${marcas === 1 ? 'marca de pista' : 'marcas de pista'} (os vestígios e os documentos de “${escolhido.titulo}”), ${SEM_CORPO.has(escolhido.tipo) ? 'o lugar revirado' : 'o corpo coberto'} no lugar do crime. Os testemunhos ficam com os suspeitos, no Escudo.`
+          : D() ? 'O caso novo é sorteado ao criar a cena e fica guardado no Escudo do mestre (aba Mistérios), com os suspeitos e todas as pistas.'
+            : 'Fora de uma mesa, o caso fica só nesta cena: a verdade nas notas do corpo e cada pista nas notas da marca.')) : null);
+  }
+
+  /* ---- onde pôr: um quadrado livre perto de (x, y), em quadrados ---- */
+  function livrePerto(sc, x, y, rMin, rMax, r, ocup) {
+    const c = sc.cell, segs = sc.walls.map(w => [w.x1 / c, w.y1 / c, w.x2 / c, w.y2 / c]);
+    const perto = (a, b) => segs.some(([p1, p2, p3, p4]) => Geo.distSeg(a, b, p1, p2, p3, p4) < 0.6);
+    for (let t = 0; t < 160; t++) {
+      const ang = r() * Math.PI * 2, d = rMin + r() * (rMax - rMin), i = Math.floor(x + Math.cos(ang) * d), j = Math.floor(y + Math.sin(ang) * d);
+      if (i < 1 || j < 1 || i >= sc.cols - 1 || j >= sc.rows - 1 || ocup.has(i + ',' + j) || perto(i + 0.5, j + 0.5)) continue;
+      ocup.add(i + ',' + j); return [i, j];
+    }
+    const i = Math.max(1, Math.min(sc.cols - 2, Math.floor(x))), j = Math.max(1, Math.min(sc.rows - 2, Math.floor(y)));
+    ocup.add(i + ',' + j); return [i, j];
+  }
+  // o lugar do crime: o que o gerador marcou, ou perto de uma mesa, cama, balcão ou altar, ou o meio da cena
+  function lugarDoCrime(sc, p, r) {
+    const c = sc.cell;
+    if (p && Array.isArray(p.cena) && p.cena.length === 2) return [p.cena[0], p.cena[1]];
+    const alvo = sc.tokens.filter(t => ['mesa', 'cama', 'balcao', 'altar', 'sarcofago', 'fogueira', 'bau'].includes(t.prop));
+    if (alvo.length) { const t = alvo[Math.floor(r() * alvo.length)]; return [t.x / c + t.size / 2, t.y / c + t.size + 0.5]; }
+    return [sc.cols / 2, sc.rows / 2];
+  }
+  function ancora(sc, onde, crime, r) {
+    const c = sc.cell, [cx, cy] = crime;
+    const maisPerto = lista => lista.sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy))[0] || null;
+    const deProp = ids => maisPerto(sc.tokens.filter(t => ids.includes(t.prop)).map(t => [t.x / c + t.size / 2, t.y / c + t.size / 2]));
+    const deParede = k => maisPerto(sc.walls.filter(w => w.k === k).map(w => [(w.x1 + w.x2) / 2 / c, (w.y1 + w.y2) / 2 / c]));
+    let a = null, raio = [1, 2.5];
+    if (onde === 'porta') { a = deParede('door') || deProp(['portao']); raio = [0.6, 1.6]; }
+    else if (onde === 'janela') { a = deParede('window'); raio = [0.6, 1.6]; }
+    else if (onde === 'mesa') { a = deProp(['mesa', 'balcao', 'altar']); raio = [0.8, 1.8]; }
+    else if (onde === 'lareira') { a = deProp(['lareira', 'fogueira', 'braseiro', 'fornalha']); raio = [0.8, 2]; }
+    else if (onde === 'estante') { a = deProp(['estante']); raio = [0.8, 1.8]; }
+    else if (onde === 'bau') { a = deProp(['bau', 'cofre', 'caixote', 'sarcofago']); raio = [0.8, 1.8]; }
+    else if (onde === 'jardim') { return { pt: [cx, cy], raio: [6, 11] }; }
+    return { pt: a || [cx, cy], raio: a ? raio : [1, 3] };
+  }
+
+  /* Põe o caso na cena que acabou de nascer. o: prefs(). → o texto do que entrou (para o aviso) */
+  function aplicar(sc, lugar, p, o) {
+    const m = M();
+    if (!m || !o || !o.on) return '';
+    const d = D(), r = mulberry(((p && p.seed) || 11) ^ 0x51ed27);
+    let cid = null, caso = null;
+    if (o.caso && d) { const l = vivo(d, m.PRE.caso + o.caso); if (l) { cid = o.caso; caso = m.normCaso(l.dados); } }
+    let novo = false;
+    if (!caso) {
+      caso = m.gerarCaso({ tipo: o.tipo, n: 4, lugar: sc.name }, 1 + Math.floor(r() * 2147483000), { npc: window.TC && window.TC.npc });
+      caso.em = new Date().toISOString();
+      try { const est = window.TC && TC.ponte && TC.ponte.estado; caso.camp = est && est.campanha ? est.campanha.id : null; } catch (e) { caso.camp = null; }
+      if (d) cid = m.novoId('c');
+      novo = true;
+    }
+    const c = sc.cell, ocup = new Set(sc.tokens.map(t => Math.floor(t.x / c) + ',' + Math.floor(t.y / c)));
+    const crime = lugarDoCrime(sc, p, r);
+    // o corpo coberto, ou os papéis revirados
+    const semCorpo = SEM_CORPO.has(caso.tipo);
+    const [bx, by] = livrePerto(sc, crime[0], crime[1], 0, 1.5, r, ocup);
+    const corpo = Props.novo(sc, semCorpo ? 'papeis' : 'corpo', bx * c, by * c, semCorpo ? 1 : 2, true);
+    corpo.name = semCorpo ? 'O lugar revirado' : 'O corpo (' + caso.verdade.vitima + ')';
+    corpo.mist = { c: cid, p: null };
+    const cul = m.culpado(caso);
+    corpo.notes = [caso.titulo + ' — ' + m.TIPOS[caso.tipo].n + '.', 'Vítima: ' + caso.verdade.vitima + '.'].concat(m.conclusoes(caso).map(k => m.CONCLUSOES[k] + ': ' + (k === 'quem' ? (cul ? cul.nome : '—') : caso.verdade[k] || '—'))).concat(cid ? ['O caso inteiro está no Escudo do mestre (aba Mistérios).'] : caso.suspeitos.map(s => 'Suspeito: ' + s.nome + ' — ' + s.aparencia + ' Álibi: ' + s.alibi + (s.mente ? ' (mente)' : ''))).join('\n').slice(0, 2000);
+    sc.tokens.push(corpo);
+    // as marcas de pista: os vestígios e os documentos
+    let n = 0;
+    for (const pi of caso.pistas) {
+      if (pi.jeito === 'testemunho') continue;
+      const an = ancora(sc, pi.onde, crime, r), [x, y] = livrePerto(sc, an.pt[0], an.pt[1], an.raio[0], an.raio[1], r, ocup);
+      const t = Props.novo(sc, 'pista', x * c, y * c, 1, true);
+      t.size = 0.7; t.x += c * 0.15; t.y += c * 0.15;
+      const curto = pi.txt.replace(/[.!].*$/, ''); t.name = 'Pista: ' + (curto.length > 46 ? curto.slice(0, 46).replace(/\s+\S*$/, '') + '…' : curto);
+      t.notes = (pi.txt + (pi.falsa ? '\n(É a pista falsa: aponta um inocente.)' : '') + '\nDois cliques: revelar e entregar à mesa.').slice(0, 2000);
+      t.mist = { c: cid, p: pi.id };
+      sc.tokens.push(t);
+      pi.cena = { sc: sc.id, tok: t.id };
+      n++;
+    }
+    caso.cenaId = sc.id;
+    if (d && cid) d.gravar(m.PRE.caso + cid, { dados: m.normCaso(caso), vis: 'mestre' });
+    Persist.scene(sc.id);
+    return `Mistério: ${novo ? 'o caso novo “' + caso.titulo + '”' + (cid ? ' (guardado no Escudo)' : '') : '“' + caso.titulo + '”'}, ${semCorpo ? 'o lugar revirado' : 'o corpo'} e ${n} ${n === 1 ? 'marca de pista' : 'marcas de pista'} (ocultos).`;
+  }
+
+  /* ---- revelar uma marca de pista e entregar a pista à mesa ---- */
+  const ehPista = t => !!(t && t.prop === 'pista' && t.mist && t.mist.p);
+  function revelar(t) {
+    if (!isGM() || !ehPista(t)) return;
+    t = Store.get('tokens', t.id) || t;
+    const m = M(), d = D();
+    const l = m && d && t.mist.c ? vivo(d, m.PRE.caso + t.mist.c) : null;
+    const caso = l ? m.normCaso(l.dados) : null, pi = caso ? caso.pistas.find(x => x.id === t.mist.p) : null;
+    if (pi && pi.entregue && !t.hidden) { UI.toast('Essa pista já foi entregue à mesa.'); return; }
+    const antes = caso ? [[m.PRE.caso + t.mist.c, d.pegar(m.PRE.caso + t.mist.c)], [m.idPub(t.mist.c, caso.camp), vivo(d, m.idPub(t.mist.c, caso.camp))]].map(([id, x]) => [id, x ? JSON.parse(JSON.stringify({ dados: x.dados, vis: x.vis })) : null]) : [];
+    const fezTx = !!t.hidden;
+    if (fezTx) Store.tx('Revelar a pista', () => Store.upd('tokens', t.id, { hidden: false }));
+    let msg = 'Marca revelada: “' + t.name.replace(/^Pista: /, '') + '”.';
+    if (caso && pi) {
+      const novo = m.entregar(caso, pi.id);
+      d.gravar(m.PRE.caso + t.mist.c, { dados: novo, vis: 'mestre' });
+      if (novo.aberto) { d.gravar(m.idPub(t.mist.c, novo.camp), { dados: m.projetar(t.mist.c, novo, (vivo(d, m.idPub(t.mist.c, novo.camp)) || {}).dados), vis: 'mesa' }); msg = 'Pista entregue à mesa: o grupo a vê nas Pistas, no caso “' + novo.titulo + '”.'; }
+      else msg += ' O caso “' + novo.titulo + '” ainda não está aberto à mesa: abra no Escudo do mestre (aba Mistérios) para a pista ir para as Pistas.';
+    } else if (t.mist.c) msg += ' O caso dessa marca não está mais no Escudo.';
+    UI.toast(msg, { long: true, key: 'mist-rev', action: 'Desfazer', run: () => {
+      if (fezTx) Tools.undo();
+      for (const [id, x] of antes) { if (x) d.gravar(id, x); else if (vivo(d, id)) d.apagar(id); }
+    } });
+  }
+  return { casos, controles, prefs, aplicar, revelar, ehPista, SEM_CORPO };
+})();
+/* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
    Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra e o Porto), as escolhas de cada um e, embaixo, o que vale
    para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena, a estação
@@ -39945,9 +40300,28 @@ const Povoar = (() => {
    --------------------------------------------------------------- */
 const Gerador = (() => {
   // (lote 14, parte 14c: o Vilarejo, a Cidade, a Tribo, as Ruínas e o Porto com os arredores — Arredores.envolver)
-  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Encontro.LUGAR, Regiao.LUGAR, Arredores.LUGARES.ruinas, Masmorra.LUGAR, Arena.LUGAR, Arredores.LUGARES.porto,
-    // (lote 49) as catacumbas, o castelo e o cemitério
-    Masmorra.LUGAR_CAT, LugaresFora.CASTELO, LugaresFora.CEMITERIO];
+  // (lote 49) as catacumbas, o castelo e o cemitério; (lote 53) a cena do crime — e a ordem dos grupos da janela
+  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Arredores.LUGARES.porto,
+    Encontro.LUGAR, Regiao.LUGAR,
+    LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO,
+    Masmorra.LUGAR, Masmorra.LUGAR_CAT,
+    LugaresFora.CRIME, Arena.LUGAR];
+  /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
+  const GRUPOS = [['Povoados', ['vila', 'cidade', 'tribo', 'porto']], ['Natureza', ['encontro', 'regiao']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']],
+    ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']]];
+  const GLIFOS = {
+    vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
+    tribo: 'M12 4 4 20h16L12 4zM12 4v16M9.5 20 12 13l2.5 7', porto: 'M12 4v16M8 7.5h8M12 20c-4 0-7-2.5-7.5-6M12 20c4 0 7-2.5 7.5-6M12 6a1.6 1.6 0 1 0 0-.1',
+    encontro: 'M5 5l14 14M19 5 5 19M5 5h3M5 5v3M19 5h-3M19 5v3', regiao: 'M3 19l6-10 4 6 2.5-3.5L21 19H3zM16.5 7a1.8 1.8 0 1 0 0-.1',
+    castelo: 'M4 20V8h3v2h2.5V8h5v2H17V8h3v12H4zM10 20v-4h4v4', ruinas: 'M6 20V8h3v12M15 20v-6h3v6M5 8h5M4.5 20h15M14 11l2-3 3 1',
+    cemiterio: 'M7 20v-9a5 5 0 0 1 10 0v9M5 20h14M12 9.5v5M10 11.5h4', masmorra: 'M5 20V10a7 7 0 0 1 14 0v10M5 20h14M9 20v-6h6v6M8.5 10h7',
+    catacumbas: 'M12 4a6 6 0 0 0-6 6v3l2 2v3h8v-3l2-2v-3a6 6 0 0 0-6-6zM9.5 11v.1M14.5 11v.1M10.5 18v-2M13.5 18v-2', crime: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM15.3 15.3 20.5 20.5',
+    arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
+  };
+  const glifo = id => { const NS = 'http://www.w3.org/2000/svg', v = document.createElementNS(NS, 'svg'); v.setAttribute('viewBox', '0 0 24 24'); v.setAttribute('width', '18'); v.setAttribute('height', '18'); v.setAttribute('aria-hidden', 'true'); v.setAttribute('class', 'ger-gl'); const pa = document.createElementNS(NS, 'path'); pa.setAttribute('d', GLIFOS[id] || GLIFOS.vila); pa.setAttribute('fill', 'none'); pa.setAttribute('stroke', 'currentColor'); pa.setAttribute('stroke-width', '1.7'); pa.setAttribute('stroke-linecap', 'round'); pa.setAttribute('stroke-linejoin', 'round'); v.append(pa); return v; };
+  // os blocos da coluna da direita: o que está aberto fica lembrado (nos testes, tudo aberto)
+  const tudoAberto = (() => { try { return localStorage.getItem('tinycats:testes-tudo-aberto') === '1'; } catch (e) { return false; } })();
+  const blocoAberto = k => tudoAberto || (App.opt.genAbertos && typeof App.opt.genAbertos === 'object' && k in App.opt.genAbertos ? !!App.opt.genAbertos[k] : k === 'lugar');
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
@@ -40051,12 +40425,14 @@ const Gerador = (() => {
     // (lote 14, parte 14c) os lugares com os arredores vêm preenchidos pelo hexágono: o rio (de onde vem e para onde vai) e
     // os portões nas direções dos caminhos do mapa — sem mexer no que a janela lembra
     if (hexPedido && HexCena.aceita(hexPedido)) for (const l of LUGARES) if (l.preencherHex) l.preencherHex(estadoDe(l).op, hexPedido);
+    // (lote 53) o caso do Escudo do mestre que pediu esta janela: o bloco "Mistério" já vem ligado nele
+    if (pre && typeof pre.misterio === 'string') { App.opt.genMist = true; App.opt.genMistCaso = pre.misterio; }
     let nomeMexido = !!(pre && typeof pre.nome === 'string' && pre.nome.trim()), foco = -1, sobre = null, modeloNovo = false;
     const idPedido = pre && typeof pre.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(pre.id) ? pre.id : null;
-    const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 460, height: 330, tabindex: 0, 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
+    const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 640, height: 460, tabindex: 0, 'data-focus': '', 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
     const fundo = document.createElement('canvas');
     let cell = 10;
-    const ctl = h('div', { class: 'ger-op' }), abas = h('div', { class: 'ger-ab' }), resumo = h('p', { class: 'note', id: 'ger-resumo', role: 'status' }), dica = h('p', { class: 'note ger-dica', id: 'ger-dica' });
+    const ctl = h('div', { class: 'ger-blocos' }), abas = h('div', { class: 'ger-ab' }), resumo = h('p', { class: 'note', id: 'ger-resumo', role: 'status' }), dica = h('p', { class: 'note ger-dica', id: 'ger-dica' });
     const inNome = h('input', { id: 'ger-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
     if (nomeMexido) inNome.value = pre.nome.trim().slice(0, 60);
     const inSemente = h('input', { id: 'ger-semente', class: 'in num', type: 'number', min: 1, max: 2147483647, step: 1, 'data-enter': 'proprio', 'aria-label': 'A semente do sorteio',
@@ -40109,7 +40485,7 @@ const Gerador = (() => {
       const E = estadoDe(L);
       E.plano = L.gerar(E.op, comHex(L, comEstacao(L, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base, seco: usaEv(L) && evDaAba(L).seco })));
       E.trava = L.travaDe(E.plano);                // (o que não coube sai da trava)
-      try { const r = L.previa(fundo, E.plano, 460, 330, { relevo: comum.relevo }); cell = r.cell; } catch (e) { console.error(e); }
+      try { const r = L.previa(fundo, E.plano, 640, 460, { relevo: comum.relevo }); cell = r.cell; } catch (e) { console.error(e); }
       sobre = null; foco = -1;
       desenhar(); mostrarDica(); mostrarResumo();
       inSemente.value = E.seed;
@@ -40209,9 +40585,15 @@ const Gerador = (() => {
 
     /* ---- as escolhas ---- */
     function pintar() {
-      const a = document.activeElement, fid = a && a.id && ctl.contains(a) ? a.id : null;
+      const a = document.activeElement, fid = a && a.id && (ctl.contains(a) || abas.contains(a)) ? a.id : null;
       const E = estadoDe(L);
-      abas.replaceChildren(...(LUGARES.length > 1 ? [seg('ger-lugar', L.id, LUGARES.map(l => [l.id, l.n]), v => { L = lugar(v) || L; lembrarComum(); nomeMexido = false; pintar(); refazer(); })] : []));
+      // (lote 53) a coluna dos lugares, em grupos (cada botão é um .seg-b dentro de #ger-lugar, como era a fileira de abas)
+      const naLista = new Set(GRUPOS.flatMap(g => g[1])), sobra = LUGARES.filter(l => !naLista.has(l.id)).map(l => l.id);
+      const grupos = GRUPOS.map(([n, ids]) => [n, ids.concat(n === 'Especiais' ? sobra : [])]);
+      abas.replaceChildren(...(LUGARES.length > 1 ? [h('div', { class: 'ger-rail seg', role: 'group', id: 'ger-lugar', 'aria-label': 'O lugar' },
+        grupos.map(([n, ids]) => { const ls = ids.map(lugar).filter(Boolean); return ls.length ? [h('div', { class: 'ger-rail-t', text: n }),
+          ls.map(l => h('button', { type: 'button', class: 'seg-b' + (l.id === L.id ? ' on' : ''), 'aria-pressed': String(l.id === L.id), title: l.n, 'data-lugar': l.id,
+            onclick: () => { if (l.id === L.id) return; L = l; lembrarComum(); nomeMexido = false; pintar(); refazer(); } }, glifo(l.id), h('span', { text: l.n })))] : []; }))] : []));
       // (lote 14, parte 14a) o hexágono do Mapa-múndi, no alto: a chave e o que vem dele (na aba que não aceita, o porquê)
       const blocoHex = hexDaAba(L) ? h('div', { class: 'ger-hex', id: 'ger-hex-bloco' },
         K.toggle('ger-hex', comum.comHex, v => { comum.comHex = v; const E2 = estadoDe(L); E2.trava = null; E2.base = null; pintar(); refazer(); }, 'Com o hexágono do Mapa-múndi: os vizinhos nas bordas, o rio e os caminhos pelos lados certos'),
@@ -40221,33 +40603,47 @@ const Gerador = (() => {
           ? (hexPedido.ter === 'agua' ? 'O hexágono do Mapa-múndi é de água: os vizinhos, o rio e os caminhos dele não entram aqui.' : 'O hexágono do Mapa-múndi não tem terreno: pinte o terreno dele (na aba Terreno do Mapa-múndi) para os vizinhos, o rio e os caminhos entrarem.')
           : 'O hexágono do Mapa-múndi não entra no pântano nem na água: eles cobrem a cena toda.'))) : null;
       const blocoCampo = campoPedido ? Campo.bloco(campoPedido, comum, K, () => pintar()) : null;
-      ctl.replaceChildren(...[blocoCampo, blocoHex,
-        L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) }),
-        h('div', { class: 'ger-cm' },
+      // (lote 53) os blocos que abrem e fecham, cada um com o resumo do que está escolhido
+      const bloco = (k, titulo, resumo, ...kids) => {
+        const d = h('details', { class: 'ger-bl', id: 'ger-bl-' + k, open: blocoAberto(k) ? true : null },
+          h('summary', {}, h('span', { class: 'ger-bl-t', text: titulo }), h('span', { class: 'ger-bl-r', text: resumo })),
+          h('div', { class: 'ger-bl-c' }, ...kids.filter(Boolean)));
+        d.addEventListener('toggle', () => { App.opt.genAbertos = Object.assign({}, App.opt.genAbertos || {}, { [k]: d.open }); });
+        return d;
+      };
+      const nomeDe = (lista, v, nada) => { const x = lista.find(y => y[0] === v); return x ? x[1] : nada; };
+      const resAmb = [nomeDe(Estilos.LISTA, comum.estilo, 'Comum'), L.semHora ? null : (TONES.find(t => t.id === comum.hora) || {}).n, L.semHora ? null : (comum.clima ? nomeDe(WEATHERS, comum.clima, '') : 'sem clima'), L.aceitaEstacao ? nomeDe(Estacoes.LISTA, comum.estacao, '') : null].filter(Boolean).join(' · ').toLowerCase();
+      const pv = Povoar.prefs(), mi = Misterio.prefs();
+      const casoMi = mi.on && mi.caso ? Misterio.casos().find(x => x.id === mi.caso) : null;
+      ctl.replaceChildren(...[
+        bloco('lugar', L.n, '', blocoCampo, blocoHex,
+          L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) })),
+        bloco('amb', 'Ambiente', resAmb,
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
           L.semHora ? null : field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
           L.semHora ? null : field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
           L.aceitaEstacao ? field('Estação', seg('ger-estacao', comum.estacao, Estacoes.LISTA, v => { comum.estacao = v; lembrarComum(); pintar(); refazer(); }), 'stack') : null,
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
-          Povoar.controles(K, () => pintar()),                                         // (lote 49) povoar o lugar
-          temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null)].filter(Boolean));
+          temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null),
+        bloco('pov', 'Povoar', pv.on ? 'perigo ' + nomeDe(Povoar.PERIGOS, pv.perigo, 'médio').toLowerCase() : 'desligado', Povoar.controles(K, () => pintar())),       // (lote 49) povoar o lugar
+        bloco('mist', 'Mistério', mi.on ? (casoMi ? casoMi.c.titulo : 'um caso novo') : 'desligado', Misterio.controles(K, () => pintar()))].filter(Boolean));     // (lote 53) o mistério
       nota.textContent = L.nota;
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
     }
     pintar(); refazer(); pintarModelos();
     aberta = { get lugar() { return L.id; }, get estado() { return estadoDe(L); }, comum, cell: () => cell };
-    const body = h('div', { class: 'ger' },
+    // (lote 53) a janela em três colunas: os lugares, a prévia grande (com o nome, a semente e os modelos) e as escolhas
+    const body = h('div', { class: 'ger ger2' },
       abas,
-      h('div', { class: 'ger-g' },
-        ctl,
-        h('div', { class: 'ger-pv' }, cv, h('div', { class: 'row' }, btOutro, btSoltar), dica, resumo)),
-      h('div', { class: 'ger-b' },
-        h('div', { class: 'ger-sem' }, field('Semente', inSemente, 'stack')),
-        h('div', { class: 'ger-mds' }, h('span', { class: 'lb', text: 'Modelos' }), md)),
-      field('Nome da cena', inNome, 'stack'),
-      nota);
+      h('div', { class: 'ger-pv ger-centro' }, cv,
+        h('div', { class: 'row ger-acoes' }, btOutro, btSoltar, h('span', { class: 'ger-sem' }, inSemente)),
+        dica, resumo,
+        field('Nome da cena', inNome, 'stack'),
+        h('div', { class: 'ger-mds' }, h('span', { class: 'lb', text: 'Modelos' }), md),
+        nota),
+      h('div', { class: 'ger-op ger-lado' }, ctl));
     UI.modal({
-      title: 'Gerar um lugar', xl: true, body,
+      title: 'Gerar um lugar', xl: true, cls: 'ger-janela', body,
       actions: [{ label: 'Cancelar' }, {
         label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
           const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
@@ -40256,10 +40652,11 @@ const Gerador = (() => {
           l.criar(p, inNome.value, { hora: comum.hora, clima: climaDe(l), relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(sc => {
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
             const pv = Povoar.prefs(), txtPov = pv.on ? Povoar.aplicar(sc, l.id, p, pv) : '';      // (lote 49) o lugar povoado
+            const mi = Misterio.prefs(), txtMi = mi.on ? Misterio.aplicar(sc, l.id, p, mi) : '';    // (lote 53) o mistério
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : ''), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },
@@ -41342,7 +41739,9 @@ async function start(snap) {
         fx: Array.isArray(ger.fx) ? ger.fx.filter(k => typeof k === 'string' && FX.P[k]).slice(0, 4) : null, seco: ger.seco === true,
         eventos: Array.isArray(ger.eventos) ? ger.eventos.filter(x => typeof x === 'string').map(x => x.slice(0, 60)).slice(0, 6) : null,
         // (lote 14, parte 14a) o hexágono do mapa (o chão dele e dos vizinhos, o rio e os caminhos) e as outras abas já preenchidas
-        hex: ger.hex && typeof ger.hex === 'object' ? ger.hex : null, ops: ger.ops && typeof ger.ops === 'object' ? ger.ops : null });
+        hex: ger.hex && typeof ger.hex === 'object' ? ger.hex : null, ops: ger.ops && typeof ger.ops === 'object' ? ger.ops : null,
+        // (lote 53) o caso do Escudo do mestre que vai para a cena (o bloco "Mistério" já vem ligado nele)
+        misterio: typeof ger.misterio === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(ger.misterio) ? ger.misterio : null });
       return;
     }
     const pedido = alvo.criar && typeof alvo.criar.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(alvo.criar.id) ? alvo.criar : null;
@@ -41383,7 +41782,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Misterio, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

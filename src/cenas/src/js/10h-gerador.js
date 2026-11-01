@@ -11,9 +11,28 @@
    --------------------------------------------------------------- */
 const Gerador = (() => {
   // (lote 14, parte 14c: o Vilarejo, a Cidade, a Tribo, as Ruínas e o Porto com os arredores — Arredores.envolver)
-  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Encontro.LUGAR, Regiao.LUGAR, Arredores.LUGARES.ruinas, Masmorra.LUGAR, Arena.LUGAR, Arredores.LUGARES.porto,
-    // (lote 49) as catacumbas, o castelo e o cemitério
-    Masmorra.LUGAR_CAT, LugaresFora.CASTELO, LugaresFora.CEMITERIO];
+  // (lote 49) as catacumbas, o castelo e o cemitério; (lote 53) a cena do crime — e a ordem dos grupos da janela
+  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Arredores.LUGARES.porto,
+    Encontro.LUGAR, Regiao.LUGAR,
+    LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO,
+    Masmorra.LUGAR, Masmorra.LUGAR_CAT,
+    LugaresFora.CRIME, Arena.LUGAR];
+  /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
+  const GRUPOS = [['Povoados', ['vila', 'cidade', 'tribo', 'porto']], ['Natureza', ['encontro', 'regiao']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']],
+    ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']]];
+  const GLIFOS = {
+    vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
+    tribo: 'M12 4 4 20h16L12 4zM12 4v16M9.5 20 12 13l2.5 7', porto: 'M12 4v16M8 7.5h8M12 20c-4 0-7-2.5-7.5-6M12 20c4 0 7-2.5 7.5-6M12 6a1.6 1.6 0 1 0 0-.1',
+    encontro: 'M5 5l14 14M19 5 5 19M5 5h3M5 5v3M19 5h-3M19 5v3', regiao: 'M3 19l6-10 4 6 2.5-3.5L21 19H3zM16.5 7a1.8 1.8 0 1 0 0-.1',
+    castelo: 'M4 20V8h3v2h2.5V8h5v2H17V8h3v12H4zM10 20v-4h4v4', ruinas: 'M6 20V8h3v12M15 20v-6h3v6M5 8h5M4.5 20h15M14 11l2-3 3 1',
+    cemiterio: 'M7 20v-9a5 5 0 0 1 10 0v9M5 20h14M12 9.5v5M10 11.5h4', masmorra: 'M5 20V10a7 7 0 0 1 14 0v10M5 20h14M9 20v-6h6v6M8.5 10h7',
+    catacumbas: 'M12 4a6 6 0 0 0-6 6v3l2 2v3h8v-3l2-2v-3a6 6 0 0 0-6-6zM9.5 11v.1M14.5 11v.1M10.5 18v-2M13.5 18v-2', crime: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM15.3 15.3 20.5 20.5',
+    arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
+  };
+  const glifo = id => { const NS = 'http://www.w3.org/2000/svg', v = document.createElementNS(NS, 'svg'); v.setAttribute('viewBox', '0 0 24 24'); v.setAttribute('width', '18'); v.setAttribute('height', '18'); v.setAttribute('aria-hidden', 'true'); v.setAttribute('class', 'ger-gl'); const pa = document.createElementNS(NS, 'path'); pa.setAttribute('d', GLIFOS[id] || GLIFOS.vila); pa.setAttribute('fill', 'none'); pa.setAttribute('stroke', 'currentColor'); pa.setAttribute('stroke-width', '1.7'); pa.setAttribute('stroke-linecap', 'round'); pa.setAttribute('stroke-linejoin', 'round'); v.append(pa); return v; };
+  // os blocos da coluna da direita: o que está aberto fica lembrado (nos testes, tudo aberto)
+  const tudoAberto = (() => { try { return localStorage.getItem('tinycats:testes-tudo-aberto') === '1'; } catch (e) { return false; } })();
+  const blocoAberto = k => tudoAberto || (App.opt.genAbertos && typeof App.opt.genAbertos === 'object' && k in App.opt.genAbertos ? !!App.opt.genAbertos[k] : k === 'lugar');
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
   const lugar = id => LUGARES.find(l => l.id === id) || null;
   const modelos = () => Proj.normModelos(Store.S.prefs.modelos);
@@ -117,12 +136,14 @@ const Gerador = (() => {
     // (lote 14, parte 14c) os lugares com os arredores vêm preenchidos pelo hexágono: o rio (de onde vem e para onde vai) e
     // os portões nas direções dos caminhos do mapa — sem mexer no que a janela lembra
     if (hexPedido && HexCena.aceita(hexPedido)) for (const l of LUGARES) if (l.preencherHex) l.preencherHex(estadoDe(l).op, hexPedido);
+    // (lote 53) o caso do Escudo do mestre que pediu esta janela: o bloco "Mistério" já vem ligado nele
+    if (pre && typeof pre.misterio === 'string') { App.opt.genMist = true; App.opt.genMistCaso = pre.misterio; }
     let nomeMexido = !!(pre && typeof pre.nome === 'string' && pre.nome.trim()), foco = -1, sobre = null, modeloNovo = false;
     const idPedido = pre && typeof pre.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(pre.id) ? pre.id : null;
-    const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 460, height: 330, tabindex: 0, 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
+    const cv = h('canvas', { class: 'ger-cv', id: 'ger-prev', width: 640, height: 460, tabindex: 0, 'data-focus': '', 'data-enter': 'proprio', 'aria-label': 'Prévia do lugar. Clique numa parte para travar; com o teclado, as setas escolhem a parte e Enter trava.' });
     const fundo = document.createElement('canvas');
     let cell = 10;
-    const ctl = h('div', { class: 'ger-op' }), abas = h('div', { class: 'ger-ab' }), resumo = h('p', { class: 'note', id: 'ger-resumo', role: 'status' }), dica = h('p', { class: 'note ger-dica', id: 'ger-dica' });
+    const ctl = h('div', { class: 'ger-blocos' }), abas = h('div', { class: 'ger-ab' }), resumo = h('p', { class: 'note', id: 'ger-resumo', role: 'status' }), dica = h('p', { class: 'note ger-dica', id: 'ger-dica' });
     const inNome = h('input', { id: 'ger-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
     if (nomeMexido) inNome.value = pre.nome.trim().slice(0, 60);
     const inSemente = h('input', { id: 'ger-semente', class: 'in num', type: 'number', min: 1, max: 2147483647, step: 1, 'data-enter': 'proprio', 'aria-label': 'A semente do sorteio',
@@ -175,7 +196,7 @@ const Gerador = (() => {
       const E = estadoDe(L);
       E.plano = L.gerar(E.op, comHex(L, comEstacao(L, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base, seco: usaEv(L) && evDaAba(L).seco })));
       E.trava = L.travaDe(E.plano);                // (o que não coube sai da trava)
-      try { const r = L.previa(fundo, E.plano, 460, 330, { relevo: comum.relevo }); cell = r.cell; } catch (e) { console.error(e); }
+      try { const r = L.previa(fundo, E.plano, 640, 460, { relevo: comum.relevo }); cell = r.cell; } catch (e) { console.error(e); }
       sobre = null; foco = -1;
       desenhar(); mostrarDica(); mostrarResumo();
       inSemente.value = E.seed;
@@ -275,9 +296,15 @@ const Gerador = (() => {
 
     /* ---- as escolhas ---- */
     function pintar() {
-      const a = document.activeElement, fid = a && a.id && ctl.contains(a) ? a.id : null;
+      const a = document.activeElement, fid = a && a.id && (ctl.contains(a) || abas.contains(a)) ? a.id : null;
       const E = estadoDe(L);
-      abas.replaceChildren(...(LUGARES.length > 1 ? [seg('ger-lugar', L.id, LUGARES.map(l => [l.id, l.n]), v => { L = lugar(v) || L; lembrarComum(); nomeMexido = false; pintar(); refazer(); })] : []));
+      // (lote 53) a coluna dos lugares, em grupos (cada botão é um .seg-b dentro de #ger-lugar, como era a fileira de abas)
+      const naLista = new Set(GRUPOS.flatMap(g => g[1])), sobra = LUGARES.filter(l => !naLista.has(l.id)).map(l => l.id);
+      const grupos = GRUPOS.map(([n, ids]) => [n, ids.concat(n === 'Especiais' ? sobra : [])]);
+      abas.replaceChildren(...(LUGARES.length > 1 ? [h('div', { class: 'ger-rail seg', role: 'group', id: 'ger-lugar', 'aria-label': 'O lugar' },
+        grupos.map(([n, ids]) => { const ls = ids.map(lugar).filter(Boolean); return ls.length ? [h('div', { class: 'ger-rail-t', text: n }),
+          ls.map(l => h('button', { type: 'button', class: 'seg-b' + (l.id === L.id ? ' on' : ''), 'aria-pressed': String(l.id === L.id), title: l.n, 'data-lugar': l.id,
+            onclick: () => { if (l.id === L.id) return; L = l; lembrarComum(); nomeMexido = false; pintar(); refazer(); } }, glifo(l.id), h('span', { text: l.n })))] : []; }))] : []));
       // (lote 14, parte 14a) o hexágono do Mapa-múndi, no alto: a chave e o que vem dele (na aba que não aceita, o porquê)
       const blocoHex = hexDaAba(L) ? h('div', { class: 'ger-hex', id: 'ger-hex-bloco' },
         K.toggle('ger-hex', comum.comHex, v => { comum.comHex = v; const E2 = estadoDe(L); E2.trava = null; E2.base = null; pintar(); refazer(); }, 'Com o hexágono do Mapa-múndi: os vizinhos nas bordas, o rio e os caminhos pelos lados certos'),
@@ -287,33 +314,47 @@ const Gerador = (() => {
           ? (hexPedido.ter === 'agua' ? 'O hexágono do Mapa-múndi é de água: os vizinhos, o rio e os caminhos dele não entram aqui.' : 'O hexágono do Mapa-múndi não tem terreno: pinte o terreno dele (na aba Terreno do Mapa-múndi) para os vizinhos, o rio e os caminhos entrarem.')
           : 'O hexágono do Mapa-múndi não entra no pântano nem na água: eles cobrem a cena toda.'))) : null;
       const blocoCampo = campoPedido ? Campo.bloco(campoPedido, comum, K, () => pintar()) : null;
-      ctl.replaceChildren(...[blocoCampo, blocoHex,
-        L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) }),
-        h('div', { class: 'ger-cm' },
+      // (lote 53) os blocos que abrem e fecham, cada um com o resumo do que está escolhido
+      const bloco = (k, titulo, resumo, ...kids) => {
+        const d = h('details', { class: 'ger-bl', id: 'ger-bl-' + k, open: blocoAberto(k) ? true : null },
+          h('summary', {}, h('span', { class: 'ger-bl-t', text: titulo }), h('span', { class: 'ger-bl-r', text: resumo })),
+          h('div', { class: 'ger-bl-c' }, ...kids.filter(Boolean)));
+        d.addEventListener('toggle', () => { App.opt.genAbertos = Object.assign({}, App.opt.genAbertos || {}, { [k]: d.open }); });
+        return d;
+      };
+      const nomeDe = (lista, v, nada) => { const x = lista.find(y => y[0] === v); return x ? x[1] : nada; };
+      const resAmb = [nomeDe(Estilos.LISTA, comum.estilo, 'Comum'), L.semHora ? null : (TONES.find(t => t.id === comum.hora) || {}).n, L.semHora ? null : (comum.clima ? nomeDe(WEATHERS, comum.clima, '') : 'sem clima'), L.aceitaEstacao ? nomeDe(Estacoes.LISTA, comum.estacao, '') : null].filter(Boolean).join(' · ').toLowerCase();
+      const pv = Povoar.prefs(), mi = Misterio.prefs();
+      const casoMi = mi.on && mi.caso ? Misterio.casos().find(x => x.id === mi.caso) : null;
+      ctl.replaceChildren(...[
+        bloco('lugar', L.n, '', blocoCampo, blocoHex,
+          L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) })),
+        bloco('amb', 'Ambiente', resAmb,
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
           L.semHora ? null : field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
           L.semHora ? null : field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
           L.aceitaEstacao ? field('Estação', seg('ger-estacao', comum.estacao, Estacoes.LISTA, v => { comum.estacao = v; lembrarComum(); pintar(); refazer(); }), 'stack') : null,
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
-          Povoar.controles(K, () => pintar()),                                         // (lote 49) povoar o lugar
-          temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null)].filter(Boolean));
+          temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null),
+        bloco('pov', 'Povoar', pv.on ? 'perigo ' + nomeDe(Povoar.PERIGOS, pv.perigo, 'médio').toLowerCase() : 'desligado', Povoar.controles(K, () => pintar())),       // (lote 49) povoar o lugar
+        bloco('mist', 'Mistério', mi.on ? (casoMi ? casoMi.c.titulo : 'um caso novo') : 'desligado', Misterio.controles(K, () => pintar()))].filter(Boolean));     // (lote 53) o mistério
       nota.textContent = L.nota;
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
     }
     pintar(); refazer(); pintarModelos();
     aberta = { get lugar() { return L.id; }, get estado() { return estadoDe(L); }, comum, cell: () => cell };
-    const body = h('div', { class: 'ger' },
+    // (lote 53) a janela em três colunas: os lugares, a prévia grande (com o nome, a semente e os modelos) e as escolhas
+    const body = h('div', { class: 'ger ger2' },
       abas,
-      h('div', { class: 'ger-g' },
-        ctl,
-        h('div', { class: 'ger-pv' }, cv, h('div', { class: 'row' }, btOutro, btSoltar), dica, resumo)),
-      h('div', { class: 'ger-b' },
-        h('div', { class: 'ger-sem' }, field('Semente', inSemente, 'stack')),
-        h('div', { class: 'ger-mds' }, h('span', { class: 'lb', text: 'Modelos' }), md)),
-      field('Nome da cena', inNome, 'stack'),
-      nota);
+      h('div', { class: 'ger-pv ger-centro' }, cv,
+        h('div', { class: 'row ger-acoes' }, btOutro, btSoltar, h('span', { class: 'ger-sem' }, inSemente)),
+        dica, resumo,
+        field('Nome da cena', inNome, 'stack'),
+        h('div', { class: 'ger-mds' }, h('span', { class: 'lb', text: 'Modelos' }), md),
+        nota),
+      h('div', { class: 'ger-op ger-lado' }, ctl));
     UI.modal({
-      title: 'Gerar um lugar', xl: true, body,
+      title: 'Gerar um lugar', xl: true, cls: 'ger-janela', body,
       actions: [{ label: 'Cancelar' }, {
         label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
           const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
@@ -322,10 +363,11 @@ const Gerador = (() => {
           l.criar(p, inNome.value, { hora: comum.hora, clima: climaDe(l), relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(sc => {
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
             const pv = Povoar.prefs(), txtPov = pv.on ? Povoar.aplicar(sc, l.id, p, pv) : '';      // (lote 49) o lugar povoado
+            const mi = Misterio.prefs(), txtMi = mi.on ? Misterio.aplicar(sc, l.id, p, mi) : '';    // (lote 53) o mistério
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : ''), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },

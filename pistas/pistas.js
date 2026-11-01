@@ -20,6 +20,7 @@
   };
   let st = null, D = null, naMesa = false, pronto = false;
   let sel = null, filtro = 'todas', busca = '', selPeca = null;
+  let vista = null, PC = null;                        // (lote 53) 'pistas' ou 'casos' (os mistérios abertos à mesa)
   const pend = {};                                    // os lances que ainda não voltaram do banco: id do jogo → { mudas, n }
   const chaveVistas = () => 'tinycats:pistas:vistas:' + (st && st.mesa ? st.mesa.id : 'local');
   let vistas = {};
@@ -71,6 +72,13 @@
   /* ---------------- pintar ---------------- */
   function pintar() {
     if (!pronto) return;
+    // (lote 53) as pistas soltas e os casos: com um caso aberto à mesa, o seletor no alto
+    const nCasos = PC && naMesa ? PC.casos().length : 0, nPistas = naMesa ? pistas().length : 0;
+    if (!nCasos) vista = 'pistas'; else if (!vista) vista = nPistas ? 'pistas' : 'casos';
+    $('vista').hidden = !nCasos;
+    for (const b of document.querySelectorAll('#vista button')) b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === vista));
+    $('filtro').hidden = vista === 'casos'; $('busca').hidden = vista === 'casos';
+    if (vista === 'casos') { const n = PC.pintar(); if (n) U.trocar($('meio'), n); return; }
     for (const b of document.querySelectorAll('#filtro button')) b.setAttribute('aria-pressed', String(b.getAttribute('data-f') === filtro));
     if (!naMesa) { morphEm($('meio'), [h('div', { class: 'vazio' }, h('p', { class: 'tit', text: 'Pistas' }), h('p', { text: 'Numa mesa, aqui ficam as imagens, as cartas e os puzzles que o mestre entregar.' }))]); return; }
     const todas = pistas();
@@ -121,10 +129,11 @@
         naMesa = true;
         D = TCx.dados.col('documentos');
         await D.pronta;
-        D.aoMudar(l => { if (l && typeof l.id === 'string' && l.id.startsWith(E.PRE.pista)) depois(); });
+        D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith(E.PRE.pista) || l.id.startsWith('escudo:mpub:') || l.id.startsWith('mural:'))) depois(); });
       }
       TCx.ponte.aoMudar(e => { st = e; if (pronto) depois(); });
       if (TCx.ponte.aoIr) TCx.ponte.aoIr(alvo => {
+        if (alvo && typeof alvo.caso === 'string') { vista = 'casos'; if (PC) PC.escolher(alvo.caso); if (pronto) pintar(); return; }
         if (!alvo || typeof alvo.pista !== 'string') return;
         const id = alvo.pista.startsWith(E.PRE.pista) ? alvo.pista : E.PRE.pista + alvo.pista;
         sel = id; filtro = 'todas'; busca = ''; $('busca').value = ''; selPeca = null;
@@ -132,10 +141,12 @@
       });
     }
     lerVistas();
+    if (window.PistasCasos && window.TC.misterio) PC = window.PistasCasos({ D: () => D, st: () => st, toast, J, pintar: () => depois() });
+    for (const b of document.querySelectorAll('#vista button')) b.onclick = () => { vista = b.getAttribute('data-v'); pintar(); };
     pronto = true;
     pintar();
   }
-  if (DEBUG) window.__pistas = { E, get naMesa() { return naMesa; }, get pronto() { return pronto; }, get sel() { return sel; }, pistas: () => pistas().map(x => ({ id: x.id, p: x.p })), jogo: id => jogoDe(id), pintar, escolher: id => { sel = id; pintar(); } };
+  if (DEBUG) window.__pistas = { get PC() { return PC; }, get vista() { return vista; }, E, get naMesa() { return naMesa; }, get pronto() { return pronto; }, get sel() { return sel; }, pistas: () => pistas().map(x => ({ id: x.id, p: x.p })), jogo: id => jogoDe(id), pintar, escolher: id => { sel = id; pintar(); } };
   partida().catch(e => {
     console.error(e);
     U.trocar($('meio'), h('div', { class: 'vazio' }, h('strong', { text: 'Não deu para abrir as Pistas. ' }), (e && e.message) || '', ' ',

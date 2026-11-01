@@ -444,6 +444,8 @@ const Tools = (() => {
       if (hit.c === 'tokens' && isGM()) {
         const t = Store.get('tokens', hit.id), def = t && t.prop ? Props.P[t.prop] : null;
         if (t && (t.cena || (def && def.passagem))) { setSel([hit]); UI.passagem(t, e ? e.clientX : null, e ? e.clientY : null); return; }
+        // (lote 53) dois cliques numa marca de pista: revelar e entregar a pista à mesa
+        if (t && Misterio.ehPista(t)) { setSel([hit]); Misterio.revelar(t); return; }
         // (lote 48) dois cliques num objeto com estado trocam o estado; num objeto de luz, acendem ou apagam
         if (t && def && (Props.estados(t.prop) || (def.luz && t.light))) { setSel([hit]); UI.alternarObjeto(t); return; }
       }

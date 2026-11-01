@@ -266,7 +266,9 @@ async function start(snap) {
         fx: Array.isArray(ger.fx) ? ger.fx.filter(k => typeof k === 'string' && FX.P[k]).slice(0, 4) : null, seco: ger.seco === true,
         eventos: Array.isArray(ger.eventos) ? ger.eventos.filter(x => typeof x === 'string').map(x => x.slice(0, 60)).slice(0, 6) : null,
         // (lote 14, parte 14a) o hexágono do mapa (o chão dele e dos vizinhos, o rio e os caminhos) e as outras abas já preenchidas
-        hex: ger.hex && typeof ger.hex === 'object' ? ger.hex : null, ops: ger.ops && typeof ger.ops === 'object' ? ger.ops : null });
+        hex: ger.hex && typeof ger.hex === 'object' ? ger.hex : null, ops: ger.ops && typeof ger.ops === 'object' ? ger.ops : null,
+        // (lote 53) o caso do Escudo do mestre que vai para a cena (o bloco "Mistério" já vem ligado nele)
+        misterio: typeof ger.misterio === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(ger.misterio) ? ger.misterio : null });
       return;
     }
     const pedido = alvo.criar && typeof alvo.criar.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(alvo.criar.id) ? alvo.criar : null;
@@ -307,7 +309,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Misterio, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

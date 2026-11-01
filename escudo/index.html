@@ -233,6 +233,19 @@ dialog.dl h2 { margin: 0 0 8px; font: 600 21px/1.2 var(--display); color: var(--
 dialog.dl p { margin: 0 0 12px; color: var(--fg-2); }
 dialog.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 dialog.dl .corpo { display: grid; gap: 12px; }
+/* (lote 53) os mistérios */
+.mg-tit { font: 600 19px/1.2 var(--display, Georgia, serif); }
+.mg-verdade { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.mc-susp { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.mc-susp p { margin: 0; font-size: 13.5px; }
+.ruim-t { color: var(--danger, #f0786e); }
+.mc-resp { margin: 0; padding-left: 18px; font-size: 13.5px; }
+.mc-con { display: grid; gap: 8px; padding-top: 6px; }
+.mc-con-t { font-weight: 700; color: var(--fg-2); }
+.mc-pista { display: grid; gap: 6px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+.mc-pista.entregue { border-color: color-mix(in srgb, var(--ok, #6fbf8f) 55%, var(--line)); }
+.mc-revira { display: grid; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.mc-revira p, .cartao > p { margin: 0; }
 </style>
 </head>
 <body>
@@ -245,6 +258,7 @@ dialog.dl .corpo { display: grid; gap: 12px; }
       <button type="button" data-k="aba:handouts" data-aba="handouts">Handouts e puzzles</button>
       <button type="button" data-k="aba:npcs" data-aba="npcs">NPCs</button>
       <button type="button" data-k="aba:encontros" data-aba="encontros">Encontros</button>
+      <button type="button" data-k="aba:misterios" data-aba="misterios">Mistérios</button>
     </span>
     <span class="grow"></span>
     <span class="salvo" id="salvo" aria-live="polite"></span>
@@ -271,6 +285,8 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <script src="handouts.js?v=2"></script>
 <script src="npcs.js?v=1"></script>
 <script src="encontros.js?v=1"></script>
-<script src="escudo.js?v=2"></script>
+<script src="../tc/misterio.js?v=1"></script>
+<script src="misterios.js?v=1"></script>
+<script src="escudo.js?v=3"></script>
 </body>
 </html>

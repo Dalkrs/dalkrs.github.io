@@ -2915,6 +2915,29 @@ Fichas. Sem mesa, a busca lê o que cada sistema guardou neste navegador (cada u
 A conta — o índice e a busca — fica em `tc/busca.js`, sem navegador: `indexar(fonte)`, `fonteLocal(ler)` e
 `buscar(indice, consulta, max)`.
 
+### Os mistérios (lote 53)
+
+`tc/misterio.js` é a conta pura (Node e navegador): os oito tipos de caso (as conclusões de cada um), os traços que
+entregam alguém (cada um com as três pistas que apontam para ele), as tabelas de cada conclusão (cada opção com três
+pistas: vestígio, testemunho e documento — a regra das três pistas), `gerarCaso(opts, semente, { npc })`, a projeção do
+que a mesa vê e o mural. Os documentos: `escudo:caso:<id>` (o caso inteiro, só de quem mestra o Escudo),
+`escudo:mpub:<id>[@camp]` (vis mesa: as pistas entregues, os suspeitos mostrados com as respostas do interrogatório e o
+veredito) e `mural:<id>[@camp]` (vis mesa: as cartas, os fios, as notas e a acusação, em mapas por chave para a gravação
+"conferindo a versão" juntar o que duas pessoas mexem ao mesmo tempo). O SQL `0033_mural_dos_misterios.sql` deixa quem
+participa mexer no mural (criar e apagar continuam com quem mestra).
+
+- **Escudo → Mistérios** (`escudo/misterios.js`): o gerador, o caso (a verdade, os suspeitos, as pistas por conclusão),
+  abrir à mesa, entregar e recolher, mostrar os suspeitos e anotar respostas, a acusação ("Acertaram" / "Não foi"),
+  "Gerar a cena do crime…" (pede às Cenas `gerar: { lugar: 'crime', misterio }`).
+- **Cenas**: a aba Cena do crime (`LugaresFora.CRIME`, em `10g9`), o bloco Mistério (`10gb-misterio.js`: o corpo ou o
+  lugar revirado e as marcas de pista ocultas, com `t.mist = { c, p }`) e os objetos `pista`, `corpo` e `papeis`
+  (`06b3`). Dois cliques numa marca revelam e entregam (com Desfazer).
+- **Pistas → Casos** (`pistas/casos.js`): o mural de cortiça, os suspeitos, acusar. A casca (`tc/escudo-casca.js`)
+  avisa quem joga do caso novo, da pista nova, do suspeito novo e do veredito, e avisa quem mestra da acusação.
+- **A janela do gerador** (`10h-gerador.js`): os lugares em grupos (`GRUPOS`, com o desenho de cada um), a prévia
+  grande no meio e as escolhas em blocos `<details>` (o lugar, Ambiente, Povoar, Mistério), lembrados em
+  `App.opt.genAbertos` (nos testes, tudo aberto).
+
 ### Os cadernos do bloco de notas (lote 52)
 
 O bloco de notas (`tc/notas.js`) é de todos numa mesa, em três cadernos: “Meu caderno” (o do mestre continua

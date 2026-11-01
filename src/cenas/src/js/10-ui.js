@@ -217,7 +217,7 @@ const UI = (() => {
   }
   function modal(o) {
     closeModal(); closeMenus();
-    const card = h('div', { class: 'modal' + (o.wide ? ' wide' : '') + (o.xl ? ' xl' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title },
+    const card = h('div', { class: 'modal' + (o.wide ? ' wide' : '') + (o.xl ? ' xl' : '') + (o.cls ? ' ' + o.cls : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title },
       h('h2', { class: 'modal-t', text: o.title }),
       o.text ? h('p', { class: 'modal-p', text: o.text }) : null,
       o.body || null,
@@ -2332,6 +2332,8 @@ const UI = (() => {
           field('Segunda cor', inColor('pr-c2', Props.coresDe(t)[1], v => props.forEach(x => Store.upd('tokens', x.id, { cores: [Props.coresDe(x)[0], v] })), 'Segunda cor'))),
         props.some(x => Array.isArray(x.cores)) ? h('div', { class: 'row' }, btn('Voltar às cores de sempre', () => all({ cores: null }, 'Cores do objeto'), { kind: 'small', id: 'pr-cor-0' })) : null,
         note(!many && t.bras ? 'Este veio da sede: as cores e o desenho são os do brasão do clã. Trocar aqui muda só este objeto.' : 'As duas cores do objeto. Os que vêm da sede do clã já chegam com as cores do brasão.')) : null,
+      // (lote 53) a marca de pista de um caso: revelar e entregar
+      !many && Misterio.ehPista(t) ? sec('s-pista', 'Pista do caso', true, note(t.notes ? t.notes.split('\n')[0] : 'Uma pista de um caso do Escudo.'), h('div', { class: 'row' }, btn(t.hidden ? 'Revelar e entregar à mesa' : 'Entregar à mesa', () => Misterio.revelar(t), { kind: 'small primary', id: 'pr-pista' }))) : null,
       // (lote 48) o estado (o baú aberto, a armadilha armada, o portão fechado…) e, na alavanca, o que ela abre
       !many && Props.estados(t.prop) ? sec('s-propest', 'Estado', true,
         seg('pr-est', Props.estado(t), Props.estados(t.prop).map(([v, n]) => [v, n]), v => alternarObjeto(t, v)),
@@ -3442,6 +3444,7 @@ const UI = (() => {
           { label: 'Girar para a esquerda', icon: 'undo', run: () => all(x => ({ rot: ((x.rot || 0) + 270) % 360 }), 'Girar objeto') });
         // (lote 48) o estado e a luz do objeto
         if (props.length === 1 && Props.estados(props[0].prop)) { const l = Props.estados(props[0].prop), a = Props.estado(props[0]), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; items.push({ label: nx[1], icon: 'reset', run: () => alternarObjeto(props[0], nx[0]) }); }
+        if (props.length === 1 && Misterio.ehPista(props[0])) items.push({ label: 'Revelar e entregar a pista', icon: 'eye', run: () => Misterio.revelar(props[0]) });     // (lote 53)
         if (props.length === 1 && props[0].light && (Props.P[props[0].prop] || {}).luz) items.push({ label: props[0].light.on === false ? 'Acender' : 'Apagar', icon: 'light', run: () => alternarObjeto(props[0]) });
         items.push({ label: allHidden ? 'Mostrar aos jogadores' : 'Ocultar dos jogadores', icon: allHidden ? 'eye' : 'eyeOff', run: () => all({ hidden: !allHidden }, allHidden ? 'Mostrar objeto' : 'Ocultar objeto') });
         items.push({ label: allLocked ? 'Destravar posição' : 'Travar posição', icon: allLocked ? 'unlock' : 'lock', run: () => all({ locked: !allLocked }, allLocked ? 'Destravar objeto' : 'Travar objeto') });

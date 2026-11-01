@@ -227,6 +227,90 @@ const LugaresFora = (() => {
     return [p.W + ' × ' + p.H + ' quadrados', p.igreja ? 'a igreja com a escada da cripta (oculta)' : 'sem igreja', p.mausoleus ? (p.mausoleus === 1 ? '1 mausoléu' : p.mausoleus + ' mausoléus') : 'sem mausoléus', tumulos + ' túmulos', 'as catacumbas embaixo: ' + (Masmorra.TODOS.find(x => x[0] === p.cat) || ['', ''])[1].toLowerCase()].join(' · ') + '.';
   }
 
+  /* ---------------- (lote 53) a cena do crime ----------------
+     Cinco lugares feitos para um mistério: a mansão (o salão, o escritório, a biblioteca, o quarto, a cozinha e o
+     jardim), a taverna (o salão com o balcão, a cozinha, a adega e os quartos de cima), o beco (os fundos das casas,
+     os caixotes, o portão de um quintal), a cripta (as câmaras de pedra com os sarcófagos) e a clareira da lua cheia (a
+     floresta, a clareira com as pedras e a cabana do lenhador). p.cena é onde aconteceu (o corpo, ou o vestígio); o
+     bloco "Mistério" do gerador põe ali o corpo e as marcas de pista. */
+  const CENARIOS = [['mansao', 'Mansão'], ['taverna', 'Taverna'], ['beco', 'Beco'], ['cripta', 'Cripta'], ['clareira', 'Clareira da lua cheia']];
+  function gerarCrime(o) {
+    o = o || {};
+    const cen = CENARIOS.some(x => x[0] === o.cenario) ? o.cenario : 'mansao';
+    const seed = (Math.round(Number(o.seed)) >>> 0) || 1;
+    const DIM = { mansao: [40, 32], taverna: [34, 28], beco: [30, 24], cripta: [32, 28], clareira: [40, 32] }[cen];
+    const W = DIM[0], H = DIM[1];
+    const K = novoPlano('crime', W, H, seed, { cenario: cen, estilo: o.estilo || 'comum', estacao: o.estacao || 'verao' });
+    const { p, r } = K;
+    if (cen === 'mansao') {
+      const x0 = 5, y0 = 3, w = W - 10, hh = H - 11;
+      K.pinta('caminho', { pts: [[W / 2, H - 0.5], [W / 2, y0 + hh]], w: 2, tipo: 'calcada' });
+      const metade = Math.round(w / 2);
+      const salao = construcao(K, x0, y0 + 7, w, hh - 7, { lado: 's', larg: 2 }, 'madeira', 'salao');
+      const escr = construcao(K, x0, y0, metade, 7, { lado: 's' }, 'madeira', 'escritorio');
+      const biblio = construcao(K, x0 + metade, y0, w - metade, 7, { lado: 's' }, 'madeira', 'biblioteca');
+      dentro(K, salao, () => { K.pinta('tapete', { x: salao.x + 3, y: salao.y + 2, w: salao.w - 6, h: salao.h - 4 }); K.poe('mesa', salao.x + Math.floor(salao.w / 2) - 1, salao.y + 3, 2); for (const dx of [-2, 2]) K.poe('cadeira', salao.x + Math.floor(salao.w / 2) + dx, salao.y + 3); K.poe('lareira', salao.x + 1, salao.y + 2, 2, 90); K.poe('candelabro', salao.x + salao.w - 2, salao.y + 1); K.poe('escada', salao.x + salao.w - 3, salao.y + salao.h - 3, 2); });
+      dentro(K, escr, () => { K.poe('mesa', escr.x + 2, escr.y + 2, 1); K.poe('cadeira', escr.x + 2, escr.y + 3); K.poe('estante', escr.x + 1, escr.y + 1); K.poe('cofre', escr.x + escr.w - 2, escr.y + 1); K.poe('vela', escr.x + 3, escr.y + 2); });
+      dentro(K, biblio, () => { for (let i = biblio.x + 1; i < biblio.x + biblio.w - 1; i += 2) K.poe('estante', i, biblio.y + 1); K.poe('mesa', biblio.x + 3, biblio.y + 4, 1); K.poe('lampiao', biblio.x + biblio.w - 2, biblio.y + 4); });
+      // o quarto e a cozinha, dos lados de fora do salão (anexos)
+      const q = construcao(K, 1, y0 + 8, 4, 6, { lado: 's' }, 'madeira', 'quarto');
+      dentro(K, q, () => { K.poe('cama', q.x, q.y + 1, 2); K.poe('bau', q.x + 2, q.y + 4); });
+      const coz = construcao(K, W - 5, y0 + 8, 4, 6, { lado: 's' }, 'laje', 'cozinha');
+      dentro(K, coz, () => { K.poe('lareira', coz.x + 1, coz.y, 2); K.poe('barril', coz.x + 3, coz.y + 4); K.poe('jarro', coz.x, coz.y + 4); });
+      // o jardim: as árvores, as flores e o poço
+      for (let k = 0; k < 10; k++) K.poe(K.pick(['arbusto', 'flores', 'flores', 'arvore']), K.ri(1, W - 2), K.ri(H - 7, H - 2));
+      K.poe('poco', W - 6, H - 5);
+      p.cena = [escr.x + 3, escr.y + 4];
+    } else if (cen === 'taverna') {
+      const x0 = 3, y0 = 3, w = W - 6, hh = H - 9;
+      K.pinta('caminho', { pts: [[W / 2, H - 0.5], [W / 2, y0 + hh]], w: 2, tipo: 'terra' });
+      const sal = construcao(K, x0, y0 + 6, w, hh - 6, { lado: 's', larg: 2 }, 'madeira', 'salao');
+      const coz = construcao(K, x0, y0, 8, 6, { lado: 's' }, 'laje', 'cozinha');
+      const adega = construcao(K, x0 + 8, y0, 7, 6, { lado: 's' }, 'laje', 'adega');
+      const qt = construcao(K, x0 + 15, y0, w - 15, 6, { lado: 's' }, 'madeira', 'quarto');
+      dentro(K, sal, () => { K.poe('balcao', sal.x + 1, sal.y + 1, 2); K.poe('barril', sal.x + 1, sal.y + 3); K.poe('lareira', sal.x + sal.w - 3, sal.y, 2); for (let i = 0; i < 4; i++) { const mx = sal.x + 4 + (i % 2) * 6, my = sal.y + 3 + Math.floor(i / 2) * 4; K.poe('mesa', mx, my, 1); K.poe('banco', mx - 1, my); K.poe('banco', mx + 1, my); } K.poe('lampiao', sal.x + 4, sal.y + 1); });
+      dentro(K, coz, () => { K.poe('lareira', coz.x + 1, coz.y, 2); K.poe('mesa', coz.x + 4, coz.y + 2, 1); K.poe('jarro', coz.x + 6, coz.y + 1); });
+      dentro(K, adega, () => { for (let i = 0; i < 4; i++) K.poe('barril', adega.x + 1 + i, adega.y + 1); K.poe('caixote', adega.x + 1, adega.y + 3); p.entradas.push({ x: adega.x + adega.w - 2, y: adega.y + adega.h - 2, n: 'O alçapão da adega', gera: { t: 'masmorra', m: 'porao', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (sub(seed, 70) % 2147483000) + 1 } }); K.ocupa(adega.x + adega.w - 2, adega.y + adega.h - 2, 1, 1); });
+      dentro(K, qt, () => { K.poe('cama', qt.x + 1, qt.y + 1, 2); K.poe('bau', qt.x + 3, qt.y + 1); K.poe('vela', qt.x + 4, qt.y + 3); });
+      K.poe('carroca', 2, H - 5, 2); K.poe('placa', W / 2 + 2, y0 + hh + 1);
+      p.cena = [qt.x + 2, qt.y + 4];
+    } else if (cen === 'beco') {
+      // as paredes dos fundos das casas, dos dois lados; o beco no meio, com uma curva
+      const mid = Math.round(W / 2);
+      K.pinta('piso', { x: 0, y: 0, w: W, h: H, tipo: 'calcada' });
+      const casa = (x, y, w, hh, lado) => { const q = construcao(K, x, y, w, hh, { lado }, 'madeira', 'casa'); dentro(K, q, () => { K.poe(K.pick(['mesa', 'cama', 'barril']), q.x + 1, q.y + 1, 1); K.poe('vela', q.x + q.w - 2, q.y + 1); }); return q; };
+      casa(1, 1, mid - 4, 7, 's'); casa(mid + 3, 1, W - mid - 4, 7, 's');
+      casa(1, H - 8, mid - 6, 7, 'n'); casa(mid + 5, H - 8, W - mid - 6, 7, 'n');
+      for (let k = 0; k < 12; k++) K.poe(K.pick(['caixote', 'caixote', 'barril', 'lenha']), K.ri(mid - 3, mid + 3), K.ri(8, H - 9));
+      K.poe('lampiao', mid - 3, 9); K.poe('placa', mid + 3, H - 10);
+      p.cena = [mid, Math.round(H / 2)];
+    } else if (cen === 'cripta') {
+      K.pinta('piso', { x: 0, y: 0, w: W, h: H, tipo: 'laje' });
+      const cam = [];
+      const lw = Math.floor((W - 4) / 3);
+      for (let i = 0; i < 3; i++) cam.push(construcao(K, 2 + i * lw, 2, lw, 9, { lado: 's' }, 'laje', 'camara'));
+      const nave = construcao(K, 2, 11, W - 4, H - 15, { lado: 's', larg: 2 }, 'laje', 'nave');
+      for (const q of cam) dentro(K, q, () => { K.poe('sarcofago', q.x + Math.floor(q.w / 2) - 1, q.y + 2, 2, 90); K.poe('vela', q.x + 1, q.y + 1); K.poe('vela', q.x + q.w - 2, q.y + 1); });
+      dentro(K, nave, () => { K.poe('altar', Math.round(W / 2), nave.y + 1); for (let i = 0; i < 4; i++) K.poe('caixao', nave.x + 2 + i * 5, nave.y + nave.h - 3, 2); K.poe('candelabro', nave.x + 1, nave.y + 1); K.poe('candelabro', nave.x + nave.w - 2, nave.y + 1); });
+      p.cena = [Math.round(W / 2), nave.y + 3];
+    } else {
+      // a clareira: a floresta em volta, a clareira com as pedras, a cabana do lenhador
+      const cx = Math.round(W / 2), cy = Math.round(H / 2);
+      for (let k = 0; k < 70; k++) { const x = K.ri(0, W - 2), y = K.ri(0, H - 2); if (Math.hypot(x - cx, y - cy) < 9) continue; K.poe(r() < 0.7 ? 'arvore' : 'arbusto', x, y, r() < 0.6 ? 2 : 1); }
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; K.poe('pedra', Math.round(cx + Math.cos(a) * 5), Math.round(cy + Math.sin(a) * 4)); }
+      K.poe('fogueira', cx, cy);
+      const cab = construcao(K, 3, 3, 6, 5, { lado: 'l' }, 'madeira', 'cabana');
+      dentro(K, cab, () => { K.poe('cama', cab.x, cab.y + 1, 2); K.poe('mesa', cab.x + 3, cab.y + 2, 1); K.poe('lenha', cab.x + 4, cab.y); });
+      for (let k = 0; k < 6; k++) K.poe(K.pick(['toco', 'cogumelos', 'flores']), K.ri(cx - 6, cx + 6), K.ri(cy - 5, cy + 5));
+      K.pinta('caminho', { pts: [[cx, H - 0.5], [cx, cy + 4]], w: 1.6, tipo: 'terra' });
+      p.cena = [cx + 2, cy + 1];
+    }
+    p.chegada = [Math.round(W / 2), H - 1];
+    return p;
+  }
+  const nomeCrime = p => (CENARIOS.find(x => x[0] === p.cenario) || CENARIOS[0])[1];
+  const resumoCrime = p => [nomeCrime(p), p.W + ' × ' + p.H + ' quadrados', p.salas.length ? p.salas.length + ' cômodos' : 'ao ar livre', 'o lugar do crime marcado (o bloco Mistério põe ali o corpo e as pistas)'].join(' · ') + '.';
+
   /* ---------------- o fundo ---------------- */
   function pintar(p, c) {
     const cv = document.createElement('canvas'); cv.width = p.W * c; cv.height = p.H * c;
@@ -345,5 +429,22 @@ const LugaresFora = (() => {
     nota: 'Sai uma cena nova: o muro baixo barra o passo e deixa ver; o portão e os portões dos mausoléus abrem com dois cliques. A escada da cripta (uma Entrada oculta, atrás do altar ou num mausoléu) gera as catacumbas embaixo.',
     feito: (sc) => `"${sc.name}" criada: a escada da cripta está oculta (atrás do altar ou num mausoléu); dois cliques nela geram as catacumbas.` }, semPartes);
 
-  return { CASTELO, CEMITERIO, gerarCastelo, gerarCemiterio, pintar, TAM_C, TAM_M, ESTADOS_C };
+  // (lote 53) a cena do crime
+  const CRIME = Object.assign({ id: 'crime', n: 'Cena do crime', aceitaEstacao: true,
+    padrao: () => ({ cenario: CENARIOS.some(x => x[0] === App.opt.crimeCen) ? App.opt.crimeCen : 'mansao' }),
+    controles(st, K, mudou) {
+      return h('div', { class: 'ger-c' },
+        K.field('O lugar', K.seg('crime-cen', st.cenario, CENARIOS, v => { st.cenario = v; App.opt.crimeCen = v; mudou(true); }), 'stack'));
+    },
+    opcoesDe: st => ({ cenario: st.cenario }),
+    aplicarOpcoes(st, o) { if (CENARIOS.some(x => x[0] === o.cenario)) st.cenario = o.cenario; },
+    gerar: (st, comum) => gerarCrime(Object.assign({}, st, { seed: comum && comum.seed, estilo: comum && comum.estilo, estacao: comum && comum.estacao })),
+    previa, resumo: resumoCrime, nomePadrao: nomeCrime,
+    criar: (p, nome, ex) => criar(p, nome, ex, nomeCrime),
+    relevoTxt: 'Com relevo',
+    dica: '"Gerar outro" sorteia outro lugar do mesmo tipo. Ligue o bloco "Mistério" para o corpo e as pistas entrarem escondidos.',
+    nota: 'Sai uma cena nova, com o lugar do crime marcado. Com o bloco "Mistério", o corpo (ou o vestígio) e as marcas de pista entram ocultos dos jogadores: dois cliques numa marca revelam a pista e a entregam à mesa.',
+    feito: sc => `"${sc.name}" criada.` }, semPartes);
+
+  return { CASTELO, CEMITERIO, CRIME, CENARIOS, gerarCastelo, gerarCemiterio, gerarCrime, pintar, TAM_C, TAM_M, ESTADOS_C };
 })();

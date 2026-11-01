@@ -84,12 +84,68 @@ dialog.dl { border: 1px solid var(--line-strong); border-radius: 14px; backgroun
 dialog.dl::backdrop { background: rgba(5, 7, 12, .7); }
 dialog.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 dialog.dl img { display: block; max-width: 100%; max-height: calc(100vh - 110px); margin: 0 auto; border-radius: 6px; }
+/* (lote 53) os casos: o mural de cortiça com os cartões presos e os fios vermelhos, e os suspeitos ao lado */
+.caso { display: grid; gap: 10px; padding: 12px 16px 16px; min-width: 0; }
+.caso-cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.caso-tit { margin: 0; font: 600 22px/1.15 var(--display); }
+.caso-cab select.in { width: auto; min-width: 220px; }
+.caso-g { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; min-width: 0; }
+@media (max-width: 900px) { .caso-g { grid-template-columns: minmax(0, 1fr); } }
+.mural-wrap { overflow: auto; max-height: calc(100vh - 150px); border-radius: 12px; border: 1px solid #3b2a17; box-shadow: inset 0 0 0 3px #6b4a26, inset 0 0 40px rgba(0,0,0,.45); }
+.mural { position: relative; background-color: #8a6440;
+  background-image: radial-gradient(circle at 20% 30%, rgba(255,255,255,.06) 0 1px, transparent 2px), radial-gradient(circle at 70% 60%, rgba(0,0,0,.12) 0 1.2px, transparent 2px), radial-gradient(circle at 40% 80%, rgba(0,0,0,.08) 0 1px, transparent 2px);
+  background-size: 7px 7px, 11px 11px, 5px 5px; }
+:root:not([data-claro]) .mural { background-color: #6a4b2e; }
+.mural .fios { position: absolute; inset: 0; pointer-events: none; }
+.mural .fio { fill: none; stroke: #b3241c; stroke-width: 2.6; stroke-linecap: round; filter: drop-shadow(0 2px 1px rgba(0,0,0,.35)); }
+.carta { position: absolute; width: 200px; padding: 16px 12px 10px; border-radius: 3px; background: #f1e7cd; color: #2a2116; box-shadow: 0 6px 14px rgba(0,0,0,.35), 0 1px 0 rgba(0,0,0,.2); cursor: grab; user-select: none; touch-action: none; font-size: 13px; line-height: 1.4; }
+.carta:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
+.carta.arrastando { cursor: grabbing; z-index: 5; box-shadow: 0 14px 28px rgba(0,0,0,.45); }
+.carta.escolhida { outline: 3px solid #b3241c; outline-offset: 2px; }
+.carta p { margin: 4px 0 0; }
+.carta .alfinete { position: absolute; top: 5px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff8a80, #c62828 60%, #6d0f0f); box-shadow: 0 2px 2px rgba(0,0,0,.4); }
+.carta .jeito { font-size: 11.5px; font-weight: 700; color: #7a5a2a; }
+.carta.pista.documento { background: #e9e2cf; font-family: Georgia, "Iowan Old Style", serif; }
+.carta.pista.testemunho { background: #e7ecf1; }
+.carta.suspeito { display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; background: #fbf8f1; }
+.carta.suspeito .foto { grid-row: span 2; }
+.carta.suspeito b { font: 600 15px/1.15 var(--display); }
+.carta.suspeito small { color: #5b4d3a; }
+.carta.nota { width: 170px; background: #f6df6b; transform-origin: top center; }
+.carta.nota small { display: block; margin-top: 4px; color: #6b5a12; font-size: 11.5px; }
+.carta .tirar { position: absolute; top: 2px; right: 4px; border: 0; background: none; color: #6b5a12; font-size: 16px; line-height: 1; padding: 2px 4px; }
+.foto { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #3e4a5c; color: #f1e7cd; font: 700 15px/1 var(--ui); flex: none; }
+.caso-lado { display: grid; gap: 10px; align-content: start; }
+.caso-lado-t { font: 600 18px/1 var(--display); }
+.susp { display: grid; gap: 6px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 13.5px; }
+.susp p { margin: 0; color: var(--fg-2); }
+.susp-c { display: flex; align-items: center; gap: 10px; }
+.susp-c .foto { width: 36px; height: 36px; font-size: 13px; }
+.susp-c small { display: block; color: var(--fg-3); }
+.resp-t { font-size: 12px; font-weight: 700; color: var(--fg-3); }
+.resp ul { margin: 2px 0 0; padding-left: 18px; }
+.acusar-b { display: grid; gap: 8px; }
+.aviso { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--lamp-soft); color: var(--fg); font-size: 13.5px; }
+.veredito { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong); }
+.veredito.ok { background: rgba(111,191,143,.14); border-color: rgba(111,191,143,.5); }
+.veredito.nao { background: rgba(240,120,110,.12); border-color: rgba(240,120,110,.45); }
+.acusar-l { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin: 10px 0; }
+.acusar-o { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); cursor: pointer; }
+.acusar-o:has(input:checked) { border-color: var(--lamp); background: var(--lamp-soft); }
+.acusar-o .foto { width: 34px; height: 34px; font-size: 12px; }
+.acusar-f textarea, .nota-f textarea { width: 100%; }
+dialog.dl:has(.acusar-f), dialog.dl:has(.nota-f) { width: min(560px, calc(100vw - 24px)); }
+@media (prefers-reduced-motion: reduce) { .carta { transition: none; } }
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
     <span class="brand">Pistas</span>
+    <span class="seg" role="group" aria-label="Ver" id="vista" hidden>
+      <button type="button" data-v="pistas" data-k="vista:pistas" aria-pressed="true">Pistas</button>
+      <button type="button" data-v="casos" data-k="vista:casos" aria-pressed="false">Casos</button>
+    </span>
     <input class="in busca" id="busca" type="search" placeholder="Buscar…" aria-label="Buscar nas pistas">
     <span class="seg" role="group" aria-label="Mostrar" id="filtro">
       <button type="button" data-f="todas" aria-pressed="true">Todas</button>
@@ -108,6 +164,8 @@ dialog.dl img { display: block; max-width: 100%; max-height: calc(100vh - 110px)
 <script src="../tc/escudo-puzzles.js?v=1"></script>
 <script src="../tc/pistas-ui.js?v=2"></script>
 <script src="../tc/pistas-puzzles.js?v=1"></script>
-<script src="pistas.js?v=1"></script>
+<script src="../tc/misterio.js?v=1"></script>
+<script src="casos.js?v=1"></script>
+<script src="pistas.js?v=2"></script>
 </body>
 </html>

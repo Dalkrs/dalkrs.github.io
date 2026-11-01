@@ -27,11 +27,12 @@
     carta: 'M4 6h16v12H4zM4 6l8 6.5L20 6',
     puzzle: 'M9 3.5h3a2 2 0 1 1 4 0h3v5a2 2 0 1 0 0 4v5h-5a2 2 0 1 1-4 0H5v-5a2 2 0 1 0 0-4v-5z',
     npc: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20.5c.8-3.8 3.9-6 7.5-6s6.7 2.2 7.5 6',
+    misterio: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM15.3 15.3 20.5 20.5M10.5 8v3.2M10.5 13.6v.1',
   };
 
   /* ---------------- os documentos ---------------- */
   let st = null, D = null, A = null, naMesa = false, pronto = false, bancoOk = null, souMestreDaMesa = true;
-  const ABAS = ['roteiro', 'relogios', 'handouts', 'npcs', 'encontros'];
+  const ABAS = ['roteiro', 'relogios', 'handouts', 'npcs', 'encontros', 'misterios'];
   let aba = ABAS.includes(guarda.ler('tinycats:escudo:aba')) ? guarda.ler('tinycats:escudo:aba') : 'roteiro';
   let selS = guarda.ler('tinycats:escudo:sessao') || null;
   const notas = new Set();                                           // os passos com a nota aberta
@@ -423,7 +424,7 @@
   }
 
   /* ---------------- os handouts (escudo/handouts.js), os NPCs (escudo/npcs.js) e os encontros (escudo/encontros.js) ---------------- */
-  let HO = null, NP = null, EN = null, P = null;
+  let HO = null, NP = null, EN = null, MI = null, P = null;
   // (as contas das fichas: a configuração da mesa, para os números dos NPCs)
   function cfg() {
     const R = window.TC.rules;
@@ -452,7 +453,7 @@
       const ban = $('banco');
       ban.hidden = !(naMesa && bancoOk === false);
       if (!ban.hidden && !ban.childNodes.length) ban.append(h('div', { class: 'aviso', style: { margin: '12px 16px 0' } }, 'Falta aplicar a atualização do banco desta versão (o SQL 0025): sem ela, os handouts vão só para a mesa toda, e os puzzles ainda não podem ser entregues. O roteiro e os relógios funcionam.'));
-      const conteudo = aba === 'roteiro' ? pintarRoteiro() : aba === 'relogios' ? pintarRelogios() : aba === 'npcs' ? NP.pintar() : aba === 'encontros' ? EN.pintar() : HO.pintar();
+      const conteudo = aba === 'roteiro' ? pintarRoteiro() : aba === 'relogios' ? pintarRelogios() : aba === 'npcs' ? NP.pintar() : aba === 'encontros' ? EN.pintar() : aba === 'misterios' ? MI.pintar() : HO.pintar();
       morphEm($('meio'), [conteudo]);
     } finally { pintando = false; }
   }
@@ -481,6 +482,7 @@
         else if (typeof alvo.handout === 'string') { aba = 'handouts'; HO.selecionar(alvo.handout); pintar(); }
         else if (alvo.relogios) { aba = 'relogios'; pintar(); }
         else if (typeof alvo.npc === 'string') { aba = 'npcs'; NP.selecionar(alvo.npc); pintar(); }
+        else if (typeof alvo.caso === 'string') { aba = 'misterios'; MI.selecionar(alvo.caso); pintar(); }
         else if (alvo.encontros) { aba = 'encontros'; if (typeof alvo.encontros === 'string') EN.sel = alvo.encontros; pintar(); }
       });
     }
@@ -500,15 +502,16 @@
       temCampanhas: () => !!(naMesa && st && st.temCampanhas), campanhas: () => (st && st.campanhas) || [] };
     NP = window.EscudoNpcs(kitNovo);
     EN = window.EscudoEncontros(kitNovo);
+    MI = window.EscudoMisterios(kitNovo);              // (lote 53) os mistérios
     if (!naMesa) D.aoMudar(() => depois());
     if (naMesa) {
-      D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith('escudo:') || l.id.startsWith('pista:') || l.id.startsWith('cena:') || l.id === 'cenas:indice' || l.id.startsWith('mundo:mapa:') || l.id.startsWith('best:') || l.id.startsWith('cla:') || l.id === 'fichas:cfg')) depois(); });
+      D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith('escudo:') || l.id.startsWith('pista:') || l.id.startsWith('cena:') || l.id === 'cenas:indice' || l.id.startsWith('mundo:mapa:') || l.id.startsWith('best:') || l.id.startsWith('cla:') || l.id.startsWith('mural:') || l.id === 'fichas:cfg')) depois(); });
       TCx.ponte.escudo('versao').then(() => { bancoOk = true; pintar(); }, () => { bancoOk = false; pintar(); });
     }
     pronto = true;
     pintar();
   }
-  if (DEBUG) window.__escudo = { E, get A() { return A; }, get HO() { return HO; }, get NP() { return NP; }, get EN() { return EN; }, get naMesa() { return naMesa; }, get pronto() { return pronto; }, get bancoOk() { return bancoOk; }, get aba() { return aba; }, get selS() { return selS; },
+  if (DEBUG) window.__escudo = { E, get A() { return A; }, get HO() { return HO; }, get NP() { return NP; }, get EN() { return EN; }, get MI() { return MI; }, get naMesa() { return naMesa; }, get pronto() { return pronto; }, get bancoOk() { return bancoOk; }, get aba() { return aba; }, get selS() { return selS; },
     pilha: () => pilha.map(p => p.rotulo), pintar, desfazer, irAba: a => { aba = a; pintar(); }, escolher: id => { selS = id; pintar(); } };
   partida().catch(e => {
     console.error(e);

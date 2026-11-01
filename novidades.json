@@ -2,6 +2,55 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.01-3",
+      "data": "2026-11-01",
+      "titulo": "Os mistérios e o gerador de lugares novo",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Casos para investigar: quando um mistério é aberto à mesa, ele aparece nas Pistas, em Casos, com o mural do grupo — cada pista é um cartão preso na cortiça. Arrastem os cartões, liguem com fio vermelho o que se conecta e colem notas; tudo aparece para os outros na hora."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Ao lado do mural, os suspeitos, com a aparência (os traços que as pistas apontam) e o que cada um disse no interrogatório. “Acusar…” aponta o culpado e diz por quê; a resposta chega para o grupo todo."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Avisos dos casos: o caso novo, a pista nova, o suspeito novo e o veredito, com “Ver”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Escudo do mestre → Mistérios: “+ Caso” sorteia o mistério pelo tipo (assassinato, roubo ou sumiço, desaparecimento, maldição ou assombração, licantropo, vampiro, íncubo ou súcubo, criaturas sombrias) — a verdade (culpado, motivo, método), 3 a 5 suspeitos com álibi, segredo e o que cada um sabe, e três pistas para cada conclusão, de jeitos diferentes (a regra das três pistas), mais a pista falsa e a reviravolta. Tudo se edita."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "“Abrir à mesa” põe o caso nas Pistas do grupo. Daí você entrega cada pista, mostra os suspeitos, anota as respostas do interrogatório e, quando o grupo acusa, recebe o aviso e responde “Acertaram” ou “Não foi”. Nada vai para a mesa sem um clique seu, e tudo tem Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas → “Gerar um lugar…”: a aba Cena do crime (a mansão, a taverna, o beco, a cripta e a clareira da lua cheia) e, em qualquer lugar, o bloco Mistério — o corpo coberto (ou o lugar revirado) e uma marca de pista oculta para cada vestígio do caso, perto de onde ela costuma ficar (a porta, a mesa, a lareira, o jardim). Dois cliques numa marca a revelam e entregam a pista à mesa. “Gerar a cena do crime…”, no caso, abre a janela já com ele."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "A janela “Gerar um lugar…” mudou: os lugares em grupos com desenho, à esquerda (Povoados, Natureza, Fortes e ruínas, Subterrâneo, Especiais); a prévia grande no meio, com o nome, a semente e os modelos; e as escolhas em blocos que abrem e fecham, com o resumo no título (o lugar, Ambiente, Povoar e Mistério). Os blocos abertos ficam lembrados."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Três objetos novos, no grupo Mistério: a marca de pista, o corpo coberto e os papéis espalhados."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Para o mural funcionar numa mesa, o banco precisa da atualização desta versão (o SQL 0033, depois do 0032)."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.01-2",
       "data": "2026-11-01",
       "titulo": "O bloco de notas de quem joga",

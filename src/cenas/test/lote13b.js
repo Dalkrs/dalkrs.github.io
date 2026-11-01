@@ -300,7 +300,7 @@ const OURO = { casos: [
   // ================= a janela =================
   if (parte('janela')) {
     const G = () => ev(() => JSON.parse(JSON.stringify(__tc.Gerador.vivo().estado)));
-    const ctlTxt = async () => (await page.locator('.ger-op').innerText()).replace(/\n+/g, ' | ');
+    const ctlTxt = async () => (await page.locator('#ger-bl-lugar .ger-bl-c').innerText()).replace(/\n+/g, ' | ');      // (lote 53: o bloco do lugar)
     const exato = async (grupo, txt) => { await page.locator(`#${grupo} button`).filter({ hasText: new RegExp('^' + txt + '$') }).click(); await w(500); };
     const abrir = async () => { await page.locator('#sceneBtn').click(); await w(200); await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(700); };
     await abrir();
