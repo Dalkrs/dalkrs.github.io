@@ -41330,7 +41330,7 @@ const PainelBarras = (() => {
     const npc = !deJogador(t);
     const filhos = [];
     if (t.char) {
-      filhos.push(note(bs.length ? `Da ficha: ${nomes}. ${npc ? 'É um NPC: o painel abre no turno dele, ou pelo botão.' : 'É de um jogador: só ele vê o painel; você vê o selo no token.'}` : 'A ficha não tem árvore de classe, raça ou linhagem com barra no painel.'));
+      filhos.push(note(bs.length ? `Da ficha: ${nomes}. ${npc ? 'É um NPC: o painel abre no turno dele, ou pelo botão.' : 'É de um jogador: só ele vê o painel; você vê o selo no token.'}` : 'A ficha não tem árvore de classe, raça ou linhagem com barra no painel (nem a escola Yanato).'));
     } else if (npc) {
       const atual = t.pb && typeof t.pb === 'object' ? Object.keys(t.pb)[0] || '' : '';
       const ops = [['', 'Nenhuma']].concat(PB().lista().map(d => [d.id, `${d.arvore} · ${d.barra}${d.npc ? ' (NPC)' : ''}`]));
