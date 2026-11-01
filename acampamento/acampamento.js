@@ -1321,6 +1321,8 @@
         const campos = { estado: est }, antes = { id: l.id, estado: l.estado || {}, ficha: null };
         // as barras especiais que este descanso devolve: o valor de agora delas mora no estado (estado.pd)
         if (ln.poderes.length) { const pd = est.pd && typeof est.pd === 'object' ? est.pd : (est.pd = {}); for (const x of ln.poderes) pd[x.id] = x.para; }
+        // (lote 55) o descanso longo enche o cinto de poções da Yanato
+        if (plano.tipo === 'longo' && N.encherCinto(est)) naFicha.push(ln.nome + ': cinto de poções cheio');
         fichas.push(antes);
         P.gravar(l.id, campos);
       }

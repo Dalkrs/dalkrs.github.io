@@ -60,6 +60,7 @@
         { t: 'Rolar pela cena', txt: 'Com o mouse sobre o seu token, F abre a janelinha de rolagem com os atributos da ficha e os campos de bônus só desta rolagem. E abre os equipamentos (equipar e guardar com um clique).', tecla: 'F · E' },
         { t: 'A sua vez', txt: 'No combate, a faixa “Sua vez!” aparece no meio da tela, com dois toques de som. A ordem fica na faixa de baixo.', ir: { aba: 'cenas', g: 'Os turnos' } },
         { t: 'O painel de barras', txt: 'No seu turno abre, no canto do mapa, o painel da barra da sua raça ou classe: as escolhas (postura, forma, compasso…) e os ganhos da rodada. Cada toque vai para a ficha e para a mesa ao vivo; “Desfazer” volta o último. Fora da vez, ele vira uma moeda.', ir: { aba: 'cenas', g: 'O painel de barras' } },
+        { t: 'O cinto de poções (Yanato)', txt: 'Com a escola Yanato, o painel de barras mostra o cinto: um vidro por laço (3, e mais um por grau do Bornal de Cinza). Toque num vidro para usar. O Frasco de Cinza é o de arremessar; as poções de beber somam Toxicidade (de 0 a 20: 10 Enjoado, 15 Intoxicado, 20 o corpo cede), que baixa 1 por turno. “Arrumar o cinto” escolhe o que vai em cada laço; “Descanso longo” enche tudo e zera a Toxicidade.', ir: { aba: 'cenas', g: 'O painel de barras' } },
         { t: 'Poção em outra pessoa', txt: 'No painel, “Em quem” deixa usar a poção em qualquer token — um aliado, um NPC. O mestre aplica em seguida.' },
         { t: 'Tirar uma condição', txt: 'Na faixa de baixo, um clique na condição do seu token tira ela, com Desfazer.' },
       ],

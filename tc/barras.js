@@ -1,5 +1,6 @@
 /* =======================================================================
-   TC.barras — as barras de raça, classe e linhagem (lote 34).
+   TC.barras — as barras de raça, classe e linhagem (lote 34) — e a Toxicidade da Yanato (lote 55: a escola que tem
+   barra, a do cinto de poções; ESCOLAS_COM_BARRA).
 
    Elas são barras comuns da ficha (recursos, como o HP e o SP), não barras especiais: a árvore de raça, de classe ou
    de linhagem cria a barra dela na ficha quando entra (equipar a raça, a classe; o mestre dar a Linhagem). O mestre
@@ -22,7 +23,11 @@
 (function (root) {
   'use strict';
   const CATS = Object.freeze(['raca', 'classe', 'linhagem']);
-  const NOME_CAT = Object.freeze({ raca: 'raça', classe: 'classe', linhagem: 'linhagem' });
+  const NOME_CAT = Object.freeze({ raca: 'raça', classe: 'classe', linhagem: 'linhagem', escola: 'escola' });
+  // (lote 55) as escolas que criam barra (as outras não criam): a Yanato, a Toxicidade do cinto de poções
+  const ESCOLAS_COM_BARRA = Object.freeze(['a5ufrdl1er']);
+  // a ordem das barras na ficha: raça → classe → linhagem → escola
+  const ORDEM = Object.freeze(CATS.concat('escola'));
   const COMBS = Object.freeze(['inicio', 'fica', 'pergunta']);
   // as árvores que não criam barra mesmo sendo de outra categoria (a Bênção de Selene usa a Geada da Kitsune Selene)
   const SEM_BARRA = Object.freeze(['aq0onsk37x', 'arcjszyt59']);
@@ -80,6 +85,7 @@
     "azavpm5qd8": {"nome": "Postura", "min": 0, "max": 20, "inicio": 0, "comb": "inicio", "fim": "zera", "teto": "5", "enche": "No começo do turno: +2 numa postura de samurai; +1 pelo que a família pediu; +1 pelo que a postura pediu", "obs": "A postura cai se a barra chega a 0"}, // Samurai
     "abuxa4zrpg": {"nome": "Malícia", "min": 0, "max": 20, "inicio": 0, "comb": "inicio", "fim": "zera", "teto": "5", "enche": "No começo do turno: +2 se terminou Oculto ou ninguém o atacou; +1 por furto, ataque sigiloso que acertou ou truque que pegou", "obs": "Com armadura pesada ou escudo grande não enche"}, // Shaji
     "ayfvz27k70": {"nome": "Fome", "min": 0, "max": 20, "inicio": null, "comb": "fica", "fim": "fica (não volta: é o estado do vampiro)", "teto": "5 (ao se alimentar)", "enche": "Alimentar-se: mordida +3, frasco +3, servo +3, aliado que aceita +5", "obs": "Fora de combate cai 3 por dia sem comer. Estágios: Sedento 0–4, Faminto 5–9, Alimentado 10–14, Saciado 15–20"}, // Vampiro
+    "a5ufrdl1er": {"nome": "Toxicidade", "min": 0, "max": 20, "inicio": 0, "comb": "fica", "fim": "fica; zera no descanso longo", "teto": "—", "enche": "Cada poção do cinto soma a toxicidade dela; −1 no começo de cada turno", "obs": "10+ Enjoado (−2 em ataque e esquiva); 15+ Intoxicado (−2 em tudo, −5% do HP por turno); 20: o corpo cede (Atordoado, depois cai para 15)"}, // Yanato (escola: o cinto de poções)
     "a7va7rq14q": {"nome": "Barra Bestial", "min": 0, "max": 20, "inicio": 0, "comb": "pergunta", "fim": "some (só existe à noite, no combate)", "teto": "5 (6 com vampiro a até 6 cédulas; habilidades +N fora do teto)", "enche": "No começo do turno: +1 golpe brutal dado; +1 golpe sofrido; +1 presa que fugiu ou sangue jorrando", "obs": "Só à noite. Início: 0 (lua cheia 15; outras fases o mestre diz 0, 5 ou 10). Patamares 5 Desperto, 10 Garras, 15 Fera; 20 = Fera Solta. Comer baixa 5"}, // Licantropo
   };
   Object.keys(PADRAO).forEach(k => Object.freeze(PADRAO[k]));
@@ -122,7 +128,7 @@
     return limpar({ nome: d.nome, min, max, inicio: ini });
   }
   const textoDaArvore = a => ((a && a.nodes) || []).slice(0, 4).map(n => (n && n.desc) || '').join('\n');
-  const barraDaArvore = a => !!a && CATS.includes(a.categoria) && !SEM_BARRA.includes(a.id);
+  const barraDaArvore = a => !!a && (CATS.includes(a.categoria) || (a.categoria === 'escola' && ESCOLAS_COM_BARRA.includes(a.id))) && !SEM_BARRA.includes(a.id);
   /* A barra que a árvore cria na ficha, ou null (a árvore não é de raça, classe ou linhagem; ou o mestre disse que ela
      não cria barra; ou não há o que ler). */
   function defDaArvore(a) {
@@ -154,7 +160,7 @@
       }
       out.push({ nome: d.nome, min: d.min, max: d.max, inicio: d.inicio, comb: d.comb, cat: d.cat, arvs: [a.id], defs: [{ a, d }] });
     }
-    return out.sort((x, y) => CATS.indexOf(x.cat) - CATS.indexOf(y.cat));
+    return out.sort((x, y) => ORDEM.indexOf(x.cat) - ORDEM.indexOf(y.cat));
   }
   // o recurso da ficha para uma barra (de doPersonagem); id: o id que ele vai ter
   function recurso(b, id) {
@@ -168,7 +174,7 @@
      resto, como estava. → uma lista nova (o mesmo objeto de cada recurso). */
   function ordenar(recursos) {
     const l = Array.isArray(recursos) ? recursos.slice() : [];
-    const arv = l.filter(ehDeArvore).sort((x, y) => CATS.indexOf(x.cat) - CATS.indexOf(y.cat)), resto = l.filter(r => !ehDeArvore(r));
+    const arv = l.filter(ehDeArvore).sort((x, y) => ORDEM.indexOf(x.cat) - ORDEM.indexOf(y.cat)), resto = l.filter(r => !ehDeArvore(r));
     let p = 0;
     resto.forEach((r, i) => { const n = normNome(r && r.nome); if (n === 'hp' || n === 'sp') p = i + 1; });
     return resto.slice(0, p).concat(arv, resto.slice(p));
@@ -181,7 +187,7 @@
     return b.inicio == null ? f : f + ', começa em ' + (b.inicio < 0 ? '−' + Math.abs(b.inicio) : b.inicio);
   }
 
-  const api = { CATS, NOME_CAT, COMBS, SEM_BARRA, FASES, PADRAO, limpar, doTexto, doGuia, defDaArvore, barraDaArvore, doPersonagem, recurso, ehDeArvore, ordenar, faixaTexto, normNome };
+  const api = { CATS, NOME_CAT, ESCOLAS_COM_BARRA, ORDEM, COMBS, SEM_BARRA, FASES, PADRAO, limpar, doTexto, doGuia, defDaArvore, barraDaArvore, doPersonagem, recurso, ehDeArvore, ordenar, faixaTexto, normNome };
   (root.TC || (root.TC = {})).barras = api;
   if (typeof window !== 'undefined' && window && window !== root) (window.TC || (window.TC = root.TC)).barras = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

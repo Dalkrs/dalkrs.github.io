@@ -27,7 +27,7 @@ const j = JSON.stringify;
   const quem = () => page.locator('#pbHost .pb:not(.moeda) .pb-quem').allInnerTexts();
   const selecionar = id => ev(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, id);
 
-  ok(await ev(() => !!(window.TC && TC.painelBarras && TC.painelBarras.BARRAS.length === 49) && typeof __tc.PainelBarras === 'object'), 'o motor das 49 barras chega às Cenas');
+  ok(await ev(() => !!(window.TC && TC.painelBarras && TC.painelBarras.BARRAS.length === 50) && typeof __tc.PainelBarras === 'object'), 'o motor das 49 barras chega às Cenas');
   ok(await ev(() => __tc.PainelBarras.ligado()), 'o painel começa ligado');
 
   const ids = await ev(() => { const { Store, newToken } = __tc, sc = Store.scene();
@@ -38,7 +38,7 @@ const j = JSON.stringify;
   /* ---------- a barra especial do NPC sem ficha ---------- */
   await selecionar(ids.rast); await w(300);
   const ops = await page.locator('#pb-escolher option').count();
-  ok(ops === 50, 'no painel do token, "Barra especial": Nenhuma e as 49 do guia — ' + ops);
+  ok(ops === 51, 'no painel do token, "Barra especial": Nenhuma, as 49 do guia e a Toxicidade da Yanato — ' + ops);
   await page.locator('#pb-escolher').selectOption('rastoroni'); await w(300);
   let b = await barraPb(ids.rast), k = await tok(ids.rast);
   ok(b && b.n === 'Frenesi' && b.v === 6 && b.m === 20 && b.ref === 'pb:rastoroni' && k.pb && k.pb.rastoroni, 'Orc Rastoroni: o token ganha a barra Frenesi (6 de 20) e o estado do painel — ' + j([b, k.pb]));

@@ -2,6 +2,38 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.01-5",
+      "data": "2026-11-01",
+      "titulo": "O cinto de poções da Yanato",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Cenas: quem tem a escola Yanato ganha, no painel de barras, o cinto de poções — um vidro por laço (3, e mais um por grau do Bornal de Cinza). Um toque usa o vidro: o Frasco de Cinza é o de arremessar, e as poções de beber valem por algumas rodadas, com os lembretes no começo de cada turno."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Oito poções, uma por cor: Vermelha (regeneração), Laranja (+15% de dano), Amarela (esquiva e movimento), Verde (contra veneno e doença), Azul (SP de volta), Preta (ver no escuro), Branca (limpa o sangue) e Cinza Brilhante (+2 em tudo, uma por combate)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "A barra de Toxicidade (de 0 a 20): cada poção soma, e ela baixa 1 por turno. Com 10, Enjoado; com 15, Intoxicado; com 20, o corpo cede (Atordoado) e ela volta a 15. O combate não mexe nela; o descanso longo zera."
+        },
+        {
+          "tipo": "novo",
+          "texto": "“Arrumar o cinto” escolhe o que vai em cada laço (o vidro novo chega vazio) e “Descanso longo” enche o cinto todo — o descanso longo do Acampamento também enche. O mestre dá laços a mais (até 8)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: a escola Yanato cria a barra de Toxicidade, também nas fichas que já tinham a escola (uma vez só; a que alguém tirar não volta)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: o NPC do mestre pode ter o cinto também — no painel do token, “Barra especial” → Toxicidade (Yanato)."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.01-4",
       "data": "2026-11-01",
       "titulo": "Rios e estradas no Mapa-múndi, e lugares gerados mais caprichados",

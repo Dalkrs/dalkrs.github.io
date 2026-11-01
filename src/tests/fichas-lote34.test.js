@@ -3,7 +3,7 @@
 //     Oficina, o texto), as que dividem a barra (as Oradoras), a ordem, o que os nós somam ao início (até 10);
 //   · equipar a raça cria a barra comum depois do HP e do SP, com o aviso e o Desfazer; os nós somam ao início;
 //   · a barra especial que veio da raça (do lote 28) vira a comum, guardando o valor de agora; o Desfazer devolve;
-//   · a Bênção de Selene e a escola não criam barra; a barra acompanha o que o mestre muda na árvore;
+//   · a Bênção de Selene e a escola não criam barra (a Yanato, desde o lote 55, cria a Toxicidade); a barra acompanha o que o mestre muda na árvore;
 //   · as outras fichas trocam também (uma vez só), num aviso só.
 const { start, checker } = require('./lib');
 const { ok, end } = checker();
@@ -12,7 +12,7 @@ const B = require('../../tc/barras.js');
 const j = JSON.stringify;
 
 // ---------- as contas ----------
-ok(Object.keys(B.PADRAO).length === 51, 'o guia: 37 raças, 12 classes e 2 linhagens (51)');
+ok(Object.keys(B.PADRAO).length === 52, 'o guia: 37 raças, 12 classes, 2 linhagens e a escola Yanato (52)');
 const forja = B.defDaArvore({ id: 'aaj23w9sif', categoria: 'raca', nodes: [] });
 ok(forja.nome === 'Calor da Forja' && forja.min === 0 && forja.max === 20 && forja.inicio === 5 && forja.comb === 'inicio' && forja.de === 'guia', 'Anão da Forja (pelo id): Calor da Forja, 0 a 20, começa em 5 — ' + j(forja));
 const comp = B.defDaArvore({ id: 'atrwp3vplm', categoria: 'raca', nodes: [] });
@@ -131,7 +131,9 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [dain, li
     await aba('skills');
     await equipar('aq0onsk37x', true); await equipar('a5ufrdl1er', true);
     const f = await ficha('pc_dain');
-    ok(f.pd.length === 0 && f.rec.length === 4, 'a Bênção de Selene e a escola (Yanato) não criam barra nenhuma — ' + j(f.rec.map(r => r.nome)) + ' ' + j(f.pd));
+    const tx = f.rec.find(r => r.nome === 'Toxicidade');
+    ok(f.pd.length === 0 && f.rec.length === 5 && tx && tx.fml === '20' && tx.comeca === '0' && tx.comb === 'fica' && j(tx.arvs) === j(['a5ufrdl1er']),
+      'a Bênção de Selene não cria barra; a escola Yanato cria a Toxicidade (0 a 20, começa em 0, o combate não mexe; lote 55) — ' + j(f.rec.map(r => r.nome)) + ' ' + j(tx) + ' ' + j(f.pd));
     await equipar('ayfvz27k70', true);
     const v = (await ficha('pc_dain')).rec.find(r => r.nome === 'Fome');
     ok(v && v.comeca === '' && v.comb === 'fica', 'a linhagem Vampiro: a Fome (o combate não mexe nela) — ' + j(v));

@@ -2886,6 +2886,214 @@ barra({id:'zierasurper', cat:'raca', arvore:"Taekeir Zier'Asurper", barra:'Sangu
 
 
 /* =====================================================================
+   (lote 55) O CINTO DE POÇÕES DA YANATO (a escola). Não é a barra da classe: o número é a Toxicidade (0–20), uma
+   barra da ficha que a árvore da Yanato cria (TC.barras: "Toxicidade"; o combate não mexe nela, o descanso longo zera).
+   O cinto tem um laço por vidro: 3, mais 1 por grau do Bornal de Cinza (s.bornal, que as Cenas contam na ficha), mais
+   os que o mestre der (s.extra, até 3). Cada laço leva um Frasco de Cinza (o de arremessar: o "Frasco" que as técnicas
+   da Yanato gastam) ou uma poção de beber (POCOES, uma por cor). Tocar num vidro cheio usa: o frasco sai do cinto; a
+   poção é bebida — soma a toxicidade dela e liga o efeito pelas rodadas dela (os números que o efeito mexe, como o HP,
+   a mesa aplica: o painel lembra no começo de cada turno). No começo de cada turno a Toxicidade baixa 1; 10+ Enjoado,
+   15+ Intoxicado, 20 o corpo cede (Atordoado até o fim do próximo turno; depois ela cai para 15). "Arrumar o cinto"
+   escolhe o que vai em cada laço (o vidro novo chega vazio); "Descanso longo" enche todos (o mestre diz se falta
+   material) e zera a Toxicidade.
+   s: { lacos: [{ k: 'frasco' | id da poção, cheio }], efeitos: [{ p: id da poção, r: rodadas | 'combate' }], extra,
+        bornal, cinzaUsada (a Cinza Viva, uma por combate), cedeu (o corpo cedeu: no próximo turno cai para 15),
+        arrumar, sel (o laço escolhido ao arrumar) }
+   ===================================================================== */
+const YANATO = 'a5ufrdl1er';
+const CINTO_BASE = 3, CINTO_EXTRA = 3, CINTO_MAX = 8;
+// as poções: o vidro (cor, nomeCor), o nome, a toxicidade, as rodadas (0: na hora; 'combate': até o fim do combate),
+// o efeito (o texto inteiro, no painel), o curto (na mesa ao vivo) e o porTurno (o lembrete do começo de cada turno)
+const POCOES = [
+  { id: 'vermelha', cor: '#D9443A', nomeCor: 'Vermelha', nome: 'Sangue de Vas', tox: 4, dur: 4, curto: 'regenera 5% do HP por turno', porTurno: 'recupera 5% do HP máximo',
+    efeito: 'Regeneração: recupera 5% do HP máximo no começo de cada turno, por 4 rodadas.' },
+  { id: 'laranja', cor: '#EF8A2E', nomeCor: 'Laranja', nome: 'Brasa no Aço', tox: 4, dur: 3, curto: '+15% de dano',
+    efeito: 'Os golpes, arremessos e disparos causam +15% de dano, por 3 rodadas (é o aumento de dano da Yanato: não soma com outro dela).' },
+  { id: 'amarela', cor: '#F2CC3A', nomeCor: 'Amarela', nome: 'Asa de Gavião', tox: 3, dur: 3, curto: '+2 ESQ e +2 cédulas',
+    efeito: '+2 de fixa na esquiva e +2 cédulas de movimento, por 3 rodadas.' },
+  { id: 'verde', cor: '#5DBB5A', nomeCor: 'Verde', nome: 'Erva do Pântano', tox: 2, dur: 4, curto: 'imune a veneno e doença',
+    efeito: 'Tira Envenenado e Doente na hora e deixa imune aos dois por 4 rodadas.' },
+  { id: 'azul', cor: '#4C8FE0', nomeCor: 'Azul', nome: 'Fôlego Frio', tox: 3, dur: 3, curto: '+15% de SP e 5% por turno', porTurno: 'recupera 5% do SP máximo',
+    efeito: 'Recupera 15% do SP máximo na hora e mais 5% no começo de cada turno, por 3 rodadas.' },
+  { id: 'preta', cor: '#3A3542', nomeCor: 'Preta', nome: 'Olhos de Ayto', tox: 2, dur: 5, curto: 'vê no escuro',
+    efeito: 'Vê no escuro (mesmo no mágico) e através da fumaça do Frasco Ayto, com +2 de PER para achar quem está Oculto, por 5 rodadas.' },
+  { id: 'branca', cor: '#F2EFE6', nomeCor: 'Branca', nome: 'Sal de Yana', tox: 0, dur: 0, curto: 'limpa o sangue',
+    efeito: 'Limpa o sangue: a Toxicidade vai a 0 e os efeitos das outras poções acabam na hora.' },
+  { id: 'cinza', cor: '#CDD1DA', nomeCor: 'Cinza Brilhante', nome: 'Cinza Viva', tox: 10, dur: 'combate', curto: '+2 em tudo',
+    efeito: 'A poção da escola, entre a luz e a treva: +2 de fixa em ataque, esquiva e testes de resistência até o fim do combate. Uma por combate.' }
+];
+const POCAO = {};
+POCOES.forEach(p => { POCAO[p.id] = p; });
+// os patamares da Toxicidade: [a partir de, nome, o que faz, cor]
+const TOX = [[20, 'O corpo cede', 'Atordoado até o fim do próximo turno; depois a Toxicidade cai para 15', '#F0605A'],
+  [15, 'Intoxicado', '−2 de fixa em tudo e perde 5% do HP máximo no começo de cada turno', '#EE8A4E'],
+  [10, 'Enjoado', '−2 de fixa em ataque e esquiva', '#E8C04A'],
+  [0, 'Limpo', 'a toxicidade não atrapalha', '#9CCB6A']];
+const toxDe = v => TOX.find(x => v >= x[0]) || TOX[TOX.length - 1];
+// os laços do cinto, arrumados (o tamanho segue o Bornal e os laços extras; os que chegam, chegam vazios)
+function lacosDe(s){
+  const n = Math.max(1, Math.min(CINTO_MAX, CINTO_BASE + Math.max(0, Math.floor(+s.bornal || 0)) + Math.max(0, Math.min(CINTO_EXTRA, Math.floor(+s.extra || 0)))));
+  const novo = !Array.isArray(s.lacos);
+  const L = (novo ? [] : s.lacos).filter(x => x && typeof x === 'object').map(x => ({ k: x.k === 'frasco' || POCAO[x.k] ? x.k : 'frasco', cheio: !!x.cheio }));
+  while (L.length < n) L.push({ k: 'frasco', cheio: novo });
+  L.length = n;
+  s.lacos = L;
+  return L;
+}
+// o efeito em uma linha (para a dica, que tem 3 linhas): "+15% de dano, 3 rodadas"
+const efeitoCurto = p => p.dur === 'combate' ? `${p.curto}, até o fim do combate; uma por combate` : p.dur ? `${p.curto}, ${p.dur} rodadas` : p.curto;
+const nomeDoVidro = k => (k === 'frasco' ? 'Frasco de Cinza' : POCAO[k] ? POCAO[k].nomeCor + ' · ' + POCAO[k].nome : '?');
+// "2 Frascos de Cinza, Vermelha e Branca"
+function resumoDoCinto(L){
+  const n = {}; L.forEach(x => { n[x.k] = (n[x.k] || 0) + 1; });
+  const partes = Object.keys(n).map(k => k === 'frasco' ? (n[k] === 1 ? '1 Frasco de Cinza' : n[k] + ' Frascos de Cinza') : (n[k] > 1 ? n[k] + '× ' : '') + POCAO[k].nomeCor);
+  return partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] : partes.join('');
+}
+// os vidros (desenho): o frasco de barro, de arremessar; o vidro redondo, de beber
+function vidroSVG(k, cx, base, w, cheio, sel){
+  const r = w / 2, contorno = sel ? '#4FC3D6' : '#E8E4DA', tr = sel ? 2.4 : 1.3;
+  if (k === 'frasco'){
+    const h = w * 1.25, x = cx - r, y = base - h;
+    const corpo = `M${f1(x + r * .25)} ${f1(y + h * .18)}H${f1(x + w - r * .25)}Q${f1(x + w)} ${f1(y + h * .3)} ${f1(x + w)} ${f1(y + h * .55)}V${f1(base - 3)}Q${f1(x + w)} ${f1(base)} ${f1(x + w - 3)} ${f1(base)}H${f1(x + 3)}Q${f1(x)} ${f1(base)} ${f1(x)} ${f1(base - 3)}V${f1(y + h * .55)}Q${f1(x)} ${f1(y + h * .3)} ${f1(x + r * .25)} ${f1(y + h * .18)}Z`;
+    if (!cheio) return `<path d="${corpo}" fill="none" stroke="${sel ? contorno : '#6B6459'}" stroke-width="${sel ? 2.4 : 1.2}" stroke-dasharray="3 3"/>`;
+    return `<path d="${corpo}" fill="#8C7A66" stroke="${contorno}" stroke-width="${tr}"/>`
+      + `<rect x="${f1(cx - r * .45)}" y="${f1(y + 1)}" width="${f1(r * .9)}" height="${f1(h * .2)}" rx="2" fill="#B9A58C"/>`
+      + `<path d="M${f1(x + 2)} ${f1(y + h * .62)}H${f1(x + w - 2)}M${f1(x + 2)} ${f1(y + h * .78)}H${f1(x + w - 2)}" stroke="#5E5043" stroke-width="1.4"/>`;
+  }
+  const p = POCAO[k], cy = base - r, pesc = r * .42, topo = cy - r - r * .7;
+  const forma = `M${f1(cx - pesc)} ${f1(topo)}H${f1(cx + pesc)}V${f1(cy - r * .78)}A${f1(r)} ${f1(r)} 0 1 1 ${f1(cx - pesc)} ${f1(cy - r * .78)}Z`;
+  if (!cheio) return `<path d="${forma}" fill="none" stroke="${sel ? contorno : p.cor}" stroke-opacity="${sel ? 1 : .6}" stroke-width="${sel ? 2.4 : 1.2}" stroke-dasharray="3 3"/>`;
+  let o = `<path d="${forma}" fill="${p.cor}" stroke="${contorno}" stroke-width="${tr}"/>`
+    + `<rect x="${f1(cx - pesc - 1)}" y="${f1(topo - r * .32)}" width="${f1(pesc * 2 + 2)}" height="${f1(r * .38)}" rx="1.5" fill="#9C7A55"/>`
+    + `<path d="M${f1(cx - r * .55)} ${f1(cy - r * .25)}A${f1(r * .62)} ${f1(r * .62)} 0 0 1 ${f1(cx - r * .1)} ${f1(cy - r * .62)}" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="1.6" stroke-linecap="round"/>`;
+  if (k === 'cinza') o += `<path d="M${f1(cx + r * .3)} ${f1(cy - r * .1)}l1.6 3.4l3.4 1.6l-3.4 1.6l-1.6 3.4l-1.6 -3.4l-3.4 -1.6l3.4 -1.6Z" fill="#FFFFFF"/>`;
+  return o;
+}
+
+barra({id:'yanato', cat:'escola', arvore:'Yanato', barra:'Toxicidade', cor:'#C9CDD6',
+  inicio:0, teto:null, fim:'fica', demo:7, persiste:['lacos', 'extra', 'bornal'],
+  icone:'<path d="M2 8.5H22M2 12H22"/><path d="M6.3 12V14.2A3.6 3.6 0 1 0 8.7 14.2V12M6.3 8.5V5.5M8.7 8.5V5.5M5.8 5.5H9.2"/><path d="M15.3 12V20Q15.3 21 16.3 21H17.7Q18.7 21 18.7 20V12M15.3 8.5V5.5M18.7 8.5V5.5M14.8 5.5H19.2"/>',
+  estado:()=>({ lacos: null, efeitos: [], extra: 0, bornal: 0, cinzaUsada: false, cedeu: false, arrumar: false, sel: null }),
+  POCOES, POCAO, TOX,
+  face(s, v){
+    const L = lacosDe(s), t = toxDe(v);
+    let o = `<rect x="4" y="6" width="212" height="208" rx="14" fill="#16130F"/>`;
+    // a Toxicidade: 20 gomos, com os patamares (10 e 15) marcados
+    o += KIT.texto(14, 26, 'Toxicidade', { ancora: 'start', tam: 12, cor: '#B7AFA2' }) + KIT.texto(206, 26, t[1], { ancora: 'end', tam: 12, peso: 800, cor: t[3] });
+    for (let i = 0; i < 20; i++){
+      const x = 14 + i * 9.6, on = i < v, z = toxDe(i + 1);
+      o += `<rect x="${f1(x)}" y="34" width="7.4" height="16" rx="2" fill="${on ? z[3] : '#ffffff12'}"/>`;
+    }
+    [10, 15].forEach(n => { const x = 14 + n * 9.6 - 1.1; o += `<path d="M${f1(x)} 31V53" stroke="#E8E4DA" stroke-opacity=".55" stroke-width="1.4"/>` + KIT.texto(x, 64, n, { tam: 10, peso: 600, cor: '#8E877C' }); });
+    // o que está valendo: uma gota da cor da poção, com as rodadas que faltam
+    s.efeitos.slice(0, 5).forEach((e, i) => {
+      const p = POCAO[e.p]; if (!p) return;
+      const x = 22 + i * 40, y = 84;
+      o += `<path d="M${x} ${y - 9}C${x + 6} ${y - 1} ${x + 6} ${y + 6} ${x} ${y + 6}C${x - 6} ${y + 6} ${x - 6} ${y - 1} ${x} ${y - 9}Z" fill="${p.cor}" stroke="#E8E4DA" stroke-width="1"/>`
+        + KIT.texto(x + 11, y + 4, e.r === 'combate' ? '∞' : e.r, { ancora: 'start', tam: 12, peso: 800, cor: '#E8E4DA' });
+    });
+    // o cinto: a tira de couro, um laço por vidro
+    o += `<path d="M6 176Q110 206 214 176" fill="none" stroke="#5C3D26" stroke-width="22" stroke-linecap="round"/>`
+      + `<path d="M8 170Q110 199 212 170M8 182Q110 211 212 182" fill="none" stroke="#C9A27A" stroke-opacity=".5" stroke-width="1" stroke-dasharray="4 3"/>`;
+    const n = L.length, passo = 188 / n, w = Math.min(36, passo * .72);
+    L.forEach((x, i) => {
+      const cx = 16 + passo * (i + .5), yC = 176 + 30 * (1 - Math.pow((cx - 110) / 104, 2)) * .5 - 1, sel = s.arrumar && s.sel === i;
+      const laco = `<rect x="${f1(cx - w * .62)}" y="${f1(yC - 8)}" width="${f1(w * 1.24)}" height="16" rx="3" fill="#7A5434" stroke="#2A1C12" stroke-width="1"/>`;
+      const rot = `${x.cheio ? '' : 'vazio: '}${nomeDoVidro(x.k)} (laço ${i + 1})`;
+      o += KIT.botao('l' + i, rot, `<rect x="${f1(cx - passo / 2 + 1)}" y="96" width="${f1(passo - 2)}" height="${f1(yC + 8 - 96)}" fill="transparent"/>${vidroSVG(x.k, cx, yC - 6, w, x.cheio, sel)}${laco}`);
+    });
+    if (s.cedeu) o += `<path d="M14 100L206 196" stroke="#F0605A" stroke-width="3" stroke-linecap="round" opacity=".8"/>`;
+    return o;
+  },
+  dica(s, k, ctx){
+    const L = lacosDe(s), i = +String(k).slice(1), x = L[i];
+    if (!x) return '';
+    if (s.arrumar) return `<b>Laço ${i + 1}: ${esc(nomeDoVidro(x.k))}</b> <em>· toque para escolher o que vai nele.</em>`;
+    if (x.k === 'frasco') return `<b>Frasco de Cinza</b> <em>· de arremessar: é o “Frasco” que as técnicas da Yanato gastam. ${x.cheio ? 'Toque quando usar.' : 'Vazio: enche no descanso longo.'}</em>`;
+    const p = POCAO[x.k], depois = Math.min(20, ctx.v + p.tox);
+    return `<b>${esc(p.nomeCor)} · ${esc(p.nome)}</b> <em>· ${esc(p.id === 'branca' ? 'a Toxicidade vai a 0 e os outros efeitos acabam' : efeitoCurto(p))}. ${x.cheio ? (p.id === 'branca' ? 'Toque para beber.' : `Toxicidade ${ctx.v} → ${depois}.`) : 'Vazio: enche no descanso longo.'}</em>`;
+  },
+  linha(s, ctx){
+    const L = lacosDe(s);
+    if (s.arrumar){
+      const x = s.sel != null ? L[s.sel] : null, p = x && POCAO[x.k];
+      if (!x) return `<b>Arrumar o cinto</b> <em>· toque num laço e escolha, abaixo, o que vai nele. O vidro novo chega vazio e enche no descanso longo.</em>`;
+      return `<b>Laço ${s.sel + 1}: ${esc(nomeDoVidro(x.k))}</b> <em>· ${p ? esc(p.efeito) : 'de arremessar: é o “Frasco” que as técnicas da Yanato gastam.'}</em>`;
+    }
+    const t = toxDe(ctx.v);
+    const vale = s.efeitos.map(e => POCAO[e.p] ? `${POCAO[e.p].nome} (${e.r === 'combate' ? 'até o fim do combate' : e.r + (e.r === 1 ? ' rodada' : ' rodadas')})` : '').filter(Boolean);
+    const cheios = L.filter(x => x.cheio).length;
+    return `<b style="color:${t[3]}">${t[1]}</b> <em>· ${esc(t[2])}.</em><br><em>${vale.length ? 'Valendo: ' + esc(vale.join(', ')) + '.' : `${cheios} de ${L.length} ${L.length === 1 ? 'vidro cheio' : 'vidros cheios'} no cinto · toque num vidro para usar.`}</em>`;
+  },
+  acoes(s){
+    const L = lacosDe(s);
+    if (!s.arrumar) return `<button type="button" data-a="arrumar" title="Escolher o que vai em cada laço">Arrumar o cinto</button><button type="button" data-a="descanso" title="Enche todos os laços e zera a Toxicidade. O mestre diz se falta material.">Descanso longo</button>`;
+    const ops = [['frasco', 'Frasco de Cinza (de arremessar)']].concat(POCOES.map(p => [p.id, `${p.nomeCor} · ${p.nome}${p.tox ? ' (+' + p.tox + ' tox.)' : ''}`]));
+    const x = s.sel != null ? L[s.sel] : null;
+    return (x ? `<select data-a="poe" aria-label="O que vai no laço ${s.sel + 1}">${ops.map(([k, n]) => `<option value="${k}" ${x.k === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>` : '')
+      + `<button type="button" data-a="maislaco" ${s.extra >= CINTO_EXTRA || L.length >= CINTO_MAX ? 'disabled' : ''} title="Laço a mais, que o mestre dá">+1 laço</button>`
+      + `<button type="button" data-a="menoslaco" ${s.extra > 0 ? '' : 'disabled'} title="Tira um laço a mais">−1 laço</button>`
+      + `<button type="button" data-a="pronto">Pronto</button>`;
+  },
+  clique(s, k, ctx){
+    const L = lacosDe(s), i = +String(k).slice(1), x = L[i];
+    if (!x) return;
+    if (s.arrumar){ s.sel = i; return; }
+    if (!x.cheio) return ctx.aviso(`O laço ${i + 1} está vazio: enche no descanso longo.`);
+    if (x.k === 'frasco'){
+      x.cheio = false;
+      const r = L.filter(y => y.k === 'frasco' && y.cheio).length;
+      return ctx.log(`${ctx.nome} tirou um Frasco de Cinza do cinto (${r ? r + (r === 1 ? ' resta' : ' restam') : 'era o último'}).`);
+    }
+    const p = POCAO[x.k];
+    if (p.id === 'cinza' && s.cinzaUsada) return ctx.aviso('Cinza Viva: só uma por combate.');
+    x.cheio = false;
+    const antes = ctx.v;
+    if (p.id === 'branca'){
+      const tinha = s.efeitos.length;
+      s.efeitos = []; s.cedeu = false; ctx.v = 0;
+      return ctx.log(`${ctx.nome} bebeu a Branca (${p.nome}): Toxicidade ${antes} → 0${tinha ? '; os efeitos das outras poções acabam' : ''}.`);
+    }
+    if (p.id === 'cinza') s.cinzaUsada = true;
+    s.efeitos = s.efeitos.filter(e => e.p !== p.id);
+    if (p.dur) s.efeitos.push({ p: p.id, r: p.dur });
+    ctx.v = antes + p.tox;
+    ctx.log(`${ctx.nome} bebeu a ${p.nomeCor} (${p.nome}: ${p.curto}, ${p.dur === 'combate' ? 'até o fim do combate' : p.dur + ' rodadas'}). Toxicidade ${antes} → ${ctx.v}.`);
+  },
+  acao(s, a, ctx, val){
+    const L = lacosDe(s);
+    if (a === 'arrumar'){ s.arrumar = true; s.sel = null; }
+    if (a === 'pronto'){ s.arrumar = false; s.sel = null; ctx.log(`${ctx.nome} arrumou o cinto: ${resumoDoCinto(L)}.`); }
+    if (a === 'poe' && s.sel != null && L[s.sel] && val && (val === 'frasco' || POCAO[val]) && L[s.sel].k !== val) L[s.sel] = { k: val, cheio: false };
+    if (a === 'maislaco' && s.extra < CINTO_EXTRA && L.length < CINTO_MAX){ s.extra = (s.extra || 0) + 1; lacosDe(s); }
+    if (a === 'menoslaco' && s.extra > 0){ s.extra--; lacosDe(s); if (s.sel != null && s.sel >= s.lacos.length) s.sel = null; }
+    if (a === 'descanso'){
+      L.forEach(x => { x.cheio = true; });
+      const antes = ctx.v;
+      s.efeitos = []; s.cinzaUsada = false; s.cedeu = false; ctx.v = 0;
+      ctx.log(`Descanso longo: cinto de ${ctx.nome} cheio (${resumoDoCinto(L)})${antes ? `; Toxicidade ${antes} → 0` : ''}.`);
+    }
+  },
+  aoMudar(s, ctx, antes){
+    if (ctx.v >= 20 && antes < 20 && !s.cedeu){ s.cedeu = true; ctx.log(`O corpo de ${ctx.nome} cede: Atordoado até o fim do próximo turno; depois a Toxicidade cai para 15.`); }
+  },
+  aoComecarTurno(s, ctx){
+    if (s.cedeu){ s.cedeu = false; ctx.definir(15, 'o corpo se recupera'); ctx.aviso('O corpo cedeu: Atordoado neste turno.'); }
+    else if (ctx.v > 0) ctx.perder(1, null, { mudo: true });
+    const lembretes = [], acabaram = [];
+    for (const e of s.efeitos){
+      const p = POCAO[e.p]; if (!p) continue;
+      if (p.porTurno) lembretes.push(`${p.nome}, ${p.porTurno}`);
+      if (typeof e.r === 'number'){ e.r--; if (e.r <= 0) acabaram.push(p.nome); }
+    }
+    s.efeitos = s.efeitos.filter(e => POCAO[e.p] && (typeof e.r !== 'number' || e.r > 0));
+    if (lembretes.length) ctx.log(`${ctx.nome}, começo do turno: ${lembretes.join('; ')}.`);
+    if (ctx.v >= 15 && ctx.v < 20) ctx.log(`${ctx.nome} está Intoxicado: perde 5% do HP máximo.`);
+    if (acabaram.length) ctx.log(`${ctx.nome}: ${acabaram.join(' e ')} ${acabaram.length > 1 ? 'acabaram' : 'acabou'}.`);
+  }
+});
+
+/* =====================================================================
    A ligação com as árvores do site: o id da árvore na biblioteca da mesa (o guia de barras, 28/10) e, para as de
    outra mesa, o nome (sem acento, sem maiúscula). As 3 Oradoras dividem a barra das Palavras. A Bênção de Selene não
    cria barra: ela liga a "Verdadeira Forma" na Geada de Selene.
@@ -2902,7 +3110,8 @@ const ARVORES = {
   hayune: ['a3wu21kjf6'], danca: ['atrwp3vplm'], oradora: ['aijv2xkz3l', 'a24nmazt4x', 'a0j41dk16b'], lotus: ['abn117rgrd'],
   merune: ['anc7t74pn8'], nirus: ['abivun83nh'], selene: ['atehaqx1sg'], konaitos: ['at5llfbjwm'], magiritu: ['a6uy0qcbys'],
   'orc-natuphas': ['aes6lsap36'], rastoroni: ['awbw94n05o'], 'orc-vas': ['a2vms52foj'], silk: ['a847813eqe'],
-  magiatach: ['aiwzp5pvi4'], maritimo: ['avi6wkp0m9'], nistusatach: ['a2fjc1iqaf'], zierasurper: ['abtaqznjap']
+  magiatach: ['aiwzp5pvi4'], maritimo: ['avi6wkp0m9'], nistusatach: ['a2fjc1iqaf'], zierasurper: ['abtaqznjap'],
+  yanato: [YANATO]                                           // (lote 55: a escola, o cinto de poções)
 };
 const BENCAO_SELENE = 'aq0onsk37x';
 const POR_ID = {};
@@ -2923,11 +3132,12 @@ function barraDaArvore(arv){
   return d ? d.id : null;
 }
 // a lista para o mestre escolher (NPC sem ficha): por categoria e nome
-const lista = () => BARRAS.slice().sort((a, b) => (['classe', 'raca', 'linhagem'].indexOf(a.cat) - ['classe', 'raca', 'linhagem'].indexOf(b.cat)) || a.arvore.localeCompare(b.arvore, 'pt-BR'))
+const ORDEM_CAT = ['classe', 'raca', 'linhagem', 'escola'];
+const lista = () => BARRAS.slice().sort((a, b) => (ORDEM_CAT.indexOf(a.cat) - ORDEM_CAT.indexOf(b.cat)) || a.arvore.localeCompare(b.arvore, 'pt-BR'))
   .map(d => ({ id: d.id, cat: d.cat, arvore: d.arvore, barra: d.barra, cor: d.cor, npc: !!d.npc }));
 
 const api = {
-  BARRAS, BARRA, ICONES, KIT, ARVORES, BENCAO_SELENE,
+  BARRAS, BARRA, ICONES, KIT, ARVORES, BENCAO_SELENE, YANATO, POCOES, lacosDe,
   barraDaArvore, lista, instancia, guardar, ctxDe, mexer, valorGanho, pendente, aplicar, tocarAgora,
   comecarTurno, terminarTurno, fimDoCombate, painelHTML, desenharPainel, ligarPainel, faceSVG, seloDe, seloHTML,
   svgIcone, iconeSolto, mostra, tetoDe, esc

@@ -1,4 +1,4 @@
-// O painel de barras (lote 44), a lógica pura (tc/barras-painel.js): as 49 barras do guia, cada uma com a face, as
+// O painel de barras (lote 44), a lógica pura (tc/barras-painel.js): as 49 barras do guia (e o cinto de poções da Yanato, lote 55: 50), cada uma com a face, as
 // abas, os toques e os ganhos; o que se guarda e volta; os limites da ficha; o teto da rodada; o fim do combate (zera,
 // volta ao início da ficha, fica); a ligação com as árvores (pelo id da mesa, pelo nome; as 3 Oradoras numa barra só;
 // a Bênção de Selene não cria barra); a lista para o mestre escolher no NPC sem ficha.
@@ -12,14 +12,14 @@ const fonte = fs.readFileSync(path.join(__dirname, '../../tc/barras-painel.js'),
 ok(!/<\/script/i.test(fonte), 'o arquivo não tem "</script" (ele vai inteiro dentro da página de teste das Cenas)');
 ok(!/Alegreya/.test(fonte), 'as faces usam as fontes do site (nenhuma "Alegreya" do protótipo)');
 
-ok(PB.BARRAS.length === 49, '49 barras — ' + PB.BARRAS.length);
+ok(PB.BARRAS.length === 50, '50 barras (as 49 do guia e a Toxicidade da Yanato) — ' + PB.BARRAS.length);
 const ids = PB.BARRAS.map(d => d.id);
-ok(new Set(ids).size === 49 && ids.every(id => PB.BARRA[id] && PB.BARRA[id].id === id), 'os ids não se repetem e o índice BARRA aponta para cada uma');
+ok(new Set(ids).size === 50 && ids.every(id => PB.BARRA[id] && PB.BARRA[id].id === id), 'os ids não se repetem e o índice BARRA aponta para cada uma');
 const cats = {}; for (const d of PB.BARRAS) cats[d.cat] = (cats[d.cat] || 0) + 1;
-ok(cats.classe === 12 && Object.keys(cats).every(c => ['classe', 'raca', 'linhagem'].includes(c)), 'as categorias: 12 classes, e o resto raças e linhagens — ' + j(cats));
+ok(cats.classe === 12 && cats.escola === 1 && Object.keys(cats).every(c => ['classe', 'raca', 'linhagem', 'escola'].includes(c)), 'as categorias: 12 classes, 1 escola (a Yanato), e o resto raças e linhagens — ' + j(cats));
 ok(PB.BARRAS.every(d => /^#[0-9A-Fa-f]{6}$/.test(d.cor) && d.barra && d.arvore && typeof d.face === 'function' && typeof d.linha === 'function' && typeof d.acoes === 'function' && Array.isArray(d.ganhos) && ['zera', 'inicio', 'fica'].includes(d.fim)),
   'toda barra tem cor, nome, árvore, face, linha de estado, ações, ganhos e o que faz no fim do combate');
-ok(Object.keys(PB.ARVORES).length === 49 && ids.every(id => PB.ARVORES[id] && PB.ARVORES[id].length), 'toda barra tem a árvore dela na biblioteca da mesa');
+ok(Object.keys(PB.ARVORES).length === 50 && ids.every(id => PB.ARVORES[id] && PB.ARVORES[id].length), 'toda barra tem a árvore dela na biblioteca da mesa');
 
 // um personagem de mentira, que guarda o que vai para a mesa ao vivo
 const linhas = [];
@@ -121,8 +121,8 @@ ok(PB.BARRAS.every(d => PB.barraDaArvore({ id: 'qualquer', nome: d.arvore }) ===
 
 // a lista do mestre (NPC sem ficha)
 const L = PB.lista();
-const ordem = ['classe', 'raca', 'linhagem'];
-ok(L.length === 49 && L.every((x, i) => i === 0 || ordem.indexOf(L[i - 1].cat) < ordem.indexOf(x.cat) || (L[i - 1].cat === x.cat && L[i - 1].arvore.localeCompare(x.arvore, 'pt-BR') <= 0)), 'a lista para o mestre: por categoria (classes, raças, linhagens) e por nome');
+const ordem = ['classe', 'raca', 'linhagem', 'escola'];
+ok(L.length === 50 && L.every((x, i) => i === 0 || ordem.indexOf(L[i - 1].cat) < ordem.indexOf(x.cat) || (L[i - 1].cat === x.cat && L[i - 1].arvore.localeCompare(x.arvore, 'pt-BR') <= 0)), 'a lista para o mestre: por categoria (classes, raças, linhagens) e por nome');
 
 // os ícones soltos e o escape
 ok(/^<svg/.test(PB.iconeSolto('samurai', '#fff', 20)) && /^<svg/.test(PB.svgIcone('samurai', 14)), 'o ícone de cada barra (para o selo do token)');

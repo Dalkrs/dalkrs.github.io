@@ -592,7 +592,21 @@
     return out;
   }
 
-  const AcampNucleo = { HORAS, REGRAS_PADRAO, normalizar: normalizarSeguro, efeitos, efeitosDe, alcanca, fxDe, temParaAlguns, temEfeito, racoes, textoEfeitos, comSinal, planejar, aposDescanso, resumoDescanso,
+  /* (lote 55) O descanso longo enche o cinto de poções da Yanato: o estado do painel de barras das Cenas
+     (estado.pb.yanato.s, ver tc/barras-painel.js) — todos os laços cheios, sem efeitos de poção, a Cinza Brilhante de
+     volta. (A Toxicidade é uma barra da ficha: o descanso a põe no começo dela, 0, como as outras.) O material das
+     poções o mestre confere. → true quando havia um cinto (est muda no lugar). */
+  function encherCinto(est) {
+    const pb = ehObj(est) && ehObj(est.pb) ? est.pb : null, y = pb && ehObj(pb.yanato) && ehObj(pb.yanato.s) ? pb.yanato : null;
+    if (!y) return false;
+    const s = copia(y.s);
+    if (Array.isArray(s.lacos)) s.lacos = s.lacos.filter(ehObj).map(x => Object.assign({}, x, { cheio: true }));
+    s.efeitos = []; s.cinzaUsada = false; s.cedeu = false;
+    est.pb = Object.assign({}, pb, { yanato: Object.assign({}, y, { s }) });
+    return true;
+  }
+
+  const AcampNucleo = { HORAS, encherCinto, REGRAS_PADRAO, normalizar: normalizarSeguro, efeitos, efeitosDe, alcanca, fxDe, temParaAlguns, temEfeito, racoes, textoEfeitos, comSinal, planejar, aposDescanso, resumoDescanso,
     textoFx, tmpDoFx, barraPeloNome, EMOCOES, emocao, emoOk, TIPOS_VEICULO, cargaDe, lugarPadrao, folga, AREA, item, novoId, copia, limitar,
     LUGARES, CLIMAS, CLIMA_MUNDO, AREAS, CATEGORIAS, NIVEIS, ESTRUTURAS, estrutura, areaDe, construcoes, chaveRaca, quantoCome, SO_MESTRE, mexeNoMestre, paraJogador,
     FAD_MAX, paraDaEspecial, ATR_CACA, cacadores, difDaCaca, racoesDaCaca, ID_CACA };

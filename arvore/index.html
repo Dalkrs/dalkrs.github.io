@@ -619,7 +619,7 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <script src="../tc/ponte.js?v=20"></script>
 <script src="../tc/rules.js?v=28"></script>
 <script src="../tc/icones.js?v=1"></script>
-<script src="../tc/barras.js?v=1"></script>
+<script src="../tc/barras.js?v=2"></script>
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=11"></script>
 <script>
@@ -3087,7 +3087,7 @@ function blocoArvore(a){
     ${a.secreta ? `<div class="grupo recuo"><label class="rot" for="aSenha">Senha</label>
       <input id="aSenha" class="campo" value="${esc(a.senha)}" autocomplete="off" spellcheck="false">
       <p class="nota">Maiúsculas, acentos e espaços a mais não contam.</p></div>` : ''}
-    ${window.TC && TC.barras && TC.barras.CATS.includes(a.categoria) ? blocoBarraArv(a) : `<div class="grupo"><label class="rot" for="aBarra">Barra especial</label>
+    ${window.TC && TC.barras && (TC.barras.CATS.includes(a.categoria) || (a.categoria === 'escola' && (TC.barras.ESCOLAS_COM_BARRA || []).includes(a.id))) ? blocoBarraArv(a) : `<div class="grupo"><label class="rot" for="aBarra">Barra especial</label>
       <input id="aBarra" class="campo" value="${esc(a.barra || '')}" placeholder="${esc((RR() && RR().barraEspecial(Object.assign({}, a, {barra:undefined}))) || 'ex.: Preparo')}" autocomplete="off">
       <p class="nota">Vazio: o nome vem do texto do nó que define a barra (“Preparo (barra): máximo 20…”).</p></div>`}
     <p class="nota">${plural(a.nodes.length,'nódulo','nódulos')} · ${plural(escolas,'escola-ramo','escolas-ramo')}</p>

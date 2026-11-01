@@ -222,6 +222,36 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   não mostra o teto.
 - Testes: `teto-por-nivel`.
 
+### O cinto de poções da Yanato (lote 55)
+
+- **A barra**: a escola Yanato (`a5ufrdl1er`) é a única escola com barra (`TC.barras.ESCOLAS_COM_BARRA`): a
+  **Toxicidade**, de 0 a 20, começa em 0, o combate não mexe (`comb: 'fica'`) e o descanso longo zera (`comeca '0'`).
+  Na ficha, ela vem depois das barras de raça, classe e linhagem (`TC.barras.ORDEM`). As fichas que já tinham a Yanato
+  ganham a barra uma vez (`pc.barrasEsc` guarda as escolas já vistas; `barrasDasOutras` passa nelas também, com o
+  aviso "A barra da escola chegou…"); a barra que alguém tirar não volta sozinha.
+- **O painel** (`tc/barras-painel.js`, a barra `yanato`, categoria `escola`): a face mostra a Toxicidade em 20 gomos
+  (com os patamares 10 Enjoado, 15 Intoxicado e 20 o corpo cede), as gotas dos efeitos que estão valendo (com as
+  rodadas) e o cinto: um vidro por laço, tocável. São 3 laços, +1 por grau do Bornal de Cinza (o nó da Yanato, achado
+  pelo nome; `bornalDe` nas Cenas lê os graus na ficha e, enquanto a ficha não chega, fica o que estava guardado) e
+  +até 3 que o mestre dá ("+1 laço"), no máximo 8 (`lacosDe`).
+  - Tocar no **Frasco de Cinza** (o de arremessar, que as técnicas gastam) o esvazia. Tocar numa **poção** soma a
+    Toxicidade dela e põe o efeito com as rodadas (`POCOES`: Vermelha, Laranja, Amarela, Verde, Azul, Preta, Branca e
+    Cinza Brilhante). A Branca zera a Toxicidade e acaba com os efeitos; a Cinza Brilhante vale até o fim do combate e
+    só uma por combate.
+  - **No começo do turno**: −1 de Toxicidade; os lembretes de quem regenera (Vermelha, Azul) e de quem está
+    Intoxicado; as rodadas dos efeitos descontam e o chat diz o que acabou. Chegar a 20 escreve "o corpo cede"; no
+    turno seguinte, Atordoado e a Toxicidade cai para 15. Os números dos efeitos (HP, SP, bônus) o mestre aplica: o
+    painel lembra.
+  - **Arrumar o cinto**: tocar num laço e escolher o vidro; o vidro novo chega vazio. **Descanso longo** (o botão do
+    painel): enche todos os laços e zera a Toxicidade. O descanso longo do Acampamento faz o mesmo
+    (`AcampNucleo.encherCinto`, no `estado.pb.yanato`; a Toxicidade volta ao começo dela, 0, como as outras barras). O
+    material das poções o mestre confere.
+  - **Fim do combate**: a Toxicidade fica; o cinto, os laços extras e o Bornal ficam (`persiste`); os efeitos e a Cinza
+    da luta vão embora.
+- Na Árvore, a Yanato mostra o quadro "Barra da escola" (o mestre muda o nome, o máximo, ou diz que não cria barra).
+- Testes: `cinto-yanato` (a lógica e o descanso do Acampamento), `fichas-lote55` (a barra nas fichas de antes), `fichas-lote34`,
+  `painel-barras-nucleo` e `src/cenas/test/lote44.js` (as 50 barras).
+
 ### O menu do Mapa-múndi para quem mestra (lote 26)
 
 - **As abas** (`mundo/painel.js`): para quem mestra, uma fileira só, em três grupos com nome (`GRUPOS_ABAS`):
@@ -3102,7 +3132,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas busca lote8-nucleo mundo-nucleo acampamento-nucleo site busca-casca fichas fichas-regras fichas-quadros fichas-lote8 teto-por-nivel arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d mundo-lote8 acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas busca lote8-nucleo mundo-nucleo acampamento-nucleo site busca-casca fichas fichas-regras fichas-quadros fichas-lote8 teto-por-nivel cinto-yanato arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d mundo-lote8 acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada

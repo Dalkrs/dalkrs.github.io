@@ -1293,7 +1293,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <script src="../tc/bestiario.js?v=3"></script>
 <script src="../tc/sede.js?v=2"></script>
 <script src="../tc/corrupcao.js?v=1"></script>
-<script src="../tc/barras-painel.js?v=1"></script>
+<script src="../tc/barras-painel.js?v=2"></script>
 <script src="../tc/npc.js?v=1"></script>
 <script src="../tc/misterio.js?v=1"></script>
 <div class="app" id="app">
@@ -41002,6 +41002,18 @@ const PainelBarras = (() => {
     }
     return out;
   }
+  /* (lote 55) Os graus do Bornal de Cinza (o nó da Yanato) na ficha do token: cada grau é um laço a mais no cinto de
+     poções. O nó é achado pelo nome, na árvore da Yanato da biblioteca da mesa. Sem ficha (o NPC sem ficha), 0. Com a
+     ficha ou a árvore ainda chegando, null: fica o que estava guardado (para o cinto não perder laços no caminho). */
+  function bornalDe(t) {
+    if (!t || !t.char) return 0;
+    if (typeof Fichas === 'undefined' || !Fichas.arvore) return null;
+    const l = Fichas.get(t.char), a = Fichas.arvore(PB().YANATO);
+    const no = a && Array.isArray(a.nodes) ? a.nodes.find(n => n && /^bornal de cinza$/i.test(String(n.nome || '').trim())) : null;
+    if (!l || !no) return null;
+    const al = l.skills && l.skills.alocados && typeof l.skills.alocados === 'object' ? l.skills.alocados : {};
+    return Math.max(0, Math.min(5, Math.floor(Number(al[no.id]) || 0)));
+  }
   const chaveDe = t => (t.char ? 'c:' + t.char : 't:' + t.id);
   function atorDe(t) {
     const bs = barrasDoToken(t);
@@ -41011,6 +41023,7 @@ const PainelBarras = (() => {
       const b = P0.instancia(x.id, x.v, x.guard, { min: x.min, max: x.max });
       b.ref = x.ref; b.inicioFicha = x.inicio;
       if (x.id === 'selene') b.s.bencao = !!x.bencao;        // (a Verdadeira Forma é da Bênção de Selene)
+      if (x.id === 'yanato') { const bn = bornalDe(t); if (bn != null) b.s.bornal = bn; }   // (lote 55: cada grau do Bornal de Cinza é um laço a mais no cinto)
       return b;
     });
     const ator = { chave, tok: t.id, char: t.char || null, nome: tokName(t), dono: deJogador(t) ? 'jogador' : 'mestre', barras,

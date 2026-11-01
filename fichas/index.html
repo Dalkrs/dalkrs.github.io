@@ -1662,7 +1662,7 @@ html:not(.modo-simples) .so-simples{display:none!important}
 <script src="../tc/ponte.js?v=20"></script>
 <script src="../tc/rules.js?v=28"></script>
 <script src="../tc/icones.js?v=1"></script>
-<script src="../tc/barras.js?v=1"></script>
+<script src="../tc/barras.js?v=2"></script>
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=16"></script>
 <script src="extras.js?v=20"></script>
@@ -3360,7 +3360,10 @@ function barrasDeArvore(pc){
   const antes={recursos:JSON.parse(JSON.stringify(pc.recursos)), poderes:JSON.parse(JSON.stringify(pc.poderes||[])), pd:Object.assign({},(pc.estado&&pc.estado.pd)||{}), rec:Object.assign({},(pc.estado&&pc.estado.rec)||{})};
   const norm=B.normNome, idsRec=()=>new Set(pc.recursos.map(r=>r&&r.id).concat((pc.poderes||[]).map(p=>p&&p.id)));
   for(const b of barras){
-    const nova=b.arvs.some(id=>!vistas.includes(id));
+    // (lote 55) a barra de uma escola (a Toxicidade da Yanato) entra uma vez também na ficha que já tinha a escola
+    const escNova=b.cat==='escola' && !(Array.isArray(pc.barrasEsc)? pc.barrasEsc : []).some(id=>b.arvs.includes(id));
+    if(escNova){ pc.barrasEsc=(Array.isArray(pc.barrasEsc)? pc.barrasEsc : []).concat(b.arvs); out.mudou=true; }
+    const nova=b.arvs.some(id=>!vistas.includes(id)) || escNova;
     // a barra que já é desta árvore: acompanha a árvore (e ganha a outra árvore que divide a barra)
     let r=pc.recursos.find(x=>B.ehDeArvore(x) && x.arvs.some(id=>b.arvs.includes(id)));
     if(r){
@@ -3399,7 +3402,7 @@ function barrasDeArvore(pc){
 // o nome da árvore de onde a barra vem: "da raça Anão da Forja", "das raças Kitsune Karê - Oradora · Paciência e …"
 function deOndeVem(b){
   const B=TC.barras, nomes=b.defs.map(x=>x.a.nome), cat=B.NOME_CAT[b.cat]||'árvore';
-  return (nomes.length>1? 'das '+(cat==='raça'?'raças':cat==='classe'?'classes':'linhagens')+' ' : (cat==='raça'?'da raça ':cat==='classe'?'da classe ':'da linhagem '))+nomes.join(' e ');
+  return (nomes.length>1? 'das '+(cat==='raça'?'raças':cat==='classe'?'classes':cat==='escola'?'escolas':'linhagens')+' ' : (cat==='raça'?'da raça ':cat==='classe'?'da classe ':cat==='escola'?'da escola ':'da linhagem '))+nomes.join(' e ');
 }
 function textoBarraDeArvore(x){
   const B=TC.barras, b=x.b;
@@ -3411,7 +3414,7 @@ function textoBarraDeArvore(x){
 function textoDaBarraArv(r){
   const nomes=r.arvs.map(id=>{ const a=arvPorId(id); return a? a.nome : null; }).filter(Boolean);
   const cat=(window.TC&&TC.barras&&TC.barras.NOME_CAT[r.cat])||'árvore';
-  const de=nomes.length? 'Barra '+(cat==='raça'?'da raça':cat==='classe'?'da classe':cat==='linhagem'?'da linhagem':'da árvore')+' '+nomes.join(' e ') : 'Barra de árvore';
+  const de=nomes.length? 'Barra '+(cat==='raça'?'da raça':cat==='classe'?'da classe':cat==='linhagem'?'da linhagem':cat==='escola'?'da escola':'da árvore')+' '+nomes.join(' e ') : 'Barra de árvore';
   if(r.comb==='fica') return de+'. O combate não mexe nela.';
   if(r.comb==='pergunta') return de+'. Quando o combate começa, o mestre diz onde ela começa (Dia, 0, 5, 10 ou 15 na lua cheia)'+(r.iniArv? '; os nós somam +'+r.iniArv+' (até 10)' : '')+'.';
   if(r.inicio==null) return de+'. Começa o combate cheia.';
@@ -3425,13 +3428,18 @@ function textoBarraNova(x){
 }
 /* (lote 34) As outras fichas que esta pessoa pode mexer também trocam as barras (uma vez só): o mestre abre as Fichas e
    as de todos ficam prontas para as Cenas. O aviso junta tudo o que mudou de uma vez, com um Desfazer só. */
+// (lote 55) a ficha que já tinha uma escola com barra (a Yanato) e ainda não ganhou a barra dela (a Toxicidade)
+function faltaEscola(p){
+  const esc=(window.TC&&TC.barras&&TC.barras.ESCOLAS_COM_BARRA)||[], ja=Array.isArray(p.barrasEsc)? p.barrasEsc : [];
+  return ((p.skills&&p.skills.arvores)||[]).some(id=>esc.includes(id) && !ja.includes(id));
+}
 function barrasDasOutras(){
   if(!(window.TC&&TC.barras)) return;
   const ids=new Set(((S.bib&&S.bib.arvores)||[]).map(a=>a&&a.id));
   if(!ids.size) return;                                                      // (a biblioteca ainda não chegou)
   let algum=false;
   for(const p of S.personagens||[]){
-    if(!p || p.id===S.sel || p.petDe || p.barrasArv===1) continue;
+    if(!p || p.id===S.sel || p.petDe || (p.barrasArv===1 && !faltaEscola(p))) continue;
     if(((p.skills&&p.skills.arvores)||[]).some(id=>typeof id==='string' && !ids.has(id))) continue;   // (uma árvore dela não está aqui)
     const r=barrasDeArvore(p);
     if(r.mudou) algum=true;
@@ -3456,7 +3464,8 @@ function desfazerBarras(x){
 }
 function avisarBarrasDeVarias(f){
   const nomes=f.map(x=>(x.pc.nome||'Sem nome')+' ('+[].concat((x.arvB&&x.arvB.itens||[]).map(i=>i.b.nome),(x.novas||[]).map(n=>n.pw.nome)).join(', ')+')');
-  FichasExtras.aviso('As barras de raça, classe e linhagem agora são barras comuns, depois do HP e do SP, em '+f.length+' fichas (o valor de agora ficou): '+nomes.join('; ')+'.', 'Desfazer', ()=>{
+  const soEscola=f.every(x=>!(x.novas||[]).length && ((x.arvB&&x.arvB.itens)||[]).every(i=>i.b.cat==='escola'));
+  FichasExtras.aviso((soEscola? 'A barra da escola chegou, depois do HP e do SP, em '+f.length+' fichas: ' : 'As barras de raça, classe e linhagem agora são barras comuns, depois do HP e do SP, em '+f.length+' fichas (o valor de agora ficou): ')+nomes.join('; ')+'.', 'Desfazer', ()=>{
     f.forEach(desfazerBarras); save(); FichasExtras.desenhar(render);
   }, 16000);
 }
