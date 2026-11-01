@@ -890,7 +890,7 @@
     const num = (u, campo, rot, o2) => campoNumero('o:' + id + ':u:' + u.id + ':' + campo, rot, u[campo], n => mudarUnid(id, u.id, 'mudar a unidade', x => { if (x[campo] === n) return false; x[campo] = n; if (campo === 'hpT') x.fer = 0; }), o2);
     for (const u of e.unid) {
       const aberta = unidAbertas.has(u.id), tn = tipoNome(m, u.tipo), vb = G().bonusVet ? G().bonusVet(u) : 0, eqB = u.equip.reduce((s, q) => s + q.atq, 0) + vb, eqD = u.equip.reduce((s, q) => s + q.def, 0) + vb;
-      const VETN = ['', 'Recruta', 'Veterana', 'Elite'];
+      const VETN = ['', 'Recruta', 'Veterana', 'Elite', 'Lendária ★', 'Mítica ★★'];
       // (lote 12, parte 12c) o HP da unidade: a soma das tropas (a ferida, à parte)
       const H = N().hpDaUnidade(u);
       const maqN = N().somaDasMaquinas(m, u.maq).n;
@@ -907,7 +907,7 @@
         h('div', { class: 'row gu-nums' },
           num(u, 'atq', 'ATQ', { min: -99, max: 99 }), num(u, 'def', 'DEF', { min: -99, max: 99 }),
           // (lote 41) a veterania: soma no ATQ e na DEF (o bônus das tabelas base das Fichas)
-          campoEscolha('o:' + id + ':u:' + u.id + ':vet', 'Veterania', String(u.vet || 1), [['1', 'Recruta'], ['2', 'Veterana'], ['3', 'Elite']],
+          campoEscolha('o:' + id + ':u:' + u.id + ':vet', 'Veterania', String(u.vet || 1), [['1', 'Recruta'], ['2', 'Veterana'], ['3', 'Elite'], ['4', 'Lendária ★'], ['5', 'Mítica ★★']],
             v => mudarUnid(id, u.id, 'mudar a veterania', x => { const n = Number(v) || 1; if ((x.vet || 1) === n) return false; if (n > 1) x.vet = n; else delete x.vet; }))),
         vb ? h('p', { class: 'note', 'data-k': 'o:' + id + ':u:' + u.id + ':vetb', text: VETN[u.vet] + ': ' + sinal(vb) + ' no ATQ e na DEF nas batalhas.' }) : null,
         h('div', { class: 'row gu-nums' },

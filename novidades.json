@@ -2,6 +2,39 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.01-6",
+      "data": "2026-11-01",
+      "titulo": "Os membros do clã, as perícias das tropas e a veterania até Mítica",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Clã: a aba Membros, com todo mundo do clã — com cargo ou sem —, a raça, a classe e a idade, que cresce com o calendário do mundo."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Tropas: cada unidade tem perícias de 0 a 10 (Investigação, Caçada, Rastreio, Emboscada, Formação, Cerco, Sobrevivência e Pontaria). O d20 da carta rola 1d20 + os pontos."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "A veterania vai até 5: depois da Elite vêm a Lendária (★) e a Mítica (★★), nas Fichas e na plaquinha do exército no Mapa-múndi."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Os soldados com nome ganham o nascimento, escolhido numa janela de calendário com os meses do mundo; o chip mostra a idade."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã: “+ Membro” anota um membro (um nome ou uma ficha, que traz o nome e o aniversário) com raça, classe, nascimento e cargo — ou sem cargo. No rol, o mestre muda tudo e tira do clã (o respeito fica guardado). Nos clãs de NPC, “Membros” é uma parte que o mestre mostra ou não."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Tabelas base: a lista das perícias das tropas e duas chaves — os jogadores distribuem os pontos, e a rolagem soma o bônus da veterania (Lendária +3, Mítica +4, editáveis)."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.01-5",
       "data": "2026-11-01",
       "titulo": "O cinto de poções da Yanato",

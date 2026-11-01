@@ -121,6 +121,21 @@ const ficha = nome => ({ nome, raca: 'Humana', lado: 'Aliado', grupo: '', tags: 
     await FM.locator('#tropasAba [data-trvet="un_b"]').selectOption('2'); await w(400);
     ok(await ate(async () => { const e = await exeDoc(); return e && e.exe.unid.find(x => x.id === 'un_b').vet === 2; }, 30000), 'o mestre faz dos Arqueiros Veteranos, nas Fichas: o exército recebe (com o Mapa-múndi em outra aba)');
     ok(await ate(async () => { const p = await pubDe(); return p && p.vet === 2.5; }), 'a média dos jogadores: 2,5');
+    // (lote 56) a veterania até Mítica: com a Lendária e a Mítica, a média 4,5 vira as duas estrelas na plaquinha
+    await FM.locator('#tropasAba [data-trvet="un_a"]').selectOption('4'); await w(300);
+    await FM.locator('#tropasAba [data-trvet="un_b"]').selectOption('5'); await w(300);
+    ok(await ate(async () => { const p = await pubDe(); return p && p.vet === 4.5; }, 30000), '(lote 56) Lendária e Mítica nas Fichas: a média 4,5 chega ao mapa');
+    await M.locator('#tab-mundo').click(); await w(500);
+    ok(await ate(async () => await W.evaluate(() => { const g = document.querySelector('[data-id="ga"] .veter'); return !!g && g.classList.contains('veter-5') && g.querySelectorAll('path.estrela').length === 2 && /4,5/.test(g.textContent); })),
+      '(lote 56) a plaquinha da veterania com as duas estrelas da Mítica (4,5)');
+    if (process.env.TC_SCRATCH) {
+      const bx = await W.locator('[data-id="ga"]').boundingBox().catch(() => null);   // (relativo à página, com a moldura)
+      if (bx) { const pa = require('path'); await M.screenshot({ path: pa.join(process.env.TC_SCRATCH, 'fotos', 'l55-mapa-estrela.png'), clip: { x: Math.max(0, bx.x - 90), y: Math.max(0, bx.y - 70), width: bx.width + 180, height: bx.height + 140 } }).catch(() => {}); }
+    }
+    await M.locator('#tab-fichas').click(); await w(400);
+    await FM.locator('#tropasAba [data-trvet="un_a"]').selectOption('3'); await w(300);
+    await FM.locator('#tropasAba [data-trvet="un_b"]').selectOption('2'); await w(300);
+    ok(await ate(async () => { const p = await pubDe(); return p && p.vet === 2.5; }, 30000), '(e de volta a Elite e Veterana: 2,5)');
     await M.locator('#tab-mundo').click(); await w(400);
     await W.evaluate(() => __mundo.App.mudar('mudar a moral', m => { m.objs.find(o => o.id === 'ga').exe.moral = 9; }));
     ok(await ate(async () => (await tropa()).moral === 9), 'a moral que muda no mapa (9) chega à ficha');

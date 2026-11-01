@@ -95,6 +95,7 @@
         { t: 'Rolar pela ficha', txt: 'A rolagem rápida da ficha tem “+ atributo” e “+ resultado”; eles ficam guardados para a próxima até você zerar no ×.' },
         { t: 'Missões, aniversário e relações', txt: 'Em Notas, as missões do grupo; em Atributos, o aniversário no calendário do mundo; em Social, os relacionamentos que o mestre revelou.', ir: { aba: 'fichas', g: 'As missões' } },
         { t: 'As tropas', txt: 'Se o seu personagem comanda uma tropa, a aba Tropas mostra cada unidade em carta. Em “Editar o que é seu” você escolhe os nomes, os brasões, os equipamentos e os soldados com nome.', ir: { aba: 'fichas', g: 'As tropas' } },
+        { t: 'Perícias e veterania das tropas', txt: 'Cada unidade tem perícias de 0 a 10 (Investigação, Caçada, Rastreio, Emboscada…): o botão d20 rola 1d20 + os pontos. A veterania vai de Recruta a Elite e depois vira estrela: Lendária (★) e Mítica (★★). Os soldados com nome ganham o nascimento, e a idade cresce com o calendário do mundo.', ir: { aba: 'fichas', g: 'As perícias das tropas' } },
       ],
       mestre: [
         { t: 'O elenco', txt: 'Ativos (na aventura), Inativos (fora desta sessão) e Toldo (longe da aventura, fora do “Puxar o grupo”). Arraste para mudar de aba, ou “Vários” para mover várias fichas de uma vez.', ir: { aba: 'fichas', g: 'O elenco e os grupos' } },
@@ -103,6 +104,7 @@
         { t: 'Tabelas base', txt: 'As regras que valem para a mesa: os tipos de equipamento, a corrupção, as listas das tropas e o bônus da veterania.' },
         { t: 'A corrupção', txt: 'Vampírica, licantropa ou demoníaca, em cinco estágios. O painel fica em cima da ficha, só para você e o dono.', ir: { aba: 'fichas', g: 'A corrupção' } },
         { t: 'Dar uma tropa', txt: '“+ Tropas”, no fim das abas. Você define os números (tropas, HP, ATQ, DEF, veterania), registra batalhas e liga a tropa a um exército do Mapa-múndi.', ir: { aba: 'fichas', g: 'As tropas' } },
+        { t: 'As perícias das tropas', txt: 'Nas Tabelas base, a lista das perícias (renomeie, tire, ponha outras) e duas chaves: os jogadores distribuem os pontos, e a rolagem soma o bônus da veterania. Os pontos de cada unidade ficam em “Pontos…”, na carta.', ir: { aba: 'fichas', g: 'As perícias das tropas' } },
       ],
     },
     {
@@ -232,11 +234,13 @@
       ] },
       jogador: [
         { t: 'O salão do clã', txt: 'As bandeiras do brasão e as abas: Hierarquia (a árvore de cargos), Construções, Cofre, Respeito e relações, Sede, Tropas e Histórico.', ir: { aba: 'cla', g: 'O clã' } },
+        { t: 'Os membros', txt: 'A aba Membros lista todo mundo do clã, com cargo ou sem: o nome, a raça, a classe e a idade, que cresce com o calendário do mundo.', ir: { aba: 'cla', g: 'Os membros do clã' } },
         { t: 'Se você é o líder', txt: 'Você cria, renomeia, move e preenche os cargos abaixo do seu.' },
         { t: 'As tropas do clã', txt: 'Quem lidera o clã vê todas; quem lidera uma tropa vê a dela.', ir: { aba: 'cla', g: 'As tropas do clã' } },
       ],
       mestre: [
         { t: 'Criar os clãs', txt: 'O dos jogadores e os de NPC, com o brasão. Dos de NPC, você escolhe parte por parte o que os jogadores veem.', ir: { aba: 'cla', g: 'Os clãs da mesa' } },
+        { t: 'Os membros do clã', txt: 'No cartão Membros, “+ Membro”: o nome (ou uma ficha, que traz o nome e o aniversário), a raça, a classe, o nascimento no calendário do mapa principal e o cargo — ou sem cargo. No rol você muda tudo e tira do clã (o respeito fica guardado).', ir: { aba: 'cla', g: 'Os membros do clã' } },
         { t: 'A Sede', txt: 'Arraste plantas prontas para o terreno; “Editar no construtor” monta os cômodos; “Ver nas Cenas” cria a cena da sede.', ir: { aba: 'cla', g: 'A Sede' } },
         { t: 'Construções, cofre e respeito', txt: '“Subir de nível” desconta do cofre. Respeito no mundo, relações e respeito de cada membro, com o motivo indo para o histórico.' },
       ],
@@ -468,5 +472,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 4, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 5, sistemas, tarefas, roteiro, sabia };
 })();

@@ -42,7 +42,10 @@ const FichasTropas = (() => {
     return `<span class="tr-bras${cls ? ' ' + cls : ''}">${svg}</span>`;
   }
   // as divisas da veterania (uma, duas ou três)
-  const divisas = (n, cls) => `<svg class="tr-div${cls ? ' ' + cls : ''}" viewBox="0 0 30 30" aria-hidden="true" focusable="false"><path class="${n >= 1 ? 'on' : ''}" d="M5 23l10-6 10 6"/><path class="${n >= 2 ? 'on' : ''}" d="M5 16l10-6 10 6"/><path class="${n >= 3 ? 'on' : ''}" d="M5 9l10-6 10 6"/></svg>`;
+  const divisas0 = (n, cls) => `<svg class="tr-div${cls ? ' ' + cls : ''}" viewBox="0 0 30 30" aria-hidden="true" focusable="false"><path class="${n >= 1 ? 'on' : ''}" d="M5 23l10-6 10 6"/><path class="${n >= 2 ? 'on' : ''}" d="M5 16l10-6 10 6"/><path class="${n >= 3 ? 'on' : ''}" d="M5 9l10-6 10 6"/></svg>`;
+  // (lote 56) a Lendária e a Mítica: uma estrela, duas estrelas (no lugar das divisas)
+  const ESTRELA = 'M15 2l3.5 7.6 8.3.9-6.2 5.6 1.8 8.2L15 20.2 7.6 24.3l1.8-8.2L3.2 10.5l8.3-.9z';
+  const divisas = (n, cls) => (n >= 4 ? `<svg class="tr-div tr-est${cls ? ' ' + cls : ''}" viewBox="0 0 30 30" aria-hidden="true" focusable="false">${n >= 5 ? `<path class="on" transform="translate(-6 2) scale(.8)" d="${ESTRELA}"/><path class="on" transform="translate(12 2) scale(.8)" d="${ESTRELA}"/>` : `<path class="on" d="${ESTRELA}"/>`}</svg>` : divisas0(n, cls));
   const CADEADO = '<svg class="tr-cad" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
   const LAPIS = '<svg class="tr-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
 
@@ -125,9 +128,9 @@ const FichasTropas = (() => {
           </div>
         </div>
         <div class="tr-medidas">
-          <div class="tr-med tr-med-vet" title="A média da veterania das unidades com soldados (Recruta 1, Veterana 2, Elite 3)">
+          <div class="tr-med tr-med-vet" title="A média da veterania das unidades com soldados (Recruta 1, Veterana 2, Elite 3, Lendária 4, Mítica 5)">
             <span class="tr-rot">Veterania média</span>
-            <div class="tr-vetm">${divisas(c.vetN || 0, 'g')}<div><b class="tr-vetnome">${esc(c.vetNome || '—')}</b><small class="mono">média ${t.fmtMedia(c.vetMedia)} de 3</small></div></div>
+            <div class="tr-vetm">${divisas(c.vetN || 0, 'g')}<div><b class="tr-vetnome">${esc(c.vetNome || '—')}</b><small class="mono">média ${t.fmtMedia(c.vetMedia)} de 5</small></div></div>
           </div>
           <div class="tr-med">
             <span class="tr-rot">Moral</span>
@@ -197,8 +200,8 @@ const FichasTropas = (() => {
         <div class="tr-cabt">
           <div class="tr-cabl">
             <h4>${esc(u.nome)}</h4>
-            ${M ? `<label class="tr-vetsel" title="A veterania da unidade">${divisas(u.vet)}<span class="sr">Veterania de ${esc(u.nome)}</span><select data-trvet="${esc(u.id)}">${[1, 2, 3].map(n => `<option value="${n}" ${u.vet === n ? 'selected' : ''}>${t.nomeVet(n)}</option>`).join('')}</select></label>`
-              : `<span class="tr-vetb" title="Veterania: ${k.nomeVet}">${divisas(u.vet)}<span>${k.nomeVet}</span></span>`}
+            ${M ? `<label class="tr-vetsel" title="A veterania da unidade">${divisas(u.vet)}<span class="sr">Veterania de ${esc(u.nome)}</span><select data-trvet="${esc(u.id)}">${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${u.vet === n ? 'selected' : ''}>${t.nomeVetEst(n)}</option>`).join('')}</select></label>`
+              : `<span class="tr-vetb" title="Veterania: ${k.nomeVet}">${divisas(u.vet)}<span>${k.nomeVet}${k.estrelas ? ' ' + k.estrelas : ''}</span></span>`}
           </div>
           ${raca || classe ? `<div class="tr-tags">${raca ? `<span class="tr-tag" title="Raça">${esc(raca)}</span>` : ''}${classe ? `<span class="tr-tag" title="Classe">${esc(classe)}</span>` : ''}</div>` : E ? '<div class="tr-tags"><span class="tr-fraco">Sem raça e classe ainda</span></div>' : ''}
         </div>
@@ -218,6 +221,7 @@ const FichasTropas = (() => {
         <div><span class="tr-rot">Equipamentos</span><div class="tr-chips">${k.eqs.length ? k.eqs.map(eq).join('') : '<span class="tr-fraco">Nenhum</span>'}</div></div>
         <div><span class="tr-rot">Suprimentos</span><div class="tr-chips">${k.sps.length ? k.sps.map(sp).join('') : '<span class="tr-fraco">Nenhum</span>'}</div></div>
         ${htmlSoldados(u, bib, E)}
+        ${htmlPericias(k, c, M, E)}
         ${u.info ? `<p class="tr-info">${multi(u.info)}</p>` : ''}
       </div>
       <footer class="tr-pe">
@@ -226,11 +230,50 @@ const FichasTropas = (() => {
       </footer>
     </article>`;
   }
+  /* (lote 56) as perícias da unidade: as treinadas (de 1 a 10), cada uma com os dez tracinhos e o dado (1d20 + os
+     pontos, mais a veterania quando o mestre liga) — e "Perícias…" para quem pode mudar os pontos */
+  const podePer = (c, M, E) => M || (E && c.cf.perJog);
+  function htmlPericias(k, c, M, E) {
+    const t = T(), feitas = k.pers.filter(p => p.pts > 0);
+    if (!k.pers.length) return '';
+    const pips = n => `<span class="tr-pips" aria-hidden="true">${Array.from({ length: t.PER_MAX }, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('')}</span>`;
+    const linha = p => `<li class="tr-per"><span class="tr-pern">${esc(p.nome)}</span>${pips(p.pts)}<b class="mono" title="${p.pts} ${p.pts === 1 ? 'ponto' : 'pontos'}${p.mais !== p.pts ? ' + ' + (p.mais - p.pts) + ' da veterania' : ''}">${sinal(p.mais)}</b>
+      <button type="button" class="mini tr-perd" data-trperrolar="${esc(k.u.id)}|${esc(p.id)}" aria-label="Rolar ${esc(p.nome)} de ${esc(k.u.nome)}: 1d20 ${sinal(p.mais)}" title="Rolar 1d20 ${sinal(p.mais)}">d20</button></li>`;
+    return `<div class="tr-pers"><span class="tr-rot">Perícias${podePer(c, M, E) ? ` <button type="button" class="mini tr-perbt" data-trper="${esc(k.u.id)}">Pontos…</button>` : ''}</span>
+      ${feitas.length ? `<ul class="tr-perl">${feitas.map(linha).join('')}</ul>` : '<div class="tr-chips"><span class="tr-fraco">Nenhuma treinada ainda</span></div>'}</div>`;
+  }
+  // a janela dos pontos das perícias de uma unidade (o mestre; o dono, quando o mestre deixa)
+  function janelaPericias(pc, unidId) {
+    const t = T(), c = t.calc(cru(pc), S.cfg), k = c && c.cartas.find(x => x.u.id === unidId);
+    if (!k) return;
+    const corpo = `<p class="hint" style="margin:0 0 10px">De 0 (sem treino) a ${t.PER_MAX}. Nos eventos, a perícia rola 1d20 + os pontos${c.cf.perVet ? ' + o bônus da veterania' : ''}.</p>
+      <div class="tr-perjan">${k.pers.map(p => `<label class="tr-perin"><span>${esc(p.nome)}</span><input type="number" min="0" max="${t.PER_MAX}" step="1" data-trperv="${esc(p.id)}" value="${p.pts}" aria-label="Pontos de ${esc(p.nome)}"></label>`).join('')}</div>`;
+    const { m, fechar } = FichasExtras.janela('As perícias de ' + k.u.nome, corpo + `<div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px"><button type="button" data-trpercanc>Cancelar</button><button type="button" class="primary" data-trperok>Salvar</button></div>`, 520);
+    m.querySelector('[data-trpercanc]').onclick = fechar;
+    m.querySelector('[data-trperok]').onclick = () => {
+      const per = {};
+      m.querySelectorAll('[data-trperv]').forEach(i => { const n = Math.max(0, Math.min(t.PER_MAX, Math.round(+i.value || 0))); if (n) per[i.dataset.trperv] = n; });
+      fechar();
+      const rot = 'As perícias de ' + k.u.nome + ' foram salvas.';
+      if (podeMestre(pc)) mudarMestre(pc, rot, d => { const u = d.unid.find(y => y.id === unidId); if (!u) return false; u.per = per; });
+      else mudarEscolhas(pc, unidId, { per }, rot);
+    };
+    const pri = m.querySelector('[data-trperv]'); if (pri) pri.focus();
+  }
+  // rolar uma perícia: 1d20 + os pontos (no registro da mesa, como as outras rolagens)
+  function rolarPericia(pc, unidId, perId) {
+    const t = T(), c = t.calc(cru(pc), S.cfg), k = c && c.cartas.find(x => x.u.id === unidId), p = k && k.pers.find(x => x.id === perId);
+    if (!p) return;
+    const dado = typeof rolarDado === 'function' ? rolarDado(20) : 1 + Math.floor(Math.random() * 20), total = dado + p.mais;
+    const det = p.nome + ' ' + sinal(p.mais) + ' · d20 ' + dado + (p.mais !== p.pts ? ' (' + p.pts + ' + ' + (p.mais - p.pts) + ' da veterania)' : '');
+    if (typeof logar === 'function') logar({ tipo: 'tropa', quem: k.u.nome + ' (' + (pc.nome || 'tropa') + ')', pc: pc.id, det, total });
+    FichasExtras.aviso(k.u.nome + ' rolou ' + p.nome + ': ' + total + ' (d20 ' + dado + ' ' + sinal(p.mais) + ').');
+  }
   // (lote 42) os soldados com nome da unidade: os oito primeiros e "+N" (abre os outros)
   function htmlSoldados(u, bib, E) {
     const t = T(), l = u.sold || [];
     if (!l.length) return E ? '<div><span class="tr-rot">Soldados</span><div class="tr-chips"><span class="tr-fraco">Nenhum com nome ainda</span></div></div>' : '';
-    const chip = (x, i) => { const q = t.quemESold(x, bib); return `<span class="tr-chip tr-chip-sd${i >= 8 ? ' tr-sdmais' : ''}"${i >= 8 ? ' hidden' : ''}>${esc(x.nome)}${q ? ` <small>${esc(q)}</small>` : ''}</span>`; };
+    const chip = (x, i) => { const q = [t.quemESold(x, bib), x.nasc ? txtNasc(x.nasc) : ''].filter(v => v && v !== 'Nascimento').join(', '); return `<span class="tr-chip tr-chip-sd${i >= 8 ? ' tr-sdmais' : ''}"${i >= 8 ? ' hidden' : ''}>${esc(x.nome)}${q ? ` <small>${esc(q)}</small>` : ''}</span>`; };
     return `<div><span class="tr-rot">Soldados <small class="tr-fraco">${l.length} com nome${u.tropas > 0 ? ' de ' + num(u.tropas) : ''}</small></span>
       <div class="tr-chips">${l.map(chip).join('')}${l.length > 8 ? `<button type="button" class="mini" data-trsdver aria-label="Ver os outros ${l.length - 8} soldados">+${l.length - 8}</button>` : ''}</div></div>`;
   }
@@ -291,6 +334,8 @@ const FichasTropas = (() => {
       if (ok) U.refocar('#tropasAba [data-trvet="' + CSS.escape(id) + '"]');
     });
     qn('[data-trnum]').forEach(bn => bn.onclick = () => janelaNumUnid(pc, bn.dataset.trnum));
+    qn('[data-trper]').forEach(bp => bp.onclick = () => janelaPericias(pc, bp.dataset.trper));            // (lote 56)
+    qn('[data-trperrolar]').forEach(br => br.onclick = () => { const [u, p] = br.dataset.trperrolar.split('|'); rolarPericia(pc, u, p); });
     qn('[data-tresc]').forEach(be => be.onclick = () => janelaEscolhas(pc, be.dataset.tresc));
     const no = q1('[data-trnota]'); if (no) no.onclick = () => janelaNota(pc);
     qn('[data-trtiradi]').forEach(bx => bx.onclick = () => {
@@ -372,11 +417,21 @@ const FichasTropas = (() => {
     const tem = l.some(a => a.id === id);
     return `<select data-sd${cat} aria-label="${rot} do soldado"><option value="" ${!tem && !nomeN ? 'selected' : ''}>${rot}…</option>${!tem && nomeN ? `<option value="__fora" selected>${esc(nomeN)}</option>` : ''}${l.map(a => `<option value="${esc(a.id)}" ${a.id === id ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}</select>`;
   }
+  // (lote 56) o nascimento do soldado no calendário do mundo (o mapa principal) e a idade que dá hoje
+  const calMundo = () => { try { return FichasMesa.calendario(); } catch (e) { return null; } };
+  function txtNasc(n) {
+    const C = window.TC && TC.calendario, cal = calMundo();
+    if (!C || !n) return 'Nascimento';
+    const ms = cal ? cal.meses : C.MESES_PADRAO, id = cal && cal.hoje ? C.idade(n, cal.hoje, ms) : null;
+    return id != null && id >= 0 ? C.anos(id) : C.texto(n, ms);
+  }
   function linhaSold(x) {
     x = x || {};
-    return `<div class="tr-sd" data-trsd="${esc(x.id || '')}" data-racan="${esc(x.racaN || '')}" data-classen="${esc(x.classeN || '')}">
+    const n = x.nasc || null, C = window.TC && TC.calendario, cal = calMundo();
+    return `<div class="tr-sd" data-trsd="${esc(x.id || '')}" data-racan="${esc(x.racaN || '')}" data-classen="${esc(x.classeN || '')}" data-nasc="${esc(n ? JSON.stringify(n) : '')}">
       <input data-sdnome maxlength="60" value="${esc(x.nome || '')}" placeholder="Nome" aria-label="Nome do soldado" autocomplete="off">
       ${campoSold('raca', 'Raça', x.raca, x.racaN)}${campoSold('classe', 'Classe', x.classe, x.classeN)}
+      ${C ? `<button type="button" class="mini tr-sdnasc${n ? ' tem' : ''}" data-sdnasc title="${esc(n ? 'Nasceu em ' + C.texto(n, cal ? cal.meses : C.MESES_PADRAO) : 'O nascimento, no calendário do mundo')}">${esc(txtNasc(n))}</button>` : ''}
       <button type="button" class="mini tr-sdx" data-sdx aria-label="Tirar o soldado" title="Tirar o soldado">×</button></div>`;
   }
   function lerSoldados(m) {
@@ -393,7 +448,8 @@ const FichasTropas = (() => {
         return [null, inp ? inp.value : ''];
       };
       const [raca, racaN] = pega('raca'), [classe, classeN] = pega('classe'), nome = r.querySelector('[data-sdnome]').value;
-      out.push({ id: r.dataset.trsd || undefined, nome, raca, racaN, classe, classeN });
+      let nasc = null; try { nasc = r.dataset.nasc ? JSON.parse(r.dataset.nasc) : null; } catch (e) { nasc = null; }
+      out.push(Object.assign({ id: r.dataset.trsd || undefined, nome, raca, racaN, classe, classeN }, nasc ? { nasc } : {}));
     });
     return out;
   }
@@ -447,6 +503,20 @@ const FichasTropas = (() => {
     const caixaSd = m.querySelector('[data-trsds]'), novoSd = m.querySelector('[data-trsdnovo]');
     const travarSd = () => { if (novoSd) novoSd.disabled = caixaSd.querySelectorAll('[data-trsd]').length >= t.MAX.sold; };
     if (caixaSd) {
+      // (lote 56) o nascimento: a janela do calendário do mundo
+      caixaSd.addEventListener('click', ev => {
+        const b = ev.target.closest('[data-sdnasc]');
+        if (!b || !window.TC || !TC.calendario) return;
+        const r = b.closest('[data-trsd]'), cal = calMundo();
+        let v = null; try { v = r.dataset.nasc ? JSON.parse(r.dataset.nasc) : null; } catch (e) { v = null; }
+        const nome = r.querySelector('[data-sdnome]').value.trim();
+        TC.calendario.escolher({ meses: cal ? cal.meses : null, hoje: cal ? cal.hoje : null, valor: v, titulo: 'O nascimento de ' + (nome || 'o soldado') }).then(n => {
+          if (n === undefined) return;
+          r.dataset.nasc = n ? JSON.stringify(n) : '';
+          b.textContent = txtNasc(n); b.classList.toggle('tem', !!n);
+          b.title = n ? 'Nasceu em ' + TC.calendario.texto(n, cal ? cal.meses : null) : 'O nascimento, no calendário do mundo';
+        });
+      });
       caixaSd.addEventListener('click', ev => { const x = ev.target.closest('[data-sdx]'); if (!x) return; x.closest('[data-trsd]').remove(); travarSd(); if (novoSd) novoSd.focus(); });
       novoSd.onclick = () => { if (caixaSd.querySelectorAll('[data-trsd]').length >= t.MAX.sold) return; caixaSd.insertAdjacentHTML('beforeend', linhaSold({})); travarSd(); const ult = caixaSd.lastElementChild; if (ult) ult.querySelector('[data-sdnome]').focus(); };
     }
@@ -487,7 +557,7 @@ const FichasTropas = (() => {
         ${n('HP de cada soldado', 'hpT', u.hpT, 1, t.MAX.hpT)}
         ${n('ATQ da unidade', 'atq', u.atq, -t.MAX.atr, t.MAX.atr, 'Sem os equipamentos e a veterania (eles somam por cima)')}
         ${n('DEF da unidade', 'def', u.def, -t.MAX.atr, t.MAX.atr, 'Sem os equipamentos e a veterania (eles somam por cima)')}
-        <label class="f"><span class="eyebrow">Veterania</span><select data-trn="vet">${[1, 2, 3].map(v => `<option value="${v}" ${u.vet === v ? 'selected' : ''}>${t.nomeVet(v)}${v > 1 && cf.vet[v] ? ' (+' + cf.vet[v] + ' no ATQ e na DEF)' : ''}</option>`).join('')}</select></label>
+        <label class="f"><span class="eyebrow">Veterania</span><select data-trn="vet">${[1, 2, 3, 4, 5].map(v => `<option value="${v}" ${u.vet === v ? 'selected' : ''}>${t.nomeVet(v)}${v > 1 && cf.vet[v] ? ' (+' + cf.vet[v] + ' no ATQ e na DEF)' : ''}</option>`).join('')}</select></label>
         ${n('Batalhas', 'bat', u.bat, 0, t.MAX.bat)}
         ${n('Baixas (todas)', 'baixas', u.baixas, 0, t.MAX.tropas)}
         ${n('Magos', 'magos', u.magos, 0, t.MAX.magos)}
@@ -628,7 +698,17 @@ const FichasTropas = (() => {
       <table class="cfg"><tbody>
         <tr><td>Veterana</td><td><input type="number" min="0" max="${t.MAX.bonus}" step="1" data-trcvet="2" value="${cf.vet[2]}" style="width:54px" aria-label="Bônus da Veterana"></td></tr>
         <tr><td>Elite</td><td><input type="number" min="0" max="${t.MAX.bonus}" step="1" data-trcvet="3" value="${cf.vet[3]}" style="width:54px" aria-label="Bônus da Elite"></td></tr>
+        <tr><td>Lendária ★</td><td><input type="number" min="0" max="${t.MAX.bonus}" step="1" data-trcvet="4" value="${cf.vet[4]}" style="width:54px" aria-label="Bônus da Lendária"></td></tr>
+        <tr><td>Mítica ★★</td><td><input type="number" min="0" max="${t.MAX.bonus}" step="1" data-trcvet="5" value="${cf.vet[5]}" style="width:54px" aria-label="Bônus da Mítica"></td></tr>
       </tbody></table>
+      <span class="eyebrow" style="display:block;margin-top:12px">Tropas → perícias das unidades (de 1 a ${t.PER_MAX})</span>
+      <table class="cfg"><thead><tr><th>Perícia</th><th></th></tr></thead><tbody>
+        ${cf.per.map(p => `<tr><td><input data-trcprn="${esc(p.id)}" value="${esc(p.nome)}" maxlength="${t.MAX.nome}" aria-label="Nome da perícia"></td><td><button class="mini" data-trcprx="${esc(p.id)}" aria-label="Tirar a perícia ${esc(p.nome)}" title="Tirar a perícia">×</button></td></tr>`).join('')}
+      </tbody></table>
+      <button class="mini" data-trcprmais style="margin-top:6px" ${cf.per.length >= t.MAX.lista ? 'disabled' : ''}>+ Perícia</button>
+      <label class="chk" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" data-trcperjog ${cf.perJog ? 'checked' : ''}> Os jogadores distribuem os pontos das perícias</label>
+      <label class="chk" style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" data-trcpervet ${cf.perVet ? 'checked' : ''}> A rolagem soma o bônus da veterania</label>
+      <div class="hint" style="margin-top:5px">Nos eventos, cada perícia rola 1d20 + os pontos dela. Desligada a primeira chave, só você muda os pontos.</div>
       <span class="eyebrow" style="display:block;margin-top:12px">Tropas → comandante pela ficha</span>
       <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
         <label class="f"><span class="hint">O atributo</span><select data-trccmd style="width:auto">
@@ -643,8 +723,8 @@ const FichasTropas = (() => {
   function ligarCfg(m, reabrir) {
     const t = T();
     if (!t) return;
-    const pegar = () => { const cf = t.normCfg(S.cfg); return (S.cfg.tropas = { equip: cf.equip, supr: cf.supr, vet: cf.vet, maxEquip: cf.maxEquip, cmd: cf.cmd }); };
-    const salvar = () => { S.cfg.tropas = (({ equip, supr, vet, maxEquip, cmd }) => ({ equip, supr, vet, maxEquip, cmd }))(t.normCfg(S.cfg)); save(); };
+    const pegar = () => { const cf = t.normCfg(S.cfg); return (S.cfg.tropas = { equip: cf.equip, supr: cf.supr, vet: cf.vet, maxEquip: cf.maxEquip, cmd: cf.cmd, per: cf.per, perJog: cf.perJog, perVet: cf.perVet }); };
+    const salvar = () => { S.cfg.tropas = (({ equip, supr, vet, maxEquip, cmd, per, perJog, perVet }) => ({ equip, supr, vet, maxEquip, cmd, per, perJog, perVet }))(t.normCfg(S.cfg)); save(); };
     const em = (sel, fn) => m.querySelectorAll(sel).forEach(i => i.onchange = () => fn(i));
     em('[data-trceqn]', i => { const e = pegar().equip.find(x => x.id === i.dataset.trceqn); if (e) { e.nome = i.value; salvar(); } });
     em('[data-trceqa]', i => { const e = pegar().equip.find(x => x.id === i.dataset.trceqa); if (e) { e.atq = +i.value || 0; salvar(); } });
@@ -654,6 +734,10 @@ const FichasTropas = (() => {
     em('[data-trcmax]', i => { pegar().maxEquip = +i.value || 1; salvar(); i.value = t.normCfg(S.cfg).maxEquip; });
     em('[data-trccmd]', i => { pegar().cmd.atr = i.value; salvar(); });
     em('[data-trccmddiv]', i => { pegar().cmd.div = +i.value || 1; salvar(); i.value = t.normCfg(S.cfg).cmd.div; });
+    // (lote 56) as perícias e as duas chaves
+    em('[data-trcprn]', i => { const x = pegar().per.find(y => y.id === i.dataset.trcprn); if (x) { x.nome = i.value; salvar(); } });
+    m.querySelectorAll('[data-trcperjog]').forEach(i => i.onchange = () => { pegar().perJog = i.checked; salvar(); });
+    m.querySelectorAll('[data-trcpervet]').forEach(i => i.onchange = () => { pegar().perVet = i.checked; salvar(); });
     em('[data-trcvet]', i => { pegar().vet[i.dataset.trcvet] = +i.value || 0; salvar(); i.value = t.normCfg(S.cfg).vet[i.dataset.trcvet]; });
     const tirar = (lista, id, rot) => {
       const tp = pegar(), l = tp[lista], ix = l.findIndex(x => x.id === id);
@@ -664,9 +748,11 @@ const FichasTropas = (() => {
     };
     m.querySelectorAll('[data-trceqx]').forEach(b => b.onclick = () => tirar('equip', b.dataset.trceqx, 'O equipamento'));
     m.querySelectorAll('[data-trcspx]').forEach(b => b.onclick = () => tirar('supr', b.dataset.trcspx, 'O suprimento'));
+    m.querySelectorAll('[data-trcprx]').forEach(b => b.onclick = () => tirar('per', b.dataset.trcprx, 'A perícia'));
     const mais = (lista, pre, novo, foco) => { const tp = pegar(); if (tp[lista].length >= t.MAX.lista) return; const id = pre + uid(); tp[lista].push(Object.assign({ id }, novo)); salvar(); reabrir(); const n = document.querySelector('[' + foco + '="' + id + '"]'); if (n) { n.focus(); n.select(); } };
     const be = m.querySelector('[data-trceqmais]'); if (be) be.onclick = () => mais('equip', 'eq_', { nome: 'Equipamento novo', atq: 0, def: 0 }, 'data-trceqn');
     const bs = m.querySelector('[data-trcspmais]'); if (bs) bs.onclick = () => mais('supr', 'sp_', { nome: 'Suprimento novo', desc: '' }, 'data-trcspn');
+    const bp = m.querySelector('[data-trcprmais]'); if (bp) bp.onclick = () => mais('per', 'pr_', { nome: 'Perícia nova' }, 'data-trcprn');
   }
 
   return { tem, marca, htmlMais, htmlAba, ligar, criar, contas, htmlCfg, ligarCfg, htmlMontador, ligarMontador };

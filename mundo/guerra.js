@@ -61,11 +61,11 @@
   const rolar = (n, rng) => 1 + Math.floor(limitar((rng || Math.random)(), 0, 0.999999) * n);
   /* (lote 41) O bônus da veterania no ATQ e na DEF de cada unidade (Veterana e Elite): o das tabelas base das Fichas —
      o Mapa-múndi da mesa avisa (usarVeterania) quando lê as Fichas; sem elas, o de começo (+1 e +2). */
-  const VET_PADRAO = { 2: 1, 3: 2 };
+  const VET_PADRAO = { 2: 1, 3: 2, 4: 3, 5: 4 };          // (lote 56: e a Lendária ★ e a Mítica ★★)
   let VET = Object.assign({}, VET_PADRAO);
   function usarVeterania(t) {
     const n = (v, d) => { const x = Math.round(Number(v)); return Number.isFinite(x) ? limitar(x, 0, 10) : d; };
-    VET = t && typeof t === 'object' ? { 2: n(t[2], VET_PADRAO[2]), 3: n(t[3], VET_PADRAO[3]) } : Object.assign({}, VET_PADRAO);
+    VET = t && typeof t === 'object' ? { 2: n(t[2], VET_PADRAO[2]), 3: n(t[3], VET_PADRAO[3]), 4: n(t[4], VET_PADRAO[4]), 5: n(t[5], VET_PADRAO[5]) } : Object.assign({}, VET_PADRAO);
     return VET;
   }
   const bonusVet = u => (u && u.vet > 1 ? VET[u.vet] || 0 : 0);

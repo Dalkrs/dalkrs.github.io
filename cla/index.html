@@ -185,6 +185,41 @@ select.in { padding: 0 6px; width: auto; }
 .rel .nm small, .membro .nm small { color: var(--fg-2); font-size: 12px; }
 .rel .v, .membro .v { min-width: 108px; text-align: center; font-size: 12.5px; font-weight: 700; }
 .membro { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* (lote 56) o rol dos membros: um livro de registro — o nome na letra do clã, a raça e a classe embaixo, o cargo numa
+   etiqueta e a idade grande à direita, com a data de nascimento no calendário do mundo */
+.rol { list-style: none; margin: 0; padding: 0; display: grid; }
+.rol-l { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 2px; border-bottom: 1px dashed var(--line); }
+.rol-l:last-child { border-bottom: 0; }
+.rol-l .av, .rol-ed .av { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--line-strong); background: #283041 center / cover no-repeat; display: grid; place-items: center; font: 600 14px/1 var(--ui); color: var(--fg-2); overflow: hidden; }
+.rol-l .av.pj, .rol-ed .av.pj { border-color: var(--lamp); }
+.rol-l .av img, .rol-ed .av img { width: 100%; height: 100%; object-fit: cover; }
+.rol-q { display: grid; min-width: 0; }
+.rol-nm { font: 600 19px/1.15 var(--display); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rol-q small { color: var(--fg-3); }
+.rol-cg { padding: 2px 9px; border-radius: 99px; border: 1px solid var(--line-strong); color: var(--fg-2); font-size: 12.5px; white-space: nowrap; }
+.rol-cg.sem { border-style: dashed; color: var(--fg-3); }
+.rol-idade { display: grid; justify-items: end; min-width: 92px; font-variant-numeric: tabular-nums; }
+.rol-idade b { font: 700 26px/1 var(--display); color: var(--lamp-ink); }
+.rol-idade > b + small { display: inline; color: var(--fg-2); }
+.rol-idade em { font-style: italic; font-size: 12px; color: var(--fg-3); white-space: nowrap; }
+.rol-idade.vazia { color: var(--fg-3); font-size: 12.5px; }
+.rol-cartao .cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rol-lista { display: grid; gap: 6px; }
+.rol-ed { display: grid; grid-template-columns: 32px minmax(120px, 1.3fr) minmax(90px, 1fr) minmax(90px, 1fr) auto minmax(110px, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.rol-ed:last-child { border-bottom: 0; }
+.rol-ed .av { width: 32px; height: 32px; font-size: 12px; }
+.rol-ed .rol-nm { font-size: 16px; }
+.rol-nasc { min-width: 104px; justify-content: flex-end; }
+.rol-nasc .rol-idade { min-width: 0; }
+.rol-nasc .rol-idade b { font-size: 17px; }
+.rol-nasc .rol-idade em { display: none; }
+.rol-nasc.ficha { display: inline-flex; padding: 0 8px; color: var(--fg-2); }
+@media (max-width: 760px) {
+  .rol-ed { grid-template-columns: 32px minmax(0, 1fr) auto; }
+  .rol-ed > select, .rol-ed > input:not(.rol-nome), .rol-ed .rol-nasc { grid-column: 2 / 4; }
+  .rol-l { grid-template-columns: 36px minmax(0, 1fr) auto; }
+  .rol-l .rol-cg { grid-column: 2; justify-self: start; }
+}
 .membro .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 
 /* ---- o painel de quem mestra ---- */
@@ -370,12 +405,13 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=20"></script>
 <script src="../meditacao/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=4"></script>
-<script src="../tc/tropas.js?v=4"></script>
-<script src="../mundo/nucleo.js?v=44"></script>
+<script src="nucleo.js?v=5"></script>
+<script src="../tc/tropas.js?v=5"></script>
+<script src="../tc/calendario.js?v=1"></script>
+<script src="../mundo/nucleo.js?v=46"></script>
 <script src="../tc/sede.js?v=2"></script>
 <script src="sede-ui.js?v=3"></script>
 <script src="construtor.js?v=1"></script>
-<script src="cla.js?v=6"></script>
+<script src="cla.js?v=7"></script>
 </body>
 </html>

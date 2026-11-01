@@ -252,6 +252,38 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
 - Testes: `cinto-yanato` (a lógica e o descanso do Acampamento), `fichas-lote55` (a barra nas fichas de antes), `fichas-lote34`,
   `painel-barras-nucleo` e `src/cenas/test/lote44.js` (as 50 barras).
 
+### Os membros do clã, as perícias das tropas e a veterania até Mítica (lote 56)
+
+- **O calendário** (`tc/calendario.js`, `TC.calendario`, roda no Node e no navegador): `doMundo` acha o calendário do
+  mapa principal — o mapa de onde o Jornal tira a data (`jornal:pub`; para quem mestra, também o rascunho), senão o
+  primeiro mapa por nome; sem mapa, 12 meses de 30 dias sem o dia de hoje. `idade(nasc, hoje)` conta os anos completos;
+  `texto` escreve "3 de Brumas, ano 412". `escolher` abre a janela (um `<dialog>` modal, por cima das outras janelas):
+  as setas e a fita dos meses, o ano, os dias, a data em palavras com a idade, Limpar/Hoje/Cancelar/Escolher, Esc e
+  as setas do teclado. Nas Fichas, `FichasMesa.calendario()`.
+- **Os membros do clã** (`cla/nucleo.js`): a chave `membros` do `cla:c:<id>` guarda os sem cargo (`avulsos`, até 300) e,
+  de todos — com cargo ou sem —, os dados (`dados[pid]`: a raça e a classe das árvores ou escritas, o nascimento e a
+  ficha ligada; a ficha traz o nome e o aniversário). Fica fora dos cargos porque a RPC `cla_cargos` do líder
+  reconstrói a gente dos cargos. `membrosDe` junta os dois; `novoMembro`, `mudarMembroDados`, `moverMembro` (a
+  liderança tem um lugar só; cargo cheio avisa) e `tirarMembro` (o respeito vai para `respGuardado`). `membros` é uma
+  parte (`PARTES`) como as outras: no clã dos jogadores, sempre; no de NPC, quando o mestre marca. Sem os cargos, a
+  projeção leva em `membros.gente` as pessoas dos cargos (o nome e a ficha, sem o cargo); no clã de NPC, os avulsos
+  vão sem o respeito. **SQL 0034** (`privado.cla_pub`) faz a mesma conta no banco.
+- **Na tela do clã** (`cla/cla.js`): o cartão Membros do mestre (`secRol`: o nome, a raça, a classe, o nascimento, o
+  cargo e ×; "+ Membro" em `novoMembroDlg`) e a aba Membros do salão (`membrosVer`, o rol com a idade grande).
+- **As perícias das tropas** (`tc/tropas.js`): `cfg.per` (a lista; `PER_PADRAO`: Investigação, Caçada, Rastreio,
+  Emboscada, Formação, Cerco, Sobrevivência, Pontaria), `per` em cada unidade (`{ id: 0–10 }`, `PER_MAX`), e duas
+  chaves: `perJog` (os jogadores distribuem os pontos — `unidJogador` passa a incluir `per`) e `perVet` (a rolagem
+  soma o bônus da veterania). `contaUnid` dá `pers` (`pts` e `mais`). Na carta (`fichas/tropas.js`): os tracinhos, o
+  d20 (1d20 + `mais`, no registro da mesa) e "Pontos…". **SQL 0034**: `privado.tropas_guarda` lê
+  `fichas:cfg → v.tropas.perJog` e, ligada, compara a tropa sem as perícias (`privado.tropas_sem_per`).
+- **A veterania até 5** (`VET_MAX`): Recruta, Veterana, Elite, Lendária (★) e Mítica (★★); bônus padrão
+  `{2:1, 3:2, 4:3, 5:4}`, editáveis nas Tabelas base. As estrelas na carta, nos selects e na plaquinha do exército no
+  Mapa-múndi (`seloDaVeterania`, "de 5"); `mundo/guerra.js` lê os bônus 4 e 5.
+- **Os soldados com nome** ganham `nasc`, escolhido na janela do calendário; o chip mostra a idade.
+- Testes: `cla-nucleo`, `cla-membros`, `cla`, `cla.rede` (os membros sem os cargos, no banco), `tropas-nucleo`,
+  `tropas-lote56.rede` (perícias, a chave do mestre no banco, Mítica, o nascimento), `tropas-mapa.rede` (a plaquinha
+  com as estrelas), `fichas-lote40`.
+
 ### O menu do Mapa-múndi para quem mestra (lote 26)
 
 - **As abas** (`mundo/painel.js`): para quem mestra, uma fileira só, em três grupos com nome (`GRUPOS_ABAS`):

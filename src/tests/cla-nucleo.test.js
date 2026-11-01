@@ -14,7 +14,7 @@ ok(j(Object.keys(C.ESCALAS)) === j(['mundo', 'rel', 'membro']) && Object.values(
   '(lote 8) as três escalas, de −10 a +10, com os nomes do esboço de −5 a +5 no meio');
 ok(C.ESCALAS.mundo[0] === 'Inimigo do mundo' && C.ESCALAS.mundo[20] === 'Divino' && C.ESCALAS.rel[0] === 'Extermínio' && C.ESCALAS.rel[20] === 'Um só povo' && C.ESCALAS.membro[0] === 'Inimigo jurado' && C.ESCALAS.membro[20] === 'Alma do clã'
   && Object.values(C.ESCALAS).every(l => new Set(l).size === l.length), '(lote 8) os níveis novos (de −10 a −6 e de +6 a +10) têm nomes próprios, sem repetir na escala');
-ok(j(C.PARTES.map(p => p[0])) === j(['cargos', 'construcoes', 'recursos', 'respeito', 'relacoes', 'hist']) && C.PARTE_NOME.hist === 'Histórico', 'as seis partes que o mestre mostra (ou não) de um clã de NPC');
+ok(j(C.PARTES.map(p => p[0])) === j(['cargos', 'construcoes', 'recursos', 'respeito', 'relacoes', 'hist', 'membros']) && C.PARTE_NOME.hist === 'Histórico', 'as sete partes que o mestre mostra (ou não) de um clã de NPC (lote 56: e os membros)');
 ok(C.FORMAS.length === 12 && C.DIVISOES.length === 16 && C.CORES.every(c => /^#[0-9a-f]{6}$/.test(c)), '(lote 45) doze formas, dezesseis divisões e a paleta de cores');
 {
   // (lote 45) os símbolos novos: a heráldica, as classes e as raças, em grupos; os caminhos que o Cenas aceita
@@ -171,7 +171,7 @@ const VAR = { id: 'var', nome: 'Casa Varonil', lema: 'Ferro e honra', ordem: 2, 
 const COR = { id: 'cor', nome: 'Ordem do Corvo', jogadores: false, ver: { mostrar: false, cargos: true }, brasao: { cores: ['#1b1b22', '#e8eaf0'] }, cargos: { lider: { nome: 'Grão-mestre', gente: [{ id: 'q1', nome: 'Corvo Branco', resp: 5 }] } } };
 {
   const c = C.normCla(null);
-  ok(c.nome === 'Clã sem nome' && c.jogadores === false && j(c.ver) === j({ mostrar: false, cargos: false, construcoes: false, recursos: false, respeito: false, relacoes: false, hist: false })
+  ok(c.nome === 'Clã sem nome' && c.jogadores === false && j(c.ver) === j({ mostrar: false, cargos: false, construcoes: false, recursos: false, respeito: false, relacoes: false, hist: false, membros: false }) && j(c.membros) === j({ avulsos: [], dados: {} })
     && c.faccao === null && j(c.cargos) === j({ lider: { nome: 'Líder', pai: null, ordem: 0, gente: [] } }) && j(c.recursos) === j({ lista: [], hist: [] }) && c.respeito.v === 0, 'o clã de começo');
   const nv = C.claNovo('  Casa Nova ', 3, false);
   ok(nv.nome === 'Casa Nova' && nv.ordem === 3 && nv.ver.mostrar === false && nv.brasao.simb !== null && C.claNovo('', 0, true).jogadores === true && C.claNovo('', 0, true).nome === 'Clã novo', 'um clã novo (escondido dos jogadores, até o mestre mostrar)');

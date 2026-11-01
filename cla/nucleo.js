@@ -29,7 +29,8 @@
   const NIVEIS = Array.from({ length: 2 * NIVEL_MAX + 1 }, (_, i) => i - NIVEL_MAX);        // −10 … +10
   const ESCALA_NOME = { mundo: 'Respeito no mundo', rel: 'Relações', membro: 'Respeito dos membros' };
   // as partes de um clã que o mestre mostra (ou não) aos jogadores, num clã de NPC
-  const PARTES = [['cargos', 'Cargos e quem ocupa'], ['construcoes', 'Construções do clã'], ['recursos', 'Cofre do clã'], ['respeito', 'Respeito no mundo'], ['relacoes', 'Relações'], ['hist', 'Histórico']];
+  const PARTES = [['cargos', 'Cargos e quem ocupa'], ['construcoes', 'Construções do clã'], ['recursos', 'Cofre do clã'], ['respeito', 'Respeito no mundo'], ['relacoes', 'Relações'], ['hist', 'Histórico'],
+    ['membros', 'Membros (raça, classe e idade)']];      // (lote 56)
   const PARTE_NOME = Object.fromEntries(PARTES);
   /* o brasão: a forma (numa caixa de 100×120), a divisão, duas cores e um símbolo — ou uma imagem. st: onde o símbolo
      fica na forma ([x, y, escala] da caixa 24×24 do símbolo; sem st, [26, 28, 2]). (Lote 45) Mais sete formas. */
@@ -198,7 +199,7 @@
   const MAX = {
     clas: 40, nome: 60, lema: 160, nomeCargo: 60, nomePessoa: 60, cargos: 60, gente: 30, construcoes: 40, nomeCons: 60,
     efeito: 1000, nivel: 99, custo: 8, recursos: 40, nomeRec: 40, qtd: 1000000000, relacoes: 60, motivo: 200,
-    hist: 300, rhist: 200, txt: 300, nomeNivel: 30,
+    hist: 300, rhist: 200, txt: 300, nomeNivel: 30, avulsos: 300, nomeArv: 40,
   };
   const JANELA = 60000;          // mudanças seguidas na mesma coisa, dentro de um minuto, viram uma linha só do histórico
 
@@ -444,6 +445,97 @@
     return normCargos(c);
   }
 
+  /* ---------------- (lote 56) os membros ----------------
+     membros: { avulsos: [as pessoas sem cargo: { id, pc, nome, resp }], dados: { <id da pessoa>: { raca, racaN, classe,
+     classeN, nasc } } } — os dados valem para todos (com cargo ou sem); a raça e a classe como as das tropas (a árvore da
+     mesa, ou o nome escrito); nasc: { d, m (de 0), a? } no calendário do mundo. A pessoa ligada a uma ficha (pc) usa o
+     nome e o aniversário da ficha (quem mostra é a tela). */
+  function normNascM(v) {
+    if (!ehObj(v)) return null;
+    const d = inteiro(v.d, 0, 0, 99), m = inteiro(v.m, -1, -1, 98);
+    if (!d || m < 0) return null;
+    const o = { d, m }, a = Number(v.a);
+    if (v.a !== null && v.a !== '' && v.a !== undefined && Number.isFinite(a) && Math.abs(a) <= 1e6) o.a = Math.round(a);
+    return o;
+  }
+  function normDadosM(x) {
+    if (!ehObj(x)) return null;
+    const o = {}, raca = idOk(x.raca), classe = idOk(x.classe), racaN = linha(x.racaN, MAX.nomeArv), classeN = linha(x.classeN, MAX.nomeArv), nasc = normNascM(x.nasc);
+    if (raca) o.raca = raca; if (racaN) o.racaN = racaN; if (classe) o.classe = classe; if (classeN) o.classeN = classeN; if (nasc) o.nasc = nasc;
+    return Object.keys(o).length ? o : null;
+  }
+  /* gente: (só no que a mesa recebe) as pessoas dos cargos, quando os cargos não vão — o nome e a ficha, sem o cargo */
+  function normMembros(m, cargos, semResp, comGente) {
+    m = ehObj(m) ? m : {};
+    const vistos = new Set(membros(cargos).map(x => x.pid));
+    const gente = comGente ? (Array.isArray(m.gente) ? m.gente : []).map(p => normPessoa(p, vistos, true)).filter(Boolean).slice(0, MAX.avulsos + MAX.cargos * MAX.gente) : null;
+    const avulsos = (Array.isArray(m.avulsos) ? m.avulsos : []).map(p => normPessoa(p, vistos, semResp)).filter(Boolean).slice(0, MAX.avulsos);
+    const dados = {};
+    const d0 = ehObj(m.dados) ? m.dados : {};
+    for (const pid of vistos) { const x = normDadosM(d0[pid]); if (x) dados[pid] = x; }
+    return gente ? { avulsos, dados, gente } : { avulsos, dados };
+  }
+  // todos os membros: os dos cargos (do líder para baixo) e depois os sem cargo: [{ pid, cargo (null sem), cargoNome, pessoa, dados }]
+  function membrosDe(cla) {
+    const c = ehObj(cla) ? cla : {}, cg = normCargos(c.cargos), mb = ehObj(c.membros) && Array.isArray(c.membros.gente) ? c.membros : normMembros(c.membros, cg);
+    // (no que a mesa recebe sem os cargos: as pessoas deles vêm em membros.gente, sem dizer o cargo)
+    const dosCargos = Array.isArray(mb.gente) ? mb.gente.map(p => ({ pid: p.id, cargo: null, cargoNome: '', pessoa: p, oculto: true })) : membros(cg);
+    return dosCargos.map(x => Object.assign(x, { dados: mb.dados[x.pid] || {} }))
+      .concat(mb.avulsos.map(p => ({ pid: p.id, cargo: null, cargoNome: '', pessoa: p, dados: mb.dados[p.id] || {} })));
+  }
+  // um membro novo (num cargo, ou sem cargo): { nome, pc, raca, racaN, classe, classeN, nasc } → { cla, pid } | null
+  function novoMembro(cla, info, cargo) {
+    const c = normCla(cla);
+    if (!ehObj(info)) return null;
+    const pc = pcOk(info.pc) || null, nome = linha(info.nome, MAX.nomePessoa);
+    if (!pc && !nome) return null;
+    let pid;
+    if (cargo) { const r = porPessoa(c.cargos, cargo, { pc, nome, resp: 0 }); if (!r) return null; c.cargos = r.cargos; pid = r.id; }
+    else {
+      if (c.membros.avulsos.length >= MAX.avulsos) return null;
+      pid = unico('', new Set(membrosDe(c).map(x => x.pid)), 'ps');
+      c.membros.avulsos.push({ id: pid, pc, nome, resp: 0 });
+    }
+    const d = normDadosM(info);
+    if (d) c.membros.dados[pid] = d;
+    return { cla: normCla(c), pid };
+  }
+  // mudar o nome, a ficha ligada e os dados de um membro (campos: só o que vem)
+  function mudarMembroDados(cla, pid, campos) {
+    const c = normCla(cla), x = membrosDe(c).find(y => y.pid === pid);
+    if (!x || !ehObj(campos)) return null;
+    const p = x.cargo ? c.cargos[x.cargo].gente.find(y => y.id === pid) : c.membros.avulsos.find(y => y.id === pid);
+    if ('nome' in campos) { const n = linha(campos.nome, MAX.nomePessoa); if (!n && !p.pc) return null; p.nome = n; }
+    if ('pc' in campos) { const pc = pcOk(campos.pc) || null; if (!pc && !p.nome) return null; p.pc = pc; }
+    const d = Object.assign({}, c.membros.dados[pid] || {});
+    for (const k of ['raca', 'racaN', 'classe', 'classeN', 'nasc']) if (k in campos) { if (campos[k] == null || campos[k] === '') delete d[k]; else d[k] = campos[k]; }
+    const nd = normDadosM(d);
+    if (nd) c.membros.dados[pid] = nd; else delete c.membros.dados[pid];
+    return normCla(c);
+  }
+  // passar um membro para um cargo (ou para nenhum: null), com o respeito dele; o cargo de líder tem um lugar só
+  function moverMembro(cla, pid, cargo) {
+    const c = normCla(cla), x = membrosDe(c).find(y => y.pid === pid);
+    if (!x || (x.cargo || null) === (cargo || null)) return null;
+    if (cargo && (!c.cargos[cargo] || c.cargos[cargo].gente.length >= (cargo === 'lider' ? 1 : MAX.gente))) return null;
+    if (!cargo && c.membros.avulsos.length >= MAX.avulsos) return null;
+    let p;
+    if (x.cargo) { const g = c.cargos[x.cargo].gente, i = g.findIndex(y => y.id === pid); p = g.splice(i, 1)[0]; }
+    else { const i = c.membros.avulsos.findIndex(y => y.id === pid); p = c.membros.avulsos.splice(i, 1)[0]; }
+    if (cargo) c.cargos[cargo].gente.push(p); else c.membros.avulsos.push(p);
+    return normCla(c);
+  }
+  // tirar um membro do clã (o respeito fica guardado, como o de quem sai dos cargos)
+  function tirarMembro(cla, pid) {
+    const c = normCla(cla), x = membrosDe(c).find(y => y.pid === pid);
+    if (!x) return null;
+    if (x.cargo) c.cargos[x.cargo].gente = c.cargos[x.cargo].gente.filter(y => y.id !== pid);
+    else c.membros.avulsos = c.membros.avulsos.filter(y => y.id !== pid);
+    if (x.pessoa.resp != null) c.respGuardado[pid] = x.pessoa.resp;
+    delete c.membros.dados[pid];
+    return normCla(c);
+  }
+
   /* ---------------- construções, recursos, respeito, relações ---------------- */
   function normCusto(l) {
     const out = [];
@@ -544,6 +636,7 @@
       jogadores: d.jogadores === true, ver: normVer(d.ver), faccao: normFaccao(d.faccao), brasao: normBrasao(d.brasao),
       cargos: normCargos(d.cargos, false), construcoes: normConstrucoes(d.construcoes), recursos: normRecursos(d.recursos),
       respeito: normRespeito(d.respeito), relacoes: normRelacoes(d.relacoes), hist: normHist(d.hist), respGuardado: normGuardado(d.respGuardado),
+      membros: normMembros(d.membros, normCargos(d.cargos, false)),           // (lote 56)
     };
   }
   function claNovo(nome, i, jogadores) {
@@ -561,6 +654,7 @@
       cargos: ver.cargos ? normCargos(d.cargos, !jog) : null, construcoes: ver.construcoes ? normConstrucoes(d.construcoes) : null,
       recursos: ver.recursos ? normRecursos(d.recursos) : null, respeito: ver.respeito ? normRespeito(d.respeito) : null,
       relacoes: ver.relacoes ? normRelacoes(d.relacoes) : null, hist: ver.hist ? normHist(d.hist) : null,
+      membros: ver.membros ? normMembros(d.membros, ver.cargos ? normCargos(d.cargos, !jog) : {}, !jog, !ver.cargos) : null,      // (lote 56)
     };
   }
   // a vista do mestre (o clã inteiro) com o mesmo jeito da dos jogadores, para as mesmas telas
@@ -589,6 +683,14 @@
     for (const [k] of PARTES) { const p = jog || ver[k] === true; pub.ver[k] = p; if (p && k in d) pub[k] = copia(d[k]); }
     if (Array.isArray(pub.relacoes)) pub.relacoes = pub.relacoes.filter(r => ehObj(r) && (r.tipo !== 'cla' || vistos.has(r.alvo))).map(r => (r.tipo === 'cla' ? Object.assign({}, r, vistos.get(r.alvo)) : r));
     if (Array.isArray(pub.hist)) pub.hist = pub.hist.filter(e => ehObj(e) && histVai(e, pub.ver, jog, vistos));
+    // (lote 56) sem os cargos, as pessoas deles vão na lista de membros (o nome e a ficha, sem o cargo e sem o respeito)
+    if (pub.ver.membros && !pub.ver.cargos && ehObj(d.cargos)) {
+      if (!ehObj(pub.membros)) pub.membros = {};
+      pub.membros.gente = [];          // (na ordem das chaves do banco)
+      for (const k of Object.keys(d.cargos).sort((x, y) => x.length - y.length || (x < y ? -1 : x > y ? 1 : 0))) { const c = d.cargos[k]; if (ehObj(c) && Array.isArray(c.gente)) for (const p of c.gente) if (ehObj(p)) pub.membros.gente.push({ id: p.id == null ? null : p.id, pc: p.pc == null ? null : p.pc, nome: p.nome == null ? null : p.nome }); }
+    }
+    // (lote 56) no clã de NPC, o respeito de quem não tem cargo também fica de fora
+    if (!jog && ehObj(pub.membros) && Array.isArray(pub.membros.avulsos)) pub.membros = Object.assign({}, pub.membros, { avulsos: pub.membros.avulsos.map(p => { if (!ehObj(p)) return p; const q = Object.assign({}, p); delete q.resp; return q; }) });
     if (!jog && ehObj(pub.cargos)) for (const k of Object.keys(pub.cargos)) {
       const c = pub.cargos[k];
       if (ehObj(c) && Array.isArray(c.gente)) c.gente = c.gente.map(p => { if (!ehObj(p)) return p; const q = Object.assign({}, p); delete q.resp; return q; });
@@ -656,8 +758,8 @@
   // (nome: o nome da pessoa como a página mostra — o do personagem, de agora)
   function mudarMembro(cla, pid, para, mot, em, nome) {
     const c = normCla(cla), p = nivel(para);
-    for (const k of Object.keys(c.cargos)) {
-      const x = c.cargos[k].gente.find(y => y.id === pid);
+    for (const lista of Object.keys(c.cargos).map(k => c.cargos[k].gente).concat([c.membros.avulsos])) {        // (lote 56: e quem não tem cargo)
+      const x = lista.find(y => y.id === pid);
       if (!x) continue;
       if (x.resp === p) return null;
       const e = { em: instante(em), tipo: 'membro', pid, nome: linha(nome, MAX.nomePessoa) || x.nome || 'Alguém', de: x.resp, para: p, mot: linha(mot, MAX.motivo) };
@@ -713,6 +815,7 @@
     novoId, sinal, normNomes, nomeNivel, nivelTxt, normBrasao, brasaoNovo, brasaoSvg,
     normCargos, filhos, descendentes, arvore, membros, lider, totalCargos, novoCargo, renomearCargo, moverCargo, apagarCargo,
     porPessoa, tirarPessoa, passarLideranca, diffCargos, aplicarDiff,
+    normMembros, membrosDe, novoMembro, mudarMembroDados, moverMembro, tirarMembro, normNascM,
     normConstrucoes, normRecursos, normRespeito, normRelacoes, normFaccao, normHist, normVer, normCla, claNovo, normPub, comoVista,
     visivel, projetar, anotar, mudarRecurso, definirRecurso, mudarRespeito, mudarRelacao, mudarMembro, falta, subirNivel,
     custoTxt, mudTxt, histTxt, qtdTxt,

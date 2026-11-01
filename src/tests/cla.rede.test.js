@@ -294,13 +294,27 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
     await botao(CM, '[data-k="c:ver"]'); await botao(CM, '#dlg [data-ver="mostrar"]'); await botao(CM, '#dlg [data-ver="cargos"]'); await botao(CM, '#dlg [data-k="dl:fechar"]');
     ok(await ate(async () => (await CD.locator('#escolhaCla [data-cla]').count()) === 2), 'o mestre mostra a Varonil (e os cargos): ela aparece para o Dalmo');
     await botao(CD, `#escolhaCla [data-cla="${varo}"]`);
-    ok(await ate(async () => /Espiã-mor/.test(await texto(CD, '#parte'))) && await CD.locator('#parte .resp').count() === 0 && await CD.locator('#abas button.tranca').count() === 4,
-      'no salão da Varonil: os cargos, sem o respeito dos membros; o resto trancado');
+    ok(await ate(async () => /Espiã-mor/.test(await texto(CD, '#parte'))) && await CD.locator('#parte .resp').count() === 0 && await CD.locator('#abas button.tranca').count() === 5,
+      'no salão da Varonil: os cargos, sem o respeito dos membros; o resto (e os membros, lote 56) trancado');
     await botao(CD, `#escolhaCla [data-cla="${lam}"]`); await botao(CD, '[data-aba="resp"]');
     ok(await ate(async () => /Casa Varonil/.test(await texto(CD, '#parte')) && /−3 · Rival/.test(await texto(CD, '#parte'))), 'e a relação da Lâmina com a Varonil passa a aparecer');
     await botao(CM, '[data-k="c:ver"]'); await botao(CM, '#dlg [data-ver="mostrar"]'); await botao(CM, '#dlg [data-k="dl:fechar"]');
     ok(await ate(async () => (await CD.locator('#escolhaCla').count()) === 0 && !/Casa Varonil/.test(await texto(CD, '#parte'))), 'o mestre esconde a Varonil de novo: ela some do Dalmo (e a relação também)');
     await botao(CD, '[data-aba="hier"]');
+
+    // ---------- (lote 56) os membros: a Varonil mostra só os membros (sem os cargos) ----------
+    await botao(CM, `.cla-item[data-cla="${varo}"]`);
+    await botao(CM, '[data-k="rol:novo"]'); await CM.locator('#dlg [data-k="dl:nome"]').fill('Ivo Ferreiro'); await CM.locator('#dlg [data-k="dl:racan"]').fill('Anão'); await botao(CM, '#dlg [data-k="dl:sim"]');
+    await botao(CM, '[data-k="c:ver"]'); await botao(CM, '#dlg [data-ver="mostrar"]'); await botao(CM, '#dlg [data-ver="cargos"]'); await botao(CM, '#dlg [data-ver="membros"]'); await botao(CM, '#dlg [data-k="dl:fechar"]');
+    ok(await ate(async () => (await CD.locator('#escolhaCla [data-cla]').count()) === 2), '(lote 56) o mestre mostra a Varonil só com os membros');
+    await botao(CD, `#escolhaCla [data-cla="${varo}"]`); await botao(CD, '[data-aba="membros"]');
+    ok(await ate(async () => { const tx = await texto(CD, '#parte'); return /Ivo Ferreiro/.test(tx) && /Anão/.test(tx) && /Espiã-mor/.test(tx) === false && (await CD.locator('#parte .resp').count()) === 0; }),
+      '(lote 56) o Dalmo vê os membros da Varonil (o Ivo, anão), sem os cargos e sem o respeito');
+    const pubV = await M.evaluate(id => { const l = TC.dados.col('documentos').pegar('cla:pub:' + id); return l && !l.apagado ? { dados: JSON.parse(JSON.stringify(l.dados)) } : null; }, varo);
+    ok(!!pubV && pubV.dados.ver.membros === true && pubV.dados.ver.cargos === false && !('cargos' in pubV.dados) && Array.isArray(pubV.dados.membros.gente) && pubV.dados.membros.avulsos.every(p => !('resp' in p)),
+      '(lote 56) no banco: a parte "membros", com a gente dos cargos (sem os cargos) e sem o respeito dos avulsos');
+    await botao(CM, '[data-k="c:ver"]'); await botao(CM, '#dlg [data-ver="cargos"]'); await botao(CM, '#dlg [data-ver="mostrar"]'); await botao(CM, '#dlg [data-k="dl:fechar"]');
+    ok(await ate(async () => (await CD.locator('#escolhaCla').count()) === 0), '(e a Varonil escondida de novo)');
 
     // ---------- o respeito no mundo; passar a liderança ----------
     await botao(CM, `.cla-item[data-cla="${lam}"]`);

@@ -223,7 +223,7 @@
   function personagens() {
     if (!naMesa) return [{ id: PC_TESTE, nome: 'Personagem de teste', dono: 'local', img: null, campanha: null }];
     return P.todas().filter(l => !l.apagado && typeof l.id === 'string' && String(l.nome || '').trim())
-      .map(l => { const f = ehObj(l.ficha) ? l.ficha : {}; return { id: l.id, nome: String(l.nome).trim(), dono: l.dono_id || null, campanha: l.campanha || null, img: imagemOk(f.img) ? f.img : null }; })
+      .map(l => { const f = ehObj(l.ficha) ? l.ficha : {}; return { id: l.id, nome: String(l.nome).trim(), dono: l.dono_id || null, campanha: l.campanha || null, img: imagemOk(f.img) ? f.img : null, aniv: ehObj(f.aniv) ? f.aniv : null }; })
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }
   const pcDe = id => personagens().find(p => p.id === id) || null;
@@ -332,7 +332,7 @@
   function escolher(id) { if (sel !== id) { sel = id; aba = 'hier'; verTudo = false; } pintar(); }
 
   /* ---------------- o salão: as partes ---------------- */
-  const ABAS = [['hier', 'Hierarquia', ['cargos']], ['tropas', 'Tropas', []], ['cons', 'Construções', ['construcoes']], ['sede', 'Sede', []], ['rec', 'Cofre', ['recursos']], ['resp', 'Respeito e relações', ['respeito', 'relacoes']], ['hist', 'Histórico', ['hist']]];
+  const ABAS = [['hier', 'Hierarquia', ['cargos']], ['membros', 'Membros', ['membros']], ['tropas', 'Tropas', []], ['cons', 'Construções', ['construcoes']], ['sede', 'Sede', []], ['rec', 'Cofre', ['recursos']], ['resp', 'Respeito e relações', ['respeito', 'relacoes']], ['hist', 'Histórico', ['hist']]];
   // (lote 30) a Sede: à vista quando o clã tem sede e os jogadores a veem (quem joga só recebe a que pode ver)
   function sedeVisivel(c) {
     if (!SedeUI || !c || !c.id || !SedeUI.temSede(c.id)) return false;
@@ -492,7 +492,8 @@
         h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'novo-cargo', disabled: ocupado, onclick: () => novoCargoDlg(c, 'lider') }, '+ Cargo')) : null,
       hierarquia(c, pode),
       h('p', { class: 'ajuda', text: 'Cada pessoa pode ser um personagem da mesa ou só um nome.' + (c.jogadores ? ' O número ao lado é o respeito dela dentro do clã (de −10 a +10): todos do clã veem; quem muda é o mestre.' : '') })];
-    } else if (aba === 'tropas') corpo = [tropasVer(c)];
+    } else if (aba === 'membros') corpo = [membrosVer(c)];
+    else if (aba === 'tropas') corpo = [tropasVer(c)];
     else if (aba === 'cons') corpo = [construcoesVer(c)];
     else if (aba === 'sede') corpo = [SedeUI.parteDoSalao(c.id, c.nome)];
     else if (aba === 'rec') corpo = [recursosVer(c)];
@@ -505,7 +506,7 @@
   function resumoVer(c) {
     if (c.jogadores) return { cls: 'jog', txt: 'Clã dos jogadores · eles veem tudo' };
     if (!c.ver.mostrar) return { cls: 'oc', txt: 'NPC · escondido dos jogadores' };
-    const partes = N.PARTES.filter(([k]) => c.ver[k]).map(([k]) => ({ cargos: 'cargos', construcoes: 'construções', recursos: 'recursos', respeito: 'respeito', relacoes: 'relações', hist: 'histórico' })[k]);
+    const partes = N.PARTES.filter(([k]) => c.ver[k]).map(([k]) => ({ cargos: 'cargos', construcoes: 'construções', recursos: 'recursos', respeito: 'respeito', relacoes: 'relações', hist: 'histórico', membros: 'membros' })[k]);
     return { cls: '', txt: partes.length ? 'NPC · os jogadores veem: ' + partes.join(', ') : 'NPC · os jogadores veem só o nome e o brasão' };
   }
   function telaMestre() {
@@ -543,6 +544,7 @@
       h('div', { class: 'cartao', 'data-k': 'sec:hier' }, h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Hierarquia' }),
         h('small', { class: 'ajuda', text: c.jogadores ? 'O líder (o dono do personagem no cargo de líder) também mexe nos cargos abaixo do dele.' : 'Os jogadores veem os cargos se você marcar “Cargos e quem ocupa”.' })),
         hierarquia(V, true)),
+      secRol(x),
       secTropas(x),
       h('div', { class: 'lado-a-lado' }, secConstrucoes(x), secRecursos(x)),
       SedeUI ? SedeUI.cartao(x) : null,
@@ -669,19 +671,136 @@
       h('p', { class: 'ajuda', text: 'De −' + N.NIVEL_MAX + ' (' + nm.rel[0] + ') a +' + N.NIVEL_MAX + ' (' + nm.rel[2 * N.NIVEL_MAX] + '). Cada mudança vai para o histórico, com o motivo, se houver.' }));
   }
   function secMembros(x) {
-    const c = x.c, id = x.id, nm = nomes(), ms = N.membros(c.cargos);
+    const c = x.c, id = x.id, nm = nomes(), ms = N.membrosDe(c);
     const ir = (m, n) => { const q = quemE(m.pessoa); mudarCla(id, 'mudar o respeito de ' + q.nome, y => trocar(y, N.mudarMembro(y, m.pid, n, usarMotivo('membro'), agora(), q.nome))); };
     return h('div', { class: 'cartao', 'data-k': 'sec:membros' },
       h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Respeito dos membros' })),
       ms.length ? ms.map(m => { const q = quemE(m.pessoa), v = m.pessoa.resp;
         return h('div', { class: 'membro', 'data-membro': m.pid },
-          h('span', { class: 'nm' }, q.nome, h('small', { text: ' ' + m.cargoNome + (m.pessoa.pc && !q.pj ? ' · NPC' : !m.pessoa.pc ? ' · só um nome' : '') })),
+          h('span', { class: 'nm' }, q.nome, h('small', { text: ' ' + (m.cargoNome || 'sem cargo') + (m.pessoa.pc && !q.pj ? ' · NPC' : !m.pessoa.pc ? ' · só um nome' : '') })),
           h('button', { type: 'button', class: 'ib', 'data-k': 'mb:menos:' + m.pid, 'aria-label': 'Menos respeito para ' + q.nome, disabled: v <= -N.NIVEL_MAX, onclick: () => ir(m, v - 1) }, '−'),
           h('span', { class: 'v ' + tom(v), text: N.nivelTxt(nm, 'membro', v) }),
           h('button', { type: 'button', class: 'ib', 'data-k': 'mb:mais:' + m.pid, 'aria-label': 'Mais respeito para ' + q.nome, disabled: v >= N.NIVEL_MAX, onclick: () => ir(m, v + 1) }, '+')); })
-        : h('p', { class: 'vazio-p', text: 'Ninguém nos cargos ainda.' }),
+        : h('p', { class: 'vazio-p', text: 'Ninguém no clã ainda.' }),
       ms.length ? motivoEl('membro', 'Motivo (opcional)') : null,
       h('p', { class: 'ajuda', text: c.jogadores ? 'Todos do clã veem; só você muda.' : 'Num clã de NPC, os jogadores não veem o respeito dos membros.' }));
+  }
+  /* ---------------- (lote 56) os membros: o rol do clã ----------------
+     Todos os membros (os dos cargos e os sem cargo), como num livro de registro: o nome, a raça e a classe (as árvores
+     da mesa, ou escritas), a idade (do nascimento no calendário do mundo — o mapa principal —, que cresce sozinha com o
+     tempo do Mapa-múndi) e o cargo. Quem é uma ficha usa o nome e o aniversário dela. */
+  function calCla() {
+    const C = window.TC && window.TC.calendario;
+    if (!C) return { meses: [], hoje: null, mapa: null };
+    return naMesa ? C.doMundo(D.todas(), { pegar: id => D.pegar(id), mestre }) : C.doMundo([], {});
+  }
+  function bibCla() {
+    if (!naMesa) return null;
+    for (const id of mestre ? ['arvore:biblioteca', 'arvore:pacote'] : ['arvore:pacote', 'arvore:biblioteca']) { const d = D.pegar(id), b = d && !d.apagado && d.dados; if (b && Array.isArray(b.arvores)) return b; }
+    return null;
+  }
+  const arvoresCla = (bib, cat) => (window.TC && TC.tropas && bib ? TC.tropas.arvoresDe(bib, cat) : []);
+  const nomeArv = (bib, id) => { const a = id && bib && Array.isArray(bib.arvores) ? bib.arvores.find(x => x && x.id === id) : null; return a ? String(a.nome || '') : ''; };
+  // o nascimento que vale: o da ficha (o aniversário dela), quando o membro é uma ficha; senão, o do rol
+  function nascDe(m) { const pc = m.pessoa.pc ? pcDe(m.pessoa.pc) : null; return pc && pc.aniv ? { n: pc.aniv, daFicha: true } : { n: m.dados.nasc || null, daFicha: false }; }
+  function idadeEl(m, cal, curto) {
+    const C = window.TC && window.TC.calendario, { n, daFicha } = nascDe(m);
+    if (!C || !n) return h('span', { class: 'rol-idade vazia', text: curto ? '—' : 'Sem nascimento' });
+    const id = cal.hoje ? C.idade(n, cal.hoje, cal.meses) : null;
+    return h('span', { class: 'rol-idade', title: 'Nasceu em ' + C.texto(n, cal.meses) + (daFicha ? ' (o aniversário da ficha)' : '') },
+      id != null && id >= 0 ? [h('b', { text: String(id) }), h('small', { text: id === 1 ? ' ano' : ' anos' })] : h('small', { text: C.texto(n, cal.meses) }),
+      h('em', { text: C.texto(n, cal.meses) + (daFicha ? ' · da ficha' : '') }));
+  }
+  const quemDoRol = (m, bib) => [nomeArv(bib, m.dados.raca) || m.dados.racaN || '', nomeArv(bib, m.dados.classe) || m.dados.classeN || ''].filter(Boolean).join(' · ');
+  // a vista do rol (os jogadores; o mestre também, no salão)
+  function membrosVer(c) {
+    const ms = N.membrosDe(c), cal = calCla(), bib = bibCla();
+    if (!ms.length) return h('p', { class: 'vazio-p', 'data-k': 'rol-vazio', text: 'Ninguém no clã ainda.' });
+    return h('div', { class: 'rol-ver', 'data-k': 'rol-ver' },
+      h('ol', { class: 'rol' }, ms.map(m => { const q = quemE(m.pessoa), rq = quemDoRol(m, bib);
+        return h('li', { class: 'rol-l', 'data-rol': m.pid },
+          h('span', { class: 'av' + (q.pj ? ' pj' : '') }, q.img ? h('img', { src: q.img, alt: '' }) : iniciais(q.nome)),
+          h('span', { class: 'rol-q' }, h('b', { class: 'rol-nm', text: q.nome }), h('small', { text: rq || 'Raça e classe não anotadas' })),
+          m.cargo ? h('span', { class: 'rol-cg', text: m.cargoNome }) : m.oculto ? null : h('span', { class: 'rol-cg sem', text: 'sem cargo' }),
+          idadeEl(m, cal)); })),
+      h('p', { class: 'ajuda', text: 'A idade conta pelo calendário do mundo' + (cal.mapa ? ' (' + cal.mapa + ')' : '') + ' e cresce sozinha com o tempo.' }));
+  }
+  // o campo de raça ou de classe: as árvores da mesa (ou escrito, sem árvores)
+  function campoArv(id, m, cat, rot, bib) {
+    const l = arvoresCla(bib, cat), v = m.dados[cat] || '', vn = m.dados[cat + 'N'] || '';
+    const grava = campos => mudarCla(id, 'mudar ' + (cat === 'raca' ? 'a raça' : 'a classe') + ' de ' + quemE(m.pessoa).nome, y => trocar(y, N.mudarMembroDados(y, m.pid, campos)));
+    if (!l.length) return h('input', { class: 'in', type: 'text', 'data-k': 'rol:' + cat + 'n:' + m.pid, maxlength: 40, value: vn, placeholder: rot, 'aria-label': rot + ' de ' + quemE(m.pessoa).nome, onchange: function () { grava({ [cat]: null, [cat + 'N']: this.value }); } });
+    const fora = !l.some(a => a.id === v) && (v || vn);
+    return h('select', { class: 'in', 'data-k': 'rol:' + cat + ':' + m.pid, 'aria-label': rot + ' de ' + quemE(m.pessoa).nome, onchange: function () { if (this.value === '__fora') return; const a = l.find(x => x.id === this.value); grava(a ? { [cat]: a.id, [cat + 'N']: a.nome } : { [cat]: null, [cat + 'N']: null }); } },
+      h('option', { value: '', text: rot + '…', selected: !v && !vn }), fora ? h('option', { value: '__fora', text: (vn || 'Árvore que saiu') + ' (fora da lista)', selected: true }) : null,
+      l.map(a => h('option', { value: a.id, text: a.nome, selected: a.id === v })));
+  }
+  function nascimentoDe(id, m, cal) {
+    const C = window.TC && window.TC.calendario, { n, daFicha } = nascDe(m);
+    if (!C) return null;
+    if (daFicha) return h('span', { class: 'rol-nasc ficha', title: 'O aniversário da ficha: muda na ficha' }, idadeEl(m, cal, true));
+    return h('button', { type: 'button', class: 'btn sm rol-nasc', 'data-k': 'rol:nasc:' + m.pid, title: n ? 'Nasceu em ' + C.texto(n, cal.meses) + ' — mudar' : 'O nascimento, no calendário do mundo', disabled: ocupado,
+      onclick: () => C.escolher({ meses: cal.meses, hoje: cal.hoje, valor: n, titulo: 'O nascimento de ' + quemE(m.pessoa).nome }).then(v => {
+        if (v === undefined) return;
+        mudarCla(id, (v ? 'anotar' : 'tirar') + ' o nascimento de ' + quemE(m.pessoa).nome, y => trocar(y, N.mudarMembroDados(y, m.pid, { nasc: v })));
+      }) }, n ? idadeEl(m, cal, true) : 'Nascimento…');
+  }
+  function secRol(x) {
+    const c = x.c, id = x.id, ms = N.membrosDe(c), cal = calCla(), bib = bibCla(), cs = N.normCargos(c.cargos);
+    const opcCargo = [['', 'Sem cargo']].concat(N.membros(cs).length >= 0 ? (function lista() { const out = [], anda = (k, prof) => { out.push([k, ' '.repeat(prof) + cs[k].nome]); for (const f of N.filhos(cs, k)) anda(f, prof + 1); }; anda('lider', 0); return out; })() : []);
+    const linha = m => {
+      const q = quemE(m.pessoa);
+      return h('div', { class: 'rol-ed', 'data-rol': m.pid },
+        h('span', { class: 'av' + (q.pj ? ' pj' : '') }, q.img ? h('img', { src: q.img, alt: '' }) : iniciais(q.nome)),
+        m.pessoa.pc ? h('span', { class: 'rol-q' }, h('b', { class: 'rol-nm', text: q.nome }), h('small', { text: 'ficha' + (q.de ? ' · ' + q.de : '') }))
+          : h('input', { class: 'in rol-nome', type: 'text', 'data-k': 'rol:nome:' + m.pid, maxlength: N.MAX.nomePessoa, value: m.pessoa.nome || '', 'aria-label': 'Nome do membro',
+            onchange: function () { const v = this.value.replace(/\s+/g, ' ').trim(); if (!v) { this.value = m.pessoa.nome; toast('O membro precisa de um nome.'); return; } mudarCla(id, 'mudar o nome de ' + m.pessoa.nome, y => trocar(y, N.mudarMembroDados(y, m.pid, { nome: v }))); } }),
+        campoArv(id, m, 'raca', 'Raça', bib), campoArv(id, m, 'classe', 'Classe', bib),
+        nascimentoDe(id, m, cal),
+        h('select', { class: 'in rol-cargo', 'data-k': 'rol:cargo:' + m.pid, 'aria-label': 'Cargo de ' + q.nome, disabled: ocupado,
+          onchange: function () { const v = this.value || null; if (!mudarCla(id, (v ? 'pôr ' + q.nome + ' no cargo ' + cs[v].nome : 'tirar ' + q.nome + ' do cargo'), y => trocar(y, N.moverMembro(y, m.pid, v)))) { this.value = m.cargo || ''; toast(v === 'lider' ? 'A liderança tem um lugar só: use “Trocar o líder…”.' : 'Esse cargo está cheio.'); } } },
+          opcCargo.map(([k, t]) => h('option', { value: k, text: t, selected: (m.cargo || '') === k }))),
+        h('button', { type: 'button', class: 'ib leve', 'data-k': 'rol:x:' + m.pid, title: 'Tirar do clã', 'aria-label': 'Tirar ' + q.nome + ' do clã', disabled: ocupado, onclick: () => mudarCla(id, 'tirar ' + q.nome + ' do clã', y => trocar(y, N.tirarMembro(y, m.pid))) }, '×'));
+    };
+    return h('div', { class: 'cartao rol-cartao', 'data-k': 'sec:rol' },
+      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Membros' }), h('small', { class: 'ajuda', text: ms.length === 1 ? '1 membro' : ms.length + ' membros' }),
+        h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'rol:novo', style: 'margin-left:auto', disabled: ocupado, onclick: () => novoMembroDlg(x) }, '+ Membro')),
+      ms.length ? h('div', { class: 'rol-lista' }, ms.map(linha)) : h('p', { class: 'vazio-p', text: 'Ninguém no clã ainda. “+ Membro” anota alguém, com ou sem cargo.' }),
+      h('p', { class: 'ajuda', text: 'A idade conta pelo calendário do mundo' + (cal.mapa ? ' (' + cal.mapa + ')' : ' (crie um mapa no Mapa-múndi para a data de hoje)') + ' e cresce sozinha. Quem é uma ficha usa o nome e o aniversário dela. ' + (c.jogadores ? 'Os jogadores veem o rol.' : 'Os jogadores veem o rol se você marcar “Membros”.') }));
+  }
+  function novoMembroDlg(x) {
+    const c = x.c, id = x.id, cs = N.normCargos(c.cargos), bib = bibCla(), cal = calCla(), C = window.TC && window.TC.calendario;
+    const ja = new Set(N.membrosDe(c).map(m => m.pessoa.pc).filter(Boolean)), pcs = personagens().filter(p => !ja.has(p.id));
+    let modo = 'nome', nasc = null;
+    const nome = h('input', { class: 'in', type: 'text', maxlength: N.MAX.nomePessoa, 'data-k': 'dl:nome', placeholder: 'Ex.: Oswin, o tesoureiro', 'aria-label': 'Nome' });
+    const sel = h('select', { class: 'in', 'data-k': 'dl:pc', 'aria-label': 'Personagem', disabled: true }, pcs.map(p => h('option', { value: p.id, text: p.nome + ' · ' + (p.dono ? (p.dono === eu ? 'seu' : nomeDoMembro(p.dono) || 'jogador') : 'NPC') })));
+    const r1 = h('input', { type: 'radio', name: 'quem', 'data-k': 'dl:modo-nome', checked: true, onchange: () => { modo = 'nome'; sel.disabled = true; nome.disabled = false; btN.disabled = false; nome.focus(); } });
+    const r2 = h('input', { type: 'radio', name: 'quem', 'data-k': 'dl:modo-pc', disabled: !pcs.length, onchange: () => { modo = 'pc'; sel.disabled = false; nome.disabled = true; btN.disabled = true; } });
+    const arv = (cat, rot) => { const l = arvoresCla(bib, cat); return l.length ? h('select', { class: 'in', 'data-k': 'dl:' + cat, 'aria-label': rot }, h('option', { value: '', text: rot + '…' }), l.map(a => h('option', { value: a.id, text: a.nome })))
+      : h('input', { class: 'in', type: 'text', maxlength: 40, 'data-k': 'dl:' + cat + 'n', placeholder: rot, 'aria-label': rot }); };
+    const raca = arv('raca', 'Raça'), classe = arv('classe', 'Classe');
+    const btN = h('button', { type: 'button', class: 'btn', 'data-k': 'dl:nasc', disabled: !C, onclick: () => C.escolher({ meses: cal.meses, hoje: cal.hoje, valor: nasc, titulo: 'O nascimento' }).then(v => { if (v === undefined) return; nasc = v; btN.textContent = v ? C.texto(v, cal.meses) : 'Nascimento…'; }) }, 'Nascimento…');
+    const cargo = h('select', { class: 'in', 'data-k': 'dl:cargo', 'aria-label': 'Cargo' }, h('option', { value: '', text: 'Sem cargo' }),
+      (function () { const out = [], anda = (k, prof) => { const cheio = cs[k].gente.length >= (k === 'lider' ? 1 : N.MAX.gente); out.push(h('option', { value: k, text: ' '.repeat(prof) + cs[k].nome + (cheio ? ' (cheio)' : ''), disabled: cheio })); for (const f of N.filhos(cs, k)) anda(f, prof + 1); }; anda('lider', 0); return out; })());
+    const valArv = (el, cat) => { if (el.tagName === 'SELECT') { const a = arvoresCla(bib, cat).find(y => y.id === el.value); return a ? { [cat]: a.id, [cat + 'N']: a.nome } : {}; } return el.value.trim() ? { [cat + 'N']: el.value.trim() } : {}; };
+    const ok = () => {
+      let info;
+      if (modo === 'pc') { const p = pcs.find(y => y.id === sel.value); if (!p) { toast('Escolha um personagem.'); return; } info = { pc: p.id, nome: p.nome }; }
+      else { const n = String(nome.value || '').replace(/\s+/g, ' ').trim(); if (!n) { toast('Escreva o nome.'); nome.focus(); return; } info = { nome: n }; if (nasc) info.nasc = nasc; }
+      Object.assign(info, valArv(raca, 'raca'), valArv(classe, 'classe'));
+      const cg = cargo.value || null;
+      fechar();
+      mudarCla(id, 'anotar ' + info.nome + ' no clã', y => { const r = N.novoMembro(y, info, cg); return r ? trocar(y, r.cla) : false; });
+    };
+    nome.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); ok(); } };
+    abrir('', [h('h2', { text: 'Um membro novo em ' + c.nome }),
+      h('div', { class: 'corpo' },
+        h('label', { class: 'chk' }, r1, 'Um nome (alguém que não tem ficha)'), nome,
+        h('label', { class: 'chk' + (pcs.length ? '' : ' off') }, r2, 'Um personagem da mesa (usa o nome e o aniversário da ficha)'), pcs.length ? sel : null,
+        h('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap' }, raca, classe, btN),
+        h('label', { class: 'field' }, h('span', { text: 'Cargo' }), cargo)),
+      pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, 'Anotar'))]);
+    nome.focus();
   }
   function secHistorico(x) {
     const c = x.c, nm = nomes(), l = verTudo ? c.hist : c.hist.slice(0, 40);

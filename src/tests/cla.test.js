@@ -341,7 +341,7 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
     await clicar('[data-aba="hist"]');
     ok(/Respeito de Personagem de teste no clã: \+3 \(Estimado\)/.test(await P.locator('#parte').innerText()) && /A liderança passou para Personagem de teste/.test(await P.locator('#parte').innerText()), 'o histórico');
     await clicar(`#escolhaCla [data-cla="${varo}"]`);
-    ok(await P.locator('#abas button.tranca').count() === 3 && await P.locator('[data-aba="hier"]').getAttribute('aria-selected') === 'true', 'a Casa Varonil: construções, recursos e histórico trancados');
+    ok(await P.locator('#abas button.tranca').count() === 4 && await P.locator('[data-aba="hier"]').getAttribute('aria-selected') === 'true', 'a Casa Varonil: os membros, as construções, os recursos e o histórico trancados (lote 56: a aba Membros)');
     ok(/Espiã-mor/.test(await P.locator('#parte').innerText()) && await P.locator('#parte .resp').count() === 0, 'os cargos, sem o respeito dos membros (clã de NPC)');
     await clicar('[data-aba="rec"]');
     ok(/O mestre ainda não mostrou esta parte de Casa Varonil/.test(await P.locator('#parte').innerText()), 'a parte trancada diz que o mestre ainda não mostrou');

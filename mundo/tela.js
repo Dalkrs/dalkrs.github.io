@@ -2068,14 +2068,17 @@
   }
   /* (lote 41) A veterania média do exército (a tropa de uma ficha, ou com alguma unidade que já subiu): as divisas e a
      média ("2,1"), numa plaquinha em cima do token — o mestre e os jogadores veem (a projeção leva a média pronta). */
-  const VET_NOMES = ['', 'Recruta', 'Veterana', 'Elite'], DIVISAS = ['M5 23l10-6 10 6', 'M5 16l10-6 10 6', 'M5 9l10-6 10 6'];
+  const VET_NOMES = ['', 'Recruta', 'Veterana', 'Elite', 'Lendária ★', 'Mítica ★★'], DIVISAS = ['M5 23l10-6 10 6', 'M5 16l10-6 10 6', 'M5 9l10-6 10 6'];
+  // (lote 56) a estrela da Lendária e da Mítica (no lugar das divisas: uma estrela; duas, na Mítica)
+  const ESTRELA = 'M15 2l3.5 7.6 8.3.9-6.2 5.6 1.8 8.2L15 20.2 7.6 24.3l1.8-8.2L3.2 10.5l8.3-.9z';
   function seloDaVeterania(v, y) {
-    const n = v < 1.5 ? 1 : v < 2.5 ? 2 : 3, t = v.toFixed(1).replace('.', ',');
+    const n = Math.max(1, Math.min(5, Math.floor(v + 0.5))), t = v.toFixed(1).replace('.', ',');
     const g = s('g', { class: 'veter veter-' + n, transform: 'translate(0 ' + y + ')' });
-    g.append(s('title', { texto: 'Veterania média: ' + VET_NOMES[n] + ' (' + t + ' de 3)' }));
+    g.append(s('title', { texto: 'Veterania média: ' + VET_NOMES[n] + ' (' + t + ' de 5)' }));
     g.append(s('rect', { class: 'veter-fundo', x: -15.5, y: -5.5, width: 31, height: 11, rx: 5.5 }));
     const ch = s('g', { class: 'veter-div', transform: 'translate(-13.2 -4.6) scale(0.31)' });
-    DIVISAS.forEach((d, i) => ch.append(s('path', { class: i < n ? 'on' : 'off', d })));
+    if (n >= 4) { for (let i = 0; i < n - 3; i++) ch.append(s('path', { class: 'on estrela', d: ESTRELA, transform: n === 5 ? 'translate(' + (i ? 7 : -7) + ' 1) scale(.8)' : null })); }
+    else DIVISAS.forEach((d, i) => ch.append(s('path', { class: i < n ? 'on' : 'off', d })));
     g.append(ch, s('text', { class: 'veter-n', x: 6.6, y: 3.1, 'text-anchor': 'middle', 'font-size': 8.4, texto: t }));
     return g;
   }

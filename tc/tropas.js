@@ -27,10 +27,15 @@
   const MAX = { unid: 40, tropas: 1e7, hpT: 1e6, atr: 99, lista: 40, equipUnid: 6, suprUnid: 6, suprQ: 1e6, diario: 40, nome: 60, info: 400, titulo: 80, det: 200, raca: 40, magos: 1e7, mant: 1e9, bat: 9999, bonus: 10, sold: 50 };
 
   /* ---------------- a veterania ---------------- */
-  const VET = [null, { n: 1, nome: 'Recruta' }, { n: 2, nome: 'Veterana' }, { n: 3, nome: 'Elite' }];
-  const nomeVet = n => (VET[inteiro(n, 1, 3, 1)] || VET[1]).nome;
-  // a média de veterania com uma casa ("2,1"), e o nome que ela tem
-  const vetDaMedia = m => (m == null ? null : m < 1.5 ? 1 : m < 2.5 ? 2 : 3);
+  // (lote 56) cinco níveis: depois da Elite, as estrelas — a Lendária (★) e a Mítica (★★)
+  const VET_MAX = 5;
+  const VET = [null, { n: 1, nome: 'Recruta', est: 0 }, { n: 2, nome: 'Veterana', est: 0 }, { n: 3, nome: 'Elite', est: 0 }, { n: 4, nome: 'Lendária', est: 1 }, { n: 5, nome: 'Mítica', est: 2 }];
+  const nomeVet = n => (VET[inteiro(n, 1, VET_MAX, 1)] || VET[1]).nome;
+  const estrelasVet = n => '★'.repeat((VET[inteiro(n, 1, VET_MAX, 1)] || VET[1]).est);
+  // o nome com as estrelas ("Lendária ★")
+  const nomeVetEst = n => nomeVet(n) + (estrelasVet(n) ? ' ' + estrelasVet(n) : '');
+  // a média de veterania com uma casa ("2,1"), e o nível que ela tem
+  const vetDaMedia = m => (m == null ? null : Math.max(1, Math.min(VET_MAX, Math.floor(m + 0.5))));
   const fmtMedia = m => (m == null ? '—' : m.toFixed(1).replace('.', ','));
 
   /* ---------------- as listas do mestre (nas tabelas base das Fichas: cfg.tropas) ---------------- */
@@ -44,7 +49,15 @@
     { id: 'sp_flechas', nome: 'Flechas', desc: 'Aljavas cheias para os arqueiros.' }, { id: 'sp_ataduras', nome: 'Ataduras', desc: 'Para os feridos depois da luta.' },
     { id: 'sp_remedios', nome: 'Remédios', desc: 'Ervas e poções simples.' }, { id: 'sp_ferramentas', nome: 'Ferramentas', desc: 'Pás, cordas e martelos para o acampamento.' },
   ];
-  const VET_BONUS_PADRAO = { 2: 1, 3: 2 };
+  const VET_BONUS_PADRAO = { 2: 1, 3: 2, 4: 3, 5: 4 };
+  /* (lote 56) as perícias das unidades (de 1 a 10, roladas com 1d20 + os pontos nos eventos): a lista é do mestre
+     (nas tabelas base, como os equipamentos); perJog: os jogadores distribuem os pontos; perVet: a rolagem soma o bônus
+     da veterania */
+  const PER_PADRAO = [
+    { id: 'pr_investigacao', nome: 'Investigação' }, { id: 'pr_cacada', nome: 'Caçada' }, { id: 'pr_rastreio', nome: 'Rastreio' }, { id: 'pr_emboscada', nome: 'Emboscada' },
+    { id: 'pr_formacao', nome: 'Formação' }, { id: 'pr_cerco', nome: 'Cerco' }, { id: 'pr_sobrevivencia', nome: 'Sobrevivência' }, { id: 'pr_pontaria', nome: 'Pontaria' },
+  ];
+  const PER_MAX = 10;
   const MAX_EQUIP_PADRAO = 2;
   /* (lote 41) o comandante pela ficha: o atributo que dá o bônus de comando do exército (no d20) e o divisor —
      floor(valor ÷ divisor), até ±20. '' = sem conta (o mestre escreve o bônus no mapa). */
@@ -60,7 +73,7 @@
       if (!ehObj(x) || out.length >= MAX.lista || !idOk(x.id) || vistos.has(x.id)) continue;
       vistos.add(x.id);
       const nome = linha(x.nome, MAX.nome) || (comNumeros ? 'Equipamento' : 'Suprimento');
-      out.push(comNumeros ? { id: x.id, nome, atq: inteiro(x.atq, -MAX.atr, MAX.atr, 0), def: inteiro(x.def, -MAX.atr, MAX.atr, 0) } : { id: x.id, nome, desc: linha(x.desc, MAX.det) });
+      out.push(comNumeros === 'per' ? { id: x.id, nome: linha(x.nome, MAX.nome) || 'Perícia' } : comNumeros ? { id: x.id, nome, atq: inteiro(x.atq, -MAX.atr, MAX.atr, 0), def: inteiro(x.def, -MAX.atr, MAX.atr, 0) } : { id: x.id, nome, desc: linha(x.desc, MAX.det) });
     }
     return out;
   }
@@ -72,7 +85,8 @@
     return {
       equip: Array.isArray(t.equip) ? normLista(t.equip, true) : EQUIP_PADRAO.map(x => Object.assign({}, x)),
       supr: Array.isArray(t.supr) ? normLista(t.supr, false) : SUPR_PADRAO.map(x => Object.assign({}, x)),
-      vet: { 2: inteiro(vb[2], 0, MAX.bonus, VET_BONUS_PADRAO[2]), 3: inteiro(vb[3], 0, MAX.bonus, VET_BONUS_PADRAO[3]) },
+      vet: { 2: inteiro(vb[2], 0, MAX.bonus, VET_BONUS_PADRAO[2]), 3: inteiro(vb[3], 0, MAX.bonus, VET_BONUS_PADRAO[3]), 4: inteiro(vb[4], 0, MAX.bonus, VET_BONUS_PADRAO[4]), 5: inteiro(vb[5], 0, MAX.bonus, VET_BONUS_PADRAO[5]) },
+      per: Array.isArray(t.per) ? normLista(t.per, 'per') : PER_PADRAO.map(x => Object.assign({}, x)), perJog: t.perJog === true, perVet: t.perVet === true,
       maxEquip: inteiro(t.maxEquip, 1, MAX.equipUnid, MAX_EQUIP_PADRAO),
       cmd: { atr: cm.atr === '' ? '' : ATR_CMD.some(x => x[0] === cm.atr) ? cm.atr : CMD_PADRAO.atr, div: inteiro(cm.div, 1, 10, CMD_PADRAO.div) },
     };
@@ -104,6 +118,22 @@
   // as chaves que são do jogador (o resto é do mestre). A conta do banco (privado.tropas_mestre) tira as mesmas.
   const TOPO_JOGADOR = ['nome', 'bras', 'info'];
   const UNID_JOGADOR = ['nome', 'raca', 'racaN', 'classe', 'classeN', 'bras', 'equip', 'supr', 'info', 'sold'];
+  // (lote 56) as perícias: do jogador quando o mestre liga a chave (perJog); a conta do banco faz o mesmo
+  const unidJogador = cfg => (normCfg(cfg).perJog ? UNID_JOGADOR.concat(['per']) : UNID_JOGADOR);
+  function normPer(v) {
+    const out = {};
+    for (const k of ehObj(v) ? Object.keys(v).slice(0, MAX.lista * 2) : []) { const n = inteiro(v[k], 0, PER_MAX, 0); if (idOk(k) && n) out[k] = n; }
+    return out;
+  }
+  // (lote 56) o nascimento no calendário do mundo: { d (o dia), m (o mês, de 0), a (o ano) } — o ano é opcional
+  function normNasc(v) {
+    if (!ehObj(v)) return null;
+    const d = inteiro(v.d, 0, 99, 0), m = inteiro(v.m, -1, 99, -1);
+    if (!d || m < 0) return null;
+    const o = { d, m }, a = Number(v.a);
+    if (v.a !== null && v.a !== '' && Number.isFinite(a) && Math.abs(a) <= 1e6) o.a = Math.round(a);
+    return o;
+  }
   const listaDeIds = (l, max) => { const out = []; for (const x of Array.isArray(l) ? l : []) if (idOk(x) && !out.includes(x) && out.length < max) out.push(x); return out; };
   function normSuprQ(v) {
     const out = {};
@@ -121,7 +151,8 @@
       let id = idOk(x.id) ? x.id : novoId('sd');
       while (vistos.has(id)) id = novoId('sd');
       vistos.add(id);
-      out.push({ id, nome: nome || 'Soldado', raca, racaN, classe, classeN });
+      const nasc = normNasc(x.nasc);
+      out.push(Object.assign({ id, nome: nome || 'Soldado', raca, racaN, classe, classeN }, nasc ? { nasc } : {}));
     }
     return out;
   }
@@ -141,13 +172,14 @@
       id,
       // do mestre
       tropas, cheio: Math.max(tropas, inteiro(u.cheio, 0, MAX.tropas, tropas)), hpT, fer: tropas > 0 ? inteiro(u.fer, 0, hpT - 1, 0) : 0,
-      atq: inteiro(u.atq, -MAX.atr, MAX.atr, 0), def: inteiro(u.def, -MAX.atr, MAX.atr, 0), vet: inteiro(u.vet, 1, 3, 1),
+      atq: inteiro(u.atq, -MAX.atr, MAX.atr, 0), def: inteiro(u.def, -MAX.atr, MAX.atr, 0), vet: inteiro(u.vet, 1, VET_MAX, 1),
       bat: inteiro(u.bat, 0, MAX.bat, 0), baixas: inteiro(u.baixas, 0, MAX.tropas, 0), magos: inteiro(u.magos, 0, MAX.magos, 0), cura: inteiro(u.cura, 0, 100, 0),
       suprQ: normSuprQ(u.suprQ),
       // do jogador
       nome: linha(u.nome, MAX.nome) || 'Unidade ' + (i + 1), raca: idOk(u.raca) ? u.raca : null, racaN: linha(u.racaN, MAX.raca),
       classe: idOk(u.classe) ? u.classe : null, classeN: linha(u.classeN, MAX.raca), bras: normBras(u.bras) || brasNovo(i),
       equip: listaDeIds(u.equip, MAX.equipUnid), supr: listaDeIds(u.supr, MAX.suprUnid), info: textoLongo(u.info, MAX.info), sold: normSold(u.sold),
+      per: normPer(u.per),                                      // (lote 56) as perícias: { id: pontos de 1 a 10 }
     };
     if (idMapa(u.tipo)) out.tipo = u.tipo;                   // (o tipo de tropa do Mapa-múndi, quando ligada: guardado como veio)
     if (ehObj(u.maq)) { const m = normMaq(u.maq); if (Object.keys(m).length) out.maq = m; }
@@ -197,10 +229,10 @@
     return x;
   }
   /* A parte do mestre (o que o jogador não pode mudar): a tropa sem as chaves do jogador. É a mesma conta do banco. */
-  function parteMestre(d) {
-    const x = ehObj(d) ? Object.assign({}, d) : {};
+  function parteMestre(d, cfg) {
+    const x = ehObj(d) ? Object.assign({}, d) : {}, uj = unidJogador(cfg);
     for (const k of TOPO_JOGADOR) delete x[k];
-    x.unid = (Array.isArray(x.unid) ? x.unid : []).map(u => { const y = ehObj(u) ? Object.assign({}, u) : u; if (ehObj(y)) for (const k of UNID_JOGADOR) delete y[k]; return y; });
+    x.unid = (Array.isArray(x.unid) ? x.unid : []).map(u => { const y = ehObj(u) ? Object.assign({}, u) : u; if (ehObj(y)) for (const k of uj) delete y[k]; return y; });
     return x;
   }
   /* As escolhas do jogador numa tropa crua (sem mexer no resto: o banco confere que a parte do mestre ficou igual).
@@ -227,6 +259,7 @@
     if ('supr' in esc) u.supr = listaDeIds(esc.supr, MAX.suprUnid);
     if ('info' in esc) u.info = textoLongo(esc.info, MAX.info);
     if ('sold' in esc) u.sold = normSold(esc.sold);
+    if ('per' in esc) u.per = normPer(esc.per);              // (lote 56: só vale quando o mestre deixa — o banco confere)
     return d;
   }
   // (lote 42) a raça e a classe de um soldado ("Humano Guerreiro")
@@ -260,8 +293,10 @@
     const eqs = u.equip.map(id => cf.equip.find(e => e.id === id)).filter(Boolean);
     const sps = u.supr.map(id => cf.supr.find(s => s.id === id)).filter(Boolean).map(s => Object.assign({ q: u.suprQ[s.id] || 0 }, s));
     const eqAtq = eqs.reduce((s, e) => s + e.atq, 0), eqDef = eqs.reduce((s, e) => s + e.def, 0), vb = u.vet > 1 ? cf.vet[u.vet] || 0 : 0;
+    // (lote 56) as perícias da lista do mestre, com os pontos desta unidade (0 = sem treino) e o bônus da rolagem
+    const pers = cf.per.map(p => ({ id: p.id, nome: p.nome, pts: u.per[p.id] || 0, mais: (u.per[p.id] || 0) + (cf.perVet ? vb : 0) }));
     const hp = Math.max(0, u.tropas * u.hpT - u.fer), hpCheio = Math.max(u.cheio, u.tropas) * u.hpT;
-    return { u, eqs, sps, eqAtq, eqDef, vb, atq: u.atq + eqAtq + vb, def: u.def + eqDef + vb, hp, hpCheio, desfalque: u.tropas < u.cheio, vazia: u.tropas <= 0, nomeVet: nomeVet(u.vet) };
+    return { u, eqs, sps, pers, eqAtq, eqDef, vb, atq: u.atq + eqAtq + vb, def: u.def + eqDef + vb, hp, hpCheio, desfalque: u.tropas < u.cheio, vazia: u.tropas <= 0, nomeVet: nomeVet(u.vet), estrelas: estrelasVet(u.vet) };
   }
   /* A tropa inteira: { tropas, unidades (com soldados), vetMedia (a média das unidades com soldados; com uma casa),
      vetN (1–3) e vetNome, consumo (por dia), dias (de mantimentos; null sem consumo), cartas[] (contaUnid de cada uma) } */
@@ -371,7 +406,7 @@
     return x;
   }
 
-  const api = { PRE, docId, pcDoDoc, MAX, VET, nomeVet, vetDaMedia, fmtMedia, EQUIP_PADRAO, SUPR_PADRAO, VET_BONUS_PADRAO, MAX_EQUIP_PADRAO, RESULTADOS,
+  const api = { PRE, docId, pcDoDoc, MAX, VET, VET_MAX, nomeVet, nomeVetEst, estrelasVet, PER_PADRAO, PER_MAX, normPer, normNasc, unidJogador, vetDaMedia, fmtMedia, EQUIP_PADRAO, SUPR_PADRAO, VET_BONUS_PADRAO, MAX_EQUIP_PADRAO, RESULTADOS,
     TOPO_JOGADOR, UNID_JOGADOR, normCfg, normLista, normBras, brasNovo, norm, normUnid, normDiario, parteMestre, comEscolhas, escolhasDaUnid, escolhasDaTropa,
     nova, unidadeNova, novoId, racaDe, classeDe, arvoresDe, contaUnid, calc, registrarBatalha, noDiario,
     normSold, quemESold, ATR_CMD, CMD_PADRAO, nomeAtr, peloAtr, bonusDeComando, normLig, comumDaTropa, comumDoExe, tropaComExe, exeComTropa, mesmaTropa, comBatalhaDoMapa, idMapa };

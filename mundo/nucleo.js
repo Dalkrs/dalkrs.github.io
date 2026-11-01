@@ -2280,8 +2280,8 @@
       tropas, hpT, fer: tropas > 0 ? inteiro(u.fer, 0, 0, hpT - 1) : 0, atq: atr(u.atq), def: atr(u.def), magos: inteiro(u.magos, 0, 0, MAX_TROPAS),
       cura: inteiro(u.cura, 0, 0, 100), maq: normTabMaq(u.maq), equip: normEquip(u.equip) };
     if (sim(u.oc)) out.oc = true;                                // escondida dos jogadores (até o nome)
-    // (lote 40/41) a veterania: 1 Recruta (sem guardar), 2 Veterana, 3 Elite — soma no ATQ e na DEF (o bônus das Fichas)
-    const vet = inteiro(u.vet, 1, 1, 3);
+    // (lote 40/41) a veterania: 1 Recruta (sem guardar), 2 Veterana, 3 Elite (lote 56: 4 Lendária ★, 5 Mítica ★★) — soma no ATQ e na DEF (o bônus das Fichas)
+    const vet = inteiro(u.vet, 1, 1, 5);
     if (vet > 1) out.vet = vet;
     return out;
   }
@@ -2337,7 +2337,7 @@
     if (v.pub) {
       const p = { pub: true, cmd: { nome: texto(cmd.nome, '', 80).trim() }, unid: unid.map((u, i) => ({ id: unico(idOk(u.id) || 'un_' + i, vistos), nome: texto(u.nome, '', 80).trim() || 'Unidade ' + (i + 1), tipo: idRef(u.tipo) })) };
       const vm = num(v.vet, NaN);                                 // (lote 41) a veterania média, para a plaquinha do token
-      if (Number.isFinite(vm) && vm >= 1 && vm <= 3) p.vet = Math.round(vm * 10) / 10;
+      if (Number.isFinite(vm) && vm >= 1 && vm <= 5) p.vet = Math.round(vm * 10) / 10;
       return p;
     }
     const cons = v.cons == null || v.cons === '' ? null : inteiro(v.cons, null, 1, MAX_TROPAS);

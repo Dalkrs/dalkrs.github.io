@@ -49,7 +49,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
   });
   await passo('a faixa', async () => {
     const f = await P.locator('.tr-faixa').innerText();
-    ok(/Guarda de Selene/.test(f) && /100\s+soldados em\s+1\s+unidade/.test(f) && /Recruta/.test(f) && /média 1,0 de 3/.test(f) && /Moral\s*5/.test(f), 'a faixa: o nome, 100 soldados em 1 unidade, a veterania média (Recruta, 1,0), a moral 5 — ' + f.replace(/\s+/g, ' ').slice(0, 220));
+    ok(/Guarda de Selene/.test(f) && /100\s+soldados em\s+1\s+unidade/.test(f) && /Recruta/.test(f) && /média 1,0 de 5/.test(f) && /Moral\s*5/.test(f), 'a faixa: o nome, 100 soldados em 1 unidade, a veterania média (Recruta, 1,0), a moral 5 — ' + f.replace(/\s+/g, ' ').slice(0, 220));
     ok(await P.locator('.tr-faixa .tr-bras svg').count() === 1 && await P.locator('#tropasAba .tr-diario li').count() === 1 && /A tropa foi formada/.test(await P.locator('.tr-diario').innerText()), 'o brasão da tropa e o diário (a primeira linha: a tropa foi formada)');
     await P.locator('[data-trmoral="1"]').click(); await w(200);
     ok((await tropa()).moral === 6 && /Moral da tropa: 6 de 10/.test(await avisos()) && await P.locator('.tr-pips i.on').count() === 6, '+ na moral: 6 de 10 (seis marcas), com Desfazer');
@@ -78,7 +78,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
   await passo('a veterania na carta', async () => {
     await cartaDe(idb).locator('[data-trvet]').selectOption('2'); await w(300);
     ok((await tropa()).unid.find(x => x.id === idb).vet === 2 && /Unidade 2 virou Veterana/.test(await avisos()), 'a veterania escolhida na carta: Unidade 2 virou Veterana (com Desfazer)');
-    ok(/média 2,5 de 3/.test(await P.locator('.tr-faixa').innerText()), 'a veterania média: 2,5 (Elite e Veterana)');
+    ok(/média 2,5 de 5/.test(await P.locator('.tr-faixa').innerText()), 'a veterania média: 2,5 (Elite e Veterana)');
   });
   await passo('as escolhas', async () => {
     await cartaDe(ida).locator('[data-tresc]').click(); await w(300);
