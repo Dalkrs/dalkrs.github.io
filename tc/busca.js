@@ -114,9 +114,12 @@
       const NOME_TAG = { condicao: 'Condição', efeito: 'Efeito', recurso: 'Recurso' };
       for (const t of Array.isArray(f.tags) ? f.tags : []) if (ehObj(t) && typeof t.id === 'string') por('tag', txt(t.nome), 'Tag · ' + (NOME_TAG[t.tipo] || 'Tag'), 'arvore', { tag: t.id });
     }
-    if (ms.notas) for (const id of ids) {
-      if (typeof id !== 'string' || !id.startsWith('notas:')) continue;
-      const d = doc(id); if (ehObj(d)) por('nota', txt(d.t) || 'Sem título', 'Capítulo das notas', 'notas', { cap: id });
+    // (lote 52) e quem joga acha o caderno dele; todos, o caderno do grupo
+    for (const id of ids) {
+      if (typeof id !== 'string') continue;
+      const grupo = id.startsWith('notasg:'), meu = ms.notas ? id.startsWith('notas:') : !!f.eu && id.startsWith('notasj:' + f.eu + ':');
+      if (!grupo && !meu) continue;
+      const d = doc(id); if (ehObj(d) && !d.apagada) por('nota', txt(d.t) || 'Sem título', grupo ? 'Caderno do grupo' : 'Capítulo das notas', 'notas', { cap: id });
     }
     return out;
   }

@@ -2915,6 +2915,16 @@ Fichas. Sem mesa, a busca lê o que cada sistema guardou neste navegador (cada u
 A conta — o índice e a busca — fica em `tc/busca.js`, sem navegador: `indexar(fonte)`, `fonteLocal(ler)` e
 `buscar(indice, consulta, max)`.
 
+### Os cadernos do bloco de notas (lote 52)
+
+O bloco de notas (`tc/notas.js`) é de todos numa mesa, em três cadernos: “Meu caderno” (o do mestre continua
+`notas:<id>`, só dele; o de quem joga é `notasj:<uid>:<id>`, vis mestre, com ele como dono — ele e o mestre leem),
+“Do grupo” (`notasg:<id>[@campanha]`, vis mesa: quem participa lê e escreve, e o mestre também) e, só para o mestre,
+“Dos jogadores” (o caderno de cada um, só para ler). Cada capítulo pode ter um personagem (`dados.pc`, com o filtro).
+Quem joga não apaga a linha (dono, visibilidade e apagar são de quem mestra, em `privado.tocar`): marca
+`dados.apagada` e o site esconde. O SQL `0032_notas_dos_jogadores.sql` deixa o jogador criar os dois tipos e editar o
+caderno do grupo, e põe um tamanho máximo por capítulo. A busca rápida acha o caderno de cada um e o do grupo.
+
 ### O Manual (lote 51)
 
 A wiki do site, em `manual/`: `index.html` desenha as páginas e `conteudo.js` (window.TC_MANUAL) guarda o texto —

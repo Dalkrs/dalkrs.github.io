@@ -154,6 +154,9 @@ button.grupo-t:hover { background: var(--hover); }
 .nt-l { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
 .nt-l input, .nt-l select { min-width: 0; height: 30px; }
 .nt-busca { flex: 1; }
+.nt-cads { display: flex; gap: 2px; padding: 2px; margin-bottom: 8px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
+.nt-cad { flex: 1; min-height: 28px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font: 600 12.5px/1 var(--ui); cursor: pointer; white-space: nowrap; }
+.nt-cad.on { background: var(--lamp); color: var(--on-lamp); }
 .nt-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
 .nt-tag { border: 1px solid var(--line-strong); background: transparent; color: var(--fg-2); border-radius: 999px; padding: 1px 9px; font-size: 12px; cursor: pointer; }
 .nt-tag.on { color: var(--lamp-ink); border-color: var(--lamp); background: var(--lamp-soft); }
@@ -557,7 +560,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     <button type="button" class="ib" id="btnRoteiro" hidden aria-pressed="false" title="O roteiro da sessão (Escudo do mestre)" aria-label="O roteiro da sessão" aria-controls="roteiro">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M3.5 5.5l1 1 2-2M3.5 11.5l1 1 2-2"/><circle cx="4.5" cy="18" r="1"/></svg>
     </button>
-    <button type="button" class="ib" id="btnNotas" hidden aria-pressed="false" title="Bloco de notas (só você vê)" aria-label="Bloco de notas do mestre" aria-controls="notas">
+    <button type="button" class="ib" id="btnNotas" hidden aria-pressed="false" title="Bloco de notas" aria-label="Bloco de notas" aria-controls="notas">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h10.5a1.5 1.5 0 0 1 1.5 1.5v14.5a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"/><path d="M8 3.5v17"/><path d="M11 8h4.5M11 11.5h4.5"/></svg>
     </button>
     <button type="button" class="ib" id="btnVivo" hidden aria-pressed="false" title="Mesa ao vivo: rolagens e conversa" aria-label="Mesa ao vivo">
@@ -575,7 +578,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   <main class="stage" id="stage">
     <div class="wait" id="wait"><span>Carregando…</span></div>
   </main>
-  <aside class="notas" id="notas" hidden aria-label="Bloco de notas do mestre"></aside>
+  <aside class="notas" id="notas" hidden aria-label="Bloco de notas"></aside>
   <aside class="roteiro" id="roteiro" hidden aria-label="O roteiro da sessão"></aside>
   <aside class="vivo" id="vivo" hidden aria-label="Mesa ao vivo">
     <div class="vivo-h">
@@ -631,10 +634,10 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=28"></script>
-<script src="tc/tc.js?v=38"></script>
-<script src="tc/busca.js?v=2"></script>
+<script src="tc/tc.js?v=39"></script>
+<script src="tc/busca.js?v=3"></script>
 <script src="tc/guia.js?v=24"></script>
-<script src="tc/notas.js?v=4"></script>
+<script src="tc/notas.js?v=5"></script>
 <script src="tc/dom.js?v=2"></script>
 <script src="tc/escudo.js?v=3"></script>
 <script src="tc/escudo-puzzles.js?v=1"></script>
@@ -648,7 +651,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.01-1';
+  const VERSAO = '2026.11.01-2';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1944,9 +1947,10 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   }
   function pintarSelo() { const s = $('selo'); s.hidden = !naoLidas; s.textContent = naoLidas > 9 ? '9+' : String(naoLidas); }
   btnVivo.addEventListener('click', () => mostrarVivo(vivo.hidden, true));
-  // (lote 22) o bloco de notas do mestre da mesa: só ele (nem o auxiliar) vê o botão e as notas
+  // (lote 22) o bloco de notas do mestre da mesa: as notas dele só ele vê (nem o auxiliar)
+  // (lote 52) quem joga também tem o bloco: o caderno dele (ele e o mestre leem) e o caderno do grupo
   // (lote 27) com @ e # o mestre liga o texto a uma ficha, uma cena, um lugar, uma habilidade, uma tag ou outro capítulo
-  notasApi = TC.notas ? TC.notas.iniciar({ mesas, dados: TC.dados, toast, confirmar, botao: $('btnNotas'), painel: $('notas'), guarda: { ler, gravar },
+  notasApi = TC.notas ? TC.notas.iniciar({ mesas, dados: TC.dados, toast, confirmar, botao: $('btnNotas'), painel: $('notas'), guarda: { ler, gravar }, eu: () => (conta.usuario ? conta.usuario.id : null),
     ir: (aba, alvo) => irPara(aba, alvo), indice: () => fonteDaBusca().then(f => TC.busca.indexar(f)), buscar: (ind, q, n) => TC.busca.buscar(ind, q, n) }) : null;
   // (lote 31) o Escudo do mestre na casca: as pistas de quem joga (a aba e a janela quando chega uma), o vigia do mestre
   // (o que acontece quando resolvem ou erram um puzzle; os relógios que a mesa vê) e o painel do roteiro

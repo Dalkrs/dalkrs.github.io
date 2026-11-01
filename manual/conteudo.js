@@ -33,13 +33,14 @@
         { t: 'A mesa ao vivo', txt: 'O painel da direita, com as rolagens e a conversa da mesa. “Dados” rola pela ficha, sem digitar comando, com os campos “+ atributo” e “+ resultado” para um bônus só naquela rolagem. Os pedidos de defesa e de rolagem geral chegam aqui como cartões.', ir: { casca: '#btnVivo' } },
         { t: 'O guia de cada aba', txt: 'O “?” da barra abre os assuntos da aba aberta, com “Mostrar onde fica”. É a versão curta deste Manual.', ir: { casca: '#btnGuia' } },
         { t: 'Campanhas', txt: 'Uma mesa pode ter várias campanhas. A campanha em vista aparece ao lado do nome da mesa; quem joga em mais de uma escolhe qual ver no menu da mesa. O que não é de nenhuma campanha é “do mundo” e aparece em todas.' },
+        { t: 'O bloco de notas', txt: 'O caderno da barra de cima abre o bloco em qualquer aba. “Meu caderno” é o seu: você e o mestre leem. “Do grupo” é de todos: cada um lê e muda o que o grupo escreveu (pistas, nomes de NPC, o que falta fazer). Capítulos com tags, campanha e personagem, busca, negrito e listas; @ liga a uma ficha e # a um lugar. Salva sozinho.', ir: { casca: '#btnNotas' } },
         { t: 'O tema e as novidades', txt: 'No menu da conta: tema escuro, claro ou do aparelho, e as Novidades de cada versão (a bolinha avisa quando há algo novo).', ir: { casca: '#btnConta' } },
       ],
       mestre: [
         { t: 'Criar a mesa e convidar', txt: 'Menu da conta → “Escolher ou criar mesa…” → criar. O código de convite fica no menu da mesa; passe aos jogadores.' },
         { t: 'Permissões de cada um', txt: 'No menu da mesa, ao lado de cada pessoa, “Permissões…”: jogador ou mestre auxiliar (nas abas que você marcar), se vê a mesa ao vivo e se mexe no acampamento. “Ficha…” dá uma ficha para o jogador criar o personagem passo a passo.' },
         { t: 'Campanhas', txt: 'Menu da mesa → “Campanhas…”: criar, renomear, ordenar, encerrar e reabrir, e escolher quem joga em cada uma. Campanha encerrada fica guardada só para consulta.' },
-        { t: 'O bloco de notas', txt: 'O caderno da barra abre as suas notas em qualquer aba — só você vê. Capítulos com tags e campanha, busca, e links: @ liga a uma ficha ou NPC, # a uma cena, um lugar do mapa, uma habilidade ou outro capítulo. Clicar no link leva até lá.', ir: { casca: '#btnNotas' } },
+        { t: 'O bloco de notas', txt: 'O caderno da barra abre as suas notas em qualquer aba — só você vê. Em “Dos jogadores” você lê o caderno de cada jogador, e “Do grupo” é o caderno que o grupo escreve junto. Capítulos com tags e campanha, busca, e links: @ liga a uma ficha ou NPC, # a uma cena, um lugar do mapa, uma habilidade ou outro capítulo. Clicar no link leva até lá.', ir: { casca: '#btnNotas' } },
         { t: 'O roteiro na barra', txt: 'O botão do roteiro mostra a sessão do Escudo ao lado, em qualquer aba: você joga com os passos à vista e marca cada um.', ir: { casca: '#btnRoteiro' } },
         { t: 'A mesa ao vivo', txt: 'Rolagens, conversa e os avisos do site. Você pode limpar a mesa ao vivo (com Desfazer) e fechar a mesa ao vivo para um jogador em “Permissões…”.', ir: { casca: '#btnVivo' } },
       ],
@@ -366,7 +367,7 @@
     { id: 'pocao', t: 'Usar uma poção (em mim ou em outro)', papel: 'jogador', sistema: 'fichas', passos: ['Na ficha, Bolsas e itens → a poção → “Usar”.', 'Escolha em quem.', 'Nas Cenas, use “Em quem” no painel do token.'] },
     { id: 'equipar', t: 'Trocar de arma no meio da luta', papel: 'jogador', sistema: 'cenas', passos: ['Mouse sobre o seu token: tecla E.', 'Um clique equipa ou guarda; os do mesmo grupo de troca se revezam.'] },
     { id: 'viagem', t: 'Fazer o grupo viajar no mapa', papel: 'mestre', sistema: 'mundo', passos: ['No Mapa-múndi, selecione o grupo e desenhe a rota (ou trace entre dois marcadores).', '“+1 tempo” anda um tempo de marcha; ▶ passa o dia.', 'Quando houver chance, o mapa pergunta se sorteia encontro.'], ir: { aba: 'mundo', g: 'A data do mundo' } },
-    { id: 'notas', t: 'Anotar algo durante a sessão', papel: 'mestre', sistema: 'mesa', passos: ['Abra o bloco de notas na barra de cima.', 'Escreva no capítulo da sessão; @ liga a uma ficha, # a uma cena ou lugar.'], ir: { casca: '#btnNotas' } },
+    { id: 'notas', t: 'Anotar algo durante a sessão', papel: 'todos', sistema: 'mesa', passos: ['Abra o bloco de notas na barra de cima.', 'Escolha o caderno: o seu ou o do grupo.', '“+ Capítulo” e escreva; @ liga a uma ficha, # a uma cena ou lugar.', 'Marque o personagem do capítulo para filtrar depois.'], ir: { casca: '#btnNotas' } },
     { id: 'buscar', t: 'Achar qualquer coisa rápido', papel: 'todos', sistema: 'mesa', passos: ['Ctrl+K (ou a lupa).', 'Digite o nome, sem acento.', 'Enter abre direto no lugar.'], ir: { casca: '#btnBusca' } },
     // ---- depois
     { id: 'fim', t: 'Encerrar o combate', papel: 'mestre', sistema: 'cenas', passos: ['Aba Turnos → “Encerrar”.', 'No aviso, “Restaurar” as energias de quem lutou (ou depois, em “Restaurar energias…”).'], ir: { aba: 'cenas', g: 'O fim do combate e as barras' } },
@@ -407,6 +408,7 @@
         { t: 'Confira a ficha', txt: 'Barras, equipamentos e o quadro “Agora”.', ir: { aba: 'fichas', g: 'A sua ficha' } },
         { t: 'Favorite as skills', txt: 'As que você mais usa ficam no topo da lista.', ir: { aba: 'fichas', g: 'O filtro de um toque e as favoritas' } },
         { t: 'Leia o Jornal', txt: 'Os boatos costumam virar ganchos.', ir: { aba: 'jornal' } },
+        { t: 'Releia as notas', txt: 'O seu caderno e o do grupo, no bloco de notas da barra de cima.', ir: { casca: '#btnNotas' } },
       ],
       durante: [
         { t: 'Na sua vez', txt: 'O painel de barras abre no canto; F rola, E troca de arma.', tarefa: 'rolar' },
@@ -443,6 +445,7 @@
     { t: 'Bônus só nesta rolagem', txt: '“+ atributo” muda o dado antes de rolar; “+ resultado” soma no total. Ficam guardados até você zerar.', papel: 'todos', sistema: 'mesa' },
     { t: 'Camadas do mapa', txt: 'A tecla C esconde o que atrapalha (só no seu aparelho).', papel: 'todos', sistema: 'mundo' },
     { t: 'A caneta do mapa', txt: 'Desenhe no Mapa-múndi para todos verem na hora — ótimo para planejar a rota.', papel: 'todos', sistema: 'mundo', ir: { aba: 'mundo', g: 'A caneta' } },
+    { t: 'O caderno do grupo', txt: 'No bloco de notas, “Do grupo” é um caderno que todos escrevem juntos: as pistas e os nomes ficam num lugar só.', papel: 'jogador', sistema: 'mesa', ir: { casca: '#btnNotas' } },
     { t: 'Favoritas no topo', txt: 'A estrela de uma skill a leva para o topo da lista da ficha.', papel: 'jogador', sistema: 'fichas', ir: { aba: 'fichas', g: 'O filtro de um toque e as favoritas' } },
     { t: 'E abre os equipamentos', txt: 'Nas Cenas, a tecla E sobre o seu token troca a arma sem ir à ficha.', papel: 'jogador', sistema: 'cenas' },
     { t: 'A emoção no acampamento', txt: 'A aura da emoção aparece em volta do retrato para todos — dá para interpretar sem falar.', papel: 'jogador', sistema: 'acampamento' },
@@ -450,5 +453,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 1, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 2, sistemas, tarefas, roteiro, sabia };
 })();

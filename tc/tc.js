@@ -1182,7 +1182,8 @@
     || r.id === 'mundo:rabisco:' + r.dono_id                       // (lote 17) a caneta de cada um no Mapa-múndi
     || (typeof r.id === 'string' && (r.id.startsWith('medit:pratica:') || r.id.startsWith('medit:achados:') || r.id.startsWith('medit:palavras:')))     // (lote 45: o dicionário)
     || (typeof r.id === 'string' && r.id.startsWith('fichas:corr:'))       // (lote 37) a corrupção: o dono é o dono do personagem
-    || (typeof r.id === 'string' && r.id.startsWith('fichas:tropas:'));    // (lote 40) a tropa: o dono é o dono do personagem
+    || (typeof r.id === 'string' && r.id.startsWith('fichas:tropas:'))     // (lote 40) a tropa: o dono é o dono do personagem
+    || (typeof r.id === 'string' && (r.id.startsWith('notasj:' + r.dono_id + ':') || r.id.startsWith('notasg:')));   // (lote 52) o caderno de quem joga e o do grupo
   function dadosZerar() {
     for (const k in cols) {
       const c = cols[k];

@@ -2,6 +2,35 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.01-2",
+      "data": "2026-11-01",
+      "titulo": "O bloco de notas de quem joga",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "O bloco de notas agora é de todos: o caderno na barra de cima abre, em qualquer aba, o “Meu caderno” — o seu, com capítulos, tags, campanha, busca, negrito e listas, @ para fichas e # para lugares. Salva sozinho; além de você, só quem mestra a mesa lê."
+        },
+        {
+          "tipo": "novo",
+          "texto": "O caderno do grupo, na aba “Do grupo” do bloco: todos da campanha leem e escrevem juntos — as pistas, os nomes dos NPCs, o que falta fazer. Cada capítulo diz quem o começou."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cada capítulo pode ter um personagem, e o filtro “Personagem” mostra só os dele. A busca rápida (Ctrl+K) acha os capítulos do seu caderno e do caderno do grupo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mestre: “Dos jogadores”, no seu bloco, mostra o caderno de cada jogador, só para ler. As suas notas continuam só suas, e você também lê e escreve no caderno do grupo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Para os cadernos funcionarem numa mesa, o banco precisa da atualização desta versão (o SQL 0032)."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.01-1",
       "data": "2026-11-01",
       "titulo": "O Manual do site",

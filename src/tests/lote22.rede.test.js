@@ -1,6 +1,6 @@
 // Lote 22, numa mesa (TC_LOCAL=… no banco local): o bloco de notas do mestre.
 // Três contas: o mestre, o Dalmo (mestre auxiliar, com todas as abas) e o Visitante (jogador).
-//   · só o mestre vê o botão; o bloco: "+ Capítulo", o título, as tags, o texto com o básico (o negrito), salva sozinho;
+//   · o bloco do mestre (lote 52: todos têm o botão, mas as notas do mestre são só dele); o bloco: "+ Capítulo", o título, as tags, o texto com o básico (o negrito), salva sozinho;
 //   · as notas são documentos "notas:<id>", vis mestre — e o banco não as entrega nem ao auxiliar nem ao jogador;
 //   · os filtros: a busca e a tag; apagar pergunta antes, e o Desfazer traz o capítulo de volta.
 const { start, checker, espiarBanco } = require('./lib');
@@ -28,7 +28,8 @@ const j = JSON.stringify;
     ok(nomear === 'ok', 'o Dalmo vira mestre auxiliar, com todas as abas: ' + nomear);
     ok(await ate(async () => await A.evaluate(() => TC.mesas.atual && TC.mesas.atual.cargo === 'auxiliar'), 30000), '(o Dalmo já é auxiliar na tela dele)');
     // ---------- o mestre ----------
-    ok(await M.locator('#btnNotas').isVisible() && await A.locator('#btnNotas').isHidden() && await J.locator('#btnNotas').isHidden(), 'o botão do bloco de notas: só o mestre vê (nem o auxiliar, nem o jogador)');
+    // (lote 52) todos têm o botão: quem joga escreve no caderno dele (notasj:) e no do grupo — as notas do mestre continuam só dele
+    ok(await M.locator('#btnNotas').isVisible() && await A.locator('#btnNotas').isVisible() && await J.locator('#btnNotas').isVisible(), 'o botão do bloco de notas: todos o têm (lote 52), cada um com o seu caderno');
     await M.locator('#btnNotas').click(); await w(300);
     ok(await M.locator('#notas').isVisible() && /O bloco de notas está vazio/.test(await M.locator('#notas').innerText()), 'o bloco abre vazio, com o convite para o primeiro capítulo');
     await M.locator('#nt-novo').click(); await w(300);
