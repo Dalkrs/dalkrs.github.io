@@ -77,7 +77,7 @@ const Regiao = (() => {
       if (noRio[m]) c += 6;
       if (v === 5) c += 2;
       { const x = m % W + 0.5, y = Math.floor(m / W) + 0.5; if (Math.min(x, y, W - x, H - y) < 2) c += 1.5; }   // (não corre junto da borda)
-      if (v === 6) c += 0.4;
+      if (v === 6) c += 3.5;          // (lote 54: o caminho contorna o planalto, a duna e a neve funda, em vez de subir neles)
       return L * c;
     };
     const R = Math.max(3, Math.min(W, H) * 0.25);

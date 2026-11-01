@@ -723,6 +723,7 @@ const Cidade = (() => {
     const out = { v: 1, lugar: 'cidade', modo, seed, sRuas, tamanho: tam, terreno, estilo, especie, poste: Est.poste, rio: p0.rio, comRio, muralha, W, H, pedidos: want,
       travaRuas: !!trava.ruas, soltas, ring, portoes, ruas, praca, pontes, largo, barracas, patios, pieres, predios, quintais, arvores, postes, bairros: { quad, grade },
       relevo: relevoDe(p0), formas: formasDe(p0) };
+    for (const r of out.relevo) if (r.t === 'agua' || (r.t === 'plataforma' && r.alt <= 2)) r.a = 0.12;     // (lote 54: o que o fundo já desenha fica leve)
     // (com mar: o mar, o cais, os molhes, os navios e o resto; sem ele, o plano fica exatamente como era)
     if (marP) Object.assign(out, { comMar: true, mar: marP });
     // (lote 8: o traçado escolhido — a forma da muralha e as torres, o afluente, o lago e as pedras)
@@ -834,7 +835,8 @@ const Cidade = (() => {
       for (const [x, y] of torresDoMuro(p)) out.push({ t: 'plataforma', alt: 9, k: 'ell', x: x - 1.2, y: y - 1.2, w: 2.4, h: 2.4 });
       for (const g of p.portoes) { const [ex, ey] = sentidoDoPortao(g); for (const sn of [-1, 1]) { const x = g.x + ex * sn * 2.4, y = g.y + ey * sn * 2.4; out.push({ t: 'plataforma', alt: 9, k: 'ell', x: x - 0.85, y: y - 0.85, w: 1.7, h: 1.7 }); } }
     }
-    if (MADEIRA.includes(est)) for (const b of p.pontes) out.push({ t: 'plataforma', alt: 2, k: 'poly', pts: retangulo(b.x, b.y, b.comp, b.larg, b.ang) });
+    // (lote 54) toda ponte é uma plataforma acima da água (a de pedra também): quem está nela não está no rio
+    for (const b of p.pontes) out.push({ t: 'plataforma', alt: 2, k: 'poly', pts: retangulo(b.x, b.y, b.comp, b.larg, b.ang) });
     for (const q of p.pieres || []) out.push({ t: 'plataforma', alt: 0.5, k: 'rect', x: q.x, y: q.y, w: q.w, h: q.h });
     { const R = Math.min(1.4, p.praca.r * 0.35); out.push({ t: 'agua', alt: -0.5, k: 'ell', x: p.praca.x - R, y: p.praca.y - R, w: 2 * R, h: 2 * R }); }
     if (p.largo && p.largo.palco) { const q = p.largo.palco; out.push({ t: 'plataforma', alt: 1.5, k: 'rect', x: q.x, y: q.y, w: q.w, h: q.h }); }
@@ -970,14 +972,7 @@ const Cidade = (() => {
       g.fillStyle = MURO[est][0]; g.beginPath(); g.arc(x, y, R * 0.25, 0, TAU2); g.fill();
     }
     // as pontes
-    for (const b of p.pontes) {
-      g.save(); g.translate(b.x * c, b.y * c); g.rotate(b.ang);
-      const L = b.comp * c, Wd = b.larg * c, pedra = est === 'anao' || est === 'desertico' || est === 'comum';
-      g.fillStyle = pedra ? '#4b4f57' : '#5b3f22'; g.fillRect(-L / 2 - c * 0.1, -Wd / 2 - c * 0.15, L + c * 0.2, Wd + c * 0.3);
-      for (let xx = -L / 2; xx < L / 2; xx += c * 0.33) { const s = rnd(); g.fillStyle = pedra ? (s < 0.5 ? '#8a857b' : '#7a756c') : s < 0.5 ? '#8a6238' : '#946b3f'; g.fillRect(xx + 1, -Wd / 2, c * 0.33 - 2, Wd); }
-      g.fillStyle = est === 'oriental' ? '#a8302a' : pedra ? '#3d4148' : '#3d2914'; g.fillRect(-L / 2, -Wd / 2 - c * 0.15, L, c * 0.15); g.fillRect(-L / 2, Wd / 2, L, c * 0.15);
-      g.restore();
-    }
+    for (const b of p.pontes) Estilos.ponte(g, b, c, rnd, MADEIRA.includes(est) ? 'madeira' : 'pedra', est === 'oriental' ? '#a8302a' : null);     // (lote 54: a ponte de verdade)
     // os pátios: o jardim da casa do senhor (gramado, caminhos, canteiros) e o pátio de treino do quartel; o muro em volta
     for (const pt of p.patios) {
       const x = pt.x * c, y = pt.y * c, w = pt.w * c, hh = pt.h * c;
@@ -1220,6 +1215,23 @@ const Cidade = (() => {
         objeto(poste, lx, ly);
       }
     });
+    // (lote 54) a placa na frente da loja e do armazém (do outro lado da porta, sem o lampião), e a feira do largo: o
+    // caixote de frutas, os sacos e o carrinho de mão na frente de algumas barracas
+    const hf = (x, y, k) => (((Math.imul((x * 73856093) ^ (y * 19349663) ^ (p.seed || 1), 0x9e3779b1) ^ Math.imul(k + 1, 0x85ebca6b)) >>> 0) % 1000) / 1000;
+    for (const k of p.predios) {
+      if (k.tipo !== 'loja' && k.tipo !== 'armazem') continue;
+      const pt = k.porta, mx = (pt.x1 + pt.x2) / 2, my = (pt.y1 + pt.y2) / 2;
+      if (!(mx > 0.2 && my > 0.2 && mx < W - 0.2 && my < H - 0.2)) continue;
+      const lx = pt.lado === 'o' ? k.x - 1 : pt.lado === 'l' ? k.x + k.w : Math.min(pt.x1, pt.x2) - 1;
+      const ly = pt.lado === 'n' ? k.y - 1 : pt.lado === 's' ? k.y + k.h : Math.min(pt.y1, pt.y2) - 1;
+      objeto('placaLoja', lx, ly);
+    }
+    (p.barracas || []).forEach((b, i) => {
+      const v = hf(b.x, b.y, i);
+      if (v > 0.55) return;
+      const id = v < 0.2 ? 'frutas' : v < 0.35 ? 'carrinho' : 'sacos';
+      if (dentro(b.x, b.y + 1.5) && Props.P[id]) sc.tokens.push(Props.novo(sc, id, (b.x + (v < 0.3 ? 0 : 1)) * c, (b.y + 1.5) * c, 1, false));
+    });
     for (const pt of p.patios) {
       for (const l of pt.tumulos || []) objeto('tumulo', l.x, l.y);
       const g = pt.portao, largo = g.lado === 'n' || g.lado === 's' ? { x1: g.x1 - 1, x2: g.x2 + 1 } : { y1: g.y1 - 1, y2: g.y2 + 1 };
@@ -1247,7 +1259,7 @@ const Cidade = (() => {
     for (const l of p.postes) objeto(poste, l.x, l.y);
     // o relevo (as áreas de terreno, com a altura) e as formas de enfeite (travadas: arte de fundo)
     if (!op || op.relevo !== false) {
-      for (const r of p.relevo || []) sc.shapes.push(Estilos.terrenoNaCena(r, c, 0, 0));
+      for (const r of p.relevo || []) { const sh = Estilos.terrenoNaCena(r, c, 0, 0); if (r.t === 'agua' || (r.t === 'plataforma' && r.alt <= 2)) sh.a = 0.12; sc.shapes.push(sh); }     // (lote 54: o que o fundo já desenha fica leve)
       for (const f of p.formas || []) sc.shapes.push(Estilos.formaNaCena(f, c, 0, 0));
     }
   }

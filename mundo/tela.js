@@ -703,7 +703,8 @@
     }
     const n = { mato: 9, arvores: 7, colinas: 4, montes: 4, juncos: 6, areia: 40, neve: 14, ondas: 4, pedras: 8,
       ruinas: 4, lava: 5, cristais: 6, selva: 10, savana: 6, tundra: 7, corrompida: 5,
-      raso: 5, fundo: 4, desfiladeiro: 3, geleira: 5, morta: 6, oasis: 2, charneca: 8, devastada: 5 }[tex] || 0, pos = [];     // (lote 17: os oito novos)
+      raso: 5, fundo: 4, desfiladeiro: 3, geleira: 5, morta: 6, oasis: 2, charneca: 8, devastada: 5,
+      rio: 4, estradaTerra: 10, estradaPedra: 12, estradaPav: 6 }[tex] || 0, pos = [];       // (lote 54)     // (lote 17: os oito novos)
     for (let i = 0; i < n; i++) {
       let melhor = null, dm = -1;
       for (let k = 0; k < 8; k++) {
@@ -746,6 +747,11 @@
         case 'oasis': x.fillStyle = '#4f9fd0'; x.globalAlpha = 0.75; x.beginPath(); x.ellipse(0, 4, 6, 2.2, 0, 0, 7); x.fill(); x.globalAlpha = 1; x.strokeStyle = misturar(cor, '#3a2a10', 0.5); x.lineWidth = 1.2; linhas([0, 3, 1, -5]);
           x.fillStyle = misturar(cor, '#1d4a22', 0.55); x.beginPath(); x.ellipse(-2, -5, 3.5, 1.2, -0.4, 0, 7); x.ellipse(3.6, -5, 3.5, 1.2, 0.4, 0, 7); x.fill(); break;
         case 'charneca': x.strokeStyle = misturar(cor, '#3a2a3a', 0.45); linhas([-3, 1, -1.5, -1.5], [0, 1.5, 0.3, -2], [3, 1, 1.8, -1.5]); x.fillStyle = '#c08cbb'; x.beginPath(); x.arc(-1.5, -2, 1, 0, 7); x.arc(1.8, -2, 1, 0, 7); x.arc(0.3, -2.6, 0.9, 0, 7); x.fill(); break;
+        // (lote 54) o rio e as estradas (no pincel livre e nas amostras: no hexágono, a rede é que desenha)
+        case 'rio': x.strokeStyle = cla; x.lineWidth = 1.5; x.beginPath(); x.moveTo(-8, -1); x.bezierCurveTo(-4, -4, -1, 2, 3, -1); x.bezierCurveTo(5, -2.5, 7, -1, 9, 0); x.stroke(); break;
+        case 'estradaTerra': x.globalAlpha = 0.6; x.beginPath(); x.ellipse(0, 0, 1.4, 0.8, 0.4, 0, 7); x.fill(); x.globalAlpha = 1; break;
+        case 'estradaPedra': x.fillStyle = misturar(cor, '#000000', 0.12); x.beginPath(); x.moveTo(-3, -2); x.lineTo(2.5, -2.5); x.lineTo(3, 2); x.lineTo(-2.5, 2.5); x.closePath(); x.fill(); x.lineWidth = 0.8; x.stroke(); break;
+        case 'estradaPav': x.lineWidth = 0.9; x.strokeStyle = misturar(cor, '#000000', 0.3); x.strokeRect(-6, -3.5, 12, 7); x.beginPath(); x.moveTo(0, -3.5); x.lineTo(0, 3.5); x.stroke(); break;
         case 'devastada': x.lineWidth = 1.2; x.strokeStyle = '#2a1f18'; linhas([-6, -2, -1, 1], [-1, 1, 3, -1], [3, -1, 7, 2]); x.fillStyle = '#e0702a'; x.globalAlpha = 0.7; x.beginPath(); x.arc(-3, 3, 0.9, 0, 7); x.arc(4, -3, 0.7, 0, 7); x.fill(); x.globalAlpha = 1; break;
       }
     });
@@ -805,17 +811,23 @@
     const chaveT = JSON.stringify([m.hexes, m.terrenos, gr.tam, gr.x, gr.y, gr.orient, gr.des, custo, L, A]);
     if (chaveT === hexChave) { pintarHexVista(); return; }
     hexChave = chaveT;
-    const por = new Map(), custos = [];
+    const por = new Map(), custos = [], rede = [];
     let nada = '';
     for (const k of Object.keys(m.hexes || {})) {
       const v = m.hexes[k], t = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', hx = N().lerChaveHex(k);
       if (!hx) continue;
       if (t === '-') { if (custo) nada += caminho(N().cantosHex(m, hx.q, hx.r), true); }        // "sem terreno", por cima do desenho
-      else if (t) { if (!por.has(t)) por.set(t, []); por.get(t).push(hx); }
+      else if (t) {
+        // (lote 54) o rio e a estrada: o fundo com o terreno da margem, e a rede (a água, a estrada, a ponte) por cima
+        const rd = N().redeDoHex ? N().redeDoHex(m, hx.q, hx.r) : null;
+        let tf = t;
+        if (rd) { tf = rd.margem ? rd.margem.id : (m.terrenos.some(x => x.id === 'pl') ? 'pl' : t); rede.push(Object.assign({ q: hx.q, r: hx.r, t }, rd)); hx.rede = true; }
+        if (!por.has(tf)) por.set(tf, []); por.get(tf).push(hx);
+      }
       if (Array.isArray(v) && v[1] != null) custos.push([hx, v[1]]);
     }
     // a cor e o desenho de cada hexágono vão no canvas; aqui, por cima, o "sem terreno" e os custos do mestre
-    prepararHexes(m, por);
+    prepararHexes(m, por, rede);
     if (hexDados && ter) { hexCv.hidden = false; pintarHexVista(); }
     const frag = document.createDocumentFragment();
     if (nada) frag.append(s('path', { class: 'hex-nada', d: nada }));
@@ -886,7 +898,7 @@
   }
   // O terreno pintado (a cada mudança dele): por tipo, os hexágonos com o centro de cada um, e a caixa de todos.
   // porTer: id do terreno → [{ q, r }]
-  function prepararHexes(m, porTer) {
+  function prepararHexes(m, porTer, rede) {
     const ters = new Map((m.terrenos || []).map(t => [t.id, t])), lista = [], R = m.grade.tam / Math.sqrt(3) + 1;
     let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
     for (const [tid, hs] of porTer) {
@@ -897,12 +909,14 @@
       const pts = hs.map(x => {
         const c = N().centroHex(m, x.q, x.r);
         bx0 = Math.min(bx0, c.x - R); by0 = Math.min(by0, c.y - R); bx1 = Math.max(bx1, c.x + R); by1 = Math.max(by1, c.y + R);
-        return { q: x.q, r: x.r, x: c.x, y: c.y };
+        return { q: x.q, r: x.r, x: c.x, y: c.y, rede: !!x.rede };
       });
       lista.push({ t, semT, hs: pts });
     }
+    // (lote 54) a rede: cada hexágono de rio ou de estrada com o centro, os meios dos lados que ligam e a ponte
+    const redeD = (rede || []).map(x => { const c = N().centroHex(m, x.q, x.r); return Object.assign({}, x, { x: c.x, y: c.y, meios: [0, 1, 2, 3, 4, 5].map(i => N().meioDoLado(m, x.q, x.r, i)) }); });
     if (!lista.length || !garantirHexCanvas()) { limparHexCanvas(); return; }
-    hexDados = { m, lista, R, u: m.grade.tam / 2, des: m.grade.des !== false, caixa: [bx0, by0, bx1, by1], n: ++hexVersao };
+    hexDados = { m, lista, rede: redeD, R, u: m.grade.tam / 2, des: m.grade.des !== false, caixa: [bx0, by0, bx1, by1], n: ++hexVersao };
     hexFeito = null;
     hexCv.dataset.ters = lista.map(x => x.t.id + ':' + x.hs.length).join(',');
     hexCv.dataset.des = hexDados.des ? '1' : '0';
@@ -1039,6 +1053,11 @@
         if (++n % 150 === 0) yield;
       }
     }
+    // (lote 54) a rede, de longe e de perto: os rios, as estradas e as pontes
+    if (d.rede && d.rede.length) {
+      c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+      desenharRede(c, d, perto, d.m.grade.tam * k);
+    }
     c.globalAlpha = 1;
   }
   /* (lote 24) O hexágono no caminho: os cantos saem do centro já guardado (p.x, p.y) e de seis deslocamentos iguais para
@@ -1060,6 +1079,141 @@
     c.moveTo(cx + d[0][0], cy + d[0][1]);
     for (let i = 1; i < 6; i++) c.lineTo(cx + d[i][0], cy + d[i][1]);
     c.lineTo(cx + d[0][0], cy + d[0][1]);
+  }
+  /* (lote 54) A rede: os rios, as estradas e as pontes, por cima da tinta (de longe só a água e a estrada; de perto, as
+     margens, o brilho da água, os sulcos da terra, as pedras do calçamento, o meio-fio e as pontes de madeira ou de
+     pedra). Cada hexágono leva as curvas dele: de um lado ligado ao outro, pelo centro (com uma curva macia que sai
+     reta de cada lado, então o rio continua sem quebra no vizinho); a ponta sem saída (a nascente) afina. */
+  function curvasDaRede(p, tam, sem) {
+    let h = (sem ^ (p.q * 73856093) ^ (p.r * 19349663)) >>> 0 || 1;
+    const rnd = () => (h = (h * 16807) % 2147483647) / 2147483647;
+    const c = { x: p.x, y: p.y }, M = i => p.meios[i], L = p.liga, out = [];
+    const mix = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    const cub = (a, b, cc, d, n) => { const pts = []; for (let i = 0; i <= n; i++) { const t = i / n, s = 1 - t; pts.push([s * s * s * a.x + 3 * s * s * t * b.x + 3 * s * t * t * cc.x + t * t * t * d.x, s * s * s * a.y + 3 * s * s * t * b.y + 3 * s * t * t * cc.y + t * t * t * d.y]); } return pts; };
+    const rio = p.tipo === 'rio', jit = p.ponte || p.reto ? 0 : (rio ? 0.16 : 0.05) * tam;
+    // a ponta que entra na água (o mar, o lago) avança um pouco nela, abrindo
+    const fim = i => { const m = M(i); return rio && p.agua && p.agua[i] ? mix(c, m, 1.4) : m; };
+    const liga2 = (a, b) => {
+      const ma = fim(a), mb = fim(b), dx = mb.x - ma.x, dy = mb.y - ma.y, dl = Math.hypot(dx, dy) || 1, T = { x: dx / dl, y: dy / dl };
+      const J = { x: c.x - T.y * (rnd() - 0.5) * 2 * jit, y: c.y + T.x * (rnd() - 0.5) * 2 * jit }, hh = dl * 0.22;
+      const pa = mix(M(a), c, 0.45), pb = mix(M(b), c, 0.45);
+      return cub(ma, pa, { x: J.x - T.x * hh, y: J.y - T.y * hh }, J, 10).concat(cub(J, { x: J.x + T.x * hh, y: J.y + T.y * hh }, pb, mb, 10).slice(1));
+    };
+    const raio = i => { const m = fim(i); return cub(c, mix(c, M(i), 0.35), mix(M(i), c, 0.45), m, 10); };
+    if (L.length >= 2) {
+      // os dois mais opostos numa curva só; os outros chegam ao centro
+      let a = L[0], b = L[1], sep = -1;
+      for (const x of L) for (const y of L) { const d = Math.min(Math.abs(x - y), 6 - Math.abs(x - y)); if (x < y && d > sep) { sep = d; a = x; b = y; } }
+      out.push({ pts: liga2(a, b) });
+      for (const i of L) if (i !== a && i !== b) out.push({ pts: raio(i), junta: true });
+    } else if (L.length === 1) out.push({ pts: raio(L[0]), ponta: true });
+    else out.push({ pts: [[c.x, c.y]], so: true });
+    return out;
+  }
+  function desenharRede(c, d, perto, pxHex) {
+    const tam = d.m.grade.tam, longe = pxHex < 9, W = tam * 0.17, R = tam * 0.1;
+    const visiveis = d.rede.filter(p => perto(p));
+    if (!visiveis.length) return;
+    // a água que recebe o rio (o mar, o lago): para a foz abrir dentro dela
+    const geo = visiveis.map(p => Object.assign(p, { agua: p.tipo === 'rio' ? aguaVizinha(d.m, p) : null })).map(p => ({ p, cs: curvasDaRede(p, tam, 97) }));
+    const traco = (pts) => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); };
+    const tra = (cor, larg, alfa, tracejado) => { c.strokeStyle = cor; c.lineWidth = larg; c.globalAlpha = alfa == null ? 1 : alfa; c.setLineDash(tracejado || []); c.stroke(); c.setLineDash([]); };
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    const camadas = (tipo, lista) => {
+      for (const [cor, larg, alfa, tr, soPerto, afina] of lista) {
+        if (soPerto && longe) continue;
+        for (const { p, cs } of geo) {
+          if (p.tipo !== tipo.t || (tipo.via && p.via !== tipo.via)) continue;
+          for (const cv of cs) {
+            if (cv.so) { c.beginPath(); c.ellipse(cv.pts[0][0], cv.pts[0][1], larg * (tipo.t === 'rio' ? 1.6 : 0.7), larg * (tipo.t === 'rio' ? 1.1 : 0.7), 0, 0, Math.PI * 2); c.fillStyle = cor; c.globalAlpha = alfa == null ? 1 : alfa; c.fill(); continue; }
+            if (cv.ponta && tipo.t === 'rio' && afina !== false) {
+              // a nascente: a água afina até a ponta (em pedaços, do centro para fora engrossa)
+              const n = cv.pts.length - 1;
+              for (let i = 0; i < n; i++) { traco([cv.pts[i], cv.pts[i + 1]]); tra(cor, larg * (0.35 + 0.65 * (i + 1) / n), alfa, tr); }
+              continue;
+            }
+            junto.push(cv.pts);
+          }
+        }
+        // (todos os pedaços num caminho só: onde dois se encontram, a tinta transparente não escurece)
+        if (junto.length) { c.beginPath(); for (const pts of junto) { c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); } tra(cor, larg, alfa, tr); junto.length = 0; }
+      }
+    };
+    const junto = [];
+    // o rio: a sombra da margem, a borda, a água, a correnteza e o brilho
+    camadas({ t: 'rio' }, [
+      ['#2f3a22', W * 2.0, 0.22, null, true],
+      ['#6b5a3c', W * 1.45, 0.55, null, true],
+      ['#2e5d8e', W * 1.18, 1],
+      ['#5c97cc', W, 1],
+      ['#7fb3df', W * 0.55, 0.85, null, true],
+      ['#d6ecfa', W * 0.12, 0.7, [W * 0.9, W * 1.6], true, false],
+    ]);
+    // as estradas: a de terra (a borda, o chão batido, os sulcos), a de pedra (o calçamento) e a pavimentada (o meio-fio e
+    // as lajes)
+    camadas({ t: 'via', via: 1 }, [
+      ['#4a3a24', R * 1.5, 0.35, null, true],
+      ['#8a6a42', R * 1.18, 1],
+      ['#b8956a', R, 1],
+      ['#7d5f3a', R * 0.14, 0.7, [R * 0.7, R * 0.45], true],
+    ]);
+    camadas({ t: 'via', via: 2 }, [
+      ['#3a3833', R * 1.55, 0.35, null, true],
+      ['#5f5b55', R * 1.28, 1],
+      ['#a39d92', R * 1.1, 1],
+      ['#7f7a70', R * 0.95, 0.8, [R * 0.16, R * 0.14], true],
+      ['#c2bcb0', R * 0.35, 0.55, [R * 0.22, R * 0.3], true],
+    ]);
+    camadas({ t: 'via', via: 3 }, [
+      ['#2f2c28', R * 1.8, 0.35, null, true],
+      ['#4f4a43', R * 1.62, 1],
+      ['#ddd3bd', R * 1.45, 1, [R * 0.55, R * 0.08], true],
+      ['#c9bc9e', R * 1.15, 1],
+      ['#b3a586', R * 1.05, 0.9, [R * 0.42, R * 0.07], true],
+      ['#e2d8c0', R * 0.08, 0.6, null, true],
+    ]);
+    // as pontes: no meio do rio, ao longo da estrada que passa por ele (a de terra, de madeira; as outras, de pedra)
+    for (const { p } of geo) {
+      if (p.tipo !== 'rio' || !p.ponte) continue;
+      const cv = curvasDaRede(Object.assign({}, p, { tipo: 'via', liga: [p.ponte.a, p.ponte.b], agua: null }), tam, 211)[0].pts;
+      const nivel = p.ponte.via, est = camadasVia(nivel, R);
+      // a estrada passa por cima de tudo, de um lado ao outro
+      for (const [cor, larg, alfa, tr, soPerto] of est) { if (soPerto && longe) continue; traco(cv); tra(cor, larg, alfa, tr); }
+      // o tabuleiro: reto, no centro (onde a estrada cruza a água), na direção da estrada
+      const ma = p.meios[p.ponte.a], mb = p.meios[p.ponte.b], dl = Math.hypot(mb.x - ma.x, mb.y - ma.y) || 1, tx = (mb.x - ma.x) / dl, ty = (mb.y - ma.y) / dl, Lp = W * 1.3;
+      const meio = []; for (let i = 0; i <= 8; i++) { const t = -1 + i / 4; meio.push([p.x + tx * Lp * t, p.y + ty * Lp * t]); }
+      const off = (pts, dd) => pts.map((q, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [q[0] - dy / l * dd, q[1] + dx / l * dd]; });
+      if (!longe) { traco(off(meio, R * 0.25)); tra('#10161c', R * 1.9, 0.35); }          // a sombra na água
+      if (nivel <= 1) {
+        c.lineCap = 'butt';
+        traco(meio); tra('#5a3d22', R * 1.62, 1); traco(meio); tra('#b98a52', R * 1.42, 1);
+        if (!longe) {
+          traco(meio); tra('#8f6236', R * 1.42, 0.85, [R * 0.05, R * 0.11]);
+          traco(meio); tra('#d6a96d', R * 0.5, 0.35);
+          for (const sd of [-1, 1]) { const g = off(meio, sd * R * 0.72); traco(g); tra('#4a3019', R * 0.13, 1); traco(g); tra('#4a3019', R * 0.3, 1, [R * 0.14, R * 0.55]); }
+        }
+        c.lineCap = 'round';
+      } else {
+        traco(meio); tra('#3b3833', R * 1.95, 1); traco(meio); tra(nivel >= 3 ? '#d4c8ad' : '#b3ac9f', R * 1.7, 1);
+        if (!longe) {
+          traco(meio); tra(nivel >= 3 ? '#bfb193' : '#948d81', R * 1.3, 0.8, [R * 0.3, R * 0.06]);
+          for (const sd of [-1, 1]) { const g = off(meio, sd * R * 0.82); traco(g); tra('#4a463f', R * 0.42, 1); traco(g); tra('#e3dccb', R * 0.26, 1, [R * 0.34, R * 0.07]); }
+        }
+      }
+    }
+    c.globalAlpha = 1; c.setLineDash([]);
+  }
+  // as camadas da estrada de cada nível (as mesmas de desenharRede, para a estrada que passa na ponte)
+  function camadasVia(nivel, R) {
+    if (nivel <= 1) return [['#8a6a42', R * 1.18, 1], ['#b8956a', R, 1], ['#7d5f3a', R * 0.14, 0.7, [R * 0.7, R * 0.45], true]];
+    if (nivel === 2) return [['#5f5b55', R * 1.28, 1], ['#a39d92', R * 1.1, 1], ['#7f7a70', R * 0.95, 0.8, [R * 0.16, R * 0.14], true]];
+    return [['#4f4a43', R * 1.62, 1], ['#ddd3bd', R * 1.45, 1, [R * 0.55, R * 0.08], true], ['#c9bc9e', R * 1.15, 1], ['#b3a586', R * 1.05, 0.9, [R * 0.42, R * 0.07], true]];
+  }
+  // as direções em que o rio encontra o mar ou o lago (para a foz)
+  function aguaVizinha(m, p) {
+    const V = N().VIZ_REDE, out = {};
+    p.liga.forEach(i => { const v = m.hexes[(p.q + V[i][0]) + ',' + (p.r + V[i][1])], id = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', t = m.terrenos.find(x => x.id === id); if (t && t.tex !== 'rio') out[i] = true; });
+    return out;
   }
   /* A composição do terreno num hexágono (centro cx, cy; u = o raio de dentro dele). Tudo cabe num círculo de 0,8 u
      (a lavoura, que vai de borda a borda, fica presa ao hexágono). */
@@ -1083,6 +1237,8 @@
     const enche = (cor0, alfa) => { c.fillStyle = cor0; c.globalAlpha = alfa == null ? 0.92 : alfa; c.fill(); };
     const circ = (x, y, r) => { c.beginPath(); c.arc(x, y, Math.max(r, 0.01), 0, Math.PI * 2); };
     const poli = (pts, fechar) => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); if (fechar) c.closePath(); };
+    // (lote 54) a sombra no chão, para baixo e à direita (a luz vem de cima, à esquerda): dá volume ao que está de pé
+    const sombra = (x, y, rx, ry) => { c.save(); c.beginPath(); c.arc(cx, cy, u * 0.96, 0, Math.PI * 2); c.clip(); c.beginPath(); c.ellipse(x + rx * 0.22, y, Math.max(rx, 0.01), Math.max(ry, 0.01), 0, 0, Math.PI * 2); enche('#1c1608', 0.2); c.restore(); };     // (dentro do hexágono: o canto fica com a tinta)
     const tufo = (x, y, s, cor0) => {           // capim: três folhas
       c.beginPath(); c.moveTo(x - s * 0.7, y); c.lineTo(x - s * 1.05, y - s * 1.15); c.moveTo(x, y); c.lineTo(x + s * 0.1, y - s * 1.6); c.moveTo(x + s * 0.7, y); c.lineTo(x + s * 1.1, y - s * 1.1);
       tra(cor0, lw);
@@ -1110,17 +1266,20 @@
       case 'mato': {
         for (const [dx, dy] of espalhar(4 + Math.floor(rnd() * 3), 0.72)) tufo(cx + dx * u, cy + dy * u, u * (0.09 + rnd() * 0.05), esc);
         if (rnd() < 0.5) { const [dx, dy] = ponto(0.6); circ(cx + dx * u, cy + dy * u, u * 0.035); enche(misturar(cor, '#fff2a8', 0.7)); }
+        if (rnd() < 0.35) { const [dx, dy] = ponto(0.65), fl = ['#f4f1ea', '#e7a3c4', '#c7b6f2'][Math.floor(rnd() * 3)]; for (let i = 0; i < 3; i++) { circ(cx + dx * u + (i - 1) * u * 0.05, cy + dy * u + (i % 2) * u * 0.04, u * 0.022); enche(fl, 0.85); } }
         break;
       }
       case 'arvores': {
         for (const [dx, dy] of espalhar(3 + Math.floor(rnd() * 3), 0.58)) {
           const [x, y] = P(dx, dy), r = u * (0.19 + rnd() * 0.08);
+          sombra(x + r * 0.25, y + r * 1.25, r * 0.95, r * 0.36);
           c.beginPath(); c.moveTo(x, y + r * 0.5); c.lineTo(x, y + r * 1.3); tra(esc, lw * 1.2);
           if (rnd() < 0.35) {                    // um pinheiro
             poli([[x, y - r * 1.35], [x - r * 0.95, y + r * 0.75], [x + r * 0.95, y + r * 0.75]], true); enche(som); tra(esc, lw);
             poli([[x, y - r * 1.35], [x - r * 0.35, y - r * 0.2], [x + r * 0.05, y - r * 0.35]], true); enche(cla, 0.55);
           } else {
             circ(x, y, r); enche(som); tra(esc, lw);
+            c.save(); circ(x, y, r); c.clip(); circ(x + r * 0.35, y + r * 0.45, r * 0.85); enche(esc, 0.28); c.restore();
             circ(x - r * 0.3, y - r * 0.32, r * 0.38); enche(cla, 0.7);
           }
         }
@@ -1131,6 +1290,7 @@
         for (let i = 0; i < n; i++) {
           const x = cx + ((i - (n - 1) / 2) * 0.5 + (rnd() - 0.5) * 0.15) * u, y = cy + (0.3 - (i % 2) * 0.32 + (rnd() - 0.5) * 0.1) * u;
           const w = u * (0.5 + rnd() * 0.18), hg = w * (0.5 + rnd() * 0.2);
+          sombra(x + w * 0.15, y, w * 0.95, hg * 0.18);
           c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x, y - hg * 2, x + w, y); c.closePath(); enche(som, 0.75);
           c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x, y - hg * 2, x + w, y); tra(esc, lw);
           c.beginPath(); c.moveTo(x - w * 0.55, y - hg * 0.55); c.quadraticCurveTo(x - w * 0.3, y - hg * 0.9, x - w * 0.05, y - hg * 0.95); tra(cla, lw, 0.8);
@@ -1140,6 +1300,7 @@
       case 'montes': {
         const pico = (x, yb, H, W, neve) => {
           const sx = x + (rnd() - 0.5) * W * 0.3, sy = yb - H;
+          sombra(x + W * 0.25, yb, W * 1.05, H * 0.11);
           poli([[x - W, yb], [sx - W * 0.35, sy + H * 0.45], [sx, sy], [sx + W * 0.4, sy + H * 0.5], [x + W, yb]], true); enche(som);
           poli([[sx, sy], [sx + W * 0.4, sy + H * 0.5], [x + W, yb], [sx + W * 0.08, yb], [sx + W * 0.12, sy + H * 0.55]], true); enche(esc, 0.55);
           if (neve) { poli([[sx, sy], [sx - W * 0.24, sy + H * 0.3], [sx - W * 0.08, sy + H * 0.24], [sx + W * 0.04, sy + H * 0.32], [sx + W * 0.22, sy + H * 0.26]], true); enche('#f3f5f7', 0.95); }
@@ -1190,13 +1351,16 @@
       case 'ondas': {
         for (const [dx, dy] of espalhar(3 + Math.floor(rnd() * 2), 0.6)) {
           const [x, y] = P(dx, dy), w = u * (0.17 + rnd() * 0.06);
+          c.beginPath(); c.moveTo(x - w, y + w * 0.22); c.quadraticCurveTo(x - w / 2, y - w * 0.28, x, y + w * 0.22); c.quadraticCurveTo(x + w / 2, y + w * 0.72, x + w, y + w * 0.22); tra(esc, lw * 1.1, 0.35);
           c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x - w / 2, y - w * 0.5, x, y); c.quadraticCurveTo(x + w / 2, y + w * 0.5, x + w, y); tra(cla, lw * 1.25);
+          circ(x - w * 0.5, y - w * 0.3, lw * 0.9); enche('#ffffff', 0.6);
         }
         break;
       }
       case 'pedras': {
         for (const [dx, dy] of espalhar(3 + Math.floor(rnd() * 3), 0.66)) {
           const [x, y] = P(dx, dy), r = u * (0.08 + rnd() * 0.08), n = 6, pts = [];
+          sombra(x + r * 0.2, y + r * 0.55, r * 1.05, r * 0.4);
           for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + rnd() * 0.4, rr = r * (0.75 + rnd() * 0.4); pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.75]); }
           poli(pts, true); enche(som); tra(esc, lw);
           c.beginPath(); c.moveTo(x - r * 0.5, y - r * 0.35); c.lineTo(x + r * 0.2, y - r * 0.55); tra(cla, lw * 0.9, 0.8);
@@ -1220,6 +1384,7 @@
       case 'ruinas': {
         for (const [dx, dy] of espalhar(2, 0.42)) {
           const [x, y] = P(dx, dy + 0.25), w = u * 0.16, H = u * (0.34 + rnd() * 0.3);
+          sombra(x + w * 0.4, y, w * 1.1, w * 0.3);
           poli([[x - w / 2, y], [x - w / 2, y - H], [x - w / 6, y - H - u * 0.07], [x + w / 6, y - H + u * 0.03], [x + w / 2, y - H - u * 0.02], [x + w / 2, y]], true); enche(cla); tra(esc, lw);
           c.beginPath(); c.moveTo(x - w * 0.7, y); c.lineTo(x + w * 0.7, y); tra(esc, lw * 1.3);
         }
@@ -1254,6 +1419,7 @@
         const escura = misturar(cor, '#000000', 0.25);
         for (const [dx, dy] of espalhar(5 + Math.floor(rnd() * 3), 0.6)) {
           const [x, y] = P(dx, dy), r = u * (0.17 + rnd() * 0.08);
+          sombra(x + r * 0.2, y + r * 0.8, r * 1.2, r * 0.38);
           circ(x - r * 0.45, y + r * 0.1, r * 0.75); enche(escura);
           circ(x + r * 0.45, y + r * 0.1, r * 0.75); enche(escura);
           circ(x, y - r * 0.3, r * 0.85); enche(som); tra(esc, lw * 0.9);
@@ -2371,18 +2537,23 @@
     // "sem terreno" onde o desenho à mão dá um terreno precisa vencer o desenho ('-'); onde não dá, só tira o do hexágono
     let pint = null;
     try { pint = N().terrenoPintado(App.mapa); } catch (e) { pint = new Map(); }
-    let passou = false;
+    let passou = false, pontes = 0;
+    // (lote 54) a estrada pintada por cima de um rio não apaga o rio: o hexágono continua rio e a ponte sai sozinha
+    const ehVia = modo === 'ter' && N().TEX_VIA && !!N().TEX_VIA[t.tex];
+    const ehRio = id => { const x = (App.mapa.terrenos || []).find(y => y.id === id); return !!x && x.tex === 'rio'; };
     App.mudar(rot, d => {
       if (!d.hexes || typeof d.hexes !== 'object') d.hexes = {};
       for (const k of chaves) {
         const v = d.hexes[k], tid = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '';
         let nt = tid, nc = Array.isArray(v) ? v[1] : null;
+        if (ehVia && ehRio(tid || pint.get(k) || '')) { pontes++; continue; }
         if (modo === 'ter') nt = t.id; else if (modo === 'nada') nt = pint.has(k) ? '-' : ''; else if (modo === 'desenho') nt = ''; else if (modo === 'custo') nc = custo; else nc = null;
         if (!nt && nc == null) delete d.hexes[k]; else d.hexes[k] = nc == null ? nt : [nt, nc];
       }
       if (Object.keys(d.hexes).length > lim) { passou = true; return false; }
     });
     if (passou) App.toast('O mapa chegou ao limite de ' + num(lim, 0) + ' hexágonos com terreno ou custo próprio. Nada mudou.');
+    else if (pontes) App.toast(pontes === 1 ? 'A estrada passou por cima de um rio: o rio ficou e a ponte aparece quando houver estrada dos dois lados.' : 'A estrada passou por cima de ' + pontes + ' hexágonos de rio: o rio ficou e as pontes aparecem onde houver estrada dos dois lados.');
   }
   // o que há no hexágono embaixo do cursor (para a dica)
   function sobOCursor(p) {
@@ -3028,7 +3199,10 @@
         const o = modo === 'rec' ? (r0 ? 'Arraste sobre os hexágonos para que produzam ' + num(qtdDoPincel(), 1) + ' de ' + r0.nome + ' por semana, além do terreno (0 tira).' : 'Ligue a economia na aba Reinos para pôr recursos.')
           : modo === 'semrec' ? 'Arraste sobre os hexágonos para tirar os recursos que o pincel pôs (o do terreno fica).'
           : modo === 'nada' ? 'Arraste sobre os hexágonos para tirar o terreno.' : modo === 'desenho' ? 'Arraste sobre os hexágonos para que voltem a seguir o desenho à mão.' : modo === 'custo' ? 'Arraste sobre os hexágonos para que custem ' + num(Number(opt('custo')) || 0, 1) + ' cubos.'
-          : modo === 'semcusto' ? 'Arraste sobre os hexágonos para tirar o custo próprio (volta o do terreno).' : 'Arraste sobre os hexágonos para pintar: ' + (t ? t.nome : 'terreno') + '.';
+          : modo === 'semcusto' ? 'Arraste sobre os hexágonos para tirar o custo próprio (volta o do terreno).' : 'Arraste sobre os hexágonos para pintar: ' + (t ? t.nome : 'terreno') + '.'
+            // (lote 54) o rio e as estradas
+            + (modo === 'ter' && t && t.tex === 'rio' ? ' O fundo fica com o terreno dos vizinhos e a água liga sozinha aos rios, lagos e mares do lado.' : '')
+            + (modo === 'ter' && t && /^estrada/.test(t.tex || '') ? ' O fundo fica com o terreno dos vizinhos e a estrada liga sozinha às do lado; por cima de um rio, o rio fica e a ponte aparece.' : '');
         const sob = cursor && !tq ? sobOCursor(cursor) : '';
         return o + (sob ? ' ' + sob : '') + (tq ? '' : ' Cada traço é um passo de desfazer.');
       }

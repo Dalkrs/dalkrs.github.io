@@ -134,6 +134,13 @@ const LugaresFora = (() => {
     // o pátio: o poço, os barris, as tochas do portão e da menagem
     K.poe('poco', gx + 4, Math.round(y0 + ih * 0.62));
     for (let k = 0; k < 6; k++) K.poe(K.pick(['barril', 'caixote', 'caixote', 'feno']), K.ri(x0 + 2, x1 - 3), K.ri(Math.round(y0 + ih * 0.55), y1 - 2));
+    // (lote 54) o campo de treino na frente do quartel (os bonecos e o alvo), a pedra de amolar e os lingotes na forja e o
+    // troféu de caça na menagem — em lugares fixos (sem sortear: o resto do castelo não muda)
+    if (estado !== 'ruinas') {
+      for (const [dx, id] of [[1, 'boneco'], [3, 'boneco'], [qw - 2, 'alvo']]) K.poe(id, qt.x + dx, qt.y - 2);
+      K.poe('rebolo', qt.x + 3, qt.y + 1); K.poe('lingotes', qt.x + 2, qt.y + 3);
+      K.poe('trofeu', kx + 3, ky);
+    }
     if (estado !== 'ruinas') { for (const x of [gx - 2, gx + 1]) K.poe('tocha', x, y1 - 2); K.poe('tocha', gx - 2, ky + kh + 1); K.poe('tocha', gx + 1, ky + kh + 1); }
     // em ruínas: o mato, as árvores, o fogo antigo
     if (estado === 'ruinas') {
@@ -203,7 +210,12 @@ const LugaresFora = (() => {
       const [mx, my] = lugaresM[k];
       const m = construcao(K, mx, my, 4, 4, { lado: 's', k: 'portao' }, 'laje', 'mausoleu');
       dentro(K, m, () => { K.poe('sarcofago', mx + 1, my, 2, 90); K.poe('vela', mx, my); K.poe('vela', mx + 3, my); if (k === 0 && !igreja) { p.entradas.push({ x: mx + 3, y: my + 2, n: 'A entrada da cripta', gera: geraCat(2) }); K.ocupa(mx + 3, my + 2, 1, 1); } });
+      K.ocupa(mx, my, 4, 4);                          // (lote 54: dentro do mausoléu não cai túmulo)
     }
+    // a casa do coveiro (embaixo, à esquerda) antes dos túmulos (lote 54: nenhum túmulo cai dentro dela)
+    const cv = construcao(K, x0 + 1, y1 - 6, 4, 4, { lado: 'l' }, 'madeira', 'coveiro');
+    dentro(K, cv, () => { K.poe('cama', cv.x, cv.y, 2); K.poe('mesa', cv.x + 2, cv.y + 2, 1); K.poe('lampiao', cv.x + 3, cv.y); });
+    K.ocupa(cv.x, cv.y, 4, 4); K.ocupa(cv.x + 4, cv.y + 1, 1, 2);
     // os túmulos em fileiras, dos dois lados do caminho (com flores, estátuas e um crânio aqui e ali)
     for (let j = topo + 1; j < y1 - 2; j += 2) for (let i = x0 + 2; i < x1 - 1; i += 2) {
       if (Math.abs(i - gx) < 2) continue;
@@ -211,10 +223,8 @@ const LugaresFora = (() => {
       const id = r() < 0.08 ? 'estatua' : 'tumulo';
       if (K.poe(id, i, j) && r() < 0.25) K.poe('flores', i + (r() < 0.5 ? 1 : -1), j);
     }
-    // as árvores dos cantos, as velas soltas, a casa do coveiro (embaixo, à esquerda)
+    // as árvores dos cantos e as velas soltas
     for (const [x, y] of [[x0 + 1, y0 + 1], [x1 - 3, y0 + 1], [x0 + 1, y1 - 3], [x1 - 3, y1 - 3]]) K.poe('arvore', x, y, 2);
-    const cv = construcao(K, x0 + 1, y1 - 6, 4, 4, { lado: 'l' }, 'madeira', 'coveiro');
-    dentro(K, cv, () => { K.poe('cama', cv.x, cv.y, 2); K.poe('mesa', cv.x + 2, cv.y + 2, 1); K.poe('lampiao', cv.x + 3, cv.y); });
     for (let k = 0; k < 4; k++) K.poe('vela', K.ri(x0 + 2, x1 - 2), K.ri(topo + 1, y1 - 2));
     // fora do muro: o mato
     for (let k = 0; k < 8; k++) { const x = K.ri(0, W - 2), y = K.ri(0, H - 2); if (x >= x0 - 1 && x <= x1 && y >= y0 - 1 && y <= y1) continue; K.poe(r() < 0.6 ? 'arbusto' : 'arvore', x, y, 1); }

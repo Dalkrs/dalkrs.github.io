@@ -526,6 +526,35 @@ const Vila = (() => {
       for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) pos(i + a, j + b, 4);
       enfeites.push({ id, x: i, y: j, s }); k++;
     }
+    // 6a) (lote 54) outro sorteio, que não mexe no resto: a feira em volta da praça (as barracas, o caixote de frutas, os
+    //     sacos de grãos e o carrinho de mão), a placa na frente do armazém, o torii do estilo oriental e o bote no rio
+    const rf = mulberry((seed ^ 0x7e1a5f3b) >>> 0 || 9), feira = [];
+    const cabeF = (i, j, s, perto) => {
+      if (anel && !dentroDoAnel(i, j, s, s, 0.5)) return false;
+      for (let b = -1; b <= s; b++) for (let a = -1; a <= s; a++) { const v = at(i + a, j + b), dentro = a >= 0 && a < s && b >= 0 && b < s; if (dentro ? v !== 0 : v === 3 || v === 2 || v === 6 || v === 9) return false; }
+      return !perto || perto(i, j, s);
+    };
+    const poeF = (id, i, j, s) => { for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) pos(i + a, j + b, 4); feira.push({ id, x: i, y: j, s }); };
+    const emVoltaDaPraca = (i, j, s) => { const d = Math.hypot(i + s / 2 - praca.x, j + s / 2 - praca.y); return d >= praca.r + 0.6 && d <= praca.r + 3.2; };
+    const procura = (id, s, perto, tent) => { for (let t = 0; t < (tent || 160); t++) { const i = Math.floor(praca.x - praca.r - 4 + rf() * (2 * praca.r + 8)), j = Math.floor(praca.y - praca.r - 4 + rf() * (2 * praca.r + 8)); if (cabeF(i, j, s, perto)) { poeF(id, i, j, s); return true; } } return false; };
+    if (Props.P.barracaFeira) {
+      const nB = tam === 'vila' ? 2 : 1, miudos = ['frutas', 'sacos', 'carrinho', 'frutas', 'sacos'].slice(0, tam === 'vila' ? 4 : 2);
+      for (let k = 0; k < nB; k++) procura('barracaFeira', 2, emVoltaDaPraca);
+      for (const id of miudos) if (Props.P[id]) procura(id, 1, emVoltaDaPraca);
+      if (estilo === 'oriental' && Props.P.torii) procura('torii', 2, (i, j, s) => { const d = Math.hypot(i + 1 - praca.x, j + 1 - praca.y); return d >= praca.r + 1 && d <= praca.r + 5; }, 240);
+    }
+    // a placa na frente do armazém (do lado de fora da porta, ao lado dela)
+    for (const k of casas) {
+      if (k.tipo !== 'armazem' || !Props.P.placaLoja) continue;
+      const pt = k.porta, mx = (pt.x1 + pt.x2) / 2, my = (pt.y1 + pt.y2) / 2, nx = pt.lado === 'o' ? -1 : pt.lado === 'l' ? 1 : 0, ny = pt.lado === 'n' ? -1 : pt.lado === 's' ? 1 : 0;
+      for (const sd of [1, -1]) { const i = Math.floor(mx + nx * 0.5 + ny * sd * 1.5), j = Math.floor(my + ny * 0.5 + nx * sd * 1.5); if (at(i, j) === 0) { poeF('placaLoja', i, j, 1); break; } }
+    }
+    // o bote, num trecho largo do rio, longe das pontes
+    if (comRio && Props.P.bote) {
+      const ag = (i, j) => at(i, j) === 2, cands = [];
+      for (let j = 1; j < H - 2; j++) for (let i = 1; i < W - 2; i++) if (ag(i, j) && ag(i + 1, j) && ag(i, j + 1) && ag(i + 1, j + 1) && !pontesTodas.some(b => Math.hypot(i + 1 - b.x, j + 1 - b.y) < 4.5)) cands.push([i, j]);
+      if (cands.length) { const [i, j] = cands[Math.floor(rf() * cands.length)]; feira.push({ id: 'bote', x: i, y: j, s: 2 }); }
+    }
     // 6b) (lote 7) outro sorteio, que não mexe no resto: os quintais atrás das casas (a horta ou o terreiro), o píer no
     //     rio (do lado da praça, longe da ponte) e um morro num canto livre
     const rq = mulberry((seed ^ 0x51ed270b) >>> 0 || 7), quintais = [];
@@ -542,6 +571,7 @@ const Vila = (() => {
     }
     // (as árvores e os enfeites que caíram num quintal saem)
     for (let n = arvores.length - 1; n >= 0; n--) if (quintais.some(q => arvores[n].x > q.x - 0.2 && arvores[n].x < q.x + q.w + 0.2 && arvores[n].y > q.y - 0.2 && arvores[n].y < q.y + q.h + 0.2)) arvores.splice(n, 1);
+    for (let n = feira.length - 1; n >= 0; n--) { const e = feira[n]; if (quintais.some(q => e.x < q.x + q.w && e.x + e.s > q.x && e.y < q.y + q.h && e.y + e.s > q.y)) feira.splice(n, 1); }
     for (let n = enfeites.length - 1; n >= 0; n--) { const e = enfeites[n]; if (quintais.some(q => e.x < q.x + q.w && e.x + e.s > q.x && e.y < q.y + q.h && e.y + e.s > q.y)) enfeites.splice(n, 1); }
     let pier = null;
     if (rioGeo) {
@@ -575,13 +605,15 @@ const Vila = (() => {
     if (rioGeo) relevo.push({ t: 'agua', alt: -1.5, k: 'free', pts: rioGeo.pts.filter((_, i) => i % 2 === 0), sw: rioGeo.hw * 2 });
     if (afluente) relevo.push({ t: 'agua', alt: -1.2, k: 'free', pts: afluente.pts.filter((_, i) => i % 2 === 0), sw: afluente.hw * 2 });
     if (lago) relevo.push({ t: 'agua', alt: -1.5, k: 'poly', pts: lago });
-    // (a ponte de madeira vira plataforma; a de pedra, do anão e do desértico, fica só no desenho)
-    for (const b of pontesTodas) if (estilo !== 'anao' && estilo !== 'desertico') relevo.push({ t: 'plataforma', alt: 1.5, k: 'poly', pts: Estilos.retangulo(b.x, b.y, b.comp, b.larg, b.ang) });
+    // (a ponte vira plataforma; lote 54: a de pedra, do anão e do desértico, também)
+    for (const b of pontesTodas) relevo.push({ t: 'plataforma', alt: 1.5, k: 'poly', pts: Estilos.retangulo(b.x, b.y, b.comp, b.larg, b.ang) });
     if (pier) relevo.push({ t: 'plataforma', alt: 0.5, k: 'rect', x: pier.x, y: pier.y, w: pier.w, h: pier.h });
     const metade = Math.floor(lampioes.length / 2);
     for (let i = 0; i < metade; i++) { const a = lampioes[i], b = lampioes[i + metade]; formas.push(...Estilos.bandeirinhas([a.x + 0.5, a.y + 0.5], [b.x + 0.5, b.y + 0.5], estilo, 'praca' + i)); }
     const out = { v: 2, seed, tamanho: tam, terreno, estilo, especie, poste: E.poste, rio: rioGeo, muralha, W, H, pedidas: want, ruaP, rioP, travaRuas: !!travaRuas, travaRio: !!travaRio, soltas,
-      ruas, praca, ponte, muro, casas, poco, lampioes, arvores, enfeites, quintais, pier, relevo, formas };
+      ruas, praca, ponte, muro, casas, poco, lampioes, arvores, enfeites, feira, quintais, pier, relevo, formas };
+    // (lote 54) a água e as plataformas que o fundo já desenha ficam leves (na prévia e na cena)
+    for (const r of relevo) if (r.t === 'agua' || r.t === 'plataforma') r.a = 0.12;
     // (lote 8: o traçado novo — as pontes contadas, o afluente, o lago e as pedras; sem ele, o plano fica como era)
     if (pontes) out.pontes = pontes;
     if (afluente) out.afluente = afluente;
@@ -784,18 +816,8 @@ const Vila = (() => {
       g.fillStyle = '#8a6238'; for (let s2 = 0; s2 < 4; s2++) g.fillRect(q.x * c + s2 * 0.35 * c + 1, (q.y + 0.06) * c, 0.3 * c - 2, (q.h - 0.12) * c);
       g.fillStyle = '#2e1f10'; for (const [px, py] of [[q.x, q.y], [q.x + q.w, q.y], [q.x, q.y + q.h], [q.x + q.w, q.y + q.h]]) { g.beginPath(); g.arc(px * c, py * c, c * 0.09, 0, Math.PI * 2); g.fill(); }
     }
-    for (const b of p.pontes || (p.ponte ? [p.ponte] : [])) {
-      g.save(); g.translate(b.x * c, b.y * c); g.rotate(b.ang);
-      const L = b.comp * c, Wd = b.larg * c, pedra = est === 'anao' || est === 'desertico';
-      g.fillStyle = pedra ? '#4b4f57' : '#5b3f22'; g.fillRect(-L / 2 - c * 0.1, -Wd / 2 - c * 0.1, L + c * 0.2, Wd + c * 0.2);
-      for (let x = -L / 2; x < L / 2; x += c * 0.33) {
-        const s = rnd();
-        g.fillStyle = pedra ? (s < 0.5 ? '#7d828c' : '#6b7079') : s < 0.33 ? '#8a6238' : s < 0.66 ? '#7c5631' : '#946b3f';
-        g.fillRect(x + 1, -Wd / 2, c * 0.33 - 2, Wd);
-      }
-      g.fillStyle = est === 'oriental' ? '#a8302a' : pedra ? '#3d4148' : '#3d2914'; g.fillRect(-L / 2, -Wd / 2 - c * 0.12, L, c * 0.14); g.fillRect(-L / 2, Wd / 2 - c * 0.02, L, c * 0.14);
-      g.restore();
-    }
+    // (lote 54) a ponte desenhada de verdade (Estilos.ponte): de madeira; de pedra no anão e no deserto
+    for (const b of p.pontes || (p.ponte ? [p.ponte] : [])) Estilos.ponte(g, b, c, rnd, est === 'anao' || est === 'desertico' ? 'pedra' : 'madeira', est === 'oriental' ? '#a8302a' : null);
     // as casas: a sombra, o piso (na forma da casa), a sombra das paredes de dentro, as paredes pintadas e o enfeite do estilo
     for (const k of p.casas) {
       const def = TP[k.tipo] || TP.casa, cont = Estilos.contorno(k);
@@ -897,10 +919,12 @@ const Vila = (() => {
     if (Props.P.poco) sc.tokens.push(Props.novo(sc, 'poco', p.poco.x * c, p.poco.y * c, 1, false));
     const poste = Props.P[p.poste] ? p.poste : 'lampiao';
     for (const l of p.lampioes) sc.tokens.push(Props.novo(sc, poste, l.x * c, l.y * c, 1, false));
-    for (const e of p.enfeites) if (Props.P[e.id]) sc.tokens.push(Props.novo(sc, e.id, e.x * c, e.y * c, e.s, false));
+    for (const e of p.enfeites.concat(p.feira || [])) if (Props.P[e.id]) sc.tokens.push(Props.novo(sc, e.id, e.x * c, e.y * c, e.s, false));
     // (lote 7) o relevo (com a altura) e as formas de enfeite (travadas: arte de fundo)
     if (!ex || ex.relevo !== false) {
-      for (const r of p.relevo || []) sc.shapes.push(Estilos.terrenoNaCena(r, c, 0, 0));
+      // (lote 54) a água e as plataformas (a ponte, o píer) já estão desenhadas no fundo: a área delas fica leve (o véu e o
+      // contorno tracejado), com a altura e a fundura valendo do mesmo jeito
+      for (const r of p.relevo || []) { const sh = Estilos.terrenoNaCena(r, c, 0, 0); if (r.t === 'agua' || r.t === 'plataforma') sh.a = 0.12; sc.shapes.push(sh); }
       for (const f of p.formas || []) sc.shapes.push(Estilos.formaNaCena(f, c, 0, 0));
     }
   }

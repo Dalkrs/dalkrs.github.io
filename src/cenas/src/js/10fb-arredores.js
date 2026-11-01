@@ -276,6 +276,7 @@ const Arredores = (() => {
       let c = 1 + 12 * Math.abs(alt[m] - alt[q]) + 1.4 * nzC(i / 5, j / 5);
       if (ehRioQ[m]) c += 6;
       if (v === 5) c += 1;
+      if (v === 6) c += 3.5;          // (lote 54: contorna o relevo)
       if (Math.min(i, j, W2 - 1 - i, H2 - 1 - j) < 2) c += 1.5;
       if (v === 1) c *= 0.55;
       return L * c;

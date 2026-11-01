@@ -48,6 +48,16 @@ const Render = (() => {
     const cell = sc.cell;
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // (lote 54) a correnteza passa por baixo das pontes e dos píeres: as plataformas acima da água ficam de fora
+    const plats = sc.shapes.filter(x => x.ter && x.ter.t === 'plataforma' && (Number(x.ter.h) || 0) > 0 && (x.k === 'poly' || x.k === 'rect') && shapeShown(x));
+    if (plats.length) {
+      ctx.beginPath(); ctx.rect(-1e6, -1e6, 2e6, 2e6);
+      for (const x of plats) {
+        if (x.k === 'rect') ctx.rect(x.x, x.y, x.w, x.h);
+        else if (x.pts && x.pts.length >= 6) { ctx.moveTo(x.pts[0], x.pts[1]); for (let i = 2; i < x.pts.length; i += 2) ctx.lineTo(x.pts[i], x.pts[i + 1]); ctx.closePath(); }
+      }
+      ctx.clip('evenodd');
+    }
     for (const x of sc.shapes) {
       if (!x.ter || x.ter.t !== 'agua' || !shapeShown(x)) continue;
       if (x.k === 'free') {

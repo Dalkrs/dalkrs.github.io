@@ -378,6 +378,88 @@ const Masmorra = (() => {
     for (const q of resto) if (!q.papel) q.papel = fila.length ? fila.shift() : 'vazia';
   }
 
+  /* (lote 54) As catacumbas escavadas: metade dos corredores compridos vira túnel cavado na pedra — mais largo aqui, mais
+     estreito ali, com as covas dos lados — e a parede deles sai tremida, como rocha cortada a picareta (o resto continua
+     de cantaria). A conta tem o sorteio dela (o resto das catacumbas não muda) e não abre passagem para outra sala ou
+     outro corredor: a terra que cai perto deles fica. → p.escavado: as casas cavadas (j * W + i) */
+  function escavarCorredores(C, ligacoes, salas) {
+    const { G, p, W, H } = C, r = mulberry((sub(p.seed, 77) % 2147483000) + 1), cav = new Set();
+    const vivas = ligacoes.filter(lg => !salas[lg.a].fora && !salas[lg.b].fora && lg.pts.length >= 6);
+    for (const lg of vivas) {
+      if (r() < 0.45) continue;
+      const meu = new Set(lg.pts.map(([i, j]) => j * W + i));
+      const ok = (x, y) => {
+        if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1 || G.at(x, y) !== ROCHA) return false;
+        for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const v = G.at(x + a, y + b), k = (y + b) * W + x + a; if (v === SALA || v === NICHO || ((v === CORREDOR || v === PONTE) && !meu.has(k))) return false; }
+        return true;
+      };
+      const n = lg.pts.length;
+      for (let k = 2; k < n - 2; k++) {
+        const [i, j] = lg.pts[k];
+        cav.add(j * W + i);
+        const larga = r() < 0.55;
+        for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+          if (Math.abs(a) + Math.abs(b) === 2 && !larga) continue;
+          // (a casa da diagonal só com uma das duas do lado já aberta: o túnel não se liga só pela quina)
+          const quina = Math.abs(a) + Math.abs(b) === 2 && !(meu.has(j * W + i + a) || meu.has((j + b) * W + i));
+          if (r() < (larga ? 0.42 : 0.18) && !quina && ok(i + a, j + b)) { G.pos(i + a, j + b, CORREDOR); meu.add((j + b) * W + i + a); cav.add((j + b) * W + i + a); }
+        }
+        // a cova: um nicho cavado de lado, de vez em quando
+        if (r() < 0.12) { const [a, b] = [[2, 0], [-2, 0], [0, 2], [0, -2]][Math.floor(r() * 4)]; if (ok(i + a / 2, j + b / 2) && ok(i + a, j + b)) for (const [x, y] of [[i + a / 2, j + b / 2], [i + a, j + b]]) { G.pos(x, y, CORREDOR); meu.add(y * W + x); cav.add(y * W + x); } }
+      }
+    }
+    p.escavado = Array.from(cav).sort((a, b) => a - b);
+    return cav;
+  }
+  /* O tremor das casas cavadas (o mesmo para as paredes e para o desenho do chão): cada canto da grade e cada meio de
+     lado andam um pouco, pelo lugar deles (a mesma conta dos dois lados de um lado); o canto e o meio que encostam numa
+     casa aberta não cavada ficam onde estão (a emenda com o resto, sem fresta). */
+  function tremorEscavado(W, H, at, cav, semente) {
+    const aberto = (i, j) => at(i, j) !== ROCHA, ehCav = (i, j) => i >= 0 && j >= 0 && i < W && j < H && cav.has(j * W + i);
+    const hs = (x, y, k) => { let v = (Math.imul(Math.round(x * 4) * 73856093 ^ Math.round(y * 4) * 19349663 ^ (k + semente) * 83492791, 0x9e3779b1) >>> 0); v ^= v >>> 15; v = Math.imul(v, 0x85ebca6b) >>> 0; return (v % 10007) / 10007; };
+    const solto = (i, j) => aberto(i, j) && !ehCav(i, j);
+    const canto = (x, y) => {
+      for (const [a, b] of [[0, 0], [-1, 0], [0, -1], [-1, -1]]) if (solto(x + a, y + b)) return [x, y];
+      const an = hs(x, y, 1) * Math.PI * 2, d = 0.08 + 0.12 * hs(x, y, 2);
+      return [x + Math.cos(an) * d, y + Math.sin(an) * d];
+    };
+    const meio = (x1, y1, x2, y2) => {
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, horiz = y1 === y2;
+      const c1 = horiz ? [x1, y1 - 1] : [x1 - 1, y1], c2 = [x1, y1];
+      if (solto(...c1) || solto(...c2)) return [mx, my];
+      const d = (hs(mx, my, 3) - 0.5) * 0.3;
+      return horiz ? [mx, my + d] : [mx + d, my];
+    };
+    return { canto, meio, ehCav };
+  }
+  /* As paredes com os túneis cavados: as retas da grade sem os pedaços que encostam numa casa cavada, e a volta tremida
+     das casas cavadas (sem os trechos que dão para o resto aberto: ali é passagem). O tremor fica preso onde a volta
+     encosta numa casa aberta que não é cavada, para emendar sem fresta. → { retas, tremidas: [linhas] } */
+  function paredesEscavadas(W, H, at, cav, semente) {
+    const aberto = (i, j) => at(i, j) !== ROCHA, ehCav = (i, j) => i >= 0 && j >= 0 && i < W && j < H && cav.has(j * W + i);
+    const retas = [];
+    for (const s of paredesDaGrade({ W, H, at })) {
+      const horiz = s.y1 === s.y2, L = Math.round(horiz ? s.x2 - s.x1 : s.y2 - s.y1);
+      let ini = null;
+      for (let u = 0; u <= L; u++) {
+        const x = horiz ? s.x1 + u : s.x1, y = horiz ? s.y1 : s.y1 + u;
+        const toca = u < L && (horiz ? ehCav(x, y - 1) || ehCav(x, y) : ehCav(x - 1, y) || ehCav(x, y));
+        if (u < L && !toca) { if (ini == null) ini = u; continue; }
+        if (ini != null) { retas.push(horiz ? { x1: s.x1 + ini, y1: s.y1, x2: s.x1 + u, y2: s.y1 } : { x1: s.x1, y1: s.y1 + ini, x2: s.x1, y2: s.y1 + u }); ini = null; }
+      }
+    }
+    const J = tremorEscavado(W, H, at, cav, semente), tremidas = [];
+    // cada lado de casa cavada que dá para a rocha: do canto, pelo meio (puxado), ao outro canto
+    for (const k of cav) {
+      const i = k % W, j = Math.floor(k / W);
+      for (const [a, b, x1, y1, x2, y2] of [[0, -1, i, j, i + 1, j], [0, 1, i, j + 1, i + 1, j + 1], [-1, 0, i, j, i, j + 1], [1, 0, i + 1, j, i + 1, j + 1]]) {
+        if (aberto(i + a, j + b)) continue;
+        tremidas.push([J.canto(x1, y1), J.meio(x1, y1, x2, y2), J.canto(x2, y2)]);
+      }
+    }
+    return { retas, tremidas };
+  }
+
   /* A masmorra de pedra, a cripta e os estilos de salas (lote 28). */
   function nivelDeSalas(C) {
     const { G, r, p, W, H } = C, E = ESTILOS_SALAS[p.tipo] || ESTILOS_SALAS.pedra;
@@ -435,8 +517,11 @@ const Masmorra = (() => {
     }
     // (lote 28) as ruínas: as paredes que caíram, antes de as paredes saírem da grade
     if (E.antesDasParedes) E.antesDasParedes(C);
+    // (lote 54) nas catacumbas, os túneis cavados na pedra
+    const cav = CATACUMBAS.includes(p.tipo) ? escavarCorredores(C, ligacoes, salas) : null;
     // as paredes: a beira da rocha; as portas por cima das bocas dos corredores
-    p.paredes = paredesDaGrade(G).map(s => Object.assign(s, { k: 'wall' }));
+    if (cav && cav.size) { const pe = paredesEscavadas(W, H, G.at, cav, p.seed % 9973); p.paredes = pe.retas.concat(segmentosDe(pe.tremidas)).map(s => Object.assign(s, { k: 'wall' })); }
+    else p.paredes = paredesDaGrade(G).map(s => Object.assign(s, { k: 'wall' }));
     const vistas = new Set();
     for (const pt of portas) {
       const key = [pt.x1, pt.y1, pt.x2, pt.y2].join(',');
@@ -526,8 +611,14 @@ const Masmorra = (() => {
       C.p.relevo.push({ t: 'plataforma', alt: 0.5, k: 'rect', x: est.x + 0.05, y: est.y + 0.05, w: est.w - 0.1, h: est.h - 0.1 });
       C.pinta('estrado', est);
       const tx = horiz ? Math.floor(est.x + est.w / 2 - 0.5) : fundo === 'o' ? est.x : est.x + 1, ty = horiz ? (fundo === 'n' ? est.y : est.y + 1) : Math.floor(est.y + est.h / 2 - 0.5);
-      C.poe('cadeira', tx, ty, 1, ROT_FRENTE[lp]);
-      C.pinta('trono', { x: tx + 0.5, y: ty + 0.5, rot: ROT_FRENTE[lp] });
+      // (lote 54) no covil, na caverna e no ossuário (e numa sala do trono de cada quatro), o trono de ossos (de 2 × 2,
+      // em cima do estrado); sem ele, a cadeira com o trono pintado (a conta pela sala: o resto do sorteio não muda)
+      const ossos = Props.P.tronoOssos && (['covil', 'caverna', 'ossuario'].includes(C.p.tipo) || ((q.x * 31 + q.y * 17 + q.w * 7) % 4 === 0));
+      const ox = horiz ? Math.min(Math.max(est.x, tx), est.x + est.w - 2) : est.x, oy = horiz ? est.y : Math.min(Math.max(est.y, ty), est.y + est.h - 2);
+      if (!(ossos && est.w >= 2 && est.h >= 2 && C.poe('tronoOssos', ox, oy, 2, ROT_FRENTE[lp]))) {
+        C.poe('cadeira', tx, ty, 1, ROT_FRENTE[lp]);
+        C.pinta('trono', { x: tx + 0.5, y: ty + 0.5, rot: ROT_FRENTE[lp] });
+      }
       C.ocupaRet(est.x, est.y, est.w, est.h, 1);
       const lad = horiz ? [[est.x - 1, ty], [est.x + est.w, ty]] : [[tx, est.y - 1], [tx, est.y + est.h]];
       for (const [i, j] of lad) C.poe('braseiro', i, j);
@@ -591,6 +682,8 @@ const Masmorra = (() => {
       if (C.r() < 0.6) C.pinta('ossos', { x: q.x + C.ent(0.8, q.w - 0.8), y: q.y + C.ent(0.8, q.h - 0.8), n: 3 });
       if (C.r() < 0.5) noCanto(C, q, 'caixote');
       if (C.r() < 0.2) noCanto(C, q, 'cranios');          // (lote 39)
+      // (lote 54) numa sala vazia grande de cada duas, um buraco no chão (a armadilha, escondida); a conta pela sala
+      if (Props.P.buraco && q.w >= 4 && q.h >= 4 && (q.x * 13 + q.y * 29) % 2 === 0) C.poe('buraco', Math.floor(q.x + q.w / 2 - 1), Math.floor(q.y + q.h / 2 - 1), 2);
     },
     tesouro(C, q) {
       let n = 0;
@@ -2708,7 +2801,9 @@ const Masmorra = (() => {
       g.restore();
     }
     // 4) a sombra das paredes no chão (para dentro), e a beira das paredes
-    const bordas = reto ? paredesDaGrade({ W, H, at }, v => v !== ROCHA) : null;
+    // (lote 54) com os túneis cavados das catacumbas, a cantaria só nas retas (a volta deles é desenhada depois)
+    const cavP = reto && Array.isArray(p.escavado) && p.escavado.length ? new Set(p.escavado) : null;
+    const bordas = reto ? (cavP ? paredesEscavadas(W, H, at, cavP, p.seed % 9973).retas : paredesDaGrade({ W, H, at }, v => v !== ROCHA)) : null;
     g.save(); caminhoDoChao(); g.clip('evenodd');
     g.lineCap = 'round'; g.lineJoin = 'round';
     const tracaBordas = () => { g.beginPath(); if (reto) for (const s of bordas) { g.moveTo(s.x1 * c, s.y1 * c); g.lineTo(s.x2 * c, s.y2 * c); } else for (const l of linhas) l.forEach(([x, y], k) => (k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); };
@@ -2744,6 +2839,35 @@ const Masmorra = (() => {
     g.beginPath(); if (reto) for (const s of bordas) { g.moveTo(s.x1 * c, s.y1 * c); g.lineTo(s.x2 * c, s.y2 * c); } else for (const l of linhas) l.forEach(([x, y], k) => (k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c)));
     g.stroke();
     g.restore();
+    // 4b) (lote 54) os túneis cavados: a rocha por cima do chão reto, o chão bruto na volta tremida, a sombra e a beira
+    if (cavP) {
+      const J = tremorEscavado(W, H, at, cavP, p.seed % 9973), cels = Array.from(cavP, k => [k % W, Math.floor(k / W)]);
+      g.save();
+      g.fillStyle = P.rocha[0]; for (const [i, j] of cels) g.fillRect((i - 0.02) * c, (j - 0.02) * c, c * 1.04, c * 1.04);
+      for (const [i, j] of cels) for (let n = 0; n < 3; n++) { g.globalAlpha = 0.25; g.fillStyle = rnd() < 0.5 ? P.rocha[1] : P.rocha[2]; g.beginPath(); g.arc((i + rnd()) * c, (j + rnd()) * c, c * (0.15 + rnd() * 0.3), 0, TAU); g.fill(); }
+      g.globalAlpha = 1;
+      const tile = (i, j) => { const q = [J.canto(i, j), J.meio(i, j, i + 1, j), J.canto(i + 1, j), J.meio(i + 1, j, i + 1, j + 1), J.canto(i + 1, j + 1), J.meio(i, j + 1, i + 1, j + 1), J.canto(i, j + 1), J.meio(i, j, i, j + 1)]; g.moveTo(q[0][0] * c, q[0][1] * c); for (let k = 1; k < 8; k++) g.lineTo(q[k][0] * c, q[k][1] * c); g.closePath(); };
+      g.beginPath(); for (const [i, j] of cels) tile(i, j);
+      g.fillStyle = P.chao[0]; g.fill('nonzero'); g.clip('nonzero');
+      // o chão de terra batida, com o cascalho
+      for (const [i, j] of cels) {
+        for (let n = 0; n < 4; n++) { g.globalAlpha = 0.2 + rnd() * 0.2; g.fillStyle = rnd() < 0.5 ? P.chao[1] : P.chao[2]; g.beginPath(); g.ellipse((i + rnd()) * c, (j + rnd()) * c, c * (0.2 + rnd() * 0.35), c * (0.12 + rnd() * 0.2), rnd() * 3, 0, TAU); g.fill(); }
+        for (let n = 0; n < 5; n++) { g.globalAlpha = 0.55; g.fillStyle = rnd() < 0.5 ? P.rocha[1] : P.bloco[2]; g.beginPath(); g.arc((i + rnd()) * c, (j + rnd()) * c, c * (0.025 + rnd() * 0.05), 0, TAU); g.fill(); }
+      }
+      g.globalAlpha = 1;
+      const pe = paredesEscavadas(W, H, at, cavP, p.seed % 9973).tremidas;
+      const traca = () => { g.beginPath(); for (const l of pe) l.forEach(([x, y], k) => (k ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); };
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      for (const [lw, a] of [[0.9, 0.2], [0.5, 0.24], [0.22, 0.32]]) { g.globalAlpha = a; g.strokeStyle = '#000'; g.lineWidth = c * lw; traca(); g.stroke(); }
+      g.restore();
+      // a beira de rocha bruta, com as lascas
+      g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+      g.strokeStyle = P.bloco[1]; g.lineWidth = c * 0.36; traca(); g.stroke();
+      g.strokeStyle = P.bloco[0]; g.lineWidth = c * 0.18; traca(); g.stroke();
+      for (const l of pe) if (rnd() < 0.3) { const [x, y] = l[1]; g.fillStyle = P.bloco[2]; g.beginPath(); g.arc(x * c + (rnd() - 0.5) * c * 0.25, y * c + (rnd() - 0.5) * c * 0.25, c * (0.05 + rnd() * 0.07), 0, TAU); g.fill(); }
+      g.strokeStyle = 'rgba(0,0,0,0.6)'; g.lineWidth = Math.max(1, c * 0.05); traca(); g.stroke();
+      g.restore();
+    }
     // 5) as portas: a soleira e os batentes (a porta mesmo é da cena: abre e fecha); as grades das celas
     for (const w of p.paredes) {
       if (w.k === 'door' && !w.secret) soleira(g, w, c);
@@ -2751,7 +2875,7 @@ const Masmorra = (() => {
       else if (w.k === 'mureta' || w.k === 'window') grade_(g, w, c);
     }
     // as paredes de dentro das celas (entre uma cela e outra)
-    for (const w of p.paredes) if (w.k === 'wall' && dentroDoChao(w, aberto)) parede_(g, w, c, P);
+    for (const w of p.paredes) if (w.k === 'wall' && (w.x1 === w.x2 || w.y1 === w.y2) && dentroDoChao(w, aberto)) parede_(g, w, c, P);
     // 6) o resto dos desenhos, de baixo para cima
     for (const z of [1, 2, 3]) for (const o of p.pintados) if (DESENHO[o.k] && DESENHO[o.k].z === z) DESENHO[o.k].f(g, o, c, rnd, p);
     if (typeof Paisagem !== 'undefined') Paisagem.vinheta(g, W, H, c, 0.35);

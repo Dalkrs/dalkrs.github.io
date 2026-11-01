@@ -17,47 +17,48 @@ const Estilos = (() => {
      os que mais importam); max: quantos móveis no máximo; janelas: quantas; centro: o móvel que vai no meio (a fogueira
      da casa longa). */
   const T = (tam, piso, moveis, max, janelas, extra) => Object.assign({ tam, piso, forma: 'ret', moveis, max, janelas }, extra || null);
+  // (lote 54) a pedra de amolar e os lingotes na ferraria, o quadro de missões na taverna, os sacos no armazém e o atril na capela
   const TIPOS = {
     comum: {
-      taverna: T([[6, 5], [5, 6], [7, 5]], 'madeira', ['mesa', 'barril', 'mesa', 'cadeira', 'cadeira', 'barril', 'lampiao'], 6, 2),
-      capela: T([[5, 6], [6, 5]], 'pedra', ['altar', 'estatua', 'vela', 'vela'], 4, 2),
-      ferraria: T([[5, 4], [4, 5]], 'pedra', ['braseiro', 'bigorna', 'caixote', 'barril'], 4, 1),
-      armazem: T([[5, 4], [6, 4], [4, 5]], 'madeira', ['estante', 'caixote', 'barril', 'caixote', 'barril'], 4, 1),
+      taverna: T([[6, 5], [5, 6], [7, 5]], 'madeira', ['mesa', 'barril', 'quadroMissoes', 'mesa', 'cadeira', 'cadeira', 'barril', 'lampiao'], 7, 2),
+      capela: T([[5, 6], [6, 5]], 'pedra', ['altar', 'atril', 'estatua', 'vela', 'vela'], 5, 2),
+      ferraria: T([[5, 4], [4, 5]], 'pedra', ['braseiro', 'bigorna', 'rebolo', 'lingotes', 'caixote', 'barril'], 5, 1),
+      armazem: T([[5, 4], [6, 4], [4, 5]], 'madeira', ['estante', 'sacos', 'caixote', 'barril', 'caixote', 'barril'], 4, 1),
       casa: T([[4, 3], [3, 4], [4, 4], [5, 4], [4, 5]], 'madeira', ['cama', 'mesa', 'barril', 'bau', 'cadeira'], 3, 1),
     },
     oriental: {
-      taverna: T([[6, 5], [7, 5], [6, 6]], 'tatami', ['mesa', 'almofada', 'almofada', 'mesa', 'almofada', 'lanterna'], 6, 2),
-      capela: T([[5, 5], [6, 5]], 'madeira', ['altar', 'lanterna', 'lanterna', 'estatua'], 4, 2, { torii: true }),
-      ferraria: T([[5, 4], [4, 5]], 'pedra', ['braseiro', 'bigorna', 'caixote'], 3, 1),
-      armazem: T([[5, 4], [6, 4]], 'madeira', ['caixote', 'jarro', 'barril', 'caixote'], 4, 1),
+      taverna: T([[6, 5], [7, 5], [6, 6]], 'tatami', ['mesa', 'almofada', 'quadroMissoes', 'almofada', 'mesa', 'almofada', 'lanterna'], 7, 2),
+      capela: T([[5, 5], [6, 5]], 'madeira', ['altar', 'atril', 'lanterna', 'lanterna', 'estatua'], 5, 2, { torii: true }),
+      ferraria: T([[5, 4], [4, 5]], 'pedra', ['braseiro', 'bigorna', 'rebolo', 'lingotes', 'caixote'], 4, 1),
+      armazem: T([[5, 4], [6, 4]], 'madeira', ['caixote', 'sacos', 'jarro', 'barril', 'caixote'], 4, 1),
       casa: T([[4, 4], [5, 4], [4, 5]], 'tatami', ['cama', 'mesa', 'almofada', 'bau', 'lanterna'], 3, 1),
     },
     nordico: {
-      taverna: T([[9, 5], [8, 5], [10, 5]], 'madeira', ['fogueira', 'mesa', 'mesa', 'barril', 'barril', 'cadeira'], 6, 2, { centro: 'fogueira' }),
-      capela: T([[6, 5], [5, 6]], 'pedra', ['altar', 'braseiro', 'estatua'], 3, 1),
-      ferraria: T([[5, 4], [4, 5]], 'pedra', ['braseiro', 'bigorna', 'barril'], 3, 1),
-      armazem: T([[6, 4], [7, 4]], 'madeira', ['barril', 'caixote', 'barril', 'caixote'], 4, 0),
+      taverna: T([[9, 5], [8, 5], [10, 5]], 'madeira', ['fogueira', 'mesa', 'quadroMissoes', 'mesa', 'barril', 'barril', 'cadeira'], 7, 2, { centro: 'fogueira' }),
+      capela: T([[6, 5], [5, 6]], 'pedra', ['altar', 'atril', 'braseiro', 'estatua'], 4, 1),
+      ferraria: T([[5, 4], [4, 5]], 'pedra', ['braseiro', 'bigorna', 'rebolo', 'lingotes', 'barril'], 4, 1),
+      armazem: T([[6, 4], [7, 4]], 'madeira', ['barril', 'sacos', 'caixote', 'barril', 'caixote'], 4, 0),
       casa: T([[7, 4], [8, 4], [6, 4], [4, 7]], 'madeira', ['fogueira', 'cama', 'mesa', 'bau', 'barril'], 4, 1, { centro: 'fogueira' }),
     },
     desertico: {
-      taverna: T([[6, 6], [7, 5]], 'ladrilho', ['tapete', 'almofada', 'almofada', 'mesa', 'jarro', 'lampiao'], 6, 2),
-      capela: T([[6, 6], [5, 5]], 'ladrilho', ['altar', 'tapete', 'vela', 'vela'], 4, 2),
-      ferraria: T([[5, 4], [5, 5]], 'pedra', ['braseiro', 'bigorna', 'jarro'], 3, 1),
-      armazem: T([[5, 5], [6, 4]], 'pedra', ['jarro', 'jarro', 'caixote', 'barril', 'jarro'], 5, 1),
+      taverna: T([[6, 6], [7, 5]], 'ladrilho', ['tapete', 'almofada', 'quadroMissoes', 'almofada', 'mesa', 'jarro', 'lampiao'], 7, 2),
+      capela: T([[6, 6], [5, 5]], 'ladrilho', ['altar', 'atril', 'tapete', 'vela', 'vela'], 5, 2),
+      ferraria: T([[5, 4], [5, 5]], 'pedra', ['braseiro', 'bigorna', 'rebolo', 'lingotes', 'jarro'], 4, 1),
+      armazem: T([[5, 5], [6, 4]], 'pedra', ['jarro', 'sacos', 'jarro', 'caixote', 'barril', 'jarro'], 5, 1),
       casa: T([[4, 4], [5, 4], [4, 5], [5, 5]], 'ladrilho', ['tapete', 'cama', 'jarro', 'almofada', 'bau'], 4, 1),
     },
     elfico: {
-      taverna: T([[7, 7], [6, 6]], 'clara', ['mesa', 'cadeira', 'cadeira', 'mesa', 'flores', 'lanterna'], 6, 2, { forma: 'oct' }),
-      capela: T([[6, 6], [7, 7]], 'pedra', ['altar', 'flores', 'flores', 'estatua'], 4, 2, { forma: 'oct' }),
-      ferraria: T([[5, 5]], 'pedra', ['braseiro', 'bigorna'], 2, 1, { forma: 'oct' }),
-      armazem: T([[5, 5], [6, 5]], 'clara', ['estante', 'caixote', 'jarro'], 3, 1),
+      taverna: T([[7, 7], [6, 6]], 'clara', ['mesa', 'cadeira', 'quadroMissoes', 'cadeira', 'mesa', 'flores', 'lanterna'], 7, 2, { forma: 'oct' }),
+      capela: T([[6, 6], [7, 7]], 'pedra', ['altar', 'atril', 'flores', 'flores', 'estatua'], 5, 2, { forma: 'oct' }),
+      ferraria: T([[5, 5]], 'pedra', ['braseiro', 'bigorna', 'rebolo'], 3, 1, { forma: 'oct' }),
+      armazem: T([[5, 5], [6, 5]], 'clara', ['estante', 'sacos', 'caixote', 'jarro'], 3, 1),
       casa: T([[5, 5], [6, 6], [5, 4]], 'clara', ['cama', 'mesa', 'flores', 'bau'], 3, 1, { forma: 'oct' }),
     },
     anao: {
-      taverna: T([[7, 6], [8, 6]], 'lajes', ['mesa', 'barril', 'mesa', 'barril', 'braseiro', 'cadeira'], 6, 1, { forma: 'oct' }),
-      capela: T([[6, 6]], 'lajes', ['altar', 'estatua', 'estatua', 'braseiro'], 4, 0, { forma: 'oct' }),
-      ferraria: T([[6, 5], [7, 5]], 'lajes', ['braseiro', 'bigorna', 'bigorna', 'caixote', 'barril'], 5, 1),
-      armazem: T([[6, 4], [5, 5]], 'lajes', ['caixote', 'caixote', 'barril', 'estante'], 4, 0),
+      taverna: T([[7, 6], [8, 6]], 'lajes', ['mesa', 'barril', 'quadroMissoes', 'mesa', 'barril', 'braseiro', 'cadeira'], 7, 1, { forma: 'oct' }),
+      capela: T([[6, 6]], 'lajes', ['altar', 'atril', 'estatua', 'estatua', 'braseiro'], 5, 0, { forma: 'oct' }),
+      ferraria: T([[6, 5], [7, 5]], 'lajes', ['braseiro', 'bigorna', 'rebolo', 'lingotes', 'bigorna', 'caixote', 'barril'], 6, 1),
+      armazem: T([[6, 4], [5, 5]], 'lajes', ['caixote', 'sacos', 'caixote', 'barril', 'estante'], 4, 0),
       casa: T([[5, 4], [4, 5], [5, 5]], 'lajes', ['cama', 'mesa', 'bau', 'braseiro'], 3, 1),
     },
   };
@@ -74,7 +75,7 @@ const Estilos = (() => {
       enfeites: { campo: ['arbusto', 'pedra', 'toco', 'arbusto'], floresta: ['arbusto', 'pedra', 'toco', 'arbusto'], areia: ['pedra', 'pedra', 'caixote'], neve: ['pedra', 'toco', 'tronco'] },
       arvore: { campo: 'folhosa', floresta: 'folhosa', areia: 'palmeira', neve: 'pinheiro' }, dens: 1 },
     oriental: { rua: ['#6e6a62', '#8a857b', '#a29d92'], praca: 'cascalho', parede: { cor: '#2a1d16', luz: '#efe4cb', larg: 0.13, tipo: 'papel' }, poste: 'lanterna',
-      enfeites: { campo: ['pedra', 'arbusto', 'flores'], floresta: ['pedra', 'arbusto', 'flores'], areia: ['pedra', 'jarro'], neve: ['pedra', 'toco'] },
+      enfeites: { campo: ['pedra', 'arbusto', 'flores', 'lanternaPedra', 'bonsai'], floresta: ['pedra', 'arbusto', 'flores', 'lanternaPedra'], areia: ['pedra', 'jarro', 'lanternaPedra'], neve: ['pedra', 'toco', 'lanternaPedra'] },     // (lote 54: a lanterna de pedra e o bonsai)
       arvore: { campo: 'oriental', floresta: 'oriental', areia: 'palmeira', neve: 'pinheiro' }, dens: 1 },
     nordico: { rua: ['#4a3d2c', '#5e4d38', '#76634a'], praca: 'terra', parede: { cor: '#3b2716', luz: '#7a5634', larg: 0.26, tipo: 'troncos' }, poste: 'braseiro',
       enfeites: { campo: ['runa', 'toco', 'tronco', 'pedra'], floresta: ['runa', 'toco', 'tronco', 'pedra'], areia: ['runa', 'pedra'], neve: ['runa', 'toco', 'tronco', 'pedra'] },
@@ -606,7 +607,9 @@ const Estilos = (() => {
   const ptsNaCena = (pts, c, dx, dy) => { const o = []; for (const [x, y] of pts) o.push(Math.round((x + dx) * c * 10) / 10, Math.round((y + dy) * c * 10) / 10); return o; };
   function terrenoNaCena(r, c, dx, dy) {
     const geo = r.k === 'rect' || r.k === 'ell' ? { k: r.k, x: (r.x + dx) * c, y: (r.y + dy) * c, w: r.w * c, h: r.h * c } : { k: r.k, pts: ptsNaCena(r.pts, c, dx, dy), sw: r.k === 'free' ? Math.max(4, (r.sw || 1) * c) : 0 };
-    return Combate.newTerrain(geo, r.t, r.alt);
+    const sh = Combate.newTerrain(geo, r.t, r.alt);
+    if (r.a != null && r.a < 0.5) sh.a = r.a;          // (lote 54) a área leve (o fundo já desenha o que ela é)
+    return sh;
   }
   function formaNaCena(f, c, dx, dy) {
     const s = { id: uid('sh'), k: f.k, s: f.s || '#000000', sw: Math.round((f.sw || 0) * c * 10) / 10, f: f.f || null, a: f.a == null ? 1 : f.a, top: false, gm: false, lock: true, by: null };
@@ -654,6 +657,59 @@ const Estilos = (() => {
   }
   /* O relevo e as formas na prévia (pc pixels por quadrado), com o desenho de verdade do Terreno (o mesmo da cena:
      a cor, o desenho de cada tipo e a sombra de quem é alto, translúcido por cima do fundo). */
+  /* (lote 54) A ponte desenhada de verdade, por cima da água (b: { x, y, comp, larg, ang } em quadrados; c: o tamanho do
+     quadrado em pixels): a sombra na água, as cabeceiras de pedra nas margens e o tabuleiro — de madeira (as tábuas, cada
+     uma de um tom, com os pregos, as vigas por baixo aparecendo nas pontas e o guarda-corpo com os postes) ou de pedra (o
+     arco com as lajes, as juntas, o parapeito de blocos e os quebra-mares de frente para a correnteza). cor: a do
+     guarda-corpo (o vermelho da ponte oriental). */
+  function ponte(g, b, c, rnd, tipo, cor) {
+    const L = b.comp * c, Wd = b.larg * c, pedra = tipo === 'pedra';
+    g.save(); g.translate(b.x * c, b.y * c); g.rotate(b.ang);
+    // a sombra na água (para baixo e à direita) e as cabeceiras nas margens
+    g.fillStyle = 'rgba(8,16,24,0.38)'; g.fillRect(-L / 2 + c * 0.15, -Wd / 2 + c * 0.22, L, Wd + c * 0.1);
+    for (const sd of [-1, 1]) {
+      const x0 = sd * L / 2 - (sd > 0 ? c * 0.55 : 0) + (sd < 0 ? -c * 0.05 : c * 0.05);
+      g.fillStyle = '#5e5a52'; g.fillRect(x0, -Wd / 2 - c * 0.28, c * 0.55, Wd + c * 0.56);
+      for (let j = 0; j < 4; j++) { g.fillStyle = rnd() < 0.5 ? '#7b766c' : '#6c675e'; g.fillRect(x0 + c * 0.04, -Wd / 2 - c * 0.24 + j * (Wd + c * 0.48) / 4, c * 0.47, (Wd + c * 0.48) / 4 - c * 0.05); }
+    }
+    if (!pedra) {
+      // as vigas por baixo, aparecendo nas pontas; as tábuas de lado a lado, cada uma de um tom, com os pregos
+      g.fillStyle = '#3d2914'; g.fillRect(-L / 2, -Wd / 2 + c * 0.05, L, c * 0.12); g.fillRect(-L / 2, Wd / 2 - c * 0.17, L, c * 0.12);
+      const tab = c * 0.3;
+      for (let x = -L / 2 + c * 0.1; x < L / 2 - c * 0.1; x += tab) {
+        const s = rnd(), w = Math.min(tab - c * 0.03, L / 2 - c * 0.1 - x), dy = (rnd() - 0.5) * c * 0.06;
+        g.fillStyle = s < 0.33 ? '#9a6a3a' : s < 0.66 ? '#8a5d33' : '#a8763f'; g.fillRect(x, -Wd / 2 + dy, w, Wd);
+        g.fillStyle = 'rgba(255,230,190,0.18)'; g.fillRect(x, -Wd / 2 + dy, w, c * 0.05);
+        g.fillStyle = 'rgba(40,20,5,0.35)'; g.fillRect(x + w - c * 0.025, -Wd / 2 + dy, c * 0.025, Wd);
+        g.fillStyle = '#2b1d10'; for (const yy of [-Wd / 2 + c * 0.14, Wd / 2 - c * 0.14]) { g.beginPath(); g.arc(x + w / 2, yy + dy, c * 0.025, 0, Math.PI * 2); g.fill(); }
+        if (rnd() < 0.25) { g.strokeStyle = 'rgba(50,28,10,0.5)'; g.lineWidth = Math.max(1, c * 0.015); g.beginPath(); g.moveTo(x + w * 0.3, -Wd / 4); g.quadraticCurveTo(x + w * 0.6, 0, x + w * 0.35, Wd / 4); g.stroke(); }
+      }
+      // o guarda-corpo: o corrimão e os postes
+      const gc = cor || '#4a3019';
+      for (const sd of [-1, 1]) {
+        const y = sd * (Wd / 2 + c * 0.04);
+        g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(-L / 2 + c * 0.1 + c * 0.05, y - c * 0.05 + c * 0.06, L - c * 0.2, c * 0.1);
+        g.fillStyle = gc; g.fillRect(-L / 2 + c * 0.1, y - c * 0.05, L - c * 0.2, c * 0.1);
+        for (let x = -L / 2 + c * 0.15; x <= L / 2 - c * 0.15; x += c * 0.9) { g.fillStyle = gc; g.fillRect(x - c * 0.07, y - c * 0.09, c * 0.14, c * 0.18); g.fillStyle = 'rgba(255,255,255,0.15)'; g.fillRect(x - c * 0.07, y - c * 0.09, c * 0.14, c * 0.04); }
+      }
+    } else {
+      // os quebra-mares (as pontas dos pilares, de frente para a água), o tabuleiro de lajes e o parapeito de blocos
+      for (const x of [-L / 6, L / 6]) for (const sd of [-1, 1]) { g.fillStyle = '#5b574f'; g.beginPath(); g.moveTo(x - c * 0.22, sd * Wd / 2); g.lineTo(x, sd * (Wd / 2 + c * 0.42)); g.lineTo(x + c * 0.22, sd * Wd / 2); g.closePath(); g.fill(); }
+      const gr = g.createLinearGradient(0, -Wd / 2, 0, Wd / 2); gr.addColorStop(0, '#a49d90'); gr.addColorStop(0.5, '#b8b1a3'); gr.addColorStop(1, '#948d81');
+      g.fillStyle = gr; g.fillRect(-L / 2, -Wd / 2, L, Wd);
+      g.strokeStyle = 'rgba(60,55,48,0.45)'; g.lineWidth = Math.max(1, c * 0.02);
+      const laje = c * 0.42;
+      for (let j = 0, y = -Wd / 2; y < Wd / 2 - 1; y += laje * 0.8, j++) { g.beginPath(); g.moveTo(-L / 2, y); g.lineTo(L / 2, y); g.stroke(); for (let x = -L / 2 + (j % 2) * laje / 2; x < L / 2; x += laje) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, Math.min(Wd / 2, y + laje * 0.8)); g.stroke(); } }
+      // o arco (mais claro no meio: o tabuleiro sobe)
+      g.fillStyle = 'rgba(255,250,235,0.12)'; g.beginPath(); g.ellipse(0, 0, L * 0.36, Wd * 0.48, 0, 0, Math.PI * 2); g.fill();
+      for (const sd of [-1, 1]) {
+        const y = sd * (Wd / 2 + c * 0.06);
+        g.fillStyle = 'rgba(0,0,0,0.32)'; g.fillRect(-L / 2 + c * 0.08, y - c * 0.09 + c * 0.07, L - c * 0.16, c * 0.18);
+        for (let x = -L / 2 + c * 0.05; x < L / 2 - c * 0.05; x += c * 0.36) { const w = Math.min(c * 0.33, L / 2 - c * 0.05 - x); g.fillStyle = cor || (rnd() < 0.5 ? '#d2cab9' : '#c3bba9'); g.fillRect(x, y - c * 0.1, w, c * 0.2); g.fillStyle = 'rgba(70,64,55,0.5)'; g.fillRect(x + w - c * 0.02, y - c * 0.1, c * 0.02, c * 0.2); }
+      }
+    }
+    g.restore();
+  }
   function relevoNaPrevia(g, relevo, formas, pc, unidade) {
     if (typeof Render === 'undefined' || !Render.drawTer || !Render.drawShape) return;
     const k = pc / 64, sc = { cell: 64, grid: { unit: unidade || 1.5 } };
@@ -668,5 +724,5 @@ const Estilos = (() => {
     if (formas && formas.length) { g.save(); g.setTransform(k, 0, 0, k, ox, oy); for (const f of formas) Render.drawShape(g, formaNaCena(f, 64, 0, 0)); g.restore(); }
   }
   return { LISTA, ADJ, valido, TIPOS, tipos, formaDe, ESTILO, de, lados, contorno, proaDe, pedacos, paredesDaCasa, corDaRua, piso, paredesPintadas, arvore, praca, enfeiteDaCasa, telhado, tom,
-    quintal, terrenoNaCena, formaNaCena, caixaDe, moverRelevo, retangulo, bandeirinhas, relevoNaPrevia };
+    quintal, terrenoNaCena, formaNaCena, caixaDe, moverRelevo, retangulo, bandeirinhas, relevoNaPrevia, ponte };
 })();

@@ -312,6 +312,8 @@ const Porto = (() => {
       K.pinta(2, 'barco', { x, y, ang: Math.atan2(uy, ux) + ent(rB, -0.5, 0.5), L: ent(rB, 2.6, 3.2) });
       K.marcaCirc(x, y, 0.9, 4, true); n--;
     }
+    // (lote 54) o bote (o que dá para mover e pôr gente dentro), na água perto da costa, com o sorteio dele
+    { const rBo = sorteio(54); for (let i = 0; i < 60; i++) { const sv = ent(rBo, -Dv / 2 + 3, Dv / 2 - 3), [x, y] = pt(sv, costa(sv) + ent(rBo, 1.5, 3.5)); if (nasVagas(x, y, 1.6) || !K.livreCirc(x, y, 1.2, naAgua)) continue; if (K.objeto('bote', Math.floor(x - 1), Math.floor(y - 1), Math.floor(rBo() * 4) * 90, naAgua)) { K.marcaCirc(x, y, 1.1, 4, true); break; } } }
     if (terreno === 'neve') for (let i = 0, n = 9; i < 60 && n > 0; i++) {
       const [x, y] = pt(ent(rB, -Dv / 2, Dv / 2), ent(rB, 2.5, fundo + 1)), rr = ent(rB, 0.5, 1.3);
       if (nasVagas(x, y, 1.5) || !K.livreCirc(x, y, rr, naAgua)) continue;

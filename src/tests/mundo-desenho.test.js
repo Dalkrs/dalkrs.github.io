@@ -72,7 +72,7 @@ const desfazer = async a => { await a.F.click('#btDesfazer'); await a.F.waitForT
   await passo('o pincel livre, sem grade', async () => {
     await ferramenta(L, 'h');
     ok(await L.F.locator('#opts .chip', { hasText: 'Pincel livre' }).getAttribute('aria-pressed') === 'true', 'sem grade, a ferramenta Terreno começa no pincel livre');
-    ok(await L.F.locator('#opts select[aria-label="Com o que o pincel pinta"] option').count() === 25, 'o pincel livre oferece os terrenos (lote 17: 24) e a borracha');
+    ok(await L.F.locator('#opts select[aria-label="Com o que o pincel pinta"] option').count() === 29, 'o pincel livre oferece os terrenos (lote 54: 28) e a borracha');
     await opcao(L, 'Com o que o pincel pinta', 'fl');
     await pairar(L, 300, 300);
     ok(/Arraste para pintar à mão: Floresta\./.test(await dica(L)) && await L.F.locator('#mundo svg .c-rasc .pincel').count() === 1, 'a dica diz o que o pincel pinta; o círculo do pincel segue o cursor: ' + await dica(L));

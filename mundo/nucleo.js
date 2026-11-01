@@ -160,7 +160,17 @@
     { id: 'ch', nome: 'Charneca', cor: '#8f7a8c', custo: 8, tex: 'charneca' },
     { id: 'td', nome: 'Terra devastada', cor: '#6e5a48', custo: 8, tex: 'devastada' },
   ];
-  TERRENOS_PADRAO.push(...TERRENOS_NOVOS, ...TERRENOS_L17);
+  /* (lote 54) O rio e as três estradas, pintados por hexágono: o fundo do hexágono fica com o terreno da maioria dos
+     vizinhos (a margem) e a água (ou a estrada) passa por ele, ligando sozinha aos vizinhos do mesmo jeito — o rio aos
+     rios, aos lagos e aos mares; a estrada às estradas e às pontes. Onde uma estrada atravessa um rio, a ponte sai
+     sozinha e o rio deixa de custar a mais ali. Como os do lote 17, um mapa de antes os recebe pela aba Terreno. */
+  const TERRENOS_L54 = [
+    { id: 'ri', nome: 'Rio', cor: '#4f86c0', custo: 10, tex: 'rio' },
+    { id: 'et', nome: 'Estrada de terra', cor: '#a8865a', custo: 4, tex: 'estradaTerra' },
+    { id: 'ep', nome: 'Estrada de pedra', cor: '#9c968b', custo: 3, tex: 'estradaPedra' },
+    { id: 'ev', nome: 'Estrada pavimentada', cor: '#c4b89c', custo: 2, tex: 'estradaPav' },
+  ];
+  TERRENOS_PADRAO.push(...TERRENOS_NOVOS, ...TERRENOS_L17, ...TERRENOS_L54);
   /* (lote 17) A defesa do terreno na batalha (de começo; o mestre muda na tabela da aba Guerra): quem defende o
      hexágono da batalha ganha o número do terreno dele. */
   const DEF_TERRENO_PADRAO = { mo: 3, df: 3, co: 2, fl: 1, se: 1, pa: 1, ru: 1, gl: 1, fm: 1 };
@@ -174,7 +184,12 @@
     selva: { nome: 'Selva' }, savana: { nome: 'Savana' }, tundra: { nome: 'Tundra' }, corrompida: { nome: 'Corrompida' },
     raso: { nome: 'Água rasa' }, fundo: { nome: 'Mar profundo' }, desfiladeiro: { nome: 'Desfiladeiro' }, geleira: { nome: 'Geleira' },     // (lote 17)
     morta: { nome: 'Floresta morta' }, oasis: { nome: 'Oásis' }, charneca: { nome: 'Charneca' }, devastada: { nome: 'Terra devastada' },
+    rio: { nome: 'Rio' }, estradaTerra: { nome: 'Estrada de terra' }, estradaPedra: { nome: 'Estrada de pedra' }, estradaPav: { nome: 'Estrada pavimentada' },     // (lote 54)
   };
+  // (lote 54) o que liga: o rio (e a água em que ele deságua) e as estradas, pelo desenho do terreno (o nível da estrada:
+  // 1 terra, 2 pedra, 3 pavimentada)
+  const TEX_VIA = { estradaTerra: 1, estradaPedra: 2, estradaPav: 3 }, TEX_AGUA = { ondas: 1, raso: 1, fundo: 1 };
+  const ehRede = tex => tex === 'rio' || !!TEX_VIA[tex];
   const TEX_PADRAO = Object.fromEntries(TERRENOS_PADRAO.map(t => [t.id, t.tex]));
   /* Carimbos: desenhos para enfeitar o mapa (arte própria, numa caixa 24×24). Na tela, .cc é preenchido com a cor do
      carimbo, .tc é um traço nessa cor, e o resto é traço de tinta escura. */
@@ -789,8 +804,112 @@
     if (proprio != null) return { q, r, terreno: t, custo: proprio, de: 'hex', regiao: null, desenho };
     const c = centroHex(m, q, r), reg = regiaoComCusto(m, c.x, c.y);
     if (reg) return { q, r, terreno: t, custo: reg.custo, de: 'regiao', regiao: reg, desenho };
+    // (lote 54) o rio com ponte custa o da estrada que passa por ela (sem o a mais de atravessar a água)
+    const rd = t && texDoTerreno(t) === 'rio' ? redeDoHex(m, q, r) : null;
+    if (rd && rd.ponte && rd.ponte.t) return { q, r, terreno: t, custo: rd.ponte.t.custo, de: 'ponte', regiao: null, desenho, ponte: true };
     if (t) return { q, r, terreno: t, custo: t.custo, de: 'terreno', regiao: null, desenho };
     return { q, r, terreno: null, custo: CUBOS_HEX, de: 'base', regiao: null, desenho };
+  }
+  /* ---------------- (lote 54) a rede: os rios e as estradas por hexágono ----------------
+     Os seis vizinhos na ordem de VIZ_REDE (a direção i e a i+3 são opostas). O terreno de um hexágono para a rede é o que
+     o mestre deu a ele, ou o do desenho à mão. */
+  const VIZ_REDE = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+  function terDoHex(m, q, r) {
+    const k = q + ',' + r, v = ehObj(m) && ehObj(m.hexes) ? m.hexes[k] : undefined;
+    const ex = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '';
+    return ex === '-' ? null : terrenoDe(m, ex || terrenoPintado(m).get(k) || '');
+  }
+  const cacheRede = typeof WeakMap === 'function' ? new WeakMap() : null;
+  // o que cada vizinho é: { t (o terreno), tex, rio (rio ou água), agua, via (o nível da estrada, 0 sem) }
+  function vizinhosDaRede(m, q, r) {
+    return VIZ_REDE.map(([dq, dr]) => {
+      const t = terDoHex(m, q + dq, r + dr), tex = texDoTerreno(t);
+      return { t, tex, rio: tex === 'rio' || !!TEX_AGUA[tex], agua: !!TEX_AGUA[tex], via: TEX_VIA[tex] || 0 };
+    });
+  }
+  /* A margem: o terreno da maioria dos vizinhos que não são rio, estrada nem água (no empate, o primeiro na ordem);
+     nenhum assim: o dos vizinhos de dois passos; nenhum mesmo: null. */
+  function margemDoHex(m, q, r) {
+    const conta = new Map(), soma = (t, p) => { if (t && !ehRede(texDoTerreno(t)) && !TEX_AGUA[texDoTerreno(t)]) conta.set(t.id, (conta.get(t.id) || 0) + p); };
+    for (const [dq, dr] of VIZ_REDE) soma(terDoHex(m, q + dq, r + dr), 1);
+    if (!conta.size) for (let dq = -2; dq <= 2; dq++) for (let dr = -2; dr <= 2; dr++) { if (distHex({ q: 0, r: 0 }, { q: dq, r: dr }) === 2) soma(terDoHex(m, q + dq, r + dr), 1); }
+    let melhor = null, n = 0;
+    for (const [id, c] of conta) if (c > n) { n = c; melhor = id; }
+    return melhor ? terrenoDe(m, melhor) : null;
+  }
+  /* A ponte de um hexágono de rio: duas estradas vizinhas que ficam dos dois lados da água (entre elas, nos dois sentidos,
+     há um vizinho de rio ou de água; com a água só de um lado — a nascente —, basta não serem vizinhas uma da outra), as
+     mais opostas. → { a, b (as direções), via (o nível da melhor), t (o terreno dela) } ou null */
+  function ponteDoRio(vz) {
+    const vias = [], aguas = [];
+    vz.forEach((v, i) => { if (v.via) vias.push(i); if (v.rio) aguas.push(i); });
+    if (vias.length < 2) return null;
+    const entre = (a, b) => { for (let i = (a + 1) % 6; i !== b; i = (i + 1) % 6) if (vz[i].rio) return true; return false; };
+    let melhor = null, sep = 0;
+    for (let x = 0; x < vias.length; x++) for (let y = x + 1; y < vias.length; y++) {
+      const a = vias[x], b = vias[y], d = Math.min(b - a, 6 - (b - a));
+      if (d < 2) continue;
+      if (aguas.length >= 2 && !(entre(a, b) && entre(b, a))) continue;
+      if (d > sep) { sep = d; melhor = [a, b]; }
+    }
+    if (!melhor) return null;
+    const [a, b] = melhor, va = vz[a], vb = vz[b], bom = va.via >= vb.via ? va : vb;
+    return { a, b, via: bom.via, t: va.t && vb.t ? (num(va.t.custo, 99) <= num(vb.t.custo, 99) ? va.t : vb.t) : bom.t };
+  }
+  /* A rede num hexágono: → null (não é rio nem estrada) ou { tipo: 'rio' | 'via', via (o nível, nas estradas), liga (as
+     direções que ligam: o rio aos rios e à água; a estrada às estradas e às pontes), ponte (no rio: a de ponteDoRio),
+     margem (o terreno do fundo) } */
+  function redeDoHex(m, q, r) {
+    const t = terDoHex(m, q, r), tex = texDoTerreno(t);
+    if (!ehRede(tex)) return null;
+    let porMapa = null;
+    if (cacheRede) { porMapa = cacheRede.get(m); if (!porMapa) { porMapa = new Map(); cacheRede.set(m, porMapa); } const k = q + ',' + r; if (porMapa.has(k)) return porMapa.get(k); }
+    const vz = vizinhosDaRede(m, q, r), out = { tipo: tex === 'rio' ? 'rio' : 'via', via: TEX_VIA[tex] || 0, liga: [], ponte: null, margem: margemDoHex(m, q, r) };
+    const crua = ligaCrua(m, q, r, vz, tex);
+    // o triângulo (três hexágonos da rede, cada um vizinho dos outros dois): sai a ligação dos dois que têm mais ligações
+    // (no empate, a de chave menor) — o caminho continua passando pelos três, sem o desenho fechar um triângulo
+    const peso = (a, b) => { const ka = a.q + ',' + a.r, kb = b.q + ',' + b.r; return [grauCru(m, a.q, a.r) + grauCru(m, b.q, b.r), ka < kb ? ka + '|' + kb : kb + '|' + ka]; };
+    const maior = (x, y) => x[0] !== y[0] ? x[0] > y[0] : x[1] > y[1];
+    const A = { q, r };
+    out.liga = crua.filter(i => {
+      if (out.tipo === 'rio' && vz[i].agua) return true;
+      const B = { q: q + VIZ_REDE[i][0], r: r + VIZ_REDE[i][1] }, pAB = peso(A, B);
+      for (const j of [(i + 1) % 6, (i + 5) % 6]) {
+        if (!crua.includes(j) || (out.tipo === 'rio' && vz[j].agua)) continue;
+        const C = { q: q + VIZ_REDE[j][0], r: r + VIZ_REDE[j][1] };
+        if (maior(pAB, peso(A, C)) && maior(pAB, peso(B, C))) return false;
+      }
+      return true;
+    });
+    if (out.tipo === 'rio') out.ponte = ponteDoRio(vz);
+    if (porMapa) porMapa.set(q + ',' + r, out);
+    return out;
+  }
+  /* As ligações sem o corte dos triângulos: o rio aos rios e a uma água só (a mais do lado oposto ao resto do rio: a foz
+     não se abre em várias); a estrada às estradas e aos rios em que ela passa por uma ponte. */
+  function ligaCrua(m, q, r, vz, tex) {
+    vz = vz || vizinhosDaRede(m, q, r);
+    tex = tex || texDoTerreno(terDoHex(m, q, r));
+    const out = [];
+    if (tex === 'rio') {
+      const rios = [], aguas = [];
+      vz.forEach((v, i) => { if (v.tex === 'rio') rios.push(i); else if (v.agua) aguas.push(i); });
+      let foz = null, md = -1;
+      for (const a of aguas) { const d = rios.length ? Math.min(...rios.map(b => Math.min(Math.abs(a - b), 6 - Math.abs(a - b)))) : 0; if (d > md) { md = d; foz = a; } }
+      return rios.concat(foz == null ? [] : [foz]).sort((a, b) => a - b);
+    }
+    if (!TEX_VIA[tex]) return out;
+    vz.forEach((v, i) => {
+      if (v.via) out.push(i);
+      else if (v.tex === 'rio') { const [dq, dr] = VIZ_REDE[i], p = ponteDoRio(vizinhosDaRede(m, q + dq, r + dr)); if (p && (p.a === (i + 3) % 6 || p.b === (i + 3) % 6)) out.push(i); }
+    });
+    return out;
+  }
+  const grauCru = (m, q, r) => ligaCrua(m, q, r).length;
+  // o meio do lado do hexágono na direção i (onde a rede passa para o vizinho)
+  function meioDoLado(m, q, r, i) {
+    const a = centroHex(m, q, r), [dq, dr] = VIZ_REDE[i], b = centroHex(m, q + dq, r + dr);
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   }
   /* (lote 7, parte 5a) Os eventos de hoje que cobrem o centro do hexágono somam o peso deles por cima de tudo (até do
      custo próprio): custo (o total), custoBase (sem os eventos), eventos (os ids), extra (os cubos dos eventos) e
@@ -829,7 +948,12 @@
     ondas: 'agua', lavoura: 'campo', ruinas: 'campo', lava: 'lava', cristais: 'cristais', selva: 'selva', savana: 'savana', tundra: 'tundra', corrompida: 'corrompida',
     raso: 'agua', fundo: 'agua', desfiladeiro: 'montanha', geleira: 'neve', morta: 'floresta', oasis: 'deserto', charneca: 'campo', devastada: 'campo' };     // (lote 17)
   const texDoTerreno = t => (!t ? '' : t.tex || (TERRENOS_PADRAO.find(x => x.id === t.id) || {}).tex || '');
-  const biomaDoHex = (m, q, r) => BIOMA_DA_TEX[texDoTerreno(hexInfoBase(m, q, r).terreno)] || null;
+  // (lote 54) o rio e a estrada ficam com o bioma da margem (a cena do hexágono é a floresta, o campo… com a estrada nela)
+  const biomaDoHex = (m, q, r) => {
+    const tex = texDoTerreno(hexInfoBase(m, q, r).terreno);
+    if (ehRede(tex)) { const rd = redeDoHex(m, q, r); return (rd && rd.margem && BIOMA_DA_TEX[texDoTerreno(rd.margem)]) || 'campo'; }
+    return BIOMA_DA_TEX[tex] || null;
+  };
   // o número do mapa (pelo id), para as sementes das fronteiras: dois mapas não dão as mesmas
   const semDoMapa = m => { let h = 0x811c9dc5; for (const ch of String(m.id || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 0x01000193); } return (h >>> 1) || 1; };
   function tijoloHex(m, q, r) {
@@ -865,6 +989,18 @@
     return out.filter(l => l.length > 1 && compr(l) >= 0.005 && l.some((p, i) => i > 0 && !naBorda([(p[0] + l[i - 1][0]) / 2, (p[1] + l[i - 1][1]) / 2])))
       .map(l => { const n = l.length, pts2 = n <= 24 ? l : Array.from({ length: 24 }, (_, k) => l[Math.round(k * (n - 1) / 23)]); return { pts: pts2, ini: naBorda(l[0]), fim: naBorda(l[n - 1]) }; });
   }
+  /* (lote 54) Os pedaços da rede dentro do tijolo, em (u, v): com dois lados ligados, uma curva de um ao outro pelo centro;
+     com um, do centro (a nascente, a ponta da estrada) ao lado; com três ou mais, os dois primeiros numa curva e os
+     outros do centro ao lado. Cada pedaço em 9 pontos. */
+  function pedacosDaRede(m, q, r, T, liga) {
+    if (!liga.length) return [];
+    const c = centroHex(m, q, r), uv = p => [Math.round(limitar((p.x - T.x0) / T.w, 0, 1) * 1e4) / 1e4, Math.round(limitar((p.y - T.y0) / T.h, 0, 1) * 1e4) / 1e4];
+    const curva = (a, b, ctl) => { const out = []; for (let i = 0; i <= 8; i++) { const t = i / 8, s = 1 - t; out.push(uv({ x: s * s * a.x + 2 * s * t * ctl.x + t * t * b.x, y: s * s * a.y + 2 * s * t * ctl.y + t * t * b.y })); } return out; };
+    const meio = i => meioDoLado(m, q, r, i), out = [];
+    if (liga.length >= 2) out.push({ pts: curva(meio(liga[0]), meio(liga[1]), c), ini: true, fim: true });
+    for (const i of liga.length >= 2 ? liga.slice(2) : liga) { const b = meio(i); out.push({ pts: curva(c, b, { x: (c.x + b.x) / 2, y: (c.y + b.y) / 2 }), ini: false, fim: true }); }
+    return out;
+  }
   /* A cena do hexágono (q, r): → { k ('q,r'), q, r, orient, sem (o número do mapa), ter (o bioma dele, ou 'agua', ou
      null), nome (o do terreno), viz: { direção: bioma }, rios: [{ pts, ini, fim }] (da nascente para a foz; o mais
      comprido primeiro), caminhos: [{ t, pts, ini, fim }] } — os rios são as linhas de rio; os caminhos, as linhas de
@@ -880,6 +1016,12 @@
       if (!ehObj(o) || !Array.isArray(o.pts) || o.pts.length < 2) continue;
       const t = o.k === 'l' && tem(LINHAS, o.estilo) ? o.estilo : o.k === 't' && (o.via === 'estrada' || o.via === 'trilha') ? o.via : null;
       if (t) for (const pc of recorteNoTijolo(o.pts, T)) { if (t === 'rio') rios.push(pc); else caminhos.push(Object.assign({ t }, pc)); }
+    }
+    // (lote 54) o rio e a estrada pintados no hexágono: do meio de um lado ligado, pelo centro, ao meio do outro
+    const rd = redeDoHex(m, q, r);
+    if (rd) {
+      for (const pc of pedacosDaRede(m, q, r, T, rd.liga)) { if (rd.tipo === 'rio') rios.push(pc); else caminhos.push(Object.assign({ t: rd.via >= 2 ? 'estrada' : 'trilha', nivel: rd.via }, pc)); }
+      if (rd.ponte) for (const pc of pedacosDaRede(m, q, r, T, [rd.ponte.a, rd.ponte.b])) caminhos.push(Object.assign({ t: rd.ponte.via >= 2 ? 'estrada' : 'trilha', nivel: rd.ponte.via, ponte: true }, pc));
     }
     const perto = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.05;
     const mesmo = (a, b) => { const a0 = a.pts[0], a1 = a.pts[a.pts.length - 1], b0 = b.pts[0], b1 = b.pts[b.pts.length - 1]; return (perto(a0, b0) && perto(a1, b1)) || (perto(a0, b1) && perto(a1, b0)); };
@@ -1511,7 +1653,9 @@
       const k = chaveHex(cam[i]), L = distHex(cam[i - 1], cam[i]) > 1 ? ligMar.get(chaveHex(cam[i - 1]) + '|' + k) : null;
       if (L) { dias += L.d; mar.push({ a: L.a, b: L.b, d: L.d }); continue; }      // (lote 17) a travessia: os dias, não os cubos
       terra++;
-      custo += custoHex(mapa, cam[i].q, cam[i].r); if (tipoVia.get(k) === 'estrada') est++; else if (tipoVia.get(k) === 'trilha') tri++;
+      // (lote 54) a estrada pintada no hexágono (e a ponte) também conta como estrada
+      const tv = tipoVia.get(k) || (i2 => (TEX_VIA[texDoTerreno(i2.terreno)] || i2.ponte ? 'estrada' : ''))(hexInfoBase(mapa, cam[i].q, cam[i].r));
+      custo += custoHex(mapa, cam[i].q, cam[i].r); if (tv === 'estrada') est++; else if (tv === 'trilha') tri++;
     }
     const hexes = mar.length ? terra : cam.length - 1;
     const out = { ok: true, pts, cam, hexes, custo: arred(custo), via: est >= tri && est ? 'estrada' : 'trilha', naVia: est + tri, msg: plHex(hexes) + ' (' + n1(custo) + ' cubos)' + (est + tri ? ', ' + plHex(est + tri) + ' por estrada ou trilha' : '') };
@@ -3215,7 +3359,7 @@
   function terrenosQueFaltam(mapa) {
     const ts = ehObj(mapa) && Array.isArray(mapa.terrenos) ? mapa.terrenos : [];
     const ids = new Set(ts.map(t => t.id)), nomes = new Set(ts.map(t => String(t.nome || '').trim().toLowerCase()));
-    return TERRENOS_NOVOS.concat(TERRENOS_L17).filter(t => !ids.has(t.id) && !nomes.has(t.nome.toLowerCase())).slice(0, Math.max(0, MAX_TER - ts.length)).map(t => copia(t));
+    return TERRENOS_NOVOS.concat(TERRENOS_L17, TERRENOS_L54).filter(t => !ids.has(t.id) && !nomes.has(t.nome.toLowerCase())).slice(0, Math.max(0, MAX_TER - ts.length)).map(t => copia(t));
   }
   /* (lote 8) A bandeira do clã ligado à facção, como a projeção a leva aos jogadores (f.br): a forma, a divisão, as duas
      cores, o símbolo e a imagem (só a do banco, https). Quem desenha (ClaNucleo.brasaoSvg) confere tudo de novo. */
@@ -3847,7 +3991,7 @@
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, controleDaRegiao, acimaDe,
     TIPOS_GRUPO, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
     CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
-    HONRA, TERRENOS_NOVOS, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
+    HONRA, TERRENOS_NOVOS, TERRENOS_L54, redeDoHex, margemDoHex, meioDoLado, VIZ_REDE, TEX_VIA, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     normBr,
     MIS_E, situacaoDaMissao,

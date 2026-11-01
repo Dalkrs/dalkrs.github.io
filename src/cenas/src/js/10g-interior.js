@@ -40,26 +40,29 @@ const Interior = (() => {
   const MOVEIS = {
     sala: ['tapete', 'mesa', 'cadeira', 'cadeira', 'estante', 'bau'],
     quarto: ['cama', 'bau', 'vela', 'tapete'],
-    cozinha: ['braseiro', 'mesa', 'barril', 'caixote', 'jarro'],
-    loja: ['#balcao', 'estante', 'estante', 'caixote', 'barril', 'jarro'],
-    deposito: ['caixote', 'barril', 'caixote', 'estante', 'barril'],
-    salao: ['#balcao', '#palco', 'mesa', 'cadeira', 'cadeira', 'mesa', 'cadeira', 'cadeira', 'barril', 'mesa', 'cadeira', 'braseiro'],
-    nobre: ['#mesaAlta', 'tapete', 'cadeira', 'cadeira', '#colunas', 'estatua', 'estatua', 'braseiro', 'estante'],
-    forja: ['braseiro', 'bigorna', '#tina', 'barril', 'caixote', 'bigorna'],
-    armazem: ['#alcapao', 'caixote', 'caixote', 'barril', 'estante', 'barril', 'caixote', 'jarro', 'barril'],
+    // (lote 54: os sacos de grãos e as frutas na cozinha, na loja e no depósito; o quadro de missões na taverna; o troféu
+    //  no salão nobre; a pedra de amolar e os lingotes na forja; o atril no templo e na biblioteca; o boneco e o alvo no
+    //  arsenal do quartel; a cortina na sacristia)
+    cozinha: ['braseiro', 'mesa', 'barril', 'caixote', 'jarro', 'sacos'],
+    loja: ['#balcao', 'estante', 'estante', 'caixote', 'barril', 'jarro', 'frutas', 'sacos'],
+    deposito: ['caixote', 'barril', 'caixote', 'estante', 'barril', 'sacos'],
+    salao: ['#balcao', '#palco', 'mesa', 'cadeira', 'cadeira', 'mesa', 'cadeira', 'cadeira', 'barril', 'mesa', 'cadeira', 'braseiro', 'quadroMissoes'],
+    nobre: ['#mesaAlta', 'tapete', 'cadeira', 'cadeira', '#colunas', 'estatua', 'estatua', 'braseiro', 'estante', 'trofeu'],
+    forja: ['braseiro', 'bigorna', '#tina', 'barril', 'caixote', 'bigorna', 'rebolo', 'lingotes'],
+    armazem: ['#alcapao', 'caixote', 'caixote', 'barril', 'estante', 'barril', 'caixote', 'jarro', 'barril', 'sacos', 'sacos'],
     escritorio: ['mesa', 'cadeira', 'estante', 'bau'],
-    nave: ['altar', 'estatua', 'estatua', 'vela', 'vela', '#estrado', '#colunata', '#bancos', '#pia'],
-    sacristia: ['estante', 'bau', 'vela'],
-    biblioteca: ['estante', 'estante', 'estante', 'mesa', 'cadeira', 'vela'],
+    nave: ['altar', 'estatua', 'estatua', 'vela', 'vela', '#estrado', '#colunata', '#bancos', '#pia', 'atril'],
+    sacristia: ['estante', 'bau', 'vela', 'cortina'],
+    biblioteca: ['estante', 'estante', 'estante', 'mesa', 'cadeira', 'vela', 'atril'],
     dormitorio: ['cama', 'cama', 'cama', 'cama', 'bau', 'bau'],
-    arsenal: ['estante', 'caixote', 'bau', 'estante'],
+    arsenal: ['estante', 'caixote', 'bau', 'estante', 'boneco', 'alvo'],
     refeitorio: ['mesa', 'banco', 'banco', 'mesa', 'banco', 'banco', 'barril'],
   };
   // perto de quê cada móvel gosta de ficar (a cadeira junto da mesa, o baú e a vela junto da cama, as estátuas junto do altar)
   const PERTO = { cadeira: ['mesa'], banco: ['mesa'], vela: ['altar', 'cama', 'mesa'], bau: ['cama'], estatua: ['altar'], bigorna: ['braseiro'], jarro: ['braseiro', 'mesa'] };
   // o estilo troca alguns móveis e põe outros
   const TROCA = { oriental: { cadeira: 'almofada', vela: 'lanterna' }, desertico: { cadeira: 'almofada' }, anao: { vela: 'braseiro' } };
-  const EXTRA = { nordico: { sala: 'fogueira', salao: 'fogueira', nobre: 'fogueira' }, elfico: { sala: 'flores', quarto: 'flores', salao: 'flores', nobre: 'flores' }, desertico: { sala: 'jarro', quarto: 'tapete' }, oriental: { sala: 'lanterna', salao: 'lanterna', nobre: 'lanterna' } };
+  const EXTRA = { nordico: { sala: 'fogueira', salao: 'fogueira', nobre: 'fogueira' }, elfico: { sala: 'flores', quarto: 'flores', salao: 'flores', nobre: 'flores' }, desertico: { sala: 'jarro', quarto: 'tapete' }, oriental: { sala: ['lanterna', 'tatame', 'bonsai'], quarto: ['tatame', 'biombo'], salao: ['lanterna', 'biombo'], nobre: ['lanterna', 'biombo', 'bonsai'] } };     // (lote 54: o tatame, o biombo e o bonsai)
   // o piso de cada tipo (pelo tipo do vilarejo que mais se parece)
   const PISO_DE = { casa: 'casa', loja: 'armazem', taverna: 'taverna', ferraria: 'ferraria', armazem: 'armazem', templo: 'capela', senhor: 'taverna', quartel: 'ferraria', navio: 'armazem' };
   const tipoValido = t => (PLANTAS[t] ? t : PLANTAS[DO_VILAREJO[t]] ? DO_VILAREJO[t] : 'casa');
@@ -283,7 +286,7 @@ const Interior = (() => {
         },
       };
       // os móveis da sala (com os do estilo); o "#" marca uma arrumação
-      const ids = (EX[q.papel] ? [EX[q.papel]] : []).concat((MOVEIS[q.papel] || MOVEIS.sala)).filter(id => id[0] === '#' || Props.P[TR[id] || id]);
+      const ids = [].concat(EX[q.papel] || []).concat((MOVEIS[q.papel] || MOVEIS.sala)).filter(id => id[0] === '#' || Props.P[TR[id] || id]);
       // quantos (o tapete e as arrumações não contam; o tapete só entra em sala de 12 casas ou mais)
       const max = clamp(Math.round(q.w * q.h / 5), 1, ids.filter(id => id[0] !== '#').length), contam = () => q.moveis.filter(m => m.id !== 'tapete' && !m.arranjo).length;
       const cx0 = q.x + q.w / 2, cy0 = q.y + q.h / 2;

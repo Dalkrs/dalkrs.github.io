@@ -2,6 +2,60 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.01-4",
+      "data": "2026-11-01",
+      "titulo": "Rios e estradas no Mapa-múndi, e lugares gerados mais caprichados",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: os rios e as estradas agora correm de hexágono em hexágono, com curvas, margens e pontes. Há três estradas — de terra, de pedra e pavimentada — e cada uma deixa a viagem mais rápida."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: os desenhos do terreno ganharam sombra e mais detalhe — as árvores, os montes, as colinas, as pedras e as ruínas ficam de pé no chão, o mar tem espuma e o capim tem flores."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: as pontes dos lugares gerados aparecem como pontes de verdade — de madeira, com as tábuas e o guarda-corpo, ou de pedra, com o parapeito — e a água corre por baixo delas."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi → Terreno: quatro terrenos novos para o pincel por hexágono — Rio, Estrada de terra (4 cubos), Estrada de pedra (3) e Estrada pavimentada (2). O fundo do hexágono pega o terreno dos vizinhos (a margem) e a água ou a estrada liga sozinha às do lado; o rio deságua no lago ou no mar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Pintar estrada por cima de um rio não apaga o rio: com estrada dos dois lados, a ponte aparece sozinha, e ali o rio custa o da estrada. Sem ponte, atravessar o rio custa 10 cubos. Num mapa de antes, a aba Terreno oferece “Acrescentar” os quatro."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A cena gerada num hexágono de rio ou de estrada sai com o rio e a estrada (e a ponte), no chão da margem. A rota traçada pela estrada pintada conta como estrada."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Gerar um lugar: os objetos que ainda não apareciam entram nos lugares — a feira em volta da praça do vilarejo (as barracas, as frutas, os sacos e o carrinho), a placa na frente do armazém e da loja, o bote no rio e no porto, a pedra de amolar e os lingotes na forja, o quadro de missões na taverna, o atril no templo, os bonecos e o alvo no castelo, o troféu no salão, o trono de ossos e o buraco nas masmorras, e o torii, a lanterna de pedra, o bonsai, o tatame e o biombo no estilo Oriental."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Catacumbas: alguns corredores viram túneis cavados na pedra, mais largos aqui e mais estreitos ali, com covas dos lados e a parede de rocha bruta."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Gerar um lugar: os caminhos contornam os planaltos, as dunas e a neve funda; as árvores ficam espalhadas sem fileiras nem montes; a água e as pontes dos vilarejos e das cidades ficam com o relevo leve (o desenho do fundo aparece, e a altura continua valendo)."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Cemitério gerado: nenhum túmulo cai mais na porta do mausoléu nem dentro da casa do coveiro."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.01-3",
       "data": "2026-11-01",
       "titulo": "Os mistérios e o gerador de lugares novo",

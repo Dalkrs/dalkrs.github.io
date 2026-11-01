@@ -65,7 +65,7 @@
       ],
       mestre: [
         { t: 'Trocar e organizar as cenas', txt: 'O botão da cena abre a lista: pastas (“Organizar em pastas…”), famílias (a cidade, o bairro, a casa — uma cena dentro da outra) e as cenas ligadas ao Mapa-múndi.', ir: { aba: 'cenas', g: 'Trocar de cena' } },
-        { t: 'Gerar um lugar', txt: 'No botão de cenas, “Gerar um lugar…”. À esquerda, os lugares em grupos: Povoados (Vilarejo, Cidade, Tribo, Porto), Natureza (Encontro, Região livre), Fortes e ruínas (Castelo, Ruínas, Cemitério), Subterrâneo (Masmorra, Catacumbas) e Especiais (Cena do crime, Arena). No meio, a prévia grande: clique numa parte para travar e “Gerar outro” sorteia só o resto. À direita, os blocos: o lugar, o Ambiente (estilo, hora, clima, estação), Povoar (luzes, inimigos do Bestiário, moradores, saque) e Mistério — tudo oculto até você revelar.', ir: { aba: 'cenas', g: 'Povoar o lugar' } },
+        { t: 'Gerar um lugar', txt: 'No botão de cenas, “Gerar um lugar…”. À esquerda, os lugares em grupos: Povoados (Vilarejo, Cidade, Tribo, Porto), Natureza (Encontro, Região livre), Fortes e ruínas (Castelo, Ruínas, Cemitério), Subterrâneo (Masmorra, Catacumbas) e Especiais (Cena do crime, Arena). No meio, a prévia grande: clique numa parte para travar e “Gerar outro” sorteia só o resto. À direita, os blocos: o lugar, o Ambiente (estilo, hora, clima, estação), Povoar (luzes, inimigos do Bestiário, moradores, saque) e Mistério — tudo oculto até você revelar. Os lugares já vêm com a feira na praça, o bote no rio, a forja com a pedra de amolar, o quadro de missões na taverna, os bonecos de treino do castelo, as pontes de madeira ou de pedra e, nas catacumbas, túneis cavados na rocha.', ir: { aba: 'cenas', g: 'Povoar o lugar' } },
         { t: 'A cena do crime', txt: 'A aba Cena do crime gera a mansão, a taverna, o beco, a cripta ou a clareira da lua cheia. Em qualquer lugar, o bloco Mistério põe um caso do Escudo (ou um caso novo) na cena: o corpo coberto (ou o lugar revirado) e uma marca de pista oculta para cada vestígio e documento, perto de onde ela costuma ficar. Dois cliques numa marca a revelam e entregam a pista à mesa.', ir: { aba: 'cenas', g: 'A cena do crime e as pistas' } },
         { t: 'As ferramentas', txt: 'Na barra da esquerda: selecionar, mover, régua, tokens, objetos (J), desenho (paredes, portas, janelas, relevo), luz, névoa (U), efeitos de magia (Y) e o grupo Mestre (a vez, os momentos, os lembretes, a cura e as energias).', ir: { aba: 'cenas', g: 'As ferramentas' } },
         { t: 'Os turnos', txt: 'Na aba Turnos: puxe o grupo, role a iniciativa (com faixas de grupo para muitos inimigos), comece o combate. N passa a vez, Shift+N volta. Atrasar, pular, entrar no combate, surpresa e o olho que esconde um combatente dos jogadores.', tecla: 'N', ir: { aba: 'cenas', g: 'Atrasar, pular, entrar' } },
@@ -186,6 +186,7 @@
       ] },
       jogador: [
         { t: 'O mapa', txt: 'Arraste para andar, a roda para aproximar. Você vê o que o mestre deixou à vista; o resto fica sob a névoa.', ir: { aba: 'mundo', g: 'O mapa' } },
+        { t: 'Rios e estradas', txt: 'Os rios correm de hexágono em hexágono até o lago ou o mar; as estradas (de terra, de pedra e pavimentada) deixam a viagem mais rápida, e a ponte aparece onde a estrada cruza o rio.' },
         { t: 'A data, a hora e o clima', txt: 'Junto da data: o dia da semana, o tempo de marcha (“4º tempo de 10”) e o clima de agora. Clicar na data mostra a campanha que está no mapa.', ir: { aba: 'mundo', g: 'A data do mundo' } },
         { t: 'O painel', txt: 'Hoje (eventos, viagem), Reinos (a sua facção, o Livro do reino), Corte (quem vocês conhecem, árvores de família, títulos), Diplomacia e Intrigas (os segredos descobertos).', ir: { aba: 'mundo', g: 'O painel' } },
         { t: 'Camadas', txt: 'O botão Camadas (tecla C) mostra e esconde cidades, estradas, eventos, regiões, guerra… só no seu aparelho. Atalhos Viagem, Política, Guerra e Tudo.', tecla: 'C' },
@@ -193,6 +194,7 @@
       ],
       mestre: [
         { t: 'Criar o mapa', txt: 'Uma imagem sua ou papel em branco. Na aba Terreno, a grade de hexágonos (cada um vale 5 cubos), os tipos de terreno com o custo, e o pincel para pintar.', ir: { aba: 'mundo', g: 'Trocar de mapa' } },
+        { t: 'Rios e estradas por hexágono', txt: 'No pincel por hexágono (Terreno, H): Rio, Estrada de terra (4 cubos), Estrada de pedra (3) e Estrada pavimentada (2). O fundo pega o terreno dos vizinhos e a água ou a estrada liga sozinha às do lado. Pinte a estrada por cima do rio: o rio fica e a ponte aparece, custando o da estrada. Sem ponte, atravessar o rio custa 10. Num mapa de antes, a aba Terreno oferece “Acrescentar”.', ir: { aba: 'mundo', g: 'Rios e estradas' } },
         { t: 'Ferramentas', txt: 'Marcadores (cidades, portos, ruínas, lojas…), Grupos (o dos jogadores, caravanas, patrulhas, exércitos), Rotas, Regiões, Desenho com carimbos, Terreno (H), Frente (guerra e zonas de perigo) e Eventos.', ir: { aba: 'mundo', g: 'As ferramentas' } },
         { t: 'Passar o tempo e viajar', txt: '“+1 tempo” leva todos os grupos com rota; ▶ passa o dia. O clima muda aos poucos, os eventos pesam na viagem e as caravanas andam sozinhas. Tudo tem Desfazer.', ir: { aba: 'mundo', g: 'A data do mundo' } },
         { t: 'Ver como jogador', txt: 'A chave “Ver como jogador” mostra o mapa exatamente como a mesa vê.', ir: { aba: 'mundo', g: 'Ver como jogador' } },
@@ -442,6 +444,7 @@
     { t: 'O roteiro fica na barra de cima', txt: 'Em qualquer aba, os passos da sessão ao lado.', papel: 'mestre', sistema: 'escudo', ir: { casca: '#btnRoteiro' } },
     { t: 'Notas com links', txt: 'No bloco de notas, @ liga uma ficha e # uma cena ou lugar. Clicar leva até lá.', papel: 'mestre', sistema: 'mesa', ir: { casca: '#btnNotas' } },
     { t: 'Povoar o lugar', txt: 'O gerador põe luzes, inimigos do Bestiário, moradores com segredo e saque — tudo escondido até você revelar.', papel: 'mestre', sistema: 'cenas', ir: { aba: 'cenas', g: 'Povoar o lugar' } },
+    { t: 'A estrada passa por cima do rio', txt: 'No Mapa-múndi, pinte a estrada por cima do rio: o rio fica e a ponte aparece sozinha.', papel: 'mestre', sistema: 'mundo', ir: { aba: 'mundo', g: 'Rios e estradas' } },
     { t: 'A cena nasce do mapa', txt: '“Gerar a cena aqui”, no grupo do Mapa-múndi, já traz o terreno, o rio, o clima, a estação e a guerra.', papel: 'mestre', sistema: 'mundo' },
     { t: 'Ver como jogador', txt: 'No Mapa-múndi, a chave mostra o mapa exatamente como a mesa vê.', papel: 'mestre', sistema: 'mundo', ir: { aba: 'mundo', g: 'Ver como jogador' } },
     { t: 'A linha invisível na ordem', txt: 'O olho de uma linha da ordem de turnos esconde aquele combatente dos jogadores.', papel: 'mestre', sistema: 'cenas', ir: { aba: 'cenas', g: 'Atrasar, pular, entrar' } },
@@ -464,5 +467,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 3, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 4, sistemas, tarefas, roteiro, sabia };
 })();

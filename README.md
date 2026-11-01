@@ -2948,6 +2948,22 @@ Quem joga não apaga a linha (dono, visibilidade e apagar são de quem mestra, e
 `dados.apagada` e o site esconde. O SQL `0032_notas_dos_jogadores.sql` deixa o jogador criar os dois tipos e editar o
 caderno do grupo, e põe um tamanho máximo por capítulo. A busca rápida acha o caderno de cada um e o do grupo.
 
+### Rios e estradas por hexágono, e o gerador mais caprichado (lote 54)
+
+No Mapa-múndi, quatro terrenos novos (`TERRENOS_L54` em `mundo/nucleo.js`): Rio (`ri`, textura `rio`, 10 cubos) e as
+estradas de terra, de pedra e pavimentada (`et`/`ep`/`ev`, 4/3/2 cubos). O que liga é a textura, então um terreno do
+mestre com a textura de rio também liga. `redeDoHex(m, q, r)` diz a margem (o terreno da maioria dos vizinhos que não
+são rio, estrada nem água), as direções que ligam (o rio aos rios e a uma água só; a estrada às estradas e às pontes;
+nos triângulos sai a ligação dos dois de mais ligações) e a ponte (duas estradas dos dois lados da água). O rio com
+ponte custa o da estrada. `mundo/tela.js` pinta o fundo do hexágono com a margem e desenha a rede por cima
+(`desenharRede`); o pincel de estrada não apaga o rio. A cena do hexágono (`hexParaCena`) leva o rio e a estrada.
+
+Nas Cenas: `Estilos.ponte` desenha a ponte de madeira ou de pedra; a água e as plataformas que o fundo já desenha ficam
+leves (`a < 0.5`) e a correnteza não passa por cima das pontes; os objetos do lote 48 entram nos lugares (a feira do
+vilarejo com sorteio próprio, a placa da loja, o bote, a forja, a taverna, o castelo, as masmorras, o estilo oriental);
+as catacumbas ganham túneis cavados (`escavarCorredores`, `paredesEscavadas`, `p.escavado`). O teste
+`src/cenas/test/lote54-sementes.js` varre 200 sementes por lugar (`SEMENTES=40` para uma volta rápida).
+
 ### O Manual (lote 51)
 
 A wiki do site, em `manual/`: `index.html` desenha as páginas e `conteudo.js` (window.TC_MANUAL) guarda o texto —

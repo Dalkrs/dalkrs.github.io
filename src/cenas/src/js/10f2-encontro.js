@@ -1412,7 +1412,7 @@ const Encontro = (() => {
   function vegetacao(K, rV) {
     const P = K.P, { W, H, at, pos } = K, E = Estilos.de(K.estilo);
     if (!P.semVeg) {
-      const base = (P.densBase != null ? P.densBase : TER[K.terreno].dens) * (E.dens || 1);
+      const base = (P.densBase != null ? P.densBase : TER[K.terreno].dens) * (E.dens || 1), perto = new Map();
       for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
         if (at(i, j) !== 0) continue;
         let colado = false;
@@ -1422,7 +1422,18 @@ const Encontro = (() => {
         const pr = base * m * (borda < 2 ? 1.5 : 1);
         if (rV() >= pr) continue;
         const esp = typeof P.esp === 'function' ? P.esp(x, y, rV) : P.esp || especieDe(K, rV), R = RAIO[esp] || [0.6, 1.1];
-        P.arvores.push({ x: x + (rV() - 0.5) * 0.5, y: y + (rV() - 0.5) * 0.5, r: R[0] + rV() * (R[1] - R[0]), esp });
+        // (lote 54) a árvore mais solta dentro da casa, e afastada da vizinha que ficou perto demais (como a amostra de
+        // Poisson: espalhadas sem fileiras nem montes), com o mesmo sorteio de antes
+        let ax = x + (rV() - 0.5) * 0.85, ay = y + (rV() - 0.5) * 0.85;
+        const ar = R[0] + rV() * (R[1] - R[0]);
+        for (let volta = 0; volta < 2; volta++) for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) for (const o of perto.get((i + a) + ',' + (j + b)) || []) {
+          const dx = ax - o.x, dy = ay - o.y, d = Math.hypot(dx, dy) || 0.01, min = (ar + o.r) * 0.5;
+          if (d < min) { const f = (min - d) * 0.6 / d; ax += dx * f; ay += dy * f; }
+        }
+        ax = Math.min(i + 0.98, Math.max(i + 0.02, ax)); ay = Math.min(j + 0.98, Math.max(j + 0.02, ay));
+        const nova = { x: ax, y: ay, r: ar, esp };
+        P.arvores.push(nova);
+        { const ch = i + ',' + j; if (!perto.has(ch)) perto.set(ch, []); perto.get(ch).push(nova); }
         pos(i, j, 4);
       }
     }
@@ -1720,6 +1731,7 @@ const Encontro = (() => {
       if (noRio[m]) c += 6;
       if (v === 5) c += 3;
       if (v === 4) c += 0.8;
+      if (v === 6) c += 3.5;          // (lote 54: contorna o planalto e a duna)
       if (v === 1) c *= 0.5;
       if (Math.min(x, y, W - x, H - y) < 2) c += 1.5;
       return L * c;

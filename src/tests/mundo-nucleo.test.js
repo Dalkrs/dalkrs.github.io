@@ -30,9 +30,10 @@ ok(N.RITMOS === undefined && N.CUBOS_HEX === 5 && N.CUBOS_DIA === 30, 'sem ritmo
 ok(j(Object.keys(N.VIAS)) === j(['estrada', 'trilha', 'selvagem', 'rio', 'mar']) && Object.values(N.VIAS).every(v => v.nome && v.mult === undefined) && N.VIAS.mar.nome === 'Mar (navio)', 'vias: só o desenho da rota (não mudam a velocidade)');
 ok(j(N.TERRENOS_PADRAO.map(t => [t.id, t.nome, t.custo])) === j([['pl', 'Planície', 5], ['fl', 'Floresta', 10], ['co', 'Colina', 8], ['mo', 'Montanha', 15], ['pa', 'Pântano', 15], ['de', 'Deserto', 10], ['ne', 'Neve', 15], ['ag', 'Água', 10],
   ['la', 'Lavoura', 6], ['ru', 'Ruínas', 8], ['lv', 'Lava', 30], ['cr', 'Cristais', 12], ['se', 'Selva', 15], ['sv', 'Savana', 6], ['tu', 'Tundra', 10], ['tc', 'Terra corrompida', 12],
-  ['ar', 'Água rasa', 8], ['md', 'Mar profundo', 15], ['df', 'Desfiladeiro', 15], ['gl', 'Geleira', 20], ['fm', 'Floresta morta', 10], ['oa', 'Oásis', 5], ['ch', 'Charneca', 8], ['td', 'Terra devastada', 8]])
+  ['ar', 'Água rasa', 8], ['md', 'Mar profundo', 15], ['df', 'Desfiladeiro', 15], ['gl', 'Geleira', 20], ['fm', 'Floresta morta', 10], ['oa', 'Oásis', 5], ['ch', 'Charneca', 8], ['td', 'Terra devastada', 8],
+  ['ri', 'Rio', 10], ['et', 'Estrada de terra', 4], ['ep', 'Estrada de pedra', 3], ['ev', 'Estrada pavimentada', 2]])
   && N.TERRENOS_PADRAO.every(t => /^#[0-9a-f]{6}$/.test(t.cor)) && j(N.TERRENOS_NOVOS.map(t => t.id)) === j(['la', 'ru', 'lv', 'cr', 'se', 'sv', 'tu', 'tc']),
-  'os tipos de terreno de começo (os oito de antes, os oito novos do lote 6 e os oito do lote 17), com custo em cubos por hexágono');
+  'os tipos de terreno de começo (os oito de antes, os oito novos do lote 6, os oito do lote 17 e, no lote 54, o rio e as três estradas), com custo em cubos por hexágono');
 ok(j(N.RELACOES) === j({ alianca: 'Aliança', neutra: 'Neutra', tensao: 'Tensão', guerra: 'Guerra' }), 'relações como no contrato');
 ok(N.CAL_PADRAO.meses.length === 12 && N.CAL_PADRAO.meses.every(m => m.dias === 30 && m.nome) && N.CAL_PADRAO.ano0 === 1 && N.CAL_PADRAO.era === '', 'calendário padrão: 12 meses de 30 dias');
 
@@ -495,8 +496,8 @@ function mundo() {
   // catálogos
   ok(Object.keys(N.CARIMBOS).length >= 12 && Object.values(N.CARIMBOS).every(c => c.nome && /^#[0-9a-f]{6}$/.test(c.cor) && /^<path/.test(c.svg) && !/<script|on\w+=|href/i.test(c.svg)),
     'carimbos: pelo menos 12, com nome, cor e desenho (só path, nada executável)');
-  ok(j(Object.keys(N.LINHAS)) === j(['rio', 'estrada', 'trilha']) && Object.keys(N.FONTES).length === 3 && Object.keys(N.TEXTURAS).length === 26 && N.TERRENOS_PADRAO.every(t => N.TEXTURAS[t.tex]),
-    'linhas (rio, estrada, trilha), três letras para os textos, as texturas (lote 17: 26) — e cada terreno de começo com a sua');
+  ok(j(Object.keys(N.LINHAS)) === j(['rio', 'estrada', 'trilha']) && Object.keys(N.FONTES).length === 3 && Object.keys(N.TEXTURAS).length === 30 && N.TERRENOS_PADRAO.every(t => N.TEXTURAS[t.tex]),
+    'linhas (rio, estrada, trilha), três letras para os textos, as texturas (lote 54: 30) — e cada terreno de começo com a sua');
 
   // objetos novos
   const M0 = N.normalizarMapa({ cal: { dia: 12 }, faccoes: [{ id: 'fa', nome: 'Norte' }, { id: 'fb', nome: 'Sul' }], objs: [
@@ -713,7 +714,7 @@ function mundo() {
   // a grade: o desenho em cada hexágono (ligado de começo); os terrenos novos que faltam num mapa de antes
   ok(N.normalizarMapa({ grade: { tam: 40 } }).grade.des === true && N.normalizarMapa({ grade: { tam: 40, des: false } }).grade.des === false, 'o desenho em cada hexágono: ligado de começo; o mestre desliga');
   const antigo = N.normalizarMapa({ terrenos: [{ id: 'pl', nome: 'Planície' }, { id: 'xx', nome: 'lava' }] });
-  ok(j(N.terrenosQueFaltam(antigo).map(t => t.id)) === j(['la', 'ru', 'cr', 'se', 'sv', 'tu', 'tc', 'ar', 'md', 'df', 'gl', 'fm', 'oa', 'ch', 'td']) && N.terrenosQueFaltam(N.mapaNovo('x')).length === 0 && N.normalizarMapa({}).terrenos.length === 24,
+  ok(j(N.terrenosQueFaltam(antigo).map(t => t.id)) === j(['la', 'ru', 'cr', 'se', 'sv', 'tu', 'tc', 'ar', 'md', 'df', 'gl', 'fm', 'oa', 'ch', 'td', 'ri', 'et', 'ep', 'ev']) && N.terrenosQueFaltam(N.mapaNovo('x')).length === 0 && N.normalizarMapa({}).terrenos.length === 28,
     'num mapa de antes, os terrenos novos que faltam (nem o id nem o nome; lote 17: e os oito dele); um mapa novo já tem todos');
   const cheio = N.normalizarMapa({ terrenos: Array.from({ length: 36 }, (_, i) => ({ id: 't' + i, nome: 'T' + i })) });
   ok(N.terrenosQueFaltam(cheio).length === 4, 'cabendo no limite de 40 tipos de terreno');
