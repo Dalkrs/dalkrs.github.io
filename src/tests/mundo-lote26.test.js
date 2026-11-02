@@ -10,7 +10,7 @@ const { ok, end } = checker();
 const j = JSON.stringify;
 (async () => {
   const t = await start();
-  const { page: P } = await t.device({ name: 'mundo26', w: 1440, h: 900, fechado: true });
+  const { page: P } = await t.device({ name: 'mundo26', w: 1440, h: 900, fechado: true, seed: { 'tinycats:mundo:semModos': '1' } });   // (lote 63: sem os modos, os grupos de abas de antes)
   const w = ms => P.waitForTimeout(ms);
   const E = (fn, a) => P.evaluate(fn, a);
   const passo = async (nome, fn) => { try { await fn(); } catch (e) { ok(false, nome + ' — parou: ' + String((e && e.message) || e).split('\n')[0]); } };

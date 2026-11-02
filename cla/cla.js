@@ -1162,15 +1162,50 @@
     if (!ps.length) { toast('Todos os personagens da mesa já lideram uma tropa deste clã.'); return; }
     const sel = h('select', { class: 'in', 'data-k': 'tr:lider', 'aria-label': 'Quem lidera' }, h('option', { value: '', text: 'Escolha quem lidera…' }),
       ps.map(p => { const e = estado(p); return h('option', { value: p.id, text: p.nome + (p.dono ? '' : ' (NPC)') + (e.cla ? ' — lidera uma tropa de ' + nomeDoCla(e.cla) + ' (ela passa para este clã)' : e.d ? ' — já tem uma tropa (ela entra no clã)' : '') }); }));
-    const ok = () => { const v = sel.value; if (!v) { toast('Escolha quem lidera a tropa.'); sel.focus(); return; } fechar(); cadastrarTropa(claId, v); };
+    /* (lote 63) a tropa nova nasce pronta: o modelo da primeira unidade (os modelos da mesa, do Mapa-múndi), quantos
+       soldados e a veterania. Quem já tem tropa entra com ela (sem mudar nada nela). */
+    const TMd = window.TC && TC.modelos, lMd = D.pegar('mundo:modelos'), modelos = TMd ? TMd.lista(lMd && !lMd.apagado ? lMd.dados : null) : [];
+    const est = { md: modelos.some(m => m.id === 'md_infantaria') ? 'md_infantaria' : (modelos[0] || {}).id, n: 10, vet: 1 };
+    const cxMod = h('div', { class: 'tr-modelos', role: 'group', 'aria-label': 'Modelo da primeira unidade' }), qtd = h('output', { class: 'tr-qtd', 'data-k': 'tr:qtd' });
+    const cxVet = h('div', { class: 'tr-vet', role: 'group', 'aria-label': 'Veterania' }), resumo = h('p', { class: 'ajuda tr-resumo', 'aria-live': 'polite' });
+    const nomesVet = ['Recruta', 'Veterana', 'Elite', 'Lendária', 'Mítica'];
+    const pintarNova = () => {
+      cxMod.replaceChildren(...modelos.map(m => h('button', { type: 'button', class: 'tr-modelo', 'data-k': 'tr:md:' + m.id, 'aria-pressed': String(m.id === est.md), title: m.desc || null, onclick: () => { est.md = m.id; pintarNova(); } },
+        h('b', { text: m.nome }), h('small', { text: 'ATQ ' + (m.atq >= 0 ? '+' : '−') + Math.abs(m.atq) + ' · DEF ' + (m.def >= 0 ? '+' : '−') + Math.abs(m.def) + (m.cura ? ' · cura ' + m.cura + '%' : '') + (m.magos ? ' · magos' : '') }))));
+      qtd.textContent = String(est.n);
+      cxVet.replaceChildren(...nomesVet.map((nv, i) => h('button', { type: 'button', class: 'tr-est' + (i < est.vet ? ' on' : ''), 'data-k': 'tr:vet:' + (i + 1), 'aria-label': nv, 'aria-pressed': String(i + 1 === est.vet), title: nv, onclick: () => { est.vet = i + 1; pintarNova(); } }, '★')));
+      const m = modelos.find(q => q.id === est.md), lider = ps.find(q => q.id === sel.value);
+      resumo.textContent = m ? m.nome + ': ' + est.n + (est.n === 1 ? ' soldado, ' : ' soldados, ') + nomesVet[est.vet - 1].toLowerCase() + '.' + (lider ? ' Aparece na ficha de ' + lider.nome + ', aba Tropas.' : '') : '';
+    };
+    const passo = d => { est.n = Math.max(1, Math.min(500, est.n + d)); pintarNova(); };
+    const nova = h('div', { class: 'tr-nova', 'data-k': 'tr:nova-campos', hidden: !modelos.length },
+      h('div', { class: 'field' }, h('span', { text: 'Modelo da primeira unidade' }), cxMod),
+      h('div', { class: 'tr-linha' },
+        h('div', { class: 'field' }, h('span', { text: 'Soldados' }), h('div', { class: 'tr-passos' },
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'tr:menos5', 'aria-label': 'Menos 5 soldados', onclick: () => passo(-5) }, '−5'),
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'tr:menos', 'aria-label': 'Menos 1 soldado', onclick: () => passo(-1) }, '−1'), qtd,
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'tr:mais', 'aria-label': 'Mais 1 soldado', onclick: () => passo(1) }, '+1'),
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'tr:mais5', 'aria-label': 'Mais 5 soldados', onclick: () => passo(5) }, '+5'))),
+        h('div', { class: 'field' }, h('span', { text: 'Veterania' }), cxVet)),
+      resumo);
+    const atualizar = () => { const e = sel.value ? estado(ps.find(q => q.id === sel.value)) : null; nova.hidden = !modelos.length || !!(e && e.d); pintarNova(); };
+    sel.addEventListener('change', atualizar);
+    const ok = () => { const v = sel.value; if (!v) { toast('Escolha quem lidera a tropa.'); sel.focus(); return; } fechar(); cadastrarTropa(claId, v, nova.hidden ? null : { modelo: modelos.find(q => q.id === est.md), n: est.n, vet: est.vet }); };
     abrir('', [h('h2', { text: 'Uma tropa para ' + x.c.nome }),
-      h('p', { class: 'ajuda', text: 'A tropa mora na ficha de quem a lidera (aba Tropas, nas Fichas): cada personagem lidera uma só. Quem já tem tropa entra com ela; quem não tem ganha uma, com uma unidade de recrutas.' }),
-      h('label', { class: 'field' }, h('span', { text: 'Quem lidera' }), sel), pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, 'Cadastrar'))]);
+      h('p', { class: 'ajuda', text: 'A tropa mora na ficha de quem a lidera (aba Tropas, nas Fichas): cada personagem lidera uma só. Quem já tem tropa entra com ela; quem não tem ganha uma nova, pronta.' }),
+      h('label', { class: 'field' }, h('span', { text: 'Quem lidera' }), sel), nova, pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, 'Criar tropa'))]);
+    atualizar();
     sel.focus();
   }
-  function cadastrarTropa(claId, pc) {
+  function cadastrarTropa(claId, pc, nova) {
     const T = TT(), l = D.pegar(PRE_TROPA + pc), antes = l && !l.apagado && ehObj(l.dados) ? copia(l.dados) : null, p = pcDe(pc);
-    const x = antes ? T.norm(antes) : T.nova(p ? p.nome : '', agora(), '');
+    let x = antes ? T.norm(antes) : T.nova(p ? p.nome : '', agora(), '');
+    // (lote 63) a tropa nova com o modelo: a primeira unidade com os números dele, os soldados e a veterania
+    if (!antes && nova && nova.modelo && window.TC && TC.modelos) {
+      const u = TC.modelos.unidadeDaTropa(nova.modelo, nova.n, nova.vet);
+      x.unid = [Object.assign({}, x.unid[0], u)];
+      x = T.norm(x);
+    }
     const deOutro = antes && antes.cla && antes.cla !== claId;
     x.cla = claId;
     D.gravar(PRE_TROPA + pc, { dados: x, vis: 'mestre', dono_id: l && !l.apagado ? l.dono_id || null : (p && p.dono) || null, para: paraDe(claId) }, null, { cas: true });

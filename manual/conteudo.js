@@ -186,8 +186,8 @@
       resumo: 'O mundo inteiro: o mapa, a data e o clima, as viagens, os reinos, a corte, a diplomacia, a guerra e a economia.',
       img: { arq: 'mundo.jpg', legenda: 'O Mapa-múndi com um mapa em branco.', marcas: [
         { sel: '#btMapa', t: 'Trocar de mapa e o menu do mapa.' },
-        { sel: '#rail', t: 'As ferramentas: Sessão, Traçar, Preparar.' },
-        { sel: '#tabs', t: 'As abas do painel: Sessão, Política e Preparar (teclas 1 a 6).' },
+        { sel: '#rail', t: 'As ferramentas do modo, com o nome e a tecla.' },
+        { sel: '#tabs', t: 'As abas do modo de trabalho (teclas 1 a 6).' },
       ] },
       jogador: [
         { t: 'O mapa', txt: 'Arraste para andar, a roda para aproximar. Você vê o que o mestre deixou à vista; o resto fica sob a névoa.', ir: { aba: 'mundo', g: 'O mapa' } },
@@ -197,8 +197,12 @@
         { t: 'O painel', txt: 'Hoje (eventos, viagem), Reinos (a sua facção, o Livro do reino), Corte (quem vocês conhecem, árvores de família, títulos), Diplomacia e Intrigas (os segredos descobertos).', ir: { aba: 'mundo', g: 'O painel' } },
         { t: 'Camadas', txt: 'O botão Camadas (tecla C) mostra e esconde cidades, estradas, eventos, regiões, guerra… só no seu aparelho. Atalhos Viagem, Política, Guerra e Tudo.', tecla: 'C' },
         { t: 'A caneta', txt: 'Desenhe para a mesa inteira ver na hora. A que some apaga sozinha; a que fica, até limpar.', ir: { aba: 'mundo', g: 'A caneta' } },
+        { t: 'O mapa em aquarela', txt: 'O terreno é tinta lavada no papel: os terrenos se misturam na divisa, e as árvores e os morros vêm em traço de tinta. A grade aparece quando os hexágonos ficam grandes e nunca passa pelo mar. Cada exército tem o símbolo do tipo dele (patrulha, hoste, frota, caravana…) num anel com a cor da facção.', ir: { aba: 'mundo', g: 'O mapa' } },
       ],
       mestre: [
+        { t: 'Os modos de trabalho', txt: 'No alto: Sessão (jogar), Guerra (exércitos e batalhas), Política (reinos, corte, diplomacia) e Preparar (terreno e o mapa). Cada modo mostra só as ferramentas e as abas dele; a Seleção está em todos. Alt+1 a Alt+4 trocam, e a tecla de uma ferramenta de outro modo leva até ele. O “?” mostra de novo a apresentação.', ir: { aba: 'mundo', g: 'Os modos de trabalho' } },
+        { t: 'Novo exército no mapa', txt: 'Tecla X (modo Guerra) ou o botão direito no mapa: escolha a facção, o tipo (batedores, patrulha, guarnição, hoste, horda, cerco, frota, caravana armada, mercenários, caravana comercial) e o tamanho. Os soldados vêm divididos pelos modelos de unidade; a aba Exércitos lista todos por facção. Tem Desfazer.', ir: { aba: 'mundo', g: 'Novo exército' } },
+        { t: 'Modelos de unidade', txt: 'Na aba Regras (modo Guerra): Aegis, Infantaria, Cavalaria, Arqueiros, Shajis, Sacerdotes e Magos, com ataque, defesa e vida. Mude os números ou crie os seus; valem para os exércitos do mapa e para as tropas do clã.', ir: { aba: 'mundo', g: 'Modelos de unidade' } },
         { t: 'Criar o mapa', txt: 'Uma imagem sua ou papel em branco. Na aba Terreno, a grade de hexágonos (cada um vale 5 cubos), os tipos de terreno com o custo, e o pincel para pintar.', ir: { aba: 'mundo', g: 'Trocar de mapa' } },
         { t: 'Rios e estradas por hexágono', txt: 'No pincel por hexágono (Terreno, H): Rio, Estrada de terra (4 cubos), Estrada de pedra (3) e Estrada pavimentada (2). O fundo pega o terreno dos vizinhos e a água ou a estrada liga sozinha às do lado. Pinte a estrada por cima do rio: o rio fica e a ponte aparece, custando o da estrada. Sem ponte, atravessar o rio custa 10. Num mapa de antes, a aba Terreno oferece “Acrescentar”.', ir: { aba: 'mundo', g: 'Rios e estradas' } },
         { t: 'Lagos, mares e desfiladeiros', txt: 'Pinte a Água, a Água rasa, o Mar profundo ou o Lago (água doce, 10 cubos): a água vira um corpo só e a margem sai sozinha do terreno vizinho (areia, junco, falésia ou gelo), com o raso clareando perto da terra. O Desfiladeiro liga aos vizinhos como o rio; o rio corre no fundo dele e a estrada que o atravessa ganha uma ponte suspensa. Os montes vizinhos viram cordilheira.', ir: { aba: 'mundo', g: 'Lagos, mares e desfiladeiros' } },
@@ -247,6 +251,7 @@
         { t: 'Os membros do clã', txt: 'No cartão Membros, “+ Membro”: o nome (ou uma ficha, que traz o nome e o aniversário), a raça, a classe, o nascimento no calendário do mapa principal e o cargo — ou sem cargo. No rol você muda tudo e tira do clã (o respeito fica guardado).', ir: { aba: 'cla', g: 'Os membros do clã' } },
         { t: 'A foto e o clã na cena', txt: 'Clique no avatar de um membro para pôr a foto. Nas Cenas, “Puxar o clã…” cria os tokens dos membros que você marcar, com o nome, a foto e a borda na cor do brasão.', ir: { aba: 'cla', g: 'A foto dos membros e o clã na cena' } },
         { t: 'Membros ligados', txt: '“Ficha…” liga um membro a uma ficha; “Das fichas…” traz um grupo das Fichas ou uma campanha de uma vez; “Das tropas…” traz os soldados com nome das tropas do clã. Membro e soldado ficam ligados: o que muda num muda no outro.', ir: { aba: 'cla', g: 'Membros ligados às fichas e às tropas' } },
+        { t: 'A tropa com modelo', txt: '“Nova tropa” escolhe o modelo de unidade (os do Mapa-múndi), quantos soldados e a veterania, numa janela só.', ir: { aba: 'cla', g: 'A tropa com modelo' } },
         { t: 'O painel em abas', txt: 'O clã abre em abas: Geral, Membros, Cofre e obras, Sede e tropas, Relações e histórico. No cofre, escreva +50 ou -20; no rol, clique na linha para mudar o membro; nas construções, a estrela, as etiquetas e os filtros. A sede pode ficar ligada a uma cena das Cenas.', ir: { aba: 'cla', g: 'O painel do clã em abas' } },
         { t: 'A Sede', txt: 'Arraste plantas prontas para o terreno; “Editar no construtor” monta os cômodos; “Ver nas Cenas” cria a cena da sede.', ir: { aba: 'cla', g: 'A Sede' } },
         { t: 'Construções, cofre e respeito', txt: '“Subir de nível” desconta do cofre. Respeito no mundo, relações e respeito de cada membro, com o motivo indo para o histórico.' },
@@ -479,5 +484,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 11, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 12, sistemas, tarefas, roteiro, sabia };
 })();

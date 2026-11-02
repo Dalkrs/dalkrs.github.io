@@ -254,6 +254,33 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### O Mapa-múndi em aquarela, os modos de trabalho e os exércitos (lote 63)
+
+- **Os modos** (`mundo/mundo.js`, `MODOS`): Sessão, Guerra, Política e Preparar, cada um com as ferramentas (`fer`) e as
+  abas (`abas`) dele; o modo fica em `tinycats:mundo:modo`. `App.comModos()` (quem mestra, fora do "Ver como jogador");
+  `App.mudarModo(id, { ferramenta, aba })` emite `modo`. A tecla de uma ferramenta de outro modo troca de modo. Nos testes
+  de antes, `?debug&tudo` ou `tinycats:mundo:semModos` = `1` deixam tudo como era. O painel (`mundo/painel.js`) mostra os
+  botões em `#modos` (Alt+1..4) e só as abas do modo; a aba Guerra aparece como "Regras"; a aba nova Exércitos
+  (`soModos`). O trilho mostra o nome e a tecla de cada ferramenta.
+- **A apresentação** (`mundo/tour.js`, `MundoTour`): seis passos (os modos, o trilho, as abas, o mapa, a lupa, a data),
+  na primeira vez (`tinycats:mundo:tour63` = `visto`) e no botão "?". Os testes marcam como vista, menos com `tourMundo`.
+- **Os modelos e os tipos de exército** (`tc/modelos.js`, `TC.modelos`): o documento `mundo:modelos` (sem mesa, em
+  `tinycats:mundo:modelos`) com os 7 modelos de começo (Aegis, Infantaria, Cavalaria, Arqueiros, Shajis, Sacerdotes,
+  Magos); `ARMAS`, os 10 tipos com a faixa de soldados pensada numa cidade de 70 a 80 pessoas (Batedores 2–6 … Horda
+  20–90, Frota de 1 a 3 barcos); `TAMANHOS` p/m/g; `unidadesDoMapa` divide os soldados pelos modelos;
+  `unidadeDaTropa` faz a unidade da tropa do clã. `App.gravarModelos` tem Desfazer.
+- **Novo exército** (`mundo/exercitos-painel.js`): a ferramenta X, "Novo exército aqui" no botão direito e o botão da aba
+  Exércitos abrem a janela (`ne:*`: a facção, o tipo, o tamanho, "só o mestre vê"); cria o grupo `exercito` com `arma`
+  (lido em `nucleo.js`, `ARMAS_IDS`) e as unidades. A aba Regras começa com os cartões dos modelos (`md:*`).
+- **A aquarela** (`mundo/tela.js`): a tinta é misturada ao papel (`aq`, `PAPEL`), o ladrilho tem manchas e grão, os
+  desenhos vão em sépia e os terrenos abertos pulam desenhos em grupos (`DESENHO_ABERTO`, `ruidoHex`). A grade: no SVG
+  aparece entre 16 e 36 px por hexágono (`opacidadeGrade`), some no mapa pintado (menos com o Terreno em uso ou a aba
+  Terreno aberta); no canvas, linhas de tinta só na terra. As regiões ganharam a faixa de atlas (`reg-faixa`) e os
+  exércitos com `arma`, o símbolo com o anel da facção.
+- **A tropa do clã com modelo** (`cla/cla.js`, `tropaDlg`): os chips dos modelos, a quantidade e a veterania.
+- Testes: `mundo-lote63` (os modelos, os modos, a apresentação, o novo exército, a aba Exércitos, a grade e o atlas);
+  `mundo-lote7`, `mundo-lote8` e `mundo-lote26` ajustados à aquarela e aos modos.
+
 ### Os pontos da Árvore com o site em duas abas (2026.11.02-2)
 
 - O defeito: a Árvore acompanhava o que outra aba do mesmo navegador guardava (`storage` em `CHAVE_DOC`, que na mesa é

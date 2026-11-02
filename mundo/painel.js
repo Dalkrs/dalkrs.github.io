@@ -20,7 +20,8 @@
     { id: 'corte', nome: 'Corte', fila: 2, grupo: 'politica' },                      // (lote 11) os personagens do mundo e as casas
     { id: 'diplomacia', nome: 'Diplomacia', fila: 2, grupo: 'politica' },            // (lote 11, parte 3a) as relações, a opinião, os tratados
     { id: 'intrigas', nome: 'Intrigas', fila: 2, grupo: 'politica' },                // (lote 11, parte 4a) os segredos (4b: as intrigas)
-    { id: 'guerra', nome: 'Guerra', fila: 2, mestre: true, grupo: 'politica' },      // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
+    { id: 'guerra', nome: 'Guerra', nomeModo: 'Regras', fila: 2, mestre: true, grupo: 'politica' },      // (lote 8, parte 6) as batalhas, os exércitos, os tipos de tropa
+    { id: 'exercitos', nome: 'Exércitos', fila: 2, mestre: true, grupo: 'guerra', soModos: true },     // (lote 63) todos os exércitos do mapa, no modo Guerra
   ];
   /* (lote 26) As abas ficam numa fileira só, em três grupos com nome e cor: Sessão (o que se usa jogando), Política (um
      botão que abre as cinco) e Preparar. Vale para quem mestra e para quem joga (o grupo sem nenhuma aba some: o
@@ -53,6 +54,7 @@
   let App = null;
   const N = () => (App && App.N) || window.MundoNucleo;
   const Tela = () => window.MundoTela || null;
+  const EP = () => window.MundoExercitosPainel || null;          // (lote 63) os exércitos e os modelos
   const GP = () => window.MundoGuerraPainel || null;           // (lote 8, parte 6) a guerra no painel
   const RP = () => window.MundoReinoPainel || null;            // (lote 10) os reinos no painel: a província, o Livro do reino
   const CP = () => window.MundoCortePainel || null;            // (lote 11) a corte no painel: a aba Corte, quem está aqui
@@ -423,7 +425,16 @@
       'aria-expanded': o.expandido, onclick: fn }, o.ico ? glifo(o.ico, 15) : null, texto);
   }
   const linha = (...kids) => h('div', { class: 'row' }, kids);
-  const nota = (texto, c) => h('p', { class: 'note' + (c ? ' ' + c : ''), text: texto });
+  /* (lote 63) Nos modos de trabalho, a explicação comprida vira uma linha (a primeira frase) e o resto abre em "Como
+     funciona" — o painel fica curto, e a explicação continua lá para quem quiser. */
+  const NOTA_LONGA = 160;
+  const nota = (texto, c) => {
+    if (comModos() && typeof texto === 'string' && texto.length > NOTA_LONGA) {
+      const m = /^(.{20,150}?[.:!?])\s/.exec(texto), prim = m ? m[1] : texto.slice(0, 120).replace(/\s+\S*$/, '') + '…';
+      return h('details', { class: 'note nota-longa' + (c ? ' ' + c : '') }, h('summary', null, h('span', { text: prim }), h('span', { class: 'como', text: 'Como funciona' })), h('p', { text: texto }));
+    }
+    return h('p', { class: 'note' + (c ? ' ' + c : ''), text: texto });
+  };
   /* (lote 26) Os blocos das abas abrem e fecham (o título é o botão), para quem mestra e para quem joga. Nas abas da sessão (Seleção, Hoje, Linha)
      começam abertos; nas da Política e do Preparar, fechados — o que a pessoa abre ou fecha fica lembrado enquanto a
      página está aberta. Um resumo ({ resumo: '…' } no lugar do primeiro filho) aparece no título do bloco fechado. */
@@ -431,7 +442,7 @@
   const secao = (titulo, ...kids) => {
     const r = kids.length && kids[0] && typeof kids[0] === 'object' && !kids[0].nodeType && !Array.isArray(kids[0]) && 'resumo' in kids[0] ? kids.shift().resumo : '';
     const vis = abaVisivel(), chave = vis + '|' + titulo, grupo = (ABAS.find(a => a.id === vis) || {}).grupo;
-    const aberto = COMO_ANTES || !App ? true : blocosAbertos.has(chave) ? blocosAbertos.get(chave) : grupo === 'sessao';
+    const aberto = COMO_ANTES || !App ? true : blocosAbertos.has(chave) ? blocosAbertos.get(chave) : grupo === 'sessao' || vis === 'exercitos';
     return h('details', { class: 'sec dobra', open: aberto, 'data-k': 'sec:' + titulo, ontoggle: e => { blocosAbertos.set(chave, e.target.open); } },
       h('summary', null, h('b', { text: titulo }), r ? h('span', { class: 'sec-res', text: r }) : null), kids);
   };
@@ -1282,14 +1293,16 @@
   }
 
   /* ================= abas ================= */
-  const abasDisponiveis = () => ABAS.filter(a => !a.mestre || App.podeEditar());
-  const abaVisivel = () => (abasDisponiveis().some(a => a.id === aba) ? aba : 'selecao');
+  const comModos = () => !!(App && App.comModos && App.comModos());
+  const abasDisponiveis = () => ABAS.filter(a => (!a.mestre || App.podeEditar()) && (!a.soModos || comModos()));
+  // (lote 63) nos modos, a aba aberta é uma do modo (a de outro modo dá lugar à Seleção)
+  const abaVisivel = () => { const ok = abasDisponiveis().some(a => a.id === aba) && (!comModos() || App.modo().abas.includes(aba)); return ok ? aba : 'selecao'; };
   function montarAbas() {
     const tabs = $('tabs');
     if (!tabs) return;
     tabs.setAttribute('aria-label', 'Painel do mapa');
-    const bt = a => h('button', { type: 'button', class: 'tab', role: 'tab', id: 'tab-' + a.id, title: a.titulo || null, 'aria-controls': 'pane', 'aria-selected': 'false', tabindex: '-1',
-      onclick: () => { aba = a.id; lembrar({ aba }); politicaAberta = false; pintar(); } }, h('span', { text: a.nome }), h('span', { class: 'n', hidden: true, 'aria-hidden': 'true' }));
+    const bt = a => { const b = h('button', { type: 'button', class: 'tab', role: 'tab', id: 'tab-' + a.id, title: a.titulo || null, 'aria-controls': 'pane', 'aria-selected': 'false', tabindex: '-1',
+      onclick: () => { aba = a.id; lembrar({ aba }); politicaAberta = false; pintar(); } }, h('span', { text: a.nome }), h('span', { class: 'n', hidden: true, 'aria-hidden': 'true' })); BTS_ABAS.set(a.id, b); return b; };
     tabs.dataset.modo = 'filas';
     tabs.replaceChildren(...[1, 2].map(n => h('div', { class: 'tabs-fila', role: 'none', 'data-fila': String(n) }, ABAS.filter(a => a.fila === n).map(bt))));
     tabs.addEventListener('keydown', ev => {
@@ -1309,11 +1322,15 @@
   }
   // (lote 26) as abas em grupos (as duas fileiras de sempre só nos testes de antes)
   let politicaAberta = false, ultimaPolitica = 'faccoes';
+  const BTS_ABAS = new Map();
   function arrumarAbas(tabs) {
-    const modo = COMO_ANTES ? 'filas' : 'grupos';
+    const modo = COMO_ANTES ? 'filas' : comModos() ? 'modos' : 'grupos';
     if (tabs.dataset.modo === modo) return;
-    const bts = new Map(ABAS.map(a => [a.id, $('tab-' + a.id)]));
+    const bts = BTS_ABAS;                      // (lote 63: guardados — a aba que um arranjo não usa sai da página e volta no outro)
     tabs.dataset.modo = modo;
+    for (const a of ABAS) { const b = bts.get(a.id), sp = b && b.firstChild; if (sp) sp.textContent = modo === 'modos' && a.nomeModo ? a.nomeModo : a.nome; }
+    // (lote 63) nos modos: uma fileira só, com as abas do modo (as outras escondidas)
+    if (modo === 'modos') { tabs.replaceChildren(h('div', { class: 'tabs-grupo tabs-modo', role: 'none', 'data-grupo': App.modo().id }, h('div', { class: 'tabs-gb', role: 'none' }, ABAS.map(a => bts.get(a.id))))); return; }
     if (modo === 'filas') { tabs.replaceChildren(...[1, 2].map(n => h('div', { class: 'tabs-fila', role: 'none', 'data-fila': String(n) }, ABAS.filter(a => a.fila === n).map(a => bts.get(a.id))))); return; }
     const grupo = g => h('div', { class: 'tabs-grupo', role: 'none', 'data-grupo': g.id }, h('span', { class: 'tabs-g', 'aria-hidden': 'true', text: g.nome }),
       h('div', { class: 'tabs-gb', role: 'none' }, g.id === 'politica'
@@ -1329,8 +1346,9 @@
   // (lote 26) as teclas 1 a 6: as abas na ordem em que aparecem (a Política: a última aberta dela)
   function abaPorNumero(n) {
     if (!App || !App.mapa) return;
-    const lista = $('tabs') && $('tabs').dataset.modo === 'grupos'
-      ? ['selecao', 'hoje', 'linha', ultimaPolitica, 'terreno', 'mapa'].filter(id => abasDisponiveis().some(a => a.id === id))
+    const md = $('tabs') && $('tabs').dataset.modo;
+    const lista = md === 'modos' ? App.modo().abas.filter(id => abasDisponiveis().some(a => a.id === id))
+      : md === 'grupos' ? ['selecao', 'hoje', 'linha', ultimaPolitica, 'terreno', 'mapa'].filter(id => abasDisponiveis().some(a => a.id === id))
       : abasDisponiveis().map(a => a.id);
     const id = lista[n - 1]; if (id) abrirAba(id);
   }
@@ -1352,11 +1370,13 @@
       // o grupo sem aba para esta pessoa some (o Preparar, para quem joga); a cor do painel é a do grupo da aba aberta
       for (const g of tabs.querySelectorAll('.tabs-grupo')) g.hidden = !ABAS.some(a => a.grupo === g.dataset.grupo && disp.includes(a));
     }
-    const side = $('pane'); if (side) side.dataset.grupo = COMO_ANTES ? '' : (ABAS.find(a => a.id === vis) || {}).grupo || '';
+    const nosModos = tabs.dataset.modo === 'modos', mdA = nosModos ? App.modo() : null;
+    if (nosModos) { const gr = tabs.querySelector('.tabs-modo'); if (gr) gr.dataset.grupo = mdA.id; }
+    const side = $('pane'); if (side) side.dataset.grupo = COMO_ANTES ? '' : nosModos ? mdA.id : (ABAS.find(a => a.id === vis) || {}).grupo || '';
     for (const a of ABAS) {
       const b = $('tab-' + a.id);
       if (!b) continue;
-      b.hidden = !disp.includes(a);
+      b.hidden = !disp.includes(a) || (nosModos && !mdA.abas.includes(a.id));
       b.setAttribute('aria-selected', String(a.id === vis));
       b.tabIndex = a.id === vis ? 0 : -1;
     }
@@ -1391,7 +1411,7 @@
         botao('Voltar a editar', () => { App.comoJogador = false; pintar(); }, { c: 'sm', k: 'sair-como' })));
     }
     const a = abaVisivel();
-    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'corte' ? (CP() ? CP().abaCorte(v) : nota('A corte não carregou. Recarregue a página.')) : a === 'diplomacia' ? (DP() ? DP().abaDiplomacia(v) : nota('A diplomacia não carregou. Recarregue a página.')) : a === 'intrigas' ? (IP() ? IP().abaIntrigas(v) : nota('As intrigas não carregaram. Recarregue a página.')) : a === 'guerra' ? (GP() ? GP().abaGuerra(v) : nota('A guerra não carregou. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : a === 'linha' ? abaLinha(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
+    raiz.append(...[].concat(a === 'selecao' ? abaSelecao(v) : a === 'hoje' ? abaHoje(v) : a === 'faccoes' ? abaFaccoes(v) : a === 'corte' ? (CP() ? CP().abaCorte(v) : nota('A corte não carregou. Recarregue a página.')) : a === 'diplomacia' ? (DP() ? DP().abaDiplomacia(v) : nota('A diplomacia não carregou. Recarregue a página.')) : a === 'intrigas' ? (IP() ? IP().abaIntrigas(v) : nota('As intrigas não carregaram. Recarregue a página.')) : a === 'guerra' ? (GP() ? [EP() ? EP().secModelos() : null].concat(GP().abaGuerra(v)) : nota('A guerra não carregou. Recarregue a página.')) : a === 'exercitos' ? (EP() ? EP().abaExercitos(v) : nota('Os exércitos não carregaram. Recarregue a página.')) : a === 'terreno' ? abaTerreno(App.mapa) : a === 'linha' ? abaLinha(App.mapa) : abaMapa(App.mapa)).filter(Boolean));
     return raiz;
   }
 
@@ -3869,13 +3889,34 @@
     if (!App) return;
     const id = App.mapa ? App.mapa.id : null;
     if (id !== mapaVisto) { mapaVisto = id; encontro = null; facAberta = null; busca = ''; }
-    try { pintarTopo(); pintarVazio(); pintarAbas(); pintarPainel(); }
+    try { pintarTopo(); pintarModos(); pintarVazio(); pintarAbas(); pintarPainel(); }
     catch (e) { console.error('MundoPainel: falhou ao desenhar o painel', e); }
   }
-  function abrirAba(id) {
+  /* (lote 63) a barra dos modos de trabalho, no alto (só quem mestra, fora do "Ver como jogador") */
+  function pintarModos() {
+    const el = $('modos'); if (!el) return;
+    const on = comModos() && !!App.mapa;
+    el.hidden = !on;
+    if (!on) return;
+    if (!el.childNodes.length) {
+      el.append(...App.MODOS.map((m, i) => h('button', { type: 'button', class: 'modo', 'data-modo': m.id, 'aria-pressed': 'false', title: m.nome + ': ' + m.dica + ' (Alt+' + (i + 1) + ')',
+        onclick: () => App.mudarModo(m.id) }, h('i', { 'aria-hidden': 'true' }), h('span', { text: m.nome }))),
+        h('button', { type: 'button', class: 'modo modo-tour', 'data-k': 'tour:rever', title: 'Rever a apresentação do Mapa-múndi', 'aria-label': 'Rever a apresentação do Mapa-múndi',
+          onclick: () => { if (window.MundoTour) MundoTour.abrir(); } }, h('span', { class: 'modo-q', text: '?' })));
+    }
+    const atual = App.modo().id;
+    for (const b of el.querySelectorAll('.modo')) b.setAttribute('aria-pressed', String(b.dataset.modo === atual));
+    document.documentElement.dataset.modo = atual;
+    if (window.MundoTour) MundoTour.talvez(App);                       // (a apresentação, na primeira vez)
+  }
+  function abrirAba(id, doModo) {
     if (!ABAS.some(a => a.id === id)) return;
+    // (lote 63) a aba de outro modo: o modo troca junto (a Seleção é de todos)
+    if (!doModo && comModos()) { const md = App.modoDaAba(id); if (md && md.id !== App.modo().id) { App.mudarModo(md.id, { aba: id }); return; } }
+    const mudou = aba !== id;
     aba = id;
     lembrar({ aba });
+    if (mudou && App.emit) App.emit('aba', id);                        // (lote 63: a grade aparece com a aba Terreno aberta)
     if ($('side') && $('side').classList.contains('fechado')) definirPainel(true);
     pintar();
   }
@@ -3884,6 +3925,15 @@
     App = app;
     App.toast = toast;
     App.confirmar = confirmar;
+    App.abaAberta = () => aba;
+    // (lote 63) o modo de trabalho e os modelos de unidade
+    App.on('modo', () => pintar());
+    App.on('modelos', () => pintar());
+    document.addEventListener('keydown', ev => {
+      if (!ev.altKey || ev.ctrlKey || ev.metaKey || !comModos() || !App.mapa) return;
+      const n = Number(ev.key); if (!(n >= 1 && n <= App.MODOS.length)) return;
+      ev.preventDefault(); App.mudarModo(App.MODOS[n - 1].id);
+    });
     const u = ler();
     if (u.aba && ABAS.some(a => a.id === u.aba)) aba = u.aba;
     montarAbas();

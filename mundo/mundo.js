@@ -22,7 +22,7 @@
   /* (lote 20) a projeção de um mapa na data de uma campanha (a linha do tempo): mundo:pubc:<mapa>@<campanha> — o "@" faz
      o banco entregá-la só a quem participa daquela campanha; o jogador dela usa esta no lugar da projeção de sempre. */
   const PRE_PUBC = 'mundo:pubc:';
-  const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'h', 'p', 'n', 'd', 'w'];      // (lote 17: w, a caneta — de todos)
+  const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'h', 'p', 'n', 'd', 'w', 'x'];      // (lote 17: w, a caneta — de todos; lote 63: x, o exército novo)
   const MAX_DESFAZER = 100;
   const ESPERA = { local: 400, fora: 900 };
   const DEBUG = /[?&]debug(?:[=&]|$)/.test(location.search);
@@ -172,6 +172,8 @@
     usarFerramenta(f) {
       if (!FERRAMENTAS.includes(f)) return;
       if (f !== 'sel' && !App.podeEditar() && !(f === 'w' && App.podeRabiscar())) f = 'sel';
+      // (lote 63) a ferramenta de outro modo (pela tecla): o modo troca para o dela
+      if (App.comModos() && f !== 'sel' && !modoAtual().fer.includes(f)) { const md = MODOS.find(x => x.fer.includes(f)); if (md) App.mudarModo(md.id, { ferramenta: f }); }
       if (f === App.ferramenta) return;
       App.ferramenta = f;
       App.emit('ferramenta', f);
@@ -214,6 +216,55 @@
       App.emit('muda', { origem: 'vista' });
     },
   });
+  /* (lote 63) Os modos de trabalho de quem mestra: Sessão, Guerra, Política e Preparar. Cada um mostra só as ferramentas
+     e as abas dele (a Seleção está em todos). Trocar de modo leva a ferramenta para Selecionar (quando a de agora não é
+     do modo novo) e abre a aba principal do modo. O modo fica lembrado neste aparelho. Quem joga, o mestre em "Ver como
+     jogador" e os testes de antes (a marca tinycats:testes-tudo-aberto) não têm modos. */
+  const MODOS = [
+    { id: 'sessao', nome: 'Sessão', fer: ['sel', 'g', 'e', 'm', 'd', 'w'], abas: ['selecao', 'hoje', 'linha'], dica: 'mover grupos, eventos do dia, marcadores, régua e caneta' },
+    { id: 'guerra', nome: 'Guerra', fer: ['sel', 'x', 'f', 'd'], abas: ['selecao', 'exercitos', 'guerra'], dica: 'exércitos, frentes e batalhas' },
+    { id: 'politica', nome: 'Política', fer: ['sel', 'r', 't'], abas: ['selecao', 'faccoes', 'corte', 'diplomacia', 'intrigas'], dica: 'reinos, corte, diplomacia e intrigas' },
+    { id: 'preparar', nome: 'Preparar', fer: ['sel', 'h', 'p', 'n', 'r', 't'], abas: ['selecao', 'terreno', 'mapa'], dica: 'terreno, desenho, névoa e o mapa' },
+  ];
+  const CHAVE_MODO = 'tinycats:mundo:modo';
+  // (os testes de antes e os do lote 26, que conferem os grupos de abas do mestre: tinycats:mundo:semModos)
+  const COMO_ANTES_M = (() => { try { return localStorage.getItem('tinycats:testes-tudo-aberto') === '1' || localStorage.getItem('tinycats:mundo:semModos') === '1'; } catch (e) { return false; } })();
+  let modoId = (() => { const v = guarda.ler(CHAVE_MODO); return MODOS.some(m => m.id === v) ? v : 'sessao'; })();
+  const modoAtual = () => MODOS.find(m => m.id === modoId) || MODOS[0];
+  App.MODOS = MODOS;
+  App.comModos = () => App.papel === 'mestre' && !App.comoJogador && !COMO_ANTES_M;
+  App.modo = () => modoAtual();
+  App.modoDaAba = id => (id === 'selecao' ? null : MODOS.find(m => m.abas.includes(id)) || null);
+  // o: { ferramenta, aba } — a ferramenta e a aba que vão abrir no modo novo (sem: Selecionar e a aba principal)
+  App.mudarModo = (id, o) => {
+    const md = MODOS.find(m => m.id === id); if (!md) return;
+    o = o || {};
+    const trocou = md.id !== modoId;
+    modoId = md.id; guarda.gravar(CHAVE_MODO, md.id);
+    if (o.ferramenta == null && App.ferramenta !== 'sel' && !md.fer.includes(App.ferramenta)) { App.ferramenta = 'sel'; App.emit('ferramenta', 'sel'); }
+    const aba = o.aba || (trocou ? md.abas[1] || 'selecao' : null);
+    if (aba && window.MundoPainel && MundoPainel.abrirAba) MundoPainel.abrirAba(aba, true);
+    App.emit('modo', md.id);
+  };
+  /* (lote 63) Os modelos de unidade da mesa (tc/modelos.js): o documento mundo:modelos — o mesmo que o Clã lê —, ou,
+     sem mesa, neste navegador. */
+  const TM = () => (window.TC && TC.modelos) || null;
+  App.modelos = () => {
+    const T = TM(); if (!T) return [];
+    if (modo === 'mesa') return T.lista(D ? dadosDoc(D.pegar(T.DOC)) : null);
+    let v = null; try { v = JSON.parse(guarda.ler(T.LOCAL) || 'null'); } catch (e) { v = null; }
+    return T.lista(v);
+  };
+  App.podeModelos = () => App.papel === 'mestre' && !App.comoJogador && !!TM() && (modo !== 'mesa' || !!D);
+  App.gravarModelos = (lista, rotulo) => {
+    const T = TM(); if (!App.podeModelos()) return false;
+    const antes = App.modelos(), novo = T.docDe(lista);
+    if (j(novo.lista) === j(antes)) return false;
+    const gravar = l => { const d = T.docDe(l); if (modo === 'mesa') gravarDocMesa(T.DOC, { dados: d, vis: 'mesa' }); else guarda.gravar(T.LOCAL, j(d)); App.emit('modelos'); App.emit('muda', { origem: 'modelos' }); };
+    gravar(novo.lista);
+    if (rotulo && App.toast) App.toast(rotulo, 'Desfazer', () => gravar(antes));
+    return true;
+  };
   window.Mundo = App;
   // (lote 8) uma camada escondida ou travada neste aparelho tira da seleção o que está nela
   App.on('camadas', () => podarSel());
@@ -1688,6 +1739,7 @@
         return;
       }
       if (!l || typeof l.id !== 'string' || !l.id.startsWith('mundo:')) return;
+      if (l.id === 'mundo:modelos') { App.emit('modelos'); App.emit('muda', { origem: 'fora' }); return; }      // (lote 63)
       if (l.id.startsWith(PRE_RAB)) { App.emit('rabiscos'); return; }          // (lote 17) a caneta: só redesenha (o mapa não mudou)
       if (App.papel === 'mestre' && l.id.startsWith(PRE_PUBC)) { const d = dadosDoc(l); if (d) sombraPubC.set(l.id, j(d)); else sombraPubC.delete(l.id); return; }     // (lote 20)
       if (App.papel === 'mestre' && l.id.startsWith(PRE_PUB)) {           // outro aparelho do mestre publicou

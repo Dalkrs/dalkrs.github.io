@@ -2,6 +2,45 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.02-3",
+      "data": "2026-11-02",
+      "titulo": "O Mapa-múndi em aquarela, com modos de trabalho e exércitos novos",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: o terreno virou aquarela, com tinta lavada no papel, os terrenos se misturando na divisa e as árvores e os morros em traço de tinta. De perto continua nítido."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: a grade aparece sozinha quando os hexágonos ficam grandes na tela e nunca passa por cima do mar. As fronteiras dos reinos viraram faixas de atlas, com a cor por dentro da linha."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: cada exército tem um símbolo do tipo dele (batedores, patrulha, guarnição, hoste, horda, cerco, frota, caravana armada, mercenários ou caravana comercial), com um anel na cor da facção."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: quatro modos de trabalho no alto (Sessão, Guerra, Política e Preparar). Cada modo mostra só as ferramentas e as abas dele, e as ferramentas têm o nome escrito. Alt+1 a Alt+4 trocam de modo. Na primeira vez, uma apresentação mostra onde fica cada coisa; o botão “?” mostra de novo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: “Novo exército” (tecla X, ou o botão direito no mapa) cria o exército no lugar clicado. Você escolhe a facção, o tipo e o tamanho, e os soldados vêm divididos pelos modelos de unidade. Tem Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: a aba Exércitos, no modo Guerra, lista os exércitos por facção. Em Regras ficam os modelos de unidade (Aegis, Infantaria, Cavalaria, Arqueiros, Shajis, Sacerdotes e Magos), que você pode mudar e criar os seus."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Clã: a tropa nova usa um modelo de unidade, com a quantidade de soldados e a veterania escolhidas na mesma janela."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.02-2",
       "data": "2026-11-02",
       "titulo": "Os pontos da Árvore ficam salvos com o site em duas abas",

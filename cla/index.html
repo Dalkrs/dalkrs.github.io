@@ -290,6 +290,21 @@ ul.marcar li.ja { opacity: .55; }
 .chip { all: unset; cursor: pointer; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 12.5px; font-weight: 600; color: var(--fg-2); }
 .chip:hover { color: var(--fg); }
 .chip[aria-pressed="true"] { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); }
+/* (lote 63) a tropa nova com modelo */
+.tr-nova { display: grid; gap: 12px; margin-top: 4px; }
+.tr-modelos { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.tr-modelo { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); font-size: 13.5px; }
+.tr-modelo small { color: var(--fg-3); font-size: 11.5px; }
+.tr-modelo b { font-weight: 600; }
+.tr-modelo[aria-pressed="true"] { border-color: var(--lamp); background: var(--lamp-soft); }
+.tr-modelo:focus-visible, .tr-est:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.tr-linha { display: flex; flex-wrap: wrap; gap: 18px; align-items: end; }
+.tr-passos { display: flex; align-items: center; gap: 4px; }
+.tr-qtd { min-width: 44px; text-align: center; font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.tr-vet { display: flex; gap: 2px; }
+.tr-est { all: unset; cursor: pointer; font-size: 20px; line-height: 1; padding: 0 2px; color: var(--fg-3); }
+.tr-est.on { color: var(--lamp); }
+.tr-resumo { margin: 0; }
 .chip:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
 .cons-l { display: grid; }
 .obras-l .cons { display: grid; grid-template-columns: 26px 34px minmax(0, 1.4fr) minmax(0, 1fr) auto; align-items: center; gap: 10px; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 9px 0; }
@@ -508,11 +523,12 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <script src="../meditacao/nucleo.js?v=2"></script>
 <script src="nucleo.js?v=8"></script>
 <script src="../tc/tropas.js?v=5"></script>
+<script src="../tc/modelos.js?v=1"></script>
 <script src="../tc/calendario.js?v=1"></script>
-<script src="../mundo/nucleo.js?v=48"></script>
+<script src="../mundo/nucleo.js?v=49"></script>
 <script src="../tc/sede.js?v=3"></script>
 <script src="sede-ui.js?v=4"></script>
 <script src="construtor.js?v=1"></script>
-<script src="cla.js?v=10"></script>
+<script src="cla.js?v=11"></script>
 </body>
 </html>

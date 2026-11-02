@@ -151,6 +151,9 @@ svg text.rotulo.regua-txt { font-family: var(--ui); fill: #fff3d6; }
 .t-sel .obj { cursor: grab; }
 .reg { fill-opacity: .2; fill-rule: evenodd; stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .reg.semfac { fill: #9aa3b5; stroke: #c3cadb; stroke-dasharray: 6 5; }
+/* (lote 63) a fronteira de atlas: a cor bem leve por dentro, a faixa larga junto da borda e o tracejado escuro */
+.reg.atlas { fill-opacity: .07; stroke-width: 1.8; stroke-dasharray: 8 5; stroke-linecap: round; }
+.reg-faixa { fill: none; stroke-width: 22; stroke-opacity: .36; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }
 .reg.subreg { fill-opacity: .16; stroke-width: 1.4; stroke-dasharray: 5 3; }     /* (lote 6) a região de dentro: borda mais fina */
 .reg.m-terreno { fill-opacity: 0; }                                            /* (lote 10) os modos do mapa */
 .reg.m-clima, .reg.m-perigo { fill-opacity: .4; stroke-opacity: .85; }
@@ -370,8 +373,8 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 .sanfona-data .sf-lin.agora { border-color: var(--lamp); }
 .sanfona-data .sf-pe { display: flex; justify-content: flex-end; }
 /* (lote 26) a cor de cada grupo das abas: o nome do grupo, o traço da aba aberta e a faixa no alto do painel */
-:root { --g-sessao: #5fb9a6; --g-politica: #d57f8f; --g-preparar: #8ba3e0; }
-:root:where([data-claro]) { --g-sessao: #1f7a68; --g-politica: #a83c52; --g-preparar: #3d5bb0; }
+:root { --g-sessao: #5fb9a6; --g-politica: #d57f8f; --g-preparar: #8ba3e0; --g-guerra: #e2735f; }
+:root:where([data-claro]) { --g-sessao: #1f7a68; --g-politica: #a83c52; --g-preparar: #3d5bb0; --g-guerra: #b23a2c; }
 .tabs-grupo[data-grupo="sessao"] { --gc: var(--g-sessao); }
 .tabs-grupo[data-grupo="politica"] { --gc: var(--g-politica); }
 .tabs-grupo[data-grupo="preparar"] { --gc: var(--g-preparar); }
@@ -383,6 +386,73 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 .pane[data-grupo="sessao"] { --gc: var(--g-sessao); }
 .pane[data-grupo="politica"] { --gc: var(--g-politica); }
 .pane[data-grupo="preparar"] { --gc: var(--g-preparar); }
+.pane[data-grupo="guerra"] { --gc: var(--g-guerra); }
+/* (lote 63) os modos de trabalho: a barra no alto, as abas do modo, o trilho com os nomes */
+.modos { display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: var(--table); flex: none; }
+.modo { display: flex; align-items: center; gap: 7px; border: 0; background: none; color: var(--fg-2); font: 600 13.5px var(--ui); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+.modo i { width: 8px; height: 8px; border-radius: 50%; background: var(--gc); flex: none; }
+.modo:hover { color: var(--fg); background: var(--hover); }
+.modo[aria-pressed="true"] { color: var(--fg); background: color-mix(in srgb, var(--gc) 22%, var(--raised)); box-shadow: inset 0 -2px 0 var(--gc); }
+.modo[data-modo="sessao"], .tabs-grupo[data-grupo="sessao"], .rail[data-modo="sessao"] { --gc: var(--g-sessao); }
+.modo[data-modo="guerra"], .tabs-grupo[data-grupo="guerra"], .rail[data-modo="guerra"] { --gc: var(--g-guerra); }
+.modo[data-modo="politica"], .rail[data-modo="politica"] { --gc: var(--g-politica); }
+.modo[data-modo="preparar"], .rail[data-modo="preparar"] { --gc: var(--g-preparar); }
+.tabs[data-modo="modos"] .tabs-modo { width: 100%; box-shadow: inset 0 3px 0 var(--gc); padding-top: 3px; }
+.tabs[data-modo="modos"] .tabs-modo .tabs-gb { display: flex; flex-wrap: wrap; }
+.tabs[data-modo="modos"] .tab[aria-selected="true"] { color: var(--gc); }
+.tabs[data-modo="modos"] .tab[aria-selected="true"]::after { background: var(--gc); }
+.rail.rail-nomes { width: 172px; align-items: stretch; }
+.rail.rail-nomes .rail-g { align-self: flex-start; padding: 0 8px; color: var(--gc); font-size: 11.5px; }
+.rail.rail-nomes .tool { width: auto; height: 36px; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 9px; align-items: center; justify-items: start; padding: 0 8px; font: 500 13.5px var(--ui); text-align: left; }
+.rail.rail-nomes .tool-nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; }
+.rail.rail-nomes .tool-tecla { font: 600 11px var(--ui); color: var(--fg-3); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+.rail.rail-nomes .tool[aria-pressed="true"] .tool-tecla { color: var(--on-lamp); border-color: rgba(0,0,0,.25); }
+@media (max-width: 900px) { .rail.rail-nomes { width: 50px; } .rail.rail-nomes .tool { grid-template-columns: 22px; justify-items: center; padding: 0; } .rail.rail-nomes .tool-nome, .rail.rail-nomes .tool-tecla, .rail.rail-nomes .rail-g { display: none; } .modo span { display: none; } .modo { padding: 6px 9px; } }
+.palco.t-x { cursor: crosshair; }
+.modo-tour { padding: 6px 10px; }
+.modo-q { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid currentColor; font-size: 11.5px; line-height: 1; }
+@media (max-width: 900px) { .modo-tour .modo-q { display: inline-grid; } }
+/* (lote 63) a apresentação: o lugar aceso e o cartão */
+.tour { position: fixed; inset: 0; z-index: 900; }
+.tour-anel { position: fixed; border-radius: 12px; box-shadow: 0 0 0 3px var(--lamp), 0 0 0 9999px rgba(8, 10, 16, .58); pointer-events: none; transition: left .25s, top .25s, width .25s, height .25s; }
+.tour-card { position: fixed; background: var(--surface); color: var(--fg); border: 1px solid var(--line-strong); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); display: grid; gap: 6px; }
+.tour-card h2 { margin: 0; font: 600 1.25rem var(--display); color: var(--lamp-ink); }
+.tour-n { font-size: 12px; color: var(--fg-3); }
+.tour-txt { margin: 0; color: var(--fg-2); line-height: 1.5; }
+.tour-pe { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.tour-pe .grow { flex: 1; }
+@media (prefers-reduced-motion: reduce) { .tour-anel { transition: none; } }
+/* a explicação comprida: uma linha e "Como funciona" */
+details.nota-longa > summary { list-style: none; cursor: pointer; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+details.nota-longa > summary::-webkit-details-marker { display: none; }
+details.nota-longa .como { color: var(--lamp-ink); font-weight: 600; white-space: nowrap; }
+details.nota-longa[open] .como { display: none; }
+details.nota-longa > p { margin: 6px 0 0; }
+/* a aba Exércitos, a janela do exército novo e os modelos */
+.tok-arma { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #f6efdc; border: 3px solid var(--fc); color: #2a2118; flex: none; }
+.tok-arma svg { width: 60%; height: 60%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ex-lista { display: grid; gap: 6px; }
+.ex-linha { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; text-align: left; width: 100%; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); color: var(--fg); cursor: pointer; }
+.ex-linha:hover { border-color: var(--line-strong); }
+.ex-linha.on { border-color: var(--lamp); }
+.ex-tx { display: grid; min-width: 0; }
+.ex-tx b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-tx small { color: var(--fg-3); font-size: 12px; }
+.ne-janela { width: min(620px, 94vw); }
+.ne-passo { display: grid; gap: 6px; margin-bottom: 12px; }
+.ne-dl .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ne-dl .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); border-radius: 999px; padding: 4px 11px; font: 500 13px var(--ui); cursor: pointer; }
+.ne-dl .chip .pinta { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,.35); }
+.ne-dl .chip[aria-pressed="true"], .ne-tipo[aria-pressed="true"] { border-color: var(--lamp); background: var(--lamp-soft); }
+.ne-tipos { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+.ne-tipo { display: grid; justify-items: center; gap: 3px; padding: 8px 4px 6px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); cursor: pointer; font: 600 12.5px var(--ui); text-align: center; }
+.ne-tipo small { font-weight: 400; color: var(--fg-3); font-size: 11px; }
+.ne-conta { min-height: 2.6em; }
+.md-lista { display: grid; gap: 8px; }
+.md-carta { border: 1px solid var(--line); border-radius: 9px; padding: 8px; display: grid; gap: 6px; background: var(--raised); }
+.md-topo { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+.md-nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.md-nums .in { width: 100%; }
 .pane[data-grupo]:not([data-grupo=""]) { box-shadow: inset 0 3px 0 var(--gc); }
 .pane[data-grupo]:not([data-grupo=""]) h3 { color: var(--gc); }
 .pane[data-grupo]:not([data-grupo=""]) .sec.dobra > summary::after { border-color: var(--gc); }
@@ -442,6 +512,10 @@ textarea.in { height: auto; min-height: 64px; padding: 8px 10px; resize: vertica
 .gru-glifo { stroke: #fff; stroke-width: 2.1; }
 .gru-glifo.escura { stroke: #14171f; }
 .gru-mundo .grupo-anel { stroke-dasharray: 4 3; }
+/* (lote 63) o exército com tipo: fundo de papel, desenho em tinta, anel grosso na cor da facção */
+.arma-anel { fill: none; stroke-width: 5; }
+.arma-base { fill: #f6efdc; stroke: #2a2118; stroke-width: 1.4; }
+.arma-glifo { stroke: #2a2118; stroke-width: 2; fill: none; }
 .sel-rota { fill: none; stroke: var(--lamp); stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-dasharray: 7 5; stroke-linecap: round; pointer-events: none; opacity: .9; }
 .sel-rota.previa { stroke: #8fd18f; stroke-width: 2.4; stroke-dasharray: 3 5; }
 .sel-rota-seta { fill: none; stroke: var(--lamp); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
@@ -1459,6 +1533,7 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <div class="app" id="app">
   <header class="top">
     <span class="brand">Mapa-múndi</span>
+    <div class="modos" id="modos" role="group" aria-label="Modo de trabalho" hidden></div>
     <button type="button" class="pick" id="btMapa" aria-haspopup="menu" title="Trocar de mapa, criar ou renomear"><span id="nomeMapa">Mapa</span><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <div class="cal" title="A data do mundo">
       <button type="button" class="ib" id="diaMenos" title="Voltar um dia" aria-label="Voltar um dia"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
@@ -1510,8 +1585,9 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../meditacao/nucleo.js?v=2"></script>
 <script src="../cla/nucleo.js?v=8"></script>
 <script src="../tc/tropas.js?v=5"></script>
+<script src="../tc/modelos.js?v=1"></script>
 <script src="../jornal/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=48"></script>
+<script src="nucleo.js?v=49"></script>
 <script src="guerra.js?v=8"></script>
 <script src="reino.js?v=14"></script>
 <script src="corte.js?v=4"></script>
@@ -1519,14 +1595,16 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="intrigas.js?v=2"></script>
 <script src="campanha.js?v=5"></script>
 <script src="camadas.js?v=4"></script>
-<script src="tela.js?v=33"></script>
-<script src="painel.js?v=54"></script>
+<script src="tela.js?v=34"></script>
+<script src="painel.js?v=55"></script>
 <script src="guerra-painel.js?v=15"></script>
+<script src="exercitos-painel.js?v=1"></script>
+<script src="tour.js?v=1"></script>
 <script src="guerra-ajuda.js?v=6"></script>
 <script src="reino-painel.js?v=16"></script>
 <script src="corte-painel.js?v=6"></script>
 <script src="diplomacia-painel.js?v=7"></script>
 <script src="intrigas-painel.js?v=2"></script>
-<script src="mundo.js?v=19"></script>
+<script src="mundo.js?v=20"></script>
 </body>
 </html>

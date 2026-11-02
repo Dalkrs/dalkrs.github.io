@@ -76,11 +76,11 @@ const Y = 346.41;          // a fileira de hexágonos r = 10 (em pé, de 40 unid
     }, [N.pl.x, N.pl.y]);
     ok(variados > 20, 'a tinta tem a textura do terreno (as manchas e o mato dela), não uma cor lisa — mesmo sem o desenho em cada hexágono: ' + variados + ' cores num pedaço do hexágono');
     await campo(L, 'ter:des').check(); await espera(400);
-    // a divisa entre a floresta e a planície: sem fresta (a tinta cobre tudo), com as duas cores se misturando
+    // a divisa entre a floresta e a planície: sem fresta (a tinta cobre tudo; a aquarela do lote 63 deixa um fio de 1 a 5 no alfa), com as duas cores se misturando
     const cantos = await A(L, () => __mundo.N.cantosHex(__mundo.App.mapa, 7, 10));
     const xs = cantos.map(c => c[0]), xd = Math.max(...xs), ys = cantos.filter(c => Math.abs(c[0] - xd) < 0.01).map(c => c[1]);
     const divisa = await pixelHex(L, xd, (ys[0] + ys[ys.length - 1]) / 2);
-    ok(divisa && divisa[3] === 255, 'na divisa entre a floresta e a planície, a tinta não deixa fresta: ' + j(divisa));
+    ok(divisa && divisa[3] >= 250, 'na divisa entre a floresta e a planície, a tinta não deixa fresta: ' + j(divisa));
     // a volta da área pintada: a borda é macia (nem cheia, nem vazia, logo depois da beirada)
     const beira = await A(L, () => { const cs = __mundo.N.cantosHex(__mundo.App.mapa, 4, 10); return Math.min(...cs.map(c => c[0])); });
     const fora = [await pixelHex(L, beira + 1.5, N.fl.y), await pixelHex(L, beira - 3, N.fl.y), await pixelHex(L, beira - 20, N.fl.y)];

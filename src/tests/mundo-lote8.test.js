@@ -41,6 +41,7 @@ const zoom = async (a, z) => { await A(a, z => { window.MundoTela.zoom = z; }, z
 // unidade do mapa: "cantos" são as do canto de cada hexágono (fora do círculo de dentro dele, onde o desenho do
 // hexágono não chega); "miolo", as de perto do centro. "Escuras" são as do verde das árvores (bem mais escuro que a cor
 // da floresta, #3f7a46): as manchas da tinta lisa são de leve e não chegam lá.
+// (lote 63: com a aquarela a tinta é lavada no papel, então o limite subiu de 108 para 120.)
 const amostrar = a => A(a, () => {
   const { App, N } = __mundo, m = App.mapa, cv = document.querySelector('#mundo canvas.hex-desenho');
   if (!cv || cv.hidden) return null;
@@ -59,7 +60,7 @@ const amostrar = a => A(a, () => {
     if (!dentro.has(h.q + ',' + h.r)) continue;
     const px = Math.round((x - x0) * k), py = Math.round((y - y0) * k);
     if (px < 0 || py < 0 || px >= cv.width || py >= cv.height) continue;
-    const i = (py * cv.width + px) * 4, escura = img[i + 3] > 200 && img[i + 1] < 108;
+    const i = (py * cv.width + px) * 4, escura = img[i + 3] > 200 && img[i + 1] < 120;
     const c = N.centroHex(m, h.q, h.r), d = Math.hypot(x - c.x, y - c.y);
     if (d > u * 1.02) { out.cantos++; if (escura) out.cantosEscuras++; }
     else if (d < u * 0.9) { out.miolo++; if (escura) out.mioloEscuras++; }

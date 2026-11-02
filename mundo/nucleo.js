@@ -232,6 +232,8 @@
   /* (lote 7, parte 5b) Os grupos do mundo: as caravanas, as patrulhas e os exércitos, que andam sozinhos pelas rotas
      deles com o tempo do mapa (o grupo comum, sem tipo, é o de sempre: os jogadores, ou quem o mestre quiser). Nascem
      escondidos dos jogadores. pt: os cubos de um tempo de marcha de começo. */
+  // (lote 63) os tipos de exército (o desenho e a composição estão em tc/modelos.js)
+  const ARMAS_IDS = new Set(['batedores', 'patrulha', 'guarnicao', 'hoste', 'horda', 'cerco', 'frota', 'caravanaArmada', 'mercenarios', 'caravanaComercial']);
   const TIPOS_GRUPO = {
     caravana: { nome: 'Caravana', sigla: 'CAR', cor: '#c9963a', pt: 2, svg: '<path d="M2 15V8h11v7M13 11h4l3 3v1M2 15h18M4 8c0-2 2-3 4.5-3S13 6 13 8"/><circle cx="6" cy="17.5" r="2"/><circle cx="16" cy="17.5" r="2"/>' },
     patrulha: { nome: 'Patrulha', sigla: 'PAT', cor: '#5a8fc0', pt: 4, svg: '<path d="M17 2v20M15 5l2-3 2 3M3 7h9v5c0 4-2.5 6.5-4.5 8C5.5 18.5 3 16 3 12z"/>' },
@@ -2141,6 +2143,8 @@
         if (tem(CLIMAS, o.ch)) g.ch = o.ch;                       // (lote 7, parte 5c) na projeção: o clima de hoje onde ele está
         // (lote 8, parte 6) o exército: as unidades, o comandante, a moral e os mantimentos
         if (g.tipo === 'exercito') { const exe = normExe(o.exe); if (exe) g.exe = exe; }
+        // (lote 63) o tipo do exército (Batedores, Hoste, Frota…: tc/modelos.js): o desenho do token
+        if (g.tipo === 'exercito' && typeof o.arma === 'string' && ARMAS_IDS.has(o.arma)) g.arma = o.arma;
         // (lote 17) a marcha planejada vira seta (ver: os jogadores de outra facção também veem); na projeção, sp = os
         // pontos da seta, prontos
         if (ehObj(o.seta)) g.seta = { ver: sim(o.seta.ver) };
@@ -4018,7 +4022,7 @@
     temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,
     terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, VIZINHOS_HEX, BIOMA_DA_TEX, tijoloHex, hexParaCena, guerraDoHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, controleDaRegiao, acimaDe,
-    TIPOS_GRUPO, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
+    TIPOS_GRUPO, ARMAS_IDS, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
     CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
     HONRA, TERRENOS_NOVOS, TERRENOS_L54, TERRENOS_L57, TEX_AGUA, redeDoHex, margemDoHex, meioDoLado, VIZ_REDE, TEX_VIA, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
