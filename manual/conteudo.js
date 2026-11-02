@@ -244,6 +244,7 @@
         { t: 'Criar os clãs', txt: 'O dos jogadores e os de NPC, com o brasão. Dos de NPC, você escolhe parte por parte o que os jogadores veem.', ir: { aba: 'cla', g: 'Os clãs da mesa' } },
         { t: 'Os membros do clã', txt: 'No cartão Membros, “+ Membro”: o nome (ou uma ficha, que traz o nome e o aniversário), a raça, a classe, o nascimento no calendário do mapa principal e o cargo — ou sem cargo. No rol você muda tudo e tira do clã (o respeito fica guardado).', ir: { aba: 'cla', g: 'Os membros do clã' } },
         { t: 'A foto e o clã na cena', txt: 'Clique no avatar de um membro para pôr a foto. Nas Cenas, “Puxar o clã…” cria os tokens dos membros que você marcar, com o nome, a foto e a borda na cor do brasão.', ir: { aba: 'cla', g: 'A foto dos membros e o clã na cena' } },
+        { t: 'Membros ligados', txt: '“Ficha…” liga um membro a uma ficha; “Das fichas…” traz um grupo das Fichas ou uma campanha de uma vez; “Das tropas…” traz os soldados com nome das tropas do clã. Membro e soldado ficam ligados: o que muda num muda no outro.', ir: { aba: 'cla', g: 'Membros ligados às fichas e às tropas' } },
         { t: 'A Sede', txt: 'Arraste plantas prontas para o terreno; “Editar no construtor” monta os cômodos; “Ver nas Cenas” cria a cena da sede.', ir: { aba: 'cla', g: 'A Sede' } },
         { t: 'Construções, cofre e respeito', txt: '“Subir de nível” desconta do cofre. Respeito no mundo, relações e respeito de cada membro, com o motivo indo para o histórico.' },
       ],
@@ -475,5 +476,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 8, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 9, sistemas, tarefas, roteiro, sabia };
 })();

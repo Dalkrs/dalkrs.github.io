@@ -221,9 +221,9 @@
 
   /* ---------------- quem é quem ---------------- */
   function personagens() {
-    if (!naMesa) return [{ id: PC_TESTE, nome: 'Personagem de teste', dono: 'local', img: null, campanha: null }];
+    if (!naMesa) return [{ id: PC_TESTE, nome: 'Personagem de teste', dono: 'local', img: null, campanha: null, grupo: '' }];
     return P.todas().filter(l => !l.apagado && typeof l.id === 'string' && String(l.nome || '').trim())
-      .map(l => { const f = ehObj(l.ficha) ? l.ficha : {}; return { id: l.id, nome: String(l.nome).trim(), dono: l.dono_id || null, campanha: l.campanha || null, img: imagemOk(f.img) ? f.img : null, aniv: ehObj(f.aniv) ? f.aniv : null }; })
+      .map(l => { const f = ehObj(l.ficha) ? l.ficha : {}; return { id: l.id, nome: String(l.nome).trim(), dono: l.dono_id || null, campanha: l.campanha || null, img: imagemOk(f.img) ? f.img : null, aniv: ehObj(f.aniv) ? f.aniv : null, grupo: typeof f.grupo === 'string' ? f.grupo.trim().slice(0, 60) : '' }; })
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }
   const pcDe = id => personagens().find(p => p.id === id) || null;
@@ -731,7 +731,7 @@
   // o campo de raça ou de classe: as árvores da mesa (ou escrito, sem árvores)
   function campoArv(id, m, cat, rot, bib) {
     const l = arvoresCla(bib, cat), v = m.dados[cat] || '', vn = m.dados[cat + 'N'] || '';
-    const grava = campos => mudarCla(id, 'mudar ' + (cat === 'raca' ? 'a raça' : 'a classe') + ' de ' + quemE(m.pessoa).nome, y => trocar(y, N.mudarMembroDados(y, m.pid, campos)));
+    const grava = campos => editarMembro(id, m, 'mudar ' + (cat === 'raca' ? 'a raça' : 'a classe') + ' de ' + quemE(m.pessoa).nome, campos);
     if (!l.length) return h('input', { class: 'in', type: 'text', 'data-k': 'rol:' + cat + 'n:' + m.pid, maxlength: 40, value: vn, placeholder: rot, 'aria-label': rot + ' de ' + quemE(m.pessoa).nome, onchange: function () { grava({ [cat]: null, [cat + 'N']: this.value }); } });
     const fora = !l.some(a => a.id === v) && (v || vn);
     return h('select', { class: 'in', 'data-k': 'rol:' + cat + ':' + m.pid, 'aria-label': rot + ' de ' + quemE(m.pessoa).nome, onchange: function () { if (this.value === '__fora') return; const a = l.find(x => x.id === this.value); grava(a ? { [cat]: a.id, [cat + 'N']: a.nome } : { [cat]: null, [cat + 'N']: null }); } },
@@ -745,7 +745,7 @@
     return h('button', { type: 'button', class: 'btn sm rol-nasc', 'data-k': 'rol:nasc:' + m.pid, title: n ? 'Nasceu em ' + C.texto(n, cal.meses) + ' — mudar' : 'O nascimento, no calendário do mundo', disabled: ocupado,
       onclick: () => C.escolher({ meses: cal.meses, hoje: cal.hoje, valor: n, titulo: 'O nascimento de ' + quemE(m.pessoa).nome }).then(v => {
         if (v === undefined) return;
-        mudarCla(id, (v ? 'anotar' : 'tirar') + ' o nascimento de ' + quemE(m.pessoa).nome, y => trocar(y, N.mudarMembroDados(y, m.pid, { nasc: v })));
+        editarMembro(id, m, (v ? 'anotar' : 'tirar') + ' o nascimento de ' + quemE(m.pessoa).nome, { nasc: v });
       }) }, n ? idadeEl(m, cal, true) : 'Nascimento…');
   }
   function secRol(x) {
@@ -763,17 +763,22 @@
             onclick: () => mudarCla(id, 'tirar a foto de ' + q.nome, y => trocar(y, N.mudarMembroDados(y, m.pid, { img: null }))) }, '×') : null),
         m.pessoa.pc ? h('span', { class: 'rol-q' }, h('b', { class: 'rol-nm', text: q.nome }), h('small', { text: 'ficha' + (q.de ? ' · ' + q.de : '') }))
           : h('input', { class: 'in rol-nome', type: 'text', 'data-k': 'rol:nome:' + m.pid, maxlength: N.MAX.nomePessoa, value: m.pessoa.nome || '', 'aria-label': 'Nome do membro',
-            onchange: function () { const v = this.value.replace(/\s+/g, ' ').trim(); if (!v) { this.value = m.pessoa.nome; toast('O membro precisa de um nome.'); return; } mudarCla(id, 'mudar o nome de ' + m.pessoa.nome, y => trocar(y, N.mudarMembroDados(y, m.pid, { nome: v }))); } }),
+            onchange: function () { const v = this.value.replace(/\s+/g, ' ').trim(); if (!v) { this.value = m.pessoa.nome; toast('O membro precisa de um nome.'); return; } editarMembro(id, m, 'mudar o nome de ' + m.pessoa.nome, { nome: v }); } }),
         campoArv(id, m, 'raca', 'Raça', bib), campoArv(id, m, 'classe', 'Classe', bib),
         nascimentoDe(id, m, cal),
         h('select', { class: 'in rol-cargo', 'data-k': 'rol:cargo:' + m.pid, 'aria-label': 'Cargo de ' + q.nome, disabled: ocupado,
           onchange: function () { const v = this.value || null; if (!mudarCla(id, (v ? 'pôr ' + q.nome + ' no cargo ' + cs[v].nome : 'tirar ' + q.nome + ' do cargo'), y => trocar(y, N.moverMembro(y, m.pid, v)))) { this.value = m.cargo || ''; toast(v === 'lider' ? 'A liderança tem um lugar só: use “Trocar o líder…”.' : 'Esse cargo está cheio.'); } } },
           opcCargo.map(([k, t]) => h('option', { value: k, text: t, selected: (m.cargo || '') === k }))),
+        acoesDoMembro(x, m, q),
         h('button', { type: 'button', class: 'ib leve', 'data-k': 'rol:x:' + m.pid, title: 'Tirar do clã', 'aria-label': 'Tirar ' + q.nome + ' do clã', disabled: ocupado, onclick: () => mudarCla(id, 'tirar ' + q.nome + ' do clã', y => trocar(y, N.tirarMembro(y, m.pid))) }, '×'));
     };
     return h('div', { class: 'cartao rol-cartao', 'data-k': 'sec:rol' },
       h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Membros' }), h('small', { class: 'ajuda', text: ms.length === 1 ? '1 membro' : ms.length + ' membros' }),
-        h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'rol:novo', style: 'margin-left:auto', disabled: ocupado, onclick: () => novoMembroDlg(x) }, '+ Membro')),
+        // (lote 60) trazer fichas (por grupo ou campanha) e os soldados com nome das tropas do clã
+        h('span', { class: 'rol-trazer', style: 'margin-left:auto' },
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'rol:fichas', disabled: ocupado, onclick: () => fichasDlg(x) }, 'Das fichas…'),
+          soldadosDoCla(id).length ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'rol:tropas', disabled: ocupado || !gravaFichas(), onclick: () => tropasDlg(x) }, 'Das tropas…') : null,
+          h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'rol:novo', disabled: ocupado, onclick: () => novoMembroDlg(x) }, '+ Membro'))),
       ms.length ? h('div', { class: 'rol-lista' }, ms.map(linha)) : h('p', { class: 'vazio-p', text: 'Ninguém no clã ainda. “+ Membro” anota alguém, com ou sem cargo.' }),
       h('p', { class: 'ajuda', text: 'A idade conta pelo calendário do mundo' + (cal.mapa ? ' (' + cal.mapa + ')' : ' (crie um mapa no Mapa-múndi para a data de hoje)') + ' e cresce sozinha. Quem é uma ficha usa o nome e o aniversário dela. ' + (c.jogadores ? 'Os jogadores veem o rol.' : 'Os jogadores veem o rol se você marcar “Membros”.') }));
   }
@@ -810,6 +815,194 @@
         h('label', { class: 'field' }, h('span', { text: 'Cargo' }), cargo)),
       pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, 'Anotar'))]);
     nome.focus();
+  }
+  /* ---------------- (lote 60) os membros ligados: a ficha, os soldados das tropas ----------------
+     · ligar um membro anotado a uma ficha: o nome, o aniversário e o retrato vêm dela (a raça, a classe e a foto
+       anotadas ficam); desligar deixa o nome de agora anotado;
+     · trazer fichas para o clã, por grupo das Fichas ou por campanha;
+     · os soldados com nome das tropas do clã: viram membros (e um membro vira soldado de uma unidade) — ligados: o
+       soldado manda (o nome, a raça, a classe, o nascimento); mudar no clã muda o soldado, e o que muda nas Fichas o
+       clã acompanha quando quem mestra abre o Clã. */
+  function soldadosDoCla(claId) {
+    const out = [];
+    for (const t of tropasDoCla(claId)) for (const u of t.d.unid) for (const sd of u.sold) out.push({ pc: t.pc, t, u, s: sd });
+    return out;
+  }
+  function soldadoDe(claId, sold) {
+    if (!sold) return null;
+    const t = tropasDoCla(claId).find(x => x.pc === sold.pc), u = t && t.d.unid.find(x => x.id === sold.un), sd = u && u.sold.find(x => x.id === sold.sd);
+    return sd ? { t, u, s: sd } : null;
+  }
+  const CAMPOS_SOLDADO = ['nome', 'raca', 'racaN', 'classe', 'classeN', 'nasc'];
+  // o soldado como campos do membro (o que o clã copia dele)
+  const camposDoSoldado = sd => ({ nome: sd.nome, raca: sd.raca || null, racaN: sd.racaN || null, classe: sd.classe || null, classeN: sd.classeN || null, nasc: sd.nasc || null });
+  // mudar um soldado na tropa (quem mestra as Fichas grava) → o que havia antes (para desfazer) ou null
+  function mudarNaTropa(pc, fn) {
+    const T = TT(), l = D && D.pegar(PRE_TROPA + pc);
+    if (!T || !l || l.apagado || !ehObj(l.dados) || !gravaFichas()) return null;
+    const antes = copia(l.dados), x = T.norm(copia(l.dados));
+    if (fn(x) === false) return null;
+    D.gravar(PRE_TROPA + pc, { dados: T.norm(x) }, null, { cas: true });
+    return antes;
+  }
+  const voltarTropa = (pc, antes) => { if (antes) D.gravar(PRE_TROPA + pc, { dados: antes }, null, { cas: true }); };
+  // junta o passo de desfazer do clã (o último) com o da tropa: um Desfazer volta os dois
+  function juntarDesfazer(rotulo, pc, antes) {
+    const passo = pilha.pop();
+    if (!passo) { voltarTropa(pc, antes); return; }
+    empilhar(rotulo, () => { voltarTropa(pc, antes); return passo.desfazer(); });
+  }
+  // mudar um membro; quando ele é um soldado, o soldado muda junto
+  function editarMembro(id, m, rotulo, campos) {
+    const sold = m.dados && m.dados.sold, sv = sold ? soldadoDe(id, sold) : null;
+    const pSold = {}; for (const k of CAMPOS_SOLDADO) if (k in campos) pSold[k] = campos[k];
+    let antes = null;
+    if (sv && Object.keys(pSold).length) antes = mudarNaTropa(sold.pc, x => { const u = x.unid.find(y => y.id === sold.un), sd = u && u.sold.find(y => y.id === sold.sd); if (!sd) return false; for (const k of Object.keys(pSold)) { if (pSold[k] == null || pSold[k] === '') delete sd[k]; else sd[k] = pSold[k]; } });
+    const ok = mudarCla(id, rotulo, y => trocar(y, N.mudarMembroDados(y, m.pid, campos)));
+    if (antes) { if (ok) juntarDesfazer(rotulo, sold.pc, antes); else voltarTropa(sold.pc, antes); }
+    return ok;
+  }
+  // o clã acompanha os soldados (quem mestra as Fichas): o nome, a raça, a classe e o nascimento; o soldado que saiu da
+  // tropa solta a ligação (o membro fica)
+  function sincronizarSoldados() {
+    if (!gravaFichas() || !TT()) return;
+    for (const x of clasMestre()) {
+      let c = x.c, mudou = false;
+      for (const m of N.membrosDe(c)) {
+        const sold = m.dados && m.dados.sold;
+        if (!sold) continue;
+        const l = D.pegar(PRE_TROPA + sold.pc);
+        if (!l) continue;                                                    // (a tropa ainda não chegou)
+        const sv = !l.apagado && ehObj(l.dados) && l.dados.cla === x.id ? soldadoDe(x.id, sold) : null;
+        if (!sv) { const n = N.mudarMembroDados(c, m.pid, { sold: null }); if (n) { c = n; mudou = true; } continue; }
+        const quer = camposDoSoldado(sv.s), tem = { nome: m.pessoa.nome, raca: m.dados.raca || null, racaN: m.dados.racaN || null, classe: m.dados.classe || null, classeN: m.dados.classeN || null, nasc: m.dados.nasc || null };
+        if (j(quer) !== j(tem)) { const n = N.mudarMembroDados(c, m.pid, quer); if (n) { c = n; mudou = true; } }
+      }
+      if (mudou) gravarDoc(PRE_C + x.id, c);
+    }
+  }
+  // os botões de cada membro no cartão: ligar à ficha (ou desligar), pôr numa tropa, e o selo do soldado
+  function acoesDoMembro(x, m, q) {
+    const id = x.id, sold = m.dados && m.dados.sold, sv = sold ? soldadoDe(id, sold) : null;
+    const pode = !ocupado;
+    return h('span', { class: 'rol-acoes' },
+      sv ? h('span', { class: 'rol-sd', 'data-k': 'rol:sd:' + m.pid, title: 'Soldado da tropa ' + sv.t.d.nome + ' (o que mudar aqui muda lá)' }, 'soldado · ' + sv.u.nome) : null,
+      m.pessoa.pc ? h('button', { type: 'button', class: 'btn sm leve', 'data-k': 'rol:desliga:' + m.pid, disabled: !pode, title: 'Desligar da ficha (fica o nome de agora)',
+        onclick: () => editarMembro(id, m, 'desligar ' + q.nome + ' da ficha', { pc: null, nome: q.nome }) }, 'Desligar')
+        : h('button', { type: 'button', class: 'btn sm leve', 'data-k': 'rol:liga:' + m.pid, disabled: !pode, title: 'Ligar a uma ficha da mesa (o nome, o aniversário e o retrato vêm dela)', onclick: () => ligarDlg(x, m) }, 'Ficha…'),
+      !m.pessoa.pc && !sv && tropasDoCla(id).length ? h('button', { type: 'button', class: 'btn sm leve', 'data-k': 'rol:tropa:' + m.pid, disabled: !pode || !gravaFichas(), title: 'Pôr como soldado com nome numa unidade de uma tropa do clã', onclick: () => soldadoDlg(x, m) }, 'Tropa…') : null);
+  }
+  function ligarDlg(x, m) {
+    const c = x.c, id = x.id, q = quemE(m.pessoa), ja = new Set(N.membrosDe(c).map(y => y.pessoa.pc).filter(Boolean)), pcs = personagens().filter(p => !ja.has(p.id));
+    if (!pcs.length) { toast('Todas as fichas da mesa já são membros deste clã.'); return; }
+    const sel = h('select', { class: 'in', 'data-k': 'dl:pc', 'aria-label': 'Ficha' }, pcs.map(p => h('option', { value: p.id, text: p.nome + (p.grupo ? ' · ' + p.grupo : '') + ' · ' + (p.dono ? 'jogador' : 'NPC'), selected: p.nome.toLowerCase() === q.nome.toLowerCase() })));
+    const ok = () => {
+      const p = pcs.find(y => y.id === sel.value);
+      if (!p) return;
+      fechar();
+      if (m.dados && m.dados.sold) toast('O membro deixa de ser o soldado da tropa (o soldado continua lá).');
+      editarMembro(id, m, 'ligar ' + q.nome + ' à ficha de ' + p.nome, { pc: p.id, nome: p.nome, sold: null });
+    };
+    abrir('', [h('h2', { text: 'Ligar ' + q.nome + ' a uma ficha' }),
+      h('div', { class: 'corpo' }, h('p', { class: 'ajuda', text: 'O nome, o aniversário e o retrato passam a vir da ficha. A raça, a classe e a foto anotadas ficam (a foto anotada continua valendo).' }), sel),
+      pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, 'Ligar'))]);
+    sel.focus();
+  }
+  // a lista com caixinhas (as fichas ou os soldados): itens [{ k, nome, sub, ja }] → o elemento e quem está marcado
+  function listaMarcar(itens, pre) {
+    const marc = new Set(itens.filter(i => !i.ja).map(i => i.k));
+    const conta = h('small', { class: 'ajuda', 'data-k': pre + ':conta' });
+    const ul = h('ul', { class: 'marcar' });
+    const pintarL = () => {
+      conta.textContent = marc.size + ' de ' + itens.filter(i => !i.ja).length + ' marcados';
+      ul.replaceChildren(...itens.map((i, n) => h('li', { class: i.ja ? 'ja' : '' }, h('label', { class: 'chk' },
+        h('input', { type: 'checkbox', 'data-k': pre + ':' + n, checked: marc.has(i.k), disabled: i.ja, onchange: function () { if (this.checked) marc.add(i.k); else marc.delete(i.k); pintarL(); } }),
+        h('span', { text: i.nome }), h('small', { class: 'ajuda', text: i.ja ? ' · já é membro' : i.sub ? ' · ' + i.sub : '' })))));
+    };
+    pintarL();
+    return { el: h('div', { class: 'marcar-caixa' }, conta, ul), marc, todos: on => { marc.clear(); if (on) itens.filter(i => !i.ja).forEach(i => marc.add(i.k)); pintarL(); } };
+  }
+  const opcoesDeCargo = cs => { const out = [], anda = (k, prof) => { const cheio = cs[k].gente.length >= (k === 'lider' ? 1 : N.MAX.gente); out.push(h('option', { value: k, text: ' '.repeat(prof) + cs[k].nome + (cheio ? ' (cheio)' : ''), disabled: cheio })); for (const f of N.filhos(cs, k)) anda(f, prof + 1); }; anda('lider', 0); return out; };
+  function fichasDlg(x) {
+    const c = x.c, id = x.id, cs = N.normCargos(c.cargos), pcs = personagens(), ja = new Set(N.membrosDe(c).map(m => m.pessoa.pc).filter(Boolean));
+    // de onde: os grupos das Fichas e as campanhas
+    const fontes = [];
+    const grupos = [...new Set(pcs.map(p => p.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    for (const g of grupos) fontes.push({ k: 'g:' + g, n: 'Grupo: ' + g, f: p => p.grupo === g });
+    if (grupos.length && pcs.some(p => !p.grupo)) fontes.push({ k: '@semgrupo', n: 'Sem grupo', f: p => !p.grupo });
+    for (const b of porCampanha(pcs)) if (b.id) fontes.push({ k: 'c:' + b.id, n: 'Campanha: ' + b.nome, f: p => p.campanha === b.id });
+    if (pcs.some(p => p.dono)) fontes.push({ k: '@jog', n: 'Personagens dos jogadores', f: p => !!p.dono });
+    fontes.push({ k: '@todas', n: 'Todas as fichas', f: () => true });
+    let fonte = fontes[0], L = null;
+    const caixa = h('div', {});
+    const montar = () => { L = listaMarcar(pcs.filter(fonte.f).map(p => ({ k: p.id, nome: p.nome, sub: [p.grupo, p.dono ? 'jogador' : 'NPC'].filter(Boolean).join(' · '), ja: ja.has(p.id) })), 'fi'); caixa.replaceChildren(L.el); };
+    montar();
+    const selF = h('select', { class: 'in', 'data-k': 'dl:fonte', 'aria-label': 'De onde', onchange: function () { fonte = fontes.find(f => f.k === this.value) || fontes[0]; montar(); } }, fontes.map(f => h('option', { value: f.k, text: f.n + ' (' + pcs.filter(f.f).length + ')' })));
+    const cargo = h('select', { class: 'in', 'data-k': 'dl:cargo', 'aria-label': 'Cargo' }, h('option', { value: '', text: 'Sem cargo' }), opcoesDeCargo(cs));
+    const ok = () => {
+      const quem = pcs.filter(p => L.marc.has(p.id));
+      if (!quem.length) { toast('Marque pelo menos uma ficha.'); return; }
+      const cg = cargo.value || null;
+      fechar();
+      let semLugar = 0;
+      mudarCla(id, quem.length === 1 ? 'anotar ' + quem[0].nome + ' no clã' : 'anotar ' + quem.length + ' fichas no clã', y => {
+        let atual = y, n = 0;
+        for (const p of quem) { let r = N.novoMembro(atual, { pc: p.id, nome: p.nome }, cg); if (!r && cg) { r = N.novoMembro(atual, { pc: p.id, nome: p.nome }, null); if (r) semLugar++; } if (r) { atual = r.cla; n++; } }
+        return n ? trocar(y, atual) : false;
+      });
+      if (semLugar) toast(semLugar === 1 ? 'Uma ficha entrou sem cargo: o cargo encheu.' : semLugar + ' fichas entraram sem cargo: o cargo encheu.');
+    };
+    abrir('largo', [h('h2', { text: 'Trazer fichas para ' + c.nome }),
+      h('div', { class: 'corpo' },
+        h('label', { class: 'field' }, h('span', { text: 'De onde' }), selF),
+        h('div', { class: 'row', style: 'gap:6px' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'fi:todos', onclick: () => L.todos(true) }, 'Todos'), h('button', { type: 'button', class: 'btn sm', 'data-k': 'fi:nenhum', onclick: () => L.todos(false) }, 'Nenhum')),
+        caixa,
+        h('label', { class: 'field' }, h('span', { text: 'Cargo' }), cargo),
+        h('p', { class: 'ajuda', text: 'Cada ficha marcada vira um membro ligado a ela (o nome, o aniversário e o retrato vêm da ficha).' })),
+      pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, 'Anotar'))]);
+  }
+  function tropasDlg(x) {
+    const c = x.c, id = x.id, sds = soldadosDoCla(id);
+    const L = listaMarcar(sds.map(o => ({ k: o.pc + '|' + o.u.id + '|' + o.s.id, nome: o.s.nome, sub: o.t.d.nome + ' · ' + o.u.nome, ja: !!N.membroDoSoldado(c, o.pc, o.u.id, o.s.id) })), 'sd');
+    const ok = () => {
+      const quem = sds.filter(o => L.marc.has(o.pc + '|' + o.u.id + '|' + o.s.id));
+      if (!quem.length) { toast('Marque pelo menos um soldado.'); return; }
+      fechar();
+      mudarCla(id, quem.length === 1 ? 'anotar ' + quem[0].s.nome + ' no clã' : 'anotar ' + quem.length + ' soldados no clã', y => {
+        let atual = y, n = 0;
+        for (const o of quem) { const r = N.novoMembro(atual, Object.assign(camposDoSoldado(o.s), { sold: { pc: o.pc, un: o.u.id, sd: o.s.id } }), null); if (r) { atual = r.cla; n++; } }
+        return n ? trocar(y, atual) : false;
+      });
+    };
+    abrir('largo', [h('h2', { text: 'Os soldados das tropas de ' + c.nome }),
+      h('div', { class: 'corpo' },
+        h('div', { class: 'row', style: 'gap:6px' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'sd:todos', onclick: () => L.todos(true) }, 'Todos'), h('button', { type: 'button', class: 'btn sm', 'data-k': 'sd:nenhum', onclick: () => L.todos(false) }, 'Nenhum')),
+        L.el,
+        h('p', { class: 'ajuda', text: 'Cada soldado marcado vira um membro sem cargo, ligado a ele: o nome, a raça, a classe e o nascimento mudam juntos, aqui e na tropa.' })),
+      pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, 'Anotar'))]);
+  }
+  // um membro vira soldado com nome de uma unidade (de uma tropa do clã)
+  function soldadoDlg(x, m) {
+    const id = x.id, q = quemE(m.pessoa), T = TT(), unids = [];
+    for (const t of tropasDoCla(id)) for (const u of t.d.unid) unids.push({ t, u, cheio: u.sold.length >= T.MAX.sold });
+    const sel = h('select', { class: 'in', 'data-k': 'dl:unid', 'aria-label': 'Unidade' }, unids.map((o, n) => h('option', { value: String(n), disabled: o.cheio, text: o.t.d.nome + ' · ' + o.u.nome + ' (' + o.u.sold.length + ' com nome' + (o.cheio ? ', cheia' : '') + ')' })));
+    const ok = () => {
+      const o = unids[Number(sel.value)];
+      if (!o || o.cheio) return;
+      fechar();
+      const sd = 'sd' + Math.random().toString(36).slice(2, 10), dd = m.dados || {};
+      const novo = Object.assign({ id: sd, nome: q.nome, raca: dd.raca || null, racaN: dd.racaN || null, classe: dd.classe || null, classeN: dd.classeN || null }, dd.nasc ? { nasc: dd.nasc } : {});
+      const antes = mudarNaTropa(o.t.pc, y => { const u = y.unid.find(z => z.id === o.u.id); if (!u || u.sold.length >= T.MAX.sold) return false; u.sold.push(novo); });
+      if (!antes) { toast('Não deu para pôr o soldado na tropa.'); return; }
+      const rot = 'pôr ' + q.nome + ' na tropa ' + o.t.d.nome;
+      if (mudarCla(id, rot, y => trocar(y, N.mudarMembroDados(y, m.pid, { sold: { pc: o.t.pc, un: o.u.id, sd } })))) juntarDesfazer(rot, o.t.pc, antes);
+      else voltarTropa(o.t.pc, antes);
+      toast(q.nome + ' agora é soldado de ' + o.u.nome + ' (' + o.t.d.nome + ').');
+    };
+    abrir('', [h('h2', { text: 'Pôr ' + q.nome + ' numa tropa' }),
+      h('div', { class: 'corpo' }, h('p', { class: 'ajuda', text: 'Vira um soldado com nome da unidade escolhida, ligado ao membro: o nome, a raça, a classe e o nascimento mudam juntos.' }), sel),
+      pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, 'Pôr na tropa'))]);
+    sel.focus();
   }
   function secHistorico(x) {
     const c = x.c, nm = nomes(), l = verTudo ? c.hist : c.hist.slice(0, 40);
@@ -1389,6 +1582,7 @@
   function pintarJa() {
     sincronizarSedes();
     sincronizarTropas();                                        // (lote 42) quem recebe as tropas do clã acompanha a liderança
+    sincronizarSoldados();                                      // (lote 60) os membros que são soldados acompanham a tropa
     const bt = $('btDesfazer');
     bt.disabled = !pilha.length;
     bt.title = pilha.length ? 'Desfazer: ' + pilha[pilha.length - 1].rotulo + ' (Ctrl+Z)' : 'Nada para desfazer';

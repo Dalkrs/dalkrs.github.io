@@ -222,6 +222,23 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   não mostra o teto.
 - Testes: `teto-por-nivel`.
 
+### Membros do clã ligados às fichas e às tropas (lote 60)
+
+- **A ligação com o soldado** (`cla/nucleo.js`, `normDadosM`): `membros.dados[pid].sold = { pc, un, sd }` — a tropa
+  (`fichas:tropas:<pc>`), a unidade e o soldado com nome. `mudarMembroDados` aceita `sold` (null tira) e `pc` (ligar à
+  ficha; null desliga, com o nome anotado); `membroDoSoldado(cla, pc, un, sd)` acha o membro de um soldado. Vai para a
+  mesa com a parte "membros", como os outros dados (sem SQL novo).
+- **Na tela** (`cla/cla.js`, só quem mestra): no cartão Membros, "Ficha…" (`rol:liga:<pid>`) e "Desligar"
+  (`rol:desliga:<pid>`); "Das fichas…" (`rol:fichas`: a fonte — os grupos das Fichas, `ficha.grupo`, as campanhas, os
+  personagens dos jogadores e todas — com caixinhas e o cargo; o cargo cheio põe sem cargo); "Das tropas…" (`rol:tropas`,
+  os soldados das tropas do clã) e "Tropa…" (`rol:tropa:<pid>`, o membro vira um soldado novo da unidade escolhida). As
+  duas últimas gravam a tropa e só aparecem para quem mestra as Fichas (`gravaFichas`).
+- **Ligado**: `editarMembro` muda o membro e, quando ele é um soldado, o soldado na tropa (o nome, a raça, a classe, o
+  nascimento), juntando os dois num passo de Desfazer (`juntarDesfazer`). `sincronizarSoldados` (no `pintarJa`) copia o
+  soldado para o membro sem passo de desfazer e solta a ligação quando o soldado sai da tropa (ou a tropa sai do clã).
+- Testes: `cla-nucleo` (a ligação), `cla-membros` (ligar, desligar, "Das fichas…"), `cla-ligar.rede` (o grupo, os
+  soldados, o clã mudando a tropa e a tropa mudando o clã, "Tropa…").
+
 ### A foto dos membros do clã e o clã na cena (lote 59)
 
 - **A foto** (`cla/nucleo.js`, `normDadosM`): `membros.dados[pid].img` — o endereço da imagem enviada à mesa (https) ou,

@@ -263,5 +263,18 @@ const COR = { id: 'cor', nome: 'Ordem do Corvo', jogadores: false, ver: { mostra
     'o custo (com o nome de agora do recurso) e o que mudou');
 }
 
+/* ---------------- (lote 60) o membro ligado: a ficha e o soldado ---------------- */
+{
+  const c0 = C.normCla({ v: 1, nome: 'X', cargos: { lider: { nome: 'Líder', gente: [] } } });
+  const r = C.novoMembro(c0, { nome: 'Ilya', racaN: 'Elfo', sold: { pc: 'pc_nyx', un: 'un_1', sd: 'sd_ilya' } }, null);
+  ok(r && j(r.cla.membros.dados[r.pid].sold) === j({ pc: 'pc_nyx', un: 'un_1', sd: 'sd_ilya' }) && C.membroDoSoldado(r.cla, 'pc_nyx', 'un_1', 'sd_ilya') === r.pid && C.membroDoSoldado(r.cla, 'pc_nyx', 'un_1', 'sd_x') === null,
+    'o membro que é um soldado: a ligação guardada e achada pelo soldado');
+  { const k = C.novoMembro(c0, { nome: 'Kel', racaN: 'Anão', sold: { pc: 'pc_nyx', un: 'un 1', sd: 'sd' } }, null); ok(k && !k.cla.membros.dados[k.pid].sold, 'a ligação com id ruim não entra'); }
+  const c2 = C.mudarMembroDados(r.cla, r.pid, { pc: 'pc_selene', nome: 'Selene', sold: null }), m2 = C.membrosDe(c2).find(x => x.pid === r.pid);
+  ok(m2.pessoa.pc === 'pc_selene' && !m2.dados.sold && m2.dados.racaN === 'Elfo', 'ligar à ficha: a ficha manda, a ligação com o soldado sai, a raça anotada fica');
+  const c3 = C.mudarMembroDados(c2, r.pid, { pc: null, nome: 'Selene' }), m3 = C.membrosDe(c3).find(x => x.pid === r.pid);
+  ok(!m3.pessoa.pc && m3.pessoa.nome === 'Selene', 'desligar: fica o nome anotado');
+}
+
 console.log(ruins ? n - ruins + ' verificações passaram, ' + ruins + ' falharam' : n + ' verificações passaram');
 process.exit(ruins ? 1 : 0);

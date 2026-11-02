@@ -212,7 +212,7 @@ select.in { padding: 0 6px; width: auto; }
 .rol-fbt:disabled { cursor: default; }
 .rol-fx { position: absolute; top: -5px; right: -6px; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg-2, #1b1f27); color: var(--fg-2, #c8cdd6); font-size: 11px; line-height: 13px; padding: 0; cursor: pointer; }
 .rol-fx:hover { color: #fff; }
-.rol-ed { display: grid; grid-template-columns: 32px minmax(120px, 1.3fr) minmax(90px, 1fr) minmax(90px, 1fr) auto minmax(110px, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.rol-ed { display: grid; grid-template-columns: 32px minmax(120px, 1.3fr) minmax(90px, 1fr) minmax(90px, 1fr) auto minmax(110px, 1fr) auto auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); }
 .rol-ed:last-child { border-bottom: 0; }
 .rol-ed .av { width: 32px; height: 32px; font-size: 12px; }
 .rol-ed .rol-nm { font-size: 16px; }
@@ -220,10 +220,18 @@ select.in { padding: 0 6px; width: auto; }
 .rol-nasc .rol-idade { min-width: 0; }
 .rol-nasc .rol-idade b { font-size: 17px; }
 .rol-nasc .rol-idade em { display: none; }
+.rol-acoes { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.rol-sd { font: 500 12px/1.2 var(--ui); color: var(--fg-2); border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.rol-trazer { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.marcar-caixa { display: grid; gap: 4px; }
+ul.marcar { list-style: none; margin: 0; padding: 4px 0; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+ul.marcar li { padding: 2px 10px; }
+ul.marcar li.ja { opacity: .55; }
 .rol-nasc.ficha { display: inline-flex; padding: 0 8px; color: var(--fg-2); }
 @media (max-width: 760px) {
   .rol-ed { grid-template-columns: 32px minmax(0, 1fr) auto; }
   .rol-ed > select, .rol-ed > input:not(.rol-nome), .rol-ed .rol-nasc { grid-column: 2 / 4; }
+  .rol-ed .rol-acoes { grid-column: 2 / 4; justify-content: flex-start; }
   .rol-l { grid-template-columns: 36px minmax(0, 1fr) auto; }
   .rol-l .rol-cg { grid-column: 2; justify-self: start; }
 }
@@ -412,13 +420,13 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=20"></script>
 <script src="../meditacao/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=6"></script>
+<script src="nucleo.js?v=7"></script>
 <script src="../tc/tropas.js?v=5"></script>
 <script src="../tc/calendario.js?v=1"></script>
 <script src="../mundo/nucleo.js?v=48"></script>
 <script src="../tc/sede.js?v=2"></script>
 <script src="sede-ui.js?v=3"></script>
 <script src="construtor.js?v=1"></script>
-<script src="cla.js?v=8"></script>
+<script src="cla.js?v=9"></script>
 </body>
 </html>

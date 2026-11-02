@@ -2,6 +2,32 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.01-10",
+      "data": "2026-11-01",
+      "titulo": "Membros do clã ligados às fichas e às tropas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Clã: um membro pode ser o personagem de uma ficha ou um soldado com nome de uma tropa do clã, e o nome segue a ficha ou o soldado."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã: “Ficha…” liga um membro anotado a uma ficha (o nome, o aniversário e o retrato vêm dela; a raça, a classe e a foto anotadas ficam). “Desligar” deixa o nome anotado."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã: “Das fichas…” traz de uma vez as fichas de um grupo das Fichas ou de uma campanha, com caixinhas e o cargo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã: “Das tropas…” traz os soldados com nome das tropas do clã, e “Tropa…” põe um membro como soldado de uma unidade. Membro e soldado ficam ligados: mudar o nome, a raça, a classe ou o nascimento num lugar muda no outro, e um Desfazer volta os dois."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.01-9",
       "data": "2026-11-01",
       "titulo": "A foto dos membros do clã e o clã na cena",

@@ -465,6 +465,8 @@
     const o = {}, raca = idOk(x.raca), classe = idOk(x.classe), racaN = linha(x.racaN, MAX.nomeArv), classeN = linha(x.classeN, MAX.nomeArv), nasc = normNascM(x.nasc);
     if (raca) o.raca = raca; if (racaN) o.racaN = racaN; if (classe) o.classe = classe; if (classeN) o.classeN = classeN; if (nasc) o.nasc = nasc;
     const img = fotoOk(x.img); if (img) o.img = img;                       // (lote 59) a foto do membro
+    // (lote 60) o soldado com nome de uma tropa que é este membro: { pc (o dono da tropa), un (a unidade), sd (o soldado) }
+    if (ehObj(x.sold) && pcOk(x.sold.pc) && idOk(x.sold.un) && idOk(x.sold.sd)) o.sold = { pc: x.sold.pc, un: x.sold.un, sd: x.sold.sd };
     return Object.keys(o).length ? o : null;
   }
   /* gente: (só no que a mesa recebe) as pessoas dos cargos, quando os cargos não vão — o nome e a ficha, sem o cargo */
@@ -511,10 +513,16 @@
     if ('nome' in campos) { const n = linha(campos.nome, MAX.nomePessoa); if (!n && !p.pc) return null; p.nome = n; }
     if ('pc' in campos) { const pc = pcOk(campos.pc) || null; if (!pc && !p.nome) return null; p.pc = pc; }
     const d = Object.assign({}, c.membros.dados[pid] || {});
-    for (const k of ['raca', 'racaN', 'classe', 'classeN', 'nasc', 'img']) if (k in campos) { if (campos[k] == null || campos[k] === '') delete d[k]; else d[k] = campos[k]; }
+    for (const k of ['raca', 'racaN', 'classe', 'classeN', 'nasc', 'img', 'sold']) if (k in campos) { if (campos[k] == null || campos[k] === '') delete d[k]; else d[k] = campos[k]; }
     const nd = normDadosM(d);
     if (nd) c.membros.dados[pid] = nd; else delete c.membros.dados[pid];
     return normCla(c);
+  }
+  // (lote 60) o membro que é o soldado (pc, un, sd) de uma tropa → o pid ou null
+  function membroDoSoldado(cla, pc, un, sd) {
+    const c = normCla(cla);
+    for (const pid of Object.keys(c.membros.dados)) { const s = c.membros.dados[pid].sold; if (s && s.pc === pc && s.un === un && s.sd === sd) return pid; }
+    return null;
   }
   // passar um membro para um cargo (ou para nenhum: null), com o respeito dele; o cargo de líder tem um lugar só
   function moverMembro(cla, pid, cargo) {
@@ -818,7 +826,7 @@
     novoId, sinal, normNomes, nomeNivel, nivelTxt, normBrasao, brasaoNovo, brasaoSvg,
     normCargos, filhos, descendentes, arvore, membros, lider, totalCargos, novoCargo, renomearCargo, moverCargo, apagarCargo,
     porPessoa, tirarPessoa, passarLideranca, diffCargos, aplicarDiff,
-    normMembros, membrosDe, novoMembro, mudarMembroDados, moverMembro, tirarMembro, normNascM,
+    normMembros, membrosDe, novoMembro, mudarMembroDados, membroDoSoldado, moverMembro, tirarMembro, normNascM,
     normConstrucoes, normRecursos, normRespeito, normRelacoes, normFaccao, normHist, normVer, normCla, claNovo, normPub, comoVista,
     visivel, projetar, anotar, mudarRecurso, definirRecurso, mudarRespeito, mudarRelacao, mudarMembro, falta, subirNivel,
     custoTxt, mudTxt, histTxt, qtdTxt,

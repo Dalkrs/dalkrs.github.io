@@ -3,7 +3,8 @@
 //   · no rol: mudar a raça, a classe, o cargo (e a liderança, que tem um lugar só), o nascimento e tirar do clã;
 //   · a janela do calendário: o mês, a fita dos meses, o ano, os dias, a data em palavras e a idade; Esc desiste;
 //   · o respeito dos membros conta também quem não tem cargo;
-//   · o salão: a aba Membros com o rol (o nome, a raça e a classe, o cargo e a idade).
+//   · o salão: a aba Membros com o rol (o nome, a raça e a classe, o cargo e a idade);
+//   · (lote 60) ligar um membro a uma ficha e desligar (com o Desfazer); "Das fichas…" traz as fichas para o clã.
 // TC_SCRATCH=<pasta> guarda capturas.
 const path = require('path');
 const { start, checker } = require('./lib');
@@ -94,6 +95,38 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
     ok(/Bruna Vel/.test(txt) && /Elfa/.test(txt) && /Oswin/.test(txt) && /Humano · Arqueiro/.test(txt) && /sem cargo/.test(txt), 'a aba Membros: o rol com a raça, a classe e o cargo — ' + txt.slice(0, 200));
     ok(/12 de Semeadura, ano 380/.test(txt), 'a data de nascimento no rol');
     await foto('l55-rol-salao');
+  });
+
+  // (lote 60) ligar um membro anotado a uma ficha (a ficha manda no nome), desligar, e trazer fichas para o clã
+  await passo('ligar à ficha', async () => {
+    await clicar('[data-vista="mestre"]').catch(() => {});
+    await espera(300);
+    const po = await pid('Oswin');
+    await clicar(`[data-k="rol:liga:${po}"]`);
+    ok(await P.locator('#dlg [data-k="dl:pc"] option').count() === 1, 'a janela "Ficha…": as fichas que ainda não estão no clã');
+    await clicar('#dlg [data-k="dl:sim"]');
+    let m = await A(id => window.ClaNucleo.membrosDe(__cla.doc('cla:c:' + __cla.sel)).find(x => x.pid === id), po);
+    ok(m && m.pessoa.pc === 'pc_teste' && m.dados.racaN === 'Humano' && /^data:image/.test(m.dados.img || '') && /Personagem de teste/.test(await P.locator(`.rol-ed[data-rol="${po}"]`).innerText()),
+      'Oswin ligado à ficha: o nome vem dela; a raça e a foto anotadas ficam — ' + JSON.stringify(m && { pc: m.pessoa.pc, r: m.dados.racaN }));
+    await foto('l60-ligado', '[data-k="sec:rol"]');
+    await clicar(`[data-k="rol:desliga:${po}"]`);
+    m = await A(id => window.ClaNucleo.membrosDe(__cla.doc('cla:c:' + __cla.sel)).find(x => x.pid === id), po);
+    ok(m && !m.pessoa.pc && m.pessoa.nome === 'Personagem de teste', 'Desligar: fica o nome de agora, anotado');
+    await A(() => __cla.desfazer()); await espera(200);
+    m = await A(id => window.ClaNucleo.membrosDe(__cla.doc('cla:c:' + __cla.sel)).find(x => x.pid === id), po);
+    ok(m && m.pessoa.pc === 'pc_teste', 'Desfazer volta a ligação');
+    await A(() => __cla.desfazer()); await espera(200);
+    m = await A(id => window.ClaNucleo.membrosDe(__cla.doc('cla:c:' + __cla.sel)).find(x => x.pid === id), po);
+    ok(m && !m.pessoa.pc && m.pessoa.nome === 'Oswin', 'e mais um Desfazer volta o Oswin como era');
+    await clicar('[data-k="rol:fichas"]');
+    ok(await P.locator('#dlg [data-k="fi:0"]').isChecked(), '"Das fichas…": a lista com as fichas marcadas');
+    await foto('l60-das-fichas', '#dlg');
+    await clicar('#dlg [data-k="dl:sim"]');
+    const ms = await A(() => window.ClaNucleo.membrosDe(__cla.doc('cla:c:' + __cla.sel)).map(x => x.pessoa.pc).filter(Boolean));
+    ok(JSON.stringify(ms) === JSON.stringify(['pc_teste']), 'a ficha entrou no clã, ligada');
+    await clicar('[data-k="rol:fichas"]');
+    ok(await P.locator('#dlg [data-k="fi:0"]').isDisabled() && /já é membro/.test(await P.locator('#dlg').innerText()), 'quem já é membro aparece sem caixinha');
+    await P.keyboard.press('Escape'); await espera(150);
   });
 
   const erros = dv.errs ? dv.errs.filter(e => !/favicon|fonts\.g/.test(e)) : [];
