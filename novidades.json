@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.02-2",
+      "data": "2026-11-02",
+      "titulo": "Os pontos da Árvore ficam salvos com o site em duas abas",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Árvore: com o site aberto em mais de uma aba, o total de pontos que você mudou e o nó que você pegou podiam voltar ao que eram antes, e sumiam ao recarregar. Agora ficam salvos, e cada aba mostra o que está na mesa."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.02-1",
       "data": "2026-11-02",
       "titulo": "Vilas em festa, masmorras novas e o painel do clã",

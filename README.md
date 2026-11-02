@@ -254,6 +254,18 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Os pontos da Árvore com o site em duas abas (2026.11.02-2)
+
+- O defeito: a Árvore acompanhava o que outra aba do mesmo navegador guardava (`storage` em `CHAVE_DOC`, que na mesa é
+  `tinycats:arvore:<mesa>`) trocando o documento inteiro — mas não a sombra (`sombra.pcs`, o que esta aba acha que a mesa
+  tem). Uma aba esquecida em segundo plano, com os dados velhos (o navegador segura os relógios de uma aba escondida),
+  guardava o documento dela ao abrir a Árvore ou ao receber algo da mesa; a aba em uso passava a mostrar o velho, e a
+  gravação seguinte dela mandava como diferença "o total volta e o nó sai". Era o "não salvou o ponto da escola".
+- O conserto: na mesa, a Árvore não ouve o `storage` (como o Acampamento, o Rolador e o Mundo já faziam): cada aba recebe
+  da mesa o que mudou (`ArvoreMesa.remoto`). Sem mesa, continua acompanhando a outra aba.
+- Teste: `arvore-escola.rede` (os graus e o total da Escola sobem e voltam depois de recarregar; a outra aba guarda um
+  documento velho e a mesa não perde nada).
+
 ### O painel do clã em abas (lote 62)
 
 - **As abas** (`cla/cla.js`, `editorCla`): Geral, Membros, Cofre e obras, Sede e tropas, Relações e histórico

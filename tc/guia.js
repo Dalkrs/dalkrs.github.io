@@ -147,6 +147,8 @@
         { t: 'A busca', txt: 'Acha pelo nome e pelo texto, nas árvores equipadas: a lista leva até lá.', onde: { sel: '#busca' } },
         { t: 'Os filtros', txt: 'Em cima da árvore: as naturezas e os tipos de uso (ativa, passiva…).', onde: { sel: '#filtroNat', nada: 'Os filtros aparecem quando a árvore à vista tem naturezas ou tipos de uso.' } },
         { t: 'As skills únicas', txt: 'As que o mestre criou só para o seu personagem: já vêm aprendidas.', onde: { sel: '#blocoUnicas' } },
+        // (2026.11.02-2)
+        { t: 'Em duas abas', txt: 'Com o site aberto em mais de uma aba, cada uma mostra o que está na mesa: o que você gasta aqui fica salvo, e as outras abas recebem.' },
         // (lote 43)
         { t: 'Os ícones dos nós', txt: 'No centro do nó, o que a skill faz (espada, escudo, cruz…); no canto de cima, quando ela entra (o raio dourado é reação); embaixo, a barra: ▼2 gasta 2, ▲ enche. No painel da skill que você já tem, “Favoritar” leva ela para o topo da aba Skills da ficha.', onde: { sel: '#painel' } },
       ],

@@ -4643,7 +4643,11 @@ function iniciar(){
   if(window.TC && TC.ponte && TC.ponte.aoFechar) TC.ponte.aoFechar(()=>{ if(sujo) salvarJa(); });   // dentro do site: a casca avisa antes de fechar
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && sujo) salvarJa(); });
   // outra aba deste navegador salvou: acompanha
+  // (numa mesa, não: a mesa é que manda, e cada aba recebe dela o que mudou. O documento que outra aba guardou no
+  //  navegador pode ser velho — uma aba esquecida em segundo plano — e, posto aqui, a próxima gravação desta aba
+  //  desfaria na mesa o que ela mesma tinha acabado de fazer: o total de pontos e os nódulos voltavam)
   addEventListener('storage', e=>{
+    if(ArvoreMesa.ativo()) return;
     if(e.key!==CHAVE_DOC || !e.newValue || sujo) return;
     try{ doc = JSON.parse(e.newValue); normalizarDoc(); pintarTudo(); }catch(_){}
   });

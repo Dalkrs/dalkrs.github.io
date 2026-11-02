@@ -117,6 +117,7 @@
         { t: 'Os ícones dos nós', txt: 'O ícone diz o papel (espada ofensiva, escudo defensiva, cruz suporte…), o canto diz quando entra (o raio da reação, o anel da passiva), e ▼ ▲ dizem o que faz com a barra especial.', ir: { aba: 'arvore', g: 'Os ícones dos nós' } },
         { t: 'Contas e links', txt: 'Números como {FOR*2 + 10} viram o número do seu personagem (passe o mouse para ver a conta). O nome de outra habilidade no texto é um link.' },
         { t: 'Favoritar', txt: 'No painel de uma habilidade que você já tem, “Favoritar” a leva para o topo das Skills da ficha.' },
+        { t: 'Em duas abas', txt: 'Com o site aberto em mais de uma aba, cada uma mostra o que está na mesa. O que você gasta numa aba fica salvo, e as outras recebem a mudança.' },
       ],
       mestre: [
         { t: 'A Árvore de quem mestra é a Oficina', txt: 'Quem mestra monta as árvores na aba Oficina (grupo Mestre). Veja a página da Oficina.' },
@@ -478,5 +479,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 10, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 11, sistemas, tarefas, roteiro, sabia };
 })();
