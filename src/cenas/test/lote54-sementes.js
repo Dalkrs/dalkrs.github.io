@@ -14,7 +14,9 @@ const N = Number(process.env.SEMENTES || 200);
   await page.waitForTimeout(600);
   const lugares = [['vila', { rio: true }, N], ['vila', { rio: true, tamanho: 'vila', muralha: true }, Math.round(N / 2)], ['cidade', { rio: true }, Math.round(N / 4)], ['tribo', {}, N], ['porto', {}, Math.round(N / 2)],
     ['encontro', {}, N], ['regiao', {}, Math.round(N / 2)], ['castelo', {}, N], ['ruinas', {}, N], ['cemiterio', {}, N], ['masmorra', {}, N], ['masmorra', { tipo: 'caverna' }, Math.round(N / 2)],
-    ['catacumbas', {}, N], ['catacumbas', { tipo: 'culto' }, Math.round(N / 2)], ['crime', {}, N], ['arena', {}, Math.round(N / 2)]];
+    ['catacumbas', {}, N], ['catacumbas', { tipo: 'culto' }, Math.round(N / 2)], ['crime', {}, N], ['arena', {}, Math.round(N / 2)],
+    // (lote 58) os lugares de água e penhasco
+    ['lago', {}, Math.round(N / 2)], ['praia', {}, Math.round(N / 2)], ['penhasco', {}, Math.round(N / 2)], ['desfiladeiro', {}, Math.round(N / 2)]];
   for (const [id, op, qtd] of lugares) {
     const r = await page.evaluate(({ id, op, qtd }) => {
       const L = __tc.Gerador.LUGARES.find(l => l.id === id), out = { erro: [], fora: [], sobre: [], desligado: [], casas: [], feira: [], difere: [], cavado: 0 };

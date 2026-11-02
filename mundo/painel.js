@@ -1880,6 +1880,9 @@
     let op;
     // (lote 7, parte 4b-3) no terreno Ruínas, fora do mar e do rio: a aba Ruínas
     if (ter && ter.tex === 'ruinas' && via !== 'mar' && via !== 'rio') return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'ruinas', op: { terreno: 'campo' } }, comum(m, g.x, g.y), hx) });
+    // (lote 58) no desfiladeiro, a aba Desfiladeiro seguindo a fenda (a ponte, o rio no fundo ou a garganta); no lago, a aba Lago
+    if (via !== 'mar' && via !== 'rio' && hx && hx.hex && hx.hex.fenda) return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'desfiladeiro', op: { situacao: hx.hex.fenda.ponte ? 'ponte' : hx.hex.fenda.comRio ? 'rio' : 'garganta', caminho: via === 'estrada' ? 'estrada' : 'trilha' } }, comum(m, g.x, g.y), hx) });
+    if (via !== 'mar' && via !== 'rio' && ter && ter.tex === 'lago') return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'lago', op: { situacao: 'surpresa' } }, comum(m, g.x, g.y), hx) });
     if (via === 'mar') op = { terreno: 'agua', situacao: 'navio' };
     else if (via === 'rio') op = { terreno: 'agua', situacao: 'barco' };
     else {

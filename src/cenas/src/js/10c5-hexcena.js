@@ -94,7 +94,28 @@ const HexCena = (() => {
     const sem = (Math.round(Number(h.sem)) >>> 0) || 1;
     return { k: q + ',' + r, q, r, orient, sem, ter: okBio(h.ter) ? h.ter : null, nome: typeof h.nome === 'string' ? h.nome.trim().slice(0, 60) : '', viz,
       rios: (Array.isArray(h.rios) ? h.rios : []).slice(0, 3).map(p => peca(p, false)).filter(Boolean),
-      caminhos: (Array.isArray(h.caminhos) ? h.caminhos : []).slice(0, 6).map(p => peca(p, true)).filter(Boolean), guerra: validaGuerra(h.guerra) };
+      caminhos: (Array.isArray(h.caminhos) ? h.caminhos : []).slice(0, 6).map(p => peca(p, true)).filter(Boolean), guerra: validaGuerra(h.guerra),
+      margem: validaMargem(h.margem, orient), lago: validaLago(h.lago, orient), fenda: validaFenda(h.fenda) };
+  }
+  /* (lote 58) a beira de cada vizinho de água ({ direção: 'areia' | 'junco' | 'rocha' | 'gelo' }), os que são lago e a fenda do
+     desfiladeiro ({ pecas, comRio, ponte }); sem nada, null */
+  const MARGENS = ['areia', 'junco', 'rocha', 'gelo'];
+  function validaMargem(v, orient) {
+    if (!v || typeof v !== 'object') return null;
+    const out = {};
+    for (const L of LADOS[orient]) if (MARGENS.includes(v[L.d])) out[L.d] = v[L.d];
+    return Object.keys(out).length ? out : null;
+  }
+  function validaLago(v, orient) {
+    if (!v || typeof v !== 'object') return null;
+    const out = {};
+    for (const L of LADOS[orient]) if (v[L.d] === true) out[L.d] = true;
+    return Object.keys(out).length ? out : null;
+  }
+  function validaFenda(f) {
+    if (!f || typeof f !== 'object') return null;
+    const pecas = (Array.isArray(f.pecas) ? f.pecas : []).slice(0, 4).map(p => peca(p, false)).filter(Boolean);
+    return pecas.length ? { pecas, comRio: f.comRio === true, ponte: f.ponte === true } : null;
   }
   // a cena aceita o hexágono quando ele é de terra (no mar e no lago, o Encontro fica como era)
   const aceita = hex => !!hex && !!hex.ter && hex.ter !== 'agua';
@@ -157,10 +178,11 @@ const HexCena = (() => {
         if (g > d && g - d > sobra[q]) { sobra[q] = g - d; dono[q] = k; }
       }
     });
+    const aguaDir = new Array(N).fill(null);                     // (lote 58) de que vizinho é cada casa de água
     for (let q = 0; q < N; q++) {
       const k = dono[q];
       if (k < 0) continue;
-      if (ls[k].tipo === 'agua') agua[q] = 1; else bio[q] = B.IDX[ls[k].bio];
+      if (ls[k].tipo === 'agua') { agua[q] = 1; aguaDir[q] = ls[k].L.d; } else bio[q] = B.IDX[ls[k].bio];
     }
     // (os pedacinhos: de cada um — a água, cada bioma — os grupos com menos de cinco casas viram o que mais encosta; os
     // que encostam na borda ficam: a outra metade deles está na cena do vizinho)
@@ -191,7 +213,9 @@ const HexCena = (() => {
     for (let q = 0; q < N; q++) if (agua[q]) bio[q] = ip;
     const vizs = [];
     for (const S of ls) if (S.tipo === 'terra' && !vizs.includes(S.bio) && bio.includes(B.IDX[S.bio])) vizs.push(S.bio);
-    return { bio, agua, vizs, temAgua: agua.includes(1), D };
+    // (a água que veio dos pedacinhos fica com o vizinho de água mais perto)
+    for (let q = 0; q < N; q++) if (agua[q] && !aguaDir[q]) { let m = null, dm = Infinity; const i = q % W, j = (q - i) / W; for (let p2 = 0; p2 < N; p2++) if (aguaDir[p2]) { const d = Math.abs(p2 % W - i) + Math.abs(Math.floor(p2 / W) - j); if (d < dm) { dm = d; m = aguaDir[p2]; } } aguaDir[q] = m; }
+    return { bio, agua, aguaDir, vizs, temAgua: agua.includes(1), D };
   }
   /* A água dos vizinhos: cada pedaço de água (as casas ligadas), com o contorno que passa da borda (a água continua lá
      fora), a praia em volta (a água alargada em dois quadrados) e a beira (a espuma). → [{ pts, praia, beira, cel }] */
@@ -214,9 +238,42 @@ const HexCena = (() => {
       const praia = contornoDe(cel, q => largo[q] === 1) || pts;
       // a beira: o contorno, só o que fica dentro do mapa (a espuma não corre por fora da borda)
       const beira = pts.concat([pts[0]]);
-      out.push({ pts, praia, beira, cel: set });
+      // (lote 58) o vizinho de água de onde ela veio (o que tem mais casas dela)
+      let dir = null;
+      if (M.aguaDir) { const conta = {}; for (const q of cel) { const d = M.aguaDir[q]; if (d) conta[d] = (conta[d] || 0) + 1; } let n = 0; for (const d in conta) if (conta[d] > n) { n = conta[d]; dir = d; } }
+      out.push({ pts, praia, beira, cel: set, dir });
     }
     return out;
+  }
+
+  /* (lote 58) A água de um vizinho com a beira do Mapa-múndi: a areia com a espuma (a de sempre), o junco e a lama (no
+     lago, no pântano, na mata), o paredão de pedra (a falésia: a montanha e o desfiladeiro encostados na água) ou a borda
+     de gelo. poeAgua(pts, tipo): põe a água (cada lugar tem a dele). → o tipo que ficou */
+  function poeBeira(K, A, hex, poeAgua) {
+    const P = K.P, CH = Encontro.motor.CH, tipo = (hex && hex.margem && A.dir && hex.margem[A.dir]) || 'areia', lago = !!(hex && hex.lago && A.dir && hex.lago[A.dir]);
+    if (tipo === 'junco') { K.mancha(A.praia, CH.lama); K.marcaPoli(A.praia, 5); P.juncos = Math.max(P.juncos || 0, 0.4); }
+    else if (tipo === 'gelo') { K.mancha(A.praia, CH.neveFunda); K.marcaPoli(A.praia, 5); }
+    else if (tipo !== 'rocha') { K.pinta(0, 'praia', { pts: A.praia }); K.marcaPoli(A.praia, 5); }
+    poeAgua(A.pts, lago ? 'agua' : 'mar');
+    const dentro = (x, y) => Tracado.dentro(A.pts, x, y);
+    // a beira de fora (o lado da terra) a d quadrados da linha da água
+    const fora = d => A.beira.map((p, i) => {
+      const a = A.beira[Math.max(0, i - 1)], b = A.beira[Math.min(A.beira.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+      let nx = -dy / l, ny = dx / l;
+      if (dentro(p[0] + nx * 0.6, p[1] + ny * 0.6)) { nx = -nx; ny = -ny; }
+      return [p[0] + nx * d, p[1] + ny * d];
+    });
+    if (tipo === 'rocha') {
+      const baixo = fora(0.15), alto = fora(1.7), face = baixo.concat(alto.slice().reverse());
+      K.pinta(1, 'falesia', { alto, baixo, cores: Paisagem.PEDRA.mar });
+      K.marcaPoli(face, 7, true);
+      P.relevo.push({ t: 'fosso', alt: -4, k: 'poly', pts: face, a: 0.16 });
+      K.pinta(1, 'espuma', { pts: A.beira });
+    } else if (tipo === 'gelo') {
+      // o gelo da beira, do lado da água (escorrega)
+      for (let i = 0; i < A.beira.length; i += 4) { const p = A.beira[i]; if (K.dentro(p[0], p[1], 0.5)) K.zona('gelado', p[0], p[1], { r: 1.6 }); }
+    } else if (tipo === 'areia' && !lago) K.pinta(1, 'espuma', { pts: A.beira });
+    return tipo;
   }
 
   /* ---- o rio e os caminhos ---- */
@@ -417,5 +474,5 @@ const HexCena = (() => {
     return (hex.nome || nomeBio(hex.ter) || 'Hexágono') + ' (hexágono ' + numTxt(hex.q) + ', ' + numTxt(hex.r) + '): ' + partes.join('; ') + '.';
   }
 
-  return { LADOS, PASSO, FUNDO, valida, validaGuerra, aceita, centro, tijolo, doPar, lados, mapa, aguas, linhas, ponta, dirDe, vetorPara, distancia, naTerra, rioDoMapa, altura, campo, pontasDosCaminhos, prenderNaSituacao, vizinhosTxt, rioTxt, caminhosTxt, resumoTxt, texto, nomeBio };
+  return { LADOS, PASSO, FUNDO, valida, poeBeira, MARGENS, validaGuerra, aceita, centro, tijolo, doPar, lados, mapa, aguas, linhas, ponta, dirDe, vetorPara, distancia, naTerra, rioDoMapa, altura, campo, pontasDosCaminhos, prenderNaSituacao, vizinhosTxt, rioTxt, caminhosTxt, resumoTxt, texto, nomeBio };
 })();

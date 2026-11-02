@@ -25,10 +25,10 @@ const j = JSON.stringify;
   /* ---------- a janela nova ---------- */
   await ev(() => __tc.Gerador.abrir('vila')); await w(900);
   const grupos = await page.locator('#ger-lugar .ger-rail-t').allInnerTexts();
-  ok(j(grupos) === j(['Povoados', 'Natureza', 'Fortes e ruínas', 'Subterrâneo', 'Especiais']), 'os lugares em grupos: ' + j(grupos));
+  ok(j(grupos) === j(['Povoados', 'Natureza', 'Água e penhasco', 'Fortes e ruínas', 'Subterrâneo', 'Especiais']), 'os lugares em grupos: ' + j(grupos));
   const abas = await page.locator('#ger-lugar .seg-b').allInnerTexts();
-  ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Porto', 'Encontro', 'Região livre', 'Castelo', 'Ruínas', 'Cemitério', 'Masmorra', 'Catacumbas', 'Cena do crime', 'Arena']), 'os treze lugares, na ordem dos grupos: ' + j(abas));
-  ok(await page.locator('#ger-lugar .seg-b .ger-gl').count() === 13, 'cada lugar com o desenho dele');
+  ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Porto', 'Encontro', 'Região livre', 'Lago', 'Praia', 'Penhasco', 'Desfiladeiro', 'Castelo', 'Ruínas', 'Cemitério', 'Masmorra', 'Catacumbas', 'Cena do crime', 'Arena']), 'os dezessete lugares, na ordem dos grupos (lote 58: e os quatro de água e penhasco): ' + j(abas));
+  ok(await page.locator('#ger-lugar .seg-b .ger-gl').count() === 17, 'cada lugar com o desenho dele');
   const blocos = await page.locator('.ger-bl > summary .ger-bl-t').allInnerTexts();
   ok(j(blocos) === j(['Vilarejo', 'Ambiente', 'Povoar', 'Mistério']), 'as escolhas em blocos: ' + j(blocos));
   ok(/comum · dia · sem clima/.test(await page.locator('#ger-bl-amb .ger-bl-r').innerText()) && /desligado/.test(await page.locator('#ger-bl-pov .ger-bl-r').innerText()), 'cada bloco com o resumo do que está escolhido');

@@ -218,7 +218,7 @@ function sorteados(k) {
       // a água dos vizinhos: o mar (com a praia), do lado dela
       const mares = p.aguas.filter(a => a.k === 'lago' && a.tipo === 'mar'), praias = p.pintados.filter(o => o.k === 'praia');
       const cen = pts => { let x = 0, y = 0; for (const q of pts) { x += q[0]; y += q[1]; } return [x / pts.length, y / pts.length]; };
-      out.mar = mares.map(m => cen(m.pts).map(v => +v.toFixed(1))); out.praias = praias.length; out.pmar = p.mar;
+      out.mar = mares.map(m => cen(m.pts).map(v => +v.toFixed(1))); out.praias = praias.length; out.pmar = p.mar; out.beira = h0.margem ? Object.values(h0.margem) : null;      // (lote 58: a beira vem do mapa — na mata, o junco, sem a areia)
       // o rio do mapa: as pontas exatas (o ponto de fora e o da borda), e acaba na água
       const L = X.linhas(X.valida(h0), p.W, p.H), rio = p.aguas.filter(a => a.k === 'rio');
       // (o desenho passa pelos pontos: o de fora é o primeiro; o da borda está nele)
@@ -280,7 +280,7 @@ function sorteados(k) {
     }, { PE, DT });
     ok(r.hex && r.hex.k === '0,0' && r.hex.rioDoMapa && r.hex.camDoMapa && r.hex.agua === 1 && r.hex.rios === 1 && r.hex.caminhos === 2, 'a Região no hexágono: o que veio do mapa (o rio, os dois caminhos, a água): ' + j(r.hex));
     ok(j(r.vizinhos) === j(['campo', 'montanha', 'savana']), 'o chão: os vizinhos do mapa nas bordas: ' + j(r.vizinhos));
-    ok(r.mar.length === 1 && r.mar[0][0] > 20 && r.mar[0][1] < 8 && r.praias >= 1 && r.pmar && r.pmar.lado === null, 'a água do vizinho (a nordeste): o mar no alto, à direita, com a praia: ' + j([r.mar, r.praias]));
+    ok(r.mar.length === 1 && r.mar[0][0] > 20 && r.mar[0][1] < 8 && (r.praias >= 1 || (r.beira && !r.beira.includes('areia'))) && r.pmar && r.pmar.lado === null, 'a água do vizinho (a nordeste): o mar no alto, à direita, com a beira do mapa: ' + j([r.mar, r.praias, r.beira]));
     ok(r.rio.n >= 1 && r.rio.fora && r.rio.borda && r.rio.destino === 'mar', 'o rio do mapa entra pelo ponto exato da borda (e o de fora dele) e acaba na água: ' + j(r.rio));
     ok(r.cam.length === 3 && r.cam.every(Boolean) && j(r.tipos) === j(['estrada', 'trilha']), 'os caminhos do mapa passam pelas pontas deles na borda (as duas da estrada e a da trilha): ' + j([r.cam, r.tipos]));
     ok(r.patamar.every(v => v >= 2) && r.massas.every(v => v >= 2), 'os patamares e os penhascos longe da borda (a borda fica como a do vizinho): ' + j([r.patamar, r.massas]));

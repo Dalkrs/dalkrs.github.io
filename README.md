@@ -222,6 +222,31 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   não mostra o teto.
 - Testes: `teto-por-nivel`.
 
+### Lagos, praias, penhascos e desfiladeiros nas Cenas (lote 58)
+
+- **Os lugares novos** (`src/cenas/src/js/10fc-agua.js`, `AguaPenhasco`): o grupo "Água e penhasco" da janela "Gerar um
+  lugar…" tem o Lago, a Praia, o Penhasco e o Desfiladeiro. Cada um é um terreno escondido do Encontro
+  (`Encontro.TERRENOS_LUGARES`), com as situações dele; o chão, a vegetação e os enfeites vêm do terreno de base (`base`;
+  por situação, `baseSit`: o lago congelado na neve, a falésia na costa, o cânion no deserto). `Encontro.gerar` usa
+  `baseDoLugar` para o terreno do chão, chama `SIT[lugar.situação]` e guarda `p.terrenoLugar` (o nome da cena, o resumo e
+  a trava usam o lugar). As abas (`lugarDe`) usam o motor do Encontro com controles e lembranças próprios
+  (`App.opt.agLago`…), sem mexer nos do Encontro.
+- **As situações novas**: `lago.margem` (o lago grande `lagoGrande`, a praia pequena, o píer `poePassarela` e o barco),
+  `lago.ilha` (a ilha com o santuário ou a árvore antiga, as pedras de atravessar), `lago.cabana`, `praia.pescadores`
+  (as cabanas em fileira, o píer, os barcos puxados, as redes), `penhasco.precipicio` (o paredão `falesia` sem o mar: o
+  chão de baixo no relevo, a escada cavada, as grutas no pé, os ninhos), `desfiladeiro.garganta`, `desfiladeiro.rio`
+  (o rio colado num paredão, a passagem na outra margem) e `desfiladeiro.ponte` (o abismo e a ponte de corda). As outras
+  são as do Encontro (a enseada, o naufrágio, as piscinas de maré, a falésia, a encosta, o cânion, o lago congelado).
+  Na Floresta do Encontro, `floresta.ruinas` e `floresta.lagoa`.
+- **O hexágono do Mapa-múndi**: `hexParaCena` manda `margem` (a beira de cada vizinho de água: `areia`, `junco`, `rocha`
+  ou `gelo`, a mesma conta da costa desenhada), `lago` e `fenda` (`{ pecas, comRio, ponte }`); `HexCena.valida` confere.
+  `HexCena.mapa` guarda de que vizinho é cada casa de água (`aguaDir`), `aguas` dá o vizinho de cada água (`dir`) e
+  `HexCena.poeBeira` desenha a água com a beira certa (o Encontro e a Região livre usam). No desfiladeiro, `meioDaFenda`
+  segue a peça mais comprida da fenda; a ponte vai onde o caminho do hexágono cruza. "Gerar a cena aqui" no desfiladeiro
+  abre a aba Desfiladeiro (`gerarAqui`, `mundo/painel.js`).
+- Testes: `src/cenas/test/lote58.js`, `src/tests/lote58-hex.test.js`; a varredura de sementes (`lote54-sementes.js`)
+  passa também nos quatro lugares novos.
+
 ### A água inteira, a fenda e os vizinhos que se ligam (lote 57)
 
 - **O Lago** (`TERRENOS_L57`: `lg`, textura `lago`, 10 cubos) é água (`TEX_AGUA`), como a Água, a rasa e a funda: a foz do

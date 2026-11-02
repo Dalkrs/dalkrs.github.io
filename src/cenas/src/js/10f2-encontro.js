@@ -28,7 +28,7 @@ const Encontro = (() => {
   // os terrenos: o chão (a paleta), quantas árvores (por quadrado livre) e as situações
   const TERRENOS = [
     { id: 'estrada', n: 'Estrada', em: 'na estrada', pal: 'campo', dens: 0.06, sit: [['curva', 'Curva na mata'], ['carroca', 'Carroça tombada'], ['ponte', 'Ponte sobre o rio'], ['encruzilhada', 'Encruzilhada']] },
-    { id: 'floresta', n: 'Floresta', em: 'na floresta', pal: 'floresta', dens: 0.15, sit: [['clareira', 'Clareira'], ['riacho', 'Riacho'], ['arvore', 'Árvore gigante caída'], ['acampamento', 'Acampamento abandonado']] },
+    { id: 'floresta', n: 'Floresta', em: 'na floresta', pal: 'floresta', dens: 0.15, sit: [['clareira', 'Clareira'], ['riacho', 'Riacho'], ['arvore', 'Árvore gigante caída'], ['acampamento', 'Acampamento abandonado'], ['ruinas', 'Ruínas no mato'], ['lagoa', 'Lagoa na clareira']] },     // (lote 58: as ruínas e a lagoa)
     { id: 'deserto', n: 'Deserto', em: 'no deserto', pal: 'areia', dens: 0.015, sit: [['dunas', 'Dunas'], ['oasis', 'Oásis'], ['ossada', 'Ossada gigante'], ['canion', 'Cânion']] },
     { id: 'montanha', n: 'Montanha', em: 'na montanha', pal: 'rocha', dens: 0.03, sit: [['desfiladeiro', 'Desfiladeiro'], ['cordas', 'Ponte de corda'], ['encosta', 'Trilha na encosta'], ['plato', 'Platô de pedras']] },
     { id: 'pantano', n: 'Pântano', em: 'no pântano', pal: 'pantano', dens: 0.12, sit: [['ilhas', 'Ilhas e água rasa'], ['passarela', 'Passarela de tábuas'], ['palafita', 'Cabana na palafita'], ['raizes', 'Raízes e névoa']] },
@@ -44,7 +44,18 @@ const Encontro = (() => {
     { id: 'tundra', n: 'Tundra', em: 'na tundra', pal: 'tundra', dens: 0.012, sit: [['fontes', 'Fontes quentes'], ['mamute', 'Ossada de mamute'], ['cacadores', 'Acampamento de caçadores'], ['pedras', 'Campo de pedras']] },
     { id: 'agua', n: 'Água', em: 'na água', pal: 'mar', dens: 0, sit: [['navio', 'Um navio'], ['abordagem', 'Abordagem'], ['barco', 'Barco no rio'], ['naufragio', 'Naufrágio']] },
   ];
-  const TER = Object.fromEntries(TERRENOS.map(t => [t.id, t]));
+  /* (lote 58) Os lugares de água e penhasco (o Lago, a Praia, o Penhasco e o Desfiladeiro): cada um é um "terreno" que não
+     aparece na lista do Encontro, com as situações dele; o chão, a vegetação e os enfeites vêm do terreno de base (base;
+     por situação, baseSit), e a paleta, da base (ou palSit). Cada um tem a aba própria na janela (10f11-agua.js). */
+  const TERRENOS_LUGARES = [
+    { id: 'lago', n: 'Lago', em: 'no lago', base: 'floresta', baseSit: { congelado: 'neve' }, sit: [['margem', 'Margem com junco'], ['ilha', 'Ilha no meio'], ['cabana', 'Cabana do pescador'], ['congelado', 'Lago congelado']] },
+    { id: 'praia', n: 'Praia', em: 'na praia', base: 'costa', sit: [['enseada', 'Enseada'], ['pescadores', 'Vila de pescadores'], ['naufragio', 'Naufrágio na areia'], ['mare', 'Piscinas de maré']] },
+    { id: 'penhasco', n: 'Penhasco', em: 'no penhasco', base: 'montanha', baseSit: { falesia: 'costa' }, sit: [['precipicio', 'Beira do precipício'], ['falesia', 'Falésia no mar'], ['encosta', 'Trilha na encosta']] },
+    { id: 'desfiladeiro', n: 'Desfiladeiro', em: 'no desfiladeiro', base: 'montanha', baseSit: { canion: 'deserto' }, sit: [['garganta', 'Garganta de pedra'], ['rio', 'Rio no fundo'], ['ponte', 'Ponte suspensa'], ['canion', 'Cânion de arenito']] },
+  ];
+  const TER = Object.fromEntries(TERRENOS.concat(TERRENOS_LUGARES).map(t => [t.id, t]));
+  // o terreno de base de um lugar (o do chão), pela situação; nos terrenos de sempre, ele mesmo
+  const baseDoLugar = (T, sit) => (T.base ? (T.baseSit && T.baseSit[sit]) || T.base : T.id);
   const CAMINHOS = [['nenhum', 'Sem caminho'], ['trilha', 'Trilha'], ['estrada', 'Estrada']];
   // o caminho que vale para o terreno: a estrada nunca fica sem; na água não há
   const camValido = (terreno, c) => (terreno === 'agua' ? 'nenhum' : terreno === 'estrada' ? (c === 'trilha' ? 'trilha' : 'estrada') : CAMINHOS.some(x => x[0] === c) ? c : 'nenhum');
@@ -1704,13 +1715,9 @@ const Encontro = (() => {
       for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const x = i + a, y = j + b; if (x >= 0 && y >= 0 && x < W && y < H) usado[y * W + x] = 1; }
     }
     for (let q = 0; q < N; q++) ag[q] = F.hexM.agua[q] && !usado[q] ? 1 : 0;
-    const As = HexCena.aguas(W, H, { agua: ag });
-    for (const A of As) {
-      K.pinta(0, 'praia', { pts: A.praia }); K.marcaPoli(A.praia, 5);
-      K.poeLago(A.pts, 'mar', -2, 2);
-      K.pinta(1, 'aguaParada', { pts: A.pts, tipo: 'mar', semBeira: true });
-      K.pinta(1, 'espuma', { pts: A.beira });
-    }
+    const As = HexCena.aguas(W, H, { agua: ag, aguaDir: F.hexM.aguaDir });
+    // (lote 58) a beira de cada água vem do Mapa-múndi: a areia, o junco, a falésia ou o gelo
+    for (const A of As) A.margem = HexCena.poeBeira(K, A, K.hex, (pts, tipo) => { K.poeLago(pts, tipo, -2, 2); K.pinta(1, 'aguaParada', { pts, tipo, semBeira: true }); });
     if (As.length) P.mar = { lado: null };
     const dA = HexCena.distancia(W, H, q => ag[q] === 1);
     Object.assign(F, { aguaQ: q => ag[q] === 1, dAguaQ: q => dA[q], mares: As });
@@ -1893,29 +1900,32 @@ const Encontro = (() => {
   function gerar(o) {
     o = o || {};
     const tam = TAMANHOS[o.tamanho] ? o.tamanho : 'medio', W = TAMANHOS[tam].W, H = TAMANHOS[tam].H;
-    const T = TER[o.terreno] || TERRENOS[0], terreno = T.id, estilo = Estilos.valido(o.estilo), seed = (Math.round(Number(o.seed)) >>> 0) || 1;
-    const caminho = camValido(terreno, o.caminho), sitPedida = T.sit.some(s => s[0] === o.situacao) ? o.situacao : 'surpresa';
+    const T = TER[o.terreno] || TERRENOS[0], lugarId = T.id, base0 = T.base || T.id, estilo = Estilos.valido(o.estilo), seed = (Math.round(Number(o.seed)) >>> 0) || 1;
+    const caminho = camValido(base0, o.caminho), sitPedida = T.sit.some(s => s[0] === o.situacao) ? o.situacao : 'surpresa';
     // (lote 14, parte 14a) o hexágono do Mapa-múndi: o chão novo com os vizinhos do mapa nas bordas (e a água deles), o rio
     // e os caminhos do mapa pelos pontos certos da borda — onde o terreno tem chão de bioma (o pântano e a água cobrem tudo)
-    const hex = HexCena.valida(o.hex), comHex = HexCena.aceita(hex) && !!BIOMA[terreno];
+    const hex = HexCena.valida(o.hex), comHex = HexCena.aceita(hex) && !!BIOMA[base0];
     // (lote 14, parte 14b) a guerra do hexágono (as marcas escolhidas na janela; a batalha de mais de 7 dias vai para a história)
     const GU = comHex && hex.guerra ? MarcasGuerra.escolha(hex.guerra, o.guerra) : null, hist = MarcasGuerra.comHistoria(Historia.valida(o.historia), GU);
     // (lote 13, parte 13b) o chão novo (chao 2: os modelos de antes não têm e ficam no de sempre) e a mistura dele
-    const chao = comHex ? 2 : chaoDe(terreno, o.chao), mist = chao === 2 ? Biomas.mistura(o.mistura) : null;
-    const trava = limparTrava(o.trava, { terreno, tamanho: tam, caminho, sitPedida, chao, mistura: mist });
+    const chao = comHex || T.base ? 2 : chaoDe(base0, o.chao), mist = chao === 2 ? Biomas.mistura(o.mistura) : null;
+    const trava = limparTrava(o.trava, { terreno: lugarId, tamanho: tam, caminho, sitPedida, chao, mistura: mist });
     const sit = trava ? trava.sit : sitPedida !== 'surpresa' ? sitPedida : T.sit[sub(seed, 9) % T.sit.length][0];
+    // (lote 58) o terreno do chão: o de base do lugar (pela situação), ou o próprio terreno
+    const terreno = baseDoLugar(T, sit), Tb = TER[terreno] || T;
     const sT = trava ? trava.s : (sub(seed, 1) % 2147483000) + 1;
-    const pal0 = terreno === 'deserto' && sit === 'canion' ? 'canion' : terreno === 'campo' && sit === 'capim' ? 'savana' : terreno === 'agua' && sit === 'barco' ? (estilo === 'desertico' ? 'savana' : 'campo') : T.pal;
+    const pal0 = terreno === 'deserto' && sit === 'canion' ? 'canion' : terreno === 'campo' && sit === 'capim' ? 'savana' : terreno === 'agua' && sit === 'barco' ? (estilo === 'desertico' ? 'savana' : 'campo') : (T.palSit && T.palSit[sit]) || Tb.pal;
     // (lote 7, parte 5a) a seca do Mapa-múndi: o chão verde vira o capim seco (o resto do sorteio é o mesmo)
     const pal = o.seco && SECO[pal0] ? SECO[pal0] : pal0;
     const K = contexto(W, H, terreno, sit, estilo, caminho, sT, pal);
+    K.hex = comHex ? hex : null;                                    // (lote 58: a beira da água e a fenda do Mapa-múndi)
     // (lote 8, parte 5) o traçado escolhido na janela: o rio, as pontes, os caminhos da rosa e o relevo natural
     const T8 = Tracado.escolhas(o, [], null);
     // (o chão novo, antes da situação: os vizinhos, a altura e o mar da costa — no hexágono, os do mapa)
     const F = chao === 2 ? (comHex ? chaoAntesHex(K, T8, sT, mist, hex) : chaoAntes(K, T8, sT, mist)) : null;
     if (F && F.hexRio) T8.rio = Object.assign({}, T8.rio, { hex: F.hexRio });
     const mudaRio = terreno !== 'agua' && (Tracado.rioDaRosa(T8.rio) || T8.rio.larg != null || T8.rio.curvas != null || !!T8.rio.hex);
-    const conta = mudaRio || T8.portoes.length || T8.pontes != null || comHex ? prepararTracado(K, T8, sT, terreno + '.' + sit, terreno !== 'agua', F) : null;
+    const conta = mudaRio || T8.portoes.length || T8.pontes != null || comHex ? prepararTracado(K, T8, sT, lugarId + '.' + sit, terreno !== 'agua', F) : null;
     // (lote 14, parte 14a) os caminhos da situação com as pontas nos pontos do hexágono (enquanto houver pontas)
     let pontasHex = F && F.hexPontas ? F.hexPontas.slice() : [];
     if (pontasHex.length) {
@@ -1927,7 +1937,7 @@ const Encontro = (() => {
         return pc(r.ctrl, tipo);
       };
     }
-    SIT[terreno + '.' + sit](K);
+    SIT[lugarId + '.' + sit](K);
     // (no hexágono com caminhos do mapa, os que sobraram; a rosa só quando o mapa não tem caminho ali)
     const camHex = F && F.hexL && F.hexL.caminhos.length ? caminhosDoHex(K, F, pontasHex, sT) : null;
     const rosa8 = T8.portoes.length && terreno !== 'agua' && camHex == null ? caminhosDaRosa(K, T8.portoes, sT) : null;
@@ -1961,6 +1971,7 @@ const Encontro = (() => {
     // (lote 14, parte 14a: o hexágono — só quando veio; sem ele, o plano é o de sempre)
     if (F && F.hexM) P.hex = { k: hex.k, q: hex.q, r: hex.r, orient: hex.orient, viz: Object.assign({}, hex.viz), ter: hex.ter, nome: hex.nome, rios: F.hexL.rios.length, caminhos: F.hexL.caminhos.length, agua: (F.mares || []).length, rioDoMapa: !!F.hexRio, camDoMapa: F.hexL.caminhos.length > 0 };
     const seco = pal !== pal0 || !!(novo && o.seco && F.vizs.some(v => SECO[Biomas.BIO[v].pal]));
+    if (T.base) P.terrenoLugar = lugarId;                                   // (lote 58: o lugar de água ou penhasco)
     return Object.assign(P, { v: 1, lugar: 'encontro', seed, sT, tamanho: tam, sitPedida, travaTracado: !!trava, comMarcas: o.marcas !== false, seco, occ: Array.from(K.occ) });
   }
 
@@ -2106,6 +2117,7 @@ const Encontro = (() => {
 
   /* ================= a cena ================= */
   const nomePadrao = p => {
+    if (p.terrenoLugar && TER[p.terrenoLugar]) { const TL = TER[p.terrenoLugar], sn = (TL.sit.find(s => s[0] === p.sit) || [0, ''])[1]; return sn ? sn + ' (' + TL.n.toLowerCase() + ')' : TL.n; }     // (lote 58)
     if (p.terreno === 'agua') return { navio: 'Encontro no navio', abordagem: 'Abordagem', barco: 'Encontro no rio', naufragio: 'O naufrágio' }[p.sit] || 'Encontro na água';
     return 'Encontro ' + (TER[p.terreno] || TERRENOS[0]).em;
   };
@@ -2202,7 +2214,7 @@ const Encontro = (() => {
 
   /* ================= a prévia ================= */
   function resumo(p) {
-    const T = TER[p.terreno] || TERRENOS[0], sitN = (T.sit.find(s => s[0] === p.sit) || [0, ''])[1];
+    const T = TER[p.terrenoLugar || p.terreno] || TERRENOS[0], sitN = (T.sit.find(s => s[0] === p.sit) || [0, ''])[1];
     const partes = [T.n + ' · ' + sitN + (p.sitPedida === 'surpresa' ? ' (sorteada)' : ''), p.W + ' × ' + p.H + ' quadrados'];
     if (p.caminhos.length) partes.push(p.caminhos.some(c => c.tipo === 'estrada') ? 'estrada' : 'trilha');
     // (lote 13, parte 13b) o chão novo: as manchas dos vizinhos e os patamares
@@ -2335,7 +2347,7 @@ const Encontro = (() => {
   const nomeDaParte = p => (p && p.chaoNovo ? 'o traçado (o caminho, a água, os morros e os penhascos, a peça do meio)' : 'o traçado (o caminho, a água, os penhascos e a peça do meio)');
   const formaDaParte = (p, parte) => (parte === 'tracado' ? p.tracado.map(f => (f.k === 'linha' ? { k: 'linha', pts: f.pts, hw: f.hw } : f.k === 'circ' ? { k: 'circ', x: f.x, y: f.y, r: f.r } : { k: 'poli', pts: f.pts })) : []);
   const travada = (p, parte) => parte === 'tracado' && !!p.travaTracado;
-  const travaDe = p => (p.travaTracado ? Object.assign({ terreno: p.terreno, tamanho: p.tamanho, caminho: p.caminho, sit: p.sit, s: p.sT }, p.chaoNovo ? { chao: 2, mistura: p.mistura } : null) : null);
+  const travaDe = p => (p.travaTracado ? Object.assign({ terreno: p.terrenoLugar || p.terreno, tamanho: p.tamanho, caminho: p.caminho, sit: p.sit, s: p.sT }, p.chaoNovo ? { chao: 2, mistura: p.mistura } : null) : null);
   function alternar(p, parte, trava) {
     if (parte !== 'tracado') return trava;
     p.travaTracado = !p.travaTracado;
@@ -2356,5 +2368,5 @@ const Encontro = (() => {
      registro de pintores */
   const motor = { contexto, vegetacao, enfeites, marcadores, lugarDePe, pintar, montar, previa, previaSobre, criarPlano, resolucao, sub, portaNoLado, foraDaPorta, CH, LEVE, blob, elipse, faixa, ladosDaFaixa, curva, perto, lerp, distLinha, dentroPoli, PINTORES,
     telinha, recorte, TER, ENFEITES, PEDRINHAS, especieDe, zonaNaCena, pintaObjeto, LINHAS_PINTADAS };
-  return { TAMANHOS, TERRENOS, TER, CAMINHOS, SIT, camValido, gerar, pintar, montar, criar, previa, resumo, parteEm, travaDe, limparTrava, nomePadrao, curva, blob, faixa, cruzamento, LUGAR, motor };
+  return { TAMANHOS, TERRENOS, TERRENOS_LUGARES, TER, BIOMA, baseDoLugar, CAMINHOS, SIT, costaBase, daBeira, naCosta, RUMO_TERRA, corredor, opcoesDe, aplicarOpcoes, camValido, gerar, pintar, montar, criar, previa, resumo, parteEm, travaDe, limparTrava, nomePadrao, curva, blob, faixa, cruzamento, LUGAR, motor };
 })();

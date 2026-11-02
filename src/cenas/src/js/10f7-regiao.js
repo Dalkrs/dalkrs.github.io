@@ -319,11 +319,8 @@ const Regiao = (() => {
       P.mar = { lado: F.mar.lado };
     }
     // (lote 14, parte 14a) a água dos vizinhos do hexágono: a praia, a água e a espuma, como o mar da costa
-    for (const A of F.mares || []) {
-      K.pinta(0, 'praia', { pts: A.praia }); K.marcaPoli(A.praia, 5);
-      aguaParada(A.pts, 'mar', -2, 2);
-      K.pinta(1, 'espuma', { pts: A.beira });
-    }
+    // (lote 58) com a beira do Mapa-múndi: a areia, o junco, a falésia ou o gelo
+    for (const A of F.mares || []) A.margem = HexCena.poeBeira(K, A, hex, (pts, tipo) => aguaParada(pts, tipo, -2, 2));
     if (F.mares && F.mares.length) P.mar = { lado: null };
     // os lagos: o tipo é o do bioma onde ele fica (o gelo, na neve e na tundra: dá para andar, e escorrega)
     const agLagos = [];

@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.01-8",
+      "data": "2026-11-01",
+      "titulo": "Lagos, praias, penhascos e desfiladeiros nas Cenas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas, “Gerar um lugar…”: o grupo Água e penhasco, com quatro lugares novos — o Lago (margem com junco e píer, ilha no meio, cabana do pescador, lago congelado), a Praia (enseada, vila de pescadores, naufrágio, piscinas de maré), o Penhasco (beira do precipício com escada e grutas, falésia no mar, trilha na encosta) e o Desfiladeiro (garganta, rio no fundo, ponte suspensa, cânion)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Na Floresta do Encontro, duas situações novas: as ruínas no mato e a lagoa na clareira."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "A cena gerada num hexágono do Mapa-múndi segue a beira desenhada no mapa (areia, junco, falésia ou gelo) e, no desfiladeiro, a direção da fenda, o rio no fundo e a ponte onde a estrada cruza. “Gerar a cena aqui” no desfiladeiro já abre a aba dele."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.01-7",
       "data": "2026-11-01",
       "titulo": "Lagos, mares e desfiladeiros que se ligam",

@@ -14,11 +14,12 @@ const Gerador = (() => {
   // (lote 49) as catacumbas, o castelo e o cemitério; (lote 53) a cena do crime — e a ordem dos grupos da janela
   const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Arredores.LUGARES.porto,
     Encontro.LUGAR, Regiao.LUGAR,
+    AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
     LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO,
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
     LugaresFora.CRIME, Arena.LUGAR];
   /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
-  const GRUPOS = [['Povoados', ['vila', 'cidade', 'tribo', 'porto']], ['Natureza', ['encontro', 'regiao']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']],
+  const GRUPOS = [['Povoados', ['vila', 'cidade', 'tribo', 'porto']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']],
     ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']]];
   const GLIFOS = {
     vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
@@ -27,6 +28,9 @@ const Gerador = (() => {
     castelo: 'M4 20V8h3v2h2.5V8h5v2H17V8h3v12H4zM10 20v-4h4v4', ruinas: 'M6 20V8h3v12M15 20v-6h3v6M5 8h5M4.5 20h15M14 11l2-3 3 1',
     cemiterio: 'M7 20v-9a5 5 0 0 1 10 0v9M5 20h14M12 9.5v5M10 11.5h4', masmorra: 'M5 20V10a7 7 0 0 1 14 0v10M5 20h14M9 20v-6h6v6M8.5 10h7',
     catacumbas: 'M12 4a6 6 0 0 0-6 6v3l2 2v3h8v-3l2-2v-3a6 6 0 0 0-6-6zM9.5 11v.1M14.5 11v.1M10.5 18v-2M13.5 18v-2', crime: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM15.3 15.3 20.5 20.5',
+    // (lote 58) o lago (a água parada com o junco), a praia (a onda na areia), o penhasco (o degrau) e o desfiladeiro (a fenda)
+    lago: 'M4 14c2-3 14-3 16 0-2 3-14 3-16 0zM8 14h1.5M13 13.5h3M6.5 10V7M8 10.5V6M17 10V7.5', praia: 'M3 17c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2 1 3 1M3 12c3-4 7-6 12-6M15 6l2 3',
+    penhasco: 'M3 7h8l1 4 1 9h8M3 7v13h18M7 11v.1M9 15v.1', desfiladeiro: 'M3 5l4 2 2 13M21 5l-4 3-2 12M9 20h6M11 9l1 2-1 3 1 3',
     arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
   };
   const glifo = id => { const NS = 'http://www.w3.org/2000/svg', v = document.createElementNS(NS, 'svg'); v.setAttribute('viewBox', '0 0 24 24'); v.setAttribute('width', '18'); v.setAttribute('height', '18'); v.setAttribute('aria-hidden', 'true'); v.setAttribute('class', 'ger-gl'); const pa = document.createElementNS(NS, 'path'); pa.setAttribute('d', GLIFOS[id] || GLIFOS.vila); pa.setAttribute('fill', 'none'); pa.setAttribute('stroke', 'currentColor'); pa.setAttribute('stroke-width', '1.7'); pa.setAttribute('stroke-linecap', 'round'); pa.setAttribute('stroke-linejoin', 'round'); v.append(pa); return v; };

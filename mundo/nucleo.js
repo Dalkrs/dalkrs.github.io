@@ -959,6 +959,9 @@
   const BIOMA_DA_TEX = { mato: 'campo', liso: 'campo', arvores: 'floresta', colinas: 'campo', montes: 'montanha', pedras: 'montanha', juncos: 'pantano', areia: 'deserto', neve: 'neve',
     ondas: 'agua', lavoura: 'campo', ruinas: 'campo', lava: 'lava', cristais: 'cristais', selva: 'selva', savana: 'savana', tundra: 'tundra', corrompida: 'corrompida',
     lago: 'agua', raso: 'agua', fundo: 'agua', desfiladeiro: 'montanha', geleira: 'neve', morta: 'floresta', oasis: 'deserto', charneca: 'campo', devastada: 'campo' };     // (lote 17)
+  // (lote 58) a beira da água pelo terreno da terra (a mesma conta da costa desenhada no mapa)
+  const MARGEM_DA_TEX = { montes: 'rocha', desfiladeiro: 'rocha', pedras: 'rocha', cristais: 'rocha', lava: 'rocha', neve: 'gelo', geleira: 'gelo', tundra: 'gelo',
+    juncos: 'junco', arvores: 'junco', selva: 'junco', morta: 'junco', charneca: 'junco', oasis: 'junco' };
   const texDoTerreno = t => (!t ? '' : t.tex || (TERRENOS_PADRAO.find(x => x.id === t.id) || {}).tex || '');
   // (lote 54) o rio e a estrada ficam com o bioma da margem (a cena do hexágono é a floresta, o campo… com a estrada nela)
   const biomaDoHex = (m, q, r) => {
@@ -1045,6 +1048,18 @@
     rios.sort((a, b) => compr(b) - compr(a));
     const t0 = hexInfoBase(m, q, r).terreno;
     const out = { k: q + ',' + r, q, r, orient: pe ? 'pe' : 'deitado', sem: semDoMapa(m), ter: biomaDoHex(m, q, r), nome: t0 ? texto(t0.nome, '', 60).trim() : '', viz, rios: rios.slice(0, 3), caminhos: cam.slice(0, 6) };
+    // (lote 58) a beira de cada vizinho de água (a margem que o Mapa-múndi desenha: areia, junco, rocha ou gelo; e se a
+    // água é de lago) e a fenda do desfiladeiro (os pedaços dela, o rio no fundo e a ponte)
+    const tex0 = texDoTerreno(t0), texBeira = rd && rd.tipo !== 'fenda' && rd.margem ? texDoTerreno(rd.margem) : tex0;
+    const margem = {}, lago = {};
+    for (const [d, dq, dr] of VIZINHOS_HEX[pe ? 'pe' : 'deitado']) {
+      if (viz[d] !== 'agua') continue;
+      const tv = texDoTerreno(hexInfoBase(m, q + dq, r + dr).terreno);
+      margem[d] = MARGEM_DA_TEX[texBeira] || (tv === 'lago' ? 'junco' : 'areia');
+      if (tv === 'lago') lago[d] = true;
+    }
+    if (Object.keys(margem).length) { out.margem = margem; if (Object.keys(lago).length) out.lago = lago; }
+    if (rd && rd.tipo === 'fenda') out.fenda = { pecas: pedacosDaRede(m, q, r, T, rd.liga).slice(0, 4), comRio: !!rd.comRio, ponte: !!rd.ponte };
     const gu = guerraDoHex(m, q, r, T, opc);                     // (lote 14, parte 14b: só quando há guerra ali)
     if (gu) out.guerra = gu;
     return out;

@@ -395,7 +395,7 @@ const OURO = JSON.parse(fs.readFileSync(path.join(__dirname, 'gerador8-ouro.json
       return out;
     });
     const ruins = todas.filter(x => !x.ok);
-    ok(todas.length === 60 && !ruins.length, 'as 60 situações geram com o traçado todo ligado: ' + (ruins.length ? j(ruins.slice(0, 4)) : 'todas'));
+    ok(todas.length === 62 && !ruins.length, 'as 62 situações (lote 58: e as duas novas da floresta) geram com o traçado todo ligado: ' + (ruins.length ? j(ruins.slice(0, 4)) : 'todas'));
     const agua = await enc(Object.assign({}, b0, { terreno: 'agua', situacao: 'navio', rioDe: 'n', portoes: ['n'] }));
     ok(agua.rios.length === 0 && !agua.caminhosRosa, 'no mar (Um navio), o rio e os caminhos da rosa não valem');
   }
