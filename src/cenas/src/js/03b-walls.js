@@ -17,6 +17,8 @@ const Walls = (() => {
   let ver = 0, builds = 0, cache = null;
   // (lote 7) a Fumaça e a Muralha de cristais também barram: mexer numa delas refaz as paredes
   Store.on('live', (op, inv) => { if (op.c === 'walls' || (FX.mexeNaBarreira && FX.mexeNaBarreira(op, inv))) ver++; });
+  // (lote 65) com a visão pelo relevo, a altura do chão debaixo das paredes conta: mexer no relevo refaz as paredes
+  Store.on('live', op => { if (op.c === 'shapes' || (op.c === 'scene' && op.p && ('relevoVisao' in op.p))) { const sc = Store.scene(); if (sc && sc.relevoVisao) ver++; } });
 
   // Tolerâncias, proporcionais ao quadrado (os números valem para o quadrado padrão de 64 px):
   // a abertura conta como "em cima" da parede se estiver alinhada com ela a até 4 px
@@ -82,29 +84,40 @@ const Walls = (() => {
       move: [],                 // o que barra a passagem: restos de parede, portas e janelas fechadas
       pieces: new Map(),        // parede comum → os trechos dela que sobraram (para desenhar e para o clique)
       openings,
+      topo: [],                 // (lote 65) a altura de cima de cada trecho de "sight", em quadrados (Infinity: barra de qualquer altura)
     };
+    // (lote 65) a altura das paredes, para quem olha de cima (só com a visão pelo relevo): o chão debaixo dela (o mais
+    // baixo dos dois lados) mais a altura dela (a da parede, senão a da tabela do relevo)
+    const comAltura = typeof Relevo !== 'undefined' && Relevo.ligada(sc), hPad = comAltura ? Relevo.tabela(sc).parede : 0;
+    const topoDe = (x1, y1, x2, y2, h) => {
+      if (!comAltura) return Infinity;
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, L = Math.hypot(x2 - x1, y2 - y1) || 1, nx = -(y2 - y1) / L * cell * 0.3, ny = (x2 - x1) / L * cell * 0.3;
+      const base = Math.min(Relevo.alturaEm(sc, mx + nx, my + ny), Relevo.alturaEm(sc, mx - nx, my - ny));
+      return base + (h > 0 ? h : hPad);
+    };
+    const pushSight = (x1, y1, x2, y2, h) => { d.sight.push(x1, y1, x2, y2); d.topo.push(h === Infinity ? Infinity : topoDe(x1, y1, x2, y2, h)); };
     for (const w of sc.walls) {
       if (isOpening(w)) {
         if (wallBlocksMove(w)) d.move.push(w.x1, w.y1, w.x2, w.y2);
-        if (wallBlocksSight(w)) { if (w.k === 'veil') d.curtains.push(w); else d.sight.push(w.x1, w.y1, w.x2, w.y2); }
+        if (wallBlocksSight(w)) { if (w.k === 'veil') d.curtains.push(w); else pushSight(w.x1, w.y1, w.x2, w.y2, Number(w.h) || 0); }
         continue;
       }
       const pcs = remnants(w, openings, tol, min);
       d.pieces.set(w.id, pcs);
       const baixa = w.k === 'mureta';                            // (a mureta barra a passagem, mas não a visão)
-      for (const q of pcs) { if (!baixa) d.sight.push(q[0], q[1], q[2], q[3]); d.move.push(q[0], q[1], q[2], q[3]); }
+      for (const q of pcs) { if (!baixa) pushSight(q[0], q[1], q[2], q[3], Number(w.h) || 0); d.move.push(q[0], q[1], q[2], q[3]); }
     }
     // (lote 48) os portões, as grades e as cortinas que são objetos: fechados, barram como a porta, a janela e a cortina
     if (typeof Props !== 'undefined' && Props.paredes) for (const w of Props.paredes(sc)) {
       if (w.open) continue;
       if (w.k !== 'veil') d.move.push(w.x1, w.y1, w.x2, w.y2);
-      if (w.k === 'door') d.sight.push(w.x1, w.y1, w.x2, w.y2);
+      if (w.k === 'door') pushSight(w.x1, w.y1, w.x2, w.y2, 0);
       else if (w.k === 'veil') d.curtains.push(w);
     }
     // (lote 7) as zonas que tapam a visão e as que barram a passagem, como trechos de parede (não se desenham nem se clicam)
     const zb = FX.barreiras ? FX.barreiras(sc) : null;
     if (zb) {
-      for (let i = 0; i < zb.vista.length; i++) d.sight.push(zb.vista[i]);
+      for (let i = 0; i + 3 < zb.vista.length; i += 4) pushSight(zb.vista[i], zb.vista[i + 1], zb.vista[i + 2], zb.vista[i + 3], Infinity);      // (a fumaça tapa de qualquer altura)
       for (let i = 0; i < zb.passo.length; i++) d.move.push(zb.passo[i]);
     }
     d.sightAll = d.sight;
@@ -125,8 +138,18 @@ const Walls = (() => {
 
   // O que barra a visão DESTE token: o que barra a de qualquer um, mais as cortinas fechadas das quais ele
   // não está encostado. É recalculado a cada pedido (depende de onde o token está), então nunca fica velho.
+  // (lote 65) do alto, as paredes mais baixas que o olho de quem olha não barram (o olho: o chão dele + 1 quadrado)
+  function porCima(d, sc, t) {
+    if (typeof Relevo === 'undefined' || !Relevo.ligada(sc) || !d.topo.length) return d.sight;
+    const olho = Relevo.alturaDoToken(t, sc) + 1;
+    if (!d.topo.some(v => v < olho - 1e-6)) return d.sight;
+    const out = [];
+    for (let i = 0, k = 0; i + 3 < d.sight.length; i += 4, k++) if (!(d.topo[k] < olho - 1e-6)) out.push(d.sight[i], d.sight[i + 1], d.sight[i + 2], d.sight[i + 3]);
+    return out;
+  }
   function sightFor(sc, t) {
-    const d = of(sc);
+    const d0 = of(sc), d = Object.assign({}, d0, { sight: porCima(d0, sc, t) });
+    d.sightAll = d.sight === d0.sight ? d0.sightAll : d.curtains.length ? d.sight.concat(...d.curtains.map(c => [c.x1, c.y1, c.x2, c.y2])) : d.sight;
     // (lote 18) a visão pelo relevo: o que é mais alto que o olho do token também barra (só com a chave da cena)
     const rl = typeof Relevo !== 'undefined' ? Relevo.barreiras(sc, t) : [];
     const com = base => (rl.length ? base.concat(rl) : base);

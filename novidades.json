@@ -2,6 +2,26 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.02-5",
+      "data": "2026-11-02",
+      "titulo": "O lápis nas Cenas e ver de cima por cima das paredes",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o lápis (tecla S, na barra da esquerda). Rabisque por cima da cena e todos veem na hora, como a caneta do Mapa-múndi. O traço some sozinho em segundos ou fica até limpar, e você escolhe a cor. Ctrl+Z desfaz o seu último rabisco; “Limpar os meus” tem Desfazer."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: com a visão pelo relevo ligada, quem está no alto de um morro vê por cima das paredes, das cercas e das matas mais baixas lá embaixo. Do chão, elas continuam tapando."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: cada parede tem uma altura (2 quadrados de começo, nas regras do relevo). No painel da parede dá para mudar a de uma só. “Limpar os de todos”, no lápis, apaga os rabiscos da mesa inteira, com Desfazer."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.02-4",
       "data": "2026-11-02",
       "titulo": "Estradas pela serra e pelo desfiladeiro, e lugares conquistados",

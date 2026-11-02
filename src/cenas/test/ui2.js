@@ -216,7 +216,7 @@ const { open } = require('./lib');
   await page.locator('#viewerSel').selectOption({ label: 'Dalmo' }); await w(250);
   const tools = await ev(() => Array.from(document.querySelectorAll('.tool')).map(b => b.id.replace('tool-', '')).join());
   // (lote 26) em grupos: o desenho fica num botão só, que abre a lista com as seis
-  ok(tools === 'select,pan,ruler,ping,fx,grupo-desenho', 'ferramentas liberadas ao jogador: ' + tools);
+  ok(tools === 'select,pan,ruler,ping,lapis,fx,grupo-desenho', 'ferramentas liberadas ao jogador: ' + tools);
   const desenho = await ev(() => Array.from(document.querySelectorAll('.rail-item')).map(b => b.id.replace('tool-', '')).join());
   ok(desenho === 'free,line,rect,ell,poly,text', 'e, na lista do Desenho, as seis de desenhar: ' + desenho);
   d = await T('Dain X');

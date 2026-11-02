@@ -49,6 +49,8 @@
         { t: 'O painel', txt: 'À direita: os tokens, a iniciativa, as condições e o que está selecionado. O botão do painel, em cima, mostra ou esconde.', onde: { sel: '#side' } },
         { t: 'Os turnos', txt: 'Com o combate ligado, a faixa dos turnos mostra de quem é a vez, com o próximo e o anterior.', onde: { sel: '#turnb', nada: 'A faixa dos turnos aparece com o combate ligado.' } },
         { t: 'O relevo', txt: 'Na aba Cena, em Relevo: as regras da altura (subir custa movimento, o penhasco só escalando, a queda sugere o dano, de cima dá bônus) e a chave da visão pelo relevo. Tudo é sugestão: você confirma.', onde: { sel: '#tab-scene' } },
+        // (lote 65)
+        { t: 'O lápis', txt: 'Tecla S: rabisque por cima da cena para todos verem (os jogadores também têm). Some em segundos ou fica até limpar; “Limpar os de todos” apaga os da mesa. Com a visão pelo relevo, as paredes têm altura: de cima de um morro se vê por cima delas.', onde: { sel: '#tool-lapis' } },
         { t: 'A caverna embaixo', txt: 'Dois cliques numa Entrada (ou na entrada de gruta da Região livre): “Gerar a caverna embaixo…” faz o subsolo alinhado com esta cena, com o rio de cima, o bioma de baixo, um achado e um ninho.', onde: { sel: '#stage' } },
         { t: 'A arena do chefe', txt: 'Em “Gerar um lugar…”, a aba Arena faz a sala da luta com o chefe, com as fases prontas (cada mudança liga, desliga ou troca). São 19 tipos, agrupados por tema; as arenas novas têm mudanças só delas (os caixões que se abrem, o gelo que racha, o portal do fosso). Na cena, a aba Cena mostra as fases: acionar mostra antes o que muda, e o Desfazer volta.', onde: { sel: '#tab-scene' } },
         { t: 'Os objetos de cenário', txt: 'A ferramenta Objetos (J) tem oito grupos: as luzes, os móveis, a natureza, os perigos, a masmorra e o chefe, o clã e a sede, as linhagens e a viagem. No painel do estandarte, do brasão, da mesa de guerra, do quadro de missões e do atril ficam as duas cores; os que vêm da sede do clã já chegam com as cores do brasão.', onde: { sel: '#tool-obj' } },
@@ -83,6 +85,7 @@
         { t: 'Momentos preparados', txt: 'Na aba Cena, em “Momentos preparados”: junte o que vai acontecer de uma vez — tokens ocultos que aparecem, a hora do dia, luzes que acendem ou apagam, a névoa, um som para todos, zonas escondidas e uma narração à mesa. “Soltar” faz tudo num passo, com Desfazer.', onde: { sel: '#tab-scene' } },
       ],
       jogador: [
+        { t: 'O lápis', txt: 'Tecla S (ou o lápis à esquerda): rabisque para a mesa ver na hora. Some em segundos ou fica até limpar; Ctrl+Z desfaz o seu último.', onde: { sel: '#tool-lapis' } },
         { t: 'A cena', txt: 'O mapa que o mestre mostra. Seus tokens você move e usa; o resto, só vê.', onde: { sel: '#stage' } },
         { t: 'O painel', txt: 'À direita: os seus personagens, as barras e o que está selecionado.', onde: { sel: '#side' } },
         { t: 'Os turnos', txt: 'No combate, a faixa dos turnos mostra de quem é a vez.', onde: { sel: '#turnb', nada: 'A faixa dos turnos aparece quando o mestre liga o combate.' } },

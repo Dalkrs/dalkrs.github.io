@@ -1096,6 +1096,14 @@ const UI = (() => {
       if (t !== 'free' && t !== 'text') kids.push(oCheck('o-snap', 'snap', 'Encaixar na grade'));
       kids.push(oCheck('o-top', 'top', 'Acima dos tokens'));
       if (gm) kids.push(oCheck('o-gm', 'gmOnly', 'Só o mestre vê'));
+    } else if (t === 'lapis' && typeof Lapis !== 'undefined') {
+      // (lote 65) o lápis: some em segundos ou fica até limpar; a cor; desfazer e limpar (o mestre limpa o de todos)
+      const md = Lapis.modo(), minha = Lapis.cor(), meus = Lapis.quantosMeus(sc.id), todos = Lapis.daCena(sc.id).length;
+      kids.push(seg('o-lpm', md, [['some', 'Some em segundos', null, 'O rabisco apaga sozinho em poucos segundos'], ['fica', 'Fica até limpar', null, 'O rabisco fica na cena até alguém limpar']], v => { Lapis.modo(v); refresh(); }));
+      kids.push(h('div', { class: 'o-g o-cores', role: 'group', 'aria-label': 'A cor do seu lápis' }, Lapis.CORES.map(c => h('button', { type: 'button', class: 'o-cor' + (c === minha ? ' on' : ''), id: 'o-lpc-' + c.slice(1), title: 'Esta cor', 'aria-label': 'Cor ' + c, 'aria-pressed': String(c === minha), style: 'background:' + c, onclick: () => { Lapis.mudarCor(c); refresh(); } }))));
+      kids.push(btn('Desfazer o meu último', () => { Lapis.desfazer(sc.id); refresh(); }, { kind: 'small', id: 'o-lp-desf', disabled: !meus, title: 'Tira o seu último rabisco (Ctrl+Z)' }),
+        btn('Limpar os meus', () => { Lapis.limpar(sc.id, false, gm); refresh(); }, { kind: 'small', id: 'o-lp-meus', disabled: !meus }));
+      if (gm && Nuvem.on()) kids.push(btn('Limpar os de todos', () => { Lapis.limpar(sc.id, true, true); refresh(); }, { kind: 'small', id: 'o-lp-todos', disabled: !todos, title: 'Apaga os rabiscos de todos nesta cena (o aviso deixa desfazer)' }));
     } else if (t === 'wall') {
       const isDoor = k => k === 'door' || k === 'secret';
       kids.push(seg('o-wk', o.wallKind, WALL_SEG, v => { if (isDoor(v)) o.wallMode = 'line'; optSet('wallKind', v, true); }));
@@ -2710,7 +2718,11 @@ const UI = (() => {
         kind === 'door' && Nuvem.mestre() && (EscudoCenas.puzzles().length || w.pz) ? field('Abre com um puzzle', inSelect('wl-pz', many && !walls.every(x => (x.pz || '') === (w.pz || '')) ? '' : (w.pz || ''),
           [['', 'Nenhum']].concat(EscudoCenas.puzzles().map(p => [p.id, p.nome])), v => all({ pz: v || undefined, pzOk: undefined }, v ? 'Ligar a porta a um puzzle' : 'Desligar a porta do puzzle'))) : null,
         kind === 'door' && Nuvem.mestre() && w.pz ? note(EscudoCenas.resolvido(w.pz) ? (w.pzOk ? 'Resolveram o puzzle e a porta abriu.' : 'O puzzle já foi resolvido.') : 'Quando os jogadores resolverem “' + EscudoCenas.nomeDoPuzzle(w.pz) + '”, a porta abre e destranca sozinha (você recebe um aviso com Desfazer).') : null,
-        note(kind ? WALL_NOTES[kind] : 'Trechos de tipos diferentes. Escolher um tipo acima vale para todos.')),
+        note(kind ? WALL_NOTES[kind] : 'Trechos de tipos diferentes. Escolher um tipo acima vale para todos.'),
+        // (lote 65) a altura da parede para quem olha de cima (só com a visão pelo relevo ligada nesta cena)
+        Store.scene().relevoVisao && (kind === 'wall' || kind === 'door' || kind === 'secret') ? field('Altura (q)', inNum('wl-h', Number(w.h) > 0 ? w.h : Relevo.tabela(Store.scene()).parede,
+          v => all({ h: v === Relevo.tabela(Store.scene()).parede ? undefined : v }, 'Altura da parede'), { min: 0.5, max: 100, step: 0.5, label: 'Altura da parede, em quadrados', title: 'Quem está num lugar mais alto que isto vê por cima dela' })) : null,
+        Store.scene().relevoVisao && (kind === 'wall' || kind === 'door' || kind === 'secret') ? note('Quem olha de um lugar mais alto (o chão dele mais 1 quadrado, a altura do olho) vê por cima da parede.') : null),
       h('div', { class: 'row' }, btn('Apagar', deleteSelToast, { icon: 'trash', kind: 'danger' })),
     ];
   }
@@ -3277,7 +3289,7 @@ const UI = (() => {
       // (lote 18) o relevo com regra: a visão pelo relevo (desta cena) e a tabela do mestre (da mesa)
       acc(secR('c-relevo', 'Relevo', false, sc.relevoVisao ? 'a altura esconde' : '',
         toggle('rl-visao', !!sc.relevoVisao, v => S({ relevoVisao: v || undefined }, 'Visão pelo relevo'), 'A altura esconde (visão pelo relevo)', { disabled: !f.dynamic }),
-        note(f.dynamic ? 'Ligada, a visão dos jogadores segue o relevo: morros e penhascos escondem o que está atrás, de dentro de um fosso só se vê o fosso, e de cima se vê mais longe.'
+        note(f.dynamic ? 'Ligada, a visão dos jogadores segue o relevo: morros e penhascos escondem o que está atrás, de dentro de um fosso só se vê o fosso, e de cima se vê mais longe e por cima das paredes mais baixas.'
           : 'A visão pelo relevo precisa da "Visão por paredes" (em Visão e névoa).'),
         h('p', { class: 'note', id: 'rl-resumo', text: resumoDoRelevo(Relevo.tabela(sc)) }),
         btn('Regras do relevo…', abrirRegrasDoRelevo, { icon: 'sliders', id: 'rl-regras' }))),
@@ -3310,14 +3322,15 @@ const UI = (() => {
       linha('Atacar de baixo', num('rl-baixo', 'baixo', -999, 999, 1, 'Bônus no ataque de quem está mais baixo'), 'no atributo'),
       linha('A queda tira', num('rl-queda', 'queda', 0, 100, 1, 'Porcentagem da Vida máxima'), '% da Vida máxima'),
       linha('a cada', num('rl-qcada', 'quedaCada', 0.5, 100, 0.5, 'Quadrados de queda'), 'quadrados de queda'),
+      linha('As paredes têm', num('rl-parede', 'parede', 0.5, 100, 0.5, 'Altura das paredes para quem olha de cima'), 'quadrados de altura (quem está mais alto vê por cima; cada parede pode ter a dela)'),
       note('Vale em todas as cenas desta mesa. A régua e o arrastar mostram a subida; a queda de um penhasco avisa você com o dano sugerido; mirando alguém, a janelinha de atributos (F) oferece o bônus de cima ou de baixo.'));
     modal({ title: 'Regras do relevo', body, wide: true, actions: [
-      { label: 'Valores de começo', run: () => { Object.assign(r, Relevo.norm(null)); for (const [id, k] of [['rl-sobe', 'sobe'], ['rl-pen', 'penhasco'], ['rl-cima', 'cima'], ['rl-baixo', 'baixo'], ['rl-queda', 'queda'], ['rl-qcada', 'quedaCada']]) { const c = document.getElementById(id); if (c) c.value = r[k]; } const o = document.getElementById('rl-on'); if (o) o.checked = true; return false; }, keep: true },
+      { label: 'Valores de começo', run: () => { Object.assign(r, Relevo.norm(null)); for (const [id, k] of [['rl-sobe', 'sobe'], ['rl-pen', 'penhasco'], ['rl-cima', 'cima'], ['rl-baixo', 'baixo'], ['rl-queda', 'queda'], ['rl-qcada', 'quedaCada'], ['rl-parede', 'parede']]) { const c = document.getElementById(id); if (c) c.value = r[k]; } const o = document.getElementById('rl-on'); if (o) o.checked = true; return false; }, keep: true },
       { label: 'Cancelar' },
       { label: 'Salvar', kind: 'primary', run: () => {
         const novo = Relevo.igualAoPadrao(r) ? null : Relevo.norm(r);
         if (JSON.stringify(novo) === JSON.stringify(antes)) return;
-        Store.S.prefs.relevo = novo; Persist.meta({ pub: true }); Render.request(); refresh();
+        Store.S.prefs.relevo = novo; Persist.meta({ pub: true }); Walls.invalidate(); Vision.invalidate(); Render.request(); refresh();
         toast('As regras do relevo estão salvas.', { action: 'Desfazer', key: 'relevo', run: () => { Store.S.prefs.relevo = antes; Persist.meta({ pub: true }); Render.request(); refresh(); toast('As regras do relevo voltaram.'); } });
       } },
     ] });

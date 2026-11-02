@@ -1283,6 +1283,12 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .mt-pop-l { display: flex; flex-wrap: wrap; gap: 6px; }
 .mt-pop .mt-lista { max-height: 40vh; margin: 0; }
 @media (max-height: 820px) { .tool { height: 29px; } .rail-g { margin: 2px 0 1px; } .rail-sep { margin: 2px 0; } }
+
+/* (lote 65) as cores do lápis */
+.o-cores { display: flex; gap: 4px; align-items: center; }
+.o-cor { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); padding: 0; cursor: pointer; }
+.o-cor.on { border-color: var(--fg, #fff); box-shadow: 0 0 0 2px rgba(0,0,0,.5); }
+.o-cor:focus-visible { outline: 2px solid var(--accent, #e6ab4f); outline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -2726,6 +2732,8 @@ const Walls = (() => {
   let ver = 0, builds = 0, cache = null;
   // (lote 7) a Fumaça e a Muralha de cristais também barram: mexer numa delas refaz as paredes
   Store.on('live', (op, inv) => { if (op.c === 'walls' || (FX.mexeNaBarreira && FX.mexeNaBarreira(op, inv))) ver++; });
+  // (lote 65) com a visão pelo relevo, a altura do chão debaixo das paredes conta: mexer no relevo refaz as paredes
+  Store.on('live', op => { if (op.c === 'shapes' || (op.c === 'scene' && op.p && ('relevoVisao' in op.p))) { const sc = Store.scene(); if (sc && sc.relevoVisao) ver++; } });
 
   // Tolerâncias, proporcionais ao quadrado (os números valem para o quadrado padrão de 64 px):
   // a abertura conta como "em cima" da parede se estiver alinhada com ela a até 4 px
@@ -2791,29 +2799,40 @@ const Walls = (() => {
       move: [],                 // o que barra a passagem: restos de parede, portas e janelas fechadas
       pieces: new Map(),        // parede comum → os trechos dela que sobraram (para desenhar e para o clique)
       openings,
+      topo: [],                 // (lote 65) a altura de cima de cada trecho de "sight", em quadrados (Infinity: barra de qualquer altura)
     };
+    // (lote 65) a altura das paredes, para quem olha de cima (só com a visão pelo relevo): o chão debaixo dela (o mais
+    // baixo dos dois lados) mais a altura dela (a da parede, senão a da tabela do relevo)
+    const comAltura = typeof Relevo !== 'undefined' && Relevo.ligada(sc), hPad = comAltura ? Relevo.tabela(sc).parede : 0;
+    const topoDe = (x1, y1, x2, y2, h) => {
+      if (!comAltura) return Infinity;
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, L = Math.hypot(x2 - x1, y2 - y1) || 1, nx = -(y2 - y1) / L * cell * 0.3, ny = (x2 - x1) / L * cell * 0.3;
+      const base = Math.min(Relevo.alturaEm(sc, mx + nx, my + ny), Relevo.alturaEm(sc, mx - nx, my - ny));
+      return base + (h > 0 ? h : hPad);
+    };
+    const pushSight = (x1, y1, x2, y2, h) => { d.sight.push(x1, y1, x2, y2); d.topo.push(h === Infinity ? Infinity : topoDe(x1, y1, x2, y2, h)); };
     for (const w of sc.walls) {
       if (isOpening(w)) {
         if (wallBlocksMove(w)) d.move.push(w.x1, w.y1, w.x2, w.y2);
-        if (wallBlocksSight(w)) { if (w.k === 'veil') d.curtains.push(w); else d.sight.push(w.x1, w.y1, w.x2, w.y2); }
+        if (wallBlocksSight(w)) { if (w.k === 'veil') d.curtains.push(w); else pushSight(w.x1, w.y1, w.x2, w.y2, Number(w.h) || 0); }
         continue;
       }
       const pcs = remnants(w, openings, tol, min);
       d.pieces.set(w.id, pcs);
       const baixa = w.k === 'mureta';                            // (a mureta barra a passagem, mas não a visão)
-      for (const q of pcs) { if (!baixa) d.sight.push(q[0], q[1], q[2], q[3]); d.move.push(q[0], q[1], q[2], q[3]); }
+      for (const q of pcs) { if (!baixa) pushSight(q[0], q[1], q[2], q[3], Number(w.h) || 0); d.move.push(q[0], q[1], q[2], q[3]); }
     }
     // (lote 48) os portões, as grades e as cortinas que são objetos: fechados, barram como a porta, a janela e a cortina
     if (typeof Props !== 'undefined' && Props.paredes) for (const w of Props.paredes(sc)) {
       if (w.open) continue;
       if (w.k !== 'veil') d.move.push(w.x1, w.y1, w.x2, w.y2);
-      if (w.k === 'door') d.sight.push(w.x1, w.y1, w.x2, w.y2);
+      if (w.k === 'door') pushSight(w.x1, w.y1, w.x2, w.y2, 0);
       else if (w.k === 'veil') d.curtains.push(w);
     }
     // (lote 7) as zonas que tapam a visão e as que barram a passagem, como trechos de parede (não se desenham nem se clicam)
     const zb = FX.barreiras ? FX.barreiras(sc) : null;
     if (zb) {
-      for (let i = 0; i < zb.vista.length; i++) d.sight.push(zb.vista[i]);
+      for (let i = 0; i + 3 < zb.vista.length; i += 4) pushSight(zb.vista[i], zb.vista[i + 1], zb.vista[i + 2], zb.vista[i + 3], Infinity);      // (a fumaça tapa de qualquer altura)
       for (let i = 0; i < zb.passo.length; i++) d.move.push(zb.passo[i]);
     }
     d.sightAll = d.sight;
@@ -2834,8 +2853,18 @@ const Walls = (() => {
 
   // O que barra a visão DESTE token: o que barra a de qualquer um, mais as cortinas fechadas das quais ele
   // não está encostado. É recalculado a cada pedido (depende de onde o token está), então nunca fica velho.
+  // (lote 65) do alto, as paredes mais baixas que o olho de quem olha não barram (o olho: o chão dele + 1 quadrado)
+  function porCima(d, sc, t) {
+    if (typeof Relevo === 'undefined' || !Relevo.ligada(sc) || !d.topo.length) return d.sight;
+    const olho = Relevo.alturaDoToken(t, sc) + 1;
+    if (!d.topo.some(v => v < olho - 1e-6)) return d.sight;
+    const out = [];
+    for (let i = 0, k = 0; i + 3 < d.sight.length; i += 4, k++) if (!(d.topo[k] < olho - 1e-6)) out.push(d.sight[i], d.sight[i + 1], d.sight[i + 2], d.sight[i + 3]);
+    return out;
+  }
   function sightFor(sc, t) {
-    const d = of(sc);
+    const d0 = of(sc), d = Object.assign({}, d0, { sight: porCima(d0, sc, t) });
+    d.sightAll = d.sight === d0.sight ? d0.sightAll : d.curtains.length ? d.sight.concat(...d.curtains.map(c => [c.x1, c.y1, c.x2, c.y2])) : d.sight;
     // (lote 18) a visão pelo relevo: o que é mais alto que o olho do token também barra (só com a chave da cena)
     const rl = typeof Relevo !== 'undefined' ? Relevo.barreiras(sc, t) : [];
     const com = base => (rl.length ? base.concat(rl) : base);
@@ -10924,6 +10953,7 @@ const Nuvem = (() => {
     try { await D.pronta; } catch (e) { throw new Error('não deu para ler as cenas da mesa (' + ((e && e.message) || 'sem resposta') + ')'); }
     mesa = st.mesa.id; eu = st.eu;
     modo = st.papel === 'mestre' ? 'mestre' : 'jogador';
+    if (typeof Lapis !== 'undefined') Lapis.ligar(D, eu);              // (lote 65) o lápis: os rabiscos de cada um, que a mesa vê
     // (a campanha em vista é lida uma vez: quando ela muda, a casca abre esta página de novo)
     camp = st.campanha ? st.campanha.id : null;
     campsDaMesa = Array.isArray(st.campanhas) ? st.campanhas.slice() : [];
@@ -11985,11 +12015,14 @@ const Combate = (() => {
      - de cima, `cima` no ataque; de baixo, `baixo` (a janelinha de atributos oferece somar, mirando alguém).
    E a visão pelo relevo (uma chave por cena, sc.relevoVisao): o que é mais alto que o olho de quem olha esconde o que
    está atrás; de dentro de um fosso, só se vê o fosso; de cima, o alcance da visão cresce com a altura.
+   (lote 65) E de cima se vê por cima das paredes: cada parede tem uma altura (a dela, senão `parede` da tabela, 2 de
+   começo) sobre o chão mais baixo dos dois lados; quem tem o olho (o chão dele + 1 quadrado) acima disso vê por cima
+   (3b. WALLS, sightFor). As paredes de visão que o gerador põe em volta das matas e das pedras contam como paredes.
    Nada se aplica sozinho. A tabela mora nas preferências da mesa (Store.S.prefs.relevo, só do mestre); a cena que
    vai para os jogadores leva uma cópia dela (relevoTab).
    --------------------------------------------------------------- */
 const Relevo = (() => {
-  const PADRAO = Object.freeze({ on: true, sobe: 1, penhasco: 3, cima: 2, baixo: -2, queda: 10, quedaCada: 2 });
+  const PADRAO = Object.freeze({ on: true, sobe: 1, penhasco: 3, cima: 2, baixo: -2, queda: 10, quedaCada: 2, parede: 2 });     // (lote 65: parede, a altura das paredes para quem olha de cima, em quadrados)
   const numOk = (v, a, b, p) => { const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : NaN; return isFinite(n) ? clamp(Math.round(n * 10) / 10, a, b) : p; };
   function norm(t) {
     const o = t && typeof t === 'object' && !Array.isArray(t) ? t : {};
@@ -12001,6 +12034,7 @@ const Relevo = (() => {
       baixo: numOk(o.baixo, -999, 999, PADRAO.baixo),
       queda: numOk(o.queda, 0, 100, PADRAO.queda),
       quedaCada: numOk(o.quedaCada, 0.5, 100, PADRAO.quedaCada),
+      parede: numOk(o.parede, 0.5, 100, PADRAO.parede),
     };
   }
   const igualAoPadrao = t => JSON.stringify(norm(t)) === JSON.stringify(norm(null));
@@ -12131,6 +12165,177 @@ const Relevo = (() => {
   return { PADRAO, norm, igualAoPadrao, tabela, alturaEm, alturaDoToken, temRelevo, perfil, custo, rotulo, danoDaQueda, quedaDoPasso, vantagem, contorno, barreiras, alcanceExtra, ligada };
 })();
 /* ---------------------------------------------------------------
+   7g. LÁPIS (lote 65) — o rabisco de agora, que todos na cena veem
+   Como a caneta do Mapa-múndi: cada pessoa desenha por cima da cena, e a mesa inteira vê na hora. Dois jeitos: o traço
+   que some sozinho em poucos segundos e o que fica até alguém limpar (cada um limpa os seus; o mestre, os de todos).
+   É de todos (quem joga também), sem depender da permissão de desenhar: o rabisco não mexe na cena nem no desfazer dela.
+   Os traços moram no mesmo documento da caneta do Mapa-múndi ("mundo:rabisco:<pessoa>", com ela como dona e a mesa
+   inteira lendo — o banco já deixa cada um gravar o seu), marcados com a cena: mp = "cena:<id da cena>". Assim não
+   precisa de nada novo no banco, e um não apaga o do outro (cada um regrava a lista inteira, com os traços do Mapa-múndi
+   junto). Sem mesa, os traços ficam neste navegador.
+   --------------------------------------------------------------- */
+const Lapis = (() => {
+  const PRE = 'mundo:rabisco:', LOCAL = 'tinycats:cenas:rabiscos', PREF = 'tinycats:cenas:lapis';
+  const TEMPO_SOME = 8000, VELHO = 60000, MAX_TRACOS = 300, MAX_PTS_TRACO = 600, MAX_PTS_DOC = 20000;
+  const CORES = ['#e6ab4f', '#f0786e', '#7fbf7a', '#7fb7e0', '#b39cf0', '#f2c14e', '#f3ead2', '#2a2118'];
+  const idOk = k => typeof k === 'string' && k.length <= 80 && /^[A-Za-z0-9_:.-]+$/.test(k) && k !== '__proto__';
+  const corOk = c => (typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c : null);
+  const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
+  let D = null, eu = null, naMesa = false, local = null, tLimpa = 0;
+  const vistos = new Map();                    // id do traço → { n (pontos), t (quando mudou, aqui) }
+  const ouvintes = [];
+  const avisar = () => {
+    for (const f of ouvintes) { try { f(); } catch (e) { console.error(e); } }
+    if (typeof Render !== 'undefined') Render.request();
+    if (typeof App !== 'undefined' && App.tool === 'lapis' && typeof UI !== 'undefined' && UI.refresh) UI.refresh();      // (as contas das opções)
+  };
+
+  function norm(v) {
+    const out = [], ja = new Set();
+    let pts = 0;
+    for (const x of v && Array.isArray(v.t) ? v.t.slice(-MAX_TRACOS) : []) {
+      if (!ehObj(x) || !idOk(x.id) || ja.has(x.id) || !idOk(x.mp) || !Array.isArray(x.p)) continue;
+      const p = x.p.slice(0, MAX_PTS_TRACO).filter(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1])).map(q => [Math.round(q[0] * 10) / 10, Math.round(q[1] * 10) / 10]);
+      if (!p.length || pts + p.length > MAX_PTS_DOC) continue;
+      ja.add(x.id); pts += p.length;
+      out.push({ id: x.id, mp: x.mp, c: corOk(x.c) || CORES[0], s: x.s ? 1 : 0, em: isFinite(x.em) ? x.em : 0, p });
+    }
+    return out;
+  }
+  const lerJ = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+  const gravarJ = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } };
+  const meuDoc = () => (naMesa ? (eu ? PRE + eu : null) : 'local');
+  const cacheDoc = new WeakMap();
+  const dosDados = l => { const d = l && !l.apagado && ehObj(l.dados) ? l.dados : null; if (!d) return []; if (!cacheDoc.has(d)) cacheDoc.set(d, norm(d)); return cacheDoc.get(d); };
+  function docs() {
+    if (!naMesa) { if (!local) local = { t: norm(lerJ(LOCAL)) }; return [{ dono: 'local', doc: 'local', t: local.t }]; }
+    if (!D) return [];
+    return D.todas().filter(l => typeof l.id === 'string' && l.id.startsWith(PRE) && idOk(l.id.slice(PRE.length)) && l.dono_id === l.id.slice(PRE.length))
+      .map(l => ({ dono: l.id.slice(PRE.length), doc: l.id, t: dosDados(l) }));
+  }
+  function meus() { const id = meuDoc(); const d = id ? docs().find(x => x.doc === id) : null; return d ? d.t.slice() : []; }
+  function gravar(t) {
+    const id = meuDoc();
+    if (!id) return;
+    if (!naMesa) { local = { t }; gravarJ(LOCAL, { v: 1, t: t.filter(x => !x.s) }); }
+    else D.gravar(id, { dados: { v: 1, t }, vis: 'mesa', dono_id: eu });
+    avisar();
+  }
+  // o traço que some sai do documento de quem desenhou depois do tempo dele (os do Mapa-múndi também: o tempo é o mesmo)
+  function agendarLimpeza() {
+    clearTimeout(tLimpa);
+    const t = meus().filter(x => x.s);
+    if (!t.length) return;
+    const prox = Math.min(...t.map(x => (x.em || 0) + TEMPO_SOME + 1500)) - Date.now();
+    tLimpa = setTimeout(() => {
+      const agora = Date.now(), ms = meus(), fica = ms.filter(x => !x.s || (x.em || 0) + TEMPO_SOME + 1000 > agora);
+      if (fica.length !== ms.length) gravar(fica);
+      agendarLimpeza();
+    }, Math.max(500, prox));
+  }
+  const prefs = () => { const v = lerJ(PREF); return ehObj(v) ? v : {}; };
+  const mpDe = cena => 'cena:' + cena;
+
+  // a mesa (chamado pela Nuvem quando a cena abre dentro de uma mesa)
+  function ligar(dados, quem) {
+    D = dados; eu = quem || null; naMesa = !!D;
+    if (D && D.aoMudar) D.aoMudar(l => { if (l && typeof l.id === 'string' && l.id.startsWith(PRE)) avisar(); });
+  }
+  // sem mesa: os traços que outra aba deste navegador deixou
+  window.addEventListener('storage', ev => { if (!naMesa && (ev.key === LOCAL || ev.key === null)) { local = null; avisar(); } });
+
+  const pode = () => !naMesa || !!eu;
+  function modo(v) { if (v === 'some' || v === 'fica') { gravarJ(PREF, Object.assign(prefs(), { modo: v })); avisar(); return v; } return prefs().modo === 'fica' ? 'fica' : 'some'; }
+  // a cor de quem desenha: a escolhida neste aparelho, senão a de quem joga (a da mesa), senão uma da lista
+  function cor() {
+    const c = corOk(prefs().cor);
+    if (c) return c;
+    const p = eu && typeof playerById === 'function' ? playerById(eu) : null;
+    if (p && corOk(p.color)) return p.color;
+    if (typeof isGM === 'function' && isGM()) return CORES[0];
+    let h0 = 0;
+    for (const ch of String(eu || 'local')) h0 = (h0 * 31 + ch.charCodeAt(0)) >>> 0;
+    return CORES[h0 % (CORES.length - 2)];
+  }
+  function mudarCor(c) { if (corOk(c)) { gravarJ(PREF, Object.assign(prefs(), { cor: c })); avisar(); } }
+  /* um traço: novo, ou o mesmo crescendo (parcial: ainda sendo desenhado) */
+  function rabiscar(cena, tr, parcial) {
+    if (!pode() || !cena || !tr || !idOk(tr.id) || !Array.isArray(tr.p) || !tr.p.length) return;
+    const t = meus().filter(x => x.id !== tr.id), novo = { id: tr.id, mp: mpDe(cena), c: corOk(tr.c) || cor(), s: tr.s ? 1 : 0, em: Date.now(), p: tr.p.slice(0, MAX_PTS_TRACO) };
+    t.push(novo);
+    while (t.length > MAX_TRACOS) t.shift();
+    vistos.set(novo.id, { n: novo.p.length, t: Date.now() });
+    gravar(t);
+    if (!parcial && novo.s) agendarLimpeza();
+  }
+  const quantosMeus = cena => meus().filter(x => x.mp === mpDe(cena)).length;
+  function desfazer(cena) { const t = meus(); for (let i = t.length - 1; i >= 0; i--) if (t[i].mp === mpDe(cena)) { t.splice(i, 1); gravar(t); return true; } return false; }
+  /* limpar: os meus traços nesta cena, ou (quem mestra) os de todos — o aviso deixa desfazer */
+  function limpar(cena, todos, mestra) {
+    const mp = mpDe(cena), antes = [];
+    for (const d of docs()) {
+      const mine = d.doc === meuDoc();
+      if (!mine && !(todos && mestra)) continue;
+      const fica = d.t.filter(x => x.mp !== mp);
+      if (fica.length === d.t.length) continue;
+      antes.push({ doc: d.doc, t: d.t });
+      if (mine) gravar(fica); else if (D) D.gravar(d.doc, { dados: { v: 1, t: fica } });
+    }
+    if (!antes.length) return false;
+    avisar();
+    if (typeof UI !== 'undefined') UI.toast(todos && mestra ? 'Os rabiscos desta cena foram limpos (de todos).' : 'Os seus rabiscos nesta cena saíram.', { action: 'Desfazer', long: true, run: () => {
+      for (const a of antes) {
+        const volta = a.t.filter(x => x.mp === mp && !x.s);
+        if (a.doc === meuDoc()) { const atual = meus(), ids = new Set(atual.map(x => x.id)); gravar(atual.concat(volta.filter(x => !ids.has(x.id)))); }
+        else if (D) { const atual = dosDados(D.pegar(a.doc)), ids = new Set(atual.map(x => x.id)); D.gravar(a.doc, { dados: { v: 1, t: atual.concat(volta.filter(x => !ids.has(x.id))) } }); }
+      }
+      avisar();
+    } });
+    return true;
+  }
+  /* os traços de uma cena para desenhar: [{ id, c, s, p, idade }] — o que some, só enquanto ainda está no tempo */
+  function daCena(cena) {
+    const agora = Date.now(), mp = mpDe(cena), out = [];
+    for (const d of docs()) for (const x of d.t) {
+      if (x.mp !== mp) continue;
+      let v = vistos.get(x.id);
+      if (!v || v.n !== x.p.length) { v = { n: x.p.length, t: agora }; vistos.set(x.id, v); }
+      if (x.s) {
+        const idade = agora - v.t;
+        if (idade >= TEMPO_SOME || (x.em && x.em < agora - VELHO)) continue;
+        out.push({ id: x.id, c: x.c, s: 1, p: x.p, idade });
+      } else out.push({ id: x.id, c: x.c, s: 0, p: x.p });
+    }
+    if (vistos.size > 4000) { const ids = new Set(); for (const d of docs()) for (const x of d.t) ids.add(x.id); for (const k of [...vistos.keys()]) if (!ids.has(k)) vistos.delete(k); }
+    return out;
+  }
+  // o desenho, por cima de tudo (da névoa também: é um recado para a mesa); devolve se ainda há traço sumindo (animação)
+  function desenhar(ctx, sc, px, rasc) {
+    if (!sc) return false;
+    const lista = daCena(sc.id);
+    if (rasc && rasc.p.length) lista.push(rasc);
+    if (!lista.length) return false;
+    let anima = false;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const t of lista) {
+      let a = 1;
+      if (t.s && t.idade != null) { const resta = TEMPO_SOME - t.idade; a = resta < 1500 ? Math.max(0, resta / 1500) : 1; anima = true; }
+      if (a <= 0) continue;
+      ctx.beginPath();
+      ctx.moveTo(t.p[0][0], t.p[0][1]);
+      if (t.p.length === 1) ctx.lineTo(t.p[0][0] + 0.01, t.p[0][1]);
+      for (let i = 1; i < t.p.length; i++) ctx.lineTo(t.p[i][0], t.p[i][1]);
+      ctx.globalAlpha = a * 0.55; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 7 * px; ctx.stroke();
+      ctx.globalAlpha = a; ctx.strokeStyle = t.c; ctx.lineWidth = 4 * px; ctx.stroke();
+      if (t.s) { ctx.globalAlpha = a * 0.5; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2 * px; ctx.stroke(); }
+    }
+    ctx.restore();
+    return anima;
+  }
+  return { ligar, pode, modo, cor, mudarCor, CORES, rabiscar, quantosMeus, desfazer, limpar, daCena, desenhar, TEMPO_SOME, aoMudar: f => ouvintes.push(f) };
+})();
+/* ---------------------------------------------------------------
    8. RENDER — desenho da cena no canvas
    Ordem das camadas: fundo, terreno, grade, desenhos de baixo, efeitos sem
    brilho, luz e escuridão, auras, efeitos luminosos, tokens, desenhos de cima,
@@ -12167,8 +12372,9 @@ const Render = (() => {
   function request() { need = true; if (!raf) raf = requestAnimationFrame(frame); }
 
   const motion = () => App.anim && !reduce.matches;
+  let lapisAnima = false;                                  // (lote 65) um rabisco do lápis sumindo: o quadro segue
   function animating() {
-    if (App.pings.length || App.floats.length) return true;
+    if (App.pings.length || App.floats.length || lapisAnima) return true;
     const sc = Store.scene();
     // (chamas dos objetos e luzes que tremulam também mexem o mapa)
     return !!sc && motion() && (sc.effects.length > 0 || !!(sc.weather && sc.weather.k) || Props.temFogo(sc) || temAgua(sc) || (Vision.out.flick.length > 0 && sc.light !== 'claro'));
@@ -13360,6 +13566,8 @@ const Render = (() => {
     drawSelection(sc, px);
     drawNums(sc, px);
     Tools.drawPreview(ctx, px, sc);
+    // (lote 65) os rabiscos do lápis, por cima de tudo (da névoa também: são recados para a mesa)
+    try { lapisAnima = typeof Lapis !== 'undefined' && Lapis.desenhar(ctx, sc, px, Tools.rascunhoLapis ? Tools.rascunhoLapis() : null); } catch (e) { lapisAnima = false; }
     drawFloats(sc, px, ts);
     drawPings(sc, px, ts);
     UI.frame();
@@ -13383,7 +13591,7 @@ const Tools = (() => {
   let lastUp = null;         // último clique, para reconhecer clique duplo
 
   // (lote 6: E passou a ser os equipamentos do token e N, passar o turno; a Névoa foi para U e os Efeitos, para Y)
-  const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', u: 'fog', q: 'terrain', y: 'fx', m: 'ruler' };
+  const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', u: 'fog', q: 'terrain', y: 'fx', m: 'ruler', s: 'lapis' };
   /* (lote 26) Os grupos do trilho, com nome: o que se usa jogando, as peças, o desenho (recolhido num botão só, que
      abre a lista) e o mapa. Os atalhos de teclado são os de sempre. */
   const GRUPOS = [{ n: 'Jogo' }, { n: 'Peças' }, { n: 'Desenho', junto: true, i: 'pen' }, { n: 'Mapa' }];
@@ -13392,6 +13600,7 @@ const Tools = (() => {
     { id: 'pan', n: 'Mover a câmera', k: 'H', i: 'pan', grp: 0 },
     { id: 'ruler', n: 'Régua', k: 'M', i: 'ruler', grp: 0, perm: 'ruler' },
     { id: 'ping', n: 'Ping (ou tecla G sobre o mapa)', k: 'G', i: 'ping', grp: 0, perm: 'ping' },
+    { id: 'lapis', n: 'Lápis: rabiscar para todos verem', k: 'S', i: 'pen', grp: 0 },      // (lote 65) de todos, como a caneta do Mapa-múndi
     { id: 'token', n: 'Novo token', k: 'T', i: 'token', grp: 1, gm: true },
     { id: 'obj', n: 'Objetos de cenário', k: 'J', i: 'obj', grp: 1, gm: true },
     { id: 'fx', n: 'Efeito de magia', k: 'Y', i: 'fx', grp: 1, perm: 'fx' },
@@ -14474,6 +14683,34 @@ const Tools = (() => {
     preview(ctx, px, sc) { if (ruler) Render.drawMeasure(ruler.pts, sc, px, viewerColor()); },
   };
 
+  /* (lote 65) O lápis: o traço vai para a mesa enquanto é desenhado (de pouco em pouco) e no fim. */
+  let lapisR = null, lapisT = 0;
+  T.lapis = {
+    hint: 'Arraste para rabiscar: todos na cena veem. O traço some sozinho em segundos (ou fica até limpar, nas opções).',
+    cursor: 'crosshair',
+    down(p) {
+      if (typeof Lapis === 'undefined' || !Lapis.pode()) return;
+      lapisR = { id: uid('rb'), c: Lapis.cor(), s: Lapis.modo() === 'some' ? 1 : 0, p: [[r1(p.x), r1(p.y)]] };
+      g = { type: 'lapis' };
+      Render.request();
+    },
+    move(p) {
+      if (!lapisR || !g || g.type !== 'lapis') return;
+      const u = lapisR.p[lapisR.p.length - 1];
+      if (Math.hypot(p.x - u[0], p.y - u[1]) * App.view.z < 3 || lapisR.p.length >= 600) return;
+      lapisR.p.push([r1(p.x), r1(p.y)]);
+      const agora = performance.now();
+      if (agora - lapisT > 160) { lapisT = agora; Lapis.rabiscar(Store.scene().id, lapisR, true); }
+      Render.request();
+    },
+    up() {
+      if (!lapisR || !g || g.type !== 'lapis') return;
+      Lapis.rabiscar(Store.scene().id, lapisR, false);
+      lapisR = null; g = null;
+      Render.request(); UI.refresh && UI.refresh();
+    },
+  };
+
   T.ping = {
     hint: 'Clique para chamar a atenção de todos para um ponto. A tecla G faz o mesmo em qualquer ferramenta.',
     cursor: 'crosshair',
@@ -14612,7 +14849,8 @@ const Tools = (() => {
     const t = T[App.tool];
     if (!mod && t.key && t.key(e)) { e.preventDefault(); return; }
     if (mod) {
-      if (lk === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+      if (lk === 'z' && !e.shiftKey && App.tool === 'lapis' && typeof Lapis !== 'undefined') { e.preventDefault(); Lapis.desfazer(Store.scene().id); }     // (lote 65) com o lápis, o Ctrl+Z desfaz o rabisco
+      else if (lk === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
       else if (lk === 'y') { e.preventDefault(); redo(); }
       else if (lk === 'c') { const n = Act.copySel(); if (n) UI.toast(n === 1 ? 'Copiado. Ctrl+V cola onde o cursor estiver.' : `${n} itens copiados. Ctrl+V cola onde o cursor estiver.`); }
       else if (lk === 'd') { e.preventDefault(); Act.duplicateSel(); }
@@ -14678,7 +14916,7 @@ const Tools = (() => {
     if (t.preview) t.preview(ctx, px, sc);
   }
 
-  return { LIST, GRUPOS, set, allowed, handles, drawPreview, hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
+  return { LIST, GRUPOS, set, allowed, handles, drawPreview, rascunhoLapis: () => (lapisR ? { id: lapisR.id, c: lapisR.c, s: 0, p: lapisR.p } : null), hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
 })();
 /* ---------------------------------------------------------------
    10. UI — barra do topo, trilho de ferramentas, painel, menus e janelas
@@ -15778,6 +16016,14 @@ const UI = (() => {
       if (t !== 'free' && t !== 'text') kids.push(oCheck('o-snap', 'snap', 'Encaixar na grade'));
       kids.push(oCheck('o-top', 'top', 'Acima dos tokens'));
       if (gm) kids.push(oCheck('o-gm', 'gmOnly', 'Só o mestre vê'));
+    } else if (t === 'lapis' && typeof Lapis !== 'undefined') {
+      // (lote 65) o lápis: some em segundos ou fica até limpar; a cor; desfazer e limpar (o mestre limpa o de todos)
+      const md = Lapis.modo(), minha = Lapis.cor(), meus = Lapis.quantosMeus(sc.id), todos = Lapis.daCena(sc.id).length;
+      kids.push(seg('o-lpm', md, [['some', 'Some em segundos', null, 'O rabisco apaga sozinho em poucos segundos'], ['fica', 'Fica até limpar', null, 'O rabisco fica na cena até alguém limpar']], v => { Lapis.modo(v); refresh(); }));
+      kids.push(h('div', { class: 'o-g o-cores', role: 'group', 'aria-label': 'A cor do seu lápis' }, Lapis.CORES.map(c => h('button', { type: 'button', class: 'o-cor' + (c === minha ? ' on' : ''), id: 'o-lpc-' + c.slice(1), title: 'Esta cor', 'aria-label': 'Cor ' + c, 'aria-pressed': String(c === minha), style: 'background:' + c, onclick: () => { Lapis.mudarCor(c); refresh(); } }))));
+      kids.push(btn('Desfazer o meu último', () => { Lapis.desfazer(sc.id); refresh(); }, { kind: 'small', id: 'o-lp-desf', disabled: !meus, title: 'Tira o seu último rabisco (Ctrl+Z)' }),
+        btn('Limpar os meus', () => { Lapis.limpar(sc.id, false, gm); refresh(); }, { kind: 'small', id: 'o-lp-meus', disabled: !meus }));
+      if (gm && Nuvem.on()) kids.push(btn('Limpar os de todos', () => { Lapis.limpar(sc.id, true, true); refresh(); }, { kind: 'small', id: 'o-lp-todos', disabled: !todos, title: 'Apaga os rabiscos de todos nesta cena (o aviso deixa desfazer)' }));
     } else if (t === 'wall') {
       const isDoor = k => k === 'door' || k === 'secret';
       kids.push(seg('o-wk', o.wallKind, WALL_SEG, v => { if (isDoor(v)) o.wallMode = 'line'; optSet('wallKind', v, true); }));
@@ -17392,7 +17638,11 @@ const UI = (() => {
         kind === 'door' && Nuvem.mestre() && (EscudoCenas.puzzles().length || w.pz) ? field('Abre com um puzzle', inSelect('wl-pz', many && !walls.every(x => (x.pz || '') === (w.pz || '')) ? '' : (w.pz || ''),
           [['', 'Nenhum']].concat(EscudoCenas.puzzles().map(p => [p.id, p.nome])), v => all({ pz: v || undefined, pzOk: undefined }, v ? 'Ligar a porta a um puzzle' : 'Desligar a porta do puzzle'))) : null,
         kind === 'door' && Nuvem.mestre() && w.pz ? note(EscudoCenas.resolvido(w.pz) ? (w.pzOk ? 'Resolveram o puzzle e a porta abriu.' : 'O puzzle já foi resolvido.') : 'Quando os jogadores resolverem “' + EscudoCenas.nomeDoPuzzle(w.pz) + '”, a porta abre e destranca sozinha (você recebe um aviso com Desfazer).') : null,
-        note(kind ? WALL_NOTES[kind] : 'Trechos de tipos diferentes. Escolher um tipo acima vale para todos.')),
+        note(kind ? WALL_NOTES[kind] : 'Trechos de tipos diferentes. Escolher um tipo acima vale para todos.'),
+        // (lote 65) a altura da parede para quem olha de cima (só com a visão pelo relevo ligada nesta cena)
+        Store.scene().relevoVisao && (kind === 'wall' || kind === 'door' || kind === 'secret') ? field('Altura (q)', inNum('wl-h', Number(w.h) > 0 ? w.h : Relevo.tabela(Store.scene()).parede,
+          v => all({ h: v === Relevo.tabela(Store.scene()).parede ? undefined : v }, 'Altura da parede'), { min: 0.5, max: 100, step: 0.5, label: 'Altura da parede, em quadrados', title: 'Quem está num lugar mais alto que isto vê por cima dela' })) : null,
+        Store.scene().relevoVisao && (kind === 'wall' || kind === 'door' || kind === 'secret') ? note('Quem olha de um lugar mais alto (o chão dele mais 1 quadrado, a altura do olho) vê por cima da parede.') : null),
       h('div', { class: 'row' }, btn('Apagar', deleteSelToast, { icon: 'trash', kind: 'danger' })),
     ];
   }
@@ -17959,7 +18209,7 @@ const UI = (() => {
       // (lote 18) o relevo com regra: a visão pelo relevo (desta cena) e a tabela do mestre (da mesa)
       acc(secR('c-relevo', 'Relevo', false, sc.relevoVisao ? 'a altura esconde' : '',
         toggle('rl-visao', !!sc.relevoVisao, v => S({ relevoVisao: v || undefined }, 'Visão pelo relevo'), 'A altura esconde (visão pelo relevo)', { disabled: !f.dynamic }),
-        note(f.dynamic ? 'Ligada, a visão dos jogadores segue o relevo: morros e penhascos escondem o que está atrás, de dentro de um fosso só se vê o fosso, e de cima se vê mais longe.'
+        note(f.dynamic ? 'Ligada, a visão dos jogadores segue o relevo: morros e penhascos escondem o que está atrás, de dentro de um fosso só se vê o fosso, e de cima se vê mais longe e por cima das paredes mais baixas.'
           : 'A visão pelo relevo precisa da "Visão por paredes" (em Visão e névoa).'),
         h('p', { class: 'note', id: 'rl-resumo', text: resumoDoRelevo(Relevo.tabela(sc)) }),
         btn('Regras do relevo…', abrirRegrasDoRelevo, { icon: 'sliders', id: 'rl-regras' }))),
@@ -17992,14 +18242,15 @@ const UI = (() => {
       linha('Atacar de baixo', num('rl-baixo', 'baixo', -999, 999, 1, 'Bônus no ataque de quem está mais baixo'), 'no atributo'),
       linha('A queda tira', num('rl-queda', 'queda', 0, 100, 1, 'Porcentagem da Vida máxima'), '% da Vida máxima'),
       linha('a cada', num('rl-qcada', 'quedaCada', 0.5, 100, 0.5, 'Quadrados de queda'), 'quadrados de queda'),
+      linha('As paredes têm', num('rl-parede', 'parede', 0.5, 100, 0.5, 'Altura das paredes para quem olha de cima'), 'quadrados de altura (quem está mais alto vê por cima; cada parede pode ter a dela)'),
       note('Vale em todas as cenas desta mesa. A régua e o arrastar mostram a subida; a queda de um penhasco avisa você com o dano sugerido; mirando alguém, a janelinha de atributos (F) oferece o bônus de cima ou de baixo.'));
     modal({ title: 'Regras do relevo', body, wide: true, actions: [
-      { label: 'Valores de começo', run: () => { Object.assign(r, Relevo.norm(null)); for (const [id, k] of [['rl-sobe', 'sobe'], ['rl-pen', 'penhasco'], ['rl-cima', 'cima'], ['rl-baixo', 'baixo'], ['rl-queda', 'queda'], ['rl-qcada', 'quedaCada']]) { const c = document.getElementById(id); if (c) c.value = r[k]; } const o = document.getElementById('rl-on'); if (o) o.checked = true; return false; }, keep: true },
+      { label: 'Valores de começo', run: () => { Object.assign(r, Relevo.norm(null)); for (const [id, k] of [['rl-sobe', 'sobe'], ['rl-pen', 'penhasco'], ['rl-cima', 'cima'], ['rl-baixo', 'baixo'], ['rl-queda', 'queda'], ['rl-qcada', 'quedaCada'], ['rl-parede', 'parede']]) { const c = document.getElementById(id); if (c) c.value = r[k]; } const o = document.getElementById('rl-on'); if (o) o.checked = true; return false; }, keep: true },
       { label: 'Cancelar' },
       { label: 'Salvar', kind: 'primary', run: () => {
         const novo = Relevo.igualAoPadrao(r) ? null : Relevo.norm(r);
         if (JSON.stringify(novo) === JSON.stringify(antes)) return;
-        Store.S.prefs.relevo = novo; Persist.meta({ pub: true }); Render.request(); refresh();
+        Store.S.prefs.relevo = novo; Persist.meta({ pub: true }); Walls.invalidate(); Vision.invalidate(); Render.request(); refresh();
         toast('As regras do relevo estão salvas.', { action: 'Desfazer', key: 'relevo', run: () => { Store.S.prefs.relevo = antes; Persist.meta({ pub: true }); Render.request(); refresh(); toast('As regras do relevo voltaram.'); } });
       } },
     ] });
@@ -43579,7 +43830,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { MembrosCla, AguaPenhasco, Misterio, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Lapis, MembrosCla, AguaPenhasco, Misterio, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

@@ -1238,3 +1238,9 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .mt-pop-l { display: flex; flex-wrap: wrap; gap: 6px; }
 .mt-pop .mt-lista { max-height: 40vh; margin: 0; }
 @media (max-height: 820px) { .tool { height: 29px; } .rail-g { margin: 2px 0 1px; } .rail-sep { margin: 2px 0; } }
+
+/* (lote 65) as cores do lápis */
+.o-cores { display: flex; gap: 4px; align-items: center; }
+.o-cor { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); padding: 0; cursor: pointer; }
+.o-cor.on { border-color: var(--fg, #fff); box-shadow: 0 0 0 2px rgba(0,0,0,.5); }
+.o-cor:focus-visible { outline: 2px solid var(--accent, #e6ab4f); outline-offset: 2px; }

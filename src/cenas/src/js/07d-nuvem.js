@@ -146,6 +146,7 @@ const Nuvem = (() => {
     try { await D.pronta; } catch (e) { throw new Error('não deu para ler as cenas da mesa (' + ((e && e.message) || 'sem resposta') + ')'); }
     mesa = st.mesa.id; eu = st.eu;
     modo = st.papel === 'mestre' ? 'mestre' : 'jogador';
+    if (typeof Lapis !== 'undefined') Lapis.ligar(D, eu);              // (lote 65) o lápis: os rabiscos de cada um, que a mesa vê
     // (a campanha em vista é lida uma vez: quando ela muda, a casca abre esta página de novo)
     camp = st.campanha ? st.campanha.id : null;
     campsDaMesa = Array.isArray(st.campanhas) ? st.campanhas.slice() : [];

@@ -282,7 +282,7 @@ const { open } = require('./lib');
   ok(s.viewer !== 'gm', 'troca para o jogador');
   ok(await page.locator('#banner').isVisible(), 'faixa de aviso aparece');
   const tools = await ev(() => Array.from(document.querySelectorAll('.tool')).map(b => b.id));
-  ok(tools.join() === 'tool-select,tool-pan,tool-ruler,tool-ping', 'jogador vê só as ferramentas liberadas: ' + tools.join());
+  ok(tools.join() === 'tool-select,tool-pan,tool-ruler,tool-ping,tool-lapis', 'jogador vê só as ferramentas liberadas (lote 65: e o lápis, que é de todos): ' + tools.join());
   const vis = await ev(() => {
     const u = __urgm, sc = u.Store.scene(), c = sc.cell;
     const byName = n => sc.tokens.find(t => t.name === n);

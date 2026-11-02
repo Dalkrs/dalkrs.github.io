@@ -48,8 +48,8 @@ const SO = process.env.SO || '';
     const R = (fn, arg) => ev(fn, arg);
 
     // a tabela
-    ok(await R(() => JSON.stringify(__tc.Relevo.tabela(__tc.Store.scene()))) === JSON.stringify({ on: true, sobe: 1, penhasco: 3, cima: 2, baixo: -2, queda: 10, quedaCada: 2 }), 'a tabela de começo: subir 1 custa +1 q; penhasco a partir de 3; de cima +2, de baixo −2; queda 10% a cada 2 q');
-    ok(await R(() => JSON.stringify(__tc.Relevo.norm({ on: 0, sobe: '2,5', penhasco: 0, cima: 'x', queda: 500, quedaCada: 0 }))) === JSON.stringify({ on: true, sobe: 2.5, penhasco: 1, cima: 2, baixo: -2, queda: 100, quedaCada: 0.5 }), 'a tabela arrumada: os limites e os números escritos com vírgula (on só desliga com false)');
+    ok(await R(() => JSON.stringify(__tc.Relevo.tabela(__tc.Store.scene()))) === JSON.stringify({ on: true, sobe: 1, penhasco: 3, cima: 2, baixo: -2, queda: 10, quedaCada: 2, parede: 2 }), 'a tabela de começo: subir 1 custa +1 q; penhasco a partir de 3; de cima +2, de baixo −2; queda 10% a cada 2 q');
+    ok(await R(() => JSON.stringify(__tc.Relevo.norm({ on: 0, sobe: '2,5', penhasco: 0, cima: 'x', queda: 500, quedaCada: 0 }))) === JSON.stringify({ on: true, sobe: 2.5, penhasco: 1, cima: 2, baixo: -2, queda: 100, quedaCada: 0.5, parede: 2 }), 'a tabela arrumada: os limites e os números escritos com vírgula (on só desliga com false)');
 
     // a régua: subida, penhasco e queda
     const c1 = await R(() => { const sc = __tc.Store.scene(); return __tc.Relevo.custo(sc, [5 * 64, 300, 12 * 64, 300]); });
@@ -135,12 +135,12 @@ const SO = process.env.SO || '';
     await page.locator('#rl-cima').fill('3'); await page.locator('#rl-cima').dispatchEvent('change');
     await page.locator('#rl-qcada').fill('3'); await page.locator('#rl-qcada').dispatchEvent('change');
     await page.locator('.modal .btn.primary').click(); await w(250);
-    ok(await R(() => JSON.stringify(__tc.Store.S.prefs.relevo)) === JSON.stringify({ on: true, sobe: 1, penhasco: 3, cima: 3, baixo: -2, queda: 10, quedaCada: 3 }), 'Salvar grava a tabela da mesa');
+    ok(await R(() => JSON.stringify(__tc.Store.S.prefs.relevo)) === JSON.stringify({ on: true, sobe: 1, penhasco: 3, cima: 3, baixo: -2, queda: 10, quedaCada: 3, parede: 2 }), 'Salvar grava a tabela da mesa');
     ok(/de cima \+3/.test(await page.locator('#rl-resumo').innerText()), 'o resumo acompanha');
     await page.locator('.toast', { hasText: 'regras do relevo estão salvas' }).locator('.toast-a').click(); await w(250);
     ok(await R(() => __tc.Store.S.prefs.relevo) === null, 'Desfazer volta a tabela de antes (a de começo)');
     // a tabela vai para os jogadores com a cena (o índice da mesa e a projeção)
-    ok(await R(() => JSON.stringify(__tc.Proj.normIndice({ prefs: { relevo: { cima: 4 } } }).prefs.relevo)) === JSON.stringify({ on: true, sobe: 1, penhasco: 3, cima: 4, baixo: -2, queda: 10, quedaCada: 2 }) && await R(() => !('relevo' in __tc.Proj.normIndice({}).prefs)), 'o índice da mesa guarda a tabela (só quando o mestre mudou)');
+    ok(await R(() => JSON.stringify(__tc.Proj.normIndice({ prefs: { relevo: { cima: 4 } } }).prefs.relevo)) === JSON.stringify({ on: true, sobe: 1, penhasco: 3, cima: 4, baixo: -2, queda: 10, quedaCada: 2, parede: 2 }) && await R(() => !('relevo' in __tc.Proj.normIndice({}).prefs)), 'o índice da mesa guarda a tabela (só quando o mestre mudou)');
     ok(await R(() => { const sc = { relevoTab: { cima: 5 } }; const p = __tc.Store.S.prefs.relevo; __tc.Store.S.prefs.relevo = null; const v = __tc.Relevo.tabela(sc).cima; __tc.Store.S.prefs.relevo = p; return v; }) === 5, 'o jogador usa a cópia que veio com a cena');
   }
 

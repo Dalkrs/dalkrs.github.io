@@ -10,11 +10,14 @@
      - de cima, `cima` no ataque; de baixo, `baixo` (a janelinha de atributos oferece somar, mirando alguém).
    E a visão pelo relevo (uma chave por cena, sc.relevoVisao): o que é mais alto que o olho de quem olha esconde o que
    está atrás; de dentro de um fosso, só se vê o fosso; de cima, o alcance da visão cresce com a altura.
+   (lote 65) E de cima se vê por cima das paredes: cada parede tem uma altura (a dela, senão `parede` da tabela, 2 de
+   começo) sobre o chão mais baixo dos dois lados; quem tem o olho (o chão dele + 1 quadrado) acima disso vê por cima
+   (3b. WALLS, sightFor). As paredes de visão que o gerador põe em volta das matas e das pedras contam como paredes.
    Nada se aplica sozinho. A tabela mora nas preferências da mesa (Store.S.prefs.relevo, só do mestre); a cena que
    vai para os jogadores leva uma cópia dela (relevoTab).
    --------------------------------------------------------------- */
 const Relevo = (() => {
-  const PADRAO = Object.freeze({ on: true, sobe: 1, penhasco: 3, cima: 2, baixo: -2, queda: 10, quedaCada: 2 });
+  const PADRAO = Object.freeze({ on: true, sobe: 1, penhasco: 3, cima: 2, baixo: -2, queda: 10, quedaCada: 2, parede: 2 });     // (lote 65: parede, a altura das paredes para quem olha de cima, em quadrados)
   const numOk = (v, a, b, p) => { const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : NaN; return isFinite(n) ? clamp(Math.round(n * 10) / 10, a, b) : p; };
   function norm(t) {
     const o = t && typeof t === 'object' && !Array.isArray(t) ? t : {};
@@ -26,6 +29,7 @@ const Relevo = (() => {
       baixo: numOk(o.baixo, -999, 999, PADRAO.baixo),
       queda: numOk(o.queda, 0, 100, PADRAO.queda),
       quedaCada: numOk(o.quedaCada, 0.5, 100, PADRAO.quedaCada),
+      parede: numOk(o.parede, 0.5, 100, PADRAO.parede),
     };
   }
   const igualAoPadrao = t => JSON.stringify(norm(t)) === JSON.stringify(norm(null));

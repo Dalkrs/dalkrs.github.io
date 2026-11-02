@@ -254,6 +254,23 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### O lápis nas Cenas e ver de cima por cima das paredes (lote 65)
+
+- **O lápis** (`src/cenas/src/js/07g-lapis.js`, `Lapis`; a ferramenta `lapis`, tecla S, no grupo Jogo, sem permissão): o
+  rabisco de cada um vai para o documento da caneta do Mapa-múndi (`mundo:rabisco:<pessoa>`, dono a pessoa, a mesa lê —
+  o banco já deixava), com `mp = "cena:<id da cena>"`; cada um regrava a própria lista com os traços do Mapa-múndi
+  junto. O que some (`s: 1`) sai depois de 8 s (contados quando chega); o que fica, com "Limpar os meus" ou (o mestre,
+  na mesa) "Limpar os de todos", os dois com Desfazer. Sem mesa: `tinycats:cenas:rabiscos`. A Nuvem liga o lápis à mesa
+  (`Lapis.ligar(D, eu)`); o desenho vai por cima de tudo (`Render`, depois do preview), o Ctrl+Z com o lápis desfaz o
+  rabisco, e as opções (`o-lpm`, `o-lpc-*`, `o-lp-desf`, `o-lp-meus`, `o-lp-todos`).
+- **Por cima das paredes** (`03b-walls.js`, `porCima`; só com a visão pelo relevo): cada trecho que barra a visão guarda
+  a altura de cima (`topo`): o chão mais baixo dos dois lados da parede mais a altura dela (`w.h`, senão `parede` da
+  tabela do relevo, 2 de começo). Quem tem o olho (`Relevo.alturaDoToken` + 1) acima disso vê por cima. A fumaça e as
+  cortinas tapam de qualquer altura. As paredes de visão do gerador (em volta das matas e das pedras) contam como paredes.
+  Mexer no relevo refaz as paredes. O painel da parede tem a altura (`wl-h`); as Regras do relevo, "As paredes têm".
+- Testes: `src/cenas/test/lote65.js` (o lápis sem mesa, a visão por cima das paredes, o painel), `cenas-lote65.rede`
+  (o rabisco do jogador para o mestre, o que some, limpar os de todos); `lote18` com a tabela nova.
+
 ### Estradas pela serra e pelo desfiladeiro, lugares conquistados e o pincel de recursos (lote 64)
 
 - **A estrada no relevo** (`mundo/tela.js`, `desenhoAoLadoDaRede`): no hexágono de estrada, de rio ou de fenda, o desenho

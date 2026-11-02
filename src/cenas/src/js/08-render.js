@@ -35,8 +35,9 @@ const Render = (() => {
   function request() { need = true; if (!raf) raf = requestAnimationFrame(frame); }
 
   const motion = () => App.anim && !reduce.matches;
+  let lapisAnima = false;                                  // (lote 65) um rabisco do lápis sumindo: o quadro segue
   function animating() {
-    if (App.pings.length || App.floats.length) return true;
+    if (App.pings.length || App.floats.length || lapisAnima) return true;
     const sc = Store.scene();
     // (chamas dos objetos e luzes que tremulam também mexem o mapa)
     return !!sc && motion() && (sc.effects.length > 0 || !!(sc.weather && sc.weather.k) || Props.temFogo(sc) || temAgua(sc) || (Vision.out.flick.length > 0 && sc.light !== 'claro'));
@@ -1228,6 +1229,8 @@ const Render = (() => {
     drawSelection(sc, px);
     drawNums(sc, px);
     Tools.drawPreview(ctx, px, sc);
+    // (lote 65) os rabiscos do lápis, por cima de tudo (da névoa também: são recados para a mesa)
+    try { lapisAnima = typeof Lapis !== 'undefined' && Lapis.desenhar(ctx, sc, px, Tools.rascunhoLapis ? Tools.rascunhoLapis() : null); } catch (e) { lapisAnima = false; }
     drawFloats(sc, px, ts);
     drawPings(sc, px, ts);
     UI.frame();

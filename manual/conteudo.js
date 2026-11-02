@@ -56,6 +56,7 @@
       ] },
       jogador: [
         { t: 'Mover o seu token', txt: 'Arraste o seu personagem. Ele para na parede enquanto você arrasta, e a sua visão segue o que ele vê. A régua mostra a distância, a subida e o penhasco.', ir: { aba: 'cenas', g: 'A cena' } },
+        { t: 'O lápis', txt: 'Tecla S (ou o lápis na barra da esquerda): rabisque por cima da cena para a mesa ver — um caminho, um alvo. O traço some sozinho em segundos ou fica até limpar; escolha a cor. Ctrl+Z desfaz o seu último. Do alto de um morro, com a visão pelo relevo, você vê por cima das paredes e das matas mais baixas.', ir: { aba: 'cenas', g: 'O lápis' } },
         { t: 'O painel do token', txt: 'Selecione o seu token para ver as barras (digite −8, +5 ou −10%), as condições e a Postura. Enter confirma.', ir: { aba: 'cenas', g: 'O painel' } },
         { t: 'Rolar pela cena', txt: 'Com o mouse sobre o seu token, F abre a janelinha de rolagem com os atributos da ficha e os campos de bônus só desta rolagem. E abre os equipamentos (equipar e guardar com um clique).', tecla: 'F · E' },
         { t: 'A sua vez', txt: 'No combate, a faixa “Sua vez!” aparece no meio da tela, com dois toques de som. A ordem fica na faixa de baixo.', ir: { aba: 'cenas', g: 'Os turnos' } },
@@ -70,6 +71,7 @@
         { t: 'Vilas, cidades e masmorras variadas', txt: 'No Vilarejo, escolha o formato (beira de estrada, encruzilhada, na encosta, palafitas) e os prédios a mais. No Vilarejo e na Cidade, a Situação (feira, festa, atacada, abandonada) e os Detalhes pelo chão. Na Masmorra, os tipos novos, as salas especiais, as armadilhas escondidas e as variações do traçado.', ir: { aba: 'cenas', g: 'Povoados e masmorras variados' } },
         { t: 'A cena do crime', txt: 'A aba Cena do crime gera a mansão, a taverna, o beco, a cripta ou a clareira da lua cheia. Em qualquer lugar, o bloco Mistério põe um caso do Escudo (ou um caso novo) na cena: o corpo coberto (ou o lugar revirado) e uma marca de pista oculta para cada vestígio e documento, perto de onde ela costuma ficar. Dois cliques numa marca a revelam e entregam a pista à mesa.', ir: { aba: 'cenas', g: 'A cena do crime e as pistas' } },
         { t: 'As ferramentas', txt: 'Na barra da esquerda: selecionar, mover, régua, tokens, objetos (J), desenho (paredes, portas, janelas, relevo), luz, névoa (U), efeitos de magia (Y) e o grupo Mestre (a vez, os momentos, os lembretes, a cura e as energias).', ir: { aba: 'cenas', g: 'As ferramentas' } },
+        { t: 'O lápis e a altura das paredes', txt: 'O lápis (S) é de todos, mesmo sem a permissão de desenhar: o rabisco não mexe na cena. “Limpar os de todos” apaga os da mesa inteira. Com a visão pelo relevo, cada parede tem uma altura (2 quadrados de começo, nas Regras do relevo; no painel da parede, a de uma só): quem tem o olho mais alto (o chão + 1 quadrado) vê por cima.', ir: { aba: 'cenas', g: 'O relevo' } },
         { t: 'Os turnos', txt: 'Na aba Turnos: puxe o grupo, role a iniciativa (com faixas de grupo para muitos inimigos), comece o combate. N passa a vez, Shift+N volta. Atrasar, pular, entrar no combate, surpresa e o olho que esconde um combatente dos jogadores.', tecla: 'N', ir: { aba: 'cenas', g: 'Atrasar, pular, entrar' } },
         { t: 'Ataque e rolagem geral', txt: 'K sobre um token abre o ataque com defesa (o jogador recebe o pedido de defesa na mesa ao vivo). Shift+F rola o mesmo atributo para vários tokens — a Percepção do grupo — pedindo aos jogadores ou rolando por todos.', tecla: 'K · Shift+F' },
         { t: 'Condições e zonas', txt: 'Mais de 150 condições em abas (com busca) e dezenas de zonas no chão. Zona com dano pergunta “Aplicar” ou “Pular” no começo da vez de quem está dentro — nada acontece sozinho. Fogo no óleo, raio na água: o site sugere a combinação.', ir: { aba: 'cenas', g: 'As condições das raças' } },
@@ -487,5 +489,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 13, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 14, sistemas, tarefas, roteiro, sabia };
 })();

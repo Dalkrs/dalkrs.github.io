@@ -14,7 +14,7 @@ const Tools = (() => {
   let lastUp = null;         // último clique, para reconhecer clique duplo
 
   // (lote 6: E passou a ser os equipamentos do token e N, passar o turno; a Névoa foi para U e os Efeitos, para Y)
-  const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', u: 'fog', q: 'terrain', y: 'fx', m: 'ruler' };
+  const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', u: 'fog', q: 'terrain', y: 'fx', m: 'ruler', s: 'lapis' };
   /* (lote 26) Os grupos do trilho, com nome: o que se usa jogando, as peças, o desenho (recolhido num botão só, que
      abre a lista) e o mapa. Os atalhos de teclado são os de sempre. */
   const GRUPOS = [{ n: 'Jogo' }, { n: 'Peças' }, { n: 'Desenho', junto: true, i: 'pen' }, { n: 'Mapa' }];
@@ -23,6 +23,7 @@ const Tools = (() => {
     { id: 'pan', n: 'Mover a câmera', k: 'H', i: 'pan', grp: 0 },
     { id: 'ruler', n: 'Régua', k: 'M', i: 'ruler', grp: 0, perm: 'ruler' },
     { id: 'ping', n: 'Ping (ou tecla G sobre o mapa)', k: 'G', i: 'ping', grp: 0, perm: 'ping' },
+    { id: 'lapis', n: 'Lápis: rabiscar para todos verem', k: 'S', i: 'pen', grp: 0 },      // (lote 65) de todos, como a caneta do Mapa-múndi
     { id: 'token', n: 'Novo token', k: 'T', i: 'token', grp: 1, gm: true },
     { id: 'obj', n: 'Objetos de cenário', k: 'J', i: 'obj', grp: 1, gm: true },
     { id: 'fx', n: 'Efeito de magia', k: 'Y', i: 'fx', grp: 1, perm: 'fx' },
@@ -1105,6 +1106,34 @@ const Tools = (() => {
     preview(ctx, px, sc) { if (ruler) Render.drawMeasure(ruler.pts, sc, px, viewerColor()); },
   };
 
+  /* (lote 65) O lápis: o traço vai para a mesa enquanto é desenhado (de pouco em pouco) e no fim. */
+  let lapisR = null, lapisT = 0;
+  T.lapis = {
+    hint: 'Arraste para rabiscar: todos na cena veem. O traço some sozinho em segundos (ou fica até limpar, nas opções).',
+    cursor: 'crosshair',
+    down(p) {
+      if (typeof Lapis === 'undefined' || !Lapis.pode()) return;
+      lapisR = { id: uid('rb'), c: Lapis.cor(), s: Lapis.modo() === 'some' ? 1 : 0, p: [[r1(p.x), r1(p.y)]] };
+      g = { type: 'lapis' };
+      Render.request();
+    },
+    move(p) {
+      if (!lapisR || !g || g.type !== 'lapis') return;
+      const u = lapisR.p[lapisR.p.length - 1];
+      if (Math.hypot(p.x - u[0], p.y - u[1]) * App.view.z < 3 || lapisR.p.length >= 600) return;
+      lapisR.p.push([r1(p.x), r1(p.y)]);
+      const agora = performance.now();
+      if (agora - lapisT > 160) { lapisT = agora; Lapis.rabiscar(Store.scene().id, lapisR, true); }
+      Render.request();
+    },
+    up() {
+      if (!lapisR || !g || g.type !== 'lapis') return;
+      Lapis.rabiscar(Store.scene().id, lapisR, false);
+      lapisR = null; g = null;
+      Render.request(); UI.refresh && UI.refresh();
+    },
+  };
+
   T.ping = {
     hint: 'Clique para chamar a atenção de todos para um ponto. A tecla G faz o mesmo em qualquer ferramenta.',
     cursor: 'crosshair',
@@ -1243,7 +1272,8 @@ const Tools = (() => {
     const t = T[App.tool];
     if (!mod && t.key && t.key(e)) { e.preventDefault(); return; }
     if (mod) {
-      if (lk === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+      if (lk === 'z' && !e.shiftKey && App.tool === 'lapis' && typeof Lapis !== 'undefined') { e.preventDefault(); Lapis.desfazer(Store.scene().id); }     // (lote 65) com o lápis, o Ctrl+Z desfaz o rabisco
+      else if (lk === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
       else if (lk === 'y') { e.preventDefault(); redo(); }
       else if (lk === 'c') { const n = Act.copySel(); if (n) UI.toast(n === 1 ? 'Copiado. Ctrl+V cola onde o cursor estiver.' : `${n} itens copiados. Ctrl+V cola onde o cursor estiver.`); }
       else if (lk === 'd') { e.preventDefault(); Act.duplicateSel(); }
@@ -1309,5 +1339,5 @@ const Tools = (() => {
     if (t.preview) t.preview(ctx, px, sc);
   }
 
-  return { LIST, GRUPOS, set, allowed, handles, drawPreview, hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
+  return { LIST, GRUPOS, set, allowed, handles, drawPreview, rascunhoLapis: () => (lapisR ? { id: lapisR.id, c: lapisR.c, s: 0, p: lapisR.p } : null), hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
 })();
