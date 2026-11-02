@@ -1085,6 +1085,7 @@ const UI = (() => {
       kids.push(oGroup('Dono', inSelect('o-owner', o.tokOwner, [['', 'Mestre (NPC)'], ['*', 'Todos os jogadores']].concat(Store.S.players.map(p => [p.id, p.name])), v => optSet('tokOwner', v))));
       kids.push(oGroup('Tamanho', seg('o-size', o.tokSize, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => optSet('tokSize', v, true))));
       if (Fichas.on()) kids.push(btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', kind: 'small', id: 'o-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }));
+      if (Nuvem.on() && window.ClaNucleo) kids.push(btn('Puxar o clã…', () => MembrosCla.abrir(), { icon: 'users', kind: 'small', id: 'o-cla', title: 'Cria os tokens dos membros de um clã, com o nome e a foto' }));     // (lote 59)
     } else if (['free', 'line', 'rect', 'ell', 'poly', 'text'].includes(t)) {
       kids.push(oGroup(t === 'text' ? 'Cor' : 'Traço', oColor('o-stroke', 'stroke', 'Cor do traço')));
       if (t === 'rect' || t === 'ell' || t === 'poly') kids.push(oGroup(null, oCheck('o-fillon', 'fillOn', 'Preencher', true), o.fillOn ? oColor('o-fill', 'fill', 'Cor do preenchimento') : null));
@@ -1254,6 +1255,7 @@ const UI = (() => {
         h('div', { class: 'row' }, btn('Trazer cenas deste navegador…', bringLocal, { icon: 'upload', kind: 'primary small', id: 'localBring' }))) : null,
       gm ? h('div', { class: 'row' }, btn('Novo token', () => Tools.set('token'), { icon: 'token' }), btn('Trazer imagem…', () => pickImage(f => importImages(f, null)), { icon: 'image' }),
         Fichas.on() ? btn('Puxar o grupo…', () => Luta.grupo(), { icon: 'users', id: 'sel-grupo', title: 'Cria de uma vez os tokens de um grupo de personagens das Fichas, já ligados a elas' }) : null,
+        Nuvem.on() && window.ClaNucleo ? btn('Puxar o clã…', () => MembrosCla.abrir(), { icon: 'users', id: 'sel-cla', title: 'Cria os tokens dos membros de um clã, com o nome e a foto' }) : null,      // (lote 59)
         sc.tokens.some(t => !t.prop) ? btn('Rolagem geral…', () => Luta.rolagemGeral(), { icon: 'die', id: 'sel-geral', title: 'O mesmo atributo para vários tokens: os jogadores rolam pela mesa ao vivo, ou você rola por todos (Shift+F)' }) : null,
         Luta.podeDescanso() && sc.tokens.some(t => t.char && !t.clone) ? btn('Descanso curto…', () => Luta.descansoCurto(), { icon: 'rest', id: 'sel-curto', title: 'Abre o Descanso curto do Acampamento com quem está nesta cena já marcado (os personagens dos jogadores e os aliados). Lá você confere e confirma.' }) : null) : null,
     ];
@@ -3515,6 +3517,7 @@ const UI = (() => {
       } });
       { const f = gm ? Arena.proxima(sc) : null; if (f) items.push({ label: 'Acionar a ' + f.nome.toLowerCase() + ' da arena…', icon: 'next', run: () => Arena.acionar(f.i) }); }
       if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
+      if (gm && Nuvem.on() && window.ClaNucleo) items.push({ label: 'Puxar os membros do clã para cá…', icon: 'users', run: () => MembrosCla.abrir({ x: p.x, y: p.y }) });      // (lote 59)
       if (Luta.podeDescanso() && Store.scene().tokens.some(t => t.char && !t.clone)) items.push({ label: 'Descanso curto do grupo…', icon: 'rest', run: () => Luta.descansoCurto() });
       if (App.clip.length && (gm || can('draw') || can('fx'))) items.push({ label: 'Colar aqui', icon: 'copy', key: 'Ctrl+V', run: () => Act.pasteAt(p.x, p.y) });
       if (can('ping')) items.push({ label: 'Ping aqui', icon: 'ping', key: 'G', run: () => Act.ping(p.x, p.y) });

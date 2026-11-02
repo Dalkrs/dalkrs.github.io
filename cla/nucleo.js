@@ -458,10 +458,13 @@
     if (v.a !== null && v.a !== '' && v.a !== undefined && Number.isFinite(a) && Math.abs(a) <= 1e6) o.a = Math.round(a);
     return o;
   }
+  // (lote 59) a foto: o endereço da imagem enviada à mesa (https) ou, fora de uma mesa, a imagem embutida (pequena)
+  const fotoOk = v => (typeof v === 'string' && ((/^https:\/\/[^\s"'<>]+$/.test(v) && v.length <= 1000) || (/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(v) && v.length <= 300000)) ? v : null);
   function normDadosM(x) {
     if (!ehObj(x)) return null;
     const o = {}, raca = idOk(x.raca), classe = idOk(x.classe), racaN = linha(x.racaN, MAX.nomeArv), classeN = linha(x.classeN, MAX.nomeArv), nasc = normNascM(x.nasc);
     if (raca) o.raca = raca; if (racaN) o.racaN = racaN; if (classe) o.classe = classe; if (classeN) o.classeN = classeN; if (nasc) o.nasc = nasc;
+    const img = fotoOk(x.img); if (img) o.img = img;                       // (lote 59) a foto do membro
     return Object.keys(o).length ? o : null;
   }
   /* gente: (só no que a mesa recebe) as pessoas dos cargos, quando os cargos não vão — o nome e a ficha, sem o cargo */
@@ -508,7 +511,7 @@
     if ('nome' in campos) { const n = linha(campos.nome, MAX.nomePessoa); if (!n && !p.pc) return null; p.nome = n; }
     if ('pc' in campos) { const pc = pcOk(campos.pc) || null; if (!pc && !p.nome) return null; p.pc = pc; }
     const d = Object.assign({}, c.membros.dados[pid] || {});
-    for (const k of ['raca', 'racaN', 'classe', 'classeN', 'nasc']) if (k in campos) { if (campos[k] == null || campos[k] === '') delete d[k]; else d[k] = campos[k]; }
+    for (const k of ['raca', 'racaN', 'classe', 'classeN', 'nasc', 'img']) if (k in campos) { if (campos[k] == null || campos[k] === '') delete d[k]; else d[k] = campos[k]; }
     const nd = normDadosM(d);
     if (nd) c.membros.dados[pid] = nd; else delete c.membros.dados[pid];
     return normCla(c);

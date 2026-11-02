@@ -234,6 +234,9 @@
     const de = !pc ? '' : !pc.dono ? 'NPC' : !naMesa ? 'teste' : pc.dono === eu ? 'você' : nomeDoMembro(pc.dono) || 'jogador';
     return { nome: (pc && pc.nome) || p.nome || 'Alguém', de, img: pc ? pc.img : null, pj: !!(pc && pc.dono) };
   }
+  // (lote 59) a foto de um membro: a enviada no Clã (membros.dados[pid].img); senão, o retrato da ficha
+  const fotoDe = (c, pid, q) => { const d = c && c.membros && c.membros.dados ? c.membros.dados[pid] : null; return (d && d.img) || (q && q.img) || null; };
+  const avDe = (c, pid, q, extra) => { const f = fotoDe(c, pid, q); return h('span', Object.assign({ class: 'av' + (q.pj ? ' pj' : '') }, extra || null), f ? h('img', { src: f, alt: '' }) : iniciais(q.nome)); };
   // quem usa é o líder deste clã (o clã dos jogadores; o personagem no cargo de líder é dele)
   function souLider(c) {
     if (!naMesa || mestre || !c || !c.jogadores || !c.cargos) return false;
@@ -389,7 +392,7 @@
   function linhaPessoa(c, cargo, p, pode, resp) {
     const q = quemE(p);
     return h('div', { class: 'pessoa', 'data-pessoa': p.id },
-      h('span', { class: 'av' + (q.pj ? ' pj' : '') }, q.img ? h('img', { src: q.img, alt: '' }) : iniciais(q.nome)),
+      avDe(c, p.id, q),
       h('span', { class: 'nm' }, q.nome, q.de ? h('small', { text: ' · ' + q.de }) : null),
       resp && p.resp != null ? h('span', { class: 'resp ' + tom(p.resp), title: N.nomeNivel(nomes(), 'membro', p.resp) + ' (o respeito dentro do clã)' }, N.sinal(p.resp)) : null,
       pode ? h('button', { type: 'button', class: 'ib leve', 'data-k': 'tirar:' + p.id, title: 'Tirar do cargo', 'aria-label': 'Tirar ' + q.nome + ' do cargo', disabled: ocupado, onclick: () => tirarPessoaDo(c, cargo, p) }, '×') : null);
@@ -719,7 +722,7 @@
     return h('div', { class: 'rol-ver', 'data-k': 'rol-ver' },
       h('ol', { class: 'rol' }, ms.map(m => { const q = quemE(m.pessoa), rq = quemDoRol(m, bib);
         return h('li', { class: 'rol-l', 'data-rol': m.pid },
-          h('span', { class: 'av' + (q.pj ? ' pj' : '') }, q.img ? h('img', { src: q.img, alt: '' }) : iniciais(q.nome)),
+          avDe(c, m.pid, q),
           h('span', { class: 'rol-q' }, h('b', { class: 'rol-nm', text: q.nome }), h('small', { text: rq || 'Raça e classe não anotadas' })),
           m.cargo ? h('span', { class: 'rol-cg', text: m.cargoNome }) : m.oculto ? null : h('span', { class: 'rol-cg sem', text: 'sem cargo' }),
           idadeEl(m, cal)); })),
@@ -750,8 +753,14 @@
     const opcCargo = [['', 'Sem cargo']].concat(N.membros(cs).length >= 0 ? (function lista() { const out = [], anda = (k, prof) => { out.push([k, ' '.repeat(prof) + cs[k].nome]); for (const f of N.filhos(cs, k)) anda(f, prof + 1); }; anda('lider', 0); return out; })() : []);
     const linha = m => {
       const q = quemE(m.pessoa);
+      const temFoto = !!(m.dados && m.dados.img);
       return h('div', { class: 'rol-ed', 'data-rol': m.pid },
-        h('span', { class: 'av' + (q.pj ? ' pj' : '') }, q.img ? h('img', { src: q.img, alt: '' }) : iniciais(q.nome)),
+        // (lote 59) a foto: clicar escolhe uma imagem; o × volta para o retrato da ficha (ou as iniciais)
+        h('span', { class: 'rol-foto' },
+          h('button', { type: 'button', class: 'rol-fbt', 'data-k': 'rol:foto:' + m.pid, disabled: ocupado, title: temFoto ? 'Trocar a foto' : 'Pôr uma foto', 'aria-label': (temFoto ? 'Trocar a foto de ' : 'Pôr uma foto de ') + q.nome,
+            onclick: () => escolherImagem({ para: 'membro', id, pid: m.pid, nome: q.nome }) }, avDe(c, m.pid, q)),
+          temFoto ? h('button', { type: 'button', class: 'rol-fx', 'data-k': 'rol:sem-foto:' + m.pid, disabled: ocupado, title: 'Tirar a foto', 'aria-label': 'Tirar a foto de ' + q.nome,
+            onclick: () => mudarCla(id, 'tirar a foto de ' + q.nome, y => trocar(y, N.mudarMembroDados(y, m.pid, { img: null }))) }, '×') : null),
         m.pessoa.pc ? h('span', { class: 'rol-q' }, h('b', { class: 'rol-nm', text: q.nome }), h('small', { text: 'ficha' + (q.de ? ' · ' + q.de : '') }))
           : h('input', { class: 'in rol-nome', type: 'text', 'data-k': 'rol:nome:' + m.pid, maxlength: N.MAX.nomePessoa, value: m.pessoa.nome || '', 'aria-label': 'Nome do membro',
             onchange: function () { const v = this.value.replace(/\s+/g, ' ').trim(); if (!v) { this.value = m.pessoa.nome; toast('O membro precisa de um nome.'); return; } mudarCla(id, 'mudar o nome de ' + m.pessoa.nome, y => trocar(y, N.mudarMembroDados(y, m.pid, { nome: v }))); } }),
@@ -1351,9 +1360,10 @@
     if (!arq || !alvo) return;
     $('salvo').textContent = naMesa ? 'Enviando a imagem…' : 'Preparando a imagem…';
     try {
-      const url = await prepararImagem(arq, naMesa ? 480 : 320);
+      const url = await prepararImagem(arq, alvo.para === 'membro' ? (naMesa ? 384 : 192) : naMesa ? 480 : 320);
       $('salvo').textContent = '';
       if (alvo.para === 'brasao') { mudarCla(alvo.id, 'usar uma imagem no brasão', y => { y.brasao.img = url; }); if (alvo.depois) alvo.depois(); }
+      if (alvo.para === 'membro') mudarCla(alvo.id, 'pôr a foto de ' + alvo.nome, y => trocar(y, N.mudarMembroDados(y, alvo.pid, { img: url })));      // (lote 59)
     } catch (e) { $('salvo').textContent = ''; toast((e && e.message) || 'Não deu para usar esta imagem.'); }
   }
   $('arquivo').addEventListener('change', function () { usarImagem(this.files && this.files[0]); });

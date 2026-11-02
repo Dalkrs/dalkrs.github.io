@@ -73,6 +73,19 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
     ok(!!po, 'Oswin continua');
   });
 
+  // (lote 59) a foto do membro: clicar no avatar escolhe a imagem; o × tira
+  await passo('a foto', async () => {
+    const po = await pid('Oswin');
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGM4Y+yCFTEMLQkAr5lQwWMa+ZsAAAAASUVORK5CYII=', 'base64');
+    const [esc] = await Promise.all([P.waitForEvent('filechooser'), P.click(`[data-k="rol:foto:${po}"]`)]);
+    await esc.setFiles({ name: 'oswin.png', mimeType: 'image/png', buffer: png }); await espera(1200);
+    let img = null;
+    for (let t = 0; t < 20 && !img; t++) { img = await A(id => { const d = __cla.doc('cla:c:' + __cla.sel).membros.dados[id]; return d && d.img; }, po); if (!img) await espera(250); }
+    await espera(200);
+    ok(/^data:image\/png;base64,/.test(img || '') && await P.locator(`[data-rol="${po}"] .av img`).count() >= 1 && await k('rol:sem-foto:' + po).count() === 1, 'a foto do Oswin: guardada no clã, no avatar, com o × para tirar — ' + String(img).slice(0, 40) + ' · ' + (await P.locator(`[data-rol="${po}"] .av img`).count()) + ' · ' + (await k('rol:sem-foto:' + po).count()) + ' · ' + (await P.locator('#toasts').innerText().catch(() => '')));
+    await foto('l59-foto-membro', '[data-k="sec:rol"]');
+  });
+
   await passo('o salão', async () => {
     await clicar('[data-vista="salao"]');
     await clicar('#escolhaCla [data-cla="' + await A(() => __cla.sel) + '"]').catch(() => {});

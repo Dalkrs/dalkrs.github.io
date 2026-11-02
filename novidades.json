@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.01-9",
+      "data": "2026-11-01",
+      "titulo": "A foto dos membros do clã e o clã na cena",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Clã: cada membro pode ter uma foto. Quem é uma ficha usa o retrato dela, até receber uma foto própria."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã: no cartão Membros, um clique no avatar põe a foto do membro; o × tira."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Puxar o clã…” cria de uma vez os tokens dos membros marcados de um clã, com o nome, a foto e a borda na cor do brasão. Um Desfazer tira todos."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.01-8",
       "data": "2026-11-01",
       "titulo": "Lagos, praias, penhascos e desfiladeiros nas Cenas",

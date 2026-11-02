@@ -205,6 +205,13 @@ select.in { padding: 0 6px; width: auto; }
 .rol-idade.vazia { color: var(--fg-3); font-size: 12.5px; }
 .rol-cartao .cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .rol-lista { display: grid; gap: 6px; }
+/* (lote 59) a foto do membro: o avatar é o botão; o × tira */
+.rol-foto { position: relative; display: inline-flex; width: 32px; height: 32px; }
+.rol-fbt { padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; display: inline-flex; }
+.rol-fbt:hover .av, .rol-fbt:focus-visible .av { outline: 2px solid var(--acc, #e6ab4f); outline-offset: 1px; }
+.rol-fbt:disabled { cursor: default; }
+.rol-fx { position: absolute; top: -5px; right: -6px; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg-2, #1b1f27); color: var(--fg-2, #c8cdd6); font-size: 11px; line-height: 13px; padding: 0; cursor: pointer; }
+.rol-fx:hover { color: #fff; }
 .rol-ed { display: grid; grid-template-columns: 32px minmax(120px, 1.3fr) minmax(90px, 1fr) minmax(90px, 1fr) auto minmax(110px, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); }
 .rol-ed:last-child { border-bottom: 0; }
 .rol-ed .av { width: 32px; height: 32px; font-size: 12px; }
@@ -405,13 +412,13 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=20"></script>
 <script src="../meditacao/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=5"></script>
+<script src="nucleo.js?v=6"></script>
 <script src="../tc/tropas.js?v=5"></script>
 <script src="../tc/calendario.js?v=1"></script>
 <script src="../mundo/nucleo.js?v=48"></script>
 <script src="../tc/sede.js?v=2"></script>
 <script src="sede-ui.js?v=3"></script>
 <script src="construtor.js?v=1"></script>
-<script src="cla.js?v=7"></script>
+<script src="cla.js?v=8"></script>
 </body>
 </html>

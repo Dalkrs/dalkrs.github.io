@@ -222,6 +222,21 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   não mostra o teto.
 - Testes: `teto-por-nivel`.
 
+### A foto dos membros do clã e o clã na cena (lote 59)
+
+- **A foto** (`cla/nucleo.js`, `normDadosM`): `membros.dados[pid].img` — o endereço da imagem enviada à mesa (https) ou,
+  fora de uma mesa, a imagem embutida pequena (até 300 mil caracteres). `mudarMembroDados(…, { img })` põe e tira. Na tela
+  (`cla/cla.js`): o avatar do cartão Membros é o botão da foto (`rol:foto:<pid>`, a imagem reduzida e enviada como a do
+  brasão) e o × tira (`rol:sem-foto:<pid>`); a foto vale no rol, na aba Membros e na Hierarquia (`fotoDe`: a do clã, senão o
+  retrato da ficha). Vai para a mesa com a parte "membros" (a projeção do banco leva os dados como estão: sem SQL novo).
+- **Puxar o clã** (`src/cenas/src/js/10c8-membros-cla.js`, `MembrosCla`): só o mestre, numa mesa. As Cenas carregam o
+  `cla/nucleo.js` (no `build.sh`) e leem os clãs da mesa (`cla:c:*`); a janela mostra os membros do clã escolhido (todos
+  marcados, com a foto e o cargo) e "Trazer" cria os tokens em quadrados livres (`Combate.vagas`), com o nome (o da ficha,
+  para quem tem), a imagem (`Assets.fromData`: o endereço do banco na hora; a embutida sobe e entra quando chega, fora do
+  desfazer) e a cor do brasão. Um passo de desfazer. Os botões: "Puxar o clã…" no painel (sem seleção e na aba Turnos) e
+  "Puxar os membros do clã para cá…" no botão direito do mapa.
+- Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
+
 ### Lagos, praias, penhascos e desfiladeiros nas Cenas (lote 58)
 
 - **Os lugares novos** (`src/cenas/src/js/10fc-agua.js`, `AguaPenhasco`): o grupo "Água e penhasco" da janela "Gerar um
