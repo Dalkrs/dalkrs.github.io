@@ -23,7 +23,7 @@ const corvos = CN.claNovo('Corvos', 1, false);
   const t = await start({ net: true });
   const c = contas();
   { const d = await t.device({ name: 'prep' }); await d.page.goto(t.base + 'src/tests/vazio.html'); await entrar(d.page, c.mestre, c.senha, 'Bruno'); await entrar(d.page, c.jog1, c.senha, 'Dalmo'); await d.ctx.close(); }
-  const M = (await t.device({ name: 'mestre', w: 1500, h: 960, seed: { 'tinycats:aba': 'fichas', 'tinycats-tour': '1', 'tinycats:cla:vista': 'mestre' } })).page;
+  const M = (await t.device({ name: 'mestre', w: 1500, h: 960, seed: { 'tinycats:aba': 'fichas', 'tinycats-tour': '1', 'tinycats:cla:vista': 'mestre', 'tinycats:cla:tudo': '1' } })).page;
   const Dp = (await t.device({ name: 'dalmo', w: 1300, h: 900, seed: { 'tinycats:aba': 'fichas', 'tinycats-tour': '1' } })).page;
   const w = (ms, p) => (p || M).waitForTimeout(ms);
   const quadro = async (p, re, vezes = 80) => { for (let i = 0; i < vezes; i++) { const f = p.frame({ url: re }); if (f) return f; await p.waitForTimeout(250); } return null; };

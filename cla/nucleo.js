@@ -564,8 +564,32 @@
       const prox = ehObj(k.prox) ? k.prox : {};
       out.push({ id: unico(idOk(k.id), vistos, 'ct'), nome: linha(k.nome, MAX.nomeCons) || 'Construção', ico: ICONE.has(k.ico) ? k.ico : 'salao',
         nivel: inteiro(k.nivel, 0, 0, MAX.nivel), efeito: texto(k.efeito, MAX.efeito), prox: { custo: normCusto(prox.custo), efeito: texto(prox.efeito, MAX.efeito) } });
+      // (lote 62) a favorita (a estrela) e as etiquetas (até 4, para filtrar: defesa, economia…)
+      const z = out[out.length - 1];
+      if (k.fav === true) z.fav = true;
+      const tags = normTags(k.tags); if (tags.length) z.tags = tags;
     }
     return out;
+  }
+  // (lote 62) as etiquetas de uma construção: até 4, sem repetir (sem diferença de maiúsculas), de até 24 letras
+  function normTags(l) {
+    const out = [], vistos = new Set();
+    for (const t of Array.isArray(l) ? l : typeof l === 'string' ? l.split(',') : []) {
+      const v = linha(t, 24), k = v.toLowerCase();
+      if (!v || vistos.has(k) || out.length >= 4) continue;
+      vistos.add(k); out.push(v);
+    }
+    return out;
+  }
+  /* (lote 62) O que se escreve na quantidade de um recurso: "+50" soma, "-20" (ou "−20") tira, um número sem sinal troca
+     o valor. → { delta } | { valor } | null (o que não é número) */
+  function lerQtd(txt) {
+    const t = String(txt == null ? '' : txt).replace(/\s+/g, '').replace(/\u2212/g, '-').replace(/\./g, '').replace(',', '.');
+    const m = /^([+-]?)(\d+(?:\.\d+)?)$/.exec(t);
+    if (!m) return null;
+    const n = Math.trunc(Number(m[2]));
+    if (!Number.isFinite(n)) return null;
+    return m[1] === '+' ? { delta: n } : m[1] === '-' ? { delta: -n } : { valor: n };
   }
   function normMud(l) {
     const out = [];
@@ -829,7 +853,7 @@
     normMembros, membrosDe, novoMembro, mudarMembroDados, membroDoSoldado, moverMembro, tirarMembro, normNascM,
     normConstrucoes, normRecursos, normRespeito, normRelacoes, normFaccao, normHist, normVer, normCla, claNovo, normPub, comoVista,
     visivel, projetar, anotar, mudarRecurso, definirRecurso, mudarRespeito, mudarRelacao, mudarMembro, falta, subirNivel,
-    custoTxt, mudTxt, histTxt, qtdTxt,
+    custoTxt, mudTxt, histTxt, qtdTxt, normTags, lerQtd,
   };
   if (typeof module === 'object' && module && module.exports) module.exports = ClaNucleo;
   if (typeof window !== 'undefined') window.ClaNucleo = ClaNucleo;

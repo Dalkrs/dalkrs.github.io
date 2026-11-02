@@ -276,5 +276,14 @@ const COR = { id: 'cor', nome: 'Ordem do Corvo', jogadores: false, ver: { mostra
   ok(!m3.pessoa.pc && m3.pessoa.nome === 'Selene', 'desligar: fica o nome anotado');
 }
 
+/* ---------------- (lote 62) o cofre (+50 / -20), as etiquetas e a favorita ---------------- */
+{
+  ok(j([C.lerQtd('+50'), C.lerQtd('-20'), C.lerQtd('−7'), C.lerQtd(' 1.240 '), C.lerQtd('0'), C.lerQtd('abc'), C.lerQtd('+')]) === j([{ delta: 50 }, { delta: -20 }, { delta: -7 }, { valor: 1240 }, { valor: 0 }, null, null]),
+    'a quantidade: +50 soma, -20 (ou −7) tira, um número troca (o ponto dos milhares vale); o resto não é número');
+  ok(j(C.normTags('defesa, Economia, DEFESA, a, b, c')) === j(['defesa', 'Economia', 'a', 'b']) && j(C.normTags(null)) === '[]', 'as etiquetas: até 4, sem repetir (sem diferença de maiúsculas)');
+  const k = C.normCla({ construcoes: [{ nome: 'Forja', fav: true, tags: ['defesa'] }, { nome: 'Salão', fav: 'sim' }] }).construcoes;
+  ok(k[0].fav === true && j(k[0].tags) === j(['defesa']) && !('fav' in k[1]) && !('tags' in k[1]), 'a favorita e as etiquetas ficam na construção (só quando há)');
+}
+
 console.log(ruins ? n - ruins + ' verificações passaram, ' + ruins + ' falharam' : n + ' verificações passaram');
 process.exit(ruins ? 1 : 0);

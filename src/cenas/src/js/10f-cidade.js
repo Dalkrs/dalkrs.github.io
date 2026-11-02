@@ -46,7 +46,8 @@ const Cidade = (() => {
     rio: { w: [5, 7], h: [4, 6], gap: 1 },
     porto: { w: [4, 7], h: [4, 5], gap: 0 },
   };
-  const NOME_TIPO = { casa: 'a casa', loja: 'a loja', taverna: 'a taverna', ferraria: 'a ferraria', armazem: 'o armazém', templo: 'o templo', senhor: 'a casa do senhor', quartel: 'o quartel' };
+  const NOME_TIPO = { casa: 'a casa', loja: 'a loja', taverna: 'a taverna', ferraria: 'a ferraria', armazem: 'o armazém', templo: 'o templo', senhor: 'a casa do senhor', quartel: 'o quartel',
+    banhos: 'os banhos', guilda: 'a guilda', escola: 'a escola' };                    // (lote 61: os prédios públicos, quando escolhidos)
   const TIPOS_C = Object.keys(NOME_TIPO);
   const GRANDES = ['templo', 'senhor', 'quartel'];
   const TIPO_DO_BAIRRO = { centro: ['loja', 'casa', 'loja'], nobres: ['casa'], mercado: ['loja', 'casa', 'loja', 'armazem'], pobres: ['casa'], quartel: ['casa', 'ferraria'], rio: ['armazem', 'casa', 'armazem'], porto: ['armazem', 'casa', 'armazem', 'taverna', 'loja'] };
@@ -605,6 +606,8 @@ const Cidade = (() => {
     for (let i = frentes.length - 1; i > 0; i--) { const k = Math.floor(rnd() * (i + 1)) % (i + 1); [frentes[i], frentes[k]] = [frentes[k], frentes[i]]; }
     frentes.sort((a, b) => b.pr - a.pr);
     const especiais = ['taverna', 'taverna', 'ferraria', 'armazem', 'armazem'].concat(tam === 'pequena' ? [] : ['armazem', 'ferraria']);
+    // (lote 61) os prédios públicos: os banhos, a guilda e a escola (mais um de cada na grande), entre os primeiros
+    if (o.publicos) especiais.unshift(...(tam === 'grande' ? ['guilda', 'banhos', 'escola', 'guilda', 'banhos'] : ['guilda', 'banhos', 'escola']));
     for (const k of predios) { const i = especiais.indexOf(k.tipo); if (i >= 0) especiais.splice(i, 1); }
     for (const fr of frentes) {
       if (predios.length >= want) break;
@@ -731,6 +734,15 @@ const Cidade = (() => {
     if (E.afluente) out.afluente = E.afluente;
     if (E.lago) out.lago = E.lago;
     if (natural) out.pedras = natural.pedras;
+    // (lote 61) os prédios públicos, a situação e os detalhes pelo chão (só quando escolhidos)
+    if (o.publicos) out.publicos = true;
+    const sit = Situacao.valida(o.situacao), det = Situacao.detalhe(o.detalhe);
+    if (!Situacao.nada(sit, det)) {
+      if (det === 'pouco') { out.quintais = Situacao.reduzir(out.quintais, seed); out.barracas = Situacao.reduzir(out.barracas, seed + 1); }
+      const V = { W, H, seed, estilo, casas: predios, ruas, praca, livre: (i, j) => at(i, j) === 0, naRua: (i, j) => at(i, j) === 1, dentro: (i, j) => at(i, j) !== 6 && at(i, j) !== 9 };
+      out.sit = Situacao.aplicar(V, sit, det);
+      if (out.sit.semLuz) out.postes = [];
+    }
     return out;
   }
   /* ================= o relevo e as formas ================= */
@@ -962,6 +974,7 @@ const Cidade = (() => {
     }
     // a praça, com a fonte no meio
     Estilos.praca(g, p.praca, c, rnd, est);
+    if (p.sit) Situacao.pintarChao(g, p.sit, c, rnd);                // (lote 61: a lama, a cinza, o mato nas ruas)
     {
       const x = p.praca.x * c, y = p.praca.y * c, R = Math.min(1.4, p.praca.r * 0.35) * c;
       g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.arc(x + c * 0.1, y + c * 0.12, R + c * 0.25, 0, TAU2); g.fill();
@@ -1050,6 +1063,7 @@ const Cidade = (() => {
     }
     // os prédios: os telhados do estilo
     p.predios.forEach((k, i) => Estilos.telhado(g, k, c, rnd, est, (hashStr(p.seed + ':' + i) >>> 0) % 997));
+    if (p.sit) Situacao.pintarSobre(g, p.sit, p.predios, c, rnd);      // (lote 61: os telhados queimados, os buracos, a fumaça)
     // na porta das lojas, dos armazéns e das ferrarias: caixotes, barris e sacos (pintados, de enfeite)
     for (const k of p.predios) {
       if (!['loja', 'armazem', 'ferraria'].includes(k.tipo)) continue;
@@ -1204,12 +1218,13 @@ const Cidade = (() => {
     const noite = sc.tone === 'noite' || sc.tone === 'breu', poste = Props.P[p.poste] ? p.poste : 'lampiao';
     const objeto = (id, x, y) => { if (dentro(x, y) && Props.P[id]) sc.tokens.push(Props.novo(sc, id, x * c, y * c, 1, false)); };
     p.predios.forEach((k, i) => {
-      for (const s of Estilos.paredesDaCasa(Object.assign({}, k, { porta: null, janelas: [] }))) parede(s.x1, s.y1, s.x2, s.y2);
+      const ru = p.sit ? p.sit.ruinas[i] : null;            // (lote 61: o prédio em ruína — os buracos nas paredes)
+      for (const s of Situacao.paredes(Estilos.paredesDaCasa(Object.assign({}, k, { porta: null, janelas: [] })), ru)) parede(s.x1, s.y1, s.x2, s.y2);
       const pt = k.porta, mx = (pt.x1 + pt.x2) / 2, my = (pt.y1 + pt.y2) / 2;
       if (!(mx > 0.2 && my > 0.2 && mx < W - 0.2 && my < H - 0.2)) return;
       sc.tokens.push(marcador(sc, k, c, p.estilo, (sub(p.seed, 50 + i) % 2147483000) + 1));
       // à noite, o lampião ao lado da porta (do lado de fora)
-      if (noite && ['taverna', 'templo', 'senhor', 'quartel'].includes(k.tipo)) {
+      if (noite && !ru && ['taverna', 'templo', 'senhor', 'quartel'].includes(k.tipo)) {
         const lx = pt.lado === 'o' ? k.x - 1 : pt.lado === 'l' ? k.x + k.w : Math.max(pt.x1, pt.x2);
         const ly = pt.lado === 'n' ? k.y - 1 : pt.lado === 's' ? k.y + k.h : Math.max(pt.y1, pt.y2);
         objeto(poste, lx, ly);
@@ -1262,6 +1277,7 @@ const Cidade = (() => {
       for (const r of p.relevo || []) { const sh = Estilos.terrenoNaCena(r, c, 0, 0); if (r.t === 'agua' || (r.t === 'plataforma' && r.alt <= 2)) sh.a = 0.12; sc.shapes.push(sh); }     // (lote 54: o que o fundo já desenha fica leve)
       for (const f of p.formas || []) sc.shapes.push(Estilos.formaNaCena(f, c, 0, 0));
     }
+    if (p.sit) Situacao.montar(sc, p.sit, c);
   }
   // os dados com que o mapa de bairros refaz a cidade (para recortar um bairro)
   // (o traçado vai sempre pela semente dele: refazer a cidade dá a mesma, mesmo quando um prédio travado não coube)
@@ -1349,7 +1365,9 @@ const Cidade = (() => {
       relevo: (p.relevo || []).map(r => Estilos.moverRelevo(r, -x0, -y0)).filter(cai),
       formas: formasNoRecorte,
       bairros: { quad: p.bairros.quad, grade },
-    }, p.mar ? { mar: moverMar(p.mar, x0, y0) } : null);
+    }, p.mar ? { mar: moverMar(p.mar, x0, y0) } : null,
+    // (lote 61) a situação: o que cai no bairro, deslocado; as ruínas acompanham os prédios que ficaram
+    p.sit ? { sit: Situacao.mover(p.sit, x0, y0, W, H, p.predios.map((k, i) => (toca(k) ? i : -1)).filter(i => i >= 0)) } : null);
   }
   // (com mar) o mar de um plano, deslocado para o recorte de um bairro
   function moverMar(m, x0, y0) {
@@ -1423,7 +1441,8 @@ const Cidade = (() => {
     return `${n} ${n === 1 ? 'prédio' : 'prédios'}` + (n < p.pedidos ? ` (couberam ${n} dos ${p.pedidos})` : '') + ` · ${p.W} × ${p.H} quadrados` + (p.modo === 'bairros' ? ` (no mapa, ${Math.ceil(p.W / 2)} × ${Math.ceil(p.H / 2)})` : '') +
       (p.ring ? ' · muralha' + (p.muroForma === 'redonda' ? ' redonda' : p.muroForma === 'irregular' ? ' irregular' : '') + ' com ' + p.portoes.length + (p.portoes.length === 1 ? ' portão' : ' portões') : '') +
       (p.rio ? textoDoRio(p) : '') +
-      (p.mar ? ' · mar com o cais' + (p.mar.navios.length ? ' e ' + (p.mar.navios.length === 1 ? 'um navio' : p.mar.navios.length + ' navios') : '') : '') + '.';
+      (p.mar ? ' · mar com o cais' + (p.mar.navios.length ? ' e ' + (p.mar.navios.length === 1 ? 'um navio' : p.mar.navios.length + ' navios') : '') : '') +
+      (p.publicos ? ' · com os banhos, a guilda e a escola' : '') + Situacao.resumo(p.sit) + '.';
   }
   // "rio com 3 pontes"; (lote 8) "rio com afluente, lago e 2 pontes"; "rio sem pontes"
   function textoDoRio(p) {
@@ -1446,11 +1465,13 @@ const Cidade = (() => {
   function padrao() {
     const o = App.opt;
     const st = { modo: MODOS.some(m => m[0] === o.cidModo) ? o.cidModo : 'completa', tamanho: TAMANHOS[o.cidTam] ? o.cidTam : 'media', terreno: TERRENOS_C.some(x => x[0] === o.cidTer) ? o.cidTer : 'campo', rio: o.cidRio != null ? !!o.cidRio : true, muralha: o.cidMuro != null ? !!o.cidMuro : true, mar: !!o.cidMar, predios: 0,
-      t: Tracado.limpar(o.cidTracado) };                                          // (lote 8) o traçado (a seção "Traçado")
+      t: Tracado.limpar(o.cidTracado),                                            // (lote 8) o traçado (a seção "Traçado")
+      publicos: !!o.cidPublicos, situacao: Situacao.valida(o.cidSit), detalhe: Situacao.detalhe(o.cidDet) };     // (lote 61)
     st.predios = TAMANHOS[st.tamanho].padrao;
     return st;
   }
   const lembrar = st => { App.opt.cidModo = st.modo; App.opt.cidTam = st.tamanho; App.opt.cidTer = st.terreno; App.opt.cidRio = st.rio; App.opt.cidMuro = st.muralha; App.opt.cidMar = !!st.mar; App.opt.cidTracado = Tracado.soMudadas(st.t || Tracado.padrao()); };
+  const lembrar61 = st => { App.opt.cidPublicos = !!st.publicos; App.opt.cidSit = st.situacao || 'normal'; App.opt.cidDet = st.detalhe || 'normal'; };
   // (lote 14, parte 14c: ctx.hex — com os arredores, o rio e os portões vêm do hexágono do Mapa-múndi: a nota no lugar da rosa)
   function controles(st, K, mudou, ctx) {
     const { field, seg, toggle, stepper } = K, T = TAMANHOS[st.tamanho];
@@ -1463,13 +1484,18 @@ const Cidade = (() => {
         field('Prédios', stepper('cid-pred', st.predios, T.predios[0], T.predios[1], v => { st.predios = v; mudou(true); }, 'Quantos prédios'), 'stack'),
         toggle('cid-rio', st.rio, v => { st.rio = v; lembrar(st); mudou(true); }, 'Com rio (e pontes)'),
         toggle('cid-muro', st.muralha, v => { st.muralha = v; lembrar(st); mudou(true); }, 'Com muralha (portões abertos)'),
-        toggle('cid-mar', !!st.mar, v => { st.mar = v; lembrar(st); mudou(true); }, 'Com mar (um lado vira mar: o cais, os molhes e os navios atracados)')),
+        toggle('cid-mar', !!st.mar, v => { st.mar = v; lembrar(st); mudou(true); }, 'Com mar (um lado vira mar: o cais, os molhes e os navios atracados)'),
+        toggle('cid-pub', !!st.publicos, v => { st.publicos = v; lembrar61(st); mudou(true); }, 'Com os banhos, a guilda e a escola')),
+      // (lote 61) a situação e os detalhes pelo chão
+      field('Situação', seg('cid-sit', st.situacao || 'normal', Situacao.SITS.map(([k, n]) => [k, n, null, Situacao.NOTA[k] || 'Como sempre.']), v => { st.situacao = v; lembrar61(st); mudou(true); }), 'stack'),
+      field('Detalhes pelo chão', seg('cid-det', st.detalhe || 'normal', Situacao.DETALHES.map(([k, n]) => [k, n]), v => { st.detalhe = v; lembrar61(st); mudou(true); }), 'stack'),
       // (lote 8) o traçado: os portões na rosa, a forma da muralha, o rio, a praça, as pontes e o relevo natural
       Tracado.secao(st.t, K, () => { lembrar(st); mudou(true); }, Object.assign({ pre: 'cid', portoes: 'Portões',
         muro: { nome: 'Muralha', formas: [['oct', 'Octógono'], ['redonda', 'Redonda'], ['irregular', 'Irregular']], ligada: !!st.muralha, padraoLigada: true, ligar: v => { st.muralha = v; } },
         rio: st.rio ? true : false, mar: !!st.mar, praca: true, pontes: true }, Arredores.notasHex(st.modo !== 'bairros' ? ctx : null, !!st.rio))));
   }
-  const opcoesDe = st => Object.assign({ modo: st.modo, tamanho: st.tamanho, terreno: st.terreno, rio: !!st.rio, muralha: !!st.muralha, mar: !!st.mar, predios: st.predios }, Tracado.soMudadas(st.t || Tracado.padrao()));
+  const opcoesDe = st => Object.assign({ modo: st.modo, tamanho: st.tamanho, terreno: st.terreno, rio: !!st.rio, muralha: !!st.muralha, mar: !!st.mar, predios: st.predios }, Tracado.soMudadas(st.t || Tracado.padrao()),
+    st.publicos ? { publicos: true } : null, st.situacao && st.situacao !== 'normal' ? { situacao: st.situacao } : null, st.detalhe && st.detalhe !== 'normal' ? { detalhe: st.detalhe } : null);
   function aplicarOpcoes(st, o) {
     if (MODOS.some(m => m[0] === o.modo)) st.modo = o.modo;
     if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
@@ -1480,7 +1506,8 @@ const Cidade = (() => {
     const T = TAMANHOS[st.tamanho];
     st.predios = clamp(Math.round(Number(o.predios) || T.padrao), T.predios[0], T.predios[1]);
     st.t = Tracado.limpar(o);                                                       // (lote 8: o traçado do modelo; sem ele, o automático)
-    lembrar(st);
+    st.publicos = o.publicos === true; st.situacao = Situacao.valida(o.situacao); st.detalhe = Situacao.detalhe(o.detalhe);      // (lote 61)
+    lembrar(st); lembrar61(st);
   }
   const LUGAR = { id: 'cidade', n: 'Cidade', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao,
     criar: (p, nome, ex) => criar(p, nome, ex),

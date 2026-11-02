@@ -256,6 +256,92 @@ ul.marcar li.ja { opacity: .55; }
 .cab-cla .nomes { display: grid; gap: 6px; flex: 1 1 280px; min-width: 0; }
 .cab-cla .nomes .in.nome { font: 600 20px var(--display); }
 .cab-cla .opcoes { display: grid; gap: 8px; flex: 1 1 300px; min-width: 0; }
+/* (lote 62) o painel de quem mestra: os números do clã no cabeçalho, as abas, o cofre, as construções e o rol em tabela */
+.cab-bloco { display: grid; }
+.cab-bloco > .cab-cla { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.cab-num { display: flex; flex-wrap: wrap; gap: 0; margin: 0; flex: 1 1 100%; border-top: 1px solid var(--line); padding-top: 10px; }
+.cab-num > div { padding: 0 18px; border-left: 1px solid rgba(230, 171, 79, .28); min-width: 0; }
+.cab-num > div:first-child { padding-left: 0; border-left: 0; }
+.cab-num dt { font-size: 12px; color: var(--fg-3); }
+.cab-num dd { margin: 0; font: 600 24px/1.1 var(--display); font-variant-numeric: tabular-nums; color: var(--fg); }
+.abas-m { display: flex; gap: 2px; overflow-x: auto; background: var(--raised); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 12px 12px; padding: 0 10px; margin-bottom: 4px; scrollbar-width: thin; }
+.aba-m { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; padding: 11px 12px 9px; font-weight: 600; font-size: 14px; color: var(--fg-2); border-bottom: 2px solid transparent; white-space: nowrap; }
+.aba-m:hover { color: var(--fg); }
+.aba-m[aria-selected="true"] { color: var(--lamp-ink); border-bottom-color: var(--lamp); }
+.aba-m:focus-visible { outline: 2px solid var(--lamp); outline-offset: -2px; border-radius: 6px; }
+.aba-n { font: 600 11.5px/1 var(--ui); padding: 3px 7px; border-radius: 999px; background: var(--hover); color: var(--fg-2); }
+.aba-m[aria-selected="true"] .aba-n { background: var(--lamp-soft); color: var(--lamp-ink); }
+.painel-m { display: grid; gap: 14px; }
+.in.sm { min-height: 30px; padding: 0 8px; font-size: 13px; width: auto; }
+/* o cofre: uma coluna estreita, cada recurso numa linha com o número alinhado à direita */
+.obras { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .obras { grid-template-columns: 1fr; } }
+.cofre-l { display: grid; }
+.cofre .rec { background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 5px 0; gap: 4px; }
+.cofre .rec:last-child { border-bottom: 0; }
+.rec-nm { all: unset; cursor: pointer; flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.rec-nm:hover { color: var(--lamp-ink); }
+.rec-nm:focus-visible { outline: 2px solid var(--lamp); border-radius: 4px; }
+.cofre .rec input.qtd { width: 104px; text-align: right; font: 600 16px var(--mono); font-variant-numeric: tabular-nums; border-color: transparent; background: transparent; padding: 0 8px; color: var(--fg); }
+.cofre .rec input.qtd:hover { border-color: var(--line-strong); }
+.cofre .rec input.qtd:focus { border-color: var(--lamp); background: var(--surface); }
+/* as construções: o filtro em botões e uma linha por construção */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { all: unset; cursor: pointer; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 12.5px; font-weight: 600; color: var(--fg-2); }
+.chip:hover { color: var(--fg); }
+.chip[aria-pressed="true"] { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); }
+.chip:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.cons-l { display: grid; }
+.obras-l .cons { display: grid; grid-template-columns: 26px 34px minmax(0, 1.4fr) minmax(0, 1fr) auto; align-items: center; gap: 10px; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 9px 0; }
+.obras-l .cons:last-child { border-bottom: 0; }
+.obras-l .cons .ico { width: 34px; height: 34px; border-radius: 8px; }
+.estrela { all: unset; cursor: pointer; font-size: 18px; line-height: 1; color: var(--fg-3); text-align: center; }
+.estrela[aria-pressed="true"] { color: var(--lamp); }
+.estrela:focus-visible { outline: 2px solid var(--lamp); border-radius: 4px; }
+.cons-tx { display: grid; gap: 2px; min-width: 0; }
+.cons-nm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cons-nm b { font: 600 17px/1.15 var(--display); }
+.obras-l .cons .ef { font-size: 13px; color: var(--fg-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+.tag { font-size: 11.5px; padding: 1px 7px; border-radius: 6px; background: var(--hover); color: var(--fg-2); }
+.cons-custo { display: grid; gap: 4px; min-width: 0; font-size: 12.5px; }
+.cons-custo small { color: var(--fg-2); }
+.barra { display: block; height: 5px; border-radius: 3px; background: var(--hover); overflow: hidden; }
+.barra i { display: block; height: 100%; background: var(--fg-3); }
+.barra.cheia i { background: var(--ok); }
+.cons-ac { display: flex; gap: 4px; align-items: center; }
+@media (max-width: 760px) { .obras-l .cons { grid-template-columns: 26px 34px minmax(0, 1fr) auto; } .cons-custo { grid-column: 3 / 5; } }
+/* o rol em tabela: uma linha por membro; clicada, abre embaixo os campos */
+.rol-filtro { display: flex; gap: 8px; flex-wrap: wrap; }
+.rol-filtro input { flex: 1 1 240px; }
+.rol-filtro select { flex: 0 0 auto; width: auto; }
+.rol-tab { display: grid; }
+.rt-l { display: grid; grid-template-columns: 36px minmax(120px, 1.3fr) minmax(100px, 1.2fr) minmax(70px, .7fr) minmax(90px, 1fr) minmax(170px, auto) 32px; align-items: center; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.rt-l:hover { background: var(--hover); }
+.rt-l.rt-cab { cursor: default; font-size: 12px; color: var(--fg-3); padding-top: 0; }
+.rt-l.rt-cab:hover { background: none; }
+.rol-grupo.aberto > .rt-l { background: var(--lamp-soft); border-bottom-color: transparent; }
+.rt-av .av { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--line-strong); background: #283041 center / cover no-repeat; display: grid; place-items: center; font: 600 12px/1 var(--ui); color: var(--fg-2); overflow: hidden; }
+.rt-av .av.pj { border-color: var(--lamp); }
+.rt-av .av img { width: 100%; height: 100%; object-fit: cover; }
+.rt-nm { display: grid; min-width: 0; }
+.rt-nm b { font-weight: 700; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-nm small, .rt-rc, .rt-cg { font-size: 13px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-nm small { font-size: 12px; }
+.rt-id { font-size: 13px; color: var(--fg-2); overflow: hidden; }
+.rt-l .rt-id .rol-idade { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-l .rt-id .rol-idade b { font: 700 16px/1 var(--display); }
+.rt-l .rt-id .rol-idade em { display: none; }
+.rt-rs { display: inline-flex; align-items: center; gap: 2px; justify-self: start; }
+.rt-rs .v { font-size: 12.5px; font-weight: 600; min-width: 96px; text-align: center; }
+.rol-edita { padding: 4px 8px 12px; background: var(--lamp-soft); border-bottom: 1px solid var(--line); }
+.rol-edita .rol-ed { border-bottom: 0; }
+@media (max-width: 760px) {
+  .rt-l { grid-template-columns: 36px minmax(0, 1fr) auto 32px; }
+  .rt-l .rt-rc, .rt-l .rt-id, .rt-l .rt-cg, .rt-l.rt-cab span:nth-child(n+3):not(:nth-child(6)) { display: none; }
+  .cab-num > div { padding: 0 10px; } .cab-num dd { font-size: 20px; }
+}
+.sede-cena { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13.5px; }
+.sede-cena > span:first-child { flex: 1 1 200px; }
 .so-mestre { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--secret); }
 @media (max-width: 760px) { .lista-clas { max-width: none; border-right: 0; border-bottom: 1px solid var(--line); } .cena { height: 240px; } .cena .nome h1 { font-size: 26px; } }
 
@@ -420,13 +506,13 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=20"></script>
 <script src="../meditacao/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=7"></script>
+<script src="nucleo.js?v=8"></script>
 <script src="../tc/tropas.js?v=5"></script>
 <script src="../tc/calendario.js?v=1"></script>
 <script src="../mundo/nucleo.js?v=48"></script>
-<script src="../tc/sede.js?v=2"></script>
-<script src="sede-ui.js?v=3"></script>
+<script src="../tc/sede.js?v=3"></script>
+<script src="sede-ui.js?v=4"></script>
 <script src="construtor.js?v=1"></script>
-<script src="cla.js?v=9"></script>
+<script src="cla.js?v=10"></script>
 </body>
 </html>

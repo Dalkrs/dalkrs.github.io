@@ -12,6 +12,8 @@
   'use strict';
   const N = window.ClaNucleo;
   const DEBUG = /[?&]debug\b/.test(location.search);
+  // (lote 62, só nos testes de antes das abas: ?debug&tudo mostra as partes do painel todas juntas, com o rol aberto)
+  const TUDO = DEBUG && (/[?&]tudo\b/.test(location.search) || (() => { try { return localStorage.getItem('tinycats:cla:tudo') === '1'; } catch (e) { return false; } })());
   const $ = id => document.getElementById(id);
   const j = JSON.stringify;
   const copia = x => (x == null ? x : JSON.parse(JSON.stringify(x)));
@@ -111,7 +113,13 @@
   const PRE_SEDE = 'cla:sede:';                                     // (lote 30) a sede de um clã
   let st = null, D = null, P = null, naMesa = false, mestre = true, eu = null, pronto = false;
   let vista = guarda.ler('tinycats:cla:vista') === 'salao' ? 'salao' : 'mestre';
+  function trocarAbaM(k) { if (!ABAS_M.some(x => x[0] === k)) return; abaM = k; guarda.gravar('tinycats:cla:abaM', k); pintar(); }
   let sel = null, aba = 'hier', ocupado = false, verTudo = false;
+  // (lote 62) o painel de quem mestra: a aba aberta (lembrada), o membro aberto no rol, a busca e a ordem do rol, o filtro
+  // e a ordem das construções
+  const ABAS_M = [['geral', 'Geral'], ['membros', 'Membros'], ['obras', 'Cofre e obras'], ['sede', 'Sede e tropas'], ['mundo', 'Relações e histórico']];
+  let abaM = 'geral', rolAberto = null, rolBusca = '', rolOrdem = 'cargo', obraFiltro = 'todas', obraOrdem = 'clã';
+  { const a = guarda.ler('tinycats:cla:abaM'); if (ABAS_M.some(x => x[0] === a)) abaM = a; }
   const motivos = { rec: '', resp: '', rel: '', membro: '' };     // o motivo da próxima mudança, em cada parte do painel
   let pilha = [];                                                   // o desfazer: { rotulo, desfazer() }
   let pintando = false, pendente = false, local = {}, tSalvo = 0, arrasto = null;
@@ -541,18 +549,24 @@
   // o motivo vale para uma linha do histórico: usado, o campo esvazia (as mudanças seguidas na mesma coisa continuam na mesma linha)
   const usarMotivo = parte => { const m = motivos[parte]; motivos[parte] = ''; return m; };
   function editorCla(x) {
-    const c = x.c, id = x.id, V = N.comoVista(c, id);
-    return h('section', { class: 'ed', 'aria-label': 'O clã ' + c.nome, 'data-k': 'ed:' + id },
-      cabecalho(x),
-      h('div', { class: 'cartao', 'data-k': 'sec:hier' }, h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Hierarquia' }),
+    const c = x.c, id = x.id, V = N.comoVista(c, id), ms = N.membrosDe(c);
+    const prontas = c.construcoes.filter(k => !N.falta(c, k.id).length && k.prox.custo.length && k.nivel < N.MAX.nivel).length, nt = tropasDoCla(id).length;
+    const conta = { membros: String(ms.length), obras: prontas ? prontas + (prontas === 1 ? ' pronta' : ' prontas') : '', sede: nt ? String(nt) : '' };
+    const painel = {
+      geral: () => [h('div', { class: 'cartao', 'data-k': 'sec:hier' }, h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Hierarquia' }),
         h('small', { class: 'ajuda', text: c.jogadores ? 'O líder (o dono do personagem no cargo de líder) também mexe nos cargos abaixo do dele.' : 'Os jogadores veem os cargos se você marcar “Cargos e quem ocupa”.' })),
-        hierarquia(V, true)),
-      secRol(x),
-      secTropas(x),
-      h('div', { class: 'lado-a-lado' }, secConstrucoes(x), secRecursos(x)),
-      SedeUI ? SedeUI.cartao(x) : null,
-      h('div', { class: 'lado-a-lado' }, secRespeito(x), secRelacoes(x), secMembros(x)),
-      secHistorico(x));
+        hierarquia(V, true))],
+      membros: () => [secRol(x)],
+      obras: () => [h('div', { class: 'obras' }, secRecursos(x), secConstrucoes(x))],
+      sede: () => [SedeUI ? SedeUI.cartao(x) : null, secTropas(x)],
+      mundo: () => [h('div', { class: 'lado-a-lado' }, secRespeito(x), secRelacoes(x)), secHistorico(x)],
+    };
+    return h('section', { class: 'ed', 'aria-label': 'O clã ' + c.nome, 'data-k': 'ed:' + id },
+      h('div', { class: 'cab-bloco' }, cabecalho(x),
+        // (lote 62) as abas do painel: uma parte por vez, a que estava aberta fica lembrada
+        h('nav', { class: 'abas-m', role: 'tablist', 'aria-label': 'As partes do clã' }, ABAS_M.map(([k, n]) => h('button', { type: 'button', role: 'tab', class: 'aba-m', 'data-aba-m': k, 'aria-selected': String(abaM === k), onclick: () => trocarAbaM(k) },
+          n, conta[k] ? h('span', { class: 'aba-n', text: conta[k] }) : null)))),
+      TUDO ? h('div', { class: 'painel-m' }, ABAS_M.map(([k]) => painel[k]())) : h('div', { class: 'painel-m', role: 'tabpanel', 'data-k': 'painel:' + abaM }, painel[abaM]()));
   }
   function cabecalho(x) {
     const c = x.c, id = x.id, facs = faccoesDoMundo();
@@ -575,26 +589,55 @@
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'c:brasao', onclick: () => brasaoDlg(id) }, 'Brasão…'),
           c.jogadores ? null : h('button', { type: 'button', class: 'btn sm', 'data-k': 'c:ver', onclick: () => verDlg(id) }, 'O que os jogadores veem…'),
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'c:lider', onclick: () => liderancaDlg(id) }, c.jogadores ? 'Passar a liderança…' : 'Trocar o líder…'),
-          h('button', { type: 'button', class: 'btn sm per', 'data-k': 'c:apagar', onclick: () => apagarClaDlg(id) }, 'Apagar o clã'))));
+          h('button', { type: 'button', class: 'btn sm per', 'data-k': 'c:apagar', onclick: () => apagarClaDlg(id) }, 'Apagar o clã'))),
+      // (lote 62) os números do clã, de relance: os membros, o respeito no mundo e os três primeiros recursos do cofre
+      h('dl', { class: 'cab-num', 'data-k': 'cab:num' },
+        h('div', null, h('dt', { text: 'Membros' }), h('dd', { text: String(N.membrosDe(c).length) })),
+        h('div', null, h('dt', { text: 'Respeito' }), h('dd', { class: tom(c.respeito.v), text: N.sinal(c.respeito.v) })),
+        c.recursos.lista.slice(0, 3).map(r => h('div', null, h('dt', { text: r.nome }), h('dd', { text: N.qtdTxt(r.qtd) })))));
   }
+  /* (lote 62) As construções em linhas: a estrela (favorita), o ícone, o nome com as etiquetas, o nível, o efeito, o custo do
+     próximo nível com a barra do que o cofre já tem, e "Subir". Em cima, o filtro (todas, as que dá para subir agora, as
+     favoritas, uma etiqueta) e a ordem (a do clã, de A a Z, pelo nível). */
   function secConstrucoes(x) {
-    const c = x.c, id = x.id;
-    return h('div', { class: 'cartao', 'data-k': 'sec:cons', style: 'flex:2 1 520px' },
-      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Construções do clã' }), h('button', { type: 'button', class: 'btn sm', 'data-k': 'cons:nova', disabled: c.construcoes.length >= N.MAX.construcoes, onclick: () => construcaoDlg(id, null) }, '+ Construção')),
-      c.construcoes.length ? h('div', { class: 'grade' }, c.construcoes.map(k => {
-        const ic = N.ICONES.find(i => i.id === k.ico) || N.ICONES[0], f = N.falta(c, k.id), custo = k.prox.custo;
-        const gasto = custo.map(y => '−' + N.qtdTxt(y.qtd) + ' ' + ((c.recursos.lista.find(r => r.id === y.rec) || {}).nome || y.nome)).join(', ');
-        return h('div', { class: 'cons', 'data-cons': k.id },
-          h('div', { class: 'cab' }, h('span', { class: 'ico' }, icone(ic.d, 22)), h('b', { text: k.nome }), h('span', { class: 'badge ouro', text: 'Nível ' + k.nivel }),
-            h('button', { type: 'button', class: 'ib leve', 'data-k': 'cons:ed:' + k.id, title: 'Editar', 'aria-label': 'Editar ' + k.nome, onclick: () => construcaoDlg(id, k.id) }, '✎')),
-          h('span', { class: 'ef', text: k.efeito || (k.nivel ? 'Sem efeito escrito.' : 'Ainda não construída.') }),
-          h('div', { class: 'prox' }, h('small', { text: 'Para o nível ' + (k.nivel + 1) }),
-            h('span', null, custo.length ? N.custoTxt(custo, c.recursos) : 'sem custo', f.length ? h('span', { class: 'falta', text: ' (faltam ' + f.map(y => N.qtdTxt(y.qtd) + ' ' + y.nome).join(', ') + ')' }) : null,
-              k.prox.efeito ? ' · o efeito novo: “' + k.prox.efeito + '”' : null)),
-          h('button', { type: 'button', class: 'btn' + (f.length ? '' : ' pri'), 'data-k': 'cons:sobe:' + k.id, disabled: !!f.length || k.nivel >= N.MAX.nivel,
-            title: f.length ? 'Faltam recursos: ajuste o cofre do clã antes' : null, onclick: () => subir(id, k) }, 'Subir de nível' + (gasto && !f.length ? ' (' + gasto + ')' : '')));
-      })) : h('p', { class: 'vazio-p', text: 'Nenhuma construção ainda.' }),
-      h('p', { class: 'ajuda', text: '“Subir de nível” desconta o custo do cofre do clã (com Desfazer) e fica no histórico. Cada construção: nome, ícone, nível, efeito escrito e o custo do próximo nível. (As construções das cidades, no Mapa-múndi, são outra coisa: as do catálogo do mundo.)' }));
+    const c = x.c, id = x.id, rec = r => c.recursos.lista.find(y => y.id === r) || null;
+    const tags = [...new Set(c.construcoes.flatMap(k => k.tags || []))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    if (obraFiltro.startsWith('#') && !tags.includes(obraFiltro.slice(1))) obraFiltro = 'todas';
+    const pronta = k => !N.falta(c, k.id).length && k.nivel < N.MAX.nivel;
+    let lista = c.construcoes.filter(k => obraFiltro === 'todas' || (obraFiltro === 'prontas' && pronta(k) && k.prox.custo.length) || (obraFiltro === 'fav' && k.fav) || (obraFiltro.startsWith('#') && (k.tags || []).includes(obraFiltro.slice(1))));
+    if (obraOrdem === 'az') lista = lista.slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    else if (obraOrdem === 'nivel') lista = lista.slice().sort((a, b) => b.nivel - a.nivel || a.nome.localeCompare(b.nome, 'pt-BR'));
+    if (obraOrdem !== 'clã') lista = lista.slice().sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0));
+    // quanto do custo o cofre já tem (de 0 a 1: o recurso que mais falta manda)
+    const tem = k => (k.prox.custo.length ? Math.min(...k.prox.custo.map(y => { const r = rec(y.rec); return Math.min(1, (r ? r.qtd : 0) / y.qtd); })) : 1);
+    const chip = (k, n) => h('button', { type: 'button', class: 'chip', 'data-k': 'obra:f:' + k, 'aria-pressed': String(obraFiltro === k), onclick: () => { obraFiltro = obraFiltro === k && k !== 'todas' ? 'todas' : k; pintar(); } }, n);
+    return h('div', { class: 'cartao obras-l', 'data-k': 'sec:cons' },
+      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Construções do clã' }),
+        h('select', { class: 'in sm', 'data-k': 'obra:ordem', 'aria-label': 'A ordem das construções', onchange: function () { obraOrdem = this.value; pintar(); } },
+          [['clã', 'Na ordem do clã'], ['az', 'De A a Z'], ['nivel', 'Pelo nível']].map(([k, n]) => h('option', { value: k, text: n, selected: obraOrdem === k }))),
+        h('button', { type: 'button', class: 'btn sm', 'data-k': 'cons:nova', disabled: c.construcoes.length >= N.MAX.construcoes, onclick: () => construcaoDlg(id, null) }, '+ Construção')),
+      c.construcoes.length ? h('div', { class: 'chips', role: 'group', 'aria-label': 'Mostrar' }, chip('todas', 'Todas'), chip('prontas', 'Dá para subir'), chip('fav', '★ Favoritas'), tags.map(t => chip('#' + t, t))) : null,
+      lista.length ? h('div', { class: 'cons-l' }, lista.map(k => {
+        const ic = N.ICONES.find(i => i.id === k.ico) || N.ICONES[0], f = N.falta(c, k.id), custo = k.prox.custo, frac = tem(k), max = k.nivel >= N.MAX.nivel;
+        return h('div', { class: 'cons' + (k.fav ? ' fav' : ''), 'data-cons': k.id },
+          h('button', { type: 'button', class: 'estrela', 'data-k': 'cons:fav:' + k.id, 'aria-pressed': String(!!k.fav), title: k.fav ? 'Tirar das favoritas' : 'Marcar como favorita', 'aria-label': (k.fav ? 'Tirar ' : 'Marcar ') + k.nome + (k.fav ? ' das favoritas' : ' como favorita'),
+            onclick: () => mudarCla(id, (k.fav ? 'tirar ' : 'marcar ') + k.nome + (k.fav ? ' das favoritas' : ' como favorita'), y => { const z = y.construcoes.find(w => w.id === k.id); if (!z) return false; if (z.fav) delete z.fav; else z.fav = true; }) }, k.fav ? '★' : '☆'),
+          h('span', { class: 'ico' }, icone(ic.d, 20)),
+          h('div', { class: 'cons-tx' },
+            h('div', { class: 'cons-nm' }, h('b', { text: k.nome }), h('span', { class: 'badge ouro', text: 'Nível ' + k.nivel }), (k.tags || []).map(t => h('span', { class: 'tag', text: t }))),
+            h('span', { class: 'ef', text: k.efeito || (k.nivel ? 'Sem efeito escrito.' : 'Ainda não construída.') })),
+          h('div', { class: 'cons-custo' },
+            max ? h('small', { text: 'No nível máximo.' }) : [
+              h('small', { text: 'Para o nível ' + (k.nivel + 1) + ': ' + (custo.length ? N.custoTxt(custo, c.recursos) : 'sem custo') }),
+              custo.length ? h('span', { class: 'barra' + (f.length ? '' : ' cheia'), title: f.length ? 'Faltam ' + f.map(y => N.qtdTxt(y.qtd) + ' ' + y.nome).join(', ') : 'O cofre tem o bastante' }, h('i', { style: 'width:' + Math.round(frac * 100) + '%' })) : null,
+              f.length ? h('small', { class: 'falta', text: 'Faltam ' + f.map(y => N.qtdTxt(y.qtd) + ' ' + y.nome).join(', ') }) : null,
+              k.prox.efeito ? h('small', { class: 'ajuda', text: 'Passa a: ' + k.prox.efeito }) : null]),
+          h('div', { class: 'cons-ac' },
+            h('button', { type: 'button', class: 'btn sm' + (f.length ? '' : ' pri'), 'data-k': 'cons:sobe:' + k.id, disabled: !!f.length || max,
+              title: f.length ? 'Faltam recursos: ajuste o cofre do clã antes' : 'Subir para o nível ' + (k.nivel + 1) + (custo.length ? ' (' + custo.map(y => '−' + N.qtdTxt(y.qtd) + ' ' + ((rec(y.rec) || {}).nome || y.nome)).join(', ') + ')' : ''), onclick: () => subir(id, k) }, 'Subir'),
+            h('button', { type: 'button', class: 'ib leve', 'data-k': 'cons:ed:' + k.id, title: 'Editar', 'aria-label': 'Editar ' + k.nome, onclick: () => construcaoDlg(id, k.id) }, '✎')));
+      })) : h('p', { class: 'vazio-p', text: c.construcoes.length ? 'Nenhuma construção neste filtro.' : 'Nenhuma construção ainda.' }),
+      h('p', { class: 'ajuda', text: '“Subir” desconta o custo do cofre (com Desfazer) e fica no histórico. A estrela marca as favoritas (vêm primeiro quando a ordem não é a do clã); as etiquetas, no ✎, servem para filtrar.' }));
   }
   function subir(id, k) {
     let feito = false;
@@ -624,16 +667,24 @@
   function secRecursos(x) {
     const c = x.c, id = x.id, est = estoqueDaFaccao(c);
     const mudar = (r, d) => mudarCla(id, (d > 0 ? 'somar ' : 'tirar ') + r.nome, y => trocar(y, N.mudarRecurso(y, r.id, d, usarMotivo('rec'), agora())));
-    return h('div', { class: 'cartao', 'data-k': 'sec:rec', style: 'flex:1 1 340px' },
+    // (lote 62) a quantidade aceita "+50" (soma), "-20" (tira) ou um número (troca); o que não é número volta como estava
+    const escrever = (r, el) => {
+      const q = N.lerQtd(el.value);
+      if (!q) { el.value = N.qtdTxt(r.qtd); toast('Escreva um número, ou +50 para somar e -20 para tirar.'); return; }
+      const ok = q.delta != null ? (q.delta ? mudar(r, Math.max(-r.qtd, q.delta)) : false) : mudarCla(id, 'mudar ' + r.nome, y => trocar(y, N.definirRecurso(y, r.id, q.valor, usarMotivo('rec'), agora())));
+      if (!ok) el.value = N.qtdTxt(r.qtd);
+    };
+    return h('div', { class: 'cartao cofre', 'data-k': 'sec:rec' },
       h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Cofre do clã' }), h('button', { type: 'button', class: 'btn sm', 'data-k': 'rec:novo', disabled: c.recursos.lista.length >= N.MAX.recursos, onclick: () => recursoDlg(id, null) }, '+ Recurso')),
-      c.recursos.lista.length ? c.recursos.lista.map(r => h('div', { class: 'rec', 'data-rec': r.id },
-        h('b', { text: r.nome }),
-        h('button', { type: 'button', class: 'ib leve', 'data-k': 'rec:ren:' + r.id, title: 'Renomear', 'aria-label': 'Renomear ' + r.nome, onclick: () => recursoDlg(id, r.id) }, '✎'),
-        h('button', { type: 'button', class: 'ib', 'data-k': 'rec:menos:' + r.id, title: 'Tirar 1 (com Shift, 10)', 'aria-label': 'Tirar de ' + r.nome, disabled: r.qtd <= 0, onclick: ev => mudar(r, ev.shiftKey ? -10 : -1) }, '−'),
-        h('input', { class: 'qtd', type: 'number', min: 0, max: N.MAX.qtd, step: 1, 'data-k': 'rec:qtd:' + r.id, value: String(r.qtd), 'aria-label': 'Quantidade de ' + r.nome,
-          onchange: function () { mudarCla(id, 'mudar ' + r.nome, y => trocar(y, N.definirRecurso(y, r.id, this.value, usarMotivo('rec'), agora()))) || pintar(); } }),
-        h('button', { type: 'button', class: 'ib', 'data-k': 'rec:mais:' + r.id, title: 'Somar 1 (com Shift, 10)', 'aria-label': 'Somar em ' + r.nome, onclick: ev => mudar(r, ev.shiftKey ? 10 : 1) }, '+')))
+      c.recursos.lista.length ? h('div', { class: 'cofre-l' }, c.recursos.lista.map(r => h('div', { class: 'rec', 'data-rec': r.id },
+        h('button', { type: 'button', class: 'rec-nm', 'data-k': 'rec:ren:' + r.id, title: 'Renomear', onclick: () => recursoDlg(id, r.id) }, r.nome),
+        h('button', { type: 'button', class: 'ib leve', 'data-k': 'rec:menos:' + r.id, title: 'Tirar 1 (com Shift, 10)', 'aria-label': 'Tirar de ' + r.nome, disabled: r.qtd <= 0, onclick: ev => mudar(r, ev.shiftKey ? -10 : -1) }, '−'),
+        h('input', { class: 'qtd', type: 'text', inputmode: 'numeric', 'data-k': 'rec:qtd:' + r.id, value: N.qtdTxt(r.qtd), 'aria-label': 'Quantidade de ' + r.nome + ' (+50 soma, -20 tira)', title: '+50 soma · -20 tira · um número troca',
+          onfocus: function () { this.select(); }, onkeydown: function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); this.blur(); } else if (ev.key === 'Escape') { this.value = N.qtdTxt(r.qtd); this.blur(); } },
+          onchange: function () { escrever(r, this); } }),
+        h('button', { type: 'button', class: 'ib leve', 'data-k': 'rec:mais:' + r.id, title: 'Somar 1 (com Shift, 10)', 'aria-label': 'Somar em ' + r.nome, onclick: ev => mudar(r, ev.shiftKey ? 10 : 1) }, '+'))))
         : h('p', { class: 'vazio-p', text: 'Nenhum recurso ainda (ouro, madeira, ferro, influência…).' }),
+      c.recursos.lista.length ? h('p', { class: 'ajuda', text: 'Na quantidade, escreva +50 para somar, -20 para tirar ou um número para trocar.' }) : null,
       h('label', { class: 'field' }, h('span', { text: 'Motivo da próxima mudança (vai para o histórico)' }), motivoEl('rec', 'ex.: o pagamento da escolta')),
       est ? h('div', { class: 'fac-estoque', 'data-k': 'rec:fac' }, h('b', { text: 'Estoque de ' + est.fac + ' (Mapa-múndi)' }),
         h('span', { 'data-k': 'rec:fac:linhas', text: est.linhas.map(y => y.nome + ' ' + y.n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })).join(' · ') || 'nada' }),
@@ -672,21 +723,6 @@
       }) : h('p', { class: 'vazio-p', text: 'Nenhuma relação ainda.' }),
       motivoEl('rel', 'Motivo (opcional)'),
       h('p', { class: 'ajuda', text: 'De −' + N.NIVEL_MAX + ' (' + nm.rel[0] + ') a +' + N.NIVEL_MAX + ' (' + nm.rel[2 * N.NIVEL_MAX] + '). Cada mudança vai para o histórico, com o motivo, se houver.' }));
-  }
-  function secMembros(x) {
-    const c = x.c, id = x.id, nm = nomes(), ms = N.membrosDe(c);
-    const ir = (m, n) => { const q = quemE(m.pessoa); mudarCla(id, 'mudar o respeito de ' + q.nome, y => trocar(y, N.mudarMembro(y, m.pid, n, usarMotivo('membro'), agora(), q.nome))); };
-    return h('div', { class: 'cartao', 'data-k': 'sec:membros' },
-      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Respeito dos membros' })),
-      ms.length ? ms.map(m => { const q = quemE(m.pessoa), v = m.pessoa.resp;
-        return h('div', { class: 'membro', 'data-membro': m.pid },
-          h('span', { class: 'nm' }, q.nome, h('small', { text: ' ' + (m.cargoNome || 'sem cargo') + (m.pessoa.pc && !q.pj ? ' · NPC' : !m.pessoa.pc ? ' · só um nome' : '') })),
-          h('button', { type: 'button', class: 'ib', 'data-k': 'mb:menos:' + m.pid, 'aria-label': 'Menos respeito para ' + q.nome, disabled: v <= -N.NIVEL_MAX, onclick: () => ir(m, v - 1) }, '−'),
-          h('span', { class: 'v ' + tom(v), text: N.nivelTxt(nm, 'membro', v) }),
-          h('button', { type: 'button', class: 'ib', 'data-k': 'mb:mais:' + m.pid, 'aria-label': 'Mais respeito para ' + q.nome, disabled: v >= N.NIVEL_MAX, onclick: () => ir(m, v + 1) }, '+')); })
-        : h('p', { class: 'vazio-p', text: 'Ninguém no clã ainda.' }),
-      ms.length ? motivoEl('membro', 'Motivo (opcional)') : null,
-      h('p', { class: 'ajuda', text: c.jogadores ? 'Todos do clã veem; só você muda.' : 'Num clã de NPC, os jogadores não veem o respeito dos membros.' }));
   }
   /* ---------------- (lote 56) os membros: o rol do clã ----------------
      Todos os membros (os dos cargos e os sem cargo), como num livro de registro: o nome, a raça e a classe (as árvores
@@ -779,8 +815,48 @@
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'rol:fichas', disabled: ocupado, onclick: () => fichasDlg(x) }, 'Das fichas…'),
           soldadosDoCla(id).length ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'rol:tropas', disabled: ocupado || !gravaFichas(), onclick: () => tropasDlg(x) }, 'Das tropas…') : null,
           h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'rol:novo', disabled: ocupado, onclick: () => novoMembroDlg(x) }, '+ Membro'))),
-      ms.length ? h('div', { class: 'rol-lista' }, ms.map(linha)) : h('p', { class: 'vazio-p', text: 'Ninguém no clã ainda. “+ Membro” anota alguém, com ou sem cargo.' }),
+      // (lote 62) a busca e a ordem
+      ms.length > 1 ? h('div', { class: 'rol-filtro' },
+        h('input', { class: 'in', type: 'search', 'data-k': 'rol:busca', value: rolBusca, placeholder: 'Buscar por nome, raça, classe ou cargo', 'aria-label': 'Buscar no rol', oninput: function () { rolBusca = this.value; pintar(); } }),
+        h('select', { class: 'in', 'data-k': 'rol:ordem', 'aria-label': 'A ordem do rol', onchange: function () { rolOrdem = this.value; pintar(); } },
+          [['cargo', 'Pelo cargo'], ['nome', 'Pelo nome'], ['resp', 'Pelo respeito']].map(([k, n]) => h('option', { value: k, text: n, selected: rolOrdem === k })))) : null,
+      ms.length ? tabelaDoRol(x, ms, linha, cal, bib) : h('p', { class: 'vazio-p', text: 'Ninguém no clã ainda. “+ Membro” anota alguém, com ou sem cargo.' }),
+      ms.length ? h('label', { class: 'field rol-mot' }, h('span', { text: 'Motivo da próxima mudança de respeito (vai para o histórico)' }), motivoEl('membro', 'Motivo (opcional)')) : null,
       h('p', { class: 'ajuda', text: 'A idade conta pelo calendário do mundo' + (cal.mapa ? ' (' + cal.mapa + ')' : ' (crie um mapa no Mapa-múndi para a data de hoje)') + ' e cresce sozinha. Quem é uma ficha usa o nome e o aniversário dela. ' + (c.jogadores ? 'Os jogadores veem o rol.' : 'Os jogadores veem o rol se você marcar “Membros”.') }));
+  }
+  /* (lote 62) O rol em tabela: cada membro numa linha só (a foto, o nome, a raça e a classe, a idade, o cargo e o respeito,
+     com − e +); clicar na linha (ou no ✎) abre embaixo os campos para mudar — um aberto por vez. */
+  function tabelaDoRol(x, ms, linha, cal, bib) {
+    const c = x.c, id = x.id, nm = nomes(), sem = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const ordemCargo = new Map(); { const cs = N.normCargos(c.cargos); let n = 0; const anda = k => { ordemCargo.set(k, n++); for (const f of N.filhos(cs, k)) anda(f); }; anda('lider'); }
+    const b = sem(rolBusca).trim();
+    let l = ms.filter(m => !b || sem([quemE(m.pessoa).nome, quemDoRol(m, bib), m.cargoNome || 'sem cargo'].join(' ')).includes(b));
+    const nomeDe = m => quemE(m.pessoa).nome;
+    if (rolOrdem === 'nome') l = l.slice().sort((p, q) => nomeDe(p).localeCompare(nomeDe(q), 'pt-BR'));
+    else if (rolOrdem === 'resp') l = l.slice().sort((p, q) => q.pessoa.resp - p.pessoa.resp || nomeDe(p).localeCompare(nomeDe(q), 'pt-BR'));
+    else l = l.slice().sort((p, q) => (p.cargo ? ordemCargo.get(p.cargo) : 1e4) - (q.cargo ? ordemCargo.get(q.cargo) : 1e4));
+    if (rolAberto && !ms.some(m => m.pid === rolAberto)) rolAberto = null;
+    const ir = (m, n) => { const q = quemE(m.pessoa); mudarCla(id, 'mudar o respeito de ' + q.nome, y => trocar(y, N.mudarMembro(y, m.pid, n, usarMotivo('membro'), agora(), q.nome))); };
+    const abrirL = pid => { rolAberto = rolAberto === pid ? null : pid; pintar(); };
+    if (!l.length) return h('p', { class: 'vazio-p', 'data-k': 'rol:nada', text: 'Ninguém com “' + rolBusca.trim() + '” no rol.' });
+    return h('div', { class: 'rol-tab', role: 'table', 'aria-label': 'O rol do clã' },
+      h('div', { class: 'rt-l rt-cab', role: 'row' }, ['', 'Nome', 'Raça e classe', 'Idade', 'Cargo', 'Respeito', ''].map(t => h('span', { role: 'columnheader', text: t }))),
+      l.map(m => {
+        const q = quemE(m.pessoa), v = m.pessoa.resp, aberto = TUDO || rolAberto === m.pid, sv = m.dados && m.dados.sold ? soldadoDe(id, m.dados.sold) : null;
+        return h('div', { class: 'rol-grupo' + (aberto ? ' aberto' : ''), 'data-rolg': m.pid },
+          h('div', { class: 'rt-l', role: 'row', 'data-rol-l': m.pid, onclick: ev => { if (!ev.target.closest('button,input,select')) abrirL(m.pid); } },
+            h('span', { class: 'rt-av' }, avDe(c, m.pid, q)),
+            h('span', { class: 'rt-nm' }, h('b', { text: q.nome }), m.pessoa.pc ? h('small', { text: 'ficha' + (q.de ? ' · ' + q.de : '') }) : sv ? h('small', { text: 'soldado · ' + sv.u.nome }) : null),
+            h('span', { class: 'rt-rc', text: quemDoRol(m, bib) || '—' }),
+            h('span', { class: 'rt-id' }, idadeEl(m, cal, true)),
+            h('span', { class: 'rt-cg', text: m.cargoNome || 'sem cargo' }),
+            h('span', { class: 'rt-rs' },
+              h('button', { type: 'button', class: 'ib leve', 'data-k': 'mb:menos:' + m.pid, 'aria-label': 'Menos respeito para ' + q.nome, disabled: v <= -N.NIVEL_MAX, onclick: () => ir(m, v - 1) }, '−'),
+              h('span', { class: 'v ' + tom(v), 'data-k': 'mb:v:' + m.pid, text: N.nivelTxt(nm, 'membro', v) }),
+              h('button', { type: 'button', class: 'ib leve', 'data-k': 'mb:mais:' + m.pid, 'aria-label': 'Mais respeito para ' + q.nome, disabled: v >= N.NIVEL_MAX, onclick: () => ir(m, v + 1) }, '+')),
+            h('button', { type: 'button', class: 'ib leve rol-abre', 'data-k': 'rol:ed:' + m.pid, 'aria-expanded': String(aberto), title: aberto ? 'Fechar' : 'Mudar os dados', 'aria-label': (aberto ? 'Fechar ' : 'Mudar os dados de ') + q.nome, onclick: () => abrirL(m.pid) }, aberto ? '▴' : '✎')),
+          aberto ? h('div', { class: 'rol-edita' }, linha(m)) : null);
+      }));
   }
   function novoMembroDlg(x) {
     const c = x.c, id = x.id, cs = N.normCargos(c.cargos), bib = bibCla(), cal = calCla(), C = window.TC && window.TC.calendario;
@@ -1453,6 +1529,8 @@
     const nivel = h('input', { class: 'in', type: 'number', min: 0, max: N.MAX.nivel, step: 1, value: String(k ? k.nivel : 0), 'data-k': 'dl:nivel', 'aria-label': 'Nível', style: 'width:100px' });
     const efeito = h('textarea', { class: 'in', rows: 3, maxlength: N.MAX.efeito, 'data-k': 'dl:efeito', value: k ? k.efeito : '', placeholder: 'O que ela faz pelo clã agora', 'aria-label': 'Efeito' });
     const efeitoNovo = h('textarea', { class: 'in', rows: 2, maxlength: N.MAX.efeito, 'data-k': 'dl:efeito-novo', value: k ? k.prox.efeito : '', placeholder: 'Opcional: o efeito que passa a valer no próximo nível', 'aria-label': 'Efeito novo' });
+    // (lote 62) as etiquetas (para filtrar as construções): separadas por vírgula, até 4
+    const tagsEl = h('input', { class: 'in', type: 'text', maxlength: 110, 'data-k': 'dl:tags', value: k && k.tags ? k.tags.join(', ') : '', placeholder: 'Ex.: defesa, economia', 'aria-label': 'Etiquetas' });
     const icones = h('div', { class: 'escolhas', role: 'group', 'aria-label': 'Ícone' });
     const pintarIcones = () => icones.replaceChildren(...N.ICONES.map(i => h('button', { type: 'button', class: 'escolha', 'data-ico': i.id, title: i.nome, 'aria-label': i.nome, 'aria-pressed': String(ico === i.id), onclick: () => { ico = i.id; pintarIcones(); } }, icone(i.d, 22))));
     const listaCusto = h('div', { class: 'custo-l', 'data-k': 'dl:custo' });
@@ -1496,7 +1574,7 @@
           y.recursos.lista.push(r); criados.push(r.nome);
           return { rec: r.id, nome: r.nome, qtd: c.qtd };
         }).filter(Boolean);
-        return { nome: n, ico, nivel: Math.max(0, Math.min(N.MAX.nivel, Math.trunc(Number(nivel.value) || 0))), efeito: efeito.value, prox: { custo: lista.filter((c, i) => lista.findIndex(z => z.rec === c.rec) === i), efeito: efeitoNovo.value } };
+        return { nome: n, ico, nivel: Math.max(0, Math.min(N.MAX.nivel, Math.trunc(Number(nivel.value) || 0))), efeito: efeito.value, prox: { custo: lista.filter((c, i) => lista.findIndex(z => z.rec === c.rec) === i), efeito: efeitoNovo.value }, tags: N.normTags(tagsEl.value) };
       };
       const novosTxt = () => (criados.length ? ' ' + (criados.length === 1 ? 'Recurso novo' : 'Recursos novos') + ' na lista do clã (com 0): ' + criados.join(', ') + '.' : '');
       if (k) { if (mudarCla(id, 'mudar ' + k.nome, y => { const z = y.construcoes.find(w => w.id === k.id); if (!z) return false; Object.assign(z, montar(y)); }) && criados.length) avisoDesfazer(k.nome + ' mudou.' + novosTxt()); }
@@ -1512,6 +1590,7 @@
         h('div', { class: 'row', style: 'align-items:flex-end' }, h('label', { class: 'field', style: 'flex:1 1 220px' }, h('span', { text: 'Nome' }), nome), h('label', { class: 'field' }, h('span', { text: 'Nível' }), nivel)),
         h('div', { class: 'field' }, h('span', { text: 'Ícone' }), icones),
         h('label', { class: 'field' }, h('span', { text: 'Efeito' }), efeito),
+        h('label', { class: 'field' }, h('span', { text: 'Etiquetas (separadas por vírgula, até 4)' }), tagsEl),
         h('fieldset', { class: 'cartao', style: 'margin:0' }, h('legend', { style: 'font-weight:600;color:var(--fg-2);padding:0 6px', text: 'O próximo nível' }),
           h('div', { class: 'field' }, h('span', { text: 'Custo (sai do cofre do clã ao subir)' }), listaCusto),
           h('label', { class: 'field' }, h('span', { text: 'Efeito novo' }), efeitoNovo))),
@@ -1659,6 +1738,15 @@
     docs: () => (naMesa ? D.todas() : Object.keys(local).map(id => ({ id, dados: local[id] }))),
     naMesa: () => naMesa, sedeAberta: () => !!sedeAberta, podeDesfazer: () => pilha.length > 0, desfazer: () => desfazer(),
     pedirTexto: (titulo, rotulo, valor) => new Promise(res => pedirNome(titulo, rotulo, valor, 'Salvar', res)),
+    // (lote 62) as cenas da mesa (as do mestre: o id e o nome) e a janela de escolher uma
+    cenasDaMesa: () => (naMesa ? D.todas() : []).map(l => { const m = typeof l.id === 'string' ? /^cena:(?!pub:|pedido:)([A-Za-z0-9_-]{1,60}):m$/.exec(l.id) : null; return m && !l.apagado && l.dono_id == null && ehObj(l.dados) ? { id: m[1], nome: String(l.dados.name || 'Cena').slice(0, 60) } : null; })
+      .filter(Boolean).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    escolherCena: (lista, atual, titulo) => new Promise(res => {
+      const sel = h('select', { class: 'in', 'data-k': 'dl:cena', 'aria-label': 'A cena' }, lista.map(x => h('option', { value: x.id, text: x.nome, selected: x.id === atual })));
+      abrir('', [h('h2', { text: titulo || 'Ligar a uma cena' }), h('div', { class: 'corpo' }, h('p', { class: 'ajuda', text: 'As cenas que você já fez nas Cenas, por nome.' }), sel),
+        pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: () => { const x = lista.find(y => y.id === sel.value); fechar(); res(x || null); } }, 'Ligar'))], () => res(null));
+      sel.focus();
+    }),
   };
   const SedeUI = window.ClaSedeUI && window.TC && window.TC.sede ? window.ClaSedeUI(kitSede) : null;
   const Construtor = SedeUI && window.ClaConstrutor ? window.ClaConstrutor(kitSede) : null;
@@ -1697,7 +1785,7 @@
     pintar();
   }
   if (DEBUG) window.__cla = { N, get naMesa() { return naMesa; }, get mestre() { return mestre; }, get pronto() { return pronto; }, get pilha() { return pilha.map(p => p.rotulo); },
-    get sel() { return sel; }, get vista() { return vista; }, get sedeAberta() { return sedeAberta; }, get sedeUI() { return SedeUI; }, abrirSede, get aba() { return aba; }, get ocupado() { return ocupado; }, doc: id => copia(doc(id)), pub: id => copia(pubDe(id)), pintar, desfazer: () => desfazer() };
+    get sel() { return sel; }, get vista() { return vista; }, get abaM() { return abaM; }, irAba: k => trocarAbaM(k), get sedeAberta() { return sedeAberta; }, get sedeUI() { return SedeUI; }, abrirSede, get aba() { return aba; }, get ocupado() { return ocupado; }, doc: id => copia(doc(id)), pub: id => copia(pubDe(id)), pintar, desfazer: () => desfazer() };
   partida().catch(e => {
     console.error(e);
     $('nada').hidden = false;

@@ -42,7 +42,7 @@ function png(w, h, cor) {
   const t = await start({ net: true });
   const c = contas();
   { const d = await t.device({ name: 'prep' }); await d.page.goto(t.base + 'src/tests/vazio.html'); await entrar(d.page, c.mestre, c.senha, 'Bruno'); await entrar(d.page, c.jog1, c.senha, 'Dalmo'); await d.ctx.close(); }
-  const M = (await t.device({ name: 'mestre', seed: { 'tinycats:aba': 'mundo' } })).page;
+  const M = (await t.device({ name: 'mestre', seed: { 'tinycats:aba': 'mundo', 'tinycats:cla:tudo': '1' } })).page;
   const J = (await t.device({ name: 'jogador', w: 1250, h: 820, seed: { 'tinycats:aba': 'mundo' } })).page;
   const w = (ms, p) => (p || M).waitForTimeout(ms);
   const quadro = async (p, re) => { for (let i = 0; i < 60; i++) { const f = p.frame({ url: re }); if (f) return f; await p.waitForTimeout(250); } return null; };

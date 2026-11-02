@@ -31,7 +31,7 @@ const Interior = (() => {
     cabana: { n: 'Cabana', salas: ['cabana'], min: 1, so: true, fogo: true, planta: o => Tribo.planta(o) },
     palafita: { n: 'Palafita', salas: ['cabana'], min: 1, so: true, fogo: true, planta: o => Tribo.planta(o) },
   };
-  const DO_VILAREJO = { capela: 'templo' };
+  const DO_VILAREJO = { capela: 'templo', estalagem: 'taverna', celeiro: 'armazem', moinho: 'armazem', estabulo: 'armazem', torre: 'quartel', guarita: 'quartel', banhos: 'casa', guilda: 'loja', escola: 'casa' };      // (lote 61: os prédios novos usam a planta mais parecida)
   const TIPOS_I = Object.keys(PLANTAS).filter(k => !PLANTAS[k].so);      // (o navio e as moradias da tribo só aparecem no marcador deles)
   // os móveis de cada sala, na ordem em que entram (o tapete que vem primeiro fica por baixo da mesa); com "#", uma
   // arrumação: o estrado do altar, a colunata, os bancos e a pia de água benta da nave; o balcão no fundo da taverna e

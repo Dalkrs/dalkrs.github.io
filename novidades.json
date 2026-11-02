@@ -2,6 +2,61 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.02-1",
+      "data": "2026-11-02",
+      "titulo": "Vilas em festa, masmorras novas e o painel do clã",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Clã: o painel ficou em abas (Geral, Membros, Cofre e obras, Sede e tropas, Relações e histórico), com os números do clã no cabeçalho. A aba aberta fica lembrada."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Clã: no cofre, escreva +50 para somar, -20 para tirar ou um número para trocar."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Clã: o rol virou uma tabela, uma linha por membro, com o respeito de cada um; clique na linha para mudar os dados. Dá para buscar e ordenar (pelo cargo, pelo nome ou pelo respeito)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã: as construções em linhas, com a barra do que o cofre já tem, a estrela de favorita, etiquetas e os filtros \u201cDá para subir\u201d, \u201cFavoritas\u201d e por etiqueta; a ordem pode ser de A a Z ou pelo nível."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Clã: a sede pode ficar ligada a uma cena das Cenas. O mestre escolhe a cena; o botão \u201cAbrir a cena\u201d leva até ela, também no salão."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas, Vilarejo: formatos novos (beira de estrada, encruzilhada, na encosta em patamares e palafitas sobre a água) e prédios a mais (moinho, celeiro e campos; estalagem e estábulo; torre de vigia e guaritas)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas, Vilarejo e Cidade: a Situação (dia de feira, festa, atacada ou abandonada) e os Detalhes pelo chão (pouco, normal ou muito). Na cidade, também os banhos, a guilda e a escola."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas, Masmorra: quatro tipos novos (caverna de gelo, vulcânica, colmeia de fungos e tumba do deserto), as salas especiais (o enigma, o santuário com a fonte, a ponte sobre o abismo e a sala do chefe em qualquer nível) e as armadilhas escondidas, com o efeito no nome."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas, Masmorra: variações do traçado — salas redondas e octogonais, um rio subterrâneo com pontes e vaus, desníveis e corredores irregulares com becos."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: objetos novos — escombros, varal, barricada, palco, mesa comprida, casulo, fonte sagrada e as armadilhas de placa, dardos, fosso com espetos e lâmina de pêndulo."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.01-10",
       "data": "2026-11-01",
       "titulo": "Membros do clã ligados às fichas e às tropas",

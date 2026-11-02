@@ -36,7 +36,7 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
   let lam = null, varo = null;
 
   await passo('a página sozinha', async () => {
-    await P.goto(t.base + 'cla/?debug', { waitUntil: 'load' });
+    await P.goto(t.base + 'cla/?debug&tudo', { waitUntil: 'load' });
     await P.waitForFunction(() => window.__cla && __cla.pronto, null, { timeout: 15000 }); await espera(300);
     ok(await A(() => __cla.mestre && !__cla.naMesa && __cla.vista === 'mestre') && await P.locator('#vistas').isVisible() && await P.locator('#mestre').isVisible(),
       'sem mesa, quem abre o Clã é o próprio mestre: o painel (Mestre) e o salão');
@@ -191,9 +191,9 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
     const f = c.construcoes[0];
     ok(f && f.nome === 'Forja' && f.ico === 'forja' && f.nivel === 2 && f.prox.custo.map(x => x.nome + ' ' + x.qtd).join() === 'Ferro 45,Madeira 20' && f.prox.efeito === 'Armas e armaduras pela metade do preço.',
       'a Forja, nível 2, com o custo do nível 3 (45 Ferro, 20 Madeira) e o efeito novo');
-    ok(await k(`cons:sobe:${f.id}`).isDisabled() && /faltam 15 Ferro/.test(await P.locator(`[data-cons="${f.id}"]`).innerText()), 'sem Ferro bastante: "faltam 15 Ferro" e o botão desativado');
+    ok(await k(`cons:sobe:${f.id}`).isDisabled() && /Faltam 15 Ferro/.test(await P.locator(`[data-cons="${f.id}"]`).innerText()), 'sem Ferro bastante: "faltam 15 Ferro" e o botão desativado');
     await P.fill(`[data-k="rec:qtd:${fe}"]`, '100'); await k(`rec:qtd:${fe}`).dispatchEvent('change'); await espera(200);
-    ok(!(await k(`cons:sobe:${f.id}`).isDisabled()) && /Subir de nível \(−45 Ferro, −20 Madeira\)/.test(await k(`cons:sobe:${f.id}`).innerText()), 'com recursos: o botão diz o que vai sair');
+    ok(!(await k(`cons:sobe:${f.id}`).isDisabled()) && /\(−45 Ferro, −20 Madeira\)/.test(await k(`cons:sobe:${f.id}`).getAttribute('title')), 'com recursos: o botão diz o que vai sair');
     await clicar(`[data-k="cons:sobe:${f.id}"]`);
     c = await cla();
     ok(c.construcoes[0].nivel === 3 && c.construcoes[0].efeito === 'Armas e armaduras pela metade do preço.' && c.recursos.lista[0].qtd === 55 && c.recursos.lista[1].qtd === 19
@@ -285,7 +285,7 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
     const pid = (await cla()).cargos.lider.gente[0].id;
     await clicar(`[data-k="mb:mais:${pid}"]`); await clicar(`[data-k="mb:mais:${pid}"]`); await clicar(`[data-k="mb:mais:${pid}"]`);
     c = await cla();
-    ok(c.cargos.lider.gente[0].resp === 3 && c.hist[0].tipo === 'membro' && c.hist[0].de === 0 && c.hist[0].para === 3 && /\+3 · Estimado/.test(await P.locator(`[data-membro="${pid}"]`).innerText())
+    ok(c.cargos.lider.gente[0].resp === 3 && c.hist[0].tipo === 'membro' && c.hist[0].de === 0 && c.hist[0].para === 3 && /\+3 · Estimado/.test(await P.locator(`[data-k="mb:v:${pid}"]`).innerText())
       && (await P.locator('[data-cargo="lider"] .resp').innerText()) === '+3', 'o respeito do líder: +3 (Estimado), também no cartão do cargo');
     await foto('cla-2-painel');
   });

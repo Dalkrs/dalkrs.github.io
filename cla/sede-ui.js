@@ -444,22 +444,45 @@ window.ClaSedeUI = function (kit) {
     TC.ponte.ir('cenas', { sede: { cla: id, nome: c.nome, sede: s, ir, brasao: brasaoParaCenas(c) } });
   }
 
+  /* (lote 62) A cena ligada à sede: um mapa que o mestre já fez nas Cenas. "Abrir a cena" abre as Cenas nela (para quem
+     joga, as Cenas mostram a cena que está no ar). */
+  const casca = () => !!(window.TC && TC.ponte && TC.ponte.ir && TC.ponte.naCasca);
+  const abrirCena = s => { if (!casca()) { toast('As Cenas abrem dentro do site.'); return; } TC.ponte.ir('cenas', { cena: s.cena.id }); };
+  async function ligarCena(id) {
+    const lista = kit.cenasDaMesa ? kit.cenasDaMesa() : [];
+    if (!lista.length) { toast(kit.naMesa() ? 'A mesa ainda não tem cenas: crie o mapa da sede nas Cenas.' : 'As cenas da mesa aparecem quando você está numa mesa.'); return; }
+    const s = sedeDe(id), x = await kit.escolherCena(lista, s.cena ? s.cena.id : null, 'Ligar a sede a uma cena');
+    if (!x) return;
+    if (mudar(id, 'ligar a sede à cena ' + x.nome, y => { y.cena = { id: x.id, nome: x.nome }; })) kit.avisoDesfazer('A sede ficou ligada à cena ' + x.nome + '.');
+  }
+  function linhaDaCena(id, s, mestra) {
+    if (!s.cena && !mestra) return null;
+    const viva = s.cena && (!kit.naMesa() || !mestra || (kit.cenasDaMesa ? kit.cenasDaMesa() : []).some(x => x.id === s.cena.id));
+    return h('div', { class: 'sede-cena', 'data-k': 'sede:cena' },
+      s.cena ? h('span', null, 'Cena ligada: ', h('b', { text: s.cena.nome }), viva ? null : h('small', { class: 'falta', text: ' (não está mais nas Cenas)' })) : h('span', { class: 'ajuda', text: 'Nenhuma cena ligada.' }),
+      s.cena ? h('button', { type: 'button', class: 'btn sm pri', 'data-k': 'sede:cena:abrir', disabled: !viva, title: mestra ? 'Abre as Cenas nesta cena' : 'Abre as Cenas (a sede aparece quando o mestre a puser no ar)', onclick: () => abrirCena(s) }, 'Abrir a cena') : null,
+      mestra ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'sede:cena:ligar', onclick: () => ligarCena(id) }, s.cena ? 'Trocar a cena…' : 'Ligar a uma cena…') : null,
+      mestra && s.cena ? h('button', { type: 'button', class: 'btn sm leve', 'data-k': 'sede:cena:x', onclick: () => { if (mudar(id, 'desligar a cena da sede', y => { delete y.cena; })) kit.avisoDesfazer('A sede não está mais ligada a uma cena.'); } }, 'Desligar') : null);
+  }
+
   /* ================= quem joga: a planta, para ver ================= */
   function parteDoSalao(claId, nome) {
     const s = sedeDe(claId);
-    if (!existe(claId) || (!s.predios.length && !s.estruturas.length)) return h('p', { class: 'vazio-p', 'data-k': 'sem-sede', text: 'A sede ainda não tem prédios.' });
+    if (!existe(claId) || (!s.predios.length && !s.estruturas.length)) return s.cena && existe(claId) ? h('div', { class: 'sede-ver', 'data-k': 'sede-ver' }, linhaDaCena(claId, s, false)) : h('p', { class: 'vazio-p', 'data-k': 'sem-sede', text: 'A sede ainda não tem prédios.' });
     ui.sel = null;
     return h('div', { class: 'sede-ver', 'data-k': 'sede-ver' },
+      linhaDaCena(claId, s, false),
       h('p', { class: 'ajuda', text: S.resumo(s) + (s.lugar ? ' · em ' + (s.lugar.nome || 'um lugar do mapa') : '') }),
       h('div', { class: 'sede-mapa so-ver' }, desenho(s, { nome, k: 'sede-ver-svg' })),
       h('ul', { class: 'sede-lista' }, s.predios.map(p => h('li', { 'data-k': 'sv:' + p.id }, h('b', { text: p.nome }), ' · nível ' + p.nivel + ' · ' + p.planta.andares.map(a => S.nomeDoAndar(a.id)).join(', ')))));
   }
-  const temSede = claId => { const s = existe(claId) ? sedeDe(claId) : null; return !!s && (s.predios.length > 0 || s.estruturas.length > 0); };
+  const temSede = claId => { const s = existe(claId) ? sedeDe(claId) : null; return !!s && (s.predios.length > 0 || s.estruturas.length > 0 || !!s.cena); };
   // o cartão do clã no painel de quem mestra: o resumo e o botão que abre a Sede
   function cartao(x) {
     const s = sedeDe(x.id), tem = s.predios.length || s.estruturas.length;
     return h('div', { class: 'cartao', 'data-k': 'sec:sede' },
       h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Sede' }), h('button', { type: 'button', class: 'btn sm pri', 'data-k': 'sede:abrir', onclick: () => kit.abrirSede(x.id) }, tem ? 'Abrir a Sede' : 'Montar a Sede')),
+      linhaDaCena(x.id, s, true),
       tem ? h('div', { class: 'sede-mini', 'data-k': 'sede:mini', onclick: () => kit.abrirSede(x.id) }, desenho(s, { nome: x.c.nome, k: 'sede-mini-svg' })) : null,
       h('p', { class: 'ajuda', text: tem ? S.resumo(s) + (x.c.jogadores ? ' · os jogadores veem a planta.' : s.mostrar ? ' · os jogadores veem a planta.' : ' · só você vê.') : 'A planta da sede do clã: os prédios (ligados às construções), a muralha, as estradas. Vira cena nas Cenas, com o interior de cada prédio.' }));
   }

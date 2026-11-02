@@ -39,7 +39,7 @@ const local = j({ 'cla:c:cl_lobos': lobos, 'cla:c:cl_corvos': corvos });
   const tela = async (x, y) => A(([x, y]) => { const s = document.querySelector('[data-k="sede:mapa"] > svg'), r = s.getBoundingClientRect(), vb = s.viewBox.baseVal; return { x: r.left + x * 20 / vb.width * r.width, y: r.top + y * 20 / vb.height * r.height }; }, [x, y]);
   const clicarEm = async (x, y) => { const p = await tela(x, y); await P.mouse.click(p.x, p.y); await espera(250); };
 
-  await P.goto(t.base + 'cla/?debug', { waitUntil: 'load' });
+  await P.goto(t.base + 'cla/?debug&tudo', { waitUntil: 'load' });
   await P.waitForFunction(() => window.__cla && __cla.pronto, null, { timeout: 15000 }); await espera(300);
 
   await passo('o cartão e a tela', async () => {

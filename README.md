@@ -254,6 +254,51 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### O painel do clã em abas (lote 62)
+
+- **As abas** (`cla/cla.js`, `editorCla`): Geral, Membros, Cofre e obras, Sede e tropas, Relações e histórico
+  (`ABAS_M`, a aberta em `tinycats:cla:abaM`), presas embaixo do cabeçalho, que ganhou os números do clã (`cab:num`).
+  Nos testes de antes das abas, `?debug&tudo` (ou `tinycats:cla:tudo` = `1`, com `?debug`) mostra as partes todas
+  juntas, com o rol aberto.
+- **O cofre**: a quantidade é um campo de texto; `ClaNucleo.lerQtd` lê "+50" (soma), "-20" (tira, até zero) e um número
+  (troca; o ponto dos milhares vale).
+- **O rol** (`tabelaDoRol`): uma linha por membro (a foto, o nome, a raça e a classe, a idade, o cargo e o respeito com
+  − e +, `mb:*`); a linha (ou `rol:ed:<pid>`) abre embaixo os campos de antes (`.rol-ed`), um por vez. A busca
+  (`rol:busca`, sem acento) e a ordem (`rol:ordem`). O cartão "Respeito dos membros" saiu (está na tabela).
+- **As construções**: uma linha cada, com a barra do custo (o recurso que mais falta), a estrela (`fav`), as etiquetas
+  (`tags`, até 4, `ClaNucleo.normTags`, no ✎), o filtro (`obra:f:*`) e a ordem (`obra:ordem`).
+- **A sede numa cena** (`tc/sede.js`, `cla/sede-ui.js`): `cena: { id, nome }` na sede. "Ligar a uma cena…" lista as
+  cenas da mesa (os documentos `cena:<id>:m` do mestre, pelo `name`); "Abrir a cena" chama `TC.ponte.ir('cenas',
+  { cena })`. No salão, a parte Sede aparece também só com a cena.
+- Testes: `cla-painel` (as abas, o cofre, as construções, o rol), `cla-cena.rede` (ligar, abrir, desligar, o salão).
+
+### Povoados e masmorras variados nas Cenas (lote 61)
+
+- **A situação** (`src/cenas/src/js/10c9-situacao.js`, `Situacao`): uma conta pura, com o sorteio dela, que o Vilarejo e a
+  Cidade chamam no fim do `gerar` com a vista deles (`{ W, H, seed, casas, ruas, praca, livre, naRua, dentro }`). Põe em
+  `p.sit` os objetos (`itens`), o desenho do chão (`chao`: lama, cinza, mato, fumaça), as bandeirinhas (`formas`) e as
+  ruínas (`ruinas[índice da casa]`: queimada, buracos nas paredes, a porta arrombada aberta). `Situacao.paredes` tira os
+  buracos das paredes da casa; `pintarChao`/`pintarSobre` desenham; `montar` põe os objetos. Os detalhes pelo chão:
+  "pouco" corta metade dos enfeites; "muito" põe carroças, barris, varais, lenha, feno, cercas e um poço. Situação e
+  detalhe "normal" não fazem nada (o plano sai igual a antes). O bairro recortado da cidade leva a situação
+  (`Situacao.mover`).
+- **O Vilarejo** (`10d-vila.js`): `formato` (estrada e encruzilhada pelos portões do traçado; a encosta marca os muros de
+  arrimo antes das casas, com o relevo dos patamares e as escadas onde as ruas cruzam; as palafitas fazem a água depois
+  das casas, com as estacas e as pranchas até as passarelas) e `predios` (`lavoura`: celeiro, moinho e os campos;
+  `estalagem`: estalagem e estábulo, que a encruzilhada já traz; `vigia`: a torre e uma guarita na entrada de cada rua).
+- **Os prédios novos** (`10c2-estilos.js`): celeiro, moinho (redondo, com as pás desenhadas), estalagem, estábulo, torre,
+  guarita, banhos, guilda e escola, em todos os estilos; o interior deles usa a planta mais parecida (`10g-interior.js`).
+  A Cidade traz os três públicos com `publicos`.
+- **A Masmorra** (`10g2-masmorra.js`): os tipos `gelo`, `vulcanica` e `colmeia` (a caverna, com o lago de gelo ou de
+  lava e os detalhes do bioma do subsolo; a colmeia com as câmaras redondas, os casulos e as teias) e `tumba` (salas, com
+  a areia que escorre). `especiais` (enigma, fonte, ponte, chefe: os papéis das salas, ou as câmaras da caverna; o
+  enigma e a fonte deixam um marcador oculto com o texto; o chefe vira um token de dois quadrados e dois turnos),
+  `armadilhas` (placa com dardos e lâmina nos corredores retos, fosso numa sala, a parede falsa: a porta secreta com a
+  alavanca escondida ligada a ela) e `variantes` (redondas, rio, desnível, irregular), cada um com o sorteio dele.
+- **Os objetos novos** (`06b4-props-povo.js`): escombros, varal, barricada, palco, mesa comprida (grupo Vila e festa),
+  casulo, fonte sagrada e as armadilhas (placa de pressão, dardos, fosso com espetos, lâmina de pêndulo).
+- Testes: `src/cenas/test/lote61.js`.
+
 ### Lagos, praias, penhascos e desfiladeiros nas Cenas (lote 58)
 
 - **Os lugares novos** (`src/cenas/src/js/10fc-agua.js`, `AguaPenhasco`): o grupo "Água e penhasco" da janela "Gerar um

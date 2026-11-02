@@ -198,7 +198,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
     ok(fora.length === 0, 'sem erros inesperados no console');
     await t.close(); end(); return;
   }
-  const M = (await t.device({ name: 'mestre', w: 1440, h: 950, seed: { 'tinycats:aba': 'cla', 'tinycats-tour': '1' } })).page;
+  const M = (await t.device({ name: 'mestre', w: 1440, h: 950, seed: { 'tinycats:aba': 'cla', 'tinycats-tour': '1', 'tinycats:cla:tudo': '1' } })).page;
   const Dp = (await t.device({ name: 'dalmo', w: 1360, h: 900, seed: { 'tinycats:aba': 'cla', 'tinycats-tour': '1' } })).page;
   const Lp = (await t.device({ name: 'lia', w: 1360, h: 900, seed: { 'tinycats:aba': 'fichas', 'tinycats-tour': '1' } })).page;
   const w = (ms, p) => (p || M).waitForTimeout(ms);

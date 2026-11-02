@@ -415,6 +415,8 @@
       lugar: ehObj(d.lugar) && idOk(d.lugar.mapa) && idOk(d.lugar.marcador) ? { mapa: d.lugar.mapa, marcador: d.lugar.marcador, nome: texto(d.lugar.nome, 60), bioma: TERRENOS.some(([k]) => k === d.lugar.bioma) ? d.lugar.bioma : '' } : null,
       mostrar: d.mostrar === true, predios: [], estruturas: [],
     };
+    // (lote 62) a cena das Cenas ligada à sede (o mapa que o mestre já fez): o id e o nome dela
+    if (ehObj(d.cena) && typeof d.cena.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(d.cena.id)) out.cena = { id: d.cena.id, nome: texto(d.cena.nome, 60) || 'Cena' };
     const ids = new Set();
     for (const p of Array.isArray(d.predios) ? d.predios : []) {
       if (out.predios.length >= LIM.predios) break;

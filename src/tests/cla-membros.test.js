@@ -25,7 +25,7 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
   const pid = nome => A(n => { const N = window.ClaNucleo, m = N.membrosDe(__cla.doc('cla:c:' + __cla.sel)).find(x => x.pessoa.nome === n); return m ? m.pid : null; }, nome);
 
   await passo('o clã', async () => {
-    await P.goto(t.base + 'cla/?debug', { waitUntil: 'load' });
+    await P.goto(t.base + 'cla/?debug&tudo', { waitUntil: 'load' });
     await P.waitForFunction(() => window.__cla && __cla.pronto, null, { timeout: 15000 }); await espera(300);
     await clicar('[data-k="novo-cla"]');
     await P.fill('#dlg [data-k="dl:nome"]', 'Lâmina do Crepúsculo'); await clicar('#dlg [data-k="dl:sim"]');

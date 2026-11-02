@@ -62,6 +62,25 @@ const Estilos = (() => {
       casa: T([[5, 4], [4, 5], [5, 5]], 'lajes', ['cama', 'mesa', 'bau', 'braseiro'], 3, 1),
     },
   };
+  /* (lote 61) Os prédios novos, em todos os estilos (o chão do estilo): a lavoura (o celeiro e o moinho), a estalagem e o
+     estábulo, a vigia (a torre e a guarita) e os da cidade (os banhos, a guilda e a escola). O moinho é redondo e leva as
+     pás desenhadas por cima (enfeiteDaCasa). */
+  const PISO_EST = { comum: 'madeira', oriental: 'tatami', nordico: 'madeira', desertico: 'ladrilho', elfico: 'clara', anao: 'lajes' };
+  const PEDRA_EST = { comum: 'pedra', oriental: 'pedra', nordico: 'pedra', desertico: 'ladrilho', elfico: 'pedra', anao: 'lajes' };
+  for (const est of Object.keys(TIPOS)) {
+    const md = PISO_EST[est], pd = PEDRA_EST[est], oct = est === 'elfico' ? { forma: 'oct' } : null;
+    Object.assign(TIPOS[est], {
+      celeiro: T([[7, 5], [6, 5], [5, 7]], 'madeira', ['feno', 'feno', 'caixote', 'sacos', 'barril', 'feno', 'carrinho'], 6, 1),
+      moinho: T([[5, 5]], pd, ['sacos', 'sacos', 'caixote', 'barril'], 4, 1, { forma: 'oct', moinho: true }),
+      estalagem: T([[8, 6], [7, 6], [6, 8]], md, ['mesa', 'barril', 'quadroMissoes', 'mesa', 'cama', 'cama', 'cadeira', 'cama', 'lampiao', 'bau'], 9, 2, oct),
+      estabulo: T([[7, 4], [6, 4], [4, 7]], 'madeira', ['feno', 'cocho', 'feno', 'cocho', 'feno', 'barril'], 6, 0),
+      torre: T([[3, 3]], pd, ['escada', 'barril'], 2, 1, { vigia: true }),
+      guarita: T([[3, 3]], pd, ['banco', 'armas'], 2, 1),
+      banhos: T([[7, 6], [6, 6]], 'ladrilho', ['tina', 'tina', 'banco', 'braseiro', 'jarro', 'tina'], 5, 1),
+      guilda: T([[7, 6], [8, 5]], md, ['mesa', 'quadroMissoes', 'estante', 'mesa', 'cadeira', 'cofre', 'cadeira', 'estandarte'], 7, 2),
+      escola: T([[7, 5], [6, 6]], md, ['atril', 'banco', 'banco', 'estante', 'banco', 'mesa'], 6, 2),
+    });
+  }
   const tipos = est => TIPOS[valido(est)];
   // a forma de uma casa: a casa redonda (cantos cortados) só a partir de 5 × 5; menor que isso fica retângulo
   const formaDe = (def, w, h) => (def.forma === 'oct' && w >= 5 && h >= 5 ? 'oct' : 'ret');
@@ -407,6 +426,28 @@ const Estilos = (() => {
   function enfeiteDaCasa(g, k, c, rnd, est, def) {
     const pt = k.porta;
     if (!pt) return;
+    // (lote 61) o moinho: as quatro pás de lona por cima do telhado redondo; a torre de vigia: o parapeito com as ameias
+    if (def && def.moinho) {
+      const mx = (k.x + k.w / 2) * c, my = (k.y + k.h / 2) * c, L = Math.max(k.w, k.h) * 0.85 * c, a0 = 0.35 + rnd() * 0.6;
+      g.save(); g.translate(mx, my);
+      for (let i = 0; i < 4; i++) {
+        g.save(); g.rotate(a0 + i * Math.PI / 2);
+        g.fillStyle = 'rgba(0,0,0,0.28)'; g.fillRect(c * 0.12, -c * 0.12 + c * 0.1, L, c * 0.5);
+        g.fillStyle = '#4a3220'; g.fillRect(0, -c * 0.06, L, c * 0.12);
+        g.fillStyle = 'rgba(232,222,196,0.92)'; g.fillRect(c * 0.4, c * 0.06, L - c * 0.5, c * 0.36);
+        g.strokeStyle = '#5a4028'; g.lineWidth = Math.max(1, c * 0.03); for (let u = 0.4; u < L / c - 0.1; u += 0.45) { g.beginPath(); g.moveTo(u * c, c * 0.06); g.lineTo(u * c, c * 0.42); g.stroke(); }
+        g.restore();
+      }
+      g.fillStyle = '#3a2614'; g.beginPath(); g.arc(0, 0, c * 0.22, 0, TAU2); g.fill();
+      g.restore();
+      return;
+    }
+    if (def && def.vigia) {
+      g.save(); g.strokeStyle = 'rgba(30,26,22,0.85)'; g.lineWidth = Math.max(1.5, c * 0.12);
+      g.strokeRect((k.x + 0.25) * c, (k.y + 0.25) * c, (k.w - 0.5) * c, (k.h - 0.5) * c);
+      g.fillStyle = '#7d828c'; for (let u = 0; u < k.w; u += 0.75) for (const y of [k.y + 0.1, k.y + k.h - 0.35]) g.fillRect((k.x + u + 0.1) * c, y * c, c * 0.3, c * 0.25);
+      g.restore();
+    }
     const cx = (pt.x1 + pt.x2) / 2, cy = (pt.y1 + pt.y2) / 2, dx = pt.lado === 'o' ? -1 : pt.lado === 'l' ? 1 : 0, dy = pt.lado === 'n' ? -1 : pt.lado === 's' ? 1 : 0;
     if (valido(est) === 'oriental' && def && def.torii) {
       // o torii: duas colunas vermelhas e as duas vigas, um pouco à frente da porta

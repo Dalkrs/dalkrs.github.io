@@ -130,7 +130,7 @@ const SHOTS = process.env.FOTOS;
     __tc.normalizeScene(sc); out.norm = sc.tokens[0].gera;
     return out;
   });
-  ok(j(pl.tipos) === j(['pedra', 'caverna', 'cripta', 'mina', 'templo', 'esgoto', 'torre', 'laboratorio', 'fortaleza', 'ruinas', 'covil', 'navio']), 'os doze tipos de masmorra');
+  ok(j(pl.tipos) === j(['pedra', 'caverna', 'cripta', 'mina', 'templo', 'esgoto', 'torre', 'laboratorio', 'fortaleza', 'ruinas', 'covil', 'navio', 'gelo', 'vulcanica', 'colmeia', 'tumba']), 'os doze tipos de masmorra (e os quatro do lote 61)');
   ok(!pl.ruins.length, 'os oito novos, nos três tamanhos e nas três larguras: sempre com a subida, a descida e as salas; o mesmo sorteio dá o mesmo nível — ' + pl.ruins.slice(0, 4).join('; '));
   ok(pl.c3 > pl.c1 * 1.8 && pl.tres && /corredores de 3 quadrados/.test(pl.resumo), 'a largura 3: os corredores com três casas de largura (' + pl.c1 + ' → ' + pl.c3 + ' casas), e o resumo diz — ' + pl.resumo);
   ok(/^Navio naufragado · nível 1 · 46 × 34 quadrados · \d+ compartimentos/.test(pl.navio), 'o navio: os compartimentos no resumo — ' + pl.navio);

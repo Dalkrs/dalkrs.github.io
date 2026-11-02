@@ -24,7 +24,7 @@ const claDe = lider => C.normCla({ v: 1, nome: 'Clã Garret', jogadores: true, v
   const c = contas();
   { const d = await t.device({ name: 'prep' }); await d.page.goto(t.base + 'src/tests/vazio.html'); await entrar(d.page, c.mestre, c.senha, 'Bruno'); await entrar(d.page, c.jog1, c.senha, 'Dalmo'); await entrar(d.page, c.jog2, c.senha, 'Lia'); await d.ctx.close(); }
   const errosDeFora = () => t.errs.filter(e => !/^\[prep\]/.test(e) && !/^\[sonda-/.test(e) && !/Multiple GoTrueClient instances/.test(e) && !/status of (400|401|403|409)/.test(e));
-  const M = (await t.device({ name: 'mestre', w: 1440, h: 950, seed: { 'tinycats:aba': 'cla', 'tinycats-tour': '1' } })).page;
+  const M = (await t.device({ name: 'mestre', w: 1440, h: 950, seed: { 'tinycats:aba': 'cla', 'tinycats-tour': '1', 'tinycats:cla:tudo': '1' } })).page;
   const Dp = (await t.device({ name: 'dalmo', w: 1440, h: 950, seed: { 'tinycats:aba': 'cla', 'tinycats-tour': '1' } })).page;
   const Lp = (await t.device({ name: 'lia', w: 1360, h: 950, seed: { 'tinycats:aba': 'fichas', 'tinycats-tour': '1' } })).page;
   const w = (ms, p) => (p || M).waitForTimeout(ms);

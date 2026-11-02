@@ -47,11 +47,11 @@ const BRASAO = { cores: ['#5b3f8a', '#e8eaf0'], div: 'cortado', f: 'M6 6H94V58C9
     await ev(() => { const { Store, App, setSel } = __tc; Store.tx('preparar', () => Store.scn({ cols: 30, rows: 20, light: 'penumbra' })); setSel([]); App.view.z = 1; __tc.Render.fit(); });
     await page.keyboard.press('j'); await w(250);
     const cats = await page.locator('#o-oc .seg-b').allInnerTexts();
-    ok(cats.length === 14 && j(cats.slice(4, 8)) === j(['Masmorra e chefe', 'Clã e sede', 'Linhagens', 'Viagem e acampamento']), 'a barra da ferramenta Objetos tem as categorias (14 desde o lote 53; 13 desde o lote 48): ' + cats.join(' / '));
+    ok(cats.length === 15 && j(cats.slice(4, 8)) === j(['Masmorra e chefe', 'Clã e sede', 'Linhagens', 'Viagem e acampamento']), 'a barra da ferramenta Objetos tem as categorias (15 desde o lote 61; 14 desde o lote 53; 13 desde o lote 48): ' + cats.join(' / '));
     for (const [g, nome] of [['masmorra', 'Masmorra e chefe'], ['cla', 'Clã e sede'], ['linhagem', 'Linhagens'], ['viagem', 'Viagem']]) {
       await page.locator('#o-oc .seg-b', { hasText: nome }).click(); await w(150);
       const ids = await page.locator('.o-obj').evaluateAll(l => l.map(b => b.id.replace('o-obj-', '')));
-      ok(j(ids) === j(NOVOS[g]), nome + ': os oito objetos — ' + ids.join(', '));
+      ok(j(ids.filter(x => !['casulo', 'fonteSagrada'].includes(x))) === j(NOVOS[g]), nome + ': os oito objetos (e, na masmorra, o casulo e a fonte do lote 61) — ' + ids.join(', '));
       if (g === 'linhagem') await foto('l39-barra-linhagens');
     }
     // pôr o cristal e o candelabro: o cristal brilha parado, a chama do candelabro tremula

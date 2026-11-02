@@ -18,7 +18,7 @@ const j = JSON.stringify;
   let id = null;
 
   await passo('o montador do brasão', async () => {
-    await P.goto(t.base + 'cla/?debug', { waitUntil: 'load' });
+    await P.goto(t.base + 'cla/?debug&tudo', { waitUntil: 'load' });
     await P.waitForFunction(() => window.__cla && __cla.pronto, null, { timeout: 15000 }); await espera(300);
     await P.locator('[data-k="novo-cla"]').click(); await espera(200);
     await P.locator('#dlg [data-k="dl:nome"]').fill('Lâmina do Crepúsculo'); await P.locator('#dlg [data-k="dl:sim"]').click(); await espera(400);
