@@ -283,7 +283,13 @@
   function lugaresQueProduzem(m) {
     if (cacheLug && cacheLug.has(m)) return cacheLug.get(m);
     const N = NN(), P = N.PRODUCAO_ICONE || {}, out = [];
-    for (const o of objsDe(m)) if (ehObj(o) && o.k === 'm' && P[o.ic] && ehObj(o.pr) && Object.keys(o.pr).length) out.push({ o, r: N.regiaoEm(m, o.x, o.y) });
+    // (lote 64) com a marca de conquista, qualquer marcador produz — mas só depois de conquistado, e para quem conquistou
+    // (conq: a facção); sem a marca, como antes: os lugares que produzem, para quem controla a região
+    for (const o of objsDe(m)) {
+      if (!ehObj(o) || o.k !== 'm' || !ehObj(o.pr) || !Object.keys(o.pr).length) continue;
+      if (ehObj(o.conq)) { if (o.conq.ok) out.push({ o, r: N.regiaoEm(m, o.x, o.y), conq: o.conq.fac || null }); }
+      else if (P[o.ic]) out.push({ o, r: N.regiaoEm(m, o.x, o.y) });
+    }
     if (cacheLug) cacheLug.set(m, out);
     return out;
   }
@@ -307,7 +313,7 @@
     // (lote 17) e os recursos que o pincel pôs no hexágono, somados aos do terreno dele
     for (const k of hexesProprios(m, r)) { const t = terrenoDoHex(m, k); if (t && eco.ter[t.id]) somar(out.terreno, eco.ter[t.id]); if (eco.hexr && eco.hexr[k]) somar(out.terreno, eco.hexr[k]); }
     // (lote 17) os lugares que produzem (mina, pedreira, serraria, fazenda) dentro da região
-    for (const a of lugaresQueProduzem(m)) if (a.r && a.r.id === r.id) somar(out.lugar, a.o.pr);
+    for (const a of lugaresQueProduzem(m)) if (a.r && a.r.id === r.id && !a.o.conq) somar(out.lugar, a.o.pr);
     for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.estr) somar(out.pop, producaoDaPopulacao(m, a.o));
     for (const a of assentamentosDe(m)) if (a.r && a.r.id === r.id && a.o.ass.cons) { const e = efeitoDasConstrucoes(m, a.o); somar(out.cons, e.prod); somar(out.gasto, e.gasto); }
     // (parte 5b) a parte das guildas que vai para a facção dona da cidade
@@ -334,6 +340,8 @@
     if (!ecoDe(m)) return { por, sem };
     for (const f of m.faccoes || []) por[f.id] = {};
     for (const r of regioes(m)) { const fid = N.controleDaRegiao(m, r); somar(fid && por[fid] ? por[fid] : sem, producaoPropria(m, r).total); }   // (lote 12: a ocupada produz para quem ocupa)
+    // (lote 64) os lugares conquistados: direto para quem conquistou
+    for (const a of lugaresQueProduzem(m)) if (a.o.conq) somar(a.conq && por[a.conq] ? por[a.conq] : sem, a.o.pr);
     for (const a of assentamentosDe(m)) {
       const c = a.o.ass.cla;
       if (!c) continue;
@@ -821,6 +829,8 @@
       if (r.pai) livro.sub++; else livro.prov++;
       if (livro.grade) livro.hex += hexesProprios(m, r).length;
     }
+    // (lote 64) os lugares conquistados por ela (estejam onde estiverem)
+    for (const a of lugaresQueProduzem(m)) if (a.o.conq && a.conq === f.id) juntar(a.r, 'lugar', a.o.pr);
     // a sede do clã: para a facção ligada ao clã (sem ela, para a dona do lugar), como em producaoPorFaccao
     for (const a of assentamentosDe(m)) {
       const c = a.o.ass.cla;

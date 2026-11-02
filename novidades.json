@@ -2,6 +2,40 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.02-4",
+      "data": "2026-11-02",
+      "titulo": "Estradas pela serra e pelo desfiladeiro, e lugares conquistados",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: a estrada nas colinas e nas montanhas serpenteia entre os morros e os picos, que ficam dos dois lados do caminho, em vez de ser cortados ao meio por ela. O mesmo vale para o rio e a mata."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: a estrada que chega a um desfiladeiro sem atravessá-lo vira uma trilha estreita pela beirada, do lado em que chegou, até a próxima estrada daquele lado. Sem outra estrada, a trilha para num mirante. Andar pela trilha custa o mesmo que a estrada."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: um lugar conquistado ganha uma bandeirinha na cor de quem conquistou."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: qualquer marcador (masmorra, mina, ruína, ninho, portal…) pode ter recursos que só começam a produzir depois de conquistado. Em “Produção e conquista”, escolha quem conquistou; os recursos vão para essa facção toda semana, seja quem for o dono da região. Até lá, só você vê o que ele vai produzir."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: um lugar pode produzir vários recursos por semana, uma linha para cada, com “+ Recurso” e o × para tirar."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: o pincel do Terreno tem um modo só, “Recursos…”: ponha quantos recursos quiser, cada um com a quantidade, e pinte todos de uma vez. O pincel vazio tira os recursos do hexágono."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.02-3",
       "data": "2026-11-02",
       "titulo": "O Mapa-múndi em aquarela, com modos de trabalho e exércitos novos",

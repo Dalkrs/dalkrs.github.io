@@ -254,6 +254,29 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Estradas pela serra e pelo desfiladeiro, lugares conquistados e o pincel de recursos (lote 64)
+
+- **A estrada no relevo** (`mundo/tela.js`, `desenhoAoLadoDaRede`): no hexágono de estrada, de rio ou de fenda, o desenho
+  do terreno da margem sai em dois ou três desenhos menores nos lugares mais longe do caminho (antes, um desenho grande
+  no centro, que a estrada cortava). Nas colinas, montanhas e pedras (`RELEVO`), a curva da estrada serpenteia mais
+  (`curvasDaRede`). O triângulo da rede não corta mais a ligação entre duas estradas por causa de uma fenda ou de uma ponte.
+- **A trilha da beirada** (`mundo/nucleo.js`, `trilhasDoMapa`): a estrada que encosta num Desfiladeiro sem ponte segue
+  pela borda, do lado em que chegou (o lado é a esquerda ou a direita de quem anda pela fenda), até a próxima estrada
+  que encosta daquele lado (até 14 hexágonos); sem outra, um pedaço com o mirante (`fim`). As estradas vizinhas que
+  encostam na mesma fenda contam como uma (a ponta). `redeDoHex` da fenda traz `trilha` (os pedaços `{ de, para, lado,
+  custo }`); a estrada liga à fenda com trilha (`ligaCrua`); `hexInfo` dá à fenda com trilha o custo da estrada
+  (`de: 'trilha'`). O desenho: uma trilha estreita de terra na borda e o mirante.
+- **A conquista** (`conq` no marcador: `{ ok: false }` ou `{ ok: true, fac }`): com a marca, qualquer marcador produz o
+  que está em `pr`, mas só depois de conquistado e para a facção que conquistou (`MundoReino.lugaresQueProduzem`,
+  `producaoPorFaccao`, a economia dos jogadores); sem a marca, os lugares de produção vão para o dono da região, como
+  antes. Quem joga vê a marca de conquistado (a bandeirinha `.conq-selo`), não a que falta nem os recursos.
+- **O painel** (`secLugarQueFaz`): "Recursos ao conquistar…", "Conquistado por" (uma escolha: ninguém ainda ou a
+  facção), uma linha por recurso (`o:<id>:pr-rec:<r>`, `pr-n:<r>`, `pr-x:<r>`), "+ Recurso", "Só depois de conquistado".
+- **O pincel de recursos** (`conjDoPincel`, `recSet`): um modo só, "Recursos…", com uma pastilha por recurso (`rp:rec`,
+  `rp:n`, `rp:x`) e "+ Recurso" (`rp:mais`); o hexágono pintado fica com exatamente o conjunto; o pincel vazio tira. O
+  "Tirar os recursos" de antes vira o pincel vazio.
+- Testes: `mundo-lote64` (a trilha, o custo, a conquista na conta e na tela, o pincel); `mundo-lote17` ajustado ao pincel novo.
+
 ### O Mapa-múndi em aquarela, os modos de trabalho e os exércitos (lote 63)
 
 - **Os modos** (`mundo/mundo.js`, `MODOS`): Sessão, Guerra, Política e Preparar, cada um com as ferramentas (`fer`) e as

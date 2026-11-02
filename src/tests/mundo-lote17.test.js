@@ -176,20 +176,20 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
     await A(() => { __mundo.App.selecionar([]); __mundo.App.usarFerramenta('h'); if (!__mundo.App.opt) __mundo.App.opt = {}; __mundo.App.opt.terPincel = 'hex'; }); await espera(200);
     await A(() => __mundo.Tela.redesenhar()); await espera(150);
     await F.selectOption('#opts select[aria-label="O que o pincel faz"]', 'rec'); await espera(200);
-    ok(await F.locator('#opts select[aria-label="O recurso que o pincel põe"]').isVisible(), 'com a economia ligada, o pincel "Recurso…" pede o recurso e quanto');
-    await F.selectOption('#opts select[aria-label="O recurso que o pincel põe"]', 'madeira'); await espera(150);
-    await F.locator('#opts input[aria-label="Quanto o hexágono produz por semana"]').fill('3'); await F.locator('#opts input[aria-label="Quanto o hexágono produz por semana"]').press('Tab'); await espera(150);
+    ok(await F.locator('#opts .rec-pin select').count() === 1, 'com a economia ligada, o pincel "Recursos…" pede o recurso e quanto (lote 64: uma pastilha por recurso)');
+    await F.selectOption('#opts .rec-pin select', 'madeira'); await espera(150);
+    await F.locator('#opts .rec-pin input').fill('3'); await F.locator('#opts .rec-pin input').press('Tab'); await espera(150);
     const k1 = await hexDe(600, 300);
     const antes = await A(() => (window.MundoReino.producaoPropria(__mundo.App.mapa, __mundo.App.mapa.objs.find(o => o.id === 'r1')).terreno.madeira || 0));
     await arrastar([[600, 300], [602, 301]]);
     const hr = await A(() => __mundo.App.mapa.eco.hexr);
     const depois = await A(() => (window.MundoReino.producaoPropria(__mundo.App.mapa, __mundo.App.mapa.objs.find(o => o.id === 'r1')).terreno.madeira || 0));
-    ok(hr && j(hr[k1]) === j({ madeira: 3 }) && depois === antes + 3 && /^Desfazer: pôr Madeira nos hexágonos/.test(await rotulo()), 'pintar põe 3 de Madeira no hexágono: soma na produção da região (' + antes + ' → ' + depois + ')');
+    ok(hr && j(hr[k1]) === j({ madeira: 3 }) && depois === antes + 3 && /^Desfazer: pôr os recursos nos hexágonos/.test(await rotulo()), 'pintar põe 3 de Madeira no hexágono: soma na produção da região (' + antes + ' → ' + depois + ')');
     ok(await A(() => [...document.querySelectorAll('.c-hexr .hexr-txt')].map(x => x.textContent).includes('+3 Madeira')), 'com o pincel nesse modo, o hexágono mostra o que tem');
     await foto('l17-recursos');
-    await F.selectOption('#opts select[aria-label="O que o pincel faz"]', 'semrec'); await espera(150);
+    await F.locator('#opts .rec-pin .x').click(); await espera(150);
     await arrastar([[600, 300], [602, 301]]);
-    ok(!(await A(() => __mundo.App.mapa.eco.hexr)), '"Tirar os recursos" limpa o hexágono');
+    ok(!(await A(() => __mundo.App.mapa.eco.hexr)), 'o pincel vazio (lote 64: no lugar de "Tirar os recursos") limpa o hexágono');
     await A(() => __mundo.App.usarFerramenta('sel')); await espera(150);
   });
 

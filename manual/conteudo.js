@@ -198,6 +198,7 @@
         { t: 'Camadas', txt: 'O botão Camadas (tecla C) mostra e esconde cidades, estradas, eventos, regiões, guerra… só no seu aparelho. Atalhos Viagem, Política, Guerra e Tudo.', tecla: 'C' },
         { t: 'A caneta', txt: 'Desenhe para a mesa inteira ver na hora. A que some apaga sozinha; a que fica, até limpar.', ir: { aba: 'mundo', g: 'A caneta' } },
         { t: 'O mapa em aquarela', txt: 'O terreno é tinta lavada no papel: os terrenos se misturam na divisa, e as árvores e os morros vêm em traço de tinta. A grade aparece quando os hexágonos ficam grandes e nunca passa pelo mar. Cada exército tem o símbolo do tipo dele (patrulha, hoste, frota, caravana…) num anel com a cor da facção.', ir: { aba: 'mundo', g: 'O mapa' } },
+        { t: 'Trilhas e lugares conquistados', txt: 'A estrada que chega a um desfiladeiro segue por uma trilha estreita na beirada; o mirante marca onde ela termina. A bandeirinha num lugar diz que ele foi conquistado, na cor de quem conquistou.', ir: { aba: 'mundo', g: 'O mapa' } },
       ],
       mestre: [
         { t: 'Os modos de trabalho', txt: 'No alto: Sessão (jogar), Guerra (exércitos e batalhas), Política (reinos, corte, diplomacia) e Preparar (terreno e o mapa). Cada modo mostra só as ferramentas e as abas dele; a Seleção está em todos. Alt+1 a Alt+4 trocam, e a tecla de uma ferramenta de outro modo leva até ele. O “?” mostra de novo a apresentação.', ir: { aba: 'mundo', g: 'Os modos de trabalho' } },
@@ -206,6 +207,8 @@
         { t: 'Criar o mapa', txt: 'Uma imagem sua ou papel em branco. Na aba Terreno, a grade de hexágonos (cada um vale 5 cubos), os tipos de terreno com o custo, e o pincel para pintar.', ir: { aba: 'mundo', g: 'Trocar de mapa' } },
         { t: 'Rios e estradas por hexágono', txt: 'No pincel por hexágono (Terreno, H): Rio, Estrada de terra (4 cubos), Estrada de pedra (3) e Estrada pavimentada (2). O fundo pega o terreno dos vizinhos e a água ou a estrada liga sozinha às do lado. Pinte a estrada por cima do rio: o rio fica e a ponte aparece, custando o da estrada. Sem ponte, atravessar o rio custa 10. Num mapa de antes, a aba Terreno oferece “Acrescentar”.', ir: { aba: 'mundo', g: 'Rios e estradas' } },
         { t: 'Lagos, mares e desfiladeiros', txt: 'Pinte a Água, a Água rasa, o Mar profundo ou o Lago (água doce, 10 cubos): a água vira um corpo só e a margem sai sozinha do terreno vizinho (areia, junco, falésia ou gelo), com o raso clareando perto da terra. O Desfiladeiro liga aos vizinhos como o rio; o rio corre no fundo dele e a estrada que o atravessa ganha uma ponte suspensa. Os montes vizinhos viram cordilheira.', ir: { aba: 'mundo', g: 'Lagos, mares e desfiladeiros' } },
+        { t: 'Estradas na serra e no desfiladeiro', txt: 'Nas colinas e nas montanhas, a estrada serpenteia entre os morros e os picos. A estrada que chega a um Desfiladeiro sem atravessar vira uma trilha pela beirada, do lado em que chegou, até a próxima estrada daquele lado (sem outra, para num mirante); andar pela trilha custa o da estrada. Com estrada dos dois lados, sai a ponte suspensa.', ir: { aba: 'mundo', g: 'Estradas na serra e no desfiladeiro' } },
+        { t: 'Lugares conquistados e recursos', txt: 'No painel de um marcador (com a economia ligada): “Recursos ao conquistar…” põe recursos que só contam depois da conquista; em “Conquistado por”, escolha a facção, e os recursos vão para ela toda semana. Cada lugar pode ter vários recursos (+ Recurso). No pincel do Terreno, “Recursos…” pinta vários recursos de uma vez; o pincel vazio tira.', ir: { aba: 'mundo', g: 'Lugares conquistados' } },
         { t: 'Ferramentas', txt: 'Marcadores (cidades, portos, ruínas, lojas…), Grupos (o dos jogadores, caravanas, patrulhas, exércitos), Rotas, Regiões, Desenho com carimbos, Terreno (H), Frente (guerra e zonas de perigo) e Eventos.', ir: { aba: 'mundo', g: 'As ferramentas' } },
         { t: 'Passar o tempo e viajar', txt: '“+1 tempo” leva todos os grupos com rota; ▶ passa o dia. O clima muda aos poucos, os eventos pesam na viagem e as caravanas andam sozinhas. Tudo tem Desfazer.', ir: { aba: 'mundo', g: 'A data do mundo' } },
         { t: 'Ver como jogador', txt: 'A chave “Ver como jogador” mostra o mapa exatamente como a mesa vê.', ir: { aba: 'mundo', g: 'Ver como jogador' } },
@@ -484,5 +487,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 12, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 13, sistemas, tarefas, roteiro, sabia };
 })();

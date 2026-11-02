@@ -20,7 +20,7 @@
   const OPT_PADRAO = { ic: 'cidade', rumor: false, tipo: 'guerra', via: 'trilha', a: null, b: null, pincel: 'revelar', raio: 60, oculto: false, ter: 'fl', terModo: 'ter', custo: 10, hexPincel: 0,
     terPincel: '', pinTer: 'fl', pinRaio: 24, freModo: 'linha', des: 'carimbo', carimbo: 'arvore', carTam: 40, fonte: 'mapa', txtTam: 28, estilo: 'rio', linNivel: 2,
     tipoGrupo: '', zonaTipo: 'tempestade',                                  // (lote 7, parte 5b) o tipo do grupo novo: '' (grupo), caravana, patrulha, exército
-    setaFac: null, zAj: 'por', recPin: '', recQtd: 1 };                      // (lote 17) a seta (a facção), o ajuste da zona, o recurso do pincel
+    setaFac: null, zAj: 'por', recPin: '', recQtd: 1, recSet: null };                      // (lote 17) a seta (a facção), o ajuste da zona, o recurso do pincel
   // a largura de cada desenho de linha, em pixels da tela, para Fina, Média, Larga e Bem larga (no rio: a da foz)
   const LARGURAS = { rio: [6, 12, 20, 32], estrada: [2, 3.5, 5, 8], trilha: [1.5, 2.5, 4, 6] };
   const CAMADA = { r: 'reg', f: 'fre', t: 'rot', e: 'eve', m: 'mar', g: 'gru', z: 'zon', l: 'lin', c: 'car', x: 'txt', a: 'set' };
@@ -1132,7 +1132,9 @@
         if (!perto(p)) continue;
         if (t.tex === 'montes' && !p.rede) continue;
         c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
-        desenhoDoHex(c, d.m, p, p.x, p.y, d.u, t.tex || 'liso', t.cor, ((p.q * 73856093) ^ (p.r * 19349663) ^ semT) >>> 0);
+        const rdP = p.rede ? redePorChave(d).get(p.q + ',' + p.r) : null;
+        if (rdP && (rdP.tipo === 'via' || rdP.tipo === 'rio' || rdP.tipo === 'fenda') && t.tex !== 'lavoura') desenhoAoLadoDaRede(c, d, p, rdP, t.tex || 'liso', t.cor, ((p.q * 73856093) ^ (p.r * 19349663) ^ semT) >>> 0);
+        else desenhoDoHex(c, d.m, p, p.x, p.y, d.u, t.tex || 'liso', t.cor, ((p.q * 73856093) ^ (p.r * 19349663) ^ semT) >>> 0);
         if (++n % 150 === 0) yield;
       }
       c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
@@ -1181,6 +1183,39 @@
     for (let i = 1; i < 6; i++) c.lineTo(cx + d[i][0], cy + d[i][1]);
     c.lineTo(cx + d[0][0], cy + d[0][1]);
   }
+  /* (lote 64) O hexágono de estrada (ou de rio) no meio das colinas, das montanhas, da mata…: o desenho do terreno vai
+     dos dois lados do caminho, menor, e o caminho serpenteia entre eles (antes o desenho ficava no centro e a estrada
+     passava por cima dele, como um corte). */
+  function redePorChave(d) {
+    if (!d.redeK) d.redeK = new Map((d.rede || []).map(x => [x.q + ',' + x.r, x]));
+    return d.redeK;
+  }
+  const RELEVO = { colinas: 1, montes: 1, pedras: 1 };
+  function desenhoAoLadoDaRede(c, d, p, rd, tex, cor, sem) {
+    const u = d.u, tam = d.m.grade.tam;
+    if (DESENHO_ABERTO[tex] != null && !RELEVO[tex] && ruidoHex(p.q, p.r) > DESENHO_ABERTO[tex]) return;
+    const geo = Object.assign({}, rd, { x: p.x, y: p.y, meios: rd.meios || [0, 1, 2, 3, 4, 5].map(i => N().meioDoLado(d.m, p.q, p.r, i)), agua: null });
+    const pts = curvasDaRede(geo, tam, 97).flatMap(cv => cv.pts);
+    // (a trilha da beirada da fenda também: os desenhos ficam longe dela)
+    if (rd.trilha) for (const pd of rd.trilha) for (const x of [pd.de, pd.para]) { const mm = geo.meios[x.via != null ? x.via : x.passa]; pts.push([p.x, p.y], [mm.x, mm.y]); }
+    const dist = (x, y) => { let m = Infinity; for (let i = 1; i < pts.length; i++) m = Math.min(m, distSeg(x, y, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1])); if (pts.length === 1) m = Math.hypot(x - pts[0][0], y - pts[0][1]); return m; };
+    const n = tex === 'montes' ? 2 : 3, esc = tex === 'montes' ? 0.56 : tex === 'colinas' ? 0.6 : 0.5, longe = u * (rd.tipo === 'rio' ? 0.46 : 0.4);
+    const cand = [];
+    for (let i = 0; i < 18; i++) {
+      const a = hash01(p.q * 7 + i, p.r * 13 - i) * Math.PI * 2, r = (0.35 + 0.3 * hash01(p.q * 3 - i, p.r * 5 + i)) * u;
+      const x = p.x + Math.cos(a) * r, y = p.y + Math.sin(a) * r * 0.9, dd = dist(x, y);
+      if (dd >= longe) cand.push({ x, y, dd });
+    }
+    cand.sort((a, b) => b.dd - a.dd);
+    const esc0 = [];
+    for (const k of cand) { if (esc0.length >= n) break; if (esc0.every(o => Math.hypot(o.x - k.x, o.y - k.y) > u * 0.5)) esc0.push(k); }
+    esc0.sort((a, b) => a.y - b.y);
+    esc0.forEach((k, i) => desenhoDoHex(c, d.m, null, k.x, k.y, u * esc, tex, cor, (sem + i * 7919) >>> 0));
+  }
+  function distSeg(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, t = l2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
+    return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+  }
   /* (lote 54) A rede: os rios, as estradas e as pontes, por cima da tinta (de longe só a água e a estrada; de perto, as
      margens, o brilho da água, os sulcos da terra, as pedras do calçamento, o meio-fio e as pontes de madeira ou de
      pedra). Cada hexágono leva as curvas dele: de um lado ligado ao outro, pelo centro (com uma curva macia que sai
@@ -1191,7 +1226,9 @@
     const c = { x: p.x, y: p.y }, M = i => p.meios[i], L = p.liga, out = [];
     const mix = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
     const cub = (a, b, cc, d, n) => { const pts = []; for (let i = 0; i <= n; i++) { const t = i / n, s = 1 - t; pts.push([s * s * s * a.x + 3 * s * s * t * b.x + 3 * s * t * t * cc.x + t * t * t * d.x, s * s * s * a.y + 3 * s * s * t * b.y + 3 * s * t * t * cc.y + t * t * t * d.y]); } return pts; };
-    const rio = p.tipo === 'rio' || p.tipo === 'fenda', jit = p.ponte || p.reto ? 0 : (p.tipo === 'rio' ? 0.16 : p.tipo === 'fenda' ? 0.1 : 0.05) * tam;     // (lote 57: a fenda abre na água como o rio)
+    // (lote 64) a estrada no relevo (colinas, montanhas, pedras) serpenteia mais
+    const noRelevo = p.tipo === 'via' && p.margem && RELEVO[p.margem.tex];
+    const rio = p.tipo === 'rio' || p.tipo === 'fenda', jit = p.ponte || p.reto ? 0 : (p.tipo === 'rio' ? 0.16 : p.tipo === 'fenda' ? 0.1 : noRelevo ? 0.15 : 0.05) * tam;     // (lote 57: a fenda abre na água como o rio)
     // a ponta que entra na água (o mar, o lago) avança um pouco nela, abrindo
     const fim = i => { const m = M(i); return rio && p.agua && p.agua[i] ? mix(c, m, 1.2) : m; };
     const liga2 = (a, b) => {
@@ -1303,6 +1340,45 @@
       ['#b3a586', R * 1.05, 0.9, [R * 0.42, R * 0.07], true],
       ['#e2d8c0', R * 0.08, 0.6, null, true],
     ]);
+    // (lote 64) a trilha na beirada do desfiladeiro: a estrada que encosta na fenda segue estreita pela borda, do lado
+    // em que chegou, até a próxima estrada daquele lado (ou para num mirante)
+    const trilhas = [];
+    for (const { p } of geo) {
+      if (p.tipo !== 'fenda' || !p.trilha) continue;
+      const cen = { x: p.x, y: p.y };
+      for (const pd of p.trilha) {
+        const md = pd.de.via != null ? p.meios[pd.de.via] : p.meios[pd.de.passa], mp = pd.para.via != null ? p.meios[pd.para.via] : p.meios[pd.para.passa];
+        // o eixo da fenda (de onde ela vem para onde ela vai, no sentido de quem anda na trilha): a borda fica ao lado dele
+        const ax = pd.para.passa != null ? (pd.de.passa != null ? [mp.x - md.x, mp.y - md.y] : [mp.x - cen.x, mp.y - cen.y]) : pd.de.passa != null ? [cen.x - md.x, cen.y - md.y] : [mp.x - md.x, mp.y - md.y];
+        let fx = ax[0], fy = ax[1]; const fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
+        const lx = fy * pd.lado, ly = -fx * pd.lado, off = tam * 0.21;
+        const ponto = (x, mm) => x.via != null ? { x: mm.x, y: mm.y } : { x: mm.x + lx * off, y: mm.y + ly * off };
+        const A = ponto(pd.de, md);
+        let B = ponto(pd.para, mp);
+        const ctl = pd.de.via != null && pd.para.via != null
+          ? { x: cen.x + ((md.x + mp.x) / 2 - cen.x) * 0.55, y: cen.y + ((md.y + mp.y) / 2 - cen.y) * 0.55 }
+          : { x: cen.x + lx * tam * 0.24, y: cen.y + ly * tam * 0.24 };
+        if (pd.fim) B = { x: ctl.x + (B.x - ctl.x) * 0.55, y: ctl.y + (B.y - ctl.y) * 0.55 };
+        const pts = []; for (let i = 0; i <= 12; i++) { const t = i / 12, u0 = 1 - t; pts.push([u0 * u0 * A.x + 2 * u0 * t * ctl.x + t * t * B.x, u0 * u0 * A.y + 2 * u0 * t * ctl.y + t * t * B.y]); }
+        trilhas.push({ pts, fim: pd.fim ? B : null, lx, ly });
+      }
+    }
+    if (trilhas.length) {
+      for (const [cor, larg, alfa, tr, soPerto] of [['#3b2c1a', R * 1.0, 0.4, null, true], ['#7a5e3c', R * 0.72, 1], ['#b99a6c', R * 0.52, 1], ['#6b5032', R * 0.1, 0.75, [R * 0.45, R * 0.35], true]]) {
+        if (soPerto && longe) continue;
+        c.beginPath(); for (const t of trilhas) { c.moveTo(t.pts[0][0], t.pts[0][1]); for (let i = 1; i < t.pts.length; i++) c.lineTo(t.pts[i][0], t.pts[i][1]); }
+        tra(cor, larg, alfa, tr);
+      }
+      // o mirante no fim da trilha: um patamar de pedra com o parapeito virado para a fenda
+      if (!longe) for (const t of trilhas) {
+        if (!t.fim) continue;
+        c.beginPath(); c.arc(t.fim.x, t.fim.y, R * 0.62, 0, Math.PI * 2); c.fillStyle = '#c9b48a'; c.globalAlpha = 1; c.fill();
+        c.strokeStyle = '#4a3a24'; c.lineWidth = R * 0.14; c.stroke();
+        const a0 = Math.atan2(-t.ly, -t.lx);
+        c.beginPath(); c.arc(t.fim.x, t.fim.y, R * 0.62, a0 - 1.1, a0 + 1.1); c.strokeStyle = '#2a1c10'; c.lineWidth = R * 0.26; c.stroke();
+      }
+      c.globalAlpha = 1;
+    }
     // as pontes: no meio do rio, ao longo da estrada que passa por ele (a de terra, de madeira; as outras, de pedra)
     for (const { p } of geo) {
       if ((p.tipo !== 'rio' && p.tipo !== 'fenda') || !p.ponte) continue;
@@ -2340,7 +2416,7 @@
     const cerc = o.cerco ? (o.cerco.fac ? corFac(ctx, o.cerco.fac) : '#6b7385') : null, nCerco = o.cerco ? (o.cerco.fac ? nomeFac(ctx, o.cerco.fac) : '') : '';
     const arte = s('g', { class: 'ico-arte', transform: 'scale(' + ICO + ')' });          // (lote 29) o desenho, menor (os nomes não)
     fx.append(
-      s('title', { texto: (o.nome ? o.nome + ' · ' : '') + def.nome + (o.rumor ? ' (boato)' : '') + (o.cerco ? ' · cercado' + (nCerco ? ' por ' + nCerco : '') : '') }),
+      s('title', { texto: (o.nome ? o.nome + ' · ' : '') + def.nome + (o.rumor ? ' (boato)' : '') + (o.cerco ? ' · cercado' + (nCerco ? ' por ' + nCerco : '') : '') + (o.conq && o.conq.ok ? ' · conquistado' : '') }),
       s('circle', { class: 'alvo', r: 16, fill: 'transparent' }), arte);
     arte.append(...[
       cerc ? s('circle', { class: 'cerco-anel', r: 18.5, stroke: cerc, 'data-cerco': o.cerco.fac || '' }) : null,
@@ -2348,6 +2424,16 @@
       glifo(def, 19)].filter(Boolean));
     if (o.rumor) arte.append(s('circle', { class: 'rumor-bola', cx: 12, cy: -12, r: 7.5, fill: '#2b3243', stroke: '#f3ead2' }), s('text', { class: 'interroga', x: 12, y: -8, 'text-anchor': 'middle', 'font-size': 11, texto: '?' }));
     if (o.falso) arte.append(s('path', { class: 'risco', d: 'M-12 12L12 -12' }));
+    // (lote 64) o lugar conquistado: uma bandeirinha na cor de quem conquistou, no alto à direita
+    if (o.conq && o.conq.ok) {
+      const cf = o.conq.fac ? corFac(ctx, o.conq.fac) : '#e6ab4f', nf = o.conq.fac ? nomeFac(ctx, o.conq.fac) : '', [bx, by] = o.rumor ? [18, 2] : [11, -13];
+      g0.classList.add('conquistado');
+      arte.append(s('g', { class: 'conq-selo', transform: 'translate(' + bx + ' ' + by + ')', 'data-conq': o.conq.fac || '' },
+        s('title', { texto: 'Conquistado' + (nf ? ' por ' + nf : '') }),
+        s('circle', { r: 8, fill: '#1c2230', stroke: '#f3ead2', 'stroke-width': 1.2 }),
+        s('path', { d: 'M-2.6 5V-5.2', stroke: '#f3ead2', 'stroke-width': 1.4, 'stroke-linecap': 'round', fill: 'none' }),
+        s('path', { d: 'M-2 -5.2h6.2l-1.7 2.2 1.7 2.2H-2z', fill: cf, stroke: '#f3ead2', 'stroke-width': 0.6 })));
+    }
     { const mk = marcaMissao(o, ctx, -12, -12); if (mk) arte.append(mk); }     // (lote 9) a missão, em cima à esquerda
     if (o.desc) arte.append(s('g', { class: 'pdesc-selo', transform: 'translate(-12 12)' }, s('title', { texto: 'Ponto de descanso (os grupos do mundo dormem aqui)' }),
       s('circle', { class: 'pdesc-bola', r: 7.5 }), s('path', { class: 'pdesc-lua', d: 'M1.6 -4.2a4.4 4.4 0 1 0 2.8 6.6 3.6 3.6 0 1 1-2.8-6.6z' })));     // (lote 9)
@@ -3191,19 +3277,26 @@
   const ecoLigada = m => !!(m && m.eco && m.eco.on && Array.isArray(m.eco.rec) && m.eco.rec.length);
   function recDoPincel() { const e = M && M.eco; return e && Array.isArray(e.rec) ? e.rec.find(r => r.id === opt('recPin')) || e.rec[0] || null : null; }
   const qtdDoPincel = () => { const n = Math.round(Number(opt('recQtd')) * 10) / 10; return Number.isFinite(n) ? limitar(n, -9999, 9999) : 1; };
+  /* (lote 64) O pincel leva um conjunto de recursos ({ recurso: por semana }, quantos o mestre quiser): o hexágono pintado
+     fica com exatamente esses (o pincel vazio tira os recursos). O de antes (um recurso só) vira o conjunto de um. */
+  function conjDoPincel() {
+    const e = M && M.eco, ids = new Set(e && Array.isArray(e.rec) ? e.rec.map(r => r.id) : []), st = opt('recSet'), out = {};
+    if (st && typeof st === 'object') { for (const k of Object.keys(st)) { const n = Math.round(Number(st[k]) * 10) / 10; if (ids.has(k) && Number.isFinite(n) && n) out[k] = limitar(n, -9999, 9999); } return out; }
+    const r = recDoPincel(), q = qtdDoPincel();
+    if (r && q) out[r.id] = q;
+    return out;
+  }
   function aplicarRecursoHex(chaves) {
-    const rec = recDoPincel(), tirar = opt('terModo') === 'semrec', qtd = qtdDoPincel();
-    if (!ecoLigada(M) || !rec) { App.toast('Ligue a economia na aba Reinos para pôr recursos nos hexágonos.'); return; }
+    const conj = conjDoPincel(), tirar = opt('terModo') === 'semrec' || !Object.keys(conj).length;
+    if (!ecoLigada(M)) { App.toast('Ligue a economia na aba Reinos para pôr recursos nos hexágonos.'); return; }
     const lim = (N().LIMITES && N().LIMITES.hexes) || 20000;
     let passou = false;
-    App.mudar(tirar ? 'tirar os recursos dos hexágonos' : 'pôr ' + rec.nome + ' nos hexágonos', d => {
+    App.mudar(tirar ? 'tirar os recursos dos hexágonos' : 'pôr os recursos nos hexágonos', d => {
       if (!d.eco || typeof d.eco !== 'object') return false;
       const hr = d.eco.hexr && typeof d.eco.hexr === 'object' ? Object.assign({}, d.eco.hexr) : {}, antes = JSON.stringify(hr);
       for (const k of chaves) {
         if (tirar) { delete hr[k]; continue; }
-        const t = Object.assign({}, hr[k] || {});
-        if (qtd) t[rec.id] = qtd; else delete t[rec.id];
-        if (Object.keys(t).length) hr[k] = t; else delete hr[k];
+        hr[k] = Object.assign({}, conj);
       }
       if (JSON.stringify(hr) === antes) return false;
       if (Object.keys(hr).length > lim) { passou = true; return false; }
@@ -3454,12 +3547,13 @@
           h('label', { class: 'chip', title: 'Tamanho do pincel na tela' }, h('span', { texto: 'Tamanho' }), faixa));
       } else if (!temGrade(M)) optsEl.append(chip({ class: 'chip pri', title: 'A grade de hexágonos fica na aba Terreno', onclick: () => abrirAba('terreno') }, 'Definir a grade de hexágonos…'));
       else {
-        const comRec = ecoLigada(M), t = terrenoEscolhido(), modo = ['ter', 'nada', 'desenho', 'custo', 'semcusto'].concat(comRec ? ['rec', 'semrec'] : []).includes(opt('terModo')) ? opt('terModo') : 'ter';
+        if (opt('terModo') === 'semrec') { porOpt('terModo', 'rec'); porOpt('recSet', {}); }       // (lote 64: o "Tirar os recursos" virou o pincel vazio)
+        const comRec = ecoLigada(M), t = terrenoEscolhido(), modo = ['ter', 'nada', 'desenho', 'custo', 'semcusto'].concat(comRec ? ['rec'] : []).includes(opt('terModo')) ? opt('terModo') : 'ter';
         const sel = h('select', { 'aria-label': 'O que o pincel faz' });
         for (const x of M.terrenos || []) sel.append(h('option', { value: 'ter:' + x.id, texto: x.nome }));
         // (lote 17) os recursos por hexágono (com a economia ligada): somam aos do terreno
         const modos = [['nada', 'Sem terreno'], temDesenho ? ['desenho', 'Seguir o desenho'] : null, ['custo', 'Custo próprio…'], ['semcusto', 'Tirar o custo próprio'],
-          comRec ? ['rec', 'Recurso…'] : null, comRec ? ['semrec', 'Tirar os recursos'] : null].filter(Boolean);
+          comRec ? ['rec', 'Recursos…'] : null].filter(Boolean);
         for (const [v, tx] of modos) sel.append(h('option', { value: v, texto: tx }));
         sel.value = modo === 'ter' ? (t ? 'ter:' + t.id : 'nada') : modo === 'desenho' && !temDesenho ? 'nada' : modo;
         sel.addEventListener('change', () => {
@@ -3468,16 +3562,25 @@
           reabrir(); atualizarDica(); desenharRascunho();
         });
         optsEl.append(h('label', { class: 'chip', title: 'O que o pincel pinta nos hexágonos' },
-          h('span', { class: 'amostra', style: 'background:' + (modo === 'ter' && t ? t.cor : modo === 'custo' ? '#e6ab4f' : modo === 'rec' ? ((recDoPincel() || {}).cor || '#f2c14e') : 'transparent') }), h('span', { texto: 'Pincel' }), sel));
+          h('span', { class: 'amostra', style: 'background:' + (modo === 'ter' && t ? t.cor : modo === 'custo' ? '#e6ab4f' : modo === 'rec' ? (((M.eco.rec.find(x => x.id === Object.keys(conjDoPincel())[0]) || {}).cor) || '#f2c14e') : 'transparent') }), h('span', { texto: 'Pincel' }), sel));
         if (modo === 'rec') {
-          const r = recDoPincel(), sr = h('select', { 'aria-label': 'O recurso que o pincel põe' });
-          for (const x of M.eco.rec) sr.append(h('option', { value: x.id, texto: x.nome }));
-          sr.value = r ? r.id : '';
-          sr.addEventListener('change', () => { porOpt('recPin', sr.value); reabrir(); atualizarDica(); });
-          const qi = h('input', { type: 'number', min: -9999, max: 9999, step: 1, value: String(qtdDoPincel()), 'aria-label': 'Quanto o hexágono produz por semana', class: 'num' });
-          qi.addEventListener('change', () => { const n = Number(String(qi.value).replace(',', '.')); if (Number.isFinite(n)) porOpt('recQtd', Math.round(limitar(n, -9999, 9999) * 10) / 10); qi.value = String(qtdDoPincel()); atualizarDica(); });
-          optsEl.append(h('label', { class: 'chip', title: 'O recurso que o hexágono produz por semana, além do terreno' }, h('span', { texto: 'Recurso' }), sr),
-            h('label', { class: 'chip', title: 'Quanto, por semana (0 tira este recurso)' }, qi, h('span', { texto: 'por semana' })));
+          // (lote 64) os recursos do pincel: uma pastilha por recurso (qual e quanto por semana, com o ×) e "+ Recurso"
+          const conj = conjDoPincel(), ids = Object.keys(conj), mudarConj = fn => { const c = Object.assign({}, conjDoPincel()); fn(c); porOpt('recSet', c); reabrir(); atualizarDica(); };
+          for (const rid of ids) {
+            const sr = h('select', { 'aria-label': 'O recurso', 'data-k': 'rp:rec:' + rid });
+            for (const x of M.eco.rec) if (x.id === rid || !ids.includes(x.id)) sr.append(h('option', { value: x.id, texto: x.nome }));
+            sr.value = rid;
+            sr.addEventListener('change', () => mudarConj(c => { const n = c[rid]; const nc = {}; for (const k of Object.keys(c)) nc[k === rid ? sr.value : k] = k === rid ? n : c[k]; for (const k of Object.keys(c)) delete c[k]; Object.assign(c, nc); }));
+            const qi = h('input', { type: 'number', min: -9999, max: 9999, step: 1, value: String(conj[rid]), 'aria-label': 'Quanto por semana', class: 'num', 'data-k': 'rp:n:' + rid });
+            qi.addEventListener('change', () => { const n = Math.round(Number(String(qi.value).replace(',', '.')) * 10) / 10; if (Number.isFinite(n) && n) mudarConj(c => { c[rid] = limitar(n, -9999, 9999); }); else qi.value = String(conj[rid]); });
+            const cor = (M.eco.rec.find(x => x.id === rid) || {}).cor || '#f2c14e';
+            optsEl.append(h('span', { class: 'chip rec-pin', title: 'Quanto o hexágono produz por semana, além do terreno' },
+              h('span', { class: 'amostra', style: 'background:' + cor }), sr, qi, h('span', { texto: '/sem' }),
+              h('button', { type: 'button', class: 'x', 'data-k': 'rp:x:' + rid, 'aria-label': 'Tirar do pincel', title: 'Tirar do pincel', onclick: () => mudarConj(c => { delete c[rid]; }) }, '×')));
+          }
+          const livre = M.eco.rec.find(x => !ids.includes(x.id));
+          if (livre) optsEl.append(chip({ class: 'chip', 'data-k': 'rp:mais', title: 'Mais um recurso no pincel', onclick: () => mudarConj(c => { c[livre.id] = 1; }) }, '+ Recurso'));
+          if (!ids.length) optsEl.append(h('span', { class: 'chip muted', 'data-k': 'rp:vazio' }, h('span', { texto: 'Pincel vazio: tira os recursos' })));
         }
         if (modo === 'custo') {
           const ci = h('input', { type: 'number', min: 0.1, max: 9999, step: 0.5, value: String(Number(opt('custo')) || 10), 'aria-label': 'Custo próprio, em cubos por hexágono', class: 'num' });
@@ -3636,8 +3739,8 @@
         }
         if (!temGrade(M)) return 'Defina a grade de hexágonos primeiro (aba Terreno).';
         const modo = opt('terModo'), t = terrenoEscolhido();
-        const r0 = modo === 'rec' ? recDoPincel() : null;
-        const o = modo === 'rec' ? (r0 ? 'Arraste sobre os hexágonos para que produzam ' + num(qtdDoPincel(), 1) + ' de ' + r0.nome + ' por semana, além do terreno (0 tira).' : 'Ligue a economia na aba Reinos para pôr recursos.')
+        const cj = modo === 'rec' && ecoLigada(M) ? conjDoPincel() : null, lista = cj ? Object.keys(cj).map(k => num(cj[k], 1) + ' de ' + ((M.eco.rec.find(x => x.id === k) || {}).nome || k)).join(', ') : '';
+        const o = modo === 'rec' ? (!cj ? 'Ligue a economia na aba Reinos para pôr recursos.' : lista ? 'Arraste sobre os hexágonos para que produzam ' + lista + ' por semana, além do terreno.' : 'Pincel sem recursos: arraste sobre os hexágonos para tirar os que o pincel pôs (o do terreno fica).')
           : modo === 'semrec' ? 'Arraste sobre os hexágonos para tirar os recursos que o pincel pôs (o do terreno fica).'
           : modo === 'nada' ? 'Arraste sobre os hexágonos para tirar o terreno.' : modo === 'desenho' ? 'Arraste sobre os hexágonos para que voltem a seguir o desenho à mão.' : modo === 'custo' ? 'Arraste sobre os hexágonos para que custem ' + num(Number(opt('custo')) || 0, 1) + ' cubos.'
           : modo === 'semcusto' ? 'Arraste sobre os hexágonos para tirar o custo próprio (volta o do terreno).' : 'Arraste sobre os hexágonos para pintar: ' + (t ? t.nome : 'terreno') + '.'

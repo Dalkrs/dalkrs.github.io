@@ -817,6 +817,11 @@
     // (lote 54) o rio com ponte custa o da estrada que passa por ela (sem o a mais de atravessar a água); (lote 57) a fenda também
     const rd = t && (texDoTerreno(t) === 'rio' || texDoTerreno(t) === 'desfiladeiro') ? redeDoHex(m, q, r) : null;
     if (rd && rd.ponte && rd.ponte.t) return { q, r, terreno: t, custo: rd.ponte.t.custo, de: 'ponte', regiao: null, desenho, ponte: true };
+    // (lote 64) a trilha da beirada: anda-se pela borda da fenda pelo custo da estrada mais lenta que chega nela
+    if (rd && rd.trilha) {
+      const cs = rd.trilha.map(p => p.custo).filter(x => Number.isFinite(x));
+      if (cs.length) return { q, r, terreno: t, custo: Math.min(...cs), de: 'trilha', regiao: null, desenho, trilha: true };
+    }
     if (t) return { q, r, terreno: t, custo: t.custo, de: 'terreno', regiao: null, desenho };
     return { q, r, terreno: null, custo: CUBOS_HEX, de: 'base', regiao: null, desenho };
   }
@@ -885,8 +890,10 @@
     out.liga = crua.filter(i => {
       if ((out.tipo === 'rio' || out.tipo === 'fenda') && vz[i].agua) return true;
       const B = { q: q + VIZ_REDE[i][0], r: r + VIZ_REDE[i][1] }, pAB = peso(A, B);
+      if (out.tipo === 'via' && !vz[i].via) return true;                 // (lote 64) a ponte e a trilha não entram no triângulo
       for (const j of [(i + 1) % 6, (i + 5) % 6]) {
         if (!crua.includes(j) || ((out.tipo === 'rio' || out.tipo === 'fenda') && vz[j].agua)) continue;
+        if (out.tipo === 'via' && !vz[j].via) continue;
         const C = { q: q + VIZ_REDE[j][0], r: r + VIZ_REDE[j][1] };
         if (maior(pAB, peso(A, C)) && maior(pAB, peso(B, C))) return false;
       }
@@ -896,6 +903,8 @@
     // (lote 57) a fenda: a ponte suspensa da estrada que a atravessa, e o rio no fundo (quando liga a um rio)
     if (out.tipo === 'fenda') { out.ponte = ponteDoRio(vz, true); out.comRio = out.liga.some(i => vz[i].tex === 'rio'); }
     if (porMapa) porMapa.set(q + ',' + r, out);
+    // (lote 64) a trilha na beirada da fenda: a estrada que encosta nela sem atravessar segue pela borda
+    if (out.tipo === 'fenda') { const tr = trilhasDoMapa(m).get(q + ',' + r); out.trilha = tr && tr.length ? tr : null; }
     return out;
   }
   /* As ligações sem o corte dos triângulos: o rio aos rios e a uma água só (a mais do lado oposto ao resto do rio: a foz
@@ -915,10 +924,124 @@
     if (!TEX_VIA[tex]) return out;
     vz.forEach((v, i) => {
       if (v.via) out.push(i);
-      else if (v.tex === 'rio' || v.fenda) { const [dq, dr] = VIZ_REDE[i], p = ponteDoRio(vizinhosDaRede(m, q + dq, r + dr), v.fenda); if (p && (p.a === (i + 3) % 6 || p.b === (i + 3) % 6)) out.push(i); }
+      else if (v.tex === 'rio' || v.fenda) {
+        const [dq, dr] = VIZ_REDE[i], p = ponteDoRio(vizinhosDaRede(m, q + dq, r + dr), v.fenda);
+        if (p && (p.a === (i + 3) % 6 || p.b === (i + 3) % 6)) out.push(i);
+        else if (v.fenda && contatosDaTrilha(m).has((q + dq) + ',' + (r + dr) + '|' + ((i + 3) % 6))) out.push(i);      // (lote 64) a trilha da beirada
+      }
     });
     return out;
   }
+  /* ---------------- (lote 64) a trilha na beirada do desfiladeiro ----------------
+     A estrada que chega a uma fenda sem atravessá-la (a ponte suspensa só sai com estrada dos dois lados) vira uma trilha
+     estreita pela borda: ela segue a fenda, do mesmo lado em que a estrada chegou, até a próxima estrada que encosta
+     naquele lado (até 14 hexágonos); sem outra estrada, a trilha avança um pedaço pela borda e para num mirante.
+     Cada hexágono de fenda guarda os pedaços dela: { de, para, lado, fim } — de/para são { via: i } (o lado do hexágono
+     onde a estrada encosta) ou { passa: i } (onde a fenda segue para o vizinho); lado é 1 (a esquerda de quem anda de
+     "de" para "para") ou -1; fim: true no pedaço que termina no mirante. */
+  const cacheTrilha = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function fendaCrua(m, q, r) {
+    const t = terDoHex(m, q, r);
+    if (texDoTerreno(t) !== 'desfiladeiro') return null;
+    const vz = vizinhosDaRede(m, q, r), ponte = ponteDoRio(vz, true);
+    const elos = [];
+    vz.forEach((v, i) => { if (v.fenda) elos.push(i); });
+    const vias = [];
+    vz.forEach((v, i) => { if (v.via && !(ponte && (ponte.a === i || ponte.b === i))) vias.push(i); });
+    return { elos, vias, vz };
+  }
+  // o arco à esquerda de quem entra por "ent" e sai por "sai" (as direções entre sai e ent, girando no sentido de VIZ_REDE)
+  function aEsquerda(ent, sai, i) { for (let k = (sai + 1) % 6; k !== ent; k = (k + 1) % 6) if (k === i) return true; return false; }
+  function calcularTrilhas(m) {
+    const porHex = new Map(), contatos = new Set();
+    if (!ehObj(m) || !temGrade(m)) return { porHex, contatos };
+    const chaves = new Set(Object.keys(ehObj(m.hexes) ? m.hexes : {}));
+    try { for (const k of terrenoPintado(m).keys()) chaves.add(k); } catch (e) { /* sem desenho */ }
+    const crus = new Map();
+    const cru = (q, r) => { const k = q + ',' + r; if (!crus.has(k)) crus.set(k, fendaCrua(m, q, r)); return crus.get(k); };
+    const por = (k, pedaco) => { if (!porHex.has(k)) porHex.set(k, []); porHex.get(k).push(pedaco); };
+    const opostoDe = (x, list) => list.slice().sort((a, b) => Math.abs(3 - Math.abs(a - x)) - Math.abs(3 - Math.abs(b - x)))[0];
+    const estrada = (q, r, i) => (q + VIZ_REDE[i][0]) + ',' + (r + VIZ_REDE[i][1]);
+    const custoEst = k => { const h = lerChaveHex(k), t = h ? terDoHex(m, h.q, h.r) : null; return t ? num(t.custo, CUBOS_HEX) : CUBOS_HEX; };
+    // os contatos (a fenda, a direção) e as estradas que já atravessam uma fenda pela ponte (essas não precisam de trilha)
+    const lista = [], naPonte = new Set();
+    for (const k of chaves) {
+      const h = lerChaveHex(k);
+      if (!h) continue;
+      const f = cru(h.q, h.r);
+      if (!f) continue;
+      const p = ponteDoRio(f.vz, true);
+      if (p) { naPonte.add(estrada(h.q, h.r, p.a)); naPonte.add(estrada(h.q, h.r, p.b)); }
+      for (const i of f.vias) lista.push({ k, h, f, i, est: estrada(h.q, h.r, i) });
+    }
+    const usadas = new Set();
+    const marcar = (k, i, est) => { contatos.add(k + '|' + i); usadas.add(est); for (const x of (grupo.get(est) || [])) usadas.add(x); };
+    // as estradas que encostam na fenda e são vizinhas umas das outras são a mesma estrada chegando: fica só a ponta dela
+    // (a que tem menos estradas em volta), e as outras não fazem trilha (nem ligam à fenda)
+    const ests = new Set(lista.map(x => x.est)), grupo = new Map();
+    const vizEst = k => { const h = lerChaveHex(k); return h ? VIZ_REDE.map(([dq, dr]) => (h.q + dq) + ',' + (h.r + dr)) : []; };
+    for (const e0 of ests) {
+      if (grupo.has(e0)) continue;
+      const g = [e0], fila = [e0];
+      grupo.set(e0, g);
+      while (fila.length) for (const v of vizEst(fila.pop())) if (ests.has(v) && !grupo.has(v)) { grupo.set(v, g); g.push(v); fila.push(v); }
+    }
+    const grauVia = k => vizEst(k).filter(v => { const h = lerChaveHex(v); return h && TEX_VIA[texDoTerreno(terDoHex(m, h.q, h.r))]; }).length;
+    const ponta = new Set();
+    for (const g of new Set(grupo.values())) ponta.add(g.slice().sort((a, b) => grauVia(a) - grauVia(b) || (a < b ? -1 : 1))[0]);
+    for (let i = lista.length - 1; i >= 0; i--) if (!ponta.has(lista[i].est)) lista.splice(i, 1);
+    // 1) as trilhas que ligam duas estradas pela borda (do mesmo lado da fenda)
+    for (const c of lista) {
+      const { k, h, f, i, est } = c;
+      if (usadas.has(est)) continue;
+      // outra estrada no mesmo hexágono, do mesmo lado
+      if (f.elos.length) {
+        const sai0 = f.elos[0], ent0 = f.elos.length >= 2 ? opostoDe(sai0, f.elos.slice(1)) : (sai0 + 3) % 6, ladoI = aEsquerda(ent0, sai0, i);
+        const par = f.vias.find(j => j !== i && ponta.has(estrada(h.q, h.r, j)) && !(grupo.get(estrada(h.q, h.r, j)) || []).includes(est) && !usadas.has(estrada(h.q, h.r, j)) && aEsquerda(ent0, sai0, j) === ladoI);
+        if (par != null) { por(k, { de: { via: i }, para: { via: par }, lado: 1, custo: Math.max(custoEst(est), custoEst(estrada(h.q, h.r, par))) }); marcar(k, i, est); marcar(k, par, estrada(h.q, h.r, par)); continue; }
+      }
+      let melhor = null;
+      for (const sai of f.elos) {
+        const outros = f.elos.filter(x => x !== sai), ent = outros.length ? opostoDe(sai, outros) : (sai + 3) % 6;
+        const lado = aEsquerda(ent, sai, i) ? 1 : -1;
+        const caminho = [{ q: h.q, r: h.r, de: { via: i }, para: { passa: sai } }];
+        let q = h.q, r = h.r, s = sai, achou = null;
+        for (let passo = 0; passo < 14; passo++) {
+          q += VIZ_REDE[s][0]; r += VIZ_REDE[s][1];
+          const g = cru(q, r);
+          if (!g) break;
+          const e = (s + 3) % 6, resto = g.elos.filter(x => x !== e), prox = resto.length ? opostoDe(e, resto) : null, pv = prox == null ? (e + 3) % 6 : prox;
+          const mesmo = g.vias.filter(j => ponta.has(estrada(q, r, j)) && !(grupo.get(estrada(q, r, j)) || []).includes(est) && (j === pv && prox == null || (lado === 1 ? aEsquerda(e, pv, j) : aEsquerda(pv, e, j))));
+          if (mesmo.length) { const j = opostoDe(e, mesmo); caminho.push({ q, r, de: { passa: e }, para: { via: j } }); achou = { k: q + ',' + r, j, est: estrada(q, r, j) }; break; }
+          if (prox == null) break;
+          caminho.push({ q, r, de: { passa: e }, para: { passa: prox } });
+          s = prox;
+        }
+        if (achou && (!melhor || caminho.length < melhor.caminho.length)) melhor = { caminho, lado, achou };
+      }
+      if (!melhor) continue;
+      const custo = Math.max(custoEst(est), custoEst(melhor.achou.est));
+      for (const p of melhor.caminho) por(p.q + ',' + p.r, { de: p.de, para: p.para, lado: melhor.lado, custo });
+      marcar(k, i, est); marcar(melhor.achou.k, melhor.achou.j, melhor.achou.est);
+    }
+    // 2) a estrada que só encosta: a trilha avança pela borda e para num mirante
+    for (const { k, f, i, est } of lista) {
+      if (usadas.has(est) || naPonte.has(est)) continue;
+      const sai = f.elos.length ? opostoDe(i, f.elos) : (i + 3) % 6;
+      const outros = f.elos.filter(x => x !== sai), ent = outros.length ? opostoDe(sai, outros) : (sai + 3) % 6;
+      por(k, { de: { via: i }, para: { passa: sai }, lado: aEsquerda(ent, sai, i) ? 1 : -1, fim: true, custo: custoEst(est) });
+      marcar(k, i, est);
+    }
+    return { porHex, contatos };
+  }
+  function trilhasCalc(m) {
+    if (!cacheTrilha || !ehObj(m)) return calcularTrilhas(m);
+    let v = cacheTrilha.get(m);
+    if (!v) { v = calcularTrilhas(m); cacheTrilha.set(m, v); }
+    return v;
+  }
+  const trilhasDoMapa = m => trilhasCalc(m).porHex;
+  const contatosDaTrilha = m => trilhasCalc(m).contatos;
   const grauCru = (m, q, r) => ligaCrua(m, q, r).length;
   // o meio do lado do hexágono na direção i (onde a rede passa para o vizinho)
   function meioDoLado(m, q, r, i) {
@@ -2127,6 +2250,8 @@
         // no porto, as ligações por mar com outros portos (os dias de viagem)
         const pr = normTabProd(o.pr);
         if (Object.keys(pr).length) mc.pr = pr;
+        // (lote 64) a conquista: o lugar (a masmorra, a mina, a ruína…) só produz depois de conquistado, e para quem conquistou
+        if (ehObj(o.conq)) mc.conq = o.conq.ok ? { ok: true, fac: idRef(o.conq.fac) } : { ok: false };
         const mar = normMar(o.mar);
         if (mar.length) mc.mar = mar;
         return mc;
@@ -3892,6 +4017,7 @@
       if (o.k === 'm') {
         const est0 = o.estr;
         delete o.falso; delete o.estr; delete o.desc; delete o.ass; delete o.dentro; delete o.pr;     // (lote 17: a produção do lugar é do mestre)
+        if (o.conq && !o.conq.ok) delete o.conq;                         // (lote 64: a marca de conquistado aparece; o que falta conquistar, não)
         if (coberto(o.x, o.y)) continue;
         // (lote 12, parte 12e) o cerco: quem cerca (sem a facção escondida) e desde quando; a reserva e o HP da muralha
         // só para a facção dos jogadores, quando ela cerca ou é cercada ali
@@ -4024,7 +4150,7 @@
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, controleDaRegiao, acimaDe,
     TIPOS_GRUPO, ARMAS_IDS, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
     CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
-    HONRA, TERRENOS_NOVOS, TERRENOS_L54, TERRENOS_L57, TEX_AGUA, redeDoHex, margemDoHex, meioDoLado, VIZ_REDE, TEX_VIA, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
+    HONRA, TERRENOS_NOVOS, TERRENOS_L54, TERRENOS_L57, TEX_AGUA, redeDoHex, trilhasDoMapa, margemDoHex, meioDoLado, VIZ_REDE, TEX_VIA, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     normBr,
     MIS_E, situacaoDaMissao,

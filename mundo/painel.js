@@ -400,7 +400,7 @@
       return gravar(n);
     };
     const el = h('input', { class: 'in', type: o.decimal ? 'text' : 'number', inputmode: o.decimal ? 'decimal' : 'numeric', 'data-k': k, value: txt,
-      min: o.decimal ? null : o.min, max: o.decimal ? null : o.max, step: o.decimal ? null : 1, disabled: o.off, placeholder: o.ph, autocomplete: 'off',
+      min: o.decimal ? null : o.min, max: o.decimal ? null : o.max, step: o.decimal ? null : 1, disabled: o.off, placeholder: o.ph, autocomplete: 'off', 'aria-label': rotulo ? null : o.rotulo,
       _modelo: txt, _gravar: validar, _commit: commitCampo, onchange: mudaCampo, onkeydown: teclaCampo });
     return rotulo ? campo(rotulo, el, o.dica) : el;
   }
@@ -1725,31 +1725,54 @@
       { off: daJog, dica: daJog ? 'É da facção dos jogadores: eles sempre veem (o grupo precisa estar à vista deles).' : 'Sem marcar, só você vê.' }));
     return secao('Seta da marcha', out);
   }
-  /* o lugar que produz (mina, pedreira, serraria, fazenda): um recurso por semana para quem controla a região; o porto:
-     as ligações por mar com outros portos (os dias de viagem, que a marcha usa) */
+  /* o lugar que produz (mina, pedreira, serraria, fazenda): os recursos por semana para quem controla a região; o porto:
+     as ligações por mar com outros portos (os dias de viagem, que a marcha usa).
+     (lote 64) Vários recursos por lugar (uma linha cada) e a conquista: qualquer marcador (a masmorra, a mina, a ruína, o
+     ninho…) pode ter recursos que só contam depois de conquistado, e vão para quem conquistou. */
   function secLugarQueFaz(o, m) {
     const N_ = N(), id = o.id, P = N_.PRODUCAO_ICONE || {}, out = [], ic = (N_.ICONES[o.ic] || {}).nome || 'O lugar';
-    if (P[o.ic]) {
-      const eco = m.eco && m.eco.on && m.eco.rec.length ? m.eco : null, sec = [];
-      if (!eco) {
-        sec.push(nota('Com a economia ligada (aba Reinos), ' + ic.toLocaleLowerCase('pt-BR') + ' produz um recurso por semana para quem controla a região.'));
-        sec.push(linha(botao('Abrir a aba Reinos', () => abrirAba('reino'), { c: 'sm', k: 'o:' + id + ':ir-reino' })));
-      } else {
-        const r = N_.regiaoEm(m, o.x, o.y), fid = r ? N_.controleDaRegiao(m, r) : null, fac = facDe(m, fid), rec0 = Object.keys(o.pr || {})[0] || null;
-        if (!rec0) {
-          const R0 = window.MundoReino && MundoReino.recursoDoLugar ? MundoReino.recursoDoLugar(m, o.ic) : eco.rec[0];
-          sec.push(nota('Ainda não produz nada.'));
-          sec.push(linha(botao('Produzir…', () => mudarObj(id, 'pôr o lugar para produzir', x => { x.pr = { [(R0 || eco.rec[0]).id]: 5 }; }), { c: 'sm', k: 'o:' + id + ':pr-novo', title: 'Começa com 5 de ' + ((R0 || eco.rec[0]).nome) + ' por semana (dá para mudar)' })));
-        } else {
-          const n0 = o.pr[rec0];
-          sec.push(h('div', { class: 'row' },
-            campoEscolha('o:' + id + ':pr-rec', 'Recurso', rec0, eco.rec.map(x => [x.id, x.nome]), v => mudarObj(id, 'mudar o recurso do lugar', x => { const n = (x.pr || {})[rec0] || n0; if (v === rec0) return false; x.pr = { [v]: n }; })),
-            campoNumero('o:' + id + ':pr-n', 'Por semana', n0, n => mudarObj(id, 'mudar a produção do lugar', x => { if (!n) return false; x.pr = { [rec0]: n }; }), { decimal: true, min: -1e6, max: 1e6, erro: 'Use um número (diferente de zero).' })));
-          sec.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':pr-dono', text: fac ? 'Vai para ' + nomeFac(fac) + (r && r.ocup && r.ocup.fac === fid ? ' (que ocupa a região)' : ', que controla a região') + '.' : r ? 'A região não tem dono: a produção não vai para ninguém.' : 'Fora de uma região: a produção não vai para ninguém.' }));
-          sec.push(linha(botao('Parar de produzir', () => { if (mudarObj(id, 'parar a produção do lugar', x => { if (!x.pr) return false; delete x.pr; }) !== false) avisoDesfazer(ic + ' parou de produzir.'); }, { c: 'sm', k: 'o:' + id + ':pr-x' })));
-        }
+    const eco = m.eco && m.eco.on && m.eco.rec.length ? m.eco : null, prod = P[o.ic], tem = !!(o.pr && Object.keys(o.pr).length), conq = o.conq || null;
+    if (!eco) {
+      if (prod) out.push(secao('Produção', [
+        nota('Com a economia ligada (aba Reinos), ' + ic.toLocaleLowerCase('pt-BR') + ' produz recursos por semana para quem controla a região.'),
+        linha(botao('Abrir a aba Reinos', () => abrirAba('reino'), { c: 'sm', k: 'o:' + id + ':ir-reino' }))]));
+    } else if (!tem && !conq) {
+      // nada ainda: o lugar de produção começa com o recurso dele; os outros, com recursos que esperam a conquista
+      const R0 = (window.MundoReino && MundoReino.recursoDoLugar ? MundoReino.recursoDoLugar(m, o.ic) : null) || eco.rec[0];
+      out.push(secao('Produção', [
+        nota(prod ? 'Ainda não produz nada.' : 'Uma masmorra, uma mina ou uma ruína pode dar recursos depois de conquistada.'),
+        linha(prod ? botao('Produzir…', () => mudarObj(id, 'pôr o lugar para produzir', x => { x.pr = { [R0.id]: 5 }; }), { c: 'sm', k: 'o:' + id + ':pr-novo', title: 'Começa com 5 de ' + R0.nome + ' por semana (dá para mudar)' }) : null,
+          botao('Recursos ao conquistar…', () => mudarObj(id, 'pôr recursos para quando o lugar for conquistado', x => { x.pr = { [R0.id]: 5 }; x.conq = { ok: false }; }), { c: 'sm', k: 'o:' + id + ':conq-novo', title: 'O lugar só produz depois de marcado como conquistado, para quem conquistou' }))]));
+    } else {
+      const sec = [], ids = Object.keys(o.pr || {}), nomeRec = rid => (eco.rec.find(r => r.id === rid) || {}).nome || rid;
+      // a conquista: uma escolha só (ninguém ainda, ou a facção que conquistou)
+      if (conq) {
+        const facs = (m.faccoes || []).map(f => [f.id, nomeFac(f)]);
+        sec.push(h('div', { class: 'row' }, campoEscolha('o:' + id + ':conq', 'Conquistado por', conq.ok ? conq.fac || '' : '', [['', 'Ninguém ainda']].concat(facs),
+          v => mudarObj(id, v ? 'marcar o lugar como conquistado' : 'tirar a conquista do lugar', x => { const nv = v ? { ok: true, fac: v } : { ok: false }; if (JSON.stringify(x.conq || null) === JSON.stringify(nv)) return false; x.conq = nv; }))));
+        sec.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':conq-txt', text: conq.ok
+          ? (tem ? 'Produz toda semana para ' + (facDe(m, conq.fac) ? nomeFac(facDe(m, conq.fac)) : 'quem conquistou') + ', seja quem for o dono da região.' : 'Conquistado. Ponha um recurso para ele produzir.')
+          : 'Produz quando for conquistado. Até lá, a semana não conta (os jogadores não veem estes recursos).' }));
       }
-      out.push(secao('Produção', sec));
+      // os recursos, uma linha cada
+      for (const rid of ids) {
+        sec.push(h('div', { class: 'row pr-li', 'data-k': 'o:' + id + ':pr:' + rid },
+          campoEscolha('o:' + id + ':pr-rec:' + rid, null, rid, eco.rec.filter(r => r.id === rid || !ids.includes(r.id)).map(x => [x.id, x.nome]),
+            v => mudarObj(id, 'trocar o recurso do lugar', x => { if (v === rid || !x.pr || x.pr[v] != null) return false; const n = x.pr[rid]; const np = {}; for (const k of Object.keys(x.pr)) np[k === rid ? v : k] = k === rid ? n : x.pr[k]; x.pr = np; }), { rotulo: 'Recurso' }),
+          campoNumero('o:' + id + ':pr-n:' + rid, null, o.pr[rid], n => mudarObj(id, 'mudar a produção do lugar', x => { if (!n || !x.pr) return false; x.pr = Object.assign({}, x.pr, { [rid]: n }); }), { decimal: true, min: -1e6, max: 1e6, rotulo: 'Por semana', erro: 'Use um número (diferente de zero).' }),
+          h('span', { class: 'tx muted', text: 'por semana' }),
+          botao('×', () => { if (mudarObj(id, 'tirar um recurso do lugar', x => { if (!x.pr || x.pr[rid] == null) return false; const np = Object.assign({}, x.pr); delete np[rid]; if (Object.keys(np).length) x.pr = np; else delete x.pr; }) !== false) avisoDesfazer(nomeRec(rid) + ' saiu de ' + nomeDe(o, m) + '.'); }, { c: 'sm ghost', k: 'o:' + id + ':pr-x:' + rid, title: 'Tirar ' + nomeRec(rid) })));
+      }
+      const livre = eco.rec.find(r => !ids.includes(r.id));
+      sec.push(linha(livre ? botao('+ Recurso', () => mudarObj(id, 'pôr mais um recurso no lugar', x => { x.pr = Object.assign({}, x.pr || {}, { [livre.id]: 5 }); }), { c: 'sm', k: 'o:' + id + ':pr-mais', title: 'Mais um recurso, que você muda na linha nova' }) : null,
+        !conq ? botao('Só depois de conquistado', () => mudarObj(id, 'fazer o lugar produzir só depois de conquistado', x => { x.conq = { ok: false }; }), { c: 'sm', k: 'o:' + id + ':conq-por', title: 'Os recursos esperam a conquista e vão para quem conquistou' }) : null,
+        conq && !conq.ok && prod ? botao('Produzir já, sem conquista', () => mudarObj(id, 'tirar a marca de conquista', x => { delete x.conq; }), { c: 'sm', k: 'o:' + id + ':conq-tira' }) : null));
+      if (!conq && tem) {
+        const r = N_.regiaoEm(m, o.x, o.y), fid = r ? N_.controleDaRegiao(m, r) : null, fac = facDe(m, fid);
+        sec.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':pr-dono', text: fac ? 'Vai para ' + nomeFac(fac) + (r && r.ocup && r.ocup.fac === fid ? ' (que ocupa a região)' : ', que controla a região') + '.' : r ? 'A região não tem dono: a produção não vai para ninguém.' : 'Fora de uma região: a produção não vai para ninguém.' }));
+      }
+      if (tem) sec.push(linha(botao('Parar de produzir', () => { if (mudarObj(id, 'parar a produção do lugar', x => { if (!x.pr) return false; delete x.pr; if (x.conq && !x.conq.ok) delete x.conq; }) !== false) avisoDesfazer(ic + ' parou de produzir.'); }, { c: 'sm', k: 'o:' + id + ':pr-x' })));
+      out.push(secao(conq ? 'Produção e conquista' : 'Produção', sec));
     }
     if (o.ic === 'porto' && N_.ligacoesMar) {
       const sec = [], ls = N_.ligacoesMar(m).filter(L => L.a === id || L.b === id), outros = m.objs.filter(x => x.k === 'm' && x.ic === 'porto' && x.id !== id);

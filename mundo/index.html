@@ -630,6 +630,17 @@ svg text.veter-n { font-family: var(--ui); font-weight: 800; fill: #edb960; stro
 /* opções da ferramenta (#opts) */
 .chip select { height: 26px; border: 0; background: none; color: inherit; font-weight: 600; max-width: 150px; padding: 0 2px; cursor: pointer; }
 .chip select option { background: var(--surface); color: var(--fg); }
+/* (lote 64) as pastilhas dos recursos do pincel e as linhas de recurso do lugar */
+.chip.rec-pin { gap: 4px; padding-right: 4px; }
+.chip.rec-pin .num { width: 52px; }
+.chip.rec-pin .x { border: 0; background: none; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 4px; cursor: pointer; border-radius: 6px; }
+.chip.rec-pin .x:hover, .chip.rec-pin .x:focus-visible { color: var(--fg); background: rgba(255,255,255,.08); }
+.chip.muted { opacity: .75; font-style: italic; }
+.row.pr-li { align-items: center; gap: 6px; flex-wrap: nowrap; }
+.row.pr-li select.in { flex: 1 1 0; width: auto; min-width: 0; }
+.row.pr-li input.in { width: 64px; flex: 0 0 auto; }
+.row.pr-li .btn { flex: 0 0 auto; }
+.row.pr-li .tx.muted { color: var(--muted); font-size: 12px; }
 .chip.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
 .chip:disabled { opacity: .55; cursor: default; }
 .chip svg { flex: none; }
@@ -1587,16 +1598,16 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../tc/tropas.js?v=5"></script>
 <script src="../tc/modelos.js?v=1"></script>
 <script src="../jornal/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=49"></script>
+<script src="nucleo.js?v=50"></script>
 <script src="guerra.js?v=8"></script>
-<script src="reino.js?v=14"></script>
+<script src="reino.js?v=15"></script>
 <script src="corte.js?v=4"></script>
 <script src="diplomacia.js?v=3"></script>
 <script src="intrigas.js?v=2"></script>
 <script src="campanha.js?v=5"></script>
 <script src="camadas.js?v=4"></script>
-<script src="tela.js?v=34"></script>
-<script src="painel.js?v=55"></script>
+<script src="tela.js?v=35"></script>
+<script src="painel.js?v=56"></script>
 <script src="guerra-painel.js?v=15"></script>
 <script src="exercitos-painel.js?v=1"></script>
 <script src="tour.js?v=1"></script>
