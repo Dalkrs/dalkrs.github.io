@@ -704,7 +704,7 @@
     const n = { mato: 9, arvores: 7, colinas: 4, montes: 4, juncos: 6, areia: 40, neve: 14, ondas: 4, pedras: 8,
       ruinas: 4, lava: 5, cristais: 6, selva: 10, savana: 6, tundra: 7, corrompida: 5,
       raso: 5, fundo: 4, desfiladeiro: 3, geleira: 5, morta: 6, oasis: 2, charneca: 8, devastada: 5,
-      rio: 4, estradaTerra: 10, estradaPedra: 12, estradaPav: 6 }[tex] || 0, pos = [];       // (lote 54)     // (lote 17: os oito novos)
+      rio: 4, estradaTerra: 10, estradaPedra: 12, estradaPav: 6, lago: 3 }[tex] || 0, pos = [];       // (lote 54)     // (lote 17: os oito novos)
     for (let i = 0; i < n; i++) {
       let melhor = null, dm = -1;
       for (let k = 0; k < 8; k++) {
@@ -752,6 +752,9 @@
         case 'estradaTerra': x.globalAlpha = 0.6; x.beginPath(); x.ellipse(0, 0, 1.4, 0.8, 0.4, 0, 7); x.fill(); x.globalAlpha = 1; break;
         case 'estradaPedra': x.fillStyle = misturar(cor, '#000000', 0.12); x.beginPath(); x.moveTo(-3, -2); x.lineTo(2.5, -2.5); x.lineTo(3, 2); x.lineTo(-2.5, 2.5); x.closePath(); x.fill(); x.lineWidth = 0.8; x.stroke(); break;
         case 'estradaPav': x.lineWidth = 0.9; x.strokeStyle = misturar(cor, '#000000', 0.3); x.strokeRect(-6, -3.5, 12, 7); x.beginPath(); x.moveTo(0, -3.5); x.lineTo(0, 3.5); x.stroke(); break;
+        // (lote 57) o lago: os círculos da água parada e, às vezes, uma folha de ninfeia
+        case 'lago': x.strokeStyle = cla; x.lineWidth = 1; x.globalAlpha = 0.8; x.beginPath(); x.ellipse(0, 0, 5, 2, 0, Math.PI * 1.05, Math.PI * 1.95); x.stroke(); x.globalAlpha = 0.45; x.beginPath(); x.ellipse(0, 0.6, 8.5, 3.4, 0, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); x.globalAlpha = 1;
+          if (rnd() < 0.5) { x.fillStyle = misturar(cor, '#3f7a3a', 0.65); x.beginPath(); x.arc(5, 4, 2.2, 0.5, Math.PI * 2.2); x.lineTo(5, 4); x.closePath(); x.fill(); } break;
         case 'devastada': x.lineWidth = 1.2; x.strokeStyle = '#2a1f18'; linhas([-6, -2, -1, 1], [-1, 1, 3, -1], [3, -1, 7, 2]); x.fillStyle = '#e0702a'; x.globalAlpha = 0.7; x.beginPath(); x.arc(-3, 3, 0.9, 0, 7); x.arc(4, -3, 0.7, 0, 7); x.fill(); x.globalAlpha = 1; break;
       }
     });
@@ -811,7 +814,8 @@
     const chaveT = JSON.stringify([m.hexes, m.terrenos, gr.tam, gr.x, gr.y, gr.orient, gr.des, custo, L, A]);
     if (chaveT === hexChave) { pintarHexVista(); return; }
     hexChave = chaveT;
-    const por = new Map(), custos = [], rede = [];
+    const por = new Map(), custos = [], rede = [], fundo = new Map();
+    const terPorId = new Map((m.terrenos || []).map(x => [x.id, x])), AGUA = N().TEX_AGUA || { ondas: 1, raso: 1, fundo: 1, lago: 1 };
     let nada = '';
     for (const k of Object.keys(m.hexes || {})) {
       const v = m.hexes[k], t = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', hx = N().lerChaveHex(k);
@@ -823,11 +827,14 @@
         let tf = t;
         if (rd) { tf = rd.margem ? rd.margem.id : (m.terrenos.some(x => x.id === 'pl') ? 'pl' : t); rede.push(Object.assign({ q: hx.q, r: hx.r, t }, rd)); hx.rede = true; }
         if (!por.has(tf)) por.set(tf, []); por.get(tf).push(hx);
+        // (lote 57) o fundo de cada hexágono (para a costa e para os vizinhos que se ligam)
+        const tt = terPorId.get(t), tff = terPorId.get(tf);
+        if (tt && tff) fundo.set(hx.q + ',' + hx.r, { tex: tff.tex || 'liso', agua: !!AGUA[tt.tex], cor: tt.cor, rd, ter: tff });
       }
       if (Array.isArray(v) && v[1] != null) custos.push([hx, v[1]]);
     }
     // a cor e o desenho de cada hexágono vão no canvas; aqui, por cima, o "sem terreno" e os custos do mestre
-    prepararHexes(m, por, rede);
+    prepararHexes(m, por, rede, fundo);
     if (hexDados && ter) { hexCv.hidden = false; pintarHexVista(); }
     const frag = document.createDocumentFragment();
     if (nada) frag.append(s('path', { class: 'hex-nada', d: nada }));
@@ -898,7 +905,7 @@
   }
   // O terreno pintado (a cada mudança dele): por tipo, os hexágonos com o centro de cada um, e a caixa de todos.
   // porTer: id do terreno → [{ q, r }]
-  function prepararHexes(m, porTer, rede) {
+  function prepararHexes(m, porTer, rede, fundo) {
     const ters = new Map((m.terrenos || []).map(t => [t.id, t])), lista = [], R = m.grade.tam / Math.sqrt(3) + 1;
     let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
     for (const [tid, hs] of porTer) {
@@ -916,10 +923,20 @@
     // (lote 54) a rede: cada hexágono de rio ou de estrada com o centro, os meios dos lados que ligam e a ponte
     const redeD = (rede || []).map(x => { const c = N().centroHex(m, x.q, x.r); return Object.assign({}, x, { x: c.x, y: c.y, meios: [0, 1, 2, 3, 4, 5].map(i => N().meioDoLado(m, x.q, x.r, i)) }); });
     if (!lista.length || !garantirHexCanvas()) { limparHexCanvas(); return; }
-    hexDados = { m, lista, rede: redeD, R, u: m.grade.tam / 2, des: m.grade.des !== false, caixa: [bx0, by0, bx1, by1], n: ++hexVersao };
+    // (lote 57) a água por último (para a margem ficar limpa) e a costa, já em correntes
+    const AGUA = N().TEX_AGUA || {};
+    lista.sort((a, b) => (AGUA[a.t.tex] ? 1 : 0) - (AGUA[b.t.tex] ? 1 : 0));
+    let costa = [];
+    try { costa = fundo && fundo.size ? costaDoMapa(m, fundo) : []; } catch (e) { costa = []; }
+    hexDados = { m, lista, rede: redeD, R, u: m.grade.tam / 2, des: m.grade.des !== false, caixa: [bx0, by0, bx1, by1], n: ++hexVersao, fundo: fundo || new Map(), costa,
+      terra: lista.filter(x => !AGUA[x.t.tex]).flatMap(x => x.hs) };
     hexFeito = null;
     hexCv.dataset.ters = lista.map(x => x.t.id + ':' + x.hs.length).join(',');
     hexCv.dataset.des = hexDados.des ? '1' : '0';
+    // (lote 57) para conferir: as correntes da costa (os tipos de margem) e as fendas
+    const tiposCosta = new Set(); costa.forEach(cr => cr.T.forEach(e => tiposCosta.add(e.tipo)));
+    hexCv.dataset.costa = costa.length + ':' + [...tiposCosta].sort().join(',');
+    hexCv.dataset.fendas = String(redeD.filter(x => x.tipo === 'fenda').length) + ':' + redeD.filter(x => x.tipo === 'fenda' && x.comRio).length + ':' + redeD.filter(x => x.tipo === 'fenda' && x.ponte).length;
   }
   /* (lote 24) O desenho dos hexágonos, mais leve:
      · numa escala "de degrau" (de √2 em √2) e, quando cabe (e sem os desenhos de cada hexágono), cobrindo todo o terreno
@@ -962,7 +979,7 @@
       st.left = x0 + 'px'; st.top = y0 + 'px'; st.width = (w / k) + 'px'; st.height = (hh / k) + 'px';
     };
     if (!grande) mostrar();
-    const passos = passosHex(d, alvo.getContext('2d'), { x0, y0, k, w, hh, R, perto, comDesenhos });
+    const passos = passosHex(d, alvo.getContext('2d'), { x0, y0, k, w, hh, R, perto, comDesenhos, x1v: x1, y1v: y1 });
     const fim = () => {
       if (grande) { mostrar(); hexCtx.setTransform(1, 0, 0, 1, 0, 0); hexCtx.globalCompositeOperation = 'source-over'; hexCtx.globalAlpha = 1; hexCtx.clearRect(0, 0, w, hh); hexCtx.drawImage(alvo, 0, 0); }
       hexFeito = feito; hexPedido = null;
@@ -1019,8 +1036,25 @@
     for (const { t, hs } of d.lista) {
       if (!hs.some(perto)) continue;
       limpar();
+      const ehAgua = !!(N().TEX_AGUA || {})[t.tex];
       const cx = encher(hs, comBorda ? macio * 1.6 : 0, comBorda ? macio : 0), r = cx && emPx(cx);
       if (!r) continue;
+      // (lote 57) a água não avança na terra: a tinta dela é recortada pelos hexágonos de terra (a margem desenha a beira)
+      if (ehAgua && comBorda && d.terra && d.terra.length) {
+        mx.globalCompositeOperation = 'destination-out'; mx.filter = 'blur(' + Math.max(0.3, macio * 0.3 * sm).toFixed(2) + 'px)';
+        mx.fillStyle = '#000'; mx.beginPath();
+        for (const p of d.terra) if (perto(p)) hexNoCaminho(mx, d.m, p.q, p.r, p.x, p.y);
+        mx.fill();
+        // a beira segue a costa amaciada: a água volta até a linha (nos cantos de terra) e sai do outro lado dela
+        const tam = d.m.grade.tam;
+        mx.lineCap = 'butt'; mx.lineJoin = 'round';
+        for (const [modo, dd, larg] of [['source-over', 0.16, 0.32], ['destination-out', -0.26, 0.52]]) {
+          mx.globalCompositeOperation = modo; mx.strokeStyle = '#fff'; mx.lineWidth = larg * tam; mx.beginPath();
+          for (const cr of d.costa || []) for (const pts of corridasDaCosta(cr, dd * tam, e => e.terA && e.terA.id === t.id)) { mx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) mx.lineTo(pts[i][0], pts[i][1]); }
+          mx.stroke();
+        }
+        mx.filter = 'none'; mx.globalCompositeOperation = 'source-over';
+      }
       algumTer = true;
       const [px, py, pw, ph] = r;
       tx.setTransform(1, 0, 0, 1, 0, 0); tx.globalCompositeOperation = 'source-over'; tx.globalAlpha = 1; tx.imageSmoothingEnabled = true;
@@ -1043,15 +1077,37 @@
       c.globalCompositeOperation = 'source-over';
       yield;
     }
+    // (lote 57) a costa: o raso, a margem, a espuma, a falésia, o gelo
+    if (d.costa && d.costa.length) {
+      c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+      d.vista = [x0, y0, o.x1v, o.y1v];
+      desenharCosta(c, d, perto, d.m.grade.tam * k, k, comDesenhos);
+      yield;
+    }
     // o desenho de cada um (de longe, com os hexágonos miúdos na tela, fica só a textura)
     if (comDesenhos) {
       let n = 0;
+      // (lote 57) os que se ligam aos vizinhos: os montes (a cordilheira), a mata (a borda) e o pântano (os canais)
+      const montes = [], matas = [], pantanos = [];
+      for (const { t, semT, hs } of d.lista) for (const p of hs) {
+        if (!perto(p) || p.rede) continue;
+        if (t.tex === 'montes') montes.push({ p, t, semT });
+        else if (t.tex === 'arvores' || t.tex === 'selva') matas.push({ p, t });
+        else if (t.tex === 'juncos') pantanos.push({ p, t });
+      }
+      c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+      if (pantanos.length) desenharPantano(c, d, pantanos, d.u);
       for (const { t, semT, hs } of d.lista) for (const p of hs) {
         if (!perto(p)) continue;
+        if (t.tex === 'montes' && !p.rede) continue;
         c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
         desenhoDoHex(c, d.m, p, p.x, p.y, d.u, t.tex || 'liso', t.cor, ((p.q * 73856093) ^ (p.r * 19349663) ^ semT) >>> 0);
         if (++n % 150 === 0) yield;
       }
+      c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+      if (matas.length) desenharBordaMata(c, d, matas, d.u);
+      if (montes.length) desenharCordilheira(c, d, montes, d.u);
+      yield;
     }
     // (lote 54) a rede, de longe e de perto: os rios, as estradas e as pontes
     if (d.rede && d.rede.length) {
@@ -1090,9 +1146,9 @@
     const c = { x: p.x, y: p.y }, M = i => p.meios[i], L = p.liga, out = [];
     const mix = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
     const cub = (a, b, cc, d, n) => { const pts = []; for (let i = 0; i <= n; i++) { const t = i / n, s = 1 - t; pts.push([s * s * s * a.x + 3 * s * s * t * b.x + 3 * s * t * t * cc.x + t * t * t * d.x, s * s * s * a.y + 3 * s * s * t * b.y + 3 * s * t * t * cc.y + t * t * t * d.y]); } return pts; };
-    const rio = p.tipo === 'rio', jit = p.ponte || p.reto ? 0 : (rio ? 0.16 : 0.05) * tam;
+    const rio = p.tipo === 'rio' || p.tipo === 'fenda', jit = p.ponte || p.reto ? 0 : (p.tipo === 'rio' ? 0.16 : p.tipo === 'fenda' ? 0.1 : 0.05) * tam;     // (lote 57: a fenda abre na água como o rio)
     // a ponta que entra na água (o mar, o lago) avança um pouco nela, abrindo
-    const fim = i => { const m = M(i); return rio && p.agua && p.agua[i] ? mix(c, m, 1.4) : m; };
+    const fim = i => { const m = M(i); return rio && p.agua && p.agua[i] ? mix(c, m, 1.2) : m; };
     const liga2 = (a, b) => {
       const ma = fim(a), mb = fim(b), dx = mb.x - ma.x, dy = mb.y - ma.y, dl = Math.hypot(dx, dy) || 1, T = { x: dx / dl, y: dy / dl };
       const J = { x: c.x - T.y * (rnd() - 0.5) * 2 * jit, y: c.y + T.x * (rnd() - 0.5) * 2 * jit }, hh = dl * 0.22;
@@ -1115,18 +1171,19 @@
     const visiveis = d.rede.filter(p => perto(p));
     if (!visiveis.length) return;
     // a água que recebe o rio (o mar, o lago): para a foz abrir dentro dela
-    const geo = visiveis.map(p => Object.assign(p, { agua: p.tipo === 'rio' ? aguaVizinha(d.m, p) : null })).map(p => ({ p, cs: curvasDaRede(p, tam, 97) }));
+    const geo = visiveis.map(p => Object.assign(p, { agua: p.tipo === 'rio' || p.tipo === 'fenda' ? aguaVizinha(d.m, p) : null })).map(p => ({ p, cs: curvasDaRede(p, tam, 97) }));
     const traco = (pts) => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); };
     const tra = (cor, larg, alfa, tracejado) => { c.strokeStyle = cor; c.lineWidth = larg; c.globalAlpha = alfa == null ? 1 : alfa; c.setLineDash(tracejado || []); c.stroke(); c.setLineDash([]); };
     c.lineCap = 'round'; c.lineJoin = 'round';
     const camadas = (tipo, lista) => {
-      for (const [cor, larg, alfa, tr, soPerto, afina] of lista) {
+      for (const [cor, larg, alfa, tr, soPerto, afina, off, reto] of lista) {
         if (soPerto && longe) continue;
+        c.save(); if (off) c.translate(off[0], off[1]); if (reto) c.lineCap = 'butt';            // (lote 57) a camada deslocada: a luz e a sombra da fenda
         for (const { p, cs } of geo) {
           if (p.tipo !== tipo.t || (tipo.via && p.via !== tipo.via)) continue;
           for (const cv of cs) {
-            if (cv.so) { c.beginPath(); c.ellipse(cv.pts[0][0], cv.pts[0][1], larg * (tipo.t === 'rio' ? 1.6 : 0.7), larg * (tipo.t === 'rio' ? 1.1 : 0.7), 0, 0, Math.PI * 2); c.fillStyle = cor; c.globalAlpha = alfa == null ? 1 : alfa; c.fill(); continue; }
-            if (cv.ponta && tipo.t === 'rio' && afina !== false) {
+            if (cv.so) { c.beginPath(); c.ellipse(cv.pts[0][0], cv.pts[0][1], larg * (tipo.t !== 'via' ? 1.6 : 0.7), larg * (tipo.t !== 'via' ? 1.1 : 0.7), 0, 0, Math.PI * 2); c.fillStyle = cor; c.globalAlpha = alfa == null ? 1 : alfa; c.fill(); continue; }
+            if (cv.ponta && tipo.t !== 'via' && afina !== false) {
               // a nascente: a água afina até a ponta (em pedaços, do centro para fora engrossa)
               const n = cv.pts.length - 1;
               for (let i = 0; i < n; i++) { traco([cv.pts[i], cv.pts[i + 1]]); tra(cor, larg * (0.35 + 0.65 * (i + 1) / n), alfa, tr); }
@@ -1137,9 +1194,27 @@
         }
         // (todos os pedaços num caminho só: onde dois se encontram, a tinta transparente não escurece)
         if (junto.length) { c.beginPath(); for (const pts of junto) { c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); } tra(cor, larg, alfa, tr); junto.length = 0; }
+        c.restore();
       }
     };
     const junto = [];
+    // (lote 57) a fenda: a sombra que ela joga, a beira de cima iluminada, as paredes (com as camadas da rocha), a
+    // parede da sombra e o fundo escuro; com o rio, a água corre lá embaixo
+    const F = tam * 0.17;
+    camadas({ t: 'fenda' }, [
+      ['#5e4a33', F * 3.1, 0.55, [F * 0.045, F * 0.15], true, false, null, true],
+      ['#3a2a1b', F * 1.5, 0.95],
+      ['#7d6045', F * 1.22, 1],
+      ['#a4845f', F * 0.5, 0.7, null, true, null, [F * 0.3, F * 0.3]],
+      ['#2a1c10', F * 0.7, 1, null, false, null, [-F * 0.12, -F * 0.12]],
+    ]);
+    for (const g of geo) if (g.p.tipo === 'fenda' && g.p.comRio) g.p.tipo = 'fendaRio';
+    camadas({ t: 'fendaRio' }, [
+      ['#2e5d8e', F * 0.55, 1, null, false, null, [-F * 0.1, -F * 0.1]],
+      ['#5c97cc', F * 0.38, 1, null, false, null, [-F * 0.1, -F * 0.1]],
+      ['#d6ecfa', F * 0.07, 0.7, [F * 0.4, F * 0.8], true, false, [-F * 0.1, -F * 0.1]],
+    ]);
+    for (const g of geo) if (g.p.tipo === 'fendaRio') g.p.tipo = 'fenda';
     // o rio: a sombra da margem, a borda, a água, a correnteza e o brilho
     camadas({ t: 'rio' }, [
       ['#2f3a22', W * 2.0, 0.22, null, true],
@@ -1149,6 +1224,17 @@
       ['#7fb3df', W * 0.55, 0.85, null, true],
       ['#d6ecfa', W * 0.12, 0.7, [W * 0.9, W * 1.6], true, false],
     ]);
+    // (lote 57) a foz: onde o rio chega à água, ele se abre num leque claro que se mistura com ela
+    for (const { p, cs } of geo) {
+      if (p.tipo !== 'rio' || !p.agua) continue;
+      for (const i of Object.keys(p.agua).map(Number)) {
+        const mm = p.meios[i], dx = mm.x - p.x, dy = mm.y - p.y, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l;
+        const cx = mm.x + ux * W * 0.9, cy = mm.y + uy * W * 0.9, g = c.createRadialGradient(cx, cy, 0, cx, cy, W * 2.6);
+        g.addColorStop(0, 'rgba(92,151,204,0.95)'); g.addColorStop(0.55, 'rgba(110,170,215,0.55)'); g.addColorStop(1, 'rgba(140,190,225,0)');
+        c.beginPath(); c.ellipse(cx, cy, W * 2.6, W * 2.6, 0, 0, Math.PI * 2); c.fillStyle = g; c.globalAlpha = 1; c.fill();
+        if (!longe) { c.beginPath(); c.moveTo(mm.x - uy * W * 0.4, mm.y + ux * W * 0.4); c.quadraticCurveTo(cx + ux * W * 0.6, cy + uy * W * 0.6, mm.x + uy * W * 1.4 + ux * W * 1.6, mm.y - ux * W * 1.4 + uy * W * 1.6); c.strokeStyle = '#d6ecfa'; c.lineWidth = W * 0.12; c.globalAlpha = 0.6; c.setLineDash([W * 0.5, W * 0.6]); c.stroke(); c.setLineDash([]); }
+      }
+    }
     // as estradas: a de terra (a borda, o chão batido, os sulcos), a de pedra (o calçamento) e a pavimentada (o meio-fio e
     // as lajes)
     camadas({ t: 'via', via: 1 }, [
@@ -1174,16 +1260,17 @@
     ]);
     // as pontes: no meio do rio, ao longo da estrada que passa por ele (a de terra, de madeira; as outras, de pedra)
     for (const { p } of geo) {
-      if (p.tipo !== 'rio' || !p.ponte) continue;
+      if ((p.tipo !== 'rio' && p.tipo !== 'fenda') || !p.ponte) continue;
+      const fenda = p.tipo === 'fenda';                                  // (lote 57: a ponte suspensa sobre a fenda)
       const cv = curvasDaRede(Object.assign({}, p, { tipo: 'via', liga: [p.ponte.a, p.ponte.b], agua: null }), tam, 211)[0].pts;
       const nivel = p.ponte.via, est = camadasVia(nivel, R);
       // a estrada passa por cima de tudo, de um lado ao outro
       for (const [cor, larg, alfa, tr, soPerto] of est) { if (soPerto && longe) continue; traco(cv); tra(cor, larg, alfa, tr); }
       // o tabuleiro: reto, no centro (onde a estrada cruza a água), na direção da estrada
-      const ma = p.meios[p.ponte.a], mb = p.meios[p.ponte.b], dl = Math.hypot(mb.x - ma.x, mb.y - ma.y) || 1, tx = (mb.x - ma.x) / dl, ty = (mb.y - ma.y) / dl, Lp = W * 1.3;
+      const ma = p.meios[p.ponte.a], mb = p.meios[p.ponte.b], dl = Math.hypot(mb.x - ma.x, mb.y - ma.y) || 1, tx = (mb.x - ma.x) / dl, ty = (mb.y - ma.y) / dl, Lp = fenda ? F * 1.2 : W * 1.3;
       const meio = []; for (let i = 0; i <= 8; i++) { const t = -1 + i / 4; meio.push([p.x + tx * Lp * t, p.y + ty * Lp * t]); }
       const off = (pts, dd) => pts.map((q, i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [q[0] - dy / l * dd, q[1] + dx / l * dd]; });
-      if (!longe) { traco(off(meio, R * 0.25)); tra('#10161c', R * 1.9, 0.35); }          // a sombra na água
+      if (!longe) { traco(off(meio, R * 0.25)); tra('#10161c', R * 1.9, fenda ? 0.22 : 0.35); }          // a sombra na água (na fenda, no fundo dela)
       if (nivel <= 1) {
         c.lineCap = 'butt';
         traco(meio); tra('#5a3d22', R * 1.62, 1); traco(meio); tra('#b98a52', R * 1.42, 1);
@@ -1191,6 +1278,11 @@
           traco(meio); tra('#8f6236', R * 1.42, 0.85, [R * 0.05, R * 0.11]);
           traco(meio); tra('#d6a96d', R * 0.5, 0.35);
           for (const sd of [-1, 1]) { const g = off(meio, sd * R * 0.72); traco(g); tra('#4a3019', R * 0.13, 1); traco(g); tra('#4a3019', R * 0.3, 1, [R * 0.14, R * 0.55]); }
+          // na fenda, a ponte é de corda: as cordas que descem e os postes das duas pontas
+          if (fenda) for (const sd of [-1, 1]) {
+            const g = off(meio, sd * R * 0.95); c.beginPath(); c.moveTo(g[0][0], g[0][1]); c.quadraticCurveTo(g[4][0] + R * 0.25, g[4][1] + R * 0.45, g[8][0], g[8][1]); c.strokeStyle = '#e1c48f'; c.lineWidth = R * 0.1; c.globalAlpha = 0.95; c.stroke();
+            for (const q of [g[0], g[8]]) { c.beginPath(); c.arc(q[0], q[1], R * 0.2, 0, Math.PI * 2); c.fillStyle = '#4a3019'; c.globalAlpha = 1; c.fill(); }
+          }
         }
         c.lineCap = 'round';
       } else {
@@ -1214,6 +1306,256 @@
     const V = N().VIZ_REDE, out = {};
     p.liga.forEach(i => { const v = m.hexes[(p.q + V[i][0]) + ',' + (p.r + V[i][1])], id = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '', t = m.terrenos.find(x => x.id === id); if (t && t.tex !== 'rio') out[i] = true; });
     return out;
+  }
+  /* ---------------- (lote 57) a água inteira, a fenda e os vizinhos que se ligam ----------------
+     A costa: os lados de hexágono entre a água (o mar, o raso, o fundo, o lago) e a terra viram linhas contínuas
+     (as correntes), amaciadas (com um leve tremido, sempre o mesmo para o mesmo lado) e desenhadas por cima da tinta:
+     do lado da água, o raso que clareia perto da terra; do lado da terra, a margem — a areia com a espuma, o junco e a
+     lama (no pântano, na mata e na beira do lago), o paredão de pedra caindo na água (a falésia: a montanha e o
+     desfiladeiro encostados na água) e a borda de gelo (a neve, a geleira, a tundra). Onde o rio (ou a fenda)
+     deságua, a margem se abre para ele. */
+  const TIPO_COSTA = { montes: 'rocha', desfiladeiro: 'rocha', pedras: 'rocha', cristais: 'rocha', lava: 'rocha', colinas: 'seixo', ruinas: 'seixo',
+    neve: 'gelo', geleira: 'gelo', tundra: 'gelo', juncos: 'junco', arvores: 'junco', selva: 'junco', morta: 'junco', charneca: 'junco', oasis: 'junco' };
+  const tipoCosta = (tex, lago) => TIPO_COSTA[tex] || (lago ? 'junco' : 'areia');
+  // os dois cantos de cada lado (o lado i é o da direção i de VIZ_REDE), pela posição dos cantos em volta do centro
+  function cantosDosLados(m) {
+    const d6 = deslocamentosHex(m), c0 = N().centroHex(m, 0, 0);
+    return [0, 1, 2, 3, 4, 5].map(i => {
+      const mm = N().meioDoLado(m, 0, 0, i), dx = mm.x - c0.x, dy = mm.y - c0.y;
+      return d6.map((p, j) => [j, Math.hypot(p[0] - dx, p[1] - dy)]).sort((a, b) => a[1] - b[1]).slice(0, 2).map(x => x[0]);
+    });
+  }
+  const hash01 = (a, b) => { let h = (Math.imul(a | 0, 73856093) ^ Math.imul(b | 0, 19349663)) >>> 0; h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; return (h % 10007) / 10007; };
+  // fundo: chave → { tex (o do fundo: nos de rede, o da margem), agua, rd }
+  function costaDoMapa(m, fundo) {
+    const V = N().VIZ_REDE, d6 = deslocamentosHex(m), lados = cantosDosLados(m), s0 = m.grade.tam / Math.sqrt(3), arest = [];
+    for (const [k, f] of fundo) {
+      if (!f.agua) continue;
+      const [q, r] = k.split(',').map(Number), c = N().centroHex(m, q, r);
+      for (let i = 0; i < 6; i++) {
+        const nk = (q + V[i][0]) + ',' + (r + V[i][1]), g = fundo.get(nk);
+        if (!g || g.agua) continue;
+        const foz = !!(g.rd && (g.rd.tipo === 'rio' || g.rd.tipo === 'fenda') && g.rd.liga.includes((i + 3) % 6));     // (a foz: sem margem)
+        const [ia, ib] = lados[i];
+        let A = [c.x + d6[ia][0], c.y + d6[ia][1]], B = [c.x + d6[ib][0], c.y + d6[ib][1]];
+        if ((B[0] - A[0]) * (c.y - A[1]) - (B[1] - A[1]) * (c.x - A[0]) < 0) { const t = A; A = B; B = t; }      // (a água à esquerda)
+        const tex = g.rd && g.rd.tipo === 'fenda' ? 'desfiladeiro' : g.tex;
+        arest.push({ A, B, tipo: foz ? 'foz' : tipoCosta(tex, f.tex === 'lago'), lago: f.tex === 'lago', cor: f.cor, h: hash01(q * 7 + i, r * 13 - i), terA: f.ter, terT: g.ter });
+      }
+    }
+    // as correntes: o fim de um lado é o começo do próximo
+    const ch = p => Math.round(p[0] * 4) + ',' + Math.round(p[1] * 4), porIni = new Map(), temFim = new Set();
+    arest.forEach((e, i) => { const k = ch(e.A); if (!porIni.has(k)) porIni.set(k, []); porIni.get(k).push(i); temFim.add(ch(e.B)); });
+    const usado = new Uint8Array(arest.length), correntes = [];
+    const andar = i0 => {
+      const lista = []; let i = i0;
+      while (i != null && !usado[i]) { usado[i] = 1; lista.push(arest[i]); const prox = (porIni.get(ch(arest[i].B)) || []).find(j => !usado[j]); i = prox == null ? null : prox; }
+      return lista;
+    };
+    arest.forEach((e, i) => { if (!usado[i] && !temFim.has(ch(e.A))) correntes.push({ ar: andar(i), fechada: false }); });
+    arest.forEach((e, i) => { if (!usado[i]) { const ar = andar(i); correntes.push({ ar, fechada: ar.length > 2 && ch(ar[ar.length - 1].B) === ch(ar[0].A) }); } });
+    // amaciar: o meio de cada lado tremido para um lado ou outro; duas passadas de Chaikin (cada pedaço guarda o tipo)
+    return correntes.map(({ ar, fechada }) => {
+      let P = [], T = [];
+      ar.forEach(e => {
+        const mx = (e.A[0] + e.B[0]) / 2, my = (e.A[1] + e.B[1]) / 2, dx = e.B[0] - e.A[0], dy = e.B[1] - e.A[1], l = Math.hypot(dx, dy) || 1, j = (e.h - 0.5) * 0.4 * s0;
+        // (só o meio de cada lado: sem os cantos, o zigue-zague dos hexágonos vira curva)
+        P.push([mx - dy / l * j, my + dx / l * j]); T.push(e);
+      });
+      if (!fechada) { P.unshift(ar[0].A); T.unshift(ar[0]); P.push(ar[ar.length - 1].B); }
+      for (let pass = 0; pass < 3; pass++) {
+        const n = P.length, P2 = [], T2 = [], segs = fechada ? n : n - 1;
+        if (!fechada) { P2.push(P[0]); T2.push(T[0]); }
+        for (let i = 0; i < segs; i++) {
+          const a = P[i], b = P[(i + 1) % n];
+          P2.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]); T2.push(T[i], T[i]);
+        }
+        if (!fechada) { P2.push(P[n - 1]); T2.push(T[T.length - 1]); }
+        P = P2; T = T2;
+      }
+      let bx = Infinity, by = Infinity, bX = -Infinity, bY = -Infinity;
+      for (const p of P) { if (p[0] < bx) bx = p[0]; if (p[1] < by) by = p[1]; if (p[0] > bX) bX = p[0]; if (p[1] > bY) bY = p[1]; }
+      return { P, T, fechada, caixa: [bx, by, bX, bY] };
+    });
+  }
+  // a linha deslocada (d > 0: para o lado da água; d < 0: para a terra)
+  function deslocada(P, d, fechada) {
+    const n = P.length;
+    return P.map((p, i) => {
+      const a = P[fechada ? (i - 1 + n) % n : Math.max(0, i - 1)], b = P[fechada ? (i + 1) % n : Math.min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+      return [p[0] - dy / l * d, p[1] + dx / l * d];
+    });
+  }
+  // os pedaços da corrente (deslocada de d) em que o lado vale f(lado)
+  function corridasDaCosta(cr, d, f) {
+    const { P, T, fechada } = cr, Q = deslocada(P, d, fechada), out = [], n = P.length, segs = fechada ? n : n - 1;
+    let atual = null;
+    for (let i = 0; i < segs; i++) {
+      if (f(T[i])) { if (!atual) { atual = [Q[i]]; out.push(atual); } atual.push(Q[(i + 1) % n]); } else atual = null;
+    }
+    if (fechada && out.length > 1 && f(T[0]) && f(T[segs - 1])) { const pri = out.shift(); out[out.length - 1].push(...pri.slice(1)); }
+    return out.filter(x => x.length > 1);
+  }
+  function desenharCosta(c, d, perto0, pxHex, k, liso) {
+    if (!d.costa || !d.costa.length) return;
+    const tam = d.m.grade.tam, longe = pxHex < 9, [vx0, vy0, vx1, vy1] = d.vista || [-Infinity, -Infinity, Infinity, Infinity];
+    const tra = (pts, fechada, cor, larg, alfa, tracejado) => {
+      if (pts.length < 2) return;
+      c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); if (fechada) c.closePath();
+      c.strokeStyle = cor; c.lineWidth = larg; c.globalAlpha = alfa == null ? 1 : alfa; c.setLineDash(tracejado || []); c.stroke(); c.setLineDash([]);
+    };
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    for (const cr of d.costa) {
+      const [bx, by, bX, bY] = cr.caixa;
+      if (bX < vx0 - tam || bx > vx1 + tam || bY < vy0 - tam || by > vy1 + tam) continue;
+      const { P, T, fechada } = cr, W = d => deslocada(P, d * tam, fechada);
+      // os trechos de mesmo tipo (o último ponto de um é o primeiro do outro)
+      const trechos = [];
+      for (let i = 0; i < P.length - (fechada ? 0 : 1); i++) {
+        const tp = T[i].tipo + (T[i].lago ? 'L' : ''), u = trechos[trechos.length - 1];
+        if (u && u.k === tp) u.ix.push(i + 1); else trechos.push({ k: tp, e: T[i], ix: [i, i + 1] });
+      }
+      const pega = (pts, ix) => ix.map(i => pts[i % pts.length]);
+      const so = fechada && trechos.length === 1;
+      // 1) do lado da água: o raso, que clareia perto da terra
+      for (const t of trechos) {
+        const e = t.e, base = e.cor || '#4f86c0', raso = e.lago ? misturar(base, '#cfe9c8', 0.55) : misturar(base, '#d3f0f4', 0.6);
+        if (e.tipo === 'foz') continue;
+        if (e.tipo === 'rocha') { tra(pega(W(0.1), t.ix), so, '#0f1820', tam * 0.18, 0.26); continue; }
+        for (const [o, a] of [[0.5, 0.1], [0.32, 0.14], [0.17, 0.2]]) tra(pega(W(o / 2), t.ix), so, raso, tam * o, a);
+      }
+      // 2) do lado da terra: a margem de cada tipo
+      for (const t of trechos) {
+        const e = t.e, ix = t.ix, dash = (a, b) => [tam * a, tam * b];
+        switch (e.tipo) {
+          case 'areia':
+            tra(pega(W(-0.075), ix), so, '#d8c38c', tam * (e.lago ? 0.1 : 0.15), 0.96);
+            if (!longe) { tra(pega(W(-0.13), ix), so, '#e9dbb0', tam * 0.035, 0.7); tra(pega(W(-0.005), ix), so, '#a8915c', tam * 0.03, 0.75); tra(pega(W(0.05), ix), so, '#f6fcff', tam * 0.028, 0.85, dash(0.13, 0.08)); tra(pega(W(0.1), ix), so, '#f6fcff', tam * 0.018, 0.5, dash(0.07, 0.15)); }
+            break;
+          case 'seixo':
+            tra(pega(W(-0.07), ix), so, '#a69f92', tam * 0.13, 0.95);
+            if (!longe) { tra(pega(W(-0.07), ix), so, '#6f685d', tam * 0.07, 0.75, dash(0.02, 0.06)); tra(pega(W(0.04), ix), so, '#f6fcff', tam * 0.022, 0.7, dash(0.1, 0.09)); }
+            break;
+          case 'junco':
+            tra(pega(W(-0.04), ix), so, '#6b6541', tam * 0.08, 0.85);
+            if (!longe) {
+              // os tufos de junco, tremidos, do lado da água
+              const linha = pega(W(0.02), ix);
+              for (let i = 0; i < linha.length - 1; i += 3) {
+                const p = linha[i], hh = hash01(Math.round(p[0] * 3), Math.round(p[1] * 3));
+                if (hh < (e.lago ? 0.25 : 0.4)) continue;
+                const s = tam * (0.035 + hh * 0.03);
+                c.beginPath(); for (const k of [-1, 0, 1]) { c.moveTo(p[0] + k * s * 0.35, p[1]); c.lineTo(p[0] + k * s * 0.7, p[1] - s * (1.3 + Math.abs(k) * -0.3)); }
+                c.strokeStyle = '#3c5a2a'; c.lineWidth = Math.max(tam * 0.012, 0.4); c.globalAlpha = 0.9; c.stroke();
+              }
+            }
+            break;
+          case 'rocha':
+            // a falésia: o paredão (com as fendas da pedra), a beira de cima iluminada e o pé escuro na água
+            tra(pega(W(-0.1), ix), so, '#7f7468', tam * 0.2, 1);
+            if (!longe) tra(pega(W(-0.1), ix), so, '#463f37', tam * 0.2, 0.6, dash(0.03, 0.055));
+            tra(pega(W(-0.2), ix), so, '#c7bba8', tam * 0.045, 0.95);
+            tra(pega(W(0.0), ix), so, '#2b2722', tam * 0.045, 0.9);
+            if (!longe) tra(pega(W(0.035), ix), so, '#f6fcff', tam * 0.02, 0.55, dash(0.05, 0.1));
+            break;
+          case 'gelo':
+            tra(pega(W(0.06), ix), so, '#eef6fb', tam * 0.14, 0.95);
+            if (!longe) { tra(pega(W(0.11), ix), so, '#eef6fb', tam * 0.08, 0.85, dash(0.05, 0.07)); tra(pega(W(0.135), ix), so, '#8fb9d1', tam * 0.015, 0.8); }
+            tra(pega(W(-0.01), ix), so, '#b9d3e1', tam * 0.03, 0.9);
+            break;
+        }
+      }
+    }
+    c.globalAlpha = 1; c.setLineDash([]);
+  }
+  /* A cordilheira: os montes vizinhos se juntam — entre dois hexágonos de montanha nasce um pico no meio (e a crista
+     ligando os dois); os picos são desenhados de trás para a frente (o de baixo na frente), com a sombra sempre do
+     mesmo lado (a luz vem de cima, à esquerda). */
+  function picoMonte(c, x, yb, H, Wd, neve, cor, lw, rnd) {
+    const esc = misturar(cor, '#000000', 0.42), som = misturar(cor, '#000000', 0.2);
+    const poli = (pts, fechar) => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); if (fechar) c.closePath(); };
+    const sx = x + (rnd() - 0.5) * Wd * 0.3, sy = yb - H;
+    c.beginPath(); c.ellipse(x + Wd * 0.35, yb, Wd * 1.05, H * 0.11, 0, 0, Math.PI * 2); c.fillStyle = '#1c1608'; c.globalAlpha = 0.2; c.fill();
+    poli([[x - Wd, yb], [sx - Wd * 0.35, sy + H * 0.45], [sx, sy], [sx + Wd * 0.4, sy + H * 0.5], [x + Wd, yb]], true); c.fillStyle = som; c.globalAlpha = 0.95; c.fill();
+    poli([[sx, sy], [sx + Wd * 0.4, sy + H * 0.5], [x + Wd, yb], [sx + Wd * 0.08, yb], [sx + Wd * 0.12, sy + H * 0.55]], true); c.fillStyle = esc; c.globalAlpha = 0.55; c.fill();
+    if (neve) { poli([[sx, sy], [sx - Wd * 0.24, sy + H * 0.3], [sx - Wd * 0.08, sy + H * 0.24], [sx + Wd * 0.04, sy + H * 0.32], [sx + Wd * 0.22, sy + H * 0.26]], true); c.fillStyle = '#f3f5f7'; c.globalAlpha = 0.95; c.fill(); }
+    poli([[x - Wd, yb], [sx - Wd * 0.35, sy + H * 0.45], [sx, sy], [sx + Wd * 0.4, sy + H * 0.5], [x + Wd, yb]]); c.strokeStyle = esc; c.lineWidth = lw * 1.1; c.globalAlpha = 0.92; c.stroke();
+  }
+  function desenharCordilheira(c, d, lista, u) {
+    const V = N().VIZ_REDE, chaves = new Set(lista.map(x => x.p.q + ',' + x.p.r)), picos = [], lw = Math.max(u * 0.045, 0.5);
+    for (const { p, t, semT } of lista) {
+      let sem = (((p.q * 73856093) ^ (p.r * 19349663) ^ semT) >>> 0) % 2147483647 || 1;
+      const rnd = () => (sem = (sem * 16807) % 2147483647) / 2147483647;
+      const cx = p.x, cy = p.y;
+      // os vizinhos de montanha: a cordilheira segue para eles (os picos do hexágono se alinham na direção dela)
+      const liga = [0, 1, 2, 3, 4, 5].filter(i => chaves.has((p.q + V[i][0]) + ',' + (p.r + V[i][1])));
+      if (rnd() < 0.55 || liga.length) { const lado = rnd() < 0.5 ? -1 : 1; picos.push({ x: cx + lado * u * 0.42, yb: cy + u * 0.32, H: u * (0.5 + rnd() * 0.15), W: u * 0.36, neve: rnd() < 0.4, cor: t.cor, s: rnd() * 1e9 }); }
+      picos.push({ x: cx + (rnd() - 0.5) * u * 0.2, yb: cy + u * 0.5, H: u * (0.85 + rnd() * 0.2), W: u * (0.52 + rnd() * 0.12), neve: rnd() < 0.65, cor: t.cor, s: rnd() * 1e9 });
+      // a crista: um pico entre este e cada vizinho de montanha (só para os vizinhos de depois na ordem, para não repetir)
+      for (const i of [0, 4, 5]) {
+        if (!liga.includes(i)) continue;
+        const b = N().centroHex(d.m, p.q + V[i][0], p.r + V[i][1]), mx = (cx + b.x) / 2, my = (cy + b.y) / 2;
+        picos.push({ x: mx + (rnd() - 0.5) * u * 0.15, yb: my + u * 0.36, H: u * (0.6 + rnd() * 0.2), W: u * (0.42 + rnd() * 0.1), neve: rnd() < 0.5, cor: t.cor, s: rnd() * 1e9 });
+      }
+    }
+    picos.sort((a, b) => a.yb - b.yb);
+    for (const k of picos) { let sem = (Math.floor(k.s) % 2147483646) + 1; const rnd = () => (sem = (sem * 16807) % 2147483647) / 2147483647; picoMonte(c, k.x, k.yb, k.H, k.W, k.neve, k.cor, lw, rnd); }
+    c.globalAlpha = 1;
+  }
+  /* A borda da mata: onde a floresta (ou a selva) encosta em outro terreno, uma fileira de copas fecha a beirada
+     (do lado de dentro: as árvores não avançam na água nem no vizinho). */
+  function desenharBordaMata(c, d, lista, u) {
+    const V = N().VIZ_REDE, lw = Math.max(u * 0.045, 0.5), copas = [];
+    for (const { p, t } of lista) {
+      for (let i = 0; i < 6; i++) {
+        const g = d.fundo.get((p.q + V[i][0]) + ',' + (p.r + V[i][1]));
+        if (!g || g.tex === t.tex) continue;
+        const mm = N().meioDoLado(d.m, p.q, p.r, i), dx = mm.x - p.x, dy = mm.y - p.y, l = Math.hypot(dx, dy) || 1, tx = -dy / l, ty = dx / l;
+        for (const k of [-0.62, -0.2, 0.22, 0.62]) {
+          const h = hash01(p.q * 11 + i * 5 + Math.round(k * 10), p.r * 17 - i), f = 0.7 + h * 0.08;
+          copas.push({ x: p.x + dx * f + tx * k * l * 0.95, y: p.y + dy * f + ty * k * l * 0.95, r: u * (0.15 + h * 0.06), cor: t.cor, h });
+        }
+      }
+    }
+    copas.sort((a, b) => a.y - b.y);
+    for (const k of copas) {
+      const som = misturar(k.cor, '#000000', 0.2), esc = misturar(k.cor, '#000000', 0.42), cla = misturar(k.cor, '#ffffff', 0.35);
+      c.beginPath(); c.ellipse(k.x + k.r * 0.3, k.y + k.r * 0.95, k.r * 0.9, k.r * 0.32, 0, 0, Math.PI * 2); c.fillStyle = '#1c1608'; c.globalAlpha = 0.18; c.fill();
+      c.beginPath(); c.arc(k.x, k.y, k.r, 0, Math.PI * 2); c.fillStyle = som; c.globalAlpha = 0.95; c.fill(); c.strokeStyle = esc; c.lineWidth = lw; c.globalAlpha = 0.9; c.stroke();
+      c.beginPath(); c.arc(k.x - k.r * 0.3, k.y - k.r * 0.32, k.r * 0.36, 0, Math.PI * 2); c.fillStyle = cla; c.globalAlpha = 0.6; c.fill();
+    }
+    c.globalAlpha = 1;
+  }
+  /* O pântano: as poças dos hexágonos vizinhos ligadas por canais de água parada (e à água, quando ela encosta). */
+  function desenharPantano(c, d, lista, u) {
+    const V = N().VIZ_REDE, chaves = new Set(lista.map(x => x.p.q + ',' + x.p.r));
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    for (const camada of [['#2f4a3e', 0.11, 0.35], ['#3f6e7a', 0.065, 0.65], ['#86b5be', 0.02, 0.45]]) {
+      c.beginPath();
+      for (const { p } of lista) {
+        // cada poça escorre para um vizinho só (o de número menor, sempre o mesmo) e para a água que encosta
+        let um = -1, menor = 2;
+        for (let i = 0; i < 6; i++) { const nk = (p.q + V[i][0]) + ',' + (p.r + V[i][1]); if (chaves.has(nk)) { const h = hash01(p.q + V[i][0] * 0.5 + 101, p.r + V[i][1] * 0.5 + 7) + hash01(p.q * 2 + V[i][0], p.r * 2 + V[i][1]) * 0.001; if (h < menor) { menor = h; um = i; } } }
+        for (let i = 0; i < 6; i++) {
+          const nk = (p.q + V[i][0]) + ',' + (p.r + V[i][1]), g = d.fundo.get(nk);
+          const vai = chaves.has(nk) ? i === um : !!(g && g.agua);
+          if (!vai) continue;
+          const mm = N().meioDoLado(d.m, p.q, p.r, i), h = hash01(p.q * 3 + i, p.r * 5 + i), dx = mm.x - p.x, dy = mm.y - p.y;
+          const fim = chaves.has(nk) ? [p.x + dx * 2, p.y + dy * 2] : [p.x + dx * 1.1, p.y + dy * 1.1];
+          c.moveTo(p.x, p.y);
+          c.bezierCurveTo(p.x + dx * 0.5 - dy * (h - 0.5) * 0.9, p.y + dy * 0.5 + dx * (h - 0.5) * 0.9, mm.x + dx * 0.5 + dy * (h - 0.5) * 0.9, mm.y + dy * 0.5 - dx * (h - 0.5) * 0.9, fim[0], fim[1]);
+        }
+      }
+      c.strokeStyle = camada[0]; c.lineWidth = u * camada[1]; c.globalAlpha = camada[2]; c.stroke();
+    }
+    // a poça do meio de cada um, onde os canais se encontram
+    for (const { p } of lista) {
+      const h = hash01(p.q * 5, p.r * 9), rx = u * (0.24 + h * 0.08);
+      c.beginPath(); c.ellipse(p.x, p.y, rx * 1.15, rx * 0.55, 0, 0, Math.PI * 2); c.fillStyle = '#2f4a3e'; c.globalAlpha = 0.45; c.fill();
+      c.beginPath(); c.ellipse(p.x, p.y, rx, rx * 0.45, 0, 0, Math.PI * 2); c.fillStyle = '#3f6e7a'; c.globalAlpha = 0.85; c.fill();
+      c.beginPath(); c.ellipse(p.x - rx * 0.2, p.y - rx * 0.1, rx * 0.5, rx * 0.15, 0, Math.PI * 1.1, Math.PI * 1.9); c.strokeStyle = '#a9d0d6'; c.lineWidth = u * 0.03; c.globalAlpha = 0.7; c.stroke();
+    }
+    c.globalAlpha = 1;
   }
   /* A composição do terreno num hexágono (centro cx, cy; u = o raio de dentro dele). Tudo cabe num círculo de 0,8 u
      (a lavoura, que vai de borda a borda, fica presa ao hexágono). */
@@ -1354,6 +1696,19 @@
           c.beginPath(); c.moveTo(x - w, y + w * 0.22); c.quadraticCurveTo(x - w / 2, y - w * 0.28, x, y + w * 0.22); c.quadraticCurveTo(x + w / 2, y + w * 0.72, x + w, y + w * 0.22); tra(esc, lw * 1.1, 0.35);
           c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x - w / 2, y - w * 0.5, x, y); c.quadraticCurveTo(x + w / 2, y + w * 0.5, x + w, y); tra(cla, lw * 1.25);
           circ(x - w * 0.5, y - w * 0.3, lw * 0.9); enche('#ffffff', 0.6);
+        }
+        break;
+      }
+      // (lote 57) o lago: a água parada (os círculos que se abrem) e as ninfeias, algumas com flor
+      case 'lago': {
+        for (const [dx, dy] of espalhar(2 + Math.floor(rnd() * 2), 0.5)) {
+          const [x, y] = P(dx, dy), r = u * (0.13 + rnd() * 0.06);
+          for (let i = 0; i < 3; i++) { c.beginPath(); c.ellipse(x, y, r * (1 + i * 0.7), r * (0.4 + i * 0.28), 0, 0, Math.PI * 2); tra(cla, lw * (1 - i * 0.25), 0.55 - i * 0.15); }
+        }
+        for (const [dx, dy] of espalhar(1 + Math.floor(rnd() * 3), 0.66)) {
+          const [x, y] = P(dx, dy), r = u * (0.06 + rnd() * 0.035), a = rnd() * Math.PI * 2;
+          c.beginPath(); c.arc(x, y, r, a + 0.45, a + Math.PI * 2 - 0.05); c.lineTo(x, y); c.closePath(); enche(misturar(cor, '#3e7a36', 0.7), 0.9); tra(misturar(cor, '#1f3d1c', 0.6), lw * 0.7, 0.7);
+          if (rnd() < 0.3) { circ(x + r * 0.2, y - r * 0.15, r * 0.35); enche('#f1d3e3', 0.95); }
         }
         break;
       }

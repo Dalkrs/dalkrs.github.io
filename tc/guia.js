@@ -96,13 +96,15 @@
         { t: 'Ver como jogador', txt: 'Mostra o mapa como os jogadores veem: sem o que é só seu e com a névoa fechada.', onde: { sel: '#comoJogBox' } },
         // (lote 54)
         { t: 'Rios e estradas', txt: 'Ferramenta Terreno (H), por hexágono: pinte Rio ou uma das três estradas. O fundo pega o terreno dos vizinhos e tudo liga sozinho; a estrada por cima do rio vira ponte.', onde: { sel: '#rail .tool[data-f="h"]' } },
+        // (lote 57)
+        { t: 'Lagos, mares e desfiladeiros', txt: 'A água pintada (Água, Água rasa, Mar profundo e o Lago, de água doce) vira um corpo só, com a margem do lado da terra: areia com espuma na planície, junco e lama no pântano, na mata e na beira do lago, paredão de pedra onde a montanha ou o desfiladeiro encostam na água (a falésia) e borda de gelo na neve. Perto da terra, a água clareia sozinha (o raso). O Desfiladeiro liga sozinho aos vizinhos, como o rio: vira uma fenda com as duas paredes; o rio que chega nele corre lá no fundo, e a estrada que o atravessa ganha uma ponte suspensa (custando o da estrada; sem ponte, 15). De perto, os montes vizinhos viram cordilheira, a mata ganha borda e as poças do pântano se ligam por canais.', onde: { sel: '#rail .tool[data-f="h"]' } },
         { t: 'A guerra no mapa', txt: 'A zona de guerra aparece sozinha: as terras ocupadas e a fronteira entre facções em guerra, com a linha do front. A ferramenta Frente ajusta a zona e desenha setas de ofensiva; a tabela da defesa do terreno fica na aba Guerra.', onde: { sel: '#rail [data-f="f"]' } },
         // (lote 41)
         { t: 'A tropa de uma ficha', txt: 'No painel de um exército (aba Seleção), “Tropa da ficha” liga o exército à tropa de um personagem (a aba Tropas das Fichas): daí em diante são a mesma tropa — o que muda no mapa (uma batalha, a moral, as unidades) muda na ficha, e as escolhas do jogador (os nomes, os equipamentos) chegam ao mapa. A plaquinha em cima do token é a veterania média; a veterania soma no ATQ e na DEF, e o comandante pode tirar o bônus da ficha dele (o atributo fica nas tabelas base das Fichas). As batalhas entram no diário da tropa.', onde: { sel: '#pane', nada: 'Selecione um exército no mapa para ver o painel dele.' } },
         { t: 'A caneta', txt: 'No canto do mapa (ou a tecla W): desenhe para a mesa inteira ver na hora. A caneta que some apaga sozinha em segundos; a que fica, só com “Limpar desenhos”, que apaga a de todos.', onde: { sel: '#zCaneta' } },
       ],
       jogador: [
-        { t: 'O mapa', txt: 'O que o mestre mostra do mundo: as regiões e os lugares que vocês conhecem.', onde: { sel: '#palco' } },
+        { t: 'O mapa', txt: 'O que o mestre mostra do mundo: as regiões e os lugares que vocês conhecem. A costa mostra o que há na beira: praia, junco, falésia ou gelo; os desfiladeiros são fendas, e a ponte suspensa é o caminho para atravessar.', onde: { sel: '#palco' } },
         { t: 'A data do mundo', txt: 'O dia, a hora e o clima de agora.', onde: { sel: '#dataTxt' } },
         { t: 'O painel', txt: 'À direita: o que vocês sabem dos reinos, da corte e da diplomacia.', onde: { sel: '#tabs' } },
         { t: 'A caneta', txt: 'No canto do mapa: desenhe para a mesa ver na hora (uma rota, um alvo). A caneta que some apaga sozinha em segundos; a que fica, até alguém limpar — você limpa os seus.', onde: { sel: '#zCaneta' } },

@@ -2,6 +2,34 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.01-7",
+      "data": "2026-11-01",
+      "titulo": "Lagos, mares e desfiladeiros que se ligam",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: a água virou um corpo só, com a margem desenhada do lado da terra — areia com espuma, junco e lama, o paredão da falésia onde a montanha encosta no mar e a borda de gelo na neve. Perto da terra, a água clareia (o raso)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "O rio deságua de verdade no lago e no mar, abrindo na água."
+        },
+        {
+          "tipo": "novo",
+          "texto": "O desfiladeiro virou uma fenda contínua, com as paredes e a sombra; o rio pode correr no fundo dela, e a estrada que a atravessa ganha uma ponte suspensa."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "De perto, os montes vizinhos formam cordilheira, a mata ganha borda e as poças do pântano se ligam por canais."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Terreno novo: Lago (água doce, 10 cubos). Num mapa de antes, a aba Terreno oferece “Acrescentar”. A fenda sem ponte custa 15; com a ponte, o da estrada."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.01-6",
       "data": "2026-11-01",
       "titulo": "Os membros do clã, as perícias das tropas e a veterania até Mítica",

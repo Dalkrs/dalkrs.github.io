@@ -261,9 +261,9 @@ const achar = (m, id) => m.objs.find(o => o.id === id);
 {
   const ids = ['ar', 'md', 'df', 'gl', 'fm', 'oa', 'ch', 'td'];
   ok(j(N.TERRENOS_L17.map(t => t.id)) === j(ids) && N.TERRENOS_L17.every(t => /^#[0-9a-f]{6}$/.test(t.cor) && t.custo > 0 && N.TEXTURAS[t.tex] && N.BIOMA_DA_TEX[t.tex]), 'os oito terrenos novos, cada um com a cor, o custo, o desenho e o bioma da cena');
-  ok(ids.every(id => N.TERRENOS_PADRAO.some(t => t.id === id)) && N.mapaNovo('x').terrenos.length === 28, 'um mapa novo já vem com eles (lote 54: e o rio e as três estradas)');
+  ok(ids.every(id => N.TERRENOS_PADRAO.some(t => t.id === id)) && N.mapaNovo('x').terrenos.length === 29, 'um mapa novo já vem com eles (lote 54: e o rio e as três estradas; lote 57: e o lago)');
   const antigo = N.normalizarMapa({ terrenos: N.TERRENOS_PADRAO.slice(0, 16) });
-  eq(N.terrenosQueFaltam(antigo).map(t => t.id), ids.concat(['ri', 'et', 'ep', 'ev']), 'num mapa de antes, a aba Terreno oferece os que faltam (lote 54: e os quatro dele)');
+  eq(N.terrenosQueFaltam(antigo).map(t => t.id), ids.concat(['ri', 'et', 'ep', 'ev', 'lg']), 'num mapa de antes, a aba Terreno oferece os que faltam (lote 54: e os quatro dele; lote 57: o lago)');
   const ics = ['fazenda', 'pedreira', 'serraria', 'forte', 'farol', 'estalagem', 'mercado', 'cemiterio', 'portal', 'ninho'];
   ok(ics.every(k => N.ICONES[k] && N.ICONES[k].nome && /^#[0-9a-f]{6}$/.test(N.ICONES[k].cor) && /^<path d="[^"]+"\/>|^<path/.test(N.ICONES[k].svg)), 'os dez ícones novos, com o nome, a cor e o desenho');
   ok(j(Object.keys(N.PRODUCAO_ICONE)) === j(['mina', 'pedreira', 'serraria', 'fazenda']) && j(N.DEF_ICONE_PADRAO) === j({ castelo: 3, forte: 2 }), 'os lugares que produzem e os que defendem');

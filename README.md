@@ -222,6 +222,28 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   não mostra o teto.
 - Testes: `teto-por-nivel`.
 
+### A água inteira, a fenda e os vizinhos que se ligam (lote 57)
+
+- **O Lago** (`TERRENOS_L57`: `lg`, textura `lago`, 10 cubos) é água (`TEX_AGUA`), como a Água, a rasa e a funda: a foz do
+  rio, a cena `agua` do hexágono e o encontro da água. Num mapa de antes, a aba Terreno oferece.
+- **A costa** (`mundo/tela.js`, `costaDoMapa`): os lados de hexágono entre água e terra viram correntes (o fim de um lado é
+  o começo do próximo, a água sempre à esquerda), amaciadas pelo meio de cada lado (com um tremido fixo por lado) e três
+  passadas de Chaikin; cada pedaço guarda o tipo da margem (`TIPO_COSTA`: `areia`, `seixo`, `junco` — no lago, também na
+  planície —, `rocha` — a falésia: montanha, desfiladeiro, pedras —, `gelo` e `foz`, onde o rio ou a fenda deságua).
+  A tinta da água é desenhada por último e recortada pela terra, e a beira segue a linha amaciada
+  (`corridasDaCosta` na máscara); por cima, `desenharCosta`: o raso que clareia perto da terra e a margem de cada tipo.
+  A foz abre um leque claro na água.
+- **A fenda** (`mundo/nucleo.js`): o Desfiladeiro é rede (`ehRede`, `tipo: 'fenda'`): liga às fendas, aos rios e a uma
+  água; o rio liga às fendas; a fenda que liga a um rio tem `comRio` (a água corre no fundo); `ponteDoRio(vz, true)` dá a
+  ponte (a estrada dos dois lados da fenda) e ali a fenda custa o da estrada. Na tela, as camadas da fenda (a encosta
+  riscada, a beira, as paredes e o fundo, com a luz de cima à esquerda) e a ponte de corda (terra) ou de pedra. A cena
+  do hexágono de fenda é a da montanha; a fenda seca não vira caminho.
+- **De perto** (`passosHex`): `desenharCordilheira` junta os montes vizinhos (um pico no meio de cada par, todos de trás
+  para a frente), `desenharBordaMata` fecha a beira da floresta e da selva com uma fileira de copas e `desenharPantano`
+  liga cada poça do pântano a um vizinho (e à água) por canais.
+- No canvas, `data-costa` (as correntes e os tipos) e `data-fendas` (as fendas, as com rio, as com ponte), para conferir.
+- Testes: `lote57-agua` (a conta), `mundo-lote57` (o desenho), e os de antes com o terreno a mais.
+
 ### O cinto de poções da Yanato (lote 55)
 
 - **A barra**: a escola Yanato (`a5ufrdl1er`) é a única escola com barra (`TC.barras.ESCOLAS_COM_BARRA`): a

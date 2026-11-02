@@ -247,12 +247,12 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
 
   await passo('os terrenos e os ícones novos', async () => {
     const ts = await A(() => __mundo.N.mapaNovo('x').terrenos.map(t => t.id));
-    ok(ts.length === 28 && ['ar', 'md', 'df', 'gl', 'fm', 'oa', 'ch', 'td'].every(id => ts.includes(id)), 'um mapa novo já vem com os oito terrenos novos (lote 54: 28 ao todo)');
+    ok(ts.length === 29 && ['ar', 'md', 'df', 'gl', 'fm', 'oa', 'ch', 'td'].every(id => ts.includes(id)), 'um mapa novo já vem com os oito terrenos novos (lote 57: 29 ao todo)');
     const ics = await A(() => Object.keys(__mundo.N.ICONES));
     ok(['fazenda', 'pedreira', 'serraria', 'forte', 'farol', 'estalagem', 'mercado', 'cemiterio', 'portal', 'ninho'].every(k => ics.includes(k)), 'os dez ícones novos');
     await A(() => __mundo.App.mudar('pintar', m => { const ids = ['ar', 'md', 'df', 'gl', 'fm', 'oa', 'ch', 'td']; ids.forEach((id, i) => { const h = __mundo.N.hexDe(m, 120 + i * 60, 1300); m.hexes[h.q + ',' + h.r] = id; }); })); await espera(400);
     const d = await A(() => (document.querySelector('canvas.hex-desenho') || {}).dataset || {});
-    ok(['ar', 'md', 'df', 'gl', 'fm', 'oa', 'ch', 'td'].every(id => new RegExp('(^|,)' + id + ':').test(d.ters || '')), 'pintados, aparecem no mapa (a tinta de cada um): ' + (d.ters || ''));
+    ok(['ar', 'md', 'gl', 'fm', 'oa', 'ch', 'td'].every(id => new RegExp('(^|,)' + id + ':').test(d.ters || '')), 'pintados, aparecem no mapa (a tinta de cada um; lote 57: o desfiladeiro é rede, desenhado por cima do terreno da margem): ' + (d.ters || ''));
     await A(() => { __mundo.Tela.zoom = 1.8; }); await espera(300); await A(() => { __mundo.Tela.centrar({ x: 330, y: 1300 }); }); await espera(600);
     // (para a foto: a aba Terreno aberta nos terrenos novos, com os nomes)
     await F.click('#tab-terreno'); await espera(300);

@@ -190,6 +190,7 @@
       jogador: [
         { t: 'O mapa', txt: 'Arraste para andar, a roda para aproximar. Você vê o que o mestre deixou à vista; o resto fica sob a névoa.', ir: { aba: 'mundo', g: 'O mapa' } },
         { t: 'Rios e estradas', txt: 'Os rios correm de hexágono em hexágono até o lago ou o mar; as estradas (de terra, de pedra e pavimentada) deixam a viagem mais rápida, e a ponte aparece onde a estrada cruza o rio.' },
+        { t: 'Costas, lagos e desfiladeiros', txt: 'A beira da água mostra o que há nela: praia, junco, o paredão da falésia ou o gelo. O desfiladeiro é uma fenda funda; atravessar sem ponte é lento, e a ponte suspensa da estrada é o atalho.', ir: { aba: 'mundo', g: 'O mapa' } },
         { t: 'A data, a hora e o clima', txt: 'Junto da data: o dia da semana, o tempo de marcha (“4º tempo de 10”) e o clima de agora. Clicar na data mostra a campanha que está no mapa.', ir: { aba: 'mundo', g: 'A data do mundo' } },
         { t: 'O painel', txt: 'Hoje (eventos, viagem), Reinos (a sua facção, o Livro do reino), Corte (quem vocês conhecem, árvores de família, títulos), Diplomacia e Intrigas (os segredos descobertos).', ir: { aba: 'mundo', g: 'O painel' } },
         { t: 'Camadas', txt: 'O botão Camadas (tecla C) mostra e esconde cidades, estradas, eventos, regiões, guerra… só no seu aparelho. Atalhos Viagem, Política, Guerra e Tudo.', tecla: 'C' },
@@ -198,6 +199,7 @@
       mestre: [
         { t: 'Criar o mapa', txt: 'Uma imagem sua ou papel em branco. Na aba Terreno, a grade de hexágonos (cada um vale 5 cubos), os tipos de terreno com o custo, e o pincel para pintar.', ir: { aba: 'mundo', g: 'Trocar de mapa' } },
         { t: 'Rios e estradas por hexágono', txt: 'No pincel por hexágono (Terreno, H): Rio, Estrada de terra (4 cubos), Estrada de pedra (3) e Estrada pavimentada (2). O fundo pega o terreno dos vizinhos e a água ou a estrada liga sozinha às do lado. Pinte a estrada por cima do rio: o rio fica e a ponte aparece, custando o da estrada. Sem ponte, atravessar o rio custa 10. Num mapa de antes, a aba Terreno oferece “Acrescentar”.', ir: { aba: 'mundo', g: 'Rios e estradas' } },
+        { t: 'Lagos, mares e desfiladeiros', txt: 'Pinte a Água, a Água rasa, o Mar profundo ou o Lago (água doce, 10 cubos): a água vira um corpo só e a margem sai sozinha do terreno vizinho (areia, junco, falésia ou gelo), com o raso clareando perto da terra. O Desfiladeiro liga aos vizinhos como o rio; o rio corre no fundo dele e a estrada que o atravessa ganha uma ponte suspensa. Os montes vizinhos viram cordilheira.', ir: { aba: 'mundo', g: 'Lagos, mares e desfiladeiros' } },
         { t: 'Ferramentas', txt: 'Marcadores (cidades, portos, ruínas, lojas…), Grupos (o dos jogadores, caravanas, patrulhas, exércitos), Rotas, Regiões, Desenho com carimbos, Terreno (H), Frente (guerra e zonas de perigo) e Eventos.', ir: { aba: 'mundo', g: 'As ferramentas' } },
         { t: 'Passar o tempo e viajar', txt: '“+1 tempo” leva todos os grupos com rota; ▶ passa o dia. O clima muda aos poucos, os eventos pesam na viagem e as caravanas andam sozinhas. Tudo tem Desfazer.', ir: { aba: 'mundo', g: 'A data do mundo' } },
         { t: 'Ver como jogador', txt: 'A chave “Ver como jogador” mostra o mapa exatamente como a mesa vê.', ir: { aba: 'mundo', g: 'Ver como jogador' } },
@@ -472,5 +474,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 5, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 6, sistemas, tarefas, roteiro, sabia };
 })();

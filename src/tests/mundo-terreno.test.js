@@ -55,7 +55,7 @@ const noHex = async (a, x, y) => A(a, k => (__mundo.App.mapa.hexes || {})[k], aw
     await L.F.waitForFunction(() => window.__mundo && window.__mundo.App.pronto, null, { timeout: 15000 }); await espera(250);
     await L.F.fill('#vazio [data-k="vz:nome"]', 'Hexes'); await L.F.click('#vazio [data-k="vz:papel"]'); await espera(300);
     const m = await mapa(L);
-    ok(!!m && m.grade.tam === 0 && m.terrenos.length === 28 && j(m.hexes) === '{}', 'um mapa novo: sem grade, com os terrenos de começo (lote 54: 28), nenhum hexágono pintado');
+    ok(!!m && m.grade.tam === 0 && m.terrenos.length === 29 && j(m.hexes) === '{}', 'um mapa novo: sem grade, com os terrenos de começo (lote 57: 29), nenhum hexágono pintado');
     ok(await L.F.locator('#tab-terreno').isVisible() && (await L.F.locator('#tabs .tab:not([hidden])').allInnerTexts()).join('|').replace(/\s+/g, '') === 'Seleção|Hoje|Terreno|Mapa|Linha|Reinos|Corte|Diplomacia|Intrigas|Guerra', 'o painel ganha a aba Terreno (lote 11, parte 3a: as abas em duas fileiras — o mapa e a política; parte 4a: Intrigas; lote 20: a Linha do tempo)');
   });
 
@@ -120,7 +120,7 @@ const noHex = async (a, x, y) => A(a, k => (__mundo.App.mapa.hexes || {})[k], aw
   });
 
   await passo('os tipos de terreno', async () => {
-    ok(await L.F.locator('#pane .ter-linha').count() === 28, 'os tipos de terreno na lista (lote 54: 28)');
+    ok(await L.F.locator('#pane .ter-linha').count() === 29, 'os tipos de terreno na lista (lote 57: 29)');
     await escrever(L, 'ter:fl:nome', 'Mata Fechada');
     await escrever(L, 'ter:mo:custo', '20');
     let m = await mapa(L);
@@ -129,7 +129,7 @@ const noHex = async (a, x, y) => A(a, k => (__mundo.App.mapa.hexes || {})[k], aw
     ok((await mapa(L)).terrenos.find(x => x.id === 'mo').custo === 20 && /Use um custo de 0,1 a 9999 cubos/.test(await textoDoAviso(L)), 'custo zero não entra (o aviso explica)');
     await botao(L, 'ter:novo');
     m = await mapa(L);
-    ok(m.terrenos.length === 29 && m.terrenos[28].id === 't1' && m.terrenos[28].nome === 'Terreno 1' && m.terrenos[28].custo === 5 && await A(L, () => document.activeElement && document.activeElement.dataset.k === 'ter:t1:nome'), 'um tipo novo, com o cursor no nome');
+    ok(m.terrenos.length === 30 && m.terrenos[29].id === 't1' && m.terrenos[29].nome === 'Terreno 1' && m.terrenos[29].custo === 5 && await A(L, () => document.activeElement && document.activeElement.dataset.k === 'ter:t1:nome'), 'um tipo novo, com o cursor no nome');
     await escrever(L, 'ter:t1:nome', 'Pedreira');
     await L.F.click('#pane [data-k="ter:ne:x"]'); await espera(200);
     ok(!(await mapa(L)).terrenos.some(x => x.id === 'ne') && /Neve saiu da lista\./.test(await textoDoAviso(L)), 'tirar um tipo (Neve) avisa, com desfazer');
@@ -140,7 +140,7 @@ const noHex = async (a, x, y) => A(a, k => (__mundo.App.mapa.hexes || {})[k], aw
   await passo('o pincel de terreno', async () => {
     await botao(L, 'ter:pincel');
     ok(await A(L, () => __mundo.App.ferramenta) === 'h' && await L.F.locator('#rail .tool[data-f="h"]').getAttribute('aria-pressed') === 'true', 'o botão da aba liga a ferramenta Terreno (H)');
-    ok(await L.F.locator('#opts select[aria-label="O que o pincel faz"] option').count() === 32, 'o pincel oferece os 29 terrenos, "Sem terreno", "Custo próprio" e "Tirar o custo próprio" (sem a economia, sem os recursos)');
+    ok(await L.F.locator('#opts select[aria-label="O que o pincel faz"] option').count() === 33, 'o pincel oferece os 30 terrenos, "Sem terreno", "Custo próprio" e "Tirar o custo próprio" (sem a economia, sem os recursos)');
     await pairar(L, 125, 325);
     ok(/Arraste sobre os hexágonos para pintar: Mata Fechada\. Aqui: sem terreno · 5 cubos \(sem terreno\)\./.test(await dica(L)), 'a dica diz o que o pincel pinta e o que há embaixo do cursor: ' + await dica(L));
     ok(await L.F.locator('#mundo svg .pincel-hex').count() === 1, 'o hexágono embaixo do cursor aparece contornado');

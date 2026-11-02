@@ -1837,7 +1837,7 @@
   // (o desenho do hexágono → o terreno do encontro e, às vezes, a situação; lote 13: a savana e a tundra nos terrenos delas)
   const ENC_DA_TEX = { mato: ['campo'], liso: ['campo'], arvores: ['floresta'], colinas: ['campo', 'morro'], montes: ['montanha'], juncos: ['pantano'], areia: ['deserto'], neve: ['neve'], ondas: ['agua', 'navio'], pedras: ['montanha'],
     lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['savana'], tundra: ['tundra'], corrompida: ['corrompida'],
-    raso: ['agua'], fundo: ['agua', 'navio'], desfiladeiro: ['montanha'], geleira: ['neve'], morta: ['floresta'], oasis: ['deserto'], charneca: ['campo'], devastada: ['campo'] };     // (lote 17)
+    lago: ['agua'], raso: ['agua'], fundo: ['agua', 'navio'], desfiladeiro: ['montanha'], geleira: ['neve'], morta: ['floresta'], oasis: ['deserto'], charneca: ['campo'], devastada: ['campo'] };     // (lote 17)
   const VILA_DA_TEX = { arvores: 'floresta', selva: 'floresta', areia: 'areia', savana: 'areia', neve: 'neve', tundra: 'neve', geleira: 'neve', oasis: 'areia', morta: 'floresta' };
   function terrenoNoPonto(m, x, y) { const hx = N().hexDe(m, x, y); return hx ? N().hexInfo(m, hx.q, hx.r).terreno : null; }
   /* (lote 7, parte 5a) o que os eventos de hoje levam para a cena: o clima (a tempestade e a inundação, chuva; o incêndio,
