@@ -319,7 +319,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
     // ---------- o respeito no mundo; passar a liderança ----------
     await botao(CM, `.cla-item[data-cla="${lam}"]`);
     await botao(CM, '[data-k="resp:mais"]'); await botao(CM, '[data-k="resp:mais"]');
-    ok(await ate(async () => /Respeito no mundo: \+2 · Respeitado/.test(await texto(CL, '#chips'))), 'o mestre muda o respeito no mundo: a Lia vê "+2 · Respeitado"');
+    ok(await ate(async () => /\+2 respeito no mundo Respeitado/.test((await texto(CL, '#numeros')).replace(/\s+/g, ' '))), 'o mestre muda o respeito no mundo: a Lia vê "+2 · Respeitado"');
     await botao(CM, '[data-k="c:lider"]'); await CM.locator('#dlg [data-k="dl:novo"]').selectOption({ label: 'Brisa · Conselheira' }); await botao(CM, '#dlg [data-k="dl:sim"]');
     ok(await ate(async () => await CL.locator('[data-k="sou-lider"]').isVisible() && /Você é quem lidera \(Brisa\)/.test(await texto(CL, '[data-k="sou-lider"]')), 40000), 'o mestre passa a liderança à Brisa: a Lia passa a liderar');
     ok(await ate(async () => (await CD.locator('[data-k="sou-lider"]').count()) === 0 && (await CD.locator('#parte button').count()) === 0, 40000), 'e o Dalmo deixa de mexer nos cargos');
@@ -327,7 +327,7 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
       'pedindo ao banco mesmo assim: "Só quem ocupa o cargo de líder…"');
     // ---------- os nomes dos níveis (da mesa toda) e o nome de agora de cada personagem ----------
     await botao(CM, '[data-k="niveis"]'); await CM.locator('#dlg [data-k="nv:mundo:12"]').fill('Prestigiado'); await botao(CM, '#dlg [data-k="dl:sim"]');
-    ok(await ate(async () => /Respeito no mundo: \+2 · Prestigiado/.test(await texto(CL, '#chips'))), 'o mestre renomeia um nível: os jogadores veem o nome novo');
+    ok(await ate(async () => /\+2 respeito no mundo Prestigiado/.test((await texto(CL, '#numeros')).replace(/\s+/g, ' '))), 'o mestre renomeia um nível: os jogadores veem o nome novo');
     await M.evaluate(() => TC.dados.col('personagens').gravar('pc_brisa', { nome: 'Brisa do Vale' }));
     ok(await ate(async () => /Brisa do Vale/.test(await texto(CL, '[data-cargo="lider"]'))), 'o personagem renomeado aparece no cargo com o nome de agora');
     await foto(M, 'cla-rede-mestre');

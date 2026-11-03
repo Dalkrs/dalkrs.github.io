@@ -2,6 +2,29 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-10",
+      "data": "2026-11-03",
+      "titulo": "O salão do clã mais limpo, e a hierarquia de verdade",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Clã: a hierarquia dos cargos virou um organograma. O líder fica no alto, os cargos abaixo dele ligados por linhas, e cada subcargo pendurado no seu. Dá para montar vários cargos e subcargos sem embolar."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Clã: os números do clã, de relance, embaixo do salão: os membros, o respeito no mundo, os lapros do cofre, as construções e os recursos, cada um com a sua cor e o seu desenho."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Clã: os membros em cartões, com a foto maior, a raça e a classe, o cargo e a idade. Os textos de ajuda ficam recolhidos em “Como funciona”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Clã: quem lidera tem “Ver” e “Editar” ao lado das abas. No Ver, o clã como todos veem; no Editar, os botões dos membros, das construções e dos recursos."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-9",
       "data": "2026-11-03",
       "titulo": "O cofre de lapros do clã, e o líder que cuida do clã",

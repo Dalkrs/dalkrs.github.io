@@ -225,6 +225,7 @@
         { t: 'A tropa com modelo', txt: 'Ao criar a tropa, escolha o modelo de unidade (os do Mapa-múndi), quantos soldados (1 a 500) e a veterania. Tudo na mesma janela.', onde: { sel: '[data-k="tr:nova"]', nada: 'Abra um clã, na aba Sede e tropas.' } },
       ],
       jogador: [
+        { t: 'Ver ou editar o clã', txt: 'Quem lidera o clã tem “Ver” e “Editar” ao lado das abas: no Ver, o clã como todos veem; no Editar, os botões dos membros, das construções e dos recursos.', onde: { sel: '[data-k="lider-modo"]', nada: 'Só aparece para quem tem o personagem no cargo de líder.' } },
         { t: 'O cofre de lapros', txt: 'Na aba Cofre: “Pôr no cofre…” tira os lapros da ficha do seu personagem e guarda no cofre do clã. O líder paga os membros. Quem lidera também mexe nos recursos, nas construções e nos membros, e tudo fica no histórico com o nome dele.', onde: { sel: '[data-k="sec:lapros"]', nada: 'Abra a aba Cofre.' } },
         { t: 'O clã', txt: 'As partes do clã que vocês veem: os cargos, as construções, os recursos e o histórico. O líder mexe nos outros cargos.', onde: { sel: '#abas', nada: 'O mestre ainda não mostrou um clã.' } },
         { t: 'A sede', txt: 'Na parte Sede do salão, a planta da sede do clã: os prédios, a muralha, as estradas. Quem monta é o mestre; nas sessões, ela vira cena.', onde: { sel: '#abas [data-aba="sede"]', nada: 'O mestre ainda não mostrou a sede deste clã.' } },

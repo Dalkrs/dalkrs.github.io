@@ -120,15 +120,35 @@ select.in { padding: 0 6px; width: auto; }
 .aviso.lider { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--lamp-soft); border-color: #8a6a2a; color: var(--fg); }
 .aviso.lider span { flex: 1 1 280px; }
 
-/* a árvore de cargos */
-.arvore { display: flex; flex-direction: column; align-items: center; min-width: 0; }
-.cargo { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; width: 250px; max-width: 100%; display: grid; gap: 7px; position: relative; }
-.cargo.lider { border: 2px solid #d9a441; width: 290px; padding: 12px 14px; }
-.cargo.sub { background: var(--surface); width: 232px; }
-.cargo > .cab { display: flex; align-items: center; gap: 4px; min-width: 0; }
+/* a árvore de cargos (lote 75: um organograma) */
+.org { overflow-x: auto; padding: 4px 2px 10px; }
+.org-dentro { display: flex; flex-direction: column; align-items: center; min-width: max-content; margin: 0 auto; }
+.org-raiz { position: relative; display: flex; justify-content: center; padding-bottom: 22px; }
+.org-raiz:not(.com-filhos) { padding-bottom: 0; }
+.org-raiz.com-filhos::after { content: ""; position: absolute; left: 50%; bottom: 0; height: 22px; border-left: 2px solid var(--fio); }
+.org-n1 { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; align-items: flex-start; }
+.org-n1 > .ramo { position: relative; padding: 22px 10px 0; display: flex; flex-direction: column; align-items: center; }
+.org-n1 > .ramo::before { content: ""; position: absolute; top: 0; left: 0; right: 0; border-top: 2px solid var(--fio); }
+.org-n1 > .ramo:first-child::before { left: 50%; }
+.org-n1 > .ramo:last-child::before { right: 50%; }
+.org-n1.so-um > .ramo::before { display: none; }
+.org-n1 > .ramo::after { content: ""; position: absolute; top: 0; left: 50%; height: 22px; border-left: 2px solid var(--fio); }
+.org-sub { list-style: none; margin: 0; padding: 0 0 0 26px; align-self: stretch; display: grid; gap: 0; }
+.org-sub > .ramo { position: relative; padding: 12px 0 0; display: grid; justify-items: start; }
+.org-sub > .ramo::before { content: ""; position: absolute; left: -14px; top: 0; height: 34px; width: 12px; border-left: 2px solid var(--fio); border-bottom: 2px solid var(--fio); border-bottom-left-radius: 8px; }
+.org-sub > .ramo:not(:last-child)::after { content: ""; position: absolute; left: -14px; top: 0; bottom: 0; border-left: 2px solid var(--fio); }
+.org .ramo > .org-sub { margin-left: 18px; }
+:root { --fio: color-mix(in srgb, var(--lamp) 35%, var(--line-strong)); }
+.cargo { --nivel: 1; background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; width: 236px; max-width: 100%; display: grid; gap: 7px; position: relative;
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--lamp) calc(70% - var(--nivel) * 18%), transparent); }
+.cargo.lider { border: 2px solid #d9a441; width: 290px; padding: 12px 14px; box-shadow: 0 0 0 4px var(--lamp-soft), 0 10px 26px rgba(0,0,0,.25); }
+.cargo.sub { background: var(--surface); width: 220px; }
+.cargo > .cab { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.cargo > .cab svg { color: var(--lamp-ink); flex: none; }
 .cargo > .cab b { font: 600 17px/1.15 var(--display); flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .cargo.lider > .cab b { color: var(--lamp-ink); font-size: 19px; }
-.cargo .alca { color: var(--fg-3); cursor: grab; font-weight: 700; letter-spacing: -2px; padding: 0 4px 0 0; user-select: none; }
+.cargo .cg-n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--hover); color: var(--fg-2); font: 600 11.5px/20px var(--ui); text-align: center; }
+.cargo .alca { color: var(--fg-3); cursor: grab; font-weight: 700; letter-spacing: -2px; padding: 0 2px 0 0; user-select: none; }
 .cargo[draggable="true"] { cursor: default; }
 .cargo.arrastando { opacity: .45; }
 .cargo.antes { box-shadow: -4px 0 0 var(--lamp); }
@@ -136,20 +156,14 @@ select.in { padding: 0 6px; width: auto; }
 .cargo.dentro { outline: 2px dashed var(--lamp); outline-offset: 2px; }
 .cargo small.nota { font-size: 11.5px; color: var(--fg-3); white-space: nowrap; }
 .pessoa { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.pessoa .av { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line-strong); background: #283041 center / cover no-repeat; display: grid; place-items: center; font: 600 13px/1 var(--display); color: #e8dcc4; flex: none; overflow: hidden; }
+.pessoa .av { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line-strong); background: #283041 center / cover no-repeat; display: grid; place-items: center; font: 600 13px/1 var(--display); color: var(--fg); overflow: hidden; flex: none; }
 .pessoa .av.pj { border-color: #f1d8a8; }
 .cargo.lider .pessoa .av { width: 36px; height: 36px; font-size: 15px; }
 .pessoa .av img { width: 100%; height: 100%; object-fit: cover; }
 .pessoa .nm { flex: 1; min-width: 0; font-size: 13.5px; overflow-wrap: anywhere; }
 .pessoa .nm small { color: var(--fg-2); font-size: 12px; }
-.cargo .acoes { display: flex; gap: 6px; flex-wrap: wrap; }
-.cargo .acoes .btn { min-height: 26px; font-size: 12px; padding: 0 8px; }
-.liga-v { width: 2px; height: 16px; background: var(--line-strong); flex: none; }
-.liga-h { height: 2px; background: var(--line-strong); width: min(760px, 80%); }
-.ramos { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; width: 100%; }
-.ramo { display: flex; flex-direction: column; align-items: center; min-width: 0; }
-.sub-ramos { display: flex; flex-direction: column; align-items: center; gap: 0; }
-.sub-ramos .sub-ramos { padding-left: 18px; border-left: 2px solid var(--line-strong); margin-left: 8px; align-items: flex-start; }
+.cargo .acoes { display: flex; gap: 4px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dashed var(--line); }
+.cargo .acoes .btn { min-height: 24px; font-size: 11.5px; padding: 0 7px; }
 
 /* construções, recursos, respeito, relações, histórico */
 .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
@@ -502,6 +516,36 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 .cofre-ext .ext-q { font: 700 14px/1.2 var(--mono, ui-monospace); text-align: right; }
 .cofre-ext .ext-q.pos { color: var(--ok-ink); } .cofre-ext .ext-q.neg { color: var(--danger); }
 .cofre-ext .ext-s { color: var(--fg-3); font-size: 12px; white-space: nowrap; }
+/* (lote 75) os números do clã, de relance: cada um com a sua cor e o seu desenho */
+.numeros { display: flex; flex-wrap: wrap; gap: 8px 10px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.numeros:empty { display: none; }
+.num { --cn: var(--fg-2); display: flex; align-items: center; gap: 10px; padding: 7px 14px 7px 10px; border-radius: 12px; background: color-mix(in srgb, var(--cn) 9%, var(--raised)); border: 1px solid color-mix(in srgb, var(--cn) 26%, transparent); box-shadow: inset 3px 0 0 var(--cn); min-width: 0; }
+.num svg { color: var(--cn); flex: none; }
+.num b { font: 700 22px/1 var(--mono, ui-monospace); color: var(--cn); }
+.num span { display: grid; line-height: 1.15; }
+.num small { color: var(--fg-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.num em { font-style: normal; color: var(--fg-3); font-size: 11.5px; white-space: nowrap; }
+/* (lote 75) os membros em cartões */
+.rol-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.mbc { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 4px 12px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--raised); }
+.mbc .av { grid-row: span 3; width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--line-strong); background: #283041; display: grid; place-items: center; font: 600 18px/1 var(--display); color: #e8dcc4; overflow: hidden; }
+.mbc .av.pj { border-color: var(--lamp); }
+.mbc .av img { width: 100%; height: 100%; object-fit: cover; }
+.mbc .mbc-nm { font: 600 18px/1.15 var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mbc .mbc-rc { color: var(--fg-2); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mbc .mbc-pe { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; color: var(--fg-3); }
+.mbc .rol-cg { font-size: 12px; }
+.mbc .rol-cg.lider { border-color: var(--lamp); color: var(--lamp-ink); }
+.mbc .rol-idade { display: inline-flex; align-items: baseline; gap: 3px; min-width: 0; justify-items: start; }
+.mbc .rol-idade b { font-size: 15px; }
+.mbc .rol-idade em, .mbc .rol-idade.vazia { display: none; }
+.rol-ver > details.como { margin-top: 12px; }
+/* (lote 75) "Como funciona": o texto de ajuda longo, recolhido */
+details.como { color: var(--fg-3); font-size: 13px; }
+details.como > summary { cursor: pointer; width: fit-content; font-weight: 600; color: var(--fg-2); }
+details.como > p { margin: 6px 0 0; max-width: 72ch; line-height: 1.5; }
+/* (lote 75) Ver ou Editar, para quem lidera */
+.abas .lider-modo { margin-left: auto; align-self: center; }
 </style>
 </head>
 <body>
@@ -519,6 +563,8 @@ dialog.dl .corpo { display: grid; gap: 12px; }
       <div class="chips" id="chips"></div>
       <div class="nome" id="nomeCla"></div>
     </section>
+    <!-- (lote 75) os números do clã, de relance -->
+    <div class="numeros" id="numeros" aria-label="O clã em números"></div>
     <nav class="abas" id="abas" role="tablist" aria-label="Partes do clã"></nav>
     <main class="parte" id="parte"></main>
   </div>
@@ -539,6 +585,6 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <script src="../tc/sede.js?v=3"></script>
 <script src="sede-ui.js?v=4"></script>
 <script src="construtor.js?v=1"></script>
-<script src="cla.js?v=12"></script>
+<script src="cla.js?v=13"></script>
 </body>
 </html>

@@ -254,6 +254,18 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### O salão do clã mais limpo (lote 75)
+
+- **A hierarquia** (`hierarquia`, `cartaoCargo`): um organograma em `.org` — o líder (`.org-raiz`) no alto, o
+  primeiro nível em `ul.org-n1` ligado por um fio horizontal, e daí para baixo `ul.org-sub` com fios em cotovelo;
+  a cor do topo do cartão segue a profundidade (`--nivel`, até 3).
+- **Os números** (`#numeros`, `numerosDoCla`): membros, respeito no mundo, lapros do cofre, construções e até três
+  recursos, cada um com o seu ícone e a sua cor (`--cn`). O chip do respeito saiu do salão.
+- **Os membros** em cartões (`.rol-cartoes`, `.mbc`); os textos longos de ajuda em `details.como` (“Como funciona”).
+- **Ver | Editar** para quem lidera (`liderEdita`, `[data-k="lider-modo"]`): começa no Ver; nos testes
+  (`tinycats:testes-tudo-aberto`), no Editar.
+- Testes: `cla`, `cla.rede` e `cla-lote74.rede` (os números e o Ver | Editar).
+
 ### O cofre de lapros do clã e o líder que cuida do clã (lote 74)
 
 - **O cofre** (`cla:cofre:<clã>`, `0036_cofre_e_o_lider_do_cla.sql`, `public.cla_cofre_mover`): como a caixinha do

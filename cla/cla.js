@@ -49,7 +49,14 @@
     tranca: 'M5 11h14v10H5zM8 11V8a4 4 0 0 1 8 0v3',
     coroa: 'M4 18h16M4 18 3 7l5 4 4-6 4 6 5-4-1 11',
     lapis: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
+    // (lote 75) os números do clã
+    gente: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c.6-3.6 3.2-6 6.5-6s5.9 2.4 6.5 6M16 4.5a3.3 3.3 0 0 1 0 6.4M18 14.4c2 .8 3.2 2.8 3.5 5.6',
+    estrela: 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z',
+    moeda: 'M12 4c4.4 0 8 1.6 8 3.5S16.4 11 12 11 4 9.4 4 7.5 7.6 4 12 4zM4 7.5v4C4 13.4 7.6 15 12 15s8-1.6 8-3.5v-4M4 11.5v4c0 1.9 3.6 3.5 8 3.5s8-1.6 8-3.5v-4',
+    caixa: 'M3.5 8 12 4l8.5 4v8L12 20l-8.5-4zM3.5 8 12 12l8.5-4M12 12v8',
+    torre: 'M7 21V8h2V5h2v3h2V5h2v3h2v13zM5 21h14M10.5 21v-4h3v4',
   };
+  const CORES_REC = ['#d9a441', '#6fa8f0', '#6fbf9f', '#e08bdb', '#ee9658', '#9c95f5'];
   const guarda = {
     ler(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     gravar(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
@@ -74,7 +81,8 @@
     if (!mesmo(v, n)) { v.replaceWith(n); return; }
     if (v.nodeType !== 1) { if (v.nodeValue !== n.nodeValue) v.nodeValue = n.nodeValue; return; }
     if (v.namespaceURI === NS) { if (!v.isEqualNode(n)) v.replaceWith(n); return; }
-    for (const a of [...v.attributes]) if (!n.hasAttribute(a.name)) v.removeAttribute(a.name);
+    // (lote 75) um “Como funciona” aberto continua aberto quando a tela se repinta
+    for (const a of [...v.attributes]) if (!n.hasAttribute(a.name) && !(a.name === 'open' && v.tagName === 'DETAILS')) v.removeAttribute(a.name);
     for (const a of n.attributes) if (v.getAttribute(a.name) !== a.value) v.setAttribute(a.name, a.value);
     for (const p of PROPS) if (v[p] !== n[p]) v[p] = n[p];
     if (v.tagName !== 'TEXTAREA') morphFilhos(v, n, foco);
@@ -402,17 +410,19 @@
   function linhaHist(e, i, txt) { return h('div', { class: 'linha-h', 'data-h': String(i) }, h('time', { text: dia(e.em) }), h('span', { text: txt })); }
 
   // a árvore de cargos: o líder no alto; logo abaixo, os cargos lado a lado; mais abaixo, em coluna
+  /* (lote 75) A hierarquia como um organograma: o líder no alto; os cargos logo abaixo dele, lado a lado, ligados por
+     uma linha; e, debaixo de cada um, os cargos dele em coluna, com os fios em L (quantos níveis houver). Quando não cabe
+     na largura, a árvore rola para o lado, sem quebrar as linhas. */
   function hierarquia(c, pode) {
     const cs = N.normCargos(c.cargos), resp = !!c.jogadores, fs = N.filhos(cs, 'lider');
-    return h('div', { class: 'arvore', 'data-k': 'arvore' },
-      cartaoCargo(c, cs, 'lider', pode, resp, 0),
-      fs.length ? [h('div', { class: 'liga-v' }), fs.length > 1 ? h('div', { class: 'liga-h' }) : null,
-        h('div', { class: 'ramos' }, fs.map(f => ramo(c, cs, f, pode, resp, 1)))] : null);
+    return h('div', { class: 'org', 'data-k': 'arvore' }, h('div', { class: 'org-dentro' },
+      h('div', { class: 'org-raiz' + (fs.length ? ' com-filhos' : '') }, cartaoCargo(c, cs, 'lider', pode, resp, 0)),
+      fs.length ? h('ul', { class: 'org-n1' + (fs.length === 1 ? ' so-um' : '') }, fs.map(f => ramo(c, cs, f, pode, resp, 1))) : null));
   }
   function ramo(c, cs, id, pode, resp, prof) {
     const fs = N.filhos(cs, id);
-    return h('div', { class: 'ramo', 'data-k': 'ramo:' + id }, h('div', { class: 'liga-v' }), cartaoCargo(c, cs, id, pode, resp, prof),
-      fs.length ? h('div', { class: 'sub-ramos' }, fs.map(f => ramo(c, cs, f, pode, resp, prof + 1))) : null);
+    return h('li', { class: 'ramo', 'data-k': 'ramo:' + id }, cartaoCargo(c, cs, id, pode, resp, prof),
+      fs.length ? h('ul', { class: 'org-sub' }, fs.map(f => ramo(c, cs, f, pode, resp, prof + 1))) : null);
   }
   function cartaoCargo(c, cs, id, pode, resp, prof) {
     const x = cs[id], ehLider = id === 'lider', podeEste = pode && (!ehLider || mestre), livre = pode && !ocupado;
@@ -428,17 +438,20 @@
       a.ondrop = function (ev) { ev.preventDefault(); const z = zona(ev, this, id), de = arrasto; limparAlvos(); arrasto = null; if (de) soltar(c, cs, de, id, z); };
     }
     const lim = ehLider ? 1 : N.MAX.gente;
+    a.style = '--nivel:' + Math.min(prof, 3);
     return h('div', a,
       h('div', { class: 'cab' },
         livre && !ehLider ? h('span', { class: 'alca', title: 'Arrastar para mover', 'aria-hidden': 'true' }, '⋮⋮') : null,
+        ehLider ? icone(ICO.coroa, 16, '1.9') : null,
         h('b', { text: x.nome }),
+        x.gente.length > 1 ? h('span', { class: 'cg-n', title: x.gente.length + ' pessoas neste cargo', text: String(x.gente.length) }) : null,
         ehLider && pode && !mestre ? h('small', { class: 'nota', text: 'só o mestre muda' }) : null,
         podeEste ? h('button', { type: 'button', class: 'ib leve', 'data-k': 'ren:' + id, title: 'Renomear', 'aria-label': 'Renomear o cargo ' + x.nome, disabled: ocupado, onclick: () => renomearCargoDlg(c, id) }, '✎') : null,
         pode && !ehLider ? h('button', { type: 'button', class: 'ib leve', 'data-k': 'apg:' + id, title: 'Apagar o cargo', 'aria-label': 'Apagar o cargo ' + x.nome, disabled: ocupado, onclick: () => apagarCargoDlg(c, id) }, '×') : null),
       x.gente.length ? x.gente.map(p => linhaPessoa(c, id, p, podeEste && !ehLider, resp)) : h('small', { class: 'ajuda', text: ehLider ? 'Ninguém na liderança ainda.' : 'Ninguém neste cargo ainda.' }),
       pode ? h('div', { class: 'acoes' },
         !ehLider ? h('button', { type: 'button', class: 'btn tracejado', 'data-k': 'pes:' + id, disabled: ocupado || x.gente.length >= lim, onclick: () => pessoaDlg(c, id) }, '+ pessoa') : null,
-        h('button', { type: 'button', class: 'btn tracejado', 'data-k': 'sub:' + id, disabled: ocupado || N.totalCargos(cs) >= N.MAX.cargos, onclick: () => novoCargoDlg(c, id) }, ehLider ? '+ cargo' : '+ cargo abaixo'),
+        h('button', { type: 'button', class: 'btn tracejado', 'data-k': 'sub:' + id, title: ehLider ? 'Um cargo logo abaixo do líder' : 'Um cargo abaixo de ' + x.nome, disabled: ocupado || N.totalCargos(cs) >= N.MAX.cargos, onclick: () => novoCargoDlg(c, id) }, ehLider ? '+ cargo' : '+ subcargo'),
         !ehLider ? h('button', { type: 'button', class: 'btn tracejado', 'data-k': 'mov:' + id, disabled: ocupado, onclick: () => moverDlg(c, id) }, 'Mover…') : null,
         ehLider && mestre ? h('button', { type: 'button', class: 'btn tracejado', 'data-k': 'liderar', onclick: () => liderancaDlg(c.id) }, c.jogadores ? 'Passar a liderança…' : 'Trocar o líder…') : null) : null);
   }
@@ -520,24 +533,46 @@
       c.hist.length ? h('div', { class: 'linhas' }, c.hist.slice(0, 100).map((e, i) => linhaHist(e, i, N.histTxt(e, nm)))) : h('p', { class: 'vazio-p', text: 'Nada ainda.' }),
       h('p', { class: 'ajuda', text: 'As mudanças no clã ficam aqui (sem aviso na mesa ao vivo).' }));
   }
+  /* (lote 75) Os números do clã, de relance, embaixo do salão: os membros, o respeito no mundo, os lapros do cofre, as
+     construções e os primeiros recursos — cada um com o seu desenho e a sua cor. */
+  function numerosDoCla(c) {
+    const nm = nomes(), num = (k, ico, cor, n, rot, sub) => h('div', { class: 'num', 'data-k': 'num:' + k, style: '--cn:' + cor },
+      icone(ico, 20, '1.8'), h('b', { text: n }), h('span', null, h('small', { text: rot }), sub ? h('em', { text: sub }) : null));
+    const out = [];
+    if (c.ver.cargos || c.ver.membros) out.push(num('membros', ICO.gente, '#74a9f2', String(N.membrosDe(c).length), N.membrosDe(c).length === 1 ? 'membro' : 'membros'));
+    if (c.ver.respeito && c.respeito) out.push(num('resp', ICO.estrela, c.respeito.v > 0 ? '#6fbf8f' : c.respeito.v < 0 ? '#f0786e' : '#c9ccd4', N.sinal(c.respeito.v), 'respeito no mundo', N.nomeNivel(nm, 'mundo', c.respeito.v)));
+    if (naMesa && c.jogadores) { const q = cofreDe(c.id).q; out.push(num('lapros', ICO.moeda, '#e6ab4f', N.qtdTxt(q), q === 1 ? 'lapro no cofre' : 'lapros no cofre')); }
+    if (c.ver.construcoes && c.construcoes) out.push(num('cons', ICO.torre, '#b39cf0', String(c.construcoes.filter(k => k.nivel > 0).length), 'construções', c.construcoes.length ? 'de ' + c.construcoes.length + ' planejadas' : null));
+    if (c.ver.recursos && c.recursos) c.recursos.lista.slice(0, 3).forEach((r, i) => out.push(num('rec:' + r.id, ICO.caixa, CORES_REC[i % CORES_REC.length], N.qtdTxt(r.qtd), r.nome)));
+    return out;
+  }
+  const comoFunciona = (txt, k) => h('details', { class: 'como', 'data-k': 'como:' + (k || ''), open: tudoAberto ? '' : null }, h('summary', { text: 'Como funciona' }), h('p', { text: txt }));
+  // (lote 75) quem lidera começa vendo o clã; "Editar" abre o que ele cuida (nos testes, já aberto)
+  const tudoAberto = (() => { try { return localStorage.getItem('tinycats:testes-tudo-aberto') === '1'; } catch (e) { return false; } })();
+  let liderEdita = tudoAberto;
   let chaveSalao = '';
   function pintarSalao(c, pode, oculto) {
     const chave = j([c.brasao]);
     if (chave !== chaveSalao) { chaveSalao = chave; $('fundo').innerHTML = salaoSvg(c.brasao); }       // (desenho fixo, deste site)
     const nm = nomes();
     morphEm($('chips'), [
-      c.ver.respeito && c.respeito ? h('span', { class: 'chip', 'data-k': 'ch:resp' }, 'Respeito no mundo: ', h('b', { class: tom(c.respeito.v), text: N.nivelTxt(nm, 'mundo', c.respeito.v) })) : null,
+
       c.faccao ? h('span', { class: 'chip', 'data-k': 'ch:fac' }, h('span', { class: 'pt', style: 'background:' + (c.faccao.cor || '#8a93a8') }), 'Da facção ' + c.faccao.nome) : null,
       oculto ? h('span', { class: 'chip', 'data-k': 'ch:oc' }, icone(ICO.tranca, 14, '2'), 'Os jogadores não veem este clã') : null,
     ]);
     morphEm($('nomeCla'), [h('h1', { text: c.nome }), c.lema ? h('p', { text: c.lema }) : null]);
+    morphEm($('numeros'), oculto ? [] : numerosDoCla(c));
     $('abas').hidden = !!oculto;
     if (!oculto && !abaVisivel(c, aba) && ABAS.every(([id]) => !abaVisivel(c, id))) aba = 'hier';
-    morphEm($('abas'), oculto ? [] : ABAS.filter(([id]) => (id !== 'sede' && id !== 'tropas') || abaVisivel(c, id)).map(([id, nome]) => {
+    // (lote 75) quem lidera vê o clã (Ver) e cuida dele (Editar), nas abas Membros, Construções e Cofre
+    const verEd = !oculto && !mestre && souLider(c) ? h('span', { class: 'seg lider-modo', role: 'group', 'aria-label': 'Ver ou editar o clã', 'data-k': 'lider-modo' },
+      h('button', { type: 'button', 'data-k': 'lider-ver', 'aria-pressed': String(!liderEdita), title: 'O clã como todos veem', onclick: () => { liderEdita = false; pintar(); } }, 'Ver'),
+      h('button', { type: 'button', 'data-k': 'lider-editar', 'aria-pressed': String(liderEdita), title: 'Você lidera: os membros, as construções e os recursos', onclick: () => { liderEdita = true; if (!['membros', 'cons', 'rec'].includes(aba)) aba = 'membros'; pintar(); } }, 'Editar')) : null;
+    morphEm($('abas'), oculto ? [] : [...ABAS.filter(([id]) => (id !== 'sede' && id !== 'tropas') || abaVisivel(c, id)).map(([id, nome]) => {
       const ve = abaVisivel(c, id);
       return h('button', { type: 'button', role: 'tab', class: ve ? null : 'tranca', 'data-aba': id, 'aria-selected': String(aba === id), 'aria-label': ve ? nome : nome + ' (o mestre ainda não mostrou)', onclick: () => { aba = id; pintar(); } },
         nome, ve ? null : icone(ICO.tranca, 13, '2'));
-    }));
+    }), verEd]);
     let corpo;
     if (oculto) corpo = [h('div', { class: 'aviso', 'data-k': 'oculto' }, 'Os jogadores não veem este clã. ', c.jogadores ? null : 'Para mostrar, use “O que os jogadores veem…” no painel (ou marque “Clã dos jogadores”).')];
     else if (!abaVisivel(c, aba)) corpo = [escondida(c)];
@@ -547,10 +582,10 @@
         h('span', { text: 'Você é ' + (q ? 'quem lidera (' + q.nome + ')' : 'quem lidera') + ': crie, renomeie, mova e preencha os cargos abaixo do seu. Passar a liderança é com o mestre.' }),
         h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'novo-cargo', disabled: ocupado, onclick: () => novoCargoDlg(c, 'lider') }, '+ Cargo')) : null,
       hierarquia(c, pode),
-      h('p', { class: 'ajuda', text: 'Cada pessoa pode ser um personagem da mesa ou só um nome.' + (c.jogadores ? ' O número ao lado é o respeito dela dentro do clã (de −10 a +10): todos do clã veem; quem muda é o mestre.' : '') })];
+      comoFunciona('Cada pessoa pode ser um personagem da mesa ou só um nome.' + (c.jogadores ? ' O número ao lado é o respeito dela dentro do clã (de −10 a +10): todos do clã veem; quem muda é o mestre ou o líder, na aba Membros.' : '') + (pode ? ' Arraste um cargo pela alça (⋮⋮) para outro lugar: no meio de um cargo, ele fica abaixo dele; nas pontas, ao lado.' : ''), 'hier')];
     } else {
       // (lote 74) o líder cuida dos membros, das construções e dos recursos: na tela dele, as mesmas partes do mestre
-      const xl = !mestre && souLider(c) ? { id: c.id, c: claDoLider(c.id) } : null;
+      const xl = !mestre && souLider(c) && liderEdita ? { id: c.id, c: claDoLider(c.id) } : null;
       if (xl && !xl.c) xl.c = null;
       if (aba === 'membros') corpo = [xl && xl.c ? avisoLider('Você lidera o clã: anote membros, mude os dados e o respeito de cada um.') : null, xl && xl.c ? secRol(xl) : membrosVer(c)];
       else if (aba === 'tropas') corpo = [tropasVer(c)];
@@ -775,7 +810,7 @@
               title: f.length ? 'Faltam recursos: ajuste o cofre do clã antes' : 'Subir para o nível ' + (k.nivel + 1) + (custo.length ? ' (' + custo.map(y => '−' + N.qtdTxt(y.qtd) + ' ' + ((rec(y.rec) || {}).nome || y.nome)).join(', ') + ')' : ''), onclick: () => subir(id, k) }, 'Subir'),
             h('button', { type: 'button', class: 'ib leve', 'data-k': 'cons:ed:' + k.id, title: 'Editar', 'aria-label': 'Editar ' + k.nome, onclick: () => construcaoDlg(id, k.id) }, '✎')));
       })) : h('p', { class: 'vazio-p', text: c.construcoes.length ? 'Nenhuma construção neste filtro.' : 'Nenhuma construção ainda.' }),
-      h('p', { class: 'ajuda', text: '“Subir” desconta o custo do cofre (com Desfazer) e fica no histórico. A estrela marca as favoritas (vêm primeiro quando a ordem não é a do clã); as etiquetas, no ✎, servem para filtrar.' }));
+      comoFunciona('“Subir” desconta o custo do cofre (com Desfazer) e fica no histórico. A estrela marca as favoritas (vêm primeiro quando a ordem não é a do clã); as etiquetas, no ✎, servem para filtrar.', 'l811'));
   }
   function subir(id, k) {
     let feito = false;
@@ -860,7 +895,7 @@
             onclick: () => { if (mudarCla(id, 'tirar a relação com ' + nomeDaRelacao(r, clas), y => { y.relacoes = y.relacoes.filter(z => z.id !== r.id); })) avisoDesfazer('A relação com ' + nomeDaRelacao(r, clas) + ' saiu.'); } }, '×'));
       }) : h('p', { class: 'vazio-p', text: 'Nenhuma relação ainda.' }),
       motivoEl('rel', 'Motivo (opcional)'),
-      h('p', { class: 'ajuda', text: 'De −' + N.NIVEL_MAX + ' (' + nm.rel[0] + ') a +' + N.NIVEL_MAX + ' (' + nm.rel[2 * N.NIVEL_MAX] + '). Cada mudança vai para o histórico, com o motivo, se houver.' }));
+      comoFunciona('De −' + N.NIVEL_MAX + ' (' + nm.rel[0] + ') a +' + N.NIVEL_MAX + ' (' + nm.rel[2 * N.NIVEL_MAX] + '). Cada mudança vai para o histórico, com o motivo, se houver.', 'l896'));
   }
   /* ---------------- (lote 56) os membros: o rol do clã ----------------
      Todos os membros (os dos cargos e os sem cargo), como num livro de registro: o nome, a raça e a classe (as árvores
@@ -893,14 +928,15 @@
   function membrosVer(c) {
     const ms = N.membrosDe(c), cal = calCla(), bib = bibCla();
     if (!ms.length) return h('p', { class: 'vazio-p', 'data-k': 'rol-vazio', text: 'Ninguém no clã ainda.' });
+    // (lote 75) um cartão por membro: a foto, o nome, a raça e a classe, o cargo e a idade
     return h('div', { class: 'rol-ver', 'data-k': 'rol-ver' },
-      h('ol', { class: 'rol' }, ms.map(m => { const q = quemE(m.pessoa), rq = quemDoRol(m, bib);
-        return h('li', { class: 'rol-l', 'data-rol': m.pid },
+      h('ol', { class: 'rol rol-cartoes' }, ms.map(m => { const q = quemE(m.pessoa), rq = quemDoRol(m, bib);
+        return h('li', { class: 'rol-l mbc', 'data-rol': m.pid },
           avDe(c, m.pid, q),
-          h('span', { class: 'rol-q' }, h('b', { class: 'rol-nm', text: q.nome }), h('small', { text: rq || 'Raça e classe não anotadas' })),
-          m.cargo ? h('span', { class: 'rol-cg', text: m.cargoNome }) : m.oculto ? null : h('span', { class: 'rol-cg sem', text: 'sem cargo' }),
-          idadeEl(m, cal)); })),
-      h('p', { class: 'ajuda', text: 'A idade conta pelo calendário do mundo' + (cal.mapa ? ' (' + cal.mapa + ')' : '') + ' e cresce sozinha com o tempo.' }));
+          h('b', { class: 'rol-nm mbc-nm', text: q.nome }),
+          h('span', { class: 'mbc-rc', text: rq || 'Raça e classe não anotadas' }),
+          h('span', { class: 'mbc-pe' }, m.cargo ? h('span', { class: 'rol-cg' + (m.cargo === 'lider' ? ' lider' : ''), text: m.cargoNome }) : m.oculto ? null : h('span', { class: 'rol-cg sem', text: 'sem cargo' }), idadeEl(m, cal, true))); })),
+      comoFunciona('A idade conta pelo calendário do mundo' + (cal.mapa ? ' (' + cal.mapa + ')' : '') + ' e cresce sozinha com o tempo.', 'membros'));
   }
   // o campo de raça ou de classe: as árvores da mesa (ou escrito, sem árvores)
   function campoArv(id, m, cat, rot, bib) {
@@ -960,7 +996,7 @@
           [['cargo', 'Pelo cargo'], ['nome', 'Pelo nome'], ['resp', 'Pelo respeito']].map(([k, n]) => h('option', { value: k, text: n, selected: rolOrdem === k })))) : null,
       ms.length ? tabelaDoRol(x, ms, linha, cal, bib) : h('p', { class: 'vazio-p', text: 'Ninguém no clã ainda. “+ Membro” anota alguém, com ou sem cargo.' }),
       ms.length ? h('label', { class: 'field rol-mot' }, h('span', { text: 'Motivo da próxima mudança de respeito (vai para o histórico)' }), motivoEl('membro', 'Motivo (opcional)')) : null,
-      h('p', { class: 'ajuda', text: 'A idade conta pelo calendário do mundo' + (cal.mapa ? ' (' + cal.mapa + ')' : ' (crie um mapa no Mapa-múndi para a data de hoje)') + ' e cresce sozinha. Quem é uma ficha usa o nome e o aniversário dela. ' + (c.jogadores ? 'Os jogadores veem o rol.' : 'Os jogadores veem o rol se você marcar “Membros”.') }));
+      comoFunciona('A idade conta pelo calendário do mundo' + (cal.mapa ? ' (' + cal.mapa + ')' : ' (crie um mapa no Mapa-múndi para a data de hoje)') + ' e cresce sozinha. Quem é uma ficha usa o nome e o aniversário dela. ' + (c.jogadores ? 'Os jogadores veem o rol.' : 'Os jogadores veem o rol se você marcar “Membros”.'), 'l997'));
   }
   /* (lote 62) O rol em tabela: cada membro numa linha só (a foto, o nome, a raça e a classe, a idade, o cargo e o respeito,
      com − e +); clicar na linha (ou no ✎) abre embaixo os campos para mudar — um aberto por vez. */
@@ -1290,7 +1326,7 @@
       h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Tropas do clã' }), h('small', { class: 'ajuda', text: ts.length ? ts.length + (ts.length === 1 ? ' tropa' : ' tropas') : '' }),
         h('button', { type: 'button', class: 'btn sm', 'data-k': 'tr:nova', disabled: !pode, title: pode ? null : 'Quem mestra as Fichas cadastra as tropas', onclick: () => tropaDlg(id) }, '+ Tropa')),
       ts.length ? h('div', { class: 'tropas-cla' }, ts.map(t => linhaTropa(t, true))) : h('p', { class: 'vazio-p', text: 'Nenhuma tropa ainda. Cadastre escolhendo quem lidera: a tropa mora na ficha dele (aba Tropas, nas Fichas).' }),
-      h('p', { class: 'ajuda', text: 'Cada personagem lidera uma tropa só (a da ficha dele). O líder do clã vê todas as tropas do clã, sem mudar os números; o líder de cada tropa escolhe nela, pelas Fichas.' + (lider ? '' : ' Este clã ainda não tem um jogador na liderança: só você vê a lista.') }));
+      comoFunciona('Cada personagem lidera uma tropa só (a da ficha dele). O líder do clã vê todas as tropas do clã, sem mudar os números; o líder de cada tropa escolhe nela, pelas Fichas.' + (lider ? '' : ' Este clã ainda não tem um jogador na liderança: só você vê a lista.'), 'l1327'));
   }
   function tropaDlg(claId) {
     const T = TT(), x = clasMestre().find(y => y.id === claId);
@@ -1330,7 +1366,7 @@
     sel.addEventListener('change', atualizar);
     const ok = () => { const v = sel.value; if (!v) { toast('Escolha quem lidera a tropa.'); sel.focus(); return; } fechar(); cadastrarTropa(claId, v, nova.hidden ? null : { modelo: modelos.find(q => q.id === est.md), n: est.n, vet: est.vet }); };
     abrir('', [h('h2', { text: 'Uma tropa para ' + x.c.nome }),
-      h('p', { class: 'ajuda', text: 'A tropa mora na ficha de quem a lidera (aba Tropas, nas Fichas): cada personagem lidera uma só. Quem já tem tropa entra com ela; quem não tem ganha uma nova, pronta.' }),
+      comoFunciona('A tropa mora na ficha de quem a lidera (aba Tropas, nas Fichas): cada personagem lidera uma só. Quem já tem tropa entra com ela; quem não tem ganha uma nova, pronta.', 'l1367'),
       h('label', { class: 'field' }, h('span', { text: 'Quem lidera' }), sel), nova, pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, 'Criar tropa'))]);
     atualizar();
     sel.focus();

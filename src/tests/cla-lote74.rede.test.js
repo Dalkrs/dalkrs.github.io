@@ -64,6 +64,17 @@ const ficha = (nome, extra) => Object.assign({ nome, raca: 'Humana', lado: 'Alia
       ok(await ate(async () => { const x = await cla(); return x.membros && x.membros.avulsos.some(p => p.nome === 'Oswin'); }), 'o membro novo (Oswin) entra no rol');
     });
 
+    await passo('(lote 75) os números e o Ver | Editar do líder', async () => {
+      const nums = (await CJ.locator('#numeros').innerText()).replace(/\s+/g, ' ');
+      ok(/membros/.test(nums) && /lapros no cofre/.test(nums) && /7 Madeira/.test(nums) && /1 construções/.test(nums), 'os números do clã no alto: ' + nums);
+      ok(await CJ.locator('[data-k="lider-editar"]').getAttribute('aria-pressed') === 'true', '(nos testes, o líder já começa no Editar)');
+      await CJ.locator('[data-k="lider-ver"]').click(); await w(300, J);
+      ok(!(await CJ.locator('[data-k="rol:novo"]').count()) && await CJ.locator('.rol-cartoes .mbc').count() >= 2, 'no Ver, o rol em cartões, sem os botões de editar');
+      if (process.env.FOTOS) await J.screenshot({ path: process.env.FOTOS + '/l75-lider-ver.png' });
+      await CJ.locator('[data-k="lider-editar"]').click(); await w(300, J);
+      ok(await CJ.locator('[data-k="rol:novo"]').isVisible(), 'no Editar, os botões voltam');
+    });
+
     await passo('o que é só do mestre', async () => {
       const r = await pedir(J, 'lider', { cla: 'lam', partes: { relacoes: [] }, txt: 'x' });
       ok(/o resto é com o mestre/.test(r), 'as relações (e o resto) continuam só do mestre: ' + r);
@@ -75,6 +86,7 @@ const ficha = (nome, extra) => Object.assign({ nome, raca: 'Humana', lado: 'Alia
       let CK = null;
       ok(await ate(async () => { CK = await quadro(K, /\/cla\//); return CK && await CK.evaluate(() => !!window.__cla && __cla.pronto); }, 40000), '(a Bia abre o Clã)');
       await CK.locator('[data-aba="rec"]').click(); await w(400, K);
+      ok(!(await CK.locator('[data-k="lider-modo"]').count()), '(lote 75) quem não lidera não tem o Ver | Editar');
       ok(await CK.locator('[data-k="cofre:por"]').isVisible() && !(await CK.locator('[data-k="cofre:pagar"]').count()), 'a Bia (membro) põe, mas não paga');
       await CK.locator('[data-k="cofre:por"]').click(); await w(300, K);
       await CK.locator('#dlg [data-k="dl:qtd"]').fill('30'); await CK.locator('#dlg [data-k="dl:sim"]').click();

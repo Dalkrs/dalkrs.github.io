@@ -331,7 +331,7 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
     ok(await P.locator('#salao').isVisible() && await A(() => __cla.vista) === 'salao' && await P.locator('#escolhaCla').isVisible(), 'o salão, com a escolha do clã');
     await clicar(`#escolhaCla [data-cla="${lam}"]`);
     ok(await P.locator('#nomeCla h1').innerText() === 'Lâmina do Crepúsculo' && /Onde a luz termina/.test(await P.locator('#nomeCla').innerText()) && await P.locator('#fundo > svg').count() === 1
-      && /Respeito no mundo: −3 · Temido/.test((await P.locator('#chips').innerText()).replace(/\s+/g, ' ')), 'o salão da Lâmina: o nome, o lema, o desenho com as bandeiras e o respeito no mundo');
+      && /−3 respeito no mundo Temido/.test((await P.locator('#numeros [data-k="num:resp"]').innerText()).replace(/\s+/g, ' ')), 'o salão da Lâmina: o nome, o lema, o desenho com as bandeiras e o respeito no mundo');
     ok(await P.locator('#abas button.tranca').count() === 0 && await P.locator('#parte [data-cargo="lider"] .resp').count() === 1 && await P.locator('#parte button').count() === 0,
       'o clã dos jogadores: todas as abas abertas; o respeito de cada membro aparece; nada para mexer (é a vista dos jogadores)');
     await clicar('[data-aba="cons"]');
