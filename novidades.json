@@ -2,6 +2,29 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-2",
+      "data": "2026-11-03",
+      "titulo": "Quando a internet cai, nada se perde",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Sem internet, o que você muda fica esperando. Quando a internet volta, sobe na hora, sem esperar a próxima tentativa."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Se a página fechar sem internet, o que não tinha subido fica guardado neste navegador. Ao abrir a mesa de novo, sobe sozinho, com um aviso."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Uma mudança que a mesa não aceita (grande demais, por exemplo) avisa uma vez e volta ao que estava salvo. Antes, ficava tentando para sempre e sumia ao recarregar."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "A mesa fica mais leve: salvar o que não mudou não manda nada, e quem está online aparece sem recarregar a lista inteira."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-1",
       "data": "2026-11-03",
       "titulo": "Duas pessoas mexendo ao mesmo tempo, sem perder nada",

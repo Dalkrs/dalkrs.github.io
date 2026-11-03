@@ -634,9 +634,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=28"></script>
-<script src="tc/tc.js?v=40"></script>
+<script src="tc/tc.js?v=41"></script>
 <script src="tc/busca.js?v=3"></script>
-<script src="tc/guia.js?v=37"></script>
+<script src="tc/guia.js?v=38"></script>
 <script src="tc/notas.js?v=6"></script>
 <script src="tc/dom.js?v=2"></script>
 <script src="tc/escudo.js?v=3"></script>
@@ -652,7 +652,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.03-1';
+  const VERSAO = '2026.11.03-2';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1288,6 +1288,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   });
   // (o mesmo aviso não se repete em seguida: um sistema pode tentar gravar várias linhas de uma vez)
   let ultimaRecusa = '', quandoRecusa = 0;
+  // (lote 67) o que tinha ficado sem subir da última vez (a aba fechou sem internet) voltou para a fila
+  TC.dados.on('voltaram', (col, n) => toast(n === 1 ? 'Uma mudança que não tinha chegado à mesa da última vez voltou e está subindo agora.' : n + ' mudanças que não tinham chegado à mesa da última vez voltaram e estão subindo agora.'));
   TC.dados.on('recusado', (col, id, msg) => { const t = Date.now(); if (msg === ultimaRecusa && t - quandoRecusa < 3000) return; ultimaRecusa = msg; quandoRecusa = t; toast(msg); });
   /* Nada do que foi feito no último instante pode ficar para trás quando a página fecha ou a mesa troca.
      Cada sistema segura as mudanças por uma fração de segundo antes de entregá-las à casca, e a casca, antes de
@@ -2521,6 +2523,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     else if (chave !== comoAntes) comoAntes = '';
   });
   mesas.on('membros', () => { pintarQuem(); if (!menu.hidden) abrirMenu(); difundir(); });
+  mesas.on('presenca', () => { pintarQuem(); difundir(); });          // (lote 67: só a hora de quem está na mesa mudou)
   mesas.on('removido', () => toast('Você não participa mais desta mesa.'));
   /* O meu papel mudou com a mesa aberta (o mestre me nomeou, mexeu nas minhas abas ou me devolveu a jogador; ou eu
      alternei entre mestrar e jogar em outro aparelho). A mesa já foi aberta de novo; aqui só se diz o que houve. */

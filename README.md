@@ -254,6 +254,21 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Quando a internet cai (lote 67)
+
+- **A volta da rede** (`voltouARede`): no `online` do navegador e quando o tempo real conecta de novo, o que esperava a
+  próxima tentativa sobe na hora.
+- **A fila guardada** (`tinycats:fila:<mesa>:<pessoa>:<aba>`): o que ainda não subiu fica no navegador (`guardarFila`, a
+  cada mudança na contagem e ao sair). Ao abrir a mesa, as filas de abas paradas (sem sinal de vida há 25 s) voltam
+  (`restaurarFila`/`refazerFila`): as colunas que se juntam (estado, skills, ficha) refazem só o que mudou, por cima do
+  que o banco tem agora; o resto vai com a conferência de versão. O aviso: `voltaram`.
+- **O que o banco recusa de vez** (`recusaDeVez`: as regras de acesso, os códigos 22/23 — menos 23505 —, 42 e P0, e
+  "grande demais"): não volta para a fila; avisa (`recusado`) e a linha é lida de novo (`relerRecusada`).
+- **Menos idas ao banco**: o campo igual ao que já está aqui não sobe; a mudança só de presença (`visto_em`) emite
+  `presenca` em vez de ler os membros de novo; o aviso em tempo real que não traz uma coluna fica com a daqui quando a
+  revisão anterior é a que este aparelho tinha.
+- Testes: `sincronia-lote67.rede` (a internet que volta, a aba fechada sem internet, o grande demais, gravar igual).
+
 ### Duas pessoas mexendo ao mesmo tempo (lote 66)
 
 - **A ficha se junta** (`0035_a_ficha_tambem_se_junta.sql`): `personagem_juntar` aceita também a coluna `ficha`, e ela

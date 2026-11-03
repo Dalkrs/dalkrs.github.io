@@ -63,9 +63,20 @@
     if (/rate limit|too many/i.test(m)) return 'Muitas tentativas seguidas. Espere um minuto e tente de novo.';
     if (/row-level security|permission denied/i.test(m)) return 'Você não tem permissão para fazer isso nesta mesa.';
     if (/duplicate key/i.test(m)) return 'Isso já estava registrado.';
+    // (lote 67) o banco recusou o que veio (grande demais, fora das regras): tentar de novo não adianta
+    if (/check constraint|octet_length|too large|grande demais|value too long/i.test(m)) return 'O banco não aceitou esta mudança: ficou grande demais. Ela não foi salva na mesa.';
     return padrao || 'Não deu certo agora. Tente de novo.';
   }
   const falha = (e, padrao) => { const x = new Error(erroPt(e, padrao)); x.original = e; return x; };
+  /* (lote 67) O que o banco recusou de vez — não foi a rede: as regras de acesso, o tamanho (as checagens da tabela), um
+     valor fora do formato, uma guarda das funções (P0001). Tentar de novo para sempre deixava a linha "a subir" (e o
+     que os outros faziam nela escondido) até alguém recarregar a página, quando a mudança sumia sem aviso. */
+  function recusaDeVez(e) {
+    const m = String((e && (e.message || e.details)) || ''), cod = String((e && e.code) || '');
+    if (/row-level security|permission denied|Só o mestre/i.test(m)) return true;
+    if (/^(22|23|42|P0)/.test(cod) && cod !== '23505') return true;
+    return /check constraint|too large|grande demais|value too long|inválid/i.test(m);
+  }
 
   /* ---------------- conta ---------------- */
   const conta = emissor({ usuario: null, pronta: null, disponivel: temNuvem });
@@ -451,6 +462,17 @@
     if (error || !data || !data.length) throw falha(error, 'Só quem criou a mesa pode apagá-la.');
     mesas.esquecer();
   };
+  // (lote 67) a assinatura de um membro sem a presença: a mudança que só traz um visto_em novo não relê ninguém
+  const assMembro = new Map();
+  const semVisto = r => { const o = Object.assign({}, r); delete o.visto_em; return JSON.stringify(Object.keys(o).sort().map(k => [k, o[k]])); };
+  function presencaSo(r) {
+    const a = mesas.atual, ass = semVisto(r), ant = assMembro.get(r.usuario_id);
+    assMembro.set(r.usuario_id, ass);
+    const m = a && Array.isArray(a.membros) ? a.membros.find(x => x.usuario_id === r.usuario_id) : null;
+    if (ant !== ass || !m) return false;
+    m.visto_em = r.visto_em; mesas.emit('presenca', m);
+    return true;
+  }
   async function recarregarMembros() {
     const a = mesas.atual; if (!a) return;
     try {
@@ -624,10 +646,15 @@
           aplicar(p.new);
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mesas', filter: 'id=eq.' + id }, () => conferirNome())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'mesa_membros', filter: 'mesa_id=eq.' + id }, () => { clearTimeout(aoVivo._m); aoVivo._m = setTimeout(recarregarMembros, 400); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'mesa_membros', filter: 'mesa_id=eq.' + id }, p => {
+          /* (lote 67) A presença (visto_em) de cada um muda a cada 24 s, e cada mudança chegava a todos e fazia cada um ler
+             os membros de novo. Quando só ela mudou, basta anotar a hora; o resto (papel, nome, cor, abas) relê, como antes. */
+          if (p && p.eventType === 'UPDATE' && p.new && presencaSo(p.new)) return;
+          clearTimeout(aoVivo._m); aoVivo._m = setTimeout(recarregarMembros, 400);
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'personagens', filter: 'mesa_id=eq.' + id }, p => doTempoReal('personagens', p))
         .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: 'mesa_id=eq.' + id }, p => doTempoReal('documentos', p))
-        .subscribe(st => { const c = st === 'SUBSCRIBED'; if (c !== aoVivo.conectado) { aoVivo.conectado = c; aoVivo.emit('estado', c); if (c) { buscarNovos(); dadosBuscar(); } } });
+        .subscribe(st => { const c = st === 'SUBSCRIBED'; if (c !== aoVivo.conectado) { aoVivo.conectado = c; aoVivo.emit('estado', c); if (c) { buscarNovos(); dadosBuscar(); voltouARede(); } } });
     } catch (e) { canal = null; }
     // Rede de segurança: sem o tempo real, lê a cada 3 s; com ele, confere a cada 30 s. A presença vai a cada 25 s.
     volta = 0;
@@ -1213,6 +1240,104 @@
     let n = 0;
     for (const k in cols) n += cols[k].sujos.size + cols[k].emVoo.size;
     if (n !== dados.pendentes) { dados.pendentes = n; dados.emit('pendentes', n); }
+    if (!n) { clearTimeout(tFila); guardarFila(); }      // (tudo subiu: a fila guardada sai já)
+    else agendarFila();
+  }
+  /* ---- (lote 67) a fila guardada no aparelho ----
+     O que ainda não subiu morava só na memória: sem internet, se o celular fechasse a aba (ou o navegador fosse
+     encerrado), a mudança se perdia. Agora a fila fica guardada neste navegador (por mesa e por pessoa) enquanto há o
+     que subir: cada linha com os campos, o valor deles, a revisão em que a mudança se baseou e, no estado, nas skills e
+     na ficha, as mudanças em si. Ao abrir a mesa de novo, o que sobrou volta para a fila — por cima da versão que o
+     banco tem agora, sem desfazer o que os outros fizeram: as mudanças do estado se refazem sobre o de lá; um documento
+     que confere a versão se junta em três vias; o resto só volta se a linha continua na mesma revisão. */
+  /* (Cada aba guarda a fila dela: uma aba não apaga a da outra. A guardada de uma aba que não dá sinal de vida há mais
+     de 25 s — fechou — é trazida por quem abrir a mesa e então apagada.) */
+  const CHAVE_FILA = 'tinycats:fila:', MAX_FILA = 1500000, ABA = Math.random().toString(36).slice(2, 10);
+  let tFila = 0, tVivo = 0;
+  const prefixoFila = () => (mesas.atual && conta.usuario ? CHAVE_FILA + mesas.atual.id + ':' + conta.usuario.id + ':' : null);
+  const chaveFila = () => { const p = prefixoFila(); return p ? p + ABA : null; };
+  function agendarFila() { if (!tFila) tFila = setTimeout(guardarFila, 400); }
+  function guardarFila(saindo) {
+    tFila = 0;
+    const k = chaveFila();
+    if (!k) return;
+    const fila = {};
+    let n = 0;
+    for (const nome in cols) {
+      const c = cols[nome];
+      if (c.morta) continue;
+      for (const id of new Set([...c.sujos.keys(), ...c.emVoo.keys()])) {
+        if (saindo && c.naSaida.has(id) && !c.sujos.has(id)) continue;     // (foi agora, no envio da saída, com a rede de pé)
+        const l = c.linhas.get(id), campos = [...new Set([...(c.sujos.get(id) || []), ...(c.emVoo.get(id) || [])])];
+        if (!l && !campos.includes('*')) continue;
+        const e = { id, campos, rev: l ? (c.bases.has(id) ? c.bases.get(id).rev : l.rev || 0) : 0, valores: {}, mudas: {} };
+        if (l) for (const f of campos.includes('*') ? TABELAS[nome] : campos) if (f in l) e.valores[f] = l[f];
+        if (c.bases.has(id) && c.bases.get(id).dados !== undefined) e.base = c.bases.get(id).dados;
+        for (const col of JUNTAM) { const f = (c.remsVoo.get(kq(col, id)) || []).concat(c.rems.get(kq(col, id)) || []); if (f.length) e.mudas[col] = f; }
+        (fila[nome] = fila[nome] || []).push(e); n++;
+      }
+    }
+    clearTimeout(tVivo);
+    if (!n) { guarda.gravar(k, null); return; }
+    let txt = '';
+    try { txt = JSON.stringify({ v: 1, vivo: Date.now(), fila }); } catch (e) { return; }
+    if (txt.length > MAX_FILA) return;                       // (grande demais para guardar: fica só na memória, como antes)
+    guarda.gravar(k, txt);
+    tVivo = setTimeout(guardarFila, 10000);                  // (o sinal de vida, enquanto há o que subir)
+  }
+  // ao abrir a coleção: o que tinha ficado sem subir da última vez volta para a fila
+  function filasParadas() {
+    const p = prefixoFila(), out = [];
+    if (!p) return out;
+    let ks = [];
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(p) && k !== p + ABA) ks.push(k); } } catch (e) { return out; }
+    for (const k of ks) {
+      let v = null;
+      try { v = JSON.parse(guarda.ler(k) || 'null'); } catch (e) { v = null; }
+      if (!v || !v.fila) { guarda.gravar(k, null); continue; }
+      if (Date.now() - (Number(v.vivo) || 0) < 25000) continue;         // (a aba ainda está aberta: ela mesma sobe)
+      out.push({ k, v });
+    }
+    return out;
+  }
+  function restaurarFila(c) {
+    let voltou = 0;
+    for (const { k, v } of filasParadas()) {
+      const lista = Array.isArray(v.fila[c.nome]) ? v.fila[c.nome] : [];
+      delete v.fila[c.nome];
+      if (Object.keys(v.fila).length) guarda.gravar(k, JSON.stringify(v)); else guarda.gravar(k, null);
+      voltou += refazerFila(c, lista);
+    }
+    if (voltou) dados.emit('voltaram', c.nome, voltou);
+    return voltou;
+  }
+  function refazerFila(c, lista) {
+    let voltou = 0;
+    for (const e of lista) {
+      if (!e || typeof e.id !== 'string' || c.sujos.has(e.id)) continue;
+      const l = c.linhas.get(e.id), campos = Array.isArray(e.campos) ? e.campos : [], mesma = l && (l.rev || 0) === (e.rev || 0);
+      try {
+        if (!l) {
+          if (campos.includes('*') && !c.apagadas.has(e.id) && e.valores && Object.keys(e.valores).length) { dadosGravar(c.nome, e.id, e.valores, null); voltou++; }
+          continue;
+        }
+        const campos2 = {}, mudas = {};
+        for (const f of campos) {
+          if (f === '*' || f === 'apagado') continue;
+          if (JUNTAM.includes(f) && e.mudas && Array.isArray(e.mudas[f]) && e.mudas[f].length) { mudas[f] = e.mudas[f].reduce((a, b) => compor(a, b), {}); continue; }
+          if (!(f in (e.valores || {}))) continue;
+          if (f === 'dados' && c.nome === 'documentos' && !mesma) {
+            if (e.base === undefined) continue;               // (sem a base, não dá para juntar sem desfazer o que outro fez)
+            campos2.dados = juntar3(e.base, e.valores.dados, l.dados);
+            continue;
+          }
+          if (mesma) campos2[f] = e.valores[f];
+        }
+        if (campos.includes('apagado') && mesma) { dadosGravar(c.nome, e.id, { apagado: true }, null); voltou++; continue; }
+        if (Object.keys(campos2).length || Object.keys(mudas).length) { dadosGravar(c.nome, e.id, campos2, null, Object.keys(mudas).length ? mudas : null, c.nome === 'documentos' ? { cas: true } : null); voltou++; }
+      } catch (err) { console.warn('Não deu para trazer de volta uma mudança guardada:', err); }
+    }
+    return voltou;
   }
   /* Uma linha apagada sai do espelho, e com ela vai a revisão que servia para recusar o que chegasse mais velho. Por
      isso fica anotada a revisão em que ela foi apagada: dali em diante a linha só volta por uma revisão MAIOR que
@@ -1226,7 +1351,7 @@
     // (rems / remsVoo: as mudanças do estado e das skills de cada personagem que ainda vão subir / que estão subindo agora)
     // (reler: as linhas a ler de novo, inteiras, porque outra pessoa mexeu nelas junto com uma gravação daqui)
     // (apagadas: a revisão em que cada linha foi apagada — ver enterrar)
-    const c = cols[nome] = { deFora: new Map(), nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), cas: new Set(), bases: new Map(), tempo: new Map(), prazo: new Map(), falhas: 0, morta: false, buscando: false };
+    const c = cols[nome] = { deFora: new Map(), relerRecusada: new Set(), nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), cas: new Set(), bases: new Map(), tempo: new Map(), prazo: new Map(), falhas: 0, morta: false, buscando: false };
     c.pronta = (async () => {
       if (nome === 'personagens') await sondarFicha(c.mesa);           // (lote 66: antes de qualquer gravação dos personagens)
       for (let de = 0; ; de += 1000) {
@@ -1235,6 +1360,8 @@
         for (const l of data) { if (l.rev > c.maxRev) c.maxRev = l.rev; if (l.apagado) enterrar(c, l.id, l.rev); else if (aceita(nome, l) && !c.linhas.has(l.id)) c.linhas.set(l.id, l); }
         if (data.length < 1000) break;
       }
+      // (lote 67) o que tinha ficado sem subir da última vez (a aba fechou sem rede) volta para a fila, um instante depois
+      setTimeout(() => { if (cols[nome] === c && !c.morta) restaurarFila(c); }, 0);
       return true;
     })();
     c.pronta.catch(() => { if (cols[nome] === c) delete cols[nome]; });   // falhou: a próxima abertura tenta de novo
@@ -1250,7 +1377,17 @@
     if (!r || !r.id) return;
     const c = cols[nome], l = c ? c.linhas.get(r.id) : null;
     const falta = k => !SEM_FALTA.includes(k) && (r[k] === undefined || (r[k] === null && !!l && l[k] != null));
-    if ((p.errors && p.errors.length) || TABELAS[nome].some(falta)) { buscarLinha(nome, r.id); return; }
+    if ((p.errors && p.errors.length) || TABELAS[nome].some(falta)) {
+      /* (lote 67) As colunas que não vieram são as que não mudaram nesta gravação. Se ela parte da revisão que está
+         aqui (rev_ant), o valor delas é o daqui: completa sem ler a linha de novo (cada clique na vida de um personagem
+         fazia todos os aparelhos lerem a ficha inteira). */
+      const so = !(p.errors && p.errors.length) && l && r.rev_ant != null && Number(r.rev_ant) === (l.rev || 0) && TABELAS[nome].every(k => !falta(k) || (r[k] === undefined && k in l));
+      if (!so) { buscarLinha(nome, r.id); return; }
+      const n = Object.assign({}, r);
+      for (const k of TABELAS[nome]) if (n[k] === undefined && k in l) n[k] = l[k];
+      dadosRemoto(nome, n);
+      return;
+    }
     dadosRemoto(nome, r);
   }
   async function buscarLinha(nome, id) {
@@ -1391,7 +1528,8 @@
   /* Lê a linha inteira e a aplica mesmo que a revisão seja a que já está aqui (o que está aqui é só o que este
      aparelho gravou; o que veio do banco tem também o que os outros gravaram). Se a leitura sair mais velha que uma
      gravação daqui que chegou depois, lê de novo. Sem rede, fica marcada e a volta periódica tenta outra vez. */
-  async function relerLinha(c, id) {
+  async function relerLinha(c, id, recusada) {
+    if (recusada) c.relerRecusada.add(id);            // (lote 67) a recusada volta ao que o banco tem, mesmo na mesma revisão
     c.reler.add(id);
     if (c.relendo.has(id)) return;                    // (já há uma leitura desta linha a caminho)
     c.relendo.add(id);
@@ -1400,6 +1538,12 @@
         const r = await cliente().from(c.nome).select('*').eq('mesa_id', c.mesa).eq('id', id).maybeSingle();
         if (r.error) return;
         const l = c.linhas.get(id);
+        if (c.relerRecusada.has(id)) {
+          c.relerRecusada.delete(id); c.reler.delete(id);
+          if (c.morta || c.sujos.has(id) || c.emVoo.has(id)) return;          // (outra mudança daqui já está a caminho)
+          if (!r.data) { if (l) { c.linhas.delete(id); dados.emit('muda', c.nome, { id, apagado: true }, 'remota', null); } return; }
+          c.linhas.set(id, r.data); dados.emit('muda', c.nome, r.data, 'remota', null); return;
+        }
         if (c.morta || !l || !r.data) { c.reler.delete(id); return; }
         if (r.data.rev >= (l.rev || 0)) { c.reler.delete(id); dadosRemoto(c.nome, r.data, 'relida'); return; }
       }
@@ -1455,9 +1599,10 @@
       // volta para a fila (junto com o que mudou nesse meio-tempo) e tenta de novo, cada vez mais devagar
       const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) if (!subiu.has(k)) de_novo.add(k); c.sujos.set(id, de_novo);
       for (const col in voltam) c.rems.set(kq(col, id), voltam[col].concat(c.rems.get(kq(col, id)) || []));
-      const semPermissao = /row-level security|permission denied|Só o mestre/i.test(String(r.error.message || ''));
+      const semPermissao = recusaDeVez(r.error);
       dados.erro = erroPt(r.error, 'Não deu para salvar na mesa agora.');
-      if (semPermissao) { c.sujos.delete(id); largarFilas(c, id); dados.emit('recusado', c.nome, id, dados.erro); }   // não adianta insistir (e não é falha de rede)
+      // não adianta insistir (e não é falha de rede): a linha volta a ser a do banco, e quem usa é avisado
+      if (semPermissao) { c.sujos.delete(id); largarFilas(c, id); dados.emit('recusado', c.nome, id, dados.erro); relerLinha(c, id, true); }
       else { c.falhas = Math.min(c.falhas + 1, 6); agendar(c, id, 2000 * Math.pow(2, c.falhas)); }
       dados.emit('erro', dados.erro);
     } else {
@@ -1502,9 +1647,9 @@
     }
     if (erro) {
       const de_novo = c.sujos.get(id) || new Set(); for (const k of campos) de_novo.add(k); c.sujos.set(id, de_novo);
-      const semPermissao = /row-level security|permission denied|Só o mestre/i.test(String(erro.message || ''));
+      const semPermissao = recusaDeVez(erro);
       dados.erro = erroPt(erro, 'Não deu para salvar na mesa agora.');
-      if (semPermissao) { c.sujos.delete(id); c.bases.delete(id); dados.emit('recusado', c.nome, id, dados.erro); }
+      if (semPermissao) { c.sujos.delete(id); c.bases.delete(id); dados.emit('recusado', c.nome, id, dados.erro); relerLinha(c, id, true); }
       else { c.falhas = Math.min(c.falhas + 1, 6); agendar(c, id, 2000 * Math.pow(2, c.falhas)); }
       dados.emit('erro', dados.erro);
     } else if (deles) {
@@ -1589,7 +1734,8 @@
       }
       else l = Object.assign({}, l);
       let mudou = nova;
-      for (const k of TABELAS[nome]) if (campos[k] !== undefined && !(comMuda && JUNTAM.includes(k))) { l[k] = campos[k]; suj.add(k); mudou = true; }
+      // (lote 67) o campo igual ao que já está aqui não sobe (nem vira aviso para todos e revisão nova à toa)
+      for (const k of TABELAS[nome]) if (campos[k] !== undefined && !(comMuda && JUNTAM.includes(k)) && (nova || suj.has(k) || !igual(l[k], campos[k]))) { l[k] = campos[k]; suj.add(k); mudou = true; }
       if (nome === 'personagens') for (const col of JUNTAM) {
         const m = mudas && ehMapa(mudas[col]) ? copiar(mudas[col]) : comMuda && campos[col] !== undefined ? diferenca(l[col], campos[col]) : null;
         if (m && Object.keys(m).length) {
@@ -1794,6 +1940,10 @@
   };
   /* Manda agora o que está na fila (ao fechar a página, por exemplo). */
   dados.descarregar = () => { for (const k in cols) for (const id of [...cols[k].sujos.keys()]) { clearTimeout(cols[k].tempo.get(id)); cols[k].tempo.delete(id); enviarLinha(cols[k], id); } };
+  /* (lote 67) A rede voltou (o navegador avisa, ou o tempo real conectou de novo): o que estava esperando a próxima
+     tentativa (até 2 minutos, depois de várias falhas) sobe agora. */
+  function voltouARede() { for (const k in cols) cols[k].falhas = 0; dados.descarregar(); }
+  window.addEventListener('online', () => { if (mesas.atual) voltouARede(); });
   /* Manda agora e espera subir, até `ms` (antes de fechar ou trocar de mesa, ou de sair da conta). Devolve true se
      subiu tudo. Não trava: se algo não sobe (sem rede, por exemplo), segue depois do prazo. */
   dados.esvaziar = ms => new Promise(ok => {
@@ -1879,6 +2029,7 @@
       }
     }
     contarPendentes();
+    clearTimeout(tFila); guardarFila(true);                  // (lote 67) a fila guardada fica com o que não foi na saída
     return semGarantia;
   };
   window.addEventListener('pagehide', () => dados.sair());
