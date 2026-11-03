@@ -254,6 +254,19 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### A árvore que voltava para a versão de antes (lote 76)
+
+- **O defeito**: `arvore/mesa.js` montava o documento da mesa e o passava ao aplicativo pelo navegador
+  (`localStorage`, `tinycats:arvore:<mesa>`). Com a biblioteca grande (quase 3 milhões de letras; o navegador guarda
+  uns 5 milhões por site), a cópia nova não cabia, o erro era engolido e `carregar()` abria a cópia VELHA. Logo em
+  seguida, `depoisDeAbrir` → `depoisDeSalvar` "mandava o que mudou" — da mesa para a cópia velha: os nódulos, os pontos
+  e as árvores equipadas dos personagens voltavam.
+- **O conserto**: o documento vai pela memória (`ArvoreMesa.abrirDoc`); no navegador fica só o que não vem da mesa
+  (`ArvoreMesa.paraGuardar`: a árvore aberta de cada personagem, o rascunho do mestre e, enquanto a mesa não tem
+  biblioteca, a dele). A cópia antiga sai ao abrir. Numa mesa, o desfazer não é mais guardado no navegador.
+- Teste: `arvore-eco.rede` (o mestre e o jogador com a Árvore aberta; o mestre sai e entra; troca de aba; e o navegador
+  cheio com uma cópia velha guardada — falhava antes do conserto).
+
 ### O salão do clã mais limpo (lote 75)
 
 - **A hierarquia** (`hierarquia`, `cartaoCargo`): um organograma em `.org` — o líder (`.org-raiz`) no alto, o

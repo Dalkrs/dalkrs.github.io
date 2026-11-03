@@ -17,6 +17,22 @@ const ArvoreMesa = (() => {
   const j = JSON.stringify;
   let st = null, P = null, D = null, ativo = false, adiado = 0, publicar = 0;
   let sombra = { bib: null, pcs: new Map() };     // o que a mesa já tem, para mandar só o que mudou
+  /* (lote 76) O documento montado da mesa vai para o aplicativo pela memória, e não pelo navegador. Antes ia pelo
+     navegador: com a biblioteca grande (a de verdade tem quase 3 milhões de letras, e o navegador guarda uns 5 milhões
+     por site), a cópia nova às vezes não cabia — e o aplicativo abria a cópia VELHA que estava lá. Logo depois ele
+     "mandava para a mesa o que mudou": os personagens voltavam para a cópia velha (os nódulos, os pontos e as árvores
+     equipadas). No navegador fica só o que não vem da mesa: a árvore aberta de cada personagem, o rascunho do mestre e,
+     enquanto a mesa não tem biblioteca, a dele. */
+  let docAberto = null;
+  function guardavel(d) {
+    const o = { personagens: (d.personagens || []).map(p => (p.id === TESTE ? p : { id: p.id, nome: p.nome, arvoreAtual: p.arvoreAtual || null })) };
+    if (mestre() && !dadosDe('arvore:biblioteca')) o.biblioteca = d.biblioteca;
+    return j(o);
+  }
+  function guardar(d) {
+    try { localStorage.setItem(CHAVE_DOC, guardavel(d)); }
+    catch (e) { try { localStorage.removeItem(CHAVE_DOC); } catch (e2) { /* tudo bem: a mesa continua valendo */ } }
+  }
   // (lote 66) a biblioteca da mesa que esta tela aplicou por último ({ rev, dados }): a base da conferência de versão
   const marcarBase = () => { const l = D && D.pegar('arvore:biblioteca'); sombra.bibBase = l && !l.apagado && Number.isFinite(l.rev) ? { rev: l.rev, dados: l.dados } : undefined; };
 
@@ -91,13 +107,15 @@ const ArvoreMesa = (() => {
     if (!pers.length && mestre() && velhos.get(TESTE)) pers.push(velhos.get(TESTE));
     // Mesa sem biblioteca ainda: o mestre começa com a árvore de exemplo (só sobe quando ele mexer); o jogador, vazio.
     const d = { biblioteca: bibl || (mestre() ? bibliotecaInicial() : bibVazia()), personagens: pers };
+    docAberto = d;
     try {
-      localStorage.setItem(CHAVE_DOC, j(d));
+      localStorage.removeItem(CHAVE_DOC);           // (a cópia de antes, que pode ser a velha e grande, sai primeiro)
       localStorage.removeItem(CHAVE_HIST);         // o desfazer não atravessa sessões na mesa (o documento pode ter mudado por fora)
       const u = lerLocal(CHAVE_UI) || {};
       if (!mestre()) u.modo = 'jogador';
       localStorage.setItem(CHAVE_UI, j(u));
-    } catch (e) { /* sem espaço no navegador: abre do zero e a mesa continua valendo */ }
+    } catch (e) { /* sem espaço no navegador: a mesa continua valendo */ }
+    guardar(d);
     document.documentElement.classList.add('na-mesa', mestre() ? 'papel-mestre' : 'papel-jogador');
     return true;
   }
@@ -238,7 +256,7 @@ const ArvoreMesa = (() => {
       normalizarDoc(); if (trocouBib) podarTodos(); else indexar();
       garantirSelecoes();                          // (o nódulo selecionado continua selecionado, se ainda existe)
       if (mestre()) sombra.bib = j(bib());
-      try { localStorage.setItem(CHAVE_DOC, j(doc)); } catch (e) { /* a mesa continua valendo */ }
+      guardar(doc);
       pilhaDesfazer.length = 0; pilhaRefazer.length = 0; atualizarHistorico();    // o desfazer não volta por cima do que veio de fora
       pintarTudo();
       // a câmera só se mexe se a árvore à vista passou a ser outra (a mesma árvore, mudada, continua onde a pessoa a deixou)
@@ -363,5 +381,8 @@ const ArvoreMesa = (() => {
   // de quem é cada ficha daqui (e a rev de cada uma): para saber se alguma mudou
   function revsDosMeus() { return P ? meus().map(l => l.id + ':' + (l.rev || 0)).join(',') + '|' + ((D && D.pegar('fichas:cfg') || {}).rev || 0) : ''; }
 
-  return { preparar, falhou, personagemInicial, depoisDeSalvar, depoisDeAbrir, restringir, ativo: () => ativo, mestre, etiqueta, calcDe, barras, donoDe, nivelDe };
+  // (lote 76) o documento que a mesa montou, uma vez só (para o aplicativo abrir); e o que vai para o navegador
+  const abrirDoc = () => { const d = docAberto; docAberto = null; return d; };
+  const paraGuardar = d => guardavel(d);
+  return { preparar, abrirDoc, paraGuardar, falhou, personagemInicial, depoisDeSalvar, depoisDeAbrir, restringir, ativo: () => ativo, mestre, etiqueta, calcDe, barras, donoDe, nivelDe };
 })();

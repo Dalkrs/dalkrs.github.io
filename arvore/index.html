@@ -630,7 +630,7 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=2"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="mesa.js?v=12"></script>
+<script src="mesa.js?v=13"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -1042,7 +1042,8 @@ function salvarJa(){
   clearTimeout(pendente); sujo = false;
   try{ sincronizarRamos(); }catch(e){ console.warn(e); }     // (lote 6) as cópias dos caminhos abertos acompanham a biblioteca
   try{
-    localStorage.setItem(CHAVE_DOC, JSON.stringify(doc));
+    // (lote 76) numa mesa, no navegador fica só o pouco que não vem dela (a mesa é que guarda o resto)
+    localStorage.setItem(CHAVE_DOC, ArvoreMesa.ativo() ? ArvoreMesa.paraGuardar(doc) : JSON.stringify(doc));
     localStorage.setItem(CHAVE_UI, JSON.stringify(ui));
     localStorage.setItem(CHAVE_SENHAS, JSON.stringify(senhas));
     avisouFalha = false;
@@ -1056,7 +1057,8 @@ function salvarJa(){
 function lerJSON(chave){ try{ return JSON.parse(localStorage.getItem(chave)); }catch(e){ return null; } }
 
 function carregar(){
-  let d = lerJSON(CHAVE_DOC);
+  // (lote 76) numa mesa, o documento vem pela memória (mesa.js): o navegador pode ter uma cópia velha
+  let d = ArvoreMesa.ativo() ? ArvoreMesa.abrirDoc() : lerJSON(CHAVE_DOC);
   if(!d || !d.biblioteca){
     d = null;
     const v3 = lerJSON(ANTIGAS.doc3);
@@ -1139,6 +1141,9 @@ function atualizarHistorico(){
 }
 // o histórico é grande; se não couber no navegador, guarda menos passos
 function salvarHistorico(){
+  // (lote 76) numa mesa, o desfazer não atravessa sessões (mesa.js apaga o guardado ao abrir): guardar o documento
+  // inteiro várias vezes só ocupava o lugar do navegador
+  if(ArvoreMesa.ativo()){ try{ localStorage.removeItem(CHAVE_HIST); }catch(_){} return; }
   let n = Math.min(PILHA_SALVA, pilhaDesfazer.length);
   for(;;){
     try{ localStorage.setItem(CHAVE_HIST, JSON.stringify(pilhaDesfazer.slice(-n))); return; }

@@ -2,6 +2,22 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-11",
+      "data": "2026-11-03",
+      "titulo": "A árvore não volta mais para a versão de antes",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Árvore: quando o mestre abria a Árvore, os personagens podiam voltar para uma versão antiga: os nódulos aprendidos, os pontos e as árvores equipadas. Acontecia quando o navegador dele estava cheio (a biblioteca de árvores é grande). Não acontece mais."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Árvore e Oficina: o seu navegador guarda bem menos coisa da mesa (as árvores ficam só na mesa). Se algum personagem voltou para uma versão antiga nos últimos dias, confira com o jogador os nódulos, os pontos e as árvores equipadas dele."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-10",
       "data": "2026-11-03",
       "titulo": "O salão do clã mais limpo, e a hierarquia de verdade",

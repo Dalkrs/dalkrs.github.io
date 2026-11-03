@@ -501,5 +501,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 24, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 25, sistemas, tarefas, roteiro, sabia };
 })();
