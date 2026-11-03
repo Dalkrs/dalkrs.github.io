@@ -93,6 +93,7 @@
         { t: 'Momentos preparados', txt: 'Na aba Cena, em “Momentos preparados”: junte o que vai acontecer de uma vez — tokens ocultos que aparecem, a hora do dia, luzes que acendem ou apagam, a névoa, um som para todos, zonas escondidas e uma narração à mesa. “Soltar” faz tudo num passo, com Desfazer.', onde: { sel: '#tab-scene' } },
       ],
       jogador: [
+        { t: 'A rolagem grande', txt: 'Quando alguém rola, o total aparece grande no meio da tela de todos por 3 segundos (em segredo, só para quem rolou). No painel Dados da Mesa ao vivo, a base fica embaixo dos cinco atributos: um clique rola sem o equipamento.' },
         { t: 'Os modos, no alto', txt: 'Sessão, Mundo e Descanso: cada modo mostra só as abas dele. Fechada, a Mesa ao vivo vira um trilho fino à direita: a conversa (com o número do que chegou) e os dados. Ela lembra, em cada aba, se você a deixou aberta ou fechada.' },
         { t: 'O lápis', txt: 'Tecla S (ou o lápis à esquerda): rabisque para a mesa ver na hora. Some em segundos ou fica até limpar; Ctrl+Z desfaz o seu último.', onde: { sel: '#tool-lapis' } },
         { t: 'A cena', txt: 'O mapa que o mestre mostra. Seus tokens você move e usa; o resto, só vê.', onde: { sel: '#stage' } },

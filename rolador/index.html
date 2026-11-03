@@ -390,6 +390,10 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 .fx-b.base { display: flex; align-items: baseline; gap: 4px; min-width: 0; padding: 2px 8px; border-style: dashed; } .fx-b.base b { font-size: 12.5px; } .fx-b.base small { font-size: 10.5px; }
 .fx-der { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
 .fx-b:hover { border-color: currentColor; }
+/* (lote 73) as cores dos números, as mesmas da ficha e do painel Dados */
+:root { --a-for: #E0705E; --a-agi: #E3B341; --a-vit: #6FBF9F; --a-can: #B07CC6; --a-des: #74A9F2; --s-esq: #56C7D4; --s-fur: #9C95F5; --s-per: #B4D263; --s-emb: #EE9658; }
+:root[data-claro] { --a-for: #C0392B; --a-agi: #A87609; --a-vit: #2F7A55; --a-can: #6b4d8f; --a-des: #2D63B0; --s-esq: #13808f; --s-fur: #4b44b8; --s-per: #5f7f12; --s-emb: #b05418; }
+.fx-b { --cn: currentColor; box-shadow: inset 0 2px 0 var(--cn); } .fx-b b { color: var(--cn); } .fx-b.base { box-shadow: none; } .fx-b.base b { color: color-mix(in srgb, var(--cn) 65%, currentColor); }
 </style>
 </head>
 <body>
@@ -3066,8 +3070,10 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
       const ct = contas(atual);
       out.replaceChildren();
       if (!ct) return;
-      const botao = (rot, v, base, nomeLongo) => {
+      const COR = { FOR: 'a-for', DES: 'a-des', VIT: 'a-vit', CAN: 'a-can', AGI: 'a-agi', ESQ: 's-esq', FUR: 's-fur', PER: 's-per', EMB: 's-emb' };
+      const botao = (rot, v, base, nomeLongo, k) => {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'fx-b' + (base ? ' base' : '');
+        if (COR[k]) b.style.setProperty('--cn', 'var(--' + COR[k] + ')');
         b.innerHTML = '<small></small><b></b>'; b.querySelector('small').textContent = rot; b.querySelector('b').textContent = String(v);
         b.title = 'Pôr ' + v + ' no Atributo (' + nomeLongo + ' de ' + ct.nome + ')';
         b.addEventListener('click', () => {
@@ -3080,11 +3086,11 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
       };
       for (const a of R.ATRIBS || []) {
         const g = document.createElement('span'); g.className = 'fx-g';
-        g.append(botao(a.k, ct.c.tot[a.k], false, a.nome), botao('base', ct.c.base[a.k], true, a.nome + ' base'));
+        g.append(botao(a.k, ct.c.tot[a.k], false, a.nome, a.k), botao('base', ct.c.base[a.k], true, a.nome + ' base', a.k));
         out.append(g);
       }
       const der = document.createElement('div'); der.className = 'fx-der';
-      for (const d of R.DERIV || []) der.append(botao(d.k, ct.c.der[d.k], false, d.nome));
+      for (const d of R.DERIV || []) der.append(botao(d.k, ct.c.der[d.k], false, d.nome, d.k));
       out.append(der);
     };
     sel.addEventListener('change', () => { try { localStorage.setItem('tinycats:rolador:pc', sel.value); } catch (e) { /* sem armazenamento */ } pintarF(); });

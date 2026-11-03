@@ -254,6 +254,16 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### O resultado grande e a base no painel Dados (lote 73)
+
+- **O resultado grande** (`#grande`, `mostrarGrande`): cada rolagem nova com total (`aoVivo.on('item')`, a mesma
+  conferência do efeito) aparece no meio da tela por 3 s, para todos; a secreta, só para quem rolou; a endereçada
+  (`l.para`), não. Não segura o clique (`pointer-events: none`). Um por vez.
+- **O painel Dados** (`contasDe` com `base`; `.dados-c`, `button[data-kb]`; `rolarDaTelinha(k, daBase)`): a base
+  embaixo dos cinco atributos e as cores da ficha (`COR_DADO`, as variáveis `--a-*`, `--s-*`, `--d-*`). O "Da ficha"
+  do Rolador usa as mesmas cores.
+- Testes: `casca-lote73.rede`.
+
 ### Cada número com a sua cor e mais espaço para a ficha (lote 72)
 
 - **As cores e os desenhos** (`ICO_NUM`, `COR_NUM`, `.rscor` com `--cn`): os 12 números do resumo (5 atributos, 4

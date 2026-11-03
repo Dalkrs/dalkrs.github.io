@@ -5332,7 +5332,9 @@ function aplicarTema(k){
 })();
 
 /* ---------- bootstrap ---------- */
-function elencoComoSeletor(){ return FichasMesa.ativo() && !FichasMesa.mestre() && S.personagens.length>0 && S.personagens.length<=2; }
+// (os testes antigos, que clicam no elenco, ficam com ele: ver tinycats:testes-ficha-editar)
+const elencoDeTeste=(()=>{ try{ return localStorage.getItem('tinycats:testes-ficha-editar')==='1'; }catch(e){ return false; } })();
+function elencoComoSeletor(){ return !elencoDeTeste && FichasMesa.ativo() && !FichasMesa.mestre() && S.personagens.length>0 && S.personagens.length<=2; }
 function render(){
   const aba=S.aba||'fichas';
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===aba));

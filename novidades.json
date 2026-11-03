@@ -2,6 +2,25 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-8",
+      "data": "2026-11-03",
+      "titulo": "O resultado grande para a mesa toda, e a base no painel Dados",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Toda rolagem aparece grande no meio da tela por 3 segundos, para a mesa toda, com quem rolou e o quê. A rolagem em segredo aparece grande só para quem rolou."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mesa ao vivo, Dados: a base fica embaixo dos cinco atributos, como na ficha. Um clique rola sem o equipamento."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "O painel Dados, a ficha e o Rolador usam as mesmas cores para cada número."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-7",
       "data": "2026-11-03",
       "titulo": "Cada número com a sua cor, e mais espaço para a ficha",

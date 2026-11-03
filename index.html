@@ -245,6 +245,18 @@ dialog.pista { width: min(760px, calc(100% - 24px)); }
 :where(:root[data-claro]) .selo-desc { border-color: #6a4fc2; background: rgba(106,79,194,.08); }
 :where(:root[data-claro]) .sd-b svg { color: #6a4fc2; }
 @media (max-width: 1100px) { .sd-b span { display: none; } }
+.grande { position: fixed; left: 50%; top: 42%; z-index: 40; transform: translate(-50%, -50%); min-width: 240px; max-width: min(460px, calc(100vw - 32px)); padding: 16px 26px 18px; border-radius: 18px; background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid color-mix(in srgb, var(--gc, var(--lamp)) 60%, var(--line)); box-shadow: 0 0 0 1px rgba(0,0,0,.2), 0 18px 50px rgba(0,0,0,.5), inset 0 3px 0 var(--gc, var(--lamp)); text-align: center; pointer-events: none; backdrop-filter: blur(6px); }
+.grande .gr-q { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; color: var(--fg-2); }
+.grande .gr-q .av { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+.grande .gr-q b { color: var(--gc, var(--fg)); }
+.grande .gr-s { font-size: 12px; color: var(--fg-3); }
+.grande .gr-t { margin-top: 4px; font: 600 16px/1.2 var(--display); color: var(--fg); }
+.grande .gr-n { margin: 2px 0; font: 700 64px/1 var(--mono, ui-monospace); color: var(--fg); letter-spacing: -.02em; }
+.grande .gr-r { font: 13px/1.3 var(--mono, ui-monospace); color: var(--fg-3); }
+.grande .gr-v { margin-top: 6px; font-weight: 700; font-size: 14px; } .grande .gr-v.sim { color: #6fbf8f; } .grande .gr-v.nao { color: #e0705e; }
+.grande.entra { animation: grandeEntra .28s cubic-bezier(.2,.9,.3,1.2); }
+@keyframes grandeEntra { from { opacity: 0; transform: translate(-50%, -46%) scale(.92); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .grande.entra { animation: none; } }
 .trilho { flex: none; width: 46px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0; background: var(--surface); border-left: 1px solid var(--line); }
 .tr-b { position: relative; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid transparent; border-radius: 9px; background: none; color: var(--fg-3); }
 .tr-b:hover { color: var(--fg); background: var(--hover); border-color: var(--line); }
@@ -352,6 +364,15 @@ dialog.pista { width: min(760px, calc(100% - 24px)); }
 .dm-x { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line); background: transparent; color: var(--fg-2); cursor: pointer; font-size: 15px; line-height: 1; }
 .dm-x:hover { color: var(--fg-1); border-color: var(--line-strong); }
 .dados-b { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+/* (lote 73) as cores dos números, as mesmas da ficha; a base embaixo dos cinco atributos */
+:root { --a-for: #E0705E; --a-agi: #E3B341; --a-vit: #6FBF9F; --a-can: #B07CC6; --a-des: #74A9F2; --s-esq: #56C7D4; --s-fur: #9C95F5; --s-per: #B4D263; --s-emb: #EE9658; --d-dff: #A3B4C7; --d-dfm: #E08BDB; --d-blq: #D6B373; }
+:root[data-claro] { --a-for: #C0392B; --a-agi: #A87609; --a-vit: #2F7A55; --a-can: #6b4d8f; --a-des: #2D63B0; --s-esq: #13808f; --s-fur: #4b44b8; --s-per: #5f7f12; --s-emb: #b05418; --d-dff: #4a5d73; --d-dfm: #9b3794; --d-blq: #7d5a1e; }
+.dados-c { display: grid; gap: 2px; min-width: 0; --cn: var(--fg-2); }
+.dados-c > button[data-k] { box-shadow: inset 0 2px 0 var(--cn); }
+.dados-c > button[data-k] small { color: color-mix(in srgb, var(--cn) 70%, var(--fg-3)); }
+.dados-c > button[data-k] b { color: var(--cn); }
+.dados-b .dados-c > button.base { display: flex; justify-content: center; align-items: baseline; gap: 3px; padding: 1px 0 2px; border-style: dashed; font-size: 10px; color: var(--fg-3); }
+.dados-b .dados-c > button.base b { font-size: 11.5px; color: color-mix(in srgb, var(--cn) 60%, var(--fg-2)); }
 .dados-b button { display: grid; justify-items: center; gap: 0; min-width: 0; padding: 4px 0 5px; border-radius: 7px; border: 1px solid var(--line); background: var(--raised); color: var(--fg); line-height: 1.15; }
 .dados-b button:hover:not(:disabled) { border-color: var(--lamp); background: var(--hover); }
 .dados-b button:disabled { opacity: .5; cursor: default; }
@@ -598,6 +619,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   <main class="stage" id="stage">
     <div class="wait" id="wait"><span>Carregando…</span></div>
   </main>
+  <div class="grande" id="grande" hidden role="status" aria-live="polite"></div>
   <aside class="notas" id="notas" hidden aria-label="Bloco de notas"></aside>
   <aside class="roteiro" id="roteiro" hidden aria-label="O roteiro da sessão"></aside>
   <!-- (lote 68) a Mesa ao vivo fechada vira um trilho fino: a conversa (com quantas chegaram) e os dados -->
@@ -667,7 +689,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/tc.js?v=41"></script>
 <script src="tc/busca.js?v=3"></script>
 <script src="tc/calendario.js?v=2"></script>
-<script src="tc/guia.js?v=43"></script>
+<script src="tc/guia.js?v=44"></script>
 <script src="tc/notas.js?v=6"></script>
 <script src="tc/dom.js?v=2"></script>
 <script src="tc/escudo.js?v=3"></script>
@@ -683,7 +705,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.03-7';
+  const VERSAO = '2026.11.03-8';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -2232,6 +2254,22 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     campo.focus();
   });
 
+  /* (lote 73) O resultado grande: o total no meio da tela por 3 segundos (não segura o clique: some sozinho), com quem rolou e o quê.
+     A cor é a de quem rolou. Um por vez: o seguinte troca o de agora. */
+  let tGrande = 0;
+  function mostrarGrande(l) {
+    const d = l.dados || {}, el = $('grande');
+    clearTimeout(tGrande);
+    el.replaceChildren(...[
+      h('div', { class: 'gr-q' }, retrato(d), h('b', { text: d.como || l.autor_nome }), l.secreta ? h('span', { class: 'gr-s', text: 'em segredo' }) : null),
+      d.titulo ? h('div', { class: 'gr-t', text: d.titulo }) : null,
+      h('div', { class: 'gr-n', text: String(d.total) }),
+      d.resumo ? h('div', { class: 'gr-r', text: d.resumo }) : null,
+      d.veredito ? h('div', { class: 'gr-v ' + (d.passou === true ? 'sim' : d.passou === false ? 'nao' : 'emp'), text: d.veredito }) : null].filter(Boolean));
+    el.style.setProperty('--gc', l.secreta ? 'var(--fg-3)' : corDe(l.autor_id));
+    el.hidden = false; el.classList.remove('entra'); void el.offsetWidth; el.classList.add('entra');
+    tGrande = setTimeout(() => { el.hidden = true; }, 3000);
+  }
   aoVivo.on('reinicio', () => { pintarFeed(); pintarQuem(); pintarCompor(); });
   const saidas = new Set();            // linhas que saíram do painel nesta visita: se uma voltar (alguém desfez o apagar), não é rolagem nova
   aoVivo.on('item', (l, novo) => {
@@ -2251,6 +2289,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       if (novo && ehSorteio(l) && aoVivo.idade(l) < 90000) {
         if (prefs.efeito) { el.classList.add('rolou'); if (vivo.hidden) pulsar(btnVivo); }
         if (prefs.som) tocarDados();
+        // (lote 73) o resultado grande no meio da tela, para a mesa toda (a secreta, só para quem rolou)
+        if (l.dados && l.dados.total != null && (!l.secreta || meu) && !l.para) mostrarGrande(l);
       }
     }
     // a defesa que alguém rolou a pedido aparece no cartão do pedido
@@ -2371,6 +2411,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       return { R, l, pc, cfg, extra, c: R.calcular(pc, cfg, extra), fonte: (pc.rol && pc.rol.fonte) || 'total' };
     } catch (e) { console.error(e); return null; }
   }
+  // (lote 73) a cor de cada número no painel Dados, a mesma da ficha
+  const COR_DADO = { FOR: 'a-for', DES: 'a-des', VIT: 'a-vit', CAN: 'a-can', AGI: 'a-agi', ESQ: 's-esq', FUR: 's-fur', PER: 's-per', EMB: 's-emb', DFF: 'd-dff', DFM: 'd-dfm', BLQ: 'd-blq' };
   function contasDe(id) {
     const k = calculoDe(id);
     if (!k) return null;
@@ -2378,7 +2420,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       const { R, l, pc, cfg, extra, c, fonte } = k;
       const rotulo = x => { const d = R.DEFESAS.find(y => y.k === x); return (d && d.rot) || x; };
       return { nome: l.nome || 'Sem nome', fixa: pc.rol ? Math.max(0, Math.round(+pc.rol.fixa || 0)) : 0, ini: R.iniciativa(pc, cfg, extra).val || 0,
-        itens: ROLAVEIS.map(x => ({ k: x, rot: rotulo(x), nome: R.NOMES[x] || x, valor: Math.max(0, Math.round(R.valorDoAtributo(c, x, fonte) || 0)) })) };
+        itens: ROLAVEIS.map(x => ({ k: x, rot: rotulo(x), nome: R.NOMES[x] || x, valor: Math.max(0, Math.round(R.valorDoAtributo(c, x, fonte) || 0)),
+          // (lote 73) nos cinco atributos, a base (sem o equipamento), como na ficha
+          base: R.ATRIBS.some(a => a.k === x) ? Math.max(0, Math.round(R.valorDoAtributo(c, x, 'base') || 0)) : null })) };
     } catch (e) { console.error(e); return null; }
   }
   // quanto fixar agora: o que está no campo; com o campo vazio, a fixa da ficha
@@ -2437,7 +2481,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       return v < 1 ? 'nada a rolar' : f >= v ? 'fixa total: ' + v + r : '1d' + (v - f) + (f ? ' + ' + f : '') + r; };
     pintarMais();
     if (dadosBotoes.querySelectorAll('button[data-k]').length !== ct.itens.length + 1) {
-      dadosBotoes.replaceChildren(...ct.itens.map(it => h('button', { type: 'button', 'data-k': it.k, onclick: () => rolarDaTelinha(it.k) }, h('small', { text: it.rot }), h('b', {}))),
+      dadosBotoes.replaceChildren(...ct.itens.map(it => h('span', { class: 'dados-c', style: COR_DADO[it.k] ? '--cn:var(--' + COR_DADO[it.k] + ')' : null },
+          h('button', { type: 'button', 'data-k': it.k, onclick: () => rolarDaTelinha(it.k) }, h('small', { text: it.rot }), h('b', {})),
+          it.base != null ? h('button', { type: 'button', class: 'base', 'data-kb': it.k, onclick: () => rolarDaTelinha(it.k, true) }, 'base ', h('b', {})) : null)),
         h('button', { type: 'button', class: 'ini', 'data-k': 'INI', onclick: () => rolarDaTelinha('INI') }, h('small', { text: 'Iniciativa' }), h('b', {})));
     }
     for (const it of ct.itens) {
@@ -2446,13 +2492,15 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       b.title = it.nome + ' ' + it.valor + ' — ' + comoRola(it.valor);
       b.setAttribute('aria-label', 'Rolar ' + it.nome + ', ' + it.valor + ': ' + comoRola(it.valor));
       b.disabled = dadosOcupado || comMais(it.valor) < 1;
+      const bb = dadosBotoes.querySelector('button[data-kb="' + it.k + '"]');
+      if (bb) { bb.querySelector('b').textContent = String(it.base); bb.title = it.nome + ' base ' + it.base + ' (sem o equipamento) — ' + comoRola(it.base); bb.setAttribute('aria-label', 'Rolar ' + it.nome + ' base, ' + it.base + ': ' + comoRola(it.base)); bb.disabled = dadosOcupado || comMais(it.base) < 1; }
     }
     const bi = dadosBotoes.querySelector('button[data-k="INI"]');
     bi.querySelector('b').textContent = '1d20 ' + (ct.ini < 0 ? '− ' : '+ ') + Math.abs(ct.ini);
     bi.title = 'Rola 1d20 ' + (ct.ini < 0 ? '− ' : '+ ') + Math.abs(ct.ini) + ' (a iniciativa da ficha)' + (mais.res ? (mais.res > 0 ? ' + ' : ' − ') + Math.abs(mais.res) + ' (o bônus no resultado)' : '') + ' e mostra à mesa';
     bi.disabled = dadosOcupado;
   }
-  async function rolarDaTelinha(k) {
+  async function rolarDaTelinha(k, daBase) {
     if (dadosOcupado) return;
     const ct = contasDe(dadosMem.pc), pc = aoVivo.personagem(dadosMem.pc);
     if (!ct || !pc) return;
@@ -2460,12 +2508,12 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     try {
       const mais = maisAgora();
       if (k === 'INI') await aoVivo.rolarIniciativa(pc, ct.ini, mais);        // (a iniciativa usa só o bônus no resultado; lote 21: os bônus ficam)
-      else { const it = ct.itens.find(x => x.k === k); if (it) { const r = await aoVivo.rolarAtributo(pc, it.nome, it.valor, fixaAgora(ct), mais); if (!r.ok) toast(r.error); } }
+      else { const it = ct.itens.find(x => x.k === k); if (it) { const r = daBase && it.base != null ? await aoVivo.rolarAtributo(pc, it.nome + ' base', it.base, fixaAgora(ct), mais) : await aoVivo.rolarAtributo(pc, it.nome, it.valor, fixaAgora(ct), mais); if (!r.ok) toast(r.error); } }
       descer();
     } catch (e) { toast((e && e.message) || 'A rolagem não chegou à mesa. Tente de novo.'); }
     dadosOcupado = false; pintarDados();
     // (o botão ficou travado durante o envio e perdeu o foco: volta para ele, se a pessoa não foi para outro lugar)
-    const b = dadosBotoes.querySelector('button[data-k="' + k + '"]'); if (b && !b.disabled && (!document.activeElement || document.activeElement === document.body)) b.focus({ preventScroll: true });
+    const b = dadosBotoes.querySelector(daBase ? 'button[data-kb="' + k + '"]' : 'button[data-k="' + k + '"]'); if (b && !b.disabled && (!document.activeElement || document.activeElement === document.body)) b.focus({ preventScroll: true });
   }
   $('dadosAbre').addEventListener('click', () => { const aberta = $('dadosCorpo').hidden; dadosMem.aberta = aberta; guardarDadosMem(); pintarDados(); if (aberta) descer(); });
   dadosPc.addEventListener('change', () => { dadosMem.pc = dadosPc.value; guardarDadosMem(); pintarDados(); });
