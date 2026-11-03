@@ -3033,7 +3033,7 @@ const UI = (() => {
         btn('Rolar iniciativa', rollAll, { icon: 'die', id: 'turnRoll', title: missing ? 'Rola 1d20 + Iniciativa para quem ainda não tem iniciativa e ordena a lista' : 'Todos já têm iniciativa: rolar de novo troca os valores (a mesa pergunta antes)' }),
         btn(tn.on ? 'Encerrar' : 'Iniciar', () => { if (tn.on) { encerrarCombate(); return; } const antes = vezAgora(); Act.turnPatch(x => { x.on = true; x.round = 1; x.cur = x.list[0].id; x.back = 0; turnPularSurpresos(x); }, 'Iniciar combate'); depoisDaVez(antes, 1); },
           { icon: tn.on ? 'stop' : 'play', id: 'turnOnOff', title: tn.on ? 'Encerra o combate e zera a iniciativa de todos, para o próximo começar do zero (dá para desfazer)' : null }),
-        btn('Ordenar por iniciativa', () => Act.turnPatch(x => { turnSort(x.list); }, 'Ordenar turnos'), { icon: 'sort' }),
+        btn('Ordenar por iniciativa', () => Act.turnPatch(x => { turnSort(x.list); turnVezNoTopo(x); }, 'Ordenar turnos'), { icon: 'sort' }),
         btn('Limpar', () => Act.turnPatch(x => { x.list = []; x.on = false; x.round = 1; x.back = 0; }, 'Limpar turnos'), { icon: 'trash' })) : null,
       // (lote 47) entrar no combate no meio dele, e a rodada de surpresa
       Mestre.botoesDoCombate(selToks),
@@ -3940,6 +3940,21 @@ const UI = (() => {
     if (!d.dano || !d.barra) { toast(`${tokName(t)} caiu ${alt}: a regra sugere ${d.pct}% da Vida máxima.`, { key: 'queda-' + d.tok, long: true }); return; }
     toast(`${tokName(t)} caiu ${alt}: a regra sugere ${d.pct}% da Vida máxima (${fmt(d.dano)} de ${d.barra}).`, { action: 'Aplicar o dano', key: 'queda-' + d.tok, long: true,
       run: () => { const tk = Store.get('tokens', d.tok); if (tk && Combate.aplicarAtaque([{ t: tk, final: d.dano }], d.barra, 'Dano da queda').length) toast(`${tokName(tk)}: −${fmt(d.dano)} de ${d.barra} (queda).`, { action: 'Desfazer', run: Tools.undo }); } });
+  });
+  /* (lote 80) A vida chegou a 0: o token ganhou Morto (no mesmo passo do dano). O aviso pergunta se ele sai da ordem de
+     turnos (se está nela); nada mais muda sozinho. Voltou a ter vida: o Morto saiu, e o aviso diz. */
+  Store.on('morto', d => {
+    const t = Store.get('tokens', d.tok), sc = Store.scene();
+    if (!t || !isGM()) return;
+    const naOrdem = !!sc && sc.turn.list.some(e => e.token === t.id || (isBand(e) && e.toks.includes(t.id)));
+    somAviso('urgente');
+    toast(`${tokName(t)} chegou a 0 de vida: Morto.` + (naOrdem ? ' Tirar da iniciativa?' : ''), naOrdem ? { action: 'Tirar da iniciativa', key: 'morto-' + t.id, long: true,
+      run: () => { if (!Store.get('tokens', d.tok)) return; Act.turnPatch(tn => turnDrop(tn, [d.tok]), 'Tirar da iniciativa'); toast(`${tokName(t)} saiu da iniciativa.`, { action: 'Desfazer', run: Tools.undo }); } } : { key: 'morto-' + t.id });
+  });
+  Store.on('reviveu', d => {
+    const t = Store.get('tokens', d.tok);
+    if (!t || !isGM()) return;
+    toast(`${tokName(t)} voltou a ter vida: o Morto saiu.`, { key: 'morto-' + t.id });
   });
   // (lote 20) o HP abaixo de zero: a regra sugere o Ferido; o mestre aplica (ou não)
   Store.on('ferido', d => {

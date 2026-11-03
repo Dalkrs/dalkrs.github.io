@@ -254,6 +254,17 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Morto ao chegar a 0 e a iniciativa pelo topo (lote 80)
+
+- **Morto** (`acertarCondicoes`, 07-app): a barra da vida passou de mais de 0 para 0 ou menos neste passo → `morto`;
+  de 0 ou menos para mais de 0 → sai. Vale para todos os tokens, no aparelho do mestre (o dano daqui e o que vem de
+  fora). `avisarMorte` emite `morto`/`reviveu`; o aviso (10-ui) oferece “Tirar da iniciativa” (`turnDrop`) quando o
+  token está na ordem.
+- **A vez** (`turnVezNoTopo`): rolar ou anotar iniciativa, ou “Ordenar por iniciativa”, com o combate parado (ou
+  começado sem a vez ter passado: `turn.andou === false`) põe a vez no topo; começar o combate com todos já com
+  iniciativa também. Depois que a vez passa (`andou`), rolar não mexe nela.
+- Testes: `src/cenas/test/lote80.js`; o `fuzz.js` aceita a vez no topo quando o combate está começando.
+
 ### As Tabelas base em abas e o level máximo (lote 79)
 
 - **As abas** (`abrirCfg`, `cfgAba`, `CFG_ABAS`): Níveis e pontos · Tiers · Corrupção · Tropas; a aba aberta fica

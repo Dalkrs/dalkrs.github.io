@@ -457,6 +457,7 @@
   };
 
   const sabia = [
+    { t: 'Morto ao chegar a 0', txt: 'Nas Cenas, a vida chegou a 0: o token ganha Morto e o aviso pergunta se ele sai da iniciativa. Curado, o Morto sai.', papel: 'mestre', sistema: 'cenas' },
     { t: 'O level máximo', txt: 'Nas Tabelas base das Fichas, aba Níveis e pontos, o Level máximo corta ou estende a tabela. A padrão vai até o 30.', papel: 'mestre', sistema: 'fichas' },
     { t: 'Andares no ar', txt: 'Nas Cenas, a cena e os andares dela podem ficar no ar juntos: cada jogador vê o andar do token dele e sobe ou desce pela escada.', papel: 'todos', sistema: 'cenas' },
     { t: 'O XP no Jogando', txt: 'A barra de XP aparece na ficha em Jogando: digite +5 para somar ou −2 para tirar, sem ir ao Editar.', papel: 'todos', sistema: 'fichas' },
@@ -504,5 +505,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 28, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 29, sistemas, tarefas, roteiro, sabia };
 })();

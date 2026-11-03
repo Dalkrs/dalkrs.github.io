@@ -131,11 +131,14 @@ const SEED = parseInt(process.argv[2], 10) || 20261002, STEPS = parseInt(process
       turnLoose: () => A.turnLoose(pick(['Armadilha', 'Reforço', 'Desabamento']), pick([0, 2, -4, 150, NaN]), pick([1, 1, 2, 3, 9])),
       turnRoll: () => {
         const tn = S.scene().turn, cur = tn.cur, ids = tn.list.filter(() => rnd() < 0.6).map(e => e.id);
+        // (lote 80) com o combate parado (ou recém-começado, antes de a vez passar), a vez vai para o topo da ordem
+        const comecando = !tn.on || (tn.andou === false && (tn.round || 1) === 1);
         const res = A.turnRoll(ids);
         if (res.length !== ids.length) problems.push(`turnRoll: pedi ${ids.length} rolagens, vieram ${res.length}`);
         if (res.some(r => r.total !== r.d + r.bonus || r.d < 1 || r.d > 20)) problems.push('turnRoll: resultado que não fecha: ' + JSON.stringify(res));
         if (ids.length && !turnSorted()) problems.push('turnRoll: a lista não ficou em ordem de iniciativa');
-        if (S.scene().turn.cur !== cur) problems.push('turnRoll: rolar mudou de quem é a vez');
+        if (!comecando && S.scene().turn.cur !== cur) problems.push('turnRoll: rolar mudou de quem é a vez');
+        if (comecando && ids.length && res.length && S.scene().turn.list.length && !S.scene().turn.list[0].sur && S.scene().turn.cur !== S.scene().turn.list[0].id) problems.push('turnRoll: com o combate começando, a vez não foi para o topo');
       },
       turnType: () => { const l = S.scene().turn.list; if (l.length) { const id = pick(l).id, v = pick([20, 7, 0, -3, 15.5]); A.turnPatch(x => { const y = x.list.find(z => z.id === id); if (y) { y.init = v; y.roll = null; } }, 'Iniciativa'); } },
       turnMove: () => A.turnPatch(x => { const i = Math.floor(rnd() * x.list.length); if (i > 0) { const [m] = x.list.splice(i, 1); x.list.splice(i - 1, 0, m); } }),

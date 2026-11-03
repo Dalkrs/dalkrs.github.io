@@ -289,6 +289,15 @@ function acertarCondicoes(t, antes) {
     const sai = tinha('agigantado') ? 'agigantado' : 'encolhido';
     conds = conds.filter(c => c !== sai); delete info[sai]; mudou = true;
   }
+  /* (lote 80) A vida chegou a 0 (de mais de 0): Morto — a vida negativa continua valendo (os Feridos, o piso). Voltou
+     a ter vida (de 0 ou menos para mais de 0): o Morto sai. Só quando a barra da vida mudou neste passo. */
+  if (Array.isArray(a.bars)) {
+    const d = barraDaVida(t.bars), av = d ? a.bars.find(b => b && b.n === d.n && b.on !== false) : null;
+    if (d && av && isFinite(av.v) && isFinite(d.v)) {
+      if (av.v > 0 && d.v <= 0 && !conds.includes('morto')) { conds = conds.concat('morto'); mudou = true; }
+      else if (av.v <= 0 && d.v > 0 && conds.includes('morto')) { conds = conds.filter(c => c !== 'morto'); delete info.morto; mudou = true; }
+    }
+  }
   // (lote 20) um Ferido de cada vez: fica o que acabou de entrar (ou o mais grave, se entraram juntos)
   if (FERIDOS.filter(id => conds.includes(id)).length > 1) {
     const tem = FERIDOS.filter(id => conds.includes(id)), novos = tem.filter(id => !tinha(id)), fica = (novos.length ? novos : tem)[(novos.length ? novos : tem).length - 1];
@@ -542,12 +551,19 @@ function aplicarRegrasDoClone(regras) {
   }
 }
 const acertaAqui = () => !(typeof Nuvem !== 'undefined' && Nuvem.jogador && Nuvem.jogador());
+// (lote 80) o Morto entrou ou saiu por causa da vida: o aviso (que pergunta se tira da iniciativa)
+function avisarMorte(id, antes, p) {
+  if (!p || !Array.isArray(p.conds)) return;
+  const tinha = Array.isArray(antes) && antes.includes('morto'), tem = p.conds.includes('morto');
+  if (!tinha && tem) Store.emit('morto', { tok: id });
+  else if (tinha && !tem) Store.emit('reviveu', { tok: id });
+}
 Store.aoFechar(tx => {
   if (!acertaAqui()) return;
   const ids = [...new Set(tx.fwd.filter(op => op.t === 'upd' && op.c === 'tokens').map(op => op.id))];
   for (const id of ids) {
     const t = Store.get('tokens', id), p = acertarCondicoes(t, antesDoToken(tx.inv, id));
-    if (p) Store.upd('tokens', id, p);
+    if (p) { const era = t.conds.slice(); Store.upd('tokens', id, p); avisarMorte(id, era, p); }
   }
   // (lote 7) o portal e as runas: só os tokens que mudaram de lugar neste passo
   const sc = Store.scene(), andou = [...new Set(tx.fwd.filter(mexeuNoLugar).map(op => op.id))];
@@ -571,7 +587,7 @@ Store.on('commit', e => {
   const ids = [...new Set((e.ops || []).filter(op => op.t === 'upd' && op.c === 'tokens').map(op => op.id))];
   const mud = ids.map(id => [id, acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id))]).filter(x => x[1]);
   if (mud.length) setTimeout(() => Store.tx('Condição', () => {
-    for (const [id] of mud) { const p = acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id)); if (p) Store.upd('tokens', id, p); }
+    for (const [id] of mud) { const t = Store.get('tokens', id), p = acertarCondicoes(t, antesDoToken(e.inv, id)); if (p) { const era = t.conds.slice(); Store.upd('tokens', id, p); avisarMorte(id, era, p); } }
   }), 0);
   // (lote 7) o token que um jogador soltou num portal atravessa num passo logo depois; o que pisou nas runas avisa
   const sc = Store.scene(), andou = [...new Set((e.ops || []).filter(mexeuNoLugar).map(op => op.id))];
@@ -686,6 +702,14 @@ function turnSort(list) {
   rows.sort((p, q) => (p.v === q.v ? 0 : q.v - p.v) || (p.f - q.f) || (q.b - p.b) || (p.i - q.i));
   for (let i = 0; i < rows.length; i++) list[i] = rows[i].e;
   return list;
+}
+/* (lote 80) Com o combate ainda parado (ou recém-começado, antes de alguém passar a vez), quem joga primeiro é quem
+   está no topo da ordem. Antes, a vez ficava com quem tinha entrado primeiro na ordem (o token selecionado), mesmo
+   depois de rolar as iniciativas. */
+function turnVezNoTopo(tn) {
+  if (!tn.list.length || (tn.on && !(tn.andou === false && (tn.round || 1) === 1))) return;
+  tn.cur = tn.list[0].id;
+  turnPularSurpresos(tn);
 }
 // (lote 47) Na 1ª rodada, a vez não fica com quem foi surpreendido: vai para o primeiro que pode jogar (se ninguém pode,
 // a 2ª rodada começa).
@@ -1438,6 +1462,7 @@ const Act = {
     const e = es.find(x => x.init == null) || es[0];
     e.init = total; e.roll = isFinite(d) && isFinite(b) ? { d, b } : null;
     turnSort(tn.list);
+    turnVezNoTopo(tn);
     Store.tx('Anotar iniciativa', () => Store.scn({ turn: tn }));
     return e;
   },
@@ -1454,6 +1479,7 @@ const Act = {
     }
     if (!out.length) return out;
     turnSort(tn.list);
+    turnVezNoTopo(tn);
     Store.tx('Rolar iniciativa', () => Store.scn({ turn: tn }));
     if (Ext.roll) {
       for (const r of out) {
@@ -1477,8 +1503,9 @@ const Act = {
     if (!tn.list.length) return ended;
     if (!tn.on) {
       // Combate parado: o primeiro "próximo turno" só começa o combate, na vez de quem já estava marcado.
-      tn.on = true; tn.back = 0;
-      if (!tn.list.some(e => e.id === tn.cur)) tn.cur = tn.list[0].id;
+      tn.on = true; tn.back = 0; tn.andou = false;
+      // (lote 80) com todos já com iniciativa, o combate começa pelo topo da ordem
+      if (!tn.list.some(e => e.id === tn.cur) || tn.list.every(e => e.init != null)) tn.cur = tn.list[0].id;
       turnPularSurpresos(tn);
       Store.tx('Iniciar combate', () => Store.scn({ turn: tn }));
       return ended;
@@ -1496,6 +1523,7 @@ const Act = {
       else if (i > 0) i--; else break;
     }
     tn.cur = tn.list[i].id;
+    if (d > 0) tn.andou = true;                                         // (lote 80) a vez já passou: rolar não mexe mais nela
     if (d < 0 && i === from && tn.round === fromRound) return ended;     // já está no começo: nada a voltar
     if (d > 0 && tn.list[i].reac) delete tn.list[i].reac;               // a vez chegou: a espera pela reação acabou
     if (d > 0) { if (tn.back > 0) tn.back--; else fresh = true; }

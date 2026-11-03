@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-15",
+      "data": "2026-11-03",
+      "titulo": "Morto ao chegar a 0, e a iniciativa que começa pelo topo",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Cenas: quando a vida de um token chega a 0, ele ganha Morto sozinho. A vida negativa continua valendo (os Feridos). Curado acima de 0, o Morto sai."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: quando um token morre e está na ordem de turnos, o aviso pergunta: “Tirar da iniciativa” (com Desfazer)."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Cenas: ao rolar as iniciativas antes de começar o combate, a vez ficava com o token que entrou primeiro na ordem (o selecionado). Agora o combate começa pela maior iniciativa. Depois que a vez passa, rolar para quem chega no meio não muda de quem é a vez."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-14",
       "data": "2026-11-03",
       "titulo": "As Tabelas base em abas, e o level máximo",
