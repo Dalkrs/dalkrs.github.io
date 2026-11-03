@@ -59,6 +59,8 @@ async function start(opt = {}) {
     if (!o.fechado) await ctx.addInitScript(() => { try { localStorage.setItem('tinycats:testes-tudo-aberto', '1'); } catch (e) {} });
     // (lote 63) a apresentação do Mapa-múndi novo, na primeira vez de quem mestra: nos testes, só com o.tourMundo
     if (!o.tourMundo) await ctx.addInitScript(() => { try { localStorage.setItem('tinycats:mundo:tour63', 'visto'); } catch (e) {} });
+    // (lote 69) a ficha abre em Jogando; os testes antigos (que mexem em todos os campos) no Editar — a não ser o.jogando
+    if (!o.jogando) await ctx.addInitScript(() => { try { if (localStorage.getItem('tinycats:testes-ficha-editar') === null) localStorage.setItem('tinycats:testes-ficha-editar', '1'); } catch (e) {} });
     // (lote 68) os modos no alto mostram só as abas do modo; nos testes antigos, todas as abas ficam à vista (o.modos: como a pessoa encontra)
     if (!o.modos) await ctx.addInitScript(() => { try { if (localStorage.getItem('tinycats:abas-todas') === null) localStorage.setItem('tinycats:abas-todas', '1'); for (const k of ['acampamento', 'meditacao', 'arvore', 'oficina']) if (localStorage.getItem('tinycats:vivo:' + k) === null && localStorage.getItem('tinycats:vivo') === null) localStorage.setItem('tinycats:vivo:' + k, '1'); } catch (e) {} });
     if (o.seed) await ctx.addInitScript(seed => { try { for (const k in seed) if (localStorage.getItem(k) === null) localStorage.setItem(k, seed[k]); } catch (e) {} }, o.seed);

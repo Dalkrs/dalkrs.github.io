@@ -17,6 +17,7 @@
   if(/[?&]casca\b/.test(location.search)) document.documentElement.classList.add('na-casca');
   // (lote 24) o modo Simples (o padrão) mostra o que se usa na sessão; o Completo, tudo
   var modo='simples'; try{ modo = localStorage.getItem('tinycats:fichas:modo')==='completo' ? 'completo' : 'simples'; }catch(e){}
+  try{ if(localStorage.getItem('tinycats:testes-tudo-aberto')==='1') document.documentElement.classList.add('menus-abertos'); }catch(e){}      // (lote 69: nos testes, os "⋯" ficam abertos na linha)
   if(modo==='simples') document.documentElement.classList.add('modo-simples');
 })();
 </script>
@@ -292,7 +293,7 @@ table.attr tr:last-child td{border-bottom:0}
 .mesa-oferta{margin:0 0 10px;padding:10px;border:1px dashed var(--brass-soft);border-radius:var(--r);background:var(--brass-fundo);font-size:13px}
 .mesa-oferta p{margin:0 0 8px}
 .mesa-falha{margin:14px;padding:12px 14px;border:1px solid var(--rubric-borda);border-radius:var(--r);background:var(--rubric-fundo)}
-.papel-jogador #btnCfg,.papel-jogador #btnFlush,.papel-jogador #btnImport,.papel-jogador #btnGrupo,.papel-jogador nav.tabs button[data-tab="mesa"],.papel-jogador .grab{display:none}
+.papel-jogador #actsMais,.papel-jogador #btnCfg,.papel-jogador #btnFlush,.papel-jogador #btnImport,.papel-jogador #btnGrupo,.papel-jogador nav.tabs button[data-tab="mesa"],.papel-jogador .grab{display:none}
 .rescard input.fml{font-family:var(--monof);font-size:12.5px}
 .fmlerr{color:var(--rubric);font-size:11.5px;margin-top:4px;font-family:var(--monof)}
 .vars{font-size:11.5px;color:var(--ink-soft);line-height:1.7}
@@ -1264,6 +1265,40 @@ html.na-casca nav.tabs{order:1;border:0;background:none;padding:0 12px}
 /* Simples ou Completo (lote 24): no Simples, o que não se usa durante a sessão fica escondido */
 html.modo-simples .so-completo, html.modo-simples #anivBox, html.modo-simples .idcard3{display:none!important}
 html:not(.modo-simples) .so-simples{display:none!important}
+html.menus-abertos .fmais>summary{display:none} html.menus-abertos .fmais>.fmais-m{position:static;display:flex;padding:0;border:0;box-shadow:none;background:none;min-width:0}
+/* (lote 69) Jogando ou Editar: no Jogando, o cadastro (quem é, os tiers, as defesas à mão) fica no Editar */
+#ficha.ficha-jogando .so-editar{display:none!important}
+html.ficha-jogando-on .modoseg{display:none!important}
+#ficha:not(.ficha-jogando) .so-jogando{display:none!important}
+.fmodos{display:inline-flex;padding:2px;border:1px solid var(--line-2);border-radius:9px;background:var(--campo-sut)}
+.fmodo{height:28px;padding:0 13px;border:0;border-radius:7px;background:none;color:var(--ink-soft);font:600 13.5px/1 var(--ui);cursor:pointer}
+.fmodo:hover{color:var(--ink)}
+.fmodo[aria-checked="true"]{background:var(--campo);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.18),inset 0 -2px 0 var(--teal)}
+.fmais{position:relative}
+.fmais>summary{list-style:none;cursor:pointer;min-width:30px;text-align:center;font-weight:700;letter-spacing:.05em}
+.fmais>summary::-webkit-details-marker{display:none}
+.fmais-m{position:absolute;right:0;top:calc(100% + 4px);z-index:30;display:grid;gap:4px;min-width:150px;padding:6px;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+.fmais-m .mini{justify-content:flex-start;text-align:left}
+.rsnomej{margin:0;font:700 30px/1.1 var(--display,inherit);color:var(--ink)}
+/* os números do resumo rolam: o total (com o equipamento) e, nos atributos, a base embaixo */
+button.rsn,.rsatr .rsrola,.rsatr .rsbase{border:0;cursor:pointer;color:inherit;text-align:left}
+button.rsn{display:inline-flex;border:1px solid transparent}
+button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
+.rsatr{position:relative;padding:0!important;overflow:hidden;border:1px solid transparent}
+.rsatr:hover{border-color:var(--line-2)}
+.rsatr .rsrola{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;padding:7px 12px 3px;background:none;font-family:var(--ui)}
+.rsatr .rsrola:hover{background:var(--campo)}
+.rsatr .rsbase{display:flex;align-items:baseline;gap:5px;width:100%;padding:3px 12px 6px;background:none;font:600 11.5px/1.2 var(--ui);color:var(--ink-soft)}
+.rsatr .rsbase b{font:600 14px/1 var(--monof)!important;color:var(--ink-2)!important}
+.rsatr .rsbase:hover{background:var(--campo);color:var(--ink)}
+.rsatr .rsbase.igual b{color:var(--ink-soft)!important}
+.rsrolou{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:10px;background:var(--campo-sut);border-left:4px solid var(--teal);font-size:13.5px;color:var(--ink-2)}
+.rsrolou .rsrt{font:700 22px/1 var(--monof);color:var(--ink)}
+.rsrolou.c-for{border-left-color:var(--a-for)} .rsrolou.c-des{border-left-color:var(--a-des)} .rsrolou.c-vit{border-left-color:var(--a-vit)} .rsrolou.c-can{border-left-color:var(--a-can)} .rsrolou.c-agi{border-left-color:var(--a-agi)}
+.so-mestre-fim{margin-top:18px;border:1px dashed var(--line-2);border-radius:12px;background:var(--panel)}
+.so-mestre-fim>summary{cursor:pointer;padding:10px 14px;font-weight:600;color:var(--ink-2)}
+.so-mestre-fim[open]>summary{border-bottom:1px dashed var(--line-2)}
+.so-mestre-fim .corr-barra{margin:0;border:0}
 .dica-completo{margin:12px 0 0;font-size:13.5px;color:var(--ink-soft)}
 .dica-completo .linkbtn{font-size:inherit}
 .modoseg{display:inline-flex;padding:3px;border-radius:10px;border:1px solid var(--topo-borda);background:var(--paper);margin-right:6px}
@@ -1636,10 +1671,16 @@ html:not(.modo-simples) .so-simples{display:none!important}
       <button type="button" data-modoficha="completo" title="Todos os campos da ficha">Completo</button>
     </div>
     <button class="ghost" id="btnTema" title="Alternar entre automático, claro e escuro"></button>
-    <button class="ghost" id="btnCfg">Tabelas base</button>
     <button class="ghost" id="btnExport">Exportar</button>
-    <button class="ghost" id="btnImport">Importar</button>
-    <button class="ghost perigo" id="btnFlush">Apagar dados</button>
+    <!-- (lote 69) o que mexe na mesa inteira fica no "⋯": as tabelas, importar e apagar -->
+    <details class="fmais acts-mais" id="actsMais">
+      <summary class="ghost" title="Mais: Tabelas base, Importar, Apagar dados" aria-label="Mais ações">⋯</summary>
+      <div class="fmais-m" role="menu">
+        <button class="ghost" id="btnCfg" role="menuitem">Tabelas base</button>
+        <button class="ghost" id="btnImport" role="menuitem">Importar</button>
+        <button class="ghost perigo" id="btnFlush" role="menuitem">Apagar dados</button>
+      </div>
+    </details>
     <input type="file" id="fileIn" accept=".json" style="display:none">
   </div>
 </header>
@@ -2652,6 +2693,11 @@ function casaFiltro(p){
 }
 
 /* ---------- render: ficha ---------- */
+/* (lote 69) Os dois modos da ficha: Jogando (o que se usa na mesa: as barras, os números que rolam, o que vale agora)
+   e Editar (o cadastro inteiro). A ficha sempre abre em Jogando; o botão no alto do resumo troca. */
+let fichaModo=(()=>{ try{ return localStorage.getItem('tinycats:testes-ficha-editar')==='1'? 'editar' : 'jogando'; }catch(e){ return 'jogando'; } })();     // (os testes antigos abrem no Editar)
+// (a Corrupção, no fim da ficha, recolhida; aberta fica aberta ao trocar de ficha. Nos testes, aberta de começo)
+let corrAbertaFim=(()=>{ try{ return localStorage.getItem('tinycats:testes-tudo-aberto')==='1'; }catch(e){ return false; } })();
 function renderFicha(){
   const host=document.getElementById('ficha');
   const pc=S.personagens.find(p=>p.id===S.sel);
@@ -2678,7 +2724,6 @@ function renderFicha(){
   const parte=(k,html)=>`<div class="abaficha" id="abafichac-${k}" data-abafichac="${k}" role="tabpanel" aria-labelledby="abaficha-${k}"${aba===k?'':' hidden'}>${html}</div>`;
   host.innerHTML=`
   ${FichasCriacao.htmlAviso(pc)}
-  ${FichasCorr.htmlBarra(pc)}
   ${htmlResumo(pc,c)}
   ${htmlAbasFicha(pc,aba)}
   ${parte('atributos', `
@@ -2686,7 +2731,7 @@ function renderFicha(){
 
   <div class="two" style="margin-bottom:18px">
     ${FichasExtras.abaDefesas(c)? FichasExtras.painelDefesas(pc,c) : FichasExtras.ehLivre(pc)? FichasExtras.painelAtributosLivre(pc,c) : `
-    <div class="panel">
+    <div class="panel so-editar" id="painelTabAtr">
       <div class="hd">${FichasExtras.htmlAbasAtr(pc,c)}
         <span style="margin-left:auto;display:flex;gap:6px"><button class="mini" data-act="pct">${pc.pctProprio?'Percentuais próprios':'Usar percentuais gerais'}</button>${FichasExtras.htmlBotaoModo(pc)}</span>
       </div>
@@ -2890,7 +2935,11 @@ function renderFicha(){
   ${parte('skills', htmlAbaSkills(pc))}
   ${FichasTropas.tem(pc)? parte('tropas', FichasTropas.htmlAba(pc)) : ''}
   ${parte('notas', htmlAbaNotas(pc))}
+  ${(()=>{ const cb=FichasCorr.htmlBarra(pc); return cb? `<details class="so-mestre-fim" id="soMestreFim"${corrAbertaFim?' open':''}><summary><span class="corr-so">Só o mestre</span> Corrupção${FichasCorr.htmlEtiqueta(pc)? ' · '+esc(FichasCorr.estadoDe(pc)? 'estágio '+FichasCorr.estadoDe(pc).n : 'ligada') : ''}</summary>${cb}</details>` : ''; })()}
   `;
+  host.classList.toggle('ficha-jogando', fichaModo==='jogando');      // (lote 69) os modos da ficha
+  document.documentElement.classList.toggle('ficha-jogando-on', fichaModo==='jogando');     // (no Jogando, Simples e Completo não dizem nada)
+  { const sm=host.querySelector('#soMestreFim'); if(sm) sm.addEventListener('toggle',()=>{ corrAbertaFim=sm.open; }); }
   ligarFicha(pc);
   FichasCorr.aplicar(host, pc);          // (lote 37) a corrupção: o painel do mestre, o efeito e o retrato
   FichasTropas.ligar(host, pc);          // (lote 40) a aba das tropas (e o "+ Tropas" de quem mestra)
@@ -2978,12 +3027,16 @@ function pintarBarrinhas(host, pc){
 }
 // os números do resumo: os atributos, os derivados e as defesas (com o equipamento)
 function htmlNumerosResumo(pc,c){
-  // (o nome inteiro em cima e o número embaixo: ninguém precisa decorar as siglas — elas ficam na dica)
-  const chip=(k,rot,v,cls,nome)=>`<span class="rsn${cls?' '+cls:''}" title="${esc(rot)} · ${esc(k)}"><span class="rsnm">${esc(nome||k)}</span><b>${v}</b></span>`;
-  return `<div class="rsnums" aria-label="Atributos, derivados e defesas">
-    <span class="rsgrupo" aria-label="Atributos">${ATRIBS.map(a=>chip(a.k,a.nome+' (com equipamento)',c.tot[a.k],'c-'+(COR_ATR[a.k]||''),a.nome.replace(' Mágica',''))).join('')}</span>
+  /* (o nome inteiro em cima e o número embaixo: ninguém precisa decorar as siglas — elas ficam na dica)
+     (lote 69) Um clique no número rola a fixa dele (com o equipamento). Nos cinco atributos, a base (sem o equipamento)
+     fica embaixo, num botão próprio: o mestre pede muito para rolar a base. */
+  const chip=(k,rot,v,cls,nome)=>`<button type="button" class="rsn${cls?' '+cls:''}" data-rolar-r="${esc(k)}" title="Rolar ${esc(rot)} · ${esc(k)}: ${v}"><span class="rsnm">${esc(nome||k)}</span><b>${v}</b></button>`;
+  const atr=a=>{ const nome=a.nome.replace(' Mágica',''), t=c.tot[a.k], b=c.base[a.k];
+    return `<span class="rsn rsatr c-${COR_ATR[a.k]||''}"><button type="button" class="rsrola" data-rolar-r="${a.k}" title="Rolar ${esc(a.nome)} com o equipamento: ${t}"><span class="rsnm">${esc(nome)}</span><b>${t}</b></button><button type="button" class="rsbase${b===t?' igual':''}" data-rolar-base="${a.k}" title="Rolar ${esc(a.nome)} base, sem o equipamento: ${b}" aria-label="Rolar ${esc(a.nome)} base: ${b}">base <b>${b}</b></button></span>`; };
+  return `<div class="rsnums" aria-label="Atributos, derivados e defesas (um clique rola)">
+    <span class="rsgrupo" aria-label="Atributos">${ATRIBS.map(atr).join('')}</span>
     <span class="rsgrupo rsder" aria-label="Calculados a partir dos atributos">${DERIV.map(d=>chip(d.k,d.nome,c.der[d.k],'',d.nome)).join('')}</span>
-    <span class="rsgrupo rsdef" aria-label="Defesas">${DEFESAS.map(d=>chip(d.rot,d.nome,c.def[d.k],'',d.nome)).join('')}</span>
+    <span class="rsgrupo rsdef" aria-label="Defesas">${DEFESAS.map(d=>chip(d.k,d.nome,c.def[d.k],'',d.nome)).join('')}</span>
   </div>`;
 }
 // o estado de agora: os lapros (e a caixinha do grupo), os ferimentos abertos, a Sanidade e o Conforto
@@ -3019,6 +3072,11 @@ function htmlEstadoResumo(pc){
     out.push(`<button type="button" class="rschip mente-${k}" data-irpara="social|#painelMente" title="${esc(M.nome)}: ${v} de 100 (na aba Social)">${esc(M.nome)} <b>${v}</b></button>`); }
   return `<div class="rsestado">${out.filter(Boolean).join('')}</div>`;
 }
+// (lote 69) a última rolagem desta ficha, logo embaixo dos números (some depois de alguns minutos)
+function htmlRolouResumo(pc){
+  const u=pc.ultRol; if(!u || !u.em || Date.now()-u.em>5*60*1000) return '';
+  return `<div class="rsrolou c-${COR_ATR[u.k]||''}" id="rsRolou" role="status"><b class="rsrt">${u.total}</b><span>${esc(u.k)} ${u.valor}${u.base?' base':''} · ${esc(u.texto)}${u.dado?` · dado ${u.bruto}`:''}</span></div>`;
+}
 function htmlResumo(pc,c){
   return `<div class="panel resumo" id="resumo" style="margin-bottom:10px">
     <div class="hd">
@@ -3026,10 +3084,19 @@ function htmlResumo(pc,c){
       <span class="mono so-completo" style="font-size:11.5px;color:var(--ink-soft);margin-left:6px">${c.total.toFixed(2)} pts${FichasMesa.deJogador(pc) && c.mult===1 ? '' : ' · ×'+c.mult}</span>
       ${FichasCorr.htmlEtiqueta(pc)}
       ${pc.petDe?`<span class="petde">${PATA_SVG} pet de <button type="button" class="linkbtn" data-abrirpc="${esc(pc.petDe)}" title="Abrir a ficha do dono">${esc(FichasMesa.nomeDoPetDe(pc))}</button></span>`:''}
-      <span style="margin-left:auto;display:flex;gap:6px">
-        ${!pc.petDe && FichasMesa.podeEditar(pc)?`<button class="mini" data-act="addpet" title="Uma ficha suplementar para o animal ou companheiro de ${esc(pc.nome||'este personagem')}: atributos à mão, barras e habilidades, sem bolsa. Quem controla ${esc(pc.nome||'o personagem')} controla o pet.">+ Pet</button>`:''}
-        <button class="mini" data-act="dup">Duplicar</button>
-        <button class="mini danger" data-act="del">Excluir</button>
+      <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <span class="fmodos" role="radiogroup" aria-label="Como ver a ficha">
+          <button type="button" class="fmodo" id="fmodoJogando" data-fmodo="jogando" role="radio" aria-checked="${fichaModo==='jogando'}" title="O que se usa na mesa: as barras, os números (um clique rola) e o que está valendo agora">Jogando</button>
+          <button type="button" class="fmodo" id="fmodoEditar" data-fmodo="editar" role="radio" aria-checked="${fichaModo==='editar'}" title="O cadastro inteiro: quem é, os tiers, as defesas, os percentuais">Editar</button>
+        </span>
+        <details class="fmais" id="fmais"${document.documentElement.classList.contains('menus-abertos')?' open':''}>
+          <summary class="mini" title="Mais: + Pet, Duplicar, Excluir" aria-label="Mais ações da ficha">⋯</summary>
+          <div class="fmais-m" role="menu">
+            ${!pc.petDe && FichasMesa.podeEditar(pc)?`<button class="mini" data-act="addpet" role="menuitem" title="Uma ficha suplementar para o animal ou companheiro de ${esc(pc.nome||'este personagem')}: atributos à mão, barras e habilidades, sem bolsa. Quem controla ${esc(pc.nome||'o personagem')} controla o pet.">+ Pet</button>`:''}
+            <button class="mini" data-act="dup" role="menuitem">Duplicar</button>
+            <button class="mini danger" data-act="del" role="menuitem">Excluir</button>
+          </div>
+        </details>
       </span>
     </div>
     <div class="bd">
@@ -3037,12 +3104,14 @@ function htmlResumo(pc,c){
       ${FichasExtras.htmlRetrato(pc, '')}
       <div class="idcorpo rscorpo">
         <div class="rsnome">
-          <label class="f"><span class="eyebrow">Nome</span><input id="f_nome" value="${esc(pc.nome)}"></label>
+          <label class="f so-editar"><span class="eyebrow">Nome</span><input id="f_nome" value="${esc(pc.nome)}"></label>
+          <h2 class="rsnomej so-jogando">${esc(pc.nome||'Sem nome')}</h2>
           <span class="rsmeta" id="rsmeta">${esc(metaDaFicha(pc))}</span>
           ${htmlLugarNaFicha(pc)}
         </div>
         ${htmlBarrinhas(pc, c)}
         ${htmlNumerosResumo(pc,c)}
+        ${htmlRolouResumo(pc)}
         ${htmlEstadoResumo(pc)}
         ${htmlAgoraResumo(pc)}
       </div>
@@ -3052,7 +3121,7 @@ function htmlResumo(pc,c){
 }
 // quem é (na aba Atributos): a raça, o lado, o tier, o level, o XP, o dono, o grupo, as tags e o resto da identidade
 function htmlQuemE(pc,optTier,optLvl){
-  return `<div class="panel" style="margin-bottom:18px" id="quemE">
+  return `<div class="panel so-editar" style="margin-bottom:18px" id="quemE">
     <div class="hd"><span class="eyebrow">Quem é</span></div>
     <div class="bd">
       <div class="idcard idcardq">
@@ -3622,6 +3691,10 @@ function ligarFicha(pc){
   const rfo=host.querySelector('#rolFonte');
   if(rfo) rfo.onchange=e=>patch(()=>{pc.rol.fonte=e.target.value});
   host.querySelectorAll('[data-rolar]').forEach(b=>b.onclick=()=>rolarNaFicha(pc,b.dataset.rolar));
+  // (lote 69) o resumo: o número rola com o equipamento; o "base", sem
+  host.querySelectorAll('[data-rolar-r]').forEach(b=>b.onclick=()=>rolarNaFicha(pc,b.dataset.rolarR,'total'));
+  host.querySelectorAll('[data-rolar-base]').forEach(b=>b.onclick=()=>rolarNaFicha(pc,b.dataset.rolarBase,'base'));
+  host.querySelectorAll('[data-fmodo]').forEach(b=>b.onclick=()=>{ fichaModo=b.dataset.fmodo; renderFicha(); });
   const bdis=host.querySelector('#btnDisputa');
   if(bdis) bdis.onclick=()=>abrirDisputa(pc);
   host.querySelector('#f_grupo').onchange=e=>{
@@ -4552,15 +4625,15 @@ function rolMaisGuardar(){
   try{ localStorage.setItem(ROLMAIS_KEY, JSON.stringify(o)); }catch(e){}
 }
 const sinalMais=n=>(n<0?'−':'+')+Math.abs(n);
-function rolarNaFicha(pc,k){
-  const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'}), m=rolMaisDe(pc);
-  const valor0=valorDoAtributo(pc,k,rol.fonte), valor=Math.max(0,Math.round(valor0)+m.atr);
+function rolarNaFicha(pc,k,fonteAqui){
+  const rol=pc.rol||(pc.rol={fixa:0,fonte:'total'}), m=rolMaisDe(pc), fonte=fonteAqui||rol.fonte;     // (lote 69: o resumo diz a fonte)
+  const valor0=valorDoAtributo(pc,k,fonte), valor=Math.max(0,Math.round(valor0)+m.atr);
   const r=rolarFixa(valor, rol.fixa||0), total=r.total+m.res;
-  const usouBase = ATRIBS.some(a=>a.k===k) && rol.fonte==='base';      // "base" só existe nos cinco atributos
+  const usouBase = ATRIBS.some(a=>a.k===k) && fonte==='base';      // "base" só existe nos cinco atributos
   const esp = window.TC && TC.rules && TC.rules.DEFESAS_ESP ? TC.rules.DEFESAS_ESP.find(d=>d.k===k) : null;
   const rot = esp? 'Defesa contra '+esp.nome.toLowerCase() : k;
   const extra=(m.atr? ' · '+sinalMais(m.atr)+' no atributo ('+Math.round(valor0)+' → '+valor+')' : '')+(m.res? ' · '+sinalMais(m.res)+' no resultado' : '');
-  pc.ultRol={k:rot, valor, base:usouBase, total, texto:r.texto+extra, dado:r.dado, bruto:r.bruto};
+  pc.ultRol={k:rot, valor, base:usouBase, total, texto:r.texto+extra, dado:r.dado, bruto:r.bruto, em:Date.now()};
   logar({tipo:'fixa', quem:pc.nome, pc:pc.id,
     det:rot+' '+valor+(usouBase?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:'')+extra,
     total, dd:ddDaFixa(r)});
@@ -5310,6 +5383,9 @@ document.getElementById('btnGrupo').onclick=()=>{
   save(); renderLista();
 };
 document.getElementById('busca').oninput=renderLista;
+// (lote 69) os menus "⋯" fecham ao escolher e ao clicar fora
+if(document.documentElement.classList.contains('menus-abertos')) document.querySelectorAll('details.fmais').forEach(d=>d.open=true);
+document.addEventListener('click',ev=>{ if(document.documentElement.classList.contains('menus-abertos')) return; for(const d of document.querySelectorAll('details.fmais[open]')) if(!d.contains(ev.target) || ev.target.closest('.fmais-m button')) d.open=false; },true);
 document.getElementById('btnCfg').onclick=abrirCfg;
 document.getElementById('btnExport').onclick=exportar;
 document.getElementById('btnImport').onclick=()=>document.getElementById('fileIn').click();

@@ -254,6 +254,19 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### A ficha em Jogando e Editar (lote 69)
+
+- **Os modos da ficha** (`fichaModo`, `#fmodoJogando` / `#fmodoEditar`; a classe `ficha-jogando` no `#ficha`): abre
+  sempre em Jogando. No Jogando somem o que é `.so-editar` (o Quem é, a tabela dos tiers `#painelTabAtr`, o campo do
+  nome) e o Simples/Completo; aparece o `.so-jogando` (o nome em destaque). Os testes antigos abrem no Editar
+  (`tinycats:testes-ficha-editar`; `o.jogando` desliga).
+- **Os números do resumo rolam** (`data-rolar-r`, `data-rolar-base`; `rolarNaFicha(pc, k, fonte)`): o total com o
+  equipamento e, nos cinco atributos, a base embaixo. A última rolagem fica no resumo (`#rsRolou`, por 5 minutos).
+- **Os "⋯"** (`details.fmais`): o da ficha (+ Pet, Duplicar, Excluir) e o do alto (`#actsMais`: Tabelas base,
+  Importar, Apagar dados). Fecham ao escolher ou clicar fora; nos testes (`tinycats:testes-tudo-aberto`) ficam abertos.
+- **A Corrupção** no fim da ficha, num `details#soMestreFim` "Só o mestre" (aberto nos testes).
+- Testes: `fichas-lote69`.
+
 ### Os modos no alto, o trilho da Mesa ao vivo e o lembrete do descanso longo (lote 68)
 
 - **Os modos** (`GRUPOS`: `sessao`, `mundo`, `descanso`, `preparar`; o botão `#modo-<id>`): a barra mostra só as abas

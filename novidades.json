@@ -2,6 +2,30 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-4",
+      "data": "2026-11-03",
+      "titulo": "A ficha em Jogando e Editar, e a base ao lado do total",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Fichas: a ficha abre em Jogando, com o que se usa na mesa: as barras, os números e o que está valendo agora. “Editar”, no alto da ficha, traz o cadastro inteiro (quem é, os tiers, as defesas). Um clique troca."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: cada atributo mostra o total e, embaixo, a base (sem o equipamento). Um clique no número rola com o equipamento; um clique no “base” rola sem. A rolagem aparece logo embaixo dos números e vai para a Mesa ao vivo."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: + Pet, Duplicar e Excluir ficam no “⋯” da ficha, longe dos números."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Fichas: Tabelas base, Importar e Apagar dados foram para o “⋯” do alto. A Corrupção desceu para o fim da ficha, recolhida e marcada “Só o mestre”."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-3",
       "data": "2026-11-03",
       "titulo": "Os modos no alto e a Mesa ao vivo num trilho",
