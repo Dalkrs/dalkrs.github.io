@@ -381,7 +381,7 @@
   let focoDepois = null;
   function pintar() {
     if (!pronto) return;
-    pintarTopo(); pintarCena(); pintarPainel();
+    pintarTopo(); pintarCena(); pintarPainel(); aplicarModoAc();
   }
   function pintarTopo() {
     document.documentElement.classList.toggle('jogador', !mestre());
@@ -1348,6 +1348,57 @@
     gravar(); passo.depois = jCamp; pintar();
     publicar(camp.nome, resumo + (naFicha.length ? '. Na ficha — ' + naFicha.join(' · ') : ''));
     toast(resumo + '.', 'Desfazer', desfazer, 15000);
+    // (lote 70) depois do descanso longo, a pergunta da noite: como ficou cada par
+    if (plano.tipo === 'longo') setTimeout(() => abrirNoite(plano.linhas.map(x => x.id)), 350);
+  }
+
+  /* ---- (lote 70) "Como foi a noite entre eles?" ----
+     Depois do descanso longo, para o mestre não esquecer os relacionamentos: um par por linha (quem descansou e tem
+     ficha), cada um com Pior, Igual ou Melhor (−1, 0, +1, para os dois lados). Igual não muda nada; "Pular" fecha.
+     Registrar muda tudo de uma vez, com um passo só de desfazer. */
+  function abrirNoite(ids) {
+    if (!mestre() || !naMesa() || !comSegredos()) return;
+    const gente = presentes().filter(p => !p.semFicha && (!ids || ids.includes(p.id)));
+    if (gente.length < 2) return;
+    const pares = [];
+    for (let i = 0; i < gente.length; i++) for (let k = i + 1; k < gente.length; k++) pares.push({ a: gente[i], b: gente[k], d: 0 });
+    const OPC = [[-1, 'Pior'], [0, 'Igual'], [1, 'Melhor']];
+    const lista = h('div', { class: 'noite-l', id: 'noite-l' });
+    const ok = h('button', { type: 'button', class: 'btn pri', id: 'noite-ok', text: 'Registrar a noite' });
+    const pintarNoite = () => {
+      lista.replaceChildren(...pares.map((p, i) => h('div', { class: 'noite-p', 'data-par': i },
+        h('span', { class: 'noite-n', text: p.a.nome + ' e ' + p.b.nome }),
+        h('span', { class: 'seg', role: 'group', 'aria-label': 'Como ficou entre ' + p.a.nome + ' e ' + p.b.nome },
+          OPC.map(([v, rot]) => h('button', { type: 'button', 'data-v': v, 'aria-pressed': String(p.d === v), text: rot, onclick: () => { p.d = v; pintarNoite(); } }))))));
+      const n = pares.filter(p => p.d).length;
+      ok.textContent = n ? 'Registrar a noite (' + (n === 1 ? '1 par' : n + ' pares') + ')' : 'Nada mudou entre eles';
+    };
+    pintarNoite();
+    // (um cartão sobre a cena, não uma janela: não segura nada — o Desfazer do descanso continua à mão)
+    const velho = $('noite'); if (velho) velho.remove();
+    const fechar = () => { const c = $('noite'); if (c) c.remove(); };
+    const pular = h('button', { type: 'button', class: 'btn', id: 'noite-pular', text: 'Pular', onclick: fechar });
+    ok.addEventListener('click', () => { const mud = pares.filter(p => p.d); fechar(); if (mud.length) registrarNoite(mud); });
+    const card = h('section', { class: 'noite-card', id: 'noite', role: 'dialog', 'aria-label': 'Como foi a noite entre eles?' },
+      h('h3', { text: 'Como foi a noite entre eles?' }),
+      h('p', { class: 'note', text: 'O Relacionamento de cada um pelo outro. Igual não muda nada.' }), lista,
+      h('div', { class: 'noite-f' }, pular, ok));
+    $('palco').append(card);
+    ok.focus();
+  }
+  function registrarNoite(pares) {
+    const fichas = [], partes = [], aplicar = aplicadorDeMomento(fichas, partes);
+    for (const p of pares) { aplicar(p.a.id, p.b.id, p.a.nome, p.b.nome, p.d, 0, 0, 0, ''); aplicar(p.b.id, p.a.id, p.b.nome, p.a.nome, p.d, 0, 0, 0, ''); }
+    if (!fichas.length) return;
+    const resumo = pares.map(p => p.a.nome + ' e ' + p.b.nome + ' ' + N.comSinal(p.d)).join(' · ');
+    const passo = { rotulo: 'a noite entre eles', json: jCamp, junta: null, fichas, publicar: true };
+    pilha.push(passo);
+    if (pilha.length > 60) pilha.shift();
+    camp = N.normalizar(Object.assign(N.copia(camp), { diario: [{ id: N.novoId('di'), t: Date.now(), texto: 'A noite entre eles: ' + resumo }].concat(camp.diario) }));
+    gravar(); passo.depois = jCamp;
+    pintar();
+    publicar(camp.nome + ' · a noite', resumo);
+    toast('A noite ficou registrada: ' + resumo + '.', 'Desfazer', desfazer, 12000);
   }
 
   /* ---- um momento entre dois personagens ----
@@ -1493,10 +1544,10 @@
     publicar(camp.nome, resumo);
     toast('Feito: ' + resumo, 'Desfazer', desfazer, 12000);
   }
-  function registrarMomento(m, nomeA, nomeB) {
-    const fichas = [], partes = [];
+  // (lote 70) o que um momento muda em um personagem; serve ao momento e à noite depois do descanso longo
+  function aplicadorDeMomento(fichas, partes) {
     // tudo o que muda num personagem vai numa gravação só (o estado da ficha, e o que o mestre guarda dele)
-    const aplicar = (de, para, nomeDe, nomePara, dv, dh, ds, dc, emo) => {
+    return (de, para, nomeDe, nomePara, dv, dh, ds, dc, emo) => {
       const l = P.pegar(de); if (!l) return;
       // (o valor pode estar na ficha ou guardado com o mestre — escondido do jogador, ou de um NPC: muda onde estiver)
       const npc = !l.dono_id, seg0 = segDe(de);
@@ -1524,6 +1575,9 @@
       if (emo === '-') partes.push(nomeDe + ' sem emoção');
       else if (emo && N.emocao(emo)) partes.push(nomeDe + ': ' + N.emocao(emo).nome.toLowerCase());
     };
+  }
+  function registrarMomento(m, nomeA, nomeB) {
+    const fichas = [], partes = [], aplicar = aplicadorDeMomento(fichas, partes);
     aplicar(m.a, m.b, nomeA, nomeB, m.da, m.ha, m.sa, m.ca, m.ea);
     aplicar(m.b, m.a, nomeB, nomeA, m.db, m.hb, m.sb, m.cb, m.eb);
     const resumo = (m.texto.trim() ? m.texto.trim() + ' ' : '') + (partes.length ? '(' + partes.join(' · ') + ')' : '');
@@ -1603,7 +1657,29 @@
   /* ---------------- ligações fixas da página ---------------- */
   $('nome').addEventListener('change', e => { const v = e.target.value.trim(); if (!v) { e.target.value = camp.nome; return; } mudar('renomear o acampamento', c => { c.nome = v; }); });
   $('btDesfazer').addEventListener('click', desfazer);
-  $('btPainel').addEventListener('click', () => { $('side').classList.toggle('fechado'); ajustarPalco(); });
+  /* (lote 70) Fogueira ou Arrumar (quem mestra): na Fogueira, o painel fecha e a cena fica com a tela; em Arrumar, abre.
+     Lembrado neste aparelho. Quem joga começa com o painel fechado (abre pelo botão do painel). Nos testes, aberto. */
+  const lerG = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const gravarG = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento */ } };
+  let modoAc = lerG('tinycats:acamp:modo') || (lerG('tinycats:testes-tudo-aberto') === '1' ? 'arrumar' : 'fogueira'), aplicouModo = false;
+  function pintarModoAc() { for (const b of document.querySelectorAll('#modoAcamp [data-mac]')) b.setAttribute('aria-pressed', String(b.dataset.mac === modoAc)); }
+  function porModoAc(m, lembrar) {
+    modoAc = m; if (lembrar) gravarG('tinycats:acamp:modo', m);
+    $('side').classList.toggle('fechado', m === 'fogueira');
+    pintarModoAc(); ajustarPalco();
+  }
+  function aplicarModoAc() {
+    if (aplicouModo || !pronto) return;
+    aplicouModo = true;
+    if (mestre()) porModoAc(modoAc, false);
+    else { $('side').classList.toggle('fechado', lerG('tinycats:testes-tudo-aberto') !== '1'); ajustarPalco(); }
+  }
+  for (const b of document.querySelectorAll('#modoAcamp [data-mac]')) b.addEventListener('click', () => porModoAc(b.dataset.mac, true));
+  $('btPainel').addEventListener('click', () => {
+    const abre = $('side').classList.contains('fechado');
+    if (mestre()) porModoAc(abre ? 'arrumar' : 'fogueira', true);
+    else { $('side').classList.toggle('fechado'); ajustarPalco(); }
+  });
   if (window.matchMedia('(max-width: 720px)').matches) $('side').classList.add('fechado');      // em tela estreita o painel é uma gaveta, que começa fechada
   $('btCurto').addEventListener('click', () => abrirDescanso('curto'));
   $('btLongo').addEventListener('click', () => abrirDescanso('longo'));

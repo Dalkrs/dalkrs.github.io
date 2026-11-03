@@ -2,6 +2,32 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-5",
+      "data": "2026-11-03",
+      "titulo": "Fogueira e Arrumar no Acampamento, e o Hoje do Escudo",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Acampamento: o painel começa fechado e a fogueira fica com a tela. O botão do painel abre quando você quiser."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Acampamento: dois modos, Fogueira (a cena inteira, com os descansos) e Arrumar (o painel aberto, com as provisões, a estrutura, a bancada e a caravana)."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Acampamento: depois do descanso longo, “Como foi a noite entre eles?”. Cada par tem Pior, Igual ou Melhor, e o Relacionamento dos dois muda junto, com Desfazer. Pular fecha sem mudar nada."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Escudo do mestre: o modo Hoje junta numa tela a sessão em jogo (com o passo de agora marcado), os relógios e o que os passos ligam, como o handout para mostrar. Preparar traz as seis partes de sempre."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-4",
       "data": "2026-11-03",
       "titulo": "A ficha em Jogando e Editar, e a base ao lado do total",

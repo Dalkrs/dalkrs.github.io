@@ -33,7 +33,10 @@
   /* ---------------- os documentos ---------------- */
   let st = null, D = null, A = null, naMesa = false, pronto = false, bancoOk = null, souMestreDaMesa = true;
   const ABAS = ['roteiro', 'relogios', 'handouts', 'npcs', 'encontros', 'misterios'];
-  let aba = ABAS.includes(guarda.ler('tinycats:escudo:aba')) ? guarda.ler('tinycats:escudo:aba') : 'roteiro';
+  /* (lote 70) Dois modos: Hoje (a sessão em jogo, os relógios e o que está ligado aos passos, numa tela só) e Preparar
+     (as seis partes de sempre). O Escudo abre em Hoje; Preparar volta para a parte aberta da última vez. */
+  let abaPrep = ABAS.includes(guarda.ler('tinycats:escudo:aba')) ? guarda.ler('tinycats:escudo:aba') : 'roteiro';
+  let aba = guarda.ler('tinycats:testes-tudo-aberto') === '1' ? abaPrep : 'hoje';
   let selS = guarda.ler('tinycats:escudo:sessao') || null;
   const notas = new Set();                                           // os passos com a nota aberta
   let pilha = [], tSalvo = 0, ultimoTexto = null;
@@ -360,6 +363,56 @@
     return h('div', { class: 'cols' }, lista, det);
   }
 
+  /* ---------------- (lote 70) Hoje ----------------
+     A sessão em jogo (ou a próxima planejada), com o passo de agora marcado; os relógios, com − e +; e o que os passos
+     ligam (os handouts para entregar, os NPCs, os encontros, as cenas), cada um com o botão de ir. Marcar um passo como
+     feito anda para o próximo (e a hora fica no "O que aconteceu", como no Roteiro). */
+  function pintarHoje() {
+    const camp = campVista(), ss = A.sessoes();
+    const x = A.sessaoAberta(camp) || E.proximaPlanejada(ss, camp) || null;
+    const s = x ? (x.s || A.sessao(x.id)) : null, sid = x ? x.id : null;
+    const sec = (tit, ...kids) => h('section', { class: 'hj-sec' }, h('h3', { class: 'sub', text: tit }), ...kids);
+    let colSessao;
+    if (!s) colSessao = sec('A sessão', h('div', { class: 'vazio', style: { padding: '10px 0' } }, h('p', { text: 'Nenhuma sessão planejada.' }),
+      h('button', { type: 'button', class: 'btn pri', 'data-k': 'hoje:roteiro', onclick: () => { aba = 'roteiro'; pintar(); } }, 'Escrever o roteiro')));
+    else {
+      const prox = s.passos.find(p => !p.feito);
+      const feitos = s.passos.filter(p => p.feito).length;
+      colSessao = h('section', { class: 'hj-sec hj-sessao' },
+        h('div', { class: 'cab' }, h('h2', { class: 'hj-nome', text: s.nome }), h('span', { class: 'badge ' + (s.estado === 'aberta' ? 'ouro' : ''), text: s.estado === 'aberta' ? 'Em jogo' : 'Planejada' }),
+          h('span', { class: 'ajuda', text: feitos + ' de ' + s.passos.length + (s.passos.length === 1 ? ' passo' : ' passos') })),
+        s.estado === 'plano' ? h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn pri', 'data-k': 'hoje:abrir', onclick: () => {
+          const outra = A.sessaoAberta(s.camp);
+          if (outra && outra.id !== sid) { toast(outra.s.nome + ' ainda está em jogo: feche-a antes.'); return; }
+          mudar('abrir ' + s.nome, [E.PRE.sessao + sid], () => A.abrirSessao(sid)); toast(s.nome + ' em jogo.');
+        } }, 'Abrir a sessão')) : null,
+        h('ol', { class: 'hj-passos' }, s.passos.map(p => {
+          const nome = nomeDaLiga(p.liga), agora = prox && p.id === prox.id;
+          return h('li', { class: 'hj-p' + (p.feito ? ' feito' : '') + (agora ? ' agora' : ''), 'data-k': 'hj:' + p.id },
+            h('input', { type: 'checkbox', checked: p.feito, 'data-k': 'hj:' + p.id + ':feito', 'aria-label': 'Aconteceu: ' + (p.txt || 'passo'),
+              onchange: ev => mudarSessao(sid, ev.target.checked ? 'marcar um passo' : 'desmarcar um passo', y => { const q = y.passos.find(z => z.id === p.id); if (q) q.feito = ev.target.checked; if (ev.target.checked && y.estado === 'plano') { /* (marca na planejada também) */ } }) }),
+            h('span', { class: 'hj-t', text: p.txt || 'Passo' }),
+            agora ? h('span', { class: 'badge ouro', text: 'Agora' }) : null,
+            p.liga && nome ? h('button', { type: 'button', class: 'btn xs', 'data-k': 'hj:' + p.id + ':ir', onclick: () => irPasso(sid, p) }, nome) : null);
+        })),
+        s.estado === 'aberta' ? h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'hoje:fechar', onclick: () => fecharDlg(sid) }, 'Fechar a sessão')) : null);
+    }
+    const rs = A.relogios().filter(y => !camp || !y.r.camp || y.r.camp === camp);
+    const colRel = sec('Relógios', rs.length ? h('div', { class: 'hj-rels' }, rs.map(y => { const r = y.r, cheio = r.cheio >= r.gomos;
+      return h('div', { class: 'hj-rel' + (cheio ? ' cheio' : ''), 'data-k': 'hj-r:' + y.id }, relogioSvg(y.id, r, 56, true),
+        h('span', { class: 'hj-rn' }, h('b', { text: r.nome }), h('small', { text: r.cheio + ' de ' + r.gomos + (r.vista ? ' · os jogadores veem' : '') })),
+        h('span', { class: 'row' }, h('button', { type: 'button', class: 'ib', disabled: r.cheio <= 0, 'aria-label': 'Voltar um gomo de ' + r.nome, onclick: () => andarRelogio(y.id, -1) }, '−'),
+          h('button', { type: 'button', class: 'ib', disabled: cheio, 'aria-label': 'Avançar um gomo de ' + r.nome, 'data-k': 'hj-r:' + y.id + ':mais', onclick: () => andarRelogio(y.id, 1) }, '+'))); }))
+      : h('p', { class: 'ajuda', text: 'Nenhum relógio. Em Preparar, Relógios.' }));
+    const ligas = s ? s.passos.filter(p => p.liga && nomeDaLiga(p.liga) && p.liga.k !== 'relogio') : [];
+    const colLig = sec('Na sessão', ligas.length ? h('div', { class: 'hj-ligas' }, ligas.map(p => {
+      const ho = p.liga.k === 'handout' ? A.handout(p.liga.id) : null;
+      return h('div', { class: 'hj-liga', 'data-k': 'hj-l:' + p.id }, icone(ICO[p.liga.k], 15), h('span', { class: 'hj-ln', text: nomeDaLiga(p.liga) }),
+        h('button', { type: 'button', class: 'btn xs' + (ho && !ho.entregue ? ' pri' : ''), onclick: () => irPasso(sid, p) }, ho ? (ho.entregue ? 'Ver' : 'Mostrar aos jogadores') : ROT_LIGA[p.liga.k] || 'Ir'));
+    })) : h('p', { class: 'ajuda', text: 'Os handouts, NPCs, encontros e cenas ligados aos passos aparecem aqui.' }));
+    return h('div', { class: 'hoje' }, colSessao, h('div', { class: 'hj-lado' }, colRel, colLig));
+  }
+
   /* ---------------- os relógios ---------------- */
   function editarRelogio(id) {
     const r0 = A.relogio(id);
@@ -450,14 +503,18 @@
     pintando = true;
     try {
       for (const b of document.querySelectorAll('#partes button')) b.setAttribute('aria-pressed', String(b.getAttribute('data-aba') === aba));
+      for (const b of document.querySelectorAll('#modoEsc button')) b.setAttribute('aria-pressed', String((b.dataset.mesc === 'hoje') === (aba === 'hoje')));
+      $('partes').hidden = aba === 'hoje';
+      if (aba !== 'hoje') abaPrep = aba;
       const ban = $('banco');
       ban.hidden = !(naMesa && bancoOk === false);
       if (!ban.hidden && !ban.childNodes.length) ban.append(h('div', { class: 'aviso', style: { margin: '12px 16px 0' } }, 'Falta aplicar a atualização do banco desta versão (o SQL 0025): sem ela, os handouts vão só para a mesa toda, e os puzzles ainda não podem ser entregues. O roteiro e os relógios funcionam.'));
-      const conteudo = aba === 'roteiro' ? pintarRoteiro() : aba === 'relogios' ? pintarRelogios() : aba === 'npcs' ? NP.pintar() : aba === 'encontros' ? EN.pintar() : aba === 'misterios' ? MI.pintar() : HO.pintar();
+      const conteudo = aba === 'hoje' ? pintarHoje() : aba === 'roteiro' ? pintarRoteiro() : aba === 'relogios' ? pintarRelogios() : aba === 'npcs' ? NP.pintar() : aba === 'encontros' ? EN.pintar() : aba === 'misterios' ? MI.pintar() : HO.pintar();
       morphEm($('meio'), [conteudo]);
     } finally { pintando = false; }
   }
   const depois = () => { clearTimeout(tPintar); tPintar = setTimeout(() => { if (!J.aberta()) pintar(); }, 120); };
+  for (const b of document.querySelectorAll('#modoEsc button')) b.onclick = () => { aba = b.dataset.mesc === 'hoje' ? 'hoje' : abaPrep; pintar(); };
   for (const b of document.querySelectorAll('#partes button')) b.onclick = () => { aba = b.getAttribute('data-aba'); guarda.gravar('tinycats:escudo:aba', aba); pintar(); };
   document.addEventListener('keydown', ev => {
     const a = document.activeElement, escrevendo = !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable);

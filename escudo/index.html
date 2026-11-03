@@ -84,6 +84,24 @@ select.in { padding: 0 6px; }
 .aviso { background: var(--lamp-soft); border: 1px solid #8a6a2a; border-radius: 10px; padding: 10px 12px; font-size: 13px; }
 .aviso.cinza { background: var(--raised); border-color: var(--line); color: var(--fg-2); }
 main { flex: 1; min-width: 0; }
+/* (lote 70) Hoje: a sessão à esquerda; os relógios e o que está na sessão à direita */
+.hoje { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap: 16px; padding: 16px; align-items: start; }
+.hj-lado { display: grid; gap: 16px; }
+.hj-sec { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--raised); min-width: 0; }
+.hj-sec .sub { margin: 0; }
+.hj-sessao .cab { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.hj-nome { margin: 0; font: 600 22px/1.15 var(--display); }
+.hj-passos { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.hj-p { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+.hj-p input { width: 18px; height: 18px; accent-color: var(--lamp); flex: none; }
+.hj-p .hj-t { flex: 1; min-width: 0; font-weight: 600; }
+.hj-p.feito .hj-t { color: var(--fg-3); text-decoration: line-through; text-decoration-color: var(--line-strong); }
+.hj-p.agora { border-color: var(--lamp); box-shadow: inset 3px 0 0 var(--lamp); }
+.hj-rels, .hj-ligas { display: grid; gap: 8px; }
+.hj-rel { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.hj-rn { display: grid; } .hj-rn small { color: var(--fg-3); font-size: 12.5px; }
+.hj-liga { display: flex; align-items: center; gap: 8px; } .hj-liga .hj-ln { flex: 1; min-width: 0; font-weight: 600; }
+@media (max-width: 860px) { .hoje { grid-template-columns: 1fr; } }
 .cols { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start; }
 @media (max-width: 860px) { .cols { grid-template-columns: minmax(0, 1fr); padding: 12px; } }
 .lista { display: grid; gap: 6px; align-content: start; position: sticky; top: 58px; max-height: calc(100vh - 74px); overflow: auto; padding-right: 2px; }
@@ -252,6 +270,10 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <div class="app" id="app">
   <header class="top" id="top">
     <span class="brand">Escudo do mestre</span>
+    <span class="seg" role="group" aria-label="Hoje ou preparar" id="modoEsc">
+      <button type="button" data-k="modo:hoje" data-mesc="hoje" title="A sessão em jogo, os relógios e o que os passos ligam, numa tela só">Hoje</button>
+      <button type="button" data-k="modo:preparar" data-mesc="preparar" title="O roteiro, os relógios, os handouts, os NPCs, os encontros e os mistérios">Preparar</button>
+    </span>
     <span class="seg" role="group" aria-label="Partes do Escudo" id="partes">
       <button type="button" data-k="aba:roteiro" data-aba="roteiro">Roteiro</button>
       <button type="button" data-k="aba:relogios" data-aba="relogios">Relógios</button>
@@ -287,6 +309,6 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <script src="encontros.js?v=1"></script>
 <script src="../tc/misterio.js?v=1"></script>
 <script src="misterios.js?v=1"></script>
-<script src="escudo.js?v=3"></script>
+<script src="escudo.js?v=4"></script>
 </body>
 </html>

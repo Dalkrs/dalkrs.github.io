@@ -254,6 +254,19 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Fogueira e Arrumar no Acampamento, a noite entre eles e o Hoje do Escudo (lote 70)
+
+- **Acampamento** (`#modoAcamp`, `porModoAc`; `tinycats:acamp:modo`): Fogueira fecha o painel (`#side.fechado`),
+  Arrumar abre; o botão do painel acompanha. Quem joga começa com o painel fechado. Nos testes
+  (`tinycats:testes-tudo-aberto`), o painel começa aberto.
+- **A noite entre eles** (`abrirNoite`, `registrarNoite`): depois do descanso longo, um cartão sobre a cena (`#noite`,
+  não uma janela) com os pares de quem descansou; Pior, Igual, Melhor mudam o Relacionamento dos dois lados em ±1,
+  pelo mesmo caminho do Momento (`aplicadorDeMomento`), num passo só de desfazer e uma linha no diário.
+- **Escudo, Hoje** (`aba = 'hoje'`, `pintarHoje`; `#modoEsc`): abre em Hoje; Preparar volta à última parte (`abaPrep`).
+  A sessão aberta (senão a próxima planejada), os passos com o de agora marcado, os relógios (− e +) e as ligações
+  dos passos com o botão de ir (`irPasso`).
+- Testes: `acampamento-lote70.rede`, e os do Escudo e do Acampamento de sempre.
+
 ### A ficha em Jogando e Editar (lote 69)
 
 - **Os modos da ficha** (`fichaModo`, `#fmodoJogando` / `#fmodoEditar`; a classe `ficha-jogando` no `#ficha`): abre

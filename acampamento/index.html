@@ -57,6 +57,14 @@ button { cursor: pointer; }
 .seg { display: inline-flex; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); }
 .seg button { height: 28px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font-weight: 600; font-size: 13px; }
 .seg button[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+/* (lote 70) a noite depois do descanso longo: um cartão sobre a cena */
+.noite-card { position: absolute; right: 16px; top: 16px; z-index: 12; width: min(380px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 12px 34px rgba(0,0,0,.45); }
+.noite-card h3 { margin: 0 0 4px; font: 600 18px/1.2 var(--display, inherit); }
+.noite-card .note { margin: 0 0 10px; }
+.noite-l { display: grid; gap: 8px; }
+.noite-p { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.noite-n { font-weight: 600; font-size: 14px; }
+.noite-f { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
 .btn:hover:not(:disabled) { background: var(--hover); }
 .btn:disabled { opacity: .5; cursor: default; }
@@ -387,6 +395,11 @@ dialog.largo { max-width: min(1080px, calc(100vw - 24px)); width: 100%; }
     <span class="chip" id="chipRacoes" title="Rações: a soma das provisões guardadas"></span>
     <span class="grow"></span>
     <span class="salvo" id="salvo" role="status"></span>
+    <!-- (lote 70) dois jeitos de trabalhar: a fogueira (a cena inteira, com os descansos) e arrumar (o painel aberto) -->
+    <div class="seg so-mestre" id="modoAcamp" role="group" aria-label="Como trabalhar no acampamento">
+      <button type="button" data-mac="fogueira" aria-pressed="false" title="A cena inteira, com os descansos e os momentos">Fogueira</button>
+      <button type="button" data-mac="arrumar" aria-pressed="false" title="O painel aberto: o grupo, as provisões, a estrutura, a bancada e a caravana">Arrumar</button>
+    </div>
     <div class="seg so-mestre" id="hora" role="group" aria-label="Hora no acampamento"></div>
     <button type="button" class="btn sm" id="btCena" hidden title="Abre o mapa do acampamento na aba Cenas, com tokens, luz e paredes">Mapa tático</button>
     <button type="button" class="btn sm" id="btMundo" hidden title="Vai para o Mapa-múndi">Mapa-múndi</button>
@@ -431,6 +444,6 @@ dialog.largo { max-width: min(1080px, calc(100vw - 24px)); width: 100%; }
 <script src="../tc/calendario.js?v=2"></script>
 <script src="nucleo.js?v=15"></script>
 <script src="desenhos.js?v=3"></script>
-<script src="acampamento.js?v=24"></script>
+<script src="acampamento.js?v=25"></script>
 </body>
 </html>

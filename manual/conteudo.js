@@ -457,6 +457,8 @@
   };
 
   const sabia = [
+    { t: 'A noite entre eles', txt: 'Depois do descanso longo, o Acampamento pergunta como ficou cada par: Pior, Igual ou Melhor. O Relacionamento dos dois muda junto.', papel: 'mestre', sistema: 'acampamento' },
+    { t: 'O Escudo em Hoje', txt: 'Na sessão, o modo Hoje mostra o passo de agora, os relógios e os handouts para mostrar, sem trocar de aba.', papel: 'mestre', sistema: 'escudo' },
     { t: 'Rolar a base num clique', txt: 'Na ficha, embaixo de cada atributo, o “base” rola sem o equipamento — o que o mestre pede tanto. O número grande rola com ele.', papel: 'todos', sistema: 'fichas' },
     { t: 'Um modo de cada vez', txt: 'No alto do site, Sessão, Mundo, Descanso e Preparar mostram só as abas de cada momento. A Mesa ao vivo fechada vira um trilho fino à direita.', papel: 'todos', sistema: 'mesa' },
     { t: 'O selo do descanso longo', txt: 'Virou o dia no Mapa-múndi e o grupo não descansou? O selo “Falta o descanso longo” fica no alto até o descanso, ou até você dizer que hoje não tem.', papel: 'mestre', sistema: 'acampamento' },
@@ -494,5 +496,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 18, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 19, sistemas, tarefas, roteiro, sabia };
 })();

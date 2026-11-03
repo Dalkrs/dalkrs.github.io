@@ -137,6 +137,8 @@
     acampamento: {
       mestre: [
         { t: 'Os descansos', txt: 'Descanso curto (uma pausa, sem gastar provisões) e longo (a noite: recupera as barras, gasta rações e mexe em Conforto e Sanidade). Sempre com prévia antes.', onde: { sel: '#acoes' } },
+        { t: 'Fogueira e Arrumar', txt: 'No alto: Fogueira deixa a cena com a tela (os descansos e os momentos embaixo); Arrumar abre o painel (o grupo, as provisões, a estrutura, a bancada, a caravana).', onde: { sel: '#modoAcamp' } },
+        { t: 'A noite entre eles', txt: 'Depois do descanso longo, um cartão sobre a cena pergunta como ficou cada par: Pior, Igual ou Melhor (o Relacionamento dos dois lados, ±1). Registrar tem Desfazer; Pular fecha.' },
         { t: 'As rações', txt: 'A soma das provisões guardadas.', onde: { sel: '#chipRacoes' } },
         { t: 'O lembrete do descanso longo', txt: 'Quando o dia vira no Mapa-múndi e o grupo ainda não teve o descanso longo, o selo “Falta o descanso longo” aparece no alto do site. Ele abre o Acampamento; o × diz que hoje não tem (volta no dia seguinte).' },
         { t: 'As áreas', txt: 'As partes do acampamento (a fogueira, as oficinas, o convívio, a guarda e a caça), com quem está em cada uma.', onde: { sel: '#areas' } },
@@ -269,6 +271,7 @@
     // (lote 31) o Escudo do mestre e as Pistas
     escudo: {
       mestre: [
+        { t: 'Hoje e Preparar', txt: 'O Escudo abre em Hoje: a sessão em jogo (ou a próxima), com o passo de agora marcado, os relógios com − e +, e o que os passos ligam (o handout para mostrar, o NPC, o encontro). Preparar traz o Roteiro, os Relógios, os Handouts, os NPCs, os Encontros e os Mistérios.', onde: { sel: '#modoEsc' } },
         { t: 'Os mistérios', txt: 'Na aba Mistérios: “+ Caso” sorteia o culpado, o motivo e o método, os suspeitos (com álibi, segredo e o que cada um sabe) e três pistas para cada conclusão, com a pista falsa e a reviravolta. “Abrir à mesa” põe o caso nas Pistas de quem joga, com o mural do grupo; daí você entrega as pistas, mostra os suspeitos (com as respostas do interrogatório) e confirma ou não a acusação. “Gerar a cena do crime…” abre as Cenas com o caso.', onde: { sel: '[data-k="aba:misterios"]' } },
         { t: 'O roteiro', txt: 'Cada sessão é uma lista de passos. Ligue um passo a uma cena, a um lugar do Mapa-múndi, a um encontro do Bestiário, a um handout, a um relógio ou a um NPC: o botão do passo faz a ação.', onde: { sel: '[data-k="aba:roteiro"]' } },
         { t: 'Abrir e fechar a sessão', txt: '“Abrir a sessão” marca o começo. O botão do roteiro, na barra de cima, mostra os passos ao lado em qualquer aba. Ao fechar, você escolhe os passos que passam para a próxima e sai o resumo, que pode ir para o rascunho do Jornal.', onde: { sel: '[data-k="aba:roteiro"]' } },
