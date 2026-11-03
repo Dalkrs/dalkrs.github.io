@@ -457,6 +457,7 @@
   };
 
   const sabia = [
+    { t: 'Dois mexendo ao mesmo tempo', txt: 'Você e o mestre podem mexer na mesma ficha, no Acampamento ou no mapa ao mesmo tempo: cada mudança fica. No caderno do grupo, se dois escreveram no mesmo capítulo, o outro texto vira um capítulo ao lado.', papel: 'todos', sistema: 'mesa' },
     { t: 'Tudo tem Desfazer', txt: 'Quase toda mudança no site mostra um aviso com “Desfazer”. Pode testar sem medo.', papel: 'todos', sistema: 'mesa' },
     { t: 'Ctrl+K acha qualquer coisa', txt: 'Fichas, cenas, lugares do mapa, itens, receitas e matérias, de qualquer aba.', papel: 'todos', sistema: 'mesa', ir: { casca: '#btnBusca' } },
     { t: 'A tecla K faz o ataque com defesa', txt: 'Mouse sobre o alvo e K: o jogador recebe o pedido de defesa sem você falar nada.', papel: 'mestre', sistema: 'cenas' },
@@ -489,5 +490,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 14, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 15, sistemas, tarefas, roteiro, sabia };
 })();

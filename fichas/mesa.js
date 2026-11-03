@@ -191,6 +191,7 @@ const FichasMesa = (() => {
       const base = {};
       if (!novo && campos.estado !== undefined) base.estado = JSON.parse(ant.estado);
       if (!novo && campos.skills !== undefined) base.skills = JSON.parse(ant.skills);
+      if (!novo && campos.ficha !== undefined) base.ficha = JSON.parse(ant.ficha);       // (lote 66: a ficha também, quando a casca a junta)
       if (Object.keys(campos).length) P.gravar(pc.id, campos, novo ? undefined : base);
       sombra.pcs.set(pc.id, r);
     });

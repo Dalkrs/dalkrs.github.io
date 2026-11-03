@@ -1052,6 +1052,19 @@
      que mudou, e o banco junta. O formato é o "JSON Merge Patch" (RFC 7396): objeto se junta chave por chave, null
      apaga a chave, qualquer outro valor (número, texto, lista) troca o que havia. */
   const JUNTAM = ['estado', 'skills'];                 // as colunas de `personagens` que viajam assim
+  /* (lote 66) E a ficha, quando o banco já tem a versão de personagem_juntar que aceita a coluna (0035): ao abrir os
+     personagens de uma mesa, uma pergunta só, com uma linha que não existe e nenhuma mudança (não mexe em nada). Até a
+     resposta chegar — ou com o banco ainda na versão de antes —, a ficha sobe inteira, como sempre. */
+  let fichaJunta = null;
+  async function sondarFicha(mesa) {
+    if (fichaJunta !== null) return;
+    try {
+      const e = await cliente().rpc('personagem_juntar', { p_mesa: mesa, p_id: '__sonda_ficha__', p_coluna: 'ficha', p_mudas: [] });
+      if (e.error && !/Coluna inválida/i.test(String(e.error.message || ''))) return;        // (outro erro, como a rede: pergunta de novo na próxima vez)
+      fichaJunta = !e.error;
+      if (fichaJunta && !JUNTAM.includes('ficha')) { JUNTAM.push('ficha'); remendo.colunas.push('ficha'); }
+    } catch (e) { /* sem rede: pergunta de novo na próxima mesa */ }
+  }
   const RPC_JUNTAR = 'personagem_juntar';              // (p_mesa, p_id, p_coluna, p_mudas) → { rev, rev_ant }
   const ehMapa = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const proprio = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -1213,8 +1226,9 @@
     // (rems / remsVoo: as mudanças do estado e das skills de cada personagem que ainda vão subir / que estão subindo agora)
     // (reler: as linhas a ler de novo, inteiras, porque outra pessoa mexeu nelas junto com uma gravação daqui)
     // (apagadas: a revisão em que cada linha foi apagada — ver enterrar)
-    const c = cols[nome] = { nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), cas: new Set(), bases: new Map(), tempo: new Map(), prazo: new Map(), falhas: 0, morta: false, buscando: false };
+    const c = cols[nome] = { deFora: new Map(), nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), cas: new Set(), bases: new Map(), tempo: new Map(), prazo: new Map(), falhas: 0, morta: false, buscando: false };
     c.pronta = (async () => {
+      if (nome === 'personagens') await sondarFicha(c.mesa);           // (lote 66: antes de qualquer gravação dos personagens)
       for (let de = 0; ; de += 1000) {
         const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).order('rev').range(de, de + 999);
         if (error) throw falha(error, 'Não deu para ler os dados da mesa.');
@@ -1276,6 +1290,10 @@
     c.linhas.set(r.id, n);
     // nada mudou para quem usa a linha (é a volta de algo que já estava aqui): só a revisão anda
     if (l && TABELAS[nome].every(k => igual(n[k], l[k]))) return;
+    /* (lote 66) a última revisão desta linha que veio de outra pessoa (ver opt.base). Com uma gravação daqui a caminho, o
+       que chega pode ser a volta dela mesma (antes da resposta): não conta. Se era de outra pessoa, a resposta mostra
+       (rev_ant) e a linha é relida — aí conta. */
+    if (!(c.emVoo.get(r.id) || []).size) c.deFora.set(r.id, n.rev || 0);
     dados.emit('muda', nome, n, 'remota', null);
   }
   /* As duas voltas abaixo esperam a rede no meio do caminho; nesse meio-tempo a mesa pode ser fechada ou trocada
@@ -1446,6 +1464,9 @@
       c.falhas = 0; dados.erro = null;
       if (!l && r.data && r.data.rev) enterrar(c, id, r.data.rev);      // (foi um apagar: a linha só volta por uma revisão maior que esta)
       if (!certas.includes(r.data)) assentar(c, id, r.data);
+      /* (lote 66) Um documento que confere a versão e mudou de novo enquanto esta gravação ia (a primeira, a que o cria):
+         o ponto de partida da próxima é o que acabou de chegar ao banco, não "a revisão de antes, sem conteúdo". */
+      { const b = c.bases.get(id); if (l && b && b.dados === undefined && r.data && r.data.rev > b.rev && (campos.has('*') || campos.has('dados'))) c.bases.set(id, { rev: r.data.rev, dados: l.dados }); }
       for (const col of JUNTAM) if (c.rems.has(kq(col, id))) { const s = c.sujos.get(id) || new Set(); s.add(col); c.sujos.set(id, s); }      // sobrou mudança para a volta seguinte
       if (c.sujos.has(id)) agendar(c, id, 300);
     }
@@ -1545,6 +1566,12 @@
     if (nome === 'documentos' && opt && opt.cas && l && !campos.apagado && campos.dados !== undefined) {
       c.cas.add(id);
       const indo = c.emVoo.get(id);
+      /* (lote 66) A base que o sistema mandou (o documento em que ele se baseou) vale quando ela é mais velha que a
+         última mudança de outra pessoa que chegou aqui: o sistema ainda não tinha aplicado essa mudança (adiou, porque
+         alguém digitava ou havia uma janela aberta) e a gravação dele não pode desfazê-la. Senão, como antes: a cópia
+         daqui (que só difere da dele pelas gravações dele mesmo). */
+      const bs = opt.base && Number.isFinite(opt.base.rev) && opt.base.rev < (c.deFora.get(id) || 0) ? opt.base : null;
+      if (bs && (!c.bases.has(id) || c.bases.get(id).rev > bs.rev)) c.bases.set(id, { rev: bs.rev, dados: bs.dados === undefined ? undefined : copiar(bs.dados) });
       if (!c.bases.has(id)) c.bases.set(id, suj.has('dados') || suj.has('*') || (indo && (indo.has('dados') || indo.has('*'))) ? { rev: l.rev || 0, dados: undefined } : { rev: l.rev || 0, dados: l.dados });
     }
     if (campos.apagado) {

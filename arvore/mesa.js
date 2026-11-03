@@ -17,6 +17,8 @@ const ArvoreMesa = (() => {
   const j = JSON.stringify;
   let st = null, P = null, D = null, ativo = false, adiado = 0, publicar = 0;
   let sombra = { bib: null, pcs: new Map() };     // o que a mesa já tem, para mandar só o que mudou
+  // (lote 66) a biblioteca da mesa que esta tela aplicou por último ({ rev, dados }): a base da conferência de versão
+  const marcarBase = () => { const l = D && D.pegar('arvore:biblioteca'); sombra.bibBase = l && !l.apagado && Number.isFinite(l.rev) ? { rev: l.rev, dados: l.dados } : undefined; };
 
   const mestre = () => !!st && st.papel === 'mestre';
   const mestraFichas = () => { const T = window.TC && window.TC.ponte; return T && typeof T.mestra === 'function' ? T.mestra('fichas') : mestre(); };
@@ -121,7 +123,9 @@ const ArvoreMesa = (() => {
       const b = bib(), jb = j(b);
       if (sombra.bib !== jb) {
         sombra.bib = jb;
-        D.gravar('arvore:biblioteca', { dados: JSON.parse(jb), vis: 'mestre' });
+        // (lote 66) conferindo a versão, a partir da biblioteca que esta tela aplicou por último: o que o mestre mudou
+        // em outro aparelho enquanto aqui havia uma janela aberta não é desfeito (a casca junta)
+        D.gravar('arvore:biblioteca', { dados: JSON.parse(jb), vis: 'mestre' }, sombra.bibBase, { cas: true });
         clearTimeout(publicar);
         publicar = setTimeout(publicarPacote, 4000);      // (lote 35: 4 s depois da última mudança — o pacote tem uns 2,6 MB e vai para cada jogador)
       }
@@ -221,7 +225,7 @@ const ArvoreMesa = (() => {
     if (b) {
       const jb = j(b);
       if (mestre() ? sombra.bib !== jb : sombra.pacote !== jb) {
-        if (mestre()) sombra.bib = jb; else sombra.pacote = jb;
+        if (mestre()) { sombra.bib = jb; marcarBase(); } else sombra.pacote = jb;
         doc.biblioteca = b; mudou = true; trocouBib = true;
       }
     }
@@ -275,6 +279,7 @@ const ArvoreMesa = (() => {
     if (!ativo) return;
     fotografar();
     sombra.bib = mestre() ? (dadosDe('arvore:biblioteca') ? j(bib()) : null) : null;
+    if (mestre()) marcarBase();
     sombra.pacote = mestre() ? null : (bibDaMesa() ? j(bibDaMesa()) : null);
     // o que o aplicativo ajustou ao abrir (personagem criado, poda) sobe agora
     if (mestre() && sombra.bib === null && dadosDe('arvore:biblioteca') === null) { sombra.bib = j(bib()); oferecerLocal(); }

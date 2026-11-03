@@ -242,8 +242,16 @@
             if (Object.keys(mudas).length || Object.keys(resto).length) enviar({ t: 'dados.gravar', col: nome, id, campos: resto, mudas, muda: mudas.estado || null, mesa: c.mesa });
             return l;
           }
-          const l = Object.assign({}, atual || { id }, campos); c.linhas.set(id, l);
+          const l = Object.assign({}, atual || { id }, campos), base0 = atual; c.linhas.set(id, l);
           const msg = { t: 'dados.gravar', col: nome, id, campos, mesa: c.mesa, cas: !!(opt && opt.cas) };
+          /* (lote 66) Conferindo a versão, a base é o documento em que esta mudança se baseou: o que o sistema passar em
+             `base` ({ rev, dados }: o que ele tinha aplicado — um sistema que adia o que vem de fora, enquanto alguém
+             digita, passa o de antes), senão a cópia daqui. A casca confere contra ela, e não contra a dela, que pode já
+             ter a mudança de outra pessoa: assim essa mudança não é desfeita. */
+          if (msg.cas && nome === 'documentos') {
+            const b = base && Number.isFinite(base.rev) ? base : base0 && Number.isFinite(base0.rev) ? { rev: base0.rev, dados: base0.dados } : null;
+            if (b) msg.base = { rev: b.rev, dados: b.dados };
+          }
           if (opt && typeof opt.pressa === 'number') msg.pressa = opt.pressa;     // (opt.pressa: sobe quase em seguida — ver dadosGravar, na casca)
           enviar(msg); return l;
         },

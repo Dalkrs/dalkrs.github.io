@@ -696,9 +696,31 @@ const Nuvem = (() => {
   }
   // Até que número o mestre já aplicou os pedidos deste jogador.
   const ackDe = v => Number(ehObj(v.ack) ? v.ack[eu] : 0) || 0;
+  /* (lote 66) Os pedidos de um jogador moram num documento só (cena:pedido:<jogador>), regravado inteiro: com as Cenas
+     abertas em duas abas do mesmo navegador, uma apagaria os pedidos da outra. A aba aberta por último é a que
+     manda os pedidos; a outra fica só olhando (e avisa), até ser a única de novo ou a pessoa voltar a ela. */
+  const ABA = Math.random().toString(36).slice(2, 10);
+  let outraAba = false, canalAba = null, avisouAba = 0;
+  function vigiarAbas() {
+    if (typeof BroadcastChannel === 'undefined') return;
+    try {
+      canalAba = new BroadcastChannel('tinycats:cenas:pedidos:' + mesa + ':' + eu);
+      canalAba.onmessage = ev => {
+        const m = ev.data || {};
+        if (m.t === 'abri' && m.aba !== ABA) { outraAba = true; canalAba.postMessage({ t: 'tenho', aba: ABA }); }
+        else if (m.t === 'voltei' && m.aba !== ABA) outraAba = true;
+        else if (m.t === 'fechei' && m.aba !== ABA) outraAba = false;
+      };
+      canalAba.postMessage({ t: 'abri', aba: ABA });
+      // quem volta a uma aba passa a mandar por ela
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) { outraAba = false; canalAba.postMessage({ t: 'voltei', aba: ABA }); } });
+      window.addEventListener('pagehide', () => { try { canalAba.postMessage({ t: 'fechei', aba: ABA }); } catch (e) { /* fechando */ } });
+    } catch (e) { canalAba = null; }
+  }
   function carregarJogador() {
     S.prefs = prefsDaqui();
     App.viewer = eu;
+    vigiarAbas();
     // pedidos de uma visita anterior que o mestre nunca aplicou: não valem mais
     const meu = dadosDe(D.pegar(PRE_PED + eu));
     if (meu && Array.isArray(meu.lote) && meu.lote.length) D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: { cena: null, lote: [] } });
@@ -758,6 +780,10 @@ const Nuvem = (() => {
   /* O que o jogador fez vai para a fila; o mestre aplica e confirma na projeção seguinte. Barras, condições e auras
      vão com o "como estava" (b), para o mestre aplicar só a diferença por cima do que ele tem agora. */
   function pedir(ops, inv) {
+    if (outraAba) {
+      if (Date.now() - avisouAba > 6000) { avisouAba = Date.now(); UI.toast('As Cenas estão abertas em outra aba sua: o que você faz aqui não vai para a mesa. Use a outra aba, ou feche-a e recarregue esta.', { long: true }); }
+      return;
+    }
     const lote = comBase(ops, inv);
     seq += 1;                                              // (seq nunca fica atrás do que o mestre já confirmou: ver montar e receber)
     caixa.push({ n: seq, ops: clone(lote) });

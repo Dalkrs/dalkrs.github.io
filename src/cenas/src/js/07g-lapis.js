@@ -52,7 +52,7 @@ const Lapis = (() => {
     const id = meuDoc();
     if (!id) return;
     if (!naMesa) { local = { t }; gravarJ(LOCAL, { v: 1, t: t.filter(x => !x.s) }); }
-    else D.gravar(id, { dados: { v: 1, t }, vis: 'mesa', dono_id: eu });
+    else D.gravar(id, { dados: { v: 1, t }, vis: 'mesa', dono_id: eu }, undefined, { cas: true });      // (lote 66: o Mapa-múndi grava o mesmo documento)
     avisar();
   }
   // o traço que some sai do documento de quem desenhou depois do tempo dele (os do Mapa-múndi também: o tempo é o mesmo)
@@ -113,7 +113,7 @@ const Lapis = (() => {
       const fica = d.t.filter(x => x.mp !== mp);
       if (fica.length === d.t.length) continue;
       antes.push({ doc: d.doc, t: d.t });
-      if (mine) gravar(fica); else if (D) D.gravar(d.doc, { dados: { v: 1, t: fica } });
+      if (mine) gravar(fica); else if (D) D.gravar(d.doc, { dados: { v: 1, t: fica } }, undefined, { cas: true });
     }
     if (!antes.length) return false;
     avisar();
@@ -121,7 +121,7 @@ const Lapis = (() => {
       for (const a of antes) {
         const volta = a.t.filter(x => x.mp === mp && !x.s);
         if (a.doc === meuDoc()) { const atual = meus(), ids = new Set(atual.map(x => x.id)); gravar(atual.concat(volta.filter(x => !ids.has(x.id)))); }
-        else if (D) { const atual = dosDados(D.pegar(a.doc)), ids = new Set(atual.map(x => x.id)); D.gravar(a.doc, { dados: { v: 1, t: atual.concat(volta.filter(x => !ids.has(x.id))) } }); }
+        else if (D) { const atual = dosDados(D.pegar(a.doc)), ids = new Set(atual.map(x => x.id)); D.gravar(a.doc, { dados: { v: 1, t: atual.concat(volta.filter(x => !ids.has(x.id))) } }, undefined, { cas: true }); }
       }
       avisar();
     } });

@@ -2,6 +2,37 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-1",
+      "data": "2026-11-03",
+      "titulo": "Duas pessoas mexendo ao mesmo tempo, sem perder nada",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Fichas: quando duas pessoas mexem na mesma ficha ao mesmo tempo (uma nas notas, outra no nível ou nos itens), as duas mudanças ficam. Antes, a última a salvar apagava a outra."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Acampamento, Árvore e Mapa-múndi: uma mudança feita no instante em que chegava a de outra pessoa não desfaz mais a dela."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Desfazer, no Acampamento e no “Um dia em…” do Mapa-múndi, volta só o que você mudou. O que outra pessoa fez depois continua."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Lápis e caneta: se alguém limpa os rabiscos enquanto você desenha, o seu traço novo fica."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Caderno do grupo: se outra pessoa mudou o capítulo enquanto você escrevia, o texto dela não some. Ele fica num capítulo ao lado, “(a versão de outra pessoa)”."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas abertas em duas abas suas: só uma fala com a mesa. A outra avisa, para nada se perder no caminho."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.02-5",
       "data": "2026-11-02",
       "titulo": "O lápis nas Cenas e ver de cima por cima das paredes",

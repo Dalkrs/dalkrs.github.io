@@ -610,7 +610,7 @@
   const sombraDoc = new Map(), sombraPub = new Map(), restaurados = new Set();
   let sombraIndice = null;
   // O jogador nunca grava nada na mesa: as duas portas de escrita conferem o papel.
-  function gravarDocMesa(id, campos) { if (modo === 'mesa' && App.papel === 'mestre' && D) D.gravar(id, campos); }
+  function gravarDocMesa(id, campos, opt) { if (modo === 'mesa' && App.papel === 'mestre' && D) D.gravar(id, campos, undefined, opt); }
   function apagarDocMesa(id) { if (modo === 'mesa' && App.papel === 'mestre' && D && D.pegar(id)) D.apagar(id); }
   const dadosDoc = l => (l && !l.apagado && l.dados && typeof l.dados === 'object' && !Array.isArray(l.dados) ? l.dados : null);
   /* As cenas da mesa, como a aba Cenas as guarda nos documentos da mesa: [{ id, nome }], na ordem do mestre.
@@ -670,7 +670,7 @@
       sombraDoc.set(id, jd);
     }
     if (sombraDoc.get(id) !== jAtual) {
-      gravarDocMesa(PRE_MAPA + id, { dados: JSON.parse(jAtual), vis: 'mestre' });
+      gravarDocMesa(PRE_MAPA + id, { dados: JSON.parse(jAtual), vis: 'mestre' }, { cas: true });     // (lote 66: conferindo a versão também na casca)
       sombraDoc.set(id, jAtual);
     }
     marcarSalvo('ok', 'Salvo na mesa');
@@ -1415,7 +1415,7 @@
     if (modo !== 'mesa') {
       rabLocal = { t };
       guarda.gravar(RAB_LOCAL, j({ v: 1, t: t.filter(x => !x.s) }));      // (o que some não fica guardado)
-    } else D.gravar(id, { dados: { v: 1, t }, vis: 'mesa', dono_id: App.eu });
+    } else D.gravar(id, { dados: { v: 1, t }, vis: 'mesa', dono_id: App.eu }, undefined, { cas: true });     // (lote 66: o Mapa-múndi e as Cenas gravam o mesmo documento)
     App.emit('rabiscos');
   }
   // o traço que some sai do documento de quem desenhou depois do tempo dele
@@ -1474,14 +1474,14 @@
         if (fica.length === d.t.length) continue;
         antes.push({ doc: d.doc, dono: d.dono, t: d.t });
         if (mine) gravarMeus(fica);
-        else D.gravar(d.doc, { dados: { v: 1, t: fica } });
+        else D.gravar(d.doc, { dados: { v: 1, t: fica } }, undefined, { cas: true });      // (lote 66: o traço que chegou agora não é apagado)
       }
       if (!antes.length) return false;
       App.emit('rabiscos');
       App.toast(todos && mestra ? 'Os desenhos deste mapa foram limpos (de todos).' : 'Os seus traços neste mapa saíram.', 'Desfazer', () => {
         for (const a of antes) {
           if (a.doc === meuRab()) { const atual = tracosMeus(), ids = new Set(atual.map(x => x.id)); gravarMeus(atual.concat(a.t.filter(x => x.mp === mp && !ids.has(x.id) && !x.s))); }
-          else if (modo === 'mesa' && D) { const l = D.pegar(a.doc), atual = normTracos(dadosDoc(l)), ids = new Set(atual.map(x => x.id)); D.gravar(a.doc, { dados: { v: 1, t: atual.concat(a.t.filter(x => x.mp === mp && !ids.has(x.id) && !x.s)) } }); }
+          else if (modo === 'mesa' && D) { const l = D.pegar(a.doc), atual = normTracos(dadosDoc(l)), ids = new Set(atual.map(x => x.id)); D.gravar(a.doc, { dados: { v: 1, t: atual.concat(a.t.filter(x => x.mp === mp && !ids.has(x.id) && !x.s)) } }, undefined, { cas: true }); }
         }
         App.emit('rabiscos');
       }, 12000);

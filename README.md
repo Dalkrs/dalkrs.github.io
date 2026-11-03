@@ -254,6 +254,24 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Duas pessoas mexendo ao mesmo tempo (lote 66)
+
+- **A ficha se junta** (`0035_a_ficha_tambem_se_junta.sql`): `personagem_juntar` aceita também a coluna `ficha`, e ela
+  sobe só com o que mudou (como o `estado` e as `skills`). Ao abrir os personagens, a casca sonda o banco
+  (`sondarFicha`, um pedido vazio com `p_id: '__sonda_ficha__'`): sem a 0035, a ficha continua subindo inteira.
+- **A conferência de versão pela base do sistema** (`opt.base = {rev, dados}`): o sistema na moldura manda, junto da
+  gravação com `cas`, a versão em que se baseou (a que ele aplicou na tela, não a cópia da casca). Se essa versão é
+  anterior à última que chegou de fora (`deFora`), é ela que vale como base, e o que veio de fora entra na junta de três
+  (`juntar3`) em vez de ser desfeito. Usam: o Acampamento (`aplicado`), a biblioteca da Árvore (`bibBase`), o mapa do
+  Mapa-múndi e a caneta (`gravarDocMesa`), o lápis das Cenas e o caderno do grupo (`basesEd`; se o texto mudou dos dois
+  lados, o de lá vira um capítulo "(a versão de outra pessoa)").
+- **Desfazer só o que mudou**: o Acampamento guarda o `depois` de cada passo e desfaz com `juntar3(depois, antes, agora)`;
+  o "Um dia em…" do Mapa-múndi volta só as chaves que mudou (`so`).
+- **As Cenas numa aba só** (`vigiarAbas`, BroadcastChannel): com duas abas do mesmo jogador, só a primeira manda pedidos;
+  a outra avisa.
+- Testes: `sincronia-lote66.rede` (a ficha ao mesmo tempo, com e sem a 0035; a base de quem adiou a mudança de fora; os
+  rabiscos limpos enquanto alguém desenha).
+
 ### O lápis nas Cenas e ver de cima por cima das paredes (lote 65)
 
 - **O lápis** (`src/cenas/src/js/07g-lapis.js`, `Lapis`; a ferramenta `lapis`, tecla S, no grupo Jogo, sem permissão): o

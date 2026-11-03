@@ -147,10 +147,10 @@ const { ok, end } = checker();
   // a função nova (a que o site usa agora: serve para o estado e para as skills) tem as mesmas travas
   const nova = await J.evaluate(async mesa => {
     const f = (id, col, mudas) => __sb.rpc('personagem_juntar', { p_mesa: mesa, p_id: id, p_coluna: col, p_mudas: mudas });
-    const alheio = await f('pc_npc', 'skills', [{ pontos: { pr: 99 } }]), coluna = await f('pc_tessa', 'ficha', [{ nome: 'x' }]), semColuna = await f('pc_tessa', null, [{ a: 1 }]), ruim = await f('pc_tessa', 'skills', [5]);
+    const alheio = await f('pc_npc', 'skills', [{ pontos: { pr: 99 } }]), coluna = await f('pc_tessa', 'nome', [{ nome: 'x' }]), semColuna = await f('pc_tessa', null, [{ a: 1 }]), ruim = await f('pc_tessa', 'skills', [5]);
     return { alheio: [alheio.error ? alheio.error.message : null, (alheio.data || []).length], coluna: coluna.error && coluna.error.message, semColuna: semColuna.error && semColuna.error.message, ruim: ruim.error && ruim.error.message };
   }, mesa);
-  ok(nova.alheio[0] === null && nova.alheio[1] === 0 && /Coluna inválida/.test(nova.coluna || '') && /Coluna inválida/.test(nova.semColuna || '') && /inválida/.test(nova.ruim || ''), 'personagem_juntar: quem não pode alterar a linha não altera nada; só junta o estado e as skills (a ficha, não); mudança que não é objeto é recusada — ' + j(nova));
+  ok(nova.alheio[0] === null && nova.alheio[1] === 0 && /Coluna inválida/.test(nova.coluna || '') && /Coluna inválida/.test(nova.semColuna || '') && /inválida/.test(nova.ruim || ''), 'personagem_juntar: quem não pode alterar a linha não altera nada; só junta o estado, as skills e a ficha (o nome, não); mudança que não é objeto é recusada — ' + j(nova));
   const anonNova = await M.evaluate(async mesa => { const guarda = window.__sb; const a = supabase.createClient(TC_CONFIG.url, TC_CONFIG.chave, { auth: { persistSession: false, storageKey: 'anon-skills' } }); window.__sb = guarda; const r = await a.rpc('personagem_juntar', { p_mesa: mesa, p_id: 'pc_tessa', p_coluna: 'skills', p_mudas: [{ pontos: { pr: 1 } }] }); return r.error ? 'recusado' : 'ACEITO'; }, mesa);
   ok(anonNova === 'recusado', 'e sem conta ela também não roda');
 
@@ -188,8 +188,10 @@ const { ok, end } = checker();
   // ---------- a ficha e o estado saem juntos (dois pedidos: o estado, depois a ficha); entre um e outro, o mestre mexe no estado ----------
   // (o pedido da ficha do jogador fica preso antes de chegar ao banco; o do estado passa)
   let fichasPresas = 0;
-  await dJ.ctx.route(/\/rest\/v1\/personagens\?/, async route => {
-    if (route.request().method() !== 'PATCH') return route.fallback();
+  // (lote 66: com a 0035 no banco, a ficha sobe pela personagem_juntar, coluna "ficha"; sem ela, inteira, num PATCH)
+  const ehFicha = rq => rq.method() === 'PATCH' ? /\/rest\/v1\/personagens\?/.test(rq.url()) : /\/rpc\/personagem_juntar/.test(rq.url()) && /"p_coluna":"ficha"/.test(rq.postData() || '');
+  await dJ.ctx.route(/\/rest\/v1\/(personagens\?|rpc\/personagem_juntar)/, async route => {
+    if (!ehFicha(route.request())) return route.fallback();
     fichasPresas++; await new Promise(r => setTimeout(r, 9000)); route.fallback();
   });
   const fichaJ = (await espelho(J, 'pc_tessa')).ficha;
@@ -200,7 +202,7 @@ const { ok, end } = checker();
   ok((await noBanco('pc_tessa')).estado.san === 55 && !(await parado(J)), 'o mestre muda outra coisa do estado (Sanidade 55) enquanto a ficha do jogador ainda sobe');
   ok(await ate(async () => (await espelho(J, 'pc_tessa')).estado.san === 55, 6000), 'o jogador vê a mudança do mestre já, com a ficha dele ainda a caminho: ' + j((await espelho(J, 'pc_tessa')).estado));
   await ate(() => parado(J), 20000);
-  await dJ.ctx.unroute(/\/rest\/v1\/personagens\?/);
+  await dJ.ctx.unroute(/\/rest\/v1\/(personagens\?|rpc\/personagem_juntar)/);
   const rF = await noBanco('pc_tessa');
   ok(rF.ficha.notas === 'do jogador' && rF.estado.san === 55 && rF.estado.rec.sp === 33, 'no banco ficam a ficha do jogador, o SP dele e a Sanidade do mestre');
   ok(await ate(async () => { const e = await espelho(J, 'pc_tessa'); return igual(e.estado, rF.estado) && e.ficha.notas === 'do jogador' && e.rev === rF.rev; }, 8000), 'e a tela do jogador fica igual ao banco (a mudança do mestre não some): ' + j((await espelho(J, 'pc_tessa')).estado));

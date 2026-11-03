@@ -3072,14 +3072,24 @@
       const l = eq.P.pegar(x.id); if (!l) continue;
       const r = eq.R.mexerNaMente(l.estado || {}, p.ef, x.uso);
       if (!r.so.length) continue;
-      antes.push({ id: l.id, estado: l.estado || {} });
+      antes.push({ id: l.id, estado: l.estado || {}, so: r.so.slice() });
       eq.P.gravar(l.id, { estado: r.estado });
       nomes.push(x.nome);
     }
     if (!nomes.length) { App.toast('Nada mudou: os valores já estavam no limite.'); return; }
     const resumo = efTxt + ' para ' + nomes.join(', ') + ' — um dia em ' + onde + '.';
     if (App.publicarNaMesa) App.publicarNaMesa('Um dia em ' + onde, resumo, false);
-    App.toast('Feito: ' + resumo, 'Desfazer', () => { for (const a of antes) eq.P.gravar(a.id, { estado: a.estado }); App.toast('As fichas voltaram ao que eram.'); });
+    // (lote 66) desfazer volta só o que este passo mudou (o Conforto, a Sanidade, a Fadiga): o resto do estado — a vida
+    // que alguém mexeu depois, as moedas — fica como está agora
+    App.toast('Feito: ' + resumo, 'Desfazer', () => {
+      for (const a of antes) {
+        const l = eq.P.pegar(a.id); if (!l) continue;
+        const est = Object.assign({}, l.estado || {});
+        for (const k of a.so) { if (a.estado[k] === undefined) delete est[k]; else est[k] = a.estado[k]; }
+        eq.P.gravar(a.id, { estado: est });
+      }
+      App.toast('As fichas voltaram ao que eram.');
+    });
   }
   function secRota(o, m, grava) {
     const N_ = N(), id = o.id, un = N_.compPolilinha(o.pts), out = [];

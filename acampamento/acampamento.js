@@ -54,6 +54,8 @@
   let modo = 'local', papel = 'mestre', st = { mesa: null, papel: null, eu: null, membros: [] }, P = null, D = null;
   let encerrada = false;                             // a campanha em vista está encerrada: o acampamento é só para consulta
   let camp = N.normalizar(null), jCamp = j(camp);
+  let aplicado;                                          // (lote 66) { rev, dados }: o documento da mesa que esta tela aplicou por último
+  const marcarAplicado = d => { aplicado = d && Number.isFinite(d.rev) ? { rev: d.rev, dados: d.apagado ? null : d.dados } : undefined; };
   let pilha = [];                                    // desfazer: [{ rotulo, json, fichas? }]
   let sel = null, aba = guarda.ler('tinycats:acampamento:aba') || 'grupo';
   let pronto = false;
@@ -159,8 +161,10 @@
   function gravar() {
     jCamp = j(camp);
     if (naMesa()) {
-      if (mestre()) D.gravar(DOC, { dados: JSON.parse(jCamp), vis: 'mesa' }, undefined, { cas: true });
-      else if (ajudante()) { const cru = D.pegar(DOC); D.gravar(DOC, { dados: N.paraJogador(cru && cru.dados, camp) }, undefined, { cas: true }); }
+      // (lote 66) a base da conferência é o acampamento que esta tela tinha aplicado (o que veio de fora e ainda não
+      // entrou, porque alguém digitava ou havia uma janela aberta, não é desfeito: a casca junta)
+      if (mestre()) D.gravar(DOC, { dados: JSON.parse(jCamp), vis: 'mesa' }, aplicado, { cas: true });
+      else if (ajudante()) { const cru = D.pegar(DOC); D.gravar(DOC, { dados: N.paraJogador(cru && cru.dados, camp) }, aplicado, { cas: true }); }
       marcarSalvo('Salvo na mesa');
     }
     else if (guarda.gravar(CHAVE, jCamp)) marcarSalvo('Salvo neste navegador');
@@ -213,6 +217,9 @@
     if (p.fichas && naMesa()) for (const f of p.fichas) {
       // f.so: só estas chaves do estado voltam (a Sanidade, o Conforto); sem f.so, o estado inteiro
       if (Array.isArray(f.so)) { const l = P.pegar(f.id); if (!l) continue; const est = Object.assign({}, l.estado || {}); for (const k of f.so) { if (f.estado[k] === undefined) delete est[k]; else est[k] = f.estado[k]; } P.gravar(f.id, { estado: est }); continue; }
+      // (lote 66) com o estado de depois guardado, volta só o que este passo mudou, por cima do estado de agora: a vida
+      // ou as moedas que outra pessoa mexeu depois ficam (a junta em três vias da casca)
+      if (f.depois && j3) { const l = P.pegar(f.id); if (l) { P.gravar(f.id, { estado: j3(f.depois, f.estado, l.estado || {}) }); if (f.seg !== undefined) porSeg(f.id, f.seg); continue; } }
       const campos = { estado: f.estado }; if (f.ficha) campos.ficha = f.ficha; P.gravar(f.id, campos); if (f.seg !== undefined) porSeg(f.id, f.seg);
     }
     gravar();
@@ -228,6 +235,7 @@
     clearTimeout(adiado);
     if (digitando() || $('dlg').open || arrasto) { adiado = setTimeout(deFora, 900); return; }
     const d = D.pegar(DOC), novo = N.normalizar(d && !d.apagado ? d.dados : null), jn = j(novo);
+    marcarAplicado(d);
     if (jn === jCamp) return;
     camp = novo; jCamp = jn;
     // mudou em outro aparelho (ou outra pessoa mexeu): com a junta em três vias, o desfazer continua valendo — cada passo
@@ -1318,7 +1326,7 @@
           const feito = aplicarFx(est, ln, recursos, agora);
           if (feito.length) naFicha.push(ln.nome + ': ' + feito.join(', '));
         }
-        const campos = { estado: est }, antes = { id: l.id, estado: l.estado || {}, ficha: null };
+        const campos = { estado: est }, antes = { id: l.id, estado: l.estado || {}, ficha: null, depois: est };
         // as barras especiais que este descanso devolve: o valor de agora delas mora no estado (estado.pd)
         if (ln.poderes.length) { const pd = est.pd && typeof est.pd === 'object' ? est.pd : (est.pd = {}); for (const x of ln.poderes) pd[x.id] = x.para; }
         // (lote 55) o descanso longo enche o cinto de poções da Yanato
@@ -1503,7 +1511,7 @@
       if (emo === '-' && est.emo) { est = Object.assign({}, est); delete est.emo; }
       else if (emo && emo !== '-' && N.emoOk(emo) && est.emo !== emo) est = Object.assign({}, est, { emo });
       if (est === l.estado && r.seg === seg0) return;
-      fichas.push({ id: l.id, estado: l.estado || {}, ficha: null, seg: seg0 });
+      fichas.push({ id: l.id, estado: l.estado || {}, ficha: null, seg: seg0, depois: est });
       if (est !== l.estado) P.gravar(de, { estado: est });
       if (r.seg !== seg0) porSeg(de, r.seg);
       if (dv) partes.push(nomeDe + ' → ' + nomePara + ' ' + N.comSinal(dv));
@@ -1647,7 +1655,7 @@
     if (naMesa()) {
       const d = D.pegar(DOC);
       camp = N.normalizar(d && !d.apagado ? d.dados : null);
-      jCamp = j(camp);
+      jCamp = j(camp); marcarAplicado(d);
       marcarSalvo(encerrada ? 'Campanha encerrada: só consulta' : st.temCampanhas && !campId ? 'Você ainda não está numa campanha' : 'Salvo na mesa');
       D.aoMudar(l => { if (!l) return; if (l.id === DOC) deFora(); else if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote' || l.id === 'mundo:indice' || String(l.id).startsWith('mundo:pub:') || String(l.id).startsWith('itens:rec:')) pintar(); });
       P.aoMudar(() => { if (arrasto) return; manterRoda(); if (!digitando() && !dlg.open) pintar(); else pintarCena(); });

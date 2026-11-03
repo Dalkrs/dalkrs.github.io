@@ -78,6 +78,7 @@
     const ir = typeof o.ir === 'function' ? o.ir : () => {};
     const eu = typeof o.eu === 'function' ? o.eu : () => null;
     let atual = null, filtro = { q: '', tag: '', camp: '*', pc: '' }, tSalvar = 0, pendente = null;
+    const basesEd = new Map();                  // (lote 66) capítulo → { rev, dados }: o que o editor abriu (a base da conferência de versão)
     let cad = 'meu', jogSel = null, ultimaTecla = 0;          // (lote 52) o caderno aberto: 'meu', 'grupo' ou 'jog' (o mestre lendo o de um jogador)
     const D = () => { try { return mesas.atual ? dados.col('documentos') : null; } catch (e) { return null; } };
     const eMestre = () => !!(mesas.atual && mesas.atual.cargo === 'mestre');
@@ -130,7 +131,18 @@
         const l = d.pegar(id);
         // (o capítulo do grupo nasce com quem o criou como dono; depois, cada um muda só o texto — o dono e a visibilidade ficam)
         if (novo || !l || l.apagado) d.gravar(id, eMestre() ? { dados: dd, vis: 'mesa' } : { dados: dd, vis: 'mesa', dono_id: eu() });
-        else d.gravar(id, { dados: dd });
+        else {
+          /* (lote 66) Conferindo a versão, a partir do capítulo que este editor abriu. Se outra pessoa mudou o texto
+             nesse meio-tempo, o texto dela não some: vira um capítulo ao lado ("… (a versão de outra pessoa)"). */
+          const b = basesEd.get(id), deles = l.dados || {};
+          if (b && (l.rev || 0) > b.rev && b.dados && deles.html !== b.dados.html && dd.html !== b.dados.html && dd.html !== deles.html) {
+            const copia = Object.assign({}, deles, { t: String(deles.t || 'Capítulo') + ' (a versão de outra pessoa)', em: Date.now(), ord: (deles.ord || 0) + 0.5 });
+            d.gravar(PRE_G + novoId() + (id.indexOf('@') > 0 ? id.slice(id.indexOf('@')) : ''), eMestre() ? { dados: copia, vis: 'mesa' } : { dados: copia, vis: 'mesa', dono_id: eu() });
+            toast('Outra pessoa mudou este capítulo enquanto você escrevia. O texto dela ficou num capítulo ao lado.');
+          }
+          d.gravar(id, { dados: dd }, null, null, { cas: true, base: b && { rev: b.rev, dados: b.dados } });
+          basesEd.set(id, { rev: Math.max(l.rev || 0, b ? b.rev : 0), dados: dd });
+        }
       }
     }
     // o que está escrito no editor e ainda não subiu: sobe já
@@ -238,7 +250,7 @@
       if (!(mesmo && focoNoTexto) || trocarFocado) {
         corpoVelho.replaceChildren(corpo);
         const ed = corpoVelho.querySelector('#nt-texto');
-        if (ed && c) ed.innerHTML = limpar(c.html);
+        if (ed && c) { ed.innerHTML = limpar(c.html); const lc = D() && D().pegar(c.id); if (lc && !lc.apagado) basesEd.set(c.id, { rev: lc.rev || 0, dados: lc.dados }); }
         const sc = corpoVelho.querySelector('#nt-capcamp'); if (sc && c) sc.value = c.camp || '';
         const sp = corpoVelho.querySelector('#nt-cappc'); if (sp && c) sp.value = c.pc || '';
         if (trocarFocado && ed) { ed.focus(); const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); const sl = window.getSelection(); sl.removeAllRanges(); sl.addRange(r); }
