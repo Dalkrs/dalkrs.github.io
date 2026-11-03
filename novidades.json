@@ -2,6 +2,28 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-14",
+      "data": "2026-11-03",
+      "titulo": "As Tabelas base em abas, e o level máximo",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Fichas: as Tabelas base ficam em abas (Níveis e pontos, Tiers, Corrupção e Tropas), cada uma com a largura toda. Nas Tropas, os nomes dos equipamentos e suprimentos cabem inteiros."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas, Tabelas base: o “Level máximo” corta ou estende a tabela de níveis. Mudando só ele, o que você mudou à mão fica. Quem está acima do máximo aparece numa janela antes e baixa junto, com Desfazer."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Fichas, Tabelas base: a tabela de níveis em colunas de 10, com quanto cada level ganha do anterior. A tabela padrão agora vai até o level 30, e “Restaurar padrão” tem Desfazer."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-13",
       "data": "2026-11-03",
       "titulo": "Andares no ar ao mesmo tempo",

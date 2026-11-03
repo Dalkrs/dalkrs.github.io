@@ -254,6 +254,19 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### As Tabelas base em abas e o level máximo (lote 79)
+
+- **As abas** (`abrirCfg`, `cfgAba`, `CFG_ABAS`): Níveis e pontos · Tiers · Corrupção · Tropas; a aba aberta fica
+  lembrada enquanto a página está aberta. As Tropas em duas colunas (`.trc-g` agrupa cada lista com o título dela).
+- **O level máximo** (`#ptsMax`, `ligarPtsRapido`): com o Inicial e o Por level de sempre, corta ou estende a tabela
+  sem perder o que foi mudado à mão; senão, refaz a tabela inteira. As fichas acima do máximo vão para
+  `janelaAcimaDoMax` antes e baixam junto (com Desfazer); depois, as de distribuição livre acima do total, para
+  `janelaProporcao`.
+- **A tabela** em colunas de 10 (`htmlTabelaNiveis`), com o ganho de cada level. A padrão vai até o 30
+  (`NIVEL_MAX_PADRAO`; `tc/rules.js` também).
+- Teste: `fichas-lote79` (e `fichas-lote37`, `fichas-lote40`, `tropas-lote56.rede`, `rules` acompanham as abas e a
+  tabela nova).
+
 ### Andares no ar ao mesmo tempo (lote 78)
 
 - **O índice** ganha `juntas` (até 11 cenas no ar junto com a do `noAr`; `Proj.normIndice`). Cada andar vai em dois

@@ -682,26 +682,26 @@ const FichasTropas = (() => {
     const t = T();
     if (!t) return '';
     const cf = t.normCfg(S.cfg);
-    return `<div class="tr-cfg">
+    return `<div class="tr-cfg"><div class="trc-g">
       <span class="eyebrow">Tropas → equipamentos</span>
       <table class="cfg"><thead><tr><th>Nome</th><th>ATQ</th><th>DEF</th><th></th></tr></thead><tbody>
         ${cf.equip.map(e => `<tr><td><input data-trceqn="${esc(e.id)}" value="${esc(e.nome)}" maxlength="${t.MAX.nome}" aria-label="Nome do equipamento"></td><td><input type="number" step="1" data-trceqa="${esc(e.id)}" value="${e.atq}" style="width:54px" aria-label="ATQ de ${esc(e.nome)}"></td><td><input type="number" step="1" data-trceqd="${esc(e.id)}" value="${e.def}" style="width:54px" aria-label="DEF de ${esc(e.nome)}"></td><td><button class="mini danger" data-trceqx="${esc(e.id)}" aria-label="Tirar ${esc(e.nome)}">×</button></td></tr>`).join('')}
       </tbody></table>
       <button class="mini" data-trceqmais style="margin-top:6px" ${cf.equip.length >= t.MAX.lista ? 'disabled' : ''}>+ Equipamento</button>
       <label class="f" style="margin-top:8px"><span class="eyebrow">Equipamentos por unidade</span><input type="number" min="1" max="${t.MAX.equipUnid}" step="1" data-trcmax value="${cf.maxEquip}" style="width:64px"></label>
-      <span class="eyebrow" style="display:block;margin-top:12px">Tropas → suprimentos</span>
+      </div><div class="trc-g"><span class="eyebrow" style="display:block;margin-top:12px">Tropas → suprimentos</span>
       <table class="cfg"><thead><tr><th>Nome</th><th>Para que serve</th><th></th></tr></thead><tbody>
         ${cf.supr.map(s => `<tr><td><input data-trcspn="${esc(s.id)}" value="${esc(s.nome)}" maxlength="${t.MAX.nome}" aria-label="Nome do suprimento"></td><td><input data-trcspd="${esc(s.id)}" value="${esc(s.desc)}" maxlength="${t.MAX.det}" aria-label="Para que serve ${esc(s.nome)}"></td><td><button class="mini danger" data-trcspx="${esc(s.id)}" aria-label="Tirar ${esc(s.nome)}">×</button></td></tr>`).join('')}
       </tbody></table>
       <button class="mini" data-trcspmais style="margin-top:6px" ${cf.supr.length >= t.MAX.lista ? 'disabled' : ''}>+ Suprimento</button>
-      <span class="eyebrow" style="display:block;margin-top:12px">Tropas → bônus da veterania (no ATQ e na DEF)</span>
+      </div><div class="trc-g"><span class="eyebrow" style="display:block;margin-top:12px">Tropas → bônus da veterania (no ATQ e na DEF)</span>
       <table class="cfg"><tbody>
         <tr><td>Veterana</td><td><input type="number" min="0" max="${t.MAX.bonus}" step="1" data-trcvet="2" value="${cf.vet[2]}" style="width:54px" aria-label="Bônus da Veterana"></td></tr>
         <tr><td>Elite</td><td><input type="number" min="0" max="${t.MAX.bonus}" step="1" data-trcvet="3" value="${cf.vet[3]}" style="width:54px" aria-label="Bônus da Elite"></td></tr>
         <tr><td>Lendária ★</td><td><input type="number" min="0" max="${t.MAX.bonus}" step="1" data-trcvet="4" value="${cf.vet[4]}" style="width:54px" aria-label="Bônus da Lendária"></td></tr>
         <tr><td>Mítica ★★</td><td><input type="number" min="0" max="${t.MAX.bonus}" step="1" data-trcvet="5" value="${cf.vet[5]}" style="width:54px" aria-label="Bônus da Mítica"></td></tr>
       </tbody></table>
-      <span class="eyebrow" style="display:block;margin-top:12px">Tropas → perícias das unidades (de 1 a ${t.PER_MAX})</span>
+      </div><div class="trc-g"><span class="eyebrow" style="display:block;margin-top:12px">Tropas → perícias das unidades (de 1 a ${t.PER_MAX})</span>
       <table class="cfg"><thead><tr><th>Perícia</th><th></th></tr></thead><tbody>
         ${cf.per.map(p => `<tr><td><input data-trcprn="${esc(p.id)}" value="${esc(p.nome)}" maxlength="${t.MAX.nome}" aria-label="Nome da perícia"></td><td><button class="mini" data-trcprx="${esc(p.id)}" aria-label="Tirar a perícia ${esc(p.nome)}" title="Tirar a perícia">×</button></td></tr>`).join('')}
       </tbody></table>
@@ -709,7 +709,7 @@ const FichasTropas = (() => {
       <label class="chk" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" data-trcperjog ${cf.perJog ? 'checked' : ''}> Os jogadores distribuem os pontos das perícias</label>
       <label class="chk" style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" data-trcpervet ${cf.perVet ? 'checked' : ''}> A rolagem soma o bônus da veterania</label>
       <div class="hint" style="margin-top:5px">Nos eventos, cada perícia rola 1d20 + os pontos dela. Desligada a primeira chave, só você muda os pontos.</div>
-      <span class="eyebrow" style="display:block;margin-top:12px">Tropas → comandante pela ficha</span>
+      </div><div class="trc-g"><span class="eyebrow" style="display:block;margin-top:12px">Tropas → comandante pela ficha</span>
       <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
         <label class="f"><span class="hint">O atributo</span><select data-trccmd style="width:auto">
           <option value="" ${!cf.cmd.atr ? 'selected' : ''}>Nenhum (você escreve o bônus)</option>
@@ -718,7 +718,7 @@ const FichasTropas = (() => {
       </div>
       <div class="hint" style="margin-top:5px">O bônus de comando do exército (no Mapa-múndi), quando o comandante é uma ficha e o exército tem a marca “Bônus pela ficha”: o atributo dividido, para baixo.</div>
       <div class="hint" style="margin-top:8px">O jogador escolhe os equipamentos e os suprimentos de cada unidade nestas listas; você põe as quantidades. Valem para a mesa toda.</div>
-    </div>`;
+    </div></div>`;
   }
   function ligarCfg(m, reabrir) {
     const t = T();

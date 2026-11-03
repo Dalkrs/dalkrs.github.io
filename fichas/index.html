@@ -516,11 +516,42 @@ label.f > span.pisoin{display:flex;align-items:center;gap:6px;margin:0}
 .modal .sheet{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);max-width:860px;width:100%}
 .modal .sheet .hd{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .modal .sheet .bd{padding:14px}
-/* (lote 77) os pontos de atributo, de uma vez */
-.ptsrap{margin:6px 0 10px;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--campo-sut);display:grid;gap:8px}
-.ptsrap-l{display:flex;gap:10px;flex-wrap:wrap}
-.ptsrap label{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-soft)}
-.ptsrap input{width:64px;text-align:right;font-family:var(--monof)}
+/* (lote 77/79) as Tabelas base em abas, e os pontos de atributo de uma vez */
+.cfgsheet{max-width:980px}
+.cfgabas{display:flex;gap:2px;padding:0 14px;border-bottom:1px solid var(--line);overflow-x:auto}
+.cfgaba{background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px 9px;font:600 13.5px var(--ui);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+.cfgaba:hover{color:var(--ink)}
+.cfgaba[aria-selected="true"]{color:var(--brass);border-bottom-color:var(--brass)}
+.cfgbd{padding:16px 14px 18px}
+.cfgcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.cfgcard{border:1px solid var(--line);border-radius:var(--r);background:var(--campo-sut);padding:12px 14px}
+.cfgcard .hint{margin:2px 0 8px}
+.cfgt{margin:0;font:600 14px var(--ui);color:var(--ink)}
+.cfgt-l{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.cfgniveis{display:grid;grid-template-columns:minmax(240px,300px) 1fr;gap:14px;align-items:start}
+@media (max-width:760px){.cfgniveis{grid-template-columns:1fr}}
+.ptsrap{display:grid;gap:10px}
+.ptsrap-l{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center}
+.ptsrap label{display:contents;font-size:13px;font-weight:600;color:var(--ink-soft)}
+.ptsrap input{width:72px;text-align:right;font-family:var(--monof);justify-self:end}
+.ptsprev{display:flex;gap:6px;flex-wrap:wrap}
+.ptsprev span{display:grid;padding:5px 9px;border-radius:8px;border:1px solid var(--line);background:var(--panel);min-width:64px}
+.ptsprev small{font-size:11px;color:var(--ink-soft)}
+.ptsprev b{font:700 17px var(--monof);color:var(--brass)}
+.lvlcols{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px 12px}
+table.lvlcol td{padding:2px 4px}
+table.lvlcol td:first-child{width:28px;color:var(--ink-soft)}
+table.lvlcol input{width:58px}
+.lvlg{font-size:12px;color:var(--teal);width:36px}
+.lvlg.neg{color:var(--danger,#e07a6e)}
+.cfgcard-larga{max-width:none}
+.cfgtropas .tr-cfg{columns:2 380px;column-gap:28px}
+.cfgtropas .tr-cfg>*{break-inside:avoid}
+.cfgtropas .trc-g{break-inside:avoid;padding-bottom:6px}
+.cfgtropas label.chk{display:flex!important;justify-content:flex-start;text-align:left;font-size:13px}
+.cfgtropas label.chk input{width:auto;flex:none;margin:0}
+.cfgtropas .tr-cfg table.cfg{break-inside:avoid;margin-bottom:4px}
+.cfgtropas table.cfg input:not([type=number]){width:100%;min-width:160px;text-align:left}
 .ptsprop td{vertical-align:top;padding:6px 8px}
 .ptsprop .ptsmenos{color:var(--danger,#e07a6e);font-weight:700}
 .ptsprop .ptsatr{white-space:pre-wrap;font-size:12.5px;color:var(--ink-soft)}
@@ -1744,7 +1775,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=21"></script>
-<script src="../tc/rules.js?v=28"></script>
+<script src="../tc/rules.js?v=29"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=2"></script>
 <script src="../tc/tags.js?v=3"></script>
@@ -1759,7 +1790,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../meditacao/nucleo.js?v=2"></script>
 <script src="../cla/nucleo.js?v=8"></script>
 <script src="../tc/calendario.js?v=2"></script>
-<script src="../tc/tropas.js?v=5"></script>
+<script src="../tc/tropas.js?v=6"></script>
 <script src="tropas.js?v=5"></script>
 <script>
 /* =======================================================================
@@ -1977,8 +2008,10 @@ function horaCurta(ts){
 }
 
 /* ---------- estado padrão ---------- */
+// (lote 79) a tabela padrão vai até o level 30 (antes, 50)
+const NIVEL_MAX_PADRAO=30;
 function tabelaNiveisPadrao(){
-  const t=[]; for(let l=1;l<=50;l++) t.push({lvl:l, pts: l===50?445:45+(l-1)*8});
+  const t=[]; for(let l=1;l<=NIVEL_MAX_PADRAO;l++) t.push({lvl:l, pts:45+(l-1)*8});
   return t;
 }
 function estadoPadrao(){
@@ -5021,74 +5054,90 @@ function ligarSkills(pc,host){
 }
 
 /* ---------- configurações (tabelas base) ---------- */
+/* (lote 79) As Tabelas base em abas: Níveis e pontos · Tiers · Corrupção · Tropas. A aba aberta fica lembrada enquanto a
+   página está aberta (reabrir a janela depois de uma mudança volta para ela). */
+let cfgAba='niveis';
+const CFG_ABAS=[['niveis','Níveis e pontos'],['tiers','Tiers'],['corr','Corrupção'],['tropas','Tropas']];
+function htmlCfgTiers(){
+  return `<div class="cfgcols">
+    <section class="cfgcard">
+      <h3 class="cfgt">Tier de herói → multiplicador</h3>
+      <p class="hint">Multiplica o total de pontos do level.</p>
+      <table class="cfg"><tbody>
+        ${S.cfg.tiersPersonagem.map((t,i)=>`<tr><td><input data-ct="${i}" value="${esc(t.t)}" style="width:58px" aria-label="Nome do tier"></td>
+          <td><input type="number" step="0.01" data-cm="${i}" value="${t.m}" aria-label="Multiplicador do tier ${esc(t.t)}"></td>
+          <td><button class="mini danger" data-ctdel="${i}" aria-label="Tirar o tier ${esc(t.t)}">×</button></td></tr>`).join('')}
+      </tbody></table>
+      <button class="mini" id="addTier" style="margin-top:8px">+ Tier</button>
+    </section>
+    <section class="cfgcard">
+      <h3 class="cfgt">Tier de atributo → percentual</h3>
+      <p class="hint">A parte do total que vai para cada atributo, nas fichas por tabela.</p>
+      <table class="cfg"><tbody>
+        ${TIERS_ATR.map(t=>`<tr><td>${t}</td><td><input type="number" step="0.01" data-cp="${t}" value="${S.cfg.pct[t]}" aria-label="Percentual do tier ${t}"></td>
+          <td class="mono" style="color:var(--ink-soft)">${(S.cfg.pct[t]*100).toFixed(0)}%</td></tr>`).join('')}
+        <tr><td class="mono" style="color:var(--ink-soft)">soma</td><td class="mono" id="somaPct">${(TIERS_ATR.reduce((s,t)=>s+ +S.cfg.pct[t],0)*100).toFixed(0)}%</td><td></td></tr>
+      </tbody></table>
+      <label class="f" style="margin-top:12px"><span class="eyebrow">Arredondamento dos atributos</span>
+        <select id="cfgArred">
+          <option value="floor" ${S.cfg.arredondar==='floor'?'selected':''}>Para baixo</option>
+          <option value="round" ${S.cfg.arredondar==='round'?'selected':''}>Normal</option>
+          <option value="ceil" ${S.cfg.arredondar==='ceil'?'selected':''}>Para cima</option>
+          <option value="none" ${S.cfg.arredondar==='none'?'selected':''}>Sem arredondar</option>
+        </select></label>
+      <div class="hint" style="margin-top:5px">As fórmulas de HP/SP usam o valor já arredondado.</div>
+    </section>
+  </div>`;
+}
+// (lote 79) a tabela dos levels em colunas de 10, cada level com os pontos e o quanto ganhou do anterior
+function htmlTabelaNiveis(){
+  const t=S.cfg.niveis, cols=[];
+  for(let c=0;c<t.length;c+=10) cols.push(t.slice(c,c+10).map((r,k)=>({r, i:c+k})));
+  return `<div class="lvlcols" id="lvlCols">${cols.map(col=>`<table class="cfg lvlcol"><tbody>${col.map(({r,i})=>{ const g=i? (+r.pts)-(+t[i-1].pts) : null;
+    return `<tr><td class="mono">${r.lvl}</td><td><input type="number" data-cn="${i}" value="${r.pts}" aria-label="Pontos no level ${r.lvl}"></td><td class="mono lvlg ${g!=null&&g<0?'neg':''}" data-cng="${i}">${g==null?'':(g>=0?'+':'−')+Math.abs(g)}</td></tr>`; }).join('')}</tbody></table>`).join('')}</div>`;
+}
+function htmlCfgNiveis(){
+  return `<div class="cfgniveis">
+    ${htmlPtsRapido()}
+    <section class="cfgcard cfgcard-lvl">
+      <div class="cfgt-l"><h3 class="cfgt">Level por level</h3><button class="mini" id="resetLvl" type="button">Restaurar padrão</button></div>
+      <p class="hint">Mude um level à mão aqui; o número pequeno é quanto ele ganhou do anterior.</p>
+      ${htmlTabelaNiveis()}
+    </section>
+  </div>`;
+}
 function abrirCfg(){
   const m=document.createElement('div'); m.className='modal'; m.dataset.cfg='1';
-  m.innerHTML=`<div class="sheet">
+  const corpo= cfgAba==='tiers'? htmlCfgTiers() : cfgAba==='corr'? `<section class="cfgcard cfgcard-larga">${FichasCorr.htmlCortes()}</section>` : cfgAba==='tropas'? `<section class="cfgcard cfgcard-larga cfgtropas">${FichasTropas.htmlCfg()}</section>` : htmlCfgNiveis();
+  m.innerHTML=`<div class="sheet cfgsheet" role="dialog" aria-label="Tabelas base">
     <div class="hd"><span class="eyebrow">Tabelas base</span>
       <span class="hint" style="margin-left:6px">Valem para todos os personagens</span>
       <button class="mini" id="cfgClose" style="margin-left:auto">Fechar</button></div>
-    <div class="bd">
-      <div class="cfggrid">
-        <div>
-          <span class="eyebrow">Tier de herói → multiplicador</span>
-          <table class="cfg"><tbody>
-            ${S.cfg.tiersPersonagem.map((t,i)=>`<tr><td><input data-ct="${i}" value="${esc(t.t)}" style="width:58px"></td>
-              <td><input type="number" step="0.01" data-cm="${i}" value="${t.m}"></td>
-              <td><button class="mini danger" data-ctdel="${i}">×</button></td></tr>`).join('')}
-          </tbody></table>
-          <button class="mini" id="addTier" style="margin-top:6px">+ Tier</button>
-        </div>
-        <div>
-          <span class="eyebrow">Tier de atributo → percentual</span>
-          <table class="cfg"><tbody>
-            ${TIERS_ATR.map(t=>`<tr><td>${t}</td><td><input type="number" step="0.01" data-cp="${t}" value="${S.cfg.pct[t]}"></td>
-              <td class="mono" style="color:var(--ink-soft)">${(S.cfg.pct[t]*100).toFixed(0)}%</td></tr>`).join('')}
-            <tr><td class="mono" style="color:var(--ink-soft)">soma</td><td class="mono" id="somaPct">${(TIERS_ATR.reduce((s,t)=>s+ +S.cfg.pct[t],0)*100).toFixed(0)}%</td><td></td></tr>
-          </tbody></table>
-          <div style="margin-top:12px">
-            <label class="f"><span class="eyebrow">Arredondamento dos atributos</span>
-              <select id="cfgArred">
-                <option value="floor" ${S.cfg.arredondar==='floor'?'selected':''}>Para baixo</option>
-                <option value="round" ${S.cfg.arredondar==='round'?'selected':''}>Normal</option>
-                <option value="ceil" ${S.cfg.arredondar==='ceil'?'selected':''}>Para cima</option>
-                <option value="none" ${S.cfg.arredondar==='none'?'selected':''}>Sem arredondar</option>
-              </select></label>
-            <div class="hint" style="margin-top:5px">As fórmulas de HP/SP usam o valor já arredondado.</div>
-          </div>
-        </div>
-        <div>
-          <span class="eyebrow">Pontos por level</span>
-          ${htmlPtsRapido()}
-          <div class="lvlscroll" style="margin-top:4px">
-            <table class="cfg"><tbody>
-              ${S.cfg.niveis.map((r,i)=>`<tr><td class="mono">Lvl ${r.lvl}</td><td><input type="number" data-cn="${i}" value="${r.pts}"></td></tr>`).join('')}
-            </tbody></table>
-          </div>
-          <button class="mini" id="addLvl" style="margin-top:6px">+ Level</button>
-          <button class="mini" id="resetLvl" style="margin-top:6px">Restaurar padrão</button>
-        </div>
-        ${FichasCorr.htmlCortes()}
-        ${FichasTropas.htmlCfg()}
-      </div>
-    </div></div>`;
+    <nav class="cfgabas" role="tablist" aria-label="Partes das Tabelas base">${CFG_ABAS.map(([id,nome])=>`<button type="button" role="tab" class="cfgaba" data-cfgaba="${id}" aria-selected="${cfgAba===id}">${nome}</button>`).join('')}</nav>
+    <div class="bd cfgbd" data-cfgparte="${cfgAba}">${corpo}</div></div>`;
   document.body.appendChild(m);
+  const reabrir=()=>{ const v=document.querySelector('.modal[data-cfg]'); if(v) v.remove(); abrirCfg(); };
   const fechar=()=>{m.remove(); render()};
   m.querySelector('#cfgClose').onclick=fechar;
   m.onclick=e=>{if(e.target===m)fechar()};
+  m.querySelectorAll('[data-cfgaba]').forEach(b=>b.onclick=()=>{ cfgAba=b.dataset.cfgaba; reabrir(); const n=document.querySelector('.modal[data-cfg] [data-cfgaba="'+cfgAba+'"]'); if(n) n.focus(); });
+  const q=sel=>m.querySelector(sel);
   m.querySelectorAll('[data-ct]').forEach(i=>i.onchange=e=>{S.cfg.tiersPersonagem[+e.target.dataset.ct].t=e.target.value.trim()||'?';save()});
   m.querySelectorAll('[data-cm]').forEach(i=>i.onchange=e=>{S.cfg.tiersPersonagem[+e.target.dataset.cm].m=+e.target.value||0;save()});
-  m.querySelectorAll('[data-ctdel]').forEach(b=>b.onclick=()=>{S.cfg.tiersPersonagem.splice(+b.dataset.ctdel,1);save();m.remove();abrirCfg()});
-  m.querySelector('#addTier').onclick=()=>{S.cfg.tiersPersonagem.push({t:'X',m:1});save();m.remove();abrirCfg()};
-  m.querySelectorAll('[data-cp]').forEach(i=>i.onchange=e=>{S.cfg.pct[e.target.dataset.cp]=+e.target.value||0;save();m.remove();abrirCfg()});
-  m.querySelector('#cfgArred').onchange=e=>{S.cfg.arredondar=e.target.value;save()};
+  m.querySelectorAll('[data-ctdel]').forEach(b=>b.onclick=()=>{S.cfg.tiersPersonagem.splice(+b.dataset.ctdel,1);save();reabrir()});
+  if(q('#addTier')) q('#addTier').onclick=()=>{S.cfg.tiersPersonagem.push({t:'X',m:1});save();reabrir()};
+  m.querySelectorAll('[data-cp]').forEach(i=>i.onchange=e=>{S.cfg.pct[e.target.dataset.cp]=+e.target.value||0;save();reabrir()});
+  if(q('#cfgArred')) q('#cfgArred').onchange=e=>{S.cfg.arredondar=e.target.value;save()};
   FichasCorr.ligarCortes(m);
-  FichasTropas.ligarCfg(m, ()=>{ const v=document.querySelector('.modal[data-cfg]'); if(!v){ render(); return; } v.remove(); abrirCfg(); });
-  m.querySelectorAll('[data-cn]').forEach(i=>i.onchange=e=>{S.cfg.niveis[+e.target.dataset.cn].pts=+e.target.value||0;save()});
-  m.querySelector('#addLvl').onclick=()=>{
-    const last=S.cfg.niveis[S.cfg.niveis.length-1]||{lvl:0,pts:37};
-    S.cfg.niveis.push({lvl:+last.lvl+1,pts:+last.pts+8});save();m.remove();abrirCfg()};
+  FichasTropas.ligarCfg(m, ()=>{ if(!document.querySelector('.modal[data-cfg]')){ render(); return; } reabrir(); });
+  // um level à mão: o ganho dele e o do seguinte acompanham
+  m.querySelectorAll('[data-cn]').forEach(i=>i.onchange=e=>{ const k=+e.target.dataset.cn; S.cfg.niveis[k].pts=Math.max(0,Math.round(+e.target.value||0)); e.target.value=S.cfg.niveis[k].pts; save();
+    for(const x of [k,k+1]){ const c=m.querySelector('[data-cng="'+x+'"]'); if(c&&x>0&&S.cfg.niveis[x]){ const g=S.cfg.niveis[x].pts-S.cfg.niveis[x-1].pts; c.textContent=(g>=0?'+':'−')+Math.abs(g); c.classList.toggle('neg',g<0); } } });
   ligarPtsRapido(m);
-  m.querySelector('#resetLvl').onclick=()=>{if(confirm('Restaurar a tabela de levels padrão (1 a 50)?')){S.cfg.niveis=tabelaNiveisPadrao();save();m.remove();abrirCfg()}};
+  if(q('#resetLvl')) q('#resetLvl').onclick=()=>{
+    const antes=JSON.parse(JSON.stringify(S.cfg.niveis)); S.cfg.niveis=tabelaNiveisPadrao(); save(); reabrir();
+    FichasExtras.aviso('A tabela voltou à padrão: '+NIVEL_MAX_PADRAO+' levels, 45 no level 1 e +8 por level.', 'Desfazer', ()=>{ S.cfg.niveis=antes; save(); reabrir(); });
+  };
 }
 
 /* ---------- (lote 77) os pontos de atributo, de uma vez ----------
@@ -5102,12 +5151,23 @@ function ptsAtuais(){
 }
 function htmlPtsRapido(){
   const p=ptsAtuais(), n=(S.cfg.niveis||[]).length;
-  return `<div class="ptsrap" id="ptsRap">
-    <div class="ptsrap-l"><label>Inicial <input type="number" min="0" step="1" id="ptsIni" value="${p.ini}" aria-label="Pontos no level 1"></label>
-      <label>Por level <input type="number" min="0" step="1" id="ptsPor" value="${p.por}" aria-label="Pontos a mais a cada level"></label></div>
-    <div class="hint" id="ptsPrevia">Level 10: ${p.ini+9*p.por} · level 20: ${p.ini+19*p.por}</div>
-    <button class="mini primary" id="ptsAplicar" type="button">Refazer a tabela (${n} levels)</button>
-  </div>`;
+  return `<section class="cfgcard ptsrap" id="ptsRap">
+    <h3 class="cfgt">Pontos de atributo</h3>
+    <div class="ptsrap-l">
+      <label>Inicial <input type="number" min="0" step="1" id="ptsIni" value="${p.ini}" aria-label="Pontos no level 1"></label>
+      <label>Por level <input type="number" min="0" step="1" id="ptsPor" value="${p.por}" aria-label="Pontos a mais a cada level"></label>
+      <label>Level máximo <input type="number" min="1" max="${NIVEL_MAX_TETO}" step="1" id="ptsMax" value="${n}" aria-label="O level mais alto da tabela"></label>
+    </div>
+    <div class="ptsprev" id="ptsPrevia">${previaPts(p.ini,p.por,n)}</div>
+    <button class="mini primary" id="ptsAplicar" type="button">Refazer a tabela</button>
+    <p class="hint">As fichas por tier acompanham sozinhas. Com o Inicial e o Por level de sempre, mudar só o Level máximo mantém o que foi mudado à mão.</p>
+  </section>`;
+}
+const NIVEL_MAX_TETO=99;
+// a prévia: os pontos no level 10, no 20 e no máximo
+function previaPts(ini,por,max){
+  const v=l=>ini+(l-1)*por, ls=[10,20].filter(l=>l<max).concat([max]);
+  return ls.map(l=>`<span><small>level ${l}</small><b>${v(l)}</b></span>`).join('');
 }
 // a distribuição na proporção: cada atributo × (novo / usado), para baixo, e o que sobrar vai para os de maior resto
 function naProporcao(al, alvo){
@@ -5120,24 +5180,53 @@ function naProporcao(al, alvo){
   return Object.assign({},al,out);
 }
 function ligarPtsRapido(m){
-  const ini=m.querySelector('#ptsIni'), por=m.querySelector('#ptsPor'), prev=m.querySelector('#ptsPrevia');
+  const ini=m.querySelector('#ptsIni'), por=m.querySelector('#ptsPor'), mx=m.querySelector('#ptsMax'), prev=m.querySelector('#ptsPrevia');
   if(!ini) return;
-  const ler=()=>({ini:Math.max(0,Math.round(+ini.value||0)), por:Math.max(0,Math.round(+por.value||0))});
-  const pintar=()=>{ const p=ler(); prev.textContent='Level 10: '+(p.ini+9*p.por)+' · level 20: '+(p.ini+19*p.por); };
-  ini.oninput=pintar; por.oninput=pintar;
+  const ler=()=>({ini:Math.max(0,Math.round(+ini.value||0)), por:Math.max(0,Math.round(+por.value||0)), max:Math.min(NIVEL_MAX_TETO,Math.max(1,Math.round(+mx.value||1)))});
+  const pintar=()=>{ const p=ler(); prev.innerHTML=previaPts(p.ini,p.por,p.max); };
+  ini.oninput=pintar; por.oninput=pintar; mx.oninput=pintar;
   m.querySelector('#ptsAplicar').onclick=()=>{
-    const p=ler(), antes=JSON.parse(JSON.stringify(S.cfg.niveis)), n=antes.length||50;
-    const nova=[]; for(let l=1;l<=n;l++) nova.push({lvl:l, pts:p.ini+(l-1)*p.por});
+    const p=ler(), antes=JSON.parse(JSON.stringify(S.cfg.niveis)), at=ptsAtuais();
+    let nova;
+    if(p.ini===at.ini && p.por===at.por){
+      // (só o máximo mudou: o que foi mudado à mão fica; os levels novos seguem o Por level a partir do último)
+      nova=antes.slice(0,p.max).map(r=>({lvl:+r.lvl, pts:+r.pts}));
+      while(nova.length<p.max){ const u=nova[nova.length-1]||{lvl:0,pts:p.ini-p.por}; nova.push({lvl:u.lvl+1, pts:u.pts+p.por}); }
+    } else { nova=[]; for(let l=1;l<=p.max;l++) nova.push({lvl:l, pts:p.ini+(l-1)*p.por}); }
     if(JSON.stringify(nova)===JSON.stringify(antes)){ FichasExtras.aviso('A tabela já é essa.'); return; }
-    S.cfg.niveis=nova;
-    // as fichas em distribuição livre que passam do total novo
-    const acima=S.personagens.filter(pc=>pc.modoAtr==='livre' && pc.atrLivre && FichasMesa.podeEditar(pc)).map(pc=>{ const c=calcular(pc); return {pc, usados:c.usados||0, limite:c.limite||0}; }).filter(x=>x.usados>x.limite);
-    save(); m.remove(); abrirCfg();
-    const desfazer=()=>{ S.cfg.niveis=antes; save(); const v=document.querySelector('.modal[data-cfg]'); if(v){ v.remove(); abrirCfg(); } else render(); };
-    const msg='Tabela refeita: '+p.ini+' no level 1 e +'+p.por+' por level.';
-    if(!acima.length){ FichasExtras.aviso(msg, 'Desfazer', desfazer); return; }
-    janelaProporcao(acima, msg, desfazer);
+    // as fichas acima do level máximo novo: a janela pergunta antes (e baixa para o máximo)
+    const altas=S.personagens.filter(pc=>(+pc.level||1)>p.max);
+    const seguir=()=>{
+      const niveisAntes=altas.map(pc=>({pc, lvl:pc.level}));
+      altas.forEach(pc=>{ pc.level=p.max; });
+      S.cfg.niveis=nova;
+      const acima=S.personagens.filter(pc=>pc.modoAtr==='livre' && pc.atrLivre && FichasMesa.podeEditar(pc)).map(pc=>{ const c=calcular(pc); return {pc, usados:c.usados||0, limite:c.limite||0}; }).filter(x=>x.usados>x.limite);
+      save(); reabrirCfg();
+      const desfazer=()=>{ S.cfg.niveis=antes; niveisAntes.forEach(x=>{ x.pc.level=x.lvl; }); save(); reabrirCfg(); };
+      const msg='Tabela refeita: '+p.ini+' no level 1, +'+p.por+' por level, até o '+p.max+'.'+(altas.length? ' '+(altas.length===1?'1 ficha baixou':altas.length+' fichas baixaram')+' para o level '+p.max+'.':'');
+      if(!acima.length){ FichasExtras.aviso(msg, 'Desfazer', desfazer); return; }
+      janelaProporcao(acima, msg, desfazer);
+    };
+    if(!altas.length){ seguir(); return; }
+    janelaAcimaDoMax(altas, p.max, seguir);
   };
+}
+function reabrirCfg(){ const v=document.querySelector('.modal[data-cfg]'); if(v){ v.remove(); abrirCfg(); } else render(); }
+// (lote 79) as fichas acima do level máximo novo: a lista, antes de mudar qualquer coisa
+function janelaAcimaDoMax(altas, max, seguir){
+  const j=document.createElement('div'); j.className='modal'; j.dataset.lvlmax='1';
+  j.innerHTML=`<div class="sheet" role="dialog" aria-label="Fichas acima do level máximo" style="max-width:520px">
+    <div class="hd"><span class="eyebrow">Acima do level ${max}</span></div>
+    <div class="bd">
+      <p style="margin:0 0 10px">${altas.length===1?'Esta ficha está':'Estas '+altas.length+' fichas estão'} acima do level máximo novo:</p>
+      <table class="cfg"><tbody>${altas.map(pc=>`<tr data-lvlmax="${esc(pc.id)}"><td><b>${esc(pc.nome||'Sem nome')}</b></td><td class="mono">level ${esc(String(pc.level))} → ${max}</td></tr>`).join('')}</tbody></table>
+      <p class="hint" style="margin:10px 0">Elas baixam para o level ${max} junto com a tabela. Dá para desfazer.</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><button class="mini" id="lvlmaxNao" type="button">Cancelar</button><button class="mini primary" id="lvlmaxSim" type="button">Baixar para o level ${max}</button></div>
+    </div></div>`;
+  document.body.appendChild(j);
+  j.querySelector('#lvlmaxNao').onclick=()=>j.remove();
+  j.querySelector('#lvlmaxSim').onclick=()=>{ j.remove(); seguir(); };
+  j.querySelector('#lvlmaxSim').focus();
 }
 function janelaProporcao(acima, msg, desfazerTabela){
   const j=document.createElement('div'); j.className='modal'; j.dataset.prop='1';

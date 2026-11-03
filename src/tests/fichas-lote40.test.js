@@ -150,6 +150,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
   });
   await passo('as tabelas base', async () => {
     await P.locator('text=Tabelas base').first().click(); await w(300);
+    await P.locator('[data-cfgaba="tropas"]').click(); await w(200);      // (lote 79: a aba Tropas)
     ok(await P.locator('[data-trceqn]').count() === 6 && await P.locator('[data-trcspn]').count() === 6, 'nas Tabelas base, os seis equipamentos e os seis suprimentos de começo');
     await P.locator('[data-trceqmais]').click(); await w(250);
     await P.locator('[data-trceqn]').last().fill('Machado de guerra'); await P.locator('[data-trceqn]').last().press('Tab'); await w(100);

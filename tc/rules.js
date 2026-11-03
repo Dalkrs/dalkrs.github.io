@@ -348,7 +348,7 @@
 
   /* ---------- padrões (da calculadora) ---------- */
   function tabelaNiveisPadrao(){
-    const t=[]; for(let l=1;l<=50;l++) t.push({lvl:l, pts: l===50?445:45+(l-1)*8});
+    const t=[]; for(let l=1;l<=30;l++) t.push({lvl:l, pts:45+(l-1)*8});      // (lote 79: até o level 30)
     return t;
   }
   /* a parte cfg do estadoPadrao() de lá; cada chamada devolve uma cópia nova */

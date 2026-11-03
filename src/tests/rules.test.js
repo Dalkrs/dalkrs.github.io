@@ -16,7 +16,8 @@ const clone = x => JSON.parse(JSON.stringify(x));
 
 // ---------- 1. exemplo documentado ----------
 const cfg0 = R.cfgPadrao();
-ok(j(cfg0) === j(clone(O.cfg())), 'a configuração padrão é a mesma da calculadora');
+// (lote 79: a tabela padrão vai até o level 30; o resto é o da calculadora)
+ok(j(Object.assign({}, cfg0, { niveis: null })) === j(Object.assign(clone(O.cfg()), { niveis: null })) && cfg0.niveis.length === 30 && cfg0.niveis.every((r, i) => r.lvl === i + 1 && r.pts === O.cfg().niveis[i].pts), 'a configuração padrão é a mesma da calculadora (com a tabela até o level 30)');
 const dain = { id: 'd', nome: 'Dain X', tier: 'S', level: 19, tiers: { FOR: 'A', DES: 'C', AGI: 'D', VIT: 'B', CAN: 'E' }, pctProprio: null, defesas: { DFF: 10, DFM: 4 }, itens: [], recursos: [{ id: 'hp', nome: 'HP', fml: 'VIT*8 + LVL*5' }, { id: 'sp', nome: 'SP', fml: 'CAN*6 + LVL*3' }] };
 const c = R.calcular(dain, cfg0);
 ok(c.tot.FOR === 63 && c.tot.VIT === 55 && c.tot.DES === 46 && c.tot.AGI === 35 && c.tot.CAN === 10, 'Dain X: atributos ' + j(c.tot));

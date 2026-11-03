@@ -88,7 +88,7 @@ const ficha = nome => ({ nome, raca: 'Humana', lado: 'Aliado', grupo: '', tags: 
     const mudar = dados => sD.evaluate(async ([mesa, dados]) => { const r = await sb.from('documentos').update({ dados }).eq('mesa_id', mesa).eq('id', 'fichas:tropas:pc_selene').select('id'); return r.error ? 'recusado' : (r.data || []).length ? 'ok' : 'nada'; }, [mesa, dados]);
     const comPer = async (per, tropas) => { const d = (await ler('fichas:tropas:pc_selene')).dados; const u = d.unid.find(x => x.id === ua); u.per = per; if (tropas) u.tropas = tropas; return d; };
     ok(await mudar(await comPer({ pr_rastreio: 10 })) === 'recusado', 'sem a chave do mestre, o Dalmo não muda os pontos das perícias (recusado)');
-    await FM.evaluate(() => abrirCfg()); await w(400);
+    await FM.evaluate(() => { cfgAba = 'tropas'; abrirCfg(); }); await w(400);      // (lote 79: a aba Tropas)
     await FM.locator('[data-trcperjog]').check(); await w(300);
     ok(await ate(async () => await M.evaluate(() => { const l = TC.dados.col('documentos').pegar('fichas:cfg'); return !!(l && l.dados.v && l.dados.v.tropas && l.dados.v.tropas.perJog); })) && await ate(() => parado(M)),
       'o mestre liga "Os jogadores distribuem os pontos das perícias" (nas tabelas base)');

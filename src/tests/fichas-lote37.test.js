@@ -78,6 +78,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
   await passo('os cortes', async () => {
     await P.locator('#corrBarra [data-corrtipo="vamp"]').click(); await w(200);
     await P.locator('text=Tabelas base').first().click(); await w(250);
+    await P.locator('[data-cfgaba="corr"]').click(); await w(200);      // (lote 79: a aba Corrupção)
     ok(await P.locator('[data-corrcorte]').count() === 10, 'nas Tabelas base, os cortes da vampírica e da licantropa (cinco cada)');
     await P.locator('[data-corrcorte="vamp|4"]').fill('50'); await P.locator('[data-corrcorte="vamp|4"]').press('Tab'); await w(150);
     await P.locator('[data-corrcorte="vamp|1"]').fill('2'); await P.locator('[data-corrcorte="vamp|1"]').press('Tab'); await w(150);
