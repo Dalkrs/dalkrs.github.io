@@ -457,6 +457,8 @@
   };
 
   const sabia = [
+    { t: 'Um modo de cada vez', txt: 'No alto do site, Sessão, Mundo, Descanso e Preparar mostram só as abas de cada momento. A Mesa ao vivo fechada vira um trilho fino à direita.', papel: 'todos', sistema: 'mesa' },
+    { t: 'O selo do descanso longo', txt: 'Virou o dia no Mapa-múndi e o grupo não descansou? O selo “Falta o descanso longo” fica no alto até o descanso, ou até você dizer que hoje não tem.', papel: 'mestre', sistema: 'acampamento' },
     { t: 'A internet caiu? Pode continuar', txt: 'O que você muda sem internet fica esperando e sobe quando ela volta. Se a página fechar antes, a mudança fica guardada neste navegador e sobe quando você abrir a mesa de novo.', papel: 'todos', sistema: 'mesa' },
     { t: 'Dois mexendo ao mesmo tempo', txt: 'Você e o mestre podem mexer na mesma ficha, no Acampamento ou no mapa ao mesmo tempo: cada mudança fica. No caderno do grupo, se dois escreveram no mesmo capítulo, o outro texto vira um capítulo ao lado.', papel: 'todos', sistema: 'mesa' },
     { t: 'Tudo tem Desfazer', txt: 'Quase toda mudança no site mostra um aviso com “Desfazer”. Pode testar sem medo.', papel: 'todos', sistema: 'mesa' },
@@ -491,5 +493,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 16, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 17, sistemas, tarefas, roteiro, sabia };
 })();

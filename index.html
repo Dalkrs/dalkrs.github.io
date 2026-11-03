@@ -69,40 +69,34 @@ button { cursor: pointer; }
 .tabs-seta.dir { right: 0; justify-content: end; padding-right: 2px; background: linear-gradient(270deg, var(--surface) 55%, transparent); }
 .tabs-seta span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
 .tabs-seta:hover span { border-color: var(--lamp); color: var(--lamp-ink); }
-.grupo { --grupo: #74c28e; flex: none; display: flex; flex-direction: column; justify-content: flex-end; }
-.grupo[data-g="mundo"] { --grupo: #6fa8f0; }
-.grupo[data-g="descanso"] { --grupo: #b39cf0; }
-.grupo[data-g="mestre"] { --grupo: #d9dde6; }
-:where(:root[data-claro]) .grupo { --grupo: #2f7a55; }
-:where(:root[data-claro]) .grupo[data-g="mundo"] { --grupo: #2563b0; }
-:where(:root[data-claro]) .grupo[data-g="descanso"] { --grupo: #6a4fc2; }
-:where(:root[data-claro]) .grupo[data-g="mestre"] { --grupo: #4a5468; }
-.grupo-t { padding: 0 10px; font-size: 10.5px; line-height: 14px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--grupo); white-space: nowrap; }
-/* (barra de cima, 28/10) o nome da categoria recolhe e abre as abas dela */
-button.grupo-t { display: flex; align-items: center; gap: 4px; align-self: flex-start; border: 0; border-radius: 4px; background: none; cursor: pointer; font-family: inherit; }
-button.grupo-t:hover { background: var(--hover); }
-.grupo-t .gt-seta { flex: none; transition: transform .15s; }
-.grupo.recolhido .grupo-t .gt-seta { transform: rotate(-90deg); }
+.grupo, .modo { --grupo: #74c28e; }
+.grupo { flex: none; display: flex; flex-direction: column; justify-content: flex-end; }
+:is(.grupo, .modo)[data-g="mundo"] { --grupo: #6fa8f0; }
+:is(.grupo, .modo)[data-g="descanso"] { --grupo: #b39cf0; }
+:is(.grupo, .modo)[data-g="preparar"] { --grupo: #d9dde6; }
+:where(:root[data-claro]) :is(.grupo, .modo) { --grupo: #2f7a55; }
+:where(:root[data-claro]) :is(.grupo, .modo)[data-g="mundo"] { --grupo: #2563b0; }
+:where(:root[data-claro]) :is(.grupo, .modo)[data-g="descanso"] { --grupo: #6a4fc2; }
+:where(:root[data-claro]) :is(.grupo, .modo)[data-g="preparar"] { --grupo: #4a5468; }
+/* (lote 68) os modos: um trilho de botões, o do modo em que se está aceso na cor dele */
+.modos { flex: none; align-self: center; display: flex; gap: 2px; padding: 3px; margin-right: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--table); }
+.modo { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border: 0; border-radius: 7px; background: none; color: var(--fg-3); font: 600 13.5px/1 var(--ui); white-space: nowrap; }
+.modo svg { flex: none; color: var(--grupo); opacity: .75; }
+.modo:hover { color: var(--fg); background: var(--hover); }
+.modo[aria-checked="true"] { color: var(--fg); background: var(--raised); box-shadow: inset 0 -2px 0 var(--grupo), 0 1px 2px rgba(0,0,0,.2); }
+.modo[aria-checked="true"] svg { opacity: 1; }
+/* (os nomes dos modos saem quando a barra aperta: fica o ícone, e o nome na dica) */
+body.barra-apertada1 .brand span { display: none; } body.barra-apertada1 .brand { padding-right: 6px; }
+body.barra-apertada2 .conta { max-width: 160px; } body.barra-apertada2 .conta .pp { display: none; }
+body.barra-apertada .modo span { display: none; } body.barra-apertada .modo { padding: 0 9px; }
+@media (max-width: 1100px) { .modo span { display: none; } .modo { padding: 0 9px; } }
 .grupo-abas { display: flex; align-items: stretch; gap: 2px; height: 36px; }
-.grupo.recolhido .grupo-abas { display: none; }
-.grupo-menu { display: none; height: 36px; border: 0; background: none; font-family: var(--ui); cursor: pointer; }
-.grupo.recolhido .grupo-menu { display: flex; }
-.grupo-menu .gm-car { flex: none; display: flex; color: var(--fg-3); }
-.grupo-menu .gm-car svg { color: inherit; }
-.grupo-menu.ativo { color: var(--fg); background: var(--hover); }
-.grupo-menu.ativo::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 2px 2px 0 0; background: var(--grupo); }
-.menu-grupo { position: fixed; z-index: 31; min-width: 200px; padding: 6px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: var(--shadow); }
-.menu-grupo .mg-it { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 10px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font: 600 14px/1.2 var(--ui); text-align: left; cursor: pointer; }
-.menu-grupo .mg-it svg { flex: none; color: var(--grupo); }
-.menu-grupo .mg-it:hover, .menu-grupo .mg-it:focus-visible { background: var(--hover); color: var(--fg); }
-.menu-grupo .mg-it[aria-current="page"] { color: var(--fg); background: var(--hover); box-shadow: inset 3px 0 0 var(--grupo); }
-.menu-grupo .mg-mostrar { margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
-.menu-grupo .mg-mostrar .mg-it { font-weight: 500; font-size: 13px; color: var(--fg-3); }
 .grupo[hidden] { display: none; }
-.tab, .grupo-menu { position: relative; align-items: center; gap: 7px; padding: 0 11px; color: var(--fg-2); text-decoration: none; font-weight: 600; font-size: 14.5px; white-space: nowrap; border-radius: 7px 7px 0 0; }
+
+.tab { position: relative; align-items: center; gap: 7px; padding: 0 11px; color: var(--fg-2); text-decoration: none; font-weight: 600; font-size: 14.5px; white-space: nowrap; border-radius: 7px 7px 0 0; }
 .tab { display: flex; }
-.tab svg, .grupo-menu svg { flex: none; color: var(--grupo); }
-.tab:hover, .grupo-menu:hover { color: var(--fg); background: var(--hover); }
+.tab svg { flex: none; color: var(--grupo); }
+.tab:hover { color: var(--fg); background: var(--hover); }
 .tab[aria-selected="true"] { color: var(--fg); background: var(--hover); }
 .tab[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 2px 2px 0 0; background: var(--grupo); }
 /* (lote 6) a edição do Jornal que a pessoa ainda não leu */
@@ -242,6 +236,23 @@ dialog.pista { width: min(760px, calc(100% - 24px)); }
 .pista-janela .pj-pz p { margin: 0; color: var(--fg-2); }
 .pista-janela .pe { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 900px) { .notas { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; width: min(400px, 100%); box-shadow: -10px 0 30px rgba(0,0,0,.3); } }
+.selo-desc { display: flex; align-items: center; height: 32px; border: 1px solid #8f7ad6; border-radius: 9px; background: rgba(179,156,240,.14); color: var(--fg); }
+.selo-desc[hidden] { display: none; }
+.sd-b { display: flex; align-items: center; gap: 7px; height: 100%; padding: 0 10px; border: 0; border-radius: 8px 0 0 8px; background: none; font: 600 13px/1 var(--ui); white-space: nowrap; }
+.sd-b svg { color: #b39cf0; }
+.sd-b:hover, .sd-x:hover { background: rgba(179,156,240,.18); }
+.sd-x { display: grid; place-items: center; width: 26px; height: 100%; padding: 0; border: 0; border-left: 1px solid rgba(143,122,214,.5); border-radius: 0 8px 8px 0; background: none; color: var(--fg-3); }
+:where(:root[data-claro]) .selo-desc { border-color: #6a4fc2; background: rgba(106,79,194,.08); }
+:where(:root[data-claro]) .sd-b svg { color: #6a4fc2; }
+@media (max-width: 1100px) { .sd-b span { display: none; } }
+.trilho { flex: none; width: 46px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0; background: var(--surface); border-left: 1px solid var(--line); }
+.tr-b { position: relative; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid transparent; border-radius: 9px; background: none; color: var(--fg-3); }
+.tr-b:hover { color: var(--fg); background: var(--hover); border-color: var(--line); }
+.tr-b.pede { color: var(--lamp-ink); background: var(--lamp-soft); border-color: var(--lamp); }
+.tr-n { position: absolute; top: -4px; right: -4px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--lamp); color: var(--on-lamp); font: 700 10.5px/17px var(--ui); text-align: center; }
+.tr-b.pulso { animation: pulso .9s ease-out; }
+@media (prefers-reduced-motion: reduce) { .tr-b.pulso { animation: none; } }
+@media (max-width: 620px) { .trilho { width: 40px; } }
 .vivo { flex: none; width: 340px; display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: 1px solid var(--line); }
 .vivo-h { flex: none; display: flex; align-items: center; gap: 8px; padding: 9px 8px 9px 14px; border-bottom: 1px solid var(--line); }
 .vivo-h strong { font: 600 17px/1.1 var(--display); letter-spacing: .01em; }
@@ -519,11 +530,12 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 }
 @media (max-width: 620px) {
   .brand span { display: none; }
-  .tab, .grupo-menu { padding: 0 10px; }
+  .modos { margin-right: 4px; padding: 2px; } .modo { padding: 0 6px; height: 28px; }
+  #pop { display: none; }
+  .tab { padding: 0 10px; }
   .tab svg { display: none; }
   .tabs { gap: 6px; }
-  .grupo-t { font-size: 9.5px; line-height: 13px; padding: 0 6px; }
-  .grupo-abas, .grupo-menu { height: 36px; }
+  .grupo-abas { height: 36px; }
   .conta .pp { display: none; }
   .conta, .conta.com-camp { max-width: 130px; }
   /* numa mesa com campanhas, na tela estreita fica a campanha em vista (é nela que a pessoa está); o nome da mesa está no menu */
@@ -547,6 +559,14 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     <button type="button" class="tabs-seta dir" id="tabsDir" hidden title="Rolar as abas para a direita" aria-label="Rolar as abas para a direita"><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span></button>
   </div>
   <div class="bar-r">
+    <!-- (lote 68) para quem mestra o Acampamento: o dia do mundo virou e ainda não teve descanso longo -->
+    <span class="selo-desc" id="seloDesc" hidden>
+      <button type="button" class="sd-b" id="seloDescAbrir" title="O dia virou no Mapa-múndi e o grupo ainda não teve o descanso longo. Abrir o Acampamento.">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg>
+        <span>Falta o descanso longo</span>
+      </button>
+      <button type="button" class="sd-x" id="seloDescHoje" title="Hoje não tem descanso longo (o selo volta no próximo dia)" aria-label="Hoje não tem descanso longo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </span>
     <button type="button" class="ib" id="btnGuia" title="Guia desta aba" aria-label="Guia: como usar esta aba" aria-expanded="false" aria-controls="guia">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
     </button>
@@ -580,6 +600,16 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   </main>
   <aside class="notas" id="notas" hidden aria-label="Bloco de notas"></aside>
   <aside class="roteiro" id="roteiro" hidden aria-label="O roteiro da sessão"></aside>
+  <!-- (lote 68) a Mesa ao vivo fechada vira um trilho fino: a conversa (com quantas chegaram) e os dados -->
+  <aside class="trilho" id="trilho" hidden aria-label="Mesa ao vivo, recolhida">
+    <button type="button" class="tr-b" id="trConversa" title="Abrir a Mesa ao vivo: as rolagens e a conversa" aria-label="Abrir a Mesa ao vivo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8"/><path d="M8 12.5h5"/></svg>
+      <span class="tr-n" id="trN" hidden></span>
+    </button>
+    <button type="button" class="tr-b" id="trDados" title="Rolar pela ficha: abre a Mesa ao vivo nos dados" aria-label="Rolar pela ficha">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.8 20 7.4v9.2l-8 4.6-8-4.6V7.4z"/><path d="M12 12 20 7.4M12 12 4 7.4M12 12v9.2"/></svg>
+    </button>
+  </aside>
   <aside class="vivo" id="vivo" hidden aria-label="Mesa ao vivo">
     <div class="vivo-h">
       <strong>Mesa ao vivo</strong><span class="sinal" id="sinal"></span>
@@ -636,7 +666,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/rules.js?v=28"></script>
 <script src="tc/tc.js?v=41"></script>
 <script src="tc/busca.js?v=3"></script>
-<script src="tc/guia.js?v=38"></script>
+<script src="tc/calendario.js?v=2"></script>
+<script src="tc/guia.js?v=39"></script>
 <script src="tc/notas.js?v=6"></script>
 <script src="tc/dom.js?v=2"></script>
 <script src="tc/escudo.js?v=3"></script>
@@ -652,7 +683,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.03-2';
+  const VERSAO = '2026.11.03-3';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -677,12 +708,12 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   };
   /* As abas, na ordem da barra, em três grupos (ver GRUPOS). */
   const ABAS = [
-    { id: 'cenas', nome: 'Cenas', src: 'cenas/', dados: true, grupo: 'jogar' },
-    { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true, grupo: 'jogar' },
-    { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true, grupo: 'jogar', soJogador: true },     // (lote 24) a árvore de quem joga; quem mestra usa a Oficina
-    { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true, dados: true, grupo: 'jogar' },      // ferramenta do mestre: numa mesa, os jogadores não a veem (e os históricos ficam na mesa)
-    { id: 'loja', nome: 'Loja', src: 'loja/', dados: true, grupo: 'jogar', soPerto: true },                 // (lote 29) aparece quando um personagem seu está no hexágono de uma loja
-    { id: 'pistas', nome: 'Pistas', src: 'pistas/', dados: true, grupo: 'jogar', soPistas: true },           // (lote 31) o que o mestre entregou (aparece quando há alguma)
+    { id: 'cenas', nome: 'Cenas', src: 'cenas/', dados: true, grupo: 'sessao' },
+    { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true, grupo: 'sessao' },
+    { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true, dados: true, grupo: 'sessao' },      // ferramenta do mestre: numa mesa, os jogadores não a veem (e os históricos ficam na mesa)
+    { id: 'escudo', nome: 'Escudo do mestre', src: 'escudo/', dados: true, grupo: 'sessao', soMestre: true }, // (lote 31) o roteiro, os relógios, os handouts e os puzzles
+    { id: 'loja', nome: 'Loja', src: 'loja/', dados: true, grupo: 'sessao', soPerto: true },                 // (lote 29) aparece quando um personagem seu está no hexágono de uma loja
+    { id: 'pistas', nome: 'Pistas', src: 'pistas/', dados: true, grupo: 'sessao', soPistas: true },           // (lote 31) o que o mestre entregou (aparece quando há alguma)
     { id: 'mundo', nome: 'Mapa-múndi', src: 'mundo/', dados: true, grupo: 'mundo' },
     { id: 'jornal', nome: 'Jornal', src: 'jornal/', dados: true, grupo: 'mundo' },          // (lote 6) o jornal da mesa
     { id: 'cla', nome: 'Clã', src: 'cla/', dados: true, grupo: 'mundo' },                   // (lote 6) os clãs da mesa
@@ -691,16 +722,24 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     { id: 'livro', get nome() { return mestraAba('cla') ? 'Bestiário do clã' : 'Bestiário'; }, src: 'livro/', dados: true, grupo: 'mundo', soLivro: true, permissao: 'cla' },
     { id: 'acampamento', nome: 'Acampamento', src: 'acampamento/', dados: true, grupo: 'descanso' },
     { id: 'meditacao', nome: 'Meditação', src: 'meditacao/', dados: true, grupo: 'descanso' },      // (lote 6) a meditação dos personagens
+    { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true, grupo: 'descanso', soJogador: true },     // (lote 24) a árvore de quem joga; quem mestra usa a Oficina
     // (lote 24) a Oficina de árvores: a mesma página da Árvore, aberta no modo de quem mestra (montar e editar as árvores)
-    { id: 'oficina', nome: 'Oficina', src: 'arvore/?oficina', dados: true, grupo: 'mestre', soMestre: true, permissao: 'arvore' },
+    { id: 'oficina', nome: 'Oficina', src: 'arvore/?oficina', dados: true, grupo: 'preparar', soMestre: true, permissao: 'arvore' },
     // (lote 29) o Bestiário: os inimigos do mestre, prontos para puxar para a cena (só quem mestra)
-    { id: 'bestiario', nome: 'Bestiário', src: 'bestiario/', dados: true, grupo: 'mestre', soMestre: true },
-    { id: 'itens', nome: 'Itens', src: 'itens/', dados: true, grupo: 'mestre', soMestre: true },          // (lote 29) o catálogo, as lojas e as receitas
-    { id: 'escudo', nome: 'Escudo do mestre', src: 'escudo/', dados: true, grupo: 'mestre', soMestre: true }, // (lote 31) o roteiro, os relógios, os handouts e os puzzles
+    { id: 'bestiario', nome: 'Bestiário', src: 'bestiario/', dados: true, grupo: 'preparar', soMestre: true },
+    { id: 'itens', nome: 'Itens', src: 'itens/', dados: true, grupo: 'preparar', soMestre: true },          // (lote 29) o catálogo, as lojas e as receitas
     // (lote 27) a administração do site inteiro (as contas, as mesas, o cadastro): só quem está em public.admins a vê
-    { id: 'admin', nome: 'Administração', src: 'admin/', grupo: 'site', soAdmin: true },
+    { id: 'admin', nome: 'Administração', src: 'admin/', grupo: 'preparar', soAdmin: true },
   ];
-  const GRUPOS = [{ id: 'jogar', nome: 'Jogar' }, { id: 'mundo', nome: 'Mundo' }, { id: 'descanso', nome: 'Descanso' }, { id: 'mestre', nome: 'Mestre' }, { id: 'site', nome: 'Administração' }];
+  /* (lote 68) Os modos de trabalho, no alto, para quem joga e para quem mestra: só as abas do modo ficam à vista.
+     Sessão (a mesa rodando), Mundo (o mapa, o jornal, o clã), Descanso (a fogueira, o templo, a árvore) e Preparar
+     (o que o mestre monta antes). */
+  const GRUPOS = [
+    { id: 'sessao', nome: 'Sessão', dica: 'A mesa rodando: as cenas, as fichas' },
+    { id: 'mundo', nome: 'Mundo', dica: 'O mapa-múndi, o jornal e o clã' },
+    { id: 'descanso', nome: 'Descanso', dica: 'O acampamento, a meditação e a árvore' },
+    { id: 'preparar', nome: 'Preparar', dica: 'O que se monta antes da sessão' },
+  ];
   let souAdmin = false;                           // (lote 27) conta.ehAdmin(), conferido ao entrar
   const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento', meditacao: 'Meditação', escudo: 'Escudo do mestre', pistas: 'Pistas' };
   const CHAVE = 'tinycats:aba';
@@ -771,18 +810,27 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (pode(salvo)) return salvo;
     return ler('rolador-urgm:dados:v1') && pode('rolador') ? 'rolador' : 'cenas';
   }
-  /* (barra de cima, 28/10) Cada categoria recolhe e abre pelo nome dela (lembrado neste aparelho). Recolhida, fica um
-     botão com o nome da aba aberta (ou o da categoria) que abre o menu com as abas dela. */
-  const CHAVE_RECOLHIDAS = 'tinycats:abas-recolhidas';
-  let recolhidas = new Set();
-  try { const v = JSON.parse(ler(CHAVE_RECOLHIDAS) || '[]'); if (Array.isArray(v)) recolhidas = new Set(v.filter(x => GRUPOS.some(g => g.id === x))); } catch (e) { /* lista estragada: tudo aberto */ }
-  const SETA_GT = '<svg class="gt-seta" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+  /* (lote 68) Os modos, no começo da barra: um botão por modo (só os que têm alguma aba para esta pessoa). Ao lado,
+     só as abas do modo em que se está. Abrir uma aba de outro modo (pela busca, por um link, por um aviso) troca o modo
+     junto. Cada modo lembra a última aba aberta nele (neste aparelho): trocar de modo volta para ela. */
+  const CHAVE_MODO_ABA = 'tinycats:modo-aba';
+  let abaDoModo = {};
+  try { const v = JSON.parse(ler(CHAVE_MODO_ABA) || '{}'); if (v && typeof v === 'object' && !Array.isArray(v)) abaDoModo = v; } catch (e) { /* estragado: começa do zero */ }
+  const modos = h('div', { class: 'modos', id: 'modos', role: 'radiogroup', 'aria-label': 'Modo de trabalho' });
+  tabs.parentNode.before(modos);
+  const ICO_MODO = {
+    sessao: '<path d="M12 3.5 14.4 9l5.6.5-4.2 3.8 1.3 5.7L12 16l-5.1 3 1.3-5.7L4 9.5 9.6 9z"/>',
+    mundo: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.6 5.2 3.6 8.5s-1 6.1-3.6 8.5c-2.6-2.4-3.6-5.2-3.6-8.5s1-6.1 3.6-8.5z"/>',
+    descanso: '<path d="M12 3.5c1.8 3 4.5 4.6 4.5 8.4a4.5 4.5 0 0 1-9 0c0-1.7.8-3 1.9-4.1.2 1.5.9 2.4 1.9 2.8-.2-2.6.1-4.9.7-7.1z"/><path d="M5 20.5h14"/>',
+    preparar: '<path d="M14.5 4.5a4 4 0 0 0-4.9 5.4L4 15.5V20h4.5l5.6-5.6a4 4 0 0 0 5.4-4.9l-2.6 2.6-2.8-.6-.6-2.8z"/>',
+  };
   for (const g of GRUPOS) {
+    const b = h('button', { type: 'button', class: 'modo', id: 'modo-' + g.id, 'data-g': g.id, role: 'radio', 'aria-checked': 'false', title: g.nome + ': ' + g.dica, onclick: () => irParaModo(g.id) });
+    b.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO_MODO[g.id] + '</svg>';
+    b.append(h('span', { text: g.nome }));
+    modos.append(b);
     const abas = h('div', { class: 'grupo-abas', role: 'presentation' });
-    const gt = h('button', { type: 'button', class: 'grupo-t', id: 'gt-' + g.id, 'aria-expanded': 'true', title: 'Recolher ou mostrar as abas de ' + g.nome, onclick: () => recolher(g.id, !recolhidas.has(g.id)) });
-    gt.innerHTML = SETA_GT; gt.append(h('span', { text: g.nome }));
-    const gm = h('button', { type: 'button', class: 'grupo-menu', id: 'gm-' + g.id, 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: ev => { ev.stopPropagation(); menuDoGrupo(g.id); } });
-    tabs.append(h('div', { class: 'grupo' + (recolhidas.has(g.id) ? ' recolhido' : ''), 'data-g': g.id, id: 'grupo-' + g.id, role: 'presentation' }, gt, abas, gm));
+    tabs.append(h('div', { class: 'grupo', 'data-g': g.id, id: 'grupo-' + g.id, role: 'presentation' }, abas));
     for (const a of ABAS.filter(x => x.grupo === g.id)) {
       const el = h('a', { class: 'tab', id: 'tab-' + a.id, href: '#/' + a.id, role: 'tab', 'aria-selected': 'false' });
       el.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[a.id] + '</svg>';
@@ -791,6 +839,24 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       abas.append(el);
     }
   }
+  // as setas dos modos: ← e → trocam, como num grupo de botões de rádio
+  modos.addEventListener('keydown', ev => {
+    if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+    const bs = [...modos.querySelectorAll('.modo')].filter(x => !x.hidden), i = bs.indexOf(document.activeElement);
+    if (i < 0) return;
+    ev.preventDefault();
+    const b = bs[(i + (ev.key === 'ArrowRight' ? 1 : -1) + bs.length) % bs.length];
+    b.focus(); b.click();
+  });
+  // (quem prefere a barra antiga, com as abas de todos os modos, liga no menu da conta; os testes antigos também)
+  const todasAsAbas = () => ler('tinycats:abas-todas') === '1';
+  const modoDe = id => { const a = ABAS.find(x => x.id === id); return a ? a.grupo : null; };
+  function irParaModo(g) {
+    if (modoDe(atual) === g) return;
+    const lembrada = abaDoModo[g];
+    const id = lembrada && modoDe(lembrada) === g && pode(lembrada) ? lembrada : (ABAS.find(a => a.grupo === g && pode(a.id)) || {}).id;
+    if (id) abrir(id);
+  }
   function pintarAbas() {
     for (const a of ABAS) {
       const ok = pode(a.id);
@@ -798,74 +864,35 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       if (a.soLivro) { const sp = $('tab-' + a.id).querySelector('span'); if (sp && sp.textContent !== a.nome) sp.textContent = a.nome; }
       if (!ok && frames[a.id]) { frames[a.id].remove(); delete frames[a.id]; }
     }
-    for (const g of GRUPOS) $('grupo-' + g.id).hidden = !ABAS.some(a => a.grupo === g.id && pode(a.id));
     pintarGrupos();
     if (atual && !pode(atual)) abrir(abaPossivel(atual));
   }
-  // (barra de cima) o nome de cada categoria (aberta ou recolhida) e o botão da recolhida: a aba aberta, se é dela
+  // (lote 68) o modo da aba aberta: o botão dele marcado e só as abas dele à vista. Com um modo só, os botões somem.
   function pintarGrupos() {
+    const m = modoDe(atual), comAbas = GRUPOS.filter(g => ABAS.some(a => a.grupo === g.id && pode(a.id)));
+    modos.hidden = comAbas.length < 2;
     for (const g of GRUPOS) {
-      const el = $('grupo-' + g.id), rec = recolhidas.has(g.id), gm = $('gm-' + g.id);
-      el.classList.toggle('recolhido', rec);
-      $('gt-' + g.id).setAttribute('aria-expanded', String(!rec));
-      const aberta = ABAS.find(a => a.id === atual && a.grupo === g.id), n = ABAS.filter(a => a.grupo === g.id && pode(a.id)).length;
-      gm.classList.toggle('ativo', !!aberta);
-      gm.title = aberta ? aberta.nome + ' · as abas de ' + g.nome : 'As abas de ' + g.nome + ' (' + n + ')';
-      gm.setAttribute('aria-label', gm.title);
-      gm.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (aberta ? ICO[aberta.id] : '<path d="M4 6h16M4 12h16M4 18h16"/>') + '</svg>';
-      gm.append(h('span', { text: aberta ? aberta.nome : g.nome }));
-      const car = h('span', { class: 'gm-car', 'aria-hidden': 'true' }); car.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
-      gm.append(car);
+      const tem = comAbas.includes(g), b = $('modo-' + g.id);
+      b.hidden = !tem;
+      b.setAttribute('aria-checked', String(g.id === m));
+      b.tabIndex = g.id === m ? 0 : -1;
+      $('grupo-' + g.id).hidden = !tem || (comAbas.length > 1 && g.id !== m && !todasAsAbas());
     }
+    document.body.dataset.modo = m || '';
     pintarSetas();
   }
-  function recolher(id, sim) {
-    if (sim) recolhidas.add(id); else recolhidas.delete(id);
-    gravar(CHAVE_RECOLHIDAS, JSON.stringify([...recolhidas]));
-    fecharMenuGrupo();
-    pintarGrupos();
-    mostrarAbaAberta();
-  }
-  // o menu da categoria recolhida: as abas dela (a aberta, marcada) e "Mostrar as abas na barra"
-  let menuGrupo = null;
-  function fecharMenuGrupo(voltar) {
-    if (!menuGrupo) return;
-    const { el, g } = menuGrupo;
-    menuGrupo = null; el.remove();
-    const gm = $('gm-' + g); gm.setAttribute('aria-expanded', 'false');
-    if (voltar) gm.focus();
-  }
-  function menuDoGrupo(id) {
-    const era = menuGrupo && menuGrupo.g;
-    fecharMenuGrupo();
-    if (era === id) return;
-    const g = GRUPOS.find(x => x.id === id), gm = $('gm-' + id), r = gm.getBoundingClientRect();
-    const itens = ABAS.filter(a => a.grupo === id && pode(a.id)).map(a => {
-      const b = h('button', { type: 'button', class: 'mg-it', role: 'menuitem', 'data-aba': a.id, 'aria-current': a.id === atual ? 'page' : null, onclick: () => { fecharMenuGrupo(); abrir(a.id); } });
-      b.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[a.id] + '</svg>';
-      b.append(h('span', { text: a.nome }));
-      return b;
-    });
-    const el = h('div', { class: 'menu-grupo', id: 'menuGrupo', role: 'menu', 'aria-label': 'As abas de ' + g.nome, 'data-g': id, style: '--grupo:' + getComputedStyle($('grupo-' + id)).getPropertyValue('--grupo') },
-      itens, h('div', { class: 'mg-mostrar' }, h('button', { type: 'button', class: 'mg-it', role: 'menuitem', id: 'mg-mostrar', onclick: () => recolher(id, false) }, 'Mostrar as abas de ' + g.nome + ' na barra')));
-    el.addEventListener('keydown', ev => {
-      const bs = [...el.querySelectorAll('.mg-it')], i = bs.indexOf(document.activeElement);
-      if (ev.key === 'Escape') { ev.preventDefault(); fecharMenuGrupo(true); }
-      else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); const k = (i + (ev.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length; bs[k].focus(); }
-    });
-    document.body.append(el);
-    const w = el.offsetWidth;
-    el.style.left = Math.max(6, Math.min(r.left, innerWidth - w - 6)) + 'px';
-    el.style.top = (r.bottom + 4) + 'px';
-    menuGrupo = { el, g: id };
-    gm.setAttribute('aria-expanded', 'true');
-    (el.querySelector('[aria-current="page"]') || el.querySelector('.mg-it')).focus();
-  }
-  document.addEventListener('pointerdown', ev => { if (menuGrupo && !menuGrupo.el.contains(ev.target) && !ev.target.closest('.grupo-menu')) fecharMenuGrupo(); }, true);
-  window.addEventListener('blur', () => fecharMenuGrupo());
   // a rolagem: as setas aparecem quando há aba escondida daquele lado; a roda do mouse rola para os lados
   const setaE = $('tabsEsq'), setaD = $('tabsDir');
+  /* (lote 68) A barra apertada: quando as abas do modo não cabem, primeiro sai o nome "Tiny Cats" da marca (fica a
+     gatinha), depois o botão da conta encolhe; se ainda não couber, os modos ficam só com o ícone (o nome fica na dica). Quando cabem, confere se cabem
+     com mais (no mesmo quadro: nada pisca). */
+  function apertarSePreciso() {
+    const b = document.body, falta = () => tabs.scrollWidth - tabs.clientWidth > 1;
+    b.classList.remove('barra-apertada', 'barra-apertada1', 'barra-apertada2');
+    for (const k of ['barra-apertada1', 'barra-apertada2', 'barra-apertada']) { if (!falta()) break; b.classList.add(k); }
+  }
   function pintarSetas() {
+    apertarSePreciso();
     const max = tabs.scrollWidth - tabs.clientWidth;
     setaE.hidden = !(max > 1 && tabs.scrollLeft > 2);
     setaD.hidden = !(max > 1 && tabs.scrollLeft < max - 2);
@@ -873,19 +900,19 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   const rolar = sinal => tabs.scrollBy({ left: sinal * Math.max(160, Math.round(tabs.clientWidth * 0.6)), behavior: 'smooth' });
   setaE.addEventListener('click', () => rolar(-1));
   setaD.addEventListener('click', () => rolar(1));
-  tabs.addEventListener('scroll', () => { pintarSetas(); if (menuGrupo) fecharMenuGrupo(); }, { passive: true });
+  tabs.addEventListener('scroll', pintarSetas, { passive: true });
   tabs.addEventListener('wheel', ev => {
     if (tabs.scrollWidth - tabs.clientWidth < 2 || Math.abs(ev.deltaX) >= Math.abs(ev.deltaY)) return;
     ev.preventDefault();
     tabs.scrollLeft += ev.deltaY;
   }, { passive: false });
-  if (window.ResizeObserver) new ResizeObserver(pintarSetas).observe(tabs);
+  if (window.ResizeObserver) new ResizeObserver(() => requestAnimationFrame(pintarSetas)).observe(tabs);
   window.addEventListener('resize', pintarSetas);
-  // a aba aberta (ou o botão da categoria recolhida) sempre à vista na barra
+  // a aba aberta sempre à vista na barra
   function mostrarAbaAberta() {
     const a = ABAS.find(x => x.id === atual);
     if (!a) return;
-    const el = recolhidas.has(a.grupo) ? $('gm-' + a.grupo) : $('tab-' + a.id);
+    const el = $('tab-' + a.id);
     if (!el || el.hidden || !el.offsetParent) return;
     const r = el.getBoundingClientRect(), t = tabs.getBoundingClientRect(), folga = 34;
     if (r.left < t.left + folga) tabs.scrollLeft -= (t.left + folga - r.left);
@@ -899,6 +926,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (atual !== id) {
       atual = id;
       gravar(CHAVE, id);
+      if (abaDoModo[a.grupo] !== id) { abaDoModo[a.grupo] = id; gravar(CHAVE_MODO_ABA, JSON.stringify(abaDoModo)); }
       if (daHash() !== id) history.replaceState(null, '', '#/' + id);
       document.title = a.nome + ' · Tiny Cats';
       for (const x of ABAS) $('tab-' + x.id).setAttribute('aria-selected', x.id === id ? 'true' : 'false');
@@ -1348,7 +1376,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       btnConta.title = 'Mesa ' + a.nome + (camp ? ' · campanha ' + nomeCamp : '') + ' · ' + cargoPt(a);
     }
     btnVivo.hidden = !a;
-    if (!a) { vivo.hidden = true; btnVivo.setAttribute('aria-pressed', 'false'); }
+    if (!a) { vivo.hidden = true; $('trilho').hidden = true; btnVivo.setAttribute('aria-pressed', 'false'); }
     pintarPonto();
   }
   btnConta.addEventListener('click', () => {
@@ -1439,6 +1467,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     menu.append(h('div', { class: 'sec', id: 'mn-tema' }, h('div', { class: 'rot', text: 'Tema' }), seletorTema('mn-tema-seg')));
     sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-novidades', onclick: () => { fecharMenu(); janelaNovidades(); } },
       'Novidades', naoVistas().length ? h('i', { class: 'pt', 'aria-hidden': 'true', title: 'Há novidade que você ainda não viu' }) : null));
+    // (lote 68) a barra antiga: as abas de todos os modos à vista
+    sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-abas', text: todasAsAbas() ? 'Mostrar só as abas do modo' : 'Mostrar as abas de todos os modos', title: 'Na barra de cima, ao lado de Sessão, Mundo, Descanso e Preparar',
+      onclick: () => { fecharMenu(); gravar('tinycats:abas-todas', todasAsAbas() ? '0' : '1'); pintarGrupos(); mostrarAbaAberta(); } }));
     sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-manual', text: 'Manual', title: 'O guia completo do site: o que cada aba faz e como usar', onclick: () => { fecharMenu(); abrirManual(); } }));
     sec.append(h('button', { type: 'button', class: 'lk', text: 'Sair da conta', onclick: async () => { fecharMenu(); if (mesas.atual) await assentar(); await conta.sair(); toast('Você saiu da conta.'); } }));
     sec.append(h('div', { class: 'sub', style: 'padding:4px 8px 0', text: u.email }));
@@ -1943,13 +1974,26 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   const descer = () => { feed.scrollTop = feed.scrollHeight; $('novas').hidden = true; };
   feed.addEventListener('scroll', () => { if (perto()) $('novas').hidden = true; });
   $('novas').addEventListener('click', descer);
+  /* (lote 68) Aberta ou fechada fica lembrada por aba (neste aparelho). De começo, fechada no Acampamento, na
+     Meditação e na Árvore (a cena precisa da tela) e aberta nas outras. Fechada, fica o trilho. */
+  const VIVO_FECHADO_DE_COMECO = ['acampamento', 'meditacao', 'arvore', 'oficina'];
+  const vivoDaAba = id => { const v = ler('tinycats:vivo:' + id); if (v === '1' || v === '0') return v === '1'; return !VIVO_FECHADO_DE_COMECO.includes(id) && ler('tinycats:vivo') !== '0'; };
   function mostrarVivo(v, lembrar) {
     vivo.hidden = !v || !mesas.atual;
+    $('trilho').hidden = !mesas.atual || !vivo.hidden;
     btnVivo.setAttribute('aria-pressed', String(!vivo.hidden));
-    if (lembrar) gravar('tinycats:vivo', v ? '1' : '0');
-    if (!vivo.hidden) { naoLidas = 0; pintarSelo(); descer(); }
+    if (lembrar && atual) gravar('tinycats:vivo:' + atual, v ? '1' : '0');
+    if (!vivo.hidden) { naoLidas = 0; pintarSelo(); descer(); $('trDados').classList.remove('pede'); }
   }
-  function pintarSelo() { const s = $('selo'); s.hidden = !naoLidas; s.textContent = naoLidas > 9 ? '9+' : String(naoLidas); }
+  function pintarSelo() {
+    const s = $('selo'), t = naoLidas > 9 ? '9+' : String(naoLidas);
+    s.hidden = !naoLidas; s.textContent = t;
+    const n = $('trN'); n.hidden = !naoLidas; n.textContent = t;
+    $('trConversa').setAttribute('aria-label', naoLidas ? 'Abrir a Mesa ao vivo: ' + (naoLidas === 1 ? '1 novidade' : naoLidas + ' novidades') : 'Abrir a Mesa ao vivo');
+  }
+  $('trConversa').addEventListener('click', () => mostrarVivo(true, true));
+  // os dados: abre a Mesa ao vivo com o painel Dados aberto
+  $('trDados').addEventListener('click', () => { mostrarVivo(true, true); if ($('dadosCorpo').hidden && !$('dados').hidden) $('dadosAbre').click(); });
   btnVivo.addEventListener('click', () => mostrarVivo(vivo.hidden, true));
   // (lote 22) o bloco de notas do mestre da mesa: as notas dele só ele vê (nem o auxiliar)
   // (lote 52) quem joga também tem o bloco: o caderno dele (ele e o mestre leem) e o caderno do grupo
@@ -2214,7 +2258,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (sis && (sis.t === 'rd' || sis.t === 'ra') && typeof sis.p === 'string') repintarPedido(sis.p);
     // um pedido de defesa para um personagem meu: se a mesa ao vivo está fechada, um aviso leva até ela
     if (novo && !velho && aoVivo.idade(l) < 90000 && pedidoParaMim(l)) {
-      if (vivo.hidden) { const pd = l.dados.pd, oQue = typeof pd.atr === 'string' ? aoVivo.nomeDoPedido(pd) || 'um atributo' : 'a defesa'; pulsar(btnVivo); toast('O mestre pediu que você role ' + oQue + '.', 'Abrir a mesa ao vivo', () => mostrarVivo(true, true), 12000); }
+      if (vivo.hidden) { const pd = l.dados.pd, oQue = typeof pd.atr === 'string' ? aoVivo.nomeDoPedido(pd) || 'um atributo' : 'a defesa'; pulsar(btnVivo); $('trDados').classList.add('pede'); toast('O mestre pediu que você role ' + oQue + '.', 'Abrir a mesa ao vivo', () => mostrarVivo(true, true), 12000); }
       else descer();
     }
     // (lote 6) um aviso só para mim (o caminho da árvore que o mestre abriu): com a mesa ao vivo fechada, ele leva até ela
@@ -2245,7 +2289,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
      aparelho, o efeito não se mexe. O som é feito aqui mesmo (três batidas de dado e um toque), sem arquivo. */
   const prefs = { som: ler('tinycats:som') === '1', efeito: ler('tinycats:efeito') !== '0' };
   const ehSorteio = l => { const d = l.dados || {}; return l.tipo === 'rolagem' && (d.total != null || (Array.isArray(d.dd) && d.dd.length > 0) || (d.k === 'tabela' && (l.origem === 'rolador' || l.origem === 'mundo'))); };
-  function pulsar(b) { b.classList.remove('pulso'); void b.offsetWidth; b.classList.add('pulso'); setTimeout(() => b.classList.remove('pulso'), 1000); }
+  function pulsar(b) { if (b === btnVivo && !$('trilho').hidden) pulsar($('trConversa')); b.classList.remove('pulso'); void b.offsetWidth; b.classList.add('pulso'); setTimeout(() => b.classList.remove('pulso'), 1000); }
   let audio = null, ruido = null, saidaSom = null, ultimoSom = 0;
   /* O som da página, um só para todos (os dados, o aviso da ficha nova e a fanfarra do level): quem tocar primeiro cria
      tudo — também a saída e o ruído das batidas dos dados. (Antes, a fanfarra criava só o som, e os dados ficavam mudos.) */
@@ -2632,7 +2676,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       return el.tagName === 'TEXTAREA' || el.isContentEditable || (el.tagName === 'INPUT' && /^(text|search|number|email|password|url|tel)$/i.test(el.type || 'text'));
     } catch (e) { return false; }
   }
-  aoAbrirAba = id => { if (id === 'jornal') jornalLido(); };
+  aoAbrirAba = id => { if (id === 'jornal') jornalLido(); if (mesas.atual) mostrarVivo(vivoDaAba(id), false); };
   /* (lote 29) A aba Loja: aparece quando uma loja aberta tem um personagem seu por perto (o banco monta a lista de quem
      está no hexágono do lugar dela: aqui) e some quando ele sai. Ao aparecer, um aviso com "Abrir". */
   const lojasPerto = () => {
@@ -2690,12 +2734,49 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     naoLidas = 0; pintarSelo();
     if (!a) prepararDados();
     if (a) {
-      $('sinal').title = 'Atualizando a cada poucos segundos'; pintarQuem(); pintarCompor(); mostrarVivo(ler('tinycats:vivo') !== '0', false);
+      $('sinal').title = 'Atualizando a cada poucos segundos'; pintarQuem(); pintarCompor(); mostrarVivo(vivoDaAba(atual), false);
       prepararDados();
       try { TC.dados.col('personagens').pronta.then(() => { if (mesas.atual && mesas.atual.id === a.id) pintarCompor(); }, () => { /* sem os personagens, só não há o que escolher */ }); } catch (e) { /* idem */ }
     }
   });
   conta.on('muda', u => { if (!u) mesas.fechar(); pintarConta(); conferirAdmin(); });
+
+  /* (lote 68) O lembrete do descanso longo, para quem mestra o Acampamento: um selo fixo no alto quando o dia do mundo
+     (o do Mapa-múndi principal) não é o do último descanso longo do acampamento em vista. Some quando o descanso longo
+     acontece, ou com o × ("hoje não tem"), até o dia seguinte. Um acampamento que nunca anotou o dia (de antes desta
+     versão) começa a contar do dia em que este aparelho o viu pela primeira vez. */
+  function pintarSeloDescanso() {
+    const el = $('seloDesc'), a = mesas.atual;
+    let mostra = false;
+    try {
+      const camp = a ? mesas.campanha() : null;
+      if (a && mesas.mestra('acampamento') && !(camp && camp.encerrada) && TC.calendario) {
+        const D = TC.dados.col('documentos');
+        const hoje = TC.calendario.chaveDeHoje(D.todas(), { pegar: id => D.pegar(id), mestre: true });
+        if (hoje) {
+          const doc = D.pegar(camp ? 'acampamento@' + camp.id : 'acampamento'), lg = doc && !doc.apagado && doc.dados && doc.dados.longo;
+          const k = a.id + (camp ? '@' + camp.id : ''), chVisto = 'tinycats:longo-visto:' + k, chPulo = 'tinycats:longo-pulado:' + k;
+          let ultimo = lg && typeof lg.dia === 'string' ? lg.dia : null;
+          if (!ultimo) { ultimo = ler(chVisto); if (!ultimo) { gravar(chVisto, hoje); ultimo = hoje; } }
+          mostra = ultimo !== hoje && ler(chPulo) !== hoje;
+        }
+      }
+    } catch (e) { mostra = false; }
+    if (el.hidden !== !mostra) { el.hidden = !mostra; pintarSetas(); }
+  }
+  $('seloDescAbrir').addEventListener('click', () => abrir('acampamento'));
+  $('seloDescHoje').addEventListener('click', () => {
+    const a = mesas.atual; if (!a) return;
+    const camp = mesas.campanha(), D = TC.dados.col('documentos'), k = a.id + (camp ? '@' + camp.id : '');
+    const hoje = TC.calendario.chaveDeHoje(D.todas(), { pegar: id => D.pegar(id), mestre: true }), ch = 'tinycats:longo-pulado:' + k, antes = ler(ch);
+    gravar(ch, hoje); pintarSeloDescanso();
+    toast('Certo: hoje sem descanso longo. O lembrete volta no próximo dia do mundo.', 'Desfazer', () => { if (antes) gravar(ch, antes); else { try { localStorage.removeItem(ch); } catch (e) { /* sem armazenamento */ } } pintarSeloDescanso(); });
+  });
+  let tSeloDesc = 0;
+  TC.dados.on('muda', (col, linha) => { if (col === 'documentos' && linha && typeof linha.id === 'string' && /^(acampamento|mundo:mapa:|mundo:pub:|jornal:)/.test(linha.id)) { clearTimeout(tSeloDesc); tSeloDesc = setTimeout(pintarSeloDescanso, 400); } });
+  const seloQuandoPronto = () => { pintarSeloDescanso(); try { TC.dados.col('documentos').pronta.then(pintarSeloDescanso, () => {}); } catch (e) { /* sem mesa */ } };
+  mesas.on('muda', () => setTimeout(seloQuandoPronto, 0));
+  mesas.on('permissao', () => setTimeout(seloQuandoPronto, 0));
 
   /* ================= versão nova do site =================
      A página aberta fica na versão em que foi carregada. De tempos em tempos, e quando a pessoa volta para a aba, a

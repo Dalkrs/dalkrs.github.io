@@ -1339,7 +1339,10 @@
     const passo = { rotulo, json: jCamp, junta: null, fichas, publicar: true };
     pilha.push(passo);
     if (pilha.length > 60) pilha.shift();
-    camp = N.aposDescanso(camp, plano, agora);
+    // (lote 68) o dia do mundo deste descanso longo: o selo "Falta o descanso longo", no alto do site, olha para ele
+    let dia = null;
+    try { if (naMesa() && window.TC && TC.calendario) dia = TC.calendario.chaveDeHoje(D.todas(), { pegar: id => D.pegar(id), mestre: mestre() }); } catch (e) { /* sem o calendário: só a hora */ }
+    camp = N.aposDescanso(camp, plano, agora, dia);
     // (o que foi para a ficha de cada um entra no diário, logo abaixo da linha do descanso)
     if (naFicha.length) camp = N.normalizar(Object.assign(N.copia(camp), { diario: [camp.diario[0], { id: N.novoId('di'), t: agora, texto: 'Na ficha — ' + naFicha.join(' · ') }].concat(camp.diario.slice(1)) }));
     gravar(); passo.depois = jCamp; pintar();

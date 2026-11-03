@@ -2,6 +2,26 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-3",
+      "data": "2026-11-03",
+      "titulo": "Os modos no alto e a Mesa ao vivo num trilho",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "No alto do site, os modos: Sessão, Mundo e Descanso (e Preparar, para quem mestra). Cada modo mostra só as abas dele e volta para a última que você usou nele. Quem prefere ver todas liga “Mostrar as abas de todos os modos” no menu da conta."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "A Mesa ao vivo fechada não some mais: vira um trilho fino à direita, com a conversa (e o número do que chegou) e os dados. Aberta ou fechada fica lembrada em cada aba; no Acampamento, na Meditação e na Árvore, ela começa fechada para a cena ter a tela."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "O lembrete do descanso longo: quando o dia vira no Mapa-múndi e o grupo ainda não descansou, o selo “Falta o descanso longo” fica no alto. Um clique abre o Acampamento; o × diz que hoje não tem, com Desfazer."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-2",
       "data": "2026-11-03",
       "titulo": "Quando a internet cai, nada se perde",

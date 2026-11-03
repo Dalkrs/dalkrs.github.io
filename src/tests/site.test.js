@@ -1,6 +1,7 @@
 // A casca do site: abas, sistemas embutidos, marca nova e os dados antigos do Rolador.
 const { start, checker } = require('./lib');
 const { ok, end } = checker();
+const j = JSON.stringify;
 const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'fixa', lastBackupAt: null, tables: [], trash: [],
   histories: [{ id: 'h_teste', name: 'Sessão antiga do Bruno', createdAt: 1790000000000, updatedAt: 1790000100000, entries: [
     { id: 'r_um', type: 'roll', mode: 'fixa', title: 'Ataque do goblin', description: '', color: 'vermelho', pinned: false, createdAt: 1790000050000, atributo: 60, fixa: 20, die: 40, dieValue: 8, total: 28, check: null }] }] });
@@ -10,20 +11,23 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
 
   // 1. visitante novo: cai em Cenas; todas as abas abrem sem erro
   {
-    const { page } = await t.device({ name: 'novo' });
+    const { page } = await t.device({ name: 'novo', modos: true });
     await page.goto(t.base, { waitUntil: 'load' }); await w(page, 1500);
     ok(await page.title() === 'Cenas · Tiny Cats', 'visitante novo abre em Cenas: ' + await page.title());
     ok((await page.locator('.brand').innerText()).trim() === 'Tiny Cats', 'marca Tiny Cats na barra');
-    ok(await page.locator('.tab:visible').count() === 13, 'treze abas à mostra (lote 31: o Escudo do mestre; lote 36: o Bestiário do clã)');
+    // (lote 68) os modos: Sessão, Mundo, Descanso e Preparar; só as abas do modo ficam à vista
+    ok(j(await page.locator('.modo:visible').allInnerTexts()) === j(['Sessão', 'Mundo', 'Descanso', 'Preparar']), 'os quatro modos no alto');
+    ok(await page.locator('.modo[aria-checked="true"]').innerText() === 'Sessão', 'em Cenas, o modo Sessão');
     const nomes = await page.locator('.tab:visible').allInnerTexts();
-    ok(nomes.join('|') === 'Cenas|Fichas|Rolador|Mapa-múndi|Jornal|Clã|Bestiário do clã|Acampamento|Meditação|Oficina|Bestiário|Itens|Escudo do mestre', 'nomes das abas (sem mesa, cada um mestra: a Oficina no lugar da Árvore): ' + nomes.join('|'));
-    // as abas em três grupos, cada um com o nome em cima e a sua cor
-    const grupos = await page.evaluate(() => [...document.querySelectorAll('.grupo')].filter(g => !g.hidden).map(g => g.querySelector('.grupo-t').textContent + ':' + [...g.querySelectorAll('.tab')].filter(x => !x.hidden).map(x => x.id.slice(4)).join(',')));
-    ok(grupos.join(' ') === 'Jogar:cenas,fichas,rolador Mundo:mundo,jornal,cla,livro Descanso:acampamento,meditacao Mestre:oficina,bestiario,itens,escudo', 'os grupos da barra: ' + grupos.join(' '));
-    const cores = await page.evaluate(() => [...document.querySelectorAll('.grupo-t')].map(x => getComputedStyle(x).color));
-    ok(new Set(cores).size === 4, 'cada grupo com uma cor: ' + cores.join(' '));
+    ok(nomes.join('|') === 'Cenas|Fichas|Rolador|Escudo do mestre', 'só as abas da Sessão à mostra: ' + nomes.join('|'));
+    const grupos = await page.evaluate(() => [...document.querySelectorAll('.grupo')].map(g => g.dataset.g + ':' + [...g.querySelectorAll('.tab')].filter(x => !x.hidden).map(x => x.id.slice(4)).join(',')));
+    ok(grupos.join(' ') === 'sessao:cenas,fichas,rolador,escudo mundo:mundo,jornal,cla,livro descanso:acampamento,meditacao preparar:oficina,bestiario,itens', 'as abas de cada modo (sem mesa, cada um mestra: a Oficina no lugar da Árvore): ' + grupos.join(' '));
+    const cores = await page.evaluate(() => [...document.querySelectorAll('.modo svg')].map(x => getComputedStyle(x).color));
+    ok(new Set(cores).size === 4, 'cada modo com uma cor: ' + cores.join(' '));
     const esperado = { jornal: /Jornal · Tiny Cats/, cenas: /Cenas · Tiny Cats/, mundo: /Mapa-múndi · Tiny Cats/, acampamento: /Acampamento · Tiny Cats/, fichas: /Fichas · Tiny Cats/, oficina: /Árvore de Habilidades · Tiny Cats/, meditacao: /Meditação · Tiny Cats/, cla: /Clã · Tiny Cats/, rolador: /Rolador · Tiny Cats/, bestiario: /Bestiário · Tiny Cats/, itens: /Itens · Tiny Cats/ };
+    const MODO = { jornal: 'mundo', mundo: 'mundo', cla: 'mundo', acampamento: 'descanso', meditacao: 'descanso', oficina: 'preparar', bestiario: 'preparar', itens: 'preparar' };
     for (const id of ['jornal', 'cenas', 'mundo', 'acampamento', 'fichas', 'oficina', 'meditacao', 'cla', 'bestiario', 'itens', 'rolador']) {
+      if (!(await page.locator('#tab-' + id).isVisible())) { await page.locator('#modo-' + (MODO[id] || 'sessao')).click(); await w(page, 300); }
       await page.locator('#tab-' + id).click(); await w(page, 1300);
       ok(page.url().endsWith('#/' + id), `aba ${id}: endereço com #/${id}`);
       ok(await page.locator('#tab-' + id).getAttribute('aria-selected') === 'true', `aba ${id} marcada`);

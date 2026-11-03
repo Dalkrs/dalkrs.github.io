@@ -254,6 +254,22 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Os modos no alto, o trilho da Mesa ao vivo e o lembrete do descanso longo (lote 68)
+
+- **Os modos** (`GRUPOS`: `sessao`, `mundo`, `descanso`, `preparar`; o botão `#modo-<id>`): a barra mostra só as abas
+  do modo da aba aberta (`pintarGrupos`). Trocar de modo (`irParaModo`) abre a última aba usada nele
+  (`tinycats:modo-aba`); abrir uma aba de outro modo troca o modo junto. ← e → andam entre os modos. Com um modo só,
+  os botões somem. `tinycats:abas-todas` = '1' (no menu da conta, "Mostrar as abas de todos os modos") volta à barra
+  com tudo — os testes antigos ligam isso (`o.modos` desliga). Os rótulos das categorias e o recolher saíram.
+- **O trilho** (`#trilho`: `#trConversa`, com `#trN`, e `#trDados`): a Mesa ao vivo fechada (com mesa) vira o trilho.
+  Aberta ou fechada fica por aba (`tinycats:vivo:<aba>`); de começo, fechada no Acampamento, na Meditação, na Árvore
+  e na Oficina. O pedido de rolagem acende o botão dos dados.
+- **O selo do descanso longo** (`#seloDesc`, só para quem mestra o Acampamento): o Acampamento anota o dia do mundo do
+  último descanso longo (`longo: { t, dia }`, com `TC.calendario.chaveDeHoje`, a data do mapa principal). Se o dia de
+  hoje é outro, o selo aparece; o × guarda "hoje não tem" (`tinycats:longo-pulado:<mesa>`). Um acampamento sem o dia
+  anotado conta do dia em que o aparelho o viu (`tinycats:longo-visto:<mesa>`).
+- Testes: `barra`, `site` (os modos), `casca-lote68.rede` (o trilho por aba, o selo).
+
 ### Quando a internet cai (lote 67)
 
 - **A volta da rede** (`voltouARede`): no `online` do navegador e quando o tempo real conecta de novo, o que esperava a

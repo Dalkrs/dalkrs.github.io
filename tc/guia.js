@@ -48,6 +48,7 @@
     },
     cenas: {
       mestre: [
+        { t: 'Os modos, no alto', txt: 'Sessão, Mundo, Descanso e Preparar: cada modo mostra só as abas dele, e volta para a última que você usou nele. Quem prefere ver todas as abas liga “Mostrar as abas de todos os modos” no menu da conta. Fechada, a Mesa ao vivo vira um trilho fino à direita, com o número do que chegou.' },
         { t: 'Trocar de cena', txt: 'O nome da cena, em cima: abre a lista para trocar, criar ou renomear.', onde: { sel: '#sceneBtn' } },
         { t: 'As ferramentas', txt: 'À esquerda: selecionar, desenhar, terreno, luz, névoa, régua… Passe o mouse em cada uma para ver o que faz.', onde: { sel: '#rail' } },
         { t: 'O painel', txt: 'À direita: os tokens, a iniciativa, as condições e o que está selecionado. O botão do painel, em cima, mostra ou esconde.', onde: { sel: '#side' } },
@@ -89,6 +90,7 @@
         { t: 'Momentos preparados', txt: 'Na aba Cena, em “Momentos preparados”: junte o que vai acontecer de uma vez — tokens ocultos que aparecem, a hora do dia, luzes que acendem ou apagam, a névoa, um som para todos, zonas escondidas e uma narração à mesa. “Soltar” faz tudo num passo, com Desfazer.', onde: { sel: '#tab-scene' } },
       ],
       jogador: [
+        { t: 'Os modos, no alto', txt: 'Sessão, Mundo e Descanso: cada modo mostra só as abas dele. Fechada, a Mesa ao vivo vira um trilho fino à direita: a conversa (com o número do que chegou) e os dados. Ela lembra, em cada aba, se você a deixou aberta ou fechada.' },
         { t: 'O lápis', txt: 'Tecla S (ou o lápis à esquerda): rabisque para a mesa ver na hora. Some em segundos ou fica até limpar; Ctrl+Z desfaz o seu último.', onde: { sel: '#tool-lapis' } },
         { t: 'A cena', txt: 'O mapa que o mestre mostra. Seus tokens você move e usa; o resto, só vê.', onde: { sel: '#stage' } },
         { t: 'O painel', txt: 'À direita: os seus personagens, as barras e o que está selecionado.', onde: { sel: '#side' } },
@@ -134,6 +136,7 @@
       mestre: [
         { t: 'Os descansos', txt: 'Descanso curto (uma pausa, sem gastar provisões) e longo (a noite: recupera as barras, gasta rações e mexe em Conforto e Sanidade). Sempre com prévia antes.', onde: { sel: '#acoes' } },
         { t: 'As rações', txt: 'A soma das provisões guardadas.', onde: { sel: '#chipRacoes' } },
+        { t: 'O lembrete do descanso longo', txt: 'Quando o dia vira no Mapa-múndi e o grupo ainda não teve o descanso longo, o selo “Falta o descanso longo” aparece no alto do site. Ele abre o Acampamento; o × diz que hoje não tem (volta no dia seguinte).' },
         { t: 'As áreas', txt: 'As partes do acampamento (a fogueira, as oficinas, o convívio, a guarda e a caça), com quem está em cada uma.', onde: { sel: '#areas' } },
         { t: 'Distribuir pelas áreas', txt: '“Distribuir…” abre um quadro com uma coluna por área: arraste cada retrato para onde o personagem fica (ou use as setas do teclado). Tem Desfazer.', onde: { sel: '#btDistribuir', nada: 'O botão aparece quando há alguém no acampamento.' } },
         { t: 'A caça', txt: 'Quem fica na área Caça caça no descanso longo: cada um rola (a Percepção, de começo) contra a dificuldade do lugar, e o resultado sugere rações. Você confirma; as regras ficam no Diário, em Regras do descanso.', onde: { sel: '#area-tab-caca' } },

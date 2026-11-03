@@ -188,7 +188,9 @@
     });
   }
 
-  const api = { MESES_PADRAO, mesesDe, hojeDe, doMundo, normNasc, idade, texto, anos, escolher };
+  // (lote 68) o dia de hoje do mundo como uma chave ("412-3-17"), para comparar dias: null sem o dia de hoje
+  function chaveDeHoje(lista, op) { const c = doMundo(lista, op); return c.hoje ? c.hoje.a + '-' + c.hoje.m + '-' + c.hoje.d : null; }
+  const api = { MESES_PADRAO, mesesDe, hojeDe, doMundo, chaveDeHoje, normNasc, idade, texto, anos, escolher };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.TC = window.TC || {}; window.TC.calendario = api; }
 })(typeof window !== 'undefined' ? window : this);

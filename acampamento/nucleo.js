@@ -284,6 +284,8 @@
       verCaravana: a.verCaravana !== false,
       area,
       comer: normComer(a.comer),
+      // (lote 68) o último descanso longo: quando (t) e em que dia do mundo (dia, a chave de TC.calendario.chaveDeHoje)
+      longo: ehObj(a.longo) && num(a.longo.t, 0) > 0 ? Object.assign({ t: num(a.longo.t, 0) }, typeof a.longo.dia === 'string' && a.longo.dia.length < 30 ? { dia: a.longo.dia } : {}) : null,
       diario: unicos(listaDe(a.diario, MAX_DIARIO).map(d => ({ id: d.id, t: Math.max(0, num(d.t, 0)), texto: texto(d.texto) })), 'di'),
     };
   }
@@ -504,8 +506,9 @@
   }
   // O acampamento depois do descanso: as rações gastas saem (provisão zerada continua na lista), os bônus "até o
   // descanso" acabam (se o descanso tira os bônus) e o diário ganha a linha. Não muda o que recebeu.
-  function aposDescanso(camp, plano, quando) {
+  function aposDescanso(camp, plano, quando, dia) {
     const c = copia(camp);
+    if (plano.tipo === 'longo') c.longo = Object.assign({ t: quando || Date.now() }, typeof dia === 'string' ? { dia } : {});
     for (const g of plano.consumo) { const p = c.provisoes.find(x => x.id === g.id); if (p) p.qtd = Math.max(0, p.qtd - g.qtd); }
     // (lote 18) a caça confirmada entra depois do que se comeu: fica para os próximos descansos
     const cc = plano.caca && plano.caca.racoes > 0 ? plano.caca.racoes : 0;
