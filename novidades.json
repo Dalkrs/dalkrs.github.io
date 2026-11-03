@@ -2,6 +2,30 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-6",
+      "data": "2026-11-03",
+      "titulo": "A Árvore que explica, a prática numa linha e o Rolador com a ficha",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: enquanto o mestre não monta as árvores da mesa, a tela diz isso, sem pedir arquivo. Elas aparecem sozinhas quando ficam prontas."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: Tinta e Pedra ganharam o nome do que são: o estilo do desenho. Numa mesa, os botões de criar, renomear e apagar personagem saíram da tela de quem joga (os personagens vêm das Fichas)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Meditação: a prática preenchida vira uma linha só (o objeto e o mantra), com “Editar” para mudar. Os pilares ficam logo à vista."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Rolador: “Da ficha”, na Fixa. Escolha o personagem e clique num número (o total, ou a base embaixo): ele vai para o Atributo e o nome vai para o que está sendo rolado."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-5",
       "data": "2026-11-03",
       "titulo": "Fogueira e Arrumar no Acampamento, e o Hoje do Escudo",

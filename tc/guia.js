@@ -193,6 +193,7 @@
         { t: 'Receitas com palavras', txt: 'Em Receitas e símbolos, o grupo Palavras traz as que algum personagem tem; “Outra palavra” põe uma que ninguém tem ainda (a receita avisa). Um pilar pode ter um símbolo ou uma palavra; o jogador só usa as do dicionário dele.', onde: { sel: '[data-vista="receitas"]' } },
       ],
       jogador: [
+        { t: 'A prática numa linha', txt: 'Depois de preenchida, a prática (o objeto, o mantra) vira uma linha, com “Editar” para mudar. Os pilares ficam logo embaixo.' },
         { t: 'Meditar', txt: 'No painel: entrar na meditação com o seu personagem e tentar uma combinação nos pilares quando o mestre liberar.', onde: { sel: '#painel' } },
         // (lote 45)
         { t: 'O dicionário', txt: 'As palavras que o mestre deu ao seu personagem, com o sentido. Busque, ordene (de A a Z, as mais novas, as mais usadas), escreva a sua nota e veja onde cada palavra já foi usada. A estrela leva a palavra para o começo da lista dos pilares.', onde: { sel: '[data-k="dic:busca"], #painel', nada: 'O dicionário aparece quando o mestre der a primeira palavra.' } },
@@ -229,6 +230,7 @@
     },
     rolador: {
       mestre: [
+        { t: 'Da ficha', txt: 'Na Fixa, escolha o personagem em “Da ficha” e clique num número: o total (com o equipamento) ou a base, embaixo. Ele vai para o Atributo, e o nome para “O que está sendo rolado”.', onde: { sel: '#daFicha', nada: 'Aparece numa mesa com fichas.' } },
         { t: 'Rolar', txt: 'Escreva a rolagem (2d6+3) ou monte pelo formulário: o resultado entra no histórico, com o título que você der.', onde: { sel: '#log' } },
         { t: 'As tabelas', txt: 'Tabelas de eventos para sortear, com o histórico de cada uma.', onde: { sel: '#newTableBtn' } },
       ],

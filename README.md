@@ -254,6 +254,17 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### A Árvore que explica, a prática numa linha e o Rolador com a ficha (lote 71)
+
+- **Árvore**: numa mesa, o vazio de quem joga diz que o mestre ainda não montou as árvores (sem o botão de arquivo);
+  "Estilo do desenho" junto de Tinta/Pedra; quem joga numa mesa não vê `#btNovaAba`, `#btRenomearAba`,
+  `#btDuplicarAba`, `#btExcluirAba`.
+- **Meditação**: a prática com objeto ou mantra vira `.pratica-linha` (`editandoPratica` abre o formulário, "Pronto"
+  fecha). Nos testes (`tinycats:testes-tudo-aberto`), o formulário.
+- **Rolador** (`daFichaLigar`, `#daFicha`, `#fxPc`, `#fxAtrs`): na mesa, os personagens com ficha e os números de
+  cada um (`TC.rules.calcular` com `fichas:cfg`); um clique põe o número em `#fAtr` (e o nome em `#fTitle`, se vazio).
+  O Rolador passa a carregar `tc/rules.js`.
+
 ### Fogueira e Arrumar no Acampamento, a noite entre eles e o Hoje do Escudo (lote 70)
 
 - **Acampamento** (`#modoAcamp`, `porModoAc`; `tinycats:acamp:modo`): Fogueira fecha o painel (`#side.fechado`),

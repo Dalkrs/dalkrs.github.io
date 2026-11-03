@@ -542,6 +542,9 @@ a.lk-no:hover{text-decoration-thickness:2px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .mesa-oferta{margin:8px 12px 0;padding:10px 12px;border:1px dashed var(--acento-borda);border-radius:8px;background:var(--acento-fundo);font-size:13px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .papel-jogador #btMestre,.papel-jogador #btJogador,.papel-jogador #btTroca,.papel-jogador #nomeBib{display:none}
+/* (lote 71) o nome do grupo do estilo do desenho */
+.rot-estilo{font-size:12px;color:var(--tinta-2, currentColor);opacity:.75;white-space:nowrap}
+@media (max-width:1100px){.rot-estilo{display:none}}
 </style>
 </head>
 <body>
@@ -551,9 +554,10 @@ a.lk-no:hover{text-decoration-thickness:2px}
     <input id="nomeBib" value="Árvores de Habilidade" aria-label="Nome da biblioteca">
     <div class="espaco"></div>
     <input id="busca" class="campo" type="search" placeholder="Buscar skill…" aria-label="Buscar skill pelo nome ou pelo texto" autocomplete="off">
-    <div class="seg" role="group" aria-label="Tema">
-      <button id="btTinta" aria-pressed="false" title="Tinta sobre papel">Tinta</button>
-      <button id="btPedra" aria-pressed="false" title="Pedra e ouro">Pedra</button>
+    <span class="rot-estilo" aria-hidden="true">Estilo do desenho</span>
+    <div class="seg" role="group" aria-label="Estilo do desenho">
+      <button id="btTinta" aria-pressed="false" title="Estilo do desenho: tinta sobre papel">Tinta</button>
+      <button id="btPedra" aria-pressed="false" title="Estilo do desenho: pedra e ouro">Pedra</button>
     </div>
     <div class="historico" role="group" aria-label="Histórico">
       <button class="btn ico" id="btDesfazer" aria-label="Desfazer">↺</button>
@@ -2228,12 +2232,14 @@ function atualizarMarca(a){
 function mostrarVazio(a){
   const nada = $('#nada'), txt = nada.querySelector('p'), bt = $('#btNada');
   nada.classList.add('on');
-  const faz = (t, rot, fn) => { txt.textContent = t; bt.textContent = rot; bt.onclick = fn; };
+  const faz = (t, rot, fn) => { txt.textContent = t; bt.textContent = rot; bt.onclick = fn; bt.hidden = false; };
   if(ui.modo==='mestre'){
     if(!a) faz('A biblioteca ainda não tem árvores. Crie a primeira — raça, classe ou escola.', 'Criar árvore', novaArvore);
     else faz('Esta árvore está vazia. Comece pela origem e vá ramificando a partir dela.', 'Criar a origem', ()=>criarNo(null));
   }else{
     const p = personagemAtual();
+    // (lote 71) numa mesa, as árvores chegam sozinhas quando o mestre as monta na Oficina: nada de arquivo
+    if(!bib().arvores.length && ArvoreMesa.ativo()){ faz('O mestre ainda não montou as árvores da mesa (na Oficina). Quando ele montar, elas aparecem aqui sozinhas.', '', null); bt.hidden = true; return; }
     if(!bib().arvores.length) faz('A biblioteca está vazia. Carregue o pacote que o mestre mandou.', 'Importar pacote', abrirTroca);
     else if(!a) faz(`${p.nome} ainda não tem árvores. Equipe a raça, a classe e as escolas.`, 'Equipar árvore', abrirEquipar);
     else faz('Esta árvore ainda está vazia.', 'Equipar outra árvore', abrirEquipar);
@@ -2366,6 +2372,8 @@ function pintarAbas(){
     $('#btRenomearAba').title = 'Renomear personagem';
     $('#btRenomearAba').disabled = $('#btDuplicarAba').disabled = false;
     $('#btExcluirAba').disabled = doc.personagens.length<=1;
+    // (lote 71) numa mesa, os personagens vêm das Fichas: quem joga não cria, renomeia nem apaga personagem por aqui
+    for(const id of ['#btNovaAba','#btRenomearAba','#btDuplicarAba','#btExcluirAba']) $(id).hidden = ArvoreMesa.ativo() && !ArvoreMesa.mestre();
   }
   cx.querySelectorAll('.aba').forEach(b=>{
     b.onclick = () => ui.modo==='mestre' ? trocarArvoreMestre(b.dataset.id) : trocarPersonagem(b.dataset.id);

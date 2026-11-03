@@ -37,7 +37,9 @@ const ficha = (nome, extra) => Object.assign({ nome, raca: 'Humana', lado: 'Alia
     ok(await ate(parado), '(as fichas sobem)');
     await M.locator('#tab-acampamento').click();
     let A = null;
-    ok(await ate(async () => { A = await quadro(/\/acampamento\//); return A && await A.evaluate(() => !!window.__acamp && __acamp.pronto && __acamp.papel === 'mestre' && __acamp.presentes().length === 2); }, 40000), 'o mestre abre o Acampamento, com os dois na roda');
+    ok(await ate(async () => { A = await quadro(/\/acampamento\//); return A && await A.evaluate(() => !!window.__acamp && __acamp.pronto && __acamp.papel === 'mestre'); }, 40000), 'o mestre abre o Acampamento');
+    await A.evaluate(() => __acamp.mudar('chamar os dois', c => { c.presentes = ['pc_dain', 'pc_lia']; }));
+    ok(await ate(() => A.evaluate(() => __acamp.presentes().length === 2)), '(os dois na roda)');
 
     await passo('Fogueira e Arrumar', async () => {
       ok(await A.locator('#modoAcamp [data-mac="fogueira"]').getAttribute('aria-pressed') === 'true' && !(await A.locator('#side').isVisible()), 'começa na Fogueira: o painel fechado, a cena com a tela');

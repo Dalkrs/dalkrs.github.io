@@ -420,11 +420,20 @@
     return h('span', { class: 'retrato-p' }, img ? h('img', { src: img, alt: '' }) : iniciais(p.nome));
   }
   // A prática de um personagem: quem joga escreve a do personagem dele; quem mestra também pode mudar.
+  const editandoPratica = new Set();
   function secaoPratica(p) {
     const pr = pratica(p.id), dono = naMesa ? p.dono : null, fig = figuraDe(p);
     const gravar = (campo, rot) => v => mudarDoc(PRE_P + p.id, rot, N.normPratica, x => { x[campo] = v; }, dono);
     const quemVe = !naMesa ? 'Fica neste navegador' : mestre && !meu(p) ? (p.dono ? 'O dono e quem mestra veem' : 'Só quem mestra vê') : 'Só você e o mestre veem';
-    return secao('A prática de ' + p.nome, h('small', { text: quemVe }),
+    /* (lote 71) a prática preenchida vira uma linha (o objeto e o mantra), com "Editar": o formulário só quando a
+       pessoa quer mudar. (Nos testes, aberto.) */
+    if ((pr.objeto || pr.mantra) && !editandoPratica.has(p.id) && guarda.ler('tinycats:testes-tudo-aberto') !== '1')
+      return secao('A prática de ' + p.nome, h('small', { text: quemVe }),
+        h('div', { class: 'pratica-linha', 'data-k': 'p:linha' }, retratoP(p),
+          h('span', { class: 'pl-t' }, h('b', { text: pr.objeto || 'Sem objeto' }), pr.mantra ? h('i', { text: '“' + pr.mantra + '”' }) : null),
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'p:editar', onclick: () => { editandoPratica.add(p.id); pintar(); } }, 'Editar')));
+    return secao('A prática de ' + p.nome, h('span', { class: 'row', style: 'gap:8px' }, h('small', { text: quemVe }),
+        editandoPratica.has(p.id) ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'p:pronto', onclick: () => { editandoPratica.delete(p.id); pintar(); } }, 'Pronto') : null),
       campoTexto('p:objeto', 'Objeto', pr.objeto, gravar('objeto', 'mudar o objeto'), { max: N.MAX.objeto, ph: 'Um colar de dentes de lobo' }),
       campoTexto('p:mantra', 'Mantra', pr.mantra, gravar('mantra', 'mudar o mantra'), { max: N.MAX.mantra, ph: 'A lua não tem pressa, e ainda assim chega.' }),
       campoTexto('p:rep', 'Representação', pr.rep, gravar('rep', 'mudar a representação'), { area: true, linhas: 3, max: N.MAX.rep, ph: 'O que o personagem vê quando medita' }),

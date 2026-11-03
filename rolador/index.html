@@ -380,6 +380,16 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 .aud-ler strong{display:block;margin-bottom:4px;color:var(--parchment)}
 .aud-ler p{margin-top:6px}
 .ai-out-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+/* (lote 71) Da ficha */
+.daficha { display: grid; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--line, rgba(255,255,255,.12)); }
+.fx-atrs { display: flex; flex-wrap: wrap; gap: 6px; }
+.fx-g { display: inline-grid; gap: 2px; }
+.fx-b { display: grid; justify-items: start; gap: 1px; min-width: 54px; padding: 5px 9px; border: 1px solid var(--line, rgba(255,255,255,.14)); border-radius: 8px; background: transparent; color: inherit; cursor: pointer; font: inherit; }
+.fx-b small { font-size: 11px; opacity: .75; } .fx-b b { font-size: 16px; }
+.fx-g { align-content: start; }
+.fx-b.base { display: flex; align-items: baseline; gap: 4px; min-width: 0; padding: 2px 8px; border-style: dashed; } .fx-b.base b { font-size: 12.5px; } .fx-b.base small { font-size: 10.5px; }
+.fx-der { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.fx-b:hover { border-color: currentColor; }
 </style>
 </head>
 <body>
@@ -422,6 +432,12 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     </label>
 
     <div class="mode-body" data-for="fixa">
+      <!-- (lote 71) os números de uma ficha da mesa, como no painel Dados: um clique põe o valor no Atributo -->
+      <div class="daficha" id="daFicha" hidden>
+        <label class="field"><span class="field-label">Da ficha <span class="opt">um clique põe o número</span></span>
+          <select class="input" id="fxPc" aria-label="O personagem"></select></label>
+        <div class="fx-atrs" id="fxAtrs" role="group" aria-label="Os números da ficha"></div>
+      </div>
       <div class="row2">
         <label class="field"><span class="field-label">Atributo</span>
           <input class="input num-input" id="fAtr" type="text" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="60"></label>
@@ -696,6 +712,7 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
 <input type="file" id="importInput" class="sr-only" tabindex="-1" aria-hidden="true" accept=".json,application/json">
 
 <script src="../tc/ponte.js?v=21"></script>
+<script src="../tc/rules.js?v=28"></script>
 <script src="../tc/auditoria.js?v=2"></script>
 <script src="auditor.js?v=1"></script>
 <script>
@@ -3022,7 +3039,58 @@ textarea.ai-out{margin-top:12px;min-height:320px;font-size:15px;line-height:1.5}
     state = daMesa;
     purgeTrash();
     D.aoMudar(mesaDeFora);
+    daFichaLigar(T);
     return primeira ? 'primeira' : true;
+  }
+  /* (lote 71) "Da ficha": os personagens da mesa e os números de cada um (com o equipamento; nos cinco atributos, a
+     base embaixo). Um clique põe o número no Atributo e, se o "O que está sendo rolado" está vazio, o nome. */
+  function daFichaLigar(T) {
+    const R = T.rules, box = document.getElementById('daFicha'), sel = document.getElementById('fxPc'), out = document.getElementById('fxAtrs');
+    if (!R || !R.calcular || !box) return;
+    let P, D;
+    try { P = T.dados.col('personagens'); D = T.dados.col('documentos'); } catch (e) { return; }
+    const guardado = () => { try { return localStorage.getItem('tinycats:rolador:pc') || ''; } catch (e) { return ''; } };
+    const contas = id => {
+      const l = P.pegar(id); if (!l || !l.ficha || !l.ficha.tiers) return null;
+      const dc = D.pegar('fichas:cfg'), cfg = (dc && dc.dados && dc.dados.v) || R.cfgPadrao();
+      try { return { nome: l.nome || 'Personagem', c: R.calcular(Object.assign({}, l.ficha, { id: l.id, nome: l.nome }), cfg) }; } catch (e) { return null; }
+    };
+    const pintarF = () => {
+      const lista = P.todas().filter(l => !l.apagado && l.ficha && l.ficha.tiers).sort((a, b) => (a.ordem || 0) - (b.ordem || 0) || String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+      box.hidden = !lista.length;
+      if (!lista.length) return;
+      const atual = lista.some(l => l.id === sel.value) ? sel.value : lista.some(l => l.id === guardado()) ? guardado() : lista[0].id;
+      const ch = lista.map(l => l.id + ':' + l.nome).join('|');
+      if (sel.dataset.ch !== ch) { sel.dataset.ch = ch; sel.replaceChildren(...lista.map(l => { const o = document.createElement('option'); o.value = l.id; o.textContent = l.nome; return o; })); }
+      sel.value = atual;
+      const ct = contas(atual);
+      out.replaceChildren();
+      if (!ct) return;
+      const botao = (rot, v, base, nomeLongo) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'fx-b' + (base ? ' base' : '');
+        b.innerHTML = '<small></small><b></b>'; b.querySelector('small').textContent = rot; b.querySelector('b').textContent = String(v);
+        b.title = 'Pôr ' + v + ' no Atributo (' + nomeLongo + ' de ' + ct.nome + ')';
+        b.addEventListener('click', () => {
+          const a = document.getElementById('fAtr'), t = document.getElementById('fTitle');
+          a.value = String(v); a.dispatchEvent(new Event('input', { bubbles: true }));
+          if (!t.value.trim()) { t.value = nomeLongo + ' de ' + ct.nome; t.dispatchEvent(new Event('input', { bubbles: true })); }
+          document.getElementById('fFixa').focus();
+        });
+        return b;
+      };
+      for (const a of R.ATRIBS || []) {
+        const g = document.createElement('span'); g.className = 'fx-g';
+        g.append(botao(a.k, ct.c.tot[a.k], false, a.nome), botao('base', ct.c.base[a.k], true, a.nome + ' base'));
+        out.append(g);
+      }
+      const der = document.createElement('div'); der.className = 'fx-der';
+      for (const d of R.DERIV || []) der.append(botao(d.k, ct.c.der[d.k], false, d.nome));
+      out.append(der);
+    };
+    sel.addEventListener('change', () => { try { localStorage.setItem('tinycats:rolador:pc', sel.value); } catch (e) { /* sem armazenamento */ } pintarF(); });
+    let tF = 0; const depoisF = () => { clearTimeout(tF); tF = setTimeout(pintarF, 300); };
+    P.aoMudar(depoisF); D.aoMudar(depoisF);
+    P.pronta.then(pintarF, () => {});
   }
   // O navegador tem algo que valha trazer? (rolagens, separadores ou tabelas)
   function mesaTemLocal() { return !!mesa.local && (mesa.local.tables.length > 0 || mesa.local.histories.some((x) => x.entries.length > 0)); }
