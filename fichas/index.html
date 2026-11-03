@@ -516,6 +516,14 @@ label.f > span.pisoin{display:flex;align-items:center;gap:6px;margin:0}
 .modal .sheet{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);max-width:860px;width:100%}
 .modal .sheet .hd{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .modal .sheet .bd{padding:14px}
+/* (lote 77) os pontos de atributo, de uma vez */
+.ptsrap{margin:6px 0 10px;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--campo-sut);display:grid;gap:8px}
+.ptsrap-l{display:flex;gap:10px;flex-wrap:wrap}
+.ptsrap label{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-soft)}
+.ptsrap input{width:64px;text-align:right;font-family:var(--monof)}
+.ptsprop td{vertical-align:top;padding:6px 8px}
+.ptsprop .ptsmenos{color:var(--danger,#e07a6e);font-weight:700}
+.ptsprop .ptsatr{white-space:pre-wrap;font-size:12.5px;color:var(--ink-soft)}
 .cfggrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
 table.cfg{width:100%;border-collapse:collapse;font-size:13.5px}
 table.cfg th,table.cfg td{padding:3px 5px;text-align:right;border-bottom:1px solid var(--linha-sut)}
@@ -1093,6 +1101,11 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
 .xpval input{width:72px;text-align:right;font-family:var(--monof);font-weight:600;padding:3px 6px}
 .xpval small,.xpfalta{font-family:var(--monof);font-size:11.5px;color:var(--ink-soft);white-space:nowrap}
 .xplim{display:inline-flex;gap:8px}
+/* (lote 77) a barra de XP no Jogando: junto das barras, sem o mínimo e o máximo (que ficam no Editar) */
+.xpbox.xpjog{margin-top:6px}
+.xpbox.xpjog .xprow{grid-template-columns:auto minmax(110px,1fr) auto auto auto}
+.xpbox.xpjog .xplim{display:none}
+.xpbox.xpjog #f_xp[readonly]{border-color:transparent;background:transparent}
 .xplim label{display:inline-flex;align-items:center;gap:4px;font-family:var(--ui);font-size:12.5px;letter-spacing:normal;text-transform:none;color:var(--ink-soft);font-weight:600}
 .xplim input{width:66px;text-align:right;font-family:var(--monof);padding:2px 5px}
 @media (max-width:900px){.xprow{grid-template-columns:auto 1fr auto}}
@@ -1737,7 +1750,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=17"></script>
 <script src="extras.js?v=20"></script>
-<script src="quadros.js?v=6"></script>
+<script src="quadros.js?v=7"></script>
 <script src="skills-lista.js?v=1"></script>
 <script src="filtro-skills.js?v=3"></script>
 <script src="criacao.js?v=3"></script>
@@ -3142,6 +3155,7 @@ function htmlResumo(pc,c){
           ${htmlLugarNaFicha(pc)}
         </div>
         ${htmlBarrinhas(pc, c)}
+        ${fichaModo==='jogando'? FichasQuadros.htmlXp(pc, true) : ''}
         ${htmlNumerosResumo(pc,c)}
         ${htmlRolouResumo(pc)}
         ${htmlEstadoResumo(pc)}
@@ -3164,7 +3178,7 @@ function htmlQuemE(pc,optTier,optLvl){
         ${FichasMesa.deJogador(pc) || pc.petDe? '' : `<label class="f"><span class="eyebrow">Tier</span><select id="f_tier">${optTier}</select></label>`}
         <label class="f"><span class="eyebrow">Level</span><select id="f_level">${optLvl}</select></label>
       </div>
-      ${FichasQuadros.htmlXp(pc)}
+      ${fichaModo==='jogando'? '' : FichasQuadros.htmlXp(pc)}
       ${FichasMesa.htmlDono(pc)}
       <div class="idcard2">
         <label class="f"><span class="eyebrow">${FichasMesa.campanhas().length?'Campanha e grupo':'Grupo'}</span>
@@ -5044,6 +5058,7 @@ function abrirCfg(){
         </div>
         <div>
           <span class="eyebrow">Pontos por level</span>
+          ${htmlPtsRapido()}
           <div class="lvlscroll" style="margin-top:4px">
             <table class="cfg"><tbody>
               ${S.cfg.niveis.map((r,i)=>`<tr><td class="mono">Lvl ${r.lvl}</td><td><input type="number" data-cn="${i}" value="${r.pts}"></td></tr>`).join('')}
@@ -5072,7 +5087,85 @@ function abrirCfg(){
   m.querySelector('#addLvl').onclick=()=>{
     const last=S.cfg.niveis[S.cfg.niveis.length-1]||{lvl:0,pts:37};
     S.cfg.niveis.push({lvl:+last.lvl+1,pts:+last.pts+8});save();m.remove();abrirCfg()};
+  ligarPtsRapido(m);
   m.querySelector('#resetLvl').onclick=()=>{if(confirm('Restaurar a tabela de levels padrão (1 a 50)?')){S.cfg.niveis=tabelaNiveisPadrao();save();m.remove();abrirCfg()}};
+}
+
+/* ---------- (lote 77) os pontos de atributo, de uma vez ----------
+   O inicial (level 1) e quanto sobe por level refazem a tabela inteira (do 1 ao último level dela). As fichas por tier
+   acompanham sozinhas. As de distribuição livre que passam do total novo aparecem numa janela, antes de qualquer
+   mudança nelas: "Tirar na proporção" tira de cada atributo na mesma proporção (o total fica exato); "Deixar como
+   estão" só troca a tabela (a ficha avisa que passou). Tudo com Desfazer. */
+function ptsAtuais(){
+  const t=S.cfg.niveis||[], a=t.find(r=>+r.lvl===1), b=t.find(r=>+r.lvl===2);
+  return {ini: a? +a.pts : 45, por: a&&b? (+b.pts)-(+a.pts) : 8};
+}
+function htmlPtsRapido(){
+  const p=ptsAtuais(), n=(S.cfg.niveis||[]).length;
+  return `<div class="ptsrap" id="ptsRap">
+    <div class="ptsrap-l"><label>Inicial <input type="number" min="0" step="1" id="ptsIni" value="${p.ini}" aria-label="Pontos no level 1"></label>
+      <label>Por level <input type="number" min="0" step="1" id="ptsPor" value="${p.por}" aria-label="Pontos a mais a cada level"></label></div>
+    <div class="hint" id="ptsPrevia">Level 10: ${p.ini+9*p.por} · level 20: ${p.ini+19*p.por}</div>
+    <button class="mini primary" id="ptsAplicar" type="button">Refazer a tabela (${n} levels)</button>
+  </div>`;
+}
+// a distribuição na proporção: cada atributo × (novo / usado), para baixo, e o que sobrar vai para os de maior resto
+function naProporcao(al, alvo){
+  const ks=ATRIBS.map(a=>a.k), tot=ks.reduce((s,k)=>s+(+al[k]||0),0);
+  if(tot<=alvo||tot<=0) return Object.assign({},al);
+  const brutos=ks.map(k=>({k, v:(+al[k]||0)*alvo/tot})), out={};
+  brutos.forEach(b=>{ out[b.k]=Math.floor(b.v); });
+  let falta=alvo-ks.reduce((s,k)=>s+out[k],0);
+  brutos.slice().sort((x,y)=>(y.v-Math.floor(y.v))-(x.v-Math.floor(x.v))).forEach(b=>{ if(falta>0){ out[b.k]++; falta--; } });
+  return Object.assign({},al,out);
+}
+function ligarPtsRapido(m){
+  const ini=m.querySelector('#ptsIni'), por=m.querySelector('#ptsPor'), prev=m.querySelector('#ptsPrevia');
+  if(!ini) return;
+  const ler=()=>({ini:Math.max(0,Math.round(+ini.value||0)), por:Math.max(0,Math.round(+por.value||0))});
+  const pintar=()=>{ const p=ler(); prev.textContent='Level 10: '+(p.ini+9*p.por)+' · level 20: '+(p.ini+19*p.por); };
+  ini.oninput=pintar; por.oninput=pintar;
+  m.querySelector('#ptsAplicar').onclick=()=>{
+    const p=ler(), antes=JSON.parse(JSON.stringify(S.cfg.niveis)), n=antes.length||50;
+    const nova=[]; for(let l=1;l<=n;l++) nova.push({lvl:l, pts:p.ini+(l-1)*p.por});
+    if(JSON.stringify(nova)===JSON.stringify(antes)){ FichasExtras.aviso('A tabela já é essa.'); return; }
+    S.cfg.niveis=nova;
+    // as fichas em distribuição livre que passam do total novo
+    const acima=S.personagens.filter(pc=>pc.modoAtr==='livre' && pc.atrLivre && FichasMesa.podeEditar(pc)).map(pc=>{ const c=calcular(pc); return {pc, usados:c.usados||0, limite:c.limite||0}; }).filter(x=>x.usados>x.limite);
+    save(); m.remove(); abrirCfg();
+    const desfazer=()=>{ S.cfg.niveis=antes; save(); const v=document.querySelector('.modal[data-cfg]'); if(v){ v.remove(); abrirCfg(); } else render(); };
+    const msg='Tabela refeita: '+p.ini+' no level 1 e +'+p.por+' por level.';
+    if(!acima.length){ FichasExtras.aviso(msg, 'Desfazer', desfazer); return; }
+    janelaProporcao(acima, msg, desfazer);
+  };
+}
+function janelaProporcao(acima, msg, desfazerTabela){
+  const j=document.createElement('div'); j.className='modal'; j.dataset.prop='1';
+  const linha=x=>{ const nv=naProporcao(x.pc.atrLivre, x.limite);
+    return `<tr data-prop="${esc(x.pc.id)}"><td><b>${esc(x.pc.nome||'Sem nome')}</b><br><small>level ${esc(String(x.pc.level))}${FichasMesa.deJogador(x.pc)?' · jogador':''}</small></td>
+      <td class="mono">${x.usados} → ${x.limite} <span class="ptsmenos">−${x.usados-x.limite}</span></td>
+      <td class="mono ptsatr">${ATRIBS.map(a=>`${a.k} ${+x.pc.atrLivre[a.k]||0}→${nv[a.k]||0}`).join('  ')}</td></tr>`; };
+  j.innerHTML=`<div class="sheet" role="dialog" aria-label="Fichas acima do total novo">
+    <div class="hd"><span class="eyebrow">Pontos a mais</span></div>
+    <div class="bd">
+      <p style="margin:0 0 10px">${esc(msg)} ${acima.length===1?'Esta ficha, em distribuição livre, passa':'Estas '+acima.length+' fichas, em distribuição livre, passam'} do total novo:</p>
+      <table class="cfg ptsprop"><tbody>${acima.map(linha).join('')}</tbody></table>
+      <p class="hint" style="margin:10px 0">“Tirar na proporção” tira de cada atributo na mesma proporção, até o total novo. Dá para desfazer.</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="mini" id="propDeixar" type="button">Deixar como estão</button>
+        <button class="mini primary" id="propTirar" type="button">Tirar na proporção</button>
+      </div>
+    </div></div>`;
+  document.body.appendChild(j);
+  const fechar=()=>j.remove();
+  j.querySelector('#propDeixar').onclick=()=>{ fechar(); FichasExtras.aviso(msg+' As fichas acima do total ficaram como estavam (cada uma avisa que passou).', 'Desfazer', desfazerTabela); };
+  j.querySelector('#propTirar').onclick=()=>{
+    const guardados=acima.map(x=>({pc:x.pc, al:JSON.parse(JSON.stringify(x.pc.atrLivre))}));
+    acima.forEach(x=>{ x.pc.atrLivre=naProporcao(x.pc.atrLivre, x.limite); });
+    save(); fechar(); render();
+    FichasExtras.aviso(msg+' '+(acima.length===1?'1 ficha ajustada':acima.length+' fichas ajustadas')+' na proporção.', 'Desfazer', ()=>{ guardados.forEach(g=>{ g.pc.atrLivre=g.al; }); desfazerTabela(); });
+  };
+  j.querySelector('#propTirar').focus();
 }
 
 /* ---------- apagar dados (flush, com duas confirmações) ---------- */

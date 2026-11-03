@@ -254,6 +254,15 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### O XP no Jogando e os pontos de atributo de uma vez (lote 77)
+
+- **XP**: `FichasQuadros.htmlXp(pc, jog)` — no Jogando, a barra vai para o resumo (junto das barras), sem o mínimo e o
+  máximo; no Editar, fica onde sempre esteve (uma só por vez: `fichaModo` decide). Quem não mexe na ficha só vê.
+- **Pontos de atributo** (Tabelas base, `htmlPtsRapido` / `ligarPtsRapido`): o inicial e o por level refazem
+  `cfg.niveis` (do 1 ao último level). As fichas em distribuição livre acima do total novo vão para `janelaProporcao`:
+  `naProporcao` tira na mesma proporção (para baixo; o que sobra vai para os de maior resto, e o total fica exato).
+- Teste: `fichas-lote77`.
+
 ### A árvore que voltava para a versão de antes (lote 76)
 
 - **O defeito**: `arvore/mesa.js` montava o documento da mesa e o passava ao aplicativo pelo navegador

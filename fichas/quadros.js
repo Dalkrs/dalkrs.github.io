@@ -26,16 +26,18 @@ const FichasQuadros = (() => {
   const usaXp = pc => !!RR() && !!RR().xpDe && (FichasMesa.deJogador(pc) || FichasExtras.ehLivre(pc) || !!(pc.estado && pc.estado.xp));
   const nx = v => String(Math.round(v * 10) / 10).replace('-', '−');
   let xpConf = null;                          // o personagem cuja barra está perguntando "subir de nível?"
-  function htmlXp(pc) {
+  // (lote 77) jog: a barra no modo Jogando (junto das barras; o mínimo e o máximo ficam no Editar; quem não mexe na
+  // ficha só vê o número)
+  function htmlXp(pc, jog) {
     if (!usaXp(pc)) return '';
     const R = RR(), x = R.xpDe(pc.estado, pc.level), pode = FichasMesa.podeEditar(pc);
     const prox = (+pc.level || 1) + 1, temProx = S.cfg.niveis.some(r => +r.lvl === prox);
     const depois = R.xpDe(R.subirNivelXp(pc.estado || {}, pc.level), prox), sobra = x.v > x.max;
-    return `<div class="xpbox" id="xpBox">
+    return `<div class="xpbox${jog ? ' xpjog' : ''}" id="xpBox" data-jog="${jog ? 1 : 0}">
       <div class="xprow">
         <span class="eyebrow">XP</span>
         <div class="xpbar ${x.cheia ? 'cheia' : ''}" role="img" aria-label="XP: ${nx(x.v)} de ${nx(x.max)}${x.cheia ? ', barra cheia' : ', faltam ' + nx(x.falta)}"><i style="width:${Math.round(x.fracao * 100)}%"></i></div>
-        <span class="xpval"><input type="text" inputmode="numeric" id="f_xp" autocomplete="off" value="${nx(x.v)}" aria-label="XP atual" title="O XP do personagem. Digite o valor, ou +50 e −20 para somar e subtrair do que ele tem."><small>/ ${nx(x.max)}</small></span>
+        <span class="xpval"><input type="text" inputmode="numeric" id="f_xp" autocomplete="off" value="${nx(x.v)}" aria-label="XP atual" ${pode ? '' : 'readonly '}title="${pode ? 'O XP do personagem. Digite o valor, ou +50 e −20 para somar e subtrair do que ele tem.' : 'O XP do personagem'}"><small>/ ${nx(x.max)}</small></span>
         <span class="xpfalta">${x.cheia ? 'cheia' : 'faltam ' + nx(x.falta)}</span>
         <span class="xplim"><label>mín <input type="number" step="1" id="f_xpmin" value="${x.min}" aria-label="XP mínimo da barra"></label>
           <label>máx <input type="number" step="1" id="f_xpmax" value="${x.max}" aria-label="XP máximo da barra" title="${x.maxProprio ? 'Apague o campo para voltar ao de costume (10 por nível)' : 'O de costume: 10 por nível. Digite outro se quiser.'}"></label></span>
@@ -57,7 +59,7 @@ const FichasQuadros = (() => {
   function ligarXp(host, pc) {
     const box = U().q(host, '#xpBox'); if (!box) return;
     const R = RR(), xp = () => U().mapaDe(pc, 'xp'), agora = () => R.xpDe(pc.estado, pc.level);
-    const pintar = focar => trocar('xpBox', htmlXp(pc), ligarXp, pc, focar);
+    const pintar = focar => trocar('xpBox', htmlXp(pc, box.dataset.jog === '1'), ligarXp, pc, focar);
     const arrumar = () => { const e = U().estadoDe(pc); if (e.xp && !Object.keys(e.xp).length) delete e.xp; };
     const guardar = focar => { arrumar(); save(); pintar(focar); };
     // (o que muda ao sair de um campo é desenhado sem atrapalhar o clique ou o Tab que tirou o cursor dali)
@@ -546,7 +548,7 @@ const FichasQuadros = (() => {
      redesenhados no lugar (o que ela está usando espera ela sair). */
   function aoVivo(pc) {
     const foco = document.activeElement, livre = id => { const n = document.getElementById(id); return !!n && !n.contains(foco); };
-    if (livre('xpBox')) trocar('xpBox', htmlXp(pc), ligarXp, pc);
+    if (livre('xpBox')) trocar('xpBox', htmlXp(pc, document.getElementById('xpBox').dataset.jog === '1'), ligarXp, pc);
     if (livre('painelAsc')) trocar('painelAsc', painelAscensao(pc), ligarAscensao, pc);
     if (livre('painelCorpo')) trocar('painelCorpo', painelCorpo(pc), ligarCorpo, pc);
     if (livre('blocoMissoes')) trocar('blocoMissoes', blocoMissoes(pc), ligarMissoes, pc);

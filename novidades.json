@@ -2,6 +2,27 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-12",
+      "data": "2026-11-03",
+      "titulo": "O XP no Jogando, e os pontos de atributo de uma vez",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: a barra de XP aparece também no modo Jogando, junto das barras. Digite +5 para somar ou −2 para tirar, com Desfazer. O mínimo e o máximo da barra continuam no Editar."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas, Tabelas base: “Inicial” e “Por level” refazem a tabela de pontos inteira de uma vez (por exemplo, 45 e 5). As fichas por tier acompanham sozinhas."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Ao refazer a tabela, as fichas em distribuição livre que passam do total novo aparecem numa janela, antes de mudar qualquer coisa nelas: “Tirar na proporção” tira de cada atributo na mesma proporção, e “Deixar como estão” só troca a tabela. As duas têm Desfazer."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-11",
       "data": "2026-11-03",
       "titulo": "A árvore não volta mais para a versão de antes",
