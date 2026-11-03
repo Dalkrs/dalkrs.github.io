@@ -254,6 +254,19 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### O cofre de lapros do clã e o líder que cuida do clã (lote 74)
+
+- **O cofre** (`cla:cofre:<clã>`, `0036_cofre_e_o_lider_do_cla.sql`, `public.cla_cofre_mover`): como a caixinha do
+  grupo, com o saldo e o extrato (até 100 linhas; `por`: o líder que pagou; `m`: quem mestra). Quem é do clã põe
+  lapros da ficha de um personagem seu; o líder tira do cofre para a ficha de qualquer membro; quem mestra o Clã também
+  põe e tira sem ficha. Só o banco escreve o cofre (`privado.cla_guarda`).
+- **O líder** (`public.cla_lider`, `p_partes`: `recursos`, `construcoes`, `membros`, `resp`): na tela do Clã do jogador
+  que lidera, as abas Membros, Construções e Cofre usam as mesmas partes do painel do mestre (`secRol`,
+  `secConstrucoes`, `secRecursos`), e `mudarCla` vira `mudarComoLider`: os cargos vão pela `cla_cargos`, o resto pela
+  `cla_lider`, e o que é só do mestre é recusado. O banco escreve no histórico (`tipo: 'lider'`) e guarda a última
+  (`liderUlt`, o antes e o depois), que quem mestra desfaz em Cofre e obras (`desfazerDoLider`).
+- Testes: `cla-lote74.rede`.
+
 ### O resultado grande e a base no painel Dados (lote 73)
 
 - **O resultado grande** (`#grande`, `mostrarGrande`): cada rolagem nova com total (`aoVivo.on('item')`, a mesma

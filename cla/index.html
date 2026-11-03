@@ -492,6 +492,16 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 .cs-svg .cs-mira-cel { fill: rgba(230, 171, 79, .18); stroke: rgba(230, 171, 79, .6); stroke-width: 1.5; pointer-events: none; }
 @media (max-width: 1100px) { .cs-corpo { grid-template-columns: 80px minmax(0, 1fr); } .cs-lado { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); max-height: 40vh; } }
 @media (max-width: 1100px) { .sede-corpo { grid-template-columns: 1fr; } .sede-plantas { flex-direction: row; flex-wrap: wrap; } .planta-card { flex: 1 1 200px; } }
+/* (lote 74) o cofre de lapros do clã: o saldo grande, os botões e o extrato */
+.cofre-lap .cab { display: flex; align-items: baseline; gap: 12px; }
+.cofre-q { margin-left: auto; display: inline-flex; align-items: baseline; gap: 4px; padding: 4px 14px; border-radius: 12px; background: var(--lamp-soft); border: 1px solid color-mix(in srgb, var(--lamp) 40%, transparent); }
+.cofre-q b { font: 700 26px/1 var(--mono, ui-monospace); color: var(--lamp-ink); }
+.cofre-q span { color: var(--fg-2); font-weight: 600; }
+.cofre-bt { gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.cofre-ext .linha-h { display: grid; grid-template-columns: 48px 86px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; }
+.cofre-ext .ext-q { font: 700 14px/1.2 var(--mono, ui-monospace); text-align: right; }
+.cofre-ext .ext-q.pos { color: var(--ok-ink); } .cofre-ext .ext-q.neg { color: var(--danger); }
+.cofre-ext .ext-s { color: var(--fg-3); font-size: 12px; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -521,7 +531,7 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=21"></script>
 <script src="../meditacao/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=8"></script>
+<script src="nucleo.js?v=9"></script>
 <script src="../tc/tropas.js?v=5"></script>
 <script src="../tc/modelos.js?v=1"></script>
 <script src="../tc/calendario.js?v=2"></script>
@@ -529,6 +539,6 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <script src="../tc/sede.js?v=3"></script>
 <script src="sede-ui.js?v=4"></script>
 <script src="construtor.js?v=1"></script>
-<script src="cla.js?v=11"></script>
+<script src="cla.js?v=12"></script>
 </body>
 </html>

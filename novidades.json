@@ -2,6 +2,26 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-9",
+      "data": "2026-11-03",
+      "titulo": "O cofre de lapros do clã, e o líder que cuida do clã",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Clã: o cofre de lapros. Quem é do clã põe lapros da ficha de um personagem seu. O líder paga um membro: sai do cofre e entra na ficha dele. Todos do clã veem o saldo e o extrato."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Clã: o líder (quem tem o personagem no cargo de líder) cuida dos recursos do cofre, das construções e dos membros: anota, muda, tira e sobe. Tudo fica no histórico com o nome dele."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã: o mestre põe ou tira lapros do cofre sem ficha (“O mestre pôs 200 · o saque da cripta”). Em Cofre e obras, a última mudança do líder aparece com Desfazer. As relações, a sede, as tropas, o nome e o brasão continuam só com o mestre."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-8",
       "data": "2026-11-03",
       "titulo": "O resultado grande para a mesa toda, e a base no painel Dados",

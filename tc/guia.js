@@ -204,6 +204,7 @@
     },
     cla: {
       mestre: [
+        { t: 'O cofre de lapros e o líder', txt: 'Em Cofre e obras, o cofre de lapros: “Pôr no cofre…” (sem ficha, você põe do nada), “Pagar a um membro…” e “Tirar (sem ficha)…”, com o extrato. O líder do clã dos jogadores cuida dos recursos, das construções e dos membros; a última mudança dele aparece aqui com Desfazer.', onde: { sel: '[data-k="sec:lapros"]', nada: 'Abra o clã em Cofre e obras.' } },
         { t: 'Os clãs da mesa', txt: 'O dos jogadores e os de NPC (rivais, aliados). Escolha um para abrir.', onde: { sel: '#mestre', nada: 'A lista dos clãs aparece fora de um clã aberto.' } },
         { t: 'As partes do clã', txt: 'Cargos, construções, recursos, respeito, relações e o histórico. No clã de NPC, você marca o que os jogadores veem.', onde: { sel: '#abas', nada: 'Abra um clã primeiro.' } },
         // (lote 30) a Sede e o construtor
@@ -224,6 +225,7 @@
         { t: 'A tropa com modelo', txt: 'Ao criar a tropa, escolha o modelo de unidade (os do Mapa-múndi), quantos soldados (1 a 500) e a veterania. Tudo na mesma janela.', onde: { sel: '[data-k="tr:nova"]', nada: 'Abra um clã, na aba Sede e tropas.' } },
       ],
       jogador: [
+        { t: 'O cofre de lapros', txt: 'Na aba Cofre: “Pôr no cofre…” tira os lapros da ficha do seu personagem e guarda no cofre do clã. O líder paga os membros. Quem lidera também mexe nos recursos, nas construções e nos membros, e tudo fica no histórico com o nome dele.', onde: { sel: '[data-k="sec:lapros"]', nada: 'Abra a aba Cofre.' } },
         { t: 'O clã', txt: 'As partes do clã que vocês veem: os cargos, as construções, os recursos e o histórico. O líder mexe nos outros cargos.', onde: { sel: '#abas', nada: 'O mestre ainda não mostrou um clã.' } },
         { t: 'A sede', txt: 'Na parte Sede do salão, a planta da sede do clã: os prédios, a muralha, as estradas. Quem monta é o mestre; nas sessões, ela vira cena.', onde: { sel: '#abas [data-aba="sede"]', nada: 'O mestre ainda não mostrou a sede deste clã.' } },
         { t: 'Os membros do clã', txt: 'A aba Membros: todo mundo do clã, com cargo ou sem — o nome, a raça, a classe, o cargo e a idade, que cresce com o calendário do mundo.', onde: { sel: '#abas [data-aba="membros"]', nada: 'A aba Membros aparece quando o mestre mostra os membros do clã.' } },

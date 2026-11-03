@@ -1835,6 +1835,22 @@
       await Promise.race([buscarLinha('documentos', 'cla:lpub:' + cla + ':n:' + pag), new Promise(ok2 => setTimeout(ok2, 3000))]);
       return data || null;
     }
+    /* (lote 74) O líder cuida do clã (os recursos, as construções, os membros e o respeito deles: args.partes) e o cofre de
+       lapros do clã (args = { pc, qtd, nota }). Quem confere tudo é o banco (ver supabase/migrations/0036). */
+    if (op === 'lider' || op === 'cofre') {
+      if (!cla) throw new Error('Pedido desconhecido.');
+      const r = op === 'lider'
+        ? await cliente().rpc('cla_lider', { p_mesa: a.id, p_cla: cla, p_partes: args.partes && typeof args.partes === 'object' ? args.partes : {}, p_txt: String(args.txt || '').slice(0, 200) })
+        : await cliente().rpc('cla_cofre_mover', { p_mesa: a.id, p_cla: cla, p_pc: typeof args.pc === 'string' && args.pc ? args.pc.slice(0, 64) : null, p_qtd: Math.trunc(Number(args.qtd) || 0), p_nota: String(args.nota || '').slice(0, 120) });
+      if (r.error) {
+        if (semEsquemaM(r.error)) throw new Error('O banco desta mesa ainda não tem o cofre do clã: falta aplicar a atualização do banco (o SQL 0036).');
+        if (String(r.error.code || '') === 'P0001' && r.error.message) throw new Error(String(r.error.message).slice(0, 300));
+        throw falha(r.error, 'Não deu certo agora. Tente de novo.');
+      }
+      const ler = op === 'lider' ? [buscarLinha('documentos', 'cla:pub:' + cla)] : [buscarLinha('documentos', 'cla:cofre:' + cla), args.pc ? buscarLinha('personagens', String(args.pc)) : null];
+      await Promise.race([Promise.all(ler), new Promise(ok => setTimeout(ok, 3000))]);
+      return r.data || null;
+    }
     const mudar = args && args.mudar && typeof args.mudar === 'object' && !Array.isArray(args.mudar) ? args.mudar : null;
     if (op !== 'cargos' || !cla || !mudar) throw new Error('Pedido desconhecido.');
     const { data, error } = await cliente().rpc('cla_cargos', { p_mesa: a.id, p_cla: cla, p_mudar: mudar, p_txt: String(args.txt || '').slice(0, 200) });

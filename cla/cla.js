@@ -177,7 +177,52 @@
     if (!quieto) pintar();
     return true;
   }
-  const mudarCla = (id, rotulo, fn, quieto) => mudarDoc(PRE_C + id, rotulo, N.normCla, fn, quieto);
+  /* (lote 74) Quem mestra grava o clã direto. O líder do clã dos jogadores (que só recebe o que a mesa vê do clã) pede ao
+     banco: os cargos mudam pela função dos cargos (o que mudou, cargo por cargo); os recursos, as construções, os membros
+     e o respeito deles, pela função do líder (a parte nova inteira). O resto (o nome, o brasão, as relações…) é com o
+     mestre. O desfazer pede a volta do que esta mudança mudou. */
+  const mudarCla = (id, rotulo, fn, quieto) => (mestre || !naMesa ? mudarDoc(PRE_C + id, rotulo, N.normCla, fn, quieto) : mudarComoLider(id, rotulo, fn));
+  const PARTES_LIDER = ['recursos', 'construcoes', 'membros'];
+  const respDe = cs => { const o = {}; for (const m of N.membros(cs)) o[m.pessoa.id] = m.pessoa.resp || 0; return o; };
+  function claDoLider(id) {
+    const c = clasDosJogadores().find(x => x.id === id);
+    return c && souLider(c.c) ? N.normCla(copia(doc(PRE_P + id))) : null;
+  }
+  // o que mudou de antes para depois, como a função do líder recebe (e os cargos, como a função dos cargos)
+  function pedidoDoLider(antes, depois) {
+    const partes = {};
+    for (const k of PARTES_LIDER) if (j(antes[k]) !== j(depois[k])) partes[k] = depois[k];
+    const ra = respDe(antes.cargos), rd = respDe(depois.cargos), resp = {};
+    for (const k of Object.keys(rd)) if (ra[k] !== rd[k]) resp[k] = rd[k];
+    if (Object.keys(resp).length) partes.resp = resp;
+    const cargos = N.diffCargos(N.normCargos(antes.cargos), N.normCargos(depois.cargos));
+    const outras = Object.keys(depois).filter(k => !PARTES_LIDER.includes(k) && !['cargos', 'hist', 'respGuardado', 'liderUlt'].includes(k) && j(antes[k]) !== j(depois[k]));
+    return { partes, cargos, outras };
+  }
+  async function enviarDoLider(id, ped, txt) {
+    if (Object.keys(ped.cargos).length) await pedirCargos(id, ped.cargos, txt);
+    if (Object.keys(ped.partes).length) await TC.ponte.cla('lider', { cla: id, partes: ped.partes, txt });
+  }
+  function mudarComoLider(id, rotulo, fn) {
+    const antes = claDoLider(id);
+    if (!antes) { toast('Só o mestre (ou o líder do clã) muda isso.'); return false; }
+    const novo = copia(antes);
+    if (fn(novo) === false) return false;
+    const depois = N.normCla(novo), ped = pedidoDoLider(antes, depois);
+    if (ped.outras.length) { toast('Isso é com o mestre: o líder cuida dos cargos, dos recursos, das construções e dos membros.'); return false; }
+    if (!Object.keys(ped.partes).length && !Object.keys(ped.cargos).length) return false;
+    acao(() => enviarDoLider(id, ped, rotulo)).then(r => {
+      if (r === null) return;
+      empilhar(rotulo, async () => {
+        const agoraC = claDoLider(id);
+        if (!agoraC) throw new Error('Você não lidera mais este clã.');
+        const volta = N.normCla(juntar3(depois, antes, agoraC));
+        await enviarDoLider(id, pedidoDoLider(agoraC, volta), 'desfez: ' + rotulo);
+      });
+      pintar();
+    });
+    return true;
+  }
   // (as contas do núcleo devolvem o clã novo; aqui ele entra no lugar da cópia)
   const trocar = (c, novo) => { if (!novo) return false; for (const k of Object.keys(c)) delete c[k]; Object.assign(c, novo); return true; };
   function empilhar(rotulo, desfazer) { pilha.push({ rotulo, desfazer }); if (pilha.length > 120) pilha.shift(); return pilha[pilha.length - 1]; }
@@ -503,14 +548,107 @@
         h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'novo-cargo', disabled: ocupado, onclick: () => novoCargoDlg(c, 'lider') }, '+ Cargo')) : null,
       hierarquia(c, pode),
       h('p', { class: 'ajuda', text: 'Cada pessoa pode ser um personagem da mesa ou só um nome.' + (c.jogadores ? ' O número ao lado é o respeito dela dentro do clã (de −10 a +10): todos do clã veem; quem muda é o mestre.' : '') })];
-    } else if (aba === 'membros') corpo = [membrosVer(c)];
-    else if (aba === 'tropas') corpo = [tropasVer(c)];
-    else if (aba === 'cons') corpo = [construcoesVer(c)];
-    else if (aba === 'sede') corpo = [SedeUI.parteDoSalao(c.id, c.nome)];
-    else if (aba === 'rec') corpo = [recursosVer(c)];
-    else if (aba === 'resp') corpo = [respeitoVer(c)];
-    else corpo = [historicoVer(c)];
+    } else {
+      // (lote 74) o líder cuida dos membros, das construções e dos recursos: na tela dele, as mesmas partes do mestre
+      const xl = !mestre && souLider(c) ? { id: c.id, c: claDoLider(c.id) } : null;
+      if (xl && !xl.c) xl.c = null;
+      if (aba === 'membros') corpo = [xl && xl.c ? avisoLider('Você lidera o clã: anote membros, mude os dados e o respeito de cada um.') : null, xl && xl.c ? secRol(xl) : membrosVer(c)];
+      else if (aba === 'tropas') corpo = [tropasVer(c)];
+      else if (aba === 'cons') corpo = [xl && xl.c ? avisoLider('Você lidera o clã: crie, mude e suba as construções com o que o cofre tem.') : null, xl && xl.c ? secConstrucoes(xl) : construcoesVer(c)];
+      else if (aba === 'sede') corpo = [SedeUI.parteDoSalao(c.id, c.nome)];
+      else if (aba === 'rec') corpo = [cofreLapros(c.id, c), xl && xl.c ? secRecursos(xl) : recursosVer(c)];
+      else corpo = null;
+    }
+    if (corpo === null) {
+      if (aba === 'resp') corpo = [respeitoVer(c)];
+      else corpo = [historicoVer(c)];
+    }
     morphEm($('parte'), corpo);
+  }
+
+  const avisoLider = txt => h('div', { class: 'aviso lider', 'data-k': 'sou-lider-p' }, icone(ICO.coroa, 18, '1.8'), h('span', { text: txt + ' Tudo fica no histórico, com o seu nome.' }));
+
+  /* ---------------- (lote 74) o cofre de lapros do clã ----------------
+     cla:cofre:<id> (ver supabase/migrations/0036): o saldo e o extrato. Quem é do clã põe lapros de um personagem seu (sai
+     da ficha); o líder paga um membro (sai do cofre, entra na ficha dele); quem mestra também põe e tira sem ficha. */
+  const PRE_COFRE = 'cla:cofre:';
+  function cofreDe(id) { const d = doc(PRE_COFRE + id), v = d && ehObj(d.v) ? d.v : {}; return { q: Math.max(0, Math.trunc(Number(v.q) || 0)), ext: Array.isArray(v.ext) ? v.ext.filter(ehObj).slice(0, 100) : [] }; }
+  // os personagens com ficha que são membros do clã: [{ pc, nome, meu, lapros }]
+  function membrosComFicha(c) {
+    const out = [], vistos = new Set();
+    for (const m of N.membrosDe(c)) {
+      const pcId = m.pessoa && m.pessoa.pc; if (!pcId || vistos.has(pcId)) continue;
+      const l = naMesa && P ? P.pegar(pcId) : null; if (!l || l.apagado) continue;
+      vistos.add(pcId);
+      out.push({ pc: pcId, nome: l.nome || 'Sem nome', meu: !!eu && l.dono_id === eu, lapros: Math.max(0, Math.trunc(Number(l.estado && l.estado.lapros) || 0)) });
+    }
+    return out.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+  const lap = n => N.qtdTxt(n) + (Math.abs(n) === 1 ? ' lapro' : ' lapros');
+  function cofreLapros(id, c) {
+    if (!naMesa) return null;
+    const cf = cofreDe(id), ms = membrosComFicha(c), meus = ms.filter(m => m.meu), lider = !mestre && souLider(c);
+    const podePagar = mestre || lider;
+    return h('div', { class: 'cartao cofre-lap', 'data-k': 'sec:lapros' },
+      h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Cofre de lapros' }),
+        h('span', { class: 'cofre-q', 'data-k': 'cofre:q' }, h('b', { text: N.qtdTxt(cf.q) }), h('span', { text: cf.q === 1 ? ' lapro' : ' lapros' }))),
+      h('div', { class: 'row cofre-bt' },
+        meus.length || mestre ? h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'cofre:por', disabled: ocupado, onclick: () => cofreDlg(id, c, 'por') }, 'Pôr no cofre…') : null,
+        podePagar ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'cofre:pagar', disabled: ocupado || !cf.q || !ms.length, onclick: () => cofreDlg(id, c, 'pagar') }, 'Pagar a um membro…') : null,
+        mestre ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'cofre:tirar', disabled: ocupado || !cf.q, onclick: () => cofreDlg(id, c, 'tirar') }, 'Tirar (sem ficha)…') : null),
+      !meus.length && !mestre ? h('p', { class: 'ajuda', text: 'Para pôr lapros, um personagem seu precisa ser membro do clã.' }) : null,
+      cf.ext.length ? h('div', { class: 'linhas cofre-ext', 'data-k': 'cofre:ext' }, cf.ext.slice(0, 30).map((e, i) => {
+        const q = Math.trunc(Number(e.q) || 0);
+        return h('div', { class: 'linha-h', 'data-ext': String(i) }, h('time', { text: dia(e.em) }),
+          h('span', { class: 'ext-q ' + (q > 0 ? 'pos' : 'neg'), text: (q > 0 ? '+' : '−') + N.qtdTxt(Math.abs(q)) }),
+          h('span', { class: 'ext-t', text: (e.quem || 'O mestre') + (q > 0 ? ' pôs' : e.pc ? ' recebeu' : ' tirou') + (e.por ? ', pago por ' + e.por : e.m && e.pc ? ' (pelo mestre)' : '') + (e.nota ? ' · ' + e.nota : '') }),
+          h('small', { class: 'ext-s', text: 'saldo ' + N.qtdTxt(Math.trunc(Number(e.saldo) || 0)) }));
+      })) : h('p', { class: 'vazio-p', text: 'O cofre está vazio. O que cada um puser aparece aqui, com quem pôs e quanto.' }));
+  }
+  function cofreDlg(id, c, modo) {
+    const ms = membrosComFicha(c), cf = cofreDe(id);
+    const opcoes = modo === 'por' ? (mestre ? ms : ms.filter(m => m.meu)) : ms;
+    const sel = h('select', { class: 'in', 'data-k': 'dl:pc', style: 'width:100%' },
+      modo === 'por' && mestre ? h('option', { value: '', text: 'Sem ficha (o mestre põe do nada)' }) : null,
+      opcoes.map(m => h('option', { value: m.pc, text: m.nome + (modo === 'por' ? ' · tem ' + lap(m.lapros) : '') })));
+    const qtd = h('input', { class: 'in', type: 'text', inputmode: 'numeric', 'data-k': 'dl:qtd', placeholder: 'Quantos lapros', autocomplete: 'off' });
+    const nota = h('input', { class: 'in', type: 'text', 'data-k': 'dl:nota', maxlength: 120, placeholder: modo === 'pagar' ? 'Pelo quê (ex.: a escolta)' : 'Uma nota (opcional)', autocomplete: 'off' });
+    const tit = modo === 'por' ? 'Pôr lapros no cofre' : modo === 'pagar' ? 'Pagar a um membro' : 'Tirar lapros do cofre';
+    const ok = async () => {
+      const n = Math.trunc(Number(String(qtd.value).replace(/\D/g, '')));
+      if (!(n > 0)) { toast('Diga quantos lapros.'); qtd.focus(); return; }
+      const pc = modo === 'tirar' ? null : (sel.value || null);
+      if (modo === 'pagar' && !pc) { toast('Escolha o membro.'); return; }
+      if (modo !== 'por' && n > cf.q) { toast('O cofre tem só ' + lap(cf.q) + '.'); return; }
+      fechar();
+      const r = await acao(() => TC.ponte.cla('cofre', { cla: id, pc, qtd: modo === 'por' ? n : -n, nota: nota.value }));
+      if (r === null) return;
+      const quem = pc ? (ms.find(m => m.pc === pc) || {}).nome : null;
+      toast(modo === 'por' ? lap(n) + ' no cofre' + (quem ? ' (de ' + quem + ')' : '') + '.' : modo === 'pagar' ? quem + ' recebeu ' + lap(n) + ' do cofre.' : lap(n) + ' saíram do cofre.');
+      pintar();
+    };
+    abrir('', [h('h2', { text: tit }),
+      modo !== 'tirar' ? h('label', { class: 'field' }, h('span', { text: modo === 'pagar' ? 'Para quem' : 'De quem' }), sel) : null,
+      h('label', { class: 'field' }, h('span', { text: 'Quantos lapros' + (modo === 'por' ? '' : ' (o cofre tem ' + lap(cf.q) + ')') }), qtd),
+      h('label', { class: 'field' }, h('span', { text: 'Nota' }), nota),
+      pe(btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: ok }, modo === 'por' ? 'Pôr' : modo === 'pagar' ? 'Pagar' : 'Tirar'))]);
+    qtd.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); ok(); } };
+    qtd.focus();
+  }
+  /* (lote 74) A última mudança do líder, para quem mestra desfazer: volta só o que ela mudou (o resto, como está agora). */
+  function desfazerDoLider(x) {
+    const u = x.c.liderUlt;
+    if (!u) return null;
+    return h('div', { class: 'aviso lider', 'data-k': 'lider-ult' }, icone(ICO.coroa, 18, '1.8'),
+      h('span', { text: 'A última mudança do líder: ' + u.quem + ' — ' + u.txt + ' (' + dia(u.em) + ').' }),
+      h('button', { type: 'button', class: 'btn sm', 'data-k': 'lider-desfazer', onclick: async () => {
+        if (!(await confirmar('Desfazer a mudança do líder?', 'Volta só o que ' + u.quem + ' mudou em “' + u.txt + '”. O que mudou depois continua.', 'Desfazer'))) return;
+        mudarCla(x.id, 'desfazer a mudança do líder', y => {
+          for (const k of Object.keys(u.depois)) { const v = juntar3(u.depois[k], u.antes[k], y[k]); y[k] = v === undefined ? y[k] : v; }
+          delete y.liderUlt;
+          y.hist = N.anotar(y.hist, { em: agora(), tipo: 'cargo', txt: 'O mestre desfez: ' + u.txt + '.' }, N.MAX.hist);
+        });
+      } }, 'Desfazer'));
   }
 
   /* ---------------- o painel de quem mestra ---------------- */
@@ -557,7 +695,7 @@
         h('small', { class: 'ajuda', text: c.jogadores ? 'O líder (o dono do personagem no cargo de líder) também mexe nos cargos abaixo do dele.' : 'Os jogadores veem os cargos se você marcar “Cargos e quem ocupa”.' })),
         hierarquia(V, true))],
       membros: () => [secRol(x)],
-      obras: () => [h('div', { class: 'obras' }, secRecursos(x), secConstrucoes(x))],
+      obras: () => [cofreLapros(id, c), desfazerDoLider(x), h('div', { class: 'obras' }, secRecursos(x), secConstrucoes(x))],
       sede: () => [SedeUI ? SedeUI.cartao(x) : null, secTropas(x)],
       mundo: () => [h('div', { class: 'lado-a-lado' }, secRespeito(x), secRelacoes(x)), secHistorico(x)],
     };

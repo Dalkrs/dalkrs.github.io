@@ -457,6 +457,7 @@
   };
 
   const sabia = [
+    { t: 'O cofre do clã', txt: 'Na aba Cofre do clã, cada um põe lapros da própria ficha. O líder paga os membros, e todos veem o extrato.', papel: 'todos', sistema: 'cla' },
     { t: 'A rolagem aparece grande', txt: 'Quando alguém rola, o resultado aparece grande no meio da tela de todos por 3 segundos. Em segredo, só para quem rolou.', papel: 'todos', sistema: 'mesa' },
     { t: 'Cada número com a sua cor', txt: 'Na ficha, cada atributo, subatributo e defesa tem uma cor e um desenho: dá para achar a Percepção ou o Bloqueio de olho.', papel: 'todos', sistema: 'fichas' },
     { t: 'O Rolador lê a ficha', txt: 'Na Fixa do Rolador, “Da ficha” põe o número de um personagem no Atributo num clique, com a base ao lado.', papel: 'mestre', sistema: 'rolador' },
@@ -499,5 +500,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 22, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 23, sistemas, tarefas, roteiro, sabia };
 })();

@@ -650,7 +650,7 @@
       else if (e.tipo === 'resp') x = { em, tipo: 'resp', de: nivel(e.de), para: nivel(e.para), mot };
       else if (e.tipo === 'rel' && (e.alvoTipo === 'cla' || e.alvoTipo === 'faccao') && idOk(e.alvo)) x = { em, tipo: 'rel', alvoTipo: e.alvoTipo, alvo: e.alvo, nome: linha(e.nome, MAX.nome), de: nivel(e.de), para: nivel(e.para), mot };
       else if (e.tipo === 'membro') x = { em, tipo: 'membro', pid: idOk(e.pid) || null, nome: linha(e.nome, MAX.nomePessoa) || 'Alguém', de: nivel(e.de), para: nivel(e.para), mot };
-      else if (e.tipo === 'cargo' || e.tipo === 'texto') { const txt = linha(e.txt, MAX.txt); if (txt) x = { em, tipo: e.tipo, txt }; }
+      else if (e.tipo === 'cargo' || e.tipo === 'texto' || e.tipo === 'lider') { const txt = linha(e.txt, MAX.txt); if (txt) x = { em, tipo: e.tipo, txt }; }
       if (x) out.push(x);
     }
     return out;
@@ -672,7 +672,16 @@
       cargos: normCargos(d.cargos, false), construcoes: normConstrucoes(d.construcoes), recursos: normRecursos(d.recursos),
       respeito: normRespeito(d.respeito), relacoes: normRelacoes(d.relacoes), hist: normHist(d.hist), respGuardado: normGuardado(d.respGuardado),
       membros: normMembros(d.membros, normCargos(d.cargos, false)),           // (lote 56)
+      // (lote 74) a última mudança do líder (o banco guarda o antes e o depois, para quem mestra desfazer)
+      ...(normLiderUlt(d.liderUlt) ? { liderUlt: normLiderUlt(d.liderUlt) } : {}),
     };
+  }
+  function normLiderUlt(u) {
+    if (!ehObj(u) || !ehObj(u.antes) || !ehObj(u.depois)) return null;
+    const ks = ['recursos', 'construcoes', 'membros', 'cargos'], antes = {}, depois = {};
+    for (const k of ks) if (k in u.depois) { antes[k] = u.antes[k] === undefined ? null : u.antes[k]; depois[k] = u.depois[k]; }
+    if (!Object.keys(depois).length) return null;
+    return { em: instante(u.em), quem: linha(u.quem, 80) || 'O líder', txt: linha(u.txt, 200) || 'mudou o clã', antes, depois };
   }
   function claNovo(nome, i, jogadores) {
     return normCla({ nome: linha(nome, MAX.nome) || 'Clã novo', ordem: Math.max(0, Math.trunc(Number(i) || 0)), jogadores: !!jogadores, brasao: brasaoNovo(i),
