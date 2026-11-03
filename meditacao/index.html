@@ -299,6 +299,9 @@ dialog.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 
 dialog.dl .lista-esc { display: grid; gap: 8px; max-height: 50vh; overflow: auto; }
 dialog.dl #ns-des { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); max-height: 38vh; overflow: auto; }
 .vazio { margin: 40px auto; max-width: 520px; text-align: center; color: var(--fg-2); }
+/* (lote 72) o Meditar dos pilares fica preso embaixo do painel enquanto se escolhe os símbolos */
+.tentar-fixo { position: sticky; bottom: 12px; z-index: 5; box-shadow: 0 -10px 18px var(--surface, #161a24), 0 6px 18px rgba(0,0,0,.35); }
+.tentar-fixo:disabled { opacity: 1; filter: saturate(.35) brightness(.8); }
 /* (lote 71) a prática preenchida, numa linha */
 .pratica-linha { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); }
 .pratica-linha .pl-t { flex: 1; min-width: 0; display: grid; gap: 2px; }
@@ -330,6 +333,6 @@ dialog.dl #ns-des { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
 <script src="../jornal/nucleo.js?v=2"></script>
 <script src="nucleo.js?v=2"></script>
 <script src="desenhos.js?v=2"></script>
-<script src="meditacao.js?v=6"></script>
+<script src="meditacao.js?v=7"></script>
 </body>
 </html>

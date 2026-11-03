@@ -361,6 +361,11 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 .info.acento{color:var(--acento)}
 
 /* ================= tela ================= */
+#pontosTopo{display:flex;margin-right:auto;gap:10px;flex-wrap:wrap;pointer-events:none}
+#pontosTopo .pt-item{display:flex;align-items:baseline;gap:8px;padding:8px 14px 8px 12px;border-radius:12px;background:color-mix(in srgb,var(--tela) 82%,transparent);border:1px solid color-mix(in srgb,var(--pc) 45%,transparent);box-shadow:inset 4px 0 0 var(--pc);backdrop-filter:blur(3px)}
+#pontosTopo b{font:700 28px/1 var(--ui);color:var(--pc)}
+#pontosTopo span{font:600 13.5px/1.2 var(--ui);color:var(--texto-2,var(--texto))}
+#pontosTopo .neg b{color:var(--perigo)}
 #tela{position:relative;min-width:0;overflow:hidden;touch-action:none;cursor:grab;background-color:var(--tela)}
 [data-tema="tinta"] #tela{background-image:var(--fibras)}
 #tela.arrastando{cursor:grabbing}
@@ -2936,8 +2941,22 @@ function pintarPainel(){
   const pn = $('#painel'); const rolagem = pn.scrollTop;
   pn.innerHTML = ui.modo==='mestre' ? painelMestre() : painelJogador();
   ui.modo==='mestre' ? ligarMestre() : ligarJogador();
+  pintarPontosTopo();
   pn.querySelectorAll('details[data-chave]').forEach(d=>d.addEventListener('toggle', ()=>{ ui.abertos[d.dataset.chave] = d.open; salvar(); }));
   pn.scrollTop = rolagem;
+}
+/* (lote 72) Os pontos para gastar, grandes, no alto da árvore (quem joga): um por tipo de ponto que a árvore usa. */
+function pintarPontosTopo(){
+  let el = $('#pontosTopo');
+  if(!el){ el = document.createElement('div'); el.id = 'pontosTopo'; el.setAttribute('role','status'); el.setAttribute('aria-live','polite'); $('#seletor').after(el); }
+  const p = ui.modo==='mestre' ? null : personagemAtual();
+  if(!p || !bib().arvores.length){ el.hidden = true; return; }
+  const usados = new Set();
+  p.arvores.map(arvorePorId).filter(Boolean).forEach(x=>x.nodes.forEach(m=>m.graus.forEach(g=>Object.keys(g.custos).forEach(k=>usados.add(k)))));
+  const pools = bib().pools.filter(pl=>!usados.size || usados.has(pl.id) || gastos(p, pl.id)>0);
+  el.hidden = !pools.length;
+  el.innerHTML = pools.map(pl=>{ const r = restantes(p, pl.id);
+    return `<div class="pt-item${r<0?' neg':''}" style="--pc:${esc(pl.cor)}"><b>${r}</b><span>${r===1||r===-1?'ponto':'pontos'}${/^pontos?$/i.test(String(pl.nome).trim())?'':' de '+esc(pl.nome)} ${r<0?'a mais':'para gastar'}</span></div>`; }).join('');
 }
 function noSelecionadoNa(a){
   return (a && selecionado && porId.has(selecionado) && arvDe.get(selecionado)===a) ? porId.get(selecionado) : null;

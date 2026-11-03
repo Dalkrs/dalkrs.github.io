@@ -2,6 +2,29 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-7",
+      "data": "2026-11-03",
+      "titulo": "Cada número com a sua cor, e mais espaço para a ficha",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: cada atributo, subatributo e defesa tem a sua cor e um desenho pequeno, como a Esquiva, a Percepção, o Embate e o Bloqueio. Dá para achar o número de olho."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: com um ou dois personagens, o elenco da esquerda sai e a ficha fica com a largura toda. Com dois, um seletor no alto da ficha troca de um para o outro."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: os pontos para gastar ficam grandes, no alto da árvore."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Meditação: o botão de meditar sobre os pilares fica preso embaixo do painel enquanto você escolhe os símbolos, e diz quantos pilares faltam."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-6",
       "data": "2026-11-03",
       "titulo": "A Árvore que explica, a prática numa linha e o Rolador com a ficha",

@@ -44,8 +44,10 @@
   --rubric:#b9342a; --rubric-fundo:rgba(185,52,42,.08); --rubric-borda:rgba(185,52,42,.3); --rubric-forte:#8f261e; --rubric-off:rgba(185,52,42,.22);
   --flor-petala:#e9edf3; --flor-borda:rgba(196,128,16,.35); --radar:#d2d8e2; --radar-miolo:rgba(47,122,85,.16);
   --roxo:#5b3fb5; --roxo-fundo:rgba(91,63,181,.08); --roxo-borda:rgba(91,63,181,.3);
-  --a-for:#C0392B; --a-agi:#A87609; --a-vit:#2F7A55; --a-can:#6b4d8f; --a-des:#5d6e86;
-  --a-for-f:#fbefed; --a-agi-f:#fbf4e3; --a-vit-f:#ecf6f1; --a-can-f:#f3eef8; --a-des-f:#eef1f5;
+  --a-for:#C0392B; --a-agi:#A87609; --a-vit:#2F7A55; --a-can:#6b4d8f; --a-des:#2D63B0;
+  /* (lote 72) cada subatributo e cada defesa com a sua cor */
+  --s-esq:#13808f; --s-fur:#4b44b8; --s-per:#5f7f12; --s-emb:#b05418; --d-dff:#4a5d73; --d-dfm:#9b3794; --d-blq:#7d5a1e;
+  --a-for-f:#fbefed; --a-agi-f:#fbf4e3; --a-vit-f:#ecf6f1; --a-can-f:#f3eef8; --a-des-f:#edf2fb;
   --sombra:0 12px 34px rgba(40,50,72,.24);
   --r:8px;
   color-scheme:light;
@@ -66,9 +68,10 @@
   --rubric:#f0786e; --rubric-fundo:rgba(240,120,110,.12); --rubric-borda:rgba(240,120,110,.35); --rubric-forte:#b9342a; --rubric-off:rgba(240,120,110,.3);
   --flor-petala:#1f2431; --flor-borda:rgba(230,171,79,.3); --radar:rgba(232,234,240,.12); --radar-miolo:rgba(111,191,143,.2);
   --roxo:#b39cf0; --roxo-fundo:rgba(179,156,240,.13); --roxo-borda:rgba(179,156,240,.4);
-  --a-for:#E0705E; --a-agi:#E3B341; --a-vit:#6FBF9F; --a-can:#B07CC6; --a-des:#9FAFC4;
+  --a-for:#E0705E; --a-agi:#E3B341; --a-vit:#6FBF9F; --a-can:#B07CC6; --a-des:#74A9F2;
+  --s-esq:#56C7D4; --s-fur:#9C95F5; --s-per:#B4D263; --s-emb:#EE9658; --d-dff:#A3B4C7; --d-dfm:#E08BDB; --d-blq:#D6B373;
   --a-for-f:rgba(224,112,94,.13); --a-agi-f:rgba(227,179,65,.13); --a-vit-f:rgba(111,191,159,.13);
-  --a-can-f:rgba(176,124,198,.13); --a-des-f:rgba(159,175,196,.13);
+  --a-can-f:rgba(176,124,198,.13); --a-des-f:rgba(116,169,242,.13);
   --sombra:0 12px 34px rgba(0,0,0,.5);
   color-scheme:dark;
 }
@@ -1266,9 +1269,19 @@ html.na-casca nav.tabs{order:1;border:0;background:none;padding:0 12px}
 html.modo-simples .so-completo, html.modo-simples #anivBox, html.modo-simples .idcard3{display:none!important}
 html:not(.modo-simples) .so-simples{display:none!important}
 html.menus-abertos .fmais>summary{display:none} html.menus-abertos .fmais>.fmais-m{position:static;display:flex;padding:0;border:0;box-shadow:none;background:none;min-width:0}
+/* (lote 72) a cor e o desenho de cada número do resumo: o nome com o desenho, o número na cor, um fio da cor à esquerda */
+.rscor{--cn:var(--ink-2);position:relative;background:color-mix(in srgb,var(--cn) 9%,var(--campo-sut))!important;border-color:color-mix(in srgb,var(--cn) 22%,transparent)!important;box-shadow:inset 3px 0 0 var(--cn)}
+.rscor .rsnm{display:inline-flex;align-items:center;gap:5px;color:color-mix(in srgb,var(--cn) 55%,var(--ink-2))}
+.rscor .rsico{flex:none;color:var(--cn)}
+.rscor b{color:var(--cn)!important}
+.rsatr.rscor .rsbase b{color:color-mix(in srgb,var(--cn) 60%,var(--ink-2))!important}
+.rsder .rscor, .rsdef .rscor{padding:5px 10px 5px 12px}
+button.rscor:hover,.rsatr.rscor:hover{border-color:color-mix(in srgb,var(--cn) 55%,transparent)!important;background:color-mix(in srgb,var(--cn) 15%,var(--campo))!important}
 /* (lote 69) Jogando ou Editar: no Jogando, o cadastro (quem é, os tiers, as defesas à mão) fica no Editar */
 #ficha.ficha-jogando .so-editar{display:none!important}
 html.ficha-jogando-on .modoseg{display:none!important}
+html.elenco-seletor #tab-fichas > .roster{display:none} html.elenco-seletor #tab-fichas{grid-template-columns:1fr;max-width:1060px}
+.fsel select{height:30px;padding:0 28px 0 10px;border:1px solid var(--line-2);border-radius:9px;background:var(--campo);color:var(--ink);font:600 13.5px/1 var(--ui)}
 #ficha:not(.ficha-jogando) .so-jogando{display:none!important}
 .fmodos{display:inline-flex;padding:2px;border:1px solid var(--line-2);border-radius:9px;background:var(--campo-sut)}
 .fmodo{height:28px;padding:0 13px;border:0;border-radius:7px;background:none;color:var(--ink-soft);font:600 13.5px/1 var(--ui);cursor:pointer}
@@ -3026,13 +3039,31 @@ function pintarBarrinhas(host, pc){
   });
 }
 // os números do resumo: os atributos, os derivados e as defesas (com o equipamento)
+/* (lote 72) Um desenho pequeno para cada número da ficha (traço, 24×24), e a cor de cada um (ver --a-*, --s-*, --d-*). */
+const ICO_NUM={
+  FOR:'<path d="M14.5 3.5 20.5 9.5 17 13 11 7z"/><path d="M12.5 8.5 4 17l3 3 8.5-8.5"/>',
+  DES:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8" fill="currentColor"/>',
+  VIT:'<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/>',
+  CAN:'<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  AGI:'<path d="M13.5 2.5 5.5 13h6l-1 8.5 8-10.5h-6z"/>',
+  ESQ:'<path d="M4 17c3.5-7 10.5-9.5 15-7.5"/><path d="M15.5 6.5 19.5 9.5 16 13"/><path d="M4 12.5c1.5-2 3-3.2 4.5-4"/>',
+  FUR:'<path d="M3 10.5c3.5-2.4 14.5-2.4 18 0-.8 4.6-3.5 5.8-5.6 5.8-1.8 0-2.3-1.9-3.4-1.9s-1.6 1.9-3.4 1.9c-2.1 0-4.8-1.2-5.6-5.8z"/><path d="M7.5 11.5h2M14.5 11.5h2"/>',
+  PER:'<path d="M2.5 12s3.8-6.5 9.5-6.5S21.5 12 21.5 12s-3.8 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+  EMB:'<path d="M4.5 4.5l9.5 9.5M19.5 4.5 10 14"/><path d="M13 16.5l2-2 4.5 4.5-2 2zM11 16.5l-2-2-4.5 4.5 2 2z"/>',
+  DFF:'<path d="M12 3 4.5 6v5.8c0 4.6 3.2 7.8 7.5 9.2 4.3-1.4 7.5-4.6 7.5-9.2V6z"/>',
+  DFM:'<path d="M12 3 4.5 6v5.8c0 4.6 3.2 7.8 7.5 9.2 4.3-1.4 7.5-4.6 7.5-9.2V6z"/><path d="M12 8.5l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z"/>',
+  BLQ:'<rect x="3.5" y="6" width="17" height="12" rx="1"/><path d="M3.5 12h17M9 6v6M15 12v6"/>',
+};
+const COR_NUM={FOR:'a-for',DES:'a-des',VIT:'a-vit',CAN:'a-can',AGI:'a-agi',ESQ:'s-esq',FUR:'s-fur',PER:'s-per',EMB:'s-emb',DFF:'d-dff',DFM:'d-dfm',BLQ:'d-blq'};
+const icoNum=k=>ICO_NUM[k]? `<svg class="rsico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO_NUM[k]}</svg>` : '';
+const corNum=k=>COR_NUM[k]? ` style="--cn:var(--${COR_NUM[k]})"` : '';
 function htmlNumerosResumo(pc,c){
   /* (o nome inteiro em cima e o número embaixo: ninguém precisa decorar as siglas — elas ficam na dica)
      (lote 69) Um clique no número rola a fixa dele (com o equipamento). Nos cinco atributos, a base (sem o equipamento)
      fica embaixo, num botão próprio: o mestre pede muito para rolar a base. */
-  const chip=(k,rot,v,cls,nome)=>`<button type="button" class="rsn${cls?' '+cls:''}" data-rolar-r="${esc(k)}" title="Rolar ${esc(rot)} · ${esc(k)}: ${v}"><span class="rsnm">${esc(nome||k)}</span><b>${v}</b></button>`;
+  const chip=(k,rot,v,cls,nome)=>`<button type="button" class="rsn rscor${cls?' '+cls:''}" data-rolar-r="${esc(k)}"${corNum(k)} title="Rolar ${esc(rot)} · ${esc(k)}: ${v}"><span class="rsnm">${icoNum(k)}${esc(nome||k)}</span><b>${v}</b></button>`;
   const atr=a=>{ const nome=a.nome.replace(' Mágica',''), t=c.tot[a.k], b=c.base[a.k];
-    return `<span class="rsn rsatr c-${COR_ATR[a.k]||''}"><button type="button" class="rsrola" data-rolar-r="${a.k}" title="Rolar ${esc(a.nome)} com o equipamento: ${t}"><span class="rsnm">${esc(nome)}</span><b>${t}</b></button><button type="button" class="rsbase${b===t?' igual':''}" data-rolar-base="${a.k}" title="Rolar ${esc(a.nome)} base, sem o equipamento: ${b}" aria-label="Rolar ${esc(a.nome)} base: ${b}">base <b>${b}</b></button></span>`; };
+    return `<span class="rsn rsatr rscor c-${COR_ATR[a.k]||''}"${corNum(a.k)}><button type="button" class="rsrola" data-rolar-r="${a.k}" title="Rolar ${esc(a.nome)} com o equipamento: ${t}"><span class="rsnm">${icoNum(a.k)}${esc(nome)}</span><b>${t}</b></button><button type="button" class="rsbase${b===t?' igual':''}" data-rolar-base="${a.k}" title="Rolar ${esc(a.nome)} base, sem o equipamento: ${b}" aria-label="Rolar ${esc(a.nome)} base: ${b}">base <b>${b}</b></button></span>`; };
   return `<div class="rsnums" aria-label="Atributos, derivados e defesas (um clique rola)">
     <span class="rsgrupo" aria-label="Atributos">${ATRIBS.map(atr).join('')}</span>
     <span class="rsgrupo rsder" aria-label="Calculados a partir dos atributos">${DERIV.map(d=>chip(d.k,d.nome,c.der[d.k],'',d.nome)).join('')}</span>
@@ -3085,6 +3116,7 @@ function htmlResumo(pc,c){
       ${FichasCorr.htmlEtiqueta(pc)}
       ${pc.petDe?`<span class="petde">${PATA_SVG} pet de <button type="button" class="linkbtn" data-abrirpc="${esc(pc.petDe)}" title="Abrir a ficha do dono">${esc(FichasMesa.nomeDoPetDe(pc))}</button></span>`:''}
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        ${elencoComoSeletor() && S.personagens.length>1? `<label class="fsel"><span class="sr">Personagem</span><select id="fselPc" aria-label="O personagem">${S.personagens.map(p=>`<option value="${esc(p.id)}"${p.id===pc.id?' selected':''}>${esc(p.nome||'Sem nome')}${p.petDe?' (pet)':''}</option>`).join('')}</select></label>` : ''}
         <span class="fmodos" role="radiogroup" aria-label="Como ver a ficha">
           <button type="button" class="fmodo" id="fmodoJogando" data-fmodo="jogando" role="radio" aria-checked="${fichaModo==='jogando'}" title="O que se usa na mesa: as barras, os números (um clique rola) e o que está valendo agora">Jogando</button>
           <button type="button" class="fmodo" id="fmodoEditar" data-fmodo="editar" role="radio" aria-checked="${fichaModo==='editar'}" title="O cadastro inteiro: quem é, os tiers, as defesas, os percentuais">Editar</button>
@@ -3695,6 +3727,7 @@ function ligarFicha(pc){
   host.querySelectorAll('[data-rolar-r]').forEach(b=>b.onclick=()=>rolarNaFicha(pc,b.dataset.rolarR,'total'));
   host.querySelectorAll('[data-rolar-base]').forEach(b=>b.onclick=()=>rolarNaFicha(pc,b.dataset.rolarBase,'base'));
   host.querySelectorAll('[data-fmodo]').forEach(b=>b.onclick=()=>{ fichaModo=b.dataset.fmodo; renderFicha(); });
+  { const fs=host.querySelector('#fselPc'); if(fs) fs.onchange=()=>{ S.sel=fs.value; save(); render(); }; }
   const bdis=host.querySelector('#btnDisputa');
   if(bdis) bdis.onclick=()=>abrirDisputa(pc);
   host.querySelector('#f_grupo').onchange=e=>{
@@ -5299,10 +5332,14 @@ function aplicarTema(k){
 })();
 
 /* ---------- bootstrap ---------- */
+function elencoComoSeletor(){ return FichasMesa.ativo() && !FichasMesa.mestre() && S.personagens.length>0 && S.personagens.length<=2; }
 function render(){
   const aba=S.aba||'fichas';
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===aba));
   ['fichas','mesa','eventos'].forEach(t=>{document.getElementById('tab-'+t).hidden = (t!==aba)});
+  // (lote 72) quem joga com 1 ou 2 personagens: o elenco sai e vira um seletor no alto da ficha (a ficha fica com a largura)
+  { const sel=elencoComoSeletor(); document.documentElement.classList.toggle('elenco-seletor', sel);
+    if(sel && !S.personagens.some(p=>p.id===S.sel)) S.sel=S.personagens[0].id; }
   if(aba==='fichas'){barrasDasOutras();renderLista();renderFicha()}
   else if(aba==='mesa') renderMesa();
   else renderEventos();

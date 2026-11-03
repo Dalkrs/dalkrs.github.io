@@ -254,6 +254,17 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Cada número com a sua cor e mais espaço para a ficha (lote 72)
+
+- **As cores e os desenhos** (`ICO_NUM`, `COR_NUM`, `.rscor` com `--cn`): os 12 números do resumo (5 atributos, 4
+  subatributos, 3 defesas) com o desenho e a cor de cada um (`--a-*`, `--s-*`, `--d-*`, no claro e no escuro); a
+  Destreza passou a azul.
+- **O elenco como seletor** (`elencoComoSeletor`; `html.elenco-seletor`, `#fselPc`): numa mesa, quem joga com 1 ou 2
+  personagens não vê o elenco; com 2, o seletor no alto da ficha.
+- **Árvore**: `#pontosTopo`, no alto da tela (`pintarPontosTopo`), um por tipo de ponto que a árvore usa.
+- **Meditação**: o botão dos pilares (`.tentar-fixo`, `position: sticky`) e "Meditar (falta 1 pilar)".
+- Testes: `fichas-lote72`, `fichas-lote72.rede`.
+
 ### A Árvore que explica, a prática numa linha e o Rolador com a ficha (lote 71)
 
 - **Árvore**: numa mesa, o vazio de quem joga diz que o mestre ainda não montou as árvores (sem o botão de arquivo);

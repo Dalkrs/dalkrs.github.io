@@ -495,7 +495,7 @@
         h('span', { class: 'pedra' }, s ? desenhoDe(s, 30) : null), h('span', { class: 'coluna' }), h('small', { text: s ? s.nome : i < 2 ? 'vazio' : 'opcional' }));
     }));
     const g = gs.find(x => x.id === grupoVisto);
-    const txt = !noAr ? 'Entre na meditação para usar os pilares' : !lib ? 'Esperando o mestre liberar uma tentativa' : seqAtual.length < N.MAX.minPilares ? 'Ponha pelo menos 2 símbolos' : 'Meditar sobre os pilares';
+    const txt = !noAr ? 'Entre na meditação para usar os pilares' : !lib ? 'Esperando o mestre liberar uma tentativa' : seqAtual.length < N.MAX.minPilares ? 'Meditar (falta ' + (N.MAX.minPilares - seqAtual.length === 1 ? '1 pilar' : (N.MAX.minPilares - seqAtual.length) + ' pilares') + ')' : 'Meditar sobre os pilares';
     const res = resultado && resultado.pc === p.id ? resultado : null;
     return secao('Os pilares', h('span', { class: 'tag' + (lib ? ' ok' : ''), 'data-k': 'tent', text: lib ? (livres > 1 ? livres + ' tentativas liberadas' : 'O mestre liberou 1 tentativa') : 'Sem tentativa agora' }),
       h('p', { class: 'ajuda', text: pw.length ? 'Ponha de 2 a 5 símbolos ou palavras, na ordem — a ordem importa. Clique num pilar para tirar o que está nele.' : 'Ponha de 2 a 5 símbolos, na ordem — a ordem importa. Clique num pilar para tirar o símbolo dele.' }),
@@ -505,7 +505,7 @@
       h('div', { class: 'simbolos' + (g && g.id === 'pal' ? ' palavras' : ''), 'data-k': 'simbolos' }, (g ? g.itens : []).map(s => h('button', { type: 'button', class: 'simb' + (s.palavra ? ' pal' : ''), 'data-simb': s.id, disabled: !pode || seqAtual.length >= N.MAX.pilares,
         title: s.sentido || null, 'aria-label': 'Pôr ' + (s.palavra ? 'a palavra ' : '') + s.nome + ' no próximo pilar', onclick: () => { if (seqAtual.length < N.MAX.pilares) { seqAtual.push(s.id); resultado = null; pintar(); } } },
         s.palavra ? null : desenhoDe(s, 24), h('span', { text: s.nome }), s.fav ? h('i', { class: 'estrela', 'aria-hidden': 'true', text: '★' }) : null))),
-      h('button', { type: 'button', class: 'btn pri lg', 'data-k': 'tentar', disabled: !(pode && seqAtual.length >= N.MAX.minPilares), onclick: () => tentar(p.id) }, txt),
+      h('button', { type: 'button', class: 'btn pri lg tentar-fixo', 'data-k': 'tentar', disabled: !(pode && seqAtual.length >= N.MAX.minPilares), onclick: () => tentar(p.id) }, txt),
       res && res.res.res === 'achou'
         ? h('div', { class: 'res achou', role: 'status', 'data-k': 'res' }, h('b', { text: (res.res.nova ? 'Você descobriu: ' : 'Você já conhecia: ') + res.res.nome }),
           h('span', { class: 'txt', text: res.res.efeito || '' }), h('small', { class: 'ajuda', text: res.res.nova ? 'Só você vê esta receita (e o mestre, que recebeu um aviso).' : 'Ela já estava na sua lista.' }))
