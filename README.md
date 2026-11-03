@@ -254,6 +254,22 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Andares no ar ao mesmo tempo (lote 78)
+
+- **O índice** ganha `juntas` (até 11 cenas no ar junto com a do `noAr`; `Proj.normIndice`). Cada andar vai em dois
+  documentos de projeção, `cena:pub:<id>:m` e `:v`, escritos por quem transmite (`publicar`); a principal diz quais
+  são em `v.andares`. A passagem que leva a um andar no ar vai com `vai` (o destino), e `m.saidas` lista aonde as
+  passagens levam (também os marcadores ocultos).
+- **Os pedidos** levam a cena em que foram feitos (`c` em cada lote); quem transmite aplica os de todos os andares, na
+  ordem, com uma conta só (`filas`, `pedidos`). O pedido `{ t: 'andar', id, para }` (a escada) passa o token de uma
+  cena para outra (`moverDeAndar`: só o token do jogador, só entre andares no ar, só se a cena tem a passagem). O
+  mestre leva qualquer token (`levarParaAndar`).
+- **O jogador** vê o andar do token dele (`andarDoJogador`), ou o que escolheu olhar (`verAndar`); a barra dos andares
+  fica no topo (`#andaresBar`). Trocar de andar no mesmo prédio não perde a fila dos pedidos.
+- **O mestre**: “Pôr no ar com os andares…” (`UI.janelaAndares`; as cenas ligadas por passagens vêm marcadas:
+  `Nuvem.ligadas`), “Só esta cena” e, no botão direito do token, “Levar para…”.
+- Teste: `cenas-lote78.rede`.
+
 ### O XP no Jogando e os pontos de atributo de uma vez (lote 77)
 
 - **XP**: `FichasQuadros.htmlXp(pc, jog)` — no Jogando, a barra vai para o resumo (junto das barras), sem o mínimo e o

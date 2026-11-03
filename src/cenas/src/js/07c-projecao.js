@@ -40,6 +40,7 @@ const Proj = (() => {
   const tem = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
   // Id de cena: além disso, não pode ser uma das palavras que os documentos da mesa já usam (cena:pub:…, cena:pedido:…).
   const idCena = v => idOk(v) && v !== 'pub' && v !== 'pedido';
+  const MAX_ANDARES = 11;                                             // (lote 78) a cena no ar e mais 11 andares junto
 
   // Igualdade de conteúdo, sem ligar para a ordem das chaves (o banco devolve os objetos com as chaves reordenadas).
   function igual(a, b) {
@@ -154,11 +155,18 @@ const Proj = (() => {
     if (o.on && tn.list.some(e => e.id === tn.cur && e.inv)) o.mestre = true;
     return o;
   }
-  function projetar(sc, assets, jogadores) {
+  /* (lote 78) andares: as cenas que estão no ar junto com esta (Set de ids). A passagem (a escada, a porta) que leva a
+     uma delas vai com o destino em `vai`: o jogador pode usá-la. A que leva a uma cena fora do ar continua sem dizer
+     aonde leva. */
+  function projetar(sc, assets, jogadores, andares) {
     const fora = new Set(sc.tokens.filter(t => t.hidden).map(t => t.id));
     const grupos = new Map();                                         // (lote 8) id do real → a marca do grupo do Clone
     for (const t of sc.tokens) if (t.clone && !grupos.has(t.clone)) grupos.set(t.clone, 'cg' + resumo(sc.id + ':' + t.clone));
-    const tokens = sc.tokens.filter(t => !t.hidden).map(t => tokenPublico(t, jogadores, grupos));
+    const tokens = sc.tokens.filter(t => !t.hidden).map(t => {
+      const o = tokenPublico(t, jogadores, grupos);
+      if (andares && t.prop && idCena(t.cena) && t.cena !== sc.id && andares.has(t.cena)) o.vai = t.cena;
+      return o;
+    });
     const nomes = new Map(tokens.map(t => [t.id, t.name]));
     const m = {};
     for (const k in sc) if (k !== 'explored' && k !== 'gerado' && k !== 'fases' && k !== 'campo' && k !== 'lembretes' && k !== 'momentos' && !VIVO.includes(k)) m[k] = sc[k];       // (com que semente o mapa de bairros foi feito: só do mestre)
@@ -166,6 +174,8 @@ const Proj = (() => {
     m.lights = sc.lights.map(l => Object.assign({}, l, { name: '' }));           // o nome que o mestre deu à luz é dele
     m.shapes = sc.shapes.filter(s => !s.gm);
     m.imgs = imgsDe([sc.bg && sc.bg.asset], assets, true);
+    // (lote 78) aonde as passagens desta cena levam, entre os andares no ar (também as ocultas: o marcador de saída)
+    if (andares) { const s = [...new Set(sc.tokens.filter(t => t.prop && idCena(t.cena) && t.cena !== sc.id && andares.has(t.cena)).map(t => t.cena))]; if (s.length) m.saidas = s; }
     const v = {
       id: sc.id, tokens,
       effects: sc.effects.filter(e => !e.gm && !(e.token && fora.has(e.token))).map(e => {
@@ -569,6 +579,8 @@ const Proj = (() => {
     return {
       v: 1, ordem, atual: idCena(d.atual) ? d.atual : null, noAr: idCena(d.noAr) ? d.noAr : null,
       tx: idOk(d.tx) ? d.tx : null,                         // qual aparelho do mestre está transmitindo a cena que está no ar
+      // (lote 78) os andares: as outras cenas que estão no ar junto com a do noAr (cada jogador vê a do token dele)
+      juntas: idCena(d.noAr) && Array.isArray(d.juntas) ? [...new Set(d.juntas.filter(x => idCena(x) && x !== d.noAr))].slice(0, MAX_ANDARES) : [],
       prefs: pf,
       pastas: normPastas(d.pastas),
     };
@@ -598,5 +610,5 @@ const Proj = (() => {
     return sc;
   }
 
-  return { COLS, VIVO, MAX_NIVEIS, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, normPastas, normModelos, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
+  return { MAX_ANDARES, COLS, VIVO, MAX_NIVEIS, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, normPastas, normModelos, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
 })();

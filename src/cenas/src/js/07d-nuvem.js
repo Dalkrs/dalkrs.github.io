@@ -50,6 +50,15 @@ const Nuvem = (() => {
   const doMestre = l => !!l && l.dono_id == null;
   const dadosMestre = id => { const l = D.pegar(id); return doMestre(l) ? dadosDe(l) : null; };
   const docM = id => 'cena:' + id + ':m', docV = id => 'cena:' + id + ':v';
+  /* (lote 78) Os andares: outras cenas que ficam no ar junto com a do noAr (idx.juntas). Cada uma vai em dois
+     documentos de projeção, como a principal (cena:pub:<id>:m e :v); a principal diz quais são (v.andares). Cada
+     jogador vê o andar em que está o token dele — ou outro, se escolher olhar. Os pedidos vão marcados com a cena
+     (c), e quem transmite aplica os de todos os andares, na ordem; a conta (ack) é uma só. */
+  const pubA = (id, k) => 'cena:pub:' + id + ':' + k;
+  const ehPubA = id => typeof id === 'string' && /^cena:pub:[A-Za-z0-9_-]{1,60}:[mv]$/.test(id);
+  const andares = () => (idx.noAr && S.scenes[idx.noAr] ? [idx.noAr].concat((idx.juntas || []).filter(id => id !== idx.noAr && S.scenes[id])) : []);
+  const noArJunto = id => !!id && andares().includes(id);
+  let pubsAndares = new Set();                             // os andares cuja projeção este aparelho escreveu
 
   let modo = 'local', D = null, mesa = null, eu = null;
   let idx = Proj.normIndice(null);
@@ -382,7 +391,7 @@ const Nuvem = (() => {
         if (resto.length) feito.set(id, resto); else feito.delete(id);
       }
     }
-    if (idx.noAr && (pubSuja || sujas.has(idx.noAr))) publicar();
+    if (idx.noAr && (pubSuja || andares().some(id => sujas.has(id)))) publicar();
     sujas.clear(); pubSuja = false;
     if (metaSuja) {
       metaSuja = false;
@@ -390,7 +399,7 @@ const Nuvem = (() => {
          motivo — trocar de cena, sozinho, não regrava o índice (com o mestre em dois aparelhos, cada um numa cena,
          um ficaria regravando o que o outro acabou de gravar). */
       try { localStorage.setItem(chaveAtual(), S.current || ''); } catch (e) { /* sem armazenamento: vale a do índice */ }
-      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, prefs: Object.assign({ barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, S.prefs.relevo && typeof Relevo !== 'undefined' ? { relevo: Relevo.norm(S.prefs.relevo) } : {}, S.prefs.feridos ? { feridos: S.prefs.feridos } : {}, S.prefs.barrinhas ? { barrinhas: S.prefs.barrinhas } : {}, S.prefs.painelBarras === false ? { painelBarras: false } : {}), pastas: Proj.normPastas(S.pastas) };
+      const novo = { v: 1, ordem: S.order.filter(id => S.scenes[id]), atual: S.current, noAr: idx.noAr, tx: idx.noAr ? idx.tx : null, juntas: idx.noAr ? (idx.juntas || []).slice() : [], prefs: Object.assign({ barDefaults: S.prefs.barDefaults || null, modelos: Proj.normModelos(S.prefs.modelos) }, S.prefs.relevo && typeof Relevo !== 'undefined' ? { relevo: Relevo.norm(S.prefs.relevo) } : {}, S.prefs.feridos ? { feridos: S.prefs.feridos } : {}, S.prefs.barrinhas ? { barrinhas: S.prefs.barrinhas } : {}, S.prefs.painelBarras === false ? { painelBarras: false } : {}), pastas: Proj.normPastas(S.pastas) };
       const la = dadosMestre(INDICE);
       if (!la || !Proj.igual(Object.assign({}, la, { atual: null }), Object.assign({}, novo, { atual: null }))) escrever(INDICE, novo, 'mestre', true);
       arSujo = false;
@@ -403,7 +412,7 @@ const Nuvem = (() => {
   const agendar = () => {
     marcar('saving');
     if (!tGravar) tGravar = setTimeout(gravar, 450);
-    if (!tPub && idx.noAr && (pubSuja || sujas.has(idx.noAr)) && transmito()) tPub = setTimeout(publicarLogo, 40);
+    if (!tPub && idx.noAr && (pubSuja || andares().some(id => sujas.has(id))) && transmito()) tPub = setTimeout(publicarLogo, 40);
   };
   function publicarLogo() {
     tPub = 0;
@@ -421,7 +430,8 @@ const Nuvem = (() => {
     if (!transmito()) return;
     const sc = S.scenes[idx.noAr];
     if (!sc) { despublicar(); return; }
-    const { m, v } = Proj.projetar(sc, S.assets, new Set(S.players.map(p => p.id)));
+    const lista = andares(), noArSet = lista.length > 1 ? new Set(lista) : null, jogs = new Set(S.players.map(p => p.id));
+    const { m, v } = Proj.projetar(sc, S.assets, jogs, noArSet);
     // (lote 18) a tabela do relevo da mesa vai com a cena (sem ela, os jogadores usam a de começo)
     if (S.prefs.relevo && typeof Relevo !== 'undefined' && !Relevo.igualAoPadrao(S.prefs.relevo)) m.relevoTab = Relevo.norm(S.prefs.relevo);
     if (S.prefs.painelBarras === false) m.pbOff = true;           // (lote 44) o painel de barras desligado pelo mestre
@@ -432,10 +442,32 @@ const Nuvem = (() => {
     // se o mapa novo não coube no banco, os jogadores continuam com o mapa que está lá — e com os tokens ao vivo
     v.mv = coube || !la || la.id !== sc.id ? m.ver : la.ver;
     v.ack = Object.assign({}, acks); v.pings = pings;
+    // (lote 78) os andares no ar: o nome e o id de cada um (o primeiro é o desta projeção)
+    if (noArSet) v.andares = lista.map(id => ({ id, nome: String(S.scenes[id].name || 'Andar').slice(0, 60) }));
     if (!(escrever(PUB_V, v, 'mesa', false, cs, true) & coube)) avisarGrande(sc);
+    // (lote 78) a projeção de cada andar junto
+    const agora = new Set();
+    for (const id of lista.slice(1)) {
+      const a = S.scenes[id], p = Proj.projetar(a, S.assets, jogs, noArSet);
+      if (S.prefs.relevo && typeof Relevo !== 'undefined' && !Relevo.igualAoPadrao(S.prefs.relevo)) p.m.relevoTab = Relevo.norm(S.prefs.relevo);
+      if (S.prefs.painelBarras === false) p.m.pbOff = true;
+      p.m.ver = Proj.resumo(JSON.stringify(p.m));
+      const ok1 = escrever(pubA(id, 'm'), p.m, 'mesa', false, cs, true), la1 = dadosMestre(pubA(id, 'm'));
+      p.v.mv = ok1 || !la1 || la1.id !== id ? p.m.ver : la1.ver;
+      p.v.ack = Object.assign({}, acks); p.v.pings = pings; p.v.de = sc.id;
+      if (!(escrever(pubA(id, 'v'), p.v, 'mesa', false, cs, true) & ok1)) avisarGrande(a);
+      agora.add(id);
+    }
+    tirarAndares(agora);
+  }
+  // (lote 78) apaga a projeção dos andares que não estão mais no ar (fica a dos que estão em `ficam`)
+  function tirarAndares(ficam) {
+    for (const l of D.todas()) if (ehPubA(l.id) && !l.apagado && doMestre(l) && !(ficam && ficam.has(l.id.slice(9, -2)))) { D.apagar(l.id); esquecer(l.id); }
+    pubsAndares = ficam ? new Set(ficam) : new Set();
   }
   function despublicar() {
     for (const id of [PUB_M, PUB_V]) { if (D.pegar(id)) D.apagar(id); esquecer(id); }
+    tirarAndares(null);
     pings = [];
   }
 
@@ -446,6 +478,7 @@ const Nuvem = (() => {
     if (!l.apagado && !doMestre(l)) return;                  // documento com dono não é do mestre: não é cena nem índice
     if (l.id === INDICE) { indiceDeFora(l); return; }
     if (l.id === PUB_M || l.id === PUB_V) { projecaoDeFora(l); return; }
+    if (ehPubA(l.id)) return;                                // (lote 78) a projeção de um andar: é quem transmite que escreve
     const mm = RE_PARTE.exec(l.id);
     if (!mm || !idCena(mm[1])) return;
     // a campanha da cena mudou em outro aparelho (é a da linha do mapa da cena): a lista daqui acompanha
@@ -505,9 +538,9 @@ const Nuvem = (() => {
   // (a cena apontada pode ainda nem ter chegado a este aparelho: o que vale é o que o índice diz, guardado como veio)
   function adotarAr(n) {
     const tx = n.noAr ? n.tx : null;
-    if (n.noAr === idx.noAr && tx === idx.tx) return;
+    if (n.noAr === idx.noAr && tx === idx.tx && iguais(n.juntas, idx.juntas)) return;
     const transmitia = transmito(), outraCena = n.noAr !== idx.noAr;
-    idx.noAr = n.noAr; idx.tx = tx;
+    idx.noAr = n.noAr; idx.tx = tx; idx.juntas = n.noAr ? (n.juntas || []).slice() : [];
     // este aparelho transmitia e a cena saiu do ar por outro: ele pode ter reescrito a projeção nesse meio-tempo
     if (transmitia && !idx.noAr) despublicar();
     // outra cena no ar: a conta dos pedidos é a que está guardada com ela
@@ -564,13 +597,16 @@ const Nuvem = (() => {
   function pedidos() {
     clearTimeout(tPedidos); tPedidos = 0;
     if (modo !== 'mestre' || !idx.noAr) return;
-    const sc = S.scenes[idx.noAr];
-    if (!sc) return;
-    if (!transmito()) { vigiar(sc); return; }                // quem aplica os pedidos é o aparelho que transmite
-    if (Store.inTx() && sc.id === S.current) { tPedidos = setTimeout(pedidos, 150); return; }   // o mestre está no meio de um gesto
+    const principal = S.scenes[idx.noAr];
+    if (!principal) return;
+    if (!transmito()) { vigiar(principal); return; }         // quem aplica os pedidos é o aparelho que transmite
+    if (Store.inTx() && andares().includes(S.current)) { tPedidos = setTimeout(pedidos, 150); return; }   // o mestre está no meio de um gesto
     let andou = false;
-    for (const { quem, lotes } of filas(sc, acks)) {
+    const tocadas = new Set();
+    for (const { quem, lotes } of filas(principal, acks)) {
       for (const b of lotes) {
+        const sc = S.scenes[b.c] || principal;              // (lote 78) o andar em que o jogador estava quando pediu
+        tocadas.add(sc.id);
         aplicando = { quem, n: b.n };
         try {
           for (const op of b.ops.slice(0, 300)) {
@@ -578,6 +614,7 @@ const Nuvem = (() => {
                conta do jogador anda do mesmo jeito. */
             try {
               if (ehObj(op) && op.t === 'ping') { pingDe(quem, op, sc); continue; }
+              if (ehObj(op) && op.t === 'andar') { if (moverDeAndar(op.id, sc.id, op.para, quem)) tocadas.add(op.para); continue; }   // (lote 78) a escada
               if (ehObj(op) && op.t === 'item') { Fichas.usoPedido(quem, op, sc); continue; }      // um item da bolsa dele, num token (lote 5)
               const v = Proj.validar(op, quem, sc);         // contra a cena como está agora: as anteriores do lote já valeram
               if (!v || !Store.remoteIn(sc.id, [v])) continue;
@@ -589,18 +626,21 @@ const Nuvem = (() => {
         acks[quem] = b.n; andou = true;
       }
     }
-    if (andou) { sujas.add(sc.id); pubSuja = true; agendar(); }      // (a conta vai guardada com a cena e na projeção)
+    if (andou) { sujas.add(principal.id); for (const id of tocadas) sujas.add(id); pubSuja = true; agendar(); }      // (a conta vai guardada com a cena e na projeção)
   }
   /* Os pedidos de cada jogador que passam da conta dada (a deste aparelho, ou a que está publicada na projeção), na
      ordem: cada lote tem um número, que só cresce. */
+  /* (lote 78) Com andares no ar, cada lote diz de que cena é (c); sem isso, vale a cena do documento. Entram os lotes de
+     todos os andares no ar (com `c` = o andar), na ordem dos números. */
   function filas(sc, contas) {
-    const out = [];
+    const out = [], vale = andares().length > 1 && sc.id === idx.noAr ? new Set(andares()) : new Set([sc.id]);
     for (const l of D.todas()) {
       try {
         if (typeof l.id !== 'string' || !l.id.startsWith(PRE_PED)) continue;
         const quem = l.id.slice(PRE_PED.length), d = dadosDe(l);
-        if (!d || d.cena !== sc.id || !Array.isArray(d.lote) || l.dono_id !== quem || !playerById(quem)) continue;
-        const lotes = d.lote.filter(x => ehObj(x) && Array.isArray(x.ops) && typeof x.n === 'number' && x.n > (contas[quem] || 0) && isFinite(x.n)).sort((x, y) => x.n - y.n);
+        if (!d || !Array.isArray(d.lote) || l.dono_id !== quem || !playerById(quem)) continue;
+        const lotes = d.lote.filter(x => ehObj(x) && Array.isArray(x.ops) && typeof x.n === 'number' && x.n > (contas[quem] || 0) && isFinite(x.n))
+          .map(x => Object.assign({}, x, { c: idCena(x.c) ? x.c : d.cena })).filter(x => vale.has(x.c)).sort((x, y) => x.n - y.n);
         if (lotes.length) out.push({ quem, lotes });
       } catch (e) { console.warn('A fila de pedidos de um jogador não pôde ser lida e foi ignorada.', e); }
     }
@@ -650,7 +690,7 @@ const Nuvem = (() => {
   function pingDe(quem, op, sc) {
     if (!sc.perms.ping || typeof op.x !== 'number' || typeof op.y !== 'number' || !isFinite(op.x) || !isFinite(op.y)) return;
     const p = playerById(quem);
-    porPing({ id: uid('pg'), x: op.x, y: op.y, c: p ? p.color : '#4fb8e0', n: p ? p.name : 'Jogador', by: quem }, sc.id === S.current);
+    porPing({ id: uid('pg'), x: op.x, y: op.y, c: p ? p.color : '#4fb8e0', n: p ? p.name : 'Jogador', by: quem, cena: sc.id }, sc.id === S.current);
   }
   function porPing(p, mostrarAqui) {
     pings.push(p); if (pings.length > 6) pings.shift();
@@ -673,7 +713,35 @@ const Nuvem = (() => {
     if (camp && cs.length && !cs.includes(camp)) { arDeFora = cs; return { st: 'nada' }; }
     // metade ainda não chegou, ou as duas metades não são do mesmo momento (mapa de uma versão, tokens de outra)
     if (!m || !v || !idCena(m.id) || m.id !== v.id || (m.ver || 0) !== (v.mv || 0)) return { st: 'espera' };
-    return { st: 'ok', m, v };
+    return { st: 'ok', m, v, andares: andaresDe(v) };
+  }
+  /* (lote 78) Os andares no ar, como a projeção principal diz: [{ id, nome }] (o primeiro é o dela). Sem andares, []. */
+  function andaresDe(v) {
+    if (!v || !Array.isArray(v.andares)) return [];
+    const out = [], vistos = new Set();
+    for (const a of v.andares.slice(0, Proj.MAX_ANDARES + 1)) if (ehObj(a) && idCena(a.id) && !vistos.has(a.id)) { vistos.add(a.id); out.push({ id: a.id, nome: String(a.nome || 'Andar').slice(0, 60) }); }
+    return out.length > 1 ? out : [];
+  }
+  // a projeção de um andar (o principal está em PUB_M/PUB_V): { m, v } quando as duas metades combinam, ou null
+  function parDoAndar(a, id) {
+    if (!a.andares.length || id === a.m.id) return { m: a.m, v: a.v };
+    if (!a.andares.some(x => x.id === id)) return null;
+    const m = dadosMestre(pubA(id, 'm')), v = dadosMestre(pubA(id, 'v'));
+    if (!m || !v || m.id !== id || v.id !== id || (m.ver || 0) !== (v.mv || 0)) return null;
+    return { m, v };
+  }
+  /* O andar que este jogador vê: o que ele escolheu olhar; senão, o do token dele (de preferência o andar em que já
+     está, se o token continua lá); senão, o principal. */
+  let olhando = null, ondeEstou = null;
+  const temMeu = v => !!v && Array.isArray(v.tokens) && v.tokens.some(t => ehObj(t) && (t.owner === eu || t.owner === '*') && !t.prop);
+  function andarDoJogador(a) {
+    if (!a.andares.length) { olhando = null; ondeEstou = null; return a.m.id; }
+    const pares = a.andares.map(x => ({ id: x.id, p: parDoAndar(a, x.id) })).filter(x => x.p);
+    const comMeu = pares.filter(x => temMeu(x.p.v)).map(x => x.id);
+    ondeEstou = comMeu.includes(S.current) ? S.current : comMeu[0] || null;
+    if (olhando && pares.some(x => x.id === olhando)) return olhando;
+    olhando = null;
+    return ondeEstou || (pares.some(x => x.id === S.current) ? S.current : a.m.id);
   }
   function cenaVazia() {
     const sc = newScene('Sem cena');
@@ -682,14 +750,15 @@ const Nuvem = (() => {
     S.scenes = { [sc.id]: sc }; S.order = [sc.id]; S.current = sc.id;
     vazia = true; caixa = []; confirmados = [];
   }
-  function montar(a) {
+  function montar(a, manter) {
     const sc = Proj.juntar(a.m, a.v);
     sc.id = a.m.id;
     normalizeScene(sc);
     registrarImgs(a.m.imgs); registrarImgs(a.v.imgs);
     sc.explored = exploradoDe(sc);
     S.scenes = { [sc.id]: sc }; S.order = [sc.id]; S.current = sc.id;
-    vazia = false; caixa = []; confirmados = [];
+    vazia = false;
+    if (!manter) { caixa = []; confirmados = []; }         // (lote 78) de um andar para outro do mesmo prédio, a fila continua
     ultimaConta = ackDe(a.v);
     seq = Math.max(seq, ultimaConta);                      // os próximos pedidos têm de vir depois do que o mestre já contou
     for (const p of Array.isArray(a.v.pings) ? a.v.pings : []) if (ehObj(p)) pingsVistos.add(p.id);
@@ -725,8 +794,8 @@ const Nuvem = (() => {
     const meu = dadosDe(D.pegar(PRE_PED + eu));
     if (meu && Array.isArray(meu.lote) && meu.lote.length) D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: { cena: null, lote: [] } });
     const a = noArAgora();
-    if (a.st === 'ok') montar(a); else cenaVazia();
-    D.aoMudar(l => { if (l && (l.id === PUB_M || l.id === PUB_V)) { if (!tReceber) tReceber = setTimeout(receber, 30); } });
+    if (a.st === 'ok') { const p = parDoAndar(a, andarDoJogador(a)) || { m: a.m, v: a.v }; montar(p); } else cenaVazia();
+    D.aoMudar(l => { if (l && (l.id === PUB_M || l.id === PUB_V || ehPubA(l.id))) { if (!tReceber) tReceber = setTimeout(receber, 30); } });
     Store.on('commit', e => { if (!e.remote && !vazia && e.ops.length && e.sceneId === S.current) pedir(e.ops, e.inv || []); });
     return true;
   }
@@ -740,30 +809,39 @@ const Nuvem = (() => {
     clearTimeout(tReceber); tReceber = 0;
     if (modo !== 'jogador') return;
     if (Store.inTx() || Tools.busy()) { tReceber = setTimeout(receber, 150); return; }     // no meio de um gesto: espera soltar
-    const foraAntes = arDeFora.join(), a = noArAgora();
+    const foraAntes = arDeFora.join();
+    let a = noArAgora();
     if (a.st === 'espera') return;
     // (sem cena — ou com a cena no ar sendo de outra campanha: aí a faixa diz de qual, e acompanha se isso mudar)
-    if (a.st === 'nada') { if (!vazia) { cenaVazia(); trocou(); marcar('ok'); } else if (arDeFora.join() !== foraAntes) Store.emit('scene', S.current); return; }
-    if (vazia || a.m.id !== S.current) { montar(a); trocou(); marcar('ok'); return; }
+    if (a.st === 'nada') { olhando = null; ondeEstou = null; if (!vazia) { cenaVazia(); trocou(); marcar('ok'); avisarAndares(); } else if (arDeFora.join() !== foraAntes) Store.emit('scene', S.current); return; }
+    // (lote 78) o andar que este jogador vê, e a projeção dele
+    const antesAndares = andaresVistos.join('|'), alvoId = andarDoJogador(a), par = parDoAndar(a, alvoId) || { m: a.m, v: a.v };
+    andaresVistos = a.andares.map(x => x.id + ':' + x.nome);
+    if (vazia || par.m.id !== S.current) {
+      const mesmoPredio = !vazia && a.andares.some(x => x.id === S.current);
+      montar(par, mesmoPredio); trocou(); marcar('ok'); avisarAndares(); return;
+    }
+    if (andaresVistos.join('|') !== antesAndares) avisarAndares();
+    a = par;
     // a mesma cena: o que o mestre já aplicou sai da fila; o que falta continua valendo por cima do que chegou
     const ack = ackDe(a.v), agora = relogio();
     let mudou = false;
     seq = Math.max(seq, ack);
     if (ack < ultimaConta) {                               // a conta voltou atrás: o que tinha sido confirmado depois dela volta para a fila
       const voltam = confirmados.filter(b => b.n > ack);
-      if (voltam.length) { caixa = voltam.map(b => ({ n: b.n, ops: b.ops })).concat(caixa).sort((x, y) => x.n - y.n); mudou = true; }
+      if (voltam.length) { caixa = voltam.map(b => ({ n: b.n, ops: b.ops, c: b.c })).concat(caixa).sort((x, y) => x.n - y.n); mudou = true; }
       confirmados = confirmados.filter(b => b.n <= ack);
     }
     ultimaConta = ack;
     const saem = caixa.filter(b => b.n <= ack);
-    if (saem.length) { mudou = true; confirmados = confirmados.concat(saem.map(b => ({ n: b.n, ops: b.ops, t: agora }))); }
+    if (saem.length) { mudou = true; confirmados = confirmados.concat(saem.map(b => ({ n: b.n, ops: b.ops, c: b.c, t: agora }))); }
     confirmados = confirmados.filter(b => agora - b.t < 120000).slice(-40);
     caixa = caixa.filter(b => b.n > ack);
     if (mudou) desde = caixa.length ? Date.now() : 0;      // o mestre está respondendo: a espera recomeça
     const alvo = Proj.juntar(a.m, a.v);
     alvo.id = a.m.id;
     normalizeScene(alvo);
-    for (const b of caixa) Proj.aplicarEm(alvo, b.ops.filter(op => op.t !== 'ping' && op.t !== 'item'));
+    for (const b of caixa) if (!b.c || b.c === S.current) Proj.aplicarEm(alvo, b.ops.filter(op => op.t !== 'ping' && op.t !== 'item' && op.t !== 'andar'));
     registrarImgs(a.m.imgs); registrarImgs(a.v.imgs);
     const aqui = Store.scene(), seqAntes = aqui.expSeq || 0;
     const ops = Proj.diferenca(aqui, alvo);
@@ -772,6 +850,7 @@ const Nuvem = (() => {
     for (const p of Array.isArray(a.v.pings) ? a.v.pings : []) {
       if (!ehObj(p) || pingsVistos.has(p.id)) continue;
       pingsVistos.add(p.id);
+      if (p.cena && p.cena !== S.current) continue;          // (lote 78) o sinal de outro andar
       if (p.by !== eu && isFinite(p.x) && isFinite(p.y)) { App.pings.push({ x: p.x, y: p.y, t0: performance.now(), c: p.c || '#e6ab4f', n: p.n || '' }); if (App.pings.length > 8) App.pings.shift(); Render.request(); }
     }
     if (mudou) gravarPedido();
@@ -786,7 +865,7 @@ const Nuvem = (() => {
     }
     const lote = comBase(ops, inv);
     seq += 1;                                              // (seq nunca fica atrás do que o mestre já confirmou: ver montar e receber)
-    caixa.push({ n: seq, ops: clone(lote) });
+    caixa.push({ n: seq, ops: clone(lote), c: S.current });   // (lote 78) c: o andar em que o pedido foi feito
     if (caixa.length > 80) caixa.shift();
     if (!desde) desde = Date.now();
     if (!tPedido) tPedido = setTimeout(gravarPedido, 120);
@@ -798,7 +877,7 @@ const Nuvem = (() => {
     /* Além do que ainda falta o mestre aplicar, ficam no documento os pedidos confirmados há pouco: se a cena passar a
        ser transmitida por um aparelho do mestre que ainda não os tinha, ele os encontra aqui, na ordem — e aplica os
        que passam da conta dele. (O documento é do próprio jogador: o banco só aceita que ele crie o que é dele.) */
-    let lote = confirmados.map(b => ({ n: b.n, ops: b.ops })).concat(caixa);
+    let lote = confirmados.map(b => ({ n: b.n, ops: b.ops, c: b.c })).concat(caixa);
     while (lote.length > caixa.length && JSON.stringify(lote).length > 120000) lote = lote.slice(1);
     D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: JSON.parse(JSON.stringify({ cena: vazia ? null : S.current, lote })) }, undefined, { pressa: PRESSA });
   }
@@ -811,6 +890,33 @@ const Nuvem = (() => {
     marcar('saving');
     tEspera = setTimeout(situacao, 12050 - faz);
   }
+
+  /* ---- (lote 78) os andares, do lado do jogador ---- */
+  let andaresVistos = [];
+  function avisarAndares() { try { if (typeof UI !== 'undefined' && UI.pintarAndares) UI.pintarAndares(); } catch (e) { console.error(e); } }
+  // { lista: [{ id, nome, meu (o token dele está lá) }], atual, olhando } — ou null, sem andares no ar
+  function andaresDoJogador() {
+    if (modo !== 'jogador' || vazia) return null;
+    const a = noArAgora();
+    if (a.st !== 'ok' || !a.andares.length) return null;
+    return { lista: a.andares.map(x => { const p = parDoAndar(a, x.id); return { id: x.id, nome: x.nome, meu: !!p && temMeu(p.v), pronto: !!p }; }), atual: S.current, olhando, ondeEstou };
+  }
+  // olhar outro andar (null: voltar a seguir o token)
+  function verAndar(id) {
+    if (modo !== 'jogador') return false;
+    olhando = id && id !== ondeEstou ? id : null;
+    if (!tReceber) tReceber = setTimeout(receber, 0);
+    return true;
+  }
+  // o jogador leva o token dele pela passagem (a escada) para outro andar no ar
+  function pedirAndar(tokenId, para) {
+    if (modo !== 'jogador' || vazia || !idCena(para) || typeof tokenId !== 'string') return false;
+    olhando = null;
+    pedir([{ t: 'andar', id: tokenId, para }]);
+    return true;
+  }
+  // o mestre: as cenas no ar agora (a primeira é a do noAr)
+  const andaresNoAr = () => (modo === 'mestre' ? andares() : []);
 
   /* ---------------- o que o resto do programa chama ---------------- */
   function carregar() { return modo === 'mestre' ? carregarMestre() : carregarJogador(); }
@@ -843,9 +949,12 @@ const Nuvem = (() => {
   function esquecerExplorado(sc) { if (modo !== 'mestre') return; if (sc.id === idx.noAr) assumir(); Store.remoteIn(sc.id, [{ t: 'scn', p: { expSeq: (sc.expSeq || 0) + 1 } }]); }
 
   /* ---- no ar ---- */
-  function mostrar(id) {
-    if (modo !== 'mestre' || !S.scenes[id] || idx.noAr === id) return false;
-    idx.noAr = id; idx.tx = meu; arSujo = true;            // quem põe no ar transmite
+  function mostrar(id, juntas) {
+    if (modo !== 'mestre' || !S.scenes[id]) return false;
+    const novas = Array.isArray(juntas) ? [...new Set(juntas.filter(x => x !== id && S.scenes[x]))].slice(0, Proj.MAX_ANDARES) : [];
+    if (idx.noAr === id && iguais(novas, idx.juntas)) return false;
+    if (idx.noAr === id) { definirAndares(novas); return true; }      // (lote 78) a mesma cena: só os andares mudam
+    idx.noAr = id; idx.tx = meu; arSujo = true; idx.juntas = novas;      // quem põe no ar transmite
     darPorVistos();                                        // o que os jogadores tinham pedido em outra cena não vale nesta
     pings = [];
     sombra.delete(PUB_M); sombra.delete(PUB_V);
@@ -857,9 +966,61 @@ const Nuvem = (() => {
   }
   function esconder() {
     if (modo !== 'mestre' || (!idx.noAr && !D.pegar(PUB_M) && !D.pegar(PUB_V))) return false;
-    idx.noAr = null; idx.tx = null; arSujo = true; despublicar(); metaSuja = true; agendar();
+    idx.noAr = null; idx.tx = null; idx.juntas = []; arSujo = true; despublicar(); metaSuja = true; agendar();
     Store.meta();
     return true;
+  }
+  /* (lote 78) Os andares que ficam no ar junto com a cena do noAr. Os pedidos que os jogadores já tinham feito
+     continuam valendo (a conta é uma só). */
+  function definirAndares(lista) {
+    if (modo !== 'mestre' || !idx.noAr) return false;
+    const novas = [...new Set((lista || []).filter(x => x !== idx.noAr && S.scenes[x]))].slice(0, Proj.MAX_ANDARES);
+    if (iguais(novas, idx.juntas)) return false;
+    idx.juntas = novas; if (idx.tx !== meu) idx.tx = meu;
+    arSujo = true; metaSuja = true; pubSuja = true; agendar(); Store.meta();
+    setTimeout(() => { if (transmito()) Fichas.syncAll(); }, 0);
+    return true;
+  }
+  /* As cenas ligadas à cena `id` pelas passagens (escadas, portas, saídas que levam de uma à outra), em qualquer
+     sentido e em qualquer distância: o "prédio" da cena. */
+  function ligadas(id) {
+    const viz = new Map();
+    const liga = (a, b) => { if (!viz.has(a)) viz.set(a, new Set()); viz.get(a).add(b); };
+    for (const k in S.scenes) for (const t of S.scenes[k].tokens || []) if (t.prop && t.cena && S.scenes[t.cena] && t.cena !== k) { liga(k, t.cena); liga(t.cena, k); }
+    const visto = new Set([id]), fila = [id];
+    while (fila.length) { const a = fila.shift(); for (const b of viz.get(a) || []) if (!visto.has(b) && naVista(b)) { visto.add(b); fila.push(b); } }
+    visto.delete(id);
+    return S.order.filter(x => visto.has(x));
+  }
+  /* (lote 78) Leva um token de um andar para outro: sai de `de`, entra em `para`, perto da passagem de `para` que leva
+     de volta a `de` (sem ela, no meio). Vindo de um jogador (quem): só o token dele, só entre andares no ar, e só se
+     `de` tem uma passagem que leva a `para`. */
+  function moverDeAndar(tokenId, de, para, quem) {
+    const A = S.scenes[de], B = S.scenes[para];
+    if (!A || !B || de === para || typeof tokenId !== 'string') return false;
+    const t = A.tokens.find(x => x.id === tokenId);
+    if (!t || t.prop) return false;
+    if (quem) {
+      if (!noArJunto(de) || !noArJunto(para)) return false;
+      if (!(t.owner === quem || t.owner === '*') || t.locked) return false;
+      if (!A.tokens.some(x => x.prop && x.cena === para)) return false;
+    }
+    if (B.tokens.some(x => x.id === tokenId)) return false;
+    const volta = B.tokens.find(x => x.prop && x.cena === de), cel = B.cell || 64;
+    let x = volta ? volta.x + cel : Math.floor(B.cols / 2) * cel, y = volta ? volta.y : Math.floor(B.rows / 2) * cel;
+    x = clamp(x, 0, Math.max(0, (B.cols - (t.size || 1)) * cel)); y = clamp(y, 0, Math.max(0, (B.rows - (t.size || 1)) * cel));
+    const novo = Object.assign(clone(t), { x, y });
+    if (!Store.remoteIn(de, [{ t: 'del', c: 'tokens', id: tokenId }])) return false;
+    Store.remoteIn(para, [{ t: 'add', c: 'tokens', v: novo }]);
+    sujas.add(de); sujas.add(para); metaSuja = true; pubSuja = true; agendar();
+    return true;
+  }
+  // o mestre leva o token da cena aberta para outra cena
+  function levarParaAndar(tokenId, para) {
+    if (modo !== 'mestre') return false;
+    const de = S.current;
+    if (noArJunto(de) || noArJunto(para)) assumir();
+    return moverDeAndar(tokenId, de, para, null);
   }
   /* O jogador usa um item da bolsa do personagem dele num token: o mestre (o aparelho que transmite) confere e aplica.
      op = { t: 'item', de: personagem, item, alvo: token, rol: os dados rolados de cada efeito }. */
@@ -1004,7 +1165,8 @@ const Nuvem = (() => {
     iniciar, carregar, cena, meta, tirarCena, descarregar, explorado, esquecerExplorado, noMundo,
     modo: () => modo, on: () => modo !== 'local', mestre: () => modo === 'mestre', jogador: () => modo === 'jogador',
     estado: () => estado, aoEstado(fn) { ouvinte = fn; },
-    noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito, segue, cobrar, apareceu, mostrar, esconder, ping, usarItem, semCena: () => vazia,
+    noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito,
+    andaresNoAr, noArJunto, definirAndares, ligadas, levarParaAndar, andaresDoJogador, verAndar, pedirAndar, segue, cobrar, apareceu, mostrar, esconder, ping, usarItem, semCena: () => vazia,
     // campanhas: a que está em vista, as da mesa, as de cada cena, e se a cena aparece na lista da campanha em vista
     comCampanhas, podeOrganizar, campanha: () => camp, campanhas: () => campsDaMesa.slice(), campanhasDaCena, definirCampanhas, naVista,
     arDeFora: () => arDeFora.slice(),

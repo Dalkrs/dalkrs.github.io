@@ -638,12 +638,13 @@ const UI = (() => {
       const deFora = !!ar && !aqui && !Nuvem.naVista(ar);
       const txt = aqui ? 'No ar' : ar ? 'No ar: ' + outra : 'Fora do ar';
       air = h('button', { type: 'button', class: 'air-b' + (aqui ? ' on' : ar ? ' other' : ''), id: 'airBtn', title: aqui ? 'Os jogadores estão vendo esta cena' : deFora ? `Está no ar "${outra}", uma cena de outra campanha: quem a vê são os jogadores daquela campanha` : ar ? `Os jogadores estão vendo "${outra}", não esta cena` : 'Os jogadores não estão vendo nenhuma cena', onclick: () => anchorMenu(air, airMenu()) },
-        icon(ar ? 'eye' : 'eyeOff', 16), h('span', { class: 'air-t', text: txt }), icon('down', 13));
+        icon(ar ? 'eye' : 'eyeOff', 16), h('span', { class: 'air-t', text: txt + (Nuvem.andaresNoAr().length > 1 ? (Nuvem.noArJunto(sc.id) && !aqui ? ' (andar)' : '') + ' · ' + Nuvem.andaresNoAr().length + ' andares' : '') }), icon('down', 13));
     }
     el.top.replaceChildren(...[
       h('span', { class: 'brand', text: 'Tiny Cats' }),
       gm ? sceneBtn : h('span', { class: 'scene-b flat' }, icon('map', 17), h('span', { class: 'scene-n', text: Nuvem.semCena() ? 'Sem cena' : sc.name })),
       air,
+      Nuvem.jogador() ? andaresJogador() : null,
       h('div', { class: 'grp' },
         iconBtn('undo', 'Desfazer (Ctrl+Z)', Tools.undo, { disabled: !Store.canUndo(), id: 'undoBtn' }),
         iconBtn('redo', 'Refazer (Ctrl+Shift+Z)', Tools.redo, { disabled: !Store.canRedo(), id: 'redoBtn' })),
@@ -892,8 +893,73 @@ const UI = (() => {
       { head: ar === cur ? 'Os jogadores veem esta cena' : deFora ? `No ar: "${outra.name}", de outra campanha` : outra ? `Os jogadores veem "${outra.name}"` : 'Os jogadores não veem nenhuma cena' },
       ar === cur ? null : { label: 'Mostrar esta cena aos jogadores', icon: 'eye', run: () => showToPlayers(cur) },
       outra && !deFora ? { label: 'Ir para a cena que está no ar', icon: 'map', run: () => switchScene(ar) } : null,
+      // (lote 78) os andares: outras cenas no ar junto (cada jogador vê a do token dele)
+      { label: Nuvem.andaresNoAr().length > 1 ? `Andares no ar (${Nuvem.andaresNoAr().length})…` : 'Pôr no ar com os andares…', icon: 'layers', run: janelaAndares },
       ar ? { label: 'Tirar a cena do ar', icon: 'eyeOff', run: hideFromPlayers } : null,
     ];
+  }
+  /* (lote 78) Os andares no ar ao mesmo tempo: a cena do noAr (ou a aberta) e as que o mestre marcar. As ligadas por
+     passagens (escadas, portas) já vêm marcadas; dá para tirar e pôr outras à mão. Cada jogador vê o andar em que
+     está o token dele (ou outro, se escolher olhar), e o mestre troca de cena à vontade sem mudar o que eles veem. */
+  function janelaAndares() {
+    const ar = Nuvem.noAr(), base = ar || Store.S.current, sc = Store.S.scenes[base];
+    if (!sc) return;
+    const ligadas = Nuvem.ligadas(base), ja = ar ? Nuvem.andaresNoAr().slice(1) : [];
+    const marcadas = new Set(ja.length ? ja : ligadas);
+    const outras = Store.S.order.filter(id => id !== base && Store.S.scenes[id] && Nuvem.naVista(id));
+    const lista = ligadas.concat(outras.filter(id => !ligadas.includes(id)));
+    const caixas = lista.map(id => {
+      const cb = h('input', { type: 'checkbox', checked: marcadas.has(id), 'data-andar': id });
+      return h('label', { class: 'andar-op' }, cb, h('span', { text: Store.S.scenes[id].name }), ligadas.includes(id) ? h('small', { text: 'ligada por passagem' }) : null);
+    });
+    const body = h('div', { class: 'andares-j' },
+      h('p', { class: 'modal-p', text: `"${sc.name}" fica no ar junto com as cenas marcadas. Cada jogador vê o andar em que está o token dele, e pode olhar os outros. Você troca de cena à vontade sem mudar o que eles veem.` }),
+      lista.length ? h('div', { class: 'andares-l' }, caixas) : h('p', { class: 'modal-p', text: 'Não há outras cenas. Ligue esta cena a outra com uma passagem (uma escada, uma porta) ou crie uma cena nova.' }));
+    modal({ title: 'Andares no ar', body, wide: true, actions: [
+      { label: 'Cancelar' },
+      ja.length ? { label: 'Só esta cena', run: () => { Nuvem.definirAndares([]); toast(`Só "${sc.name}" no ar agora.`, { action: 'Desfazer', run: () => Nuvem.definirAndares(ja) }); } } : null,
+      { label: ar ? 'Pôr no ar juntas' : 'Mostrar aos jogadores', kind: 'primary', run: () => {
+        const sel = caixas.map(c => c.querySelector('input')).filter(i => i.checked).map(i => i.dataset.andar);
+        const antesAr = Nuvem.noAr(), antesJ = ja.slice();
+        if (!ar) showToPlayers(base);
+        if (sel.length || ja.length) Nuvem.mostrar(base, sel);
+        const n = sel.length + 1;
+        toast(n > 1 ? `${n} andares no ar: cada jogador vê o do token dele.` : `Os jogadores veem "${sc.name}".`, { action: 'Desfazer', run: () => { if (!antesAr) hideFromPlayers(); else if (antesAr === base) Nuvem.definirAndares(antesJ); else Nuvem.mostrar(antesAr); } });
+        refresh();
+      } },
+    ] });
+  }
+  // (lote 78) o jogador: a barra dos andares no topo (onde o token dele está, e olhar os outros)
+  function andaresJogador() {
+    const a = Nuvem.andaresDoJogador();
+    if (!a) return null;
+    return h('div', { class: 'andares-b', role: 'group', 'aria-label': 'Andares no ar', id: 'andaresBar' },
+      a.lista.map(x => h('button', { type: 'button', class: 'andar-b' + (x.id === a.atual ? ' on' : '') + (x.meu ? ' meu' : ''), 'data-andar': x.id, disabled: !x.pronto, 'aria-pressed': String(x.id === a.atual),
+        title: x.meu ? 'O seu token está aqui' : 'Olhar este andar', onclick: () => { Nuvem.verAndar(x.id === a.ondeEstou ? null : x.id); } },
+        x.meu ? icon('token', 13) : null, h('span', { text: x.nome }))),
+      a.olhando ? h('button', { type: 'button', class: 'andar-volta', id: 'andarVolta', onclick: () => Nuvem.verAndar(null), text: 'Voltar ao meu token' }) : null);
+  }
+  function andarPelaPassagem(t, x, y) {
+    const sc = Store.scene(), eu = Nuvem.eu(), meus = sc.tokens.filter(k => !k.prop && (k.owner === eu || k.owner === '*'));
+    const nome = ((Nuvem.andaresDoJogador() || { lista: [] }).lista.find(a => a.id === t.vai) || {}).nome || 'outro andar';
+    if (!meus.length) { toast(`Esta passagem leva a "${nome}". Você não tem token nesta cena.`); return; }
+    const ir = k => { if (Nuvem.pedirAndar(k.id, t.vai)) toast(`${tokName(k)} vai para "${nome}"…`); };
+    if (meus.length === 1) { ir(meus[0]); return; }
+    if (x == null || y == null) { const r = el.stage.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
+    menu(x, y, [{ head: 'Levar para ' + nome }].concat(meus.map(k => ({ label: tokName(k), icon: 'token', run: () => ir(k) }))));
+  }
+  function pintarAndares() { try { renderTop(); } catch (e) { console.error(e); } }
+  // (lote 78) as passagens desta cena que levam a outro andar no ar (para o jogador: as que vieram com `vai`)
+  function saidasDeAndar(sc) {
+    const out = [], vistos = new Set();
+    const alvos = Nuvem.jogador() ? (Array.isArray(sc.saidas) ? sc.saidas : []).concat((sc.tokens || []).map(t => t.vai)) : (sc.tokens || []).map(t => (t.prop && t.cena && Nuvem.noArJunto(t.cena) ? t.cena : null));
+    for (const para of alvos) {
+      if (!para || vistos.has(para)) continue;
+      vistos.add(para);
+      const nome = Nuvem.jogador() ? ((Nuvem.andaresDoJogador() || { lista: [] }).lista.find(x => x.id === para) || {}).nome : (Store.S.scenes[para] || {}).name;
+      out.push({ para, nome: nome || 'outro andar' });
+    }
+    return out;
   }
 
   /* ---- As cenas guardadas neste navegador (de antes da mesa): o mestre escolhe quais levar para a mesa. ---- */
@@ -3479,6 +3545,13 @@ const UI = (() => {
       if (gm && toks.length === 1 && o.clone && Store.get('tokens', o.clone)) items.push({ label: 'Este é o real', icon: 'real', run: () => { const rid = o.clone; Act.cloneReal(o); setSel([{ c: 'tokens', id: rid }]); toast('Pronto: o real agora é este (a coroa).', { action: 'Desfazer', run: Tools.undo }); } });
       if (gm && toks.length === 1 && (o.clone || realDeClone(o, Store.scene()))) items.push({ label: 'Sortear o real', icon: 'die', run: () => sortearReal(o.clone || o.id) });
       if (can('target')) items.push({ label: isTargeted(toks) ? 'Tirar a mira' : 'Mirar', icon: 'center', key: 'A', run: () => Act.targetToggle(toks) });
+      // (lote 78) levar a outro andar: o mestre, para qualquer cena ligada ou no ar junto; o jogador, o token dele, pela passagem
+      if (toks.length === 1 && Nuvem.mestre() && gm) {
+        const alvos = [...new Set(Nuvem.ligadas(sc.id).concat(Nuvem.andaresNoAr()))].filter(id => id !== sc.id && Store.S.scenes[id]).slice(0, 8);
+        for (const id of alvos) items.push({ label: 'Levar para ' + Store.S.scenes[id].name, icon: 'down', run: () => { if (Nuvem.levarParaAndar(o.id, id)) toast(`${tokName(o)} foi para "${Store.S.scenes[id].name}".`); } });
+      }
+      if (toks.length === 1 && Nuvem.jogador() && (o.owner === Nuvem.eu() || o.owner === '*'))
+        for (const x of saidasDeAndar(sc)) items.push({ label: 'Ir para ' + x.nome, icon: 'down', run: () => { if (Nuvem.pedirAndar(o.id, x.para)) toast(`${tokName(o)} vai para "${x.nome}"…`); } });
       if (toks.length === 1 && Luta.podeAtributos(o)) items.push({ label: 'Rolar atributo…', icon: 'die', key: 'F', run: () => Luta.atributos(o) });
       if (gm) items.push({ label: 'Disputa…', icon: 'die', key: 'C', run: () => Luta.disputa(toks) });
       if (gm && toks.length > 1) items.push({ label: 'Dano, cura ou condição…', icon: 'area', run: () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null) });
@@ -3956,7 +4029,7 @@ const UI = (() => {
     // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
     feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
-    passagem, porNaFamilia, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
+    passagem, porNaFamilia, janelaAndares, andarPelaPassagem, pintarAndares, saidasDeAndar, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)

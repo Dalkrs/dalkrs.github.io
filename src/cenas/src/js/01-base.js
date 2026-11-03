@@ -180,6 +180,7 @@ function focusKind(t) {
 
 /* ---- Ícones (traço 24×24). Os mesmos caminhos servem ao DOM e ao canvas. ---- */
 const ICONS = {
+  layers: 'M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5M3 16.5l9 5 9-5',      // (lote 78) os andares
   select: 'M5 3l14 7.5-6 1.8L10.5 19z',
   pan: 'M12 3v18M3 12h18M12 3L9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5',
   token: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 12.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6.3 18.6c1-2.4 3.1-3.8 5.7-3.8s4.7 1.4 5.7 3.8',
@@ -1037,6 +1038,8 @@ function normalizeScene(sc) {
     else delete t.mist;
     // (lote 7) o objeto que leva a outra cena (a entrada de uma casa, a saída, uma escada): o id da cena
     if (!(t.prop && typeof t.cena === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.cena))) delete t.cena;
+    // (lote 78) a passagem que leva a outro andar no ar (só na cena que o jogador recebe: ver Proj.projetar)
+    if (!(t.prop && typeof t.vai === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.vai))) delete t.vai;
     // (lote 7) o que o marcador sabe para gerar a cena de dentro: o prédio (tipo, medidas, porta, estilo, semente,
     // forma) ou o bairro do mapa de bairros
     const gera = t.prop && t.gera && typeof t.gera === 'object' ? t.gera : null, palavra = v => typeof v === 'string' && /^[a-z]{1,12}$/.test(v);

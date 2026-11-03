@@ -2,6 +2,31 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.03-13",
+      "data": "2026-11-03",
+      "titulo": "Andares no ar ao mesmo tempo",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Cenas: com mais de um andar no ar, cada um vê o andar em que está o seu token. A barra dos andares, no alto, mostra onde você está e deixa olhar os outros (“Voltar ao meu token” volta)."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: dois cliques na escada levam o seu token para o outro andar (ou botão direito no token → “Ir para…”). A sua tela acompanha."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: “Pôr no ar com os andares…”, no botão No ar, deixa a cena e os andares dela no ar juntos. As cenas ligadas por escada, porta ou saída já vêm marcadas, e dá para pôr ou tirar outras. Você troca de cena à vontade sem mudar o que os jogadores veem."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: botão direito num token → “Levar para…” leva o token para outro andar (perto da escada de lá). “Só esta cena” tira os andares do ar."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-12",
       "data": "2026-11-03",
       "titulo": "O XP no Jogando, e os pontos de atributo de uma vez",

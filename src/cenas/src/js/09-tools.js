@@ -441,6 +441,11 @@ const Tools = (() => {
     dbl(p, e) {
       const hit = hitTest(p, { locked: true });
       if (!hit) return;
+      // (lote 78) o jogador: dois cliques na passagem para outro andar levam o token dele (ou perguntam qual)
+      if (hit.c === 'tokens' && !isGM() && Nuvem.jogador()) {
+        const t = Store.get('tokens', hit.id);
+        if (t && t.vai) { UI.andarPelaPassagem(t, e ? e.clientX : null, e ? e.clientY : null); return; }
+      }
       // (lote 7) objeto que leva a outra cena (a entrada de uma casa, a saída): dois cliques abrem o menu da passagem
       if (hit.c === 'tokens' && isGM()) {
         const t = Store.get('tokens', hit.id), def = t && t.prop ? Props.P[t.prop] : null;

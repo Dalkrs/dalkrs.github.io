@@ -1244,3 +1244,15 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .o-cor { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); padding: 0; cursor: pointer; }
 .o-cor.on { border-color: var(--fg, #fff); box-shadow: 0 0 0 2px rgba(0,0,0,.5); }
 .o-cor:focus-visible { outline: 2px solid var(--accent, #e6ab4f); outline-offset: 2px; }
+
+/* (lote 78) os andares no ar */
+.andares-b { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; padding: 2px; border-radius: 10px; background: var(--panel-2, rgba(255,255,255,.04)); border: 1px solid var(--line); }
+.andar-b { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--fg-2, inherit); font: inherit; font-size: 13px; cursor: pointer; }
+.andar-b:hover:not(:disabled) { background: var(--hover); color: var(--fg); }
+.andar-b.on { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); font-weight: 600; }
+.andar-b.meu svg { color: var(--lamp); }
+.andar-b:disabled { opacity: .45; cursor: default; }
+.andar-volta { height: 28px; padding: 0 10px; border-radius: 8px; border: 1px dashed var(--lamp); background: none; color: var(--lamp-ink); font: inherit; font-size: 12.5px; cursor: pointer; }
+.andares-j .andares-l { display: grid; gap: 6px; max-height: 46vh; overflow: auto; margin-top: 6px; }
+.andar-op { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.andar-op small { margin-left: auto; color: var(--fg-3, #8a8f9a); font-size: 12px; }
