@@ -1374,7 +1374,10 @@
   }
   const soNumeros = o => { const out = {}; if (ehObjeto(o)) for (const k of Object.keys(o)) { const v = numFinito(o[k]); if (v != null) out[k] = v; } return out; };
   // um nível arrumado: as três listas de números e a passiva
-  const normNivel = n => ({ bonus: soNumeros(n && n.bonus), rec: soNumeros(n && n.rec), def: soNumeros(n && n.def), efeito: String(n && n.efeito != null ? n.efeito : '') });
+  const normNivel = n => {
+    const d = soNumeros(n && n.dano);            // (lote 89) o dano de elemento só aparece quando o nível tem
+    return Object.assign({ bonus: soNumeros(n && n.bonus), rec: soNumeros(n && n.rec), def: soNumeros(n && n.def) }, Object.keys(d).length ? { dano: d } : {}, { efeito: String(n && n.efeito != null ? n.efeito : '') });
+  };
   // os níveis do item, arrumados (um item comum tem um nível só: o dele)
   function niveisDoItem(it) {
     if (!ehObjeto(it)) return [];
@@ -1385,7 +1388,7 @@
     if (!temNiveis(it)) return it;
     const lista = it.niveis.filter(ehObjeto).slice(0, NIVEIS_MAX), n = Math.max(1, Math.min(lista.length, Math.round(numFinito(nv) || 1)));
     const l = normNivel(lista[n - 1]), out = Object.assign({}, it, { niveis: lista, nv: n, bonus: l.bonus });
-    for (const k of ['rec', 'def']) { if (Object.keys(l[k]).length) out[k] = l[k]; else delete out[k]; }
+    for (const k of ['rec', 'def', 'dano']) { if (l[k] && Object.keys(l[k]).length) out[k] = l[k]; else delete out[k]; }
     if (l.efeito) out.efeito = l.efeito; else delete out.efeito;
     return out;
   }
@@ -1399,7 +1402,7 @@
   function espelharItem(it) {
     if (!temNiveis(it)) return it;
     const nv = nivelDoItem(it), l = normNivel(it.niveis.filter(ehObjeto)[nv - 1]);
-    const ok = numFinito(it.nv) === nv && mesmosNumeros(it.bonus, l.bonus) && mesmosNumeros(it.rec, l.rec) && mesmosNumeros(it.def, l.def)
+    const ok = numFinito(it.nv) === nv && mesmosNumeros(it.bonus, l.bonus) && mesmosNumeros(it.rec, l.rec) && mesmosNumeros(it.def, l.def) && mesmosNumeros(it.dano, l.dano)
       && String(it.efeito == null ? '' : it.efeito) === l.efeito && it.niveis.length <= NIVEIS_MAX && it.niveis.every(ehObjeto);
     return ok ? it : itemNoNivel(it, nv);
   }
@@ -2068,6 +2071,172 @@
     return { teto, total: t, nivel: n, porNivel: pn, d, estado, txt, dica };
   }
 
+
+  /* ---------- (lote 89) A regra dos equipamentos: faixa, material e melhoria ----------
+     Cada faixa de nível tem os números de cada peça (a "Cola dos Equipamentos"): a arma no atributo principal, a
+     armadura em DEF F e DEF M, a bota em Esquiva, o escudo em Bloqueio, o acessório em uma coisa só. O item guarda:
+       it.faixa (1 a 4), it.mat (1 a 3: o material Q1–Q3, que diz até onde ele sobe), it.melhoria (0 a 5) e, se o
+       mestre escolher, it.peca ('arma' | 'armadura' | 'bota' | 'escudo' | 'acessorio' | 'fora'); sem ela, a peça vem do
+       tipo e dos números do item.
+     Cada melhoria sobe o número principal pelo passo da faixa (1 na F1 e na F2, 2 na F3 e na F4). */
+  const FAIXAS_EQ = Object.freeze([
+    { f: 1, de: 1, ate: 5, arma: 10, outros: 25, def: 9, esq: 10, blq: 10, acess: 2, passo: 1, custo: [2, 4, 6, 10, 15] },
+    { f: 2, de: 6, ate: 10, arma: 14, outros: 35, def: 13, esq: 14, blq: 14, acess: 2, passo: 1, custo: [4, 8, 12, 20, 30] },
+    { f: 3, de: 11, ate: 20, arma: 22, outros: 55, def: 20, esq: 22, blq: 22, acess: 3, passo: 2, custo: [6, 12, 18, 30, 45] },
+    { f: 4, de: 21, ate: 30, arma: 31, outros: 77, def: 28, esq: 31, blq: 31, acess: 5, passo: 2, custo: [8, 16, 24, 40, 60] },
+  ].map(x => Object.freeze(x)));
+  const MAT_MAX = Object.freeze({ 1: 2, 2: 4, 3: 5 });          // Q1 até +2, Q2 até +4, Q3 até +5
+  const PECAS = Object.freeze([['arma', 'Arma'], ['armadura', 'Armadura'], ['bota', 'Bota'], ['escudo', 'Escudo'], ['acessorio', 'Acessório'], ['fora', 'Fora da regra']]);
+  const faixaDoNivel = lvl => { const n = Math.max(1, Math.round(numFinito(lvl) || 1)); return n <= 5 ? 1 : n <= 10 ? 2 : n <= 20 ? 3 : 4; };
+  const faixaEq = f => FAIXAS_EQ[Math.max(1, Math.min(4, Math.round(numFinito(f) || 1))) - 1];
+  // as etiquetas do item, arrumadas: { faixa (1–4 ou null), mat (1–3 ou null), melhoria (0–5) }
+  function etiquetasEq(it) {
+    const o = ehObjeto(it) ? it : {};
+    const f = numFinito(o.faixa), m = numFinito(o.mat), q = numFinito(o.melhoria);
+    return { faixa: f >= 1 && f <= 4 ? Math.round(f) : null, mat: m >= 1 && m <= 3 ? Math.round(m) : null, melhoria: q >= 1 && q <= 5 ? Math.round(q) : 0 };
+  }
+  const textoEtiquetas = it => { const e = etiquetasEq(it); return [e.faixa ? 'F' + e.faixa : '', e.mat ? 'Q' + e.mat : '', e.melhoria ? '+' + e.melhoria : ''].filter(Boolean).join(' · '); };
+  // a peça do item na regra (a escolhida, ou pelo tipo e pelos números)
+  function pecaDoItem(it) {
+    if (!ehObjeto(it)) return 'fora';
+    if (PECAS.some(p => p[0] === it.peca)) return it.peca;
+    const b = ehObjeto(it.bonus) ? it.bonus : {}, v = k => numFinito(b[k]) || 0;
+    const maior = Math.max(0, ...ATRIBS.map(a => v(a.k))), def = Math.max(v('DFF'), v('DFM')), esq = v('ESQ'), blq = v('BLQ');
+    const nome = String(it.nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    if (it.tipo === 'escudo' || (blq >= 10 && maior < 8)) return 'escudo';
+    if (/BOTA|SAPATO|CALCADO|GREVA/.test(nome) || (esq >= 6 && def < 6 && maior < 8 && it.tipo !== 'arma')) return 'bota';
+    if (it.tipo === 'arma' || maior >= 8) return 'arma';
+    if (it.tipo === 'armadura' || def >= 6) return 'armadura';
+    return 'acessorio';
+  }
+  // os números que a peça usa na regra
+  function chavesDaPeca(it, peca) {
+    const b = ehObjeto(it.bonus) ? it.bonus : {}, v = k => numFinito(b[k]) || 0;
+    if (peca === 'arma') { const k = ['FOR', 'DES', 'CAN', 'AGI', 'VIT'].reduce((x, y) => (v(y) > v(x) ? y : x)); return [k]; }      // (no empate, a Vitalidade por último)
+    if (peca === 'armadura') return ['DFF', 'DFM'];
+    if (peca === 'bota') return ['ESQ'];
+    if (peca === 'escudo') return ['BLQ'];
+    if (peca === 'acessorio') { const ks = CHAVES_BONUS.filter(k => v(k) > 0); return ks.length ? [ks.reduce((x, y) => (v(y) > v(x) ? y : x))] : []; }
+    return [];
+  }
+  // o número da faixa para a peça, com a melhoria
+  function valorDaFaixa(f, peca, melhoria) {
+    const F = faixaEq(f), q = Math.max(0, Math.min(5, Math.round(numFinito(melhoria) || 0)));
+    const base = { arma: F.arma, armadura: 2 * F.def, bota: F.esq, escudo: F.blq, acessorio: F.acess }[peca];
+    if (base == null) return null;
+    return peca === 'acessorio' ? base : base + q * F.passo;
+  }
+  /* (lote 89) A armadura tem um total de defesa para repartir entre a DEF F e a DEF M (F1 18, F2 26, F3 40, F4 56; cada
+     melhoria soma o passo no total), e nenhum lado passa de 2/3 do total (F1 12). */
+  const tetoArmadura = (f, melhoria) => Math.round(valorDaFaixa(f, 'armadura', melhoria) * 2 / 3);
+  /* reparte um total entre DEF F e DEF M: na proporção de agora (meio a meio se não houver), sem passar do teto */
+  function repartirArmadura(dff, dfm, total, teto) {
+    const a = Math.max(0, numFinito(dff) || 0), b = Math.max(0, numFinito(dfm) || 0), soma = a + b;
+    let x = soma ? Math.round(total * a / soma) : Math.ceil(total / 2);
+    x = Math.max(total - teto, Math.min(teto, x));
+    return { DFF: x, DFM: total - x };
+  }
+  /* (lote 89) O dano de elemento da arma, por cima do dano dela (it.dano: { FOGO: 3 }): os nove elementos e o
+     psicológico. A sugestão (não é trava): até 1/3 da arma da faixa no total (F1 3, F2 4, F3 7, F4 10), em até 1, 1,
+     2 e 3 elementos. */
+  const ELEM_DANO = Object.freeze(['FOGO', 'AGUA', 'PEDRA', 'GELO', 'TROVAO', 'PLANTA', 'VENTO', 'LUZ', 'SOMBRAS', 'PSI']);
+  const elemDaFaixa = f => { const F = faixaEq(f); return { max: Math.floor(F.arma / 3), n: [1, 1, 2, 3][F.f - 1] }; };
+  function danoDoItem(it) {
+    const d = ehObjeto(it) && ehObjeto(it.dano) ? it.dano : {}, out = {};
+    for (const k of ELEM_DANO) { const v = numFinito(d[k]); if (v) out[k] = v; }
+    return out;
+  }
+  /* O item contra a regra: { peca, faixa (a do item ou a do nível), chaves, valor (o maior das chaves), ref (o da faixa
+     com a melhoria), estado: 'no' | 'acima' | 'abaixo' | 'fora', limite (a melhoria máxima do material) } */
+  function itemNaRegra(it, nivelPc) {
+    const peca = pecaDoItem(it), e = etiquetasEq(it), faixa = e.faixa || faixaDoNivel(nivelPc);
+    if (peca === 'fora') return { ...e, peca, faixa, chaves: [], valor: 0, ref: null, estado: 'fora', limite: 0 };
+    const ch = chavesDaPeca(it, peca), b = ehObjeto(it.bonus) ? it.bonus : {}, v = k => numFinito(b[k]) || 0;
+    // (a armadura vale pelo total das duas defesas)
+    const valor = !ch.length ? 0 : peca === 'armadura' ? v('DFF') + v('DFM') : Math.max(...ch.map(v)), ref = valorDaFaixa(faixa, peca, e.melhoria);
+    const estado = valor > ref ? 'acima' : valor < ref ? 'abaixo' : 'no';
+    const out = { ...e, peca, faixa, chaves: ch, valor, ref, estado, limite: e.mat ? MAT_MAX[e.mat] : 0 };
+    if (peca === 'armadura') { out.teto = tetoArmadura(faixa, e.melhoria); out.ladoAcima = Math.max(v('DFF'), v('DFM')) > out.teto; }
+    if (peca === 'arma') {
+      const d = danoDoItem(it), s = elemDaFaixa(faixa), ks = Object.keys(d), soma = ks.reduce((t, k) => t + d[k], 0);
+      out.elem = { chaves: ks, soma, max: s.max, n: s.n, acima: soma > s.max || ks.length > s.n };
+    }
+    return out;
+  }
+  /* "Melhorar": a melhoria sobe 1 e o número principal sobe o passo da faixa. Não passa do limite do material (sem
+     material: não sobe). → { ok, it (novo), erro } */
+  function melhorarItem(it, nivelPc) {
+    const r = itemNaRegra(it, nivelPc);
+    if (r.peca === 'fora' || r.peca === 'acessorio') return { ok: false, erro: 'Esta peça não tem melhoria.' };
+    if (!r.mat) return { ok: false, erro: 'Escolha o material (Q1, Q2 ou Q3) antes de melhorar.' };
+    if (r.melhoria >= r.limite) return { ok: false, erro: 'Q' + r.mat + ' sobe até +' + r.limite + '.' };
+    const F = faixaEq(r.faixa), novo = clonarItemEq(it);
+    novo.bonus = Object.assign({}, novo.bonus);
+    if (r.peca === 'armadura') {
+      // (o passo entra no total, no lado mais baixo — o mestre reparte depois, se quiser)
+      const a = numFinito(novo.bonus.DFF) || 0, b = numFinito(novo.bonus.DFM) || 0;
+      if (b < a) novo.bonus.DFM = b + F.passo; else novo.bonus.DFF = a + F.passo;
+    } else for (const k of r.chaves) novo.bonus[k] = (numFinito(novo.bonus[k]) || 0) + F.passo;
+    novo.melhoria = r.melhoria + 1; if (!novo.faixa) novo.faixa = r.faixa;
+    return { ok: true, it: novo };
+  }
+  const clonarItemEq = it => JSON.parse(JSON.stringify(it));
+  /* "Ajustar à regra": o que muda num item. Acima da faixa: os números ficam e o item ganha a melhoria que os explica
+     (+1 a +5) e o material que a permite; a armadura acerta as duas defesas no valor dessa melhoria (nenhuma desce).
+     Abaixo: os números sobem até o da faixa. Sempre: a faixa (a do nível, se o item não tem). Itens com níveis e fora
+     da regra: só a faixa. → null (nada muda) | { it (novo), muda: [textos], muitoAcima } */
+  function ajusteDoItem(it, nivelPc) {
+    if (!ehObjeto(it)) return null;
+    const r = itemNaRegra(it, nivelPc), F = faixaEq(r.faixa), novo = clonarItemEq(it), muda = [];
+    let muitoAcima = false;
+    if (!etiquetasEq(it).faixa) { novo.faixa = r.faixa; muda.push('faixa F' + r.faixa); }
+    if (r.peca !== 'fora' && r.peca !== 'acessorio' && !temNiveis(it) && r.chaves.length) {
+      const base = valorDaFaixa(r.faixa, r.peca, 0), b = Object.assign({}, novo.bonus), nomeK = k => (NOMES[k] || k);
+      // (a melhoria que o item já tem também conta: um +1 da F2 pede 15, não 14)
+      let q = r.melhoria;
+      if (r.valor > base) {
+        const n = Math.ceil((r.valor - base) / F.passo); muitoAcima = n > 5;
+        if (Math.min(5, n) > q) { q = Math.min(5, n); novo.melhoria = q; muda.push('melhoria +' + q); }
+      }
+      if (q) {
+        const precisa = q <= 2 ? 1 : q <= 4 ? 2 : 3;
+        if (!r.mat || MAT_MAX[r.mat] < q) { novo.mat = precisa; muda.push('material Q' + precisa); }
+      }
+      const alvo = base + q * F.passo;
+      if (r.peca === 'armadura') {
+        // a armadura: o total sobe até o da faixa (repartido como está, sem passar do teto); nenhum lado desce
+        const a = numFinito(b.DFF) || 0, c = numFinito(b.DFM) || 0;
+        if (a + c < alvo) {
+          const p = repartirArmadura(a, c, alvo, tetoArmadura(r.faixa, q)), x = { DFF: Math.max(a, p.DFF), DFM: Math.max(c, p.DFM) };
+          for (const k of ['DFF', 'DFM']) if (x[k] !== (k === 'DFF' ? a : c)) { muda.push(nomeK(k) + ' ' + (k === 'DFF' ? a : c) + ' → ' + x[k]); b[k] = x[k]; }
+        }
+      } else for (const k of r.chaves) {
+        const atual = numFinito(b[k]) || 0, quer = Math.max(atual, alvo);
+        if (quer !== atual) { b[k] = quer; muda.push(nomeK(k) + ' ' + atual + ' → ' + quer); }
+      }
+      novo.bonus = b;
+    }
+    if (!muda.length) return null;
+    return { it: novo, muda, muitoAcima, peca: r.peca };
+  }
+  /* O ajuste de uma ficha: os itens equipados que mudam e, para quem já usa equipamento (uma arma ou uma armadura
+     equipada), a armadura e a bota que faltam, da faixa do nível. → [{ id, nome, peca, muda, muitoAcima, it, novo? }] */
+  function ajusteDaFicha(pc) {
+    const out = [], eqs = (pc && Array.isArray(pc.itens) ? pc.itens : []).filter(it => ehObjeto(it) && it.equipado !== false);
+    for (const it of eqs) {
+      const a = ajusteDoItem(it, pc.level);
+      if (a) out.push(Object.assign({ id: it.id, nome: String(it.nome || '').trim() || 'Item sem nome' }, a));
+    }
+    const pecas = new Set(eqs.map(pecaDoItem)), f = faixaDoNivel(pc && pc.level);
+    if (pecas.has('arma') || pecas.has('armadura')) {
+      const faz = (peca, nome, tipo, bonus) => ({ id: 'novo_' + peca, novo: true, nome, peca, muda: ['item novo da F' + f], muitoAcima: false,
+        it: { id: 'it' + Math.random().toString(36).slice(2, 10), nome, tipo, equipado: true, bonus, faixa: f } });
+      if (!pecas.has('armadura')) out.push(faz('armadura', 'Armadura F' + f, 'armadura', repartirArmadura(1, 1, valorDaFaixa(f, 'armadura', 0), tetoArmadura(f, 0))));
+      if (!pecas.has('bota')) out.push(faz('bota', 'Bota F' + f, 'vestimenta', { ESQ: valorDaFaixa(f, 'bota', 0) }));
+    }
+    return out;
+  }
+
   const api = {
     ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, ehDerivado, ehDefesa,
     cfgPadrao, personagemPadrao,
@@ -2088,7 +2257,8 @@
     ROM_MAX, relacoes, temRelacoes, relacoesDoMestre, mexerRelacao, relacaoCom,
     MIS_ESTADOS, missoes,
     XP_PASSO, xpDe, subirNivelXp, anivOk, aniversario,
-    POR_NIVEL_PADRAO, porNivelDoTipo, tetoDoTipo, contaDoTeto
+    POR_NIVEL_PADRAO, porNivelDoTipo, tetoDoTipo, contaDoTeto,
+    FAIXAS_EQ, MAT_MAX, PECAS, ELEM_DANO, elemDaFaixa, danoDoItem, tetoArmadura, repartirArmadura, faixaDoNivel, faixaEq, etiquetasEq, textoEtiquetas, pecaDoItem, chavesDaPeca, valorDaFaixa, itemNaRegra, melhorarItem, ajusteDoItem, ajusteDaFicha
   };
 
   (root.TC || (root.TC = {})).rules = api;

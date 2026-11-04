@@ -251,6 +251,8 @@ const FichasExtras = (() => {
       const rec = it.rec && typeof it.rec === 'object' ? it.rec : {}, def = it.def && typeof it.def === 'object' ? it.def : {};
       (pc.recursos || []).forEach(r => { const v = +rec[r.id] || 0; if (v) out.push({ rot: r.nome || 'Barra', v, title: 'No máximo de ' + (r.nome || 'barra') }); });
       ESP().forEach(d => { const v = +def[d.k] || 0; if (v) out.push({ rot: 'Def. ' + d.nome, v, title: 'Defesa contra ' + d.nome.toLowerCase() }); });
+      const dano = it.dano && typeof it.dano === 'object' ? it.dano : {};
+      ELEM().forEach(d => { const v = +dano[d.k] || 0; if (v) out.push({ rot: 'Dano ' + d.nome, v, title: 'Dano de ' + d.nome.toLowerCase() + ', por cima do dano da arma' }); });
     }
     return out;
   }
@@ -260,6 +262,58 @@ const FichasExtras = (() => {
     const R = R7();
     if (!R || !R.temNiveis(it)) return 0;
     return Math.max(1, Math.min(R.niveisDoItem(it).length, nivelAberto.get(it.id) || R.nivelDoItem(it)));
+  }
+  /* (lote 89) A regra dos equipamentos no item: a peça, a faixa (F1–F4), o material (Q1–Q3) e a melhoria (+1 a +5).
+     Quem mestra escolhe; "Melhorar" sobe +1 e o número principal (sem cobrar: o Compendiânio sai à mão). O aviso diz o
+     número da faixa e, fora dele, oferece "Usar o valor da faixa". */
+  const RE = () => (window.TC && TC.rules && TC.rules.itemNaRegra ? TC.rules : null);
+  // (lote 89) os tipos de dano de elemento de uma arma: os nove elementos e o psicológico (com os nomes das defesas)
+  const ELEM = () => { const R = RE(); return R && R.ELEM_DANO ? ESP().filter(d => R.ELEM_DANO.includes(d.k)) : []; };
+  const NOME_K = k => (NOMES_K[k] || k);
+  const NOMES_K = { FOR: 'FOR', DES: 'DES', VIT: 'VIT', CAN: 'CAN', AGI: 'AGI', DFF: 'DEF F', DFM: 'DEF M', ESQ: 'Esquiva', BLQ: 'Bloqueio', FUR: 'FUR', PER: 'PER', EMB: 'EMB' };
+  function htmlEtiquetas(it) {
+    const R = RE(); if (!R) return '';
+    const t = R.textoEtiquetas(it);
+    return t ? `<span class="itetq" title="Faixa · material · melhoria (a regra dos equipamentos)">${esc(t)}</span>` : '';
+  }
+  function htmlRegra(it, pc) {
+    const R = RE(); if (!R || !quemMestra()) return '';
+    const r = R.itemNaRegra(it, pc.level), id = esc(it.id), autoF = R.faixaDoNivel(pc.level), F = R.faixaEq(r.faixa);
+    const sel = (attr, atual, ops, rot) => `<label class="f itregf"><span class="eyebrow">${rot}</span><select data-${attr}="${id}" aria-label="${rot} de ${esc(nomeIt(it) || 'item sem nome')}">${ops.map(([v, t]) => `<option value="${v}" ${String(v) === String(atual) ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
+    const pecas = [['', 'Pelo item (' + (R.PECAS.find(p => p[0] === R.pecaDoItem(Object.assign({}, it, { peca: undefined })))[1]) + ')']].concat(R.PECAS);
+    const faixas = [['', 'Pelo nível (F' + autoF + ')']].concat(R.FAIXAS_EQ.map(f => [f.f, 'F' + f.f + ' · níveis ' + f.de + ' a ' + f.ate]));
+    const mats = [['', '—'], [1, 'Q1 (até +2)'], [2, 'Q2 (até +4)'], [3, 'Q3 (até +5)']];
+    const melh = [0, 1, 2, 3, 4, 5].map(n => [n, n ? '+' + n : 'nenhuma']);
+    const semMelhoria = r.peca === 'fora' || r.peca === 'acessorio', niveis = !!R7() && R7().temNiveis(it);
+    const podeMelhorar = !semMelhoria && !niveis && r.mat && r.melhoria < r.limite;
+    const porQue = semMelhoria ? 'Esta peça não tem melhoria.' : niveis ? 'Item com níveis: use as abas dos níveis.' : !r.mat ? 'Escolha o material primeiro.' : r.melhoria >= r.limite ? 'Q' + r.mat + ' sobe até +' + r.limite + '.' : (r.peca === 'armadura' ? 'Sobe +1 e o total da armadura +' + F.passo + ' (no lado mais baixo)' : 'Sobe +1 e ' + r.chaves.map(NOME_K).join(' e ') + ' +' + F.passo) + ' (o Compendiânio sai à mão: ' + F.custo[r.melhoria] + ').';
+    let aviso = '';
+    if (r.peca === 'armadura') {
+      const b = it.bonus || {}, a = +b.DFF || 0, c = +b.DFM || 0;
+      const pede = 'A F' + r.faixa + ' pede ' + r.ref + ' no total' + (r.melhoria ? ' (com +' + r.melhoria + ')' : '') + ', repartido entre DEF F e DEF M, até ' + r.teto + ' num lado.';
+      const este = ' Este item: ' + a + ' + ' + c + ' = ' + r.valor + (r.estado === 'no' ? '' : r.estado === 'acima' ? ', acima' : ', abaixo') + (r.ladoAcima ? '; um lado passa de ' + r.teto : '') + '.';
+      const certo = r.estado === 'no' && !r.ladoAcima;
+      aviso = `<div class="itregaviso est-${certo ? 'no' : r.estado === 'no' ? 'acima' : r.estado}"><span>${esc(pede + este)}</span>${!certo && !niveis ? `<button type="button" class="mini" data-itregusar="${id}">Usar o valor da faixa</button>` : ''}</div>`;
+    } else if (r.peca !== 'fora' && r.chaves.length) {
+      const pede = 'A F' + r.faixa + ' pede ' + r.ref + (r.melhoria ? ' (com +' + r.melhoria + ')' : '') + (r.peca === 'arma' ? ' em ' + NOME_K(r.chaves[0]) : r.peca === 'armadura' ? ' em cada DEF' : r.peca === 'acessorio' ? '' : ' de ' + NOME_K(r.chaves[0])) + '.';
+      const este = r.estado === 'no' ? ' Este item está no valor.' : ' Este item: ' + r.valor + (r.estado === 'acima' ? ', acima.' : ', abaixo.');
+      aviso = `<div class="itregaviso est-${r.estado}"><span>${esc(pede + este)}</span>${r.estado !== 'no' && !niveis && r.peca !== 'acessorio' ? `<button type="button" class="mini" data-itregusar="${id}">Usar o valor da faixa</button>` : ''}</div>`;
+    }
+    if (r.elem) {
+      const E = r.elem, nomes = E.chaves.map(k => ((ELEM().find(d => d.k === k) || {}).nome || k) + ' ' + (+(it.dano || {})[k] || 0)).join(', ');
+      const sug = 'Elemento (sugestão da F' + r.faixa + '): até ' + E.max + ' por cima do dano, em ' + (E.n === 1 ? '1 elemento' : 'até ' + E.n + ' elementos') + '.';
+      const este = E.chaves.length ? ' Este item: ' + nomes + (E.acima ? ', acima da sugestão.' : '.') : ' Este item não tem (“+ barra, defesa ou elemento…”, mais abaixo).';
+      aviso += `<div class="itregaviso est-${E.acima ? 'acima' : E.chaves.length ? 'no' : 'nada'} itregelem"><span>${esc(sug + este)}</span></div>`;
+    }
+    return `<div class="itregra">
+      <div class="itregsel">
+        ${sel('itregpeca', it.peca || '', pecas, 'Peça')}
+        ${sel('itregfaixa', R.etiquetasEq(it).faixa || '', faixas, 'Faixa')}
+        ${sel('itregmat', R.etiquetasEq(it).mat || '', mats, 'Material')}
+        ${sel('itregmelh', r.melhoria, melh, 'Melhoria')}
+        <button type="button" class="mini" data-itregmais="${id}" ${podeMelhorar ? '' : 'disabled'} title="${esc(porQue)}">Melhorar +1</button>
+      </div>${aviso}
+    </div>`;
   }
   function editorItem(it, pc) {
     const R = R7(), k = nivelEditado(it), lv = k ? R.niveisDoItem(it) : null, alvo = k ? lv[k - 1] : it, nvAttr = k ? ` data-nv="${k}"` : '';
@@ -272,6 +326,7 @@ const FichasExtras = (() => {
       </select></label>` : '';
     return `<div class="ited">
       ${R ? `<div class="itcab">${selTipo}${htmlNiveis(it, k, lv)}</div>` : ''}
+      ${htmlRegra(it, pc)}
       <div class="itgrupos">
         <div class="itgrupo"><span class="eyebrow">Atributos</span><div class="itnums">${ATRIBS.map(a => campo(a, 'atr')).join('')}</div></div>
         <div class="itgrupo"><span class="eyebrow">Secundários</span><div class="itnums">${DERIV.map(d => campo(d, 'der')).join('')}</div></div>
@@ -354,6 +409,7 @@ const FichasExtras = (() => {
         <label class="itchave" title="${on ? 'Equipado: soma nas contas. Clique para guardar.' : 'Guardado: não soma. Clique para equipar.'}${g ? ' Grupo de troca: ' + esc(g) + '.' : ''}"><input type="checkbox" data-itemon="${esc(it.id)}" ${on ? 'checked' : ''} aria-label="${esc(it.nome || 'Item sem nome')}: equipado"><span class="itsw" aria-hidden="true"></span></label>
         <input class="inm itnome" data-itemnome="${esc(it.id)}" value="${esc(it.nome || '')}" placeholder="Nome do item" aria-label="Nome do item">
         ${niv ? htmlNivelCartao(it) : ''}
+        ${htmlEtiquetas(it)}
         ${it.reliquia ? `<span class="itrel" title="Relíquia">${RELIQUIA_SVG}<span>Relíquia</span></span>` : ''}
         ${g ? `<span class="ittroca" title="Grupo de troca: equipar um item do grupo guarda os outros">${TROCA_SVG}<span>${esc(g)}</span></span>` : ''}
         <span class="itbts"><button type="button" class="mini" data-itemed="${esc(it.id)}" aria-expanded="${aberto}">${aberto ? 'Fechar' : 'Editar'}</button><button type="button" class="mini danger" data-itemdel="${esc(it.id)}" title="Tirar este item (dá para desfazer)" aria-label="Tirar o item ${esc(it.nome || 'sem nome')}">×</button></span>
@@ -759,6 +815,44 @@ const FichasExtras = (() => {
     const s0 = q(m, '[data-jsep]'); if (s0) s0.focus();
   }
 
+  /* (lote 89) "Ajustar equipamentos à regra…": a lista, por personagem, do que muda nos itens equipados (a faixa, a
+     melhoria e o material que explicam os números de quem está acima, os números de quem está abaixo e a armadura ou a
+     bota que faltam). Quem mestra desmarca o que não quiser; nada muda até "Aplicar". Um Desfazer volta tudo. */
+  function ajustarARegra(pcs, aoFim) {
+    const R = RE(); if (!R) return;
+    const grupos = pcs.map(pc => ({ pc, l: R.ajusteDaFicha(pc) })).filter(g => g.l.length);
+    if (!grupos.length) { aviso('Os equipamentos já seguem a regra.'); return; }
+    let n = 0;
+    const linha = (g, gi) => `<div class="ajreg-pc"><div class="ajreg-h"><b>${esc(g.pc.nome || 'Sem nome')}</b><span class="hint">nível ${esc(String(g.pc.level || 1))} · F${R.faixaDoNivel(g.pc.level)}</span></div>
+      ${g.l.map((a, ai) => { n++; return `<label class="ajreg-l"><input type="checkbox" checked data-ajreg="${gi}|${ai}"> <span><b>${esc(a.nome)}</b> <span class="hint">${esc(R.PECAS.find(p => p[0] === a.peca)[1].toLowerCase())}</span><br>${esc(a.muda.join(' · '))}${a.muitoAcima ? ' <span class="ajreg-alto">muito acima até no +5: confira</span>' : ''}</span></label>`; }).join('')}</div>`;
+    const { m, fechar } = janela('Ajustar equipamentos à regra', `
+      <p style="margin:0 0 10px;font-size:14px">O que muda nos itens equipados, pela Cola dos Equipamentos. Quem está acima da faixa fica com os números e ganha a melhoria e o material; quem está abaixo sobe até a faixa. Desmarque o que não quiser.</p>
+      <div class="ajreg">${grupos.map(linha).join('')}</div>
+      <div class="modalacts"><span style="margin-left:auto;display:flex;gap:8px"><button type="button" data-jcancela>Cancelar</button><button type="button" class="primary" data-jok>Aplicar</button></span></div>`, 640);
+    const ok = q(m, '[data-jok]');
+    const contar = () => { const k = qa(m, '[data-ajreg]').filter(c => c.checked).length; ok.textContent = k ? (k === 1 ? 'Aplicar 1 mudança' : 'Aplicar ' + k + ' mudanças') : 'Aplicar'; ok.disabled = !k; };
+    qa(m, '[data-ajreg]').forEach(c => c.onchange = contar); contar();
+    ok.onclick = () => {
+      const marcados = qa(m, '[data-ajreg]').filter(c => c.checked).map(c => c.dataset.ajreg.split('|').map(Number));
+      if (!marcados.length) return;
+      const antes = new Map();
+      for (const [gi, ai] of marcados) {
+        const g = grupos[gi], a = g.l[ai], pc = g.pc;
+        if (!antes.has(pc)) antes.set(pc, JSON.parse(JSON.stringify(pc.itens || [])));
+        pc.itens = Array.isArray(pc.itens) ? pc.itens : [];
+        if (a.novo) pc.itens.push(a.it);
+        else { const i = pc.itens.findIndex(x => x && x.id === a.id); if (i >= 0) pc.itens[i] = a.it; }
+      }
+      fechar(); save(); if (aoFim) aoFim();
+      const qtd = marcados.length, quem = antes.size;
+      aviso((qtd === 1 ? '1 mudança' : qtd + ' mudanças') + ' em ' + (quem === 1 ? '1 personagem' : quem + ' personagens') + '.', 'Desfazer', () => {
+        for (const [pc, l] of antes) pc.itens = l;
+        save(); if (aoFim) aoFim();
+      });
+    };
+    const c0 = q(m, '[data-ajreg]'); if (c0) c0.focus();
+  }
+
   function ligarItens(host, pc) {
     const painel = q(host, '#painelItens'); if (!painel) return;
     const item = id => (pc.itens || []).find(x => x && x.id === id);
@@ -849,6 +943,40 @@ const FichasExtras = (() => {
         save(); render();
       });
     });
+    // (lote 89) a regra dos equipamentos: peça, faixa, material e melhoria; "Melhorar +1"; "Usar o valor da faixa"
+    const regraMuda = (attr, campo, rotulo) => qa(painel, '[data-' + attr + ']').forEach(s => s.onchange = () => {
+      const it = item(s.getAttribute('data-' + attr)); if (!it) return;
+      const antes = it[campo], v = s.value === '' ? undefined : campo === 'peca' ? s.value : +s.value;
+      if (v === undefined || v === 0 && campo === 'melhoria') delete it[campo]; else it[campo] = v;
+      save(); desenhar(render, sel('data-' + attr, it.id));
+      aviso((nomeIt(it) || 'O item') + ': ' + rotulo + '.', 'Desfazer', () => { const x = item(it.id); if (!x) return; if (antes === undefined) delete x[campo]; else x[campo] = antes; save(); render(); });
+    });
+    regraMuda('itregpeca', 'peca', 'peça trocada'); regraMuda('itregfaixa', 'faixa', 'faixa trocada'); regraMuda('itregmat', 'mat', 'material trocado'); regraMuda('itregmelh', 'melhoria', 'melhoria trocada');
+    const trocarPelaRegra = (it, novo, txt) => {
+      const i = (pc.itens || []).indexOf(it); if (i < 0) return;
+      const antes = JSON.parse(JSON.stringify(it));
+      pc.itens[i] = novo; if (itensAbertos.has(it.id)) itensAbertos.add(novo.id);
+      save(); render();
+      aviso(txt, 'Desfazer', () => { const j = (pc.itens || []).findIndex(x => x && x.id === antes.id); if (j >= 0) { pc.itens[j] = antes; save(); render(); } });
+    };
+    qa(painel, '[data-itregmais]').forEach(b => b.onclick = () => {
+      const it = item(b.dataset.itregmais); if (!it || !RE()) return;
+      const r = RE().melhorarItem(it, pc.level);
+      if (!r.ok) { aviso(r.erro); return; }
+      trocarPelaRegra(it, r.it, (nomeIt(it) || 'O item') + ' agora é +' + r.it.melhoria + '.');
+    });
+    qa(painel, '[data-itregusar]').forEach(b => b.onclick = () => {
+      const it = item(b.dataset.itregusar), R = RE(); if (!it || !R) return;
+      const r = R.itemNaRegra(it, pc.level), novo = JSON.parse(JSON.stringify(it));
+      novo.bonus = Object.assign({}, novo.bonus);
+      if (r.peca === 'armadura') {
+        const p = R.repartirArmadura(novo.bonus.DFF, novo.bonus.DFM, r.ref, r.teto); novo.bonus.DFF = p.DFF; novo.bonus.DFM = p.DFM;
+        trocarPelaRegra(it, novo, (nomeIt(it) || 'O item') + ': DEF F ' + p.DFF + ' e DEF M ' + p.DFM + ', o total da F' + r.faixa + ' (' + r.ref + ').');
+        return;
+      }
+      for (const k of r.chaves) novo.bonus[k] = r.ref;
+      trocarPelaRegra(it, novo, (nomeIt(it) || 'O item') + ': ' + r.chaves.map(NOME_K).join(' e ') + ' em ' + r.ref + ', o valor da F' + r.faixa + '.');
+    });
     const sep = q(painel, '[data-itseparar]'); if (sep) sep.onclick = () => separarPorTipo(pc);
     const tps = q(painel, '[data-ittipos]'); if (tps) tps.onclick = () => janelaTipos(pc);
     // (lote 7) os filtros e as seções
@@ -903,7 +1031,7 @@ const FichasExtras = (() => {
       const id = b.dataset.itnvcopia, it = item(id), R = R7(), k = +b.dataset.nv; if (!it || !R || k < 2) return;
       const de = R.niveisDoItem(it)[k - 2]; if (!de) return;
       const voltar = trocarItem(pc, id, it);
-      editarNivel(pc, it, k, l => { const c = copia(de); l.bonus = c.bonus; l.rec = c.rec; l.def = c.def; l.efeito = c.efeito; });
+      editarNivel(pc, it, k, l => { const c = copia(de); l.bonus = c.bonus; l.rec = c.rec; l.def = c.def; l.dano = c.dano; l.efeito = c.efeito; });
       save(); render(); refocar('[data-itnvaba="' + CSS.escape(id) + '"][data-nv="' + k + '"]');
       aviso('O Nv ' + k + ' agora tem os números e a passiva do Nv ' + (k - 1) + '.', 'Desfazer', () => { if (voltar) voltar(); save(); render(); });
     });
@@ -1404,14 +1532,17 @@ const FichasExtras = (() => {
   function htmlMaisDoItem(it, pc, alvo, k) {
     if (!RR()) return '';
     const fonte = alvo || it, rs = pc.recursos || [], rec = fonte.rec && typeof fonte.rec === 'object' ? fonte.rec : {}, def = fonte.def && typeof fonte.def === 'object' ? fonte.def : {};
+    const dano = fonte.dano && typeof fonte.dano === 'object' ? fonte.dano : {};
     const chips = rs.filter(r => rec[r.id] != null).map(r => chipItem('rec', it, r.id, r.nome || 'Barra', rec[r.id], k))
-      .concat(ESP().filter(d => def[d.k] != null).map(d => chipItem('def', it, d.k, 'Def. ' + d.nome, def[d.k], k)));
-    const livresR = rs.filter(r => rec[r.id] == null), livresD = ESP().filter(d => def[d.k] == null);
+      .concat(ESP().filter(d => def[d.k] != null).map(d => chipItem('def', it, d.k, 'Def. ' + d.nome, def[d.k], k)))
+      .concat(ELEM().filter(d => dano[d.k] != null).map(d => chipItem('dano', it, d.k, 'Dano ' + d.nome, dano[d.k], k)));
+    const livresR = rs.filter(r => rec[r.id] == null), livresD = ESP().filter(d => def[d.k] == null), livresE = ELEM().filter(d => dano[d.k] == null);
     return `<div class="itmais">${chips.join('')}
-      <select class="itmais-s" data-itmais="${esc(it.id)}"${k ? ` data-nv="${k}"` : ''} aria-label="${esc(it.nome || 'Este item')} também soma em…" title="O item pode aumentar o máximo de uma barra (HP, SP…) ou uma defesa específica">
-        <option value="">+ barra ou defesa…</option>
+      <select class="itmais-s" data-itmais="${esc(it.id)}"${k ? ` data-nv="${k}"` : ''} aria-label="${esc(it.nome || 'Este item')} também soma em…" title="O item pode aumentar o máximo de uma barra (HP, SP…), uma defesa específica ou dar dano de um elemento">
+        <option value="">+ barra, defesa ou elemento…</option>
         ${livresR.length ? `<optgroup label="No máximo da barra">${livresR.map(r => `<option value="rec:${esc(r.id)}">${esc(r.nome || 'Barra')}</option>`).join('')}</optgroup>` : ''}
         ${livresD.length ? `<optgroup label="Na defesa contra">${livresD.map(d => `<option value="def:${d.k}">${d.nome}</option>`).join('')}</optgroup>` : ''}
+        ${livresE.length ? `<optgroup label="No dano de elemento (por cima da arma)">${livresE.map(d => `<option value="dano:${d.k}">Dano de ${d.nome.toLowerCase()}</option>`).join('')}</optgroup>` : ''}
       </select></div>`;
   }
   // embaixo da tabela: o que os itens em uso somam fora das dez colunas
@@ -1808,7 +1939,7 @@ const FichasExtras = (() => {
     aviso, janela, imagemOk, iniciais, miniatura,
     htmlRetrato, ligarRetrato, guardarImagem,
     htmlLapros, ligarLapros, laprosDe, lerLapros, MOEDA,
-    painelItens, ligarItens, abrirItem, mostrarItem, itemNovo, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,
+    painelItens, ligarItens, ajustarARegra, abrirItem, mostrarItem, itemNovo, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,
     htmlSobrevida, ligarSobrevida, sobrevidaDe,
     ehLivre, tornarLivre, painelAtributosLivre, htmlBotaoModo, ligarAtributos,
     painelMente, ligarMente, usaMente, valorMente, relsDe, MENTE,

@@ -296,7 +296,7 @@ table.attr tr:last-child td{border-bottom:0}
 .mesa-oferta{margin:0 0 10px;padding:10px;border:1px dashed var(--brass-soft);border-radius:var(--r);background:var(--brass-fundo);font-size:13px}
 .mesa-oferta p{margin:0 0 8px}
 .mesa-falha{margin:14px;padding:12px 14px;border:1px solid var(--rubric-borda);border-radius:var(--r);background:var(--rubric-fundo)}
-.papel-jogador #actsMais,.papel-jogador #btnCfg,.papel-jogador #btnFlush,.papel-jogador #btnImport,.papel-jogador #btnGrupo,.papel-jogador nav.tabs button[data-tab="mesa"],.papel-jogador .grab{display:none}
+.papel-jogador #actsMais,.papel-jogador #btnCfg,.papel-jogador #btnRegraEq,.papel-jogador #btnFlush,.papel-jogador #btnImport,.papel-jogador #btnGrupo,.papel-jogador nav.tabs button[data-tab="mesa"],.papel-jogador .grab{display:none}
 .rescard input.fml{font-family:var(--monof);font-size:12.5px}
 .fmlerr{color:var(--rubric);font-size:11.5px;margin-top:4px;font-family:var(--monof)}
 .vars{font-size:11.5px;color:var(--ink-soft);line-height:1.7}
@@ -337,6 +337,20 @@ table.attr tr:last-child td{border-bottom:0}
 .ittroca{display:inline-flex;align-items:center;gap:4px;flex:0 1 auto;min-width:0;max-width:150px;padding:1px 7px;border:1px solid var(--line-2);border-radius:999px;font-size:11px;color:var(--ink-2);background:var(--campo-sut);white-space:nowrap}
 .ittroca span{overflow:hidden;text-overflow:ellipsis}
 .ittroca svg{flex:none}
+.itetq{flex:none;padding:1px 7px;border:1px solid var(--line-2);border-radius:999px;font-family:var(--monof);font-size:11px;color:var(--ink-2);background:var(--campo-sut);white-space:nowrap}
+.itregra{display:flex;flex-direction:column;gap:6px;margin:6px 0 2px;padding:8px;border:1px dashed var(--line-2);border-radius:8px}
+.itregsel{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:flex-end}
+.itregf{display:flex;flex-direction:column;gap:2px;min-width:0}
+.itregf select{max-width:200px}
+.itregaviso{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+.itregaviso.est-acima,.itregaviso.est-abaixo{color:var(--ink)}
+.itregaviso.est-no::before{content:"✓";color:var(--teal);font-weight:700}
+.ajreg{display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow:auto;padding-right:4px}
+.ajreg-h{display:flex;gap:8px;align-items:baseline;margin-bottom:4px}
+.ajreg-l{display:flex;gap:8px;align-items:flex-start;padding:5px 2px;font-size:13.5px;border-top:1px solid var(--line-2)}
+.ajreg-l input{margin-top:3px;flex:none;width:auto}
+.ajreg-l > span{flex:1;min-width:0;display:block;text-align:left}
+.ajreg-alto{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:var(--brass-fundo);color:var(--brass-ink);font-size:11.5px}
 .itbon{display:flex;flex-wrap:wrap;gap:3px 6px;align-items:center;font-family:var(--monof);font-size:12px;padding-left:38px}
 .itb{color:var(--teal);font-weight:600;white-space:nowrap}
 .itb.neg{color:var(--rubric)}
@@ -1734,6 +1748,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
       <summary class="ghost" title="Mais: Tabelas base, Importar, Apagar dados" aria-label="Mais ações">⋯</summary>
       <div class="fmais-m" role="menu">
         <button class="ghost" id="btnCfg" role="menuitem">Tabelas base</button>
+        <button class="ghost" id="btnRegraEq" role="menuitem" title="Ver, por personagem, o que muda nos equipamentos pela regra das faixas e aplicar só o que quiser">Ajustar equipamentos à regra…</button>
         <button class="ghost" id="btnImport" role="menuitem">Importar</button>
         <button class="ghost perigo" id="btnFlush" role="menuitem">Apagar dados</button>
       </div>
@@ -1775,12 +1790,12 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=21"></script>
-<script src="../tc/rules.js?v=29"></script>
+<script src="../tc/rules.js?v=30"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=2"></script>
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=17"></script>
-<script src="extras.js?v=20"></script>
+<script src="extras.js?v=21"></script>
 <script src="quadros.js?v=7"></script>
 <script src="skills-lista.js?v=1"></script>
 <script src="filtro-skills.js?v=3"></script>
@@ -5608,6 +5623,8 @@ document.getElementById('busca').oninput=renderLista;
 if(document.documentElement.classList.contains('menus-abertos')) document.querySelectorAll('details.fmais').forEach(d=>d.open=true);
 document.addEventListener('click',ev=>{ if(document.documentElement.classList.contains('menus-abertos')) return; for(const d of document.querySelectorAll('details.fmais[open]')) if(!d.contains(ev.target) || ev.target.closest('.fmais-m button')) d.open=false; },true);
 document.getElementById('btnCfg').onclick=abrirCfg;
+// (lote 89) a regra dos equipamentos para a mesa toda (só quem mestra; nada muda até "Aplicar")
+document.getElementById('btnRegraEq').onclick=()=>{const m=document.getElementById('actsMais');if(m)m.open=false;FichasExtras.ajustarARegra(S.personagens||[],()=>render());};
 document.getElementById('btnExport').onclick=exportar;
 document.getElementById('btnImport').onclick=()=>document.getElementById('fileIn').click();
 document.getElementById('btnFlush').onclick=abrirFlush;

@@ -254,6 +254,23 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### A regra dos equipamentos nas Fichas (lote 89)
+
+- `tc/rules.js`: `FAIXAS_EQ` (F1 1–5, F2 6–10, F3 11–20, F4 21–30: arma, defesa, esquiva/bloqueio, acessório, o passo
+  da melhoria e o custo em Compendiânio), `MAT_MAX` (Q1 +2, Q2 +4, Q3 +5) e `PECAS`. No item: `faixa`, `mat`, `melhoria`
+  e `peca` (vazia = pelo tipo, pelo nome e pelos números, `pecaDoItem`).
+- A armadura vale pelo total (DEF F + DEF M = 2 × `def` da faixa, mais o passo por melhoria), com `tetoArmadura` (2/3 do
+  total num lado) e `repartirArmadura` (na proporção de agora, sem passar do teto).
+- O dano de elemento da arma: `it.dano` (`ELEM_DANO`: os nove elementos e `PSI`; vai também nos níveis do item),
+  `danoDoItem` e `elemDaFaixa` (a sugestão: até 1/3 da arma da faixa, em 1, 1, 2 e 3 elementos — só aviso).
+- `itemNaRegra` (o valor, o da faixa e se está acima, no valor ou abaixo), `melhorarItem` (+1 e o número principal, sem
+  cobrar), `ajusteDoItem` (acima: fica com o número e ganha melhoria e material; abaixo: sobe até a faixa; a melhoria
+  que já tem conta) e `ajusteDaFicha` (os equipados que mudam e a armadura e a bota que faltam).
+- Fichas (`fichas/extras.js`): a etiqueta `.itetq` no cartão; o bloco Regra no "Editar" (só quem mestra), com
+  `data-itregpeca|faixa|mat|melh`, `data-itregmais` e `data-itregusar`; `FichasExtras.ajustarARegra(pcs, aoFim)`,
+  o botão `#btnRegraEq` no "⋯" do alto. Tudo com Desfazer.
+- Teste: `src/tests/fichas-lote89.test.js`.
+
 ### Os recursos do clã com desenho (lote 86)
 
 - `ClaNucleo.RECURSOS` (a lista fixa), `porNome` (os nomes de antes: T1→Q1, sem acento e espaço) e `svgRecurso` (o

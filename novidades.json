@@ -2,6 +2,36 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.04-9",
+      "data": "2026-11-04",
+      "titulo": "A regra dos equipamentos nas fichas",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Fichas: os equipamentos ganham etiquetas ao lado do nome — a faixa (F1 a F4), o material (Q1 a Q3) e a melhoria (+1 a +5), como “F2 · Q2 · +3”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: as armas podem dar dano de um elemento por cima do dano delas (Fogo, Água, Pedra, Gelo, Trovão, Planta, Vento, Luz, Sombras ou Psicológico), em “+ barra, defesa ou elemento…” no “Editar” do item. O cartão mostra, por exemplo, “Dano Fogo +3”."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas: no “Editar” de cada item, o bloco Regra escolhe a peça, a faixa, o material e a melhoria. “Melhorar +1” sobe a melhoria e o número principal (o Compendiânio você tira à mão), e o aviso mostra o número que a faixa pede, com “Usar o valor da faixa”. Tudo com Desfazer."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Fichas: a armadura agora tem um total de defesa para repartir entre DEF F e DEF M (F1 18, F2 26, F3 40, F4 56), com até 2/3 num lado. Cada melhoria soma o passo no total. Para o dano de elemento, a sugestão é até 3, 4, 7 e 10 por faixa, em 1, 1, 2 e 3 elementos. É só um aviso: nada trava."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Fichas: “Ajustar equipamentos à regra…”, no “⋯” do alto, mostra por personagem o que muda nos itens equipados (e a armadura ou a bota que faltam). Desmarque o que não quiser, aplique e, se precisar, desfaça."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.04-8",
       "data": "2026-11-04",
       "titulo": "A foto padrão do clã vale para todos",
