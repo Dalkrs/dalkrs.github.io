@@ -3042,11 +3042,32 @@ const Assets = (() => {
       im = new Image();
       im.decoding = 'async';
       if (/^https?:/.test(a.url)) im.crossOrigin = 'anonymous';      // imagem que vem do banco: sem isto o canvas fica "sujo" e não exporta
-      im.onload = () => { im.ok = true; Render.request(); };
+      im.onload = () => { im.ok = true; reduzidas(im); Render.request(); };
       im.src = a.url;
       imgs.set(id, im);
     }
     return im.ok ? im : null;
+  }
+
+  /* (lote 81) Uma imagem grande (mais de 4096 px no lado maior): cópias com a metade e com um quarto do tamanho, para
+     desenhar a que basta no zoom de agora (ver escolher). Feitas uma vez, quando a imagem carrega. */
+  const GRANDE = 4096;
+  function reduzidas(im) {
+    const w = im.naturalWidth, hh = im.naturalHeight;
+    if (Math.max(w, hh) <= GRANDE || typeof createImageBitmap !== 'function') return;
+    im.mips = [];
+    for (const f of [0.5, 0.25]) {
+      createImageBitmap(im, { resizeWidth: Math.max(1, Math.round(w * f)), resizeHeight: Math.max(1, Math.round(hh * f)), resizeQuality: 'high' })
+        .then(b => { im.mips.push({ f, b }); im.mips.sort((x, y) => y.f - x.f); Render.request(); }, () => {});
+    }
+  }
+  /* A cópia que basta para desenhar a imagem com `porPx` pixels da imagem por pixel da tela (2 = cada pixel da tela
+     cobre dois da imagem): a menor que ainda tem ao menos um pixel por pixel da tela. */
+  function escolher(im, porPx) {
+    if (!im || !im.mips || !im.mips.length || !(porPx > 1)) return im;
+    let melhor = im;
+    for (const m of im.mips) if (porPx * m.f >= 1) melhor = m.b;
+    return melhor;
   }
 
   function decode(src) {
@@ -3078,19 +3099,31 @@ const Assets = (() => {
     return register(encode(cv, kind), cv.width, cv.height, kind, name);
   }
 
-  // Lê um arquivo de imagem, reduz se for grande demais e guarda.
+  /* Lê um arquivo de imagem, reduz se for grande demais e guarda.
+     (lote 81) O fundo vai até 8192 px no lado maior (antes, 4096); os tokens, 512. Um WebP ou JPEG que já cabe no
+     teto e no limite de tamanho sobe como veio (os mesmos bytes, sem passar pelo canvas): só o que precisa reduzir, ou
+     um PNG ou GIF, é recodificado. O canvas de passagem é liberado logo depois. */
+  const MAX_BG = 8192, MAX_TOKEN = 512, MAX_BYTES = 40 * 1024 * 1024;
+  const comoVeio = (file, w, hh, max) => /^image\/(webp|jpeg)$/.test(file.type || '') && Math.max(w, hh) <= max && file.size <= MAX_BYTES;
+  const lerDados = file => new Promise((ok, falha) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result)); rd.onerror = () => falha(rd.error || new Error('Não consegui ler essa imagem.')); rd.readAsDataURL(file); });
   async function fromFile(file, kind) {
     if (!file || !/^image\//.test(file.type || '')) throw new Error('Esse arquivo não é uma imagem.');
     const src = URL.createObjectURL(file);
     try {
       const im = await decode(src);
-      const max = kind === 'bg' ? 4096 : 512;
-      const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
-      const w = Math.max(1, Math.round(im.naturalWidth * k)), hh = Math.max(1, Math.round(im.naturalHeight * k));
-      const cv = document.createElement('canvas'); cv.width = w; cv.height = hh;
-      cv.getContext('2d').drawImage(im, 0, 0, w, hh);
+      const max = kind === 'bg' ? MAX_BG : MAX_TOKEN, nw = im.naturalWidth, nh = im.naturalHeight;
       const name = String(file.name || '').replace(/\.[a-z0-9]+$/i, '');
-      return await fromCanvas(cv, kind, name);
+      if (comoVeio(file, nw, nh, max)) {
+        if (Nuvem.on()) return await Nuvem.guardarArquivo(file, nw, nh, kind, name);
+        return register(await lerDados(file), nw, nh, kind, name);
+      }
+      const k = Math.min(1, max / Math.max(nw, nh));
+      const w = Math.max(1, Math.round(nw * k)), hh = Math.max(1, Math.round(nh * k));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = hh;
+      try {
+        cv.getContext('2d').drawImage(im, 0, 0, w, hh);
+        return await fromCanvas(cv, kind, name);
+      } finally { cv.width = 0; cv.height = 0; }                 // (a memória do canvas de passagem volta na hora)
     } finally { URL.revokeObjectURL(src); }
   }
 
@@ -3106,7 +3139,7 @@ const Assets = (() => {
     return S.assets[a.id];
   }
 
-  return { img, fromFile, fromCanvas, fromData, register, encode };
+  return { img, escolher, fromFile, fromCanvas, fromData, register, encode, MAX_BG, MAX_BYTES };
 })();
 /* ---------------------------------------------------------------
    5. VISION — paredes, luz, escuridão e névoa
@@ -11912,6 +11945,8 @@ const Nuvem = (() => {
     S.assets[id] = { id, url, w, h: hh, kind, name: name || '' };
     return S.assets[id];
   }
+  // (lote 81) Um arquivo que já serve (WebP ou JPEG dentro do teto): sobe como veio, com os mesmos bytes.
+  async function guardarArquivo(file, w, hh, kind, name) { return subir(file, w, hh, kind, name); }
   // Uma imagem que está num canvas: vira arquivo no Storage da mesa.
   async function guardarImagem(cv, kind, name) {
     let blob = await blobDe(cv, 'image/webp', 0.86);
@@ -12032,7 +12067,7 @@ const Nuvem = (() => {
     // campanhas: a que está em vista, as da mesa, as de cada cena, e se a cena aparece na lista da campanha em vista
     comCampanhas, podeOrganizar, campanha: () => camp, campanhas: () => campsDaMesa.slice(), campanhasDaCena, definirCampanhas, naVista,
     arDeFora: () => arDeFora.slice(),
-    guardarImagem, guardarDeDados, embutir, cenasDoNavegador, trazer, locais: () => nLocais,
+    guardarImagem, guardarArquivo, guardarDeDados, embutir, cenasDoNavegador, trazer, locais: () => nLocais,
     eu: () => eu, pendentes: () => caixa.length,
   };
 })();
@@ -13736,8 +13771,11 @@ const Render = (() => {
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
     const bg = Assets.img(sc.bg.asset);
     if (bg) {
-      if (sc.bg.stretch) ctx.drawImage(bg, 0, 0, W, H);
-      else { const w = W * (sc.bg.scale || 1); ctx.drawImage(bg, sc.bg.dx || 0, sc.bg.dy || 0, w, w * bg.naturalHeight / bg.naturalWidth); }
+      // (lote 81) um fundo grande: a cópia reduzida que basta para o zoom de agora (pixels da imagem por pixel da tela)
+      const dw = sc.bg.stretch ? W : W * (sc.bg.scale || 1), dpr = window.devicePixelRatio || 1;
+      const img = Assets.escolher(bg, bg.naturalWidth / (dw * z * dpr));
+      if (sc.bg.stretch) ctx.drawImage(img, 0, 0, W, H);
+      else ctx.drawImage(img, sc.bg.dx || 0, sc.bg.dy || 0, dw, dw * bg.naturalHeight / bg.naturalWidth);
     }
     drawTerrain(sc, px, W, H);
     drawAgua(sc, px, t);                                   // (lote 48) a água que corre
@@ -15474,10 +15512,15 @@ const UI = (() => {
     let a;
     try { a = await Assets.fromFile(file, 'bg'); } catch (err) { toast(err.message || 'Não consegui abrir essa imagem.'); return; }
     const sc = Store.scene();
-    const input = h('input', { id: 'dlg-cols', class: 'in num', type: 'number', min: 2, max: 300, value: sc.cols, 'data-focus': '' });
+    // (lote 81) a largura em quadrados, quando a imagem foi desenhada a 64 px por quadrado (7680 / 64 = 120)
+    const sugestao = a.w % 64 === 0 && a.w / 64 >= 2 && a.w / 64 <= 300 ? a.w / 64 : sc.cols;
+    const input = h('input', { id: 'dlg-cols', class: 'in num', type: 'number', min: 2, max: 300, value: sugestao, 'data-focus': '' });
+    // a proporção da imagem bate com a da cena (até 1% de diferença): o fundo encaixa na grade, esticado
+    const encaixa = (c, r) => Math.abs((a.w / a.h) / (c / r) - 1) <= 0.01;
     const setBg = fitCols => Store.tx('Imagem de fundo', () => {
-      const p = { bg: { asset: a.id, stretch: false, dx: 0, dy: 0, scale: 1 } };
-      if (fitCols) { p.cols = fitCols; p.rows = Math.max(2, Math.round(fitCols * a.h / a.w)); }
+      const c = fitCols || sc.cols, r = fitCols ? Math.max(2, Math.round(fitCols * a.h / a.w)) : sc.rows;
+      const p = { bg: { asset: a.id, stretch: encaixa(c, r), dx: 0, dy: 0, scale: 1 } };
+      if (fitCols) { p.cols = c; p.rows = r; }
       Store.scn(p);
     });
     modal({
@@ -19212,7 +19255,7 @@ const UI = (() => {
     // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
     feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
-    passagem, porNaFamilia, janelaAndares, andarPelaPassagem, pintarAndares, saidasDeAndar, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
+    passagem, porNaFamilia, janelaAndares, andarPelaPassagem, bgFromFile, pintarAndares, saidasDeAndar, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)

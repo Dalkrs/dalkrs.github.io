@@ -2,6 +2,32 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.04-1",
+      "data": "2026-11-04",
+      "titulo": "Fundos grandes e nítidos nas Cenas",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: o fundo pode ter até 8192 px no lado maior (antes, 4096). Um mapa desenhado a 64 px por quadrado, como a Fortaleza Cinzenta (7680 × 5120), fica nítido no zoom."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: um fundo em WebP ou JPEG que já cabe sobe como veio, sem ser comprimido de novo. As imagens podem ter até 40 MB."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: “Ajustar a cena ao mapa” sugere a largura em quadrados (7680 px ÷ 64 = 120), e o fundo encaixa sozinho na grade quando a proporção bate."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: um fundo grande continua leve para arrastar e dar zoom: de longe, a tela usa uma cópia menor da imagem."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.03-15",
       "data": "2026-11-03",
       "titulo": "Morto ao chegar a 0, e a iniciativa que começa pelo topo",

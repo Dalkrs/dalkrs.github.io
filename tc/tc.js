@@ -2087,7 +2087,7 @@
       const a = mesas.atual;
       if (!a) throw new Error('Abra uma mesa primeiro.');
       if (!blob || !EXT[blob.type]) throw new Error('Envie uma imagem JPG, PNG ou WebP.');
-      if (blob.size > 15 * 1024 * 1024) throw new Error('A imagem passa de 15 MB. Diminua e tente de novo.');
+      if (blob.size > 40 * 1024 * 1024) throw new Error('A imagem passa de 40 MB. Diminua e tente de novo.');      // (lote 81: antes, 15 MB)
       // o mestre guarda na pasta da mesa; o jogador, na pasta dele dentro dela (o banco só aceita assim)
       const pasta = a.papel === 'mestre' ? a.id : a.id + '/j/' + conta.usuario.id;
       const caminho = pasta + '/' + novoId('img') + '.' + EXT[blob.type];

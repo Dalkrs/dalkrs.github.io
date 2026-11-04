@@ -254,6 +254,14 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Fundos grandes nas Cenas (lote 81)
+
+- O fundo vai até 8192 px (`Assets.MAX_BG`); WebP e JPEG que cabem sobem como vieram (`Nuvem.guardarArquivo`).
+- **Banco:** `0037_imagens_de_ate_40_mb.sql` sobe o limite do balde `mesas` para 40 MB (`arquivos.subir` confere o mesmo).
+- Fundo grande: cópias de ½ e ¼ (`createImageBitmap`) e `Assets.escolher` pelo zoom (08-render).
+- “Ajustar a cena ao mapa”: sugere `largura / 64`; proporção igual à da cena → `stretch: true`.
+- Teste: `src/cenas/test/lote81.js`; o checklist está no `src/cenas/PROGRESSO.md`.
+
 ### Morto ao chegar a 0 e a iniciativa pelo topo (lote 80)
 
 - **Morto** (`acertarCondicoes`, 07-app): a barra da vida passou de mais de 0 para 0 ou menos neste passo → `morto`;

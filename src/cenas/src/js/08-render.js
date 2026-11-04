@@ -1156,8 +1156,11 @@ const Render = (() => {
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
     const bg = Assets.img(sc.bg.asset);
     if (bg) {
-      if (sc.bg.stretch) ctx.drawImage(bg, 0, 0, W, H);
-      else { const w = W * (sc.bg.scale || 1); ctx.drawImage(bg, sc.bg.dx || 0, sc.bg.dy || 0, w, w * bg.naturalHeight / bg.naturalWidth); }
+      // (lote 81) um fundo grande: a cópia reduzida que basta para o zoom de agora (pixels da imagem por pixel da tela)
+      const dw = sc.bg.stretch ? W : W * (sc.bg.scale || 1), dpr = window.devicePixelRatio || 1;
+      const img = Assets.escolher(bg, bg.naturalWidth / (dw * z * dpr));
+      if (sc.bg.stretch) ctx.drawImage(img, 0, 0, W, H);
+      else ctx.drawImage(img, sc.bg.dx || 0, sc.bg.dy || 0, dw, dw * bg.naturalHeight / bg.naturalWidth);
     }
     drawTerrain(sc, px, W, H);
     drawAgua(sc, px, t);                                   // (lote 48) a água que corre

@@ -1050,6 +1050,8 @@ const Nuvem = (() => {
     S.assets[id] = { id, url, w, h: hh, kind, name: name || '' };
     return S.assets[id];
   }
+  // (lote 81) Um arquivo que já serve (WebP ou JPEG dentro do teto): sobe como veio, com os mesmos bytes.
+  async function guardarArquivo(file, w, hh, kind, name) { return subir(file, w, hh, kind, name); }
   // Uma imagem que está num canvas: vira arquivo no Storage da mesa.
   async function guardarImagem(cv, kind, name) {
     let blob = await blobDe(cv, 'image/webp', 0.86);
@@ -1170,7 +1172,7 @@ const Nuvem = (() => {
     // campanhas: a que está em vista, as da mesa, as de cada cena, e se a cena aparece na lista da campanha em vista
     comCampanhas, podeOrganizar, campanha: () => camp, campanhas: () => campsDaMesa.slice(), campanhasDaCena, definirCampanhas, naVista,
     arDeFora: () => arDeFora.slice(),
-    guardarImagem, guardarDeDados, embutir, cenasDoNavegador, trazer, locais: () => nLocais,
+    guardarImagem, guardarArquivo, guardarDeDados, embutir, cenasDoNavegador, trazer, locais: () => nLocais,
     eu: () => eu, pendentes: () => caixa.length,
   };
 })();

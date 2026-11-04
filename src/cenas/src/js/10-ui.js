@@ -306,10 +306,15 @@ const UI = (() => {
     let a;
     try { a = await Assets.fromFile(file, 'bg'); } catch (err) { toast(err.message || 'Não consegui abrir essa imagem.'); return; }
     const sc = Store.scene();
-    const input = h('input', { id: 'dlg-cols', class: 'in num', type: 'number', min: 2, max: 300, value: sc.cols, 'data-focus': '' });
+    // (lote 81) a largura em quadrados, quando a imagem foi desenhada a 64 px por quadrado (7680 / 64 = 120)
+    const sugestao = a.w % 64 === 0 && a.w / 64 >= 2 && a.w / 64 <= 300 ? a.w / 64 : sc.cols;
+    const input = h('input', { id: 'dlg-cols', class: 'in num', type: 'number', min: 2, max: 300, value: sugestao, 'data-focus': '' });
+    // a proporção da imagem bate com a da cena (até 1% de diferença): o fundo encaixa na grade, esticado
+    const encaixa = (c, r) => Math.abs((a.w / a.h) / (c / r) - 1) <= 0.01;
     const setBg = fitCols => Store.tx('Imagem de fundo', () => {
-      const p = { bg: { asset: a.id, stretch: false, dx: 0, dy: 0, scale: 1 } };
-      if (fitCols) { p.cols = fitCols; p.rows = Math.max(2, Math.round(fitCols * a.h / a.w)); }
+      const c = fitCols || sc.cols, r = fitCols ? Math.max(2, Math.round(fitCols * a.h / a.w)) : sc.rows;
+      const p = { bg: { asset: a.id, stretch: encaixa(c, r), dx: 0, dy: 0, scale: 1 } };
+      if (fitCols) { p.cols = c; p.rows = r; }
       Store.scn(p);
     });
     modal({
@@ -4044,7 +4049,7 @@ const UI = (() => {
     // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
     feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
-    passagem, porNaFamilia, janelaAndares, andarPelaPassagem, pintarAndares, saidasDeAndar, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
+    passagem, porNaFamilia, janelaAndares, andarPelaPassagem, bgFromFile, pintarAndares, saidasDeAndar, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)

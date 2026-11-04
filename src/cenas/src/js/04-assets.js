@@ -131,11 +131,32 @@ const Assets = (() => {
       im = new Image();
       im.decoding = 'async';
       if (/^https?:/.test(a.url)) im.crossOrigin = 'anonymous';      // imagem que vem do banco: sem isto o canvas fica "sujo" e não exporta
-      im.onload = () => { im.ok = true; Render.request(); };
+      im.onload = () => { im.ok = true; reduzidas(im); Render.request(); };
       im.src = a.url;
       imgs.set(id, im);
     }
     return im.ok ? im : null;
+  }
+
+  /* (lote 81) Uma imagem grande (mais de 4096 px no lado maior): cópias com a metade e com um quarto do tamanho, para
+     desenhar a que basta no zoom de agora (ver escolher). Feitas uma vez, quando a imagem carrega. */
+  const GRANDE = 4096;
+  function reduzidas(im) {
+    const w = im.naturalWidth, hh = im.naturalHeight;
+    if (Math.max(w, hh) <= GRANDE || typeof createImageBitmap !== 'function') return;
+    im.mips = [];
+    for (const f of [0.5, 0.25]) {
+      createImageBitmap(im, { resizeWidth: Math.max(1, Math.round(w * f)), resizeHeight: Math.max(1, Math.round(hh * f)), resizeQuality: 'high' })
+        .then(b => { im.mips.push({ f, b }); im.mips.sort((x, y) => y.f - x.f); Render.request(); }, () => {});
+    }
+  }
+  /* A cópia que basta para desenhar a imagem com `porPx` pixels da imagem por pixel da tela (2 = cada pixel da tela
+     cobre dois da imagem): a menor que ainda tem ao menos um pixel por pixel da tela. */
+  function escolher(im, porPx) {
+    if (!im || !im.mips || !im.mips.length || !(porPx > 1)) return im;
+    let melhor = im;
+    for (const m of im.mips) if (porPx * m.f >= 1) melhor = m.b;
+    return melhor;
   }
 
   function decode(src) {
@@ -167,19 +188,31 @@ const Assets = (() => {
     return register(encode(cv, kind), cv.width, cv.height, kind, name);
   }
 
-  // Lê um arquivo de imagem, reduz se for grande demais e guarda.
+  /* Lê um arquivo de imagem, reduz se for grande demais e guarda.
+     (lote 81) O fundo vai até 8192 px no lado maior (antes, 4096); os tokens, 512. Um WebP ou JPEG que já cabe no
+     teto e no limite de tamanho sobe como veio (os mesmos bytes, sem passar pelo canvas): só o que precisa reduzir, ou
+     um PNG ou GIF, é recodificado. O canvas de passagem é liberado logo depois. */
+  const MAX_BG = 8192, MAX_TOKEN = 512, MAX_BYTES = 40 * 1024 * 1024;
+  const comoVeio = (file, w, hh, max) => /^image\/(webp|jpeg)$/.test(file.type || '') && Math.max(w, hh) <= max && file.size <= MAX_BYTES;
+  const lerDados = file => new Promise((ok, falha) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result)); rd.onerror = () => falha(rd.error || new Error('Não consegui ler essa imagem.')); rd.readAsDataURL(file); });
   async function fromFile(file, kind) {
     if (!file || !/^image\//.test(file.type || '')) throw new Error('Esse arquivo não é uma imagem.');
     const src = URL.createObjectURL(file);
     try {
       const im = await decode(src);
-      const max = kind === 'bg' ? 4096 : 512;
-      const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
-      const w = Math.max(1, Math.round(im.naturalWidth * k)), hh = Math.max(1, Math.round(im.naturalHeight * k));
-      const cv = document.createElement('canvas'); cv.width = w; cv.height = hh;
-      cv.getContext('2d').drawImage(im, 0, 0, w, hh);
+      const max = kind === 'bg' ? MAX_BG : MAX_TOKEN, nw = im.naturalWidth, nh = im.naturalHeight;
       const name = String(file.name || '').replace(/\.[a-z0-9]+$/i, '');
-      return await fromCanvas(cv, kind, name);
+      if (comoVeio(file, nw, nh, max)) {
+        if (Nuvem.on()) return await Nuvem.guardarArquivo(file, nw, nh, kind, name);
+        return register(await lerDados(file), nw, nh, kind, name);
+      }
+      const k = Math.min(1, max / Math.max(nw, nh));
+      const w = Math.max(1, Math.round(nw * k)), hh = Math.max(1, Math.round(nh * k));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = hh;
+      try {
+        cv.getContext('2d').drawImage(im, 0, 0, w, hh);
+        return await fromCanvas(cv, kind, name);
+      } finally { cv.width = 0; cv.height = 0; }                 // (a memória do canvas de passagem volta na hora)
     } finally { URL.revokeObjectURL(src); }
   }
 
@@ -195,5 +228,5 @@ const Assets = (() => {
     return S.assets[a.id];
   }
 
-  return { img, fromFile, fromCanvas, fromData, register, encode };
+  return { img, escolher, fromFile, fromCanvas, fromData, register, encode, MAX_BG, MAX_BYTES };
 })();

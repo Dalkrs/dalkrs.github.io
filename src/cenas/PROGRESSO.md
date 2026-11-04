@@ -262,6 +262,20 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
 | efeito | `apply` (`{ bar, amt, cond: { id, n, d } ou null, skip: [ids] }` ou `null`) | `null` | `normalizeScene` (`cleanApply`: valor zero ou inválido vira `''`; sem valor nem condição vira `null`) |
 | parede | `open`, `locked`, `secret` passam a ser sempre sim/não (janela e cortina usam `open`/`locked`) | `false` | `normalizeScene` |
 
+## Lote 81 — fundos grandes (Fortaleza Cinzenta 3.0)
+
+- [x] Teto do fundo em 8192 px no lado maior (`Assets.MAX_BG`); os tokens continuam em 512.
+- [x] WebP ou JPEG dentro do teto e de 40 MB sobe como veio, os mesmos bytes (`comoVeio`, `Nuvem.guardarArquivo`); sem
+      mesa, entra como data URL do próprio arquivo. PNG, GIF ou maior que o teto passa pelo canvas (reduz e recodifica).
+- [x] O canvas de passagem é zerado logo depois do envio.
+- [x] Limite de 40 MB: `supabase/migrations/0037_imagens_de_ate_40_mb.sql` (ensaiado no banco local) e `arquivos.subir`.
+- [x] Fundo com mais de 4096 px: cópias de ½ e ¼ (`createImageBitmap`) e `Assets.escolher` desenha a que basta para o
+      zoom (a menor com pelo menos um pixel da imagem por pixel da tela). Não cortei em blocos: medido, não precisou.
+- [x] "Ajustar a cena ao mapa" sugere `largura / 64` quando dá inteiro; a proporção da imagem igual à da cena (≤ 1%)
+      grava `stretch: true`.
+- [x] A lista de cenas não baixa os fundos (não há miniatura); os jogadores recebem a imagem só da cena no ar.
+- Teste: `test/lote81.js` (11). Rodados: `perf2.js`, `stress.js`, `unit.js`, `e2e.js`, `ui.js` — sem mudança.
+
 ## Frágil / observar
 
 - `cenas/index.html` (página do site) é PRODUTO do `build.sh`: mexeu em `src/`, rodar o build e levar o arquivo junto. Hoje ele
