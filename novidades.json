@@ -2,6 +2,22 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.04-7",
+      "data": "2026-11-04",
+      "titulo": "O mapa-múndi bem mais leve",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: mexer num rio, numa estrada ou numa tropa não regrava mais a grade inteira de hexágonos. Cada mudança agora gasta bem menos dados, e o site abre mais leve. Nada muda na tela."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Quem estiver com o terreno do mapa-múndi vazio precisa recarregar o site pelo botão “Versão nova”: a grade agora chega de outro jeito."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.04-6",
       "data": "2026-11-04",
       "titulo": "Os recursos do clã com desenho",

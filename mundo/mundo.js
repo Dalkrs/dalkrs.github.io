@@ -22,6 +22,11 @@
   /* (lote 20) a projeção de um mapa na data de uma campanha (a linha do tempo): mundo:pubc:<mapa>@<campanha> — o "@" faz
      o banco entregá-la só a quem participa daquela campanha; o jogador dela usa esta no lugar da projeção de sempre. */
   const PRE_PUBC = 'mundo:pubc:';
+  /* (lote 87) A grade de hexágonos (250 KB num mapa grande) mora num documento só dela, e não em cada uma das cópias do mapa:
+     mundo:hexm:<mapa> { hexes } (a do mestre) e mundo:hexp:<mapa> { hexes } (a dos jogadores: sem o que a névoa cobre).
+     Assim, mexer num rio ou numa tropa não regrava nem reenvia a grade. As cópias continuam sendo entendidas com a grade
+     dentro: é como vêm as de antes, e a de um mapa cuja grade ainda não chegou ao banco. Quem lê junta em comHex. */
+  const PRE_HEXM = 'mundo:hexm:', PRE_HEXP = 'mundo:hexp:';
   const FERRAMENTAS = ['sel', 'm', 'g', 'r', 'e', 't', 'f', 'h', 'p', 'n', 'd', 'w', 'x'];      // (lote 17: w, a caneta — de todos; lote 63: x, o exército novo)
   const MAX_DESFAZER = 100;
   const ESPERA = { local: 400, fora: 900 };
@@ -503,6 +508,7 @@
       gravarEstado(est);
     } else {
       apagarDocMesa(PRE_MAPA + id);
+      apagarDocMesa(PRE_HEXM + id);
       sombraDoc.delete(id);
       if (App.mostrado === id) App.mostrado = null;
     }
@@ -610,7 +616,42 @@
   const sombraDoc = new Map(), sombraPub = new Map(), restaurados = new Set();
   let sombraIndice = null;
   // O jogador nunca grava nada na mesa: as duas portas de escrita conferem o papel.
-  function gravarDocMesa(id, campos, opt) { if (modo === 'mesa' && App.papel === 'mestre' && D) D.gravar(id, campos, undefined, opt); }
+  function gravarDocMesa(id, campos, opt) { if (modo === 'mesa' && App.papel === 'mestre' && D) D.gravar(id, semHex(id, campos, opt), undefined, opt); }
+  // (o banco devolve as chaves em outra ordem: comparar o texto diria que mudou)
+  function mesmaGrade(a, b) {
+    const ka = Object.keys(a);
+    if (ka.length !== Object.keys(b).length) return false;
+    for (const k of ka) { const x = a[k], y = b[k]; if (x !== y && j(x) !== j(y)) return false; }
+    return true;
+  }
+  // (quem sabe a revisão é a casca: a cópia desta moldura não acompanha a volta das próprias gravações)
+  function hexNoBanco(idHex) {
+    let l = null;
+    try { const c = window.parent !== window && window.parent.TC && window.parent.TC.dados && window.parent.TC.dados.col('documentos'); l = c && c.pegar ? c.pegar(idHex) : null; } catch (e) { /* sem casca */ }
+    if (!l && D) l = D.pegar(idHex);
+    return !!l && !l.apagado && l.rev > 0;
+  }
+  // grava a grade separada, se mudou (e a campanha, que acompanha a do mapa)
+  function gravarGrade(idHex, hexes, vis, cs, opt) {
+    const atual = hexesDe(idHex);
+    if (!D.pegar(idHex) || !atual || !mesmaGrade(atual, hexes) || !mesmas(campsDoc(D.pegar(idHex)), cs)) D.gravar(idHex, Object.assign({ dados: { hexes }, vis }, cs.length || campsDoc(D.pegar(idHex)).length ? { campanhas: cs.slice() } : {}), undefined, opt);
+  }
+  /* Tira a grade de uma cópia do mapa que vai para a mesa. Ela só sai depois que a separada está no banco: até lá a cópia
+     vai inteira, e uma falha de rede no meio do caminho nunca deixa um mapa sem grade. A projeção de uma data com grade
+     diferente da dos jogadores fica com a dela. */
+  function semHex(id, campos, opt) {
+    if (!campos || !campos.dados || typeof campos.dados !== 'object' || !campos.dados.hexes || typeof campos.dados.hexes !== 'object') return campos;
+    let idHex = null;
+    if (id.startsWith(PRE_MAPA)) { const mid = id.slice(PRE_MAPA.length); idHex = PRE_HEXM + mid; gravarGrade(idHex, campos.dados.hexes, 'mestre', campsDoMapa(mid), opt); }
+    else if (id.startsWith(PRE_PUB)) { const mid = id.slice(PRE_PUB.length); idHex = PRE_HEXP + mid; gravarGrade(idHex, campos.dados.hexes, 'mesa', campsDoMapa(mid)); }
+    else if (id.startsWith(PRE_PUBC)) { idHex = PRE_HEXP + id.slice(PRE_PUBC.length).split('@')[0]; const h = hexesDe(idHex); if (!h || !mesmaGrade(h, campos.dados.hexes)) return campos; }
+    else return campos;
+    if (!hexNoBanco(idHex)) return campos;
+    const dados = Object.assign({}, campos.dados); delete dados.hexes;
+    return Object.assign({}, campos, { dados });
+  }
+  // a cópia que está na mesa ainda leva a grade, que já está no banco em separado: vale regravar sem ela
+  const gradeSobrando = (l, idHex) => temHex(dadosDoc(l)) && hexNoBanco(idHex);
   function apagarDocMesa(id) { if (modo === 'mesa' && App.papel === 'mestre' && D && D.pegar(id)) D.apagar(id); }
   const dadosDoc = l => (l && !l.apagado && l.dados && typeof l.dados === 'object' && !Array.isArray(l.dados) ? l.dados : null);
   /* As cenas da mesa, como a aba Cenas as guarda nos documentos da mesa: [{ id, nome }], na ordem do mestre.
@@ -626,11 +667,21 @@
     return cenas.sort((a, b) => (ordem.indexOf(a.id) + 1 || 1e9) - (ordem.indexOf(b.id) + 1 || 1e9));
   };
   function docsMapas() { return D ? D.todas().filter(l => typeof l.id === 'string' && l.id.startsWith(PRE_MAPA) && idValido(l.id.slice(PRE_MAPA.length)) && dadosDoc(l)) : []; }
-  function docMapa(id) { const d = D ? dadosDoc(D.pegar(PRE_MAPA + id)) : null; return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null; }
+  const hexesDe = idDoc => { const d = D ? dadosDoc(D.pegar(idDoc)) : null; return d && d.hexes && typeof d.hexes === 'object' && !Array.isArray(d.hexes) ? d.hexes : null; };
+  const temHex = d => !!d && !!d.hexes && typeof d.hexes === 'object' && !Array.isArray(d.hexes) && Object.keys(d.hexes).length > 0;
+  /* A cópia com a grade. Na projeção, a que veio com grade dentro vale como está (pode ser a de outra data). No mapa do mestre,
+     soma-se a separada: um aparelho ainda na versão antiga, que não recebeu a grade, grava só o que mexeu, e nada se perde. */
+  function comHex(d, idHex, somar) {
+    const h = hexesDe(idHex);
+    if (!h) return d;
+    if (!temHex(d)) return Object.assign({}, d, { hexes: h });
+    return somar ? Object.assign({}, d, { hexes: Object.assign({}, h, d.hexes) }) : d;
+  }
+  function docMapa(id) { const d = D ? dadosDoc(D.pegar(PRE_MAPA + id)) : null; return d ? N.normalizarMapa(Object.assign({}, comHex(d, PRE_HEXM + id, true), { id })) : null; }
   function docPub(id) {
     const dc = D && camp && App.papel !== 'mestre' ? dadosDoc(D.pegar(PRE_PUBC + id + '@' + camp)) : null;      // (lote 20) a da data da campanha dele
     const d = dc || (D ? dadosDoc(D.pegar(PRE_PUB + id)) : null);
-    return d ? N.normalizarMapa(Object.assign({}, d, { id })) : null;
+    return d ? N.normalizarMapa(Object.assign({}, comHex(d, PRE_HEXP + id), { id })) : null;
   }
   /* O índice: os mapas do mundo que os jogadores podem abrir (com o nome) e o mapa que está sendo mostrado — que, numa
      mesa com campanhas, pode ser um mapa de campanha, que não está na lista do índice. */
@@ -814,7 +865,7 @@
     if (modo !== 'mesa' || App.papel !== 'mestre') return;
     const m = App.mapa && App.mapa.id === id ? App.mapa : docMapa(id);
     const lp = D.pegar(PRE_PUB + id), tem = !!dadosDoc(lp);
-    if (!m || m.oculto || escondidoNaMesa(id)) { if (tem) apagarDocMesa(PRE_PUB + id); sombraPub.delete(id); if (D) for (const l of D.todas()) if (typeof l.id === 'string' && l.id.startsWith(PRE_PUBC + id + '@') && dadosDoc(l)) apagarDocMesa(l.id); return; }
+    if (!m || m.oculto || escondidoNaMesa(id)) { if (tem) apagarDocMesa(PRE_PUB + id); apagarDocMesa(PRE_HEXP + id); sombraPub.delete(id); if (D) for (const l of D.todas()) if (typeof l.id === 'string' && l.id.startsWith(PRE_PUBC + id + '@') && dadosDoc(l)) apagarDocMesa(l.id); return; }
     const p = comMissoes(comBrasoes(N.projetar(m, projOpts()), id)), cs = campsDoMapa(id);
     /* atalhos que os jogadores recebem: para mapa escondido, nenhum (nem o nome dele); para um mapa que nem todos os
        que veem este podem ver (é de outra campanha), também nenhum; para cena, sem o nome dela */
@@ -829,8 +880,9 @@
       else if (o.liga.t === 'cena') o.liga = { t: 'cena', id: o.liga.id, nome: '' };
     }
     const jp = j(p);
+    gravarGrade(PRE_HEXP + id, p.hexes || {}, 'mesa', cs);     // (lote 87: antes das projeções das datas, que comparam com ela)
     pubsDasCampanhas(m, p, cs);
-    if (tem && sombraPub.get(id) === jp && mesmas(campsDoc(lp), cs)) return;
+    if (tem && sombraPub.get(id) === jp && mesmas(campsDoc(lp), cs) && !gradeSobrando(lp, PRE_HEXP + id)) return;
     gravarDocMesa(PRE_PUB + id, comColuna({ dados: p, vis: 'mesa' }, cs, PRE_PUB + id));
     sombraPub.set(id, jp);
   }
@@ -849,7 +901,7 @@
       const p = comMissoes(comBrasoes(N.projetar(nm, projOpts()), m.id));
       p.objs.forEach((o, i) => { const b = base.objs.find(x => x.id === o.id); if (b && 'liga' in b) o.liga = b.liga; else if (o.liga) o.liga = null; });
       const jp = j(p);
-      if (sombraPubC.get(k) === jp && dadosDoc(D.pegar(k))) continue;
+      if (sombraPubC.get(k) === jp && dadosDoc(D.pegar(k)) && !gradeSobrando(D.pegar(k), PRE_HEXP + m.id)) continue;
       gravarDocMesa(k, { dados: p, vis: 'mesa' });
       sombraPubC.set(k, jp);
     }
@@ -958,6 +1010,7 @@
     const nova = [...new Set((Array.isArray(lista) ? lista : []).filter(c => validas.has(c)))], antes = campsDoc(l);
     if (mesmas(antes, nova)) return false;
     gravarDocMesa(PRE_MAPA + id, { campanhas: nova });
+    if (D.pegar(PRE_HEXM + id)) D.gravar(PRE_HEXM + id, { campanhas: nova });
     for (const x of todosOsMapas()) sincronizarPub(x.id);
     sincronizarIndice();
     if (App.mapa && App.mapa.id === id && !naVista(nova)) {
@@ -1698,6 +1751,7 @@
       for (const m of todosOsMapas()) sincronizarPub(m.id);
       for (const l of D.todas()) if (typeof l.id === 'string' && l.id.startsWith(PRE_PUB) && dadosDoc(l) && !docMapa(l.id.slice(PRE_PUB.length))) apagarDocMesa(l.id);
       for (const l of D.todas()) if (typeof l.id === 'string' && l.id.startsWith(PRE_PUBC) && dadosDoc(l) && !docMapa(l.id.slice(PRE_PUBC.length).split('@')[0])) apagarDocMesa(l.id);     // (lote 20)
+      for (const l of D.todas()) if (typeof l.id === 'string' && dadosDoc(l) && (l.id.startsWith(PRE_HEXM) || l.id.startsWith(PRE_HEXP)) && !docMapa(l.id.slice(PRE_HEXM.length))) apagarDocMesa(l.id);     // (lote 87)
       sincronizarIndice();
       marcarSalvo('ok', 'Salvo na mesa');
       if (!docsMapas().length) oferecerLocais();
@@ -1741,10 +1795,10 @@
       if (!l || typeof l.id !== 'string' || !l.id.startsWith('mundo:')) return;
       if (l.id === 'mundo:modelos') { App.emit('modelos'); App.emit('muda', { origem: 'fora' }); return; }      // (lote 63)
       if (l.id.startsWith(PRE_RAB)) { App.emit('rabiscos'); return; }          // (lote 17) a caneta: só redesenha (o mapa não mudou)
-      if (App.papel === 'mestre' && l.id.startsWith(PRE_PUBC)) { const d = dadosDoc(l); if (d) sombraPubC.set(l.id, j(d)); else sombraPubC.delete(l.id); return; }     // (lote 20)
+      if (App.papel === 'mestre' && l.id.startsWith(PRE_PUBC)) { const d = dadosDoc(l); if (d) sombraPubC.set(l.id, j(comHex(d, PRE_HEXP + l.id.slice(PRE_PUBC.length).split('@')[0]))); else sombraPubC.delete(l.id); return; }     // (lote 20)
       if (App.papel === 'mestre' && l.id.startsWith(PRE_PUB)) {           // outro aparelho do mestre publicou
         const id = l.id.slice(PRE_PUB.length), d = dadosDoc(l);
-        if (d) sombraPub.set(id, j(N.normalizarMapa(Object.assign({}, d, { id })))); else sombraPub.delete(id);
+        if (d) sombraPub.set(id, j(N.normalizarMapa(Object.assign({}, comHex(d, PRE_HEXP + id), { id })))); else sombraPub.delete(id);
         return;
       }
       deFora();
