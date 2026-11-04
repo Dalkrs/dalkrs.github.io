@@ -254,6 +254,23 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### O Bloqueio com a VIT/2 e o elemento à vista (lote 90)
+
+- O Embate (`EMB`) saiu dos derivados: o Bloqueio (`BLQ`, nas defesas, `vit: true`) é `floor(VIT base / 2)` + o valor
+  próprio + itens + árvore + temporários. O `EMB` de antes vale como `BLQ` em tudo o que soma (`chaveViva`: itens,
+  árvore, temporários, ferimentos), nas fórmulas (`EMB`, `EMBATE`, `EMB_B`…) e em quem rola (`valorDoAtributo`). O
+  Embate à mão do Bestiário (`derMan.EMB`) vira o Bloqueio do monstro (no lugar de VIT/2 + o próprio). Tropas: o
+  comando padrão é `{ atr: 'BLQ', div: 3 }` (um `EMB` guardado vira `BLQ`). As listas de rolagem (casca, Cenas, Mapa,
+  Acampamento, Bestiário) ficam com onze chaves.
+- Conferido na mesa (só leitura): uma skill usava `EMB` (Lombo de Carregador); nenhuma ficha, item, fórmula ou tropa.
+- O elemento: `ELEM_INFO` (o desenho e a cor), `svgElem`, `elemDaFicha(pc)` (`{ FOR: [['FOGO', 3]] }`, das armas
+  equipadas) e `limparElem`. Na ficha: `.rselem` no cartão do número, `.itelem` colado no número principal do item e no
+  "Agora". Na rolagem: `dados.el` (a ficha, a telinha de dados e o F das Cenas mandam; `comEl` em tc/tc.js arruma), e o
+  feed e a rolagem grande mostram o selo `.el` ao lado do total, fora da conta.
+- Cartão do item: os selos (nível, etiquetas, relíquia, troca) em `.itselos`, embaixo do nome. Acampamento: `.tabs` e
+  `.areas` com `flex-wrap`.
+- Testes: `src/tests/fichas-lote90.test.js` e as partes novas de `rules.test.js` e `dados.rede.test.js`.
+
 ### A regra dos equipamentos nas Fichas (lote 89)
 
 - `tc/rules.js`: `FAIXAS_EQ` (F1 1–5, F2 6–10, F3 11–20, F4 21–30: arma, defesa, esquiva/bloqueio, acessório, o passo

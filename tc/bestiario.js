@@ -158,7 +158,7 @@
   const skillsDe = e => ({ arvores: e.skills.arvores, pontos: e.skills.pontos, alocados: e.skills.alocados });
   // a linha "de mentira" que as Cenas usam como se fosse a ficha de um personagem (sem estado: as barras moram no token)
   const linhaDe = (e, id) => ({ id: 'best:' + id, nome: e.nome, ficha: Object.assign(JSON.parse(JSON.stringify(e.ficha)), { nome: e.nome }), skills: skillsDe(e), estado: {}, best: true });
-  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ'];
   /* Tudo o que se mostra e se rola: os atributos (com o que a árvore soma), as defesas, as barras (o máximo, o começo e
      o piso), a iniciativa e o "poder" (os pontos do level com o tier, para medir o encontro). */
   function contas(e, cfg, bib) {

@@ -80,7 +80,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   ok(await P.locator('table.items').count() === 0 && await P.locator('[data-itcard="it1"]').count() === 1 && (await P.locator('[data-itcard="it1"] .itbon').innerText()).replace(/\s+/g, ' ').trim() === 'CAN +2' && await P.locator('[data-itembon]').count() === 0,
     'o cartão do Manto mostra só o que ele soma ("CAN +2"), sem a tabela de números: ' + await P.locator('[data-itcard="it1"] .itbon').innerText());
   await P.locator('[data-itemed="it1"]').click(); await w(300);
-  ok(await P.locator('[data-itcard="it1"] [data-itembon]').count() === 12 && await P.locator('[data-itembon="it1|EMB"]').count() === 1 && await P.locator('[data-itemed="it1"]').innerText() === 'Fechar', '"Editar" abre os doze números (atributos, secundários com o Embate, defesas)');
+  ok(await P.locator('[data-itcard="it1"] [data-itembon]').count() === 11 && await P.locator('[data-itembon="it1|EMB"]').count() === 0 && await P.locator('[data-itemed="it1"]').innerText() === 'Fechar', '"Editar" abre os onze números (atributos, secundários, defesas; lote 90: sem o Embate)');
   await P.locator('[data-itembon="it1|DFF"]').fill('3'); await P.locator('[data-itembon="it1|DFF"]').press('Tab'); await w(350);
   ok((await sel()).itens[0].bonus.DFF === 3 && /CAN \+2\s*·\s*DEF F \+3/.test(await P.locator('[data-itcard="it1"] .itbon').innerText()) && /DEF F \+3/.test(await P.locator('#itTotal').innerText()), 'mudar um número: o cartão e o "Em uso somam" acompanham');
   await P.locator('[data-itmais="it1"]').selectOption('rec:hp'); await w(300);

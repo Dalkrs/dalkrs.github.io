@@ -5,7 +5,7 @@
 //     na projeção dos jogadores;
 //   · as escolhas do Dalmo nas Fichas (o nome, o equipamento) chegam ao exército e à projeção; a veterania que o
 //     mestre muda nas Fichas também; a moral que ele muda no mapa chega à ficha;
-//   · o comandante pela ficha: o bônus pelo Embate da Selene (÷ 3, as tabelas base);
+//   · o comandante pela ficha: o bônus pelo Bloqueio da Selene (÷ 3, as tabelas base);
 //   · a batalha no mapa: as baixas e a linha no diário da tropa; o Desfazer leva junto;
 //   · com o mestre só nas Fichas (página nova), o Mapa-múndi abre escondido e as escolhas do Dalmo chegam ao mapa;
 //   · desligar: o exército e a ficha seguem cada um com os seus números.
@@ -59,7 +59,7 @@ const ficha = nome => ({ nome, raca: 'Humana', lado: 'Aliado', grupo: '', tags: 
       render();
     });
     ok(await ate(async () => !!(await tropa()) && await parado(M)), '(a tropa da Selene: Lanças, Elite, e Arqueiros, Recruta)');
-    const emb = await FM.evaluate(() => { const pc = S.personagens.find(p => p.id === 'pc_selene'); return Math.max(0, Math.round(valorDoAtributo(pc, 'EMB', 'total') || 0)); });
+    const emb = await FM.evaluate(() => { const pc = S.personagens.find(p => p.id === 'pc_selene'); return Math.max(0, Math.round(valorDoAtributo(pc, 'BLQ', 'total') || 0)); });
 
     // ---------------- o mapa: o exército e o inimigo ----------------
     let W = null;
@@ -95,7 +95,7 @@ const ficha = nome => ({ nome, raca: 'Humana', lado: 'Aliado', grupo: '', tags: 
     ok(await ate(async () => { const p = await pubDe(); return !!p && p.vet === 2 && !('tropa' in p) && !j(p).includes('"tropas"'); }), 'e na projeção dos jogadores (a média, sem os números nem a ligação)');
     // o comandante pela ficha
     const nota = await W.evaluate(() => ((document.querySelector('#pane [data-k="o:ga:cmdauto-v"]') || {}).textContent || ''));
-    ok(nota === 'Comando ' + (Math.floor(emb / 3) > 0 ? '+' : '') + Math.floor(emb / 3) + ', pelo Embate de Selene (' + emb + ' ÷ 3).', 'o comandante pela ficha: o Embate da Selene ÷ 3 — ' + nota);
+    ok(nota === 'Comando ' + (Math.floor(emb / 3) > 0 ? '+' : '') + Math.floor(emb / 3) + ', pelo Bloqueio de Selene (' + emb + ' ÷ 3).', 'o comandante pela ficha: o Bloqueio da Selene ÷ 3 — ' + nota);
     await W.evaluate(() => { MundoTela.zoom = 2.6; MundoTela.centrar('ga'); const e = document.querySelector('#pane [data-k="o:ga:tropa"]'); if (e) e.scrollIntoView({ block: 'center' }); }); await w(600);
     await foto(M, 'tropas-mapa-mestre');
 

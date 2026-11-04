@@ -71,10 +71,11 @@ const bs = G.bonus(L0, B, { cmd: { a: 4 } }, 'a', 'vi'), bs2 = G.bonus(L0, B, {}
 ok(bs.some(b => b.k === 'comandante' && b.v === 4) && bs2.some(b => b.k === 'comandante' && b.v === 1), 'o comandante pela ficha (o que quem chama calculou) vale no lugar do escrito: ' + j([bs, bs2]));
 
 // ---- o comandante e a batalha no diário
-ok(T.bonusDeComando(8, { atr: 'EMB', div: 3 }) === 2 && T.bonusDeComando(80, { atr: 'EMB', div: 1 }) === 20 && T.bonusDeComando(8, { atr: '', div: 3 }) === null && T.peloAtr('EMB') === 'pelo Embate' && T.peloAtr('FOR') === 'pela Força',
+ok(T.bonusDeComando(8, { atr: 'BLQ', div: 3 }) === 2 && T.bonusDeComando(80, { atr: 'BLQ', div: 1 }) === 20 && T.bonusDeComando(8, { atr: '', div: 3 }) === null && T.peloAtr('BLQ') === 'pelo Bloqueio' && T.peloAtr('FOR') === 'pela Força',
   'o bônus de comando: o atributo ÷ o divisor, para baixo, até 20; sem atributo, sem conta');
-ok(j(T.normCfg(null).cmd) === j({ atr: 'EMB', div: 3 }) && j(T.normCfg({ tropas: { cmd: { atr: '', div: 99 } } }).cmd) === j({ atr: '', div: 10 }) && T.normCfg({ tropas: { cmd: { atr: 'XX' } } }).cmd.atr === 'EMB',
-  'nas tabelas base: o Embate ÷ 3 de começo; "nenhum" vale; o divisor até 10');
+ok(j(T.normCfg(null).cmd) === j({ atr: 'BLQ', div: 3 }) && j(T.normCfg({ tropas: { cmd: { atr: '', div: 99 } } }).cmd) === j({ atr: '', div: 10 }) && T.normCfg({ tropas: { cmd: { atr: 'XX' } } }).cmd.atr === 'BLQ'
+  && T.normCfg({ tropas: { cmd: { atr: 'EMB', div: 3 } } }).cmd.atr === 'BLQ',
+  'nas tabelas base: o Bloqueio ÷ 3 de começo (lote 90: o Embate de antes vira o Bloqueio); "nenhum" vale; o divisor até 10');
 const fb = T.comBatalhaDoMapa(f2, { id: 'dr_bt.1:a', t: 'Exército de Selene × Hoste', r: 'v', lutaram: ['un_a', 'un_c'], perdas: { un_a: 30, un_x: 7 }, acabaram: ['Batedores'] }, '2026-10-29T12:00:00.000Z', '3 de Brumas, ano 412');
 const e0 = fb.diario[0], fa = fb.unid.find(u => u.id === 'un_a'), fc = fb.unid.find(u => u.id === 'un_c');
 ok(e0.id === 'dr_bt_1_a' && e0.k === 'bat' && e0.r === 'v' && e0.b === 30 && /Lanças −30/.test(e0.x) && /Batedores foi destruída/.test(e0.x) && e0.dj === '3 de Brumas, ano 412' && fa.bat === 3 && fa.baixas === 71 && fc.bat === 1 && fc.baixas === 0,

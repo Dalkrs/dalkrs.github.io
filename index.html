@@ -300,6 +300,11 @@ dialog.pista { width: min(760px, calc(100% - 24px)); }
 .rol .tt { margin-top: 3px; font-weight: 600; }
 .rol .rs { display: flex; align-items: baseline; gap: 10px; margin-top: 2px; }
 .rol .tot { font: 600 26px/1.1 var(--display); color: var(--lamp-ink); flex: none; }
+/* (lote 90) o selo do dano de elemento ao lado do total: pequeno, na cor do elemento, fora da conta */
+.rol .els { display: inline-flex; gap: 4px; flex: none; align-self: center; }
+.rol .el, .grande .el { display: inline-flex; align-items: center; gap: 2px; padding: 0 6px 0 4px; border-radius: 999px; font: 700 12.5px/1.6 var(--mono, ui-monospace); color: var(--ce); background: color-mix(in srgb, var(--ce) 15%, transparent); }
+.rol .el svg, .grande .el svg { flex: none; }
+.grande .els { display: inline-flex; gap: 6px; justify-content: center; margin: 0 0 4px; }
 .rol .res { color: var(--fg-2); font-size: 13px; min-width: 0; }
 .rol .vd { margin-top: 3px; font-weight: 600; font-size: 13px; }
 .rol .vd.sim { color: var(--ok); }
@@ -689,11 +694,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/supabase.js?v=1"></script>
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
-<script src="tc/rules.js?v=30"></script>
-<script src="tc/tc.js?v=45"></script>
+<script src="tc/rules.js?v=31"></script>
+<script src="tc/tc.js?v=46"></script>
 <script src="tc/busca.js?v=3"></script>
 <script src="tc/calendario.js?v=2"></script>
-<script src="tc/guia.js?v=56"></script>
+<script src="tc/guia.js?v=57"></script>
 <script src="tc/notas.js?v=6"></script>
 <script src="tc/dom.js?v=2"></script>
 <script src="tc/escudo.js?v=3"></script>
@@ -709,7 +714,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.04-9';
+  const VERSAO = '2026.11.04-10';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -2052,6 +2057,18 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   }
   // "· Dain X" depois do nome do jogador, quando o título da rolagem ainda não diz de quem é
   const comoQuem = d => (d && d.como && !String(d.titulo || '').includes(d.como) ? h('span', { class: 'como', text: d.como }) : null);
+  /* (lote 90) o dano de elemento da arma, ao lado do total: o desenho do elemento e o número ("🔥 +3"), fora da conta */
+  function selosElem(d) {
+    const R = window.TC && TC.rules, l = R && R.limparElem ? R.limparElem(d && d.el) : [];
+    if (!l.length) return null;
+    const box = h('span', { class: 'els' });
+    for (const [k, v] of l) {
+      const e = R.ELEM_INFO[k], s = h('span', { class: 'el', style: '--ce:' + e.cor, title: 'Dano de ' + e.nome.toLowerCase() + ' da arma, por cima do dano: ' + (v > 0 ? '+' : '') + v });
+      s.innerHTML = R.svgElem(k, 13); s.append(document.createTextNode((v > 0 ? '+' : '−') + Math.abs(v)));
+      box.append(s);
+    }
+    return box;
+  }
   function linha(l) {
     const meu = l.autor_id === conta.usuario.id, mestre = mesas.atual.papel === 'mestre', d = l.dados || {};
     let el;
@@ -2060,7 +2077,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       el = h('li', { class: 'it rol' + (l.secreta ? ' secreta' : ''), 'data-id': l.id, style: l.secreta ? null : 'border-left-color:' + corDe(l.autor_id) },
         h('div', { class: 'it-h' }, retrato(d), h('b', { text: l.autor_nome }), comoQuem(d), ORIGENS[l.origem] ? h('span', { class: 'or', text: ORIGENS[l.origem] }) : null, h('time', { text: hora(l.criado_em) })),
         d.titulo ? h('div', { class: 'tt', text: d.titulo }) : null,
-        h('div', { class: 'rs' }, d.total != null ? h('span', { class: 'tot', text: String(d.total) }) : null, h('span', { class: 'res', text: d.resumo || '' })),
+        h('div', { class: 'rs' }, d.total != null ? h('span', { class: 'tot', text: String(d.total) }) : null, selosElem(d), h('span', { class: 'res', text: d.resumo || '' })),
         d.veredito ? h('div', { class: 'vd ' + (d.passou === true ? 'sim' : d.passou === false ? 'nao' : 'emp'), text: d.veredito }) : null);
       // (lote 6) a linha endereçada: o mestre a mandou só para um jogador (ou, da Meditação, o jogador para o mestre) —
       // os dois a veem, e ela não vai para a mesa
@@ -2269,6 +2286,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       h('div', { class: 'gr-q' }, retrato(d), h('b', { text: d.como || l.autor_nome }), l.secreta ? h('span', { class: 'gr-s', text: 'em segredo' }) : null),
       d.titulo ? h('div', { class: 'gr-t', text: d.titulo }) : null,
       h('div', { class: 'gr-n', text: String(d.total) }),
+      selosElem(d),
       d.resumo ? h('div', { class: 'gr-r', text: d.resumo }) : null,
       d.veredito ? h('div', { class: 'gr-v ' + (d.passou === true ? 'sim' : d.passou === false ? 'nao' : 'emp'), text: d.veredito }) : null].filter(Boolean));
     el.style.setProperty('--gc', l.secreta ? 'var(--fg-3)' : corDe(l.autor_id));
@@ -2391,7 +2409,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
      mestre, entre todos), ajusta a fixa e clica no atributo; "Iniciativa" rola 1d20 + a iniciativa da ficha. As
      contas são as mesmas das Fichas (tc/rules.js), com as tabelas da mesa, a árvore, os bônus temporários e os
      ferimentos. A fixa começa na da ficha; a que a pessoa digitar aqui fica neste aparelho (não muda a ficha). */
-  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ'];
   const dadosEl = $('dados'), dadosPc = $('dadosPc'), dadosFixa = $('dadosFixa'), dadosBotoes = $('dadosBotoes'), dadosMaisA = $('dadosMaisA'), dadosMaisR = $('dadosMaisR');
   let dadosMem = { pc: '', fx: {}, mais: {}, def: {}, aberta: null }, dadosLista = '', dadosProntos = false, dadosOcupado = false, tDados = 0;
   const chaveDados = () => 'tinycats:dados:' + (mesas.atual ? mesas.atual.id + (mesas.atual.campanha ? '@' + mesas.atual.campanha : '') : '');      // (por mesa e por campanha em vista)
@@ -2427,7 +2445,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       return { nome: l.nome || 'Sem nome', fixa: pc.rol ? Math.max(0, Math.round(+pc.rol.fixa || 0)) : 0, ini: R.iniciativa(pc, cfg, extra).val || 0,
         itens: ROLAVEIS.map(x => ({ k: x, rot: rotulo(x), nome: R.NOMES[x] || x, valor: Math.max(0, Math.round(R.valorDoAtributo(c, x, fonte) || 0)),
           // (lote 73) nos cinco atributos, a base (sem o equipamento), como na ficha
-          base: R.ATRIBS.some(a => a.k === x) ? Math.max(0, Math.round(R.valorDoAtributo(c, x, 'base') || 0)) : null })) };
+          base: R.ATRIBS.some(a => a.k === x) ? Math.max(0, Math.round(R.valorDoAtributo(c, x, 'base') || 0)) : null,
+          el: R.elemDaFicha ? (R.elemDaFicha(pc)[x] || null) : null })) };
     } catch (e) { console.error(e); return null; }
   }
   // quanto fixar agora: o que está no campo; com o campo vazio, a fixa da ficha
@@ -2513,7 +2532,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     try {
       const mais = maisAgora();
       if (k === 'INI') await aoVivo.rolarIniciativa(pc, ct.ini, mais);        // (a iniciativa usa só o bônus no resultado; lote 21: os bônus ficam)
-      else { const it = ct.itens.find(x => x.k === k); if (it) { const r = daBase && it.base != null ? await aoVivo.rolarAtributo(pc, it.nome + ' base', it.base, fixaAgora(ct), mais) : await aoVivo.rolarAtributo(pc, it.nome, it.valor, fixaAgora(ct), mais); if (!r.ok) toast(r.error); } }
+      else { const it = ct.itens.find(x => x.k === k); if (it) { const r = daBase && it.base != null ? await aoVivo.rolarAtributo(pc, it.nome + ' base', it.base, fixaAgora(ct), Object.assign({}, mais, { el: it.el })) : await aoVivo.rolarAtributo(pc, it.nome, it.valor, fixaAgora(ct), Object.assign({}, mais, { el: it.el })); if (!r.ok) toast(r.error); } }
       descer();
     } catch (e) { toast((e && e.message) || 'A rolagem não chegou à mesa. Tente de novo.'); }
     dadosOcupado = false; pintarDados();

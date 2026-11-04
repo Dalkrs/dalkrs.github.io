@@ -105,7 +105,7 @@
         { t: 'Quem vê e quem controla', txt: 'Em cada ficha: o dono e se os outros jogadores veem. Ferimentos com cadeado, Estaque escondido, relações escondidas ou reveladas uma a uma.', ir: { aba: 'fichas', g: 'Quem vê e quem controla' } },
         { t: 'Criar o personagem com o jogador', txt: 'No menu da mesa, “Ficha…” ao lado do jogador. Ele recebe o aviso e cria passo a passo (raça, classe, atributos, primeiras habilidades); você confere depois. “Criar background” faz os NPCs da história dele.' },
         { t: 'Tabelas base', txt: 'As regras que valem para a mesa: os tipos de equipamento, a corrupção, as listas das tropas e o bônus da veterania.' },
-        { t: 'A regra dos equipamentos', txt: 'Faixa (F1 a F4, pelo nível), material (Q1 a Q3) e melhoria (+1 a +5) em cada item. A armadura reparte um total entre DEF F e DEF M (F1 18), até 2/3 num lado; a arma pode ter dano de elemento por cima (sugestão, sem trava). No “Editar” do item: “Melhorar +1” (o Compendiânio sai à mão) e o número que a faixa pede. No “⋯” do alto, “Ajustar equipamentos à regra…” mostra o que muda em cada ficha antes de aplicar, com Desfazer.', ir: { aba: 'fichas', g: 'A regra dos equipamentos' } },
+        { t: 'A regra dos equipamentos', txt: 'Faixa (F1 a F4, pelo nível), material (Q1 a Q3) e melhoria (+1 a +5) em cada item. A armadura reparte um total entre DEF F e DEF M (F1 18), até 2/3 num lado; a arma pode ter dano de elemento por cima (sugestão, sem trava). O elemento aparece ao lado do atributo da arma e na rolagem. O Bloqueio é VIT/2 + o da raça, do escudo e das skills. No “Editar” do item: “Melhorar +1” (o Compendiânio sai à mão) e o número que a faixa pede. No “⋯” do alto, “Ajustar equipamentos à regra…” mostra o que muda em cada ficha antes de aplicar, com Desfazer.', ir: { aba: 'fichas', g: 'A regra dos equipamentos' } },
         { t: 'A corrupção', txt: 'Vampírica, licantropa ou demoníaca, em cinco estágios. O painel fica em cima da ficha, só para você e o dono.', ir: { aba: 'fichas', g: 'A corrupção' } },
         { t: 'Dar uma tropa', txt: '“+ Tropas”, no fim das abas. Você define os números (tropas, HP, ATQ, DEF, veterania), registra batalhas e liga a tropa a um exército do Mapa-múndi.', ir: { aba: 'fichas', g: 'As tropas' } },
         { t: 'As perícias das tropas', txt: 'Nas Tabelas base, a lista das perícias (renomeie, tire, ponha outras) e duas chaves: os jogadores distribuem os pontos, e a rolagem soma o bônus da veterania. Os pontos de cada unidade ficam em “Pontos…”, na carta.', ir: { aba: 'fichas', g: 'As perícias das tropas' } },
@@ -509,5 +509,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 33, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 34, sistemas, tarefas, roteiro, sabia };
 })();

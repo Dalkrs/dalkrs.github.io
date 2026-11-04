@@ -61,9 +61,9 @@ mkdir -p "$(dirname "$SITE")"
   # só a página do site fala com a casca: mesa ao vivo, fichas da mesa, regras da ficha e dados
   echo '<script src="../tc/ponte.js?v=21"></script>'
   echo '<script src="../tc/dice.js?v=3"></script>'
-  echo '<script src="../tc/rules.js?v=30"></script>'
+  echo '<script src="../tc/rules.js?v=31"></script>'
   echo '<script src="../tc/tags.js?v=3"></script>'
-  echo '<script src="../tc/bestiario.js?v=3"></script>'
+  echo '<script src="../tc/bestiario.js?v=4"></script>'
   echo '<script src="../tc/sede.js?v=3"></script>'
   echo '<script src="../tc/corrupcao.js?v=1"></script>'
   echo '<script src="../cla/nucleo.js?v=11"></script>'            # (lote 59) os membros do clã, para "Puxar os membros do clã"

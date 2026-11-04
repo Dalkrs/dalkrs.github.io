@@ -30,7 +30,7 @@ const ficha = (nome, extra) => Object.assign({ nome, raca: 'Humana', lado: 'Alia
     ok(await ate(() => J.evaluate(() => !document.getElementById('dados').hidden && document.querySelectorAll('#dadosBotoes button[data-kb]').length === 5)), 'o painel Dados do jogador: a base embaixo dos cinco atributos');
     if (await J.locator('#dadosCorpo').isHidden()) await J.locator('#dadosAbre').click();
     const cor = await J.evaluate(() => [...document.querySelectorAll('#dadosBotoes .dados-c')].map(x => getComputedStyle(x).getPropertyValue('--cn').trim()));
-    ok(new Set(cor).size === 12, 'cada número com a cor da ficha: ' + cor.length);
+    ok(new Set(cor).size === 11, 'cada número com a cor da ficha (lote 90: sem o Embate): ' + cor.length);
     const base = await J.evaluate(() => document.querySelector('#dadosBotoes button[data-kb="FOR"] b').textContent);
     await J.locator('#dadosBotoes button[data-kb="FOR"]').click();
     ok(await ate(async () => { const l = await J.evaluate(() => { const x = TC.aoVivo.itens.filter(l => l.tipo === 'rolagem').pop(); return x ? x.dados : null; }); return l && /base/.test(l.titulo || '') ; }, 10000), 'o "base" rola a Força base (' + base + ')');

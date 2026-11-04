@@ -562,7 +562,7 @@
   /* (lote 33) Os números: o tier e o level; cada atributo com a letra (A recebe mais, E menos — como nas fichas) ou um
      número digitado (a base: o equipamento e a árvore somam por cima); os derivados (vazio: a conta de sempre); a
      iniciativa e as barras com fórmula ou número fixo (o equipamento ainda soma). */
-  const ATR5 = ['FOR', 'DES', 'VIT', 'CAN', 'AGI'], DER4 = [['ESQ', 'Esquiva'], ['FUR', 'Furtividade'], ['PER', 'Percepção'], ['EMB', 'Embate']];
+  const ATR5 = ['FOR', 'DES', 'VIT', 'CAN', 'AGI'], DER4 = [['ESQ', 'Esquiva'], ['FUR', 'Furtividade'], ['PER', 'Percepção'], ['EMB', 'Bloqueio']];      // (lote 90: o EMB à mão de antes é o Bloqueio do monstro)
   function edNumeros() {
     const f = ed.e.ficha;
     f.atrMan = ehObj(f.atrMan) ? f.atrMan : {};

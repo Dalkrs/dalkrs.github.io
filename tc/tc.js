@@ -840,6 +840,8 @@
     return out;
   }
   const comDd = (dados, dd) => { const l = limparDd(dd); if (l.length) dados.dd = l; return dados; };
+  // (lote 90) o dano de elemento que vai junto da rolagem (el: [['FOGO', 3]]): só um selo ao lado do total, fora da conta
+  const comEl = (dados, el) => { const R = TC.rules, l = R && R.limparElem ? R.limparElem(el) : []; if (l.length) dados.el = l; return dados; };
   function deResultado(k, titulo, x, check) {
     const v = check ? D().verdict(x.total, check) : null;
     return comDd({ k, titulo: titulo || '', total: x.total, resumo: semTotal(D().summary(x)), veredito: v ? v.text : null, passou: v ? v.passed : null }, D().diceOf(x));
@@ -855,6 +857,7 @@
     const r = D().rollFixaMais(v, fixa, mais);
     if (!r.ok) return r;
     const d = deResultado('fixa', ((pc && pc.nome ? pc.nome + ' · ' : '') + String(rotulo || '')).slice(0, 120), { mode: 'fixa', atributo: r.atributo, fixa: r.fixa, dieValue: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr });
+    comEl(d, mais && mais.el);
     await aoVivo.rolagem(d, { quem: pc || null });
     return r;
   };
@@ -1035,6 +1038,7 @@
       const vd = typeof d.veredito === 'string' && d.veredito.trim() ? d.veredito.trim().slice(0, 160) : null;
       dados = { k: 'ficha', titulo: String(d.quem || '').slice(0, 120), total: typeof d.total === 'number' ? d.total : null, resumo: String(d.det || '').slice(0, 600), veredito: vd, passou: vd && typeof d.passou === 'boolean' ? d.passou : null };
       comDd(dados, d.dd);                    // os dados que a ficha sorteou, um a um
+      comEl(dados, d.el);                    // (lote 90) o dano de elemento da arma, se o atributo é o dela
       opt.id = d.id ? 'f_' + String(d.id).slice(0, 50) : undefined;
     } else if (origem === 'cena' && d.kind === 'iniciativa') {
       const b = Number(d.bonus) || 0;
@@ -1047,6 +1051,7 @@
       // (ma, mr: os bônus só desta rolagem — no atributo, antes de rolar, e no resultado; base: o atributo sem o bônus)
       dados = { k: 'fixa', titulo: (String(d.name || '?') + ' · ' + String(d.attrNome || d.attr || '')).slice(0, 120), total: d.total, resumo: semTotal(D().summary({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d, total: d.total, base: d.base, ma: d.ma, mr: d.mr })), veredito: null, passou: null };
       comDd(dados, D().diceOf({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d }));
+      comEl(dados, d.el);
       if (d.oculto) opt.secreta = true;
       // a rolagem geral, rolada no lugar de um jogador com o pedido em aberto: vale como a resposta dele
       else if (typeof d.pedido === 'string' && d.pedido && typeof d.alvo === 'string' && d.alvo) {

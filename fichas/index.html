@@ -351,6 +351,15 @@ table.attr tr:last-child td{border-bottom:0}
 .ajreg-l input{margin-top:3px;flex:none;width:auto}
 .ajreg-l > span{flex:1;min-width:0;display:block;text-align:left}
 .ajreg-alto{display:inline-block;margin-left:4px;padding:0 6px;border-radius:999px;background:var(--brass-fundo);color:var(--brass-ink);font-size:11.5px}
+.itb.itelem{display:inline-flex;align-items:center;gap:2px;color:var(--ce);margin-left:-2px}
+.itb.itelem svg{flex:none}
+.rsval{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.rselems{display:inline-flex;gap:5px;align-items:center}
+.rselem{display:inline-flex;align-items:center;gap:2px;font-family:var(--monof);font-size:12.5px;font-weight:700;color:var(--ce);padding:0 5px 0 3px;border-radius:999px;background:color-mix(in srgb,var(--ce) 14%,transparent);line-height:1.5}
+.rselem svg{flex:none}
+.rschip .itb.itelem{margin-left:4px;font-weight:700}
+.itselos{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding-left:38px;min-width:0;margin-top:-2px}
+.itselos .ittroca{max-width:100%}
 .itbon{display:flex;flex-wrap:wrap;gap:3px 6px;align-items:center;font-family:var(--monof);font-size:12px;padding-left:38px}
 .itb{color:var(--teal);font-weight:600;white-space:nowrap}
 .itb.neg{color:var(--rubric)}
@@ -375,7 +384,7 @@ table.attr tr:last-child td{border-bottom:0}
 /* (lote 7) o "Só funciona com…" numa linha só dele (com vários itens, o nome do cartão não fica espremido) */
 .itreqlinha{display:flex;padding-left:38px;min-width:0}
 .itreqlinha .itreq{max-width:100%}
-.itcard.comalca .itbon,.itcard.comalca .itreqlinha{padding-left:64px}
+.itcard.comalca .itbon,.itcard.comalca .itreqlinha,.itcard.comalca .itselos{padding-left:64px}
 .itreq.falta{border-color:var(--rubric);color:var(--rubric)}
 .itcard.semfx .itbon,.itcard.semfx .itfxv{opacity:.55}
 .ittotal{display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--line-2);font-family:var(--monof);font-size:12px}
@@ -1790,12 +1799,12 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=21"></script>
-<script src="../tc/rules.js?v=30"></script>
+<script src="../tc/rules.js?v=31"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=2"></script>
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=17"></script>
-<script src="extras.js?v=21"></script>
+<script src="extras.js?v=22"></script>
 <script src="quadros.js?v=7"></script>
 <script src="skills-lista.js?v=1"></script>
 <script src="filtro-skills.js?v=3"></script>
@@ -1805,7 +1814,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../meditacao/nucleo.js?v=2"></script>
 <script src="../cla/nucleo.js?v=11"></script>
 <script src="../tc/calendario.js?v=2"></script>
-<script src="../tc/tropas.js?v=6"></script>
+<script src="../tc/tropas.js?v=7"></script>
 <script src="tropas.js?v=5"></script>
 <script>
 /* =======================================================================
@@ -1830,9 +1839,7 @@ const DERIV = [
    aliases:['FURTIVIDADE']},
   {k:'PER', nome:'Percepção',   desc:'DES + CAN/2',   calc:b=>b.DES+Math.floor(b.CAN/2),
    aliases:['PERCEPCAO','PERCEPÇÃO']},
-  // o Embate: a metade da Vitalidade base (para baixo) + o Bloqueio inteiro (d: as defesas já calculadas)
-  {k:'EMB', nome:'Embate',      desc:'VIT/2 + BLOQ',  calc:(b,d)=>Math.floor(b.VIT/2)+((d&&d.BLQ)||0),
-   aliases:['EMBATE']},
+  // (lote 90) o Embate saiu: virou o Bloqueio (VIT/2 + BLOQ, nas defesas)
 ];
 const ehDerivado = k => DERIV.some(d=>d.k===k);
 /* Defesas: valor manual por personagem (varia por raça) + o que os equipamentos somam.
@@ -1840,7 +1847,7 @@ const ehDerivado = k => DERIV.some(d=>d.k===k);
 const DEFESAS = [
   {k:'DFF', nome:'Defesa Física', rot:'DEF F', aliases:['DEFF','DEFESAFISICA']},
   {k:'DFM', nome:'Defesa Mágica', rot:'DEF M', aliases:['DEFM','DEFESAMAGICA']},
-  {k:'BLQ', nome:'Bloqueio',      rot:'BLOQ',  aliases:['BLOQUEIO','BLOQ']},       // valor próprio + itens; rola como a Esquiva
+  {k:'BLQ', nome:'Bloqueio',      rot:'BLOQ',  aliases:['BLOQUEIO','BLOQ','EMB','EMBATE']},       // VIT/2 + valor próprio + itens (lote 90); rola como a Esquiva
 ];
 const ehDefesa = k => DEFESAS.some(d=>d.k===k);
 /* cores dos cinco atributos principais, usadas na rolagem */
@@ -2167,8 +2174,8 @@ function calcular(pc){
     tot[a.k] =base[a.k]+eq[a.k];
   });
   const def={};                                   // manual da ficha + equipamentos
-  DEFESAS.forEach(d=>{ def[d.k]=(+((pc.defesas||{})[d.k])||0)+eq[d.k]; });
-  const der={}, derAnt={};                       // sempre a partir dos valores BASE (o Embate usa também o Bloqueio)
+  DEFESAS.forEach(d=>{ def[d.k]=(+((pc.defesas||{})[d.k])||0)+eq[d.k]+(d.k==='BLQ'? Math.floor((+base.VIT||0)/2) : 0); });   // (lote 90: o Bloqueio soma VIT/2)
+  const der={}, derAnt={};                       // sempre a partir dos valores BASE
   DERIV.forEach(d=>{ der[d.k]=d.calc(base,def)+eq[d.k]; derAnt[d.k]=d.calc(ant,def)+eq[d.k]; });
   const vars={LVL:+pc.level, NIVEL:+pc.level, MULT:mult, PTS:arred(total), TOTAL:arred(total)};
   DERIV.forEach(d=>{
@@ -2833,9 +2840,9 @@ function renderFicha(){
             <td class="num"><span style="color:var(--ink-soft);font-size:12.5px">${c.derAnt[d.k]}</span>
               <span class="delta ${dd>0?'up':'zero'}">${dd>0?'+'+arredTxt(dd):'·'}</span></td>
           </tr>`}).join('')}
-          ${DEFESAS.map(d=>`<tr class="defesa">
+          ${DEFESAS.map(d=>`<tr class="defesa"${d.k==='BLQ'?` title="Bloqueio = metade da Vitalidade base (${Math.floor((+c.base.VIT||0)/2)}) + o que você digita (a raça) + os equipamentos"`:''}>
             <td><span class="aname">${d.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${d.rot}</span></td>
-            <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">manual</span></td>
+            <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">${d.k==='BLQ'?'VIT/2 + manual':'manual'}</span></td>
             <td><input type="number" class="defbase" data-defesa="${d.k}" value="${(+((pc.defesas||{})[d.k])||0)}"></td>
             <td class="num vequip">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}${FichasExtras.htmlTemp(c,d.k)}</td>
             <td class="num vtot">${c.def[d.k]}</td>
@@ -2851,7 +2858,7 @@ function renderFicha(){
           </tr>
           </tbody>
         </table>
-        <div class="hint" style="margin-top:6px">Os derivados usam os atributos <strong>base</strong> (sem equipamento), metades arredondadas pra baixo, mais o campo especial de cada um na tabela de equipamentos; o Embate soma ainda o Bloqueio inteiro. As defesas e o bloqueio variam por raça: você digita a base e os equipamentos somam por cima. O limite de dano é só um número de consulta: você escreve, e ele não entra em conta nenhuma.</div>
+        <div class="hint" style="margin-top:6px">Os derivados usam os atributos <strong>base</strong> (sem equipamento), metades arredondadas pra baixo, mais o campo especial de cada um na tabela de equipamentos; o Bloqueio soma ainda a metade da Vitalidade base. As defesas e o bloqueio variam por raça: você digita a base e os equipamentos somam por cima. O limite de dano é só um número de consulta: você escreve, e ele não entra em conta nenhuma.</div>
         <div class="pctnote">
           ${pc.pctProprio?`<span>Percentuais deste personagem:</span>`:`<span>Percentuais gerais:</span>`}
           ${TIERS_ATR.map(t=>`<span class="mono">${t} ${(pctDe(pc,t)*100).toFixed(0)}%</span>`).join('')}
@@ -3123,8 +3130,11 @@ function htmlNumerosResumo(pc,c){
      (lote 69) Um clique no número rola a fixa dele (com o equipamento). Nos cinco atributos, a base (sem o equipamento)
      fica embaixo, num botão próprio: o mestre pede muito para rolar a base. */
   const chip=(k,rot,v,cls,nome)=>`<button type="button" class="rsn rscor${cls?' '+cls:''}" data-rolar-r="${esc(k)}"${corNum(k)} title="Rolar ${esc(rot)} · ${esc(k)}: ${v}"><span class="rsnm">${icoNum(k)}${esc(nome||k)}</span><b>${v}</b></button>`;
-  const atr=a=>{ const nome=a.nome.replace(' Mágica',''), t=c.tot[a.k], b=c.base[a.k];
-    return `<span class="rsn rsatr rscor c-${COR_ATR[a.k]||''}"${corNum(a.k)}><button type="button" class="rsrola" data-rolar-r="${a.k}" title="Rolar ${esc(a.nome)} com o equipamento: ${t}"><span class="rsnm">${icoNum(a.k)}${esc(nome)}</span><b>${t}</b></button><button type="button" class="rsbase${b===t?' igual':''}" data-rolar-base="${a.k}" title="Rolar ${esc(a.nome)} base, sem o equipamento: ${b}" aria-label="Rolar ${esc(a.nome)} base: ${b}">base <b>${b}</b></button></span>`; };
+  // (lote 90) o dano de elemento da arma que usa este atributo, ao lado do número: "12 🔥+3"
+  const R=window.TC&&TC.rules, els=R&&R.elemDaFicha? R.elemDaFicha(pc) : {};
+  const selo=k=>(els[k]||[]).map(([e,v])=>`<span class="rselem" title="Dano de ${esc(R.ELEM_INFO[e].nome.toLowerCase())} da arma, por cima do dano: ${v>0?'+':''}${v}" style="--ce:${R.ELEM_INFO[e].cor}">${R.svgElem(e,13)}${v>0?'+':'−'}${Math.abs(v)}</span>`).join('');
+  const atr=a=>{ const nome=a.nome.replace(' Mágica',''), t=c.tot[a.k], b=c.base[a.k], sl=selo(a.k);
+    return `<span class="rsn rsatr rscor c-${COR_ATR[a.k]||''}"${corNum(a.k)}><button type="button" class="rsrola" data-rolar-r="${a.k}" title="Rolar ${esc(a.nome)} com o equipamento: ${t}"><span class="rsnm">${icoNum(a.k)}${esc(nome)}</span><span class="rsval"><b>${t}</b>${sl?`<span class="rselems">${sl}</span>`:''}</span></button><button type="button" class="rsbase${b===t?' igual':''}" data-rolar-base="${a.k}" title="Rolar ${esc(a.nome)} base, sem o equipamento: ${b}" aria-label="Rolar ${esc(a.nome)} base: ${b}">base <b>${b}</b></button></span>`; };
   return `<div class="rsnums" aria-label="Atributos, derivados e defesas (um clique rola)">
     <span class="rsgrupo" aria-label="Atributos">${ATRIBS.map(atr).join('')}</span>
     <span class="rsgrupo rsder" aria-label="Calculados a partir dos atributos">${DERIV.map(d=>chip(d.k,d.nome,c.der[d.k],'',d.nome)).join('')}</span>
@@ -3146,7 +3156,10 @@ function htmlAgoraResumo(pc){
   for(const it of (pc.itens||[])){
     if(!it||it.equipado===false) continue;
     const bs=FichasExtras.bonusDoItem(it,pc); if(!bs.length) continue;
-    out.push(`<button type="button" class="rschip agora-item" data-irpara="bolsas|#painelItens" title="Equipado — na aba Bolsas e itens">${esc(it.nome||'Item')} <b>${bs.slice(0,2).map(x=>esc(x.rot)+' '+sinal(x.v)).join(' · ')}${bs.length>2?' …':''}</b></button>`);
+    // (lote 90) o elemento da arma entra colado no número principal: "FOR +10 🔥+3"
+    let n=0; const parte=[]; for(const x of bs){ if(x.elem){ if(parte.length) parte.push(FichasExtras.chipElem(x)); continue; } if(n>=2) break; parte.push((n?' · ':'')+esc(x.rot)+' '+sinal(x.v)); n++; }
+    const resto=bs.filter(x=>!x.elem).length>2;
+    out.push(`<button type="button" class="rschip agora-item" data-irpara="bolsas|#painelItens" title="Equipado — na aba Bolsas e itens">${esc(it.nome||'Item')} <b>${parte.join('')}${resto?' …':''}</b></button>`);
   }
   if(!out.length) return '';
   return `<div class="rsagora" aria-label="O que está valendo agora"><span class="rsagt">Agora</span>${out.join('')}</div>`;
@@ -4729,9 +4742,11 @@ function rolarNaFicha(pc,k,fonteAqui){
   const rot = esp? 'Defesa contra '+esp.nome.toLowerCase() : k;
   const extra=(m.atr? ' · '+sinalMais(m.atr)+' no atributo ('+Math.round(valor0)+' → '+valor+')' : '')+(m.res? ' · '+sinalMais(m.res)+' no resultado' : '');
   pc.ultRol={k:rot, valor, base:usouBase, total, texto:r.texto+extra, dado:r.dado, bruto:r.bruto, em:Date.now()};
-  logar({tipo:'fixa', quem:pc.nome, pc:pc.id,
+  // (lote 90) o dano de elemento da arma que usa este atributo vai junto, como um selo ao lado do total
+  const el=(window.TC&&TC.rules&&TC.rules.elemDaFicha)? (TC.rules.elemDaFicha(pc)[k]||null) : null;
+  logar(Object.assign({tipo:'fixa', quem:pc.nome, pc:pc.id,
     det:rot+' '+valor+(usouBase?' base':'')+' · '+r.texto+(r.dado?' → dado '+r.bruto:'')+extra,
-    total, dd:ddDaFixa(r)});
+    total, dd:ddDaFixa(r)}, el&&el.length? {el} : {}));
   save(); renderFicha();
 }
 

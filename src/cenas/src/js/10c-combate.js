@@ -812,7 +812,7 @@ const Luta = (() => {
      rola os NPCs ali) ou rola por todos (cada linha com a fixa dela; um botão rola tudo). Cada rolagem vai para a mesa
      ao vivo como as outras (em segredo, a de um token oculto), e a janela diz quem tirou mais. Nada muda na cena. */
   let ger = null, gerRelogio = 0;
-  const ATR_GERAL = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const ATR_GERAL = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ'];
   const nomeAtr = k => { const R = window.TC && window.TC.rules; return (R && R.NOMES && R.NOMES[k]) || k; };
   function encerrarGeral(fim) {
     const p = ger && ger.pedido;
@@ -838,7 +838,7 @@ const Luta = (() => {
     const P = ponte();
     const st = ger = {
       quem: sel.length ? 'sel' : deJogador().length ? 'jog' : 'todos',
-      atr: ATR_GERAL.includes(App.opt.gerAtr) ? App.opt.gerAtr : 'PER',
+      atr: ATR_GERAL.includes(App.opt.gerAtr) ? App.opt.gerAtr : App.opt.gerAtr === 'EMB' ? 'BLQ' : 'PER',
       rows: [], pedido: null, pedindo: false, cena: Store.S.current, card: null,
     };
     const linhasDe = quem => (quem === 'sel' ? sel.map(t => Store.get('tokens', t.id)).filter(Boolean) : quem === 'jog' ? deJogador() : todos())

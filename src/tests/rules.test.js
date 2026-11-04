@@ -49,16 +49,12 @@ for (const modo of ['floor', 'round', 'ceil', 'none']) {
       let x = a[k], y = b[k];
       if (k === 'vars') { y = {}; for (const v of Object.keys(x)) y[v] = b.vars[v]; }
       if (k === 'recursos') y = (b.recursos || []).map(r => ({ id: r.id, nome: r.nome, fml: r.fml, val: r.val, err: r.err }));
-      // o Bloqueio (lote 5) não existe na original: nas fichas sorteadas (sem bloqueio) ele vale 0 e o resto bate
+      // o Bloqueio (lote 5) não existe na original: nas fichas sorteadas (sem bloqueio) ele vale VIT/2, para baixo
+      // (lote 90: o Embate saiu e virou o Bloqueio); nas variáveis, EMB e EMBATE (os nomes de antes) leem o Bloqueio
       if (x && typeof x === 'object' && !Array.isArray(x) && y && typeof y === 'object' && 'BLQ' in y && !('BLQ' in x)) {
-        if (y.BLQ !== 0) ok(false, `(${modo}) personagem ${i}, campo ${k}: o bloqueio de quem não tem bloqueio devia ser 0 (veio ${y.BLQ})`);
+        const esperado = k === 'eq' ? 0 : Math.floor(b.base.VIT / 2);
+        if (y.BLQ !== esperado) ok(false, `(${modo}) personagem ${i}, campo ${k}: o bloqueio de quem não tem bloqueio devia ser VIT/2 = ${esperado} (veio ${y.BLQ})`);
         y = Object.assign({}, y); delete y.BLQ;
-      }
-      // o Embate (lote 6) também não existe na original: nos secundários ele é VIT/2, para baixo, + BLOQ (0 nas sorteadas)
-      if (x && typeof x === 'object' && !Array.isArray(x) && y && typeof y === 'object' && 'EMB' in y && !('EMB' in x)) {
-        const esperado = k === 'der' ? Math.floor(b.base.VIT / 2) : k === 'derAnt' ? Math.floor(b.ant.VIT / 2) : 0;
-        if (y.EMB !== esperado) ok(false, `(${modo}) personagem ${i}, campo ${k}: o Embate devia ser ${esperado} (veio ${y.EMB})`);
-        y = Object.assign({}, y); delete y.EMB;
       }
       ok(j(x) === j(y),`(${modo}) personagem ${i}, campo ${k}: original ${j(x).slice(0, 160)} · novo ${j(y).slice(0, 160)}`);
     }
@@ -130,7 +126,7 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   const c3 = R.calcular(p3, cfg0);
   ok(c3.recursos[0].val === 130 && c3.recursos[0].max === 130 && c3.recursos[0].eq === 30 && c3.recursos[2].max === 25 && c3.recursos[1].eq === 0, 'itens equipados somam no máximo da barra (HP 100 + 25 + 5; o desequipado não) — ' + j(c3.recursos.map(r => r.max)));
   ok(c3.defEsp.FOGO === 15 && c3.defEsp.GELO === 1 && c3.defEsp.CORTE === 4 && c3.defEsp.LUZ === 0 && c3.eqEsp.FOGO === 5 && c3.baseEsp.FOGO === 10 && Object.keys(c3.defEsp).length === 13, 'defesas específicas: a digitada mais a dos itens equipados — ' + j(c3.defEsp));
-  ok(j(c3.eq) === j(R.calcular(Object.assign(base(), { itens: [{ id: 'i1', equipado: true, bonus: { VIT: 2 } }] }), cfg0).eq) && Object.keys(c3.eq).length === 12, 'o bônus de sempre dos itens continua com as doze chaves (as dez de antes, o Bloqueio e o Embate)');
+  ok(j(c3.eq) === j(R.calcular(Object.assign(base(), { itens: [{ id: 'i1', equipado: true, bonus: { VIT: 2 } }] }), cfg0).eq) && Object.keys(c3.eq).length === 11, 'o bônus de sempre dos itens continua com as onze chaves (as dez de antes e o Bloqueio; lote 90: o Embate saiu)');
   ok(c3.vars.DEF_FOGO === 15 && R.valorDoAtributo(c3, 'FOGO') === 15 && R.ehDefesaEsp('PSI') && !R.ehDefesaEsp('DFF'), 'a defesa específica vira variável (DEF_FOGO) e pode ser rolada');
   // sem fórmula, a barra continua sem valor (o item não inventa um)
   const p4 = base(); p4.recursos.push({ id: 'vazia', nome: 'Vazia', fml: '' }); p4.itens = [{ id: 'i', bonus: {}, rec: { vazia: 10 } }];
@@ -161,8 +157,8 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   {
     const todos = { a: { n: 'Banquete', k: 'ATR', v: 2, t: 1 }, b: { n: 'Força', k: 'FOR', v: 3, t: 2 }, c: { n: 'minúscula', k: 'atr', v: 1, t: 3 }, d: { n: 'desligado', k: 'ATR', v: 50, off: true, t: 4 } };
     const Tt = R.temporarios(todos), c0t = R.calcular(pv, cfg0), c1t = R.calcular(pv, cfg0, { temp: todos });
-    ok(R.CHAVE_TODOS === 'ATR' && R.NOMES_BONUS.ATR === 'Todos os atributos' && R.CHAVES_BONUS.indexOf('ATR') < 0 && R.CHAVES_BONUS.length === 12 && R.CHAVES_BONUS[8] === 'EMB' && R.CHAVES_BONUS[11] === 'BLQ', 'a chave "todos os atributos" existe à parte das doze de sempre (o Embate com os secundários; o Bloqueio é a última)');
-    ok(j(Tt.soma) === j({ FOR: 6, DES: 3, VIT: 3, CAN: 3, AGI: 3, ESQ: 0, FUR: 0, PER: 0, EMB: 0, DFF: 0, DFM: 0, BLQ: 0 }) && Tt.lista.map(x => x.k).join() === 'ATR,FOR,ATR,ATR', 'soma nos cinco atributos (e só neles): ' + j(Tt.soma));
+    ok(R.CHAVE_TODOS === 'ATR' && R.NOMES_BONUS.ATR === 'Todos os atributos' && R.CHAVES_BONUS.indexOf('ATR') < 0 && R.CHAVES_BONUS.length === 11 && R.CHAVES_BONUS[10] === 'BLQ', 'a chave "todos os atributos" existe à parte das onze de sempre (lote 90: sem o Embate; o Bloqueio é a última)');
+    ok(j(Tt.soma) === j({ FOR: 6, DES: 3, VIT: 3, CAN: 3, AGI: 3, ESQ: 0, FUR: 0, PER: 0, DFF: 0, DFM: 0, BLQ: 0 }) && Tt.lista.map(x => x.k).join() === 'ATR,FOR,ATR,ATR', 'soma nos cinco atributos (e só neles): ' + j(Tt.soma));
     ok(R.ATRIBS.every(a => c1t.tot[a.k] === c0t.tot[a.k] + (a.k === 'FOR' ? 6 : 3) && c1t.base[a.k] === c0t.base[a.k]) && c1t.der.ESQ === c0t.der.ESQ && c1t.def.DFF === c0t.def.DFF && c1t.vars.DES_TMP === 3, 'na ficha: cada atributo sobe o seu tanto, a base não muda, derivados e defesas ficam como estavam');
     ok(c1t.recursos[0].max === c0t.recursos[0].max + 30, 'e as barras que dependem de um atributo acompanham (HP = VIT*10 sobe 30)');
     const ft = R.ferimentos({ x: { p: 'peito', t: 'corte', g: 2, k: 'ATR', v: -2, c: 1 } }), cft = R.calcular(pv, cfg0, { fer: { x: { p: 'peito', t: 'corte', g: 2, k: 'ATR', v: -2, c: 1 } } });
@@ -587,19 +583,19 @@ ok(R.valorDoAtributo(semExtra, 'FOR', 'total') === 63 && R.valorDoAtributo(semEx
   const pb = { id: 'b', nome: 'Bruna', tier: 'C', level: 3, tiers: { FOR: 'A', DES: 'B', AGI: 'C', VIT: 'D', CAN: 'E' }, pctProprio: null, defesas: { DFF: 2, DFM: 1, BLQ: 5 },
     itens: [{ id: 'e', nome: 'Escudo', equipado: true, bonus: { BLQ: 3, DFF: 1 } }, { id: 'g', nome: 'Guardado', equipado: false, bonus: { BLQ: 50 } }], recursos: [{ id: 'hp', nome: 'HP', fml: 'BLQ*10 + BLQ_B + BLQ_EQ' }] };
   const cb = R.calcular(pb, cfg0, { arvore: { BLQ: 2 }, temp: { t1: { n: 'Poção de pedra', k: 'BLQ', v: 4 } } });
-  ok(cb.def.BLQ === 14 && cb.eq.BLQ === 3 && cb.def.DFF === 3, 'bloqueio = o digitado (5) + o escudo equipado (3) + a árvore (2) + o bônus (4) = 14; o item guardado não conta — ' + j(cb.def));
-  ok(cb.vars.BLQ === 14 && cb.vars.BLQ_B === 5 && cb.vars.BLQ_EQ === 3 && cb.recursos[0].val === 148, 'vira variável das fórmulas (BLQ, BLQ_B, BLQ_EQ) — ' + cb.recursos[0].val);
-  ok(R.valorDoAtributo(cb, 'BLQ') === 14 && R.ehDefesa('BLQ') && R.NOMES.BLQ === 'Bloqueio' && R.CHAVES_BONUS.includes('BLQ'), 'pode ser rolado (como a Esquiva) e é uma chave de bônus de item, árvore e poção');
+  const v2 = Math.floor(cb.base.VIT / 2);
+  ok(cb.def.BLQ === 14 + v2 && cb.eq.BLQ === 3 && cb.def.DFF === 3, '(lote 90) bloqueio = VIT/2 (' + v2 + ') + o digitado (5) + o escudo equipado (3) + a árvore (2) + o bônus (4); o item guardado não conta — ' + j(cb.def));
+  ok(cb.vars.BLQ === 14 + v2 && cb.vars.BLQ_B === 5 + v2 && cb.vars.BLQ_EQ === 3, 'vira variável das fórmulas (BLQ, BLQ_B com a VIT/2, BLQ_EQ) — ' + cb.recursos[0].val);
+  ok(R.valorDoAtributo(cb, 'BLQ') === 14 + v2 && R.ehDefesa('BLQ') && R.NOMES.BLQ === 'Bloqueio' && R.CHAVES_BONUS.includes('BLQ'), 'pode ser rolado (como a Esquiva) e é uma chave de bônus de item, árvore e poção');
   const sem = R.calcular(Object.assign({}, pb, { defesas: { DFF: 2, DFM: 1 }, itens: [] }), cfg0);
-  ok(sem.def.BLQ === 0 && sem.vars.BLQ === 0, 'ficha antiga, sem bloqueio: vale 0 (e nada é gravado nela)');
-  ok(R.resumo(pb, cfg0, { arvore: { BLQ: 2 } }).def.BLQ === 10, 'o resumo (o que as outras abas leem) traz o bloqueio — ' + j(R.resumo(pb, cfg0, { arvore: { BLQ: 2 } }).def));
-  // o Embate (lote 6): VIT/2 (da base, para baixo) + o Bloqueio inteiro; é um secundário — rola, recebe bônus e vira variável
-  const vit = cb.base.VIT;
-  ok(cb.der.EMB === Math.floor(vit / 2) + 14 && R.ehDerivado('EMB') && R.NOMES.EMB === 'Embate' && R.valorDoAtributo(cb, 'EMB') === cb.der.EMB, 'Embate = VIT ' + vit + '/2, para baixo (' + Math.floor(vit / 2) + '), + o Bloqueio (14) = ' + cb.der.EMB);
-  const ce = R.calcular(Object.assign({}, pb, { itens: pb.itens.concat({ id: 'm', nome: 'Manopla', equipado: true, bonus: { EMB: 2 } }), recursos: [{ id: 'r', nome: 'R', fml: 'EMB + EMBATE + EMB_B' }] }), cfg0, { arvore: { BLQ: 2 }, temp: { t1: { n: 'Poção de pedra', k: 'BLQ', v: 4 } } });
-  ok(ce.der.EMB === cb.der.EMB + 2 && ce.eq.EMB === 2 && ce.recursos[0].val === 2 * ce.der.EMB + cb.der.EMB, 'um item com Embate +2 soma nele, e ele vira variável (EMB, EMBATE, EMB_B) — ' + ce.recursos[0].val);
-  ok(R.calcular(Object.assign({}, pb, { tiers: { FOR: 'E', DES: 'E', AGI: 'E', VIT: 'A', CAN: 'E' }, defesas: {} , itens: [] }), cfg0).der.EMB % 1 === 0, 'sempre um número inteiro');
-  ok(R.evalFormula('BLOQUEIO + BLOQ + BLQ_ARV + BLQ_TMP', cb.vars) === 34, 'nas fórmulas, o nome por extenso também vale (BLOQUEIO, BLOQ), e há o pedaço da árvore e o do bônus');
+  ok(sem.def.BLQ === Math.floor(sem.base.VIT / 2) && sem.vars.BLQ === sem.def.BLQ, 'ficha antiga, sem bloqueio: vale só a VIT/2 (e nada é gravado nela)');
+  { const rs = R.resumo(pb, cfg0, { arvore: { BLQ: 2 } }); ok(rs.def.BLQ === 10 + Math.floor(R.calcular(pb, cfg0).base.VIT / 2), 'o resumo (o que as outras abas leem) traz o bloqueio — ' + j(rs.def)); }
+  // (lote 90) o Embate saiu: virou o Bloqueio. O EMB de antes (itens, árvore, temporários, fórmulas, quem rola) vale como BLQ
+  ok(!R.ehDerivado('EMB') && !R.CHAVES_BONUS.includes('EMB') && R.valorDoAtributo(cb, 'EMB') === cb.def.BLQ, 'o Embate não existe mais; quem pede o EMB rola o Bloqueio');
+  const ce = R.calcular(Object.assign({}, pb, { itens: pb.itens.concat({ id: 'm', nome: 'Manopla', equipado: true, bonus: { EMB: 2 } }), recursos: [{ id: 'r', nome: 'R', fml: 'EMB + EMBATE + EMB_B' }] }), cfg0, { arvore: { BLQ: 2, EMB: 1 }, temp: { t1: { n: 'Poção de pedra', k: 'BLQ', v: 4 }, t2: { n: 'Velha', k: 'EMB', v: 1 } } });
+  ok(ce.def.BLQ === cb.def.BLQ + 4 && ce.eq.BLQ === cb.eq.BLQ + 2 && ce.recursos[0].val === 2 * ce.def.BLQ + ce.vars.BLQ_B, 'um item com EMB +2, a árvore com EMB +1 e um bônus EMB +1 somam no Bloqueio; nas fórmulas EMB, EMBATE e EMB_B leem o Bloqueio — ' + ce.recursos[0].val);
+  ok(R.calcular(Object.assign({}, pb, { derMan: { EMB: 50 }, itens: [] }), cfg0, {}).def.BLQ === 50, 'o Embate digitado à mão (os monstros) vira o Bloqueio deles, no lugar de VIT/2 + o valor próprio');
+  ok(R.evalFormula('BLOQUEIO + BLOQ + BLQ_ARV + BLQ_TMP', cb.vars) === 2 * (14 + v2) + 6, 'nas fórmulas, o nome por extenso também vale (BLOQUEIO, BLOQ), e há o pedaço da árvore e o do bônus');
 }
 // ---------- a árvore (lote 6): os caminhos trancados que o mestre abre, as contas entre chaves e o custo de uso ----------
 {

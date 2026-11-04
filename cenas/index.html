@@ -1327,9 +1327,9 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <body>
 <script src="../tc/ponte.js?v=21"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="../tc/rules.js?v=30"></script>
+<script src="../tc/rules.js?v=31"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="../tc/bestiario.js?v=3"></script>
+<script src="../tc/bestiario.js?v=4"></script>
 <script src="../tc/sede.js?v=3"></script>
 <script src="../tc/corrupcao.js?v=1"></script>
 <script src="../cla/nucleo.js?v=11"></script>
@@ -9224,7 +9224,7 @@ const Act = {
 const Fichas = (() => {
   let P = null, D = null, on = false, applying = false, papel = null, eu = null;
   const R = () => window.TC.rules;
-  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ'];
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
   const cfg = () => { const d = D && D.pegar('fichas:cfg'); return (d && d.dados && d.dados.v) || R().cfgPadrao(); };
   const get = id => (P && id ? P.pegar(id) : null);
@@ -9893,7 +9893,9 @@ const Fichas = (() => {
     const r = window.TC.dice.rollFixaMais(valor, fixa, mais);
     if (!r.ok) return r;
     const doPedido = ped && typeof ped.pedido === 'string' && ped.pedido && typeof ped.alvo === 'string' && ped.alvo ? { pedido: ped.pedido, alvo: ped.alvo } : null;
-    if (Ext.roll) { try { Ext.roll(Object.assign({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }, doPedido)); } catch (e) { console.error(e); } }
+    // (lote 90) o dano de elemento da arma que usa este atributo vai junto, como um selo ao lado do total
+    let el = null; try { const l = linhaDoTok(t); el = l && R().elemDaFicha ? (R().elemDaFicha(pcDe(l))[chave] || null) : null; } catch (e) { el = null; }
+    if (Ext.roll) { try { Ext.roll(Object.assign({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }, el && el.length ? { el } : {}, doPedido)); } catch (e) { console.error(e); } }
     return Object.assign({ nome: item[1] }, r);
   }
 
@@ -20778,7 +20780,7 @@ const Luta = (() => {
      rola os NPCs ali) ou rola por todos (cada linha com a fixa dela; um botão rola tudo). Cada rolagem vai para a mesa
      ao vivo como as outras (em segredo, a de um token oculto), e a janela diz quem tirou mais. Nada muda na cena. */
   let ger = null, gerRelogio = 0;
-  const ATR_GERAL = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const ATR_GERAL = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ'];
   const nomeAtr = k => { const R = window.TC && window.TC.rules; return (R && R.NOMES && R.NOMES[k]) || k; };
   function encerrarGeral(fim) {
     const p = ger && ger.pedido;
@@ -20804,7 +20806,7 @@ const Luta = (() => {
     const P = ponte();
     const st = ger = {
       quem: sel.length ? 'sel' : deJogador().length ? 'jog' : 'todos',
-      atr: ATR_GERAL.includes(App.opt.gerAtr) ? App.opt.gerAtr : 'PER',
+      atr: ATR_GERAL.includes(App.opt.gerAtr) ? App.opt.gerAtr : App.opt.gerAtr === 'EMB' ? 'BLQ' : 'PER',
       rows: [], pedido: null, pedindo: false, cena: Store.S.current, card: null,
     };
     const linhasDe = quem => (quem === 'sel' ? sel.map(t => Store.get('tokens', t.id)).filter(Boolean) : quem === 'jog' ? deJogador() : todos())

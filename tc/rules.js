@@ -80,19 +80,17 @@
      aliases:['FURTIVIDADE']},
     {k:'PER', nome:'Percepção',   desc:'DES + CAN/2',   calc:b=>b.DES+Math.floor(b.CAN/2),
      aliases:['PERCEPCAO','PERCEPÇÃO']},
-    // o Embate (lote 6): a metade da Vitalidade base, para baixo, mais o Bloqueio inteiro (o valor próprio, os itens,
-    // a árvore e os bônus dele) — `d` são as defesas já calculadas
-    {k:'EMB', nome:'Embate',      desc:'VIT/2 + BLOQ',  calc:(b,d)=>Math.floor(b.VIT/2)+((d&&d.BLQ)||0),
-     aliases:['EMBATE']},
+    // (lote 90) o Embate saiu: virou o Bloqueio (VIT/2 + BLOQ, nas defesas). O EMB de antes vale como BLQ.
   ];
   const ehDerivado = k => DERIV.some(d=>d.k===k);
   /* Defesas: valor manual por personagem (varia por raça) + o que os equipamentos somam.
      Não entram na distribuição de pontos do level. O Bloqueio (lote 5) segue a mesma regra — valor próprio + itens,
-     árvore e bônus — e rola como a Esquiva; na ficha, fica junto dos atributos secundários. */
+     árvore e bônus — e rola como a Esquiva; na ficha, fica junto dos atributos secundários.
+     (lote 90) O Bloqueio soma ainda a metade da Vitalidade base, para baixo (é o Embate de antes, que saiu). */
   const DEFESAS = [
     {k:'DFF', nome:'Defesa Física', rot:'DEF F', aliases:['DEFF','DEFESAFISICA']},
     {k:'DFM', nome:'Defesa Mágica', rot:'DEF M', aliases:['DEFM','DEFESAMAGICA']},
-    {k:'BLQ', nome:'Bloqueio',      rot:'BLOQ',  aliases:['BLOQUEIO','BLOQ']},
+    {k:'BLQ', nome:'Bloqueio',      rot:'BLOQ',  aliases:['BLOQUEIO','BLOQ','EMB','EMBATE'], vit:true},
   ];
   const ehDefesa = k => DEFESAS.some(d=>d.k===k);
   const TIERS_ATR = ['A','B','C','D','E'];
@@ -228,7 +226,10 @@
   const CHAVE_TODOS = 'ATR';
   NOMES_BONUS[CHAVE_TODOS] = 'Todos os atributos';
   // a chave como é guardada, ou '' se não é uma chave de bônus
-  const chaveDeBonus = k => (k === CHAVE_TODOS || CHAVES_BONUS.indexOf(k) >= 0 || CHAVES_ESP.indexOf(k) >= 0 ? k : '');
+  // (lote 90) o EMB (o Embate, que saiu) vale como BLQ em tudo o que soma: itens, árvore, temporários, ferimentos
+  const CHAVE_ANTIGA = Object.freeze({ EMB: 'BLQ' });
+  const chaveViva = k => (tem(CHAVE_ANTIGA, k) ? CHAVE_ANTIGA[k] : k);
+  const chaveDeBonus = k0 => { const k = chaveViva(k0); return k === CHAVE_TODOS || CHAVES_BONUS.indexOf(k) >= 0 || CHAVES_ESP.indexOf(k) >= 0 ? k : ''; };
   // soma v onde a chave manda: nas dez (soma), nas 13 específicas (esp), ou nos cinco atributos de uma vez
   const somarBonus = (soma, esp, k, v) => {
     if (k === CHAVE_TODOS) ATRIBS.forEach(a => { soma[a.k] += v; });
@@ -407,7 +408,7 @@
   }
   /* "for", " FOR " → 'FOR'; qualquer outra coisa → null (é nome de recurso) */
   function codigoBonus(ch) {
-    const c = String(ch == null ? '' : ch).trim().toUpperCase();
+    const c = chaveViva(String(ch == null ? '' : ch).trim().toUpperCase());
     return CHAVES_BONUS.indexOf(c) >= 0 ? c : null;
   }
   /* separa o mapa de bônus da árvore: arv (as dez chaves, zero quando não vem)
@@ -558,6 +559,7 @@
       ATRIBS.forEach(a=>{ b[a.k]+= (+it.bonus?.[a.k]||0); });
       DERIV.forEach(d=>{ b[d.k]+= (+it.bonus?.[d.k]||0); });
       DEFESAS.forEach(d=>{ b[d.k]+= (+it.bonus?.[d.k]||0); });
+      b.BLQ += (+it.bonus?.EMB||0);                  // (lote 90) o EMB de antes vale como BLQ
     }});
     return b;
   }
@@ -641,6 +643,8 @@
     const {arv,arvRec}=separarArvore(extra&&extra.arvore);
     const tiers=pc.tiers||{};
     const livres=pontosLivres(pc), aMao=manuais(pc.atrMan,ATRIBS), dMao=manuais(pc.derMan,DERIV);
+    // (lote 90) o Embate digitado à mão (os monstros de antes) vira o Bloqueio dele: no lugar de VIT/2 + o valor próprio
+    const blqMao=pc.derMan&&typeof pc.derMan==='object'&&tem(pc.derMan,'EMB')? numFinito(pc.derMan.EMB) : null;
     const nat={},base={},ant={},tot={};
     ATRIBS.forEach(a=>{
       const p=pctDe(pc,cfg,tiers[a.k]), m=aMao&&tem(aMao,a.k)?aMao[a.k]:null;
@@ -650,8 +654,9 @@
       tot[a.k] =mais(base[a.k]+eq[a.k],tmp[a.k]);
     });
     const def={};                                   // manual da ficha + equipamentos + árvore (+ temporários)
-    DEFESAS.forEach(d=>{ def[d.k]=mais(mais((+((pc.defesas||{})[d.k])||0)+eq[d.k],arv[d.k]),tmp[d.k]); });
-    const der={}, derAnt={};                       // sempre a partir dos valores BASE (o Embate usa também o Bloqueio)
+    const proprio=d=>(d.vit? (blqMao!=null? Math.max(0,Math.round(blqMao)) : Math.floor((+base.VIT||0)/2)+(+((pc.defesas||{})[d.k])||0)) : (+((pc.defesas||{})[d.k])||0));
+    DEFESAS.forEach(d=>{ def[d.k]=mais(mais(proprio(d)+eq[d.k],arv[d.k]),tmp[d.k]); });
+    const der={}, derAnt={};                       // sempre a partir dos valores BASE
     const daConta=(d,b)=>(dMao&&tem(dMao,d.k)?dMao[d.k]:d.calc(b,def));   // (lote 33) o digitado vale no lugar da conta
     DERIV.forEach(d=>{
       der[d.k]   =mais(mais(daConta(d,base)+eq[d.k],arv[d.k]),tmp[d.k]);
@@ -668,7 +673,7 @@
       d.aliases.forEach(al=>{vars[al]=der[d.k]});
     });
     DEFESAS.forEach(d=>{
-      vars[d.k]=def[d.k]; vars[d.k+'_B']=+((pc.defesas||{})[d.k])||0; vars[d.k+'_EQ']=eq[d.k];
+      vars[d.k]=def[d.k]; vars[d.k+'_B']=proprio(d); vars[d.k+'_EQ']=eq[d.k];
       d.aliases.forEach(al=>{vars[al]=def[d.k]});
     });
     ATRIBS.forEach(a=>{
@@ -684,6 +689,8 @@
       a.aliases.forEach(al=>{vars[al+'_ARV']=arv[a.k]; vars[al+'_NAT']=nat[a.k];});
     });
     CHAVES_BONUS.forEach(k=>{ vars[k+'_TMP']=tmp[k]; });            // só os bônus temporários
+    // (lote 90) as fórmulas de antes com o Embate leem o Bloqueio
+    for(const suf of ['','_B','_EQ','_ARV','_TMP']){ vars['EMB'+suf]=vars['BLQ'+suf]; if(suf) vars['EMBATE'+suf]=vars['BLQ'+suf]; }
     DEFESAS_ESP.forEach(d=>{ vars['DEF_'+d.k]=defEsp[d.k]; });
     const recursos=(pc.recursos||[]).map(r=>{
       let val=null,err=null;
@@ -721,7 +728,8 @@
     return ATRIBS.reduce((s,a)=>s+pctDe(pc,cfg,tiers[a.k]),0);
   }
   /* o número que se rola: c é o resultado de calcular(); fonte 'base' só muda os cinco atributos */
-  function valorDoAtributo(c,atr,fonte){
+  function valorDoAtributo(c,atr0,fonte){
+    const atr=chaveViva(atr0);                      // (lote 90) quem ainda pede o EMB rola o Bloqueio
     if(ehDefesaEsp(atr)) return c.defEsp[atr];      // defesa específica: digitada + itens + temporários
     if(ehDefesa(atr))   return c.def[atr];          // defesa: manual + equipamento + árvore
     if(ehDerivado(atr)) return c.der[atr];          // derivados têm valor único
@@ -2141,6 +2149,39 @@
      2 e 3 elementos. */
   const ELEM_DANO = Object.freeze(['FOGO', 'AGUA', 'PEDRA', 'GELO', 'TROVAO', 'PLANTA', 'VENTO', 'LUZ', 'SOMBRAS', 'PSI']);
   const elemDaFaixa = f => { const F = faixaEq(f); return { max: Math.floor(F.arma / 3), n: [1, 1, 2, 3][F.f - 1] }; };
+  /* (lote 90) o desenho e a cor de cada tipo de dano de elemento (o traço dos ícones dos números da ficha) */
+  const ELEM_INFO = Object.freeze({
+    FOGO:    { nome: 'Fogo',        cor: '#f08a3c', d: '<path d="M12 3c.8 3.2 4.8 5.3 4.8 10a4.8 4.8 0 0 1-9.6 0c0-2.2 1-3.6 2.2-4.8.2 1.7 1 2.7 2 3.1C11.1 9 11 6 12 3z"/>' },
+    AGUA:    { nome: 'Água',        cor: '#4d9be8', d: '<path d="M12 3.5c3 4 6 7.2 6 10.5a6 6 0 0 1-12 0c0-3.3 3-6.5 6-10.5z"/>' },
+    PEDRA:   { nome: 'Pedra',       cor: '#b08a63', d: '<path d="M4 16.5 7 8.5l5.5-3 5.5 3.5 2 7.5-6 3.5z"/><path d="M7 8.5l5 4 6-3.5M12 12.5v6.5"/>' },
+    GELO:    { nome: 'Gelo',        cor: '#5fd0e0', d: '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5 12 6.5l2.5-2M9.5 19.5 12 17.5l2.5 2"/>' },
+    TROVAO:  { nome: 'Trovão',      cor: '#f2cc3d', d: '<path d="M13.5 3 6 13.5h5.5L10 21l8-11h-5.5z"/>' },
+    PLANTA:  { nome: 'Planta',      cor: '#5cb85c', d: '<path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z"/><path d="M5 19 13 11"/>' },
+    VENTO:   { nome: 'Vento',       cor: '#9ad48a', d: '<path d="M3 9h11a3 3 0 1 0-3-3"/><path d="M3 13h15a3 3 0 1 1-3 3"/><path d="M3 17h7"/>' },
+    LUZ:     { nome: 'Luz',         cor: '#e8c25a', d: '<circle cx="12" cy="12" r="3.8"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>' },
+    SOMBRAS: { nome: 'Sombras',     cor: '#a383e0', d: '<path d="M19 14.5A7.5 7.5 0 1 1 9.5 5a6 6 0 0 0 9.5 9.5z"/>' },
+    PSI:     { nome: 'Psicológico', cor: '#e57fb8', d: '<path d="M12 12.2a.9.9 0 1 1 .9-.9c0 2.1-3.3 2.6-3.6.2-.4-2.9 3.4-4.4 5.4-2.3 2.4 2.5.4 6.6-3 6.6-4 0-6.2-4.3-4.3-7.8 2.2-4 8.5-4.4 11 .2"/>' },
+  });
+  // o ícone do elemento (cor própria; o tamanho em px)
+  const svgElem = (k, px) => { const e = ELEM_INFO[k]; if (!e) return ''; const n = Math.max(8, Math.min(48, Math.round(numFinito(px) || 14)));
+    return '<svg class="icoelem" width="' + n + '" height="' + n + '" viewBox="0 0 24 24" fill="none" stroke="' + e.cor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + e.d + '</svg>'; };
+  /* (lote 90) o dano de elemento que vale em cada atributo: as armas equipadas (e funcionando) com elemento, pelo
+     atributo principal de cada uma (um anel de fogo de CAN +2 também conta, pelo CAN). → { FOR: [['FOGO', 3]], … } (somados por elemento, na ordem da lista) */
+  function elemDaFicha(pc) {
+    const itens = pc && Array.isArray(pc.itens) ? pc.itens : [], out = {};
+    for (const it of itens) {
+      // (a arma, ou qualquer item com elemento que não seja armadura, bota ou escudo: o elemento vai no maior atributo dele)
+      if (!itemAtivo(it, itens) || ['armadura', 'bota', 'escudo', 'fora'].includes(pecaDoItem(it))) continue;
+      const d = danoDoItem(it), ks = Object.keys(d); if (!ks.length) continue;
+      const k = chavesDaPeca(it, 'arma')[0], m = out[k] || (out[k] = {});
+      for (const e of ks) m[e] = (m[e] || 0) + d[e];
+    }
+    for (const k of Object.keys(out)) out[k] = ELEM_DANO.filter(e => out[k][e]).map(e => [e, out[k][e]]);
+    return out;
+  }
+  // a lista de elementos de uma rolagem, arrumada (para a mesa ao vivo): até 4 pares [chave, 1..999]
+  const limparElem = l => (Array.isArray(l) ? l : []).filter(x => Array.isArray(x) && ELEM_DANO.includes(x[0]) && Number.isFinite(+x[1]) && Math.round(+x[1]) !== 0)
+    .slice(0, 4).map(x => [x[0], Math.max(-999, Math.min(999, Math.round(+x[1])))]);
   function danoDoItem(it) {
     const d = ehObjeto(it) && ehObjeto(it.dano) ? it.dano : {}, out = {};
     for (const k of ELEM_DANO) { const v = numFinito(d[k]); if (v) out[k] = v; }
@@ -2238,7 +2279,7 @@
   }
 
   const api = {
-    ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, ehDerivado, ehDefesa,
+    ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, ehDerivado, ehDefesa, chaveViva,
     cfgPadrao, personagemPadrao,
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
     bonusDaArvore, unicasDe, iniciativa, estadoRecursos, aplicarDelta, podreDe, resumo,
@@ -2258,7 +2299,7 @@
     MIS_ESTADOS, missoes,
     XP_PASSO, xpDe, subirNivelXp, anivOk, aniversario,
     POR_NIVEL_PADRAO, porNivelDoTipo, tetoDoTipo, contaDoTeto,
-    FAIXAS_EQ, MAT_MAX, PECAS, ELEM_DANO, elemDaFaixa, danoDoItem, tetoArmadura, repartirArmadura, faixaDoNivel, faixaEq, etiquetasEq, textoEtiquetas, pecaDoItem, chavesDaPeca, valorDaFaixa, itemNaRegra, melhorarItem, ajusteDoItem, ajusteDaFicha
+    FAIXAS_EQ, MAT_MAX, PECAS, ELEM_DANO, ELEM_INFO, svgElem, elemDaFicha, limparElem, elemDaFaixa, danoDoItem, tetoArmadura, repartirArmadura, faixaDoNivel, faixaEq, etiquetasEq, textoEtiquetas, pecaDoItem, chavesDaPeca, valorDaFaixa, itemNaRegra, melhorarItem, ajusteDoItem, ajusteDaFicha
   };
 
   (root.TC || (root.TC = {})).rules = api;

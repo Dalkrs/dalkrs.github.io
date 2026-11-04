@@ -106,7 +106,7 @@ const estado = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d', 'Dain', 8,
     await P.selectOption('[data-itmais="es"]', 'dano:FOGO'); await w(300);
     await P.locator('[data-itx="dano"][data-it="es"][data-ch="FOGO"]').fill('3'); await P.locator('[data-itx="dano"][data-it="es"][data-ch="FOGO"]').press('Tab'); await w(300);
     ok((await item('pc_d', 'es')).dano.FOGO === 3, 'o dano de fogo entra no item (it.dano)');
-    ok(/Dano Fogo \+3/.test(await P.locator('[data-itcard="es"] .itbon').innerText()), 'o cartão mostra "Dano Fogo +3"');
+    ok(await P.locator('[data-itcard="es"] .itbon .itelem svg').count() === 1 && /\+3/.test(await P.locator('[data-itcard="es"] .itbon .itelem').innerText()), '(lote 90) o cartão mostra o fogo colado no FOR: "FOR +14 🔥+3"');
     ok(/Este item: Fogo 3\./.test(await P.locator('[data-itcard="es"] .itregelem').innerText()), 'e a sugestão confere');
     await foto('l89-elemento', '[data-itcard="es"]');
     await P.locator('[data-itemed="co"]').click(); await w(250);

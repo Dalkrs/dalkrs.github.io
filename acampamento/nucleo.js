@@ -79,11 +79,12 @@
   const listaDe = (v, max) => (Array.isArray(v) ? v.filter(ehObj).slice(0, max) : []);
   /* (lote 18) O teste da caça: o atributo (os mesmos que se rolam nas Cenas), a dificuldade de cada lugar, de quantos em
      quantos pontos acima vem mais uma ração e o máximo de rações por caçador. */
-  const ATR_CACA = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const ATR_CACA = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ'];
   function normCaca(c) {
     c = ehObj(c) ? c : {};
     const p = REGRAS_PADRAO.caca, d = ehObj(c.dif) ? c.dif : {}, dif = {};
     for (const k of Object.keys(p.dif)) dif[k] = inteiro(d[k], p.dif[k], 0, 99999);
+    if (c.atr === 'EMB') c = Object.assign({}, c, { atr: 'BLQ' });      // (lote 90) o Embate virou o Bloqueio
     return { atr: ATR_CACA.includes(c.atr) ? c.atr : p.atr, dif, passo: inteiro(c.passo, p.passo, 1, 9999), max: inteiro(c.max, p.max, 1, 99) };
   }
   const r1d = v => Math.round(v * 10) / 10, r2d = v => Math.round(v * 100) / 100;
@@ -438,7 +439,7 @@
     return margem >= 0 ? { passou: true, margem, racoes: Math.min(r.max, 1 + Math.floor(margem / r.passo)) } : { passou: false, margem, racoes: 0 };
   }
   function planoDaCaca(camp, o) {
-    const r = camp.regras.caca, atr = ATR_CACA.includes(o.atr) ? o.atr : r.atr, dif = inteiro(o.dif, difDaCaca(camp), 0, 99999);
+    const r = camp.regras.caca, atr = ATR_CACA.includes(o.atr) ? o.atr : o.atr === 'EMB' ? 'BLQ' : r.atr, dif = inteiro(o.dif, difDaCaca(camp), 0, 99999);
     const linhas = listaDe(o.rolagens, 60).filter(x => idOk(x.id) && Number.isFinite(num(x.total, NaN))).map(x => {
       const z = racoesDaCaca(camp, x.total, dif);
       return { id: x.id, nome: texto(x.nome, MAX_NOME), total: Math.round(num(x.total, 0)), det: texto(x.det, 80), passou: z.passou, margem: z.margem, racoes: z.racoes, on: x.on !== false && z.racoes > 0 };

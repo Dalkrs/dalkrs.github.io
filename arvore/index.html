@@ -626,7 +626,7 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
 <script src="../tc/ponte.js?v=21"></script>
-<script src="../tc/rules.js?v=30"></script>
+<script src="../tc/rules.js?v=31"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=2"></script>
 <script src="../tc/tags.js?v=3"></script>
@@ -907,8 +907,8 @@ function normalizarNo(n, b, ids){
   for(const k of Object.keys(n)) if(k.startsWith('_')) delete n[k];
 }
 /* Bônus que um grau dá na ficha do personagem. No editor é um texto ("FOR +2, HP +10"); guardado, um mapa {FOR:2, HP:10}.
-   Siglas de atributo (FOR DES VIT CAN AGI ESQ FUR PER EMB DFF DFM BLQ) somam no atributo; qualquer outro nome é o de um recurso da ficha (HP, SP…). */
-const SIGLAS_BONUS = ['FOR','DES','VIT','CAN','AGI','ESQ','FUR','PER','EMB','DFF','DFM','BLQ'];
+   Siglas de atributo (FOR DES VIT CAN AGI ESQ FUR PER DFF DFM BLQ) somam no atributo (EMB, de antes, soma no BLQ); qualquer outro nome é o de um recurso da ficha (HP, SP…). */
+const SIGLAS_BONUS = ['FOR','DES','VIT','CAN','AGI','ESQ','FUR','PER','DFF','DFM','BLQ','EMB'];      // (lote 90: EMB, o Embate de antes, soma no Bloqueio)
 function bonusLimpo(b){
   if(!b || typeof b!=='object' || Array.isArray(b)) return null;
   const o = {};
@@ -2317,7 +2317,7 @@ function campoIni(a, g, i){
 }
 function campoBonus(g, i){
   return `<input class="campo gbonus" data-g="${i}" value="${esc(bonusTexto(g.bonus))}" placeholder="Bônus na ficha (opcional): FOR +2, HP +10" style="margin-top:4px"
-    title="O que este grau soma na ficha de quem o escolher. Siglas dos atributos (FOR DES VIT CAN AGI ESQ FUR PER EMB DFF DFM BLQ) ou o nome de um recurso da ficha (HP, SP…), separados por vírgula." aria-label="Bônus na ficha, grau ${i+1}">`;
+    title="O que este grau soma na ficha de quem o escolher. Siglas dos atributos (FOR DES VIT CAN AGI ESQ FUR PER DFF DFM BLQ) ou o nome de um recurso da ficha (HP, SP…), separados por vírgula." aria-label="Bônus na ficha, grau ${i+1}">`;
 }
 function pintarTudo(){
   indexar(); garantirSelecoes();
@@ -3066,7 +3066,7 @@ function blocoNo(a, n){
     </div>
     ${blocoTranca(n)}
     <div class="grupo"><label class="rot" for="eDesc">Descrição</label><textarea id="eDesc" class="campo" placeholder="O que esta habilidade faz… (contas entre chaves: {FOR*2 + 10})">${esc(n.desc)}</textarea>
-      <p class="nota">Contas entre chaves viram o número do personagem: <code>{FOR*2 + 10}</code>. Valem FOR, DES, AGI, VIT, CAN, as defesas (DFF, DFM, BLQ), os derivados (ESQ, FUR, PER, EMB) e LVL.</p>
+      <p class="nota">Contas entre chaves viram o número do personagem: <code>{FOR*2 + 10}</code>. Valem FOR, DES, AGI, VIT, CAN, as defesas (DFF, DFM, BLQ — o Bloqueio já soma VIT/2), os derivados (ESQ, FUR, PER) e LVL.</p>
       ${(()=>{ const c = citadosEm(n); return c.length ? `<p class="nota citados">Cita: ${c.map(m=>linkNo(m)).join(', ')}</p>` : ''; })()}</div>
     <div class="acoes">
       <button class="btn" id="btDuplicar">Duplicar</button>

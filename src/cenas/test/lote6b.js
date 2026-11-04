@@ -42,7 +42,7 @@ const SHOTS = process.env.FOTOS;                         // (as fotos só saem c
   const opcoes = await page.locator('#ger-quem option').allInnerTexts();
   ok(j(opcoes) === j(['Os personagens dos jogadores (0)', 'Todos os tokens da cena (4)']) && await page.locator('#ger-quem').inputValue() === 'todos', 'sem seleção: escolhe quem rola — os personagens dos jogadores ou todos os tokens (o objeto de cenário fica de fora): ' + j(opcoes));
   ok(await page.locator('#ger-lista li').count() === 4 && /Espião \(oculto\)/.test(await page.locator('#ger-lista').innerText()), 'a lista: os quatro tokens, o oculto marcado');
-  ok(await page.locator('#ger-atr .chip').count() === 12 && await page.locator('#ger-atr .chip.on').innerText() === 'PER', 'os doze atributos para escolher; começa em Percepção');
+  ok(await page.locator('#ger-atr .chip').count() === 11 && await page.locator('#ger-atr .chip.on').innerText() === 'PER', 'os onze atributos para escolher (lote 90: sem o Embate); começa em Percepção');
   ok(await page.locator('#ger-pedir').count() === 0 && (await page.locator('#ger-tudo').innerText()) === 'Rolar tudo', 'fora de uma mesa não há pedido aos jogadores: o botão é "Rolar tudo"');
   await page.locator('#ger-a-FOR').click(); await w();
   ok(await page.locator('#ger-atr .chip.on').innerText() === 'FOR' && await ev(() => __tc.App.opt.gerAtr) === 'FOR', 'escolher Força (e a janela lembra da escolha)');

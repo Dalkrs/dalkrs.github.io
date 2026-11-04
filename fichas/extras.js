@@ -246,17 +246,25 @@ const FichasExtras = (() => {
   // só o que o item soma: as chaves com valor, o máximo de barras e as defesas específicas — [{ rot, v, title }]
   function bonusDoItem(it, pc) {
     const b = it.bonus || {}, out = [];
-    ATRIBS.concat(DERIV, DEFESAS).forEach(x => { const v = +b[x.k] || 0; if (v) out.push({ rot: x.rot || x.k, v, title: x.nome }); });
+    ATRIBS.concat(DERIV, DEFESAS).forEach(x => { const v = +b[x.k] || 0; if (v) out.push({ rot: x.rot || x.k, v, title: x.nome, k: x.k }); });
     if (RR()) {
       const rec = it.rec && typeof it.rec === 'object' ? it.rec : {}, def = it.def && typeof it.def === 'object' ? it.def : {};
       (pc.recursos || []).forEach(r => { const v = +rec[r.id] || 0; if (v) out.push({ rot: r.nome || 'Barra', v, title: 'No máximo de ' + (r.nome || 'barra') }); });
       ESP().forEach(d => { const v = +def[d.k] || 0; if (v) out.push({ rot: 'Def. ' + d.nome, v, title: 'Defesa contra ' + d.nome.toLowerCase() }); });
-      const dano = it.dano && typeof it.dano === 'object' ? it.dano : {};
-      ELEM().forEach(d => { const v = +dano[d.k] || 0; if (v) out.push({ rot: 'Dano ' + d.nome, v, title: 'Dano de ' + d.nome.toLowerCase() + ', por cima do dano da arma' }); });
+      // (lote 90) o dano de elemento: na arma, logo depois do número principal ("FOR +10 🔥+3"); nos outros, no fim
+      const dano = it.dano && typeof it.dano === 'object' ? it.dano : {}, R = RE();
+      const els = ELEM().filter(d => +dano[d.k]).map(d => ({ rot: d.nome, v: +dano[d.k], elem: d.k, title: 'Dano de ' + d.nome.toLowerCase() + ', por cima do dano da arma' }));
+      if (els.length) {
+        const k = R && !['armadura', 'bota', 'escudo', 'fora'].includes(R.pecaDoItem(it)) ? R.chavesDaPeca(it, 'arma')[0] : null, i = k ? out.findIndex(x => x.k === k) : -1;
+        if (i >= 0) out.splice(i + 1, 0, ...els); else out.push(...els);
+      }
     }
     return out;
   }
-  const chipsBonus = lista => lista.map(b => `<span class="itb ${b.v < 0 ? 'neg' : ''}" title="${esc(b.title)}">${esc(b.rot)} ${sinalTxt(b.v)}</span>`).join('<span class="itsep" aria-hidden="true">·</span>');
+  // (lote 90) o elemento vai colado no número anterior, só com o desenho: "FOR +10 🔥+3"
+  const chipElem = b => `<span class="itb itelem ${b.v < 0 ? 'neg' : ''}" title="${esc(b.title)}" style="--ce:${esc((RE().ELEM_INFO[b.elem] || {}).cor || 'currentColor')}">${RE().svgElem(b.elem, 13)}<span class="sr">${esc(b.rot)} </span>${sinalTxt(b.v)}</span>`;
+  const chipsBonus = lista => lista.map((b, i) => (b.elem ? (i && !lista[i - 1].elem ? '' : i ? '<span class="itsep" aria-hidden="true">·</span>' : '') + chipElem(b)
+    : (i ? '<span class="itsep" aria-hidden="true">·</span>' : '') + `<span class="itb ${b.v < 0 ? 'neg' : ''}" title="${esc(b.title)}">${esc(b.rot)} ${sinalTxt(b.v)}</span>`)).join('');
   // o nível aberto no "Editar" de um item com níveis (0: item comum)
   function nivelEditado(it) {
     const R = R7();
@@ -270,7 +278,7 @@ const FichasExtras = (() => {
   // (lote 89) os tipos de dano de elemento de uma arma: os nove elementos e o psicológico (com os nomes das defesas)
   const ELEM = () => { const R = RE(); return R && R.ELEM_DANO ? ESP().filter(d => R.ELEM_DANO.includes(d.k)) : []; };
   const NOME_K = k => (NOMES_K[k] || k);
-  const NOMES_K = { FOR: 'FOR', DES: 'DES', VIT: 'VIT', CAN: 'CAN', AGI: 'AGI', DFF: 'DEF F', DFM: 'DEF M', ESQ: 'Esquiva', BLQ: 'Bloqueio', FUR: 'FUR', PER: 'PER', EMB: 'EMB' };
+  const NOMES_K = { FOR: 'FOR', DES: 'DES', VIT: 'VIT', CAN: 'CAN', AGI: 'AGI', DFF: 'DEF F', DFM: 'DEF M', ESQ: 'Esquiva', BLQ: 'Bloqueio', FUR: 'FUR', PER: 'PER' };
   function htmlEtiquetas(it) {
     const R = RE(); if (!R) return '';
     const t = R.textoEtiquetas(it);
@@ -408,12 +416,13 @@ const FichasExtras = (() => {
         ${alca ? `<button type="button" class="itarr" data-itarr="${esc(it.id)}" title="Arraste para mudar a ordem — ou para outra seção, que troca o tipo. Com o teclado: as setas para cima e para baixo." aria-label="Mudar ${esc(nomeIt(it) || 'o item sem nome')} de lugar">${ALCA_SVG}</button>` : ''}
         <label class="itchave" title="${on ? 'Equipado: soma nas contas. Clique para guardar.' : 'Guardado: não soma. Clique para equipar.'}${g ? ' Grupo de troca: ' + esc(g) + '.' : ''}"><input type="checkbox" data-itemon="${esc(it.id)}" ${on ? 'checked' : ''} aria-label="${esc(it.nome || 'Item sem nome')}: equipado"><span class="itsw" aria-hidden="true"></span></label>
         <input class="inm itnome" data-itemnome="${esc(it.id)}" value="${esc(it.nome || '')}" placeholder="Nome do item" aria-label="Nome do item">
-        ${niv ? htmlNivelCartao(it) : ''}
-        ${htmlEtiquetas(it)}
-        ${it.reliquia ? `<span class="itrel" title="Relíquia">${RELIQUIA_SVG}<span>Relíquia</span></span>` : ''}
-        ${g ? `<span class="ittroca" title="Grupo de troca: equipar um item do grupo guarda os outros">${TROCA_SVG}<span>${esc(g)}</span></span>` : ''}
         <span class="itbts"><button type="button" class="mini" data-itemed="${esc(it.id)}" aria-expanded="${aberto}">${aberto ? 'Fechar' : 'Editar'}</button><button type="button" class="mini danger" data-itemdel="${esc(it.id)}" title="Tirar este item (dá para desfazer)" aria-label="Tirar o item ${esc(it.nome || 'sem nome')}">×</button></span>
       </div>
+      ${(() => { // (lote 90) os selos numa linha própria, embaixo do nome: o nome não some e os botões não vazam
+        const selos = (niv ? htmlNivelCartao(it) : '') + htmlEtiquetas(it)
+          + (it.reliquia ? `<span class="itrel" title="Relíquia">${RELIQUIA_SVG}<span>Relíquia</span></span>` : '')
+          + (g ? `<span class="ittroca" title="Grupo de troca: equipar um item do grupo guarda os outros">${TROCA_SVG}<span>${esc(g)}</span></span>` : '');
+        return selos ? `<div class="itselos">${selos}</div>` : ''; })()}
       ${req ? `<div class="itreqlinha"><span class="ittroca itreq ${semEfeito ? 'falta' : ''}" title="${semEfeito ? 'Sem efeito: só vale com ' + esc(req) + ' equipado' : 'Só funciona com ' + esc(req)}">${LIGA_SVG}<span>${semEfeito ? 'sem efeito · ' : 'com '}${esc(req)}</span></span></div>` : ''}
       <div class="itbon">${bon.length ? chipsBonus(bon) : '<span class="hint">sem bônus</span>'}</div>
       ${fx && !aberto ? `<div class="itfxv">${esc(fx)}</div>` : ''}
@@ -1133,9 +1142,9 @@ const FichasExtras = (() => {
             <td class="num vequip">${c.eq[d.k] ? (c.eq[d.k] > 0 ? '+' : '') + c.eq[d.k] : '—'}${htmlTemp(c, d.k)}</td>
             <td class="num vtot">${c.der[d.k]}</td>
           </tr>`).join('')}
-          ${DEFESAS.map(d => `<tr class="defesa">
+          ${DEFESAS.map(d => `<tr class="defesa"${d.k === 'BLQ' ? ` title="Bloqueio = metade da Vitalidade base (${Math.floor((+c.base.VIT || 0) / 2)}) + o que você digita (a raça) + os equipamentos"` : ''}>
             <td><span class="aname">${d.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${d.rot}</span></td>
-            <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">manual</span></td>
+            <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">${d.k === 'BLQ' ? 'VIT/2 + manual' : 'manual'}</span></td>
             <td><input type="number" class="defbase" data-defesa="${d.k}" value="${(+((pc.defesas || {})[d.k]) || 0)}"></td>
             <td class="num vequip">${c.eq[d.k] ? (c.eq[d.k] > 0 ? '+' : '') + c.eq[d.k] : '—'}${htmlTemp(c, d.k)}</td>
             <td class="num vtot">${c.def[d.k]}</td>
@@ -1143,7 +1152,7 @@ const FichasExtras = (() => {
           ${linhaLimiteDeDano(pc)}
           </tbody>
         </table>
-        <div class="hint" style="margin-top:6px">Distribuição livre: quem controla a ficha põe os pontos onde quiser. O total vem da tabela de levels (${c.limite} no level ${esc(String(pc.level))}); a ficha avisa se faltar ou passar, mas não trava. Os derivados usam os atributos <strong>base</strong> (o Embate soma ainda o Bloqueio inteiro); a árvore e os equipamentos somam por cima.</div>
+        <div class="hint" style="margin-top:6px">Distribuição livre: quem controla a ficha põe os pontos onde quiser. O total vem da tabela de levels (${c.limite} no level ${esc(String(pc.level))}); a ficha avisa se faltar ou passar, mas não trava. Os derivados usam os atributos <strong>base</strong> (o Bloqueio soma ainda a metade da Vitalidade base); a árvore e os equipamentos somam por cima.</div>
       </div>
     </div>`;
   }
@@ -1939,7 +1948,7 @@ const FichasExtras = (() => {
     aviso, janela, imagemOk, iniciais, miniatura,
     htmlRetrato, ligarRetrato, guardarImagem,
     htmlLapros, ligarLapros, laprosDe, lerLapros, MOEDA,
-    painelItens, ligarItens, ajustarARegra, abrirItem, mostrarItem, itemNovo, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,
+    painelItens, ligarItens, ajustarARegra, chipsBonus, chipElem, abrirItem, mostrarItem, itemNovo, bonusDoItem, ligarEfeitos, htmlEfeitosEquipados,
     htmlSobrevida, ligarSobrevida, sobrevidaDe,
     ehLivre, tornarLivre, painelAtributosLivre, htmlBotaoModo, ligarAtributos,
     painelMente, ligarMente, usaMente, valorMente, relsDe, MENTE,

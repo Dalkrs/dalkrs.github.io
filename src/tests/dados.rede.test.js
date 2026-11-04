@@ -10,7 +10,8 @@ const R = require('../../tc/rules.js');
 const { ok, end } = checker();
 const ficha = (nome, extra) => Object.assign({ nome, raca: 'Elfa da neve', lado: 'Aliado', grupo: '', tags: [], tier: 'C', level: 3, tiers: { FOR: 'A', DES: 'B', AGI: 'C', VIT: 'D', CAN: 'E' }, pctProprio: null, poderes: [],
   defesas: { DFF: 3, DFM: 6 }, rol: { fixa: 5, fonte: 'total' }, ini: 'AGI/5', disputa: {}, estaque: { a: '', b: '' }, habilidades: [], itens: [], notas: '', recursos: [{ id: 'hp', nome: 'HP', fml: '100' }] }, extra);
-const selene = ficha('Selene'), goblin = ficha('Goblin batedor', { lado: 'Inimigo', level: 1, ini: '1' });
+// (lote 90) a Selene com uma espada de fogo: a rolagem da Força leva o selo do elemento
+const selene = ficha('Selene', { itens: [{ id: 'esp', nome: 'Espada de brasa', equipado: true, bonus: { FOR: 2 }, dano: { FOGO: 3 } }] }), goblin = ficha('Goblin batedor', { lado: 'Inimigo', level: 1, ini: '1' });
 /* um som de mentira: conta as batidas (cada som da mesa são quatro) */
 const somFalso = () => {
   window.__batidas = 0;
@@ -56,8 +57,8 @@ const somFalso = () => {
   ok(await ate(() => M.evaluate(() => TC.dados.pendentes === 0)), '(as fichas sobem para a mesa)');
 
   // ---------- a telinha do jogador ----------
-  ok(await ate(() => J.evaluate(() => !document.getElementById('dados').hidden && document.querySelectorAll('#dadosBotoes button[data-k]').length === 13)), 'o mestre entrega uma ficha: a telinha de dados aparece para o jogador, sem recarregar');
-  const esperado = (() => { const cc = R.calcular(Object.assign({}, selene, { id: 'pc_selene' }), R.cfgPadrao(), {}); const o = {}; for (const k of ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ']) o[k] = String(Math.round(R.valorDoAtributo(cc, k, 'total'))); o.INI = '1d20 + ' + R.iniciativa(Object.assign({}, selene, { id: 'pc_selene' }), R.cfgPadrao(), {}).val; return o; })();
+  ok(await ate(() => J.evaluate(() => !document.getElementById('dados').hidden && document.querySelectorAll('#dadosBotoes button[data-k]').length === 12)), 'o mestre entrega uma ficha: a telinha de dados aparece para o jogador, sem recarregar');
+  const esperado = (() => { const cc = R.calcular(Object.assign({}, selene, { id: 'pc_selene' }), R.cfgPadrao(), {}); const o = {}; for (const k of ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ']) o[k] = String(Math.round(R.valorDoAtributo(cc, k, 'total'))); o.INI = '1d20 + ' + R.iniciativa(Object.assign({}, selene, { id: 'pc_selene' }), R.cfgPadrao(), {}).val; return o; })();
   const vistos = await botoes(J);
   ok(JSON.stringify(vistos) === JSON.stringify(esperado), 'os números são os da ficha (as mesmas contas): ' + JSON.stringify(vistos) + ' × ' + JSON.stringify(esperado));
   ok(await J.evaluate(() => !document.getElementById('dadosCorpo').hidden && document.getElementById('dadosFixa').value === '5' && [...document.querySelectorAll('#dadosPc option')].map(o => o.textContent).join() === 'Selene' && document.getElementById('dadosQuem').textContent.includes('Selene')),
@@ -71,6 +72,9 @@ const somFalso = () => {
   let r = await ultima(M);
   ok(r.autor === 'Dalmo' && r.d.titulo === 'Selene · Força' && r.d.k === 'fixa' && r.d.como === 'Selene' && r.d.total >= 6 && r.d.total <= FOR && JSON.stringify(r.d.dd) === JSON.stringify([[FOR - 5, r.d.total - 5]]) && r.d.resumo.includes('no d' + (FOR - 5)),
     'a linha diz de quem é ("Selene · Força"), o total cabe na regra da fixa e os dados ficam guardados (dd): ' + JSON.stringify(r.d));
+  ok(JSON.stringify(r.d.el) === JSON.stringify([['FOGO', 3]]) && await M.locator('#feed [data-id="' + r.id + '"] .rs .el svg').count() === 1 && /\+3/.test(await M.locator('#feed [data-id="' + r.id + '"] .rs .el').innerText()),
+    '(lote 90) a espada de fogo vai junto: o selo "🔥 +3" ao lado do total, fora da conta — ' + JSON.stringify(r.d.el));
+  if (process.env.FOTOS) await M.locator('#feed [data-id="' + r.id + '"]').screenshot({ path: process.env.FOTOS + '/l90-chat.png' });
   ok(/\brolou\b/.test(await cartao(M, r.id)) && await batidas(M) === 0, 'no aparelho do mestre a rolagem chega com o efeito (ligado de início) e sem som (desligado de início)');
   ok(await M.evaluate(() => document.getElementById('chaveSom').getAttribute('aria-pressed') === 'false' && document.getElementById('chaveEfeito').getAttribute('aria-pressed') === 'true' && /desligado neste aparelho/.test(document.getElementById('chaveSom').title)), 'as duas chaves ficam no topo da mesa ao vivo, e dizem como estão');
 
@@ -114,7 +118,7 @@ const somFalso = () => {
 
   // ---------- recarregando, a telinha lembra o que a pessoa deixou ----------
   await J.reload({ waitUntil: 'load' });
-  ok(await ate(() => J.evaluate(() => !document.getElementById('dados').hidden && document.querySelectorAll('#dadosBotoes button[data-k]').length === 13 && document.getElementById('dadosFixa').value === '3'), 30000), 'depois de recarregar, a telinha volta com a fixa que o jogador tinha deixado (3)');
+  ok(await ate(() => J.evaluate(() => !document.getElementById('dados').hidden && document.querySelectorAll('#dadosBotoes button[data-k]').length === 12 && document.getElementById('dadosFixa').value === '3'), 30000), 'depois de recarregar, a telinha volta com a fixa que o jogador tinha deixado (3)');
 
   // ---------- as Cenas do mestre: a iniciativa do jogador pode ser anotada na ordem de turnos ----------
   await M.locator('#tab-cenas').click();

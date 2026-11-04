@@ -62,10 +62,11 @@
   /* (lote 41) o comandante pela ficha: o atributo que dá o bônus de comando do exército (no d20) e o divisor —
      floor(valor ÷ divisor), até ±20. '' = sem conta (o mestre escreve o bônus no mapa). */
   const ATR_CMD = [['FOR', 'Força'], ['DES', 'Destreza'], ['VIT', 'Vitalidade'], ['CAN', 'Canalização'], ['AGI', 'Agilidade'], ['ESQ', 'Esquiva'], ['FUR', 'Furtividade'],
-    ['PER', 'Percepção'], ['EMB', 'Embate'], ['DFF', 'Defesa Física'], ['DFM', 'Defesa Mágica'], ['BLQ', 'Bloqueio']];
-  const CMD_PADRAO = { atr: 'EMB', div: 3 };
+    ['PER', 'Percepção'], ['DFF', 'Defesa Física'], ['DFM', 'Defesa Mágica'], ['BLQ', 'Bloqueio']];
+  // (lote 90) o Embate saiu (virou o Bloqueio: VIT/2 + BLOQ); quem guardou EMB passa a usar o Bloqueio
+  const CMD_PADRAO = { atr: 'BLQ', div: 3 };
   const nomeAtr = k => (ATR_CMD.find(x => x[0] === k) || [k, k])[1];
-  const peloAtr = k => (k === 'EMB' || k === 'BLQ' ? 'pelo ' : 'pela ') + nomeAtr(k);
+  const peloAtr = k => (k === 'BLQ' ? 'pelo ' : 'pela ') + nomeAtr(k);
   const bonusDeComando = (valor, cmd) => (cmd && cmd.atr && Number.isFinite(Number(valor)) ? Math.max(-20, Math.min(20, Math.floor(Number(valor) / Math.max(1, cmd.div || 1)))) : null);
   function normLista(l, comNumeros) {
     const out = [], vistos = new Set();
@@ -88,7 +89,7 @@
       vet: { 2: inteiro(vb[2], 0, MAX.bonus, VET_BONUS_PADRAO[2]), 3: inteiro(vb[3], 0, MAX.bonus, VET_BONUS_PADRAO[3]), 4: inteiro(vb[4], 0, MAX.bonus, VET_BONUS_PADRAO[4]), 5: inteiro(vb[5], 0, MAX.bonus, VET_BONUS_PADRAO[5]) },
       per: Array.isArray(t.per) ? normLista(t.per, 'per') : PER_PADRAO.map(x => Object.assign({}, x)), perJog: t.perJog === true, perVet: t.perVet === true,
       maxEquip: inteiro(t.maxEquip, 1, MAX.equipUnid, MAX_EQUIP_PADRAO),
-      cmd: { atr: cm.atr === '' ? '' : ATR_CMD.some(x => x[0] === cm.atr) ? cm.atr : CMD_PADRAO.atr, div: inteiro(cm.div, 1, 10, CMD_PADRAO.div) },
+      cmd: { atr: cm.atr === '' ? '' : cm.atr === 'EMB' ? 'BLQ' : ATR_CMD.some(x => x[0] === cm.atr) ? cm.atr : CMD_PADRAO.atr, div: inteiro(cm.div, 1, 10, CMD_PADRAO.div) },
     };
   }
   let seq = 0;

@@ -2,6 +2,38 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.04-10",
+      "data": "2026-11-04",
+      "titulo": "O Bloqueio com a Vitalidade e o fogo da arma à vista",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "O Bloqueio agora soma metade da Vitalidade base: é a VIT/2 mais o Bloqueio da raça, do escudo e das skills. O Embate saiu: ele era essa mesma conta. O que somava Embate (a skill Lombo de Carregador, por exemplo) passa a somar no Bloqueio."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: o dano de elemento da arma aparece ao lado do atributo dela, com o desenho do elemento — por exemplo, a Força com “🔥+3” de uma katana de fogo. Também no cartão do item (“FOR +14 🔥+3”) e no “Agora”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mesa ao vivo: ao rolar o atributo de uma arma com elemento, a rolagem chega com o selo do elemento ao lado do total (“18 🔥+3”). O selo não entra na conta: é o dano de fogo por cima."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Fichas: no cartão do item, a relíquia, o grupo de troca e as etiquetas descem para uma linha embaixo do nome: o nome aparece e os botões não saem mais do cartão."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Acampamento: as abas do painel (Caravana, Diário…) e as áreas do alto quebram em duas linhas quando não cabem, em vez de sumir para o lado."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Bestiário: o Embate digitado à mão dos monstros virou o Bloqueio deles. Tropas: o bônus do comandante passa a ser o Bloqueio ÷ 3 (o mesmo número de antes)."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.04-9",
       "data": "2026-11-04",
       "titulo": "A regra dos equipamentos nas fichas",

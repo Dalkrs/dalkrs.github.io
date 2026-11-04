@@ -18,7 +18,7 @@
 const Fichas = (() => {
   let P = null, D = null, on = false, applying = false, papel = null, eu = null;
   const R = () => window.TC.rules;
-  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ'];
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
   const cfg = () => { const d = D && D.pegar('fichas:cfg'); return (d && d.dados && d.dados.v) || R().cfgPadrao(); };
   const get = id => (P && id ? P.pegar(id) : null);
@@ -687,7 +687,9 @@ const Fichas = (() => {
     const r = window.TC.dice.rollFixaMais(valor, fixa, mais);
     if (!r.ok) return r;
     const doPedido = ped && typeof ped.pedido === 'string' && ped.pedido && typeof ped.alvo === 'string' && ped.alvo ? { pedido: ped.pedido, alvo: ped.alvo } : null;
-    if (Ext.roll) { try { Ext.roll(Object.assign({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }, doPedido)); } catch (e) { console.error(e); } }
+    // (lote 90) o dano de elemento da arma que usa este atributo vai junto, como um selo ao lado do total
+    let el = null; try { const l = linhaDoTok(t); el = l && R().elemDaFicha ? (R().elemDaFicha(pcDe(l))[chave] || null) : null; } catch (e) { el = null; }
+    if (Ext.roll) { try { Ext.roll(Object.assign({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }, el && el.length ? { el } : {}, doPedido)); } catch (e) { console.error(e); } }
     return Object.assign({ nome: item[1] }, r);
   }
 

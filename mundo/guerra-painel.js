@@ -735,7 +735,7 @@
      batalha. O bônus de cada um: o que o mestre escreveu, senão o sugerido pela ficha (a média de +1 a cada 5 níveis e de
      +1 a cada 13 pontos do maior atributo). Na batalha, somam na Virada (e na resumida), até +10 por lado; nos
      momentos-chave, a ação heroica; no depois, os ferimentos no HP da ficha. */
-  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'EMB', 'DFF', 'DFM', 'BLQ'];
+  const ROLAVEIS = ['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER', 'DFF', 'DFM', 'BLQ'];
   const docDados = id => { const TC = window.TC, D = TC && TC.dados && TC.dados.col('documentos'), l = D && D.pegar(id); return l && !l.apagado && l.dados ? l.dados : null; };
   // as contas da ficha (como nas Cenas): os atributos, o HP, a fixa e o nível
   function contasDaFicha(l) {
@@ -807,7 +807,7 @@
     return P.todas().filter(l => l && !l.apagado && !(l.ficha && l.ficha.petDe) && (!camp || !l.campanha || l.campanha === camp));
   }
   /* (lote 41) O bônus do comandante pela ficha (marcado no exército): o atributo das tabelas base das Fichas ÷ o divisor.
-     → { v, val, txt ("pelo Embate de Selene (8 ÷ 3)") } | null (sem a marca, sem a ficha aqui, sem atributo escolhido) */
+     → { v, val, txt ("pelo Bloqueio de Selene (8 ÷ 3)") } | null (sem a marca, sem a ficha aqui, sem atributo escolhido) */
   const TRP = () => (window.TC && window.TC.tropas) || null;
   const cfgTropas = () => { const T = TRP(), d = docDados('fichas:cfg'); return T ? T.normCfg(d && d.v) : null; };
   function cmdDaFicha(e) {
