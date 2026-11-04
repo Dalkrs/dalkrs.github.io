@@ -2,6 +2,30 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.04-5",
+      "data": "2026-11-04",
+      "titulo": "A mesa gasta menos dados",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "A mesa agora economiza dados: uma aba escondida para de consultar o banco e, depois de 10 minutos, entra em pausa. Ao voltar, ela recebe tudo o que aconteceu, sem carregar a mesa de novo."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Depois de 1 hora sem uso com a aba à vista, aparece a pergunta “Ainda está aí?”. Basta mexer o mouse ou apertar uma tecla para continuar; sem resposta em 60 segundos, a mesa entra em pausa."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Depois de 8 horas sem uso, o site sai da sua conta só naquele navegador. Se ainda houver algo por salvar, ele espera antes de sair."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Mapa-múndi: as mudanças são salvas e chegam aos jogadores em até 5 segundos, juntando as que vêm em sequência. Revelar ou esconder um mapa continua indo na hora."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.04-4",
       "data": "2026-11-04",
       "titulo": "A lista de cenas mais arrumada e a foto padrão por cargo",

@@ -523,6 +523,10 @@ dialog::backdrop { background: var(--scrim); }
 .ms button small { margin-left: auto; color: var(--fg-3); font-weight: 500; }
 
 .toasts { position: fixed; z-index: 40; left: 50%; bottom: 18px; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; }
+.sono { position: fixed; right: 16px; bottom: 16px; z-index: 9000; display: flex; align-items: center; gap: 14px; max-width: min(420px, calc(100vw - 32px)); padding: 12px 14px; border-radius: 10px; background: var(--raised); border: 1px solid var(--border, rgba(127,127,127,.35)); box-shadow: 0 6px 24px rgba(0,0,0,.35); }
+.sono[hidden] { display: none; }
+.sono strong { display: block; margin-bottom: 2px; }
+.sono p { margin: 0; font-size: 13px; line-height: 1.35; }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 24px)); padding: 9px 14px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow); }
 .toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 0; }
 
@@ -686,7 +690,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=29"></script>
-<script src="tc/tc.js?v=43"></script>
+<script src="tc/tc.js?v=44"></script>
 <script src="tc/busca.js?v=3"></script>
 <script src="tc/calendario.js?v=2"></script>
 <script src="tc/guia.js?v=53"></script>
@@ -705,7 +709,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.04-4';
+  const VERSAO = '2026.11.04-5';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -969,7 +973,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   function moldura(a) {
     const f = frames[a.id] = h('iframe', { title: a.nome, id: 'f-' + a.id, allow: 'clipboard-read; clipboard-write; fullscreen' });
     f.hidden = true;
-    f.addEventListener('load', () => { prontas.add(f); if (atual === a.id && frames[a.id] === f) { wait.hidden = true; foco(f); } });
+    f.addEventListener('load', () => { TC.sono.vigiar(f); prontas.add(f); if (atual === a.id && frames[a.id] === f) { wait.hidden = true; foco(f); } });
     f.src = a.src + (a.src.includes('?') ? '&' : '?') + 'casca=1&v=' + encodeURIComponent(VERSAO) + (/[?&]debug\b/.test(location.search) ? '&debug' : '');   // ?debug na casca passa adiante (testes)
     stage.append(f);
     return f;
@@ -1053,6 +1057,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     manual.hidden = false;
     const f = $('f-manual');
     const focar = () => { try { f.contentWindow.focus(); const q = f.contentDocument && f.contentDocument.getElementById('q'); if (q) q.focus({ preventScroll: true }); } catch (e) { /* carregando */ } };
+    f.addEventListener('load', () => TC.sono.vigiar(f));
     f.addEventListener('load', focar, { once: true }); focar();
   }
   function fecharManual(voltar) {
@@ -2607,6 +2612,30 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   TC.dados.on('muda', col => { if (col === 'personagens') conferirLevels(); });
   TC.dados.on('muda', col => { if ((col === 'personagens' || col === 'documentos') && dadosProntos) { clearTimeout(tDados); tDados = setTimeout(() => { pintarDados(); repintarPedidosAbertos(); }, 200); } });
   aoVivo.on('estado', c => { const s = $('sinal'); s.classList.toggle('on', c); s.title = c ? 'Ao vivo' : 'Atualizando a cada poucos segundos'; });
+  /* (lote 86) o sono da mesa (ver tc.js): o cartão no canto, sem cobrir a mesa, e a saída por inatividade */
+  const cartaoSono = h('div', { id: 'sono', class: 'sono', role: 'status', hidden: true });
+  document.body.append(cartaoSono);
+  TC.sono.on('muda', e => {
+    if (e === 'acordado') { cartaoSono.hidden = true; cartaoSono.replaceChildren(); return; }
+    const pergunta = e === 'pergunta';
+    cartaoSono.replaceChildren(
+      h('div', null,
+        h('strong', { text: pergunta ? 'Ainda está aí?' : 'Mesa em pausa' }),
+        h('p', { text: pergunta ? 'Sem uso há um tempo. Em ' + Math.round(TC.sono.resposta / 1000) + ' s, a mesa entra em pausa para economizar dados.' : 'Para economizar dados, ela parou de receber novidades. Volta com tudo o que aconteceu.' })),
+      h('button', { type: 'button', class: 'btn', id: 'sono-ok', text: pergunta ? 'Continuar' : 'Voltar', onclick: () => TC.sono.usou() }));
+    cartaoSono.hidden = false;
+  });
+  let avisoSaida = false;
+  const mostrarSaida = () => { if (avisoSaida && !document.hidden) { avisoSaida = false; toast('Você saiu da conta por inatividade. Entre de novo quando quiser.', null, null, 12000); } };
+  document.addEventListener('visibilitychange', mostrarSaida);
+  TC.sono.on('sair', async pronto => {
+    try {
+      if (mesas.atual) await assentar();
+      if (TC.dados.pendentes) return;        // ainda há o que subir (sem internet, por exemplo): não sai; confere de novo depois
+      await TC.conta.sair({ local: true });
+      avisoSaida = true; mostrarSaida();
+    } catch (e) { /* tenta de novo na próxima conferência */ } finally { pronto(); }
+  });
   aoVivo.on('segredo', () => { pintarCompor(); difundir(); });
   let comoAntes = '';
   aoVivo.on('como', () => {           // só redesenha quando muda o que aparece (as fichas mudam o tempo todo)
