@@ -254,6 +254,16 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Os recursos do clã com desenho (lote 86)
+
+- `ClaNucleo.RECURSOS` (a lista fixa), `porNome` (os nomes de antes: T1→Q1, sem acento e espaço) e `svgRecurso` (o
+  desenho, com os pontinhos da qualidade). `normRecursos` põe `fixo` pelo campo ou pelo nome (uma vez cada); o id e a
+  quantidade não mudam, então o custo das construções continua certo.
+- No alto do clã (`num:recs`, `cab:num`) só os da lista com quantidade; no cofre, o desenho no lugar do nome.
+- Mapa-múndi: "Usar a lista do clã…" (`eco:rec-fixa`, reino-painel) renomeia e acrescenta, com confirmação e Desfazer.
+- Testes: `src/tests/cla-lote86.test.js` e a parte nova do `mundo-lote10.test.js`; os nomes dos testes antigos do clã
+  (Ferro, Madeira, Ouro) mudaram para nomes próprios, porque agora esses viram os da lista.
+
 ### A foto padrão por cargo no Clã (lote 85)
 
 - `membros.imgCargo` (`{ <id do cargo> | '_sem': imagem }`, `ClaNucleo.normMembros`): só cargos que existem e imagens

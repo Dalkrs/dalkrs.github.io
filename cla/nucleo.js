@@ -196,6 +196,51 @@
     ['poco', 'Poço', 'M5 10h14M7 10V6h10v4M6 10v11h12V10M12 6V3M12 13v4'],
   ].map(([id, nome, d]) => ({ id, nome, d }));
 
+
+  /* (lote 86) A lista fixa de recursos do clã (a mesma do Mapa-múndi do Bruno): madeira, orith e pedra em três
+     qualidades (Q1 a Q3), os suprimentos, o compendiânio (para melhorar equipamentos), o ouro (um mineral de construção:
+     a moeda do mundo é o lapro, que fica no cofre de lapros) e os minerais especiais. Cada um tem o seu desenho; a
+     qualidade aparece em pontinhos. Um recurso escrito com outro nome continua valendo (o nome próprio do mestre), mas
+     só os da lista aparecem no alto do clã. porNome reconhece os nomes de antes (Madeira T1 → Madeira Q1). */
+  const DESENHO_REC = {
+    madeira: 'M4 9.5h11.5a3.5 3.5 0 0 1 0 7H4zM4 9.5a3.5 3.5 0 0 0 0 7M15.5 11.5a1.5 1.5 0 1 1 0 3M7 12h5',
+    orith: 'M3.5 16.5 7 9h10l3.5 7.5zM7 9l2-3h6l2 3M9.5 12.5h5',
+    pedra: 'M4 15.5 6 8.5l5-2.5 6.5 1.5 2.5 6-3 4H7zM6 8.5l4 3.5 7.5-4.5M10 12v6',
+    suprimentos: 'M7 8.5c0-2 2-3 5-3s5 1 5 3M6 9.5h12l-1 9.5H7zM9.5 5.5 12 3l2.5 2.5M9 13h6',
+    compendianio: 'M5 5.5h6.5a2 2 0 0 1 2 2V19a1.5 1.5 0 0 0-1.5-1.5H5zM19 5.5h-5.5M19 5.5v12h-5.5M15.5 9.5l1.5-1.5 1.5 1.5-1.5 1.5z',
+    ouro: 'M4 17.5 7 12h4.5l3 5.5zM10 12l2.5-4.5h4.5L20 13l-2.5 4.5h-3M8 14.5h3',
+    gema: 'M7 4.5h10l3.5 5L12 20 3.5 9.5zM3.5 9.5h17M9.5 4.5 12 9.5l2.5-5M12 9.5V20',
+    runas: 'M7 4h10l2 4v8l-2 4H7l-2-4V8zM10 8l4 4-4 4M14 8v8',
+    mana: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM12 3.5v4M12 16.5v4',
+  };
+  const RECURSOS = [
+    ['madeira_q1', 'Madeira Q1', 'madeira', 1, '#c8955a'], ['madeira_q2', 'Madeira Q2', 'madeira', 2, '#c8955a'], ['madeira_q3', 'Madeira Q3', 'madeira', 3, '#c8955a'],
+    ['orith_q1', 'Orith Q1', 'orith', 1, '#7fb7e0'], ['orith_q2', 'Orith Q2', 'orith', 2, '#7fb7e0'], ['orith_q3', 'Orith Q3', 'orith', 3, '#7fb7e0'],
+    ['pedra_q1', 'Pedra Q1', 'pedra', 1, '#a7afbf'], ['pedra_q2', 'Pedra Q2', 'pedra', 2, '#a7afbf'], ['pedra_q3', 'Pedra Q3', 'pedra', 3, '#a7afbf'],
+    ['suprimentos', 'Suprimentos', 'suprimentos', 0, '#9fbf4a'], ['compendianio', 'Compendiânio', 'compendianio', 0, '#c58af0'], ['ouro', 'Ouro', 'ouro', 0, '#e3c23a'],
+    ['demonite', 'Demônite', 'gema', 0, '#e0505f'], ['amonite', 'Amonite', 'gema', 0, '#d99a62'], ['saverite', 'Saverite', 'gema', 0, '#3fc29a'],
+    ['maziernite', 'Mãziernite', 'gema', 0, '#b07ad0'], ['mana_nucleo', "Mana'Nucleo", 'mana', 0, '#4fc3f7'], ['runas', 'Runas', 'runas', 0, '#b39cf0'],
+  ].map(([id, nome, t, q, cor]) => ({ id, nome, t, q, cor }));
+  const REC_POR_ID = new Map(RECURSOS.map(r => [r.id, r]));
+  const chaveRec = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const APELIDOS_REC = { madeira: 'madeira_q1', orith: 'orith_q1', metal: 'orith_q1', ferro: 'orith_q1', pedra: 'pedra_q1', suprimento: 'suprimentos', comida: 'suprimentos', compendio: 'compendianio', mazier: 'maziernite', mananucleo: 'mana_nucleo', runa: 'runas' };
+  function porNome(nome) {
+    let k = chaveRec(nome);
+    if (!k) return null;
+    k = k.replace(/t([123])$/, 'q$1').replace(/tier([123])$/, 'q$1').replace(/qualidade([123])$/, 'q$1');
+    for (const r of RECURSOS) if (chaveRec(r.nome) === k) return r.id;
+    const m = k.match(/^(metal|ferro)q([123])$/); if (m) return 'orith_q' + m[2];
+    return APELIDOS_REC[k] || null;
+  }
+  const recursoFixo = id => REC_POR_ID.get(id) || null;
+  // o desenho de um recurso da lista, como texto SVG (o mesmo no clã, no Mapa-múndi e nas Cenas): px de lado
+  function svgRecurso(id, px) {
+    const r = recursoFixo(id);
+    if (!r) return '';
+    const n = px || 20, pts = r.q ? Array.from({ length: r.q }, (_, i) => '<circle cx="' + (12 + (i - (r.q - 1) / 2) * 4.2).toFixed(1) + '" cy="23" r="1.6" fill="' + r.cor + '" stroke="none"/>').join('') : '';
+    return '<svg viewBox="0 0 24 ' + (r.q ? 26 : 24) + '" width="' + n + '" height="' + Math.round(n * (r.q ? 26 : 24) / 24) + '" fill="none" stroke="' + r.cor + '" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + DESENHO_REC[r.t] + '"/>' + pts + '</svg>';
+  }
+
   const MAX = {
     clas: 40, nome: 60, lema: 160, nomeCargo: 60, nomePessoa: 60, cargos: 60, gente: 30, construcoes: 40, nomeCons: 60,
     efeito: 1000, nivel: 99, custo: 8, recursos: 40, nomeRec: 40, qtd: 1000000000, relacoes: 60, motivo: 200,
@@ -610,7 +655,13 @@
     const lista = [], vistos = new Set();
     for (const x of Array.isArray(r.lista) ? r.lista : []) {
       if (!ehObj(x) || lista.length >= MAX.recursos) continue;
-      lista.push({ id: unico(idOk(x.id), vistos, 'rc'), nome: linha(x.nome, MAX.nomeRec) || 'Recurso', qtd: inteiro(x.qtd, 0, 0, MAX.qtd) });
+      // (lote 86) o recurso da lista fixa (fixo): pelo campo, ou pelo nome (os de antes viram da lista: Madeira T1 → Madeira Q1);
+      // cada um da lista entra uma vez (o segundo com o mesmo nome fica como nome próprio)
+      const nome0 = linha(x.nome, MAX.nomeRec) || 'Recurso', fx = (recursoFixo(x.fixo) ? x.fixo : null) || porNome(nome0);
+      const fixo = fx && !lista.some(y => y.fixo === fx) ? fx : null;
+      const o = { id: unico(idOk(x.id), vistos, 'rc'), nome: fixo ? recursoFixo(fixo).nome : nome0, qtd: inteiro(x.qtd, 0, 0, MAX.qtd) };
+      if (fixo) o.fixo = fixo;
+      lista.push(o);
     }
     const hist = [];
     for (const e of Array.isArray(r.hist) ? r.hist : []) {
@@ -868,6 +919,7 @@
     normConstrucoes, normRecursos, normRespeito, normRelacoes, normFaccao, normHist, normVer, normCla, claNovo, normPub, comoVista,
     visivel, projetar, anotar, mudarRecurso, definirRecurso, mudarRespeito, mudarRelacao, mudarMembro, falta, subirNivel,
     custoTxt, mudTxt, histTxt, qtdTxt, normTags, lerQtd,
+    RECURSOS, recursoFixo, porNome, svgRecurso,      // (lote 86)
   };
   if (typeof module === 'object' && module && module.exports) module.exports = ClaNucleo;
   if (typeof window !== 'undefined') window.ClaNucleo = ClaNucleo;

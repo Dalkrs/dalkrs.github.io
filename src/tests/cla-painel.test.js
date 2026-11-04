@@ -17,10 +17,10 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
 const CLA = N.normCla({ v: 1, nome: 'Lâmina do Crepúsculo', lema: 'A noite guarda os seus', jogadores: true, ver: { mostrar: true }, brasao: { forma: 'escudo', div: 'cortado', cores: ['#5b3f8a', '#e8eaf0'], simb: 'lobo' },
   cargos: { lider: { nome: 'Líder', gente: [{ id: 'ps_a', nome: 'Bruna Vel', resp: 2 }] }, cg_m: { nome: 'Marechal', pai: 'lider', ordem: 1, gente: [{ id: 'ps_b', nome: 'Oswin', resp: 1 }, { id: 'ps_c', nome: 'Tomas', resp: 0 }] } },
   membros: { avulsos: [{ id: 'ps_e', nome: 'Ilya', resp: -1 }, { id: 'ps_f', nome: 'Kel', resp: 3 }], dados: { ps_a: { racaN: 'Elfa', classeN: 'Arqueira' }, ps_b: { racaN: 'Humano', classeN: 'Guerreiro' } } },
-  construcoes: [{ id: 'ct_sal', nome: 'Salão do clã', ico: 'salao', nivel: 2, efeito: 'Reuniões.', prox: { custo: [{ rec: 'rc_ouro', nome: 'Ouro', qtd: 500 }, { rec: 'rc_mad', nome: 'Madeira', qtd: 120 }] } },
-    { id: 'ct_for', nome: 'Forja', ico: 'forja', nivel: 1, efeito: 'Armas.', prox: { custo: [{ rec: 'rc_fer', nome: 'Ferro', qtd: 80 }] } },
+  construcoes: [{ id: 'ct_sal', nome: 'Salão do clã', ico: 'salao', nivel: 2, efeito: 'Reuniões.', prox: { custo: [{ rec: 'rc_ouro', nome: 'Ouro', qtd: 500 }, { rec: 'rc_mad', nome: 'Madeira Q1', qtd: 120 }] } },
+    { id: 'ct_for', nome: 'Forja', ico: 'forja', nivel: 1, efeito: 'Armas.', prox: { custo: [{ rec: 'rc_fer', nome: 'Aço', qtd: 80 }] } },
     { id: 'ct_bib', nome: 'Biblioteca', ico: 'biblioteca', nivel: 0, prox: { custo: [{ rec: 'rc_ouro', nome: 'Ouro', qtd: 300 }] } }],
-  recursos: { lista: [{ id: 'rc_ouro', nome: 'Ouro', qtd: 1240 }, { id: 'rc_mad', nome: 'Madeira', qtd: 90 }, { id: 'rc_fer', nome: 'Ferro', qtd: 35 }], hist: [] }, respeito: { v: 2, hist: [] } });
+  recursos: { lista: [{ id: 'rc_ouro', nome: 'Ouro', qtd: 1240 }, { id: 'rc_mad', nome: 'Madeira Q1', qtd: 90 }, { id: 'rc_fer', nome: 'Aço', qtd: 35 }], hist: [] }, respeito: { v: 2, hist: [] } });
 
 (async () => {
   const t = await start();
@@ -42,7 +42,8 @@ const CLA = N.normCla({ v: 1, nome: 'Lâmina do Crepúsculo', lema: 'A noite gua
     await P.goto(t.base + 'cla/?debug', { waitUntil: 'load' });
     await P.waitForFunction(() => window.__cla && __cla.pronto, null, { timeout: 15000 }); await espera(300);
     const num = (await k('cab:num').innerText()).replace(/\s+/g, ' ');
-    ok(/Membros 5/.test(num) && /Respeito \+2/.test(num) && /Ouro 1\.240/.test(num) && /Ferro 35/.test(num), 'o cabeçalho: os membros, o respeito e os recursos — ' + num);
+    const tits = await P.locator('[data-k="cab:num"] .cab-rec').evaluateAll(l => l.map(e => e.title));
+    ok(/Membros 5/.test(num) && /Respeito \+2/.test(num) && /1\.240/.test(num) && /90/.test(num) && !/35/.test(num) && JSON.stringify(tits) === JSON.stringify(['Ouro', 'Madeira Q1']), '(lote 86) o cabeçalho: os membros, o respeito e os recursos da lista fixa, pelo desenho (o Aço, de nome próprio, fica no cofre) — ' + num + ' ' + JSON.stringify(tits));
     const abas = await P.locator('[data-aba-m]').allInnerTexts();
     ok(JSON.stringify(abas.map(x => x.replace(/\s+/g, ' ').trim())) === JSON.stringify(['Geral', 'Membros 5', 'Cofre e obras 1 pronta', 'Sede e tropas', 'Relações e histórico']), 'as cinco abas, com a contagem dos membros e das obras prontas — ' + JSON.stringify(abas));
     ok(await k('sec:hier').count() === 1 && await k('sec:rol').count() === 0 && await k('sec:rec').count() === 0, 'uma parte por vez: a Geral tem a hierarquia, sem o rol e o cofre');
@@ -77,7 +78,7 @@ const CLA = N.normCla({ v: 1, nome: 'Lâmina do Crepúsculo', lema: 'A noite gua
     await P.selectOption('[data-k="obra:ordem"]', 'az'); await espera(200);
     ok(JSON.stringify(await nomes()) === JSON.stringify(['ct_bib', 'ct_for', 'ct_sal']), 'de A a Z, com as favoritas primeiro: ' + JSON.stringify(await nomes()));
     await clicar('[data-k="obra:f:prontas"]');
-    ok(JSON.stringify(await nomes()) === JSON.stringify(['ct_bib', 'ct_for']), '"Dá para subir": a Biblioteca (300 de Ouro) e a Forja (o Ferro trocado para 1.000)');
+    ok(JSON.stringify(await nomes()) === JSON.stringify(['ct_bib', 'ct_for']), '"Dá para subir": a Biblioteca (300 de Ouro) e a Forja (o Aço trocado para 1.000)');
     await clicar('[data-k="obra:f:fav"]');
     ok(JSON.stringify(await nomes()) === JSON.stringify(['ct_bib']), '"Favoritas": só a Biblioteca');
     await clicar('[data-k="obra:f:todas"]');
@@ -88,7 +89,7 @@ const CLA = N.normCla({ v: 1, nome: 'Lâmina do Crepúsculo', lema: 'A noite gua
     ok(JSON.stringify(await nomes()) === JSON.stringify(['ct_for']), 'o filtro por etiqueta');
     await clicar('[data-k="obra:f:#defesa"]');
     const larg = await P.locator('[data-cons="ct_sal"] .barra i').evaluate(e => e.style.width);
-    ok(larg === '75%' && /Faltam 30 Madeira/.test(await P.locator('[data-cons="ct_sal"]').innerText()), 'a barra do Salão: o cofre tem 90 das 120 de madeira (75%), e o que falta — ' + larg);
+    ok(larg === '75%' && /Faltam 30 Madeira Q1/.test(await P.locator('[data-cons="ct_sal"]').innerText()), 'a barra do Salão: o cofre tem 90 das 120 de madeira (75%), e o que falta — ' + larg);
     await foto('l62-obras');
   });
 

@@ -571,9 +571,15 @@
     if (c.ver.respeito && c.respeito) out.push(num('resp', ICO.estrela, c.respeito.v > 0 ? '#6fbf8f' : c.respeito.v < 0 ? '#f0786e' : '#c9ccd4', N.sinal(c.respeito.v), 'respeito no mundo', N.nomeNivel(nm, 'mundo', c.respeito.v)));
     if (naMesa && c.jogadores) { const q = cofreDe(c.id).q; out.push(num('lapros', ICO.moeda, '#e6ab4f', N.qtdTxt(q), q === 1 ? 'lapro no cofre' : 'lapros no cofre')); }
     if (c.ver.construcoes && c.construcoes) out.push(num('cons', ICO.torre, '#b39cf0', String(c.construcoes.filter(k => k.nivel > 0).length), 'construções', c.construcoes.length ? 'de ' + c.construcoes.length + ' planejadas' : null));
-    if (c.ver.recursos && c.recursos) c.recursos.lista.slice(0, 3).forEach((r, i) => out.push(num('rec:' + r.id, ICO.caixa, CORES_REC[i % CORES_REC.length], N.qtdTxt(r.qtd), r.nome)));
+    // (lote 86) os recursos da lista fixa que o clã tem, só com o desenho (o nome na dica); os de nome próprio ficam no cofre
+    if (c.ver.recursos && c.recursos) {
+      const fx = c.recursos.lista.filter(r => r.fixo && r.qtd > 0).sort((a, b) => N.RECURSOS.findIndex(x => x.id === a.fixo) - N.RECURSOS.findIndex(x => x.id === b.fixo));
+      if (fx.length) out.push(h('div', { class: 'num num-recs', 'data-k': 'num:recs' }, fx.map(r => h('span', { class: 'num-rec', 'data-k': 'num:rec:' + r.fixo, title: r.nome + ': ' + N.qtdTxt(r.qtd) }, icoRec(r, 22), h('b', { text: N.qtdTxt(r.qtd) })))));
+    }
     return out;
   }
+  // (lote 86) o desenho de um recurso da lista fixa (com os pontinhos da qualidade); o nome fica na dica
+  const icoRec = (r, px) => { const sp = h('span', { class: 'ico-rec', title: r.nome, role: 'img', 'aria-label': r.nome }); sp.innerHTML = N.svgRecurso(r.fixo || r.id, px || 22); return sp; };
   const comoFunciona = (txt, k) => h('details', { class: 'como', 'data-k': 'como:' + (k || ''), open: tudoAberto ? '' : null }, h('summary', { text: 'Como funciona' }), h('p', { text: txt }));
   // (lote 75) quem lidera começa vendo o clã; "Editar" abre o que ele cuida (nos testes, já aberto)
   const tudoAberto = (() => { try { return localStorage.getItem('tinycats:testes-tudo-aberto') === '1'; } catch (e) { return false; } })();
@@ -795,7 +801,8 @@
       h('dl', { class: 'cab-num', 'data-k': 'cab:num' },
         h('div', null, h('dt', { text: 'Membros' }), h('dd', { text: String(N.membrosDe(c).length) })),
         h('div', null, h('dt', { text: 'Respeito' }), h('dd', { class: tom(c.respeito.v), text: N.sinal(c.respeito.v) })),
-        c.recursos.lista.slice(0, 3).map(r => h('div', null, h('dt', { text: r.nome }), h('dd', { text: N.qtdTxt(r.qtd) })))));
+        // (lote 86) os recursos da lista fixa que o clã tem, pelo desenho
+        c.recursos.lista.filter(r => r.fixo && r.qtd > 0).sort((a, b) => N.RECURSOS.findIndex(x => x.id === a.fixo) - N.RECURSOS.findIndex(x => x.id === b.fixo)).slice(0, 8).map(r => h('div', { class: 'cab-rec', title: r.nome }, h('dt', null, icoRec(r, 18)), h('dd', { text: N.qtdTxt(r.qtd) })))));
   }
   /* (lote 62) As construções em linhas: a estrela (favorita), o ícone, o nome com as etiquetas, o nível, o efeito, o custo do
      próximo nível com a barra do que o cofre já tem, e "Subir". Em cima, o filtro (todas, as que dá para subir agora, as
@@ -878,13 +885,14 @@
     return h('div', { class: 'cartao cofre', 'data-k': 'sec:rec' },
       h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Cofre do clã' }), h('button', { type: 'button', class: 'btn sm', 'data-k': 'rec:novo', disabled: c.recursos.lista.length >= N.MAX.recursos, onclick: () => recursoDlg(id, null) }, '+ Recurso')),
       c.recursos.lista.length ? h('div', { class: 'cofre-l' }, c.recursos.lista.map(r => h('div', { class: 'rec', 'data-rec': r.id },
-        h('button', { type: 'button', class: 'rec-nm', 'data-k': 'rec:ren:' + r.id, title: 'Renomear', onclick: () => recursoDlg(id, r.id) }, r.nome),
+        r.fixo ? h('button', { type: 'button', class: 'rec-nm rec-ico', 'data-k': 'rec:ren:' + r.id, title: r.nome + ' (clique para trocar ou apagar)', 'aria-label': r.nome, onclick: () => recursoDlg(id, r.id) }, icoRec(r, 26))
+          : h('button', { type: 'button', class: 'rec-nm', 'data-k': 'rec:ren:' + r.id, title: 'Renomear', onclick: () => recursoDlg(id, r.id) }, r.nome),
         h('button', { type: 'button', class: 'ib leve', 'data-k': 'rec:menos:' + r.id, title: 'Tirar 1 (com Shift, 10)', 'aria-label': 'Tirar de ' + r.nome, disabled: r.qtd <= 0, onclick: ev => mudar(r, ev.shiftKey ? -10 : -1) }, '−'),
         h('input', { class: 'qtd', type: 'text', inputmode: 'numeric', 'data-k': 'rec:qtd:' + r.id, value: N.qtdTxt(r.qtd), 'aria-label': 'Quantidade de ' + r.nome + ' (+50 soma, -20 tira)', title: '+50 soma · -20 tira · um número troca',
           onfocus: function () { this.select(); }, onkeydown: function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); this.blur(); } else if (ev.key === 'Escape') { this.value = N.qtdTxt(r.qtd); this.blur(); } },
           onchange: function () { escrever(r, this); } }),
         h('button', { type: 'button', class: 'ib leve', 'data-k': 'rec:mais:' + r.id, title: 'Somar 1 (com Shift, 10)', 'aria-label': 'Somar em ' + r.nome, onclick: ev => mudar(r, ev.shiftKey ? 10 : 1) }, '+'))))
-        : h('p', { class: 'vazio-p', text: 'Nenhum recurso ainda (ouro, madeira, ferro, influência…).' }),
+        : h('p', { class: 'vazio-p', text: 'Nenhum recurso ainda (madeira, orith, pedra, suprimentos, compendiânio…).' }),
       c.recursos.lista.length ? h('p', { class: 'ajuda', text: 'Na quantidade, escreva +50 para somar, -20 para tirar ou um número para trocar.' }) : null,
       h('label', { class: 'field' }, h('span', { text: 'Motivo da próxima mudança (vai para o histórico)' }), motivoEl('rec', 'ex.: o pagamento da escolta')),
       est ? h('div', { class: 'fac-estoque', 'data-k': 'rec:fac' }, h('b', { text: 'Estoque de ' + est.fac + ' (Mapa-múndi)' }),
@@ -1740,12 +1748,19 @@
     const nome = h('input', { class: 'in', type: 'text', maxlength: N.MAX.nomeRec, value: r ? r.nome : '', 'data-k': 'dl:nome', placeholder: 'Ex.: Ouro', 'aria-label': 'Nome do recurso' });
     const qtd = h('input', { class: 'in', type: 'number', min: 0, max: N.MAX.qtd, step: 1, value: '0', 'data-k': 'dl:qtd', 'aria-label': 'Quanto o clã tem' });
     const usado = r ? x.c.construcoes.filter(k => k.prox.custo.some(y => y.rec === r.id)).map(k => k.nome) : [];
+    // (lote 86) a lista fixa: um clique escolhe (os que o clã já tem ficam de fora); escrever outro nome cria um recurso próprio
+    const ja = new Set(x.c.recursos.lista.filter(y => y.fixo && (!r || y.id !== r.id)).map(y => y.fixo));
+    const marcar = () => { const fx = N.porNome(nome.value); for (const b of lista.querySelectorAll('button')) b.classList.toggle('on', b.dataset.fixo === fx); };
+    const lista = h('div', { class: 'rec-lista', 'data-k': 'dl:fixos', role: 'group', 'aria-label': 'A lista de recursos' }, N.RECURSOS.filter(f => !ja.has(f.id)).map(f => h('button', { type: 'button', class: 'rec-op', 'data-k': 'dl:fixo:' + f.id, 'data-fixo': f.id, title: f.nome,
+      onclick: () => { nome.value = f.nome; marcar(); } }, icoRec({ fixo: f.id, nome: f.nome }, 22), h('small', { text: f.nome }))));
+    nome.oninput = marcar;
     const salvar = () => {
       const n = String(nome.value || '').replace(/\s+/g, ' ').trim();
       if (!n) { toast('Dê um nome ao recurso.'); nome.focus(); return; }
       fechar();
-      if (r) mudarCla(id, 'renomear o recurso ' + r.nome, y => { const z = y.recursos.lista.find(w => w.id === r.id); if (!z || z.nome === n) return false; z.nome = n; });
-      else if (mudarCla(id, 'criar o recurso ' + n, y => { y.recursos.lista.push({ id: N.novoId('rc'), nome: n, qtd: Math.max(0, Math.min(N.MAX.qtd, Math.trunc(Number(qtd.value) || 0))) }); })) avisoDesfazer('Recurso criado: ' + n + '.');
+      const fx = N.porNome(n), fixo = fx && !ja.has(fx) ? fx : null, nomeF = fixo ? N.recursoFixo(fixo).nome : n;
+      if (r) mudarCla(id, 'renomear o recurso ' + r.nome, y => { const z = y.recursos.lista.find(w => w.id === r.id); if (!z || (z.nome === nomeF && (z.fixo || null) === fixo)) return false; z.nome = nomeF; if (fixo) z.fixo = fixo; else delete z.fixo; });
+      else if (mudarCla(id, 'criar o recurso ' + nomeF, y => { y.recursos.lista.push(Object.assign({ id: N.novoId('rc'), nome: nomeF, qtd: Math.max(0, Math.min(N.MAX.qtd, Math.trunc(Number(qtd.value) || 0))) }, fixo ? { fixo } : {})); })) avisoDesfazer('Recurso criado: ' + nomeF + '.');
     };
     const apagar = async () => {
       fechar();
@@ -1753,8 +1768,9 @@
       if (mudarCla(id, 'apagar o recurso ' + r.nome, y => { y.recursos.lista = y.recursos.lista.filter(w => w.id !== r.id); })) avisoDesfazer('O recurso ' + r.nome + ' saiu.');
     };
     nome.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); salvar(); } };
-    abrir('', [h('h2', { text: r ? 'O recurso ' + r.nome : 'Recurso novo' }), h('div', { class: 'corpo' }, h('label', { class: 'field' }, h('span', { text: 'Nome' }), nome), r ? null : h('label', { class: 'field' }, h('span', { text: 'Quanto o clã tem agora' }), qtd)),
+    abrir('', [h('h2', { text: r ? 'O recurso ' + r.nome : 'Recurso novo' }), h('div', { class: 'corpo' }, h('div', { class: 'field' }, h('span', { text: 'Da lista' }), lista), h('label', { class: 'field' }, h('span', { text: 'Nome (ou escreva outro: um recurso próprio, que não vai para o alto do clã)' }), nome), r ? null : h('label', { class: 'field' }, h('span', { text: 'Quanto o clã tem agora' }), qtd)),
       pe(r ? h('button', { type: 'button', class: 'btn per', 'data-k': 'dl:apagar', onclick: apagar }, 'Apagar o recurso') : null, btCancelar(), h('button', { type: 'button', class: 'btn pri', 'data-k': 'dl:sim', onclick: salvar }, r ? 'Salvar' : 'Criar'))]);
+    marcar();
     nome.focus(); if (r) nome.select();
   }
   // uma construção: nova ou editada (tudo de uma vez, ao salvar)
@@ -1805,7 +1821,7 @@
       const montar = y => {
         const lista = custo.map(c => {
           if (!c.novo) return { rec: c.rec, nome: c.nome, qtd: c.qtd };
-          const igual = y.recursos.lista.find(r => chave(r.nome) === chave(c.nome));
+          const igual = y.recursos.lista.find(r => chave(r.nome) === chave(c.nome) || (r.fixo && r.fixo === N.porNome(c.nome)));
           if (igual) return { rec: igual.id, nome: igual.nome, qtd: c.qtd };
           if (y.recursos.lista.length >= N.MAX.recursos) return null;
           const r = { id: N.novoId('rc'), nome: limpo(c.nome).slice(0, N.MAX.nomeRec), qtd: 0 };

@@ -245,6 +245,7 @@
         h('button', { type: 'button', class: 'ib', 'data-k': 'eco:r:' + r.id + ':x', title: 'Tirar ' + r.nome + ' do mundo', 'aria-label': 'Tirar ' + r.nome + ' do mundo', onclick: () => tirarRecurso(r.id) }, glifo(X_SVG, 14)));
     })));
     out.push(linha(botao('+ Recurso', novoRecurso, { c: 'sm', k: 'eco:rec-novo', off: eco.rec.length >= 24 }),
+      window.ClaNucleo && window.ClaNucleo.porNome ? botao('Usar a lista do clã…', usarListaFixa, { c: 'sm', k: 'eco:rec-fixa' }) : null,
       botao('Produção do terreno…', janelaTerreno, { c: 'sm', k: 'eco:ter' }),
       botao('Manutenção dos exércitos…', janelaManutencao, { c: 'sm', k: 'eco:manut' }),
       botao('Regras da falta…', janelaRegras, { c: 'sm', k: 'eco:regras' })));
@@ -327,6 +328,33 @@
       e.rec.push(r);
       for (const f of mm.faccoes) R().recursosNaFaccao(mm, f);
     }) !== false) K.avisoDesfazer(v.nome + ': um recurso novo no mundo (cada facção ganha o estoque dele).');
+  }
+  /* (lote 86) A lista fixa de recursos (a mesma do Clã): os nomes de antes viram os da lista (Madeira T1 → Madeira Q1,
+     Orith → Orith Q1…) e os que faltam entram no mundo (cada facção ganha o estoque deles). Mostra antes o que muda; um
+     passo só, com Desfazer. */
+  function planoListaFixa(eco) {
+    const C = window.ClaNucleo, renomear = [], usados = new Set();
+    for (const r of eco.rec) { const fx = C.porNome(r.nome); if (!fx || usados.has(fx)) continue; usados.add(fx); const nm = C.recursoFixo(fx).nome; if (nm !== r.nome) renomear.push({ id: r.id, de: r.nome, para: nm }); }
+    const novos = C.RECURSOS.filter(f => !usados.has(f.id)).slice(0, Math.max(0, 24 - eco.rec.length));
+    return { renomear, novos };
+  }
+  async function usarListaFixa() {
+    const K = kit(), m = app().mapa, eco = m.eco, C = window.ClaNucleo;
+    if (!eco || !C) return;
+    const p = planoListaFixa(eco);
+    if (!p.renomear.length && !p.novos.length) { K.aviso ? K.aviso('O mundo já usa a lista do clã.') : null; return; }
+    const txt = [p.renomear.length ? 'Trocar o nome: ' + p.renomear.map(x => x.de + ' → ' + x.para).join(', ') + '.' : '',
+      p.novos.length ? 'Pôr no mundo: ' + p.novos.map(x => x.nome).join(', ') + ' (cada facção começa com 0).' : '',
+      'Os outros recursos ficam como estão.'].filter(Boolean).join(' ');
+    const ok = await K.confirmar({ titulo: 'Usar a lista de recursos do clã?', ok: 'Usar a lista', texto: txt });
+    if (!ok || !K.mesmoMapa(m.id)) return;
+    if (app().mudar('usar a lista de recursos do clã', mm => {
+      if (!mm.eco) return false;
+      const q = planoListaFixa(mm.eco);
+      for (const x of q.renomear) { const r = mm.eco.rec.find(y => y.id === x.id); if (r) r.nome = x.para; for (const f of mm.faccoes) { const y = (f.rec || []).find(z => z.id === x.id); if (y) y.nome = x.para; } }
+      for (const f of q.novos) { const r = { id: N().novoId('rc'), nome: f.nome, cor: f.cor }; const papel = { madeira: 'madeira', orith: 'metal', pedra: 'pedra', suprimentos: 'comida', mana: 'magia', runas: 'magia' }[f.t]; if (papel && (N().PAPEIS_REC || {})[papel]) r.papel = papel; mm.eco.rec.push(r); }
+      for (const f of mm.faccoes) R().recursosNaFaccao(mm, f);
+    }) !== false) K.avisoDesfazer('O mundo agora usa a lista de recursos do clã.');
   }
   async function tirarRecurso(id) {
     const K = kit(), m = app().mapa, r = m.eco && m.eco.rec.find(x => x.id === id);

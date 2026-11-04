@@ -141,19 +141,19 @@ const CARGOS = {
 
 /* ---------------- construções, recursos, respeito, relações, histórico ---------------- */
 {
-  const k = C.normConstrucoes([{ id: 'f1', nome: 'Forja', ico: 'forja', nivel: 2, efeito: 'Armas.', prox: { custo: [{ rec: 'r1', nome: 'Ferro', qtd: 45 }, { rec: 'r1', qtd: 9 }, { rec: 'r2', qtd: 0 }, { rec: 'x y', qtd: 3 }], efeito: 'E à noite.' } },
+  const k = C.normConstrucoes([{ id: 'f1', nome: 'Forja', ico: 'forja', nivel: 2, efeito: 'Armas.', prox: { custo: [{ rec: 'r1', nome: 'Aço', qtd: 45 }, { rec: 'r1', qtd: 9 }, { rec: 'r2', qtd: 0 }, { rec: 'x y', qtd: 3 }], efeito: 'E à noite.' } },
     { nome: '', ico: 'nada', nivel: 500 }, 'x']);
-  ok(k.length === 2 && j(k[0].prox.custo) === j([{ rec: 'r1', nome: 'Ferro', qtd: 45 }]) && k[0].prox.efeito === 'E à noite.' && k[1].nome === 'Construção' && k[1].ico === 'salao' && k[1].nivel === 99 && /^ct_/.test(k[1].id),
+  ok(k.length === 2 && j(k[0].prox.custo) === j([{ rec: 'r1', nome: 'Aço', qtd: 45 }]) && k[0].prox.efeito === 'E à noite.' && k[1].nome === 'Construção' && k[1].ico === 'salao' && k[1].nivel === 99 && /^ct_/.test(k[1].id),
     'as construções: nome, ícone, nível, efeito e o próximo nível (custo sem repetir recurso, sem zero)');
-  const r = C.normRecursos({ lista: [{ id: 'r1', nome: 'Ouro', qtd: 240.7 }, { nome: '', qtd: -5 }, { id: 'r1', nome: 'Dup', qtd: 1 }], hist: [{ em: T0, mud: [{ rec: 'r1', n: 'Ouro', d: 120 }, { rec: 'r1', n: 'x', d: 0 }], mot: ' a escolta ' }, { mud: [] }] });
-  ok(r.lista.length === 3 && r.lista[0].qtd === 240 && r.lista[1].nome === 'Recurso' && r.lista[1].qtd === 0 && r.lista[2].id !== 'r1' && r.hist.length === 1 && j(r.hist[0]) === j({ em: T0, tipo: 'rec', mud: [{ rec: 'r1', n: 'Ouro', d: 120 }], mot: 'a escolta' }),
+  const r = C.normRecursos({ lista: [{ id: 'r1', nome: 'Prata', qtd: 240.7 }, { nome: '', qtd: -5 }, { id: 'r1', nome: 'Dup', qtd: 1 }], hist: [{ em: T0, mud: [{ rec: 'r1', n: 'Prata', d: 120 }, { rec: 'r1', n: 'x', d: 0 }], mot: ' a escolta ' }, { mud: [] }] });
+  ok(r.lista.length === 3 && r.lista[0].qtd === 240 && r.lista[1].nome === 'Recurso' && r.lista[1].qtd === 0 && r.lista[2].id !== 'r1' && r.hist.length === 1 && j(r.hist[0]) === j({ em: T0, tipo: 'rec', mud: [{ rec: 'r1', n: 'Prata', d: 120 }], mot: 'a escolta' }),
     'os recursos: nome e quantidade (inteira, de 0 para cima) e o que mudou');
   ok(j(C.normRespeito({ v: 19, hist: [{ em: T0, de: 1, para: 2, mot: 'x' }] })) === j({ v: 10, hist: [{ em: T0, tipo: 'resp', de: 1, para: 2, mot: 'x' }] }) && C.normRespeito(null).v === 0 && C.normRespeito({ v: -9 }).v === -9, 'o respeito no mundo, de −10 a +10');
   const rl = C.normRelacoes([{ id: 'y1', tipo: 'faccao', alvo: 'fc_vale', nome: 'Liga do Vale', cor: '#5A8FD0', v: 3 }, { tipo: 'cla', alvo: 'var', v: -19 }, { tipo: 'cla', alvo: 'var', v: 1 }, { tipo: 'outro', alvo: 'z' }, { tipo: 'cla', alvo: 'a b' }]);
   ok(rl.length === 2 && rl[0].cor === '#5a8fd0' && rl[1].v === -10 && rl[1].nome === '' && /^rl_/.test(rl[1].id), 'as relações: com uma facção ou com um clã (uma por alvo), de −10 a +10');
   ok(j(C.normFaccao({ id: 'fc_vale', nome: 'Liga do Vale', cor: '#5a8fd0' })) === j({ id: 'fc_vale', nome: 'Liga do Vale', cor: '#5a8fd0' }) && C.normFaccao({ nome: 'sem id' }) === null && C.normFaccao(null) === null,
     'a facção do Mapa-múndi: uma referência (ou nenhuma)');
-  const h = C.normHist([{ em: T0, tipo: 'rec', mud: [{ rec: 'r1', n: 'Ouro', d: 5 }] }, { tipo: 'rec', mud: [] }, { tipo: 'cons', nome: 'Forja', nivel: 3, mud: [{ rec: 'r1', n: 'Ferro', d: -45 }] },
+  const h = C.normHist([{ em: T0, tipo: 'rec', mud: [{ rec: 'r1', n: 'Prata', d: 5 }] }, { tipo: 'rec', mud: [] }, { tipo: 'cons', nome: 'Forja', nivel: 3, mud: [{ rec: 'r1', n: 'Aço', d: -45 }] },
     { tipo: 'resp', de: 1, para: 2, mot: 'm' }, { tipo: 'rel', alvoTipo: 'cla', alvo: 'var', nome: 'Casa Varonil', de: 0, para: -3 }, { tipo: 'rel', alvoTipo: 'x', alvo: 'var' },
     { tipo: 'membro', pid: 'p7', nome: 'Mira', de: 0, para: -1 }, { tipo: 'cargo', txt: ' Selene (líder): criou o cargo X. ' }, { tipo: 'texto', txt: '' }, { tipo: 'outro', txt: 'x' }]);
   ok(j(h.map(e => e.tipo)) === j(['rec', 'cons', 'resp', 'rel', 'membro', 'cargo']) && h[5].txt === 'Selene (líder): criou o cargo X.' && h[1].nivel === 3, 'o histórico: cada linha com o seu tipo (as tortas ficam de fora)');
@@ -161,13 +161,13 @@ const CARGOS = {
 
 /* ---------------- o clã, o que a mesa recebe e a projeção ---------------- */
 const LAM = { id: 'lam', nome: 'Lâmina do Crepúsculo', lema: 'Onde a luz termina', ordem: 1, jogadores: true, ver: {}, brasao: { cores: ['#24305e', '#d9a441'] }, faccao: { id: 'fc_vale', nome: 'Liga do Vale', cor: '#5a8fd0' },
-  cargos: CARGOS, construcoes: [{ id: 'f1', nome: 'Forja', nivel: 2 }], recursos: { lista: [{ id: 'r1', nome: 'Ferro', qtd: 18 }], hist: [] }, respeito: { v: 2, hist: [] },
+  cargos: CARGOS, construcoes: [{ id: 'f1', nome: 'Forja', nivel: 2 }], recursos: { lista: [{ id: 'r1', nome: 'Aço', qtd: 18 }], hist: [] }, respeito: { v: 2, hist: [] },
   relacoes: [{ id: 'y1', tipo: 'faccao', alvo: 'fc_vale', nome: 'Liga do Vale', cor: '#5a8fd0', v: 3 }, { id: 'y2', tipo: 'cla', alvo: 'var', v: -3 }, { id: 'y3', tipo: 'cla', alvo: 'cor', v: -1 }],
   hist: [{ em: T0, tipo: 'rel', alvoTipo: 'cla', alvo: 'cor', nome: 'Ordem', de: 0, para: -1 }, { em: T0, tipo: 'rel', alvoTipo: 'cla', alvo: 'var', nome: 'Casa Varonil', de: 0, para: -3 }, { em: T0, tipo: 'membro', pid: 'p2', nome: 'Brisa', de: 0, para: 2 }] };
-const VAR = { id: 'var', nome: 'Casa Varonil', lema: 'Ferro e honra', ordem: 2, jogadores: false, ver: { mostrar: true, cargos: true, respeito: true, hist: true }, brasao: { cores: ['#8a2a2a', '#c9ccd4'] },
+const VAR = { id: 'var', nome: 'Casa Varonil', lema: 'Aço e honra', ordem: 2, jogadores: false, ver: { mostrar: true, cargos: true, respeito: true, hist: true }, brasao: { cores: ['#8a2a2a', '#c9ccd4'] },
   cargos: { lider: { nome: 'Lorde', gente: [{ id: 'v1', nome: 'Lorde Aster', resp: 3 }] }, s1: { nome: 'Espiã-mor', pai: 'lider', gente: [{ id: 'v2', nome: 'Vesna', resp: 1 }] } },
-  construcoes: [{ id: 'k1', nome: 'Muralha', nivel: 2 }], recursos: { lista: [{ id: 'r1', nome: 'Ouro', qtd: 900 }], hist: [] }, respeito: { v: 1, hist: [] }, relacoes: [{ id: 'x1', tipo: 'cla', alvo: 'lam', v: -3 }],
-  hist: [{ em: T0, tipo: 'membro', pid: 'v2', nome: 'Vesna', de: 0, para: 1 }, { em: T0, tipo: 'resp', de: 0, para: 1 }, { em: T0, tipo: 'rec', mud: [{ rec: 'r1', n: 'Ouro', d: 100 }] }, { em: T0, tipo: 'cargo', txt: 'O mestre: criou o cargo Espiã-mor.' }, { em: T0, tipo: 'texto', txt: 'Fundada.' }] };
+  construcoes: [{ id: 'k1', nome: 'Muralha', nivel: 2 }], recursos: { lista: [{ id: 'r1', nome: 'Prata', qtd: 900 }], hist: [] }, respeito: { v: 1, hist: [] }, relacoes: [{ id: 'x1', tipo: 'cla', alvo: 'lam', v: -3 }],
+  hist: [{ em: T0, tipo: 'membro', pid: 'v2', nome: 'Vesna', de: 0, para: 1 }, { em: T0, tipo: 'resp', de: 0, para: 1 }, { em: T0, tipo: 'rec', mud: [{ rec: 'r1', n: 'Prata', d: 100 }] }, { em: T0, tipo: 'cargo', txt: 'O mestre: criou o cargo Espiã-mor.' }, { em: T0, tipo: 'texto', txt: 'Fundada.' }] };
 const COR = { id: 'cor', nome: 'Ordem do Corvo', jogadores: false, ver: { mostrar: false, cargos: true }, brasao: { cores: ['#1b1b22', '#e8eaf0'] }, cargos: { lider: { nome: 'Grão-mestre', gente: [{ id: 'q1', nome: 'Corvo Branco', resp: 5 }] } } };
 {
   const c = C.normCla(null);
@@ -198,7 +198,7 @@ const COR = { id: 'cor', nome: 'Ordem do Corvo', jogadores: false, ver: { mostra
 {
   let c = C.normCla(LAM);
   c = C.mudarRecurso(c, 'r1', 5, 'a mina', T0);
-  ok(c.recursos.lista[0].qtd === 23 && j(c.recursos.hist[0]) === j({ em: T0, tipo: 'rec', mud: [{ rec: 'r1', n: 'Ferro', d: 5 }], mot: 'a mina' }) && c.hist[0].tipo === 'rec', 'somar um recurso: no histórico dos recursos e no do clã');
+  ok(c.recursos.lista[0].qtd === 23 && j(c.recursos.hist[0]) === j({ em: T0, tipo: 'rec', mud: [{ rec: 'r1', n: 'Aço', d: 5 }], mot: 'a mina' }) && c.hist[0].tipo === 'rec', 'somar um recurso: no histórico dos recursos e no do clã');
   c = C.mudarRecurso(c, 'r1', 3, '', mais(20));
   ok(c.recursos.hist.length === 1 && c.recursos.hist[0].mud[0].d === 8 && c.recursos.hist[0].mot === 'a mina' && c.recursos.hist[0].em === mais(20), 'outra mudança no mesmo recurso, dentro de um minuto: a mesma linha (+8)');
   c = C.mudarRecurso(c, 'r1', -8, '', mais(40));
@@ -232,19 +232,19 @@ const COR = { id: 'cor', nome: 'Ordem do Corvo', jogadores: false, ver: { mostra
     && C.anotar([1, 2, 3].map(i => ({ em: T0, tipo: 'texto', txt: 't' + i })), { em: T0, tipo: 'texto', txt: 't0' }, 3).length === 3, 'as linhas de cargo não se juntam; o histórico tem um limite');
 }
 {
-  const cla = C.normCla({ construcoes: [{ id: 'f1', nome: 'Forja', nivel: 2, efeito: 'Armas.', prox: { custo: [{ rec: 'r1', nome: 'Ferro', qtd: 45 }, { rec: 'r2', nome: 'Madeira', qtd: 20 }], efeito: 'Armas e armaduras.' } },
-    { id: 'b1', nome: 'Biblioteca', nivel: 0, prox: { custo: [{ rec: 'r2', nome: 'Madeira', qtd: 10 }] } }, { id: 's1', nome: 'Salão', nivel: 1, efeito: 'Abriga 20.' }, { id: 'x1', nome: 'Velha', nivel: 1, prox: { custo: [{ rec: 'rz', nome: 'Pedra', qtd: 5 }] } }],
-    recursos: { lista: [{ id: 'r1', nome: 'Ferro', qtd: 18 }, { id: 'r2', nome: 'Madeira', qtd: 55 }] } });
-  ok(j(C.falta(cla, 'f1')) === j([{ rec: 'r1', nome: 'Ferro', qtd: 27 }]) && j(C.falta(cla, 'b1')) === j([]) && j(C.falta(cla, 'x1')) === j([{ rec: 'rz', nome: 'Pedra', qtd: 5 }]), 'o que falta para subir (o recurso que não existe mais conta inteiro)');
+  const cla = C.normCla({ construcoes: [{ id: 'f1', nome: 'Forja', nivel: 2, efeito: 'Armas.', prox: { custo: [{ rec: 'r1', nome: 'Aço', qtd: 45 }, { rec: 'r2', nome: 'Junco', qtd: 20 }], efeito: 'Armas e armaduras.' } },
+    { id: 'b1', nome: 'Biblioteca', nivel: 0, prox: { custo: [{ rec: 'r2', nome: 'Junco', qtd: 10 }] } }, { id: 's1', nome: 'Salão', nivel: 1, efeito: 'Abriga 20.' }, { id: 'x1', nome: 'Velha', nivel: 1, prox: { custo: [{ rec: 'rz', nome: 'Mármore', qtd: 5 }] } }],
+    recursos: { lista: [{ id: 'r1', nome: 'Aço', qtd: 18 }, { id: 'r2', nome: 'Junco', qtd: 55 }] } });
+  ok(j(C.falta(cla, 'f1')) === j([{ rec: 'r1', nome: 'Aço', qtd: 27 }]) && j(C.falta(cla, 'b1')) === j([]) && j(C.falta(cla, 'x1')) === j([{ rec: 'rz', nome: 'Mármore', qtd: 5 }]), 'o que falta para subir (o recurso que não existe mais conta inteiro)');
   ok(!C.subirNivel(cla, 'f1', T0).ok && C.subirNivel(cla, 'f1', T0).falta.length === 1, 'sem recurso: não sobe');
   const r = C.subirNivel(cla, 'b1', T0);
   ok(r.ok && r.cla.construcoes[1].nivel === 1 && r.cla.recursos.lista[1].qtd === 45 && j(r.cla.construcoes[1].prox) === j({ custo: [], efeito: '' }) && r.cla.construcoes[1].efeito === ''
-    && j(r.cla.recursos.hist[0]) === j({ em: T0, tipo: 'rec', mud: [{ rec: 'r2', n: 'Madeira', d: -10 }], mot: 'Biblioteca foi construída' }) && r.cla.hist[0].tipo === 'cons' && r.cla.hist[0].nivel === 1,
+    && j(r.cla.recursos.hist[0]) === j({ em: T0, tipo: 'rec', mud: [{ rec: 'r2', n: 'Junco', d: -10 }], mot: 'Biblioteca foi construída' }) && r.cla.hist[0].tipo === 'cons' && r.cla.hist[0].nivel === 1,
     'subir a Biblioteca para o nível 1: desconta, o custo do próximo fica em branco, e vai para os dois históricos');
-  const rico = C.normCla(Object.assign({}, cla, { recursos: { lista: [{ id: 'r1', nome: 'Ferro', qtd: 100 }, { id: 'r2', nome: 'Madeira', qtd: 55 }] } }));
+  const rico = C.normCla(Object.assign({}, cla, { recursos: { lista: [{ id: 'r1', nome: 'Aço', qtd: 100 }, { id: 'r2', nome: 'Junco', qtd: 55 }] } }));
   const f = C.subirNivel(rico, 'f1', T0);
   ok(f.ok && f.cla.construcoes[0].nivel === 3 && f.cla.construcoes[0].efeito === 'Armas e armaduras.' && f.cla.recursos.lista[0].qtd === 55 && f.cla.recursos.lista[1].qtd === 35
-    && C.histTxt(f.cla.hist[0], null) === 'Forja subiu para o nível 3 (−45 Ferro, −20 Madeira).', 'subir a Forja: o efeito novo passa a valer');
+    && C.histTxt(f.cla.hist[0], null) === 'Forja subiu para o nível 3 (−45 Aço, −20 Junco).', 'subir a Forja: o efeito novo passa a valer');
   const s = C.subirNivel(cla, 's1', T0);
   ok(s.ok && s.cla.construcoes[2].nivel === 2 && s.cla.construcoes[2].efeito === 'Abriga 20.' && s.cla.recursos.hist.length === 0 && C.histTxt(s.cla.hist[0], null) === 'Salão subiu para o nível 2.', 'sem custo: sobe sem descontar nada');
   ok(!C.subirNivel(cla, 'nada', T0).ok, 'a construção que não existe');
@@ -253,13 +253,13 @@ const COR = { id: 'cor', nome: 'Ordem do Corvo', jogadores: false, ver: { mostra
 /* ---------------- os textos ---------------- */
 {
   const nomes = { mundo: ['m-5', 'm-4', 'm-3', 'm-2', 'm-1', 'm0', 'm1', 'm2', 'm3', 'm4', 'm5'] };
-  ok(C.histTxt({ tipo: 'rec', mud: [{ n: 'Ouro', d: 1200 }, { n: 'Ferro', d: -5 }], mot: 'a escolta' }) === '+1.200 Ouro, −5 Ferro — a escolta.', 'recursos (com o motivo)');
+  ok(C.histTxt({ tipo: 'rec', mud: [{ n: 'Prata', d: 1200 }, { n: 'Aço', d: -5 }], mot: 'a escolta' }) === '+1.200 Prata, −5 Aço — a escolta.', 'recursos (com o motivo)');
   ok(C.histTxt({ tipo: 'resp', de: 1, para: 2, mot: '' }, nomes) === 'Respeito no mundo: +2 (m2).' && C.histTxt({ tipo: 'resp', de: 1, para: 2, mot: 'x' }, null) === 'Respeito no mundo: +2 (Respeitado) — x.', 'o respeito no mundo, com os nomes da mesa');
   ok(C.histTxt({ tipo: 'rel', alvoTipo: 'cla', nome: 'Casa Varonil', para: -3, mot: 'o duelo' }) === 'Relação com Casa Varonil: −3 (Rival) — o duelo.' && C.histTxt({ tipo: 'rel', alvoTipo: 'faccao', nome: '', para: 0 }) === 'Relação com uma facção: 0 (Neutro).',
     'uma relação');
   ok(C.histTxt({ tipo: 'membro', nome: 'Mira', para: -1 }) === 'Respeito de Mira no clã: −1 (Questionado).' && C.histTxt({ tipo: 'cons', nome: 'Biblioteca', nivel: 1, mud: [] }) === 'Biblioteca foi construída.'
     && C.histTxt({ tipo: 'cargo', txt: 'Selene (líder): criou o cargo X.' }) === 'Selene (líder): criou o cargo X.', 'um membro, uma construção, os cargos');
-  ok(C.custoTxt([{ rec: 'r1', nome: 'Velho', qtd: 45 }, { rec: 'r9', nome: 'Pedra', qtd: 2000 }], { lista: [{ id: 'r1', nome: 'Ferro' }] }) === '45 Ferro · 2.000 Pedra' && C.mudTxt([{ n: 'Ouro', d: -3 }]) === '−3 Ouro',
+  ok(C.custoTxt([{ rec: 'r1', nome: 'Velho', qtd: 45 }, { rec: 'r9', nome: 'Mármore', qtd: 2000 }], { lista: [{ id: 'r1', nome: 'Aço' }] }) === '45 Aço · 2.000 Mármore' && C.mudTxt([{ n: 'Prata', d: -3 }]) === '−3 Prata',
     'o custo (com o nome de agora do recurso) e o que mudou');
 }
 

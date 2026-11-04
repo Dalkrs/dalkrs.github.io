@@ -239,6 +239,16 @@ const m10eq = (a, b) => { const ks = new Set(Object.keys(a || {}).concat(Object.
     await botao(L, 'eco:r:' + sal.id + ':x');
     await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(400);
     ok(await A(L, id => !__mundo.App.mapa.eco.rec.some(r => r.id === id) && __mundo.App.mapa.faccoes[0].rec.some(r => r.id === id), sal.id), 'tirar o Sal do mundo: a facção fica com o estoque (como um recurso só dela)');
+    // (lote 86) "Usar a lista do clã…": os nomes de antes viram os da lista e os que faltam entram (com 0 nas facções)
+    const antesF = await A(L, () => __mundo.App.mapa.eco.rec.map(r => r.nome));
+    await botao(L, 'eco:rec-fixa');
+    const txtF = await L.F.locator('dialog.mundo-dl[open]').innerText();
+    await L.F.click('dialog.mundo-dl[open] button[type="submit"]'); await espera(400);
+    const depoisF = await A(L, () => { const m = __mundo.App.mapa, c = m.eco.rec.find(r => r.nome === 'Compendiânio'); return { nomes: m.eco.rec.map(r => r.nome), comp: !!c && m.faccoes.every(f => f.rec.some(x => x.id === c.id && x.n === 0)) }; });
+    ok(/Usar a lista de recursos do clã/.test(txtF) && depoisF.comp && depoisF.nomes.includes('Madeira Q2') && depoisF.nomes.includes('Orith Q3') && !depoisF.nomes.some(n => /^(Madeira|Pedra)$/.test(n)) && depoisF.nomes.includes('Lapros'),
+      '(lote 86) "Usar a lista do clã…": mostra o que muda; os nomes viram os da lista, os que faltam entram com 0 nas facções e os outros (Lapros) ficam — ' + JSON.stringify({ antesF, depois: depoisF.nomes }));
+    await A(L, () => __mundo.App.desfazer ? __mundo.App.desfazer() : null); await espera(300);
+    if (await A(L, () => typeof __mundo.App.desfazer === 'function')) ok(JSON.stringify(await A(L, () => __mundo.App.mapa.eco.rec.map(r => r.nome))) === JSON.stringify(antesF), '(lote 86) Desfazer volta os recursos como estavam');
     // as tabelas
     await botao(L, 'eco:ter');
     await L.F.waitForSelector('dialog.eco-dl[open]');

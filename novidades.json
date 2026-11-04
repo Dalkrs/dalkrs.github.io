@@ -2,6 +2,31 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.04-5",
+      "data": "2026-11-04",
+      "titulo": "Os recursos do clã com desenho",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Clã: os recursos agora são de uma lista: Madeira, Orith e Pedra (Q1 a Q3), Suprimentos, Compendiânio, Ouro, Demônite, Amonite, Saverite, Mãziernite, Mana'Nucleo e Runas. Cada um tem o seu desenho, e a qualidade aparece em pontinhos."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Clã: no alto do clã e no cofre, os recursos aparecem pelo desenho (passe o mouse para ver o nome). No alto ficam só os da lista que o clã tem."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Clã: os recursos de antes viraram os da lista pelo nome (Madeira T1 → Madeira Q1…), com as mesmas quantidades. Um recurso com outro nome continua no cofre, mas não vai para o alto."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Mapa-múndi: na economia, “Usar a lista do clã…” troca os nomes dos recursos do mundo pelos da lista e põe os que faltam, depois de mostrar o que muda (com Desfazer)."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.04-4",
       "data": "2026-11-04",
       "titulo": "A lista de cenas mais arrumada e a foto padrão por cargo",

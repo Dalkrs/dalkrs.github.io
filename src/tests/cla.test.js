@@ -156,11 +156,11 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
   });
 
   await passo('os recursos', async () => {
-    await clicar('[data-k="rec:novo"]'); await dlg({ 'dl:nome': 'Ferro', 'dl:qtd': '18' });
-    await clicar('[data-k="rec:novo"]'); await dlg({ 'dl:nome': 'Madeira', 'dl:qtd': '55' });
+    await clicar('[data-k="rec:novo"]'); await dlg({ 'dl:nome': 'Aço', 'dl:qtd': '18' });
+    await clicar('[data-k="rec:novo"]'); await dlg({ 'dl:nome': 'Junco', 'dl:qtd': '55' });
     let c = await cla();
     const fe = c.recursos.lista[0].id, ma = c.recursos.lista[1].id;
-    ok(c.recursos.lista.map(r => r.nome + ' ' + r.qtd).join(', ') === 'Ferro 18, Madeira 55', 'dois recursos');
+    ok(c.recursos.lista.map(r => r.nome + ' ' + r.qtd).join(', ') === 'Aço 18, Junco 55', 'dois recursos');
     await P.fill('[data-k="mot:rec"]', 'a mina do norte');
     await clicar(`[data-k="rec:mais:${fe}"]`); await clicar(`[data-k="rec:mais:${fe}"]`);
     await P.click(`[data-k="rec:mais:${fe}"]`, { modifiers: ['Shift'] }); await espera(200);
@@ -169,11 +169,11 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
       'somar 1, 1 e 10 (Shift): uma linha só no histórico (+12, com o motivo); o campo do motivo esvazia');
     await escrever(`rec:qtd:${ma}`, '40');
     c = await cla();
-    ok(c.recursos.lista[1].qtd === 40 && c.recursos.hist[0].mud[0].d === -15 && c.recursos.hist[0].mud[0].n === 'Madeira', 'escrever a quantidade: o histórico leva a diferença');
+    ok(c.recursos.lista[1].qtd === 40 && c.recursos.hist[0].mud[0].d === -15 && c.recursos.hist[0].mud[0].n === 'Junco', 'escrever a quantidade: o histórico leva a diferença');
     await clicar(`[data-k="rec:menos:${ma}"]`);
-    ok((await cla()).recursos.hist[0].mud[0].d === -16 && /Madeira/.test(await rotulo()), 'tirar 1 da Madeira (na mesma linha)');
-    await clicar(`[data-k="rec:ren:${fe}"]`); await dlg({ 'dl:nome': 'Ferro bom' });
-    ok((await cla()).recursos.lista[0].nome === 'Ferro bom', 'renomear um recurso');
+    ok((await cla()).recursos.hist[0].mud[0].d === -16 && /Junco/.test(await rotulo()), 'tirar 1 da Junco (na mesma linha)');
+    await clicar(`[data-k="rec:ren:${fe}"]`); await dlg({ 'dl:nome': 'Aço bom' });
+    ok((await cla()).recursos.lista[0].nome === 'Aço bom', 'renomear um recurso');
     await P.keyboard.press('Control+z'); await espera(250);
   });
 
@@ -189,11 +189,11 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
     await clicar('#dlg [data-k="dl:sim"]');
     c = await cla();
     const f = c.construcoes[0];
-    ok(f && f.nome === 'Forja' && f.ico === 'forja' && f.nivel === 2 && f.prox.custo.map(x => x.nome + ' ' + x.qtd).join() === 'Ferro 45,Madeira 20' && f.prox.efeito === 'Armas e armaduras pela metade do preço.',
-      'a Forja, nível 2, com o custo do nível 3 (45 Ferro, 20 Madeira) e o efeito novo');
-    ok(await k(`cons:sobe:${f.id}`).isDisabled() && /Faltam 15 Ferro/.test(await P.locator(`[data-cons="${f.id}"]`).innerText()), 'sem Ferro bastante: "faltam 15 Ferro" e o botão desativado');
+    ok(f && f.nome === 'Forja' && f.ico === 'forja' && f.nivel === 2 && f.prox.custo.map(x => x.nome + ' ' + x.qtd).join() === 'Aço 45,Junco 20' && f.prox.efeito === 'Armas e armaduras pela metade do preço.',
+      'a Forja, nível 2, com o custo do nível 3 (45 Aço, 20 Junco) e o efeito novo');
+    ok(await k(`cons:sobe:${f.id}`).isDisabled() && /Faltam 15 Aço/.test(await P.locator(`[data-cons="${f.id}"]`).innerText()), 'sem Aço bastante: "faltam 15 Aço" e o botão desativado');
     await P.fill(`[data-k="rec:qtd:${fe}"]`, '100'); await k(`rec:qtd:${fe}`).dispatchEvent('change'); await espera(200);
-    ok(!(await k(`cons:sobe:${f.id}`).isDisabled()) && /\(−45 Ferro, −20 Madeira\)/.test(await k(`cons:sobe:${f.id}`).getAttribute('title')), 'com recursos: o botão diz o que vai sair');
+    ok(!(await k(`cons:sobe:${f.id}`).isDisabled()) && /\(−45 Aço, −20 Junco\)/.test(await k(`cons:sobe:${f.id}`).getAttribute('title')), 'com recursos: o botão diz o que vai sair');
     await clicar(`[data-k="cons:sobe:${f.id}"]`);
     c = await cla();
     ok(c.construcoes[0].nivel === 3 && c.construcoes[0].efeito === 'Armas e armaduras pela metade do preço.' && c.recursos.lista[0].qtd === 55 && c.recursos.lista[1].qtd === 19
@@ -221,12 +221,12 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
     await P.fill('#dlg [data-k="dl:custo-novo:0"]', '  Mitril ');
     await P.fill('#dlg [data-k="dl:custo-qtd:0"]', '30');
     // o mesmo nome de um que já existe (sem acento e maiúscula) usa o que existe
-    await clicar('#dlg [data-k="dl:custo-novo"]'); await P.fill('#dlg [data-k="dl:custo-novo:1"]', 'ferro'); await P.fill('#dlg [data-k="dl:custo-qtd:1"]', '5');
+    await clicar('#dlg [data-k="dl:custo-novo"]'); await P.fill('#dlg [data-k="dl:custo-novo:1"]', 'aço'); await P.fill('#dlg [data-k="dl:custo-qtd:1"]', '5');
     await clicar('#dlg [data-k="dl:sim"]');
     c = await cla();
     const torre = c.construcoes.find(x => x.nome === 'Torre de Mitril'), mit = c.recursos.lista.find(r => r.nome === 'Mitril');
     ok(torre && mit && mit.qtd === 0 && c.recursos.lista.length === nRec + 1 && torre.prox.custo.map(x => x.rec + ':' + x.qtd).join() === mit.id + ':30,' + fe + ':5',
-      'salvo: o Mitril entra na lista do clã com 0 e já está no custo; "ferro" usou o Ferro que existia: ' + JSON.stringify(torre && torre.prox.custo));
+      'salvo: o Mitril entra na lista do clã com 0 e já está no custo; "aço" usou o Aço que existia: ' + JSON.stringify(torre && torre.prox.custo));
     ok(/Recurso novo na lista do clã \(com 0\): Mitril/.test(await avisos()), 'o aviso diz o recurso novo: ' + await avisos());
     await desfazerDoAviso();
     c = await cla();
@@ -335,9 +335,9 @@ const PNG = { name: 'brasao.png', mimeType: 'image/png', buffer: Buffer.from('iV
     ok(await P.locator('#abas button.tranca').count() === 0 && await P.locator('#parte [data-cargo="lider"] .resp').count() === 1 && await P.locator('#parte button').count() === 0,
       'o clã dos jogadores: todas as abas abertas; o respeito de cada membro aparece; nada para mexer (é a vista dos jogadores)');
     await clicar('[data-aba="cons"]');
-    ok(/Forja Grande/.test(await P.locator('#parte').innerText()) && /Para o nível 3: 45 Ferro · 20 Madeira/.test(await P.locator('#parte').innerText()), 'as construções, com o custo do próximo nível');
+    ok(/Forja Grande/.test(await P.locator('#parte').innerText()) && /Para o nível 3: 45 Aço · 20 Junco/.test(await P.locator('#parte').innerText()), 'as construções, com o custo do próximo nível');
     await clicar('[data-aba="rec"]');
-    ok(/Ferro\s*100/.test(await P.locator('#parte').innerText()) && /a mina do norte/.test(await P.locator('#parte').innerText()), 'os recursos e o que mudou');
+    ok(/Aço\s*100/.test(await P.locator('#parte').innerText()) && /a mina do norte/.test(await P.locator('#parte').innerText()), 'os recursos e o que mudou');
     await clicar('[data-aba="hist"]');
     ok(/Respeito de Personagem de teste no clã: \+3 \(Estimado\)/.test(await P.locator('#parte').innerText()) && /A liderança passou para Personagem de teste/.test(await P.locator('#parte').innerText()), 'o histórico');
     await clicar(`#escolhaCla [data-cla="${varo}"]`);

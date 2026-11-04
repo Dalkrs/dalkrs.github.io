@@ -66,7 +66,7 @@ const ficha = (nome, extra) => Object.assign({ nome, raca: 'Humana', lado: 'Alia
 
     await passo('(lote 75) os números e o Ver | Editar do líder', async () => {
       const nums = (await CJ.locator('#numeros').innerText()).replace(/\s+/g, ' ');
-      ok(/membros/.test(nums) && /lapros no cofre/.test(nums) && /7 Madeira/.test(nums) && /1 construções/.test(nums), 'os números do clã no alto: ' + nums);
+      ok(/membros/.test(nums) && /lapros no cofre/.test(nums) && /\b7\b/.test(nums) && await CJ.locator('[data-k="num:rec:madeira_q1"]').count() === 1 && /1 construções/.test(nums), 'os números do clã no alto: ' + nums);
       ok(await CJ.locator('[data-k="lider-editar"]').getAttribute('aria-pressed') === 'true', '(nos testes, o líder já começa no Editar)');
       await CJ.locator('[data-k="lider-ver"]').click(); await w(300, J);
       ok(!(await CJ.locator('[data-k="rol:novo"]').count()) && await CJ.locator('.rol-cartoes .mbc').count() >= 2, 'no Ver, o rol em cartões, sem os botões de editar');
