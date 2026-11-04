@@ -684,15 +684,18 @@
   };
   function fecharCanais() {
     const c1 = canal, c2 = canalCamp; canal = null; canalCamp = null;
-    if (c1) { try { cliente().removeChannel(c1); } catch (e) { /* já fechado */ } }
-    if (c2) { try { cliente().removeChannel(c2); } catch (e) { /* já fechado */ } }
+    const idas = [];
+    if (c1) { try { idas.push(cliente().removeChannel(c1)); } catch (e) { /* já fechado */ } }
+    if (c2) { try { idas.push(cliente().removeChannel(c2)); } catch (e) { /* já fechado */ } }
+    return Promise.allSettled(idas);
   }
   /* (lote 84) Em pausa: sem leituras, sem presença e sem o tempo real, que manda a uma aba esquecida tudo o que os outros
      gravam. A mesa continua aberta, com tudo o que já leu: ao retomar, só o que mudou vem do banco. */
   aoVivo.pausar = () => {
     if (!mesaId || pausado) return;
     pausado = true;
-    fecharCanais();
+    // (sem canais, a conexão ficaria aberta à toa; ela reabre sozinha quando um canal novo se inscreve)
+    fecharCanais().then(() => { if (pausado) { try { cliente().realtime.disconnect(); } catch (e) { /* já fechada */ } } });
     if (aoVivo.conectado) { aoVivo.conectado = false; aoVivo.emit('estado', false); }
   };
   aoVivo.retomar = () => {

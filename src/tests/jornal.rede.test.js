@@ -16,7 +16,7 @@
 //   · o banco (SQL 0016): quem lê e quem escreve cada documento do Jornal (e o mestre auxiliar com e sem a aba Jornal).
 // SO=banco roda só a parte do banco, numa mesa criada direto pelo banco (é o que os mutantes do SQL usam).
 // (Sem mesa — o editor, a folha, desfazer, publicar —: src/tests/jornal.test.js.) FOTOS=<pasta> guarda capturas.
-const { start, checker } = require('./lib');
+const { start, checker, LOCAL } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
 // uma ficha completa (como a das Fichas), para o personagem do Dalmo
@@ -242,7 +242,8 @@ async function sondarBanco(t, c, mesa, dalmo, lia, doZero) {
     await segundoPlano(Lp, true);
     await publicar(JM);
     ok(await ate(async () => await abaAtiva(Dp) === 'jornal' && /O Arauto de Brenn/.test(await leitura(JD)) && await tag(JD, cD) === 'Saiu no jornal', 30000), 'publicado de novo: o Jornal abre para o Dalmo, e a carta dele saiu');
-    ok(await ate(async () => await bolinha(Lp), 30000) && await abaAtiva(Lp) === 'fichas', 'para a Lia, com o site em segundo plano: só a bolinha (nada troca de aba enquanto ela não está olhando)');
+    // (lote 84: a aba escondida não lê o banco; o que chega nela é o tempo real, que o banco local não tem)
+    if (!LOCAL) ok(await ate(async () => await bolinha(Lp), 30000) && await abaAtiva(Lp) === 'fichas', 'para a Lia, com o site em segundo plano: só a bolinha (nada troca de aba enquanto ela não está olhando)');
     await segundoPlano(Lp, false);
     ok(await ate(async () => await abaAtiva(Lp) === 'jornal', 8000) && await Lp.locator('#toasts .toast button', { hasText: 'Voltar para Fichas' }).count() === 1 && !(await bolinha(Lp)), 'quando ela volta ao site, o Jornal abre (com "Voltar para Fichas")');
     await Dp.locator('#tab-fichas').click(); await w(300, Dp);
