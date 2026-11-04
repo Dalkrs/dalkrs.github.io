@@ -56,7 +56,7 @@ Site único com os sistemas da mesa, publicado em <https://dalkrs.github.io/>:
 | `jornal/`, `cenas/`, `mundo/`, `acampamento/`, `fichas/`, `arvore/`, `meditacao/`, `cla/`, `rolador/` | As páginas dos sistemas (cada uma também abre sozinha, em outra janela). |
 | `tc/` | O que é de todos: `supabase.js` (a biblioteca do banco), `tc.js` (conta, mesas, mesa ao vivo e os dados da mesa), `ponte.js` (a conversa entre um sistema e a casca), `rules.js` (regras da ficha), `dice.js` (dados), `auditoria.js` (as contas do auditor dos dados), `config.js` (endereço e chave pública do banco). |
 | `src/cenas/` | Fontes das Cenas. `./build.sh` gera `cenas/index.html`. Testes em `src/cenas/test/`. |
-| `src/tests/` | Testes do site. Os `*-mesa.test.js`, os `*.rede.test.js` (e `banco`, `mesa`, `fichas-novas`, `token-ficha`) usam o banco de verdade — ou, com `TC_LOCAL`, o banco local de ensaio. |
+| `src/tests/` | Testes do site. Os `*-mesa.test.js`, os `*.rede.test.js` (e `banco`, `mesa`, `fichas-novas`, `token-ficha`) usam o banco local de ensaio (`TC_LOCAL`) ou, de propósito, o de verdade (`TC_REAL=1`). |
 | `src/tests/local/` | O banco local de ensaio: um PostgreSQL daqui mesmo com as migrações aplicadas, para ensaiar uma migração antes de aplicá-la no projeto de verdade e rodar os testes de rede sem tocar nele. Ver `src/tests/local/LEIA.md`. |
 | `src/legado/` | As versões originais de cada sistema, guardadas para comparação nos testes. |
 | `supabase/` | O banco: migrações (tabelas, regras de acesso, Storage) e as funções `criar-conta` e `faxina`. |
@@ -280,6 +280,26 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
 - Busca (`#menuBusca`, todas as palavras, sem acento) e recentes (`tinycats:cenas:recentes`, até 4 com mais de 6 cenas).
 - As chaves antigas de pastas e famílias fechadas deixaram de valer na lista (a janela "Organizar" não muda).
 - Teste: `src/cenas/test/lote84.js`.
+### O consumo do banco e o sono da mesa (lote 86)
+
+O plano gratuito do Supabase tem cota de dados enviados (Egress) e de logs. O que cada parte faz para gastar menos:
+
+- **Mapa-múndi**: `mundo:mapa:*`, `mundo:pub:*` e `mundo:pubc:*` têm perto de 300 KB cada, cinco por gesto, e o tempo real
+  manda a linha inteira a quem está conectado. Agora sobem no máximo a cada 5 s (`DOCS_MAPA`, em `tc/tc.js`). O que nasce
+  ou some vai logo: revelar um mapa, e esconder, que apaga as projeções. Falta o maior ganho: tirar os hexágonos
+  (251 KB, iguais em todas) das cinco cópias.
+- **Presença**: a cada 60 s (antes 24 s), e sem reler membros e nome da mesa a cada vez: com o tempo real, uma releitura a
+  cada 3 presenças, porque a saída de alguém não chega pelo canal. `aoVivo.online` passou de 75 s para 130 s.
+- **Aba escondida**: o relógio de `aoVivo.iniciar` não lê nada; ao voltar, o `visibilitychange` busca o que chegou.
+- **Sono** (`TC.sono`, em `tc/tc.js`; o cartão `#sono` e a saída, na casca): escondida por 10 min, a mesa entra em pausa
+  (`aoVivo.pausar`: fecha o tempo real) e volta sozinha ao reabrir. À vista, sem uso por 1 h, pergunta "Ainda está aí?"; sem
+  resposta em 60 s, pausa. Sem uso por 8 h em nenhuma aba, sai da conta só neste navegador (`signOut({ scope: 'local' })`),
+  depois de entregar o que falta subir; com algo pendente, não sai. O último uso fica em `tinycats:uso`, comum às abas; as
+  molduras são vigiadas pela casca (`TC.sono.vigiar`); `window.TC_SONO` troca os prazos nos testes. `aoVivo.retomar` não
+  baixa a mesa de novo: só o que mudou.
+- **Testes**: um teste de rede sem `TC_LOCAL` agora para com um aviso; para o projeto real, `TC_REAL=1`. Na mesma
+  organização, um segundo projeto divide a mesma cota.
+- Testes: `sono.rede` (com `TC_REAL=1`, confere também o tempo real fechando e reabrindo).
 
 ### Construção ou Mestrando nas Cenas (lote 83)
 
