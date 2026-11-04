@@ -38,9 +38,39 @@ const Tools = (() => {
     { id: 'fog', n: 'Névoa manual', k: 'U', i: 'fog', grp: 3, gm: true },
     { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
   ];
+  /* (lote 83) A visão do mestre: "Construção" (mexe em tudo, como sempre) ou "Mestrando" (só os tokens andam; portas,
+     luzes, baús e passagens se usam, mas nada do mapa sai do lugar). Cada cena lembra a última, neste aparelho; uma
+     cena que nunca foi escolhida abre em Mestrando se está no ar e em Construção se não está. */
+  const CONSTRUCAO = new Set(['obj', 'free', 'line', 'rect', 'ell', 'poly', 'text', 'wall', 'light', 'terrain']);
+  const VISAO_K = 'tinycats:cenas:visao';
+  const visoes = (() => { try { const o = JSON.parse(localStorage.getItem(VISAO_K) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } })();
+  const mestrando = () => isGM() && App.visao === 'mestrando';
+  const noArAgora = id => typeof Nuvem !== 'undefined' && Nuvem.mestre() && (Nuvem.noAr() === id || Nuvem.noArJunto(id));
+  function visaoDaCena(id) {
+    App.visao = visoes[id] === 'mestrando' || visoes[id] === 'construcao' ? visoes[id] : noArAgora(id) ? 'mestrando' : 'construcao';
+    if (mestrando() && CONSTRUCAO.has(App.tool)) set('select');
+  }
+  function trocarVisao(v) {
+    if (v !== 'mestrando' && v !== 'construcao') return;
+    const sc = Store.scene();
+    App.visao = v;
+    if (sc) { visoes[sc.id] = v; try { localStorage.setItem(VISAO_K, JSON.stringify(visoes)); } catch (e) { /* vale só nesta visita */ } }
+    if (v === 'mestrando') {
+      if (CONSTRUCAO.has(App.tool)) set('select');
+      const fica = App.sel.filter(x => x.c === 'tokens' || x.c === 'effects');
+      if (fica.length !== App.sel.length) setSel(fica);
+    }
+    Store.emit('tool'); Store.emit('visao', v);
+    cursor(); Render.request();
+  }
+  // um objeto do mapa (não um token de personagem)? é o que fica parado em Mestrando
+  const ehDoMapa = s => s.c === 'shapes' || s.c === 'walls' || s.c === 'lights' || (s.c === 'tokens' && !!(Store.get('tokens', s.id) || {}).prop);
+  const AVISO_MESTRANDO = 'Em Mestrando, só os tokens andam. Para mexer no mapa, troque para Construção.';
+  const avisoMestrando = () => UI.toast(AVISO_MESTRANDO, { key: 'visao', action: 'Ir para Construção', run: () => trocarVisao('construcao') });
   const allowed = id => {
     const d = LIST.find(x => x.id === id);
     if (!d) return false;
+    if (CONSTRUCAO.has(id) && mestrando()) return false;
     if (d.gm) return isGM();
     return d.perm ? can(d.perm) : true;
   };
@@ -79,6 +109,7 @@ const Tools = (() => {
       if (!fxVisible(e) || !(gm || can('editFx', e))) continue;
       if (scratch.isPointInPath(FX.geom(e, sc).path, p.x, p.y)) return { c: 'effects', id: e.id };
     }
+    if (mestrando() && App.tool === 'select') return null;          // (lote 83) em Mestrando, os desenhos do mapa não se pegam
     for (const top of [true, false]) {
       for (let i = sc.shapes.length - 1; i >= 0; i--) {
         const s = sc.shapes[i];
@@ -135,6 +166,7 @@ const Tools = (() => {
     const s = App.sel[0], o = Store.get(s.c, s.id), sc = Store.scene();
     if (!o) return [];
     const out = [], gm = isGM(), selTool = App.tool === 'select';
+    if (mestrando() && ehDoMapa(s)) return out;                    // (lote 83) em Mestrando, o mapa não se ajusta
     if (s.c === 'shapes' && (selTool || (App.tool === 'terrain' && gm && isTer(o)))) {
       if (!(gm || can('editShape', o)) || o.lock) return out;
       if (o.k === 'line') out.push({ kind: 'end', i: 0, x: o.pts[0], y: o.pts[1] }, { kind: 'end', i: 1, x: o.pts[2], y: o.pts[3] });
@@ -220,10 +252,11 @@ const Tools = (() => {
 
   /* ---- Arrastar a seleção ---- */
   function startMove(p) {
-    const items = [], gm = isGM();
+    const items = [], gm = isGM(), mt = mestrando();
     for (const s of App.sel) {
       const o = Store.get(s.c, s.id);
       if (!o) continue;
+      if (mt && ehDoMapa(s)) continue;                              // (lote 83) em Mestrando, o mapa fica parado
       if (s.c === 'tokens') { if (can('moveToken', o)) items.push({ c: s.c, id: o.id, x: o.x, y: o.y, size: o.size }); }
       else if (s.c === 'shapes') { if ((gm || can('editShape', o)) && !o.lock) items.push({ c: s.c, id: o.id, o0: o.pts ? { pts: o.pts.slice() } : { x: o.x, y: o.y } }); }
       else if (s.c === 'effects') {
@@ -303,7 +336,7 @@ const Tools = (() => {
     if (typeof Reforco !== 'undefined') Reforco.soltouEm(g.items.filter(it => it.c === 'tokens').map(it => it.id));
   }
   function nudge(dx, dy) {
-    const sc = Store.scene(), toks = selOf('tokens').filter(t => can('moveToken', t));
+    const sc = Store.scene(), toks = selOf('tokens').filter(t => can('moveToken', t) && !(mestrando() && t.prop));
     if (!toks.length) return false;
     const moves = toks.map(t => ({ t, to: snapTok(sc, t.x + dx * sc.cell, t.y + dy * sc.cell, t.size, false) }));
     if (!isGM() && sc.blockMove) {
@@ -322,12 +355,15 @@ const Tools = (() => {
     if ((x1 - x0) * App.view.z < 4 && (y1 - y0) * App.view.z < 4) return;
     const inR = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
     const picked = [];
+    const mt = mestrando();
     for (const t of sc.tokens) {
-      if (!tokShown(t, sc)) continue;
+      if (!tokShown(t, sc) || (mt && t.prop)) continue;             // (lote 83) em Mestrando, a caixa pega só os tokens
       const [cx, cy] = tokC(t, sc);
       if (inR(cx, cy)) picked.push({ c: 'tokens', id: t.id });
     }
-    if (!picked.length) {
+    if (!picked.length && mt) {
+      for (const e of sc.effects) { if (!fxVisible(e)) continue; const ge = FX.geom(e, sc); if (inR(ge.cx, ge.cy)) picked.push({ c: 'effects', id: e.id }); }
+    } else if (!picked.length) {
       for (const s of sc.shapes) {
         if (!shapeShown(s) || s.lock || isTer(s) || !(gm || can('editShape', s))) continue;
         const b = shapeBBox(s);
@@ -400,7 +436,8 @@ const Tools = (() => {
           setSel(App.sel.concat(hit));
         } else if (!selHas(hit.c, hit.id)) setSel([hit]);
         g = startMove(p);
-        if (!g && hit.c === 'tokens') {
+        if (!g && mestrando() && ehDoMapa(hit)) g = { type: 'stuck', p0: p, why: AVISO_MESTRANDO, mestrando: true };
+        else if (!g && hit.c === 'tokens') {
           // Não dá para mover: guarda o motivo para avisar se a pessoa tentar arrastar.
           const tk = Store.get('tokens', hit.id), sc = Store.scene();
           const why = isGM() ? (tk.locked ? 'Este token está com a posição travada. Destrave pelo botão direito.' : '')
@@ -426,7 +463,7 @@ const Tools = (() => {
       if (g.type === 'handle') moveHandle(p, e);
       else if (g.type === 'move') { doMove(p, e); if (g.moved) cv.style.cursor = 'grabbing'; }
       else if (g.type === 'marquee') { g.x1 = p.x; g.y1 = p.y; }
-      else if (g.type === 'stuck') { if (Math.hypot(p.x - g.p0.x, p.y - g.p0.y) * App.view.z > 8) { UI.toast(g.why); g = null; } return; }
+      else if (g.type === 'stuck') { if (Math.hypot(p.x - g.p0.x, p.y - g.p0.y) * App.view.z > 8) { if (g.mestrando) avisoMestrando(); else UI.toast(g.why); g = null; } return; }
       Render.request();
     },
     up() {
@@ -1282,10 +1319,12 @@ const Tools = (() => {
       else if (lk === 'y') { e.preventDefault(); redo(); }
       else if (lk === 'c') { const n = Act.copySel(); if (n) UI.toast(n === 1 ? 'Copiado. Ctrl+V cola onde o cursor estiver.' : `${n} itens copiados. Ctrl+V cola onde o cursor estiver.`); }
       else if (lk === 'd') { e.preventDefault(); Act.duplicateSel(); }
-      else if (lk === 'a' && isGM()) { e.preventDefault(); setSel(Store.scene().tokens.map(x => ({ c: 'tokens', id: x.id }))); }
+      else if (lk === 'a' && isGM()) { e.preventDefault(); setSel(Store.scene().tokens.filter(x => !(mestrando() && x.prop)).map(x => ({ c: 'tokens', id: x.id }))); }
       return;
     }
     if (k === 'Delete' || k === 'Backspace') {
+      // (lote 83) em Mestrando, o Delete não apaga peças do mapa (só tokens e efeitos)
+      if (mestrando() && App.sel.some(ehDoMapa)) { const fica = App.sel.filter(x => !ehDoMapa(x)); if (!fica.length) { avisoMestrando(); return; } setSel(fica); }
       const n = Act.deleteSel();
       if (n) { e.preventDefault(); UI.toast(n === 1 ? 'Item apagado.' : `${n} itens apagados.`, { action: 'Desfazer', run: undo }); }
       return;
@@ -1338,6 +1377,7 @@ const Tools = (() => {
       else UI.toast('Para mirar, passe o mouse sobre um token e aperte A.');
       return;
     }
+    if (KEYS[lk] && CONSTRUCAO.has(KEYS[lk]) && mestrando()) { avisoMestrando(); return; }
     if (KEYS[lk] && allowed(KEYS[lk])) set(KEYS[lk], KEYS[lk] === 'wall' ? { wallKind: lk === 'd' ? 'door' : 'wall' } : null);
   });
   window.addEventListener('keyup', e => { if (e.code === 'Space') { App.keys.space = false; cursor(); } });
@@ -1348,5 +1388,6 @@ const Tools = (() => {
     if (t.preview) t.preview(ctx, px, sc);
   }
 
-  return { LIST, GRUPOS, set, allowed, handles, drawPreview, rascunhoLapis: () => (lapisR ? { id: lapisR.id, c: lapisR.c, s: 0, p: lapisR.p } : null), hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || T[App.tool].hint || '', cancel() { resetState(); Render.request(); } };
+  Store.on('scene', id => { if (isGM()) { visaoDaCena(id || (Store.scene() || {}).id); Store.emit('tool'); } });
+  return { LIST, GRUPOS, set, allowed, mestrando, trocarVisao, visaoDaCena, ehDoMapa, handles, drawPreview, rascunhoLapis: () => (lapisR ? { id: lapisR.id, c: lapisR.c, s: 0, p: lapisR.p } : null), hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || (mestrando() && App.tool === 'select' ? 'Mestrando: arraste os tokens; um clique abre e fecha portas; dois cliques acendem luzes e abrem baús e passagens. O resto do mapa fica parado.' : T[App.tool].hint) || '', cancel() { resetState(); Render.request(); } };
 })();

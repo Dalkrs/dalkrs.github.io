@@ -1261,3 +1261,12 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .andares-j .andares-l { display: grid; gap: 6px; max-height: 46vh; overflow: auto; margin-top: 6px; }
 .andar-op { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .andar-op small { margin-left: auto; color: var(--fg-3, #8a8f9a); font-size: 12px; }
+
+/* (lote 83) a visão do mestre: Construção ou Mestrando */
+.visao-s { display: inline-flex; gap: 2px; padding: 2px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2, rgba(255,255,255,.04)); }
+.visao-b { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--fg-2, inherit); font: inherit; font-size: 13px; cursor: pointer; }
+.visao-b:hover { background: var(--hover); color: var(--fg); }
+.visao-b.on { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); font-weight: 600; }
+.visao-b[data-visao="mestrando"].on { background: color-mix(in srgb, var(--ok, #4caf50) 18%, transparent); border-color: var(--ok, #4caf50); color: var(--fg); }
+.visao-b:focus-visible { outline: 2px solid var(--lamp); outline-offset: 1px; }
+@media (max-width: 1100px) { .visao-b span { display: none; } }

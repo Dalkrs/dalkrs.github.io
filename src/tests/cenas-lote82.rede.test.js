@@ -84,6 +84,7 @@ const j = JSON.stringify;
       // o Dain volta pelo mestre (direto) e os dois sobem juntos pelo jogador
       await C.evaluate(([P, tk]) => { __tc.UI.switchScene(P); const t = __tc.Store.get('tokens', tk); __tc.UI.levarAndar([t], __tc.Store.S.scenes[P].tokens.find(x => x.prop && x.cena).cena); }, [ids.P, ids.tk]);
       ok(await ate(() => B.evaluate(id => __tc.Store.scene().id === id, ids.A), 15000), '(o Dain volta ao Térreo, e o jogador junto)');
+      ok(await C.evaluate(() => __tc.App.visao) === 'mestrando', '(lote 83) o 2º andar, no ar e nunca escolhido, abre em Mestrando');
       await w(800, J);
       const itens = await B.evaluate(tk => { const t = __tc.Store.get('tokens', tk), sc = __tc.Store.scene(); __tc.setSel([{ c: 'tokens', id: tk }]); __tc.UI.contextMenu({ x: t.x + sc.cell / 2, y: t.y + sc.cell / 2 }, 300, 300); return [...document.querySelectorAll('.menu-i')].map(b => b.innerText.trim()); }, ids.tk);
       ok(itens.some(x => /^Levar todos os meus \(2\) para 2º andar$/.test(x)), 'no menu do token: "Levar todos os meus (2) para 2º andar" — ' + j(itens.filter(x => /Ir|Levar/.test(x))));

@@ -276,6 +276,16 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
 - [x] A lista de cenas não baixa os fundos (não há miniatura); os jogadores recebem a imagem só da cena no ar.
 - Teste: `test/lote81.js` (11). Rodados: `perf2.js`, `stress.js`, `unit.js`, `e2e.js`, `ui.js` — sem mudança.
 
+## Lote 83 — Construção ou Mestrando
+
+- [x] Botão no topo (só o mestre): Construção / Mestrando; cada cena lembra (neste aparelho); no ar → Mestrando.
+- [x] Mestrando: a barra some com paredes, objetos, desenhos, luz e terreno (os atalhos avisam).
+- [x] Arrastar objeto não move (aviso com "Ir para Construção"); com objeto e token selecionados, só o token anda.
+- [x] Caixa de seleção e Ctrl+A: só tokens. Setas e Delete não mexem em objeto. Desenhos não se pegam com o clique.
+- [x] Continuam: portas (clique), luzes e estados (dois cliques), passagens, ocultar/mostrar, névoa, efeitos, turnos.
+- [x] Menu do objeto em Mestrando: sem girar, travar, duplicar, ordem e apagar; com "Usar a passagem…".
+- Teste: `test/lote83.js` (25); `cenas-lote82.rede` confere que a cena no ar abre em Mestrando.
+
 ## Lote 82 — andares mais rápidos
 
 - [x] Chegar pela escada certa: andares alinhados (mesmas colunas, linhas e quadrado) → a mesma casa; ocupada ou com

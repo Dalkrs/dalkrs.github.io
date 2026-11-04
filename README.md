@@ -254,6 +254,16 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Construção ou Mestrando nas Cenas (lote 83)
+
+- `App.visao` (`construcao` | `mestrando`), trocada por `Tools.trocarVisao` (botão `#visaoSeg` no topo); cada cena
+  lembra a sua no `localStorage` (`tinycats:cenas:visao`); sem escolha, no ar → Mestrando, fora → Construção.
+- Em Mestrando (`Tools.mestrando()`): as ferramentas de construção somem (`CONSTRUCAO` em 09-tools), objetos,
+  desenhos, paredes e luzes não se arrastam, não se ajustam pelas alças, não apagam com Delete nem andam com as
+  setas; a caixa de seleção e o Ctrl+A pegam só tokens; os desenhos não se pegam com o clique.
+- Portas (clique), luzes e estados de objetos (dois cliques), passagens, efeitos, condições e turnos continuam.
+- Teste: `src/cenas/test/lote83.js`.
+
 ### Andares mais rápidos nas Cenas (lote 82)
 
 - `src/cenas/src/js/07h-andares.js` (`Andares`): a casa de chegada (`chegada`: alinhados → a mesma casa; senão, a

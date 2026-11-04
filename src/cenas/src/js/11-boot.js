@@ -194,6 +194,7 @@ async function start(snap) {
   Render.resize();
   Render.fit();
   if (snap && snap.view && isFinite(snap.view.z)) Object.assign(App.view, snap.view);
+  if (isGM()) Tools.visaoDaCena(Store.S.current);      // (lote 83) Construção ou Mestrando, a que esta cena lembra
   UI.renderAll();
   UI.initCaps();
   let first = true;

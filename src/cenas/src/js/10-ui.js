@@ -649,6 +649,8 @@ const UI = (() => {
       h('span', { class: 'brand', text: 'Tiny Cats' }),
       gm ? sceneBtn : h('span', { class: 'scene-b flat' }, icon('map', 17), h('span', { class: 'scene-n', text: Nuvem.semCena() ? 'Sem cena' : sc.name })),
       air,
+      // (lote 83) a visão do mestre: Construção (mexe em tudo) ou Mestrando (só os tokens andam)
+      gm && !Nuvem.jogador() ? visaoSeg() : null,
       Nuvem.jogador() ? andaresJogador() : gm ? andaresMestre(sc) : null,
       h('div', { class: 'grp' },
         iconBtn('undo', 'Desfazer (Ctrl+Z)', Tools.undo, { disabled: !Store.canUndo(), id: 'undoBtn' }),
@@ -943,6 +945,12 @@ const UI = (() => {
         title: x.meu ? 'O seu token está aqui' : 'Olhar este andar', onclick: () => { Nuvem.verAndar(x.id === a.ondeEstou ? null : x.id); } },
         x.meu ? icon('token', 13) : null, h('span', { text: x.nome }))),
       a.olhando ? h('button', { type: 'button', class: 'andar-volta', id: 'andarVolta', onclick: () => Nuvem.verAndar(null), text: 'Voltar ao meu token' }) : null);
+  }
+  function visaoSeg() {
+    const op = [['construcao', 'Construção', 'wall', 'Construir a cena: paredes, objetos, desenhos e luzes se mexem'], ['mestrando', 'Mestrando', 'token', 'Mestrar a sessão: só os tokens andam; portas, luzes, baús e passagens se usam; o resto do mapa fica parado']];
+    return h('div', { class: 'visao-s', role: 'group', 'aria-label': 'Visão da cena', id: 'visaoSeg' },
+      op.map(([v, l, ic, tip]) => h('button', { type: 'button', class: 'visao-b' + (App.visao === v ? ' on' : ''), 'data-visao': v, 'aria-pressed': String(App.visao === v), title: tip,
+        onclick: () => { if (App.visao !== v) { Tools.trocarVisao(v); toast(v === 'mestrando' ? 'Mestrando: só os tokens andam. O mapa fica parado.' : 'Construção: tudo no mapa se mexe de novo.', { key: 'visao' }); } } }, icon(ic, 15), h('span', { text: l }))));
   }
   /* (lote 82) Trocar de andar, pelos dois lados:
        · o mestre (levarAndar): os tokens vão já, cada um pela passagem mais perto do grupo, na formação; toast com Desfazer;
@@ -2469,6 +2477,7 @@ const UI = (() => {
     const head = h('div', { class: 'p-head' }, prev,
       h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: many ? `${props.length} objetos` : (gm ? t.name : def.n) || def.n }), h('div', { class: 'p-sub', text: many ? 'Objetos de cenário' : 'Objeto de cenário' + (t.hidden && gm ? ' · oculto dos jogadores' : '') })));
     if (!gm) return [head];
+    const mt = Tools.mestrando();      // (lote 83) em Mestrando, o objeto se usa, mas não muda de forma nem sai do lugar
     const girar = d => all(x => ({ rot: (((x.rot || 0) + d) % 360 + 360) % 360 }), 'Girar objeto');
     const luz = !many && t.light && def.luz ? t.light : null;
     // (lote 7) aonde o objeto leva: a lista das cenas (na ordem das famílias) e o botão de ir
@@ -2484,11 +2493,12 @@ const UI = (() => {
     return [head,
       sec('s-prop', 'Objeto', true,
         !many ? field('Nome', inText('pr-name', t.name, v => all({ name: v.trim() || t.name }, 'Renomear objeto'))) : null,
-        field('Girar', h('div', { class: 'row tight' },
+        mt ? note('Em Mestrando, o objeto fica como está. Para girar, mudar o tamanho, duplicar ou apagar, troque para Construção.') : null,
+        mt ? null : field('Girar', h('div', { class: 'row tight' },
           btn('', () => girar(-90), { icon: 'undo', kind: 'small', id: 'pr-rot-l', title: 'Girar 90° para a esquerda' }),
           btn('', () => girar(90), { icon: 'redo', kind: 'small', id: 'pr-rot-r', title: 'Girar 90° para a direita' }),
           !many ? inNum('pr-rot', t.rot || 0, v => all({ rot: ((Math.round(v) % 360) + 360) % 360 }, 'Girar objeto'), { min: 0, max: 359, step: 15, label: 'Rotação em graus' }) : null)),
-        field('Tamanho', seg('pr-size', many ? null : t.size, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => all(x => { const sc = Store.scene(), [nx, ny] = snapTok(sc, x.x, x.y, v, false); return { size: v, x: nx, y: ny }; }, 'Tamanho do objeto')))),
+        mt ? null : field('Tamanho', seg('pr-size', many ? null : t.size, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => all(x => { const sc = Store.scene(), [nx, ny] = snapTok(sc, x.x, x.y, v, false); return { size: v, x: nx, y: ny }; }, 'Tamanho do objeto')))),
       // (lote 39) as cores do objeto (o estandarte, o brasão, a mesa de guerra, o quadro de missões, o atril): na sede, as do clã
       props.every(x => (Props.P[x.prop] || {}).cores) ? sec('s-propcor', 'Cores', true,
         h('div', { class: 'grid2' },
@@ -2521,8 +2531,8 @@ const UI = (() => {
       !many && t.saque ? Best.secaoBau(t, UI.kit) : null,                                                                                 // (lote 29) o saque no chão
       sec('s-gm', 'Só do mestre', true,
         toggle('pr-hidden', props.every(x => x.hidden), v => all({ hidden: v }, v ? 'Ocultar objeto' : 'Mostrar objeto'), 'Oculto dos jogadores'),
-        toggle('pr-locked', props.every(x => x.locked), v => all({ locked: v }, v ? 'Travar objeto' : 'Destravar objeto'), 'Posição travada'),
-        h('div', { class: 'row' },
+        mt ? null : toggle('pr-locked', props.every(x => x.locked), v => all({ locked: v }, v ? 'Travar objeto' : 'Destravar objeto'), 'Posição travada'),
+        mt ? btn('Mexer no objeto (Construção)', () => Tools.trocarVisao('construcao'), { icon: 'wall', id: 'pr-construcao' }) : h('div', { class: 'row' },
           btn('Duplicar', Act.duplicateSel, { icon: 'copy' }),
           btn('Frente', () => Act.toFront('tokens', props.map(x => x.id), true), { icon: 'front' }),
           btn('Trás', () => Act.toFront('tokens', props.map(x => x.id), false), { icon: 'back' }),
@@ -3614,18 +3624,24 @@ const UI = (() => {
       items.push({ head: props.length > 1 ? `${props.length} objetos` : props[0].name });
       items.push({ label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') });
       if (gm) {
-        const allHidden = props.every(t => t.hidden), allLocked = props.every(t => t.locked);
-        items.push({ label: 'Girar para a direita', icon: 'redo', run: () => all(x => ({ rot: ((x.rot || 0) + 90) % 360 }), 'Girar objeto') },
+        const allHidden = props.every(t => t.hidden), allLocked = props.every(t => t.locked), mt = Tools.mestrando();
+        if (!mt) items.push({ label: 'Girar para a direita', icon: 'redo', run: () => all(x => ({ rot: ((x.rot || 0) + 90) % 360 }), 'Girar objeto') },
           { label: 'Girar para a esquerda', icon: 'undo', run: () => all(x => ({ rot: ((x.rot || 0) + 270) % 360 }), 'Girar objeto') });
         // (lote 48) o estado e a luz do objeto
         if (props.length === 1 && Props.estados(props[0].prop)) { const l = Props.estados(props[0].prop), a = Props.estado(props[0]), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; items.push({ label: nx[1], icon: 'reset', run: () => alternarObjeto(props[0], nx[0]) }); }
         if (props.length === 1 && Misterio.ehPista(props[0])) items.push({ label: 'Revelar e entregar a pista', icon: 'eye', run: () => Misterio.revelar(props[0]) });     // (lote 53)
         if (props.length === 1 && props[0].light && (Props.P[props[0].prop] || {}).luz) items.push({ label: props[0].light.on === false ? 'Acender' : 'Apagar', icon: 'light', run: () => alternarObjeto(props[0]) });
         items.push({ label: allHidden ? 'Mostrar aos jogadores' : 'Ocultar dos jogadores', icon: allHidden ? 'eye' : 'eyeOff', run: () => all({ hidden: !allHidden }, allHidden ? 'Mostrar objeto' : 'Ocultar objeto') });
-        items.push({ label: allLocked ? 'Destravar posição' : 'Travar posição', icon: allLocked ? 'unlock' : 'lock', run: () => all({ locked: !allLocked }, allLocked ? 'Destravar objeto' : 'Travar objeto') });
-        items.push('-', { label: 'Duplicar', icon: 'copy', key: 'Ctrl+D', run: Act.duplicateSel },
-          { label: 'Trazer para frente', icon: 'front', run: () => Act.toFront('tokens', ids, true) }, { label: 'Enviar para trás', icon: 'back', run: () => Act.toFront('tokens', ids, false) },
-          '-', { label: 'Apagar', icon: 'trash', key: 'Del', danger: true, run: deleteSelToast });
+        // (lote 83) em Mestrando, o objeto se usa mas não sai do lugar: sem girar, travar, duplicar, ordem e apagar
+        if (mt) {
+          if (props.length === 1 && (props[0].cena || (Props.P[props[0].prop] || {}).passagem)) items.push({ label: 'Usar a passagem…', icon: 'map', run: () => passagem(props[0], cx, cy) });
+          items.push('-', { label: 'Mexer no objeto (ir para Construção)', icon: 'wall', run: () => Tools.trocarVisao('construcao') });
+        } else {
+          items.push({ label: allLocked ? 'Destravar posição' : 'Travar posição', icon: allLocked ? 'unlock' : 'lock', run: () => all({ locked: !allLocked }, allLocked ? 'Destravar objeto' : 'Travar objeto') });
+          items.push('-', { label: 'Duplicar', icon: 'copy', key: 'Ctrl+D', run: Act.duplicateSel },
+            { label: 'Trazer para frente', icon: 'front', run: () => Act.toFront('tokens', ids, true) }, { label: 'Enviar para trás', icon: 'back', run: () => Act.toFront('tokens', ids, false) },
+            '-', { label: 'Apagar', icon: 'trash', key: 'Del', danger: true, run: deleteSelToast });
+        }
       }
     } else if (hit && hit.c === 'tokens') {
       const todos = selOf('tokens'), toks = todos.filter(t => !t.prop), o = Store.get('tokens', hit.id).prop ? toks[0] : Store.get('tokens', hit.id), ids = todos.map(t => t.id);

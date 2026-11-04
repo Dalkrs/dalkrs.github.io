@@ -4,6 +4,7 @@
 const App = {
   viewer: 'gm',                     // 'gm' ou o id de um jogador
   tool: 'select',
+  visao: 'construcao',                  // (lote 83) a visão do mestre: construcao | mestrando (Tools.trocarVisao)
   sel: [],                          // [{ c: coleção, id }]
   view: { x: 0, y: 0, z: 1 },       // câmera: canto superior esquerdo + zoom
   mouse: { sx: 0, sy: 0, x: 0, y: 0, inside: false },
