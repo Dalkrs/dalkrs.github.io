@@ -270,14 +270,29 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
 - Busca (`#menuBusca`, todas as palavras, sem acento) e recentes (`tinycats:cenas:recentes`, até 4 com mais de 6 cenas).
 - As chaves antigas de pastas e famílias fechadas deixaram de valer na lista (a janela "Organizar" não muda).
 - Teste: `src/cenas/test/lote84.js`.
+### A grade de hexágonos em documento próprio (lote 87)
+
+- `mundo:hexm:<mapa>` (`{ hexes }`, a grade do mestre, `vis: mestre`) e `mundo:hexp:<mapa>` (a dos jogadores, sem o que a névoa
+  cobre, `vis: mesa`, com as campanhas do mapa). `mundo:mapa`, `mundo:pub` e `mundo:pubc` deixam de levar `hexes`: um gesto
+  no mapa que não mexe na grade vale dezenas de KB, e não 1,3 MB.
+- Tudo passa por `gravarDocMesa` (`semHex`, em `mundo/mundo.js`): a grade é gravada à parte e sai da cópia **só depois** de estar
+  no banco (`hexNoBanco`, que pergunta à casca a revisão), então uma falha no meio nunca deixa um mapa sem grade. A cópia
+  antiga, com a grade dentro, continua valendo até o próximo gesto (`comHex`). No mapa do mestre, o que vier dentro soma com a
+  separada: um aparelho na versão antiga, que grava só o que mexeu, não apaga nada. Na projeção, o que vier dentro vale como
+  está (uma data com outra grade fica com a dela).
+- Esconder apaga `hexp`; apagar o mapa apaga `hexm`; os documentos sem mapa saem ao abrir. `cla/sede-ui.js` lê a grade de `hexm`
+  para o chão da sede; nenhum outro sistema lê `hexes`.
+- Quem abre um mapa assim na versão antiga do site vê o terreno vazio até recarregar: nada se perde.
+- Cópia de segurança dos mapas de antes da mudança: `privado.copia_mapas_20261104`, no banco.
+- Testes: `mundo-hex.rede`.
+
 ### O consumo do banco e o sono da mesa (lote 86)
 
 O plano gratuito do Supabase tem cota de dados enviados (Egress) e de logs. O que cada parte faz para gastar menos:
 
 - **Mapa-múndi**: `mundo:mapa:*`, `mundo:pub:*` e `mundo:pubc:*` têm perto de 300 KB cada, cinco por gesto, e o tempo real
   manda a linha inteira a quem está conectado. Agora sobem no máximo a cada 5 s (`DOCS_MAPA`, em `tc/tc.js`). O que nasce
-  ou some vai logo: revelar um mapa, e esconder, que apaga as projeções. Falta o maior ganho: tirar os hexágonos
-  (251 KB, iguais em todas) das cinco cópias.
+  ou some vai logo: revelar um mapa, e esconder, que apaga as projeções.
 - **Presença**: a cada 60 s (antes 24 s), e sem reler membros e nome da mesa a cada vez: com o tempo real, uma releitura a
   cada 3 presenças, porque a saída de alguém não chega pelo canal. `aoVivo.online` passou de 75 s para 130 s.
 - **Aba escondida**: o relógio de `aoVivo.iniciar` não lê nada; ao voltar, o `visibilitychange` busca o que chegou.
