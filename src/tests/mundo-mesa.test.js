@@ -60,7 +60,7 @@ const SEG = 'Z9917Q';                                   // vai em tudo o que é 
   ok(await noMundo(M, () => __mundo.App.mostrarAosJogadores()), 'e mostra o mapa aos jogadores');
   ok(await ate(async () => await M.evaluate(() => TC.dados.pendentes === 0)), 'tudo sobe para a mesa');
   const docsM = await M.evaluate(() => TC.dados.col('documentos').todas().filter(d => d.id.startsWith('mundo:')).map(d => d.id.replace(/mp_[a-z0-9_]+/, '*') + ':' + d.vis).sort().join());
-  ok(docsM === 'mundo:indice:mesa,mundo:mapa:*:mestre,mundo:pub:*:mesa', 'na mesa ficam o mapa (só do mestre), a projeção e o índice: ' + docsM);
+  ok(docsM === 'mundo:hexm:*:mestre,mundo:hexp:*:mesa,mundo:indice:mesa,mundo:mapa:*:mestre,mundo:pub:*:mesa', 'na mesa ficam o mapa (só do mestre), a projeção e o índice: ' + docsM);
 
   // ---------- o jogador ----------
   await J.goto(t.base + '?debug', { waitUntil: 'load' }); await w(1500, J);
@@ -94,7 +94,7 @@ const SEG = 'Z9917Q';                                   // vai em tudo o que é 
     const lista = await a.storage.from('mesas').list(mesa);
     return { ids: (docs || []).map(d => d.id.replace(/mp_[a-z0-9_]+/, '*')).filter(i => i.startsWith('mundo:')).sort().join(), vazou: JSON.stringify(docs || []).includes(seg), upErro: up.error ? String(up.error.message) : null, lista: (lista.data || []).length };
   }, [mesaId, SEG]);
-  ok(direto.ids === 'mundo:indice,mundo:pub:*', 'pelo banco, o jogador só lê a projeção e o índice: ' + direto.ids);
+  ok(direto.ids === 'mundo:hexp:*,mundo:indice,mundo:pub:*', 'pelo banco, o jogador só lê a projeção, a grade dela e o índice: ' + direto.ids);
   ok(!direto.vazou, 'e o segredo do mestre não vem em nenhum documento');
   ok(!!direto.upErro, 'o banco recusa imagem enviada por jogador: ' + direto.upErro);
 

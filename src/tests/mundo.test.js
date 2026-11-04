@@ -540,7 +540,7 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     ok(!!mm && mm.vis === 'mestre' && j(mm.dados).includes(SEG), 'mundo:mapa:<id> é vis "mestre" e guarda tudo (notas, escondidos, encontros)');
     ok(!!pub && pub.vis === 'mesa' && !j(pub.dados).includes(SEG), 'mundo:pub:<id> é vis "mesa" e não tem nada do que é só do mestre');
     ok(!!idx && idx.vis === 'mesa' && j(idx.dados) === j({ mapas: [{ id: id.mapa1, nome: 'Mundo da Mesa' }], mostrado: id.mapa1 }), 'mundo:indice é vis "mesa": ' + j(idx && idx.dados) + ' (vis ' + (idx && idx.vis) + ')');
-    ok(j([...banco.documentos.keys()].sort()) === j([INDICE, PRE_MAPA + id.mapa1, PRE_PUB + id.mapa1].sort()), 'só esses três documentos na mesa: ' + [...banco.documentos.keys()].join(', '));
+    ok(j([...banco.documentos.keys()].sort()) === j([INDICE, PRE_MAPA + id.mapa1, PRE_PUB + id.mapa1, 'mundo:hexm:' + id.mapa1, 'mundo:hexp:' + id.mapa1].sort()), 'só esses documentos na mesa (lote 87: e as duas grades): ' + [...banco.documentos.keys()].join(', '));
     ok(await casca(M, () => window.__recusas.length) === 0, 'nenhuma gravação do mestre foi recusada');
     await foto(M, 'mesa-mestre');
   });
@@ -781,7 +781,13 @@ async function foto(a, nome) { if (FOTOS) await a.P.screenshot({ path: path.join
     await abrirCasca(M);
     ok(await A(M, x => !!__mundo.App.mapa && __mundo.App.mapa.id === x, id.mapa1) && j(await mapa(M)) === j(doc(PRE_MAPA + id.mapa1).dados), 'mestre recarregado: volta ao mesmo mapa, igual ao da mesa');
     await espera(1500);
-    ok(banco.log.length === n, 'abrir de novo não regrava nada: ' + banco.log.slice(n).map(x => x.id).join(', '));
+    // (lote 87) a única gravação possível é a projeção perdendo a grade, que já está no banco em separado; depois, nada
+    ok(banco.log.slice(n).every(x => x.id === PRE_PUB + id.mapa1) && !doc(PRE_PUB + id.mapa1).dados.hexes, 'abrir de novo só tira a grade da projeção: ' + banco.log.slice(n).map(x => x.id).join(', '));
+    const n2 = banco.log.length;
+    await abrirCasca(M);
+    await A(M, x => !!__mundo.App.mapa && __mundo.App.mapa.id === x, id.mapa1);
+    await espera(1500);
+    ok(banco.log.length === n2, 'abrir mais uma vez não regrava nada: ' + banco.log.slice(n2).map(x => x.id).join(', '));
   });
 
   /* ================= 3. celular e tema claro ================= */

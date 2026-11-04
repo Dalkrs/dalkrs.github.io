@@ -1528,7 +1528,7 @@
      cada mudança deixaria a linha parada até todo mundo dar uma pausa. */
   const DOCS_GRANDES = /^arvore:(biblioteca|pacote)(@|$)/;
   // (lote 86) o mapa-múndi e as projeções dele (perto de 300 KB cada, cinco por gesto): no máximo uma gravação a cada 5 s.
-  const DOCS_MAPA = /^mundo:(mapa|pub|pubc):/;
+  const DOCS_MAPA = /^mundo:(mapa|pub|pubc|hexm|hexp):/;
   function agendar(c, id, ms) {
     const ate = performance.now() + ms, ja = c.prazo.get(id);
     if (c.tempo.has(id) && ja != null && ja <= ate) return;

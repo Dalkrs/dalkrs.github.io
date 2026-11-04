@@ -323,7 +323,9 @@ window.ClaSedeUI = function (kit) {
     const out = [];
     for (const l of kit.docs()) {
       if (typeof l.id !== 'string' || !l.id.startsWith('mundo:mapa:') || l.apagado || !l.dados || typeof l.dados !== 'object') continue;
-      const m = l.dados, marcadores = (Array.isArray(m.objs) ? m.objs : []).filter(o => o && o.k === 'm' && typeof o.id === 'string' && String(o.nome || '').trim()).map(o => ({ id: o.id, nome: String(o.nome).trim().slice(0, 60), x: o.x, y: o.y }));
+      // (lote 87) a grade de hexágonos mora em mundo:hexm:<mapa> (o chão da sede vem dela)
+      const lh = kit.docs().find(x => x.id === 'mundo:hexm:' + l.id.slice('mundo:mapa:'.length) && !x.apagado && x.dados && x.dados.hexes);
+      const m = lh && !(l.dados.hexes && Object.keys(l.dados.hexes).length) ? Object.assign({}, l.dados, { hexes: lh.dados.hexes }) : l.dados, marcadores = (Array.isArray(m.objs) ? m.objs : []).filter(o => o && o.k === 'm' && typeof o.id === 'string' && String(o.nome || '').trim()).map(o => ({ id: o.id, nome: String(o.nome).trim().slice(0, 60), x: o.x, y: o.y }));
       out.push({ id: l.id.slice('mundo:mapa:'.length), nome: String(m.nome || 'Mapa').slice(0, 60), m, marcadores: marcadores.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')) });
     }
     return out.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
