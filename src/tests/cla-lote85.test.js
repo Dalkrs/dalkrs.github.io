@@ -1,6 +1,6 @@
 // Clã (lote 85): a foto padrão por cargo, sem mesa (a página sozinha — quem abre é o mestre):
 //   · no cartão de cada cargo (Geral), o botão da foto padrão: quem do cargo não tem foto aparece com ela;
-//   · "Foto dos sem cargo" (Membros): a dos membros sem cargo;
+//   · "Foto padrão do clã" (Membros): a de quem não tem foto nem a do cargo (lote 88: vale também para quem tem cargo);
 //   · a foto do próprio membro (ou da ficha) continua valendo por cima da padrão;
 //   · trocar e tirar pelo menu pequeno; Desfazer;
 //   · o núcleo guarda só as fotos de cargos que existem (e '_sem').
@@ -66,7 +66,7 @@ const PNG = c => Buffer.from({
     await escolher('[data-k="fcg:_sem"]', 'b');
     ok(await ate(async () => /^data:image\/png/.test(((await cla()).membros.imgCargo || {})._sem || '')), '"Foto dos sem cargo" guardada');
     ok(await ate(async () => (await P.locator(`[data-rol="${oswin}"] .av img`).count()) >= 1), 'Oswin (sem cargo) aparece com ela');
-    ok(await P.locator('[data-k="fcg:_sem"] img').count() === 1, 'o botão "Foto dos sem cargo" mostra a foto escolhida');
+    ok(await P.locator('[data-k="fcg:_sem"] img').count() === 1, 'o botão "Foto padrão do clã" mostra a foto escolhida');
     // a foto do próprio membro vale por cima
     const tamsin = await pid('Tamsin');
     await clicar(`[data-rol="${tamsin}"]`).catch(() => {});
@@ -86,7 +86,10 @@ const PNG = c => Buffer.from({
     await clicar('[data-k="fcg-tirar"]');
     ok(await ate(async () => !((await cla()).membros.imgCargo || {}).lider), 'tirar: a foto padrão do Líder sai');
     const brida = await pid('Brida');
-    ok(await P.locator(`[data-pessoa="${brida}"] .av img`).count() === 0, 'e a Brida volta para as iniciais');
+    // (lote 88) sem a foto do cargo, ela fica com a foto padrão do clã (a dos sem cargo)
+    const srcB = await A(id => { const im = document.querySelector(`[data-pessoa="${id}"] .av img`); return im ? im.src : null; }, brida);
+    const sem = ((await cla()).membros.imgCargo || {})._sem;
+    ok(srcB && srcB === sem, '(lote 88) e a Brida passa para a foto padrão do clã');
     await clicar('#btDesfazer');
     ok(await ate(async () => !!((await cla()).membros.imgCargo || {}).lider), 'Desfazer devolve a foto padrão');
   });

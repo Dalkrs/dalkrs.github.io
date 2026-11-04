@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.04-8",
+      "data": "2026-11-04",
+      "titulo": "A foto padrão do clã vale para todos",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Clã: a foto que era “dos sem cargo” agora é a “Foto padrão do clã”. Quem não tem foto, nem retrato na ficha, nem foto do cargo aparece com ela, tenha cargo ou não. Vale também ao puxar os membros para uma cena."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.04-6",
       "data": "2026-11-04",
       "titulo": "Os recursos do clã com desenho",

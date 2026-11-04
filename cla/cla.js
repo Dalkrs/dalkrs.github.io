@@ -301,7 +301,8 @@
   const cargoDaPessoa = (c, pid) => { const cs = c && c.cargos; if (!cs) return null; for (const k of Object.keys(cs)) if (cs[k] && Array.isArray(cs[k].gente) && cs[k].gente.some(p => p.id === pid)) return k; return null; };
   const fotoDoCargo = (c, k) => { const ic = c && c.membros && c.membros.imgCargo; return ic ? ic[k || '_sem'] || null : null; };
   const fotoDe = (c, pid, q) => { const d = c && c.membros && c.membros.dados ? c.membros.dados[pid] : null; if ((d && d.img) || (q && q.img)) return (d && d.img) || q.img;
-    const k = cargoDaPessoa(c, pid); if (k) return fotoDoCargo(c, k); if (c && c.membros && Array.isArray(c.membros.avulsos) && c.membros.avulsos.some(p => p.id === pid)) return fotoDoCargo(c, '_sem'); return null; };
+    // (lote 88) a foto padrão do clã ('_sem') vale para todo mundo sem foto: quem não tem cargo e quem está num cargo sem foto padrão
+    const k = cargoDaPessoa(c, pid); return (k && fotoDoCargo(c, k)) || fotoDoCargo(c, '_sem'); };
   const avDe = (c, pid, q, extra) => { const f = fotoDe(c, pid, q); return h('span', Object.assign({ class: 'av' + (q.pj ? ' pj' : '') }, extra || null), f ? h('img', { src: f, alt: '' }) : iniciais(q.nome)); };
   // quem usa é o líder deste clã (o clã dos jogadores; o personagem no cargo de líder é dele)
   function souLider(c) {
@@ -464,9 +465,10 @@
   /* (lote 85) a foto padrão de um cargo (ou dos sem cargo, k = '_sem'): quem do cargo não tem foto aparece com ela. Um
      clique escolhe; com foto, o menu pequeno troca ou tira. */
   function fotoCargoBtn(c, k, nome) {
-    const f = fotoDoCargo(c, k), rot = k === '_sem' ? 'os membros sem cargo' : 'o cargo ' + nome;
+    const f = fotoDoCargo(c, k), rot = k === '_sem' ? 'o clã' : 'o cargo ' + nome;
     return h('button', { type: 'button', class: 'ib leve foto-cg' + (f ? ' tem' : ''), 'data-k': 'fcg:' + k, disabled: ocupado,
-      title: f ? 'Foto padrão de ' + rot + ' (quem não tem foto aparece com ela). Clique para trocar ou tirar.' : 'Escolher a foto padrão de ' + rot + ': quem não tem foto aparece com ela',
+      title: k === '_sem' ? (f ? 'Foto padrão do clã: quem não tem foto (nem a do cargo) aparece com ela. Clique para trocar ou tirar.' : 'Escolher a foto padrão do clã: quem não tem foto (nem a do cargo) aparece com ela')
+        : f ? 'Foto padrão de ' + rot + ' (quem do cargo não tem foto aparece com ela). Clique para trocar ou tirar.' : 'Escolher a foto padrão de ' + rot + ': quem do cargo não tem foto aparece com ela',
       'aria-label': 'Foto padrão de ' + rot,
       onclick: ev => {
         if (!f) { escolherImagem({ para: 'cargo', id: c.id, cargo: k, nome: rot }); return; }
@@ -1022,7 +1024,7 @@
       h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Membros' }), h('small', { class: 'ajuda', text: ms.length === 1 ? '1 membro' : ms.length + ' membros' }),
         // (lote 60) trazer fichas (por grupo ou campanha) e os soldados com nome das tropas do clã
         h('span', { class: 'rol-trazer', style: 'margin-left:auto' },
-          mestre ? h('span', { class: 'rol-fsem', title: 'A foto de quem está sem cargo e sem foto' }, fotoCargoBtn(Object.assign({}, x.c, { id: x.id }), '_sem', ''), h('small', { text: 'Foto dos sem cargo' })) : null,
+          mestre ? h('span', { class: 'rol-fsem', title: 'A foto de quem não tem foto (nem a do cargo)' }, fotoCargoBtn(Object.assign({}, x.c, { id: x.id }), '_sem', ''), h('small', { text: 'Foto padrão do clã' })) : null,
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'rol:fichas', disabled: ocupado, onclick: () => fichasDlg(x) }, 'Das fichas…'),
           soldadosDoCla(id).length ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'rol:tropas', disabled: ocupado || !gravaFichas(), onclick: () => tropasDlg(x) }, 'Das tropas…') : null,
           h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'rol:novo', disabled: ocupado, onclick: () => novoMembroDlg(x) }, '+ Membro'))),

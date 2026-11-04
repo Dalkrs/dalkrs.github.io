@@ -23660,8 +23660,8 @@ const MembrosCla = (() => {
     return N.membrosDe(c).map(m => {
       const d = m.dados || {}, pc = m.pessoa.pc || d.pc || null, l = pc && Fichas.on() ? Fichas.get(pc) : null;
       const fichaImg = l ? Fichas.imagemDe(l) : null, nome = (l && String(l.nome || '').trim()) || m.pessoa.nome || 'Alguém';
-      // (lote 85) sem foto nenhuma: a foto padrão do cargo (ou a dos sem cargo), que o mestre escolhe no Clã
-      const ic = (c.membros && c.membros.imgCargo) || {}, doCargo = m.oculto ? null : ic[m.cargo || '_sem'];
+      // (lote 85/88) sem foto nenhuma: a foto padrão do cargo; sem ela, a foto padrão do clã ('_sem'), que o mestre escolhe no Clã
+      const ic = (c.membros && c.membros.imgCargo) || {}, doCargo = (!m.oculto && m.cargo && imagemOk(ic[m.cargo]) ? ic[m.cargo] : null) || ic._sem;
       return { pid: m.pid, nome: nome.slice(0, 60), cargo: m.cargo ? (c.cargos[m.cargo] || {}).nome || '' : '', img: imagemOk(d.img) ? d.img : imagemOk(fichaImg) ? fichaImg : imagemOk(doCargo) ? doCargo : null };
     });
   }

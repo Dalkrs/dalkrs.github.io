@@ -268,7 +268,7 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
 
 - `membros.imgCargo` (`{ <id do cargo> | '_sem': imagem }`, `ClaNucleo.normMembros`): só cargos que existem e imagens
   válidas. Vai junto com a parte "membros" (no banco, `privado.cla_pub` já copia a parte inteira: sem SQL novo).
-- `fotoDe` (cla.js): a foto do membro → a da ficha → a do cargo (ou `_sem`). As Cenas ("Puxar os membros do clã") usam
+- `fotoDe` (cla.js): a foto do membro → a da ficha → a do cargo → a foto padrão do clã (`_sem`, lote 88: para todos, com cargo ou sem). As Cenas ("Puxar os membros do clã") usam
   a mesma ordem. O botão `fcg:<cargo>` no cartão do cargo e `fcg:_sem` em Membros (só o mestre).
 - Teste: `src/tests/cla-lote85.test.js`.
 
