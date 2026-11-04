@@ -254,6 +254,17 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### Andares mais rápidos nas Cenas (lote 82)
+
+- `src/cenas/src/js/07h-andares.js` (`Andares`): a casa de chegada (`chegada`: alinhados → a mesma casa; senão, a
+  formação em volta da escada de volta), `mover`/`voltar` (um passo em cada cena, sem entrar no desfazer; os efeitos
+  presos vão junto, a mira e a vez na iniciativa ficam), `pisou`, `vertical` e `nivelDe`.
+- Campos novos: `t.pisar` (passagem que leva ao pisar; vai ao jogador como `pisa`), `sc.nivel` (−20..50) e `sc.soEscada`.
+- A troca de andar esquece, no desfazer das duas cenas, os passos que falam dos tokens que mudaram (`Store.esquecer`).
+- O pedido do jogador leva os ids e a passagem (`{t:'andar', ids, p}`); a tela dele segue os tokens que pediu.
+- A projeção é refeita quando alguém entra ou sai da mesa (antes, os tokens dele ficavam sem dono até a cena mudar).
+- Testes: `src/cenas/test/lote82.js`, `src/tests/cenas-lote82.rede.test.js` e as ações de andar no `fuzz.js`.
+
 ### Fundos grandes nas Cenas (lote 81)
 
 - O fundo vai até 8192 px (`Assets.MAX_BG`); WebP e JPEG que cabem sobem como vieram (`Nuvem.guardarArquivo`).

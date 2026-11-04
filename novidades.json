@@ -2,6 +2,49 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.04-2",
+      "data": "2026-11-04",
+      "titulo": "Andares mais rápidos nas Cenas",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: quem sobe ou desce chega pela escada certa. Entre andares do mesmo tamanho, o token aparece na mesma casa em que estava; se ela estiver ocupada, na casa livre mais perto da escada."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: algumas escadas levam ao pisar. Pare o token em cima dela e ele muda de andar, com um aviso e o Desfazer; a sua tela vai junto."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: quem tem mais de um token na cena pode levar todos de uma vez (botão direito no token → “Levar todos os meus”). Eles chegam na mesma formação."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: PageUp sobe um andar e PageDown desce, com o token selecionado."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: com vários tokens selecionados, o botão direito oferece “Levar 4 para…”; eles vão juntos, na formação, com Desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: a barra de andares no alto mostra os andares do prédio com quantos tokens há em cada um. Um clique abre o andar; “Pôr o prédio no ar” mostra todos juntos aos jogadores."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: na escada, “Leva ao pisar”; na aba Cena, o “Andar” (−1 subsolo, 0 térreo, 1 o 2º andar…) e a regra “Só pela escada” (o jogador só troca de andar a até 1 quadrado de uma passagem)."
+        },
+        {
+          "tipo": "consertado",
+          "mestre": true,
+          "texto": "Cenas: quem entra na mesa com uma cena já no ar passa a ver os próprios tokens como seus na hora, sem esperar a cena mudar."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.04-1",
       "data": "2026-11-04",
       "titulo": "Fundos grandes e nítidos nas Cenas",

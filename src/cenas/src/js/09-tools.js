@@ -1290,6 +1290,10 @@ const Tools = (() => {
       if (n) { e.preventDefault(); UI.toast(n === 1 ? 'Item apagado.' : `${n} itens apagados.`, { action: 'Desfazer', run: undo }); }
       return;
     }
+    if (k === 'PageUp' || k === 'PageDown') {                    // (lote 82) sobe ou desce um andar, pela passagem mais perto
+      if (UI.andarVertical(k === 'PageUp' ? 1 : -1)) e.preventDefault();
+      return;
+    }
     if (k === 'Escape') {
       if (UI.escolhendoReal()) { UI.fimEscolhaReal(); UI.toast('O real fica onde está (a coroa).'); return; }      // (lote 8)
       if (g) { resetState(); Render.request(); }

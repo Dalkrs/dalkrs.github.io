@@ -1253,6 +1253,11 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .andar-b.meu svg { color: var(--lamp); }
 .andar-b:disabled { opacity: .45; cursor: default; }
 .andar-volta { height: 28px; padding: 0 10px; border-radius: 8px; border: 1px dashed var(--lamp); background: none; color: var(--lamp-ink); font: inherit; font-size: 12.5px; cursor: pointer; }
+/* (lote 82) a barra de andares do mestre: quantos tokens em cada andar; o andar no ar ganha um ponto */
+.andares-b.gm .andar-b { gap: 6px; }
+.andar-n { min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--hover); font-size: 11px; font-weight: 600; text-align: center; line-height: 18px; }
+.andar-b.ar::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ok, #4caf50); }
+.andar-volta { display: inline-flex; align-items: center; gap: 5px; }
 .andares-j .andares-l { display: grid; gap: 6px; max-height: 46vh; overflow: auto; margin-top: 6px; }
 .andar-op { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .andar-op small { margin-left: auto; color: var(--fg-3, #8a8f9a); font-size: 12px; }

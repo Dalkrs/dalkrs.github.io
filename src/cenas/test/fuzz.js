@@ -207,7 +207,44 @@ const SEED = parseInt(process.argv[2], 10) || 20261002, STEPS = parseInt(process
       uiVeil: () => { u.UI.renderAll(); press($('#veilOff')); },
       uiMenu: () => { const sc = S.scene(), e = sc.effects.length ? pick(sc.effects) : null; if (!e) return; const g = u.FX.geom(e, sc); u.UI.contextMenu({ x: g.cx, y: g.cy }, 200, 200); const it = $$('.menu .menu-i').filter(b => !b.disabled && /Reaplicar|Aplicar/.test(b.textContent)); if (it.length) pick(it).click(); u.UI.closeMenus(); modalStep(); },
     };
-    const noStepCheck = new Set(['undo', 'undo2', 'redo']);
+    /* ---- (lote 82) os andares: um 2º andar ligado por duas escadas (uma "leva ao pisar"); levar, voltar, pisar,
+       PageUp/PageDown. A troca de andar não entra no desfazer (tem o Desfazer do aviso), então fica fora da conta de passos. */
+    const andar = (() => {
+      const A0 = S.scene(), B0 = u.normalizeScene(Object.assign(u.newScene('Fuzz 2º andar'), { cols: A0.cols, rows: A0.rows, cell: A0.cell, nivel: 1 }));
+      S.addScene(B0); S.setCurrent(A0.id);
+      const e1 = Object.assign(u.Props.novo(A0, 'escada', 2 * A0.cell, 2 * A0.cell, 1, false), { cena: B0.id }), e2 = Object.assign(u.Props.novo(A0, 'escada', 8 * A0.cell, 6 * A0.cell, 1, false), { cena: B0.id, pisar: true });
+      B0.tokens.push(Object.assign(u.Props.novo(B0, 'escada', 2 * A0.cell, 2 * A0.cell, 1, false), { cena: A0.id }), Object.assign(u.Props.novo(B0, 'escada', 8 * A0.cell, 6 * A0.cell, 1, false), { cena: A0.id }));
+      S.tx('Escadas', () => { S.add('tokens', e1); S.add('tokens', e2); S.scn({ nivel: 0 }); });
+      S.clearHistory && S.clearHistory();
+      return { A: A0.id, B: B0.id, regs: [] };
+    })();
+    const vivos = () => S.scene().tokens.filter(t => !t.prop);
+    const total = () => Object.values(S.S.scenes).reduce((n, c) => n + c.tokens.length, 0);
+    const checkAndar = label => {
+      const vistos = new Map();
+      for (const id in S.S.scenes) for (const t of S.S.scenes[id].tokens) { if (vistos.has(t.id)) problems.push(`${label}: o token ${t.name} está em duas cenas (${vistos.get(t.id)} e ${id})`); vistos.set(t.id, id); }
+    };
+    Object.assign(ops, {
+      andarLevar: () => {
+        const l = vivos().filter(() => rnd() < 0.4).slice(0, 4); if (!l.length) return;
+        const para = S.S.current === andar.A ? andar.B : andar.A, n0 = total();
+        const reg = u.UI.levarAndar(l, para);
+        if (reg) {
+          andar.regs.push(reg);
+          const B = S.S.scenes[para], ps = B.tokens.filter(t => t.prop && t.cena);
+          for (const it of reg.itens) { const t = B.tokens.find(x => x.id === it.t.id); if (!t) { problems.push(`${label0()}: levado mas não chegou`); continue; }
+            if (ps.some(p => p.x === t.x && p.y === t.y)) problems.push(`${label0()}: ${t.name} chegou em cima de uma escada`);
+            if (t.x < 0 || t.y < 0 || t.x > (B.cols - 1) * B.cell || t.y > (B.rows - 1) * B.cell) problems.push(`${label0()}: ${t.name} chegou fora da cena`); }
+        }
+        if (total() !== n0) problems.push(`${label0()}: trocar de andar mudou o número de tokens (${n0} → ${total()})`);
+      },
+      andarVolta: () => { const reg = andar.regs.pop(); if (reg) { const n0 = total(); u.Nuvem.voltarDeAndar(reg); if (total() !== n0) problems.push(`${label0()}: desfazer a troca mudou o número de tokens`); } },
+      andarPisar: () => { const sc = S.scene(), p = sc.tokens.find(t => t.prop && t.pisar), t = pick(vivos()); if (p && t) S.tx('Mover', () => S.upd('tokens', t.id, { x: p.x, y: p.y })); },
+      andarPage: () => { const l = vivos(); if (l.length) { u.setSel([{ c: 'tokens', id: pick(l).id }]); u.UI.andarVertical(pick([1, -1])); } },
+      andarAbrir: () => u.UI.switchScene(pick([andar.A, andar.B])),
+    });
+    let label0 = () => '';
+    const noStepCheck = new Set(['undo', 'undo2', 'redo', 'andarLevar', 'andarVolta', 'andarPisar', 'andarPage', 'andarAbrir']);
     const names = Object.keys(ops);
     let thrown = null, frames = 0, visChecks = 0;
     // Uma amostra pequena das camadas de visão (névoa, véu, escuridão), para comparar antes e depois de refazer a conta.
@@ -229,13 +266,13 @@ const SEED = parseInt(process.argv[2], 10) || 20261002, STEPS = parseInt(process
     for (let i = 0; i < STEPS && !thrown; i++) {
       const name = pick(names);
       counts[name] = (counts[name] || 0) + 1;
-      const label = `passo ${i} (${name})`;
+      const label = `passo ${i} (${name})`; label0 = () => label;
       try {
         const before = snap(); commits = 0;
         ops[name]();
         if ($('.modal')) u.UI.closeModal();
         u.UI.renderAll();                 // o que a mesa faz depois de qualquer ação: arruma a seleção e redesenha os painéis
-        check(label);
+        check(label); checkAndar(label);
         visionFresh(label);
         if (!noStepCheck.has(name)) {
           // cada ação é um passo só de desfazer, e desfazer devolve a cena exatamente como estava

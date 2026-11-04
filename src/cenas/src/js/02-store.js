@@ -141,6 +141,21 @@ const Store = (() => {
 
   return {
     S, on, emit, scene, get, begin, commit, cancel, inTx, undo, redo,
+    /* (lote 82) Esquece, no desfazer de uma cena, os passos que mexem com estes ids (e os de antes deles, que vêm
+       antes na mesma linha): usado quando tokens trocam de cena — desfazer aqui não pode trazer de volta uma vez na
+       iniciativa, uma mira ou um movimento de quem já está em outra cena. O refazer, se fala deles, é esquecido todo. */
+    esquecer(sceneId, ids) {
+      const x = hist.get(sceneId);
+      if (!x || !ids || !ids.length) return 0;
+      const fala = e => { const j = JSON.stringify([e.fwd, e.inv]); return ids.some(id => j.includes('"' + id + '"')); };
+      let i = -1;
+      for (let k = x.undo.length - 1; k >= 0; k--) if (fala(x.undo[k])) { i = k; break; }
+      const n = i + 1;
+      if (n) x.undo.splice(0, n);
+      if (x.redo.some(fala)) x.redo.length = 0;
+      if (n && sceneId === S.current) emit('commit', { sceneId, label: '', ops: [] });
+      return n;
+    },
     canUndo: () => H().undo.length > 0,
     canRedo: () => H().redo.length > 0,
     add: (c, v, i) => push({ t: 'add', c, v, i }),

@@ -649,7 +649,7 @@ const UI = (() => {
       h('span', { class: 'brand', text: 'Tiny Cats' }),
       gm ? sceneBtn : h('span', { class: 'scene-b flat' }, icon('map', 17), h('span', { class: 'scene-n', text: Nuvem.semCena() ? 'Sem cena' : sc.name })),
       air,
-      Nuvem.jogador() ? andaresJogador() : null,
+      Nuvem.jogador() ? andaresJogador() : gm ? andaresMestre(sc) : null,
       h('div', { class: 'grp' },
         iconBtn('undo', 'Desfazer (Ctrl+Z)', Tools.undo, { disabled: !Store.canUndo(), id: 'undoBtn' }),
         iconBtn('redo', 'Refazer (Ctrl+Shift+Z)', Tools.redo, { disabled: !Store.canRedo(), id: 'redoBtn' })),
@@ -944,14 +944,97 @@ const UI = (() => {
         x.meu ? icon('token', 13) : null, h('span', { text: x.nome }))),
       a.olhando ? h('button', { type: 'button', class: 'andar-volta', id: 'andarVolta', onclick: () => Nuvem.verAndar(null), text: 'Voltar ao meu token' }) : null);
   }
+  /* (lote 82) Trocar de andar, pelos dois lados:
+       · o mestre (levarAndar): os tokens vão já, cada um pela passagem mais perto do grupo, na formação; toast com Desfazer;
+       · o jogador (irDeAndar): vira um pedido ao mestre, pela passagem mais perto dos tokens dele; com a regra
+         "Só pela escada", só a até 1 quadrado de uma passagem. */
+  const meusTokens = sc => { const eu = Nuvem.eu(); return sc.tokens.filter(k => !k.prop && (k.owner === eu || k.owner === '*') && !k.locked); };
+  function alvosDeAndar(sc) {
+    return [...new Set(Nuvem.ligadas(sc.id).concat(Nuvem.mestre() ? Nuvem.andaresNoAr() : []))].filter(id => id !== sc.id && Store.S.scenes[id]).slice(0, 8);
+  }
+  function levarAndar(toks, para, usadaId) {
+    const sc = Store.scene(), B = Store.S.scenes[para];
+    if (!B || !toks.length) return null;
+    const p = usadaId ? { id: usadaId } : Andares.usadaPor(sc, toks, para);
+    const reg = Nuvem.levarParaAndar(toks.map(t => t.id), para, p ? p.id : undefined);
+    if (!reg) { toast('Não deu para levar: confira se a outra cena existe e se os tokens ainda estão aqui.'); return null; }
+    setSel([]);
+    const quem = reg.itens.length > 1 ? `${reg.itens.length} tokens foram` : `${tokName(reg.itens[0].t)} foi`;
+    toast(`${quem} para "${B.name}".`, { action: 'Desfazer', run: () => { if (Nuvem.voltarDeAndar(reg)) toast('Voltaram para cá.'); } });
+    return reg;
+  }
+  function irDeAndar(toks, para, nome) {
+    const sc = Store.scene(), vis = sc.tokens.filter(t => t.prop && t.vai === para);
+    if (sc.soEscada && vis.length) {
+      const longe = toks.filter(t => !vis.some(p => Andares.pertoDaPassagem(sc, t, p)));
+      if (longe.length === toks.length) { toast(`Aqui só se troca de andar pela escada: chegue a 1 quadrado da passagem para "${nome}".`); return false; }
+      toks = toks.filter(t => !longe.includes(t));
+    }
+    const p = vis.length ? vis.reduce((a, b) => (dist(sc, toks, b) < dist(sc, toks, a) ? b : a)) : null;
+    if (!Nuvem.pedirAndar(toks.map(t => t.id), para, p ? p.id : undefined)) return false;
+    toast(toks.length > 1 ? `${toks.length} tokens vão para "${nome}"…` : `${tokName(toks[0])} vai para "${nome}"…`);
+    return true;
+  }
+  const dist = (sc, toks, p) => { let d = 0; for (const t of toks) d += Math.hypot(t.x - p.x, t.y - p.y); return d; };
   function andarPelaPassagem(t, x, y) {
-    const sc = Store.scene(), eu = Nuvem.eu(), meus = sc.tokens.filter(k => !k.prop && (k.owner === eu || k.owner === '*'));
+    const sc = Store.scene(), meus = meusTokens(sc);
     const nome = ((Nuvem.andaresDoJogador() || { lista: [] }).lista.find(a => a.id === t.vai) || {}).nome || 'outro andar';
     if (!meus.length) { toast(`Esta passagem leva a "${nome}". Você não tem token nesta cena.`); return; }
-    const ir = k => { if (Nuvem.pedirAndar(k.id, t.vai)) toast(`${tokName(k)} vai para "${nome}"…`); };
-    if (meus.length === 1) { ir(meus[0]); return; }
+    if (meus.length === 1) { irDeAndar(meus, t.vai, nome); return; }
     if (x == null || y == null) { const r = el.stage.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
-    menu(x, y, [{ head: 'Levar para ' + nome }].concat(meus.map(k => ({ label: tokName(k), icon: 'token', run: () => ir(k) }))));
+    // o mais perto desta passagem primeiro
+    const ord = meus.slice().sort((a, b) => Math.hypot(a.x - t.x, a.y - t.y) - Math.hypot(b.x - t.x, b.y - t.y));
+    menu(x, y, [{ head: 'Levar para ' + nome }].concat(ord.map(k => ({ label: tokName(k), icon: 'token', run: () => irDeAndar([k], t.vai, nome) })),
+      ['-', { label: `Todos os meus (${meus.length})`, icon: 'down', run: () => irDeAndar(meus, t.vai, nome) }]));
+  }
+  /* PageUp / PageDown: os tokens selecionados (do mestre) ou os meus selecionados (do jogador) sobem ou descem um andar,
+     pela passagem mais perto. */
+  function andarVertical(dir) {
+    const sc = Store.scene(), sel = selOf('tokens').filter(t => !t.prop);
+    if (Nuvem.jogador()) {
+      const a = Nuvem.andaresDoJogador();
+      if (!a) return false;
+      const eu = Nuvem.eu(), toks = sel.filter(t => t.owner === eu || t.owner === '*');
+      const usar = toks.length ? toks : meusTokens(sc);
+      if (!usar.length) return false;
+      const aqui = (a.lista.find(x => x.id === sc.id) || {}).nivel;
+      const saidas = saidasDeAndar(sc).map(x => ({ para: x.para, nome: x.nome, nivel: (a.lista.find(l => l.id === x.para) || {}).nivel })).filter(x => Number.isFinite(x.nivel));
+      const d = Number.isFinite(aqui) ? Andares.vertical(saidas, aqui, dir) : null;
+      if (!d) { toast(dir > 0 ? 'Não há escada para cima aqui.' : 'Não há escada para baixo aqui.'); return true; }
+      irDeAndar(usar, d.para, d.nome);
+      return true;
+    }
+    if (!sel.length) { toast('Selecione os tokens que vão trocar de andar (PageUp sobe, PageDown desce).'); return true; }
+    const destinos = [...new Set(sc.tokens.filter(t => Andares.ehPassagem(t) && Store.S.scenes[t.cena]).map(t => t.cena))].map(id => ({ para: id, nivel: Andares.nivelDe(id) }));
+    const d = Andares.vertical(destinos, Andares.nivelDe(sc.id), dir);
+    if (!d) { toast(dir > 0 ? 'Nenhuma passagem desta cena leva para cima.' : 'Nenhuma passagem desta cena leva para baixo.'); return true; }
+    levarAndar(sel, d.para);
+    return true;
+  }
+  /* (lote 82) A barra de andares do mestre: os andares do prédio da cena aberta (ela e as ligadas por passagens), em
+     ordem, com quantos tokens há em cada um; um clique abre o andar; "Pôr o prédio no ar" põe todos juntos. */
+  function andaresMestre(sc) {
+    const lig = Nuvem.ligadas(sc.id);
+    if (!lig.length) return null;
+    const ids = [sc.id].concat(lig).filter(id => Store.S.scenes[id]).sort((a, b) => Andares.nivelDe(b) - Andares.nivelDe(a));
+    const noAr = new Set(Nuvem.andaresNoAr()), tudo = ids.every(id => noAr.has(id));
+    return h('div', { class: 'andares-b gm', role: 'group', 'aria-label': 'Andares do prédio', id: 'andaresGm' },
+      ids.map(id => {
+        const c = Store.S.scenes[id], n = c.tokens.filter(t => !t.prop).length;
+        return h('button', { type: 'button', class: 'andar-b' + (id === sc.id ? ' on' : '') + (noAr.has(id) ? ' ar' : ''), 'data-andar': id, 'aria-pressed': String(id === sc.id),
+          title: `${c.name}: ${n} ${n === 1 ? 'token' : 'tokens'}${noAr.has(id) ? ' · no ar' : ''}`, onclick: () => { if (id !== sc.id) switchScene(id); } },
+          h('span', { text: c.name }), h('small', { class: 'andar-n', text: String(n) }));
+      }),
+      Nuvem.mestre() && !tudo ? h('button', { type: 'button', class: 'andar-volta', id: 'predioNoAr', title: 'Todos estes andares no ar juntos: cada jogador vê o do token dele',
+        onclick: () => predioNoAr(sc, ids) }, icon('eye', 13), h('span', { text: 'Pôr o prédio no ar' })) : null);
+  }
+  function predioNoAr(sc, ids) {
+    const antesAr = Nuvem.noAr(), antesJ = antesAr ? Nuvem.andaresNoAr().slice(1) : [];
+    const base = antesAr && ids.includes(antesAr) ? antesAr : sc.id, juntas = ids.filter(id => id !== base);
+    if (!antesAr) showToPlayers(base);
+    Nuvem.mostrar(base, juntas);
+    toast(`${ids.length} andares no ar: cada jogador vê o do token dele.`, { action: 'Desfazer', run: () => { if (!antesAr) hideFromPlayers(); else if (antesAr === base) Nuvem.definirAndares(antesJ); else Nuvem.mostrar(antesAr, antesJ); } });
+    refresh();
   }
   function pintarAndares() { try { renderTop(); } catch (e) { console.error(e); } }
   // (lote 78) as passagens desta cena que levam a outro andar no ar (para o jogador: as que vieram com `vai`)
@@ -2432,6 +2515,7 @@ const UI = (() => {
         h('div', { class: 'row' },
           btn('Ir para lá', () => passagemIr(alvo, false), { icon: 'map', id: 'pr-ir', disabled: !alvo || !Nuvem.naVista(alvo) }),
           !alvo ? btn('Uma cena nova, dentro desta…', () => novaCenaLigada(t), { icon: 'plus', id: 'pr-nova' }) : null),
+        alvo ? toggle('pr-pisar', !!t.pisar, v => all({ pisar: v ? true : undefined }, v ? 'Leva ao pisar' : 'Não leva ao pisar'), 'Leva ao pisar (o token muda de andar ao parar aqui)') : null,   // (lote 82)
         note(alvo ? `Dois cliques no objeto levam você (só você) até "${Store.S.scenes[alvo].name}". O que os jogadores veem só muda com "Mostrar aos jogadores".` : 'Com uma cena escolhida, dois cliques no objeto levam você até ela. "Uma cena nova" cria a cena dentro desta (na lista de cenas), já com a saída de volta.')) : null,
       !many && t.prop === 'reforco' && typeof Reforco !== 'undefined' ? Reforco.secao(t, { sec, note, btn, field, inNum, modal }) : null,      // (lote 22)
       !many && t.saque ? Best.secaoBau(t, UI.kit) : null,                                                                                 // (lote 29) o saque no chão
@@ -3303,7 +3387,12 @@ const UI = (() => {
           field('Largura (q)', inNum('sc-cols', sc.cols, v => S({ cols: Math.round(v) }, 'Tamanho da cena'), { min: 2, max: 300 })),
           field('Altura (q)', inNum('sc-rows', sc.rows, v => S({ rows: Math.round(v) }, 'Tamanho da cena'), { min: 2, max: 300 }))),
         field('Quadrado (px)', inNum('sc-cell', sc.cell, v => resizeCell(Math.round(v)), { min: 16, max: 256, step: 2 })),
-        note('O tamanho do quadrado em pixels só importa para a nitidez de desenhos e imagens; os tokens e as medidas acompanham.'))),
+        note('O tamanho do quadrado em pixels só importa para a nitidez de desenhos e imagens; os tokens e as medidas acompanham.'),
+        // (lote 82) o andar no prédio (as cenas ligadas por passagens) e a regra "Só pela escada"
+        Nuvem.ligadas(sc.id).length ? [
+          field('Andar', inNum('sc-nivel', Andares.nivelDe(sc.id), v => S({ nivel: Math.round(v) }, 'Andar da cena'), { min: -20, max: 50, label: 'Andar da cena', title: '−1 subsolo, 0 térreo, 1 o 2º andar… Decide a ordem na barra de andares e no PageUp / PageDown' })),
+          toggle('sc-soescada', !!sc.soEscada, v => S({ soEscada: v ? true : undefined }, v ? 'Só pela escada' : 'Troca de andar de qualquer lugar'), 'Só pela escada (o jogador troca de andar a até 1 quadrado de uma passagem)'),
+        ] : null)),
       acc(secR('c-bg', 'Fundo', false, a ? 'imagem' + (bg.stretch ? ' esticada' : bg.scale !== 1 ? ' · ' + fmt(Math.round(bg.scale * 100)) + '%' : '') : 'sem imagem',
         h('div', { class: 'row' },
           a ? h('span', { class: 'bg-prev', style: { backgroundImage: `url("${a.url}")` } }) : null,
@@ -3550,13 +3639,19 @@ const UI = (() => {
       if (gm && toks.length === 1 && o.clone && Store.get('tokens', o.clone)) items.push({ label: 'Este é o real', icon: 'real', run: () => { const rid = o.clone; Act.cloneReal(o); setSel([{ c: 'tokens', id: rid }]); toast('Pronto: o real agora é este (a coroa).', { action: 'Desfazer', run: Tools.undo }); } });
       if (gm && toks.length === 1 && (o.clone || realDeClone(o, Store.scene()))) items.push({ label: 'Sortear o real', icon: 'die', run: () => sortearReal(o.clone || o.id) });
       if (can('target')) items.push({ label: isTargeted(toks) ? 'Tirar a mira' : 'Mirar', icon: 'center', key: 'A', run: () => Act.targetToggle(toks) });
-      // (lote 78) levar a outro andar: o mestre, para qualquer cena ligada ou no ar junto; o jogador, o token dele, pela passagem
-      if (toks.length === 1 && Nuvem.mestre() && gm) {
-        const alvos = [...new Set(Nuvem.ligadas(sc.id).concat(Nuvem.andaresNoAr()))].filter(id => id !== sc.id && Store.S.scenes[id]).slice(0, 8);
-        for (const id of alvos) items.push({ label: 'Levar para ' + Store.S.scenes[id].name, icon: 'down', run: () => { if (Nuvem.levarParaAndar(o.id, id)) toast(`${tokName(o)} foi para "${Store.S.scenes[id].name}".`); } });
+      // (lote 78/82) levar a outro andar: o mestre, os tokens selecionados (na formação, pela passagem mais perto), para
+      // qualquer cena ligada ou no ar junto; o jogador, o token dele (ou todos os dele), pela passagem mais perto
+      if (toks.length && gm && !Nuvem.jogador()) {
+        const alvos = alvosDeAndar(sc);
+        for (const id of alvos) items.push({ label: (toks.length > 1 ? `Levar ${toks.length} para ` : 'Levar para ') + Store.S.scenes[id].name, icon: 'down', run: () => levarAndar(toks, id) });
       }
-      if (toks.length === 1 && Nuvem.jogador() && (o.owner === Nuvem.eu() || o.owner === '*'))
-        for (const x of saidasDeAndar(sc)) items.push({ label: 'Ir para ' + x.nome, icon: 'down', run: () => { if (Nuvem.pedirAndar(o.id, x.para)) toast(`${tokName(o)} vai para "${x.nome}"…`); } });
+      if (toks.length === 1 && Nuvem.jogador() && (o.owner === Nuvem.eu() || o.owner === '*')) {
+        const meus = meusTokens(sc);
+        for (const x of saidasDeAndar(sc)) {
+          items.push({ label: 'Ir para ' + x.nome, icon: 'down', run: () => irDeAndar([o], x.para, x.nome) });
+          if (meus.length > 1) items.push({ label: `Levar todos os meus (${meus.length}) para ${x.nome}`, icon: 'down', run: () => irDeAndar(meus, x.para, x.nome) });
+        }
+      }
       if (toks.length === 1 && Luta.podeAtributos(o)) items.push({ label: 'Rolar atributo…', icon: 'die', key: 'F', run: () => Luta.atributos(o) });
       if (gm) items.push({ label: 'Disputa…', icon: 'die', key: 'C', run: () => Luta.disputa(toks) });
       if (gm && toks.length > 1) items.push({ label: 'Dano, cura ou condição…', icon: 'area', run: () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null) });
@@ -3948,6 +4043,12 @@ const UI = (() => {
   });
   /* (lote 80) A vida chegou a 0: o token ganhou Morto (no mesmo passo do dano). O aviso pergunta se ele sai da ordem de
      turnos (se está nela); nada mais muda sozinho. Voltou a ter vida: o Morto saiu, e o aviso diz. */
+  // (lote 82) o mestre pôs um token numa passagem que "leva ao pisar": ele muda de andar (com Desfazer)
+  Store.on('pisou', d => setTimeout(() => {
+    const sc = Store.scene(), t = sc.tokens.find(x => x.id === d.tok);
+    if (!t || !Store.S.scenes[d.para]) return;
+    levarAndar([t], d.para, d.p);
+  }, 0));
   Store.on('morto', d => {
     const t = Store.get('tokens', d.tok), sc = Store.scene();
     if (!t || !isGM()) return;
@@ -4049,7 +4150,7 @@ const UI = (() => {
     // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
     feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
-    passagem, porNaFamilia, janelaAndares, andarPelaPassagem, bgFromFile, pintarAndares, saidasDeAndar, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
+    passagem, porNaFamilia, janelaAndares, andarPelaPassagem, andarVertical, levarAndar, irDeAndar, bgFromFile, pintarAndares, saidasDeAndar, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
     frame() { if (zoomLabel) { const zt = Math.round(App.view.z * 100) + '%'; if (zoomLabel.textContent !== zt) zoomLabel.textContent = zt; } },
     setSave(s) { saveState = s; status(); },
     hint: setHint,                                        // a linha de dica muda sem redesenhar o resto (cursor sobre um item travado)

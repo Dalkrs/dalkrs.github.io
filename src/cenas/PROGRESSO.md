@@ -276,6 +276,28 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
 - [x] A lista de cenas não baixa os fundos (não há miniatura); os jogadores recebem a imagem só da cena no ar.
 - Teste: `test/lote81.js` (11). Rodados: `perf2.js`, `stress.js`, `unit.js`, `e2e.js`, `ui.js` — sem mudança.
 
+## Lote 82 — andares mais rápidos
+
+- [x] Chegar pela escada certa: andares alinhados (mesmas colunas, linhas e quadrado) → a mesma casa; ocupada ou com
+      parede → a casa livre mais perto da escada de volta mais perto dela. Tamanhos diferentes → ao lado da escada de
+      volta mais perto do lugar da usada, em proporção. Nunca em parede, em cima de token ou de passagem (`Andares.chegada`).
+- [x] A passagem usada é a mais perto do token (ou do grupo), no "Ir para…" do jogador e no menu do mestre.
+- [x] "Só pela escada" (aba Cena, desligado por padrão): o jogador só troca a até 1 quadrado de uma passagem (o mestre
+      confere de novo ao aplicar o pedido).
+- [x] "Leva ao pisar" no painel da passagem: parou em cima, troca de andar. Jogador → pedido; mestre → direto. Aviso
+      com Desfazer.
+- [x] Vários de uma vez: "Levar N para…" do mestre mantém a formação; o jogador tem "Levar todos os meus".
+- [x] PageUp / PageDown pela passagem mais perto; campo "Andar" (`nivel`) na aba Cena (sem ele, a ordem das cenas).
+- [x] Barra de andares do mestre: o prédio da cena aberta, com a contagem de tokens; clique abre; "Pôr o prédio no ar".
+- [ ] (Opcional) os tokens do andar de baixo bem apagados, só para o mestre — ficou para depois.
+- [x] Encontrado no fuzz: o token que troca de andar deixava a vez na iniciativa e a mira na cena de onde saiu, e o
+      desfazer podia trazê-las de volta → `mover` tira as duas (e leva os efeitos presos) e `Store.esquecer` limpa o
+      desfazer das duas cenas.
+- [x] Encontrado no teste de rede: quem entrava na mesa com a cena já no ar via os próprios tokens sem dono até a cena
+      mudar → a projeção é refeita quando a lista de jogadores muda.
+- Testes: `test/lote82.js` (unit da casa de chegada, formação, menu, pisar, PageUp/PageDown, barra, painel),
+  `src/tests/cenas-lote82.rede.test.js` (o pedido do jogador, com 2 aparelhos) e o `fuzz.js` com as ações de andar.
+
 ## Frágil / observar
 
 - `cenas/index.html` (página do site) é PRODUTO do `build.sh`: mexeu em `src/`, rodar o build e levar o arquivo junto. Hoje ele

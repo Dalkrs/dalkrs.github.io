@@ -86,7 +86,7 @@ const j = JSON.stringify;
       await B.evaluate(id => { const t = __tc.Store.get('tokens', id); __tc.UI.andarPelaPassagem(t); }, ids.eA);
       ok(await ate(() => C.evaluate(([P, tk]) => __tc.Store.S.scenes[P].tokens.some(t => t.id === tk), [ids.P, ids.tk]), 15000), 'pela escada, o token do Dalmo vai para o Porão (no mestre)');
       const pos = await C.evaluate(([A, P, tk]) => { const sc = __tc.Store.S.scenes[P], t = sc.tokens.find(x => x.id === tk), e = sc.tokens.find(x => x.prop && x.cena === A); return { dx: t.x - e.x, dy: t.y - e.y, noTerreo: __tc.Store.S.scenes[A].tokens.some(x => x.id === tk) }; }, [ids.A, ids.P, ids.tk]);
-      ok(!pos.noTerreo && pos.dx === 64 && pos.dy === 0, 'sai do Térreo e aparece ao lado da escada do Porão: ' + j(pos));
+      ok(!pos.noTerreo && pos.dx === -320 && pos.dy === -128, '(lote 82) sai do Térreo e aparece na mesma casa no Porão (os andares são do mesmo tamanho): ' + j(pos));
       ok(await ate(() => B.evaluate(id => __tc.Store.scene().id === id, ids.P), 15000), 'a tela do jogador acompanha o token: ele está no Porão');
       ok(await ate(async () => /Porão/.test(await B.locator('#andaresBar .andar-b.on').innerText()), 5000), '(a barra marca o Porão)');
       await foto(J, 'l78-jogador-porao');

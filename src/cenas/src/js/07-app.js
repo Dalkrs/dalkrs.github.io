@@ -571,6 +571,8 @@ Store.aoFechar(tx => {
     const t = Store.get('tokens', id), antes = antesDoToken(tx.inv, id, ['x', 'y']), v = atravessar(t, antes, sc);
     if (v) { Store.upd('tokens', id, { x: v.x, y: v.y }); Store.emit('portal', { tok: id, fx: v.portal }); continue; }
     for (const r of runasPisadas(t, antes, sc)) Store.emit('runas', { tok: id, fx: r.id });
+    // (lote 82) parou numa passagem que leva ao pisar: troca de andar logo depois do passo (com o aviso e o Desfazer)
+    { const p = typeof Andares !== 'undefined' ? Andares.pisou(sc, t) : null; if (p && isGM()) Store.emit('pisou', { tok: id, p: p.id, para: p.cena }); }
     // (lote 18) a queda de um penhasco: o aviso sugere o dano (nada muda sozinho)
     const q = typeof Relevo !== 'undefined' ? Relevo.quedaDoPasso(sc, t, antes) : null;
     if (q) Store.emit('queda', q);

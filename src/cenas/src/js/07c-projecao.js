@@ -109,7 +109,7 @@ const Proj = (() => {
   function tokenPublico(t, jogadores, grupos) {
     const o = clone(t);
     o.notes = '';                                                     // anotações são só do mestre
-    delete o.cena; delete o.gera;                                     // (lote 7) aonde o objeto leva, também
+    delete o.cena; delete o.gera; delete o.pisar;                     // (lote 7) aonde o objeto leva, também
     delete o.ref;                                                     // (lote 22) o que o ponto de reforço guarda
     delete o.best; delete o.saque; delete o.bestEq;                   // (lote 29) o inimigo do Bestiário e o saque no chão (lote 33: e o equipamento dele)
     delete o.pb;                                                      // (lote 44) o painel de barras do NPC: só do mestre
@@ -164,7 +164,7 @@ const Proj = (() => {
     for (const t of sc.tokens) if (t.clone && !grupos.has(t.clone)) grupos.set(t.clone, 'cg' + resumo(sc.id + ':' + t.clone));
     const tokens = sc.tokens.filter(t => !t.hidden).map(t => {
       const o = tokenPublico(t, jogadores, grupos);
-      if (andares && t.prop && idCena(t.cena) && t.cena !== sc.id && andares.has(t.cena)) o.vai = t.cena;
+      if (andares && t.prop && idCena(t.cena) && t.cena !== sc.id && andares.has(t.cena)) { o.vai = t.cena; if (t.pisar) o.pisa = true; }      // (lote 82: leva ao pisar)
       return o;
     });
     const nomes = new Map(tokens.map(t => [t.id, t.name]));

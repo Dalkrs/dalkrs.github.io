@@ -966,6 +966,9 @@ function normalizeScene(sc) {
   if (Array.isArray(sc.momentos)) { sc.momentos = sc.momentos.map(cleanMomento).filter(Boolean).slice(0, 20); if (!sc.momentos.length) delete sc.momentos; } else delete sc.momentos;
   if (sc.momSom && !(typeof sc.momSom === 'object' && SONS_MOMENTO.some(x => x.id === sc.momSom.k) && Number.isFinite(sc.momSom.n))) delete sc.momSom;
   if (!TONES.some(x => x.id === sc.tone)) sc.tone = 'dia';
+  // (lote 82) o andar da cena no prédio (−1 subsolo, 0 térreo, 1 2º andar…) e a regra "Só pela escada"
+  if (Number.isFinite(Number(sc.nivel)) && sc.nivel !== null && sc.nivel !== '') sc.nivel = clamp(Math.round(Number(sc.nivel)), -20, 50); else delete sc.nivel;
+  if (sc.soEscada === true) sc.soEscada = true; else delete sc.soEscada;
   for (const w of sc.walls) {
     if (!(w.k === 'door' && w.secret) && !['wall', 'door', 'window', 'veil', 'mureta'].includes(w.k)) w.k = 'wall';
     w.open = !!w.open; w.locked = !!w.locked; w.secret = w.k === 'door' && !!w.secret;     // janela e cortina também abrem e trancam
@@ -1040,6 +1043,9 @@ function normalizeScene(sc) {
     if (!(t.prop && typeof t.cena === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.cena))) delete t.cena;
     // (lote 78) a passagem que leva a outro andar no ar (só na cena que o jogador recebe: ver Proj.projetar)
     if (!(t.prop && typeof t.vai === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.vai))) delete t.vai;
+    // (lote 82) a passagem que leva ao pisar (o mestre marca; o jogador recebe "pisa" junto com o destino)
+    if (t.prop && t.cena && t.pisar === true) t.pisar = true; else delete t.pisar;
+    if (t.prop && t.vai && t.pisa === true) t.pisa = true; else delete t.pisa;
     // (lote 7) o que o marcador sabe para gerar a cena de dentro: o prédio (tipo, medidas, porta, estilo, semente,
     // forma) ou o bairro do mapa de bairros
     const gera = t.prop && t.gera && typeof t.gera === 'object' ? t.gera : null, palavra = v => typeof v === 'string' && /^[a-z]{1,12}$/.test(v);

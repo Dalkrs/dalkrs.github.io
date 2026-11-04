@@ -165,7 +165,10 @@ const Nuvem = (() => {
     jogadores(st);
     T.ponte.aoMudar(novo => {
       if (!novo.mesa || novo.mesa.id !== mesa) return;       // a mesa mudou: a casca recarrega esta página
+      const antes = S.players.map(p => p.id).join(',');
       jogadores(novo);
+      // (lote 82) alguém entrou (ou saiu) da mesa: a projeção é refeita, senão os tokens dele chegam sem dono até a cena mudar
+      if (modo === 'mestre' && antes !== S.players.map(p => p.id).join(',')) { pubSuja = true; agendar(); }
       if (App.viewer !== 'gm' && !playerById(App.viewer) && modo === 'mestre') UI.setViewer('gm');
       Vision.invalidate(); Store.meta();
     });
@@ -443,7 +446,7 @@ const Nuvem = (() => {
     v.mv = coube || !la || la.id !== sc.id ? m.ver : la.ver;
     v.ack = Object.assign({}, acks); v.pings = pings;
     // (lote 78) os andares no ar: o nome e o id de cada um (o primeiro é o desta projeção)
-    if (noArSet) v.andares = lista.map(id => ({ id, nome: String(S.scenes[id].name || 'Andar').slice(0, 60) }));
+    if (noArSet) v.andares = lista.map(id => ({ id, nome: String(S.scenes[id].name || 'Andar').slice(0, 60), nivel: Andares.nivelDe(id) }));
     if (!(escrever(PUB_V, v, 'mesa', false, cs, true) & coube)) avisarGrande(sc);
     // (lote 78) a projeção de cada andar junto
     const agora = new Set();
@@ -614,7 +617,7 @@ const Nuvem = (() => {
                conta do jogador anda do mesmo jeito. */
             try {
               if (ehObj(op) && op.t === 'ping') { pingDe(quem, op, sc); continue; }
-              if (ehObj(op) && op.t === 'andar') { if (moverDeAndar(op.id, sc.id, op.para, quem)) tocadas.add(op.para); continue; }   // (lote 78) a escada
+              if (ehObj(op) && op.t === 'andar') { if (moverDeAndar(Array.isArray(op.ids) ? op.ids : [op.id], sc.id, op.para, quem, typeof op.p === 'string' ? op.p : null)) tocadas.add(op.para); continue; }   // (lote 78/82) a escada
               if (ehObj(op) && op.t === 'item') { Fichas.usoPedido(quem, op, sc); continue; }      // um item da bolsa dele, num token (lote 5)
               const v = Proj.validar(op, quem, sc);         // contra a cena como está agora: as anteriores do lote já valeram
               if (!v || !Store.remoteIn(sc.id, [v])) continue;
@@ -719,7 +722,7 @@ const Nuvem = (() => {
   function andaresDe(v) {
     if (!v || !Array.isArray(v.andares)) return [];
     const out = [], vistos = new Set();
-    for (const a of v.andares.slice(0, Proj.MAX_ANDARES + 1)) if (ehObj(a) && idCena(a.id) && !vistos.has(a.id)) { vistos.add(a.id); out.push({ id: a.id, nome: String(a.nome || 'Andar').slice(0, 60) }); }
+    for (const a of v.andares.slice(0, Proj.MAX_ANDARES + 1)) if (ehObj(a) && idCena(a.id) && !vistos.has(a.id)) { vistos.add(a.id); out.push({ id: a.id, nome: String(a.nome || 'Andar').slice(0, 60), nivel: Number.isFinite(a.nivel) ? a.nivel : out.length }); }
     return out.length > 1 ? out : [];
   }
   // a projeção de um andar (o principal está em PUB_M/PUB_V): { m, v } quando as duas metades combinam, ou null
@@ -733,11 +736,14 @@ const Nuvem = (() => {
   /* O andar que este jogador vê: o que ele escolheu olhar; senão, o do token dele (de preferência o andar em que já
      está, se o token continua lá); senão, o principal. */
   let olhando = null, ondeEstou = null;
+  let seguir = null;           // (lote 82) o jogador pediu para levar tokens a outro andar: a tela vai com eles (mesmo tendo outro token aqui)
   const temMeu = v => !!v && Array.isArray(v.tokens) && v.tokens.some(t => ehObj(t) && (t.owner === eu || t.owner === '*') && !t.prop);
   function andarDoJogador(a) {
     if (!a.andares.length) { olhando = null; ondeEstou = null; return a.m.id; }
     const pares = a.andares.map(x => ({ id: x.id, p: parDoAndar(a, x.id) })).filter(x => x.p);
     const comMeu = pares.filter(x => temMeu(x.p.v)).map(x => x.id);
+    if (seguir && (Date.now() > seguir.ate || !pares.some(x => x.id === seguir.para))) seguir = null;
+    if (seguir && pares.some(x => x.id === seguir.para && x.p.v.tokens.some(t => ehObj(t) && seguir.ids.includes(t.id)))) { ondeEstou = seguir.para; seguir = null; olhando = null; return ondeEstou; }
     ondeEstou = comMeu.includes(S.current) ? S.current : comMeu[0] || null;
     if (olhando && pares.some(x => x.id === olhando)) return olhando;
     olhando = null;
@@ -796,7 +802,21 @@ const Nuvem = (() => {
     const a = noArAgora();
     if (a.st === 'ok') { const p = parDoAndar(a, andarDoJogador(a)) || { m: a.m, v: a.v }; montar(p); } else cenaVazia();
     D.aoMudar(l => { if (l && (l.id === PUB_M || l.id === PUB_V || ehPubA(l.id))) { if (!tReceber) tReceber = setTimeout(receber, 30); } });
-    Store.on('commit', e => { if (!e.remote && !vazia && e.ops.length && e.sceneId === S.current) pedir(e.ops, e.inv || []); });
+    Store.on('commit', e => {
+      if (e.remote || vazia || !e.ops.length || e.sceneId !== S.current) return;
+      pedir(e.ops, e.inv || []);
+      // (lote 82) parou em cima de uma passagem que "leva ao pisar": o pedido de trocar de andar vai junto
+      const sc = Store.scene(), movidos = [...new Set(e.ops.filter(op => op.t === 'upd' && op.c === 'tokens' && op.p && ('x' in op.p || 'y' in op.p)).map(op => op.id))];
+      for (const id of movidos) {
+        const t = sc.tokens.find(x => x.id === id);
+        if (!t || !(t.owner === eu || t.owner === '*')) continue;
+        const p = Andares.pisou(sc, t, 'vai');
+        if (p && pedirAndar([id], p.vai, p.id)) {
+          const de = S.current, nome = ((andaresDoJogador() || { lista: [] }).lista.find(x => x.id === p.vai) || {}).nome || 'outro andar';
+          UI.toast(`${tokName(t)} vai para "${nome}" pela passagem.`, { action: 'Desfazer', run: () => { if (Store.S.current !== de) pedirAndar([id], de); else UI.toast('Espere o token chegar ao outro andar para voltar.'); } });
+        }
+      }
+    });
     return true;
   }
   function trocou() {
@@ -899,7 +919,7 @@ const Nuvem = (() => {
     if (modo !== 'jogador' || vazia) return null;
     const a = noArAgora();
     if (a.st !== 'ok' || !a.andares.length) return null;
-    return { lista: a.andares.map(x => { const p = parDoAndar(a, x.id); return { id: x.id, nome: x.nome, meu: !!p && temMeu(p.v), pronto: !!p }; }), atual: S.current, olhando, ondeEstou };
+    return { lista: a.andares.map(x => { const p = parDoAndar(a, x.id); return { id: x.id, nome: x.nome, nivel: x.nivel, meu: !!p && temMeu(p.v), pronto: !!p }; }).sort((p, q) => p.nivel - q.nivel), atual: S.current, olhando, ondeEstou };
   }
   // olhar outro andar (null: voltar a seguir o token)
   function verAndar(id) {
@@ -908,11 +928,12 @@ const Nuvem = (() => {
     if (!tReceber) tReceber = setTimeout(receber, 0);
     return true;
   }
-  // o jogador leva o token dele pela passagem (a escada) para outro andar no ar
-  function pedirAndar(tokenId, para) {
-    if (modo !== 'jogador' || vazia || !idCena(para) || typeof tokenId !== 'string') return false;
-    olhando = null;
-    pedir([{ t: 'andar', id: tokenId, para }]);
+  // o jogador leva os tokens dele pela passagem (a escada) para outro andar no ar (p: a passagem, se ele escolheu uma)
+  function pedirAndar(tokenIds, para, p) {
+    const ids = (Array.isArray(tokenIds) ? tokenIds : [tokenIds]).filter(x => typeof x === 'string').slice(0, 40);
+    if (modo !== 'jogador' || vazia || !idCena(para) || !ids.length) return false;
+    olhando = null; seguir = { para, ids, ate: Date.now() + 20000 };
+    pedir([Object.assign({ t: 'andar', id: ids[0], ids, para }, typeof p === 'string' ? { p } : {})]);
     return true;
   }
   // o mestre: as cenas no ar agora (a primeira é a do noAr)
@@ -992,35 +1013,36 @@ const Nuvem = (() => {
     visto.delete(id);
     return S.order.filter(x => visto.has(x));
   }
-  /* (lote 78) Leva um token de um andar para outro: sai de `de`, entra em `para`, perto da passagem de `para` que leva
-     de volta a `de` (sem ela, no meio). Vindo de um jogador (quem): só o token dele, só entre andares no ar, e só se
-     `de` tem uma passagem que leva a `para`. */
-  function moverDeAndar(tokenId, de, para, quem) {
-    const A = S.scenes[de], B = S.scenes[para];
-    if (!A || !B || de === para || typeof tokenId !== 'string') return false;
-    const t = A.tokens.find(x => x.id === tokenId);
-    if (!t || t.prop) return false;
+  /* (lote 78/82) Leva tokens de um andar para outro (Andares.mover: cada um chega pela escada certa, na formação). Vindo
+     de um jogador (quem): só os tokens dele, só entre andares no ar, só se `de` tem uma passagem para `para` — e, com a
+     regra "Só pela escada" da cena, só os que estão a até 1 quadrado de uma delas. → o registro (para desfazer) ou null. */
+  function moverDeAndar(tokenIds, de, para, quem, usadaId) {
+    const A = S.scenes[de], B = S.scenes[para], ids = (Array.isArray(tokenIds) ? tokenIds : [tokenIds]).filter(x => typeof x === 'string').slice(0, 40);
+    if (!A || !B || de === para || !ids.length) return null;
+    let vao = ids;
     if (quem) {
-      if (!noArJunto(de) || !noArJunto(para)) return false;
-      if (!(t.owner === quem || t.owner === '*') || t.locked) return false;
-      if (!A.tokens.some(x => x.prop && x.cena === para)) return false;
+      if (!noArJunto(de) || !noArJunto(para)) return null;
+      const ps = Andares.passagens(A, para);
+      if (!ps.length) return null;
+      vao = ids.filter(id => { const t = A.tokens.find(x => x.id === id); return t && !t.prop && (t.owner === quem || t.owner === '*') && !t.locked && (!A.soEscada || ps.some(p => Andares.pertoDaPassagem(A, t, p))); });
+      if (!vao.length) return null;
     }
-    if (B.tokens.some(x => x.id === tokenId)) return false;
-    const volta = B.tokens.find(x => x.prop && x.cena === de), cel = B.cell || 64;
-    let x = volta ? volta.x + cel : Math.floor(B.cols / 2) * cel, y = volta ? volta.y : Math.floor(B.rows / 2) * cel;
-    x = clamp(x, 0, Math.max(0, (B.cols - (t.size || 1)) * cel)); y = clamp(y, 0, Math.max(0, (B.rows - (t.size || 1)) * cel));
-    const novo = Object.assign(clone(t), { x, y });
-    if (!Store.remoteIn(de, [{ t: 'del', c: 'tokens', id: tokenId }])) return false;
-    Store.remoteIn(para, [{ t: 'add', c: 'tokens', v: novo }]);
+    const reg = Andares.mover(de, para, vao, usadaId);
+    if (!reg) return null;
     sujas.add(de); sujas.add(para); metaSuja = true; pubSuja = true; agendar();
-    return true;
+    return reg;
   }
-  // o mestre leva o token da cena aberta para outra cena
-  function levarParaAndar(tokenId, para) {
-    if (modo !== 'mestre') return false;
+  // o mestre leva tokens (um ou vários) da cena aberta para outra cena → o registro (para desfazer) ou null
+  function levarParaAndar(tokenIds, para, usadaId) {
     const de = S.current;
+    if (modo !== 'mestre') return Andares.mover(de, para, Array.isArray(tokenIds) ? tokenIds : [tokenIds], usadaId);     // (sem mesa: só aqui)
     if (noArJunto(de) || noArJunto(para)) assumir();
-    return moverDeAndar(tokenId, de, para, null);
+    return moverDeAndar(tokenIds, de, para, null, usadaId);
+  }
+  function voltarDeAndar(reg) {
+    if (!reg || !Andares.voltar(reg)) return false;
+    if (modo === 'mestre') { sujas.add(reg.de); sujas.add(reg.para); metaSuja = true; pubSuja = true; agendar(); }
+    return true;
   }
   /* O jogador usa um item da bolsa do personagem dele num token: o mestre (o aparelho que transmite) confere e aplica.
      op = { t: 'item', de: personagem, item, alvo: token, rol: os dados rolados de cada efeito }. */
@@ -1168,7 +1190,7 @@ const Nuvem = (() => {
     modo: () => modo, on: () => modo !== 'local', mestre: () => modo === 'mestre', jogador: () => modo === 'jogador',
     estado: () => estado, aoEstado(fn) { ouvinte = fn; },
     noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito,
-    andaresNoAr, noArJunto, definirAndares, ligadas, levarParaAndar, andaresDoJogador, verAndar, pedirAndar, segue, cobrar, apareceu, mostrar, esconder, ping, usarItem, semCena: () => vazia,
+    andaresNoAr, noArJunto, definirAndares, ligadas, levarParaAndar, voltarDeAndar, andaresDoJogador, verAndar, pedirAndar, segue, cobrar, apareceu, mostrar, esconder, ping, usarItem, semCena: () => vazia,
     // campanhas: a que está em vista, as da mesa, as de cada cena, e se a cena aparece na lista da campanha em vista
     comCampanhas, podeOrganizar, campanha: () => camp, campanhas: () => campsDaMesa.slice(), campanhasDaCena, definirCampanhas, naVista,
     arDeFora: () => arDeFora.slice(),
