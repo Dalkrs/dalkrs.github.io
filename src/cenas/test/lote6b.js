@@ -108,18 +108,18 @@ const SHOTS = process.env.FOTOS;                         // (as fotos só saem c
   ok(await ev(([id, pa]) => __tc.Store.S.pastas.de[id] === pa, [cenas.Castelo, pa1]) && await page.locator('#org-p-' + pa1 + ' .org-c').count() === 2, 'ou escolher a pasta na lista ao lado da cena (o Castelo)');
   await foto('02-organizar-em-pastas');
   await page.locator('.modal .btn.primary', { hasText: 'Pronto' }).click(); await w(200);
+  // (lote 84) a lista abre recolhida: a pasta fechada (com quantas tem); um clique abre, sem fechar o menu; ao abrir de novo, recolhe
   let lista = await menu();
-  ok(/CENAS \| .*Taverna \| Ponte \| Lugares do mundo \| 2 \| Floresta \| Castelo/.test(lista), 'no menu: as cenas soltas, depois a pasta (com quantas tem) e as cenas dela: ' + lista);
+  ok(/CENAS \| .*Taverna \| Ponte \| Lugares do mundo \| 2/.test(lista) && !/Floresta/.test(lista), 'no menu: as cenas soltas, depois a pasta recolhida (com quantas tem): ' + lista);
   await page.locator('#sceneBtn').click(); await w(200);
   await page.locator('#mp-' + pa1).click(); await w(200);
   lista = (await page.locator('.menu').innerText()).replace(/\n/g, ' | ');
-  ok(await page.locator('.menu').count() === 1 && !/Floresta/.test(lista) && (await page.locator('#mp-' + pa1).getAttribute('aria-expanded')) === 'false', 'um clique na pasta fecha (o menu continua aberto): ' + lista);
+  ok(await page.locator('.menu').count() === 1 && /Lugares do mundo \| 2 \| Floresta \| Castelo/.test(lista) && (await page.locator('#mp-' + pa1).getAttribute('aria-expanded')) === 'true', 'um clique na pasta abre (o menu continua aberto): ' + lista);
   await page.keyboard.press('Escape'); await w(80);
-  ok(!/Floresta/.test(await menu()) && (await ev(() => localStorage.getItem('tinycats:cenas:pastas-fechadas') || '')).includes(pa1), 'fechada, fica fechada (lembrado neste aparelho)');
-  await page.locator('#sceneBtn').click(); await w(200); await page.locator('#mp-' + pa1).click(); await w(150); await page.keyboard.press('Escape'); await w(80);
-  // a cena ligada a um marcador do Mapa-múndi ganha o ícone do mundo
+  ok(!/Floresta/.test(await menu()), 'abrindo a lista de novo, a pasta volta a ficar recolhida');
   await ev(id => { __tc.Nuvem.noMundo = () => ({ [id]: ['Urgm', 'Porto'] }); }, cenas.Floresta);
   await page.locator('#sceneBtn').click(); await w(200);
+  await page.locator('#mp-' + pa1).click(); await w(200);
   ok(await page.locator('.menu-i', { hasText: 'Floresta' }).locator('.menu-m').count() === 1 && (await page.locator('.menu-i', { hasText: 'Floresta' }).locator('.menu-m').getAttribute('title')) === 'No Mapa-múndi: Urgm, Porto' && await page.locator('.menu-i', { hasText: 'Taverna' }).locator('.menu-m').count() === 0, 'a cena que um marcador do Mapa-múndi abre ganha o ícone do mundo (a dica diz quais)');
   await foto('03-menu-com-pastas');
   await page.keyboard.press('Escape'); await w(80);

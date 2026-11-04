@@ -276,6 +276,16 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
 - [x] A lista de cenas não baixa os fundos (não há miniatura); os jogadores recebem a imagem só da cena no ar.
 - Teste: `test/lote81.js` (11). Rodados: `perf2.js`, `stress.js`, `unit.js`, `e2e.js`, `ui.js` — sem mudança.
 
+## Lote 84 — a lista de cenas recolhida
+
+- [x] Pastas, famílias e prédios fechados a cada abertura; só o caminho até a cena aberta abre.
+- [x] Abrir ou fechar à mão vale até fechar a lista.
+- [x] Prédio: andares ligados por escada numa linha ("N andares"), de cima para baixo quando aberto.
+- [x] Busca no alto (palavras em qualquer ordem, sem acento; Enter abre a primeira; diz onde a cena está).
+- [x] Recentes (até 4, quando há mais de 6 cenas).
+- Teste: `test/lote84.js` (21). Testes antigos da lista (lote6b, lote7c…) ajustados para a lista recolhida.
+- (lote 85) "Puxar os membros do clã": sem foto, o token usa a foto padrão do cargo.
+
 ## Lote 83 — Construção ou Mestrando
 
 - [x] Botão no topo (só o mestre): Construção / Mestrando; cada cena lembra (neste aparelho); no ar → Mestrando.

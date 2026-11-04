@@ -2,6 +2,37 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.04-4",
+      "data": "2026-11-04",
+      "titulo": "A lista de cenas mais arrumada e a foto padrão por cargo",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Cenas: a lista de cenas abre recolhida. Pastas, famílias e prédios ficam fechados; só abre o caminho até a cena aberta. O que você abrir à mão vale até fechar a lista."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: os andares ligados por escada viram um prédio, numa linha só (“Fortaleza Cinzenta · 3 andares”). Aberto, mostra os andares de cima para baixo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Cenas: no alto da lista, a busca pelo nome (Enter abre a primeira) e as últimas cenas que você abriu."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Clã: cada cargo pode ter uma foto padrão (o botão com a câmera no cartão do cargo). Quem não tem foto própria nem da ficha aparece com ela; em Membros, “Foto dos sem cargo”."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Clã: os membros sem foto aparecem com a foto do cargo deles, também quando o mestre os puxa para uma cena."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.04-3",
       "data": "2026-11-04",
       "titulo": "Construção ou Mestrando nas Cenas",

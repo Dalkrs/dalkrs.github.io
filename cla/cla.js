@@ -55,6 +55,7 @@
     moeda: 'M12 4c4.4 0 8 1.6 8 3.5S16.4 11 12 11 4 9.4 4 7.5 7.6 4 12 4zM4 7.5v4C4 13.4 7.6 15 12 15s8-1.6 8-3.5v-4M4 11.5v4c0 1.9 3.6 3.5 8 3.5s8-1.6 8-3.5v-4',
     caixa: 'M3.5 8 12 4l8.5 4v8L12 20l-8.5-4zM3.5 8 12 12l8.5-4M12 12v8',
     torre: 'M7 21V8h2V5h2v3h2V5h2v3h2v13zM5 21h14M10.5 21v-4h3v4',
+    foto: 'M4 7h3l1.5-2h7L17 7h3v12H4zM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',      // (lote 85) a foto padrão do cargo
   };
   const CORES_REC = ['#d9a441', '#6fa8f0', '#6fbf9f', '#e08bdb', '#ee9658', '#9c95f5'];
   const guarda = {
@@ -296,7 +297,11 @@
     return { nome: (pc && pc.nome) || p.nome || 'Alguém', de, img: pc ? pc.img : null, pj: !!(pc && pc.dono) };
   }
   // (lote 59) a foto de um membro: a enviada no Clã (membros.dados[pid].img); senão, o retrato da ficha
-  const fotoDe = (c, pid, q) => { const d = c && c.membros && c.membros.dados ? c.membros.dados[pid] : null; return (d && d.img) || (q && q.img) || null; };
+  // (lote 85) …e, sem nenhuma das duas, a foto padrão do cargo dela (ou a dos sem cargo), que o mestre escolhe
+  const cargoDaPessoa = (c, pid) => { const cs = c && c.cargos; if (!cs) return null; for (const k of Object.keys(cs)) if (cs[k] && Array.isArray(cs[k].gente) && cs[k].gente.some(p => p.id === pid)) return k; return null; };
+  const fotoDoCargo = (c, k) => { const ic = c && c.membros && c.membros.imgCargo; return ic ? ic[k || '_sem'] || null : null; };
+  const fotoDe = (c, pid, q) => { const d = c && c.membros && c.membros.dados ? c.membros.dados[pid] : null; if ((d && d.img) || (q && q.img)) return (d && d.img) || q.img;
+    const k = cargoDaPessoa(c, pid); if (k) return fotoDoCargo(c, k); if (c && c.membros && Array.isArray(c.membros.avulsos) && c.membros.avulsos.some(p => p.id === pid)) return fotoDoCargo(c, '_sem'); return null; };
   const avDe = (c, pid, q, extra) => { const f = fotoDe(c, pid, q); return h('span', Object.assign({ class: 'av' + (q.pj ? ' pj' : '') }, extra || null), f ? h('img', { src: f, alt: '' }) : iniciais(q.nome)); };
   // quem usa é o líder deste clã (o clã dos jogadores; o personagem no cargo de líder é dele)
   function souLider(c) {
@@ -446,6 +451,7 @@
         h('b', { text: x.nome }),
         x.gente.length > 1 ? h('span', { class: 'cg-n', title: x.gente.length + ' pessoas neste cargo', text: String(x.gente.length) }) : null,
         ehLider && pode && !mestre ? h('small', { class: 'nota', text: 'só o mestre muda' }) : null,
+        mestre && pode ? fotoCargoBtn(c, id, x.nome) : null,
         podeEste ? h('button', { type: 'button', class: 'ib leve', 'data-k': 'ren:' + id, title: 'Renomear', 'aria-label': 'Renomear o cargo ' + x.nome, disabled: ocupado, onclick: () => renomearCargoDlg(c, id) }, '✎') : null,
         pode && !ehLider ? h('button', { type: 'button', class: 'ib leve', 'data-k': 'apg:' + id, title: 'Apagar o cargo', 'aria-label': 'Apagar o cargo ' + x.nome, disabled: ocupado, onclick: () => apagarCargoDlg(c, id) }, '×') : null),
       x.gente.length ? x.gente.map(p => linhaPessoa(c, id, p, podeEste && !ehLider, resp)) : h('small', { class: 'ajuda', text: ehLider ? 'Ninguém na liderança ainda.' : 'Ninguém neste cargo ainda.' }),
@@ -454,6 +460,28 @@
         h('button', { type: 'button', class: 'btn tracejado', 'data-k': 'sub:' + id, title: ehLider ? 'Um cargo logo abaixo do líder' : 'Um cargo abaixo de ' + x.nome, disabled: ocupado || N.totalCargos(cs) >= N.MAX.cargos, onclick: () => novoCargoDlg(c, id) }, ehLider ? '+ cargo' : '+ subcargo'),
         !ehLider ? h('button', { type: 'button', class: 'btn tracejado', 'data-k': 'mov:' + id, disabled: ocupado, onclick: () => moverDlg(c, id) }, 'Mover…') : null,
         ehLider && mestre ? h('button', { type: 'button', class: 'btn tracejado', 'data-k': 'liderar', onclick: () => liderancaDlg(c.id) }, c.jogadores ? 'Passar a liderança…' : 'Trocar o líder…') : null) : null);
+  }
+  /* (lote 85) a foto padrão de um cargo (ou dos sem cargo, k = '_sem'): quem do cargo não tem foto aparece com ela. Um
+     clique escolhe; com foto, o menu pequeno troca ou tira. */
+  function fotoCargoBtn(c, k, nome) {
+    const f = fotoDoCargo(c, k), rot = k === '_sem' ? 'os membros sem cargo' : 'o cargo ' + nome;
+    return h('button', { type: 'button', class: 'ib leve foto-cg' + (f ? ' tem' : ''), 'data-k': 'fcg:' + k, disabled: ocupado,
+      title: f ? 'Foto padrão de ' + rot + ' (quem não tem foto aparece com ela). Clique para trocar ou tirar.' : 'Escolher a foto padrão de ' + rot + ': quem não tem foto aparece com ela',
+      'aria-label': 'Foto padrão de ' + rot,
+      onclick: ev => {
+        if (!f) { escolherImagem({ para: 'cargo', id: c.id, cargo: k, nome: rot }); return; }
+        menuFotoCargo(ev.currentTarget, c, k, rot);
+      } }, f ? h('img', { src: f, alt: '' }) : icone(ICO.foto, 14, '1.8'));
+  }
+  function menuFotoCargo(b, c, k, rot) {
+    const m = h('div', { class: 'mini-menu', role: 'menu' },
+      h('button', { type: 'button', role: 'menuitem', 'data-k': 'fcg-trocar', onclick: () => { m.remove(); escolherImagem({ para: 'cargo', id: c.id, cargo: k, nome: rot }); } }, 'Trocar a foto padrão…'),
+      h('button', { type: 'button', role: 'menuitem', 'data-k': 'fcg-tirar', onclick: () => { m.remove(); mudarCla(c.id, 'tirar a foto padrão de ' + rot, y => { const ic = Object.assign({}, y.membros.imgCargo); delete ic[k]; y.membros.imgCargo = ic; }); } }, 'Tirar a foto padrão'));
+    document.body.append(m);
+    const r = b.getBoundingClientRect();
+    m.style.left = Math.max(8, Math.min(window.innerWidth - 220, r.left)) + 'px'; m.style.top = (r.bottom + 4 + window.scrollY) + 'px';
+    const fora = e => { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('pointerdown', fora, true); } };
+    setTimeout(() => document.addEventListener('pointerdown', fora, true), 0);
   }
   function linhaPessoa(c, cargo, p, pode, resp) {
     const q = quemE(p);
@@ -986,6 +1014,7 @@
       h('div', { class: 'cab' }, h('h2', { class: 'tit', text: 'Membros' }), h('small', { class: 'ajuda', text: ms.length === 1 ? '1 membro' : ms.length + ' membros' }),
         // (lote 60) trazer fichas (por grupo ou campanha) e os soldados com nome das tropas do clã
         h('span', { class: 'rol-trazer', style: 'margin-left:auto' },
+          mestre ? h('span', { class: 'rol-fsem', title: 'A foto de quem está sem cargo e sem foto' }, fotoCargoBtn(Object.assign({}, x.c, { id: x.id }), '_sem', ''), h('small', { text: 'Foto dos sem cargo' })) : null,
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'rol:fichas', disabled: ocupado, onclick: () => fichasDlg(x) }, 'Das fichas…'),
           soldadosDoCla(id).length ? h('button', { type: 'button', class: 'btn sm', 'data-k': 'rol:tropas', disabled: ocupado || !gravaFichas(), onclick: () => tropasDlg(x) }, 'Das tropas…') : null,
           h('button', { type: 'button', class: 'btn pri sm', 'data-k': 'rol:novo', disabled: ocupado, onclick: () => novoMembroDlg(x) }, '+ Membro'))),
@@ -1841,10 +1870,11 @@
     if (!arq || !alvo) return;
     $('salvo').textContent = naMesa ? 'Enviando a imagem…' : 'Preparando a imagem…';
     try {
-      const url = await prepararImagem(arq, alvo.para === 'membro' ? (naMesa ? 384 : 192) : naMesa ? 480 : 320);
+      const url = await prepararImagem(arq, alvo.para === 'membro' || alvo.para === 'cargo' ? (naMesa ? 384 : 192) : naMesa ? 480 : 320);
       $('salvo').textContent = '';
       if (alvo.para === 'brasao') { mudarCla(alvo.id, 'usar uma imagem no brasão', y => { y.brasao.img = url; }); if (alvo.depois) alvo.depois(); }
       if (alvo.para === 'membro') mudarCla(alvo.id, 'pôr a foto de ' + alvo.nome, y => trocar(y, N.mudarMembroDados(y, alvo.pid, { img: url })));      // (lote 59)
+      if (alvo.para === 'cargo') mudarCla(alvo.id, 'pôr a foto padrão de ' + alvo.nome, y => { y.membros.imgCargo = Object.assign({}, y.membros.imgCargo, { [alvo.cargo]: url }); });      // (lote 85)
     } catch (e) { $('salvo').textContent = ''; toast((e && e.message) || 'Não deu para usar esta imagem.'); }
   }
   $('arquivo').addEventListener('change', function () { usarImagem(this.files && this.files[0]); });

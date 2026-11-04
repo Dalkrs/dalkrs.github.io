@@ -460,6 +460,7 @@
     { t: 'Morto ao chegar a 0', txt: 'Nas Cenas, a vida chegou a 0: o token ganha Morto e o aviso pergunta se ele sai da iniciativa. Curado, o Morto sai.', papel: 'mestre', sistema: 'cenas' },
     { t: 'O level máximo', txt: 'Nas Tabelas base das Fichas, aba Níveis e pontos, o Level máximo corta ou estende a tabela. A padrão vai até o 30.', papel: 'mestre', sistema: 'fichas' },
     { t: 'Andares no ar', txt: 'Nas Cenas, a cena e os andares dela podem ficar no ar juntos: cada jogador vê o andar do token dele e sobe ou desce pela escada.', papel: 'todos', sistema: 'cenas' },
+    { t: 'Procurar uma cena', txt: 'Na lista de cenas, escreva parte do nome na busca do alto e aperte Enter. As últimas cenas abertas ficam logo abaixo.', papel: 'mestre', sistema: 'cenas' },
     { t: 'Construção ou Mestrando', txt: 'Nas Cenas, o mestre escolhe no alto: em Construção tudo se mexe; em Mestrando só os tokens andam, e portas, luzes e baús se usam sem sair do lugar.', papel: 'mestre', sistema: 'cenas' },
     { t: 'PageUp e PageDown', txt: 'Nas Cenas, com o token selecionado, PageUp sobe um andar e PageDown desce, pela escada mais perto.', papel: 'todos', sistema: 'cenas' },
     { t: 'O XP no Jogando', txt: 'A barra de XP aparece na ficha em Jogando: digite +5 para somar ou −2 para tirar, sem ir ao Editar.', papel: 'todos', sistema: 'fichas' },
@@ -507,5 +508,5 @@
     { t: 'O Jornal escreve sozinho', txt: 'O resumo da semana, da sessão, das guerras e os aniversários chegam prontos ao rascunho.', papel: 'mestre', sistema: 'jornal', ir: { aba: 'jornal', g: 'Sugestões no rascunho' } },
   ];
 
-  window.TC_MANUAL = { versao: 31, sistemas, tarefas, roteiro, sabia };
+  window.TC_MANUAL = { versao: 32, sistemas, tarefas, roteiro, sabia };
 })();

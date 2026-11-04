@@ -157,8 +157,12 @@ const UI = (() => {
       if (it === '-') return h('div', { class: 'menu-sep' });
       if (it.head) return h('div', { class: 'menu-h', text: it.head });
       // (a pasta da lista de cenas: um clique abre ou fecha — quem chama desenha a lista de novo)
-      if (it.pasta) return h('button', { type: 'button', class: 'menu-i menu-pasta', role: 'menuitem', id: 'mp-' + it.pasta, 'aria-expanded': String(!!it.aberta), title: it.aberta ? 'Fechar a pasta' : 'Abrir a pasta', onclick: () => it.run() },
-        h('span', { class: 'menu-ck' }, icon(it.aberta ? 'down' : 'right', 14)), icon('folder', 15), h('span', { class: 'menu-l', text: it.label }), h('span', { class: 'menu-k', text: String(it.n) }));
+      // (lote 84) a busca da lista de cenas: cada letra filtra; Enter abre a primeira cena achada
+      if (it.busca) return h('div', { class: 'menu-busca' }, icon('search', 14), h('input', { type: 'search', id: 'menuBusca', class: 'in', value: it.value || '', placeholder: 'Procurar cena…', 'aria-label': 'Procurar cena pelo nome', autocomplete: 'off',
+        oninput: e => { listaCenas.q = e.target.value; reabrirMenuCenas('menuBusca'); },
+        onkeydown: e => { if (e.key === 'Enter') { const b = menuEl && menuEl.querySelector('.menu-h ~ .menu-i'); if (b) { e.preventDefault(); b.click(); } } else if (e.key === 'ArrowDown') { const b = menuEl && menuEl.querySelector('.menu-i'); if (b) { e.preventDefault(); b.focus(); } } } }));
+      if (it.pasta) return h('button', { type: 'button', class: 'menu-i menu-pasta' + (it.aqui ? ' aqui' : '') + (it.dentro ? ' dentro' : ''), role: 'menuitem', id: 'mp-' + it.pasta, 'aria-expanded': String(!!it.aberta), title: it.aberta ? 'Fechar a pasta' : 'Abrir a pasta', onclick: () => it.run() },
+        h('span', { class: 'menu-ck' }, icon(it.aberta ? 'down' : 'right', 14)), icon(it.ic || 'folder', 15), h('span', { class: 'menu-l', text: it.label }), it.sub ? h('span', { class: 'menu-sub', text: it.sub }) : null, h('span', { class: 'menu-k', text: String(it.n) }));
       // (lote 7) a cena de uma família: as filhas vêm um pouco para dentro; a mãe tem, à direita, o botão que abre e
       // fecha a família (com quantas cenas há dentro dela) — o clique no nome continua abrindo a cena
       if (it.fam) return h('div', { class: 'menu-fam' },
@@ -630,7 +634,7 @@ const UI = (() => {
   /* ================= Barra do topo ================= */
   function renderTop() {
     const sc = Store.scene(), gm = isGM();
-    const sceneBtn = h('button', { type: 'button', class: 'scene-b', id: 'sceneBtn', title: 'Trocar de cena', onclick: () => anchorMenu(sceneBtn, sceneMenu()) },
+    const sceneBtn = h('button', { type: 'button', class: 'scene-b', id: 'sceneBtn', title: 'Trocar de cena', onclick: () => abrirListaCenas(sceneBtn) },
       icon('map', 17), h('span', { class: 'scene-n', text: sc.name }), icon('down', 14));
     const more = iconBtn('more', 'Arquivo e ajuda', () => anchorMenu(more, fileMenu(), true), { id: 'moreBtn' });
     zoomLabel = h('button', { type: 'button', class: 'zoom-l', id: 'zoomBtn', title: 'Enquadrar a cena (0)', text: Math.round(App.view.z * 100) + '%', onclick: () => { Render.fit(); status(); } });
@@ -664,6 +668,22 @@ const UI = (() => {
       iconBtn('panel', App.sideOpen ? 'Esconder o painel' : 'Mostrar o painel', () => { App.sideOpen = !App.sideOpen; refresh(); }, { on: App.sideOpen, id: 'panelBtn' }),
     ].filter(Boolean));          // (o que não se aplica a quem está olhando fica de fora)
   }
+  /* (lote 84) A lista de cenas recolhida: as pastas, as famílias e os prédios (andares ligados por escada) começam
+     fechados cada vez que a lista abre — só abre o caminho até a cena aberta. No alto, a busca e as recentes. O que se
+     abre ou fecha à mão vale enquanto a lista está aberta. */
+  const listaCenas = { abre: new Set(), fecha: new Set(), q: '' };
+  const RECENTES = 'tinycats:cenas:recentes';
+  const recentes = (() => { try { const l = JSON.parse(localStorage.getItem(RECENTES) || '[]'); return Array.isArray(l) ? l.filter(x => typeof x === 'string').slice(0, 12) : []; } catch (e) { return []; } })();
+  Store.on('scene', id => {
+    const k = id || Store.S.current;
+    if (!k || !Store.S.scenes[k] || recentes[0] === k) return;
+    const i = recentes.indexOf(k); if (i >= 0) recentes.splice(i, 1);
+    recentes.unshift(k); recentes.length = Math.min(recentes.length, 12);
+    try { localStorage.setItem(RECENTES, JSON.stringify(recentes)); } catch (e) { /* vale só nesta visita */ }
+  });
+  function abrirListaCenas(b) { listaCenas.abre.clear(); listaCenas.fecha.clear(); listaCenas.q = ''; anchorMenu(b, sceneMenu()); }
+  const abertoNaLista = (id, temAtual) => !listaCenas.fecha.has(id) && (listaCenas.abre.has(id) || temAtual);
+  const alternarNaLista = (id, aberto, foco) => { if (aberto) { listaCenas.fecha.add(id); listaCenas.abre.delete(id); } else { listaCenas.abre.add(id); listaCenas.fecha.delete(id); } reabrirMenuCenas(foco); };
   function sceneMenu() {
     const items = [], ar = Nuvem.noAr(), comCamp = Nuvem.comCampanhas(), mundo = Nuvem.noMundo(), pastas = pastasP().lista;
     const visiveis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id)));
@@ -674,29 +694,57 @@ const UI = (() => {
       // (lote 7) a cena de uma família: a filha vem para dentro; a mãe abre e fecha as que estão dentro dela
       const nf = F.filhas(id).length;
       if (nivel || nf) {
-        const aberta = !famFechadas.has(id);
-        Object.assign(it, { fam: id, nivel, filhas: nf ? F.dentro(id).length : 0, aberta, aqui: !aberta && F.dentro(id).includes(atual),
-          tg: () => { if (aberta) famFechadas.add(id); else famFechadas.delete(id); guardarFamFechadas(); reabrirMenuCenas('mf-' + id); } });
+        const temAtual = F.dentro(id).includes(atual), aberta = abertoNaLista(id, temAtual);
+        Object.assign(it, { fam: id, nivel, filhas: nf ? F.dentro(id).length : 0, aberta, aqui: !aberta && temAtual, tg: () => alternarNaLista(id, aberta, 'mf-' + id) });
       }
       return it;
     };
-    // a família de cada cena da lista: ela e, se estiver aberta, as que estão dentro dela (cada uma com a família dela)
-    const familia = (id, nivel, dentro) => { items.push(linha(id, nivel, dentro)); if (!famFechadas.has(id)) for (const f of F.filhas(id)) familia(f, nivel + 1, dentro); };
+    const familia = (id, nivel, dentro) => { const it = linha(id, nivel, dentro); items.push(it); if (it.aberta) for (const f of F.filhas(id)) familia(f, nivel + 1, dentro); };
+    // os prédios: as cenas soltas de um mesmo lugar ligadas por passagens (os andares) viram uma linha só
+    const comAtual = id => id === atual || F.dentro(id).includes(atual);
+    const grupo = (ids, dentro) => {
+      const feitos = new Set();
+      for (const id of ids) {
+        if (feitos.has(id)) continue;
+        const lig = new Set(Nuvem.ligadas(id)), pr = ids.filter(x => x === id || lig.has(x));
+        pr.forEach(x => feitos.add(x));
+        if (pr.length < 2) { familia(id, 0, dentro); continue; }
+        pr.sort((a, b) => Andares.nivelDe(a) - Andares.nivelDe(b));
+        const base = pr.find(x => Andares.nivelDe(x) >= 0) || pr[0], temAtual = pr.some(comAtual), aberto = abertoNaLista('pr:' + base, temAtual);
+        const n = pr.reduce((s2, x) => s2 + 1 + F.dentro(x).length, 0);
+        items.push({ pasta: 'pr-' + base, label: Store.S.scenes[base].name, n, aberta: aberto, ic: 'layers', sub: pr.length + ' andares', aqui: !aberto && temAtual, dentro, run: () => alternarNaLista('pr:' + base, aberto, 'mp-pr-' + base) });
+        if (aberto) for (const x of pr.slice().reverse()) familia(x, 1, dentro);
+      }
+    };
+    // a busca e as recentes, no alto
+    items.push({ busca: true, value: listaCenas.q });
+    const q = semAcento(listaCenas.q.trim());
+    if (q) {
+      const palavras = q.split(/\s+/).filter(Boolean), achadas = visiveis.filter(id => { const nm = semAcento(Store.S.scenes[id].name); return palavras.every(x => nm.includes(x)); }).slice(0, 30);      // (todas as palavras, em qualquer ordem)
+      items.push({ head: achadas.length ? `Cenas com "${listaCenas.q.trim()}"` : `Nenhuma cena com "${listaCenas.q.trim()}"` });
+      for (const id of achadas) {
+        const onde = F.maeVis(id) ? Store.S.scenes[F.maeVis(id)].name : pastaDaCena(raizDaCena(id)) ? nomeDaPasta(pastaDaCena(raizDaCena(id))) : '';
+        items.push({ label: Store.S.scenes[id].name, check: id === atual, key: id === ar ? 'no ar' : onde || null, run: () => switchScene(id) });
+      }
+      return items;
+    }
+    const rec = recentes.filter(id => id !== atual && visiveis.includes(id)).slice(0, 4);
+    if (visiveis.length > 6 && rec.length) { items.push({ head: 'Recentes' }); for (const id of rec) items.push({ label: Store.S.scenes[id].name, check: false, key: id === ar ? 'no ar' : null, run: () => switchScene(id) }); }
     const soltas = F.raizes.filter(id => !pastaDaCena(id));
-    if (!comCamp) { if (soltas.length || !pastas.length) { items.push({ head: 'Cenas' }); for (const id of soltas) familia(id, 0, false); } }
+    if (!comCamp) { if (soltas.length || !pastas.length) { items.push({ head: 'Cenas' }); grupo(soltas, false); } }
     else {
       // numa mesa com campanhas: as cenas da campanha em vista e, depois, as do mundo (as das outras campanhas ficam na lista delas)
       const c = Nuvem.campanha(), dela = soltas.filter(id => Nuvem.campanhasDaCena(id).includes(c)), doMundo = soltas.filter(id => !Nuvem.campanhasDaCena(id).length);
-      if (dela.length || !doMundo.length) { items.push({ head: 'Cenas · ' + nomeDaCampanha(c) }); for (const id of dela) familia(id, 0, false); }
-      if (doMundo.length) { items.push({ head: 'Do mundo' }); for (const id of doMundo) familia(id, 0, false); }
+      if (dela.length || !doMundo.length) { items.push({ head: 'Cenas · ' + nomeDaCampanha(c) }); grupo(dela, false); }
+      if (doMundo.length) { items.push({ head: 'Do mundo' }); grupo(doMundo, false); }
     }
-    // as pastas (lote 6): cada uma abre e fecha; fechada, fica só o nome e quantas cenas tem (contando as famílias)
+    // as pastas (lote 6): fechadas, cada uma mostra o nome e quantas cenas tem; a da cena aberta já vem aberta
     for (const pa of pastas) {
       const dela = F.raizes.filter(id => pastaDaCena(id) === pa.id);
       if (!dela.length) continue;
-      const aberta = !fechadas.has(pa.id), n = dela.reduce((s, id) => s + 1 + F.dentro(id).length, 0);
-      items.push({ pasta: pa.id, label: pa.nome, n, aberta, run: () => { if (aberta) fechadas.add(pa.id); else fechadas.delete(pa.id); guardarFechadas(); reabrirMenuCenas('mp-' + pa.id); } });
-      if (aberta) for (const id of dela) familia(id, 0, true);
+      const temAtual = dela.some(comAtual), aberta = abertoNaLista('pa:' + pa.id, temAtual), n = dela.reduce((s2, id) => s2 + 1 + F.dentro(id).length, 0);
+      items.push({ pasta: pa.id, label: pa.nome, n, aberta, aqui: !aberta && temAtual, run: () => alternarNaLista('pa:' + pa.id, aberta, 'mp-' + pa.id) });
+      if (aberta) grupo(dela, true);
     }
     items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Gerar um lugar…', icon: 'house', run: () => Gerador.abrir() }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
       { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Organizar as cenas…', icon: 'folder', run: () => organizarCenas() },
@@ -709,7 +757,7 @@ const UI = (() => {
     if (!b) return;
     anchorMenu(b, sceneMenu());
     const f = document.getElementById(focoId);
-    if (f) f.focus();
+    if (f) { f.focus(); if (f.tagName === 'INPUT') { const n = f.value.length; f.setSelectionRange(n, n); } }
   }
 
   /* ---- As pastas da lista de cenas (lote 6) ----

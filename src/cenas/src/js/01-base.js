@@ -259,6 +259,7 @@ const ICONS = {
   obj: 'M4 10h16v9.500H4zM4 10l1.500-4.500h13L20 10M10 14h4M12 5.500V10',
   // (lote 6) as pastas da lista de cenas, o Mapa-múndi e o vilarejo
   folder: 'M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z',
+  search: 'M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14M20 20l-4-4',      // (lote 84) a lupa da busca de cenas
   globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3.5 9h17M3.5 15h17M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z',
   house: 'M3.5 11.5L12 4.5l8.5 7M6 10v9.5h12V10M10 19.5v-5h4v5',
   // Condições (as marcadas com fill são preenchidas)

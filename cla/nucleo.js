@@ -478,7 +478,12 @@
     const dados = {};
     const d0 = ehObj(m.dados) ? m.dados : {};
     for (const pid of vistos) { const x = normDadosM(d0[pid]); if (x) dados[pid] = x; }
-    return gente ? { avulsos, dados, gente } : { avulsos, dados };
+    // (lote 85) a foto de quem não tem foto, pelo cargo: { <id do cargo> | '_sem' (os sem cargo): imagem } — o mestre escolhe
+    const ic = {}, ic0 = ehObj(m.imgCargo) ? m.imgCargo : {};
+    for (const k of Object.keys(ic0).slice(0, MAX.cargos + 2)) if ((k === '_sem' || (cargos && ehObj(cargos[k])) || (comGente && idOk(k))) && fotoOk(ic0[k])) ic[k] = ic0[k];
+    const out = gente ? { avulsos, dados, gente } : { avulsos, dados };
+    if (Object.keys(ic).length) out.imgCargo = ic;
+    return out;
   }
   // todos os membros: os dos cargos (do líder para baixo) e depois os sem cargo: [{ pid, cargo (null sem), cargoNome, pessoa, dados }]
   function membrosDe(cla) {

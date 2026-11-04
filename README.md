@@ -254,6 +254,23 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### A foto padrão por cargo no Clã (lote 85)
+
+- `membros.imgCargo` (`{ <id do cargo> | '_sem': imagem }`, `ClaNucleo.normMembros`): só cargos que existem e imagens
+  válidas. Vai junto com a parte "membros" (no banco, `privado.cla_pub` já copia a parte inteira: sem SQL novo).
+- `fotoDe` (cla.js): a foto do membro → a da ficha → a do cargo (ou `_sem`). As Cenas ("Puxar os membros do clã") usam
+  a mesma ordem. O botão `fcg:<cargo>` no cartão do cargo e `fcg:_sem` em Membros (só o mestre).
+- Teste: `src/tests/cla-lote85.test.js`.
+
+### A lista de cenas recolhida (lote 84)
+
+- `sceneMenu` (10-ui): pastas, famílias e prédios fecham a cada abertura (`abrirListaCenas`); `listaCenas.abre/fecha`
+  guarda o que se abriu à mão só enquanto a lista está aberta; o caminho até a cena aberta vem aberto.
+- Prédio: as cenas soltas de um mesmo lugar ligadas por passagens (`Nuvem.ligadas`), em ordem de `Andares.nivelDe`.
+- Busca (`#menuBusca`, todas as palavras, sem acento) e recentes (`tinycats:cenas:recentes`, até 4 com mais de 6 cenas).
+- As chaves antigas de pastas e famílias fechadas deixaram de valer na lista (a janela "Organizar" não muda).
+- Teste: `src/cenas/test/lote84.js`.
+
 ### Construção ou Mestrando nas Cenas (lote 83)
 
 - `App.visao` (`construcao` | `mestrando`), trocada por `Tools.trocarVisao` (botão `#visaoSeg` no topo); cada cena

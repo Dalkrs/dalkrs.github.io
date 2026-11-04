@@ -25,7 +25,9 @@ const MembrosCla = (() => {
     return N.membrosDe(c).map(m => {
       const d = m.dados || {}, pc = m.pessoa.pc || d.pc || null, l = pc && Fichas.on() ? Fichas.get(pc) : null;
       const fichaImg = l ? Fichas.imagemDe(l) : null, nome = (l && String(l.nome || '').trim()) || m.pessoa.nome || 'Alguém';
-      return { pid: m.pid, nome: nome.slice(0, 60), cargo: m.cargo ? (c.cargos[m.cargo] || {}).nome || '' : '', img: imagemOk(d.img) ? d.img : imagemOk(fichaImg) ? fichaImg : null };
+      // (lote 85) sem foto nenhuma: a foto padrão do cargo (ou a dos sem cargo), que o mestre escolhe no Clã
+      const ic = (c.membros && c.membros.imgCargo) || {}, doCargo = m.oculto ? null : ic[m.cargo || '_sem'];
+      return { pid: m.pid, nome: nome.slice(0, 60), cargo: m.cargo ? (c.cargos[m.cargo] || {}).nome || '' : '', img: imagemOk(d.img) ? d.img : imagemOk(fichaImg) ? fichaImg : imagemOk(doCargo) ? doCargo : null };
     });
   }
   const corDe = c => { const cs = c && c.brasao && Array.isArray(c.brasao.cores) ? c.brasao.cores : []; return typeof cs[0] === 'string' && /^#[0-9a-f]{6}$/i.test(cs[0]) ? cs[0] : null; };

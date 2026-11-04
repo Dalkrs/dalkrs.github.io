@@ -1270,3 +1270,10 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .visao-b[data-visao="mestrando"].on { background: color-mix(in srgb, var(--ok, #4caf50) 18%, transparent); border-color: var(--ok, #4caf50); color: var(--fg); }
 .visao-b:focus-visible { outline: 2px solid var(--lamp); outline-offset: 1px; }
 @media (max-width: 1100px) { .visao-b span { display: none; } }
+
+/* (lote 84) a lista de cenas recolhida: a busca no alto, o prédio (andares ligados) e o "a cena aberta está aqui" */
+.menu-busca { display: flex; align-items: center; gap: 6px; padding: 4px 6px 6px; color: var(--fg-3); }
+.menu-busca .in { flex: 1 1 auto; min-width: 0; height: 30px; }
+.menu-sub { color: var(--fg-3); font-size: 11.5px; margin-left: 2px; white-space: nowrap; }
+.menu-pasta.aqui .menu-k { color: var(--lamp-ink); font-weight: 700; }
+.menu-pasta.dentro { padding-left: 22px; }

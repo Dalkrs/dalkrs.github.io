@@ -546,6 +546,14 @@ details.como > summary { cursor: pointer; width: fit-content; font-weight: 600; 
 details.como > p { margin: 6px 0 0; max-width: 72ch; line-height: 1.5; }
 /* (lote 75) Ver ou Editar, para quem lidera */
 .abas .lider-modo { margin-left: auto; align-self: center; }
+/* (lote 85) a foto padrão de um cargo: o botão pequeno no cartão do cargo (com a foto, quando há) e o menu dele */
+.foto-cg { overflow: hidden; }
+.foto-cg.tem { padding: 0; border: 1px solid var(--line); }
+.foto-cg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rol-fsem { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; color: var(--fg-2); }
+.mini-menu { position: absolute; z-index: 60; display: flex; flex-direction: column; min-width: 200px; padding: 4px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel, #1c2130); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.mini-menu button { text-align: left; padding: 8px 10px; border: 0; border-radius: 7px; background: none; color: var(--fg); font: inherit; cursor: pointer; }
+.mini-menu button:hover, .mini-menu button:focus-visible { background: var(--hover); }
 </style>
 </head>
 <body>
@@ -577,7 +585,7 @@ details.como > p { margin: 6px 0 0; max-width: 72ch; line-height: 1.5; }
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=21"></script>
 <script src="../meditacao/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=9"></script>
+<script src="nucleo.js?v=10"></script>
 <script src="../tc/tropas.js?v=5"></script>
 <script src="../tc/modelos.js?v=1"></script>
 <script src="../tc/calendario.js?v=2"></script>
@@ -585,6 +593,6 @@ details.como > p { margin: 6px 0 0; max-width: 72ch; line-height: 1.5; }
 <script src="../tc/sede.js?v=3"></script>
 <script src="sede-ui.js?v=4"></script>
 <script src="construtor.js?v=1"></script>
-<script src="cla.js?v=13"></script>
+<script src="cla.js?v=14"></script>
 </body>
 </html>
