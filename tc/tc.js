@@ -167,9 +167,10 @@
     }
     return data;
   };
-  conta.sair = async () => {
+  // (lote 84) opt.local: sai só deste navegador (a saída por inatividade); sem ele, a conta sai de todos os aparelhos
+  conta.sair = async opt => {
     mesas.fechar();
-    try { await cliente().auth.signOut(); } catch (e) { /* sem rede: a sessão local some do mesmo jeito */ }
+    try { await cliente().auth.signOut(opt && opt.local ? { scope: 'local' } : undefined); } catch (e) { /* sem rede: a sessão local some do mesmo jeito */ }
     conta.usuario = null; passe = null; passeAte = 0;
   };
 
@@ -523,7 +524,7 @@
   const aoVivo = emissor({ itens: [], conectado: false, segredo: false });
   let mesaId = null, canal = null, canalCamp = null, relogio = 0, volta = 0, maxRev = 0, folga = 0, buscando = false;
 
-  const online = m => !!(m && m.visto_em && (Date.now() + folga - Date.parse(m.visto_em)) < 75000);
+  const online = m => !!(m && m.visto_em && (Date.now() + folga - Date.parse(m.visto_em)) < 130000)   // (lote 84: a presença vai a cada 60 s; cabem duas perdidas por pouco);
   aoVivo.online = online;
   /* Há quanto tempo (ms) uma linha do registro chegou à mesa — foi escrita ou, se era secreta, mostrada —, pelo
      relógio do banco (o do aparelho pode estar errado). */
@@ -583,14 +584,18 @@
     } catch (e) { /* sem rede: a próxima volta tenta de novo */ }
     buscando = false;
   }
-  async function presenca() {
-    if (!mesaId || document.hidden) return;
+  /* (lote 84) A presença vai a cada 60 s e não relê mais os membros e o nome da mesa a cada vez: com o tempo real, as
+     mudanças já chegam pelo canal. Fica uma releitura a cada 3 presenças, porque a saída de alguém (um DELETE com filtro)
+     não chega por ele. `tudo`: ao abrir a mesa e ao voltar para a aba, relê de qualquer jeito. */
+  let contaPresenca = 0, pausado = false;
+  async function presenca(tudo) {
+    if (!mesaId || document.hidden || pausado) return;
     if (mesas.atual && mesas.atual.auditoria) { recarregarMembros(); conferirNome(); return; }     // (lote 27) quem audita não aparece online
     try {
       const { data } = await cliente().rpc('marcar_presenca', { p_mesa: mesaId });
       if (data) folga = Date.parse(data) - Date.now();
     } catch (e) { /* idem */ }
-    recarregarMembros(); conferirNome();
+    if (tudo === true || !aoVivo.conectado || ++contaPresenca % 3 === 0) { recarregarMembros(); conferirNome(); }
   }
   // As últimas linhas do painel, lidas do banco.
   /* A revisão mais alta é lida ANTES das linhas, e é dela que a leitura periódica parte: o que alguém escrever
@@ -621,14 +626,7 @@
     await carregarItens(id);
     if (mesaId === id && leitura === minha) aoVivo.emit('reinicio');
   };
-  aoVivo.iniciar = async id => {
-    aoVivo.parar();
-    mesaId = id; maxRev = 0; anterior = null; aoVivo.itens = []; leitura++;
-    // (o "em segredo" lembrado só vale para quem está mestrando: o auxiliar que passou a jogar como jogador não rola em segredo)
-    aoVivo.segredo = guarda.ler('tinycats:segredo:' + id) === '1' && !!mesas.atual && mesas.atual.papel === 'mestre';
-    await carregarItens(id);
-    if (mesaId !== id) return;
-    aoVivo.emit('reinicio');
+  function ligarCanais(id) {
     /* As campanhas e quem participa delas têm um canal só delas: num banco de antes das campanhas essas tabelas não
        existem, e o pedido de avisos delas não pode derrubar os avisos do resto. */
     if (mesas.atual && mesas.atual.campanhasLigadas) try {
@@ -638,7 +636,7 @@
         .subscribe();
     } catch (e) { canalCamp = null; }
     try {
-      canal = cliente().channel('mesa-' + id)
+      const este = cliente().channel('mesa-' + id)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'registro', filter: 'mesa_id=eq.' + id }, p => {
           if (!p.new || !p.new.id) return;
           // (uma linha grande que só mudou de estado — revelada, desapagada — chega sem o conteúdo: é lida do banco)
@@ -647,36 +645,70 @@
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mesas', filter: 'id=eq.' + id }, () => conferirNome())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'mesa_membros', filter: 'mesa_id=eq.' + id }, p => {
-          /* (lote 67) A presença (visto_em) de cada um muda a cada 24 s, e cada mudança chegava a todos e fazia cada um ler
+          /* (lote 67) A presença (visto_em) de cada um muda de tempos em tempos, e cada mudança chegava a todos e fazia cada um ler
              os membros de novo. Quando só ela mudou, basta anotar a hora; o resto (papel, nome, cor, abas) relê, como antes. */
           if (p && p.eventType === 'UPDATE' && p.new && presencaSo(p.new)) return;
           clearTimeout(aoVivo._m); aoVivo._m = setTimeout(recarregarMembros, 400);
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'personagens', filter: 'mesa_id=eq.' + id }, p => doTempoReal('personagens', p))
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: 'mesa_id=eq.' + id }, p => doTempoReal('documentos', p))
-        .subscribe(st => { const c = st === 'SUBSCRIBED'; if (c !== aoVivo.conectado) { aoVivo.conectado = c; aoVivo.emit('estado', c); if (c) { buscarNovos(); dadosBuscar(); voltouARede(); } } });
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'documentos', filter: 'mesa_id=eq.' + id }, p => doTempoReal('documentos', p));
+      canal = este;
+      // (lote 84: o aviso de um canal que já saiu, ao pausar, não diz nada sobre o de agora)
+      este.subscribe(st => { if (canal !== este) return; const c = st === 'SUBSCRIBED'; if (c !== aoVivo.conectado) { aoVivo.conectado = c; aoVivo.emit('estado', c); if (c) { buscarNovos(); dadosBuscar(); voltouARede(); } } });
     } catch (e) { canal = null; }
-    // Rede de segurança: sem o tempo real, lê a cada 3 s; com ele, confere a cada 30 s. A presença vai a cada 25 s.
-    volta = 0;
+  }
+  aoVivo.iniciar = async id => {
+    aoVivo.parar();
+    mesaId = id; maxRev = 0; anterior = null; aoVivo.itens = []; leitura++;
+    // (o "em segredo" lembrado só vale para quem está mestrando: o auxiliar que passou a jogar como jogador não rola em segredo)
+    aoVivo.segredo = guarda.ler('tinycats:segredo:' + id) === '1' && !!mesas.atual && mesas.atual.papel === 'mestre';
+    await carregarItens(id);
+    if (mesaId !== id) return;
+    aoVivo.emit('reinicio');
+    ligarCanais(id);
+    // Rede de segurança: sem o tempo real, lê a cada 3 s; com ele, confere a cada 30 s. A presença vai a cada 60 s.
+    volta = 0; contaPresenca = 0;
     relogio = setInterval(() => {
+      // (lote 84) a aba escondida não lê nada: ao voltar, o visibilitychange busca o que chegou. O que está por subir tem
+      // relógios próprios e continua subindo.
+      if (document.hidden || pausado) return;
       volta++;
       if (!aoVivo.conectado || volta % 10 === 0) { buscarNovos(); dadosBuscar(); }
       // (lote 35) a conferência do que deixou de ser visível lê a mesa inteira com as regras do banco: a cada 45 s com o
       // tempo real (antes, a cada 9 s), a cada 15 s sem ele
       if (volta % (aoVivo.conectado ? 15 : 5) === 0) dadosConferir();
-      if (volta % 8 === 0) presenca();
+      if (volta % 20 === 0) presenca();
       else if (!aoVivo.conectado && volta % 2 === 0) recarregarMembros();   // sem tempo real, quem entrou aparece em poucos segundos
     }, 3000);
-    presenca();
+    presenca(true);
+  };
+  function fecharCanais() {
+    const c1 = canal, c2 = canalCamp; canal = null; canalCamp = null;
+    if (c1) { try { cliente().removeChannel(c1); } catch (e) { /* já fechado */ } }
+    if (c2) { try { cliente().removeChannel(c2); } catch (e) { /* já fechado */ } }
+  }
+  /* (lote 84) Em pausa: sem leituras, sem presença e sem o tempo real, que manda a uma aba esquecida tudo o que os outros
+     gravam. A mesa continua aberta, com tudo o que já leu: ao retomar, só o que mudou vem do banco. */
+  aoVivo.pausar = () => {
+    if (!mesaId || pausado) return;
+    pausado = true;
+    fecharCanais();
+    if (aoVivo.conectado) { aoVivo.conectado = false; aoVivo.emit('estado', false); }
+  };
+  aoVivo.retomar = () => {
+    if (!pausado) return;
+    pausado = false;
+    if (!mesaId) return;
+    ligarCanais(mesaId);
+    buscarNovos(); dadosBuscar(); presenca(true);
   };
   aoVivo.parar = () => {
-    clearInterval(relogio); relogio = 0;
-    if (canal) { try { cliente().removeChannel(canal); } catch (e) { /* já fechado */ } canal = null; }
-    if (canalCamp) { try { cliente().removeChannel(canalCamp); } catch (e) { /* já fechado */ } canalCamp = null; }
+    clearInterval(relogio); relogio = 0; pausado = false;
+    fecharCanais();
     mesaId = null; aoVivo.itens = []; leitura++;
     if (aoVivo.conectado) { aoVivo.conectado = false; aoVivo.emit('estado', false); }
   };
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && mesaId) { buscarNovos(); dadosBuscar(); presenca(); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && mesaId && !pausado) { buscarNovos(); dadosBuscar(); presenca(true); } });
 
   async function gravar(tipo, dados, opt = {}) {
     const a = mesas.atual; if (!a) throw new Error('Abra uma mesa primeiro.');
@@ -1492,6 +1524,8 @@
      subida que já estava marcada: com várias pessoas mexendo ao mesmo tempo (as cenas), a espera que recomeçasse a
      cada mudança deixaria a linha parada até todo mundo dar uma pausa. */
   const DOCS_GRANDES = /^arvore:(biblioteca|pacote)(@|$)/;
+  // (lote 84) o mapa-múndi e as projeções dele (perto de 300 KB cada, cinco por gesto): no máximo uma gravação a cada 5 s.
+  const DOCS_MAPA = /^mundo:(mapa|pub|pubc):/;
   function agendar(c, id, ms) {
     const ate = performance.now() + ms, ja = c.prazo.get(id);
     if (c.tempo.has(id) && ja != null && ja <= ate) return;
@@ -1752,7 +1786,9 @@
     // (lote 35) os documentos grandes (a biblioteca das árvores e o pacote dos jogadores: uns 2,6 MB cada) juntam as
     // mudanças por 2 s: cada gravação deles reescreve a linha inteira no banco e vai para todos
     const grande = nome === 'documentos' && DOCS_GRANDES.test(String(id));
-    const pressa = opt && typeof opt.pressa === 'number' && opt.pressa >= 0 ? Math.min(opt.pressa, 500) : (grande ? 2000 : 500);
+    // (o que nasce ou some vai logo: revelar um mapa aos jogadores, ou esconder, que apaga as projeções)
+    const mapa = nome === 'documentos' && DOCS_MAPA.test(String(id)) && !campos.apagado && !suj.has('*');
+    const pressa = opt && typeof opt.pressa === 'number' && opt.pressa >= 0 ? Math.min(opt.pressa, 500) : (grande ? 2000 : mapa ? 5000 : 500);
     agendar(c, id, pressa);
     contarPendentes();
     return l;
@@ -2140,5 +2176,55 @@
     return deSistemaAntes(origem, d);
   };
 
+  /* ---------------- (lote 84) o sono: a aba esquecida para de gastar ----------------
+     Aba escondida por 10 min: a mesa entra em pausa (aoVivo.pausar) e volta sozinha ao reabrir.
+     Aba à vista, sem uso por 1 h: pergunta "Ainda está aí?"; sem resposta em 60 s, entra em pausa.
+     Sem uso nenhum por 8 h, em nenhuma aba: sai da conta só neste navegador (a casca, ouvindo 'sair', entrega antes o que
+     falta subir; com algo pendente, não sai). O último uso fica no localStorage, comum às abas, e as contas são feitas
+     com o relógio de verdade: os temporizadores de uma aba escondida atrasam, e o computador pode ter dormido. */
+  const SONO = Object.assign({ oculta: 10 * 60e3, semUso: 60 * 60e3, resposta: 60e3, sair: 8 * 3600e3 }, window.TC_SONO || {});
+  const CHAVE_USO = 'tinycats:uso';
+  const sono = emissor({ estado: 'acordado', resposta: SONO.resposta });
+  let usoAqui = Date.now(), usoGravado = 0, ocultaDesde = document.hidden ? Date.now() : 0, perguntaDesde = 0, saindo = false;
+  const ultimoUso = () => Math.max(usoAqui, Number(guarda.ler(CHAVE_USO)) || 0);
+  const mudarSono = e => { if (sono.estado !== e) { sono.estado = e; sono.emit('muda', e); } };
+  function acordar() { perguntaDesde = 0; const dormia = sono.estado === 'dormindo'; mudarSono('acordado'); if (dormia) aoVivo.retomar(); }
+  function dormir() { perguntaDesde = 0; aoVivo.pausar(); mudarSono('dormindo'); }
+  sono.usou = () => {
+    const t = Date.now(); usoAqui = t;
+    if (t - usoGravado > Math.min(5000, SONO.semUso / 4)) { usoGravado = t; guarda.gravar(CHAVE_USO, String(t)); }
+    if (sono.estado !== 'acordado') acordar();
+  };
+  const EVENTOS_USO = ['pointerdown', 'pointermove', 'keydown', 'wheel'];
+  function vigiar(alvo) { for (const ev of EVENTOS_USO) alvo.addEventListener(ev, sono.usou, { passive: true, capture: true }); }
+  // as molduras dos sistemas (do mesmo endereço): o que se faz dentro delas não chega à janela da casca
+  sono.vigiar = f => { try { if (f && f.contentWindow) vigiar(f.contentWindow); } catch (e) { /* moldura de fora: não conta */ } };
+  function conferirSono() {
+    if (!conta.usuario) return;
+    const agora = Date.now(), parado = agora - ultimoUso();
+    if (parado >= SONO.sair) {
+      if (!saindo) { saindo = true; sono.emit('sair', () => { saindo = false; }); }
+      return;
+    }
+    if (!mesaId || sono.estado === 'dormindo') return;
+    if (document.hidden) { if (ocultaDesde && agora - ocultaDesde >= SONO.oculta) dormir(); return; }
+    if (sono.estado === 'pergunta') { if (agora - perguntaDesde >= SONO.resposta) dormir(); else if (parado < SONO.semUso) acordar(); return; }
+    if (parado >= SONO.semUso) { perguntaDesde = agora; mudarSono('pergunta'); }
+  }
+  vigiar(window);
+  sono.usou();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { ocultaDesde = Date.now(); conferirSono(); return; }
+    ocultaDesde = 0;
+    // voltar para a aba é usar — menos depois do prazo de sair: aí a conta sai, como se o tempo tivesse corrido à vista
+    if (Date.now() - ultimoUso() >= SONO.sair) conferirSono(); else sono.usou();
+  });
+  // usar outra aba do mesmo navegador: a que está à vista acorda; a escondida segue dormindo até reabrir
+  window.addEventListener('storage', e => { if (e.key === CHAVE_USO && !document.hidden && sono.estado !== 'acordado') acordar(); });
+  setInterval(conferirSono, Math.max(200, Math.min(30e3, SONO.oculta / 3, SONO.semUso / 3, SONO.resposta / 3, SONO.sair / 3)));
+  // a mesa fechou ou trocou: não há mais o que retomar
+  mesas.on('muda', a => { if (!a) { perguntaDesde = 0; mudarSono('acordado'); } });
+
+  TC.sono = sono;
   TC.conta = conta; TC.mesas = mesas; TC.aoVivo = aoVivo; TC.dados = dados; TC.arquivos = arquivos; TC.erroPt = erroPt;
 })();

@@ -35,6 +35,11 @@ function serve() {
 // Abre um contexto de navegador. Cada contexto é um "aparelho" separado (armazenamento próprio).
 async function start(opt = {}) {
   const srv = await serve();
+  // (lote 84) cada teste de rede no projeto real gasta a cota dele (logs e dados): só com TC_REAL=1, de propósito
+  if (opt.net && !LOCAL && process.env.TC_REAL !== '1') {
+    console.error('Teste de rede sem banco: use o local (src/tests/local/banco.sh ligar; TC_LOCAL=https://127.0.0.1:54331 node <teste>) ou, para a rodada final no projeto real, TC_REAL=1.');
+    process.exit(2);
+  }
   // opt.net: os testes falam com o Supabase de verdade, pelo proxy do ambiente (ou, com TC_LOCAL, com o banco local: sem proxy)
   const proxy = opt.net && !LOCAL ? (process.env.HTTPS_PROXY || process.env.https_proxy) : null;
   // (com o banco local, a página — servida daqui — fala com outro endereço desta mesma máquina: o navegador novo pede
