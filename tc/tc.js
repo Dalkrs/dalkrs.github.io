@@ -170,8 +170,10 @@
   // (lote 86) opt.local: sai só deste navegador (a saída por inatividade); sem ele, a conta sai de todos os aparelhos
   conta.sair = async opt => {
     mesas.fechar();
+    const limpar = copia.apagarTudo();                       // (lote 91: a cópia local da mesa sai junto com a conta)
     try { await cliente().auth.signOut(opt && opt.local ? { scope: 'local' } : undefined); } catch (e) { /* sem rede: a sessão local some do mesmo jeito */ }
     conta.usuario = null; passe = null; passeAte = 0;
+    await limpar;
   };
 
   /* ---------------- mesas ---------------- */
@@ -183,6 +185,7 @@
     const u = exigir();
     const { data, error } = await cliente().from('mesa_membros').select('papel, jogando, nome, mesas(id, nome, criada_em)').eq('usuario_id', u.id);
     if (error) throw falha(error);
+    copia.soDasMesas(u.id, (data || []).filter(x => x.mesas).map(x => x.mesas.id));      // (lote 91: a mesa que saiu da lista perdeu o acesso)
     return (data || []).filter(x => x.mesas).map(x => { const m = membroDe(x); return { id: x.mesas.id, nome: x.mesas.nome, papel: m.papel, cargo: m.cargo, jogando: m.jogando, criada: x.mesas.criada_em }; })
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   };
@@ -260,11 +263,11 @@
     // (a linha inteira: num banco que já tem as campanhas ela traz `campanhas`, a conta de quantas a mesa tem)
     const { data: m, error } = await cliente().from('mesas').select('*').eq('id', id).maybeSingle();
     if (error) throw falha(error);
-    if (!m) { guarda.gravar(CHAVE_MESA, null); throw new Error('Esta mesa não existe mais, ou você saiu dela.'); }
+    if (!m) { copia.apagarMesa(u.id, id); guarda.gravar(CHAVE_MESA, null); throw new Error('Esta mesa não existe mais, ou você saiu dela.'); }
     const [membros, camps] = await Promise.all([lerMembros(id), lerCampanhas(id, 'campanhas' in m)]).catch(e => { throw falha(e); });
     comCampanhas(membros, camps);
     const eu = auditoria ? euAuditor(u) : membros.find(x => x.usuario_id === u.id);
-    if (!eu) throw new Error('Você não participa desta mesa.');
+    if (!eu) { copia.apagarMesa(u.id, id); throw new Error('Você não participa desta mesa.'); }
     let codigo = null;
     if (eu.cargo === 'mestre') {                             // (o código de convite é de quem administra a mesa)
       const cv = await cliente().from('mesa_convites').select('codigo').eq('mesa_id', id).maybeSingle();
@@ -293,7 +296,8 @@
     const ultima = mesas.ultima();
     if (ultima) { try { await mesas.abrir(ultima); } catch (e) { /* fica sem mesa */ } }
   };
-  mesas.esquecer = () => { guarda.gravar(CHAVE_MESA, null); mesas.fechar(); };
+  // (lote 91) sair da mesa, perder o acesso ou fechá-la neste navegador: a cópia local dela sai também
+  mesas.esquecer = () => { if (mesas.atual && conta.usuario) copia.apagarMesa(conta.usuario.id, mesas.atual.id); guarda.gravar(CHAVE_MESA, null); mesas.fechar(); };
   mesas.ultima = () => guarda.ler(CHAVE_MESA);
   /* Quem mestra o quê. O mestre mestra todas as abas; o auxiliar, enquanto está mestrando, as que o mestre liberou;
      o jogador (e o auxiliar que está jogando como jogador), nenhuma. Administrar a mesa — o código de convite, tirar
@@ -1384,6 +1388,194 @@
      essa (alguém a recriou). Uma leitura que saiu do banco antes de a linha ser apagada e chegou depois — a periódica
      que demorou, ou a de uma linha sozinha — não a traz de volta. */
   function enterrar(c, id, rev) { if (rev > (c.apagadas.get(id) || 0)) c.apagadas.set(id, rev); }
+  /* ---- (lote 91) a cópia local dos dados da mesa ----
+     Abrir ou recarregar o site baixava a mesa inteira (mais de 9 MB na mesa de verdade, dezenas de vezes por dia). Agora
+     as linhas ficam guardadas neste navegador (IndexedDB) e a abertura lê só o que mudou. A cópia é só um atalho: o banco
+     continua mandando, e qualquer problema com ela cai no download completo, sem aviso nenhum para a pessoa.
+       · A chave leva a pessoa, a mesa, a coleção e o "jeito" (cargo, jogando, abas, campanhas: ver meuJeito). Quem muda de
+         papel não reaproveita nada. Na auditoria não há cópia.
+       · Ao abrir: `carregar` lê o que há depois da revisão guardada e confere a lista inteira do que o banco mostra (só o
+         nome e a revisão de cada linha) ANTES de entregar qualquer coisa às telas. O que deixou de ser visível sai, o que
+         passou a ser visível ou ficou para trás é lido. Se a conferência falhar, a cópia é descartada e baixa tudo.
+       · Só entra na cópia o que é do banco: a linha com mudança daqui ainda por subir (ou que foi mexida aqui e ainda não
+         ganhou revisão nova) fica de fora. A fila do que falta subir continua sendo a dela, em localStorage. */
+  const COPIA_FORMATO = 1, COPIA_BANCO = 'tinycats-copia', COPIA_PRAZO = 4000, COPIA_MAX_LER = 300;
+  const copiaEspera = () => Number(window.TC_COPIA && window.TC_COPIA.espera) || 8000;
+  const copia = (() => {
+    let conexao = null;
+    const faixa = k => IDBKeyRange.bound([k], [k, []]);      // (todas as linhas de uma chave: [k, id])
+    const comPrazo = p => { let t = 0; return Promise.race([p, new Promise((_, n) => { t = setTimeout(() => n(new Error('A cópia local não respondeu.')), COPIA_PRAZO); })]).finally(() => clearTimeout(t)); };
+    const pedido = r => new Promise((s, n) => { r.onsuccess = () => s(r.result); r.onerror = () => n(r.error); });
+    const fim = tx => { const p = new Promise((s, n) => { tx.oncomplete = () => s(); tx.onerror = () => n(tx.error); tx.onabort = () => n(tx.error || new Error('Gravação abortada.')); }); p.catch(() => {}); return p; };
+    function abrir() {
+      if (conexao) return conexao;
+      const p = new Promise((s, n) => {
+        const r = indexedDB.open(COPIA_BANCO, 1);            // (sem IndexedDB, ou janela privada: cai no catch de quem chamou)
+        r.onupgradeneeded = () => { r.result.createObjectStore('metas', { keyPath: 'chave' }); r.result.createObjectStore('linhas', { keyPath: ['chave', 'id'] }); };
+        r.onsuccess = () => { const db = r.result; db.onversionchange = () => { db.close(); conexao = null; }; db.onclose = () => { conexao = null; }; s(db); };
+        r.onerror = () => n(r.error);
+        r.onblocked = () => n(new Error('Cópia local bloqueada.'));
+      });
+      conexao = p;
+      p.catch(() => { if (conexao === p) conexao = null; });
+      return p;
+    }
+    async function db() { return comPrazo(abrir()); }
+    // apaga as cópias que `sai(meta)` indicar (sempre as duas partes juntas)
+    async function apagarSe(sai) {
+      const d = await db(), tx = d.transaction(['metas', 'linhas'], 'readwrite'), acabou = fim(tx);
+      const metas = await pedido(tx.objectStore('metas').getAll());
+      for (const m of metas) if (sai(m)) { tx.objectStore('metas').delete(m.chave); tx.objectStore('linhas').delete(faixa(m.chave)); }
+      await acabou;
+    }
+    const semErro = p => comPrazo(p).catch(() => { /* sem cópia para apagar, ou sem IndexedDB: nada a fazer */ });
+    const api = {
+      para(c) {
+        const a = mesas.atual, u = conta.usuario;
+        if (!a || !u || a.auditoria) return null;
+        return { chave: [u.id, c.mesa, c.nome, a.jeito].join('~'), usuario: u.id, cargo: a.cargo, jogando: !!a.jogando, jeito: a.jeito, salvas: new Map(), tocadas: new Map(), tempo: 0, off: false };
+      },
+      apagarTudo: () => semErro((async () => { const d = await db(), tx = d.transaction(['metas', 'linhas'], 'readwrite'), acabou = fim(tx); tx.objectStore('metas').clear(); tx.objectStore('linhas').clear(); await acabou; })()),
+      apagarMesa: (usuario, mesa) => semErro(apagarSe(m => m.usuario === usuario && m.mesa === mesa)),
+      soDasMesas: (usuario, mesas_) => semErro(apagarSe(m => m.usuario === usuario && !mesas_.includes(m.mesa))),
+      apagar: chave => semErro(apagarSe(m => m.chave === chave)),
+      /* Lê a cópia desta coleção, e aproveita para jogar fora o que não pode ficar: a de outra pessoa, e a desta mesa de
+         outro cargo ou de outras permissões. (As duas do auxiliar, mestrando e jogando, ficam: ele alterna entre elas.) */
+      async ler(q, mesa) {
+        const d = await db(), tx = d.transaction(['metas', 'linhas'], 'readwrite'), acabou = fim(tx);
+        const metas = await pedido(tx.objectStore('metas').getAll());
+        let meta = null, linhas = [];
+        for (const m of metas) {
+          const fora = m.usuario !== q.usuario || (m.mesa === mesa && m.jeito !== q.jeito && (m.cargo !== q.cargo || m.jogando === q.jogando));
+          if (fora) { tx.objectStore('metas').delete(m.chave); tx.objectStore('linhas').delete(faixa(m.chave)); }
+          else if (m.chave === q.chave) meta = m;
+        }
+        if (meta) linhas = await pedido(tx.objectStore('linhas').getAll(faixa(q.chave)));
+        await acabou;
+        return { meta, linhas };
+      },
+      /* Tenta abrir a coleção a partir da cópia. Devolve true se ela serviu (c.linhas pronta para as telas); false se é
+         para baixar tudo. Nada chega a c.linhas antes de a conferência terminar. */
+      async carregar(c) {
+        const q = c.copia, nome = c.nome;
+        if (!q) return false;
+        try {
+          const { meta, linhas } = await comPrazo(api.ler(q, c.mesa));
+          if (!meta) return false;
+          if (meta.formato !== COPIA_FORMATO || !(meta.maxRev > 0) || meta.mesa !== c.mesa || meta.col !== nome || !Array.isArray(linhas)) throw new Error('Cópia de outro formato.');
+          const base = new Map(), salvas = new Map(), mortas = new Map();
+          for (const x of linhas) {
+            if (!x || !x.linha || x.id !== x.linha.id || x.linha.mesa_id !== c.mesa || !(x.linha.rev > 0)) throw new Error('Cópia estragada.');
+            base.set(x.id, x.linha); salvas.set(x.id, x.linha.rev);
+          }
+          const pegar = r => { if (r.apagado) { base.delete(r.id); mortas.set(r.id, r.rev); } else if (aceita(nome, r)) base.set(r.id, r); else base.delete(r.id); };
+          // 1) o que mudou depois da revisão guardada (a mesma leitura de dadosBuscar, até o fim)
+          let ate = meta.maxRev;
+          for (;;) {
+            const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).gt('rev', ate).order('rev').limit(1000);
+            if (error) throw error;
+            for (const r of data) { pegar(r); if (r.rev > ate) ate = r.rev; }
+            if (data.length < 1000) break;
+          }
+          // 2) a conferência: tudo o que o banco me mostra hoje, só o nome e a revisão
+          const vistos = new Map();
+          let maior = 0;
+          for (let de = 0; ; de += 1000) {
+            const { data, error } = await cliente().from(nome).select(nome === 'documentos' ? 'id,rev,apagado,dono_id' : 'id,rev,apagado').eq('mesa_id', c.mesa).order('id').range(de, de + 999);
+            if (error) throw error;
+            for (const x of data) { vistos.set(x.id, x); if (x.rev > maior) maior = x.rev; }
+            if (data.length < 1000) break;
+          }
+          if (meta.maxRev > maior) throw new Error('A cópia está à frente do banco.');      // (banco restaurado, ou a última linha que vi sumiu para mim)
+          const faltam = [];
+          for (const [id, l] of [...base]) {
+            const x = vistos.get(id);
+            if (!x) { base.delete(id); continue; }             // o mestre escondeu, ou deixou de ser visível: some antes de aparecer
+            if (x.apagado) { base.delete(id); mortas.set(id, x.rev); continue; }
+            if (x.rev < l.rev) throw new Error('A cópia está à frente do banco.');
+            if (x.rev > l.rev) faltam.push(id);
+          }
+          // 3) o que passou a ser visível, ou que ficou fora de ordem, é lido inteiro. Muita coisa: é mais fácil baixar tudo.
+          for (const [id, x] of vistos) {
+            if (x.apagado) { if (!mortas.has(id)) mortas.set(id, x.rev); continue; }
+            if (!base.has(id) && aceita(nome, x)) faltam.push(id);
+          }
+          if (faltam.length > COPIA_MAX_LER) throw new Error('Mudou coisa demais.');
+          for (let i = 0; i < faltam.length; i += 50) {
+            const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).in('id', faltam.slice(i, i + 50));
+            if (error) throw error;
+            for (const r of data) pegar(r);
+          }
+          // 4) entrega. O que chegou pelo tempo real durante a abertura, ou foi mexido aqui, vale por cima.
+          if (c.morta) return true;
+          for (const [id, rev] of mortas) enterrar(c, id, rev);
+          for (const [id, l] of base) {
+            const enterrada = c.apagadas.get(id);
+            if (!c.linhas.has(id) && !(enterrada != null && l.rev <= enterrada) && !c.sujos.has(id) && !c.emVoo.has(id)) c.linhas.set(id, l);
+          }
+          if (ate > c.maxRev) c.maxRev = ate;
+          c.anterior = meta.maxRev;                            // (a primeira busca confere a faixa lida aqui: ver dadosBuscar)
+          q.salvas = salvas;
+          return true;
+        } catch (e) {
+          // qualquer falha (sem IndexedDB, janela privada, cópia velha ou estragada, conferência que não deu): baixa tudo
+          api.apagar(q.chave);                                 // (sem esperar: com o IndexedDB parado, a pessoa já esperou o prazo)
+          q.salvas = new Map();
+          return false;
+        }
+      },
+      agendar(c) {
+        const q = c.copia;
+        if (!q || q.off || q.tempo || c.morta) return;
+        q.tempo = setTimeout(() => { q.tempo = 0; api.salvar(c); }, copiaEspera());
+      },
+      /* Guarda o que mudou desde a última vez. Só o que é do banco; o que está por subir espera a próxima volta. */
+      async salvar(c) {
+        const q = c.copia;
+        if (!q || q.off || c.morta || !conta.usuario || conta.usuario.id !== q.usuario || !mesas.atual || mesas.atual.id !== c.mesa || mesas.atual.jeito !== q.jeito || !c.maxRev) return;
+        const ver = () => {
+          const poe = [], tira = [];
+          let espera = false;
+          for (const [id, l] of c.linhas) {
+            if (!l.rev || c.sujos.has(id) || c.emVoo.has(id) || c.reler.has(id) || c.relendo.has(id)) { espera = true; continue; }
+            if (q.tocadas.has(id)) { if (q.tocadas.get(id) === l.rev) continue; q.tocadas.delete(id); }
+            if (q.salvas.get(id) !== l.rev) poe.push(l);
+          }
+          for (const id of q.salvas.keys()) if (!c.linhas.has(id)) tira.push(id);
+          return { poe, tira, espera };
+        };
+        const antes = ver();
+        if (antes.espera) api.agendar(c);
+        if (!antes.poe.length && !antes.tira.length && q.gravada === c.maxRev) return;
+        try {
+          const d = await db();
+          if (c.morta || !conta.usuario || conta.usuario.id !== q.usuario) return;
+          // (a lista é refeita aqui, sem esperar mais nada: o que ficou por subir nesse meio-tempo não entra)
+          const { poe, tira } = ver(), revs = poe.map(l => [l.id, l.rev]), maxRev = c.maxRev;
+          const tx = d.transaction(['metas', 'linhas'], 'readwrite'), acabou = fim(tx);
+          for (const l of poe) tx.objectStore('linhas').put({ chave: q.chave, id: l.id, linha: l });
+          for (const id of tira) tx.objectStore('linhas').delete([q.chave, id]);
+          tx.objectStore('metas').put({ chave: q.chave, formato: COPIA_FORMATO, usuario: q.usuario, mesa: c.mesa, col: c.nome, cargo: q.cargo, jogando: q.jogando, jeito: q.jeito, maxRev, salvo: Date.now() });
+          await acabou;
+          for (const [id, rev] of revs) q.salvas.set(id, rev);
+          for (const id of tira) q.salvas.delete(id);
+          q.gravada = maxRev;
+        } catch (e) {
+          // cheio, ou sem IndexedDB: nesta aba não há mais cópia, e a que houver sai (na próxima, baixa tudo)
+          q.off = true;
+          api.apagar(q.chave);
+        }
+      },
+      salvarTodas() { for (const c of Object.values(cols)) { const q = c.copia; if (q && !c.morta) { clearTimeout(q.tempo); q.tempo = 0; c.pronta.then(() => api.salvar(c), () => {}); } } },
+    };
+    return api;
+  })();
+  dados.on('muda', nome => { const c = cols[nome]; if (c) copia.agendar(c); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) copia.salvarTodas(); });
+  window.addEventListener('pagehide', () => copia.salvarTodas());
+  conta.on('muda', u => { if (!u) copia.apagarTudo(); });      // (a conta saiu em outra aba, ou a sessão acabou)
+  conta.pronta.then(u => { if (!u) copia.apagarTudo(); }, () => {});      // (abriu sem conta: a sessão acabou com o site fechado)
+  dados.copiaLocal = { formato: COPIA_FORMATO, salvar: () => copia.salvarTodas(), apagarTudo: () => copia.apagarTudo() };
   function abrirCol(nome) {
     if (!TABELAS[nome]) throw new Error('Coleção desconhecida: ' + nome);
     if (!mesas.atual) throw new Error('Abra uma mesa primeiro.');
@@ -1392,14 +1584,16 @@
     // (reler: as linhas a ler de novo, inteiras, porque outra pessoa mexeu nelas junto com uma gravação daqui)
     // (apagadas: a revisão em que cada linha foi apagada — ver enterrar)
     const c = cols[nome] = { deFora: new Map(), relerRecusada: new Set(), nome, mesa: mesas.atual.id, doMestre: mesas.atual.papel === 'mestre', linhas: new Map(), maxRev: 0, sujos: new Map(), emVoo: new Map(), rems: new Map(), remsVoo: new Map(), reler: new Set(), relendo: new Set(), apagadas: new Map(), naSaida: new Set(), cas: new Set(), bases: new Map(), tempo: new Map(), prazo: new Map(), falhas: 0, morta: false, buscando: false };
+    c.copia = copia.para(c);                                           // (lote 91: a cópia local; null na auditoria)
     c.pronta = (async () => {
       if (nome === 'personagens') await sondarFicha(c.mesa);           // (lote 66: antes de qualquer gravação dos personagens)
-      for (let de = 0; ; de += 1000) {
+      if (!(await copia.carregar(c))) for (let de = 0; ; de += 1000) {   // (sem cópia que sirva: baixa tudo, como sempre)
         const { data, error } = await cliente().from(nome).select('*').eq('mesa_id', c.mesa).order('rev').range(de, de + 999);
         if (error) throw falha(error, 'Não deu para ler os dados da mesa.');
         for (const l of data) { if (l.rev > c.maxRev) c.maxRev = l.rev; if (l.apagado) enterrar(c, l.id, l.rev); else if (aceita(nome, l) && !c.linhas.has(l.id)) c.linhas.set(l.id, l); }
         if (data.length < 1000) break;
       }
+      copia.agendar(c);
       // (lote 67) o que tinha ficado sem subir da última vez (a aba fechou sem rede) volta para a fila, um instante depois
       setTimeout(() => { if (cols[nome] === c && !c.morta) restaurarFila(c); }, 0);
       return true;
@@ -1734,6 +1928,7 @@
   function dadosGravar(nome, id, campos, de, mudas, opt) {
     const c = abrirCol(nome);
     let l = c.linhas.get(id);
+    if (c.copia) c.copia.tocadas.set(id, l ? l.rev || 0 : 0);   // (lote 91: fica fora da cópia até voltar com revisão nova)
     const suj = c.sujos.get(id) || new Set();
     campos = campos || {};
     // (num banco de antes das campanhas essas colunas não existem: o que viesse nelas faria a gravação inteira falhar)

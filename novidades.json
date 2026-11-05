@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.05-1",
+      "data": "2026-11-05",
+      "titulo": "A mesa abre mais rápido",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Abrir ou recarregar o site não baixa mais a mesa inteira: o seu navegador guarda uma cópia e busca só o que mudou desde a última vez. A mesa abre mais rápido e gasta bem menos dados. O que o mestre esconde continua sumindo na hora de abrir, e a cópia é apagada quando você sai da conta ou da mesa."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.04-10",
       "data": "2026-11-04",
       "titulo": "O Bloqueio com a Vitalidade e o fogo da arma à vista",

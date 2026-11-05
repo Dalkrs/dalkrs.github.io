@@ -254,6 +254,30 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### A cópia local dos dados da mesa (lote 91)
+
+Abrir ou recarregar o site baixava a mesa inteira (mais de 9 MB na mesa de verdade, dezenas de vezes por dia). Agora as linhas
+de cada coleção ficam guardadas no navegador e a abertura lê só o que mudou (`copia`, em `tc/tc.js`). Não muda nada no banco.
+
+- **Onde**: IndexedDB `tinycats-copia`, com as lojas `metas` (uma por cópia: formato, pessoa, mesa, coleção, cargo, `maxRev`) e
+  `linhas`. A chave é pessoa + mesa + coleção + `jeito` (`meuJeito`: cargo, jogando, abas, campanhas). O auxiliar tem uma
+  mestrando e outra jogando. Na auditoria não há cópia. Abrir joga fora a cópia de outra pessoa e a desta mesa com outro cargo.
+- **Ao abrir** (`copia.carregar`, dentro de `c.pronta`): lê `rev > maxRev` até o fim e depois a lista inteira do que o banco
+  mostra, só com `id` e `rev` (e `apagado`, `dono_id`), para qualquer cargo. O que não está na lista ou está apagado sai; o que
+  passou a ser visível ou ficou para trás é lido por `id`. Nada chega às telas antes disso. A primeira busca confere de novo a
+  faixa lida (`c.anterior`), como em `dadosBuscar`. Mudou mais de 300 linhas: baixa tudo.
+- **Baixa tudo, sem dizer nada à pessoa**, em qualquer falha: sem IndexedDB, janela privada, cheio, sem resposta em 4 s,
+  formato diferente (`COPIA_FORMATO`: suba ao mudar o que se guarda), linha estragada, conferência que falhou, `maxRev` maior
+  que o maior `rev` visível ou linha à frente do banco. Quando a última revisão que um jogador viu é a de um documento que o
+  mestre escondeu, esse `maxRev` também passa do visível: ele baixa tudo uma vez (o certo, mais caro).
+- **O que entra**: só o que é do banco (`copia.salvar`, 8 s depois de uma mudança, e ao esconder ou fechar a aba). A linha com
+  mudança por subir, a relida e a mexida aqui que ainda não voltou com revisão nova (`tocadas`) ficam de fora. A fila do que
+  falta subir continua em `localStorage`, e `restaurarFila` volta a refazê-la por cima.
+- **O que apaga**: sair da conta, também por inatividade e em outra aba (`conta.sair` e `conta.on('muda')`), sair ou fechar a
+  mesa neste navegador e ser tirado dela (`mesas.esquecer`), abrir uma mesa de que já não participa (`mesas.abrir`) e a lista
+  de mesas que não a traz mais (`mesas.lista`).
+- `window.TC_COPIA = { espera }` troca o prazo nos testes. Testes: `copia-local.rede`.
+
 ### O Bloqueio com a VIT/2 e o elemento à vista (lote 90)
 
 - O Embate (`EMB`) saiu dos derivados: o Bloqueio (`BLQ`, nas defesas, `vit: true`) é `floor(VIT base / 2)` + o valor
