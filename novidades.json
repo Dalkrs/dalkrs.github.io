@@ -2,6 +2,21 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.05-2",
+      "data": "2026-11-05",
+      "titulo": "Os tokens andam gastando bem menos dados",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: mover um token agora envia só o que mudou, em vez da cena inteira. O movimento continua aparecendo na hora para todos."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Todos precisam recarregar pelo botão “Versão nova”: quem ficar na versão antiga vê os tokens com até um minuto de atraso."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.05-1",
       "data": "2026-11-05",
       "titulo": "A mesa abre mais rápido",

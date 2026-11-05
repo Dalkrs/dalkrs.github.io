@@ -254,6 +254,22 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   "Puxar os membros do clã para cá…" no botão direito do mapa.
 - Testes: `cla-membros` (a foto), `cla-tokens.rede` (a janela, os tokens, a foto que sobe, o desfazer).
 
+### O movimento leve das Cenas (lote 92)
+
+Mover um token regravava a parte viva inteira (46 KB na cena e 36 KB na projeção, numa cena de 69 tokens), e o banco a reenviava
+a todos. Agora, em quem transmite (`vivoOuCheio`, em `07d-nuvem.js`):
+
+- **O que muda vai por mensagem** (`Proj.difVivo`, `aoVivo.leve` em `tc/tc.js`), por canais privados do Realtime: `cenap:<mesa>:<campanha|mundo>`
+  leva a diferença da projeção; `cenam:<mesa>` leva a da cena inteira, para os aparelhos de quem mestra. As regras estão na migração 0038:
+  só quem mestra manda; em `cenam`, só quem mestra lê; em `cenap`, os membros que veem a campanha.
+- **O documento inteiro** vai no máximo a cada 60 s (`CHEIA_MS`), ao sair da página, quando muda o mapa da cena, quando a diferença passa
+  de 20 KB, quando um jogador pede (`quer`, no documento de pedidos dele: quem abre, recarrega ou perdeu uma mensagem) e sempre que o
+  canal não está pronto. Um jogador sem o canal avisa (`sl`), e o mestre volta a gravar tudo inteiro por 2 min.
+- **Quem recebe** guarda o resultado em `recebidos`, por cima do documento, até ele alcançar a mensagem (`lv: { tx, n }`) ou outro aparelho
+  gravar por cima. Por ser o valor novo de cada campo, uma mensagem perdida não estraga as seguintes.
+- **Os andares**: a conta dos pedidos e os sinais ficam só na projeção principal (cada pedido regravava todos os andares).
+- Testes: `cenas-leve.rede` (no banco local, a queda para o documento; com `TC_REAL=1`, o canal, inclusive o token escondido, quem é de fora e a mensagem forjada).
+
 ### A cópia local dos dados da mesa (lote 91)
 
 Abrir ou recarregar o site baixava a mesa inteira (mais de 9 MB na mesa de verdade, dezenas de vezes por dia). Agora as linhas

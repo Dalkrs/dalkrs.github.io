@@ -630,6 +630,37 @@
     await carregarItens(id);
     if (mesaId === id && leitura === minha) aoVivo.emit('reinicio');
   };
+  /* (lote 92) O movimento leve das Cenas: canais privados do Realtime por onde vai só o que mudou (ver
+     supabase/migrations/0038). Quem assina é a moldura das Cenas; a conexão, e o fechar na pausa, são daqui. */
+  const leves = new Map();                               // tópico → { fn, canal, ok, aviso }
+  function ligarLeve(topico, r) {
+    if (r.canal || !mesaId || pausado || !topico.includes(':' + mesaId)) return;
+    try {
+      const ch = cliente().channel(topico, { config: { private: true, broadcast: { self: false, ack: false } } });
+      ch.on('broadcast', { event: 'm' }, e => { if (r.canal === ch) { try { r.fn(e.payload); } catch (x) { /* a moldura pode ter saído */ } } });
+      r.canal = ch;
+      ch.subscribe(st => { if (r.canal !== ch) return; const ok = st === 'SUBSCRIBED'; if (ok !== r.ok) { r.ok = ok; try { if (r.aviso) r.aviso(ok); } catch (x) { /* idem */ } } });
+    } catch (e) { r.canal = null; r.ok = false; }
+  }
+  function fecharLeve(r) {
+    const ch = r.canal; r.canal = null; r.ok = false;
+    if (ch) { try { cliente().removeChannel(ch); } catch (e) { /* já fechado */ } }
+  }
+  aoVivo.leve = {
+    assinar(topico, fn, aviso) {
+      const velho = leves.get(topico); if (velho) fecharLeve(velho);
+      const r = { fn, aviso, canal: null, ok: false };
+      leves.set(topico, r); ligarLeve(topico, r);
+      return () => { if (leves.get(topico) === r) { fecharLeve(r); leves.delete(topico); } };
+    },
+    pronto: topico => { const r = leves.get(topico); return !!r && r.ok; },
+    // false: não saiu (quem manda grava o documento inteiro, como antes)
+    enviar(topico, msg) {
+      const r = leves.get(topico);
+      if (!r || !r.ok || !r.canal) return false;
+      try { r.canal.send({ type: 'broadcast', event: 'm', payload: msg }); return true; } catch (e) { return false; }
+    },
+  };
   function ligarCanais(id) {
     /* As campanhas e quem participa delas têm um canal só delas: num banco de antes das campanhas essas tabelas não
        existem, e o pedido de avisos delas não pode derrubar os avisos do resto. */
@@ -660,6 +691,7 @@
       // (lote 86: o aviso de um canal que já saiu, ao pausar, não diz nada sobre o de agora)
       este.subscribe(st => { if (canal !== este) return; const c = st === 'SUBSCRIBED'; if (c !== aoVivo.conectado) { aoVivo.conectado = c; aoVivo.emit('estado', c); if (c) { buscarNovos(); dadosBuscar(); voltouARede(); } } });
     } catch (e) { canal = null; }
+    for (const [t, r] of leves) ligarLeve(t, r);
   }
   aoVivo.iniciar = async id => {
     aoVivo.parar();
@@ -691,6 +723,7 @@
     const idas = [];
     if (c1) { try { idas.push(cliente().removeChannel(c1)); } catch (e) { /* já fechado */ } }
     if (c2) { try { idas.push(cliente().removeChannel(c2)); } catch (e) { /* já fechado */ } }
+    for (const r of leves.values()) fecharLeve(r);
     return Promise.allSettled(idas);
   }
   /* (lote 86) Em pausa: sem leituras, sem presença e sem o tempo real, que manda a uma aba esquecida tudo o que os outros
