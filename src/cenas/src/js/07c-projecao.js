@@ -598,6 +598,57 @@ const Proj = (() => {
     }
     return mapa;
   }
+  /* (lote 92) A diferença entre duas partes vivas (cena:<id>:v, ou a projeção dela), para ir como mensagem pequena:
+     { k: { campo: valor }, x: [campos que saíram], u: [{ id, p: { campo: valor }, x: [...] }], a: [tokens novos], r: [ids
+     que saíram], o: [a ordem, se mudou] }. O que ela leva é sempre o valor novo: quem perdeu uma mensagem acerta o
+     resto na gravação inteira seguinte. */
+  function difVivo(a, b) {
+    const d = {}, k = {}, x = [];
+    for (const c of new Set(Object.keys(a).concat(Object.keys(b)))) {
+      if (c === 'tokens' || c === 'lv') continue;
+      if (b[c] === undefined) x.push(c); else if (!igual(a[c], b[c])) k[c] = b[c];
+    }
+    if (Object.keys(k).length) d.k = k;
+    if (x.length) d.x = x;
+    const ta = Array.isArray(a.tokens) ? a.tokens : [], tb = Array.isArray(b.tokens) ? b.tokens : [];
+    const A = new Map(ta.map(t => [t.id, t])), B = new Set(tb.map(t => t.id));
+    const u = [], novos = [];
+    for (const t of tb) {
+      const v = A.get(t.id);
+      if (!v) { novos.push(t); continue; }
+      const p = {}, tx = [];
+      for (const c of new Set(Object.keys(v).concat(Object.keys(t)))) {
+        if (t[c] === undefined) tx.push(c); else if (!igual(v[c], t[c])) p[c] = t[c];
+      }
+      if (Object.keys(p).length || tx.length) u.push(tx.length ? { id: t.id, p, x: tx } : { id: t.id, p });
+    }
+    if (u.length) d.u = u;
+    if (novos.length) d.a = novos;
+    const r = ta.filter(t => !B.has(t.id)).map(t => t.id);
+    if (r.length) d.r = r;
+    const oa = ta.filter(t => B.has(t.id)).map(t => t.id), ob = tb.filter(t => A.has(t.id)).map(t => t.id);
+    if (novos.length || !igual(oa, ob)) d.o = tb.map(t => t.id);
+    return d;
+  }
+  function aplicarVivo(v, d) {
+    const n = Object.assign({}, v);
+    if (!ehObj(d)) return n;
+    if (ehObj(d.k)) Object.assign(n, d.k);
+    if (Array.isArray(d.x)) for (const c of d.x) delete n[c];
+    const M = new Map((Array.isArray(v.tokens) ? v.tokens : []).filter(ehObj).map(t => [t.id, t]));
+    for (const c of Array.isArray(d.u) ? d.u : []) {
+      if (!ehObj(c) || !M.has(c.id)) continue;
+      const t = Object.assign({}, M.get(c.id), ehObj(c.p) ? c.p : null);
+      if (Array.isArray(c.x)) for (const f of c.x) delete t[f];
+      M.set(c.id, t);
+    }
+    for (const t of Array.isArray(d.a) ? d.a : []) if (ehObj(t) && t.id != null) M.set(t.id, t);
+    for (const id of Array.isArray(d.r) ? d.r : []) M.delete(id);
+    if (Array.isArray(d.o)) { const lista = []; for (const id of d.o) if (M.has(id)) { lista.push(M.get(id)); M.delete(id); } n.tokens = lista.concat([...M.values()]); }
+    else n.tokens = [...M.values()];
+    return n;
+  }
+
   // Troca os donos numa cena (cópia já feita por quem chama). Quem não tem par na mesa passa a ser do mestre.
   function trocarDonos(sc, mapa, membros) {
     const ids = new Set((membros || []).map(m => m.id));
@@ -610,5 +661,5 @@ const Proj = (() => {
     return sc;
   }
 
-  return { MAX_ANDARES, COLS, VIVO, MAX_NIVEIS, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, normPastas, normModelos, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
+  return { difVivo, aplicarVivo, MAX_ANDARES, COLS, VIVO, MAX_NIVEIS, igual, imgsDe, partes, juntar, projetar, validar, diferenca, aplicarEm, normIndice, normPastas, normModelos, mapaDeDonos, trocarDonos, idOk, idCena, resumo };
 })();

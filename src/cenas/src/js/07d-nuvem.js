@@ -48,7 +48,17 @@ const Nuvem = (() => {
   /* Os documentos das cenas são do mestre e não têm dono (dono_id vazio). Um documento com dono foi criado por um
      jogador: só vale se for o de pedidos dele. O banco já não deixa um jogador criar outro; isto é a segunda tranca. */
   const doMestre = l => !!l && l.dono_id == null;
-  const dadosMestre = id => { const l = D.pegar(id); return doMestre(l) ? dadosDe(l) : null; };
+  /* (lote 92) O que chegou pelo movimento leve e ainda não está no documento: documento → { tx, n, v, rev }. Vale por cima do
+     documento até ele alcançar a mensagem (lv: de quem e até qual mensagem ele vem) ou outro aparelho gravar por cima. */
+  const recebidos = new Map();
+  const dadosMestre = id => {
+    const l = D.pegar(id), d = doMestre(l) ? dadosDe(l) : null, o = recebidos.get(id);
+    if (!o) return d;
+    if (!d) { recebidos.delete(id); return null; }
+    const lv = ehObj(d.lv) ? d.lv : null;
+    if ((lv && lv.tx === o.tx && lv.n >= o.n) || ((!lv || lv.tx !== o.tx) && (l.rev || 0) !== o.rev)) { recebidos.delete(id); return d; }
+    return o.v;
+  };
   const docM = id => 'cena:' + id + ':m', docV = id => 'cena:' + id + ':v';
   /* (lote 78) Os andares: outras cenas que ficam no ar junto com a do noAr (idx.juntas). Cada uma vai em dois
      documentos de projeção, como a principal (cena:pub:<id>:m e :v); a principal diz quais são (v.andares). Cada
@@ -116,7 +126,7 @@ const Nuvem = (() => {
      jogadores). O resto espera o meio segundo de sempre. */
   const PRESSA = 30;
   const relogio = () => performance.now();
-  const esquecer = id => { sombra.delete(id); visto.delete(id); };
+  const esquecer = id => { sombra.delete(id); visto.delete(id); soltarVivo(id); };
   // O documento como está no banco agora passa a ser o ponto de partida deste aparelho.
   const anotar = id => { const l = D.pegar(id), x = doMestre(l) ? dadosDe(l) : null; if (x) { sombra.set(id, JSON.stringify(x)); visto.set(id, l); } else esquecer(id); };
   const contasDe = d => { const o = {}; if (d && ehObj(d.ack)) for (const k in d.ack) { const n = d.ack[k]; if (typeof n === 'number' && isFinite(n) && n > 0) o[k] = n; } return o; };
@@ -294,6 +304,7 @@ const Nuvem = (() => {
     }
     else abrirTransmitindo();
     D.aoMudar(doBanco);
+    assinar(topicoM(), ok => { if (ok) pedirCheia(); });
     Store.on('commit', e => {
       if (!e.ops || !e.ops.length || !S.scenes[e.sceneId]) return;
       // fica anotado o que foi feito aqui e ainda não subiu (ver `feito`)
@@ -366,6 +377,84 @@ const Nuvem = (() => {
     visto.set(id, D.gravar(id, { dono_id: null, vis, dados: JSON.parse(j) }, undefined, opt) || D.pegar(id));       // sem dono: é do mestre
     return true;
   }
+  /* ---------------- (lote 92) o movimento leve ----------------
+     Mexer num token regravava a parte viva inteira (dezenas de KB, duas vezes) e o banco a reenviava a todos. Agora, com os
+     canais prontos, vai só a diferença (Proj.difVivo), por mensagem; o documento inteiro é gravado no máximo a cada
+     CHEIA_MS, ao sair da página, ou quando alguém pede. O que vai aos jogadores é a diferença da projeção: nada que
+     a projeção não leve. Sem canal, sem resposta, ou diferença grande: o documento inteiro, como sempre foi. */
+  const CHEIA_MS = (window.TC_LEVE && window.TC_LEVE.cheia) || 60000, MAX_DIF = 20000;
+  const vivos = new Map();                       // documento → o que quem transmite mandou por último
+  let tudoCheioAte = 0;                          // um jogador sem o canal: por um tempo, o documento inteiro para todos
+  const leve = () => { try { return (window.parent !== window && window.parent.TC && window.parent.TC.aoVivo && window.parent.TC.aoVivo.leve) || null; } catch (e) { return null; } };
+  const topicoM = () => 'cenam:' + mesa;
+  const topicosP = cs => (cs && cs.length ? cs : ['mundo']).map(c => 'cenap:' + mesa + ':' + c);
+  const assinados = new Map();
+  function assinar(topico, aviso) {
+    const L = leve();
+    if (!L || assinados.has(topico)) return;
+    assinados.set(topico, L.assinar(topico, deOutroAparelho, aviso));
+  }
+  function soltarVivo(id) { const st = vivos.get(id); if (st) { clearTimeout(st.t); vivos.delete(id); } }
+  function gravarCheia(id, st) {
+    clearTimeout(st.t); st.t = 0;
+    if ((id === PUB_V || ehPubA(id)) && !transmito()) { vivos.delete(id); return true; }     // outro aparelho transmite agora
+    return escrever(id, Object.assign({}, st.ultimo, { lv: { tx: meu, n: st.n } }), st.vis, st.cas, st.camps, st.pressa);
+  }
+  function vivoOuCheio(id, v, vis, cas, camps, pressa, topicos) {
+    for (const t of topicos) assinar(t);
+    const L = leve(), st = vivos.get(id), j = topicos.join();
+    const cheia = () => {
+      // (sem novidade, a mesma marca: o documento só é regravado se outro aparelho tiver mexido nele)
+      if (st && st.de === v.id && st.mv === v.mv && st.topicos === j && Proj.igual(st.ultimo, v)) return gravarCheia(id, st);
+      const n = (st ? st.n : 0) + 1;
+      if (st) clearTimeout(st.t);
+      const novo = { ultimo: clone(v), n, de: v.id, mv: v.mv, topicos: j, vis, cas, camps, pressa, t: 0 };
+      vivos.set(id, novo);
+      return gravarCheia(id, novo);
+    };
+    if (!st || st.de !== v.id || st.mv !== v.mv || st.topicos !== j || !L || Date.now() < tudoCheioAte || !topicos.every(t => L.pronto(t))) return cheia();
+    if (Proj.igual(st.ultimo, v)) return st.t ? true : gravarCheia(id, st);
+    const d = Proj.difVivo(st.ultimo, v);
+    if (JSON.stringify(d).length > MAX_DIF) return cheia();
+    const msg = { t: 'v', doc: id, tx: meu, base: st.n, n: st.n + 1, d };
+    if (!topicos.every(t => L.enviar(t, msg))) return cheia();
+    st.ultimo = clone(v); st.n = msg.n; st.camps = camps; st.vis = vis;
+    if (!st.t) st.t = setTimeout(() => { st.t = 0; if (vivos.get(id) === st) gravarCheia(id, st); }, CHEIA_MS);
+    return true;
+  }
+  // grava agora o que estava esperando (ao sair da página, ou quando alguém pede o documento inteiro)
+  function vivosAgora(filtro) { for (const [id, st] of vivos) if (st.t && (!filtro || filtro(id))) gravarCheia(id, st); }
+  // chegou uma mensagem de quem transmite (ou o pedido de um aparelho do mestre)
+  function deOutroAparelho(msg) {
+    if (!ehObj(msg)) return;
+    if (msg.t === 'pede') { if (modo === 'mestre' && transmito()) vivosAgora(id => RE_PARTE.test(id)); return; }
+    if (msg.t !== 'v' || typeof msg.doc !== 'string' || typeof msg.tx !== 'string' || !Number.isFinite(msg.n)) return;
+    const ehPub = msg.doc === PUB_V || (ehPubA(msg.doc) && msg.doc.endsWith(':v'));
+    const parte = RE_PARTE.exec(msg.doc), ehMinha = !!parte && parte[2] === 'v' && !ehPub;
+    if (modo === 'jogador' ? !ehPub : !(ehMinha && !transmito())) return;
+    const atual = dadosMestre(msg.doc), o = recebidos.get(msg.doc), lv = o ? { tx: o.tx, n: o.n } : atual && ehObj(atual.lv) ? atual.lv : null;
+    if (!atual) { pedirCheia(); return; }
+    if (lv && lv.tx === msg.tx && msg.n <= lv.n) return;
+    const l = D.pegar(msg.doc);
+    recebidos.set(msg.doc, { tx: msg.tx, n: msg.n, v: Proj.aplicarVivo(atual, msg.d), rev: (l && l.rev) || 0 });
+    if (!lv || lv.tx !== msg.tx || msg.base !== lv.n) pedirCheia();    // perdeu alguma: o que veio vale, e o resto vem no documento
+    if (modo === 'jogador') { if (!tReceber) tReceber = setTimeout(receber, 30); return; }
+    aplicarRecebida(parte[1], msg.doc);
+  }
+  function aplicarRecebida(id, doc) {
+    if (Store.inTx() && id === S.current) { setTimeout(() => aplicarRecebida(id, doc), 300); return; }
+    if (!S.scenes[id] || !recebidos.has(doc)) return;
+    const l = D.pegar(doc);
+    if (l) cenaDeFora(id, Object.assign({}, l, { dados: recebidos.get(doc).v }));
+  }
+  let pediuEm = 0, quer = 0;
+  function pedirCheia() {
+    if (Date.now() - pediuEm < 10000) return;
+    pediuEm = Date.now();
+    if (modo === 'jogador') { if (!outraAba) { quer = Date.now(); gravarPedido(); } return; }
+    const L = leve();
+    if (L) L.enviar(topicoM(), { t: 'pede' });
+  }
   function avisarGrande(sc) {
     if (grandes.has(sc.id)) return;
     grandes.add(sc.id);
@@ -385,7 +474,7 @@ const Nuvem = (() => {
       // a cena que ainda não está no banco nasce na campanha em vista (numa mesa sem campanhas, em nenhuma)
       if (!campDe.has(id)) campDe.set(id, camp ? [camp] : []);
       const nasce = part => (D.pegar(part) ? undefined : campanhasDaCena(id));
-      const okM = escrever(docM(id), m, 'mestre', true, nasce(docM(id))), okV = escrever(docV(id), v, 'mestre', true, nasce(docV(id)));
+      const okM = escrever(docM(id), m, 'mestre', true, nasce(docM(id))), okV = noArJunto(id) && transmito() ? vivoOuCheio(docV(id), v, 'mestre', true, nasce(docV(id)), false, [topicoM()]) : (soltarVivo(docV(id)), escrever(docV(id), v, 'mestre', true, nasce(docV(id))));
       if (okM && okV) { grandes.delete(id); feito.delete(id); }
       else {
         falhou = true; avisarGrande(sc);
@@ -447,7 +536,7 @@ const Nuvem = (() => {
     v.ack = Object.assign({}, acks); v.pings = pings;
     // (lote 78) os andares no ar: o nome e o id de cada um (o primeiro é o desta projeção)
     if (noArSet) v.andares = lista.map(id => ({ id, nome: String(S.scenes[id].name || 'Andar').slice(0, 60), nivel: Andares.nivelDe(id) }));
-    if (!(escrever(PUB_V, v, 'mesa', false, cs, true) & coube)) avisarGrande(sc);
+    if (!(vivoOuCheio(PUB_V, v, 'mesa', false, cs, true, topicosP(cs)) & coube)) avisarGrande(sc);
     // (lote 78) a projeção de cada andar junto
     const agora = new Set();
     for (const id of lista.slice(1)) {
@@ -457,8 +546,8 @@ const Nuvem = (() => {
       p.m.ver = Proj.resumo(JSON.stringify(p.m));
       const ok1 = escrever(pubA(id, 'm'), p.m, 'mesa', false, cs, true), la1 = dadosMestre(pubA(id, 'm'));
       p.v.mv = ok1 || !la1 || la1.id !== id ? p.m.ver : la1.ver;
-      p.v.ack = Object.assign({}, acks); p.v.pings = pings; p.v.de = sc.id;
-      if (!(escrever(pubA(id, 'v'), p.v, 'mesa', false, cs, true) & ok1)) avisarGrande(a);
+      p.v.de = sc.id;            // (lote 92: a conta dos pedidos e os sinais ficam só na principal, que todos recebem)
+      if (!(vivoOuCheio(pubA(id, 'v'), p.v, 'mesa', false, cs, true, topicosP(cs)) & ok1)) avisarGrande(a);
       agora.add(id);
     }
     tirarAndares(agora);
@@ -597,6 +686,7 @@ const Nuvem = (() => {
   }
 
   /* ---------------- mestre: os pedidos dos jogadores ---------------- */
+  const quersVistos = new Map();
   function pedidos() {
     clearTimeout(tPedidos); tPedidos = 0;
     if (modo !== 'mestre' || !idx.noAr) return;
@@ -604,6 +694,13 @@ const Nuvem = (() => {
     if (!principal) return;
     if (!transmito()) { vigiar(principal); return; }         // quem aplica os pedidos é o aparelho que transmite
     if (Store.inTx() && andares().includes(S.current)) { tPedidos = setTimeout(pedidos, 150); return; }   // o mestre está no meio de um gesto
+    // (lote 92) um jogador pediu o documento inteiro (acabou de abrir, ou perdeu mensagens), ou está sem o canal
+    for (const l of D.todas()) {
+      if (typeof l.id !== 'string' || !l.id.startsWith(PRE_PED)) continue;
+      const d = dadosDe(l), q = d && Number(d.quer);
+      if (d && d.sl === true) tudoCheioAte = Date.now() + 120000;
+      if (q && q !== quersVistos.get(l.id)) { const ja = quersVistos.has(l.id); quersVistos.set(l.id, q); if (ja || Date.now() - q < 120000) vivosAgora(id => id === PUB_V || ehPubA(id)); }
+    }
     let andou = false;
     const tocadas = new Set();
     for (const { quem, lotes } of filas(principal, acks)) {
@@ -765,17 +862,19 @@ const Nuvem = (() => {
     S.scenes = { [sc.id]: sc }; S.order = [sc.id]; S.current = sc.id;
     vazia = false;
     if (!manter) { caixa = []; confirmados = []; }         // (lote 78) de um andar para outro do mesmo prédio, a fila continua
-    ultimaConta = ackDe(a.v);
+    const vp = vPrincipal(a.v);                            // (lote 92) a conta e os sinais estão só na projeção principal
+    ultimaConta = ackDe(vp);
     seq = Math.max(seq, ultimaConta);                      // os próximos pedidos têm de vir depois do que o mestre já contou
-    for (const p of Array.isArray(a.v.pings) ? a.v.pings : []) if (ehObj(p)) pingsVistos.add(p.id);
+    for (const p of Array.isArray(vp.pings) ? vp.pings : []) if (ehObj(p)) pingsVistos.add(p.id);
   }
   // Até que número o mestre já aplicou os pedidos deste jogador.
   const ackDe = v => Number(ehObj(v.ack) ? v.ack[eu] : 0) || 0;
+  const vPrincipal = v => dadosMestre(PUB_V) || v;
   /* (lote 66) Os pedidos de um jogador moram num documento só (cena:pedido:<jogador>), regravado inteiro: com as Cenas
      abertas em duas abas do mesmo navegador, uma apagaria os pedidos da outra. A aba aberta por último é a que
      manda os pedidos; a outra fica só olhando (e avisa), até ser a única de novo ou a pessoa voltar a ela. */
   const ABA = Math.random().toString(36).slice(2, 10);
-  let outraAba = false, canalAba = null, avisouAba = 0;
+  let outraAba = false, canalAba = null, avisouAba = 0, avisouSemCanal = false;
   function vigiarAbas() {
     if (typeof BroadcastChannel === 'undefined') return;
     try {
@@ -802,6 +901,14 @@ const Nuvem = (() => {
     const a = noArAgora();
     if (a.st === 'ok') { const p = parDoAndar(a, andarDoJogador(a)) || { m: a.m, v: a.v }; montar(p); } else cenaVazia();
     D.aoMudar(l => { if (l && (l.id === PUB_M || l.id === PUB_V || ehPubA(l.id))) { if (!tReceber) tReceber = setTimeout(receber, 30); } });
+    /* (lote 92) O movimento leve: quem abre (ou volta) pede o documento inteiro, porque o que está no banco pode estar até um
+       minuto atrás. Quem ficou sem o canal avisa no pedido: aí o mestre volta a gravar tudo inteiro por um tempo. */
+    for (const t of topicosP(camp ? [camp] : []).concat(camp ? topicosP([]) : [])) assinar(t, ok => { if (ok) { pediuEm = 0; pedirCheia(); } });
+    const semCanal = () => { const L = leve(); return !L || !L.pronto(topicosP([])[0]); };
+    const dormindo = () => { try { return document.hidden || window.parent.TC.sono.estado === 'dormindo'; } catch (e) { return document.hidden; } };
+    const conferirCanal = () => { if (outraAba || dormindo()) return; const sc = semCanal(); if (sc || sc !== avisouSemCanal) { avisouSemCanal = sc; gravarPedido(); } };
+    setTimeout(conferirCanal, 8000);
+    setInterval(conferirCanal, 60000);
     Store.on('commit', e => {
       if (e.remote || vazia || !e.ops.length || e.sceneId !== S.current) return;
       pedir(e.ops, e.inv || []);
@@ -828,6 +935,7 @@ const Nuvem = (() => {
   function receber() {
     clearTimeout(tReceber); tReceber = 0;
     if (modo !== 'jogador') return;
+    if (camp) assinar(topicosP([camp])[0], ok => { if (ok) { pediuEm = 0; pedirCheia(); } });      // (lote 92: a campanha em vista pode ter mudado)
     if (Store.inTx() || Tools.busy()) { tReceber = setTimeout(receber, 150); return; }     // no meio de um gesto: espera soltar
     const foraAntes = arDeFora.join();
     let a = noArAgora();
@@ -844,7 +952,7 @@ const Nuvem = (() => {
     if (andaresVistos.join('|') !== antesAndares) avisarAndares();
     a = par;
     // a mesma cena: o que o mestre já aplicou sai da fila; o que falta continua valendo por cima do que chegou
-    const ack = ackDe(a.v), agora = relogio();
+    const vp = vPrincipal(a.v), ack = ackDe(vp), agora = relogio();
     let mudou = false;
     seq = Math.max(seq, ack);
     if (ack < ultimaConta) {                               // a conta voltou atrás: o que tinha sido confirmado depois dela volta para a fila
@@ -867,7 +975,7 @@ const Nuvem = (() => {
     const ops = Proj.diferenca(aqui, alvo);
     if (ops.length) Store.remoteIn(S.current, ops);
     if ((Store.scene().expSeq || 0) !== seqAntes) { Vision.resetExplored(Store.scene()); Render.request(); }
-    for (const p of Array.isArray(a.v.pings) ? a.v.pings : []) {
+    for (const p of Array.isArray(vp.pings) ? vp.pings : []) {
       if (!ehObj(p) || pingsVistos.has(p.id)) continue;
       pingsVistos.add(p.id);
       if (p.cena && p.cena !== S.current) continue;          // (lote 78) o sinal de outro andar
@@ -899,7 +1007,8 @@ const Nuvem = (() => {
        que passam da conta dele. (O documento é do próprio jogador: o banco só aceita que ele crie o que é dele.) */
     let lote = confirmados.map(b => ({ n: b.n, ops: b.ops, c: b.c })).concat(caixa);
     while (lote.length > caixa.length && JSON.stringify(lote).length > 120000) lote = lote.slice(1);
-    D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: JSON.parse(JSON.stringify({ cena: vazia ? null : S.current, lote })) }, undefined, { pressa: PRESSA });
+    const L = leve(), sl = !L || !L.pronto(topicosP([])[0]);
+    D.gravar(PRE_PED + eu, { dono_id: eu, vis: 'mestre', dados: JSON.parse(JSON.stringify(Object.assign({ cena: vazia ? null : S.current, lote }, quer ? { quer } : null, sl ? { sl: true } : null))) }, undefined, { pressa: PRESSA });
   }
   // "Ao vivo" quando não há nada na fila; "enviando" enquanto o mestre não confirma; depois de um tempo, "esperando o mestre".
   function situacao() {
@@ -952,7 +1061,7 @@ const Nuvem = (() => {
     metaSuja = true; agendar();
   }
   function descarregar() {
-    if (modo === 'mestre') { if (tGravar) gravar(); }
+    if (modo === 'mestre') { if (tGravar) gravar(); vivosAgora(); }
     else if (tPedido) gravarPedido();
     gravarExplorado();
   }
