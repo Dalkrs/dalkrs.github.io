@@ -1075,7 +1075,7 @@
     /* (lote 93) De perto, a tinta (a textura macia de cada terreno) é feita em meia resolução e esticada no fim: por cima vem
        o desenho nítido de cada hexágono, e as cópias de imagem de cada terreno — quase todo o tempo do desenho — passam a
        mexer com um quarto dos pixels. De longe, nada muda. */
-    const cFora = c, fT = comDesenhos && w * hh > 6e5 ? 0.5 : 1, tintaCv = fT < 1 ? tintaHex(Math.ceil(w * fT), Math.ceil(hh * fT)) : null;
+    const cFora = c, fT = w * hh > 6e5 ? 0.5 : 1, tintaCv = fT < 1 ? tintaHex(Math.ceil(w * fT), Math.ceil(hh * fT)) : null;
     {
     const k = o.k * fT, w = tintaCv ? tintaCv.width : o.w, hh = tintaCv ? tintaCv.height : o.hh, c = tintaCv ? tintaCv.getContext('2d') : cFora;
     if (tintaCv) { c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, w, hh); }
@@ -1122,7 +1122,11 @@
         mx.lineCap = 'butt'; mx.lineJoin = 'round';
         for (const [modo, dd, larg] of [['source-over', 0.16, 0.32], ['destination-out', -0.26, 0.52]]) {
           mx.globalCompositeOperation = modo; mx.strokeStyle = '#fff'; mx.lineWidth = larg * tam; mx.beginPath();
-          for (const cr of d.costa || []) for (const pts of corridasDaCosta(cr, dd * tam, e => e.terA && e.terA.id === t.id)) { mx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) mx.lineTo(pts[i][0], pts[i][1]); }
+          // (lote 94) os pedaços ficam guardados na costa (por terreno e lado) e só entram os que aparecem
+          for (const cr of d.costa || []) for (const pts of corridasDaCosta(cr, dd * tam, e => e.terA && e.terA.id === t.id, 't:' + t.id)) {
+            const cx = pts.caixa; if (cx && (cx[2] < x0 - R * 3 || cx[0] > x0 + o.w / o.k + R * 3 || cx[3] < y0 - R * 3 || cx[1] > y0 + o.hh / o.k + R * 3)) continue;
+            mx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) mx.lineTo(pts[i][0], pts[i][1]);
+          }
           mx.stroke();
         }
         mx.filter = 'none'; mx.globalCompositeOperation = 'source-over';
@@ -1560,8 +1564,19 @@
     });
   }
   // os pedaços da corrente (deslocada de d) em que o lado vale f(lado)
-  function corridasDaCosta(cr, d, f) {
-    const { P, T, fechada } = cr, Q = deslocada(P, d, fechada), out = [], n = P.length, segs = fechada ? n : n - 1;
+  function corridasDaCosta(cr, d, f, chave) {
+    if (!cr.memo) cr.memo = { w: new Map(), pega: new Map() };
+    const ck = chave ? 'c:' + chave + '|' + d : null;
+    if (ck && cr.memo.pega.has(ck)) return cr.memo.pega.get(ck);
+    let Q = cr.memo.w.get('px' + d);
+    if (!Q) { Q = deslocada(cr.P, d, cr.fechada); cr.memo.w.set('px' + d, Q); }
+    const res = corridasDe(cr, Q, f);
+    for (const r of res) { let a = Infinity, b = Infinity, A = -Infinity, B = -Infinity; for (const p of r) { if (p[0] < a) a = p[0]; if (p[1] < b) b = p[1]; if (p[0] > A) A = p[0]; if (p[1] > B) B = p[1]; } r.caixa = [a, b, A, B]; }
+    if (ck) cr.memo.pega.set(ck, res);
+    return res;
+  }
+  function corridasDe(cr, Q, f) {
+    const { P, T, fechada } = cr, out = [], n = P.length, segs = fechada ? n : n - 1;
     let atual = null;
     for (let i = 0; i < segs; i++) {
       if (f(T[i])) { if (!atual) { atual = [Q[i]]; out.push(atual); } atual.push(Q[(i + 1) % n]); } else atual = null;
@@ -1572,23 +1587,41 @@
   function desenharCosta(c, d, perto0, pxHex, k, liso) {
     if (!d.costa || !d.costa.length) return;
     const tam = d.m.grade.tam, longe = pxHex < 9, [vx0, vy0, vx1, vy1] = d.vista || [-Infinity, -Infinity, Infinity, Infinity];
+    /* (lote 94) Com a terra toda em hexágonos, a costa da ilha vira uma linha só, com dezenas de milhares de pontos: o traço
+       entra só com o pedaço que aparece na tela (mais uma folga), e as linhas deslocadas ficam guardadas na própria costa. */
+    const fx0 = vx0 - tam * 2, fy0 = vy0 - tam * 2, fx1 = vx1 + tam * 2, fy1 = vy1 + tam * 2;
+    const dentro = p => p[0] >= fx0 && p[0] <= fx1 && p[1] >= fy0 && p[1] <= fy1;
     const tra = (pts, fechada, cor, larg, alfa, tracejado) => {
       if (pts.length < 2) return;
-      c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); if (fechada) c.closePath();
+      c.beginPath();
+      let aberto = false, inteira = true;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i], vale = dentro(p) || (i > 0 && dentro(pts[i - 1])) || (i + 1 < pts.length && dentro(pts[i + 1]));
+        if (!vale) { aberto = false; inteira = false; continue; }
+        if (!aberto) { c.moveTo(p[0], p[1]); aberto = true; } else c.lineTo(p[0], p[1]);
+      }
+      if (fechada && inteira) c.closePath();
       c.strokeStyle = cor; c.lineWidth = larg; c.globalAlpha = alfa == null ? 1 : alfa; c.setLineDash(tracejado || []); c.stroke(); c.setLineDash([]);
     };
     c.lineCap = 'round'; c.lineJoin = 'round';
     for (const cr of d.costa) {
       const [bx, by, bX, bY] = cr.caixa;
       if (bX < vx0 - tam || bx > vx1 + tam || bY < vy0 - tam || by > vy1 + tam) continue;
-      const { P, T, fechada } = cr, W = d => deslocada(P, d * tam, fechada);
+      const { P, T, fechada } = cr;
+      if (!cr.memo) cr.memo = { w: new Map(), pega: new Map() };
+      const W = d => { let q = cr.memo.w.get(d); if (!q) { q = deslocada(P, d * tam, fechada); q.dd = d; cr.memo.w.set(d, q); } return q; };
       // os trechos de mesmo tipo (o último ponto de um é o primeiro do outro)
-      const trechos = [];
-      for (let i = 0; i < P.length - (fechada ? 0 : 1); i++) {
-        const tp = T[i].tipo + (T[i].lago ? 'L' : ''), u = trechos[trechos.length - 1];
-        if (u && u.k === tp) u.ix.push(i + 1); else trechos.push({ k: tp, e: T[i], ix: [i, i + 1] });
+      if (!cr.trechos) {
+        const tr = [];
+        for (let i = 0; i < P.length - (fechada ? 0 : 1); i++) {
+          const tp = T[i].tipo + (T[i].lago ? 'L' : ''), u = tr[tr.length - 1];
+          if (u && u.k === tp) u.ix.push(i + 1); else tr.push({ k: tp, e: T[i], ix: [i, i + 1], n: tr.length });
+        }
+        cr.trechos = tr;
       }
-      const pega = (pts, ix) => ix.map(i => pts[i % pts.length]);
+      const trechos = cr.trechos;
+      const pega = (pts, ix) => { if (pts.dd === undefined || !ix.n0) return ix.map(i => pts[i % pts.length]); const k = pts.dd + '|' + ix.n0; let v = cr.memo.pega.get(k); if (!v) { v = ix.map(i => pts[i % pts.length]); cr.memo.pega.set(k, v); } return v; };
+      for (const t of trechos) t.ix.n0 = 't' + t.n;
       const so = fechada && trechos.length === 1;
       // 1) do lado da água: o raso, que clareia perto da terra
       for (const t of trechos) {

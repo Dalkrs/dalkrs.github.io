@@ -299,7 +299,8 @@
 
   /* ---------------- limites ---------------- */
   const MAX_OBJS = 2000, MAX_OPS = 4000, MAX_TXT = 4000, MAX_FAC = 500, MAX_PTS = 2000, MAX_COORD = 1e6;
-  const MAX_HEX = 20000, MAX_TER = 40, MAX_CUSTO = 9999;
+  const MAX_HEX = 70000,   // (lote 94: 20 mil → 70 mil, para pintar um mapa grande inteiro hexágono por hexágono)
+    MAX_TER = 40, MAX_CUSTO = 9999;
   // o desenho à mão: quantas pinceladas e quantos pontos ao todo (o documento do mapa tem limite de tamanho)
   const MAX_PINC = 4000, MAX_PONTOS_PINT = 60000, MAX_FASES = 60;
   const MAX_NIVEL = 10;                           // regiões dentro de regiões: até quantos níveis (Reino → Condado → …)

@@ -2,6 +2,21 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.07-2",
+      "data": "2026-11-07",
+      "titulo": "Mapas grandes pintados hexágono por hexágono",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: um mapa agora aceita até 70 mil hexágonos pintados (antes, 20 mil). Assim dá para pintar uma ilha inteira hexágono por hexágono, com cada hexágono nítido de perto."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: a costa e a margem da água ficaram bem mais leves de desenhar num mapa grande."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.07-1",
       "data": "2026-11-07",
       "titulo": "O Mapa-múndi mais rápido de perto, o rio de lava e oito terrenos com desenho próprio",

@@ -634,9 +634,9 @@ function mundo() {
   ok(gg.x === 120 && gg.y === 0 && gg.prog === N.viagem(G2, gg).acum[6], 'o grupo fica onde está, e o andado é o do hexágono dele na rota nova: ' + gg.prog);
   ok(N.regradear(N.copia(G), 40).ok === false && N.regradear(N.normalizarMapa({}), 20).ok === false, 'mesmo tamanho, ou sem grade: nada muda');
   const cheio = {};
-  for (let q = 0; q < 120; q++) for (let r = 0; r < 50; r++) cheio[q + ',' + r] = 'pl';
-  const rc = N.regradear(N.normalizarMapa({ larg: 6000, alt: 4000, grade: { tam: 40 }, hexes: cheio }), 20);
-  ok(!rc.ok && /passaria de 20\.000 hexágonos/.test(rc.msg), 'o terreno que passaria do limite de hexágonos: não muda, e diz por quê: ' + rc.msg);
+  for (let q = 0; q < 200; q++) for (let r = 0; r < 100; r++) cheio[q + ',' + r] = 'pl';      // (lote 94: o limite subiu para 70 mil)
+  const rc = N.regradear(N.normalizarMapa({ larg: 16000, alt: 8000, grade: { tam: 40 }, hexes: cheio }), 20);
+  ok(!rc.ok && /passaria de 70\.000 hexágonos/.test(rc.msg), 'o terreno que passaria do limite de hexágonos: não muda, e diz por quê: ' + rc.msg);
 
   // as regiões de dentro
   const R = N.normalizarMapa({ grade: { tam: 40 }, faccoes: [{ id: 'fa', nome: 'Aldar' }], objs: [
