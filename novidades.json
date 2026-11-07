@@ -2,6 +2,26 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.07-1",
+      "data": "2026-11-07",
+      "titulo": "O Mapa-múndi mais rápido de perto, o rio de lava e oito terrenos com desenho próprio",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: de perto, os hexágonos aparecem bem mais rápido ao aproximar e ao andar pelo mapa."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: terreno novo, o Rio de lava. Ele corre de hexágono em hexágono como um rio, brilha, nasce num campo de lava e não se mistura com a água."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: oito desenhos novos para os terrenos — Sal, Enxofre, Arrozal, Floresta gigante, Resíduo de metal, Charneca do crepúsculo, Cratera e Água negra. Escolha na aba Terreno, em Textura.",
+          "mestre": true
+        }
+      ]
+    },
+    {
       "versao": "2026.11.05-2",
       "data": "2026-11-05",
       "titulo": "Os tokens andam gastando bem menos dados",

@@ -176,7 +176,12 @@
   const TERRENOS_L57 = [
     { id: 'lg', nome: 'Lago', cor: '#4f9aa3', custo: 10, tex: 'lago' },
   ];
-  TERRENOS_PADRAO.push(...TERRENOS_NOVOS, ...TERRENOS_L17, ...TERRENOS_L54, ...TERRENOS_L57);
+  /* (lote 93) O rio de lava: corre e se liga como o rio de água (a nascente afina, as curvas seguem os vizinhos), mas é uma
+     rede à parte — não encontra rio nem mar; nasce e acaba na lava (ou em lugar nenhum: esfria e vira pedra). */
+  const TERRENOS_L93 = [
+    { id: 'rl', nome: 'Rio de lava', cor: '#b8410e', custo: 30, tex: 'rioLava' },
+  ];
+  TERRENOS_PADRAO.push(...TERRENOS_NOVOS, ...TERRENOS_L17, ...TERRENOS_L54, ...TERRENOS_L57, ...TERRENOS_L93);
   /* (lote 17) A defesa do terreno na batalha (de começo; o mestre muda na tabela da aba Guerra): quem defende o
      hexágono da batalha ganha o número do terreno dele. */
   const DEF_TERRENO_PADRAO = { mo: 3, df: 3, co: 2, fl: 1, se: 1, pa: 1, ru: 1, gl: 1, fm: 1 };
@@ -192,12 +197,17 @@
     morta: { nome: 'Floresta morta' }, oasis: { nome: 'Oásis' }, charneca: { nome: 'Charneca' }, devastada: { nome: 'Terra devastada' },
     rio: { nome: 'Rio' }, estradaTerra: { nome: 'Estrada de terra' }, estradaPedra: { nome: 'Estrada de pedra' }, estradaPav: { nome: 'Estrada pavimentada' },     // (lote 54)
     lago: { nome: 'Lago' },                                                                                                       // (lote 57)
+    // (lote 93) o rio de lava e oito desenhos novos (o sal, o enxofre, o arrozal, a mata gigante, o resíduo de metal, a
+    // charneca do crepúsculo, a cratera e a água negra)
+    rioLava: { nome: 'Rio de lava' }, sal: { nome: 'Sal' }, enxofre: { nome: 'Enxofre' }, arrozal: { nome: 'Arrozal' },
+    gigante: { nome: 'Mata gigante' }, residuo: { nome: 'Resíduo de metal' }, crepusculo: { nome: 'Crepúsculo' },
+    cratera: { nome: 'Cratera' }, aguaNegra: { nome: 'Água negra' },
   };
   // (lote 54) o que liga: o rio (e a água em que ele deságua) e as estradas, pelo desenho do terreno (o nível da estrada:
   // 1 terra, 2 pedra, 3 pavimentada)
-  const TEX_VIA = { estradaTerra: 1, estradaPedra: 2, estradaPav: 3 }, TEX_AGUA = { ondas: 1, raso: 1, fundo: 1, lago: 1 };
+  const TEX_VIA = { estradaTerra: 1, estradaPedra: 2, estradaPav: 3 }, TEX_AGUA = { ondas: 1, raso: 1, fundo: 1, lago: 1, aguaNegra: 1 };
   // (lote 57) o desfiladeiro também é rede: a fenda liga às fendas, ao rio que corre no fundo dela e a uma água
-  const ehRede = tex => tex === 'rio' || tex === 'desfiladeiro' || !!TEX_VIA[tex];
+  const ehRede = tex => tex === 'rio' || tex === 'rioLava' || tex === 'desfiladeiro' || !!TEX_VIA[tex];
   const TEX_PADRAO = Object.fromEntries(TERRENOS_PADRAO.map(t => [t.id, t.tex]));
   /* Carimbos: desenhos para enfeitar o mapa (arte própria, numa caixa 24×24). Na tela, .cc é preenchido com a cor do
      carimbo, .tc é um traço nessa cor, e o resto é traço de tinta escura. */
@@ -815,7 +825,7 @@
     const c = centroHex(m, q, r), reg = regiaoComCusto(m, c.x, c.y);
     if (reg) return { q, r, terreno: t, custo: reg.custo, de: 'regiao', regiao: reg, desenho };
     // (lote 54) o rio com ponte custa o da estrada que passa por ela (sem o a mais de atravessar a água); (lote 57) a fenda também
-    const rd = t && (texDoTerreno(t) === 'rio' || texDoTerreno(t) === 'desfiladeiro') ? redeDoHex(m, q, r) : null;
+    const rd = t && (texDoTerreno(t) === 'rio' || texDoTerreno(t) === 'rioLava' || texDoTerreno(t) === 'desfiladeiro') ? redeDoHex(m, q, r) : null;
     if (rd && rd.ponte && rd.ponte.t) return { q, r, terreno: t, custo: rd.ponte.t.custo, de: 'ponte', regiao: null, desenho, ponte: true };
     // (lote 64) a trilha da beirada: anda-se pela borda da fenda pelo custo da estrada mais lenta que chega nela
     if (rd && rd.trilha) {
@@ -839,7 +849,7 @@
   function vizinhosDaRede(m, q, r) {
     return VIZ_REDE.map(([dq, dr]) => {
       const t = terDoHex(m, q + dq, r + dr), tex = texDoTerreno(t);
-      return { t, tex, rio: tex === 'rio' || !!TEX_AGUA[tex], agua: !!TEX_AGUA[tex], via: TEX_VIA[tex] || 0, fenda: tex === 'desfiladeiro' };
+      return { t, tex, rio: tex === 'rio' || !!TEX_AGUA[tex], agua: !!TEX_AGUA[tex], via: TEX_VIA[tex] || 0, fenda: tex === 'desfiladeiro', lava: tex === 'rioLava' || tex === 'lava' };
     });
   }
   /* A margem: o terreno da maioria dos vizinhos que não são rio, estrada nem água (no empate, o primeiro na ordem);
@@ -880,7 +890,7 @@
     if (!ehRede(tex)) return null;
     let porMapa = null;
     if (cacheRede) { porMapa = cacheRede.get(m); if (!porMapa) { porMapa = new Map(); cacheRede.set(m, porMapa); } const k = q + ',' + r; if (porMapa.has(k)) return porMapa.get(k); }
-    const vz = vizinhosDaRede(m, q, r), out = { tipo: tex === 'rio' ? 'rio' : tex === 'desfiladeiro' ? 'fenda' : 'via', via: TEX_VIA[tex] || 0, liga: [], ponte: null, margem: margemDoHex(m, q, r) };
+    const vz = vizinhosDaRede(m, q, r), out = { tipo: tex === 'rio' ? 'rio' : tex === 'rioLava' ? 'lava' : tex === 'desfiladeiro' ? 'fenda' : 'via', via: TEX_VIA[tex] || 0, liga: [], ponte: null, margem: margemDoHex(m, q, r) };
     const crua = ligaCrua(m, q, r, vz, tex);
     // o triângulo (três hexágonos da rede, cada um vizinho dos outros dois): sai a ligação dos dois que têm mais ligações
     // (no empate, a de chave menor) — o caminho continua passando pelos três, sem o desenho fechar um triângulo
@@ -889,6 +899,7 @@
     const A = { q, r };
     out.liga = crua.filter(i => {
       if ((out.tipo === 'rio' || out.tipo === 'fenda') && vz[i].agua) return true;
+      if (out.tipo === 'lava' && vz[i].tex === 'lava') return true;                  // (lote 93) o campo de lava
       const B = { q: q + VIZ_REDE[i][0], r: r + VIZ_REDE[i][1] }, pAB = peso(A, B);
       if (out.tipo === 'via' && !vz[i].via) return true;                 // (lote 64) a ponte e a trilha não entram no triângulo
       for (const j of [(i + 1) % 6, (i + 5) % 6]) {
@@ -913,6 +924,14 @@
     vz = vz || vizinhosDaRede(m, q, r);
     tex = tex || texDoTerreno(terDoHex(m, q, r));
     const out = [];
+    // (lote 93) o rio de lava: liga aos rios de lava e a um campo de lava só (o lago dele, onde nasce ou morre)
+    if (tex === 'rioLava') {
+      const rios = [], campos = [];
+      vz.forEach((v, i) => { if (v.tex === 'rioLava') rios.push(i); else if (v.tex === 'lava') campos.push(i); });
+      let fonte = null, md = -1;
+      for (const a of campos) { const d = rios.length ? Math.min(...rios.map(b => Math.min(Math.abs(a - b), 6 - Math.abs(a - b)))) : 0; if (d > md) { md = d; fonte = a; } }
+      return rios.concat(fonte == null ? [] : [fonte]).sort((a, b) => a - b);
+    }
     if (tex === 'rio' || tex === 'desfiladeiro') {
       // (lote 57) o rio liga também às fendas (ele corre no fundo delas); a fenda, às fendas e aos rios
       const rios = [], aguas = [];
@@ -3517,7 +3536,7 @@
   function terrenosQueFaltam(mapa) {
     const ts = ehObj(mapa) && Array.isArray(mapa.terrenos) ? mapa.terrenos : [];
     const ids = new Set(ts.map(t => t.id)), nomes = new Set(ts.map(t => String(t.nome || '').trim().toLowerCase()));
-    return TERRENOS_NOVOS.concat(TERRENOS_L17, TERRENOS_L54, TERRENOS_L57).filter(t => !ids.has(t.id) && !nomes.has(t.nome.toLowerCase())).slice(0, Math.max(0, MAX_TER - ts.length)).map(t => copia(t));
+    return TERRENOS_NOVOS.concat(TERRENOS_L17, TERRENOS_L54, TERRENOS_L57, TERRENOS_L93).filter(t => !ids.has(t.id) && !nomes.has(t.nome.toLowerCase())).slice(0, Math.max(0, MAX_TER - ts.length)).map(t => copia(t));
   }
   /* (lote 8) A bandeira do clã ligado à facção, como a projeção a leva aos jogadores (f.br): a forma, a divisão, as duas
      cores, o símbolo e a imagem (só a do banco, https). Quem desenha (ClaNucleo.brasaoSvg) confere tudo de novo. */
@@ -4150,7 +4169,7 @@
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, controleDaRegiao, acimaDe,
     TIPOS_GRUPO, ARMAS_IDS, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
     CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
-    HONRA, TERRENOS_NOVOS, TERRENOS_L54, TERRENOS_L57, TEX_AGUA, redeDoHex, trilhasDoMapa, margemDoHex, meioDoLado, VIZ_REDE, TEX_VIA, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
+    HONRA, TERRENOS_NOVOS, TERRENOS_L54, TERRENOS_L57, TERRENOS_L93, TEX_AGUA, redeDoHex, trilhasDoMapa, margemDoHex, meioDoLado, VIZ_REDE, TEX_VIA, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     normBr,
     MIS_E, situacaoDaMissao,
