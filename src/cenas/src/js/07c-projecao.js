@@ -367,12 +367,31 @@ const Proj = (() => {
     for (const k in p) if (tem(novo, k) && k !== 'id' && k !== 'by' && k !== 'gm' && k !== 'apply') q[k] = novo[k];
     return Object.keys(q).length ? q : null;
   }
+  /* (lote 107) O que o painel de barras do jogador pode pôr no mapa: um token simples, dele, com duração (ver
+     PainelBarras.porNoMapa), perto do token dele e no máximo 8 de cada vez. Nada de ficha, imagem ou visão. */
+  const MAX_INV = 8, MAX_EF_PAINEL = 6;
+  const FX_PAINEL = ['fumaca', 'escuridao', 'toxica', 'vento', 'vortice', 'tempestade', 'circuloProtecao', 'barreira', 'espinhos', 'chaoEspinhos', 'terra', 'cura', 'sagrado', 'consagrado',
+    'fogo', 'gelado', 'nevasca', 'teia', 'oleo', 'runas', 'acida', 'aguaEletrica', 'muralhaNatu', 'portal', 'silencio', 'raizesNirus', 'bosqueNirus', 'lama', 'esporos', 'seloYana',
+    'luzLanterna', 'maldicao', 'espiritos', 'brasas', 'cristais', 'sombra', 'luaSangue'];
+  function invocacaoLimpa(v, quem, sc) {
+    if (!ehObj(v) || !idOk(v.id) || !ehObj(v.inv) || sc.tokens.some(t => t.id === v.id)) return null;
+    const de = sc.tokens.find(t => t.id === v.inv.de && !t.inv && (t.owner === quem || t.owner === '*'));
+    if (!de || sc.tokens.filter(t => t.inv && t.inv.de === de.id).length >= MAX_INV) return null;
+    const tam = [0.5, 1, 2].includes(v.size) ? v.size : 1, perto = (de.size + 6) * sc.cell;
+    const x = num(v.x, de.x - perto, de.x + perto, de.x), y = num(v.y, de.y - perto, de.y + perto, de.y);
+    const base = newToken(sc, clamp(x, 0, sc.cols * sc.cell), clamp(y, 0, sc.rows * sc.cell), { name: String(typeof v.name === 'string' ? v.name : 'Invocação').slice(0, 40) || 'Invocação' });
+    const vida = Array.isArray(v.bars) && v.bars[0] && v.bars[0].on ? clamp(Math.round(nu(v.bars[0].m)) || 0, 0, 40) : 0;
+    base.bars = barDefaults().map((b, j) => (j === 0 && vida > 0 ? Object.assign({}, b, { v: vida, m: vida, on: true }) : Object.assign({}, b, { on: false })));
+    return { t: 'add', c: 'tokens', v: Object.assign(base, { id: v.id, color: cor(v.color, base.color), size: tam, owner: quem, barVis: vida > 0 ? 'bar' : 'none',
+      inv: { d: Math.round(num(v.inv.d, 1, 20, 3)), at: typeof v.inv.at === 'string' && sc.turn.list.some(e => e.id === v.inv.at) ? v.inv.at : null, de: de.id } }) };
+  }
   /* Uma operação pedida pelo jogador `quem`, conferida contra a cena `sc` como ela está agora. Devolve a operação
      que o mestre aplica (uma cópia limpa, só com o que o jogador pode mexer) ou null. */
   function validar(op, quem, sc) {
     if (!ehObj(op) || !sc || !quem) return null;
     const p = sc.perms || {};
     if (op.c === 'tokens') {
+      if (op.t === 'add') return invocacaoLimpa(op.v, quem, sc);     // (lote 107) só o que o painel de barras põe
       if (op.t !== 'upd' || !ehObj(op.p)) return null;                // criar e apagar tokens é com o mestre
       const t = sc.tokens.find(x => x.id === op.id);
       if (!t || t.hidden || !(t.owner === quem || t.owner === '*')) return null;
@@ -421,6 +440,14 @@ const Proj = (() => {
       return null;
     }
     if (op.c === 'effects') {
+      // (lote 107) a área que o painel de barras põe (a Corrente, a fumaça…): vale sem a permissão de efeitos, com limite
+      if (op.t === 'add' && ehObj(op.v) && op.v.pb === true && FX_PAINEL.includes(op.v.fx)) {
+        const v = efeitoLimpo(Object.assign({}, op.v, { token: null }), quem, sc);
+        if (!v || sc.effects.some(e => e.id === v.id) || sc.effects.filter(e => e.by === quem && e.pb).length >= MAX_EF_PAINEL) return null;
+        v.pb = true; v.dur = Math.max(1, Math.min(20, v.dur || 1)); v.dur0 = v.dur;
+        return { t: 'add', c: 'effects', v };
+      }
+      if (op.t !== 'add') { const e0 = sc.effects.find(x => x.id === op.id); if (e0 && e0.pb && e0.by === quem && op.t === 'upd') { const q = remendoEfeito(e0, op.p, sc); return q ? { t: 'upd', c: 'effects', id: e0.id, p: q } : null; } }
       if (!p.efeitos) return null;
       if (op.t === 'add') {
         const v = efeitoLimpo(op.v, quem, sc);

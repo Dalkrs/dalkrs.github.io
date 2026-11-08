@@ -812,7 +812,7 @@ O plano gratuito do Supabase tem cota de dados enviados (Egress) e de logs. O qu
     da luta vão embora.
 - Na Árvore, a Yanato mostra o quadro "Barra da escola" (o mestre muda o nome, o máximo, ou diz que não cria barra).
 - Testes: `cinto-yanato` (a lógica e o descanso do Acampamento), `fichas-lote55` (a barra nas fichas de antes), `fichas-lote34`,
-  `painel-barras-nucleo` e `src/cenas/test/lote44.js` (as 50 barras).
+  `painel-classes-lote107` e `src/cenas/test/lote107.js` (as 20 barras do mundo novo; as 50 do mundo antigo saíram no lote 107).
 
 ### Os membros do clã, as perícias das tropas e a veterania até Mítica (lote 56)
 
@@ -3726,7 +3726,7 @@ faltava subir.
 
 ```
 cd src/cenas && ./build.sh && cd test && for f in unit unit2 unit3 unit4 unit5 unit6 unit7 v3 v4 v5 e2e ui2 faixa negativa combate lote6 lote6b; do node $f.js; done
-cd src/tests && for f in dice rules auditoria juntar campanhas busca lote8-nucleo mundo-nucleo acampamento-nucleo site busca-casca fichas fichas-regras fichas-quadros fichas-lote8 teto-por-nivel cinto-yanato arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d mundo-lote8 acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
+cd src/tests && for f in dice rules auditoria juntar campanhas busca lote8-nucleo mundo-nucleo acampamento-nucleo site busca-casca fichas fichas-regras fichas-quadros fichas-lote8 teto-por-nivel painel-classes-lote107 arvore arvore-lote6 mundo mundo-campanhas mundo-terreno mundo-desenho mundo-lote6 mundo-lote6b mundo-lote7 mundo-lote7b mundo-lote7c mundo-lote7d mundo-lote8 acampamento acampamento-racoes auditor jornal-nucleo jornal meditacao-nucleo meditacao cla-nucleo cla; do node $f.test.js; done
 ```
 
 Os testes que usam o banco de verdade precisam das contas de teste (criadas na primeira vez, com a senha guardada

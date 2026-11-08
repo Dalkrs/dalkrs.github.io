@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-3",
+      "data": "2026-11-08",
+      "titulo": "Cenas: o painel novo de cada classe, do Vampiro e do Lobisomem",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: as 18 classes, o Vampiro e o Lobisomem ganharam o disco próprio no painel de barras: a postura do Samurai e do Monge, o Voto do Aégis, a flecha na corda do Arqueiro, as Palavras do Mago, as Formas do Druida, os frascos de alma do Necromante, a Lua do Lobisomem e mais." },
+        { "tipo": "novo", "texto": "Cenas: o painel lista as habilidades do personagem com o custo; tocar usa a habilidade, gasta a barra e avisa na mesa ao vivo. O topo só sai com o patamar que ele pede." },
+        { "tipo": "novo", "texto": "Cenas: habilidades que invocam ou criam áreas (esqueletos, torretas, lobos, Correntes de vento, fumaça, muros) põem a coisa no mapa, perto de quem usou; ela some sozinha quando os turnos acabam." },
+        { "tipo": "melhorou", "texto": "Cenas: os painéis do mundo antigo saíram.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.08-2",
       "data": "2026-11-08",
       "titulo": "Raças e classes novas: todas as habilidades reescritas",

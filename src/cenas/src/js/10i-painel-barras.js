@@ -67,7 +67,7 @@ const PainelBarras = (() => {
         if (!id || vistos.has(id)) continue;
         vistos.add(id);
         const v = isFinite(Number(rec[x.ref])) && rec[x.ref] !== null ? Number(rec[x.ref]) : x.v;
-        out.push({ id, ref: x.ref, v, min: x.min, max: x.max, inicio: x.inicio, guard: guard[id] || null, bencao: arvs.includes(P0.BENCAO_SELENE) });
+        out.push({ id, ref: x.ref, v, min: x.min, max: x.max, inicio: x.inicio, guard: guard[id] || null, arvs: x.arvs });
       }
       return out;
     }
@@ -77,21 +77,43 @@ const PainelBarras = (() => {
     for (const id of Object.keys(t.pb)) {
       const def = P0.BARRA[id], b = (t.bars || []).find(x => x && x.ref === PRE + id);
       if (!def || !b) continue;
-      out.push({ id, ref: PRE + id, v: Number(b.v) || 0, min: -barLo(b), max: b.m, inicio: def.inicio, guard: t.pb[id] || null, bencao: false });
+      out.push({ id, ref: PRE + id, v: Number(b.v) || 0, min: -barLo(b), max: b.m, inicio: def.inicio, guard: t.pb[id] || null, arvs: null });
     }
     return out;
   }
-  /* (lote 55) Os graus do Bornal de Cinza (o nó da Yanato) na ficha do token: cada grau é um laço a mais no cinto de
-     poções. O nó é achado pelo nome, na árvore da Yanato da biblioteca da mesa. Sem ficha (o NPC sem ficha), 0. Com a
-     ficha ou a árvore ainda chegando, null: fica o que estava guardado (para o cinto não perder laços no caminho). */
-  function bornalDe(t) {
-    if (!t || !t.char) return 0;
-    if (typeof Fichas === 'undefined' || !Fichas.arvore) return null;
-    const l = Fichas.get(t.char), a = Fichas.arvore(PB().YANATO);
-    const no = a && Array.isArray(a.nodes) ? a.nodes.find(n => n && /^bornal de cinza$/i.test(String(n.nome || '').trim())) : null;
-    if (!l || !no) return null;
-    const al = l.skills && l.skills.alocados && typeof l.skills.alocados === 'object' ? l.skills.alocados : {};
-    return Math.max(0, Math.min(5, Math.floor(Number(al[no.id]) || 0)));
+  /* (lote 107) As habilidades que gastam a barra: as que o personagem tem na ficha (o grau comprado), ou, no NPC sem
+     ficha, todas as da árvore. [{ id, nome, custo, inverso (a barra que sobe, como a Toxicidade), patamar, desc, usos }] */
+  function habsDe(t, arvs, def) {
+    const out = [], al = (() => { if (!t.char) return null; const l = Fichas.get(t.char); return l && l.skills && l.skills.alocados && typeof l.skills.alocados === 'object' ? l.skills.alocados : {}; })();
+    const ids = arvs && arvs.length ? arvs : ((PB().ARVORES || {})[def.id] || []);
+    for (const aid of ids) {
+      const a = typeof Fichas !== 'undefined' && Fichas.arvore ? Fichas.arvore(aid) : null;
+      if (!a || !Array.isArray(a.nodes)) continue;
+      for (const n of a.nodes) {
+        if (!n || !Array.isArray(n.graus) || !n.graus.length) continue;
+        const g = al ? Math.floor(Number(al[n.id]) || 0) : 1;
+        if (g <= 0) continue;
+        const gr = n.graus[Math.min(g, n.graus.length) - 1] || n.graus[0];
+        const u = Array.isArray(gr.uso) ? gr.uso.find(x => x && String(x.b || '').trim().toLowerCase() === String(def.barra).toLowerCase()) || gr.uso[0] : null;
+        if (!u) continue;
+        const v = String(u.v == null ? '' : u.v).trim(), custo = Math.abs(parseInt(v, 10)) || 0;
+        const pm = /Exige (?:o patamar|a Mão cheia) \(?(\d+)/i.exec(String(n.desc || '') + ' ' + String(gr.texto || ''));
+        out.push({ id: n.id, nome: n.nome, custo, inverso: v.startsWith('+'), patamar: pm ? +pm[1] : (/Exige a Mão cheia/i.test(n.desc || '') ? 7 : 0),
+          desc: String(gr.texto || '') + (n.desc ? '\n' + String(n.desc).replace(/^[^\n]*\n/, '') : ''), usos: n.usos || [] });
+      }
+    }
+    return out;
+  }
+  // os outros tokens da cena, para escolher o Escolhido, o Protegido, o Distraído
+  function alvosDe(t) {
+    const sc = Store.scene(), out = { alvos: [], aliados: [] };
+    if (!sc) return out;
+    for (const x of sc.tokens) {
+      if (x.id === t.id || x.prop || (x.hidden && !isGM())) continue;
+      const nome = tokName(x); if (!nome) continue;
+      (deJogador(x) === deJogador(t) ? out.aliados : out.alvos).push({ id: x.id, nome });
+    }
+    return out;
   }
   const chaveDe = t => (t.char ? 'c:' + t.char : 't:' + t.id);
   function atorDe(t) {
@@ -101,14 +123,16 @@ const PainelBarras = (() => {
     const barras = bs.map(x => {
       const b = P0.instancia(x.id, x.v, x.guard, { min: x.min, max: x.max });
       b.ref = x.ref; b.inicioFicha = x.inicio;
-      if (x.id === 'selene') b.s.bencao = !!x.bencao;        // (a Verdadeira Forma é da Bênção de Selene)
-      if (x.id === 'yanato') { const bn = bornalDe(t); if (bn != null) b.s.bornal = bn; }   // (lote 55: cada grau do Bornal de Cinza é um laço a mais no cinto)
+      try { b.habs = habsDe(t, x.arvs, P0.BARRA[x.id]); } catch (e) { b.habs = []; }
       return b;
     });
     const ator = { chave, tok: t.id, char: t.char || null, nome: tokName(t), dono: deJogador(t) ? 'jogador' : 'mestre', barras,
       aba: Math.max(0, Math.min(m.aba || 0, barras.length - 1)), aberto: !!m.aberto, linhas: [],
       rodada: () => (Store.scene() && Store.scene().turn.round) || 1 };
     ator.logar = texto => { ator.linhas.push(texto); };
+    Object.assign(ator, alvosDe(t));
+    ator.fila = [];
+    ator.pedirMapa = (sp, h) => { ator.fila.push({ sp, h }); };
     return ator;
   }
 
@@ -131,6 +155,7 @@ const PainelBarras = (() => {
       Store.tx(rotulo || 'Painel de barras', () => Store.upd('tokens', t.id, { bars, pb }));
     }
     publicarLinhas(ator, t);
+    if (ator.fila && ator.fila.length) porNoMapa(ator, t, ator.fila.splice(0));
   }
   // as linhas vão para a mesa ao vivo (token escondido, ou sem o nome à mostra: só o mestre vê); fora da mesa, um aviso
   function publicarLinhas(ator, t) {
@@ -141,6 +166,42 @@ const PainelBarras = (() => {
       if (naMesa) { try { T.publicar('cena', { kind: 'uso', titulo: String(texto).slice(0, 120), resumo: '', total: null, char: t.char || null, oculto: !!(t.hidden || t.showName === false), dd: [] }); } catch (e) { /* sem a casca */ } }
     }
     if (!naMesa) toast(l[l.length - 1], { key: 'painel-barras' });
+  }
+
+  /* (lote 107) O que as habilidades põem no mapa: os tokens (o esqueleto, a torreta, os lobos…) e as áreas (a Corrente, a
+     fumaça, o muro…), perto de quem usou, com a duração em turnos (contada na vez de quem usou). O jogador arrasta para o
+     lugar certo. No aparelho do jogador, vira pedido ao mestre (ver Proj.validar: só o que vem do painel, e com limite). */
+  const MAX_INV = 8;
+  function porNoMapa(ator, t, fila) {
+    const sc = Store.scene();
+    if (!sc || !Store.get('tokens', t.id)) return;
+    const cell = sc.cell, cx = t.x + t.size * cell / 2, cy = t.y + t.size * cell / 2;
+    const vez = sc.turn && Array.isArray(sc.turn.list) ? sc.turn.list.find(e => e.token === t.id) : null;
+    const quem = deJogador(t) ? (t.owner && t.owner !== '*' ? t.owner : (App.viewer || null)) : null;
+    const novos = [], areas = [];
+    for (const { sp } of fila) {
+      const n = Math.max(1, Math.min(6, sp.n || 1));
+      for (let i = 0; i < n; i++) {
+        const ang = (i / n) * Math.PI * 2 + 0.6, dist = (t.size / 2 + 0.9 + (sp.tam || 1) / 2) * cell;
+        if (sp.k === 'token') {
+          const tam = [0.5, 1, 2].includes(sp.tam) ? sp.tam : 1;
+          const bars = barDefaults().map((b, j) => (j === 0 && sp.vida > 0 ? Object.assign({}, b, { v: sp.vida, m: sp.vida, on: true }) : Object.assign({}, b, { on: false })));
+          novos.push(newToken(sc, Math.round(cx + Math.cos(ang) * dist - tam * cell / 2), Math.round(cy + Math.sin(ang) * dist - tam * cell / 2), {
+            name: String(sp.nome).slice(0, 40), color: sp.cor, size: tam, owner: quem, bars, barVis: sp.vida > 0 ? 'bar' : 'none',
+            inv: { d: Math.max(1, Math.min(20, sp.turnos || 3)), at: vez ? vez.id : null, de: t.id } }));
+        } else if (sp.k === 'area') {
+          const linha = sp.forma === 'line';
+          const x = linha ? cx : cx + (n > 1 ? Math.cos(ang) * cell * 1.5 : 0), y = linha ? cy : cy + (n > 1 ? Math.sin(ang) * cell * 1.5 : 0);
+          areas.push({ id: uid('fx'), fx: FX.P[sp.fx] ? sp.fx : 'fogo', k: linha ? 'line' : 'circ', x, y, r: Math.max(0.5, Math.min(12, linha ? sp.r * 2 : sp.r)), w: 1, rw: 3, rh: 2, ang: 60, dir: 0, pow: 0.8,
+            token: null, gm: false, by: quem || undefined, pb: true, seed: Math.floor(Math.random() * 99998) + 1, dur: Math.max(1, Math.min(20, sp.turnos || 1)), dur0: Math.max(1, Math.min(20, sp.turnos || 1)), at: vez ? vez.id : null, apply: null });
+        }
+      }
+    }
+    const dele = sc.tokens.filter(x => x.inv && x.inv.de === t.id).length;
+    const cabe = Math.max(0, MAX_INV - dele), cortados = novos.length - cabe;
+    if (!novos.length && !areas.length) return;
+    Store.tx('Painel: pôr no mapa', () => { novos.slice(0, cabe).forEach(x => Store.add('tokens', x)); areas.forEach(e => Store.add('effects', e)); });
+    if (cortados > 0) toast(`Só cabem ${MAX_INV} invocações de ${ator.nome} no mapa ao mesmo tempo.`);
   }
 
   /* ---------------- desfazer (os últimos toques neste aparelho) ---------------- */
@@ -450,5 +511,5 @@ const PainelBarras = (() => {
   // as Cenas avisam quando mudam (o desenho geral e o mapa)
   return { render, ligado, desenharSelo, novoQuadro, cliqueNoSelo, depoisDaVez, fimDoCombate, temPainel, cuida, doPainel, secaoToken, secaoTurnos, abrirNpc,
     // para os testes
-    _atorDe: atorDe, _barrasDoToken: barrasDoToken, _selos: () => selos, _hits: () => hits };
+    _atorDe: atorDe, _barrasDoToken: barrasDoToken, _selos: () => selos, _hits: () => hits, _porNoMapa: porNoMapa, _gravar: gravar };
 })();

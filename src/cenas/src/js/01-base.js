@@ -980,6 +980,7 @@ function normalizeScene(sc) {
     if (!(e.rw > 0)) e.rw = side;
     if (!(e.rh > 0)) e.rh = side;
     e.apply = cleanApply(e.apply);
+    if (e.pb === true) e.pb = true; else delete e.pb;                 // (lote 107) a área que veio do painel de barras
     // (lote 7) o portal sem uma saída que valha fica só com a entrada; os pontos da muralha, inteiros e no limite
     if (e.fx === 'portal' && !(Number.isFinite(e.x2) && Number.isFinite(e.y2))) { delete e.x2; delete e.y2; }
     if (e.pvm != null) { e.pvm = Math.max(1, Math.round(Number(e.pvm)) || 30); e.pv = clamp(Math.round(Number.isFinite(Number(e.pv)) ? Number(e.pv) : e.pvm), 0, e.pvm); }
@@ -1034,6 +1035,12 @@ function normalizeScene(sc) {
       for (const k of Object.keys(t.pb).slice(0, 3)) { const x = t.pb[k]; if (/^[a-z][a-z-]{1,24}$/.test(k) && x && typeof x === 'object' && !Array.isArray(x) && JSON.stringify(x).length < 4000) o[k] = x; }
       if (Object.keys(o).length) t.pb = o; else delete t.pb;
     } else delete t.pb;
+    // (lote 107) o que o painel de barras pôs no mapa (o esqueleto do Necromante, a torreta do Artífice…): { d: os turnos
+    // que faltam, at: a vez de quem pôs (a conta anda nela), de: o token de quem pôs }. Some quando d chega a 0.
+    if (t.inv && typeof t.inv === 'object' && !Array.isArray(t.inv) && !t.char && !t.prop) {
+      const idv = v => (typeof v === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(v) ? v : null);
+      t.inv = { d: clamp(Math.round(Number(t.inv.d)) || 1, 1, 20), at: idv(t.inv.at), de: idv(t.inv.de) };
+    } else delete t.inv;
     const sq = t.prop ? cleanSaque(t.saque) : null;
     if (sq) t.saque = sq; else delete t.saque;
     // (lote 53) a marca de pista de um caso do Escudo (e o corpo da cena do crime): { c: o caso, p: a pista }

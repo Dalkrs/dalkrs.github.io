@@ -1553,6 +1553,14 @@ const Act = {
           }
           Store.upd('tokens', t.id, { cinfo: next, conds });
         }
+        // (lote 107) o que o painel de barras pôs no mapa: conta na vez de quem pôs (ou na volta da rodada) e some no fim
+        for (const t of sc.tokens.slice()) {
+          if (!t.inv) continue;
+          const anc = !!t.inv.at && tn.list.some(x => x.id === t.inv.at);
+          if (!(anc ? tn.cur === t.inv.at : wrapped)) continue;
+          if (t.inv.d - 1 <= 0) { Store.del('tokens', t.id); ended.push(t.name); }
+          else Store.upd('tokens', t.id, { inv: Object.assign({}, t.inv, { d: t.inv.d - 1 }) });
+        }
         for (const e of sc.effects.slice()) {
           if (!(e.dur > 0)) continue;
           const anchored = !!e.at && tn.list.some(x => x.id === e.at);
