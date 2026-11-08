@@ -2068,10 +2068,7 @@ function personagemPadrao(nome,raca,tier,level,tiers){
     estaque:{a:'', b:''},
     habilidades:[],
     itens:[],
-    recursos:[
-      {id:uid(), nome:'HP', fml:'VIT*8 + LVL*5'},
-      {id:uid(), nome:'SP', fml:'CAN*6 + LVL*3'}
-    ],
+    recursos: recursosNovos(),      // (lote 97) as da mesa, se o mestre definiu; senão HP e SP
     notas:''
   };
 }
@@ -5117,7 +5114,26 @@ function htmlCfgTiers(){
         </select></label>
       <div class="hint" style="margin-top:5px">As fórmulas de HP/SP usam o valor já arredondado.</div>
     </section>
+    <section class="cfgcard">
+      <h3 class="cfgt">Barras de toda ficha nova</h3>
+      <p class="hint">(lote 97) Uma barra por linha: <b>Nome = fórmula</b> (VIT, CAN, LVL…). Vale para as fichas criadas daqui em diante, também na criação de personagem. A Vida base da raça e as barras de raça e de classe vêm sozinhas das árvores escolhidas. Em branco: HP e SP de sempre.</p>
+      <textarea id="cfgRecNovos" rows="3" style="width:100%;font-family:var(--mono,monospace)" placeholder="HP = VIT*8 + LVL*5&#10;SP = CAN*6 + LVL*3">${esc(textoRecursosNovos())}</textarea>
+    </section>
   </div>`;
+}
+/* (lote 97) As barras com que toda ficha nova nasce (S.cfg.recursosFicha: [{ nome, fml }]); sem isso, HP e SP de sempre. */
+function recursosDeSempre(){ return [{nome:'HP', fml:'VIT*8 + LVL*5'},{nome:'SP', fml:'CAN*6 + LVL*3'}]; }
+function recursosDaMesa(){
+  let cfg=null; try{ cfg=S && S.cfg; }catch(e){ cfg=null; }     // (S ainda não existe enquanto o estado padrão é montado)
+  const l=cfg && Array.isArray(cfg.recursosFicha) ? cfg.recursosFicha.filter(r=>r && String(r.nome||'').trim() && String(r.fml||'').trim()) : [];
+  return l.length ? l.map(r=>({nome:String(r.nome).trim().slice(0,30), fml:String(r.fml).trim().slice(0,200)})) : null;
+}
+function recursosNovos(){ return (recursosDaMesa() || recursosDeSempre()).map(r=>({id:uid(), nome:r.nome, fml:r.fml})); }
+function textoRecursosNovos(){ const l=recursosDaMesa(); return l ? l.map(r=>r.nome+' = '+r.fml).join('\n') : ''; }
+function lerRecursosNovos(t){
+  const out=[];
+  for(const linha of String(t||'').split(/\n+/)){ const m=/^\s*([^=]{1,30}?)\s*=\s*(.+?)\s*$/.exec(linha); if(m) out.push({nome:m[1].trim(), fml:m[2].trim().slice(0,200)}); }
+  return out.slice(0,8);
 }
 // (lote 79) a tabela dos levels em colunas de 10, cada level com os pontos e o quanto ganhou do anterior
 function htmlTabelaNiveis(){
@@ -5158,6 +5174,7 @@ function abrirCfg(){
   if(q('#addTier')) q('#addTier').onclick=()=>{S.cfg.tiersPersonagem.push({t:'X',m:1});save();reabrir()};
   m.querySelectorAll('[data-cp]').forEach(i=>i.onchange=e=>{S.cfg.pct[e.target.dataset.cp]=+e.target.value||0;save();reabrir()});
   if(q('#cfgArred')) q('#cfgArred').onchange=e=>{S.cfg.arredondar=e.target.value;save()};
+  if(q('#cfgRecNovos')) q('#cfgRecNovos').onchange=e=>{ const l=lerRecursosNovos(e.target.value); if(l.length) S.cfg.recursosFicha=l; else delete S.cfg.recursosFicha; save(); };
   FichasCorr.ligarCortes(m);
   FichasTropas.ligarCfg(m, ()=>{ if(!document.querySelector('.modal[data-cfg]')){ render(); return; } reabrir(); });
   // um level à mão: o ganho dele e o do seguinte acompanham

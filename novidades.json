@@ -2,6 +2,22 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.07-4",
+      "data": "2026-11-07",
+      "titulo": "Fichas novas já nascem com as barras da mesa",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Fichas: em Tabelas base, o mestre define com que barras toda ficha nova nasce (por exemplo, só \"HP = VIT*2\", sem SP). Vale também na criação de personagem.",
+          "mestre": true
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Criação de personagem: ao escolher a raça e a classe, a ficha já sai com a Vida base da raça e com as barras de raça e de classe."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.07-3",
       "data": "2026-11-07",
       "titulo": "Árvore de habilidades: escolhas mais fáceis de ler",

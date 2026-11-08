@@ -336,6 +336,12 @@ const FichasCriacao = (() => {
     pc.skills.arvores = [...new Set([w.raca, w.classe, ...(pc.skills.arvores || [])].filter(Boolean))];
     pc.skills.pontos = Object.assign({}, w.pontos, pc.skills.pontos || {});
     pc.skills.alocados = Object.assign({}, pc.skills.alocados || {}, w.aloc);
+    // (lote 97) as barras da mesa (S.cfg.recursosFicha): a ficha nasce com elas (a Vida base da raça e as barras de raça e de
+    // classe vêm das árvores equipadas acima); as que o mestre já tinha mudado à mão na ficha ficam como estão
+    if (typeof recursosNovos === 'function' && S.cfg && Array.isArray(S.cfg.recursosFicha) && S.cfg.recursosFicha.length) {
+      const antes = new Map((pc.recursos || []).map(r => [String(r.nome || '').trim().toLowerCase(), r]));
+      pc.recursos = recursosNovos().map(r => { const v = antes.get(r.nome.toLowerCase()); return v && !['VIT*8 + LVL*5', 'CAN*6 + LVL*3'].includes(v.fml) ? v : r; });
+    }
     pc.criacao = { conferir: true, feita: Date.now(), raca: w.raca, classe: w.classe };
     S.sel = pc.id; S.aba = 'fichas';
     fechar(); save(); render(); window.scrollTo({ top: 0 });
