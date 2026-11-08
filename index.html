@@ -532,6 +532,17 @@ dialog::backdrop { background: var(--scrim); }
 .sono[hidden] { display: none; }
 .sono strong { display: block; margin-bottom: 2px; }
 .sono p { margin: 0; font-size: 13px; line-height: 1.35; }
+/* (lote 117) o anúncio de uma conquista: no alto, para todos que estão no site */
+.cqan { position: fixed; top: 64px; left: 50%; z-index: 2147482000; display: flex; align-items: center; gap: 14px; width: min(460px, calc(100vw - 24px)); padding: 12px 16px 12px 12px;
+  border-radius: 14px; background: var(--raised); border: 2px solid var(--cor); box-shadow: var(--shadow), 0 0 28px color-mix(in srgb, var(--cor) 45%, transparent);
+  transform: translate(-50%, -18px) scale(.96); opacity: 0; transition: transform .35s cubic-bezier(.2, 1.4, .4, 1), opacity .25s; cursor: pointer; }
+.cqan.on { transform: translate(-50%, 0) scale(1); opacity: 1; }
+.cqan .ic { flex: none; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--cor) 80%, #fff), var(--cor) 75%); }
+.cqan .tx { min-width: 0; display: grid; gap: 2px; }
+.cqan .rar { font: 600 11px/1 var(--mono, monospace); text-transform: uppercase; letter-spacing: .08em; color: var(--cor); }
+.cqan b { font-size: 15px; overflow-wrap: anywhere; }
+.cqan span.d { font-size: 13px; color: var(--fg-2); overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .cqan { transition: none; } }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 24px)); padding: 9px 14px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow); }
 .toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 0; }
 
@@ -695,7 +706,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=33"></script>
-<script src="tc/tc.js?v=48"></script>
+<script src="tc/tc.js?v=49"></script>
 <script src="tc/busca.js?v=3"></script>
 <script src="tc/calendario.js?v=2"></script>
 <script src="tc/guia.js?v=57"></script>
@@ -710,11 +721,12 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/misterio.js?v=1"></script>
 <script src="tc/escudo-casca.js?v=4"></script>
 <script src="tc/tags.js?v=3"></script>
+<script src="tc/conquistas.js?v=1"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.08-12';
+  const VERSAO = '2026.11.08-13';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -737,6 +749,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     baralho: '<rect x="3.5" y="6" width="10" height="14" rx="1.5" transform="rotate(-10 8.5 13)"/><rect x="10" y="4" width="10" height="14" rx="1.5"/><path d="M15 8.2l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z"/>',
     loja: '<path d="M4 9l1.5-5h13L20 9"/><path d="M4 9h16v2a2.7 2.7 0 0 1-5.3 0 2.7 2.7 0 0 1-5.4 0A2.7 2.7 0 0 1 4 11z"/><path d="M5.5 13v7h13v-7"/><path d="M10 20v-4h4v4"/>',
     admin: '<path d="M12 3 4.5 6v5.5c0 4.4 3.1 8 7.5 9.5 4.4-1.5 7.5-5.1 7.5-9.5V6z"/><circle cx="12" cy="10.5" r="2.2"/><path d="M12 12.7V16"/>',
+    // (lote 117) as Conquistas: a taça
+    conquistas: '<path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.8 3.4M17 6h2.5a2.5 2.5 0 0 1-2.8 3.4"/><path d="M12 13v3M8.5 20h7M9.5 16h5v4h-5z"/>',
     rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
   };
   /* As abas, na ordem da barra, em três grupos (ver GRUPOS). */
@@ -751,6 +765,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     { id: 'mundo', nome: 'Mapa-múndi', src: 'mundo/', dados: true, grupo: 'mundo' },
     { id: 'jornal', nome: 'Jornal', src: 'jornal/', dados: true, grupo: 'mundo' },          // (lote 6) o jornal da mesa
     { id: 'cla', nome: 'Clã', src: 'cla/', dados: true, grupo: 'mundo' },                   // (lote 6) os clãs da mesa
+    { id: 'conquistas', nome: 'Conquistas', src: 'conquistas/', dados: true, grupo: 'mundo' }, // (lote 117) as conquistas de cada jogador
     // (lote 36) o Bestiário do clã: o livro de caça. Quem mestra o Clã monta (e o vê sempre, com o nome "Bestiário do
     // clã", para não confundir com o Bestiário dele); quem joga o vê quando o livro de um clã em que está foi liberado.
     { id: 'livro', get nome() { return mestraAba('cla') ? 'Bestiário do clã' : 'Bestiário'; }, src: 'livro/', dados: true, grupo: 'mundo', soLivro: true, permissao: 'cla' },
@@ -770,7 +785,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
      (o que o mestre monta antes). */
   const GRUPOS = [
     { id: 'sessao', nome: 'Sessão', dica: 'A mesa rodando: as cenas, as fichas' },
-    { id: 'mundo', nome: 'Mundo', dica: 'O mapa-múndi, o jornal e o clã' },
+    { id: 'mundo', nome: 'Mundo', dica: 'O mapa-múndi, o jornal, o clã e as conquistas' },
     { id: 'descanso', nome: 'Descanso', dica: 'O acampamento, a meditação e a árvore' },
     { id: 'preparar', nome: 'Preparar', dica: 'O que se monta antes da sessão' },
   ];
@@ -2476,7 +2491,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (!a || !TC.rules) return;
     let P, D;
     try { P = TC.dados.col('personagens'); D = TC.dados.col('documentos'); } catch (e) { return; }
-    Promise.all([P.pronta, D.pronta]).then(() => { if (mesas.atual === a) { dadosProntos = true; conferirLevels(); pintarDados(); repintarPedidosAbertos(); } }, () => { /* sem os dados da mesa, a telinha não aparece */ });
+    Promise.all([P.pronta, D.pronta]).then(() => { if (mesas.atual === a) { dadosProntos = true; conferirLevels(); conferirConquistas(); pintarDados(); repintarPedidosAbertos(); } }, () => { /* sem os dados da mesa, a telinha não aparece */ });
   }
   function pintarDados() {
     const a = mesas.atual;
@@ -2632,6 +2647,81 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     }
   }
   TC.dados.on('muda', col => { if (col === 'personagens') conferirLevels(); });
+  /* (lote 117) As conquistas: quando o mestre libera uma, todos que estão no site ouvem um toque e veem o anúncio. A
+     comum vem inteira; a rara, a épica e a lendária, só a raridade ("Fulano conquistou uma conquista Épica!") — o nome
+     e a descrição, só quem ganhou (e o mestre). Cada anúncio toca uma vez por aparelho (fica guardado o que já tocou), e
+     só os recentes (de menos de 10 minutos): abrir o site mais tarde não toca os antigos. */
+  const CQ = TC.conquistas;
+  const chaveCq = () => (mesas.atual ? 'tinycats:conq:vistos:' + mesas.atual.id : null);
+  function tocarConquista(rar) {
+    try {
+      if (!garantirAudio()) return;
+      const soar = () => {
+        const t0 = audio.currentTime + 0.03, saida = audio.createGain();
+        saida.gain.value = 0.2; saida.connect(audio.destination);
+        const nota = (fq, q, dura, tipo, vol) => {
+          const o = audio.createOscillator(), e = audio.createGain();
+          o.type = tipo; o.frequency.value = fq;
+          e.gain.setValueAtTime(0.0001, q); e.gain.exponentialRampToValueAtTime(vol, q + 0.012); e.gain.exponentialRampToValueAtTime(0.0001, q + dura);
+          o.connect(e); e.connect(saida); o.start(q); o.stop(q + dura + 0.05);
+        };
+        // o "plim" de conquista: duas notas que sobem e um sino; quanto mais rara, mais brilho por cima
+        nota(987.77, t0, 0.18, 'triangle', 0.5); nota(1318.5, t0 + 0.11, 0.55, 'triangle', 0.55);
+        nota(1975.5, t0 + 0.11, 0.7, 'sine', 0.22); nota(659.25, t0 + 0.11, 0.5, 'square', 0.08);
+        const extra = { rara: 1, epica: 2, lendaria: 3 }[rar] || 0;
+        [2637, 3135.96, 3951.07].slice(0, extra).forEach((fq, i) => nota(fq, t0 + 0.32 + i * 0.09, 0.3, 'sine', 0.2));
+        if (rar === 'lendaria') [523.25, 659.25, 783.99].forEach(fq => nota(fq, t0 + 0.11, 1.2, 'triangle', 0.25));
+      };
+      if (audio.state === 'suspended') audio.resume().then(soar, () => {}); else soar();
+    } catch (e) { /* sem som neste aparelho */ }
+  }
+  const filaCq = [];
+  let mostrandoCq = false;
+  function mostrarConquista(a) {
+    filaCq.push(a);
+    if (mostrandoCq) return;
+    const proximo = () => {
+      const x = filaCq.shift();
+      if (!x) { mostrandoCq = false; return; }
+      mostrandoCq = true;
+      tocarConquista(x.rar);
+      const el = h('div', { class: 'cqan', role: 'status', style: '--cor:' + x.cor, title: 'Abrir as Conquistas' });
+      const ic = h('div', { class: 'ic' }); ic.innerHTML = x.oculta ? CQ.svgOculta(30) : CQ.svgDe(x.ic, 30);       // (desenhos fixos do núcleo)
+      el.append(ic, h('div', { class: 'tx' }, h('span', { class: 'rar', text: 'Conquista ' + x.nomeRar }), h('b', { text: x.titulo }),
+        x.desc ? h('span', { class: 'd', text: x.desc }) : null, x.premio ? h('span', { class: 'd', text: 'Prêmio: ' + x.premio }) : null));
+      let foi = false;
+      const sair = () => { if (foi) return; foi = true; el.classList.remove('on'); setTimeout(() => { el.remove(); proximo(); }, 380); };
+      el.addEventListener('click', () => { sair(); if (pode('conquistas')) abrir('conquistas'); });
+      document.body.append(el);
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('on')));
+      setTimeout(sair, x.oculta ? 6000 : 8000);
+    };
+    proximo();
+  }
+  function conferirConquistas(tentativa) {
+    const a = mesas.atual, eu = conta.usuario ? conta.usuario.id : null, k = chaveCq();
+    if (!a || !eu || !k) return;
+    const D = TC.dados.col('documentos'), doc = id => { const l = D.pegar(id); return l && !l.apagado ? l.dados : null; };
+    const pb = doc(CQ.PUB);
+    if (!pb || !Array.isArray(pb.log)) return;
+    let vistos; try { vistos = JSON.parse(ler(k) || '[]'); } catch (e) { vistos = []; }
+    if (!Array.isArray(vistos)) vistos = [];
+    const agora = Date.now(), novos = pb.log.filter(l => l && l.k && !vistos.includes(l.k));
+    if (!novos.length) return;
+    const meuJ = doc(CQ.PRE_J + eu), lst = a.papel === 'mestre' ? doc(CQ.LISTA) : null;
+    const nomeDe = u => { const m = (a.membros || []).find(x => x.usuario_id === u); return m ? m.nome : null; };
+    let esperar = false;
+    for (const l of novos) {
+      // (a minha: a conquista inteira chega no meu documento — se ainda não chegou, espero um pouco por ela)
+      if (l.u === eu && !lst && !(meuJ && Array.isArray(meuJ.itens) && meuJ.itens.some(x => x && x.id === l.c)) && (tentativa || 0) < 4) { esperar = true; continue; }
+      vistos.push(l.k);
+      if (Math.abs(agora - (Number(l.em) || 0)) > 10 * 60e3) continue;
+      mostrarConquista(CQ.anuncio(l, pb, eu, meuJ, lst, nomeDe));
+    }
+    gravar(k, JSON.stringify(vistos.slice(-200)));
+    if (esperar) setTimeout(() => conferirConquistas((tentativa || 0) + 1), 1500);
+  }
+  TC.dados.on('muda', (col, linha) => { if (col === 'documentos' && linha && typeof linha.id === 'string' && (linha.id === CQ.PUB || linha.id.startsWith(CQ.PRE_J))) conferirConquistas(); });
   TC.dados.on('muda', col => { if ((col === 'personagens' || col === 'documentos') && dadosProntos) { clearTimeout(tDados); tDados = setTimeout(() => { pintarDados(); repintarPedidosAbertos(); }, 200); } });
   aoVivo.on('estado', c => { const s = $('sinal'); s.classList.toggle('on', c); s.title = c ? 'Ao vivo' : 'Atualizando a cada poucos segundos'; });
   /* (lote 86) o sono da mesa (ver tc.js): o cartão no canto, sem cobrir a mesa, e a saída por inatividade */

@@ -1297,6 +1297,7 @@
   const aceita = (nome, r) => nome !== 'documentos' || r.dono_id == null || r.id === 'cena:pedido:' + r.dono_id
     || r.id === 'jornal:cartas:' + r.dono_id || r.id === 'jornal:resp:' + r.dono_id
     || r.id === 'mundo:rabisco:' + r.dono_id                       // (lote 17) a caneta de cada um no Mapa-múndi
+    || r.id === 'conq:j:' + r.dono_id                              // (lote 117) as conquistas de cada jogador (só ele e o mestre)
     || (typeof r.id === 'string' && (r.id.startsWith('medit:pratica:') || r.id.startsWith('medit:achados:') || r.id.startsWith('medit:palavras:')))     // (lote 45: o dicionário)
     || (typeof r.id === 'string' && r.id.startsWith('fichas:corr:'))       // (lote 37) a corrupção: o dono é o dono do personagem
     || (typeof r.id === 'string' && r.id.startsWith('fichas:tropas:'))     // (lote 40) a tropa: o dono é o dono do personagem

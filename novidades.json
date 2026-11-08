@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-13",
+      "data": "2026-11-08",
+      "titulo": "Conquistas",
+      "itens": [
+        { "tipo": "novo", "texto": "Aba Conquistas, no grupo Mundo. Cada jogador tem as suas. As comuns ficam à mostra; as raras, épicas e lendárias ficam ocultas (\"???\") até a pessoa ganhar. Passando o mouse, dá para ver quem já ganhou." },
+        { "tipo": "novo", "texto": "Quando o mestre libera uma conquista, todo mundo que está no site ouve um toque e vê o anúncio. A comum aparece inteira; nas outras, só a raridade, e o nome fica só para quem ganhou." },
+        { "tipo": "novo", "texto": "O mestre já começa com 40 conquistas do mundo, libera, tira, cria e edita as dele (com mais de 40 ícones e um campo de prêmio, que ele aplica na ficha).", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.08-12",
       "data": "2026-11-08",
       "titulo": "Bolinhas ou barra no token",
