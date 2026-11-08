@@ -13,13 +13,14 @@ const R = require('../../tc/rules.js');
 
 // ---------- as contas ----------
 const raca = { id: 'pr', nome: 'Raça', padrao: 4 }, classe = { id: 'pc', nome: 'Classe', padrao: 6 }, escola = { id: 'pe', nome: 'Escola', padrao: 1 };
-ok(R.POR_NIVEL_PADRAO === 3 && R.porNivelDoTipo(raca) === 3 && R.porNivelDoTipo(classe) === 3 && R.porNivelDoTipo({ nome: ' raça ' }) === 3 && R.porNivelDoTipo(escola) === 0 && R.porNivelDoTipo(null) === 0,
-  'Raça e Classe sobem 3 por nível (pelo nome, sem acento nem maiúscula); Escola e o resto, 0');
+ok(R.POR_NIVEL_PADRAO.raca === 1 && R.POR_NIVEL_PADRAO.classe === 2 && R.porNivelDoTipo({ nome: ' raça ' }) === 1 && R.porNivelDoTipo({ nome: 'Classe' }) === 2 && R.porNivelDoTipo(escola) === 0 && R.porNivelDoTipo(null) === 0,
+  '(lote 108) sem o campo: Raça sobe 1 e Classe 2 por nível (pelo nome, sem acento nem maiúscula); Escola e o resto, 0');
+raca.porNivel = 3; classe.porNivel = 3; // o resto das contas usa 3 escrito no tipo
 ok(j([1, 7, 9, 10, 30].map(n => R.tetoDoTipo(raca, n))) === j([4, 22, 28, 31, 91]) && j([1, 9, 30].map(n => R.tetoDoTipo(classe, n))) === j([6, 30, 93]),
   'o teto: Raça 4, 22, 28, 31 e 91 nos níveis 1, 7, 9, 10 e 30; Classe 6, 30 e 93 nos níveis 1, 9 e 30');
 ok(R.tetoDoTipo(escola, 9) === null && R.tetoDoTipo(Object.assign({}, raca, { porNivel: 0 }), 9) === null && R.tetoDoTipo(Object.assign({}, escola, { porNivel: 2 }), 4) === 7 && R.tetoDoTipo(Object.assign({}, raca, { porNivel: '5' }), 3) === 14,
   'porNivel manda: 0 tira o teto da Raça; 2 dá teto à Escola (1 + 2×3 = 7 no nível 4); "5" (texto) vale 5');
-ok(R.tetoDoTipo(raca, 0) === 4 && R.tetoDoTipo(raca, null) === 4 && R.tetoDoTipo(raca, '9') === 28 && R.tetoDoTipo({ nome: 'Raça' }, 3) === 6, 'nível vazio ou 0 conta como 1; o nível em texto vale; sem padrão, 0 no nível 1');
+ok(R.tetoDoTipo(raca, 0) === 4 && R.tetoDoTipo(raca, null) === 4 && R.tetoDoTipo(raca, '9') === 28 && R.tetoDoTipo({ nome: 'Raça' }, 3) === 2, 'nível vazio ou 0 conta como 1; o nível em texto vale; sem padrão, 0 no nível 1 (e a Raça, sem o campo, +1 por nível)');
 const c1 = R.contaDoTeto(raca, 27, 9), c2 = R.contaDoTeto(raca, 28, 9), c3 = R.contaDoTeto(raca, 31, 9), c4 = R.contaDoTeto(escola, 10, 9), c5 = R.contaDoTeto(raca, 25, 9);
 ok(c1.estado === 'abaixo' && c1.d === -1 && c1.txt === '27 de 28 · falta 1' && c5.txt === '25 de 28 · faltam 3' && /Falta 1 ponto para chegar ao teto/.test(c1.dica), 'abaixo do teto: "27 de 28 · falta 1", "25 de 28 · faltam 3"');
 ok(c2.estado === 'no' && c2.txt === '28 de 28 · no teto' && /teto do nível 9: 28 \(4 no nível 1, \+3 por nível\)\. Está no teto\./.test(c2.dica), 'no teto: "28 de 28 · no teto", e a dica explica a conta');
@@ -46,6 +47,8 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
     const r = await teto('pr'), c = await teto('pc'), e = await teto('pe');
     ok(r && r.txt === '31 · teto 28 · +3 extraordinário' && /\bextra\b/.test(r.cls) && /teto do nível 9: 28/.test(r.dica), 'Raça no nível 9: 31 pontos, teto 28 → "+3 extraordinário", na cor do extraordinário — ' + j(r));
     ok(c && c.txt === '30 de 30 · no teto' && /\bcerto\b/.test(c.cls), 'Classe: 30 de 30, no teto (a cor de "certo") — ' + j(c));
+    const rg = (await F.locator('#painelAsc [data-ascregra]').innerText()).replace(/\s+/g, ' ');
+    ok(/Raça: 4 no nível 1, \+3 por nível · Classe: 6 no nível 1, \+3 por nível\. No nível 9, o teto é: Raça 28, Classe 30\./.test(rg) && !/Escola/.test(rg), '(lote 108) a regra dos pontos fica à vista no quadro, com o teto do nível — ' + rg);
     ok(e && e.txt === 'o mestre distribui' && /\bmestre\b/.test(e.cls), 'Escola: "o mestre distribui", sem teto — ' + j(e));
     ok((await F.locator('#painelAsc [data-asc="pr"] .ascconta').innerText()).replace(/\s+/g, ' ') === '2 gastos · 29 livres', 'a conta de gastos e livres continua a mesma, ao lado');
     await F.locator('[data-ascstep="pc|-1"]').click(); await w(300);
@@ -79,7 +82,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
     await A.locator('.lista-ed.pool[data-id="pe"] .pool-nivel').fill('2'); await A.locator('.lista-ed.pool[data-id="pe"] .pool-nivel').press('Tab'); await A.waitForTimeout(250);
     await A.locator('.lista-ed.pool[data-id="pr"] .pool-nivel').fill('0'); await A.locator('.lista-ed.pool[data-id="pr"] .pool-nivel').press('Tab'); await A.waitForTimeout(250);
     const p = await A.evaluate(() => bib().pools.map(x => [x.id, 'porNivel' in x ? x.porNivel : 'sem']));
-    ok(j(p) === j([['pr', 0], ['pc', 'sem'], ['pe', 2]]), 'mudar grava porNivel (Escola 2, Raça 0); a Classe, sem mexer, fica sem o campo — ' + j(p));
+    ok(j(p) === j([['pr', 0], ['pc', 3], ['pe', 2]]), 'mudar grava porNivel (Escola 2, Raça 0); a Classe, sem mexer, fica como estava — ' + j(p));
     await A.locator('.lista-ed.pool[data-id="pr"] .pool-nivel').fill('3'); await A.locator('.lista-ed.pool[data-id="pr"] .pool-nivel').press('Tab'); await A.waitForTimeout(250);
   });
   await passo(A, 'a bolsa do personagem', async () => {

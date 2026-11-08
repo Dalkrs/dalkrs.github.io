@@ -2,14 +2,47 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-4",
+      "data": "2026-11-08",
+      "titulo": "Pontos por nível e a Kitsune",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: a Ascensão mostra a regra dos pontos e o teto do nível do personagem. Agora são 5 de Raça e 5 de Classe no nível 1; depois, +1 de Raça e +2 de Classe por nível. No nível 30, dá para comprar mais ou menos metade da árvore de raça e dois terços da de classe: é preciso escolher.",
+          "mestre": true
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Kitsune: quem dá as caudas é o mestre (na ficha, sobe o máximo da barra Caudas, até 9). As passivas que davam cauda viraram seis habilidades novas."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Árvores: as escolhas de uma coisa ou outra (encruzilhadas e topos) voltaram a pedir só uma das duas."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.08-3",
       "data": "2026-11-08",
       "titulo": "Cenas: o painel novo de cada classe, do Vampiro e do Lobisomem",
       "itens": [
-        { "tipo": "novo", "texto": "Cenas: as 18 classes, o Vampiro e o Lobisomem ganharam o disco próprio no painel de barras: a postura do Samurai e do Monge, o Voto do Aégis, a flecha na corda do Arqueiro, as Palavras do Mago, as Formas do Druida, os frascos de alma do Necromante, a Lua do Lobisomem e mais." },
-        { "tipo": "novo", "texto": "Cenas: o painel lista as habilidades do personagem com o custo; tocar usa a habilidade, gasta a barra e avisa na mesa ao vivo. O topo só sai com o patamar que ele pede." },
-        { "tipo": "novo", "texto": "Cenas: habilidades que invocam ou criam áreas (esqueletos, torretas, lobos, Correntes de vento, fumaça, muros) põem a coisa no mapa, perto de quem usou; ela some sozinha quando os turnos acabam." },
-        { "tipo": "melhorou", "texto": "Cenas: os painéis do mundo antigo saíram.", "mestre": true }
+        {
+          "tipo": "novo",
+          "texto": "Cenas: as 18 classes, o Vampiro e o Lobisomem ganharam o disco próprio no painel de barras: a postura do Samurai e do Monge, o Voto do Aégis, a flecha na corda do Arqueiro, as Palavras do Mago, as Formas do Druida, os frascos de alma do Necromante, a Lua do Lobisomem e mais."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o painel lista as habilidades do personagem com o custo; tocar usa a habilidade, gasta a barra e avisa na mesa ao vivo. O topo só sai com o patamar que ele pede."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: habilidades que invocam ou criam áreas (esqueletos, torretas, lobos, Correntes de vento, fumaça, muros) põem a coisa no mapa, perto de quem usou; ela some sozinha quando os turnos acabam."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: os painéis do mundo antigo saíram.",
+          "mestre": true
+        }
       ]
     },
     {
@@ -17,11 +50,27 @@
       "data": "2026-11-08",
       "titulo": "Raças e classes novas: todas as habilidades reescritas",
       "itens": [
-        { "tipo": "novo", "texto": "Árvore: as 14 raças, as 18 classes e as linhagens Vampiro e Lobisomem foram reescritas. Cada habilidade mostra o papel (ícones), se gasta ou enche a barra, e uma linha do que se vê." },
-        { "tipo": "novo", "texto": "Criar personagem: cada raça e cada classe começa com uma apresentação que conta como é jogar com ela." },
-        { "tipo": "melhorou", "texto": "Números: dano, defesa e cura agora usam uma escala de 1 a 5 (Dano 3, Defesa +2). O mestre diz quanto cada número vale na mesa." },
-        { "tipo": "melhorou", "texto": "Fichas: a Vida agora depende da raça (Vitalidade × 1, × 2 ou × 3, mais a base da raça).", "mestre": true },
-        { "tipo": "melhorou", "texto": "Barras: cada classe enche a barra do seu jeito e tem patamares em 5, 10 e 15; as bolinhas de raça vão de 5 a 10 e voltam por um costume do povo." }
+        {
+          "tipo": "novo",
+          "texto": "Árvore: as 14 raças, as 18 classes e as linhagens Vampiro e Lobisomem foram reescritas. Cada habilidade mostra o papel (ícones), se gasta ou enche a barra, e uma linha do que se vê."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Criar personagem: cada raça e cada classe começa com uma apresentação que conta como é jogar com ela."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Números: dano, defesa e cura agora usam uma escala de 1 a 5 (Dano 3, Defesa +2). O mestre diz quanto cada número vale na mesa."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: a Vida agora depende da raça (Vitalidade × 1, × 2 ou × 3, mais a base da raça).",
+          "mestre": true
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Barras: cada classe enche a barra do seu jeito e tem patamares em 5, 10 e 15; as bolinhas de raça vão de 5 a 10 e voltam por um costume do povo."
+        }
       ]
     },
     {
@@ -29,10 +78,23 @@
       "data": "2026-11-08",
       "titulo": "A aba Baralho: as cartas da Cartomante",
       "itens": [
-        { "tipo": "novo", "texto": "Baralho: cada personagem tem a sua coleção de cartas. Na luta, puxa 3 no começo e 1 por turno (mão de até 7); jogar, armar uma armadilha (num quadrado das Cenas), disparar, descartar e, nas lendárias, virar a carta." },
-        { "tipo": "novo", "texto": "Baralho: a mão é secreta (só o dono e o mestre veem). A carta jogada vai para a mesa ao vivo, para todos." },
-        { "tipo": "novo", "texto": "Baralho: fora da luta, a leitura de 1 ou 3 cartas (passado, presente e futuro). O mestre interpreta." },
-        { "tipo": "novo", "texto": "Baralho: o mestre dá e tira cartas (comum, rara ou lendária) e escreve o que cada uma das 22 cartas faz.", "mestre": true }
+        {
+          "tipo": "novo",
+          "texto": "Baralho: cada personagem tem a sua coleção de cartas. Na luta, puxa 3 no começo e 1 por turno (mão de até 7); jogar, armar uma armadilha (num quadrado das Cenas), disparar, descartar e, nas lendárias, virar a carta."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Baralho: a mão é secreta (só o dono e o mestre veem). A carta jogada vai para a mesa ao vivo, para todos."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Baralho: fora da luta, a leitura de 1 ou 3 cartas (passado, presente e futuro). O mestre interpreta."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Baralho: o mestre dá e tira cartas (comum, rara ou lendária) e escreve o que cada uma das 22 cartas faz.",
+          "mestre": true
+        }
       ]
     },
     {
@@ -853,11 +915,11 @@
         {
           "tipo": "novo",
           "mestre": true,
-          "texto": "Clã: as construções em linhas, com a barra do que o cofre já tem, a estrela de favorita, etiquetas e os filtros \u201cDá para subir\u201d, \u201cFavoritas\u201d e por etiqueta; a ordem pode ser de A a Z ou pelo nível."
+          "texto": "Clã: as construções em linhas, com a barra do que o cofre já tem, a estrela de favorita, etiquetas e os filtros “Dá para subir”, “Favoritas” e por etiqueta; a ordem pode ser de A a Z ou pelo nível."
         },
         {
           "tipo": "novo",
-          "texto": "Clã: a sede pode ficar ligada a uma cena das Cenas. O mestre escolhe a cena; o botão \u201cAbrir a cena\u201d leva até ela, também no salão."
+          "texto": "Clã: a sede pode ficar ligada a uma cena das Cenas. O mestre escolhe a cena; o botão “Abrir a cena” leva até ela, também no salão."
         },
         {
           "tipo": "novo",
@@ -1975,10 +2037,10 @@
           "mestre": true,
           "texto": "Masmorras: a largura dos corredores (1, 2 ou 3 quadrados), escolhida antes de gerar, na janela da Entrada e no “Gerar um lugar…”. A Entrada do nível de baixo lembra a largura."
         },
-    {
-      "tipo": "novo",
-      "texto": "Árvore: a categoria Linhagem, logo depois de Raça. No “Selecionar árvore” ela tem a aba Linhagens; as árvores dela gastam pontos do tipo “Linhagem”, que nasce com a primeira árvore da categoria (cada personagem começa com 0). Nas Fichas, as árvores de Linhagem aparecem no grupo delas."
-    }
+        {
+          "tipo": "novo",
+          "texto": "Árvore: a categoria Linhagem, logo depois de Raça. No “Selecionar árvore” ela tem a aba Linhagens; as árvores dela gastam pontos do tipo “Linhagem”, que nasce com a primeira árvore da categoria (cada personagem começa com 0). Nas Fichas, as árvores de Linhagem aparecem no grupo delas."
+        }
       ]
     },
     {
@@ -4848,14 +4910,45 @@
       "data": "2026-10-08",
       "titulo": "Mapa-múndi desenhado: terreno à mão, carimbos, rios e zonas de guerra",
       "itens": [
-        { "tipo": "novo", "mestre": true, "texto": "Pincel livre de terreno, na ferramenta Terreno: pinte à mão com a textura de cada tipo (árvores na floresta, montes na montanha, ondas na água…), por cima da imagem ou num mapa do zero, com borracha e desfazer. Não precisa de grade." },
-        { "tipo": "novo", "mestre": true, "texto": "Com a grade, cada hexágono ganha o terreno do desenho, e o custo dele conta na viagem. Pintar por hexágono corrige um a um: “Sem terreno” vale mais que o desenho, e “Seguir o desenho” tira a correção." },
-        { "tipo": "novo", "mestre": true, "texto": "Ferramenta nova, Desenho (tecla P), com carimbos: árvore, pinheiro, bosque, montanha, serra, colinas, vulcão, rochas, ondas, juncos, dunas, navio, casario e ruínas. Um clique põe um; arrastando, você espalha vários de uma vez." },
-        { "tipo": "novo", "mestre": true, "texto": "Textos livres no mapa, com letra de mapa antigo, clássica ou simples, e o tamanho, o giro, o espaço entre as letras e a cor que você quiser." },
-        { "tipo": "novo", "mestre": true, "texto": "Rios, estradas e trilhas com desenho orgânico: a linha passa suave por todos os pontos, o rio engrossa da nascente até a foz, a estrada é tracejada, a trilha é pontilhada, e o nome vai ao longo da linha." },
-        { "tipo": "novo", "mestre": true, "texto": "Zonas de guerra, na ferramenta Frente: a área das duas facções, em listras com as cores delas, pulsando enquanto a guerra acontece. Com as fases, a zona cresce, encolhe ou muda de lugar com o passar dos dias." },
-        { "tipo": "melhorou", "mestre": true, "texto": "Na aba Terreno: a textura de cada tipo de terreno, a força do desenho por cima da imagem e “Apagar o desenho” (com desfazer)." },
-        { "tipo": "melhorou", "texto": "Os jogadores veem o desenho, os carimbos, os textos, os rios e as guerras de hoje (também listadas na aba Hoje). O que a névoa cobre, as fases que ainda vêm e quando a guerra termina continuam só com o mestre." }
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Pincel livre de terreno, na ferramenta Terreno: pinte à mão com a textura de cada tipo (árvores na floresta, montes na montanha, ondas na água…), por cima da imagem ou num mapa do zero, com borracha e desfazer. Não precisa de grade."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Com a grade, cada hexágono ganha o terreno do desenho, e o custo dele conta na viagem. Pintar por hexágono corrige um a um: “Sem terreno” vale mais que o desenho, e “Seguir o desenho” tira a correção."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Ferramenta nova, Desenho (tecla P), com carimbos: árvore, pinheiro, bosque, montanha, serra, colinas, vulcão, rochas, ondas, juncos, dunas, navio, casario e ruínas. Um clique põe um; arrastando, você espalha vários de uma vez."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Textos livres no mapa, com letra de mapa antigo, clássica ou simples, e o tamanho, o giro, o espaço entre as letras e a cor que você quiser."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Rios, estradas e trilhas com desenho orgânico: a linha passa suave por todos os pontos, o rio engrossa da nascente até a foz, a estrada é tracejada, a trilha é pontilhada, e o nome vai ao longo da linha."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Zonas de guerra, na ferramenta Frente: a área das duas facções, em listras com as cores delas, pulsando enquanto a guerra acontece. Com as fases, a zona cresce, encolhe ou muda de lugar com o passar dos dias."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Na aba Terreno: a textura de cada tipo de terreno, a força do desenho por cima da imagem e “Apagar o desenho” (com desfazer)."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Os jogadores veem o desenho, os carimbos, os textos, os rios e as guerras de hoje (também listadas na aba Hoje). O que a névoa cobre, as fases que ainda vêm e quando a guerra termina continuam só com o mestre."
+        }
       ]
     },
     {
@@ -4863,15 +4956,49 @@
       "data": "2026-10-08",
       "titulo": "Mapa-múndi: hexágonos, terreno e viagem em cubos",
       "itens": [
-        { "tipo": "novo", "mestre": true, "texto": "A grade de hexágonos no Mapa-múndi: na nova aba Terreno, o mestre define o tamanho do hexágono — ou mede com a régua, arrastando sobre alguns hexágonos da imagem —, a orientação (com a ponta ou com um lado para cima), a posição e se a grade aparece para todos." },
-        { "tipo": "melhorou", "texto": "As distâncias do mundo agora são em cubos, como nas fichas: um hexágono tem 5 cubos. A rota diz quantos hexágonos tem, quanto custa pelo terreno e quantos dias leva." },
-        { "tipo": "novo", "mestre": true, "texto": "Tipos de terreno, cada um com o seu custo em cubos por hexágono (Planície 5, Colina 8, Floresta 10, Montanha 15…): dá para mudar o nome, a cor e o custo, criar outros, e pintar o terreno de hexágono em hexágono com a ferramenta Terreno (tecla H), num pincel de 1, 7 ou 19 hexágonos." },
-        { "tipo": "novo", "mestre": true, "texto": "Custo próprio: o mestre pode mudar quanto custa um hexágono só, ou dar um custo a uma região inteira. Com a ferramenta Terreno, a dica diz quanto custa o hexágono embaixo do cursor e de onde vem esse custo." },
-        { "tipo": "novo", "mestre": true, "texto": "A régua mede em hexágonos: quantos há em linha reta, os cubos disso e quanto dá pelo terreno de cada um." },
-        { "tipo": "novo", "mestre": true, "texto": "Viagem de hexágono em hexágono: cada grupo anda os cubos por dia dele (30 de começo) e gasta, em cada hexágono, o custo do terreno. O que sobra fica para o dia seguinte — atravessar uma montanha de 15 cubos andando 10 por dia leva dois dias." },
-        { "tipo": "melhorou", "mestre": true, "texto": "“Andar 1 dia” também passa o dia no calendário (um Desfazer volta as duas coisas), e com dois ou mais grupos viajando a aba Hoje oferece “Andar 1 dia com todos”: cada um anda o seu, num dia só." },
-        { "tipo": "melhorou", "texto": "Os jogadores veem a grade, quando o mestre a mostra, e o terreno dos hexágonos à vista; o que está sob a névoa e os custos que o mestre mudou continuam só com ele." },
-        { "tipo": "melhorou", "mestre": true, "texto": "Os mapas que já existiam continuam iguais: a escala em km vira a grade que dá a mesma escala (1 km = 1 cubo), escondida, e o ritmo de cada grupo vira cubos por dia (lento 20, normal 30, rápido 40)." }
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A grade de hexágonos no Mapa-múndi: na nova aba Terreno, o mestre define o tamanho do hexágono — ou mede com a régua, arrastando sobre alguns hexágonos da imagem —, a orientação (com a ponta ou com um lado para cima), a posição e se a grade aparece para todos."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "As distâncias do mundo agora são em cubos, como nas fichas: um hexágono tem 5 cubos. A rota diz quantos hexágonos tem, quanto custa pelo terreno e quantos dias leva."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Tipos de terreno, cada um com o seu custo em cubos por hexágono (Planície 5, Colina 8, Floresta 10, Montanha 15…): dá para mudar o nome, a cor e o custo, criar outros, e pintar o terreno de hexágono em hexágono com a ferramenta Terreno (tecla H), num pincel de 1, 7 ou 19 hexágonos."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Custo próprio: o mestre pode mudar quanto custa um hexágono só, ou dar um custo a uma região inteira. Com a ferramenta Terreno, a dica diz quanto custa o hexágono embaixo do cursor e de onde vem esse custo."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A régua mede em hexágonos: quantos há em linha reta, os cubos disso e quanto dá pelo terreno de cada um."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Viagem de hexágono em hexágono: cada grupo anda os cubos por dia dele (30 de começo) e gasta, em cada hexágono, o custo do terreno. O que sobra fica para o dia seguinte — atravessar uma montanha de 15 cubos andando 10 por dia leva dois dias."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "“Andar 1 dia” também passa o dia no calendário (um Desfazer volta as duas coisas), e com dois ou mais grupos viajando a aba Hoje oferece “Andar 1 dia com todos”: cada um anda o seu, num dia só."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Os jogadores veem a grade, quando o mestre a mostra, e o terreno dos hexágonos à vista; o que está sob a névoa e os custos que o mestre mudou continuam só com ele."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Os mapas que já existiam continuam iguais: a escala em km vira a grade que dá a mesma escala (1 km = 1 cubo), escondida, e o ritmo de cada grupo vira cubos por dia (lento 20, normal 30, rápido 40)."
+        }
       ]
     },
     {
@@ -4879,16 +5006,52 @@
       "data": "2026-10-08",
       "titulo": "Acampamento: rações, aura e caravana",
       "itens": [
-        { "tipo": "novo", "mestre": true, "texto": "Rações com efeito: cada provisão pode mudar o Conforto, a Sanidade e a recuperação de quem a come, e pôr na ficha um bônus (até o próximo descanso ou por algumas rodadas), uma barra que recupera (um número ou dados, como 2d6+3) ou sobrevida." },
-        { "tipo": "novo", "mestre": true, "texto": "Em Provisões, “O que cada descanso serve”: a provisão que sai primeiro no descanso longo e no curto, e quantas rações cada um come. Na hora do descanso dá para servir outra, e a prévia mostra quem come o quê e o que vai para cada ficha." },
-        { "tipo": "novo", "mestre": true, "texto": "Melhorias e equipamentos podem valer só para alguns personagens ou grupos, e também podem pôr bônus, barras ou sobrevida na ficha no descanso longo." },
-        { "tipo": "novo", "texto": "A aura da emoção: no Acampamento, cada um escolhe a emoção do próprio personagem (Calmo, Alegre, Com raiva…), e um brilho na cor dela aparece em volta do retrato, para todos." },
-        { "tipo": "novo", "mestre": true, "texto": "A aba Caravana, no Acampamento: veículos e animais (quanto levam e em que estado estão), a carga com o peso — com aviso quando passa do que os veículos levam — e quem viaja junto." },
-        { "tipo": "novo", "texto": "Nas Fichas, cada bônus temporário diz como acaba: uma anotação, até o próximo descanso (o Acampamento tira) ou rodadas, que você desconta com − e + (com 0, ele para de somar)." },
-        { "tipo": "melhorou", "mestre": true, "texto": "Em Provisões, o nome inteiro de cada provisão aparece (a ordem e a quantidade foram para a linha de baixo)." },
-        { "tipo": "melhorou", "mestre": true, "texto": "Na janela do momento entre dois personagens, escolher de um lado quem está do outro troca os dois de lugar." },
-        { "tipo": "consertado", "texto": "Logo depois de abrir uma mesa, o menu da conta podia fechar sozinho quando as Cenas abriam o tutorial ou a oferta de trazer as cenas do navegador. Agora elas esperam o menu fechar." },
-        { "tipo": "consertado", "texto": "Nas Fichas, em tela estreita, a lista de bônus temporários ficava embaralhada." }
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Rações com efeito: cada provisão pode mudar o Conforto, a Sanidade e a recuperação de quem a come, e pôr na ficha um bônus (até o próximo descanso ou por algumas rodadas), uma barra que recupera (um número ou dados, como 2d6+3) ou sobrevida."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Em Provisões, “O que cada descanso serve”: a provisão que sai primeiro no descanso longo e no curto, e quantas rações cada um come. Na hora do descanso dá para servir outra, e a prévia mostra quem come o quê e o que vai para cada ficha."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Melhorias e equipamentos podem valer só para alguns personagens ou grupos, e também podem pôr bônus, barras ou sobrevida na ficha no descanso longo."
+        },
+        {
+          "tipo": "novo",
+          "texto": "A aura da emoção: no Acampamento, cada um escolhe a emoção do próprio personagem (Calmo, Alegre, Com raiva…), e um brilho na cor dela aparece em volta do retrato, para todos."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A aba Caravana, no Acampamento: veículos e animais (quanto levam e em que estado estão), a carga com o peso — com aviso quando passa do que os veículos levam — e quem viaja junto."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Nas Fichas, cada bônus temporário diz como acaba: uma anotação, até o próximo descanso (o Acampamento tira) ou rodadas, que você desconta com − e + (com 0, ele para de somar)."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Em Provisões, o nome inteiro de cada provisão aparece (a ordem e a quantidade foram para a linha de baixo)."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "Na janela do momento entre dois personagens, escolher de um lado quem está do outro troca os dois de lugar."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Logo depois de abrir uma mesa, o menu da conta podia fechar sozinho quando as Cenas abriam o tutorial ou a oferta de trazer as cenas do navegador. Agora elas esperam o menu fechar."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Nas Fichas, em tela estreita, a lista de bônus temporários ficava embaralhada."
+        }
       ]
     },
     {
@@ -4896,20 +5059,66 @@
       "data": "2026-10-08",
       "titulo": "Campanhas",
       "itens": [
-        { "tipo": "novo", "mestre": true, "texto": "A mesa pode ser dividida em campanhas. No menu da mesa, “Criar a primeira campanha…” mostra a lista do que vai para ela antes de mover qualquer coisa, e dá para desfazer." },
-        { "tipo": "novo", "mestre": true, "texto": "Em “Campanhas…”, no menu da mesa: criar, renomear, ordenar, encerrar e reabrir campanhas, e escolher quem joga em cada uma." },
-        { "tipo": "novo", "texto": "Cada campanha tem a própria mesa ao vivo, acampamento, missões do grupo, cenas e mapas. O que não é de nenhuma campanha é “do mundo” e aparece em todas." },
-        { "tipo": "novo", "texto": "A campanha em vista aparece ao lado do nome da mesa. Quem joga em mais de uma escolhe qual ver no menu da mesa." },
-        { "tipo": "novo", "texto": "Nas Fichas, a campanha em vista vem primeiro e o resto fica recolhido. O mesmo vale ao escolher ficha nas Cenas, na mesa ao vivo e no Acampamento." },
-        { "tipo": "novo", "mestre": true, "texto": "“⇄”, nas Fichas, passa um grupo inteiro para outra campanha (com desfazer). Cenas e mapas também dizem de que campanha são." },
-        { "tipo": "novo", "texto": "Campanha encerrada fica guardada para consulta: a conversa, as fichas, o acampamento e as missões dela não mudam até o mestre reabrir." },
-        { "tipo": "novo", "texto": "Novidades: o que muda em cada versão fica aqui, no menu da conta. Uma bolinha avisa quando há algo que você ainda não viu." },
-        { "tipo": "melhorou", "mestre": true, "texto": "O mestre auxiliar mestra dentro das campanhas que existem. Passar fichas, cenas e mapas de uma campanha para outra é só do mestre da mesa." },
-        { "tipo": "melhorou", "texto": "Os avisos com “Desfazer” não somem enquanto o ponteiro está em cima deles." },
-        { "tipo": "consertado", "texto": "A palavra “null” aparecia na cena do Acampamento e no menu principal do Rolador." },
-        { "tipo": "consertado", "texto": "Na ficha “só para consulta”, as abas de dentro (itens, poderes, missões…) voltaram a abrir." },
-        { "tipo": "consertado", "texto": "Na mesa ao vivo, quem falava logo ao abrir a mesa podia não ver a fala de quem tinha falado pouco antes." },
-        { "tipo": "consertado", "texto": "Uma janela fechada enquanto o site ainda salvava podia abrir de novo sozinha (ou fechar outra) quando ele terminava." }
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "A mesa pode ser dividida em campanhas. No menu da mesa, “Criar a primeira campanha…” mostra a lista do que vai para ela antes de mover qualquer coisa, e dá para desfazer."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "Em “Campanhas…”, no menu da mesa: criar, renomear, ordenar, encerrar e reabrir campanhas, e escolher quem joga em cada uma."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cada campanha tem a própria mesa ao vivo, acampamento, missões do grupo, cenas e mapas. O que não é de nenhuma campanha é “do mundo” e aparece em todas."
+        },
+        {
+          "tipo": "novo",
+          "texto": "A campanha em vista aparece ao lado do nome da mesa. Quem joga em mais de uma escolhe qual ver no menu da mesa."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Nas Fichas, a campanha em vista vem primeiro e o resto fica recolhido. O mesmo vale ao escolher ficha nas Cenas, na mesa ao vivo e no Acampamento."
+        },
+        {
+          "tipo": "novo",
+          "mestre": true,
+          "texto": "“⇄”, nas Fichas, passa um grupo inteiro para outra campanha (com desfazer). Cenas e mapas também dizem de que campanha são."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Campanha encerrada fica guardada para consulta: a conversa, as fichas, o acampamento e as missões dela não mudam até o mestre reabrir."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Novidades: o que muda em cada versão fica aqui, no menu da conta. Uma bolinha avisa quando há algo que você ainda não viu."
+        },
+        {
+          "tipo": "melhorou",
+          "mestre": true,
+          "texto": "O mestre auxiliar mestra dentro das campanhas que existem. Passar fichas, cenas e mapas de uma campanha para outra é só do mestre da mesa."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Os avisos com “Desfazer” não somem enquanto o ponteiro está em cima deles."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "A palavra “null” aparecia na cena do Acampamento e no menu principal do Rolador."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Na ficha “só para consulta”, as abas de dentro (itens, poderes, missões…) voltaram a abrir."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Na mesa ao vivo, quem falava logo ao abrir a mesa podia não ver a fala de quem tinha falado pouco antes."
+        },
+        {
+          "tipo": "consertado",
+          "texto": "Uma janela fechada enquanto o site ainda salvava podia abrir de novo sozinha (ou fechar outra) quando ele terminava."
+        }
       ]
     }
   ]

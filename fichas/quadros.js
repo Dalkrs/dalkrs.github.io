@@ -118,6 +118,18 @@ const FichasQuadros = (() => {
     if (c.estado === 'mestre' && !comMestre) return '';
     return `<span class="ptscont ascteto ${CLS_TETO[c.estado]}" data-teto="${esc(pl.id)}" title="${esc(c.dica)}">${esc(c.txt)}</span>`;
   }
+  /* (lote 108) A regra dos pontos, à vista: quanto cada tipo com teto dá no nível 1, quanto sobe por nível e o teto no
+     nível do personagem — para o mestre conferir a ficha sem fazer conta. */
+  function regraDosPontos(tipos, pc) {
+    const R = window.TC && TC.rules && TC.rules.contaDoTeto ? TC.rules : null;
+    if (!R) return '';
+    const com = tipos.map(pl => ({ pl, c: R.contaDoTeto(pl, 0, pc && pc.level) })).filter(x => x.c.teto != null);
+    if (!com.length) return '';
+    const n = com[0].c.nivel;
+    const regra = com.map(({ pl, c }) => `${esc(pl.nome || pl.id)}: ${Math.max(0, Math.floor(+pl.padrao || 0))} no nível 1, +${c.porNivel} por nível`).join(' · ');
+    const agora = com.map(({ pl, c }) => `${esc(pl.nome || pl.id)} <strong>${c.teto}</strong>`).join(', ');
+    return `<p class="hint ascregra" data-ascregra="1"><strong>Regra dos pontos.</strong> ${regra}. No nível ${n}, o teto é: ${agora}. Passar do teto só por feito extraordinário.</p>`;
+  }
   function painelAscensao(pc) {
     const tipos = tiposDePonto();
     if (!tipos.length) {
@@ -130,7 +142,7 @@ const FichasQuadros = (() => {
         <span class="hint" style="margin-left:8px">os pontos que o personagem tem para gastar nas árvores de habilidade</span>
         <span style="margin-left:auto"><button type="button" class="mini" data-ascir="1" title="Abrir Skills, onde os pontos são gastos">Gastar em Skills</button></span>
       </div>
-      <div class="bd"><div class="asclist">${tipos.map(pl => {
+      <div class="bd">${regraDosPontos(tipos, pc)}<div class="asclist">${tipos.map(pl => {
         const total = Math.max(0, Math.round(+sk.pontos[pl.id] || 0)), gasto = gastosPool(pc, pl.id), livre = total - gasto, id = esc(pl.id), nome = esc(pl.nome || pl.id);
         const teto = tetoHtml(pl, total, pc, true);
         return `<div class="ascrow" data-asc="${id}">

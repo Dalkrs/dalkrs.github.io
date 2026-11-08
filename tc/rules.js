@@ -2046,19 +2046,19 @@
      personagem pode ter até  padrao + porNivel × (N − 1)  pontos daquele tipo (padrao: o total de um personagem novo,
      no nível 1). Os outros tipos (Escola, Linhagem, Vínculo, Bênção, Profissão…) o mestre distribui, sem teto.
        pool.porNivel   quanto o teto sobe a cada nível (inteiro ≥ 0; 0 = sem teto). Sem o campo, vale o padrão pelo
-                       nome do tipo: Raça e Classe, POR_NIVEL_PADRAO; os outros, 0.
+                       nome do tipo (POR_NIVEL_PADRAO): Raça 1 e Classe 2 (lote 108: o jogador escolhe; não dá
+                       para comprar tudo); os outros, 0.
        tetoDoTipo      → o teto no nível, ou null (o tipo não tem teto)
        contaDoTeto     → { teto, total, nivel, porNivel, d (total − teto), estado }: estado 'abaixo', 'no' ou 'acima'
                          (acima = o extraordinário: pontos dados por feitos fora do comum; a ficha mostra, não trava),
                          ou 'mestre' (sem teto). Também txt (curto, para a etiqueta) e dica (a frase inteira).
      A conta é sobre o total que o personagem TEM (o que o mestre deu), não sobre o que ele gastou. */
-  const POR_NIVEL_PADRAO = 3;
-  const TIPOS_COM_TETO = ['raca', 'classe'];
+  const POR_NIVEL_PADRAO = Object.freeze({ raca: 1, classe: 2 });
   function porNivelDoTipo(pool) {
     if (!ehObjeto(pool)) return 0;
     const v = numFinito(pool.porNivel);
     if (v != null) return Math.max(0, Math.floor(v));
-    return TIPOS_COM_TETO.indexOf(normNome(pool.nome)) >= 0 ? POR_NIVEL_PADRAO : 0;
+    return POR_NIVEL_PADRAO[normNome(pool.nome)] || 0;
   }
   function tetoDoTipo(pool, nivel) {
     const pn = porNivelDoTipo(pool);
