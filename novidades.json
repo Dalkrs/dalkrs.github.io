@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-5",
+      "data": "2026-11-08",
+      "titulo": "Habilidades mais fáceis de entender",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Árvores: cerca de 400 descrições de habilidade foram reescritas para dizer tudo por extenso: 3 ou mais o quê, a quantos hexágonos, quem testa o quê e o que acontece se falhar. As regras não mudaram."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.08-4",
       "data": "2026-11-08",
       "titulo": "Pontos por nível e a Kitsune",
