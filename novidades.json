@@ -2,13 +2,13 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
-      "versao": "2026.11.08-6",
+      "versao": "2026.11.08-7",
       "data": "2026-11-08",
-      "titulo": "Células no lugar de hexágonos",
+      "titulo": "Cédulas no lugar de hexágonos",
       "itens": [
         {
           "tipo": "melhorou",
-          "texto": "Árvores e painel de barras das Cenas: as distâncias agora são contadas em células (\"a 6 células\"). Hexágono fica só para o Mapa-múndi."
+          "texto": "Árvores e painel de barras das Cenas: as distâncias agora são contadas em cédulas (\"a 6 cédulas\"). Hexágono fica só para o Mapa-múndi."
         }
       ]
     },
