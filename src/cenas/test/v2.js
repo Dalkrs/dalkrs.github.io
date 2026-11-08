@@ -99,6 +99,7 @@ const { open } = require('./lib');
   await undo();
   ok((await T('Dain X')).bars.length === 4, 'desfazer tira as barras acrescentadas (o padrão continua salvo)');
   await key('t'); await click(4.5, 4.5);
+  await page.locator('.modal .btn.primary').click(); await w(200);       // (lote 118) a janela do token novo: criar com o que veio
   let nt = await ev(() => { const sc = __urgm.Store.scene(); return JSON.parse(JSON.stringify(sc.tokens[sc.tokens.length - 1])); });
   ok(nt.bars.map(b => `${b.n}:${b.on}:${b.k}:${b.v}/${b.m}`).join() === 'Vida:true:bar:10/10,SP:false:bar:10/10,Energia:false:bar:10/10,Mana:true:pts:3/3', 'token novo nasce com as barras padrão: ' + nt.bars.map(b => `${b.n}:${b.on}:${b.k}:${b.v}/${b.m}`).join());
   await ev(() => { document.activeElement.blur(); __urgm.Act.deleteSel(); }); await w(); await clearToasts();

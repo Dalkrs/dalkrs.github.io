@@ -11,7 +11,7 @@ const { open } = require('./lib');
     const u = __urgm, sc = u.Store.scene();
     return {
       tool: u.App.tool, sel: u.App.sel, viewer: u.App.viewer, tab: u.App.tab,
-      tokens: sc.tokens.map(t => ({ id: t.id, name: t.name, x: t.x, y: t.y, size: t.size, hidden: t.hidden, bars: t.bars, conds: t.conds, owner: t.owner, img: t.img })),
+      tokens: sc.tokens.map(t => ({ id: t.id, name: t.name, x: t.x, y: t.y, size: t.size, hidden: t.hidden, bars: t.bars, conds: t.conds, owner: t.owner, img: t.img, ini: t.ini })),
       shapes: sc.shapes.map(s => ({ id: s.id, k: s.k, x: s.x, y: s.y, w: s.w, h: s.h, pts: s.pts, txt: s.txt })),
       walls: sc.walls.map(w => ({ id: w.id, k: w.k, open: w.open })), lights: sc.lights.length, effects: sc.effects.map(e => ({ id: e.id, fx: e.fx, k: e.k, r: e.r, dir: e.dir, token: e.token })),
       fogOps: sc.fogOps.length, cell: sc.cell, turn: sc.turn, light: sc.light, fog: sc.fog, scenes: u.Store.S.order.length, name: sc.name, pings: u.App.pings.length,
@@ -86,18 +86,51 @@ const { open } = require('./lib');
   await key('t');
   ok((await S()).tool === 'token', 'atalho T');
   await click(4.5, 8.5);
-  await page.waitForTimeout(120);
+  await page.waitForTimeout(150);
+  ok(await page.locator('.modal').isVisible() && (await S()).tokens.length === 7, '(lote 118) a janela do token novo abre antes de criar');
+  ok(await ev(() => document.activeElement && document.activeElement.id) === 'nt-nome', 'o nome fica em foco');
+  // cancelar: nada é criado
+  await page.keyboard.press('Escape'); await page.waitForTimeout(100);
+  ok((await S()).tokens.length === 7, 'cancelar não cria o token');
+  await key('t'); await click(4.5, 8.5); await page.waitForTimeout(150);
+  await page.locator('#nt-nome').fill('Goblin');
+  await page.locator('#nt-ini').fill('3');
+  await page.locator('#nt-0-m').fill('25');
+  if (!(await page.locator('#nt-1-on').isChecked())) await page.locator('#nt-1-on').check();
+  await page.locator('#nt-1-m').fill('12');
+  await page.locator('.modal .btn.primary').click();
+  await page.waitForTimeout(150);
   s = await S();
   ok(s.tokens.length === 8 && s.tool === 'select', 'token criado e ferramenta volta a Selecionar');
-  ok(await ev(() => document.activeElement && document.activeElement.id) === 'tk-name', 'campo do nome fica em foco');
-  await page.keyboard.type('Goblin');
-  await page.keyboard.press('Tab');
-  await page.waitForTimeout(120);
-  s = await S();
-  ok(!!tok(s, 'Goblin'), 'renomear pelo painel');
+  const gob = tok(s, 'Goblin');
+  ok(!!gob && gob.ini === 3, 'o nome e a iniciativa da janela: ' + JSON.stringify(gob && gob.ini));
+  ok(gob && gob.bars[0].m === 25 && gob.bars[0].v === 25 && gob.bars[1].on && gob.bars[1].m === 12 && gob.bars[1].v === 12, 'as barras da janela, cheias: ' + JSON.stringify(gob && gob.bars.map(b => [b.n, b.on, b.v, b.m])));
   ok(tok(s, 'Goblin').x === 4 * s.cell && tok(s, 'Goblin').y === 8 * s.cell, 'token nasce no quadrado clicado');
-  ok(await ev(() => document.activeElement && document.activeElement.id) === 'tk-owner', 'Tab leva ao próximo campo mesmo com o painel redesenhado');
-  await ev(() => document.activeElement.blur());
+  // copiar e colar: não pergunta de novo
+  await key('Control+c');
+  await key('Control+v'); await page.waitForTimeout(150);
+  s = await S();
+  ok(!(await page.locator('.modal').isVisible()) && s.tokens.filter(x => x.name.startsWith('Goblin')).length === 2, 'Ctrl+C, Ctrl+V: cola sem perguntar');
+  ok(s.tokens.filter(x => x.name.startsWith('Goblin')).every(x => x.ini === 3 && x.bars[0].m === 25), '(a cópia leva a iniciativa e as barras)');
+  await key('Control+z'); await page.waitForTimeout(100);
+  s = await S();
+  ok(s.tokens.length === 8, '(desfazer a colagem)');
+  await key('Escape');
+  await ev(() => document.activeElement && document.activeElement.blur());
+  // (lote 118) o contador de uma condição: clicar no número e digitar
+  await ev(() => { const u = __urgm, t = u.Store.scene().tokens.find(x => x.name === 'Goblin'); u.Act.condToggle([t], 'veneno'); u.App.sel = [{ c: 'tokens', id: t.id }]; u.UI.openTab('sel'); u.UI.refresh(); });
+  await page.waitForTimeout(200);
+  const cnt = page.locator('#cd-veneno-n');
+  if (await cnt.count()) {
+    await cnt.click(); await page.waitForTimeout(80);
+    await page.keyboard.type('16'); await page.keyboard.press('Enter'); await page.waitForTimeout(150);
+    ok(await ev(() => { const t = __urgm.Store.scene().tokens.find(x => x.name === 'Goblin'); return (t.cinfo.veneno || {}).n; }) === 16, 'clicar no número do contador e digitar 16');
+    await page.locator('#cd-veneno-n').click(); await page.waitForTimeout(80);
+    await page.keyboard.type('3'); await page.keyboard.press('Escape'); await page.waitForTimeout(120);
+    ok(await ev(() => { const t = __urgm.Store.scene().tokens.find(x => x.name === 'Goblin'); return (t.cinfo.veneno || {}).n; }) === 16, 'Esc desiste');
+    ok(await page.locator('.modal').count() === 0 || !(await page.locator('.modal').isVisible()), '(nada mais fecha com o Esc do campo)');
+  } else ok(false, 'o contador da condição não apareceu: ' + await ev(() => [...document.querySelectorAll('[id^=cd-]')].map(e => e.id).slice(0, 8).join(',')));
+  await key('Escape');
   errsAt('token');
 
   /* 5. Desenho e formas */

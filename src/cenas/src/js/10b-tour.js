@@ -61,7 +61,7 @@ const Tour = (() => {
       },
       {
         title: 'Condições',
-        text: 'Aqui você marca o que está afetando o token. Cada condição ativa pode ter um contador, que só muda nos botões + e −, e uma duração em rodadas, que desconta sozinha.',
+        text: 'Aqui você marca o que está afetando o token. Cada condição ativa pode ter um contador (nos botões + e −, ou clicando no número para digitar), e uma duração em rodadas, que desconta sozinha.',
         enter: () => { selectTok(idC); UI.openTab('sel'); }, after: () => openSec('s-cond'), target: () => rectOf('#s-cond') || rectOf('#side'), side: 'left',
       },
       {

@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-14",
+      "data": "2026-11-08",
+      "titulo": "Token novo e contadores digitáveis",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: ao criar um token (ferramenta Token ou uma imagem), uma janelinha pede o nome, a iniciativa e as barras (quais usar e o máximo de cada). Copiar e colar (Ctrl+C, Ctrl+V) não pergunta de novo. Cancelar não cria nada.", "mestre": true },
+        { "tipo": "melhorou", "texto": "Cenas: dá para desligar a pergunta (\"Criar os próximos sem perguntar\") e ligar de novo em Barras padrão…", "mestre": true },
+        { "tipo": "melhorou", "texto": "Cenas: nos contadores (das condições e dos turnos por rodada), clique no número do meio para digitar o valor de uma vez (15, 16, 18…). Enter grava; Esc desiste." }
+      ]
+    },
+    {
       "versao": "2026.11.08-13",
       "data": "2026-11-08",
       "titulo": "Conquistas",

@@ -63,11 +63,36 @@ const UI = (() => {
     'aria-label': o && o.label, title: o && o.title,
     onchange: e => { const v = clamp(Math.round(parseFloat(e.target.value) || 0), 0, (o && o.max) || 99); e.target.value = v > 0 ? v : ''; onChange(v); },
   });
+  /* (lote 118) O número do meio de um contador (entre o − e o +): um clique abre o campo para digitar o valor de uma vez
+     (15, 16, 18…). Enter ou sair do campo grava; Esc desiste. apply(v) recebe o número já entre min e max. */
+  function numDigitavel(el, value, min, max, apply, what) {
+    el.classList.add('stp-dig');
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    el.title = 'Clique para digitar o valor';
+    el.setAttribute('aria-label', what + ': ' + (value || 0) + '. Clique para digitar');
+    const abrir = () => {
+      const inp = h('input', { type: 'number', class: 'in num stp-in', id: el.id ? el.id + '-in' : null, min, max, step: 1, value: value || '', 'aria-label': what, 'data-esc': '1' });
+      let foi = false;
+      const fim = gravar => {
+        if (foi) return; foi = true;
+        if (gravar) { const raw = String(inp.value).trim(), v = raw === '' ? min : clamp(Math.round(parseFloat(raw)) || 0, min, max); inp.replaceWith(el); if (v !== value) { el.textContent = v > 0 || min > 0 ? String(v) : '–'; apply(v); } return; }
+        inp.replaceWith(el);
+      };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); fim(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fim(false); } });
+      inp.addEventListener('blur', () => fim(true));
+      el.replaceWith(inp);
+      inp.focus(); inp.select();
+    };
+    el.addEventListener('click', abrir);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } });
+    return el;
+  }
   // Contador pequeno, de − a +, para um número de poucos valores (turnos por rodada).
   function stepper(id, value, min, max, onChange, what) {
     return h('span', { class: 'stp', id, role: 'group', 'aria-label': what },
       h('button', { type: 'button', class: 'stp-b', id: id + '-minus', disabled: value <= min, title: 'Um a menos', 'aria-label': what + ': um a menos', onclick: () => onChange(value - 1) }, icon('minus', 13)),
-      h('span', { class: 'stp-v', id: id + '-n', text: String(value) }),
+      numDigitavel(h('span', { class: 'stp-v', id: id + '-n', text: String(value) }), value, min, max, onChange, what),
       h('button', { type: 'button', class: 'stp-b', id: id + '-plus', disabled: value >= max, title: 'Um a mais', 'aria-label': what + ': um a mais', onclick: () => onChange(value + 1) }, icon('plus', 13)));
   }
   function btn(label, onClick, o) {
@@ -301,6 +326,10 @@ const UI = (() => {
       } catch (err) { toast(err.message || 'Não consegui abrir uma das imagens.'); }
     }
     if (!made.length) return;
+    if (made.length === 1) { novoTokenBox(made[0], t => tokensFeitos([t])); return; }      // (lote 118) uma imagem só: pergunta o nome, a iniciativa e as barras
+    tokensFeitos(made);
+  }
+  function tokensFeitos(made) {
     Store.tx(made.length > 1 ? 'Criar tokens' : 'Criar token', () => made.forEach(t => Store.add('tokens', t)));
     setSel(made.map(t => ({ c: 'tokens', id: t.id })));
     Tools.set('select');
@@ -1858,7 +1887,9 @@ const UI = (() => {
           : c.id === 'duplicado' ? h('span', { class: 'stp-v ro', id: `${pre}-${c.id}-n`, title: 'Para os jogadores, o gêmeo é igual ao original', text: dupTexto(t) })
           : edit ? h('span', { class: 'stp' },
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-minus`, disabled: !n, title: n === 1 ? 'Tirar 1 (em zero, a condição sai)' : 'Tirar 1', 'aria-label': `Tirar 1 de ${c.n}`, onclick: () => { condStepToast(t, c, -1); done(); } }, icon('minus', 13)),
-            h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, text: n ? String(n) : '–' }),
+            // (lote 118) clicar no número: digitar o valor de uma vez (zero ou vazio: sem contador)
+            numDigitavel(h('span', { class: 'stp-v', id: `${pre}-${c.id}-n`, text: n ? String(n) : '–' }), n, 0, c.max || 999,
+              v => { Act.condSet(t, c.id, { n: v }, 'Contador de condição'); done(); }, 'Contador de ' + c.n),
             h('button', { type: 'button', class: 'stp-b', id: `${pre}-${c.id}-plus`, disabled: !!(c.max && n >= c.max), title: c.max && n >= c.max ? `No máximo (${c.max})` : 'Somar 1' + (c.max ? ` (até ${c.max})` : ''), 'aria-label': `Somar 1 em ${c.n}`, onclick: () => { condStepToast(t, c, 1); done(); } }, icon('plus', 13)))
             : h('span', { class: 'stp-v ro', text: n ? String(n) : '–' }),
           edit ? inCount(`${pre}-${c.id}-d`, ci.d || 0, v => { Act.condSet(t, c.id, { d: v, d0: v }, 'Duração da condição'); done(); },
@@ -2032,6 +2063,49 @@ const UI = (() => {
   }
 
   /* Barras padrão: a lista com que todo token novo nasce (vale para a mesa inteira). */
+  /* (lote 118) O token novo (a ferramenta Token e a imagem que vira token): antes de entrar na cena, uma janelinha pede o
+     nome, a iniciativa e as barras (as padrão, ligadas ou não, com o máximo de cada uma — o token já nasce cheio). Assim
+     o mestre monta um inimigo de passagem sem precisar de ficha. Copiar e colar (Ctrl+C, Ctrl+V) não pergunta: só a
+     primeira criação. "Criar sem perguntar" fica neste aparelho (e volta nas Barras padrão…).
+     done(t) recebe o token já preenchido; cancelar não cria nada. */
+  const CH_PERG = 'tinycats:cenas:perguntarToken';
+  const perguntarToken = () => { try { return localStorage.getItem(CH_PERG) !== '0'; } catch (e) { return true; } };
+  const setPerguntarToken = on => { try { localStorage.setItem(CH_PERG, on ? '1' : '0'); } catch (e) { /* sem armazenamento */ } };
+  function novoTokenBox(t, done) {
+    if (!perguntarToken()) { done(t); return; }
+    const bars = t.bars.map(b => Object.assign({}, b));
+    const nome = h('input', { type: 'text', class: 'in', id: 'nt-nome', value: t.name, maxlength: 60, autocomplete: 'off', 'data-focus': '', 'aria-label': 'Nome do token' });
+    const ini = h('input', { type: 'number', class: 'in num', id: 'nt-ini', value: clampIni(t.ini), min: -99, max: 99, step: 1, 'aria-label': 'Bônus de iniciativa', title: 'A rolagem é 1d20 + este valor' });
+    const nao = h('input', { type: 'checkbox', id: 'nt-nao', class: 'ck' });
+    const body = h('div', { class: 'bd nt' },
+      h('div', { class: 'nt-top' }, field('Nome', nome, 'stack'), field('Iniciativa', ini, 'stack')),
+      h('div', { class: 'bd-list nt-list' },
+        h('div', { class: 'bd-row bd-h' }, h('span', { text: 'Usar' }), h('span'), h('span', { text: 'Barra' }), h('span', { text: 'Máximo' })),
+        bars.map((b, i) => {
+          const max = h('input', { type: 'number', class: 'in num', id: `nt-${i}-m`, value: b.m, min: 0, step: 1, 'aria-label': 'Máximo de ' + b.n, disabled: !b.on,
+            oninput: e => { const v = parseFloat(e.target.value); if (isFinite(v) && v >= 0) { b.m = v; b.v = v; } } });
+          return h('div', { class: 'bd-row' },
+            h('input', { type: 'checkbox', class: 'ck', id: `nt-${i}-on`, checked: b.on, 'aria-label': 'Usar ' + b.n, onchange: e => { b.on = e.target.checked; max.disabled = !b.on; if (b.on) { max.focus(); max.select(); } } }),
+            h('span', { class: 'nt-cor', style: 'background:' + b.c, 'aria-hidden': 'true' }),
+            h('span', { class: 'nt-n', text: b.n }),
+            max);
+        })),
+      h('label', { class: 'o-ck bd-ck' }, nao, h('span', { text: 'Criar os próximos sem perguntar (volta nas Barras padrão…)' })));
+    modal({
+      title: 'Token novo', text: 'Copiar e colar (Ctrl+C, Ctrl+V) não pergunta de novo.', body,
+      actions: [{ label: 'Cancelar' }, {
+        label: 'Criar token', kind: 'primary', run: () => {
+          if (nao.checked) setPerguntarToken(false);
+          const antes = t.name;
+          t.name = nome.value.trim().slice(0, 60) || t.name;
+          if (t.name !== antes) t.color = TOKEN_COLORS[hashStr(t.name) % TOKEN_COLORS.length];
+          t.ini = clampIni(ini.value);
+          t.bars = bars.map(b => cleanBar(Object.assign({}, b, { v: b.m })));
+          setTimeout(() => done(t), 0);
+        },
+      }],
+    });
+  }
   function barDefaultsBox(fromTok) {
     let list = barDefaults();
     const body = h('div', { class: 'bd' });
@@ -2054,6 +2128,7 @@ const UI = (() => {
           fromTok && fromTok.bars.length ? btn('Copiar de ' + fromTok.name, () => { list = fromTok.bars.map(b => cleanBar(Object.assign({}, b, { v: b.m }))); paint(); }, { id: 'bd-copy' }) : null,
           btn('Voltar ao original', () => { list = BAR_DEFAULTS.map(cleanBar); paint(); }, { id: 'bd-reset' })),
         h('label', { class: 'o-ck bd-ck' }, addMissing, h('span', { text: 'Acrescentar as que faltam aos tokens desta cena' })),
+        h('label', { class: 'o-ck bd-ck' }, h('input', { type: 'checkbox', id: 'bd-perg', class: 'ck', checked: perguntarToken(), onchange: e => setPerguntarToken(e.target.checked) }), h('span', { text: 'Perguntar o nome, a iniciativa e as barras ao criar um token' })),
         note('"Ligada" diz se a barra já nasce em uso no token novo. A lista vale para os tokens criados daqui em diante; os que já existem só mudam se você marcar a opção acima, e nada é apagado deles.'),
       ]);
     };
@@ -4212,7 +4287,7 @@ const UI = (() => {
     refresh, renderAll, toast, somAviso, modal, closeMenus, contextMenu, openTab, abaPorNumero, editText, status,
     prompt: promptBox, confirm: confirmBox, importImages, initCaps, setViewer, switchScene, offerLocal,
     modalOpen: () => !!modalEl || Tour.active(),
-    alternarObjeto, closeModal, condPicker, barDefaultsBox, areaBox, bagBox, iniFromTable, passarTurno,
+    alternarObjeto, closeModal, condPicker, barDefaultsBox, novoTokenBox, areaBox, bagBox, iniFromTable, passarTurno,
     // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
     feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares

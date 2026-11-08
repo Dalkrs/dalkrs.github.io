@@ -1277,3 +1277,13 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .menu-sub { color: var(--fg-3); font-size: 11.5px; margin-left: 2px; white-space: nowrap; }
 .menu-pasta.aqui .menu-k { color: var(--lamp-ink); font-weight: 700; }
 .menu-pasta.dentro { padding-left: 22px; }
+/* (lote 118) a janela do token novo: o nome e a iniciativa em cima, as barras embaixo */
+.nt-top { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 10px; margin-bottom: 10px; }
+.nt-list { grid-template-columns: auto 18px minmax(0, 1fr) 80px; margin-bottom: 8px; }
+.nt-cor { width: 14px; height: 14px; border-radius: 50%; justify-self: center; }
+.nt-n { font-weight: 600; }
+.nt-list .in.num:disabled { opacity: .45; }
+/* (lote 118) o número do contador: clicar abre o campo para digitar */
+.stp-dig { cursor: text; border-radius: 5px; }
+.stp-dig:hover { background: var(--hover, rgba(255,255,255,.08)); outline: 1px dashed var(--line-strong, #40495f); }
+.stp-in { width: 52px; height: 26px; padding: 0 4px; text-align: center; }

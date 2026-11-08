@@ -526,10 +526,14 @@ const Tools = (() => {
       const [x, y] = snapTok(sc, p.x - size * sc.cell / 2, p.y - size * sc.cell / 2, size, false);
       const t = newToken(sc, x, y, { size, owner: App.opt.tokOwner || null });
       if (t.owner) t.barVis = 'num';
-      Store.tx('Criar token', () => Store.add('tokens', t));
-      setSel([{ c: 'tokens', id: t.id }]);
-      set('select');
-      UI.openTab('sel', 'tk-name');
+      // (lote 118) antes de entrar na cena: o nome, a iniciativa e as barras (cancelar não cria nada)
+      UI.novoTokenBox(t, tk => {
+        if (Store.scene() !== sc) return;                  // (trocou de cena com a janela aberta)
+        Store.tx('Criar token', () => Store.add('tokens', tk));
+        setSel([{ c: 'tokens', id: tk.id }]);
+        set('select');
+        UI.openTab('sel');
+      });
     },
     move(p) { ghost = p; Render.request(); },
     preview(ctx, px, sc) {
