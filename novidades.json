@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-2",
+      "data": "2026-11-08",
+      "titulo": "Raças e classes novas: todas as habilidades reescritas",
+      "itens": [
+        { "tipo": "novo", "texto": "Árvore: as 14 raças, as 18 classes e as linhagens Vampiro e Lobisomem foram reescritas. Cada habilidade mostra o papel (ícones), se gasta ou enche a barra, e uma linha do que se vê." },
+        { "tipo": "novo", "texto": "Criar personagem: cada raça e cada classe começa com uma apresentação que conta como é jogar com ela." },
+        { "tipo": "melhorou", "texto": "Números: dano, defesa e cura agora usam uma escala de 1 a 5 (Dano 3, Defesa +2). O mestre diz quanto cada número vale na mesa." },
+        { "tipo": "melhorou", "texto": "Fichas: a Vida agora depende da raça (Vitalidade × 1, × 2 ou × 3, mais a base da raça).", "mestre": true },
+        { "tipo": "melhorou", "texto": "Barras: cada classe enche a barra do seu jeito e tem patamares em 5, 10 e 15; as bolinhas de raça vão de 5 a 10 e voltam por um costume do povo." }
+      ]
+    },
+    {
       "versao": "2026.11.08-1",
       "data": "2026-11-08",
       "titulo": "A aba Baralho: as cartas da Cartomante",

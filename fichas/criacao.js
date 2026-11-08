@@ -162,13 +162,13 @@ const FichasCriacao = (() => {
       const fs = familias(valem('raca', w.racas));
       if (!fs.length) return '<p class="cria-vazio">Nenhuma raça disponível. Fale com o mestre.</p>';
       return `<p class="cria-dica">${w.modo === 'fundo' ? 'De que povo é este NPC?' : 'De que povo é o seu personagem?'} Escolha a raça; depois vem a sub-raça.</p>
-        <div class="cria-grade">${fs.map(f => cartao(`data-fam="${e(f.k)}"`, f.nome, f.arvores.length > 1 ? f.arvores.length + ' sub-raças: ' + f.arvores.map(x => x.rotulo).join(', ') : '', f.arvores.length === 1 ? textoDe(f.arvores[0].a, 180) : '', w.fam === f.k)).join('')}</div>
+        <div class="cria-grade">${fs.map(f => cartao(`data-fam="${e(f.k)}"`, f.nome, f.arvores.length > 1 ? f.arvores.length + ' sub-raças: ' + f.arvores.map(x => x.rotulo).join(', ') : '', f.arvores.length === 1 ? textoDe(f.arvores[0].a, 240) : '', w.fam === f.k)).join('')}</div>
         ${w.fam && familias(valem('raca', w.racas)).find(f => f.k === w.fam).arvores.length === 1 ? detalhe(arvorePorId(w.raca)) : ''}`;
     }
     if (passo === 'sub') {
       const f = familias(valem('raca', w.racas)).find(x => x.k === w.fam);
       return `<p class="cria-dica">Qual sub-raça de ${e(f ? f.nome : '')}? Clique para ler sobre ela.</p>
-        <div class="cria-grade">${(f ? f.arvores : []).map(x => cartao(`data-raca="${e(x.a.id)}"`, x.rotulo, '', textoDe(x.a, 140), w.raca === x.a.id)).join('')}</div>${detalhe(arvorePorId(w.raca))}`;
+        <div class="cria-grade">${(f ? f.arvores : []).map(x => cartao(`data-raca="${e(x.a.id)}"`, x.rotulo, '', textoDe(x.a, 240), w.raca === x.a.id)).join('')}</div>${detalhe(arvorePorId(w.raca))}`;
     }
     if (passo === 'classe') {
       const cs = valem('classe', w.classes).sort((x, y) => x.nome.localeCompare(y.nome, 'pt'));

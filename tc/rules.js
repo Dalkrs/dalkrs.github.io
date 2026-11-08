@@ -668,6 +668,9 @@
       baseEsp[d.k]=b; defEsp[d.k]=b+ext.esp[d.k]+tp.esp[d.k];
     });
     const vars={LVL:+pc.level, NIVEL:+pc.level, MULT:mult, PTS:arred(cfg,total), TOTAL:arred(cfg,total)};
+    // (lote 106) quanto cada ponto de VIT vale de Vida: vem da árvore de raça ("Vida por VIT": 1, 2 ou 3); sem raça, 2.
+    // A fórmula da Vida (fichas:cfg) usa VIDAVIT: "VIT*VIDAVIT". Mestiço: as duas raças somam, e o teto é 3.
+    { const vv=tem(arvRec,'vida por vit')? numFinito(arvRec['vida por vit']) : null; vars.VIDAVIT = vv!=null&&vv>0? Math.min(3,vv) : 2; }
     DERIV.forEach(d=>{
       vars[d.k]=der[d.k]; vars[d.k+'_B']=daConta(d,base); vars[d.k+'_EQ']=eq[d.k];
       d.aliases.forEach(al=>{vars[al]=der[d.k]});
