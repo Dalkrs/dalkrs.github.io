@@ -31,6 +31,8 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
 
   // ---------- Sexo, partes íntimas e Panteão ----------
   ok(await P.locator('#f_sexo').inputValue() === '' && await P.locator('#f_tampenis').count() === 1 && await P.locator('#f_partes').count() === 1, 'sem o sexo informado, aparecem os dois campos (tamanho do pênis e tipo das partes íntimas)');
+  ok(await P.locator('#f_altura').count() === 1, '(lote 119) o campo Altura na ficha');
+  await P.locator('#f_altura').fill('1,82 m');
   await P.locator('#f_tampenis').fill('15 cm'); await P.locator('#f_partes').fill('exemplo A'); await w(200);
   await P.locator('#f_sexo').selectOption('F'); await w(300);
   ok(await P.locator('#f_tampenis').count() === 0 && await P.locator('#f_partes').inputValue() === 'exemplo A', 'ficha do sexo feminino: fica só o "Tipo das partes íntimas"');
@@ -41,7 +43,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.locator('#f_sexo').selectOption('F'); await w(200);
   await P.locator('#f_panteao').fill('Selene, a Lua de Gelo'); await w(500);
   const id1 = await sel();
-  ok(id1.sexo === 'F' && id1.partes === 'exemplo A' && id1.tamPenis === '15 cm' && id1.panteao === 'Selene, a Lua de Gelo', 'Sexo, partes íntimas e Panteão ficam guardados na ficha: ' + j([id1.sexo, id1.partes, id1.panteao]));
+  ok(id1.sexo === 'F' && id1.partes === 'exemplo A' && id1.tamPenis === '15 cm' && id1.panteao === 'Selene, a Lua de Gelo' && id1.altura === '1,82 m', 'Sexo, altura, partes íntimas e Panteão ficam guardados na ficha: ' + j([id1.sexo, id1.partes, id1.panteao]));
 
   // ---------- opções da barra: começa em, pode ficar negativa ----------
   ok(await P.locator('details.resopc').count() === 3 && !(await P.locator('details.resopc').first().evaluate(e => e.open)), 'cada barra tem as "Opções da barra", fechadas');

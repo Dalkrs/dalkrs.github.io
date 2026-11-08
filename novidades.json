@@ -4,6 +4,14 @@
     {
       "versao": "2026.11.08-15",
       "data": "2026-11-08",
+      "titulo": "Altura na ficha",
+      "itens": [
+        { "tipo": "novo", "texto": "Fichas: campo Altura, junto do Sexo (ex.: 1,75 m)." }
+      ]
+    },
+    {
+      "versao": "2026.11.08-15",
+      "data": "2026-11-08",
       "titulo": "Mariposa e ajustes de equilíbrio",
       "itens": [
         {

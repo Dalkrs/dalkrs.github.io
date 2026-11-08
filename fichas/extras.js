@@ -1941,13 +1941,15 @@ const FichasExtras = (() => {
     qa(painel, '[data-bolnao]').forEach(b => b.onclick = () => { const id = bolsaPede; bolsaPede = null; bolsaEm = null; render(); if (id) refocar('[data-boluse="' + id + '"]'); });
   }
 
-  /* ---- identidade: sexo, partes íntimas e panteão ---- */
+  /* ---- identidade: sexo, altura (lote 119), partes íntimas e panteão ---- */
   const SEXOS = [['', '—'], ['M', 'Masculino'], ['F', 'Feminino'], ['O', 'Outro']];
   function htmlIdentidade(pc) {
     const s = SEXOS.some(x => x[0] === pc.sexo) ? pc.sexo : '';
     // masculino mostra o tamanho do pênis; feminino, o tipo das partes íntimas; "outro" ou sem resposta, os dois
     return `<div class="idcard3">
       <label class="f"><span class="eyebrow">Sexo</span><select id="f_sexo">${SEXOS.map(([v, n]) => `<option value="${v}" ${s === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label class="f"><span class="eyebrow">Altura</span>
+        <input id="f_altura" maxlength="24" value="${esc(pc.altura || '')}" placeholder="ex.: 1,75 m" autocomplete="off"></label>
       ${s !== 'F' ? `<label class="f"><span class="eyebrow">Tamanho do pênis</span>
         <input id="f_tampenis" maxlength="24" value="${esc(pc.tamPenis || '')}" placeholder="ex.: 15 cm" autocomplete="off"></label>` : ''}
       ${s !== 'M' ? `<label class="f"><span class="eyebrow">Tipo das partes íntimas</span>
@@ -1958,7 +1960,7 @@ const FichasExtras = (() => {
   }
   function ligarIdentidade(host, pc) {
     const texto = (sel, chave, max) => { const i = q(host, sel); if (i) i.oninput = () => { const v = i.value.trim().slice(0, max); if (v) pc[chave] = v; else delete pc[chave]; save(); }; };
-    texto('#f_tampenis', 'tamPenis', 24); texto('#f_partes', 'partes', 40); texto('#f_panteao', 'panteao', 60);
+    texto('#f_altura', 'altura', 24); texto('#f_tampenis', 'tamPenis', 24); texto('#f_partes', 'partes', 40); texto('#f_panteao', 'panteao', 60);
     const s = q(host, '#f_sexo');
     if (s) s.onchange = () => { if (s.value) pc.sexo = s.value; else delete pc.sexo; save(); render(); refocar('#f_sexo'); };
   }
