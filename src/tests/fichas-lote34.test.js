@@ -65,7 +65,9 @@ const bib = { nome: 'Bib', pools: [{ id: 'p1', nome: 'Pontos', cor: '#D9A441', p
     { id: 'a24nmazt4x', nome: 'Oradora · Rast', categoria: 'raca', nodes: [no('o2', 'Rast', [], 'Dor.')] },
     { id: 'aq0onsk37x', nome: 'Bênção de Selene', categoria: 'outra', nodes: [no('s1', 'Luar', [], 'x\n\nGeada: máximo 20; começa com 4.')] },
     { id: 'a5ufrdl1er', nome: 'Yanato', categoria: 'escola', nodes: [no('y1', 'Cinza', [], 'Frascos: máximo 3.')] },
-    { id: 'ayfvz27k70', nome: 'Vampiro', categoria: 'linhagem', nodes: [no('v1', 'Fome', [], 'Fome: máximo 20.')] }] };
+    { id: 'ayfvz27k70', nome: 'Vampiro', categoria: 'linhagem', nodes: [no('v1', 'Fome', [], 'Fome: máximo 20.')] },
+    // (lote 115) a categoria Bênção cria a barra dela, como a raça e a classe
+    { id: 'a_arcano_sombrio', nome: 'Arcano Sombrio', categoria: 'bencao', barraDef: { nome: 'Marcas', min: 0, max: 6, inicio: 6, comb: 'fica' }, nodes: [no('ar0', 'Arcano Sombrio', [], 'Marcas.')] }] };
 const pc = (id, nome, extra) => Object.assign(R.personagemPadrao(nome), { id, nome, level: 8, recursos: [{ id: 'hp' + id, nome: 'HP', fml: '100' }, { id: 'sp' + id, nome: 'SP', fml: '50' }, { id: 'en' + id, nome: 'Energia', fml: '10' }] }, extra);
 const dain = pc('pc_dain', 'Dain', { arvVistas: [], barrasArv: 1, skills: { arvores: [], pontos: { p1: 10 }, alocados: {} } });
 // a Lia é de antes: a raça já estava, com a barra especial do lote 28 (Calor da Forja, 7 agora)
@@ -137,6 +139,10 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [dain, li
     await equipar('ayfvz27k70', true);
     const v = (await ficha('pc_dain')).rec.find(r => r.nome === 'Fome');
     ok(v && v.comeca === '' && v.comb === 'fica', 'a linhagem Vampiro: a Fome (o combate não mexe nela) — ' + j(v));
+    await equipar('a_arcano_sombrio', true);
+    const f2 = await ficha('pc_dain'), mk = f2.rec.find(r => r.nome === 'Marcas'), iM = f2.rec.indexOf(mk), iF = f2.rec.findIndex(r => r.nome === 'Fome');
+    ok(mk && mk.fml === '6' && mk.comeca === '6' && mk.comb === 'fica' && j(mk.arvs) === j(['a_arcano_sombrio']) && iM > iF,
+      '(lote 115) a Bênção Arcano Sombrio cria as Marcas (0 a 6, começa cheia, o combate não mexe), depois da linhagem — ' + j(f2.rec.map(r => r.nome)) + ' ' + j(mk));
   });
   await passo('a árvore muda na Oficina', async () => {
     await P.evaluate(() => { const a = S.bib.arvores.find(x => x.id === 'aaj23w9sif'); a.barraDef = { nome: 'Calor da Forja', max: 25, inicio: 6, comb: 'inicio' }; save(); render(); }); await w(300);
