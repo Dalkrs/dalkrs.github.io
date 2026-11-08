@@ -1894,7 +1894,7 @@
     return '';
   }
   // (lote 13, parte 13c) a estação do mês de hoje no calendário (no Inverno rigoroso, inverno)
-  const estacaoNoPonto = (m, c) => (c.eventos.some(e => e && e.tipo === 'inverno') ? 'inverno' : N().estacaoDoMes(N().dataDe(m.cal, m.cal && m.cal.dia).mes, N().mesesDe(m.cal).length));
+  const estacaoNoPonto = (m, c) => (c.eventos.some(e => e && e.tipo === 'inverno') ? 'inverno' : N().estacaoDe(m.cal, N().dataDe(m.cal, m.cal && m.cal.dia).mes));
   const comum = (m, x, y) => {
     const e = estiloNoPonto(m, x, y), c = N().cenaNoPonto(m, x, y), out = { hora: horaComEventos(N().horaDoTempo(m.cal), c), clima: c.clima, estacao: estacaoNoPonto(m, c) };
     // (lote 7, parte 5c) sem clima de evento, o clima do dia (o da região, ou o do mundo)
@@ -3009,9 +3009,9 @@
     if (!N_.tabelaPadraoDoMes) return null;
     const Cs = N_.CLIMAS, meses = m.cal.meses, hojeMes = N_.dataDe(m.cal, m.cal.dia).mes, nM = meses.length;
     const i = mesClima != null && mesClima < nM ? mesClima : hojeMes;
-    const tab = m.clima && Array.isArray(m.clima.tab) ? m.clima.tab : null, pesos = tab && tab[i] ? tab[i] : N_.tabelaPadraoDoMes(i, nM), padrao = N_.tabelaPadraoDoMes(i, nM);
+    const tab = m.clima && Array.isArray(m.clima.tab) ? m.clima.tab : null, pesos = tab && tab[i] ? tab[i] : N_.tabelaPadraoDoMes(i, nM, m.cal), padrao = N_.tabelaPadraoDoMes(i, nM, m.cal);
     const soma = Object.keys(Cs).reduce((t, k) => t + (pesos[k] || 0), 0), out = [];
-    out.push(campoEscolha('clima:mes', 'Mês', String(i), meses.map((x, k) => [String(k), x.nome + (k === hojeMes ? ' (hoje)' : '')]), v => { mesClima = Number(v); agendar(); return true; }));
+    out.push(campoEscolha('clima:mes', 'Mês', String(i), meses.map((x, k) => [String(k), x.nome + (N_.ESTACOES_NOMES && N_.estacaoDe ? ' · ' + N_.ESTACOES_NOMES[N_.estacaoDe(m.cal, k)] : '') + (k === hojeMes ? ' (hoje)' : '')]), v => { mesClima = Number(v); agendar(); return true; }));
     out.push(h('div', { class: 'tabela-clima' }, Object.keys(Cs).map(k => h('label', { class: 'tc-linha' }, glifo(Cs[k].svg, 16), h('span', { text: Cs[k].nome }),
       campoNumero('clima:' + i + ':' + k, null, pesos[k] || 0, n => mudarTabelaClima(i, k, n), { min: 0, max: 100, erro: 'Use de 0 a 100 (%).' }), h('small', { text: '%' })))));
     out.push(nota(soma === 100 ? 'Somam 100%.' : 'Somam ' + fmt(soma, 0) + '%: as chances valem na proporção (é como se fossem ' + Object.keys(Cs).filter(k => pesos[k] > 0).map(k => Cs[k].nome.toLocaleLowerCase('pt-BR') + ' ' + fmt(pesos[k] * 100 / soma, 0) + '%').join(', ') + ').'));
@@ -3025,9 +3025,9 @@
   function mudarTabelaClima(i, k, n) {
     return App.mudar(k ? 'mudar a tabela do clima' : 'voltar o mês à tabela de começo', mm => {
       const nM = mm.cal.meses.length, cl = mm.clima || (mm.clima = {});
-      if (!Array.isArray(cl.tab)) cl.tab = Array.from({ length: nM }, (_, j) => N().tabelaPadraoDoMes(j, nM));
-      const atual = Object.assign({}, cl.tab[i] || N().tabelaPadraoDoMes(i, nM));
-      if (k) { if ((atual[k] || 0) === n) return false; atual[k] = n; } else Object.assign(atual, N().tabelaPadraoDoMes(i, nM));
+      if (!Array.isArray(cl.tab)) cl.tab = Array.from({ length: nM }, (_, j) => N().tabelaPadraoDoMes(j, nM, mm.cal));
+      const atual = Object.assign({}, cl.tab[i] || N().tabelaPadraoDoMes(i, nM, mm.cal));
+      if (k) { if ((atual[k] || 0) === n) return false; atual[k] = n; } else Object.assign(atual, N().tabelaPadraoDoMes(i, nM, mm.cal));
       if (!Object.values(atual).some(x => x > 0)) { App.toast('Pelo menos um clima precisa ter chance neste mês. Nada mudou.'); return false; }
       cl.tab[i] = atual;
     });
@@ -3675,7 +3675,7 @@
       h('div', { class: 'row' },
         campoNumero('mapa:ano', 'Ano de hoje', d.ano, n => App.mudar('mudar o ano', mm => { mm.cal.ano0 = n - Math.floor(mm.cal.dia / N().diasNoAno(mm.cal)); }), { min: -1e6, max: 1e6 }),
         campoTexto('mapa:era', 'Era', cal.era, v => App.mudar('mudar a era', mm => { mm.cal.era = v.trim(); }), { max: 40, ph: 'Ex.: d.C.' })),
-      campoTexto('mapa:meses', 'Meses (um por linha, "Nome: dias")', cal.meses.map(x => x.nome + ': ' + x.dias).join('\n'), v => {
+      campoTexto('mapa:meses', 'Meses (um por linha, "Nome: dias: estação")', cal.meses.map(x => x.nome + ': ' + x.dias + (x.est && N_.ESTACOES_NOMES ? ': ' + N_.ESTACOES_NOMES[x.est] : '')).join('\n'), v => {
         const meses = lerMeses(v);
         if (!meses) { App.toast('Escreva pelo menos um mês, no formato "Nome: dias".'); return false; }
         return App.mudar('mudar os meses', mm => {
@@ -3683,7 +3683,7 @@
           mm.cal.meses = meses;
           mm.cal.ano0 = ano - Math.floor(mm.cal.dia / N().diasNoAno(mm.cal));
         });
-      }, { area: true, linhas: 6, dica: 'O mundo conta os dias desde o começo: mudar os meses pode mudar o dia e o mês de hoje, mas não o ano.' }),
+      }, { area: true, linhas: 8, dica: 'A estação (primavera, verão, outono ou inverno) é opcional: ela escolhe a tabela do clima do mês. O mundo conta os dias desde o começo: mudar os meses pode mudar o dia e o mês de hoje, mas não o ano.' }),
       // (lote 7) os dias da semana: o mestre diz que dia da semana é hoje, e o resto segue
       campoEscolha('mapa:semana', 'Dia da semana de hoje', String(N_.semanaDe(cal, cal.dia)), [['-1', 'Sem dia da semana']].concat(N_.SEMANA.map((nome, i) => [String(i), nome])),
         v => App.mudar(Number(v) < 0 ? 'tirar o dia da semana' : 'escolher o dia da semana', mm => { const s0 = N().sem0Para(mm.cal.dia, Number(v)); if (s0 === mm.cal.sem0) return false; mm.cal.sem0 = s0; }),
@@ -3875,10 +3875,15 @@
     for (const l of String(s).split(/\r?\n/)) {
       const t = l.trim();
       if (!t) continue;
-      const i = t.lastIndexOf(':'), n = i >= 0 ? parseInt(t.slice(i + 1).trim(), 10) : NaN;
-      const nome = (i >= 0 && Number.isFinite(n) ? t.slice(0, i) : t).trim();
+      // (lote 115) "Nome: dias" ou "Nome: dias: estação"
+      const EST = { primavera: 'primavera', verao: 'verao', 'verão': 'verao', outono: 'outono', inverno: 'inverno' };
+      let resto = t, est = '';
+      const j = resto.lastIndexOf(':');
+      if (j >= 0 && EST[resto.slice(j + 1).trim().toLowerCase()]) { est = EST[resto.slice(j + 1).trim().toLowerCase()]; resto = resto.slice(0, j).trim(); }
+      const i = resto.lastIndexOf(':'), n = i >= 0 ? parseInt(resto.slice(i + 1).trim(), 10) : NaN;
+      const nome = (i >= 0 && Number.isFinite(n) ? resto.slice(0, i) : resto).trim();
       if (!nome) continue;
-      meses.push({ nome: nome.slice(0, 60), dias: Number.isFinite(n) ? Math.min(1000, Math.max(1, n)) : 30 });
+      meses.push(Object.assign({ nome: nome.slice(0, 60), dias: Number.isFinite(n) ? Math.min(1000, Math.max(1, n)) : 30 }, est ? { est } : {}));
     }
     return meses.length ? meses.slice(0, 100) : null;
   }

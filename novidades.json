@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-11",
+      "data": "2026-11-08",
+      "titulo": "Estações no calendário",
+      "itens": [
+        { "tipo": "novo", "texto": "Mapa-múndi: cada mês pode ter a sua estação (\"Degelo: 30: primavera\" no calendário). A data mostra a estação, e o clima de começo do mês segue ela." },
+        { "tipo": "melhorou", "texto": "A tabela do clima mostra a estação ao lado de cada mês.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.08-10",
       "data": "2026-11-08",
       "titulo": "Bênçãos e o Arcano Sombrio",

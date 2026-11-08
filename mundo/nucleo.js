@@ -504,7 +504,8 @@
   }
   function textoData(cal, dia) {
     const d = dataDe(cal, dia), era = ehObj(cal) ? texto(cal.era, '').trim() : '';
-    return d.diaMes + ' de ' + d.nomeMes + ', ano ' + d.ano + (era ? ' ' + era : '');
+    const est = ehObj(mesesDe(cal)[d.mes]) && ESTACOES_NOMES[mesesDe(cal)[d.mes].est];   // (lote 115) "(primavera)"
+    return d.diaMes + ' de ' + d.nomeMes + (est ? ' (' + est + ')' : '') + ', ano ' + d.ano + (era ? ' ' + era : '');
   }
   // (lote 7) o dia da semana de um dia do mundo (índice 0 a 6, ou -1 sem a semana) e o nome dele ('' sem a semana)
   function semanaDe(cal, dia) {
@@ -583,12 +584,20 @@
      clima por clima (nunca, menos, mais, muito mais). O sorteio do dia é um número só para o mapa inteiro (do id do mapa
      e do dia: sai igual em todo aparelho e não muda ao repintar), e cada região o lê com as chances dela — um dia de
      tempestade tende a ser de tempestade em todo lugar, e no deserto vira calor. O mestre troca o de hoje à mão. */
+  /* (lote 115) Cada mês pode guardar a sua estação (cal.meses[i].est): o mundo do Bruno tem 8 meses, 2 de cada, e começa
+     na primavera. Sem ela, a estação sai da posição do mês no ano (o primeiro e o último são de inverno). */
+  const ESTACOES_NOMES = { primavera: 'primavera', verao: 'verão', outono: 'outono', inverno: 'inverno' };
+  function estacaoDe(cal, i) {
+    const ms = mesesDe(cal), m = ms[i];
+    return ehObj(m) && ESTACOES_NOMES[m.est] ? m.est : estacaoDoMes(i, ms.length);
+  }
   function estacaoDoMes(i, n) { const f = (i + 0.5) / Math.max(1, n); return f < 1 / 6 || f >= 11 / 12 ? 'inverno' : f < 5 / 12 ? 'primavera' : f < 2 / 3 ? 'verao' : 'outono'; }
-  const tabelaPadraoDoMes = (i, n) => Object.assign({}, CLIMA_ESTACOES[estacaoDoMes(i, n)]);
+  // (lote 115) com o calendário (cal), vale a estação gravada no mês
+  const tabelaPadraoDoMes = (i, n, cal) => Object.assign({}, CLIMA_ESTACOES[cal ? estacaoDe(cal, i) : estacaoDoMes(i, n)]);
   // a chance de cada clima num mês (a da tabela do mapa, ou a de começo), com o ajuste da região
   function chancesDoClima(mapa, mes, regiao) {
     const n = mesesDe(ehObj(mapa) ? mapa.cal : null).length, tab = ehObj(mapa) && ehObj(mapa.clima) && Array.isArray(mapa.clima.tab) ? mapa.clima.tab : null;
-    const base = tab && ehObj(tab[mes]) ? tab[mes] : tabelaPadraoDoMes(mes, n), out = {};
+    const base = tab && ehObj(tab[mes]) ? tab[mes] : Object.assign({}, CLIMA_ESTACOES[estacaoDe(ehObj(mapa) ? mapa.cal : null, mes)]), out = {};
     for (const k of Object.keys(CLIMAS)) { const aj = ehObj(regiao) && ehObj(regiao.clima) ? AJUSTES_CLIMA[regiao.clima[k]] : null; out[k] = Math.max(0, num(base[k], 0)) * (aj ? aj.x : 1) + (aj ? aj.mais : 0); }
     return out;
   }
@@ -2186,9 +2195,9 @@
     for (const k of Object.keys(CLIMAS)) { out[k] = inteiro(v[k], 0, 0, 100); soma += out[k]; }
     return soma > 0 ? out : null;
   }
-  function normClima(v, nMeses) {
+  function normClima(v, nMeses, cal) {
     const c = ehObj(v) ? v : {}, out = {};
-    if (Array.isArray(c.tab) && c.tab.length) out.tab = Array.from({ length: nMeses }, (_, i) => normPesosClima(c.tab[i]) || tabelaPadraoDoMes(i, nMeses));
+    if (Array.isArray(c.tab) && c.tab.length) out.tab = Array.from({ length: nMeses }, (_, i) => normPesosClima(c.tab[i]) || tabelaPadraoDoMes(i, nMeses, cal));
     const mao = normDiaK(c.mao);
     if (mao) out.mao = mao;
     if (tem(CLIMAS, c.hoje)) out.hoje = c.hoje;
@@ -2403,7 +2412,7 @@
   function normCal(c) {
     c = ehObj(c) ? c : {};
     let meses = (Array.isArray(c.meses) ? c.meses : []).filter(ehObj).slice(0, 100)
-      .map((m, i) => ({ nome: texto(m.nome).trim() || 'Mês ' + (i + 1), dias: diasDoMes(m) }));
+      .map((m, i) => Object.assign({ nome: texto(m.nome).trim() || 'Mês ' + (i + 1), dias: diasDoMes(m) }, ESTACOES_NOMES[m.est] ? { est: m.est } : {}));   // (lote 115) a estação do mês
     if (!meses.length) meses = copia(CAL_PADRAO.meses);
     const tpd = inteiro(c.tpd, TEMPOS_DIA, 1, MAX_TEMPOS);
     const sem0 = Number.isInteger(c.sem0) && c.sem0 >= 0 && c.sem0 <= 6 ? c.sem0 : null;
@@ -3590,7 +3599,7 @@
       faccoes: normFaccoes(m.faccoes), objs: [],
     };
     // (lote 7, parte 5c) o clima (só quando há algo: o mapa de antes fica igual)
-    const clima = normClima(m.clima, mesesDe(cal).length);
+    const clima = normClima(m.clima, mesesDe(cal).length, cal);
     if (Object.keys(clima).length) mapa.clima = clima;
     mapa.terrenos = normTerrenos(m.terrenos);
     mapa.hexes = normHexes(m.hexes, mapa.terrenos);
@@ -4169,7 +4178,7 @@
     terrenoDe, terrenoPintado, hexInfo, custoHex, medirHex, VIZINHOS_HEX, BIOMA_DA_TEX, tijoloHex, hexParaCena, guerraDoHex, viagem, ondeNoCaminho, andarUmDia, regiaoEm, sortearEncontro,
     TEMPOS_DIA, passoDe, passarTempos, andarTempos, ajustarMarcha, bolinhas, regradear, regioesEm, facDaRegiao, controleDaRegiao, acimaDe,
     TIPOS_GRUPO, ARMAS_IDS, MODOS_ROTA, MAX_PARADAS, camposDoTipo, tracarRota, encontrosNoCaminho, temposDaParada, nomeDaParada, marchar,
-    CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
+    CLIMAS, CLIMA_ESTACOES, AJUSTES_CLIMA, ZONAS, estacaoDoMes, estacaoDe, ESTACOES_NOMES, tabelaPadraoDoMes, chancesDoClima, climaSorteado, climaDoDia, regiaoDoClima, climaNoPonto, zonasNoPonto, efeitoDasZonas, sorteioDoDia,
     HONRA, TERRENOS_NOVOS, TERRENOS_L54, TERRENOS_L57, TERRENOS_L93, TEX_AGUA, redeDoHex, trilhasDoMapa, margemDoHex, meioDoLado, VIZ_REDE, TEX_VIA, mudarHonra, facMudar, facNovoRecurso, facTirarRecurso, terrenosQueFaltam,
     nevoaCobre, projetar, copia, escalarMapa, ESTILOS_CENA, quandoEscurece, horaDoTempo,
     normBr,

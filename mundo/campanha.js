@@ -37,7 +37,7 @@
 
   /* ---------------- as regras ---------------- */
   // os meses de inverno pela estação do calendário (o primeiro e o último do ano, num ano de 12 meses)
-  function mesesDeInverno(m) { const N = NN(), ms = N.mesesDe(ehObj(m) ? m.cal : null); return ms.map((_, i) => i).filter(i => N.estacaoDoMes(i, ms.length) === 'inverno'); }
+  function mesesDeInverno(m) { const N = NN(), ms = N.mesesDe(ehObj(m) ? m.cal : null); return ms.map((_, i) => i).filter(i => (N.estacaoDe ? N.estacaoDe(m && m.cal, i) : N.estacaoDoMes(i, ms.length)) === 'inverno'); }
   // as regras que valem: as do mestre, ou as de começo (os meses de inverno, sem os do mestre, pela estação)
   function regrasDe(m) {
     const N = NN(), r = ehObj(m) && ehObj(m.guerra) && ehObj(m.guerra.regras) ? m.guerra.regras : null;
