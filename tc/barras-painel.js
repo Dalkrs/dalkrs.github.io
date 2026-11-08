@@ -548,7 +548,7 @@ classe({ id: 'samurai', arvore: 'Samurai', barra: 'Postura', cor: '#D9A441', gli
 
 /* ---------------- Ninja: Selos e sombra ---------------- */
 classe({ id: 'ninja', arvore: 'Ninja', barra: 'Jutsu', cor: '#8C9BE0', glifo: '忍', inicio: 4,
-  patamares: [[5, 'Passo Mudo', 'andar não te revela'], [10, 'Olhos de Noite', 'você vê no escuro e na fumaça'], [15, 'Selo Completo', 'o próximo jutsu sai sem gastar a ação']],
+  patamares: [[5, 'Passo Mudo', 'andar não te revela para quem está em alerta 0, 1 ou 2'], [10, 'Olhos de Noite', 'você vê no escuro e na fumaça'], [15, 'Selo Completo', 'o próximo jutsu sai sem gastar a ação']],
   risco: ['Sombra Cheia', 'você aparece como silhueta e não se esconde até gastar'],
   est: () => ({ escondido: false, selos: 0 }),
   marcas: s => [{ k: 'esc', glifo: '隠', rotulo: s.escondido ? 'Escondido (toque para aparecer)' : 'Ficar Escondido', dica: 'golpes com Dano +1 enquanto ninguém te vê' },

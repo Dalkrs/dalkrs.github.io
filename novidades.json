@@ -2,13 +2,39 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-15",
+      "data": "2026-11-08",
+      "titulo": "Mariposa e ajustes de equilíbrio",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Árvores: nova raça Mariposa (Antro), com o Pó (8 bolinhas) e os ramos Pó de Lua, Asas e Antenas."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Equilíbrio: o Pisar Leve do Ninja e o Passo Leve do Silk agora abafam os passos só para quem está distraído ou desconfiado (o Ninja, no nível 2, também para quem está procurando). Saíram o 'nunca é surpreendido' e as imunidades disfarçadas; viraram bônus nos testes."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.08-14",
       "data": "2026-11-08",
       "titulo": "Token novo e contadores digitáveis",
       "itens": [
-        { "tipo": "novo", "texto": "Cenas: ao criar um token (ferramenta Token ou uma imagem), uma janelinha pede o nome, a iniciativa e as barras (quais usar e o máximo de cada). Copiar e colar (Ctrl+C, Ctrl+V) não pergunta de novo. Cancelar não cria nada.", "mestre": true },
-        { "tipo": "melhorou", "texto": "Cenas: dá para desligar a pergunta (\"Criar os próximos sem perguntar\") e ligar de novo em Barras padrão…", "mestre": true },
-        { "tipo": "melhorou", "texto": "Cenas: nos contadores (das condições e dos turnos por rodada), clique no número do meio para digitar o valor de uma vez (15, 16, 18…). Enter grava; Esc desiste." }
+        {
+          "tipo": "novo",
+          "texto": "Cenas: ao criar um token (ferramenta Token ou uma imagem), uma janelinha pede o nome, a iniciativa e as barras (quais usar e o máximo de cada). Copiar e colar (Ctrl+C, Ctrl+V) não pergunta de novo. Cancelar não cria nada.",
+          "mestre": true
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: dá para desligar a pergunta (\"Criar os próximos sem perguntar\") e ligar de novo em Barras padrão…",
+          "mestre": true
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: nos contadores (das condições e dos turnos por rodada), clique no número do meio para digitar o valor de uma vez (15, 16, 18…). Enter grava; Esc desiste."
+        }
       ]
     },
     {
@@ -16,9 +42,19 @@
       "data": "2026-11-08",
       "titulo": "Conquistas",
       "itens": [
-        { "tipo": "novo", "texto": "Aba Conquistas, no grupo Mundo. Cada jogador tem as suas. As comuns ficam à mostra; as raras, épicas e lendárias ficam ocultas (\"???\") até a pessoa ganhar. Passando o mouse, dá para ver quem já ganhou." },
-        { "tipo": "novo", "texto": "Quando o mestre libera uma conquista, todo mundo que está no site ouve um toque e vê o anúncio. A comum aparece inteira; nas outras, só a raridade, e o nome fica só para quem ganhou." },
-        { "tipo": "novo", "texto": "O mestre já começa com 40 conquistas do mundo, libera, tira, cria e edita as dele (com mais de 40 ícones e um campo de prêmio, que ele aplica na ficha).", "mestre": true }
+        {
+          "tipo": "novo",
+          "texto": "Aba Conquistas, no grupo Mundo. Cada jogador tem as suas. As comuns ficam à mostra; as raras, épicas e lendárias ficam ocultas (\"???\") até a pessoa ganhar. Passando o mouse, dá para ver quem já ganhou."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Quando o mestre libera uma conquista, todo mundo que está no site ouve um toque e vê o anúncio. A comum aparece inteira; nas outras, só a raridade, e o nome fica só para quem ganhou."
+        },
+        {
+          "tipo": "novo",
+          "texto": "O mestre já começa com 40 conquistas do mundo, libera, tira, cria e edita as dele (com mais de 40 ícones e um campo de prêmio, que ele aplica na ficha).",
+          "mestre": true
+        }
       ]
     },
     {
@@ -26,9 +62,18 @@
       "data": "2026-11-08",
       "titulo": "Bolinhas ou barra no token",
       "itens": [
-        { "tipo": "novo", "texto": "Ficha: em cada barra, \"No token: Bolinhas / Barra\". A escolha vale para todos os tokens do personagem, em todas as cenas. Clicar de novo volta ao padrão." },
-        { "tipo": "melhorou", "texto": "Sem escolha, a barra de raça aparece em bolinhas no token, e a de classe (e as outras das árvores) em barra corrente." },
-        { "tipo": "melhorou", "texto": "Cenas: no painel do token, a barra cujo jeito vem da ficha avisa que é para mudar lá." }
+        {
+          "tipo": "novo",
+          "texto": "Ficha: em cada barra, \"No token: Bolinhas / Barra\". A escolha vale para todos os tokens do personagem, em todas as cenas. Clicar de novo volta ao padrão."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Sem escolha, a barra de raça aparece em bolinhas no token, e a de classe (e as outras das árvores) em barra corrente."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: no painel do token, a barra cujo jeito vem da ficha avisa que é para mudar lá."
+        }
       ]
     },
     {
@@ -36,8 +81,15 @@
       "data": "2026-11-08",
       "titulo": "Estações no calendário",
       "itens": [
-        { "tipo": "novo", "texto": "Mapa-múndi: cada mês pode ter a sua estação (\"Degelo: 30: primavera\" no calendário). A data mostra a estação, e o clima de começo do mês segue ela." },
-        { "tipo": "melhorou", "texto": "A tabela do clima mostra a estação ao lado de cada mês.", "mestre": true }
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: cada mês pode ter a sua estação (\"Degelo: 30: primavera\" no calendário). A data mostra a estação, e o clima de começo do mês segue ela."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "A tabela do clima mostra a estação ao lado de cada mês.",
+          "mestre": true
+        }
       ]
     },
     {
