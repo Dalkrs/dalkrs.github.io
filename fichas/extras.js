@@ -246,6 +246,8 @@ const FichasExtras = (() => {
   // só o que o item soma: as chaves com valor, o máximo de barras e as defesas específicas — [{ rot, v, title }]
   function bonusDoItem(it, pc) {
     const b = it.bonus || {}, out = [];
+    // (lote 112) o dano próprio da arma (arco, besta, pólvora) vem primeiro: "Dano 10"
+    if (+it.dp > 0) out.push({ rot: 'Dano', v: +it.dp, k: 'DP', puro: true, title: 'Dano próprio da arma (não rola atributo)' });
     ATRIBS.concat(DERIV, DEFESAS).forEach(x => { const v = +b[x.k] || 0; if (v) out.push({ rot: x.rot || x.k, v, title: x.nome, k: x.k }); });
     if (RR()) {
       const rec = it.rec && typeof it.rec === 'object' ? it.rec : {}, def = it.def && typeof it.def === 'object' ? it.def : {};
@@ -264,7 +266,7 @@ const FichasExtras = (() => {
   // (lote 90) o elemento vai colado no número anterior, só com o desenho: "FOR +10 🔥+3"
   const chipElem = b => `<span class="itb itelem ${b.v < 0 ? 'neg' : ''}" title="${esc(b.title)}" style="--ce:${esc((RE().ELEM_INFO[b.elem] || {}).cor || 'currentColor')}">${RE().svgElem(b.elem, 13)}<span class="sr">${esc(b.rot)} </span>${sinalTxt(b.v)}</span>`;
   const chipsBonus = lista => lista.map((b, i) => (b.elem ? (i && !lista[i - 1].elem ? '' : i ? '<span class="itsep" aria-hidden="true">·</span>' : '') + chipElem(b)
-    : (i ? '<span class="itsep" aria-hidden="true">·</span>' : '') + `<span class="itb ${b.v < 0 ? 'neg' : ''}" title="${esc(b.title)}">${esc(b.rot)} ${sinalTxt(b.v)}</span>`)).join('');
+    : (i ? '<span class="itsep" aria-hidden="true">·</span>' : '') + `<span class="itb ${b.v < 0 ? 'neg' : ''}" title="${esc(b.title)}">${esc(b.rot)} ${b.puro ? esc(String(b.v)) : sinalTxt(b.v)}</span>`)).join('');
   // o nível aberto no "Editar" de um item com níveis (0: item comum)
   function nivelEditado(it) {
     const R = R7();
@@ -278,7 +280,7 @@ const FichasExtras = (() => {
   // (lote 89) os tipos de dano de elemento de uma arma: os nove elementos e o psicológico (com os nomes das defesas)
   const ELEM = () => { const R = RE(); return R && R.ELEM_DANO ? ESP().filter(d => R.ELEM_DANO.includes(d.k)) : []; };
   const NOME_K = k => (NOMES_K[k] || k);
-  const NOMES_K = { FOR: 'FOR', DES: 'DES', VIT: 'VIT', CAN: 'CAN', AGI: 'AGI', DFF: 'DEF F', DFM: 'DEF M', ESQ: 'Esquiva', BLQ: 'Bloqueio', FUR: 'FUR', PER: 'PER' };
+  const NOMES_K = { DP: 'Dano próprio', FOR: 'FOR', DES: 'DES', VIT: 'VIT', CAN: 'CAN', AGI: 'AGI', DFF: 'DEF F', DFM: 'DEF M', ESQ: 'Esquiva', BLQ: 'Bloqueio', FUR: 'FUR', PER: 'PER' };
   function htmlEtiquetas(it) {
     const R = RE(); if (!R) return '';
     const t = R.textoEtiquetas(it);
@@ -292,20 +294,28 @@ const FichasExtras = (() => {
     const faixas = [['', 'Pelo nível (F' + autoF + ')']].concat(R.FAIXAS_EQ.map(f => [f.f, 'F' + f.f + ' · níveis ' + f.de + ' a ' + f.ate]));
     const mats = [['', '—'], [1, 'Q1 (até +2)'], [2, 'Q2 (até +4)'], [3, 'Q3 (até +5)']];
     const melh = [0, 1, 2, 3, 4, 5].map(n => [n, n ? '+' + n : 'nenhuma']);
+    // (lote 112) o que rola o dano da arma: um atributo (FOR nas físicas, CAN nas mágicas) ou o dano próprio dela
+    const danos = [['', 'Pelo maior número'], ['FOR', 'FOR'], ['CAN', 'CAN'], ['DES', 'DES'], ['AGI', 'AGI'], ['VIT', 'VIT'], ['dp', 'Próprio (arco, besta, pólvora)']];
+    const danoAtual = +it.dp > 0 ? 'dp' : (it.atr || '');
     const semMelhoria = r.peca === 'fora' || r.peca === 'acessorio', niveis = !!R7() && R7().temNiveis(it);
     const podeMelhorar = !semMelhoria && !niveis && r.mat && r.melhoria < r.limite;
     const porQue = semMelhoria ? 'Esta peça não tem melhoria.' : niveis ? 'Item com níveis: use as abas dos níveis.' : !r.mat ? 'Escolha o material primeiro.' : r.melhoria >= r.limite ? 'Q' + r.mat + ' sobe até +' + r.limite + '.' : (r.peca === 'armadura' ? 'Sobe +1 e o total da armadura +' + F.passo + ' (no lado mais baixo)' : 'Sobe +1 e ' + r.chaves.map(NOME_K).join(' e ') + ' +' + F.passo) + ' (o Compendiânio sai à mão: ' + F.custo[r.melhoria] + ').';
     let aviso = '';
     if (r.peca === 'armadura') {
-      const b = it.bonus || {}, a = +b.DFF || 0, c = +b.DFM || 0;
+      const b = it.bonus || {}, a = +b.DFF || 0, c = +b.DFM || 0, eq = +b.ESQ || 0;
       const pede = 'A F' + r.faixa + ' pede ' + r.ref + ' no total' + (r.melhoria ? ' (com +' + r.melhoria + ')' : '') + ', repartido entre DEF F e DEF M, até ' + r.teto + ' num lado.';
-      const este = ' Este item: ' + a + ' + ' + c + ' = ' + r.valor + (r.estado === 'no' ? '' : r.estado === 'acima' ? ', acima' : ', abaixo') + (r.ladoAcima ? '; um lado passa de ' + r.teto : '') + '.';
+      const este = ' Este item: ' + a + ' + ' + c + (eq ? (eq > 0 ? ' + ' : ' − ') + Math.abs(eq) + ' de Esquiva' : '') + ' = ' + r.valor + (r.estado === 'no' ? '' : r.estado === 'acima' ? ', acima' : ', abaixo') + (r.ladoAcima ? '; um lado passa de ' + r.teto : '') + '.';
       const certo = r.estado === 'no' && !r.ladoAcima;
       aviso = `<div class="itregaviso est-${certo ? 'no' : r.estado === 'no' ? 'acima' : r.estado}"><span>${esc(pede + este)}</span>${!certo && !niveis ? `<button type="button" class="mini" data-itregusar="${id}">Usar o valor da faixa</button>` : ''}</div>`;
     } else if (r.peca !== 'fora' && r.chaves.length) {
       const pede = 'A F' + r.faixa + ' pede ' + r.ref + (r.melhoria ? ' (com +' + r.melhoria + ')' : '') + (r.peca === 'arma' ? ' em ' + NOME_K(r.chaves[0]) : r.peca === 'armadura' ? ' em cada DEF' : r.peca === 'acessorio' ? '' : ' de ' + NOME_K(r.chaves[0])) + '.';
       const este = r.estado === 'no' ? ' Este item está no valor.' : ' Este item: ' + r.valor + (r.estado === 'acima' ? ', acima.' : ', abaixo.');
       aviso = `<div class="itregaviso est-${r.estado}"><span>${esc(pede + este)}</span>${r.estado !== 'no' && !niveis && r.peca !== 'acessorio' ? `<button type="button" class="mini" data-itregusar="${id}">Usar o valor da faixa</button>` : ''}</div>`;
+    }
+    if (r.outros) {
+      const O = r.outros;
+      const txt = 'Outros atributos da arma (' + O.chaves.map(NOME_K).join(', ') + '), todos juntos: ' + O.soma + ' de ' + O.max + ' (F' + r.faixa + ').' + (O.acima ? ' Passou ' + (O.soma - O.max) + '.' : O.sobra ? ' Sobram ' + O.sobra + '.' : ' Chegou no teto.');
+      aviso += `<div class="itregaviso est-${O.acima ? 'acima' : O.soma === O.max ? 'no' : 'nada'} itregoutros"><span>${esc(txt)}</span></div>`;
     }
     if (r.elem) {
       const E = r.elem, nomes = E.chaves.map(k => ((ELEM().find(d => d.k === k) || {}).nome || k) + ' ' + (+(it.dano || {})[k] || 0)).join(', ');
@@ -319,6 +329,7 @@ const FichasExtras = (() => {
         ${sel('itregfaixa', R.etiquetasEq(it).faixa || '', faixas, 'Faixa')}
         ${sel('itregmat', R.etiquetasEq(it).mat || '', mats, 'Material')}
         ${sel('itregmelh', r.melhoria, melh, 'Melhoria')}
+        ${r.peca === 'arma' ? sel('itregdano', danoAtual, danos, 'Dano rola') : ''}
         <button type="button" class="mini" data-itregmais="${id}" ${podeMelhorar ? '' : 'disabled'} title="${esc(porQue)}">Melhorar +1</button>
       </div>${aviso}
     </div>`;
@@ -960,6 +971,16 @@ const FichasExtras = (() => {
       save(); desenhar(render, sel('data-' + attr, it.id));
       aviso((nomeIt(it) || 'O item') + ': ' + rotulo + '.', 'Desfazer', () => { const x = item(it.id); if (!x) return; if (antes === undefined) delete x[campo]; else x[campo] = antes; save(); render(); });
     });
+    // (lote 112) o que rola o dano: um atributo (it.atr) ou o dano próprio (it.dp, que começa no número da faixa)
+    qa(painel, '[data-itregdano]').forEach(s => s.onchange = () => {
+      const it = item(s.getAttribute('data-itregdano')), R = RE(); if (!it || !R) return;
+      const antes = { atr: it.atr, dp: it.dp }, v = s.value;
+      delete it.atr; delete it.dp;
+      if (v === 'dp') it.dp = antes.dp > 0 ? antes.dp : R.valorDaFaixa(R.itemNaRegra(it, pc.level).faixa, 'arma', R.etiquetasEq(it).melhoria);
+      else if (v) it.atr = v;
+      save(); desenhar(render, sel('data-itregdano', it.id));
+      aviso((nomeIt(it) || 'O item') + ': ' + (v === 'dp' ? 'dano próprio ' + it.dp : v ? 'o dano rola ' + v : 'o dano rola o maior número') + '.', 'Desfazer', () => { const x = item(it.id); if (!x) return; delete x.atr; delete x.dp; if (antes.atr) x.atr = antes.atr; if (antes.dp) x.dp = antes.dp; save(); render(); });
+    });
     regraMuda('itregpeca', 'peca', 'peça trocada'); regraMuda('itregfaixa', 'faixa', 'faixa trocada'); regraMuda('itregmat', 'mat', 'material trocado'); regraMuda('itregmelh', 'melhoria', 'melhoria trocada');
     const trocarPelaRegra = (it, novo, txt) => {
       const i = (pc.itens || []).indexOf(it); if (i < 0) return;
@@ -979,11 +1000,11 @@ const FichasExtras = (() => {
       const r = R.itemNaRegra(it, pc.level), novo = JSON.parse(JSON.stringify(it));
       novo.bonus = Object.assign({}, novo.bonus);
       if (r.peca === 'armadura') {
-        const p = R.repartirArmadura(novo.bonus.DFF, novo.bonus.DFM, r.ref, r.teto); novo.bonus.DFF = p.DFF; novo.bonus.DFM = p.DFM;
+        const p = R.repartirArmadura(novo.bonus.DFF, novo.bonus.DFM, r.ref - (r.esq || 0), r.teto); novo.bonus.DFF = p.DFF; novo.bonus.DFM = p.DFM;
         trocarPelaRegra(it, novo, (nomeIt(it) || 'O item') + ': DEF F ' + p.DFF + ' e DEF M ' + p.DFM + ', o total da F' + r.faixa + ' (' + r.ref + ').');
         return;
       }
-      for (const k of r.chaves) novo.bonus[k] = r.ref;
+      for (const k of r.chaves) { if (k === 'DP') novo.dp = r.ref; else novo.bonus[k] = r.ref; }
       trocarPelaRegra(it, novo, (nomeIt(it) || 'O item') + ': ' + r.chaves.map(NOME_K).join(' e ') + ' em ' + r.ref + ', o valor da F' + r.faixa + '.');
     });
     const sep = q(painel, '[data-itseparar]'); if (sep) sep.onclick = () => separarPorTipo(pc);

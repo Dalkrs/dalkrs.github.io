@@ -57,6 +57,12 @@
       const tipos = Rr && Rr.tiposDeItem ? Rr.tiposDeItem(null).map(y => y.id) : [];
       o.equip = { tipo: typeof e.tipo === 'string' && (tipos.includes(e.tipo) || /^tp_[a-z0-9_-]{1,40}$/i.test(e.tipo)) ? e.tipo : '',
         bonus: numeros(e.bonus, Rr ? Rr.CHAVES_BONUS : []), def: numeros(e.def, Rr && Rr.DEFESAS_ESP ? Rr.DEFESAS_ESP.map(d => d.k) : []) };
+      // (lote 112) a regra dos equipamentos (a Cola): peça, faixa, material, melhoria, o atributo que rola o dano e o dano próprio
+      const pecas = Rr && Rr.PECAS ? Rr.PECAS.map(p => p[0]) : [];
+      if (pecas.includes(e.peca)) o.equip.peca = e.peca;
+      const fx = inteiro(e.faixa, 0, 4, 0), mt = inteiro(e.mat, 0, 3, 0), mh = inteiro(e.melhoria, 0, 5, 0), dp = inteiro(e.dp, 0, 999, 0);
+      if (fx) o.equip.faixa = fx; if (mt) o.equip.mat = mt; if (mh) o.equip.melhoria = mh; if (dp) o.equip.dp = dp;
+      if (['FOR', 'DES', 'VIT', 'CAN', 'AGI'].includes(e.atr)) o.equip.atr = e.atr;
     }
     return o;
   }
@@ -112,6 +118,7 @@
     const o = { id: id || uid(), nome: it.nome, equipado: false, bonus: b };
     if (e.tipo) o.tipo = e.tipo;
     if (e.def && Object.keys(e.def).length) o.def = Object.assign({}, e.def);
+    for (const k of ['peca', 'faixa', 'mat', 'melhoria', 'atr', 'dp']) if (e[k] != null && e[k] !== '') o[k] = e[k];      // (lote 112) a regra vai junto
     if (it.nota) o.efeito = it.nota;
     return o;
   }

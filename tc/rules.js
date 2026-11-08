@@ -2116,13 +2116,15 @@
     const nome = String(it.nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
     if (it.tipo === 'escudo' || (blq >= 10 && maior < 8)) return 'escudo';
     if (/BOTA|SAPATO|CALCADO|GREVA/.test(nome) || (esq >= 6 && def < 6 && maior < 8 && it.tipo !== 'arma')) return 'bota';
-    if (it.tipo === 'arma' || maior >= 8) return 'arma';
+    if (it.tipo === 'arma' || maior >= 8 || numFinito(it.dp) > 0) return 'arma';
     if (it.tipo === 'armadura' || def >= 6) return 'armadura';
     return 'acessorio';
   }
   // os números que a peça usa na regra
   function chavesDaPeca(it, peca) {
     const b = ehObjeto(it.bonus) ? it.bonus : {}, v = k => numFinito(b[k]) || 0;
+    if (peca === 'arma' && numFinito(it.dp) > 0) return ['DP'];                    // (lote 112) arco, besta, pólvora: o dano é da arma
+    if (peca === 'arma' && ATRIBS.some(x => x.k === it.atr)) return [it.atr];     // (lote 112) o atributo que rola o dano, escolhido no item
     if (peca === 'arma') { const k = ['FOR', 'DES', 'CAN', 'AGI', 'VIT'].reduce((x, y) => (v(y) > v(x) ? y : x)); return [k]; }      // (no empate, a Vitalidade por último)
     if (peca === 'armadura') return ['DFF', 'DFM'];
     if (peca === 'bota') return ['ESQ'];
@@ -2192,18 +2194,30 @@
   }
   /* O item contra a regra: { peca, faixa (a do item ou a do nível), chaves, valor (o maior das chaves), ref (o da faixa
      com a melhoria), estado: 'no' | 'acima' | 'abaixo' | 'fora', limite (a melhoria máxima do material) } */
+  /* (lote 112) O dano próprio da arma (it.dp): arco, besta e arma de pólvora não rolam atributo; o dano é o número da
+     faixa (F1 10, F2 14…), que sobe com a melhoria. Na regra, ele faz o papel do atributo principal ('DP'). */
+  const valorEq = (it, k) => k === 'DP' ? (numFinito(it && it.dp) || 0) : (numFinito((ehObjeto(it && it.bonus) ? it.bonus : {})[k]) || 0);
+  /* (lote 112) Os outros atributos da arma, todos juntos, têm um teto por faixa (F1 25, F2 35, F3 55, F4 77): os cinco
+     atributos (menos o principal) e Esquiva, Furtividade e Percepção. Defesas, Bloqueio, elemento e barras ficam fora. */
+  const OUTROS_ARMA = Object.freeze(['FOR', 'DES', 'VIT', 'CAN', 'AGI', 'ESQ', 'FUR', 'PER']);
+  function outrosDaArma(it, principal, faixa) {
+    const chaves = OUTROS_ARMA.filter(k => k !== principal), soma = chaves.reduce((t, k) => t + Math.max(0, valorEq(it, k)), 0), max = faixaEq(faixa).outros;
+    return { chaves, soma, max, sobra: max - soma, acima: soma > max };
+  }
   function itemNaRegra(it, nivelPc) {
     const peca = pecaDoItem(it), e = etiquetasEq(it), faixa = e.faixa || faixaDoNivel(nivelPc);
     if (peca === 'fora') return { ...e, peca, faixa, chaves: [], valor: 0, ref: null, estado: 'fora', limite: 0 };
-    const ch = chavesDaPeca(it, peca), b = ehObjeto(it.bonus) ? it.bonus : {}, v = k => numFinito(b[k]) || 0;
+    const ch = chavesDaPeca(it, peca), b = ehObjeto(it.bonus) ? it.bonus : {}, v = k => valorEq(it, k);
     // (a armadura vale pelo total das duas defesas)
-    const valor = !ch.length ? 0 : peca === 'armadura' ? v('DFF') + v('DFM') : Math.max(...ch.map(v)), ref = valorDaFaixa(faixa, peca, e.melhoria);
+    // (lote 112) a armadura leve troca DEF F por Esquiva, e a pesada o contrário (a Cola): a Esquiva dela entra no total
+    const valor = !ch.length ? 0 : peca === 'armadura' ? v('DFF') + v('DFM') + v('ESQ') : Math.max(...ch.map(v)), ref = valorDaFaixa(faixa, peca, e.melhoria);
     const estado = valor > ref ? 'acima' : valor < ref ? 'abaixo' : 'no';
     const out = { ...e, peca, faixa, chaves: ch, valor, ref, estado, limite: e.mat ? MAT_MAX[e.mat] : 0 };
-    if (peca === 'armadura') { out.teto = tetoArmadura(faixa, e.melhoria); out.ladoAcima = Math.max(v('DFF'), v('DFM')) > out.teto; }
+    if (peca === 'armadura') { out.teto = tetoArmadura(faixa, e.melhoria); out.ladoAcima = Math.max(v('DFF'), v('DFM')) > out.teto; out.esq = v('ESQ'); }
     if (peca === 'arma') {
       const d = danoDoItem(it), s = elemDaFaixa(faixa), ks = Object.keys(d), soma = ks.reduce((t, k) => t + d[k], 0);
       out.elem = { chaves: ks, soma, max: s.max, n: s.n, acima: soma > s.max || ks.length > s.n };
+      out.outros = outrosDaArma(it, ch[0], faixa);
     }
     return out;
   }
@@ -2220,7 +2234,7 @@
       // (o passo entra no total, no lado mais baixo — o mestre reparte depois, se quiser)
       const a = numFinito(novo.bonus.DFF) || 0, b = numFinito(novo.bonus.DFM) || 0;
       if (b < a) novo.bonus.DFM = b + F.passo; else novo.bonus.DFF = a + F.passo;
-    } else for (const k of r.chaves) novo.bonus[k] = (numFinito(novo.bonus[k]) || 0) + F.passo;
+    } else for (const k of r.chaves) { if (k === 'DP') novo.dp = valorEq(it, 'DP') + F.passo; else novo.bonus[k] = (numFinito(novo.bonus[k]) || 0) + F.passo; }
     novo.melhoria = r.melhoria + 1; if (!novo.faixa) novo.faixa = r.faixa;
     return { ok: true, it: novo };
   }
@@ -2249,14 +2263,14 @@
       const alvo = base + q * F.passo;
       if (r.peca === 'armadura') {
         // a armadura: o total sobe até o da faixa (repartido como está, sem passar do teto); nenhum lado desce
-        const a = numFinito(b.DFF) || 0, c = numFinito(b.DFM) || 0;
-        if (a + c < alvo) {
-          const p = repartirArmadura(a, c, alvo, tetoArmadura(r.faixa, q)), x = { DFF: Math.max(a, p.DFF), DFM: Math.max(c, p.DFM) };
+        const a = numFinito(b.DFF) || 0, c = numFinito(b.DFM) || 0, eq = numFinito(b.ESQ) || 0;
+        if (a + c + eq < alvo) {
+          const p = repartirArmadura(a, c, alvo - eq, tetoArmadura(r.faixa, q)), x = { DFF: Math.max(a, p.DFF), DFM: Math.max(c, p.DFM) };
           for (const k of ['DFF', 'DFM']) if (x[k] !== (k === 'DFF' ? a : c)) { muda.push(nomeK(k) + ' ' + (k === 'DFF' ? a : c) + ' → ' + x[k]); b[k] = x[k]; }
         }
       } else for (const k of r.chaves) {
-        const atual = numFinito(b[k]) || 0, quer = Math.max(atual, alvo);
-        if (quer !== atual) { b[k] = quer; muda.push(nomeK(k) + ' ' + atual + ' → ' + quer); }
+        const atual = valorEq(it, k), quer = Math.max(atual, alvo);
+        if (quer !== atual) { if (k === 'DP') novo.dp = quer; else b[k] = quer; muda.push((k === 'DP' ? 'Dano próprio' : nomeK(k)) + ' ' + atual + ' → ' + quer); }
       }
       novo.bonus = b;
     }
@@ -2302,7 +2316,7 @@
     MIS_ESTADOS, missoes,
     XP_PASSO, xpDe, subirNivelXp, anivOk, aniversario,
     POR_NIVEL_PADRAO, porNivelDoTipo, tetoDoTipo, contaDoTeto,
-    FAIXAS_EQ, MAT_MAX, PECAS, ELEM_DANO, ELEM_INFO, svgElem, elemDaFicha, limparElem, elemDaFaixa, danoDoItem, tetoArmadura, repartirArmadura, faixaDoNivel, faixaEq, etiquetasEq, textoEtiquetas, pecaDoItem, chavesDaPeca, valorDaFaixa, itemNaRegra, melhorarItem, ajusteDoItem, ajusteDaFicha
+    FAIXAS_EQ, MAT_MAX, PECAS, ELEM_DANO, ELEM_INFO, svgElem, elemDaFicha, limparElem, elemDaFaixa, danoDoItem, tetoArmadura, repartirArmadura, faixaDoNivel, faixaEq, etiquetasEq, textoEtiquetas, pecaDoItem, chavesDaPeca, valorDaFaixa, itemNaRegra, melhorarItem, outrosDaArma, OUTROS_ARMA, valorEq, ajusteDoItem, ajusteDaFicha
   };
 
   (root.TC || (root.TC = {})).rules = api;

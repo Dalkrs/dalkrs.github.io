@@ -328,7 +328,32 @@
       const e = it.equip = it.equip || { tipo: '', bonus: {}, def: {} };
       out.push(campo('Tipo de equipamento', escolha('it-eq-tipo', e.tipo, [['', 'Sem tipo']].concat(R.tiposDeItem(cfgFichas()).map(t => [t.id, t.nome])), v => { e.tipo = v; }, { largo: true })));
       out.push(h('div', { class: 'field' }, h('span', { text: 'O que soma, equipado' }),
-        h('div', { class: 'g6', id: 'it-bonus' }, R.CHAVES_BONUS.map(k => h('label', null, k, num('it-b-' + k, e.bonus[k] || '', v => { const n = Math.round(+v) || 0; if (n) e.bonus[k] = n; else delete e.bonus[k]; }, { ph: '0' }))))));
+        h('div', { class: 'g6', id: 'it-bonus' }, R.CHAVES_BONUS.map(k => h('label', null, k, num('it-b-' + k, e.bonus[k] || '', v => { const n = Math.round(+v) || 0; if (n) e.bonus[k] = n; else delete e.bonus[k]; pintarRegra(); }, { ph: '0' }))))));
+      /* (lote 112) a regra dos equipamentos (a Cola): peça, faixa, material, o que rola o dano e o dano próprio; embaixo,
+         o aviso do número principal e dos outros atributos da arma (F1 25, F2 35, F3 55, F4 77), que muda enquanto se edita */
+      const str = v => (v == null || v === '' ? '' : String(v)), setN = (k, v) => { const n = Math.round(+v) || 0; if (n) e[k] = n; else delete e[k]; pintarRegra(); };
+      const caixa = h('div', { class: 'ajuda', id: 'it-regra', style: { margin: '2px 0 0' } });
+      const pintarRegra = () => {
+        const pseudo = { nome: it.nome, tipo: e.tipo, bonus: e.bonus || {}, peca: e.peca, faixa: e.faixa, mat: e.mat, melhoria: e.melhoria, atr: e.atr, dp: e.dp };
+        const r = R.itemNaRegra ? R.itemNaRegra(pseudo, 1) : null, linhas = [];
+        if (!r || r.peca === 'fora') { caixa.replaceChildren(h('span', { text: 'Fora da regra dos equipamentos (ferramenta, montaria, relíquia de uso).' })); return; }
+        const nome = k => (k === 'DP' ? 'Dano próprio' : k), est = r.estado === 'no' ? '✓ no valor' : r.estado === 'acima' ? 'acima' : 'abaixo';
+        if (r.chaves.length) linhas.push('F' + r.faixa + (r.melhoria ? ' +' + r.melhoria : '') + ' pede ' + r.ref + (r.peca === 'armadura' ? ' no total (DEF F + DEF M), até ' + r.teto + ' num lado' : ' em ' + r.chaves.map(nome).join(' e ')) + '. Este item: ' + r.valor + ' (' + est + ').');
+        if (r.outros) { const O = r.outros; linhas.push('Outros atributos da arma, todos juntos: ' + O.soma + ' de ' + O.max + (O.acima ? ' — passou ' + (O.soma - O.max) + '.' : O.sobra ? ' — sobram ' + O.sobra + '.' : ' — chegou no teto.')); }
+        caixa.replaceChildren(...linhas.map(t => h('span', { style: { display: 'block' }, text: t })));
+      };
+      const pecas = [['', 'Pelo tipo']].concat(R.PECAS || []), faixas = [['', '—']].concat((R.FAIXAS_EQ || []).map(f => [String(f.f), 'F' + f.f + ' · níveis ' + f.de + ' a ' + f.ate]));
+      const mats = [['', '—'], ['1', 'Q1 (até +2)'], ['2', 'Q2 (até +4)'], ['3', 'Q3 (até +5)']], danos = [['', 'Pelo maior número'], ['FOR', 'FOR'], ['CAN', 'CAN'], ['DES', 'DES'], ['AGI', 'AGI'], ['VIT', 'VIT']];
+      out.push(h('div', { class: 'field' }, h('span', { text: 'Regra dos equipamentos (a Cola)' }),
+        h('div', { class: 'g6', id: 'it-regra-campos' },
+          h('label', null, 'Peça', escolha('it-eq-peca', e.peca || '', pecas, v => { if (v) e.peca = v; else delete e.peca; pintarRegra(); })),
+          h('label', null, 'Faixa', escolha('it-eq-faixa', str(e.faixa), faixas, v => setN('faixa', v))),
+          h('label', null, 'Material', escolha('it-eq-mat', str(e.mat), mats, v => setN('mat', v))),
+          h('label', null, 'Melhoria', num('it-eq-melh', e.melhoria || '', v => setN('melhoria', Math.max(0, Math.min(5, Math.round(+v) || 0))), { ph: '0', min: '0', max: '5' })),
+          h('label', null, 'Dano rola', escolha('it-eq-atr', e.atr || '', danos, v => { if (v) e.atr = v; else delete e.atr; pintarRegra(); })),
+          h('label', { title: 'Arco, besta e pólvora: o dano é da arma (o número da faixa), não rola atributo' }, 'Dano próprio', num('it-eq-dp', e.dp || '', v => setN('dp', v), { ph: '0', min: '0' }))),
+        caixa));
+      pintarRegra();
       out.push(h('details', { class: 'sec' }, h('summary', { text: 'Defesas específicas (fogo, corte…)' }),
         h('div', { class: 'g6' }, R.DEFESAS_ESP.map(d => h('label', null, d.nome, num('it-d-' + d.k, e.def[d.k] || '', v => { const n = Math.round(+v) || 0; if (n) e.def[d.k] = n; else delete e.def[d.k]; }, { ph: '0' }))))));
     }

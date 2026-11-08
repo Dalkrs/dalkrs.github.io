@@ -73,6 +73,15 @@ ok(I.recDaFicha({ recursos: [{ id: 'r_hp', nome: 'HP' }], poderes: [{ id: 'fu', 
     await P.locator('#btNovo').click(); await w(200);
     await P.locator('#it-nome').fill('Espada curta'); await P.locator('#it-tipo [data-v="equip"]').click(); await w(150);
     await P.locator('#it-eq-tipo').selectOption('arma');
+    // (lote 112) a regra da Cola no editor: o aviso muda enquanto se edita
+    await P.selectOption('#it-eq-faixa', '1'); await P.selectOption('#it-eq-atr', 'FOR'); await w(80);
+    await P.locator('#it-b-FOR').fill('10'); await P.locator('#it-b-FOR').press('Tab');
+    await P.locator('#it-b-AGI').fill('8'); await P.locator('#it-b-AGI').press('Tab'); await P.locator('#it-b-PER').fill('4'); await P.locator('#it-b-PER').press('Tab'); await w(120);
+    const rg = await P.locator('#it-regra').innerText();
+    ok(/F1 pede 10 em FOR\. Este item: 10 \(✓ no valor\)/.test(rg) && /Outros atributos da arma, todos juntos: 12 de 25 — sobram 13\./.test(rg), '(lote 112) o editor: ' + rg.replace(/\n/g, ' | '));
+    await P.locator('#it-b-AGI').fill('30'); await P.locator('#it-b-AGI').press('Tab'); await w(120);
+    ok(/34 de 25 — passou 9\./.test(await P.locator('#it-regra').innerText()), '(lote 112) AGI 30 + PER 4: passou 9');
+    await P.locator('#it-b-AGI').fill(''); await P.locator('#it-b-AGI').press('Tab'); await P.locator('#it-b-PER').fill(''); await P.locator('#it-b-PER').press('Tab'); await P.selectOption('#it-eq-faixa', ''); await P.selectOption('#it-eq-atr', '');
     await P.locator('#it-b-FOR').fill('3'); await P.locator('#it-b-FOR').press('Tab');
     await P.locator('#it-preco').fill('120'); await P.locator('#it-preco').press('Tab');
     await P.locator('#dl-ok').click(); await w(250);
