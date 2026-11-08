@@ -441,6 +441,9 @@ a.lk-no:hover{text-decoration-thickness:2px}
 [data-tema="tinta"] .rotulo{fill:rgba(31,27,22,.72);stroke:#ECE4D0;font-family:var(--titulo);font-size:14px;font-weight:600}
 [data-tema="tinta"] .rotulo.forte{fill:#1F1B16;font-size:15px}
 .glifo{font-family:var(--glifo);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.escolha-txt{font:700 11px var(--monof);text-anchor:middle;letter-spacing:.08em;pointer-events:none;paint-order:stroke;stroke-width:3.5px;stroke-linejoin:round}
+[data-tema="pedra"] .escolha-txt{stroke:#101318}
+[data-tema="tinta"] .escolha-txt{stroke:#ECE4D0}
 .regra-txt{font:600 9px var(--monof);text-anchor:middle;letter-spacing:.1em;pointer-events:none;paint-order:stroke;stroke-width:3px;stroke-linejoin:round}
 [data-tema="pedra"] .regra-txt{stroke:#101318}
 [data-tema="tinta"] .regra-txt{stroke:#ECE4D0}
@@ -1898,7 +1901,9 @@ function desenhar(){
     for(const pid of paisNaArvore(n)) if(pid!==q.principal) ligacaoExtra(g.tr, pid, n, est, tema);
   }
   for(const n of a.nodes){ const q = pos.get(n.id); if(q.principal) desenharAresta(g.tr, q.principal, n, est, tema); }
+  const rotulosEx = desenharEncruzilhadas(g.tr, a, est, tema);
   for(const n of a.nodes) desenharNo(g.no, n, est.get(n.id), tema, p, bate(n), busca);
+  for(const r of rotulosEx) g.no.appendChild(r);
   revalidarPaire();
 }
 
@@ -2014,11 +2019,14 @@ function desenharAresta(g, pid, n, est, tema){
   const ep = est.get(pid), eb = est.get(n.id);
   const ligado = ep==='on' && eb==='on';
   const perto = eb==='disp' || eb==='caro';
+  /* (lote 96) o caminho escolhido acende até o próximo nó (o pai está pego e o filho pode ser pego por ele), e o que
+     sai ou chega num nó fechado (o outro lado de uma encruzilhada) fica apagado */
+  const aberto = ep==='on' && perto, morto = ep==='fechado' || eb==='fechado';
   const L = Math.hypot(b.x-a.x, b.y-a.y) || 1;
   const curva = (semente(n.id+'t')-.5)*L*0.12;
   if(tema==='tinta'){
     const d = traco(a.x, a.y, Math.max(3.4, raioDe(pn)*.32), b.x, b.y, Math.max(1.8, raioDe(n)*.24), curva);
-    const op = ligado ? .9 : eb==='mestre' ? .62 : perto ? .28 : .13;
+    const op = ligado ? .9 : morto ? .05 : aberto ? .5 : eb==='mestre' ? .62 : perto ? .28 : .13;
     g.appendChild(el('path', {d, fill:COR_T.tinta, opacity:op}));
     return;
   }
@@ -2029,6 +2037,11 @@ function desenharAresta(g, pid, n, est, tema){
     g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.ouro, 'stroke-width':12, opacity:.08, 'stroke-linecap':'round'}));
     g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.ouroEsc, 'stroke-width':5, 'stroke-linecap':'round'}));
     g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.ouroClaro, 'stroke-width':1.4, 'stroke-linecap':'round'}));
+  }else if(morto){
+    g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.canal, 'stroke-width':1, 'stroke-linecap':'round', opacity:.25}));
+  }else if(aberto){
+    g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.ouro, 'stroke-width':8, opacity:.06, 'stroke-linecap':'round'}));
+    g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.bronzeClaro, 'stroke-width':2.6, 'stroke-linecap':'round'}));
   }else if(eb==='mestre'){
     g.appendChild(el('path', {d:cam_(0), fill:'none', stroke:COR_P.bronze, 'stroke-width':2.4, 'stroke-linecap':'round', opacity:.9}));
   }else{
@@ -2036,15 +2049,50 @@ function desenharAresta(g, pid, n, est, tema){
     for(const k of [-s, s]) g.appendChild(el('path', {d:cam_(k), fill:'none', stroke:cor, 'stroke-width':1}));
   }
 }
+/* (lote 96) A encruzilhada: as opções de um mesmo caminho exclusivo que ficam perto uma da outra ganham um arco vermelho
+   entre elas, com "escolha 1" no meio (depois da escolha: "escolhido", e o arco apaga). Grupos de mais de dois e os muito
+   espalhados (como a Mestria de cada ramo) ficam sem arco: a marca de exclusivo no próprio nó continua dizendo. */
+function desenharEncruzilhadas(g, a, est, tema){
+  const grupos = new Map(), rotulos = [];
+  for(const n of a.nodes) if(n.exclusivo && pos.get(n.id)){ const k = grupoEx(n); grupos.set(k, (grupos.get(k) || []).concat(n)); }
+  for(const ns of grupos.values()){
+    if(ns.length<2 || ns.length>2) continue;          // (só pares; grupos maiores, como a Mestria, ficam pela marca no nó)
+    const ps = ns.map(n=>pos.get(n.id));
+    let longe = false;
+    for(let i=0;i<ps.length;i++) for(let j=i+1;j<ps.length;j++) if(Math.hypot(ps[i].x-ps[j].x, ps[i].y-ps[j].y) > ANEL*3.2) longe = true;
+    if(longe) continue;
+    const pego = ns.some(n=>est.get(n.id)==='on');
+    const cor = pego ? (tema==='tinta' ? 'rgba(31,27,22,.25)' : 'rgba(227,181,94,.35)') : (tema==='tinta' ? COR_T.verm : COR_P.verm);
+    const cx0 = ps.reduce((s,q)=>s+q.x, 0)/ps.length, cy0 = ps.reduce((s,q)=>s+q.y, 0)/ps.length;
+    const lc = Math.hypot(cx0, cy0) || 1, ux = cx0/lc, uy = cy0/lc;     // para fora do centro da árvore
+    for(let i=0;i+1<ps.length;i++){
+      const p1 = ps[i], p2 = ps[i+1], d = Math.hypot(p2.x-p1.x, p2.y-p1.y);
+      const mx = (p1.x+p2.x)/2 + ux*d*.35, my = (p1.y+p2.y)/2 + uy*d*.35;
+      g.appendChild(el('path', {d:`M${f1(p1.x)},${f1(p1.y)} Q${f1(mx)},${f1(my)} ${f1(p2.x)},${f1(p2.y)}`, fill:'none', stroke:cor,
+        'stroke-width': pego ? 1.2 : 1.8, 'stroke-dasharray': pego ? '2 5' : '1 0', 'stroke-linecap':'round', opacity: pego ? .8 : .85}));
+    }
+    const d0 = Math.hypot(ps[ps.length-1].x-ps[0].x, ps[ps.length-1].y-ps[0].y);
+    const t = el('text', {class:'escolha-txt', x:f1(cx0 + ux*(d0*.18 + 10)), y:f1(cy0 + uy*(d0*.18 + 10) + 3)});
+    t.setAttribute('fill', cor); t.textContent = pego ? 'escolhido' : 'escolha 1';
+    rotulos.push(t);
+  }
+  return rotulos;
+}
 function ligacaoExtra(g, pid, n, est, tema){
   const a = pos.get(pid), b = pos.get(n.id); if(!a || !b) return;
-  const ligado = est.get(pid)==='on' && est.get(n.id)==='on';
+  const ep = est.get(pid), eb = est.get(n.id);
+  const ligado = ep==='on' && eb==='on';
+  // (lote 96) a segunda entrada de um nó: acesa (cheia) quando é por ela que o caminho segue; apagada quando sai de um nó fechado
+  const aberto = ep==='on' && (eb==='disp' || eb==='caro'), morto = ep==='fechado' || eb==='fechado';
   const dx = b.x-a.x, dy = b.y-a.y, L = Math.hypot(dx,dy) || 1;
   const lado = semente(n.id+pid) > .5 ? 1 : -1;
   const cx = (a.x+b.x)/2 + (-dy/L)*L*0.15*lado, cy = (a.y+b.y)/2 + (dx/L)*L*0.15*lado;
-  const cor = tema==='tinta' ? (ligado ? COR_T.tinta : 'rgba(31,27,22,.32)') : (ligado ? COR_P.ouro : 'rgba(233,227,214,.24)');
-  g.appendChild(el('path', {d:`M${f1(a.x)},${f1(a.y)} Q${f1(cx)},${f1(cy)} ${f1(b.x)},${f1(b.y)}`, fill:'none', stroke:cor,
-    'stroke-width': ligado ? 2.2 : 1.4, 'stroke-dasharray':'7 6', 'stroke-linecap':'round'}));
+  const cor = tema==='tinta' ? (ligado ? COR_T.tinta : aberto ? 'rgba(31,27,22,.6)' : morto ? 'rgba(31,27,22,.08)' : 'rgba(31,27,22,.32)')
+    : (ligado ? COR_P.ouro : aberto ? COR_P.bronzeClaro : morto ? 'rgba(233,227,214,.07)' : 'rgba(233,227,214,.24)');
+  const at = {d:`M${f1(a.x)},${f1(a.y)} Q${f1(cx)},${f1(cy)} ${f1(b.x)},${f1(b.y)}`, fill:'none', stroke:cor,
+    'stroke-width': ligado ? 2.2 : aberto ? 2.4 : 1.4, 'stroke-linecap':'round'};
+  if(!ligado && !aberto) at['stroke-dasharray'] = '7 6';
+  g.appendChild(el('path', at));
 }
 
 function desenharNo(g, n, e, tema, p, bate, busca){

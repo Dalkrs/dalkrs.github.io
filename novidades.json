@@ -2,6 +2,21 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.07-3",
+      "data": "2026-11-07",
+      "titulo": "Árvore de habilidades: escolhas mais fáceis de ler",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: as duas opções de uma encruzilhada (caminho exclusivo) ficam ligadas por um arco vermelho com \"escolha 1\". Depois da escolha, o arco apaga e diz \"escolhido\"."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Árvore: o caminho que você escolheu acende até a próxima habilidade que dá para pegar, e o lado fechado fica apagado, com as linhas dele."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.07-2",
       "data": "2026-11-07",
       "titulo": "Mapas grandes pintados hexágono por hexágono",
