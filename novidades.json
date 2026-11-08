@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-1",
+      "data": "2026-11-08",
+      "titulo": "A aba Baralho: as cartas da Cartomante",
+      "itens": [
+        { "tipo": "novo", "texto": "Baralho: cada personagem tem a sua coleção de cartas. Na luta, puxa 3 no começo e 1 por turno (mão de até 7); jogar, armar uma armadilha (num quadrado das Cenas), disparar, descartar e, nas lendárias, virar a carta." },
+        { "tipo": "novo", "texto": "Baralho: a mão é secreta (só o dono e o mestre veem). A carta jogada vai para a mesa ao vivo, para todos." },
+        { "tipo": "novo", "texto": "Baralho: fora da luta, a leitura de 1 ou 3 cartas (passado, presente e futuro). O mestre interpreta." },
+        { "tipo": "novo", "texto": "Baralho: o mestre dá e tira cartas (comum, rara ou lendária) e escreve o que cada uma das 22 cartas faz.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.07-4",
       "data": "2026-11-07",
       "titulo": "Fichas novas já nascem com as barras da mesa",

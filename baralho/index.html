@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../tc/tema.js?v=1"></script>
+<title>Baralho · Tiny Cats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&display=swap">
+<style>
+/* Baralho (lote 105): as cartas da Cartomante — a mão (secreta), o monte, o descarte, as armadilhas e a leitura. */
+:root {
+  color-scheme: dark;
+  --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
+  --line: #2b3243; --line-strong: #40495f;
+  --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #8a93a8;
+  --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .12); --on-lamp: #1d1503;
+  --ok: #6fbf8f; --danger: #f0786e; --roxo: #9a5ac0;
+  --papel: #f1e7cd; --tinta: #2a2116;
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  --ui: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
+  --display: "Grenze", "Iowan Old Style", Georgia, serif;
+}
+:root:where([data-claro]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9; --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #5d6880;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .13); --on-lamp: #241a04;
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--table); color: var(--fg); font: 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px 10px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.brand { font: 600 20px/1 var(--display); color: var(--lamp-ink); }
+.na-casca .brand { display: none; }
+.grow { flex: 1; }
+.seg { display: inline-flex; padding: 2px; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); gap: 2px; }
+.seg button { min-height: 28px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--fg-2); font-weight: 600; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--lamp); color: var(--on-lamp); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.pri:hover:not(:disabled) { background: var(--lamp-ink); }
+.carta .acoes .btn:hover:not(:disabled) { background: #f3e6c4; }
+.carta .acoes .btn.pri:hover:not(:disabled) { background: #5a4220; }
+.btn.sm { min-height: 28px; padding: 0 9px; font-size: 12.5px; }
+.btn.per { color: var(--danger); }
+.in { min-height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
+textarea.in { width: 100%; min-height: 70px; padding: 8px 10px; }
+.ajuda { font-size: 12.5px; color: var(--fg-3); margin: 0; }
+.salvo { font-size: 12px; color: var(--fg-3); }
+main { padding: 14px; display: grid; gap: 16px; max-width: 1300px; margin: 0 auto; }
+.painel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+.painel h2 { margin: 0; font: 600 19px/1.1 var(--display); }
+.linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cont { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 13px; color: var(--fg-2); }
+.cont b { color: var(--fg); font-size: 16px; }
+.mao { display: flex; gap: 12px; flex-wrap: wrap; }
+.carta { width: 180px; min-height: 290px; border-radius: 12px; background: var(--papel); color: var(--tinta); box-shadow: 0 6px 16px rgba(0,0,0,.35); display: grid; grid-template-rows: auto 120px auto 1fr auto; overflow: hidden; border: 3px solid #b8945a; position: relative; }
+.carta.rara { border-color: #6a8fd6; box-shadow: 0 0 0 2px #6a8fd6, 0 6px 16px rgba(0,0,0,.35); }
+.carta.lendaria { border-color: #d9a441; box-shadow: 0 0 0 2px #f3d27a, 0 0 18px rgba(243,210,122,.6); }
+.carta .num { text-align: center; font: 600 15px/1 var(--display); padding: 6px 0 0; color: #6b5126; }
+.carta .arte { display: grid; place-items: center; color: #3a2a12; background: radial-gradient(circle at 50% 45%, #fff6dc, #e6d4a8 70%); margin: 4px 8px; border-radius: 8px; }
+.carta.inv .arte svg { transform: rotate(180deg); }
+.carta .nome { text-align: center; font: 600 17px/1.1 var(--display); padding: 4px 6px 0; }
+.carta .tipo { text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #7a5a2a; }
+.carta .ef { font-size: 12px; line-height: 1.35; padding: 6px 9px; }
+.carta .ef .inv-t { display: block; font-weight: 700; color: #8a1c2c; }
+.carta .acoes { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: rgba(0,0,0,.06); }
+.carta .acoes .btn { background: #fffaf0; color: var(--tinta); border-color: #c8b384; }
+.carta .acoes .btn.pri { background: #3a2a12; color: #f3d9a4; border-color: #3a2a12; }
+.carta .rar { position: absolute; top: 6px; right: 6px; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: #3a2a12; color: #f3d9a4; }
+.verso { width: 120px; height: 190px; border-radius: 12px; background: repeating-linear-gradient(45deg, #3a1f52 0 8px, #4a2a66 8px 16px); border: 3px solid #b8945a; display: grid; place-items: center; color: #f3d9a4; font: 600 13px/1.2 var(--display); text-align: center; padding: 6px; gap: 6px; }
+.mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.mini .carta { width: auto; min-height: 0; grid-template-rows: auto 70px auto auto; }
+.mini .carta .ef { display: none; }
+.log { margin: 0; padding-left: 18px; color: var(--fg-2); font-size: 13px; max-height: 180px; overflow: auto; }
+.vazio { margin: 50px auto; max-width: 560px; text-align: center; color: var(--fg-2); display: grid; gap: 10px; justify-items: center; }
+.vazio .tit { margin: 0; font: 600 22px/1.2 var(--display); color: var(--fg); }
+.toasts { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 50; width: min(560px, calc(100vw - 24px)); }
+.toast { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow); font-size: 13.5px; }
+.toast span { flex: 1; }
+.toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; }
+dialog.dl { border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--fg); padding: 14px; width: min(620px, calc(100vw - 24px)); box-shadow: var(--shadow); max-height: calc(100vh - 24px); overflow: auto; }
+dialog.dl::backdrop { background: rgba(5, 7, 12, .7); }
+dialog.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.field { display: grid; gap: 4px; margin: 6px 0; font-size: 13px; color: var(--fg-2); }
+.lista-cartas { display: grid; gap: 8px; }
+.lc { display: grid; grid-template-columns: 54px 1fr auto; gap: 10px; align-items: center; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); }
+.lc .ic { width: 48px; height: 48px; border-radius: 8px; background: var(--papel); color: #3a2a12; display: grid; place-items: center; }
+.lc b { font-family: var(--display); font-size: 16px; }
+.lc p { margin: 2px 0 0; font-size: 12.5px; color: var(--fg-2); }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">Baralho</span>
+  <span class="seg" role="group" aria-label="Ver" id="vista">
+    <button type="button" data-v="jogo" aria-pressed="true">Jogo</button>
+    <button type="button" data-v="cartas" aria-pressed="false">As 22 cartas</button>
+  </span>
+  <select class="in" id="pc" aria-label="Personagem"></select>
+  <span class="grow"></span>
+  <span class="salvo" id="salvo"></span>
+</header>
+<main id="meio" aria-live="polite"></main>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<dialog class="dl" id="dlg"></dialog>
+<script src="../tc/ponte.js?v=21"></script>
+<script src="../tc/dom.js?v=2"></script>
+<script src="../tc/baralho.js?v=1"></script>
+<script src="baralho.js?v=1"></script>
+</body>
+</html>

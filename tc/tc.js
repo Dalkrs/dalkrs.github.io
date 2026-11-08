@@ -2379,14 +2379,14 @@
   const deSistemaAntes = aoVivo.deSistema;
   aoVivo.deSistema = async (origem, d) => {
     // O Mapa-múndi (encontros sorteados) e o Acampamento (descansos, momentos) mandam um título e um resumo.
-    if ((origem === 'mundo' || origem === 'acampamento' || origem === 'escudo' || origem === 'pistas') && d && typeof d === 'object' && mesas.atual) {
-      const padrao = { mundo: 'Mapa-múndi', acampamento: 'Acampamento', escudo: 'Escudo do mestre', pistas: 'Pistas' }[origem];
+    if ((origem === 'mundo' || origem === 'acampamento' || origem === 'escudo' || origem === 'pistas' || origem === 'baralho') && d && typeof d === 'object' && mesas.atual) {
+      const padrao = { mundo: 'Mapa-múndi', acampamento: 'Acampamento', escudo: 'Escudo do mestre', pistas: 'Pistas', baralho: 'Baralho' }[origem];
       // (o encontro do Mapa-múndi acompanha o "em segredo" do mestre; descanso e momento do Acampamento são da mesa toda)
       const dados = { k: 'tabela', titulo: String(d.titulo || padrao).slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null };
       // (lote 29) a bancada: a receita que falhou com condições — quem mestra as Cenas põe no token do personagem
       if (origem === 'acampamento' && typeof d.pc === 'string' && d.pc && Array.isArray(d.conds) && d.conds.length)
         dados.sis = { t: 'bc', c: d.pc.slice(0, 64), cs: d.conds.slice(0, 6).filter(x => x && typeof x.c === 'string').map(x => ({ c: x.c.slice(0, 40), r: Math.max(0, Math.min(99, Math.round(+x.r) || 0)) })) };
-      return aoVivo.rolagem(dados, { origem, quem: origem === 'acampamento' && typeof d.pc === 'string' && d.pc ? aoVivo.personagem(d.pc) : null, secreta: d.secreta ? true : origem === 'acampamento' || origem === 'pistas' ? false : undefined });
+      return aoVivo.rolagem(dados, { origem, quem: (origem === 'acampamento' || origem === 'baralho') && typeof d.pc === 'string' && d.pc ? aoVivo.personagem(d.pc) : null, secreta: d.secreta ? true : origem === 'acampamento' || origem === 'pistas' || origem === 'baralho' ? false : undefined });
     }
     // A Árvore avisa o dono de um personagem que o mestre abriu para ele um caminho trancado (lote 6): uma linha em
     // segredo, endereçada a ele — só os dois a veem.
