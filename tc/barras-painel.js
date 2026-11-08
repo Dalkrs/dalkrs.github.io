@@ -997,7 +997,7 @@ function barraDaArvore(arv){
   return d ? d.id : null;
 }
 // a lista para o mestre escolher (NPC sem ficha): por categoria e nome
-const ORDEM_CAT = ['classe', 'raca', 'linhagem', 'escola'];
+const ORDEM_CAT = ['classe', 'raca', 'linhagem', 'bencao', 'escola'];
 const lista = () => BARRAS.slice().sort((a, b) => (ORDEM_CAT.indexOf(a.cat) - ORDEM_CAT.indexOf(b.cat)) || a.arvore.localeCompare(b.arvore, 'pt-BR'))
   .map(d => ({ id: d.id, cat: d.cat, arvore: d.arvore, barra: d.barra, cor: d.cor, npc: !!d.npc }));
 

@@ -22,8 +22,8 @@
    ======================================================================= */
 (function (root) {
   'use strict';
-  const CATS = Object.freeze(['raca', 'classe', 'linhagem']);
-  const NOME_CAT = Object.freeze({ raca: 'raça', classe: 'classe', linhagem: 'linhagem', escola: 'escola' });
+  const CATS = Object.freeze(['raca', 'classe', 'linhagem', 'bencao']);   // (lote 112) a Bênção também cria barra
+  const NOME_CAT = Object.freeze({ raca: 'raça', classe: 'classe', linhagem: 'linhagem', bencao: 'bênção', escola: 'escola' });
   // (lote 55) as escolas que criam barra (as outras não criam): a Yanato, a Toxicidade do cinto de poções
   const ESCOLAS_COM_BARRA = Object.freeze(['a5ufrdl1er']);
   // a ordem das barras na ficha: raça → classe → linhagem → escola

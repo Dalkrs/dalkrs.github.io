@@ -1802,7 +1802,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../tc/ponte.js?v=21"></script>
 <script src="../tc/rules.js?v=32"></script>
 <script src="../tc/icones.js?v=1"></script>
-<script src="../tc/barras.js?v=2"></script>
+<script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=17"></script>
 <script src="extras.js?v=23"></script>
@@ -3606,7 +3606,7 @@ function textoBarraDeArvore(x){
 function textoDaBarraArv(r){
   const nomes=r.arvs.map(id=>{ const a=arvPorId(id); return a? a.nome : null; }).filter(Boolean);
   const cat=(window.TC&&TC.barras&&TC.barras.NOME_CAT[r.cat])||'árvore';
-  const de=nomes.length? 'Barra '+(cat==='raça'?'da raça':cat==='classe'?'da classe':cat==='linhagem'?'da linhagem':cat==='escola'?'da escola':'da árvore')+' '+nomes.join(' e ') : 'Barra de árvore';
+  const de=nomes.length? 'Barra '+(cat==='raça'?'da raça':cat==='classe'?'da classe':cat==='linhagem'?'da linhagem':cat==='bênção'?'da bênção':cat==='escola'?'da escola':'da árvore')+' '+nomes.join(' e ') : 'Barra de árvore';
   if(r.comb==='fica') return de+'. O combate não mexe nela.';
   if(r.comb==='pergunta') return de+'. Quando o combate começa, o mestre diz onde ela começa (Dia, 0, 5, 10 ou 15 na lua cheia)'+(r.iniArv? '; os nós somam +'+r.iniArv+' (até 10)' : '')+'.';
   if(r.inicio==null) return de+'. Começa o combate cheia.';
@@ -4385,7 +4385,7 @@ function ligarRegistro(){
    ÁRVORES DE HABILIDADE — mesma regra do app de árvores do mestre:
    pais com regra E/OU, grupos exclusivos, graus com custo por pool.
    ======================================================================= */
-const CAT_ARV=[{id:'raca',nome:'Raça'},{id:'linhagem',nome:'Linhagem'},{id:'classe',nome:'Classe'},{id:'escola',nome:'Escola'},{id:'profissao',nome:'Profissão'},{id:'outra',nome:'Outra'}];
+const CAT_ARV=[{id:'raca',nome:'Raça'},{id:'linhagem',nome:'Linhagem'},{id:'classe',nome:'Classe'},{id:'bencao',nome:'Bênção'},{id:'escola',nome:'Escola'},{id:'profissao',nome:'Profissão'},{id:'outra',nome:'Outra'}];
 const nomeCatArv = id => (CAT_ARV.find(c=>c.id===id)||CAT_ARV[CAT_ARV.length-1]).nome;
 const ARV={porId:new Map(), arvDe:new Map(), filhos:new Map(), bib:null, base:null, pc:null, ramos:null};
 
