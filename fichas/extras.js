@@ -1532,7 +1532,11 @@ const FichasExtras = (() => {
     if (!RR() || r.min === undefined) return '';
     const temC = String(r.comeca || '').trim() !== '', temP = String(r.piso || '').trim() !== '';
     const resumo = [temC ? (r.errInicio ? 'começo com erro' : r.inicio != null ? 'começa em ' + menos(r.inicio) : '') : '', temP ? (r.errMin ? 'piso com erro' : r.min < 0 ? 'vai até ' + menos(r.min) : '') : ''].filter(Boolean).join(' · ');
-    return `<details class="resopc" data-resopc="${esc(r.id)}" ${resAbertas.has(r.id) ? 'open' : ''}>
+    // (lote 116) como a barra aparece no token das Cenas: bolinhas ou barra corrente (o padrão: raça em bolinhas)
+    const est = RR().estiloDaBarra ? RR().estiloDaBarra(r) : null, escolhido = r.est === 'pts' || r.est === 'bar';
+    const btEst = (k, rot, tit) => `<button type="button" class="mini${est === k ? ' on' : ''}" data-resest="${esc(r.id)}|${k}" aria-pressed="${est === k}" title="${esc(tit)}">${rot}</button>`;
+    const linhaEst = `<div class="resest"><span class="eyebrow">No token</span>${btEst('pts', '●●● Bolinhas', 'Uma bolinha por ponto (se não couber no token, vira barra)')}${btEst('bar', '━━ Barra', 'A barra corrente')}${!escolhido ? `<span class="hint">${est ? 'padrão da ' + (r.cat === 'raca' ? 'raça' : 'árvore') : 'o token decide'}</span>` : ''}</div>`;
+    return linhaEst + `<details class="resopc" data-resopc="${esc(r.id)}" ${resAbertas.has(r.id) ? 'open' : ''}>
       <summary><span class="resopc-t">Opções da barra</span>${resumo ? `<span class="resopc-r">${esc(resumo)}</span>` : ''}</summary>
       <div class="resopc-g">
         <label class="f"><span class="eyebrow">Começa em</span>
@@ -1552,6 +1556,12 @@ const FichasExtras = (() => {
       i.onchange = () => { if (!rec()) return; save(); desenhar(render, '[data-' + attr + '="' + CSS.escape(i.dataset[attr]) + '"]'); };
     });
     campo('rescomeca', 'comeca'); campo('respiso', 'piso');
+    // (lote 116) bolinhas ou barra no token: clicar no que já está escolhido volta ao padrão
+    qa(host, '[data-resest]').forEach(b => b.onclick = () => {
+      const [id, k] = b.dataset.resest.split('|'), r = (pc.recursos || []).find(x => x.id === id); if (!r) return;
+      if (r.est === k) delete r.est; else r.est = k;
+      save(); desenhar(render, '[data-resest="' + CSS.escape(b.dataset.resest) + '"]');
+    });
   }
 
   /* ---- equipamentos que somam numa barra ou numa defesa específica ---- */

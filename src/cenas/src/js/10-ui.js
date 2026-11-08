@@ -2001,7 +2001,9 @@ const UI = (() => {
         // (lote 47) o cadeado: nada automático mexe na barra trancada
         toggle(`tk-b${i}-mao`, Fichas.soAMao(t, b), v => Act.barPatch(t, i, { mao: v }), 'Só à mão'),
         note('Trancada, a Cura total e o Restaurar energias não mexem nela: muda só quando alguém digita ou usa o painel.'),
-        field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
+        // (lote 116) a barra cujo jeito vem da ficha (as de raça e de classe, ou a que o dono escolheu): muda-se lá
+        Fichas.estiloDaFicha(t, b) ? note('Estilo: ' + (Fichas.estiloDaFicha(t, b) === 'pts' ? 'bolinhas' : 'barra') + '. Vem da ficha (No token, na barra): mude lá, e vale para todos os tokens do personagem.')
+          : field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
         field('Os outros veem', inSelect(`tk-b${i}-vis`, b.vis || '', [['', 'O mesmo que o token'], ['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => Act.barPatch(t, i, { vis: v }), { title: 'O que vê desta barra quem não é dono do token' })),
         // (lote 15) a barra que só aparece no token com o mouse por cima (as especiais da ficha começam assim)
         field('No mapa', inSelect(`tk-b${i}-mapa`, barMapa(b), [['sempre', 'Sempre no token'], ['passar', 'Só ao passar o mouse ou selecionar']], v => Act.barPatch(t, i, { mapa: v }), { title: 'Quando esta barra aparece em cima do token, no mapa (o painel e a faixa de baixo mostram sempre)' })),

@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-12",
+      "data": "2026-11-08",
+      "titulo": "Bolinhas ou barra no token",
+      "itens": [
+        { "tipo": "novo", "texto": "Ficha: em cada barra, \"No token: Bolinhas / Barra\". A escolha vale para todos os tokens do personagem, em todas as cenas. Clicar de novo volta ao padrão." },
+        { "tipo": "melhorou", "texto": "Sem escolha, a barra de raça aparece em bolinhas no token, e a de classe (e as outras das árvores) em barra corrente." },
+        { "tipo": "melhorou", "texto": "Cenas: no painel do token, a barra cujo jeito vem da ficha avisa que é para mudar lá." }
+      ]
+    },
+    {
       "versao": "2026.11.08-11",
       "data": "2026-11-08",
       "titulo": "Estações no calendário",

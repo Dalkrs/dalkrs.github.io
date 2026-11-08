@@ -1229,6 +1229,15 @@
      começa (null = cheia). atual é o guardado em estado.rec — no começo da barra quando não há nada
      guardado — e só é preso em min..max quando existe max (com a ferida permanente, em min..teto: o máximo menos
      o podre). sobre é a sobrevida guardada em estado.sob (0 quando não há); podre, o que a ferida apodreceu. */
+  /* (lote 116) Como a barra aparece no token das Cenas: 'pts' (uma bolinha por ponto) ou 'bar' (a barra corrente). O
+     dono escolhe na ficha (r.est); sem escolha, a barra de raça sai em bolinhas e as outras das árvores (classe,
+     linhagem, bênção, escola) em barra. As barras que não são de árvore (HP, SP…) sem escolha: null (o token decide). */
+  function estiloDaBarra(r) {
+    if (!r) return null;
+    if (r.est === 'pts' || r.est === 'bar') return r.est;
+    if (Array.isArray(r.arvs) && r.arvs.length) return r.cat === 'raca' ? 'pts' : 'bar';
+    return null;
+  }
   function estadoRecursos(pc, calc, estado) {
     const rec = (estado && estado.rec) || {};
     const sob = (estado && estado.sob) || {};
@@ -1239,7 +1248,8 @@
       const max = c ? numFinito(c.max) : null, min = c ? Math.min(0, numFinito(c.min) || 0) : 0, inicio = c ? numFinito(c.inicio) : null;
       const podre = podreDe(estado, r.id, max), teto = max == null ? null : Math.max(min, max - podre);
       const o = { id: r.id, nome: r.nome, max, min, inicio, atual: atualDe(tem(rec, r.id) ? rec[r.id] : null, teto, min, inicio), sobre: sobreDe(r.id), podre };
-      if (r.comb === 'fica' && Array.isArray(r.arvs) && r.arvs.length) o.fica = true;     // (lote 34) a barra da árvore que o combate e o descanso não mexem (a Fome do Vampiro)
+      if (r.comb === 'fica' && Array.isArray(r.arvs) && r.arvs.length) o.fica = true;
+      const est = estiloDaBarra(r); if (est) o.est = est;                               // (lote 116) bolinha ou barra, no token     // (lote 34) a barra da árvore que o combate e o descanso não mexem (a Fome do Vampiro)
       return o;
     });
   }
@@ -2299,7 +2309,7 @@
     ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, ehDerivado, ehDefesa, chaveViva,
     cfgPadrao, personagemPadrao,
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
-    bonusDaArvore, unicasDe, iniciativa, estadoRecursos, aplicarDelta, podreDe, resumo,
+    bonusDaArvore, unicasDe, iniciativa, estadoRecursos, estiloDaBarra, aplicarDelta, podreDe, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
     FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,

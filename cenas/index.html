@@ -1327,7 +1327,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <body>
 <script src="../tc/ponte.js?v=21"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="../tc/rules.js?v=32"></script>
+<script src="../tc/rules.js?v=33"></script>
 <script src="../tc/tags.js?v=3"></script>
 <script src="../tc/bestiario.js?v=4"></script>
 <script src="../tc/sede.js?v=3"></script>
@@ -9310,10 +9310,13 @@ const Fichas = (() => {
       if (b && b.ref === PD + rec.id) { b.k = rec.pts ? 'pts' : 'bar'; mudou = true; if (deArvore(l, rec.id)) porNoLugar(bars, b, lista, rec); }      // (a especial vira barra comum)
       if (!b) {
         if (bars.length >= MAX_BARS) continue;
-        b = cleanBar({ n: rec.nome, c: BAR_COLORS[bars.length % BAR_COLORS.length], v: rec.atual, m: rec.max, k: rec.pts ? 'pts' : 'bar', on: true, vis: '' });
+        b = cleanBar({ n: rec.nome, c: BAR_COLORS[bars.length % BAR_COLORS.length], v: rec.atual, m: rec.max, k: rec.pts ? 'pts' : (rec.est || 'bar'), on: true, vis: '' });
         bars.push(b); mudou = true;
         if (deArvore(l, rec.id)) porNoLugar(bars, b, lista, rec);
       }
+      // (lote 116) o jeito da barra (bolinhas ou barra) vem da ficha, quando ela diz; senão, fica o do token
+      const est = rec.pts ? 'pts' : rec.est;
+      if (est && b.k !== est) { b.k = est; mudou = true; }
       const nome = String(rec.nome || 'Barra').slice(0, 24);
       if (b.ref !== rec.id) { b.ref = rec.id; mudou = true; }
       if (b.n !== nome) { b.n = nome; mudou = true; }
@@ -9341,7 +9344,7 @@ const Fichas = (() => {
       if (out.length >= MAX_BARS) continue;
       let velha = barraDoRec(t.bars, rec, lista);
       if (velha && velha.ref === PD + rec.id) velha = Object.assign({}, velha, { k: rec.pts ? 'pts' : 'bar' });
-      out.push(cleanBar(Object.assign({ c: BAR_COLORS[out.length % BAR_COLORS.length], k: rec.pts ? 'pts' : 'bar' }, velha,
+      out.push(cleanBar(Object.assign({ c: BAR_COLORS[out.length % BAR_COLORS.length], k: rec.pts ? 'pts' : 'bar' }, velha, rec.est && !rec.pts ? { k: rec.est } : {},
         { n: String(rec.nome || 'Barra').slice(0, 24), v: rec.atual, m: rec.max, on: true, ref: rec.id, x: Math.max(0, Number(rec.sobre) || 0), lo: pisoDe(rec), st: comecoDe(rec), pod: Math.max(0, Number(rec.podre) || 0) })));
     }
     return out.length ? out : null;
@@ -10324,6 +10327,12 @@ const Fichas = (() => {
      O mestre tranca ou abre cada barra (b.mao); sem escolha, ficam trancadas as barras especiais da ficha com a regra
      "Só à mão" (o Chamado de Selene, a Voz da Graça…). As do painel de barras seguem as regras delas (o começo e o fim
      do combate), e a Cura total e o Restaurar já não mexem nelas. */
+  // (lote 116) o jeito desta barra (bolinhas ou barra), quando a ficha diz: 'pts' | 'bar' | null
+  function estiloDaFicha(t, b) {
+    if (!t || !b || !b.ref || ehPd(b.ref) || !R() || !R().estiloDaBarra) return null;
+    const l = t.char ? fichaDe(t) : null, rec = l && Array.isArray(l.ficha.recursos) ? l.ficha.recursos.find(x => x && x.id === b.ref) : null;
+    return rec ? R().estiloDaBarra(rec) : null;
+  }
   function soAMao(t, b) {
     if (!b) return false;
     if (b.mao === true) return true;
@@ -10336,7 +10345,7 @@ const Fichas = (() => {
     }
     return false;
   }
-  return { listaBest, soAMao, corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { listaBest, soAMao, estiloDaFicha, corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)
@@ -17748,7 +17757,9 @@ const UI = (() => {
         // (lote 47) o cadeado: nada automático mexe na barra trancada
         toggle(`tk-b${i}-mao`, Fichas.soAMao(t, b), v => Act.barPatch(t, i, { mao: v }), 'Só à mão'),
         note('Trancada, a Cura total e o Restaurar energias não mexem nela: muda só quando alguém digita ou usa o painel.'),
-        field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
+        // (lote 116) a barra cujo jeito vem da ficha (as de raça e de classe, ou a que o dono escolheu): muda-se lá
+        Fichas.estiloDaFicha(t, b) ? note('Estilo: ' + (Fichas.estiloDaFicha(t, b) === 'pts' ? 'bolinhas' : 'barra') + '. Vem da ficha (No token, na barra): mude lá, e vale para todos os tokens do personagem.')
+          : field('Estilo', seg(`tk-b${i}-k`, b.k, [['bar', 'Barra'], ['pts', 'Pontos', null, 'Uma bolinha por ponto: bom para recursos pequenos, como cargas e usos']], v => Act.barPatch(t, i, { k: v }))),
         field('Os outros veem', inSelect(`tk-b${i}-vis`, b.vis || '', [['', 'O mesmo que o token'], ['num', 'Números'], ['bar', 'Só a barra'], ['none', 'Nada']], v => Act.barPatch(t, i, { vis: v }), { title: 'O que vê desta barra quem não é dono do token' })),
         // (lote 15) a barra que só aparece no token com o mouse por cima (as especiais da ficha começam assim)
         field('No mapa', inSelect(`tk-b${i}-mapa`, barMapa(b), [['sempre', 'Sempre no token'], ['passar', 'Só ao passar o mouse ou selecionar']], v => Act.barPatch(t, i, { mapa: v }), { title: 'Quando esta barra aparece em cima do token, no mapa (o painel e a faixa de baixo mostram sempre)' })),

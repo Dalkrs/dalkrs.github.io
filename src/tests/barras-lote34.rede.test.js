@@ -77,7 +77,7 @@ const j = JSON.stringify;
     await passo('os tokens', async () => {
       await C.evaluate(() => __tc.Combate.trazer(['pc_dain', 'pc_lobo', 'pc_vamp', 'pc_kai'], 0, 0)); await w(600);
       Object.assign(ids, await C.evaluate(() => { const o = {}; for (const k of __tc.Store.scene().tokens) o[k.char] = k.id; return o; }));
-      ok(j(await bars(ids.pc_dain)) === j(['HP:100/100', 'Calor da Forja:2/20']), 'o Dain: o HP e o Calor da Forja (2 agora) — ' + j(await bars(ids.pc_dain)));
+      ok(j(await bars(ids.pc_dain)) === j(['HP:100/100', 'Calor da Forja:2/20·pts']), 'o Dain: o HP e o Calor da Forja (2 agora; barra de raça: em bolinhas desde o lote 116) — ' + j(await bars(ids.pc_dain)));
       ok(j(await bars(ids.pc_kai)) === j(['HP:100/100', 'Energia:10/10', 'Ira:4/20·pts']) && await C.evaluate(id => __tc.Store.get('tokens', id).bars[2].ref, ids.pc_kai) === 'pd:pa_aasemzgk9a', 'o Kai ainda com a Ira especial (em bolinhas, no fim, ligada à barra especial) — ' + j(await bars(ids.pc_kai)));
       ok(await C.evaluate(id => __tc.Store.get('tokens', id).bars[1].st, ids.pc_dain) === 9, 'o começo da barra no token: 9 (5 + 4 dos nós)');
     });
@@ -94,24 +94,24 @@ const j = JSON.stringify;
       await C.locator('#turnOnOff').click(); await w(500);
       const txt = await C.locator('.modal').innerText();
       ok(/Barra Bestial: onde ela começa\?/.test(txt) && /Lobo/.test(txt) && /os nós somam \+2/.test(txt) && /Dia/.test(txt) && /15 · lua cheia/.test(txt), 'a mesa pergunta onde começa a Barra Bestial (Dia, 0, 5, 10, 15) — ' + txt.replace(/\n/g, ' | ').slice(0, 220));
-      ok(j(await bars(ids.pc_dain)) === j(['HP:100/100', 'Calor da Forja:2/20']), '(antes da resposta, nada mudou)');
+      ok(j(await bars(ids.pc_dain)) === j(['HP:100/100', 'Calor da Forja:2/20·pts']), '(antes da resposta, nada mudou)');
       await foto('l34-rede-bestial');
       await C.locator('.modal .btn', { hasText: /^5$/ }).click(); await w(500);
-      ok(j(await bars(ids.pc_lobo)) === j(['HP:100/100', 'Barra Bestial:7/20']) && j(await bars(ids.pc_dain)) === j(['HP:100/100', 'Calor da Forja:9/20']) && j(await bars(ids.pc_kai)) === j(['HP:100/100', 'Ira:0/20', 'Energia:10/10']) && j(await bars(ids.pc_vamp)) === j(['HP:100/100', 'Fome:6/20']),
+      ok(j(await bars(ids.pc_lobo)) === j(['HP:100/100', 'Barra Bestial:7/20']) && j(await bars(ids.pc_dain)) === j(['HP:100/100', 'Calor da Forja:9/20·pts']) && j(await bars(ids.pc_kai)) === j(['HP:100/100', 'Ira:0/20', 'Energia:10/10']) && j(await bars(ids.pc_vamp)) === j(['HP:100/100', 'Fome:6/20']),
         'com 5: o Lobo vai a 7 (5 + 2), o Calor a 9, a Ira a 0; a Fome fica em 6 — ' + j([await bars(ids.pc_lobo), await bars(ids.pc_dain), await bars(ids.pc_kai), await bars(ids.pc_vamp)]));
       const tt = await C.evaluate(() => [...document.querySelectorAll('.toast')].map(x => x.innerText).join(' ¶ '));
       ok(/Combate: as barras de raça e classe foram para o início — .*Dain: Calor da Forja 9/.test(tt) && /Barra Bestial \(à noite\) — Lobo: Barra Bestial 7/.test(tt), 'o aviso diz o que mudou — ' + tt.slice(0, 260));
       await foto('l34-rede-inicio');
       ok(await ate(async () => (await linha('pc_dain')).rec.ba_aaj23w9sif === 9 && (await linha('pc_lobo')).rec.ba_a7va7rq14q === 7), 'as fichas acompanham (Calor 9, Bestial 7)');
       await C.evaluate(() => __tc.Tools.undo()); await w(400);
-      ok(j(await bars(ids.pc_dain)) === j(['HP:100/100', 'Calor da Forja:2/20']) && j(await bars(ids.pc_lobo)) === j(['HP:100/100', 'Barra Bestial:18/20']) && j(await bars(ids.pc_kai)) === j(['HP:100/100', 'Ira:4/20', 'Energia:10/10']), 'um Desfazer volta as três (um passo só)');
+      ok(j(await bars(ids.pc_dain)) === j(['HP:100/100', 'Calor da Forja:2/20·pts']) && j(await bars(ids.pc_lobo)) === j(['HP:100/100', 'Barra Bestial:18/20']) && j(await bars(ids.pc_kai)) === j(['HP:100/100', 'Ira:4/20', 'Energia:10/10']), 'um Desfazer volta as três (um passo só)');
       ok(await C.evaluate(() => __tc.Store.scene().turn.on), '(e o combate continua começado)');
     });
     await passo('agora não', async () => {
       await C.locator('#turnOnOff').click(); await w(400);     // encerrar
       await C.locator('#turnOnOff').click(); await w(500);     // e começar de novo
       await C.locator('.modal .btn', { hasText: 'Agora não' }).click(); await w(500);
-      ok(j(await bars(ids.pc_dain)) === j(['HP:100/100', 'Calor da Forja:9/20']) && j(await bars(ids.pc_lobo)) === j(['HP:100/100', 'Barra Bestial:18/20']), '"Agora não": o Calor vai ao início; a Barra Bestial fica (18)');
+      ok(j(await bars(ids.pc_dain)) === j(['HP:100/100', 'Calor da Forja:9/20·pts']) && j(await bars(ids.pc_lobo)) === j(['HP:100/100', 'Barra Bestial:18/20']), '"Agora não": o Calor vai ao início; a Barra Bestial fica (18)');
     });
     await passo('as condições novas', async () => {
       await C.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, ids.pc_lobo); await w(300);
@@ -121,6 +121,21 @@ const j = JSON.stringify;
       const tk = await C.evaluate(id => { const t = __tc.Store.get('tokens', id); return { conds: t.conds, info: t.cinfo }; }, ids.pc_lobo);
       ok(tk.conds.includes('feraSolta') && tk.conds.includes('naToca') && tk.info.naToca && tk.info.naToca.d === 2, 'a Fera Solta e o Na Toca no Lobo (o Na Toca com 2 rodadas) — ' + j(tk));
       await foto('l34-rede-condicoes');
+    });
+    // (lote 116) o jeito da barra no token vem da ficha: a raça em bolinhas, a classe em barra; quem troca na ficha troca o token
+    await passo('bolinhas ou barra', async () => {
+      const mudar = (id, nome, est) => M.evaluate(([id, nome, est]) => { const P = TC.dados.col('personagens'), l = P.pegar(id), f = JSON.parse(JSON.stringify(l.ficha));
+        const r = f.recursos.find(x => x.nome === nome); if (est) r.est = est; else delete r.est; P.gravar(id, { ficha: f }); }, [id, nome, est]);
+      ok(j(await bars(ids.pc_kai)) === j(['HP:100/100', 'Ira:4/20', 'Energia:10/10']) || (await bars(ids.pc_kai)).some(x => x.startsWith('Ira:') && !x.endsWith('·pts')), 'a Ira (classe) sai em barra, sem escolher');
+      await mudar('pc_dain', 'Calor da Forja', 'bar');
+      ok(await ate(async () => (await bars(ids.pc_dain)).some(x => /^Calor da Forja:\d+\/20$/.test(x)), 15000), 'o dono escolhe "Barra" na ficha: o Calor (raça) vira barra no token — ' + j(await bars(ids.pc_dain)));
+      await mudar('pc_kai', 'Ira', 'pts');
+      ok(await ate(async () => (await bars(ids.pc_kai)).some(x => /^Ira:\d+\/20·pts$/.test(x)), 15000), '"Bolinhas" na Ira (classe): o token troca — ' + j(await bars(ids.pc_kai)));
+      await C.evaluate(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, ids.pc_kai); await w(300);
+      const i = await C.evaluate(id => __tc.Store.get('tokens', id).bars.findIndex(b => b.n === 'Ira'), ids.pc_kai);
+      ok(await C.evaluate(([id, i]) => !!__tc.Fichas.estiloDaFicha(__tc.Store.get('tokens', id), __tc.Store.get('tokens', id).bars[i]), [ids.pc_kai, i]), 'no painel do token, o estilo dessa barra diz que vem da ficha');
+      await mudar('pc_dain', 'Calor da Forja', null);
+      ok(await ate(async () => (await bars(ids.pc_dain)).some(x => /^Calor da Forja:\d+\/20·pts$/.test(x)), 15000), 'sem escolha, volta ao padrão da raça (bolinhas)');
     });
     await apagarMesaTela(M, nomeMesa); apagada = true;
   } finally {
