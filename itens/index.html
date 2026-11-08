@@ -44,7 +44,7 @@ button { cursor: pointer; }
 .brand { font: 600 20px/1 var(--display); color: var(--lamp-ink); white-space: nowrap; }
 .na-casca .brand { display: none; }
 .grow { flex: 1; }
-.busca { width: 260px; max-width: 100%; }
+.in.busca { width: 300px; max-width: 100%; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
 .btn:hover:not(:disabled) { background: var(--hover); }
 .btn:disabled { opacity: .5; cursor: default; }
@@ -98,6 +98,20 @@ button.chip:hover { border-color: var(--lamp); color: var(--fg); }
 .chk input { width: 16px; height: 16px; margin: 0; accent-color: var(--lamp); }
 .acoes { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .seg { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+/* (lote 113) os filtros: uma faixa de botões por grupo, embaixo das abas */
+.filtros { display: grid; gap: 6px; padding: 8px 12px 10px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.filtros:empty { display: none; }
+.fg { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.fg > .eyebrow { min-width: 74px; }
+.fc { border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg-2); border-radius: 999px; padding: 3px 10px; font: 600 12.5px var(--ui); cursor: pointer; }
+.fc small { font-weight: 400; color: var(--fg-3); margin-left: 4px; }
+.fc[aria-pressed="true"] { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.fc[aria-pressed="true"] small { color: inherit; opacity: .75; }
+.fc:disabled { opacity: .4; cursor: default; }
+.fc:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.fsel { min-height: 28px; padding: 0 8px; font-size: 12.5px; }
+.fconta { font-size: 12.5px; color: var(--fg-2); }
+.fconta b { color: var(--fg); }
 .seg button { border: 1px solid var(--line-strong); background: var(--raised); border-radius: 999px; padding: 4px 11px; font-weight: 600; font-size: 13px; }
 .seg button[aria-pressed="true"] { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); }
 /* ---- a janela de editar ---- */
@@ -154,7 +168,7 @@ dialog.dl::backdrop { background: rgba(5, 7, 12, .62); }
 <div class="app">
   <header class="top">
     <span class="brand">Itens</span>
-    <input class="in busca" id="busca" type="search" placeholder="Buscar…" autocomplete="off" aria-label="Buscar pelo nome">
+    <input class="in busca" id="busca" type="search" placeholder="Buscar (nome, efeito…)" autocomplete="off" aria-label="Buscar pelo nome ou pelo efeito">
     <span class="grow"></span>
     <span class="salvo" id="salvo" aria-live="polite"></span>
     <button type="button" class="btn sm" id="btDesfazer" disabled title="Desfazer (Ctrl+Z)">Desfazer</button>
@@ -165,6 +179,7 @@ dialog.dl::backdrop { background: rgba(5, 7, 12, .62); }
     <button type="button" role="tab" id="aba-lojas" data-aba="lojas" aria-selected="false">Lojas <small id="n-lojas"></small></button>
     <button type="button" role="tab" id="aba-receitas" data-aba="receitas" aria-selected="false">Receitas <small id="n-receitas"></small></button>
   </nav>
+  <div class="filtros" id="filtros" role="region" aria-label="Filtros"></div>
   <main class="meio" id="meio"></main>
 </div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
@@ -173,6 +188,6 @@ dialog.dl::backdrop { background: rgba(5, 7, 12, .62); }
 <script src="../tc/rules.js?v=32"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/itens.js?v=2"></script>
-<script src="itens.js?v=2"></script>
+<script src="itens.js?v=3"></script>
 </body>
 </html>

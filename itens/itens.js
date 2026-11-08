@@ -119,6 +119,71 @@
 
   /* ---------------- pintar ---------------- */
   const passa = nome => !busca || sem(nome).includes(sem(busca));
+  /* (lote 113) Os filtros: uma faixa de botões por grupo (um botão ligado por grupo; clicar de novo desliga), com a
+     contagem de cada botão (quantos sobram se ele for ligado) e "X de Y · Limpar". A busca olha o nome e o efeito
+     (no catálogo), o lugar e os itens vendidos (nas lojas), os ingredientes e o resultado (nas receitas). */
+  const filtros = { catalogo: {}, lojas: {}, receitas: {} };
+  const busca2 = (...txts) => !busca || txts.some(t => sem(t || '').includes(sem(busca)));
+  const RARIDADES = [['Comum', 'Comum'], ['Incomum', 'Incomum'], ['Raro', 'Raro'], ['Lendário', 'Lendário']];
+  const PRECOS = [['p1', 'até 10', 0, 10], ['p2', '11 a 50', 11, 50], ['p3', '51 a 250', 51, 250], ['p4', 'mais de 250', 251, Infinity]];
+  const rarDe = x => ((/^\[([^\]]+)\]/.exec(x.nota || '') || [])[1] || '');
+  const pecaDe = x => (x.t !== 'equip' || !R.pecaDoItem ? '' : R.pecaDoItem({ nome: x.nome, tipo: x.equip.tipo, bonus: x.equip.bonus, peca: x.equip.peca, dp: x.equip.dp }));
+  const negro = l => /mercado negro/i.test(l.nome || '');
+  // os grupos de cada parte: [chave, rótulo, opções [[valor, texto]], teste(item, valor), mostrar?]
+  function gruposFiltro(parte, cat, ls, rs) {
+    if (parte === 'catalogo') {
+      const vende = new Map(), naRec = new Set();
+      for (const y of ls) for (const z of y.l.itens) { if (!vende.has(z.cat)) vende.set(z.cat, new Set()); vende.get(z.cat).add(y.id); }
+      for (const y of rs) { naRec.add(sem(y.r.resultado.item.nome)); for (const g of y.r.ingredientes) naRec.add(sem(g.nome)); }
+      const f = filtros.catalogo, soEquip = !f.t || f.t === 'equip';
+      return [
+        ['t', 'Tipo', I.TIPOS, (x, v) => x.t === v, true],
+        ['peca', 'Peça', (R.PECAS || []).map(p => [p[0], p[1]]), (x, v) => pecaDe(x) === v, soEquip],
+        ['rar', 'Raridade', RARIDADES, (x, v) => rarDe(x) === v, true],
+        ['faixa', 'Faixa', [1, 2, 3, 4].map(n => [String(n), 'F' + n]), (x, v) => x.t === 'equip' && String(x.equip.faixa || '') === v, soEquip],
+        ['preco', 'Preço', PRECOS.map(p => [p[0], p[1]]), (x, v) => { const p = PRECOS.find(q => q[0] === v); return x.preco >= p[2] && x.preco <= p[3]; }, true],
+        ['onde', 'Onde está', [['loja', 'Em loja'], ['semloja', 'Sem loja'], ['receita', 'Em receita']].concat(ls.map(y => ['l:' + y.id, y.l.nome])),
+          (x, v) => v === 'loja' ? vende.has(x.id) : v === 'semloja' ? !vende.has(x.id) : v === 'receita' ? naRec.has(sem(x.nome)) : !!(vende.get(x.id) || new Set()).has(v.slice(2)), true]];
+    }
+    if (parte === 'lojas') return [
+      ['sit', 'Situação', [['aberta', 'Aberta'], ['fechada', 'Fechada']], (x, v) => x.l.aberta === (v === 'aberta'), true],
+      ['tipo', 'Tipo', [['negro', 'Mercado negro'], ['comum', 'Loja comum']], (x, v) => negro(x.l) === (v === 'negro'), true],
+      ['gente', 'Por perto', [['sim', 'Alguém por perto'], ['nao', 'Ninguém']], (x, v) => (x.l.aqui.length > 0) === (v === 'sim'), true]];
+    return [
+      ['res', 'Resultado', I.TIPOS, (x, v) => x.r.resultado.item.t === v, true],
+      ['vis', 'Quem vê', [['mestre', 'Só você'], ['todos', 'Todos']], (x, v) => !!x.r.oculta === (v === 'mestre'), true],
+      ['teste', 'Teste', [['com', 'Com teste'], ['sem', 'Sem teste']], (x, v) => !!x.r.teste === (v === 'com'), true]];
+  }
+  // aplica a busca e os filtros (menos o grupo `exceto`, para contar o que cada botão daria)
+  function filtrar(parte, lista, grupos, exceto) {
+    const f = filtros[parte];
+    const txt = parte === 'catalogo' ? x => busca2(x.nome, x.nota) : parte === 'lojas' ? x => busca2(x.l.nome, x.l.lugar && x.l.lugar.nome, ...x.l.itens.map(z => z.item && z.item.nome))
+      : x => busca2(x.r.nome, x.r.resultado.item.nome, ...x.r.ingredientes.map(g => g.nome));
+    const fora = [].concat(exceto || []);
+    return lista.filter(x => txt(x) && grupos.every(([k, , , teste, mostra]) => fora.includes(k) || !mostra || !f[k] || teste(x, f[k])));
+  }
+  function pintarFiltros(parte, lista, grupos) {
+    const f = filtros[parte], vis = filtrar(parte, lista, grupos);
+    const ligado = Object.keys(f).some(k => f[k]) || !!busca;
+    const linhas = grupos.filter(g => g[4]).map(([k, rot, ops, teste]) => {
+      const base = filtrar(parte, lista, grupos, k);
+      // (no Tipo, os outros tipos contam sem a Peça e a Faixa, que só valem para equipamento e saem ao trocar)
+      const baseT = k === 't' ? filtrar(parte, lista, grupos, ['t', 'peca', 'faixa']) : base;
+      const lojasDoOnde = k === 'onde' ? ops.filter(o => o[0].startsWith('l:')) : [];
+      const chips = ops.filter(o => !o[0].startsWith('l:')).map(([v, t]) => {
+        const n = (k === 't' && v !== 'equip' ? baseT : base).filter(x => teste(x, v)).length, on = f[k] === v;
+        return h('button', { type: 'button', class: 'fc', 'data-f': parte + ':' + k + ':' + v, 'aria-pressed': String(on), disabled: !n && !on,
+          onclick: () => { f[k] = on ? '' : v; if (k === 't' && f.t && f.t !== 'equip') { f.peca = ''; f.faixa = ''; } pintar(); } }, t, h('small', { text: String(n) }));
+      });
+      if (lojasDoOnde.length) chips.push(h('select', { class: 'in fsel', id: 'f-loja', 'aria-label': 'Vendido em qual loja', onchange: e => { f[k] = e.target.value; pintar(); } },
+        h('option', { value: '', text: 'Vendido em…' }), lojasDoOnde.map(([v, t]) => h('option', { value: v, text: t + ' (' + base.filter(x => teste(x, v)).length + ')', selected: f[k] === v }))));
+      return h('div', { class: 'fg' }, h('span', { class: 'eyebrow', text: rot }), chips);
+    });
+    linhas.push(h('div', { class: 'fg' }, h('span', { class: 'fconta' }, h('b', { text: String(vis.length) }), ' de ' + lista.length),
+      ligado ? h('button', { type: 'button', class: 'fc', id: 'f-limpar', text: 'Limpar filtros', onclick: () => { filtros[parte] = {}; busca = ''; $('busca').value = ''; pintar(); } }) : null));
+    trocar($('filtros'), linhas);
+    return vis;
+  }
   const icone = t => h('span', { class: 'ico', style: { background: COR_TIPO[t] || '#888' }, text: SIGLA[t] || '?' });
   function pintar() {
     if (!pronto) return;
@@ -129,13 +194,13 @@
     trocar($('meio'), aba === 'catalogo' ? pintarCatalogo(cat) : aba === 'lojas' ? pintarLojas(ls, cat) : pintarReceitas(rs, cat));
   }
   function vazio(titulo, texto, rotulo, fn) {
+    trocar($('filtros'), []);
     return h('div', { class: 'vazio' }, h('strong', { text: titulo }), h('p', { class: 'ajuda', text: texto }), h('button', { type: 'button', class: 'btn pri', text: rotulo, onclick: fn }));
   }
   function pintarCatalogo(cat) {
     if (!cat.itens.length) return vazio('O catálogo está vazio.', 'Os itens da mesa: os da bolsa (poções, bombas, runas, munições, materiais) e os equipamentos, com o preço de sempre. Daqui eles vão para as lojas, para as receitas e para a ficha de alguém (“Dar a…”).', '+ Item', () => editarItem(null));
-    const lista = cat.itens.filter(x => passa(x.nome));
-    if (!lista.length) return h('p', { class: 'ajuda', text: 'Nenhum item com este nome.' });
-    const ls = lojas();
+    const ls = lojas(), lista = pintarFiltros('catalogo', cat.itens, gruposFiltro('catalogo', cat, ls, receitas()));
+    if (!lista.length) return h('p', { class: 'ajuda', text: 'Nenhum item com estes filtros.' });
     return I.TIPOS.map(([t, nome]) => {
       const its = lista.filter(x => x.t === t).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
       if (!its.length) return null;
@@ -158,15 +223,16 @@
     if (x.t === 'equip') {
       const b = Object.entries(x.equip.bonus).map(([k, v]) => k + ' ' + (v > 0 ? '+' : '') + v), d = Object.entries(x.equip.def).map(([k, v]) => ((R.DEFESAS_ESP.find(e => e.k === k) || {}).nome || k) + ' ' + (v > 0 ? '+' : '') + v);
       const tipo = (R.tiposDeItem(cfgFichas()).find(t => t.id === x.equip.tipo) || {}).nome;
-      return [tipo, ...b, ...d].filter(Boolean).join(', ');
+      const extra = [x.equip.faixa ? 'F' + x.equip.faixa : '', x.equip.dp ? 'Dano ' + x.equip.dp : '', x.equip.atr && !x.equip.dp ? 'rola ' + x.equip.atr : ''];   // (lote 113)
+      return [tipo, ...extra, ...b, ...d].filter(Boolean).join(', ');
     }
     if (x.t === 'pocao' && x.fx && x.fx.length) return x.fx.map(e => e.k === 'barra' ? e.rec + ' ' + e.val : e.k === 'sob' ? 'sobrevida ' + e.val : e.k === 'bonus' ? e.bk + ' ' + (e.bv > 0 ? '+' : '') + e.bv : (R.nomeDaCondicao ? R.nomeDaCondicao(e.c) : e.c)).join(', ');
     return '';
   }
   function pintarLojas(ls, cat) {
     if (!ls.length) return vazio('Nenhuma loja ainda.', 'Cada loja fica num lugar do Mapa-múndi (uma cidade, uma vila). Quando o grupo de um personagem para no hexágono do lugar, a aba Loja aparece para o dono dele: ele compra sozinho, com os lapros da ficha.', '+ Loja', () => editarLoja(null));
-    const lista = ls.filter(x => passa(x.l.nome));
-    if (!lista.length) return h('p', { class: 'ajuda', text: 'Nenhuma loja com este nome.' });
+    const lista = pintarFiltros('lojas', ls, gruposFiltro('lojas'));
+    if (!lista.length) return h('p', { class: 'ajuda', text: 'Nenhuma loja com estes filtros.' });
     return h('section', { class: 'grupo-l' }, lista.map(x => {
       const l = x.l, aqui = l.aqui.map(nomeDaFicha).filter(Boolean);
       const det = [l.lugar ? (l.lugar.nome || 'um lugar') : 'sem lugar no mapa', l.itens.length + (l.itens.length === 1 ? ' item' : ' itens'), aqui.length ? 'perto: ' + aqui.join(', ') : 'ninguém por perto'].join(' · ');
@@ -180,8 +246,8 @@
   }
   function pintarReceitas(rs, cat) {
     if (!rs.length) return vazio('Nenhuma receita ainda.', 'O que a bancada do Acampamento faz: os ingredientes (que saem da bolsa), o resultado, o teste (se há) e o que acontece se ele falhar.', '+ Receita', () => editarReceita(null));
-    const lista = rs.filter(x => passa(x.r.nome));
-    if (!lista.length) return h('p', { class: 'ajuda', text: 'Nenhuma receita com este nome.' });
+    const lista = pintarFiltros('receitas', rs, gruposFiltro('receitas'));
+    if (!lista.length) return h('p', { class: 'ajuda', text: 'Nenhuma receita com estes filtros.' });
     return h('section', { class: 'grupo-l' }, lista.map(x => {
       const r = x.r, ing = r.ingredientes.map(g => g.qtd + ' × ' + g.nome).join(', ') || 'sem ingredientes';
       const det = ing + ' → ' + (r.resultado.qtd > 1 ? r.resultado.qtd + ' × ' : '') + r.resultado.item.nome + ' · ' + (r.teste ? 'teste de ' + (I.ATR_TESTE.find(a => a[0] === r.teste.atr) || [])[1] + ' ' + r.teste.dif : 'sem teste');

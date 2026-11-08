@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-9",
+      "data": "2026-11-08",
+      "titulo": "Filtros na aba Itens",
+      "itens": [
+        { "tipo": "novo", "texto": "Catálogo: filtros por tipo, peça, raridade, faixa, preço e onde o item está (em loja, sem loja, em receita ou numa loja escolhida), com a contagem em cada botão e \"Limpar filtros\".", "mestre": true },
+        { "tipo": "novo", "texto": "Lojas: filtro por aberta/fechada, mercado negro e quem está por perto; a busca acha a loja pelo item que ela vende. Receitas: filtro pelo resultado, por quem vê e pelo teste.", "mestre": true },
+        { "tipo": "melhorou", "texto": "A busca da aba Itens olha também o efeito do item (\"vampiro\" acha a Espada de Amonite e o alho).", "mestre": true },
+        { "tipo": "consertado", "texto": "Aba Itens: a busca voltou a caber na linha de cima, ao lado dos botões.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.08-8",
       "data": "2026-11-08",
       "titulo": "Equipamentos pela Cola",
