@@ -859,21 +859,21 @@ classe({ id: 'bardo', arvore: 'Bardo', barra: 'Ritmo', cor: '#F2B544', glifo: '�
 
 /* ---------------- Shaji: Distraído ---------------- */
 classe({ id: 'shaji', arvore: 'Shaji', barra: 'Malandragem', cor: '#D99A5B', glifo: '遊', inicio: 5,
-  patamares: [[5, 'Mão Leve', 'furtar e trocar itens com aliados é ação de movimento'], [10, 'Rosto Comum', 'ninguém te ataca primeiro se houver outro alvo à mesma distância'], [15, 'Golpe de Mestre', 'o próximo golpe em alvo Distraído é crítico']],
+  patamares: [[5, 'Briga Esquentou', 'pegar um objeto para Arma Improvisada não gasta ação'], [10, 'Mão Leve', 'furtar na luta gasta só a ação de movimento'], [15, 'Golpe de Mestre', 'o próximo golpe em alvo Distraído é crítico']],
   risco: ['Fama de Rua', 'alguém te reconhece: o mestre traz um credor, rival ou guarda depois da luta'],
-  est: () => ({ distraidos: [], escondido: false }),
-  marcas: s => [{ k: 'esc', glifo: '隠', rotulo: s.escondido ? 'Escondido (toque para aparecer)' : 'Sumir da vista', dica: '+2 ao sumir da vista de todos' }],
+  est: () => ({ distraidos: [], carregada: true }),
+  marcas: s => [{ k: 'bal', glifo: '弩', rotulo: s.carregada ? 'Balestra carregada (toque ao atirar)' : 'Balestra vazia (toque ao recarregar)', dica: 'recarregar gasta a ação de movimento' }],
   marcasOpc: { raio: 56, r: 16, inicio: 135 },
-  ativo: (s, k) => k === 'esc' && s.escondido,
+  ativo: (s, k) => k === 'bal' && s.carregada,
   arte(s){ let o = glifoCentro(this, '遊', { tam: 26, dy: 4 }); s.distraidos.slice(0, 4).forEach((d, i) => { o += KIT.texto(110, 128 + i * 12, esc(d.n.slice(0, 14)), { tam: 9.5, cor: this.cor }); }); return o; },
-  tocar(s, k, ctx){ if (k === 'esc'){ s.escondido = !s.escondido; if (s.escondido) ctx.ganhar(2, 'sumiu da vista'); else ctx.log(`${ctx.nome} aparece.`); } },
+  tocar(s, k, ctx){ if (k === 'bal'){ s.carregada = !s.carregada; ctx.log(s.carregada ? `${ctx.nome} recarrega a balestra.` : `${ctx.nome} atira com a balestra.`); } },
   acoes(s, ctx){ return escolheAlvo('Deixar Distraído', 'dist', '', ctx.ator.alvos) + (s.distraidos.length ? `<button type="button" data-a="limpar">Ninguém mais Distraído</button>` : ''); },
   acao(s, a, ctx, val){ if (a === 'dist' && val && !s.distraidos.some(d => d.n === val)){ s.distraidos.push({ n: val, t: 2 }); ctx.log(`${val} está Distraído (Defesa -tier I).`); } if (a === 'limpar') s.distraidos = []; },
   aoComecarTurno(s, ctx){ s.distraidos = contarTurnos(s.distraidos, ctx, 'Distraído'); },
-  linhaEstado: s => (s.distraidos.length ? `<b>Distraídos:</b> ${esc(s.distraidos.map(d => d.n).join(', '))} <em>· Defesa -tier I</em>` : '<em>Ninguém Distraído.</em>') + (s.escondido ? ' · <b>Escondido</b>' : ''),
-  ganhos: [{ c: 'Enganou alguém', t: 'Finta, mentira ou truque que pegou', v: 3 }, { c: 'Acertou um Distraído', v: 2 }],
-  selo: s => (s.escondido ? '隠' : s.distraidos.length ? '遊' : null),
-  mapa: { 'Chuva de Moedas': AREA('cristais', 3, 1), 'Saída Secreta': TOK('Saída Secreta', '#6A5A4A', { tam: 0.5, turnos: 5 }) }
+  linhaEstado: s => (s.distraidos.length ? `<b>Distraídos:</b> ${esc(s.distraidos.map(d => d.n).join(', '))} <em>· Defesa -tier I</em>` : '<em>Ninguém Distraído.</em>') + (s.carregada ? ' · <b>Balestra carregada</b>' : ' · <em>Balestra vazia</em>'),
+  ganhos: [{ c: 'Acertou um Distraído', v: 2 }, { c: 'Truque que pegou', t: 'Finta, mentira, areia ou roubo', v: 3 }, { c: 'Apanhou e revidou', t: 'Revidou quem te acertou, até o fim do seu próximo turno', v: 2 }, { c: 'Arma Improvisada', t: 'Acertou com um objeto do cenário', v: 2 }],
+  selo: s => (s.distraidos.length ? '遊' : null),
+  mapa: { 'Chuva de Moedas': AREA('cristais', 3, 1), 'Virar a Mesa': TOK('Mesa virada', '#6A5A4A', { tam: 0.6, turnos: 5 }) }
 });
 
 /* ---------------- Karê'mã: as Correntes ---------------- */

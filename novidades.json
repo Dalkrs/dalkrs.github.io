@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.09-10",
+      "data": "2026-11-09",
+      "titulo": "Shaji, o arruaceiro",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Shaji refeito para a luta: ramos Briga de Rua (adaga, cotovelo, cadeira voando), Balestra de Mão (tiro curto, virotes de truque, duas balestras) e Malandragem (fintas, mentiras e mãos leves). Nova mecânica: Arma Improvisada, qualquer objeto do cenário vira arma de um golpe."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.09-9",
       "data": "2026-11-09",
       "titulo": "Banheiro no interior",
