@@ -2463,6 +2463,17 @@
   // a mesa fechou ou trocou: não há mais o que retomar
   mesas.on('muda', a => { if (!a) { perguntaDesde = 0; mudarSono('acordado'); } });
 
+  /* (lote 124) A auditoria lê também os capítulos apagados do bloco de notas. O que quem mestra apaga fica no banco
+     (apagado = true, com o texto), mas a coleção não carrega linhas apagadas: só o administrador auditando busca
+     essas, aqui, direto (o banco já as entrega a ele: privado.auditando). Leitura só — nada é gravado. */
+  dados.notasApagadas = async () => {
+    const a = mesas.atual;
+    if (!a || !a.auditoria) return [];
+    const { data, error } = await cliente().from('documentos').select('id,dono_id,dados,atualizado_em').eq('mesa_id', a.id).eq('apagado', true).like('id', 'notas%').limit(2000);
+    if (error) throw falha(error);
+    return data || [];
+  };
+
   TC.sono = sono;
   TC.conta = conta; TC.mesas = mesas; TC.aoVivo = aoVivo; TC.dados = dados; TC.arquivos = arquivos; TC.erroPt = erroPt;
 })();

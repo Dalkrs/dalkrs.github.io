@@ -16,7 +16,12 @@
    escrevem, e o mestre também — e, só para o mestre, "Dos jogadores": o caderno de cada jogador, para ler. Cada
    capítulo pode ter um personagem (o filtro "Personagem"). Quem joga não apaga a linha no banco (só quem mestra apaga):
    o capítulo apagado por ele fica marcado (dados.apagada) e some da lista; o Desfazer o traz de volta.
-   O SQL 0032 deixa o jogador criar esses documentos e escrever no caderno do grupo. */
+   O SQL 0032 deixa o jogador criar esses documentos e escrever no caderno do grupo.
+   (lote 124) A auditoria. O administrador do site, auditando a mesa (nos dois modos, "só olhando" e "como mestre"), lê
+   tudo e não escreve nada: os cadernos se chamam "Do mestre", "Do grupo" e "Dos jogadores" (com os auxiliares, e com
+   ele mesmo, se também participa da mesa), e aparecem também os capítulos apagados, marcados e no fim da lista — os
+   que quem mestra apagou (o banco guarda a linha, com o texto: dados.notasApagadas os busca) e os que quem joga marcou
+   como apagados (daqui em diante o texto fica guardado junto da marca; os de antes não têm mais o texto). */
 (() => {
   'use strict';
   const PRE = 'notas:', PRE_J = 'notasj:', PRE_G = 'notasg:';
@@ -71,6 +76,7 @@
   const textoDe = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   const lerTags = t => [...new Set(String(t || '').split(/[,;]+/).map(x => x.trim().replace(/\s+/g, ' ').slice(0, 30)).filter(Boolean))].slice(0, MAX_TAGS);
+  const quando = ms => { try { return new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
   const novoId = () => 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
   function iniciar(o) {
@@ -82,15 +88,17 @@
     let cad = 'meu', jogSel = null, ultimaTecla = 0;          // (lote 52) o caderno aberto: 'meu', 'grupo' ou 'jog' (o mestre lendo o de um jogador)
     const D = () => { try { return mesas.atual ? dados.col('documentos') : null; } catch (e) { return null; } };
     const eMestre = () => !!(mesas.atual && mesas.atual.cargo === 'mestre');
+    const aud = () => !!(mesas.atual && mesas.atual.auditoria);          // (lote 124) o administrador auditando: só lê
+    let apagadasBanco = [], tApag = 0;                                    // (lote 124) os capítulos que quem mestra apagou (só na auditoria)
     const chaveUi = () => 'tinycats:notas:' + (mesas.atual ? mesas.atual.id : '');
     const lerUi = () => { try { return JSON.parse(guarda.ler(chaveUi()) || '{}') || {}; } catch (e) { return {}; } };
     const gravarUi = () => guarda.gravar(chaveUi(), JSON.stringify({ atual, filtro, cad, jogSel }));
     const dadosDe = l => (l && !l.apagado && l.dados && typeof l.dados === 'object' && !l.dados.apagada ? l.dados : null);
     const preMeu = () => (eMestre() ? PRE : PRE_J + eu() + ':');
     const preDe = () => (cad === 'grupo' ? PRE_G : cad === 'jog' ? PRE_J + jogSel + ':' : preMeu());
-    const soLer = () => cad === 'jog';
+    const soLer = () => cad === 'jog' || aud();
     // os jogadores da mesa (para o mestre ler o caderno de cada um)
-    const jogadores = () => (mesas.atual && Array.isArray(mesas.atual.membros) ? mesas.atual.membros : []).filter(x => x.cargo !== 'mestre' && x.usuario_id !== eu());
+    const jogadores = () => (mesas.atual && Array.isArray(mesas.atual.membros) ? mesas.atual.membros : []).filter(x => x.cargo !== 'mestre' && (aud() || x.usuario_id !== eu()));
     // os personagens que um capítulo pode ter: os seus (quem joga), os dos jogadores (o mestre e o caderno do grupo)
     function personagens() {
       let P = null; try { P = dados.col('personagens').todas(); } catch (e) { return []; }
@@ -102,11 +110,21 @@
       const d = D();
       if (!d) return [];
       const pre = preDe();
-      return d.todas().filter(l => typeof l.id === 'string' && l.id.startsWith(pre) && dadosDe(l)).map(l => {
-        const x = l.dados, campId = l.id.includes('@') ? l.id.split('@')[1] : null;
+      // apag: 'marca' (quem joga marcou como apagado) · 'linha' (quem mestra apagou a linha) · null; apagEm: quando
+      const cap = (l, x, apag, apagEm) => {
+        const campId = l.id.includes('@') ? l.id.split('@')[1] : null;
         return { id: l.id, dono: l.dono_id || null, pc: typeof x.pc === 'string' && x.pc ? x.pc : null, t: String(x.t || 'Sem título').slice(0, MAX_TIT), tags: Array.isArray(x.tags) ? x.tags.map(String).slice(0, MAX_TAGS) : [],
-          camp: cad === 'grupo' ? campId : typeof x.camp === 'string' && x.camp ? x.camp : null, html: String(x.html || ''), ord: Number(x.ord) || 0, em: Number(x.em) || 0 };
-      });
+          camp: cad === 'grupo' ? campId : typeof x.camp === 'string' && x.camp ? x.camp : null, html: String(x.html || ''), ord: Number(x.ord) || 0, em: Number(x.em) || 0, apag, apagEm };
+      };
+      const marcada = l => !!(aud() && l && !l.apagado && l.dados && typeof l.dados === 'object' && l.dados.apagada);
+      const out = d.todas().filter(l => typeof l.id === 'string' && l.id.startsWith(pre) && (dadosDe(l) || marcada(l)))
+        .map(l => (marcada(l) ? cap(l, l.dados, 'marca', Number(l.dados.em) || 0) : cap(l, l.dados, null, 0)));
+      // (lote 124) na auditoria, os apagados por quem mestra (vêm do banco; a coleção não os carrega)
+      if (aud()) for (const l of apagadasBanco) {
+        if (!l || typeof l.id !== 'string' || !l.id.startsWith(pre) || out.some(c => c.id === l.id)) continue;
+        out.push(cap(l, l.dados && typeof l.dados === 'object' ? l.dados : {}, 'linha', Date.parse(l.atualizado_em) || 0));
+      }
+      return out;
     }
     const campDaVista = () => { const c = mesas.campanha ? mesas.campanha() : null; return c ? c.id : null; };
     const campanhas = () => (mesas.atual && Array.isArray(mesas.atual.campanhas) ? mesas.atual.campanhas : []);
@@ -119,7 +137,7 @@
         if (filtro.camp === 'mundo' && c.camp) return false;
         if (filtro.camp !== '*' && filtro.camp !== 'mundo' && c.camp !== filtro.camp) return false;
         return !q || norm(c.t + ' ' + c.tags.join(' ') + ' ' + textoDe(c.html)).includes(q);
-      }).sort((a, b) => ((b.camp && b.camp === cv) - (a.camp && a.camp === cv)) || (a.ord - b.ord) || a.t.localeCompare(b.t, 'pt-BR'));
+      }).sort((a, b) => ((!!a.apag) - (!!b.apag)) || ((b.camp && b.camp === cv) - (a.camp && a.camp === cv)) || (a.ord - b.ord) || a.t.localeCompare(b.t, 'pt-BR'));
     }
     function gravar(id, x, novo) {
       const d = D();
@@ -176,7 +194,9 @@
       const copia = Object.assign({}, c), d = D();
       if (!d) return;
       // (quem joga não apaga a linha no banco: o capítulo fica marcado como apagado, sem o texto, e some da lista)
-      if (eMestre()) d.apagar(c.id); else d.gravar(c.id, { dados: { v: 1, apagada: true, em: Date.now() } });
+      // (lote 124) a marca de apagado guarda o texto junto (a auditoria do site lê o que foi apagado)
+      if (eMestre()) d.apagar(c.id);
+      else { const l = d.pegar(c.id); d.gravar(c.id, { dados: Object.assign({}, l && l.dados && typeof l.dados === 'object' ? l.dados : {}, { v: 1, apagada: true, em: Date.now() }) }); }
       if (atual === c.id) atual = null;
       gravarUi(); pintar();
       toast('O capítulo “' + c.t + '” saiu do bloco de notas.', 'Desfazer', () => { gravar(copia.id, copia); atual = copia.id; gravarUi(); pintar(); });
@@ -202,13 +222,13 @@
       const nomePc = id => { const x = pcs.find(y => y.id === id); return x ? x.nome : null; };
       // (lote 52) os cadernos
       const abaCad = (k, txt) => h('button', { type: 'button', class: 'nt-cad' + (cad === k ? ' on' : ''), 'data-cad': k, 'aria-pressed': String(cad === k), text: txt, onclick: () => trocarCad(k) });
-      const cads = h('div', { class: 'nt-cads', role: 'group', 'aria-label': 'Cadernos' }, abaCad('meu', 'Meu caderno'), abaCad('grupo', 'Do grupo'), eMestre() ? abaCad('jog', 'Dos jogadores') : null);
+      const cads = h('div', { class: 'nt-cads', role: 'group', 'aria-label': 'Cadernos' }, abaCad('meu', aud() ? 'Do mestre' : 'Meu caderno'), abaCad('grupo', 'Do grupo'), eMestre() ? abaCad('jog', 'Dos jogadores') : null);
       const so = painel.querySelector('#nt-so');
-      if (so) so.textContent = cad === 'grupo' ? 'o grupo todo vê e escreve' : cad === 'jog' ? 'só para ler' : eMestre() ? 'só você vê' : 'você e o mestre veem';
+      if (so) so.textContent = aud() ? 'auditoria · só leitura' : cad === 'grupo' ? 'o grupo todo vê e escreve' : cad === 'jog' ? 'só para ler' : eMestre() ? 'só você vê' : 'você e o mestre veem';
       // a lista e os filtros (o editor só é refeito quando o capítulo troca ou quando ninguém está escrevendo nele)
       const topo = h('div', { class: 'nt-topo' }, cads,
         cad === 'jog' ? h('div', { class: 'nt-l' }, jogs.length ? h('select', { id: 'nt-jog', 'aria-label': 'O caderno de qual jogador', onchange: e => { jogSel = e.target.value; atual = null; filtro.pc = ''; gravarUi(); pintar(); } },
-          jogs.map(x => h('option', { value: x.usuario_id, text: x.nome || 'Jogador' }))) : h('span', { class: 'nt-so', text: 'Ainda não há jogadores nesta mesa.' })) : null,
+          jogs.map(x => h('option', { value: x.usuario_id, text: (x.nome || 'Jogador') + (x.cargo === 'auxiliar' ? ' (auxiliar)' : '') + (aud() && x.usuario_id === eu() ? ' (você)' : '') }))) : h('span', { class: 'nt-so', text: 'Ainda não há jogadores nesta mesa.' })) : null,
         h('div', { class: 'nt-l' },
           h('input', { type: 'search', class: 'nt-busca', id: 'nt-busca', placeholder: 'Buscar nas notas…', value: filtro.q, 'aria-label': 'Buscar nas notas', oninput: e => { filtro.q = e.target.value; gravarUi(); pintarLista(); } }),
           camps.length ? h('select', { id: 'nt-camp', 'aria-label': 'Filtrar por campanha', onchange: e => { filtro.camp = e.target.value; gravarUi(); pintar(); } },
@@ -219,6 +239,8 @@
         tags.length ? h('div', { class: 'nt-tags', role: 'group', 'aria-label': 'Filtrar por tag' }, tags.map(t => h('button', { type: 'button', class: 'nt-tag' + (filtro.tag === t ? ' on' : ''), 'aria-pressed': String(filtro.tag === t), text: t, onclick: () => { filtro.tag = filtro.tag === t ? '' : t; gravarUi(); pintar(); } }))) : null,
         h('ul', { class: 'nt-lista', id: 'nt-lista' }));
       const corpo = c ? h('div', { class: 'nt-ed', 'data-cap': c.id },
+        c.apag ? h('p', { class: 'nt-apag', id: 'nt-apag', text: (c.apag === 'linha' ? 'Capítulo apagado' : 'Capítulo apagado por quem escreveu') + (c.apagEm ? ' em ' + quando(c.apagEm) : '') + '.'
+          + (c.apag === 'marca' && !c.html && !c.tags.length && c.t === 'Sem título' ? ' Foi apagado antes de o site guardar o texto dos apagados: não há o que mostrar.' : '') }) : null,
         h('input', { class: 'nt-tit', id: 'nt-tit', value: c.t, maxlength: String(MAX_TIT), readonly: ler, 'aria-label': 'Título do capítulo', oninput: e => { agendar(c.id, { t: e.target.value.trim() || 'Sem título' }); pintarLista(); } }),
         h('div', { class: 'nt-l' },
           h('input', { class: 'nt-tagsin', id: 'nt-tagsin', value: c.tags.join(', '), readonly: ler, placeholder: 'tags, separadas por vírgula', 'aria-label': 'Tags do capítulo', onchange: e => { agendar(c.id, { tags: lerTags(e.target.value) }); salvarJa(); pintar(); } }),
@@ -240,6 +262,7 @@
         : h('div', { class: 'nt-vazio' }, h('p', { text: todas.length ? 'Nenhum capítulo com este filtro.'
           : cad === 'grupo' ? 'O caderno do grupo está vazio. O que for escrito aqui, todos do grupo leem e mudam: as pistas, os nomes dos NPCs, o que falta fazer…'
           : cad === 'jog' ? (jogSel ? 'Este jogador ainda não escreveu nada no caderno dele.' : 'Escolha um jogador.')
+          : aud() ? 'O mestre ainda não escreveu nada no caderno dele.'
           : eMestre() ? 'O bloco de notas está vazio. Crie o primeiro capítulo (ou assunto): os planos da sessão, os segredos, os NPCs…'
           : 'O seu caderno está vazio. Anote o que o seu personagem descobriu, as suspeitas, os nomes e os planos. Você e o mestre leem.' }));
       const mesmo = ed0 && painel.querySelector('.nt-ed') && painel.querySelector('.nt-ed').dataset.cap === (c && c.id);
@@ -269,8 +292,8 @@
       const cv = campDaVista(), lista = visiveis();
       ul.replaceChildren(...lista.map(c => {
         const t = pendente && pendente.id === c.id && pendente.campos.t ? pendente.campos.t : c.t;
-        return h('li', null, h('button', { type: 'button', class: 'nt-cap' + (c.id === atual ? ' on' : ''), 'data-cap': c.id, 'aria-current': c.id === atual ? 'true' : null, onclick: () => { salvarJa(); atual = c.id; gravarUi(); pintar(); } },
-          h('b', { text: t }), h('small', { text: [c.camp ? (c.camp === cv ? nomeCamp(c.camp) + ' (em vista)' : nomeCamp(c.camp)) : 'do mundo', c.pc ? nomePc(c.pc) : null, cad === 'grupo' ? autor(c.dono) : null, c.tags.join(' · ')].filter(Boolean).join(' · ') })));
+        return h('li', null, h('button', { type: 'button', class: 'nt-cap' + (c.id === atual ? ' on' : '') + (c.apag ? ' apag' : ''), 'data-cap': c.id, 'aria-current': c.id === atual ? 'true' : null, onclick: () => { salvarJa(); atual = c.id; gravarUi(); pintar(); } },
+          h('b', { text: t }), h('small', { text: [c.apag ? 'apagado' : null, c.camp ? (c.camp === cv ? nomeCamp(c.camp) + ' (em vista)' : nomeCamp(c.camp)) : 'do mundo', c.pc ? nomePc(c.pc) : null, cad === 'grupo' ? autor(c.dono) : null, c.tags.join(' · ')].filter(Boolean).join(' · ') })));
       }));
     }
     /* ---- (lote 27) o @ e o # ---- */
@@ -382,10 +405,20 @@
       painel.hidden = !v;
       botao.setAttribute('aria-pressed', String(!painel.hidden));
       guarda.gravar('tinycats:notas-aberto', v ? '1' : '0');
+      if (v) buscarApagadas();
       if (v) { const u = lerUi(); atual = u.atual || null; filtro = Object.assign({ q: '', tag: '', camp: '*', pc: '' }, u.filtro || {}); cad = u.cad === 'grupo' || (u.cad === 'jog' && eMestre()) ? u.cad : 'meu'; jogSel = u.jogSel || null; if (cad === 'jog' && !jogadores().some(x => x.usuario_id === jogSel)) jogSel = jogadores().length ? jogadores()[0].usuario_id : null; pintar(); }
+    }
+    // (lote 124) os capítulos que quem mestra apagou: só na auditoria, direto do banco
+    function buscarApagadas() {
+      clearTimeout(tApag);
+      if (!aud() || typeof dados.notasApagadas !== 'function') { apagadasBanco = []; return; }
+      const mesa = mesas.atual.id;
+      dados.notasApagadas().then(l => { if (!mesas.atual || mesas.atual.id !== mesa || !aud()) return; apagadasBanco = Array.isArray(l) ? l : []; if (!painel.hidden) pintar(); },
+        e => { console.error(e); toast('Não deu para ler os capítulos apagados agora.'); });
     }
     function mesaMudou() {
       salvarJa();
+      apagadasBanco = [];
       botao.hidden = !mesas.atual;                 // (lote 52) numa mesa, todos têm o bloco (quem joga, o caderno dele e o do grupo)
       if (!mesas.atual) { painel.hidden = true; botao.setAttribute('aria-pressed', 'false'); return; }
       if (cad === 'jog' && !eMestre()) cad = 'meu';
@@ -403,6 +436,7 @@
       // (lote 52) os personagens do filtro: só redesenha quando a lista de nomes muda (o HP do combate não mexe no bloco)
       if (col === 'personagens') { if (!painel.hidden) { clearTimeout(tPcs); tPcs = setTimeout(() => { const ass = JSON.stringify(personagens()); if (ass !== assPcs) { assPcs = ass; pintar(); } }, 400); } return; }
       if (col !== 'documentos' || !l || typeof l.id !== 'string' || !l.id.startsWith('notas') || painel.hidden) return;
+      if (aud() && l.apagado) { clearTimeout(tApag); tApag = setTimeout(buscarApagadas, 1500); }      // (lote 124) alguém apagou um capítulo
       if (origem === 'local') { const s = painel.querySelector('#nt-salvo'); if (s) s.textContent = 'salvando…'; return; }
       pintar();                                                // (outro aparelho, ou alguém do grupo, mexeu)
     });

@@ -3573,6 +3573,13 @@ Quem joga não apaga a linha (dono, visibilidade e apagar são de quem mestra, e
 `dados.apagada` e o site esconde. O SQL `0032_notas_dos_jogadores.sql` deixa o jogador criar os dois tipos e editar o
 caderno do grupo, e põe um tamanho máximo por capítulo. A busca rápida acha o caderno de cada um e o do grupo.
 
+**A auditoria do bloco de notas (lote 124).** O administrador auditando uma mesa (nos dois modos) lê tudo e não
+escreve nada: os cadernos se chamam “Do mestre” (`notas:`), “Do grupo” e “Dos jogadores” (com os auxiliares e com ele
+mesmo, se também participa da mesa). Os capítulos apagados aparecem riscados, no fim da lista, com a data: os que quem
+mestra apagou (a linha fica no banco com o texto; `TC.dados.notasApagadas()` os busca, só na auditoria) e os que quem
+joga marcou. Daqui em diante, a marca `dados.apagada` guarda o texto junto (antes, o texto saía). O banco não mudou:
+`privado.auditando` já entregava tudo ao auditor. Teste: `src/tests/notas-lote124.test.js`.
+
 ### Rios e estradas por hexágono, e o gerador mais caprichado (lote 54)
 
 No Mapa-múndi, quatro terrenos novos (`TERRENOS_L54` em `mundo/nucleo.js`): Rio (`ri`, textura `rio`, 10 cubos) e as
