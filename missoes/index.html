@@ -87,6 +87,11 @@ select.in { padding: 0 6px; width: auto; }
 .mc .foto { position: relative; }
 .mc .foto img { display: block; width: 100%; max-height: 170px; object-fit: cover; }
 .carimbo { position: absolute; z-index: 3; pointer-events: none; }
+.mc .marcar { position: absolute; top: 6px; right: 6px; z-index: 4; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: rgba(255, 255, 255, .85); box-shadow: 0 1px 3px rgba(0, 0, 0, .35); cursor: pointer; }
+.mc .marcar input { width: 18px; height: 18px; margin: 0; accent-color: #b3261e; cursor: pointer; }
+.barra-marcar { max-width: 1240px; margin: 0 auto 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+body[data-estilo="diario"] .barra-marcar { max-width: 820px; }
+body[data-estilo="diario"] .mc .marcar { top: 8px; right: 8px; background: var(--raised); }
 .mc.e-feita, .mc.e-falhou { opacity: .9; }
 
 /* ----- Mural de cartazes (aventureiro) ----- */
@@ -294,6 +299,6 @@ dialog.est-mural .folha .x, dialog.est-dossie .folha .x, dialog.est-ordem .folha
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=21"></script>
 <script src="../tc/missoes.js?v=1"></script>
-<script src="missoes.js?v=1"></script>
+<script src="missoes.js?v=2"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
    as missões de cada personagem e as do grupo.
      · quem joga: pega no quadro (com um dos personagens dele), acompanha e desiste — a do quadro volta para o quadro,
        a da história conta como falha;
-     · quem mestra (as Fichas): cria, guarda nos rascunhos, publica no quadro ou entrega direto a um personagem, marca
+     · quem mestra (as Fichas): cria, guarda oculta, revela no quadro (uma ou várias de uma vez) ou entrega direto a um personagem, volta a ocultar, marca
        os objetivos e o estado, devolve ao quadro, recolhe e apaga; escolhe o estilo do quadro da campanha.
    As missões que moravam na ficha vêm para cá na primeira vez que quem mestra abre a aba (a cópia; nada é apagado).
    Fora de uma mesa (a página sozinha), tudo fica neste navegador, no modo de quem mestra (?jogador: no de quem joga). */
@@ -119,8 +119,9 @@
 
   /* ---------------- a tela ---------------- */
   let aba = null, pcSel = null;
+  const marcadas = new Set();          // (as ocultas marcadas para revelar de uma vez)
   const ABAS_J = [{ k: 'quadro', n: 'Quadro' }, { k: 'minhas', n: 'Minhas missões' }, { k: 'grupo', n: 'Do grupo' }];
-  const ABAS_M = [{ k: 'quadro', n: 'Quadro' }, { k: 'andamento', n: 'Em andamento' }, { k: 'rascunhos', n: 'Rascunhos' }, { k: 'encerradas', n: 'Encerradas' }];
+  const ABAS_M = [{ k: 'quadro', n: 'Quadro' }, { k: 'andamento', n: 'Em andamento' }, { k: 'rascunhos', n: 'Ocultas' }, { k: 'encerradas', n: 'Encerradas' }];
   const abas = () => (mestre ? ABAS_M : ABAS_J);
   const estilo = () => M.estiloDe(quadro().estilo).k;
   const caveiras = (pe, k) => {
@@ -177,6 +178,9 @@
     const el = h('article', { class: 'mc e-' + e + (m.quem === 'pc' ? ' hist' : ''), tabindex: '0', role: 'button', 'data-mis': m.id,
       'aria-label': titulo + (e !== 'oferta' ? ', ' + M.estadoDe(e).n : ''), style: '--giro:' + giro + 'deg',
       onclick: () => abrir(m.id, ctx), onkeydown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrir(m.id, ctx); } } },
+      ctx.marca ? h('label', { class: 'marcar', title: 'Marcar para revelar', onclick: ev => ev.stopPropagation(), onkeydown: ev => ev.stopPropagation() },
+        h('input', { type: 'checkbox', 'data-marca': m.id, checked: marcadas.has(m.id), 'aria-label': 'Marcar “' + titulo + '” para revelar',
+          onchange: ev => { if (ev.target.checked) marcadas.add(m.id); else marcadas.delete(m.id); pintar(); } })) : null,
       s === 'mural' ? h('span', { class: 'pino', 'aria-hidden': 'true' }) : null,
       s === 'dossie' ? h('span', { class: 'aba-pasta', text: 'ARQUIVO Nº ' + numArquivo(m.id) }) : null,
       s === 'ordem' ? h('span', { class: 'selo', 'aria-hidden': 'true', style: m.cti ? 'background-image:url("' + m.cti.replace(/"/g, '%22') + '")' : null }, m.cti ? '' : (m.ct || '?').trim().charAt(0).toUpperCase()) : null,
@@ -209,7 +213,7 @@
 
   function telaQuadro() {
     const lst = M.noQuadro(quadro());
-    const ajuda = mestre ? 'O que os jogadores veem para pegar. Crie em “Nova missão”: ela nasce nos rascunhos ou vai direto para cá.'
+    const ajuda = mestre ? 'O que os jogadores veem para pegar. Crie em “Nova missão”: ela fica oculta (só você vê) até você revelar.'
       : meus().length ? 'Escolha uma missão e pegue. As de “Só um pega” saem do quadro; as do grupo valem para todos.' : 'Você ainda não tem personagem nesta campanha: dá para olhar, mas não para pegar.';
     const sem = !naMesa || docDados(idQuadro()) ? 'O quadro está vazio.' : (mestre ? 'O quadro está vazio.' : 'O mestre ainda não abriu o quadro de missões desta campanha.');
     return [secao(null, ajuda, lst.map(m => cartao(m, { e: 'oferta', rodape: rodapeQuem(m), onde: 'quadro', pc: pcSel })), sem)];
@@ -240,8 +244,12 @@
   }
   function telaRascunhos() {
     const R = rasc(), l = Object.keys(R.ms).map(id => Object.assign({ id }, R.ms[id])).sort((a, b) => b.c - a.c);
-    return [secao(null, 'Só você vê. Publique no quadro, ou entregue direto a um personagem (as da história).',
-      l.map(m => cartao(m, { e: 'oferta', onde: 'rasc', rodape: h('span', { class: 'tag' }, m.quem === 'pc' ? 'Da história' + (m.alvo ? ' · para ' + nomePc(m.alvo) : '') : M.quemDe(m.quem).curto) })), 'Nenhum rascunho.')];
+    for (const id of [...marcadas]) if (!R.ms[id]) marcadas.delete(id);
+    const barra = l.length && !fechada() ? h('div', { class: 'barra-marcar' },
+      h('button', { type: 'button', class: 'btn sm', id: 'mMarcarTodas', text: marcadas.size === l.length ? 'Desmarcar todas' : 'Marcar todas', onclick: () => { if (marcadas.size === l.length) marcadas.clear(); else l.forEach(m => marcadas.add(m.id)); pintar(); } }),
+      h('button', { type: 'button', class: 'btn pri sm', id: 'mRevelarMarcadas', disabled: !marcadas.size, text: marcadas.size ? 'Revelar as marcadas (' + marcadas.size + ')' : 'Revelar as marcadas', onclick: revelarMarcadas })) : null;
+    return [barra, secao(null, 'Só você vê. Revele no quadro (marque várias para revelar de uma vez) ou entregue direto a um personagem (as da história).',
+      l.map(m => cartao(m, { e: 'oferta', onde: 'rasc', marca: !fechada(), rodape: h('span', { class: 'tag' }, m.quem === 'pc' ? 'Da história' + (m.alvo ? ' · para ' + nomePc(m.alvo) : ' · escolha o personagem') : M.quemDe(m.quem).curto) })), 'Nenhuma missão oculta.')];
   }
   function telaEncerradas() {
     const Q = quadro(), partes = [];
@@ -275,7 +283,7 @@
     // em "Cada um pega a sua": de quem é o andamento que aparece (quem mestra escolhe entre os que pegaram)
     let pc = ctx.pc || null;
     if (m.quem === 'todos' && mestre && !pc) pc = Object.keys(m.pegas)[0] || null;
-    const and = M.andamento(m, pc), e = a.onde === 'rasc' ? 'rascunho' : and.e;
+    const and = M.andamento(m, pc), e = a.onde === 'rasc' ? 'oculta' : and.e;
     const podeMarcar = mestre && !fim && a.onde !== 'rasc' && (m.quem !== 'todos' || (pc && m.pegas[pc])) && and.e !== 'oferta';
     const objs = and.objs.length ? h('div', { class: 'objs' }, h('h4', { text: s === 'dossie' ? 'OBJETIVOS' : 'Objetivos' }),
       h('ul', null, and.objs.map(o => h('li', { class: o.ok ? 'ok' : '' },
@@ -300,7 +308,7 @@
         s === 'ordem' ? h('span', { class: 'selo', 'aria-hidden': 'true', style: m.cti ? 'background-image:url("' + m.cti.replace(/"/g, '%22') + '")' : null }, m.cti ? '' : (m.ct || '?').trim().charAt(0).toUpperCase()) : null,
         m.img ? h('div', { class: 'foto' }, h('img', { src: m.img, alt: '' })) : null,
         h('h2', { text: m.t || 'Missão sem título' }),
-        h('p', { class: 'estado', text: e === 'rascunho' ? 'Rascunho (só você vê)' : M.estadoDe(and.e).n }),
+        h('p', { class: 'estado', text: e === 'oculta' ? 'Oculta (só você vê)' : M.estadoDe(and.e).n }),
         m.d ? h('p', { class: 'desc', text: m.d }) : null,
         objs, info, deQuem,
         h('div', { class: 'acoes', id: 'mAcoes' }, acoes(a, pc, and))));
@@ -326,7 +334,7 @@
       if (m.quem === 'pc') {
         const sel = h('select', { class: 'in', id: 'mEntregarA', 'aria-label': 'Entregar a' }, personagens().map(p => h('option', { value: p.id, selected: p.id === m.alvo }, p.nome)));
         out.push(sel, bt('Entregar', () => entregarA(m.id, sel.value), 'pri', 'mEntregar'));
-      } else out.push(bt('Publicar no quadro', () => publicarRasc(m.id), 'pri', 'mPublicar'));
+      } else out.push(bt('Revelar aos jogadores', () => publicarRasc(m.id), 'pri', 'mPublicar'));
     } else if (m.quem !== 'pc' || a.onde === 'pc') {
       if (and.e !== 'oferta' && (m.quem !== 'todos' || pc)) {
         const sel = h('select', { class: 'in', id: 'mEstado', 'aria-label': 'Situação' }, M.ESTADOS.filter(x => x.k !== 'oferta').map(x => h('option', { value: x.k, selected: x.k === and.e }, x.n)));
@@ -338,7 +346,7 @@
     }
     out.push(h('span', { class: 'grow' }),
       bt('Editar', () => editar(a), '', 'mEditar'),
-      a.onde !== 'rasc' ? bt('Recolher', () => recolherMissao(a), '', 'mRecolher') : null,
+      a.onde !== 'rasc' ? bt('Ocultar de novo', () => recolherMissao(a), '', 'mRecolher') : null,
       bt('Apagar', () => apagar(a), 'per', 'mApagar'));
     return out;
   }
@@ -397,7 +405,28 @@
   function publicarRasc(id) {
     const r = M.publicar(docDados(idRasc()), docDados(idQuadro()), id); if (!r) return;
     salvarQuadro(r.quadro); salvarRasc(r.rasc); fechar();
-    toast('Publicada no quadro.');
+    toast('Revelada: já está no quadro.');
+  }
+  /* Revelar várias de uma vez: um documento gravado por vez (o quadro, as ocultas, o de cada personagem). As da história
+     vão para o personagem escolhido nelas; as sem personagem ficam ocultas. */
+  function revelarMarcadas() {
+    let R = docDados(idRasc()), Q = docDados(idQuadro());
+    const pcs = {}, sem = [];
+    let n = 0;
+    for (const id of [...marcadas]) {
+      const m = M.doc(R).ms[id]; if (!m) continue;
+      if (m.quem === 'pc') {
+        if (!m.alvo || !personagens().some(p => p.id === m.alvo)) { sem.push(m.t || 'sem título'); continue; }
+        const r = M.entregar(R, pcs[m.alvo] || docDados(idPc(m.alvo)), id); if (!r) continue;
+        R = r.rasc; pcs[m.alvo] = r.pc; n++;
+      } else { const r = M.publicar(R, Q, id); if (!r) continue; R = r.rasc; Q = r.quadro; n++; }
+      marcadas.delete(id);
+    }
+    if (!n) { toast(sem.length ? 'Escolha o personagem das missões da história antes de revelar.' : 'Nada para revelar.'); pintar(); return; }
+    salvarQuadro(M.doc(Q)); salvarRasc(M.doc(R));
+    for (const pc of Object.keys(pcs)) salvarPc(pc, pcs[pc]);
+    toast((n === 1 ? 'Uma missão revelada.' : n + ' missões reveladas.') + (sem.length ? ' Ficaram ocultas (falta escolher o personagem): ' + sem.join(', ') + '.' : ''));
+    pintar();
   }
   function entregarA(id, pc) {
     if (!pc) { toast('Escolha o personagem.'); return; }
@@ -405,10 +434,20 @@
     salvarPc(pc, r.pc); salvarRasc(r.rasc); fechar();
     toast('Entregue a ' + nomePc(pc) + '.');
   }
-  function recolherMissao(a) {
+  function recolherMissao(a, certo) {
+    const pegaram = Object.keys(a.m.pegas || {});
+    if (!certo && (pegaram.length || a.onde === 'pc')) {
+      const quem = a.onde === 'pc' ? nomePc(aberto.ctx.pc) : pegaram.map(nomePc).join(', ');
+      const ctx = Object.assign({}, aberto.ctx);
+      janela(h('div', { class: 'conf' }, h('h2', { text: 'Ocultar “' + (a.m.t || 'missão') + '” de novo?' }),
+        h('p', { text: quem + (a.onde === 'pc' || pegaram.length === 1 ? ' está' : ' estão') + ' com esta missão. Ela some para os jogadores e volta para “Ocultas”' + (a.onde === 'pc' ? '.' : ', sem ninguém com ela e sem o andamento.') }),
+        h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: () => abrir(a.m.id, ctx) }),
+          h('button', { type: 'button', class: 'btn pri', id: 'mOcultarSim', text: 'Ocultar', onclick: () => { aberto = { id: a.m.id, ctx }; recolherMissao(a, true); } }))));
+      return;
+    }
     const r = M.recolher(docDe(a), docDados(idRasc()), a.m.id, a.onde === 'pc' ? aberto.ctx.pc : null); if (!r) return;
     salvarOnde(a, r.de); salvarRasc(r.rasc); fechar();
-    toast('Voltou para os rascunhos: os jogadores não a veem mais.');
+    toast('Oculta de novo: os jogadores não a veem mais (está em “Ocultas”).');
   }
   function apagar(a) {
     const Dn = M.doc(docDe(a)), m = Dn.ms[a.m.id]; if (!m) return;
@@ -522,7 +561,7 @@
         const R = M.doc(docDados(idRasc())); R.ms[id] = m; salvarRasc(R);
         if (destino === 'publicar') { publicarRasc(id); return; }
         if (destino === 'entregar') { entregarA(id, alvo.value); return; }
-        fechar(); toast(novo ? 'Guardada nos rascunhos.' : 'Rascunho salvo.');
+        fechar(); toast(novo ? 'Guardada oculta: só você vê.' : 'Missão oculta salva.');
         if (novo) { aba = 'rascunhos'; pintar(); }
         return;
       }
@@ -532,9 +571,9 @@
     };
     const pe0 = h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: () => (novo ? fechar() : abrir(id, aberto.ctx)) }));
     if (onde === 'rasc') {
-      pe0.append(h('button', { type: 'button', class: 'btn', id: 'fSalvar', text: 'Guardar nos rascunhos', onclick: () => salvar('rasc') }));
+      pe0.append(h('button', { type: 'button', class: 'btn', id: 'fSalvar', text: 'Guardar oculta', onclick: () => salvar('rasc') }));
       const pub = h('button', { type: 'button', class: 'btn pri', id: 'fPublicar', onclick: () => salvar(quem.value === 'pc' ? 'entregar' : 'publicar') });
-      const rot = () => { pub.textContent = quem.value === 'pc' ? 'Entregar ao personagem' : 'Publicar no quadro'; };
+      const rot = () => { pub.textContent = quem.value === 'pc' ? 'Entregar ao personagem' : 'Revelar no quadro'; };
       quem.addEventListener('change', rot); rot();
       pe0.append(pub);
     } else pe0.append(h('button', { type: 'button', class: 'btn pri', id: 'fSalvar', text: 'Salvar', onclick: () => salvar() }));
@@ -548,7 +587,7 @@
       h('div', { class: 'campo' }, h('span', { text: 'Perigo' }), pes),
       h('div', { class: 'campo' }, h('span', { text: 'Imagem (o cartaz, a foto do alvo)' }), boxImg),
       campo('Lugar no Mapa-múndi', lug),
-      h('div', { class: 'linha' }, campo('Quem pode pegar', quem, !novo && onde !== 'rasc' ? 'Para mudar o tipo, recolha a missão para os rascunhos.' : null), campoAlvo),
+      h('div', { class: 'linha' }, campo('Quem pode pegar', quem, !novo && onde !== 'rasc' ? 'Para mudar o tipo, oculte a missão de novo.' : null), campoAlvo),
       arq, pe0));
     trocaQuem();
     tit.focus();

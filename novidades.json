@@ -2,6 +2,23 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.09-3",
+      "data": "2026-11-09",
+      "titulo": "Missões ocultas",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Missões: os rascunhos agora se chamam “Ocultas” — só o mestre vê até revelar. Marque várias e use “Revelar as marcadas” para pôr todas no quadro de uma vez.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "“Ocultar de novo”: a missão revelada volta a ficar só com o mestre (se alguém já tinha pegado, ele confirma antes).",
+          "mestre": true
+        }
+      ]
+    },
+    {
       "versao": "2026.11.09-2",
       "data": "2026-11-09",
       "titulo": "A aba Missões",

@@ -92,6 +92,18 @@ ok(M.missao({ pe: 9, quem: 'x', t: 'a'.repeat(300) }).pe === 5 && M.missao({ que
     await pg.click('#fPublicar'); await espera(200);
     const P2 = await doc('fichas:mis:pc:p2'), hid = P2 && Object.keys(P2.ms)[0];
     ok(hid && P2.ms[hid].t === 'A carta da irmã' && P2.ms[hid].e === 'ativa', 'entregue direto à Lia');
+    // várias ocultas de uma vez
+    for (const t of ['Lobo na trilha', 'O poço seco']) { await pg.click('#btNova'); await pg.fill('#fTit', t); await pg.selectOption('#fQuem', 'todos'); await pg.click('#fSalvar'); await espera(150); }
+    ok(await pg.locator('[data-aba="rascunhos"]').innerText() === 'Ocultas (3)' && await pg.evaluate(() => __mis.aba) === 'rascunhos', 'guardadas ocultas: a aba “Ocultas” (com a do traidor, que já estava)');
+    const ocs = await pg.evaluate(() => Object.keys(__mis.rasc().ms).filter(k => /Lobo|poço/.test(__mis.rasc().ms[k].t)));
+    for (const k of ocs) await pg.check('[data-marca="' + k + '"]');
+    ok((await pg.locator('#mRevelarMarcadas').innerText()) === 'Revelar as marcadas (2)' && !(await dlg.isVisible()), 'marcou duas (sem abrir a missão)');
+    await pg.click('#mRevelarMarcadas'); await espera(200);
+    Qd = await doc('fichas:mis:quadro');
+    ok(ocs.every(k => Qd.ms[k] && Qd.ms[k].e === 'oferta') && Object.keys((await doc('fichas:mis:rasc')).ms).length === 1 && /2 missões reveladas/.test(await pg.locator('.toast').last().innerText()), 'reveladas as duas de uma vez: estão no quadro');
+    // e voltar a ocultar
+    await pg.click('[data-aba="quadro"]'); await pg.click('.mc[data-mis="' + ocs[0] + '"]'); await pg.click('#mRecolher'); await espera(150);
+    ok(!(await doc('fichas:mis:quadro')).ms[ocs[0]] && (await doc('fichas:mis:rasc')).ms[ocs[0]], '“Ocultar de novo”: some do quadro e volta para as ocultas');
     // o estilo
     for (const e of ['dossie', 'ordem', 'diario', 'mural']) {
       await pg.selectOption('#estilo', e); await espera(120);
