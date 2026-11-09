@@ -2,6 +2,30 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.09-2",
+      "data": "2026-11-09",
+      "titulo": "A aba Missões",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Aba Missões, no modo Sessão: o quadro de missões da campanha. Escolha uma missão e pegue com o seu personagem; em “Minhas missões”, as suas; em “Do grupo”, as de todos."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Desistir: a missão do quadro volta para o quadro; a da história (entregue pelo mestre) conta como falha."
+        },
+        {
+          "tipo": "novo",
+          "texto": "O mestre escolhe o estilo do quadro de cada campanha: mural de cartazes, arquivos e dossiês, pergaminhos de ordem ou diário simples. Cria a missão com quem pede (e o retrato), perigo, imagem, lugar no Mapa-múndi e prazo; guarda nos rascunhos, publica no quadro (só um pega, cada um pega a sua, ou para o grupo) ou entrega direto a um personagem.",
+          "mestre": true
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Na ficha, as missões viram um resumo das em andamento, com o botão para a aba Missões. As missões que já estavam nas fichas vão sozinhas para a aba quando o mestre a abre pela primeira vez (nada se perde)."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.09-1",
       "data": "2026-11-09",
       "titulo": "Móveis do tamanho certo, missões de furtividade e fechaduras rápidas",

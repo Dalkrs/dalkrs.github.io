@@ -119,72 +119,12 @@ const bib = { nome: 'Árvores de teste', pools: [{ id: 'pr', nome: 'Raça', cor:
     return b.vis === 'mesa' && !b.estado.rel && !b.estado.rels && e && e.l === 1 && e.v === 15 && e.alvo === 'pc_dain'; }), 'ao abrir a ficha do Ogro aos jogadores, o relacionamento antigo sai da ficha e fica com o mestre, com o mesmo valor');
   ok(await ate(async () => (await G.locator('#lista .pc .nm').allInnerTexts()).join('|').includes('Ogro')) && !R.temRelacoes((await linha(J, 'pc_ogro')).estado) && !(await linha(J, 'pc_ogro')).estado.rel, 'o jogador recebe a ficha do Ogro sem relacionamento nenhum');
 
-  // ---------- missões ----------
+  // ---------- missões (lote 123: moram na aba Missões — ver missoes.rede.test.js; a ficha mostra só o resumo) ----------
   await abrir(F, 'Dain X'); await abrir(G, 'Dain X', J);
   await F.locator('#ficha [data-abaficha="notas"]').click(); await w(300);
   await G.locator('#ficha [data-abaficha="notas"]').click(); await w(300, J);
-  ok(await F.locator('[data-misnova="g"]').count() === 1 && await F.locator('[data-misnova="p"]').count() === 1 && await G.locator('[data-misnova="g"]').count() === 0 && (await G.locator('[data-misnova="p"]').innerText()).includes('Missão pessoal'), 'o mestre cria missões do grupo e do personagem; o jogador, só as pessoais dele');
-  await F.locator('[data-misnova="g"]').click(); await w(300);
-  const gid = await F.evaluate(() => Object.keys(S.segredos.mis.g)[0]);
-  await F.locator(`[data-mist="g|${gid}"]`).fill('Escoltar a caravana'); await F.locator(`[data-mist="g|${gid}"]`).press('Tab'); await w(200);
-  await F.locator(`[data-misoadd="g|${gid}"]`).click(); await w(250);
-  const oid = await F.evaluate(g => Object.keys(S.segredos.mis.g[g].o)[0], gid);
-  await F.locator(`[data-misot="g|${gid}|${oid}"]`).fill('Sair ao amanhecer'); await w(600);
-  ok(await ate(async () => { const s = await noBanco(M, 'documentos', 'fichas:segredos', mesa), m = s.dados.v.mis && s.dados.v.mis.g && s.dados.v.mis.g[gid]; return m && m.t === 'Escoltar a caravana' && m.o[oid].t === 'Sair ao amanhecer' && await parado(M); }) && (await noBanco(M, 'documentos', 'fichas:missoes', mesa)) === null,
-    'a missão do grupo nasce escondida: fica com o mestre, e o documento das missões do grupo ainda nem existe');
-  ok(await F.locator(`[data-mis="g|${gid}"] .tagseg`).count() === 1 && await G.locator('.miscard').count() === 0 && (await docDe(J, 'fichas:missoes')) === null, 'o mestre a vê marcada como escondida; o jogador não vê nada');
-  await F.locator(`[data-misrevelar="g|${gid}"]`).click(); await w(500);
-  ok(await ate(async () => { const d = await noBanco(M, 'documentos', 'fichas:missoes', mesa), s = await noBanco(M, 'documentos', 'fichas:segredos', mesa); return d && d.vis === 'mesa' && d.dados.v[gid].t === 'Escoltar a caravana' && !(s.dados.v.mis.g || {})[gid]; }), 'revelada: passa para o documento que a mesa toda lê');
-  ok(await ate(async () => (await G.locator(`[data-mis="g|${gid}"]`).count()) === 1 && (await G.locator(`[data-mis="g|${gid}"] .misprog`).innerText()) === '0/1'), 'e aparece para o jogador');
-  await G.locator(`[data-misabrir="g|${gid}"]`).click(); await w(300, J);
-  ok(await G.locator(`[data-mis="g|${gid}"] input, [data-mis="g|${gid}"] textarea, [data-mis="g|${gid}"] select`).count() === 0 && (await G.locator(`[data-mis="g|${gid}"] ul.misobjs li`).innerText()).includes('Sair ao amanhecer'), 'aberta, ele só lê (objetivos sem caixinha para marcar)');
-  const invasao = await J.evaluate(async mesa => { const a = supabase.createClient(TC_CONFIG.url, TC_CONFIG.chave); const r = await a.from('documentos').update({ dados: { v: {} } }).eq('mesa_id', mesa).eq('id', 'fichas:missoes').select('id'); return (r.data || []).length; }, mesa);
-  ok(invasao === 0 && (await noBanco(M, 'documentos', 'fichas:missoes', mesa)).dados.v[gid].t === 'Escoltar a caravana', 'e o banco não aceita mudança do jogador nas missões do grupo');
-  await F.locator(`[data-misok="g|${gid}|${oid}"]`).check(); await w(400);
-  ok(await ate(async () => (await G.locator(`[data-mis="g|${gid}"] .misprog`).innerText()) === '1/1' && (await G.locator(`[data-mis="g|${gid}"] ul.misobjs li.ok`).count()) === 1), 'o mestre marca o objetivo e o jogador vê: 1/1');
-  // do personagem: dada pelo mestre (escondida, depois revelada) e criada pelo jogador
-  await F.locator('[data-misnova="p"]').click(); await w(300);
-  const pid = await F.evaluate(() => Object.keys(S.segredos.mis.p.pc_dain)[0]);
-  await F.locator(`[data-mist="p|${pid}"]`).fill('Vingar o mestre de armas'); await F.locator(`[data-mist="p|${pid}"]`).press('Tab'); await w(500);
-  ok(await ate(async () => { const s = await noBanco(M, 'documentos', 'fichas:segredos', mesa); return s.dados.v.mis.p.pc_dain[pid].t === 'Vingar o mestre de armas' && await parado(M); }) && !(await noBanco(M, 'personagens', 'pc_dain', mesa)).estado.mis && await G.locator('[data-mis^="p|"]').count() === 0, 'a missão que o mestre dá ao Dain também nasce escondida (fora da ficha)');
-  ok((await F.locator(`[data-misrevelar="p|${pid}"]`).innerText()) === 'Revelar a Dalmo', 'o botão diz a quem ela será revelada');
-  await F.locator(`[data-misrevelar="p|${pid}"]`).click(); await w(500);
-  ok(await ate(async () => { const b = await noBanco(M, 'personagens', 'pc_dain', mesa); return b.estado.mis && b.estado.mis[pid].t === 'Vingar o mestre de armas' && b.estado.mis[pid].de === 'm'; }) && await ate(async () => (await G.locator(`[data-mis="p|${pid}"]`).count()) === 1), 'revelada, vai para a ficha do Dain e o jogador a vê');
-  await G.locator(`[data-misabrir="p|${pid}"]`).click(); await w(300, J);
-  ok(await G.locator(`[data-mis="p|${pid}"] input`).count() === 0, 'missão dada pelo mestre: o jogador lê, não muda');
-  await G.locator('[data-misnova="p"]').click(); await w(300, J);
-  const jid = await G.evaluate(p => Object.keys(S.personagens.find(x => x.id === 'pc_dain').estado.mis).find(k => k !== p), pid);
-  await G.locator(`[data-mist="p|${jid}"]`).fill('Aprender a ler runas'); await G.locator(`[data-mist="p|${jid}"]`).press('Tab'); await w(200, J);
-  await G.locator(`[data-misoadd="p|${jid}"]`).click(); await w(250, J);
-  const joid = await G.evaluate(k => Object.keys(S.personagens.find(x => x.id === 'pc_dain').estado.mis[k].o)[0], jid);
-  await G.locator(`[data-misot="p|${jid}|${joid}"]`).fill('Achar um professor'); await w(600, J);
-  ok(await ate(async () => { const b = await noBanco(M, 'personagens', 'pc_dain', mesa), m = b.estado.mis[jid]; return m && m.t === 'Aprender a ler runas' && m.de === 'j' && m.o[joid].t === 'Achar um professor' && await parado(J); }), 'o jogador cria a missão pessoal dele, com um objetivo: fica na ficha');
-  ok(await ate(async () => (await F.locator(`[data-mis="p|${jid}"] .misde`).count()) === 1 && (await F.locator(`[data-mis="p|${jid}"] .mistit`).innerText()) === 'Aprender a ler runas'), 'o mestre a vê na ficha do Dain, marcada como pessoal');
-  // os dois ao mesmo tempo, cada um numa missão: as duas mudanças ficam
-  await F.locator(`[data-misabrir="p|${pid}"]`).click().catch(() => {}); await w(250);
-  if (!(await F.locator(`[data-mise="p|${pid}"]`).count())) { await F.locator(`[data-misabrir="p|${pid}"]`).click(); await w(250); }
-  await Promise.all([F.locator(`[data-mise="p|${pid}"]`).selectOption('feita'), G.locator(`[data-misok="p|${jid}|${joid}"]`).check()]);
-  await w(700);
-  ok(await ate(async () => { const b = await noBanco(M, 'personagens', 'pc_dain', mesa); return b.estado.mis[pid].e === 'feita' && b.estado.mis[jid].o[joid].ok === 1 && await parado(M) && await parado(J); }), 'o mestre conclui uma missão enquanto o jogador marca o objetivo de outra: as duas mudanças ficam no banco');
-  ok(await ate(async () => (await G.locator(`[data-mis="p|${pid}"] .misest`).innerText()).toLowerCase() === 'concluída' && (await F.locator(`[data-mis="p|${jid}"] .misprog`).innerText()) === '1/1'), 'e cada um vê a do outro');
-  ok(await ate(async () => (await G.locator('#ficha [data-abaficha="notas"] .mk').innerText()) === '2'), 'a aba mostra quantas missões ativas o personagem tem (a do grupo e a pessoal): 2');
-
-  // o mestre copia uma missão para outro personagem (e pode desfazer); a cópia de uma escondida continua escondida
-  const misDe = async id => Object.values(((await noBanco(M, 'personagens', id, mesa)).estado || {}).mis || {});
-  await F.locator(`[data-miscopiar="p|${pid}"]`).selectOption('pc_lia'); await w(400);
-  ok(/Missão copiada para Lia\./.test(await F.locator('.toast').last().innerText()) && await ate(async () => { const l = await misDe('pc_lia'); return l.length === 1 && l[0].t === 'Vingar o mestre de armas' && l[0].e === 'feita' && await parado(M); }), 'copiar a missão do Dain para a Lia: ela ganha uma cópia na ficha dela');
-  ok((await misDe('pc_dain')).length === 2, '(a do Dain continua onde estava)');
-  await F.locator('.toast.comacao button').click(); await w(400);
-  ok(await ate(async () => (await misDe('pc_lia')).length === 0 && await parado(M)), 'e o Desfazer tira a cópia');
-  await F.locator('[data-misnova="p"]').click(); await w(300);
-  const sid = await F.evaluate(() => Object.keys(S.segredos.mis.p.pc_dain)[0]);
-  await F.locator(`[data-mist="p|${sid}"]`).fill('Descobrir quem é o traidor'); await w(300);
-  await F.locator(`[data-miscopiar="p|${sid}"]`).selectOption('pc_lia'); await w(400);
-  ok(/Missão copiada para Lia \(também escondida\)\./.test(await F.locator('.toast').last().innerText()) && await ate(async () => { const v = (await noBanco(M, 'documentos', 'fichas:segredos', mesa)).dados.v.mis.p; return Object.values(v.pc_lia || {}).some(m => m.t === 'Descobrir quem é o traidor') && v.pc_dain[sid].t === 'Descobrir quem é o traidor' && await parado(M); }) && (await misDe('pc_lia')).length === 0,
-    'a cópia de uma missão ainda escondida também fica só com o mestre (nada vai para a ficha da Lia)');
-  await F.locator('.toast.comacao button').click(); await w(400);
-  await F.locator(`[data-misdel="p|${sid}"]`).click(); await w(400);
-  ok(await ate(async () => { const v = (await noBanco(M, 'documentos', 'fichas:segredos', mesa)).dados.v.mis.p; return !Object.keys(v.pc_lia || {}).length && !(v.pc_dain || {})[sid] && await parado(M); }), '(desfeita a cópia e excluída a original, o mestre não guarda mais nenhuma das duas)');
+  ok(await F.locator('#blocoMissoes [data-misir]').count() === 1 && await G.locator('#blocoMissoes [data-misir]').count() === 1 && await F.locator('[data-misnova]').count() === 0 && await G.locator('[data-misnova]').count() === 0,
+    'na ficha, as missões são só o resumo e o caminho para a aba Missões (para o mestre e para o jogador)');
 
   await F.locator('#ficha [data-abaficha="atributos"]').click(); await w(300);
   await G.locator('#ficha [data-abaficha="atributos"]').click(); await w(300, J);

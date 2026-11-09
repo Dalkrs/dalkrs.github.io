@@ -19,9 +19,9 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
     ok(j(await page.locator('.modo:visible').allInnerTexts()) === j(['Sessão', 'Mundo', 'Descanso', 'Preparar']), 'os quatro modos no alto');
     ok(await page.locator('.modo[aria-checked="true"]').innerText() === 'Sessão', 'em Cenas, o modo Sessão');
     const nomes = await page.locator('.tab:visible').allInnerTexts();
-    ok(nomes.join('|') === 'Cenas|Fichas|Rolador|Escudo do mestre|Baralho', 'só as abas da Sessão à mostra: ' + nomes.join('|'));
+    ok(nomes.join('|') === 'Cenas|Fichas|Missões|Rolador|Escudo do mestre|Baralho', 'só as abas da Sessão à mostra: ' + nomes.join('|'));
     const grupos = await page.evaluate(() => [...document.querySelectorAll('.grupo')].map(g => g.dataset.g + ':' + [...g.querySelectorAll('.tab')].filter(x => !x.hidden).map(x => x.id.slice(4)).join(',')));
-    ok(grupos.join(' ') === 'sessao:cenas,fichas,rolador,escudo,baralho mundo:mundo,jornal,cla,conquistas,livro descanso:acampamento,meditacao preparar:oficina,bestiario,itens', 'as abas de cada modo (sem mesa, cada um mestra: a Oficina no lugar da Árvore): ' + grupos.join(' '));
+    ok(grupos.join(' ') === 'sessao:cenas,fichas,missoes,rolador,escudo,baralho mundo:mundo,jornal,cla,conquistas,livro descanso:acampamento,meditacao preparar:oficina,bestiario,itens', 'as abas de cada modo (sem mesa, cada um mestra: a Oficina no lugar da Árvore): ' + grupos.join(' '));
     const cores = await page.evaluate(() => [...document.querySelectorAll('.modo svg')].map(x => getComputedStyle(x).color));
     ok(new Set(cores).size === 4, 'cada modo com uma cor: ' + cores.join(' '));
     const esperado = { jornal: /Jornal · Tiny Cats/, cenas: /Cenas · Tiny Cats/, mundo: /Mapa-múndi · Tiny Cats/, acampamento: /Acampamento · Tiny Cats/, fichas: /Fichas · Tiny Cats/, oficina: /Árvore de Habilidades · Tiny Cats/, meditacao: /Meditação · Tiny Cats/, cla: /Clã · Tiny Cats/, conquistas: /Conquistas · Tiny Cats/, rolador: /Rolador · Tiny Cats/, bestiario: /Bestiário · Tiny Cats/, itens: /Itens · Tiny Cats/ };

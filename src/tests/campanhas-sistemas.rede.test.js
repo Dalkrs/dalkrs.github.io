@@ -174,29 +174,14 @@ const { ok, end } = checker();
     ok(await ate(async () => { const d = await linhaDoc('mundo:mapa:' + vale), p = await linhaDoc('mundo:pub:' + vale); return d.campanhas.slice().sort().join() === [C1, C2].sort().join() && p.campanhas.slice().sort().join() === [C1, C2].sort().join(); }), 'o mapa e a projeção, no banco');
     ok(await ate(async () => await WA.evaluate(() => __mundo.App.mapas.map(m => m.nome).join() === 'Vale da Lira'), 30000), 'e o Dalmo passa a tê-lo na lista');
 
-    /* ===================== missões do grupo (Fichas) ===================== */
+    /* ===================== missões (lote 123: o quadro de cada campanha, na aba Missões) ===================== */
+    await TM.locator('#tab-missoes').click();
+    await moldura(TM, /\/missoes\//, () => !!window.__mis && !!window.__mis.quadro().mig);
+    ok(await ate(async () => { const d = await linhaDoc('fichas:mis:quadro@' + C2); return d && d.vis === 'mesa' && d.campanhas.join() === C2; }, 30000), 'o mestre abre as Missões com a Geração 2 em vista: nasce o quadro dessa campanha');
+    await w(4000);
+    ok((await leDoBanco(comoA, 'fichas:mis:')).every(x => x !== 'fichas:mis:quadro@' + C2), 'o Dalmo, da outra campanha, não lê esse quadro');
     await TM.locator('#tab-fichas').click();
     const FM = await moldura(TM, /\/fichas\//, () => typeof S === 'object' && !!S && Array.isArray(S.personagens) && S.personagens.length === 3);
-    await FM.locator('#lista .pc', { hasText: 'Dain' }).click(); await w(400);
-    await FM.locator('#ficha [data-abaficha="notas"]').click(); await w(300);
-    await FM.locator('[data-misnova="g"]').click(); await w(300);
-    const gid = await FM.evaluate(c2 => Object.keys(((S.segredos.mis || {}).gc || {})[c2] || {})[0] || null, C2);
-    ok(!!gid, 'a missão do grupo criada na ficha de um personagem da Geração 2 nasce (escondida) como missão dessa campanha');
-    await FM.locator(`[data-mist="g|${gid}"]`).fill('Atravessar o vale'); await FM.locator(`[data-mist="g|${gid}"]`).press('Tab'); await w(300);
-    await FM.locator(`[data-misrevelar="g|${gid}"]`).click(); await w(500);
-    ok(await ate(async () => { const d = await linhaDoc('fichas:missoes@' + C2); return d && d.vis === 'mesa' && d.campanhas.join() === C2 && d.dados.v[gid] && d.dados.v[gid].t === 'Atravessar o vale'; }), 'revelada, vai para o documento das missões do grupo da Geração 2');
-    ok((await linhaDoc('fichas:missoes@' + C1)) === null || !JSON.stringify(await linhaDoc('fichas:missoes@' + C1)).includes('Atravessar'), 'e não para o da primeira campanha');
-    await TJ.locator('#tab-fichas').click();
-    const FJ = await moldura(TJ, /\/fichas\//, () => typeof S === 'object' && !!S && Array.isArray(S.personagens) && S.personagens.length >= 1);
-    await FJ.locator('#lista .pc', { hasText: 'Dain' }).click(); await w(400);
-    await FJ.locator('#ficha [data-abaficha="notas"]').click(); await w(300);
-    ok(await ate(async () => (await FJ.locator(`[data-mis="g|${gid}"]`).count()) === 1 && /Atravessar o vale/.test(await FJ.locator(`[data-mis="g|${gid}"]`).innerText()), 30000), 'o Visitante vê a missão do grupo dele');
-    await TA.locator('#tab-fichas').click();
-    const FA = await moldura(TA, /\/fichas\//, () => typeof S === 'object' && !!S && Array.isArray(S.personagens) && S.personagens.length >= 1);
-    await FA.locator('#lista .pc', { hasText: 'Selene' }).click(); await w(400);
-    await FA.locator('#ficha [data-abaficha="notas"]').click(); await w(300);
-    await w(6000);
-    ok(await FA.locator('.miscard').count() === 0 && (await leDoBanco(comoA, 'fichas:missoes')).every(x => x !== 'fichas:missoes@' + C2), 'o Dalmo, da outra campanha, não a vê (nem o banco lhe entrega o documento)');
 
     /* ===================== Fichas: a ficha nova, o seletor de grupo e os relacionamentos ===================== */
     const linhaPc = id => noBanco(async ([mesa, id]) => (await window.__sb.from('personagens').select('*').eq('mesa_id', mesa).eq('id', id).maybeSingle()).data, [mesa, id]);

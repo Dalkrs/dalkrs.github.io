@@ -3,8 +3,8 @@
      · Ascensão   os pontos de cada tipo (os mesmos de Skills) num quadro para dar e tirar; gastar continua na árvore
      · Corpo      o boneco em 12 partes e os ferimentos abertos; a penalidade de um ferimento conta como um bônus
                   temporário enquanto ele existir (as contas são de TC.rules)
-     · Missões    as do grupo (um documento da mesa, que o mestre escreve), as de cada personagem (no estado da
-                  ficha: dadas pelo mestre ou criadas pelo jogador) e as que o mestre ainda não revelou (com ele)
+     · Missões    (lote 123) só o resumo das em andamento do personagem; o quadro, as do grupo e as de cada
+                  personagem moram na aba Missões (tc/missoes.js)
    Como o resto de extras.js, isto lê as variáveis da calculadora (S, save, render, esc, uid…) só na hora de usar. */
 const FichasQuadros = (() => {
   'use strict';
@@ -395,157 +395,57 @@ const FichasQuadros = (() => {
   }
 
   /* ======================= Missões ======================= */
-  const misUI = { abertas: new Set() };
-  const mapa = (o, k) => (o[k] && typeof o[k] === 'object' && !Array.isArray(o[k]) ? o[k] : (o[k] = {}));
-  const ler = (o, ...ks) => { for (const k of ks) { if (!o || typeof o !== 'object') return null; o = o[k]; } return o && typeof o === 'object' && !Array.isArray(o) ? o : null; };
-  /* Onde mora cada missão:  grupo → S.missoes (todos leem) · do personagem → estado.mis da ficha dele ·
-     ainda escondida → com o mestre (S.segredos.mis.g, ou .p[idDoPersonagem])
-     Com campanhas, cada uma tem as missões do grupo dela: S.missoesCamp[campanha] (e, escondidas, S.segredos.mis.gc[campanha]).
-     As de uma ficha são as da campanha dela; a ficha do mundo mostra as da campanha em vista. */
+  /* (lote 123) As missões moram na aba Missões (o quadro da campanha, as do grupo e as de cada personagem: ver
+     tc/missoes.js). A ficha mostra só o resumo — as em andamento deste personagem, com os objetivos — e o caminho
+     para a aba. Enquanto quem mestra ainda não abriu a aba Missões (as de antes ainda não foram copiadas para lá), o
+     resumo é o das que estavam na ficha (as à mostra). */
+  const MM = () => (window.TC && window.TC.missoes) || null;
+  const naMesaMis = () => FichasMesa.ativo() && !!(window.TC && TC.dados && TC.dados.disponivel && TC.dados.disponivel());
+  function lerMis() {
+    if (naMesaMis()) { const D = TC.dados.col('documentos'); return id => { const d = D.pegar(id); return d && !d.apagado ? d.dados : null; }; }
+    let l = {}; try { l = JSON.parse(localStorage.getItem('tinycats:missoes:local') || '{}') || {}; } catch (e) { l = {}; }
+    return id => l[id] || null;
+  }
+  // com campanhas, as missões do grupo são as da campanha da ficha (a ficha do mundo: as da campanha em vista)
   const campDasMissoes = pc => { const cs = FichasMesa.campanhas(); if (!cs.length) return ''; const c = (pc && pc._camp) || FichasMesa.campEmVista() || ''; return cs.some(x => x.id === c) ? c : ''; };
-  const lugar = (pc, esc0, oculta, criar) => {
-    if (esc0 === 'g') {
-      const c = campDasMissoes(pc);
-      if (c) return oculta ? (criar ? mapa(mapa(mapa(mapa(S, 'segredos'), 'mis'), 'gc'), c) : ler(S.segredos, 'mis', 'gc', c)) : (criar ? mapa(mapa(S, 'missoesCamp'), c) : ler(S.missoesCamp, c));
-      return oculta ? (criar ? mapa(mapa(mapa(S, 'segredos'), 'mis'), 'g') : ler(S.segredos, 'mis', 'g')) : (criar ? mapa(S, 'missoes') : ler(S, 'missoes'));
-    }
-    return oculta ? (criar ? mapa(mapa(mapa(mapa(S, 'segredos'), 'mis'), 'p'), pc.id) : ler(S.segredos, 'mis', 'p', pc.id)) : (criar ? mapa(U().estadoDe(pc), 'mis') : ler(pc.estado, 'mis'));
-  };
-  function missoesDe(pc, esc0) {
-    const R = RR(); if (!R) return [];
-    const a = R.missoes(lugar(pc, esc0, false)).map(m => Object.assign(m, { esc: esc0, oculta: false }));
-    const b = mestre() ? R.missoes(lugar(pc, esc0, true)).map(m => Object.assign(m, { esc: esc0, oculta: true })) : [];
-    const peso = { ativa: 0, feita: 1, falhou: 2 };
-    return a.concat(b).sort((x, y) => (peso[x.e] - peso[y.e]) || (x.c - y.c) || (x.id < y.id ? -1 : 1));
+  function resumoDe(pc) {
+    const M = MM(); if (!M || !pc) return [];
+    const ler = lerMis(), c = campDasMissoes(pc), Q = ler(M.comCamp(M.QUADRO, c));
+    const Pd = ler(M.PRE_PC + pc.id);
+    if (Q && Q.mig && Pd && Pd.mig) return M.resumo(Q, Pd, pc.id);
+    // (o que ainda não veio — o quadro, ou as deste personagem — entra como estava na ficha)
+    const grupo = Q && Q.mig ? null : c ? (S.missoesCamp && S.missoesCamp[c]) : S.missoes;
+    const r = M.migrar({ grupo, pcs: [{ id: pc.id, mis: Pd && Pd.mig ? null : pc.estado && pc.estado.mis }] }, Q, null, { [pc.id]: Pd });
+    return M.resumo(r.quadro, r.pcs[pc.id], pc.id);
   }
-  // quem pode mudar a missão: fora de uma mesa, qualquer um; na mesa, o mestre — e o dono da ficha, nas que ele mesmo criou
-  // (numa campanha encerrada, as missões do grupo dela — e as das fichas dela — são só para consulta, para todos)
-  const missaoFechada = (pc, esc0) => FichasMesa.encerrada(esc0 === 'g' ? campDasMissoes(pc) : pc && pc._camp);
-  const podeMissao = (pc, m) => !FichasMesa.ativo() || (!missaoFechada(pc, m.esc) && (mestre() || (m.esc === 'p' && m.de === 'j' && FichasMesa.podeEditar(pc))));
-  const contaAtivas = pc => missoesDe(pc, 'g').concat(missoesDe(pc, 'p')).filter(m => m.e === 'ativa').length;
-  const chaveDe = m => m.esc + '|' + m.id;
-  function htmlMissao(pc, m) {
-    const R = RR(), k = esc(chaveDe(m)), aberta = misUI.abertas.has(chaveDe(m)), pode = podeMissao(pc, m);
-    const est = R.MIS_ESTADOS.find(x => x.k === m.e) || R.MIS_ESTADOS[0];
-    const cab = `<button type="button" class="mishd" data-misabrir="${k}" aria-expanded="${aberta}">
-      <span class="caret">${aberta ? '▾' : '▸'}</span>
-      <span class="mistit">${esc(m.t || 'Missão sem título')}</span>
-      ${m.total ? `<span class="misprog" title="Objetivos feitos">${m.feitos}/${m.total}</span>` : ''}
-      <span class="misest e-${m.e}">${est.nome}</span>
-      ${m.oculta ? '<span class="tagseg" title="Só você vê esta missão, até revelar">escondida</span>' : ''}
-      ${m.esc === 'p' && m.de === 'j' ? '<span class="misde">pessoal</span>' : ''}
-    </button>`;
-    if (!aberta) return `<div class="miscard e-${m.e} ${m.oculta ? 'oculta' : ''}" data-mis="${k}">${cab}</div>`;
-    const dono = FichasMesa.nomeDoDono(pc);
-    const corpo = pode ? `
-        <label class="f"><span class="eyebrow">Título</span><input class="inm" data-mist="${k}" value="${esc(m.t)}" maxlength="120" placeholder="Ex.: Encontrar o ferreiro desaparecido"></label>
-        <label class="f"><span class="eyebrow">Descrição</span><textarea class="entrada" rows="3" data-misd="${k}" maxlength="2000" placeholder="O que se sabe, quem pediu, onde começar…">${esc(m.d)}</textarea></label>
-        <div class="misobjs"><span class="eyebrow">Objetivos</span>
-          ${m.objs.map(o => `<div class="misobj"><input type="checkbox" data-misok="${k}|${esc(o.id)}" ${o.ok ? 'checked' : ''} aria-label="Feito: ${esc(o.t || 'objetivo')}">
-            <input class="inm" data-misot="${k}|${esc(o.id)}" value="${esc(o.t)}" maxlength="200" placeholder="Um passo da missão">
-            <button type="button" class="mini danger" data-misodel="${k}|${esc(o.id)}" title="Tirar este objetivo" aria-label="Tirar o objetivo ${esc(o.t)}">×</button></div>`).join('')}
-          <div><button type="button" class="mini" data-misoadd="${k}">+ Objetivo</button></div>
-        </div>
-        <div class="mispe">
-          <label class="f"><span class="eyebrow">Recompensa</span><input class="inm" data-misr="${k}" value="${esc(m.r)}" maxlength="300" placeholder="Ex.: 200 lapros e a gratidão da vila"></label>
-          <label class="f"><span class="eyebrow">Situação</span><select data-mise="${k}">${R.MIS_ESTADOS.map(x => `<option value="${x.k}" ${m.e === x.k ? 'selected' : ''}>${x.nome}</option>`).join('')}</select></label>
-        </div>
-        <div class="misacoes">
-          ${mestre() ? (m.oculta
-            ? `<button type="button" class="mini primary" data-misrevelar="${k}">${m.esc === 'g' ? 'Revelar aos jogadores' : dono ? 'Revelar a ' + esc(dono) : 'Pôr na ficha'}</button><span class="hint">${m.esc === 'g' ? 'Por enquanto só você vê.' : dono ? 'Por enquanto só você vê.' : 'Por enquanto fica só com você (quem vê a ficha não vê).'}</span>`
-            : `<button type="button" class="mini" data-misesconder="${k}" title="A missão volta a ficar só com você">Esconder de novo</button>`) : ''}
-          ${mestre() && m.esc === 'p' ? `<select data-miscopiar="${k}" aria-label="Copiar esta missão para outro personagem"><option value="">Copiar para…</option>${FichasMesa.opcoesDePcs(S.personagens.filter(p => p.id !== pc.id && !FichasMesa.encerrada(p._camp)), '')}</select>` : ''}
-          <button type="button" class="mini danger" data-misdel="${k}" style="margin-left:auto">Excluir</button>
-        </div>` : `
-        ${m.d ? `<p class="misdesc">${esc(m.d)}</p>` : ''}
-        ${m.objs.length ? `<ul class="misobjs ro">${m.objs.map(o => `<li class="${o.ok ? 'ok' : ''}"><span class="mischeck" aria-hidden="true">${o.ok ? '✓' : '○'}</span><span>${esc(o.t)}</span><span class="sr">${o.ok ? ' (feito)' : ' (por fazer)'}</span></li>`).join('')}</ul>` : ''}
-        ${m.r ? `<p class="misrec"><span class="eyebrow">Recompensa</span> ${esc(m.r)}</p>` : ''}
-        ${!m.d && !m.objs.length && !m.r ? '<p class="hint">Sem detalhes ainda.</p>' : ''}`;
-    return `<div class="miscard aberta e-${m.e} ${m.oculta ? 'oculta' : ''}" data-mis="${k}">${cab}<div class="misbd">${corpo}</div></div>`;
-  }
+  const contaAtivas = pc => resumoDe(pc).length;
+  const DE_ONDE = { grupo: 'do grupo', pc: 'da história', um: 'do quadro', todos: 'do quadro' };
   function blocoMissoes(pc) {
-    if (!RR()) return '<div class="hint">As missões precisam das regras do site.</div>';
-    const g = missoesDe(pc, 'g'), p = missoesDe(pc, 'p'), naMesa = FichasMesa.ativo(), m = mestre(), dono = FichasMesa.podeEditar(pc);
-    // (com campanhas, as missões do grupo são as da campanha da ficha — ou, para a ficha do mundo, as da campanha em vista)
-    const camp = campDasMissoes(pc), fechadaG = missaoFechada(pc, 'g'), fechadaP = missaoFechada(pc, 'p');
-    const secao = (titulo, dica, lista, botao, vazio) => `<div class="missec">
-      <div class="mishead"><span class="eyebrow">${titulo}</span><span class="hint">${dica}</span>${botao ? `<span style="margin-left:auto">${botao}</span>` : ''}</div>
-      ${lista.length ? `<div class="mislist">${lista.map(x => htmlMissao(pc, x)).join('')}</div>` : `<div class="hint">${vazio}</div>`}</div>`;
+    if (!MM()) return '<div id="blocoMissoes" class="hint">As missões precisam do site inteiro.</div>';
+    const l = resumoDe(pc);
     return `<div id="blocoMissoes">
-      ${secao('Do grupo', (naMesa ? (camp ? 'as mesmas para toda a campanha ' + esc(FichasMesa.nomeDaCampanha(camp)) : 'as mesmas para a mesa toda') + (fechadaG ? ' · campanha encerrada: só consulta' : m ? '' : ' · quem escreve é o mestre') : 'valem para todos os personagens'),
-        g, (!naMesa || m) && !fechadaG ? '<button type="button" class="mini primary" data-misnova="g">+ Missão do grupo</button>' : '', 'Nenhuma missão do grupo ainda.')}
-      ${secao('De ' + esc(pc.nome), naMesa ? (m ? 'as que você deu a este personagem e as que o jogador criou' : 'as que o mestre deu e as que você criou') : 'só deste personagem',
-        p, fechadaP ? '' : !naMesa || m ? `<button type="button" class="mini primary" data-misnova="p">+ Missão para ${esc(pc.nome)}</button>` : dono ? '<button type="button" class="mini primary" data-misnova="p">+ Missão pessoal</button>' : '', 'Nenhuma missão deste personagem ainda.')}
-      ${m && !(fechadaG && fechadaP) ? '<p class="hint misdica">Uma missão criada por você nasce escondida: só aparece para os jogadores quando você clicar em “Revelar”.</p>' : ''}
+      ${l.length ? `<div class="mislist">${l.map(m => `<div class="miscard e-ativa"><div class="mishd misres">
+          <span class="mistit">${esc(m.t)}</span>${m.total ? `<span class="misprog" title="Objetivos feitos">${m.feitos}/${m.total}</span>` : ''}<span class="misde">${DE_ONDE[m.quem] || ''}</span></div>
+          ${m.objs.length ? `<ul class="misobjs ro">${m.objs.map(o => `<li class="${o.ok ? 'ok' : ''}"><span class="mischeck" aria-hidden="true">${o.ok ? '✓' : '○'}</span><span>${esc(o.t)}</span><span class="sr">${o.ok ? ' (feito)' : ' (por fazer)'}</span></li>`).join('')}</ul>` : ''}
+        </div>`).join('')}</div>` : '<div class="hint">Nenhuma missão em andamento.</div>'}
+      <div class="misacoes"><button type="button" class="mini primary" data-misir>Abrir as missões</button><span class="hint">O quadro, as do grupo e as de cada personagem ficam na aba Missões.</span></div>
     </div>`;
   }
+  let pcMis = null, ouvindoMis = false;
   function ligarMissoes(host, pc) {
     const bloco = U().q(host, '#blocoMissoes'); if (!bloco) return;
-    const pintar = focar => { trocar('blocoMissoes', blocoMissoes(pc), ligarMissoes, pc, focar); pintarMarca(pc); };
-    const guardar = focar => { save(); pintar(focar); };
-    const achar = k => { const [e0, id] = k.split('|'); for (const oc of [false, true]) { const l = lugar(pc, e0, oc); if (l && l[id] && typeof l[id] === 'object') return { esc: e0, id, oculta: oc, onde: l, m: l[id] }; } return null; };
-    U().qa(bloco, '[data-misnova]').forEach(b => b.onclick = () => {
-      const e0 = b.dataset.misnova, id = 'm' + uid(), doMestre = !FichasMesa.ativo() || mestre();
-      // (na mesa, a missão do mestre nasce escondida: ele revela quando quiser)
-      lugar(pc, e0, mestre(), true)[id] = { t: '', e: 'ativa', de: doMestre ? 'm' : 'j', c: Date.now() };
-      misUI.abertas.add(e0 + '|' + id);
-      guardar('[data-mist="' + e0 + '|' + id + '"]');
-    });
-    U().qa(bloco, '[data-misabrir]').forEach(b => b.onclick = () => { const k = b.dataset.misabrir; if (misUI.abertas.has(k)) misUI.abertas.delete(k); else misUI.abertas.add(k); pintar('[data-misabrir="' + k + '"]'); });
-    // textos: guardados enquanto se escreve. Nada é redesenhado (o campo não perde o cursor, e o clique seguinte — em
-    // "+ Objetivo", por exemplo — não cai no vazio); o título, no cabeçalho da missão, acompanha no lugar.
-    const texto = (attr, chave, max) => U().qa(bloco, '[' + attr + ']').forEach(i => {
-      i.oninput = () => {
-        const a = achar(i.getAttribute(attr)); if (!a) return;
-        const t = i.value.slice(0, max); if (t) a.m[chave] = t; else delete a.m[chave]; save();
-        if (chave === 't') { const cartao = i.closest('.miscard'), tit = cartao && cartao.querySelector('.mistit'); if (tit) tit.textContent = t || 'Missão sem título'; }
-      };
-    });
-    texto('data-mist', 't', 120); texto('data-misd', 'd', 2000); texto('data-misr', 'r', 300);
-    U().qa(bloco, '[data-mise]').forEach(s => s.onchange = () => { const a = achar(s.dataset.mise); if (!a) return; a.m.e = s.value; guardar('[data-mise="' + s.dataset.mise + '"]'); });
-    const objDe = v => { const [e0, id, oid] = v.split('|'), a = achar(e0 + '|' + id); return a ? { a, oid, o: a.m.o && a.m.o[oid] } : null; };
-    U().qa(bloco, '[data-misoadd]').forEach(b => b.onclick = () => {
-      const a = achar(b.dataset.misoadd); if (!a) return;
-      const objs = mapa(a.m, 'o'), oid = 'o' + uid(), n = Object.keys(objs).reduce((mx, k) => Math.max(mx, +(objs[k] && objs[k].n) || 0), 0) + 1;
-      objs[oid] = { t: '', n };
-      guardar('[data-misot="' + b.dataset.misoadd + '|' + oid + '"]');
-    });
-    U().qa(bloco, '[data-misok]').forEach(c => c.onchange = () => { const x = objDe(c.dataset.misok); if (!x || !x.o) return; if (c.checked) x.o.ok = 1; else delete x.o.ok; guardar('[data-misok="' + c.dataset.misok + '"]'); });
-    U().qa(bloco, '[data-misot]').forEach(i => { i.oninput = () => {
-      const x = objDe(i.dataset.misot); if (!x || !x.o) return;
-      x.o.t = i.value.slice(0, 200); save();
-      // (a caixinha e o "×" ao lado continuam dizendo de que objetivo são, para quem usa leitor de tela)
-      const linha = i.closest('.misobj'), c = linha && linha.querySelector('[data-misok]'), d = linha && linha.querySelector('[data-misodel]');
-      if (c) c.setAttribute('aria-label', 'Feito: ' + (x.o.t || 'objetivo'));
-      if (d) d.setAttribute('aria-label', 'Tirar o objetivo ' + x.o.t);
-    }; });
-    U().qa(bloco, '[data-misodel]').forEach(b => b.onclick = () => { const x = objDe(b.dataset.misodel); if (!x || !x.o) return; delete x.a.m.o[x.oid]; if (!Object.keys(x.a.m.o).length) delete x.a.m.o; guardar('[data-misoadd="' + chaveDe(x.a) + '"]'); });
-    const mover = (k, paraOculta) => {
-      const a = achar(k); if (!a || a.oculta === paraOculta) return null;
-      lugar(pc, a.esc, paraOculta, true)[a.id] = a.m; delete a.onde[a.id];
-      return a;
-    };
-    U().qa(bloco, '[data-misrevelar]').forEach(b => b.onclick = () => {
-      const a = mover(b.dataset.misrevelar, false); if (!a) return;
-      guardar('[data-misabrir="' + b.dataset.misrevelar + '"]');
-      const dono = FichasMesa.nomeDoDono(pc), titulo = a.m.t || 'A missão';
-      aviso(a.esc === 'g' ? '“' + titulo + '” agora aparece para todos os jogadores.' : dono ? '“' + titulo + '” agora aparece para ' + dono + '.' : '“' + titulo + '” agora está na ficha de ' + pc.nome + '.');
-    });
-    U().qa(bloco, '[data-misesconder]').forEach(b => b.onclick = () => { if (!mover(b.dataset.misesconder, true)) return; guardar('[data-misabrir="' + b.dataset.misesconder + '"]'); aviso('A missão voltou a ficar só com você.'); });
-    U().qa(bloco, '[data-miscopiar]').forEach(s => s.onchange = () => {
-      const a = achar(s.dataset.miscopiar), outro = S.personagens.find(p => p.id === s.value); s.value = '';
-      if (!a || !outro) return;
-      const nid = 'm' + uid(), oculta = a.oculta;
-      lugar(outro, 'p', oculta, true)[nid] = Object.assign(JSON.parse(JSON.stringify(a.m)), { c: Date.now() });
-      save();
-      aviso('Missão copiada para ' + outro.nome + (oculta ? ' (também escondida).' : '.'), 'Desfazer', () => { const l = lugar(outro, 'p', oculta, false); if (l) delete l[nid]; save(); });
-    });
-    U().qa(bloco, '[data-misdel]').forEach(b => b.onclick = () => {
-      const a = achar(b.dataset.misdel); if (!a) return;
-      delete a.onde[a.id]; misUI.abertas.delete(b.dataset.misdel);
-      guardar();
-      aviso('Missão “' + (a.m.t || 'sem título') + '” excluída.', 'Desfazer', () => { lugar(pc, a.esc, a.oculta, true)[a.id] = a.m; guardar(); });
-    });
+    pcMis = pc;
+    const ir = U().q(bloco, '[data-misir]');
+    if (ir) ir.onclick = () => { const P = window.TC && TC.ponte; if (!(P && P.ir && P.ir('missoes', { pc: pc.id }))) window.open('../missoes/', '_blank'); };
+    // o que muda na aba Missões (ou em outro aparelho) chega aqui: o resumo e a marca da aba acompanham
+    if (!ouvindoMis && naMesaMis()) {
+      ouvindoMis = true;
+      TC.dados.col('documentos').aoMudar(l => {
+        if (!l || typeof l.id !== 'string' || !l.id.startsWith('fichas:mis:') || !pcMis) return;
+        if (document.getElementById('blocoMissoes')) trocar('blocoMissoes', blocoMissoes(pcMis), ligarMissoes, pcMis);
+        pintarMarca(pcMis);
+      });
+    }
   }
   // a marca da aba (quantas missões ativas), sem redesenhar a ficha
   function pintarMarca(pc) {

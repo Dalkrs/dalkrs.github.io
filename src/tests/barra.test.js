@@ -28,7 +28,7 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
 
   await passo('os modos', async () => {
     ok(j(await P.locator('.modo').allInnerTexts()) === j(['Sessão', 'Mundo', 'Descanso', 'Preparar']), 'os quatro modos, com o nome');
-    ok(await modoAtual() === 'modo-sessao' && await abasVisiveis() === 'cenas,fichas,rolador,escudo', 'em Cenas: o modo Sessão e só as abas dele: ' + await abasVisiveis());
+    ok(await modoAtual() === 'modo-sessao' && await abasVisiveis() === 'cenas,fichas,missoes,rolador,escudo,baralho', 'em Cenas: o modo Sessão e só as abas dele: ' + await abasVisiveis());
     ok(!(await P.locator('.grupo-t').count()), 'sem os rótulos em caixa alta das categorias');
     ok(j(await setas()) === j({ e: false, d: false }), 'na tela larga, as abas do modo cabem: sem setas');
     await foto('barra-modos');
@@ -37,7 +37,7 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
   await passo('trocar de modo', async () => {
     await P.click('#modo-mundo'); await espera(700);
     ok(await abaAtual() === 'tab-mundo' && await modoAtual() === 'modo-mundo', 'Mundo abre a primeira aba dele (o Mapa-múndi)');
-    ok(await abasVisiveis() === 'mundo,jornal,cla,livro', 'e só as abas do Mundo: ' + await abasVisiveis());
+    ok(await abasVisiveis() === 'mundo,jornal,cla,conquistas,livro', 'e só as abas do Mundo: ' + await abasVisiveis());
     await P.click('#tab-jornal'); await espera(500);
     await P.click('#modo-sessao'); await espera(500);
     ok(await abaAtual() === 'tab-cenas', 'Sessão volta para a aba que estava aberta nela (Cenas)');
@@ -57,7 +57,7 @@ async function passo(nome, fn) { try { await fn(); } catch (e) { ok(false, nome 
 
   await passo('todas as abas', async () => {
     await P.evaluate(() => { localStorage.setItem('tinycats:abas-todas', '1'); }); await P.reload({ waitUntil: 'load' }); await espera(1500);
-    ok(await abasVisiveis() === 'cenas,fichas,rolador,escudo,mundo,jornal,cla,livro,acampamento,meditacao,oficina,bestiario,itens', 'ligado “Mostrar as abas de todos os modos”: a barra antiga, com tudo');
+    ok(await abasVisiveis() === 'cenas,fichas,missoes,rolador,escudo,baralho,mundo,jornal,cla,conquistas,livro,acampamento,meditacao,oficina,bestiario,itens', 'ligado “Mostrar as abas de todos os modos”: a barra antiga, com tudo');
     ok(await modoAtual() === 'modo-mundo', '(o modo da aba aberta continua marcado)');
     await P.evaluate(() => { localStorage.setItem('tinycats:abas-todas', '0'); }); await P.reload({ waitUntil: 'load' }); await espera(1500);
   });

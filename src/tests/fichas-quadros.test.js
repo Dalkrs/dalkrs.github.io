@@ -165,41 +165,25 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await P.locator('#lista .pc', { hasText: 'Selene' }).click(); await w(350);
   ok(await des() === 12 && await P.locator('#painelCorpo svg').count() === 0, 'cada ficha tem o seu corpo: a da Selene não mudou');
 
-  // ---------- missões ----------
+  // ---------- missões (lote 123: na ficha, só o resumo; o quadro e o resto moram na aba Missões) ----------
+  const [gid, pid] = await S0(() => {
+    S.missoes = { g1: { t: 'Escoltar a caravana', e: 'ativa', c: 1, o: { a: { t: 'Sair ao amanhecer', n: 0, ok: 1 }, b: { t: 'Atravessar o desfiladeiro', n: 1 } } } };
+    const a = S.personagens.find(x => x.id === 'pc_sel'); a.estado = a.estado || {};
+    a.estado.mis = { p1: { t: 'Aprender a runa do gelo', e: 'feita', c: 2 }, p2: { t: 'Achar o mapa', e: 'ativa', c: 3 } };
+    save(); render(); return ['g1', 'p1'];
+  });
+  await P.locator('#lista .pc', { hasText: 'Selene' }).click(); await w(350);
   await aba('notas');
-  ok(await P.locator('[data-misnova="g"]').count() === 1 && await P.locator('[data-misnova="p"]').count() === 1 && await P.locator('.miscard').count() === 0 && await P.locator('.misdica').count() === 0, 'a aba Missões: do grupo e do personagem, vazias (sem mesa, nada de "escondida")');
-  await P.locator('[data-misnova="g"]').click(); await w(300);
-  const gid = await S0(() => Object.keys(S.missoes)[0]);
-  await P.locator(`[data-mist="g|${gid}"]`).fill('Escoltar a caravana'); await P.locator(`[data-mist="g|${gid}"]`).press('Tab'); await w(250);
-  await P.locator(`[data-misd="g|${gid}"]`).fill('Três dias de estrada.'); await w(150);
-  await P.locator(`[data-misoadd="g|${gid}"]`).click(); await w(250);
-  await P.locator(`[data-misoadd="g|${gid}"]`).click(); await w(250);
-  const oids = await S0(g => Object.keys(S.missoes[g].o).sort((a, b) => S.missoes[g].o[a].n - S.missoes[g].o[b].n), gid);
-  await P.locator(`[data-misot="g|${gid}|${oids[0]}"]`).fill('Sair ao amanhecer'); await P.locator(`[data-misot="g|${gid}|${oids[1]}"]`).fill('Atravessar o desfiladeiro'); await w(200);
-  await P.locator(`[data-misok="g|${gid}|${oids[0]}"]`).check(); await w(300);
-  await P.locator(`[data-misr="g|${gid}"]`).fill('50 lapros'); await P.locator(`[data-misr="g|${gid}"]`).press('Tab'); await w(300);
-  let m = await S0(g => JSON.parse(JSON.stringify(S.missoes[g])), gid);
-  ok(m.t === 'Escoltar a caravana' && m.d === 'Três dias de estrada.' && m.r === '50 lapros' && m.e === 'ativa' && m.o[oids[0]].ok === 1 && !m.o[oids[1]].ok && (await P.locator(`[data-mis="g|${gid}"] .misprog`).innerText()) === '1/2' && await P.locator(`[data-mis="g|${gid}"] .tagseg`).count() === 0,
-    'missão do grupo: título, descrição, dois objetivos (um feito: 1/2) e recompensa — sem mesa, ela não nasce escondida');
-  await P.locator('[data-misnova="p"]').click(); await w(300);
-  const pid = await S0(() => Object.keys(S.personagens[0].estado.mis)[0]);
-  await P.locator(`[data-mist="p|${pid}"]`).fill('Aprender a runa do gelo'); await P.locator(`[data-mist="p|${pid}"]`).press('Tab'); await w(300);
-  ok((await sel()).estado.mis[pid].t === 'Aprender a runa do gelo' && (await P.locator('#ficha [data-abaficha="notas"] .mk').innerText()) === '2', 'missão da Selene: fica na ficha dela; a aba mostra 2 missões ativas');
-  await P.locator(`[data-mise="p|${pid}"]`).selectOption('feita'); await w(300);
-  ok((await sel()).estado.mis[pid].e === 'feita' && (await P.locator(`[data-mis="p|${pid}"] .misest`).innerText()).toLowerCase() === 'concluída' && (await P.locator('#ficha [data-abaficha="notas"] .mk').innerText()) === '1', 'concluída: muda a situação, e deixa de contar como ativa');
-  await P.locator(`[data-misodel="g|${gid}|${oids[1]}"]`).click(); await w(300);
-  ok(await S0(g => Object.keys(S.missoes[g].o).length, gid) === 1 && (await P.locator(`[data-mis="g|${gid}"] .misprog`).innerText()) === '1/1', 'tirar um objetivo');
-  await P.locator(`[data-misabrir="g|${gid}"]`).click(); await w(250);
-  ok(await P.locator(`[data-mist="g|${gid}"]`).count() === 0 && (await P.locator(`[data-mis="g|${gid}"] .mistit`).innerText()) === 'Escoltar a caravana', 'a missão fecha num cabeçalho de uma linha');
-  await P.locator(`[data-misabrir="g|${gid}"]`).click(); await w(250);
-  await P.locator(`[data-misdel="g|${gid}"]`).click(); await w(300);
-  ok(await S0(() => Object.keys(S.missoes).length) === 0 && /Missão “Escoltar a caravana” excluída/.test(await toast()), 'excluir avisa: ' + await toast());
-  await desfazer();
-  ok(await S0(g => S.missoes[g] && S.missoes[g].t, gid) === 'Escoltar a caravana', 'e dá para desfazer');
-  // a missão do grupo aparece na ficha de todos; a da Selene, só na dela
-  await P.locator('#lista .pc', { hasText: 'Guarda' }).click(); await w(350);
-  ok(await P.locator(`[data-mis="g|${gid}"]`).count() === 1 && await P.locator('[data-mis^="p|"]').count() === 0, 'na ficha do Guarda: a missão do grupo, e nenhuma da Selene');
-  await P.locator(`[data-miscopiar]`).count().then(n => ok(n === 0, 'sem mesa não há "copiar para" (é coisa do mestre)'));
+  const titulos = () => P.locator('#blocoMissoes .mistit').allInnerTexts();
+  ok(j(await titulos()) === j(['Achar o mapa', 'Escoltar a caravana']) && (await P.locator('#blocoMissoes .misprog').innerText()) === '1/2' && await P.locator('[data-mist], [data-misnova]').count() === 0
+    && await P.locator('[data-misir]').count() === 1 && (await P.locator('#ficha [data-abaficha="notas"] .mk').innerText()) === '2',
+    'a ficha mostra só o resumo das em andamento (a do grupo com 1/2 objetivos; a cumprida não), sem editar, e o botão para a aba Missões: ' + j(await titulos()));
+  // depois que quem mestra abre a aba Missões, o resumo vem do quadro e do documento do personagem
+  await P.evaluate(() => localStorage.setItem('tinycats:missoes:local', JSON.stringify({ 'fichas:mis:quadro': { v: 1, mig: true, ms: { q1: { t: 'Defender a ponte', quem: 'grupo', e: 'ativa' }, q2: { t: 'Ratos no porão', quem: 'um', e: 'oferta' } } }, 'fichas:mis:pc:pc_sel': { v: 1, mig: true, ms: { h1: { t: 'A carta da irmã', quem: 'pc', e: 'ativa' } } } })));
+  await S0(() => render()); await w(250);
+  ok(j(await titulos()) === j(['A carta da irmã', 'Defender a ponte']) && (await P.locator('#ficha [data-abaficha="notas"] .mk').innerText()) === '2', 'com a aba Missões aberta: a da história e a do grupo (a do quadro que ninguém pegou, não): ' + j(await titulos()));
+  await P.evaluate(() => localStorage.removeItem('tinycats:missoes:local'));
+  await S0(() => render()); await w(150);
 
   // ---------- o gesto: o clique que vem depois de um campo pega de primeira; o Tab leva ao campo seguinte ----------
   // (um campo de número só avisa que mudou quando o cursor sai dele; se a ficha fosse redesenhada nessa hora, o

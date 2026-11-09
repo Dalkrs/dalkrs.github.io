@@ -798,8 +798,8 @@ const { ok, end } = checker();
     ok(await F.locator(`#lista .bloco[data-bloco="${C1}"] [data-gcamp]`).count() === 0, 'os grupos dela não têm como ser passados adiante');
     // (as missões dela — as do grupo e as da ficha — também: sem botão de criar, e com o motivo)
     await F.locator('#ficha [data-abaficha="notas"]').click(); await w(300);
-    const missoesFechadas = { novas: await F.locator('#blocoMissoes [data-misnova]').count(), texto: (await F.locator('#blocoMissoes').innerText()).replace(/\s+/g, ' ') };
-    ok(missoesFechadas.novas === 0 && /campanha encerrada: só consulta/i.test(missoesFechadas.texto), 'as missões da campanha encerrada são só para consulta (não há como criar missão do grupo nem da ficha): ' + missoesFechadas.texto.slice(0, 160));
+    // (lote 123: na ficha, as missões são só o resumo — na aba Missões, a campanha encerrada é só para consulta)
+    ok(await F.locator('#blocoMissoes [data-misnova], #blocoMissoes input').count() === 0, 'as missões da campanha encerrada: na ficha, só o resumo');
     // ("Apagar dados", com a campanha encerrada em vista, não leva ficha nenhuma — e diz por quê)
     await F.locator('button', { hasText: 'Apagar dados' }).first().click(); await w(300);
     const dscEncerrada = (await F.locator('.flushitem', { hasText: 'Personagens' }).innerText()).replace(/\s+/g, ' ');
