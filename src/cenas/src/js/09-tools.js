@@ -37,6 +37,7 @@ const Tools = (() => {
     { id: 'light', n: 'Luz', k: 'I', i: 'light', grp: 3, gm: true },
     { id: 'fog', n: 'Névoa manual', k: 'U', i: 'fog', grp: 3, gm: true },
     { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
+    { id: 'ronda', n: 'Rota do guarda', i: 'ronda', grp: -1, gm: true },       // (lote 121) fora do trilho: vem do bloco "Guarda"
   ];
   /* (lote 83) A visão do mestre: "Construção" (mexe em tudo, como sempre) ou "Mestrando" (só os tokens andam; portas,
      luzes, baús e passagens se usam, mas nada do mapa sai do lugar). Cada cena lembra a última, neste aparelho; uma
@@ -92,8 +93,8 @@ const Tools = (() => {
       for (let i = sc.tokens.length - 1; i >= 0; i--) {
         const t = sc.tokens[i];
         if (!!t.prop !== props || !tokShown(t, sc)) continue;
-        const [cx, cy, half] = tokC(t, sc);
-        const inside = t.shape === 'quad' ? Math.abs(p.x - cx) <= half && Math.abs(p.y - cy) <= half : Math.hypot(p.x - cx, p.y - cy) <= half;
+        const [cx, cy, half] = tokC(t, sc), [tw, th] = tokWH(t);
+        const inside = t.shape === 'quad' ? Math.abs(p.x - cx) <= tw * sc.cell / 2 && Math.abs(p.y - cy) <= th * sc.cell / 2 : Math.hypot(p.x - cx, p.y - cy) <= half;
         if (inside) return { c: 'tokens', id: t.id };
       }
     }
@@ -257,7 +258,7 @@ const Tools = (() => {
       const o = Store.get(s.c, s.id);
       if (!o) continue;
       if (mt && ehDoMapa(s)) continue;                              // (lote 83) em Mestrando, o mapa fica parado
-      if (s.c === 'tokens') { if (can('moveToken', o)) items.push({ c: s.c, id: o.id, x: o.x, y: o.y, size: o.size }); }
+      if (s.c === 'tokens') { if (can('moveToken', o)) items.push({ c: s.c, id: o.id, x: o.x, y: o.y, size: tokWH(o) }); }     // (lote 121: [largura, altura])
       else if (s.c === 'shapes') { if ((gm || can('editShape', o)) && !o.lock) items.push({ c: s.c, id: o.id, o0: o.pts ? { pts: o.pts.slice() } : { x: o.x, y: o.y } }); }
       else if (s.c === 'effects') {
         if (!((gm || can('editFx', o)) && !o.token)) continue;
@@ -304,8 +305,8 @@ const Tools = (() => {
     const vdx = g.vdx || 0, vdy = g.vdy || 0;
     const livre = (ax, ay) => g.items.every(it => {
       if (it.c !== 'tokens') return true;
-      const hf = it.size * sc.cell / 2;
-      return !blockedPath(sc, it.x + vdx + hf, it.y + vdy + hf, it.x + ax + hf, it.y + ay + hf);
+      const hf = it.size[0] * sc.cell / 2, hg = it.size[1] * sc.cell / 2;
+      return !blockedPath(sc, it.x + vdx + hf, it.y + vdy + hg, it.x + ax + hf, it.y + ay + hg);
     });
     if (livre(dx, dy)) { g.vdx = dx; g.vdy = dy; return [dx, dy]; }
     // o mais longe que dá no caminho reto (busca binária), encaixado na grade — e conferido de novo depois de encaixar
@@ -323,8 +324,8 @@ const Tools = (() => {
     if (!isGM() && sc.blockMove && !g.barrar) {
       for (const it of g.items) {
         if (it.c !== 'tokens') continue;
-        const t = Store.get('tokens', it.id), hf = it.size * sc.cell / 2;
-        if (t && blockedPath(sc, it.x + hf, it.y + hf, t.x + hf, t.y + hf)) {
+        const t = Store.get('tokens', it.id), hf = it.size[0] * sc.cell / 2, hg = it.size[1] * sc.cell / 2;
+        if (t && blockedPath(sc, it.x + hf, it.y + hg, t.x + hf, t.y + hg)) {
           Store.cancel();
           UI.toast('Há uma parede no caminho.');
           return;
@@ -338,11 +339,11 @@ const Tools = (() => {
   function nudge(dx, dy) {
     const sc = Store.scene(), toks = selOf('tokens').filter(t => can('moveToken', t) && !(mestrando() && t.prop));
     if (!toks.length) return false;
-    const moves = toks.map(t => ({ t, to: snapTok(sc, t.x + dx * sc.cell, t.y + dy * sc.cell, t.size, false) }));
+    const moves = toks.map(t => ({ t, to: snapTok(sc, t.x + dx * sc.cell, t.y + dy * sc.cell, tokWH(t), false) }));
     if (!isGM() && sc.blockMove) {
       for (const m of moves) {
-        const hf = m.t.size * sc.cell / 2;
-        if (blockedPath(sc, m.t.x + hf, m.t.y + hf, m.to[0] + hf, m.to[1] + hf)) { UI.toast('Há uma parede no caminho.'); return true; }
+        const [hw, hh] = tokWH(m.t).map(v => v * sc.cell / 2);
+        if (blockedPath(sc, m.t.x + hw, m.t.y + hh, m.to[0] + hw, m.to[1] + hh)) { UI.toast('Há uma parede no caminho.'); return true; }
       }
     }
     Store.tx('Mover', () => { for (const m of moves) Store.upd('tokens', m.t.id, { x: m.to[0], y: m.to[1] }); });
@@ -510,10 +511,10 @@ const Tools = (() => {
       } else if (g.type === 'move' && g.moved && g.lead.c === 'tokens') {
         const t = Store.get('tokens', g.lead.id);
         if (!t) return;
-        const hf = g.lead.size * sc.cell / 2;
+        const hf = g.lead.size[0] * sc.cell / 2, hg = g.lead.size[1] * sc.cell / 2;
         ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#ffffff';
-        ctx.beginPath(); ctx.arc(g.lead.x + hf, g.lead.y + hf, hf * 0.9, 0, TAU); ctx.fill(); ctx.restore();
-        Render.drawMeasure([g.lead.x + hf, g.lead.y + hf, t.x + hf, t.y + hf], sc, px, viewerColor());
+        ctx.beginPath(); ctx.ellipse(g.lead.x + hf, g.lead.y + hg, hf * 0.9, hg * 0.9, 0, 0, TAU); ctx.fill(); ctx.restore();
+        Render.drawMeasure([g.lead.x + hf, g.lead.y + hg, t.x + hf, t.y + hg], sc, px, viewerColor());
       }
     },
   };
@@ -545,15 +546,33 @@ const Tools = (() => {
     },
   };
 
+  /* ---- (lote 121) A rota do guarda: cada clique põe um ponto (ver 07i. RONDAS) ---- */
+  T.ronda = {
+    hint: 'Clique para pôr os pontos da rota, na ordem. Enter ou dois cliques terminam; Backspace tira o último; Esc sai.',
+    cursor: 'crosshair',
+    down(p) { Rondas.porPonto(p); },
+    dbl() { Rondas.terminar(); },
+    move(p) { ghost = p; Render.request(); },
+    key(e) {
+      if (e.key === 'Enter' || e.key === 'Escape') { Rondas.terminar(); return true; }
+      if (e.key === 'Backspace' || e.key === 'Delete') { Rondas.tirarPonto(); return true; }
+      return false;
+    },
+    preview(ctx, px, sc) { Rondas.previaRota(ctx, px, sc, ghost); },
+  };
+
   /* ---- Objetos de cenário: escolha o objeto na barra de cima e clique no mapa ---- */
   const objSize = () => { const d = Props.P[App.opt.obj] || Props.P.fogueira; return App.opt.objSize || d.size || 1; };
   T.obj = {
     hint: 'Escolha o objeto na barra de cima e clique no mapa para pô-lo. Depois ele anda, gira e se esconde como um token.',
     cursor: 'crosshair',
     down(p) {
-      const sc = Store.scene(), id = Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', size = objSize();
-      const [x, y] = snapTok(sc, p.x - size * sc.cell / 2, p.y - size * sc.cell / 2, size, false);
+      const sc = Store.scene(), id = Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', size = objSize(), d = Props.P[id];
+      // (lote 121) o comprido: nas medidas dele (fw × fh), de pé, com o meio no clique
+      const wh = d.fw ? [d.fw, d.fh] : [size, size];
+      const [x, y] = snapTok(sc, p.x - wh[0] * sc.cell / 2, p.y - wh[1] * sc.cell / 2, wh, false);
       const t = Props.novo(sc, id, x, y, size, !!App.opt.objHidden);
+      if (d.fw) { t.fw = d.fw; t.fh = d.fh; t.size = Math.max(d.fw, d.fh); t.x = x; t.y = y; delete t.q0; }
       Store.tx('Pôr ' + Props.P[id].n.toLowerCase(), () => Store.add('tokens', t));
       if (Props.P[id].luz && sc.light === 'claro') UI.toast('A cena está clara, então a luz do objeto ainda não aparece.', { action: 'Pôr em penumbra', run: () => Store.tx('Luz ambiente', () => Store.scn({ light: 'penumbra' })) });
       else UI.toast(Props.P[id].n + ' no mapa.', { key: 'obj', action: 'Desfazer', run: undo });       // (um aviso só: o novo troca o anterior)
@@ -561,12 +580,12 @@ const Tools = (() => {
     move(p) { ghost = p; Render.request(); },
     preview(ctx, px, sc) {
       if (!ghost) return;
-      const size = objSize(), s = size * sc.cell;
-      const [x, y] = snapTok(sc, ghost.x - s / 2, ghost.y - s / 2, size, false);
+      const size = objSize(), id = Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', d = Props.P[id], wh = d.fw ? [d.fw, d.fh] : [size, size];
+      const [x, y] = snapTok(sc, ghost.x - wh[0] * sc.cell / 2, ghost.y - wh[1] * sc.cell / 2, wh, false);
       ctx.save(); ctx.globalAlpha = 0.6;
-      Props.draw(ctx, { id: 'previa', prop: Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', x, y, size, rot: 0 }, sc, 1.3);
+      Props.draw(ctx, Object.assign({ id: 'previa', prop: id, x, y, size, rot: 0 }, d.fw ? { fw: d.fw, fh: d.fh } : null), sc, 1.3);
       ctx.restore();
-      ctx.save(); ctx.setLineDash([6 * px, 5 * px]); ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.4 * px; ctx.strokeRect(x + 2 * px, y + 2 * px, s - 4 * px, s - 4 * px); ctx.restore();
+      ctx.save(); ctx.setLineDash([6 * px, 5 * px]); ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.4 * px; ctx.strokeRect(x + 2 * px, y + 2 * px, wh[0] * sc.cell - 4 * px, wh[1] * sc.cell - 4 * px); ctx.restore();
     },
   };
 

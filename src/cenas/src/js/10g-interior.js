@@ -146,11 +146,13 @@ const Interior = (() => {
     // o relevo (as áreas de terreno: o estrado, o palco, a água, o alçapão) e as formas de enfeite, em quadrados da planta
     const relevo = [], formas = [];
     // encosta (pela beira) ou fica do lado (pela quina) de um móvel m
-    const encosta = (i, j, s, m) => ((i + s === m.x || i === m.x + m.s) && j < m.y + m.s && j + s > m.y) || ((j + s === m.y || j === m.y + m.s) && i < m.x + m.s && i + s > m.x);
-    const aoLado = (i, j, s, m, g) => i < m.x + m.s + g && i + s > m.x - g && j < m.y + m.s + g && j + s > m.y - g;
+    // (lote 121) as medidas de um móvel na planta (o comprido, pelo retângulo dele)
+    const dims = m => (m.fw ? tokWH({ prop: m.id, fw: m.fw, fh: m.fh, rot: m.rot }) : [m.s, m.s]);
+    const encosta = (i, j, s, m) => { const [mw, mh] = dims(m); return ((i + s === m.x || i === m.x + mw) && j < m.y + mh && j + s > m.y) || ((j + s === m.y || j === m.y + mh) && i < m.x + mw && i + s > m.x); };
+    const aoLado = (i, j, s, m, g) => { const [mw, mh] = dims(m); return i < m.x + mw + g && i + s > m.x - g && j < m.y + mh + g && j + s > m.y - g; };
     // o giro de quem fica junto de m, virado para ele (a cadeira de frente para a mesa; o banco ao comprido)
     const viradoPara = (i, j, s, m, id) => {
-      const dx = (i + s / 2) - (m.x + m.s / 2), dy = (j + s / 2) - (m.y + m.s / 2), deLado = Math.abs(dx) > Math.abs(dy);
+      const [mw, mh] = dims(m), dx = (i + s / 2) - (m.x + mw / 2), dy = (j + s / 2) - (m.y + mh / 2), deLado = Math.abs(dx) > Math.abs(dy);
       if (id === 'banco') return deLado ? 90 : 0;
       return deLado ? (dx < 0 ? 270 : 90) : (dy < 0 ? 0 : 180);
     };
@@ -162,7 +164,20 @@ const Interior = (() => {
       const livre = (i, j, tapete) => i >= q.x && j >= q.y && i < q.x + q.w && j < q.y + q.h && !fora(i, j) && !passagens.has(i + ',' + j) && !ocup.has(i + ',' + j) && !(tapete && sob.has(i + ',' + j));
       const livreS = (i, j, s) => { for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) if (!livre(i + a, j + b, false)) return false; return true; };
       const poe = (id, i, j, rot, arranjo) => {
-        const s = Props.P[id].size || 1;
+        const s = Props.P[id].size || 1, d = Props.P[id];
+        // (lote 121) o comprido com costas (a cama, a estante): ocupa só o retângulo dele, rente à parede, dentro do quadrado
+        if (d.fw && d.costas && s > 1) {
+          const tk = { prop: id, rot: rot || 0, fw: Math.max(1, Math.round((d.legado ? d.legado.w : 1) * s)), fh: Math.max(1, Math.round((d.legado ? d.legado.h : 1) * s)) }, [w, h] = tokWH(tk);
+          const r4 = ((Math.round((rot || 0) / 90) % 4) + 4) % 4, costas = ['n', 'l', 's', 'o'][(['n', 'l', 's', 'o'].indexOf(d.costas) + r4) % 4];
+          const ox = s - w <= 0 ? 0 : costas === 'o' ? 0 : costas === 'l' ? s - w : i === q.x ? 0 : i + s === q.x + q.w ? s - w : 0;
+          const oy = s - h <= 0 ? 0 : costas === 'n' ? 0 : costas === 's' ? s - h : j === q.y ? 0 : j + s === q.y + q.h ? s - h : 0;
+          for (let b = 0; b < h; b++) for (let a = 0; a < w; a++) ocup.add((i + ox + a) + ',' + (j + oy + b));
+          const m = { id, x: i + ox, y: j + oy, s, fw: tk.fw, fh: tk.fh };
+          if (rot) m.rot = rot;
+          if (arranjo) m.arranjo = true;
+          q.moveis.push(m);
+          return;
+        }
         for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) (id === 'tapete' ? sob : ocup).add((i + a) + ',' + (j + b));
         const m = { id, x: i, y: j, s };
         if (rot) m.rot = rot;
@@ -410,7 +425,10 @@ const Interior = (() => {
     // o relevo, as formas e a luz das janelas (como na cena)
     if (!op || op.relevo !== false) Estilos.relevoNaPrevia(g, (p.relevo || []).map(r => Estilos.moverRelevo(r, M, M)), (p.formas || []).concat(feixes(p, (op && op.tom) || 'dia')).map(f => Estilos.moverRelevo(f, M, M)), cell, 1.5);
     g.fillStyle = '#f3ead2';
-    for (const q of p.salas) for (const mv of q.moveis) { g.beginPath(); g.arc((mv.x + M + mv.s / 2) * cell, (mv.y + M + mv.s / 2) * cell, Math.max(1.5, cell * 0.18 * mv.s), 0, Math.PI * 2); g.fill(); }
+    for (const q of p.salas) for (const mv of q.moveis) {
+      if (mv.fw) { const [w, hh] = tokWH({ prop: mv.id, fw: mv.fw, fh: mv.fh, rot: mv.rot }); g.fillRect((mv.x + M) * cell + 1, (mv.y + M) * cell + 1, w * cell - 2, hh * cell - 2); continue; }      // (lote 121) o comprido: o retângulo dele
+      g.beginPath(); g.arc((mv.x + M + mv.s / 2) * cell, (mv.y + M + mv.s / 2) * cell, Math.max(1.5, cell * 0.18 * mv.s), 0, Math.PI * 2); g.fill();
+    }
     return { cell };
   }
   const resumo = p => { const n = p.salas.length, m = p.salas.reduce((s, q) => s + q.moveis.length, 0); return `${n} ${n === 1 ? 'sala' : 'salas'} · ${m} móveis · ${p.W} × ${p.H} quadrados.`; };
@@ -437,7 +455,12 @@ const Interior = (() => {
     const noite = sc.tone === 'noite' || sc.tone === 'breu';
     for (const q of p.salas) {
       const ms = q.moveis.slice().sort((a, b) => (a.id === 'tapete' ? 0 : 1) - (b.id === 'tapete' ? 0 : 1));
-      for (const mv of ms) if (Props.P[mv.id]) { const tk = Props.novo(sc, mv.id, (mv.x + M) * c, (mv.y + M) * c, mv.s, false); if (mv.rot) tk.rot = mv.rot; sc.tokens.push(tk); }
+      for (const mv of ms) if (Props.P[mv.id]) {
+        const tk = Props.novo(sc, mv.id, (mv.x + M) * c, (mv.y + M) * c, mv.s, false);
+        if (mv.rot) tk.rot = mv.rot;
+        if (mv.fw) { tk.fw = mv.fw; tk.fh = mv.fh; tk.size = Math.max(mv.fw, mv.fh); tk.x = (mv.x + M) * c; tk.y = (mv.y + M) * c; delete tk.q0; }      // (lote 121) já no lugar certo
+        sc.tokens.push(tk);
+      }
       if (noite && !(PLANTAS[p.tipo] && PLANTAS[p.tipo].fogo)) sc.lights.push({ id: uid('lz'), name: 'Luz da sala', x: (q.x + M + q.w / 2) * c, y: (q.y + M + q.h / 2) * c, bright: 1.5, dim: Math.max(3, Math.round(Math.max(q.w, q.h) * 0.8)), c: '#ffc77a', on: true, fl: true });
     }
     // o relevo (o estrado, o palco, a água, o alçapão), as formas de enfeite (travadas) e os feixes de luz das janelas

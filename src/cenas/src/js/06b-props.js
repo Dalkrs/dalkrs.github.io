@@ -1516,16 +1516,71 @@ const Props = (() => {
   const ORDER = Object.keys(P);
 
   // Desenha o objeto do token t (já sabendo que ele é um objeto) no lugar dele, girado. tm: o tempo, em segundos.
+  // (lote 121) o objeto comprido (fw × fh): o desenho recebe a meia largura (R) e o meio comprimento (B), sem o giro
   function draw(c, t, sc, tm) {
     const def = P[t.prop];
     if (!def) return;
-    const s = t.size * sc.cell, R = s / 2, ang = rad(t.rot || 0), semente = (hashStr(t.id) % 997) + 1;
+    const ang = rad(t.rot || 0), semente = (hashStr(t.id) % 997) + 1;
+    let R = t.size * sc.cell / 2, B = R, cx = t.x + R, cy = t.y + R;
+    if (def.fw && t.fw > 0 && t.fh > 0) { const [w, h] = tokWH(t); R = t.fw * sc.cell / 2; B = t.fh * sc.cell / 2; cx = t.x + w * sc.cell / 2; cy = t.y + h * sc.cell / 2; }
     c.save();
-    c.translate(t.x + R, t.y + R); c.rotate(ang);
+    c.translate(cx, cy); c.rotate(ang);
     APAGADO = !!(def.luz && t.light && t.light.on === false);
     EST = estado(t);
-    try { def.draw(c, R, tm, semente, ang, t); } finally { APAGADO = false; EST = ''; }
+    try { def.draw(c, R, tm, semente, ang, t, B); } finally { APAGADO = false; EST = ''; }
     c.restore();
+  }
+  /* (lote 121) Desenha o objeto id num canvas qualquer (as prévias dos geradores): o canto (x, y) e as medidas em
+     quadrados (fw × fh, de pé; o giro troca), cell: o lado do quadrado em pixels. */
+  function desenhar(g, id, x, y, fw, fh, rot, cell, tm) {
+    const def = P[id];
+    if (!def) return;
+    const r4 = ((Math.round((rot || 0) / 90) % 4) + 4) % 4, w = r4 % 2 ? fh : fw, h = r4 % 2 ? fw : fh;
+    g.save(); g.translate((x + w / 2) * cell, (y + h / 2) * cell); g.rotate(rad(rot || 0));
+    try { def.draw(g, fw * cell / 2, tm || 1.3, 7, 0, null, fh * cell / 2); } catch (e) { /* desenho que precisa do token */ }
+    g.restore();
+  }
+  /* (lote 121) As medidas de um objeto comprido posto no lugar de um quadrado (o canto x, y e o lado s, em unidades da
+     cena), como ele era antes deste lote e como os geradores ainda pedem: as medidas saem do que o desenho de antes
+     ocupava (def.legado: a fração do lado), e o objeto vai rente à parede — pelas costas (def.costas: o lado de trás, de
+     pé; "n" é o de cima) ou, no outro sentido, pelo lado do quadrado que tem parede. */
+  const LADOS = ['n', 'l', 's', 'o'];
+  function encaixar(t, sc) {
+    const def = P[t.prop];
+    if (!def || !def.fw) return;
+    // q0: [dx, dy, s] — o canto do quadrado pedido, em relação ao canto do token (quem move o token leva o quadrado junto)
+    const c = sc.cell, q = Array.isArray(t.q0) && t.q0.length === 3 && t.q0.every(Number.isFinite) ? [t.x + t.q0[0], t.y + t.q0[1], t.q0[2]] : [t.x, t.y, Number(t.size) || def.size || 1];
+    delete t.q0;
+    const [x0, y0, s] = q, L = def.legado || { w: def.fw / Math.max(def.fw, def.fh), h: def.fh / Math.max(def.fw, def.fh) };
+    t.fw = clamp(Math.max(1, Math.round(L.w * s)), 1, 12); t.fh = clamp(Math.max(1, Math.round(L.h * s)), 1, 12); t.size = Math.max(t.fw, t.fh);
+    const [w, h] = tokWH(t), S = Math.max(1, Math.round(s)), sx = Math.max(0, S - w), sy = Math.max(0, S - h);
+    const r4 = ((Math.round((t.rot || 0) / 90) % 4) + 4) % 4, costas = def.costas ? LADOS[(LADOS.indexOf(def.costas) + r4) % 4] : null;
+    // há parede rente a este lado do quadrado? (a parede que corre ao longo do lado, a menos de meio quadrado dele)
+    const temParede = lado => (sc.walls || []).some(wl => {
+      if (wl.k === 'door' || wl.k === 'window') return false;
+      const vert = Math.abs(wl.x1 - wl.x2) < c * 0.2, hor = Math.abs(wl.y1 - wl.y2) < c * 0.2;
+      if (lado === 'o' || lado === 'l') { const x = lado === 'o' ? x0 : x0 + S * c; return vert && Math.abs(wl.x1 - x) <= c * 0.5 && Math.min(wl.y1, wl.y2) < y0 + S * c - c * 0.2 && Math.max(wl.y1, wl.y2) > y0 + c * 0.2; }
+      const y = lado === 'n' ? y0 : y0 + S * c; return hor && Math.abs(wl.y1 - y) <= c * 0.5 && Math.min(wl.x1, wl.x2) < x0 + S * c - c * 0.2 && Math.max(wl.x1, wl.x2) > x0 + c * 0.2;
+    });
+    const lado = (folga, a, b) => (!folga ? 0 : costas === a ? 0 : costas === b ? folga : temParede(a) ? 0 : temParede(b) ? folga : 0);
+    const ox = lado(sx, 'o', 'l'), oy = lado(sy, 'n', 's');
+    t.x = clamp(x0 + ox * c, 0, Math.max(0, sceneW(sc) - w * c)); t.y = clamp(y0 + oy * c, 0, Math.max(0, sceneH(sc) - h * c));
+  }
+  /* (lote 121) O giro de um objeto: o comprido gira em volta do meio e volta para a grade (o 1 × 2 deitado continua
+     ocupando dois quadrados inteiros). → { rot, x, y } */
+  function girado(t, rot, sc) {
+    rot = ((Math.round(rot) % 360) + 360) % 360;
+    if (!ehRet(t)) return { rot };
+    const [cx, cy] = tokC(t, sc), n = Object.assign({}, t, { rot }), [w, h] = tokWH(n);
+    const [x, y] = snapTok(sc, cx - w * sc.cell / 2, cy - h * sc.cell / 2, [w, h], false);
+    return { rot, x, y };
+  }
+  // (lote 121) novas medidas para um objeto comprido, com o meio parado (e de volta para a grade). → { fw, fh, size, x, y }
+  function medido(t, fw, fh, sc) {
+    fw = clamp(Math.round(fw) || 1, 1, 12); fh = clamp(Math.round(fh) || 1, 1, 12);
+    const [cx, cy] = tokC(t, sc), n = Object.assign({}, t, { fw, fh }), [w, h] = tokWH(n);
+    const [x, y] = snapTok(sc, cx - w * sc.cell / 2, cy - h * sc.cell / 2, [w, h], false);
+    return { fw, fh, size: Math.max(fw, fh), x, y };
   }
   /* (lote 47b) Os estados de um objeto: [id, nome] — o primeiro é o de quando nada foi escolhido. As armadilhas,
      armada (escondida dos jogadores) ou disparada; as que vieram antes deste lote contam como disparadas (já se viam). */
@@ -1554,7 +1609,8 @@ const Props = (() => {
     g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, cv.height);
     if (!def) return;
     g.save(); g.translate(w / 2, cv.height / 2);
-    def.draw(g, w * 0.46, tm || 1.3, 7, 0);
+    if (def.fw) { const u = Math.min(w, cv.height) * 0.92 / Math.max(def.fw, def.fh); def.draw(g, def.fw * u / 2, tm || 1.3, 7, 0, null, def.fh * u / 2); }      // (lote 121) o comprido, nas medidas dele
+    else def.draw(g, w * 0.46, tm || 1.3, 7, 0);
     g.restore();
   }
   const isProp = t => !!t && !!t.prop && !!P[t.prop];
@@ -1571,11 +1627,14 @@ const Props = (() => {
     if (def.armadilha) { t.est = 'armada'; t.hidden = true; }          // (lote 47b: a armadilha nova nasce armada, escondida)
     if (def.estados) t.est = def.estados[0][0];
     if (def.luz) t.light = Object.assign({ on: true, bright: def.luz.bright, dim: def.luz.dim, c: def.luz.c }, def.calma ? {} : { fl: true });          // (lote 39: o cristal brilha parado)
+    // (lote 121) o comprido pedido num quadrado (os geradores): já sai encaixado; q0 guarda o quadrado, para ser encaixado de
+    // novo quando a cena estiver pronta (com o giro e as paredes)
+    if (def.fw) { const s0 = size || def.size || 1; encaixar(t, sc); t.q0 = [x - t.x, y - t.y, s0]; }
     return t;
   }
   // (lote 47b) um objeto novo no catálogo (06b2: o mercado, o templo, a forja, o oriental, os portões)
   function registrar(id, def) { P[id] = def; if (!ORDER.includes(id)) ORDER.push(id); }
   function grupo(id, n) { if (!G.some(g => g.id === id)) G.push({ id, n }); }
   const kit = { caixa, sombra, linha, grad, radial, hsh, MAD, PED, FER, chama, brasa, pedrinha, tabua, folhas, osso, cranio, tom, apagado: () => APAGADO, est: () => EST };
-  return { P, G, ORDER, draw, thumb, isProp, temFogo, novo, coresDe, estados, estado, registrar, grupo, kit };
+  return { P, G, ORDER, draw, thumb, isProp, temFogo, novo, coresDe, estados, estado, registrar, grupo, kit, desenhar, encaixar, girado, medido };
 })();

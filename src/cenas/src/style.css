@@ -173,6 +173,7 @@ button { cursor: pointer; }
 .o-l { color: var(--fg-2); font-size: 12.5px; white-space: nowrap; }
 .o-val { min-width: 44px; font: 12px var(--mono); color: var(--fg-2); }
 .o-u { color: var(--fg-3); font-size: 12.5px; }
+.o-note { color: var(--fg-2); font-size: 12.5px; }      /* (lote 121) as medidas do objeto comprido */
 .o-warn { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--lamp-ink); font-size: 12.5px; }
 .opts .in { width: auto; }
 .opts .in.num { width: 64px; }

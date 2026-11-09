@@ -45,7 +45,7 @@ const SHOTS = process.env.FOTOS;
   if (parte('aba')) {
     await abrirGerador();
     const abas = await ev(() => [...document.querySelectorAll('#ger-lugar button')].map(b => b.textContent.trim()));
-    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Porto', 'Encontro', 'Região livre', 'Lago', 'Praia', 'Penhasco', 'Desfiladeiro', 'Castelo', 'Ruínas', 'Cemitério', 'Masmorra', 'Catacumbas', 'Cena do crime', 'Arena']), 'as abas: as Ruínas entre a Região livre e a Masmorra: ' + j(abas));
+    ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Porto', 'Encontro', 'Região livre', 'Lago', 'Praia', 'Penhasco', 'Desfiladeiro', 'Castelo', 'Ruínas', 'Cemitério', 'Masmorra', 'Catacumbas', 'Cena do crime', 'Arena', 'Mansão', 'Fortaleza', 'Guilda', 'Acampamento', 'Ruas', 'Torre'])     /* (lote 121: e os seis de furtividade) */ , 'as abas: as Ruínas entre a Região livre e a Masmorra: ' + j(abas));
     await page.locator('#ger-lugar button', { hasText: 'Ruínas' }).click(); await w(700);
     await semente(3);
     const g0 = await G();

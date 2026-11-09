@@ -123,8 +123,8 @@ const Vision = (() => {
     const L = [], cell = sc.cell;
     for (const t of sc.tokens) {
       if (!t.light || !t.light.on || t.hidden || !(t.light.dim > 0)) continue;
-      const half = t.size * cell / 2;
-      L.push({ x: t.x + half, y: t.y + half, bright: t.light.bright * cell + half, dim: t.light.dim * cell + half, c: t.light.c, fl: !!t.light.fl, k: t.id });
+      const [lx, ly, half] = tokC(t, sc);                       // (lote 121: o objeto comprido, pelo meio dele)
+      L.push({ x: lx, y: ly, bright: t.light.bright * cell + half, dim: t.light.dim * cell + half, c: t.light.c, fl: !!t.light.fl, k: t.id });
     }
     return L;
   }

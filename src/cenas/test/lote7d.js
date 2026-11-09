@@ -429,7 +429,9 @@ const SHOTS = process.env.FOTOS;
         const corte = p.forma === 'oct' ? 2 : 0, oc = new Set(), ot = new Set();
         for (const q of p.salas) for (const m of q.moveis) {
           if (!__tc.Props.P[m.id]) erros.push(s + ': móvel desconhecido ' + m.id);
-          for (let b = 0; b < m.s; b++) for (let a = 0; a < m.s; a++) {
+          // (lote 121) o comprido ocupa o retângulo dele (fw × fh, girado), não o quadrado de lado s
+          const [mw, mh] = m.fw ? __tc.tokWH({ prop: m.id, fw: m.fw, fh: m.fh, rot: m.rot }) : [m.s, m.s];
+          for (let b = 0; b < mh; b++) for (let a = 0; a < mw; a++) {
             const ii = m.x + a, jj = m.y + b, key = ii + ',' + jj, set = m.id === 'tapete' ? ot : oc;
             if (set.has(key)) erros.push(s + ': um móvel em cima do outro'); set.add(key);
             if (ii < q.x || jj < q.y || ii >= q.x + q.w || jj >= q.y + q.h) erros.push(s + ': móvel fora da sala');

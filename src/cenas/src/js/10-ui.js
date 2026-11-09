@@ -1317,6 +1317,7 @@ const UI = (() => {
     mureta: 'Uma parede baixa: deixa ver e deixa a luz passar, mas não deixa atravessar. Não abre (para passar, apague um trecho ou ponha uma porta em cima).',
   };
   const wallKindOf = w => (w.k === 'door' && w.secret ? 'secret' : w.k);
+  const FECH_NIV = [['', 'Nenhuma'], ['facil', 'Fácil'], ['medio', 'Médio'], ['dificil', 'Difícil'], ['extremo', 'Extremo'], ['absoluto', 'Absoluto']];      // (lote 121)
 
   function renderOpts() {
     const t = App.tool, o = App.opt, sc = Store.scene(), gm = isGM(), kids = [];
@@ -1343,6 +1344,12 @@ const UI = (() => {
       kids.push(btn('Desfazer o meu último', () => { Lapis.desfazer(sc.id); refresh(); }, { kind: 'small', id: 'o-lp-desf', disabled: !meus, title: 'Tira o seu último rabisco (Ctrl+Z)' }),
         btn('Limpar os meus', () => { Lapis.limpar(sc.id, false, gm); refresh(); }, { kind: 'small', id: 'o-lp-meus', disabled: !meus }));
       if (gm && Nuvem.on()) kids.push(btn('Limpar os de todos', () => { Lapis.limpar(sc.id, true, true); refresh(); }, { kind: 'small', id: 'o-lp-todos', disabled: !todos, title: 'Apaga os rabiscos de todos nesta cena (o aviso deixa desfazer)' }));
+    } else if (t === 'ronda') {
+      // (lote 121) a rota do guarda: de quem é, quantos pontos, tirar o último e terminar
+      const gd = Rondas.editando();
+      kids.push(h('span', { class: 'o-note', id: 'o-ronda', text: gd ? `Rota de ${gd.name}: ${gd.ronda.pts.length} ${gd.ronda.pts.length === 1 ? 'ponto' : 'pontos'}.` : 'Nenhum guarda escolhido.' }));
+      kids.push(btn('Tirar o último', () => Rondas.tirarPonto(), { kind: 'small', id: 'o-ronda-tira', disabled: !gd || !gd.ronda.pts.length }));
+      kids.push(btn('Pronto', () => Rondas.terminar(), { kind: 'small primary', id: 'o-ronda-ok' }));
     } else if (t === 'wall') {
       const isDoor = k => k === 'door' || k === 'secret';
       kids.push(seg('o-wk', o.wallKind, WALL_SEG, v => { if (isDoor(v)) o.wallMode = 'line'; optSet('wallKind', v, true); }));
@@ -1358,7 +1365,9 @@ const UI = (() => {
         Props.thumb(cv, id, 1.3);
         return h('button', { type: 'button', class: 'o-obj' + (o.obj === id ? ' on' : ''), id: 'o-obj-' + id, title: Props.P[id].n + (Props.P[id].luz ? ' (com luz que tremula)' : ''), 'aria-pressed': String(o.obj === id), onclick: () => optSet('obj', id, true) }, cv);
       })));
-      kids.push(oGroup('Tamanho', seg('o-osz', o.objSize || 0, [[0, 'Normal'], [0.5, '½'], [1, '1'], [2, '2'], [3, '3']], v => optSet('objSize', v, true))));
+      const dObj = Props.P[o.obj];
+      if (dObj && dObj.fw) kids.push(oGroup('Medidas', h('span', { class: 'o-note', id: 'o-omed', text: `${dObj.fw} × ${dObj.fh} quadrados (mude no painel do objeto)` })));      // (lote 121) o comprido
+      else kids.push(oGroup('Tamanho', seg('o-osz', o.objSize || 0, [[0, 'Normal'], [0.5, '½'], [1, '1'], [2, '2'], [3, '3']], v => optSet('objSize', v, true))));
       kids.push(oCheck('o-ohid', 'objHidden', 'Oculto dos jogadores'));
       if (sc.light === 'claro' && Props.P[o.obj] && Props.P[o.obj].luz) kids.push(h('span', { class: 'o-warn' }, 'A cena está clara: a luz só aparece em penumbra ou no escuro.', btn('Pôr em penumbra', () => Store.tx('Luz ambiente', () => Store.scn({ light: 'penumbra' })), { kind: 'small' })));
     } else if (t === 'light') {
@@ -2468,6 +2477,7 @@ const UI = (() => {
       typeof PainelBarras !== 'undefined' ? PainelBarras.secaoToken(t) : null,      // (lote 44) o painel de barras
       feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
       Best.secao(t, UI.kit),                                                 // (lote 29) o inimigo do Bestiário: o lembrete e o saque
+      Rondas.secao(t, UI.kit),                                               // (lote 121) o guarda: a ronda, o cone e o estado
       secR('s-turn', 'Turnos', false, 'Iniciativa ' + (clampIni(t.ini) >= 0 ? '+' : '') + clampIni(t.ini) + ' · ' + clampTurns(t.turns) + (clampTurns(t.turns) === 1 ? ' turno' : ' turnos') + ' por rodada',
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
@@ -2587,7 +2597,7 @@ const UI = (() => {
   }
   // o que uma alavanca pode abrir e fechar: as portas, janelas e cortinas da cena e os portões que são objetos
   function ligaveis(t) {
-    const sc = Store.scene(), cx = t.x + t.size * sc.cell / 2, cy = t.y + t.size * sc.cell / 2, q = v => Math.round(v / sc.cell);
+    const sc = Store.scene(), [cx, cy] = tokC(t, sc), q = v => Math.round(v / sc.cell);
     const nome = { door: 'Porta', window: 'Janela', veil: 'Cortina' };
     const ws = sc.walls.filter(isOpening).map(w => ({ id: w.id, d: Geo.distSeg(cx, cy, w.x1, w.y1, w.x2, w.y2), n: nome[w.k] || 'Porta' }));
     const gs = sc.tokens.filter(x => x.prop && (Props.P[x.prop] || {}).parede).map(x => ({ id: x.id, d: Math.hypot(x.x - t.x, x.y - t.y), n: x.name }));
@@ -2603,7 +2613,8 @@ const UI = (() => {
       h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: many ? `${props.length} objetos` : (gm ? t.name : def.n) || def.n }), h('div', { class: 'p-sub', text: many ? 'Objetos de cenário' : 'Objeto de cenário' + (t.hidden && gm ? ' · oculto dos jogadores' : '') })));
     if (!gm) return [head];
     const mt = Tools.mestrando();      // (lote 83) em Mestrando, o objeto se usa, mas não muda de forma nem sai do lugar
-    const girar = d => all(x => ({ rot: (((x.rot || 0) + d) % 360 + 360) % 360 }), 'Girar objeto');
+    const girar = d => all(x => Props.girado(x, (x.rot || 0) + d, Store.scene()), 'Girar objeto');      // (lote 121: o comprido gira pelo meio)
+    const compridos = props.every(x => ehRet(x));
     const luz = !many && t.light && def.luz ? t.light : null;
     // (lote 7) aonde o objeto leva: a lista das cenas (na ordem das famílias) e o botão de ir
     const alvo = !many && t.cena && Store.S.scenes[t.cena] ? t.cena : null;
@@ -2622,8 +2633,14 @@ const UI = (() => {
         mt ? null : field('Girar', h('div', { class: 'row tight' },
           btn('', () => girar(-90), { icon: 'undo', kind: 'small', id: 'pr-rot-l', title: 'Girar 90° para a esquerda' }),
           btn('', () => girar(90), { icon: 'redo', kind: 'small', id: 'pr-rot-r', title: 'Girar 90° para a direita' }),
-          !many ? inNum('pr-rot', t.rot || 0, v => all({ rot: ((Math.round(v) % 360) + 360) % 360 }, 'Girar objeto'), { min: 0, max: 359, step: 15, label: 'Rotação em graus' }) : null)),
-        mt ? null : field('Tamanho', seg('pr-size', many ? null : t.size, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => all(x => { const sc = Store.scene(), [nx, ny] = snapTok(sc, x.x, x.y, v, false); return { size: v, x: nx, y: ny }; }, 'Tamanho do objeto')))),
+          !many ? inNum('pr-rot', t.rot || 0, v => all(x => Props.girado(x, v, Store.scene()), 'Girar objeto'), { min: 0, max: 359, step: 15, label: 'Rotação em graus' }) : null)),
+        // (lote 121) o comprido (a cama, a estante, a mesa…): a largura e o comprimento, em quadrados; os outros, o tamanho
+        mt || !compridos ? null : h('div', { class: 'grid2' },
+          field('Largura', inNum('pr-fw', many ? '' : t.fw, v => all(x => Props.medido(x, v, x.fh, Store.scene()), 'Medidas do objeto'), { min: 1, max: 12, step: 1, label: 'Largura em quadrados' })),
+          field('Comprimento', inNum('pr-fh', many ? '' : t.fh, v => all(x => Props.medido(x, x.fw, v, Store.scene()), 'Medidas do objeto'), { min: 1, max: 12, step: 1, label: 'Comprimento em quadrados' }))),
+        mt || compridos || props.some(x => ehRet(x)) ? null : field('Tamanho', seg('pr-size', many ? null : t.size, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => all(x => { const sc = Store.scene(), [nx, ny] = snapTok(sc, x.x, x.y, v, false); return { size: v, x: nx, y: ny }; }, 'Tamanho do objeto'))),
+        !many && compridos && !mt ? note(`Ocupa ${t.fw} × ${t.fh} ${t.fw * t.fh === 1 ? 'quadrado' : 'quadrados'}${(Props.P[t.prop] || {}).costas ? '; girado, as costas ficam rentes à parede' : ''}.`) : null,
+        !many && def.esconde ? note('Dá para se esconder ' + def.esconde + ' (a condição Oculto: os guardas não veem).') : null),      // (lote 121)
       // (lote 39) as cores do objeto (o estandarte, o brasão, a mesa de guerra, o quadro de missões, o atril): na sede, as do clã
       props.every(x => (Props.P[x.prop] || {}).cores) ? sec('s-propcor', 'Cores', true,
         h('div', { class: 'grid2' },
@@ -3004,6 +3021,9 @@ const UI = (() => {
         opens ? toggle('wl-open', nOpen === walls.length, v => all({ open: v }, (v ? 'Abrir ' : 'Fechar ') + OPENING_NAMES[kind][0]), openLabel) : null,
         opens ? toggle('wl-lock', walls.every(x => x.locked), v => all({ locked: v }, (v ? 'Trancar ' : 'Destrancar ') + OPENING_NAMES[kind][0]), 'Trancada (jogadores não abrem)') : null,
         kind === 'secret' ? h('div', { class: 'row' }, btn('Revelar aos jogadores', () => all({ secret: false }, 'Revelar porta secreta'), { icon: 'eye', id: 'wl-reveal' })) : null,
+        // (lote 121) o nível da fechadura (para as gazuas do Escudo): só uma anotação do mestre; trancar vem junto
+        kind === 'door' || kind === 'window' ? field('Fechadura', seg('wl-fech', walls.every(x => (x.fech || '') === (w.fech || '')) ? (w.fech || '') : null, FECH_NIV, v => all(v ? { fech: v, locked: true } : { fech: undefined }, v ? 'Nível da fechadura' : 'Sem fechadura')), 'stack') : null,
+        (kind === 'door' || kind === 'window') && w.fech ? note('Para abrir com as gazuas: no Escudo do mestre (Handouts e puzzles), crie uma Fechadura deste nível e ligue esta porta a ela em "Abre com um puzzle".') : null,
         // (lote 31) a porta que abre quando os jogadores resolvem um puzzle do Escudo do mestre
         kind === 'door' && Nuvem.mestre() && (EscudoCenas.puzzles().length || w.pz) ? field('Abre com um puzzle', inSelect('wl-pz', many && !walls.every(x => (x.pz || '') === (w.pz || '')) ? '' : (w.pz || ''),
           [['', 'Nenhum']].concat(EscudoCenas.puzzles().map(p => [p.id, p.nome])), v => all({ pz: v || undefined, pzOk: undefined }, v ? 'Ligar a porta a um puzzle' : 'Desligar a porta do puzzle'))) : null,
@@ -3750,8 +3770,8 @@ const UI = (() => {
       items.push({ label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') });
       if (gm) {
         const allHidden = props.every(t => t.hidden), allLocked = props.every(t => t.locked), mt = Tools.mestrando();
-        if (!mt) items.push({ label: 'Girar para a direita', icon: 'redo', run: () => all(x => ({ rot: ((x.rot || 0) + 90) % 360 }), 'Girar objeto') },
-          { label: 'Girar para a esquerda', icon: 'undo', run: () => all(x => ({ rot: ((x.rot || 0) + 270) % 360 }), 'Girar objeto') });
+        if (!mt) items.push({ label: 'Girar para a direita', icon: 'redo', run: () => all(x => Props.girado(x, (x.rot || 0) + 90, Store.scene()), 'Girar objeto') },
+          { label: 'Girar para a esquerda', icon: 'undo', run: () => all(x => Props.girado(x, (x.rot || 0) + 270, Store.scene()), 'Girar objeto') });
         // (lote 48) o estado e a luz do objeto
         if (props.length === 1 && Props.estados(props[0].prop)) { const l = Props.estados(props[0].prop), a = Props.estado(props[0]), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; items.push({ label: nx[1], icon: 'reset', run: () => alternarObjeto(props[0], nx[0]) }); }
         if (props.length === 1 && Misterio.ehPista(props[0])) items.push({ label: 'Revelar e entregar a pista', icon: 'eye', run: () => Misterio.revelar(props[0]) });     // (lote 53)
@@ -3843,6 +3863,7 @@ const UI = (() => {
         setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); openTab('sel', 'tk-name');
       } });
       { const f = gm ? Arena.proxima(sc) : null; if (f) items.push({ label: 'Acionar a ' + f.nome.toLowerCase() + ' da arena…', icon: 'next', run: () => Arena.acionar(f.i) }); }
+      if (gm && Rondas.guardas(sc).length) items.push({ label: 'Avançar rondas', icon: 'ronda', run: () => Rondas.avancar() });      // (lote 121)
       if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
       if (gm && Nuvem.on() && window.ClaNucleo) items.push({ label: 'Puxar os membros do clã para cá…', icon: 'users', run: () => MembrosCla.abrir({ x: p.x, y: p.y }) });      // (lote 59)
       if (Luta.podeDescanso() && Store.scene().tokens.some(t => t.char && !t.clone)) items.push({ label: 'Descanso curto do grupo…', icon: 'rest', run: () => Luta.descansoCurto() });

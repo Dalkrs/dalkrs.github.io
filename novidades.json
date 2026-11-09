@@ -2,6 +2,19 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.09-1",
+      "data": "2026-11-09",
+      "titulo": "Móveis do tamanho certo e missões de furtividade",
+      "itens": [
+        { "tipo": "consertado", "texto": "Cenas: a cama, a estante, a mesa e os outros móveis compridos ocupam agora o retângulo certo na grade. A cama de solteiro tem 1 × 2 quadrados (um token deita em cima dela); a estante e o armário ficam rentes à parede, sem vão atrás." },
+        { "tipo": "melhorou", "texto": "As cenas de antes se ajeitam sozinhas ao abrir: a cama vai para a coluna do lado da parede, a estante encosta as costas na parede, a mesa fica do tamanho que era." },
+        { "tipo": "novo", "texto": "Móveis novos: a cama de casal, o armário (abre e fecha, e dá para se esconder dentro) e a mesa de banquete. No painel do objeto, a largura e o comprimento; girar mantém o objeto na grade." },
+        { "tipo": "novo", "texto": "Gerar um lugar: o grupo Furtividade, com a mansão do nobre, a fortaleza, a guilda com o cofre, o acampamento inimigo, as casas e ruas e a torre de guarda. Saem de noite, com os guardas nas rondas e nos postos, o alvo da missão, os esconderijos, os cantos de sombra e as entradas escondidas (a porta dos fundos, a janela destrancada, a hera do muro, o bueiro).", "mestre": true },
+        { "tipo": "novo", "texto": "Rondas dos guardas: no painel de um token, o bloco Guarda dá a rota, o cone de visão e o estado (Calmo, Desconfiado, Alerta). “Avançar rondas” (no grupo Mestre, à esquerda, ou no botão direito) faz os guardas andarem e avisa quem foi visto (na sombra, “pode ter notado”; quem está Oculto não é visto). Só o mestre vê as rotas e os cones.", "mestre": true },
+        { "tipo": "novo", "texto": "Portas e janelas guardam o nível da fechadura (Fácil a Absoluto), para ligar às fechaduras com gazuas do Escudo do mestre.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.08-17",
       "data": "2026-11-08",
       "titulo": "Venenos de lâmina e números em tier",

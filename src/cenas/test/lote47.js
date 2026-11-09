@@ -199,7 +199,7 @@ const j = JSON.stringify;
 
   /* ---------- o grupo Mestre na barra da esquerda ---------- */
   await ev(() => { if (document.querySelector('.modal')) __tc.UI.closeModal(); __tc.UI.openTab('sel'); __tc.setSel([]); }); await w(200);
-  ok(j(await page.locator('#rail .mt-rail .tool').evaluateAll(l => l.map(b => b.id))) === j(['mt-rail-vez', 'mt-rail-momentos', 'mt-rail-lembretes', 'mt-rail-cura']), 'a barra da esquerda tem o grupo Mestre: a vez, os momentos, os lembretes e a cura');
+  ok(j(await page.locator('#rail .mt-rail .tool').evaluateAll(l => l.map(b => b.id))) === j(['mt-rail-vez', 'mt-rail-momentos', 'mt-rail-lembretes', 'mt-rail-cura', 'mt-rail-rondas']), 'a barra da esquerda tem o grupo Mestre: a vez, os momentos, os lembretes, a cura (e, desde o lote 121, as rondas)');
   ok(await page.locator('#rail .rail-g', { hasText: 'Mestre' }).count() === 1, '(com o nome do grupo)');
   const railOk = await ev(() => { const r = document.getElementById('rail'), b = document.getElementById('mt-rail-cura').getBoundingClientRect(); return b.bottom <= r.getBoundingClientRect().bottom + 1; });
   ok(railOk, 'os quatro botões cabem na barra');

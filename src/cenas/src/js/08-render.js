@@ -94,7 +94,7 @@ const Render = (() => {
     for (const tk of sc.tokens) {
       const d = tk.prop ? Props.P[tk.prop] : null;
       if (!d || !d.fogo || (tk.light && tk.light.on === false) || (!gm && tk.hidden)) continue;
-      const R = tk.size * sc.cell / 2, x0 = tk.x + R, y0 = tk.y + R, k = hashStr(tk.id) % 97, grande = ['fogueira', 'lareira', 'fornalha', 'braseiro', 'carvao', 'circuloInvocacao'].includes(tk.prop);
+      const [x0, y0, R] = tokC(tk, sc), k = hashStr(tk.id) % 97, grande = ['fogueira', 'lareira', 'fornalha', 'braseiro', 'carvao', 'circuloInvocacao'].includes(tk.prop);
       const n = grande ? 6 : 3, sobe = R * (grande ? 3.4 : 2.2);
       c.save();
       for (let i = 0; i < n; i++) {
@@ -779,8 +779,10 @@ const Render = (() => {
     // os objetos de cenário ficam por baixo dos tokens (o guerreiro fica em cima da mesa, não embaixo dela)
     for (const tk of sc.tokens) if (tk.prop && (gm || !tk.hidden)) drawProp(c, tk, sc, px, t);
     drawFumaca(c, sc, px, t);                              // (lote 48) a fumaça e as fagulhas, por cima dos objetos
+    if (gm) Rondas.desenhar(c, sc, px);                    // (lote 121) as rotas e os cones dos guardas (só o mestre)
     for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenBody(c, tk, sc, px);
     for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenTop(c, tk, sc, px);
+    if (gm) Rondas.selos(c, sc, px);                       // (lote 121) o "?" e o "!" dos guardas e de quem é visto
   }
   // Um objeto de cenário: o desenho dele (o oculto, para o mestre, esmaecido e com o olho riscado)
   function drawProp(c, tk, sc, px, t) {
@@ -788,7 +790,7 @@ const Render = (() => {
     if (tk.hidden) c.globalAlpha = 0.55;
     Props.draw(c, tk, sc, t);
     c.restore();
-    if (tk.hidden && isGM()) { const s = tk.size * sc.cell; badge(c, tk.x + s * 0.14, tk.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px); }
+    if (tk.hidden && isGM()) { const s = Math.min(...tokWH(tk)) * sc.cell; badge(c, tk.x + s * 0.14, tk.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px); }
   }
   /* O brilho que tremula das chamas: um clarão quente, que cresce e diminui sem ritmo certo, dentro do que a luz
      alcança (o polígono dela, que as paredes cortam). Só com a cena em penumbra ou no escuro. */
@@ -869,7 +871,8 @@ const Render = (() => {
       ctx.setLineDash([]);
       if (s.c === 'tokens') {
         const [cx, cy, half] = tokC(o, sc);
-        tokPath(ctx, o.shape, cx, cy, half + 1.5 * px);
+        if (ehRet(o)) { const [w, h] = tokWH(o), m = 1.5 * px; ctx.beginPath(); ctx.rect(o.x - m, o.y - m, w * sc.cell + 2 * m, h * sc.cell + 2 * m); }     // (lote 121) o objeto comprido
+        else tokPath(ctx, o.shape, cx, cy, half + 1.5 * px);
         ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 4.5 * px; ctx.stroke();
         ctx.strokeStyle = theme.lamp; ctx.lineWidth = 2.2 * px; ctx.stroke();
       } else if (s.c === 'shapes') {

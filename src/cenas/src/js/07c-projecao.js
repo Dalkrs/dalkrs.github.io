@@ -113,6 +113,7 @@ const Proj = (() => {
     delete o.ref;                                                     // (lote 22) o que o ponto de reforço guarda
     delete o.best; delete o.saque; delete o.bestEq;                   // (lote 29) o inimigo do Bestiário e o saque no chão (lote 33: e o equipamento dele)
     delete o.pb;                                                      // (lote 44) o painel de barras do NPC: só do mestre
+    delete o.ronda; delete o.alerta; delete o.q0;                     // (lote 121) a ronda do guarda e o alerta dele: só do mestre
     /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
        não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */
     delete o.clone;
@@ -138,7 +139,7 @@ const Proj = (() => {
     return o;
   }
   // Porta secreta: para os jogadores é uma parede comum.
-  const paredePublica = w => (w.secret ? { id: w.id, k: 'wall', x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, open: false, locked: false, secret: false } : w);
+  const paredePublica = w => (w.secret ? { id: w.id, k: 'wall', x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, open: false, locked: false, secret: false } : w.fech ? Object.assign({}, w, { fech: undefined }) : w);      // (lote 121: o nível da fechadura é do mestre)
   function turnoPublico(sc, fora, nomes) {
     const tn = sc.turn || {};
     if (!sc.perms || !sc.perms.turnos || !Array.isArray(tn.list)) return { on: false, round: 1, cur: null, list: [] };

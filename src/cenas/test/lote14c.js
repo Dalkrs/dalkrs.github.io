@@ -488,6 +488,7 @@ const PE = mundo('pe'), DT = mundo('deitado');
       // o que a cena só do lugar teria (as paredes, as luzes e os tokens), deslocado para o meio dos arredores
       const tmp = { tokens: [], walls: [], lights: [], shapes: [], effects: [], tone: sc.tone, light: sc.light, cell: c, cols: pL.W, rows: pL.H };
       u.Arredores.AD[p.lugarId].montar(tmp, JSON.parse(JSON.stringify(pL)), c, { relevo: true });
+      for (const t2 of tmp.tokens) if (t2.q0) u.Props.encaixar(t2, tmp);         // (lote 121) o comprido, encaixado como a cena faz ao ficar pronta
       const d = p.a * c, chave = w2 => [w2.k || '', Math.round(w2.x1 + d), Math.round(w2.y1 + d), Math.round(w2.x2 + d), Math.round(w2.y2 + d)].join(','), tem = new Set(sc.walls.map(w2 => [w2.k || '', Math.round(w2.x1), Math.round(w2.y1), Math.round(w2.x2), Math.round(w2.y2)].join(',')));
       out.paredes = [tmp.walls.length, tmp.walls.filter(w2 => !tem.has(chave(w2))).length];
       const tk = new Set(sc.tokens.map(t2 => t2.name + '@' + Math.round(t2.x) + ',' + Math.round(t2.y)));

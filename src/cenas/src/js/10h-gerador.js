@@ -17,10 +17,10 @@ const Gerador = (() => {
     AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
     LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO,
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
-    LugaresFora.CRIME, Arena.LUGAR];
+    LugaresFora.CRIME, Arena.LUGAR].concat(Furtividade.IDS.map(id => Furtividade.LUGARES[id]));      // (lote 121) a furtividade
   /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
   const GRUPOS = [['Povoados', ['vila', 'cidade', 'tribo', 'porto']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']],
-    ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']]];
+    ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']], ['Furtividade', Furtividade.IDS]];
   const GLIFOS = {
     vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
     tribo: 'M12 4 4 20h16L12 4zM12 4v16M9.5 20 12 13l2.5 7', porto: 'M12 4v16M8 7.5h8M12 20c-4 0-7-2.5-7.5-6M12 20c4 0 7-2.5 7.5-6M12 6a1.6 1.6 0 1 0 0-.1',
@@ -32,6 +32,14 @@ const Gerador = (() => {
     lago: 'M4 14c2-3 14-3 16 0-2 3-14 3-16 0zM8 14h1.5M13 13.5h3M6.5 10V7M8 10.5V6M17 10V7.5', praia: 'M3 17c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2 1 3 1M3 12c3-4 7-6 12-6M15 6l2 3',
     penhasco: 'M3 7h8l1 4 1 9h8M3 7v13h18M7 11v.1M9 15v.1', desfiladeiro: 'M3 5l4 2 2 13M21 5l-4 3-2 12M9 20h6M11 9l1 2-1 3 1 3',
     arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
+    // (lote 121) a furtividade: a mansão (a casa grande com o muro), a fortaleza (a torre com as ameias), a guilda (o cofre),
+    // o acampamento (a barraca e o fogo), as ruas (as casas e o lampião) e a torre de guarda (a torre e o olho)
+    mansao: 'M3 20h18M5 20v-8l7-5 7 5v8M9.5 20v-4h5v4M8 13h.1M16 13h.1M2.5 20v-3h2M21.5 20v-3h-2',
+    fortaleza: 'M5 20V9h2.5v2H10V9h4v2h2.5V9H19v11H5zM10.5 20v-4.5h3V20M3 20h18',
+    guilda: 'M4 5h16v14H4zM12 12m-3.5 0a3.5 3.5 0 1 0 7 0 3.5 3.5 0 1 0-7 0M12 8.5V12l2 1.5M7 8h.1M17 16h.1',
+    acampamento: 'M3 19 10 6l7 13H3zM10 6v13M8 19l2-5 2 5M17.5 19c0-1.5 1-2 1-3.2.8.6 2 1.8 2 3.2M16 19h6',
+    ruas: 'M3 20V11l4-3 4 3v9M13 20v-7l4-3 4 3v7M2 20h20M7 20v-3M17 20v-3M12 4v3M10.8 4h2.4',
+    torre: 'M8 20V9h8v11M7 9h10V6h-2v1.5h-2V6h-2v1.5H9V6H7zM10.5 20v-3h3v3M5 20h14M12 12.5a1.5 1 0 1 0 .1 0',
   };
   const glifo = id => { const NS = 'http://www.w3.org/2000/svg', v = document.createElementNS(NS, 'svg'); v.setAttribute('viewBox', '0 0 24 24'); v.setAttribute('width', '18'); v.setAttribute('height', '18'); v.setAttribute('aria-hidden', 'true'); v.setAttribute('class', 'ger-gl'); const pa = document.createElementNS(NS, 'path'); pa.setAttribute('d', GLIFOS[id] || GLIFOS.vila); pa.setAttribute('fill', 'none'); pa.setAttribute('stroke', 'currentColor'); pa.setAttribute('stroke-width', '1.7'); pa.setAttribute('stroke-linecap', 'round'); pa.setAttribute('stroke-linejoin', 'round'); v.append(pa); return v; };
   // os blocos da coluna da direita: o que está aberto fica lembrado (nos testes, tudo aberto)

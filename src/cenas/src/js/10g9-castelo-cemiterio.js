@@ -456,5 +456,5 @@ const LugaresFora = (() => {
     nota: 'Sai uma cena nova, com o lugar do crime marcado. Com o bloco "Mistério", o corpo (ou o vestígio) e as marcas de pista entram ocultos dos jogadores: dois cliques numa marca revelam a pista e a entregam à mesa.',
     feito: sc => `"${sc.name}" criada.` }, semPartes);
 
-  return { CASTELO, CEMITERIO, CRIME, CENARIOS, gerarCastelo, gerarCemiterio, gerarCrime, pintar, TAM_C, TAM_M, ESTADOS_C };
+  return { CASTELO, CEMITERIO, CRIME, CENARIOS, gerarCastelo, gerarCemiterio, gerarCrime, pintar, TAM_C, TAM_M, ESTADOS_C, kit: { novoPlano, construcao, dentro, pintar, palDe, res, sub } };      // (lote 121: o kit, para a furtividade)
 })();

@@ -262,6 +262,35 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
 | efeito | `apply` (`{ bar, amt, cond: { id, n, d } ou null, skip: [ids] }` ou `null`) | `null` | `normalizeScene` (`cleanApply`: valor zero ou inválido vira `''`; sem valor nem condição vira `null`) |
 | parede | `open`, `locked`, `secret` passam a ser sempre sim/não (janela e cortina usam `open`/`locked`) | `false` | `normalizeScene` |
 
+## Lote 121 — móveis compridos, rondas e furtividade
+
+- [x] Objetos compridos: `t.fw × t.fh` (de pé; 90°/270° trocam), só nos objetos de `def.fw` (`06b5-props-compridos.js`).
+      `tokWH`/`ehRet` (01-base); `tokC`, `centroTok`, `snapTok` (aceita `[w, h]`), `hitTest`, arrasto, setas, seleção, luz do
+      objeto e fumaça usam o retângulo. `Props.girado` (gira pelo meio e volta à grade), `Props.medido` (Largura e
+      Comprimento no painel), `Props.desenhar` (prévias). O desenho recebe `R` (meia largura) e `B` (meio comprimento).
+- [x] Encaixe (`Props.encaixar`): o objeto pedido num quadrado (as cenas de antes e os geradores, que ainda pedem `s`) ganha
+      as medidas pela fração que o desenho de antes ocupava (`def.legado`) e vai rente à parede — pelas costas
+      (`def.costas`) ou pelo lado do quadrado que tem parede. `Props.novo` guarda `q0 = [dx, dy, s]` (relativo ao token:
+      quem desloca o token, como os Arredores, leva junto) e o `normalizeScene` encaixa de novo com o giro e as paredes.
+- [x] Cama 1 × 2 (as de antes também), cama de casal 2 × 2, estante e armário 2 × 1 (armário abre; esconde), mesa 2 × 1 (as
+      de antes ficam 2 × 2), mesa de banquete 4 × 2, banco 2 × 1, tapete 3 × 2, balcão, cocho, tronco, mesa de tortura,
+      lareira 2 × 1 (chaminé na parede) e a mesa comprida. `def.size` dos de antes não mudou (os geradores pedem o mesmo).
+- [x] Interior: a cama e a estante ocupam só o retângulo, rentes à parede (`poe`), e saem já medidas (sem `q0`).
+- [x] Rondas (`07i-rondas.js`): `t.ronda` { pts, i, s, modo, passo, r, a, dir } e `t.alerta`; o bloco "Guarda" no painel;
+      a ferramenta `ronda` (fora do trilho) para desenhar a rota; "Avançar rondas" no grupo Mestre e no botão direito
+      (com Desfazer); cones cortados pelas paredes (`Geo.visPoly`), selos "?"/"!" e quem é visto (luz, sombra, Oculto).
+      A projeção tira `ronda`, `alerta`, `q0` dos tokens e `fech` das paredes.
+- [x] Fechadura: `w.fech` (facil … absoluto) nas portas e janelas; no painel, com a dica de ligar ao puzzle do Escudo.
+- [x] Furtividade (`10gc-furtividade.js`): mansão, fortaleza, guilda, acampamento, ruas, torre — o kit de 10g9
+      (`LugaresFora.kit`) e o `predio` (salas numa grade de rótulos: uma parede só entre duas salas, portas, janelas, porta
+      dos fundos, porta secreta). Guardas (de ronda e de posto), alvo, esconderijos e sombras (marcas ocultas), entradas
+      escondidas; sai de Noite quando a hora está em Dia. O Povoar não põe inimigos nesses lugares.
+- Teste: `test/lote121.js` (29). Ajustados de propósito: as listas de lugares (lote13, lote53, lote7g, lote7h, lote7i),
+  as categorias e os móveis (lote39, v5), o grupo Mestre (lote47), o interior (lote7d: o comprido pelo retângulo),
+  os Arredores (lote14c: encaixa o `tmp` antes de comparar).
+- Já falhavam antes deste lote (conferido na versão anterior): gerador8 (4 ouros), lote13b, lote20, lote7c, lote7g (o ouro
+  da cidade), narrow2, reduce2, stress, unit (visPoly rápido), unit5, unit6, v2b, v3.
+
 ## Lote 81 — fundos grandes (Fortaleza Cinzenta 3.0)
 
 - [x] Teto do fundo em 8192 px no lado maior (`Assets.MAX_BG`); os tokens continuam em 512.

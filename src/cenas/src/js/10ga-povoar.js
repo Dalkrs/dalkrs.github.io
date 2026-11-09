@@ -16,7 +16,7 @@ const Povoar = (() => {
   const PERIGOS = [['facil', 'Fácil'], ['medio', 'Médio'], ['dificil', 'Difícil']];
   const QUANTOS = { facil: [2, 3], medio: [4, 6], dificil: [7, 10] };
   const DE_GENTE = new Set(['vila', 'cidade', 'porto', 'tribo', 'castelo', 'cemiterio']);
-  const FORA = new Set(['vila', 'cidade', 'porto', 'tribo', 'castelo', 'cemiterio', 'encontro', 'regiao', 'ruinas']);
+  const FORA = new Set(['vila', 'cidade', 'porto', 'tribo', 'castelo', 'cemiterio', 'encontro', 'regiao', 'ruinas', 'mansao', 'fortaleza', 'guilda', 'acampamento', 'ruas', 'torre']);      // (lote 121: e os de furtividade)
   const FOGO_FICA = new Set(['fogueira', 'lareira', 'fornalha', 'braseiro', 'carvao', 'caldeirao', 'circulo', 'tripe', 'incensario']);
   /* O que vive em cada lugar: as tags do Bestiário (tipo e bioma) e os nomes de reserva. */
   const GENERICOS = {
@@ -181,7 +181,8 @@ const Povoar = (() => {
     luzes(sc, lugar);
     const ne = entradas(sc, lugar, p, r);
     if (ne) partes.push(ne === 1 ? '1 entrada para baixo' : ne + ' entradas para baixo');
-    if (o.inimigos !== false) { const k = inimigos(sc, lugar, p, perigo, r); if (k.n) partes.push(`${k.n} ${k.n === 1 ? 'inimigo' : 'inimigos'}${k.doBest ? ` (${k.doBest} do Bestiário)` : ''}`); }
+    // (lote 121) nos lugares de furtividade, os inimigos são os guardas do lugar (já com as rondas)
+    if (o.inimigos !== false && !(typeof Furtividade !== 'undefined' && Furtividade.ehFurtivo(lugar))) { const k = inimigos(sc, lugar, p, perigo, r); if (k.n) partes.push(`${k.n} ${k.n === 1 ? 'inimigo' : 'inimigos'}${k.doBest ? ` (${k.doBest} do Bestiário)` : ''}`); }
     if (o.moradores !== false) { const k = moradores(sc, lugar, p, r); if (k) partes.push(k === 1 ? '1 morador' : k + ' moradores'); }
     if (o.tesouros !== false) { const k = tesouros(sc, perigo, r); if (k) partes.push(k === 1 ? '1 baú com saque' : k + ' com saque'); }
     Persist.scene(sc.id);

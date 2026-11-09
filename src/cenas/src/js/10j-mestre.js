@@ -299,7 +299,7 @@ const Mestre = (() => {
      Quatro botões (só o mestre): a vez, os momentos, os lembretes e a cura. Cada um abre um painel pequeno ao lado da
      barra, sem trocar de aba; um clique fora ou o Esc fecha. */
   let aberto = null;
-  const GRUPO = [['vez', 'turns', 'Controle da vez'], ['momentos', 'play', 'Momentos preparados'], ['lembretes', 'clock', 'Lembretes por rodada'], ['cura', 'heart', 'Cura e energias']];
+  const GRUPO = [['vez', 'turns', 'Controle da vez'], ['momentos', 'play', 'Momentos preparados'], ['lembretes', 'clock', 'Lembretes por rodada'], ['cura', 'heart', 'Cura e energias'], ['rondas', 'ronda', 'Rondas e guardas']];      // (lote 121) as rondas
   const fecharPainel = () => { if (!aberto) return; aberto = null; UI.refresh(); };
   // um botão do painel: fecha o painel e faz
   const acao = (rot, fn, o) => K.btn(rot, () => { aberto = null; UI.refresh(); fn(); }, Object.assign({ kind: 'small' }, o || {}));
@@ -345,7 +345,7 @@ const Mestre = (() => {
       K.note(sel.length ? '' : 'A cura vale para os tokens selecionados no mapa.'),
     ];
   }
-  const PAINEIS = { vez: painelVez, momentos: painelMomentos, lembretes: painelLembretes, cura: painelCura };
+  const PAINEIS = { vez: painelVez, momentos: painelMomentos, lembretes: painelLembretes, cura: painelCura, rondas: () => Rondas.painel(acao, linha, K) };
   function grupoDaBarra() {
     if (!isGM()) return [];
     const out = [h('span', { class: 'rail-sep' }), h('span', { class: 'rail-g', text: 'Mestre', 'aria-hidden': 'true' })];

@@ -218,6 +218,7 @@ button { cursor: pointer; }
 .o-l { color: var(--fg-2); font-size: 12.5px; white-space: nowrap; }
 .o-val { min-width: 44px; font: 12px var(--mono); color: var(--fg-2); }
 .o-u { color: var(--fg-3); font-size: 12.5px; }
+.o-note { color: var(--fg-2); font-size: 12.5px; }      /* (lote 121) as medidas do objeto comprido */
 .o-warn { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--lamp-ink); font-size: 12.5px; }
 .opts .in { width: auto; }
 .opts .in.num { width: 64px; }
@@ -1630,6 +1631,7 @@ const ICONS = {
   // (lote 15) a fogueira do descanso
   rest: 'M12 3.5c2.3 2.5 3.8 4.4 3.8 6.7a3.8 3.8 0 0 1-7.6 0c0-1.4.8-2.6 1.7-3.4.1 1.2.7 1.9 1.3 2.2 0-2.1.2-3.6.8-5.5zM5 20.5l14-3.6M5 16.9l14 3.6',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3 2',
+  ronda: 'M7.5 3.5c1.6 0 2.4 1.9 2.4 4.1S8.9 12 7.5 12 5 10 5 7.6s.9-4.1 2.5-4.1zM5.6 14.5h3.8v2a1.9 1.9 0 0 1-3.8 0zM16.5 7.5c1.6 0 2.5 1.9 2.5 4.1S17.9 16 16.5 16 14 14 14 11.6s.9-4.1 2.5-4.1zM14.6 18.5h3.8v.5a1.9 1.9 0 0 1-3.8 0z',      // (lote 121) as rondas dos guardas
   area: 'M12 12m-8.5 0a8.5 8.5 0 1 0 17 0a8.5 8.5 0 1 0-17 0M8 12h8M12 8v8',
   room: 'M4 5h16v14H4zM4 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M4 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0',
   window: 'M5 4h14v16H5zM12 4v16M5 12h14',
@@ -2258,6 +2260,15 @@ function newToken(scene, x, y, extra) {
   }, extra || {});
 }
 
+/* (lote 121) Os objetos compridos (a cama, a estante, a mesa, o banco…): o objeto tem largura e comprimento próprios,
+   fw × fh, em quadrados, como ele fica "de pé" (sem giro); girado de 90 ou 270 graus, os dois trocam. O canto de cima, à
+   esquerda (x, y), é o do retângulo que ele ocupa na grade. Os outros tokens e objetos continuam quadrados (size). */
+const ehRet = t => !!(t && t.prop && t.fw > 0 && t.fh > 0);
+function tokWH(t) {
+  if (!ehRet(t)) return [t.size, t.size];
+  return ((Math.round((t.rot || 0) / 90) % 4) + 4) % 2 ? [t.fh, t.fw] : [t.fw, t.fh];
+}
+
 /* (lote 29) O saque no chão: { itens: [{ nome, qtd, tipo }], lapros, de: de quem caiu }. null se não sobrou nada.
    (lote 33) A peça de equipamento que caiu de um inimigo vai inteira: eq { bonus, def, recN (as barras pelo nome), tipo,
    efeito } — quem pega recebe o equipamento com os bônus. */
@@ -2356,6 +2367,7 @@ function normalizeScene(sc) {
   for (const w of sc.walls) {
     if (!(w.k === 'door' && w.secret) && !['wall', 'door', 'window', 'veil', 'mureta'].includes(w.k)) w.k = 'wall';
     w.open = !!w.open; w.locked = !!w.locked; w.secret = w.k === 'door' && !!w.secret;     // janela e cortina também abrem e trancam
+    if (!(['facil', 'medio', 'dificil', 'extremo', 'absoluto'].includes(w.fech) && (w.k === 'door' || w.k === 'window'))) delete w.fech;     // (lote 121) o nível da fechadura (as gazuas do Escudo)
   }
   for (const e of sc.effects) {
     // retângulo: largura e altura próprias. Nos efeitos antigos, a caixa do tamanho que eles já tinham.
@@ -2393,6 +2405,16 @@ function normalizeScene(sc) {
     // objeto de cenário: só os do catálogo, sempre quadrado; gira de 0 a 359 graus
     if (t.prop && Props.P[t.prop]) { t.rot = ((Math.round(Number(t.rot) || 0) % 360) + 360) % 360; t.shape = 'quad'; t.char = null; }
     else { delete t.prop; delete t.rot; }
+    // (lote 121) o objeto comprido: largura e comprimento (1 a 12 quadrados); o de antes (sem as medidas) é encaixado na
+    // grade, rente à parede, como devia ter ficado
+    if (t.prop && Props.P[t.prop] && Props.P[t.prop].fw) {
+      const ok = v => Number.isFinite(Number(v)) && Number(v) >= 1;
+      if (Array.isArray(t.q0) || !(ok(t.fw) && ok(t.fh))) Props.encaixar(t, sc);
+      else { t.fw = clamp(Math.round(Number(t.fw)), 1, 12); t.fh = clamp(Math.round(Number(t.fh)), 1, 12); t.size = Math.max(t.fw, t.fh); }
+    } else { delete t.fw; delete t.fh; }
+    delete t.q0;
+    // (lote 121) a ronda do guarda e o estado dele (Calmo, Desconfiado, Alerta): só do mestre (ver 07i. RONDAS)
+    if (typeof Rondas !== 'undefined') Rondas.limpar(t); else { delete t.ronda; delete t.alerta; }
     // (lote 39) as duas cores do objeto que tem cores (o brasão, o estandarte, a mesa de guerra…) e o desenho do brasão do
     // clã (a divisão, a forma e o símbolo: caminhos de SVG, só com os comandos e os números)
     const hexOk = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v), caminhoOk = v => typeof v === 'string' && v.length <= 1500 && /^[MLHVCSQTAZmlhvcsqtaz0-9.,\s-]+$/.test(v);
@@ -3326,8 +3348,8 @@ const Vision = (() => {
     const L = [], cell = sc.cell;
     for (const t of sc.tokens) {
       if (!t.light || !t.light.on || t.hidden || !(t.light.dim > 0)) continue;
-      const half = t.size * cell / 2;
-      L.push({ x: t.x + half, y: t.y + half, bright: t.light.bright * cell + half, dim: t.light.dim * cell + half, c: t.light.c, fl: !!t.light.fl, k: t.id });
+      const [lx, ly, half] = tokC(t, sc);                       // (lote 121: o objeto comprido, pelo meio dele)
+      L.push({ x: lx, y: ly, bright: t.light.bright * cell + half, dim: t.light.dim * cell + half, c: t.light.c, fl: !!t.light.fl, k: t.id });
     }
     return L;
   }
@@ -6475,16 +6497,71 @@ const Props = (() => {
   const ORDER = Object.keys(P);
 
   // Desenha o objeto do token t (já sabendo que ele é um objeto) no lugar dele, girado. tm: o tempo, em segundos.
+  // (lote 121) o objeto comprido (fw × fh): o desenho recebe a meia largura (R) e o meio comprimento (B), sem o giro
   function draw(c, t, sc, tm) {
     const def = P[t.prop];
     if (!def) return;
-    const s = t.size * sc.cell, R = s / 2, ang = rad(t.rot || 0), semente = (hashStr(t.id) % 997) + 1;
+    const ang = rad(t.rot || 0), semente = (hashStr(t.id) % 997) + 1;
+    let R = t.size * sc.cell / 2, B = R, cx = t.x + R, cy = t.y + R;
+    if (def.fw && t.fw > 0 && t.fh > 0) { const [w, h] = tokWH(t); R = t.fw * sc.cell / 2; B = t.fh * sc.cell / 2; cx = t.x + w * sc.cell / 2; cy = t.y + h * sc.cell / 2; }
     c.save();
-    c.translate(t.x + R, t.y + R); c.rotate(ang);
+    c.translate(cx, cy); c.rotate(ang);
     APAGADO = !!(def.luz && t.light && t.light.on === false);
     EST = estado(t);
-    try { def.draw(c, R, tm, semente, ang, t); } finally { APAGADO = false; EST = ''; }
+    try { def.draw(c, R, tm, semente, ang, t, B); } finally { APAGADO = false; EST = ''; }
     c.restore();
+  }
+  /* (lote 121) Desenha o objeto id num canvas qualquer (as prévias dos geradores): o canto (x, y) e as medidas em
+     quadrados (fw × fh, de pé; o giro troca), cell: o lado do quadrado em pixels. */
+  function desenhar(g, id, x, y, fw, fh, rot, cell, tm) {
+    const def = P[id];
+    if (!def) return;
+    const r4 = ((Math.round((rot || 0) / 90) % 4) + 4) % 4, w = r4 % 2 ? fh : fw, h = r4 % 2 ? fw : fh;
+    g.save(); g.translate((x + w / 2) * cell, (y + h / 2) * cell); g.rotate(rad(rot || 0));
+    try { def.draw(g, fw * cell / 2, tm || 1.3, 7, 0, null, fh * cell / 2); } catch (e) { /* desenho que precisa do token */ }
+    g.restore();
+  }
+  /* (lote 121) As medidas de um objeto comprido posto no lugar de um quadrado (o canto x, y e o lado s, em unidades da
+     cena), como ele era antes deste lote e como os geradores ainda pedem: as medidas saem do que o desenho de antes
+     ocupava (def.legado: a fração do lado), e o objeto vai rente à parede — pelas costas (def.costas: o lado de trás, de
+     pé; "n" é o de cima) ou, no outro sentido, pelo lado do quadrado que tem parede. */
+  const LADOS = ['n', 'l', 's', 'o'];
+  function encaixar(t, sc) {
+    const def = P[t.prop];
+    if (!def || !def.fw) return;
+    // q0: [dx, dy, s] — o canto do quadrado pedido, em relação ao canto do token (quem move o token leva o quadrado junto)
+    const c = sc.cell, q = Array.isArray(t.q0) && t.q0.length === 3 && t.q0.every(Number.isFinite) ? [t.x + t.q0[0], t.y + t.q0[1], t.q0[2]] : [t.x, t.y, Number(t.size) || def.size || 1];
+    delete t.q0;
+    const [x0, y0, s] = q, L = def.legado || { w: def.fw / Math.max(def.fw, def.fh), h: def.fh / Math.max(def.fw, def.fh) };
+    t.fw = clamp(Math.max(1, Math.round(L.w * s)), 1, 12); t.fh = clamp(Math.max(1, Math.round(L.h * s)), 1, 12); t.size = Math.max(t.fw, t.fh);
+    const [w, h] = tokWH(t), S = Math.max(1, Math.round(s)), sx = Math.max(0, S - w), sy = Math.max(0, S - h);
+    const r4 = ((Math.round((t.rot || 0) / 90) % 4) + 4) % 4, costas = def.costas ? LADOS[(LADOS.indexOf(def.costas) + r4) % 4] : null;
+    // há parede rente a este lado do quadrado? (a parede que corre ao longo do lado, a menos de meio quadrado dele)
+    const temParede = lado => (sc.walls || []).some(wl => {
+      if (wl.k === 'door' || wl.k === 'window') return false;
+      const vert = Math.abs(wl.x1 - wl.x2) < c * 0.2, hor = Math.abs(wl.y1 - wl.y2) < c * 0.2;
+      if (lado === 'o' || lado === 'l') { const x = lado === 'o' ? x0 : x0 + S * c; return vert && Math.abs(wl.x1 - x) <= c * 0.5 && Math.min(wl.y1, wl.y2) < y0 + S * c - c * 0.2 && Math.max(wl.y1, wl.y2) > y0 + c * 0.2; }
+      const y = lado === 'n' ? y0 : y0 + S * c; return hor && Math.abs(wl.y1 - y) <= c * 0.5 && Math.min(wl.x1, wl.x2) < x0 + S * c - c * 0.2 && Math.max(wl.x1, wl.x2) > x0 + c * 0.2;
+    });
+    const lado = (folga, a, b) => (!folga ? 0 : costas === a ? 0 : costas === b ? folga : temParede(a) ? 0 : temParede(b) ? folga : 0);
+    const ox = lado(sx, 'o', 'l'), oy = lado(sy, 'n', 's');
+    t.x = clamp(x0 + ox * c, 0, Math.max(0, sceneW(sc) - w * c)); t.y = clamp(y0 + oy * c, 0, Math.max(0, sceneH(sc) - h * c));
+  }
+  /* (lote 121) O giro de um objeto: o comprido gira em volta do meio e volta para a grade (o 1 × 2 deitado continua
+     ocupando dois quadrados inteiros). → { rot, x, y } */
+  function girado(t, rot, sc) {
+    rot = ((Math.round(rot) % 360) + 360) % 360;
+    if (!ehRet(t)) return { rot };
+    const [cx, cy] = tokC(t, sc), n = Object.assign({}, t, { rot }), [w, h] = tokWH(n);
+    const [x, y] = snapTok(sc, cx - w * sc.cell / 2, cy - h * sc.cell / 2, [w, h], false);
+    return { rot, x, y };
+  }
+  // (lote 121) novas medidas para um objeto comprido, com o meio parado (e de volta para a grade). → { fw, fh, size, x, y }
+  function medido(t, fw, fh, sc) {
+    fw = clamp(Math.round(fw) || 1, 1, 12); fh = clamp(Math.round(fh) || 1, 1, 12);
+    const [cx, cy] = tokC(t, sc), n = Object.assign({}, t, { fw, fh }), [w, h] = tokWH(n);
+    const [x, y] = snapTok(sc, cx - w * sc.cell / 2, cy - h * sc.cell / 2, [w, h], false);
+    return { fw, fh, size: Math.max(fw, fh), x, y };
   }
   /* (lote 47b) Os estados de um objeto: [id, nome] — o primeiro é o de quando nada foi escolhido. As armadilhas,
      armada (escondida dos jogadores) ou disparada; as que vieram antes deste lote contam como disparadas (já se viam). */
@@ -6513,7 +6590,8 @@ const Props = (() => {
     g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, cv.height);
     if (!def) return;
     g.save(); g.translate(w / 2, cv.height / 2);
-    def.draw(g, w * 0.46, tm || 1.3, 7, 0);
+    if (def.fw) { const u = Math.min(w, cv.height) * 0.92 / Math.max(def.fw, def.fh); def.draw(g, def.fw * u / 2, tm || 1.3, 7, 0, null, def.fh * u / 2); }      // (lote 121) o comprido, nas medidas dele
+    else def.draw(g, w * 0.46, tm || 1.3, 7, 0);
     g.restore();
   }
   const isProp = t => !!t && !!t.prop && !!P[t.prop];
@@ -6530,13 +6608,16 @@ const Props = (() => {
     if (def.armadilha) { t.est = 'armada'; t.hidden = true; }          // (lote 47b: a armadilha nova nasce armada, escondida)
     if (def.estados) t.est = def.estados[0][0];
     if (def.luz) t.light = Object.assign({ on: true, bright: def.luz.bright, dim: def.luz.dim, c: def.luz.c }, def.calma ? {} : { fl: true });          // (lote 39: o cristal brilha parado)
+    // (lote 121) o comprido pedido num quadrado (os geradores): já sai encaixado; q0 guarda o quadrado, para ser encaixado de
+    // novo quando a cena estiver pronta (com o giro e as paredes)
+    if (def.fw) { const s0 = size || def.size || 1; encaixar(t, sc); t.q0 = [x - t.x, y - t.y, s0]; }
     return t;
   }
   // (lote 47b) um objeto novo no catálogo (06b2: o mercado, o templo, a forja, o oriental, os portões)
   function registrar(id, def) { P[id] = def; if (!ORDER.includes(id)) ORDER.push(id); }
   function grupo(id, n) { if (!G.some(g => g.id === id)) G.push({ id, n }); }
   const kit = { caixa, sombra, linha, grad, radial, hsh, MAD, PED, FER, chama, brasa, pedrinha, tabua, folhas, osso, cranio, tom, apagado: () => APAGADO, est: () => EST };
-  return { P, G, ORDER, draw, thumb, isProp, temFogo, novo, coresDe, estados, estado, registrar, grupo, kit };
+  return { P, G, ORDER, draw, thumb, isProp, temFogo, novo, coresDe, estados, estado, registrar, grupo, kit, desenhar, encaixar, girado, medido };
 })();
 /* ---------------------------------------------------------------
    6b2. OBJETOS NOVOS (lote 48) — o mercado e a cidade, o templo e a cripta, a forja e a oficina, o oriental e os
@@ -7128,6 +7209,331 @@ const Props = (() => {
   void tabua; void MAD;
 })();
 /* ---------------------------------------------------------------
+   6b5. OS OBJETOS COMPRIDOS (lote 121) — a cama, a estante, a mesa, o banco, o tapete, o balcão, o cocho, o tronco
+   caído, a mesa de tortura, a lareira e a mesa comprida deixam de ser um quadrado de 2 × 2 com o desenho no meio: cada
+   um tem a largura e o comprimento dele (fw × fh, em quadrados, de pé) e o desenho enche o retângulo que ele ocupa. A
+   cama de solteiro (1 × 2) é do tamanho de um token deitado; a estante e o armário (2 × 1) ficam rentes à parede, sem
+   vão atrás. E os novos: a cama de casal (2 × 2), o armário (abre e fecha, e dá para se esconder dentro) e a mesa de
+   banquete (4 × 2). O mestre muda as medidas no painel do objeto.
+   Cada desenho recebe R (a meia largura) e B (o meio comprimento): o retângulo vai de (−R, −B) a (R, B), de pé — as
+   costas (o lado que vai na parede: a cabeceira da cama, o fundo da estante, a chaminé da lareira) ficam em cima.
+   size: o lado do quadrado de antes (o que os geradores ainda pedem); fw × fh: as medidas de quem põe à mão.
+   legado: a fração do quadrado que o desenho de antes ocupava (para encaixar os objetos das cenas de antes e os que os
+   geradores pedem num quadrado — ver Props.encaixar).
+   --------------------------------------------------------------- */
+(() => {
+  const { caixa, linha, grad, radial, hsh, MAD, PED, FER, tabua, chama, brasa } = Props.kit;
+  const est = Props.kit.est;
+  const reg = (id, def) => Props.registrar(id, def);
+  const CONT = 'rgba(14,10,6,0.85)';
+  // a sombra do retângulo no chão (a luz vem do alto, à esquerda)
+  const sombraR = (c, R, B, m) => { c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; caixa(c, -R + m * 0.1, -B + m * 0.12, R * 2 - m * 0.06, B * 2 - m * 0.08, m * 0.12); c.fill(); c.restore(); };
+  const base = (def, id) => Object.assign({}, Props.P[id] || {}, def);
+  const PANOS = [['#a8473a', '#7d2f27', '#c8705f'], ['#3f5f8a', '#2c4566', '#6d8db5'], ['#5d7a3e', '#41592a', '#86a35f'], ['#7a5a8a', '#583f66', '#a184b0']];
+
+  /* ---------- a cama (solteiro, 1 × 2) e a de casal (2 × 2) ---------- */
+  function cama(c, R, t, s, ang, tk, B) {
+    B = B || R;
+    const m = Math.min(R, B), mg = m * 0.06, x = -R + mg, y = -B + mg, w = R * 2 - mg * 2, h = B * 2 - mg * 2, pano = PANOS[s % PANOS.length];
+    sombraR(c, R, B, m);
+    caixa(c, x, y, w, h, m * 0.1); c.fillStyle = grad(c, x, 0, x + w, 0, [MAD.cla, MAD.med]); c.fill(); linha(c, m * 0.08);
+    // a cabeceira (na parede) e o lençol
+    caixa(c, x, y, w, m * 0.22, m * 0.08); c.fillStyle = grad(c, 0, y, 0, y + m * 0.22, [MAD.cla, MAD.esc]); c.fill(); linha(c, m * 0.05);
+    caixa(c, x + m * 0.1, y + m * 0.24, w - m * 0.2, h - m * 0.32, m * 0.12); c.fillStyle = '#e9e0cf'; c.fill();
+    // os travesseiros (dois na de casal)
+    const n = w / h > 0.75 ? 2 : 1, pw = (w - m * 0.3) / n - m * 0.08;
+    for (let i = 0; i < n; i++) {
+      const px = x + m * 0.15 + i * (pw + m * 0.08);
+      caixa(c, px, y + m * 0.32, pw, m * 0.62, m * 0.2); c.fillStyle = radial(c, px + pw / 2, y + m * 0.6, pw * 0.7, ['#ffffff', '#e2dccf']); c.fill(); linha(c, m * 0.04, 'rgba(90,80,60,0.6)');
+    }
+    // o cobertor, com a dobra
+    const yc = y + m * 1.08, hc = y + h - m * 0.08 - yc;
+    if (hc > m * 0.3) {
+      caixa(c, x + m * 0.1, yc, w - m * 0.2, hc, m * 0.14); c.fillStyle = grad(c, 0, yc, 0, yc + hc, [pano[0], pano[1]]); c.fill();
+      caixa(c, x + m * 0.1, yc, w - m * 0.2, m * 0.24, m * 0.1); c.fillStyle = pano[2]; c.fill();
+      c.strokeStyle = 'rgba(255,220,200,0.22)'; c.lineWidth = m * 0.04;
+      for (let k = 1, nk = Math.max(2, Math.round(hc / (m * 0.45))); k < nk; k++) { const yy = yc + m * 0.24 + (hc - m * 0.24) * k / nk; c.beginPath(); c.moveTo(x + m * 0.18, yy); c.lineTo(x + w - m * 0.18, yy); c.stroke(); }
+    }
+    caixa(c, x, y, w, h, m * 0.1); linha(c, m * 0.08);
+  }
+  reg('cama', base({ n: 'Cama', g: 'movel', size: 2, fw: 1, fh: 2, costas: 'n', legado: { w: 0.55, h: 0.93 }, esconde: 'debaixo da cama', draw: cama }, 'cama'));
+  reg('camaCasal', { n: 'Cama de casal', g: 'movel', size: 2, fw: 2, fh: 2, costas: 'n', esconde: 'debaixo da cama', draw: cama });
+
+  /* ---------- a estante (2 × 1), rente à parede ---------- */
+  reg('estante', base({
+    n: 'Estante', g: 'movel', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 0.95, h: 0.31 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R;
+      const m = Math.min(R, B), x = -R + m * 0.04, y = -B, w = R * 2 - m * 0.08, h = Math.min(B * 2, m * 1.25);
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x + m * 0.06, y + m * 0.08, w, h); c.restore();
+      caixa(c, x, y, w, h, m * 0.06); c.fillStyle = MAD.esc; c.fill(); linha(c, m * 0.08);
+      // as lombadas, viradas para a frente (para baixo); uma divisória a cada quadrado
+      const cores = ['#7d2f27', '#2f5a7d', '#3d6b3a', '#a0782a', '#5a3d7d', '#8a4a2a', '#2a5a5a', '#9a3a4a'];
+      let bx = x + m * 0.1;
+      for (let i = 0; bx < x + w - m * 0.14; i++) {
+        const bw = m * (0.16 + hsh(s, i, 1) * 0.13), bh = h * (0.55 + hsh(s, i, 2) * 0.3), lw = Math.min(bw, x + w - m * 0.1 - bx);
+        if (hsh(s, i, 7) < 0.08) { bx += bw * 1.6; continue; }                 // um vão na prateleira
+        c.fillStyle = cores[Math.floor(hsh(s, i, 3) * cores.length)];
+        c.fillRect(bx, y + h - m * 0.1 - bh, lw, bh);
+        c.fillStyle = 'rgba(255,230,160,0.35)'; c.fillRect(bx + lw * 0.25, y + h - m * 0.1 - bh * 0.7, lw * 0.5, m * 0.04);
+        bx += bw + m * 0.02;
+      }
+      c.fillStyle = MAD.esc;
+      for (let k = 1, n = Math.round(R / m); k < n; k++) c.fillRect(x + w * k / n - m * 0.04, y, m * 0.08, h);
+      caixa(c, x, y, w, h, m * 0.06); linha(c, m * 0.08);
+    },
+  }, 'estante'));
+
+  /* ---------- o armário (2 × 1): abre e fecha; dá para se esconder dentro ---------- */
+  reg('armario', {
+    n: 'Armário', g: 'movel', size: 2, fw: 2, fh: 1, costas: 'n', esconde: 'dentro do armário', estados: [['fechado', 'Fechado'], ['aberto', 'Aberto']],
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R;
+      const m = Math.min(R, B), x = -R + m * 0.04, y = -B, w = R * 2 - m * 0.08, h = Math.min(B * 2 - m * 0.06, m * 1.6);
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.32)'; c.fillRect(x + m * 0.08, y + m * 0.1, w, h); c.restore();
+      caixa(c, x, y, w, h, m * 0.06); c.fillStyle = grad(c, x, y, x, y + h, [MAD.cla, MAD.med]); c.fill(); linha(c, m * 0.08);
+      if (est() === 'aberto') {
+        // por dentro: o escuro, a vara e as roupas penduradas; as portas abertas para a frente
+        caixa(c, x + m * 0.12, y + m * 0.1, w - m * 0.24, h - m * 0.25, m * 0.04); c.fillStyle = '#1a120b'; c.fill();
+        c.strokeStyle = FER.cla; c.lineWidth = m * 0.05; c.beginPath(); c.moveTo(x + m * 0.2, y + h * 0.4); c.lineTo(x + w - m * 0.2, y + h * 0.4); c.stroke();
+        const roupas = ['#6b2f2a', '#2f4f6b', '#5a5a3a', '#4a2f5a', '#7a6a4a'];
+        for (let i = 0, n = Math.max(3, Math.round(w / (m * 0.4))); i < n; i++) { const rx = x + m * 0.3 + (w - m * 0.6) * i / Math.max(1, n - 1); c.fillStyle = roupas[(s + i) % roupas.length]; caixa(c, rx - m * 0.12, y + h * 0.4, m * 0.24, h * 0.45, m * 0.05); c.fill(); }
+        // as portas abertas: duas folhas curtas, abertas para a frente
+        for (const sx of [-1, 1]) { const L2 = Math.min(w / 2, m * 0.9); c.save(); c.translate(sx < 0 ? x : x + w, y + h); c.rotate(sx * 0.6); caixa(c, sx < 0 ? 0 : -L2, -m * 0.07, L2, m * 0.14, m * 0.03); c.fillStyle = MAD.med; c.fill(); linha(c, m * 0.04); c.restore(); }
+      } else {
+        // as duas portas, com os puxadores
+        c.strokeStyle = CONT; c.lineWidth = m * 0.05; c.beginPath(); c.moveTo(0, y + m * 0.08); c.lineTo(0, y + h - m * 0.08); c.stroke();
+        for (const sx of [-1, 1]) {
+          caixa(c, sx < 0 ? x + m * 0.14 : m * 0.1, y + m * 0.14, w / 2 - m * 0.24, h - m * 0.28, m * 0.05); c.strokeStyle = 'rgba(40,22,8,0.45)'; c.lineWidth = m * 0.04; c.stroke();
+          c.fillStyle = '#d6a64a'; c.beginPath(); c.arc(sx * m * 0.14, y + h * 0.55, m * 0.06, 0, TAU); c.fill(); linha(c, m * 0.02);
+        }
+      }
+    },
+  });
+
+  /* ---------- a mesa (2 × 1; as de antes, 2 × 2) e a mesa de banquete (4 × 2) ---------- */
+  function mesa(c, R, t, s, ang, tk, B, banquete) {
+    B = B || R;
+    const m = Math.min(R, B), mg = m * 0.12, x = -R + mg, y = -B + mg, w = R * 2 - mg * 2, h = B * 2 - mg * 2, deitada = w >= h;
+    sombraR(c, R, B, m);
+    caixa(c, x, y, w, h, m * 0.1); c.fillStyle = MAD.med; c.fill();
+    const n = Math.max(3, Math.round((deitada ? h : w) / (m * 0.32)));
+    for (let i = 0; i < n; i++) {
+      if (deitada) tabua(c, x + m * 0.04, y + m * 0.04 + i * (h - m * 0.08) / n, w - m * 0.08, (h - m * 0.08) / n - m * 0.015, s + i);
+      else tabua(c, x + m * 0.04 + i * (w - m * 0.08) / n, y + m * 0.04, (w - m * 0.08) / n - m * 0.015, h - m * 0.08, s + i);
+    }
+    if (banquete) {
+      // a toalha no meio, de ponta a ponta, e os castiçais
+      c.save(); c.globalAlpha = 0.92;
+      if (deitada) { caixa(c, x - m * 0.04, -h * 0.28, w + m * 0.08, h * 0.56, m * 0.05); } else { caixa(c, -w * 0.28, y - m * 0.04, w * 0.56, h + m * 0.08, m * 0.05); }
+      c.fillStyle = '#efe6d2'; c.fill(); c.strokeStyle = '#c9a24a'; c.lineWidth = m * 0.04; c.stroke(); c.restore();
+    }
+    caixa(c, x, y, w, h, m * 0.1); linha(c, m * 0.07);
+    // os pratos e as canecas, um lugar a cada quadrado (dos dois lados compridos)
+    const L = deitada ? w : h, k = Math.max(1, Math.round(L / (m * 2)));
+    for (let i = 0; i < k; i++) for (const lado of (deitada ? h : w) >= m * 2.6 || banquete ? [-1, 1] : [hsh(s, i, 9) < 0.5 ? -1 : 1]) {
+      if (!banquete && hsh(s, i * 2 + lado, 4) < 0.35) continue;
+      const a = -L / 2 + L * (i + 0.5) / k, b = lado * ((deitada ? h : w) / 2 - m * 0.42), px = deitada ? a : b, py = deitada ? b : a;
+      c.fillStyle = '#d9d2c2'; c.beginPath(); c.arc(px, py, m * 0.26, 0, TAU); c.fill(); linha(c, m * 0.03, 'rgba(60,50,40,0.7)');
+      c.fillStyle = hsh(s, i, lado + 3) < 0.5 ? '#c4bba8' : '#9a6a3a'; c.beginPath(); c.arc(px, py, m * 0.15, 0, TAU); c.fill();
+      if (hsh(s, i, lado + 5) < 0.6) { const qx = px + (deitada ? m * 0.36 : 0), qy = py + (deitada ? 0 : m * 0.36); c.fillStyle = MAD.esc; c.beginPath(); c.arc(qx, qy, m * 0.13, 0, TAU); c.fill(); linha(c, m * 0.03); c.fillStyle = '#6b3a12'; c.beginPath(); c.arc(qx, qy, m * 0.08, 0, TAU); c.fill(); }
+    }
+    if (banquete) for (let i = 1; i < k; i++) { const a = -L / 2 + L * i / k, px = deitada ? a : 0, py = deitada ? 0 : a; c.fillStyle = '#c9a24a'; c.beginPath(); c.arc(px, py, m * 0.12, 0, TAU); c.fill(); linha(c, m * 0.03); chama(c, px, py, m * 0.2, t, s + i, ang); }
+  }
+  reg('mesa', base({ n: 'Mesa', g: 'movel', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 1 }, draw: (c, R, t, s, a, tk, B) => mesa(c, R, t, s, a, tk, B, false) }, 'mesa'));
+  reg('mesaBanquete', { n: 'Mesa de banquete', g: 'movel', size: 4, fw: 4, fh: 2, draw: (c, R, t, s, a, tk, B) => mesa(c, R, t, s, a, tk, B, true) });
+
+  /* ---------- o banco (2 × 1; os de antes, 1 × 1) ---------- */
+  reg('banco', base({
+    n: 'Banco', g: 'movel', size: 1, fw: 2, fh: 1, legado: { w: 1, h: 1 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R;
+      const m = Math.min(R, B), d = B * 0.76;
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(-R * 0.98, -d * 0.4, R * 1.96, d * 1.05); c.restore();
+      for (const xx of [-R + m * 0.38, R - m * 0.38]) { caixa(c, xx - m * 0.09, -d * 0.63, m * 0.18, d * 1.26, m * 0.04); c.fillStyle = MAD.esc; c.fill(); }
+      if (R / m > 1.6) { caixa(c, -m * 0.09, -d * 0.63, m * 0.18, d * 1.26, m * 0.04); c.fillStyle = MAD.esc; c.fill(); }
+      tabua(c, -R, -d * 0.5, R * 2, d * 0.49, s);
+      tabua(c, -R, d * 0.01, R * 2, d * 0.49, s + 1);
+      c.strokeStyle = CONT; c.lineWidth = m * 0.045; c.beginPath(); c.moveTo(-R, -d * 0.5); c.lineTo(R, -d * 0.5); c.moveTo(-R, d * 0.5); c.lineTo(R, d * 0.5); c.stroke();
+    },
+  }, 'banco'));
+
+  /* ---------- o tapete (3 × 2; os de antes, do tamanho que eram) ---------- */
+  reg('tapete', base({
+    n: 'Tapete', g: 'movel', size: 2, fw: 3, fh: 2, legado: { w: 1, h: 1 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R;
+      const m = Math.min(R, B), w = R * 2 - m * 0.16, hh = B * 2 - m * 0.16, pal = [['#7a2430', '#c8963e', '#2a3c5c'], ['#244a5c', '#d9b25a', '#6b2f2a'], ['#5b3a1f', '#e0c27a', '#2f4f3a']][s % 3];
+      c.save(); c.globalAlpha = 0.96;
+      caixa(c, -w / 2, -hh / 2, w, hh, m * 0.04); c.fillStyle = pal[0]; c.fill();
+      c.strokeStyle = pal[1]; c.lineWidth = m * 0.07; c.strokeRect(-w / 2 + m * 0.14, -hh / 2 + m * 0.14, w - m * 0.28, hh - m * 0.28);
+      c.lineWidth = m * 0.03; c.strokeRect(-w / 2 + m * 0.26, -hh / 2 + m * 0.26, w - m * 0.52, hh - m * 0.52);
+      // o medalhão do meio e as franjas nas pontas (as do lado comprido)
+      c.fillStyle = pal[2]; c.beginPath(); c.moveTo(0, -hh * 0.3); c.lineTo(w * 0.22, 0); c.lineTo(0, hh * 0.3); c.lineTo(-w * 0.22, 0); c.closePath(); c.fill();
+      c.strokeStyle = pal[1]; c.lineWidth = m * 0.035; c.stroke();
+      c.fillStyle = pal[1]; c.beginPath(); c.arc(0, 0, m * 0.08, 0, TAU); c.fill();
+      c.strokeStyle = '#e8dcc0'; c.lineWidth = m * 0.025;
+      if (w >= hh) { for (let y = -hh / 2 + m * 0.06; y < hh / 2; y += m * 0.1) for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(sx * w / 2, y); c.lineTo(sx * (w / 2 + m * 0.07), y); c.stroke(); } }
+      else { for (let x = -w / 2 + m * 0.06; x < w / 2; x += m * 0.1) for (const sy of [-1, 1]) { c.beginPath(); c.moveTo(x, sy * hh / 2); c.lineTo(x, sy * (hh / 2 + m * 0.07)); c.stroke(); } }
+      c.restore();
+    },
+  }, 'tapete'));
+
+  /* ---------- o balcão (2 × 1; os de antes, 1 × 1, em fileira) ---------- */
+  reg('balcao', base({
+    n: 'Balcão', g: 'movel', size: 1, fw: 2, fh: 1, legado: { w: 1, h: 1 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R;
+      const m = Math.min(R, B), d = B * 0.78;
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(-R, -d * 0.8, R * 2, d * 2); c.restore();
+      c.fillStyle = MAD.esc; c.fillRect(-R, -d, R * 2, d * 2);
+      for (let i = 0; i < 4; i++) tabua(c, -R, -d + m * 0.04 + i * d * 0.37, R * 2, d * 0.35, s + i, { esc: MAD.esc, med: '#8a5a2e', cla: '#b07a44', luz: MAD.luz });
+      c.fillStyle = grad(c, 0, d * 0.54, 0, d, ['#5e3a1c', '#2e1a0b']); c.fillRect(-R, d * 0.54, R * 2, d * 0.46);
+      c.fillStyle = 'rgba(255,225,170,0.18)'; c.fillRect(-R, -d, R * 2, m * 0.05);
+      c.strokeStyle = CONT; c.lineWidth = m * 0.05; c.beginPath(); c.moveTo(-R, -d); c.lineTo(R, -d); c.moveTo(-R, d); c.lineTo(R, d); c.stroke();
+      // as canecas em cima
+      for (let i = 0, n = Math.max(1, Math.round(R / m)); i < n; i++) {
+        if (hsh(s, i, 3) < 0.45) continue;
+        const x = -R + (R * 2) * (i + 0.3 + hsh(s, i, 1) * 0.4) / n;
+        c.fillStyle = '#d9d2c2'; c.beginPath(); c.arc(x, -d * 0.25, m * 0.16, 0, TAU); c.fill(); linha(c, m * 0.03, 'rgba(60,50,40,0.7)');
+        c.fillStyle = '#6b3a12'; c.beginPath(); c.arc(x, -d * 0.25, m * 0.09, 0, TAU); c.fill();
+      }
+    },
+  }, 'balcao'));
+
+  /* ---------- o cocho, o tronco caído e a mesa de tortura ---------- */
+  reg('cocho', base({
+    n: 'Cocho', g: 'movel', size: 2, fw: 2, fh: 1, legado: { w: 0.94, h: 0.36 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R;
+      const m = Math.min(R, B), w = R * 2 - m * 0.16, h = B * 2 * 0.8;
+      sombraR(c, R, B * 0.85, m);
+      caixa(c, -w / 2, -h / 2, w, h, m * 0.16); c.fillStyle = MAD.med; c.fill(); linha(c, m * 0.08);
+      const agua = s % 2 === 0;
+      caixa(c, -w / 2 + m * 0.18, -h / 2 + m * 0.18, w - m * 0.36, h - m * 0.36, m * 0.1);
+      c.fillStyle = agua ? grad(c, 0, -h / 2, 0, h / 2, ['#5d93b8', '#3a6a8c']) : grad(c, 0, -h / 2, 0, h / 2, ['#d8b65a', '#a8862f']); c.fill();
+      if (agua) { c.strokeStyle = 'rgba(230,245,255,0.45)'; c.lineWidth = m * 0.05; c.beginPath(); c.moveTo(-w * 0.25, -m * 0.08); c.lineTo(-w * 0.1, -m * 0.08); c.moveTo(w * 0.1, m * 0.1); c.lineTo(w * 0.28, m * 0.1); c.stroke(); }
+    },
+  }, 'cocho'));
+  reg('tronco', base({
+    n: 'Tronco caído', g: 'natureza', size: 2, fw: 2, fh: 1, legado: { w: 0.9, h: 0.25 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R;
+      const deitado = R >= B, L = (deitado ? R : B) * 2 * 0.96, e = Math.min(R, B) * 2 * 0.62;
+      c.save(); if (!deitado) c.rotate(Math.PI / 2);
+      const m = e / 1.24, w = L, h = e, x = -w / 2, y = -h / 2;
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(m * 0.06, m * 0.14, w / 2, h / 2, 0, 0, TAU); c.fill(); c.restore();
+      caixa(c, x, y, w, h, h * 0.5); c.fillStyle = grad(c, 0, y, 0, y + h, ['#7a5230', '#5a3a1e', '#3d2712']); c.fill();
+      c.save(); caixa(c, x, y, w, h, h * 0.5); c.clip();
+      c.strokeStyle = 'rgba(25,14,5,0.55)'; c.lineWidth = m * 0.05;
+      for (let i = 0, n = Math.round(w / (m * 0.4)); i < n; i++) { const xx = x + w * (0.05 + i / n); c.beginPath(); c.moveTo(xx, y); c.bezierCurveTo(xx + m * 0.1, y + h * 0.3, xx - m * 0.1, y + h * 0.7, xx + m * 0.03, y + h); c.stroke(); }
+      c.restore();
+      caixa(c, x, y, w, h, h * 0.5); linha(c, m * 0.06);
+      c.fillStyle = '#d9b07a'; c.beginPath(); c.ellipse(x + w - h * 0.3, 0, h * 0.28, h * 0.48, 0, 0, TAU); c.fill(); linha(c, m * 0.04);
+      c.strokeStyle = 'rgba(120,80,40,0.7)'; c.lineWidth = m * 0.03;
+      for (const k of [0.33, 0.66]) { c.beginPath(); c.ellipse(x + w - h * 0.3, 0, h * 0.28 * k, h * 0.48 * k, 0, 0, TAU); c.stroke(); }
+      c.fillStyle = 'rgba(110,160,80,0.6)'; c.beginPath(); c.ellipse(x + w * 0.3, y + h * 0.3, m * 0.4, m * 0.14, 0, 0, TAU); c.fill();
+      c.restore();
+    },
+  }, 'tronco'));
+  const tortura0 = Props.P.mesaTortura && Props.P.mesaTortura.draw;
+  if (tortura0) reg('mesaTortura', base({
+    fw: 1, fh: 2, legado: { w: 0.475, h: 0.85 },
+    // o desenho de antes (pensado para 0,95 × 1,7 de um quadrado de lado 2R), esticado para o retângulo
+    draw(c, R, t, s, ang, tk, B) { B = B || R; c.save(); c.scale((R * 2 * 0.9) / (0.95 * B), (B * 2 * 0.9) / (1.7 * B)); tortura0(c, B, t, s, ang, tk); c.restore(); },
+  }, 'mesaTortura'));
+
+  /* ---------- a lareira (2 × 1), a chaminé na parede ---------- */
+  reg('lareira', base({
+    fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R;
+      const m = Math.min(R, B), x = -R + m * 0.04, w = R * 2 - m * 0.08, y = -B;
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x + m * 0.08, y + m * 0.1, w, B * 1.7); c.restore();
+      // o corpo de pedra (encostado na parede, em cima) e a boca do fogo, virada para baixo
+      caixa(c, x, y, w, B * 1.45, m * 0.08); c.fillStyle = grad(c, 0, y, 0, y + B * 1.45, [PED.cla, PED.med]); c.fill(); linha(c, m * 0.07);
+      for (let j = 0; j < 3; j++) for (let i = 0, n = Math.round(w / (m * 0.42)); i < n; i++) { c.fillStyle = `rgba(30,30,36,${0.12 + hsh(s, i, j) * 0.18})`; c.fillRect(x + m * 0.05 + i * (w / n) + (j % 2) * m * 0.18, y + m * 0.06 + j * m * 0.3, w / n - m * 0.06, m * 0.24); }
+      const bw = Math.min(w * 0.62, m * 2.4), by = y + B * 0.5;
+      caixa(c, -bw / 2, by, bw, B * 0.95, m * 0.1); c.fillStyle = PED.esc; c.fill(); linha(c, m * 0.06);
+      c.fillStyle = '#160b05'; caixa(c, -bw / 2 + m * 0.14, by + m * 0.1, bw - m * 0.28, B * 0.95 - m * 0.2, m * 0.08); c.fill();
+      for (let i = 0; i < 10; i++) brasa(c, -bw * 0.36 + hsh(s, i, 2) * bw * 0.72, by + B * 0.35 + hsh(s, i, 3) * B * 0.4, m * (0.06 + hsh(s, i, 4) * 0.05), t, i);
+      chama(c, -bw * 0.12, by + B * 0.8, m * 0.5, t, s + 1, ang);
+      chama(c, bw * 0.13, by + B * 0.78, m * 0.56, t, s + 2, ang);
+      // a pedra da frente (o borralho)
+      caixa(c, -bw / 2 - m * 0.16, B - m * 0.26, bw + m * 0.32, m * 0.22, m * 0.06); c.fillStyle = PED.med; c.fill(); linha(c, m * 0.05);
+    },
+  }, 'lareira'));
+
+  /* ---------- (lote 121) a furtividade: a hera do muro, o bueiro e as marcas do mestre ---------- */
+  Props.grupo('furtiv', 'Furtividade');
+  // a hera que sobe o muro (as costas na parede, em cima): dá para escalar
+  reg('hera', {
+    n: 'Hera (dá para escalar)', g: 'furtiv', size: 1,
+    draw(c, R, t, s) {
+      c.strokeStyle = '#2f4a22'; c.lineWidth = R * 0.08; c.lineCap = 'round';
+      for (let k = 0; k < 4; k++) {
+        const x0 = -R * 0.8 + k * R * 0.52;
+        c.beginPath(); c.moveTo(x0, -R); for (let i = 1; i <= 5; i++) c.lineTo(x0 + Math.sin(i * 1.7 + s + k) * R * 0.18, -R + i * R * 0.3 * (0.6 + hsh(s, k, 1) * 0.5)); c.stroke();
+      }
+      for (let i = 0; i < 26; i++) {
+        const x = (hsh(s, i, 2) - 0.5) * R * 1.8, y = -R + hsh(s, i, 3) * hsh(s, i, 4) * R * 1.7, r = R * (0.1 + hsh(s, i, 5) * 0.08);
+        c.fillStyle = ['#3f6b2a', '#4f7f32', '#35592a', '#5d8c3a'][i % 4];
+        c.beginPath(); c.ellipse(x, y, r, r * 0.7, hsh(s, i, 6) * 3, 0, TAU); c.fill();
+      }
+    },
+  });
+  // a grade do bueiro (o esgoto embaixo)
+  reg('bueiro', {
+    n: 'Bueiro', g: 'furtiv', size: 1,
+    draw(c, R, t, s) {
+      c.fillStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); c.arc(R * 0.05, R * 0.08, R * 0.8, 0, TAU); c.fill();
+      c.fillStyle = grad(c, -R, -R, R, R, [FER.cla, FER.esc]); c.beginPath(); c.arc(0, 0, R * 0.78, 0, TAU); c.fill(); linha(c, R * 0.06);
+      c.fillStyle = '#0c0d10'; c.beginPath(); c.arc(0, 0, R * 0.62, 0, TAU); c.fill();
+      c.save(); c.beginPath(); c.arc(0, 0, R * 0.62, 0, TAU); c.clip();
+      c.strokeStyle = FER.med; c.lineWidth = R * 0.11;
+      for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(i * R * 0.19, -R); c.lineTo(i * R * 0.19, R); c.stroke(); }
+      c.restore();
+    },
+  });
+  // as marcas do mestre (nascem ocultas): o esconderijo (ou o canto de sombra) e o alvo da missão
+  reg('esconderijo', {
+    n: 'Esconderijo', g: 'furtiv', size: 1, marca: true,
+    draw(c, R) {
+      c.fillStyle = 'rgba(20,24,36,0.82)'; c.beginPath(); c.arc(0, 0, R * 0.8, 0, TAU); c.fill();
+      c.setLineDash([R * 0.18, R * 0.12]); c.strokeStyle = '#9fb3d9'; c.lineWidth = R * 0.08; c.stroke(); c.setLineDash([]);
+      c.strokeStyle = '#d8e2f5'; c.lineWidth = R * 0.08; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(-R * 0.45, 0); c.quadraticCurveTo(0, -R * 0.42, R * 0.45, 0); c.quadraticCurveTo(0, R * 0.42, -R * 0.45, 0); c.stroke();
+      c.beginPath(); c.arc(0, 0, R * 0.14, 0, TAU); c.fillStyle = '#d8e2f5'; c.fill();
+      c.strokeStyle = '#f0786e'; c.beginPath(); c.moveTo(-R * 0.45, -R * 0.38); c.lineTo(R * 0.45, R * 0.38); c.stroke();
+    },
+  });
+  reg('alvoMissao', {
+    n: 'Alvo da missão', g: 'furtiv', size: 1, marca: true,
+    draw(c, R) {
+      for (const [r, cor] of [[0.82, '#b8322a'], [0.6, '#f3ead2'], [0.38, '#b8322a'], [0.16, '#f3ead2']]) { c.fillStyle = cor; c.beginPath(); c.arc(0, 0, R * r, 0, TAU); c.fill(); }
+      c.strokeStyle = 'rgba(20,10,6,0.85)'; c.lineWidth = R * 0.06; c.beginPath(); c.arc(0, 0, R * 0.82, 0, TAU); c.stroke();
+    },
+  });
+
+  // onde mais dá para se esconder (o painel do objeto diz)
+  for (const [id, onde] of [['arbusto', 'na moita'], ['barril', 'atrás do barril'], ['caixote', 'atrás dos caixotes'], ['carroca', 'debaixo da carroça'], ['feno', 'no feno'], ['cortina', 'atrás da cortina'], ['barraca', 'dentro da barraca'], ['biombo', 'atrás do biombo'], ['estatua', 'atrás da estátua']]) if (Props.P[id]) Props.P[id].esconde = onde;
+
+  /* ---------- a mesa comprida da festa (com os bancos dos dois lados) ---------- */
+  if (Props.P.mesaLonga) reg('mesaLonga', base({
+    fw: 4, fh: 2, legado: { w: 0.95, h: 0.6 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R;
+      const deitada = R >= B, L = deitada ? R : B, E = deitada ? B : R, m = Math.min(R, B);
+      c.save(); if (!deitada) c.rotate(Math.PI / 2);
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(-L * 0.96, -E * 0.8, L * 1.96, E * 1.7); c.restore();
+      for (const y of [-E * 0.78, E * 0.78]) { caixa(c, -L * 0.94, y - E * 0.13, L * 1.88, E * 0.26, m * 0.06); c.fillStyle = MAD.esc; c.fill(); linha(c, m * 0.03); }
+      caixa(c, -L * 0.97, -E * 0.5, L * 1.94, E, m * 0.08); c.fillStyle = grad(c, 0, -E * 0.5, 0, E * 0.5, [MAD.luz, MAD.cla, MAD.med]); c.fill(); linha(c, m * 0.05);
+      for (let i = 0, n = Math.max(4, Math.round(L / (m * 0.32))); i < n; i++) { const x = -L * 0.85 + i * (L * 1.7) / (n - 1), y = (i % 2 ? 1 : -1) * E * 0.22; c.fillStyle = i % 3 === 0 ? '#c9a24a' : '#e8e0cc'; c.beginPath(); c.arc(x, y, m * 0.13, 0, TAU); c.fill(); linha(c, m * 0.025); }
+      c.restore();
+    },
+  }, 'mesaLonga'));
+})();
+/* ---------------------------------------------------------------
    6c. AS ZONAS DAS RAÇAS (lote 19)
    O chão e as áreas que as árvores de raça criam (o Chão Rachado do Orc Natuphas, a Terra Morta do Magi'atach, o Enxame
    de Varejeiras do Necrosado…), os objetos com pontos de vida (o Totem do Magi'Ritu, a Parte Solta da Mãzier'na) e a
@@ -7687,7 +8093,7 @@ const App = {
 const isGM = () => App.viewer === 'gm';
 const sceneW = sc => sc.cols * sc.cell;
 const sceneH = sc => sc.rows * sc.cell;
-const tokC = (t, sc) => { const s = t.size * sc.cell; return [t.x + s / 2, t.y + s / 2, s / 2]; };
+const tokC = (t, sc) => { const [w, h] = tokWH(t), c = sc.cell; return [t.x + w * c / 2, t.y + h * c / 2, Math.min(w, h) * c / 2]; };     // (lote 121: o objeto comprido, pelo meio do retângulo)
 const ownsTok = t => !isGM() && !!t && !!t.owner && (t.owner === App.viewer || t.owner === '*');
 const playerById = id => Store.S.players.find(p => p.id === id);
 const viewerColor = () => (isGM() ? '#e6ab4f' : (playerById(App.viewer) || {}).color || '#4fb8e0');
@@ -7995,7 +8401,7 @@ function antesDoToken(inv, id, chaves) {
    vai para o centro do outro círculo, no mesmo passo (o mesmo Desfazer). Quem acerta é o programa do mestre, como nas
    condições: o pedido de um jogador atravessa num passo logo depois. E o token que entra nas Runas-armadilha
    escondidas avisa o mestre (nada muda: Store.emit('runas')). */
-const centroTok = (t, sc, x, y) => { const h = t.size * sc.cell / 2; return [(x == null ? t.x : x) + h, (y == null ? t.y : y) + h]; };
+const centroTok = (t, sc, x, y) => { const [w, h] = tokWH(t); return [(x == null ? t.x : x) + w * sc.cell / 2, (y == null ? t.y : y) + h * sc.cell / 2]; };
 const portaisDe = sc => (sc.effects || []).filter(e => e.fx === 'portal' && !e.token && Number.isFinite(e.x2) && Number.isFinite(e.y2));
 // → { x, y, portal } (para onde o token vai) ou null. antes: { x, y } de antes do passo (só o que mudou)
 function atravessar(t, antes, sc) {
@@ -8286,10 +8692,12 @@ function pruneSel() {
 }
 
 /* ---- Grade ---- */
+// (lote 121) size: o lado (o token quadrado) ou [largura, altura] (o objeto comprido, como ele está girado)
 function snapTok(sc, x, y, size, free) {
-  const st = size < 1 ? sc.cell / 2 : sc.cell;
+  const [sw, sh] = Array.isArray(size) ? size : [size, size];
+  const st = Math.min(sw, sh) < 1 ? sc.cell / 2 : sc.cell;
   const nx = free ? x : snapTo(x, st), ny = free ? y : snapTo(y, st);
-  return [clamp(nx, 0, Math.max(0, sceneW(sc) - size * sc.cell)), clamp(ny, 0, Math.max(0, sceneH(sc) - size * sc.cell))];
+  return [clamp(nx, 0, Math.max(0, sceneW(sc) - sw * sc.cell)), clamp(ny, 0, Math.max(0, sceneH(sc) - sh * sc.cell))];
 }
 function snapPt(sc, x, y, free, step) {
   if (free) return [x, y];
@@ -8826,7 +9234,7 @@ const Act = {
         else if (it.c === 'walls') { o.x1 += dx; o.y1 += dy; o.x2 += dx; o.y2 += dy; }
         else { o.x += dx; o.y += dy; }
         if (it.c === 'tokens') {
-          [o.x, o.y] = snapTok(sc, o.x, o.y, o.size, false);
+          [o.x, o.y] = snapTok(sc, o.x, o.y, tokWH(o), false);
           for (const a of o.auras) a.id = uid('au');
         }
         if (it.c === 'shapes') o.by = authorId();
@@ -10476,6 +10884,7 @@ const Proj = (() => {
     delete o.ref;                                                     // (lote 22) o que o ponto de reforço guarda
     delete o.best; delete o.saque; delete o.bestEq;                   // (lote 29) o inimigo do Bestiário e o saque no chão (lote 33: e o equipamento dele)
     delete o.pb;                                                      // (lote 44) o painel de barras do NPC: só do mestre
+    delete o.ronda; delete o.alerta; delete o.q0;                     // (lote 121) a ronda do guarda e o alerta dele: só do mestre
     /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
        não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */
     delete o.clone;
@@ -10501,7 +10910,7 @@ const Proj = (() => {
     return o;
   }
   // Porta secreta: para os jogadores é uma parede comum.
-  const paredePublica = w => (w.secret ? { id: w.id, k: 'wall', x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, open: false, locked: false, secret: false } : w);
+  const paredePublica = w => (w.secret ? { id: w.id, k: 'wall', x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, open: false, locked: false, secret: false } : w.fech ? Object.assign({}, w, { fech: undefined }) : w);      // (lote 121: o nível da fechadura é do mestre)
   function turnoPublico(sc, fora, nomes) {
     const tn = sc.turn || {};
     if (!sc.perms || !sc.perms.turnos || !Array.isArray(tn.list)) return { on: false, round: 1, cur: null, list: [] };
@@ -13129,6 +13538,306 @@ const Andares = (() => {
   return { nivelDe, passagens, usadaPor, pertoDaPassagem, chegada, mover, voltar, pisou, vertical, ehPassagem, temParede };
 })();
 /* ---------------------------------------------------------------
+   7i. AS RONDAS DOS GUARDAS (lote 121) — para as missões de furtividade.
+   Um token vira guarda no painel dele (bloco "Guarda") ou já nasce guarda nos lugares de furtividade do "Gerar um
+   lugar…". O guarda tem (em t.ronda, só do mestre — os jogadores nunca recebem):
+     · a rota: os pontos por onde ele passa (o canto do token, em quadrados), percorridos de ida e volta ou em círculo;
+       sem rota (um ponto só, ou nenhum), é um posto fixo, olhando para um lado;
+     · os passos: quantos quadrados ele anda cada vez que o mestre aperta "Avançar rondas";
+     · o cone de visão: o alcance (em quadrados), a abertura (em graus) e para onde ele olha (o rumo do último passo);
+   e o estado (t.alerta): Calmo, Desconfiado ou Alerta. Desconfiado, ele enxerga mais longe e mais aberto; em Alerta, mais
+   ainda, e larga a rota (o mestre move à mão).
+   Só o mestre vê as rotas (tracejadas), os cones (na cor do estado, cortados pelas paredes) e o "!" de quem foi visto.
+   Visto: dentro do cone, sem parede no meio, e na luz (de dia, ou ao alcance de uma luz); na sombra, só bem de perto —
+   mais longe, "pode ter notado". Quem está Oculto (a condição) não é visto.
+   Nada anda sozinho: o mestre aperta "Avançar rondas" (no grupo Mestre do trilho, ou no menu do botão direito), com
+   Desfazer.
+   --------------------------------------------------------------- */
+const Rondas = (() => {
+  const ESTADOS = [['calmo', 'Calmo'], ['desconfiado', 'Desconfiado'], ['alerta', 'Alerta']];
+  const MODOS = [['ida', 'Vai e volta'], ['volta', 'Em círculo']];
+  const COR = { calmo: [110, 200, 120], desconfiado: [240, 196, 72], alerta: [240, 92, 78] };
+  const MAIS = { calmo: [1, 0], desconfiado: [1.25, 20], alerta: [1.5, 40] };       // o alcance × e a abertura + (graus)
+  const PADRAO = { r: 6, a: 90, passo: 3, modo: 'ida' };
+  const MAX_PTS = 40;
+  const num = (v, a, b, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? clamp(n, a, b) : d; };
+
+  /* ---------------- os dados ---------------- */
+  function limpar(t) {
+    const r = t && t.ronda;
+    if (!t || t.prop || !r || typeof r !== 'object' || Array.isArray(r)) { if (t) { delete t.ronda; delete t.alerta; } return; }
+    const pts = Array.isArray(r.pts) ? r.pts.filter(p => Array.isArray(p) && p.length === 2 && p.every(v => Number.isFinite(Number(v)))).slice(0, MAX_PTS).map(p => [num(p[0], 0, 999, 0), num(p[1], 0, 999, 0)]) : [];
+    t.ronda = { pts, i: num(r.i, 0, Math.max(0, pts.length - 1), 0), s: r.s === -1 ? -1 : 1, modo: r.modo === 'volta' ? 'volta' : 'ida', passo: num(r.passo, 1, 12, PADRAO.passo), r: num(r.r, 1, 40, PADRAO.r), a: num(r.a, 20, 360, PADRAO.a), dir: ((num(r.dir, -720, 720, 90) % 360) + 360) % 360 };
+    if (ESTADOS.some(e => e[0] === t.alerta)) { if (t.alerta === 'calmo') delete t.alerta; } else delete t.alerta;
+  }
+  const ehGuarda = t => !!(t && !t.prop && t.ronda && typeof t.ronda === 'object');
+  const estadoDe = t => (ESTADOS.some(e => e[0] === t.alerta) ? t.alerta : 'calmo');
+  const guardas = sc => (sc ? sc.tokens.filter(ehGuarda) : []);
+  const novaRonda = o => Object.assign({ pts: [], i: 0, s: 1, modo: PADRAO.modo, passo: PADRAO.passo, r: PADRAO.r, a: PADRAO.a, dir: 90 }, o || {});
+
+  /* ---------------- o cone ---------------- */
+  // → { cx, cy, R (em unidades da cena), dir, meia (radianos), est }
+  function cone(t, sc) {
+    const est = estadoDe(t), [k, mais] = MAIS[est], [cx, cy, half] = tokC(t, sc), r = t.ronda;
+    return { cx, cy, R: r.r * k * sc.cell + half, dir: rad(r.dir), meia: rad(Math.min(360, r.a + mais)) / 2, est };
+  }
+  // o que o guarda enxerga (o polígono das paredes), guardado até as paredes ou ele mudarem
+  const cache = new Map();
+  function poligono(t, sc, g) {
+    g = g || cone(t, sc);
+    const chave = [sc.id, Math.round(g.cx), Math.round(g.cy), Math.round(g.R), Walls.of(sc).stamp].join(':');
+    const c = cache.get(t.id);
+    if (c && c.k === chave) return c.p;
+    const p = Geo.visPoly(g.cx + 0.31, g.cy + 0.17, Walls.sightFor(sc, t), g.cx - g.R, g.cy - g.R, g.cx + g.R, g.cy + g.R);
+    cache.set(t.id, { k: chave, p });
+    if (cache.size > 300) cache.clear();
+    return p;
+  }
+  const angDif = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return Math.abs(d); };
+  function noCone(g, x, y, folga) {
+    const d = Math.hypot(x - g.cx, y - g.cy);
+    if (d > g.R + (folga || 0)) return false;
+    if (g.meia >= Math.PI - 1e-6 || d < 1e-6) return true;
+    return angDif(Math.atan2(y - g.cy, x - g.cx), g.dir) <= g.meia + (d > 0 ? Math.atan2(folga || 0, d) : 0);
+  }
+  // a linha reta de a até b passa por algo que barra a vista?
+  function barra(segs, ax, ay, bx, by) {
+    for (let i = 0; i + 3 < segs.length; i += 4) if (Geo.segHit(ax, ay, bx, by, segs[i], segs[i + 1], segs[i + 2], segs[i + 3])) return true;
+    return false;
+  }
+  // (x, y) está na luz? De dia, sempre; senão, ao alcance de uma luz acesa, sem parede no meio
+  function naLuz(sc, x, y) {
+    if (sc.light === 'claro') return true;
+    const segs = Walls.of(sc).sightAll, c = sc.cell;
+    const fontes = (sc.lights || []).filter(l => l.on !== false).map(l => [l.x, l.y, l.dim * c]);
+    for (const t of sc.tokens) if (t.light && t.light.on && !t.hidden && t.light.dim > 0) { const [lx, ly, h] = tokC(t, sc); fontes.push([lx, ly, t.light.dim * c + h]); }
+    return fontes.some(([lx, ly, r]) => Math.hypot(x - lx, y - ly) <= r && !barra(segs, lx, ly, x, y));
+  }
+  /* Quem cada guarda vê agora: [{ g (o guarda), t (o visto), nivel: 'visto' | 'sombra' }]. Os vistos: os tokens dos
+     jogadores (com dono), à mostra, que não estão Ocultos. */
+  function quemVe(sc) {
+    const out = [], alvos = sc.tokens.filter(t => !t.prop && t.owner && !t.hidden && !ehGuarda(t) && !(t.conds || []).includes('oculto'));
+    if (!alvos.length) return out;
+    for (const gd of guardas(sc)) {
+      const g = cone(gd, sc), segs = Walls.sightFor(sc, gd);
+      for (const t of alvos) {
+        const [x, y, half] = tokC(t, sc);
+        if (!noCone(g, x, y, half * 0.6) || barra(segs, g.cx, g.cy, x, y)) continue;
+        const perto = Math.hypot(x - g.cx, y - g.cy) <= g.R * 0.4;
+        out.push({ g: gd, t, nivel: perto || naLuz(sc, x, y) ? 'visto' : 'sombra' });
+      }
+    }
+    return out;
+  }
+
+  /* ---------------- avançar ---------------- */
+  // o caminho do guarda nesta vez: anda `passo` quadrados (um de cada vez, também na diagonal) rumo ao ponto da vez
+  function andar(t, sc) {
+    const r = t.ronda, n = r.pts.length, c = sc.cell;
+    if (n < 2 || estadoDe(t) === 'alerta') return null;
+    let x = Math.round(t.x / c), y = Math.round(t.y / c), i = clamp(r.i, 0, n - 1), s = r.s, dir = r.dir, andou = 0;
+    const proximo = () => {
+      if (r.modo === 'volta') { i = (i + 1) % n; return; }
+      if (i + s < 0 || i + s >= n) s = -s;
+      i += s;
+    };
+    for (let volta = 0; andou < r.passo && volta < r.passo + n * 2 + 4; volta++) {
+      const [tx, ty] = r.pts[i];
+      if (x === tx && y === ty) { proximo(); continue; }
+      const dx = Math.sign(tx - x), dy = Math.sign(ty - y);
+      x += dx; y += dy; andou++;
+      dir = ((Math.round(deg(Math.atan2(dy, dx))) % 360) + 360) % 360;
+      if (x === tx && y === ty) proximo();
+    }
+    if (!andou) return null;
+    const [nx, ny] = snapTok(sc, x * c, y * c, t.size, false);
+    return { x: nx, y: ny, ronda: Object.assign({}, r, { i, s, dir }) };
+  }
+  function avancar() {
+    const sc = Store.scene();
+    if (!sc || !isGM()) return;
+    const gs = guardas(sc);
+    if (!gs.length) { UI.toast('Nenhum guarda nesta cena. No painel de um token, bloco "Guarda", ele ganha a ronda e o cone de visão.'); return; }
+    const mud = gs.map(t => [t, andar(t, sc)]).filter(([, m]) => m);
+    if (mud.length) Store.tx('Avançar rondas', () => { for (const [t, m] of mud) Store.upd('tokens', t.id, m); });
+    const parados = gs.filter(t => estadoDe(t) === 'alerta').length;
+    const vistos = quemVe(Store.scene()), txt = resumoVistos(vistos);
+    const base = mud.length ? `${mud.length === 1 ? '1 guarda andou' : mud.length + ' guardas andaram'}` : 'Nenhum guarda andou';
+    UI.toast(base + (parados ? ` (${parados} em alerta, ${parados === 1 ? 'parado' : 'parados'})` : '') + '. ' + (txt || 'Ninguém foi visto.'), Object.assign({ long: !!txt, key: 'rondas' }, mud.length ? { action: 'Desfazer', run: Tools.undo } : {}));
+    if (vistos.some(v => v.nivel === 'visto') && typeof Som !== 'undefined' && Som.aviso) try { Som.aviso('alerta'); } catch (e) { /* sem som */ }
+  }
+  function resumoVistos(vistos) {
+    if (!vistos.length) return '';
+    const por = new Map();
+    for (const v of vistos) { const k = v.t.id, o = por.get(k) || { t: v.t, visto: [], sombra: [] }; o[v.nivel].push(v.g.name); por.set(k, o); }
+    return [...por.values()].map(o => o.visto.length ? `${o.visto[0]} vê ${o.t.name}!` : `${o.sombra[0]} pode ter notado ${o.t.name} (na sombra).`).join(' ');
+  }
+  function mudarEstado(ts, est) {
+    if (!ESTADOS.some(e => e[0] === est)) return;
+    Store.tx('Estado do guarda', () => ts.filter(ehGuarda).forEach(t => Store.upd('tokens', t.id, { alerta: est === 'calmo' ? undefined : est })));
+  }
+
+  /* ---------------- o desenho (só o mestre) ---------------- */
+  const mostrar = () => isGM() && App.opt.rondasVer !== false;
+  const rgba = (est, a) => `rgba(${COR[est].join(',')},${a})`;
+  function desenhar(c, sc, px) {
+    if (!mostrar()) return;
+    const gs = guardas(sc);
+    if (!gs.length) return;
+    const cell = sc.cell, sel = new Set(App.sel.filter(s => s.c === 'tokens').map(s => s.id));
+    c.save();
+    // os cones (cortados pelas paredes), na cor do estado
+    for (const t of gs) {
+      const g = cone(t, sc), poly = poligono(t, sc, g);
+      c.save();
+      c.beginPath(); for (let i = 0; i < poly.length; i += 2) (i ? c.lineTo(poly[i], poly[i + 1]) : c.moveTo(poly[i], poly[i + 1])); c.closePath(); c.clip();
+      c.beginPath(); c.moveTo(g.cx, g.cy);
+      if (g.meia >= Math.PI - 1e-6) c.arc(g.cx, g.cy, g.R, 0, TAU); else c.arc(g.cx, g.cy, g.R, g.dir - g.meia, g.dir + g.meia);
+      c.closePath();
+      const gr = c.createRadialGradient(g.cx, g.cy, 0, g.cx, g.cy, g.R);
+      gr.addColorStop(0, rgba(g.est, t.hidden ? 0.22 : 0.3)); gr.addColorStop(1, rgba(g.est, 0.06));
+      c.fillStyle = gr; c.fill();
+      c.strokeStyle = rgba(g.est, 0.75); c.lineWidth = 1.4 * px; c.setLineDash([5 * px, 4 * px]); c.stroke(); c.setLineDash([]);
+      c.restore();
+    }
+    // as rotas: tracejadas, com os pontos e a seta para o próximo; a do selecionado, mais forte
+    for (const t of gs) {
+      const r = t.ronda, [w, h] = tokWH(t), m = [w * cell / 2, h * cell / 2], on = sel.has(t.id), est = estadoDe(t);
+      if (!r.pts.length) continue;
+      const P = r.pts.map(([i, j]) => [i * cell + m[0], j * cell + m[1]]);
+      c.globalAlpha = on ? 0.95 : 0.55;
+      c.strokeStyle = 'rgba(8,10,16,0.7)'; c.lineWidth = 4 * px; c.setLineDash([8 * px, 6 * px]);
+      const traco = () => { c.beginPath(); P.forEach(([x, y], k) => (k ? c.lineTo(x, y) : c.moveTo(x, y))); if (r.modo === 'volta' && P.length > 2) c.closePath(); c.stroke(); };
+      traco(); c.strokeStyle = rgba(est, 1); c.lineWidth = 2 * px; traco(); c.setLineDash([]);
+      P.forEach(([x, y], k) => { c.beginPath(); c.arc(x, y, (k === r.i ? 5.5 : 3.5) * px, 0, TAU); c.fillStyle = k === r.i ? rgba(est, 1) : '#f3ead2'; c.fill(); c.strokeStyle = 'rgba(8,10,16,0.85)'; c.lineWidth = 1.2 * px; c.stroke(); });
+      // do guarda até o ponto da vez
+      const [cx, cy] = tokC(t, sc), alvo = P[clamp(r.i, 0, P.length - 1)];
+      if (P.length > 1 && Math.hypot(alvo[0] - cx, alvo[1] - cy) > cell * 0.4) {
+        c.strokeStyle = rgba(est, 0.9); c.lineWidth = 1.5 * px; c.setLineDash([2 * px, 4 * px]);
+        c.beginPath(); c.moveTo(cx, cy); c.lineTo(alvo[0], alvo[1]); c.stroke(); c.setLineDash([]);
+      }
+      c.globalAlpha = 1;
+    }
+    c.restore();
+  }
+  // os selos por cima dos tokens: o "?" e o "!" dos guardas e o "!" vermelho em quem está sendo visto
+  function selos(c, sc, px) {
+    if (!mostrar()) return;
+    const gs = guardas(sc);
+    if (!gs.length) return;
+    const selo = (x, y, txt, cor) => {
+      const r = 9 * px;
+      c.beginPath(); c.arc(x, y, r, 0, TAU); c.fillStyle = cor; c.fill(); c.strokeStyle = 'rgba(8,10,16,0.9)'; c.lineWidth = 1.5 * px; c.stroke();
+      c.fillStyle = '#16120a'; c.font = `700 ${12 * px}px system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(txt, x, y + 0.5 * px);
+    };
+    c.save();
+    for (const t of gs) {
+      const est = estadoDe(t);
+      if (est === 'calmo') continue;
+      const [w] = tokWH(t);
+      selo(t.x + w * sc.cell - 3 * px, t.y + 3 * px, est === 'alerta' ? '!' : '?', rgba(est, 1));
+    }
+    const vistos = quemVe(sc), ja = new Set();
+    for (const v of vistos) {
+      if (ja.has(v.t.id) && v.nivel !== 'visto') continue;
+      ja.add(v.t.id);
+      const [cx, cy, half] = tokC(v.t, sc), cor = v.nivel === 'visto' ? '#f05c4e' : '#f0c448';
+      c.beginPath(); c.arc(cx, cy, half + 5 * px, 0, TAU); c.strokeStyle = cor; c.lineWidth = 2.5 * px; c.setLineDash(v.nivel === 'visto' ? [] : [5 * px, 4 * px]); c.stroke(); c.setLineDash([]);
+      selo(cx + half * 0.75, cy - half * 0.95, v.nivel === 'visto' ? '!' : '?', cor);
+    }
+    c.restore();
+  }
+
+  /* ---------------- a rota sendo desenhada ---------------- */
+  // (a ferramenta "ronda" de 09-tools: cada clique põe um ponto na rota do guarda App.rondaDe; Enter, dois cliques ou
+  // Esc terminam; Backspace tira o último ponto)
+  function pontoDe(t, sc, p) {
+    const [w, h] = tokWH(t);
+    return [clamp(Math.round(p.x / sc.cell - w / 2), 0, sc.cols - Math.ceil(w)), clamp(Math.round(p.y / sc.cell - h / 2), 0, sc.rows - Math.ceil(h))];
+  }
+  function editando() { const sc = Store.scene(), t = sc && App.rondaDe ? Store.get('tokens', App.rondaDe) : null; return ehGuarda(t) ? t : null; }
+  function porPonto(p) {
+    const t = editando(), sc = Store.scene();
+    if (!t) { Tools.set('select'); return; }
+    const pt = pontoDe(t, sc, p), r = t.ronda, ult = r.pts[r.pts.length - 1];
+    if (ult && ult[0] === pt[0] && ult[1] === pt[1]) return;
+    if (r.pts.length >= MAX_PTS) { UI.toast(`A rota vai até ${MAX_PTS} pontos.`); return; }
+    const pts = r.pts.concat([pt]);
+    // o rumo do posto: do guarda para o primeiro ponto (com um ponto só, ele fica parado, olhando para lá)
+    const [cx, cy] = tokC(t, sc), o = pts.length === 1 ? { dir: ((Math.round(deg(Math.atan2((pt[1] + tokWH(t)[1] / 2) * sc.cell - cy, (pt[0] + tokWH(t)[0] / 2) * sc.cell - cx))) % 360) + 360) % 360 } : {};
+    Store.tx('Rota do guarda', () => Store.upd('tokens', t.id, { ronda: Object.assign({}, r, { pts, i: 0, s: 1 }, o) }));
+  }
+  function tirarPonto() {
+    const t = editando();
+    if (!t || !t.ronda.pts.length) return;
+    Store.tx('Rota do guarda', () => Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { pts: t.ronda.pts.slice(0, -1), i: 0, s: 1 }) }));
+  }
+  function terminar() {
+    const t = editando();
+    App.rondaDe = null;
+    Tools.set('select');
+    if (t) { setSel([{ c: 'tokens', id: t.id }]); UI.toast(t.ronda.pts.length > 1 ? `A rota de ${t.name} tem ${t.ronda.pts.length} pontos. "Avançar rondas" (no grupo Mestre, à esquerda, ou no botão direito) faz os guardas andarem.` : `${t.name} fica de posto${t.ronda.pts.length ? ', olhando para o ponto marcado' : ''}.`, { key: 'rondas' }); }
+  }
+  function previaRota(ctx, px, sc, mouse) {
+    const t = editando();
+    if (!t) return;
+    const [w, h] = tokWH(t), c = sc.cell, r = t.ronda, ult = r.pts.length ? r.pts[r.pts.length - 1] : [Math.round(t.x / c), Math.round(t.y / c)];
+    if (!mouse) return;
+    const pt = pontoDe(t, sc, mouse);
+    ctx.save(); ctx.strokeStyle = 'rgba(230,171,79,0.9)'; ctx.lineWidth = 2 * px; ctx.setLineDash([6 * px, 5 * px]);
+    ctx.beginPath(); ctx.moveTo((ult[0] + w / 2) * c, (ult[1] + h / 2) * c); ctx.lineTo((pt[0] + w / 2) * c, (pt[1] + h / 2) * c); ctx.stroke();
+    ctx.setLineDash([]); ctx.strokeRect(pt[0] * c + 2 * px, pt[1] * c + 2 * px, w * c - 4 * px, h * c - 4 * px);
+    ctx.restore();
+  }
+  function desenharRota(t) {
+    if (!ehGuarda(t)) return;
+    App.rondaDe = t.id;
+    Tools.set('ronda');
+    UI.toast(`Clique no mapa para pôr os pontos da rota de ${t.name}, na ordem. Enter ou dois cliques terminam; Backspace tira o último.`, { key: 'rondas', long: true });
+  }
+
+  /* ---------------- o painel do token (bloco "Guarda") ---------------- */
+  function secao(t, K) {
+    if (!isGM() || t.prop) return null;
+    const U = (p, l) => Store.tx(l || 'Guarda', () => Store.upd('tokens', t.id, p));
+    if (!ehGuarda(t)) return K.secR('s-guarda', 'Guarda', false, 'não é guarda',
+      K.note('Para missões de furtividade: o guarda ganha uma rota (ou um posto), o cone de visão e o estado (Calmo, Desconfiado, Alerta). Só o mestre vê.'),
+      h('div', { class: 'row' }, K.btn('Fazer guarda', () => { U({ ronda: novaRonda({ dir: 90 }) }, 'Fazer guarda'); desenharRota(Store.get('tokens', t.id)); }, { kind: 'small', icon: 'ronda', id: 'tk-guarda' })));
+    const r = t.ronda, R = v => U({ ronda: Object.assign({}, r, v) });
+    const rumo = [[270, '↑'], [315, '↗'], [0, '→'], [45, '↘'], [90, '↓'], [135, '↙'], [180, '←'], [225, '↖']];
+    return K.secR('s-guarda', 'Guarda', true, ESTADOS.find(e => e[0] === estadoDe(t))[1] + ' · ' + (r.pts.length > 1 ? r.pts.length + ' pontos na rota' : 'de posto'),
+      K.field('Estado', K.seg('tk-alerta', estadoDe(t), ESTADOS, v => mudarEstado([t], v)), 'stack'),
+      h('div', { class: 'grid2' },
+        K.field('Vê até (q)', K.inNum('tk-gr', r.r, v => R({ r: num(v, 1, 40, 6) }), { min: 1, max: 40, step: 1, label: 'Alcance da vista, em quadrados' })),
+        K.field('Abertura (°)', K.inNum('tk-ga', r.a, v => R({ a: num(v, 20, 360, 90) }), { min: 20, max: 360, step: 10, label: 'Abertura do cone de visão, em graus' }))),
+      K.field('Olhando para', K.seg('tk-grumo', rumo.some(x => x[0] === r.dir) ? r.dir : null, rumo, v => R({ dir: v })), 'stack'),
+      r.pts.length > 1 ? h('div', { class: 'grid2' },
+        K.field('Passos por vez', K.inNum('tk-gp', r.passo, v => R({ passo: num(v, 1, 12, 3) }), { min: 1, max: 12, step: 1, label: 'Quadrados que ele anda a cada "Avançar rondas"' })),
+        K.field('A rota', K.seg('tk-gmodo', r.modo, MODOS, v => R({ modo: v })))) : null,
+      h('div', { class: 'row' },
+        K.btn(r.pts.length ? 'Refazer a rota' : 'Desenhar a rota', () => { R({ pts: [], i: 0, s: 1 }); desenharRota(Store.get('tokens', t.id)); }, { kind: 'small', icon: 'ronda', id: 'tk-grota' }),
+        r.pts.length ? K.btn('Ficar de posto', () => R({ pts: [], i: 0, s: 1 }), { kind: 'small', id: 'tk-gposto', title: 'Apaga a rota: ele fica parado, olhando para o lado escolhido' }) : null,
+        K.btn('Não é mais guarda', () => U({ ronda: undefined, alerta: undefined }, 'Deixar de ser guarda'), { kind: 'small', id: 'tk-gfora' })),
+      K.note(estadoDe(t) === 'alerta' ? 'Em Alerta, ele larga a rota: você o move à mão.' : 'Desconfiado, ele vê mais longe e mais aberto. Na sombra, só vê bem de perto. Quem está Oculto não é visto.'));
+  }
+
+  /* ---------------- o painel do grupo Mestre ---------------- */
+  function painel(acao, linha, K) {
+    const sc = Store.scene(), gs = guardas(sc), sel = selOf('tokens').filter(ehGuarda);
+    const n = { calmo: 0, desconfiado: 0, alerta: 0 };
+    gs.forEach(t => n[estadoDe(t)]++);
+    return [
+      gs.length ? K.note(`${gs.length} ${gs.length === 1 ? 'guarda' : 'guardas'}: ${ESTADOS.filter(e => n[e[0]]).map(e => n[e[0]] + ' ' + e[1].toLowerCase()).join(', ')}.`) : K.note('Nenhum guarda nesta cena. No painel de um token (bloco "Guarda") ele ganha a ronda; os lugares de furtividade já vêm com eles.'),
+      linha(acao('Avançar rondas', avancar, { icon: 'ronda', id: 'mtp-rondas', disabled: !gs.length, title: 'Cada guarda anda os passos dele pela rota; o aviso diz quem foi visto' })),
+      gs.length ? linha(acao(sel.length ? `Acalmar (${sel.length})` : 'Acalmar todos', () => mudarEstado(sel.length ? sel : gs, 'calmo'), { id: 'mtp-calmo' }),
+        acao(sel.length ? `Alerta (${sel.length})` : 'Todos em alerta', () => mudarEstado(sel.length ? sel : gs, 'alerta'), { id: 'mtp-alerta' })) : null,
+      K.toggle('mtp-rver', App.opt.rondasVer !== false, v => { App.opt.rondasVer = v; Render.request(); UI.refresh(); }, 'Mostrar rotas e cones (só você vê)'),
+    ];
+  }
+
+  return { ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, mudarEstado, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
+})();
+/* ---------------------------------------------------------------
    8. RENDER — desenho da cena no canvas
    Ordem das camadas: fundo, terreno, grade, desenhos de baixo, efeitos sem
    brilho, luz e escuridão, auras, efeitos luminosos, tokens, desenhos de cima,
@@ -13224,7 +13933,7 @@ const Render = (() => {
     for (const tk of sc.tokens) {
       const d = tk.prop ? Props.P[tk.prop] : null;
       if (!d || !d.fogo || (tk.light && tk.light.on === false) || (!gm && tk.hidden)) continue;
-      const R = tk.size * sc.cell / 2, x0 = tk.x + R, y0 = tk.y + R, k = hashStr(tk.id) % 97, grande = ['fogueira', 'lareira', 'fornalha', 'braseiro', 'carvao', 'circuloInvocacao'].includes(tk.prop);
+      const [x0, y0, R] = tokC(tk, sc), k = hashStr(tk.id) % 97, grande = ['fogueira', 'lareira', 'fornalha', 'braseiro', 'carvao', 'circuloInvocacao'].includes(tk.prop);
       const n = grande ? 6 : 3, sobe = R * (grande ? 3.4 : 2.2);
       c.save();
       for (let i = 0; i < n; i++) {
@@ -13909,8 +14618,10 @@ const Render = (() => {
     // os objetos de cenário ficam por baixo dos tokens (o guerreiro fica em cima da mesa, não embaixo dela)
     for (const tk of sc.tokens) if (tk.prop && (gm || !tk.hidden)) drawProp(c, tk, sc, px, t);
     drawFumaca(c, sc, px, t);                              // (lote 48) a fumaça e as fagulhas, por cima dos objetos
+    if (gm) Rondas.desenhar(c, sc, px);                    // (lote 121) as rotas e os cones dos guardas (só o mestre)
     for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenBody(c, tk, sc, px);
     for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenTop(c, tk, sc, px);
+    if (gm) Rondas.selos(c, sc, px);                       // (lote 121) o "?" e o "!" dos guardas e de quem é visto
   }
   // Um objeto de cenário: o desenho dele (o oculto, para o mestre, esmaecido e com o olho riscado)
   function drawProp(c, tk, sc, px, t) {
@@ -13918,7 +14629,7 @@ const Render = (() => {
     if (tk.hidden) c.globalAlpha = 0.55;
     Props.draw(c, tk, sc, t);
     c.restore();
-    if (tk.hidden && isGM()) { const s = tk.size * sc.cell; badge(c, tk.x + s * 0.14, tk.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px); }
+    if (tk.hidden && isGM()) { const s = Math.min(...tokWH(tk)) * sc.cell; badge(c, tk.x + s * 0.14, tk.y + s * 0.14, clamp(s * 0.3, 14 * px, 24 * px), '#3a4154', 'eyeOff', px); }
   }
   /* O brilho que tremula das chamas: um clarão quente, que cresce e diminui sem ritmo certo, dentro do que a luz
      alcança (o polígono dela, que as paredes cortam). Só com a cena em penumbra ou no escuro. */
@@ -13999,7 +14710,8 @@ const Render = (() => {
       ctx.setLineDash([]);
       if (s.c === 'tokens') {
         const [cx, cy, half] = tokC(o, sc);
-        tokPath(ctx, o.shape, cx, cy, half + 1.5 * px);
+        if (ehRet(o)) { const [w, h] = tokWH(o), m = 1.5 * px; ctx.beginPath(); ctx.rect(o.x - m, o.y - m, w * sc.cell + 2 * m, h * sc.cell + 2 * m); }     // (lote 121) o objeto comprido
+        else tokPath(ctx, o.shape, cx, cy, half + 1.5 * px);
         ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 4.5 * px; ctx.stroke();
         ctx.strokeStyle = theme.lamp; ctx.lineWidth = 2.2 * px; ctx.stroke();
       } else if (s.c === 'shapes') {
@@ -14410,6 +15122,7 @@ const Tools = (() => {
     { id: 'light', n: 'Luz', k: 'I', i: 'light', grp: 3, gm: true },
     { id: 'fog', n: 'Névoa manual', k: 'U', i: 'fog', grp: 3, gm: true },
     { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
+    { id: 'ronda', n: 'Rota do guarda', i: 'ronda', grp: -1, gm: true },       // (lote 121) fora do trilho: vem do bloco "Guarda"
   ];
   /* (lote 83) A visão do mestre: "Construção" (mexe em tudo, como sempre) ou "Mestrando" (só os tokens andam; portas,
      luzes, baús e passagens se usam, mas nada do mapa sai do lugar). Cada cena lembra a última, neste aparelho; uma
@@ -14465,8 +15178,8 @@ const Tools = (() => {
       for (let i = sc.tokens.length - 1; i >= 0; i--) {
         const t = sc.tokens[i];
         if (!!t.prop !== props || !tokShown(t, sc)) continue;
-        const [cx, cy, half] = tokC(t, sc);
-        const inside = t.shape === 'quad' ? Math.abs(p.x - cx) <= half && Math.abs(p.y - cy) <= half : Math.hypot(p.x - cx, p.y - cy) <= half;
+        const [cx, cy, half] = tokC(t, sc), [tw, th] = tokWH(t);
+        const inside = t.shape === 'quad' ? Math.abs(p.x - cx) <= tw * sc.cell / 2 && Math.abs(p.y - cy) <= th * sc.cell / 2 : Math.hypot(p.x - cx, p.y - cy) <= half;
         if (inside) return { c: 'tokens', id: t.id };
       }
     }
@@ -14630,7 +15343,7 @@ const Tools = (() => {
       const o = Store.get(s.c, s.id);
       if (!o) continue;
       if (mt && ehDoMapa(s)) continue;                              // (lote 83) em Mestrando, o mapa fica parado
-      if (s.c === 'tokens') { if (can('moveToken', o)) items.push({ c: s.c, id: o.id, x: o.x, y: o.y, size: o.size }); }
+      if (s.c === 'tokens') { if (can('moveToken', o)) items.push({ c: s.c, id: o.id, x: o.x, y: o.y, size: tokWH(o) }); }     // (lote 121: [largura, altura])
       else if (s.c === 'shapes') { if ((gm || can('editShape', o)) && !o.lock) items.push({ c: s.c, id: o.id, o0: o.pts ? { pts: o.pts.slice() } : { x: o.x, y: o.y } }); }
       else if (s.c === 'effects') {
         if (!((gm || can('editFx', o)) && !o.token)) continue;
@@ -14677,8 +15390,8 @@ const Tools = (() => {
     const vdx = g.vdx || 0, vdy = g.vdy || 0;
     const livre = (ax, ay) => g.items.every(it => {
       if (it.c !== 'tokens') return true;
-      const hf = it.size * sc.cell / 2;
-      return !blockedPath(sc, it.x + vdx + hf, it.y + vdy + hf, it.x + ax + hf, it.y + ay + hf);
+      const hf = it.size[0] * sc.cell / 2, hg = it.size[1] * sc.cell / 2;
+      return !blockedPath(sc, it.x + vdx + hf, it.y + vdy + hg, it.x + ax + hf, it.y + ay + hg);
     });
     if (livre(dx, dy)) { g.vdx = dx; g.vdy = dy; return [dx, dy]; }
     // o mais longe que dá no caminho reto (busca binária), encaixado na grade — e conferido de novo depois de encaixar
@@ -14696,8 +15409,8 @@ const Tools = (() => {
     if (!isGM() && sc.blockMove && !g.barrar) {
       for (const it of g.items) {
         if (it.c !== 'tokens') continue;
-        const t = Store.get('tokens', it.id), hf = it.size * sc.cell / 2;
-        if (t && blockedPath(sc, it.x + hf, it.y + hf, t.x + hf, t.y + hf)) {
+        const t = Store.get('tokens', it.id), hf = it.size[0] * sc.cell / 2, hg = it.size[1] * sc.cell / 2;
+        if (t && blockedPath(sc, it.x + hf, it.y + hg, t.x + hf, t.y + hg)) {
           Store.cancel();
           UI.toast('Há uma parede no caminho.');
           return;
@@ -14711,11 +15424,11 @@ const Tools = (() => {
   function nudge(dx, dy) {
     const sc = Store.scene(), toks = selOf('tokens').filter(t => can('moveToken', t) && !(mestrando() && t.prop));
     if (!toks.length) return false;
-    const moves = toks.map(t => ({ t, to: snapTok(sc, t.x + dx * sc.cell, t.y + dy * sc.cell, t.size, false) }));
+    const moves = toks.map(t => ({ t, to: snapTok(sc, t.x + dx * sc.cell, t.y + dy * sc.cell, tokWH(t), false) }));
     if (!isGM() && sc.blockMove) {
       for (const m of moves) {
-        const hf = m.t.size * sc.cell / 2;
-        if (blockedPath(sc, m.t.x + hf, m.t.y + hf, m.to[0] + hf, m.to[1] + hf)) { UI.toast('Há uma parede no caminho.'); return true; }
+        const [hw, hh] = tokWH(m.t).map(v => v * sc.cell / 2);
+        if (blockedPath(sc, m.t.x + hw, m.t.y + hh, m.to[0] + hw, m.to[1] + hh)) { UI.toast('Há uma parede no caminho.'); return true; }
       }
     }
     Store.tx('Mover', () => { for (const m of moves) Store.upd('tokens', m.t.id, { x: m.to[0], y: m.to[1] }); });
@@ -14883,10 +15596,10 @@ const Tools = (() => {
       } else if (g.type === 'move' && g.moved && g.lead.c === 'tokens') {
         const t = Store.get('tokens', g.lead.id);
         if (!t) return;
-        const hf = g.lead.size * sc.cell / 2;
+        const hf = g.lead.size[0] * sc.cell / 2, hg = g.lead.size[1] * sc.cell / 2;
         ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#ffffff';
-        ctx.beginPath(); ctx.arc(g.lead.x + hf, g.lead.y + hf, hf * 0.9, 0, TAU); ctx.fill(); ctx.restore();
-        Render.drawMeasure([g.lead.x + hf, g.lead.y + hf, t.x + hf, t.y + hf], sc, px, viewerColor());
+        ctx.beginPath(); ctx.ellipse(g.lead.x + hf, g.lead.y + hg, hf * 0.9, hg * 0.9, 0, 0, TAU); ctx.fill(); ctx.restore();
+        Render.drawMeasure([g.lead.x + hf, g.lead.y + hg, t.x + hf, t.y + hg], sc, px, viewerColor());
       }
     },
   };
@@ -14918,15 +15631,33 @@ const Tools = (() => {
     },
   };
 
+  /* ---- (lote 121) A rota do guarda: cada clique põe um ponto (ver 07i. RONDAS) ---- */
+  T.ronda = {
+    hint: 'Clique para pôr os pontos da rota, na ordem. Enter ou dois cliques terminam; Backspace tira o último; Esc sai.',
+    cursor: 'crosshair',
+    down(p) { Rondas.porPonto(p); },
+    dbl() { Rondas.terminar(); },
+    move(p) { ghost = p; Render.request(); },
+    key(e) {
+      if (e.key === 'Enter' || e.key === 'Escape') { Rondas.terminar(); return true; }
+      if (e.key === 'Backspace' || e.key === 'Delete') { Rondas.tirarPonto(); return true; }
+      return false;
+    },
+    preview(ctx, px, sc) { Rondas.previaRota(ctx, px, sc, ghost); },
+  };
+
   /* ---- Objetos de cenário: escolha o objeto na barra de cima e clique no mapa ---- */
   const objSize = () => { const d = Props.P[App.opt.obj] || Props.P.fogueira; return App.opt.objSize || d.size || 1; };
   T.obj = {
     hint: 'Escolha o objeto na barra de cima e clique no mapa para pô-lo. Depois ele anda, gira e se esconde como um token.',
     cursor: 'crosshair',
     down(p) {
-      const sc = Store.scene(), id = Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', size = objSize();
-      const [x, y] = snapTok(sc, p.x - size * sc.cell / 2, p.y - size * sc.cell / 2, size, false);
+      const sc = Store.scene(), id = Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', size = objSize(), d = Props.P[id];
+      // (lote 121) o comprido: nas medidas dele (fw × fh), de pé, com o meio no clique
+      const wh = d.fw ? [d.fw, d.fh] : [size, size];
+      const [x, y] = snapTok(sc, p.x - wh[0] * sc.cell / 2, p.y - wh[1] * sc.cell / 2, wh, false);
       const t = Props.novo(sc, id, x, y, size, !!App.opt.objHidden);
+      if (d.fw) { t.fw = d.fw; t.fh = d.fh; t.size = Math.max(d.fw, d.fh); t.x = x; t.y = y; delete t.q0; }
       Store.tx('Pôr ' + Props.P[id].n.toLowerCase(), () => Store.add('tokens', t));
       if (Props.P[id].luz && sc.light === 'claro') UI.toast('A cena está clara, então a luz do objeto ainda não aparece.', { action: 'Pôr em penumbra', run: () => Store.tx('Luz ambiente', () => Store.scn({ light: 'penumbra' })) });
       else UI.toast(Props.P[id].n + ' no mapa.', { key: 'obj', action: 'Desfazer', run: undo });       // (um aviso só: o novo troca o anterior)
@@ -14934,12 +15665,12 @@ const Tools = (() => {
     move(p) { ghost = p; Render.request(); },
     preview(ctx, px, sc) {
       if (!ghost) return;
-      const size = objSize(), s = size * sc.cell;
-      const [x, y] = snapTok(sc, ghost.x - s / 2, ghost.y - s / 2, size, false);
+      const size = objSize(), id = Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', d = Props.P[id], wh = d.fw ? [d.fw, d.fh] : [size, size];
+      const [x, y] = snapTok(sc, ghost.x - wh[0] * sc.cell / 2, ghost.y - wh[1] * sc.cell / 2, wh, false);
       ctx.save(); ctx.globalAlpha = 0.6;
-      Props.draw(ctx, { id: 'previa', prop: Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', x, y, size, rot: 0 }, sc, 1.3);
+      Props.draw(ctx, Object.assign({ id: 'previa', prop: id, x, y, size, rot: 0 }, d.fw ? { fw: d.fw, fh: d.fh } : null), sc, 1.3);
       ctx.restore();
-      ctx.save(); ctx.setLineDash([6 * px, 5 * px]); ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.4 * px; ctx.strokeRect(x + 2 * px, y + 2 * px, s - 4 * px, s - 4 * px); ctx.restore();
+      ctx.save(); ctx.setLineDash([6 * px, 5 * px]); ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.4 * px; ctx.strokeRect(x + 2 * px, y + 2 * px, wh[0] * sc.cell - 4 * px, wh[1] * sc.cell - 4 * px); ctx.restore();
     },
   };
 
@@ -17087,6 +17818,7 @@ const UI = (() => {
     mureta: 'Uma parede baixa: deixa ver e deixa a luz passar, mas não deixa atravessar. Não abre (para passar, apague um trecho ou ponha uma porta em cima).',
   };
   const wallKindOf = w => (w.k === 'door' && w.secret ? 'secret' : w.k);
+  const FECH_NIV = [['', 'Nenhuma'], ['facil', 'Fácil'], ['medio', 'Médio'], ['dificil', 'Difícil'], ['extremo', 'Extremo'], ['absoluto', 'Absoluto']];      // (lote 121)
 
   function renderOpts() {
     const t = App.tool, o = App.opt, sc = Store.scene(), gm = isGM(), kids = [];
@@ -17113,6 +17845,12 @@ const UI = (() => {
       kids.push(btn('Desfazer o meu último', () => { Lapis.desfazer(sc.id); refresh(); }, { kind: 'small', id: 'o-lp-desf', disabled: !meus, title: 'Tira o seu último rabisco (Ctrl+Z)' }),
         btn('Limpar os meus', () => { Lapis.limpar(sc.id, false, gm); refresh(); }, { kind: 'small', id: 'o-lp-meus', disabled: !meus }));
       if (gm && Nuvem.on()) kids.push(btn('Limpar os de todos', () => { Lapis.limpar(sc.id, true, true); refresh(); }, { kind: 'small', id: 'o-lp-todos', disabled: !todos, title: 'Apaga os rabiscos de todos nesta cena (o aviso deixa desfazer)' }));
+    } else if (t === 'ronda') {
+      // (lote 121) a rota do guarda: de quem é, quantos pontos, tirar o último e terminar
+      const gd = Rondas.editando();
+      kids.push(h('span', { class: 'o-note', id: 'o-ronda', text: gd ? `Rota de ${gd.name}: ${gd.ronda.pts.length} ${gd.ronda.pts.length === 1 ? 'ponto' : 'pontos'}.` : 'Nenhum guarda escolhido.' }));
+      kids.push(btn('Tirar o último', () => Rondas.tirarPonto(), { kind: 'small', id: 'o-ronda-tira', disabled: !gd || !gd.ronda.pts.length }));
+      kids.push(btn('Pronto', () => Rondas.terminar(), { kind: 'small primary', id: 'o-ronda-ok' }));
     } else if (t === 'wall') {
       const isDoor = k => k === 'door' || k === 'secret';
       kids.push(seg('o-wk', o.wallKind, WALL_SEG, v => { if (isDoor(v)) o.wallMode = 'line'; optSet('wallKind', v, true); }));
@@ -17128,7 +17866,9 @@ const UI = (() => {
         Props.thumb(cv, id, 1.3);
         return h('button', { type: 'button', class: 'o-obj' + (o.obj === id ? ' on' : ''), id: 'o-obj-' + id, title: Props.P[id].n + (Props.P[id].luz ? ' (com luz que tremula)' : ''), 'aria-pressed': String(o.obj === id), onclick: () => optSet('obj', id, true) }, cv);
       })));
-      kids.push(oGroup('Tamanho', seg('o-osz', o.objSize || 0, [[0, 'Normal'], [0.5, '½'], [1, '1'], [2, '2'], [3, '3']], v => optSet('objSize', v, true))));
+      const dObj = Props.P[o.obj];
+      if (dObj && dObj.fw) kids.push(oGroup('Medidas', h('span', { class: 'o-note', id: 'o-omed', text: `${dObj.fw} × ${dObj.fh} quadrados (mude no painel do objeto)` })));      // (lote 121) o comprido
+      else kids.push(oGroup('Tamanho', seg('o-osz', o.objSize || 0, [[0, 'Normal'], [0.5, '½'], [1, '1'], [2, '2'], [3, '3']], v => optSet('objSize', v, true))));
       kids.push(oCheck('o-ohid', 'objHidden', 'Oculto dos jogadores'));
       if (sc.light === 'claro' && Props.P[o.obj] && Props.P[o.obj].luz) kids.push(h('span', { class: 'o-warn' }, 'A cena está clara: a luz só aparece em penumbra ou no escuro.', btn('Pôr em penumbra', () => Store.tx('Luz ambiente', () => Store.scn({ light: 'penumbra' })), { kind: 'small' })));
     } else if (t === 'light') {
@@ -18238,6 +18978,7 @@ const UI = (() => {
       typeof PainelBarras !== 'undefined' ? PainelBarras.secaoToken(t) : null,      // (lote 44) o painel de barras
       feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
       Best.secao(t, UI.kit),                                                 // (lote 29) o inimigo do Bestiário: o lembrete e o saque
+      Rondas.secao(t, UI.kit),                                               // (lote 121) o guarda: a ronda, o cone e o estado
       secR('s-turn', 'Turnos', false, 'Iniciativa ' + (clampIni(t.ini) >= 0 ? '+' : '') + clampIni(t.ini) + ' · ' + clampTurns(t.turns) + (clampTurns(t.turns) === 1 ? ' turno' : ' turnos') + ' por rodada',
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),
@@ -18357,7 +19098,7 @@ const UI = (() => {
   }
   // o que uma alavanca pode abrir e fechar: as portas, janelas e cortinas da cena e os portões que são objetos
   function ligaveis(t) {
-    const sc = Store.scene(), cx = t.x + t.size * sc.cell / 2, cy = t.y + t.size * sc.cell / 2, q = v => Math.round(v / sc.cell);
+    const sc = Store.scene(), [cx, cy] = tokC(t, sc), q = v => Math.round(v / sc.cell);
     const nome = { door: 'Porta', window: 'Janela', veil: 'Cortina' };
     const ws = sc.walls.filter(isOpening).map(w => ({ id: w.id, d: Geo.distSeg(cx, cy, w.x1, w.y1, w.x2, w.y2), n: nome[w.k] || 'Porta' }));
     const gs = sc.tokens.filter(x => x.prop && (Props.P[x.prop] || {}).parede).map(x => ({ id: x.id, d: Math.hypot(x.x - t.x, x.y - t.y), n: x.name }));
@@ -18373,7 +19114,8 @@ const UI = (() => {
       h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: many ? `${props.length} objetos` : (gm ? t.name : def.n) || def.n }), h('div', { class: 'p-sub', text: many ? 'Objetos de cenário' : 'Objeto de cenário' + (t.hidden && gm ? ' · oculto dos jogadores' : '') })));
     if (!gm) return [head];
     const mt = Tools.mestrando();      // (lote 83) em Mestrando, o objeto se usa, mas não muda de forma nem sai do lugar
-    const girar = d => all(x => ({ rot: (((x.rot || 0) + d) % 360 + 360) % 360 }), 'Girar objeto');
+    const girar = d => all(x => Props.girado(x, (x.rot || 0) + d, Store.scene()), 'Girar objeto');      // (lote 121: o comprido gira pelo meio)
+    const compridos = props.every(x => ehRet(x));
     const luz = !many && t.light && def.luz ? t.light : null;
     // (lote 7) aonde o objeto leva: a lista das cenas (na ordem das famílias) e o botão de ir
     const alvo = !many && t.cena && Store.S.scenes[t.cena] ? t.cena : null;
@@ -18392,8 +19134,14 @@ const UI = (() => {
         mt ? null : field('Girar', h('div', { class: 'row tight' },
           btn('', () => girar(-90), { icon: 'undo', kind: 'small', id: 'pr-rot-l', title: 'Girar 90° para a esquerda' }),
           btn('', () => girar(90), { icon: 'redo', kind: 'small', id: 'pr-rot-r', title: 'Girar 90° para a direita' }),
-          !many ? inNum('pr-rot', t.rot || 0, v => all({ rot: ((Math.round(v) % 360) + 360) % 360 }, 'Girar objeto'), { min: 0, max: 359, step: 15, label: 'Rotação em graus' }) : null)),
-        mt ? null : field('Tamanho', seg('pr-size', many ? null : t.size, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => all(x => { const sc = Store.scene(), [nx, ny] = snapTok(sc, x.x, x.y, v, false); return { size: v, x: nx, y: ny }; }, 'Tamanho do objeto')))),
+          !many ? inNum('pr-rot', t.rot || 0, v => all(x => Props.girado(x, v, Store.scene()), 'Girar objeto'), { min: 0, max: 359, step: 15, label: 'Rotação em graus' }) : null)),
+        // (lote 121) o comprido (a cama, a estante, a mesa…): a largura e o comprimento, em quadrados; os outros, o tamanho
+        mt || !compridos ? null : h('div', { class: 'grid2' },
+          field('Largura', inNum('pr-fw', many ? '' : t.fw, v => all(x => Props.medido(x, v, x.fh, Store.scene()), 'Medidas do objeto'), { min: 1, max: 12, step: 1, label: 'Largura em quadrados' })),
+          field('Comprimento', inNum('pr-fh', many ? '' : t.fh, v => all(x => Props.medido(x, x.fw, v, Store.scene()), 'Medidas do objeto'), { min: 1, max: 12, step: 1, label: 'Comprimento em quadrados' }))),
+        mt || compridos || props.some(x => ehRet(x)) ? null : field('Tamanho', seg('pr-size', many ? null : t.size, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => all(x => { const sc = Store.scene(), [nx, ny] = snapTok(sc, x.x, x.y, v, false); return { size: v, x: nx, y: ny }; }, 'Tamanho do objeto'))),
+        !many && compridos && !mt ? note(`Ocupa ${t.fw} × ${t.fh} ${t.fw * t.fh === 1 ? 'quadrado' : 'quadrados'}${(Props.P[t.prop] || {}).costas ? '; girado, as costas ficam rentes à parede' : ''}.`) : null,
+        !many && def.esconde ? note('Dá para se esconder ' + def.esconde + ' (a condição Oculto: os guardas não veem).') : null),      // (lote 121)
       // (lote 39) as cores do objeto (o estandarte, o brasão, a mesa de guerra, o quadro de missões, o atril): na sede, as do clã
       props.every(x => (Props.P[x.prop] || {}).cores) ? sec('s-propcor', 'Cores', true,
         h('div', { class: 'grid2' },
@@ -18774,6 +19522,9 @@ const UI = (() => {
         opens ? toggle('wl-open', nOpen === walls.length, v => all({ open: v }, (v ? 'Abrir ' : 'Fechar ') + OPENING_NAMES[kind][0]), openLabel) : null,
         opens ? toggle('wl-lock', walls.every(x => x.locked), v => all({ locked: v }, (v ? 'Trancar ' : 'Destrancar ') + OPENING_NAMES[kind][0]), 'Trancada (jogadores não abrem)') : null,
         kind === 'secret' ? h('div', { class: 'row' }, btn('Revelar aos jogadores', () => all({ secret: false }, 'Revelar porta secreta'), { icon: 'eye', id: 'wl-reveal' })) : null,
+        // (lote 121) o nível da fechadura (para as gazuas do Escudo): só uma anotação do mestre; trancar vem junto
+        kind === 'door' || kind === 'window' ? field('Fechadura', seg('wl-fech', walls.every(x => (x.fech || '') === (w.fech || '')) ? (w.fech || '') : null, FECH_NIV, v => all(v ? { fech: v, locked: true } : { fech: undefined }, v ? 'Nível da fechadura' : 'Sem fechadura')), 'stack') : null,
+        (kind === 'door' || kind === 'window') && w.fech ? note('Para abrir com as gazuas: no Escudo do mestre (Handouts e puzzles), crie uma Fechadura deste nível e ligue esta porta a ela em "Abre com um puzzle".') : null,
         // (lote 31) a porta que abre quando os jogadores resolvem um puzzle do Escudo do mestre
         kind === 'door' && Nuvem.mestre() && (EscudoCenas.puzzles().length || w.pz) ? field('Abre com um puzzle', inSelect('wl-pz', many && !walls.every(x => (x.pz || '') === (w.pz || '')) ? '' : (w.pz || ''),
           [['', 'Nenhum']].concat(EscudoCenas.puzzles().map(p => [p.id, p.nome])), v => all({ pz: v || undefined, pzOk: undefined }, v ? 'Ligar a porta a um puzzle' : 'Desligar a porta do puzzle'))) : null,
@@ -19520,8 +20271,8 @@ const UI = (() => {
       items.push({ label: 'Ver no painel', icon: 'sliders', run: () => openTab('sel') });
       if (gm) {
         const allHidden = props.every(t => t.hidden), allLocked = props.every(t => t.locked), mt = Tools.mestrando();
-        if (!mt) items.push({ label: 'Girar para a direita', icon: 'redo', run: () => all(x => ({ rot: ((x.rot || 0) + 90) % 360 }), 'Girar objeto') },
-          { label: 'Girar para a esquerda', icon: 'undo', run: () => all(x => ({ rot: ((x.rot || 0) + 270) % 360 }), 'Girar objeto') });
+        if (!mt) items.push({ label: 'Girar para a direita', icon: 'redo', run: () => all(x => Props.girado(x, (x.rot || 0) + 90, Store.scene()), 'Girar objeto') },
+          { label: 'Girar para a esquerda', icon: 'undo', run: () => all(x => Props.girado(x, (x.rot || 0) + 270, Store.scene()), 'Girar objeto') });
         // (lote 48) o estado e a luz do objeto
         if (props.length === 1 && Props.estados(props[0].prop)) { const l = Props.estados(props[0].prop), a = Props.estado(props[0]), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; items.push({ label: nx[1], icon: 'reset', run: () => alternarObjeto(props[0], nx[0]) }); }
         if (props.length === 1 && Misterio.ehPista(props[0])) items.push({ label: 'Revelar e entregar a pista', icon: 'eye', run: () => Misterio.revelar(props[0]) });     // (lote 53)
@@ -19613,6 +20364,7 @@ const UI = (() => {
         setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); openTab('sel', 'tk-name');
       } });
       { const f = gm ? Arena.proxima(sc) : null; if (f) items.push({ label: 'Acionar a ' + f.nome.toLowerCase() + ' da arena…', icon: 'next', run: () => Arena.acionar(f.i) }); }
+      if (gm && Rondas.guardas(sc).length) items.push({ label: 'Avançar rondas', icon: 'ronda', run: () => Rondas.avancar() });      // (lote 121)
       if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
       if (gm && Nuvem.on() && window.ClaNucleo) items.push({ label: 'Puxar os membros do clã para cá…', icon: 'users', run: () => MembrosCla.abrir({ x: p.x, y: p.y }) });      // (lote 59)
       if (Luta.podeDescanso() && Store.scene().tokens.some(t => t.char && !t.clone)) items.push({ label: 'Descanso curto do grupo…', icon: 'rest', run: () => Luta.descansoCurto() });
@@ -37010,11 +37762,13 @@ const Interior = (() => {
     // o relevo (as áreas de terreno: o estrado, o palco, a água, o alçapão) e as formas de enfeite, em quadrados da planta
     const relevo = [], formas = [];
     // encosta (pela beira) ou fica do lado (pela quina) de um móvel m
-    const encosta = (i, j, s, m) => ((i + s === m.x || i === m.x + m.s) && j < m.y + m.s && j + s > m.y) || ((j + s === m.y || j === m.y + m.s) && i < m.x + m.s && i + s > m.x);
-    const aoLado = (i, j, s, m, g) => i < m.x + m.s + g && i + s > m.x - g && j < m.y + m.s + g && j + s > m.y - g;
+    // (lote 121) as medidas de um móvel na planta (o comprido, pelo retângulo dele)
+    const dims = m => (m.fw ? tokWH({ prop: m.id, fw: m.fw, fh: m.fh, rot: m.rot }) : [m.s, m.s]);
+    const encosta = (i, j, s, m) => { const [mw, mh] = dims(m); return ((i + s === m.x || i === m.x + mw) && j < m.y + mh && j + s > m.y) || ((j + s === m.y || j === m.y + mh) && i < m.x + mw && i + s > m.x); };
+    const aoLado = (i, j, s, m, g) => { const [mw, mh] = dims(m); return i < m.x + mw + g && i + s > m.x - g && j < m.y + mh + g && j + s > m.y - g; };
     // o giro de quem fica junto de m, virado para ele (a cadeira de frente para a mesa; o banco ao comprido)
     const viradoPara = (i, j, s, m, id) => {
-      const dx = (i + s / 2) - (m.x + m.s / 2), dy = (j + s / 2) - (m.y + m.s / 2), deLado = Math.abs(dx) > Math.abs(dy);
+      const [mw, mh] = dims(m), dx = (i + s / 2) - (m.x + mw / 2), dy = (j + s / 2) - (m.y + mh / 2), deLado = Math.abs(dx) > Math.abs(dy);
       if (id === 'banco') return deLado ? 90 : 0;
       return deLado ? (dx < 0 ? 270 : 90) : (dy < 0 ? 0 : 180);
     };
@@ -37026,7 +37780,20 @@ const Interior = (() => {
       const livre = (i, j, tapete) => i >= q.x && j >= q.y && i < q.x + q.w && j < q.y + q.h && !fora(i, j) && !passagens.has(i + ',' + j) && !ocup.has(i + ',' + j) && !(tapete && sob.has(i + ',' + j));
       const livreS = (i, j, s) => { for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) if (!livre(i + a, j + b, false)) return false; return true; };
       const poe = (id, i, j, rot, arranjo) => {
-        const s = Props.P[id].size || 1;
+        const s = Props.P[id].size || 1, d = Props.P[id];
+        // (lote 121) o comprido com costas (a cama, a estante): ocupa só o retângulo dele, rente à parede, dentro do quadrado
+        if (d.fw && d.costas && s > 1) {
+          const tk = { prop: id, rot: rot || 0, fw: Math.max(1, Math.round((d.legado ? d.legado.w : 1) * s)), fh: Math.max(1, Math.round((d.legado ? d.legado.h : 1) * s)) }, [w, h] = tokWH(tk);
+          const r4 = ((Math.round((rot || 0) / 90) % 4) + 4) % 4, costas = ['n', 'l', 's', 'o'][(['n', 'l', 's', 'o'].indexOf(d.costas) + r4) % 4];
+          const ox = s - w <= 0 ? 0 : costas === 'o' ? 0 : costas === 'l' ? s - w : i === q.x ? 0 : i + s === q.x + q.w ? s - w : 0;
+          const oy = s - h <= 0 ? 0 : costas === 'n' ? 0 : costas === 's' ? s - h : j === q.y ? 0 : j + s === q.y + q.h ? s - h : 0;
+          for (let b = 0; b < h; b++) for (let a = 0; a < w; a++) ocup.add((i + ox + a) + ',' + (j + oy + b));
+          const m = { id, x: i + ox, y: j + oy, s, fw: tk.fw, fh: tk.fh };
+          if (rot) m.rot = rot;
+          if (arranjo) m.arranjo = true;
+          q.moveis.push(m);
+          return;
+        }
         for (let b = 0; b < s; b++) for (let a = 0; a < s; a++) (id === 'tapete' ? sob : ocup).add((i + a) + ',' + (j + b));
         const m = { id, x: i, y: j, s };
         if (rot) m.rot = rot;
@@ -37274,7 +38041,10 @@ const Interior = (() => {
     // o relevo, as formas e a luz das janelas (como na cena)
     if (!op || op.relevo !== false) Estilos.relevoNaPrevia(g, (p.relevo || []).map(r => Estilos.moverRelevo(r, M, M)), (p.formas || []).concat(feixes(p, (op && op.tom) || 'dia')).map(f => Estilos.moverRelevo(f, M, M)), cell, 1.5);
     g.fillStyle = '#f3ead2';
-    for (const q of p.salas) for (const mv of q.moveis) { g.beginPath(); g.arc((mv.x + M + mv.s / 2) * cell, (mv.y + M + mv.s / 2) * cell, Math.max(1.5, cell * 0.18 * mv.s), 0, Math.PI * 2); g.fill(); }
+    for (const q of p.salas) for (const mv of q.moveis) {
+      if (mv.fw) { const [w, hh] = tokWH({ prop: mv.id, fw: mv.fw, fh: mv.fh, rot: mv.rot }); g.fillRect((mv.x + M) * cell + 1, (mv.y + M) * cell + 1, w * cell - 2, hh * cell - 2); continue; }      // (lote 121) o comprido: o retângulo dele
+      g.beginPath(); g.arc((mv.x + M + mv.s / 2) * cell, (mv.y + M + mv.s / 2) * cell, Math.max(1.5, cell * 0.18 * mv.s), 0, Math.PI * 2); g.fill();
+    }
     return { cell };
   }
   const resumo = p => { const n = p.salas.length, m = p.salas.reduce((s, q) => s + q.moveis.length, 0); return `${n} ${n === 1 ? 'sala' : 'salas'} · ${m} móveis · ${p.W} × ${p.H} quadrados.`; };
@@ -37301,7 +38071,12 @@ const Interior = (() => {
     const noite = sc.tone === 'noite' || sc.tone === 'breu';
     for (const q of p.salas) {
       const ms = q.moveis.slice().sort((a, b) => (a.id === 'tapete' ? 0 : 1) - (b.id === 'tapete' ? 0 : 1));
-      for (const mv of ms) if (Props.P[mv.id]) { const tk = Props.novo(sc, mv.id, (mv.x + M) * c, (mv.y + M) * c, mv.s, false); if (mv.rot) tk.rot = mv.rot; sc.tokens.push(tk); }
+      for (const mv of ms) if (Props.P[mv.id]) {
+        const tk = Props.novo(sc, mv.id, (mv.x + M) * c, (mv.y + M) * c, mv.s, false);
+        if (mv.rot) tk.rot = mv.rot;
+        if (mv.fw) { tk.fw = mv.fw; tk.fh = mv.fh; tk.size = Math.max(mv.fw, mv.fh); tk.x = (mv.x + M) * c; tk.y = (mv.y + M) * c; delete tk.q0; }      // (lote 121) já no lugar certo
+        sc.tokens.push(tk);
+      }
       if (noite && !(PLANTAS[p.tipo] && PLANTAS[p.tipo].fogo)) sc.lights.push({ id: uid('lz'), name: 'Luz da sala', x: (q.x + M + q.w / 2) * c, y: (q.y + M + q.h / 2) * c, bright: 1.5, dim: Math.max(3, Math.round(Math.max(q.w, q.h) * 0.8)), c: '#ffc77a', on: true, fl: true });
     }
     // o relevo (o estrado, o palco, a água, o alçapão), as formas de enfeite (travadas) e os feixes de luz das janelas
@@ -43149,7 +43924,7 @@ const LugaresFora = (() => {
     nota: 'Sai uma cena nova, com o lugar do crime marcado. Com o bloco "Mistério", o corpo (ou o vestígio) e as marcas de pista entram ocultos dos jogadores: dois cliques numa marca revelam a pista e a entregam à mesa.',
     feito: sc => `"${sc.name}" criada.` }, semPartes);
 
-  return { CASTELO, CEMITERIO, CRIME, CENARIOS, gerarCastelo, gerarCemiterio, gerarCrime, pintar, TAM_C, TAM_M, ESTADOS_C };
+  return { CASTELO, CEMITERIO, CRIME, CENARIOS, gerarCastelo, gerarCemiterio, gerarCrime, pintar, TAM_C, TAM_M, ESTADOS_C, kit: { novoPlano, construcao, dentro, pintar, palDe, res, sub } };      // (lote 121: o kit, para a furtividade)
 })();
 /* ---------------------------------------------------------------
    10ga. POVOAR O LUGAR (lote 49) — depois de criar a cena pelo "Gerar um lugar…" (ou pela Entrada de um nível), com a
@@ -43169,7 +43944,7 @@ const Povoar = (() => {
   const PERIGOS = [['facil', 'Fácil'], ['medio', 'Médio'], ['dificil', 'Difícil']];
   const QUANTOS = { facil: [2, 3], medio: [4, 6], dificil: [7, 10] };
   const DE_GENTE = new Set(['vila', 'cidade', 'porto', 'tribo', 'castelo', 'cemiterio']);
-  const FORA = new Set(['vila', 'cidade', 'porto', 'tribo', 'castelo', 'cemiterio', 'encontro', 'regiao', 'ruinas']);
+  const FORA = new Set(['vila', 'cidade', 'porto', 'tribo', 'castelo', 'cemiterio', 'encontro', 'regiao', 'ruinas', 'mansao', 'fortaleza', 'guilda', 'acampamento', 'ruas', 'torre']);      // (lote 121: e os de furtividade)
   const FOGO_FICA = new Set(['fogueira', 'lareira', 'fornalha', 'braseiro', 'carvao', 'caldeirao', 'circulo', 'tripe', 'incensario']);
   /* O que vive em cada lugar: as tags do Bestiário (tipo e bioma) e os nomes de reserva. */
   const GENERICOS = {
@@ -43334,7 +44109,8 @@ const Povoar = (() => {
     luzes(sc, lugar);
     const ne = entradas(sc, lugar, p, r);
     if (ne) partes.push(ne === 1 ? '1 entrada para baixo' : ne + ' entradas para baixo');
-    if (o.inimigos !== false) { const k = inimigos(sc, lugar, p, perigo, r); if (k.n) partes.push(`${k.n} ${k.n === 1 ? 'inimigo' : 'inimigos'}${k.doBest ? ` (${k.doBest} do Bestiário)` : ''}`); }
+    // (lote 121) nos lugares de furtividade, os inimigos são os guardas do lugar (já com as rondas)
+    if (o.inimigos !== false && !(typeof Furtividade !== 'undefined' && Furtividade.ehFurtivo(lugar))) { const k = inimigos(sc, lugar, p, perigo, r); if (k.n) partes.push(`${k.n} ${k.n === 1 ? 'inimigo' : 'inimigos'}${k.doBest ? ` (${k.doBest} do Bestiário)` : ''}`); }
     if (o.moradores !== false) { const k = moradores(sc, lugar, p, r); if (k) partes.push(k === 1 ? '1 morador' : k + ' moradores'); }
     if (o.tesouros !== false) { const k = tesouros(sc, perigo, r); if (k) partes.push(k === 1 ? '1 baú com saque' : k + ' com saque'); }
     Persist.scene(sc.id);
@@ -43506,6 +44282,878 @@ const Misterio = (() => {
   return { casos, controles, prefs, aplicar, revelar, ehPista, SEM_CORPO };
 })();
 /* ---------------------------------------------------------------
+   10gc. FURTIVIDADE (lote 121) — os lugares para as missões de furtividade, no grupo "Furtividade" do "Gerar um
+   lugar…": a mansão do nobre, a fortaleza, a guilda com o cofre, o acampamento inimigo, as casas e ruas (um quarteirão)
+   e a torre de guarda. Cada um sai pronto para entrar escondido:
+     · os guardas, com as rondas (as rotas tracejadas que só o mestre vê; ver 07i. RONDAS) e os postos fixos, cada um
+       com o cone de visão; quantos, pela escolha "Guardas"; os de ronda, à noite, levam uma lanterna;
+     · as luzes onde um guarda precisa (o portão, a porta, o corredor) e o escuro no resto: os cantos de sombra ficam
+       marcados para o mestre (a marca "Esconderijo", oculta);
+     · os esconderijos de verdade: o armário (dá para entrar), debaixo da cama, as moitas, os barris, as carroças;
+     · as entradas que não são a porta da frente: a porta dos fundos trancada (com o nível da fechadura), a janela
+       destrancada, a hera que sobe o muro, o bueiro (desce ao esgoto: uma Entrada oculta) e, às vezes, uma porta secreta;
+     · o alvo da missão, já posto e marcado só para o mestre (o cofre, o documento, o prisioneiro, a pessoa, a relíquia);
+     · os que dormem (os soldados nas camas do quartel, o chefe na tenda): tokens com a condição Adormecido.
+   O plano é o mesmo dos outros lugares de fora (o kit de 10g9: as paredes, os objetos, o que se pinta no fundo), mais
+   p.guardas, p.npcs e p.marcas. As salas de dentro são feitas numa grade de rótulos (predio): a parede entre duas salas
+   é uma só, e a porta fica nela.
+   --------------------------------------------------------------- */
+const Furtividade = (() => {
+  const KIT = () => LugaresFora.kit;
+  const IDS = ['mansao', 'fortaleza', 'guilda', 'acampamento', 'ruas', 'torre'];
+  const NOMES = { mansao: 'Mansão do nobre', fortaleza: 'Fortaleza', guilda: 'Guilda e cofre', acampamento: 'Acampamento inimigo', ruas: 'Casas e ruas', torre: 'Torre de guarda' };
+  const CURTO = { mansao: 'Mansão', fortaleza: 'Fortaleza', guilda: 'Guilda', acampamento: 'Acampamento', ruas: 'Ruas', torre: 'Torre' };
+  const TAM = { pequeno: { n: 'Pequeno', k: 0.84 }, medio: { n: 'Médio', k: 1 }, grande: { n: 'Grande', k: 1.2 } };
+  const GUARDAS = [['poucos', 'Poucos'], ['normal', 'Normal'], ['muitos', 'Muitos']];
+  const ALVOS = {
+    mansao: [['cofre', 'O cofre'], ['documento', 'Um documento'], ['pessoa', 'O senhor da casa'], ['artefato', 'Uma relíquia']],
+    fortaleza: [['prisioneiro', 'Um prisioneiro'], ['documento', 'As ordens'], ['cofre', 'O cofre do soldo'], ['pessoa', 'O comandante']],
+    guilda: [['cofre', 'O cofre forte'], ['documento', 'O livro de contas'], ['artefato', 'Uma joia rara']],
+    acampamento: [['prisioneiro', 'Os cativos'], ['documento', 'O mapa do chefe'], ['pessoa', 'O chefe'], ['cofre', 'O baú do saque']],
+    ruas: [['documento', 'Uma carta'], ['pessoa', 'Uma pessoa'], ['cofre', 'Um baú escondido']],
+    torre: [['artefato', 'O sinal de fogo'], ['prisioneiro', 'Um prisioneiro'], ['documento', 'A mensagem']],
+  };
+  const NIVEIS = ['facil', 'medio', 'dificil', 'extremo', 'absoluto'];
+  const ROT = { n: 0, l: 90, s: 180, o: 270 };                       // o giro de quem fica de costas para a parede daquele lado
+  const DIR = { n: 270, l: 0, s: 90, o: 180 };                       // o rumo do olhar, para aquele lado
+  const dimsDe = (fw, fh, rot) => (((Math.round((rot || 0) / 90) % 4) + 4) % 2 ? [fh, fw] : [fw, fh]);
+
+  /* ================= o plano e as peças ================= */
+  function plano(lugar, W, H, seed, o) {
+    const K = KIT().novoPlano(lugar, W, H, seed, { estilo: o.estilo || 'comum', estacao: o.estacao || 'verao', tamanho: o.tamanho, guardas: o.guardas, alvo: o.alvo });
+    Object.assign(K.p, { guardas: [], npcs: [], marcas: [], furtivo: true });
+    K.reserva = new Set();                                         // as casas que ficam livres (a frente das portas)
+    K.livreR = (x, y, w, h) => { for (let j = 0; j < (h || 1); j++) for (let i = 0; i < (w || 1); i++) if (!K.livre(x + i, y + j) || K.reserva.has((x + i) + ',' + (y + j))) return false; return true; };
+    // um objeto (comprido ou não) no canto (x, y), se couber
+    K.poeR = (id, x, y, fw, fh, rot, o2) => {
+      x = Math.floor(x); y = Math.floor(y);
+      const [w, h] = dimsDe(fw, fh, rot);
+      if (!K.livreR(x, y, w, h) || x < 0 || y < 0 || x + w > W || y + h > H) return false;
+      K.ocupa(x, y, w, h);
+      const ob = Object.assign({ id, x, y, s: Math.max(fw, fh) }, Props.P[id] && Props.P[id].fw ? { fw, fh } : null, rot ? { rot } : null, o2 || null);
+      K.p.objetos.push(ob);
+      return ob;
+    };
+    K.poe1 = (id, x, y, rot, o2) => K.poeR(id, x, y, 1, 1, rot, o2);
+    K.guarda = (x, y, ronda, o2) => { K.p.guardas.push(Object.assign({ x, y, ronda }, o2 || {})); };
+    K.marca = (id, x, y, n, notas) => { if (x < 0 || y < 0 || x >= W || y >= H) return; K.p.marcas.push({ id, x: Math.floor(x), y: Math.floor(y), n, notas: notas || '' }); };
+    return K;
+  }
+  const embaralha = (r, l) => { const a = l.slice(); for (let i = a.length - 1; i > 0; i--) { const k = Math.floor(r() * (i + 1)); [a[i], a[k]] = [a[k], a[i]]; } return a; };
+
+  /* ================= o prédio: as salas numa grade de rótulos =================
+     cfg: { corredor (true/false), larg (do corredor), min/max (a largura das salas), papeis (na ordem de importância),
+            fundos (os papéis que preferem a faixa de trás), resto (o papel das que sobram), frente ('s' ou 'n'),
+            trancada (a porta da frente), extra (a chance de porta entre vizinhas), secreta (uma porta secreta),
+            fundosPorta (a porta dos fundos), janelas, piso: papel → tipo de piso }
+     → { salas (em quadrados da cena, com papel), corr, porta (a da frente: { x, y, fora: [x, y] }), fundos, portas } */
+  function predio(K, x0, y0, w, h, cfg) {
+    const { r, ri } = K, lab = new Int16Array(w * h).fill(-1), salas = [];
+    const L = (i, j) => (i < 0 || j < 0 || i >= w || j >= h ? -2 : lab[j * w + i]);
+    const marca = (q, k) => { for (let j = q.y; j < q.y + q.h; j++) for (let i = q.x; i < q.x + q.w; i++) lab[j * w + i] = k; };
+    const larg = cfg.larg || 2, frente = cfg.frente || 's';
+    let corr = null;
+    if (cfg.corredor && h >= 9) {
+      const cy = Math.floor((h - larg) / 2);
+      corr = { x: 0, y: cy, w, h: larg, papel: 'corredor', faixa: 'c' };
+      salas.push(corr); marca(corr, 0);
+    }
+    const faixas = corr ? [{ y: 0, h: corr.y, f: 'n' }, { y: corr.y + larg, h: h - corr.y - larg, f: 's' }] : [{ y: 0, h, f: 'x' }];
+    for (const fx of faixas) {
+      let x = 0;
+      const mn = cfg.min || 4, mx = Math.max(mn, cfg.max || 7);
+      while (x < w) {
+        let lw = ri(mn, mx);
+        if (w - (x + lw) < mn) lw = w - x;
+        const q = { x, y: fx.y, w: lw, h: fx.h, papel: '', faixa: fx.f };
+        salas.push(q); marca(q, salas.length - 1);
+        x += lw;
+      }
+    }
+    // os papéis: a entrada (a sala do meio da frente), depois os da lista, dos maiores aos menores
+    const daFrente = salas.filter(q => q.faixa === (corr ? frente : 'x'));
+    const meio = daFrente.find(q => q.x <= w / 2 && q.x + q.w > w / 2) || daFrente[0];
+    meio.papel = cfg.entrada || 'vestibulo';
+    const livres = () => salas.filter(q => !q.papel);
+    for (const pp of cfg.papeis || []) {
+      const l = livres();
+      if (!l.length) break;
+      const pref = (cfg.fundos || []).includes(pp) ? l.filter(q => q.faixa !== frente) : l;
+      const lista = (pref.length ? pref : l).sort((a, b) => b.w * b.h - a.w * a.h);
+      lista[0].papel = pp;
+    }
+    let k = 0;
+    for (const q of livres()) q.papel = (cfg.resto || ['quarto'])[k++ % (cfg.resto || ['quarto']).length];
+
+    // os trechos de parede: um por lado de quadrado, onde o rótulo muda
+    const U = new Map();
+    for (let x = 0; x <= w; x++) for (let j = 0; j < h; j++) { const a = L(x - 1, j), b = L(x, j); if (a !== b) U.set('v' + x + ',' + j, { x1: x0 + x, y1: y0 + j, x2: x0 + x, y2: y0 + j + 1, k: 'wall', a, b, v: true, p: j }); }
+    for (let y = 0; y <= h; y++) for (let i = 0; i < w; i++) { const a = L(i, y - 1), b = L(i, y); if (a !== b) U.set('h' + i + ',' + y, { x1: x0 + i, y1: y0 + y, x2: x0 + i + 1, y2: y0 + y, k: 'wall', a, b, v: false, p: i }); }
+    const entre = (A, B) => [...U.values()].filter(u => u.k === 'wall' && ((u.a === A && u.b === B) || (u.a === B && u.b === A))).sort((m, n) => (m.v === n.v ? (m.v ? m.x1 - n.x1 || m.p - n.p : m.y1 - n.y1 || m.p - n.p) : m.v ? -1 : 1));
+    // uma porta no trecho do meio (fora das pontas)
+    const porta = (lst, o) => {
+      if (!lst.length) return null;
+      const lo = lst.length >= 3 ? 1 : 0, hi = lst.length >= 3 ? lst.length - 2 : lst.length - 1, m = clamp(Math.floor((lo + hi) / 2) + ri(-1, 1), lo, hi), u = lst[m];
+      u.k = 'door'; u.o = o || {};
+      return u;
+    };
+    const portas = [], ligadas = new Set();
+    const liga = (A, B, o) => { const u = porta(entre(A, B), o); if (u) { portas.push(u); ligadas.add(Math.min(A, B) + ':' + Math.max(A, B)); } return u; };
+    if (corr) for (let i = 1; i < salas.length; i++) liga(i, 0, cfg.trancar && cfg.trancar.includes(salas[i].papel) ? { locked: true, fech: cfg.nivelSala || 'medio' } : null);
+    else for (let i = 1; i < salas.length; i++) liga(i - 1, i, cfg.trancar && (cfg.trancar.includes(salas[i].papel) || cfg.trancar.includes(salas[i - 1].papel)) ? { locked: true, fech: cfg.nivelSala || 'medio' } : null);
+    // as portas entre vizinhas da mesma faixa (outros caminhos)
+    for (let i = 1; i < salas.length; i++) for (let j = i + 1; j < salas.length; j++) {
+      if (ligadas.has(i + ':' + j) || salas[i].faixa !== salas[j].faixa || r() >= (cfg.extra == null ? 0.3 : cfg.extra)) continue;
+      if (entre(i, j).length >= 2) liga(i, j);
+    }
+    // uma porta secreta, às vezes (entre duas salas que ainda não se ligam)
+    if (cfg.secreta) {
+      const pares = [];
+      for (let i = 1; i < salas.length; i++) for (let j = i + 1; j < salas.length; j++) if (!ligadas.has(i + ':' + j) && entre(i, j).length >= 2) pares.push([i, j]);
+      const par = pares.find(([i, j]) => [salas[i].papel, salas[j].papel].includes(cfg.secreta)) || pares[0];
+      if (par) liga(par[0], par[1], { secret: true });
+    }
+    // a porta da frente e a dos fundos (para fora)
+    const fora = (q, lado) => [...U.values()].filter(u => u.k === 'wall' && (u.a === salas.indexOf(q) || u.b === salas.indexOf(q)) && (u.a === -2 || u.b === -2) && (lado === 'n' ? !u.v && u.y1 === y0 : lado === 's' ? !u.v && u.y1 === y0 + h : lado === 'o' ? u.v && u.x1 === x0 : u.v && u.x1 === x0 + w)).sort((m, n) => m.p - n.p);
+    const pf = porta(fora(meio, frente), cfg.trancada ? { locked: true, fech: cfg.nivelFrente || 'medio' } : {});
+    const out = { salas: [], corr: null, porta: null, fundos: null, portas: [], janelas: [] };
+    // a casa de fora e a de dentro de uma porta, pelo lado da parede
+    const lados = (u, lado) => (lado === 's' ? [[u.x1, u.y1], [u.x1, u.y1 - 1]] : lado === 'n' ? [[u.x1, u.y1 - 1], [u.x1, u.y1]] : lado === 'o' ? [[u.x1 - 1, u.y1], [u.x1, u.y1]] : [[u.x1, u.y1], [u.x1 - 1, u.y1]]);
+    if (pf) { portas.push(pf); const [fo, de] = lados(pf, frente); out.porta = { x: pf.x1, y: pf.y1, fora: fo, dentro: de, lado: frente }; }
+    if (cfg.fundosPorta !== false) {
+      const tras = { s: 'n', n: 's', o: 'l', l: 'o' }[frente], cand = salas.filter(q => q !== meio && q !== corr && fora(q, tras).length >= 2);
+      const qf = cand.find(q => (cfg.fundos || []).includes(q.papel)) || cand[Math.floor(r() * cand.length)];
+      const u = qf ? porta(fora(qf, tras), { locked: true, fech: cfg.nivelFundos || 'facil' }) : null;
+      if (u) { portas.push(u); out.fundos = { x: u.x1, y: u.y1, fora: lados(u, tras)[0], sala: qf, lado: tras }; }
+    }
+    // as janelas: uma (ou duas, na parede comprida) por sala, nas paredes de fora; uma das de trás fica destrancada
+    if (cfg.janelas !== false) {
+      for (const q of salas) {
+        if (q === corr && !cfg.janelaCorredor) continue;
+        for (const lado of embaralha(r, ['n', 's', 'o', 'l'])) {
+          const l = fora(q, lado).filter((u, ix, a) => ix > 0 && ix < a.length - 1);
+          if (!l.length) continue;
+          const u = l[Math.floor(l.length / 2)];
+          u.k = 'window'; u.o = {};
+          out.janelas.push({ u, sala: q, lado });
+          break;
+        }
+      }
+      const tras = out.janelas.filter(j => j.lado !== frente);
+      if (tras.length) { const j = tras[Math.floor(r() * tras.length)]; j.u.o = { open: false, locked: false, aberta: true }; out.janelaAberta = j; }
+      for (const j of out.janelas) if (j !== out.janelaAberta) j.u.o = { locked: true };
+    }
+    // as paredes: os trechos de parede juntos (na mesma linha, um atrás do outro); as portas e janelas, um a um
+    const vs = [...U.values()];
+    const linha = (lst, vert) => {
+      lst.sort((m, n) => (vert ? m.x1 - n.x1 || m.y1 - n.y1 : m.y1 - n.y1 || m.x1 - n.x1));
+      let cur = null;
+      const fecha = () => { if (cur) { K.parede(cur.x1, cur.y1, cur.x2, cur.y2, 'wall'); K.pinta('paredeFina', { x1: cur.x1, y1: cur.y1, x2: cur.x2, y2: cur.y2 }); cur = null; } };
+      for (const u of lst) {
+        if (u.k !== 'wall') { fecha(); K.parede(u.x1, u.y1, u.x2, u.y2, u.k, u.o); continue; }
+        if (cur && (vert ? cur.x1 === u.x1 && cur.y2 === u.y1 : cur.y1 === u.y1 && cur.x2 === u.x1)) { cur.x2 = u.x2; cur.y2 = u.y2; }
+        else { fecha(); cur = { x1: u.x1, y1: u.y1, x2: u.x2, y2: u.y2 }; }
+      }
+      fecha();
+    };
+    linha(vs.filter(u => u.v), true); linha(vs.filter(u => !u.v), false);
+    // o piso de cada sala; as casas da frente das portas ficam livres
+    for (const q of salas) {
+      const a = { x: x0 + q.x, y: y0 + q.y, w: q.w, h: q.h, papel: q.papel, faixa: q.faixa };
+      K.pinta('piso', { x: a.x, y: a.y, w: a.w, h: a.h, tipo: (cfg.piso && cfg.piso[q.papel]) || cfg.pisoBase || 'madeira' });
+      out.salas.push(a);
+      if (q === corr) out.corr = a;
+      if (q === (out.fundos && out.fundos.sala)) out.fundos.sala = a;
+    }
+    for (const u of portas) {
+      if (u.v) { K.reserva.add((u.x1 - 1) + ',' + u.y1); K.reserva.add(u.x1 + ',' + u.y1); }
+      else { K.reserva.add(u.x1 + ',' + (u.y1 - 1)); K.reserva.add(u.x1 + ',' + u.y1); }
+      out.portas.push({ x1: u.x1, y1: u.y1, x2: u.x2, y2: u.y2, o: u.o || {} });
+    }
+    K.ocupa(x0, y0, w, h);
+    K.p.salas.push(...out.salas);
+    return out;
+  }
+
+  /* ================= os móveis ================= */
+  // encostado numa parede da sala, de costas para ela (a cama, a estante, o armário, a lareira); n vezes
+  function encosta(K, q, id, fw, fh, n, lados) {
+    let feitos = 0;
+    for (let k = 0; k < (n || 1); k++) {
+      const cand = [];
+      for (const lado of lados || ['n', 's', 'o', 'l']) {
+        const rot = ROT[lado], [w, h] = dimsDe(fw, fh, rot);
+        if (w > q.w || h > q.h) continue;
+        if (lado === 'n' || lado === 's') for (let x = q.x; x + w <= q.x + q.w; x++) cand.push([x, lado === 'n' ? q.y : q.y + q.h - h, rot]);
+        else for (let y = q.y; y + h <= q.y + q.h; y++) cand.push([lado === 'o' ? q.x : q.x + q.w - w, y, rot]);
+      }
+      const ok = embaralha(K.r, cand).find(([x, y, rot]) => K.poeR(id, x, y, fw, fh, rot));
+      if (!ok) break;
+      feitos++;
+    }
+    return feitos;
+  }
+  // num canto (ou junto da parede), 1 × 1
+  function canto(K, q, id, o2) {
+    const cs = [[q.x, q.y], [q.x + q.w - 1, q.y], [q.x, q.y + q.h - 1], [q.x + q.w - 1, q.y + q.h - 1]];
+    for (const [x, y] of embaralha(K.r, cs)) { const ob = K.poe1(id, x, y, 0, o2); if (ob) return ob; }
+    const borda = [];
+    for (let x = q.x; x < q.x + q.w; x++) borda.push([x, q.y], [x, q.y + q.h - 1]);
+    for (let y = q.y; y < q.y + q.h; y++) borda.push([q.x, y], [q.x + q.w - 1, y]);
+    for (const [x, y] of embaralha(K.r, borda)) { const ob = K.poe1(id, x, y, 0, o2); if (ob) return ob; }
+    return null;
+  }
+  // no meio da sala (o mais perto do meio que couber)
+  function noMeio(K, q, id, fw, fh, rot, o2) {
+    const [w, h] = dimsDe(fw, fh, rot), cx = q.x + (q.w - w) / 2, cy = q.y + (q.h - h) / 2, cand = [];
+    for (let y = q.y; y + h <= q.y + q.h; y++) for (let x = q.x; x + w <= q.x + q.w; x++) cand.push([x, y]);
+    cand.sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy));
+    for (const [x, y] of cand) { const ob = K.poeR(id, x, y, fw, fh, rot, o2); if (ob) return ob; }
+    return null;
+  }
+  // as cadeiras (ou bancos) dos lados compridos de uma mesa, viradas para ela
+  function cadeiras(K, m, id, max) {
+    const [w, h] = dimsDe(m.fw || m.s, m.fh || m.s, m.rot), out = [];
+    const lados = w >= h ? [[0, -1, 180], [0, h, 0]] : [[-1, 0, 90], [w, 0, 270]];
+    for (const [dx, dy, rot] of lados) for (let k = 0; k < Math.max(w, h); k++) {
+      if (out.length >= (max || 99)) return out;
+      const x = m.x + (w >= h ? k : dx), y = m.y + (w >= h ? dy : k);
+      const ob = K.poe1(id, x, y, (rot + 180) % 360);
+      if (ob) out.push(ob);
+    }
+    return out;
+  }
+  // o tapete: pintado no fundo (fica por baixo de tudo e não ocupa)
+  const tapete = (K, q, m) => { m = m == null ? 1 : m; if (q.w - 2 * m >= 2 && q.h - 2 * m >= 2) K.pinta('tapete', { x: q.x + m + 0.15, y: q.y + m + 0.15, w: q.w - 2 * m - 0.3, h: q.h - 2 * m - 0.3 }); };
+
+  // os móveis de cada papel de sala (q: a sala, em quadrados da cena)
+  const MOB = {
+    vestibulo(K, q) { tapete(K, q, 1); canto(K, q, 'candelabro'); canto(K, q, 'estatua'); if (q.w >= 5) canto(K, q, 'candelabro'); encosta(K, q, 'banco', 2, 1, 1); },
+    salao(K, q) {
+      tapete(K, q, 1);
+      encosta(K, q, 'lareira', 2, 1, 1, ['n']);
+      const big = q.w >= 8 && q.h >= 5, m = noMeio(K, q, big ? 'mesaBanquete' : 'mesa', big ? Math.min(6, q.w - 4) : 2, big ? 2 : 1, 0);
+      if (m) cadeiras(K, m, 'cadeira', 12);
+      canto(K, q, 'candelabro'); canto(K, q, 'estandarte'); canto(K, q, 'estandarte');
+    },
+    biblioteca(K, q) { encosta(K, q, 'estante', 2, 1, Math.max(2, Math.floor((q.w + q.h) / 3))); const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); canto(K, q, 'atril'); canto(K, q, 'vela'); },
+    escritorio(K, q) { encosta(K, q, 'estante', 2, 1, 2); const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 1); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'vela'); },
+    quartoSenhor(K, q) { tapete(K, q, 1); encosta(K, q, 'camaCasal', 2, 2, 1, ['n', 'o', 'l']); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'bau'); canto(K, q, 'vela'); },
+    quarto(K, q) { encosta(K, q, 'cama', 1, 2, 1); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'bau'); if (K.r() < 0.6) canto(K, q, 'vela'); },
+    criados(K, q) { encosta(K, q, 'cama', 1, 2, Math.max(2, Math.floor(q.w / 2))); canto(K, q, 'bau'); canto(K, q, 'vela'); },
+    cozinha(K, q) { encosta(K, q, 'lareira', 2, 1, 1); const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'banco', 2); canto(K, q, 'barril'); canto(K, q, 'barril'); canto(K, q, 'jarro'); canto(K, q, 'sacos'); },
+    despensa(K, q) { for (let i = 0; i < 3; i++) canto(K, q, 'barril'); canto(K, q, 'caixote'); canto(K, q, 'caixote'); canto(K, q, 'sacos'); encosta(K, q, 'estante', 2, 1, 1); },
+    galeria(K, q) { tapete(K, q, 1); for (let i = 0; i < Math.max(2, Math.floor(q.w / 2)); i++) canto(K, q, 'estatua'); canto(K, q, 'candelabro'); },
+    capela(K, q) { encosta(K, q, 'altar', 1, 1, 1, ['n']); for (let i = 0; i < 2; i++) noMeio(K, q, 'banco', 2, 1, 0); canto(K, q, 'vela'); canto(K, q, 'vela'); },
+    corredor(K, q) {
+      // os candelabros, de tantos em tantos quadrados, encostados de um lado
+      for (let x = q.x + 2; x < q.x + q.w - 1; x += 7) { if (!K.poe1('candelabro', x, q.y)) K.poe1('candelabro', x, q.y + q.h - 1); }
+      if (q.w >= 10) K.pinta('tapete', { x: q.x + 1, y: q.y + q.h / 2 - 0.45, w: q.w - 2, h: 0.9 });
+    },
+    // o quartel e a fortaleza
+    dormitorio(K, q) { encosta(K, q, 'cama', 1, 2, Math.max(2, Math.floor((q.w + q.h) / 3)), ['n', 's']); canto(K, q, 'bau'); canto(K, q, 'bau'); },
+    refeitorio(K, q) { const m = noMeio(K, q, q.w >= 7 ? 'mesaLonga' : 'mesa', q.w >= 7 ? Math.min(6, q.w - 2) : 2, q.w >= 7 ? 2 : 1, 0); if (m && m.id === 'mesa') cadeiras(K, m, 'banco', 2); canto(K, q, 'barril'); canto(K, q, 'braseiro'); },
+    arsenal(K, q) { encosta(K, q, 'estante', 2, 1, 1); for (let i = 0; i < 3; i++) canto(K, q, 'armas'); canto(K, q, 'caixote'); canto(K, q, 'boneco'); },
+    comandante(K, q) { encosta(K, q, 'cama', 1, 2, 1); const m = noMeio(K, q, 'mesaGuerra', 2, 2, 0) || noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); canto(K, q, 'estandarte'); canto(K, q, 'braseiro'); },
+    guarda(K, q) { const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 3); canto(K, q, 'armas'); canto(K, q, 'braseiro'); canto(K, q, 'bau'); },
+    cela(K, q) { canto(K, q, 'grilhoes'); canto(K, q, 'feno'); canto(K, q, 'jarro'); },
+    torre(K, q) { canto(K, q, 'braseiro'); canto(K, q, 'armas'); canto(K, q, 'barril'); },
+    estabulo(K, q) { encosta(K, q, 'cocho', 2, 1, 2); for (let i = 0; i < 4; i++) canto(K, q, 'feno'); },
+    // a guilda
+    salaoPublico(K, q) { tapete(K, q, 1); encosta(K, q, 'balcao', Math.min(5, Math.max(2, q.w - 3)), 1, 1, ['n']); for (let i = 0; i < 2; i++) encosta(K, q, 'banco', 2, 1, 1, ['o', 'l']); canto(K, q, 'quadroMissoes'); canto(K, q, 'vela'); canto(K, q, 'vela'); },
+    arquivo(K, q) { encosta(K, q, 'estante', 2, 1, Math.max(3, Math.floor((q.w + q.h) / 2))); canto(K, q, 'vela'); },
+    cofreForte(K, q) { canto(K, q, 'cofre'); canto(K, q, 'cofre'); canto(K, q, 'bau'); canto(K, q, 'bau'); canto(K, q, 'lingotes'); canto(K, q, 'sacos'); },
+    deposito(K, q) { for (let i = 0; i < 2; i++) canto(K, q, 'caixote'); canto(K, q, 'barril'); canto(K, q, 'sacos'); encosta(K, q, 'estante', 2, 1, 1); },
+    // as casas da rua
+    sala(K, q) { const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'bau'); canto(K, q, 'vela'); },
+    entrada(K, q) { encosta(K, q, 'lareira', 2, 1, 1); const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); canto(K, q, 'barril'); },
+    loja(K, q) { encosta(K, q, 'balcao', Math.min(4, Math.max(2, q.w - 3)), 1, 1, ['n']); encosta(K, q, 'estante', 2, 1, 2); canto(K, q, 'caixote'); canto(K, q, 'barril'); },
+    tenda(K, q) { canto(K, q, 'pele'); canto(K, q, 'pele'); canto(K, q, 'bau'); canto(K, q, 'armas'); const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 1); canto(K, q, 'braseiro'); },
+  };
+  const mobiliar = (K, q) => { const f = MOB[q.papel]; if (f) KIT().dentro(K, q, () => f(K, q)); else KIT().dentro(K, q, () => {}); };
+
+  /* ================= os guardas, o alvo, as sombras e os esconderijos ================= */
+  // quantos, pela escolha: [poucos, normal, muitos] → o número
+  const qtd = (K, l) => l[{ poucos: 0, normal: 1, muitos: 2 }[K.p.guardas_ || 'normal']];
+  // o posto: parado, olhando para o lado
+  const posto = (K, x, y, lado, o2) => K.guarda(x, y, { pts: [], r: (o2 && o2.r) || 6, a: (o2 && o2.a) || 100, dir: typeof lado === 'number' ? lado : DIR[lado] }, Object.assign({ posto: true }, o2 || {}));
+  // a ronda: os pontos (em quadrados), de ida e volta ou em círculo; começa no primeiro (ou no k-ésimo)
+  function ronda(K, pts, modo, o2) {
+    const k = (o2 && o2.k) || 0, [x, y] = pts[k % pts.length], nx = pts[(k + 1) % pts.length];
+    K.guarda(x, y, { pts, i: (k + 1) % pts.length, s: 1, modo: modo || 'ida', passo: (o2 && o2.passo) || 3, r: (o2 && o2.r) || 6, a: (o2 && o2.a) || 90, dir: ((Math.round(deg(Math.atan2(nx[1] - y, nx[0] - x))) % 360) + 360) % 360 }, Object.assign({ luz: true }, o2 || {}));
+  }
+  // o retângulo em volta de um prédio, a d quadrados (para a ronda de fora), dentro de [lim]
+  const volta = (b, d, lim) => {
+    const x0 = Math.max(lim.x0, b.x - d), y0 = Math.max(lim.y0, b.y - d), x1 = Math.min(lim.x1, b.x + b.w - 1 + d), y1 = Math.min(lim.y1, b.y + b.h - 1 + d);
+    return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  };
+  // as luzes do plano: [x, y, alcance] (para achar os cantos escuros)
+  function luzesDo(p) {
+    const out = [];
+    for (const o of p.objetos) { const d = Props.P[o.id]; if (d && d.luz) out.push([o.x + 0.5, o.y + 0.5, d.luz.dim + 0.5]); }
+    for (const g of p.guardas) if (g.luz && g.ronda.pts.length) out.push([g.x + 0.5, g.y + 0.5, 4]);
+    return out;
+  }
+  // os cantos de sombra: casas livres de fora (de area), longe das luzes, encostadas em algo (parede, moita, árvore)
+  function sombras(K, n, area) {
+    const L = luzesDo(K.p), cand = [];
+    for (let y = area.y0; y <= area.y1; y++) for (let x = area.x0; x <= area.x1; x++) {
+      if (!K.livreR(x, y, 1, 1)) continue;
+      if (L.some(([lx, ly, r]) => Math.hypot(x + 0.5 - lx, y + 0.5 - ly) < r + 1)) continue;
+      let viz = 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!K.livre(x + dx, y + dy)) viz++;
+      if (viz) cand.push([x, y, viz]);
+    }
+    const out = [];
+    for (const c of embaralha(K.r, cand).sort((a, b) => b[2] - a[2])) {
+      if (out.length >= n) break;
+      if (out.some(([x, y]) => Math.hypot(x - c[0], y - c[1]) < 6)) continue;
+      out.push(c);
+      K.marca('esconderijo', c[0], c[1], 'Sombra', 'Canto escuro: longe das luzes, dá para esperar a ronda passar.');
+    }
+    return out.length;
+  }
+  // o alvo da missão, numa sala: o objeto (ou o token), e a marca do mestre ao lado
+  const NOTA_ALVO = 'Alvo da missão.';
+  function alvo(K, q, tipo, o2) {
+    o2 = o2 || {};
+    let ob = null;
+    if (tipo === 'cofre') ob = canto(K, q, o2.id || 'cofre', { n: o2.n || 'O cofre', notas: NOTA_ALVO + ' ' + (o2.notas || 'Trancado.') });
+    else if (tipo === 'documento') ob = canto(K, q, 'papeis', { n: o2.n || 'O documento', notas: NOTA_ALVO + ' ' + (o2.notas || '') });
+    else if (tipo === 'artefato') ob = noMeio(K, q, o2.id || 'idolo', 1, 1, 0, { n: o2.n || 'A relíquia', notas: NOTA_ALVO + ' ' + (o2.notas || '') });
+    else if (tipo === 'prisioneiro' || tipo === 'pessoa') {
+      const livres = [];
+      for (let y = q.y; y < q.y + q.h; y++) for (let x = q.x; x < q.x + q.w; x++) if (K.livreR(x, y, 1, 1)) livres.push([x, y]);
+      const camas = tipo === 'pessoa' ? K.p.objetos.filter(o => (o.id === 'camaCasal' || o.id === 'cama') && o.x >= q.x && o.y >= q.y && o.x < q.x + q.w && o.y < q.y + q.h) : [];
+      const [x, y] = camas.length ? [camas[0].x, camas[0].y + (camas[0].rot === 180 ? 1 : 0)] : livres.length ? livres[Math.floor(K.r() * livres.length)] : [q.x, q.y];
+      K.p.npcs.push({ x, y, n: o2.n || (tipo === 'pessoa' ? 'O alvo' : 'Prisioneiro'), notas: NOTA_ALVO + ' ' + (o2.notas || ''), conds: tipo === 'pessoa' && camas.length ? ['adormecido'] : [], cor: tipo === 'pessoa' ? '#8a5aa8' : '#8f7a4a' });
+      if (!camas.length) K.ocupa(x, y, 1, 1);
+      ob = { x, y };
+    }
+    if (ob) {
+      const viz = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]].map(([dx, dy]) => [ob.x + dx, ob.y + dy]).find(([x, y]) => x >= q.x && y >= q.y && x < q.x + q.w && y < q.y + q.h && K.livreR(x, y, 1, 1));
+      if (viz) K.marca('alvoMissao', viz[0], viz[1], 'Alvo da missão', (o2.n || '') + (o2.notas ? ': ' + o2.notas : ''));
+      K.p.alvo = { tipo, n: o2.n, x: ob.x, y: ob.y };
+    }
+    return ob;
+  }
+  // um esconderijo de verdade (a moita, o barril, a carroça…): o objeto e a marca do mestre junto
+  function esconderijo(K, x, y, id, nome, s) {
+    const ob = s > 1 ? K.poeR(id, x, y, s, s, 0) : K.poe1(id, x, y);
+    if (!ob) return null;
+    const viz = [[0, s || 1], [s || 1, 0], [-1, 0], [0, -1]].map(([dx, dy]) => [x + dx, y + dy]).find(([a, b]) => K.livreR(a, b, 1, 1));
+    if (viz) K.marca('esconderijo', viz[0], viz[1], 'Esconderijo', nome);
+    return ob;
+  }
+  // a escolha do alvo (o sorteio usa a semente)
+  const alvoDe = (K, lugar, pedido) => (ALVOS[lugar].some(a => a[0] === pedido) ? pedido : ALVOS[lugar][Math.floor(K.r() * ALVOS[lugar].length)][0]);
+  const nomeAlvo = (lugar, a) => (ALVOS[lugar].find(x => x[0] === a) || ALVOS[lugar][0])[1];
+  // o muro em volta (trechos de um quadrado: dá para abrir o portão e a brecha), com o desenho
+  function muro(K, x0, y0, x1, y1, tipo, gaps) {
+    const ehGap = (horiz, a, k) => (gaps || []).some(g => g.horiz === horiz && g.a === a && k >= g.de && k < g.ate);
+    const lado = (ax, ay, bx, by) => {
+      const horiz = ay === by, L = horiz ? bx - ax : by - ay;
+      for (let k = 0; k < L; k++) {
+        const s = horiz ? [ax + k, ay, ax + k + 1, ay] : [ax, ay + k, ax, ay + k + 1];
+        if (ehGap(horiz, horiz ? ay : ax, horiz ? ax + k : ay + k)) continue;
+        K.parede(s[0], s[1], s[2], s[3], 'wall'); K.pinta(tipo || 'muro', { x1: s[0], y1: s[1], x2: s[2], y2: s[3] });
+      }
+    };
+    lado(x0, y0, x1, y0); lado(x0, y1, x1, y1); lado(x0, y0, x0, y1); lado(x1, y0, x1, y1);
+  }
+  // o portão (dois quadrados, com o portão de ferro, que abre e fecha), no lado de baixo
+  function portao(K, gx, y, id) { for (const x of [gx - 1, gx]) K.p.objetos.push({ id: id || 'portao', x, y: y - 0.5, s: 1 }); }
+  // as árvores e as moitas numa faixa (o mato em volta)
+  function mato(K, area, n, maxTenta) {
+    let feitos = 0;
+    for (let k = 0; k < (maxTenta || n * 6) && feitos < n; k++) {
+      const x = K.ri(area.x0, area.x1), y = K.ri(area.y0, area.y1), arv = K.r() < 0.55;
+      if (arv ? K.poeR('arvore', x, y, 2, 2, 0) : K.poe1(K.r() < 0.8 ? 'arbusto' : 'pedra', x, y)) feitos++;
+    }
+    return feitos;
+  }
+
+  /* ================= a mansão do nobre ================= */
+  function gerarMansao(o) {
+    const k = TAM[o.tamanho].k, W = Math.round(44 * k), H = Math.round(34 * k), K = plano('mansao', W, H, o.seed, o), { p, r } = K;
+    p.guardas_ = o.guardas;
+    K.pinta('piso', { x: 0, y: H - 2, w: W, h: 2, tipo: 'calcada' });                         // a rua de fora
+    const mx0 = 2, my0 = 2, mx1 = W - 2, my1 = H - 2, gx = Math.round(W / 2);
+    // o prédio: no meio, mais para o fundo do terreno
+    const bw = Math.round(W * 0.62), bh = Math.max(12, Math.round(H * 0.5)), bx = Math.floor((W - bw) / 2), by = my0 + 4;
+    // a ronda de fora passa a 2 quadrados do prédio: nada fica nesse caminho
+    const rota = volta({ x: bx, y: by, w: bw, h: bh }, 2, { x0: mx0 + 1, y0: my0 + 1, x1: mx1 - 2, y1: my1 - 2 });
+    const caminhoRota = () => { const [[ax, ay], [bx2, , ], [, by2]] = [rota[0], rota[1], rota[2]]; for (let x = ax; x <= bx2; x++) { K.reserva.add(x + ',' + ay); K.reserva.add(x + ',' + by2); } for (let y = ay; y <= by2; y++) { K.reserva.add(ax + ',' + y); K.reserva.add(bx2 + ',' + y); } };
+    caminhoRota();
+    muro(K, mx0, my0, mx1, my1, 'muro', [{ horiz: true, a: my1, de: gx - 1, ate: gx + 1 }]);
+    portao(K, gx, my1);
+    K.pinta('caminho', { pts: [[gx, H - 0.5], [gx, by + bh + 0.5]], w: 2.2, tipo: 'terra' });
+    for (let y = by + bh; y < my1; y++) for (const x of [gx - 1, gx]) K.reserva.add(x + ',' + y);
+    const B = predio(K, bx, by, bw, bh, { corredor: true, larg: 2, min: 4, max: 7, papeis: ['salao', 'quartoSenhor', 'escritorio', 'biblioteca', 'cozinha', 'galeria', 'despensa', 'criados'], fundos: ['cozinha', 'despensa', 'criados'], resto: ['quarto', 'quarto', 'capela'], trancada: true, nivelFrente: 'medio', fundosPorta: true, nivelFundos: 'facil', trancar: ['escritorio', 'quartoSenhor'], nivelSala: 'dificil', secreta: 'escritorio', extra: 0.3, piso: { cozinha: 'laje', despensa: 'laje', capela: 'laje' } });
+    for (const q of B.salas) mobiliar(K, q);
+    // o jardim: as sebes junto do muro, as árvores nos cantos, a fonte e as estátuas na frente
+    const frente = { x0: mx0 + 1, y0: by + bh + 3, x1: mx1 - 2, y1: my1 - 2 };
+    if (frente.y1 - frente.y0 >= 2) {
+      const fx = gx + (r() < 0.5 ? -6 : 4), fy = Math.round((frente.y0 + frente.y1) / 2) - 1;
+      K.poeR('fonte', fx, fy, 2, 2, 0);
+      for (const sx of [gx - 3, gx + 2]) K.poe1('estatua', sx, frente.y0);
+    }
+    for (let x = mx0 + 1; x < mx1 - 1; x += 1) { if (Math.abs(x - gx) <= 2) continue; if (r() < 0.55) K.poe1('arbusto', x, my1 - 1); if (r() < 0.45) K.poe1('arbusto', x, my0); }
+    for (let y = my0 + 1; y < my1 - 1; y++) { if (r() < 0.45) K.poe1('arbusto', mx0, y); if (r() < 0.45) K.poe1('arbusto', mx1 - 1, y); }
+    for (const [x, y] of [[mx0 + 1, my0 + 1], [mx1 - 3, my0 + 1], [mx0 + 1, my1 - 3], [mx1 - 3, my1 - 3]]) K.poeR('arvore', x, y, 2, 2, 0);
+    for (let i = 0; i < 6; i++) K.poe1('flores', K.ri(mx0 + 2, mx1 - 3), K.ri(frente.y0, Math.max(frente.y0, frente.y1)));
+    // as luzes: o portão, a porta da frente; o resto do jardim fica no escuro
+    K.poe1('tocha', gx - 2, my1 - 1); K.poe1('tocha', gx + 1, my1 - 1);
+    if (B.porta) { K.poe1('lampiao', B.porta.x - 2, B.porta.y); K.poe1('lampiao', B.porta.x + 2, B.porta.y); }
+    // as entradas escondidas: a hera do muro (do lado de fora, nos fundos), o bueiro (no canto dos fundos)
+    const hx = K.ri(mx0 + 3, mx1 - 4);
+    K.p.objetos.push({ id: 'hera', x: hx, y: my0 - 1, s: 1, rot: 180 }); K.marca('interesse', hx + 1, my0 - 1, 'Entrada: a hera do muro', 'Dá para escalar o muro aqui (fora da vista do portão).');
+    const bx2 = r() < 0.5 ? mx0 + 2 : mx1 - 3, byy = my0 + 1;
+    if (K.poe1('bueiro', bx2, byy)) { K.p.entradas.push({ x: bx2, y: byy, n: 'O bueiro (desce ao esgoto)', gera: { t: 'masmorra', m: 'esgoto', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (KIT().sub(o.seed, 91) % 2147483000) + 1 } }); }
+    // o alvo
+    const a = alvoDe(K, 'mansao', o.alvo), sala = pap => B.salas.find(q => q.papel === pap) || B.salas[1];
+    if (a === 'cofre') alvo(K, sala('escritorio'), 'cofre', { n: 'O cofre do senhor', notas: 'Trancado (fechadura difícil).' });
+    else if (a === 'documento') alvo(K, sala('escritorio'), 'documento', { n: 'O documento', notas: 'Sobre a mesa do escritório (ou no cofre, se o mestre quiser).' });
+    else if (a === 'pessoa') alvo(K, sala('quartoSenhor'), 'pessoa', { n: 'O senhor da casa', notas: 'Dormindo.' });
+    else alvo(K, sala('galeria'), 'artefato', { id: 'calice', n: 'A relíquia', notas: 'Exposta na galeria.' });
+    // os guardas: no portão, a ronda do jardim, a do corredor e o posto na porta do escritório
+    posto(K, gx - 2, my1 - 2, 's', { r: 7 });
+    if (qtd(K, [0, 1, 1])) posto(K, gx + 1, my1 - 2, 's', { r: 7 });
+    ronda(K, rota, 'volta', { k: 0, passo: 4, r: 6 });
+    if (qtd(K, [0, 0, 1])) ronda(K, rota, 'volta', { k: 2, passo: 4, r: 6 });
+    if (B.corr) ronda(K, [[B.corr.x + 1, B.corr.y], [B.corr.x + B.corr.w - 2, B.corr.y]], 'ida', { passo: 3, r: 6, a: 80 });
+    if (qtd(K, [0, 1, 1]) && B.corr) { const e = sala('escritorio'), x = clamp(e.x + Math.floor(e.w / 2), B.corr.x, B.corr.x + B.corr.w - 1); posto(K, x, e.faixa === 'n' ? B.corr.y : B.corr.y + B.corr.h - 1, e.faixa === 'n' ? 'n' : 's', { r: 5 }); }
+    if (qtd(K, [0, 0, 1]) && B.fundos) posto(K, B.fundos.fora[0], B.fundos.fora[1] - 1, 'n', { r: 6 });
+    sombras(K, qtd(K, [3, 4, 4]), { x0: mx0 + 1, y0: my0 + 1, x1: mx1 - 2, y1: my1 - 2 });
+    p.cena = B.porta ? [B.porta.x, B.porta.y - 2] : [gx, by + 2];
+    p.chegada = [gx, H - 1];
+    return fim(p, 'mansao', o);
+  }
+
+  /* ================= a fortaleza ================= */
+  function gerarFortaleza(o) {
+    const k = TAM[o.tamanho].k, W = Math.round(44 * k), H = Math.round(38 * k), K = plano('fortaleza', W, H, o.seed, o), { p, r } = K;
+    p.guardas_ = o.guardas;
+    const x0 = 3, y0 = 3, x1 = W - 3, y1 = H - 3, gx = Math.round(W / 2);
+    K.pinta('piso', { x: x0, y: y0, w: x1 - x0, h: y1 - y0, tipo: 'calcada' });
+    K.pinta('caminho', { pts: [[gx, H - 0.5], [gx, y1 + 0.5]], w: 2.2, tipo: 'terra' });
+    // a brecha (uma das muralhas de trás, caída) e o portão
+    const brecha = { horiz: true, a: y0, de: K.ri(x0 + 8, x1 - 9), ate: 0 }; brecha.ate = brecha.de + 1;
+    muro(K, x0, y0, x1, y1, 'muralha', [{ horiz: true, a: y1, de: gx - 1, ate: gx + 1 }, brecha]);
+    K.pinta('entulho', { x: brecha.de + 0.5, y: y0, r: 0.9 });
+    portao(K, gx, y1, 'grade');
+    for (let y = y1 - 3; y < y1; y++) for (const x of [gx - 1, gx]) K.reserva.add(x + ',' + y);
+    // a ronda de dentro, junto das muralhas (a 1 quadrado)
+    const rotaM = [[x0 + 1, y0 + 1], [x1 - 2, y0 + 1], [x1 - 2, y1 - 2], [x0 + 1, y1 - 2]];
+    for (let x = x0 + 1; x <= x1 - 2; x++) { K.reserva.add(x + ',' + (y0 + 1)); K.reserva.add(x + ',' + (y1 - 2)); }
+    for (let y = y0 + 1; y <= y1 - 2; y++) { K.reserva.add((x0 + 1) + ',' + y); K.reserva.add((x1 - 2) + ',' + y); }
+    // as torres dos cantos: uma sala 3 × 3 com a porta para o pátio
+    const torres = [];
+    for (const [tx, ty, lado] of [[x0 + 2, y0 + 2, 's'], [x1 - 5, y0 + 2, 's'], [x0 + 2, y1 - 5, 'n'], [x1 - 5, y1 - 5, 'n']]) {
+      const T = predio(K, tx, ty, 3, 3, { corredor: false, entrada: 'torre', frente: lado, janelas: true, fundosPorta: false, pisoBase: 'laje' });
+      for (const q of T.salas) mobiliar(K, q);
+      torres.push({ q: T.salas[0], lado });
+    }
+    // o quartel (no fundo), as celas (à direita), o estábulo (à esquerda)
+    const qw = Math.round((x1 - x0) * 0.5), qh = 10, qx = Math.round(W / 2 - qw / 2), qy = y0 + 3;
+    const Q = predio(K, qx, qy, qw, qh, { corredor: true, larg: 2, min: 4, max: 6, papeis: ['dormitorio', 'refeitorio', 'comandante', 'arsenal', 'dormitorio'], resto: ['deposito'], trancada: false, fundosPorta: true, nivelFundos: 'medio', trancar: ['comandante', 'arsenal'], nivelSala: 'dificil', extra: 0.25, piso: { refeitorio: 'laje', arsenal: 'laje' } });
+    for (const q of Q.salas) mobiliar(K, q);
+    const cw = 9, ch = 9, cx = x1 - 3 - cw, cy = Math.max(Math.round(H / 2) - 2, qy + qh + 2);
+    const C = predio(K, cx, cy, cw, ch, { corredor: true, larg: 2, entrada: 'guarda', frente: 's', min: 3, max: 3, resto: ['cela'], trancar: ['cela'], nivelSala: 'medio', janelas: false, fundosPorta: false, pisoBase: 'laje', extra: 0, trancada: true, nivelFrente: 'facil' });
+    for (const q of C.salas) mobiliar(K, q);
+    const ew = 8, eh = 6, ex = x0 + 3, ey = Math.max(Math.round(H / 2), qy + qh + 2);
+    const E = predio(K, ex, ey, ew, eh, { corredor: false, entrada: 'estabulo', frente: 's', min: 8, max: 8, janelas: false, fundosPorta: false, pisoBase: 'terra' });
+    for (const q of E.salas) mobiliar(K, q);
+    // o pátio: o treino, o poço, as carroças e as pilhas de caixotes (esconderijos)
+    const pc = { x: Math.round(W / 2) - 3, y: Math.round(H / 2) + 2 };
+    K.poe1('boneco', pc.x, pc.y); K.poe1('alvo', pc.x + 3, pc.y); K.poe1('armas', pc.x + 5, pc.y);
+    K.poe1('poco', pc.x - 3, pc.y + 4);
+    esconderijo(K, x0 + 2, y1 - 8, 'carroca', 'Atrás da carroça', 2);
+    esconderijo(K, x1 - 5, y1 - 9, 'caixote', 'Entre os caixotes');
+    K.poe1('caixote', x1 - 4, y1 - 9); K.poe1('caixote', x1 - 5, y1 - 8);
+    // as luzes: o portão, as torres, a porta do quartel, as celas
+    K.poe1('tocha', gx - 2, y1 - 1); K.poe1('tocha', gx + 1, y1 - 1);
+    if (Q.porta) K.poe1('lampiao', Q.porta.x + 2, Q.porta.y);
+    if (C.porta) K.poe1('tocha', C.porta.fora[0] - 1, C.porta.fora[1]);
+    // o bueiro (o esgoto)
+    const bx = x0 + 2, by = y0 + 7;
+    if (K.poe1('bueiro', bx, by)) K.p.entradas.push({ x: bx, y: by, n: 'O bueiro (desce ao esgoto)', gera: { t: 'masmorra', m: 'esgoto', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (KIT().sub(o.seed, 93) % 2147483000) + 1 } });
+    K.marca('interesse', brecha.de, y0 - 1, 'Entrada: a brecha na muralha', 'A muralha caiu aqui: dá para passar pelo entulho, longe do portão.');
+    // o alvo
+    const a = alvoDe(K, 'fortaleza', o.alvo), cela = C.salas.find(q => q.papel === 'cela') || C.salas[0], com = Q.salas.find(q => q.papel === 'comandante') || Q.salas[1];
+    if (a === 'prisioneiro') alvo(K, cela, 'prisioneiro', { n: 'O prisioneiro', notas: 'Na cela trancada.' });
+    else if (a === 'documento') alvo(K, com, 'documento', { n: 'As ordens', notas: 'Na sala do comandante.' });
+    else if (a === 'cofre') alvo(K, com, 'cofre', { n: 'O cofre do soldo' });
+    else alvo(K, com, 'pessoa', { n: 'O comandante', notas: 'Dormindo.' });
+    // os guardas: o portão, as torres, a ronda das muralhas, a das celas; os soldados dormindo no quartel
+    posto(K, gx - 2, y1 - 2, 's', { r: 8 }); posto(K, gx + 1, y1 - 2, 's', { r: 8 });
+    torres.forEach((t, i) => { if (i < qtd(K, [2, 3, 4])) posto(K, t.q.x + 1, t.q.y + 1, i < 2 ? 'n' : 's', { r: 9, a: 120 }); });
+    ronda(K, rotaM, 'volta', { k: 0, passo: 4, r: 7 });
+    if (qtd(K, [0, 1, 1])) ronda(K, rotaM, 'volta', { k: 2, passo: 4, r: 7 });
+    if (C.porta && qtd(K, [0, 1, 1])) posto(K, C.porta.fora[0] + 1, C.porta.fora[1], 's', { r: 6 });
+    const camas = K.p.objetos.filter(ob => ob.id === 'cama' && Q.salas.some(q => q.papel === 'dormitorio' && ob.x >= q.x && ob.x < q.x + q.w && ob.y >= q.y && ob.y < q.y + q.h));
+    camas.slice(0, qtd(K, [2, 4, 6])).forEach((c2, i) => K.p.npcs.push({ x: c2.x, y: c2.y + (c2.rot === 180 ? 1 : 0), n: 'Soldado dormindo ' + (i + 1), notas: 'Dormindo. Um barulho perto acorda.', conds: ['adormecido'], cor: '#5a6b8c', inimigo: true }));
+    sombras(K, qtd(K, [3, 4, 4]), { x0: x0 + 1, y0: y0 + 1, x1: x1 - 2, y1: y1 - 2 });
+    p.cena = [gx, Math.round(H / 2)];
+    p.chegada = [gx, H - 1];
+    return fim(p, 'fortaleza', o);
+  }
+
+  /* ================= a guilda e o cofre ================= */
+  function gerarGuilda(o) {
+    const k = TAM[o.tamanho].k, W = Math.round(34 * k), H = Math.round(30 * k), K = plano('guilda', W, H, o.seed, o), { p, r } = K;
+    p.guardas_ = o.guardas;
+    K.pinta('piso', { x: 0, y: 0, w: W, h: H, tipo: 'calcada' });
+    // a rua (embaixo) e o beco (em cima)
+    const bx = 2, by = 4, bw = W - 4, bh = H - 10;
+    const G = predio(K, bx, by, bw, bh, { corredor: true, larg: 2, min: 4, max: 7, entrada: 'salaoPublico', papeis: ['cofreForte', 'escritorio', 'guarda', 'arquivo', 'escritorio'], fundos: ['cofreForte', 'arquivo'], resto: ['deposito', 'quarto'], trancada: true, nivelFrente: 'dificil', fundosPorta: true, nivelFundos: 'medio', trancar: ['cofreForte', 'arquivo', 'escritorio'], nivelSala: 'medio', extra: 0.2, piso: { cofreForte: 'laje', guarda: 'laje', deposito: 'laje' } });
+    for (const q of G.salas) mobiliar(K, q);
+    // o cofre forte: a porta da fechadura absoluta e as armadilhas na frente
+    const vault = G.salas.find(q => q.papel === 'cofreForte');
+    if (vault) {
+      const pv = G.portas.find(d => Math.abs(d.x1 - (vault.x + vault.w / 2)) <= vault.w / 2 + 0.5 && (d.y1 === vault.y + vault.h || d.y1 === vault.y));
+      if (pv) { const w0 = K.p.paredes.find(w => w.k === 'door' && w.x1 === pv.x1 && w.y1 === pv.y1 && w.x2 === pv.x2 && w.y2 === pv.y2); if (w0) { w0.locked = true; w0.fech = 'absoluto'; } }
+      // a placa de pressão bem na frente da porta; os dardos do lado
+      if (pv && G.corr) { const y = vault.faixa === 'n' ? G.corr.y : G.corr.y + G.corr.h - 1; K.p.objetos.push({ id: 'placaPressao', x: pv.x1, y, s: 1, armadilha: true }); if (pv.x1 + 1 < G.corr.x + G.corr.w) K.p.objetos.push({ id: 'dardos', x: pv.x1 + 1, y, s: 1, armadilha: true }); vault.portaX = pv.x1; }
+    }
+    // a rua: os lampiões; o beco: os barris, os caixotes, o lixo e o bueiro
+    for (let x = 3; x < W - 3; x += 7) K.poe1('lampiao', x, H - 3);
+    for (let i = 0; i < 4; i++) K.poe1(i % 2 ? 'caixote' : 'barril', K.ri(2, W - 3), K.ri(1, 2));
+    esconderijo(K, K.ri(4, W - 6), 1, 'barril', 'Entre os barris do beco');
+    const bbx = K.ri(3, W - 4);
+    if (K.poe1('bueiro', bbx, 2)) K.p.entradas.push({ x: bbx, y: 2, n: 'O bueiro do beco (desce ao esgoto)', gera: { t: 'masmorra', m: 'esgoto', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (KIT().sub(o.seed, 95) % 2147483000) + 1 } });
+    const arq = G.salas.find(q => q.papel === 'arquivo');
+    if (arq) K.marca('interesse', arq.x + 1, arq.y + 1, 'Entrada: a claraboia', 'Do telhado, a claraboia desce no arquivo (uma corda resolve).');
+    // o alvo
+    const a = alvoDe(K, 'guilda', o.alvo);
+    if (a === 'cofre' && vault) alvo(K, vault, 'cofre', { n: 'O cofre forte', notas: 'A porta da sala tem fechadura absoluta; as armadilhas estão na frente.' });
+    else if (a === 'documento') alvo(K, arq || G.salas[1], 'documento', { n: 'O livro de contas' });
+    else alvo(K, vault || G.salas[1], 'artefato', { id: 'calice', n: 'A joia rara' });
+    // os guardas: a porta da frente (fora), o corredor, a porta do cofre; o beco (muitos)
+    if (G.porta) posto(K, G.porta.fora[0] + 1, G.porta.fora[1] + 1, 's', { r: 6 });
+    if (G.corr) ronda(K, [[G.corr.x + 1, G.corr.y + 1], [G.corr.x + G.corr.w - 2, G.corr.y + 1]], 'ida', { passo: 3, r: 6, a: 80 });
+    if (vault && G.corr && qtd(K, [0, 1, 1])) { const x = clamp((vault.portaX != null ? vault.portaX : vault.x + 1) - 2, G.corr.x, G.corr.x + G.corr.w - 1); posto(K, x, vault.faixa === 'n' ? G.corr.y + 1 : G.corr.y, vault.faixa === 'n' ? 'n' : 's', { r: 5 }); }
+    if (qtd(K, [0, 0, 1])) ronda(K, [[2, 2], [W - 3, 2]], 'ida', { passo: 3, r: 6 });
+    if (qtd(K, [0, 1, 1])) ronda(K, [[2, H - 4], [W - 3, H - 4]], 'ida', { passo: 4, r: 7 });
+    const gq = G.salas.find(q => q.papel === 'guarda');
+    if (gq) { const c2 = K.p.objetos.find(ob => ob.id === 'cadeira' && ob.x >= gq.x && ob.x < gq.x + gq.w && ob.y >= gq.y && ob.y < gq.y + gq.h); if (c2) K.p.npcs.push({ x: c2.x, y: c2.y, n: 'Guarda cochilando', notas: 'Cochilando na cadeira: acorda com barulho.', conds: ['adormecido'], cor: '#5a6b8c', inimigo: true }); }
+    sombras(K, qtd(K, [2, 3, 3]), { x0: 1, y0: 1, x1: W - 2, y1: H - 2 });
+    p.cena = G.porta ? [G.porta.x, G.porta.y - 2] : [Math.round(W / 2), Math.round(H / 2)];
+    p.chegada = [Math.round(W / 2), H - 1];
+    return fim(p, 'guilda', o);
+  }
+
+  /* ================= o acampamento inimigo ================= */
+  function gerarAcampamento(o) {
+    const k = TAM[o.tamanho].k, W = Math.round(46 * k), H = Math.round(38 * k), K = plano('acampamento', W, H, o.seed, o), { p, r } = K;
+    p.guardas_ = o.guardas;
+    const cx = Math.round(W / 2), cy = Math.round(H / 2), rx = Math.round(W * 0.32), ry = Math.round(H * 0.3);
+    const dentro = (x, y, m) => ((x + 0.5 - cx) / (rx + (m || 0))) ** 2 + ((y + 0.5 - cy) / (ry + (m || 0))) ** 2 <= 1;
+    // a trilha (de baixo até o meio) e a ronda em volta (na beira da clareira)
+    K.pinta('caminho', { pts: [[cx, H - 0.5], [cx, cy + 2]], w: 2, tipo: 'terra' });
+    for (let y = cy; y < H; y++) for (const x of [cx - 1, cx]) K.reserva.add(x + ',' + y);
+    const rota = []; for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; rota.push([clamp(Math.round(cx + Math.cos(a) * (rx - 1)) - 0, 1, W - 2), clamp(Math.round(cy + Math.sin(a) * (ry - 1)), 1, H - 2)]); }
+    for (let i = 0; i < rota.length; i++) { const [ax, ay] = rota[i], [bx, by] = rota[(i + 1) % rota.length]; for (let s = 0, n = Math.max(Math.abs(bx - ax), Math.abs(by - ay)); s <= n; s++) K.reserva.add(Math.round(ax + (bx - ax) * s / Math.max(1, n)) + ',' + Math.round(ay + (by - ay) * s / Math.max(1, n))); }
+    // a tenda do chefe (com a cortina na entrada), no fundo
+    const tw = 7, th = 6, tx = cx - Math.floor(tw / 2), ty = cy - ry + 5;
+    const T = predio(K, tx, ty, tw, th, { corredor: false, entrada: 'tenda', frente: 's', min: 7, max: 7, janelas: false, fundosPorta: false, pisoBase: 'madeira' });
+    for (const w of K.p.paredes) if (w.k === 'door' && w.x1 >= tx && w.x1 <= tx + tw && w.y1 === ty + th) w.k = 'veil';
+    for (const q of T.salas) mobiliar(K, q);
+    // as fogueiras e as barracas em volta delas
+    const fogos = [[cx - Math.round(rx * 0.45), cy + 1], [cx + Math.round(rx * 0.45), cy + 1]];
+    if (o.tamanho !== 'pequeno') fogos.push([cx, cy + Math.round(ry * 0.55)]);
+    for (const [fx, fy] of fogos) { K.poe1('fogueira', fx, fy); K.poe1('tripe', fx + 1, fy); }
+    let barracas = 0;
+    for (let i = 0; i < 40 && barracas < qtd(K, [4, 6, 8]); i++) {
+      const a = K.r() * TAU, d = 0.55 + K.r() * 0.35, x = Math.round(cx + Math.cos(a) * rx * d) - 1, y = Math.round(cy + Math.sin(a) * ry * d) - 1;
+      if (!dentro(x, y, -1) || !dentro(x + 1, y + 1, -1)) continue;
+      if (K.poeR('barraca', x, y, 2, 2, 0)) { barracas++; K.poe1('sacoDormir', x + 2, y + 1); }
+    }
+    // os cativos (nas jaulas), as carroças, os caixotes, a lenha
+    const jx = cx + Math.round(rx * 0.6), jy = cy - Math.round(ry * 0.35), jaulas = [];
+    for (let i = 0; i < 3; i++) { const ob = K.poe1('jaula', jx + i, jy); if (ob) jaulas.push(ob); }
+    esconderijo(K, cx - Math.round(rx * 0.75), cy - 2, 'carroca', 'Debaixo da carroça', 2);
+    esconderijo(K, cx + Math.round(rx * 0.2), cy + Math.round(ry * 0.75) - 1, 'caixote', 'Atrás dos caixotes');
+    K.poe1('lenha', cx - Math.round(rx * 0.2), cy - 1);
+    // a mata em volta (fora da clareira): as árvores e as moitas (as moitas são esconderijos)
+    for (let k2 = 0; k2 < W * H; k2++) {
+      const x = K.ri(0, W - 2), y = K.ri(0, H - 2);
+      if (dentro(x, y, 1) || (Math.abs(x - cx) <= 1 && y > cy)) continue;
+      if (K.r() < 0.45) K.poeR('arvore', x, y, 2, 2, 0); else if (K.r() < 0.5) K.poe1('arbusto', x, y);
+    }
+    // as luzes: as fogueiras; as tochas da entrada
+    K.poe1('tocha', cx - 2, cy + ry - 1); K.poe1('tocha', cx + 1, cy + ry - 1);
+    K.marca('interesse', cx, 1, 'Entrada: a trilha do mato', 'Uma trilha de caça chega pelos fundos, sem passar pela entrada vigiada.');
+    // o alvo
+    const a = alvoDe(K, 'acampamento', o.alvo), tq = T.salas[0];
+    if (a === 'prisioneiro' && jaulas.length) {
+      jaulas.forEach((j, i) => K.p.npcs.push({ x: j.x, y: j.y, n: 'Cativo ' + (i + 1), notas: NOTA_ALVO + ' Preso na jaula (trancada).', conds: [], cor: '#8f7a4a' }));
+      K.marca('alvoMissao', jaulas[0].x, jaulas[0].y + 1, 'Alvo da missão', 'Os cativos, nas jaulas.'); K.p.alvo = { tipo: 'prisioneiro', n: 'Os cativos', x: jaulas[0].x, y: jaulas[0].y };
+    } else if (a === 'documento') alvo(K, tq, 'documento', { n: 'O mapa do chefe' });
+    else if (a === 'pessoa') { K.p.npcs.push({ x: tq.x + 1, y: tq.y + 1, n: 'O chefe', notas: NOTA_ALVO + ' Dormindo na tenda.', conds: ['adormecido'], cor: '#8a5aa8', inimigo: true }); K.marca('alvoMissao', tq.x + 2, tq.y + 1, 'Alvo da missão', 'O chefe, dormindo.'); K.p.alvo = { tipo: 'pessoa', n: 'O chefe', x: tq.x + 1, y: tq.y + 1 }; }
+    else alvo(K, tq, 'cofre', { id: 'bau', n: 'O baú do saque', notas: 'Trancado.' });
+    // os guardas: a entrada, a ronda da beira; os que estão junto do fogo; os que dormem nas barracas
+    posto(K, cx - 2, cy + ry - 2, 's', { r: 7 }); if (qtd(K, [0, 1, 1])) posto(K, cx + 1, cy + ry - 2, 's', { r: 7 });
+    ronda(K, rota, 'volta', { k: 0, passo: 4, r: 6 });
+    if (qtd(K, [0, 0, 1])) ronda(K, rota, 'volta', { k: 8, passo: 4, r: 6 });
+    fogos.slice(0, qtd(K, [1, 2, 3])).forEach(([fx, fy]) => { const x = fx, y = fy + 1; if (K.livreR(x, y)) { K.ocupa(x, y, 1, 1); posto(K, x, y, 'n', { r: 5, a: 140, n: 'Bandido junto do fogo' }); } });
+    K.p.objetos.filter(ob => ob.id === 'sacoDormir').slice(0, qtd(K, [2, 3, 5])).forEach((s2, i) => K.p.npcs.push({ x: s2.x, y: s2.y, n: 'Bandido dormindo ' + (i + 1), notas: 'Dormindo.', conds: ['adormecido'], cor: '#8f3d4a', inimigo: true }));
+    sombras(K, qtd(K, [3, 4, 5]), { x0: 1, y0: 1, x1: W - 2, y1: H - 2 });
+    p.cena = [cx, cy];
+    p.chegada = [cx, H - 1];
+    return fim(p, 'acampamento', o);
+  }
+
+  /* ================= as casas e as ruas (um quarteirão, de noite) ================= */
+  function gerarRuas(o) {
+    const k = TAM[o.tamanho].k, W = Math.round(44 * k), H = Math.round(36 * k), K = plano('ruas', W, H, o.seed, o), { p, r } = K;
+    p.guardas_ = o.guardas;
+    K.pinta('piso', { x: 0, y: 0, w: W, h: H, tipo: 'calcada' });
+    // as ruas: a de baixo (larga) e a do meio (atravessada); os becos entre as casas
+    const ry = Math.round(H / 2) - 2, rua = { y0: ry, y1: ry + 3 }, vx = Math.round(W / 2) - 1;
+    const blocos = [{ x0: 1, y0: 1, x1: vx - 2, y1: ry - 2 }, { x0: vx + 3, y0: 1, x1: W - 2, y1: ry - 2 }, { x0: 1, y0: rua.y1 + 2, x1: vx - 2, y1: H - 2 }, { x0: vx + 3, y0: rua.y1 + 2, x1: W - 2, y1: H - 2 }];
+    const casas = [];
+    for (const b of blocos) {
+      // as casas de cada bloco, lado a lado, com a porta para a rua; um beco de 2 entre elas
+      let x = b.x0;
+      const frente = b.y0 < ry ? 's' : 'n', hh = Math.min(9, b.y1 - b.y0 - 1), yy = frente === 's' ? b.y1 - hh + 1 : b.y0;
+      while (x + 6 <= b.x1) {
+        const cw = Math.min(K.ri(6, 9), b.x1 - x + 1);
+        const C = predio(K, x, yy, cw, hh, { corredor: false, entrada: K.r() < 0.3 ? 'loja' : 'entrada', frente, min: 3, max: 5, papeis: ['quarto', 'sala'], resto: ['quarto'], trancada: true, nivelFrente: 'facil', fundosPorta: true, nivelFundos: 'facil', extra: 0.4, piso: { loja: 'madeira' } });
+        for (const q of C.salas) mobiliar(K, q);
+        casas.push(C);
+        x += cw + 2;
+      }
+    }
+    // a pracinha com a fonte, no cruzamento; os lampiões das ruas
+    K.poeR('fonte', vx, ry + 1, 2, 2, 0);
+    for (let x = 3; x < W - 3; x += 8) { K.poe1('lampiao', x, rua.y0 - 1) || K.poe1('lampiao', x + 1, rua.y0 - 1); }
+    for (let y = 3; y < H - 3; y += 9) K.poe1('lampiao', vx - 1, y);
+    // os becos: barris, caixotes e lixo (esconderijos)
+    for (let i = 0; i < 8; i++) { const C = casas[Math.floor(r() * casas.length)]; if (!C) break; const b = C.salas[C.salas.length - 1], x = b.x + b.w, y = K.ri(b.y, b.y + b.h - 1); if (i < 3) esconderijo(K, x, y, i % 2 ? 'caixote' : 'barril', 'No beco, atrás dos barris'); else K.poe1(i % 2 ? 'caixote' : 'barril', x, y); }
+    const bbx = vx + 2, bby = rua.y1 + 1;
+    if (K.poe1('bueiro', bbx, bby)) K.p.entradas.push({ x: bbx, y: bby, n: 'O bueiro (desce ao esgoto)', gera: { t: 'masmorra', m: 'esgoto', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (KIT().sub(o.seed, 97) % 2147483000) + 1 } });
+    // a casa do alvo: a maior
+    const alvoC = casas.slice().sort((a2, b2) => b2.salas.reduce((s, q) => s + q.w * q.h, 0) - a2.salas.reduce((s, q) => s + q.w * q.h, 0))[0];
+    if (alvoC) {
+      for (const w of K.p.paredes) if (w.k === 'door' && alvoC.porta && w.x1 === alvoC.porta.x && w.y1 === alvoC.porta.y) w.fech = 'dificil';
+      const a = alvoDe(K, 'ruas', o.alvo), q = alvoC.salas.find(s => s.papel === 'quarto') || alvoC.salas[alvoC.salas.length - 1];
+      if (a === 'pessoa') alvo(K, q, 'pessoa', { n: 'A pessoa', notas: 'Dormindo em casa.' });
+      else if (a === 'cofre') alvo(K, q, 'cofre', { id: 'bau', n: 'O baú escondido', notas: 'Debaixo da cama, trancado.' });
+      else alvo(K, q, 'documento', { n: 'A carta' });
+      if (alvoC.porta) K.marca('interesse', alvoC.porta.fora[0] + 1, alvoC.porta.fora[1], 'A casa do alvo', 'A maior do quarteirão: a porta tem fechadura difícil; os fundos dão para o beco.');
+    }
+    // a ronda da guarda da cidade: a rua do meio e a de baixo; o vigia da praça
+    const rota = [[2, rua.y0], [W - 3, rua.y0], [W - 3, rua.y1], [2, rua.y1]];
+    ronda(K, [[2, rua.y1], [W - 3, rua.y1]], 'ida', { passo: 4, r: 7 });
+    if (qtd(K, [0, 1, 1])) ronda(K, [[vx - 1, 1], [vx - 1, H - 2]], 'ida', { passo: 4, r: 7 });
+    if (qtd(K, [0, 0, 1])) ronda(K, rota, 'volta', { k: 2, passo: 4, r: 7 });
+    posto(K, vx + 2, ry + 2, 'l', { r: 6, a: 120, n: 'Vigia da praça' });
+    sombras(K, qtd(K, [3, 4, 5]), { x0: 1, y0: 1, x1: W - 2, y1: H - 2 });
+    p.cena = [vx, ry + 1];
+    p.chegada = [1, rua.y0 + 1];
+    return fim(p, 'ruas', o);
+  }
+
+  /* ================= a torre de guarda ================= */
+  function gerarTorre(o) {
+    const k = TAM[o.tamanho].k, W = Math.round(30 * k), H = Math.round(30 * k), K = plano('torre', W, H, o.seed, o), { p, r } = K;
+    p.guardas_ = o.guardas;
+    const m = 3, x0 = m, y0 = m, x1 = W - m, y1 = H - m, gx = Math.round(W / 2);
+    // a paliçada (muro baixo de madeira) e o portão
+    muro(K, x0, y0, x1, y1, 'muro', [{ horiz: true, a: y1, de: gx - 1, ate: gx + 1 }]);
+    portao(K, gx, y1);
+    K.pinta('caminho', { pts: [[gx, H - 0.5], [gx, Math.round(H / 2) + 4]], w: 2, tipo: 'terra' });
+    for (let y = Math.round(H / 2) + 4; y < y1; y++) for (const x of [gx - 1, gx]) K.reserva.add(x + ',' + y);
+    // a torre: no meio, duas salas (a da guarda e o depósito); a escada sobe ao alto
+    const tw = Math.max(8, Math.round(W * 0.32)), th = tw, tx = gx - Math.floor(tw / 2), ty = Math.round(H / 2) - Math.floor(th / 2) - 1;
+    const rota = volta({ x: tx, y: ty, w: tw, h: th }, 2, { x0: x0 + 1, y0: y0 + 1, x1: x1 - 2, y1: y1 - 2 });
+    for (const [ax, ay] of rota) K.reserva.add(ax + ',' + ay);
+    for (let x = rota[0][0]; x <= rota[1][0]; x++) { K.reserva.add(x + ',' + rota[0][1]); K.reserva.add(x + ',' + rota[2][1]); }
+    for (let y = rota[0][1]; y <= rota[2][1]; y++) { K.reserva.add(rota[0][0] + ',' + y); K.reserva.add(rota[1][0] + ',' + y); }
+    const T = predio(K, tx, ty, tw, th, { corredor: false, entrada: 'guarda', frente: 's', min: Math.ceil(tw / 2), max: Math.ceil(tw / 2), papeis: ['deposito'], trancada: true, nivelFrente: 'medio', fundosPorta: false, trancar: ['deposito'], nivelSala: 'medio', pisoBase: 'laje', extra: 0 });
+    for (const q of T.salas) mobiliar(K, q);
+    const gq = T.salas.find(q => q.papel === 'guarda') || T.salas[0];
+    const esc = canto(K, gq, 'escada', { n: 'A escada (sobe ao alto da torre)', notas: 'Do alto, o vigia vê o terreno todo.' });
+    // o pátio: o estábulo pequeno, a lenha, o poço; o sinal de fogo (num estrado alto)
+    K.poe1('poco', x0 + 2, y1 - 3); K.poe1('lenha', x1 - 3, y1 - 3); K.poe1('lenha', x1 - 4, y1 - 3);
+    esconderijo(K, x0 + 2, y0 + 2, 'feno', 'No monte de feno');
+    const sx = x1 - 4, sy = y0 + 2;
+    p.relevo.push({ t: 'plataforma', alt: 2, k: 'rect', x: sx - 0.5, y: sy - 0.5, w: 2, h: 2 });
+    const sinal = K.poe1('braseiro', sx, sy, 0, { n: 'O sinal de fogo', notas: 'Aceso, avisa as outras torres.' });
+    // as luzes: o portão e a porta
+    K.poe1('tocha', gx - 2, y1 - 1); K.poe1('tocha', gx + 1, y1 - 1);
+    if (T.porta) K.poe1('lampiao', T.porta.x + 2, T.porta.y);
+    K.marca('interesse', x0 - 1, Math.round(H / 2), 'Entrada: por cima da paliçada', 'A paliçada é baixa deste lado, longe do portão: dá para pular.');
+    // o alvo
+    const a = alvoDe(K, 'torre', o.alvo), dep = T.salas.find(q => q.papel === 'deposito') || gq;
+    if (a === 'prisioneiro') alvo(K, dep, 'prisioneiro', { n: 'O prisioneiro', notas: 'No depósito trancado.' });
+    else if (a === 'documento') alvo(K, gq, 'documento', { n: 'A mensagem', notas: 'Sobre a mesa da guarda.' });
+    else if (sinal) { K.marca('alvoMissao', sx - 1, sy, 'Alvo da missão', 'Apagar (ou acender) o sinal de fogo.'); sinal.notas = NOTA_ALVO + ' ' + sinal.notas; p.alvo = { tipo: 'artefato', n: 'O sinal de fogo', x: sx, y: sy }; }
+    // os guardas: o vigia do alto (vê longe), a porta, a ronda em volta
+    posto(K, sx, sy + 1, 's', { r: 12, a: 140, n: 'Vigia do sinal' });
+    if (T.porta) posto(K, T.porta.fora[0] + 1, T.porta.fora[1], 's', { r: 6 });
+    ronda(K, rota, 'volta', { k: 0, passo: 3, r: 6 });
+    if (qtd(K, [0, 0, 1])) ronda(K, rota, 'volta', { k: 2, passo: 3, r: 6 });
+    if (qtd(K, [0, 1, 1])) { const c2 = K.p.objetos.find(ob => ob.id === 'cadeira' && ob.x >= gq.x && ob.x < gq.x + gq.w && ob.y >= gq.y && ob.y < gq.y + gq.h); if (c2) K.p.npcs.push({ x: c2.x, y: c2.y, n: 'Guarda de folga', notas: 'Jogando dados: distraído.', conds: [], cor: '#5a6b8c', inimigo: true }); }
+    void esc;
+    sombras(K, qtd(K, [2, 3, 4]), { x0: x0 + 1, y0: y0 + 1, x1: x1 - 2, y1: y1 - 2 });
+    p.cena = [gx, ty + th + 2];
+    p.chegada = [gx, H - 1];
+    return fim(p, 'torre', o);
+  }
+
+  // o fim de todo plano: o resumo do que entrou
+  function fim(p, lugar, o) {
+    delete p.guardas_;
+    p.lugar = lugar; p.tamanho = o.tamanho; p.guardasOp = o.guardas; p.alvoOp = o.alvo || 'sorteio';
+    return p;
+  }
+  const GERA = { mansao: gerarMansao, fortaleza: gerarFortaleza, guilda: gerarGuilda, acampamento: gerarAcampamento, ruas: gerarRuas, torre: gerarTorre };
+  function gerar(lugar, o) {
+    o = Object.assign({}, o);
+    o.tamanho = TAM[o.tamanho] ? o.tamanho : 'medio';
+    o.guardas = GUARDAS.some(g => g[0] === o.guardas) ? o.guardas : 'normal';
+    o.seed = (Math.round(Number(o.seed)) >>> 0) || 1;
+    return GERA[lugar](o);
+  }
+
+  /* ================= a prévia ================= */
+  function previa(cv, p, maxW, maxH) {
+    const cell = Math.max(5, Math.floor(Math.min((maxW || 460) / p.W, (maxH || 330) / p.H)));
+    const f = KIT().pintar(p, cell);
+    cv.width = f.width; cv.height = f.height;
+    const g = cv.getContext('2d'); g.drawImage(f, 0, 0);
+    g.lineCap = 'round';
+    for (const w of p.paredes) { g.strokeStyle = w.secret ? '#c79bff' : w.k === 'door' ? (w.locked ? '#ffb36b' : '#7fd1ff') : w.k === 'window' ? '#bff3ff' : w.k === 'veil' ? '#e3b6ff' : 'rgba(255,236,200,0.85)'; g.lineWidth = Math.max(1.5, cell * (w.k === 'wall' ? 0.12 : 0.24)); g.beginPath(); g.moveTo(w.x1 * cell, w.y1 * cell); g.lineTo(w.x2 * cell, w.y2 * cell); g.stroke(); }
+    for (const o of p.objetos) if (Props.P[o.id]) Props.desenhar(g, o.id, o.x, o.y, o.fw || o.s || 1, o.fh || o.s || 1, o.rot, cell);
+    // as rotas e os guardas (os pontos vermelhos); os que dormem e o alvo
+    for (const gd of p.guardas) {
+      const pts = gd.ronda.pts;
+      if (pts.length > 1) { g.strokeStyle = 'rgba(240,92,78,0.75)'; g.lineWidth = Math.max(1, cell * 0.12); g.setLineDash([cell * 0.4, cell * 0.3]); g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo((x + 0.5) * cell, (y + 0.5) * cell) : g.moveTo((x + 0.5) * cell, (y + 0.5) * cell))); if (gd.ronda.modo === 'volta') g.closePath(); g.stroke(); g.setLineDash([]); }
+      g.fillStyle = '#f05c4e'; g.strokeStyle = '#2a0c08'; g.lineWidth = 1.5; g.beginPath(); g.arc((gd.x + 0.5) * cell, (gd.y + 0.5) * cell, cell * 0.42, 0, TAU); g.fill(); g.stroke();
+    }
+    for (const n of p.npcs) { g.fillStyle = n.inimigo ? '#9aa6c4' : '#c99aff'; g.beginPath(); g.arc((n.x + 0.5) * cell, (n.y + 0.5) * cell, cell * 0.36, 0, TAU); g.fill(); }
+    for (const mk of p.marcas) { if (mk.id === 'esconderijo') { g.strokeStyle = '#9fb3d9'; g.lineWidth = 1.5; g.setLineDash([3, 2]); g.beginPath(); g.arc((mk.x + 0.5) * cell, (mk.y + 0.5) * cell, cell * 0.4, 0, TAU); g.stroke(); g.setLineDash([]); } else if (mk.id === 'alvoMissao') { g.fillStyle = '#ffd34d'; g.beginPath(); g.arc((mk.x + 0.5) * cell, (mk.y + 0.5) * cell, cell * 0.45, 0, TAU); g.fill(); g.strokeStyle = '#7a1e14'; g.lineWidth = 2; g.stroke(); } }
+    for (const e of p.entradas) { g.fillStyle = '#e6ab4f'; g.strokeStyle = '#3a2508'; g.lineWidth = 2; g.beginPath(); g.arc((e.x + 0.5) * cell, (e.y + 0.5) * cell, cell * 0.45, 0, TAU); g.fill(); g.stroke(); }
+    return { cell };
+  }
+  const nomeDe = p => NOMES[p.lugar] || 'Furtividade';
+  function resumo(p) {
+    const n = p.guardas.length, rondas = p.guardas.filter(g => g.ronda.pts.length > 1).length, dorme = p.npcs.filter(x => (x.conds || []).includes('adormecido')).length;
+    const esc = p.marcas.filter(m => m.id === 'esconderijo').length, entr = p.marcas.filter(m => m.id === 'interesse').length + p.entradas.length + p.paredes.filter(w => w.secret || (w.k === 'window' && w.aberta)).length;
+    const pl = (k, um, varios) => k + ' ' + (k === 1 ? um : varios);
+    return [nomeDe(p), p.W + ' × ' + p.H + ' quadrados', `${pl(n, 'guarda', 'guardas')} (${rondas} de ronda)`, dorme ? `${dorme} dormindo` : '', pl(esc, 'esconderijo ou sombra', 'esconderijos e sombras'), pl(entr, 'entrada escondida', 'entradas escondidas'), p.alvo ? 'alvo: ' + (p.alvo.n || '').toLowerCase() : ''].filter(Boolean).join(' · ') + '.';
+  }
+
+  /* ================= a cena ================= */
+  // o guarda: do Bestiário (um humanoide que seja guarda, soldado, sentinela…), senão um token com o nome
+  function bestiarioGuardas() {
+    const lista = typeof Fichas !== 'undefined' && Fichas.listaBest ? Fichas.listaBest() : [];
+    const hum = lista.filter(e => (e.tags || []).includes('Humanoide') && !(e.tags || []).some(t => ['Chefe', 'Elite'].includes(t)));
+    const nomeOk = hum.filter(e => /guard|soldad|sentinel|vigia|mercen|bandid|capang/i.test(e.nome || e.n || e.name || ''));
+    return nomeOk.length ? nomeOk : hum;
+  }
+  async function criar(p, nome, ex) {
+    ex = ex || {};
+    const sc = newScene(String(nome || '').trim().slice(0, 60) || nomeDe(p));
+    if (typeof ex.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(ex.id) && !Store.S.scenes[ex.id]) sc.id = ex.id;
+    sc.cols = p.W; sc.rows = p.H;
+    const c = sc.cell;
+    sc.fog.dynamic = true; sc.fog.explored = true;
+    // de noite: com a hora em Dia (a de começo), a cena sai de Noite; Entardecer e Breu valem como escolhidos
+    const tom = TONES.find(t => t.id === (ex.hora && ex.hora !== 'dia' ? ex.hora : 'noite')) || TONES[0];
+    sc.tone = tom.id; sc.light = tom.light;
+    sc.weather = { k: WEATHERS.some(w => w[0] === ex.clima) ? ex.clima : '', pow: 0.6 };
+    sc.bgColor = KIT().palDe(p.estilo, p.estacao).base; sc.bg.stretch = true;
+    try { const cv = KIT().pintar(p, KIT().res(p.W, p.H)); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
+    for (const w of p.paredes) {
+      if (Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.05) continue;
+      const k2 = w.secret ? 'door' : (w.k || 'wall');
+      sc.walls.push(Object.assign({ id: uid('wl'), k: k2, x1: w.x1 * c, y1: w.y1 * c, x2: w.x2 * c, y2: w.y2 * c, open: !!w.open, locked: !!w.locked, secret: !!w.secret }, w.fech ? { fech: w.fech } : null));
+    }
+    for (const o of p.objetos) if (Props.P[o.id]) {
+      const t = Props.novo(sc, o.id, o.x * c, o.y * c, o.s || 1, !!o.armadilha || !!Props.P[o.id].marca);
+      if (o.rot) t.rot = o.rot;
+      if (o.fw) { t.fw = o.fw; t.fh = o.fh; t.size = Math.max(o.fw, o.fh); t.x = o.x * c; t.y = o.y * c; delete t.q0; }
+      if (o.n) t.name = o.n;
+      if (o.notas) t.notes = o.notas;
+      sc.tokens.push(t);
+    }
+    if (ex.relevo !== false) for (const rr of p.relevo) sc.shapes.push(Object.assign(Estilos.terrenoNaCena(rr, c, 0, 0), { a: 0.3 }));
+    for (const e of p.entradas) { const t = Props.novo(sc, 'entrada', e.x * c, e.y * c, 1, true); t.name = e.n; t.gera = Object.assign({}, e.gera); sc.tokens.push(t); }
+    for (const m of p.marcas) { const t = Props.novo(sc, m.id, m.x * c, m.y * c, 1, true); t.name = m.n; t.notes = m.notas || ''; sc.tokens.push(t); }
+    // os guardas (com a ronda) e os que dormem, do Bestiário quando houver
+    const best = bestiarioGuardas(), conta = new Map(), noite = sc.light !== 'claro';
+    const novoGuarda = (x, y, nome0, k2) => {
+      let t = null;
+      if (best.length && typeof Fichas !== 'undefined' && Fichas.novoTokenBest) { const e = best[k2 % best.length]; try { t = Fichas.novoTokenBest(sc, e.id, x * c, y * c, { hidden: false }); } catch (err) { t = null; } }
+      if (!t) t = newToken(sc, x * c, y * c, { name: nome0 || 'Guarda', color: '#5a6b8c' });
+      if (nome0) t.name = nome0;
+      const base = t.name; conta.set(base, (conta.get(base) || 0) + 1);
+      return t;
+    };
+    p.guardas.forEach((g, i) => {
+      const t = novoGuarda(g.x, g.y, g.n || (g.posto ? 'Sentinela' : 'Guarda'), i);
+      t.hidden = false;
+      t.ronda = Rondas.novaRonda(g.ronda);
+      t.vis = Object.assign({}, t.vis, { on: false });
+      if (g.luz && noite && g.ronda.pts.length > 1) t.light = { on: true, bright: 1.5, dim: 4, c: '#ffd59a', fl: true };
+      t.notes = (t.notes ? t.notes + '\n' : '') + (g.posto ? 'De posto.' : 'Faz a ronda.') + ' Mude a rota no painel (bloco "Guarda").';
+      sc.tokens.push(t);
+    });
+    for (const n of p.npcs) {
+      const t = n.inimigo ? novoGuarda(n.x, n.y, n.n, 7) : newToken(sc, n.x * c, n.y * c, { name: n.n, color: n.cor || '#8a5aa8' });
+      t.name = n.n; t.hidden = false; t.conds = (n.conds || []).filter(id => COND_BY_ID[id]);
+      t.vis = Object.assign({}, t.vis, { on: false });
+      t.notes = (n.notas || '').slice(0, 2000);
+      sc.tokens.push(t);
+    }
+    // os nomes repetidos ganham número
+    const vistos = new Map();
+    for (const t of sc.tokens) if (!t.prop && (conta.get(t.name) || 0) > 1) { vistos.set(t.name, (vistos.get(t.name) || 0) + 1); t.name = (t.name.slice(0, 54) + ' ' + vistos.get(t.name)).trim(); }
+    if (p.chegada && Props.P.chegada) { const t = Props.novo(sc, 'chegada', p.chegada[0] * c, (p.chegada[1] - 1) * c, 1, true); sc.tokens.push(t); }
+    normalizeScene(sc);
+    Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
+    return sc;
+  }
+
+  /* ================= as abas da janela ================= */
+  const semPartes = { partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava, quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null };
+  const NOTAS = {
+    mansao: 'O muro com o portão vigiado, o jardim escuro (com a ronda em volta da casa), a casa com o corredor, o escritório trancado, a porta dos fundos, a janela destrancada, a hera do muro e o bueiro.',
+    fortaleza: 'As muralhas com as torres (um vigia em cada), o portão com a grade, a ronda junto das muralhas, o quartel com os soldados dormindo, as celas trancadas, a brecha na muralha e o bueiro.',
+    guilda: 'A rua na frente, o beco atrás, o salão, os escritórios, o arquivo (com a claraboia) e o cofre forte: fechadura absoluta e armadilhas na porta.',
+    acampamento: 'A clareira no mato: as fogueiras, as barracas (com quem dorme), a tenda do chefe, as jaulas dos cativos, a ronda na beira da clareira e a trilha dos fundos.',
+    ruas: 'Um quarteirão de noite: as casas trancadas, os becos, os lampiões, a pracinha com a fonte, a guarda da cidade fazendo a ronda e a casa do alvo.',
+    torre: 'A paliçada com o portão, a torre (a sala da guarda e o depósito trancado), o vigia no alto do sinal de fogo e a ronda em volta.',
+  };
+  const LUGARES = {};
+  for (const id of IDS) {
+    const pre = 'fur' + id.charAt(0).toUpperCase() + id.slice(1);
+    LUGARES[id] = Object.assign({ id, n: CURTO[id], aceitaEstacao: true, furtivo: true,
+      padrao: () => { const o = App.opt; return { tamanho: TAM[o[pre + 'Tam']] ? o[pre + 'Tam'] : 'medio', guardas: GUARDAS.some(g => g[0] === o.furGuardas) ? o.furGuardas : 'normal', alvo: ALVOS[id].some(a => a[0] === o[pre + 'Alvo']) ? o[pre + 'Alvo'] : 'sorteio' }; },
+      controles(st, K, mudou) {
+        const muda = (k, v) => { st[k] = v; App.opt[pre + 'Tam'] = st.tamanho; App.opt.furGuardas = st.guardas; App.opt[pre + 'Alvo'] = st.alvo; mudou(true); };
+        return h('div', { class: 'ger-c' },
+          K.field('Tamanho', K.seg('fur-tam', st.tamanho, Object.keys(TAM).map(k => [k, TAM[k].n]), v => muda('tamanho', v)), 'stack'),
+          K.field('Guardas', K.seg('fur-guardas', st.guardas, GUARDAS, v => muda('guardas', v)), 'stack'),
+          K.field('O alvo da missão', K.seg('fur-alvo', st.alvo, [['sorteio', 'Sortear']].concat(ALVOS[id]), v => muda('alvo', v)), 'stack'));
+      },
+      opcoesDe: st => ({ tamanho: st.tamanho, guardas: st.guardas, alvo: st.alvo }),
+      aplicarOpcoes(st, o) { if (TAM[o.tamanho]) st.tamanho = o.tamanho; if (GUARDAS.some(g => g[0] === o.guardas)) st.guardas = o.guardas; if (o.alvo === 'sorteio' || ALVOS[id].some(a => a[0] === o.alvo)) st.alvo = o.alvo; },
+      gerar: (st, comum) => gerar(id, Object.assign({}, st, { seed: comum && comum.seed, estilo: comum && comum.estilo, estacao: comum && comum.estacao })),
+      previa, resumo, nomePadrao: nomeDe,
+      criar: (p, nome, ex) => criar(p, nome, ex),
+      relevoTxt: 'Com relevo',
+      dica: '"Gerar outro" sorteia outro lugar, com as mesmas escolhas. Na prévia: os guardas em vermelho (com a rota tracejada), o alvo em amarelo, os esconderijos tracejados.',
+      nota: NOTAS[id] + ' Sai uma cena nova, de noite (com a hora em Dia; Entardecer e Breu valem como escolhidos): só você vê as rotas, os cones de visão e as marcas; "Avançar rondas" (no grupo Mestre, à esquerda) faz os guardas andarem.',
+      feito: sc => `"${sc.name}" criada: os guardas estão nos postos e nas rondas. "Avançar rondas" (no grupo Mestre, à esquerda, ou no botão direito) faz eles andarem.` }, semPartes);
+  }
+  const ehFurtivo = id => IDS.includes(id);
+  return { IDS, NOMES, LUGARES, ALVOS, TAM, GUARDAS, gerar, previa, resumo, criar, predio, ehFurtivo };
+})();
+/* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
    Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra e o Porto), as escolhas de cada um e, embaixo, o que vale
    para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena, a estação
@@ -43524,10 +45172,10 @@ const Gerador = (() => {
     AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
     LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO,
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
-    LugaresFora.CRIME, Arena.LUGAR];
+    LugaresFora.CRIME, Arena.LUGAR].concat(Furtividade.IDS.map(id => Furtividade.LUGARES[id]));      // (lote 121) a furtividade
   /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
   const GRUPOS = [['Povoados', ['vila', 'cidade', 'tribo', 'porto']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']],
-    ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']]];
+    ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']], ['Furtividade', Furtividade.IDS]];
   const GLIFOS = {
     vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
     tribo: 'M12 4 4 20h16L12 4zM12 4v16M9.5 20 12 13l2.5 7', porto: 'M12 4v16M8 7.5h8M12 20c-4 0-7-2.5-7.5-6M12 20c4 0 7-2.5 7.5-6M12 6a1.6 1.6 0 1 0 0-.1',
@@ -43539,6 +45187,14 @@ const Gerador = (() => {
     lago: 'M4 14c2-3 14-3 16 0-2 3-14 3-16 0zM8 14h1.5M13 13.5h3M6.5 10V7M8 10.5V6M17 10V7.5', praia: 'M3 17c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2 1 3 1M3 12c3-4 7-6 12-6M15 6l2 3',
     penhasco: 'M3 7h8l1 4 1 9h8M3 7v13h18M7 11v.1M9 15v.1', desfiladeiro: 'M3 5l4 2 2 13M21 5l-4 3-2 12M9 20h6M11 9l1 2-1 3 1 3',
     arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
+    // (lote 121) a furtividade: a mansão (a casa grande com o muro), a fortaleza (a torre com as ameias), a guilda (o cofre),
+    // o acampamento (a barraca e o fogo), as ruas (as casas e o lampião) e a torre de guarda (a torre e o olho)
+    mansao: 'M3 20h18M5 20v-8l7-5 7 5v8M9.5 20v-4h5v4M8 13h.1M16 13h.1M2.5 20v-3h2M21.5 20v-3h-2',
+    fortaleza: 'M5 20V9h2.5v2H10V9h4v2h2.5V9H19v11H5zM10.5 20v-4.5h3V20M3 20h18',
+    guilda: 'M4 5h16v14H4zM12 12m-3.5 0a3.5 3.5 0 1 0 7 0 3.5 3.5 0 1 0-7 0M12 8.5V12l2 1.5M7 8h.1M17 16h.1',
+    acampamento: 'M3 19 10 6l7 13H3zM10 6v13M8 19l2-5 2 5M17.5 19c0-1.5 1-2 1-3.2.8.6 2 1.8 2 3.2M16 19h6',
+    ruas: 'M3 20V11l4-3 4 3v9M13 20v-7l4-3 4 3v7M2 20h20M7 20v-3M17 20v-3M12 4v3M10.8 4h2.4',
+    torre: 'M8 20V9h8v11M7 9h10V6h-2v1.5h-2V6h-2v1.5H9V6H7zM10.5 20v-3h3v3M5 20h14M12 12.5a1.5 1 0 1 0 .1 0',
   };
   const glifo = id => { const NS = 'http://www.w3.org/2000/svg', v = document.createElementNS(NS, 'svg'); v.setAttribute('viewBox', '0 0 24 24'); v.setAttribute('width', '18'); v.setAttribute('height', '18'); v.setAttribute('aria-hidden', 'true'); v.setAttribute('class', 'ger-gl'); const pa = document.createElementNS(NS, 'path'); pa.setAttribute('d', GLIFOS[id] || GLIFOS.vila); pa.setAttribute('fill', 'none'); pa.setAttribute('stroke', 'currentColor'); pa.setAttribute('stroke-width', '1.7'); pa.setAttribute('stroke-linecap', 'round'); pa.setAttribute('stroke-linejoin', 'round'); v.append(pa); return v; };
   // os blocos da coluna da direita: o que está aberto fica lembrado (nos testes, tudo aberto)
@@ -44703,7 +46359,7 @@ const Mestre = (() => {
      Quatro botões (só o mestre): a vez, os momentos, os lembretes e a cura. Cada um abre um painel pequeno ao lado da
      barra, sem trocar de aba; um clique fora ou o Esc fecha. */
   let aberto = null;
-  const GRUPO = [['vez', 'turns', 'Controle da vez'], ['momentos', 'play', 'Momentos preparados'], ['lembretes', 'clock', 'Lembretes por rodada'], ['cura', 'heart', 'Cura e energias']];
+  const GRUPO = [['vez', 'turns', 'Controle da vez'], ['momentos', 'play', 'Momentos preparados'], ['lembretes', 'clock', 'Lembretes por rodada'], ['cura', 'heart', 'Cura e energias'], ['rondas', 'ronda', 'Rondas e guardas']];      // (lote 121) as rondas
   const fecharPainel = () => { if (!aberto) return; aberto = null; UI.refresh(); };
   // um botão do painel: fecha o painel e faz
   const acao = (rot, fn, o) => K.btn(rot, () => { aberto = null; UI.refresh(); fn(); }, Object.assign({ kind: 'small' }, o || {}));
@@ -44749,7 +46405,7 @@ const Mestre = (() => {
       K.note(sel.length ? '' : 'A cura vale para os tokens selecionados no mapa.'),
     ];
   }
-  const PAINEIS = { vez: painelVez, momentos: painelMomentos, lembretes: painelLembretes, cura: painelCura };
+  const PAINEIS = { vez: painelVez, momentos: painelMomentos, lembretes: painelLembretes, cura: painelCura, rondas: () => Rondas.painel(acao, linha, K) };
   function grupoDaBarra() {
     if (!isGM()) return [];
     const out = [h('span', { class: 'rail-sep' }), h('span', { class: 'rail-g', text: 'Mestre', 'aria-hidden': 'true' })];
@@ -45079,7 +46735,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, Rondas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

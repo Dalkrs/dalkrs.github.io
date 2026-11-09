@@ -31,7 +31,7 @@ const App = {
 const isGM = () => App.viewer === 'gm';
 const sceneW = sc => sc.cols * sc.cell;
 const sceneH = sc => sc.rows * sc.cell;
-const tokC = (t, sc) => { const s = t.size * sc.cell; return [t.x + s / 2, t.y + s / 2, s / 2]; };
+const tokC = (t, sc) => { const [w, h] = tokWH(t), c = sc.cell; return [t.x + w * c / 2, t.y + h * c / 2, Math.min(w, h) * c / 2]; };     // (lote 121: o objeto comprido, pelo meio do retângulo)
 const ownsTok = t => !isGM() && !!t && !!t.owner && (t.owner === App.viewer || t.owner === '*');
 const playerById = id => Store.S.players.find(p => p.id === id);
 const viewerColor = () => (isGM() ? '#e6ab4f' : (playerById(App.viewer) || {}).color || '#4fb8e0');
@@ -339,7 +339,7 @@ function antesDoToken(inv, id, chaves) {
    vai para o centro do outro círculo, no mesmo passo (o mesmo Desfazer). Quem acerta é o programa do mestre, como nas
    condições: o pedido de um jogador atravessa num passo logo depois. E o token que entra nas Runas-armadilha
    escondidas avisa o mestre (nada muda: Store.emit('runas')). */
-const centroTok = (t, sc, x, y) => { const h = t.size * sc.cell / 2; return [(x == null ? t.x : x) + h, (y == null ? t.y : y) + h]; };
+const centroTok = (t, sc, x, y) => { const [w, h] = tokWH(t); return [(x == null ? t.x : x) + w * sc.cell / 2, (y == null ? t.y : y) + h * sc.cell / 2]; };
 const portaisDe = sc => (sc.effects || []).filter(e => e.fx === 'portal' && !e.token && Number.isFinite(e.x2) && Number.isFinite(e.y2));
 // → { x, y, portal } (para onde o token vai) ou null. antes: { x, y } de antes do passo (só o que mudou)
 function atravessar(t, antes, sc) {
@@ -630,10 +630,12 @@ function pruneSel() {
 }
 
 /* ---- Grade ---- */
+// (lote 121) size: o lado (o token quadrado) ou [largura, altura] (o objeto comprido, como ele está girado)
 function snapTok(sc, x, y, size, free) {
-  const st = size < 1 ? sc.cell / 2 : sc.cell;
+  const [sw, sh] = Array.isArray(size) ? size : [size, size];
+  const st = Math.min(sw, sh) < 1 ? sc.cell / 2 : sc.cell;
   const nx = free ? x : snapTo(x, st), ny = free ? y : snapTo(y, st);
-  return [clamp(nx, 0, Math.max(0, sceneW(sc) - size * sc.cell)), clamp(ny, 0, Math.max(0, sceneH(sc) - size * sc.cell))];
+  return [clamp(nx, 0, Math.max(0, sceneW(sc) - sw * sc.cell)), clamp(ny, 0, Math.max(0, sceneH(sc) - sh * sc.cell))];
 }
 function snapPt(sc, x, y, free, step) {
   if (free) return [x, y];
@@ -1170,7 +1172,7 @@ const Act = {
         else if (it.c === 'walls') { o.x1 += dx; o.y1 += dy; o.x2 += dx; o.y2 += dy; }
         else { o.x += dx; o.y += dy; }
         if (it.c === 'tokens') {
-          [o.x, o.y] = snapTok(sc, o.x, o.y, o.size, false);
+          [o.x, o.y] = snapTok(sc, o.x, o.y, tokWH(o), false);
           for (const a of o.auras) a.id = uid('au');
         }
         if (it.c === 'shapes') o.by = authorId();

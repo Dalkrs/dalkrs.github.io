@@ -247,6 +247,7 @@ const ICONS = {
   // (lote 15) a fogueira do descanso
   rest: 'M12 3.5c2.3 2.5 3.8 4.4 3.8 6.7a3.8 3.8 0 0 1-7.6 0c0-1.4.8-2.6 1.7-3.4.1 1.2.7 1.9 1.3 2.2 0-2.1.2-3.6.8-5.5zM5 20.5l14-3.6M5 16.9l14 3.6',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3 2',
+  ronda: 'M7.5 3.5c1.6 0 2.4 1.9 2.4 4.1S8.9 12 7.5 12 5 10 5 7.6s.9-4.1 2.5-4.1zM5.6 14.5h3.8v2a1.9 1.9 0 0 1-3.8 0zM16.5 7.5c1.6 0 2.5 1.9 2.5 4.1S17.9 16 16.5 16 14 14 14 11.6s.9-4.1 2.5-4.1zM14.6 18.5h3.8v.5a1.9 1.9 0 0 1-3.8 0z',      // (lote 121) as rondas dos guardas
   area: 'M12 12m-8.5 0a8.5 8.5 0 1 0 17 0a8.5 8.5 0 1 0-17 0M8 12h8M12 8v8',
   room: 'M4 5h16v14H4zM4 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 5m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M20 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0M4 19m-1.2 0a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0-2.4 0',
   window: 'M5 4h14v16H5zM12 4v16M5 12h14',
@@ -875,6 +876,15 @@ function newToken(scene, x, y, extra) {
   }, extra || {});
 }
 
+/* (lote 121) Os objetos compridos (a cama, a estante, a mesa, o banco…): o objeto tem largura e comprimento próprios,
+   fw × fh, em quadrados, como ele fica "de pé" (sem giro); girado de 90 ou 270 graus, os dois trocam. O canto de cima, à
+   esquerda (x, y), é o do retângulo que ele ocupa na grade. Os outros tokens e objetos continuam quadrados (size). */
+const ehRet = t => !!(t && t.prop && t.fw > 0 && t.fh > 0);
+function tokWH(t) {
+  if (!ehRet(t)) return [t.size, t.size];
+  return ((Math.round((t.rot || 0) / 90) % 4) + 4) % 2 ? [t.fh, t.fw] : [t.fw, t.fh];
+}
+
 /* (lote 29) O saque no chão: { itens: [{ nome, qtd, tipo }], lapros, de: de quem caiu }. null se não sobrou nada.
    (lote 33) A peça de equipamento que caiu de um inimigo vai inteira: eq { bonus, def, recN (as barras pelo nome), tipo,
    efeito } — quem pega recebe o equipamento com os bônus. */
@@ -973,6 +983,7 @@ function normalizeScene(sc) {
   for (const w of sc.walls) {
     if (!(w.k === 'door' && w.secret) && !['wall', 'door', 'window', 'veil', 'mureta'].includes(w.k)) w.k = 'wall';
     w.open = !!w.open; w.locked = !!w.locked; w.secret = w.k === 'door' && !!w.secret;     // janela e cortina também abrem e trancam
+    if (!(['facil', 'medio', 'dificil', 'extremo', 'absoluto'].includes(w.fech) && (w.k === 'door' || w.k === 'window'))) delete w.fech;     // (lote 121) o nível da fechadura (as gazuas do Escudo)
   }
   for (const e of sc.effects) {
     // retângulo: largura e altura próprias. Nos efeitos antigos, a caixa do tamanho que eles já tinham.
@@ -1010,6 +1021,16 @@ function normalizeScene(sc) {
     // objeto de cenário: só os do catálogo, sempre quadrado; gira de 0 a 359 graus
     if (t.prop && Props.P[t.prop]) { t.rot = ((Math.round(Number(t.rot) || 0) % 360) + 360) % 360; t.shape = 'quad'; t.char = null; }
     else { delete t.prop; delete t.rot; }
+    // (lote 121) o objeto comprido: largura e comprimento (1 a 12 quadrados); o de antes (sem as medidas) é encaixado na
+    // grade, rente à parede, como devia ter ficado
+    if (t.prop && Props.P[t.prop] && Props.P[t.prop].fw) {
+      const ok = v => Number.isFinite(Number(v)) && Number(v) >= 1;
+      if (Array.isArray(t.q0) || !(ok(t.fw) && ok(t.fh))) Props.encaixar(t, sc);
+      else { t.fw = clamp(Math.round(Number(t.fw)), 1, 12); t.fh = clamp(Math.round(Number(t.fh)), 1, 12); t.size = Math.max(t.fw, t.fh); }
+    } else { delete t.fw; delete t.fh; }
+    delete t.q0;
+    // (lote 121) a ronda do guarda e o estado dele (Calmo, Desconfiado, Alerta): só do mestre (ver 07i. RONDAS)
+    if (typeof Rondas !== 'undefined') Rondas.limpar(t); else { delete t.ronda; delete t.alerta; }
     // (lote 39) as duas cores do objeto que tem cores (o brasão, o estandarte, a mesa de guerra…) e o desenho do brasão do
     // clã (a divisão, a forma e o símbolo: caminhos de SVG, só com os comandos e os números)
     const hexOk = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v), caminhoOk = v => typeof v === 'string' && v.length <= 1500 && /^[MLHVCSQTAZmlhvcsqtaz0-9.,\s-]+$/.test(v);
