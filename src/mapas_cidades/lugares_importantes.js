@@ -18,7 +18,7 @@ const LUGARES = {
       'O Portão da Academia': 'A única entrada da muralha branca. Guardas pedem documentos ou pedágio.',
       'Os alojamentos': 'Onde vivem os aprendizes e os mestres.',
       'O observatório': 'Os Silks olham as três luas daqui.',
-      'A cúpula afundada (o palácio de Iroma)': 'Antes do reset, esta era a cidade de magitec do próprio Iroma. A Academia proíbe a entrada.',
+      'A cúpula afundada': 'Uma cúpula de metal enterrada, de antes do reset. A Academia proíbe a entrada.',
       'O bunker selado': 'Uma porta de metal que ninguém abriu. Só uma relíquia, ou muita força.',
       'O campo das torres caídas': 'Os topos das torres de metal saindo da terra. Saqueadores de ruínas trabalham aqui à noite.',
     },
@@ -26,7 +26,7 @@ const LUGARES = {
   caldeira: {
     nome: 'Fortaleza da Caldeira', estilo: 'orc', W: 120, H: 90, terreno: 'campo', marcador: 'mc_29',
     notas: {
-      'O salão de Blavas': 'O grande salão dos Orcs, com o trono de ossos. Os xamãs sabem que Blavas foi aliado de Iroma, e escondem.',
+      'O salão de Blavas': 'O grande salão dos Orcs, com o trono de ossos. Os xamãs guardam segredos sobre Blavas.',
       'A boca do vulcão': 'A cratera de lava. Daqui nasce o Rio de Fogo. As erupções são um desastre que se repete.',
       'O Rio de Fogo': 'A lava que desce do vulcão e esfria até virar pedra antes do mar.',
       'O cercado das feras': 'Onde os Orcs domam as feras de guerra (bisões, lagartos, trolls).',
@@ -51,8 +51,8 @@ const LUGARES = {
   clareira: {
     nome: 'Clareira da Conversão', estilo: 'antro', W: 110, H: 84, terreno: 'floresta', marcador: 'mc_51',
     notas: {
-      'O círculo da Conversão': 'Os Antros e os druidas convertem os monstros de Iroma para Mã\'Nizaria aqui. Às vezes dá errado, e nascem os meio-resíduo.',
-      'As jaulas dos monstros de Iroma': 'Os monstros que esperam a conversão. Os de Iroma nunca se deixam domar.',
+      'O círculo da Conversão': 'Os Antros e os druidas convertem os monstros para Mã\'Nizaria aqui. Às vezes dá errado, e nascem os meio-resíduo.',
+      'As jaulas dos monstros': 'Os monstros que esperam a conversão. Alguns nunca se deixam domar.',
       'O cercado dos meio-resíduo': 'Os que a conversão deixou pela metade. Ninguém sabe o que fazer com eles.',
       'A árvore anciã': 'A árvore mais velha da floresta. O espírito de Mã\'Nizaria fala por ela.',
       'As casas dos druidas': 'Onde vivem os druidas e os Antros que cuidam da clareira.',
@@ -91,7 +91,7 @@ const LUGARES = {
       const ponto = (x, y, n) => P.pontos.push({ x, y, n });
       const oval = CG.oval;
       if (id === 'vale') {
-        // a Academia no meio, murada de branco; em volta, as ruínas da cidade de magitec de Iroma
+        // a Academia no meio, murada de branco; em volta, as ruínas de uma cidade de magitec
         const cx = W * 0.46, cy = H * 0.5, anel = oval(cx, cy, 24, 19, 14);
         const portao = CG.noAnel(anel, Math.PI / 2, cx, cy);
         CG.muralha(C, anel, { portoes: [portao], larg: 1.2, cores: ['#eeeae0', '#d8d4c8', '#8a8478', '#5e594f'] });
@@ -111,7 +111,7 @@ const LUGARES = {
         const dx = W * 0.85, dy = H * 0.3, R = 7;
         K.pinta(2, 'cupulaRachada', { x: dx, y: dy, r: R }); K.marcaCirc(dx, dy, R, 3, true); K.visaoPoli(F.roda(dx, dy, R * 0.95, 12, 0));
         P.relevo.push({ t: 'plataforma', alt: 4, k: 'ell', x: dx - R, y: dy - R, w: R * 2, h: R * 2 });
-        ponto(dx, dy, 'A cúpula afundada (o palácio de Iroma)');
+        ponto(dx, dy, 'A cúpula afundada');
         const bx = W * 0.86, by = H * 0.76, b = [[bx - 4, by - 3], [bx + 4, by - 3], [bx + 4, by + 3], [bx - 4, by + 3]];
         K.pinta(2, 'placasMetal', { pts: b, cores: F.METAL }); K.marcaPoli(b, 3, true); K.visaoPoli(b);
         P.paredes.push({ k: 'door', x1: bx - 1, y1: by - 3, x2: bx + 1, y2: by - 3, trancada: true });
@@ -194,7 +194,7 @@ const LUGARES = {
         const ax = cx - 16, ay = cy - 10; K.arvore(ax, ay, 5, undefined); K.marcaCirc(ax, ay, 2.5, 3, true); ponto(ax, ay, 'A árvore anciã');
         K.poeLago(oval(cx + 16, cy + 10, 6, 4.5, 14, K, 0.15), 'agua', -1.5); ponto(cx + 16, cy + 10, 'O lago');
         const jx = cx + 15, jy = cy - 12; for (let k = 0; k < 5; k++) K.objeto('jaula', Math.floor(jx + (k % 3) * 2.5), Math.floor(jy + Math.floor(k / 3) * 2.6), 0, () => true);
-        ponto(jx + 2, jy + 1, 'As jaulas dos monstros de Iroma');
+        ponto(jx + 2, jy + 1, 'As jaulas dos monstros');
         const pc = [[cx - 20, cy + 8], [cx - 12, cy + 8], [cx - 12, cy + 15], [cx - 20, cy + 15]];
         K.pinta(2, 'cerca', { pts: pc.concat([pc[0]]) }); P.paredes.push(...pc.map((p, i) => { const q = pc[(i + 1) % 4]; return { k: 'mureta', x1: p[0], y1: p[1], x2: q[0], y2: q[1] }; }));
         ponto(cx - 16, cy + 11.5, 'O cercado dos meio-resíduo');
