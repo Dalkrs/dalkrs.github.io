@@ -304,7 +304,7 @@ const ogro = { id: 'o', nome: 'Ogro', recursos: [{ id: 'hp', nome: 'HP', max: 30
   ok(JSON.stringify(sai.roda) === JSON.stringify(cru.roda) && sai.nome === 'Clareira' && !('lugar' in sai) && sai.provisoes[0].qtd === 3 && sai.area.a === 'oficinas' && JSON.stringify(sai.presentes) === '["a"]', 'o que o jogador grava: as partes do mestre exatamente como estão no banco (até o que esta versão arrumaria diferente); as dele, novas');
   ok(cru.provisoes.length === 0, 'e o documento de lá não é alterado');
   // (a lista é a mesma do gatilho do banco, privado.acamp_guarda: as duas andam juntas)
-  eq(N.SO_MESTRE, ['nome', 'hora', 'fundo', 'cena', 'presentes', 'autoVistos', 'roda', 'regras', 'bonus', 'emo', 'lugar', 'clima'], 'as partes que só o mestre muda');
+  eq(N.SO_MESTRE, ['nome', 'hora', 'fundo', 'cena', 'presentes', 'autoVistos', 'roda', 'regras', 'bonus', 'emo', 'lugar', 'clima', 'tipo', 'esc', 'nivel', 'niveis', 'exp', 'faixas', 'dono', 'mapa'], 'as partes que só o mestre muda (lote 125: e as da base)');
   ok(N.SO_MESTRE.every(k => { const d = N.copia(antes); d[k] = 'outra coisa'; return N.mexeNoMestre(antes, d); }), 'mexer em qualquer uma delas é mexer no que é do mestre');
 }
 {

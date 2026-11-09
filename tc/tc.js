@@ -1302,6 +1302,7 @@
     || (typeof r.id === 'string' && r.id.startsWith('fichas:corr:'))       // (lote 37) a corrupção: o dono é o dono do personagem
     || (typeof r.id === 'string' && r.id.startsWith('fichas:tropas:'))     // (lote 40) a tropa: o dono é o dono do personagem
     || (typeof r.id === 'string' && r.id.startsWith('fichas:mis:pc:'))     // (lote 123) as missões da história de um personagem: o dono é o dono dele
+    || (typeof r.id === 'string' && r.id.startsWith('acampamento:base:'))   // (lote 125) a casa ou o esconderijo de um personagem: o dono é o jogador dele
     || (typeof r.id === 'string' && (r.id.startsWith('notasj:' + r.dono_id + ':') || r.id.startsWith('notasg:')));   // (lote 52) o caderno de quem joga e o do grupo
   function dadosZerar() {
     for (const k in cols) {

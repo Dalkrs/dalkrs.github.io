@@ -2,6 +2,34 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.09-6",
+      "data": "2026-11-09",
+      "titulo": "Bases: casas e esconderijos",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "A aba Acampamento virou Bases. No alto, escolha qual base ver: o acampamento do grupo, uma casa ou um esconderijo — de um personagem ou do grupo. Quem está lá descansa com as regras dela."
+        },
+        {
+          "tipo": "novo",
+          "texto": "A casa cresce em 8 níveis, de barraco a mansão: o desenho melhora e cabem mais cômodos (quarto, banheiro, cozinha, oficina, biblioteca, capela…), cada um com o que soma no descanso."
+        },
+        {
+          "tipo": "novo",
+          "texto": "O esconderijo tem um tipo (porão, casa velha, armazém, caverna, ruína ou fortaleza escondida), níveis dentro dele e a exposição, de 0 a 100, em 10 faixas — de “Invisível” a “Descobertos”."
+        },
+        {
+          "tipo": "novo",
+          "texto": "O mestre cria as bases (“+ Base”), escolhe de quem é e se é segredo (só o dono e o mestre veem), sobe o nível, mexe na exposição, muda os nomes e os números dos níveis e das faixas e liga a base a um lugar do Mapa-múndi e a uma planta das Cenas. O dono de uma casa cuida dela (provisões, cômodos, diário).",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o banheiro. As casas, a mansão e as casas das ruas que o gerador faz ganham banheiro, com seis objetos novos: banheira, latrina, lavatório, espelho, toalheiro e biombo de pano. E os objetos de furtividade que ainda não apareciam agora entram nos mapas gerados: a casinha do cão, o fio com guizos, a grade da janela, o alçapão, a chaminé, a corda com gancho, o carrinho de mão e a pilha de lenha."
+        }
+      ]
+    },
+    {
       "versao": "2026.11.09-5",
       "data": "2026-11-09",
       "titulo": "Ajustes internos",

@@ -705,7 +705,7 @@
     return `<svg viewBox="${vb}" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><defs><radialGradient id="gLuz" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffd27a" stop-opacity=".7"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>`
       + `<rect x="0" y="0" width="1600" height="900" fill="#111a2b"/><rect x="0" y="652" width="1600" height="250" fill="#1b2532"/>${construcao(tipo, nivel)}</svg>`;
   }
-  const AcampDesenhos = { cena, construcao, miniatura, caravana, tiposDeAbrigo, tipos: Object.keys(desenhos) };
+  const AcampDesenhos = { cena, construcao, miniatura, caravana, tiposDeAbrigo, tipos: Object.keys(desenhos), fundo, atmosfera, sorte, nuvem };      // (lote 125: o fundo e a atmosfera também servem às bases)
   if (typeof module === 'object' && module && module.exports) module.exports = AcampDesenhos;
   if (typeof window !== 'undefined') window.AcampDesenhos = AcampDesenhos;
 })();

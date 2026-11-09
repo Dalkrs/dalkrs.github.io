@@ -262,6 +262,18 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
 | efeito | `apply` (`{ bar, amt, cond: { id, n, d } ou null, skip: [ids] }` ou `null`) | `null` | `normalizeScene` (`cleanApply`: valor zero ou inválido vira `''`; sem valor nem condição vira `null`) |
 | parede | `open`, `locked`, `secret` passam a ser sempre sim/não (janela e cortina usam `open`/`locked`) | `false` | `normalizeScene` |
 
+## Lote 125 — o banheiro
+
+- [x] `06b7-props-banheiro.js`: o grupo "Banheiro" com a banheira (2 × 1), a latrina, o lavatório, o espelho, o
+      toalheiro e o biombo (2 × 1).
+- [x] `10gc-furtividade.js`: o cômodo `banheiro` (MOB.banheiro, piso de ladrilho) na mansão (térreo e 1º andar) e nas
+      casas das ruas (térreo e andar de cima). O biombo do banheiro é `biomboPano` (o `biombo` é o oriental, lote 54).
+- [x] Os objetos do lote 122 que nenhum gerador usava agora entram: a casinha do cão (jardim da mansão, portão da
+      fortaleza), o fio com guizos (às vezes, nos corredores), a grade nas janelas do térreo da guilda (`gradear`), o
+      alçapão e a chaminé (no sótão), a corda com gancho (por fora da torre, como entrada), o carrinho de mão e a pilha
+      de lenha (pátio da fortaleza, acampamento, becos; a lenha também na cozinha).
+- Teste: `test/lote124.js` (os 28 objetos novos aparecem nos geradores).
+
 ## Lote 122 — andares, fechadura num clique e objetos de furtividade
 
 - [x] Andares (`10gc-furtividade.js`): "Andares de cima" (0, 1, 2) e "Porão" na janela (`App.opt.furCima`, `furPorao`;

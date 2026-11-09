@@ -211,7 +211,96 @@
   ];
   ESTRUTURAS.forEach(e => { Object.freeze(e.nv); Object.freeze(e); });
   Object.freeze(ESTRUTURAS);
-  const estrutura = k => ESTRUTURAS.find(e => e.k === k) || null;
+
+  /* ---- (lote 125) as bases: o acampamento, a casa e o esconderijo ----
+     Uma base é um documento igual ao do acampamento, com mais estes campos (só na casa e no esconderijo):
+       tipo   'casa' | 'esconderijo'           (sem tipo: o acampamento de sempre)
+       nivel  1 a 8                             a casa cresce de barraco a mansão; o esconderijo sobe dentro do tipo dele
+       niveis [{ nome, ef, vagas }] × 8         o nome de cada nível, o que ele soma ao descanso longo e quantos cômodos
+                                                cabem (o padrão do tipo; o mestre muda)
+       esc    o tipo do esconderijo (ESCONDERIJOS: porão, casa velha…), com o nível mínimo e o máximo dele
+       exp    0 a 100                           a exposição do esconderijo: quanto já sabem dele
+       faixas [{ nome, ef }] × 10               as faixas da exposição (de 10 em 10); o ef soma ao descanso longo
+       dono   o personagem dono da base (null: do grupo)
+       mapa   { mapa, obj, nome } | null        onde ela fica no Mapa-múndi (o mapa da cidade, de costume)
+     Os cômodos são melhorias de um tipo do catálogo da base (COMODOS); cada nível da base tem as vagas dele. */
+  const TIPOS_BASE = [['acampamento', 'Acampamento'], ['casa', 'Casa'], ['esconderijo', 'Esconderijo']];
+  const nv8 = (nome, conf, san, rec, vagas) => ({ nome, ef: ef4(conf, san, rec, 0), vagas });
+  const NIVEIS_BASE = {
+    casa: [nv8('Barraco', -5, 0, 0, 1), nv8('Casebre', 0, 0, 0, 2), nv8('Casa simples', 3, 1, 0, 3), nv8('Casa de família', 6, 2, 5, 4),
+      nv8('Sobrado', 9, 3, 5, 5), nv8('Casarão', 12, 4, 10, 6), nv8('Solar', 16, 5, 10, 8), nv8('Mansão', 20, 6, 15, 10)],
+    esconderijo: [nv8('Improvisado', -5, 0, 0, 1), nv8('Arrumado', -2, 1, 0, 2), nv8('Discreto', 0, 2, 0, 2), nv8('Seguro', 2, 3, 5, 3),
+      nv8('Bem guardado', 4, 5, 5, 4), nv8('Fortificado', 6, 7, 10, 5), nv8('Secreto', 8, 9, 10, 6), nv8('Inexpugnável', 10, 12, 15, 8)],
+  };
+  const ESCONDERIJOS = [
+    { k: 'porao', nome: 'Porão', min: 1, max: 3 }, { k: 'casavelha', nome: 'Casa velha', min: 1, max: 4 }, { k: 'armazem', nome: 'Armazém', min: 2, max: 5 },
+    { k: 'caverna', nome: 'Caverna', min: 1, max: 5 }, { k: 'ruina', nome: 'Ruína', min: 2, max: 6 }, { k: 'fortaleza', nome: 'Fortaleza escondida', min: 4, max: 8 }];
+  const fx2 = (conf, san) => ({ nome: '', ef: { conf, san, rec: 0, prov: 0 } });
+  const FAIXAS_EXP = [['Invisível', 0, 0], ['Discreto', 0, 0], ['Sussurros', 0, 0], ['Rumores', 0, -1], ['Desconfiança', 0, -2],
+    ['Vigiados', -2, -3], ['Procurados', -3, -5], ['Na trilha', -5, -7], ['Cercados', -8, -10], ['Descobertos', -10, -15]].map(([n, c, sa]) => Object.assign(fx2(c, sa), { nome: n }));
+  const CATEGORIAS_BASE = {
+    casa: [['descanso', 'Descanso'], ['oficios', 'Ofícios'], ['convivio', 'Convívio'], ['cuidado', 'Cuidado e estudo']],
+    esconderijo: [['seguranca', 'Segurança'], ['fuga', 'Fuga'], ['descanso', 'Descanso'], ['deposito', 'Depósito e contatos']],
+  };
+  const cmd = (base, k, nome, cat, desc, nv) => ({ k, nome, cat, base, area: 'comodo', desc, nv });
+  const COMODOS = [
+    cmd('casa', 'quarto', 'Quarto', 'descanso', 'Uma cama de verdade, uma janela e uma porta que fecha.', [{ ef: ef4(3, 0, 0, 0) }, { ef: ef4(5, 1, 0, 0) }, { ef: ef4(8, 2, 0, 0) }]),
+    cmd('casa', 'banheiro', 'Banheiro', 'descanso', 'Tina, bacia e água quente: o corpo descansa junto.', [{ ef: ef4(2, 0, 0, 0) }, { ef: ef4(4, 0, 5, 0) }, { ef: ef4(6, 1, 10, 0) }]),
+    cmd('casa', 'cozinha', 'Cozinha', 'oficios', 'Fogão, panelas e uma mesa: comida quente rende mais.', [{ ef: ef4(2, 0, 0, 0) }, { ef: ef4(3, 0, 0, -1) }, { ef: ef4(5, 0, 0, -1) }]),
+    cmd('casa', 'despensa', 'Despensa', 'oficios', 'Prateleiras, potes e sacos guardados do jeito certo.', [{ ef: ef4(0, 0, 0, -1) }, { ef: ef4(1, 0, 0, -1) }, { ef: ef4(1, 0, 0, -2) }]),
+    cmd('casa', 'oficina', 'Oficina', 'oficios', 'Bancada, ferramentas e uma pequena forja nos fundos.', [{ fx: [bon('DFF', 1)] }, { fx: [bon('DFF', 2)] }, { fx: [bon('DFF', 2), bon('FOR', 1)] }]),
+    cmd('casa', 'treino', 'Sala de treino', 'oficios', 'Bonecos de palha, pesos e espaço para suar.', [{ fx: [bon('FOR', 1)] }, { fx: [bon('FOR', 1), bon('AGI', 1)] }, { fx: [bon('FOR', 2), bon('AGI', 1)] }]),
+    cmd('casa', 'estabulo', 'Estábulo', 'oficios', 'Baias, feno e um cavalariço: os animais também descansam.', [{ ef: ef4(1, 0, 0, 0) }, { ef: ef4(2, 0, 0, 0) }, { ef: ef4(3, 0, 0, 0) }]),
+    cmd('casa', 'sala', 'Sala de estar', 'convivio', 'Poltronas, lareira e conversa até tarde.', [{ ef: ef4(2, 1, 0, 0) }, { ef: ef4(3, 2, 0, 0) }, { ef: ef4(5, 3, 0, 0) }]),
+    cmd('casa', 'adega', 'Adega', 'convivio', 'Barris e garrafas para as noites boas (e as ruins).', [{ ef: ef4(2, 0, 0, 0) }, { ef: ef4(4, 0, 0, 0) }, { ef: ef4(6, 1, 0, 0) }]),
+    cmd('casa', 'jardim', 'Jardim e horta', 'cuidado', 'Flores, ervas e legumes no quintal.', [{ ef: ef4(1, 0, 0, -1) }, { ef: ef4(1, 1, 5, -1) }, { ef: ef4(2, 2, 5, -2) }]),
+    cmd('casa', 'biblioteca', 'Biblioteca', 'cuidado', 'Estantes, mapas e uma mesa de estudo.', [{ fx: [bon('CAN', 1)] }, { fx: [bon('CAN', 2)] }, { ef: ef4(0, 2, 0, 0), fx: [bon('CAN', 3)] }]),
+    cmd('casa', 'capela', 'Capela', 'cuidado', 'Um altar, velas e silêncio.', [{ ef: ef4(0, 3, 0, 0) }, { ef: ef4(0, 6, 0, 0) }, { ef: ef4(1, 10, 0, 0) }]),
+    cmd('casa', 'laboratorio', 'Laboratório', 'cuidado', 'Alambique, ervas e frascos: remédios em casa.', [{ ef: ef4(0, 0, 5, 0) }, { ef: ef4(0, 0, 10, 0) }, { ef: ef4(0, 0, 15, 0) }]),
+    cmd('esconderijo', 'catre', 'Catres', 'descanso', 'Colchões no chão, cobertores e um canto escuro para dormir.', [{ ef: ef4(2, 0, 0, 0) }, { ef: ef4(3, 0, 0, 0) }, { ef: ef4(5, 1, 0, 0) }]),
+    cmd('esconderijo', 'enfermaria', 'Enfermaria clandestina', 'descanso', 'Ataduras, ervas e alguém que não faz perguntas.', [{ ef: ef4(0, 0, 5, 0) }, { ef: ef4(0, 0, 10, 0) }, { ef: ef4(1, 0, 20, 0) }]),
+    cmd('esconderijo', 'vigia', 'Posto de vigia', 'seguranca', 'Uma fresta na parede e alguém sempre olhando a rua.', [{ ef: ef4(0, 1, 0, 0) }, { ef: ef4(0, 2, 0, 0), fx: [bon('PER', 1)] }, { ef: ef4(0, 3, 0, 0), fx: [bon('PER', 2)] }]),
+    cmd('esconderijo', 'armadilhas', 'Armadilhas na porta', 'seguranca', 'Sinos, cordas e uma tábua solta que range.', [{ ef: ef4(0, 2, 0, 0) }, { ef: ef4(0, 3, 0, 0) }, { ef: ef4(0, 4, 0, 0), fx: [bon('ESQ', 1)] }]),
+    cmd('esconderijo', 'arsenal', 'Arsenal', 'seguranca', 'Armas escondidas sob o assoalho.', [{ fx: [bon('DFF', 1)] }, { fx: [bon('DFF', 1), bon('FOR', 1)] }, { fx: [bon('DFF', 2), bon('FOR', 1)] }]),
+    cmd('esconderijo', 'fuga', 'Rota de fuga', 'fuga', 'Um túnel, um telhado vizinho ou um cano de esgoto: sempre há saída.', [{ ef: ef4(0, 2, 0, 0) }, { ef: ef4(0, 4, 0, 0) }, { ef: ef4(0, 6, 0, 0) }]),
+    cmd('esconderijo', 'portafalsa', 'Porta falsa', 'fuga', 'Uma estante que gira, um alçapão debaixo do tapete.', [{ ef: ef4(0, 1, 0, 0) }, { ef: ef4(0, 2, 0, 0) }, { ef: ef4(0, 3, 0, 0) }]),
+    cmd('esconderijo', 'cofre', 'Cofre escondido', 'deposito', 'Onde ficam o dinheiro, os documentos e o que não pode aparecer.', [{}, { ef: ef4(0, 1, 0, 0) }, { ef: ef4(0, 2, 0, 0) }]),
+    cmd('esconderijo', 'deposito', 'Depósito de provisões', 'deposito', 'Comida guardada para quando não dá para sair.', [{ ef: ef4(0, 0, 0, -1) }, { ef: ef4(0, 0, 0, -1) }, { ef: ef4(1, 0, 0, -2) }]),
+    cmd('esconderijo', 'reuniao', 'Sala de reunião', 'deposito', 'Uma mesa, um mapa da cidade e os contatos que aparecem à noite.', [{ ef: ef4(1, 0, 0, 0) }, { ef: ef4(2, 1, 0, 0) }, { ef: ef4(3, 2, 0, 0) }]),
+  ];
+  COMODOS.forEach(e => { Object.freeze(e.nv); Object.freeze(e); });
+  Object.freeze(COMODOS);
+  const estrutura = k => ESTRUTURAS.find(e => e.k === k) || COMODOS.find(e => e.k === k) || null;
+  const ehBase = camp => !!camp && (camp.tipo === 'casa' || camp.tipo === 'esconderijo');
+  const esconderijo = k => ESCONDERIJOS.find(e => e.k === k) || ESCONDERIJOS[1];
+  // o catálogo de cômodos da base, e as categorias dele
+  const catalogo = camp => (ehBase(camp) ? COMODOS.filter(c => c.base === camp.tipo) : ESTRUTURAS);
+  const categorias = camp => (ehBase(camp) ? CATEGORIAS_BASE[camp.tipo] : CATEGORIAS);
+  const ehComodo = m => !!m && !!m.tipo && COMODOS.some(c => c.k === m.tipo);
+  const comodos = camp => camp.melhorias.filter(ehComodo);
+  // o nível em que a base está (o objeto: nome, ef, vagas) e quantos cômodos ainda cabem
+  const nivelDe = camp => (ehBase(camp) ? camp.niveis[camp.nivel - 1] : null);
+  const vagas = camp => (ehBase(camp) ? Math.max(0, nivelDe(camp).vagas - comodos(camp).length) : Infinity);
+  // a faixa da exposição (0 a 9) e o objeto dela
+  const faixaDe = exp => Math.min(9, Math.max(0, Math.floor(inteiro(exp, 0, 0, 100) / 10)));
+  const faixa = camp => (camp && camp.tipo === 'esconderijo' ? camp.faixas[faixaDe(camp.exp)] : null);
+  // os níveis possíveis de um esconderijo (do tipo dele); a casa vai de 1 a 8
+  const faixaNivel = camp => (camp && camp.tipo === 'esconderijo' ? esconderijo(camp.esc) : { min: 1, max: 8 });
+  // o que a base (o nível e a faixa da exposição) soma ao descanso longo de todos que descansam nela
+  function efBase(camp) {
+    const t = Object.assign({}, EF_ZERO);
+    if (!ehBase(camp)) return t;
+    for (const e of [nivelDe(camp).ef, (faixa(camp) || {}).ef]) if (e) for (const k in t) t[k] += e[k] || 0;
+    return t;
+  }
+  function normNiveis(v, tipo) {
+    const pad = NIVEIS_BASE[tipo], l = Array.isArray(v) ? v : [];
+    return pad.map((p, i) => { const x = ehObj(l[i]) ? l[i] : {}; return { nome: texto(x.nome, 40).trim() || p.nome, ef: x.ef ? normEf(x.ef) : normEf(p.ef), vagas: inteiro(x.vagas, p.vagas, 0, 30) }; });
+  }
+  function normFaixas(v) {
+    const l = Array.isArray(v) ? v : [];
+    return FAIXAS_EXP.map((p, i) => { const x = ehObj(l[i]) ? l[i] : {}; return { nome: texto(x.nome, 40).trim() || p.nome, ef: x.ef ? normEf(x.ef) : normEf(p.ef) }; });
+  }
   // o que um nível do catálogo faz, no formato do acampamento (uma cópia nova)
   const padraoDoNivel = (k, i) => { const e = estrutura(k), x = e && e.nv[i] ? e.nv[i] : {}; return { ef: normEf(x.ef), fx: normFx(copia(x.fx || [])) }; };
   /* Uma melhoria arrumada. A de um tipo do catálogo leva o tipo, o nível e o que cada nível faz; o ef e o fx dela são
@@ -262,9 +351,9 @@
     if (ehObj(a.emo)) for (const k of Object.keys(a.emo).slice(0, 200)) { const e = emoOk(a.emo[k]); if (idOk(k) && e) emo[k] = e; }
     const area = {};
     if (ehObj(a.area)) for (const k of Object.keys(a.area).slice(0, 200)) { const ar = areaOk(a.area[k]); if (idOk(k) && ar !== 'fogueira') area[k] = ar; }
-    return {
+    return Object.assign({
       v: 1,
-      nome: texto(a.nome, MAX_NOME).trim() || 'Acampamento',
+      nome: texto(a.nome, MAX_NOME).trim() || (a.tipo === 'casa' ? 'Casa' : a.tipo === 'esconderijo' ? 'Esconderijo' : 'Acampamento'),
       hora: HORAS.includes(a.hora) ? a.hora : 'noite',
       fundo,
       cena: idOk(a.cena) || null,
@@ -288,14 +377,26 @@
       // (lote 68) o último descanso longo: quando (t) e em que dia do mundo (dia, a chave de TC.calendario.chaveDeHoje)
       longo: ehObj(a.longo) && num(a.longo.t, 0) > 0 ? Object.assign({ t: num(a.longo.t, 0) }, typeof a.longo.dia === 'string' && a.longo.dia.length < 30 ? { dia: a.longo.dia } : {}) : null,
       diario: unicos(listaDe(a.diario, MAX_DIARIO).map(d => ({ id: d.id, t: Math.max(0, num(d.t, 0)), texto: texto(d.texto) })), 'di'),
-    };
+    }, baseDe(a));
+  }
+  // (lote 125) os campos da casa e do esconderijo (o acampamento não leva nenhum: o documento dele fica como era)
+  function baseDe(a) {
+    if (a.tipo !== 'casa' && a.tipo !== 'esconderijo') return {};
+    const o = { tipo: a.tipo }, esc = a.tipo === 'esconderijo' ? esconderijo(a.esc) : null;
+    if (esc) o.esc = esc.k;
+    o.nivel = inteiro(a.nivel, esc ? esc.min : 1, esc ? esc.min : 1, esc ? esc.max : 8);
+    o.niveis = normNiveis(a.niveis, a.tipo);
+    if (esc) { o.exp = inteiro(a.exp, 0, 0, 100); o.faixas = normFaixas(a.faixas); }
+    o.dono = idOk(a.dono) || null;
+    o.mapa = ehObj(a.mapa) && idOk(a.mapa.mapa) ? { mapa: a.mapa.mapa, obj: idOk(a.mapa.obj) || '', nome: texto(a.mapa.nome, MAX_NOME) } : null;
+    return o;
   }
   function normalizarSeguro(x) { try { return normalizar(x); } catch (e) { return normalizar(null); } }
 
   /* O que a estrutura em uso soma ao descanso longo de todos: Conforto, Sanidade e recuperação das que valem para
      todos, e as rações a mais (ou a menos) de todas as que estão em uso — essas são do acampamento inteiro. */
   function efeitos(camp) {
-    const t = Object.assign({}, EF_ZERO);
+    const t = efBase(camp);
     for (const m of camp.melhorias.concat(camp.equipamentos)) if (m.on) for (const k in t) if (k === 'prov' || !m.alvo || m.alvo.todos) t[k] += m.ef[k] || 0;
     return t;
   }
@@ -307,7 +408,7 @@
   }
   // o que a estrutura em uso soma ao descanso longo DESTA pessoa (sem as rações, que são do acampamento inteiro)
   function efeitosDe(camp, p) {
-    const t = { conf: 0, san: 0, rec: 0 };
+    const b = efBase(camp), t = { conf: b.conf, san: b.san, rec: b.rec };
     for (const m of camp.melhorias.concat(camp.equipamentos)) if (m.on && alcanca(m, p)) for (const k in t) t[k] += m.ef[k] || 0;
     return t;
   }
@@ -395,7 +496,7 @@
     const san = regra.san + ef.san;
     if (falta > 0) { rec = rec * camp.regras.semProv.rec / 100; conf += camp.regras.semProv.conf; }
     // (lote 7, parte 5c) o clima da noite (o do Mapa-múndi, quando o mestre deixa): soma no Conforto do descanso longo
-    const clima = longo && opt && ehObj(opt.clima) && CLIMA_MUNDO[opt.clima.k] ? { k: opt.clima.k, nome: CLIMA_MUNDO[opt.clima.k].nome, conf: inteiro(opt.clima.conf, CLIMA_MUNDO[opt.clima.k].conf, -100, 100) } : null;
+    const clima = longo && !ehBase(camp) && opt && ehObj(opt.clima) && CLIMA_MUNDO[opt.clima.k] ? { k: opt.clima.k, nome: CLIMA_MUNDO[opt.clima.k].nome, conf: inteiro(opt.clima.conf, CLIMA_MUNDO[opt.clima.k].conf, -100, 100) } : null;
     if (clima) conf += clima.conf;
     const linhas = pessoas.map((p, i) => {
       // o que vale para esta pessoa: a estrutura que a alcança, as rações que ela come e as de banquete (cada tipo uma vez)
@@ -421,7 +522,7 @@
       const deTodos = banquete.includes(pv), k = deTodos ? n : porcoes.filter(c => c.some(x => x.p === pv)).length;
       if (k) comidas.push(Object.assign({ id: pv.id, nome: pv.nome, n: k }, deTodos ? { todos: true } : {}));
     }
-    const caca = longo && opt && ehObj(opt.caca) ? planoDaCaca(camp, opt.caca) : null;
+    const caca = longo && !ehBase(camp) && opt && ehObj(opt.caca) ? planoDaCaca(camp, opt.caca) : null;
     return { tipo: longo ? 'longo' : 'curto', n, custo, disponivel, gasto, falta, consumo, rec: Math.round(rec * 10) / 10, conf, san, linhas, efeitos: ef,
       servida: servida ? { id: servida.id, nome: servida.nome, qtd: servida.qtd, efeito: temEfeito(servida), todos: !!servida.todos } : null, comem, comidas, prov: regra.prov,
       tiraBonus: tira, clima, caca };
@@ -429,7 +530,7 @@
   /* ---- (lote 18) a caça ----
      Quem está na área Caça (e tem ficha) caça no descanso longo: rola o atributo da regra contra a dificuldade do lugar
      do acampamento. O resultado só sugere: o mestre vê o que cada um trouxe e confirma (as marcadas entram). */
-  const cacadores = (camp, pessoas) => (pessoas || []).filter(p => p && !p.semFicha && areaDe(camp, p.id) === 'caca');
+  const cacadores = (camp, pessoas) => (ehBase(camp) ? [] : (pessoas || []).filter(p => p && !p.semFicha && areaDe(camp, p.id) === 'caca'));
   const difDaCaca = (camp, lugar) => { const d = camp.regras.caca.dif, l = lugar || camp.lugar; return Object.prototype.hasOwnProperty.call(d, l) ? d[l] : d.floresta; };
   // o que um total traz: { passou, margem, racoes } (passou: o total chegou à dificuldade)
   function racoesDaCaca(camp, total, dif, regra) {
@@ -585,7 +686,7 @@
      O mestre mexe em tudo. O jogador a quem o mestre deu o acampamento (no menu da mesa, em Permissões) mexe em quase
      tudo — provisões, estrutura, caravana, os lugares e as áreas, o diário —; estas partes ficam com o mestre (o banco
      confere: o gatilho privado.acamp_guarda recusa a gravação de quem não mestra que mude alguma delas). */
-  const SO_MESTRE = ['nome', 'hora', 'fundo', 'cena', 'presentes', 'autoVistos', 'roda', 'regras', 'bonus', 'emo', 'lugar', 'clima'];
+  const SO_MESTRE = ['nome', 'hora', 'fundo', 'cena', 'presentes', 'autoVistos', 'roda', 'regras', 'bonus', 'emo', 'lugar', 'clima', 'tipo', 'esc', 'nivel', 'niveis', 'exp', 'faixas', 'dono', 'mapa'];      // (lote 125: e as da base)
   // a mudança de antes para depois mexe em alguma parte que é só do mestre?
   const mexeNoMestre = (antes, depois) => SO_MESTRE.some(k => JSON.stringify(antes[k]) !== JSON.stringify(depois[k]));
   /* O que o jogador grava: o documento como está no banco (cru), com as partes dele trocadas pelas do acampamento
@@ -613,7 +714,8 @@
   const AcampNucleo = { HORAS, encherCinto, REGRAS_PADRAO, normalizar: normalizarSeguro, efeitos, efeitosDe, alcanca, fxDe, temParaAlguns, temEfeito, racoes, textoEfeitos, comSinal, planejar, aposDescanso, resumoDescanso,
     textoFx, tmpDoFx, barraPeloNome, EMOCOES, emocao, emoOk, TIPOS_VEICULO, cargaDe, lugarPadrao, folga, AREA, item, novoId, copia, limitar,
     LUGARES, CLIMAS, CLIMA_MUNDO, AREAS, CATEGORIAS, NIVEIS, ESTRUTURAS, estrutura, areaDe, construcoes, chaveRaca, quantoCome, SO_MESTRE, mexeNoMestre, paraJogador,
-    FAD_MAX, paraDaEspecial, ATR_CACA, cacadores, difDaCaca, racoesDaCaca, ID_CACA };
+    FAD_MAX, paraDaEspecial, ATR_CACA, cacadores, difDaCaca, racoesDaCaca, ID_CACA,
+    TIPOS_BASE, NIVEIS_BASE, ESCONDERIJOS, FAIXAS_EXP, CATEGORIAS_BASE, COMODOS, ehBase, esconderijo, catalogo, categorias, ehComodo, comodos, nivelDe, vagas, faixaDe, faixa, faixaNivel, efBase };
   if (typeof module === 'object' && module && module.exports) module.exports = AcampNucleo;
   if (typeof window !== 'undefined') window.AcampNucleo = AcampNucleo;
 })();

@@ -385,12 +385,45 @@ dialog.largo { max-width: min(1080px, calc(100vw - 24px)); width: 100%; }
   .side { position: absolute; right: 0; top: 0; bottom: 0; z-index: 5; width: min(340px, 90%); box-shadow: var(--shadow); }
   .nome-acamp { width: 150px; }
 }
+/* (lote 125) as bases */
+.base-sel { width: auto; max-width: 240px; height: 30px; }
+.miniatura.vazia { display: none; }
+.niveis-base { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.niveis-base li { display: grid; grid-template-columns: 96px 1fr auto; gap: 10px; align-items: center; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--raised); }
+.niveis-base li.agora { border-color: var(--lamp); box-shadow: 0 0 0 1px var(--lamp) inset; }
+.niveis-base li.fora { opacity: .45; }
+.niveis-base .nv-txt { display: grid; gap: 3px; min-width: 0; }
+.niveis-base .nv-txt small { color: var(--fg-3); font-size: 12px; }
+.niveis-base .efs { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+.niveis-base .efs label { display: inline-flex; align-items: center; gap: 4px; }
+.niveis-base .efs .in.num { width: 56px; }
+.mini-base { width: 96px; height: 54px; border-radius: 6px; overflow: hidden; --ceu1: #070a18; --ceu2: #131b3a; --ceu3: #27305a; --chao: #0c1420; --chao2: #16212c; --mata: #060a12; --astro: #f2f0e0; --luz-fogo: 1; --via: 1; --raios: 0; }
+.mini-base svg { width: 100%; height: 100%; display: block; }
+.tag-agora { font: 600 11px/1.6 var(--mono, monospace); text-transform: uppercase; color: var(--lamp-ink, #edb960); padding: 0 6px; }
+.expo { margin: 6px 0 2px; }
+.expo-barra { position: relative; height: 14px; border-radius: 7px; background: linear-gradient(90deg, #3f7a55, #c9a33a 45%, #c8562e 75%, #8e1c14); }
+.expo-barra > i { position: absolute; top: -4px; left: var(--p); width: 4px; height: 22px; margin-left: -2px; background: #fff; border-radius: 2px; box-shadow: 0 0 0 2px #0008; }
+.expo-barra .marca { position: absolute; top: 0; bottom: 0; width: 1px; background: #0006; }
+.expo-barra .marca.agora { background: #fff8; }
+.expo-txt { margin: 6px 0; }
+.expo-bt { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.expo-bt .in.num { width: 64px; }
+.faixas { display: grid; gap: 4px; }
+.nv-tab { display: grid; grid-template-columns: 18px 1fr repeat(4, 58px); gap: 4px; align-items: center; font-size: 12px; }
+.nv-tab .in.num { width: 100%; }
+.faixas .lin { display: flex; gap: 6px; align-items: center; }
+.faixas .in.num { width: 56px; }
+.campo { display: grid; gap: 4px; margin: 8px 0; }
+.campo > span { font-size: 12.5px; font-weight: 600; color: var(--fg-2); }
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <header class="top">
-    <span class="brand">Acampamento</span>
+    <span class="brand" id="brand">Acampamento</span>
+    <!-- (lote 125) as bases: o acampamento, as casas e os esconderijos -->
+    <select class="in base-sel" id="base" aria-label="Qual base" title="Qual base: o acampamento, uma casa ou um esconderijo"></select>
+    <button type="button" class="btn sm" id="btNovaBase" hidden title="Uma casa ou um esconderijo, de um personagem ou do grupo">+ Base</button>
     <input class="nome-acamp" id="nome" maxlength="80" aria-label="Nome do acampamento" autocomplete="off">
     <span class="chip" id="chipRacoes" title="Rações: a soma das provisões guardadas"></span>
     <span class="grow"></span>
@@ -442,8 +475,9 @@ dialog.largo { max-width: min(1080px, calc(100vw - 24px)); width: 100%; }
 <script src="../tc/tags.js?v=3"></script>
 <script src="../tc/itens.js?v=1"></script>
 <script src="../tc/calendario.js?v=2"></script>
-<script src="nucleo.js?v=16"></script>
-<script src="desenhos.js?v=3"></script>
-<script src="acampamento.js?v=25"></script>
+<script src="nucleo.js?v=17"></script>
+<script src="desenhos.js?v=4"></script>
+<script src="bases-desenhos.js?v=1"></script>
+<script src="acampamento.js?v=26"></script>
 </body>
 </html>

@@ -19,6 +19,11 @@
   /* O documento do acampamento na mesa. Numa mesa com campanhas, cada campanha tem o acampamento dela
      ("acampamento@<campanha>"): esta página mostra o da campanha em vista (a casca a abre de novo quando ela muda). */
   let DOC = 'acampamento', campId = null;
+  /* (lote 125) As bases: além do acampamento do grupo, a casa e o esconderijo (de um personagem ou do grupo), cada um
+     num documento "acampamento:base:<id>[@campanha]" (sem mesa: neste navegador, "tinycats:acampamento:base:<id>").
+     baseId: a base em vista ('' = o acampamento). A escolha fica neste aparelho. */
+  let baseId = '';
+  const PRE_BASE = 'acampamento:base:', CHAVE_BASE = 'tinycats:acampamento:base:';
   const DEBUG = /[?&]debug(?:[=&]|$)/.test(location.search);
   const NS = 'http://www.w3.org/2000/svg';
   const HORA_NOME = { entardecer: 'Entardecer', noite: 'Noite', amanhecer: 'Amanhecer' };
@@ -69,7 +74,10 @@
      O documento precisa existir: quem cria o acampamento da mesa (ou da campanha) é quem mestra. */
   const meuMembro = () => (st.membros || []).find(m => m.id === st.eu) || null;
   const docExiste = () => { const d = D && naMesa() ? D.pegar(DOC) : null; return !!d && !d.apagado; };
-  const ajudante = () => naMesa() && !mestre() && !encerrada && !!(meuMembro() && meuMembro().acamp) && docExiste();
+  // (lote 125) a linha do documento em vista (dono e visibilidade da base)
+  const linhaDoc = () => (D && naMesa() ? D.pegar(DOC) : null);
+  const donoDaBase = () => { const d = linhaDoc(); return !!baseId && !!d && !d.apagado && !!st.eu && d.dono_id === st.eu; };
+  const ajudante = () => naMesa() && !mestre() && !encerrada && docExiste() && ((!!(meuMembro() && meuMembro().acamp) && !(baseId && linhaDoc() && linhaDoc().dono_id)) || donoDaBase());
   const edita = () => mestre() || ajudante();
   // o painel em vista pode ser mudado por quem está olhando? (no Grupo: quem mestra; nas outras abas: quem edita)
   let podeAqui = false;
@@ -158,17 +166,19 @@
   /* Na mesa, o acampamento é gravado conferindo a versão: com o mestre e um jogador (ou o mestre em dois aparelhos)
      mexendo ao mesmo tempo, a casca junta as duas mudanças em vez de pôr uma por cima da outra. O jogador grava só as
      partes dele: as do mestre vão exatamente como estão no banco (N.paraJogador). */
+  let extraDoc = null;          // (lote 125) o que vai junto na próxima gravação de quem mestra: o dono da base
   function gravar() {
     jCamp = j(camp);
     if (naMesa()) {
       // (lote 66) a base da conferência é o acampamento que esta tela tinha aplicado (o que veio de fora e ainda não
       // entrou, porque alguém digitava ou havia uma janela aberta, não é desfeito: a casca junta)
-      if (mestre()) D.gravar(DOC, { dados: JSON.parse(jCamp), vis: 'mesa' }, aplicado, { cas: true });
+      if (mestre()) { const l0 = linhaDoc(); D.gravar(DOC, Object.assign({ dados: JSON.parse(jCamp), vis: baseId && l0 && l0.vis ? l0.vis : 'mesa' }, extraDoc || {}), aplicado, { cas: true }); }
       else if (ajudante()) { const cru = D.pegar(DOC); D.gravar(DOC, { dados: N.paraJogador(cru && cru.dados, camp) }, aplicado, { cas: true }); }
       marcarSalvo('Salvo na mesa');
     }
-    else if (guarda.gravar(CHAVE, jCamp)) marcarSalvo('Salvo neste navegador');
+    else if (guarda.gravar(baseId ? CHAVE_BASE + baseId : CHAVE, jCamp)) marcarSalvo('Salvo neste navegador');
     else marcarSalvo('Sem espaço no navegador', true);
+    extraDoc = null;
   }
   /* Toda mudança no acampamento passa por aqui: fn mexe num rascunho (ou devolve false para desistir). */
   function mudar(rotulo, fn, opt) {
@@ -212,7 +222,7 @@
     const p = pilha.pop(), antes = JSON.parse(p.json), j3 = juntar3();
     // (o que mudou depois deste passo — por outra pessoa, ou num passo seguinte já desfeito — fica)
     let volta = j3 && p.depois && p.depois !== jCamp ? N.normalizar(j3(JSON.parse(p.depois), antes, N.copia(camp))) : N.normalizar(antes);
-    if (!mestre()) { const v = N.copia(volta); for (const k of N.SO_MESTRE) v[k] = N.copia(camp[k]); volta = N.normalizar(v); }      // (as partes do mestre ficam como estão)
+    if (!mestre()) { const v = N.copia(volta); for (const k of N.SO_MESTRE) { if (camp[k] === undefined) delete v[k]; else v[k] = N.copia(camp[k]); } volta = N.normalizar(v); }      // (lote 125: as partes da base só existem na casa e no esconderijo)      // (as partes do mestre ficam como estão)
     camp = volta;
     if (p.fichas && naMesa()) for (const f of p.fichas) {
       // f.so: só estas chaves do estado voltam (a Sanidade, o Conforto); sem f.so, o estado inteiro
@@ -253,7 +263,7 @@
     mudar('roda', c => {
       // (numa mesa com campanhas, entram sozinhos os personagens de jogador DESTA campanha; os do mundo e os das outras, só chamados)
       // (lote 26) os NPCs do background de um jogador (ficha.fundo) também entram; a ficha que o jogador ainda vai criar, só depois de criada
-      const entra = l => (ehJogador(l.dono_id) || !!(l.ficha && l.ficha.fundo)) && !(l.ficha && l.ficha.criacao && l.ficha.criacao.pendente);
+      const entra = l => (camp.dono ? l.id === camp.dono : (ehJogador(l.dono_id) || !!(l.ficha && l.ficha.fundo))) && !(l.ficha && l.ficha.criacao && l.ficha.criacao.pendente);      // (lote 125: na casa de um personagem, só o dono entra sozinho)
       for (const l of todas) if (entra(l) && (!campId || l.campanha === campId) && !c.autoVistos.includes(l.id)) { c.autoVistos.push(l.id); if (!c.presentes.includes(l.id)) c.presentes.push(l.id); }
       // (a roda leva também a emoção de cada um: assim quem não vê a ficha de alguém vê a aura dele)
       c.roda = c.presentes.filter(id => ids.has(id)).map(id => { const l = todas.find(x => x.id === id), img = l.ficha && l.ficha.img, emo = N.emoOk(l.estado && l.estado.emo); return Object.assign({ id, nome: l.nome || 'Sem nome', img: typeof img === 'string' && /^https:\/\//.test(img) ? img : null, dono: l.dono_id || null }, emo ? { emo } : {}); });
@@ -272,6 +282,13 @@
     const car = areaVista === 'fogueira' && camp.verCaravana ? camp.caravana.veiculos.map(v => ({ tipo: v.tipo, quebrado: quebrou(v.estado), cheio: v.cap > 0 && (peso.por[v.id] || 0) > v.cap })) : [];
     // os abrigos: quantos estão na fogueira e o que o grupo tem em uso no Equipamento (tenda, toldo, rede, barracas)
     const ab = areaVista === 'fogueira' ? { n: camp.presentes.filter(id => N.areaDe(camp, id) === 'fogueira').length, tipos: [...AD.tiposDeAbrigo(camp.equipamentos.filter(e => e.on).map(e => e.nome))] } : null;
+    if (N.ehBase(camp)) {          // (lote 125) a casa ou o esconderijo: o desenho do nível (e do tipo) dela
+      const chaveB = j([camp.tipo, camp.esc, camp.nivel]);
+      if (chaveB === chaveCenario) return;
+      chaveCenario = chaveB;
+      $('cenario').innerHTML = window.BasesDesenhos ? window.BasesDesenhos.cena({ tipo: camp.tipo, esc: camp.esc, nivel: camp.nivel }) : '';
+      return;
+    }
     const chave = j([camp.lugar, areaVista, cs, car, ab]);
     if (chave === chaveCenario) return;
     chaveCenario = chave;
@@ -398,13 +415,17 @@
     $('btDesfazer').disabled = !pilha.length;
     $('btDesfazer').title = pilha.length ? 'Desfazer: ' + pilha[pilha.length - 1].rotulo + ' (Ctrl+Z)' : 'Nada para desfazer';
     $('btCena').hidden = !(naCasca() && mestre());
+    $('btCena').textContent = N.ehBase(camp) ? 'Planta' : 'Mapa tático';
     $('btMundo').hidden = !naCasca();
+    $('btMundo').title = N.ehBase(camp) && camp.mapa ? 'Onde ' + (camp.tipo === 'casa' ? 'a casa' : 'o esconderijo') + ' fica: ' + (camp.mapa.nome || 'no Mapa-múndi') : 'Vai para o Mapa-múndi';
+    pintarBases();
     $('btMomento').hidden = !naMesa();
     $('btTodos').hidden = !naMesa();
   }
   function barrinha(v, max, cor) { return h('div', { class: 'b' }, h('i', { style: `width:${N.limitar(max > 0 ? v / max * 100 : 0, 0, 100)}%;--c:${cor}` })); }
   function pintarCena() {
     const pa = $('palco');
+    if (N.ehBase(camp)) areaVista = 'fogueira';          // (lote 125: a base não tem áreas)
     // (a imagem de fundo do mestre é a da fogueira; as outras áreas são desenhadas)
     const fundo = camp.fundo && areaVista === 'fogueira' ? camp.fundo : null;
     pa.className = 'palco hora-' + camp.hora + ' lugar-' + camp.lugar + (fundo ? ' com-fundo' : '');
@@ -421,6 +442,7 @@
     } else if (im) { im.remove(); for (const x of c16.querySelectorAll('.longe')) x.remove(); }
     // quem está na área em vista (e as abas das áreas, com quantos há em cada uma)
     const todos = presentes(), gente = todos.filter(p => N.areaDe(camp, p.id) === areaVista), n = gente.length;
+    $('areas').hidden = N.ehBase(camp);
     $('areas').replaceChildren(...N.AREAS.map(([k, nome]) => { const q = todos.filter(p => N.areaDe(camp, p.id) === k).length, cs = N.construcoes(camp, k).length;
       return h('button', { type: 'button', id: 'area-tab-' + k, 'aria-pressed': String(areaVista === k), title: nome + ': ' + (q === 1 ? '1 personagem' : q + ' personagens') + (cs ? ' · ' + (cs === 1 ? '1 construção' : cs + ' construções') : ''), onclick: () => verArea(k) },
         nome, h('span', { class: 'n', text: String(q) })); }),
@@ -456,7 +478,7 @@
     const comLinhas = sel && gente.some(p => p.id === sel) ? (gente.find(p => p.id === sel) || {}).nome : null;
     $('avisosCena').replaceChildren(...[
       ...camp.bonus.map(b => h('span', { class: 'chip', title: b.desc || null }, h('b', { text: b.nome || 'Bônus' }), b.ateDescanso ? ' até o descanso' : null)),
-      txt || alguns ? h('span', { class: 'chip', title: 'O que as melhorias e os equipamentos em uso somam ao descanso longo' }, 'Estrutura: ', h('b', { text: txt || 'só para alguns' }), txt && alguns ? ' · e mais, só para alguns' : null) : null,
+      txt || alguns ? h('span', { class: 'chip', title: N.ehBase(camp) ? 'O que o nível, os cômodos e os equipamentos somam ao descanso longo' : 'O que as melhorias e os equipamentos em uso somam ao descanso longo' }, N.ehBase(camp) ? 'Descanso aqui: ' : 'Estrutura: ', h('b', { text: txt || 'só para alguns' }), txt && alguns ? ' · e mais, só para alguns' : null) : null,
       // (as linhas tracejadas: a legenda, enquanto alguém está escolhido)
       comLinhas ? h('span', { class: 'chip', id: 'legendaRel', title: 'Cada metade da linha é o que um sente pelo outro' }, 'Relações de ', h('b', { text: comLinhas }), ': verde gosta · vermelho não gosta · rosa, romance') : null].filter(Boolean));
     ajustarPalco();
@@ -500,14 +522,17 @@
 
   /* ---------------- o painel ---------------- */
   function trocarAba(a, semPintar) { aba = a; guarda.gravar('tinycats:acampamento:aba', a); if (!semPintar) pintarPainel(); }
+  // (lote 125) as abas de cada tipo de base: a casa e o esconderijo não têm caravana; têm a aba deles (os níveis e a exposição)
+  const abasAgora = () => (N.ehBase(camp) ? [['grupo', 'Grupo'], ['base', camp.tipo === 'casa' ? 'Casa' : 'Esconderijo'], ['provisoes', 'Provisões'], ['estrutura', 'Cômodos'], ['bancada', 'Bancada'], ['diario', 'Diário']] : ABAS);
   function pintarPainel() {
+    const ABAS = abasAgora();
     if (!ABAS.some(a => a[0] === aba)) aba = 'grupo';
     $('tabs').replaceChildren(...ABAS.map(([id, nome]) => h('button', { type: 'button', class: 'tab', role: 'tab', id: 'tab-' + id, 'aria-selected': String(aba === id), text: nome, onclick: () => trocarAba(id) })));
     const pane = $('pane'), rolagem = pane.scrollTop, ativo = document.activeElement && pane.contains(document.activeElement) ? document.activeElement.id : null;
     podeAqui = aba === 'grupo' ? mestre() : edita();
     const esperando = naMesa() && !mestre() && !encerrada && !!(meuMembro() && meuMembro().acamp) && !docExiste();
     pane.replaceChildren(...[esperando ? h('p', { class: 'aviso', id: 'acamp-espera', text: 'O mestre deixou você mexer no acampamento, mas ele ainda não foi aberto nesta mesa. Quando o mestre abrir o Acampamento uma vez, você poderá mexer aqui.' }) : null,
-      ...({ grupo: abaGrupo, provisoes: abaProvisoes, estrutura: abaEstrutura, bancada: abaBancada, caravana: abaCaravana, diario: abaDiario }[aba])()].flat(Infinity).filter(Boolean));
+      ...({ grupo: abaGrupo, base: abaBase, provisoes: abaProvisoes, estrutura: abaEstrutura, bancada: abaBancada, caravana: abaCaravana, diario: abaDiario }[aba])()].flat(Infinity).filter(Boolean));
     pane.scrollTop = rolagem;
     const alvo = focoDepois || ativo; focoDepois = null;
     if (alvo) { const el = document.getElementById(alvo); if (el && !el.disabled) el.focus({ preventScroll: true }); }
@@ -637,10 +662,10 @@
         // a Sanidade e o Conforto (moram na ficha): quem mestra muda aqui mesmo, de 1 em 1 ou digitando
         podeMente(p) ? h('div', { class: 'mente-ed', role: 'group', 'aria-label': 'Sanidade e Conforto de ' + p.nome }, linhaMente(p, 'san'), linhaMente(p, 'conf')) : null,
         // em que área do acampamento está (os suportes podem ficar nas oficinas, na guarda…)
-        edita() ? h('label', { class: 'sw area-de' }, 'Está em',
+        N.ehBase(camp) ? null : edita() ? h('label', { class: 'sw area-de' }, 'Está em',
           h('select', { class: 'in', id: 'area-' + p.id, 'aria-label': 'Em que área do acampamento ' + p.nome + ' está', onchange: e => { focoDepois = 'area-' + p.id; moverDeArea(p, e.target.value); } },
             N.AREAS.map(([k, nome]) => h('option', { value: k, text: nome, selected: N.areaDe(camp, p.id) === k }))))
-          : N.areaDe(camp, p.id) !== 'fogueira' ? h('span', { class: 'note' }, 'Está em: ', h('b', { text: nomeDaArea(N.areaDe(camp, p.id)) })) : null,
+          : N.areaDe(camp, p.id) !== 'fogueira' && !N.ehBase(camp) ? h('span', { class: 'note' }, 'Está em: ', h('b', { text: nomeDaArea(N.areaDe(camp, p.id)) })) : null,
         h('div', { class: 'lin' },
         naCasca() && !p.semFicha ? h('button', { type: 'button', class: 'btn sm', text: 'Abrir a ficha', onclick: () => TC.ponte.ir('fichas', { pc: p.id }) }) : null,
         edita() && camp.lugares[p.id] ? h('button', { type: 'button', class: 'btn sm', text: 'Voltar ao lugar padrão', onclick: () => mudar('lugar de ' + p.nome, c => { delete c.lugares[p.id]; }) }) : null,
@@ -658,7 +683,8 @@
       mestre() || b.desc ? campoArea('bn-d-' + b.id, b.desc, 'O que o bônus faz', v => mudar('descrever o bônus', c => { acha(c.bonus, b.id).desc = v; }), 'O que ele faz — ex.: +1 nas rolagens de quem dormiu bem') : null,
       h('label', { class: 'sw' }, h('input', { type: 'checkbox', id: 'bn-a-' + b.id, checked: b.ateDescanso, disabled: !mestre(), onchange: e => mudar('duração do bônus', c => { acha(c.bonus, b.id).ateDescanso = e.target.checked; }) }), 'Acaba no próximo descanso')));
     return [
-      h('h3', { text: 'Em volta da fogueira' }),
+      h('h3', { text: N.ehBase(camp) ? (camp.tipo === 'casa' ? 'Na casa' : 'No esconderijo') : 'Em volta da fogueira' }),
+      N.ehBase(camp) ? h('p', { class: 'note', id: 'base-quem', text: (camp.dono ? 'De ' + ((linha(camp.dono) || {}).nome || 'um personagem') + '. ' : 'Do grupo. ') + 'Quem está aqui descansa com as regras ' + (camp.tipo === 'casa' ? 'da casa' : 'do esconderijo') + '; quem não está, descansa onde estiver.' }) : null,
       h('p', { class: 'sub', text: gente.length ? (gente.length === 1 ? '1 personagem' : gente.length + ' personagens') + (edita() ? ' · arraste cada um na cena para mudar de lugar' : '') : 'Ninguém ainda.' }),
       !naMesa() ? h('p', { class: 'note', text: 'Sem mesa aberta: aqui aparecem as fichas deste navegador, para consulta. O descanso mostra o que cada um recupera, mas só muda as fichas quando há uma mesa.' }) : null,
       h('div', { class: 'gente' }, cartoes),
@@ -668,9 +694,9 @@
       mestre() ? h('div', { class: 'sec' }, h('div', { class: 'rot' }, 'A cena'),
         // onde o acampamento está (muda o desenho) e o tempo (animado, por cima da cena)
         h('div', { class: 'servir' },
-          h('span', { text: 'Lugar' }),
-          h('select', { class: 'in', id: 'lugar', 'aria-label': 'Onde o acampamento está', onchange: e => { focoDepois = 'lugar'; mudar('mudar o lugar', c => { c.lugar = e.target.value; }); } },
-            N.LUGARES.map(([k, nome]) => h('option', { value: k, text: nome, selected: camp.lugar === k }))), h('span'),
+          N.ehBase(camp) ? null : h('span', { text: 'Lugar' }),
+          N.ehBase(camp) ? null : h('select', { class: 'in', id: 'lugar', 'aria-label': 'Onde o acampamento está', onchange: e => { focoDepois = 'lugar'; mudar('mudar o lugar', c => { c.lugar = e.target.value; }); } },
+            N.LUGARES.map(([k, nome]) => h('option', { value: k, text: nome, selected: camp.lugar === k }))), N.ehBase(camp) ? null : h('span'),
           h('span', { text: 'Clima' }),
           h('select', { class: 'in', id: 'clima-sel', 'aria-label': 'O tempo no acampamento', onchange: e => { focoDepois = 'clima-sel'; mudar('mudar o clima', c => { c.clima = e.target.value; }); } },
             N.CLIMAS.map(([k, nome]) => h('option', { value: k, text: nome, selected: camp.clima === k }))), h('span')),
@@ -862,11 +888,11 @@
   /* ---- as construções do catálogo (a forja, o canto do bardo, a enfermaria…) ----
      Cada uma aparece desenhada na área dela e melhora em três níveis; o que cada nível faz começa no padrão do catálogo
      e pode ser mudado no cartão (vale para aquele nível). */
-  const nomeCat = k => (N.CATEGORIAS.find(c => c[0] === k) || [k, k])[1];
+  const nomeCat = k => (N.categorias(camp).find(c => c[0] === k) || N.CATEGORIAS.find(c => c[0] === k) || [k, k])[1];
   const padroes = {};
   const padraoDe = k => padroes[k] || (padroes[k] = N.normalizar({ melhorias: [N.item('construcao', k)] }).melhorias[0].nv);
   const semIds = fx => fx.map(f => { const o = Object.assign({}, f); delete o.id; return o; });
-  function miniatura(tipo, nivel) { const d = h('div', { class: 'miniatura', 'aria-hidden': 'true' }); if (window.AcampDesenhos) d.innerHTML = window.AcampDesenhos.miniatura(tipo, nivel); return d; }
+  function miniatura(tipo, nivel) { const d = h('div', { class: 'miniatura', 'aria-hidden': 'true' }); if (window.AcampDesenhos && window.AcampDesenhos.tipos.includes(tipo)) d.innerHTML = window.AcampDesenhos.miniatura(tipo, nivel); else d.classList.add('vazia'); return d; }
   function cabecaConstrucao(m, cat) {
     const nome = m.nome || cat.nome;
     const niveis = h('div', { class: 'niveis', role: 'group', 'aria-label': 'Nível de ' + nome },
@@ -875,27 +901,29 @@
         onclick: () => { if (m.nivel === i + 1) return; focoDepois = `ml-nv-${m.id}-${i + 1}`; if (mudar((i + 1 > m.nivel ? 'melhorar ' : 'mudar o nível de ') + nome, c => { acha(c.melhorias, m.id).nivel = i + 1; })) toast(nome + ': ' + rot.toLowerCase() + (i + 1 > m.nivel ? '. O desenho e o que ela faz cresceram.' : '.'), 'Desfazer', desfazer); } }, rot)));
     const pd = padraoDe(cat.k)[m.nivel - 1], noPadrao = j(pd.ef) === j(m.ef) && j(semIds(pd.fx)) === j(semIds(m.fx));
     return h('div', { class: 'construcao-cab' }, miniatura(m.tipo, m.nivel),
-      h('div', { class: 'lin', style: 'flex-wrap:wrap' }, h('span', { class: 'cat', text: nomeCat(cat.cat) + ' · na área ' + nomeDaArea(cat.area) }), h('span', { class: 'grow' }), niveis),
+      h('div', { class: 'lin', style: 'flex-wrap:wrap' }, h('span', { class: 'cat', text: nomeCat(cat.cat) + (cat.area === 'comodo' ? '' : ' · na área ' + nomeDaArea(cat.area)) }), h('span', { class: 'grow' }), niveis),
       !noPadrao && podeAqui ? h('button', { type: 'button', class: 'btn sm', id: `ml-pd-${m.id}`, style: 'justify-self:start', text: 'Voltar ao padrão deste nível',
         onclick: () => { if (mudar('voltar ao padrão de ' + nome, c => { const x = acha(c.melhorias, m.id); x.nv[x.nivel - 1] = N.copia(pd); })) toast('O nível ' + N.NIVEIS[m.nivel - 1].toLowerCase() + ' de ' + nome + ' voltou ao padrão.', 'Desfazer', desfazer); } }) : null);
   }
   function abrirConstruir() {
     if (!edita()) return;
-    const feitos = new Set(camp.melhorias.filter(m => m.tipo).map(m => m.tipo));
-    const corpo = N.CATEGORIAS.map(([ck, cnome]) => h('div', { class: 'sec' }, h('div', { class: 'rot', text: cnome }),
-      h('div', { class: 'construir' }, N.ESTRUTURAS.filter(e => e.cat === ck).map(e => {
+    const feitos = new Set(camp.melhorias.filter(m => m.tipo).map(m => m.tipo)), base = N.ehBase(camp), cabe = N.vagas(camp);
+    const corpo = N.categorias(camp).map(([ck, cnome]) => h('div', { class: 'sec' }, h('div', { class: 'rot', text: cnome }),
+      h('div', { class: 'construir' }, N.catalogo(camp).filter(e => e.cat === ck).map(e => {
         const ja = feitos.has(e.k), r0 = resumoEfeito(padraoDe(e.k)[0], true);
-        return h('button', { type: 'button', class: 'opc', id: 'ct-' + e.k, disabled: ja, title: e.desc, onclick: () => construir(e.k) },
-          miniatura(e.k, 1), h('b', { text: e.nome }), h('small', { text: ja ? 'já construída' : 'na área ' + nomeDaArea(e.area) + (r0 ? ' · simples: ' + r0 : '') }));
+        return h('button', { type: 'button', class: 'opc', id: 'ct-' + e.k, disabled: ja || cabe <= 0, title: e.desc, onclick: () => construir(e.k) },
+          base ? null : miniatura(e.k, 1), h('b', { text: e.nome }), h('small', { text: ja ? (base ? 'já tem' : 'já construída') : (base ? e.desc : 'na área ' + nomeDaArea(e.area)) + (r0 ? ' · simples: ' + r0 : '') }));
       }))));
-    abrirJanela('Construir no acampamento', [h('p', { class: 'note', text: 'Cada construção começa simples e melhora em três níveis — simples, boa, excelente: o desenho muda e o que ela faz no descanso longo cresce. O que cada nível faz pode ser mudado depois, no cartão dela.' }), ...corpo],
+    abrirJanela(base ? 'Novo cômodo' : 'Construir no acampamento', [h('p', { class: 'note', id: 'ct-vagas', text: base ? (cabe > 0 ? (cabe === 1 ? 'Cabe mais 1 cômodo' : 'Cabem mais ' + cabe + ' cômodos') + ' neste nível. Cada cômodo melhora em três níveis — simples, bom, excelente.' : 'Não cabe mais nenhum cômodo neste nível: o mestre sobe o nível na aba ' + (camp.tipo === 'casa' ? 'Casa' : 'Esconderijo') + '.')
+      : 'Cada construção começa simples e melhora em três níveis — simples, boa, excelente: o desenho muda e o que ela faz no descanso longo cresce. O que cada nível faz pode ser mudado depois, no cartão dela.' }), ...corpo],
       [h('button', { type: 'button', class: 'btn', text: 'Fechar', onclick: fecharJanela })]);
   }
   function construir(k) {
     const e = N.estrutura(k), it = N.item('construcao', k); if (!e || !it) return;
+    if (N.ehBase(camp) && N.vagas(camp) <= 0) { toast('Não cabe mais nenhum cômodo neste nível.'); return; }
     fecharJanela();
     focoDepois = 'ml-n-' + it.id;
-    if (mudar('construir ' + e.nome, c => { if (c.melhorias.some(m => m.tipo === k)) return false; c.melhorias.push(it); })) toast(e.nome + ' construída (simples), na área ' + nomeDaArea(e.area) + '.', 'Desfazer', desfazer);
+    if (mudar((N.ehBase(camp) ? 'novo cômodo: ' : 'construir ') + e.nome, c => { if (c.melhorias.some(m => m.tipo === k)) return false; c.melhorias.push(it); })) toast(N.ehBase(camp) ? e.nome + ' pronto (simples).' : e.nome + ' construída (simples), na área ' + nomeDaArea(e.area) + '.', 'Desfazer', desfazer);
   }
   function abaEstrutura() {
     const txt = N.textoEfeitos(N.efeitos(camp)), alguns = N.temParaAlguns(camp);
@@ -903,6 +931,17 @@
       h('div', { class: 'rot' }, titulo, podeAqui ? h('button', { type: 'button', class: 'btn sm', id: (tipo === 'melhorias' ? 'ml' : 'eq') + '-novo', text: botao, onclick: () => { const it = N.item(tipo); focoDepois = (tipo === 'melhorias' ? 'ml' : 'eq') + '-n-' + it.id; mudar(tipo === 'melhorias' ? 'nova melhoria' : 'novo equipamento', c => { c[tipo].push(it); }); } }) : null),
       lista.length ? lista.map(m => cartaoEstrutura(tipo, m)) : h('p', { class: 'note', text: vazio })); };
     const feitas = camp.melhorias.filter(m => m.tipo);
+    if (N.ehBase(camp)) {          // (lote 125) a casa e o esconderijo: os cômodos (cabem tantos quanto o nível deixa)
+      const nv = N.nivelDe(camp), usados = N.comodos(camp).length;
+      return [
+        h('h3', { text: 'Cômodos' }),
+        h('p', { class: 'sub', id: 'estResumo', text: usados + ' de ' + nv.vagas + (nv.vagas === 1 ? ' cômodo' : ' cômodos') + ' (' + nv.nome.toLowerCase() + ').' + (txt ? ' No descanso longo, com o nível, soma para todos: ' + txt + '.' : '') }),
+        h('div', { class: 'sec' }, h('div', { class: 'rot' }, 'Cômodos', podeAqui ? h('button', { type: 'button', class: 'btn sm', id: 'ct-novo', text: '+ Cômodo…', disabled: N.vagas(camp) <= 0, title: N.vagas(camp) <= 0 ? 'Não cabe mais nenhum: o mestre sobe o nível' : null, onclick: abrirConstruir }) : null),
+          feitas.length ? feitas.map(m => cartaoEstrutura('melhorias', m)) : h('p', { class: 'note', text: 'Nenhum cômodo ainda.' })),
+        secao('equipamentos', 'Móveis e equipamentos', '+ Equipamento', 'Nenhum. Ex.: camas boas, lareira, cofre, cavalos.'),
+        h('p', { class: 'note', text: 'Efeitos: Conforto e Sanidade em pontos por descanso longo; recuperação em % a mais das barras; rações a mais (ou, com sinal de menos, a menos) por descanso.' }),
+      ];
+    }
     return [
       h('h3', { text: 'Estrutura' }),
       h('p', { class: 'sub', id: 'estResumo', text: (txt ? 'No descanso longo, o que está em uso soma para todos: ' + txt + '.' : 'O que está em uso soma seus efeitos ao descanso longo.') + (alguns ? ' Há também o que vale só para alguns.' : '') }),
@@ -1153,7 +1192,7 @@
     // (porPessoa: o que o mestre mudou na hora, pessoa por pessoa — só para este descanso)
     const escolha = { servir: camp.servir[longo ? 'longo' : 'curto'], prov: camp.regras[longo ? 'longo' : 'curto'].prov, porPessoa: {}, tiraBonus: camp.regras[longo ? 'longo' : 'curto'].tiraBonus !== false };
     // (lote 7, parte 5c) a noite no clima de hoje do Mapa-múndi: vem marcada (o mestre desmarca)
-    const climaM = longo ? climaDoMundo() : null;
+    const climaM = longo && !N.ehBase(camp) ? climaDoMundo() : null;      // (lote 125: dentro de casa, o tempo lá fora não pesa)
     escolha.clima = !!(climaM && climaM.conf);
     const txtTmp = b => (b.k || '?') + ' ' + N.comSinal(Math.round(b.v * 10) / 10) + (b.n ? ' (' + b.n + ')' : '');
     /* (lote 18) A caça: quem está na área Caça rola (o mestre aperta, um por um ou todos); o resultado só sugere rações
@@ -1654,7 +1693,202 @@
     document.body.append(menu);
   }
 
+
+  /* ======================= (lote 125) as bases ======================= */
+  let DOC_GRUPO = 'acampamento';
+  const docDaBase = id => (id ? PRE_BASE + id + (campId ? '@' + campId : '') : DOC_GRUPO);
+  const NOME_TIPO = { acampamento: 'Acampamento', casa: 'Casa', esconderijo: 'Esconderijo' };
+  /* As bases que quem está olhando vê (o banco já esconde a dos outros que for segredo): o acampamento do grupo
+     primeiro, depois as outras, por nome. Cada uma: { id, nome, tipo, dono } */
+  function listaBases() {
+    const out = [{ id: '', nome: (camp && !baseId ? camp.nome : null) || 'Acampamento', tipo: 'acampamento', dono: null }];
+    const outras = [];
+    if (naMesa() && D) {
+      for (const l of D.todas()) {
+        if (l.apagado || typeof l.id !== 'string' || !l.id.startsWith(PRE_BASE)) continue;
+        const resto = l.id.slice(PRE_BASE.length), at = resto.indexOf('@'), id = at < 0 ? resto : resto.slice(0, at), c = at < 0 ? null : resto.slice(at + 1);
+        if ((campId || null) !== c || !id) continue;
+        const d = N.normalizar(l.dados);
+        outras.push({ id, nome: d.nome, tipo: d.tipo || 'casa', dono: d.dono });
+      }
+    } else {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i); if (!k || !k.startsWith(CHAVE_BASE) || k === CHAVE_BASE + 'vista') continue;
+          const d = N.normalizar(lerLocalBase(k.slice(CHAVE_BASE.length)));
+          outras.push({ id: k.slice(CHAVE_BASE.length), nome: d.nome, tipo: d.tipo || 'casa', dono: d.dono });
+        }
+      } catch (e) { /* sem armazenamento */ }
+    }
+    return out.concat(outras.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
+  }
+  const rotuloBase = b => (b.tipo === 'acampamento' ? '🔥 ' : b.tipo === 'casa' ? '🏠 ' : '🗝 ') + b.nome + (b.dono ? ' · ' + ((linha(b.dono) || {}).nome || 'personagem') : '');
+  function pintarBases() {
+    const sel0 = $('base'); if (!sel0 || !pronto) return;
+    const lista = listaBases();
+    sel0.replaceChildren(...lista.map(b => h('option', { value: b.id, text: rotuloBase(b), selected: b.id === baseId })));
+    sel0.hidden = lista.length < 2 && !mestre();
+    $('btNovaBase').hidden = !mestre() || (naMesa() && !!st.temCampanhas && !campId);
+    $('brand').textContent = N.ehBase(camp) ? NOME_TIPO[camp.tipo] : 'Acampamento';
+  }
+  function trocarBase(id) {
+    if (id === baseId && pronto) return;
+    baseId = id || '';
+    guarda.gravar('tinycats:acampamento:base:vista', baseId);
+    DOC = docDaBase(baseId);
+    if (naMesa()) { const d = D.pegar(DOC); camp = N.normalizar(d && !d.apagado ? d.dados : null); marcarAplicado(d); }
+    else camp = N.normalizar(baseId ? lerLocalBase(baseId) : lerLocal());
+    jCamp = j(camp); pilha = []; sel = null; chaveCenario = ''; climaFeito = null;
+    if (!abasAgora().some(a => a[0] === aba)) aba = 'grupo';
+    manterRoda(); pintar();
+  }
+  // as pessoas que podem ser donas de uma base (os personagens de jogador da campanha em vista)
+  const donos = () => linhas().filter(l => (!naMesa() || ehJogador(l.dono_id)) && !(l.ficha && l.ficha.petDe) && (!campId || !l.campanha || l.campanha === campId)).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+  /* Criar uma base (quem mestra): o tipo, o esconderijo, o nome, de quem é e quem vê. Na mesa, o documento nasce com
+     a visibilidade escolhida e, se é de um personagem, com o jogador dele como dono (ele mexe nela, menos nas partes
+     do mestre). */
+  function criarBase(o) {
+    const id = 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const dados = N.normalizar({ tipo: o.tipo, esc: o.esc, nome: o.nome, dono: o.dono || null, nivel: o.nivel });
+    if (naMesa()) {
+      const l = o.dono ? linha(o.dono) : null;
+      D.gravar(PRE_BASE + id + (campId ? '@' + campId : ''), { dados, vis: o.segredo ? 'mestre' : 'mesa', dono_id: l && l.dono_id ? l.dono_id : null });
+    } else guarda.gravar(CHAVE_BASE + id, j(dados));
+    trocarBase(id);
+    toast((o.tipo === 'casa' ? 'Casa' : 'Esconderijo') + ' criad' + (o.tipo === 'casa' ? 'a' : 'o') + ': ' + dados.nome + '.');
+    return id;
+  }
+  function abrirNovaBase() {
+    if (!mestre()) return;
+    let tipo = 'casa';
+    const nome = h('input', { class: 'in', id: 'nb-nome', maxlength: 80, placeholder: 'Ex.: A casa da Rua dos Ourives', autocomplete: 'off' });
+    const esc = h('select', { class: 'in', id: 'nb-esc', 'aria-label': 'Que tipo de esconderijo' }, N.ESCONDERIJOS.map(e => h('option', { value: e.k, text: e.nome + ' (níveis ' + e.min + ' a ' + e.max + ')' })));
+    const dono = h('select', { class: 'in', id: 'nb-dono', 'aria-label': 'De quem é' }, h('option', { value: '', text: 'Do grupo' }), donos().map(l => h('option', { value: l.id, text: l.nome || 'Sem nome' })));
+    const segredo = h('input', { type: 'checkbox', id: 'nb-segredo' });
+    const linhaEsc = h('label', { class: 'campo', hidden: true }, h('span', { text: 'Que tipo de esconderijo' }), esc);
+    const linhaSeg = h('label', { class: 'sw' }, segredo, 'Segredo: só o dono e o mestre veem');
+    const tipos = h('div', { class: 'seg', role: 'group', 'aria-label': 'Tipo da base' }, ['casa', 'esconderijo'].map(k => h('button', { type: 'button', id: 'nb-tipo-' + k, 'aria-pressed': String(k === tipo), text: NOME_TIPO[k],
+      onclick: () => { tipo = k; for (const b of tipos.children) b.setAttribute('aria-pressed', String(b.id === 'nb-tipo-' + k)); linhaEsc.hidden = k !== 'esconderijo'; segredo.checked = k === 'esconderijo' && !!dono.value; } })));
+    dono.onchange = () => { linhaSeg.hidden = !dono.value; if (!dono.value) segredo.checked = false; };
+    linhaSeg.hidden = true;
+    abrirJanela('Nova base', [h('p', { class: 'note', text: 'Uma casa ou um esconderijo, de um personagem ou do grupo. Quem está lá descansa com as regras dela; o nível sobe com as reformas (só o mestre sobe).' }),
+      tipos, h('label', { class: 'campo' }, h('span', { text: 'Nome' }), nome), linhaEsc, h('label', { class: 'campo' }, h('span', { text: 'De quem é' }), dono), linhaSeg],
+      [h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }),
+        h('button', { type: 'button', class: 'btn pri', id: 'nb-criar', text: 'Criar', onclick: () => {
+          const n = nome.value.trim() || (tipo === 'casa' ? 'Casa' : 'Esconderijo') + (dono.value ? ' de ' + ((linha(dono.value) || {}).nome || '') : ' do grupo');
+          fecharJanela(); criarBase({ tipo, esc: esc.value, nome: n, dono: dono.value || null, segredo: segredo.checked && !!dono.value });
+        } })]);
+    nome.focus();
+  }
+  function apagarBase() {
+    if (!mestre() || !baseId) return;
+    const nome = camp.nome;
+    abrirJanela('Apagar “' + nome + '”?', [h('p', { text: 'A base some para todos, com os cômodos, as provisões guardadas e o diário dela. As fichas de quem estava lá não mudam. Não dá para desfazer.' })],
+      [h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }),
+        h('button', { type: 'button', class: 'btn per', id: 'base-apagar-sim', text: 'Apagar', onclick: () => {
+          fecharJanela();
+          if (naMesa()) D.apagar(DOC); else { try { localStorage.removeItem(CHAVE_BASE + baseId); } catch (e) { /* ignora */ } }
+          trocarBase(''); toast('“' + nome + '” foi apagada.');
+        } })]);
+  }
+  // subir (ou descer) o nível da base: só quem mestra; o desenho e o que ela soma ao descanso mudam juntos
+  function mudarNivel(n) {
+    const f = N.faixaNivel(camp), alvo = N.limitar(n, f.min, f.max);
+    if (alvo === camp.nivel) return false;
+    const subiu = alvo > camp.nivel, nome = camp.niveis[alvo - 1].nome;
+    if (mudar((subiu ? 'reformar ' : 'baixar o nível de ') + camp.nome, c => { c.nivel = alvo; })) {
+      toast(camp.nome + ': ' + nome.toLowerCase() + (subiu ? '. O desenho cresceu' + (camp.tipo === 'casa' ? ' e cabem mais cômodos.' : '.') : '.'), 'Desfazer', desfazer);
+      if (naMesa()) publicar(camp.nome, (subiu ? 'Agora é ' : 'Voltou a ') + nome.toLowerCase() + '.');
+      return true;
+    }
+    return false;
+  }
+  // a exposição do esconderijo: soma (ou tira) e anota no diário quando muda de faixa
+  function mudarExp(v, motivo) {
+    const antes = camp.exp, novo = N.limitar(Math.round(v), 0, 100); if (novo === antes) return false;
+    const fa = N.faixaDe(antes), fb = N.faixaDe(novo);
+    return mudar('exposição de ' + camp.nome, c => {
+      c.exp = novo;
+      if (fa !== fb || motivo) c.diario.unshift({ id: N.novoId('di'), t: Date.now(), texto: 'Exposição ' + antes + ' → ' + novo + (fa !== fb ? ': ' + c.faixas[fb].nome.toLowerCase() : '') + (motivo ? ' · ' + motivo : '') });
+    }, { junta: 'exp:' + baseId });
+  }
+  // os lugares do Mapa-múndi (os mapas e os pontos com nome), para a base dizer onde fica
+  function lugaresDoMundo() {
+    if (!naMesa() || !D) return [];
+    const out = [];
+    for (const l of D.todas()) {
+      if (l.apagado || typeof l.id !== 'string' || !l.id.startsWith('mundo:mapa:')) continue;
+      const mid = l.id.slice('mundo:mapa:'.length), m = l.dados; if (!m || typeof m !== 'object') continue;
+      const nm = m.nome || 'Mapa';
+      out.push({ mapa: mid, obj: '', nome: nm, rot: nm + ' (o mapa inteiro)' });
+      for (const o of Array.isArray(m.objs) ? m.objs : []) if (o && typeof o.id === 'string' && o.nome) out.push({ mapa: mid, obj: o.id, nome: o.nome, rot: o.nome + ' · ' + nm });
+    }
+    return out.sort((a, b) => a.rot.localeCompare(b.rot, 'pt-BR'));
+  }
+  function miniBase(nivel) { const d = h('div', { class: 'mini-base', 'aria-hidden': 'true' }); if (window.BasesDesenhos) d.innerHTML = window.BasesDesenhos.miniatura({ tipo: camp.tipo, esc: camp.esc, nivel }); return d; }
+  /* A aba da casa (ou do esconderijo): o nível (os 8, com o desenho, o nome, o que somam e os cômodos que cabem), a
+     exposição do esconderijo, onde fica e de quem é. Quem mestra sobe o nível e mexe em tudo; os outros só veem. */
+  function abaBase() {
+    const m = mestre(), f = N.faixaNivel(camp), nv = N.nivelDe(camp), esc = camp.tipo === 'esconderijo' ? N.esconderijo(camp.esc) : null;
+    const ladder = h('ol', { class: 'niveis-base', id: 'base-niveis' }, camp.niveis.map((x, i) => {
+      const n = i + 1, fora = n < f.min || n > f.max, agora = n === camp.nivel;
+      return h('li', { class: (agora ? 'agora' : '') + (fora ? ' fora' : ''), 'data-nivel': n },
+        miniBase(n),
+        h('div', { class: 'nv-txt' }, h('b', { text: n + '. ' + x.nome }),
+          h('small', { text: (N.textoEfeitos(x.ef) || 'nada a mais no descanso') + ' · ' + (x.vagas === 1 ? '1 cômodo' : x.vagas + ' cômodos') + (fora ? ' · fora do alcance deste ' + (esc ? esc.nome.toLowerCase() : 'tipo') : '') })),
+        agora ? h('span', { class: 'tag-agora', text: 'agora' }) : m && !fora ? h('button', { type: 'button', class: 'btn sm', id: 'base-ir-' + n, text: n > camp.nivel ? 'Subir para cá' : 'Voltar para cá', onclick: () => { focoDepois = 'base-ir-' + n; mudarNivel(n); } }) : null);
+    }));
+    const partes = [
+      h('h3', { text: camp.nome }),
+      h('p', { class: 'sub', id: 'base-resumo', text: (esc ? esc.nome + ' · ' : '') + 'nível ' + camp.nivel + ': ' + nv.nome + '. ' + (N.textoEfeitos(N.efBase(camp)) ? 'Soma no descanso longo de quem está aqui: ' + N.textoEfeitos(N.efBase(camp)) + '.' : 'Não soma nada a mais no descanso.') }),
+      m ? h('div', { class: 'lin', style: 'display:flex;gap:8px;flex-wrap:wrap' },
+        h('button', { type: 'button', class: 'btn pri sm', id: 'base-subir', text: 'Reformar (subir de nível)', disabled: camp.nivel >= f.max, onclick: () => mudarNivel(camp.nivel + 1) }),
+        h('button', { type: 'button', class: 'btn sm', id: 'base-descer', text: 'Descer de nível', disabled: camp.nivel <= f.min, onclick: () => mudarNivel(camp.nivel - 1) })) : null,
+    ];
+    if (esc) {
+      const fx = N.faixa(camp), k = N.faixaDe(camp.exp);
+      partes.push(h('div', { class: 'sec', id: 'base-exp' }, h('div', { class: 'rot', text: 'Exposição' }),
+        h('div', { class: 'expo', style: '--p:' + camp.exp + '%' }, h('div', { class: 'expo-barra' }, h('i'), ...camp.faixas.map((x, i) => h('span', { class: 'marca' + (i === k ? ' agora' : ''), style: 'left:' + (i * 10) + '%', title: x.nome + ' (' + i * 10 + '–' + (i === 9 ? 100 : i * 10 + 9) + ')' })))),
+        h('p', { class: 'expo-txt', id: 'base-exp-txt' }, h('b', { text: camp.exp + '/100 · ' + fx.nome }), (N.textoEfeitos(fx.ef) ? ' — no descanso: ' + N.textoEfeitos(fx.ef) : '')),
+        m ? h('div', { class: 'expo-bt', role: 'group', 'aria-label': 'Mudar a exposição' }, [-10, -5, -1, 1, 5, 10].map(d => h('button', { type: 'button', class: 'btn sm', id: 'base-exp-' + (d > 0 ? 'mais' : 'menos') + Math.abs(d), text: (d > 0 ? '+' : '−') + Math.abs(d), onclick: () => { focoDepois = 'base-exp-' + (d > 0 ? 'mais' : 'menos') + Math.abs(d); mudarExp(camp.exp + d); } })),
+          campoNum('base-exp-num', camp.exp, 'Exposição (0 a 100)', v => mudarExp(v), 0, 100)) : null,
+        m ? dobra('base-faixas', 'As 10 faixas (nomes e o que mudam no descanso)', h('div', { class: 'faixas' }, camp.faixas.map((x, i) => h('div', { class: 'lin' },
+          h('span', { class: 'note', style: 'width:52px', text: i * 10 + '–' + (i === 9 ? 100 : i * 10 + 9) }),
+          h('input', { class: 'in', id: 'base-fx-nome-' + i, value: x.nome, maxlength: 40, 'aria-label': 'Nome da faixa ' + (i + 1), onchange: e => mudar('nome da faixa', c => { c.faixas[i].nome = e.target.value.trim() || c.faixas[i].nome; }) }),
+          campoNum('base-fx-conf-' + i, x.ef.conf, 'Conforto na faixa ' + (i + 1), v => mudar('efeito da faixa', c => { c.faixas[i].ef.conf = v; }), -100, 100),
+          campoNum('base-fx-san-' + i, x.ef.san, 'Sanidade na faixa ' + (i + 1), v => mudar('efeito da faixa', c => { c.faixas[i].ef.san = v; }), -100, 100))))) : null));
+    }
+    partes.push(h('div', { class: 'sec' }, h('div', { class: 'rot', text: 'Os níveis' }), ladder,
+      // o mestre muda o nome, o que cada nível soma ao descanso e quantos cômodos cabem
+      m ? dobra('base-nv-ed', 'Mudar os nomes e os números dos níveis', h('div', { class: 'nv-tab' },
+        h('span'), h('b', { text: 'Nome' }), h('b', { text: 'Conf.' }), h('b', { text: 'San.' }), h('b', { text: 'Rec. %' }), h('b', { text: 'Cômodos' }),
+        ...camp.niveis.map((x, i) => { const n = i + 1; return [h('span', { class: 'note', text: String(n) }),
+          h('input', { class: 'in', id: 'base-nv-nome-' + n, value: x.nome, maxlength: 40, 'aria-label': 'Nome do nível ' + n, onchange: e => mudar('nome do nível ' + n, c => { c.niveis[i].nome = e.target.value.trim() || c.niveis[i].nome; }) }),
+          ...['conf', 'san', 'rec'].map(k => campoNum('base-nv-' + k + '-' + n, x.ef[k], { conf: 'Conforto', san: 'Sanidade', rec: 'Recuperação' }[k] + ' do nível ' + n, v => mudar('efeito do nível ' + n, c => { c.niveis[i].ef[k] = v; }), -100, 100)),
+          campoNum('base-nv-vagas-' + n, x.vagas, 'Cômodos do nível ' + n, v => mudar('cômodos do nível ' + n, c => { c.niveis[i].vagas = v; }), 0, 30)]; }))) : null));
+    // onde fica e de quem é
+    const ls = lugaresDoMundo(), achaL = camp.mapa ? ls.findIndex(l => l.mapa === camp.mapa.mapa && l.obj === (camp.mapa.obj || '')) : -1;
+    partes.push(h('div', { class: 'sec', id: 'base-onde' }, h('div', { class: 'rot', text: 'Onde fica e de quem é' }),
+      m ? h('label', { class: 'campo' }, h('span', { text: 'No Mapa-múndi (o mapa da cidade, de costume)' }),
+        h('select', { class: 'in', id: 'base-mapa', onchange: e => { const l = e.target.value === '' ? null : ls[+e.target.value]; mudar('onde fica ' + camp.nome, c => { c.mapa = l ? { mapa: l.mapa, obj: l.obj, nome: l.nome } : null; }); } },
+          h('option', { value: '', text: ls.length ? 'Em nenhum mapa' : 'Sem mapas nesta mesa' }), ls.map((l, i) => h('option', { value: String(i), text: l.rot, selected: i === achaL }))))
+        : h('p', { class: 'note', text: camp.mapa ? 'Fica em: ' + camp.mapa.nome : 'Ainda não está em nenhum mapa.' }),
+      camp.mapa && naCasca() ? h('button', { type: 'button', class: 'btn sm', id: 'base-ver-mapa', text: 'Ver no Mapa-múndi', onclick: () => $('btMundo').click() }) : null,
+      m ? h('label', { class: 'campo' }, h('span', { text: 'De quem é' }),
+        h('select', { class: 'in', id: 'base-dono', onchange: e => {
+          const id = e.target.value || null, l = id ? linha(id) : null;
+          extraDoc = { dono_id: l && l.dono_id ? l.dono_id : null };          // (o jogador do personagem passa a ser o dono do documento)
+          if (!mudar('dono de ' + camp.nome, c => { c.dono = id; })) extraDoc = null;
+        } }, h('option', { value: '', text: 'Do grupo', selected: !camp.dono }), donos().map(l => h('option', { value: l.id, text: l.nome || 'Sem nome', selected: l.id === camp.dono }))))
+        : h('p', { class: 'note', text: camp.dono ? 'De ' + ((linha(camp.dono) || {}).nome || 'um personagem') + '.' : 'Do grupo.' }),
+      m && naMesa() && camp.dono ? h('label', { class: 'sw' }, h('input', { type: 'checkbox', id: 'base-segredo', checked: (linhaDoc() || {}).vis === 'mestre', onchange: e => { D.gravar(DOC, { vis: e.target.checked ? 'mestre' : 'mesa' }); toast(e.target.checked ? 'Agora só o dono e o mestre veem.' : 'Agora todos da campanha veem.'); pintarPainel(); } }), 'Segredo: só o dono e o mestre veem') : null,
+      m ? h('button', { type: 'button', class: 'btn sm per', id: 'base-apagar', text: 'Apagar esta base…', onclick: apagarBase }) : null));
+    return partes;
+  }
+
   /* ---------------- ligações fixas da página ---------------- */
+  $('base').addEventListener('change', e => trocarBase(e.target.value));
+  $('btNovaBase').addEventListener('click', abrirNovaBase);
   $('nome').addEventListener('change', e => { const v = e.target.value.trim(); if (!v) { e.target.value = camp.nome; return; } mudar('renomear o acampamento', c => { c.nome = v; }); });
   $('btDesfazer').addEventListener('click', desfazer);
   /* (lote 70) Fogueira ou Arrumar (quem mestra): na Fogueira, o painel fecha e a cena fica com a tela; em Arrumar, abre.
@@ -1686,7 +1920,7 @@
   $('btMomento').addEventListener('click', abrirMomento);
   $('btTodos').addEventListener('click', abrirMexerEmTodos);
   $('btCena').addEventListener('click', abrirCena);
-  $('btMundo').addEventListener('click', () => TC.ponte.ir('mundo'));
+  $('btMundo').addEventListener('click', () => TC.ponte.ir('mundo', N.ehBase(camp) && camp.mapa ? (camp.mapa.obj ? { mapa: camp.mapa.mapa, obj: camp.mapa.obj } : { mapa: camp.mapa.mapa }) : undefined));
   $('arq').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; trocarFundo(f); });
   document.addEventListener('keydown', ev => {
     if (ev.key === 'Escape' && menu) { fecharMenu(); return; }
@@ -1698,12 +1932,13 @@
   window.addEventListener('storage', ev => {
     if (naMesa()) return;
     if (ev.key === FICHAS_LOCAL) pintar();
-    else if (ev.key === CHAVE) { const novo = N.normalizar(lerLocal()), jn = j(novo); if (jn !== jCamp && !digitando()) { camp = novo; jCamp = jn; pilha = []; pintar(); } }
+    else if (ev.key === (baseId ? CHAVE_BASE + baseId : CHAVE)) { const novo = N.normalizar(lerLocal()), jn = j(novo); if (jn !== jCamp && !digitando()) { camp = novo; jCamp = jn; pilha = []; pintar(); } }
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !naMesa()) pintar(); });   // as fichas podem ter mudado na outra aba
 
   /* ---------------- partida ---------------- */
   function lerLocal() { try { return JSON.parse(guarda.ler(CHAVE) || 'null'); } catch (e) { return null; } }
+  function lerLocalBase(id) { try { return JSON.parse(guarda.ler(CHAVE_BASE + id) || 'null'); } catch (e) { return null; } }
   async function partida() {
     desenharCenario();
     const TCx = window.TC;
@@ -1716,6 +1951,7 @@
         const cv = st.campanha || null;
         campId = cv ? cv.id : null;
         if (campId) DOC = 'acampamento@' + campId;
+        DOC_GRUPO = DOC;
         encerrada = !!(cv && cv.encerrada);
         papel = st.papel === 'mestre' && !encerrada ? 'mestre' : 'jogador';
         P = TCx.dados.col('personagens'); D = TCx.dados.col('documentos');
@@ -1731,15 +1967,18 @@
         if (!mestre() && pode !== podia) { pilha = []; pintar(); toast(pode ? 'O mestre deixou você mexer no acampamento: provisões, estrutura, caravana, lugares e diário.' : 'O mestre tirou de você a permissão de mexer no acampamento.'); }
       });
     }
+    // (lote 125) a base que este aparelho estava vendo, se ela ainda existe
+    const b0 = guarda.ler('tinycats:acampamento:base:vista') || '';
+    if (b0 && listaBases().some(b => b.id === b0)) { baseId = b0; DOC = docDaBase(b0); }
     if (naMesa()) {
       const d = D.pegar(DOC);
       camp = N.normalizar(d && !d.apagado ? d.dados : null);
       jCamp = j(camp); marcarAplicado(d);
       marcarSalvo(encerrada ? 'Campanha encerrada: só consulta' : st.temCampanhas && !campId ? 'Você ainda não está numa campanha' : 'Salvo na mesa');
-      D.aoMudar(l => { if (!l) return; if (l.id === DOC) deFora(); else if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote' || l.id === 'mundo:indice' || String(l.id).startsWith('mundo:pub:') || String(l.id).startsWith('itens:rec:')) pintar(); });
+      D.aoMudar(l => { if (!l) return; if (String(l.id).startsWith(PRE_BASE)) { if (l.id === DOC && l.apagado) { trocarBase(''); toast('Esta base foi apagada.'); return; } if (l.id !== DOC) { pintarBases(); return; } } if (l.id === DOC) deFora(); else if (l.id === 'fichas:cfg' || l.id === 'arvore:biblioteca' || l.id === 'arvore:pacote' || l.id === 'mundo:indice' || String(l.id).startsWith('mundo:pub:') || String(l.id).startsWith('itens:rec:')) pintar(); });
       P.aoMudar(() => { if (arrasto) return; manterRoda(); if (!digitando() && !dlg.open) pintar(); else pintarCena(); });
     } else {
-      camp = N.normalizar(lerLocal());
+      camp = N.normalizar(baseId ? lerLocalBase(baseId) : lerLocal());
       jCamp = j(camp);
       marcarSalvo('Salvo neste navegador');
     }
@@ -1753,7 +1992,7 @@
       abrirDescanso('curto', { marcar: Array.isArray(alvo.marcar) ? alvo.marcar : [] });
     });
   }
-  if (DEBUG) window.__acamp = { N, get camp() { return camp; }, get pilha() { return pilha; }, mudar, desfazer, presentes, pessoa, abrirDescanso, descansar, get modo() { return modo; }, get papel() { return papel; }, get pronto() { return pronto; },
+  if (DEBUG) window.__acamp = { N, get camp() { return camp; }, trocarBase, listaBases, criarBase, get baseId() { return baseId; }, get DOC() { return DOC; }, abrirNovaBase, mudarNivel, mudarExp, get pilha() { return pilha; }, mudar, desfazer, presentes, pessoa, abrirDescanso, descansar, get modo() { return modo; }, get papel() { return papel; }, get pronto() { return pronto; },
     verArea, get areaVista() { return areaVista; }, selecionar, edita, ajudante, get sel() { return sel; } };
   partida().catch(e => {
     console.error(e);
