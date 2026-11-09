@@ -1389,6 +1389,8 @@ const Tools = (() => {
     if (k === '-') { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z / 1.25); UI.status(); return; }
     if (k === '0' || k === 'Home') { Render.fit(); UI.status(); return; }
     if (/^[1-9]$/.test(k)) { UI.abaPorNumero(+k); return; }                 // (lote 26) as abas do painel
+    // (lote 127) Shift+W: os guardas andam um passo da ronda (só o mestre; segurar não repete). O W sozinho continua a parede.
+    if (lk === 'w' && e.shiftKey) { if (!e.repeat && isGM()) Rondas.avancar(); return; }
     if (lk === 'g') { if (App.mouse.inside) Act.ping(App.mouse.x, App.mouse.y); return; }
     if (lk === 'f') { if (e.shiftKey) Luta.rolagemGeral(); else Luta.atributos(); return; }   // F: os atributos do token sob o cursor (ou do selecionado); Shift+F: a rolagem geral
     if (lk === 'e') { Luta.equipamentos(); return; }       // os equipamentos do token sob o cursor (ou do selecionado): um clique equipa

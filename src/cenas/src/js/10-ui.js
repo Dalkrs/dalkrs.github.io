@@ -1211,6 +1211,7 @@ const UI = (() => {
       ['E', 'Equipamentos do token sob o cursor (ou do selecionado): um clique equipa ou guarda'],
       ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
       ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
+      ['Shift+W', 'Avançar rondas: os guardas andam um passo da rota (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Solta da grade'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
       ['1 a 5', 'As abas do painel da direita (Seleção, Turnos, Efeitos, Cena, Jogadores)'], ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
@@ -3867,7 +3868,7 @@ const UI = (() => {
         setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); openTab('sel', 'tk-name');
       } });
       { const f = gm ? Arena.proxima(sc) : null; if (f) items.push({ label: 'Acionar a ' + f.nome.toLowerCase() + ' da arena…', icon: 'next', run: () => Arena.acionar(f.i) }); }
-      if (gm && Rondas.guardas(sc).length) items.push({ label: 'Avançar rondas', icon: 'ronda', run: () => Rondas.avancar() });      // (lote 121)
+      if (gm && Rondas.guardas(sc).length) items.push({ label: 'Avançar rondas', icon: 'ronda', key: 'Shift+W', run: () => Rondas.avancar() });      // (lote 121)
       if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
       if (gm && Nuvem.on() && window.ClaNucleo) items.push({ label: 'Puxar os membros do clã para cá…', icon: 'users', run: () => MembrosCla.abrir({ x: p.x, y: p.y }) });      // (lote 59)
       if (Luta.podeDescanso() && Store.scene().tokens.some(t => t.char && !t.clone)) items.push({ label: 'Descanso curto do grupo…', icon: 'rest', run: () => Luta.descansoCurto() });

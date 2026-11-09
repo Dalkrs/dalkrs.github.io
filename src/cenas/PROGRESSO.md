@@ -262,6 +262,12 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
 | efeito | `apply` (`{ bar, amt, cond: { id, n, d } ou null, skip: [ids] }` ou `null`) | `null` | `normalizeScene` (`cleanApply`: valor zero ou inválido vira `''`; sem valor nem condição vira `null`) |
 | parede | `open`, `locked`, `secret` passam a ser sempre sim/não (janela e cortina usam `open`/`locked`) | `false` | `normalizeScene` |
 
+## Lote 127 — o atalho das rondas
+
+- [x] `09-tools.js`: Shift+W faz os guardas andarem (Rondas.avancar; só o mestre; a repetição de tecla segurada não conta).
+      O W sozinho continua a parede. Na lista de atalhos, no menu do botão direito e na dica do botão "Avançar rondas".
+- Teste: `test/lote127.js`.
+
 ## Lote 125 — o banheiro
 
 - [x] `06b7-props-banheiro.js`: o grupo "Banheiro" com a banheira (2 × 1), a latrina, o lavatório, o espelho, o

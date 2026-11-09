@@ -237,7 +237,7 @@ const Rondas = (() => {
     const t = editando();
     App.rondaDe = null;
     Tools.set('select');
-    if (t) { setSel([{ c: 'tokens', id: t.id }]); UI.toast(t.ronda.pts.length > 1 ? `A rota de ${t.name} tem ${t.ronda.pts.length} pontos. "Avançar rondas" (no grupo Mestre, à esquerda, ou no botão direito) faz os guardas andarem.` : `${t.name} fica de posto${t.ronda.pts.length ? ', olhando para o ponto marcado' : ''}.`, { key: 'rondas' }); }
+    if (t) { setSel([{ c: 'tokens', id: t.id }]); UI.toast(t.ronda.pts.length > 1 ? `A rota de ${t.name} tem ${t.ronda.pts.length} pontos. "Avançar rondas" (Shift+W, no grupo Mestre à esquerda ou no botão direito) faz os guardas andarem.` : `${t.name} fica de posto${t.ronda.pts.length ? ', olhando para o ponto marcado' : ''}.`, { key: 'rondas' }); }
   }
   function previaRota(ctx, px, sc, mouse) {
     const t = editando();
@@ -289,7 +289,7 @@ const Rondas = (() => {
     gs.forEach(t => n[estadoDe(t)]++);
     return [
       gs.length ? K.note(`${gs.length} ${gs.length === 1 ? 'guarda' : 'guardas'}: ${ESTADOS.filter(e => n[e[0]]).map(e => n[e[0]] + ' ' + e[1].toLowerCase()).join(', ')}.`) : K.note('Nenhum guarda nesta cena. No painel de um token (bloco "Guarda") ele ganha a ronda; os lugares de furtividade já vêm com eles.'),
-      linha(acao('Avançar rondas', avancar, { icon: 'ronda', id: 'mtp-rondas', disabled: !gs.length, title: 'Cada guarda anda os passos dele pela rota; o aviso diz quem foi visto' })),
+      linha(acao('Avançar rondas', avancar, { icon: 'ronda', id: 'mtp-rondas', disabled: !gs.length, title: 'Cada guarda anda os passos dele pela rota; o aviso diz quem foi visto (atalho: Shift+W)' })),
       gs.length ? linha(acao(sel.length ? `Acalmar (${sel.length})` : 'Acalmar todos', () => mudarEstado(sel.length ? sel : gs, 'calmo'), { id: 'mtp-calmo' }),
         acao(sel.length ? `Alerta (${sel.length})` : 'Todos em alerta', () => mudarEstado(sel.length ? sel : gs, 'alerta'), { id: 'mtp-alerta' })) : null,
       K.toggle('mtp-rver', App.opt.rondasVer !== false, v => { App.opt.rondasVer = v; Render.request(); UI.refresh(); }, 'Mostrar rotas e cones (só você vê)'),

@@ -14173,7 +14173,7 @@ const Rondas = (() => {
     const t = editando();
     App.rondaDe = null;
     Tools.set('select');
-    if (t) { setSel([{ c: 'tokens', id: t.id }]); UI.toast(t.ronda.pts.length > 1 ? `A rota de ${t.name} tem ${t.ronda.pts.length} pontos. "Avançar rondas" (no grupo Mestre, à esquerda, ou no botão direito) faz os guardas andarem.` : `${t.name} fica de posto${t.ronda.pts.length ? ', olhando para o ponto marcado' : ''}.`, { key: 'rondas' }); }
+    if (t) { setSel([{ c: 'tokens', id: t.id }]); UI.toast(t.ronda.pts.length > 1 ? `A rota de ${t.name} tem ${t.ronda.pts.length} pontos. "Avançar rondas" (Shift+W, no grupo Mestre à esquerda ou no botão direito) faz os guardas andarem.` : `${t.name} fica de posto${t.ronda.pts.length ? ', olhando para o ponto marcado' : ''}.`, { key: 'rondas' }); }
   }
   function previaRota(ctx, px, sc, mouse) {
     const t = editando();
@@ -14225,7 +14225,7 @@ const Rondas = (() => {
     gs.forEach(t => n[estadoDe(t)]++);
     return [
       gs.length ? K.note(`${gs.length} ${gs.length === 1 ? 'guarda' : 'guardas'}: ${ESTADOS.filter(e => n[e[0]]).map(e => n[e[0]] + ' ' + e[1].toLowerCase()).join(', ')}.`) : K.note('Nenhum guarda nesta cena. No painel de um token (bloco "Guarda") ele ganha a ronda; os lugares de furtividade já vêm com eles.'),
-      linha(acao('Avançar rondas', avancar, { icon: 'ronda', id: 'mtp-rondas', disabled: !gs.length, title: 'Cada guarda anda os passos dele pela rota; o aviso diz quem foi visto' })),
+      linha(acao('Avançar rondas', avancar, { icon: 'ronda', id: 'mtp-rondas', disabled: !gs.length, title: 'Cada guarda anda os passos dele pela rota; o aviso diz quem foi visto (atalho: Shift+W)' })),
       gs.length ? linha(acao(sel.length ? `Acalmar (${sel.length})` : 'Acalmar todos', () => mudarEstado(sel.length ? sel : gs, 'calmo'), { id: 'mtp-calmo' }),
         acao(sel.length ? `Alerta (${sel.length})` : 'Todos em alerta', () => mudarEstado(sel.length ? sel : gs, 'alerta'), { id: 'mtp-alerta' })) : null,
       K.toggle('mtp-rver', App.opt.rondasVer !== false, v => { App.opt.rondasVer = v; Render.request(); UI.refresh(); }, 'Mostrar rotas e cones (só você vê)'),
@@ -16871,6 +16871,8 @@ const Tools = (() => {
     if (k === '-') { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z / 1.25); UI.status(); return; }
     if (k === '0' || k === 'Home') { Render.fit(); UI.status(); return; }
     if (/^[1-9]$/.test(k)) { UI.abaPorNumero(+k); return; }                 // (lote 26) as abas do painel
+    // (lote 127) Shift+W: os guardas andam um passo da ronda (só o mestre; segurar não repete). O W sozinho continua a parede.
+    if (lk === 'w' && e.shiftKey) { if (!e.repeat && isGM()) Rondas.avancar(); return; }
     if (lk === 'g') { if (App.mouse.inside) Act.ping(App.mouse.x, App.mouse.y); return; }
     if (lk === 'f') { if (e.shiftKey) Luta.rolagemGeral(); else Luta.atributos(); return; }   // F: os atributos do token sob o cursor (ou do selecionado); Shift+F: a rolagem geral
     if (lk === 'e') { Luta.equipamentos(); return; }       // os equipamentos do token sob o cursor (ou do selecionado): um clique equipa
@@ -18124,6 +18126,7 @@ const UI = (() => {
       ['E', 'Equipamentos do token sob o cursor (ou do selecionado): um clique equipa ou guarda'],
       ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
       ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
+      ['Shift+W', 'Avançar rondas: os guardas andam um passo da rota (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Solta da grade'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
       ['1 a 5', 'As abas do painel da direita (Seleção, Turnos, Efeitos, Cena, Jogadores)'], ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
@@ -20780,7 +20783,7 @@ const UI = (() => {
         setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); openTab('sel', 'tk-name');
       } });
       { const f = gm ? Arena.proxima(sc) : null; if (f) items.push({ label: 'Acionar a ' + f.nome.toLowerCase() + ' da arena…', icon: 'next', run: () => Arena.acionar(f.i) }); }
-      if (gm && Rondas.guardas(sc).length) items.push({ label: 'Avançar rondas', icon: 'ronda', run: () => Rondas.avancar() });      // (lote 121)
+      if (gm && Rondas.guardas(sc).length) items.push({ label: 'Avançar rondas', icon: 'ronda', key: 'Shift+W', run: () => Rondas.avancar() });      // (lote 121)
       if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
       if (gm && Nuvem.on() && window.ClaNucleo) items.push({ label: 'Puxar os membros do clã para cá…', icon: 'users', run: () => MembrosCla.abrir({ x: p.x, y: p.y }) });      // (lote 59)
       if (Luta.podeDescanso() && Store.scene().tokens.some(t => t.char && !t.clone)) items.push({ label: 'Descanso curto do grupo…', icon: 'rest', run: () => Luta.descansoCurto() });
