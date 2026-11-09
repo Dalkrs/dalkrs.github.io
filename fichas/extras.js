@@ -287,7 +287,8 @@ const FichasExtras = (() => {
     return t ? `<span class="itetq" title="Faixa · material · melhoria (a regra dos equipamentos)">${esc(t)}</span>` : '';
   }
   function htmlRegra(it, pc) {
-    const R = RE(); if (!R || !quemMestra()) return '';
+    // (lote 121) quem joga também acerta a faixa, o material e a melhoria da sua peça; a peça e o que rola o dano, só o mestre
+    const M = quemMestra(), R = RE(); if (!R || !(M || FichasMesa.podeEditar(pc))) return '';
     const r = R.itemNaRegra(it, pc.level), id = esc(it.id), autoF = R.faixaDoNivel(pc.level), F = R.faixaEq(r.faixa);
     const sel = (attr, atual, ops, rot) => `<label class="f itregf"><span class="eyebrow">${rot}</span><select data-${attr}="${id}" aria-label="${rot} de ${esc(nomeIt(it) || 'item sem nome')}">${ops.map(([v, t]) => `<option value="${v}" ${String(v) === String(atual) ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
     const pecas = [['', 'Pelo item (' + (R.PECAS.find(p => p[0] === R.pecaDoItem(Object.assign({}, it, { peca: undefined })))[1]) + ')']].concat(R.PECAS);
@@ -325,11 +326,11 @@ const FichasExtras = (() => {
     }
     return `<div class="itregra">
       <div class="itregsel">
-        ${sel('itregpeca', it.peca || '', pecas, 'Peça')}
+        ${M ? sel('itregpeca', it.peca || '', pecas, 'Peça') : ''}
         ${sel('itregfaixa', R.etiquetasEq(it).faixa || '', faixas, 'Faixa')}
         ${sel('itregmat', R.etiquetasEq(it).mat || '', mats, 'Material')}
         ${sel('itregmelh', r.melhoria, melh, 'Melhoria')}
-        ${r.peca === 'arma' ? sel('itregdano', danoAtual, danos, 'Dano rola') : ''}
+        ${r.peca === 'arma' && M ? sel('itregdano', danoAtual, danos, 'Dano rola') : ''}
         <button type="button" class="mini" data-itregmais="${id}" ${podeMelhorar ? '' : 'disabled'} title="${esc(porQue)}">Melhorar +1</button>
       </div>${aviso}
     </div>`;

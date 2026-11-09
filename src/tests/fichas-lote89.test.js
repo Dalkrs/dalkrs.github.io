@@ -98,6 +98,16 @@ const estado = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d', 'Dain', 8,
     await desfazer();
     x = await item('pc_d', 'es');
     ok(x.mat === 1 && x.melhoria === 1, 'Desfazer volta a melhoria (o material fica Q1)');
+    // (lote 121) quem joga também acerta a faixa, o material e a melhoria da peça dele; a peça e o dano, só o mestre
+    await S0(() => { window.__fm = [FichasMesa.ativo, FichasMesa.mestre, FichasMesa.podeEditar]; FichasMesa.ativo = () => true; FichasMesa.mestre = () => false; FichasMesa.podeEditar = () => true; render(); });
+    await w(250);
+    if (await P.locator('[data-itregmat="es"]').count() === 0) await P.locator('[data-itemed="es"]').click(), await w(250);
+    ok(await P.locator('[data-itregfaixa="es"]').count() === 1 && await P.locator('[data-itregmat="es"]').count() === 1 && await P.locator('[data-itregmelh="es"]').count() === 1, 'o jogador vê a faixa, o material e a melhoria');
+    ok(await P.locator('[data-itregpeca="es"]').count() === 0 && await P.locator('[data-itregdano="es"]').count() === 0, '(a peça e o "Dano rola" ficam com o mestre)');
+    await P.selectOption('[data-itregmelh="es"]', '2'); await w(300);
+    ok((await item('pc_d', 'es')).melhoria === 2, 'o jogador muda a melhoria');
+    await desfazer();
+    await S0(() => { [FichasMesa.ativo, FichasMesa.mestre, FichasMesa.podeEditar] = window.__fm; render(); }); await w(250);
   });
 
   await passo('o elemento e a armadura', async () => {
