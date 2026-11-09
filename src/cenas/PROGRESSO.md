@@ -262,6 +262,21 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
 | efeito | `apply` (`{ bar, amt, cond: { id, n, d } ou null, skip: [ids] }` ou `null`) | `null` | `normalizeScene` (`cleanApply`: valor zero ou inválido vira `''`; sem valor nem condição vira `null`) |
 | parede | `open`, `locked`, `secret` passam a ser sempre sim/não (janela e cortina usam `open`/`locked`) | `false` | `normalizeScene` |
 
+## Lote 122 — andares, fechadura num clique e objetos de furtividade
+
+- [x] Andares (`10gc-furtividade.js`): "Andares de cima" (0, 1, 2) e "Porão" na janela (`App.opt.furCima`, `furPorao`;
+      o acampamento não tem). Cada andar é uma cena do mesmo tamanho (`montar`), `sc.nivel` -1…2, escadas na mesma casa
+      dos dois lados (`t.cena`), guardas em cada andar; o `criar` devolve o térreo. Prévia com os andares em miniatura.
+      Térreo muda com o que há em cima/embaixo (o cofre da guilda desce ao porão; a prisão da fortaleza; o topo da torre).
+- [x] Fechadura num clique (`10g8-escudo.js` `fechadura`): o 2º clique do mestre numa porta/janela trancada (ou num objeto
+      que tranca, já selecionado, sem arrastar; 330 ms para não brigar com os dois cliques) grava `escudo:handout:<id>`
+      (puzzle fechadura, nível de `w.fech`/`t.tranca`) e liga `pz`; "Entregar…" chama `TC.ponte.ir('escudo', {handout,
+      entregar:true})` e o Escudo abre `HO.entregarDlg`. Resolvido: a porta abre e destranca; o objeto vai a "aberto".
+      Botões `wl-gazuas`/`pr-gazuas` e o nível (`pr-tranca`) no painel. A projeção tira `tranca`, `pz`, `pzOk`.
+- [x] 22 objetos (`06b6-props-furtividade.js`); trancam: cômoda, escrivaninha, quadro, cofre de parede, alçapão,
+      claraboia e os de antes (baú, cofre, armário, jaula, caixão).
+- Teste: `test/lote122.js` (28). Ajustado: v5 (contagem de móveis).
+
 ## Lote 121 — móveis compridos, rondas e furtividade
 
 - [x] Objetos compridos: `t.fw × t.fh` (de pé; 90°/270° trocam), só nos objetos de `def.fw` (`06b5-props-compridos.js`).

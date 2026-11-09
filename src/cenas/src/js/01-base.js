@@ -1031,6 +1031,10 @@ function normalizeScene(sc) {
     delete t.q0;
     // (lote 121) a ronda do guarda e o estado dele (Calmo, Desconfiado, Alerta): só do mestre (ver 07i. RONDAS)
     if (typeof Rondas !== 'undefined') Rondas.limpar(t); else { delete t.ronda; delete t.alerta; }
+    // (lote 122) o objeto que tranca: o nível da fechadura e o puzzle do Escudo ligado a ele
+    const trancaOk = t.prop && Props.P[t.prop] && Props.P[t.prop].tranca;
+    if (!(trancaOk && ['facil', 'medio', 'dificil', 'extremo', 'absoluto'].includes(t.tranca))) delete t.tranca;
+    if (!(trancaOk && typeof t.pz === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.pz))) { delete t.pz; delete t.pzOk; } else if (t.pzOk !== 1) delete t.pzOk;
     // (lote 39) as duas cores do objeto que tem cores (o brasão, o estandarte, a mesa de guerra…) e o desenho do brasão do
     // clã (a divisão, a forma e o símbolo: caminhos de SVG, só com os comandos e os números)
     const hexOk = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v), caminhoOk = v => typeof v === 'string' && v.length <= 1500 && /^[MLHVCSQTAZmlhvcsqtaz0-9.,\s-]+$/.test(v);

@@ -2640,7 +2640,10 @@ const UI = (() => {
           field('Comprimento', inNum('pr-fh', many ? '' : t.fh, v => all(x => Props.medido(x, x.fw, v, Store.scene()), 'Medidas do objeto'), { min: 1, max: 12, step: 1, label: 'Comprimento em quadrados' }))),
         mt || compridos || props.some(x => ehRet(x)) ? null : field('Tamanho', seg('pr-size', many ? null : t.size, [[0.5, '½'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], v => all(x => { const sc = Store.scene(), [nx, ny] = snapTok(sc, x.x, x.y, v, false); return { size: v, x: nx, y: ny }; }, 'Tamanho do objeto'))),
         !many && compridos && !mt ? note(`Ocupa ${t.fw} × ${t.fh} ${t.fw * t.fh === 1 ? 'quadrado' : 'quadrados'}${(Props.P[t.prop] || {}).costas ? '; girado, as costas ficam rentes à parede' : ''}.`) : null,
-        !many && def.esconde ? note('Dá para se esconder ' + def.esconde + ' (a condição Oculto: os guardas não veem).') : null),      // (lote 121)
+        !many && def.esconde ? note('Dá para se esconder ' + def.esconde + ' (a condição Oculto: os guardas não veem).') : null,      // (lote 121)
+        // (lote 122) o que tranca: o nível da fechadura e o puzzle com gazuas (o segundo clique no objeto faz o mesmo)
+        !many && def.tranca && isGM() ? field('Fechadura', seg('pr-tranca', t.tranca || '', [['', 'Nenhuma']].concat(EscudoCenas.NIVEIS), v => all({ tranca: v || undefined }, v ? 'Nível da fechadura' : 'Sem fechadura')), 'stack') : null,
+        !many && def.tranca && isGM() ? h('div', { class: 'row' }, btn(t.pz && !EscudoCenas.resolvido(t.pz) ? 'Entregar a fechadura…' : 'Criar a fechadura com gazuas', () => EscudoCenas.fechadura({ c: 'tokens', id: t.id }), { kind: 'small', icon: 'lock', id: 'pr-gazuas', title: 'Um puzzle Fechadura no Escudo, ligado a este objeto: resolveram, ele abre (ou: com ele selecionado, clique nele de novo)' })) : null),
       // (lote 39) as cores do objeto (o estandarte, o brasão, a mesa de guerra, o quadro de missões, o atril): na sede, as do clã
       props.every(x => (Props.P[x.prop] || {}).cores) ? sec('s-propcor', 'Cores', true,
         h('div', { class: 'grid2' },
@@ -3023,7 +3026,8 @@ const UI = (() => {
         kind === 'secret' ? h('div', { class: 'row' }, btn('Revelar aos jogadores', () => all({ secret: false }, 'Revelar porta secreta'), { icon: 'eye', id: 'wl-reveal' })) : null,
         // (lote 121) o nível da fechadura (para as gazuas do Escudo): só uma anotação do mestre; trancar vem junto
         kind === 'door' || kind === 'window' ? field('Fechadura', seg('wl-fech', walls.every(x => (x.fech || '') === (w.fech || '')) ? (w.fech || '') : null, FECH_NIV, v => all(v ? { fech: v, locked: true } : { fech: undefined }, v ? 'Nível da fechadura' : 'Sem fechadura')), 'stack') : null,
-        (kind === 'door' || kind === 'window') && w.fech ? note('Para abrir com as gazuas: no Escudo do mestre (Handouts e puzzles), crie uma Fechadura deste nível e ligue esta porta a ela em "Abre com um puzzle".') : null,
+        // (lote 122) a fechadura com gazuas num clique (cria o puzzle no Escudo e liga a porta)
+        (kind === 'door' || kind === 'window') && !many ? h('div', { class: 'row' }, btn(w.pz && !EscudoCenas.resolvido(w.pz) ? 'Entregar a fechadura…' : 'Criar a fechadura com gazuas', () => EscudoCenas.fechadura({ c: 'walls', id: w.id }), { kind: 'small', icon: 'lock', id: 'wl-gazuas', title: 'Um puzzle Fechadura no Escudo, do nível escolhido, ligado a esta porta (ou: clique duas vezes, devagar, na porta trancada)' })) : null,
         // (lote 31) a porta que abre quando os jogadores resolvem um puzzle do Escudo do mestre
         kind === 'door' && Nuvem.mestre() && (EscudoCenas.puzzles().length || w.pz) ? field('Abre com um puzzle', inSelect('wl-pz', many && !walls.every(x => (x.pz || '') === (w.pz || '')) ? '' : (w.pz || ''),
           [['', 'Nenhum']].concat(EscudoCenas.puzzles().map(p => [p.id, p.nome])), v => all({ pz: v || undefined, pzOk: undefined }, v ? 'Ligar a porta a um puzzle' : 'Desligar a porta do puzzle'))) : null,

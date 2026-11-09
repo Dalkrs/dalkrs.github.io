@@ -423,14 +423,26 @@ const Tools = (() => {
   }
 
   /* ---- Selecionar ---- */
+  let segundo = null, tFech = 0;            // (lote 122) o clique num objeto que tranca, já selecionado: { hit, p0 }
+  // (espera um instante: se vier o segundo clique de um "dois cliques" — que troca o estado do baú —, não é a fechadura)
+  const adiarFechadura = alvo => { clearTimeout(tFech); tFech = setTimeout(() => EscudoCenas.fechadura(alvo), 330); };
   T.select = {
     hint: 'Clique para selecionar e arraste para mover. Arraste no vazio para selecionar vários. Botão direito abre o menu.',
     down(p, e) {
       const hd = hitHandle(p);
       if (hd) { startHandle(hd); return; }
       const door = hitDoor(p);
+      // (lote 122) a porta trancada, para o mestre: o primeiro clique seleciona; o segundo cria a fechadura com gazuas
+      if (door && isGM() && door.locked && !door.secret && (door.k === 'door' || door.k === 'window') && !e.shiftKey) {
+        if (App.sel.length === 1 && selHas('walls', door.id)) { adiarFechadura({ c: 'walls', id: door.id }); return; }
+        setSel([{ c: 'walls', id: door.id }]);
+        UI.toast((door.k === 'window' ? 'Janela trancada' : 'Porta trancada') + '. Clique de novo nela para ' + (door.pz ? 'entregar a fechadura com gazuas' : 'criar a fechadura com gazuas (no Escudo)') + '.', { key: 'fechadura', action: 'Abrir assim mesmo', run: () => Act.toggleDoor(Store.get('walls', door.id)) });
+        return;
+      }
       if (door) { Act.toggleDoor(door); return; }
       const hit = hitTest(p);
+      // (lote 122) o segundo clique (sem arrastar) num objeto que tranca, já selecionado sozinho: a fechadura com gazuas
+      segundo = hit && isGM() && !e.shiftKey && hit.c === 'tokens' && App.sel.length === 1 && selHas('tokens', hit.id) && EscudoCenas.trancavel(Store.get('tokens', hit.id)) ? { hit, p0: p } : null;
       if (hit) {
         if (e.shiftKey) {
           if (selHas(hit.c, hit.id)) { setSel(App.sel.filter(s => !(s.c === hit.c && s.id === hit.id))); return; }
@@ -467,7 +479,9 @@ const Tools = (() => {
       else if (g.type === 'stuck') { if (Math.hypot(p.x - g.p0.x, p.y - g.p0.y) * App.view.z > 8) { if (g.mestrando) avisoMestrando(); else UI.toast(g.why); g = null; } return; }
       Render.request();
     },
-    up() {
+    up(p) {
+      const sg = segundo; segundo = null;
+      if (sg && (!g || !g.moved) && (!p || Math.hypot(p.x - sg.p0.x, p.y - sg.p0.y) * App.view.z < 6)) { if (g && g.type === 'move') endMove(); g = null; cursor(); adiarFechadura(sg.hit); return; }
       if (!g) return;
       if (g.type === 'handle') { endHandle(); cursor(); return; }
       if (g.type === 'move') endMove();
@@ -477,6 +491,7 @@ const Tools = (() => {
       Render.request();
     },
     dbl(p, e) {
+      clearTimeout(tFech);
       const hit = hitTest(p, { locked: true });
       if (!hit) return;
       // (lote 78) o jogador: dois cliques na passagem para outro andar levam o token dele (ou perguntam qual)

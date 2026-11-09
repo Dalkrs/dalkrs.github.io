@@ -325,8 +325,10 @@ const LugaresFora = (() => {
   function pintar(p, c) {
     const cv = document.createElement('canvas'); cv.width = p.W * c; cv.height = p.H * c;
     const g = cv.getContext('2d'), P = palDe(p.estilo, p.estacao), r = mulberry((p.seed ^ 0x9e3779b9) >>> 0 || 3);
-    g.fillStyle = P.base; g.fillRect(0, 0, cv.width, cv.height);
-    for (let i = 0, n = Math.min(4000, p.W * p.H * 2); i < n; i++) { g.globalAlpha = 0.25 + r() * 0.3; g.fillStyle = P.manchas[Math.floor(r() * P.manchas.length)]; g.beginPath(); g.arc(r() * cv.width, r() * cv.height, c * (0.15 + r() * 0.6), 0, Math.PI * 2); g.fill(); }
+    // (lote 122) o fundo de um andar: o telhado lá embaixo (os de cima) ou a rocha (o porão); senão, o chão da paleta
+    const fundo = p.fundo === 'telhado' ? { base: '#1f1d24', manchas: ['#2a2630', '#18161c', '#24212a'] } : p.fundo === 'rocha' ? { base: '#1a1816', manchas: ['#24211d', '#121110', '#2b2723'] } : null;
+    g.fillStyle = fundo ? fundo.base : P.base; g.fillRect(0, 0, cv.width, cv.height);
+    for (let i = 0, n = Math.min(4000, p.W * p.H * 2); i < n; i++) { g.globalAlpha = 0.25 + r() * 0.3; g.fillStyle = (fundo || P).manchas[Math.floor(r() * (fundo || P).manchas.length)]; g.beginPath(); g.arc(r() * cv.width, r() * cv.height, c * (0.15 + r() * 0.6), 0, Math.PI * 2); g.fill(); }
     g.globalAlpha = 1;
     const blocos = (x, y, w, h, cores, junta, tam) => {
       g.save(); g.beginPath(); g.rect(x * c, y * c, w * c, h * c); g.clip();

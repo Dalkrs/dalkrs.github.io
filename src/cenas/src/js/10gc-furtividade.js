@@ -132,7 +132,7 @@ const Furtividade = (() => {
     }
     // a porta da frente e a dos fundos (para fora)
     const fora = (q, lado) => [...U.values()].filter(u => u.k === 'wall' && (u.a === salas.indexOf(q) || u.b === salas.indexOf(q)) && (u.a === -2 || u.b === -2) && (lado === 'n' ? !u.v && u.y1 === y0 : lado === 's' ? !u.v && u.y1 === y0 + h : lado === 'o' ? u.v && u.x1 === x0 : u.v && u.x1 === x0 + w)).sort((m, n) => m.p - n.p);
-    const pf = porta(fora(meio, frente), cfg.trancada ? { locked: true, fech: cfg.nivelFrente || 'medio' } : {});
+    const pf = cfg.portaFrente === false ? null : porta(fora(meio, frente), cfg.trancada ? { locked: true, fech: cfg.nivelFrente || 'medio' } : {});      // (lote 122: os andares de cima e o porão não têm)
     const out = { salas: [], corr: null, porta: null, fundos: null, portas: [], janelas: [] };
     // a casa de fora e a de dentro de uma porta, pelo lado da parede
     const lados = (u, lado) => (lado === 's' ? [[u.x1, u.y1], [u.x1, u.y1 - 1]] : lado === 'n' ? [[u.x1, u.y1 - 1], [u.x1, u.y1]] : lado === 'o' ? [[u.x1 - 1, u.y1], [u.x1, u.y1]] : [[u.x1, u.y1], [u.x1 - 1, u.y1]]);
@@ -280,6 +280,9 @@ const Furtividade = (() => {
     salaoPublico(K, q) { tapete(K, q, 1); encosta(K, q, 'balcao', Math.min(5, Math.max(2, q.w - 3)), 1, 1, ['n']); for (let i = 0; i < 2; i++) encosta(K, q, 'banco', 2, 1, 1, ['o', 'l']); canto(K, q, 'quadroMissoes'); canto(K, q, 'vela'); canto(K, q, 'vela'); },
     arquivo(K, q) { encosta(K, q, 'estante', 2, 1, Math.max(3, Math.floor((q.w + q.h) / 2))); canto(K, q, 'vela'); },
     cofreForte(K, q) { canto(K, q, 'cofre'); canto(K, q, 'cofre'); canto(K, q, 'bau'); canto(K, q, 'bau'); canto(K, q, 'lingotes'); canto(K, q, 'sacos'); },
+    adega(K, q) { encosta(K, q, 'prateleiraVinho', 2, 1, Math.max(2, Math.floor((q.w + q.h) / 3))); if (q.w >= 4 && q.h >= 4) noMeio(K, q, 'tonel', 2, 2, 0); canto(K, q, 'barril'); canto(K, q, 'barril'); canto(K, q, 'vela'); },
+    vigia(K, q) { canto(K, q, 'armas'); canto(K, q, 'barril'); canto(K, q, 'lampiao'); },
+    sotao(K, q) { canto(K, q, 'bau'); canto(K, q, 'caixote'); canto(K, q, 'caixote'); canto(K, q, 'cestoRoupa'); if (K.r() < 0.5) canto(K, q, 'estatua'); },
     deposito(K, q) { for (let i = 0; i < 2; i++) canto(K, q, 'caixote'); canto(K, q, 'barril'); canto(K, q, 'sacos'); encosta(K, q, 'estante', 2, 1, 1); },
     // as casas da rua
     sala(K, q) { const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'bau'); canto(K, q, 'vela'); },
@@ -390,6 +393,64 @@ const Furtividade = (() => {
     return feitos;
   }
 
+  /* ================= os andares (lote 122) =================
+     Cada andar é um plano do mesmo tamanho do térreo (as cenas ficam alinhadas: quem desce aparece no mesmo lugar),
+     com o prédio no mesmo retângulo e as escadas nas mesmas casas: com corredor, nas pontas dele; sem, nos cantos.
+     Fora do prédio, o telhado de baixo (nos de cima) ou a rocha (no porão). */
+  const NOME_ANDAR = n => (n < 0 ? 'porão' : n === 0 ? 'térreo' : n + 'º andar');
+  // as casas das escadas (as do térreo ficam reservadas já, antes dos móveis): sobe (térreo ↔ 1º), desce (térreo ↔
+  // porão), sobe2 (1º ↔ 2º)
+  function escadas(K, B, rect, o) {
+    const c = B.corr, E = c ? { sobe: [c.x + c.w - 1, c.y], desce: [c.x, c.y + c.h - 1], sobe2: [c.x, c.y] }
+      : { sobe: [rect.x + rect.w - 1, rect.y], desce: [rect.x, rect.y], sobe2: [rect.x + rect.w - 1, rect.y + rect.h - 1] };
+    if (o.cima > 0) K.reserva.add(E.sobe.join(','));
+    if (o.porao) K.reserva.add(E.desce.join(','));
+    return E;
+  }
+  const escadaObj = (x, y, para, de) => ({ id: 'escada', x, y, s: 1, para, n: (para > de ? 'Escada que sobe: ' : 'Escada que desce: ') + NOME_ANDAR(para), rot: para > de ? 180 : 0 });
+  function fazAndar(o, lugar, W, H, nivel, rect, cfg, escs) {
+    const K = plano(lugar, W, H, KIT().sub(o.seed, 300 + nivel), o);
+    K.p.guardas_ = o.guardas; K.p.nivel = nivel; K.p.fundo = nivel < 0 ? 'rocha' : 'telhado';
+    for (const e of escs) K.reserva.add(e[0] + ',' + e[1]);
+    const B = predio(K, rect.x, rect.y, rect.w, rect.h, Object.assign({ portaFrente: false, fundosPorta: false, janelas: nivel > 0, corredor: rect.h >= 9, larg: 2, min: 4, max: 7, extra: 0.25, pisoBase: nivel < 0 ? 'laje' : 'madeira' }, cfg));
+    for (const q of B.salas) mobiliar(K, q);
+    for (const e of escs) K.p.objetos.push(escadaObj(e[0], e[1], e[2], nivel));
+    return { K, B, nivel };
+  }
+  /* Os andares de um prédio: defs = { cima: [cfg do 1º, cfg do 2º], porao: cfg } (as cfg do predio); o térreo (Kt, Bt)
+     ganha as escadas. → os andares todos, o térreo primeiro: [{ K, B, nivel }] */
+  function andares(o, lugar, W, H, Kt, Bt, rect, E, defs) {
+    const F = [{ K: Kt, B: Bt, nivel: 0 }], cima = Math.min(o.cima || 0, (defs.cima || []).length);
+    if (cima >= 1) { Kt.p.objetos.push(escadaObj(E.sobe[0], E.sobe[1], 1, 0)); F.push(fazAndar(o, lugar, W, H, 1, rect, defs.cima[0], [[E.sobe[0], E.sobe[1], 0]].concat(cima >= 2 ? [[E.sobe2[0], E.sobe2[1], 2]] : []))); }
+    if (cima >= 2) F.push(fazAndar(o, lugar, W, H, 2, rect, defs.cima[1], [[E.sobe2[0], E.sobe2[1], 1]]));
+    if (o.porao && defs.porao) { Kt.p.objetos.push(escadaObj(E.desce[0], E.desce[1], -1, 0)); F.push(fazAndar(o, lugar, W, H, -1, rect, defs.porao, [[E.desce[0], E.desce[1], 0]])); }
+    return F;
+  }
+  // a sala de um papel, no primeiro andar que tiver (na ordem pedida dos níveis) → { K, q } | null
+  function salaEm(F, papel, ordem) {
+    for (const n of ordem || F.map(f => f.nivel)) { const f = F.find(x => x.nivel === n); const q = f && f.B.salas.find(s2 => s2.papel === papel); if (q) return { K: f.K, q }; }
+    return null;
+  }
+  // os guardas dos andares (o térreo já tem os dele): a ronda do corredor e um posto no meio; e o porão, um posto
+  function guardasDosAndares(F, o) {
+    for (const f of F) {
+      if (f.nivel === 0) continue;
+      const K = f.K, c = f.B.corr;
+      if (c) {
+        if (f.nivel === 1 || qtd(K, [0, 0, 1])) ronda(K, [[c.x + 1, c.y], [c.x + c.w - 2, c.y]], 'ida', { passo: 3, r: 6, a: 80 });
+        const px = c.x + Math.floor(c.w / 2), py = c.y + c.h - 1;
+        if (qtd(K, [0, 1, 1]) && f.nivel !== 2 && !K.p.guardas.some(g => g.x === px && g.y === py)) posto(K, px, py, f.nivel < 0 ? 'n' : 's', { r: 5 });
+      } else if (qtd(K, [0, 1, 1]) || f.nivel === 1) {
+        const q = f.B.salas.slice().sort((a, b) => b.w * b.h - a.w * a.h)[0], x = q.x + Math.floor(q.w / 2), y = q.y + Math.floor(q.h / 2);
+        if (K.livreR(x, y)) { K.ocupa(x, y, 1, 1); posto(K, x, y, 'n', { r: 5, a: 140 }); }
+      }
+    }
+  }
+  // o fim dos andares: o resumo de cada um e a lista no plano do térreo
+  function fechaAndares(p, F, lugar, o) { p.andares = F.filter(f => f.nivel !== 0).map(f => { const q = fim(f.K.p, lugar, o); q.nomeAndar = NOME_ANDAR(f.nivel); return q; }); }
+  // as escolhas dos andares (a janela): de cima 0 a 2, e o porão
+  const ANDARES_OK = { mansao: true, fortaleza: true, guilda: true, ruas: true, torre: true };
+
   /* ================= a mansão do nobre ================= */
   function gerarMansao(o) {
     const k = TAM[o.tamanho].k, W = Math.round(44 * k), H = Math.round(34 * k), K = plano('mansao', W, H, o.seed, o), { p, r } = K;
@@ -406,7 +467,12 @@ const Furtividade = (() => {
     portao(K, gx, my1);
     K.pinta('caminho', { pts: [[gx, H - 0.5], [gx, by + bh + 0.5]], w: 2.2, tipo: 'terra' });
     for (let y = by + bh; y < my1; y++) for (const x of [gx - 1, gx]) K.reserva.add(x + ',' + y);
-    const B = predio(K, bx, by, bw, bh, { corredor: true, larg: 2, min: 4, max: 7, papeis: ['salao', 'quartoSenhor', 'escritorio', 'biblioteca', 'cozinha', 'galeria', 'despensa', 'criados'], fundos: ['cozinha', 'despensa', 'criados'], resto: ['quarto', 'quarto', 'capela'], trancada: true, nivelFrente: 'medio', fundosPorta: true, nivelFundos: 'facil', trancar: ['escritorio', 'quartoSenhor'], nivelSala: 'dificil', secreta: 'escritorio', extra: 0.3, piso: { cozinha: 'laje', despensa: 'laje', capela: 'laje' } });
+    // (lote 122) com andar de cima, os quartos e o escritório sobem; embaixo ficam as salas e o serviço
+    const rect = { x: bx, y: by, w: bw, h: bh }, sobe = o.cima > 0;
+    const B = predio(K, bx, by, bw, bh, Object.assign({ corredor: true, larg: 2, min: 4, max: 7, fundos: ['cozinha', 'despensa', 'criados'], trancada: true, nivelFrente: 'medio', fundosPorta: true, nivelFundos: 'facil', nivelSala: 'dificil', extra: 0.3, piso: { cozinha: 'laje', despensa: 'laje', capela: 'laje' } },
+      sobe ? { papeis: ['salao', 'cozinha', 'biblioteca', 'galeria', 'despensa', 'capela'], resto: ['sala'], trancar: [], secreta: 'biblioteca' }
+        : { papeis: ['salao', 'quartoSenhor', 'escritorio', 'biblioteca', 'cozinha', 'galeria', 'despensa', 'criados'], resto: ['quarto', 'quarto', 'capela'], trancar: ['escritorio', 'quartoSenhor'], secreta: 'escritorio' }));
+    const E = escadas(K, B, rect, o);
     for (const q of B.salas) mobiliar(K, q);
     // o jardim: as sebes junto do muro, as árvores nos cantos, a fonte e as estátuas na frente
     const frente = { x0: mx0 + 1, y0: by + bh + 3, x1: mx1 - 2, y1: my1 - 2 };
@@ -427,23 +493,43 @@ const Furtividade = (() => {
     K.p.objetos.push({ id: 'hera', x: hx, y: my0 - 1, s: 1, rot: 180 }); K.marca('interesse', hx + 1, my0 - 1, 'Entrada: a hera do muro', 'Dá para escalar o muro aqui (fora da vista do portão).');
     const bx2 = r() < 0.5 ? mx0 + 2 : mx1 - 3, byy = my0 + 1;
     if (K.poe1('bueiro', bx2, byy)) { K.p.entradas.push({ x: bx2, y: byy, n: 'O bueiro (desce ao esgoto)', gera: { t: 'masmorra', m: 'esgoto', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (KIT().sub(o.seed, 91) % 2147483000) + 1 } }); }
-    // o alvo
-    const a = alvoDe(K, 'mansao', o.alvo), sala = pap => B.salas.find(q => q.papel === pap) || B.salas[1];
-    if (a === 'cofre') alvo(K, sala('escritorio'), 'cofre', { n: 'O cofre do senhor', notas: 'Trancado (fechadura difícil).' });
-    else if (a === 'documento') alvo(K, sala('escritorio'), 'documento', { n: 'O documento', notas: 'Sobre a mesa do escritório (ou no cofre, se o mestre quiser).' });
-    else if (a === 'pessoa') alvo(K, sala('quartoSenhor'), 'pessoa', { n: 'O senhor da casa', notas: 'Dormindo.' });
-    else alvo(K, sala('galeria'), 'artefato', { id: 'calice', n: 'A relíquia', notas: 'Exposta na galeria.' });
+    // (lote 122) os andares: os quartos em cima, o sótão, a adega embaixo
+    const F = andares(o, 'mansao', W, H, K, B, rect, E, {
+      cima: [{ entrada: 'sala', papeis: ['quartoSenhor', 'escritorio', 'quarto', 'quarto'], resto: ['quarto'], trancar: ['escritorio', 'quartoSenhor'], nivelSala: 'dificil', secreta: 'escritorio', janelaCorredor: true },
+        { entrada: 'sotao', papeis: ['criados', 'criados'], resto: ['sotao'], trancar: [] }],
+      porao: { entrada: 'adega', papeis: ['adega', 'cela', 'deposito'], resto: ['deposito'], trancar: ['cela'], nivelSala: 'medio' } });
+    // a escada de mão no jardim, debaixo da janela destrancada do 1º andar
+    const f1 = F.find(f => f.nivel === 1), ja = f1 && f1.B.janelaAberta;
+    if (ja) {
+      const u = ja.u, [lx, ly, rt] = ja.lado === 's' ? [u.x1, u.y1, 0] : ja.lado === 'n' ? [u.x1, u.y1 - 2, 0] : ja.lado === 'o' ? [u.x1 - 2, u.y1, 90] : [u.x1, u.y1, 90];
+      if (K.livre(lx, ly) && K.livre(lx + (rt ? 1 : 0), ly + (rt ? 0 : 1))) { K.p.objetos.push({ id: 'escadaMao', x: lx, y: ly, s: 2, fw: 1, fh: 2, rot: rt }); K.ocupa(lx, ly, rt ? 2 : 1, rt ? 1 : 2); K.marca('interesse', lx + (rt ? 0 : 1), ly + (rt ? 1 : 0), 'Entrada: a janela do 1º andar', 'A escada de mão (dos jardineiros) chega até uma janela destrancada do 1º andar.'); }
+    }
+    // os quadros na parede (um deles pode esconder o cofre) e a cômoda, a penteadeira, a escrivaninha
+    for (const f of F) for (const q of f.B.salas) {
+      if (q.papel === 'quartoSenhor') { encosta(f.K, q, 'penteadeira', 2, 1, 1); encosta(f.K, q, 'quadro', 1, 1, 1); }
+      if (q.papel === 'escritorio') { encosta(f.K, q, 'escrivaninha', 2, 1, 1); encosta(f.K, q, 'quadro', 1, 1, 1); }
+      if (q.papel === 'quarto' && f.K.r() < 0.5) encosta(f.K, q, 'comoda', 2, 1, 1);
+      if (q.papel === 'sala' || q.papel === 'salao') { encosta(f.K, q, 'relogioPe', 1, 1, 1); canto(f.K, q, 'lustre'); }
+    }
+    // o alvo (no andar que tiver a sala)
+    const a = alvoDe(K, 'mansao', o.alvo), sala = pap => salaEm(F, pap, [1, 0, 2, -1]) || { K, q: B.salas[1] };
+    if (a === 'cofre') { const S2 = sala('escritorio'); alvo(S2.K, S2.q, 'cofre', { id: 'cofreParede', n: 'O cofre do senhor', notas: 'Atrás do quadro, trancado (fechadura difícil).' }); }
+    else if (a === 'documento') { const S2 = sala('escritorio'); alvo(S2.K, S2.q, 'documento', { n: 'O documento', notas: 'Na escrivaninha do escritório (ou no cofre, se o mestre quiser).' }); }
+    else if (a === 'pessoa') { const S2 = sala('quartoSenhor'); alvo(S2.K, S2.q, 'pessoa', { n: 'O senhor da casa', notas: 'Dormindo.' }); }
+    else { const S2 = sala('galeria'); alvo(S2.K, S2.q, 'artefato', { id: 'calice', n: 'A relíquia', notas: 'Exposta na galeria.' }); }
     // os guardas: no portão, a ronda do jardim, a do corredor e o posto na porta do escritório
     posto(K, gx - 2, my1 - 2, 's', { r: 7 });
     if (qtd(K, [0, 1, 1])) posto(K, gx + 1, my1 - 2, 's', { r: 7 });
     ronda(K, rota, 'volta', { k: 0, passo: 4, r: 6 });
     if (qtd(K, [0, 0, 1])) ronda(K, rota, 'volta', { k: 2, passo: 4, r: 6 });
     if (B.corr) ronda(K, [[B.corr.x + 1, B.corr.y], [B.corr.x + B.corr.w - 2, B.corr.y]], 'ida', { passo: 3, r: 6, a: 80 });
-    if (qtd(K, [0, 1, 1]) && B.corr) { const e = sala('escritorio'), x = clamp(e.x + Math.floor(e.w / 2), B.corr.x, B.corr.x + B.corr.w - 1); posto(K, x, e.faixa === 'n' ? B.corr.y : B.corr.y + B.corr.h - 1, e.faixa === 'n' ? 'n' : 's', { r: 5 }); }
+    if (qtd(K, [0, 1, 1])) { const S2 = sala('escritorio'), f = F.find(x => x.K === S2.K), c = f && f.B.corr, e = S2.q; if (c) { const x = clamp(e.x + Math.floor(e.w / 2), c.x + 1, c.x + c.w - 2); posto(S2.K, x, e.faixa === 'n' ? c.y : c.y + c.h - 1, e.faixa === 'n' ? 'n' : 's', { r: 5 }); } }
     if (qtd(K, [0, 0, 1]) && B.fundos) posto(K, B.fundos.fora[0], B.fundos.fora[1] - 1, 'n', { r: 6 });
+    guardasDosAndares(F, o);
     sombras(K, qtd(K, [3, 4, 4]), { x0: mx0 + 1, y0: my0 + 1, x1: mx1 - 2, y1: my1 - 2 });
     p.cena = B.porta ? [B.porta.x, B.porta.y - 2] : [gx, by + 2];
     p.chegada = [gx, H - 1];
+    fechaAndares(p, F, 'mansao', o);
     return fim(p, 'mansao', o);
   }
 
@@ -473,7 +559,11 @@ const Furtividade = (() => {
     }
     // o quartel (no fundo), as celas (à direita), o estábulo (à esquerda)
     const qw = Math.round((x1 - x0) * 0.5), qh = 10, qx = Math.round(W / 2 - qw / 2), qy = y0 + 3;
-    const Q = predio(K, qx, qy, qw, qh, { corredor: true, larg: 2, min: 4, max: 6, papeis: ['dormitorio', 'refeitorio', 'comandante', 'arsenal', 'dormitorio'], resto: ['deposito'], trancada: false, fundosPorta: true, nivelFundos: 'medio', trancar: ['comandante', 'arsenal'], nivelSala: 'dificil', extra: 0.25, piso: { refeitorio: 'laje', arsenal: 'laje' } });
+    // (lote 122) com andar de cima, os dormitórios e o comandante sobem; o porão é a prisão de baixo
+    const rectQ = { x: qx, y: qy, w: qw, h: qh };
+    const Q = predio(K, qx, qy, qw, qh, Object.assign({ corredor: true, larg: 2, min: 4, max: 6, trancada: false, fundosPorta: true, nivelFundos: 'medio', nivelSala: 'dificil', extra: 0.25, piso: { refeitorio: 'laje', arsenal: 'laje' } },
+      o.cima > 0 ? { papeis: ['refeitorio', 'arsenal', 'guarda', 'deposito'], resto: ['deposito'], trancar: ['arsenal'] } : { papeis: ['dormitorio', 'refeitorio', 'comandante', 'arsenal', 'dormitorio'], resto: ['deposito'], trancar: ['comandante', 'arsenal'] }));
+    const EQ = escadas(K, Q, rectQ, o);
     for (const q of Q.salas) mobiliar(K, q);
     const cw = 9, ch = 9, cx = x1 - 3 - cw, cy = Math.max(Math.round(H / 2) - 2, qy + qh + 2);
     const C = predio(K, cx, cy, cw, ch, { corredor: true, larg: 2, entrada: 'guarda', frente: 's', min: 3, max: 3, resto: ['cela'], trancar: ['cela'], nivelSala: 'medio', janelas: false, fundosPorta: false, pisoBase: 'laje', extra: 0, trancada: true, nivelFrente: 'facil' });
@@ -496,23 +586,34 @@ const Furtividade = (() => {
     const bx = x0 + 2, by = y0 + 7;
     if (K.poe1('bueiro', bx, by)) K.p.entradas.push({ x: bx, y: by, n: 'O bueiro (desce ao esgoto)', gera: { t: 'masmorra', m: 'esgoto', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (KIT().sub(o.seed, 93) % 2147483000) + 1 } });
     K.marca('interesse', brecha.de, y0 - 1, 'Entrada: a brecha na muralha', 'A muralha caiu aqui: dá para passar pelo entulho, longe do portão.');
-    // o alvo
-    const a = alvoDe(K, 'fortaleza', o.alvo), cela = C.salas.find(q => q.papel === 'cela') || C.salas[0], com = Q.salas.find(q => q.papel === 'comandante') || Q.salas[1];
-    if (a === 'prisioneiro') alvo(K, cela, 'prisioneiro', { n: 'O prisioneiro', notas: 'Na cela trancada.' });
-    else if (a === 'documento') alvo(K, com, 'documento', { n: 'As ordens', notas: 'Na sala do comandante.' });
-    else if (a === 'cofre') alvo(K, com, 'cofre', { n: 'O cofre do soldo' });
-    else alvo(K, com, 'pessoa', { n: 'O comandante', notas: 'Dormindo.' });
+    // (lote 122) os andares do quartel: os dormitórios e o comandante em cima; a prisão de baixo no porão
+    const F = andares(o, 'fortaleza', W, H, K, Q, rectQ, EQ, {
+      cima: [{ entrada: 'dormitorio', papeis: ['comandante', 'dormitorio', 'dormitorio'], resto: ['dormitorio'], trancar: ['comandante'], nivelSala: 'dificil' },
+        { entrada: 'sotao', papeis: ['arsenal', 'deposito'], resto: ['sotao'], trancar: ['arsenal'], nivelSala: 'medio' }],
+      porao: { entrada: 'guarda', papeis: ['cela', 'cela', 'cela'], resto: ['cela'], trancar: ['cela'], nivelSala: 'medio' } });
+    // o alvo (no andar que tiver a sala: a prisão de baixo primeiro, se houver)
+    const a = alvoDe(K, 'fortaleza', o.alvo), cela = salaEm(F, 'cela', [-1]) || { K, q: C.salas.find(q => q.papel === 'cela') || C.salas[0] }, com = salaEm(F, 'comandante', [1, 0]) || { K, q: Q.salas[1] };
+    if (a === 'prisioneiro') alvo(cela.K, cela.q, 'prisioneiro', { n: 'O prisioneiro', notas: 'Na cela trancada.' });
+    else if (a === 'documento') alvo(com.K, com.q, 'documento', { n: 'As ordens', notas: 'Na sala do comandante.' });
+    else if (a === 'cofre') alvo(com.K, com.q, 'cofre', { n: 'O cofre do soldo' });
+    else alvo(com.K, com.q, 'pessoa', { n: 'O comandante', notas: 'Dormindo.' });
     // os guardas: o portão, as torres, a ronda das muralhas, a das celas; os soldados dormindo no quartel
     posto(K, gx - 2, y1 - 2, 's', { r: 8 }); posto(K, gx + 1, y1 - 2, 's', { r: 8 });
     torres.forEach((t, i) => { if (i < qtd(K, [2, 3, 4])) posto(K, t.q.x + 1, t.q.y + 1, i < 2 ? 'n' : 's', { r: 9, a: 120 }); });
     ronda(K, rotaM, 'volta', { k: 0, passo: 4, r: 7 });
     if (qtd(K, [0, 1, 1])) ronda(K, rotaM, 'volta', { k: 2, passo: 4, r: 7 });
     if (C.porta && qtd(K, [0, 1, 1])) posto(K, C.porta.fora[0] + 1, C.porta.fora[1], 's', { r: 6 });
-    const camas = K.p.objetos.filter(ob => ob.id === 'cama' && Q.salas.some(q => q.papel === 'dormitorio' && ob.x >= q.x && ob.x < q.x + q.w && ob.y >= q.y && ob.y < q.y + q.h));
-    camas.slice(0, qtd(K, [2, 4, 6])).forEach((c2, i) => K.p.npcs.push({ x: c2.x, y: c2.y + (c2.rot === 180 ? 1 : 0), n: 'Soldado dormindo ' + (i + 1), notas: 'Dormindo. Um barulho perto acorda.', conds: ['adormecido'], cor: '#5a6b8c', inimigo: true }));
+    // os soldados dormindo nas camas dos dormitórios (em qualquer andar)
+    let nd = 0;
+    for (const f of F) {
+      const camas = f.K.p.objetos.filter(ob => ob.id === 'cama' && f.B.salas.some(q => q.papel === 'dormitorio' && ob.x >= q.x && ob.x < q.x + q.w && ob.y >= q.y && ob.y < q.y + q.h));
+      for (const c2 of camas) { if (nd >= qtd(K, [2, 4, 6])) break; nd++; f.K.p.npcs.push({ x: c2.x, y: c2.y + (c2.rot === 180 ? 1 : 0), n: 'Soldado dormindo ' + nd, notas: 'Dormindo. Um barulho perto acorda.', conds: ['adormecido'], cor: '#5a6b8c', inimigo: true }); }
+    }
+    guardasDosAndares(F, o);
     sombras(K, qtd(K, [3, 4, 4]), { x0: x0 + 1, y0: y0 + 1, x1: x1 - 2, y1: y1 - 2 });
     p.cena = [gx, Math.round(H / 2)];
     p.chegada = [gx, H - 1];
+    fechaAndares(p, F, 'fortaleza', o);
     return fim(p, 'fortaleza', o);
   }
 
@@ -523,16 +624,29 @@ const Furtividade = (() => {
     K.pinta('piso', { x: 0, y: 0, w: W, h: H, tipo: 'calcada' });
     // a rua (embaixo) e o beco (em cima)
     const bx = 2, by = 4, bw = W - 4, bh = H - 10;
-    const G = predio(K, bx, by, bw, bh, { corredor: true, larg: 2, min: 4, max: 7, entrada: 'salaoPublico', papeis: ['cofreForte', 'escritorio', 'guarda', 'arquivo', 'escritorio'], fundos: ['cofreForte', 'arquivo'], resto: ['deposito', 'quarto'], trancada: true, nivelFrente: 'dificil', fundosPorta: true, nivelFundos: 'medio', trancar: ['cofreForte', 'arquivo', 'escritorio'], nivelSala: 'medio', extra: 0.2, piso: { cofreForte: 'laje', guarda: 'laje', deposito: 'laje' } });
+    // (lote 122) com porão, o cofre forte desce para ele; com andar de cima, o arquivo e o escritório do mestre sobem
+    const rect = { x: bx, y: by, w: bw, h: bh }, tPap = ['escritorio', 'guarda'].concat(o.porao ? [] : ['cofreForte'], o.cima > 0 ? [] : ['arquivo'], ['escritorio']);
+    const G = predio(K, bx, by, bw, bh, { corredor: true, larg: 2, min: 4, max: 7, entrada: 'salaoPublico', papeis: tPap, fundos: ['cofreForte', 'arquivo'], resto: ['deposito', 'quarto'], trancada: true, nivelFrente: 'dificil', fundosPorta: true, nivelFundos: 'medio', trancar: ['cofreForte', 'arquivo', 'escritorio'], nivelSala: 'medio', extra: 0.2, piso: { cofreForte: 'laje', guarda: 'laje', deposito: 'laje' } });
+    const E = escadas(K, G, rect, o);
     for (const q of G.salas) mobiliar(K, q);
-    // o cofre forte: a porta da fechadura absoluta e as armadilhas na frente
-    const vault = G.salas.find(q => q.papel === 'cofreForte');
+    const F = andares(o, 'guilda', W, H, K, G, rect, E, {
+      cima: [{ entrada: 'escritorio', papeis: ['arquivo', 'biblioteca', 'escritorio'], resto: ['deposito'], trancar: ['arquivo', 'escritorio'], nivelSala: 'medio' },
+        { entrada: 'sotao', papeis: ['deposito'], resto: ['sotao'], trancar: [] }],
+      porao: { entrada: 'guarda', papeis: ['cofreForte', 'deposito'], resto: ['deposito'], trancar: ['cofreForte'], nivelSala: 'medio' } });
+    // o cofre forte (no andar em que estiver): a porta da fechadura absoluta e as armadilhas na frente
+    const fv = F.find(f => f.B.salas.some(q => q.papel === 'cofreForte')), vault = fv ? fv.B.salas.find(q => q.papel === 'cofreForte') : null, Kv = fv ? fv.K : K, Gv = fv ? fv.B : G;
     if (vault) {
-      const pv = G.portas.find(d => Math.abs(d.x1 - (vault.x + vault.w / 2)) <= vault.w / 2 + 0.5 && (d.y1 === vault.y + vault.h || d.y1 === vault.y));
-      if (pv) { const w0 = K.p.paredes.find(w => w.k === 'door' && w.x1 === pv.x1 && w.y1 === pv.y1 && w.x2 === pv.x2 && w.y2 === pv.y2); if (w0) { w0.locked = true; w0.fech = 'absoluto'; } }
+      const pv = Gv.portas.find(d => Math.abs(d.x1 - (vault.x + vault.w / 2)) <= vault.w / 2 + 0.5 && (d.y1 === vault.y + vault.h || d.y1 === vault.y));
+      if (pv) { const w0 = Kv.p.paredes.find(w => w.k === 'door' && w.x1 === pv.x1 && w.y1 === pv.y1 && w.x2 === pv.x2 && w.y2 === pv.y2); if (w0) { w0.locked = true; w0.fech = 'absoluto'; } }
       // a placa de pressão bem na frente da porta; os dardos do lado
-      if (pv && G.corr) { const y = vault.faixa === 'n' ? G.corr.y : G.corr.y + G.corr.h - 1; K.p.objetos.push({ id: 'placaPressao', x: pv.x1, y, s: 1, armadilha: true }); if (pv.x1 + 1 < G.corr.x + G.corr.w) K.p.objetos.push({ id: 'dardos', x: pv.x1 + 1, y, s: 1, armadilha: true }); vault.portaX = pv.x1; }
+      if (pv && Gv.corr) { const y = vault.faixa === 'n' ? Gv.corr.y : Gv.corr.y + Gv.corr.h - 1; Kv.p.objetos.push({ id: 'placaPressao', x: pv.x1, y, s: 1, armadilha: true }); if (pv.x1 + 1 < Gv.corr.x + Gv.corr.w) Kv.p.objetos.push({ id: 'dardos', x: pv.x1 + 1, y, s: 1, armadilha: true }); vault.portaX = pv.x1; }
+      if (Kv !== K) canto(Kv, vault, 'sinoAlarme', { n: 'O sino do alarme', notas: 'Ligado à porta do cofre: se a fechadura falhar com barulho, ele toca.' });
     }
+    // o porão: a boca do cano que dá no esgoto; o sótão: a claraboia
+    const fp = F.find(f => f.nivel === -1);
+    if (fp) { const dq = fp.B.salas.find(q => q.papel === 'deposito'); if (dq) { const cn = canto(fp.K, dq, 'canoEsgoto', { n: 'O cano do esgoto' }); if (cn) fp.K.p.entradas.push({ x: cn.x, y: cn.y, n: 'O cano (dá no esgoto)', gera: { t: 'masmorra', m: 'esgoto', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (KIT().sub(o.seed, 96) % 2147483000) + 1 } }); } }
+    const f2 = F.find(f => f.nivel === Math.max(...F.map(x => x.nivel)) && f.nivel > 0);
+    if (f2) { const q = f2.B.salas.find(x => x.papel === 'sotao' || x.papel === 'arquivo') || f2.B.salas[0]; const cb = noMeio(f2.K, q, 'claraboia', 1, 1, 0, { n: 'A claraboia', est: 'fechado' }); if (cb) f2.K.marca('interesse', cb.x + 1 < q.x + q.w ? cb.x + 1 : cb.x - 1, cb.y, 'Entrada: a claraboia', 'Do telhado, a claraboia desce aqui (uma corda resolve).'); }
     // a rua: os lampiões; o beco: os barris, os caixotes, o lixo e o bueiro
     for (let x = 3; x < W - 3; x += 7) K.poe1('lampiao', x, H - 3);
     for (let i = 0; i < 4; i++) K.poe1(i % 2 ? 'caixote' : 'barril', K.ri(2, W - 3), K.ri(1, 2));
@@ -540,23 +654,25 @@ const Furtividade = (() => {
     const bbx = K.ri(3, W - 4);
     if (K.poe1('bueiro', bbx, 2)) K.p.entradas.push({ x: bbx, y: 2, n: 'O bueiro do beco (desce ao esgoto)', gera: { t: 'masmorra', m: 'esgoto', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (KIT().sub(o.seed, 95) % 2147483000) + 1 } });
     const arq = G.salas.find(q => q.papel === 'arquivo');
-    if (arq) K.marca('interesse', arq.x + 1, arq.y + 1, 'Entrada: a claraboia', 'Do telhado, a claraboia desce no arquivo (uma corda resolve).');
+    if (arq && !f2) K.marca('interesse', arq.x + 1, arq.y + 1, 'Entrada: a claraboia', 'Do telhado, a claraboia desce no arquivo (uma corda resolve).');
     // o alvo
-    const a = alvoDe(K, 'guilda', o.alvo);
-    if (a === 'cofre' && vault) alvo(K, vault, 'cofre', { n: 'O cofre forte', notas: 'A porta da sala tem fechadura absoluta; as armadilhas estão na frente.' });
-    else if (a === 'documento') alvo(K, arq || G.salas[1], 'documento', { n: 'O livro de contas' });
-    else alvo(K, vault || G.salas[1], 'artefato', { id: 'calice', n: 'A joia rara' });
+    const a = alvoDe(K, 'guilda', o.alvo), arqF = salaEm(F, 'arquivo') || { K, q: G.salas[1] };
+    if (a === 'cofre' && vault) alvo(Kv, vault, 'cofre', { n: 'O cofre forte', notas: 'A porta da sala tem fechadura absoluta; as armadilhas estão na frente.' });
+    else if (a === 'documento') alvo(arqF.K, arqF.q, 'documento', { n: 'O livro de contas' });
+    else alvo(vault ? Kv : K, vault || G.salas[1], 'artefato', { id: 'calice', n: 'A joia rara' });
     // os guardas: a porta da frente (fora), o corredor, a porta do cofre; o beco (muitos)
     if (G.porta) posto(K, G.porta.fora[0] + 1, G.porta.fora[1] + 1, 's', { r: 6 });
     if (G.corr) ronda(K, [[G.corr.x + 1, G.corr.y + 1], [G.corr.x + G.corr.w - 2, G.corr.y + 1]], 'ida', { passo: 3, r: 6, a: 80 });
-    if (vault && G.corr && qtd(K, [0, 1, 1])) { const x = clamp((vault.portaX != null ? vault.portaX : vault.x + 1) - 2, G.corr.x, G.corr.x + G.corr.w - 1); posto(K, x, vault.faixa === 'n' ? G.corr.y + 1 : G.corr.y, vault.faixa === 'n' ? 'n' : 's', { r: 5 }); }
+    if (vault && Gv.corr && qtd(K, [0, 1, 1])) { const x = clamp((vault.portaX != null ? vault.portaX : vault.x + 1) - 2, Gv.corr.x + 1, Gv.corr.x + Gv.corr.w - 2); posto(Kv, x, vault.faixa === 'n' ? Gv.corr.y + 1 : Gv.corr.y, vault.faixa === 'n' ? 'n' : 's', { r: 5 }); }
     if (qtd(K, [0, 0, 1])) ronda(K, [[2, 2], [W - 3, 2]], 'ida', { passo: 3, r: 6 });
     if (qtd(K, [0, 1, 1])) ronda(K, [[2, H - 4], [W - 3, H - 4]], 'ida', { passo: 4, r: 7 });
     const gq = G.salas.find(q => q.papel === 'guarda');
     if (gq) { const c2 = K.p.objetos.find(ob => ob.id === 'cadeira' && ob.x >= gq.x && ob.x < gq.x + gq.w && ob.y >= gq.y && ob.y < gq.y + gq.h); if (c2) K.p.npcs.push({ x: c2.x, y: c2.y, n: 'Guarda cochilando', notas: 'Cochilando na cadeira: acorda com barulho.', conds: ['adormecido'], cor: '#5a6b8c', inimigo: true }); }
+    guardasDosAndares(F, o);
     sombras(K, qtd(K, [2, 3, 3]), { x0: 1, y0: 1, x1: W - 2, y1: H - 2 });
     p.cena = G.porta ? [G.porta.x, G.porta.y - 2] : [Math.round(W / 2), Math.round(H / 2)];
     p.chegada = [Math.round(W / 2), H - 1];
+    fechaAndares(p, F, 'guilda', o);
     return fim(p, 'guilda', o);
   }
 
@@ -637,11 +753,15 @@ const Furtividade = (() => {
       while (x + 6 <= b.x1) {
         const cw = Math.min(K.ri(6, 9), b.x1 - x + 1);
         const C = predio(K, x, yy, cw, hh, { corredor: false, entrada: K.r() < 0.3 ? 'loja' : 'entrada', frente, min: 3, max: 5, papeis: ['quarto', 'sala'], resto: ['quarto'], trancada: true, nivelFrente: 'facil', fundosPorta: true, nivelFundos: 'facil', extra: 0.4, piso: { loja: 'madeira' } });
-        for (const q of C.salas) mobiliar(K, q);
+        C.rect = { x, y: yy, w: cw, h: hh };
         casas.push(C);
         x += cw + 2;
       }
     }
+    // a casa do alvo: a maior (com as escadas reservadas antes dos móveis: os andares são dela)
+    const alvoC = casas.slice().sort((a2, b2) => b2.salas.reduce((s, q) => s + q.w * q.h, 0) - a2.salas.reduce((s, q) => s + q.w * q.h, 0))[0];
+    const EC = alvoC ? escadas(K, alvoC, alvoC.rect, o) : null;
+    for (const C of casas) for (const q of C.salas) mobiliar(K, q);
     // a pracinha com a fonte, no cruzamento; os lampiões das ruas
     K.poeR('fonte', vx, ry + 1, 2, 2, 0);
     for (let x = 3; x < W - 3; x += 8) { K.poe1('lampiao', x, rua.y0 - 1) || K.poe1('lampiao', x + 1, rua.y0 - 1); }
@@ -650,14 +770,19 @@ const Furtividade = (() => {
     for (let i = 0; i < 8; i++) { const C = casas[Math.floor(r() * casas.length)]; if (!C) break; const b = C.salas[C.salas.length - 1], x = b.x + b.w, y = K.ri(b.y, b.y + b.h - 1); if (i < 3) esconderijo(K, x, y, i % 2 ? 'caixote' : 'barril', 'No beco, atrás dos barris'); else K.poe1(i % 2 ? 'caixote' : 'barril', x, y); }
     const bbx = vx + 2, bby = rua.y1 + 1;
     if (K.poe1('bueiro', bbx, bby)) K.p.entradas.push({ x: bbx, y: bby, n: 'O bueiro (desce ao esgoto)', gera: { t: 'masmorra', m: 'esgoto', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (KIT().sub(o.seed, 97) % 2147483000) + 1 } });
-    // a casa do alvo: a maior
-    const alvoC = casas.slice().sort((a2, b2) => b2.salas.reduce((s, q) => s + q.w * q.h, 0) - a2.salas.reduce((s, q) => s + q.w * q.h, 0))[0];
+    // a casa do alvo: os andares (os quartos em cima, o sótão, a adega)
+    let F = [{ K, B: alvoC, nivel: 0 }];
     if (alvoC) {
+      F = andares(o, 'ruas', W, H, K, alvoC, alvoC.rect, EC, {
+        cima: [{ entrada: 'quarto', papeis: ['quarto', 'sala'], resto: ['quarto'], corredor: false, min: 3, max: 5, extra: 0.4, trancar: [] }, { entrada: 'sotao', papeis: [], resto: ['sotao'], corredor: false, min: 3, max: 6, trancar: [] }],
+        porao: { entrada: 'adega', papeis: ['deposito'], resto: ['adega'], corredor: false, min: 3, max: 5, trancar: [] } });
       for (const w of K.p.paredes) if (w.k === 'door' && alvoC.porta && w.x1 === alvoC.porta.x && w.y1 === alvoC.porta.y) w.fech = 'dificil';
-      const a = alvoDe(K, 'ruas', o.alvo), q = alvoC.salas.find(s => s.papel === 'quarto') || alvoC.salas[alvoC.salas.length - 1];
-      if (a === 'pessoa') alvo(K, q, 'pessoa', { n: 'A pessoa', notas: 'Dormindo em casa.' });
-      else if (a === 'cofre') alvo(K, q, 'cofre', { id: 'bau', n: 'O baú escondido', notas: 'Debaixo da cama, trancado.' });
-      else alvo(K, q, 'documento', { n: 'A carta' });
+      const a = alvoDe(K, 'ruas', o.alvo), S2 = salaEm(F, 'quarto', [1, 0]) || { K, q: alvoC.salas[alvoC.salas.length - 1] }, q = S2.q;
+      if (a === 'pessoa') alvo(S2.K, q, 'pessoa', { n: 'A pessoa', notas: 'Dormindo em casa.' });
+      else if (a === 'cofre') alvo(S2.K, q, 'cofre', { id: 'bau', n: 'O baú escondido', notas: 'Debaixo da cama, trancado.' });
+      else alvo(S2.K, q, 'documento', { n: 'A carta' });
+      const fp = F.find(f => f.nivel === -1);
+      if (fp) { const aq = fp.B.salas.find(x => x.papel === 'adega') || fp.B.salas[0], cn = canto(fp.K, aq, 'canoEsgoto', { n: 'O cano do esgoto' }); if (cn) fp.K.p.entradas.push({ x: cn.x, y: cn.y, n: 'O cano (dá no esgoto)', gera: { t: 'masmorra', m: 'esgoto', n: 1, tam: 'pequeno', e: o.estilo || 'comum', s: (KIT().sub(o.seed, 98) % 2147483000) + 1 } }); }
       if (alvoC.porta) K.marca('interesse', alvoC.porta.fora[0] + 1, alvoC.porta.fora[1], 'A casa do alvo', 'A maior do quarteirão: a porta tem fechadura difícil; os fundos dão para o beco.');
     }
     // a ronda da guarda da cidade: a rua do meio e a de baixo; o vigia da praça
@@ -666,9 +791,11 @@ const Furtividade = (() => {
     if (qtd(K, [0, 1, 1])) ronda(K, [[vx - 1, 1], [vx - 1, H - 2]], 'ida', { passo: 4, r: 7 });
     if (qtd(K, [0, 0, 1])) ronda(K, rota, 'volta', { k: 2, passo: 4, r: 7 });
     posto(K, vx + 2, ry + 2, 'l', { r: 6, a: 120, n: 'Vigia da praça' });
+    guardasDosAndares(F, o);
     sombras(K, qtd(K, [3, 4, 5]), { x0: 1, y0: 1, x1: W - 2, y1: H - 2 });
     p.cena = [vx, ry + 1];
     p.chegada = [1, rua.y0 + 1];
+    fechaAndares(p, F, 'ruas', o);
     return fim(p, 'ruas', o);
   }
 
@@ -689,40 +816,52 @@ const Furtividade = (() => {
     for (let x = rota[0][0]; x <= rota[1][0]; x++) { K.reserva.add(x + ',' + rota[0][1]); K.reserva.add(x + ',' + rota[2][1]); }
     for (let y = rota[0][1]; y <= rota[2][1]; y++) { K.reserva.add(rota[0][0] + ',' + y); K.reserva.add(rota[1][0] + ',' + y); }
     const T = predio(K, tx, ty, tw, th, { corredor: false, entrada: 'guarda', frente: 's', min: Math.ceil(tw / 2), max: Math.ceil(tw / 2), papeis: ['deposito'], trancada: true, nivelFrente: 'medio', fundosPorta: false, trancar: ['deposito'], nivelSala: 'medio', pisoBase: 'laje', extra: 0 });
+    const rectT = { x: tx, y: ty, w: tw, h: th }, ET = escadas(K, T, rectT, o);
     for (const q of T.salas) mobiliar(K, q);
     const gq = T.salas.find(q => q.papel === 'guarda') || T.salas[0];
-    const esc = canto(K, gq, 'escada', { n: 'A escada (sobe ao alto da torre)', notas: 'Do alto, o vigia vê o terreno todo.' });
+    const esc = o.cima > 0 ? null : canto(K, gq, 'escada', { n: 'A escada (sobe ao alto da torre)', notas: 'Do alto, o vigia vê o terreno todo.' });
+    // (lote 122) os andares da torre: o dormitório da guarda, e no alto a sala do vigia com o sinal de fogo; embaixo, a cela
+    const half = Math.ceil(tw / 2);
+    const F = andares(o, 'torre', W, H, K, T, rectT, ET, {
+      cima: [{ entrada: 'dormitorio', papeis: ['deposito'], corredor: false, min: half, max: half, trancar: [] }, { entrada: 'vigia', corredor: false, min: tw, max: tw, trancar: [] }],
+      porao: { entrada: 'deposito', papeis: ['cela'], corredor: false, min: half, max: half, trancar: ['cela'], nivelSala: 'medio' } });
+    const fTopo = F.find(f => f.nivel === 2);
     // o pátio: o estábulo pequeno, a lenha, o poço; o sinal de fogo (num estrado alto)
     K.poe1('poco', x0 + 2, y1 - 3); K.poe1('lenha', x1 - 3, y1 - 3); K.poe1('lenha', x1 - 4, y1 - 3);
     esconderijo(K, x0 + 2, y0 + 2, 'feno', 'No monte de feno');
-    const sx = x1 - 4, sy = y0 + 2;
-    p.relevo.push({ t: 'plataforma', alt: 2, k: 'rect', x: sx - 0.5, y: sy - 0.5, w: 2, h: 2 });
-    const sinal = K.poe1('braseiro', sx, sy, 0, { n: 'O sinal de fogo', notas: 'Aceso, avisa as outras torres.' });
+    // o sinal de fogo: no alto da torre (com o 2º andar) ou num estrado alto no pátio
+    const KS = fTopo ? fTopo.K : K, qTopo = fTopo ? fTopo.B.salas[0] : null;
+    let sx = x1 - 4, sy = y0 + 2, sinal = null;
+    if (qTopo) { sinal = noMeio(KS, qTopo, 'braseiro', 1, 1, 0, { n: 'O sinal de fogo', notas: 'Aceso, avisa as outras torres.' }); if (sinal) { sx = sinal.x; sy = sinal.y; } }
+    else { p.relevo.push({ t: 'plataforma', alt: 2, k: 'rect', x: sx - 0.5, y: sy - 0.5, w: 2, h: 2 }); sinal = K.poe1('braseiro', sx, sy, 0, { n: 'O sinal de fogo', notas: 'Aceso, avisa as outras torres.' }); }
     // as luzes: o portão e a porta
     K.poe1('tocha', gx - 2, y1 - 1); K.poe1('tocha', gx + 1, y1 - 1);
     if (T.porta) K.poe1('lampiao', T.porta.x + 2, T.porta.y);
     K.marca('interesse', x0 - 1, Math.round(H / 2), 'Entrada: por cima da paliçada', 'A paliçada é baixa deste lado, longe do portão: dá para pular.');
     // o alvo
-    const a = alvoDe(K, 'torre', o.alvo), dep = T.salas.find(q => q.papel === 'deposito') || gq;
-    if (a === 'prisioneiro') alvo(K, dep, 'prisioneiro', { n: 'O prisioneiro', notas: 'No depósito trancado.' });
+    const a = alvoDe(K, 'torre', o.alvo), dep = salaEm(F, 'cela', [-1]) || { K, q: T.salas.find(q => q.papel === 'deposito') || gq };
+    if (a === 'prisioneiro') alvo(dep.K, dep.q, 'prisioneiro', { n: 'O prisioneiro', notas: dep.K === K ? 'No depósito trancado.' : 'Na cela do porão.' });
     else if (a === 'documento') alvo(K, gq, 'documento', { n: 'A mensagem', notas: 'Sobre a mesa da guarda.' });
-    else if (sinal) { K.marca('alvoMissao', sx - 1, sy, 'Alvo da missão', 'Apagar (ou acender) o sinal de fogo.'); sinal.notas = NOTA_ALVO + ' ' + sinal.notas; p.alvo = { tipo: 'artefato', n: 'O sinal de fogo', x: sx, y: sy }; }
+    else if (sinal) { KS.marca('alvoMissao', sx - 1, sy, 'Alvo da missão', 'Apagar (ou acender) o sinal de fogo.'); sinal.notas = NOTA_ALVO + ' ' + sinal.notas; p.alvo = { tipo: 'artefato', n: 'O sinal de fogo', x: sx, y: sy }; }
     // os guardas: o vigia do alto (vê longe), a porta, a ronda em volta
-    posto(K, sx, sy + 1, 's', { r: 12, a: 140, n: 'Vigia do sinal' });
+    if (KS.livreR(sx, sy + 1)) { KS.ocupa(sx, sy + 1, 1, 1); posto(KS, sx, sy + 1, 's', { r: 12, a: 140, n: 'Vigia do sinal' }); }
     if (T.porta) posto(K, T.porta.fora[0] + 1, T.porta.fora[1], 's', { r: 6 });
     ronda(K, rota, 'volta', { k: 0, passo: 3, r: 6 });
     if (qtd(K, [0, 0, 1])) ronda(K, rota, 'volta', { k: 2, passo: 3, r: 6 });
     if (qtd(K, [0, 1, 1])) { const c2 = K.p.objetos.find(ob => ob.id === 'cadeira' && ob.x >= gq.x && ob.x < gq.x + gq.w && ob.y >= gq.y && ob.y < gq.y + gq.h); if (c2) K.p.npcs.push({ x: c2.x, y: c2.y, n: 'Guarda de folga', notas: 'Jogando dados: distraído.', conds: [], cor: '#5a6b8c', inimigo: true }); }
     void esc;
+    guardasDosAndares(F.filter(f => f.nivel !== 2), o);
     sombras(K, qtd(K, [2, 3, 4]), { x0: x0 + 1, y0: y0 + 1, x1: x1 - 2, y1: y1 - 2 });
     p.cena = [gx, ty + th + 2];
     p.chegada = [gx, H - 1];
+    fechaAndares(p, F, 'torre', o);
     return fim(p, 'torre', o);
   }
 
   // o fim de todo plano: o resumo do que entrou
   function fim(p, lugar, o) {
     delete p.guardas_;
+    if (!p.andares) p.andares = [];
     p.lugar = lugar; p.tamanho = o.tamanho; p.guardasOp = o.guardas; p.alvoOp = o.alvo || 'sorteio';
     return p;
   }
@@ -732,6 +871,8 @@ const Furtividade = (() => {
     o.tamanho = TAM[o.tamanho] ? o.tamanho : 'medio';
     o.guardas = GUARDAS.some(g => g[0] === o.guardas) ? o.guardas : 'normal';
     o.seed = (Math.round(Number(o.seed)) >>> 0) || 1;
+    o.cima = ANDARES_OK[lugar] ? clamp(Math.round(Number(o.cima)) || 0, 0, 2) : 0;
+    o.porao = !!ANDARES_OK[lugar] && o.porao === true;
     return GERA[lugar](o);
   }
 
@@ -753,14 +894,35 @@ const Furtividade = (() => {
     for (const n of p.npcs) { g.fillStyle = n.inimigo ? '#9aa6c4' : '#c99aff'; g.beginPath(); g.arc((n.x + 0.5) * cell, (n.y + 0.5) * cell, cell * 0.36, 0, TAU); g.fill(); }
     for (const mk of p.marcas) { if (mk.id === 'esconderijo') { g.strokeStyle = '#9fb3d9'; g.lineWidth = 1.5; g.setLineDash([3, 2]); g.beginPath(); g.arc((mk.x + 0.5) * cell, (mk.y + 0.5) * cell, cell * 0.4, 0, TAU); g.stroke(); g.setLineDash([]); } else if (mk.id === 'alvoMissao') { g.fillStyle = '#ffd34d'; g.beginPath(); g.arc((mk.x + 0.5) * cell, (mk.y + 0.5) * cell, cell * 0.45, 0, TAU); g.fill(); g.strokeStyle = '#7a1e14'; g.lineWidth = 2; g.stroke(); } }
     for (const e of p.entradas) { g.fillStyle = '#e6ab4f'; g.strokeStyle = '#3a2508'; g.lineWidth = 2; g.beginPath(); g.arc((e.x + 0.5) * cell, (e.y + 0.5) * cell, cell * 0.45, 0, TAU); g.fill(); g.stroke(); }
+    // (lote 122) os andares: miniaturas do prédio de cada um, no canto de cima (com o nome)
+    const And = (p.andares || []).slice().sort((a, b) => b.nivel - a.nivel);
+    if (And.length) {
+      const sal = p.salas.length ? p.salas : [{ x: 0, y: 0, w: p.W, h: p.H }];
+      const bx0 = Math.min(...And.map(a => Math.min(...a.salas.map(q => q.x)))), by0 = Math.min(...And.map(a => Math.min(...a.salas.map(q => q.y))));
+      const bx1 = Math.max(...And.map(a => Math.max(...a.salas.map(q => q.x + q.w)))), by1 = Math.max(...And.map(a => Math.max(...a.salas.map(q => q.y + q.h))));
+      void sal;
+      const bw = bx1 - bx0, bh = by1 - by0, k = Math.max(2, Math.floor(Math.min(cv.width * 0.22 / bw, cv.height * 0.9 / And.length / (bh + 3))));
+      And.forEach((a, i) => {
+        const f2 = KIT().pintar(a, k), x = cv.width - bw * k - 6, y = 6 + i * (bh * k + 18);
+        g.fillStyle = 'rgba(10,10,14,0.85)'; g.fillRect(x - 4, y - 4, bw * k + 8, bh * k + 20);
+        g.drawImage(f2, bx0 * k, by0 * k, bw * k, bh * k, x, y + 12, bw * k, bh * k);
+        for (const w of a.paredes) { g.strokeStyle = w.k === 'door' ? (w.locked ? '#ffb36b' : '#7fd1ff') : w.k === 'window' ? '#bff3ff' : 'rgba(255,236,200,0.8)'; g.lineWidth = Math.max(1, k * 0.2); g.beginPath(); g.moveTo(x + (w.x1 - bx0) * k, y + 12 + (w.y1 - by0) * k); g.lineTo(x + (w.x2 - bx0) * k, y + 12 + (w.y2 - by0) * k); g.stroke(); }
+        for (const o2 of a.objetos) if (o2.id === 'escada') { g.fillStyle = '#e6ab4f'; g.fillRect(x + (o2.x - bx0) * k, y + 12 + (o2.y - by0) * k, k, k); }
+        for (const gd of a.guardas) { g.fillStyle = '#f05c4e'; g.beginPath(); g.arc(x + (gd.x - bx0 + 0.5) * k, y + 12 + (gd.y - by0 + 0.5) * k, Math.max(1.5, k * 0.45), 0, TAU); g.fill(); }
+        g.fillStyle = '#f3ead2'; g.font = '600 11px system-ui, sans-serif'; g.textBaseline = 'top'; g.fillText(a.nomeAndar[0].toUpperCase() + a.nomeAndar.slice(1), x, y - 1);
+      });
+    }
     return { cell };
   }
   const nomeDe = p => NOMES[p.lugar] || 'Furtividade';
   function resumo(p) {
-    const n = p.guardas.length, rondas = p.guardas.filter(g => g.ronda.pts.length > 1).length, dorme = p.npcs.filter(x => (x.conds || []).includes('adormecido')).length;
-    const esc = p.marcas.filter(m => m.id === 'esconderijo').length, entr = p.marcas.filter(m => m.id === 'interesse').length + p.entradas.length + p.paredes.filter(w => w.secret || (w.k === 'window' && w.aberta)).length;
+    const And = p.andares || [], todos = [p].concat(And), soma = f => todos.reduce((m, q) => m + f(q), 0);
+    const n = p.guardas.length, ng = soma(q => q.guardas.length), rondas = soma(q => q.guardas.filter(g => g.ronda.pts.length > 1).length), dorme = soma(q => q.npcs.filter(x => (x.conds || []).includes('adormecido')).length);
+    const esc = soma(q => q.marcas.filter(m => m.id === 'esconderijo').length), entr = soma(q => q.marcas.filter(m => m.id === 'interesse').length + q.entradas.length + q.paredes.filter(w => w.secret || (w.k === 'window' && w.aberta)).length);
     const pl = (k, um, varios) => k + ' ' + (k === 1 ? um : varios);
-    return [nomeDe(p), p.W + ' × ' + p.H + ' quadrados', `${pl(n, 'guarda', 'guardas')} (${rondas} de ronda)`, dorme ? `${dorme} dormindo` : '', pl(esc, 'esconderijo ou sombra', 'esconderijos e sombras'), pl(entr, 'entrada escondida', 'entradas escondidas'), p.alvo ? 'alvo: ' + (p.alvo.n || '').toLowerCase() : ''].filter(Boolean).join(' · ') + '.';
+    // o alvo pode estar num andar
+    const alv = todos.map(q => q.alvo).find(Boolean);
+    return [nomeDe(p), p.W + ' × ' + p.H + ' quadrados', And.length ? 'térreo + ' + And.slice().sort((a, b) => b.nivel - a.nivel).map(a => a.nomeAndar).join(', ') + ' (' + (And.length + 1) + ' cenas ligadas pelas escadas)' : '', `${pl(ng, 'guarda', 'guardas')}${ng > n ? ' (' + (ng - n) + ' nos andares)' : ''}, ${rondas} de ronda`, dorme ? `${dorme} dormindo` : '', pl(esc, 'esconderijo ou sombra', 'esconderijos e sombras'), pl(entr, 'entrada escondida', 'entradas escondidas'), alv ? 'alvo: ' + (alv.n || '').toLowerCase() : ''].filter(Boolean).join(' · ') + '.';
   }
 
   /* ================= a cena ================= */
@@ -771,18 +933,14 @@ const Furtividade = (() => {
     const nomeOk = hum.filter(e => /guard|soldad|sentinel|vigia|mercen|bandid|capang/i.test(e.nome || e.n || e.name || ''));
     return nomeOk.length ? nomeOk : hum;
   }
-  async function criar(p, nome, ex) {
-    ex = ex || {};
-    const sc = newScene(String(nome || '').trim().slice(0, 60) || nomeDe(p));
-    if (typeof ex.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(ex.id) && !Store.S.scenes[ex.id]) sc.id = ex.id;
+  /* A cena de um plano (o térreo ou um andar). ids: o nível → o id da cena (para as escadas). */
+  async function montar(sc, p, ex, tom, ids) {
     sc.cols = p.W; sc.rows = p.H;
-    const c = sc.cell;
+    const c = sc.cell, andar = p.nivel != null && p.nivel !== 0;
     sc.fog.dynamic = true; sc.fog.explored = true;
-    // de noite: com a hora em Dia (a de começo), a cena sai de Noite; Entardecer e Breu valem como escolhidos
-    const tom = TONES.find(t => t.id === (ex.hora && ex.hora !== 'dia' ? ex.hora : 'noite')) || TONES[0];
     sc.tone = tom.id; sc.light = tom.light;
-    sc.weather = { k: WEATHERS.some(w => w[0] === ex.clima) ? ex.clima : '', pow: 0.6 };
-    sc.bgColor = KIT().palDe(p.estilo, p.estacao).base; sc.bg.stretch = true;
+    sc.weather = { k: !andar && WEATHERS.some(w => w[0] === ex.clima) ? ex.clima : '', pow: 0.6 };
+    sc.bgColor = p.fundo ? '#16151a' : KIT().palDe(p.estilo, p.estacao).base; sc.bg.stretch = true;
     try { const cv = KIT().pintar(p, KIT().res(p.W, p.H)); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
     for (const w of p.paredes) {
       if (Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.05) continue;
@@ -795,6 +953,8 @@ const Furtividade = (() => {
       if (o.fw) { t.fw = o.fw; t.fh = o.fh; t.size = Math.max(o.fw, o.fh); t.x = o.x * c; t.y = o.y * c; delete t.q0; }
       if (o.n) t.name = o.n;
       if (o.notas) t.notes = o.notas;
+      if (o.est) t.est = o.est;
+      if (o.para != null && ids[o.para]) t.cena = ids[o.para];            // (lote 122) a escada leva ao outro andar
       sc.tokens.push(t);
     }
     if (ex.relevo !== false) for (const rr of p.relevo) sc.shapes.push(Object.assign(Estilos.terrenoNaCena(rr, c, 0, 0), { a: 0.3 }));
@@ -831,8 +991,25 @@ const Furtividade = (() => {
     for (const t of sc.tokens) if (!t.prop && (conta.get(t.name) || 0) > 1) { vistos.set(t.name, (vistos.get(t.name) || 0) + 1); t.name = (t.name.slice(0, 54) + ' ' + vistos.get(t.name)).trim(); }
     if (p.chegada && Props.P.chegada) { const t = Props.novo(sc, 'chegada', p.chegada[0] * c, (p.chegada[1] - 1) * c, 1, true); sc.tokens.push(t); }
     normalizeScene(sc);
-    Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
-    return sc;
+  }
+  /* (lote 122) A cena do térreo e, com andares, uma cena para cada um (o mesmo tamanho: ficam alinhadas), ligadas pelas
+     escadas; o andar de cada cena (sc.nivel) põe a ordem na barra de andares. → a cena do térreo */
+  async function criar(p, nome, ex) {
+    ex = ex || {};
+    const base = String(nome || '').trim().slice(0, 60) || nomeDe(p);
+    // de noite: com a hora em Dia (a de começo), a cena sai de Noite; Entardecer e Breu valem como escolhidos
+    const tom = TONES.find(t => t.id === (ex.hora && ex.hora !== 'dia' ? ex.hora : 'noite')) || TONES[0];
+    const planos = [p].concat(Array.isArray(p.andares) ? p.andares : []), multi = planos.length > 1;
+    const cenas = planos.map((q, i) => newScene(i ? (base.slice(0, 40) + ' — ' + (q.nomeAndar || 'andar')).slice(0, 60) : base));
+    if (typeof ex.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(ex.id) && !Store.S.scenes[ex.id]) cenas[0].id = ex.id;
+    const ids = {};
+    planos.forEach((q, i) => { ids[q.nivel || 0] = cenas[i].id; });
+    for (let i = 0; i < planos.length; i++) { await montar(cenas[i], planos[i], ex, tom, ids); if (multi) cenas[i].nivel = planos[i].nivel || 0; }
+    // na lista, de baixo para cima (o porão, o térreo, os de cima)
+    const ordem = cenas.map((sc, i) => [sc, planos[i].nivel || 0]).sort((a, b) => a[1] - b[1]);
+    for (const [sc] of ordem) { Store.addScene(sc); Persist.scene(sc.id); }
+    Persist.meta();
+    return cenas[0];
   }
 
   /* ================= as abas da janela ================= */
@@ -849,22 +1026,25 @@ const Furtividade = (() => {
   for (const id of IDS) {
     const pre = 'fur' + id.charAt(0).toUpperCase() + id.slice(1);
     LUGARES[id] = Object.assign({ id, n: CURTO[id], aceitaEstacao: true, furtivo: true,
-      padrao: () => { const o = App.opt; return { tamanho: TAM[o[pre + 'Tam']] ? o[pre + 'Tam'] : 'medio', guardas: GUARDAS.some(g => g[0] === o.furGuardas) ? o.furGuardas : 'normal', alvo: ALVOS[id].some(a => a[0] === o[pre + 'Alvo']) ? o[pre + 'Alvo'] : 'sorteio' }; },
+      // (lote 122) os andares: de cima (0 a 2) e o porão; o acampamento não tem
+      padrao: () => { const o = App.opt; return { tamanho: TAM[o[pre + 'Tam']] ? o[pre + 'Tam'] : 'medio', guardas: GUARDAS.some(g => g[0] === o.furGuardas) ? o.furGuardas : 'normal', alvo: ALVOS[id].some(a => a[0] === o[pre + 'Alvo']) ? o[pre + 'Alvo'] : 'sorteio', cima: [0, 1, 2].includes(o.furCima) ? o.furCima : 1, porao: o.furPorao !== false }; },
       controles(st, K, mudou) {
-        const muda = (k, v) => { st[k] = v; App.opt[pre + 'Tam'] = st.tamanho; App.opt.furGuardas = st.guardas; App.opt[pre + 'Alvo'] = st.alvo; mudou(true); };
+        const muda = (k, v) => { st[k] = v; App.opt[pre + 'Tam'] = st.tamanho; App.opt.furGuardas = st.guardas; App.opt[pre + 'Alvo'] = st.alvo; App.opt.furCima = st.cima; App.opt.furPorao = st.porao; mudou(true); };
         return h('div', { class: 'ger-c' },
           K.field('Tamanho', K.seg('fur-tam', st.tamanho, Object.keys(TAM).map(k => [k, TAM[k].n]), v => muda('tamanho', v)), 'stack'),
           K.field('Guardas', K.seg('fur-guardas', st.guardas, GUARDAS, v => muda('guardas', v)), 'stack'),
-          K.field('O alvo da missão', K.seg('fur-alvo', st.alvo, [['sorteio', 'Sortear']].concat(ALVOS[id]), v => muda('alvo', v)), 'stack'));
+          K.field('O alvo da missão', K.seg('fur-alvo', st.alvo, [['sorteio', 'Sortear']].concat(ALVOS[id]), v => muda('alvo', v)), 'stack'),
+          ANDARES_OK[id] ? K.field('Andares de cima', K.seg('fur-cima', st.cima, [[0, 'Nenhum'], [1, '1 andar'], [2, '2 andares']], v => muda('cima', v)), 'stack') : null,
+          ANDARES_OK[id] ? K.field('Porão', K.seg('fur-porao', st.porao ? 1 : 0, [[0, 'Sem'], [1, 'Com porão']], v => muda('porao', v === 1)), 'stack') : null);
       },
-      opcoesDe: st => ({ tamanho: st.tamanho, guardas: st.guardas, alvo: st.alvo }),
-      aplicarOpcoes(st, o) { if (TAM[o.tamanho]) st.tamanho = o.tamanho; if (GUARDAS.some(g => g[0] === o.guardas)) st.guardas = o.guardas; if (o.alvo === 'sorteio' || ALVOS[id].some(a => a[0] === o.alvo)) st.alvo = o.alvo; },
+      opcoesDe: st => ({ tamanho: st.tamanho, guardas: st.guardas, alvo: st.alvo, cima: st.cima, porao: st.porao }),
+      aplicarOpcoes(st, o) { if (TAM[o.tamanho]) st.tamanho = o.tamanho; if (GUARDAS.some(g => g[0] === o.guardas)) st.guardas = o.guardas; if (o.alvo === 'sorteio' || ALVOS[id].some(a => a[0] === o.alvo)) st.alvo = o.alvo; if ([0, 1, 2].includes(o.cima)) st.cima = o.cima; if (typeof o.porao === 'boolean') st.porao = o.porao; },
       gerar: (st, comum) => gerar(id, Object.assign({}, st, { seed: comum && comum.seed, estilo: comum && comum.estilo, estacao: comum && comum.estacao })),
       previa, resumo, nomePadrao: nomeDe,
       criar: (p, nome, ex) => criar(p, nome, ex),
       relevoTxt: 'Com relevo',
       dica: '"Gerar outro" sorteia outro lugar, com as mesmas escolhas. Na prévia: os guardas em vermelho (com a rota tracejada), o alvo em amarelo, os esconderijos tracejados.',
-      nota: NOTAS[id] + ' Sai uma cena nova, de noite (com a hora em Dia; Entardecer e Breu valem como escolhidos): só você vê as rotas, os cones de visão e as marcas; "Avançar rondas" (no grupo Mestre, à esquerda) faz os guardas andarem.',
+      nota: NOTAS[id] + (ANDARES_OK[id] ? ' Com andares, cada andar e o porão viram uma cena (do mesmo tamanho), ligadas pelas escadas.' : '') + ' Sai uma cena nova, de noite (com a hora em Dia; Entardecer e Breu valem como escolhidos): só você vê as rotas, os cones de visão e as marcas; "Avançar rondas" (no grupo Mestre, à esquerda) faz os guardas andarem.',
       feito: sc => `"${sc.name}" criada: os guardas estão nos postos e nas rondas. "Avançar rondas" (no grupo Mestre, à esquerda, ou no botão direito) faz eles andarem.` }, semPartes);
   }
   const ehFurtivo = id => IDS.includes(id);

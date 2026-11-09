@@ -4,14 +4,44 @@
     {
       "versao": "2026.11.09-1",
       "data": "2026-11-09",
-      "titulo": "Móveis do tamanho certo e missões de furtividade",
+      "titulo": "Móveis do tamanho certo, missões de furtividade e fechaduras rápidas",
       "itens": [
-        { "tipo": "consertado", "texto": "Cenas: a cama, a estante, a mesa e os outros móveis compridos ocupam agora o retângulo certo na grade. A cama de solteiro tem 1 × 2 quadrados (um token deita em cima dela); a estante e o armário ficam rentes à parede, sem vão atrás." },
-        { "tipo": "melhorou", "texto": "As cenas de antes se ajeitam sozinhas ao abrir: a cama vai para a coluna do lado da parede, a estante encosta as costas na parede, a mesa fica do tamanho que era." },
-        { "tipo": "novo", "texto": "Móveis novos: a cama de casal, o armário (abre e fecha, e dá para se esconder dentro) e a mesa de banquete. No painel do objeto, a largura e o comprimento; girar mantém o objeto na grade." },
-        { "tipo": "novo", "texto": "Gerar um lugar: o grupo Furtividade, com a mansão do nobre, a fortaleza, a guilda com o cofre, o acampamento inimigo, as casas e ruas e a torre de guarda. Saem de noite, com os guardas nas rondas e nos postos, o alvo da missão, os esconderijos, os cantos de sombra e as entradas escondidas (a porta dos fundos, a janela destrancada, a hera do muro, o bueiro).", "mestre": true },
-        { "tipo": "novo", "texto": "Rondas dos guardas: no painel de um token, o bloco Guarda dá a rota, o cone de visão e o estado (Calmo, Desconfiado, Alerta). “Avançar rondas” (no grupo Mestre, à esquerda, ou no botão direito) faz os guardas andarem e avisa quem foi visto (na sombra, “pode ter notado”; quem está Oculto não é visto). Só o mestre vê as rotas e os cones.", "mestre": true },
-        { "tipo": "novo", "texto": "Portas e janelas guardam o nível da fechadura (Fácil a Absoluto), para ligar às fechaduras com gazuas do Escudo do mestre.", "mestre": true }
+        {
+          "tipo": "consertado",
+          "texto": "Cenas: a cama, a estante, a mesa e os outros móveis compridos ocupam agora o retângulo certo na grade. A cama de solteiro tem 1 × 2 quadrados (um token deita em cima dela); a estante e o armário ficam rentes à parede, sem vão atrás."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "As cenas de antes se ajeitam sozinhas ao abrir: a cama vai para a coluna do lado da parede, a estante encosta as costas na parede, a mesa fica do tamanho que era."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Móveis novos: a cama de casal, o armário (abre e fecha, e dá para se esconder dentro) e a mesa de banquete. No painel do objeto, a largura e o comprimento; girar mantém o objeto na grade."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Gerar um lugar: o grupo Furtividade, com a mansão do nobre, a fortaleza, a guilda com o cofre, o acampamento inimigo, as casas e ruas e a torre de guarda. Saem de noite, com os guardas nas rondas e nos postos, o alvo da missão, os esconderijos, os cantos de sombra e as entradas escondidas (a porta dos fundos, a janela destrancada, a hera do muro, o bueiro).",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Rondas dos guardas: no painel de um token, o bloco Guarda dá a rota, o cone de visão e o estado (Calmo, Desconfiado, Alerta). “Avançar rondas” (no grupo Mestre, à esquerda, ou no botão direito) faz os guardas andarem e avisa quem foi visto (na sombra, “pode ter notado”; quem está Oculto não é visto). Só o mestre vê as rotas e os cones.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fechadura num clique: clique de novo numa porta ou janela trancada (ou num baú, cofre, cômoda, quadro… já selecionado) e o puzzle da Fechadura nasce no Escudo, do nível da porta, já ligado a ela. “Entregar…” abre o Escudo para mandar à mesa ou a um jogador; resolvido o puzzle, a porta ou o objeto abre sozinho. O mesmo pelo botão “Criar a fechadura com gazuas” no painel.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Gerar um lugar (Furtividade): escolha “Andares de cima” (nenhum, 1 ou 2) e “Porão”. O lugar sai em várias cenas do mesmo tamanho, uma por andar, já ligadas pelas escadas, com guardas em cada andar — o cofre da guilda no porão, a prisão da fortaleza embaixo, o vigia no alto da torre.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "22 objetos novos para as missões: casa nobre (cômoda, penteadeira, escrivaninha, relógio de pé, quadro com cofre atrás, lustre que ilumina), segurança (cofre de parede, sino de alarme, casinha do cão, fio com guizos, grade na janela), entradas e fugas (alçapão, escada de mão, corda com gancho, claraboia, chaminé, cano de esgoto) e serviço (cesto de roupa, carrinho de mão, pilha de lenha, tonel, prateleira de vinho)."
+        }
       ]
     },
     {

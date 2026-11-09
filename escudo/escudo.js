@@ -536,7 +536,7 @@
       if (TCx.ponte.aoIr) TCx.ponte.aoIr(alvo => {
         if (!alvo || !pronto) return;
         if (typeof alvo.sessao === 'string') { aba = 'roteiro'; selS = alvo.sessao; pintar(); }
-        else if (typeof alvo.handout === 'string') { aba = 'handouts'; HO.selecionar(alvo.handout); pintar(); }
+        else if (typeof alvo.handout === 'string') { aba = 'handouts'; HO.selecionar(alvo.handout); pintar(); if (alvo.entregar === true) setTimeout(() => HO.entregarDlg(alvo.handout), 60); }      // (lote 122: a fechadura criada nas Cenas, para entregar)
         else if (alvo.relogios) { aba = 'relogios'; pintar(); }
         else if (typeof alvo.npc === 'string') { aba = 'npcs'; NP.selecionar(alvo.npc); pintar(); }
         else if (typeof alvo.caso === 'string') { aba = 'misterios'; MI.selecionar(alvo.caso); pintar(); }

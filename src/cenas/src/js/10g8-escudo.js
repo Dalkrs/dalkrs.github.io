@@ -92,6 +92,8 @@ const EscudoCenas = (() => {
       const sc = Store.S.scenes[id];
       if (!sc || !Array.isArray(sc.walls)) continue;
       for (const w of sc.walls) if (w.pz && res[w.pz] && !w.pzOk) achadas.push({ sc: id, w: w.id, pz: w.pz, antes: { open: !!w.open, locked: !!w.locked } });
+      // (lote 122) o objeto trancado (o baú, o cofre…): abre
+      for (const t of sc.tokens || []) if (t.prop && t.pz && res[t.pz] && !t.pzOk) achadas.push({ sc: id, t: t.id, pz: t.pz, antes: { est: t.est, pzOk: undefined } });
     }
     if (!achadas.length) return;
     aplicando = true;
@@ -99,21 +101,60 @@ const EscudoCenas = (() => {
       const cenas = [...new Set(achadas.map(a => a.sc))];
       for (const sid of cenas) {
         const daqui = achadas.filter(a => a.sc === sid);
-        if (sid === Store.S.current) Store.tx('Porta aberta pelo puzzle', () => { for (const a of daqui) Store.upd('walls', a.w, { open: true, locked: false, pzOk: 1 }); });
-        else { const sc = Store.S.scenes[sid]; for (const a of daqui) { const w = sc.walls.find(x => x.id === a.w); if (w) Object.assign(w, { open: true, locked: false, pzOk: 1 }); } Persist.scene(sid); }
+        const abreObj = t => Object.assign({ pzOk: 1 }, (Props.estados(t.prop) || []).some(e => e[0] === 'aberto') ? { est: 'aberto' } : null);
+        if (sid === Store.S.current) Store.tx('Porta aberta pelo puzzle', () => { for (const a of daqui) { if (a.w) Store.upd('walls', a.w, { open: true, locked: false, pzOk: 1 }); else { const t = Store.get('tokens', a.t); if (t) Store.upd('tokens', a.t, abreObj(t)); } } });
+        else { const sc = Store.S.scenes[sid]; for (const a of daqui) { if (a.w) { const w = sc.walls.find(x => x.id === a.w); if (w) Object.assign(w, { open: true, locked: false, pzOk: 1 }); } else { const t = sc.tokens.find(x => x.id === a.t); if (t) Object.assign(t, abreObj(t)); } } Persist.scene(sid); }
       }
       UI.renderAll();
-      const nomes = [...new Set(achadas.map(a => nomeDoPuzzle(a.pz)))];
-      UI.toast((achadas.length === 1 ? 'A porta abriu' : achadas.length + ' portas abriram') + ': resolveram “' + nomes.join('”, “') + '”.', {
+      const nomes = [...new Set(achadas.map(a => nomeDoPuzzle(a.pz)))], so = achadas.every(a => a.t);
+      UI.toast((achadas.length === 1 ? (so ? 'Abriu' : 'A porta abriu') : achadas.length + (so ? ' fechaduras abriram' : ' portas abriram')) + ': resolveram “' + nomes.join('”, “') + '”.', {
         long: true, action: 'Desfazer', run: () => {
           for (const sid of cenas) {
             const daqui = achadas.filter(a => a.sc === sid);
-            if (sid === Store.S.current) Store.tx('Fechar a porta de novo', () => { for (const a of daqui) Store.upd('walls', a.w, a.antes); });
-            else { const sc = Store.S.scenes[sid]; if (!sc) continue; for (const a of daqui) { const w = sc.walls.find(x => x.id === a.w); if (w) Object.assign(w, a.antes); } Persist.scene(sid); }
+            if (sid === Store.S.current) Store.tx('Fechar a porta de novo', () => { for (const a of daqui) Store.upd(a.w ? 'walls' : 'tokens', a.w || a.t, a.antes); });
+            else { const sc = Store.S.scenes[sid]; if (!sc) continue; for (const a of daqui) { const o = a.w ? sc.walls.find(x => x.id === a.w) : sc.tokens.find(x => x.id === a.t); if (o) Object.assign(o, a.antes); } Persist.scene(sid); }
           }
           UI.renderAll();
         } });
     } finally { aplicando = false; }
+  }
+
+  /* ---- (lote 122) a fechadura com gazuas, criada da cena ----
+     O segundo clique do mestre numa porta trancada (ou num objeto que tranca: o baú, o cofre, o armário…) cria no Escudo
+     um puzzle "Fechadura" do nível dela (w.fech / t.tranca; sem nível, Médio), liga a porta ou o objeto a ele (pz) e
+     pergunta se entrega agora — o Escudo abre no puzzle, com a janela de entregar. Resolveram: a porta abre e destranca;
+     o objeto abre (o estado Aberto, se ele tem) — com o aviso que tem Desfazer. Já ligado: o clique só oferece entregar. */
+  const NIVEIS = [['facil', 'Fácil'], ['medio', 'Médio'], ['dificil', 'Difícil'], ['extremo', 'Extremo'], ['absoluto', 'Absoluto']];
+  const nomeNivel = v => (NIVEIS.find(n => n[0] === v) || NIVEIS[1])[1];
+  const trancavel = t => !!(t && t.prop && Props.P[t.prop] && Props.P[t.prop].tranca);
+  const novoIdHo = () => 'ho' + Date.now().toString(36).slice(-6) + Math.random().toString(36).slice(2, 6);
+  const existe = id => { const l = D && id ? D.pegar('escudo:handout:' + id) : null; return !!(l && !l.apagado); };
+  function entregarNoEscudo(id) {
+    if (window.TC && TC.ponte && TC.ponte.ir && TC.ponte.ir('escudo', { handout: id, entregar: true })) return true;
+    UI.toast('A entrega é pelo Escudo do mestre (aba Handouts e puzzles).');
+    return false;
+  }
+  // alvo: { c: 'walls' | 'tokens', id }
+  function fechadura(alvo) {
+    if (!isGM() || !alvo) return;
+    const o = Store.get(alvo.c, alvo.id);
+    if (!o) return;
+    const porta = alvo.c === 'walls';
+    if (porta && !(o.k === 'door' || o.k === 'window')) return;
+    if (!porta && !trancavel(o)) return;
+    if (!D || !Nuvem.mestre()) { UI.toast('A fechadura com gazuas é um puzzle do Escudo do mestre: funciona com a mesa aberta.', { long: true }); return; }
+    const oQue = porta ? (o.k === 'window' ? 'a janela' : 'a porta') : (tokName(o) || 'o objeto').toLowerCase();
+    if (o.pz && existe(o.pz) && !resolvido(o.pz)) {
+      UI.confirm('Entregar a fechadura?', `${oQue[0].toUpperCase() + oQue.slice(1)} já abre com “${nomeDoPuzzle(o.pz)}”. Entregar o puzzle agora a quem vai tentar abrir?`, 'Entregar…').then(ok => { if (ok) entregarNoEscudo(o.pz); });
+      return;
+    }
+    const nivel = (porta ? o.fech : o.tranca) || 'medio', sc = Store.scene(), id = novoIdHo();
+    const ordem = D.todas().filter(l => l && !l.apagado && typeof l.id === 'string' && l.id.startsWith('escudo:handout:')).reduce((m, l) => Math.max(m, Number(ehObj(l.dados) && l.dados.ordem) || 0), 0) + 1;
+    const est = window.TC && TC.ponte && TC.ponte.estado, camp = est && est.campanha && !est.campanha.encerrada ? est.campanha.id : null;
+    const nome = ('Fechadura: ' + oQue + ' (' + sc.name + ')').slice(0, 80);
+    D.gravar('escudo:handout:' + id, { dados: { tipo: 'puzzle', nome, ordem, camp, puzzle: { tipo: 'fechadura', nivel, seed: 1 + Math.floor(Math.random() * 2147483000) } }, vis: 'mestre' });
+    Store.tx('Fechadura com gazuas', () => Store.upd(alvo.c, o.id, porta ? { pz: id, pzOk: undefined, locked: true, fech: nivel } : { pz: id, pzOk: undefined, tranca: nivel }));
+    UI.confirm('Fechadura criada', `“${nome}” (${nomeNivel(nivel)}) está no Escudo e ligada a ${oQue}: quando abrirem, ${porta ? 'ela abre e destranca' : 'ele abre'} sozinho. Entregar agora a quem vai tentar?`, 'Entregar…').then(ok => { if (ok) entregarNoEscudo(id); });
   }
 
   /* ---- (lote 32) o NPC na cena ---- */
@@ -156,5 +197,5 @@ const EscudoCenas = (() => {
     });
     if (TC.ponte && TC.ponte.aoMudar) TC.ponte.aoMudar(() => pintarCanto());
   }
-  return { iniciar, vistas, pintarCanto, puzzles, resolvido, aplicarPortas, nomeDoPuzzle, npc };
+  return { iniciar, vistas, pintarCanto, puzzles, resolvido, aplicarPortas, nomeDoPuzzle, npc, fechadura, trancavel, NIVEIS, entregarNoEscudo };
 })();
