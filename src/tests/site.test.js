@@ -161,8 +161,11 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
   // novidades sem conta: um link na janela de entrar abre a lista (sem bolinha nenhuma no botão "Entrar")
   {
     const fs = require('fs'), path = require('path'), { ROOT } = require('./lib');
-    const V = /const VERSAO = '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'))[1];
-    const nov = JSON.parse(fs.readFileSync(path.join(ROOT, 'novidades.json'), 'utf8')).versoes[0];
+    const VC = /const VERSAO = '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'))[1];
+    // (lote 124) os itens "interno" (a administração do site) não aparecem: confere a versão mais nova que tem o que mostrar
+    const todas = JSON.parse(fs.readFileSync(path.join(ROOT, 'novidades.json'), 'utf8')).versoes;
+    const nov0 = todas.map(v => Object.assign({}, v, { itens: v.itens.filter(i => !i.interno) })).find(v => v.itens.length);
+    const nov = nov0, V = nov0.versao, internas = todas.filter(v => v.itens.every(i => i.interno)).map(v => v.versao);
     const { page, ctx } = await t.device({ name: 'novidades', w: 420, h: 820 });
     await page.goto(t.base, { waitUntil: 'load' }); await w(page, 1500);
     ok(await page.locator('#btnConta > .pt').count() === 0 && !(await page.locator('#dlg').evaluate(d => d.open)), 'sem conta, nada de bolinha, e nada abre sozinho');
@@ -175,6 +178,8 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
     const nMestre = nov.itens.filter(i => i.mestre).length;
     ok(!!lista && lista.titulo === nov.titulo && lista.itens === nov.itens.length && lista.mestre === nMestre && lista.quando.includes('versão ' + V),
       '"Novidades do site" mostra a versão ' + V + ' inteira, com ' + nMestre + ' itens marcados para o mestre: ' + JSON.stringify(lista));
+    ok(await page.evaluate(vs => vs.every(v => !document.querySelector(`#nov-lista [data-versao="${v}"]`)) && !/auditoria/i.test(document.getElementById('nov-lista').textContent), internas),
+      'as versões só com itens internos não aparecem (' + internas.join(', ') + '), nem a auditoria; a casca está na ' + VC);
     const cabe = await page.evaluate(() => { const d = document.getElementById('dlg').getBoundingClientRect(), l = document.getElementById('nov-lista'); return d.right <= innerWidth && d.bottom <= innerHeight && l.scrollWidth <= l.clientWidth + 1; });
     ok(cabe, 'a janela cabe na tela estreita, e a lista rola por dentro sem estourar para os lados');
     if (process.env.TC_SCRATCH) await page.screenshot({ path: path.join(process.env.TC_SCRATCH, 'shot-novidades-420.png') });     // (para olhar)

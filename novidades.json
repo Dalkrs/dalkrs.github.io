@@ -1,14 +1,27 @@
 {
-  "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
+  "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
-      "versao": "2026.11.09-4",
+      "versao": "2026.11.09-5",
       "data": "2026-11-09",
-      "titulo": "Auditoria do bloco de notas",
+      "titulo": "Ajustes internos",
       "itens": [
         {
           "tipo": "melhorou",
-          "texto": "Administração do site: na auditoria de uma mesa, o bloco de notas fica só para ler, com os cadernos “Do mestre”, “Do grupo” e “Dos jogadores”, e mostra também os capítulos apagados."
+          "texto": "Ajustes internos do site.",
+          "interno": true
+        }
+      ]
+    },
+    {
+      "versao": "2026.11.09-4",
+      "data": "2026-11-09",
+      "titulo": "Administração do site",
+      "itens": [
+        {
+          "tipo": "melhorou",
+          "texto": "Administração do site: na auditoria de uma mesa, o bloco de notas fica só para ler, com os cadernos “Do mestre”, “Do grupo” e “Dos jogadores”, e mostra também os capítulos apagados.",
+          "interno": true
         }
       ]
     },
