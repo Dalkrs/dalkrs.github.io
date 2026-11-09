@@ -360,6 +360,17 @@
               if (r) avisos.push({ txt: 'Erraram “' + h.nome + '”: o relógio ' + r.r.nome + ' andou (' + r.antes + ' → ' + r.r.cheio + ' de ' + r.r.gomos + ').', antes, consequencia: r.encheu ? r.r.nome + ' encheu' + (r.r.consequencia ? ': ' + r.r.consequencia : '.') : null });
             }
           }
+          // (lote 120) a fechadura: o barulho passou do limite (o alarme), ou a tentativa acabou sem abrir
+          if (jg.tipo === 'fechadura') {
+            const quem0 = (kit.membros() || []).find(m => jg.ultimo && m.usuario_id === jg.ultimo.por);
+            for (const [kk, txt] of [['alarme', jg.estado.alarme === 1 ? 'Barulho! ' + (quem0 ? quem0.nome : 'Alguém') + ' fez barulho demais na fechadura “' + h.nome + '”: quem está por perto ouviu.' : null],
+              ['falhou', typeof jg.estado.falhou === 'string' ? (quem0 ? quem0.nome : 'Alguém') + ' não abriu “' + h.nome + '”: ' + ((E.fechadura && E.fechadura.MOTIVO[jg.estado.falhou]) || 'falhou.') : null]]) {
+              if (!txt || h.resultado.avisados.includes(kk)) continue;
+              const h2 = handout(id); h2.resultado.avisados = h2.resultado.avisados.concat(kk); gravarHandout(id, h2); h.resultado.avisados = h2.resultado.avisados;
+              logar('puzzle', txt, h.camp);
+              avisos.push({ txt });
+            }
+          }
           if (jg.resolvido && !h.resultado.acertoFeito) {
             const ids = [E.PRE.handout + id];
             for (const a of h.liga.acerto) { const ha = handout(a.h); if (ha) ids.push(E.PRE.handout + a.h, E.idPista(a.h, ha.camp), E.idJogo(a.h, ha.camp)); }

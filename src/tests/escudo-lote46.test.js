@@ -45,7 +45,7 @@ function resolverDeslizante(p, n) {
 
   await passo('os grupos novos', async () => {
     const txt = await p.locator('.tipos-pz').textContent();
-    ok(['Palavras', 'Caminhos', 'Lógica', 'Memória e sequência'].every(g => txt.includes(g)) && await p.locator('[data-k^="pz:t:"]').count() === 19, 'os quatro grupos novos e os 19 tipos de puzzle');
+    ok(['Palavras', 'Caminhos', 'Lógica', 'Memória e sequência'].every(g => txt.includes(g)) && await p.locator('[data-k^="pz:t:"]').count() === 20, 'os quatro grupos novos e os 20 tipos de puzzle (com a fechadura, do lote 120)');
   });
 
   await passo('palavras cruzadas', async () => {

@@ -408,7 +408,7 @@
       liga: { acerto: normAcerto(lg.acerto), erro },
       entregue: ent && instante(ent.em) && normPara(ent.para) ? { para: normPara(ent.para), em: ent.em, ver: int(ent.ver, 1, 1, 1e9) } : null,
       ver: int(d.ver, 1, 1, 1e9),
-      resultado: { acertoFeito: res.acertoFeito === true, errosVistos: int(res.errosVistos, 0, 0, 1e6) },
+      resultado: { acertoFeito: res.acertoFeito === true, errosVistos: int(res.errosVistos, 0, 0, 1e6), avisados: (Array.isArray(res.avisados) ? res.avisados : []).filter(x => x === 'alarme' || x === 'falhou').slice(0, 2) },   // (lote 120) os avisos da fechadura já dados
       ordem: int(d.ordem, 0, -1e6, 1e6),
     };
   }

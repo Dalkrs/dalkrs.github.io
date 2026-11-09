@@ -218,7 +218,7 @@
       const partes = [
         h('div', { class: 'tipos-pz' }, Object.keys(grupos).map(g => h('div', { class: 'grp' }, h('span', { text: g }),
           h('div', { class: 'seg', role: 'group', 'aria-label': g }, grupos[g].map(t => h('button', { type: 'button', 'data-k': 'pz:t:' + t, 'aria-pressed': String(pz.tipo === t), title: E.PUZZLES[t].desc, onclick: () => { if (pz.tipo !== t) tipoNovo(t); } }, E.PUZZLES[t].nome)))))),
-        h('div', { class: 'row' }, h('div', { class: 'seg', role: 'group', 'aria-label': 'Dificuldade' }, Object.keys(E.DIF).map(d => h('button', { type: 'button', 'data-k': 'pz:d:' + d, 'aria-pressed': String(pz.dif === d),
+        pz.tipo === 'fechadura' ? null : h('div', { class: 'row' }, h('div', { class: 'seg', role: 'group', 'aria-label': 'Dificuldade' }, Object.keys(E.DIF).map(d => h('button', { type: 'button', 'data-k': 'pz:d:' + d, 'aria-pressed': String(pz.dif === d),
           onclick: () => { if (pz.dif !== d) trocarPuzzle(hid, 'mudar a dificuldade', y => { y.puzzle.dif = d; if (y.puzzle.tipo === 'charada' && !y.puzzle.propria) y.puzzle.idx = E.sortearCharada(d, E.mulberry(E.novaSemente())); }); } }, E.DIF[d]))),
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:sortear', title: 'Outro puzzle do mesmo tipo e da mesma dificuldade', onclick: () => trocarPuzzle(hid, 'sortear outro puzzle', y => { y.puzzle.seed = E.novaSemente(); if (y.puzzle.tipo === 'charada' && !y.puzzle.propria) y.puzzle.idx = E.sortearCharada(y.puzzle.dif, E.mulberry(E.novaSemente()), y.puzzle.idx); }) }, 'Sortear outro')),
       ];
@@ -279,8 +279,29 @@
           : h('button', { type: 'button', class: 'btn pri', 'data-k': 'h:img', onclick: () => escolherImagem(hid) }, 'Escolher a imagem'));
         if (pz.modo === 'imagem' && !x.img) partes.push(h('p', { class: 'ajuda', text: 'Sem a imagem, as peças saem com runas.' }));
       }
+      // (lote 120) a fechadura: o nível, o jeito, o atributo que ajuda, as gazuas e as consequências
+      if (pz.tipo === 'fechadura' && E.fechadura) {
+        const F = E.fechadura, n = F.nivDe(pz.nivel);
+        partes.push(h('div', { class: 'seg', role: 'group', 'aria-label': 'Nível da fechadura' }, F.NIVEIS.map(([v, nm]) => h('button', { type: 'button', 'data-k': 'pz:niv:' + v, 'aria-pressed': String(pz.nivel === v),
+          onclick: () => { if (pz.nivel !== v) trocarPuzzle(hid, 'mudar o nível da fechadura', y => { const gPad = y.puzzle.gazuas === F.T.gazuas[F.nivDe(y.puzzle.nivel)]; y.puzzle.nivel = v; if (gPad) y.puzzle.gazuas = F.T.gazuas[F.nivDe(v)]; }); } }, nm))));
+        partes.push(h('div', { class: 'row' }, h('div', { class: 'seg', role: 'group', 'aria-label': 'O jeito de abrir' }, F.ESTILOS.map(([v, nm]) => h('button', { type: 'button', 'data-k': 'pz:est:' + v, 'aria-pressed': String(pz.estilo === v),
+          onclick: () => { if (pz.estilo !== v) trocarPuzzle(hid, 'mudar o jeito de abrir', y => { y.puzzle.estilo = v; }); } }, nm))),
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:sortear', title: 'Outra fechadura do mesmo nível (outro ponto certo, outro ritmo dos pinos)', onclick: () => trocarPuzzle(hid, 'sortear outra fechadura', y => { y.puzzle.seed = E.novaSemente(); }) }, 'Sortear outra')));
+        if (m) partes.push(h('p', { class: 'ajuda', text: pz.estilo === 'sorteio' ? 'Saiu: ' + (m.pub.estilo === 'girar' ? 'girar a gazua' : 'pinos (' + m.pub.pinos + ')') + '. “Sortear outra” pode trocar.' : '' }));
+        partes.push(h('div', { class: 'row' },
+          h('label', { class: 'field' }, h('span', { text: 'O atributo que ajuda (da ficha de quem abre)' }),
+            h('select', { class: 'in', 'data-k': 'pz:atr', value: pz.atr, onchange: ev => { const v = ev.target.value; trocarPuzzle(hid, 'mudar o atributo da fechadura', y => { y.puzzle.atr = v; }); } },
+              F.ATRS.map(([v, nm]) => h('option', { value: v, text: nm })))),
+          h('label', { class: 'field' }, h('span', { text: 'Gazuas' }),
+            h('input', { class: 'in', type: 'number', min: 1, max: 30, 'data-k': 'pz:gaz', value: pz.gazuas, disabled: !pz.cons.quebra,
+              onchange: ev => { const v = Math.round(Number(ev.target.value)); if (!(v >= 1 && v <= 30)) { toast('De 1 a 30 gazuas.'); k.pintar(); return; } trocarPuzzle(hid, 'mudar as gazuas', y => { y.puzzle.gazuas = v; }); } }))));
+        partes.push(h('div', { class: 'cons-fch' }, h('span', { class: 'sub', text: 'O que acontece ao errar' }), F.CONS.map(([kk, nm]) => h('label', { class: 'chk' },
+          h('input', { type: 'checkbox', 'data-k': 'pz:cons:' + kk, checked: !!pz.cons[kk], onchange: ev => { const on = ev.target.checked; trocarPuzzle(hid, 'mudar as consequências', y => { y.puzzle.cons = Object.assign({}, y.puzzle.cons, { [kk]: on }); }); } }),
+          nm + (kk === 'tempo' ? ' (' + F.T.tempo[n] + 's)' : kk === 'barulho' ? ' (o alarme toca com ' + F.T.barulho[n] + ' de barulho: você é avisado)' : kk === 'emperra' ? ' (com ' + F.T.emperra[n] + ' erros)' : '')))));
+        partes.push(h('p', { class: 'ajuda', text: 'Cada gazua quebrada conta um erro (o relógio ligado ao erro anda). Os outros jogadores só veem o resultado, na Mesa ao vivo.' }));
+      }
       // (lote 46) o cronômetro: vale para todos os puzzles
-      partes.push(h('label', { class: 'field' }, h('span', { text: 'Cronômetro' }),
+      if (pz.tipo !== 'fechadura') partes.push(h('label', { class: 'field' }, h('span', { text: 'Cronômetro' }),
         h('select', { class: 'in', 'data-k': 'pz:tempo', value: String(pz.tempo || 0), onchange: ev => { const v = Number(ev.target.value); trocarPuzzle(hid, 'mudar o cronômetro', y => { if (v) y.puzzle.tempo = v; else delete y.puzzle.tempo; }); } },
           E.TEMPOS.map(v => h('option', { value: String(v), text: v ? v + (v === 1 ? ' minuto' : ' minutos') : 'Sem tempo' })))));
       if (pz.tempo) partes.push(h('p', { class: 'ajuda', text: 'O tempo começa quando você entrega. Acabou, conta um erro e o puzzle trava até você dar mais tempo (em “Com os jogadores”).' }));

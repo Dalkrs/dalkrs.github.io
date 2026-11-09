@@ -26,6 +26,7 @@
   let vistas = {};
   const lerVistas = () => { try { const v = JSON.parse(guarda.ler(chaveVistas()) || '{}'); vistas = v && typeof v === 'object' ? v : {}; } catch (e) { vistas = {}; } };
   const marcarVista = x => { if ((vistas[x.id] || 0) >= x.rev) return; vistas[x.id] = x.rev; guarda.gravar(chaveVistas(), j(vistas)); };
+  const meuNome = () => { const m = st && (st.membros || []).find(x => (x.id || x.usuario_id) === st.eu); return (m && m.nome) || 'Alguém'; };
   const nomeDe = uid => { const m = st && (st.membros || []).find(x => (x.id || x.usuario_id) === uid); return m ? (uid === st.eu ? m.nome + ' (você)' : m.nome) : ''; };
 
   function pistas() {
@@ -48,7 +49,7 @@
     return jg;
   }
   const nova = x => (vistas[x.id] || 0) < x.rev;
-  const ERRO = { charada: 'Não é isso.', cadeado: 'O cadeado não abriu.', placas: 'As placas afundaram e voltaram: a ordem não era essa.' };
+  const ERRO = { fechadura: 'A gazua quebrou!', charada: 'Não é isso.', cadeado: 'O cadeado não abriu.', placas: 'As placas afundaram e voltaram: a ordem não era essa.' };
   function jogar(x, op, mudas, prova) {
     const jid = jogoIdDe(x.id);
     const p = pend[jid] || (pend[jid] = { mudas: {}, n: 0 });
@@ -59,8 +60,9 @@
     return TC.ponte.escudo('jogar', { id: jid, op, mudas, prova }).then(r => {
       fim(); pintar();
       if (op === 'acertar') {
-        toast('Resolvido!');
-        TC.ponte.publicar('pistas', { titulo: 'Puzzle resolvido', resumo: '“' + x.p.nome + '” foi resolvido.' });
+        const jgR = jogoDe(x.id), ehFch = jgR && jgR.tipo === 'fechadura';
+        toast(ehFch ? 'A fechadura abriu!' : 'Resolvido!');
+        TC.ponte.publicar('pistas', ehFch ? { titulo: 'Fechadura aberta', resumo: meuNome() + ' abriu “' + x.p.nome + '”.' } : { titulo: 'Puzzle resolvido', resumo: '“' + x.p.nome + '” foi resolvido.' });
       } else if (op === 'errar') { const jg = jogoDe(x.id); toast(ERRO[jg && jg.tipo] || 'Não deu.'); }
       return r;
     }, e => { delete pend[jid]; pintar(); throw e; });
@@ -109,7 +111,9 @@
       const temConteudo = x.p.img || x.p.partes.some(p => typeof p === 'number' || String(p).trim());
       det = h('section', { class: 'det', 'aria-label': x.p.nome },
         x.p.tipo !== 'puzzle' || temConteudo ? PUI.handout(x.p, { grande: true, aoAmpliar: ampliar }) : h('h2', { class: 'ho-tit', style: { textAlign: 'center' }, text: x.p.nome }),
-        x.p.tipo === 'puzzle' ? (jg ? PUI.puzzle(jg, { chave: 'pz:', eu: st && st.eu, quem: nomeDe, sel: selPeca, escolher: i => { selPeca = i; pintar(); }, aviso: toast, jogar: (op, mudas, prova) => jogar(x, op, mudas, prova) })
+        x.p.tipo === 'puzzle' ? (jg ? PUI.puzzle(jg, { chave: 'pz:', eu: st && st.eu, quem: nomeDe, sel: selPeca, escolher: i => { selPeca = i; pintar(); }, aviso: toast, jogar: (op, mudas, prova) => jogar(x, op, mudas, prova),
+          // (lote 120) a fechadura que não abriu: a mesa fica sabendo (só o resultado)
+          anunciar: (k, motivo) => { if (k === 'falhou') TC.ponte.publicar('pistas', { titulo: 'Fechadura', resumo: meuNome() + ' não abriu “' + x.p.nome + '”. ' + (motivo || '') }); } })
           : h('p', { class: 'ajuda', text: 'O puzzle está chegando…' })) : null);
     }
     morphEm($('meio'), [h('div', { class: 'cols' }, lista, det || h('div', { class: 'vazio', style: { margin: '30px auto' } }, h('p', { text: 'Escolha uma pista na lista.' })))]);

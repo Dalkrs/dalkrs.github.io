@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre.",
   "versoes": [
     {
+      "versao": "2026.11.08-16",
+      "data": "2026-11-08",
+      "titulo": "Fechaduras com gazuas",
+      "itens": [
+        { "tipo": "novo", "texto": "Puzzle novo: Fechadura. Dois jeitos de abrir: girar a gazua até o ponto certo, ou travar os pinos no alto. Cinco níveis: Fácil, Médio, Difícil, Extremo e Absoluto. O atributo da sua ficha ajuda." },
+        { "tipo": "novo", "texto": "No Escudo do mestre (Handouts e puzzles): o nível, o jeito (ou sorteio), o atributo que ajuda, quantas gazuas e as consequências do erro: a gazua quebra, tempo limite, barulho com alarme (o mestre é avisado) e a fechadura emperra.", "mestre": true },
+        { "tipo": "novo", "texto": "Só quem abre joga; a Mesa ao vivo mostra o resultado (abriu ou não abriu)." }
+      ]
+    },
+    {
       "versao": "2026.11.08-15",
       "data": "2026-11-08",
       "titulo": "Altura na ficha",

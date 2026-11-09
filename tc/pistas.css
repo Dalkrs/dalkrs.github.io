@@ -215,3 +215,37 @@
 .sq-r svg { width: 34px; height: 34px; }
 .sq-r.aceso, .sq-r:active { background: radial-gradient(circle, #f6d17a, #c0861f); color: #3a2405; box-shadow: 0 0 16px rgba(246, 209, 122, .6); border-color: #f6d17a; }
 @media (prefers-reduced-motion: reduce) { .bl-p, .sq-r { transition: none; } }
+/* (lote 120) a fechadura: girar a gazua ou travar os pinos */
+.fch { display: grid; gap: 10px; justify-items: center; }
+.fch-info { font: 600 12.5px/1.4 var(--mono, ui-monospace, monospace); color: #a6aec0; text-align: center; }
+.fch-palco { position: relative; width: min(100%, 420px); padding: 14px; border-radius: 14px; background: radial-gradient(circle at 50% 40%, #2a2f3c, #12151c 75%); border: 1px solid #343b4c; outline: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+.fch-palco:focus-visible { box-shadow: 0 0 0 2px #e6ab4f; }
+.fch-svg { display: block; width: 100%; height: auto; }
+.fch-arco { fill: none; stroke: #3a4152; stroke-width: 2; stroke-dasharray: 3 5; }
+.fch-marca { stroke: #4b5468; stroke-width: 2; }
+.fch-cil-c { fill: #8a6b2e; stroke: #c99a3e; stroke-width: 3; }
+.fch-cil-d { fill: #6f5420; stroke: #a07a2c; stroke-width: 1.5; }
+.fch-buraco { fill: #12151c; }
+.fch-gaz-l { fill: none; stroke: #c9cfdb; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.fch-gaz-c { fill: #59627a; stroke: #8b94a8; }
+.fch-forca-f { fill: #252a36; }
+.fch-forca { fill: #e0675d; }
+.fch-pinos { display: grid; gap: 8px; height: 170px; }
+.fch-col { position: relative; border: 1px solid #343b4c; border-radius: 10px; background: linear-gradient(#1b1f29, #10131a); overflow: hidden; padding: 0; cursor: pointer; }
+.fch-col.vez { border-color: #e6ab4f; box-shadow: inset 0 0 0 1px #e6ab4f; }
+.fch-col:disabled { cursor: default; }
+.fch-alvo { position: absolute; left: 6px; right: 6px; top: 18px; height: 26px; border-top: 2px dashed #6fbf8f; opacity: .55; }
+.fch-pino { position: absolute; left: 50%; bottom: 26px; width: 22px; height: 60px; margin-left: -11px; border-radius: 6px 6px 3px 3px; background: linear-gradient(90deg, #a07a2c, #e0b45a, #a07a2c); will-change: transform; }
+.fch-mola { position: absolute; left: 50%; bottom: 0; width: 10px; margin-left: -5px; height: 20px; background: repeating-linear-gradient(#5a6276 0 3px, transparent 3px 6px); }
+.fch-col.travado .fch-pino { background: linear-gradient(90deg, #3f8a5f, #7fd3a0, #3f8a5f); }
+.fch-msg { min-height: 1.4em; margin: 0; font-weight: 700; text-align: center; }
+.fch-msg.ok { color: #6fbf8f; }
+.fch-msg.falhou { color: #f0786e; }
+.fch.alarme .fch-palco { box-shadow: 0 0 0 2px #f0786e, 0 0 22px rgba(240, 120, 110, .35); }
+.fch.aberta .fch-palco { box-shadow: 0 0 0 2px #6fbf8f, 0 0 22px rgba(111, 191, 143, .35); }
+.fch-bts { display: flex; gap: 8px; }
+.fch-girar { touch-action: none; user-select: none; -webkit-user-select: none; min-width: 180px; }
+.fch-ajuda { margin: 0; max-width: 460px; font-size: 13px; color: #a6aec0; text-align: center; }
+.fch-teste { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #a6aec0; }
+.fch-teste .in { width: 90px; }
+.cons-fch { display: grid; gap: 6px; }

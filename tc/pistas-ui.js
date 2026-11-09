@@ -55,7 +55,7 @@
     const pr = E.prazo && E.prazo(jg);
     if (pr && !jg.resolvido) linhas.push(h('div', { class: 'pz-tempo' + (pr.acabou ? ' acabou' : ''), 'data-pz-fim': String(pr.acabou ? 0 : pr.fim), 'data-k': ctx.chave + 'tempo', text: textoTempo(pr.acabou ? 0 : pr.resta) }));
     return h('div', { class: 'pz-cab' },
-      h('div', { class: 'pz-tipo' }, h('b', { text: E.PUZZLES[jg.tipo].nome }), h('span', { class: 'pz-dif', text: E.DIF[jg.dif] })),
+      h('div', { class: 'pz-tipo' }, h('b', { text: E.PUZZLES[jg.tipo].nome }), h('span', { class: 'pz-dif', text: jg.tipo === 'fechadura' && E.fechadura && jg.pub ? E.fechadura.NIVEIS[E.fechadura.nivDe(jg.pub.nivel)][1] : E.DIF[jg.dif] })),
       h('p', { class: 'pz-desc', text: E.PUZZLES[jg.tipo].desc }), linhas);
   }
   const textoTempo = ms => (ms <= 0 ? 'O tempo acabou. O mestre decide se dá mais tempo.' : 'Falta ' + Math.floor(ms / 60000) + ':' + String(Math.floor((ms % 60000) / 1000)).padStart(2, '0'));

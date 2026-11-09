@@ -57,7 +57,7 @@
       const p = E.normPista(l.dados);
       const c = h('div', { class: 'dl pista-janela', 'data-k': 'pista-janela' },
         h('div', { class: 'pj-cab' }, h('span', { class: 'pj-sobre', text: 'O mestre entregou uma pista' })),
-        p.tipo === 'puzzle' ? h('div', { class: 'pj-pz' }, h('h2', { text: p.nome }), h('p', { text: 'Um puzzle' + (p.puzzle ? ': ' + p.puzzle.nome + ' (' + E.DIF[p.puzzle.dif].toLowerCase() + ')' : '') + '. Resolvam juntos, na aba Pistas.' }),
+        p.tipo === 'puzzle' ? h('div', { class: 'pj-pz' }, h('h2', { text: p.nome }), h('p', { text: 'Um puzzle' + (p.puzzle ? ': ' + p.puzzle.nome + ' (' + E.DIF[p.puzzle.dif].toLowerCase() + ')' : '') + (p.puzzle && p.puzzle.tipo === 'fechadura' ? '. Abra na aba Pistas.' : '. Resolvam juntos, na aba Pistas.') }),
           p.partes.some(x => typeof x === 'number' || String(x).trim()) ? PUI.handout(Object.assign({}, p, { img: null }), {}) : null) : PUI.handout(p, { grande: true }),
         h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', 'data-k': 'pj:fechar', text: 'Fechar', onclick: () => k.fecharJanela() }),
           h('button', { type: 'button', class: 'btn pri', 'data-k': 'pj:abrir', text: p.tipo === 'puzzle' ? 'Resolver agora' : 'Abrir nas Pistas', onclick: () => { k.fecharJanela(); k.irPara('pistas', { pista: l.id }); } })));
