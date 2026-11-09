@@ -525,12 +525,12 @@ Object.assign(ICONES, {
 const POST_SAM = { vento: 'Postura do Vento', trovao: 'Postura do Trovão', petalas: 'Postura das Pétalas' };
 classe({ id: 'samurai', arvore: 'Samurai', barra: 'Postura', cor: '#D9A441', glifo: '侍', inicio: 4,
   icone: '<circle cx="12" cy="12" r="8.6"/><path d="M12 7.4C13.7 9.2 13.7 14.8 12 16.6C10.3 14.8 10.3 9.2 12 7.4Z"/>',
-  patamares: [[5, 'Lâmina Desperta', 'a postura dá o seu dom'], [10, 'Respiração Certa', 'trocar de postura não gasta movimento'], [15, 'Kiai', 'o próximo golpe tem +1 no número do efeito e não pode ser aparado']],
+  patamares: [[5, 'Lâmina Desperta', 'a postura dá o seu dom'], [10, 'Respiração Certa', 'trocar de postura não gasta movimento'], [15, 'Kiai', 'o próximo golpe tem +1 tier no efeito e não pode ser aparado']],
   risco: ['Lâmina Transbordante', 'inimigos com escolha atacam você'],
   est: () => ({ postura: null, trocou: false }),
   marcas: () => [{ k: 'vento', glifo: '風', rotulo: 'Postura do Vento', dica: '+1 cédula; enche andando e atacando' },
-                 { k: 'trovao', glifo: '雷', rotulo: 'Postura do Trovão', dica: 'Dano +1 com duas mãos; enche atacando parado' },
-                 { k: 'petalas', glifo: '花', rotulo: 'Postura das Pétalas', dica: 'Defesa +1 a você e a um aliado colado; enche protegendo' },
+                 { k: 'trovao', glifo: '雷', rotulo: 'Postura do Trovão', dica: '+1 tier de Dano com duas mãos; enche atacando parado' },
+                 { k: 'petalas', glifo: '花', rotulo: 'Postura das Pétalas', dica: 'Defesa tier I a você e a um aliado colado; enche protegendo' },
                  { k: 'sombras', glifo: '影', rotulo: 'Postura das Sombras', trava: true }],
   marcasOpc: { raio: 54, r: 16, inicio: -45 },
   ativo: (s, k) => s.postura === k,
@@ -551,7 +551,7 @@ classe({ id: 'ninja', arvore: 'Ninja', barra: 'Jutsu', cor: '#8C9BE0', glifo: '�
   patamares: [[5, 'Passo Mudo', 'andar não te revela para quem está em alerta 0, 1 ou 2'], [10, 'Olhos de Noite', 'você vê no escuro e na fumaça'], [15, 'Selo Completo', 'o próximo jutsu sai sem gastar a ação']],
   risco: ['Sombra Cheia', 'você aparece como silhueta e não se esconde até gastar'],
   est: () => ({ escondido: false, selos: 0 }),
-  marcas: s => [{ k: 'esc', glifo: '隠', rotulo: s.escondido ? 'Escondido (toque para aparecer)' : 'Ficar Escondido', dica: 'golpes com Dano +1 enquanto ninguém te vê' },
+  marcas: s => [{ k: 'esc', glifo: '隠', rotulo: s.escondido ? 'Escondido (toque para aparecer)' : 'Ficar Escondido', dica: 'golpes com +1 tier de Dano enquanto ninguém te vê' },
                 { k: 'selo', glifo: '印', rotulo: 'Selos de mão', dica: 'no lugar de andar: +3 e o próximo jutsu ganha o bônus do ramo' }],
   marcasOpc: { raio: 56, r: 17, inicio: -90 },
   ativo: (s, k) => (k === 'esc' && s.escondido) || (k === 'selo' && s.selos > 0),
@@ -560,8 +560,8 @@ classe({ id: 'ninja', arvore: 'Ninja', barra: 'Jutsu', cor: '#8C9BE0', glifo: '�
     if (k === 'esc'){ s.escondido = !s.escondido; ctx.log(`${ctx.nome} ${s.escondido ? 'some nas sombras' : 'aparece'}.`); }
     if (k === 'selo'){ if (s.selos) return ctx.aviso('Os selos já estão feitos neste turno.'); s.selos = 1; ctx.ganhar(3, 'selos de mão'); }
   },
-  linhaEstado: s => `${s.escondido ? '<b>Escondido</b> <em>· Dano +1</em>' : '<em>À vista.</em>'}${s.selos ? ' · <b>Selos feitos</b>' : ''}`,
-  ganhos: [{ c: 'Atacou sem ser visto', t: 'Escondido, pelas costas ou de um flanco', v: 3 }, { c: 'Pôs Sangramento ou Veneno', t: 'Cada camada ou dose', v: 1, max: 3 }],
+  linhaEstado: s => `${s.escondido ? '<b>Escondido</b> <em>· +1 tier de Dano</em>' : '<em>À vista.</em>'}${s.selos ? ' · <b>Selos feitos</b>' : ''}`,
+  ganhos: [{ c: 'Atacou sem ser visto', t: 'Escondido, pelas costas ou de um flanco', v: 3 }, { c: 'Pôs Sangramento ou Veneno', t: 'Cada camada de Sangramento ou golpe com veneno', v: 1, max: 3 }],
   aoComecarTurno(s){ s.selos = 0; },
   selo: s => (s.escondido ? '隠' : null),
   mapa: { 'Bomba de Fumaça': AREA('fumaca', 2, 2), 'Clone de Sombra': TOK('Clone de Sombra', '#3A3F55', { turnos: 2 }), 'Exército de Sombras': TOK('Sombra', '#3A3F55', { turnos: 2, n: 4 }),
@@ -570,10 +570,10 @@ classe({ id: 'ninja', arvore: 'Ninja', barra: 'Jutsu', cor: '#8C9BE0', glifo: '�
 
 /* ---------------- Bárbaro: a Guarda Aberta ---------------- */
 classe({ id: 'barbaro', arvore: 'Bárbaro', barra: 'Sangue Quente', cor: '#D9503F', glifo: '怒', inicio: 4,
-  patamares: [[5, 'Pele Vermelha', 'Dano +1 corpo a corpo'], [10, 'Coração de Tambor', 'medo e encanto contra você têm -2'], [15, 'Cabeça Quente', 'pode abrir a guarda duas vezes no turno']],
-  risco: ['Fervura', 'no fim do turno, Dano 1 em você se não gastar'],
+  patamares: [[5, 'Pele Vermelha', '+1 tier de Dano corpo a corpo'], [10, 'Coração de Tambor', 'medo e encanto contra você têm -2'], [15, 'Cabeça Quente', 'pode abrir a guarda duas vezes no turno']],
+  risco: ['Fervura', 'no fim do turno, Dano tier I em você se não gastar'],
   est: () => ({ guarda: false, abriu: 0 }),
-  marcas: s => [{ k: 'guarda', glifo: s.guarda ? '開' : '閉', rotulo: s.guarda ? 'Fechar a guarda' : 'Abrir a guarda', dica: 'aberta: Defesa -2, golpes com Dano +1, +3 de barra ao abrir' }],
+  marcas: s => [{ k: 'guarda', glifo: s.guarda ? '開' : '閉', rotulo: s.guarda ? 'Fechar a guarda' : 'Abrir a guarda', dica: 'aberta: Defesa -tier II, golpes com +1 tier de Dano, +3 de barra ao abrir' }],
   marcasOpc: { raio: 0, r: 30 },
   ativo: (s, k) => k === 'guarda' && s.guarda,
   arte(){ return `<path d="M110 40 L132 80 L120 80 L140 120 L122 120 L110 170 L98 120 L80 120 L100 80 L88 80 Z" fill="#ffffff12" stroke="#ffffff22"/>`; },
@@ -584,10 +584,10 @@ classe({ id: 'barbaro', arvore: 'Bárbaro', barra: 'Sangue Quente', cor: '#D9503
     if (s.abriu >= lim) return ctx.aviso('A guarda só abre no começo do turno (duas vezes com 15 ou mais).');
     s.guarda = true; s.abriu++; ctx.ganhar(3, 'abriu a guarda');
   },
-  linhaEstado: s => s.guarda ? '<b>Guarda aberta</b> <em>· Defesa -2, Dano +1</em>' : '<em>Guarda fechada.</em>',
+  linhaEstado: s => s.guarda ? '<b>Guarda aberta</b> <em>· Defesa -tier II, +1 tier de Dano</em>' : '<em>Guarda fechada.</em>',
   ganhos: [{ c: 'Levou golpe aberto', t: 'Levou um golpe com a guarda aberta', v: 2, bloq: s => !s.guarda && 'Só com a guarda aberta.' }, { c: 'Derrubou ou empurrou', t: 'Um golpe seu derrubou ou empurrou alguém', v: 1 }],
   aoComecarTurno(s){ s.abriu = 0; },
-  aoTerminarTurno(s, ctx){ if (ctx.v >= 20) ctx.log(`${ctx.nome} ferve: Dano 1 (Fervura).`); },
+  aoTerminarTurno(s, ctx){ if (ctx.v >= 20) ctx.log(`${ctx.nome} ferve: Dano tier I (Fervura).`); },
   selo: s => (s.guarda ? '開' : null),
   mapa: { 'Golpe no Chão': AREA('terra', 2, 1) }
 });
@@ -599,7 +599,7 @@ classe({ id: 'espadachim', arvore: 'Espadachim', barra: 'Ímpeto', cor: '#7FA7D9
   est: () => ({ escolhido: '' }),
   arte(s){ return `<path d="M64 156 L156 64" stroke="#C9C3B5" stroke-width="5" stroke-linecap="round"/><path d="M76 132 L88 144" stroke="${this.cor}" stroke-width="7" stroke-linecap="round"/>`
     + (s.escolhido ? KIT.texto(110, 176, esc(s.escolhido.slice(0, 16)), { tam: 11, cor: this.cor }) : ''); },
-  linhaEstado: s => s.escolhido ? `<b>Escolhido: ${esc(s.escolhido)}</b> <em>· Defesa +1 contra ele</em>` : '<em>Sem Escolhido: aponte a lâmina para um inimigo.</em>',
+  linhaEstado: s => s.escolhido ? `<b>Escolhido: ${esc(s.escolhido)}</b> <em>· Defesa tier I contra ele</em>` : '<em>Sem Escolhido: aponte a lâmina para um inimigo.</em>',
   acoes(s, ctx){ return escolheAlvo('Escolhido', 'esc', s.escolhido, ctx.ator.alvos); },
   acao(s, a, ctx, val){ if (a === 'esc' && val !== s.escolhido){ s.escolhido = val || ''; if (val) ctx.log(`${ctx.nome} aponta a lâmina para ${val}: o Escolhido.`); } },
   ganhos: [{ c: 'Acertou o Escolhido', v: 3 }, { c: 'Errou você por pouco', t: 'O atacante errou por 2 ou menos', v: 2 }, { c: 'Finta, desarme ou proteção', v: 1 },
@@ -610,16 +610,16 @@ classe({ id: 'espadachim', arvore: 'Espadachim', barra: 'Ímpeto', cor: '#7FA7D9
 /* ---------------- Monge: Montanha, Rio e Chama ---------------- */
 const POST_MON = { montanha: 'Postura da Montanha', rio: 'Postura do Rio', chama: 'Postura da Chama' };
 classe({ id: 'monge', arvore: 'Monge', barra: 'Chi', cor: '#7FB7A8', glifo: '気', inicio: 5,
-  patamares: [[5, 'Corpo Leve', '+1 cédula, anda por paredes curtas'], [10, 'Mente Calma', 'quem tenta controlar a sua mente tem -2 no teste'], [15, 'Centro', 'a próxima troca de postura cura 2']],
+  patamares: [[5, 'Corpo Leve', '+1 cédula, anda por paredes curtas'], [10, 'Mente Calma', 'quem tenta controlar a sua mente tem -2 no teste'], [15, 'Centro', 'a próxima troca de postura cura tier II']],
   risco: ['Transbordar', 'o chi brilha e você não se esconde'],
   est: () => ({ postura: null, trocou: false }),
-  marcas: () => [{ k: 'montanha', glifo: '山', rotulo: POST_MON.montanha, dica: 'aguenta: Defesa +1, Vigor +2' }, { k: 'rio', glifo: '川', rotulo: POST_MON.rio, dica: 'desvia e devolve: Esquiva +1' }, { k: 'chama', glifo: '火', rotulo: POST_MON.chama, dica: 'o chi sai do corpo: golpes de luz' }],
+  marcas: () => [{ k: 'montanha', glifo: '山', rotulo: POST_MON.montanha, dica: 'aguenta: Defesa tier I, Vigor +2' }, { k: 'rio', glifo: '川', rotulo: POST_MON.rio, dica: 'desvia e devolve: Esquiva +1' }, { k: 'chama', glifo: '火', rotulo: POST_MON.chama, dica: 'o chi sai do corpo: golpes de luz' }],
   marcasOpc: { raio: 54, r: 17, inicio: 0 },
   ativo: (s, k) => s.postura === k,
   arte(s){ return glifoCentro(this, '気', { tam: 30, dy: 10 }); },
-  tocar(s, k, ctx){ const cura = ctx.v >= 15 && s.postura && s.postura !== k && !s.trocou; trocarUmaVez(s, 'postura', k, ctx, POST_MON, 0); if (cura) ctx.log(`${ctx.nome}: Centro, Cura 2 na troca.`); },
+  tocar(s, k, ctx){ const cura = ctx.v >= 15 && s.postura && s.postura !== k && !s.trocou; trocarUmaVez(s, 'postura', k, ctx, POST_MON, 0); if (cura) ctx.log(`${ctx.nome}: Centro, Cura tier II na troca.`); },
   linhaEstado: s => s.postura ? `<b>${POST_MON[s.postura]}</b>${s.trocou ? ' <em>· já trocou nesta rodada</em>' : ' <em>· trocar é uma reação de graça</em>'}` : '<em>Fora de postura.</em>',
-  ganhos: [{ c: 'Golpe errou você', t: 'Um golpe errou você ou você desviou', v: 3 }, { c: 'Devolveu o golpe', t: 'Acertou quem te atacou desde o seu último turno', v: 2 }, { c: 'Meditou o turno', t: 'Passou o turno só se defendendo (Defesa +2)', v: 4, max: 1 }],
+  ganhos: [{ c: 'Golpe errou você', t: 'Um golpe errou você ou você desviou', v: 3 }, { c: 'Devolveu o golpe', t: 'Acertou quem te atacou desde o seu último turno', v: 2 }, { c: 'Meditou o turno', t: 'Passou o turno só se defendendo (Defesa tier II)', v: 4, max: 1 }],
   aoComecarTurno(s){ s.trocou = false; },
   aoUsar(s, h, ctx){ const k = /Postura da Montanha/.test(h.nome) ? 'montanha' : /Postura do Rio/.test(h.nome) ? 'rio' : /Postura da Chama/.test(h.nome) ? 'chama' : null; if (k){ s.postura = k; ctx.log(`${ctx.nome} entrou na ${POST_MON[k]}.`); } },
   selo: s => (s.postura ? { montanha: '山', rio: '川', chama: '火' }[s.postura] : null),
@@ -629,7 +629,7 @@ classe({ id: 'monge', arvore: 'Monge', barra: 'Chi', cor: '#7FB7A8', glifo: '気
 /* ---------------- Aégis: o Voto ---------------- */
 const VOTOS = { proteger: 'Proteger', recuar: 'Não Recuar', passa: 'Ninguém Passa' };
 classe({ id: 'aegis', arvore: 'Aégis', barra: 'Juramento', cor: '#D9B44A', glifo: '盾', inicio: 5,
-  patamares: [[5, 'Selo de Calastiel', 'o Protegido tem Defesa +1'], [10, 'Palavra Firme', 'quem tenta controlar a mente de você ou do Protegido tem -2 no teste'], [15, 'Juramento Vivo', 'o próximo golpe recebido por alguém cai pela metade']],
+  patamares: [[5, 'Selo de Calastiel', 'o Protegido tem Defesa tier I'], [10, 'Palavra Firme', 'quem tenta controlar a mente de você ou do Protegido tem -2 no teste'], [15, 'Juramento Vivo', 'o próximo golpe recebido por alguém cai pela metade']],
   risco: ['Peso do Voto', 'quebrar o Voto agora tira a barra inteira'],
   est: () => ({ voto: null, protegido: '', quebrou: false }),
   marcas: () => [{ k: 'proteger', glifo: '護', rotulo: 'Voto: Proteger', dica: 'um aliado vira o Protegido' }, { k: 'recuar', glifo: '不', rotulo: 'Voto: Não Recuar', dica: 'você não sai do lugar por vontade própria' }, { k: 'passa', glifo: '止', rotulo: 'Voto: Ninguém Passa', dica: 'nenhum inimigo cruza a sua linha' }],
@@ -637,11 +637,11 @@ classe({ id: 'aegis', arvore: 'Aégis', barra: 'Juramento', cor: '#D9B44A', glif
   ativo: (s, k) => s.voto === k,
   arte(){ return `<path d="M84 72H136V112C136 130 124 142 110 148C96 142 84 130 84 112Z" fill="#ffffff10" stroke="${this.cor}" stroke-width="2"/>`; },
   tocar(s, k, ctx){ if (s.voto && s.voto !== k) return ctx.aviso('O Voto é um só por luta. Quebrar o Voto é com o botão abaixo.'); if (!s.voto){ s.voto = k; ctx.log(`${ctx.nome} faz o Voto: ${VOTOS[k]}.`); } },
-  linhaEstado: s => (s.voto ? `<b>Voto: ${VOTOS[s.voto]}</b>${s.voto === 'proteger' && s.protegido ? ` <em>· Protegido: ${esc(s.protegido)}</em>` : ''}` : '<em>Sem Voto: escolha um no disco.</em>') + (s.quebrou ? '<br><span class="aviso">Voto quebrado: Defesa -1 até a penitência.</span>' : ''),
-  acoes(s, ctx){ return (s.voto === 'proteger' ? escolheAlvo('Protegido', 'prot', s.protegido, ctx.ator.aliados) : '') + (s.voto ? `<button type="button" data-a="quebrar" title="A barra cai a 0 e Defesa -1 até a penitência">Quebrei o Voto</button>` : '') + (s.quebrou ? `<button type="button" data-a="penitencia">Cumpri a penitência</button>` : ''); },
+  linhaEstado: s => (s.voto ? `<b>Voto: ${VOTOS[s.voto]}</b>${s.voto === 'proteger' && s.protegido ? ` <em>· Protegido: ${esc(s.protegido)}</em>` : ''}` : '<em>Sem Voto: escolha um no disco.</em>') + (s.quebrou ? '<br><span class="aviso">Voto quebrado: Defesa -tier I até a penitência.</span>' : ''),
+  acoes(s, ctx){ return (s.voto === 'proteger' ? escolheAlvo('Protegido', 'prot', s.protegido, ctx.ator.aliados) : '') + (s.voto ? `<button type="button" data-a="quebrar" title="A barra cai a 0 e Defesa -tier I até a penitência">Quebrei o Voto</button>` : '') + (s.quebrou ? `<button type="button" data-a="penitencia">Cumpri a penitência</button>` : ''); },
   acao(s, a, ctx, val){
     if (a === 'prot'){ s.protegido = val || ''; if (val) ctx.log(`${ctx.nome} jura proteger ${val}.`); }
-    if (a === 'quebrar'){ s.quebrou = true; ctx.definir(0, 'quebrou o Voto'); ctx.log(`${ctx.nome} quebrou o Voto: Defesa -1 até cumprir a penitência.`); }
+    if (a === 'quebrar'){ s.quebrou = true; ctx.definir(0, 'quebrou o Voto'); ctx.log(`${ctx.nome} quebrou o Voto: Defesa -tier I até cumprir a penitência.`); }
     if (a === 'penitencia'){ s.quebrou = false; ctx.log(`${ctx.nome} cumpriu a penitência.`); }
   },
   ganhos: [{ c: 'Recebeu golpe por aliado', v: 3 }, { c: 'Cumpriu o Voto', t: 'Cumpriu o Voto neste turno', v: 2, quando: 'fim', tipo: 'tg', bloq: s => !s.voto && 'Faça um Voto primeiro.' }, { c: 'Bloqueou com escudo', v: 1 }],
@@ -671,7 +671,7 @@ classe({ id: 'arqueiro', arvore: 'Arqueiro', barra: 'Foco', cor: '#8FBF5A', glif
 /* ---------------- Mago: as Palavras ---------------- */
 const PALAVRAS = { vas: ['火', 'Vas (fogo)'], napha: ['氷', 'Napha (gelo)'], snir: ['雷', 'Snir (trovão)'], natu: ['土', 'Natu (terra)'], simphus: ['水', 'Simphus (água)'], kare: ['風', 'Karê (vento)'], nirus: ['木', 'Nirus (planta)'], yana: ['光', 'Yana (luz)'], ayto: ['影', 'Ayto (sombra)'] };
 classe({ id: 'mago', arvore: 'Mago', barra: 'Preparo', cor: '#7FA4F5', glifo: '魔', inicio: 6,
-  patamares: [[5, 'Língua Solta', 'magias de 1 Palavra custam 1 a menos'], [10, 'Gramática', 'pode juntar 2 Palavras numa magia'], [15, 'Sufixo -ni', 'a próxima magia tem +1 no número do efeito e o dobro da área']],
+  patamares: [[5, 'Língua Solta', 'magias de 1 Palavra custam 1 a menos'], [10, 'Gramática', 'pode juntar 2 Palavras numa magia'], [15, 'Sufixo -ni', 'a próxima magia tem +1 tier no efeito e o dobro da área']],
   risco: ['Excesso', 'a próxima magia tem 1 chance em 6 de sair descontrolada'],
   est: () => ({ palavra: null, ultima: null, trocouPalavra: false }),
   marcas: () => Object.entries(PALAVRAS).map(([k, [g, n]]) => ({ k, glifo: g, rotulo: n, dica: 'a Palavra da magia deste turno' })),
@@ -695,7 +695,7 @@ classe({ id: 'mago', arvore: 'Mago', barra: 'Preparo', cor: '#7FA4F5', glifo: '�
 
 /* ---------------- Feiticeiro: o Preço ---------------- */
 classe({ id: 'feiticeiro', arvore: 'Feiticeiro', barra: 'Pacto', cor: '#C37BDB', glifo: '契', inicio: 5,
-  patamares: [[5, 'Sussurro', 'Defesa +1 contra o primeiro golpe de cada turno'], [10, 'Marca Visível', 'maldições têm +1 no teste'], [15, 'Voz do Patrono', 'a próxima magia tem +1 no número do efeito e alcance dobrado']],
+  patamares: [[5, 'Sussurro', 'Defesa tier I contra o primeiro golpe de cada turno'], [10, 'Marca Visível', 'maldições têm +1 no teste'], [15, 'Voz do Patrono', 'a próxima magia tem +1 tier no efeito e alcance dobrado']],
   risco: ['Dívida', 'o patrono quer algo agora: se não gastar, perde 2 de Vida no fim do turno'],
   est: () => ({ promessas: 0 }),
   marcas: s => [{ k: 'vida', glifo: '血', rotulo: 'Preço: 2 de Vida (+3)', dica: 'tire 2 de Vida na ficha' }, { k: 'memoria', glifo: '憶', rotulo: 'Preço: uma lembrança (+5)', dica: 'o mestre escolhe qual' }, { k: 'promessa', glifo: '約', rotulo: `Preço: uma promessa (+4)${s.promessas ? ' · ' + s.promessas + ' em aberto' : ''}`, dica: 'cumprir até o fim da sessão' }],
@@ -719,7 +719,7 @@ classe({ id: 'feiticeiro', arvore: 'Feiticeiro', barra: 'Pacto', cor: '#C37BDB',
 
 /* ---------------- Necromante: os Frascos de Alma ---------------- */
 classe({ id: 'necromante', arvore: 'Necromante', barra: 'Almas', cor: '#9FB8B0', glifo: '死', inicio: 3,
-  patamares: [[5, 'Frio na Sala', 'espíritos ficam visíveis para você'], [10, 'Mão Firme', 'mortos-vivos seus têm Dano +1'], [15, 'Porta Entreaberta', 'a próxima magia de alma tem +1 no número do efeito']],
+  patamares: [[5, 'Frio na Sala', 'espíritos ficam visíveis para você'], [10, 'Mão Firme', 'mortos-vivos seus têm +1 tier de Dano'], [15, 'Porta Entreaberta', 'a próxima magia de alma tem +1 tier no efeito']],
   risco: ['Fome do Vazio', 'fanáticos do Vazio sentem você'],
   est: () => ({ frascos: 0, maxF: 3 }),
   marcas: s => Array.from({ length: s.maxF }, (_, i) => ({ k: 'f' + i, glifo: i < s.frascos ? '魂' : '·', rotulo: i < s.frascos ? 'Frasco cheio: gastar (+4 de Almas)' : 'Frasco vazio', dica: i < s.frascos ? 'vale 4 de barra, ou uma pergunta ao morto' : 'guarde uma alma quando alguém cair perto' })),
@@ -741,7 +741,7 @@ classe({ id: 'necromante', arvore: 'Necromante', barra: 'Almas', cor: '#9FB8B0',
 /* ---------------- Druida: as Formas ---------------- */
 const FORMAS_DR = { urso: ['熊', 'Urso de Casca', 3], lobo: ['狼', 'Lobo de Musgo', 3], serpente: ['蛇', 'Serpente de Raiz', 3], grifo: ['鷲', 'Grifo Verde', 3], behemoth: ['巨', 'Behemoth', 2], espirito: ['霊', 'Grande Espírito', 2] };
 classe({ id: 'druida', arvore: 'Druida', barra: 'Seiva', cor: '#7FC66A', glifo: '森', inicio: 5,
-  patamares: [[5, 'Raiz Funda', 'em terra viva, não pode ser empurrado'], [10, 'Pele Verde', 'Cura 1 no começo do turno'], [15, 'Coração da Mata', 'a próxima Forma dura o dobro e sai de graça']],
+  patamares: [[5, 'Raiz Funda', 'em terra viva, não pode ser empurrado'], [10, 'Pele Verde', 'Cura tier I no começo do turno'], [15, 'Coração da Mata', 'a próxima Forma dura o dobro e sai de graça']],
   risco: ['Floresta Viva', 'plantas prendem quem estiver colado (Vigor) até você gastar'],
   est: () => ({ forma: null, turnos: 0 }),
   marcas: () => Object.entries(FORMAS_DR).map(([k, [g, n]]) => ({ k, glifo: g, rotulo: 'Forma: ' + n, dica: 'entra pela habilidade da Forma; toque na forma atual para sair' })),
@@ -764,10 +764,10 @@ classe({ id: 'druida', arvore: 'Druida', barra: 'Seiva', cor: '#7FC66A', glifo: 
 
 /* ---------------- Sacerdote: a Prece ---------------- */
 classe({ id: 'sacerdote', arvore: 'Sacerdote', barra: 'Graça', cor: '#F0D27A', glifo: '聖', inicio: 6,
-  patamares: [[5, 'Auréola', 'aliados colados têm +1 nos testes contra medo'], [10, 'Mãos Quentes', 'toda cura sua cura 1 a mais'], [15, 'Céu Aberto', 'a próxima Prece completa cura 2 o grupo a 3 cédulas']],
+  patamares: [[5, 'Auréola', 'aliados colados têm +1 nos testes contra medo'], [10, 'Mãos Quentes', 'toda cura sua cura 1 tier a mais'], [15, 'Céu Aberto', 'a próxima Prece completa cura tier II o grupo a 3 cédulas']],
   risco: ['Brilho Demais', 'inimigos com escolha te atacam primeiro'],
   est: () => ({ prece: false, pronta: false }),
-  marcas: s => [{ k: 'prece', glifo: '祈', rotulo: s.prece ? 'Prece em andamento (toque se foi interrompida)' : 'Começar uma Prece', dica: 'sai no começo do próximo turno com +1 no número do efeito' }],
+  marcas: s => [{ k: 'prece', glifo: '祈', rotulo: s.prece ? 'Prece em andamento (toque se foi interrompida)' : 'Começar uma Prece', dica: 'sai no começo do próximo turno com +1 tier no efeito' }],
   marcasOpc: { raio: 0, r: 30 },
   ativo: (s, k) => s.prece || s.pronta,
   arte(){ let o = ''; for (let i = 0; i < 12; i++){ const [x1, y1] = P(110, 110, 40, i * 30), [x2, y2] = P(110, 110, 70, i * 30); o += `<line x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}" stroke="#ffffff1c" stroke-width="2"/>`; } return o; },
@@ -775,9 +775,9 @@ classe({ id: 'sacerdote', arvore: 'Sacerdote', barra: 'Graça', cor: '#F0D27A', 
     if (s.prece){ s.prece = false; return ctx.log(`A Prece de ${ctx.nome} foi interrompida.`); }
     s.prece = true; ctx.log(`${ctx.nome} começa uma Prece (sai no próximo turno).`);
   },
-  aoComecarTurno(s, ctx){ if (s.prece){ s.prece = false; s.pronta = true; ctx.ganhar(3, 'Prece completa', { foraTeto: true }); ctx.log(`A Prece de ${ctx.nome} sai agora com +1 no número do efeito${ctx.v >= 15 ? ' e Cura 2 no grupo a 3 cédulas' : ''}.`); } else s.pronta = false; },
-  antesDeUsar(s, h, ctx){ if (s.pronta){ s.pronta = false; ctx.log(`(${h.nome} sai como Prece: +1 no número do efeito.)`); } },
-  linhaEstado: s => (s.prece ? '<b>Rezando</b> <em>· levar Dano 3 ou mais pede teste de CAN</em>' : s.pronta ? '<b>Prece pronta</b> <em>· a próxima habilidade sai com +1 no número do efeito</em>' : '<em>Toque no centro para começar uma Prece.</em>'),
+  aoComecarTurno(s, ctx){ if (s.prece){ s.prece = false; s.pronta = true; ctx.ganhar(3, 'Prece completa', { foraTeto: true }); ctx.log(`A Prece de ${ctx.nome} sai agora com +1 tier no efeito${ctx.v >= 15 ? ' e Cura tier II no grupo a 3 cédulas' : ''}.`); } else s.pronta = false; },
+  antesDeUsar(s, h, ctx){ if (s.pronta){ s.pronta = false; ctx.log(`(${h.nome} sai como Prece: +1 tier no efeito.)`); } },
+  linhaEstado: s => (s.prece ? '<b>Rezando</b> <em>· levar Dano tier III ou mais pede teste de CAN</em>' : s.pronta ? '<b>Prece pronta</b> <em>· a próxima habilidade sai com +1 tier no efeito</em>' : '<em>Toque no centro para começar uma Prece.</em>'),
   ganhos: [{ c: 'Curou quem estava mal', t: 'Curou alguém abaixo de metade da Vida', v: 3 }, { c: 'Tirou uma condição', v: 2 }],
   selo: s => (s.prece ? '祈' : null),
   mapa: { 'Círculo de Cura': AREA('cura', 3, 1), 'Fonte de Luz': AREA('sagrado', 1, 3), 'Selo de Luz': AREA('seloYana', 2, 3), 'Amanhecer': AREA('sagrado', 4, 2), 'Farol': AREA('luzLanterna', 4, 2),
@@ -786,8 +786,8 @@ classe({ id: 'sacerdote', arvore: 'Sacerdote', barra: 'Graça', cor: '#F0D27A', 
 
 /* ---------------- Artífice: as Engenhocas ---------------- */
 classe({ id: 'artifice', arvore: 'Artífice', barra: 'Engrenagem', cor: '#C9A13B', glifo: '機', inicio: 5,
-  patamares: [[5, 'Engrenado', 'engenhocas têm Defesa +1'], [10, 'Sobrecarga', 'a próxima engenhoca dispara duas vezes no primeiro turno'], [15, 'Máquina Perfeita', 'a próxima engenhoca sai sem custo e dura o dobro']],
-  risco: ['Superaquecimento', 'se não gastar, a engenhoca mais perto explode (Dano 2 em quem estiver colado)'],
+  patamares: [[5, 'Engrenado', 'engenhocas têm Defesa tier I'], [10, 'Sobrecarga', 'a próxima engenhoca dispara duas vezes no primeiro turno'], [15, 'Máquina Perfeita', 'a próxima engenhoca sai sem custo e dura o dobro']],
+  risco: ['Superaquecimento', 'se não gastar, a engenhoca mais perto explode (Dano tier II em quem estiver colado)'],
   est: () => ({ eng: [] }),
   arte(s){
     let o = `<circle cx="110" cy="110" r="22" fill="none" stroke="${this.cor}" stroke-width="3"/>`;
@@ -810,7 +810,7 @@ classe({ id: 'artifice', arvore: 'Artífice', barra: 'Engrenagem', cor: '#C9A13B
 
 /* ---------------- Alquimista: a Toxicidade (sobe ao usar) ---------------- */
 classe({ id: 'alquimista', arvore: 'Alquimista', barra: 'Toxicidade', cor: '#B7D86A', glifo: '錬', inicio: 0, teto: null, inverso: true,
-  patamares: [[5, 'Olhos Brilhantes', 'bombas com Dano +1'], [10, 'Suor Químico', 'poções curam 1 a mais; Defesa -1'], [15, 'À Beira', 'a próxima criação tem +1 no número do efeito; no fim do turno, teste VIT ou perde 2 de Vida']],
+  patamares: [[5, 'Olhos Brilhantes', 'bombas com +1 tier de Dano'], [10, 'Suor Químico', 'poções curam 1 tier a mais; Defesa -tier I'], [15, 'À Beira', 'a próxima criação tem +1 tier no efeito; no fim do turno, teste VIT ou perde 2 de Vida']],
   risco: ['Passar Mal', 'você perde o próximo turno e a barra cai a 10'],
   est: () => ({ cinto: 4, mal: false, usou: false }),
   marcas: s => Array.from({ length: 4 }, (_, i) => ({ k: 'c' + i, glifo: i < s.cinto ? '瓶' : '·', rotulo: i < s.cinto ? 'Frasco preparado' : 'Laço vazio', dica: 'um frasco preparado sobe 1 a menos de Toxicidade (o painel usa sozinho)' })),
@@ -835,7 +835,7 @@ classe({ id: 'alquimista', arvore: 'Alquimista', barra: 'Toxicidade', cor: '#B7D
 /* ---------------- Bardo: a Música e o ritmo ---------------- */
 const ACOES_BARDO = { cancao: ['歌', 'Canção'], danca: ['舞', 'Dança'], palavra: ['言', 'Palavra'], golpe: ['撃', 'Golpe'] };
 classe({ id: 'bardo', arvore: 'Bardo', barra: 'Ritmo', cor: '#F2B544', glifo: '歌', inicio: 5,
-  patamares: [[5, 'Compasso', 'a Música alcança +2 cédulas'], [10, 'Refrão', 'pode manter duas Músicas'], [15, 'Crescendo', 'a próxima Música entra com +1 no número do efeito']],
+  patamares: [[5, 'Compasso', 'a Música alcança +2 cédulas'], [10, 'Refrão', 'pode manter duas Músicas'], [15, 'Crescendo', 'a próxima Música entra com +1 tier no efeito']],
   risco: ['Plateia Inteira', 'você não se esconde e todo inimigo sabe onde está'],
   est: () => ({ musica: [], acao: null, ultima: null }),
   marcas: () => Object.entries(ACOES_BARDO).map(([k, [g, n]]) => ({ k, glifo: g, rotulo: 'Ação do turno: ' + n, dica: 'variar a ação enche +2' })),
@@ -868,9 +868,9 @@ classe({ id: 'shaji', arvore: 'Shaji', barra: 'Malandragem', cor: '#D99A5B', gli
   arte(s){ let o = glifoCentro(this, '遊', { tam: 26, dy: 4 }); s.distraidos.slice(0, 4).forEach((d, i) => { o += KIT.texto(110, 128 + i * 12, esc(d.n.slice(0, 14)), { tam: 9.5, cor: this.cor }); }); return o; },
   tocar(s, k, ctx){ if (k === 'esc'){ s.escondido = !s.escondido; if (s.escondido) ctx.ganhar(2, 'sumiu da vista'); else ctx.log(`${ctx.nome} aparece.`); } },
   acoes(s, ctx){ return escolheAlvo('Deixar Distraído', 'dist', '', ctx.ator.alvos) + (s.distraidos.length ? `<button type="button" data-a="limpar">Ninguém mais Distraído</button>` : ''); },
-  acao(s, a, ctx, val){ if (a === 'dist' && val && !s.distraidos.some(d => d.n === val)){ s.distraidos.push({ n: val, t: 2 }); ctx.log(`${val} está Distraído (Defesa -1).`); } if (a === 'limpar') s.distraidos = []; },
+  acao(s, a, ctx, val){ if (a === 'dist' && val && !s.distraidos.some(d => d.n === val)){ s.distraidos.push({ n: val, t: 2 }); ctx.log(`${val} está Distraído (Defesa -tier I).`); } if (a === 'limpar') s.distraidos = []; },
   aoComecarTurno(s, ctx){ s.distraidos = contarTurnos(s.distraidos, ctx, 'Distraído'); },
-  linhaEstado: s => (s.distraidos.length ? `<b>Distraídos:</b> ${esc(s.distraidos.map(d => d.n).join(', '))} <em>· Defesa -1</em>` : '<em>Ninguém Distraído.</em>') + (s.escondido ? ' · <b>Escondido</b>' : ''),
+  linhaEstado: s => (s.distraidos.length ? `<b>Distraídos:</b> ${esc(s.distraidos.map(d => d.n).join(', '))} <em>· Defesa -tier I</em>` : '<em>Ninguém Distraído.</em>') + (s.escondido ? ' · <b>Escondido</b>' : ''),
   ganhos: [{ c: 'Enganou alguém', t: 'Finta, mentira ou truque que pegou', v: 3 }, { c: 'Acertou um Distraído', v: 2 }],
   selo: s => (s.escondido ? '隠' : s.distraidos.length ? '遊' : null),
   mapa: { 'Chuva de Moedas': AREA('cristais', 3, 1), 'Saída Secreta': TOK('Saída Secreta', '#6A5A4A', { tam: 0.5, turnos: 5 }) }
@@ -912,7 +912,7 @@ classe({ id: 'cartomante', arvore: 'Cartomante', barra: 'Mão', cor: '#B48CE0', 
 /* ---------------- Vampiro (linhagem): Sangue, formas e estágios ---------------- */
 const FORMAS_VAMP = { nevoa: ['霧', 'Névoa'], morcego: ['蝠', 'Morcego'], lobo: ['狼', 'Lobo Negro'], besta: ['獣', 'Besta de Rastmã'] };
 classe({ id: 'vampiro', cat: 'linhagem', arvore: 'Vampiro', barra: 'Sangue', cor: '#E5677B', glifo: '血', inicio: 4,
-  patamares: [[5, 'Pele Fria', 'Defesa +1 contra golpes comuns'], [10, 'Olhos Vermelhos', 'vê no escuro e sente o coração a 10 cédulas'], [15, 'Fome Cheia', 'o alvo da próxima Dominação tem -1 no teste']],
+  patamares: [[5, 'Pele Fria', 'Defesa tier I contra golpes comuns'], [10, 'Olhos Vermelhos', 'vê no escuro e sente o coração a 10 cédulas'], [15, 'Fome Cheia', 'o alvo da próxima Dominação tem -1 no teste']],
   risco: ['Sede', 'morda alguém no próximo turno ou teste CAN; falhou, ataca o mais perto'],
   est: () => ({ forma: null, estagio: 1 }),
   marcas: s => Object.entries(FORMAS_VAMP).map(([k, [g, n]]) => ({ k, glifo: g, rotulo: 'Forma: ' + n, dica: 'entra pela habilidade; toque na forma atual para voltar' })),
