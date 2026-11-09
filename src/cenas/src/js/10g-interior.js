@@ -13,13 +13,13 @@ const Interior = (() => {
   // as salas de cada tipo: a primeira é a da porta de entrada; min: quantas no mínimo; grande: a sala da porta fica com
   // a faixa da frente, inteira (essa parte da largura ou do fundo), e não se divide mais (o salão, a nave, a forja)
   const PLANTAS = {
-    casa: { n: 'Casa', salas: ['sala', 'quarto', 'cozinha'], min: 2 },
+    casa: { n: 'Casa', salas: ['sala', 'quarto', 'banheiro', 'cozinha'], min: 3 },      // (lote 128: o banheiro)
     loja: { n: 'Loja', salas: ['loja', 'deposito', 'quarto'], min: 2 },
     taverna: { n: 'Taverna', salas: ['salao', 'cozinha', 'quarto', 'quarto'], min: 3, grande: 0.58 },
     ferraria: { n: 'Ferraria', salas: ['forja', 'deposito'], min: 2, grande: 0.62 },
     armazem: { n: 'Armazém', salas: ['armazem', 'escritorio'], min: 1, grande: 0.72 },
     templo: { n: 'Templo', salas: ['nave', 'sacristia'], min: 2, grande: 0.72 },
-    senhor: { n: 'Casa do senhor', salas: ['nobre', 'biblioteca', 'quarto', 'cozinha', 'quarto'], min: 4, grande: 0.42 },
+    senhor: { n: 'Casa do senhor', salas: ['nobre', 'biblioteca', 'quarto', 'banheiro', 'cozinha', 'quarto'], min: 4, grande: 0.42 },
     quartel: { n: 'Quartel', salas: ['refeitorio', 'dormitorio', 'arsenal'], min: 3 },
     // (lote 7, parte 4b) o navio: a planta vem do Navio (do tamanho do convés, com o porão e as cabines)
     navio: { n: 'Navio', salas: ['capitao', 'cabine', 'porao', 'alojamento', 'paiol'], min: 1, so: true, planta: o => Navio.planta(Object.assign({}, o, { tipo: 'navio' })) },
@@ -40,6 +40,7 @@ const Interior = (() => {
   const MOVEIS = {
     sala: ['tapete', 'mesa', 'cadeira', 'cadeira', 'estante', 'bau'],
     quarto: ['cama', 'bau', 'vela', 'tapete'],
+    banheiro: ['banheira', 'latrina', 'lavatorio', 'espelho', 'toalheiro', 'tina'],      // (lote 128) se a banheira não cabe, a tina
     // (lote 54: os sacos de grãos e as frutas na cozinha, na loja e no depósito; o quadro de missões na taverna; o troféu
     //  no salão nobre; a pedra de amolar e os lingotes na forja; o atril no templo e na biblioteca; o boneco e o alvo no
     //  arsenal do quartel; a cortina na sacristia)
@@ -115,7 +116,10 @@ const Interior = (() => {
     const primeira = salas.find(q => contem(q, entra)) || salas[0];
     const resto = salas.filter(q => q !== primeira).sort((a, b) => b.w * b.h - a.w * a.h);
     const lista = [primeira].concat(resto);
-    lista.forEach((q, i) => { q.papel = PL.salas[Math.min(i, PL.salas.length - 1)]; q.moveis = []; });
+    // (lote 128) o banheiro fica com a menor sala (a lista vai das maiores para as menores)
+    const pap = lista.map((q, i) => PL.salas[Math.min(i, PL.salas.length - 1)]), kb = pap.indexOf('banheiro');
+    if (kb > 0 && kb < pap.length - 1) { pap.splice(kb, 1); pap.push('banheiro'); }
+    lista.forEach((q, i) => { q.papel = pap[i]; q.moveis = []; });
     // as janelas: uma por sala, numa parede de fora (nos lados retos, longe da porta de entrada)
     const janelas = [];
     for (const q of lista) {
@@ -311,6 +315,7 @@ const Interior = (() => {
         if (id0[0] === '#') { const f = ARRANJOS[id0.slice(1)]; if (f) f(); continue; }
         // id0: o móvel da lista (para saber perto de quê ele fica); id: o que entra (o estilo pode trocar)
         const id = TR[id0] || id0, tap = id === 'tapete';
+        if (id0 === 'tina' && q.moveis.some(m => m.id === 'banheira')) continue;      // (lote 128) a tina só se a banheira não coube
         if (tap ? q.w * q.h < 12 : contam() >= max) continue;
         const s = Props.P[id].size || 1, lugares = [];
         for (let j = q.y; j + s <= q.y + q.h; j++) for (let i = q.x; i + s <= q.x + q.w; i++) {

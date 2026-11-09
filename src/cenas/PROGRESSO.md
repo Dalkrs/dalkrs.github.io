@@ -397,3 +397,10 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
 - Com o véu ligado, a base do mapa ganha uma linha (legenda), e a faixa do token sobe ~36 px.
 - O agrupamento de ícones empilhados é por proximidade do ponto médio; três portas coladas em sequência podem,
   depois de afastadas, encostar numa quarta (não tratado).
+
+## Lote 128 — o banheiro no interior
+
+- "Gerar o interior": a casa ganha o papel `banheiro` (todos os tamanhos) e a casa do senhor também (média e grande;
+  a pequena só tem 3 salas e fica sem). O banheiro vai para a menor sala, com banheira (ou tina, se a banheira não
+  cabe), latrina, lavatório, espelho e toalheiro. Teste: `test/lote128.js`.
+- Pendente: a casa do senhor pequena, a fortaleza e a guilda (furtividade) seguem sem banheiro no interior.

@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.09-9",
+      "data": "2026-11-09",
+      "titulo": "Banheiro no interior",
+      "itens": [
+        {
+          "tipo": "consertado",
+          "texto": "Cenas: o “Gerar o interior” agora põe banheiro na casa (todos os tamanhos) e na casa do senhor (média e grande). Ele fica na menor sala, com banheira (ou tina, se não couber), latrina, lavatório, espelho e toalheiro.",
+          "mestre": true
+        }
+      ]
+    },
+    {
       "versao": "2026.11.09-8",
       "data": "2026-11-09",
       "titulo": "Atalho das rondas",
