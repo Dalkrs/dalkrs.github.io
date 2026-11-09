@@ -1538,6 +1538,39 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 :where(:root[data-claro]) .ico.rumor { border-color: var(--fg-3); }
 
 .row > .field.curto { flex: 0 0 72px; min-width: 0; }
+/* (lote 126) as luas: o canto em cima do zoom e o cartão */
+.luas { position: absolute; right: 10px; bottom: 52px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; z-index: 3; }
+.luas-bt { display: flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg-2); cursor: pointer; font: 600 12px var(--ui); }
+.luas-bt:hover, .luas-bt[aria-expanded="true"] { border-color: var(--lamp); background: var(--hover); }
+.luas-bt .lua-svg { display: block; }
+.luas-cartao { order: -1; width: min(330px, calc(100vw - 40px)); max-height: 60vh; overflow: auto; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--raised); box-shadow: var(--shadow); }
+.luas-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.luas-cab b { font: 600 15px var(--display); color: var(--fg); }
+.luas-cab small { color: var(--fg-3); font-size: 12px; }
+.lua-lin { display: flex; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line); }
+.lua-lin.fora .lua-tx b { color: var(--fg-3); }
+.lua-tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lua-tx b { font-size: 14px; color: var(--fg); }
+.lua-tx small { font-size: 12.5px; color: var(--fg-2); line-height: 1.35; }
+.lua-acoes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.luas-pe { display: flex; justify-content: flex-end; padding-top: 8px; border-top: 1px solid var(--line); }
+dialog.mundo-dl.luas-dl { width: min(620px, calc(100% - 24px)); }
+.luas-cards { display: flex; flex-direction: column; gap: 12px; max-height: 62vh; overflow: auto; padding-right: 4px; }
+.lua-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+.lua-card-cab { display: flex; align-items: flex-end; gap: 10px; }
+.lua-card-cab .lin { flex: 1; }
+.lua-card .lin { display: flex; flex-wrap: wrap; gap: 8px; }
+.lua-campo { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--fg-2); flex: 1 1 140px; }
+.lua-campo small { color: var(--fg-3); font-size: 12px; }
+.luas-dl .lua-campo input, .luas-dl .lua-campo select { width: 100%; box-sizing: border-box; }
+.luas-dl .lua-campo input[type=color] { width: 64px; height: 36px; padding: 2px; }
+.lua-card-cab .lin .lua-campo:first-child { flex: 4 1 200px; }
+.lua-card-cab .lin .lua-campo:last-child { flex: 0 0 auto; }
+.lua-fases .lin { align-items: flex-start; }
+dialog.mundo-dl.luas-dl .lua-fases .lin > label, dialog.mundo-dl.luas-dl .lua-fases .lin > label:first-child, dialog.mundo-dl.luas-dl .lua-fases .lin > label:last-child { flex: 1 1 0; }
+.lua-fases { display: flex; flex-direction: column; gap: 8px; padding-left: 4px; }
+.lua-nomes > span { font-size: 13px; color: var(--fg-2); }
+.lua-nomes input { flex: 1 1 100px; min-width: 0; }
 </style>
 </head>
 <body>
@@ -1598,7 +1631,7 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="../tc/tropas.js?v=7"></script>
 <script src="../tc/modelos.js?v=1"></script>
 <script src="../jornal/nucleo.js?v=2"></script>
-<script src="nucleo.js?v=51"></script>
+<script src="nucleo.js?v=52"></script>
 <script src="guerra.js?v=8"></script>
 <script src="reino.js?v=15"></script>
 <script src="corte.js?v=4"></script>
@@ -1606,8 +1639,9 @@ dialog.mundo-dl.gb.com-ajuda[open] { display: grid; grid-template-columns: minma
 <script src="intrigas.js?v=2"></script>
 <script src="campanha.js?v=6"></script>
 <script src="camadas.js?v=4"></script>
-<script src="tela.js?v=35"></script>
-<script src="painel.js?v=58"></script>
+<script src="tela.js?v=36"></script>
+<script src="painel.js?v=59"></script>
+<script src="luas.js?v=1"></script>
 <script src="guerra-painel.js?v=16"></script>
 <script src="exercitos-painel.js?v=1"></script>
 <script src="tour.js?v=1"></script>

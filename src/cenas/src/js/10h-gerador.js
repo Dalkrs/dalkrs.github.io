@@ -12,14 +12,14 @@
 const Gerador = (() => {
   // (lote 14, parte 14c: o Vilarejo, a Cidade, a Tribo, as Ruínas e o Porto com os arredores — Arredores.envolver)
   // (lote 49) as catacumbas, o castelo e o cemitério; (lote 53) a cena do crime — e a ordem dos grupos da janela
-  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, Arredores.LUGARES.tribo, Arredores.LUGARES.porto,
+  const LUGARES = [Arredores.LUGARES.vila, Arredores.LUGARES.cidade, CidadeGrande.LUGAR, Arredores.LUGARES.tribo, Arredores.LUGARES.porto,
     Encontro.LUGAR, Regiao.LUGAR,
     AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
-    LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO,
+    LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO, LugaresMundo.LUGAR,      // (lote 126) os lugares do mundo
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
     LugaresFora.CRIME, Arena.LUGAR].concat(Furtividade.IDS.map(id => Furtividade.LUGARES[id]));      // (lote 121) a furtividade
   /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
-  const GRUPOS = [['Povoados', ['vila', 'cidade', 'tribo', 'porto']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']],
+  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
     ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']], ['Furtividade', Furtividade.IDS]];
   const GLIFOS = {
     vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
@@ -31,6 +31,8 @@ const Gerador = (() => {
     // (lote 58) o lago (a água parada com o junco), a praia (a onda na areia), o penhasco (o degrau) e o desfiladeiro (a fenda)
     lago: 'M4 14c2-3 14-3 16 0-2 3-14 3-16 0zM8 14h1.5M13 13.5h3M6.5 10V7M8 10.5V6M17 10V7.5', praia: 'M3 17c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2 1 3 1M3 12c3-4 7-6 12-6M15 6l2 3',
     penhasco: 'M3 7h8l1 4 1 9h8M3 7v13h18M7 11v.1M9 15v.1', desfiladeiro: 'M3 5l4 2 2 13M21 5l-4 3-2 12M9 20h6M11 9l1 2-1 3 1 3',
+    cidadeGrande: 'M2 20h20M3 20V8l3-2 3 2v12M9 20V4h6v16M15 20v-9l3-2 3 2v9M11 7h2M11 10h2M11 13h2',
+    mundo116: 'M3 20h18M5 20V10l7-5 7 5v10M9 20v-5h6v5M12 5V2.5M10.5 3h3',          // (lote 126) o templo
     arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
     // (lote 121) a furtividade: a mansão (a casa grande com o muro), a fortaleza (a torre com as ameias), a guilda (o cofre),
     // o acampamento (a barraca e o fogo), as ruas (as casas e o lampião) e a torre de guarda (a torre e o olho)

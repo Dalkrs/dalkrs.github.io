@@ -2135,6 +2135,7 @@ const Encontro = (() => {
     const parede = (x1, y1, x2, y2, k, extra) => { if (Math.hypot(x2 - x1, y2 - y1) < 0.05) return; sc.walls.push(Object.assign({ id: uid('wl'), k: k || 'wall', x1: x1 * c, y1: y1 * c, x2: x2 * c, y2: y2 * c, open: false, locked: false }, extra || null)); };
     const noite = sc.tone === 'noite' || sc.tone === 'breu';
     p.predios.forEach((k, i) => {
+      if (k.soDesenho) return;                // (lote 126) a casa só desenhada (a cidade grande): sem paredes nem Entrada
       if (k.aberto) {
         for (const s of Estilos.paredesDaCasa(k)) parede(s.x1, s.y1, s.x2, s.y2, s.k);
         const ms = k.moveis.slice().sort((a, b) => (a.id === 'tapete' ? 0 : 1) - (b.id === 'tapete' ? 0 : 1));
@@ -2156,7 +2157,7 @@ const Encontro = (() => {
     for (const v of p.visao) parede(v[0], v[1], v[2], v[3]);
     // (lote 7, parte 4b) as paredes de outro tipo que o lugar pede: o portão da paliçada (abre e fecha), a cerca do
     // cercado (mureta: deixa ver, não deixa passar)
-    for (const w of p.paredes || []) parede(w.x1, w.y1, w.x2, w.y2, w.k);
+    for (const w of p.paredes || []) parede(w.x1, w.y1, w.x2, w.y2, w.k, w.open ? { open: true } : w.trancada ? { locked: true } : null);      // (lote 126: o portão aberto, a porta selada)
     // (lote 13, parte 13b: o objeto escondido — a armadilha dos caçadores — nasce oculto: só o mestre vê)
     for (const o of p.objetos) if (Props.P[o.id]) { const t = Props.novo(sc, o.id, o.x * c, o.y * c, o.s || 1, !!o.oculto); if (o.rot) t.rot = o.rot; sc.tokens.push(t); }
     // os marcadores ocultos: por onde o grupo chega e a boa emboscada
@@ -2255,7 +2256,7 @@ const Encontro = (() => {
     // as paredes de visão (tracejadas, claras), as construções e a amurada (ciano: deixa ver)
     for (const v of p.visao) seg(v[0], v[1], v[2], v[3], 'rgba(255,236,200,0.75)', Math.max(1.5, cell * 0.1), [Math.max(2, cell * 0.25), Math.max(2, cell * 0.18)]);
     // (as moradias com desenho próprio — a tenda, a iurte, o iglu — já se mostram no fundo: as paredes delas não aparecem)
-    for (const k of p.predios) if (!k.desenho) for (const s of Estilos.paredesDaCasa(k.aberto ? k : Object.assign({}, k, { porta: null, janelas: [] }))) seg(s.x1, s.y1, s.x2, s.y2, s.k === 'door' ? '#7fd1ff' : s.k === 'window' ? '#bff3ff' : '#1b1612', Math.max(2, cell * 0.2));
+    for (const k of p.predios) if (!k.desenho && !k.soDesenho) for (const s of Estilos.paredesDaCasa(k.aberto ? k : Object.assign({}, k, { porta: null, janelas: [] }))) seg(s.x1, s.y1, s.x2, s.y2, s.k === 'door' ? '#7fd1ff' : s.k === 'window' ? '#bff3ff' : '#1b1612', Math.max(2, cell * 0.2));
     for (const n of p.navios) for (const s of Navio.paredes(n)) seg(s.x1, s.y1, s.x2, s.y2, '#9fe9ff', Math.max(1.5, cell * 0.12));
     for (const w of p.paredes || []) seg(w.x1, w.y1, w.x2, w.y2, w.k === 'door' ? '#7fd1ff' : w.k === 'mureta' ? '#9fe9ff' : 'rgba(255,236,200,0.75)', Math.max(1.5, cell * (w.k === 'door' ? 0.2 : 0.12)), w.k === 'wall' ? [Math.max(2, cell * 0.25), Math.max(2, cell * 0.18)] : null);
     // os marcadores: a bandeira verde (chegada) e o xis vermelho (emboscada)

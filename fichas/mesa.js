@@ -448,6 +448,35 @@ const FichasMesa = (() => {
     const rel = s.rel && typeof s.rel === 'object' ? s.rel : (s.rel = {});
     if (seg && Object.keys(seg).length) rel[pc.id] = seg; else delete rel[pc.id];
   }
+  /* (lote 126) A reputação com as facções (TC.reputacao): os valores escondidos do jogador ficam com o mestre, em
+     fichas:segredos, rep[personagem]. Para quem não é o mestre (ou fora da mesa), null. */
+  const repSegDe = pc => (ativo && mestre() ? ((S.segredos && S.segredos.rep && S.segredos.rep[pc.id]) || {}) : null);
+  function porRepSeg(pc, seg) {
+    if (!ativo || !mestre()) return;
+    const s = S.segredos && typeof S.segredos === 'object' && !Array.isArray(S.segredos) ? S.segredos : (S.segredos = {});
+    const rep = s.rep && typeof s.rep === 'object' ? s.rep : (s.rep = {});
+    if (seg && Object.keys(seg).length) rep[pc.id] = seg; else delete rep[pc.id];
+    if (!Object.keys(rep).length) delete s.rep;
+  }
+  /* As facções dos mapas do Mapa-múndi: quem mestra, as dos mapas (com as escondidas); quem joga, as que o mapa mostra a
+     ele. [{ id, nome, cor, oculta }], uma vez cada, em ordem de nome. Fora de uma mesa: as dos mapas deste navegador. */
+  function faccoesDaMesa() {
+    const out = [], pega = (fs, comOcultas) => {
+      for (const f of Array.isArray(fs) ? fs : []) {
+        if (!f || typeof f !== 'object' || typeof f.id !== 'string' || !/^[A-Za-z0-9_:.-]{1,60}$/.test(f.id) || out.some(x => x.id === f.id)) continue;
+        if (f.oculta && !comOcultas) continue;
+        out.push({ id: f.id, nome: String(f.nome || '').trim().slice(0, 60) || 'Facção', cor: /^#[0-9a-fA-F]{6}$/.test(f.cor || '') ? f.cor.toLowerCase() : null, oculta: !!f.oculta });
+      }
+    };
+    if (ativo && D) {
+      const pre = mestre() ? 'mundo:mapa:' : 'mundo:pub:';
+      for (const l of D.todas()) if (l && typeof l.id === 'string' && l.id.startsWith(pre) && !l.apagado && l.dados) pega(l.dados.faccoes, mestre());
+    } else {
+      const m = lerLocal('tinycats:mundo:v1');
+      if (m && m.mapas && typeof m.mapas === 'object') for (const k of Object.keys(m.mapas)) pega(m.mapas[k] && m.mapas[k].faccoes, true);
+    }
+    return out.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
   // uma mudança nos relacionamentos do personagem (ver TC.rules.mexerRelacao); devolve true se algo mudou
   function mexerRel(pc, op) {
     const regras = R(); if (!regras) return false;
@@ -494,6 +523,7 @@ const FichasMesa = (() => {
     if (!s || typeof s !== 'object') return fora;
     if (s.rel && s.rel[id]) { fora.rel = s.rel[id]; delete s.rel[id]; }
     if (s.mis && s.mis.p && s.mis.p[id]) { fora.mis = s.mis.p[id]; delete s.mis.p[id]; }
+    if (s.rep && s.rep[id]) { fora.rep = s.rep[id]; delete s.rep[id]; }
     return fora;
   }
   function limitar() {
@@ -806,7 +836,7 @@ const FichasMesa = (() => {
   }
   return { corrDe, gravarCorr, tropasDe, gravarTropas, caixaDoGrupo, mexeNaCaixa, caixaSemFicha, moverCaixa, levarCaixa, nomeDoGrupo,
     preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, calendario, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha, lugarNaFicha,
-    ehNpc, segDe, porSeg, mexerRel, relsDe, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
+    ehNpc, segDe, porSeg, mexerRel, relsDe, repSegDe, porRepSeg, faccoesDaMesa, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
     campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza,
     ehPet, petsDe, nomeDoPetDe };
 })();

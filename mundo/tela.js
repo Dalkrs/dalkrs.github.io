@@ -4136,7 +4136,7 @@
   }
   function aoApertar(e) {
     if (!App || !M) return;
-    if (e.target.closest && e.target.closest('.opts, .zoom, .vazio, .dica')) return;
+    if (e.target.closest && e.target.closest('.opts, .zoom, .luas, .vazio, .dica')) return;
     fecharMenus();
     if (e.pointerType === 'touch') {
       toques.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -4718,19 +4718,19 @@
     palco.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });   // sem a rolagem automática do botão do meio
     // dois cliques num marcador com atalho seguem o atalho (abrem a cena, o mapa ou o acampamento)
     palco.addEventListener('dblclick', e => {
-      if (!M || App.ferramenta !== 'sel' || (e.target.closest && e.target.closest('.opts, .zoom, .vazio'))) return;
+      if (!M || App.ferramenta !== 'sel' || (e.target.closest && e.target.closest('.opts, .zoom, .luas, .vazio'))) return;
       // (o gesto captura o ponteiro, então o alvo do evento é o palco: quem está embaixo do cursor é achado pelo ponto)
       const id = idDoAlvo(document.elementFromPoint(e.clientX, e.clientY) || e.target), o = id ? M.objs.find(x => x.id === id) : null;
       if (o && o.k === 'm' && o.liga && window.MundoPainel && MundoPainel.seguirLiga) { e.preventDefault(); MundoPainel.seguirLiga(o); }
     });
     palco.addEventListener('contextmenu', e => {
-      if (e.target.closest && e.target.closest('.opts, .zoom, .vazio')) return;
+      if (e.target.closest && e.target.closest('.opts, .zoom, .luas, .vazio')) return;
       e.preventDefault();
       if (Date.now() - ultimoMenu < 900 || g) return;      // o toque longo já abriu
       abrirMenuMapa(e.clientX, e.clientY, idDoAlvo(e.target), paraMundo(e.clientX, e.clientY));
     });
     palco.addEventListener('wheel', e => {
-      if (!M || (e.target.closest && e.target.closest('.opts, .vazio'))) return;
+      if (!M || (e.target.closest && e.target.closest('.opts, .luas, .vazio'))) return;
       e.preventDefault();
       fecharMenus();
       const dy = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);

@@ -12,6 +12,7 @@
   const M = window.TC.missoes;
   const DEBUG = /[?&]debug\b/.test(location.search);
   const $ = id => document.getElementById(id);
+  const repTxt = r => (r.v > 0 ? '+' : '−') + Math.abs(r.v) + ' com ' + r.n;            // (lote 126)
   const copia = x => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
   function h(tag, attrs, ...kids) {
     const el = document.createElement(tag);
@@ -195,6 +196,7 @@
       h('div', { class: 'mc-pe' },
         m.pe ? h('span', { class: 'perigo', title: M.PERIGO[m.pe], text: caveiras(m.pe) }) : null,
         m.r ? h('span', { class: 'recomp', text: (s === 'dossie' ? 'PAGAMENTO: ' : 'Recompensa: ') + m.r }) : null,
+        m.rep && m.rep.length ? h('span', { class: 'recomp rep', text: 'Reputação: ' + m.rep.map(repTxt).join(', ') }) : null,
         m.pz ? h('span', { class: 'prazo', text: 'Prazo: ' + m.pz }) : null,
         m.lug ? h('span', { class: 'lugar', text: '⌖ ' + (m.lug.nome || 'No mapa') }) : null,
         and.total ? h('span', { class: 'prog', text: e === 'oferta' ? and.total + (and.total === 1 ? ' objetivo' : ' objetivos') : and.feitos + '/' + and.total + ' objetivos' }) : null,
@@ -293,6 +295,7 @@
     const info = h('dl', { class: 'info' },
       m.ct ? [h('dt', { text: 'Quem pede' }), h('dd', { text: m.ct })] : null,
       m.r ? [h('dt', { text: 'Recompensa' }), h('dd', { text: m.r })] : null,
+      m.rep && m.rep.length ? [h('dt', { text: 'Reputação' }), h('dd', { text: m.rep.map(repTxt).join(', ') + (m.repDada ? ' (já dada)' : '') })] : null,
       m.pe ? [h('dt', { text: 'Perigo' }), h('dd', { text: caveiras(m.pe) + ' ' + M.PERIGO[m.pe] })] : null,
       m.pz ? [h('dt', { text: 'Prazo' }), h('dd', { text: m.pz })] : null,
       m.lug ? [h('dt', { text: 'Onde' }), h('dd', null, h('button', { type: 'button', class: 'lk', id: 'mLugar', text: (m.lug.nome || 'Ver no Mapa-múndi') + ' →', onclick: () => irMapa(m.lug) }))] : null,
@@ -385,6 +388,12 @@
   }
   function mudarEstadoDe(a, e, pc) {
     const Dn = M.mudarEstado(docDe(a), a.m.id, e, pc); if (!Dn) return;
+    // (lote 126) cumprida pela primeira vez: a reputação vai para a ficha de quem cumpriu
+    const mm = Dn.ms[a.m.id], ja = mm && (mm.quem === 'todos' ? mm.pegas[pc] && mm.pegas[pc].repDada : mm.repDada);
+    if (e === 'feita' && mm && mm.rep && mm.rep.length && !ja) {
+      const quem = a.onde === 'pc' ? [aberto.ctx.pc] : mm.quem === 'todos' ? [pc] : mm.quem === 'grupo' ? personagens().map(p => p.id) : Object.keys(mm.pegas || {});
+      if (darReputacao(mm, quem.filter(Boolean))) { if (mm.quem === 'todos') mm.pegas[pc].repDada = true; else mm.repDada = true; }
+    }
     salvarOnde(a, Dn);
     toast('“' + (a.m.t || 'Missão') + '”: ' + M.estadoDe(e).n + '.');
     abrir(a.m.id, Object.assign({}, aberto.ctx, { pc }));
@@ -479,6 +488,41 @@
     } finally { URL.revokeObjectURL(url); }
   }
   /* os lugares do Mapa-múndi (os mapas de quem mestra; os objetos com nome) */
+  // (lote 126) as facções dos mapas do Mapa-múndi, para a reputação: [{ id, nome, oculta }]
+  function faccoes() {
+    if (!naMesa) return [];
+    const out = [];
+    for (const l of D.todas()) {
+      if (l.apagado || typeof l.id !== 'string' || !l.id.startsWith('mundo:mapa:') || !l.dados || !Array.isArray(l.dados.faccoes)) continue;
+      for (const f of l.dados.faccoes) if (f && typeof f.id === 'string' && /^[A-Za-z0-9_:.-]{1,60}$/.test(f.id) && !out.some(x => x.id === f.id)) out.push({ id: f.id, nome: String(f.nome || '').trim().slice(0, 60) || 'Facção', oculta: !!f.oculta });
+    }
+    return out.sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+  }
+  /* (lote 126) Cumprida: a reputação da missão vai para a ficha de quem cumpriu (uma vez). Quem: a da história, o dono
+     dela; 'todos', o personagem daquela pega; 'um', quem pegou; 'grupo', os personagens de jogador da campanha. Os
+     valores escondidos do jogador vão para os segredos do mestre (fichas:segredos). Devolve o desfazer, ou null. */
+  function darReputacao(m, pcs) {
+    const RP = window.TC && TC.reputacao;
+    if (!naMesa || !mestre || !RP || !Array.isArray(m.rep) || !m.rep.length || !pcs.length) return null;
+    const facs = faccoes(), sgDoc = D.pegar('fichas:segredos'), sg0 = sgDoc && !sgDoc.apagado && sgDoc.dados && sgDoc.dados.v && typeof sgDoc.dados.v === 'object' ? copia(sgDoc.dados.v) : {};
+    const sg = copia(sg0), antes = [], nomes = [];
+    for (const id of pcs) {
+      const l = PC.pegar(id); if (!l || l.apagado) continue;
+      let est = l.estado || {}, seg = (sg.rep && sg.rep[id]) || {};
+      for (const r of m.rep) { const x = RP.mudar(est, seg, { t: 'mais', f: r.f, n: r.n, d: r.v }, facs.find(y => y.id === r.f) || null); est = x.estado; seg = x.seg; }
+      antes.push({ id, estado: copia(l.estado || {}) });
+      PC.gravar(id, { estado: est });
+      if (Object.keys(seg).length) { sg.rep = sg.rep || {}; sg.rep[id] = seg; } else if (sg.rep) delete sg.rep[id];
+      nomes.push(l.nome || 'Sem nome');
+    }
+    if (!antes.length) return null;
+    if (JSON.stringify(sg) !== JSON.stringify(sg0)) D.gravar('fichas:segredos', { dados: { v: sg }, vis: 'mestre' }, null, { cas: true });
+    toast('Reputação: ' + m.rep.map(RP.texto).join(', ') + ' — ' + nomes.join(', ') + '.', 'Desfazer', () => {
+      for (const a of antes) PC.gravar(a.id, { estado: a.estado });
+      if (JSON.stringify(sg) !== JSON.stringify(sg0)) D.gravar('fichas:segredos', { dados: { v: sg0 }, vis: 'mestre' }, null, { cas: true });
+    }, 9000);
+    return true;
+  }
   function lugares() {
     if (!naMesa) return [];
     const out = [];
@@ -541,6 +585,17 @@
       h('button', { type: 'button', class: 'btn sm', 'aria-label': 'Tirar o objetivo ' + (i + 1), text: '×', onclick: () => { objs.splice(i, 1); pintarObjs(); } }))),
       h('button', { type: 'button', class: 'btn sm', id: 'fObjMais', text: '+ Objetivo', onclick: () => { objs.push({ id: 'o' + Date.now().toString(36) + objs.length, t: '' }); pintarObjs(); const ins = listaObj.querySelectorAll('input'); if (ins.length) ins[ins.length - 1].focus(); } }));
     pintarObjs();
+    // (lote 126) a reputação que a missão dá quando é cumprida (as facções do Mapa-múndi)
+    const facsRep = faccoes(), reps = (f.rep || []).map(x => Object.assign({}, x));
+    const listaRep = h('div', { class: 'fobjs', id: 'fReps' });
+    const pintarReps = () => listaRep.replaceChildren(...reps.map((r, i) => h('div', { class: 'fobj frep' },
+      h('select', { class: 'in', 'aria-label': 'Facção ' + (i + 1), onchange: ev => { const fc = facsRep.find(x => x.id === ev.target.value); r.f = ev.target.value; r.n = fc ? fc.nome : r.n; } },
+        (facsRep.some(x => x.id === r.f) ? [] : [h('option', { value: r.f, selected: true }, r.n || 'Facção')]).concat(facsRep.map(x => h('option', { value: x.id, selected: x.id === r.f }, x.nome + (x.oculta ? ' (escondida)' : ''))))),
+      h('input', { class: 'in', type: 'number', min: '-100', max: '100', step: '1', value: String(r.v), 'aria-label': 'Quanto (de −100 a +100)', oninput: ev => { r.v = Number(ev.target.value) || 0; } }),
+      h('button', { type: 'button', class: 'btn sm', 'aria-label': 'Tirar a reputação ' + (i + 1), text: '×', onclick: () => { reps.splice(i, 1); pintarReps(); } }))),
+      facsRep.length ? (reps.length < 6 ? h('button', { type: 'button', class: 'btn sm', id: 'fRepMais', text: '+ Reputação', onclick: () => { const livre = facsRep.find(x => !reps.some(y => y.f === x.id)) || facsRep[0]; reps.push({ f: livre.id, n: livre.nome, v: 10 }); pintarReps(); } }) : null)
+        : h('small', { class: 'hint', text: naMesa ? 'As facções vêm do Mapa-múndi: crie uma lá para dar reputação.' : 'A reputação vem das facções do Mapa-múndi, numa mesa.' }));
+    pintarReps();
     const montar = () => {
       const o = {}; objs.forEach((x, i) => { if (x.t.trim()) o[x.id] = { t: x.t.trim(), n: i }; });
       const l = lug.value === '' ? null : ls[+lug.value];
@@ -552,6 +607,7 @@
       const ok = {}; for (const k of Object.keys(m.ok || {})) if (o[k]) ok[k] = 1; m.ok = ok;
       for (const p of Object.keys(m.pegas || {})) { const pk = {}; for (const k of Object.keys(m.pegas[p].ok || {})) if (o[k]) pk[k] = 1; m.pegas[p].ok = pk; }
       if (quem.value === 'pc' && onde === 'rasc') m.alvo = alvo.value || null; else delete m.alvo;
+      m.rep = reps.filter(r => r.f && Number(r.v));
       return M.missao(m);
     };
     const salvar = destino => {
@@ -584,6 +640,7 @@
       campo('Descrição', desc),
       h('div', { class: 'campo' }, h('span', { text: 'Objetivos' }), listaObj),
       h('div', { class: 'linha' }, campo('Recompensa', rec), campo('Prazo', pz)),
+      h('div', { class: 'campo' }, h('span', { text: 'Reputação quando for cumprida' }), listaRep, h('small', { text: 'Vai sozinha para a ficha de quem cumpriu, quando você marcar “Cumprida”.' })),
       h('div', { class: 'campo' }, h('span', { text: 'Perigo' }), pes),
       h('div', { class: 'campo' }, h('span', { text: 'Imagem (o cartaz, a foto do alvo)' }), boxImg),
       campo('Lugar no Mapa-múndi', lug),

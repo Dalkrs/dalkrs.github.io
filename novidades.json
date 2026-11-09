@@ -2,6 +2,66 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.09-7",
+      "data": "2026-11-09",
+      "titulo": "Luas, reputação e o gerador de lugares do mundo novo",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Mapa-múndi: as luas. No canto do mapa, em cima do zoom, aparecem as luas de hoje, com a fase de cada uma (elas crescem e diminuem). Um clique mostra o nome, a fase e quanto está iluminada."
+        },
+        {
+          "tipo": "novo",
+          "texto": "As luas: o botão “Luas” põe as três luas (Lua Kitsune, Lua secundária e Lua do olho). Em “Editar as luas” você muda o nome, a cor, o ciclo em dias, a fase de hoje, o nome das quatro fases e a chance de cada lua estar no céu numa noite.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "A Lua do olho: quando ela sobe aos céus (ao passar o dia, ou em “Fazer subir esta noite”), você é avisado e o mapa ganha uma Horda de monstros, escondida dos jogadores. Arraste a horda para onde ela começa.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: a reputação com cada facção do Mapa-múndi, de −100 a +100, com os níveis Odiado, Hostil, Neutro, Amigo, Honrado e Venerado. Fica na aba Social da ficha."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Reputação: só quem mestra muda. O olho de cada linha diz se o jogador vê aquela facção (o valor escondido fica só com você).",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Missões: a reputação como recompensa. Quando você marca a missão como “Cumprida”, a reputação vai sozinha para a ficha de quem cumpriu (com Desfazer).",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Gerar um lugar: sete estilos novos, dos povos do mundo novo: Orc, Konaito, Kobold, Antro, Silk (Academia), Vampiro e Magitec. Cada um com os telhados, as ruas, as muralhas, o chão e os móveis dele.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Gerar um lugar, Ruínas: a nave caída, o bunker, a torre da academia, a cidade magitec soterrada, o campo de batalha antigo e o templo esquecido.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Gerar um lugar, aba nova “Lugares do mundo”: o templo de um deus (com o culto da Luz, da Lua, da guerra, da natureza ou das sombras), o ninho de dragão, a fossa das almas, a cratera e o posto de fronteira com o pedágio.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Gerar um lugar, aba nova “Cidade grande”: a cidade inteira numa cena só, a 1 quadrado = 5 m, em cinco traçados (cidade velha com rio, cidade alta e baixa com porto, terraços na encosta, fundo de cânion e palácio no morro). Só as muralhas são paredes; os lugares com nome ficam em marcadores ocultos.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: a pasta “Lugares importantes”, com o Vale das mil torres (a Academia), a Fortaleza da Caldeira, o Forte-prisão, a Clareira da Conversão e os Pilares do Vento, ligados aos ícones do Mapa-múndi.",
+          "mestre": true
+        }
+      ]
+    },
+    {
       "versao": "2026.11.09-6",
       "data": "2026-11-09",
       "titulo": "Bases: casas e esconderijos",

@@ -1738,6 +1738,30 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 .tr-cfg .cfg input{min-width:0}
 @media (max-width:760px){ .tr-faixa{grid-template-columns:auto minmax(0,1fr)} .tr-medidas{grid-column:1/-1} .tr-jesc{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:420px){ .tr-cartas{grid-template-columns:minmax(0,1fr)} .tr-j2{grid-template-columns:1fr} }
+/* (lote 126) a reputação com as facções */
+.reps{display:grid;gap:6px}
+.reprow{display:grid;grid-template-columns:minmax(120px,1fr) minmax(120px,1.4fr) auto auto auto auto;gap:10px;align-items:center;padding:6px 8px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--campo)}
+.reprow.guardada{border-style:dashed}
+.repnome{display:flex;align-items:center;gap:8px;min-width:0;font-weight:500}
+.repnome > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.repcor{width:10px;height:10px;border-radius:3px;background:var(--fac,var(--ink-soft));flex:none}
+.repbar{position:relative;height:12px;border-radius:6px;background:var(--campo-sut);border:1px solid var(--line-2);overflow:hidden}
+.repbar::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--ink-soft);z-index:1}
+.repbar i{position:absolute;top:0;bottom:0;background:var(--ink-soft)}
+.repval input{width:64px;text-align:right;font-family:var(--monof);font-weight:600;padding:3px 6px}
+.repval b{font-family:var(--monof);min-width:40px;display:inline-block;text-align:right}
+.repnivel{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line-2);white-space:nowrap}
+.rep-amigo .repbar i,.rep-honrado .repbar i,.rep-venerado .repbar i{background:var(--teal)}
+.rep-hostil .repbar i,.rep-odiado .repbar i{background:var(--rubric)}
+.rep-amigo .repnivel,.rep-honrado .repnivel,.rep-venerado .repnivel,.repniveis .rep-amigo,.repniveis .rep-honrado,.repniveis .rep-venerado{color:var(--teal);border-color:var(--teal-borda);background:var(--teal-fundo)}
+.rep-hostil .repnivel,.rep-odiado .repnivel,.repniveis .rep-hostil,.repniveis .rep-odiado{color:var(--rubric);border-color:var(--rubric-borda);background:var(--rubric-fundo)}
+.rep-venerado .repnivel,.rep-odiado .repnivel{font-weight:800}
+.repniveis{margin-top:8px;font-size:12px}
+.repniveis span{padding:0 4px;border-radius:6px}
+.repfim{display:flex;justify-content:flex-end}
+.reprow .olho{width:26px;height:26px;padding:0;border:0;background:transparent;border-radius:50%;color:var(--ink-fraco);display:grid;place-items:center;cursor:pointer}
+.reprow .relmarca{grid-column:1/-1}
+@media (max-width:720px){.reprow{grid-template-columns:1fr auto auto}.reprow .repbar{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -1813,7 +1837,9 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=17"></script>
 <script src="extras.js?v=25"></script>
-<script src="../tc/missoes.js?v=1"></script>
+<script src="../tc/reputacao.js?v=1"></script>
+<script src="reputacao.js?v=1"></script>
+<script src="../tc/missoes.js?v=2"></script>
 <script src="quadros.js?v=8"></script>
 <script src="skills-lista.js?v=1"></script>
 <script src="filtro-skills.js?v=3"></script>
@@ -3018,7 +3044,7 @@ function renderFicha(){
   ${pc.petDe? '' : FichasExtras.painelBolsa(pc,c)}
 
   ${htmlCaixinha(pc)}`)}
-  ${parte('social', `${FichasExtras.painelMente(pc)}`)}
+  ${parte('social', `${FichasExtras.painelMente(pc)}${typeof FichasRep!=='undefined'? FichasRep.painel(pc) : ''}`)}
   ${parte('skills', htmlAbaSkills(pc))}
   ${FichasTropas.tem(pc)? parte('tropas', FichasTropas.htmlAba(pc)) : ''}
   ${parte('notas', htmlAbaNotas(pc))}
@@ -3708,6 +3734,7 @@ function ligarFicha(pc){
   ligarCaixinha(host, pc);
   FichasExtras.ligarAtributos(host, pc);
   FichasExtras.ligarMente(host, pc);
+  if(typeof FichasRep!=='undefined') FichasRep.ligar(host, pc);          // (lote 126) a reputação com as facções
   FichasExtras.ligarEfeitos(host, pc);
   FichasExtras.ligarSobrevida(host, pc);
   FichasExtras.ligarNovos(host, pc);

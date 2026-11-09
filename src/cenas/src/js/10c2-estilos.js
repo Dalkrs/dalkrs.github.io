@@ -6,10 +6,19 @@
    mestre. Aqui só há tabelas e desenho; quem sorteia é o gerador (Vila, Cidade).
    --------------------------------------------------------------- */
 const Estilos = (() => {
-  const LISTA = [['comum', 'Comum'], ['oriental', 'Oriental'], ['nordico', 'Nórdico'], ['desertico', 'Desértico'], ['elfico', 'Élfico'], ['anao', 'Anão']];
+  /* (lote 126) Os povos do mundo novo: Orc (a Caldeira: couro, estacas e ossos), Konaito (o barro vermelho, os terraços
+     e os chifres), Kobold (as palafitas de junco no enxofre), Antro (as casas nas raízes, com musgo), Silk (a pedra
+     branca e as cúpulas azuis da Academia), Vampiro (a pedra escura e as ardósias de Rastmã) e Magitec (o metal e as
+     linhas de luz da era antiga). Cada um tem uma raiz (um dos seis de antes): o que um gerador ainda não sabe desenhar
+     no jeito novo sai no jeito da raiz. */
+  const LISTA = [['comum', 'Comum'], ['oriental', 'Oriental'], ['nordico', 'Nórdico'], ['desertico', 'Desértico'], ['elfico', 'Élfico'], ['anao', 'Anão'],
+    ['orc', 'Orc'], ['konaito', 'Konaito'], ['kobold', 'Kobold'], ['antro', 'Antro'], ['silk', 'Silk (Academia)'], ['vampiro', 'Vampiro'], ['magitec', 'Magitec']];
   // para o nome da cena ("Aldeia nórdica", "Vila anã"): os lugares são todos femininos
-  const ADJ = { comum: '', oriental: 'oriental', nordico: 'nórdica', desertico: 'desértica', elfico: 'élfica', anao: 'anã' };
+  const ADJ = { comum: '', oriental: 'oriental', nordico: 'nórdica', desertico: 'desértica', elfico: 'élfica', anao: 'anã',
+    orc: 'orc', konaito: 'konaita', kobold: 'kobold', antro: 'antro', silk: 'silk', vampiro: 'vampírica', magitec: 'magitec' };
+  const RAIZ = { orc: 'nordico', konaito: 'desertico', kobold: 'comum', antro: 'elfico', silk: 'comum', vampiro: 'comum', magitec: 'anao' };
   const valido = e => (LISTA.some(x => x[0] === e) ? e : 'comum');
+  const raiz = e => RAIZ[valido(e)] || valido(e);
 
   /* ---- os prédios de cada estilo ----
      tam: as medidas possíveis (largura × altura, em quadrados); piso: o desenho do chão de dentro; forma: 'ret'
@@ -62,13 +71,67 @@ const Estilos = (() => {
       casa: T([[5, 4], [4, 5], [5, 5]], 'lajes', ['cama', 'mesa', 'bau', 'braseiro'], 3, 1),
     },
   };
+  // (lote 126) os povos do mundo novo
+  Object.assign(TIPOS, {
+    orc: {
+      taverna: T([[9, 6], [8, 6]], 'terra', ['fogueira', 'mesa', 'trofeu', 'quadroMissoes', 'barril', 'pele', 'barril'], 7, 1, { centro: 'fogueira' }),
+      capela: T([[6, 6]], 'terra', ['totem', 'cranios', 'braseiro', 'idolo', 'cranios'], 5, 0, { forma: 'oct' }),
+      ferraria: T([[6, 5], [5, 5]], 'pedra', ['fornalha', 'bigorna', 'armas', 'rebolo', 'barril'], 5, 0),
+      armazem: T([[6, 4], [5, 5]], 'terra', ['pele', 'caixote', 'barril', 'sacos', 'caixote'], 4, 0),
+      casa: T([[6, 4], [5, 5], [4, 6]], 'terra', ['fogueira', 'pele', 'barril', 'bau'], 4, 0, { centro: 'fogueira' }),
+    },
+    konaito: {
+      taverna: T([[7, 6], [6, 6]], 'ladrilho', ['tapete', 'almofada', 'quadroMissoes', 'almofada', 'mesa', 'jarro', 'braseiro'], 7, 1),
+      capela: T([[7, 7], [6, 6]], 'ladrilho', ['altar', 'braseiro', 'estatua', 'vela', 'vela'], 5, 0),
+      ferraria: T([[5, 5]], 'pedra', ['braseiro', 'bigorna', 'grilhoes', 'lingotes', 'jarro'], 4, 1),
+      armazem: T([[6, 5], [5, 5]], 'pedra', ['jarro', 'sacos', 'jarro', 'caixote', 'jarro'], 5, 0),
+      casa: T([[5, 4], [4, 5], [5, 5]], 'ladrilho', ['tapete', 'cama', 'jarro', 'almofada', 'bau'], 4, 1),
+    },
+    kobold: {
+      taverna: T([[5, 5], [6, 4]], 'esteira', ['mesa', 'barril', 'quadroMissoes', 'almofada', 'caldeirao'], 5, 1, { forma: 'oct' }),
+      capela: T([[5, 5]], 'esteira', ['idolo', 'vela', 'ossada', 'vela'], 4, 0, { forma: 'oct' }),
+      ferraria: T([[4, 4]], 'terra', ['braseiro', 'bigorna', 'caixote'], 3, 0),
+      armazem: T([[4, 3], [3, 4], [4, 4]], 'esteira', ['sacos', 'caixote', 'barril'], 3, 0),
+      casa: T([[3, 3], [4, 3], [3, 4]], 'esteira', ['sacoDormir', 'barril', 'caixote'], 2, 0),
+    },
+    antro: {
+      taverna: T([[7, 7], [8, 7]], 'madeira', ['mesa', 'cadeira', 'quadroMissoes', 'barril', 'mesa', 'cogumelos', 'lanterna'], 7, 2, { forma: 'oct' }),
+      capela: T([[6, 6], [7, 7]], 'terra', ['totemLobo', 'altar', 'flores', 'cogumelos'], 4, 1, { forma: 'oct' }),
+      ferraria: T([[5, 5]], 'pedra', ['braseiro', 'bigorna', 'rebolo', 'barril'], 4, 1, { forma: 'oct' }),
+      armazem: T([[5, 5], [6, 5]], 'madeira', ['sacos', 'caixote', 'jarro', 'barril'], 4, 0, { forma: 'oct' }),
+      casa: T([[5, 5], [6, 6]], 'madeira', ['cama', 'mesa', 'cogumelos', 'bau'], 3, 1, { forma: 'oct' }),
+    },
+    silk: {
+      taverna: T([[7, 6], [8, 6]], 'marmore', ['mesa', 'cadeira', 'quadroMissoes', 'estante', 'mesa', 'cadeira', 'lanterna'], 7, 2),
+      capela: T([[7, 7], [6, 6]], 'marmore', ['estante', 'estante', 'atril', 'mesa', 'vela', 'estante'], 6, 2, { forma: 'oct' }),
+      ferraria: T([[5, 5]], 'marmore', ['circulo', 'cristal', 'mesa', 'estante'], 4, 1),
+      armazem: T([[6, 5], [5, 5]], 'marmore', ['estante', 'caixote', 'estante', 'bau'], 4, 1),
+      casa: T([[5, 4], [5, 5], [6, 5]], 'marmore', ['cama', 'mesa', 'estante', 'bau', 'vela'], 4, 2),
+    },
+    vampiro: {
+      taverna: T([[7, 6], [8, 5]], 'xadrez', ['mesa', 'cadeira', 'quadroMissoes', 'candelabro', 'mesa', 'cadeira', 'barril'], 7, 2),
+      capela: T([[6, 8], [5, 7]], 'xadrez', ['altar', 'caixao', 'candelabro', 'vela', 'estatua'], 5, 2),
+      ferraria: T([[5, 4], [4, 5]], 'pedra', ['braseiro', 'bigorna', 'grilhoes', 'armas'], 4, 1),
+      armazem: T([[5, 4], [6, 4]], 'pedra', ['caixote', 'barril', 'caixao', 'estante'], 4, 0),
+      casa: T([[4, 4], [5, 4], [4, 5]], 'xadrez', ['cama', 'mesa', 'candelabro', 'bau', 'estante'], 4, 1),
+    },
+    magitec: {
+      taverna: T([[8, 6], [7, 6]], 'metal', ['balcao', 'mesa', 'quadroMissoes', 'cadeira', 'mesa', 'cristal', 'cadeira'], 7, 2),
+      capela: T([[6, 6], [7, 7]], 'metal', ['circulo', 'cristal', 'coluna', 'coluna', 'altar'], 5, 1, { forma: 'oct' }),
+      ferraria: T([[6, 5], [7, 5]], 'metal', ['fornalha', 'bigorna', 'caixote', 'lingotes', 'estante'], 5, 1),
+      armazem: T([[6, 4], [6, 5]], 'metal', ['caixote', 'estante', 'caixote', 'caixote'], 4, 0),
+      casa: T([[5, 4], [5, 5], [4, 5]], 'metal', ['cama', 'mesa', 'estante', 'bau', 'cristal'], 4, 1),
+    },
+  });
   /* (lote 61) Os prédios novos, em todos os estilos (o chão do estilo): a lavoura (o celeiro e o moinho), a estalagem e o
      estábulo, a vigia (a torre e a guarita) e os da cidade (os banhos, a guilda e a escola). O moinho é redondo e leva as
      pás desenhadas por cima (enfeiteDaCasa). */
-  const PISO_EST = { comum: 'madeira', oriental: 'tatami', nordico: 'madeira', desertico: 'ladrilho', elfico: 'clara', anao: 'lajes' };
-  const PEDRA_EST = { comum: 'pedra', oriental: 'pedra', nordico: 'pedra', desertico: 'ladrilho', elfico: 'pedra', anao: 'lajes' };
+  const PISO_EST = { comum: 'madeira', oriental: 'tatami', nordico: 'madeira', desertico: 'ladrilho', elfico: 'clara', anao: 'lajes',
+    orc: 'terra', konaito: 'ladrilho', kobold: 'esteira', antro: 'madeira', silk: 'marmore', vampiro: 'xadrez', magitec: 'metal' };
+  const PEDRA_EST = { comum: 'pedra', oriental: 'pedra', nordico: 'pedra', desertico: 'ladrilho', elfico: 'pedra', anao: 'lajes',
+    orc: 'pedra', konaito: 'ladrilho', kobold: 'terra', antro: 'pedra', silk: 'marmore', vampiro: 'pedra', magitec: 'metal' };
   for (const est of Object.keys(TIPOS)) {
-    const md = PISO_EST[est], pd = PEDRA_EST[est], oct = est === 'elfico' ? { forma: 'oct' } : null;
+    const md = PISO_EST[est], pd = PEDRA_EST[est], oct = est === 'elfico' || est === 'antro' ? { forma: 'oct' } : null;
     Object.assign(TIPOS[est], {
       celeiro: T([[7, 5], [6, 5], [5, 7]], 'madeira', ['feno', 'feno', 'caixote', 'sacos', 'barril', 'feno', 'carrinho'], 6, 1),
       moinho: T([[5, 5]], pd, ['sacos', 'sacos', 'caixote', 'barril'], 4, 1, { forma: 'oct', moinho: true }),
@@ -109,6 +172,29 @@ const Estilos = (() => {
       enfeites: { campo: ['pedra', 'caixote', 'barril', 'pedra'], floresta: ['pedra', 'caixote', 'toco'], areia: ['pedra', 'caixote'], neve: ['pedra', 'caixote', 'barril'] },
       arvore: { campo: 'rocha', floresta: 'pinheiro', areia: 'rocha', neve: 'rocha' }, dens: 0.55 },
   };
+  Object.assign(ESTILO, {
+    orc: { rua: ['#3b2e24', '#4a3a2c', '#5c4836'], praca: 'terra', parede: { cor: '#2b1d14', luz: '#7a5236', larg: 0.3, tipo: 'troncos' }, poste: 'braseiro',
+      enfeites: { campo: ['estacas', 'cranios', 'pedra', 'toco'], floresta: ['estacas', 'toco', 'pedra', 'cranios'], areia: ['estacas', 'cranios', 'pedra'], neve: ['estacas', 'toco', 'pedra'] },
+      arvore: { campo: 'morta', floresta: 'pinheiro', areia: 'rocha', neve: 'pinheiro' }, dens: 0.6 },
+    konaito: { rua: ['#8a5a3c', '#9c6a48', '#b07c56'], praca: 'mosaico', parede: { cor: '#7a3e24', luz: '#c48058', larg: 0.3, tipo: 'adobe' }, poste: 'braseiro',
+      enfeites: { campo: ['jarro', 'pedra', 'grilhoes', 'jarro'], floresta: ['jarro', 'pedra', 'arbusto'], areia: ['jarro', 'pedra', 'grilhoes'], neve: ['jarro', 'pedra'] },
+      arvore: { campo: 'palmeira', floresta: 'folhosa', areia: 'palmeira', neve: 'pinheiro' }, dens: 0.6 },
+    kobold: { rua: ['#6b6232', '#7c7240', '#8f854e'], praca: 'terra', parede: { cor: '#4a3f22', luz: '#9a8a4a', larg: 0.16, tipo: 'troncos' }, poste: 'tocha',
+      enfeites: { campo: ['cogumelos', 'pedra', 'ossada', 'toco'], floresta: ['cogumelos', 'toco', 'ossada'], areia: ['pedra', 'ossada', 'caixote'], neve: ['pedra', 'toco'] },
+      arvore: { campo: 'morta', floresta: 'morta', areia: 'morta', neve: 'pinheiro' }, dens: 0.9 },
+    antro: { rua: ['#4a3a26', '#5a482e', '#6c583a'], praca: 'grama', parede: { cor: '#3e2e1a', luz: '#6f8a3a', larg: 0.24, tipo: 'viva' }, poste: 'lanterna',
+      enfeites: { campo: ['cogumelos', 'flores', 'toco', 'totemLobo'], floresta: ['cogumelos', 'flores', 'toco', 'arbusto'], areia: ['flores', 'pedra'], neve: ['toco', 'cogumelos'] },
+      arvore: { campo: 'gigante', floresta: 'gigante', areia: 'palmeira', neve: 'pinheiro' }, dens: 1.4 },
+    silk: { rua: ['#b8b4aa', '#c8c4ba', '#d6d2c8'], praca: 'mosaico', parede: { cor: '#c9c4b6', luz: '#f4f0e6', larg: 0.26, tipo: 'pedra' }, poste: 'lanterna',
+      enfeites: { campo: ['estatua', 'coluna', 'flores', 'pedra'], floresta: ['estatua', 'flores', 'arbusto'], areia: ['estatua', 'coluna', 'pedra'], neve: ['estatua', 'coluna'] },
+      arvore: { campo: 'folhosa', floresta: 'folhosa', areia: 'palmeira', neve: 'pinheiro' }, dens: 0.7 },
+    vampiro: { rua: ['#34303a', '#423d48', '#524c58'], praca: 'pedras', parede: { cor: '#24202a', luz: '#4a4250', larg: 0.28, tipo: 'pedra' }, poste: 'lampiao',
+      enfeites: { campo: ['tumulo', 'estatua', 'toco', 'cranios'], floresta: ['tumulo', 'toco', 'pedra'], areia: ['tumulo', 'pedra'], neve: ['tumulo', 'toco', 'estatua'] },
+      arvore: { campo: 'morta', floresta: 'morta', areia: 'morta', neve: 'pinheiro' }, dens: 0.8 },
+    magitec: { rua: ['#3a4048', '#474e58', '#565e6a'], praca: 'lajes', parede: { cor: '#2e3640', luz: '#5fd4e6', larg: 0.22, tipo: 'metal' }, poste: 'cristal',
+      enfeites: { campo: ['cristal', 'caixote', 'coluna', 'pedra'], floresta: ['cristal', 'caixote', 'toco'], areia: ['cristal', 'caixote'], neve: ['cristal', 'caixote'] },
+      arvore: { campo: 'folhosa', floresta: 'folhosa', areia: 'rocha', neve: 'rocha' }, dens: 0.3 },
+  });
   const de = est => ESTILO[valido(est)];
 
   /* ---- a forma de uma casa ----
@@ -228,6 +314,26 @@ const Estilos = (() => {
         g.strokeStyle = 'rgba(90,75,40,0.35)'; g.lineWidth = Math.max(1, c * 0.015);
         for (let t = 0.2; t < 1; t += 0.2) { g.beginPath(); if (deitada) { g.moveTo(mx + 3, my + c * t); g.lineTo(mx + mw - 3, my + c * t); } else { g.moveTo(mx + mw * t, my + 3); g.lineTo(mx + mw * t, my + c - 3); } g.stroke(); }
       }
+    } else if (tipo === 'metal') {
+      // (lote 126) placas de metal com rebites e as juntas de luz (magitec)
+      g.fillStyle = '#1e242c'; g.fillRect(x, y, w, hh);
+      for (let j = 0; j < k.h; j++) for (let i = 0; i < k.w; i++) {
+        const s = Math.floor(rnd() * 14), px = x + i * c, py = y + j * c;
+        g.fillStyle = `rgb(${62 + s},${70 + s},${80 + s})`; g.fillRect(px + 1.5, py + 1.5, c - 3, c - 3);
+        g.fillStyle = 'rgba(200,215,230,0.35)'; for (const [a, b] of [[0.15, 0.15], [0.85, 0.15], [0.15, 0.85], [0.85, 0.85]]) { g.beginPath(); g.arc(px + a * c, py + b * c, Math.max(1, c * 0.04), 0, TAU2); g.fill(); }
+      }
+      g.strokeStyle = 'rgba(95,212,230,0.35)'; g.lineWidth = Math.max(1, c * 0.03);
+      for (let j = 2; j < k.h; j += 3) { g.beginPath(); g.moveTo(x, y + j * c); g.lineTo(x + w, y + j * c); g.stroke(); }
+    } else if (tipo === 'marmore') {
+      // (lote 126) o mármore claro com veios (Silk)
+      g.fillStyle = '#b9b4a8'; g.fillRect(x, y, w, hh);
+      for (let j = 0; j < k.h; j++) for (let i = 0; i < k.w; i++) { const s = Math.floor(rnd() * 16); g.fillStyle = `rgb(${222 + s / 2},${218 + s / 2},${206 + s / 2})`; g.fillRect(x + i * c + 1, y + j * c + 1, c - 2, c - 2); }
+      g.strokeStyle = 'rgba(120,130,150,0.35)'; g.lineWidth = Math.max(1, c * 0.02);
+      for (let i = 0; i < k.w * k.h * 0.6; i++) { const px = x + rnd() * w, py = y + rnd() * hh; g.beginPath(); g.moveTo(px, py); g.quadraticCurveTo(px + c * 0.4, py + c * (rnd() - 0.5), px + c * 0.9, py + c * (rnd() - 0.5) * 0.6); g.stroke(); }
+    } else if (tipo === 'xadrez') {
+      // (lote 126) o piso em xadrez escuro e vinho (Vampiro)
+      g.fillStyle = '#141016'; g.fillRect(x, y, w, hh);
+      for (let j = 0; j < k.h; j++) for (let i = 0; i < k.w; i++) { const s = Math.floor(rnd() * 10); g.fillStyle = (i + j) % 2 ? `rgb(${40 + s},${34 + s},${44 + s})` : `rgb(${86 + s},${26 + s / 2},${34 + s / 2})`; g.fillRect(x + i * c + 1, y + j * c + 1, c - 2, c - 2); }
     } else if (tipo === 'ladrilho') {
       g.fillStyle = '#6e3a22'; g.fillRect(x, y, w, hh);
       for (let j = 0; j < k.h * 2; j++) for (let i = 0; i < k.w * 2; i++) {
@@ -283,6 +389,9 @@ const Estilos = (() => {
           g.beginPath(); g.moveTo(px - nx * lw * 0.45, py - ny * lw * 0.45); g.lineTo(px + nx * lw * 0.45, py + ny * lw * 0.45); g.stroke();
         }
         g.globalAlpha = 1;
+      } else if (P.tipo === 'metal') {
+        // (lote 126) a parede de metal com a junta de luz no meio
+        g.globalAlpha = 0.85; traco(s, P.luz, Math.max(1, lw * 0.22)); g.globalAlpha = 1;
       } else if (P.tipo === 'viva') {
         g.globalAlpha = 0.7; traco(s, P.luz, Math.max(1, lw * 0.3)); g.globalAlpha = 1;
         // folhinhas presas na madeira viva
@@ -339,6 +448,22 @@ const Estilos = (() => {
       const cores = ['#d77a9a', '#e79ab2', '#f2bfd0'];
       for (let i = 0; i < 9; i++) { const an = rnd() * TAU2, d = rnd() * R * 0.55; g.globalAlpha = 0.92; g.fillStyle = cores[i % 3]; g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.4 + rnd() * 0.25), 0, TAU2); g.fill(); }
       g.globalAlpha = 0.8; g.fillStyle = '#fff3f7'; for (let i = 0; i < 8; i++) { const an = rnd() * TAU2, d = rnd() * R * 0.8; g.beginPath(); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, R * 0.06, 0, TAU2); g.fill(); }
+    } else if (especie === 'morta') {
+      // (lote 126) a árvore seca: os galhos sem folha, tortos, a partir do tronco
+      g.globalAlpha = 0.95; g.strokeStyle = '#3a2c22'; g.lineCap = 'round';
+      const galho = (px, py, an, l, lw, n) => { const qx = px + Math.cos(an) * l, qy = py + Math.sin(an) * l; g.lineWidth = lw; g.beginPath(); g.moveTo(px, py); g.lineTo(qx, qy); g.stroke(); if (n > 0) { galho(qx, qy, an - 0.5 - rnd() * 0.3, l * 0.62, lw * 0.6, n - 1); galho(qx, qy, an + 0.4 + rnd() * 0.3, l * 0.58, lw * 0.6, n - 1); } };
+      for (let i = 0; i < 5; i++) galho(x, y, (i / 5) * TAU2 + rnd() * 0.5, R * 0.48, Math.max(1.5, R * 0.14), 2);
+      g.fillStyle = '#2a1e16'; g.beginPath(); g.arc(x, y, R * 0.16, 0, TAU2); g.fill();
+    } else if (especie === 'gigante') {
+      // (lote 126) a árvore gigante dos Antros: a copa larga e as raízes grossas saindo do pé
+      g.globalAlpha = 0.9; g.strokeStyle = '#4a3420'; g.lineCap = 'round';
+      for (let i = 0; i < 6; i++) { const an = (i / 6) * TAU2 + rnd() * 0.4; g.lineWidth = R * 0.14; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(an + 0.4) * R * 0.7, y + Math.sin(an + 0.4) * R * 0.7, x + Math.cos(an) * R * 1.25, y + Math.sin(an) * R * 1.25); g.stroke(); }
+      const cores = ['#24442a', '#2e5434', '#3a643e'], bolas = [];
+      for (let i = 0; i < 14; i++) { const an = rnd() * TAU2, d = rnd() * R * 0.75; bolas.push([x + Math.cos(an) * d, y + Math.sin(an) * d, R * (0.45 + rnd() * 0.3), cores[i % 3]]); }
+      g.globalAlpha = 0.92; g.fillStyle = escurecer(cores[0], 0.55);
+      for (const [bx, by, br] of bolas) { g.beginPath(); g.arc(bx, by, br + Math.max(1, R * 0.05), 0, TAU2); g.fill(); }
+      g.globalAlpha = 1;
+      for (const [bx, by, br, cor] of bolas) { const gr = g.createRadialGradient(bx - br * 0.35, by - br * 0.4, br * 0.1, bx, by, br); gr.addColorStop(0, clarear(cor, 0.2)); gr.addColorStop(1, escurecer(cor, 0.25)); g.fillStyle = gr; g.beginPath(); g.arc(bx, by, br, 0, TAU2); g.fill(); }
     } else if (especie === 'rocha') {
       g.globalAlpha = 1;
       const pts = [];
@@ -483,6 +608,8 @@ const Estilos = (() => {
     desertico: [['#d6b98c', '#dcc196', '#cfae7e']],
     elfico: [['#5d8a55', '#6f9e62', '#86b27a']],
     anao: [['#4a4f58', '#555b65', '#42474f']],
+    orc: [['#5a3e2a', '#4e3524', '#6a4a32']], konaito: [['#9a4e30', '#a85a38', '#8c4428']], kobold: [['#8a7a3e', '#9a8a46', '#7a6a34']],
+    antro: [['#4f6e34', '#5a7a3a', '#46632e']], silk: [['#3f5f8c', '#4a6a9a', '#365480']], vampiro: [['#2a2630', '#332e3a', '#24202a']], magitec: [['#4a5560', '#56626e', '#3e4852']],
   };
   /* O telhado de um prédio (k: x, y, w, h, forma; em quadrados), visto de cima, com a sombra no chão. A luz vem do alto,
      à esquerda: a água de cima (ou da esquerda) fica mais clara. h2: um número sorteado para o prédio (a cor, a chaminé). */
@@ -496,7 +623,56 @@ const Estilos = (() => {
     const grupos = TELHAS[est], grupo = grupos[est === 'comum' ? (h2 % 10 < 7 ? 0 : h2 % 10 < 9 ? 1 : 2) : 0], base = grupo[h2 % grupo.length];
     const deitada = k.w >= k.h;                                  // a cumeeira vai no sentido mais comprido
     g.save(); caminho(cont); g.clip();
-    if (est === 'desertico') {
+    if (est === 'orc') {
+      // (lote 126) couro esticado em gomos costurados, com os espetos de osso na cumeeira
+      g.fillStyle = base; g.fillRect(x, y, w, hh);
+      const n = Math.max(2, Math.round((deitada ? k.w : k.h) / 1.6));
+      for (let i = 0; i < n; i++) { g.fillStyle = tom(grupo[(i + h2) % grupo.length], i % 2 ? 0.08 : -0.12); if (deitada) g.fillRect(x + (i * w) / n, y, w / n, hh); else g.fillRect(x, y + (i * hh) / n, w, hh / n); }
+      g.strokeStyle = 'rgba(230,210,170,0.45)'; g.lineWidth = Math.max(1, c * 0.03); g.setLineDash([c * 0.12, c * 0.1]);
+      for (let i = 1; i < n; i++) { g.beginPath(); if (deitada) { g.moveTo(x + (i * w) / n, y); g.lineTo(x + (i * w) / n, y + hh); } else { g.moveTo(x, y + (i * hh) / n); g.lineTo(x + w, y + (i * hh) / n); } g.stroke(); }
+      g.setLineDash([]);
+      g.fillStyle = '#e8dcc0'; const m = deitada ? y + hh / 2 : x + w / 2;
+      for (let t = 0.5; t < (deitada ? k.w : k.h); t += 1.1) { g.beginPath(); if (deitada) { g.moveTo(x + t * c - c * 0.12, m); g.lineTo(x + t * c, m - c * 0.45); g.lineTo(x + t * c + c * 0.12, m); } else { g.moveTo(m, y + t * c - c * 0.12); g.lineTo(m - c * 0.45, y + t * c); g.lineTo(m, y + t * c + c * 0.12); } g.fill(); }
+    } else if (est === 'konaito') {
+      // (lote 126) o terraço de barro vermelho, a mureta e, nos prédios grandes, o chifre de Volkhum'Pan
+      g.fillStyle = base; g.fillRect(x, y, w, hh);
+      for (let i = 0; i < k.w * k.h * 2; i++) { g.globalAlpha = 0.12; g.fillStyle = rnd() < 0.5 ? '#f0c8a0' : '#5a2a18'; g.beginPath(); g.arc(x + rnd() * w, y + rnd() * hh, c * (0.1 + rnd() * 0.3), 0, TAU2); g.fill(); }
+      g.globalAlpha = 1; g.strokeStyle = tom(base, -0.3); g.lineWidth = c * 0.34; caminho(cont); g.stroke();
+      if (k.tipo === 'templo' || k.tipo === 'senhor' || (k.w >= 6 && k.h >= 6)) {
+        const cx = x + w / 2, cy = y + hh / 2, R = Math.min(w, hh) * 0.36;
+        g.strokeStyle = '#e8dcc0'; g.lineWidth = c * 0.32; g.lineCap = 'round'; g.beginPath(); g.arc(cx, cy + R * 0.3, R, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+        g.strokeStyle = '#8a7a5a'; g.lineWidth = c * 0.08; g.beginPath(); g.arc(cx, cy + R * 0.3, R, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+      } else { g.fillStyle = 'rgba(50,20,10,0.7)'; g.fillRect(x + w * 0.22, y + hh * 0.25, c * 0.6, c * 0.6); }
+    } else if (est === 'kobold' || (est === 'antro' && oct)) {
+      // (lote 126) Kobold: o sapê de junco em roda, do meio para fora; Antro: o domo de musgo com os cogumelos
+      const cx = x + w / 2, cy = y + hh / 2, R = Math.hypot(w, hh) / 2;
+      g.fillStyle = base; g.fillRect(x, y, w, hh);
+      if (est === 'kobold') {
+        g.lineWidth = Math.max(1, c * 0.04);
+        for (let i = 0; i < 90; i++) { const an = (i / 90) * TAU2 + rnd() * 0.03; g.strokeStyle = i % 3 ? tom(base, 0.15) : tom(base, -0.25); g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(an) * R, cy + Math.sin(an) * R); g.stroke(); }
+        g.fillStyle = tom(base, -0.4); g.beginPath(); g.arc(cx, cy, c * 0.3, 0, TAU2); g.fill();
+      } else {
+        const gr = g.createRadialGradient(cx - w * 0.2, cy - hh * 0.2, c * 0.2, cx, cy, R); gr.addColorStop(0, tom(base, 0.25)); gr.addColorStop(1, tom(base, -0.35));
+        g.fillStyle = gr; g.fillRect(x, y, w, hh);
+        for (let i = 0; i < k.w * k.h * 1.5; i++) { g.globalAlpha = 0.35; g.fillStyle = rnd() < 0.5 ? '#6f9a48' : '#33502a'; g.beginPath(); g.arc(x + rnd() * w, y + rnd() * hh, c * (0.12 + rnd() * 0.2), 0, TAU2); g.fill(); }
+        g.globalAlpha = 1;
+        for (let i = 0; i < 2 + (h2 % 4); i++) { const px = x + w * (0.2 + rnd() * 0.6), py = y + hh * (0.2 + rnd() * 0.6), r = c * (0.2 + rnd() * 0.15); g.fillStyle = ['#c8452f', '#d9a23a', '#e8dcc0'][i % 3]; g.beginPath(); g.arc(px, py, r, 0, TAU2); g.fill(); g.fillStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.arc(px - r * 0.3, py - r * 0.2, r * 0.18, 0, TAU2); g.fill(); }
+      }
+    } else if (est === 'magitec') {
+      // (lote 126) as placas de metal, as juntas de luz e, no prédio redondo, a cúpula de vidro
+      g.fillStyle = base; g.fillRect(x, y, w, hh);
+      for (let j = 0; j < k.h; j += 1.5) for (let i = 0; i < k.w; i += 1.5) { g.fillStyle = tom(grupo[(Math.floor(i + j) + h2) % grupo.length], ((i + j) % 3) * 0.06 - 0.06); g.fillRect(x + i * c + 1, y + j * c + 1, c * 1.5 - 2, c * 1.5 - 2); }
+      g.strokeStyle = 'rgba(95,212,230,0.75)'; g.lineWidth = Math.max(1, c * 0.06);
+      if (oct) { const cx = x + w / 2, cy = y + hh / 2, R = Math.min(w, hh) * 0.34, gr = g.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.1, cx, cy, R); gr.addColorStop(0, '#d8f6ff'); gr.addColorStop(0.6, '#5fb8d4'); gr.addColorStop(1, '#2a5a70'); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, R, 0, TAU2); g.fill(); g.beginPath(); g.arc(cx, cy, R * 1.25, 0, TAU2); g.stroke(); }
+      else { g.beginPath(); if (deitada) { g.moveTo(x, y + hh / 2); g.lineTo(x + w, y + hh / 2); } else { g.moveTo(x + w / 2, y); g.lineTo(x + w / 2, y + hh); } g.stroke();
+        g.fillStyle = '#7fe8f6'; for (let t = 0.6; t < (deitada ? k.w : k.h); t += 1.5) { g.beginPath(); g.arc(deitada ? x + t * c : x + w / 2, deitada ? y + hh / 2 : y + t * c, c * 0.1, 0, TAU2); g.fill(); } }
+    } else if (est === 'silk' && oct) {
+      // (lote 126) a cúpula azul da Academia, com o lanternim de prata
+      const cx = x + w / 2, cy = y + hh / 2;
+      for (let i = 0; i < cont.length; i++) { const a = cont[i], b = cont[(i + 1) % cont.length], luz = 0.22 - 0.4 * ((i + 6) % cont.length) / cont.length; g.fillStyle = tom(base, luz); g.beginPath(); g.moveTo(cx, cy); g.lineTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.closePath(); g.fill(); }
+      g.strokeStyle = '#d8dce4'; g.lineWidth = Math.max(1, c * 0.06); for (const [px, py] of cont) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(px, py); g.stroke(); }
+      g.fillStyle = '#eef1f6'; g.beginPath(); g.arc(cx, cy, c * 0.45, 0, TAU2); g.fill(); g.fillStyle = '#3f5f8c'; g.beginPath(); g.arc(cx, cy, c * 0.2, 0, TAU2); g.fill();
+    } else if (est === 'desertico') {
       // terraço: o chão de barro, a mureta em volta, um alçapão e, às vezes, um tapete e jarros
       g.fillStyle = base; g.fillRect(x, y, w, hh);
       for (let i = 0; i < k.w * k.h * 2; i++) { g.globalAlpha = 0.12; g.fillStyle = rnd() < 0.5 ? '#fff4dc' : '#9c7a4c'; g.beginPath(); g.arc(x + rnd() * w, y + rnd() * hh, c * (0.1 + rnd() * 0.3), 0, TAU2); g.fill(); }
@@ -557,15 +733,15 @@ const Estilos = (() => {
         const passo = c * (est === 'anao' ? 0.34 : 0.26);
         if (deitada) for (let yy = y + passo; yy < y + hh; yy += passo) { g.beginPath(); g.moveTo(x, yy); g.lineTo(x + w, yy); g.stroke(); }
         else for (let xx = x + passo; xx < x + w; xx += passo) { g.beginPath(); g.moveTo(xx, y); g.lineTo(xx, y + hh); g.stroke(); }
-        if (est === 'comum' || est === 'oriental') {
+        if (est === 'comum' || est === 'oriental' || est === 'vampiro' || est === 'silk') {
           // as juntas das telhas, desencontradas
           g.strokeStyle = 'rgba(0,0,0,0.13)';
           if (deitada) for (let yy = y, l = 0; yy < y + hh; yy += passo, l++) for (let xx = x + (l % 2) * passo / 2; xx < x + w; xx += passo) { g.beginPath(); g.moveTo(xx, yy); g.lineTo(xx, yy + passo); g.stroke(); }
           else for (let xx = x, l = 0; xx < x + w; xx += passo, l++) for (let yy = y + (l % 2) * passo / 2; yy < y + hh; yy += passo) { g.beginPath(); g.moveTo(xx, yy); g.lineTo(xx + passo, yy); g.stroke(); }
         }
       }
-      // a cumeeira
-      g.strokeStyle = est === 'anao' ? '#9a7a44' : est === 'nordico' ? '#3b2a1a' : tom(base, -0.45); g.lineWidth = Math.max(1.5, c * (est === 'anao' ? 0.14 : 0.1));
+      // a cumeeira (o Vampiro: vinho; o Silk: prata)
+      g.strokeStyle = est === 'anao' ? '#9a7a44' : est === 'nordico' ? '#3b2a1a' : est === 'vampiro' ? '#7a1e2a' : est === 'silk' ? '#d8dce4' : tom(base, -0.45); g.lineWidth = Math.max(1.5, c * (est === 'anao' ? 0.14 : 0.1));
       g.beginPath();
       if (deitada) { g.moveTo(x + recuo, meio); g.lineTo(x + w - recuo, meio); } else { g.moveTo(meio, y + recuo); g.lineTo(meio, y + hh - recuo); }
       g.stroke();
@@ -581,6 +757,11 @@ const Estilos = (() => {
         g.strokeStyle = '#4a3220'; g.lineWidth = Math.max(1.5, c * 0.09);
         const xis = (px, py) => { g.beginPath(); g.moveTo(px - c * 0.3, py - c * 0.3); g.lineTo(px + c * 0.3, py + c * 0.3); g.moveTo(px + c * 0.3, py - c * 0.3); g.lineTo(px - c * 0.3, py + c * 0.3); g.stroke(); };
         if (deitada) { xis(x + c * 0.3, meio); xis(x + w - c * 0.3, meio); } else { xis(meio, y + c * 0.3); xis(meio, y + hh - c * 0.3); }
+      }
+      if (est === 'vampiro') {
+        // (lote 126) as agulhas pretas nas pontas da cumeeira, vistas de cima
+        g.fillStyle = '#121014';
+        for (const [px, py] of deitada ? [[x + c * 0.4, meio], [x + w - c * 0.4, meio]] : [[meio, y + c * 0.4], [meio, y + hh - c * 0.4]]) { g.beginPath(); g.arc(px, py, c * 0.26, 0, TAU2); g.fill(); g.fillStyle = '#7a1e2a'; g.beginPath(); g.arc(px, py, c * 0.1, 0, TAU2); g.fill(); g.fillStyle = '#121014'; }
       }
       // a chaminé (não no templo nem no oriental)
       if (!quatro && k.tipo !== 'templo' && h2 % 4 !== 3) {
@@ -679,7 +860,9 @@ const Estilos = (() => {
   }
   // as cores das bandeirinhas de cada estilo
   const BANDEIRAS = { comum: ['#c8452f', '#e9c24a', '#2f6f8c', '#5b8c3a', '#f1e2c2'], oriental: ['#b3262b', '#f4efe3', '#d9a23a'], nordico: ['#a8302a', '#f1e2c2', '#2f5a8c'],
-    desertico: ['#e0902a', '#2a8c8c', '#a8302a', '#f1e2c2'], elfico: ['#5b8c3a', '#c8d6c0', '#9572b8', '#e9c24a'], anao: ['#d9a23a', '#8e2f3c', '#6b7380'] };
+    desertico: ['#e0902a', '#2a8c8c', '#a8302a', '#f1e2c2'], elfico: ['#5b8c3a', '#c8d6c0', '#9572b8', '#e9c24a'], anao: ['#d9a23a', '#8e2f3c', '#6b7380'],
+    orc: ['#8e1f1f', '#2a1a10', '#c9a24a'], konaito: ['#b5402a', '#e8dcc0', '#2a1a10'], kobold: ['#d9c23a', '#5a6a2a', '#7a3a2a'], antro: ['#6f9a48', '#c9a24a', '#8a5a32'],
+    silk: ['#3f5f8c', '#eef1f6', '#9fb3d6'], vampiro: ['#7a1e2a', '#121014', '#c9c4b6'], magitec: ['#5fd4e6', '#2e3640', '#e9c24a'] };
   /* As bandeirinhas: um cordão de a até b (caindo um pouco no meio) e os triângulos pendurados nele, de quadrado em
      quadrado e pouco; as cores do estilo, alternadas. Devolve as formas (o cordão primeiro), todas com o mesmo grupo
      (g): num recorte, o cordão entra inteiro ou não entra. */
@@ -764,6 +947,6 @@ const Estilos = (() => {
     }
     if (formas && formas.length) { g.save(); g.setTransform(k, 0, 0, k, ox, oy); for (const f of formas) Render.drawShape(g, formaNaCena(f, 64, 0, 0)); g.restore(); }
   }
-  return { LISTA, ADJ, valido, TIPOS, tipos, formaDe, ESTILO, de, lados, contorno, proaDe, pedacos, paredesDaCasa, corDaRua, piso, paredesPintadas, arvore, praca, enfeiteDaCasa, telhado, tom,
+  return { LISTA, ADJ, valido, raiz, RAIZ, TIPOS, tipos, formaDe, ESTILO, de, lados, contorno, proaDe, pedacos, paredesDaCasa, corDaRua, piso, paredesPintadas, arvore, praca, enfeiteDaCasa, telhado, tom,
     quintal, terrenoNaCena, formaNaCena, caixaDe, moverRelevo, retangulo, bandeirinhas, relevoNaPrevia, ponte };
 })();

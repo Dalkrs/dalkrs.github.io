@@ -202,6 +202,35 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
   quando não há nada.
 
+### As luas, a reputação e os lugares do mundo novo (lote 126)
+
+- **As luas** (`mundo/luas.js`; a conta em `mundo/nucleo.js`: `normLuas`, `faseDaLua`, `luaNoCeu`, `luasDoDia`,
+  `proximaLua`, `hordasEntre`). Ficam no calendário do mapa (`cal.luas`: nome, cor, se tem fases, o ciclo em dias, o
+  deslocamento, o nome das quatro fases, a chance de estar no céu numa noite, se traz horda e o "forçar" de uma noite).
+  O canto das luas fica em cima do zoom, para todos; o cartão mostra a fase e quanto está iluminada (quem mestra vê
+  também a chance e quando ela volta, "Fazer subir esta noite" e "Editar as luas"). Quando o dia passa e uma lua de
+  horda sobe, o mapa ganha um evento `horda` (Horda de monstros, escondido, com `lua`) e quem mestra é avisado, no mesmo
+  passo de desfazer. O sorteio da noite só depende da lua e do dia: o mesmo em qualquer aparelho.
+- **A reputação com as facções** (`tc/reputacao.js`, `fichas/reputacao.js`). De −100 a +100, com seis níveis. Na ficha:
+  `estado.rep` (as que o jogador vê, com o nome da facção) e `estado.repOc` (as escondidas dele); o valor das escondidas
+  fica em `fichas:segredos`, `rep[personagem]`. Uma facção escondida no mapa começa escondida do jogador. Só quem mestra
+  muda. As facções vêm dos mapas do Mapa-múndi (`FichasMesa.faccoesDaMesa`). A missão pode dar reputação (`rep` na
+  missão): ao marcar "Cumprida", vai para a ficha de quem cumpriu, uma vez (`repDada`), com Desfazer.
+- **Os estilos novos do gerador** (`10c2-estilos.js`): Orc, Konaito, Kobold, Antro, Silk, Vampiro e Magitec, cada um com
+  os prédios, o chão, as paredes, as ruas, as árvores (`morta`, `gigante`), os telhados e as muralhas. `Estilos.raiz`
+  diz o estilo de antes em que cada um se apoia, para o que ainda não tem desenho próprio.
+- **As ruínas novas** (`10f6-ruinas.js`): `nave`, `bunker`, `academia`, `soterrada`, `batalha` e `esquecido`, com os
+  marcadores ocultos do que importa (`P.pontos`).
+- **Os Lugares do mundo** (`10f6c-lugares-mundo.js`, `LugaresMundo`): o templo de um deus (o culto), o ninho de dragão, a
+  fossa das almas, a cratera (o fundo) e o posto de fronteira (o pedágio; a cancela é uma porta).
+- **A Cidade grande** (`10f6d-cidade-grande.js`, `CidadeGrande`): a cidade inteira numa cena, a 1 quadrado = 5 m, em
+  cinco traçados. As casas são só desenho (`soDesenho`: sem paredes nem Entrada); as muralhas são paredes e os portões,
+  portas abertas (`P.paredes` com `open`).
+- **Os lugares importantes** (`src/mapas_cidades/lugares_importantes.js`): monta o Vale das mil torres, a Fortaleza da
+  Caldeira, o Forte-prisão, a Clareira da Conversão e os Pilares do Vento com as peças do gerador, e grava os fundos em
+  `cenas/mapas/` e as paredes e os marcadores em `importantes_in.json` (para o banco).
+- Testes: `src/tests/mundo-luas.test.js`, `src/tests/reputacao.test.js`.
+
 ### O teto de pontos por nível (lote 50)
 
 - **A regra** (`TC.rules`: `porNivelDoTipo`, `tetoDoTipo`, `contaDoTeto`): Raça e Classe têm um teto que sobe com o

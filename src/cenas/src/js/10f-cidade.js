@@ -81,7 +81,8 @@ const Cidade = (() => {
   const passoPraFora = pt => [pt.lado === 'o' ? -1 : pt.lado === 'l' ? 1 : 0, pt.lado === 'n' ? -1 : pt.lado === 's' ? 1 : 0];
   // o lado que dá para (ax, ay)
   const ladoPara = (x, y, w, h, ax, ay) => { const dx = ax - (x + w / 2), dy = ay - (y + h / 2); return Math.abs(dx) / w > Math.abs(dy) / h ? (dx < 0 ? 'o' : 'l') : (dy < 0 ? 'n' : 's'); };
-  const formaDoEstilo = (estilo, tipo, w, h) => ((estilo === 'elfico' || (estilo === 'anao' && tipo !== 'casa')) && tipo !== 'quartel' && w >= 5 && h >= 5 ? 'oct' : 'ret');
+  // (lote 126) as casas redondas: élfica, antro e kobold; os prédios grandes redondos: anão, Silk (as cúpulas) e magitec
+  const formaDoEstilo = (estilo, tipo, w, h) => ((estilo === 'elfico' || estilo === 'antro' || estilo === 'kobold' || ((estilo === 'anao' || estilo === 'silk' || estilo === 'magitec') && tipo !== 'casa')) && tipo !== 'quartel' && w >= 5 && h >= 5 ? 'oct' : 'ret');
 
   /* As partes travadas que chegam de fora (um modelo, a janela): o traçado (a semente dele) e os prédios comuns (cópias). */
   function limparTrava(t, W, H) {
@@ -749,7 +750,7 @@ const Cidade = (() => {
   const retangulo = Estilos.retangulo;
   // o fosso de cada estilo (o tipo de terreno e a fundura, em metros): com água no comum e no oriental; seco e fundo no
   // anão; uma vala no nórdico; o desértico e o élfico não têm
-  const FOSSO = { comum: ['agua', -2], oriental: ['agua', -2], anao: ['fosso', -4], nordico: ['fosso', -2] };
+  const FOSSO = { comum: ['agua', -2], oriental: ['agua', -2], anao: ['fosso', -4], nordico: ['fosso', -2], orc: ['fosso', -3], vampiro: ['agua', -3], magitec: ['fosso', -4], silk: ['agua', -2] };
   const MADEIRA = ['oriental', 'nordico', 'elfico'];      // (as pontes de madeira; nos outros estilos, são de pedra)
   /* (lote 8) Os pedaços da muralha, em ordem: o muro e, em cada portão, o vão (folga para cada lado). No octógono, lado
      por lado, como sempre; nas outras formas, ao longo do contorno (o vão pode pegar dois lados). O lado aberto para o mar
@@ -874,7 +875,9 @@ const Cidade = (() => {
   }
   /* ================= o fundo pintado ================= */
   // as cores de cada estilo para a muralha (pedra, reboco, troncos, barro, pedra clara com hera, pedra escura)
-  const MURO = { comum: ['#6e6a62', '#8a857b', '#4f4b45'], oriental: ['#e8e2d3', '#f4efe3', '#2f3846'], nordico: ['#6b4a2b', '#7a5532', '#3b2814'], desertico: ['#c9a46a', '#d8b98a', '#9c7448'], elfico: ['#c8cfc0', '#dde3d4', '#5d8a55'], anao: ['#4b4f57', '#5e646e', '#2f3238'] };
+  const MURO = { comum: ['#6e6a62', '#8a857b', '#4f4b45'], oriental: ['#e8e2d3', '#f4efe3', '#2f3846'], nordico: ['#6b4a2b', '#7a5532', '#3b2814'], desertico: ['#c9a46a', '#d8b98a', '#9c7448'], elfico: ['#c8cfc0', '#dde3d4', '#5d8a55'], anao: ['#4b4f57', '#5e646e', '#2f3238'],
+    orc: ['#3b2a1e', '#5a3e28', '#1e140c'], konaito: ['#8a4a2c', '#a85e3a', '#4a2414'], kobold: ['#5a5030', '#7a6c40', '#2e2818'], antro: ['#4a3a22', '#5e4a2c', '#3f6a34'],
+    silk: ['#d8d4c8', '#eeeae0', '#3f5f8c'], vampiro: ['#24202a', '#36303e', '#7a1e2a'], magitec: ['#3a4450', '#4e5a68', '#5fd4e6'] };
   const TOM_BAIRRO = { c: null, n: 'rgba(90,150,70,0.18)', m: 'rgba(170,140,100,0.16)', p: 'rgba(100,75,45,0.22)', q: 'rgba(130,100,70,0.2)', r: 'rgba(80,90,70,0.12)', o: 'rgba(120,110,90,0.14)', '#': null, '.': null, '~': null };
   const LETRA_BAIRRO = { c: 'centro', n: 'nobres', m: 'mercado', p: 'pobres', q: 'quartel', r: 'rio', o: 'porto' };
   /* Pinta a cidade toda, com c pixels por quadrado. bairros: true pinta também o tom de cada bairro (o mapa de bairros).

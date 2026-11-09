@@ -404,7 +404,7 @@ const OURO = JSON.parse(fs.readFileSync(path.join(__dirname, 'gerador8-ouro.json
   if (parte('janela')) {
     const G = () => ev(() => JSON.parse(JSON.stringify(__tc.Gerador.vivo().estado)));
     await page.locator('#sceneBtn').click(); await w(200); await page.locator('.menu-i', { hasText: 'Gerar um lugar' }).click(); await w(700);
-    await page.locator('#ger-lugar button', { hasText: 'Cidade' }).click(); await w(700);
+    await page.locator('#ger-lugar button', { hasText: /^Cidade$/ }).click(); await w(700);
     ok(await page.locator('#cid-tr').count() === 1 && /automático \(como sempre\)/.test(await page.locator('#cid-tr-res').innerText()), 'a seção Traçado, fechada, diz "automático (como sempre)"');
     if (!(await ev(() => document.getElementById('cid-tr').open))) await page.locator('#cid-tr > summary').click();
     await w(250);

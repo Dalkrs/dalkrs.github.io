@@ -64,10 +64,14 @@
       img: txt(m.img, 600), lug: null, pz: txt(m.pz, 80), c: num(m.c) || 0, quem,
       e: ESTADOS.some(x => x.k === m.e) ? m.e : (quem === 'pc' ? 'ativa' : 'oferta'), ok: okDe(m.ok), pegas: {}, de: m.de === 'j' ? 'j' : 'm' };
     if (quem === 'pc' && r.e === 'oferta') r.e = 'ativa';
+    // (lote 126) a reputação que ela dá quando é cumprida: [{ f facção, n nome, v de −100 a +100 }]
+    if (Array.isArray(m.rep)) { const rp = []; for (const x of m.rep) { if (!ehObj(x) || !idOk(x.f) || rp.length >= 6 || rp.some(y => y.f === x.f)) continue; const v = Math.max(-100, Math.min(100, Math.round(num(x.v) || 0))); if (v) rp.push({ f: x.f, n: txt(x.n, 60) || 'Facção', v }); } if (rp.length) r.rep = rp; }
+    if (m.repDada) r.repDada = true;
     if (ehObj(m.lug) && typeof m.lug.mapa === 'string' && m.lug.mapa) r.lug = { mapa: txt(m.lug.mapa, 80), obj: typeof m.lug.obj === 'string' ? txt(m.lug.obj, 80) : '', nome: txt(m.lug.nome, 80) };
     if (ehObj(m.pegas)) for (const pc of Object.keys(m.pegas)) {
       const p = m.pegas[pc]; if (!idOk(pc) || !ehObj(p)) continue;
       r.pegas[pc] = { u: typeof p.u === 'string' ? p.u : null, em: num(p.em) || 0, e: ['ativa', 'feita', 'falhou'].includes(p.e) ? p.e : 'ativa', ok: okDe(p.ok) };
+      if (p.repDada) r.pegas[pc].repDada = true;
     }
     if (typeof m.alvo === 'string' && idOk(m.alvo)) r.alvo = m.alvo;
     if (m.fechada) r.fechada = true;

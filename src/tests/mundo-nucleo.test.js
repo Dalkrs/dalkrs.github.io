@@ -23,7 +23,7 @@ const EVS = ['guerra', 'conflito', 'praga', 'fome', 'festival', 'tempestade', 'm
 ok(EVS.every(k => N.EVENTOS[k] && N.EVENTOS[k].nome && /^#[0-9a-f]{6}$/.test(N.EVENTOS[k].cor) && N.EVENTOS[k].svg), 'os 12 tipos de evento existem');
 // (lote 7, parte 5a) os 24 novos, cada um com o nome, a cor, o desenho e o peso de começo
 const EVS5 = ['caravana', 'peregrinacao', 'bandidos', 'ponte', 'migracao', 'eclipse', 'meteoros', 'luaSangue', 'tribulacao', 'seca', 'terremoto', 'erupcao', 'inverno', 'torneio', 'coroacao', 'golpe', 'cerco', 'leilao', 'assombracao', 'reino', 'dragao', 'seita', 'cacada', 'colheita'];
-ok(j(Object.keys(N.EVENTOS)) === j(EVS.concat(EVS5)) && EVS5.every(k => N.EVENTOS[k].nome && /^#[0-9a-f]{6}$/.test(N.EVENTOS[k].cor) && /<(path|circle)/.test(N.EVENTOS[k].svg)), 'os 24 eventos novos, depois dos 12 de antes, com o nome, a cor e o desenho');
+ok(j(Object.keys(N.EVENTOS).filter(k => k !== 'horda')) === j(EVS.concat(EVS5)) && EVS5.every(k => N.EVENTOS[k].nome && /^#[0-9a-f]{6}$/.test(N.EVENTOS[k].cor) && /<(path|circle)/.test(N.EVENTOS[k].svg)), 'os 24 eventos novos, depois dos 12 de antes, com o nome, a cor e o desenho');
 ok(Object.keys(N.EVENTOS).every(k => N.PESO_EVENTO[k] && typeof N.PESO_EVENTO[k].fecha === 'boolean') && j(Object.keys(N.EVENTOS).filter(k => N.PESO_EVENTO[k].fecha)) === j(['ponte', 'terremoto', 'cerco']), 'todo tipo tem o peso de começo; fecham a passagem a ponte caída, o terremoto e o cerco');
 ok(N.CORES.length === 10 && N.CORES.every(c => /^#[0-9a-f]{6}$/.test(c)) && new Set(N.CORES).size === 10, '10 cores de facção, todas diferentes');
 ok(N.RITMOS === undefined && N.CUBOS_HEX === 5 && N.CUBOS_DIA === 30, 'sem ritmos: o grupo anda os cubos por dia dele (30 de começo); um hexágono = 5 cubos');

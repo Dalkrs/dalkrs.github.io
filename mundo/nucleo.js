@@ -67,6 +67,7 @@
     migracao: { nome: 'Migração de monstros', cor: '#c97a3a', svg: '<path d="M3 17l5-5-5-5M10 17l5-5-5-5M17 17l4-5-4-5"/>' },
     eclipse: { nome: 'Eclipse', cor: '#7b74b8', svg: '<circle cx="12" cy="12" r="5"/><path d="M14.5 8.2a5 5 0 1 0 0 7.6 4 4 0 0 1 0-7.6zM12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>' },
     meteoros: { nome: 'Chuva de meteoros', cor: '#f0a35a', svg: '<circle cx="17" cy="17" r="3"/><path d="M15 15 5 5M19.5 13.5 12 6M13.5 19.5 6 12"/>' },
+    horda: { nome: 'Horda de monstros', cor: '#b8433a', svg: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2"/><path d="M3 12c3-4 15-4 18 0M3 12c3 4 15 4 18 0"/>' },
     luaSangue: { nome: 'Lua de sangue', cor: '#c0392b', svg: '<path d="M15 3a9 9 0 1 0 6 13.5A7.5 7.5 0 0 1 15 3zM8.5 9v.01M10.5 14v.01M7 16v.01"/>' },
     tribulacao: { nome: 'Tribulação celestial', cor: '#e8d870', svg: '<path d="M13 2 6 13h5l-2 9 8-12h-5zM3 5l2 2M21 5l-2 2M2 11h2M20 11h2"/>' },
     seca: { nome: 'Seca', cor: '#d6b46a', svg: '<circle cx="12" cy="8" r="3.5"/><path d="M12 2v1.5M5.5 8H4M20 8h-1.5M7.4 3.4l1 1M16.6 3.4l-1 1M3 17h18M7 17l2 2-1 2M13 17l-1 2 2 2M18 17l1 2"/>' },
@@ -95,7 +96,7 @@
     incendio: { custo: 5, enc: 0, fecha: false }, inundacao: { custo: 10, enc: 0, fecha: false }, descoberta: { custo: 0, enc: 0, fecha: false },
     caravana: { custo: 0, enc: 0, fecha: false }, peregrinacao: { custo: 0, enc: 0, fecha: false }, bandidos: { custo: 0, enc: 30, fecha: false },
     ponte: { custo: 0, enc: 0, fecha: true }, migracao: { custo: 0, enc: 30, fecha: false }, eclipse: { custo: 0, enc: 10, fecha: false },
-    meteoros: { custo: 0, enc: 0, fecha: false }, luaSangue: { custo: 0, enc: 20, fecha: false }, tribulacao: { custo: 5, enc: 0, fecha: false },
+    meteoros: { custo: 0, enc: 0, fecha: false }, luaSangue: { custo: 0, enc: 20, fecha: false }, horda: { custo: 0, enc: 40, fecha: false }, tribulacao: { custo: 5, enc: 0, fecha: false },
     seca: { custo: 0, enc: 0, fecha: false }, terremoto: { custo: 5, enc: 0, fecha: true }, erupcao: { custo: 10, enc: 0, fecha: false },
     inverno: { custo: 5, enc: 0, fecha: false }, torneio: { custo: 0, enc: 0, fecha: false }, coroacao: { custo: 0, enc: 0, fecha: false },
     golpe: { custo: 0, enc: 15, fecha: false }, cerco: { custo: 0, enc: 20, fecha: true }, leilao: { custo: 0, enc: 0, fecha: false },
@@ -108,7 +109,7 @@
     tempestade: { clima: 'chuva' }, inundacao: { clima: 'chuva' }, incendio: { clima: 'cinzas' }, magia: { clima: 'vagalumes' },
     inverno: { clima: 'neve' }, erupcao: { clima: 'cinzas' }, meteoros: { clima: 'cinzas' }, tribulacao: { clima: 'chuva' },
     assombracao: { clima: 'neblina', fx: 'espiritos' }, reino: { clima: 'vagalumes' }, eclipse: { hora: 'breu' },
-    luaSangue: { hora: 'noite', fx: 'luaSangue' }, seca: { seco: true },
+    luaSangue: { hora: 'noite', fx: 'luaSangue' }, horda: { hora: 'noite' }, seca: { seco: true },
   };
   // Cores de facção: médias, para a região (preenchida a 20%) e a frente lerem bem no tema escuro e no claro.
   const CORES = ['#c0503a', '#3f7fbf', '#3f9a5c', '#c9922e', '#8a5cc0', '#c0457f', '#2f9a9a', '#8a9a3a', '#a0623a', '#5a6fd0'];
@@ -518,6 +519,81 @@
   const textoDataSemana = (cal, dia) => { const s = diaDaSemana(cal, dia); return (s ? s + ', ' : '') + textoData(cal, dia); };
   // o sem0 que faz o dia `dia` cair no dia da semana `i` (0 a 6); i fora disso: null (o mapa deixa de contar a semana)
   const sem0Para = (dia, i) => (Number.isInteger(i) && i >= 0 && i <= 6 ? (((i - Math.floor(num(dia, 0))) % 7) + 7) % 7 : null);
+
+  /* ---------------- (lote 126) as luas ----------------
+     cal.luas: [{ id, nome, cor, fases: true|false, ciclo (dias), desloc (o dia do ciclo no dia 0), nomes: [4 nomes das
+     fases: nova, crescente, cheia, minguante], chance (0 a 100: a chance de estar no céu numa noite; 100 = toda noite),
+     horda: true (quando sobe, o mestre é avisado e o mapa ganha uma Horda), forca: { d, v } (o mestre fez subir, ou
+     não, na noite d) }]. Sem cal.luas, o mapa não tem luas. Tudo é conta: o mesmo dia dá a mesma lua em qualquer aparelho. */
+  const FASES_LUA = ['Nova', 'Crescente', 'Cheia', 'Minguante'];
+  const MAX_LUAS = 6;
+  const LUAS_PADRAO = [
+    { id: 'kitsune', nome: 'Lua Kitsune', cor: '#d9d4ff', fases: true, ciclo: 30, desloc: 0, nomes: FASES_LUA.slice(), chance: 100, horda: false },
+    { id: 'secundaria', nome: 'Lua secundária', cor: '#f1e2b8', fases: true, ciclo: 45, desloc: 10, nomes: FASES_LUA.slice(), chance: 100, horda: false },
+    { id: 'olho', nome: 'Lua do olho', cor: '#e0605a', fases: false, ciclo: 30, desloc: 0, nomes: FASES_LUA.slice(), chance: 5, horda: true },
+  ];
+  function normLuas(v) {
+    if (!Array.isArray(v)) return null;
+    const out = [], vistos = new Set();
+    for (const x of v) {
+      if (!ehObj(x) || out.length >= MAX_LUAS) continue;
+      let id = idRef(x.id) || 'lua' + (out.length + 1);
+      while (vistos.has(id)) id += '_';
+      vistos.add(id);
+      const cor = typeof x.cor === 'string' && /^#[0-9a-f]{6}$/i.test(x.cor) ? x.cor.toLowerCase() : '#dcdcdc';
+      const nomes = FASES_LUA.map((f, i) => (Array.isArray(x.nomes) && typeof x.nomes[i] === 'string' && x.nomes[i].trim() ? x.nomes[i].trim().slice(0, 30) : f));
+      const l = { id, nome: texto(x.nome).trim().slice(0, 40) || 'Lua ' + (out.length + 1), cor, fases: x.fases !== false, ciclo: inteiro(x.ciclo, 30, 2, 1000),
+        desloc: 0, nomes, chance: inteiro(x.chance, 100, 0, 100), horda: x.horda === true };
+      l.desloc = inteiro(x.desloc, 0, 0, l.ciclo - 1);
+      if (ehObj(x.forca) && Number.isInteger(x.forca.d) && x.forca.d >= 0) l.forca = { d: x.forca.d, v: x.forca.v !== false };
+      out.push(l);
+    }
+    return out;
+  }
+  // a fase de uma lua num dia: { i (0 nova, 1 crescente, 2 cheia, 3 minguante), nome, luz (0 a 100), pos (0 a 1 do ciclo), cresce }
+  function faseDaLua(l, dia) {
+    const c = Math.max(2, num(l && l.ciclo, 30)), d = Math.floor(num(dia, 0)) + num(l && l.desloc, 0);
+    const pos = (((d % c) + c) % c) / c, luz = Math.round((1 - Math.cos(2 * Math.PI * pos)) * 50);
+    const i = pos < 0.125 || pos >= 0.875 ? 0 : pos < 0.375 ? 1 : pos < 0.625 ? 2 : 3;
+    const nomes = l && Array.isArray(l.nomes) ? l.nomes : FASES_LUA;
+    return { i, nome: nomes[i] || FASES_LUA[i], luz, pos, cresce: pos < 0.5 };
+  }
+  // está no céu nesta noite? (a chance, sorteada pelo dia e pela lua; o "forçar" do mestre vale para a noite dele)
+  function luaNoCeu(l, dia) {
+    if (!ehObj(l)) return false;
+    const d = Math.floor(num(dia, 0));
+    if (ehObj(l.forca) && l.forca.d === d) return !!l.forca.v;
+    const ch = num(l.chance, 100);
+    if (ch >= 100) return true;
+    if (ch <= 0) return false;
+    let h = 2166136261;
+    for (const c of 'lua:' + l.id + ':' + d) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+    h ^= h >>> 15; h = Math.imul(h, 2246822507); h ^= h >>> 13; h = Math.imul(h, 3266489909); h ^= h >>> 16;
+    return ((h >>> 0) / 4294967296) * 100 < ch;
+  }
+  // as luas do dia, prontas para a tela: [{ id, nome, cor, fases, ceu, horda, fase|null, chance }]
+  function luasDoDia(cal, dia) {
+    const ls = ehObj(cal) && Array.isArray(cal.luas) ? cal.luas : [];
+    const d = dia == null ? (ehObj(cal) ? num(cal.dia, 0) : 0) : num(dia, 0);
+    return ls.filter(ehObj).map(l => ({ id: l.id, nome: l.nome, cor: l.cor, fases: l.fases !== false, chance: num(l.chance, 100), horda: !!l.horda,
+      ceu: luaNoCeu(l, d), fase: l.fases !== false ? faseDaLua(l, d) : null, forcada: !!(ehObj(l.forca) && l.forca.d === Math.floor(d)) }));
+  }
+  // quantos dias até a próxima noite em que a lua está no céu (ou na fase i); null se não acontece nos próximos 1000 dias
+  function proximaLua(l, dia, fase) {
+    const d0 = Math.floor(num(dia, 0));
+    for (let k = 1; k <= 1000; k++) {
+      const d = d0 + k;
+      if (fase != null ? faseDaLua(l, d).i === fase && faseDaLua(l, d - 1).i !== fase : luaNoCeu(l, d) && !luaNoCeu(l, d - 1)) return k;
+    }
+    return null;
+  }
+  // as luas que trazem horda e sobem nos dias de (de, ate] (ao passar o dia): [{ lua, dia }]
+  function hordasEntre(cal, de, ate) {
+    const out = [], ls = ehObj(cal) && Array.isArray(cal.luas) ? cal.luas : [];
+    for (let d = Math.floor(num(de, 0)) + 1; d <= Math.floor(num(ate, 0)) && d - de <= 400; d++)
+      for (const l of ls) if (ehObj(l) && l.horda && luaNoCeu(l, d)) out.push({ lua: l, dia: d });
+    return out;
+  }
 
   /* ---------------- eventos ---------------- */
   // Raio no dia: cresce (ou encolhe) desde o começo; antes de começar, o raio de partida. Nunca negativo.
@@ -2335,6 +2411,8 @@
         // (lote 7, parte 5a) o que ele pesa na viagem (só quando tem: os eventos de antes não pesam até o mestre ligar)
         const peso = normPeso(o.peso);
         if (peso) ev.peso = peso;
+        const lua = idRef(o.lua);                       // (lote 126) a horda de uma lua: de qual lua ela veio
+        if (lua) ev.lua = lua;
         // (lote 7, parte 5b) o evento que anda: o centro dele vai pela rota, com o tempo do mapa, enquanto acontece
         const rota = idRef(o.rota);
         if (rota) {
@@ -2417,6 +2495,8 @@
     const tpd = inteiro(c.tpd, TEMPOS_DIA, 1, MAX_TEMPOS);
     const sem0 = Number.isInteger(c.sem0) && c.sem0 >= 0 && c.sem0 <= 6 ? c.sem0 : null;
     const out = { dia: inteiro(c.dia, 0, 0, 1e9), ano0: inteiro(c.ano0, 1, -1e6, 1e6), era: texto(c.era), meses, tpd, tempo: inteiro(c.tempo, 0, 0, tpd - 1), sem0 };
+    const luas = normLuas(c.luas);                     // (lote 126) as luas (só quando o mapa tem)
+    if (luas) out.luas = luas;
     // (lote 7, parte 4b) quando escurece: o tempo em que começa o entardecer e o da noite (sem eles, os de fábrica)
     if (c.ent != null && c.ent !== '') out.ent = inteiro(c.ent, null, 1, MAX_TEMPOS + 1);
     if (c.noi != null && c.noi !== '') out.noi = inteiro(c.noi, null, 1, MAX_TEMPOS + 1);
@@ -4172,6 +4252,7 @@
     ICONES, EVENTOS, PESO_EVENTO, CENA_EVENTO, pesoPadrao, normPeso, pesoNoPonto, cenaNoPonto, nomeEvento, CORES, VIAS, RELACOES, CAL_PADRAO, CUBOS_HEX, CUBOS_DIA, TERRENOS_PADRAO, TEXTURAS, CARIMBOS, LINHAS, FONTES,
     novoId, mapaNovo, objNovo, faccaoNova, normalizarMapa,
     diasNoAno, dataDe, textoData, SEMANA, semanaDe, diaDaSemana, textoDataSemana, sem0Para,
+    FASES_LUA, LUAS_PADRAO, normLuas, faseDaLua, luaNoCeu, luasDoDia, proximaLua, hordasEntre,
     dist, compPolilinha, pontoNaPolilinha, maisPerto, dentroPoligono, centroide, suavizar, contornoRio,
     eventoAtivo, raioNoDia, eventosDoDia, faseNoDia, formaNoDia, zonaAtiva,
     temGrade, hexDe, centroHex, cantosHex, distHex, chaveHex, lerChaveHex, linhaHex, caminhoHex, cubosDe, unidadesDeCubos,

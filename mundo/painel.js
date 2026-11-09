@@ -464,7 +464,10 @@
   function passarDias(n) {
     if (!App.podeEditar()) return;
     const rot = n === 1 ? 'passar o dia' : n === -1 ? 'voltar um dia' : n > 0 ? 'passar ' + n + ' dias' : 'voltar ' + -n + ' dias';
-    App.mudar(rot, m => { const d = Math.max(0, m.cal.dia + n); if (d === m.cal.dia) return false; m.cal.dia = d; m.cal.tempo = 0; });
+    let hordas = [];
+    const ok = App.mudar(rot, m => { const d0 = m.cal.dia, d = Math.max(0, m.cal.dia + n); if (d === m.cal.dia) return false; m.cal.dia = d; m.cal.tempo = 0;
+      if (n > 0 && window.MundoLuas) hordas = window.MundoLuas.hordasAoPassar(m, d0, d); });          // (lote 126)
+    if (ok !== false && hordas.length) window.MundoLuas.avisarHordas(hordas);
   }
   async function irParaData() {
     if (!App.podeEditar()) return;
@@ -2405,7 +2408,7 @@
       perto.clear();
       for (const key of agora) perto.add(key);
     }
-    let t = null;
+    let t = null, hordas = [];
     const ok = App.mudar(qual === 'dia' ? 'passar o dia' : 'passar 1 tempo', d => {
       for (const id of feitos.keys()) {
         const o = achar(d, id), r = achar(mm, id);
@@ -2415,6 +2418,7 @@
         if (r.espera > 0) o.espera = r.espera; else delete o.espera;
       }
       t = N_.passarTempos(d.cal, n); d.cal.dia = t.dia; d.cal.tempo = t.tempo;
+      if (window.MundoLuas && t.dias > 0) hordas = window.MundoLuas.hordasAoPassar(d, dia0, t.dia);      // (lote 126) a lua da horda subiu
     });
     if (ok === false) return;
     // (lote 7, parte 5a) quem andou de verdade (o parado antes de uma passagem fechada não conta) e os avisos da viagem:
@@ -2436,6 +2440,7 @@
     avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N_.textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou + av);
     // (lote 31) os relógios do Escudo do mestre marcados para andar com os dias: a sugestão (quem mestra confirma)
     if (t.dias > 0) setTimeout(() => sugerirRelogios(t.dias), 400);
+    if (hordas.length && window.MundoLuas) setTimeout(() => window.MundoLuas.avisarHordas(hordas), 200);
     // (lote 32) os grupos que andaram: a sugestão de sortear um encontro (quem mestra confirma)
     sugerirEncontros(gruposQueAndaram, t.dias > 0);
     // (lote 9) quem chegou ao fim da rota (só ida): o aviso oferece voltar pela mesma rota
@@ -3929,6 +3934,8 @@
     if (id !== mapaVisto) { mapaVisto = id; encontro = null; facAberta = null; busca = ''; }
     try { pintarTopo(); pintarModos(); pintarVazio(); pintarAbas(); pintarPainel(); }
     catch (e) { console.error('MundoPainel: falhou ao desenhar o painel', e); }
+    try { if (window.MundoLuas) window.MundoLuas.pintar(); }          // (lote 126) as luas no canto do mapa
+    catch (e) { console.error('MundoPainel: falhou ao desenhar as luas', e); }
   }
   /* (lote 63) a barra dos modos de trabalho, no alto (só quem mestra, fora do "Ver como jogador") */
   function pintarModos() {

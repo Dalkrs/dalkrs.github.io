@@ -249,6 +249,7 @@ dialog.dl::backdrop { background: rgba(5, 7, 12, .62); }
 .seg button[aria-pressed="true"] { background: var(--lamp-soft); border-color: var(--lamp); color: var(--danger); }
 .fobjs { display: grid; gap: 5px; justify-items: start; }
 .fobj { display: flex; gap: 6px; width: 100%; }
+.frep select { flex: 1 1 auto; } .frep input { flex: 0 0 90px; }
 .imgbox { display: flex; align-items: center; gap: 8px; min-height: 40px; color: var(--fg-3); font-size: 13px; }
 .imgbox img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line-strong); }
 .imgbox.subindo { opacity: .5; pointer-events: none; }
@@ -298,7 +299,8 @@ dialog.est-mural .folha .x, dialog.est-dossie .folha .x, dialog.est-ordem .folha
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=21"></script>
-<script src="../tc/missoes.js?v=1"></script>
-<script src="missoes.js?v=2"></script>
+<script src="../tc/missoes.js?v=2"></script>
+<script src="../tc/reputacao.js?v=1"></script>
+<script src="missoes.js?v=3"></script>
 </body>
 </html>

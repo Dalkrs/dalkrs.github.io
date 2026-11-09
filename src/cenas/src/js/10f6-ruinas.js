@@ -17,18 +17,31 @@
    --------------------------------------------------------------- */
 const Ruinas = (() => {
   const TAU = Math.PI * 2, MO = Encontro.motor;
-  const TIPOS = [['templo', 'Templo caído'], ['torre', 'Torre tombada'], ['forte', 'Forte em ruínas'], ['circulo', 'Círculo de pedras'], ['mina', 'Boca da mina']];
-  const NOME = { templo: 'Templo caído', torre: 'Torre tombada', forte: 'Forte em ruínas', circulo: 'Círculo de pedras', mina: 'Boca da mina' };
+  // (lote 126) as ruínas do mundo novo: a nave caída, o bunker, a torre da academia, a cidade magitec soterrada, o campo
+  // de batalha antigo e o templo esquecido
+  const TIPOS = [['templo', 'Templo caído'], ['torre', 'Torre tombada'], ['forte', 'Forte em ruínas'], ['circulo', 'Círculo de pedras'], ['mina', 'Boca da mina'],
+    ['nave', 'Nave caída'], ['bunker', 'Bunker'], ['academia', 'Torre da academia'], ['soterrada', 'Cidade magitec soterrada'], ['batalha', 'Campo de batalha antigo'], ['esquecido', 'Templo esquecido']];
+  const NOME = { templo: 'Templo caído', torre: 'Torre tombada', forte: 'Forte em ruínas', circulo: 'Círculo de pedras', mina: 'Boca da mina',
+    nave: 'Nave caída', bunker: 'Bunker antigo', academia: 'Torre da academia em ruínas', soterrada: 'Cidade magitec soterrada', batalha: 'Campo de batalha antigo', esquecido: 'Templo esquecido' };
   const DICA = {
     templo: 'O estilóbato com a escadaria, as colunas (de pé, quebradas, caídas), a cela em pedaços, o altar quebrado — e a escada da cripta',
     torre: 'A base redonda de pé, com a escada que desce, e o corpo da torre deitado no chão, em pedaços',
     forte: 'A muralha com as brechas, as torres dos cantos, o portão arrombado, o pátio, o alojamento e a torre de menagem',
     circulo: 'O círculo de menires com a pedra do altar e o paredão de rocha com a boca da caverna',
     mina: 'O paredão com a entrada escorada da mina, os trilhos, o vagonete, o monte de escória e o barracão',
+    nave: 'O casco de metal partido, cravado no chão no fim do sulco que ele abriu, o reator ainda brilhando e a escotilha que desce',
+    bunker: 'O bloco de metal meio enterrado num morro, a rampa até a porta selada, os respiros e as placas caídas em volta',
+    academia: 'A torre de pedra branca dos Silks, tombada, com as estantes e os livros espalhados e os cristais de magia soltos',
+    soterrada: 'Os topos das torres de metal saindo da terra, a cúpula rachada, as ruas de placas e o buraco que desce para a cidade de baixo',
+    batalha: 'As crateras, as trincheiras, as armas enferrujadas, os ossos, os estandartes rasgados e a carcaça de uma máquina de guerra',
+    esquecido: 'O templo de um deus que ninguém lembra, engolido pela mata: as colunas quebradas, o ídolo sem nome e a cripta embaixo',
   };
   // o nível de baixo que a entrada de cada lugar gera (a Masmorra)
-  const MASMORRA = { templo: 'cripta', torre: 'pedra', forte: 'pedra', circulo: 'caverna', mina: 'mina' };
-  const ENTRADA_TXT = { templo: 'a escada da cripta', torre: 'a escada que desce, na base', forte: 'a escada que desce, na torre de menagem', circulo: 'a boca da caverna', mina: 'a entrada da mina' };
+  const MASMORRA = { templo: 'cripta', torre: 'pedra', forte: 'pedra', circulo: 'caverna', mina: 'mina', nave: 'laboratorio', bunker: 'laboratorio', academia: 'torre', soterrada: 'subsolo', batalha: 'pedra', esquecido: 'cripta' };
+  const ENTRADA_TXT = { templo: 'a escada da cripta', torre: 'a escada que desce, na base', forte: 'a escada que desce, na torre de menagem', circulo: 'a boca da caverna', mina: 'a entrada da mina',
+    nave: 'a escotilha que desce', bunker: 'a porta selada', academia: 'a escada que desce, na base', soterrada: 'o buraco para a cidade de baixo', batalha: 'a trincheira coberta', esquecido: 'a escada da cripta' };
+  // (lote 126) o metal da era antiga e a pedra branca da Academia: [clara, média, escura, a junta]
+  const METAL = ['#8a95a3', '#677280', '#47505c', '#262c34'], BRANCA = ['#e6e2d8', '#cdc8bb', '#a8a397', '#7d786d'];
   const TAMANHOS = { pequeno: { n: 'Pequeno', W: 36, H: 28 }, medio: { n: 'Médio', W: 44, H: 34 }, grande: { n: 'Grande', W: 52, H: 40 } };
   const TERRENOS_R = [['campo', 'Campo'], ['floresta', 'Floresta'], ['areia', 'Deserto'], ['neve', 'Neve']];
   const TER_DE = { campo: 'campo', floresta: 'floresta', areia: 'deserto', neve: 'neve' };
@@ -407,7 +420,159 @@ const Ruinas = (() => {
     return { fr: pd.frente };
   }
 
-  const LUGARES_R = { templo, torre, forte, circulo, mina };
+
+  /* ---- (lote 126) a nave caída: o casco partido no fim do sulco ---- */
+  function nave(C) {
+    const { K, P, W, H, tamanho } = C, r = K.r;
+    const L = { pequeno: 14, medio: 18, grande: 22 }[tamanho], B = L * 0.36;
+    const ang = r(-0.5, 0.5) + (K.rT() < 0.5 ? 0 : Math.PI), ux = Math.cos(ang), uy = Math.sin(ang), vx = -uy, vy = ux;
+    const cx = W / 2 + r(-2, 2), cy = H / 2 + r(-1.5, 1.5);
+    const pt = (u, v) => [cx + ux * u + vx * v, cy + uy * u + vy * v];
+    // o sulco que ela abriu no chão, de trás para a frente
+    const sulco = [pt(-L / 2 - 14, r(-1, 1)), pt(-L / 2 - 7, r(-0.6, 0.6)), pt(-L / 2 + 1, 0)];
+    K.pinta(1, 'sulco', { pts: sulco, hw: B * 0.42 });
+    P.relevo.push({ t: 'fosso', alt: -1, k: 'free', pts: sulco, sw: B * 0.8 });
+    // o casco: a proa enterrada (na frente), o corpo e a popa partida (um pedaço separado, torto)
+    const corpo = [pt(-L / 2, -B / 2), pt(L / 4, -B / 2), pt(L / 2, 0), pt(L / 4, B / 2), pt(-L / 2, B / 2)];
+    K.pinta(1, 'placasMetal', { pts: corpo, cores: METAL });
+    K.marcaPoli(corpo, 5, true);
+    P.relevo.push({ t: 'plataforma', alt: 1, k: 'poly', pts: corpo });
+    const volta = corpo.concat([corpo[0]]), escot = pt(-L / 2 + 2, 0), porta = pt(-L / 2, 0);
+    paredeEmPedacos(Object.assign({}, C, { pedra: METAL }), volta, { pedaco: 2, esp: 0.45, pe: 0.62, abertura: m => Math.hypot(m[0] - porta[0], m[1] - porta[1]) < 1.6 });
+    K.pinta(2, 'cascoNave', { pts: corpo, cores: METAL });
+    // a popa partida, caída de lado atrás
+    const [px, py] = pt(-L / 2 - 3.2, r(-1, 1)), popa = Estilos.retangulo(px, py, 3.2, B * 0.9, ang + r(-0.6, 0.6));
+    K.pinta(2, 'placasMetal', { pts: popa, cores: METAL, escuro: true }); K.marcaPoli(popa, 3, true); K.visaoPoli(popa);
+    P.relevo.push({ t: 'plataforma', alt: 2, k: 'poly', pts: popa }); P.cobertura.push({ x: px, y: py, r: 1.6 });
+    // o reator no meio (a luz azul), os cabos soltos e os destroços em volta
+    const [rx, ry] = pt(L * 0.05, 0);
+    K.cristalGrande(rx, ry, 0.9, 'azul');
+    for (let k = 0; k < 3; k++) K.pinta(2, 'cabos', { pts: [pt(r(-L / 3, L / 4), r(-B / 3, B / 3)), pt(r(-L / 3, L / 4), r(-B / 3, B / 3)), pt(r(-L / 3, L / 4), r(-B / 3, B / 3))] });
+    for (let k = 0; k < 9; k++) { const [x, y] = pt(r(-L / 2 - 6, L / 2 + 4), r(-B - 3, B + 3)); if (K.dentro(x, y, 1)) K.pinta(1, 'entulhoRuina', { x, y, r: r(0.4, 1), cores: METAL }); }
+    for (let k = 0; k < 3; k++) K.objetoPerto('caixote', rx, ry, 3);
+    escadaQueDesce(C, Math.round(escot[0] - 1), Math.round(escot[1] - 1), null);
+    P.pontos.push({ x: rx, y: ry, n: 'O reator da nave' });
+    P.tracado.push({ k: 'poli', pts: corpo });
+    K.foco(cx, cy);
+    return { fr: 's' };
+  }
+
+  /* ---- (lote 126) o bunker: o bloco de metal no morro, a rampa e a porta selada ---- */
+  function bunker(C) {
+    const { K, P, W, H, tamanho } = C, r = K.r;
+    const fr = K.pick(['s', 'n', 'o', 'l']), E = eixo(fr, W / 2 + r(-2, 2), H / 2 + r(-1.5, 1.5));
+    const [lg, pf] = { pequeno: [8, 6], medio: [10, 7], grande: [12, 8] }[tamanho];
+    // o morro em volta (a terra que cobre o bunker)
+    const morro = []; for (let k = 0; k < 14; k++) { const a = (k / 14) * TAU, rr = (lg * 0.95) * (0.85 + K.rT() * 0.25); morro.push([E.cx + Math.cos(a) * rr, E.cy + Math.sin(a) * rr * 0.85]); }
+    K.mancha(morro, ['#5d6a3e', '#6b784a', '#526038']);
+    P.relevo.push({ t: 'morro', alt: 2, k: 'poly', pts: morro });
+    // o bloco de metal: as paredes inteiras (só a porta, que é selada: uma porta trancada)
+    const b = [E.pt(-lg / 2, -pf / 2 + 1), E.pt(lg / 2, -pf / 2 + 1), E.pt(lg / 2, pf / 2 + 1), E.pt(-lg / 2, pf / 2 + 1)];
+    K.pinta(2, 'placasMetal', { pts: b, cores: METAL }); K.marcaPoli(b, 3, true);
+    P.relevo.push({ t: 'plataforma', alt: 2.5, k: 'poly', pts: b });
+    const pA = E.pt(-1, -pf / 2 + 1), pB = E.pt(1, -pf / 2 + 1);
+    const lados = [[b[0], pA], [pB, b[1]], [b[1], b[2]], [b[2], b[3]], [b[3], b[0]]];
+    for (const [a, z] of lados) { P.paredes.push({ k: 'wall', x1: a[0], y1: a[1], x2: z[0], y2: z[1] }); K.pinta(2, 'paredeRuina', { a, b: z, esp: 0.6, alta: true, cores: METAL }); }
+    P.paredes.push({ k: 'door', x1: pA[0], y1: pA[1], x2: pB[0], y2: pB[1], trancada: true });
+    // a rampa que desce até a porta e a Entrada dentro (o laboratório embaixo)
+    const ra = [E.pt(-1.5, -pf / 2 - 3), E.pt(1.5, -pf / 2 - 3), E.pt(1.5, -pf / 2 + 1), E.pt(-1.5, -pf / 2 + 1)];
+    const rx0 = Math.min(...ra.map(q => q[0])), ry0 = Math.min(...ra.map(q => q[1])), rx1 = Math.max(...ra.map(q => q[0])), ry1 = Math.max(...ra.map(q => q[1]));
+    K.pinta(1, 'degraus', { x: rx0, y: ry0, w: rx1 - rx0, h: ry1 - ry0, lado: fr, n: 5, cores: METAL }); K.marcaPoli(ra, 1, true);
+    P.relevo.push({ t: 'fosso', alt: -1.5, k: 'poly', pts: ra });
+    { const [ex, ey] = E.pt(0, -pf / 2 + 2); C.entrada = [Math.floor(ex), Math.floor(ey)]; }
+    // os respiros no teto, as placas caídas, a luz que pisca
+    for (const u of [-lg / 3, lg / 3]) { const [x, y] = E.pt(u, 1); K.pinta(3, 'respiro', { x, y }); }
+    const [lx, ly] = E.pt(0, -pf / 2 + 0.6); K.luz(lx, ly, 3, '#5fd4e6', 0.5);
+    for (let k = 0; k < 6; k++) { const [x, y] = E.pt(r(-lg, lg), r(-pf - 2, pf + 3)); if (K.dentro(x, y, 1)) K.pinta(1, 'entulhoRuina', { x, y, r: r(0.3, 0.8), cores: METAL }); }
+    const [tx, ty] = E.pt(0, -pf / 2 - 3.5), borda = fr === 's' ? [tx, H + 1] : fr === 'n' ? [tx, -1] : fr === 'o' ? [-1, ty] : [W + 1, ty];
+    K.poeCaminho([borda, [(borda[0] + tx) / 2 + r(-2, 2), (borda[1] + ty) / 2 + r(-2, 2)], [tx, ty]], 'trilha');
+    P.pontos.push({ x: lx, y: ly, n: 'A porta selada (precisa de uma relíquia, ou de força)' });
+    P.tracado.push({ k: 'poli', pts: b });
+    K.foco(E.cx, E.cy);
+    return { fr };
+  }
+
+  /* ---- (lote 126) a torre da academia: a torre tombada, em pedra branca, com os livros e os cristais ---- */
+  function academia(C) {
+    C.pedra = BRANCA;
+    const out = torre(C), { K, P } = C;
+    for (let k = 0; k < 4; k++) K.objetoPerto(K.rT() < 0.6 ? 'estante' : 'atril', P.foco[0], P.foco[1], 6);
+    for (let k = 0; k < 10; k++) { const a = K.r(0, TAU), d = K.r(2, 9); K.pinta(2, 'papeis', { x: P.foco[0] + Math.cos(a) * d, y: P.foco[1] + Math.sin(a) * d }); }
+    for (let k = 0; k < 2; k++) { const l = K.lugar(1.2, null, 60); if (l) K.cristalGrande(l[0], l[1], 0.8, 'azul'); }
+    P.pontos.push({ x: P.foco[0], y: P.foco[1], n: 'Os livros da Academia (o que sobrou)' });
+    return out;
+  }
+
+  /* ---- (lote 126) a cidade magitec soterrada: os topos das torres saindo da terra ---- */
+  function soterrada(C) {
+    const { K, P, W, H, tamanho } = C, r = K.r;
+    const n = { pequeno: 4, medio: 6, grande: 8 }[tamanho];
+    // as ruas de placas, meio cobertas de terra
+    for (let k = 0; k < 3; k++) { const y = H * (0.25 + k * 0.25) + r(-1, 1); K.pinta(1, 'placasMetal', { pts: [[2, y - 1], [W - 2, y - 1.4], [W - 2, y + 1], [2, y + 1.3]], cores: METAL, enterrado: true }); }
+    // a cúpula rachada no meio
+    const cx = W / 2 + r(-3, 3), cy = H / 2 + r(-2, 2), R = { pequeno: 3.5, medio: 4.5, grande: 5.5 }[tamanho];
+    K.pinta(2, 'cupulaRachada', { x: cx, y: cy, r: R });
+    K.marcaCirc(cx, cy, R, 3, true); K.visaoPoli(roda(cx, cy, R * 0.95, 12, 0));
+    P.relevo.push({ t: 'plataforma', alt: 3, k: 'ell', x: cx - R, y: cy - R, w: R * 2, h: R * 2 });
+    // o buraco ao lado da cúpula, que desce
+    const ab = cx + R + 2 < W - 3 ? [cx + R + 1.5, cy] : [cx - R - 3.5, cy];
+    escadaQueDesce(C, Math.round(ab[0]), Math.round(ab[1] - 1), null);
+    // os topos das torres: quadrados e redondos, de metal, em pedaços
+    for (let k = 0; k < n; k++) {
+      const l = K.lugar(2.2, null, 80, (x, y) => Math.hypot(x - cx, y - cy) > R + 3); if (!l) continue;
+      const [x, y] = l, redondo = K.rT() < 0.4, s = r(1.6, 2.4);
+      const pts = redondo ? roda(x, y, s, 10, 0) : Estilos.retangulo(x, y, s * 2, s * 2, r(-0.3, 0.3));
+      K.pinta(1, 'placasMetal', { pts, cores: METAL, escuro: true });
+      paredeEmPedacos(Object.assign({}, C, { pedra: METAL }), pts.concat([pts[0]]), { pedaco: 1.6, esp: 0.4, pe: 0.5 });
+      if (K.rT() < 0.4) K.luz(x, y, 2, '#5fd4e6', 0.5);
+    }
+    for (let k = 0; k < 12; k++) { const x = r(2, W - 2), y = r(2, H - 2); K.pinta(1, 'entulhoRuina', { x, y, r: r(0.3, 0.8), cores: METAL }); }
+    P.pontos.push({ x: cx, y: cy, n: 'A cúpula (dá para entrar pela rachadura)' });
+    P.tracado.push({ k: 'circ', x: cx, y: cy, r: R + 0.5 });
+    K.foco(cx, cy);
+    return { fr: 's' };
+  }
+
+  /* ---- (lote 126) o campo de batalha antigo ---- */
+  function batalha(C) {
+    const { K, P, W, H, tamanho } = C, r = K.r;
+    const n = { pequeno: 6, medio: 9, grande: 12 }[tamanho];
+    // as trincheiras: duas linhas tortas, uma de cada exército
+    for (const t of [0.3, 0.7]) {
+      const y0 = H * t + r(-1, 1), pts = []; for (let x = 1; x <= W - 1; x += 3) pts.push([x, y0 + Math.sin(x * 0.4 + t * 9) * 1.2 + r(-0.4, 0.4)]);
+      K.pinta(1, 'sulco', { pts, hw: 0.8 }); K.marcaLinha(pts, 0.7, 5, false);
+      P.relevo.push({ t: 'fosso', alt: -1.2, k: 'free', pts, sw: 1.4 });
+    }
+    // as crateras das magias e das máquinas
+    for (let k = 0; k < n; k++) { const l = K.lugar(1.5, null, 50); if (!l) continue; const rr = r(1, 2.2); K.pinta(1, 'craterinha', { x: l[0], y: l[1], r: rr }); K.marcaCirc(l[0], l[1], rr * 0.7, 5, true); P.relevo.push({ t: 'fosso', alt: -1, k: 'ell', x: l[0] - rr, y: l[1] - rr, w: rr * 2, h: rr * 2 }); }
+    // a carcaça da máquina de guerra
+    const [mx, my] = K.lugar(3, null, 80) || [W / 2, H / 2], ret = Estilos.retangulo(mx, my, 5, 3, r(0, TAU));
+    K.pinta(2, 'placasMetal', { pts: ret, cores: METAL, escuro: true }); K.marcaPoli(ret, 3, true); K.visaoPoli(ret);
+    P.relevo.push({ t: 'plataforma', alt: 2, k: 'poly', pts: ret }); P.cobertura.push({ x: mx, y: my, r: 2 });
+    K.pinta(2, 'cabos', { pts: [[mx - 2, my], [mx, my + 2], [mx + 3, my + 1]] });
+    // as armas, os ossos e os estandartes
+    for (let k = 0; k < n * 2; k++) { const x = r(2, W - 2), y = r(2, H - 2); K.pinta(2, K.rT() < 0.5 ? 'armasChao' : 'ossosChao', { x, y, r: r(0.5, 1.1) }); }
+    for (let k = 0; k < Math.round(n / 2); k++) K.objetoPerto(K.pick(['ossada', 'cranios', 'estandarte', 'armas']), r(4, W - 4), r(4, H - 4), 3);
+    // a trincheira coberta (a Entrada: os túneis de baixo)
+    { const l = K.lugar(1.5, null, 40); if (l) escadaQueDesce(C, Math.round(l[0] - 1), Math.round(l[1] - 1), null); }
+    P.pontos.push({ x: mx, y: my, n: 'A máquina de guerra (as peças valem algo)' });
+    P.tracado.push({ k: 'poli', pts: ret });
+    K.foco(mx, my);
+    return { fr: 's' };
+  }
+
+  /* ---- (lote 126) o templo esquecido: o templo caído, engolido pela mata, com o ídolo sem nome ---- */
+  function esquecido(C) {
+    C.com.mato = true;
+    const out = templo(C), { K, P } = C;
+    K.objetoPerto('idolo', P.foco[0], P.foco[1], 2.5);
+    for (let k = 0; k < 8; k++) { const a = K.r(0, TAU), d = K.r(3, 10); const x = P.foco[0] + Math.cos(a) * d, y = P.foco[1] + Math.sin(a) * d; if (K.dentro(x, y, 2)) K.pinta(3, 'hera', { x, y, r: K.r(0.8, 1.6) }); }
+    K.zona('sombra', P.foco[0], P.foco[1], { r: 2.5 });
+    P.pontos.push({ x: P.foco[0], y: P.foco[1], n: 'O ídolo sem nome (de qual deus?)' });
+    return out;
+  }
+
+  const LUGARES_R = { templo, torre, forte, circulo, mina, nave, bunker, academia, soterrada, batalha, esquecido };
   function gerar(o) {
     o = o || {};
     const tipo = TIPOS.some(t => t[0] === o.tipo) ? o.tipo : 'templo';
@@ -419,7 +584,7 @@ const Ruinas = (() => {
     const sT = trava ? trava.s : (MO.sub(seed, 1) % 2147483000) + 1;
     const K = MO.contexto(W, H, TER_DE[terreno], 'ruinas', estilo, 'trilha', sT, terreno), P = K.P;
     const C = { K, P, W, H, tipo, tamanho, terreno, estilo, seed, com, pedra: PEDRA[terreno], rocha: ROCHA[terreno], entrada: null };
-    P.paredes = [];
+    P.paredes = []; P.pontos = [];
     LUGARES_R[tipo](C);
     // a entrada da masmorra: o marcador de Entrada (oculto), que gera o nível 1 (o tipo de baixo vem do lugar)
     const entradas = [];
@@ -436,7 +601,7 @@ const Ruinas = (() => {
     P.marcas = {};
     delete P.dens; delete P.esp;
     Estacoes.noPlano(K, o.estacao);                                  // (lote 13, parte 13c) a estação: no inverno, a água parada congela
-    return Object.assign(P, { v: 1, lugar: 'ruinas', tipo, seed, sT, tamanho, com, entradas, travaTracado: !!trava, comMarcas: false, sitPedida: null, occ: Array.from(K.occ) });
+    return Object.assign(P, { v: 1, lugar: 'ruinas', tipo, seed, sT, tamanho, com, entradas, travaTracado: !!trava, comMarcas: P.pontos.length > 0, sitPedida: null, occ: Array.from(K.occ) });
   }
 
   /* ================= os desenhos ================= */
@@ -762,6 +927,87 @@ const Ruinas = (() => {
       g.strokeStyle = '#1c1c1e'; g.lineWidth = Math.max(1, c * 0.04); g.strokeRect(-c * 0.5, -c * 0.34, c, c * 0.68);
       g.restore();
     },
+    /* (lote 126) os desenhos das ruínas do mundo novo */
+    // as placas de metal (o casco, o bunker, as torres soterradas): o polígono, as placas com os rebites, as manchas de ferrugem
+    placasMetal(g, o, c, rnd) {
+      const cores = o.cores || METAL;
+      g.save(); caminhoPts(g, o.pts, c, true); g.clip();
+      const xs = o.pts.map(p => p[0]), ys = o.pts.map(p => p[1]), x0 = Math.floor(Math.min(...xs)), y0 = Math.floor(Math.min(...ys)), x1 = Math.ceil(Math.max(...xs)), y1 = Math.ceil(Math.max(...ys));
+      g.fillStyle = o.escuro ? cores[3] : cores[2]; g.fillRect(x0 * c, y0 * c, (x1 - x0) * c, (y1 - y0) * c);
+      for (let j = y0; j < y1; j++) for (let i = x0; i < x1; i++) {
+        if (o.enterrado && rnd() < 0.35) continue;
+        g.fillStyle = tom(cores[o.escuro ? 2 : 1], (rnd() - 0.5) * 0.18); g.fillRect(i * c + 1.5, j * c + 1.5, c - 3, c - 3);
+        g.fillStyle = 'rgba(220,230,240,0.3)'; for (const [a, b] of [[0.18, 0.18], [0.82, 0.18], [0.18, 0.82], [0.82, 0.82]]) { g.beginPath(); g.arc((i + a) * c, (j + b) * c, Math.max(1, c * 0.035), 0, TAU); g.fill(); }
+        if (rnd() < 0.18) { g.globalAlpha = 0.45; g.fillStyle = '#8a4a22'; g.beginPath(); g.ellipse((i + rnd()) * c, (j + rnd()) * c, c * 0.3, c * 0.18, rnd() * 3, 0, TAU); g.fill(); g.globalAlpha = 1; }
+      }
+      g.restore();
+      g.strokeStyle = 'rgba(10,12,16,0.8)'; g.lineWidth = Math.max(1, c * 0.06); caminhoPts(g, o.pts, c, true); g.stroke();
+    },
+    // o casco da nave por cima (a quilha, as nervuras e o brilho do metal)
+    cascoNave(g, o, c, rnd) {
+      g.save(); caminhoPts(g, o.pts, c, true); g.clip();
+      const xs = o.pts.map(p => p[0]), ys = o.pts.map(p => p[1]);
+      g.strokeStyle = 'rgba(180,200,215,0.25)'; g.lineWidth = Math.max(1, c * 0.12);
+      for (let x = Math.min(...xs); x < Math.max(...xs); x += 1.6) { g.beginPath(); g.moveTo(x * c, Math.min(...ys) * c); g.lineTo((x + 0.6) * c, Math.max(...ys) * c); g.stroke(); }
+      g.restore();
+    },
+    // os cabos soltos (pretos, com a ponta acesa)
+    cabos(g, o, c) {
+      g.save(); g.strokeStyle = '#15181c'; g.lineWidth = Math.max(1.5, c * 0.1); g.lineCap = 'round';
+      g.beginPath(); g.moveTo(o.pts[0][0] * c, o.pts[0][1] * c); for (let i = 1; i < o.pts.length; i++) { const a = o.pts[i - 1], b = o.pts[i]; g.quadraticCurveTo(((a[0] + b[0]) / 2 + 0.6) * c, ((a[1] + b[1]) / 2 + 0.6) * c, b[0] * c, b[1] * c); } g.stroke();
+      const f = o.pts[o.pts.length - 1]; g.fillStyle = '#7fe8f6'; g.beginPath(); g.arc(f[0] * c, f[1] * c, c * 0.12, 0, TAU); g.fill();
+      g.restore();
+    },
+    // o sulco no chão (a terra revirada, mais escura no meio)
+    sulco(g, o, c) {
+      g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+      for (const [k, cor] of [[1.25, 'rgba(70,52,34,0.55)'], [0.8, 'rgba(48,34,22,0.6)'], [0.35, 'rgba(28,20,14,0.55)']]) { g.strokeStyle = cor; g.lineWidth = o.hw * 2 * k * c; caminhoPts(g, o.pts, c, false); g.stroke(); }
+      g.restore();
+    },
+    // a cratera pequena (a terra queimada em volta)
+    craterinha(g, o, c) {
+      const gr = g.createRadialGradient(o.x * c, o.y * c, 0, o.x * c, o.y * c, o.r * c * 1.3);
+      gr.addColorStop(0, 'rgba(20,14,10,0.85)'); gr.addColorStop(0.55, 'rgba(60,44,30,0.7)'); gr.addColorStop(0.8, 'rgba(110,90,60,0.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(o.x * c, o.y * c, o.r * c * 1.3, 0, TAU); g.fill();
+    },
+    // as armas enferrujadas no chão (a espada, a lança)
+    armasChao(g, o, c, rnd) {
+      g.save(); g.lineCap = 'round';
+      for (let k = 0; k < 2; k++) { const a = rnd() * TAU, x = (o.x + (rnd() - 0.5) * o.r) * c, y = (o.y + (rnd() - 0.5) * o.r) * c, L = c * (0.6 + rnd() * 0.9);
+        g.strokeStyle = '#6e5440'; g.lineWidth = Math.max(1, c * 0.08); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke();
+        g.strokeStyle = '#3a2c20'; g.lineWidth = Math.max(1, c * 0.05); g.beginPath(); g.moveTo(x - Math.sin(a) * c * 0.15, y + Math.cos(a) * c * 0.15); g.lineTo(x + Math.sin(a) * c * 0.15, y - Math.cos(a) * c * 0.15); g.stroke(); }
+      g.restore();
+    },
+    // os ossos espalhados
+    ossosChao(g, o, c, rnd) {
+      g.save(); g.fillStyle = '#e4dcc4'; g.strokeStyle = 'rgba(60,50,36,0.6)'; g.lineWidth = Math.max(1, c * 0.02);
+      for (let k = 0; k < 4; k++) { const x = (o.x + (rnd() - 0.5) * o.r * 1.6) * c, y = (o.y + (rnd() - 0.5) * o.r * 1.6) * c; g.save(); g.translate(x, y); g.rotate(rnd() * 3); g.fillRect(-c * 0.22, -c * 0.03, c * 0.44, c * 0.06); for (const sx of [-1, 1]) { g.beginPath(); g.arc(sx * c * 0.22, 0, c * 0.06, 0, TAU); g.fill(); } g.restore(); }
+      if (rnd() < 0.4) { g.beginPath(); g.arc(o.x * c, o.y * c, c * 0.18, 0, TAU); g.fill(); g.stroke(); g.fillStyle = '#2a2018'; g.fillRect(o.x * c - c * 0.09, o.y * c - c * 0.04, c * 0.06, c * 0.06); g.fillRect(o.x * c + c * 0.03, o.y * c - c * 0.04, c * 0.06, c * 0.06); }
+      g.restore();
+    },
+    // a cúpula de vidro e metal, rachada (a cidade soterrada)
+    cupulaRachada(g, o, c, rnd) {
+      const x = o.x * c, y = o.y * c, R = o.r * c;
+      g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(x + c * 0.3, y + c * 0.35, R, 0, TAU); g.fill();
+      const gr = g.createRadialGradient(x - R * 0.35, y - R * 0.4, R * 0.1, x, y, R); gr.addColorStop(0, '#cfe9f2'); gr.addColorStop(0.55, '#6b8fa0'); gr.addColorStop(1, '#2e4250');
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, R, 0, TAU); g.fill();
+      g.strokeStyle = '#3a434e'; g.lineWidth = Math.max(1, c * 0.1);
+      for (let k = 0; k < 8; k++) { const a = (k / 8) * TAU; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * R, y + Math.sin(a) * R); g.stroke(); }
+      for (const f of [0.4, 0.75]) { g.beginPath(); g.arc(x, y, R * f, 0, TAU); g.stroke(); }
+      g.strokeStyle = '#11161c'; g.lineWidth = Math.max(1, c * 0.06); g.beginPath(); let px = x + R * 0.1, py = y - R * 0.6; g.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (rnd() - 0.3) * R * 0.25; py += R * 0.22; g.lineTo(px, py); } g.stroke();
+      g.fillStyle = '#121820'; g.beginPath(); g.ellipse(x + R * 0.25, y + R * 0.2, R * 0.22, R * 0.14, 0.4, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(10,12,16,0.85)'; g.lineWidth = Math.max(1.5, c * 0.08); g.beginPath(); g.arc(x, y, R, 0, TAU); g.stroke();
+    },
+    // o respiro do bunker (a grade redonda)
+    respiro(g, o, c) {
+      g.fillStyle = '#2a3038'; g.beginPath(); g.arc(o.x * c, o.y * c, c * 0.45, 0, TAU); g.fill();
+      g.strokeStyle = '#8a95a3'; g.lineWidth = Math.max(1, c * 0.05); for (const d of [-0.2, 0, 0.2]) { g.beginPath(); g.moveTo((o.x - 0.35) * c, (o.y + d) * c); g.lineTo((o.x + 0.35) * c, (o.y + d) * c); g.stroke(); }
+      g.beginPath(); g.arc(o.x * c, o.y * c, c * 0.45, 0, TAU); g.stroke();
+    },
+    // as folhas de papel soltas (a academia)
+    papeis(g, o, c, rnd) {
+      for (let k = 0; k < 3; k++) { g.save(); g.translate((o.x + (rnd() - 0.5)) * c, (o.y + (rnd() - 0.5)) * c); g.rotate(rnd() * 3); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(-c * 0.13, -c * 0.1, c * 0.3, c * 0.22); g.fillStyle = '#f1e9d2'; g.fillRect(-c * 0.15, -c * 0.12, c * 0.3, c * 0.22); g.strokeStyle = 'rgba(80,70,50,0.5)'; g.lineWidth = 1; for (const d of [-0.05, 0, 0.05]) { g.beginPath(); g.moveTo(-c * 0.1, d * c); g.lineTo(c * 0.1, d * c); g.stroke(); } g.restore(); }
+    },
     // a hera: as folhas miúdas, em tufos, por cima das pedras (na neve, o musgo seco e a geada)
     hera(g, o, c, rnd) {
       g.save();
@@ -774,14 +1020,16 @@ const Ruinas = (() => {
     entulhoRuina: PR.entulhoRuina, monteEntulho: PR.monteEntulho, cacos: PR.cacos, estatuaCaida: PR.estatuaCaida, escadaDesce: PR.escadaDesce, frontao: PR.frontao, chaoRedondo: PR.chaoRedondo,
     caracol: PR.caracol, tamborTorre: PR.tamborTorre, ameias: PR.ameias, patio: PR.patio, topoTorre: PR.topoTorre, portaoQuebrado: PR.portaoQuebrado, gramaPisada: PR.gramaPisada,
     menir: PR.menir, menirCaido: PR.menirCaido, pedraAltar: PR.pedraAltar, bocaCaverna: PR.bocaCaverna, portalMina: PR.portalMina, trilhoMina: PR.trilhoMina, escoria: PR.escoria,
-    vagoneteRuina: PR.vagoneteRuina, hera: PR.hera });
+    vagoneteRuina: PR.vagoneteRuina, hera: PR.hera,
+    placasMetal: PR.placasMetal, cascoNave: PR.cascoNave, cabos: PR.cabos, sulco: PR.sulco, craterinha: PR.craterinha, armasChao: PR.armasChao, ossosChao: PR.ossosChao,      // (lote 126)
+    cupulaRachada: PR.cupulaRachada, respiro: PR.respiro, papeis: PR.papeis });
 
   /* ================= a cena, a prévia e o lugar (a janela do gerador) ================= */
   const nomePadrao = p => NOME[p.tipo] || 'Ruínas';
   const criar = (p, nome, ex) => MO.criarPlano(p, nome, ex, nomePadrao);
   function resumo(p) {
     const partes = [(TIPOS.find(t => t[0] === p.tipo) || TIPOS[0])[1], p.W + ' × ' + p.H + ' quadrados'];
-    if (p.entradas && p.entradas.length) partes.push(ENTRADA_TXT[p.tipo] + ' (a masmorra embaixo: ' + { cripta: 'a cripta', pedra: 'a masmorra de pedra', caverna: 'a caverna', mina: 'a mina' }[MASMORRA[p.tipo]] + ')');
+    if (p.entradas && p.entradas.length) partes.push(ENTRADA_TXT[p.tipo] + ' (a masmorra embaixo: ' + ({ cripta: 'a cripta', pedra: 'a masmorra de pedra', caverna: 'a caverna', mina: 'a mina', laboratorio: 'o laboratório', torre: 'a torre', subsolo: 'o subsolo' }[MASMORRA[p.tipo]] || 'o nível de baixo') + ')');
     if (p.com && p.com.mato) partes.push('com o mato');
     if (p.estacao) partes.push(Estacoes.texto(p));                // (lote 13, parte 13c) a estação
     return partes.join(' · ') + '.';
@@ -838,5 +1086,7 @@ const Ruinas = (() => {
     dica: 'Clique nas ruínas da prévia para travar o traçado: "Gerar outro" troca só as árvores, as pedras e os enfeites.',
     nota: 'Sai uma cena nova: as ruínas (as paredes que ainda estão de pé tapam a visão; as baixas deixam ver e não deixam passar; as colunas e os pedaços grandes também tapam), o relevo e, com a chave, a entrada da masmorra — um marcador de Entrada, oculto: dois cliques nele geram o nível 1 lá embaixo (a cripta embaixo do templo, a caverna atrás da boca, a mina…). Nada sai escrito; tudo continua editável; as cenas que já existem não mudam.',
     feito: (sc, p) => `"${sc.name}" criada: ${resumo(p).replace(/\.$/, '')}. Tudo é editável.` };
-  return { TIPOS, TAMANHOS, TERRENOS_R, MASMORRA, gerar, resumo, criar, nomePadrao, limparTrava, travaDe, LUGAR };
+  // (lote 126) as ferramentas das ruínas, para os Lugares do mundo (10f6c)
+  const ferr = { eixo, roda, trechoDeParede, paredeEmPedacos, coluna, escadaQueDesce, paredao, PEDRA, ROCHA, METAL, BRANCA, TER_DE, OPOSTO };
+  return { TIPOS, TAMANHOS, TERRENOS_R, MASMORRA, gerar, resumo, criar, nomePadrao, limparTrava, travaDe, LUGAR, ferr };
 })();
