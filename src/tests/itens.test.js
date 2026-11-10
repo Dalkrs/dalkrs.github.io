@@ -27,6 +27,12 @@ ok(!I.podeComprar(lj, 'x', 1, { lapros: 50 }).ok && /Faltam 50 lapros/.test(I.po
 const rc = I.receita({ nome: 'Poção', ingredientes: [{ nome: 'Erva', t: 'material', qtd: 3 }], resultado: { item: pot, qtd: 1 }, teste: { atr: 'CAN', dif: 8 }, falha: { dano: [{ barra: 'HP', val: '1d6' }], conds: [{ c: 'veneno', r: 3 }] } });
 ok(rc.falha.perde === true && rc.teste.dif === 8 && j(rc.falha.conds) === j([{ c: 'veneno', r: 3 }]), 'a receita: a falha perde os ingredientes por padrão; o dano e a condição');
 ok(!I.podeFazer(rc, f0, e0).ok && j(I.podeFazer(rc, f0, e0).faltam.map(x => x.nome + ':' + x.tem)) === j(['Erva:2']), 'faltam ingredientes: a bolsa tem 2 ervas, a receita pede 3');
+// (lote 118) a receita pode pedir uma habilidade, num nível
+{ const bib = { arvores: [{ id: 'a_alquimista', nome: 'Alquimista', nodes: [{ id: 'nP', nome: 'Preparar' }] }, { id: 'a_x', nome: 'Outra', nodes: [{ id: 'nQ', nome: 'Preparar' }] }] };
+  const rx = I.receita({ nome: 'Veneno', ingredientes: [{ nome: 'Kit de alquimia', qtd: 2 }], exige: { arv: 'Alquimista', no: 'preparar', grau: 2 } });
+  ok(j(rx.exige) === j({ arv: 'Alquimista', no: 'preparar', grau: 2 }) && I.receita({ nome: 'z', exige: { no: '' } }).exige === null, '(lote 118) a receita guarda a habilidade que pede (sem nome: nenhuma)');
+  ok(!I.habilidadeOk(rx, { alocados: { nP: 1 } }, bib).ok && I.habilidadeOk(rx, { alocados: { nP: 2 } }, bib).ok && !I.habilidadeOk(rx, { alocados: { nQ: 3 } }, bib).ok
+    && /Pede preparar, nível 2 \(Alquimista\)/.test(I.habilidadeOk(rx, {}, bib).texto) && I.habilidadeOk(rc, {}, bib).ok, '(lote 118) a bancada confere a habilidade: o nível, a árvore certa; sem pedido, qualquer um faz'); }
 const fz = I.fazer(rc, f0, { qtd: { b1: 4 } }, true);
 ok(fz.ok && fz.sucesso && fz.estado.qtd.b1 === 1 && fz.ficha.bolsa.some(x => x.nome === 'Poção de cura'), 'fazer com sucesso: gasta 3 ervas e a poção entra na bolsa');
 const fl = I.fazer(rc, f0, { qtd: { b1: 4 } }, false);

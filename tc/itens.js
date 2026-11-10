@@ -89,7 +89,25 @@
       falha: { perde: f.perde !== false,
         dano: (Array.isArray(f.dano) ? f.dano : []).filter(ehObj).slice(0, 4).map(x => ({ barra: txt(x.barra, 30) || 'HP', val: txt(x.val, 30) })).filter(x => x.val),
         conds: (Array.isArray(f.conds) ? f.conds : []).filter(ehObj).slice(0, 6).map(x => ({ c: txt(x.c, 40), r: inteiro(x.r, 0, 99, 0) })).filter(x => x.c) },
-      oculta: d.oculta === true };
+      oculta: d.oculta === true,
+      // (lote 118) a habilidade que a receita pede: { arv (id ou nome da árvore), no (nome da habilidade), grau } ou null
+      exige: ehObj(d.exige) && txt(d.exige.no, 80) ? { arv: txt(d.exige.arv, 60), no: txt(d.exige.no, 80), grau: inteiro(d.exige.grau, 1, 5, 1) } : null };
+  }
+  /* (lote 118) quem faz tem a habilidade que a receita pede? Procura a habilidade pelo nome (na árvore de mesmo id ou
+     nome, se a receita diz qual) e o nível que o personagem comprou dela. → { ok, texto, falta } */
+  function habilidadeOk(rc, skills, biblioteca) {
+    const r = receita(rc), ex = r.exige;
+    if (!ex) return { ok: true, texto: '', falta: false };
+    const arvs = ehObj(biblioteca) && Array.isArray(biblioteca.arvores) ? biblioteca.arvores : [];
+    const al = ehObj(skills) && ehObj(skills.alocados) ? skills.alocados : {};
+    const daArv = a => !ex.arv || a.id === ex.arv || norm(a.nome) === norm(ex.arv);
+    let melhor = 0, nomeArv = ex.arv;
+    for (const a of arvs) {
+      if (!ehObj(a) || !daArv(a)) continue;
+      for (const n of Array.isArray(a.nodes) ? a.nodes : []) if (ehObj(n) && norm(n.nome) === norm(ex.no)) { nomeArv = a.nome || nomeArv; melhor = Math.max(melhor, Math.floor(num(al[n.id], 0))); }
+    }
+    const texto = 'Pede ' + ex.no + (ex.grau > 1 ? ', nível ' + ex.grau : '') + (nomeArv ? ' (' + nomeArv + ')' : '');
+    return { ok: melhor >= ex.grau, texto, falta: melhor < ex.grau };
   }
 
   /* ---------------- a ficha recebe ---------------- */
@@ -238,7 +256,7 @@
   // o texto curto de um item ("Poção · 30 lapros")
   const resumo = it => nomeDoTipo(it.t) + (it.preco ? ' · ' + it.preco + ' lapros' : '');
 
-  const api = { CATALOGO, PRE_LOJA, PRE_REC, L_LOCAL, TIPOS, DA_BOLSA, ATR_TESTE, nomeDoTipo, item, catalogo, loja, receita, paraBolsa, paraFicha, entregar, desentregar,
+  const api = { habilidadeOk, CATALOGO, PRE_LOJA, PRE_REC, L_LOCAL, TIPOS, DA_BOLSA, ATR_TESTE, nomeDoTipo, item, catalogo, loja, receita, paraBolsa, paraFicha, entregar, desentregar,
     lapros, podeComprar, recDaFicha, fxParaFicha, ingredientes, podeFazer, gastar, fazer, desfazer, testar, resumo, uid, idOk, norm };
   root.TC = root.TC || {};
   root.TC.itens = api;

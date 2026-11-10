@@ -507,6 +507,14 @@
       campo('Faz', cat.itens.length ? escolha('rc-res', r.resultado.item.id, (cat.itens.some(y => y.id === r.resultado.item.id) ? [] : [[r.resultado.item.id, r.resultado.item.nome]]).concat(cat.itens.map(y => [y.id, y.nome + ' · ' + I.nomeDoTipo(y.t)])), v => { const it = cat.itens.find(y => y.id === v); if (it) r.resultado.item = copia(it); }, { largo: true })
         : h('p', { class: 'ajuda', text: 'Crie o item que a receita faz no Catálogo.' })),
       campo('Quantos', num('rc-res-q', r.resultado.qtd, v => { r.resultado.qtd = Math.max(1, Math.round(+v) || 1); }, { min: '1' }))));
+    // (lote 118) a habilidade que a receita pede (vazio: qualquer um faz)
+    const ex = r.exige || { arv: '', no: '', grau: 1 };
+    const pondo = () => { r.exige = ex.no && ex.no.trim() ? { arv: (ex.arv || '').trim(), no: ex.no.trim(), grau: Math.max(1, Math.min(5, Math.round(+ex.grau) || 1)) } : null; };
+    out.push(h('div', { class: 'field', id: 'rc-exige' }, h('span', { text: 'Pede a habilidade (vazio: qualquer um faz)' }),
+      h('div', { class: 'acoes' }, texto('rc-ex-no', ex.no, v => { ex.no = v; pondo(); }, { ph: 'ex.: Preparar', rotulo: 'Habilidade' }),
+        texto('rc-ex-arv', ex.arv, v => { ex.arv = v; pondo(); }, { ph: 'ex.: Alquimista', rotulo: 'Árvore' }),
+        num('rc-ex-g', ex.grau || 1, v => { ex.grau = v; pondo(); }, { min: '1', rotulo: 'Nível' })),
+      h('p', { class: 'ajuda', text: 'Na bancada, quem não tem a habilidade nesse nível vê a receita trancada. Você, que mestra, pode fazer mesmo assim.' })));
     out.push(h('div', { class: 'field' }, h('span', { text: 'Teste' }), seg('rc-teste', r.teste ? 'sim' : 'nao', [['nao', 'Sem teste'], ['sim', 'Com teste']], v => { r.teste = v === 'sim' ? (r.teste || { atr: 'DES', dif: 10 }) : null; repintarEd(); }),
       r.teste ? h('div', { class: 'acoes' }, escolha('rc-atr', r.teste.atr, I.ATR_TESTE, v => { r.teste.atr = v; }, { rotulo: 'Atributo do teste' }), h('span', { class: 'ajuda', text: 'contra' }), num('rc-dif', r.teste.dif, v => { r.teste.dif = Math.max(1, Math.round(+v) || 10); }, { min: '1', rotulo: 'Dificuldade' })) : null));
     const f = r.falha;

@@ -2,13 +2,45 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.10-05",
+      "data": "2026-11-10",
+      "titulo": "Produção: Alquimista, Artífice e o Ferreiro",
+      "itens": [
+        {
+          "tipo": "novo",
+          "texto": "Classe nova: Ferreiro (Martelo, Bigorna e Brasa). Luta com martelo, quebra a armadura do inimigo e forja armas e armaduras na bancada."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Alquimista e Artífice ganharam produção na cabeça de cada ramo: preparar poções e venenos, montar bombas, montar engenhocas, restaurar relíquias e fazer munição. O Alquimista agora gasta na luta os frascos que fez. O ramo Armeiro do Artífice virou Pólvora."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Bancada do Acampamento: a receita pode pedir uma habilidade da árvore. Quem não tem vê a receita trancada; quem mestra pode fazer mesmo assim. As receitas usam Kits (de alquimia, de engrenagem, de ferreiro), à venda nas lojas.",
+          "mestre": true
+        }
+      ]
+    },
+    {
       "versao": "2026.11.10-04",
       "data": "2026-11-10",
       "titulo": "Guardas: o cone vira sozinho e pode ser mostrado a um jogador",
       "itens": [
-        { "tipo": "melhorou", "texto": "Cenas: o guarda vira sozinho. Na ronda, ao chegar num ponto, já olha para o trecho seguinte; arrastado à mão (mouse ou setas), olha para onde foi.", "mestre": true },
-        { "tipo": "novo", "texto": "Cenas: \"Mostrar o cone a um jogador\", no bloco Guarda do token. Para quem usou uma skill de ver o campo de visão: só ele vê o cone, na cor do estado, e o \"!\" de quem o guarda está vendo. A rota vai junto se o mestre deixar.", "mestre": true },
-        { "tipo": "novo", "texto": "Cenas: o cone revelado fica até o mestre esconder, ou por algumas vezes de \"Avançar rondas\", ou por algumas rodadas de combate — e some sozinho no fim.", "mestre": true }
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: o guarda vira sozinho. Na ronda, ao chegar num ponto, já olha para o trecho seguinte; arrastado à mão (mouse ou setas), olha para onde foi.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: \"Mostrar o cone a um jogador\", no bloco Guarda do token. Para quem usou uma skill de ver o campo de visão: só ele vê o cone, na cor do estado, e o \"!\" de quem o guarda está vendo. A rota vai junto se o mestre deixar.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o cone revelado fica até o mestre esconder, ou por algumas vezes de \"Avançar rondas\", ou por algumas rodadas de combate — e some sozinho no fim.",
+          "mestre": true
+        }
       ]
     },
     {
@@ -16,10 +48,25 @@
       "data": "2026-11-10",
       "titulo": "Aptidões e os lembretes do mestre",
       "itens": [
-        { "tipo": "novo", "texto": "Fichas: a aba Aptidões. O que o personagem faz cada vez melhor com a prática (Rastreio, Escalada, Pescar…). Quem joga vê o nome, a descrição e o nível." },
-        { "tipo": "novo", "texto": "Fichas: o mestre cria cada aptidão e dá XP numa barrinha que só ele vê (+1, +5 ou “+15 −4” e Enter). Cheia, aparece “▲ Subir de nível” e um aviso. Cada nível tem o seu texto, e o olho deixa uma aptidão secreta.", "mestre": true },
-        { "tipo": "novo", "texto": "Fichas, aba Mesa: o quadro “Aptidões dos personagens”, com as de todos os jogadores, para dar XP sem abrir ficha por ficha.", "mestre": true },
-        { "tipo": "novo", "texto": "Lembretes do dia: uma vez por dia, ao entrar na mesa, a checklist do mestre (fichas, aptidões, relacionamentos, descanso longo, missões, tempo, luas, cenas, planejamento, jornal). Cada item abre a aba certa, alguns mostram o que falta, e a lista se edita. Reabre pelo menu da mesa, em “Lembretes do dia…”.", "mestre": true }
+        {
+          "tipo": "novo",
+          "texto": "Fichas: a aba Aptidões. O que o personagem faz cada vez melhor com a prática (Rastreio, Escalada, Pescar…). Quem joga vê o nome, a descrição e o nível."
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas: o mestre cria cada aptidão e dá XP numa barrinha que só ele vê (+1, +5 ou “+15 −4” e Enter). Cheia, aparece “▲ Subir de nível” e um aviso. Cada nível tem o seu texto, e o olho deixa uma aptidão secreta.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Fichas, aba Mesa: o quadro “Aptidões dos personagens”, com as de todos os jogadores, para dar XP sem abrir ficha por ficha.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Lembretes do dia: uma vez por dia, ao entrar na mesa, a checklist do mestre (fichas, aptidões, relacionamentos, descanso longo, missões, tempo, luas, cenas, planejamento, jornal). Cada item abre a aba certa, alguns mostram o que falta, e a lista se edita. Reabre pelo menu da mesa, em “Lembretes do dia…”.",
+          "mestre": true
+        }
       ]
     },
     {
@@ -27,9 +74,21 @@
       "data": "2026-11-10",
       "titulo": "Grade livre nas Cenas",
       "itens": [
-        { "tipo": "novo", "texto": "Cenas: um botão novo na barra (o ímã, ou Shift+G) troca entre “Na grade” e “Livre”. No Livre, paredes, portas, janelas, objetos, luzes e a régua ficam onde você soltar. Os tokens de personagem continuam na grade. A escolha vale em todas as cenas; o Alt inverte enquanto segura.", "mestre": true },
-        { "tipo": "novo", "texto": "Cenas: “Marcar uma casa na imagem” (no painel da cena, em Fundo, e ao subir uma imagem). Você arrasta um quadrado em cima de uma casa desenhada no mapa, e a grade cai em cima do desenho; a cena fica do tamanho da imagem.", "mestre": true },
-        { "tipo": "melhorou", "texto": "Cenas: Shift ao levantar parede deixa ela reta ou a 45°.", "mestre": true }
+        {
+          "tipo": "novo",
+          "texto": "Cenas: um botão novo na barra (o ímã, ou Shift+G) troca entre “Na grade” e “Livre”. No Livre, paredes, portas, janelas, objetos, luzes e a régua ficam onde você soltar. Os tokens de personagem continuam na grade. A escolha vale em todas as cenas; o Alt inverte enquanto segura.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: “Marcar uma casa na imagem” (no painel da cena, em Fundo, e ao subir uma imagem). Você arrasta um quadrado em cima de uma casa desenhada no mapa, e a grade cai em cima do desenho; a cena fica do tamanho da imagem.",
+          "mestre": true
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Cenas: Shift ao levantar parede deixa ela reta ou a 45°.",
+          "mestre": true
+        }
       ]
     },
     {
@@ -37,10 +96,23 @@
       "data": "2026-11-10",
       "titulo": "Armas de arremesso",
       "itens": [
-        { "tipo": "novo", "texto": "Kunai, Shuriken e outras armas de arremesso agora são armas (seguem a regra das armas: faixa, material e melhoria), numa pilha com quantidade. Usar na mão não gasta; \"Arremessar\" gasta 1 e avisa a Mesa ao vivo." },
-        { "tipo": "novo", "texto": "A quantidade da pilha se edita na própria ficha (−, +, ou digitando), para repor as achadas depois da luta. Em 0, a pilha fica na ficha, apagada, e não soma até repor." },
-        { "tipo": "melhorou", "texto": "Comprar mais kunais entra na pilha que você já tem. O campo \"Arremesso (quantos)\" no editor do item transforma qualquer arma numa pilha." },
-        { "tipo": "melhorou", "texto": "Itens: o campo \"Arremesso (pilha)\" no catálogo diz quantas vêm de uma vez.", "mestre": true }
+        {
+          "tipo": "novo",
+          "texto": "Kunai, Shuriken e outras armas de arremesso agora são armas (seguem a regra das armas: faixa, material e melhoria), numa pilha com quantidade. Usar na mão não gasta; \"Arremessar\" gasta 1 e avisa a Mesa ao vivo."
+        },
+        {
+          "tipo": "novo",
+          "texto": "A quantidade da pilha se edita na própria ficha (−, +, ou digitando), para repor as achadas depois da luta. Em 0, a pilha fica na ficha, apagada, e não soma até repor."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Comprar mais kunais entra na pilha que você já tem. O campo \"Arremesso (quantos)\" no editor do item transforma qualquer arma numa pilha."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Itens: o campo \"Arremesso (pilha)\" no catálogo diz quantas vêm de uma vez.",
+          "mestre": true
+        }
       ]
     },
     {
@@ -48,7 +120,11 @@
       "data": "2026-11-09",
       "titulo": "Aviso falso no Escudo",
       "itens": [
-        { "tipo": "consertado", "texto": "Escudo do mestre: o aviso “Falta aplicar a atualização do banco (o SQL 0025)” aparecia quando a mesa só demorava para responder ao abrir. Agora ele só aparece se o banco disser que falta a atualização; nos outros casos, a página tenta de novo sozinha.", "mestre": true }
+        {
+          "tipo": "consertado",
+          "texto": "Escudo do mestre: o aviso “Falta aplicar a atualização do banco (o SQL 0025)” aparecia quando a mesa só demorava para responder ao abrir. Agora ele só aparece se o banco disser que falta a atualização; nos outros casos, a página tenta de novo sozinha.",
+          "mestre": true
+        }
       ]
     },
     {
@@ -56,7 +132,11 @@
       "data": "2026-11-09",
       "titulo": "Mais símbolos de marcador",
       "itens": [
-        { "tipo": "novo", "texto": "Cenas: seis marcadores novos no grupo Missões — escudo, caveira, espada, veneno, pergaminho e estrela. Cada marcador (também o “!”) pode ficar ligado a uma missão (com a cor do tipo e o ✓/✕) ou ter só um nome, que aparece escrito em cima dele. Nascem ocultos; revelados, os jogadores veem o símbolo e o nome.", "mestre": true }
+        {
+          "tipo": "novo",
+          "texto": "Cenas: seis marcadores novos no grupo Missões — escudo, caveira, espada, veneno, pergaminho e estrela. Cada marcador (também o “!”) pode ficar ligado a uma missão (com a cor do tipo e o ✓/✕) ou ter só um nome, que aparece escrito em cima dele. Nascem ocultos; revelados, os jogadores veem o símbolo e o nome.",
+          "mestre": true
+        }
       ]
     },
     {
@@ -64,11 +144,30 @@
       "data": "2026-11-09",
       "titulo": "Marcadores de missão",
       "itens": [
-        { "tipo": "novo", "texto": "Cenas: o Marcador de missão (grupo Missões, no catálogo de objetos). Ligado a uma missão da aba Missões ou a um objetivo opcional dela: dourado na principal, azul-prata na secundária, menor e tracejado no opcional. Nasce oculto; ao ser revelado, quem joga clica nele e vê o nome, o tipo e o botão para abrir a missão.", "mestre": true },
-        { "tipo": "novo", "texto": "Cenas: o marcador muda sozinho quando a missão muda na aba Missões (cumprida ganha ✓, falhou ganha ✕, e o nome acompanha).", "mestre": true },
-        { "tipo": "novo", "texto": "Cenas: no “Gerar um lugar…”, os povoados ganham o bloco Missões: sem marcadores, até 3 marcadores vazios (na porta da taverna, do templo, da guilda…) ou um marcador para cada missão escolhida.", "mestre": true },
-        { "tipo": "novo", "texto": "Missões: cada missão é Principal ou Secundária, e cada objetivo pode ser marcado como Opcional." },
-        { "tipo": "melhorou", "texto": "Mapa-múndi: a missão do marcador agora vem da aba Missões (antes, das missões antigas das Fichas), com a cor do tipo e o objetivo opcional.", "mestre": true }
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o Marcador de missão (grupo Missões, no catálogo de objetos). Ligado a uma missão da aba Missões ou a um objetivo opcional dela: dourado na principal, azul-prata na secundária, menor e tracejado no opcional. Nasce oculto; ao ser revelado, quem joga clica nele e vê o nome, o tipo e o botão para abrir a missão.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: o marcador muda sozinho quando a missão muda na aba Missões (cumprida ganha ✓, falhou ganha ✕, e o nome acompanha).",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Cenas: no “Gerar um lugar…”, os povoados ganham o bloco Missões: sem marcadores, até 3 marcadores vazios (na porta da taverna, do templo, da guilda…) ou um marcador para cada missão escolhida.",
+          "mestre": true
+        },
+        {
+          "tipo": "novo",
+          "texto": "Missões: cada missão é Principal ou Secundária, e cada objetivo pode ser marcado como Opcional."
+        },
+        {
+          "tipo": "melhorou",
+          "texto": "Mapa-múndi: a missão do marcador agora vem da aba Missões (antes, das missões antigas das Fichas), com a cor do tipo e o objetivo opcional.",
+          "mestre": true
+        }
       ]
     },
     {
@@ -76,7 +175,10 @@
       "data": "2026-11-09",
       "titulo": "Faixa, material e melhoria pelo jogador",
       "itens": [
-        { "tipo": "melhorou", "texto": "Fichas: quem joga agora acerta a faixa, o material e a melhoria dos próprios equipamentos (e usa \"Melhorar +1\" e \"Usar o valor da faixa\"). A peça e o que rola o dano continuam com o mestre." }
+        {
+          "tipo": "melhorou",
+          "texto": "Fichas: quem joga agora acerta a faixa, o material e a melhoria dos próprios equipamentos (e usa \"Melhorar +1\" e \"Usar o valor da faixa\"). A peça e o que rola o dano continuam com o mestre."
+        }
       ]
     },
     {

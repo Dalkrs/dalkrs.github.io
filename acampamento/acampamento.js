@@ -991,8 +991,12 @@
       quem.length > 1 ? h('select', { class: 'in', id: 'banc-pc', 'aria-label': 'Quem faz', onchange: e => { bancadaPc = e.target.value; focoDepois = 'banc-pc'; pintarPainel(); } }, quem.map(x => h('option', { value: x.id, text: x.nome, selected: x.id === p.id })))
         : h('b', { text: p.nome })))];
     if (!rs.length) { out.push(h('p', { class: 'note', id: 'banc-vazia', text: 'Nenhuma receita ainda: quem mestra cria na aba Itens.' })); return out; }
+    const trancadas = [];
     for (const x of rs) {
       const r = x.r, pf = IT().podeFazer(r, l.ficha, l.estado || {}), te = r.teste;
+      // (lote 118) a habilidade que a receita pede: sem ela, trancada (quem mestra pode fazer mesmo assim: libera na hora)
+      const hb = IT().habilidadeOk ? IT().habilidadeOk(r, l.skills, bibAtual()) : { ok: true, texto: '' };
+      const travada = !hb.ok && !mestre();
       const v = te ? Math.round(+(p.atr && p.atr[te.atr]) || 0) : 0;
       out.push(h('div', { class: 'cartao receita', 'data-rec': x.id },
         h('div', { class: 'lin' }, h('b', { text: r.nome }), x.oculta ? h('span', { class: 'note', text: '· só quem mestra vê' }) : null),
@@ -1000,9 +1004,12 @@
         h('ul', { class: 'ing' }, pf.lista.map(g => h('li', { class: g.tem >= g.precisa ? 'tem' : 'falta' }, g.precisa + ' × ' + g.nome, h('span', { class: 'note', text: ' · tem ' + g.tem })))),
         h('p', { class: 'note' }, 'Faz ', h('b', { text: (r.resultado.qtd > 1 ? r.resultado.qtd + ' × ' : '') + r.resultado.item.nome }), te ? ' · teste de ' + NOME_ATR(te.atr) + ' (' + v + ') contra ' + te.dif : ' · sem teste'),
         te ? h('p', { class: 'note', text: 'Se falhar: ' + falhaTexto(r) + '.' }) : null,
-        h('div', { class: 'lin' }, h('button', { type: 'button', class: 'btn sm pri', id: 'banc-fazer-' + x.id, disabled: !pf.ok || encerrada, title: pf.ok ? '' : 'Faltam ingredientes', onclick: () => abrirFazer(x, p) }, 'Fazer'),
+        hb.texto ? h('p', { class: 'note' + (hb.ok ? '' : ' trancada'), 'data-pede': hb.ok ? 'ok' : 'falta', text: (hb.ok ? '' : '🔒 ') + hb.texto + (hb.ok ? '.' : mestre() ? ': ' + p.nome + ' não tem. Você pode fazer mesmo assim (libera na hora).' : ': ' + p.nome + ' ainda não tem.') }) : null,
+        h('div', { class: 'lin' }, h('button', { type: 'button', class: 'btn sm pri', id: 'banc-fazer-' + x.id, disabled: !pf.ok || encerrada || travada, title: travada ? hb.texto : pf.ok ? '' : 'Faltam ingredientes', onclick: () => abrirFazer(x, p) }, 'Fazer'),
           pf.ok ? null : h('span', { class: 'note', text: 'Faltam: ' + pf.faltam.map(g => (g.precisa - g.tem) + ' × ' + g.nome).join(', ') + '.' }))));
+      if (travada) trancadas.push(out.pop());
     }
+    if (trancadas.length) out.push(h('details', { class: 'cartao', id: 'banc-trancadas' }, h('summary', { text: '🔒 Trancadas (' + trancadas.length + '): pedem uma habilidade que ' + p.nome + ' ainda não tem' }), trancadas));
     return out;
   }
   function abrirFazer(x, p) {
