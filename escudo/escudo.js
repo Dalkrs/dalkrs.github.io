@@ -563,7 +563,13 @@
     if (!naMesa) D.aoMudar(() => depois());
     if (naMesa) {
       D.aoMudar(l => { if (l && typeof l.id === 'string' && (l.id.startsWith('escudo:') || l.id.startsWith('pista:') || l.id.startsWith('cena:') || l.id === 'cenas:indice' || l.id.startsWith('mundo:mapa:') || l.id.startsWith('best:') || l.id.startsWith('cla:') || l.id.startsWith('mural:') || l.id === 'fichas:cfg')) depois(); });
-      TCx.ponte.escudo('versao').then(() => { bancoOk = true; pintar(); }, () => { bancoOk = false; pintar(); });
+      /* (lote 129) o aviso do SQL 0025 só quando o banco diz que falta a atualização; as outras falhas (a mesa ainda
+         abrindo, a resposta que demorou, a troca de campanha) não dizem nada do banco: tenta de novo, com calma */
+      const conferirBanco = n => TCx.ponte.escudo('versao').then(() => { bancoOk = true; pintar(); }, e => {
+        if (/0025/.test(String((e && e.message) || ''))) { bancoOk = false; pintar(); }
+        else if (n < 6) setTimeout(() => conferirBanco(n + 1), 2000 * (n + 1));
+      });
+      conferirBanco(0);
     }
     pronto = true;
     pintar();

@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.09-13",
+      "data": "2026-11-09",
+      "titulo": "Aviso falso no Escudo",
+      "itens": [
+        { "tipo": "consertado", "texto": "Escudo do mestre: o aviso “Falta aplicar a atualização do banco (o SQL 0025)” aparecia quando a mesa só demorava para responder ao abrir. Agora ele só aparece se o banco disser que falta a atualização; nos outros casos, a página tenta de novo sozinha.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.09-12",
       "data": "2026-11-09",
       "titulo": "Mais símbolos de marcador",
