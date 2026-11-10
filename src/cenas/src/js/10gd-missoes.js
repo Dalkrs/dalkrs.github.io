@@ -13,7 +13,10 @@ const MissaoCenas = (() => {
   const M = () => (window.TC && window.TC.missoes) || null;
   const D = () => { try { return window.TC && TC.dados && TC.dados.disponivel && TC.dados.disponivel() ? TC.dados.col('documentos') : null; } catch (e) { return null; } };
   const linhas = () => { const d = D(); return d ? d.todas() : []; };
-  const eh = t => !!(t && t.prop === 'missao');
+  // (os sete marcadores do grupo Missões: o "!", o escudo, a caveira, a espada, o veneno, o pergaminho e a estrela)
+  const eh = t => !!(t && t.prop && Props.P[t.prop] && Props.P[t.prop].simb);
+  const defN = t => ((t && Props.P[t.prop]) || {}).n || 'Marcador';
+  const soNome = mq => !!(mq && !mq.id && typeof mq.n === 'string');
   const ESTADO = { oculta: 'Ainda oculta (só você vê)', oferta: 'No quadro', ativa: 'Em andamento', feita: 'Cumprida', falhou: 'Falhou', sumiu: 'A missão foi apagada' };
 
   /* As missões que dá para ligar: todas (rascunhos, quadro de cada campanha, as dos personagens), a principal primeiro. */
@@ -42,14 +45,20 @@ const MissaoCenas = (() => {
     if (mq.oid) { o.oid = mq.oid; o.ot = k.ot; o.op = k.op; }
     return o;
   }
-  const nome = mq => (!mq || !mq.id ? 'Marcador de missão' : mq.oid ? 'Opcional: ' + (mq.ot || 'objetivo') : 'Missão: ' + (mq.t || 'sem título'));
+  const nome = (mq, t) => (soNome(mq) ? mq.n || defN(t) : !mq || !mq.id ? defN(t) : mq.oid ? 'Opcional: ' + (mq.ot || 'objetivo') : 'Missão: ' + (mq.t || 'sem título'));
   const igual = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
 
   /* Liga o marcador t a uma missão (id) e, se vier, a um objetivo opcional dela (oid). id vazio: desliga. */
   function ligar(t, id, oid) {
     t = Store.get('tokens', t.id) || t;
     const mq = id ? copia({ id, oid: oid || null }) : null;
-    Store.tx(id ? 'Ligar o marcador à missão' : 'Desligar o marcador', () => Store.upd('tokens', t.id, { mq: mq || undefined, name: nome(mq) }));
+    Store.tx(id ? 'Ligar o marcador à missão' : 'Desligar o marcador', () => Store.upd('tokens', t.id, { mq: mq || undefined, name: nome(mq, t) }));
+  }
+  /* Só um nome (sem missão): o que vai escrito em cima do marcador. n: o nome (texto vazio vale: "só nome", ainda sem nome). */
+  function porNome(t, n) {
+    t = Store.get('tokens', t.id) || t;
+    const mq = { n: String(n == null ? '' : n).trim().slice(0, 60) };
+    Store.tx('Dar nome ao marcador', () => Store.upd('tokens', t.id, { mq, name: nome(mq, t) }));
   }
 
   /* O aparelho de quem mestra acerta a cópia de todos os marcadores (em todas as cenas), sem entrar no Desfazer. */
@@ -62,7 +71,7 @@ const MissaoCenas = (() => {
       for (const t of (sc && sc.tokens) || []) {
         if (!eh(t) || !t.mq || !t.mq.id) continue;
         const nv = copia(t.mq);
-        if (nv && !igual(nv, t.mq)) ops.push({ t: 'upd', c: 'tokens', id: t.id, p: { mq: nv, name: nome(nv) } });
+        if (nv && !igual(nv, t.mq)) ops.push({ t: 'upd', c: 'tokens', id: t.id, p: { mq: nv, name: nome(nv, t) } });
       }
       if (ops.length) n += Store.remoteIn(sid, ops);
     }
@@ -94,9 +103,13 @@ const MissaoCenas = (() => {
   /* ---- o balão (o clique de quem joga; os dois cliques do mestre) ---- */
   function balao(t, x, y) {
     const mq = t.mq || null, gm = isGM(), items = [];
-    if (!mq || !mq.id) {
+    if (soNome(mq)) {
+      if (!gm && !mq.n) return;
+      items.push({ head: mq.n || defN(t) + ' (sem nome)' });
+      if (gm) items.push({ label: 'Trocar o nome…', icon: 'edit', run: () => { setSel([{ c: 'tokens', id: t.id }]); UI.openTab('sel', 'pr-mq-nome'); } });
+    } else if (!mq || !mq.id) {
       if (!gm) return;
-      items.push({ head: 'Marcador de missão (sem missão)' }, { label: 'Ligar a uma missão…', icon: 'link', run: () => { setSel([{ c: 'tokens', id: t.id }]); UI.openTab('sel', 'pr-mq'); } });
+      items.push({ head: defN(t) + ' (sem missão nem nome)' }, { label: 'Ligar a uma missão ou dar um nome…', icon: 'link', run: () => { setSel([{ c: 'tokens', id: t.id }]); UI.openTab('sel', 'pr-mq-modo'); } });
     } else {
       const oculta = mq.e === 'oculta';
       items.push({ head: oculta && !gm ? 'Uma missão (ainda sem nome)' : mq.oid ? mq.ot || 'Objetivo' : mq.t || 'Missão' });
@@ -114,23 +127,31 @@ const MissaoCenas = (() => {
   function secao(t, K) {
     const mq = t.mq || null;
     if (!isGM()) {
+      if (soNome(mq)) return mq.n ? K.sec('s-mq', 'Marcador', true, K.note(mq.n)) : null;
       if (!mq || !mq.id) return null;
       const oculta = mq.e === 'oculta';
       return K.sec('s-mq', 'Missão', true,
         K.note(oculta ? 'Uma missão que o mestre ainda não revelou.' : (mq.oid ? 'Opcional: ' + (mq.ot || 'objetivo') + ' (de “' + mq.t + '”)' : mq.t) + ' · ' + (mq.tp === 'principal' ? 'principal' : 'secundária') + (ESTADO[mq.e] && mq.e !== 'ativa' && mq.e !== 'oferta' ? ' · ' + ESTADO[mq.e] : '')),
         oculta ? null : h('div', { class: 'row' }, K.btn('Abrir na aba Missões', () => abrirMissao(mq), { kind: 'small', icon: 'right', id: 'pr-mq-abrir', disabled: !naCasca() })));
     }
+    // (o jeito: ligado a uma missão, ou só com um nome escrito em cima)
+    const modo = K.field('O marcador', K.seg('pr-mq-modo', soNome(mq) ? 'nome' : 'missao', [['missao', 'Ligado a uma missão'], ['nome', 'Só um nome']], v => { if (v === 'nome') porNome(t, ''); else ligar(t, null); }), 'stack');
+    const ver = () => K.btn(t.hidden ? 'Revelar aos jogadores' : 'Ocultar dos jogadores', () => Store.tx(t.hidden ? 'Mostrar o marcador' : 'Ocultar o marcador', () => Store.upd('tokens', t.id, { hidden: !t.hidden })), { kind: 'small' + (t.hidden ? ' primary' : ''), icon: t.hidden ? 'eye' : 'eyeOff', id: 'pr-mq-ver' });
+    if (soNome(mq)) return K.sec('s-mq', 'Marcador', true, modo,
+      K.field('Nome (aparece em cima dele)', K.inText('pr-mq-nome', mq.n, v => porNome(t, v), { maxlength: '60', placeholder: 'Ex.: Covil dos bandidos' }), 'stack'),
+      K.note('Revelado, os jogadores veem o símbolo com este nome em cima.'),
+      h('div', { class: 'row' }, ver()));
     const lista = missoes(), atual = mq && mq.id ? lista.find(x => x.id === mq.id) : null;
     const opcs = [['', lista.length ? 'Nenhuma' : 'Nenhuma missão ainda']].concat(lista.map(x => [x.id, (x.tp === 'principal' ? '★ ' : '') + x.t + (x.e === 'oculta' ? ' (oculta)' : x.e === 'feita' ? ' (cumprida)' : x.e === 'falhou' ? ' (falhou)' : '')]));
     if (mq && mq.id && !atual) opcs.push([mq.id, '(a missão foi apagada)']);
     const parte = atual && atual.ops.length ? [['', 'A missão inteira']].concat(atual.ops.map(o => [o.id, 'Opcional: ' + (o.t || 'objetivo')])) : null;
     const sel = K.inSelect('pr-mq', mq && mq.id ? mq.id : '', opcs, v => ligar(t, v || null, null));
-    return K.sec('s-mq', 'Missão', true,
+    return K.sec('s-mq', 'Marcador', true, modo,
       K.field('Missão', sel, 'stack'),
       parte ? K.field('O que marca', K.inSelect('pr-mq-op', mq.oid || '', parte, v => ligar(t, mq.id, v || null)), 'stack') : null,
       mq && mq.id ? K.note((ESTADO[mq.e] || '') + (mq.e === 'sumiu' ? '.' : '. O marcador muda sozinho quando a missão muda na aba Missões.')) : K.note(D() ? 'Escolha a missão. Só as missões com objetivos marcados como “Opcional” deixam escolher um objetivo.' : 'Os marcadores se ligam às missões da aba Missões, numa mesa.'),
       h('div', { class: 'row' },
-        K.btn(t.hidden ? 'Revelar aos jogadores' : 'Ocultar dos jogadores', () => Store.tx(t.hidden ? 'Mostrar o marcador' : 'Ocultar o marcador', () => Store.upd('tokens', t.id, { hidden: !t.hidden })), { kind: 'small' + (t.hidden ? ' primary' : ''), icon: t.hidden ? 'eye' : 'eyeOff', id: 'pr-mq-ver' }),
+        ver(),
         mq && mq.id ? K.btn('Abrir na aba Missões', () => abrirMissao(mq), { kind: 'small', icon: 'right', id: 'pr-mq-abrir', disabled: !naCasca() }) : null));
   }
 
@@ -148,7 +169,7 @@ const MissaoCenas = (() => {
       if (!q) return;
       const t = Props.novo(sc, 'missao', q[0] * c, q[1] * c, 1, true);
       t.mq = a ? copia({ id: a.id }) : undefined; if (!t.mq) delete t.mq;
-      t.name = nome(t.mq);
+      t.name = nome(t.mq, t);
       sc.tokens.push(t); n++;
     });
     return n;
@@ -197,5 +218,5 @@ const MissaoCenas = (() => {
     return `${n} ${n === 1 ? 'marcador de missão' : 'marcadores de missão'} (${n === 1 ? 'oculto' : 'ocultos'}${o.modo === 'vazios' ? ': clique em cada um e escolha a missão' : ''}).`;
   }
 
-  return { eh, missoes, copia, ligar, sincronizar, balao, secao, abrirMissao, porNaCena, lugaresDaCena, prefs, controles, aplicar, nome, POVOADOS };
+  return { eh, soNome, porNome, missoes, copia, ligar, sincronizar, balao, secao, abrirMissao, porNaCena, lugaresDaCena, prefs, controles, aplicar, nome, POVOADOS };
 })();

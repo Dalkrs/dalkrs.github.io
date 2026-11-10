@@ -3783,7 +3783,8 @@ const UI = (() => {
         if (props.length === 1 && Props.estados(props[0].prop)) { const l = Props.estados(props[0].prop), a = Props.estado(props[0]), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; items.push({ label: nx[1], icon: 'reset', run: () => alternarObjeto(props[0], nx[0]) }); }
         if (props.length === 1 && Misterio.ehPista(props[0])) items.push({ label: 'Revelar e entregar a pista', icon: 'eye', run: () => Misterio.revelar(props[0]) });     // (lote 53)
         if (props.length === 1 && MissaoCenas.eh(props[0])) {      // (lote 129) o marcador de missão
-          items.push({ label: props[0].mq && props[0].mq.id ? 'Trocar a missão…' : 'Ligar a uma missão…', icon: 'link', run: () => openTab('sel', 'pr-mq') });
+          if (MissaoCenas.soNome(props[0].mq)) items.push({ label: 'Trocar o nome…', icon: 'edit', run: () => openTab('sel', 'pr-mq-nome') });
+          else items.push({ label: props[0].mq && props[0].mq.id ? 'Trocar a missão…' : 'Ligar a uma missão ou dar um nome…', icon: 'link', run: () => openTab('sel', props[0].mq && props[0].mq.id ? 'pr-mq' : 'pr-mq-modo') });
           if (props[0].mq && props[0].mq.id) items.push({ label: 'Abrir na aba Missões', icon: 'right', run: () => MissaoCenas.abrirMissao(props[0].mq) });
         }
         if (props.length === 1 && props[0].light && (Props.P[props[0].prop] || {}).luz) items.push({ label: props[0].light.on === false ? 'Acender' : 'Apagar', icon: 'light', run: () => alternarObjeto(props[0]) });

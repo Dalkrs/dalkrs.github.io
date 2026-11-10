@@ -122,6 +122,66 @@ const j = JSON.stringify;
   await t.page.screenshot({ path: __dirname + '/_lote129-marcadores.png' });
   await ev(() => { TC.dados.disponivel = () => true; });
 
+  // os outros seis símbolos: no catálogo; "Só um nome" (escrito em cima, vai para os jogadores); ligado a uma missão
+  const r6 = await ev(async () => {
+    const T = __tc, S = T.Store, MC = T.MissaoCenas, w = ms => new Promise(r => setTimeout(r, ms)), out = {};
+    const j = JSON.stringify;
+    out.catalogo = T.Props.ORDER.filter(k => T.Props.P[k].g === 'missao');
+    const sc = T.newScene('Símbolos'); sc.cols = 12; sc.rows = 8; T.normalizeScene(sc); S.addScene(sc); T.UI.switchScene(sc.id);
+    const c = sc.cell, cav = T.Props.novo(sc, 'mqCaveira', 3 * c, 3 * c, 1, false);
+    S.tx('pôr', () => S.add('tokens', cav));
+    out.nasce = S.get('tokens', cav.id).hidden && MC.eh(cav) && S.get('tokens', cav.id).name === 'Marcador: caveira';
+    T.setSel([{ c: 'tokens', id: cav.id }]); T.UI.openTab('sel'); await w(150);
+    out.modos = [...document.querySelectorAll('#pr-mq-modo button')].map(b => b.textContent).join('|');
+    [...document.querySelectorAll('#pr-mq-modo button')].find(b => /Só um nome/.test(b.textContent)).click(); await w(150);
+    const inp = document.getElementById('pr-mq-nome'); inp.value = 'Covil dos bandidos'; inp.dispatchEvent(new Event('change')); await w(100);
+    let tk = S.get('tokens', cav.id);
+    out.nome = j(tk.mq) === j({ n: 'Covil dos bandidos' }) && tk.name === 'Covil dos bandidos';
+    S.tx('revelar', () => S.upd('tokens', cav.id, { hidden: false }));
+    const pj = T.Proj.projetar(sc, {}, new Set(), null).v.tokens.find(x => x.id === cav.id);
+    out.proj = !!pj && pj.mq.n === 'Covil dos bandidos';
+    MC.sincronizar(); out.semMexer = j(S.get('tokens', cav.id).mq) === j({ n: 'Covil dos bandidos' });
+    // a estrela ligada à missão principal: a cópia da missão, como o "!"
+    const est = T.Props.novo(sc, 'mqEstrela', 7 * c, 3 * c, 1, false); S.tx('pôr', () => S.add('tokens', est));
+    MC.ligar(S.get('tokens', est.id), 'q1');
+    tk = S.get('tokens', est.id);
+    out.ligada = tk.mq.id === 'q1' && tk.mq.tp === 'principal' && /^Missão: /.test(tk.name);
+    // o balão do mestre no marcador com nome
+    MC.balao(S.get('tokens', cav.id), 300, 300); await w(100);
+    out.balao = (document.querySelector('.menu') || {}).innerText || ''; T.UI.closeMenus();
+    out.cavId = cav.id;
+    return out;
+  });
+  ok(j(r6.catalogo) === j(['missao', 'mqEscudo', 'mqCaveira', 'mqEspada', 'mqVeneno', 'mqPergaminho', 'mqEstrela']), 'o grupo Missões tem os sete marcadores: ' + j(r6.catalogo));
+  ok(r6.nasce, 'o marcador novo nasce oculto, com o nome do símbolo');
+  ok(r6.modos === 'Ligado a uma missão|Só um nome', 'o painel oferece os dois jeitos: ' + j(r6.modos));
+  ok(r6.nome && r6.proj && r6.semMexer, '"Só um nome": o nome fica no marcador, vai para os jogadores e a sincronização das missões não mexe nele');
+  ok(r6.ligada, 'a estrela ligada à missão: a mesma cópia do "!"');
+  ok(/Covil dos bandidos/i.test(r6.balao) && /Trocar o nome/.test(r6.balao), 'o balão do mestre: o nome e "Trocar o nome…": ' + j(r6.balao));
+  // quem joga: o clique no marcador com nome mostra o nome
+  const pos6 = await ev(async () => {
+    const T = __tc, S = T.Store, w = ms => new Promise(r => setTimeout(r, ms));
+    T.UI.setViewer(S.S.players[0].id); T.Render.fit(); await w(250);
+    const tk = S.scene().tokens.find(x => x.prop === 'mqCaveira'), sc = S.scene(), rc = document.getElementById('cv').getBoundingClientRect(), V = T.App.view;
+    return { x: rc.left + (tk.x + sc.cell / 2 - V.x) * V.z, y: rc.top + (tk.y + sc.cell / 2 - V.y) * V.z };
+  });
+  await t.page.mouse.click(pos6.x, pos6.y); await t.page.waitForTimeout(250);
+  const b6 = await ev(() => { const m = document.querySelector('.menu'); return m ? m.innerText : ''; });
+  ok(/Covil dos bandidos/i.test(b6) && !/Trocar/.test(b6), 'quem joga: o clique mostra o nome, sem o que é do mestre: ' + j(b6));
+  await ev(() => { __tc.UI.closeMenus(); __tc.UI.setViewer('gm'); });
+  // a prévia de todos: soltos (sem nada e com nome) e ligados (principal, secundária, opcional, cumprida, falhou)
+  await ev(async () => {
+    const T = __tc, S = T.Store, w = ms => new Promise(r => setTimeout(r, ms));
+    TC.dados.disponivel = () => false;
+    const sc = T.newScene('Todos'); sc.cols = 9; sc.rows = 14; T.normalizeScene(sc); S.addScene(sc); T.UI.switchScene(sc.id);
+    const c = sc.cell, ks = ['missao', 'mqEscudo', 'mqCaveira', 'mqEspada', 'mqVeneno', 'mqPergaminho', 'mqEstrela'];
+    const jeitos = [null, { n: 'Covil' }, { id: 'a', tp: 'principal', e: 'ativa', t: 'O barão' }, { id: 'a', tp: 'secundaria', e: 'ativa', t: 'Ratos' }, { id: 'a', oid: 'x', tp: 'principal', e: 'ativa', t: 'O barão', ot: 'Cálice' }, { id: 'a', tp: 'principal', e: 'feita', t: 'Feita' }, { id: 'a', tp: 'secundaria', e: 'falhou', t: 'Falhou' }];
+    S.tx('pôr', () => ks.forEach((k, i) => jeitos.forEach((mq, jx) => { const tk = T.Props.novo(sc, k, (1 + jx) * c, (1 + i * 1.8) * c, 1, false); tk.hidden = false; if (mq) tk.mq = mq; S.add('tokens', tk); })));
+    T.Render.fit(); await w(300);
+  });
+  await t.page.screenshot({ path: __dirname + '/_lote129-simbolos.png' });
+  await ev(() => { TC.dados.disponivel = () => true; });
+
   // o "Gerar um lugar…": os marcadores vazios e os das missões escolhidas
   const r4 = await ev(async () => {
     const T = __tc, S = T.Store, MC = T.MissaoCenas, out = {};

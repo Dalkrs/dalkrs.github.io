@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.09-12",
+      "data": "2026-11-09",
+      "titulo": "Mais símbolos de marcador",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: seis marcadores novos no grupo Missões — escudo, caveira, espada, veneno, pergaminho e estrela. Cada marcador (também o “!”) pode ficar ligado a uma missão (com a cor do tipo e o ✓/✕) ou ter só um nome, que aparece escrito em cima dele. Nascem ocultos; revelados, os jogadores veem o símbolo e o nome.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.09-11",
       "data": "2026-11-09",
       "titulo": "Marcadores de missão",
