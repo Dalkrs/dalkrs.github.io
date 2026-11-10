@@ -356,6 +356,7 @@ const UI = (() => {
       body: field('Quadrados na largura da imagem', input, 'stack'),
       actions: [
         { label: 'Manter o tamanho da cena', run: () => { setBg(0); } },
+        { label: 'Marcar uma casa na imagem', run: () => { setBg(0); setTimeout(() => { Render.fit(); Tools.set('gradeImg'); toast('Arraste um quadrado em cima de UMA casa desenhada na imagem.', { key: 'gradeImg' }); }, 30); } },      // (lote 130)
         { label: 'Ajustar a cena', kind: 'primary', run: () => { const n = clamp(Math.round(parseFloat(input.value) || sc.cols), 2, 300); setBg(n); setTimeout(Render.fit, 30); } },
       ],
     });
@@ -1212,7 +1213,7 @@ const UI = (() => {
       ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
       ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
       ['Shift+W', 'Avançar rondas: os guardas andam um passo da rota (só o mestre)'],
-      ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Solta da grade'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
+      ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Inverte a grade (solta ou encaixa)'], ['Shift+G', 'Na grade / Livre (paredes, objetos, luzes, régua)'], ['Shift na parede', 'Reta ou a 45°'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
       ['1 a 5', 'As abas do painel da direita (Seleção, Turnos, Efeitos, Cena, Jogadores)'], ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
     modal({
@@ -1282,6 +1283,12 @@ const UI = (() => {
           onclick: () => { listaDesenho = !listaDesenho; renderRail(); if (listaDesenho) { const b = el.rail.querySelector('.rail-item.on') || el.rail.querySelector('.rail-item'); if (b) b.focus(); } } }, icon(mostra.i, 20), h('span', { class: 'junto-seta', 'aria-hidden': 'true' })),
         lista));
     });
+    // (lote 130) a chave da grade (só o mestre): aceso = Na grade; apagado = Livre
+    if (isGM()) {
+      const ng = Tools.naGrade();
+      kids.push(h('span', { class: 'rail-sep' }), h('button', { type: 'button', class: 'tool grade-chave' + (ng ? ' on' : ' livre'), id: 'tool-grade', title: (ng ? 'Na grade' : 'Livre') + ' — paredes, portas, janelas, objetos, luzes e a régua ' + (ng ? 'encaixam nos quadrados' : 'ficam onde você soltar') + '. Clique para trocar (Shift+G). Alt inverte enquanto segura.',
+        'aria-label': 'Encaixar na grade', 'aria-pressed': String(ng), onclick: () => Tools.trocarGrade() }, icon('ima', 18), h('span', { class: 'grade-tx', text: ng ? 'Grade' : 'Livre', 'aria-hidden': 'true' })));
+    }
     // (lote 47) o grupo Mestre: a vez, os momentos, os lembretes e a cura, num painel pequeno ao lado da barra
     if (typeof Mestre !== 'undefined') kids.push(...Mestre.grupoDaBarra());
     el.rail.replaceChildren(...kids);
@@ -3566,6 +3573,7 @@ const UI = (() => {
             field('Mover X', inNum('bg-dx', bg.dx, v => S({ bg: Object.assign({}, bg, { dx: v }) }, 'Mover fundo'), { step: 1 })),
             field('Mover Y', inNum('bg-dy', bg.dy, v => S({ bg: Object.assign({}, bg, { dy: v }) }, 'Mover fundo'), { step: 1 })),
             field('Escala %', inNum('bg-sc', Math.round(bg.scale * 1000) / 10, v => S({ bg: Object.assign({}, bg, { scale: v / 100 }) }, 'Escala do fundo'), { min: 5, max: 1000, step: 0.5 }))) : null,
+          btn('Marcar uma casa na imagem', () => { Tools.set('gradeImg'); toast('Arraste um quadrado em cima de UMA casa desenhada na imagem.', { key: 'gradeImg' }); }, { icon: 'gradeImg', id: 'bg-gradeimg', title: 'A grade cai em cima das linhas do desenho, e a cena fica do tamanho da imagem' }),
           btn('Ajustar a cena à imagem…', () => {
             promptBox('Ajustar a cena ao mapa', 'Quadrados na largura da imagem', sc.cols, { type: 'number', min: 2, max: 300, ok: 'Ajustar' }).then(v => {
               const n = clamp(Math.round(parseFloat(v)), 2, 300);

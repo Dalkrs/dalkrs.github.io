@@ -1288,3 +1288,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .stp-dig { cursor: text; border-radius: 5px; }
 .stp-dig:hover { background: var(--hover, rgba(255,255,255,.08)); outline: 1px dashed var(--line-strong, #40495f); }
 .stp-in { width: 52px; height: 26px; padding: 0 4px; text-align: center; }
+/* (lote 130) a chave da grade: o ímã com a palavra embaixo; aceso = Na grade, tracejado = Livre */
+.tool.grade-chave { height: 40px; gap: 1px; align-content: center; }
+.rail .tool.grade-chave .grade-tx { font-size: 9px !important; font-weight: 600; line-height: 1; letter-spacing: 0; }
+.rail .tool.grade-chave.livre { outline: 1.5px dashed var(--fg-3); outline-offset: -3px; color: var(--fg); }

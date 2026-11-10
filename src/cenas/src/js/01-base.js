@@ -181,6 +181,8 @@ function focusKind(t) {
 /* ---- Ícones (traço 24×24). Os mesmos caminhos servem ao DOM e ao canvas. ---- */
 const ICONS = {
   layers: 'M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5M3 16.5l9 5 9-5',      // (lote 78) os andares
+  ima: 'M5 4h4v8a3 3 0 0 0 6 0V4h4v8a7 7 0 0 1-14 0zM5 8h4M15 8h4',      // (lote 130) a chave da grade
+  gradeImg: 'M4 4h16v16H4zM4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16M9.3 9.3h5.4v5.4H9.3z',      // (lote 130) ajustar a grade à imagem
   select: 'M5 3l14 7.5-6 1.8L10.5 19z',
   pan: 'M12 3v18M3 12h18M12 3L9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5',
   token: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 12.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6.3 18.6c1-2.4 3.1-3.8 5.7-3.8s4.7 1.4 5.7 3.8',

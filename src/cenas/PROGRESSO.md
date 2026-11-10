@@ -404,3 +404,14 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
   a pequena só tem 3 salas e fica sem). O banheiro vai para a menor sala, com banheira (ou tina, se a banheira não
   cabe), latrina, lavatório, espelho e toalheiro. Teste: `test/lote128.js`.
 - Pendente: a casa do senhor pequena, a fortaleza e a guilda (furtividade) seguem sem banheiro no interior.
+
+## Lote 130 — a grade livre e a grade em cima da imagem
+
+- A chave da grade (o ímã na barra, só o mestre; Shift+G): "Na grade" ou "Livre". No Livre, paredes, portas, janelas,
+  objetos, luzes e a régua ficam onde o mouse soltar (a ponta da parede ainda gruda na de outra). Os tokens de
+  personagem continuam na grade. Fica guardada neste aparelho (`tinycats:cenas:grade`), em todas as cenas. Alt inverte.
+- Shift ao levantar a parede: reta (de pé ou deitada) ou a 45°.
+- "Marcar uma casa na imagem" (Fundo, no painel da cena; e na janela de subir a imagem): o mestre arrasta um quadrado em
+  cima de uma casa do desenho; a imagem muda de escala e desliza para as linhas caírem nas da grade, e a cena muda de
+  tamanho para cobrir a imagem (a sobra de menos de uma casa na borda de cima e da esquerda fica de fora). Desfaz com Ctrl+Z.
+- Teste: `test/lote130.js`. `test/lote26.js` passou a contar o botão da grade no trilho.

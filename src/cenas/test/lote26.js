@@ -13,7 +13,7 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FALHOU: ' + m)
   const abertos = () => E(() => [...document.querySelectorAll('.tab-body > details.sec')].map(d => d.id + (d.open ? '+' : '-')).join(' '));
   try {
     ok(await E(() => [...document.querySelectorAll('.rail-g')].map(x => x.textContent).join()) === 'Jogo,Peças,Desenho,Mapa,Mestre', 'o trilho em cinco grupos com nome (o Mestre, do lote 47)');
-    ok(await E(() => [...document.querySelectorAll('.rail > .tool, .rail .tool.junto')].map(b => b.id.replace('tool-', '')).join()) === 'select,pan,ruler,ping,lapis,token,obj,fx,grupo-desenho,wall,light,fog,terrain', 'as ferramentas, com o desenho num botão só');
+    ok(await E(() => [...document.querySelectorAll('.rail > .tool, .rail .tool.junto')].map(b => b.id.replace('tool-', '')).join()) === 'select,pan,ruler,ping,lapis,token,obj,fx,grupo-desenho,wall,light,fog,terrain,grade', 'as ferramentas, com o desenho num botão só (e a chave da grade, lote 130)');
     await P.click('#tool-grupo-desenho'); await w(100);
     ok(await P.locator('.rail-lista').isVisible() && (await P.locator('.rail-lista').innerText()).replace(/\s+/g, ' ').includes('Retângulo R'), 'o botão do Desenho abre a lista com os nomes e as teclas');
     await P.click('#tool-rect'); await w(100);

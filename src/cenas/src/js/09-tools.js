@@ -37,7 +37,8 @@ const Tools = (() => {
     { id: 'light', n: 'Luz', k: 'I', i: 'light', grp: 3, gm: true },
     { id: 'fog', n: 'Névoa manual', k: 'U', i: 'fog', grp: 3, gm: true },
     { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
-    { id: 'ronda', n: 'Rota do guarda', i: 'ronda', grp: -1, gm: true },       // (lote 121) fora do trilho: vem do bloco "Guarda"
+    { id: 'ronda', n: 'Rota do guarda', i: 'ronda', grp: -1, gm: true },
+    { id: 'gradeImg', n: 'Ajustar a grade à imagem', i: 'gradeImg', grp: -1, gm: true },      // (lote 130) fora do trilho: vem do painel da cena       // (lote 121) fora do trilho: vem do bloco "Guarda"
   ];
   /* (lote 83) A visão do mestre: "Construção" (mexe em tudo, como sempre) ou "Mestrando" (só os tokens andam; portas,
      luzes, baús e passagens se usam, mas nada do mapa sai do lugar). Cada cena lembra a última, neste aparelho; uma
@@ -46,6 +47,18 @@ const Tools = (() => {
   const VISAO_K = 'tinycats:cenas:visao';
   const visoes = (() => { try { const o = JSON.parse(localStorage.getItem(VISAO_K) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } })();
   const mestrando = () => isGM() && App.visao === 'mestrando';
+  /* (lote 130) A chave da grade do mestre: "Na grade" (paredes, portas, janelas, objetos, luzes e a régua encaixam) ou
+     "Livre" (ficam onde o mouse soltar; bom para o mapa de imagem). Vale em todas as cenas, neste aparelho; Alt inverte
+     enquanto segura. Os tokens de personagem continuam na grade. */
+  const GRADE_K = 'tinycats:cenas:grade';
+  let naGrade = (() => { try { return localStorage.getItem(GRADE_K) !== 'livre'; } catch (e) { return true; } })();
+  const solto = e => (isGM() && !naGrade ? !(e && e.altKey) : !!(e && e.altKey));
+  function trocarGrade(v) {
+    naGrade = v === undefined ? !naGrade : !!v;
+    try { localStorage.setItem(GRADE_K, naGrade ? 'grade' : 'livre'); } catch (e) { /* sem armazenamento */ }
+    Store.emit('tool'); Render.request();
+    UI.toast(naGrade ? 'Na grade: paredes, objetos, luzes e a régua encaixam nos quadrados.' : 'Livre: paredes, objetos, luzes e a régua ficam onde você soltar.', { key: 'grade' });
+  }
   const noArAgora = id => typeof Nuvem !== 'undefined' && Nuvem.mestre() && (Nuvem.noAr() === id || Nuvem.noArJunto(id));
   function visaoDaCena(id) {
     App.visao = visoes[id] === 'mestrando' || visoes[id] === 'construcao' ? visoes[id] : noArAgora(id) ? 'mestrando' : 'construcao';
@@ -158,6 +171,15 @@ const Tools = (() => {
     }
     return best || snapPt(sc, p.x, p.y, free, 0.5);
   }
+  // (lote 130) Shift ao levantar a parede: ela fica reta (de pé ou deitada) ou a 45°, a partir do canto anterior
+  function travar(q, e) {
+    if (!e || !e.shiftKey || !chain) return q;
+    const dx = q[0] - chain.x, dy = q[1] - chain.y, ax = Math.abs(dx), ay = Math.abs(dy);
+    if (ax > ay * 2.414) return [q[0], chain.y];
+    if (ay > ax * 2.414) return [chain.x, q[1]];
+    const d = (ax + ay) / 2;
+    return [chain.x + Math.sign(dx) * d, chain.y + Math.sign(dy) * d];
+  }
   const blockedPath = (sc, ax, ay, bx, by) => Walls.blocksMove(sc, ax, ay, bx, by);
 
   /* ---- Alças do objeto selecionado ---- */
@@ -240,12 +262,12 @@ const Tools = (() => {
       else Store.upd('tokens', g.id, { auras: o0.auras.map((a, i) => (i === hd.i ? Object.assign({}, a, { r, dir }) : a)) });
     } else if (hd.kind === 'light') {
       let dim = Math.hypot(p.x - o0.x, p.y - o0.y) / sc.cell;
-      if (!free) dim = snapTo(dim, 0.5);
+      if (!solto(e)) dim = snapTo(dim, 0.5);
       dim = clamp(dim, 0.5, 60);
       const ratio = o0.dim > 0 ? o0.bright / o0.dim : 0.5;
       Store.upd('lights', g.id, { dim, bright: Math.round(dim * ratio * 2) / 2 });
     } else if (hd.kind === 'wall') {
-      const [qx, qy] = snapWall(p, free, g.id);
+      const [qx, qy] = snapWall(p, solto(e), g.id);
       Store.upd('walls', g.id, hd.i === 0 ? { x1: qx, y1: qy } : { x2: qx, y2: qy });
     }
   }
@@ -279,7 +301,7 @@ const Tools = (() => {
       if (Math.hypot(dx, dy) * App.view.z < 4) return;
       g.moved = true; Store.begin('Mover');
     }
-    const free = e.altKey, L = g.lead;
+    const L = g.lead, free = L.c === 'lights' || (L.c === 'tokens' && (Store.get('tokens', L.id) || {}).prop) ? solto(e) : e.altKey;
     if (L.c === 'tokens') { const [nx, ny] = snapTok(sc, L.x + dx, L.y + dy, L.size, free); dx = nx - L.x; dy = ny - L.y; }
     else if (L.c === 'shapes') {
       if (App.tool === 'terrain' ? !free : App.opt.snap !== free) {
@@ -339,7 +361,7 @@ const Tools = (() => {
   function nudge(dx, dy) {
     const sc = Store.scene(), toks = selOf('tokens').filter(t => can('moveToken', t) && !(mestrando() && t.prop));
     if (!toks.length) return false;
-    const moves = toks.map(t => ({ t, to: snapTok(sc, t.x + dx * sc.cell, t.y + dy * sc.cell, tokWH(t), false) }));
+    const moves = toks.map(t => ({ t, to: snapTok(sc, t.x + dx * sc.cell, t.y + dy * sc.cell, tokWH(t), !!t.prop && solto(null)) }));      // (lote 130) o objeto, no Livre, anda um quadrado sem encaixar
     if (!isGM() && sc.blockMove) {
       for (const m of moves) {
         const [hw, hh] = tokWH(m.t).map(v => v * sc.cell / 2);
@@ -587,22 +609,22 @@ const Tools = (() => {
   T.obj = {
     hint: 'Escolha o objeto na barra de cima e clique no mapa para pô-lo. Depois ele anda, gira e se esconde como um token.',
     cursor: 'crosshair',
-    down(p) {
+    down(p, e) {
       const sc = Store.scene(), id = Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', size = objSize(), d = Props.P[id];
       // (lote 121) o comprido: nas medidas dele (fw × fh), de pé, com o meio no clique
       const wh = d.fw ? [d.fw, d.fh] : [size, size];
-      const [x, y] = snapTok(sc, p.x - wh[0] * sc.cell / 2, p.y - wh[1] * sc.cell / 2, wh, false);
+      const [x, y] = snapTok(sc, p.x - wh[0] * sc.cell / 2, p.y - wh[1] * sc.cell / 2, wh, solto(e));
       const t = Props.novo(sc, id, x, y, size, !!App.opt.objHidden);
       if (d.fw) { t.fw = d.fw; t.fh = d.fh; t.size = Math.max(d.fw, d.fh); t.x = x; t.y = y; delete t.q0; }
       Store.tx('Pôr ' + Props.P[id].n.toLowerCase(), () => Store.add('tokens', t));
       if (Props.P[id].luz && sc.light === 'claro') UI.toast('A cena está clara, então a luz do objeto ainda não aparece.', { action: 'Pôr em penumbra', run: () => Store.tx('Luz ambiente', () => Store.scn({ light: 'penumbra' })) });
       else UI.toast(Props.P[id].n + ' no mapa.', { key: 'obj', action: 'Desfazer', run: undo });       // (um aviso só: o novo troca o anterior)
     },
-    move(p) { ghost = p; Render.request(); },
+    move(p, e) { ghost = { x: p.x, y: p.y, alt: !!(e && e.altKey) }; Render.request(); },
     preview(ctx, px, sc) {
       if (!ghost) return;
       const size = objSize(), id = Props.P[App.opt.obj] ? App.opt.obj : 'fogueira', d = Props.P[id], wh = d.fw ? [d.fw, d.fh] : [size, size];
-      const [x, y] = snapTok(sc, ghost.x - wh[0] * sc.cell / 2, ghost.y - wh[1] * sc.cell / 2, wh, false);
+      const [x, y] = snapTok(sc, ghost.x - wh[0] * sc.cell / 2, ghost.y - wh[1] * sc.cell / 2, wh, solto({ altKey: ghost.alt }));
       ctx.save(); ctx.globalAlpha = 0.6;
       Props.draw(ctx, Object.assign({ id: 'previa', prop: id, x, y, size, rot: 0 }, d.fw ? { fw: d.fw, fh: d.fh } : null), sc, 1.3);
       ctx.restore();
@@ -764,20 +786,20 @@ const Tools = (() => {
   T.wall = {
     get hint() {
       return App.opt.wallMode === 'room'
-        ? 'Arraste um retângulo para levantar as quatro paredes de uma sala. Clique numa parede para selecioná-la. Alt solta da grade.'
-        : 'Clique para começar e a cada canto; Enter, Esc ou clique duplo termina. Clique numa parede para selecioná-la. Alt solta da grade.';
+        ? 'Arraste um retângulo para levantar as quatro paredes de uma sala. Clique numa parede para selecioná-la. Alt inverte a grade (Shift+G troca Na grade / Livre).'
+        : 'Clique para começar e a cada canto; Enter, Esc ou clique duplo termina. Shift deixa a parede reta ou a 45°. Alt inverte a grade (Shift+G troca Na grade / Livre).';
     },
     cursor: 'crosshair',
     down(p, e) {
       const hd = hitHandle(p);
       if (hd && hd.kind === 'wall') { startHandle(hd); return; }
-      const start = snapWall(p, e.altKey);
+      const start = snapWall(p, solto(e));
       if (App.opt.wallMode === 'room') { chain = null; g = { type: 'room', p0: p, x0: start[0], y0: start[1], x1: start[0], y1: start[1], moved: false }; return; }
       g = { type: 'wallDown', p0: p, moved: false, start };
     },
     move(p, e) {
       if (g && g.type === 'handle') { moveHandle(p, e); Render.request(); return; }
-      const q = snapWall(p, e.altKey);
+      const q = travar(snapWall(p, solto(e)), e);
       if (g && g.type === 'room') {
         g.x1 = q[0]; g.y1 = q[1];
         if (Math.hypot(p.x - g.p0.x, p.y - g.p0.y) * App.view.z > 5) g.moved = true;
@@ -805,7 +827,7 @@ const Tools = (() => {
       }
       if (!g || g.type !== 'wallDown') return;
       g = null;
-      const q = snapWall(p, e.altKey);
+      const q = travar(snapWall(p, solto(e)), e);
       if (chain) { addWall(chain.x, chain.y, q[0], q[1]); Render.request(); return; }
       const hit = hitWall(p);
       if (hit) { selectWall(hit, e); return; }
@@ -851,7 +873,7 @@ const Tools = (() => {
       const hd = hitHandle(p);
       if (hd && hd.kind === 'light') { startHandle(hd); return; }
       const sc = Store.scene(), pr = LIGHT_PRESETS.find(x => x.id === App.opt.lightPreset) || LIGHT_PRESETS[1];
-      const [x, y] = snapPt(sc, p.x, p.y, e.altKey, 0.5);
+      const [x, y] = snapPt(sc, p.x, p.y, solto(e), 0.5);
       const l = Object.assign({ id: uid('lz'), name: pr.n, x, y, bright: pr.bright, dim: pr.dim, c: pr.c, on: true }, pr.fl ? { fl: true } : {});
       Store.tx('Colocar luz', () => Store.add('lights', l));
       setSel([{ c: 'lights', id: l.id }]);
@@ -1163,12 +1185,63 @@ const Tools = (() => {
     },
   };
 
+  /* ---- (lote 130) Ajustar a grade à imagem: o mestre arrasta um quadrado em cima de UMA casa desenhada na imagem de
+     fundo; a imagem cresce ou encolhe para essa casa ficar do tamanho de um quadrado da cena, desliza para as linhas
+     caírem em cima das do desenho, e a cena muda de tamanho para cobrir a imagem inteira. Paredes, tokens e o resto
+     ficam onde estão. ---- */
+  function gradeDaImagem(sc, r) {
+    const im = Assets.img(sc.bg.asset);
+    if (!im || !im.naturalWidth) return null;
+    const nw = im.naturalWidth, nh = im.naturalHeight, W = sceneW(sc), H = sceneH(sc), cell = sc.cell;
+    const dwx = sc.bg.stretch ? W : W * (sc.bg.scale || 1), dwy = sc.bg.stretch ? H : dwx * nh / nw;
+    const ox = sc.bg.stretch ? 0 : sc.bg.dx || 0, oy = sc.bg.stretch ? 0 : sc.bg.dy || 0;
+    const kx = nw / dwx, ky = nh / dwy;                                  // pixels da imagem por pixel da cena
+    const lado = (r.w * kx + r.h * ky) / 2;                              // a casa desenhada, em pixels da imagem
+    if (!(lado > 2)) return null;
+    const k = cell / lado, ix = (r.x - ox) * kx, iy = (r.y - oy) * ky;
+    const mod = v => ((v % cell) + cell) % cell;
+    const dx = -mod(ix * k), dy = -mod(iy * k);
+    const cols = Math.ceil((nw * k + dx) / cell - 0.05), rows = Math.ceil((nh * k + dy) / cell - 0.05);
+    return { cols, rows, bg: Object.assign({}, sc.bg, { stretch: false, dx: Math.round(dx * 100) / 100, dy: Math.round(dy * 100) / 100, scale: nw * k / (cols * cell) }) };
+  }
+  let gradeR = null;
+  T.gradeImg = {
+    hint: 'Arraste um quadrado em cima de UMA casa desenhada na imagem (de uma linha à outra). A grade se ajusta a ela. Esc cancela.',
+    cursor: 'crosshair',
+    down(p) { gradeR = { x0: p.x, y0: p.y, x1: p.x, y1: p.y }; Render.request(); },
+    move(p) { if (gradeR) { gradeR.x1 = p.x; gradeR.y1 = p.y; Render.request(); } },
+    up() {
+      if (!gradeR) return;
+      const sc = Store.scene(), r = { x: Math.min(gradeR.x0, gradeR.x1), y: Math.min(gradeR.y0, gradeR.y1), w: Math.abs(gradeR.x1 - gradeR.x0), h: Math.abs(gradeR.y1 - gradeR.y0) };
+      gradeR = null; Render.request();
+      if (!sc.bg.asset) { UI.toast('Esta cena não tem imagem de fundo.'); set('select'); return; }
+      if (Math.min(r.w, r.h) * App.view.z < 6) { UI.toast('Arraste um quadrado em cima de uma casa da imagem (aproxime o zoom, se ela for pequena).'); return; }
+      const n = gradeDaImagem(sc, r);
+      if (!n) { UI.toast('A imagem ainda não carregou. Tente de novo.'); return; }
+      if (n.cols > 300 || n.rows > 300 || n.cols < 2 || n.rows < 2) { UI.toast(`Com essa casa, a cena ficaria com ${n.cols} × ${n.rows} quadrados (o limite é de 2 a 300). Marque uma casa só, de uma linha à outra.`); return; }
+      Store.tx('Ajustar a grade à imagem', () => Store.scn(n));
+      set('select');
+      setTimeout(Render.fit, 30);
+      UI.toast(`Grade ajustada: a cena ficou com ${n.cols} × ${n.rows} quadrados.`, { action: 'Desfazer', run: undo });
+    },
+    key(e) { if (e.key === 'Escape') { gradeR = null; set('select'); Render.request(); return true; } return false; },
+    preview(ctx, px, sc) {
+      if (!gradeR) return;
+      const x = Math.min(gradeR.x0, gradeR.x1), y = Math.min(gradeR.y0, gradeR.y1), w = Math.abs(gradeR.x1 - gradeR.x0), hh = Math.abs(gradeR.y1 - gradeR.y0);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.lineWidth = 4 * px; ctx.strokeRect(x, y, w, hh);
+      ctx.strokeStyle = '#ffd34d'; ctx.lineWidth = 1.6 * px; ctx.strokeRect(x, y, w, hh);
+      ctx.restore();
+      Render.label(ctx, '1 quadrado', x + w / 2, y - 14 * px, px);
+    },
+  };
+
   /* ---- Régua ---- */
   T.ruler = {
     hint: 'Arraste para medir. Para medir um caminho, clique ponto a ponto e termine com clique duplo. Esc limpa.',
     cursor: 'crosshair',
     down(p, e) {
-      const q = snapCenter(Store.scene(), p, e.altKey);
+      const q = snapCenter(Store.scene(), p, solto(e));
       if (ruler && ruler.live) ruler.pts.push(q[0], q[1]);
       else ruler = { pts: [q[0], q[1], q[0], q[1]], live: true };
       g = { type: 'ruler', p0: p, moved: false };
@@ -1176,7 +1249,7 @@ const Tools = (() => {
     },
     move(p, e) {
       if (!ruler || !ruler.live) return;
-      const q = snapCenter(Store.scene(), p, e.altKey), n = ruler.pts.length;
+      const q = snapCenter(Store.scene(), p, solto(e)), n = ruler.pts.length;
       ruler.pts[n - 2] = q[0]; ruler.pts[n - 1] = q[1];
       if (g && g.type === 'ruler' && Math.hypot(p.x - g.p0.x, p.y - g.p0.y) * App.view.z > 5) g.moved = true;
       Render.request();
@@ -1397,6 +1470,7 @@ const Tools = (() => {
     if (/^[1-9]$/.test(k)) { UI.abaPorNumero(+k); return; }                 // (lote 26) as abas do painel
     // (lote 127) Shift+W: os guardas andam um passo da ronda (só o mestre; segurar não repete). O W sozinho continua a parede.
     if (lk === 'w' && e.shiftKey) { if (!e.repeat && isGM()) Rondas.avancar(); return; }
+    if (lk === 'g' && e.shiftKey) { if (!e.repeat && isGM()) trocarGrade(); return; }      // (lote 130) Shift+G: Na grade / Livre
     if (lk === 'g') { if (App.mouse.inside) Act.ping(App.mouse.x, App.mouse.y); return; }
     if (lk === 'f') { if (e.shiftKey) Luta.rolagemGeral(); else Luta.atributos(); return; }   // F: os atributos do token sob o cursor (ou do selecionado); Shift+F: a rolagem geral
     if (lk === 'e') { Luta.equipamentos(); return; }       // os equipamentos do token sob o cursor (ou do selecionado): um clique equipa
@@ -1435,5 +1509,5 @@ const Tools = (() => {
   }
 
   Store.on('scene', id => { if (isGM()) { visaoDaCena(id || (Store.scene() || {}).id); Store.emit('tool'); } });
-  return { LIST, GRUPOS, set, allowed, mestrando, trocarVisao, visaoDaCena, ehDoMapa, handles, drawPreview, rascunhoLapis: () => (lapisR ? { id: lapisR.id, c: lapisR.c, s: 0, p: lapisR.p } : null), hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || (mestrando() && App.tool === 'select' ? 'Mestrando: arraste os tokens; um clique abre e fecha portas; dois cliques acendem luzes e abrem baús e passagens. O resto do mapa fica parado.' : T[App.tool].hint) || '', cancel() { resetState(); Render.request(); } };
+  return { LIST, GRUPOS, set, allowed, naGrade: () => naGrade, trocarGrade, gradeDaImagem, mestrando, trocarVisao, visaoDaCena, ehDoMapa, handles, drawPreview, rascunhoLapis: () => (lapisR ? { id: lapisR.id, c: lapisR.c, s: 0, p: lapisR.p } : null), hitTest, hitTerrain, undo, redo, busy: () => !!g, hint: () => hoverHint || (mestrando() && App.tool === 'select' ? 'Mestrando: arraste os tokens; um clique abre e fecha portas; dois cliques acendem luzes e abrem baús e passagens. O resto do mapa fica parado.' : T[App.tool].hint) || '', cancel() { resetState(); Render.request(); } };
 })();
