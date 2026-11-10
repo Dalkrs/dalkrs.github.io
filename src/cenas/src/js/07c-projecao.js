@@ -113,6 +113,8 @@ const Proj = (() => {
     delete o.ref;                                                     // (lote 22) o que o ponto de reforço guarda
     delete o.best; delete o.saque; delete o.bestEq;                   // (lote 29) o inimigo do Bestiário e o saque no chão (lote 33: e o equipamento dele)
     delete o.pb;                                                      // (lote 44) o painel de barras do NPC: só do mestre
+    // (lote 129) o marcador de uma missão que o mestre ainda não revelou (nos rascunhos): vai sem o nome
+    if (o.mq && o.mq.e === 'oculta') { o.mq = { id: o.mq.id, tp: o.mq.tp, e: 'oculta' }; if (t.mq.oid) o.mq.oid = t.mq.oid; }
     delete o.ronda; delete o.alerta; delete o.q0; delete o.tranca; delete o.pz; delete o.pzOk;      // (lote 122: a fechadura do objeto)                     // (lote 121) a ronda do guarda e o alerta dele: só do mestre
     /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
        não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */

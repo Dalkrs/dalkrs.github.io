@@ -1502,7 +1502,7 @@
   function leitura(o, v) {
     const N_ = N(), out = [h('h3', { text: nomeDe(o, v) }), h('p', { class: 'sub', text: descricao(o, v, false) })];
     // (lote 9) a missão que o mestre mostrou
-    if (o.mis) { const st = missaoDe(o); if (st) out.push(h('p', { class: 'mis-linha', 'data-k': 'ler:mis' }, glifoMissao(st.e), h('b', { text: 'Missão: ' + (st.t || 'sem nome') }), st.e !== 'ativa' ? h('span', { class: 'tag' + (st.e === 'feita' ? ' ok' : ''), text: SIT_MIS[st.e] }) : null)); }
+    if (o.mis) { const st = missaoDe(o); if (st) out.push(h('p', { class: 'mis-linha', 'data-k': 'ler:mis' }, glifoMissao(st.e, st), h('b', { text: (tipoMis(st) || 'Missão') + ': ' + (st.t || 'sem nome') }), st.e !== 'ativa' ? h('span', { class: 'tag' + (st.e === 'feita' ? ' ok' : ''), text: SIT_MIS[st.e] }) : null)); }
     if (o.k === 'm' && o.rumor) out.push(h('p', null, h('span', { class: 'tag tensao', text: 'boato' }), ' ', h('small', { class: 'note', text: 'Pode ser verdade ou não.' })));
     // (lote 12, parte 12e) o lugar cercado: por quem (se eles conhecem a facção) e desde quando; a reserva e a muralha, quando a
     // facção deles cerca ou é cercada ali
@@ -1607,22 +1607,26 @@
      mostra aos jogadores quando quiser (a ligada a uma missão ainda escondida nas Fichas só aparece depois de revelada lá). */
   const COM_MISSAO = { m: 1, g: 1, r: 1, e: 1 };
   const SIT_MIS = { ativa: 'Ativa', feita: 'Concluída', falhou: 'Falhou' };
-  // a missão como ela está: { t, e, ligada, oculta (ainda escondida nas Fichas), perdida (saiu das Fichas) }
+  // a missão como ela está: { t, e, ligada, oculta (ainda escondida), perdida (saiu das Missões), tp, op, de }
+  // (lote 129) tp: principal ou secundária; op: é um objetivo opcional (de: a missão de que ele faz parte)
   function missaoDe(o) {
     const mi = o && o.mis;
     if (!mi) return null;
     if (mi.ref) {
-      const f = App.missaoDaFicha ? App.missaoDaFicha(mi.ref) : null;
+      const f = App.missaoDaFicha ? App.missaoDaFicha(mi.ref, mi.oid) : null;
       if (!f) return { t: mi.t || '', e: 'ativa', ligada: true, perdida: true };
-      return { t: f.t || mi.t || 'Missão sem título', e: f.e, ligada: true, oculta: !!f.oculta };
+      return { t: f.t || mi.t || 'Missão sem título', e: f.e, ligada: true, oculta: !!f.oculta, tp: f.tp || null, op: !!f.op, de: f.de || '' };
     }
-    return { t: mi.t, e: mi.e === 'feita' || mi.e === 'falhou' ? mi.e : mi.ok ? 'feita' : 'ativa', ligada: false };
+    return { t: mi.t, e: mi.e === 'feita' || mi.e === 'falhou' ? mi.e : mi.ok ? 'feita' : 'ativa', ligada: false, tp: mi.tp || null, op: !!mi.op, de: mi.de || '' };
   }
-  function glifoMissao(e) {
+  function glifoMissao(e, st) {
     const d = e === 'feita' ? '<path d="M7.4 12.3l3.1 3.1 6.1-6.3" stroke-width="2.6"/>' : e === 'falhou' ? '<path d="M8.4 8.4l7.2 7.2M15.6 8.4l-7.2 7.2" stroke-width="2.6"/>'
       : '<path d="M12 6.4v6.4" stroke-width="2.8"/><circle cx="12" cy="17.2" r="1.5" fill="currentColor" stroke="none"/>';
-    return h('span', { class: 'mis-ico m-' + (SIT_MIS[e] ? e : 'ativa'), 'aria-hidden': 'true' }, glifo(d, 15));
+    const extra = st ? (st.tp === 'secundaria' ? ' tp-secundaria' : '') + (st.op ? ' op' : '') : '';
+    return h('span', { class: 'mis-ico m-' + (SIT_MIS[e] ? e : 'ativa') + (e === 'ativa' ? extra : ''), 'aria-hidden': 'true' }, glifo(d, 15));
   }
+  // (lote 129) o que a missão é, em palavras: "Missão principal", "Opcional de “O cálice”"…
+  const tipoMis = st => (st.op ? 'Opcional' + (st.de ? ' de “' + st.de + '”' : '') : st.tp === 'principal' ? 'Missão principal' : st.tp === 'secundaria' ? 'Missão secundária' : '');
   function secMissao(o, m) {
     const id = o.id, mi = o.mis, out = [];
     if (!mi) {
@@ -1631,10 +1635,11 @@
       return secao('Missão', out);
     }
     const st = missaoDe(o);
-    out.push(h('p', { class: 'mis-linha', 'data-k': 'o:' + id + ':mis-txt' }, glifoMissao(st.e), h('b', { text: st.t || (st.perdida ? 'A missão saiu das Fichas' : 'Missão') }),
+    out.push(h('p', { class: 'mis-linha', 'data-k': 'o:' + id + ':mis-txt' }, glifoMissao(st.e, st), h('b', { text: st.t || (st.perdida ? 'A missão saiu das Missões' : 'Missão') }),
       h('span', { class: 'tag' + (st.e === 'feita' ? ' ok' : st.e === 'falhou' ? ' tensao' : ''), text: SIT_MIS[st.e] })));
-    if (st.perdida) out.push(nota('A missão ligada não está mais nas Fichas (foi excluída, ou é de outra campanha). Troque ou tire a missão.'));
-    else if (st.ligada) out.push(nota('Das missões do grupo, nas Fichas: o nome e a situação vêm de lá. Concluída lá, o “!” vira ✓.'));
+    if (tipoMis(st)) out.push(nota(tipoMis(st) + '.'));      // (lote 129)
+    if (st.perdida) out.push(nota('A missão ligada não está mais na aba Missões (foi apagada, ou é de outra campanha). Troque ou tire a missão.'));
+    else if (st.ligada) out.push(nota('Da aba Missões: o nome, o tipo e a situação vêm de lá. Cumprida lá, o “!” vira ✓.'));
     out.push(caixa('o:' + id + ':mis-ver', 'Os jogadores veem a missão', !!mi.ver, v => mudarObj(id, v ? 'mostrar a missão aos jogadores' : 'esconder a missão dos jogadores', x => { if (!x.mis || !!x.mis.ver === !!v) return false; if (v) x.mis.ver = true; else delete x.mis.ver; }),
       { dica: st.perdida ? 'Sem a missão nas Fichas, nada aparece para os jogadores.' : st.oculta ? 'A missão ainda está escondida nas Fichas: o “!” só aparece para os jogadores depois que você a revelar lá.' : mi.ver ? 'O “!” aparece no mapa deles, com o nome da missão.' : 'Por enquanto, só você vê o “!” (tracejado).' }));
     out.push(h('div', { class: 'row' },
@@ -1650,17 +1655,23 @@
     const m0 = App.mapa, o0 = m0 && achar(m0, id);
     if (!o0 || !App.podeEditar()) return;
     const fichas = App.missoesDasFichas ? App.missoesDasFichas() : null, mi = o0.mis || {};
-    const ops = (fichas || []).map(f => [f.id, (f.t || 'Missão sem título') + ' · ' + SIT_MIS[f.e] + (f.oculta ? ' (escondida)' : '')]);
+    // (lote 129) as da aba Missões: a principal com ★; logo abaixo de cada uma, os objetivos opcionais dela (id|oid)
+    const ops = [];
+    for (const f of (fichas || []).slice().sort((a, b) => ((a.tp === 'principal' ? 0 : 1) - (b.tp === 'principal' ? 0 : 1)))) {
+      ops.push([f.id, (f.tp === 'principal' ? '★ ' : '') + (f.t || 'Missão sem título') + ' · ' + SIT_MIS[f.e] + (f.oculta ? ' (escondida)' : '')]);
+      for (const x of f.ops || []) ops.push([f.id + '|' + x.id, '      Opcional: ' + (x.t || 'objetivo') + (x.e !== 'ativa' ? ' · ' + SIT_MIS[x.e] : '')]);
+    }
+    const atual = mi.ref ? mi.ref + (mi.oid ? '|' + mi.oid : '') : '';
     const campos = [];
-    if (ops.length) campos.push({ id: 'modo', tipo: 'opcoes', rotulo: 'A missão', valor: mi.ref ? 'f' : 't', opcoes: [['t', 'Um texto curto'], ['f', 'Uma missão do grupo, das Fichas']] });
+    if (ops.length) campos.push({ id: 'modo', tipo: 'opcoes', rotulo: 'A missão', valor: mi.ref ? 'f' : 't', opcoes: [['t', 'Um texto curto'], ['f', 'Uma missão da aba Missões']] });
     campos.push({ id: 't', rotulo: 'Texto curto', tipo: 'text', valor: mi.ref ? '' : (mi.t || ''), ph: 'Ex.: Resgatar o ferreiro', max: 120 });
-    if (ops.length) campos.push({ id: 'f', rotulo: 'Missão das Fichas', tipo: 'select', valor: mi.ref && ops.some(x => x[0] === mi.ref) ? mi.ref : ops[0][0], opcoes: ops });
-    const dicaFichas = fichas == null ? ' (Para ligar a uma missão das Fichas, abra o mapa dentro do site, numa mesa.)' : !ops.length ? ' (As Fichas ainda não têm missão do grupo para ligar.)' : '';
+    if (ops.length) campos.push({ id: 'f', rotulo: 'Missão (ou um objetivo opcional dela)', tipo: 'select', valor: atual && ops.some(x => x[0] === atual) ? atual : ops[0][0], opcoes: ops });
+    const dicaFichas = fichas == null ? ' (Para ligar a uma missão da aba Missões, abra o mapa dentro do site, numa mesa.)' : !ops.length ? ' (A aba Missões ainda não tem missão para ligar.)' : '';
     const r = await janela({ titulo: o0.mis ? 'Trocar a missão' : 'Marcar missão', ok: o0.mis ? 'Trocar' : 'Marcar',
       texto: 'O ícone de ' + nomeDe(o0, m0) + ' ganha um “!”.' + (o0.mis ? '' : ' Nasce só sua: os jogadores veem quando você mostrar.') + dicaFichas,
       campos,
       ler: v => {
-        if (v.modo === 'f') { if (!v.f) throw new Error('Escolha a missão.'); return { ref: v.f }; }
+        if (v.modo === 'f') { if (!v.f) throw new Error('Escolha a missão.'); const [ref, oid] = String(v.f).split('|'); return { ref, oid: oid || null }; }
         const t = String(v.t || '').trim();
         if (!t) throw new Error('Escreva a missão (um texto curto).');
         return { t };
@@ -1669,6 +1680,7 @@
     mudarObj(id, o0.mis ? 'trocar a missão' : 'marcar a missão', x => {
       const ver = !!(x.mis && x.mis.ver);
       x.mis = r.ref ? { t: '', ref: r.ref } : { t: r.t, ref: null };
+      if (r.ref && r.oid) x.mis.oid = r.oid;      // (lote 129) o objetivo opcional
       if (ver) x.mis.ver = true;
     });
   }
@@ -1679,8 +1691,8 @@
     const peso = { ativa: 0, feita: 1, falhou: 2 };
     com.sort((a, b) => (peso[a[1].e] - peso[b[1].e]) || String(a[1].t).localeCompare(String(b[1].t), 'pt-BR'));
     return secao('Missões no mapa', h('div', { class: 'lista' }, com.map(([o, st]) => h('button', { type: 'button', class: 'li clic', 'data-k': 'mis:' + o.id, onclick: () => irPara(o.id) },
-      glifoMissao(st.e), h('span', { class: 'tx' }, h('b', { text: st.t || (st.perdida ? 'A missão saiu das Fichas' : 'Missão') }),
-        h('small', { text: nomeDe(o, v) + (st.e !== 'ativa' ? ' · ' + SIT_MIS[st.e].toLocaleLowerCase('pt-BR') : '') + (mestre && (!o.mis.ver || st.oculta || st.perdida) ? ' · só você vê' : '') }))))));
+      glifoMissao(st.e, st), h('span', { class: 'tx' }, h('b', { text: st.t || (st.perdida ? 'A missão saiu das Missões' : 'Missão') }),
+        h('small', { text: nomeDe(o, v) + (tipoMis(st) ? ' · ' + tipoMis(st).toLocaleLowerCase('pt-BR') : '') + (st.e !== 'ativa' ? ' · ' + SIT_MIS[st.e].toLocaleLowerCase('pt-BR') : '') + (mestre && (!o.mis.ver || st.oculta || st.perdida) ? ' · só você vê' : '') }))))));
   }
   function secMarcador(o, grava) {
     const I = N().ICONES, id = o.id, ic = I[o.ic] || I.cidade;

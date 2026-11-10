@@ -13,7 +13,9 @@
 
    A missão: { t título, d descrição, r recompensa, o objetivos { oid: { t, n } }, ct quem pede, cti a imagem de quem
    pede, pe perigo (0 a 5), img a imagem, lug { mapa, obj, nome } o lugar no Mapa-múndi, pz prazo, c quando foi criada,
-   quem, e, ok, pegas, alvo, fechada, de }
+   quem, e, ok, pegas, alvo, fechada, de, tp }
+     tp     (lote 129) 'principal' ou 'secundaria' — a da história nasce principal; as outras, secundárias
+     o      cada objetivo pode ser opcional (op: 1): é o "opcional dentro da missão" dos marcadores de missão das Cenas
      quem   'um'     a primeira pessoa que pegar fica com ela (some do quadro)
             'todos'  cada personagem pega a sua (fica no quadro; cada um com o próprio andamento, em pegas)
             'grupo'  um pega e ela vira do grupo inteiro
@@ -22,7 +24,7 @@
      ok     os objetivos feitos { oid: 1 } (o andamento de 'um', 'grupo' e 'pc')
      pegas  { personagem: { u quem jogou, em, e, ok } } — quem pegou (em 'todos', com o andamento de cada um)
 
-     navegador   <script src="../tc/missoes.js"></script> → window.TC.missoes
+     navegador   a tag script com src="../tc/missoes.js" → window.TC.missoes
      Node        const M = require('./tc/missoes.js')
    ======================================================================= */
 (function (root) {
@@ -41,6 +43,9 @@
     { k: 'pc', n: 'Da história (entregue direto a um personagem)', curto: 'Da história' }]);
   const ESTADOS = Object.freeze([
     { k: 'oferta', n: 'No quadro' }, { k: 'ativa', n: 'Ativa' }, { k: 'feita', n: 'Cumprida' }, { k: 'falhou', n: 'Falhou' }]);
+  // (lote 129) o tipo da missão: o que os marcadores de missão das Cenas e do Mapa-múndi desenham
+  const TIPOS = Object.freeze([{ k: 'principal', n: 'Principal' }, { k: 'secundaria', n: 'Secundária' }]);
+  const tipoDe = k => TIPOS.find(x => x.k === k) || TIPOS[1];
   const PERIGO = Object.freeze(['Sem perigo', 'Tranquila', 'Arriscada', 'Perigosa', 'Mortal', 'Suicida']);
 
   const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -58,12 +63,13 @@
   function missao(m) {
     m = ehObj(m) ? m : {};
     const o = {};
-    if (ehObj(m.o)) Object.keys(m.o).forEach((oid, i) => { const x = m.o[oid]; if (idOk(oid) && ehObj(x)) o[oid] = { t: txt(x.t, 200), n: num(x.n) == null ? i : num(x.n) }; });
+    if (ehObj(m.o)) Object.keys(m.o).forEach((oid, i) => { const x = m.o[oid]; if (idOk(oid) && ehObj(x)) { o[oid] = { t: txt(x.t, 200), n: num(x.n) == null ? i : num(x.n) }; if (x.op) o[oid].op = 1; } });
     const quem = QUEM.some(x => x.k === m.quem) ? m.quem : 'grupo';
     const r = { t: txt(m.t, 120), d: txt(m.d, 3000), r: txt(m.r, 300), o, ct: txt(m.ct, 80), cti: txt(m.cti, 600), pe: Math.max(0, Math.min(5, Math.round(num(m.pe) || 0))),
       img: txt(m.img, 600), lug: null, pz: txt(m.pz, 80), c: num(m.c) || 0, quem,
       e: ESTADOS.some(x => x.k === m.e) ? m.e : (quem === 'pc' ? 'ativa' : 'oferta'), ok: okDe(m.ok), pegas: {}, de: m.de === 'j' ? 'j' : 'm' };
     if (quem === 'pc' && r.e === 'oferta') r.e = 'ativa';
+    r.tp = TIPOS.some(x => x.k === m.tp) ? m.tp : (quem === 'pc' ? 'principal' : 'secundaria');      // (lote 129)
     // (lote 126) a reputação que ela dá quando é cumprida: [{ f facção, n nome, v de −100 a +100 }]
     if (Array.isArray(m.rep)) { const rp = []; for (const x of m.rep) { if (!ehObj(x) || !idOk(x.f) || rp.length >= 6 || rp.some(y => y.f === x.f)) continue; const v = Math.max(-100, Math.min(100, Math.round(num(x.v) || 0))); if (v) rp.push({ f: x.f, n: txt(x.n, 60) || 'Facção', v }); } if (rp.length) r.rep = rp; }
     if (m.repDada) r.repDada = true;
@@ -87,7 +93,7 @@
     if (x.mig) r.mig = true;
     return r;
   }
-  const objs = m => Object.keys(m.o || {}).map(oid => ({ id: oid, t: m.o[oid].t, n: m.o[oid].n })).sort((a, b) => (a.n - b.n) || (a.id < b.id ? -1 : 1));
+  const objs = m => Object.keys(m.o || {}).map(oid => ({ id: oid, t: m.o[oid].t, n: m.o[oid].n, op: !!m.o[oid].op })).sort((a, b) => (a.n - b.n) || (a.id < b.id ? -1 : 1));
   const ordem = (a, b) => (b.c - a.c) || (a.id < b.id ? -1 : 1);
   const lista = d => { const D = doc(d); return Object.keys(D.ms).map(id => Object.assign({ id }, D.ms[id])); };
 
@@ -206,7 +212,7 @@
      as de cada personagem, para o documento dele (as escondidas, para os rascunhos, com o alvo). */
   function deAntes(m, extra) {
     const o = {};
-    if (ehObj(m.o)) Object.keys(m.o).forEach((oid, i) => { const x = m.o[oid]; if (idOk(oid) && ehObj(x)) o[oid] = { t: txt(x.t, 200), n: num(x.n) == null ? i : num(x.n) }; });
+    if (ehObj(m.o)) Object.keys(m.o).forEach((oid, i) => { const x = m.o[oid]; if (idOk(oid) && ehObj(x)) { o[oid] = { t: txt(x.t, 200), n: num(x.n) == null ? i : num(x.n) }; if (x.op) o[oid].op = 1; } });
     const ok = {}; if (ehObj(m.o)) for (const oid of Object.keys(m.o)) if (idOk(oid) && ehObj(m.o[oid]) && m.o[oid].ok) ok[oid] = 1;
     const e = ['ativa', 'feita', 'falhou'].includes(m.e) ? m.e : 'ativa';
     return missao(Object.assign({ t: m.t, d: m.d, r: m.r, o, ok, e, c: num(m.c) || 0, de: m.de, mig: true }, extra));
@@ -233,8 +239,45 @@
       .map(m => ({ id: m.id, t: m.t || 'Missão sem título', quem: m.quem, feitos: m.feitos, total: m.total, objs: m.objs, pz: m.pz }));
   }
 
-  const api = { QUADRO, RASC, PRE_PC, comCamp, ESTILOS, QUEM, ESTADOS, PERIGO, estiloDe, quemDe, estadoDe, novoId, missao, doc, objs, lista, andamento,
-    doPersonagem, noQuadro, doGrupo, pegar, desistir, marcarObjetivo, mudarEstado, publicar, entregar, recolher, migrar, resumo, copia };
+  /* (lote 129) Os marcadores de missão (Cenas e Mapa-múndi): uma missão de qualquer documento de missões, pelo id.
+     linhas: [{ id, dados, apagado }] (os documentos da mesa). → { m (com id), docId, onde: 'rasc' | 'quadro' | 'pc' } ou null */
+  function acharEmDocs(linhas, id) {
+    if (!idOk(id)) return null;
+    for (const l of linhas || []) {
+      if (!l || l.apagado || typeof l.id !== 'string' || !l.id.startsWith('fichas:mis:') || !ehObj(l.dados) || !ehObj(l.dados.ms) || !ehObj(l.dados.ms[id])) continue;
+      const onde = l.id.startsWith(PRE_PC) ? 'pc' : l.id.startsWith(RASC) ? 'rasc' : l.id.startsWith(QUADRO) ? 'quadro' : null;
+      if (!onde) continue;
+      return { m: Object.assign({ id }, missao(l.dados.ms[id])), docId: l.id, onde };
+    }
+    return null;
+  }
+  /* A situação geral de uma missão (para o marcador): 'oculta' (nos rascunhos), 'oferta', 'ativa', 'feita' ou 'falhou'.
+     Em "Cada um pega a sua": ativa enquanto alguém faz; feita quando todos que pegaram cumpriram; falhou se todos falharam. */
+  function situacao(m, onde) {
+    if (onde === 'rasc') return 'oculta';
+    if (m.quem !== 'todos') return m.e;
+    const ps = Object.values(m.pegas || {});
+    if (!ps.length) return 'oferta';
+    if (ps.some(p => p.e === 'ativa')) return 'ativa';
+    if (ps.some(p => p.e === 'feita')) return 'feita';
+    return 'falhou';
+  }
+  /* O que o marcador mostra: a missão (ou um objetivo opcional dela, oid). → { t, tp, tpN, ot, e, op } ou null
+     e do objetivo: 'feita' quando marcado (em "Cada um pega a sua", por alguém), 'falhou' quando a missão falhou. */
+  function marcador(achada, oid) {
+    if (!achada) return null;
+    const m = achada.m, e = situacao(m, achada.onde), r = { t: m.t || 'Missão sem título', tp: m.tp, tpN: tipoDe(m.tp).n, e, op: false };
+    if (oid) {
+      const o = m.o[oid]; if (!o) return null;
+      const feito = m.quem === 'todos' ? Object.values(m.pegas || {}).some(p => p.ok && p.ok[oid]) : !!(m.ok && m.ok[oid]);
+      r.ot = o.t || 'Objetivo'; r.op = !!o.op;
+      r.e = e === 'oculta' || e === 'oferta' ? e : feito ? 'feita' : e === 'falhou' ? 'falhou' : 'ativa';
+    }
+    return r;
+  }
+
+  const api = { QUADRO, RASC, PRE_PC, comCamp, ESTILOS, QUEM, ESTADOS, PERIGO, TIPOS, tipoDe, estiloDe, quemDe, estadoDe, novoId, missao, doc, objs, lista, andamento,
+    doPersonagem, noQuadro, doGrupo, pegar, desistir, marcarObjetivo, mudarEstado, publicar, entregar, recolher, migrar, resumo, copia, acharEmDocs, situacao, marcador };
   if (typeof module === 'object' && module.exports) module.exports = api;
   root.TC = root.TC || {}; root.TC.missoes = api;
 })(typeof window !== 'undefined' ? window : globalThis);

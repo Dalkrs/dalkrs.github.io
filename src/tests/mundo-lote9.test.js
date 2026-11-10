@@ -217,7 +217,7 @@ async function janela(a, f) {
     o = await obj(L, 'pt');
     mk = await marca(L, 'pt');
     ok(j(o.mis) === j({ t: '', ref: 'm1' }) && mk && /O dragão de Urgm/.test(mk.dica) && mk.so, 'ligada à missão das Fichas: o nome vem de lá (e nasce só do mestre): ' + j([o.mis, mk]));
-    ok(/Das missões do grupo, nas Fichas/.test(await L.F.locator('#pane').innerText()) && await campo(L, 'o:pt:mis-ok').count() === 0, 'o painel diz de onde vem, sem "Concluir" (a situação vem das Fichas)');
+    ok(/Da aba Missões/.test(await L.F.locator('#pane').innerText()) && await campo(L, 'o:pt:mis-ok').count() === 0, 'o painel diz de onde vem, sem "Concluir" (a situação vem da aba Missões — lote 129)');
     await campo(L, 'o:pt:mis-ver').check(); await espera(300);
     // a projeção (como a mesa publica: comMissoes) — a vista do mestre vendo como jogador usa a mesma
     const vista = () => A(L, () => { __mundo.App.comoJogador = true; const v = __mundo.App.vista(); __mundo.App.comoJogador = false; const p = v.objs.find(o => o.id === 'pt'); return p ? p.mis || null : 'sem grupo'; });
@@ -235,7 +235,7 @@ async function janela(a, f) {
     ok((await marca(L, 'pt')).so, '(no mapa do mestre, tracejada)');
     // a que saiu das Fichas
     await A(L, () => { window.__fichas.delete('m2'); __mundo.App.emit('muda', { origem: 'fora' }); }); await espera(400);
-    ok(/A missão ligada não está mais nas Fichas/.test(await L.F.locator('#pane').innerText()) && /perdida/.test((await marca(L, 'pt')).cls), 'a missão que saiu das Fichas: o painel avisa, e a marca fica apagada');
+    ok(/A missão ligada não está mais na aba Missões/.test(await L.F.locator('#pane').innerText()) && /perdida/.test((await marca(L, 'pt')).cls), 'a missão que saiu das Fichas: o painel avisa, e a marca fica apagada');
     await A(L, () => window.MundoTela.centrar({ x: 800, y: 1000 })); await espera(500);
     await foto('l9-missao-fichas');
   });

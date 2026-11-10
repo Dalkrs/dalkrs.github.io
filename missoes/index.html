@@ -249,6 +249,12 @@ dialog.dl::backdrop { background: rgba(5, 7, 12, .62); }
 .seg button[aria-pressed="true"] { background: var(--lamp-soft); border-color: var(--lamp); color: var(--danger); }
 .fobjs { display: grid; gap: 5px; justify-items: start; }
 .fobj { display: flex; gap: 6px; width: 100%; }
+/* (lote 129) o tipo da missão (principal ou secundária) e o objetivo opcional */
+.tp { display: inline-block; font: 700 11px/1.6 var(--ui); padding: 0 7px; border-radius: 999px; letter-spacing: .02em; }
+.tp-principal { background: #e9b949; color: #3a2604; }
+.tp-secundaria { background: #a9bfd8; color: #1d2b3c; }
+.op { font: 600 10.5px/1.5 var(--ui); padding: 0 6px; border-radius: 999px; border: 1px dashed currentColor; opacity: .75; margin-left: 4px; }
+.fop { display: inline-flex; align-items: center; gap: 4px; font: 500 12px var(--ui); white-space: nowrap; cursor: pointer; }
 .frep select { flex: 1 1 auto; } .frep input { flex: 0 0 90px; }
 .imgbox { display: flex; align-items: center; gap: 8px; min-height: 40px; color: var(--fg-3); font-size: 13px; }
 .imgbox img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line-strong); }
@@ -299,8 +305,8 @@ dialog.est-mural .folha .x, dialog.est-dossie .folha .x, dialog.est-ordem .folha
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <dialog class="dl" id="dlg"></dialog>
 <script src="../tc/ponte.js?v=21"></script>
-<script src="../tc/missoes.js?v=2"></script>
+<script src="../tc/missoes.js?v=3"></script>
 <script src="../tc/reputacao.js?v=1"></script>
-<script src="missoes.js?v=3"></script>
+<script src="missoes.js?v=4"></script>
 </body>
 </html>

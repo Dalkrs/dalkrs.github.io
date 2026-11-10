@@ -110,7 +110,13 @@
     },
     /* (lote 9) As missões do grupo das Fichas, para a missão ligada no mapa: o título, a situação e se ainda está escondida
        dos jogadores (com o mestre). Só na mesa (fora dela não há Fichas da mesa: null). */
-    missaoDaFicha(id) { const f = id ? misFichas.get(id) : null; return f ? Object.assign({}, f) : null; },
+    missaoDaFicha(id, oid) {
+      const f = id ? misFichas.get(id) : null;
+      if (!f) return null;
+      // (lote 129) o objetivo opcional da missão: o nome e a situação são os dele (a missão escondida esconde o objetivo)
+      if (oid) { const o = (f.ops || []).find(x => x.id === oid); return o ? Object.assign({}, f, { t: o.t || 'Objetivo', e: o.e, de: f.t, op: true }) : null; }
+      return Object.assign({}, f);
+    },
     // as que dá para ligar: as do mundo e as da campanha em vista (as ativas primeiro); fora da mesa, null
     missoesDasFichas() {
       if (modo !== 'mesa' || !D) return null;
@@ -829,6 +835,23 @@
       poe(mis.g, true, null);
       if (mis.gc && typeof mis.gc === 'object') for (const c of Object.keys(mis.gc)) poe(mis.gc[c], true, c);
     }
+    /* (lote 129) as da aba Missões (fichas:mis:rasc, fichas:mis:quadro[@campanha], fichas:mis:pc:<personagem>): também o
+       tipo (principal ou secundária) e os objetivos opcionais, com o feito de cada um. As dos rascunhos ficam escondidas. */
+    const MM = window.TC && window.TC.missoes;
+    if (MM) {
+      const linhas = D.todas().filter(l => l && !l.apagado && typeof l.id === 'string' && l.id.startsWith('fichas:mis:'));
+      for (const l of linhas) {
+        const d = l.dados; if (!d || typeof d !== 'object' || !d.ms || typeof d.ms !== 'object') continue;
+        const cp = l.id.includes('@') ? l.id.slice(l.id.indexOf('@') + 1) : null;
+        for (const id of Object.keys(d.ms)) {
+          if (out.has(id)) continue;
+          const a = MM.acharEmDocs([l], id); if (!a) continue;
+          const k = MM.marcador(a), sit = k.e === 'feita' || k.e === 'falhou' ? k.e : 'ativa';
+          const ops = MM.objs(a.m).filter(o => o.op).map(o => { const ko = MM.marcador(a, o.id); return { id: o.id, t: String(o.t || '').slice(0, 120), e: ko.e === 'feita' || ko.e === 'falhou' ? ko.e : 'ativa' }; });
+          out.set(id, { t: String(a.m.t || '').trim().slice(0, 120), e: sit, oculta: k.e === 'oculta', camp: cp, tp: a.m.tp, ops });
+        }
+      }
+    }
     return out;
   }
   function lerMissoes() {
@@ -843,9 +866,9 @@
     if (!p || !Array.isArray(p.objs)) return p;
     for (const o of p.objs) {
       if (!o.mis || !o.mis.ref) continue;
-      const f = App.missaoDaFicha(o.mis.ref);
+      const f = App.missaoDaFicha(o.mis.ref, o.mis.oid);
       if (!f || f.oculta) delete o.mis;
-      else o.mis = { t: f.t || o.mis.t || 'Missão', ref: null, ver: true, e: f.e };
+      else { o.mis = { t: f.t || o.mis.t || 'Missão', ref: null, ver: true, e: f.e }; if (f.tp) o.mis.tp = f.tp; if (f.op) { o.mis.op = true; o.mis.de = f.de; } }      // (lote 129) o tipo e o opcional
     }
     return p;
   }
@@ -1779,7 +1802,7 @@
         return;
       }
       // (lote 9) as missões do grupo mudaram nas Fichas (o nome, a situação, revelada): as missões ligadas acompanham
-      if (l && typeof l.id === 'string' && (l.id === 'fichas:segredos' || l.id === 'fichas:missoes' || l.id.startsWith('fichas:missoes@'))) {
+      if (l && typeof l.id === 'string' && (l.id === 'fichas:segredos' || l.id === 'fichas:missoes' || l.id.startsWith('fichas:missoes@') || l.id.startsWith('fichas:mis:'))) {      // (lote 129: e as da aba Missões)
         if (lerMissoes()) {
           if (App.papel === 'mestre') for (const d of docsMapas()) sincronizarPub(d.id.slice(PRE_MAPA.length));
           App.emit('muda', { origem: 'fora' });

@@ -2212,7 +2212,7 @@
   const chaveBr = (ctx, id) => { if (!id) return ''; const br = brasaoDaFac(ctx, id); return br ? '|' + JSON.stringify(br) + nomeFac(ctx, id) : ''; };
   function chaveDe(o, ctx) {
     let extra = (ctx.mestre ? 'M' : 'J') + ctx.fb;
-    if (o.mis && o.mis.ref && ctx.mestre) extra += '|mis' + JSON.stringify(App.missaoDaFicha ? App.missaoDaFicha(o.mis.ref) : null);
+    if (o.mis && o.mis.ref && ctx.mestre) extra += '|mis' + JSON.stringify(App.missaoDaFicha ? App.missaoDaFicha(o.mis.ref, o.mis.oid) : null);
     if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)) + chaveBr(ctx, fid) + '|' + JSON.stringify(modoDe(ctx, o)) + (o.ocup ? '|oc' + corOcup(ctx, o) : ''); }
     else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o)) + chaveBr(ctx, o.fac) + (o.desc && ctx.mestre && N().descansandoAgora && N().descansandoAgora(ctx.m, o) ? '|zz' : '');
     else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
@@ -2322,19 +2322,20 @@
     const mi = o && o.mis;
     if (!mi) return null;
     if (mi.ref && ctx.mestre) {
-      const f = App.missaoDaFicha ? App.missaoDaFicha(mi.ref) : null;
-      if (!f) return { t: mi.t || 'Missão que saiu das Fichas', e: 'ativa', so: true, perdida: true };
-      return { t: f.t || mi.t || 'Missão', e: f.e, so: !mi.ver || !!f.oculta };
+      const f = App.missaoDaFicha ? App.missaoDaFicha(mi.ref, mi.oid) : null;
+      if (!f) return { t: mi.t || 'Missão que saiu das Missões', e: 'ativa', so: true, perdida: true };
+      return { t: f.t || mi.t || 'Missão', e: f.e, so: !mi.ver || !!f.oculta, tp: f.tp || null, op: !!f.op, de: f.de || '' };
     }
     const e = mi.e === 'feita' || mi.e === 'falhou' ? mi.e : mi.ok ? 'feita' : 'ativa';
-    return { t: mi.t || 'Missão', e, so: !!ctx.mestre && !mi.ver };
+    return { t: mi.t || 'Missão', e, so: !!ctx.mestre && !mi.ver, tp: mi.tp || null, op: !!mi.op, de: mi.de || '' };
   }
   // a marca no ícone: "!" (ativa), ✓ (concluída) ou ✕ (falhou); a que só o mestre vê, tracejada. O nome vai na dica.
   function marcaMissao(o, ctx, x, y) {
     const mi = missaoNaTela(o, ctx);
     if (!mi) return null;
-    const g = s('g', { class: 'missao m-' + mi.e + (mi.so ? ' so-mestre' : '') + (mi.perdida ? ' perdida' : ''), transform: 'translate(' + d3(x) + ' ' + d3(y) + ') scale(1.15)' });
-    g.append(s('title', { texto: 'Missão: ' + mi.t + (mi.e === 'feita' ? ' (concluída)' : mi.e === 'falhou' ? ' (falhou)' : '') + (mi.so ? ' · só você vê' : '') }));
+    // (lote 129) a principal, dourada; a secundária, azul-prata; o objetivo opcional, menor e tracejado na cor da missão
+    const g = s('g', { class: 'missao m-' + mi.e + (mi.so ? ' so-mestre' : '') + (mi.perdida ? ' perdida' : '') + (mi.tp ? ' tp-' + mi.tp : '') + (mi.op ? ' op' : ''), transform: 'translate(' + d3(x) + ' ' + d3(y) + ') scale(' + (mi.op ? 0.95 : 1.15) + ')' });
+    g.append(s('title', { texto: (mi.op ? 'Opcional' + (mi.de ? ' de “' + mi.de + '”' : '') + ': ' : mi.tp === 'principal' ? 'Missão principal: ' : mi.tp === 'secundaria' ? 'Missão secundária: ' : 'Missão: ') + mi.t + (mi.e === 'feita' ? ' (concluída)' : mi.e === 'falhou' ? ' (falhou)' : '') + (mi.so ? ' · só você vê' : '') }));
     g.append(s('circle', { class: 'mis-bola', r: 8.5 }));
     if (mi.e === 'feita') g.append(s('path', { class: 'mis-sinal', d: 'M-3.8 0.2l2.6 2.6 5-5.2' }));
     else if (mi.e === 'falhou') g.append(s('path', { class: 'mis-sinal', d: 'M-3 -3l6 6M3 -3l-6 6' }));

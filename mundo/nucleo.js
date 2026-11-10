@@ -2305,6 +2305,11 @@
     if (sim(v.ver)) out.ver = true;
     if (sim(v.ok)) out.ok = true;
     if (tem(MIS_E, v.e)) out.e = v.e;
+    // (lote 129) o objetivo opcional da missão ligada (oid) e, na projeção, o tipo (principal ou secundária), se é o
+    // opcional e de que missão ele é
+    if (ref && idRef(v.oid)) out.oid = idRef(v.oid);
+    if (v.tp === 'principal' || v.tp === 'secundaria') out.tp = v.tp;
+    if (sim(v.op)) { out.op = true; const de = texto(v.de, '', 120).trim(); if (de) out.de = de; }
     return out;
   }
   // a situação de uma missão do mapa: a da missão ligada nas Fichas (daFicha: { e }), a que veio pronta (projeção) ou a do

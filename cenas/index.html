@@ -1347,6 +1347,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <script src="../tc/barras-painel.js?v=8"></script>
 <script src="../tc/npc.js?v=1"></script>
 <script src="../tc/misterio.js?v=1"></script>
+<script src="../tc/missoes.js?v=3"></script>
 <div class="app" id="app">
   <header class="top" id="top"></header>
   <div class="banner" id="banner" hidden></div>
@@ -7931,6 +7932,79 @@ const Props = (() => {
   });
 })();
 /* ---------------------------------------------------------------
+   6b8. O MARCADOR DE MISSÃO (lote 129) — o brasão com "!", ligado a uma missão da aba Missões (t.mq). Nasce oculto (só o
+   mestre vê) até ele revelar. O desenho segue o que a missão é:
+     · principal: dourado; secundária: azul-prata; ainda sem missão (ou a missão foi apagada): cinza, com "?";
+     · o objetivo opcional de uma missão: menor, claro, com a borda tracejada na cor da missão de que ele faz parte;
+     · cumprida: apagadinho, com o ✓ verde; falhou: apagadinho, com o ✕ vermelho; a missão ainda oculta (nos rascunhos
+       do mestre): o "?" no lugar do "!".
+   t.mq = { id, oid?, t, tp, ot?, e, op? } — a cópia do que a missão é agora (MissaoCenas.sincronizar acerta); é o que
+   os jogadores recebem na projeção (sem o título, enquanto a missão está oculta).
+   --------------------------------------------------------------- */
+(() => {
+  const TAU = Math.PI * 2;
+  Props.grupo('missao', 'Missões');
+  const COR = {
+    principal: { a: '#f8d978', b: '#d49a24', c: '#8a5a0c', borda: '#4a2e04', tinta: '#3a2604' },
+    secundaria: { a: '#e6eef7', b: '#9fb6d2', c: '#5a7596', borda: '#22324a', tinta: '#1d2b3c' },
+    nenhuma: { a: '#d6d3cc', b: '#9c978c', c: '#6a665e', borda: '#34322d', tinta: '#2a2824' },
+  };
+  // o brasão (escudo de ponta), centrado, com meia largura r
+  function brasao(c, r) {
+    c.beginPath();
+    c.moveTo(-r, -r * 0.95);
+    c.lineTo(r, -r * 0.95);
+    c.lineTo(r, -r * 0.1);
+    c.quadraticCurveTo(r * 0.95, r * 0.7, 0, r * 1.08);
+    c.quadraticCurveTo(-r * 0.95, r * 0.7, -r, -r * 0.1);
+    c.closePath();
+  }
+  function exclamacao(c, r, cor, interroga) {
+    c.fillStyle = cor;
+    if (interroga) {
+      c.font = `800 ${r * 1.25}px system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('?', 0, r * 0.05);
+      return;
+    }
+    c.beginPath(); c.moveTo(-r * 0.17, -r * 0.62); c.lineTo(r * 0.17, -r * 0.62); c.lineTo(r * 0.09, r * 0.22); c.lineTo(-r * 0.09, r * 0.22); c.closePath(); c.fill();
+    c.beginPath(); c.arc(0, r * 0.5, r * 0.13, 0, TAU); c.fill();
+  }
+  function selo(c, R, ok) {
+    const x = R * 0.55, y = R * 0.55, r = R * 0.3;
+    c.globalAlpha = 1;
+    c.fillStyle = ok ? '#2f8a4a' : '#b8322a'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+    c.strokeStyle = '#fff'; c.lineWidth = r * 0.28; c.lineCap = 'round'; c.beginPath();
+    if (ok) { c.moveTo(x - r * 0.45, y); c.lineTo(x - r * 0.1, y + r * 0.38); c.lineTo(x + r * 0.5, y - r * 0.38); }
+    else { c.moveTo(x - r * 0.38, y - r * 0.38); c.lineTo(x + r * 0.38, y + r * 0.38); c.moveTo(x + r * 0.38, y - r * 0.38); c.lineTo(x - r * 0.38, y + r * 0.38); }
+    c.stroke();
+  }
+  /* Desenha o marcador. mq: o que ele mostra; demo: a prévia do catálogo (a principal). */
+  function desenhar(c, R, mq, demo) {
+    const k = mq && mq.id && mq.e !== 'sumiu' ? (mq.tp === 'principal' ? 'principal' : 'secundaria') : demo ? 'principal' : 'nenhuma';
+    const p = COR[k], op = !!(mq && mq.oid), e = mq && mq.e, fim = e === 'feita' || e === 'falhou';
+    const r = R * (op ? 0.58 : 0.74);
+    c.save();
+    if (fim) c.globalAlpha = 0.55;
+    // a sombra
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(R * 0.04, R * 0.82, r * 0.8, r * 0.18, 0, 0, TAU); c.fill();
+    c.translate(0, -R * 0.04);
+    brasao(c, r);
+    if (op) { c.fillStyle = '#f6efdc'; c.fill(); }
+    else { const g = c.createLinearGradient(0, -r, 0, r); g.addColorStop(0, p.a); g.addColorStop(0.55, p.b); g.addColorStop(1, p.c); c.fillStyle = g; c.fill(); }
+    c.lineJoin = 'round';
+    if (op) { c.setLineDash([r * 0.32, r * 0.18]); c.strokeStyle = k === 'principal' ? '#c48a12' : k === 'secundaria' ? '#4f6f96' : p.c; c.lineWidth = r * 0.2; c.stroke(); c.setLineDash([]); }
+    else { c.strokeStyle = p.borda; c.lineWidth = r * 0.12; c.stroke(); brasao(c, r * 0.8); c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = r * 0.06; c.stroke(); }
+    exclamacao(c, r, op ? (k === 'principal' ? '#8a5a0c' : k === 'secundaria' ? '#2c4566' : p.tinta) : p.tinta, !mq ? !demo : !mq.id || e === 'oculta' || e === 'sumiu');
+    c.restore();
+    if (e === 'feita') selo(c, R, true);
+    else if (e === 'falhou') selo(c, R, false);
+  }
+  Props.registrar('missao', {
+    n: 'Marcador de missão', g: 'missao', size: 1, marca: true,
+    draw(c, R, tm, s, ang, tk) { c.save(); c.rotate(-ang); desenhar(c, R, tk ? tk.mq : null, !tk); c.restore(); },
+  });
+})();
+/* ---------------------------------------------------------------
    6c. AS ZONAS DAS RAÇAS (lote 19)
    O chão e as áreas que as árvores de raça criam (o Chão Rachado do Orc Natuphas, a Terra Morta do Magi'atach, o Enxame
    de Varejeiras do Necrosado…), os objetos com pontos de vida (o Totem do Magi'Ritu, a Parte Solta da Mãzier'na) e a
@@ -11281,6 +11355,8 @@ const Proj = (() => {
     delete o.ref;                                                     // (lote 22) o que o ponto de reforço guarda
     delete o.best; delete o.saque; delete o.bestEq;                   // (lote 29) o inimigo do Bestiário e o saque no chão (lote 33: e o equipamento dele)
     delete o.pb;                                                      // (lote 44) o painel de barras do NPC: só do mestre
+    // (lote 129) o marcador de uma missão que o mestre ainda não revelou (nos rascunhos): vai sem o nome
+    if (o.mq && o.mq.e === 'oculta') { o.mq = { id: o.mq.id, tp: o.mq.tp, e: 'oculta' }; if (t.mq.oid) o.mq.oid = t.mq.oid; }
     delete o.ronda; delete o.alerta; delete o.q0; delete o.tranca; delete o.pz; delete o.pzOk;      // (lote 122: a fechadura do objeto)                     // (lote 121) a ronda do guarda e o alerta dele: só do mestre
     /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
        não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */
@@ -15905,7 +15981,7 @@ const Tools = (() => {
   }
 
   /* ---- Selecionar ---- */
-  let segundo = null, tFech = 0;            // (lote 122) o clique num objeto que tranca, já selecionado: { hit, p0 }
+  let segundo = null, tFech = 0, balaoMq = null;            // (lote 122) o clique num objeto que tranca, já selecionado: { hit, p0 }
   // (espera um instante: se vier o segundo clique de um "dois cliques" — que troca o estado do baú —, não é a fechadura)
   const adiarFechadura = alvo => { clearTimeout(tFech); tFech = setTimeout(() => EscudoCenas.fechadura(alvo), 330); };
   T.select = {
@@ -15923,6 +15999,8 @@ const Tools = (() => {
       }
       if (door) { Act.toggleDoor(door); return; }
       const hit = hitTest(p);
+      // (lote 129) quem joga: um clique no marcador de missão abre o balão (ao soltar, sem arrastar)
+      balaoMq = hit && hit.c === 'tokens' && !isGM() && MissaoCenas.eh(Store.get('tokens', hit.id)) ? { id: hit.id, p0: p, x: e.clientX, y: e.clientY } : null;
       // (lote 122) o segundo clique (sem arrastar) num objeto que tranca, já selecionado sozinho: a fechadura com gazuas
       segundo = hit && isGM() && !e.shiftKey && hit.c === 'tokens' && App.sel.length === 1 && selHas('tokens', hit.id) && EscudoCenas.trancavel(Store.get('tokens', hit.id)) ? { hit, p0: p } : null;
       if (hit) {
@@ -15963,6 +16041,8 @@ const Tools = (() => {
     },
     up(p) {
       const sg = segundo; segundo = null;
+      const bm = balaoMq; balaoMq = null;
+      if (bm && (!g || !g.moved) && (!p || Math.hypot(p.x - bm.p0.x, p.y - bm.p0.y) * App.view.z < 6)) { const tk = Store.get('tokens', bm.id); if (tk) setTimeout(() => MissaoCenas.balao(tk, bm.x, bm.y), 0); }
       if (sg && (!g || !g.moved) && (!p || Math.hypot(p.x - sg.p0.x, p.y - sg.p0.y) * App.view.z < 6)) { if (g && g.type === 'move') endMove(); g = null; cursor(); adiarFechadura(sg.hit); return; }
       if (!g) return;
       if (g.type === 'handle') { endHandle(); cursor(); return; }
@@ -15987,6 +16067,8 @@ const Tools = (() => {
         if (t && (t.cena || (def && def.passagem))) { setSel([hit]); UI.passagem(t, e ? e.clientX : null, e ? e.clientY : null); return; }
         // (lote 53) dois cliques numa marca de pista: revelar e entregar a pista à mesa
         if (t && Misterio.ehPista(t)) { setSel([hit]); Misterio.revelar(t); return; }
+        // (lote 129) dois cliques no marcador de missão: o balão (a missão, revelar, trocar)
+        if (t && MissaoCenas.eh(t)) { setSel([hit]); MissaoCenas.balao(t, e ? e.clientX : null, e ? e.clientY : null); return; }
         // (lote 48) dois cliques num objeto com estado trocam o estado; num objeto de luz, acendem ou apagam
         if (t && def && (Props.estados(t.prop) || (def.luz && t.light))) { setSel([hit]); UI.alternarObjeto(t); return; }
       }
@@ -19527,7 +19609,7 @@ const UI = (() => {
     Props.thumb(prev, t.prop, 1.3);
     const head = h('div', { class: 'p-head' }, prev,
       h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: many ? `${props.length} objetos` : (gm ? t.name : def.n) || def.n }), h('div', { class: 'p-sub', text: many ? 'Objetos de cenário' : 'Objeto de cenário' + (t.hidden && gm ? ' · oculto dos jogadores' : '') })));
-    if (!gm) return [head];
+    if (!gm) return [head, !many && MissaoCenas.eh(t) ? MissaoCenas.secao(t, UI.kit) : null].filter(Boolean);      // (lote 129) o marcador de missão
     const mt = Tools.mestrando();      // (lote 83) em Mestrando, o objeto se usa, mas não muda de forma nem sai do lugar
     const girar = d => all(x => Props.girado(x, (x.rot || 0) + d, Store.scene()), 'Girar objeto');      // (lote 121: o comprido gira pelo meio)
     const compridos = props.every(x => ehRet(x));
@@ -19567,6 +19649,8 @@ const UI = (() => {
           field('Segunda cor', inColor('pr-c2', Props.coresDe(t)[1], v => props.forEach(x => Store.upd('tokens', x.id, { cores: [Props.coresDe(x)[0], v] })), 'Segunda cor'))),
         props.some(x => Array.isArray(x.cores)) ? h('div', { class: 'row' }, btn('Voltar às cores de sempre', () => all({ cores: null }, 'Cores do objeto'), { kind: 'small', id: 'pr-cor-0' })) : null,
         note(!many && t.bras ? 'Este veio da sede: as cores e o desenho são os do brasão do clã. Trocar aqui muda só este objeto.' : 'As duas cores do objeto. Os que vêm da sede do clã já chegam com as cores do brasão.')) : null,
+      // (lote 129) o marcador de missão: a missão (ou o objetivo opcional) que ele marca
+      !many && MissaoCenas.eh(t) ? MissaoCenas.secao(t, UI.kit) : null,
       // (lote 53) a marca de pista de um caso: revelar e entregar
       !many && Misterio.ehPista(t) ? sec('s-pista', 'Pista do caso', true, note(t.notes ? t.notes.split('\n')[0] : 'Uma pista de um caso do Escudo.'), h('div', { class: 'row' }, btn(t.hidden ? 'Revelar e entregar à mesa' : 'Entregar à mesa', () => Misterio.revelar(t), { kind: 'small primary', id: 'pr-pista' }))) : null,
       // (lote 48) o estado (o baú aberto, a armadilha armada, o portão fechado…) e, na alavanca, o que ela abre
@@ -20695,6 +20779,10 @@ const UI = (() => {
         // (lote 48) o estado e a luz do objeto
         if (props.length === 1 && Props.estados(props[0].prop)) { const l = Props.estados(props[0].prop), a = Props.estado(props[0]), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; items.push({ label: nx[1], icon: 'reset', run: () => alternarObjeto(props[0], nx[0]) }); }
         if (props.length === 1 && Misterio.ehPista(props[0])) items.push({ label: 'Revelar e entregar a pista', icon: 'eye', run: () => Misterio.revelar(props[0]) });     // (lote 53)
+        if (props.length === 1 && MissaoCenas.eh(props[0])) {      // (lote 129) o marcador de missão
+          items.push({ label: props[0].mq && props[0].mq.id ? 'Trocar a missão…' : 'Ligar a uma missão…', icon: 'link', run: () => openTab('sel', 'pr-mq') });
+          if (props[0].mq && props[0].mq.id) items.push({ label: 'Abrir na aba Missões', icon: 'right', run: () => MissaoCenas.abrirMissao(props[0].mq) });
+        }
         if (props.length === 1 && props[0].light && (Props.P[props[0].prop] || {}).luz) items.push({ label: props[0].light.on === false ? 'Acender' : 'Apagar', icon: 'light', run: () => alternarObjeto(props[0]) });
         items.push({ label: allHidden ? 'Mostrar aos jogadores' : 'Ocultar dos jogadores', icon: allHidden ? 'eye' : 'eyeOff', run: () => all({ hidden: !allHidden }, allHidden ? 'Mostrar objeto' : 'Ocultar objeto') });
         // (lote 83) em Mestrando, o objeto se usa mas não sai do lugar: sem girar, travar, duplicar, ordem e apagar
@@ -47063,6 +47151,207 @@ const Furtividade = (() => {
   return { IDS, NOMES, LUGARES, ALVOS, TAM, GUARDAS, gerar, previa, resumo, criar, predio, ehFurtivo };
 })();
 /* ---------------------------------------------------------------
+   10gd. OS MARCADORES DE MISSÃO NA CENA (lote 129) — o objeto "Marcador de missão" (06b8), ligado a uma missão da aba
+   Missões ou a um objetivo opcional dela.
+   · O mestre põe o marcador (do catálogo, grupo Missões, ou pelo "Gerar um lugar…"), escolhe no painel a missão e o que
+     ele marca (a missão inteira ou um objetivo opcional) e revela quando quiser (nasce oculto).
+   · O marcador guarda uma cópia do que a missão é (t.mq: o título, o tipo, a situação). O aparelho de quem mestra
+     acerta essa cópia sozinho quando a missão muda na aba Missões (cumprida, falhou, mudou de nome ou de tipo), em todas
+     as cenas da mesa — sem entrar no Desfazer. É a cópia que os jogadores recebem (a missão ainda oculta vai sem nome).
+   · Um clique de quem joga num marcador revelado abre o balão: o nome, o tipo e o botão para abrir a missão na aba
+     Missões. Dois cliques do mestre abrem o mesmo balão, com o que ele pode fazer.
+   --------------------------------------------------------------- */
+const MissaoCenas = (() => {
+  const M = () => (window.TC && window.TC.missoes) || null;
+  const D = () => { try { return window.TC && TC.dados && TC.dados.disponivel && TC.dados.disponivel() ? TC.dados.col('documentos') : null; } catch (e) { return null; } };
+  const linhas = () => { const d = D(); return d ? d.todas() : []; };
+  const eh = t => !!(t && t.prop === 'missao');
+  const ESTADO = { oculta: 'Ainda oculta (só você vê)', oferta: 'No quadro', ativa: 'Em andamento', feita: 'Cumprida', falhou: 'Falhou', sumiu: 'A missão foi apagada' };
+
+  /* As missões que dá para ligar: todas (rascunhos, quadro de cada campanha, as dos personagens), a principal primeiro. */
+  function missoes() {
+    const m = M(); if (!m) return [];
+    const vistas = new Set(), out = [];
+    for (const l of linhas()) {
+      if (!l || l.apagado || typeof l.id !== 'string' || !l.id.startsWith('fichas:mis:') || !l.dados || typeof l.dados.ms !== 'object') continue;
+      for (const id of Object.keys(l.dados.ms)) {
+        if (vistas.has(id)) continue;
+        const a = m.acharEmDocs([l], id); if (!a) continue;
+        vistas.add(id);
+        out.push({ id, t: a.m.t || 'Missão sem título', tp: a.m.tp, e: m.situacao(a.m, a.onde), ops: m.objs(a.m).filter(o => o.op) });
+      }
+    }
+    return out.sort((a, b) => ((a.tp === 'principal' ? 0 : 1) - (b.tp === 'principal' ? 0 : 1)) || a.t.localeCompare(b.t));
+  }
+
+  /* A cópia do que o marcador mostra agora, a partir dos documentos (só quem mestra tem todos). → mq novo, ou null */
+  function copia(mq) {
+    const m = M();
+    if (!m || !mq || !mq.id) return null;
+    const k = m.marcador(m.acharEmDocs(linhas(), mq.id), mq.oid || null);
+    if (!k) return Object.assign({}, mq, { e: 'sumiu' });
+    const o = { id: mq.id, t: k.t, tp: k.tp, e: k.e };
+    if (mq.oid) { o.oid = mq.oid; o.ot = k.ot; o.op = k.op; }
+    return o;
+  }
+  const nome = mq => (!mq || !mq.id ? 'Marcador de missão' : mq.oid ? 'Opcional: ' + (mq.ot || 'objetivo') : 'Missão: ' + (mq.t || 'sem título'));
+  const igual = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
+
+  /* Liga o marcador t a uma missão (id) e, se vier, a um objetivo opcional dela (oid). id vazio: desliga. */
+  function ligar(t, id, oid) {
+    t = Store.get('tokens', t.id) || t;
+    const mq = id ? copia({ id, oid: oid || null }) : null;
+    Store.tx(id ? 'Ligar o marcador à missão' : 'Desligar o marcador', () => Store.upd('tokens', t.id, { mq: mq || undefined, name: nome(mq) }));
+  }
+
+  /* O aparelho de quem mestra acerta a cópia de todos os marcadores (em todas as cenas), sem entrar no Desfazer. */
+  let tSync = 0;
+  function sincronizar() {
+    if (!isGM() || !M() || !D() || (typeof Nuvem !== 'undefined' && Nuvem.jogador && Nuvem.jogador())) return 0;
+    let n = 0;
+    for (const sid of Object.keys(Store.S.scenes)) {
+      const sc = Store.S.scenes[sid], ops = [];
+      for (const t of (sc && sc.tokens) || []) {
+        if (!eh(t) || !t.mq || !t.mq.id) continue;
+        const nv = copia(t.mq);
+        if (nv && !igual(nv, t.mq)) ops.push({ t: 'upd', c: 'tokens', id: t.id, p: { mq: nv, name: nome(nv) } });
+      }
+      if (ops.length) n += Store.remoteIn(sid, ops);
+    }
+    return n;
+  }
+  const agendar = () => { clearTimeout(tSync); tSync = setTimeout(sincronizar, 250); };
+  // ouve as missões (quando a mesa abre, a coleção aparece) e a troca de cena
+  let ouvindo = false;
+  function ouvir() {
+    const d = D();
+    if (!d || ouvindo) return;
+    ouvindo = true;
+    d.aoMudar(l => { if (l && typeof l.id === 'string' && l.id.startsWith('fichas:mis:')) agendar(); });
+    agendar();
+  }
+  setInterval(() => { if (!ouvindo) ouvir(); }, 2000);
+  Store.on('scene', () => { ouvir(); agendar(); });
+  // (o Desfazer pode trazer de volta uma cópia velha: depois de cada passo do mestre, ela é conferida de novo)
+  Store.on('commit', e => { if (!e.remote && e.ops && e.ops.some(op => op.c === 'tokens')) agendar(); });
+
+  /* ---- abrir a missão na aba Missões ---- */
+  const naCasca = () => !!(window.TC && TC.ponte && TC.ponte.naCasca && TC.ponte.ir);
+  function abrirMissao(mq) {
+    if (!mq || !mq.id) return;
+    if (naCasca() && TC.ponte.ir('missoes', { missao: mq.id })) return;
+    UI.toast('Abra as Missões pelo site para ver esta missão.');
+  }
+
+  /* ---- o balão (o clique de quem joga; os dois cliques do mestre) ---- */
+  function balao(t, x, y) {
+    const mq = t.mq || null, gm = isGM(), items = [];
+    if (!mq || !mq.id) {
+      if (!gm) return;
+      items.push({ head: 'Marcador de missão (sem missão)' }, { label: 'Ligar a uma missão…', icon: 'link', run: () => { setSel([{ c: 'tokens', id: t.id }]); UI.openTab('sel', 'pr-mq'); } });
+    } else {
+      const oculta = mq.e === 'oculta';
+      items.push({ head: oculta && !gm ? 'Uma missão (ainda sem nome)' : mq.oid ? mq.ot || 'Objetivo' : mq.t || 'Missão' });
+      items.push({ head: (mq.oid ? 'Opcional de “' + (oculta && !gm ? '…' : mq.t) + '” · ' : '') + (mq.tp === 'principal' ? 'Missão principal' : 'Missão secundária') + (ESTADO[mq.e] && mq.e !== 'ativa' && mq.e !== 'oferta' ? ' · ' + ESTADO[mq.e] : '') });
+      if (!oculta || gm) items.push({ label: 'Abrir na aba Missões', icon: 'right', disabled: !naCasca(), run: () => abrirMissao(mq) });
+    }
+    if (gm) {
+      items.push('-', { label: t.hidden ? 'Mostrar aos jogadores' : 'Ocultar dos jogadores', icon: t.hidden ? 'eye' : 'eyeOff', run: () => Store.tx(t.hidden ? 'Mostrar o marcador' : 'Ocultar o marcador', () => Store.upd('tokens', t.id, { hidden: !t.hidden })) });
+      if (mq && mq.id) items.push({ label: 'Trocar a missão…', icon: 'link', run: () => { setSel([{ c: 'tokens', id: t.id }]); UI.openTab('sel', 'pr-mq'); } });
+    }
+    UI.menuEm(x, y, items);
+  }
+
+  /* ---- o painel do objeto ---- */
+  function secao(t, K) {
+    const mq = t.mq || null;
+    if (!isGM()) {
+      if (!mq || !mq.id) return null;
+      const oculta = mq.e === 'oculta';
+      return K.sec('s-mq', 'Missão', true,
+        K.note(oculta ? 'Uma missão que o mestre ainda não revelou.' : (mq.oid ? 'Opcional: ' + (mq.ot || 'objetivo') + ' (de “' + mq.t + '”)' : mq.t) + ' · ' + (mq.tp === 'principal' ? 'principal' : 'secundária') + (ESTADO[mq.e] && mq.e !== 'ativa' && mq.e !== 'oferta' ? ' · ' + ESTADO[mq.e] : '')),
+        oculta ? null : h('div', { class: 'row' }, K.btn('Abrir na aba Missões', () => abrirMissao(mq), { kind: 'small', icon: 'right', id: 'pr-mq-abrir', disabled: !naCasca() })));
+    }
+    const lista = missoes(), atual = mq && mq.id ? lista.find(x => x.id === mq.id) : null;
+    const opcs = [['', lista.length ? 'Nenhuma' : 'Nenhuma missão ainda']].concat(lista.map(x => [x.id, (x.tp === 'principal' ? '★ ' : '') + x.t + (x.e === 'oculta' ? ' (oculta)' : x.e === 'feita' ? ' (cumprida)' : x.e === 'falhou' ? ' (falhou)' : '')]));
+    if (mq && mq.id && !atual) opcs.push([mq.id, '(a missão foi apagada)']);
+    const parte = atual && atual.ops.length ? [['', 'A missão inteira']].concat(atual.ops.map(o => [o.id, 'Opcional: ' + (o.t || 'objetivo')])) : null;
+    const sel = K.inSelect('pr-mq', mq && mq.id ? mq.id : '', opcs, v => ligar(t, v || null, null));
+    return K.sec('s-mq', 'Missão', true,
+      K.field('Missão', sel, 'stack'),
+      parte ? K.field('O que marca', K.inSelect('pr-mq-op', mq.oid || '', parte, v => ligar(t, mq.id, v || null)), 'stack') : null,
+      mq && mq.id ? K.note((ESTADO[mq.e] || '') + (mq.e === 'sumiu' ? '.' : '. O marcador muda sozinho quando a missão muda na aba Missões.')) : K.note(D() ? 'Escolha a missão. Só as missões com objetivos marcados como “Opcional” deixam escolher um objetivo.' : 'Os marcadores se ligam às missões da aba Missões, numa mesa.'),
+      h('div', { class: 'row' },
+        K.btn(t.hidden ? 'Revelar aos jogadores' : 'Ocultar dos jogadores', () => Store.tx(t.hidden ? 'Mostrar o marcador' : 'Ocultar o marcador', () => Store.upd('tokens', t.id, { hidden: !t.hidden })), { kind: 'small' + (t.hidden ? ' primary' : ''), icon: t.hidden ? 'eye' : 'eyeOff', id: 'pr-mq-ver' }),
+        mq && mq.id ? K.btn('Abrir na aba Missões', () => abrirMissao(mq), { kind: 'small', icon: 'right', id: 'pr-mq-abrir', disabled: !naCasca() }) : null));
+  }
+
+  /* ---- os geradores: pôr marcadores na cena que acabou de nascer ----
+     o: { modo: 'nada' | 'vazios' | 'minhas', ids: [missões escolhidas] }; lugares: [[x, y], …] em quadrados, os melhores
+     primeiro (a taverna, a guilda, a praça…). → quantos entraram */
+  function porNaCena(sc, o, lugares) {
+    if (!o || o.modo === 'nada' || !Array.isArray(lugares) || !lugares.length) return 0;
+    const c = sc.cell, ocup = new Set(sc.tokens.map(t => Math.floor(t.x / c) + ',' + Math.floor(t.y / c)));
+    const livre = (x, y) => { for (let r = 0; r < 4; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const i = Math.floor(x) + dx, j = Math.floor(y) + dy; if (i < 1 || j < 1 || i >= sc.cols - 1 || j >= sc.rows - 1 || ocup.has(i + ',' + j)) continue; ocup.add(i + ',' + j); return [i, j]; } return null; };
+    const alvos = o.modo === 'minhas' ? (o.ids || []).map(id => ({ id })).filter(x => x.id) : Array.from({ length: Math.min(3, lugares.length) }, () => null);
+    let n = 0;
+    alvos.forEach((a, i) => {
+      const [lx, ly] = lugares[i % lugares.length], q = livre(lx, ly);
+      if (!q) return;
+      const t = Props.novo(sc, 'missao', q[0] * c, q[1] * c, 1, true);
+      t.mq = a ? copia({ id: a.id }) : undefined; if (!t.mq) delete t.mq;
+      t.name = nome(t.mq);
+      sc.tokens.push(t); n++;
+    });
+    return n;
+  }
+  /* Os bons lugares de uma cena recém-gerada para os marcadores (em quadrados), os melhores primeiro e afastados uns
+     dos outros: a porta da taverna, da estalagem, da guilda, do quartel, do templo e do casarão; o quadro de missões; os
+     pontos de interesse da praça, do mercado e do templo; o poço, a fogueira e o totem; as outras portas; o meio. */
+  const PESO_PORTA = { taverna: 0, estalagem: 0, guilda: 1, quartel: 2, templo: 3, senhor: 4, prefeitura: 4, loja: 6, ferraria: 7, armazem: 8 };
+  function lugaresDaCena(sc) {
+    const c = sc.cell, cand = [];
+    for (const t of sc.tokens || []) {
+      const x = t.x / c + (t.size || 1) / 2, y = t.y / c + (t.size || 1) / 2;
+      if (t.prop === 'entrada' && t.gera && t.gera.t) { const pe = PESO_PORTA[t.gera.t]; cand.push([pe == null ? (t.gera.c ? 5 : 9) : pe, x, y + 1]); }
+      else if (t.prop === 'quadroMissoes') cand.push([0, x, y + 1]);
+      else if (t.prop === 'interesse' && /pra[çc]a|mercado|templo|castelo/i.test(t.name || '')) cand.push([1, x, y]);
+      else if (t.prop === 'poco' || t.prop === 'fogueira' || t.prop === 'totem') cand.push([5, x + 1, y]);
+    }
+    cand.sort((a, b) => a[0] - b[0]);
+    const out = [];
+    for (const [, x, y] of cand) if (out.every(([a, b]) => Math.hypot(a - x, b - y) >= 4)) out.push([x, y]);
+    if (!out.length) out.push([sc.cols / 2, sc.rows / 2]);
+    return out;
+  }
+  const POVOADOS = new Set(['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']);
+
+  /* A escolha no gerador (fica nas preferências: genMq = 'nada' | 'vazios' | 'minhas'; genMqIds = [ids]). */
+  const prefs = () => { const o = App.opt; return { modo: ['nada', 'vazios', 'minhas'].includes(o.genMq) ? o.genMq : 'nada', ids: Array.isArray(o.genMqIds) ? o.genMqIds.filter(x => typeof x === 'string') : [] }; };
+  function controles(K, mudou) {
+    const pr = prefs(), set = (k, v) => { App.opt[k] = v; if (mudou) mudou(); }, lista = missoes().filter(x => x.e !== 'feita' && x.e !== 'falhou');
+    const marcadas = new Set(pr.ids.filter(id => lista.some(x => x.id === id)));
+    return h('div', { class: 'ger-mq', id: 'ger-mq' },
+      K.field('Marcadores de missão', K.seg('ger-mq-modo', pr.modo, [['nada', 'Sem marcadores'], ['vazios', 'Vazios'], ['minhas', 'Das minhas missões']], v => set('genMq', v)), 'stack'),
+      pr.modo === 'vazios' ? K.note('Até 3 marcadores ocultos, em lugares que fazem sentido (a taverna, a guilda, a praça). Depois, clique em cada um e escolha a missão.') : null,
+      pr.modo === 'minhas' ? (lista.length ? h('div', { class: 'ger-mq-lista' }, lista.map(x => K.toggle('ger-mq-' + x.id, marcadas.has(x.id), v => { if (v) marcadas.add(x.id); else marcadas.delete(x.id); set('genMqIds', [...marcadas]); }, (x.tp === 'principal' ? '★ ' : '') + x.t + (x.e === 'oculta' ? ' (oculta)' : ''))),
+        K.note('Um marcador oculto para cada missão marcada, espalhados pelos lugares da cidade.')) : K.note(D() ? 'Nenhuma missão em aberto. Crie na aba Missões.' : 'As missões vêm da aba Missões, numa mesa.')) : null);
+  }
+
+  /* Depois de o gerador criar a cena (só nos povoados): os marcadores escolhidos. → o texto para o aviso, ou '' */
+  function aplicar(sc, lugar) {
+    if (!POVOADOS.has(lugar)) return '';
+    const o = prefs();
+    if (o.modo === 'nada') return '';
+    const n = porNaCena(sc, o, lugaresDaCena(sc));
+    if (!n) return '';
+    Persist.scene(sc.id);
+    return `${n} ${n === 1 ? 'marcador de missão' : 'marcadores de missão'} (${n === 1 ? 'oculto' : 'ocultos'}${o.modo === 'vazios' ? ': clique em cada um e escolha a missão' : ''}).`;
+  }
+
+  return { eh, missoes, copia, ligar, sincronizar, balao, secao, abrirMissao, porNaCena, lugaresDaCena, prefs, controles, aplicar, nome, POVOADOS };
+})();
+/* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
    Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra e o Porto), as escolhas de cada um e, embaixo, o que vale
    para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena, a estação
@@ -47415,7 +47704,9 @@ const Gerador = (() => {
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
           temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null),
         bloco('pov', 'Povoar', pv.on ? 'perigo ' + nomeDe(Povoar.PERIGOS, pv.perigo, 'médio').toLowerCase() : 'desligado', Povoar.controles(K, () => pintar())),       // (lote 49) povoar o lugar
-        bloco('mist', 'Mistério', mi.on ? (casoMi ? casoMi.c.titulo : 'um caso novo') : 'desligado', Misterio.controles(K, () => pintar()))].filter(Boolean));     // (lote 53) o mistério
+        bloco('mist', 'Mistério', mi.on ? (casoMi ? casoMi.c.titulo : 'um caso novo') : 'desligado', Misterio.controles(K, () => pintar())),     // (lote 53) o mistério
+        // (lote 129) os marcadores de missão, nos povoados
+        MissaoCenas.POVOADOS.has(L.id) ? bloco('mq', 'Missões', ({ nada: 'sem marcadores', vazios: 'marcadores vazios', minhas: (n => n + (n === 1 ? ' missão' : ' missões'))(MissaoCenas.prefs().ids.length) })[MissaoCenas.prefs().modo], MissaoCenas.controles(K, () => pintar())) : null].filter(Boolean));
       nota.textContent = L.nota;
       if (fid) { const n = document.getElementById(fid); if (n) n.focus({ preventScroll: true }); }
     }
@@ -47442,10 +47733,11 @@ const Gerador = (() => {
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
             const pv = Povoar.prefs(), txtPov = pv.on ? Povoar.aplicar(sc, l.id, p, pv) : '';      // (lote 49) o lugar povoado
             const mi = Misterio.prefs(), txtMi = mi.on ? Misterio.aplicar(sc, l.id, p, mi) : '';    // (lote 53) o mistério
+            const txtMq = MissaoCenas.aplicar(sc, l.id);                                              // (lote 129) os marcadores de missão
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : ''), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },
@@ -48646,7 +48938,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, Rondas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, Rondas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

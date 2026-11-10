@@ -30,7 +30,7 @@ const j = JSON.stringify;
   ok(j(abas) === j(['Vilarejo', 'Cidade', 'Tribo', 'Porto', 'Encontro', 'Região livre', 'Lago', 'Praia', 'Penhasco', 'Desfiladeiro', 'Castelo', 'Ruínas', 'Cemitério', 'Masmorra', 'Catacumbas', 'Cena do crime', 'Arena', 'Mansão', 'Fortaleza', 'Guilda', 'Acampamento', 'Ruas', 'Torre'])     /* (lote 121: e os seis de furtividade) */ , 'os dezessete lugares, na ordem dos grupos (lote 58: e os quatro de água e penhasco): ' + j(abas));
   ok(await page.locator('#ger-lugar .seg-b .ger-gl').count() === 23, 'cada lugar com o desenho dele (lote 121: 23, com os seis de furtividade)');
   const blocos = await page.locator('.ger-bl > summary .ger-bl-t').allInnerTexts();
-  ok(j(blocos) === j(['Vilarejo', 'Ambiente', 'Povoar', 'Mistério']), 'as escolhas em blocos: ' + j(blocos));
+  ok(j(blocos) === j(['Vilarejo', 'Ambiente', 'Povoar', 'Mistério', 'Missões']), 'as escolhas em blocos: ' + j(blocos));
   ok(/comum · dia · sem clima/.test(await page.locator('#ger-bl-amb .ger-bl-r').innerText()) && /desligado/.test(await page.locator('#ger-bl-pov .ger-bl-r').innerText()), 'cada bloco com o resumo do que está escolhido');
   const lado = await ev(() => { const r = document.getElementById('ger-prev').getBoundingClientRect(), m = document.querySelector('.modal').getBoundingClientRect(); return { pw: Math.round(r.width), mw: Math.round(m.width) }; });
   ok(lado.pw >= 560 && lado.mw >= 1200, 'a prévia grande, no meio de uma janela larga: ' + j(lado));

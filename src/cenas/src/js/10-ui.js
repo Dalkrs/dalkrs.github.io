@@ -2612,7 +2612,7 @@ const UI = (() => {
     Props.thumb(prev, t.prop, 1.3);
     const head = h('div', { class: 'p-head' }, prev,
       h('div', { class: 'p-head-t' }, h('h3', { class: 'p-title', text: many ? `${props.length} objetos` : (gm ? t.name : def.n) || def.n }), h('div', { class: 'p-sub', text: many ? 'Objetos de cenário' : 'Objeto de cenário' + (t.hidden && gm ? ' · oculto dos jogadores' : '') })));
-    if (!gm) return [head];
+    if (!gm) return [head, !many && MissaoCenas.eh(t) ? MissaoCenas.secao(t, UI.kit) : null].filter(Boolean);      // (lote 129) o marcador de missão
     const mt = Tools.mestrando();      // (lote 83) em Mestrando, o objeto se usa, mas não muda de forma nem sai do lugar
     const girar = d => all(x => Props.girado(x, (x.rot || 0) + d, Store.scene()), 'Girar objeto');      // (lote 121: o comprido gira pelo meio)
     const compridos = props.every(x => ehRet(x));
@@ -2652,6 +2652,8 @@ const UI = (() => {
           field('Segunda cor', inColor('pr-c2', Props.coresDe(t)[1], v => props.forEach(x => Store.upd('tokens', x.id, { cores: [Props.coresDe(x)[0], v] })), 'Segunda cor'))),
         props.some(x => Array.isArray(x.cores)) ? h('div', { class: 'row' }, btn('Voltar às cores de sempre', () => all({ cores: null }, 'Cores do objeto'), { kind: 'small', id: 'pr-cor-0' })) : null,
         note(!many && t.bras ? 'Este veio da sede: as cores e o desenho são os do brasão do clã. Trocar aqui muda só este objeto.' : 'As duas cores do objeto. Os que vêm da sede do clã já chegam com as cores do brasão.')) : null,
+      // (lote 129) o marcador de missão: a missão (ou o objetivo opcional) que ele marca
+      !many && MissaoCenas.eh(t) ? MissaoCenas.secao(t, UI.kit) : null,
       // (lote 53) a marca de pista de um caso: revelar e entregar
       !many && Misterio.ehPista(t) ? sec('s-pista', 'Pista do caso', true, note(t.notes ? t.notes.split('\n')[0] : 'Uma pista de um caso do Escudo.'), h('div', { class: 'row' }, btn(t.hidden ? 'Revelar e entregar à mesa' : 'Entregar à mesa', () => Misterio.revelar(t), { kind: 'small primary', id: 'pr-pista' }))) : null,
       // (lote 48) o estado (o baú aberto, a armadilha armada, o portão fechado…) e, na alavanca, o que ela abre
@@ -3780,6 +3782,10 @@ const UI = (() => {
         // (lote 48) o estado e a luz do objeto
         if (props.length === 1 && Props.estados(props[0].prop)) { const l = Props.estados(props[0].prop), a = Props.estado(props[0]), nx = l[(l.findIndex(x => x[0] === a) + 1) % l.length]; items.push({ label: nx[1], icon: 'reset', run: () => alternarObjeto(props[0], nx[0]) }); }
         if (props.length === 1 && Misterio.ehPista(props[0])) items.push({ label: 'Revelar e entregar a pista', icon: 'eye', run: () => Misterio.revelar(props[0]) });     // (lote 53)
+        if (props.length === 1 && MissaoCenas.eh(props[0])) {      // (lote 129) o marcador de missão
+          items.push({ label: props[0].mq && props[0].mq.id ? 'Trocar a missão…' : 'Ligar a uma missão…', icon: 'link', run: () => openTab('sel', 'pr-mq') });
+          if (props[0].mq && props[0].mq.id) items.push({ label: 'Abrir na aba Missões', icon: 'right', run: () => MissaoCenas.abrirMissao(props[0].mq) });
+        }
         if (props.length === 1 && props[0].light && (Props.P[props[0].prop] || {}).luz) items.push({ label: props[0].light.on === false ? 'Acender' : 'Apagar', icon: 'light', run: () => alternarObjeto(props[0]) });
         items.push({ label: allHidden ? 'Mostrar aos jogadores' : 'Ocultar dos jogadores', icon: allHidden ? 'eye' : 'eyeOff', run: () => all({ hidden: !allHidden }, allHidden ? 'Mostrar objeto' : 'Ocultar objeto') });
         // (lote 83) em Mestrando, o objeto se usa mas não sai do lugar: sem girar, travar, duplicar, ordem e apagar

@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.09-11",
+      "data": "2026-11-09",
+      "titulo": "Marcadores de missão",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: o Marcador de missão (grupo Missões, no catálogo de objetos). Ligado a uma missão da aba Missões ou a um objetivo opcional dela: dourado na principal, azul-prata na secundária, menor e tracejado no opcional. Nasce oculto; ao ser revelado, quem joga clica nele e vê o nome, o tipo e o botão para abrir a missão.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: o marcador muda sozinho quando a missão muda na aba Missões (cumprida ganha ✓, falhou ganha ✕, e o nome acompanha).", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: no “Gerar um lugar…”, os povoados ganham o bloco Missões: sem marcadores, até 3 marcadores vazios (na porta da taverna, do templo, da guilda…) ou um marcador para cada missão escolhida.", "mestre": true },
+        { "tipo": "novo", "texto": "Missões: cada missão é Principal ou Secundária, e cada objetivo pode ser marcado como Opcional." },
+        { "tipo": "melhorou", "texto": "Mapa-múndi: a missão do marcador agora vem da aba Missões (antes, das missões antigas das Fichas), com a cor do tipo e o objetivo opcional.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.09-01",
       "data": "2026-11-09",
       "titulo": "Faixa, material e melhoria pelo jogador",

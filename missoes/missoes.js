@@ -194,6 +194,7 @@
       h('h3', { class: 'mc-tit', text: titulo }),
       m.d ? h('p', { class: 'mc-desc', text: m.d }) : null,
       h('div', { class: 'mc-pe' },
+        h('span', { class: 'tp tp-' + m.tp, text: M.tipoDe(m.tp).n }),      // (lote 129)
         m.pe ? h('span', { class: 'perigo', title: M.PERIGO[m.pe], text: caveiras(m.pe) }) : null,
         m.r ? h('span', { class: 'recomp', text: (s === 'dossie' ? 'PAGAMENTO: ' : 'Recompensa: ') + m.r }) : null,
         m.rep && m.rep.length ? h('span', { class: 'recomp rep', text: 'Reputação: ' + m.rep.map(repTxt).join(', ') }) : null,
@@ -277,6 +278,17 @@
     if (ctx.pc) { const m = docPc(ctx.pc).ms[id]; if (m) return { m: Object.assign({ id }, m), onde: 'pc' }; }
     return null;
   }
+  /* (lote 129) A missão pedida por outro sistema (o marcador de missão das Cenas): onde quer que ela esteja — nos rascunhos
+     (quem mestra), no quadro, no documento de um personagem (de quem joga: só os dele). */
+  function abrirDeFora(id, pc) {
+    const ctx = pc ? { pc } : null;
+    if (ctx && achar(id, ctx)) { abrir(id, ctx); return; }
+    if (mestre && rasc().ms[id]) { aba = 'rascunhos'; pintar(); abrir(id, { onde: 'rasc' }); return; }
+    if (quadro().ms[id]) { abrir(id, {}); return; }
+    const dono = (mestre ? personagens() : meus()).find(p => docPc(p.id).ms[id]);
+    if (dono) { abrir(id, { onde: 'pc', pc: dono.id }); return; }
+    toast(mestre ? 'Essa missão não está mais nas missões.' : 'Essa missão ainda não está com você.');
+  }
   function abrir(id, ctx) {
     const a = achar(id, ctx);
     if (!a) { if (dlg.open) fechar(); return; }
@@ -289,8 +301,8 @@
     const podeMarcar = mestre && !fim && a.onde !== 'rasc' && (m.quem !== 'todos' || (pc && m.pegas[pc])) && and.e !== 'oferta';
     const objs = and.objs.length ? h('div', { class: 'objs' }, h('h4', { text: s === 'dossie' ? 'OBJETIVOS' : 'Objetivos' }),
       h('ul', null, and.objs.map(o => h('li', { class: o.ok ? 'ok' : '' },
-        podeMarcar ? h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: o.ok, 'data-obj': o.id, onchange: ev => marcarObj(a, o.id, ev.target.checked, pc) }), h('span', { text: o.t || 'Objetivo' }))
-          : [h('span', { class: 'marca', 'aria-hidden': 'true', text: o.ok ? '✓' : '○' }), h('span', { text: o.t || 'Objetivo' }), h('span', { class: 'sr', text: o.ok ? ' (feito)' : ' (por fazer)' })])))) : null;
+        podeMarcar ? h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: o.ok, 'data-obj': o.id, onchange: ev => marcarObj(a, o.id, ev.target.checked, pc) }), h('span', { text: o.t || 'Objetivo' }), o.op ? h('span', { class: 'op', text: 'opcional' }) : null)
+          : [h('span', { class: 'marca', 'aria-hidden': 'true', text: o.ok ? '✓' : '○' }), h('span', { text: o.t || 'Objetivo' }), o.op ? h('span', { class: 'op', text: 'opcional' }) : null, h('span', { class: 'sr', text: o.ok ? ' (feito)' : ' (por fazer)' })])))) : null;
     const pegaram = Object.keys(m.pegas || {});
     const info = h('dl', { class: 'info' },
       m.ct ? [h('dt', { text: 'Quem pede' }), h('dd', { text: m.ct })] : null,
@@ -299,6 +311,7 @@
       m.pe ? [h('dt', { text: 'Perigo' }), h('dd', { text: caveiras(m.pe) + ' ' + M.PERIGO[m.pe] })] : null,
       m.pz ? [h('dt', { text: 'Prazo' }), h('dd', { text: m.pz })] : null,
       m.lug ? [h('dt', { text: 'Onde' }), h('dd', null, h('button', { type: 'button', class: 'lk', id: 'mLugar', text: (m.lug.nome || 'Ver no Mapa-múndi') + ' →', onclick: () => irMapa(m.lug) }))] : null,
+      [h('dt', { text: 'Missão' }), h('dd', { text: M.tipoDe(m.tp).n })],      // (lote 129)
       [h('dt', { text: 'Tipo' }), h('dd', { text: m.quem === 'pc' ? 'Da história' : M.quemDe(m.quem).curto })],
       pegaram.length && m.quem !== 'pc' ? [h('dt', { text: m.quem === 'todos' ? 'Pegaram' : 'Pegou' }), h('dd', { text: pegaram.map(p => nomePc(p)).join(', ') })] : null);
     // a escolha de quem pegou (quem mestra, em "Cada um pega a sua")
@@ -540,7 +553,7 @@
     const novo = !a;
     const f = novo ? M.missao({ quem: 'um', e: 'oferta', c: Date.now() }) : M.missao(a.m);
     const id = novo ? M.novoId() : a.m.id, onde = novo ? 'rasc' : a.onde;
-    const objs = M.objs(f).map(o => ({ id: o.id, t: o.t }));
+    const objs = M.objs(f).map(o => ({ id: o.id, t: o.t, op: o.op }));
     const campo = (rot, el, dica) => h('label', { class: 'campo' }, h('span', { text: rot }), el, dica ? h('small', { text: dica }) : null);
     const tit = h('input', { class: 'in', id: 'fTit', maxlength: '120', value: f.t, placeholder: 'Ex.: O ferreiro desaparecido' });
     const ct = h('input', { class: 'in', id: 'fCt', maxlength: '80', value: f.ct, placeholder: 'Ex.: Mestre Orvin, o ferreiro' });
@@ -551,6 +564,7 @@
     const pes = h('div', { class: 'seg', id: 'fPe', role: 'group', 'aria-label': 'Perigo' });
     const pintarPe = () => pes.replaceChildren(...M.PERIGO.map((n, i) => h('button', { type: 'button', 'aria-pressed': String(i === pe), title: n, text: i ? '☠'.repeat(i) : '—', onclick: () => { pe = i; pintarPe(); } })));
     pintarPe();
+    const tp = h('select', { class: 'in', id: 'fTp' }, M.TIPOS.map(x => h('option', { value: x.k, selected: x.k === f.tp }, x.n)));      // (lote 129)
     const quem = h('select', { class: 'in', id: 'fQuem' }, M.QUEM.map(x => h('option', { value: x.k, selected: x.k === f.quem }, x.n)));
     const alvo = h('select', { class: 'in', id: 'fAlvo' }, personagens().map(p => h('option', { value: p.id, selected: p.id === (a && (a.m.alvo || (a.onde === 'pc' ? aberto.ctx.pc : null))) }, p.nome)));
     const campoAlvo = campo('Para quem', alvo);
@@ -582,6 +596,8 @@
     const listaObj = h('div', { class: 'fobjs', id: 'fObjs' });
     const pintarObjs = () => listaObj.replaceChildren(...objs.map((o, i) => h('div', { class: 'fobj' },
       h('input', { class: 'in', maxlength: '200', value: o.t, placeholder: 'Um passo da missão', 'aria-label': 'Objetivo ' + (i + 1), oninput: ev => { o.t = ev.target.value; } }),
+      h('label', { class: 'fop', title: 'Opcional: dá para cumprir a missão sem ele (e ele pode ter o próprio marcador nas Cenas)' },      // (lote 129)
+        h('input', { type: 'checkbox', checked: o.op, 'aria-label': 'Objetivo ' + (i + 1) + ' opcional', onchange: ev => { o.op = ev.target.checked; } }), h('span', { text: 'Opcional' })),
       h('button', { type: 'button', class: 'btn sm', 'aria-label': 'Tirar o objetivo ' + (i + 1), text: '×', onclick: () => { objs.splice(i, 1); pintarObjs(); } }))),
       h('button', { type: 'button', class: 'btn sm', id: 'fObjMais', text: '+ Objetivo', onclick: () => { objs.push({ id: 'o' + Date.now().toString(36) + objs.length, t: '' }); pintarObjs(); const ins = listaObj.querySelectorAll('input'); if (ins.length) ins[ins.length - 1].focus(); } }));
     pintarObjs();
@@ -597,11 +613,11 @@
         : h('small', { class: 'hint', text: naMesa ? 'As facções vêm do Mapa-múndi: crie uma lá para dar reputação.' : 'A reputação vem das facções do Mapa-múndi, numa mesa.' }));
     pintarReps();
     const montar = () => {
-      const o = {}; objs.forEach((x, i) => { if (x.t.trim()) o[x.id] = { t: x.t.trim(), n: i }; });
+      const o = {}; objs.forEach((x, i) => { if (x.t.trim()) { o[x.id] = { t: x.t.trim(), n: i }; if (x.op) o[x.id].op = 1; } });
       const l = lug.value === '' ? null : ls[+lug.value];
       const base = novo ? {} : copia(a.m);
       const m = Object.assign(base, { t: tit.value.trim(), ct: ct.value.trim(), d: desc.value, r: rec.value.trim(), pz: pz.value.trim(), pe, img, cti, o,
-        lug: l ? { mapa: l.mapa, obj: l.obj, nome: l.nome } : null, quem: quem.value, c: f.c || Date.now() });
+        lug: l ? { mapa: l.mapa, obj: l.obj, nome: l.nome } : null, quem: quem.value, tp: tp.value, c: f.c || Date.now() });
       delete m.id; delete m.objs; delete m.feitos; delete m.total; delete m.onde;
       // os objetivos que saíram não ficam marcados
       const ok = {}; for (const k of Object.keys(m.ok || {})) if (o[k]) ok[k] = 1; m.ok = ok;
@@ -635,7 +651,7 @@
     } else pe0.append(h('button', { type: 'button', class: 'btn pri', id: 'fSalvar', text: 'Salvar', onclick: () => salvar() }));
     janela(h('div', { class: 'form' },
       h('h2', { text: novo ? 'Nova missão' : 'Editar missão' }),
-      campo('Título', tit),
+      h('div', { class: 'linha' }, campo('Título', tit), campo('Missão', tp, 'Principal ou secundária: a cor do marcador nas Cenas.')),
       h('div', { class: 'linha' }, campo('Quem pede', ct), h('div', { class: 'campo' }, h('span', { text: 'Retrato de quem pede' }), boxCti)),
       campo('Descrição', desc),
       h('div', { class: 'campo' }, h('span', { text: 'Objetivos' }), listaObj),
@@ -700,7 +716,7 @@
         if (alvo.pc && !mestre && meus().some(p => p.id === alvo.pc)) { pcSel = alvo.pc; aba = 'minhas'; }
         else if (alvo.pc && mestre) aba = 'andamento';
         if (pronto) pintar();
-        if (alvo.missao) abrir(alvo.missao, { pc: alvo.pc || null });
+        if (alvo.missao) abrirDeFora(alvo.missao, alvo.pc || null);
       });
     }
     if (!naMesa && /[?&]jogador\b/.test(location.search)) { mestre = false; eu = 'local'; }
@@ -710,7 +726,7 @@
     if (!mestre && meus().length) aba = M.doPersonagem(quadro(), docPc(meus()[0].id), meus()[0].id).some(m => m.e === 'ativa') ? 'minhas' : 'quadro';
     pintar();
   }
-  if (DEBUG) window.__mis = { M, quadro, rasc, docPc, personagens, meus, pegarMissao, abrir, editar, get mestre() { return mestre; }, set mestre(v) { mestre = v; }, get aba() { return aba; }, pintar };
+  if (DEBUG) window.__mis = { M, quadro, rasc, docPc, personagens, meus, pegarMissao, abrir, abrirDeFora, editar, get mestre() { return mestre; }, set mestre(v) { mestre = v; }, get aba() { return aba; }, pintar };
   partida().catch(e => {
     console.error(e);
     $('corpo').replaceChildren(h('div', { class: 'vazio' }, h('strong', { text: 'Não deu para abrir as missões. ' }), (e && e.message) || ''));

@@ -423,7 +423,7 @@ const Tools = (() => {
   }
 
   /* ---- Selecionar ---- */
-  let segundo = null, tFech = 0;            // (lote 122) o clique num objeto que tranca, já selecionado: { hit, p0 }
+  let segundo = null, tFech = 0, balaoMq = null;            // (lote 122) o clique num objeto que tranca, já selecionado: { hit, p0 }
   // (espera um instante: se vier o segundo clique de um "dois cliques" — que troca o estado do baú —, não é a fechadura)
   const adiarFechadura = alvo => { clearTimeout(tFech); tFech = setTimeout(() => EscudoCenas.fechadura(alvo), 330); };
   T.select = {
@@ -441,6 +441,8 @@ const Tools = (() => {
       }
       if (door) { Act.toggleDoor(door); return; }
       const hit = hitTest(p);
+      // (lote 129) quem joga: um clique no marcador de missão abre o balão (ao soltar, sem arrastar)
+      balaoMq = hit && hit.c === 'tokens' && !isGM() && MissaoCenas.eh(Store.get('tokens', hit.id)) ? { id: hit.id, p0: p, x: e.clientX, y: e.clientY } : null;
       // (lote 122) o segundo clique (sem arrastar) num objeto que tranca, já selecionado sozinho: a fechadura com gazuas
       segundo = hit && isGM() && !e.shiftKey && hit.c === 'tokens' && App.sel.length === 1 && selHas('tokens', hit.id) && EscudoCenas.trancavel(Store.get('tokens', hit.id)) ? { hit, p0: p } : null;
       if (hit) {
@@ -481,6 +483,8 @@ const Tools = (() => {
     },
     up(p) {
       const sg = segundo; segundo = null;
+      const bm = balaoMq; balaoMq = null;
+      if (bm && (!g || !g.moved) && (!p || Math.hypot(p.x - bm.p0.x, p.y - bm.p0.y) * App.view.z < 6)) { const tk = Store.get('tokens', bm.id); if (tk) setTimeout(() => MissaoCenas.balao(tk, bm.x, bm.y), 0); }
       if (sg && (!g || !g.moved) && (!p || Math.hypot(p.x - sg.p0.x, p.y - sg.p0.y) * App.view.z < 6)) { if (g && g.type === 'move') endMove(); g = null; cursor(); adiarFechadura(sg.hit); return; }
       if (!g) return;
       if (g.type === 'handle') { endHandle(); cursor(); return; }
@@ -505,6 +509,8 @@ const Tools = (() => {
         if (t && (t.cena || (def && def.passagem))) { setSel([hit]); UI.passagem(t, e ? e.clientX : null, e ? e.clientY : null); return; }
         // (lote 53) dois cliques numa marca de pista: revelar e entregar a pista à mesa
         if (t && Misterio.ehPista(t)) { setSel([hit]); Misterio.revelar(t); return; }
+        // (lote 129) dois cliques no marcador de missão: o balão (a missão, revelar, trocar)
+        if (t && MissaoCenas.eh(t)) { setSel([hit]); MissaoCenas.balao(t, e ? e.clientX : null, e ? e.clientY : null); return; }
         // (lote 48) dois cliques num objeto com estado trocam o estado; num objeto de luz, acendem ou apagam
         if (t && def && (Props.estados(t.prop) || (def.luz && t.light))) { setSel([hit]); UI.alternarObjeto(t); return; }
       }
