@@ -87,7 +87,7 @@
       img: { arq: 'fichas.jpg', legenda: 'Uma ficha aberta.', marcas: [
         { sel: '#lista', t: 'O elenco: Ativos, Inativos e Toldo, por grupo.' },
         { sel: '#resumo', t: 'O resumo fixo: barras, atributos, defesas, lapros, ferimentos.' },
-        { sel: '#ficha .abasficha', t: 'As abas da ficha: Atributos, Bolsas e itens, Social, Skills, Notas (e Tropas).' },
+        { sel: '#ficha .abasficha', t: 'As abas da ficha: Atributos, Bolsas e itens, Social, Skills, Aptidões, Notas (e Tropas).' },
       ] },
       jogador: [
         { t: 'O resumo de cima', txt: 'Fica fixo enquanto você troca de aba. Nas barras, digite −8 para tirar, +5 para pôr, 50% para deixar na metade; Enter confirma, Esc desfaz. O quadro “Agora” mostra os bônus que estão valendo neste momento.', ir: { aba: 'fichas', g: 'A sua ficha' } },
@@ -98,6 +98,7 @@
         { t: 'Rolar pela ficha', txt: 'A rolagem rápida da ficha tem “+ atributo” e “+ resultado”; eles ficam guardados para a próxima até você zerar no ×.' },
         { t: 'Missões, aniversário e relações', txt: 'Em Notas, as missões do grupo; em Atributos, o aniversário no calendário do mundo; em Social, os relacionamentos que o mestre revelou.', ir: { aba: 'fichas', g: 'As missões' } },
         { t: 'As tropas', txt: 'Se o seu personagem comanda uma tropa, a aba Tropas mostra cada unidade em carta. Em “Editar o que é seu” você escolhe os nomes, os brasões, os equipamentos e os soldados com nome.', ir: { aba: 'fichas', g: 'As tropas' } },
+        { t: 'Aptidões', txt: 'O que o seu personagem faz cada vez melhor com a prática (Rastreio, Escalada, Pescar…). Quem cria é o mestre; você vê o nome, a descrição e o nível. O mestre guarda o quanto falta para subir.' },
         { t: 'Perícias e veterania das tropas', txt: 'Cada unidade tem perícias de 0 a 10 (Investigação, Caçada, Rastreio, Emboscada…): o botão d20 rola 1d20 + os pontos. A veterania vai de Recruta a Elite e depois vira estrela: Lendária (★) e Mítica (★★). Os soldados com nome ganham o nascimento, e a idade cresce com o calendário do mundo.', ir: { aba: 'fichas', g: 'As perícias das tropas' } },
       ],
       mestre: [
@@ -108,6 +109,7 @@
         { t: 'A regra dos equipamentos', txt: 'Faixa (F1 a F4, pelo nível), material (Q1 a Q3) e melhoria (+1 a +5) em cada item. A armadura reparte um total entre DEF F e DEF M (F1 18), até 2/3 num lado; a arma pode ter dano de elemento por cima (sugestão, sem trava). O elemento aparece ao lado do atributo da arma e na rolagem. O Bloqueio é VIT/2 + o da raça, do escudo e das skills. No “Editar” do item: “Melhorar +1” (o Compendiânio sai à mão) e o número que a faixa pede. No “⋯” do alto, “Ajustar equipamentos à regra…” mostra o que muda em cada ficha antes de aplicar, com Desfazer.', ir: { aba: 'fichas', g: 'A regra dos equipamentos' } },
         { t: 'A corrupção', txt: 'Vampírica, licantropa ou demoníaca, em cinco estágios. O painel fica em cima da ficha, só para você e o dono.', ir: { aba: 'fichas', g: 'A corrupção' } },
         { t: 'Dar uma tropa', txt: '“+ Tropas”, no fim das abas. Você define os números (tropas, HP, ATQ, DEF, veterania), registra batalhas e liga a tropa a um exército do Mapa-múndi.', ir: { aba: 'fichas', g: 'As tropas' } },
+        { t: 'Aptidões', txt: 'Na aba Aptidões, “+ Nova aptidão”: nome, descrição, XP para subir, nível máximo e o que cada nível dá. Dê XP com +1, +5 ou escrevendo “+15 −4” e Enter. Cheia, aparece “▲ Subir de nível”. O olho deixa uma aptidão secreta. Na aba Mesa, o quadro “Aptidões dos personagens” junta todas.' },
         { t: 'As perícias das tropas', txt: 'Nas Tabelas base, a lista das perícias (renomeie, tire, ponha outras) e duas chaves: os jogadores distribuem os pontos, e a rolagem soma o bônus da veterania. Os pontos de cada unidade ficam em “Pontos…”, na carta.', ir: { aba: 'fichas', g: 'As perícias das tropas' } },
       ],
     },

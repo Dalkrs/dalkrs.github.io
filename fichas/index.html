@@ -1764,6 +1764,33 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 .rep-hostil .repnivel,.rep-odiado .repnivel,.repniveis .rep-hostil,.repniveis .rep-odiado{color:var(--rubric);border-color:var(--rubric-borda);background:var(--rubric-fundo)}
 .rep-venerado .repnivel,.rep-odiado .repnivel{font-weight:800}
 .repniveis{margin-top:8px;font-size:12px}
+/* (lote 131) as aptidões */
+.apts{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.aptcard{border:1px solid var(--line-2);border-radius:var(--r);background:var(--campo);padding:8px 10px;display:grid;gap:6px}
+.aptcard.guardada{border-style:dashed}
+.aptcard.pronta{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal-borda)}
+.apttopo{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.aptnome{font-weight:600}
+.aptnv{font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;border:1px solid var(--line-2);white-space:nowrap}
+.aptnv small{font-weight:400;color:var(--ink-soft)}
+.aptacoes{margin-left:auto;display:flex;align-items:center;gap:4px}
+.aptcard .olho{width:26px;height:26px;padding:0;border:0;background:transparent;border-radius:50%;color:var(--ink-fraco);display:grid;place-items:center;cursor:pointer}
+.aptd,.apttx{margin:0;font-size:13px;color:var(--ink-2)}
+.apttx .eyebrow{margin-right:4px}
+.aptlinha{display:flex;align-items:center;gap:8px}
+.aptbar{flex:1;height:10px;border-radius:5px;background:var(--campo-sut);border:1px solid var(--line-2);overflow:hidden}
+.aptbar i{display:block;height:100%;background:var(--ink-soft)}
+.aptbar.cheia i{background:var(--teal)}
+.aptxp{font-family:var(--monof);font-size:12px;color:var(--ink-soft);white-space:nowrap}
+.aptmais{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.aptmais input{width:96px;padding:3px 6px}
+.aptnums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}
+.aptnvtx textarea{min-height:34px}
+.aptpc + .aptpc{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-2)}
+.aptpchd{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.aptpronto{font-size:12px;font-weight:600;color:var(--teal)}
+.apts.curto{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+@media (max-width:520px){ .aptnums{grid-template-columns:repeat(2,minmax(0,1fr))} }
 .repniveis span{padding:0 4px;border-radius:6px}
 .repfim{display:flex;justify-content:flex-end}
 .reprow .olho{width:26px;height:26px;padding:0;border:0;background:transparent;border-radius:50%;color:var(--ink-fraco);display:grid;place-items:center;cursor:pointer}
@@ -1842,10 +1869,12 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="mesa.js?v=17"></script>
+<script src="mesa.js?v=18"></script>
 <script src="extras.js?v=27"></script>
 <script src="../tc/reputacao.js?v=1"></script>
 <script src="reputacao.js?v=1"></script>
+<script src="../tc/aptidoes.js?v=1"></script>
+<script src="aptidoes.js?v=1"></script>
 <script src="../tc/missoes.js?v=3"></script>
 <script src="quadros.js?v=8"></script>
 <script src="skills-lista.js?v=1"></script>
@@ -3053,6 +3082,7 @@ function renderFicha(){
   ${htmlCaixinha(pc)}`)}
   ${parte('social', `${FichasExtras.painelMente(pc)}${typeof FichasRep!=='undefined'? FichasRep.painel(pc) : ''}`)}
   ${parte('skills', htmlAbaSkills(pc))}
+  ${pc.petDe||typeof FichasApt==='undefined'? '' : parte('aptidoes', FichasApt.painel(pc))}
   ${FichasTropas.tem(pc)? parte('tropas', FichasTropas.htmlAba(pc)) : ''}
   ${parte('notas', htmlAbaNotas(pc))}
   ${(()=>{ const cb=FichasCorr.htmlBarra(pc); return cb? `<details class="so-mestre-fim" id="soMestreFim"${corrAbertaFim?' open':''}><summary><span class="corr-so">Só o mestre</span> Corrupção${FichasCorr.htmlEtiqueta(pc)? ' · '+esc(FichasCorr.estadoDe(pc)? 'estágio '+FichasCorr.estadoDe(pc).n : 'ligada') : ''}</summary>${cb}</details>` : ''; })()}
@@ -3074,14 +3104,16 @@ const estaqueEscondido=pc=>!!(pc&&pc.estaqueOculto) && FichasMesa.ativo() && !Fi
    Sanidade e o Conforto. As abas: Atributos (quem é, a tabela, a flor e a rolagem, as barras e os recursos, o corpo e os
    bônus temporários) · Bolsas e itens · Social · Skills · Notas (o Estaque, as missões e as anotações). A aba aberta
    fica lembrada nesta tela (S.abaFicha); a de antes do lote 16 (as abas de baixo) abre em Atributos. */
-const ABAS_FICHA=[['atributos','Atributos'],['bolsas','Bolsas e itens'],['social','Social'],['skills','Skills'],['notas','Notas']];
-// (lote 40) a aba Tropas: só nas fichas com tropa (entre Skills e Notas)
-const abasDaFicha=pc=>pc && FichasTropas.tem(pc)? ABAS_FICHA.slice(0,4).concat([['tropas','Tropas']], ABAS_FICHA.slice(4)) : ABAS_FICHA;
+const ABAS_FICHA=[['atributos','Atributos'],['bolsas','Bolsas e itens'],['social','Social'],['skills','Skills'],['aptidoes','Aptidões'],['notas','Notas']];
+// (lote 40) a aba Tropas: só nas fichas com tropa (entre Aptidões e Notas). (lote 131) Pet não tem aptidões.
+const abasDaFicha=pc=>{ const b=pc && pc.petDe? ABAS_FICHA.filter(x=>x[0]!=='aptidoes') : ABAS_FICHA, i=b.findIndex(x=>x[0]==='notas');
+  return pc && FichasTropas.tem(pc)? b.slice(0,i).concat([['tropas','Tropas']], b.slice(i)) : b; };
 const abaDaFicha=pc=>{ const a=S.abaFicha; return abasDaFicha(pc).some(x=>x[0]===a)? a : 'atributos'; };
 function marcaDaAba(pc,k){
   if(k==='tropas') return FichasTropas.marca(pc);
   if(k==='skills'){ const n=(pc.habilidades||[]).length+habsDaArvore(pc).length+unicasDaFicha(pc).length; return n||''; }
   if(k==='bolsas'){ const n=(pc.itens||[]).length; return n||''; }
+  if(k==='aptidoes'){ if(typeof FichasApt==='undefined') return ''; const p=FichasApt.prontasDe(pc); return p? '▲'+p : (FichasApt.listaDe(pc).length||''); }     // (lote 131) ▲: prontas para subir
   if(k==='notas'){ const n=FichasQuadros.contaAtivas(pc); return n? n : ((!estaqueEscondido(pc)&&(pc.estaque?.a||pc.estaque?.b))||(pc.notas||'').trim())? '•' : ''; }
   return '';
 }
@@ -3742,6 +3774,7 @@ function ligarFicha(pc){
   FichasExtras.ligarAtributos(host, pc);
   FichasExtras.ligarMente(host, pc);
   if(typeof FichasRep!=='undefined') FichasRep.ligar(host, pc);          // (lote 126) a reputação com as facções
+  if(typeof FichasApt!=='undefined') FichasApt.ligar(host, pc);          // (lote 131) as aptidões
   FichasExtras.ligarEfeitos(host, pc);
   FichasExtras.ligarSobrevida(host, pc);
   FichasExtras.ligarNovos(host, pc);
@@ -4123,8 +4156,11 @@ function renderMesa(){
   </div>
 
   ${painelRegistro()}
+
+  ${typeof FichasApt!=='undefined'? FichasApt.quadroMesa() : ''}
   `;
   ligarMesa(sit);
+  if(typeof FichasApt!=='undefined'){ const am=host.querySelector('#aptMesa'); if(am) FichasApt.ligar(am, null); }     // (lote 131) as aptidões de todos
 }
 function linhaParticipante(sit,pt){
   const pc=pt.pcId? S.personagens.find(p=>p.id===pt.pcId):null;

@@ -41,7 +41,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [dain, li
 
   await passo('as abas e o resumo', async () => {
     const abas = await P.locator('#ficha [data-abaficha]').allInnerTexts();
-    ok(j(abas.map(x => x.replace(/\d+$/, '').trim().toUpperCase())) === j(['ATRIBUTOS', 'BOLSAS E ITENS', 'SOCIAL', 'SKILLS', 'NOTAS']) && await visiveis() === 'atributos', 'cinco abas; abre em Atributos: ' + j(abas));
+    ok(j(abas.map(x => x.replace(/\d+$/, '').trim().toUpperCase())) === j(['ATRIBUTOS', 'BOLSAS E ITENS', 'SOCIAL', 'SKILLS', 'APTIDÕES', 'NOTAS']) && await visiveis() === 'atributos', 'seis abas (lote 131: Aptidões); abre em Atributos: ' + j(abas));
     ok(/^SKILLS\s*6$/i.test((await P.locator('#ficha [data-abaficha="skills"]').innerText()).trim()), 'a aba Skills diz quantas: 2 da árvore + 1 única + 3 escritas à mão = 6');
     const rs = P.locator('#resumo');
     ok(await rs.locator('[data-resatual="hppc_dain"]').inputValue() === '70' && await rs.locator('.rsnums').count() === 1 && await rs.locator('#f_lapros').inputValue() === '50', 'no resumo: a barra de HP (70), os atributos e as defesas, os lapros (50)');

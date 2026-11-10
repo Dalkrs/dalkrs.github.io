@@ -458,6 +458,17 @@ const FichasMesa = (() => {
     if (seg && Object.keys(seg).length) rep[pc.id] = seg; else delete rep[pc.id];
     if (!Object.keys(rep).length) delete s.rep;
   }
+  /* (lote 131) As aptidões (TC.aptidoes): a lista inteira (com a barra, o texto de cada nível e as secretas) fica com o
+     mestre, em fichas:segredos, apt[personagem]; a ficha leva só o que o jogador vê. Para quem não é o mestre (ou fora
+     da mesa), null. */
+  const aptSegDe = pc => (ativo && mestre() ? ((S.segredos && S.segredos.apt && S.segredos.apt[pc.id]) || null) : null);
+  function porAptSeg(pc, lista) {
+    if (!ativo || !mestre()) return;
+    const s = S.segredos && typeof S.segredos === 'object' && !Array.isArray(S.segredos) ? S.segredos : (S.segredos = {});
+    const apt = s.apt && typeof s.apt === 'object' && !Array.isArray(s.apt) ? s.apt : (s.apt = {});
+    if (Array.isArray(lista) && lista.length) apt[pc.id] = lista; else delete apt[pc.id];
+    if (!Object.keys(apt).length) delete s.apt;
+  }
   /* As facções dos mapas do Mapa-múndi: quem mestra, as dos mapas (com as escondidas); quem joga, as que o mapa mostra a
      ele. [{ id, nome, cor, oculta }], uma vez cada, em ordem de nome. Fora de uma mesa: as dos mapas deste navegador. */
   function faccoesDaMesa() {
@@ -524,6 +535,7 @@ const FichasMesa = (() => {
     if (s.rel && s.rel[id]) { fora.rel = s.rel[id]; delete s.rel[id]; }
     if (s.mis && s.mis.p && s.mis.p[id]) { fora.mis = s.mis.p[id]; delete s.mis.p[id]; }
     if (s.rep && s.rep[id]) { fora.rep = s.rep[id]; delete s.rep[id]; }
+    if (s.apt && s.apt[id]) { fora.apt = s.apt[id]; delete s.apt[id]; }
     return fora;
   }
   function limitar() {
@@ -836,7 +848,7 @@ const FichasMesa = (() => {
   }
   return { corrDe, gravarCorr, tropasDe, gravarTropas, caixaDoGrupo, mexeNaCaixa, caixaSemFicha, moverCaixa, levarCaixa, nomeDoGrupo,
     preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, calendario, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha, lugarNaFicha,
-    ehNpc, segDe, porSeg, mexerRel, relsDe, repSegDe, porRepSeg, faccoesDaMesa, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
+    ehNpc, segDe, porSeg, mexerRel, relsDe, repSegDe, porRepSeg, aptSegDe, porAptSeg, faccoesDaMesa, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
     campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza,
     ehPet, petsDe, nomeDoPetDe };
 })();

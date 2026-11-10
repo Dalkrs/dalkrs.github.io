@@ -202,6 +202,20 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
   quando não há nada.
 
+### As aptidões e os lembretes do mestre (lote 131)
+
+- **As aptidões** (`tc/aptidoes.js`, `fichas/aptidoes.js`): a aba Aptidões da ficha. Só quem mestra cria, uma a uma:
+  nome, descrição, nível (até o máximo escolhido, no máximo 20), a barra de XP (`xp` de `max`) e o texto de cada nível
+  (`tx`). A barra enche com +1/+5 ou com uma conta ("+15 −4", Enter); cheia, "Subir de nível" (o que passou fica). A
+  lista inteira fica em `fichas:segredos`, `apt[personagem]`; a ficha leva em `estado.apt` só o que o jogador vê (nome,
+  descrição e nível das que não são secretas). Fora de uma mesa, a lista inteira mora em `estado.apt`. Na aba Mesa das
+  Fichas, o quadro "Aptidões dos personagens" junta as dos personagens de jogador.
+- **Os lembretes do mestre** (`tc/lembretes.js`, na casca): a checklist do dia. Abre sozinha uma vez por dia (o dia do
+  relógio, por mesa e por aparelho: `tinycats:lembretes-visto:<mesa>`) para quem mestra o Escudo; depois, pelo menu da
+  mesa. Os itens (`escudo:lembretes`, `itens`) levam a uma aba; `k` dá o número do pendente (as aptidões prontas para
+  subir, o descanso longo do dia do mundo). As marcas (`feitos`) valem para o dia. Nos testes ela não abre sozinha
+  (`tinycats:testes-sem-lembretes`; o teste que quer, `lembretes: true` no `device`).
+
 ### As luas, a reputação e os lugares do mundo novo (lote 126)
 
 - **As luas** (`mundo/luas.js`; a conta em `mundo/nucleo.js`: `normLuas`, `faseDaLua`, `luaNoCeu`, `luasDoDia`,

@@ -503,6 +503,18 @@ dialog::backdrop { background: var(--scrim); }
 .dl .lin { display: flex; gap: 8px; align-items: end; }
 .dl .lin label { flex: 1; min-width: 0; }
 .dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+/* (lote 131) os lembretes do mestre: a checklist do dia */
+.lembr { display: grid; gap: 6px; margin: 4px 0 2px; }
+.lembr li { list-style: none; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.lembr li.feito { opacity: .6; }
+.lembr li.feito .lt { text-decoration: line-through; }
+.lembr input[type=checkbox] { width: 18px; height: 18px; margin: 0; accent-color: var(--lamp); }
+.lembr .lt { display: grid; gap: 2px; font-weight: 500; color: var(--fg); cursor: pointer; }
+.lembr .lp { font-size: 12.5px; font-weight: 600; color: var(--lamp); }
+.lembr ul { margin: 0; padding: 0; }
+.lembr-ed li { grid-template-columns: 1fr auto auto; }
+.lembr-ed input[type=text] { width: 100%; }
+.lembr-sub { color: var(--fg-3); font-size: 13px; margin: 0; }
 .dl .err { color: var(--danger); font-weight: 600; min-height: 0; }
 .dl .err:empty { display: none; }
 .dl .nt { font-size: 12.5px; color: var(--fg-3); }
@@ -712,7 +724,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/tc.js?v=52"></script>
 <script src="tc/busca.js?v=3"></script>
 <script src="tc/calendario.js?v=2"></script>
-<script src="tc/guia.js?v=57"></script>
+<script src="tc/guia.js?v=58"></script>
 <script src="tc/notas.js?v=7"></script>
 <script src="tc/dom.js?v=2"></script>
 <script src="tc/escudo.js?v=4"></script>
@@ -726,11 +738,13 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/escudo-casca.js?v=5"></script>
 <script src="tc/tags.js?v=3"></script>
 <script src="tc/conquistas.js?v=1"></script>
+<script src="tc/aptidoes.js?v=1"></script>
+<script src="tc/lembretes.js?v=1"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.10-02';
+  const VERSAO = '2026.11.10-03';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1520,6 +1534,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     sec.append(h('button', { type: 'button', class: 'lk', text: a ? 'Trocar de mesa…' : 'Escolher ou criar mesa…', onclick: () => { fecharMenu(); janelaMesas(); } }));
     if (a && a.cargo !== 'mestre') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await assentar(); await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
     if (a && a.dono) sec.append(h('button', { type: 'button', class: 'lk per', text: 'Apagar esta mesa…', onclick: () => { fecharMenu(); janelaApagar(a); } }));
+    if (a && podeLembretes()) sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-lembretes', text: 'Lembretes do dia…', title: 'A checklist do mestre: fichas, aptidões, descanso, cenas…', onclick: () => { fecharMenu(); janelaLembretes(); } }));
     if (a) sec.append(h('button', { type: 'button', class: 'lk', text: 'Fechar a mesa neste navegador', onclick: async () => { fecharMenu(); await assentar(); mesas.esquecer(); } }));
     menu.append(h('div', { class: 'sec', id: 'mn-tema' }, h('div', { class: 'rot', text: 'Tema' }), seletorTema('mn-tema-seg')));
     sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-novidades', onclick: () => { fecharMenu(); janelaNovidades(); } },
@@ -2498,7 +2513,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (!a || !TC.rules) return;
     let P, D;
     try { P = TC.dados.col('personagens'); D = TC.dados.col('documentos'); } catch (e) { return; }
-    Promise.all([P.pronta, D.pronta]).then(() => { if (mesas.atual === a) { dadosProntos = true; conferirLevels(); conferirConquistas(); pintarDados(); repintarPedidosAbertos(); } }, () => { /* sem os dados da mesa, a telinha não aparece */ });
+    Promise.all([P.pronta, D.pronta]).then(() => { if (mesas.atual === a) { dadosProntos = true; conferirLevels(); conferirConquistas(); pintarDados(); repintarPedidosAbertos(); setTimeout(conferirLembretes, 1200); } }, () => { /* sem os dados da mesa, a telinha não aparece */ });
   }
   function pintarDados() {
     const a = mesas.atual;
@@ -2941,8 +2956,10 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
      (o do Mapa-múndi principal) não é o do último descanso longo do acampamento em vista. Some quando o descanso longo
      acontece, ou com o × ("hoje não tem"), até o dia seguinte. Um acampamento que nunca anotou o dia (de antes desta
      versão) começa a contar do dia em que este aparelho o viu pela primeira vez. */
-  function pintarSeloDescanso() {
-    const el = $('seloDesc'), a = mesas.atual;
+  function pintarSeloDescanso() { const el = $('seloDesc'), mostra = descansoPendente(); if (el.hidden !== !mostra) { el.hidden = !mostra; pintarSetas(); } }
+  // (o lembrete do descanso: o dia do mundo não é o do último descanso longo, e ninguém disse "hoje não tem")
+  function descansoPendente() {
+    const a = mesas.atual;
     let mostra = false;
     try {
       const camp = a ? mesas.campanha() : null;
@@ -2958,7 +2975,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
         }
       }
     } catch (e) { mostra = false; }
-    if (el.hidden !== !mostra) { el.hidden = !mostra; pintarSetas(); }
+    return mostra;
   }
   $('seloDescAbrir').addEventListener('click', () => abrir('acampamento'));
   $('seloDescHoje').addEventListener('click', () => {
@@ -3058,6 +3075,86 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     }
     return b;
   }
+  /* (lote 131) Os lembretes do mestre (TC.lembretes): a checklist do dia. Abre sozinha uma vez por dia (o dia de verdade)
+     e por mesa, na primeira vez que quem mestra entra; depois, pelo menu da mesa ("Lembretes do dia…"). Cada item leva à
+     aba certa; as marcas valem para o dia e ficam no documento escudo:lembretes (só quem mestra), junto da lista, que o
+     mestre pode mudar. */
+  const podeLembretes = () => { const a = mesas.atual; return !!(a && !a.auditoria && TC.lembretes && mesas.mestra('escudo')); };
+  const docLembretes = () => { try { const l = TC.dados.col('documentos').pegar(TC.lembretes.DOC); return l && !l.apagado ? l : null; } catch (e) { return null; } };
+  function gravarLembretes(dados) {
+    try { const D = TC.dados.col('documentos'); D.gravar(TC.lembretes.DOC, docLembretes() ? { dados } : { dados, vis: 'mestre' }); } catch (e) { toast('Não deu para guardar os lembretes agora.'); }
+  }
+  function contasDosLembretes() {
+    let aptidoes = 0;
+    try {
+      const D = TC.dados.col('documentos'), sg = D.pegar('fichas:segredos'), vivos = new Set(TC.dados.col('personagens').todas().filter(l => l && !l.apagado).map(l => l.id));
+      aptidoes = TC.lembretes.contaAptidoes(sg && !sg.apagado ? sg.dados : null, TC.aptidoes, vivos);
+    } catch (e) { /* sem os dados: sem número */ }
+    let descanso = false;
+    try { descanso = descansoPendente(); } catch (e) { /* idem */ }
+    return { aptidoes, descanso };
+  }
+  function conferirLembretes() {
+    const a = mesas.atual;
+    if (!podeLembretes() || dlg.open || ler('tinycats:testes-sem-lembretes') === '1') return;
+    const k = 'tinycats:lembretes-visto:' + a.id, dia = TC.lembretes.hoje();
+    if (!TC.lembretes.deveAbrir(ler(k), dia)) return;
+    gravar(k, dia);
+    janelaLembretes();
+  }
+  function janelaLembretes(editando) {
+    if (!podeLembretes()) return;
+    const L = TC.lembretes, dia = L.hoje(), dl = docLembretes(), dados = dl ? dl.dados : null, itens = L.itensDe(dados);
+    if (editando) return editarLembretes(dados, itens);
+    const feitos = new Set(L.feitosDe(dados, dia)), contas = contasDosLembretes();
+    const linha = it => {
+      const pend = L.pendente(it, contas), idc = 'lb-' + it.id, at = L.ATALHOS.find(x => x.id === it.ir);
+      const cx = h('input', { type: 'checkbox', id: idc, checked: feitos.has(it.id) || null, onchange: ev => {
+        const atual = docLembretes(); gravarLembretes(L.marcar(atual ? atual.dados : null, dia, it.id, ev.target.checked));
+        ev.target.closest('li').classList.toggle('feito', ev.target.checked); pintarResumo();
+      } });
+      return h('li', { class: feitos.has(it.id) ? 'feito' : null }, cx,
+        h('label', { class: 'lt', for: idc }, h('span', { text: it.t }), pend ? h('span', { class: 'lp', text: pend }) : null),
+        it.ir && at ? h('button', { type: 'button', class: 'btn sm', text: 'Abrir ' + at.nome, onclick: () => { fecharJanela(); abrir(it.ir); } }) : h('span'));
+    };
+    const resumo = h('p', { class: 'lembr-sub' });
+    const pintarResumo = () => { const n = f.querySelectorAll('.lembr input:checked').length; resumo.textContent = n === itens.length && n ? 'Tudo em dia. Bom jogo!' : 'Feitos hoje: ' + n + ' de ' + itens.length + '. Amanhã a lista volta desmarcada.'; };
+    const f = h('form', { class: 'dl', id: 'f-lembretes' }, h('h2', { text: 'Lembretes de hoje' }), resumo,
+      itens.length ? h('div', { class: 'lembr' }, h('ul', null, itens.map(linha))) : h('p', { text: 'A lista está vazia. Use "Editar a lista" para criar itens.' }),
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Editar a lista', onclick: () => janelaLembretes(true) }), h('button', { type: 'submit', class: 'btn pri', text: 'Fechar' })));
+    f.addEventListener('submit', ev => { ev.preventDefault(); fecharJanela(); });
+    abrirJanela(f);
+    pintarResumo();
+  }
+  function editarLembretes(dados, itens) {
+    const L = TC.lembretes, lista = h('ul');
+    const opcoes = ir => L.ATALHOS.map(a => h('option', { value: a.id, selected: a.id === ir || null, text: a.nome }));
+    const linha = it => {
+      const li = h('li', { 'data-id': it.id, 'data-k': it.k || '' },
+        h('input', { type: 'text', value: it.t, maxlength: String(L.LIM.texto), 'aria-label': 'O lembrete' }),
+        h('select', { 'aria-label': 'Abre a aba' }, opcoes(it.ir)),
+        h('button', { type: 'button', class: 'btn sm', title: 'Tirar este item', 'aria-label': 'Tirar: ' + it.t, onclick: () => li.remove() }, icone(X_SVG)));
+      return li;
+    };
+    itens.forEach(it => lista.append(linha(it)));
+    const novo = () => { if (lista.children.length >= L.LIM.itens) return; const li = linha({ id: 'lb' + Math.random().toString(36).slice(2, 9), t: '', ir: '' }); lista.append(li); li.querySelector('input').focus(); };
+    const f = h('form', { class: 'dl', id: 'f-lembretes-ed' }, h('h2', { text: 'Editar os lembretes' }),
+      h('p', { class: 'lembr-sub', text: 'Escreva cada lembrete e escolha a aba que ele abre. Os itens vazios saem.' }),
+      h('div', { class: 'lembr lembr-ed' }, lista),
+      h('div', { class: 'pe', style: 'justify-content:flex-start' }, h('button', { type: 'button', class: 'btn', text: '+ Item', onclick: novo }),
+        h('button', { type: 'button', class: 'btn', text: 'Voltar à lista de costume', onclick: () => { lista.replaceChildren(...L.PADRAO.map(linha)); } })),
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: () => janelaLembretes() }), h('button', { type: 'submit', class: 'btn pri', text: 'Salvar' })));
+    f.addEventListener('submit', ev => {
+      ev.preventDefault();
+      const novos = [...lista.children].map(li => ({ id: li.dataset.id, t: li.querySelector('input').value, ir: li.querySelector('select').value, k: li.dataset.k || undefined }));
+      const igualPadrao = JSON.stringify(L.itensDe({ itens: novos })) === JSON.stringify(L.itensDe(null)), antes = docLembretes();
+      gravarLembretes(L.comItens(antes ? antes.dados : null, igualPadrao ? null : novos));
+      janelaLembretes();
+      toast('Os lembretes foram salvos.', 'Desfazer', () => { gravarLembretes(antes ? antes.dados : {}); });
+    });
+    abrirJanela(f);
+  }
+
   async function janelaNovidades() {
     if (!novidades) { const l = await lerNovidades(false); if (l) novidades = l.filter(v => cmpVersao(v.versao, VERSAO) <= 0); }
     const f = h('form', { class: 'dl', id: 'f-novidades' }, h('h2', { text: 'Novidades' }),

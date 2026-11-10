@@ -63,6 +63,8 @@ async function start(opt = {}) {
     // (lote 26) nas Cenas, os blocos do painel e a lista de condições começam abertos nos testes (o.fechado: como o mestre encontra)
     if (!o.fechado) await ctx.addInitScript(() => { try { localStorage.setItem('tinycats:testes-tudo-aberto', '1'); } catch (e) {} });
     // (lote 63) a apresentação do Mapa-múndi novo, na primeira vez de quem mestra: nos testes, só com o.tourMundo
+    // (lote 131) os lembretes do mestre (a checklist do dia) não abrem sozinhos nos testes, a não ser que o teste peça (o.lembretes)
+    if (!o.lembretes) await ctx.addInitScript(() => { try { localStorage.setItem('tinycats:testes-sem-lembretes', '1'); } catch (e) {} });
     if (!o.tourMundo) await ctx.addInitScript(() => { try { localStorage.setItem('tinycats:mundo:tour63', 'visto'); } catch (e) {} });
     // (lote 69) a ficha abre em Jogando; os testes antigos (que mexem em todos os campos) no Editar — a não ser o.jogando
     if (!o.jogando) await ctx.addInitScript(() => { try { if (localStorage.getItem('tinycats:testes-ficha-editar') === null) localStorage.setItem('tinycats:testes-ficha-editar', '1'); } catch (e) {} });
