@@ -65,6 +65,14 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
   await desfazer();
   s = await sel();
   ok(s.level === 3 && s.estado.xp.v === 35 && await P.locator('#f_level').inputValue() === '3', 'o Desfazer devolve o nível 3 com os 35 de XP');
+  // (lote 136) o histórico do XP
+  const hist = (await sel()).estado.xpHist || [];
+  ok(hist.length === 7 && hist[0].d === 12 && hist[0].a === 0 && hist[0].v === 12 && hist[1].d === -5 && hist[2].desf && hist[2].d === 5 && hist.some(l => l.nv === 4) && hist[hist.length - 1].nv === 3 && hist[hist.length - 1].desf && hist.every(l => Number.isFinite(l.t)),
+    'o histórico guarda cada mudança (somar, tirar, digitar, desfazer, subir de nível): ' + JSON.stringify(hist.map(l => l.nv != null ? 'nv' + l.nv : l.d)));
+  await P.locator('#xpHistBt').click(); await w(250);
+  const linhas = await P.locator('.xphl li').allInnerTexts();
+  ok(linhas.length === 7 && /^\d\d\/\d\d, \d\d:\d\d Voltou para o nível 3/.test(linhas[0]) && /\+ 12 XP \(de 0 para 12\)$/.test(linhas[6]), '"Histórico do XP": a mais nova em cima, com data e hora: ' + linhas[0] + ' | ' + linhas[6]);
+  if (process.env.FOTOS) await P.locator('#xpBox').screenshot({ path: process.env.FOTOS + '/xp-hist.png' });
   // o nível mais alto da tabela: não há para onde subir
   const topo = await S0(() => Math.max(...S.cfg.niveis.map(r => +r.lvl)));
   await P.locator('#f_level').selectOption(String(topo)); await w(300);

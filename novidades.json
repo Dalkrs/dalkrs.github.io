@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.10-10",
+      "data": "2026-11-10",
+      "titulo": "Histórico do XP",
+      "itens": [
+        { "tipo": "novo", "texto": "Fichas: debaixo da barra de XP, o \"Histórico do XP\". Cada XP dado ou tirado (com + e −, ou digitado direto) fica anotado com a data e a hora e de quanto para quanto, junto das subidas de nível e do que foi desfeito. Quem joga e o mestre veem." }
+      ]
+    },
+    {
       "versao": "2026.11.10-09",
       "data": "2026-11-10",
       "titulo": "Token novo: a roupa já na criação",

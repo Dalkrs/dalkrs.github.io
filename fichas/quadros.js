@@ -26,6 +26,29 @@ const FichasQuadros = (() => {
   const usaXp = pc => !!RR() && !!RR().xpDe && (FichasMesa.deJogador(pc) || FichasExtras.ehLivre(pc) || !!(pc.estado && pc.estado.xp));
   const nx = v => String(Math.round(v * 10) / 10).replace('-', '−');
   let xpConf = null;                          // o personagem cuja barra está perguntando "subir de nível?"
+  /* (lote 136, pedido do Dalmo) O histórico do XP: cada mudança fica em estado.xpHist (as 100 últimas), com a hora, o
+     quanto, de quanto para quanto, e a subida de nível. Quem joga e o mestre veem (debaixo da barra, "Histórico"). */
+  const HIST_MAX = 100;
+  let xpHistAberto = null;                    // o personagem com o histórico aberto
+  function registrarXp(pc, linha) {
+    const e = U().estadoDe(pc), h = Array.isArray(e.xpHist) ? e.xpHist : [];
+    h.push(Object.assign({ t: Date.now() }, linha));
+    e.xpHist = h.slice(-HIST_MAX);
+  }
+  const quando = t => { const d = new Date(t); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ', ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  function linhaXp(l) {
+    const de = Number.isFinite(+l.a) && Number.isFinite(+l.v) ? ' (de ' + nx(+l.a) + ' para ' + nx(+l.v) + ')' : '';
+    if (l.nv != null) return (l.desf ? 'Voltou para o nível ' : 'Subiu para o nível ') + esc(l.nv) + (de ? ' · XP' + de : '') + (l.desf ? ' — desfeito' : '');
+    const d = +l.d || 0;
+    return '<b class="' + (d < 0 ? 'neg' : 'pos') + '">' + (d < 0 ? '− ' : '+ ') + nx(Math.abs(d)) + ' XP</b>' + de + (l.desf ? ' — desfeito' : '');
+  }
+  function htmlHist(pc) {
+    const h = pc.estado && Array.isArray(pc.estado.xpHist) ? pc.estado.xpHist.filter(l => l && typeof l === 'object' && Number.isFinite(+l.t)) : [];
+    const aberto = xpHistAberto === pc.id;
+    if (!h.length) return '<div class="xphist"><span class="hint">Histórico do XP: nada ainda. Cada XP dado ou tirado aparece aqui, com a hora.</span></div>';
+    return `<div class="xphist"><button type="button" class="mini" id="xpHistBt" aria-expanded="${aberto}">${aberto ? '▾' : '▸'} Histórico do XP (${h.length})</button>
+      ${aberto ? `<ol class="xphl">${h.slice().reverse().map(l => `<li><span class="xphq">${quando(+l.t)}</span> ${linhaXp(l)}</li>`).join('')}</ol>` : ''}</div>`;
+  }
   // (lote 77) jog: a barra no modo Jogando (junto das barras; o mínimo e o máximo ficam no Editar; quem não mexe na
   // ficha só vê o número)
   function htmlXp(pc, jog) {
@@ -46,6 +69,7 @@ const FichasQuadros = (() => {
       ${xpConf === pc.id && x.cheia && temProx && pode ? `<div class="relconf" role="group" aria-label="Confirmar a subida de nível">
         <span>Subir ${esc(pc.nome)} do nível ${esc(pc.level)} para o ${prox}? O XP ${sobra ? 'fica em ' + nx(depois.v) + ' (o que passou de ' + nx(x.max) + ')' : 'volta a ' + nx(depois.v)} e o máximo passa a ${nx(depois.max)}.</span>
         <button type="button" class="mini primary" id="xpSim">Subir</button><button type="button" class="mini" id="xpNao">Cancelar</button></div>` : ''}
+      ${htmlHist(pc)}
     </div>`;
   }
   /* "35" troca o XP; "+50" e "−20" somam e subtraem. → { total, delta } ou null (não é número). */
@@ -72,9 +96,12 @@ const FichasQuadros = (() => {
         const total = Math.max(antes.min, r.total);
         if (total === antes.v) { U().desenhar(() => pintar(), '#f_xp'); return; }
         const guardado = pc.estado && pc.estado.xp ? pc.estado.xp.v : undefined;
-        xp().v = total; xpConf = null; guardarCampo('#f_xp');
+        xp().v = total; xpConf = null;
+        registrarXp(pc, { d: Math.round((total - antes.v) * 10) / 10, a: antes.v, v: total });       // (lote 136)
+        guardarCampo('#f_xp');
         const d = agora();
-        if (r.delta != null) aviso('XP de ' + pc.nome + ': ' + nx(antes.v) + (r.delta < 0 ? ' − ' : ' + ') + nx(Math.abs(r.delta)) + ' = ' + nx(d.v) + (d.cheia ? ' — barra cheia.' : ' (faltam ' + nx(d.falta) + ').'), 'Desfazer', () => { if (guardado === undefined) delete xp().v; else xp().v = guardado; guardar(); });
+        const desfazer = () => { const ag = agora().v; if (guardado === undefined) delete xp().v; else xp().v = guardado; const vv = agora().v; if (vv !== ag) registrarXp(pc, { d: Math.round((vv - ag) * 10) / 10, a: ag, v: vv, desf: 1 }); guardar(); };
+        aviso('XP de ' + pc.nome + ': ' + nx(antes.v) + (d.v - antes.v < 0 ? ' − ' : ' + ') + nx(Math.abs(d.v - antes.v)) + ' = ' + nx(d.v) + (d.cheia ? ' — barra cheia.' : ' (faltam ' + nx(d.falta) + ').'), 'Desfazer', desfazer);
       };
     }
     // mínimo e máximo: sempre à mão. Campo vazio volta ao de costume (mínimo 0; máximo 10 por nível).
@@ -86,6 +113,8 @@ const FichasQuadros = (() => {
       xpConf = null; guardarCampo(sel);
     }; };
     limite('#f_xpmin', 'min'); limite('#f_xpmax', 'max');
+    const hb = U().q(box, '#xpHistBt');
+    if (hb) hb.onclick = () => { xpHistAberto = xpHistAberto === pc.id ? null : pc.id; pintar('#xpHistBt'); };
     const subir = U().q(box, '#xpSubir');
     if (subir) subir.onclick = () => { xpConf = xpConf === pc.id ? null : pc.id; pintar(xpConf ? '#xpSim' : '#xpSubir'); };
     const nao = U().q(box, '#xpNao'); if (nao) nao.onclick = () => { xpConf = null; pintar('#xpSubir'); };
@@ -96,10 +125,13 @@ const FichasQuadros = (() => {
       if (!x.cheia || !S.cfg.niveis.some(r => +r.lvl === prox)) { pintar(); return; }
       const antes = { level: pc.level, xp: pc.estado && pc.estado.xp ? JSON.parse(JSON.stringify(pc.estado.xp)) : null };
       pc.estado = R.subirNivelXp(pc.estado || {}, pc.level); pc.level = prox;
+      registrarXp(pc, { nv: prox, a: x.v, v: agora().v });       // (lote 136)
       save(); render(); U().refocar('#f_xp');
       const d = agora();
       aviso(pc.nome + ' subiu para o nível ' + prox + '. XP: ' + nx(d.v) + ' de ' + nx(d.max) + '.', 'Desfazer', () => {
+        const ag = agora().v;
         pc.level = antes.level; if (antes.xp) U().estadoDe(pc).xp = antes.xp; else if (pc.estado) delete pc.estado.xp;
+        registrarXp(pc, { nv: antes.level, a: ag, v: agora().v, desf: 1 });
         save(); render();
       }, 12000);
     };

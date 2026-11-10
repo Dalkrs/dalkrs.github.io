@@ -1168,6 +1168,14 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
 .xplim{display:inline-flex;gap:8px}
 /* (lote 77) a barra de XP no Jogando: junto das barras, sem o mínimo e o máximo (que ficam no Editar) */
 .xpbox.xpjog{margin-top:6px}
+/* (lote 136) o histórico do XP */
+.xphist{display:grid;gap:6px}
+.xphist #xpHistBt{justify-self:start}
+.xphl{margin:0;padding:0;list-style:none;max-height:220px;overflow:auto;border:1px solid var(--line-2);border-radius:var(--r);background:var(--campo)}
+.xphl li{padding:5px 10px;font-size:13px;border-bottom:1px solid var(--line-2)}
+.xphl li:last-child{border-bottom:0}
+.xphq{font-family:var(--monof);font-size:11.5px;color:var(--ink-soft);margin-right:6px}
+.xphl b.pos{color:var(--teal)} .xphl b.neg{color:var(--danger,#c0392b)}
 .xpbox.xpjog .xprow{grid-template-columns:auto minmax(110px,1fr) auto auto auto}
 .xpbox.xpjog .xplim{display:none}
 .xpbox.xpjog #f_xp[readonly]{border-color:transparent;background:transparent}
@@ -1876,7 +1884,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../tc/aptidoes.js?v=1"></script>
 <script src="aptidoes.js?v=1"></script>
 <script src="../tc/missoes.js?v=3"></script>
-<script src="quadros.js?v=8"></script>
+<script src="quadros.js?v=9"></script>
 <script src="skills-lista.js?v=1"></script>
 <script src="filtro-skills.js?v=3"></script>
 <script src="criacao.js?v=3"></script>
