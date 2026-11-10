@@ -7,7 +7,7 @@ const ok = (c, m) => { n++; if (!c) { bad++; console.log('FALHOU: ' + m); } };
 const ator = b => ({ nome: 'Teste', dono: 'jogador', barras: [b], aba: 0, aberto: true, linhas: [], logar(t) { this.linhas.push(t); }, rodada: () => 1,
   alvos: [{ nome: 'Orc' }], aliados: [{ nome: 'Ana' }], fila: [], pedirMapa(sp, h) { this.fila.push({ sp, h }); } });
 
-ok(P.BARRAS.length === 20, 'as 20 barras do mundo novo');
+ok(P.BARRAS.length === 21, 'as 21 barras do mundo novo (lote 118: entrou o Malho do Ferreiro)');
 ok(P.barraDaArvore('a_kare_ma') === 'karema' && P.barraDaArvore({ id: 'outro', nome: 'Lobisomem' }) === 'lobisomem' && P.barraDaArvore('azavpm5qd8') === null, 'a ligação pela árvore (id e nome); as do mundo antigo não ligam mais');
 for (const d of P.BARRAS) {
   try {
@@ -53,5 +53,11 @@ for (const d of P.BARRAS) {
   P.mexer(a, b, ctx => d.clique.call(d, b.s, 'petalas', ctx));
   ok(b.s.postura === 'trovao' && /Só uma troca/.test(b.aviso), 'só uma troca por turno');
 }
+// (lote 118) o Ferreiro: Quebrar soma até −tier III no mesmo alvo
+{ const b = P.BARRAS.find(x => x.id === 'ferreiro'), a = ator(b), s = b.estado();
+  const ctx = { nome: 'Teste', ator: a, log: t => a.logar(t), ganhar() {}, perder() {}, definir() {}, aviso() {} };
+  for (let i = 0; i < 4; i++) b.acao(s, 'quebrar', ctx, 'Orc');
+  ok(b && s.quebrados.length === 1 && s.quebrados[0].k === 3, 'Ferreiro: Quebrar soma até −tier III — ' + JSON.stringify(s.quebrados));
+  b.acao(s, 'consertado', ctx); ok(!s.quebrados.length, 'Ferreiro: limpar as quebras'); }
 console.log(`${n - bad} verificações passaram${bad ? ', ' + bad + ' falharam' : ''}`);
 process.exit(bad ? 1 : 0);

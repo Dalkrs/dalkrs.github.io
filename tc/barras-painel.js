@@ -876,6 +876,20 @@ classe({ id: 'shaji', arvore: 'Shaji', barra: 'Malandragem', cor: '#D99A5B', gli
   mapa: { 'Chuva de Moedas': AREA('cristais', 3, 1), 'Virar a Mesa': TOK('Mesa virada', '#6A5A4A', { tam: 0.6, turnos: 5 }) }
 });
 
+/* ---------------- Ferreiro: o Malho (lote 118) ---------------- */
+classe({ id: 'ferreiro', arvore: 'Ferreiro', barra: 'Malho', cor: '#C8743A', glifo: '鍛', inicio: 4,
+  patamares: [[5, 'Ferro Quente', 'Quebrar tira 1 tier a mais de Defesa'], [10, 'Ritmo da Forja', 'dois golpes seguidos no mesmo alvo: o segundo tem +1 tier de Dano'], [15, 'Brasa Viva', 'a próxima arma esquentada também queima']],
+  risco: ['Superaquecido', 'o martelo fica em brasa: +1 tier de Dano, mas você leva Dano tier I a cada golpe até gastar barra'],
+  est: () => ({ quebrados: [] }),
+  arte(s){ let o = glifoCentro(this, '鍛', { tam: 26, dy: 4 }); s.quebrados.slice(0, 4).forEach((d, i) => { o += KIT.texto(110, 128 + i * 12, esc(d.n.slice(0, 12)) + ' −' + ['', 'I', 'II', 'III'][d.k], { tam: 9.5, cor: this.cor }); }); return o; },
+  acoes(s, ctx){ return escolheAlvo('Quebrar (Defesa −1 tier)', 'quebrar', '', ctx.ator.alvos) + (s.quebrados.length ? `<button type="button" data-a="consertado">Limpar as quebras</button>` : ''); },
+  acao(s, a, ctx, val){ if (a === 'quebrar' && val){ const d = s.quebrados.find(x => x.n === val); if (d) d.k = Math.min(3, d.k + 1); else s.quebrados.push({ n: val, k: 1 }); const k = (d || s.quebrados[s.quebrados.length - 1]).k; ctx.log(`${val}: Defesa −tier ${['', 'I', 'II', 'III'][k]} (Quebrar).`); } if (a === 'consertado') s.quebrados = []; },
+  linhaEstado: s => (s.quebrados.length ? `<b>Defesa quebrada:</b> ${esc(s.quebrados.map(d => d.n + ' −' + ['', 'I', 'II', 'III'][d.k]).join(', '))}` : '<em>Nenhuma armadura quebrada.</em>'),
+  ganhos: [{ c: 'Golpe de martelo acertou', v: 2 }, { c: 'Reforçou ou consertou um aliado', v: 3 }, { c: 'A armadura segurou', t: 'Levou Dano tier II ou menos de um golpe', v: 2 }],
+  selo: s => (s.quebrados.length ? '鍛' : null),
+  mapa: { 'Chuva de Brasas': AREA('brasas', 2, 2), 'Terremoto de Ferro': AREA('terra', 2, 1) }
+});
+
 /* ---------------- Karê'mã: as Correntes ---------------- */
 classe({ id: 'karema', arvore: "Karê'mã", barra: 'Fluxo', cor: '#7FD3C8', glifo: '舞', inicio: 5,
   patamares: [[5, 'Pés no Ar', 'armadilhas de chão e terreno difícil não te pegam'], [10, 'Corrente Larga', 'suas Correntes têm 2 cédulas de largura'], [15, 'Olho do Tufão', 'a próxima dança move quem você escolher a 3 cédulas']],
@@ -979,7 +993,7 @@ const lacosDe = () => [];
 const ARVORES = {
   samurai: ['a_samurai'], ninja: ['a_ninja'], barbaro: ['a_barbaro'], espadachim: ['a_espadachim'], monge: ['a_monge'], aegis: ['a_aegis'],
   arqueiro: ['a_arqueiro'], mago: ['a_mago'], feiticeiro: ['a_feiticeiro'], necromante: ['a_necromante'], druida: ['a_druida'],
-  sacerdote: ['a_sacerdote'], artifice: ['a_artifice'], alquimista: ['a_alquimista'], bardo: ['a_bardo'], shaji: ['a_shaji'],
+  sacerdote: ['a_sacerdote'], artifice: ['a_artifice'], alquimista: ['a_alquimista'], ferreiro: ['a_ferreiro'], bardo: ['a_bardo'], shaji: ['a_shaji'],
   karema: ['a_kare_ma'], cartomante: ['a_cartomante'], vampiro: ['a_vampiro'], lobisomem: ['a_lobisomem']
 };
 const BENCAO_SELENE = 'aq0onsk37x';                          // (do mundo antigo; nenhuma árvore liga mais nela)
