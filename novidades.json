@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.10-01",
+      "data": "2026-11-10",
+      "titulo": "Armas de arremesso",
+      "itens": [
+        { "tipo": "novo", "texto": "Kunai, Shuriken e outras armas de arremesso agora são armas (seguem a regra das armas: faixa, material e melhoria), numa pilha com quantidade. Usar na mão não gasta; \"Arremessar\" gasta 1 e avisa a Mesa ao vivo." },
+        { "tipo": "novo", "texto": "A quantidade da pilha se edita na própria ficha (−, +, ou digitando), para repor as achadas depois da luta. Em 0, a pilha fica na ficha, apagada, e não soma até repor." },
+        { "tipo": "melhorou", "texto": "Comprar mais kunais entra na pilha que você já tem. O campo \"Arremesso (quantos)\" no editor do item transforma qualquer arma numa pilha." },
+        { "tipo": "melhorou", "texto": "Itens: o campo \"Arremesso (pilha)\" no catálogo diz quantas vêm de uma vez.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.09-13",
       "data": "2026-11-09",
       "titulo": "Aviso falso no Escudo",

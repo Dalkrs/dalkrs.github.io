@@ -63,6 +63,8 @@
       const fx = inteiro(e.faixa, 0, 4, 0), mt = inteiro(e.mat, 0, 3, 0), mh = inteiro(e.melhoria, 0, 5, 0), dp = inteiro(e.dp, 0, 999, 0);
       if (fx) o.equip.faixa = fx; if (mt) o.equip.mat = mt; if (mh) o.equip.melhoria = mh; if (dp) o.equip.dp = dp;
       if (['FOR', 'DES', 'VIT', 'CAN', 'AGI'].includes(e.atr)) o.equip.atr = e.atr;
+      // (lote 122) a arma de arremesso (Kunai, Shuriken…): vem numa pilha de tantas; na ficha, arremessar gasta 1
+      const pl = inteiro(e.pilha, 0, 999, 0); if (pl) o.equip.pilha = pl;
     }
     return o;
   }
@@ -110,6 +112,7 @@
     if (o.t === 'pocao') o.fx = fxParaFicha(it.fx, ficha);
     return o;
   }
+  const nomeDaPilha = n => String(n || '').replace(/\s*\(\s*\d+\s*\)\s*$/, '').trim() || String(n || '');
   function paraFicha(it, id) {
     const Rr = R(), b = {};
     for (const k of (Rr ? Rr.CHAVES_BONUS : [])) b[k] = 0;
@@ -120,6 +123,8 @@
     if (e.def && Object.keys(e.def).length) o.def = Object.assign({}, e.def);
     for (const k of ['peca', 'faixa', 'mat', 'melhoria', 'atr', 'dp']) if (e[k] != null && e[k] !== '') o[k] = e[k];      // (lote 112) a regra vai junto
     if (it.nota) o.efeito = it.nota;
+    // (lote 122) a pilha de arremesso: o nome sem o "(5)" da loja, e a quantidade na própria peça
+    if (e.pilha > 0) { o.pilha = e.pilha; o.nome = nomeDaPilha(it.nome); if (!o.peca) o.peca = 'arma'; }
     return o;
   }
   const tipoNaBolsa = x => (DA_BOLSA.includes(x && x.t) ? x.t : 'material');
@@ -128,9 +133,18 @@
   function entregar(ficha, estado, lista, lapros) {
     const f0 = ehObj(ficha) ? ficha : {}, e0 = ehObj(estado) ? estado : {};
     const bolsa = Array.isArray(f0.bolsa) ? f0.bolsa.slice() : [], equip = Array.isArray(f0.itens) ? f0.itens.slice() : [], qtd = Object.assign({}, e0.qtd || {});
-    const somou = {}, novosB = [], novosI = [];
+    const somou = {}, novosB = [], novosI = [], somouP = {};
     for (const x of lista || []) {
       const it = item(x.item), q = inteiro(x.qtd, 1, 9999, 1);
+      // (lote 122) a pilha de arremesso entra na pilha que a pessoa já tem (o mesmo nome, a mesma faixa, material e melhoria)
+      if (it.t === 'equip' && it.equip && it.equip.pilha > 0) {
+        const n0 = paraFicha(it), e = it.equip, ja = equip.findIndex(y => ehObj(y) && typeof y.pilha === 'number' && norm(y.nome) === norm(n0.nome)
+          && (y.faixa || 0) === (e.faixa || 0) && (y.mat || 0) === (e.mat || 0) && (y.melhoria || 0) === (e.melhoria || 0));
+        const mais = e.pilha * q;
+        if (ja >= 0) { equip[ja] = Object.assign({}, equip[ja], { pilha: Math.max(0, equip[ja].pilha) + mais }); somouP[equip[ja].id] = (somouP[equip[ja].id] || 0) + mais; }
+        else { n0.pilha = mais; equip.push(n0); novosI.push(n0.id); }
+        continue;
+      }
       if (it.t === 'equip') { for (let i = 0; i < Math.min(q, 20); i++) { const n = paraFicha(it); equip.push(n); novosI.push(n.id); } continue; }
       let b = bolsa.find(y => ehObj(y) && y.id != null && tipoNaBolsa(y) === it.t && norm(y.nome) === norm(it.nome));
       if (!b) { b = paraBolsa(it, null, f0); bolsa.push(b); novosB.push(String(b.id)); }
@@ -141,14 +155,15 @@
     const lp = Math.max(0, Math.round(num(lapros, 0))), lap0 = Math.max(0, Math.round(num(e0.lapros, 0)));
     const est = Object.assign({}, e0, { qtd });
     if (lp) est.lapros = lap0 + lp;
-    return { ficha: Object.assign({}, f0, { bolsa, itens: equip }), estado: est, desfazer: { somou, novosB, novosI, lapros: lp } };
+    return { ficha: Object.assign({}, f0, { bolsa, itens: equip }), estado: est, desfazer: { somou, novosB, novosI, somouP, lapros: lp } };
   }
   // o Desfazer de entregar, na ficha como ela está agora (o resto fica)
   function desentregar(ficha, estado, d) {
     const f0 = ehObj(ficha) ? ficha : {}, e0 = ehObj(estado) ? estado : {}, q1 = Object.assign({}, e0.qtd || {});
     for (const id in d.somou || {}) { const v = Math.max(0, Math.floor(num(q1[id], 0)) - d.somou[id]); if (v > 0 || !(d.novosB || []).includes(id)) q1[id] = v; else delete q1[id]; }
     const bolsa = (Array.isArray(f0.bolsa) ? f0.bolsa : []).filter(x => !(ehObj(x) && (d.novosB || []).includes(String(x.id)) && !(q1[String(x.id)] > 0)));
-    const itens = (Array.isArray(f0.itens) ? f0.itens : []).filter(x => !(ehObj(x) && (d.novosI || []).includes(x.id)));
+    const itens = (Array.isArray(f0.itens) ? f0.itens : []).filter(x => !(ehObj(x) && (d.novosI || []).includes(x.id)))
+      .map(x => (ehObj(x) && d.somouP && d.somouP[x.id] && typeof x.pilha === 'number' ? Object.assign({}, x, { pilha: Math.max(0, x.pilha - d.somouP[x.id]) }) : x));
     const est = Object.assign({}, e0, { qtd: q1 });
     if (d.lapros) est.lapros = Math.max(0, Math.round(num(e0.lapros, 0)) - d.lapros);
     return { ficha: Object.assign({}, f0, { bolsa, itens }), estado: est };

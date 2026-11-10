@@ -316,6 +316,13 @@ table.attr tr:last-child td{border-bottom:0}
 .itcard{border:1px solid var(--line);border-radius:6px;background:var(--campo);padding:8px 10px 9px;display:grid;gap:6px;min-width:0}
 .itcard.aberto{grid-column:1/-1}
 .itcard.guardado{background:var(--zebra)}
+/* (lote 122) a pilha de arremesso */
+.itpilha{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0 2px}
+.itpilha .itpilhan{width:64px;text-align:center}
+.itpilha .itarremessar{margin-left:4px}
+.itpilha.zero b,.itpilha.zero .itpilhan{color:var(--danger,#c0392b)}
+.itcard.pilhazero .itnome,.itcard.pilhazero .itbon{opacity:.5}
+.itpilhaf input{width:90px}
 .itcard.guardado .itnome,.itcard.guardado .itbon,.itcard.guardado .itfxv,.itcard.guardado .ittroca{opacity:.55}
 .itcard.rel{border-color:var(--brass);background:linear-gradient(180deg,var(--brass-fundo),var(--campo) 75%);box-shadow:inset 0 0 0 1px var(--brass-soft)}
 .itcard.rel.guardado{background:var(--brass-fundo)}
@@ -1831,12 +1838,12 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=21"></script>
-<script src="../tc/rules.js?v=33"></script>
+<script src="../tc/rules.js?v=34"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=17"></script>
-<script src="extras.js?v=26"></script>
+<script src="extras.js?v=27"></script>
 <script src="../tc/reputacao.js?v=1"></script>
 <script src="reputacao.js?v=1"></script>
 <script src="../tc/missoes.js?v=3"></script>

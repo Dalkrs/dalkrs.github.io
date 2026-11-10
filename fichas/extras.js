@@ -356,6 +356,7 @@ const FichasExtras = (() => {
       <textarea rows="1" data-itemfx="${esc(it.id)}"${nvAttr} placeholder="${k ? 'Passivas e efeitos do Nv ' + k + ' — ex.: +1 dado de gelo contra quem está molhado' : 'Passivas e efeitos deste item — ex.: +10% de dano contra mortos-vivos · 1×/dia: escudo de luz'}" aria-label="Passivas e efeitos de ${esc(it.nome || 'item sem nome')}${k ? ' no Nv ' + k : ''}">${esc(alvo.efeito || '')}</textarea>
       <div class="itopc">
         <label class="chk"><input type="checkbox" data-itemrel="${esc(it.id)}" ${it.reliquia ? 'checked' : ''}> <span>Relíquia <span class="hint">(o cartão fica dourado)</span></span></label>
+        <label class="f itpilhaf" title="Kunai, Shuriken, facas de arremesso: a quantidade da pilha. Arremessar gasta 1; usar na mão não gasta. Vazio: não é de arremesso."><span class="eyebrow">Arremesso (quantos)</span><input class="inm" type="number" min="0" max="999" data-itpilhaset="${esc(it.id)}" value="${typeof it.pilha === 'number' ? it.pilha : ''}" placeholder="—" aria-label="Quantos ${esc(it.nome || 'deste item')} na pilha de arremesso"></label>
         <label class="f ittrocaf"><span class="eyebrow">Grupo de troca</span><input class="inm" data-itemtroca="${esc(it.id)}" value="${esc(String(it.troca == null ? '' : it.troca))}" maxlength="40" list="gruposTroca" placeholder="ex.: Arma principal" autocomplete="off" title="Dos itens do mesmo grupo, um só fica equipado: equipar um guarda os outros"></label>
         ${opcoesReq(it, pc)}
       </div>
@@ -418,12 +419,26 @@ const FichasExtras = (() => {
       <b>Nv ${nv}</b>
       <button type="button" class="itnvb" data-itnv="${esc(it.id)}" data-d="1" ${nv >= n ? 'disabled' : ''} aria-label="${nv >= n ? 'Já está no último nível' : 'Subir ' + nome + ' para o Nv ' + (nv + 1)}">▸</button></span>`;
   }
+  /* (lote 122) A arma de arremesso (Kunai, Shuriken…): uma pilha equipada como arma. Usar na mão não gasta; "Arremessar"
+     gasta 1 e conta na Mesa ao vivo. O jogador acerta a quantidade (o mestre devolve as achadas, ou a pessoa mesma). Em 0,
+     fica na ficha, apagada, e não soma até repor. */
+  function htmlPilha(it, pc, pode, on) {
+    const n = Math.max(0, it.pilha | 0), id = esc(it.id), nome = esc(it.nome || 'item');
+    return `<div class="itpilha ${n ? '' : 'zero'}">
+      <span class="eyebrow">Arremesso</span>
+      ${pode ? `<button type="button" class="mini" data-itpilha="${id}" data-d="-1" ${n ? '' : 'disabled'} aria-label="Um ${nome} a menos">−</button>
+      <input class="inm itpilhan" type="number" min="0" max="999" data-itpilhan="${id}" value="${n}" aria-label="Quantos ${nome}">
+      <button type="button" class="mini" data-itpilha="${id}" data-d="1" aria-label="Um ${nome} a mais">+</button>` : `<b>×${n}</b>`}
+      ${pode ? `<button type="button" class="mini pri itarremessar" data-itarremesso="${id}" ${n && on ? '' : 'disabled'} title="${!n ? 'Acabaram: reponha a pilha.' : !on ? 'Equipe para arremessar.' : 'Gasta 1 e avisa a mesa'}">Arremessar</button>` : ''}
+      ${n ? '' : '<span class="hint">acabaram — não soma até repor</span>'}
+    </div>`;
+  }
   function cartaoItem(it, pc, escondido) {
     const aberto = itensAbertos.has(it.id), on = it.equipado !== false, g = grupoDe(it), fx = String(it.efeito || '').trim(), bon = bonusDoItem(it, pc);
     const req = RQ() ? RQ().nomeDoReq(it, pc.itens || []) : '', semEfeito = on && req && !ativoNa(it, pc);
     const pode = FichasMesa.podeEditar(pc), niv = !!R7() && R7().temNiveis(it);
     const alca = pode && !!R7();
-    return `<div class="itcard ${on ? '' : 'guardado'} ${it.reliquia ? 'rel' : ''} ${aberto ? 'aberto' : ''} ${semEfeito ? 'semfx' : ''} ${alca ? 'comalca' : ''}" data-itcard="${esc(it.id)}"${escondido ? ' hidden' : ''}>
+    return `<div class="itcard ${on ? '' : 'guardado'} ${typeof it.pilha === 'number' && it.pilha <= 0 ? 'pilhazero' : ''} ${it.reliquia ? 'rel' : ''} ${aberto ? 'aberto' : ''} ${semEfeito ? 'semfx' : ''} ${alca ? 'comalca' : ''}" data-itcard="${esc(it.id)}"${escondido ? ' hidden' : ''}>
       <div class="ittopo">
         ${alca ? `<button type="button" class="itarr" data-itarr="${esc(it.id)}" title="Arraste para mudar a ordem — ou para outra seção, que troca o tipo. Com o teclado: as setas para cima e para baixo." aria-label="Mudar ${esc(nomeIt(it) || 'o item sem nome')} de lugar">${ALCA_SVG}</button>` : ''}
         <label class="itchave" title="${on ? 'Equipado: soma nas contas. Clique para guardar.' : 'Guardado: não soma. Clique para equipar.'}${g ? ' Grupo de troca: ' + esc(g) + '.' : ''}"><input type="checkbox" data-itemon="${esc(it.id)}" ${on ? 'checked' : ''} aria-label="${esc(it.nome || 'Item sem nome')}: equipado"><span class="itsw" aria-hidden="true"></span></label>
@@ -436,6 +451,7 @@ const FichasExtras = (() => {
           + (g ? `<span class="ittroca" title="Grupo de troca: equipar um item do grupo guarda os outros">${TROCA_SVG}<span>${esc(g)}</span></span>` : '');
         return selos ? `<div class="itselos">${selos}</div>` : ''; })()}
       ${req ? `<div class="itreqlinha"><span class="ittroca itreq ${semEfeito ? 'falta' : ''}" title="${semEfeito ? 'Sem efeito: só vale com ' + esc(req) + ' equipado' : 'Só funciona com ' + esc(req)}">${LIGA_SVG}<span>${semEfeito ? 'sem efeito · ' : 'com '}${esc(req)}</span></span></div>` : ''}
+      ${typeof it.pilha === 'number' ? htmlPilha(it, pc, pode, on) : ''}
       <div class="itbon">${bon.length ? chipsBonus(bon) : '<span class="hint">sem bônus</span>'}</div>
       ${fx && !aberto ? `<div class="itfxv">${esc(fx)}</div>` : ''}
       ${aberto ? editorItem(it, pc) : ''}
@@ -906,6 +922,29 @@ const FichasExtras = (() => {
       const id = b.dataset.itemed;
       if (itensAbertos.has(id)) { itensAbertos.delete(id); nivelAberto.delete(id); } else itensAbertos.add(id);
       render(); refocar(sel('data-itemed', id));
+    });
+    // (lote 122) a pilha de arremesso: −/+, digitar, "Arremessar" (gasta 1 e conta na Mesa ao vivo), e o campo do editor
+    const mudarPilha = (it, n, txt, comAviso) => {
+      const antes = it.pilha; n = Math.max(0, Math.min(999, Math.round(n)));
+      if (n === antes) return false;
+      it.pilha = n; save(); desenhar(render, sel('data-itpilhan', it.id));
+      if (comAviso !== false) aviso(txt || (nomeIt(it) || 'O item') + ': ' + n + '.', 'Desfazer', () => { const x = item(it.id); if (!x) return; x.pilha = antes; save(); render(); });
+      return true;
+    };
+    qa(painel, '[data-itpilha]').forEach(b => b.onclick = () => { const it = item(b.dataset.itpilha); if (it && typeof it.pilha === 'number') mudarPilha(it, it.pilha + (+b.dataset.d || 0), null, false); });
+    qa(painel, '[data-itpilhan]').forEach(i => i.onchange = () => { const it = item(i.dataset.itpilhan); if (it && typeof it.pilha === 'number') { if (!mudarPilha(it, +i.value || 0)) render(); } });
+    qa(painel, '[data-itarremesso]').forEach(b => b.onclick = () => {
+      const it = item(b.dataset.itarremesso); if (!it || !(it.pilha > 0)) return;
+      const resta = it.pilha - 1, nm = nomeIt(it) || 'item';
+      mudarPilha(it, resta, (pc.nome || 'Arremessou') + ' arremessou ' + nm + ' (restam ' + resta + ').');
+      try { if (FichasMesa.ativo() && window.TC && TC.ponte) TC.ponte.publicar('ficha', { pc: pc.id, quem: (pc.nome || 'Alguém') + ' arremessou ' + nm, det: resta ? 'Restam ' + resta + '.' : 'Foi a última.', id: 'arr_' + it.id + '_' + Date.now().toString(36) }); } catch (e) { /* (só o aviso) */ }
+    });
+    qa(painel, '[data-itpilhaset]').forEach(i => i.onchange = () => {
+      const it = item(i.dataset.itpilhaset); if (!it) return;
+      const antes = it.pilha, v = String(i.value).trim();
+      if (v === '') delete it.pilha; else { it.pilha = Math.max(0, Math.min(999, Math.round(+v) || 0)); if (!it.peca && !it.tipo) it.peca = 'arma'; }
+      save(); desenhar(render, sel('data-itpilhaset', it.id));
+      aviso((nomeIt(it) || 'O item') + (v === '' ? ' deixou de ser de arremesso.' : ': arremesso, ' + it.pilha + '.'), 'Desfazer', () => { const x = item(it.id); if (!x) return; if (antes === undefined) delete x.pilha; else x.pilha = antes; save(); render(); });
     });
     qa(painel, '[data-itemrel]').forEach(i => i.onchange = () => {
       const it = item(i.dataset.itemrel); if (!it) return;

@@ -1516,7 +1516,9 @@
     return !algum;
   }
   // o item soma nas contas? (equipado, e com o que ele precisa)
-  function itemAtivo(it, itens) { return ehObjeto(it) && it.equipado !== false && reqAtendido(it, itens); }
+  // (lote 122) a pilha de arremesso vazia (Kunai ×0) fica na ficha, mas não soma até repor
+  const pilhaVazia = it => ehObjeto(it) && typeof it.pilha === 'number' && it.pilha <= 0;
+  function itemAtivo(it, itens) { return ehObjeto(it) && it.equipado !== false && !pilhaVazia(it) && reqAtendido(it, itens); }
   /* o nome do que o item precisa, para a tela: "Espada do Gelo de Selene", "Espada de gelo" (o grupo),
      "Katana de gelo (Nv 2 ou mais)" ou, com vários, "Katana de gelo, Sabre ou Espada longa" — ou '' */
   function nomeDoReq(it, itens) {
@@ -2290,7 +2292,7 @@
   /* O ajuste de uma ficha: os itens equipados que mudam e, para quem já usa equipamento (uma arma ou uma armadura
      equipada), a armadura e a bota que faltam, da faixa do nível. → [{ id, nome, peca, muda, muitoAcima, it, novo? }] */
   function ajusteDaFicha(pc) {
-    const out = [], eqs = (pc && Array.isArray(pc.itens) ? pc.itens : []).filter(it => ehObjeto(it) && it.equipado !== false);
+    const out = [], eqs = (pc && Array.isArray(pc.itens) ? pc.itens : []).filter(it => ehObjeto(it) && it.equipado !== false && !pilhaVazia(it));
     for (const it of eqs) {
       const a = ajusteDoItem(it, pc.level);
       if (a) out.push(Object.assign({ id: it.id, nome: String(it.nome || '').trim() || 'Item sem nome' }, a));
@@ -2311,7 +2313,7 @@
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
     bonusDaArvore, unicasDe, iniciativa, estadoRecursos, estiloDaBarra, aplicarDelta, podreDe, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
-    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, nomeDoReq, textoDoEquipar,
+    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, pilhaVazia, nomeDoReq, textoDoEquipar,
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,
     NIVEIS_MAX, temNiveis, nivelDoItem, niveisDoItem, itemNoNivel, espelharItem, itemComNivelNovo, itemSemNivel, textoDoNivel,
     MARCAS_BARRA, barraEspecial, defBarraEspecial, marcaDaBarra, textoDaMarca, TETO_INICIO, inicioDoGrau,

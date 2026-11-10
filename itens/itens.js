@@ -223,7 +223,7 @@
     if (x.t === 'equip') {
       const b = Object.entries(x.equip.bonus).map(([k, v]) => k + ' ' + (v > 0 ? '+' : '') + v), d = Object.entries(x.equip.def).map(([k, v]) => ((R.DEFESAS_ESP.find(e => e.k === k) || {}).nome || k) + ' ' + (v > 0 ? '+' : '') + v);
       const tipo = (R.tiposDeItem(cfgFichas()).find(t => t.id === x.equip.tipo) || {}).nome;
-      const extra = [x.equip.faixa ? 'F' + x.equip.faixa : '', x.equip.dp ? 'Dano ' + x.equip.dp : '', x.equip.atr && !x.equip.dp ? 'rola ' + x.equip.atr : ''];   // (lote 113)
+      const extra = [x.equip.faixa ? 'F' + x.equip.faixa : '', x.equip.dp ? 'Dano ' + x.equip.dp : '', x.equip.atr && !x.equip.dp ? 'rola ' + x.equip.atr : '', x.equip.pilha ? 'arremesso ×' + x.equip.pilha : ''];   // (lote 113)
       return [tipo, ...extra, ...b, ...d].filter(Boolean).join(', ');
     }
     if (x.t === 'pocao' && x.fx && x.fx.length) return x.fx.map(e => e.k === 'barra' ? e.rec + ' ' + e.val : e.k === 'sob' ? 'sobrevida ' + e.val : e.k === 'bonus' ? e.bk + ' ' + (e.bv > 0 ? '+' : '') + e.bv : (R.nomeDaCondicao ? R.nomeDaCondicao(e.c) : e.c)).join(', ');
@@ -417,7 +417,9 @@
           h('label', null, 'Material', escolha('it-eq-mat', str(e.mat), mats, v => setN('mat', v))),
           h('label', null, 'Melhoria', num('it-eq-melh', e.melhoria || '', v => setN('melhoria', Math.max(0, Math.min(5, Math.round(+v) || 0))), { ph: '0', min: '0', max: '5' })),
           h('label', null, 'Dano rola', escolha('it-eq-atr', e.atr || '', danos, v => { if (v) e.atr = v; else delete e.atr; pintarRegra(); })),
-          h('label', { title: 'Arco, besta e pólvora: o dano é da arma (o número da faixa), não rola atributo' }, 'Dano próprio', num('it-eq-dp', e.dp || '', v => setN('dp', v), { ph: '0', min: '0' }))),
+          h('label', { title: 'Arco, besta e pólvora: o dano é da arma (o número da faixa), não rola atributo' }, 'Dano próprio', num('it-eq-dp', e.dp || '', v => setN('dp', v), { ph: '0', min: '0' })),
+          // (lote 122) a arma de arremesso: quantas vêm na pilha (na ficha, arremessar gasta 1; na mão, não)
+          h('label', { title: 'Kunai, Shuriken, facas de arremesso: quantas vêm de uma vez. Na ficha vira uma pilha equipada como arma; arremessar gasta 1.' }, 'Arremesso (pilha)', num('it-eq-pilha', e.pilha || '', v => setN('pilha', Math.max(0, Math.min(999, Math.round(+v) || 0))), { ph: '—', min: '0' }))),
         caixa));
       pintarRegra();
       out.push(h('details', { class: 'sec' }, h('summary', { text: 'Defesas específicas (fogo, corte…)' }),
