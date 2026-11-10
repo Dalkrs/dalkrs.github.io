@@ -11,7 +11,7 @@ const { open } = require('./lib');
     const u = __urgm, sc = u.Store.scene();
     return {
       tool: u.App.tool, sel: u.App.sel, viewer: u.App.viewer, tab: u.App.tab,
-      tokens: sc.tokens.map(t => ({ id: t.id, name: t.name, x: t.x, y: t.y, size: t.size, hidden: t.hidden, bars: t.bars, conds: t.conds, owner: t.owner, img: t.img, ini: t.ini })),
+      tokens: sc.tokens.map(t => ({ id: t.id, name: t.name, x: t.x, y: t.y, size: t.size, hidden: t.hidden, bars: t.bars, conds: t.conds, owner: t.owner, img: t.img, ini: t.ini, roupa: t.roupa })),
       shapes: sc.shapes.map(s => ({ id: s.id, k: s.k, x: s.x, y: s.y, w: s.w, h: s.h, pts: s.pts, txt: s.txt })),
       walls: sc.walls.map(w => ({ id: w.id, k: w.k, open: w.open })), lights: sc.lights.length, effects: sc.effects.map(e => ({ id: e.id, fx: e.fx, k: e.k, r: e.r, dir: e.dir, token: e.token })),
       fogOps: sc.fogOps.length, cell: sc.cell, turn: sc.turn, light: sc.light, fog: sc.fog, scenes: u.Store.S.order.length, name: sc.name, pings: u.App.pings.length,
@@ -98,11 +98,14 @@ const { open } = require('./lib');
   await page.locator('#nt-0-m').fill('25');
   if (!(await page.locator('#nt-1-on').isChecked())) await page.locator('#nt-1-on').check();
   await page.locator('#nt-1-m').fill('12');
+  ok(await page.locator('#nt-roupa option').count() === 19, '(lote 135) a janela pergunta a roupa (nenhuma + 18)');
+  await page.locator('#nt-roupa').selectOption('novico');
   await page.locator('.modal .btn.primary').click();
   await page.waitForTimeout(150);
   s = await S();
   ok(s.tokens.length === 8 && s.tool === 'select', 'token criado e ferramenta volta a Selecionar');
   const gob = tok(s, 'Goblin');
+  ok(!!gob && JSON.stringify(gob.roupa) === '{"k":"novico"}', '(lote 135) o token do mestre nasce com a roupa de verdade escolhida');
   ok(!!gob && gob.ini === 3, 'o nome e a iniciativa da janela: ' + JSON.stringify(gob && gob.ini));
   ok(gob && gob.bars[0].m === 25 && gob.bars[0].v === 25 && gob.bars[1].on && gob.bars[1].m === 12 && gob.bars[1].v === 12, 'as barras da janela, cheias: ' + JSON.stringify(gob && gob.bars.map(b => [b.n, b.on, b.v, b.m])));
   ok(tok(s, 'Goblin').x === 4 * s.cell && tok(s, 'Goblin').y === 8 * s.cell, 'token nasce no quadrado clicado');

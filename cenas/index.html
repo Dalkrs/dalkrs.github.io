@@ -19574,8 +19574,15 @@ const UI = (() => {
     const nome = h('input', { type: 'text', class: 'in', id: 'nt-nome', value: t.name, maxlength: 60, autocomplete: 'off', 'data-focus': '', 'aria-label': 'Nome do token' });
     const ini = h('input', { type: 'number', class: 'in num', id: 'nt-ini', value: clampIni(t.ini), min: -99, max: 99, step: 1, 'aria-label': 'Bônus de iniciativa', title: 'A rolagem é 1d20 + este valor' });
     const nao = h('input', { type: 'checkbox', id: 'nt-nao', class: 'ck' });
+    // (lote 135, pedido do Bruno) a roupa: a que ele usa de verdade (o noviço do templo, o guarda do portão) — é ela que
+    // faz o "??" quando um disfarçado da mesma roupa chega perto. No token de jogador, vira disfarce.
+    const R = typeof Roupas !== 'undefined' ? Roupas : null;
+    const roupa = R ? h('select', { class: 'in', id: 'nt-roupa', 'aria-label': 'A roupa (para os disfarces)' },
+      h('option', { value: '', text: 'Nenhuma', selected: !(t.roupa && t.roupa.k) || null }),
+      [...new Set(R.LISTA.map(x => x.g))].map(g => h('optgroup', { label: g }, R.LISTA.filter(x => x.g === g).map(x => h('option', { value: x.id, text: x.n, selected: t.roupa && t.roupa.k === x.id ? true : null }))))) : null;
     const body = h('div', { class: 'bd nt' },
       h('div', { class: 'nt-top' }, field('Nome', nome, 'stack'), field('Iniciativa', ini, 'stack')),
+      roupa ? field('Roupa (para os disfarces: de que grupo ele é?)', roupa, 'stack') : null,
       h('div', { class: 'bd-list nt-list' },
         h('div', { class: 'bd-row bd-h' }, h('span', { text: 'Usar' }), h('span'), h('span', { text: 'Barra' }), h('span', { text: 'Máximo' })),
         bars.map((b, i) => {
@@ -19598,6 +19605,7 @@ const UI = (() => {
           if (t.name !== antes) t.color = TOKEN_COLORS[hashStr(t.name) % TOKEN_COLORS.length];
           t.ini = clampIni(ini.value);
           t.bars = bars.map(b => cleanBar(Object.assign({}, b, { v: b.m })));
+          if (roupa) { if (roupa.value) t.roupa = t.owner ? { k: roupa.value, d: true } : { k: roupa.value }; else delete t.roupa; }
           setTimeout(() => done(t), 0);
         },
       }],
