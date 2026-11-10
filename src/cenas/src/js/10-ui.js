@@ -2462,6 +2462,7 @@ const UI = (() => {
       return [head,
         sec('s-bars', 'Barras', true, mine && can('bars', t) ? barsEditor(t, false) : barsReadOnly(t)),
         sec('s-cond', 'Condições', true, canC ? postToggle(t) : t.post ? note('Em postura.') : null, condActive(t, canC), manaLinha(t), canC ? condMais([t]) : t.conds.length || t.post ? null : note('Nenhuma condição.')),
+        Roupas.secao(t, UI.kit),                                             // (lote 133) a roupa (o jogador veste o disfarce)
         mine ? numsBox(t, false) : null,
         mine && typeof PainelBarras !== 'undefined' ? PainelBarras.secaoToken(t) : null,      // (lote 44) mostrar ou esconder o painel
         mine ? fadigaBox(t) : null,
@@ -2486,6 +2487,7 @@ const UI = (() => {
       feridas ? sec('s-fer', 'Ferimentos', true, feridas) : null,
       Best.secao(t, UI.kit),                                                 // (lote 29) o inimigo do Bestiário: o lembrete e o saque
       Rondas.secao(t, UI.kit),                                               // (lote 121) o guarda: a ronda, o cone e o estado
+      Roupas.secao(t, UI.kit),                                               // (lote 133) a roupa e o disfarce
       secR('s-turn', 'Turnos', false, 'Iniciativa ' + (clampIni(t.ini) >= 0 ? '+' : '') + clampIni(t.ini) + ' · ' + clampTurns(t.turns) + (clampTurns(t.turns) === 1 ? ' turno' : ' turnos') + ' por rodada',
         field('Iniciativa', inNum('tk-ini', clampIni(t.ini), v => U({ ini: clampIni(v) }, 'Iniciativa do token'), { min: -99, max: 99, step: 1, label: 'Bônus de iniciativa', title: 'Bônus de iniciativa: a rolagem é 1d20 + este valor' })),
         field('Turnos por rodada', stepper('tk-turns', clampTurns(t.turns), 1, MAX_TURNS, v => Act.tokenTurns(t, v), 'Turnos por rodada')),

@@ -202,6 +202,19 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
   quando não há nada.
 
+### As roupas e os disfarces (lote 133)
+
+- **As roupas** (`07j-roupas.js`): `t.roupa = { k, d }` (o id da roupa e se é disfarce). 18 roupas em `Roupas.LISTA`,
+  cada uma com duas cores, o que vai na cabeça (`topo`), embaixo (`corpo`) e se tem capa. `Roupas.atras` (a capa) e
+  `Roupas.frente` (o resto e a borda na cor da roupa) desenham em volta de `drawTokenBody`. A roupa vai na projeção.
+  O jogador veste o próprio token pelo pedido (`roupa` em `DO_TOKEN`, permissão Condições): sempre disfarce.
+- **Nas rondas**: disfarçado no cone (`Rondas.quemVe`) é sempre `sombra` ("pode ter notado"), com `disf`.
+- **"Noviço encontra noviço"** (`Roupas.encontros`): o disfarçado a até `App.opt.disfPerto` quadrados (3; no painel
+  Rondas e guardas) de um NPC sem dono com a mesma roupa de verdade, sem parede no meio: o "??" (só o mestre) e um aviso
+  por encontro novo.
+- **Ficar de posto** guarda a rota em `ronda.guardada`; "Voltar para a ronda" a devolve, com o próximo ponto sendo o mais
+  perto de onde o guarda está.
+
 ### Os guardas: virar sozinho e o cone revelado (lote 132)
 
 - **Virar sozinho** (`07i-rondas.js`): em `andar`, quando o passo termina num ponto da rota, o rumo já aponta para o

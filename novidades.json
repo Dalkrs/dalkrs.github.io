@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.10-06",
+      "data": "2026-11-10",
+      "titulo": "Roupas e disfarces nas Cenas",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: o bloco Roupa do token. 18 roupas desenhadas por cima do retrato (o chapéu, o elmo, o capuz, a gola, o avental, o manto, a capa): civil, guarda, funcionário, noviço, alquimista, VIP, criado, cozinheiro, mensageiro, mendigo, mercador, bardo, peregrino, sacerdote, monge, mercenário, soldado e caçador. Todos veem a roupa." },
+        { "tipo": "novo", "texto": "Cenas: o jogador veste o disfarce no próprio token. Disfarçado, quem ronda só \"pode ter notado\" (?), nunca \"vê\" (!)." },
+        { "tipo": "novo", "texto": "Cenas: \"noviço encontra noviço\". O NPC com a roupa de verdade igual, perto (3 quadrados, ou o que você escolher em Rondas e guardas) e sem parede no meio, faz aparecer o \"??\" no disfarçado, com um aviso. O teste, você rola.", "mestre": true },
+        { "tipo": "melhorou", "texto": "Cenas: \"Ficar de posto\" guarda a rota do guarda, e aparece \"Voltar para a ronda\", que retoma do ponto mais perto.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.10-05",
       "data": "2026-11-10",
       "titulo": "Produção: Alquimista, Artífice e o Ferreiro",

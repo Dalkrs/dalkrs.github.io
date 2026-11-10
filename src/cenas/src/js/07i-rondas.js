@@ -38,6 +38,9 @@ const Rondas = (() => {
     t.ronda = { pts, i: num(r.i, 0, Math.max(0, pts.length - 1), 0), s: r.s === -1 ? -1 : 1, modo: r.modo === 'volta' ? 'volta' : 'ida', passo: num(r.passo, 1, 12, PADRAO.passo), r: num(r.r, 1, 40, PADRAO.r), a: num(r.a, 20, 360, PADRAO.a), dir: ((num(r.dir, -720, 720, 90) % 360) + 360) % 360 };
     const ver = verLimpo(r.ver);
     if (ver) t.ronda.ver = ver;
+    // (lote 133) a rota guardada quando o mestre pôs o guarda de posto ("Voltar para a ronda" a traz de volta)
+    const gp = r.guardada && Array.isArray(r.guardada.pts) ? r.guardada.pts.filter(p => Array.isArray(p) && p.length === 2 && p.every(v => Number.isFinite(Number(v)))).slice(0, MAX_PTS).map(p => [num(p[0], 0, 999, 0), num(p[1], 0, 999, 0)]) : [];
+    if (gp.length > 1 && t.ronda.pts.length < 2) t.ronda.guardada = { pts: gp, i: num(r.guardada.i, 0, gp.length - 1, 0), s: r.guardada.s === -1 ? -1 : 1 };
     if (ESTADOS.some(e => e[0] === t.alerta)) { if (t.alerta === 'calmo') delete t.alerta; } else delete t.alerta;
   }
   // (lote 132) o cone revelado, como chega na tela do jogador (t.vc, da projeção): arrumado ou apagado
@@ -116,7 +119,9 @@ const Rondas = (() => {
         const [x, y, half] = tokC(t, sc);
         if (!noCone(g, x, y, half * 0.6) || barra(segs, g.cx, g.cy, x, y)) continue;
         const perto = Math.hypot(x - g.cx, y - g.cy) <= g.R * 0.4;
-        out.push({ g: gd, t, nivel: perto || naLuz(sc, x, y) ? 'visto' : 'sombra' });
+        // (lote 133) disfarçado: nunca "visto", só "pode ter notado"
+        const disf = typeof Roupas !== 'undefined' && Roupas.disfarcado(t);
+        out.push({ g: gd, t, nivel: !disf && (perto || naLuz(sc, x, y)) ? 'visto' : 'sombra', disf });
       }
     }
     return out;
@@ -202,8 +207,8 @@ const Rondas = (() => {
   function resumoVistos(vistos) {
     if (!vistos.length) return '';
     const por = new Map();
-    for (const v of vistos) { const k = v.t.id, o = por.get(k) || { t: v.t, visto: [], sombra: [] }; o[v.nivel].push(v.g.name); por.set(k, o); }
-    return [...por.values()].map(o => o.visto.length ? `${o.visto[0]} vê ${o.t.name}!` : `${o.sombra[0]} pode ter notado ${o.t.name} (na sombra).`).join(' ');
+    for (const v of vistos) { const k = v.t.id, o = por.get(k) || { t: v.t, visto: [], sombra: [], disf: v.disf }; o[v.nivel].push(v.g.name); por.set(k, o); }
+    return [...por.values()].map(o => o.visto.length ? `${o.visto[0]} vê ${o.t.name}!` : `${o.sombra[0]} pode ter notado ${o.t.name} (${o.disf ? 'disfarçado' : 'na sombra'}).`).join(' ');
   }
   function mudarEstado(ts, est) {
     if (!ESTADOS.some(e => e[0] === est)) return;
@@ -350,10 +355,22 @@ const Rondas = (() => {
         K.field('A rota', K.seg('tk-gmodo', r.modo, MODOS, v => R({ modo: v })))) : null,
       h('div', { class: 'row' },
         K.btn(r.pts.length ? 'Refazer a rota' : 'Desenhar a rota', () => { R({ pts: [], i: 0, s: 1 }); desenharRota(Store.get('tokens', t.id)); }, { kind: 'small', icon: 'ronda', id: 'tk-grota' }),
-        r.pts.length ? K.btn('Ficar de posto', () => R({ pts: [], i: 0, s: 1 }), { kind: 'small', id: 'tk-gposto', title: 'Apaga a rota: ele fica parado, olhando para o lado escolhido' }) : null,
+        r.pts.length > 1 ? K.btn('Ficar de posto', () => R({ pts: [], i: 0, s: 1, guardada: { pts: r.pts, i: r.i, s: r.s } }), { kind: 'small', id: 'tk-gposto', title: 'Ele para onde está, olhando para o lado escolhido. A rota fica guardada para "Voltar para a ronda".' }) : null,
+        // (lote 133) de posto, com a rota guardada: volta a andar por ela, do ponto mais perto de onde está
+        r.pts.length < 2 && r.guardada ? K.btn('Voltar para a ronda', () => voltarRonda(t), { kind: 'small primary', icon: 'ronda', id: 'tk-gvolta', title: 'Ele volta a andar pela rota de antes, a partir do ponto mais perto' }) : null,
         K.btn('Não é mais guarda', () => U({ ronda: undefined, alerta: undefined }, 'Deixar de ser guarda'), { kind: 'small', id: 'tk-gfora' })),
       K.note(estadoDe(t) === 'alerta' ? 'Em Alerta, ele larga a rota: você o move à mão.' : 'Desconfiado, ele vê mais longe e mais aberto. Na sombra, só vê bem de perto. Quem está Oculto não é visto.'),
       blocoVer(t, R, K));
+  }
+  // (lote 133) "Voltar para a ronda": a rota guardada volta; o próximo ponto é o mais perto de onde ele está agora
+  function voltarRonda(t) {
+    const r = t.ronda, g = r.guardada, sc = Store.scene();
+    if (!g || !sc) return;
+    const x = Math.round(t.x / sc.cell), y = Math.round(t.y / sc.cell);
+    let i = 0, best = Infinity;
+    g.pts.forEach(([px, py], k) => { const d = Math.max(Math.abs(px - x), Math.abs(py - y)); if (d < best) { best = d; i = k; } });
+    Store.tx('Voltar para a ronda', () => Store.upd('tokens', t.id, { ronda: Object.assign({}, r, { pts: g.pts, i, s: g.s, guardada: undefined }) }));
+    UI.toast(`${t.name} volta para a ronda (${g.pts.length} pontos).`, { key: 'rondas' });
   }
   /* (lote 132) "Mostrar o cone a um jogador": para quem usou uma skill de ver o campo de visão. Escolhe o(s) jogador(es),
      se a rota vai junto e por quanto tempo. */
@@ -384,6 +401,8 @@ const Rondas = (() => {
       gs.length ? linha(acao(sel.length ? `Acalmar (${sel.length})` : 'Acalmar todos', () => mudarEstado(sel.length ? sel : gs, 'calmo'), { id: 'mtp-calmo' }),
         acao(sel.length ? `Alerta (${sel.length})` : 'Todos em alerta', () => mudarEstado(sel.length ? sel : gs, 'alerta'), { id: 'mtp-alerta' })) : null,
       K.toggle('mtp-rver', App.opt.rondasVer !== false, v => { App.opt.rondasVer = v; Render.request(); UI.refresh(); }, 'Mostrar rotas e cones (só você vê)'),
+      // (lote 133) o "??" do disfarce: até quantos quadrados um NPC da mesma roupa repara
+      K.field('Disfarce: o "??" a até (q)', K.inNum('mtp-disf', typeof Roupas !== 'undefined' ? Roupas.perto() : 3, v => { App.opt.disfPerto = clamp(Math.round(Number(v)) || 3, 1, 20); Render.request(); }, { min: 1, max: 20, step: 1, label: 'Até quantos quadrados um NPC com a mesma roupa repara no disfarçado' })),
     ];
   }
 

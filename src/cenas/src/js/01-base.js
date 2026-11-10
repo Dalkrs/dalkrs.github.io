@@ -1033,6 +1033,7 @@ function normalizeScene(sc) {
     delete t.q0;
     // (lote 121) a ronda do guarda e o estado dele (Calmo, Desconfiado, Alerta): só do mestre (ver 07i. RONDAS)
     if (typeof Rondas !== 'undefined') Rondas.limpar(t); else { delete t.ronda; delete t.alerta; }
+    if (typeof Roupas !== 'undefined') Roupas.limpar(t); else delete t.roupa;      // (lote 133) a roupa e o disfarce
     // (lote 122) o objeto que tranca: o nível da fechadura e o puzzle do Escudo ligado a ele
     const trancaOk = t.prop && Props.P[t.prop] && Props.P[t.prop].tranca;
     if (!(trancaOk && ['facil', 'medio', 'dificil', 'extremo', 'absoluto'].includes(t.tranca))) delete t.tranca;

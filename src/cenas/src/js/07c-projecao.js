@@ -206,7 +206,7 @@ const Proj = (() => {
      Barras, condições e auras viajam como "como estava → como ficou" (op.b guarda o "como estava"). O mestre aplica
      só a diferença por cima do que ele tem agora: se nesse meio-tempo ele deu dano em Vida e o jogador gastou SP,
      as duas coisas valem. */
-  const DO_TOKEN = { x: 'mover', y: 'mover', bars: 'barras', conds: 'condicoes', cinfo: 'condicoes', auras: 'auras', post: 'condicoes' };
+  const DO_TOKEN = { x: 'mover', y: 'mover', bars: 'barras', conds: 'condicoes', cinfo: 'condicoes', auras: 'auras', post: 'condicoes', roupa: 'condicoes' };      // (lote 133: a roupa)
   const MAX_FORMAS = 150, MAX_EFEITOS = 40, MAX_PONTOS = 3000, MAX_AURAS = 12;      // por jogador, por cena
   const MAX_PESO_FORMAS = 120000;                    // e o tamanho de todos os desenhos de um jogador numa cena, em caracteres
   const r1 = n => Math.round(n * 10) / 10;
@@ -417,6 +417,8 @@ const Proj = (() => {
         else if (k === 'cinfo') { const ni = fundirCinfo(t.cinfo || {}, base.cinfo, val); if (!igual(ni, t.cinfo || {})) q.cinfo = ni; }
         else if (k === 'auras') { const na = fundirAuras(t.auras || [], base.auras, val); if (na && !igual(na, t.auras || [])) q.auras = na; }
         else if (k === 'post') { if (typeof val === 'boolean' && val !== !!t.post) q.post = val; }      // (a postura: liga ou desliga)
+        // (lote 133) a roupa que o jogador veste no próprio token é sempre disfarce; null tira
+        else if (k === 'roupa') { if (val == null) { if (t.roupa) q.roupa = undefined; } else if (ehObj(val) && typeof val.k === 'string' && /^[a-z]{2,20}$/.test(val.k) && !(t.roupa && t.roupa.k === val.k && t.roupa.d)) q.roupa = { k: val.k, d: true }; }
       }
       // contador de uma condição que não está mais no token não fica sobrando
       if (q.conds || q.cinfo) { const conds = q.conds || t.conds, ci = Object.assign({}, q.cinfo || t.cinfo || {}); let tirou = false; for (const id in ci) if (!conds.includes(id)) { delete ci[id]; tirou = true; } if (tirou || q.cinfo) q.cinfo = ci; }
