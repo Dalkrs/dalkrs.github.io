@@ -202,6 +202,17 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   bônus. Cada um leva ao lugar dele (o painel de bônus temporários nos Atributos, a lista de itens nas Bolsas). Some
   quando não há nada.
 
+### Os guardas: virar sozinho e o cone revelado (lote 132)
+
+- **Virar sozinho** (`07i-rondas.js`): em `andar`, quando o passo termina num ponto da rota, o rumo já aponta para o
+  ponto seguinte. `Store.upd` chama `Rondas.virar(id, patch)`: a mudança de posição de um guarda, feita pelo mestre e
+  sem `ronda` no patch (arrastar, setas), leva o rumo novo (de 45 em 45 graus) no mesmo passo de desfazer.
+- **O cone revelado**: `t.ronda.ver = { para: [ids], rota, por: '' | 'rondas' | 'rodadas', n }`, pelo bloco Guarda do
+  token ("Mostrar o cone a um jogador"). A projeção leva `t.vc` (alcance, abertura, rumo, estado e, com `rota`, os
+  pontos); só a tela de quem está em `para` desenha o cone, a rota e os selos (`Rondas.vistos`). "Avançar rondas" tira 1
+  de quem conta por rondas; `Rondas.naRodada` (na rodada nova do combate), de quem conta por rodadas; no 0, some.
+  O `vc` vai no documento público da cena (os outros jogadores recebem, mas não desenham).
+
 ### As aptidões e os lembretes do mestre (lote 131)
 
 - **As aptidões** (`tc/aptidoes.js`, `fichas/aptidoes.js`): a aba Aptidões da ficha. Só quem mestra cria, uma a uma:

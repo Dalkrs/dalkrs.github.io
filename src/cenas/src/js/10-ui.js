@@ -3403,6 +3403,7 @@ const UI = (() => {
     const sc0 = Store.scene(), tn0 = sc0.turn, P = barrinhasPrefs();
     const comecou = !antes.on && tn0.on, novaRodada = antes.on && tn0.on && (tn0.round || 1) > antes.round;
     if (typeof Reforco !== 'undefined' && (comecou || novaRodada)) Reforco.naRodada(tn0.round || 1);
+    if (novaRodada && typeof Rondas !== 'undefined') Rondas.naRodada();                 // (lote 132) a vista revelada por rodadas
     const resto = () => {
       const sc = Store.scene(), tn = sc.turn;
       if (typeof PainelBarras !== 'undefined') PainelBarras.depoisDaVez(antes);      // (lote 44) o fim e o começo do turno no painel de barras

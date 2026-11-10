@@ -160,7 +160,8 @@ const Store = (() => {
     canRedo: () => H().redo.length > 0,
     add: (c, v, i) => push({ t: 'add', c, v, i }),
     del: (c, id) => push({ t: 'del', c, id }),
-    upd: (c, id, p) => push({ t: 'upd', c, id, p }),
+    // (lote 132) o guarda arrastado à mão vira para onde foi (Rondas.virar põe o rumo novo no mesmo passo)
+    upd: (c, id, p) => push({ t: 'upd', c, id, p: (c === 'tokens' && typeof Rondas !== 'undefined' && Rondas.virar(id, p)) || p }),
     scn: p => push({ t: 'scn', p }),
     ord: (c, ids) => push({ t: 'ord', c, ids }),
     // Operação que veio de fora (a ficha do personagem, outro aparelho): vale na hora e avisa a tela, mas não entra no desfazer.

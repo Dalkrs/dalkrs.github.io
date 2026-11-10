@@ -13,6 +13,12 @@
    mais longe, "pode ter notado". Quem está Oculto (a condição) não é visto.
    Nada anda sozinho: o mestre aperta "Avançar rondas" (no grupo Mestre do trilho, ou no menu do botão direito), com
    Desfazer.
+   (lote 132, pedido do Bruno) O guarda vira sozinho: na ronda, para onde deu o último passo — e, ao chegar num ponto
+   da rota, já olha para o trecho seguinte; arrastado à mão (mouse ou setas), para onde foi.
+   (lote 132) A vista revelada: quando um jogador usa uma skill para ver o campo de visão de um guarda, o mestre mostra
+   o cone dele só para esse jogador (t.ronda.ver: para quem, se a rota vai junto, e por quanto tempo — até o mestre
+   desligar, ou N vezes de "Avançar rondas", ou N rodadas de combate). A projeção leva t.vc (o cone, o estado, e a rota
+   se o mestre deixou) — e só a tela de quem está em `para` desenha o cone, a cor do estado e o "!" de quem ele vê.
    --------------------------------------------------------------- */
 const Rondas = (() => {
   const ESTADOS = [['calmo', 'Calmo'], ['desconfiado', 'Desconfiado'], ['alerta', 'Alerta']];
@@ -25,13 +31,38 @@ const Rondas = (() => {
 
   /* ---------------- os dados ---------------- */
   function limpar(t) {
+    if (t) limparVc(t);
     const r = t && t.ronda;
     if (!t || t.prop || !r || typeof r !== 'object' || Array.isArray(r)) { if (t) { delete t.ronda; delete t.alerta; } return; }
     const pts = Array.isArray(r.pts) ? r.pts.filter(p => Array.isArray(p) && p.length === 2 && p.every(v => Number.isFinite(Number(v)))).slice(0, MAX_PTS).map(p => [num(p[0], 0, 999, 0), num(p[1], 0, 999, 0)]) : [];
     t.ronda = { pts, i: num(r.i, 0, Math.max(0, pts.length - 1), 0), s: r.s === -1 ? -1 : 1, modo: r.modo === 'volta' ? 'volta' : 'ida', passo: num(r.passo, 1, 12, PADRAO.passo), r: num(r.r, 1, 40, PADRAO.r), a: num(r.a, 20, 360, PADRAO.a), dir: ((num(r.dir, -720, 720, 90) % 360) + 360) % 360 };
+    const ver = verLimpo(r.ver);
+    if (ver) t.ronda.ver = ver;
     if (ESTADOS.some(e => e[0] === t.alerta)) { if (t.alerta === 'calmo') delete t.alerta; } else delete t.alerta;
   }
+  // (lote 132) o cone revelado, como chega na tela do jogador (t.vc, da projeção): arrumado ou apagado
+  function limparVc(t) {
+    const v = t.vc;
+    if (t.prop || !v || typeof v !== 'object' || Array.isArray(v) || !Array.isArray(v.para)) { delete t.vc; return; }
+    const o = { para: v.para.filter(x => typeof x === 'string').slice(0, 12), r: num(v.r, 1, 40, PADRAO.r), a: num(v.a, 20, 360, PADRAO.a), dir: ((num(v.dir, -720, 720, 90) % 360) + 360) % 360, est: ESTADOS.some(e => e[0] === v.est) ? v.est : 'calmo' };
+    if (Array.isArray(v.pts)) { o.pts = v.pts.filter(p => Array.isArray(p) && p.length === 2 && p.every(n => Number.isFinite(Number(n)))).slice(0, MAX_PTS).map(p => [num(p[0], 0, 999, 0), num(p[1], 0, 999, 0)]); o.modo = v.modo === 'volta' ? 'volta' : 'ida'; o.i = num(v.i, 0, Math.max(0, o.pts.length - 1), 0); }
+    t.vc = o;
+  }
+  // (lote 132) a vista revelada: { para: [ids dos jogadores], rota: bool, por: '' | 'rondas' | 'rodadas', n }
+  function verLimpo(v) {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+    const para = Array.isArray(v.para) ? [...new Set(v.para.filter(x => typeof x === 'string' && /^[A-Za-z0-9_*-]{1,60}$/.test(x)))].slice(0, 12) : [];
+    if (!para.length) return null;
+    const por = v.por === 'rondas' || v.por === 'rodadas' ? v.por : '';
+    const o = { para, rota: !!v.rota, por, n: por ? num(v.n, 1, 99, 1) : 0 };
+    return o;
+  }
   const ehGuarda = t => !!(t && !t.prop && t.ronda && typeof t.ronda === 'object');
+  // (lote 132) na tela de um jogador: o guarda cujo cone o mestre mostrou para ele (t.vc, da projeção)
+  const vcMeu = t => !!(t && !t.prop && t.vc && typeof t.vc === 'object' && Array.isArray(t.vc.para) && (t.vc.para.includes(App.viewer) || t.vc.para.includes('*')));
+  // o que vale para o cone: no mestre, a ronda; no jogador, o que veio na projeção
+  const fonte = t => (ehGuarda(t) ? { r: t.ronda, est: estadoDe(t) } : { r: t.vc, est: ESTADOS.some(e => e[0] === t.vc.est) ? t.vc.est : 'calmo' });
+  const vistos = sc => (sc ? (isGM() ? sc.tokens.filter(ehGuarda) : sc.tokens.filter(vcMeu)) : []);
   const estadoDe = t => (ESTADOS.some(e => e[0] === t.alerta) ? t.alerta : 'calmo');
   const guardas = sc => (sc ? sc.tokens.filter(ehGuarda) : []);
   const novaRonda = o => Object.assign({ pts: [], i: 0, s: 1, modo: PADRAO.modo, passo: PADRAO.passo, r: PADRAO.r, a: PADRAO.a, dir: 90 }, o || {});
@@ -39,7 +70,7 @@ const Rondas = (() => {
   /* ---------------- o cone ---------------- */
   // → { cx, cy, R (em unidades da cena), dir, meia (radianos), est }
   function cone(t, sc) {
-    const est = estadoDe(t), [k, mais] = MAIS[est], [cx, cy, half] = tokC(t, sc), r = t.ronda;
+    const f = fonte(t), est = f.est, [k, mais] = MAIS[est], [cx, cy, half] = tokC(t, sc), r = f.r;
     return { cx, cy, R: r.r * k * sc.cell + half, dir: rad(r.dir), meia: rad(Math.min(360, r.a + mais)) / 2, est };
   }
   // o que o guarda enxerga (o polígono das paredes), guardado até as paredes ou ele mudarem
@@ -76,10 +107,10 @@ const Rondas = (() => {
   }
   /* Quem cada guarda vê agora: [{ g (o guarda), t (o visto), nivel: 'visto' | 'sombra' }]. Os vistos: os tokens dos
      jogadores (com dono), à mostra, que não estão Ocultos. */
-  function quemVe(sc) {
+  function quemVe(sc, lista) {
     const out = [], alvos = sc.tokens.filter(t => !t.prop && t.owner && !t.hidden && !ehGuarda(t) && !(t.conds || []).includes('oculto'));
     if (!alvos.length) return out;
-    for (const gd of guardas(sc)) {
+    for (const gd of lista || guardas(sc)) {
       const g = cone(gd, sc), segs = Walls.sightFor(sc, gd);
       for (const t of alvos) {
         const [x, y, half] = tokC(t, sc);
@@ -96,7 +127,7 @@ const Rondas = (() => {
   function andar(t, sc) {
     const r = t.ronda, n = r.pts.length, c = sc.cell;
     if (n < 2 || estadoDe(t) === 'alerta') return null;
-    let x = Math.round(t.x / c), y = Math.round(t.y / c), i = clamp(r.i, 0, n - 1), s = r.s, dir = r.dir, andou = 0;
+    let x = Math.round(t.x / c), y = Math.round(t.y / c), i = clamp(r.i, 0, n - 1), s = r.s, dir = r.dir, andou = 0, noPonto = false;
     const proximo = () => {
       if (r.modo === 'volta') { i = (i + 1) % n; return; }
       if (i + s < 0 || i + s >= n) s = -s;
@@ -108,11 +139,49 @@ const Rondas = (() => {
       const dx = Math.sign(tx - x), dy = Math.sign(ty - y);
       x += dx; y += dy; andou++;
       dir = ((Math.round(deg(Math.atan2(dy, dx))) % 360) + 360) % 360;
-      if (x === tx && y === ty) proximo();
+      noPonto = x === tx && y === ty;
+      if (noPonto) proximo();
     }
     if (!andou) return null;
+    // (lote 132) parou bem num ponto da rota: já olha para o trecho seguinte (vira antes da curva)
+    if (noPonto) { const [px, py] = r.pts[i]; if (px !== x || py !== y) dir = rumo(px - x, py - y); }
     const [nx, ny] = snapTok(sc, x * c, y * c, t.size, false);
     return { x: nx, y: ny, ronda: Object.assign({}, r, { i, s, dir }) };
+  }
+  // o rumo (em graus, de 45 em 45) de um deslocamento
+  const rumo = (dx, dy) => ((Math.round(deg(Math.atan2(dy, dx)) / 45) * 45) % 360 + 360) % 360;
+  /* (lote 132) Arrastado à mão (mouse, setas, qualquer mudança de posição que não venha da ronda): o guarda vira para
+     onde foi. Store.upd chama aqui; devolve o patch com o rumo novo, ou null. */
+  function virar(id, p) {
+    if (!isGM() || !p || p.ronda !== undefined || (p.x === undefined && p.y === undefined)) return null;
+    const t = Store.get('tokens', id);
+    if (!ehGuarda(t)) return null;
+    const dx = (p.x === undefined ? t.x : p.x) - t.x, dy = (p.y === undefined ? t.y : p.y) - t.y;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return null;
+    const dir = rumo(dx, dy);
+    return dir === t.ronda.dir ? null : Object.assign({}, p, { ronda: Object.assign({}, t.ronda, { dir }) });
+  }
+  // (lote 132) o tempo da vista revelada passa: tira 1 de quem conta `por` ('rondas' ou 'rodadas'); no 0, apaga
+  function contarVer(sc, por, mud) {
+    const out = [];
+    for (const t of guardas(sc)) {
+      const v = t.ronda.ver;
+      if (!v || v.por !== por) continue;
+      const m = mud && mud.find(([x]) => x === t), base = m && m[1] ? m[1].ronda : t.ronda;
+      const ver = v.n > 1 ? Object.assign({}, v, { n: v.n - 1 }) : undefined;
+      out.push([t, ver]);
+      if (m && m[1]) m[1].ronda = Object.assign({}, base, { ver });
+    }
+    return out;
+  }
+  function naRodada() {
+    const sc = Store.scene();
+    if (!sc || !isGM()) return;
+    const ls = contarVer(sc, 'rodadas');
+    if (!ls.length) return;
+    Store.tx('Vista revelada: uma rodada', () => { for (const [t, ver] of ls) Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { ver }) }); });
+    const fim = ls.filter(([, v]) => !v).map(([t]) => t.name);
+    if (fim.length) UI.toast(`Os jogadores não veem mais o cone de ${fim.join(', ')}.`, { key: 'rondas' });
   }
   function avancar() {
     const sc = Store.scene();
@@ -120,11 +189,14 @@ const Rondas = (() => {
     const gs = guardas(sc);
     if (!gs.length) { UI.toast('Nenhum guarda nesta cena. No painel de um token, bloco "Guarda", ele ganha a ronda e o cone de visão.'); return; }
     const mud = gs.map(t => [t, andar(t, sc)]).filter(([, m]) => m);
-    if (mud.length) Store.tx('Avançar rondas', () => { for (const [t, m] of mud) Store.upd('tokens', t.id, m); });
+    // (lote 132) a vista revelada "por rondas" conta uma vez (também de quem ficou parado)
+    const conta = contarVer(sc, 'rondas', mud), so = conta.filter(([t]) => !mud.some(([x]) => x === t));
+    if (mud.length || so.length) Store.tx('Avançar rondas', () => { for (const [t, m] of mud) Store.upd('tokens', t.id, m); for (const [t, ver] of so) Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { ver }) }); });
+    const fimVer = conta.filter(([, v]) => !v).map(([t]) => t.name);
     const parados = gs.filter(t => estadoDe(t) === 'alerta').length;
     const vistos = quemVe(Store.scene()), txt = resumoVistos(vistos);
     const base = mud.length ? `${mud.length === 1 ? '1 guarda andou' : mud.length + ' guardas andaram'}` : 'Nenhum guarda andou';
-    UI.toast(base + (parados ? ` (${parados} em alerta, ${parados === 1 ? 'parado' : 'parados'})` : '') + '. ' + (txt || 'Ninguém foi visto.'), Object.assign({ long: !!txt, key: 'rondas' }, mud.length ? { action: 'Desfazer', run: Tools.undo } : {}));
+    UI.toast(base + (parados ? ` (${parados} em alerta, ${parados === 1 ? 'parado' : 'parados'})` : '') + '. ' + (txt || 'Ninguém foi visto.') + (fimVer.length ? ` Os jogadores não veem mais o cone de ${fimVer.join(', ')}.` : ''), Object.assign({ long: !!txt, key: 'rondas' }, mud.length ? { action: 'Desfazer', run: Tools.undo } : {}));
     if (vistos.some(v => v.nivel === 'visto') && typeof Som !== 'undefined' && Som.aviso) try { Som.aviso('alerta'); } catch (e) { /* sem som */ }
   }
   function resumoVistos(vistos) {
@@ -141,9 +213,11 @@ const Rondas = (() => {
   /* ---------------- o desenho (só o mestre) ---------------- */
   const mostrar = () => isGM() && App.opt.rondasVer !== false;
   const rgba = (est, a) => `rgba(${COR[est].join(',')},${a})`;
+  // o que desenhar nesta tela: no mestre, todos os guardas (se a chave estiver ligada); no jogador, os revelados a ele
+  const aDesenhar = sc => (isGM() ? (mostrar() ? guardas(sc) : []) : vistos(sc));
+  const rotaDe = t => { const f = fonte(t).r; return f && Array.isArray(f.pts) ? f : null; };
   function desenhar(c, sc, px) {
-    if (!mostrar()) return;
-    const gs = guardas(sc);
+    const gs = aDesenhar(sc);
     if (!gs.length) return;
     const cell = sc.cell, sel = new Set(App.sel.filter(s => s.c === 'tokens').map(s => s.id));
     c.save();
@@ -163,8 +237,8 @@ const Rondas = (() => {
     }
     // as rotas: tracejadas, com os pontos e a seta para o próximo; a do selecionado, mais forte
     for (const t of gs) {
-      const r = t.ronda, [w, h] = tokWH(t), m = [w * cell / 2, h * cell / 2], on = sel.has(t.id), est = estadoDe(t);
-      if (!r.pts.length) continue;
+      const r = rotaDe(t), [w, h] = tokWH(t), m = [w * cell / 2, h * cell / 2], on = sel.has(t.id), est = fonte(t).est;
+      if (!r || !r.pts.length) continue;
       const P = r.pts.map(([i, j]) => [i * cell + m[0], j * cell + m[1]]);
       c.globalAlpha = on ? 0.95 : 0.55;
       c.strokeStyle = 'rgba(8,10,16,0.7)'; c.lineWidth = 4 * px; c.setLineDash([8 * px, 6 * px]);
@@ -183,8 +257,7 @@ const Rondas = (() => {
   }
   // os selos por cima dos tokens: o "?" e o "!" dos guardas e o "!" vermelho em quem está sendo visto
   function selos(c, sc, px) {
-    if (!mostrar()) return;
-    const gs = guardas(sc);
+    const gs = aDesenhar(sc);
     if (!gs.length) return;
     const selo = (x, y, txt, cor) => {
       const r = 9 * px;
@@ -193,13 +266,13 @@ const Rondas = (() => {
     };
     c.save();
     for (const t of gs) {
-      const est = estadoDe(t);
+      const est = fonte(t).est;
       if (est === 'calmo') continue;
       const [w] = tokWH(t);
       selo(t.x + w * sc.cell - 3 * px, t.y + 3 * px, est === 'alerta' ? '!' : '?', rgba(est, 1));
     }
-    const vistos = quemVe(sc), ja = new Set();
-    for (const v of vistos) {
+    const vs = quemVe(sc, gs), ja = new Set();
+    for (const v of vs) {
       if (ja.has(v.t.id) && v.nivel !== 'visto') continue;
       ja.add(v.t.id);
       const [cx, cy, half] = tokC(v.t, sc), cor = v.nivel === 'visto' ? '#f05c4e' : '#f0c448';
@@ -279,7 +352,25 @@ const Rondas = (() => {
         K.btn(r.pts.length ? 'Refazer a rota' : 'Desenhar a rota', () => { R({ pts: [], i: 0, s: 1 }); desenharRota(Store.get('tokens', t.id)); }, { kind: 'small', icon: 'ronda', id: 'tk-grota' }),
         r.pts.length ? K.btn('Ficar de posto', () => R({ pts: [], i: 0, s: 1 }), { kind: 'small', id: 'tk-gposto', title: 'Apaga a rota: ele fica parado, olhando para o lado escolhido' }) : null,
         K.btn('Não é mais guarda', () => U({ ronda: undefined, alerta: undefined }, 'Deixar de ser guarda'), { kind: 'small', id: 'tk-gfora' })),
-      K.note(estadoDe(t) === 'alerta' ? 'Em Alerta, ele larga a rota: você o move à mão.' : 'Desconfiado, ele vê mais longe e mais aberto. Na sombra, só vê bem de perto. Quem está Oculto não é visto.'));
+      K.note(estadoDe(t) === 'alerta' ? 'Em Alerta, ele larga a rota: você o move à mão.' : 'Desconfiado, ele vê mais longe e mais aberto. Na sombra, só vê bem de perto. Quem está Oculto não é visto.'),
+      blocoVer(t, R, K));
+  }
+  /* (lote 132) "Mostrar o cone a um jogador": para quem usou uma skill de ver o campo de visão. Escolhe o(s) jogador(es),
+     se a rota vai junto e por quanto tempo. */
+  function blocoVer(t, R, K) {
+    const r = t.ronda, v = r.ver || null, js = (Store.S.players || []).filter(p => p && p.id);
+    const nomes = v ? v.para.map(id => (js.find(p => p.id === id) || {}).name || 'um jogador') : [];
+    const quanto = v ? (v.por ? `ainda ${v.n} ${v.por === 'rondas' ? (v.n === 1 ? 'ronda' : 'rondas') : (v.n === 1 ? 'rodada' : 'rodadas')}` : 'até você esconder') : '';
+    const novo = Object.assign({ para: [], rota: false, por: '', n: 2 }, v || {});
+    const muda = o => R({ ver: verLimpo(Object.assign({}, novo, o)) || undefined });
+    if (!js.length) return h('div', { class: 'tk-gver' }, K.note('Mostrar o cone a um jogador: chame os jogadores para a mesa primeiro.'));
+    return h('div', { class: 'tk-gver' },
+      h('div', { class: 'o-note', style: { marginTop: '8px', fontWeight: '600' }, text: v ? `${nomes.join(', ')} ${nomes.length === 1 ? 'vê' : 'veem'} o cone (${quanto})` : 'Mostrar o cone a um jogador (quando ele usa uma skill para ver)' }),
+      ...js.map(p => K.toggle('tk-gver-' + p.id, novo.para.includes(p.id), on => muda({ para: on ? novo.para.concat([p.id]) : novo.para.filter(x => x !== p.id) }), p.name)),
+      v ? K.toggle('tk-gver-rota', !!v.rota, on => muda({ rota: on }), 'A rota vai junto') : null,
+      v ? K.field('Por quanto tempo', K.seg('tk-gver-por', v.por, [['', 'Até eu esconder'], ['rondas', 'Rondas'], ['rodadas', 'Rodadas']], x => muda({ por: x, n: v.n || 2 })), 'stack') : null,
+      v && v.por ? K.field(v.por === 'rondas' ? 'Quantas vezes de "Avançar rondas"' : 'Quantas rodadas de combate', K.inNum('tk-gver-n', v.n, x => muda({ n: num(x, 1, 99, 1) }), { min: 1, max: 99, step: 1, label: 'Por quanto tempo o jogador vê o cone' })) : null,
+      v ? h('div', { class: 'row' }, K.btn('Esconder o cone de novo', () => R({ ver: undefined }), { kind: 'small', id: 'tk-gver-fim' })) : null);
   }
 
   /* ---------------- o painel do grupo Mestre ---------------- */
@@ -296,5 +387,5 @@ const Rondas = (() => {
     ];
   }
 
-  return { ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, mudarEstado, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
+  return { ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
 })();

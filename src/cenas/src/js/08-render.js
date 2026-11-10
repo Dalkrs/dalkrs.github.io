@@ -779,10 +779,10 @@ const Render = (() => {
     // os objetos de cenário ficam por baixo dos tokens (o guerreiro fica em cima da mesa, não embaixo dela)
     for (const tk of sc.tokens) if (tk.prop && (gm || !tk.hidden)) drawProp(c, tk, sc, px, t);
     drawFumaca(c, sc, px, t);                              // (lote 48) a fumaça e as fagulhas, por cima dos objetos
-    if (gm) Rondas.desenhar(c, sc, px);                    // (lote 121) as rotas e os cones dos guardas (só o mestre)
+    Rondas.desenhar(c, sc, px);                            // (lote 121) as rotas e os cones dos guardas (o mestre; lote 132: e o cone revelado a um jogador)
     for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenBody(c, tk, sc, px);
     for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenTop(c, tk, sc, px);
-    if (gm) Rondas.selos(c, sc, px);                       // (lote 121) o "?" e o "!" dos guardas e de quem é visto
+    Rondas.selos(c, sc, px);                               // (lote 121) o "?" e o "!" dos guardas e de quem é visto (lote 132: idem)
   }
   // Um objeto de cenário: o desenho dele (o oculto, para o mestre, esmaecido e com o olho riscado)
   function drawProp(c, tk, sc, px, t) {

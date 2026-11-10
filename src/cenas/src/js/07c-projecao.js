@@ -115,6 +115,13 @@ const Proj = (() => {
     delete o.pb;                                                      // (lote 44) o painel de barras do NPC: só do mestre
     // (lote 129) o marcador de uma missão que o mestre ainda não revelou (nos rascunhos): vai sem o nome
     if (o.mq && o.mq.e === 'oculta') { o.mq = { id: o.mq.id, tp: o.mq.tp, e: 'oculta' }; if (t.mq.oid) o.mq.oid = t.mq.oid; }
+    /* (lote 132) a vista revelada: o cone do guarda (alcance, abertura, rumo, estado) para os jogadores em `para`, e a
+       rota só se o mestre deixou. O resto da ronda continua só do mestre. */
+    const rv = t.ronda && t.ronda.ver;
+    if (rv && Array.isArray(rv.para) && rv.para.length) {
+      o.vc = { para: rv.para.slice(), r: t.ronda.r, a: t.ronda.a, dir: t.ronda.dir, est: t.alerta || 'calmo' };
+      if (rv.rota) { o.vc.pts = (t.ronda.pts || []).map(p => p.slice()); o.vc.modo = t.ronda.modo; o.vc.i = t.ronda.i; }
+    } else delete o.vc;
     delete o.ronda; delete o.alerta; delete o.q0; delete o.tranca; delete o.pz; delete o.pzOk;      // (lote 122: a fechadura do objeto)                     // (lote 121) a ronda do guarda e o alerta dele: só do mestre
     /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
        não diz qual é o real — é o que deixa o anel da vez (e o clique na ordem) ir em todos. */

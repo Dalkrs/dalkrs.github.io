@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.10-04",
+      "data": "2026-11-10",
+      "titulo": "Guardas: o cone vira sozinho e pode ser mostrado a um jogador",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Cenas: o guarda vira sozinho. Na ronda, ao chegar num ponto, já olha para o trecho seguinte; arrastado à mão (mouse ou setas), olha para onde foi.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: \"Mostrar o cone a um jogador\", no bloco Guarda do token. Para quem usou uma skill de ver o campo de visão: só ele vê o cone, na cor do estado, e o \"!\" de quem o guarda está vendo. A rota vai junto se o mestre deixar.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: o cone revelado fica até o mestre esconder, ou por algumas vezes de \"Avançar rondas\", ou por algumas rodadas de combate — e some sozinho no fim.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.10-03",
       "data": "2026-11-10",
       "titulo": "Aptidões e os lembretes do mestre",
