@@ -94,6 +94,20 @@ ok(F.ajuda(0) === 1 && F.ajuda(50) === 1.5 && F.ajuda(500) === 2, 'o atributo al
     jg = await tst();
     ok(jg.estado.e === 1 && jg.estado.b === 1, 'travar fora da hora: erro e barulho');
     await p.screenshot({ path: __dirname + '/_fch-pinos.png' });
+    // (lote 134) no Extremo: travar quando o pino acaba de entrar na faixa verde vale; a faixa é a janela de verdade
+    await p.click('[data-k="pz:niv:extremo"]'); await w(400);
+    const v2 = (await segredo()).v;
+    await p.locator('.previa .fch-palco').focus();
+    const faixa = await ev(() => { const a = document.querySelector('.previa .fch-alvo'); return { top: parseFloat(a.style.top), h: parseFloat(a.style.height) }; });
+    ok(Math.abs(faixa.h - (0.11 + 0.024) * 62 - 2) < 0.6, 'no Extremo, a faixa verde tem a altura da janela (' + faixa.h + 'px)');
+    await p.keyboard.press(' ');
+    // espera o pino entrar na faixa (o topo dele abaixo da linha de baixo da faixa) e trava logo
+    await ev(([top, h]) => new Promise(res => { const pino = document.querySelector('.previa .fch-col .fch-pino'), col = pino.parentElement;
+      const olha = () => { const y = pino.getBoundingClientRect().top - col.getBoundingClientRect().top; if (y <= top + h - 1) res(); else requestAnimationFrame(olha); }; olha(); }), [faixa.top, faixa.h]);
+    await p.keyboard.press(' '); await w(250);
+    jg = await tst();
+    ok(await ev(() => document.querySelectorAll('.previa .fch-col.travado').length) === 1, 'travou ao encostar no verde: ' + JSON.stringify(jg.estado) + ' ' + JSON.stringify(v2));
+    if (process.env.FOTOS) await p.locator('.previa .fch').screenshot({ path: process.env.FOTOS + '/fch-extremo.png' });
     ok(!erros.length, 'sem erros na página: ' + erros.join(' | '));
   } catch (e) { ok(false, 'falhou: ' + e.message); }
   await t.close(); end();

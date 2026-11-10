@@ -251,6 +251,7 @@
 
     // ================= pinos =================
     let pinosEl = [];
+    const PINO_TOPO = 170 - 26 - 60 - 62;            // onde fica o topo do pino lá no alto (a altura da coluna, no CSS)
     function montarPinos() {
       const n = p().pinos || 3;
       const caixa = h('div', { class: 'fch-pinos', style: { gridTemplateColumns: 'repeat(' + n + ', 1fr)' } });
@@ -261,6 +262,7 @@
         return { col, pino, mola, alvo };
       });
       palco.append(caixa);
+      st.faixa = null;
     }
     function empurrarOuTravar() {
       if (fechadoAgora()) return;
@@ -271,7 +273,8 @@
       // travar: só no alto
       const s = segredoDe(c.jg), per = (s.v || [])[i] || 1200, f = (performance.now() - st.sobe.t0) / per, jan = Math.min(0.6, T.janela[p().n] * mult());
       st.sobe = null;
-      if (Math.abs(f - 0.5) <= jan / 2) {
+      // (lote 134) uma folga de um quadro de tela (o que se vê é o desenho de um instante atrás)
+      if (Math.abs(f - 0.5) <= jan / 2 + 0.012) {
         st.travados[i] = true; som('trava'); st.msg = 'Travou!';
         const n = p().pinos || 3, livres = [...Array(n).keys()].filter(k => !st.travados[k]);
         if (!livres.length) abrir();
@@ -290,7 +293,8 @@
       pinosEl.forEach((el, i) => {
         let alt = 0;
         if (st.travados[i]) alt = 1;
-        else if (st.sobe && st.sobe.i === i) { const per = (s.v || [])[i] || 1200; alt = Math.sin(Math.PI * clamp((performance.now() - st.sobe.t0) / per, 0, 1)); }
+        // (lote 134) sobe e desce em linha reta: a altura diz o tempo, e a faixa verde é exatamente a janela de travar
+        else if (st.sobe && st.sobe.i === i) { const per = (s.v || [])[i] || 1200; alt = 1 - Math.abs(2 * clamp((performance.now() - st.sobe.t0) / per, 0, 1) - 1); }
         el.pino.style.transform = 'translateY(' + (-alt * 62) + 'px)';
         el.mola.style.height = (20 + (1 - alt) * 0 + alt * 62) + 'px';
         el.col.classList.toggle('travado', !!st.travados[i]);
@@ -298,6 +302,10 @@
         el.col.disabled = fechadoAgora();
       });
       if (n !== pinosEl.length) { palco.replaceChildren(); montarPinos(); }
+      /* (lote 134) a faixa verde: do alto do curso até a altura em que travar ainda vale (1 − janela). Antes, a faixa era
+         fixa e bem mais funda que a janela: no Extremo, o pino "encostava no verde" muito antes de valer. */
+      const jan = Math.min(0.6, T.janela[p().n] * mult()), alto = Math.round((jan + 0.024) * 62 * 10) / 10;
+      if (st.faixa !== alto) { st.faixa = alto; pinosEl.forEach(el => { el.alvo.style.top = (PINO_TOPO - 2) + 'px'; el.alvo.style.height = (alto + 2) + 'px'; }); }
     }
 
     // ================= o laço =================
