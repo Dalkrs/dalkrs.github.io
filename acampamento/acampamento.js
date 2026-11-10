@@ -1005,6 +1005,7 @@
         h('p', { class: 'note' }, 'Faz ', h('b', { text: (r.resultado.qtd > 1 ? r.resultado.qtd + ' × ' : '') + r.resultado.item.nome }), te ? ' · teste de ' + NOME_ATR(te.atr) + ' (' + v + ') contra ' + te.dif : ' · sem teste'),
         te ? h('p', { class: 'note', text: 'Se falhar: ' + falhaTexto(r) + '.' }) : null,
         hb.texto ? h('p', { class: 'note' + (hb.ok ? '' : ' trancada'), 'data-pede': hb.ok ? 'ok' : 'falta', text: (hb.ok ? '' : '🔒 ') + hb.texto + (hb.ok ? '.' : mestre() ? ': ' + p.nome + ' não tem. Você pode fazer mesmo assim (libera na hora).' : ': ' + p.nome + ' ainda não tem.') }) : null,
+        te && hb.bonus ? h('p', { class: 'note', 'data-bonus': String(hb.bonus), text: '⭐ ' + hb.bonusTexto + ': a classe e a profissão juntas.' }) : null,
         h('div', { class: 'lin' }, h('button', { type: 'button', class: 'btn sm pri', id: 'banc-fazer-' + x.id, disabled: !pf.ok || encerrada || travada, title: travada ? hb.texto : pf.ok ? '' : 'Faltam ingredientes', onclick: () => abrirFazer(x, p) }, 'Fazer'),
           pf.ok ? null : h('span', { class: 'note', text: 'Faltam: ' + pf.faltam.map(g => (g.precisa - g.tem) + ' × ' + g.nome).join(', ') + '.' }))));
       if (travada) trancadas.push(out.pop());
@@ -1014,11 +1015,12 @@
   }
   function abrirFazer(x, p) {
     const r = x.r, te = r.teste, v = te ? Math.round(+(p.atr && p.atr[te.atr]) || 0) : 0;
+    const l0 = P.pegar(p.id), hb = IT().habilidadeOk && l0 ? IT().habilidadeOk(r, l0.skills, bibAtual()) : { bonus: 0 };
     let dispensa = false;
     const cx = mestre() && te ? h('label', { class: 'sw' }, h('input', { type: 'checkbox', id: 'banc-dispensa', onchange: e => { dispensa = e.target.checked; } }), 'Dispensar o teste (dá certo)') : null;
     abrirJanela('Fazer ' + r.nome, h('div', { class: 'cartao' },
       h('p', { text: p.nome + ' gasta ' + r.ingredientes.map(g => g.qtd + ' × ' + g.nome).join(', ') + ' e faz ' + (r.resultado.qtd > 1 ? r.resultado.qtd + ' × ' : '') + r.resultado.item.nome + '.' }),
-      te ? h('p', { class: 'note', text: 'Teste: ' + NOME_ATR(te.atr) + ' ' + v + (p.fixa ? ' (fixa ' + Math.min(p.fixa, v) + ')' : '') + ' contra ' + te.dif + '. Se falhar: ' + falhaTexto(r) + '.' }) : null, cx),
+      te ? h('p', { class: 'note', text: 'Teste: ' + NOME_ATR(te.atr) + ' ' + v + (p.fixa ? ' (fixa ' + Math.min(p.fixa, v) + ')' : '') + (hb.bonus ? ' +' + hb.bonus + ' (' + hb.bonusTexto.replace(/^\+\d+ no teste \(|\)$/g, '') + ')' : '') + ' contra ' + te.dif + '. Se falhar: ' + falhaTexto(r) + '.' }) : null, cx),
       [h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), h('button', { type: 'button', class: 'btn pri', id: 'banc-ok', text: te ? 'Rolar e fazer' : 'Fazer', onclick: () => { fecharJanela(); fazerReceita(x, p, dispensa); } })]);
   }
   // o dano da falha: como uma poção que tira da barra (as barras são achadas pelo nome); → { estado, txt: ['HP 40 → 33'] }
@@ -1040,7 +1042,8 @@
     const l = P.pegar(p.id);
     if (!l || !l.ficha) { toast('A ficha de ' + p.nome + ' não está aqui.'); return; }
     const r = x.r, antes = { ficha: l.ficha, estado: l.estado || {} };
-    const t = r.teste && !dispensa ? IT().testar(r, p.atr && p.atr[r.teste.atr], p.fixa) : { sucesso: true, total: null, texto: r.teste ? 'teste dispensado' : '' };
+    const hb = IT().habilidadeOk ? IT().habilidadeOk(r, l.skills, bibAtual()) : { bonus: 0 };
+    const t = r.teste && !dispensa ? IT().testar(r, p.atr && p.atr[r.teste.atr], p.fixa, null, hb.bonus) : { sucesso: true, total: null, texto: r.teste ? 'teste dispensado' : '' };
     const f = IT().fazer(r, l.ficha, l.estado || {}, t.sucesso);
     if (!f.ok) { toast(f.erro); return; }
     let est = f.estado, danos = [], barras = [];

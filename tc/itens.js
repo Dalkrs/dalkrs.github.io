@@ -91,13 +91,15 @@
         conds: (Array.isArray(f.conds) ? f.conds : []).filter(ehObj).slice(0, 6).map(x => ({ c: txt(x.c, 40), r: inteiro(x.r, 0, 99, 0) })).filter(x => x.c) },
       oculta: d.oculta === true,
       // (lote 118) a habilidade que a receita pede: { arv (id ou nome da árvore), no (nome da habilidade), grau } ou null
-      exige: ehObj(d.exige) && txt(d.exige.no, 80) ? { arv: txt(d.exige.arv, 60), no: txt(d.exige.no, 80), grau: inteiro(d.exige.grau, 1, 5, 1) } : null };
+      exige: ehObj(d.exige) && txt(d.exige.no, 80) ? Object.assign({ arv: txt(d.exige.arv, 60), no: txt(d.exige.no, 80), grau: inteiro(d.exige.grau, 1, 5, 1) },
+        // (lote 133) as classes que dão +2 no teste desta receita (a profissão e a classe ligada a ela: "1 + 1 = 2")
+        (() => { const c = (Array.isArray(d.exige.classe) ? d.exige.classe : []).map(x => txt(x, 60)).filter(Boolean).slice(0, 4); return c.length ? { classe: c } : {}; })()) : null };
   }
   /* (lote 118) quem faz tem a habilidade que a receita pede? Procura a habilidade pelo nome (na árvore de mesmo id ou
      nome, se a receita diz qual) e o nível que o personagem comprou dela. → { ok, texto, falta } */
   function habilidadeOk(rc, skills, biblioteca) {
     const r = receita(rc), ex = r.exige;
-    if (!ex) return { ok: true, texto: '', falta: false };
+    if (!ex) return { ok: true, texto: '', falta: false, bonus: 0, bonusTexto: '' };
     const arvs = ehObj(biblioteca) && Array.isArray(biblioteca.arvores) ? biblioteca.arvores : [];
     const al = ehObj(skills) && ehObj(skills.alocados) ? skills.alocados : {};
     const daArv = a => !ex.arv || a.id === ex.arv || norm(a.nome) === norm(ex.arv);
@@ -107,7 +109,16 @@
       for (const n of Array.isArray(a.nodes) ? a.nodes : []) if (ehObj(n) && norm(n.nome) === norm(ex.no)) { nomeArv = a.nome || nomeArv; melhor = Math.max(melhor, Math.floor(num(al[n.id], 0))); }
     }
     const texto = 'Pede ' + ex.no + (ex.grau > 1 ? ', nível ' + ex.grau : '') + (nomeArv ? ' (' + nomeArv + ')' : '');
-    return { ok: melhor >= ex.grau, texto, falta: melhor < ex.grau };
+    /* (lote 133) +2 no teste para quem segue a classe ligada à profissão: a árvore da classe está no personagem (ou
+       ele tem algum nódulo dela) */
+    let bonus = 0, classe = '';
+    const lista = Array.isArray(skills && skills.arvores) ? skills.arvores : [];
+    for (const c of ex.classe || []) {
+      const a = arvs.find(x => ehObj(x) && (x.id === c || norm(x.nome) === norm(c)));
+      const tem = a ? lista.includes(a.id) || (Array.isArray(a.nodes) ? a.nodes : []).some(n => ehObj(n) && num(al[n.id], 0) > 0) : false;
+      if (tem) { bonus = 2; classe = a.nome || c; break; }
+    }
+    return { ok: melhor >= ex.grau, texto, falta: melhor < ex.grau, bonus, bonusTexto: bonus ? '+' + bonus + ' no teste (' + classe + ')' : '' };
   }
 
   /* ---------------- a ficha recebe ---------------- */
@@ -242,7 +253,7 @@
     return { ficha: f, estado: Object.assign({}, e || {}, { qtd: q }) };
   }
   // o teste da receita: 1 dado do atributo (a regra da fixa da ficha) contra a dificuldade → { sucesso, total, texto }
-  function testar(rc, valorAtr, fixa, rng) {
+  function testar(rc, valorAtr, fixa, rng, bonus) {
     const r = receita(rc);
     if (!r.teste) return { sucesso: true, total: null, texto: 'Sem teste.' };
     const D = Dd(), v = Math.max(0, Math.round(num(valorAtr, 0)));
@@ -250,7 +261,8 @@
     if (D && D.rollFixaMais && !rng) res = D.rollFixaMais(v, fixa || 0);
     if (!res || !res.ok) { const f = Math.min(Math.max(0, Math.round(num(fixa, 0))), v), lados = v - f, d = lados > 0 ? 1 + Math.floor((rng || Math.random)() * lados) : 0; res = { ok: true, total: d + f, d, fixa: f }; }
     const nome = (ATR_TESTE.find(a => a[0] === r.teste.atr) || ATR_TESTE[0])[1];
-    return { sucesso: res.total >= r.teste.dif, total: res.total, texto: nome + ' ' + res.total + (res.total >= r.teste.dif ? ' ≥ ' : ' < ') + r.teste.dif };
+    const b = Math.max(0, Math.round(num(bonus, 0))), total = res.total + b;   // (lote 133) o +2 da classe ligada à profissão
+    return { sucesso: total >= r.teste.dif, total, texto: nome + ' ' + (b ? res.total + ' +' + b + ' = ' + total : total) + (total >= r.teste.dif ? ' ≥ ' : ' < ') + r.teste.dif };
   }
 
   // o texto curto de um item ("Poção · 30 lapros")

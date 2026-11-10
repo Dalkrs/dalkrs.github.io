@@ -509,12 +509,17 @@
       campo('Quantos', num('rc-res-q', r.resultado.qtd, v => { r.resultado.qtd = Math.max(1, Math.round(+v) || 1); }, { min: '1' }))));
     // (lote 118) a habilidade que a receita pede (vazio: qualquer um faz)
     const ex = r.exige || { arv: '', no: '', grau: 1 };
-    const pondo = () => { r.exige = ex.no && ex.no.trim() ? { arv: (ex.arv || '').trim(), no: ex.no.trim(), grau: Math.max(1, Math.min(5, Math.round(+ex.grau) || 1)) } : null; };
+    if (!Array.isArray(ex.classe)) ex.classe = [];
+    const pondo = () => {
+      const cl = ex.classe.map(x => String(x).trim()).filter(Boolean);
+      r.exige = ex.no && ex.no.trim() ? Object.assign({ arv: (ex.arv || '').trim(), no: ex.no.trim(), grau: Math.max(1, Math.min(5, Math.round(+ex.grau) || 1)) }, cl.length ? { classe: cl } : {}) : null;
+    };
     out.push(h('div', { class: 'field', id: 'rc-exige' }, h('span', { text: 'Pede a habilidade (vazio: qualquer um faz)' }),
       h('div', { class: 'acoes' }, texto('rc-ex-no', ex.no, v => { ex.no = v; pondo(); }, { ph: 'ex.: Preparar', rotulo: 'Habilidade' }),
         texto('rc-ex-arv', ex.arv, v => { ex.arv = v; pondo(); }, { ph: 'ex.: Alquimista', rotulo: 'Árvore' }),
-        num('rc-ex-g', ex.grau || 1, v => { ex.grau = v; pondo(); }, { min: '1', rotulo: 'Nível' })),
-      h('p', { class: 'ajuda', text: 'Na bancada, quem não tem a habilidade nesse nível vê a receita trancada. Você, que mestra, pode fazer mesmo assim.' })));
+        num('rc-ex-g', ex.grau || 1, v => { ex.grau = v; pondo(); }, { min: '1', rotulo: 'Nível' }),
+        texto('rc-ex-cl', ex.classe.join(', '), v => { ex.classe = v.split(',').map(x => x.trim()).filter(Boolean).slice(0, 4); pondo(); }, { ph: 'ex.: Alquimista', rotulo: 'Classe que dá +2 no teste' })),
+      h('p', { class: 'ajuda', text: 'Na bancada, quem não tem a habilidade nesse nível vê a receita trancada. Você, que mestra, pode fazer mesmo assim. Quem segue a classe escrita (pode ser mais de uma, separadas por vírgula) tem +2 no teste.' })));
     out.push(h('div', { class: 'field' }, h('span', { text: 'Teste' }), seg('rc-teste', r.teste ? 'sim' : 'nao', [['nao', 'Sem teste'], ['sim', 'Com teste']], v => { r.teste = v === 'sim' ? (r.teste || { atr: 'DES', dif: 10 }) : null; repintarEd(); }),
       r.teste ? h('div', { class: 'acoes' }, escolha('rc-atr', r.teste.atr, I.ATR_TESTE, v => { r.teste.atr = v; }, { rotulo: 'Atributo do teste' }), h('span', { class: 'ajuda', text: 'contra' }), num('rc-dif', r.teste.dif, v => { r.teste.dif = Math.max(1, Math.round(+v) || 10); }, { min: '1', rotulo: 'Dificuldade' })) : null));
     const f = r.falha;

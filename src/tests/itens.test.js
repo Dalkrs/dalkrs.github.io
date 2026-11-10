@@ -32,7 +32,15 @@ ok(!I.podeFazer(rc, f0, e0).ok && j(I.podeFazer(rc, f0, e0).faltam.map(x => x.no
   const rx = I.receita({ nome: 'Veneno', ingredientes: [{ nome: 'Kit de alquimia', qtd: 2 }], exige: { arv: 'Alquimista', no: 'preparar', grau: 2 } });
   ok(j(rx.exige) === j({ arv: 'Alquimista', no: 'preparar', grau: 2 }) && I.receita({ nome: 'z', exige: { no: '' } }).exige === null, '(lote 118) a receita guarda a habilidade que pede (sem nome: nenhuma)');
   ok(!I.habilidadeOk(rx, { alocados: { nP: 1 } }, bib).ok && I.habilidadeOk(rx, { alocados: { nP: 2 } }, bib).ok && !I.habilidadeOk(rx, { alocados: { nQ: 3 } }, bib).ok
-    && /Pede preparar, nível 2 \(Alquimista\)/.test(I.habilidadeOk(rx, {}, bib).texto) && I.habilidadeOk(rc, {}, bib).ok, '(lote 118) a bancada confere a habilidade: o nível, a árvore certa; sem pedido, qualquer um faz'); }
+    && /Pede preparar, nível 2 \(Alquimista\)/.test(I.habilidadeOk(rx, {}, bib).texto) && I.habilidadeOk(rc, {}, bib).ok, '(lote 118) a bancada confere a habilidade: o nível, a árvore certa; sem pedido, qualquer um faz');
+  // (lote 133) a profissão e a classe ligada: +2 no teste para quem segue a classe
+  const b2 = { arvores: [{ id: 'a_alquimia', nome: 'Alquimia', nodes: [{ id: 'pR', nome: 'Remédios de Bancada' }] }, { id: 'a_alquimista', nome: 'Alquimista', nodes: [{ id: 'cO', nome: 'Caminho do Cinto' }] }, { id: 'a_bardo', nome: 'Bardo', nodes: [{ id: 'bO', nome: 'Caminho do Ritmo' }] }] };
+  const rp = I.receita({ nome: 'Poção', exige: { arv: 'a_alquimia', no: 'Remédios de Bancada', grau: 1, classe: ['Alquimista', 'a_bardo', ''] }, teste: { atr: 'CAN', dif: 8 } });
+  ok(j(rp.exige.classe) === j(['Alquimista', 'a_bardo']), '(lote 133) a receita guarda as classes que dão +2');
+  const h1 = I.habilidadeOk(rp, { arvores: ['a_alquimia', 'a_alquimista'], alocados: { pR: 1 } }, b2), h2 = I.habilidadeOk(rp, { arvores: ['a_alquimia'], alocados: { pR: 1 } }, b2), h3 = I.habilidadeOk(rp, { arvores: [], alocados: { pR: 1, bO: 1 } }, b2);
+  ok(h1.ok && h1.bonus === 2 && /\+2 no teste \(Alquimista\)/.test(h1.bonusTexto) && h2.ok && h2.bonus === 0 && h3.bonus === 2 && /Bardo/.test(h3.bonusTexto), '(lote 133) +2 para quem segue a classe (pela árvore ou por um nódulo dela); sem a classe, sem bônus');
+  const t1 = I.testar(rp, 7, 0, () => 0.999, 2), t0 = I.testar(rp, 7, 0, () => 0.999);
+  ok(t0.total === 7 && !t0.sucesso && t1.total === 9 && t1.sucesso && /7 \+2 = 9 ≥ 8/.test(t1.texto), '(lote 133) o teste soma o +2: 7 falha contra 8, 7 +2 passa — ' + t1.texto); }
 const fz = I.fazer(rc, f0, { qtd: { b1: 4 } }, true);
 ok(fz.ok && fz.sucesso && fz.estado.qtd.b1 === 1 && fz.ficha.bolsa.some(x => x.nome === 'Poção de cura'), 'fazer com sucesso: gasta 3 ervas e a poção entra na bolsa');
 const fl = I.fazer(rc, f0, { qtd: { b1: 4 } }, false);

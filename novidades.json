@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.10-11",
+      "data": "2026-11-10",
+      "titulo": "Profissões",
+      "itens": [
+        { "tipo": "novo", "texto": "Árvores: seis profissões novas — Alquimia, Ferraria, Engenharia, Mineração, Coleta e Ator. Elas usam os pontos de Profissão (3 no começo, +1 por nível). Qualquer classe aprende, e cada uma tem um ramo a mais que só abre para quem segue a classe ligada (Alquimista, Ferreiro, Artífice, Druida, Ninja e Bardo)." },
+        { "tipo": "melhorou", "texto": "Bancada: as receitas agora pedem a habilidade da profissão (e não mais a da classe). Quem segue a classe ligada à profissão tem +2 no teste, e a bancada mostra isso." },
+        { "tipo": "novo", "texto": "Itens: Ervas frescas, Minério bruto e Kit de disfarce no catálogo; os kits também saem na bancada (com Coleta e Mineração), e o Ator faz máscaras, cartas, selos e salvo-condutos falsos." },
+        { "tipo": "melhorou", "texto": "Árvores: Alquimista, Artífice e Ferreiro voltaram a ser classes de luta; o que fabricava foi para as profissões.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.10-10",
       "data": "2026-11-10",
       "titulo": "Histórico do XP",
