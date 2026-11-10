@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.10-07",
+      "data": "2026-11-10",
+      "titulo": "Fechadura: a gazua não se conserta sozinha",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Fechadura (girar a gazua): o desgaste da gazua não volta quando você solta. Cada forçada fora do ponto continua de onde a outra parou, e com a barra cheia ela quebra. Só a gazua nova começa inteira (nem recarregar a página conserta)." }
+      ]
+    },
+    {
       "versao": "2026.11.10-06",
       "data": "2026-11-10",
       "titulo": "Roupas e disfarces nas Cenas",

@@ -197,6 +197,16 @@
     // ---- o valor do atributo ----
     const valor = () => valorDoAtributo(p().atr, c.ctx, st);
     const mult = () => ajuda(valor().v);
+    // (lote 134) o desgaste da gazua da vez fica guardado neste aparelho (recarregar a página não conserta a gazua)
+    const chaveGasto = () => 'tinycats:fech-gasto:' + chave.replace(/:raiz.*$/, '') + ':' + situacao(c.jg).quebradas;
+    let gastoSalvo = 0;
+    function guardarDesgaste() {
+      const agora = Date.now();
+      if (agora - gastoSalvo < 400 && st.forca) return;
+      gastoSalvo = agora;
+      try { if (st.forca) localStorage.setItem(chaveGasto(), String(Math.round(st.forca))); else localStorage.removeItem(chaveGasto()); } catch (e) { /* sem armazenamento */ }
+    }
+    try { st.forca = Math.max(0, Number(localStorage.getItem(chaveGasto())) || 0); } catch (e) { /* idem */ }
 
     // ================= girar =================
     let svg = null, cil = null, gaz = null, chaveEl = null, barra = null;
@@ -226,11 +236,14 @@
         st.rot = Math.min(max, st.rot + dt * 0.12);
         if (st.rot >= 90 - 0.01) { st.segurando = false; abrir(); }
         else if (st.rot >= max - 0.01) {
-          st.forca += dt;
+          st.forca += dt; st.forcando = true;
           if (st.forca >= T.forca[P.n] * (0.75 + 0.25 * m)) { st.forca = 0; st.segurando = false; st.rot = 0; st.tremer = 0; errar(true, 1, 'quebrou'); st.msg = 'A gazua quebrou!'; }
-        }
-      } else { st.rot = Math.max(0, st.rot - dt * 0.25); st.forca = Math.max(0, st.forca - dt * 1.5); }
-      const tremor = st.forca > 0 ? (Math.random() - 0.5) * (2 + 6 * st.forca / T.forca[P.n]) : 0;
+          guardarDesgaste();
+        } else st.forcando = false;
+      } else { st.rot = Math.max(0, st.rot - dt * 0.25); st.forcando = false; }
+      /* (lote 134, pedido do Bruno) o desgaste da gazua não volta: soltar e tentar de novo continua de onde parou —
+         só a gazua nova (depois de quebrar) começa inteira. A barra mostra quanto falta para quebrar. */
+      const tremor = st.forcando ? (Math.random() - 0.5) * (2 + 6 * st.forca / T.forca[P.n]) : 0;
       cil.setAttribute('transform', 'rotate(' + st.rot + ')');
       gaz.setAttribute('transform', 'rotate(' + (st.a + st.rot * 0.15 + tremor) + ')');
       barra.setAttribute('width', String(120 * clamp(st.forca / (T.forca[P.n] * (0.75 + 0.25 * m)), 0, 1)));
@@ -354,7 +367,7 @@
       if (s.aberta && P.estilo === 'pinos') st.travados = Array.from({ length: P.pinos }, () => true);
       if (s.aberta && P.estilo === 'girar') st.rot = 90;
       ajudaTxt.textContent = c.ctx.soVer ? '' : P.estilo === 'girar'
-        ? 'Mova o mouse (ou ← →) para posicionar a gazua e segure Girar (ou a barra de espaço). No ponto certo, o cilindro gira até o fim. Fora dele, trava: a gazua treme e, se insistir, quebra.'
+        ? 'Mova o mouse (ou ← →) para posicionar a gazua e segure Girar (ou a barra de espaço). No ponto certo, o cilindro gira até o fim. Fora dele, trava: a gazua treme e se gasta. O desgaste não volta quando você solta: com a barra cheia, ela quebra (a próxima gazua começa inteira).'
         : 'Escolha o pino (clique, ou ← →). Espaço (ou clique) empurra o pino; quando ele estiver lá no alto, espaço de novo trava. Travar fora da hora faz barulho e pode quebrar a gazua.';
       botoes.replaceChildren(...(c.ctx.soVer || s.aberta || s.falhou ? [] : P.estilo === 'girar'
         ? [h('button', { type: 'button', class: 'btn pri fch-girar', 'data-k': chave + ':girar',

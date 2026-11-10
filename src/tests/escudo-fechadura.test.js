@@ -55,6 +55,16 @@ ok(F.ajuda(0) === 1 && F.ajuda(50) === 1.5 && F.ajuda(500) === 2, 'o atributo al
     await p.keyboard.down(' '); await w(2600); await p.keyboard.up(' '); await w(300);
     let jg = await tst();
     ok(jg.erros === 1 && jg.estado.q === 1 && jg.estado.b === 1, 'forçar fora do ponto quebra a gazua (um erro, barulho): ' + JSON.stringify(jg.estado));
+    // (lote 134) o desgaste não volta: forçar aos pouquinhos, soltando entre um e outro, também quebra
+    await palco.focus();
+    for (let i = 0; i < 2; i++) { await p.keyboard.down(' '); await w(650); await p.keyboard.up(' '); await w(900); }
+    const larg = await ev(() => Number(document.querySelector('.previa .fch-forca').getAttribute('width')));
+    jg = await tst();
+    ok(jg.estado.q === 1 && larg > 60, 'depois de soltar, a barra do desgaste continua onde parou (' + Math.round(larg) + ' de 120)');
+    await p.keyboard.down(' '); await w(650); await p.keyboard.up(' '); await w(300);
+    jg = await tst();
+    ok(jg.estado.q === 2, 'a terceira forçada termina de gastar: a gazua quebra');
+    ok(await ev(() => Number(document.querySelector('.previa .fch-forca').getAttribute('width'))) === 0, 'a gazua nova começa inteira');
     // ir ao ponto certo e girar
     await palco.focus();
     const passos = Math.round((c - longe) / 2);
