@@ -1328,3 +1328,18 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .vant-c.on { border-color: var(--lamp); color: var(--fg); background: var(--lamp-soft); }
 .vant.curto .vant-c { padding: 1px 6px 1px 3px; font-size: 11px; }
 .pop-vt { margin: 2px 0 4px; }
+/* (lote 141) os andares de um prédio gerado: o tema e as salas (chips) de cada andar */
+.and { display: grid; gap: 10px; }
+.and-ls { display: grid; gap: 8px; }
+.and-l { border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 6px; }
+.and-l.base { border-color: #8a5cc4; background: rgba(138, 92, 196, 0.08); }
+.and-c { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.and-c b { font-size: 13px; }
+.and-c select { max-width: 55%; }
+.and-chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.and-chip { padding: 2px 4px 2px 9px; font-size: 12px; }
+.and-x { border: 0; background: none; color: var(--fg-3); font-size: 15px; line-height: 1; padding: 0 4px; cursor: pointer; border-radius: 50%; }
+.and-x:hover { color: var(--fg); background: var(--hover); }
+.and-mais { width: auto; font-size: 12px; padding: 2px 6px; height: auto; }
+.and-sec > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.int-ver { margin-bottom: 6px; }

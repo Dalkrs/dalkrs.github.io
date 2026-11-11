@@ -58,24 +58,89 @@ const Interior = (() => {
     dormitorio: ['cama', 'cama', 'cama', 'cama', 'bau', 'bau'],
     arsenal: ['estante', 'caixote', 'bau', 'estante', 'boneco', 'alvo'],
     refeitorio: ['mesa', 'banco', 'banco', 'mesa', 'banco', 'banco', 'barril'],
+    // (lote 141) os andares de cima, o porão e a base secreta
+    sotao: ['bau', 'caixote', 'cestoRoupa', 'caixote', 'chamine', 'estatua'],
+    adega: ['prateleiraVinho', 'tonel', 'barril', 'barril', 'prateleiraVinho', 'vela'],
+    despensa: ['barril', 'sacos', 'caixote', 'estante', 'jarro', 'sacos'],
+    galeria: ['tapete', 'estatua', 'estatua', 'candelabro', 'trofeu', 'estatua'],
+    cela: ['grilhoes', 'feno', 'jarro'],
+    reuniao: ['mesaGuerra', 'cadeira', 'cadeira', 'cadeira', 'cadeira', 'estante', 'candelabro'],
+    laboratorio: ['alambique', 'caldeirao', 'estante', 'jarro', 'vela', 'bau'],
+    cofre: ['cofre', 'cofre', 'bau', 'lingotes', 'sacos'],
+    tunel: ['tunel', 'escombros', 'caixote', 'lampiao'],
   };
   // perto de quê cada móvel gosta de ficar (a cadeira junto da mesa, o baú e a vela junto da cama, as estátuas junto do altar)
-  const PERTO = { cadeira: ['mesa'], banco: ['mesa'], vela: ['altar', 'cama', 'mesa'], bau: ['cama'], estatua: ['altar'], bigorna: ['braseiro'], jarro: ['braseiro', 'mesa'] };
+  const PERTO = { cadeira: ['mesa', 'mesaGuerra'], banco: ['mesa'], vela: ['altar', 'cama', 'mesa'], bau: ['cama'], estatua: ['altar'], bigorna: ['braseiro'], jarro: ['braseiro', 'mesa'] };
   // o estilo troca alguns móveis e põe outros
   const TROCA = { oriental: { cadeira: 'almofada', vela: 'lanterna' }, desertico: { cadeira: 'almofada' }, anao: { vela: 'braseiro' } };
   const EXTRA = { nordico: { sala: 'fogueira', salao: 'fogueira', nobre: 'fogueira' }, elfico: { sala: 'flores', quarto: 'flores', salao: 'flores', nobre: 'flores' }, desertico: { sala: 'jarro', quarto: 'tapete' }, oriental: { sala: ['lanterna', 'tatame', 'bonsai'], quarto: ['tatame', 'biombo'], salao: ['lanterna', 'biombo'], nobre: ['lanterna', 'biombo', 'bonsai'] } };     // (lote 54: o tatame, o biombo e o bonsai)
   // o piso de cada tipo (pelo tipo do vilarejo que mais se parece)
   const PISO_DE = { casa: 'casa', loja: 'armazem', taverna: 'taverna', ferraria: 'ferraria', armazem: 'armazem', templo: 'capela', senhor: 'taverna', quartel: 'ferraria', navio: 'armazem' };
   const tipoValido = t => (PLANTAS[t] ? t : PLANTAS[DO_VILAREJO[t]] ? DO_VILAREJO[t] : 'casa');
+  /* (lote 141) Os andares: as salas que o interior sabe mobiliar, os temas de cada andar e o da base secreta. */
+  const TEMAS_CIMA = {
+    quartos: { n: 'Quartos', lista: ['quarto', 'quarto', 'banheiro', 'quarto'] },
+    servico: { n: 'Serviço', lista: ['cozinha', 'despensa', 'deposito', 'quarto'] },
+    trabalho: { n: 'Trabalho', lista: ['escritorio', 'biblioteca', 'deposito'] },
+    luxo: { n: 'Luxo', lista: ['nobre', 'galeria', 'biblioteca', 'banheiro'] },
+    quartel: { n: 'Quartel', lista: ['dormitorio', 'refeitorio', 'arsenal', 'dormitorio'] },
+    sotao: { n: 'Sótão', lista: ['sotao', 'deposito'] },
+    deposito: { n: 'Depósito', lista: ['deposito', 'armazem', 'despensa'] },
+  };
+  const TEMAS_PORAO = {
+    adega: { n: 'Adega e despensa', lista: ['adega', 'despensa', 'deposito'] },
+    celas: { n: 'Celas', lista: ['cela', 'cela', 'deposito'] },
+    deposito: { n: 'Depósito', lista: ['deposito', 'deposito', 'adega'] },
+  };
+  const BASE_I = ['reuniao', 'arsenal', 'dormitorio', 'laboratorio', 'cofre', 'cela', 'tunel'];
+  const catDe = tipo => ({
+    salas: Object.keys(MOVEIS), cima: TEMAS_CIMA, porao: TEMAS_PORAO, base: BASE_I,
+    padrao: (n, N) => (n < 0 ? (tipo === 'quartel' ? 'celas' : 'adega')
+      : n === N && N >= 2 && tipo !== 'quartel' ? 'sotao'
+        : tipo === 'quartel' ? 'quartel' : tipo === 'senhor' && n === 2 ? 'luxo' : tipo === 'armazem' || tipo === 'ferraria' ? 'deposito' : 'quartos'),
+  });
   // o tamanho, para uma Entrada posta à mão (em quadrados de fora; a planta tem o dobro)
   const TAMANHOS_I = { pequeno: { n: 'Pequeno', w: 4, h: 4 }, medio: { n: 'Médio', w: 6, h: 5 }, grande: { n: 'Grande', w: 8, h: 7 } };
 
   /* ================= a planta (conta pura) ================= */
-  // o: { tipo, w, h, p (o lado da porta), estilo, f (forma), seed }
+  // o: { tipo, w, h, p (o lado da porta), estilo, f (forma), seed, andares (lote 141: a escolha da PlantaAndares) }
+  const subS = (seed, k) => (((Math.imul(seed ^ 0x5bd1e995, 0x01000193 + k * 0x9e3779b1) >>> 0) ^ (k * 0x85ebca6b)) >>> 0) || (k + 1);
   function gerar(o) {
     o = o || {};
     if (o.f === 'navio') return PLANTAS.navio.planta(o);
     if (PLANTAS[o.tipo] && PLANTAS[o.tipo].planta) return PLANTAS[o.tipo].planta(o);
+    const tipo = tipoValido(o.tipo), cat = catDe(tipo);
+    const a = o.andares ? PlantaAndares.normalizar(o.andares, cat) : null;
+    if (!a || (!a.cima && !a.porao)) return gerar1(o, null);
+    /* (lote 141) Os andares: todos do mesmo tamanho (as cenas ficam alinhadas: quem sobe aparece no mesmo lugar). As
+       escadas: A e B (nos cantos de cima) se revezam subindo; C desce do térreo ao 1º porão; D, do 1º ao 2º (com a base,
+       um alçapão escondido). */
+    const W = clamp(Math.round(Number(o.w) || 4) * 2, 6, 24), H = clamp(Math.round(Number(o.h) || 4) * 2, 6, 24), seed = (Math.round(Number(o.seed)) >>> 0) || 1;
+    const A = [W - 2, 1], B = [1, 1], C = [1, H - 2], D = [W - 2, H - 2];
+    const esc = (c, para, de, oc) => ({ x: c[0], y: c[1], para, de, oculto: !!oc });
+    const N = a.cima, P = a.porao;
+    const p0 = gerar1(o, { nivel: 0, escadas: [].concat(N ? [esc(A, 1, 0)] : [], P ? [esc(C, -1, 0)] : []) });
+    const andares = [];
+    const outro = k => Object.assign({}, o, { seed: (subS(seed, k) % 2147483000) + 1 });
+    for (let n = 1; n <= N; n++) {
+      const baixo = n % 2 ? A : B, cima = n % 2 ? B : A;
+      andares.push(gerar1(outro(300 + n), { nivel: n, entra: baixo, semPorta: true, lista: PlantaAndares.salasDe(a, cat, n), escadas: [esc(baixo, n - 1, n)].concat(n < N ? [esc(cima, n + 1, n)] : []) }));
+    }
+    for (let n = -1; n >= -P; n--) {
+      const pp = PlantaAndares.papelDoNivel(a, n), sobe = n === -1 ? C : D;
+      const escs = [esc(sobe, n + 1, n)].concat(n === -1 && P === 2 ? [esc(D, -2, -1, a.base)] : []);
+      const ex = { nivel: n, entra: sobe, semPorta: true, subsolo: true, escadas: escs };
+      if (pp === 'base') Object.assign(ex, { lista: PlantaAndares.salasDe(a, cat, 'base'), base: true });
+      else { ex.lista = PlantaAndares.salasDe(a, cat, n); if (pp === 'dividido') ex.baseLista = PlantaAndares.salasDe(a, cat, 'base'); }
+      andares.push(gerar1(outro(400 - n), ex));
+    }
+    p0.andares = andares; p0.and = a;
+    return p0;
+  }
+  /* Um andar. ex (lote 141): { nivel, lista (os papéis das salas, a primeira é a da escada de baixo), entra (a casa da
+     escada de baixo), semPorta, subsolo (sem janelas, piso de lajes), escadas [{ x, y, para, de, oculto }], base (o
+     andar todo é a base secreta), baseLista (o porão se divide: a base fica atrás de uma parede com a porta secreta) } */
+  function gerar1(o, ex) {
     const tipo = tipoValido(o.tipo), PL = PLANTAS[tipo], estilo = Estilos.valido(o.estilo);
     const W = clamp(Math.round(Number(o.w) || 4) * 2, 6, 24), H = clamp(Math.round(Number(o.h) || 4) * 2, 6, 24);
     const seed = (Math.round(Number(o.seed)) >>> 0) || 1, rnd = mulberry(seed);
@@ -85,44 +150,63 @@ const Interior = (() => {
     // a porta de entrada, no meio do lado (fora dos cantos cortados)
     const len = lado === 'n' || lado === 's' ? W : H, d = clamp(Math.floor(len / 2) - 1 + ri(0, 1), corte + 1, len - corte - 2);
     const porta = lado === 'n' ? { lado, x1: d, y1: 0, x2: d + 1, y2: 0 } : lado === 's' ? { lado, x1: d, y1: H, x2: d + 1, y2: H } : lado === 'o' ? { lado, x1: 0, y1: d, x2: 0, y2: d + 1 } : { lado, x1: W, y1: d, x2: W, y2: d + 1 };
-    // a casa logo para dentro da porta
-    const entra = lado === 'n' ? [d, 0] : lado === 's' ? [d, H - 1] : lado === 'o' ? [0, d] : [W - 1, d];
-    // as salas: divide a maior até ter quantas o tipo pede (pela área)
-    const n = clamp(Math.round((W * H) / 34), PL.min, PL.salas.length);
+    // a casa logo para dentro da porta (lote 141: num andar sem porta, a casa da escada de baixo)
+    const entra = ex && ex.entra ? ex.entra.slice() : lado === 'n' ? [d, 0] : lado === 's' ? [d, H - 1] : lado === 'o' ? [0, d] : [W - 1, d];
+    // as salas: divide a maior até ter quantas o tipo pede (pela área); (lote 141) num andar com lista, quantas a lista pede
+    const lista0 = ex && ex.lista && ex.lista.length ? ex.lista : null, baseL = ex && ex.baseLista && ex.baseLista.length && W >= 8 ? ex.baseLista : null;
+    const cabem = area => Math.max(1, Math.floor(area / 14));
+    const n = lista0 ? clamp(lista0.length, 1, cabem(W * H)) : clamp(Math.round((W * H) / 34), PL.min, PL.salas.length);
     const salas = [{ x: 0, y: 0, w: W, h: H }], paredes = [];
+    if (ex && ex.base) salas[0].base = true;
     const contem = (q, [i, j]) => i >= q.x && i < q.x + q.w && j >= q.y && j < q.y + q.h;
     // divide a sala k com uma parede vertical (emPe) ou deitada em t; a porta entre as duas fica fora das pontas
     function dividir(k, emPe, t) {
       const q = salas[k];
       const a = emPe ? { x: q.x, y: q.y, w: t, h: q.h } : { x: q.x, y: q.y, w: q.w, h: t }, b = emPe ? { x: q.x + t, y: q.y, w: q.w - t, h: q.h } : { x: q.x, y: q.y + t, w: q.w, h: q.h - t };
+      if (q.base) a.base = b.base = true;      // (lote 141) o lado da base continua base
       const comp = emPe ? q.h : q.w, ini = emPe ? q.y : q.x, pd = comp >= 3 ? ri(ini + 1, ini + comp - 2) : ini;
       const linha = emPe ? { x1: q.x + t, y1: q.y, x2: q.x + t, y2: q.y + q.h } : { x1: q.x, y1: q.y + t, x2: q.x + q.w, y2: q.y + t };
       paredes.push(Object.assign(linha, { porta: emPe ? { x1: q.x + t, y1: pd, x2: q.x + t, y2: pd + 1 } : { x1: pd, y1: q.y + t, x2: pd + 1, y2: q.y + t } }));
       salas.splice(k, 1, a, b);
     }
+    // (lote 141) o porão dividido: a base (à direita) fica atrás de uma parede com a porta secreta
+    let alvoN = null;
+    if (baseL) {
+      const xs = clamp(Math.round(W * 0.5), 3, W - 3);
+      dividir(0, true, xs);
+      paredes[paredes.length - 1].secreta = true;
+      salas[1].base = true;
+      alvoN = { c: clamp(n, 1, cabem(xs * H)), b: clamp(baseL.length, 1, cabem((W - xs) * H)) };
+    }
     // a faixa da frente: a parede é paralela à da porta, e a sala da porta fica com a parte "grande"
-    if (PL.grande && n > 1) {
+    if (PL.grande && n > 1 && !lista0) {
       const emPe = lado === 'o' || lado === 'l', L = emPe ? W : H, g = clamp(Math.round(L * PL.grande), 3, L - 3);
       dividir(0, emPe, lado === 'n' || lado === 'o' ? g : L - g);
     }
-    for (let volta = 0; salas.length < n && volta < 40; volta++) {
-      const fixa = PL.grande ? salas.find(q => contem(q, entra)) : null;
-      const cand = salas.map((q, k) => [q, k]).filter(([q]) => q !== fixa && (q.w >= 6 || q.h >= 6)).sort((a, b) => b[0].w * b[0].h - a[0].w * a[0].h);
+    for (let volta = 0; (alvoN || salas.length < n) && volta < 40; volta++) {
+      const fixa = PL.grande && !lista0 ? salas.find(q => contem(q, entra)) : null;
+      const falta = q => (alvoN ? salas.filter(s2 => !!s2.base === !!q.base).length < (q.base ? alvoN.b : alvoN.c) : true);
+      const cand = salas.map((q, k) => [q, k]).filter(([q]) => q !== fixa && (q.w >= 6 || q.h >= 6) && falta(q)).sort((a, b) => b[0].w * b[0].h - a[0].w * a[0].h);
       if (!cand.length) break;
       const [q, k] = cand[0], emPe = q.w >= q.h, L = emPe ? q.w : q.h;   // emPe: a parede nova é vertical (divide a largura)
       dividir(k, emPe, clamp(Math.round(L * r(0.38, 0.62)), 3, L - 3));
     }
     // os papéis: a sala da porta é a primeira; as outras, das maiores para as menores
-    const primeira = salas.find(q => contem(q, entra)) || salas[0];
-    const resto = salas.filter(q => q !== primeira).sort((a, b) => b.w * b.h - a.w * a.h);
-    const lista = [primeira].concat(resto);
+    const comuns = salas.filter(q => !q.base || (ex && ex.base));
+    const primeira = comuns.find(q => contem(q, entra)) || comuns[0];
+    const resto = comuns.filter(q => q !== primeira).sort((a, b) => b.w * b.h - a.w * a.h);
+    const daBase = ex && ex.base ? [] : salas.filter(q => q.base).sort((a, b) => b.w * b.h - a.w * a.h);
+    const lista = [primeira].concat(resto, daBase);
     // (lote 128) o banheiro fica com a menor sala (a lista vai das maiores para as menores)
-    const pap = lista.map((q, i) => PL.salas[Math.min(i, PL.salas.length - 1)]), kb = pap.indexOf('banheiro');
+    // (lote 141) num andar com lista, os papéis vêm dela (a mais, a última se repete); a base, com os dela
+    const L = lista0 || PL.salas, nc = 1 + resto.length;
+    const pap = lista.slice(0, nc).map((q, i) => L[Math.min(i, L.length - 1)]), kb = pap.indexOf('banheiro');
     if (kb > 0 && kb < pap.length - 1) { pap.splice(kb, 1); pap.push('banheiro'); }
+    daBase.forEach((q, i) => pap.push(baseL[Math.min(i, baseL.length - 1)]));
     lista.forEach((q, i) => { q.papel = pap[i]; q.moveis = []; });
-    // as janelas: uma por sala, numa parede de fora (nos lados retos, longe da porta de entrada)
+    // as janelas: uma por sala, numa parede de fora (nos lados retos, longe da porta de entrada); no porão, nenhuma
     const janelas = [];
-    for (const q of lista) {
+    for (const q of ex && ex.subsolo ? [] : lista) {
       const lados = [];
       if (q.y === 0) lados.push('n');
       if (q.y + q.h === H) lados.push('s');
@@ -146,6 +230,7 @@ const Interior = (() => {
     // diante da porta de entrada (duas casas) e dos dois lados de cada porta de dentro
     { const di = lado === 'l' ? -1 : lado === 'o' ? 1 : 0, dj = lado === 's' ? -1 : lado === 'n' ? 1 : 0; for (let k = 0; k < 2; k++) passagem(entra[0] + di * k, entra[1] + dj * k); }
     for (const pw of paredes) { const p = pw.porta; if (p.x1 === p.x2) { passagem(p.x1 - 1, p.y1); passagem(p.x1, p.y1); } else { passagem(p.x1, p.y1 - 1); passagem(p.x1, p.y1); } }
+    for (const e of (ex && ex.escadas) || []) passagem(e.x, e.y);      // (lote 141) as escadas ficam livres
     const TR = TROCA[estilo] || {}, EX = EXTRA[estilo] || {};
     // o relevo (as áreas de terreno: o estrado, o palco, a água, o alçapão) e as formas de enfeite, em quadrados da planta
     const relevo = [], formas = [];
@@ -374,7 +459,10 @@ const Interior = (() => {
       const lx = (B[0] - A[0]), ly = (B[1] - A[1]), sol = [0.5 * L / 3.2, 0.35 * L / 3.2];
       luzes.push({ pts: [A, B, [B[0] + di * L + lx * 0.55 + sol[0], B[1] + dj * L + ly * 0.55 + sol[1]], [A[0] + di * L - lx * 0.55 + sol[0], A[1] + dj * L - ly * 0.55 + sol[1]]] });
     }
-    return { v: 1, lugar: 'interior', tipo, estilo, W, H, forma, seed, porta, entra, salas: lista, paredes, janelas, relevo, formas, luzes };
+    const semPorta = !!(ex && (ex.semPorta || ex.subsolo));
+    return Object.assign({ v: 1, lugar: 'interior', tipo, estilo, W, H, forma, seed, porta: semPorta ? null : porta, entra, salas: lista, paredes, janelas, relevo, formas, luzes },
+      ex ? { nivel: ex.nivel || 0, escadas: (ex.escadas || []).map(e => Object.assign({}, e)), nomeAndar: PlantaAndares.nomeAndar(ex.nivel || 0) } : null,
+      ex && ex.subsolo ? { piso: 'lajes' } : null);
   }
 
   /* ================= o desenho ================= */
@@ -402,7 +490,8 @@ const Interior = (() => {
     g.lineCap = 'square';
     for (const pw of p.paredes) {
       const pd = pw.porta, horiz = pw.y1 === pw.y2;
-      const pedacos = horiz ? [[pw.x1, pd.x1], [pd.x2, pw.x2]] : [[pw.y1, pd.y1], [pd.y2, pw.y2]];
+      // (lote 141) a parede da porta secreta sai inteira no fundo (quem olha não vê o vão)
+      const pedacos = pw.secreta ? (horiz ? [[pw.x1, pw.x2]] : [[pw.y1, pw.y2]]) : horiz ? [[pw.x1, pd.x1], [pd.x2, pw.x2]] : [[pw.y1, pd.y1], [pd.y2, pw.y2]];
       for (const [a, b] of pedacos) {
         if (b <= a) continue;
         g.strokeStyle = P.cor; g.lineWidth = lw; g.beginPath();
@@ -417,6 +506,8 @@ const Interior = (() => {
   const LUZ_DA_HORA = { dia: ['#fff1c2', 0.16], entardecer: ['#ffc27a', 0.18], noite: ['#b7cdfc', 0.09] };
   const feixes = (p, tom) => { const L = LUZ_DA_HORA[tom]; return L ? (p.luzes || []).map(l => ({ k: 'poly', pts: l.pts, f: L[0], a: L[1], s: null, sw: 0 })) : []; };
   function previa(cv, p, maxW, maxH, op) {
+    // (lote 141) com andares, a prévia de um deles (op.nivel)
+    if (op && op.nivel && Array.isArray(p.andares)) p = p.andares.find(q => q.nivel === op.nivel) || p;
     const cell = Math.max(6, Math.floor(Math.min((maxW || 460) / (p.W + 2 * M), (maxH || 330) / (p.H + 2 * M))));
     const fundo = pintar(p, cell);
     cv.width = fundo.width; cv.height = fundo.height;
@@ -425,7 +516,9 @@ const Interior = (() => {
     const seg = (s, cor, w) => { g.strokeStyle = cor; g.lineWidth = w; g.beginPath(); g.moveTo((s.x1 + M) * cell, (s.y1 + M) * cell); g.lineTo((s.x2 + M) * cell, (s.y2 + M) * cell); g.stroke(); };
     g.lineCap = 'round';
     if (p.porta) seg(p.porta, '#7fd1ff', Math.max(2, cell * 0.24));
-    for (const pw of p.paredes) seg(pw.porta, '#7fd1ff', Math.max(2, cell * 0.2));
+    for (const pw of p.paredes) seg(pw.porta, pw.secreta ? '#c58bff' : '#7fd1ff', Math.max(2, cell * 0.2));
+    // (lote 141) as escadas: amarelas; a escondida, roxa
+    for (const e of p.escadas || []) { g.fillStyle = e.oculto ? '#c58bff' : '#ffd34d'; g.fillRect((e.x + M) * cell + cell * 0.2, (e.y + M) * cell + cell * 0.2, cell * 0.6, cell * 0.6); g.strokeStyle = '#1a1208'; g.lineWidth = 1; g.strokeRect((e.x + M) * cell + cell * 0.2, (e.y + M) * cell + cell * 0.2, cell * 0.6, cell * 0.6); }
     for (const j of p.janelas) seg(j, '#bff3ff', Math.max(2, cell * 0.2));
     // o relevo, as formas e a luz das janelas (como na cena)
     if (!op || op.relevo !== false) Estilos.relevoNaPrevia(g, (p.relevo || []).map(r => Estilos.moverRelevo(r, M, M)), (p.formas || []).concat(feixes(p, (op && op.tom) || 'dia')).map(f => Estilos.moverRelevo(f, M, M)), cell, 1.5);
@@ -436,14 +529,33 @@ const Interior = (() => {
     }
     return { cell };
   }
-  const resumo = p => { const n = p.salas.length, m = p.salas.reduce((s, q) => s + q.moveis.length, 0); return `${n} ${n === 1 ? 'sala' : 'salas'} · ${m} móveis · ${p.W} × ${p.H} quadrados.`; };
+  const resumo = p => {
+    const todos = [p].concat(p.andares || []), n = todos.reduce((s, q) => s + q.salas.length, 0), m = todos.reduce((s, q) => s + q.salas.reduce((s2, x) => s2 + x.moveis.length, 0), 0);
+    return `${n} ${n === 1 ? 'sala' : 'salas'} · ${m} móveis · ${p.W} × ${p.H} quadrados` + (p.and ? ` · ${PlantaAndares.resumo(p.and)} (${todos.length} cenas ligadas pelas escadas)` : '') + '.';
+  };
 
   /* ================= a cena ================= */
   /* Monta a cena da planta, dentro da cena de fora (fora): as paredes de fora (com a porta e as janelas) e as de dentro
      (com as portas fechadas), os móveis, e a Saída junto da porta de entrada. A hora e o clima vêm da cena de fora; à
      noite, uma luz em cada sala. */
+  /* (lote 141) Com andares: uma cena para cada (do mesmo tamanho), ligadas pelas escadas; o andar de cada cena
+     (sc.nivel) põe a ordem na barra de andares. A Saída fica no térreo. → a cena do térreo */
   async function criar(p, nome, fora, op) {
-    const sc = newScene(String(nome || '').trim().slice(0, 60) || (p.nome || PLANTAS[p.tipo].n) + ' — por dentro');
+    const base = String(nome || '').trim().slice(0, 60) || (p.nome || PLANTAS[p.tipo].n) + ' — por dentro';
+    if (!Array.isArray(p.andares) || !p.andares.length) return criar1(p, base, fora, op, null, true);
+    const planos = [p].concat(p.andares), cenas = planos.map((q, i) => newScene(i ? (base.slice(0, 40) + ' — ' + (q.nomeAndar || 'andar')).slice(0, 60) : base)), ids = {};
+    planos.forEach((q, i) => { ids[q.nivel || 0] = cenas[i].id; });
+    for (let i = 0; i < planos.length; i++) { await criar1(planos[i], null, fora, op, { sc: cenas[i], ids }, false); cenas[i].nivel = planos[i].nivel || 0; }
+    // na lista, de baixo para cima (o porão, o térreo, os de cima)
+    for (const [sc] of cenas.map((sc, i) => [sc, planos[i].nivel || 0]).sort((a, b) => a[1] - b[1])) {
+      Store.addScene(sc); Persist.scene(sc.id);
+      if (fora) { UI.porNaFamilia(sc.id, fora.id); UI.herdarCampanha(sc.id, fora.id); }
+    }
+    Persist.meta();
+    return cenas[0];
+  }
+  async function criar1(p, nome, fora, op, multi, guardar) {
+    const sc = multi ? multi.sc : newScene(nome);
     sc.cols = p.W + 2 * M; sc.rows = p.H + 2 * M;
     const c = sc.cell;
     sc.fog.dynamic = true; sc.fog.explored = true;
@@ -456,6 +568,15 @@ const Interior = (() => {
       const pd = pw.porta, horiz = pw.y1 === pw.y2;
       if (horiz) { if (pd.x1 > pw.x1) parede(pw.x1, pw.y1, pd.x1, pw.y1); parede(pd.x1, pw.y1, pd.x2, pw.y1, 'door'); if (pw.x2 > pd.x2) parede(pd.x2, pw.y1, pw.x2, pw.y1); }
       else { if (pd.y1 > pw.y1) parede(pw.x1, pw.y1, pw.x1, pd.y1); parede(pw.x1, pd.y1, pw.x1, pd.y2, 'door'); if (pw.y2 > pd.y2) parede(pw.x1, pd.y2, pw.x1, pw.y2); }
+      if (pw.secreta) { const w = sc.walls[sc.walls.length - (horiz ? (pw.x2 > pd.x2 ? 2 : 1) : (pw.y2 > pd.y2 ? 2 : 1))]; if (w && w.k === 'door') { w.secret = true; w.name = 'Passagem secreta (a base)'; } }      // (lote 141) a porta secreta da base
+    }
+    // (lote 141) as escadas (e o alçapão escondido da base, que só o mestre vê): levam ao outro andar
+    for (const e of p.escadas || []) {
+      const id = e.oculto ? 'alcapao' : 'escada', t = Props.novo(sc, id, (e.x + M) * c, (e.y + M) * c, 1, !!e.oculto);
+      t.name = e.oculto ? 'Alçapão secreto: desce para a base' : (e.para > e.de ? 'Escada que sobe: ' : 'Escada que desce: ') + PlantaAndares.nomeAndar(e.para);
+      if (id === 'escada') t.rot = e.para > e.de ? 180 : 0; else t.est = 'fechado';
+      if (multi && multi.ids[e.para]) t.cena = multi.ids[e.para];
+      sc.tokens.push(t);
     }
     const noite = sc.tone === 'noite' || sc.tone === 'breu';
     for (const q of p.salas) {
@@ -473,12 +594,13 @@ const Interior = (() => {
       for (const r of p.relevo || []) sc.shapes.push(Estilos.terrenoNaCena(r, c, M, M));
       for (const f of (p.formas || []).concat(feixes(p, sc.tone))) sc.shapes.push(Estilos.formaNaCena(f, c, M, M));
     }
-    // a Saída: logo para dentro da porta de entrada
-    if (fora) {
+    // a Saída: logo para dentro da porta de entrada (só no térreo)
+    if (fora && !p.nivel) {
       const s = Props.novo(sc, 'saida', (p.entra[0] + M) * c, (p.entra[1] + M) * c, 1, true);
       s.cena = fora.id; sc.tokens.push(s);
     }
     normalizeScene(sc);
+    if (!guardar) return sc;
     Store.addScene(sc); Persist.scene(sc.id); Persist.meta();
     if (fora) { UI.porNaFamilia(sc.id, fora.id); UI.herdarCampanha(sc.id, fora.id); }
     return sc;
@@ -494,6 +616,9 @@ const Interior = (() => {
     const st = g0 ? { tipo: PLANTAS[g0.t] && PLANTAS[g0.t].so ? g0.t : tipoValido(g0.t), estilo: Estilos.valido(g0.e), seed: g0.s || novaSemente(), tam: null }
       : { tipo: 'casa', estilo: Estilos.valido(App.opt.genEstilo), seed: novaSemente(), tam: TAMANHOS_I[App.opt.intTam] ? App.opt.intTam : 'medio' };
     st.relevo = App.opt.genRelevo !== false;              // (a mesma chave da janela "Gerar um lugar")
+    // (lote 141) os andares e o porão (a escolha fica guardada para a próxima vez); a prévia mostra um andar de cada vez
+    const comAndares = () => !(PLANTAS[st.tipo] && PLANTAS[st.tipo].so);
+    st.and = PlantaAndares.normalizar(App.opt.intAnd, catDe(st.tipo)); st.ver = 0;
     const medidas = () => {
       if (g0) return { w: g0.w, h: g0.h, p: g0.p, f: g0.f, c: !!g0.c };
       const T = TAMANHOS_I[st.tam];
@@ -501,11 +626,14 @@ const Interior = (() => {
     };
     let plano = null, nomeMexido = false;
     const cv = h('canvas', { class: 'ger-cv', id: 'int-prev', width: 460, height: 330, 'aria-label': 'Prévia da planta' });
-    const resumoEl = h('p', { class: 'note', id: 'int-resumo', role: 'status' }), ctl = h('div', { class: 'ger-op' });
+    const resumoEl = h('p', { class: 'note', id: 'int-resumo', role: 'status' }), ctl = h('div', { class: 'ger-op' }), verEl = h('div', { class: 'int-ver', 'aria-label': 'Ver o andar' });
     const inNome = h('input', { id: 'int-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
     const refazer = () => {
-      plano = gerar(Object.assign(medidas(), { tipo: st.tipo, estilo: st.estilo, seed: st.seed }));
-      try { previa(cv, plano, 460, 330, { tom: fora.tone, relevo: st.relevo }); } catch (e) { console.error(e); }
+      plano = gerar(Object.assign(medidas(), { tipo: st.tipo, estilo: st.estilo, seed: st.seed }, comAndares() ? { andares: st.and } : null));
+      const nivs = [0].concat((plano.andares || []).map(q => q.nivel)).sort((a, b) => b - a);
+      if (!nivs.includes(st.ver)) st.ver = 0;
+      verEl.replaceChildren(...(nivs.length > 1 ? [UI.kit.seg('int-ver', st.ver, nivs.map(n => [n, n === 0 ? 'Térreo' : n < 0 ? (n === -1 ? '1º porão' : '2º porão') : n + 'º']), v => { st.ver = v; refazer(); })] : []));
+      try { previa(cv, plano, 460, 330, { tom: fora.tone, relevo: st.relevo, nivel: st.ver }); } catch (e) { console.error(e); }
       resumoEl.textContent = resumo(plano);
       if (!nomeMexido) inNome.value = (plano.nome || PLANTAS[plano.tipo].n) + ' — por dentro';
     };
@@ -513,12 +641,14 @@ const Interior = (() => {
       field('Que prédio', seg('int-tipo', st.tipo, (PLANTAS[st.tipo] && PLANTAS[st.tipo].so ? [st.tipo] : TIPOS_I).map(k => [k, PLANTAS[k].n]), v => { st.tipo = v; pintarC(); refazer(); }), 'stack'),
       g0 ? null : field('Tamanho', seg('int-tam', st.tam, Object.keys(TAMANHOS_I).map(k => [k, TAMANHOS_I[k].n, null, `${TAMANHOS_I[k].w * 2} × ${TAMANHOS_I[k].h * 2} quadrados`]), v => { st.tam = v; App.opt.intTam = v; pintarC(); refazer(); }), 'stack'),
       field('Estilo', seg('int-est', st.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { st.estilo = v; pintarC(); refazer(); }), 'stack'),
-      K.toggle('int-relevo', st.relevo, v => { st.relevo = v; App.opt.genRelevo = v; pintarC(); refazer(); }, 'Com relevo e formas (o estrado, o palco, a água, a luz das janelas)')].filter(Boolean));
+      K.toggle('int-relevo', st.relevo, v => { st.relevo = v; App.opt.genRelevo = v; pintarC(); refazer(); }, 'Com relevo e formas (o estrado, o palco, a água, a luz das janelas)'),
+      comAndares() ? h('details', { class: 'sec and-sec', id: 'int-and-sec', open: !!(st.and.cima || st.and.porao) }, h('summary', { text: 'Andares e porão' }),
+        PlantaAndares.ui(st.and, catDe(st.tipo), a => { App.opt.intAnd = JSON.parse(JSON.stringify(a)); refazer(); }, 'int')) : null].filter(Boolean));
     pintarC(); refazer();
     UI.modal({
       title: 'Gerar o interior', xl: true,
       body: h('div', { class: 'ger' },
-        h('div', { class: 'ger-g' }, ctl, h('div', { class: 'ger-pv' }, cv, h('div', { class: 'row' }, btn('Gerar outro', () => { st.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'int-outro', title: 'Sorteia outra planta para o mesmo prédio' })), resumoEl)),
+        h('div', { class: 'ger-g' }, ctl, h('div', { class: 'ger-pv' }, verEl, cv, h('div', { class: 'row' }, btn('Gerar outro', () => { st.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'int-outro', title: 'Sorteia outra planta para o mesmo prédio' })), resumoEl)),
         field('Nome da cena', inNome, 'stack'),
         note(PLANTAS[st.tipo] && PLANTAS[st.tipo].fogo ? 'Por dentro, no dobro do tamanho da moradia: a fogueira no meio, as peles para dormir em volta, os baús e os jarros (na do chefe, mais peles, o assento e as armas). Sai uma cena nova, dentro desta, com a Saída junto da porta levando de volta; o marcador fica ligado a ela. Nada sai escrito.'
           : st.tipo === 'navio' ? 'O porão e as cabines, do tamanho do convés: a cabine do capitão (com as janelas da popa), as cabines pequenas, o porão de carga, o alojamento e o paiol da proa, com as portas de dentro fechadas e a carga de cada sala. Sai uma cena nova, dentro desta, com a Saída na escada da escotilha levando de volta ao convés; o marcador fica ligado a ela. Nada sai escrito.'
@@ -532,12 +662,13 @@ const Interior = (() => {
             UI.closeModal();
             if (Store.S.current === fora.id && Store.get('tokens', t.id)) UI.ligarObjeto(t, sc.id);
             UI.switchScene(sc.id);
-            UI.toast(`"${sc.name}" criada, dentro de "${fora.name}": ${p.salas.length === 1 ? 'uma sala' : p.salas.length + ' salas'}. A Saída, junto da porta, leva de volta.`, { long: true });
+            UI.toast(p.andares && p.andares.length ? `"${sc.name}" criada, dentro de "${fora.name}": ${PlantaAndares.resumo(p.and)}, ${p.andares.length + 1} cenas ligadas pelas escadas. A Saída, junto da porta, leva de volta.`
+              : `"${sc.name}" criada, dentro de "${fora.name}": ${p.salas.length === 1 ? 'uma sala' : p.salas.length + ' salas'}. A Saída, junto da porta, leva de volta.`, { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },
       }],
     });
   }
-  return { PLANTAS, MOVEIS, TAMANHOS_I, gerar, pintar, previa, resumo, criar, abrir };
+  return { PLANTAS, MOVEIS, TAMANHOS_I, gerar, pintar, previa, resumo, criar, abrir, catDe };
 })();

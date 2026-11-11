@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.11-03",
+      "data": "2026-11-11",
+      "titulo": "Andares e porão nos prédios",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: o “Gerar o interior” (casa, casa do senhor, taverna, quartel…) e a Furtividade (mansão, fortaleza, guilda, casa do alvo, torre) fazem até 5 andares em cima do térreo e até 2 andares de porão. Cada andar vira uma cena, todas do mesmo tamanho, ligadas pelas escadas.", "mestre": true },
+        { "tipo": "novo", "texto": "Base secreta no porão. Com 1 porão, ele se divide: a base fica atrás de uma parede com porta secreta. Com 2, o 2º porão é a base, e a descida é um alçapão que só o mestre vê. A base tem sala de reunião com o mapa, arsenal, dormitório, laboratório de alquimia, cofre, celas e túnel de fuga.", "mestre": true },
+        { "tipo": "novo", "texto": "Em “Andares e porão”, cada andar tem um tema (Quartos, Serviço, Trabalho, Luxo, Sótão…) que preenche as salas; depois dá para tirar (×) e pôr (+ sala). A prévia mostra um andar de cada vez.", "mestre": true },
+        { "tipo": "novo", "texto": "Objetos novos: a bancada de alquimia e o túnel de fuga.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.11-02",
       "data": "2026-11-11",
       "titulo": "Vantagem e desvantagem",

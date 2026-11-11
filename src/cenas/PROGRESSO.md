@@ -449,3 +449,18 @@ de cena mais fácil, num notebook de ~1366×768. O painel da direita e a faixa d
   (`alvos[id].vant`).
 - Pendente: o pedido aos jogadores (Rolagem geral) ainda não leva a vantagem; a rolagem rápida da ficha não tem as caixinhas.
 - Testes: `test/lote140.js`, `src/tests/fichas-lote140.test.js`, e um passo novo em `src/tests/combate.rede.test.js`.
+
+## Lote 141 — andares, porão e base secreta nos geradores de prédio
+
+- `10g-andares.js` (PlantaAndares): a escolha `{ cima 0–5, porao 0–2, base, temas, salas }`, a parte da janela (os
+  temas e os chips de cada andar) e as contas (`salasDe`, `papelDoNivel`: comum, base ou dividido).
+- "Gerar o interior" (10g): `gerar` virou `gerar1` (um andar) + o embrulho dos andares. Escadas A/B (se revezam
+  subindo), C (térreo ↔ 1º porão), D (1º ↔ 2º; com a base, um alçapão escondido). O porão: sem janelas, piso de lajes.
+  Com 1 porão e a base, ele se divide (a parede do meio com a porta secreta: `paredes[].secreta`, desenhada inteira no
+  fundo). `criar` faz uma cena por andar (`sc.nivel`), todas na família do mapa; a Saída só no térreo. A prévia tem
+  "Ver" (um andar de cada vez). A escolha fica em `App.opt.intAnd`.
+- Furtividade (10gc): `andares()` aceita até 5 em cima e 2 de porão (`desce2`), `fazPoraoDividido` (dois `predio`
+  lado a lado, a linha do meio refeita com a porta secreta e a marca "Passagem secreta"), temas por lugar (`catF`), o
+  alçapão escondido (`oculto`). A escolha de antes (cima 0–2, porão sim/não) ainda vale.
+- Objetos novos (06b9): a bancada de alquimia (`alambique`, 2 × 1) e o túnel de fuga (`tunel`).
+- Teste: `test/lote141.js`.
