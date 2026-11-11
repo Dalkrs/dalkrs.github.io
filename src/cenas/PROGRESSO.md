@@ -437,3 +437,15 @@ de cena mais fácil, num notebook de ~1366×768. O painel da direita e a faixa d
 - Testes ajustados: lote26, lote47, lote82, lote84, e2e, ui2, v2b (passo 5 do tutorial).
 - JÁ FALHAVAM antes deste lote (conferido com o código anterior), não mexi: lote7c/7d/7g/7h/7i, lote13/13b/13c, lote20,
   lote39, lote53, lote107, gerador8, unit5, unit6, narrow2, v2b (usa `__urgm`, nome antigo).
+
+## Lote 140 — vantagem e desvantagem
+
+- `comVantagem(rolar, vant)` (01-base.js): rola duas vezes e fica com o maior (vant 1) ou o menor (vant -1); a que ficou
+  ganha `outro` e `outroD`. `Combate.rolarFixa(valor, fixa, vant)`, `Fichas.rolar(…, vant)`. `comoSaiu`/`comoFoi` dizem
+  "· vantagem: 37 e 2̶5̶"; `dadosDe` manda os dois dados. Para a mesa: `vantDaMesa(r)` → { vant, d2, t2 } (tc.js riscando).
+- As caixinhas (marcar uma desmarca a outra) na Disputa (C), na janelinha do F e em cada linha da Rolagem geral.
+  Lembradas por token neste aparelho (`tinycats:cenas:vant`) até desmarcar.
+- A Disputa da ficha também (fichas/index.html): a do lado da ficha fica em `pc.disputa.vantA`; a do oponente, com ele
+  (`alvos[id].vant`).
+- Pendente: o pedido aos jogadores (Rolagem geral) ainda não leva a vantagem; a rolagem rápida da ficha não tem as caixinhas.
+- Testes: `test/lote140.js`, `src/tests/fichas-lote140.test.js`, e um passo novo em `src/tests/combate.rede.test.js`.

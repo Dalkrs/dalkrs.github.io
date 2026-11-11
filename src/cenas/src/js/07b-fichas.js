@@ -682,17 +682,17 @@ const Fichas = (() => {
      desta rolagem — { atr: soma no atributo antes de rolar (muda o dado), res: soma no resultado }. */
   // (ped: { pedido, alvo } — a rolagem geral, quando o mestre rola no lugar de um jogador com o pedido em aberto:
   // vale como a resposta dele, e o cartão do pedido mostra "rolou … (pelo mestre)")
-  function rolar(t, chave, fixa, mais, ped) {
+  function rolar(t, chave, fixa, mais, ped, vant) {      // (lote 140) vant: 1 vantagem, -1 desvantagem
     const item = rolaveis(t).find(x => x[0] === chave);
     if (!item) return { ok: false, error: 'Este token não está ligado a uma ficha.' };
     const valor = item[2], ma = Math.round(Number(mais && mais.atr) || 0), com = valor + ma;
     if (com < 1) return { ok: false, error: item[1] + ' está em ' + Math.max(0, com) + (ma ? ' (com o bônus)' : '') + ': não há o que rolar.' };
-    const r = window.TC.dice.rollFixaMais(valor, fixa, mais);
+    const r = comVantagem(() => { const x = window.TC.dice.rollFixaMais(valor, fixa, mais); return x.ok ? Object.assign({}, x, { die: x.atributo - x.fixa }) : x; }, vant);
     if (!r.ok) return r;
     const doPedido = ped && typeof ped.pedido === 'string' && ped.pedido && typeof ped.alvo === 'string' && ped.alvo ? { pedido: ped.pedido, alvo: ped.alvo } : null;
     // (lote 90) o dano de elemento da arma que usa este atributo vai junto, como um selo ao lado do total
     let el = null; try { const l = linhaDoTok(t); el = l && R().elemDaFicha ? (R().elemDaFicha(pcDe(l))[chave] || null) : null; } catch (e) { el = null; }
-    if (Ext.roll) { try { Ext.roll(Object.assign({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }, el && el.length ? { el } : {}, doPedido)); } catch (e) { console.error(e); } }
+    if (Ext.roll) { try { Ext.roll(Object.assign({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }, vantDaMesa(r), el && el.length ? { el } : {}, doPedido)); } catch (e) { console.error(e); } }
     return Object.assign({ nome: item[1] }, r);
   }
 

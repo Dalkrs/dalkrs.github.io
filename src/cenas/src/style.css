@@ -1321,3 +1321,10 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .mt-volta { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 4px; border: 0; border-radius: 6px; background: none; color: var(--fg-2); font: 600 12.5px var(--ui); cursor: pointer; }
 .mt-volta:hover { background: var(--hover); color: var(--fg); }
 @media (max-height: 640px) { .rail .tool { height: 30px; } .rail .mt-chave .mt-chave-t { display: none; } }
+/* (lote 140) as caixinhas de Vantagem e Desvantagem */
+.vant { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.vant-c { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 5px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; cursor: pointer; user-select: none; color: var(--fg-2); }
+.vant-c .ck { margin: 0; }
+.vant-c.on { border-color: var(--lamp); color: var(--fg); background: var(--lamp-soft); }
+.vant.curto .vant-c { padding: 1px 6px 1px 3px; font-size: 11px; }
+.pop-vt { margin: 2px 0 4px; }

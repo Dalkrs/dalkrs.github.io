@@ -198,6 +198,14 @@ const valor = (f, id, k) => Math.max(0, Math.round(R.valorDoAtributo(R.calcular(
   ok(await ate(async () => (await linhas(M)).length === antes + 1), '(a rolagem do valor chega à mesa)');
   r = await ultima(M);
   ok(r.d.titulo === 'Barril · valor avulso' && r.d.total >= 11 && r.d.total <= 30 && JSON.stringify(r.d.dd) === JSON.stringify([[20, r.d.total - 10]]), 'valor 30 fixando 10 rola 1d20 + 10: ' + JSON.stringify(r.d));
+  // (lote 140) com vantagem: a mesa mostra as duas rolagens (a outra riscada) e guarda os dois dados
+  await C.locator('#fp-vant').check(); await w(150); antes = (await linhas(M)).length;
+  await C.locator('#fp-rolar').click();
+  ok(await ate(async () => (await linhas(M)).length === antes + 1), '(a rolagem com vantagem chega à mesa)');
+  r = await ultima(M);
+  { const m = / · vantagem: (\d+) e ([\d\u0336]+)$/.exec(r.d.resumo), outro = m ? Number(m[2].replace(/\u0336/g, '')) : -1;
+    ok(m && +m[1] === r.d.total && outro <= r.d.total && r.d.dd.length === 2 && r.d.dd.every(x => x[0] === 20) && r.d.dd[0][1] + 10 === r.d.total && r.d.dd[1][1] + 10 === outro, 'com vantagem, a mesa mostra a maior e a outra riscada, e guarda os dois dados: ' + JSON.stringify(r.d)); }
+  await C.locator('#fp-vant').uncheck(); await w(150);
   await M.keyboard.press('Escape'); await w(200);
   // a jogadora: só no token do personagem dela
   { const [x, y] = await noMapa(B, ids.pc_selene); await J.mouse.move(x, y); await w(200, J); }

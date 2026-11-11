@@ -81,7 +81,9 @@ const Combate = (() => {
   /* ================= Fixa ================= */
   /* A regra da fixa para um valor qualquer: um dado de (valor − fixa) lados, mais a fixa. Fixa igual ao valor não
      rola dado. Mesmo formato do TC.dice.rollFixa, com o dado daqui (que é sorteado do mesmo jeito). */
-  function rolarFixa(valor, fixa) {
+  // (lote 140) vant: 1 rola com vantagem (fica o maior), -1 com desvantagem (fica o menor)
+  function rolarFixa(valor, fixa, vant) { return comVantagem(() => rolarFixa1(valor, fixa), vant); }
+  function rolarFixa1(valor, fixa) {
     const a = Math.round(Number(valor) || 0);
     if (!(a >= 1)) return { ok: false, error: 'O valor está em 0: não há o que rolar.' };
     if (a > 100000) return { ok: false, error: 'O valor é grande demais.' };
@@ -89,10 +91,10 @@ const Combate = (() => {
     return { ok: true, atributo: a, fixa: f, die, dieValue: d, total: f + d };
   }
   // Como a rolagem saiu, em poucas palavras: "17 no d40 + 20", "14 no d60", "fixa total"
-  const comoSaiu = r => (r.die ? `${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''}` : 'fixa total');
+  const comoSaiu = r => (r.die ? `${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''}` : 'fixa total') + vantTexto(r);
   // Como vai para a mesa (o mesmo texto das disputas da ficha, que o auditor dos dados sabe ler): "1d40 + 20, dado 17" | "fixo em 12"
-  const comoFoi = r => (r.die ? `1d${r.die} + ${r.fixa}, dado ${r.dieValue}` : `fixo em ${r.atributo}`);
-  const dadosDe = r => (r && r.die ? [[r.die, r.dieValue]] : []);
+  const comoFoi = r => (r.die ? `1d${r.die} + ${r.fixa}, dado ${r.dieValue}` : `fixo em ${r.atributo}`) + vantTexto(r);
+  const dadosDe = r => (r && r.die ? [[r.die, r.dieValue]].concat(r.vant && r.outroD ? [[r.die, r.outroD]] : []) : []);
 
   /* ================= Ataque com defesa ================= */
   // As defesas que podem descontar um ataque: as duas gerais e as 13 específicas. Vazio fora do site (sem as regras da ficha).

@@ -67,6 +67,12 @@ const Luta = (() => {
      novo, o × ou um clique fora. Com ficha: um botão por atributo, com o valor de agora. Sem ficha: um valor
      digitado. Tudo com a regra da fixa; a rolagem vai para a mesa ao vivo como as outras. */
   let pop = null;                        // { el, tokId, res, grid, fx, chips, out, valor }
+  /* (lote 140) As caixinhas de Vantagem e Desvantagem: marcar uma desmarca a outra. mudar(1 | -1 | 0). */
+  function vantBox(idp, v, mudar, curto) {
+    const mk = (k, rotulo, rc) => h('label', { class: 'vant-c' + (v === k ? ' on' : ''), title: k > 0 ? 'Vantagem: rola duas vezes e fica com o maior' : 'Desvantagem: rola duas vezes e fica com o menor' },
+      h('input', { type: 'checkbox', class: 'ck', id: `${idp}-${k > 0 ? 'vant' : 'desv'}`, checked: v === k, 'aria-label': rotulo, onchange: e => mudar(e.target.checked ? k : 0) }), h('span', { text: curto ? rc : rotulo }));
+    return h('div', { class: 'vant' + (curto ? ' curto' : ''), id: idp + '-vd', role: 'group', 'aria-label': 'Vantagem ou desvantagem' }, mk(1, 'Vantagem', 'Vant.'), mk(-1, 'Desvantagem', 'Desv.'));
+  }
   const valorMem = new Map();            // token sem ficha: o último valor rolado por ele
   function modoDoF(t) {
     if (!t) return null;
@@ -98,15 +104,15 @@ const Luta = (() => {
   function rolarDoPop(k) {
     const t = pop ? Store.get('tokens', pop.tokId) : null;
     if (!t) { fecharPop(); return; }
-    const fixa = lerFixaDoPop(), mais = lerMaisDoPop();
+    const fixa = lerFixaDoPop(), mais = lerMaisDoPop(), vant = vantDe(t.id);
     let r, nome;
     if (k === '@valor') {
       const v = clamp(int(pop.valor.value, 0), 0, 100000);
       valorMem.set(t.id, v);
-      r = Combate.rolarFixa(v + mais.atr, fixa); nome = 'Valor ' + v;
+      r = Combate.rolarFixa(v + mais.atr, fixa, vant); nome = 'Valor ' + v;
       if (r.ok) r = Object.assign({}, r, { base: v, ma: mais.atr, mr: mais.res, total: r.total + mais.res });
-      if (r.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: '', attrNome: 'valor avulso', atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }); } catch (e) { console.error(e); } }
-    } else { r = Fichas.rolar(t, k, fixa, mais); nome = r.nome || k; }
+      if (r.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: '', attrNome: 'valor avulso', atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr, ...vantDaMesa(r) }); } catch (e) { console.error(e); } }
+    } else { r = Fichas.rolar(t, k, fixa, mais, null, vant); nome = r.nome || k; }
     pop.res = r.ok ? { ok: true, total: r.total, txt: nome, det: Combate.comoSaiu(r) + maisDet(r) } : { ok: false, txt: r.error };
     if (r.ok) { pop.ma.value = ''; pop.mr.value = ''; pop.relSomado = false; }
     pintarPop();
@@ -176,6 +182,7 @@ const Luta = (() => {
     const bm = botaoMana(t, 'fp-mana');
     pop.mana.replaceChildren(...(bm ? [bm] : [])); pop.mana.hidden = !bm;
     if (document.activeElement !== pop.fx) pop.fx.value = fixaAtual(t);
+    { const vd = vantBox('fp', vantDe(t.id), v => { guardarVant(t.id, v); pintarPop(); }); pop.vt.replaceChildren(...vd.childNodes); pop.vt.classList.toggle('tem', !!vantDe(t.id)); }      // (lote 140)
     const fixa = lerFixaDoPop(), mais = lerMaisDoPop();
     pop.ma.classList.toggle('tem', !!mais.atr); pop.mr.classList.toggle('tem', !!mais.res);
     const com = v => Math.max(0, v + mais.atr), res = mais.res ? ' ' + sinalN(mais.res).replace(/^([+−])/, '$1 ') : '';
@@ -234,14 +241,15 @@ const Luta = (() => {
     // (lote 18) o relevo: mirando alguém mais baixo (ou mais alto), a sugestão de somar o bônus da tabela
     const rel = h('div', { class: 'pop-rel', id: 'fp-rel', hidden: true });
     const mana = h('div', { class: 'pop-mana', id: 'fp-mana-w', hidden: true });        // (lote 28) Imbuído de Mana
+    const vt = h('div', { class: 'vant pop-vt', id: 'fp-vd', role: 'group', 'aria-label': 'Vantagem ou desvantagem (fica marcada neste token até desmarcar)' });      // (lote 140)
     const el = h('div', { class: 'pop', id: 'fpop', role: 'dialog', 'aria-label': 'Rolar atributo de ' + tokName(t), tabindex: '-1' },
       h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou F)', fecharPop, { size: 15, id: 'fp-x' })),
       h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx),
       h('div', { class: 'pop-m', role: 'group', 'aria-label': 'Bônus só nesta rolagem', title: 'Valem só para a próxima rolagem' },
         h('span', { class: 'pop-l', text: 'Só nesta' }), h('label', { class: 'pop-l', for: 'fp-ma', text: '+ atrib.' }), ma, h('label', { class: 'pop-l', for: 'fp-mr', text: '+ result.' }), mr),
-      rel, mana, grid, out);
+      vt, rel, mana, grid, out);
     K.layer.append(el);
-    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr, rel, mana, relSomado: false };
+    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr, rel, mana, vt, relSomado: false };
     pintarPop();
     if (!pop) return;
     // ao lado do token (à direita; se não couber, à esquerda), sem sair da tela — e ali fica, mesmo que o mapa ande
@@ -346,11 +354,11 @@ const Luta = (() => {
      janela e vai para a mesa ao vivo (em segredo, se um dos tokens está oculto ou com o nome escondido). */
   const atrMem = new Map();              // o último atributo usado por cada token numa disputa
   function ladoDe(t) {
-    if (!t) return { tok: '', nome: 'NPC', valor: 40, fixa: 0, atr: '' };
+    if (!t) return { tok: '', nome: 'NPC', valor: 40, fixa: 0, atr: '', vant: 0 };
     const comFicha = !!(Fichas.ligado(t) && Fichas.podeRolar(t));
     const itens = comFicha ? Fichas.rolaveis(t) : [];
     const atr = comFicha ? (itens.some(x => x[0] === atrMem.get(t.id)) ? atrMem.get(t.id) : itens[0][0]) : '';
-    return { tok: t.id, nome: t.name, valor: valorMem.has(t.id) ? valorMem.get(t.id) : 40, fixa: fixaAtual(t), atr };
+    return { tok: t.id, nome: t.name, valor: valorMem.has(t.id) ? valorMem.get(t.id) : 40, fixa: fixaAtual(t), atr, vant: vantDe(t.id) };
   }
   function disputa(toksArg) {
     if (!isGM()) { toast('A disputa pelo mapa é do mestre. Na sua ficha, o botão "Disputar" faz o mesmo.'); return; }
@@ -381,7 +389,8 @@ const Luta = (() => {
         ficha ? field('Atributo', inSelect(`dis-${p}-atr`, L.atr, Fichas.rolaveis(t).map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { L.atr = v; atrMem.set(t.id, v); st.res = null; paint(); }), 'stack')
           : [t ? null : field('Nome', h('input', { id: `dis-${p}-nome`, class: 'in', type: 'text', maxlength: 40, value: L.nome, autocomplete: 'off', oninput: e => { L.nome = e.target.value; } }), 'stack'),
             field('Valor', h('input', { id: `dis-${p}-valor`, class: 'in num', type: 'number', min: 1, max: 100000, step: 1, value: L.valor, oninput: e => { L.valor = clamp(int(e.target.value, 0), 0, 100000); if (t) valorMem.set(t.id, L.valor); } }), 'stack')],
-        field('Fixando', h('input', { id: `dis-${p}-fixa`, class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: L.fixa, oninput: e => { L.fixa = clamp(int(e.target.value, 0), 0, 99999); if (t) guardarFixa(t, L.fixa); } }), 'stack'));
+        field('Fixando', h('input', { id: `dis-${p}-fixa`, class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: L.fixa, oninput: e => { L.fixa = clamp(int(e.target.value, 0), 0, 99999); if (t) guardarFixa(t, L.fixa); } }), 'stack'),
+        vantBox(`dis-${p}`, L.vant, v => { L.vant = v; if (t) guardarVant(t.id, v); st.res = null; paint(); }));      // (lote 140) lembrada no token
     };
     const paint = () => {
       const a = document.activeElement, fid = a && a.id && corpo.contains(a) ? a.id : null;
@@ -398,7 +407,7 @@ const Luta = (() => {
     const rolar = () => {
       const ca = conta(st.a), cb = conta(st.b);
       if (ca.t && cb.t && ca.t.id === cb.t.id) { toast('Os dois lados são o mesmo token. Escolha outro num deles.'); return false; }
-      const ra = Combate.rolarFixa(ca.valor, ca.fixa), rb = Combate.rolarFixa(cb.valor, cb.fixa);
+      const ra = Combate.rolarFixa(ca.valor, ca.fixa, st.a.vant), rb = Combate.rolarFixa(cb.valor, cb.fixa, st.b.vant);
       if (!ra.ok || !rb.ok) { toast((!ra.ok ? ca.nome : cb.nome) + ': ' + (!ra.ok ? ra.error : rb.error)); return false; }
       const empate = ra.total === rb.total, venceuA = ra.total > rb.total;
       const veredito = empate ? 'Empate em ' + ra.total
@@ -842,7 +851,7 @@ const Luta = (() => {
       rows: [], pedido: null, pedindo: false, cena: Store.S.current, card: null,
     };
     const linhasDe = quem => (quem === 'sel' ? sel.map(t => Store.get('tokens', t.id)).filter(Boolean) : quem === 'jog' ? deJogador() : todos())
-      .map(t => ({ id: t.id, char: t.char || null, on: true, st: '', r: null, fixa: String(fixaAtual(t)), valor: String(valorMem.has(t.id) ? valorMem.get(t.id) : 40) }));
+      .map(t => ({ id: t.id, char: t.char || null, on: true, st: '', r: null, fixa: String(fixaAtual(t)), valor: String(valorMem.has(t.id) ? valorMem.get(t.id) : 40), vant: vantDe(t.id) }));
     st.rows = linhasDe(st.quem);
     const inNome = h('input', { id: 'ger-nome', class: 'in', type: 'text', maxlength: 40, placeholder: 'Percepção na floresta', autocomplete: 'off', 'aria-label': 'Nome da rolagem (opcional)' });
     const selQuem = inSelect('ger-quem', st.quem, conjuntos, v => { if (st.pedido && !st.pedido.fim) { toast('Há um pedido em aberto. Cancele o pedido para mudar.'); selQuem.value = st.quem; return; } st.quem = v; st.rows = linhasDe(v); paint(); });
@@ -866,11 +875,11 @@ const Luta = (() => {
       // (no lugar de um jogador, com o pedido em aberto: a rolagem vale como a resposta dele, e o cartão dele mostra)
       const noLugar = !!(v.dono && st.pedido && !st.pedido.fim && st.pedido.chars.has(r.char));
       let res;
-      if (v.ficha) res = Fichas.rolar(v.t, st.atr, fixa, null, noLugar ? { pedido: st.pedido.id, alvo: r.char } : null);
+      if (v.ficha) res = Fichas.rolar(v.t, st.atr, fixa, null, noLugar ? { pedido: st.pedido.id, alvo: r.char } : null, r.vant);
       else {
         valorMem.set(v.t.id, v.valor);
-        res = Combate.rolarFixa(v.valor, fixa);
-        if (res.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: v.t.name, tokenId: v.t.id, attr: '', attrNome: nomeAtr(st.atr) + ' (valor avulso)', atributo: res.atributo, fixa: res.fixa, d: res.dieValue, total: res.total }); } catch (e) { console.error(e); } }
+        res = Combate.rolarFixa(v.valor, fixa, r.vant);
+        if (res.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: v.t.name, tokenId: v.t.id, attr: '', attrNome: nomeAtr(st.atr) + ' (valor avulso)', atributo: res.atributo, fixa: res.fixa, d: res.dieValue, total: res.total, ...vantDaMesa(res) }); } catch (e) { console.error(e); } }
       }
       if (!res.ok) { toast(v.t.name + ': ' + res.error); return false; }
       if (v.ficha) guardarFixa(v.t, fixa);
@@ -917,7 +926,8 @@ const Luta = (() => {
               h('input', { type: 'checkbox', class: 'ck', id: `ger-on-${k}`, checked: r.on, disabled: esperando || r.st === 'rolou', 'aria-label': 'Incluir ' + t.name, onchange: e => { r.on = e.target.checked; paint(); } }),
               tokenAvatar(t, 26), h('span', { class: 'area-n', text: t.name + (t.hidden ? ' (oculto)' : '') })),
             h('span', { class: 'area-res' + (r.st === 'rolou' ? ' ger-tot' : ''), id: `ger-res-${k}`, text: r.st === 'rolou' ? String(r.r.total) : '' })),
-          r.on ? h('div', { class: 'atq-2' }, h('span', { class: 'atq-como' + (r.st === 'rolou' ? '' : ' falta'), id: `ger-como-${k}`, text: como }), valor, r.st === 'rolou' ? null : fx, acao) : null);
+          r.on ? h('div', { class: 'atq-2' }, h('span', { class: 'atq-como' + (r.st === 'rolou' ? '' : ' falta'), id: `ger-como-${k}`, text: como }), valor, r.st === 'rolou' ? null : fx,
+            r.st === 'rolou' || esperando ? null : vantBox(`ger-${k}`, r.vant, nv => { r.vant = nv; guardarVant(t.id, nv); paint(); }, true), acao) : null);      // (lote 140)
       }));
       // quem tirou mais (do maior para o menor; empate fica na ordem da lista)
       const feitos = dentro.filter(x => x.r.st === 'rolou').slice().sort((p, q) => q.r.r.total - p.r.r.total);

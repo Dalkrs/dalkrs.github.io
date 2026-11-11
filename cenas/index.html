@@ -1366,6 +1366,13 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .mt-volta { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 4px; border: 0; border-radius: 6px; background: none; color: var(--fg-2); font: 600 12.5px var(--ui); cursor: pointer; }
 .mt-volta:hover { background: var(--hover); color: var(--fg); }
 @media (max-height: 640px) { .rail .tool { height: 30px; } .rail .mt-chave .mt-chave-t { display: none; } }
+/* (lote 140) as caixinhas de Vantagem e Desvantagem */
+.vant { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.vant-c { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 5px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; cursor: pointer; user-select: none; color: var(--fg-2); }
+.vant-c .ck { margin: 0; }
+.vant-c.on { border-color: var(--lamp); color: var(--fg); background: var(--lamp-soft); }
+.vant.curto .vant-c { padding: 1px 6px 1px 3px; font-size: 11px; }
+.pop-vt { margin: 2px 0 4px; }
 </style>
 </head>
 <body>
@@ -1594,6 +1601,33 @@ function focusKind(t) {
     return ty === 'checkbox' || ty === 'radio' || ty === 'button' || ty === 'color' || ty === 'file' ? 'control' : 'text';
   }
   return t.tagName === 'BUTTON' || t.tagName === 'SUMMARY' || t.tagName === 'A' ? 'control' : 'none';
+}
+
+/* ---- (lote 140) Vantagem e desvantagem: rola duas vezes e fica com o maior total (vantagem, vant = 1) ou com o menor
+   (desvantagem, vant = -1). `rolar` faz uma rolagem ({ ok, total, die, dieValue, … }). A que ficou ganha { vant, outro:
+   o total descartado, outroD: o dado descartado }. Sem dado (fixa total), rola uma vez só: não há o que escolher. ---- */
+function comVantagem(rolar, vant) {
+  const a = rolar();
+  if (!(vant === 1 || vant === -1) || !a || !a.ok || !a.die) return a;
+  const b = rolar();
+  if (!b || !b.ok) return a;
+  const fica = (vant > 0 ? b.total > a.total : b.total < a.total) ? b : a, sai = fica === a ? b : a;
+  return Object.assign({}, fica, { vant, outro: sai.total, outroD: sai.dieValue });
+}
+const riscado = v => [...String(v)].map(c => c + '\u0336').join('');
+// " · vantagem: 37 e 2̶5̶" (vazio sem vantagem)
+const vantTexto = r => (r && (r.vant === 1 || r.vant === -1) && r.outro != null ? ` · ${r.vant > 0 ? 'vantagem' : 'desvantagem'}: ${r.total} e ${riscado(r.outro)}` : '');
+// o que vai para a mesa ao vivo junto da rolagem (o outro dado entra na conta do auditor)
+const vantDaMesa = r => (r && (r.vant === 1 || r.vant === -1) && r.outro != null ? { vant: r.vant, d2: r.outroD, t2: r.outro } : {});
+/* A vantagem lembrada de cada token, neste aparelho, até o mestre desmarcar: { idDoToken: 1 | -1 } */
+const VANT_K = 'tinycats:cenas:vant';
+const vantMem = (() => { let m = {}; try { const o = JSON.parse(localStorage.getItem(VANT_K) || '{}'); if (o && typeof o === 'object') m = o; } catch (e) { m = {}; } return m; })();
+const vantDe = id => (id && (vantMem[id] === 1 || vantMem[id] === -1) ? vantMem[id] : 0);
+function guardarVant(id, v) {
+  if (!id) return;
+  if (v === 1 || v === -1) vantMem[id] = v; else delete vantMem[id];
+  const ks = Object.keys(vantMem); if (ks.length > 300) delete vantMem[ks[0]];
+  try { localStorage.setItem(VANT_K, JSON.stringify(vantMem)); } catch (e) { /* sem armazenamento */ }
 }
 
 /* ---- Ícones (traço 24×24). Os mesmos caminhos servem ao DOM e ao canvas. ---- */
@@ -10903,17 +10937,17 @@ const Fichas = (() => {
      desta rolagem — { atr: soma no atributo antes de rolar (muda o dado), res: soma no resultado }. */
   // (ped: { pedido, alvo } — a rolagem geral, quando o mestre rola no lugar de um jogador com o pedido em aberto:
   // vale como a resposta dele, e o cartão do pedido mostra "rolou … (pelo mestre)")
-  function rolar(t, chave, fixa, mais, ped) {
+  function rolar(t, chave, fixa, mais, ped, vant) {      // (lote 140) vant: 1 vantagem, -1 desvantagem
     const item = rolaveis(t).find(x => x[0] === chave);
     if (!item) return { ok: false, error: 'Este token não está ligado a uma ficha.' };
     const valor = item[2], ma = Math.round(Number(mais && mais.atr) || 0), com = valor + ma;
     if (com < 1) return { ok: false, error: item[1] + ' está em ' + Math.max(0, com) + (ma ? ' (com o bônus)' : '') + ': não há o que rolar.' };
-    const r = window.TC.dice.rollFixaMais(valor, fixa, mais);
+    const r = comVantagem(() => { const x = window.TC.dice.rollFixaMais(valor, fixa, mais); return x.ok ? Object.assign({}, x, { die: x.atributo - x.fixa }) : x; }, vant);
     if (!r.ok) return r;
     const doPedido = ped && typeof ped.pedido === 'string' && ped.pedido && typeof ped.alvo === 'string' && ped.alvo ? { pedido: ped.pedido, alvo: ped.alvo } : null;
     // (lote 90) o dano de elemento da arma que usa este atributo vai junto, como um selo ao lado do total
     let el = null; try { const l = linhaDoTok(t); el = l && R().elemDaFicha ? (R().elemDaFicha(pcDe(l))[chave] || null) : null; } catch (e) { el = null; }
-    if (Ext.roll) { try { Ext.roll(Object.assign({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }, el && el.length ? { el } : {}, doPedido)); } catch (e) { console.error(e); } }
+    if (Ext.roll) { try { Ext.roll(Object.assign({ kind: 'atributo', name: t.name, tokenId: t.id, attr: chave, attrNome: item[1], atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }, vantDaMesa(r), el && el.length ? { el } : {}, doPedido)); } catch (e) { console.error(e); } }
     return Object.assign({ nome: item[1] }, r);
   }
 
@@ -13447,7 +13481,9 @@ const Combate = (() => {
   /* ================= Fixa ================= */
   /* A regra da fixa para um valor qualquer: um dado de (valor − fixa) lados, mais a fixa. Fixa igual ao valor não
      rola dado. Mesmo formato do TC.dice.rollFixa, com o dado daqui (que é sorteado do mesmo jeito). */
-  function rolarFixa(valor, fixa) {
+  // (lote 140) vant: 1 rola com vantagem (fica o maior), -1 com desvantagem (fica o menor)
+  function rolarFixa(valor, fixa, vant) { return comVantagem(() => rolarFixa1(valor, fixa), vant); }
+  function rolarFixa1(valor, fixa) {
     const a = Math.round(Number(valor) || 0);
     if (!(a >= 1)) return { ok: false, error: 'O valor está em 0: não há o que rolar.' };
     if (a > 100000) return { ok: false, error: 'O valor é grande demais.' };
@@ -13455,10 +13491,10 @@ const Combate = (() => {
     return { ok: true, atributo: a, fixa: f, die, dieValue: d, total: f + d };
   }
   // Como a rolagem saiu, em poucas palavras: "17 no d40 + 20", "14 no d60", "fixa total"
-  const comoSaiu = r => (r.die ? `${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''}` : 'fixa total');
+  const comoSaiu = r => (r.die ? `${r.dieValue} no d${r.die}${r.fixa ? ' + ' + r.fixa : ''}` : 'fixa total') + vantTexto(r);
   // Como vai para a mesa (o mesmo texto das disputas da ficha, que o auditor dos dados sabe ler): "1d40 + 20, dado 17" | "fixo em 12"
-  const comoFoi = r => (r.die ? `1d${r.die} + ${r.fixa}, dado ${r.dieValue}` : `fixo em ${r.atributo}`);
-  const dadosDe = r => (r && r.die ? [[r.die, r.dieValue]] : []);
+  const comoFoi = r => (r.die ? `1d${r.die} + ${r.fixa}, dado ${r.dieValue}` : `fixo em ${r.atributo}`) + vantTexto(r);
+  const dadosDe = r => (r && r.die ? [[r.die, r.dieValue]].concat(r.vant && r.outroD ? [[r.die, r.outroD]] : []) : []);
 
   /* ================= Ataque com defesa ================= */
   // As defesas que podem descontar um ataque: as duas gerais e as 13 específicas. Vazio fora do site (sem as regras da ficha).
@@ -22149,6 +22185,12 @@ const Luta = (() => {
      novo, o × ou um clique fora. Com ficha: um botão por atributo, com o valor de agora. Sem ficha: um valor
      digitado. Tudo com a regra da fixa; a rolagem vai para a mesa ao vivo como as outras. */
   let pop = null;                        // { el, tokId, res, grid, fx, chips, out, valor }
+  /* (lote 140) As caixinhas de Vantagem e Desvantagem: marcar uma desmarca a outra. mudar(1 | -1 | 0). */
+  function vantBox(idp, v, mudar, curto) {
+    const mk = (k, rotulo, rc) => h('label', { class: 'vant-c' + (v === k ? ' on' : ''), title: k > 0 ? 'Vantagem: rola duas vezes e fica com o maior' : 'Desvantagem: rola duas vezes e fica com o menor' },
+      h('input', { type: 'checkbox', class: 'ck', id: `${idp}-${k > 0 ? 'vant' : 'desv'}`, checked: v === k, 'aria-label': rotulo, onchange: e => mudar(e.target.checked ? k : 0) }), h('span', { text: curto ? rc : rotulo }));
+    return h('div', { class: 'vant' + (curto ? ' curto' : ''), id: idp + '-vd', role: 'group', 'aria-label': 'Vantagem ou desvantagem' }, mk(1, 'Vantagem', 'Vant.'), mk(-1, 'Desvantagem', 'Desv.'));
+  }
   const valorMem = new Map();            // token sem ficha: o último valor rolado por ele
   function modoDoF(t) {
     if (!t) return null;
@@ -22180,15 +22222,15 @@ const Luta = (() => {
   function rolarDoPop(k) {
     const t = pop ? Store.get('tokens', pop.tokId) : null;
     if (!t) { fecharPop(); return; }
-    const fixa = lerFixaDoPop(), mais = lerMaisDoPop();
+    const fixa = lerFixaDoPop(), mais = lerMaisDoPop(), vant = vantDe(t.id);
     let r, nome;
     if (k === '@valor') {
       const v = clamp(int(pop.valor.value, 0), 0, 100000);
       valorMem.set(t.id, v);
-      r = Combate.rolarFixa(v + mais.atr, fixa); nome = 'Valor ' + v;
+      r = Combate.rolarFixa(v + mais.atr, fixa, vant); nome = 'Valor ' + v;
       if (r.ok) r = Object.assign({}, r, { base: v, ma: mais.atr, mr: mais.res, total: r.total + mais.res });
-      if (r.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: '', attrNome: 'valor avulso', atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr }); } catch (e) { console.error(e); } }
-    } else { r = Fichas.rolar(t, k, fixa, mais); nome = r.nome || k; }
+      if (r.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: t.name, tokenId: t.id, attr: '', attrNome: 'valor avulso', atributo: r.atributo, fixa: r.fixa, d: r.dieValue, total: r.total, base: r.base, ma: r.ma, mr: r.mr, ...vantDaMesa(r) }); } catch (e) { console.error(e); } }
+    } else { r = Fichas.rolar(t, k, fixa, mais, null, vant); nome = r.nome || k; }
     pop.res = r.ok ? { ok: true, total: r.total, txt: nome, det: Combate.comoSaiu(r) + maisDet(r) } : { ok: false, txt: r.error };
     if (r.ok) { pop.ma.value = ''; pop.mr.value = ''; pop.relSomado = false; }
     pintarPop();
@@ -22258,6 +22300,7 @@ const Luta = (() => {
     const bm = botaoMana(t, 'fp-mana');
     pop.mana.replaceChildren(...(bm ? [bm] : [])); pop.mana.hidden = !bm;
     if (document.activeElement !== pop.fx) pop.fx.value = fixaAtual(t);
+    { const vd = vantBox('fp', vantDe(t.id), v => { guardarVant(t.id, v); pintarPop(); }); pop.vt.replaceChildren(...vd.childNodes); pop.vt.classList.toggle('tem', !!vantDe(t.id)); }      // (lote 140)
     const fixa = lerFixaDoPop(), mais = lerMaisDoPop();
     pop.ma.classList.toggle('tem', !!mais.atr); pop.mr.classList.toggle('tem', !!mais.res);
     const com = v => Math.max(0, v + mais.atr), res = mais.res ? ' ' + sinalN(mais.res).replace(/^([+−])/, '$1 ') : '';
@@ -22316,14 +22359,15 @@ const Luta = (() => {
     // (lote 18) o relevo: mirando alguém mais baixo (ou mais alto), a sugestão de somar o bônus da tabela
     const rel = h('div', { class: 'pop-rel', id: 'fp-rel', hidden: true });
     const mana = h('div', { class: 'pop-mana', id: 'fp-mana-w', hidden: true });        // (lote 28) Imbuído de Mana
+    const vt = h('div', { class: 'vant pop-vt', id: 'fp-vd', role: 'group', 'aria-label': 'Vantagem ou desvantagem (fica marcada neste token até desmarcar)' });      // (lote 140)
     const el = h('div', { class: 'pop', id: 'fpop', role: 'dialog', 'aria-label': 'Rolar atributo de ' + tokName(t), tabindex: '-1' },
       h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou F)', fecharPop, { size: 15, id: 'fp-x' })),
       h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx),
       h('div', { class: 'pop-m', role: 'group', 'aria-label': 'Bônus só nesta rolagem', title: 'Valem só para a próxima rolagem' },
         h('span', { class: 'pop-l', text: 'Só nesta' }), h('label', { class: 'pop-l', for: 'fp-ma', text: '+ atrib.' }), ma, h('label', { class: 'pop-l', for: 'fp-mr', text: '+ result.' }), mr),
-      rel, mana, grid, out);
+      vt, rel, mana, grid, out);
     K.layer.append(el);
-    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr, rel, mana, relSomado: false };
+    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr, rel, mana, vt, relSomado: false };
     pintarPop();
     if (!pop) return;
     // ao lado do token (à direita; se não couber, à esquerda), sem sair da tela — e ali fica, mesmo que o mapa ande
@@ -22428,11 +22472,11 @@ const Luta = (() => {
      janela e vai para a mesa ao vivo (em segredo, se um dos tokens está oculto ou com o nome escondido). */
   const atrMem = new Map();              // o último atributo usado por cada token numa disputa
   function ladoDe(t) {
-    if (!t) return { tok: '', nome: 'NPC', valor: 40, fixa: 0, atr: '' };
+    if (!t) return { tok: '', nome: 'NPC', valor: 40, fixa: 0, atr: '', vant: 0 };
     const comFicha = !!(Fichas.ligado(t) && Fichas.podeRolar(t));
     const itens = comFicha ? Fichas.rolaveis(t) : [];
     const atr = comFicha ? (itens.some(x => x[0] === atrMem.get(t.id)) ? atrMem.get(t.id) : itens[0][0]) : '';
-    return { tok: t.id, nome: t.name, valor: valorMem.has(t.id) ? valorMem.get(t.id) : 40, fixa: fixaAtual(t), atr };
+    return { tok: t.id, nome: t.name, valor: valorMem.has(t.id) ? valorMem.get(t.id) : 40, fixa: fixaAtual(t), atr, vant: vantDe(t.id) };
   }
   function disputa(toksArg) {
     if (!isGM()) { toast('A disputa pelo mapa é do mestre. Na sua ficha, o botão "Disputar" faz o mesmo.'); return; }
@@ -22463,7 +22507,8 @@ const Luta = (() => {
         ficha ? field('Atributo', inSelect(`dis-${p}-atr`, L.atr, Fichas.rolaveis(t).map(x => [x[0], `${x[1]} · ${x[2]}`]), v => { L.atr = v; atrMem.set(t.id, v); st.res = null; paint(); }), 'stack')
           : [t ? null : field('Nome', h('input', { id: `dis-${p}-nome`, class: 'in', type: 'text', maxlength: 40, value: L.nome, autocomplete: 'off', oninput: e => { L.nome = e.target.value; } }), 'stack'),
             field('Valor', h('input', { id: `dis-${p}-valor`, class: 'in num', type: 'number', min: 1, max: 100000, step: 1, value: L.valor, oninput: e => { L.valor = clamp(int(e.target.value, 0), 0, 100000); if (t) valorMem.set(t.id, L.valor); } }), 'stack')],
-        field('Fixando', h('input', { id: `dis-${p}-fixa`, class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: L.fixa, oninput: e => { L.fixa = clamp(int(e.target.value, 0), 0, 99999); if (t) guardarFixa(t, L.fixa); } }), 'stack'));
+        field('Fixando', h('input', { id: `dis-${p}-fixa`, class: 'in num', type: 'number', min: 0, max: 99999, step: 1, value: L.fixa, oninput: e => { L.fixa = clamp(int(e.target.value, 0), 0, 99999); if (t) guardarFixa(t, L.fixa); } }), 'stack'),
+        vantBox(`dis-${p}`, L.vant, v => { L.vant = v; if (t) guardarVant(t.id, v); st.res = null; paint(); }));      // (lote 140) lembrada no token
     };
     const paint = () => {
       const a = document.activeElement, fid = a && a.id && corpo.contains(a) ? a.id : null;
@@ -22480,7 +22525,7 @@ const Luta = (() => {
     const rolar = () => {
       const ca = conta(st.a), cb = conta(st.b);
       if (ca.t && cb.t && ca.t.id === cb.t.id) { toast('Os dois lados são o mesmo token. Escolha outro num deles.'); return false; }
-      const ra = Combate.rolarFixa(ca.valor, ca.fixa), rb = Combate.rolarFixa(cb.valor, cb.fixa);
+      const ra = Combate.rolarFixa(ca.valor, ca.fixa, st.a.vant), rb = Combate.rolarFixa(cb.valor, cb.fixa, st.b.vant);
       if (!ra.ok || !rb.ok) { toast((!ra.ok ? ca.nome : cb.nome) + ': ' + (!ra.ok ? ra.error : rb.error)); return false; }
       const empate = ra.total === rb.total, venceuA = ra.total > rb.total;
       const veredito = empate ? 'Empate em ' + ra.total
@@ -22924,7 +22969,7 @@ const Luta = (() => {
       rows: [], pedido: null, pedindo: false, cena: Store.S.current, card: null,
     };
     const linhasDe = quem => (quem === 'sel' ? sel.map(t => Store.get('tokens', t.id)).filter(Boolean) : quem === 'jog' ? deJogador() : todos())
-      .map(t => ({ id: t.id, char: t.char || null, on: true, st: '', r: null, fixa: String(fixaAtual(t)), valor: String(valorMem.has(t.id) ? valorMem.get(t.id) : 40) }));
+      .map(t => ({ id: t.id, char: t.char || null, on: true, st: '', r: null, fixa: String(fixaAtual(t)), valor: String(valorMem.has(t.id) ? valorMem.get(t.id) : 40), vant: vantDe(t.id) }));
     st.rows = linhasDe(st.quem);
     const inNome = h('input', { id: 'ger-nome', class: 'in', type: 'text', maxlength: 40, placeholder: 'Percepção na floresta', autocomplete: 'off', 'aria-label': 'Nome da rolagem (opcional)' });
     const selQuem = inSelect('ger-quem', st.quem, conjuntos, v => { if (st.pedido && !st.pedido.fim) { toast('Há um pedido em aberto. Cancele o pedido para mudar.'); selQuem.value = st.quem; return; } st.quem = v; st.rows = linhasDe(v); paint(); });
@@ -22948,11 +22993,11 @@ const Luta = (() => {
       // (no lugar de um jogador, com o pedido em aberto: a rolagem vale como a resposta dele, e o cartão dele mostra)
       const noLugar = !!(v.dono && st.pedido && !st.pedido.fim && st.pedido.chars.has(r.char));
       let res;
-      if (v.ficha) res = Fichas.rolar(v.t, st.atr, fixa, null, noLugar ? { pedido: st.pedido.id, alvo: r.char } : null);
+      if (v.ficha) res = Fichas.rolar(v.t, st.atr, fixa, null, noLugar ? { pedido: st.pedido.id, alvo: r.char } : null, r.vant);
       else {
         valorMem.set(v.t.id, v.valor);
-        res = Combate.rolarFixa(v.valor, fixa);
-        if (res.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: v.t.name, tokenId: v.t.id, attr: '', attrNome: nomeAtr(st.atr) + ' (valor avulso)', atributo: res.atributo, fixa: res.fixa, d: res.dieValue, total: res.total }); } catch (e) { console.error(e); } }
+        res = Combate.rolarFixa(v.valor, fixa, r.vant);
+        if (res.ok && Ext.roll) { try { Ext.roll({ kind: 'atributo', name: v.t.name, tokenId: v.t.id, attr: '', attrNome: nomeAtr(st.atr) + ' (valor avulso)', atributo: res.atributo, fixa: res.fixa, d: res.dieValue, total: res.total, ...vantDaMesa(res) }); } catch (e) { console.error(e); } }
       }
       if (!res.ok) { toast(v.t.name + ': ' + res.error); return false; }
       if (v.ficha) guardarFixa(v.t, fixa);
@@ -22999,7 +23044,8 @@ const Luta = (() => {
               h('input', { type: 'checkbox', class: 'ck', id: `ger-on-${k}`, checked: r.on, disabled: esperando || r.st === 'rolou', 'aria-label': 'Incluir ' + t.name, onchange: e => { r.on = e.target.checked; paint(); } }),
               tokenAvatar(t, 26), h('span', { class: 'area-n', text: t.name + (t.hidden ? ' (oculto)' : '') })),
             h('span', { class: 'area-res' + (r.st === 'rolou' ? ' ger-tot' : ''), id: `ger-res-${k}`, text: r.st === 'rolou' ? String(r.r.total) : '' })),
-          r.on ? h('div', { class: 'atq-2' }, h('span', { class: 'atq-como' + (r.st === 'rolou' ? '' : ' falta'), id: `ger-como-${k}`, text: como }), valor, r.st === 'rolou' ? null : fx, acao) : null);
+          r.on ? h('div', { class: 'atq-2' }, h('span', { class: 'atq-como' + (r.st === 'rolou' ? '' : ' falta'), id: `ger-como-${k}`, text: como }), valor, r.st === 'rolou' ? null : fx,
+            r.st === 'rolou' || esperando ? null : vantBox(`ger-${k}`, r.vant, nv => { r.vant = nv; guardarVant(t.id, nv); paint(); }, true), acao) : null);      // (lote 140)
       }));
       // quem tirou mais (do maior para o menor; empate fica na ordem da lista)
       const feitos = dentro.filter(x => x.r.st === 'rolou').slice().sort((p, q) => q.r.r.total - p.r.r.total);

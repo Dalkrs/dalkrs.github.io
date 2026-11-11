@@ -1087,7 +1087,10 @@
       opt.quem = d.char ? aoVivo.personagem(d.char) : null;
       // (ma, mr: os bônus só desta rolagem — no atributo, antes de rolar, e no resultado; base: o atributo sem o bônus)
       dados = { k: 'fixa', titulo: (String(d.name || '?') + ' · ' + String(d.attrNome || d.attr || '')).slice(0, 120), total: d.total, resumo: semTotal(D().summary({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d, total: d.total, base: d.base, ma: d.ma, mr: d.mr })), veredito: null, passou: null };
-      comDd(dados, D().diceOf({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d }));
+      // (lote 140) com vantagem ou desvantagem: a rolagem descartada aparece riscada, e o dado dela entra na conta do auditor
+      const vt = (d.vant === 1 || d.vant === -1) && Number.isFinite(Number(d.t2)) ? d.vant : 0;
+      if (vt) dados.resumo = (dados.resumo + ' · ' + (vt > 0 ? 'vantagem' : 'desvantagem') + ': ' + d.total + ' e ' + [...String(Math.round(Number(d.t2)))].map(c => c + '\u0336').join('')).slice(0, 600);
+      comDd(dados, D().diceOf({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d }).concat(vt && Number.isInteger(Number(d.d2)) && d.atributo - d.fixa >= 2 ? [[d.atributo - d.fixa, Number(d.d2)]] : []));
       comEl(dados, d.el);
       if (d.oculto) opt.secreta = true;
       // a rolagem geral, rolada no lugar de um jogador com o pedido em aberto: vale como a resposta dele

@@ -718,6 +718,9 @@ input.defbase{width:62px;padding:3px 6px;text-align:right;font-family:var(--mono
 .disval{font-family:var(--monof);font-size:15px;color:var(--ink);font-weight:600}
 .disnum{font-family:var(--monof);font-size:34px;font-weight:600;line-height:1;margin-top:9px}
 .disdet{font-family:var(--monof);font-size:11.5px;color:var(--ink-soft);margin-top:3px}
+.disvant{display:flex;gap:12px;flex-wrap:wrap}
+.disvant label{justify-content:flex-start !important;font-size:12.5px;cursor:pointer;gap:5px !important}
+.disvant input{flex:none !important;width:auto !important;margin:0}
 .disveredito{margin-top:14px;padding:11px 13px;border:1px solid var(--brass);background:var(--brass-fundo);
   border-radius:var(--r);text-align:center}
 .disveredito strong{font-size:16px}
@@ -2092,6 +2095,20 @@ function rolarFixa(valorAtributo, fixado){
   const bruto=rolarDado(faces);
   return {dado:faces, bruto, fixado:f, total:bruto+f, texto:'1d'+faces+' + '+f};
 }
+
+/* (lote 140) Vantagem (vant 1) e desvantagem (vant -1): rola a fixa duas vezes e fica com o maior (ou o menor) total.
+   A que ficou ganha { vant, outro: o total descartado, outroBruto: o dado descartado }. Fixa total: rola uma vez só. */
+function rolarFixaV(valorAtributo, fixado, vant){
+  const a=rolarFixa(valorAtributo, fixado);
+  if(!(vant===1||vant===-1) || !a.dado) return a;
+  const b=rolarFixa(valorAtributo, fixado);
+  const fica=(vant>0? b.total>a.total : b.total<a.total)? b : a, sai=fica===a? b : a;
+  return Object.assign({}, fica, {vant, outro:sai.total, outroBruto:sai.bruto});
+}
+const riscar = v => [...String(v)].map(c=>c+'\u0336').join('');
+const vantTxt = r => (r && (r.vant===1||r.vant===-1) && r.outro!=null ? ' · '+(r.vant>0?'vantagem':'desvantagem')+': '+r.total+' e '+riscar(r.outro) : '');
+const ddDaFixaV = r => ddDaFixa(r).concat(r && r.vant && r.dado>=2 && r.outroBruto ? [[r.dado, r.outroBruto]] : []);
+const vantVal = v => (v===1||v===-1) ? v : 0;
 
 /* ---------- registro da mesa ---------- */
 function logar(e){
@@ -4862,6 +4879,7 @@ function abrirDisputa(pc){
     alvo: valeAlvo(m0.alvoId) ? m0.alvoId : (valeAlvo(S.ultimoAlvo) ? S.ultimoAlvo : (outros[0]?.id||'__avulso__')),
     atrB: m0.atrB||'FOR', fixaB: m0.fixaB||0, valorB: m0.valorB||40,
     nomeB: typeof m0.nomeB==='string' ? m0.nomeB : '',      // o nome do NPC (um oponente sem ficha)
+    vantA: vantVal(m0.vantA), vantB: 0,                      // (lote 140) a vantagem de cada lado: a desta ficha fica nela; a do oponente, com ele
     res:null
   };
   if(!outros.length) est.alvo='__avulso__';
@@ -4881,6 +4899,7 @@ function abrirDisputa(pc){
   // traz o que está guardado para o oponente escolhido; sem nada guardado, fica o que já estava na tela
   const carregarAlvo=()=>{
     const l = maisRecente(est.alvo);
+    est.vantB = l ? vantVal(l.vant) : 0;
     if(!l) return;
     if(l.atr) est.atrB=l.atr;
     if(l.fixa!=null) est.fixaB=Math.max(0,+l.fixa||0);
@@ -4889,6 +4908,7 @@ function abrirDisputa(pc){
   };
   const guardarAlvo=()=>{
     const d = est.alvo==='__avulso__' ? {valor:est.valorB, fixa:est.fixaB, nome:est.nomeB} : {atr:est.atrB, fixa:est.fixaB};
+    if(est.vantB) d.vant=est.vantB;
     d.t=Date.now();
     meus()[est.alvo]=d; gerais()[est.alvo]=Object.assign({},d);
     const m=mem();
@@ -4906,6 +4926,10 @@ function abrirDisputa(pc){
       vB: avulso? Math.max(0,+est.valorB||0) : valorDoAtributo(pcB, est.atrB, pcB.rol?.fonte||'total'),
       nomeB: avulso? (String(est.nomeB||'').trim().slice(0,40) || 'NPC') : pcB.nome};
   };
+  // (lote 140) as caixinhas de Vantagem e Desvantagem de um lado (marcar uma desmarca a outra)
+  const caixasVant=(l, v)=>`<div class="disvant" role="group" aria-label="Vantagem ou desvantagem">
+      <label title="Rola duas vezes e fica com o maior"><input type="checkbox" id="disVant${l}" ${v===1?'checked':''}> Vantagem</label>
+      <label title="Rola duas vezes e fica com o menor"><input type="checkbox" id="disDesv${l}" ${v===-1?'checked':''}> Desvantagem</label></div>`;
   const m=document.createElement('div'); m.className='modal';
   const fechar=()=>{ m.remove(); renderFicha(); };
   let desenhando=false;
@@ -4927,8 +4951,9 @@ function abrirDisputa(pc){
               <label><span>Atributo</span><select id="disAtrA">${opcoesDeAtributo(est.atrA)}</select></label>
               <label><span>Valor</span><span class="disval">${vA}</span></label>
               <label><span>Fixar</span><input type="number" min="0" id="disFixaA" value="${est.fixaA}"></label>
+              ${caixasVant('A', est.vantA)}
             </div>
-            ${r? `<div class="disnum">${r.a.total}</div><div class="disdet">${esc(r.a.texto)}${r.a.dado?` · dado ${r.a.bruto}`:''}</div>`:''}
+            ${r? `<div class="disnum">${r.a.total}</div><div class="disdet">${esc(r.a.texto)}${r.a.dado?` · dado ${r.a.bruto}`:''}${esc(vantTxt(r.a))}</div>`:''}
           </div>
           <div class="disvs">×</div>
           <div class="dislado ${ganhaB?'venceu':''}">
@@ -4944,8 +4969,9 @@ function abrirDisputa(pc){
                 : `<label><span>Atributo</span><select id="disAtrB">${opcoesDeAtributo(est.atrB)}</select></label>
                    <label><span>Valor</span><span class="disval">${vB}</span></label>`}
               <label><span>Fixar</span><input type="number" min="0" id="disFixaB" value="${est.fixaB}"></label>
+              ${caixasVant('B', est.vantB)}
             </div>
-            ${r? `<div class="disnum">${r.b.total}</div><div class="disdet">${esc(r.b.texto)}${r.b.dado?` · dado ${r.b.bruto}`:''}</div>`:''}
+            ${r? `<div class="disnum">${r.b.total}</div><div class="disdet">${esc(r.b.texto)}${r.b.dado?` · dado ${r.b.bruto}`:''}${esc(vantTxt(r.b))}</div>`:''}
           </div>
         </div>
         ${r? `<div class="disveredito">${
@@ -4975,11 +5001,16 @@ function abrirDisputa(pc){
     sel('#disAtrA', v=>{est.atrA=v; mem().atrA=v; save();});
     sel('#disAtrB', v=>{est.atrB=v; guardarAlvo();});
     sel('#disAlvo', v=>{est.alvo=v; carregarAlvo(); guardarAlvo();});
+    const vantCx=(id, lado, k)=>{ const e=m.querySelector(id); if(e) e.onchange=ev=>{
+      const v = ev.target.checked ? k : 0;
+      if(lado==='A'){ est.vantA=v; mem().vantA=v; save(); } else { est.vantB=v; guardarAlvo(); }
+      est.res=null; desenhar(); }; };
+    vantCx('#disVantA','A',1); vantCx('#disDesvA','A',-1); vantCx('#disVantB','B',1); vantCx('#disDesvB','B',-1);
     m.querySelector('#disRolar').onclick=()=>{
       const {avulso, vA, vB, nomeB} = lados();
       guardarAlvo();                      // rolou contra este alvo: os dados dele ficam guardados para todos
-      const ra=rolarFixa(vA, est.fixaA);
-      const rb=rolarFixa(vB, est.fixaB);
+      const ra=rolarFixaV(vA, est.fixaA, est.vantA);
+      const rb=rolarFixaV(vB, est.fixaB, est.vantB);
       est.res={a:ra, b:rb};
       const rotB = avulso? 'valor '+vB : rotuloAtr(est.atrB)+' '+vB;
       // quem venceu vai dito por extenso (na mesa ao vivo, em destaque): "Dain venceu Goblin por 4 (32 × 28)"
@@ -4987,9 +5018,9 @@ function abrirDisputa(pc){
       const veredito = empate ? 'Empate em '+ra.total
         : (venceuA? pc.nome : nomeB)+' venceu '+(venceuA? nomeB : pc.nome)+' por '+Math.abs(ra.total-rb.total)+' ('+Math.max(ra.total,rb.total)+' × '+Math.min(ra.total,rb.total)+')';
       logar({tipo:'disputa', quem:'Disputa · '+pc.nome+' × '+nomeB, pc:pc.id,
-        det:`${pc.nome}: ${rotuloAtr(est.atrA)} ${vA} (${ra.texto}${ra.dado?', dado '+ra.bruto:''}) = ${ra.total}`
-           +`  ·  ${nomeB}: ${rotB} (${rb.texto}${rb.dado?', dado '+rb.bruto:''}) = ${rb.total}`,
-        total:null, veredito, passou: empate? null : venceuA, dd:ddDaFixa(ra).concat(ddDaFixa(rb))});
+        det:`${pc.nome}: ${rotuloAtr(est.atrA)} ${vA} (${ra.texto}${ra.dado?', dado '+ra.bruto:''}${vantTxt(ra)}) = ${ra.total}`
+           +`  ·  ${nomeB}: ${rotB} (${rb.texto}${rb.dado?', dado '+rb.bruto:''}${vantTxt(rb)}) = ${rb.total}`,
+        total:null, veredito, passou: empate? null : venceuA, dd:ddDaFixaV(ra).concat(ddDaFixaV(rb))});
       save(); desenhar();
     };
   };

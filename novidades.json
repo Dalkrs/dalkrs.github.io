@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.11-02",
+      "data": "2026-11-11",
+      "titulo": "Vantagem e desvantagem",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: a Disputa (C) tem as caixinhas Vantagem e Desvantagem nos dois lados. Vantagem rola duas vezes e fica com o maior; desvantagem, com o menor. Os dois lados podem ter, juntos ou separados.", "mestre": true },
+        { "tipo": "novo", "texto": "As mesmas caixinhas na janelinha de atributos (F), em cada linha da Rolagem geral (Shift+F) e na Disputa da ficha.", "mestre": true },
+        { "tipo": "novo", "texto": "O resultado mostra as duas rolagens, com a descartada riscada, também na mesa ao vivo. A vantagem fica marcada no token (ou no oponente, na ficha) até alguém desmarcar." }
+      ]
+    },
+    {
       "versao": "2026.11.11-01",
       "data": "2026-11-11",
       "titulo": "O botão \"Versão nova\" não fica mais preso",

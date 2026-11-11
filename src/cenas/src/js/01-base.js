@@ -178,6 +178,33 @@ function focusKind(t) {
   return t.tagName === 'BUTTON' || t.tagName === 'SUMMARY' || t.tagName === 'A' ? 'control' : 'none';
 }
 
+/* ---- (lote 140) Vantagem e desvantagem: rola duas vezes e fica com o maior total (vantagem, vant = 1) ou com o menor
+   (desvantagem, vant = -1). `rolar` faz uma rolagem ({ ok, total, die, dieValue, … }). A que ficou ganha { vant, outro:
+   o total descartado, outroD: o dado descartado }. Sem dado (fixa total), rola uma vez só: não há o que escolher. ---- */
+function comVantagem(rolar, vant) {
+  const a = rolar();
+  if (!(vant === 1 || vant === -1) || !a || !a.ok || !a.die) return a;
+  const b = rolar();
+  if (!b || !b.ok) return a;
+  const fica = (vant > 0 ? b.total > a.total : b.total < a.total) ? b : a, sai = fica === a ? b : a;
+  return Object.assign({}, fica, { vant, outro: sai.total, outroD: sai.dieValue });
+}
+const riscado = v => [...String(v)].map(c => c + '\u0336').join('');
+// " · vantagem: 37 e 2̶5̶" (vazio sem vantagem)
+const vantTexto = r => (r && (r.vant === 1 || r.vant === -1) && r.outro != null ? ` · ${r.vant > 0 ? 'vantagem' : 'desvantagem'}: ${r.total} e ${riscado(r.outro)}` : '');
+// o que vai para a mesa ao vivo junto da rolagem (o outro dado entra na conta do auditor)
+const vantDaMesa = r => (r && (r.vant === 1 || r.vant === -1) && r.outro != null ? { vant: r.vant, d2: r.outroD, t2: r.outro } : {});
+/* A vantagem lembrada de cada token, neste aparelho, até o mestre desmarcar: { idDoToken: 1 | -1 } */
+const VANT_K = 'tinycats:cenas:vant';
+const vantMem = (() => { let m = {}; try { const o = JSON.parse(localStorage.getItem(VANT_K) || '{}'); if (o && typeof o === 'object') m = o; } catch (e) { m = {}; } return m; })();
+const vantDe = id => (id && (vantMem[id] === 1 || vantMem[id] === -1) ? vantMem[id] : 0);
+function guardarVant(id, v) {
+  if (!id) return;
+  if (v === 1 || v === -1) vantMem[id] = v; else delete vantMem[id];
+  const ks = Object.keys(vantMem); if (ks.length > 300) delete vantMem[ks[0]];
+  try { localStorage.setItem(VANT_K, JSON.stringify(vantMem)); } catch (e) { /* sem armazenamento */ }
+}
+
 /* ---- Ícones (traço 24×24). Os mesmos caminhos servem ao DOM e ao canvas. ---- */
 const ICONS = {
   layers: 'M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5M3 16.5l9 5 9-5',      // (lote 78) os andares
