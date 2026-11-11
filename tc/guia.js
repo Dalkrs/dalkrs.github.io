@@ -151,7 +151,7 @@
     acampamento: {
       mestre: [
         { t: 'Os descansos', txt: 'Descanso curto (uma pausa, sem gastar provisões) e longo (a noite: recupera as barras, gasta rações e mexe em Conforto e Sanidade). Sempre com prévia antes.', onde: { sel: '#acoes' } },
-        { t: 'Fogueira e Arrumar', txt: 'No alto: Fogueira deixa a cena com a tela (os descansos e os momentos embaixo); Arrumar abre o painel (o grupo, as provisões, a estrutura, a bancada, a caravana).', onde: { sel: '#modoAcamp' } },
+        { t: 'Fogueira e Arrumar', txt: 'No alto: Fogueira deixa a cena com a tela (os descansos e os momentos embaixo); Arrumar abre o painel (o grupo, as provisões, a estrutura, a caravana).', onde: { sel: '#modoAcamp' } },
         { t: 'A noite entre eles', txt: 'Depois do descanso longo, um cartão sobre a cena pergunta como ficou cada par: Pior, Igual ou Melhor (o Relacionamento dos dois lados, ±1). Registrar tem Desfazer; Pular fecha.' },
         { t: 'As rações', txt: 'A soma das provisões guardadas.', onde: { sel: '#chipRacoes' } },
         { t: 'O lembrete do descanso longo', txt: 'Quando o dia vira no Mapa-múndi e o grupo ainda não teve o descanso longo, o selo “Falta o descanso longo” aparece no alto do site. Ele abre o Acampamento; o × diz que hoje não tem (volta no dia seguinte).' },
@@ -339,8 +339,17 @@
       ],
     },
   };
-  // (lote 29) a Bancada do Acampamento, nas receitas
-  G.acampamento.mestre.push({ t: 'A bancada', txt: 'Na aba Bancada, as receitas que você criou na aba Itens. Os ingredientes saem da bolsa e o resultado entra; com teste, você pode dispensar o teste na hora. Tem Desfazer.', onde: { sel: '#tab-bancada' } });
-  G.acampamento.jogador.push({ t: 'A bancada', txt: 'Na aba Bancada, as receitas: escolha o personagem e “Fazer”. Os ingredientes saem da bolsa e o resultado entra. Se a receita tem teste e ele falhar, acontece o que ela diz.', onde: { sel: '#tab-bancada' } });
+  // (lote 142) a Bancada: os minigames de ofício, na Sessão
+  G.bancada = {
+    mestre: [
+      { t: 'A Bancada', txt: 'Minigames de alquimia, ferreiro e invenção, dois jeitos cada, do Fácil ao Lendário. O resultado (deu certo ou não, e a nota de 0 a 100) vai para a mesa ao vivo: você decide o que saiu.', onde: { sel: '#abas' } },
+      { t: 'Mandar', txt: 'Escolha o personagem, o ofício, o jeito e o nível; se quiser, o dano da falha (sai do HP) e um recado. Aparece na aba Pedidos de quem joga; o resultado volta aqui.', onde: { sel: '#aba-mandar' } },
+      { t: 'Ao vivo e Regras', txt: 'Ao vivo: quem está jogando agora e os últimos resultados. Regras: se os jogadores podem abrir sozinhos, até que nível e o dano de cada nível.', onde: { sel: '#aba-regras' } },
+    ],
+    jogador: [
+      { t: 'A Bancada', txt: 'Escolha o ofício, o jeito e o nível e jogue o minigame. O resultado vai para a mesa; o mestre diz o que saiu. Falhar pode machucar (o mestre avisa antes).', onde: { sel: '#aba-jogar' } },
+      { t: 'Pedidos', txt: 'Os minigames que o mestre mandou para o seu personagem.', onde: { sel: '#aba-pedidos' } },
+    ],
+  };
   window.TC_GUIA = { abas: G };
 })();

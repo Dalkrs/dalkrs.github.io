@@ -637,21 +637,28 @@
     if (r.canal || !mesaId || pausado || !topico.includes(':' + mesaId)) return;
     try {
       const ch = cliente().channel(topico, { config: { private: true, broadcast: { self: false, ack: false } } });
-      ch.on('broadcast', { event: 'm' }, e => { if (r.canal === ch) { try { r.fn(e.payload); } catch (x) { /* a moldura pode ter saído */ } } });
+      ch.on('broadcast', { event: 'm' }, e => { if (r.canal === ch) for (const f of [...r.fns]) { try { f(e.payload); } catch (x) { /* a moldura pode ter saído */ } } });
       r.canal = ch;
-      ch.subscribe(st => { if (r.canal !== ch) return; const ok = st === 'SUBSCRIBED'; if (ok !== r.ok) { r.ok = ok; try { if (r.aviso) r.aviso(ok); } catch (x) { /* idem */ } } });
+      ch.subscribe(st => { if (r.canal !== ch) return; const ok = st === 'SUBSCRIBED'; if (ok !== r.ok) { r.ok = ok; for (const a of [...r.avisos]) { try { a(ok); } catch (x) { /* idem */ } } } });
     } catch (e) { r.canal = null; r.ok = false; }
   }
   function fecharLeve(r) {
     const ch = r.canal; r.canal = null; r.ok = false;
     if (ch) { try { cliente().removeChannel(ch); } catch (e) { /* já fechado */ } }
   }
+  /* (lote 142) Um tópico pode ter mais de um ouvinte (a fechadura do Escudo e a Bancada, no mesmo fechv:<mesa>): o canal
+     é um só; cada ouvinte sai com a função que assinar devolve, e o canal fecha quando sai o último. */
   aoVivo.leve = {
     assinar(topico, fn, aviso) {
-      const velho = leves.get(topico); if (velho) fecharLeve(velho);
-      const r = { fn, aviso, canal: null, ok: false };
-      leves.set(topico, r); ligarLeve(topico, r);
-      return () => { if (leves.get(topico) === r) { fecharLeve(r); leves.delete(topico); } };
+      let r = leves.get(topico);
+      if (!r) { r = { fns: new Set(), avisos: new Set(), canal: null, ok: false }; leves.set(topico, r); }
+      r.fns.add(fn); if (aviso) r.avisos.add(aviso);
+      ligarLeve(topico, r);
+      if (r.ok && aviso) { try { aviso(true); } catch (x) { /* idem */ } }
+      return () => {
+        r.fns.delete(fn); if (aviso) r.avisos.delete(aviso);
+        if (!r.fns.size && leves.get(topico) === r) { fecharLeve(r); leves.delete(topico); }
+      };
     },
     pronto: topico => { const r = leves.get(topico); return !!r && r.ok; },
     // false: não saiu (quem manda grava o documento inteiro, como antes)
@@ -1306,6 +1313,7 @@
     || (typeof r.id === 'string' && r.id.startsWith('fichas:tropas:'))     // (lote 40) a tropa: o dono é o dono do personagem
     || (typeof r.id === 'string' && r.id.startsWith('fichas:mis:pc:'))     // (lote 123) as missões da história de um personagem: o dono é o dono dele
     || (typeof r.id === 'string' && r.id.startsWith('acampamento:base:'))   // (lote 125) a casa ou o esconderijo de um personagem: o dono é o jogador dele
+    || (typeof r.id === 'string' && r.id.startsWith('fichas:banc:pc:'))     // (lote 142) os minigames que o mestre mandou a um personagem
     || (typeof r.id === 'string' && (r.id.startsWith('notasj:' + r.dono_id + ':') || r.id.startsWith('notasg:')));   // (lote 52) o caderno de quem joga e o do grupo
   function dadosZerar() {
     for (const k in cols) {

@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.11-04",
+      "data": "2026-11-11",
+      "titulo": "A Bancada: minigames de ofício",
+      "itens": [
+        { "tipo": "novo", "texto": "Aba nova na Sessão: a Bancada. Minigames de Alquimia (Caldeirão e Destilar), Ferreiro (Forja e Têmpera) e Invenção (Engrenagens e Fiação), do Fácil ao Lendário: Fácil, Médio, Difícil, Impossível, Absoluto e Lendário." },
+        { "tipo": "novo", "texto": "Cada nível tem mais passos, mais pressa e menos margem. Do Impossível para cima, entram pegadinhas: vento no fogo, válvula que afrouxa, ponto que anda, nota falsa, engrenagem que inverte e faísca que gira o fio." },
+        { "tipo": "novo", "texto": "O fim vai para a mesa ao vivo: deu certo ou não e a nota de 0 a 100. O mestre decide o que saiu. A falha pode tirar HP da ficha." },
+        { "tipo": "novo", "texto": "O mestre manda um minigame a um personagem (aba Mandar), vê ao vivo quem está jogando e escolhe as regras: se os jogadores abrem sozinhos, até que nível e o dano de cada nível.", "mestre": true },
+        { "tipo": "melhorou", "texto": "A Bancada antiga (as receitas) saiu do Acampamento." }
+      ]
+    },
+    {
       "versao": "2026.11.11-03",
       "data": "2026-11-11",
       "titulo": "Andares e porão nos prédios",

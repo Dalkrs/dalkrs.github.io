@@ -94,7 +94,7 @@
     c('cq_bolso_cheio', 'comum', 'moeda', 'Bolso Cheio', 'Ter 500 lapros de uma vez.'),
     c('cq_sobrevivente', 'comum', 'coracao', 'Sobrevivente', 'Cair a 0 de Vida e viver para contar.'),
     c('cq_ferreiro', 'comum', 'martelo', 'Ferreiro de Primeira Viagem', 'Melhorar um equipamento até +1.'),
-    c('cq_alquimista', 'comum', 'pocao', 'Alquimista de Cozinha', 'Fazer a primeira poção na bancada do acampamento.'),
+    c('cq_alquimista', 'comum', 'pocao', 'Alquimista de Cozinha', 'Fazer a primeira poção na bancada.'),
     c('cq_turista', 'comum', 'castelo', 'Turista', 'Conhecer 3 das 5 cidades grandes.'),
     c('cq_devoto', 'comum', 'templo', 'Devoto', 'Deixar uma oferenda num altar à beira do caminho.'),
     c('cq_festeiro', 'comum', 'taca', 'Festeiro', 'Aproveitar uma festa grande: o Ano-Novo ou o Dia da Queda do Dragão Roxo.'),

@@ -5,8 +5,8 @@
 //     aviso); ele compra 2 poções (os lapros saem da ficha, a poção entra na bolsa, o estoque baixa), não consegue a
 //     espada (faltam lapros) e desfaz; compra uma de novo; o mestre vê as compras no Jornal (a desfeita, riscada);
 //   · o grupo sai de Vashka: a aba some, e o banco recusa a compra de longe;
-//   · a bancada do Acampamento: a receita sem teste faz a poção; a com teste que falha perde as ervas, tira HP e manda a
-//     condição — o mestre (nas Cenas, com o token da Selene) recebe Envenenado no token; o Desfazer devolve.
+//   · (lote 142) a Bancada da Sessão: o mestre manda à Selene uma forja Lendária que machuca 5; o Dalmo joga, desiste,
+//     o HP cai 5 e o pedido volta feito para o mestre (e o resultado vai para a mesa ao vivo).
 const { start, checker } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, codigoDaMesa, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
@@ -153,42 +153,29 @@ const mapa = (gx, gy) => ({ v: 1, id: 'mp_teste', nome: 'Mundo de teste', grade:
       await foto(M, 'itens-rede-mapa');
     });
 
-    // ---------- a bancada ----------
+    // ---------- (lote 142) a Bancada: os minigames, na Sessão ----------
     await passo('a bancada', async () => {
-      await M.evaluate(([p]) => {
-        const D = TC.dados.col('documentos');
-        D.gravar('itens:rec:rc_simples', { vis: 'mesa', dados: { v: 1, nome: 'Poção simples', ingredientes: [{ nome: 'Erva', t: 'material', qtd: 2 }], resultado: { item: p, qtd: 1 }, teste: null, falha: { perde: true, dano: [], conds: [] } } });
-        D.gravar('itens:rec:rc_dificil', { vis: 'mesa', dados: { v: 1, nome: 'Poção difícil', ingredientes: [{ nome: 'Erva', t: 'material', qtd: 3 }], resultado: { item: p, qtd: 1 }, teste: { atr: 'CAN', dif: 999 }, falha: { perde: true, dano: [{ barra: 'HP', val: '5' }], conds: [{ c: 'veneno', r: 3 }] } } });
-      }, [{ id: 'it_pot', t: 'pocao', nome: 'Poção de cura', nota: '', preco: 25, fx: [] }]);
-      // o mestre abre o Acampamento (a Selene entra nele) e as Cenas, com o token dela
-      await M.locator('#tab-acampamento').click();
-      ok(await ate(async () => { const a = await quadro(M, /\/acampamento\//); return !!a && await M.evaluate(() => { const d = TC.dados.col('documentos').pegar('acampamento'); return !!d && !d.apagado && Array.isArray(d.dados.presentes) && d.dados.presentes.includes('pc_selene'); }); }, 40000), '(o mestre abre o Acampamento: a Selene está nele)');
-      await M.locator('#tab-cenas').click();
-      let C = null;
-      ok(await ate(async () => { C = await quadro(M, /\/cenas\//); return C && await C.evaluate(() => !!window.__tc && !!__tc.Store.scene() && __tc.Fichas.on() && !!__tc.Fichas.get('pc_selene')); }, 40000), '(as Cenas do mestre, com a ficha da Selene)');
-      const tok = await C.evaluate(() => __tc.Combate.trazer(['pc_selene'], 200, 200)[0]);
-      // o Dalmo, no Acampamento: a Bancada
-      await Dp.locator('#tab-acampamento').click();
+      // o mestre manda à Selene uma forja Lendária que machuca 5
+      await M.locator('#tab-bancada').click();
+      let B = null;
+      ok(await ate(async () => { B = await quadro(M, /\/bancada\//); return !!B && (await B.locator('#aba-mandar').count()) === 1; }, 40000), '(o mestre abre a Bancada: Mandar)');
+      await B.locator('#aba-mandar').click(); await w(300, M);
+      await B.locator('#mand-pc').selectOption('pc_selene'); await B.locator('#of-ferreiro').click(); await w(200, M);
+      await B.locator('#mand-jeito button', { hasText: 'Forja' }).click(); await B.locator('#mand-nivel button', { hasText: 'Lendário' }).click(); await w(200, M);
+      await B.locator('#mand-dano').fill('5'); await B.locator('#mand-ok').click();
+      ok(await ate(async () => await M.evaluate(() => { const d = TC.dados.col('documentos').pegar('fichas:banc:pc:pc_selene'); return !!d && d.vis === 'mestre' && !!d.dono_id && Object.values(d.dados.ps).some(p => p.e === 'novo' && p.nivel === 'lendario'); })), 'o pedido fica no documento da Selene (o dono é o Dalmo; só ele e o mestre veem)');
+      // o Dalmo: a aba Bancada, o pedido, joga e desiste (falha: o HP cai 5)
+      ok(/bancada/.test(await abas(Dp)), 'o Dalmo tem a aba Bancada na Sessão');
+      await Dp.locator('#tab-bancada').click();
       let A = null;
-      ok(await ate(async () => { A = await quadro(Dp, /\/acampamento\//); return !!A && (await A.locator('#tab-bancada').count()) === 1; }, 40000), '(o Dalmo abre o Acampamento: a aba Bancada)');
-      await A.locator('#tab-bancada').click(); await w(400, Dp);
-      ok(await ate(async () => (await A.locator('[data-rec]').count()) === 2), 'as duas receitas na bancada');
-      const simples = A.locator('[data-rec="rc_simples"]'), dificil = A.locator('[data-rec="rc_dificil"]');
-      ok(/2 × Erva · tem 7/.test(await simples.innerText()) && /sem teste/.test(await simples.innerText()) && /teste de Canalização Mágica .* contra 999/.test(await dificil.innerText()) && /Se falhar: perde os ingredientes, HP −5, Envenenado \(3 rodadas\)\./.test(await dificil.innerText()), 'cada receita: os ingredientes (o que a bolsa tem), o teste e o que a falha faz');
+      ok(await ate(async () => { A = await quadro(Dp, /\/bancada\//); if (A && await A.locator('#aba-pedidos').count()) await A.locator('#aba-pedidos').click(); return !!A && (await A.locator('[data-ped]').count()) === 1; }, 40000), 'o Dalmo vê o pedido do mestre');
+      await A.locator('[data-ped] button', { hasText: 'Jogar' }).click(); await w(500, Dp);
+      ok(await A.locator('.bj[data-jeito="forja"]').count() === 1, 'o minigame da forja, no Lendário');
+      await A.locator('.bj-desistir').click();
+      ok(await ate(async () => { const r = await sel(); return r && r.estado.rec && r.estado.rec.hp === 95; }), 'falhou: o HP da Selene vai de 100 a 95');
+      ok(await ate(async () => await M.evaluate(() => { const d = TC.dados.col('documentos').pegar('fichas:banc:pc:pc_selene'); const p = d && Object.values(d.dados.ps)[0]; return !!p && p.e === 'feito' && p.res && p.res.ok === false && /dano 5/.test(p.res.dano); })), 'o pedido volta feito, com o resultado, para o mestre');
+      ok(await ate(async () => /Bancada · Selene/.test(await M.evaluate(() => (TC.aoVivo.itens || []).map(x => x.dados && x.dados.titulo).join(' ')))), 'o resultado vai para a mesa ao vivo');
       await foto(Dp, 'itens-rede-bancada');
-      await simples.locator('button', { hasText: 'Fazer' }).click(); await w(250, Dp);
-      await A.locator('#banc-ok').click();
-      ok(await ate(async () => j(resumo(await sel())) === j({ lapros: 75, pocoes: 2, ervas: 5, hp: undefined })), 'a receita sem teste: 2 ervas saem, a poção entra — ' + j(resumo(await sel())));
-      await A.locator('#tab-bancada').click(); await w(300, Dp);
-      await A.locator('[data-rec="rc_dificil"] button', { hasText: 'Fazer' }).click(); await w(250, Dp);
-      ok(/Rolar e fazer/.test(await A.locator('#banc-ok').innerText()) && await A.locator('#banc-dispensa').count() === 0, 'com teste: "Rolar e fazer" (o jogador não dispensa o teste)');
-      await A.locator('#banc-ok').click();
-      ok(await ate(async () => { const r = resumo(await sel()); return r.ervas === 2 && r.pocoes === 2 && r.hp === 95; }), 'falhou: perde 3 ervas e o HP vai de 100 a 95 — ' + j(resumo(await sel())));
-      ok(await ate(async () => await C.evaluate(id => __tc.Store.get('tokens', id).conds.includes('veneno') && __tc.Store.get('tokens', id).cinfo.veneno.d === 3, tok)), 'a condição chega às Cenas do mestre: Envenenado (3 rodadas) no token da Selene');
-      ok(await ate(async () => /Selene falhou na bancada: Envenenado \(3 rodadas\) no token\./.test(await C.evaluate(() => [...document.querySelectorAll('.toast')].map(x => x.innerText).join(' ¶ ')))), 'o mestre vê o aviso, com Desfazer');
-      ok(await ate(async () => /Selene tentou fazer Poção de cura e falhou/.test(await toastsDe(A))), 'o Dalmo vê o resultado');
-      await A.locator('.toast button', { hasText: 'Desfazer' }).last().click();
-      ok(await ate(async () => { const r = resumo(await sel()); return r.ervas === 5 && (r.hp === undefined || r.hp === 100); }), 'o Desfazer do Dalmo devolve as ervas e o HP (cheio de novo) — ' + j(resumo(await sel())));
     });
     await apagarMesaTela(M, nomeMesa); apagada = true;
   } finally {

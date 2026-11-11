@@ -721,10 +721,10 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=34"></script>
-<script src="tc/tc.js?v=53"></script>
+<script src="tc/tc.js?v=54"></script>
 <script src="tc/busca.js?v=3"></script>
 <script src="tc/calendario.js?v=2"></script>
-<script src="tc/guia.js?v=58"></script>
+<script src="tc/guia.js?v=59"></script>
 <script src="tc/notas.js?v=7"></script>
 <script src="tc/dom.js?v=2"></script>
 <script src="tc/escudo.js?v=4"></script>
@@ -737,14 +737,14 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/misterio.js?v=1"></script>
 <script src="tc/escudo-casca.js?v=5"></script>
 <script src="tc/tags.js?v=3"></script>
-<script src="tc/conquistas.js?v=1"></script>
+<script src="tc/conquistas.js?v=2"></script>
 <script src="tc/aptidoes.js?v=1"></script>
 <script src="tc/lembretes.js?v=1"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.11-03';
+  const VERSAO = '2026.11.11-04';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -765,6 +765,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     pistas: '<path d="M5 3.5h9.5l4 4V20.5H5z"/><path d="M14.5 3.5v4h4"/><circle cx="11" cy="13" r="2.7"/><path d="M13 15l2.6 2.6"/>',
     // (lote 123) as Missões: o cartaz pregado no quadro, com o ponto de exclamação
     missoes: '<path d="M5.5 5.5h13l-.6 15h-11.8z"/><circle cx="12" cy="4" r="1.6"/><path d="M12 9v5.2"/><path d="M12 17.2v.3"/>',
+    // (lote 142) a Bancada: a bigorna com o frasco em cima
+    bancada: '<path d="M4 14h11l-2 3H7z"/><path d="M8 17v3h5v-3"/><path d="M15 14c2 0 4-1 5-3H9"/><path d="M17 4v3l1.5 3h-5L15 7V4z"/>',
     // (lote 105) o Baralho: duas cartas, uma sobre a outra, com a estrela
     baralho: '<rect x="3.5" y="6" width="10" height="14" rx="1.5" transform="rotate(-10 8.5 13)"/><rect x="10" y="4" width="10" height="14" rx="1.5"/><path d="M15 8.2l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z"/>',
     loja: '<path d="M4 9l1.5-5h13L20 9"/><path d="M4 9h16v2a2.7 2.7 0 0 1-5.3 0 2.7 2.7 0 0 1-5.4 0A2.7 2.7 0 0 1 4 11z"/><path d="M5.5 13v7h13v-7"/><path d="M10 20v-4h4v4"/>',
@@ -778,6 +780,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     { id: 'cenas', nome: 'Cenas', src: 'cenas/', dados: true, grupo: 'sessao' },
     { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true, grupo: 'sessao' },
     { id: 'missoes', nome: 'Missões', src: 'missoes/', dados: true, grupo: 'sessao', permissao: 'fichas' },   // (lote 123) o quadro de missões e as de cada personagem (quem mestra as Fichas, mestra)
+    { id: 'bancada', nome: 'Bancada', src: 'bancada/', dados: true, grupo: 'sessao', permissao: 'fichas' },   // (lote 142) os minigames de ofício: alquimia, ferreiro e invenção (a Bancada saiu do Acampamento)
     { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true, dados: true, grupo: 'sessao' },      // ferramenta do mestre: numa mesa, os jogadores não a veem (e os históricos ficam na mesa)
     { id: 'escudo', nome: 'Escudo do mestre', src: 'escudo/', dados: true, grupo: 'sessao', soMestre: true }, // (lote 31) o roteiro, os relógios, os handouts e os puzzles
     { id: 'loja', nome: 'Loja', src: 'loja/', dados: true, grupo: 'sessao', soPerto: true },                 // (lote 29) aparece quando um personagem seu está no hexágono de uma loja

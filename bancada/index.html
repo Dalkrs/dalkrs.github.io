@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../tc/tema.js?v=1"></script>
+<title>Bancada · Tiny Cats</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&display=swap">
+<style>
+/* Bancada (lote 142): os minigames de alquimia, ferreiro e invenção. */
+:root {
+  color-scheme: dark;
+  --table: #0d1017; --surface: #161a24; --raised: #1f2431; --hover: #283042;
+  --line: #2b3243; --line-strong: #40495f;
+  --fg: #e8eaf0; --fg-2: #a6aec0; --fg-3: #7d879c;
+  --lamp: #e6ab4f; --lamp-ink: #edb960; --lamp-soft: rgba(230, 171, 79, .16); --on-lamp: #1d1503;
+  --ok: #6fbf8f; --danger: #f0786e;
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5);
+  --ui: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --display: "Grenze", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+:root:where([data-claro]) {
+  color-scheme: light;
+  --table: #c7ced9; --surface: #f2f4f8; --raised: #ffffff; --hover: #e3e8ef;
+  --line: #d2d8e2; --line-strong: #aeb8c9;
+  --fg: #1a1f2c; --fg-2: #4a5468; --fg-3: #68738a;
+  --lamp: #e2a13a; --lamp-ink: #855605; --lamp-soft: rgba(196, 128, 16, .17); --on-lamp: #241a04;
+  --ok: #2f7a55; --danger: #b9342a;
+  --shadow: 0 12px 34px rgba(40, 50, 72, .24);
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--table); color: var(--fg); font: 14px/1.4 var(--ui); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.grow { flex: 1; }
+.app { height: 100%; display: flex; flex-direction: column; min-width: 0; }
+.top { flex: none; display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.brand { font: 600 20px/1 var(--display); color: var(--lamp-ink); white-space: nowrap; }
+.na-casca .brand { display: none; }
+.abas { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.abas button { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg-2); font-size: 13px; font-weight: 600; }
+.abas button[aria-selected="true"] { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); }
+.abas .n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 5px; padding: 0 5px; border-radius: 999px; background: var(--lamp); color: var(--on-lamp); font-size: 11px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.pri { background: var(--lamp); border-color: var(--lamp); color: var(--on-lamp); }
+.btn.per { color: var(--danger); }
+.btn.sm { min-height: 28px; padding: 0 9px; font-size: 13px; }
+.in { min-width: 0; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); }
+.corpo { flex: 1; min-height: 0; overflow: auto; padding: 16px 14px 70px; }
+.secao { max-width: 980px; margin: 0 auto 22px; }
+.secao > h2 { margin: 0 0 8px; font: 600 20px/1.2 var(--display); color: var(--lamp-ink); }
+.ajuda { margin: -2px 0 12px; color: var(--fg-3); font-size: 13px; }
+.vazio { margin: 30px auto; max-width: 520px; text-align: center; color: var(--fg-2); }
+.cartao { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.lin { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.campo { display: grid; gap: 5px; margin-bottom: 12px; }
+.campo > span { font-size: 12.5px; color: var(--fg-2); font-weight: 600; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.seg button { min-height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; color: var(--fg-2); }
+.seg button[aria-pressed="true"] { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); }
+.seg button:disabled { opacity: .45; cursor: not-allowed; }
+.oficios { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.oficio { text-align: left; padding: 12px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--raised); display: grid; gap: 4px; }
+.oficio b { font: 600 18px/1.1 var(--display); }
+.oficio span { color: var(--fg-3); font-size: 12.5px; }
+.oficio[aria-pressed="true"] { border-color: var(--lamp); background: var(--lamp-soft); }
+.oficio .ic { font-size: 26px; }
+.note { color: var(--fg-3); font-size: 12.5px; margin: 4px 0; }
+.ok { color: var(--ok); } .ruim { color: var(--danger); }
+.tag { display: inline-block; font: 600 11px/1.6 var(--ui); padding: 0 7px; border-radius: 999px; background: var(--hover); color: var(--fg-2); }
+.tag.novo { background: var(--lamp-soft); color: var(--lamp-ink); }
+.tag.vivo { background: rgba(111, 191, 143, .2); color: var(--ok); }
+.regras-dano { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.regras-dano label { display: grid; gap: 3px; font-size: 12.5px; color: var(--fg-2); }
+.sw { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+/* o jogo */
+.bj { max-width: 900px; margin: 0 auto; display: grid; gap: 8px; }
+.bj-info { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13.5px; color: var(--fg-2); }
+.bj-info b { color: var(--fg); font: 600 18px/1.1 var(--display); margin-right: 6px; }
+.bj-niv { padding: 1px 9px; border-radius: 999px; background: var(--lamp-soft); color: var(--lamp-ink); font-weight: 700; }
+.bj-erros { color: var(--danger); font-weight: 700; }
+.bj-pressa { color: var(--danger); font-weight: 700; }
+.bj-palco { position: relative; }
+.bj-cv { width: 100%; height: auto; aspect-ratio: 16 / 9; display: block; border-radius: 12px; border: 1px solid var(--line-strong); touch-action: none; user-select: none; }
+.bj-fim { position: absolute; inset: 0; display: grid; place-content: center; gap: 6px; text-align: center; background: rgba(10, 12, 18, .72); border-radius: 12px; }
+.bj-fim b { font: 600 34px/1 var(--display); color: var(--lamp-ink); }
+.bj.falhou .bj-fim b { color: var(--danger); }
+.bj-fim span { font-size: 16px; color: #e8eaf0; }
+.bj-msg { min-height: 20px; margin: 0; color: var(--lamp-ink); font-weight: 600; }
+.bj-bts { display: flex; gap: 8px; flex-wrap: wrap; }
+.bj-b { min-height: 44px; padding: 0 18px; touch-action: none; user-select: none; }
+.bj-ajuda { margin: 0; color: var(--fg-3); font-size: 13px; }
+.jogando-topo { max-width: 900px; margin: 0 auto 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.resultado { max-width: 900px; margin: 10px auto 0; }
+.toasts { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 50; width: min(560px, calc(100vw - 24px)); }
+.toast { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow); font-size: 13.5px; }
+.toast span { flex: 1; }
+.toast button { border: 0; background: none; color: var(--lamp-ink); font-weight: 700; padding: 4px 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <span class="brand">Bancada</span>
+    <div class="abas" id="abas" role="tablist" aria-label="Partes"></div>
+    <span class="grow"></span>
+  </header>
+  <main class="corpo" id="corpo"></main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script src="../tc/ponte.js?v=21"></script>
+<script src="../tc/dice.js?v=3"></script>
+<script src="../tc/rules.js?v=34"></script>
+<script src="../tc/itens.js?v=6"></script>
+<script src="../tc/bancada-jogos.js?v=1"></script>
+<script src="bancada.js?v=1"></script>
+</body>
+</html>
