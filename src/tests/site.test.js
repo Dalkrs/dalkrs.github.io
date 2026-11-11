@@ -155,6 +155,13 @@ const legado = JSON.stringify({ version: 1, activeHistoryId: 'h_teste', mode: 'f
     await page.locator('#versaoNova').click(); await w(page, 250);
     await page.locator('#dlg button', { hasText: 'Recarregar agora' }).click(); await w(page, 1800);
     ok(recarregou, '"Recarregar agora" recarrega a página');
+    // (lote 139) a página recarregada continua na mesma versão (o versao.json publicado andou e a página não): o botão não volta
+    await w(page, 1200);
+    await page.evaluate(() => window.__conferirVersao()); await w(page, 500);
+    ok(await page.locator('#versaoNova').isHidden(), 'depois de recarregar, se a página não mudou, o botão não fica preso aparecendo');
+    await ctx.route('**/versao.json*', r => r.fulfill({ status: 200, contentType: 'application/json', body: '{"versao":"2000.01.01-1"}' }));
+    await page.evaluate(() => window.__conferirVersao()); await w(page, 300);
+    ok(await page.locator('#versaoNova').isHidden(), 'versão publicada mais velha que esta: não avisa');
     await ctx.close();
   }
 

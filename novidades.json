@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.11-01",
+      "data": "2026-11-11",
+      "titulo": "O botão \"Versão nova\" não fica mais preso",
+      "itens": [
+        { "tipo": "consertado", "texto": "O botão \"Versão nova\" aparecia sem parar, mesmo depois de recarregar. Agora some depois de recarregar, e só avisa de versão mais nova do que a sua." }
+      ]
+    },
+    {
       "versao": "2026.11.10-13",
       "data": "2026-11-10",
       "titulo": "Mesa mais limpa",

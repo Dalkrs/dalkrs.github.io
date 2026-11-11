@@ -744,7 +744,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.10-12';
+  const VERSAO = '2026.11.11-01';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -3004,6 +3004,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       if (!r.ok) return;
       const v = (await r.json()).versao;
       if (typeof v !== 'string' || !v || v === VERSAO || v === publicada) return;
+      /* (lote 139) Trava contra o botão que não some: só avisa de versão mais nova que esta, e não avisa de novo da
+         versão para a qual a pessoa já recarregou se a página continuou a mesma (o versao.json publicado andou e a página
+         não: recarregar de novo não resolve). */
+      if (cmpVersao(v, VERSAO) <= 0) return;
+      if (ler('tinycats:recarregou-para') === v + '|' + VERSAO) return;
       publicada = v;
       btnVersao.hidden = false;
       // o que a versão nova traz já vem agora: a janela do botão abre com a lista pronta (nada aparece depois, empurrando)
@@ -3017,7 +3022,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       h('p', { text: 'O site foi atualizado. O que você fez já está guardado. Recarregar leva alguns segundos e traz as correções e as novidades' + (novas.length ? ':' : '.') }),
       novas.length ? h('div', { class: 'nov', id: 'nov-nova' }, novas.map(blocoNovidades)) : null,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Depois', onclick: fecharJanela }), h('button', { type: 'submit', class: 'btn pri', text: 'Recarregar agora' })));
-    f.addEventListener('submit', ev => { ev.preventDefault(); location.reload(); });
+    f.addEventListener('submit', ev => { ev.preventDefault(); gravar('tinycats:recarregou-para', publicada + '|' + VERSAO); location.reload(); });
     abrirJanela(f);
     if (novas.length) marcarVistas(novas);        // (já viu o que vem: depois de recarregar, a bolinha não acende por isso)
   });
