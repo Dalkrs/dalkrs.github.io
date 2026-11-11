@@ -150,6 +150,32 @@
     return [c.raiz];
   }
 
+  /* (lote 137, pedido do Bruno) Ao vivo: enquanto o jogador mexe, a fechadura dele manda o movimento (a gazua, o
+     desgaste, os pinos) por um canal leve do Realtime, sem gravar nada no banco: fechv:<mesa>. No Escudo, em "Ver como
+     está", o mestre vê a mesma fechadura mexendo. O canal é da casca (TC.aoVivo.leve); a moldura usa o da página-mãe. */
+  function vivoApi() {
+    try {
+      const t = (W.parent && W.parent !== W && W.parent.TC) || W.TC;
+      const mesa = t && t.mesas && t.mesas.atual && t.mesas.atual.id;
+      return t && t.aoVivo && t.aoVivo.leve && mesa ? { leve: t.aoVivo.leve, topico: 'fechv:' + mesa, eu: t.conta && t.conta.usuario ? t.conta.usuario.id : null } : null;
+    } catch (e) { return null; }
+  }
+  const ouvintes = new Map();                     // chave do jogo → [fn] (as fechaduras do mestre que estão assistindo)
+  let soltarCanal = null;
+  function ligarCanal() {
+    const v = vivoApi();
+    if (!v) return null;
+    if (!soltarCanal || soltarCanal.topico !== v.topico) {
+      if (soltarCanal) soltarCanal.fn();
+      const fn = v.leve.assinar(v.topico, msg => {
+        if (!msg || msg.k !== 'fch') return;
+        for (const f of ouvintes.get(msg.h + ':' + msg.sal) || []) { try { f(msg); } catch (e) { /* a tela saiu */ } }
+      });
+      soltarCanal = { topico: v.topico, fn };
+    }
+    return v;
+  }
+
   function criar(jg0, ctx0, chave) {
     const c = { jg: jg0, ctx: ctx0, morto: false };
     const st = { teste: 15, pc: null, a: 0, rot: 0, forca: 0, segurando: false, quebrou: 0, pino: 0, travados: [], sobe: null, msg: '', pendente: false, abrindo: false };
@@ -164,6 +190,38 @@
     const botoes = h('div', { class: 'fch-bts' });
     const teste = h('label', { class: 'fch-teste' });
     raiz.append(info, palco, aviso, botoes, ajudaTxt, teste);
+    // (lote 137) ao vivo: quem só vê (o mestre) escuta; quem joga manda
+    const aoVivo = h('p', { class: 'fch-vivo', role: 'status' });
+    const jogoId = () => (c.jg.hid || '') + ':' + c.jg.sal;
+    let ouvindo = null;
+    function escutar() {
+      if (!c.ctx.soVer || ouvindo === jogoId()) return;
+      if (ouvindo) ouvintes.set(ouvindo, (ouvintes.get(ouvindo) || []).filter(f => f !== receber));
+      ouvindo = jogoId();
+      ouvintes.set(ouvindo, (ouvintes.get(ouvindo) || []).concat([receber]));
+      if (!ligarCanal()) aoVivo.textContent = 'Ao vivo: só numa mesa.';
+      raiz.insertBefore(aoVivo, palco);
+    }
+    function receber(msg) { st.rem = msg; st.remEm = Date.now(); }
+    let mandadoEm = 0, vivoV = null;
+    function transmitir() {
+      if (c.ctx.soVer || c.ctx.mestre) return;
+      const agora = Date.now();
+      if (agora - mandadoEm < 90) return;
+      mandadoEm = agora;
+      vivoV = vivoV || ligarCanal();
+      if (!vivoV) return;
+      const P = p(), m = mult();
+      const msg = { k: 'fch', h: c.jg.hid || '', sal: c.jg.sal, u: vivoV.eu, e: P.estilo };
+      if (P.estilo === 'girar') Object.assign(msg, { a: Math.round(st.a * 10) / 10, r: Math.round(st.rot * 10) / 10, f: Math.round(clamp(st.forca / (T.forca[P.n] * (0.75 + 0.25 * m)), 0, 1) * 100) / 100, fo: st.forcando ? 1 : 0 });
+      else Object.assign(msg, { p: st.pino, tv: (st.travados || []).map(x => (x ? 1 : 0)), al: (st.alts || []).map(x => Math.round(x * 100) / 100) });
+      if (st.msg) msg.m = st.msg;
+      // (manda só quando mudou, e uma vez por segundo de todo jeito, para quem acabou de abrir a tela)
+      const chaveMsg = JSON.stringify(msg);
+      if (chaveMsg === st.ultimaMsg && agora - (st.ultimaMsgEm || 0) < 1000) return;
+      st.ultimaMsg = chaveMsg; st.ultimaMsgEm = agora;
+      vivoV.leve.enviar(vivoV.topico, msg);
+    }
 
     // ---- o banco: um lance de cada vez ----
     const mandar = (op, m, txt, pr) => {
@@ -230,6 +288,15 @@
     let ultimo = 0;
     function passoGirar(dt) {
       const P = p(), s = segredoDe(c.jg), m = mult();
+      // (lote 137) o mestre assistindo: a fechadura do jogador, como chegou
+      if (c.ctx.soVer) {
+        const R = st.rem && st.rem.e === 'girar' && Date.now() - st.remEm < 4000 ? st.rem : null;
+        const rot = R ? R.r : 0, a = R ? R.a : 0, tremor = R && R.fo ? (Math.random() - 0.5) * (2 + 6 * R.f) : 0;
+        cil.setAttribute('transform', 'rotate(' + rot + ')');
+        gaz.setAttribute('transform', 'rotate(' + (a + rot * 0.15 + tremor) + ')');
+        barra.setAttribute('width', String(120 * (R ? R.f : 0)));
+        return;
+      }
       const zona = T.zona[P.n] * m, perto = T.perto[P.n], dist = Math.abs(st.a - (s.c || 0));
       const max = dist <= zona ? 90 : 90 * clamp(1 - (dist - zona) / perto, 0.04, 0.85);
       if (st.segurando && !fechadoAgora()) {
@@ -289,12 +356,30 @@
     }
     function passoPinos() {
       const s = segredoDe(c.jg), n = p().pinos || 3;
+      // (lote 137) o mestre assistindo: os pinos do jogador, como chegaram
+      const R = c.ctx.soVer && st.rem && st.rem.e === 'pinos' && Date.now() - st.remEm < 4000 ? st.rem : null;
+      if (c.ctx.soVer) {
+        const fim = situacao(c.jg).aberta;
+        pinosEl.forEach((el, i) => {
+          const tv = fim || !!(R && R.tv && R.tv[i]), alt = tv ? 1 : (R && R.al ? +R.al[i] || 0 : 0);
+          el.pino.style.transform = 'translateY(' + (-alt * 62) + 'px)';
+          el.mola.style.height = (20 + alt * 62) + 'px';
+          el.col.classList.toggle('travado', tv);
+          el.col.classList.toggle('vez', !!R && R.p === i && !fim);
+          el.col.disabled = true;
+        });
+        if (n !== pinosEl.length) { palco.replaceChildren(); montarPinos(); }
+        const jan = Math.min(0.6, T.janela[p().n] * mult()), alto = Math.round((jan + 0.024) * 62 * 10) / 10;
+        if (st.faixa !== alto) { st.faixa = alto; pinosEl.forEach(el => { el.alvo.style.top = (PINO_TOPO - 2) + 'px'; el.alvo.style.height = (alto + 2) + 'px'; }); }
+        return;
+      }
       if (st.sobe) { const per = (s.v || [])[st.sobe.i] || 1200; if (performance.now() - st.sobe.t0 >= per) st.sobe = null; }
       pinosEl.forEach((el, i) => {
         let alt = 0;
         if (st.travados[i]) alt = 1;
         // (lote 134) sobe e desce em linha reta: a altura diz o tempo, e a faixa verde é exatamente a janela de travar
         else if (st.sobe && st.sobe.i === i) { const per = (s.v || [])[i] || 1200; alt = 1 - Math.abs(2 * clamp((performance.now() - st.sobe.t0) / per, 0, 1) - 1); }
+        st.alts = st.alts || []; st.alts[i] = alt;
         el.pino.style.transform = 'translateY(' + (-alt * 62) + 'px)';
         el.mola.style.height = (20 + (1 - alt) * 0 + alt * 62) + 'px';
         el.col.classList.toggle('travado', !!st.travados[i]);
@@ -310,12 +395,19 @@
 
     // ================= o laço =================
     function quadro(agora) {
-      if (!raiz.isConnected) { if (c.saiu == null) c.saiu = agora; if (agora - c.saiu > 4000) { c.morto = true; return; } requestAnimationFrame(quadro); return; }
+      if (!raiz.isConnected) { if (c.saiu == null) c.saiu = agora; if (agora - c.saiu > 4000) { c.morto = true; if (ouvindo) ouvintes.set(ouvindo, (ouvintes.get(ouvindo) || []).filter(f => f !== receber)); return; } requestAnimationFrame(quadro); return; }
       c.saiu = null;
       if (st.querFoco && document.activeElement !== palco && (!document.activeElement || document.activeElement === document.body)) palco.focus({ preventScroll: true });
       const dt = Math.min(50, ultimo ? agora - ultimo : 16); ultimo = agora;
       const P = p();
       if (P.estilo === 'girar') passoGirar(dt); else passoPinos();
+      transmitir();                                    // (lote 137) ao vivo, para o mestre
+      if (c.ctx.soVer) {
+        const vivo = st.rem && Date.now() - st.remEm < 4000, s0 = situacao(c.jg);
+        const t = s0.aberta || s0.falhou ? '' : vivo ? '● Ao vivo: ' + (st.rem.m ? st.rem.m : 'mexendo agora.') : (ouvindo && vivoApi() ? 'Ao vivo: esperando o jogador mexer.' : aoVivo.textContent);
+        if (aoVivo.textContent !== t) aoVivo.textContent = t;
+        aoVivo.classList.toggle('on', !!vivo);
+      }
       // o tempo limite
       const s = situacao(c.jg);
       if (P.tempo && s.t0 && !s.aberta && !s.falhou && !c.ctx.soVer) {
@@ -369,6 +461,7 @@
     }
     c.atualizar = () => {
       const P = p();
+      escutar();
       if (!c.estilo || c.estilo !== P.estilo) { palco.replaceChildren(); c.estilo = P.estilo; if (P.estilo === 'girar') montarGirar(); else montarPinos(); }
       const s = situacao(c.jg);
       if (s.aberta || s.falhou) { st.segurando = false; st.sobe = null; }

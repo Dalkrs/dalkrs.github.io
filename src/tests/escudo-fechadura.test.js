@@ -108,6 +108,34 @@ ok(F.ajuda(0) === 1 && F.ajuda(50) === 1.5 && F.ajuda(500) === 2, 'o atributo al
     jg = await tst();
     ok(await ev(() => document.querySelectorAll('.previa .fch-col.travado').length) === 1, 'travou ao encostar no verde: ' + JSON.stringify(jg.estado) + ' ' + JSON.stringify(v2));
     if (process.env.FOTOS) await p.locator('.previa .fch').screenshot({ path: process.env.FOTOS + '/fch-extremo.png' });
+    // (lote 137) ao vivo: a fechadura de quem joga manda o movimento; a do mestre ("Ver como está", só ver) mostra igual
+    await ev(() => {
+      const subs = [];
+      window.TC.mesas = Object.assign({}, window.TC.mesas, { atual: { id: '00000000-0000-0000-0000-000000000001' } });
+      window.TC.aoVivo = Object.assign({}, window.TC.aoVivo, { leve: { assinar(t, fn) { subs.push([t, fn]); return () => {}; }, pronto: () => true, enviar(t, m) { window.__vivoMsgs = (window.__vivoMsgs || 0) + 1; subs.filter(x => x[0] === t).forEach(x => x[1](JSON.parse(JSON.stringify(m)))); return true; } } });
+      const E = window.TC.escudo, PUI = window.TC.pistasUI;
+      for (const est of ['girar', 'pinos']) {
+        const jg = E.jogoNovo('hv' + est, E.normHandout({ tipo: 'puzzle', nome: 'Porta', puzzle: { tipo: 'fechadura', seed: 3, nivel: 'facil', estilo: est } }));
+        const caixa = document.createElement('div'); caixa.id = 'vivo-' + est; caixa.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:20px;background:#111;padding:10px';
+        const a = document.createElement('div'); a.className = 'jog'; const b = document.createElement('div'); b.className = 'mes';
+        a.append(...[].concat(PUI.puzzle(jg, { chave: 'jog:', jogar: () => Promise.resolve() })));
+        b.append(...[].concat(PUI.puzzle(jg, { chave: 'vivo:', soVer: true })));
+        caixa.append(a, b); document.body.prepend(caixa);
+      }
+    });
+    await w(300);
+    await p.locator('#vivo-girar .jog .fch-palco').focus();
+    for (let i = 0; i < 10; i++) await p.keyboard.press('ArrowLeft');
+    await p.keyboard.down(' '); await w(500);
+    const rotG = await ev(() => { const g = el => (el.querySelector('.fch-cil').getAttribute('transform') || ''); return [g(document.querySelector('#vivo-girar .jog')), g(document.querySelector('#vivo-girar .mes')), document.querySelector('#vivo-girar .mes .fch-vivo').textContent]; });
+    await p.keyboard.up(' ');
+    ok(rotG[0] !== 'rotate(0)' && /rotate\(/.test(rotG[1]) && rotG[1] !== 'rotate(0)' && /Ao vivo/.test(rotG[2]), 'girar: o mestre vê o cilindro girando, ao vivo (' + rotG.join(' | ') + ')');
+    await p.locator('#vivo-pinos .jog .fch-palco').focus();
+    await p.keyboard.press(' '); await w(250);
+    const pinoM = await ev(() => document.querySelector('#vivo-pinos .mes .fch-pino').style.transform);
+    ok(/translateY\(-[1-9]/.test(pinoM), 'pinos: o mestre vê o pino subindo (' + pinoM + ')');
+    ok(await ev(() => window.__vivoMsgs) < 40, 'manda pouco (no máximo umas 10 por segundo): ' + await ev(() => window.__vivoMsgs));
+    if (process.env.FOTOS) await p.locator('#vivo-girar').screenshot({ path: process.env.FOTOS + '/fch-vivo.png' });
     ok(!erros.length, 'sem erros na página: ' + erros.join(' | '));
   } catch (e) { ok(false, 'falhou: ' + e.message); }
   await t.close(); end();
