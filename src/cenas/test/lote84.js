@@ -99,7 +99,7 @@ const j = JSON.stringify;
 
   // 5) as recentes
   l = await lista();
-  const iR = l.indexOf('# Recentes');
+  const iR = l.indexOf('# Abertas por último');
   ok(iR >= 0 && /Fortaleza — 2º andar/.test(l[iR + 1]) && /Taverna do Javali/.test(l.slice(iR, iR + 5).join(' ')), 'as recentes no alto: a última cena aberta antes desta primeiro — ' + j(l.slice(iR, iR + 5)));
   ok(!l.slice(iR + 1, iR + 5).some(x => /^Ponte quebrada/.test(x)), 'a cena aberta não aparece nas recentes');
   await page.keyboard.press('Escape');

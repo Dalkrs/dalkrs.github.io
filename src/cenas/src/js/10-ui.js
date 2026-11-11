@@ -197,7 +197,7 @@ const UI = (() => {
         it.filhas ? h('button', { type: 'button', class: 'menu-tg' + (it.aqui ? ' aqui' : ''), id: 'mf-' + it.fam, 'aria-expanded': String(!!it.aberta),
           title: (it.aberta ? 'Esconder' : 'Mostrar') + ` as cenas que estão dentro de "${it.label}"` + (it.aqui ? ' (a cena aberta está aqui dentro)' : ''), onclick: () => it.tg() },
         h('span', { class: 'menu-k', text: String(it.filhas) }), icon(it.aberta ? 'down' : 'right', 13)) : null);
-      return h('button', { type: 'button', class: 'menu-i' + (it.danger ? ' danger' : '') + (it.dentro ? ' dentro' : ''), role: 'menuitem', disabled: it.disabled, onclick: () => { closeMenus(); it.run(); } },
+      return h('button', { type: 'button', class: 'menu-i' + (it.danger ? ' danger' : '') + (it.dentro ? ' dentro' : ''), role: 'menuitem', id: it.id || null, disabled: it.disabled, onclick: () => { closeMenus(); it.run(); } },
         it.check != null ? h('span', { class: 'menu-ck' }, it.check ? icon('check', 15) : null) : it.icon ? icon(it.icon, 16) : h('span', { class: 'menu-ck' }),
         h('span', { class: 'menu-l', text: it.label }), it.mark ? h('span', { class: 'menu-m', title: it.markTitle || '' }, icon(it.mark, 13)) : null, it.key ? h('span', { class: 'menu-k', text: it.key }) : null);
     }));
@@ -666,7 +666,7 @@ const UI = (() => {
     const sc = Store.scene(), gm = isGM();
     const sceneBtn = h('button', { type: 'button', class: 'scene-b', id: 'sceneBtn', title: 'Trocar de cena', onclick: () => abrirListaCenas(sceneBtn) },
       icon('map', 17), h('span', { class: 'scene-n', text: sc.name }), icon('down', 14));
-    const more = iconBtn('more', 'Arquivo e ajuda', () => anchorMenu(more, fileMenu(), true), { id: 'moreBtn' });
+    const more = iconBtn('more', Nuvem.jogador() ? 'Arquivo e ajuda' : 'Ver como um jogador, arquivo e ajuda', () => anchorMenu(more, fileMenu(), true), { id: 'moreBtn' });
     zoomLabel = h('button', { type: 'button', class: 'zoom-l', id: 'zoomBtn', title: 'Enquadrar a cena (0)', text: Math.round(App.view.z * 100) + '%', onclick: () => { Render.fit(); status(); } });
     const zoomBy = k => { const [w, hh] = Render.size(); Render.zoomAt(w / 2, hh / 2, App.view.z * k); status(); };
     // Numa mesa, o mestre vê (e escolhe) qual cena está no ar para os jogadores.
@@ -682,16 +682,15 @@ const UI = (() => {
     el.top.replaceChildren(...[
       h('span', { class: 'brand', text: 'Tiny Cats' }),
       gm ? sceneBtn : h('span', { class: 'scene-b flat' }, icon('map', 17), h('span', { class: 'scene-n', text: Nuvem.semCena() ? 'Sem cena' : sc.name })),
+      // (lote 138) as cenas ligadas a esta (os andares do prédio) num botão só, ao lado do nome da cena
+      Nuvem.jogador() ? andaresJogador() : gm ? andaresMestre(sc) : null,
       air,
       // (lote 83) a visão do mestre: Construção (mexe em tudo) ou Mestrando (só os tokens andam)
       gm && !Nuvem.jogador() ? visaoSeg() : null,
-      Nuvem.jogador() ? andaresJogador() : gm ? andaresMestre(sc) : null,
+      h('span', { class: 'spacer' }),
       h('div', { class: 'grp' },
         iconBtn('undo', 'Desfazer (Ctrl+Z)', Tools.undo, { disabled: !Store.canUndo(), id: 'undoBtn' }),
         iconBtn('redo', 'Refazer (Ctrl+Shift+Z)', Tools.redo, { disabled: !Store.canRedo(), id: 'redoBtn' })),
-      h('span', { class: 'spacer' }),
-      Nuvem.jogador() ? null : h('label', { class: 'viewer' }, h('span', { class: 'viewer-l', text: 'Vendo como' }),
-        inSelect('viewerSel', App.viewer, [['gm', 'Mestre']].concat(Store.S.players.map(p => [p.id, p.name])), setViewer, { title: 'Testar a cena como o mestre ou como um jogador' })),
       h('div', { class: 'grp zoom' }, iconBtn('minus', 'Afastar (-)', () => zoomBy(1 / 1.25), { size: 16 }), zoomLabel, iconBtn('plus', 'Aproximar (+)', () => zoomBy(1.25), { size: 16 })),
       gm && typeof Som !== 'undefined' && Som.aviso ? somAvisosBtn() : null,
       more,
@@ -758,8 +757,11 @@ const UI = (() => {
       }
       return items;
     }
-    const rec = recentes.filter(id => id !== atual && visiveis.includes(id)).slice(0, 4);
-    if (visiveis.length > 6 && rec.length) { items.push({ head: 'Recentes' }); for (const id of rec) items.push({ label: Store.S.scenes[id].name, check: false, key: id === ar ? 'no ar' : null, run: () => switchScene(id) }); }
+    // (lote 138) no alto: a cena que os jogadores estão vendo (quando não é esta)
+    const arVis = ar && ar !== atual && visiveis.includes(ar);
+    if (arVis) items.push({ head: 'Os jogadores estão vendo' }, { label: Store.S.scenes[ar].name, check: false, key: 'no ar', run: () => switchScene(ar) });
+    const rec = recentes.filter(id => id !== atual && !(arVis && id === ar) && visiveis.includes(id)).slice(0, 4);
+    if (visiveis.length > 6 && rec.length) { items.push({ head: 'Abertas por último' }); for (const id of rec) items.push({ label: Store.S.scenes[id].name, check: false, key: id === ar ? 'no ar' : null, run: () => switchScene(id) }); }
     const soltas = F.raizes.filter(id => !pastaDaCena(id));
     if (!comCamp) { if (soltas.length || !pastas.length) { items.push({ head: 'Cenas' }); grupo(soltas, false); } }
     else {
@@ -1099,20 +1101,25 @@ const UI = (() => {
   }
   /* (lote 82) A barra de andares do mestre: os andares do prédio da cena aberta (ela e as ligadas por passagens), em
      ordem, com quantos tokens há em cada um; um clique abre o andar; "Pôr o prédio no ar" põe todos juntos. */
+  /* (lote 138) As cenas ligadas a esta por passagens (os andares do prédio, as casas da cidade): um botão só no topo,
+     "Ligadas N", que abre a lista — cada uma com quantos tokens tem — e, no pé, "Pôr todos no ar juntos". */
   function andaresMestre(sc) {
-    const lig = Nuvem.ligadas(sc.id);
+    const lig = Nuvem.ligadas(sc.id).filter(id => Store.S.scenes[id]);
     if (!lig.length) return null;
-    const ids = [sc.id].concat(lig).filter(id => Store.S.scenes[id]).sort((a, b) => Andares.nivelDe(b) - Andares.nivelDe(a));
+    const ids = [sc.id].concat(lig).sort((a, b) => Andares.nivelDe(b) - Andares.nivelDe(a));
     const noAr = new Set(Nuvem.andaresNoAr()), tudo = ids.every(id => noAr.has(id));
-    return h('div', { class: 'andares-b gm', role: 'group', 'aria-label': 'Andares do prédio', id: 'andaresGm' },
-      ids.map(id => {
-        const c = Store.S.scenes[id], n = c.tokens.filter(t => !t.prop).length;
-        return h('button', { type: 'button', class: 'andar-b' + (id === sc.id ? ' on' : '') + (noAr.has(id) ? ' ar' : ''), 'data-andar': id, 'aria-pressed': String(id === sc.id),
-          title: `${c.name}: ${n} ${n === 1 ? 'token' : 'tokens'}${noAr.has(id) ? ' · no ar' : ''}`, onclick: () => { if (id !== sc.id) switchScene(id); } },
-          h('span', { text: c.name }), h('small', { class: 'andar-n', text: String(n) }));
-      }),
-      Nuvem.mestre() && !tudo ? h('button', { type: 'button', class: 'andar-volta', id: 'predioNoAr', title: 'Todos estes andares no ar juntos: cada jogador vê o do token dele',
-        onclick: () => predioNoAr(sc, ids) }, icon('eye', 13), h('span', { text: 'Pôr o prédio no ar' })) : null);
+    const b = h('button', { type: 'button', class: 'ligadas-b', id: 'andaresGm', 'aria-haspopup': 'menu', title: `Os lugares ligados a "${sc.name}" por passagens`,
+      onclick: () => anchorMenu(b, [
+        { head: `Ligadas a ${sc.name}` },
+        ...ids.map(id => {
+          const c = Store.S.scenes[id], n = c.tokens.filter(t => !t.prop).length;
+          return { id: 'andar-' + id, label: c.name, check: id === sc.id, key: (noAr.has(id) ? 'no ar · ' : '') + (id === sc.id ? 'aberta' : n === 0 ? 'vazia' : n + (n === 1 ? ' token' : ' tokens')), run: () => { if (id !== sc.id) switchScene(id); } };
+        }),
+        Nuvem.mestre() && !tudo ? '-' : null,
+        Nuvem.mestre() && !tudo ? { id: 'predioNoAr', label: 'Pôr todos no ar juntos', icon: 'eye', run: () => predioNoAr(sc, ids) } : null,
+      ]) },
+      icon('layers', 16), h('span', { text: 'Ligadas' }), h('span', { class: 'ligadas-n', text: String(lig.length) }), icon('down', 13));
+    return b;
   }
   function predioNoAr(sc, ids) {
     const antesAr = Nuvem.noAr(), antesJ = antesAr ? Nuvem.andaresNoAr().slice(1) : [];
@@ -1190,7 +1197,10 @@ const UI = (() => {
 
   function fileMenu() {
     const gm = isGM();
-    return [
+    // (lote 138) "Vendo como" saiu do topo: o mestre testa a cena como um jogador por aqui (a faixa amarela traz de volta)
+    const verComo = Nuvem.jogador() ? [] : [{ head: 'Ver a cena como' }].concat([['gm', 'Mestre']].concat(Store.S.players.map(p => [p.id, p.name]))
+      .map(([id, nome]) => ({ id: 'verComo-' + id, label: nome, check: App.viewer === id, run: () => setViewer(id) })), ['-']);
+    return verComo.concat([
       gm ? { label: 'Exportar esta cena', icon: 'download', run: exportScene } : null,
       gm ? { label: 'Exportar todas as cenas', icon: 'download', run: exportAll } : null,
       gm ? { label: 'Importar cena…', icon: 'upload', run: importFile } : null,
@@ -1200,7 +1210,7 @@ const UI = (() => {
       { label: 'Animar efeitos e clima', check: App.anim, run: () => { App.anim = !App.anim; Store.S.prefs.anim = App.anim; Persist.meta(); Render.request(); } },
       { label: 'Atalhos de teclado', icon: 'help', run: helpBox },
       gm ? { label: 'Rever o tutorial', icon: 'play', run: () => Tour.start() } : null,
-    ];
+    ]);
   }
   function helpBox() {
     const rows = [
@@ -1258,38 +1268,48 @@ const UI = (() => {
   /* ================= Trilho de ferramentas =================
      (lote 26) Em grupos com nome (Tools.GRUPOS). O grupo do desenho fica num botão só — o do desenho em uso, ou o
      último — que abre a lista com os nomes e as teclas; com a lista aberta, Esc ou um clique fora fecha. */
-  let ultDesenho = 'free', listaDesenho = false;
-  const fecharDesenho = () => { if (!listaDesenho) return; listaDesenho = false; renderRail(); };
-  document.addEventListener('pointerdown', e => { if (listaDesenho && !e.target.closest('.rail-junto')) fecharDesenho(); }, true);
-  document.addEventListener('keydown', e => { if (listaDesenho && e.key === 'Escape') { e.stopPropagation(); fecharDesenho(); } }, true);
+  /* (lote 138) Agora são dois grupos num botão só cada, sob o nome "Montar": o Desenho e o Mapa (paredes, luz, névoa e
+     terreno). Só um lista fica aberta de cada vez (listaAberta: o índice do grupo). No Mestrando, as ferramentas de
+     construção somem (Tools.allowed) e a chave da grade também; a névoa manual fica, sozinha, porque se usa jogando. */
+  const ult = { 2: 'free', 3: 'wall' };
+  const ID_GRUPO = { 2: 'desenho', 3: 'mapa' };
+  let listaAberta = null;
+  const fecharDesenho = () => { if (listaAberta == null) return; listaAberta = null; renderRail(); };
+  document.addEventListener('pointerdown', e => { if (listaAberta != null && !e.target.closest('.rail-junto:not(.mt-rail)')) fecharDesenho(); }, true);
+  document.addEventListener('keydown', e => { if (listaAberta != null && e.key === 'Escape') { e.stopPropagation(); fecharDesenho(); } }, true);
   function renderRail() {
     const kids = [];
-    const toolBtn = t => h('button', { type: 'button', class: 'tool' + (App.tool === t.id ? ' on' : ''), id: 'tool-' + t.id, title: `${t.n} (${t.k})`, 'aria-label': t.n, 'aria-pressed': String(App.tool === t.id), onclick: () => { listaDesenho = false; Tools.set(t.id); } }, icon(t.i, 20));
+    const toolBtn = t => h('button', { type: 'button', class: 'tool' + (App.tool === t.id ? ' on' : ''), id: 'tool-' + t.id, title: `${t.n} (${t.k})`, 'aria-label': t.n, 'aria-pressed': String(App.tool === t.id), onclick: () => { listaAberta = null; Tools.set(t.id); } }, icon(t.i, 20));
+    let rotAntes = null;
     Tools.GRUPOS.forEach((g, gi) => {
       const ts = Tools.LIST.filter(t => t.grp === gi && Tools.allowed(t.id));
       if (!ts.length) return;
-      if (kids.length) kids.push(h('span', { class: 'rail-sep' }));
-      kids.push(h('span', { class: 'rail-g', text: g.n, 'aria-hidden': 'true' }));
+      const rot = g.junto && ts.length >= 3 && g.rot ? g.rot : g.n;      // (no Mestrando o Mapa fica só com a névoa: volta a ser "Mapa")
+      if (rot !== rotAntes) {
+        if (kids.length) kids.push(h('span', { class: 'rail-sep' }));
+        kids.push(h('span', { class: 'rail-g', text: rot, 'aria-hidden': 'true' }));
+        rotAntes = rot;
+      }
       if (!g.junto || ts.length < 3) { ts.forEach(t => kids.push(toolBtn(t))); return; }
       const ativo = ts.find(t => t.id === App.tool);
-      if (ativo) ultDesenho = ativo.id;
-      const mostra = ts.find(t => t.id === ultDesenho) || ts[0];
-      const lista = h('div', { class: 'rail-lista', role: 'menu', 'aria-label': g.n, hidden: !listaDesenho },
+      if (ativo) ult[gi] = ativo.id;
+      const mostra = ts.find(t => t.id === ult[gi]) || ts[0], aberta = listaAberta === gi;
+      const lista = h('div', { class: 'rail-lista', role: 'menu', 'aria-label': g.n, hidden: !aberta },
         h('span', { class: 'rail-lista-t', text: g.n }),
         ts.map(t => h('button', { type: 'button', role: 'menuitemradio', 'aria-checked': String(App.tool === t.id), class: 'rail-item' + (App.tool === t.id ? ' on' : ''), id: 'tool-' + t.id, title: `${t.n} (${t.k})`,
-          onclick: () => { listaDesenho = false; ultDesenho = t.id; Tools.set(t.id); renderRail(); } }, icon(t.i, 18), h('span', { text: t.n }), h('kbd', { text: t.k }))));
+          onclick: () => { listaAberta = null; ult[gi] = t.id; Tools.set(t.id); renderRail(); } }, icon(t.i, 18), h('span', { text: t.n }), h('kbd', { text: t.k }))));
       kids.push(h('div', { class: 'rail-junto' },
-        h('button', { type: 'button', class: 'tool junto' + (ativo ? ' on' : ''), id: 'tool-grupo-desenho', title: `${g.n}: ${ts.map(t => t.n + ' (' + t.k + ')').join(', ')}`, 'aria-label': g.n + ' — ' + mostra.n, 'aria-haspopup': 'menu', 'aria-expanded': String(listaDesenho),
-          onclick: () => { listaDesenho = !listaDesenho; renderRail(); if (listaDesenho) { const b = el.rail.querySelector('.rail-item.on') || el.rail.querySelector('.rail-item'); if (b) b.focus(); } } }, icon(mostra.i, 20), h('span', { class: 'junto-seta', 'aria-hidden': 'true' })),
+        h('button', { type: 'button', class: 'tool junto' + (ativo ? ' on' : '') + (aberta ? ' aberta' : ''), id: 'tool-grupo-' + (ID_GRUPO[gi] || gi), title: `${g.n}: ${ts.map(t => t.n + ' (' + t.k + ')').join(', ')}`, 'aria-label': g.n + ' — ' + mostra.n, 'aria-haspopup': 'menu', 'aria-expanded': String(aberta),
+          onclick: () => { listaAberta = aberta ? null : gi; if (typeof Mestre !== 'undefined') Mestre.fecharPainel(); renderRail(); if (listaAberta != null) { const gb = document.getElementById('tool-grupo-' + (ID_GRUPO[gi] || gi)), l = gb && gb.parentNode.querySelector('.rail-lista'), b = l && (l.querySelector('.rail-item.on') || l.querySelector('.rail-item')); if (b) b.focus(); } }}, icon(mostra.i, 20), h('span', { class: 'junto-seta', 'aria-hidden': 'true' })),
         lista));
     });
-    // (lote 130) a chave da grade (só o mestre): aceso = Na grade; apagado = Livre
-    if (isGM()) {
+    // (lote 130) a chave da grade (só o mestre, e só na Construção — lote 138): aceso = Na grade; apagado = Livre
+    if (isGM() && !Tools.mestrando()) {
       const ng = Tools.naGrade();
-      kids.push(h('span', { class: 'rail-sep' }), h('button', { type: 'button', class: 'tool grade-chave' + (ng ? ' on' : ' livre'), id: 'tool-grade', title: (ng ? 'Na grade' : 'Livre') + ' — paredes, portas, janelas, objetos, luzes e a régua ' + (ng ? 'encaixam nos quadrados' : 'ficam onde você soltar') + '. Clique para trocar (Shift+G). Alt inverte enquanto segura.',
+      kids.push(h('button', { type: 'button', class: 'tool grade-chave' + (ng ? ' on' : ' livre'), id: 'tool-grade', title: (ng ? 'Na grade' : 'Livre') + ' — paredes, portas, janelas, objetos, luzes e a régua ' + (ng ? 'encaixam nos quadrados' : 'ficam onde você soltar') + '. Clique para trocar (Shift+G). Alt inverte enquanto segura.',
         'aria-label': 'Encaixar na grade', 'aria-pressed': String(ng), onclick: () => Tools.trocarGrade() }, icon('ima', 18), h('span', { class: 'grade-tx', text: ng ? 'Grade' : 'Livre', 'aria-hidden': 'true' })));
     }
-    // (lote 47) o grupo Mestre: a vez, os momentos, os lembretes e a cura, num painel pequeno ao lado da barra
+    // (lote 47; lote 138: um botão só, no pé da barra) o grupo Mestre: a vez, os momentos, os lembretes, a cura e as rondas
     if (typeof Mestre !== 'undefined') kids.push(...Mestre.grupoDaBarra());
     el.rail.replaceChildren(...kids);
   }

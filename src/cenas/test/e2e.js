@@ -312,7 +312,7 @@ const { open } = require('./lib');
   errsAt('turnos');
 
   /* 15. Ver como jogador */
-  await page.locator('#viewerSel').selectOption({ label: 'Dalmo' });
+  await page.locator('#moreBtn').click(); await page.waitForTimeout(150); await page.locator('.menu .menu-i', { hasText: 'Dalmo' }).click();      // (lote 138) "Ver como" no menu ⋯
   await page.waitForTimeout(250);
   s = await S();
   ok(s.viewer !== 'gm', 'troca para o jogador');

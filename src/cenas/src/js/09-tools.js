@@ -17,7 +17,7 @@ const Tools = (() => {
   const KEYS = { v: 'select', h: 'pan', t: 'token', j: 'obj', b: 'free', l: 'line', r: 'rect', o: 'ell', p: 'poly', x: 'text', w: 'wall', d: 'wall', i: 'light', u: 'fog', q: 'terrain', y: 'fx', m: 'ruler', s: 'lapis' };
   /* (lote 26) Os grupos do trilho, com nome: o que se usa jogando, as peças, o desenho (recolhido num botão só, que
      abre a lista) e o mapa. Os atalhos de teclado são os de sempre. */
-  const GRUPOS = [{ n: 'Jogo' }, { n: 'Peças' }, { n: 'Desenho', junto: true, i: 'pen' }, { n: 'Mapa' }];
+  const GRUPOS = [{ n: 'Jogo' }, { n: 'Peças' }, { n: 'Desenho', rot: 'Montar', junto: true, i: 'pen' }, { n: 'Mapa', rot: 'Montar', junto: true, i: 'wall' }];      // (lote 138) Desenho e Mapa: um botão cada, sob "Montar"
   const LIST = [
     { id: 'select', n: 'Selecionar', k: 'V', i: 'select', grp: 0 },
     { id: 'pan', n: 'Mover a câmera', k: 'H', i: 'pan', grp: 0 },

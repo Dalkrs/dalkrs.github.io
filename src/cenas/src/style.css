@@ -1238,7 +1238,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .mt-pop-s { margin: 0; font: 600 13.5px var(--ui); color: var(--fg); }
 .mt-pop-l { display: flex; flex-wrap: wrap; gap: 6px; }
 .mt-pop .mt-lista { max-height: 40vh; margin: 0; }
-@media (max-height: 820px) { .tool { height: 29px; } .rail-g { margin: 2px 0 1px; } .rail-sep { margin: 2px 0; } }
+@media (max-height: 640px) { .tool { height: 29px; } .rail-g { margin: 2px 0 1px; } .rail-sep { margin: 2px 0; } }      /* (lote 138: a barra ficou curta; só aperta em tela bem baixa) */
 
 /* (lote 65) as cores do lápis */
 .o-cores { display: flex; gap: 4px; align-items: center; }
@@ -1270,7 +1270,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .visao-b.on { background: var(--lamp-soft); border-color: var(--lamp); color: var(--lamp-ink); font-weight: 600; }
 .visao-b[data-visao="mestrando"].on { background: color-mix(in srgb, var(--ok, #4caf50) 18%, transparent); border-color: var(--ok, #4caf50); color: var(--fg); }
 .visao-b:focus-visible { outline: 2px solid var(--lamp); outline-offset: 1px; }
-@media (max-width: 1100px) { .visao-b span { display: none; } }
+@media (max-width: 900px) { .visao-b span { display: none; } }
 
 /* (lote 84) a lista de cenas recolhida: a busca no alto, o prédio (andares ligados) e o "a cena aberta está aqui" */
 .menu-busca { display: flex; align-items: center; gap: 6px; padding: 4px 6px 6px; color: var(--fg-3); }
@@ -1292,3 +1292,32 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .tool.grade-chave { height: 40px; gap: 1px; align-content: center; }
 .rail .tool.grade-chave .grade-tx { font-size: 9px !important; font-weight: 600; line-height: 1; letter-spacing: 0; }
 .rail .tool.grade-chave.livre { outline: 1.5px dashed var(--fg-3); outline-offset: -3px; color: var(--fg); }
+
+/* (lote 138) Topo mais limpo e barra da esquerda mais curta (proposta aprovada pelo Dalmo para o Bruno):
+   o nome da cena é o título da mesa; as cenas ligadas num botão só; o grupo Mestre num botão só, no pé da barra. */
+.scene-b { gap: 9px; padding: 5px 11px 5px 9px; }
+.scene-b > svg:first-child { color: var(--lamp-ink); }
+.top .scene-n { font: 600 21px/1.1 var(--display); letter-spacing: .01em; }
+.ligadas-b {
+  display: inline-flex; align-items: center; gap: 7px; flex: none; height: 34px; padding: 0 10px;
+  background: var(--raised); border: 1px solid var(--line); border-radius: 8px; color: var(--fg); font: 500 13.5px var(--ui); cursor: pointer;
+}
+.ligadas-b:hover { background: var(--hover); }
+.ligadas-b:focus-visible { outline: 2px solid var(--lamp); outline-offset: 1px; }
+.ligadas-n { min-width: 20px; height: 19px; padding: 0 6px; border-radius: 10px; background: var(--hover); font: 700 11.5px/19px var(--ui); text-align: center; }
+.visao-s { margin-left: 8px; }
+.rail { width: 56px; gap: 3px; padding: 8px 0; }
+.rail .tool { width: 40px; height: 36px; }
+.rail-g { font-size: 10.5px; margin: 6px 0 2px; }
+.rail-sep { width: 26px; margin: 4px 0 2px; }
+.rail-lista { left: 50px; }
+.tool.aberta { background: var(--hover); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.rail .grade-chave { height: auto; padding: 5px 0 4px; }
+.rail-fim { flex: 1 1 auto; min-height: 10px; }
+.rail .mt-chave { height: auto; padding: 7px 0 5px; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 1px solid var(--line-strong); margin-bottom: 2px; }
+.mt-chave-t { font: 600 10.5px/1 var(--ui); }
+.mt-menu { width: 250px; }
+.mt-menu .rail-item svg:last-child { color: var(--fg-3); }
+.mt-volta { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 4px; border: 0; border-radius: 6px; background: none; color: var(--fg-2); font: 600 12.5px var(--ui); cursor: pointer; }
+.mt-volta:hover { background: var(--hover); color: var(--fg); }
+@media (max-height: 640px) { .rail .tool { height: 30px; } .rail .mt-chave .mt-chave-t { display: none; } }

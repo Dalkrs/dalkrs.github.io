@@ -296,7 +296,7 @@ const Mestre = (() => {
   function marcarSomVisto() { const sc = Store.scene(); if (sc) somVisto = sc.momSom ? sc.id + ':' + sc.momSom.n : sc.id + ':0'; }
 
   /* ---------------- o grupo Mestre na barra da esquerda ----------------
-     Quatro botões (só o mestre): a vez, os momentos, os lembretes e a cura. Cada um abre um painel pequeno ao lado da
+     (lote 138: um botão só, que abre a lista) Antes, quatro botões (só o mestre): a vez, os momentos, os lembretes e a cura. Cada um abre um painel pequeno ao lado da
      barra, sem trocar de aba; um clique fora ou o Esc fecha. */
   let aberto = null;
   const GRUPO = [['vez', 'turns', 'Controle da vez'], ['momentos', 'play', 'Momentos preparados'], ['lembretes', 'clock', 'Lembretes por rodada'], ['cura', 'heart', 'Cura e energias'], ['rondas', 'ronda', 'Rondas e guardas']];      // (lote 121) as rondas
@@ -346,16 +346,23 @@ const Mestre = (() => {
     ];
   }
   const PAINEIS = { vez: painelVez, momentos: painelMomentos, lembretes: painelLembretes, cura: painelCura, rondas: () => Rondas.painel(acao, linha, K) };
+  /* (lote 138) Um botão só, "Mestre", no pé da barra: abre a lista dos cinco (a vez, os momentos, os lembretes, a cura e
+     as rondas); escolher um troca a lista pelo painel dele, com "‹ Mestre" para voltar. aberto: null, 'menu' ou o id. */
   function grupoDaBarra() {
     if (!isGM()) return [];
-    const out = [h('span', { class: 'rail-sep' }), h('span', { class: 'rail-g', text: 'Mestre', 'aria-hidden': 'true' })];
-    for (const [id, ic, nome] of GRUPO) {
-      const on = aberto === id;
-      out.push(h('div', { class: 'rail-junto mt-rail' },
-        h('button', { type: 'button', class: 'tool' + (on ? ' on' : ''), id: 'mt-rail-' + id, title: nome, 'aria-label': nome, 'aria-expanded': String(on), onclick: () => { aberto = on ? null : id; UI.refresh(); } }, icon(ic, 20)),
-        on ? h('div', { class: 'rail-lista mt-pop', role: 'dialog', 'aria-label': nome, id: 'mt-pop-' + id }, h('span', { class: 'rail-lista-t', text: nome }), ...PAINEIS[id]().filter(Boolean)) : null));
-    }
-    return out;
+    const on = !!aberto, item = GRUPO.find(g => g[0] === aberto);
+    let pop = null;
+    if (aberto === 'menu') pop = h('div', { class: 'rail-lista mt-pop mt-menu', role: 'menu', 'aria-label': 'Mestre', id: 'mt-menu' },
+      h('span', { class: 'rail-lista-t', text: 'Mestre' }),
+      GRUPO.map(([id, ic, nome]) => h('button', { type: 'button', class: 'rail-item', role: 'menuitem', id: 'mt-rail-' + id, onclick: () => { aberto = id; UI.refresh(); } },
+        icon(ic, 18), h('span', { text: nome }), icon('right', 14))));
+    else if (item) pop = h('div', { class: 'rail-lista mt-pop', role: 'dialog', 'aria-label': item[2], id: 'mt-pop-' + item[0] },
+      h('button', { type: 'button', class: 'mt-volta', id: 'mt-volta', onclick: () => { aberto = 'menu'; UI.refresh(); } }, icon('left', 14), h('span', { text: 'Mestre' })),
+      h('span', { class: 'rail-lista-t', text: item[2] }), ...PAINEIS[item[0]]().filter(Boolean));
+    return [h('span', { class: 'rail-fim', 'aria-hidden': 'true' }), h('div', { class: 'rail-junto mt-rail' },
+      h('button', { type: 'button', class: 'tool mt-chave' + (on ? ' aberta' : ''), id: 'mt-rail-mestre', title: 'Mestre: a vez, momentos, lembretes, cura e rondas', 'aria-label': 'Mestre: a vez, momentos, lembretes, cura e rondas', 'aria-haspopup': 'menu', 'aria-expanded': String(on),
+        onclick: () => { aberto = on ? null : 'menu'; UI.refresh(); } }, icon('die', 19), h('span', { class: 'mt-chave-t', text: 'Mestre', 'aria-hidden': 'true' })),
+      pop)];
   }
   // um clique fora do painel (ou o Esc) fecha
   document.addEventListener('pointerdown', ev => { if (aberto && !ev.target.closest('.mt-rail') && !ev.target.closest('.modal, .scrim, .toast')) fecharPainel(); }, true);

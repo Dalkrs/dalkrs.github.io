@@ -12,12 +12,13 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FALHOU: ' + m)
   const P = o.page, E = (f, a) => P.evaluate(f, a), w = ms => P.waitForTimeout(ms);
   const abertos = () => E(() => [...document.querySelectorAll('.tab-body > details.sec')].map(d => d.id + (d.open ? '+' : '-')).join(' '));
   try {
-    ok(await E(() => [...document.querySelectorAll('.rail-g')].map(x => x.textContent).join()) === 'Jogo,Peças,Desenho,Mapa,Mestre', 'o trilho em cinco grupos com nome (o Mestre, do lote 47)');
-    ok(await E(() => [...document.querySelectorAll('.rail > .tool, .rail .tool.junto')].map(b => b.id.replace('tool-', '')).join()) === 'select,pan,ruler,ping,lapis,token,obj,fx,grupo-desenho,wall,light,fog,terrain,grade', 'as ferramentas, com o desenho num botão só (e a chave da grade, lote 130)');
+    ok(await E(() => [...document.querySelectorAll('.rail-g')].map(x => x.textContent).join()) === 'Jogo,Peças,Montar', 'o trilho em três grupos com nome (lote 138: Desenho e Mapa sob "Montar"; o Mestre é um botão no pé)');
+    ok(await P.locator('#rail #mt-rail-mestre').count() === 1, '(lote 138) o Mestre: um botão só, no pé da barra');
+    ok(await E(() => [...document.querySelectorAll('.rail > .tool, .rail .tool.junto')].map(b => b.id.replace('tool-', '')).join()) === 'select,pan,ruler,ping,lapis,token,obj,fx,grupo-desenho,grupo-mapa,grade', 'as ferramentas, com o desenho e o mapa num botão só cada (e a chave da grade, lote 130)');
     await P.click('#tool-grupo-desenho'); await w(100);
-    ok(await P.locator('.rail-lista').isVisible() && (await P.locator('.rail-lista').innerText()).replace(/\s+/g, ' ').includes('Retângulo R'), 'o botão do Desenho abre a lista com os nomes e as teclas');
+    ok(await P.locator('#tool-grupo-desenho + .rail-lista').isVisible() && (await P.locator('#tool-grupo-desenho + .rail-lista').innerText()).replace(/\s+/g, ' ').includes('Retângulo R'), 'o botão do Desenho abre a lista com os nomes e as teclas');
     await P.click('#tool-rect'); await w(100);
-    ok(await E(() => __tc.App.tool) === 'rect' && !(await P.locator('.rail-lista').isVisible()) && await E(() => document.querySelector('#tool-grupo-desenho').classList.contains('on')), 'escolher na lista: a ferramenta vale, a lista fecha e o botão fica aceso');
+    ok(await E(() => __tc.App.tool) === 'rect' && !(await P.locator('#tool-grupo-desenho + .rail-lista').isVisible()) && await E(() => document.querySelector('#tool-grupo-desenho').classList.contains('on')), 'escolher na lista: a ferramenta vale, a lista fecha e o botão fica aceso');
     await P.keyboard.press('Escape'); await P.keyboard.press('Escape'); await w(80);
 
     // o token selecionado (o da cena de exemplo)

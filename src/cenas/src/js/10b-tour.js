@@ -71,8 +71,9 @@ const Tour = (() => {
       },
       {
         title: 'Ver como jogador',
-        text: 'Troque para um jogador e confira o que ele enxerga e pode fazer. Para voltar, escolha Mestre. Este passeio fica guardado no menu ⋯, em "Rever o tutorial".',
-        target: () => rectOf('.viewer'), side: 'below', next: 'Concluir',
+        text: 'No menu ⋯, em "Ver a cena como", troque para um jogador e confira o que ele enxerga e pode fazer. Para voltar, use o botão "Voltar ao mestre" na faixa amarela. Este passeio também fica nesse menu, em "Rever o tutorial".',
+        // (lote 138) o "Vendo como" foi para o menu ⋯
+        target: () => rectOf('#moreBtn'), side: 'below', next: 'Concluir',
       },
     ];
   }

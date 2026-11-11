@@ -199,10 +199,11 @@ const j = JSON.stringify;
 
   /* ---------- o grupo Mestre na barra da esquerda ---------- */
   await ev(() => { if (document.querySelector('.modal')) __tc.UI.closeModal(); __tc.UI.openTab('sel'); __tc.setSel([]); }); await w(200);
-  ok(j(await page.locator('#rail .mt-rail .tool').evaluateAll(l => l.map(b => b.id))) === j(['mt-rail-vez', 'mt-rail-momentos', 'mt-rail-lembretes', 'mt-rail-cura', 'mt-rail-rondas']), 'a barra da esquerda tem o grupo Mestre: a vez, os momentos, os lembretes, a cura (e, desde o lote 121, as rondas)');
-  ok(await page.locator('#rail .rail-g', { hasText: 'Mestre' }).count() === 1, '(com o nome do grupo)');
-  const railOk = await ev(() => { const r = document.getElementById('rail'), b = document.getElementById('mt-rail-cura').getBoundingClientRect(); return b.bottom <= r.getBoundingClientRect().bottom + 1; });
-  ok(railOk, 'os quatro botões cabem na barra');
+  // (lote 138) um botão só, "Mestre", no pé da barra, que abre a lista dos cinco
+  const railOk = await ev(() => { const r = document.getElementById('rail'), b = document.getElementById('mt-rail-mestre').getBoundingClientRect(); return b.bottom <= r.getBoundingClientRect().bottom + 1; });
+  ok(railOk, 'o botão Mestre cabe na barra');
+  await page.locator('#mt-rail-mestre').click(); await w(200);
+  ok(j(await page.locator('#mt-menu .rail-item').evaluateAll(l => l.map(b => b.id))) === j(['mt-rail-vez', 'mt-rail-momentos', 'mt-rail-lembretes', 'mt-rail-cura', 'mt-rail-rondas']), 'o botão Mestre abre a lista: a vez, os momentos, os lembretes, a cura (e, desde o lote 121, as rondas)');
   await page.locator('#mt-rail-vez').click(); await w(250);
   const vt = await page.locator('#mt-pop-vez').innerText();
   ok(/Rodada \d+ · vez de/.test(vt) && await page.locator('#mtp-prox').count() === 1 && await page.locator('#mtp-atrasar').count() === 1 && await page.locator('#mtp-pular').count() === 1, 'o painel da vez: a rodada, de quem é a vez, próximo, atrasar e pular — ' + vt.replace(/\s+/g, ' '));
@@ -211,17 +212,20 @@ const j = JSON.stringify;
   await page.locator('#mtp-prox').click(); await w(350);
   ok(await vezDe() !== antesV && await page.locator('#mt-pop-vez').count() === 1, '"Próximo turno" passa a vez e o painel continua aberto, atualizado');
   await ev(() => { if (document.querySelector('.modal')) __tc.UI.closeModal(); });
+  await page.locator('#mt-volta').click(); await w(150);
   await page.locator('#mt-rail-momentos').click(); await w(250);
   ok(await page.locator('#mt-pop-vez').count() === 0 && /A emboscada/.test(await page.locator('#mt-pop-momentos').innerText()), 'trocar de botão troca o painel: os momentos, com “Soltar”');
   await foto('l47-barra-momentos');
   await page.locator('#mtp-soltar-' + moId).click(); await w(350);
   ok(await page.locator('#mt-pop-momentos').count() === 0 && (await tok(ids.ogro)).hidden === false, '“Soltar” pelo painel solta o momento (e o painel fecha)');
   await desfazerDo('Momento “A emboscada”');
+  await page.locator('#mt-rail-mestre').click(); await w(150);
   await page.locator('#mt-rail-lembretes').click(); await w(250);
   ok(/Reforços chegam/.test(await page.locator('#mt-pop-lembretes').innerText()) && await page.locator('#mtp-lb-novo').count() === 1, 'o painel dos lembretes lista os da cena e cria um novo');
   await page.mouse.click(700, 300); await w(250);
   ok(await page.locator('#mt-pop-lembretes').count() === 0, 'um clique no mapa fecha o painel');
   await ev(o => __tc.setSel([{ c: 'tokens', id: o.dain }]), ids); await w(200);
+  await page.locator('#mt-rail-mestre').click(); await w(150);
   await page.locator('#mt-rail-cura').click(); await w(250);
   ok(/Cura total \(1\)/.test(await page.locator('#mtp-cura').innerText()) && await page.locator('#mtp-restaurar').count() === 1 && await page.locator('#mtp-barrinhas').count() === 1, 'o painel da cura: Cura total dos selecionados, Restaurar energias e a tela das barrinhas');
   await foto('l47-barra-cura');

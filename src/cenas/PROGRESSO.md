@@ -415,3 +415,25 @@ Tomadas na leitura do código; valem para os itens abaixo, salvo nota em contrá
   cima de uma casa do desenho; a imagem muda de escala e desliza para as linhas caírem nas da grade, e a cena muda de
   tamanho para cobrir a imagem (a sobra de menos de uma casa na borda de cima e da esquerda fica de fora). Desfaz com Ctrl+Z.
 - Teste: `test/lote130.js`. `test/lote26.js` passou a contar o botão da grade no trilho.
+
+## Lote 138 — topo e barra da esquerda mais limpos (para o Bruno)
+
+Mockup aprovado pelo Dalmo (canvas "Mesa do Tiny Cats — topo e ferramentas"). Pedido: menos informação na tela e trocar
+de cena mais fácil, num notebook de ~1366×768. O painel da direita e a faixa do token não mudaram.
+
+- Topo: o nome da cena em Grenze (o título da mesa); a ordem agora é cena, Ligadas, No ar, Construção | Mestrando, e à
+  direita desfazer, zoom, som, ⋯ e painel. Os rótulos de Construção/Mestrando só somem abaixo de 900 px (eram 1100).
+- As cenas ligadas por passagens (os andares do prédio) saíram da fileira de pílulas: um botão "Ligadas N" (`#andaresGm`)
+  abre a lista (`#andar-<id>`, com "N tokens", "vazia", "aberta", "no ar") e, no pé, "Pôr todos no ar juntos" (`#predioNoAr`).
+- "Vendo como" saiu do topo: está no menu ⋯, em "Ver a cena como" (`#verComo-<id>`). O tutorial aponta para o ⋯.
+- Lista de cenas: no alto, "Os jogadores estão vendo" (quando a cena no ar não é a aberta); "Recentes" virou
+  "Abertas por último".
+- Barra da esquerda: Desenho e Mapa (paredes, luz, névoa, terreno) num botão cada (`#tool-grupo-desenho`,
+  `#tool-grupo-mapa`), sob o nome "Montar". No Mestrando somem as de construção (já sumiam) e também a chave da grade; a
+  névoa manual fica, sozinha, sob "Mapa", porque se usa jogando. O grupo Mestre virou um botão só no pé da barra
+  (`#mt-rail-mestre`), que abre a lista (`#mt-menu`, itens `#mt-rail-<id>`); escolher um abre o painel com "‹ Mestre"
+  (`#mt-volta`). A barra ficou com 56 px e botões de 40×36; só aperta abaixo de 640 px de altura.
+- `menu()` aceita `id` nos itens comuns.
+- Testes ajustados: lote26, lote47, lote82, lote84, e2e, ui2, v2b (passo 5 do tutorial).
+- JÁ FALHAVAM antes deste lote (conferido com o código anterior), não mexi: lote7c/7d/7g/7h/7i, lote13/13b/13c, lote20,
+  lote39, lote53, lote107, gerador8, unit5, unit6, narrow2, v2b (usa `__urgm`, nome antigo).

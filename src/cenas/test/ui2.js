@@ -213,7 +213,7 @@ const { open } = require('./lib');
   errs('cena');
 
   /* Jogador com permissões novas */
-  await page.locator('#viewerSel').selectOption({ label: 'Dalmo' }); await w(250);
+  await page.locator('#moreBtn').click(); await w(150); await page.locator('.menu .menu-i', { hasText: 'Dalmo' }).click(); await w(250);      // (lote 138) "Ver como" no menu ⋯
   const tools = await ev(() => Array.from(document.querySelectorAll('.tool')).map(b => b.id.replace('tool-', '')).join());
   // (lote 26) em grupos: o desenho fica num botão só, que abre a lista com as seis
   ok(tools === 'select,pan,ruler,ping,lapis,fx,grupo-desenho', 'ferramentas liberadas ao jogador: ' + tools);
@@ -242,7 +242,9 @@ const { open } = require('./lib');
   await page.locator('#dlg-in').fill('Bia'); await page.locator('.modal .btn.primary').click(); await w();
   let pls = await ev(() => __urgm.Store.S.players.map(p => p.name));
   ok(pls.join() === 'Dalmo,Bia', 'jogador adicionado');
-  ok((await page.locator('#viewerSel option').allTextContents()).join() === 'Mestre,Dalmo,Bia', 'lista "Vendo como" atualizada');
+  await page.locator('#moreBtn').click(); await w(150);
+  ok((await page.locator('.menu .menu-i[id^="verComo-"]').allTextContents()).join() === 'Mestre,Dalmo,Bia', 'lista "Ver a cena como" (menu ⋯) atualizada');
+  await page.keyboard.press('Escape'); await w(100);
   const bia = await ev(() => __urgm.Store.S.players[1].id);
   await page.locator('#pl-n-' + bia).fill('Beatriz'); await page.locator('#pl-n-' + bia).press('Enter'); await w();
   await page.locator('.li.player').nth(1).locator('.ib').nth(1).click(); await w();

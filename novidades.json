@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.10-13",
+      "data": "2026-11-10",
+      "titulo": "Mesa mais limpa",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Cenas: o nome da cena aparece grande no alto, e é nele que se troca de cena. Na lista, a cena que os jogadores estão vendo fica no alto, e as recentes viraram \"Abertas por último\".", "mestre": true },
+        { "tipo": "melhorou", "texto": "Cenas: os lugares ligados à cena (andares, casas da cidade) cabem num botão só, \"Ligadas\", com quantos tokens há em cada um e \"Pôr todos no ar juntos\".", "mestre": true },
+        { "tipo": "melhorou", "texto": "Cenas: a barra da esquerda ficou mais curta. Paredes, luz, névoa e terreno estão no botão \"Mapa\"; os botões do mestre (a vez, momentos, lembretes, cura e rondas), no botão \"Mestre\", no pé da barra. No modo Mestrando só aparece o que se usa jogando.", "mestre": true },
+        { "tipo": "melhorou", "texto": "Cenas: \"Vendo como\" foi para o menu ⋯, em \"Ver a cena como\".", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.10-12",
       "data": "2026-11-10",
       "titulo": "Fechadura ao vivo para o mestre",

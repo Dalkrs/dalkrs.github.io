@@ -146,13 +146,15 @@ const j = JSON.stringify;
   ok(/Nenhuma passagem desta cena leva para baixo/.test(await avisos()), 'sem andar abaixo: o aviso diz que nenhuma passagem leva para baixo');
 
   // 9) a barra de andares do mestre: os dois andares, com quantos tokens em cada um; um clique abre o outro
-  const barra = await ev(() => [...document.querySelectorAll('#andaresGm .andar-b')].map(b => b.innerText.replace(/\s+/g, ' ').trim()));
-  ok(barra.length === 2 && /^2º andar \d+$/.test(barra[0]) && /^Térreo \d+$/.test(barra[1]), 'a barra mostra o prédio (de cima para baixo), com a contagem de tokens — ' + j(barra));
-  const cont = await ev(P => [P.B, P.A].map(id => __tc.Store.S.scenes[id].tokens.filter(t => !t.prop).length), P);
-  ok(j(barra.map(x => +x.split(' ').pop())) === j(cont), 'as contagens batem com os tokens de cada andar — ' + j(cont));
-  await foto('l82-barra');
+  // (lote 138) um botão só, "Ligadas 1", que abre a lista do prédio
   await ev(P => __tc.UI.switchScene(P.A), P); await w(250);
-  await page.locator('#andaresGm .andar-b', { hasText: '2º andar' }).click(); await w(250);
+  ok(/Ligadas\s*1/.test(await page.locator('#andaresGm').innerText()), 'o botão diz quantas cenas estão ligadas a esta');
+  await page.locator('#andaresGm').click(); await w(200);
+  const barra = await ev(() => [...document.querySelectorAll('.menu .menu-i[id^="andar-"]')].map(b => b.innerText.replace(/\s+/g, ' ').trim()));
+  const cont = await ev(P => __tc.Store.S.scenes[P.B].tokens.filter(t => !t.prop).length, P);
+  ok(barra.length === 2 && /^2º andar/.test(barra[0]) && /^Térreo.*aberta/.test(barra[1]) && new RegExp(cont + ' tokens?$').test(barra[0]), 'a lista mostra o prédio (de cima para baixo), com a contagem de tokens do outro andar — ' + j(barra));
+  await foto('l82-barra');
+  await page.locator('.menu .menu-i', { hasText: '2º andar' }).click(); await w(250);
   ok(await ev(P => __tc.Store.S.current === P.B, P), 'um clique na barra abre o 2º andar');
 
   // 10) o painel: o campo "Andar" e a regra "Só pela escada" na aba Cena; "Leva ao pisar" no painel da escada
