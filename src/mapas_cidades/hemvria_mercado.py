@@ -12,7 +12,7 @@ POSTO = (138, 22, 148, 30)
 TORRE = (124, 42)
 PALCO = (40, 58, 58, 72)
 FONTE = (112, 63, 3.0)
-TENDAS = [(128, 60, 140, 70, (120, 40, 52), (200, 176, 120)), (142, 67, 154, 79, (44, 60, 100), (210, 196, 168))]
+TENDAS = [(129.5, 61.5, 138.5, 69, (120, 40, 52), (200, 176, 120)), (143.5, 68.5, 152.5, 77.5, (44, 60, 100), (210, 196, 168))]
 QUINTAL = (60, 2.5, 76, 10)            # o canto dos barris (pátio sem saída atrás da fileira norte)
 PORAOES = [((90, 28.4, 98, 31.4), 'l'), ((101, 84.2, 105, 88.0), 's'), ((60.6, 3.2, 63.8, 9.4), 'n'), ((24, 51.6, 31, 54.6), 'o'), ((164.5, 56, 167.5, 62), 's')]
 PAINEL = (140.4, 30.0, 145.6, 31.1)
@@ -226,9 +226,9 @@ def pintar(S=12, out='mercado_prev.png', previa=None):
              (FONTE[0] - 6, FONTE[1] - 6, FONTE[0] + 6, FONTE[1] + 6), (POSTO[0] - 3, POSTO[1] - 2, POSTO[2] + 3, POSTO[3] + 3)] + [(t[0] - 2, t[1] - 2, t[2] + 2, t[3] + 2) for t in TENDAS]
         return any(z0 <= x <= z1 and w0 <= y <= w1 for z0, w0, z1, w1 in z) or not M.dentro(PRACA, x + 1.5, y + 1) or not M.dentro(PRACA, x, y) or not M.dentro(PRACA, x + 3, y + 2.2)
     # zonas de barracas: fileiras deitadas, fileiras em pé e um labirinto apertado
-    ZONAS = [((36, 20, 68, 56), 'h', 4.4, 3.3, .2), ((60, 50, 100, 85), 'v', 3.3, 4.6, .15), ((96, 72, 128, 85), 'h', 4.0, 3.3, .25),
-             ((128, 20, 158, 58), 'h', 3.6, 3.2, .1), ((150, 60, 160, 84), 'v', 3.3, 4.4, .2), ((106, 20, 126, 30), 'h', 4.2, 3.3, .3),
-             ((36, 74, 60, 86), 'h', 4.2, 3.2, .25)]
+    ZONAS = [((36, 20, 68, 56), 'h', 5.6, 3.6, .25), ((60, 50, 100, 85), 'v', 4.4, 5.4, .2), ((96, 72, 128, 85), 'h', 5.4, 3.6, .3),
+             ((128, 20, 158, 58), 'h', 5.0, 3.5, .15), ((150, 60, 160, 84), 'v', 4.4, 5.2, .25), ((106, 20, 126, 30), 'h', 5.4, 3.6, .3),
+             ((36, 74, 60, 86), 'h', 5.4, 3.5, .3)]
     for (z0, w0, z1, w1), ori, dy, dx, falta in ZONAS:
         for y in np.arange(w0 + 1, w1 - 2, dy):
             for x in np.arange(z0, z1 - 2, dx):
@@ -236,13 +236,13 @@ def pintar(S=12, out='mercado_prev.png', previa=None):
                 if r.random() < falta: continue
                 if ori == 'h':
                     if evita(xx, yy): continue
-                    M.barraca(xx, yy, 3.0, 2.2)
+                    M.barraca(xx, yy, 2.5, 1.8)
                 else:
                     if evita(xx, yy) or evita(xx - .8, yy + .8): continue
-                    M.barraca(xx, yy, 2.2, 3.0)
+                    M.barraca(xx, yy, 1.8, 2.5)
                 k = r.random()
-                if k < .3: caixa(xx + .7 + r.random(), yy + (2.8 if ori == 'h' else 3.6), .8, r.random() * 30)
-                elif k < .5: barril(xx + 2.4, yy + (2.8 if ori == 'h' else 3.6))
+                if k < .3: caixa(xx + .7 + r.random(), yy + (2.4 if ori == 'h' else 3.1), .8, r.random() * 30)
+                elif k < .5: barril(xx + 2.4, yy + (2.4 if ori == 'h' else 3.1))
                 elif k < .58: caixa(xx - .7, yy + 1, .8, r.random() * 30); caixa(xx - .7, yy + 1.9, .8, r.random() * 30)
     # mesas de comida perto da fonte
     for (x, y) in ((104, 56), (104, 70), (120, 56), (120, 70), (100, 63), (124, 63)):
