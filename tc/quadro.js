@@ -28,6 +28,14 @@
   // a textura do fio
   const TEXTURAS = Object.freeze([
     ['barbante', 'Barbante'], ['torcido', 'Barbante torcido'], ['la', 'Lã grossa'], ['corrente', 'Corrente'], ['tracejado', 'Tracejado'], ['pontilhado', 'Pontilhado']]);
+  /* (lote 144) a legenda: o que cada cor e cada textura de fio quer dizer (a de costume, que cada quadro pode mudar).
+     A cor diz o tipo de ligação; a textura, o quanto se tem certeza dela. */
+  const LEGENDA = Object.freeze({
+    c: Object.freeze({ vermelho: 'O crime, o mistério ou o suspeito principal', azul: 'Pessoas: família, amizade, quem trabalha para quem', verde: 'Dinheiro: comércio, troca, suborno, dívida',
+      amarelo: 'Lugar e tempo: esteve em, aconteceu antes ou depois', roxo: 'Magia, deuses, relíquias, o sobrenatural', preto: 'Ameaça, morte, traição, inimizade', branco: 'A minha saga e o meu personagem' }),
+    t: Object.freeze({ barbante: 'Confirmado: vi, ouvi ou tenho a prova', torcido: 'Confirmado e importante: sustenta a teoria', la: 'Forte e antigo: sangue, juramento, aliança',
+      corrente: 'Preso ou obrigado: chantagem, contrato, pacto', tracejado: 'Suspeita: faz sentido, mas falta prova', pontilhado: 'Palpite ou boato' }),
+  });
   const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const idOk = k => typeof k === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(k);
   const txt = (x, n) => String(x == null ? '' : x).replace(/\r/g, '').slice(0, n);
@@ -61,6 +69,15 @@
     if (!ehObj(d)) { o.n = 'Quadro'; return o; }
     o.n = txt(d.n, LIM.nome).trim() || 'Quadro';
     if (typeof d.em === 'string') o.em = d.em.slice(0, 40);
+    // (lote 144) a legenda deste quadro: só o que mudou da de costume
+    if (ehObj(d.leg)) {
+      const leg = {};
+      for (const [g, lista] of [['c', CORES_FIO], ['t', TEXTURAS]]) if (ehObj(d.leg[g])) for (const [k] of lista) {
+        const v = txt(d.leg[g][k], 60).replace(/\s+/g, ' ').trim();
+        if (v && v !== LEGENDA[g][k]) (leg[g] = leg[g] || {})[k] = v;
+      }
+      if (leg.c || leg.t) o.leg = leg;
+    }
     if (ehObj(d.cartas)) for (const id of Object.keys(d.cartas)) { if (Object.keys(o.cartas).length >= LIM.cartas) break; const c = idOk(id) ? carta(d.cartas[id]) : null; if (c) o.cartas[id] = c; }
     const vistos = new Set();
     if (Array.isArray(d.fios)) for (const f of d.fios) {
@@ -84,6 +101,7 @@
     const q = norm(JSON.parse(JSON.stringify(norm(d))));
     if (!ehObj(op)) return q;
     if (op.t === 'nome') q.n = txt(op.n, LIM.nome).trim() || q.n;
+    else if (op.t === 'legenda') { if (ehObj(op.leg)) q.leg = op.leg; else delete q.leg; }
     else if (op.t === 'carta' && idOk(op.id)) { const c = carta(Object.assign({}, q.cartas[op.id] || {}, op.c || {})); if (c && (q.cartas[op.id] || Object.keys(q.cartas).length < LIM.cartas)) q.cartas[op.id] = c; }
     else if (op.t === 'mover' && q.cartas[op.id]) { q.cartas[op.id].x = num(op.x, 0, TAM.w - 40, q.cartas[op.id].x); q.cartas[op.id].y = num(op.y, 0, TAM.h - 40, q.cartas[op.id].y); }
     else if (op.t === 'tirar' && q.cartas[op.id]) { delete q.cartas[op.id]; q.fios = q.fios.filter(f => f.a !== op.id && f.b !== op.id); }
@@ -103,10 +121,12 @@
     return (Array.isArray(linhas) ? linhas : []).filter(l => l && !l.apagado && partes(l.id)).map(l => Object.assign({ id: l.id, q: norm(l.dados) }, partes(l.id)))
       .sort((a, b) => String(b.q.em || '').localeCompare(String(a.q.em || '')) || a.q.n.localeCompare(b.q.n));
   }
+  // o que a cor (g 'c') ou a textura (g 't') quer dizer neste quadro
+  const sentido = (q, g, k) => (q && q.leg && q.leg[g] && q.leg[g][k]) || LEGENDA[g][k] || '';
   const corDe = k => (CORES.find(x => x[0] === k) || CORES[0])[2];
   const corFio = k => (CORES_FIO.find(x => x[0] === k) || CORES_FIO[0])[2];
 
-  const API = { PRE, LIM, TAM, TIPOS, CORES, CORES_FIO, TEXTURAS, idDoc, partes, norm, mudar, quadrosEm, corDe, corFio, novoId };
+  const API = { PRE, LIM, TAM, TIPOS, CORES, CORES_FIO, TEXTURAS, LEGENDA, sentido, idDoc, partes, norm, mudar, quadrosEm, corDe, corFio, novoId };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else { root.TC = root.TC || {}; root.TC.quadro = API; }
 })(typeof window !== 'undefined' ? window : globalThis);

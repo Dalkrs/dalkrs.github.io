@@ -83,6 +83,18 @@ ok(lq.length === 1 && lq[0].dono === 'a', 'os quadros numa lista de linhas');
     await ev(() => __quadro.ajustar()); await w(200);
     if (process.env.FOTOS) await P.screenshot({ path: process.env.FOTOS + '/quadro.png' });
   });
+  await passo('a legenda', async () => {
+    await P.locator('#btLegenda').click(); await w(200);
+    const tx = await P.locator('#legenda').innerText();
+    ok(/A cor do fio: o tipo de ligação/.test(tx) && /O crime, o mistério ou o suspeito principal/.test(tx) && /Suspeita: faz sentido, mas falta prova/.test(tx) && await P.locator('#legenda svg').count() === 13, 'o botão Legenda mostra as cores, as texturas (com o desenho) e as cores dos cartões');
+    ok(/Vermelho · O crime/.test(await P.locator('#fioCor option').first().innerText()), 'a escolha do fio diz o que quer dizer');
+    if (process.env.FOTOS) await P.screenshot({ path: process.env.FOTOS + '/quadro-legenda.png' });
+    await P.locator('#legEd').click(); await w(150);
+    await P.locator('.leg-ed input[data-g="c"][data-k="azul"]').fill('Família de sangue'); await P.locator('#legOk').click(); await w(250);
+    ok(await ev(() => __quadro.atual().q.leg.c.azul) === 'Família de sangue' && /Família de sangue/.test(await P.locator('#legenda').innerText()), 'mudar um significado: vale para este quadro');
+    await P.locator('#btLegenda').click(); await w(100);
+    ok(await P.locator('#legenda').isHidden(), 'o botão fecha a legenda');
+  });
   await passo('vários quadros', async () => {
     await P.locator('#btNovoQ').click(); await w(150);
     await P.locator('#nQ').fill('O mistério da Academia'); await P.locator('#nOk').click(); await w(250);

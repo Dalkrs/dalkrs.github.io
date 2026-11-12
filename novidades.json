@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.12-02",
+      "data": "2026-11-12",
+      "titulo": "Quadro de pistas: a legenda",
+      "itens": [
+        { "tipo": "novo", "texto": "Quadro de pistas: o botão \"Legenda\". A cor do fio diz o tipo de ligação (vermelho: o crime; azul: pessoas; verde: dinheiro; amarelo: lugar e tempo; roxo: magia; preto: ameaça; branco: a sua saga), a textura diz o quanto você tem certeza (do barbante, confirmado, ao pontilhado, palpite), e a cor do cartão, o que você acha dele. Cada quadro pode mudar os significados, e a escolha do fio já mostra o que cada um quer dizer." }
+      ]
+    },
+    {
       "versao": "2026.11.12-01",
       "data": "2026-11-12",
       "titulo": "Quadro de pistas",

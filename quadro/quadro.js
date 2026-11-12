@@ -150,6 +150,54 @@
     return hit;
   }
 
+  /* ---------------- a legenda (lote 144) ---------------- */
+  let legAberta = false;
+  function amostra(cor, tex) {
+    const s = sv('svg', { viewBox: '0 0 70 16', 'aria-hidden': 'true' }), g = sv('g');
+    s.append(g); desenharFio(g, { id: 'x', cor, tex, txt: '' }, { x: 6, y: 7 }, { x: 64, y: 7 });
+    g.querySelectorAll('path').forEach(p => p.setAttribute('d', 'M6 7 L64 7'));
+    return s;
+  }
+  function pintarLegenda() {
+    const el = $('legenda'), x = atual();
+    el.hidden = !legAberta || !x;
+    $('btLegenda').classList.toggle('on', legAberta); $('btLegenda').setAttribute('aria-pressed', String(legAberta));
+    if (el.hidden) return;
+    const q = x.q;
+    el.replaceChildren(
+      h('h3', { text: 'A cor do fio: o tipo de ligação' }), h('p', { text: 'Escreva no fio o que liga os dois (ex.: “mentiu para”, “esteve em”).' }),
+      h('ul', null, Q.CORES_FIO.map(([k, n]) => h('li', null, amostra(k, 'barbante'), h('span', null, h('b', { text: n }), Q.sentido(q, 'c', k))))),
+      h('h3', { text: 'A textura: o quanto você tem certeza' }),
+      h('ul', null, Q.TEXTURAS.map(([k, n]) => h('li', null, amostra('vermelho', k), h('span', null, h('b', { text: n }), Q.sentido(q, 't', k))))),
+      h('h3', { text: 'A cor do cartão: o que você acha dele' }),
+      h('ul', null, Q.CORES.map(([k, n, cor]) => h('li', null, h('i', { style: `display:block;width:70px;height:16px;border-radius:3px;background:${cor}` }), h('span', null, h('b', { text: n }), ({ '': 'Ainda sem opinião', certo: 'Tenho certeza', duvida: 'Não sei se é verdade', perigo: 'Perigo, cuidado', ideia: 'Uma ideia, uma teoria', descartado: 'Já descartei' })[k])))),
+      h('div', { class: 'pe' }, podeMexer() ? h('button', { type: 'button', class: 'btn', id: 'legEd', text: 'Mudar os significados', onclick: editarLegenda }) : null,
+        h('button', { type: 'button', class: 'btn', text: 'Fechar', onclick: () => { legAberta = false; pintarLegenda(); } })));
+  }
+  function editarLegenda() {
+    const x = atual(); if (!x) return;
+    const ins = [];
+    const linha = (g, k, n) => { const i = h('input', { class: 'in', value: Q.sentido(x.q, g, k), maxlength: 60, 'data-g': g, 'data-k': k }); ins.push(i); return h('label', null, h('span', { text: n }), i); };
+    abrirJanela(h('h2', { text: 'Os significados deste quadro' }),
+      h('div', { class: 'leg-ed' }, h('b', { text: 'Cores do fio' }), Q.CORES_FIO.map(([k, n]) => linha('c', k, n)), h('b', { text: 'Texturas' }), Q.TEXTURAS.map(([k, n]) => linha('t', k, n))),
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn esq', text: 'Voltar aos de costume', onclick: () => { fechar(); mudar({ t: 'legenda', leg: null }, 'A legenda voltou à de costume.'); } }),
+        h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fechar }),
+        h('button', { type: 'button', class: 'btn pri', id: 'legOk', text: 'Salvar', onclick: () => {
+          const leg = { c: {}, t: {} };
+          for (const i of ins) leg[i.dataset.g][i.dataset.k] = i.value;
+          fechar(); mudar({ t: 'legenda', leg });
+        } })));
+  }
+  // as escolhas do próximo fio dizem o que querem dizer
+  function pintarEscolhasDoFio() {
+    const x = atual(), q = x ? x.q : null, cut = s => (s.length > 34 ? s.slice(0, 33) + '…' : s);
+    for (const [id, lista, g] of [['fioCor', Q.CORES_FIO, 'c'], ['fioTex', Q.TEXTURAS, 't']]) {
+      const s = $(id), v = s.value;
+      s.replaceChildren(...lista.map(([k, n]) => h('option', { value: k, title: Q.sentido(q, g, k), text: n + ' · ' + cut(Q.sentido(q, g, k)) })));
+      if (v) s.value = v;
+    }
+  }
+
   /* ---------------- o desenho ---------------- */
   const inclin = id => { let s = 0; for (const c of id) s = (s * 31 + c.charCodeAt(0)) | 0; return ((Math.abs(s) % 7) - 3) * 0.6; };
   const ROT = Object.fromEntries(Q.TIPOS);
@@ -164,6 +212,9 @@
     for (const id of ['btPregar', 'btLigar']) $(id).hidden = !mexe;
     document.querySelector('.fiodef').hidden = !mexe;
     $('soVer').hidden = mexe || !atual();
+    $('btLegenda').hidden = !atual();
+    pintarEscolhasDoFio();
+    pintarLegenda();
     $('soVer').textContent = atual() && !mexe ? 'Só olhando: o quadro de ' + nomeDe(atual().dono) : 'Só olhando';
   }
   function pintar() {
@@ -332,12 +383,12 @@
     const x = atual(), f = x && x.q.fios.find(y => y.id === fid);
     if (!f) return;
     const t = h('input', { class: 'in', id: 'fT', value: f.txt, maxlength: Q.LIM.fioTxt, placeholder: 'ex.: suspeito de, esteve em, mentiu sobre', style: 'width:100%' });
-    const cor = h('select', { class: 'in', id: 'fCor' }, Q.CORES_FIO.map(([k, n]) => h('option', { value: k, selected: k === f.cor || null, text: n })));
-    const tex = h('select', { class: 'in', id: 'fTex' }, Q.TEXTURAS.map(([k, n]) => h('option', { value: k, selected: k === f.tex || null, text: n })));
+    const cor = h('select', { class: 'in', id: 'fCor' }, Q.CORES_FIO.map(([k, n]) => h('option', { value: k, selected: k === f.cor || null, text: n + ' · ' + Q.sentido(x.q, 'c', k) })));
+    const tex = h('select', { class: 'in', id: 'fTex' }, Q.TEXTURAS.map(([k, n]) => h('option', { value: k, selected: k === f.tex || null, text: n + ' · ' + Q.sentido(x.q, 't', k) })));
     const a = x.q.cartas[f.a], b = x.q.cartas[f.b];
     abrirJanela(h('h2', { text: 'O fio' }), h('p', { class: 'dica', text: 'Entre “' + (a.t || ROT[a.k]) + '” e “' + (b.t || ROT[b.k]) + '”.' }),
       h('label', { class: 'f' }, h('span', { text: 'O que ele quer dizer' }), t),
-      h('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px' }, h('label', { class: 'f' }, h('span', { text: 'Cor' }), cor), h('label', { class: 'f' }, h('span', { text: 'Textura' }), tex)),
+      h('div', { style: 'display:grid;gap:0' }, h('label', { class: 'f' }, h('span', { text: 'Cor' }), cor), h('label', { class: 'f' }, h('span', { text: 'Textura' }), tex)),
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn perigo esq', id: 'fTira', text: 'Cortar o fio', onclick: () => { fechar(); mudar({ t: 'semFio', id: fid }, 'O fio foi cortado.'); } }),
         h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fechar }),
         h('button', { type: 'button', class: 'btn pri', id: 'fOk', text: 'Salvar', onclick: () => { fechar(); mudar({ t: 'fio', f: Object.assign({}, f, { txt: t.value, cor: cor.value, tex: tex.value }) }); } })));
@@ -378,8 +429,7 @@
   $('btPregar').onclick = () => janelaPregar('nota');
   $('btLigar').onclick = () => modoLigar(!ligando);
   $('selQ').onchange = ev => { sel = ev.target.value; modoLigar(false); ajustar(); };
-  $('fioCor').replaceChildren(...Q.CORES_FIO.map(([k, n]) => h('option', { value: k, text: n })));
-  $('fioTex').replaceChildren(...Q.TEXTURAS.map(([k, n]) => h('option', { value: k, text: n })));
+  $('btLegenda').onclick = () => { legAberta = !legAberta; pintarLegenda(); };
 
   /* ---------------- partida ---------------- */
   async function partida() {
