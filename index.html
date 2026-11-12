@@ -721,7 +721,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=34"></script>
-<script src="tc/tc.js?v=54"></script>
+<script src="tc/tc.js?v=55"></script>
 <script src="tc/busca.js?v=3"></script>
 <script src="tc/calendario.js?v=2"></script>
 <script src="tc/guia.js?v=59"></script>
@@ -744,7 +744,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.11-04';
+  const VERSAO = '2026.11.12-01';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -771,6 +771,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     baralho: '<rect x="3.5" y="6" width="10" height="14" rx="1.5" transform="rotate(-10 8.5 13)"/><rect x="10" y="4" width="10" height="14" rx="1.5"/><path d="M15 8.2l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z"/>',
     loja: '<path d="M4 9l1.5-5h13L20 9"/><path d="M4 9h16v2a2.7 2.7 0 0 1-5.3 0 2.7 2.7 0 0 1-5.4 0A2.7 2.7 0 0 1 4 11z"/><path d="M5.5 13v7h13v-7"/><path d="M10 20v-4h4v4"/>',
     admin: '<path d="M12 3 4.5 6v5.5c0 4.4 3.1 8 7.5 9.5 4.4-1.5 7.5-5.1 7.5-9.5V6z"/><circle cx="12" cy="10.5" r="2.2"/><path d="M12 12.7V16"/>',
+    // (lote 143) o Quadro de pistas: o mural com os alfinetes e o fio
+    quadro: '<rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><circle cx="8" cy="9" r="1.3" fill="currentColor"/><circle cx="16" cy="8.5" r="1.3" fill="currentColor"/><circle cx="12" cy="15" r="1.3" fill="currentColor"/><path d="M8 9l8-.5M16 8.5L12 15M8 9l4 6"/>',
     // (lote 117) as Conquistas: a taça
     conquistas: '<path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.8 3.4M17 6h2.5a2.5 2.5 0 0 1-2.8 3.4"/><path d="M12 13v3M8.5 20h7M9.5 16h5v4h-5z"/>',
     rolador: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/>',
@@ -780,6 +782,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     { id: 'cenas', nome: 'Cenas', src: 'cenas/', dados: true, grupo: 'sessao' },
     { id: 'fichas', nome: 'Fichas', src: 'fichas/', dados: true, grupo: 'sessao' },
     { id: 'missoes', nome: 'Missões', src: 'missoes/', dados: true, grupo: 'sessao', permissao: 'fichas' },   // (lote 123) o quadro de missões e as de cada personagem (quem mestra as Fichas, mestra)
+    { id: 'quadro', nome: 'Quadro de pistas', src: 'quadro/', dados: true, grupo: 'sessao', permissao: 'escudo', soQuadro: true },   // (lote 143) os quadros de cada jogador: quem joga sempre vê; o mestre, quando algum jogador já montou um
     { id: 'bancada', nome: 'Bancada', src: 'bancada/', dados: true, grupo: 'sessao', permissao: 'fichas' },   // (lote 142) os minigames de ofício: alquimia, ferreiro e invenção (a Bancada saiu do Acampamento)
     { id: 'rolador', nome: 'Rolador', src: 'rolador/', soMestre: true, dados: true, grupo: 'sessao' },      // ferramenta do mestre: numa mesa, os jogadores não a veem (e os históricos ficam na mesa)
     { id: 'escudo', nome: 'Escudo do mestre', src: 'escudo/', dados: true, grupo: 'sessao', soMestre: true }, // (lote 31) o roteiro, os relógios, os handouts e os puzzles
@@ -832,11 +835,12 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   // como jogador). Sem mesa, cada um é o próprio mestre e vê todas.
   let mestraAba = () => true;                     // (a parte da mesa, mais abaixo, troca por quem sabe)
   let lojaPerto = () => false;                    // (lote 29) a parte da mesa troca: há uma loja aberta perto de um personagem seu?
-  let temPistas = () => false;                    // (lote 31) a parte da mesa troca: o mestre entregou alguma pista a esta pessoa?
+  let temPistas = () => false;
+  let temQuadros = () => false;                   // (lote 143) algum jogador já montou um quadro de pistas (para a aba aparecer ao mestre)                    // (lote 31) a parte da mesa troca: o mestre entregou alguma pista a esta pessoa?
   let temLivro = () => false;                     // (lote 36) a parte da mesa troca: o livro de um clã desta pessoa foi liberado?
   // (a permissão de uma aba: a Oficina é a Árvore de quem mestra — vale o que vale para a Árvore)
   const permDe = id => { const a = ABAS.find(x => x.id === id); return (a && a.permissao) || id; };
-  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && (a.soAdmin ? souAdmin : a.soPerto ? lojaPerto() : a.soPistas ? temPistas() : a.soLivro ? (mestraAba('cla') || temLivro()) : !(a.soMestre && !mestraAba(permDe(id))) && !(a.soJogador && mestraAba(permDe(id)))); };
+  const pode = id => { const a = ABAS.find(x => x.id === id); return !!a && (a.soAdmin ? souAdmin : a.soPerto ? lojaPerto() : a.soPistas ? temPistas() : a.soQuadro ? (mesas.atual && !mestraAba(permDe(id)) ? true : temQuadros()) : a.soLivro ? (mestraAba('cla') || temLivro()) : !(a.soMestre && !mestraAba(permDe(id))) && !(a.soJogador && mestraAba(permDe(id)))); };
   // a Árvore e a Oficina são a mesma página: quem pede uma e só pode a outra vai para a outra
   const abaPossivel = id => (pode(id) ? id : id === 'arvore' && pode('oficina') ? 'oficina' : id === 'oficina' && pode('arvore') ? 'arvore' : id);
   const daHash = () => (location.hash || '').replace(/^#\/?/, '').split(/[/?]/)[0];
@@ -1737,7 +1741,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   function janelaPapel(m) {
     const eraAux = m.cargo === 'auxiliar', abasAntes = m.abas.slice(), viaAntes = !m.semVivo, acampAntes = !!m.acamp;
     const rJog = h('input', { type: 'radio', name: 'pp', id: 'pp-jog', checked: !eraAux }), rAux = h('input', { type: 'radio', name: 'pp', id: 'pp-aux', checked: eraAux });
-    const PERM = ABAS.filter(x => !x.soPerto && !x.soPistas && !x.soLivro);   // (a Loja, as Pistas e o Bestiário do clã não são abas de mestrar: aparecem sozinhos — o do clã vai com o Clã)
+    const PERM = ABAS.filter(x => !x.soPerto && !x.soPistas && !x.soLivro && !x.soQuadro);   // (a Loja, as Pistas e o Bestiário do clã não são abas de mestrar: aparecem sozinhos — o do clã vai com o Clã)
     const caixas = PERM.map(x => h('input', { type: 'checkbox', id: 'pp-' + x.id, checked: eraAux ? m.abas.includes(x.id) : true }));
     const grupo = h('fieldset', { class: 'abas', id: 'pp-abas' }, h('legend', { text: 'Abas que ' + m.nome + ' mestra' }),
       h('div', { class: 'cxs' }, PERM.map((x, i) => h('label', { class: 'cx' }, caixas[i], h('span', { text: x.nome })))),
@@ -2917,13 +2921,18 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   // (lote 36) o Bestiário do clã: a aba aparece para quem joga quando o banco entrega a capa do livro de um clã dele
   temLivro = () => { try { return mesas.atual ? TC.dados.col('documentos').todas().some(l => l && !l.apagado && /^cla:lpub:[A-Za-z0-9_-]{1,40}$/.test(l.id)) : false; } catch (e) { return false; } };
   let livroAntes = false, tLivro = 0;
+  // (lote 143) o Quadro de pistas: para quem mestra, a aba aparece quando o banco entrega o quadro de algum jogador
+  temQuadros = () => { try { return mesas.atual ? TC.dados.col('documentos').todas().some(l => l && !l.apagado && typeof l.id === 'string' && l.id.startsWith('quadroj:')) : false; } catch (e) { return false; } };
+  let quadrosAntes = false, tQuadros = 0;
+  const conferirQuadros = () => { const t = temQuadros(); if (t !== quadrosAntes) { quadrosAntes = t; pintarAbas(); } };
+  TC.dados.on('muda', (col, linha) => { if (col === 'documentos' && linha && typeof linha.id === 'string' && linha.id.startsWith('quadroj:')) { clearTimeout(tQuadros); tQuadros = setTimeout(conferirQuadros, 250); } });
   const conferirLivro = () => { const t = temLivro(); if (t !== livroAntes) { livroAntes = t; pintarAbas(); } };
   TC.dados.on('muda', (col, linha) => { if (col === 'documentos' && linha && typeof linha.id === 'string' && linha.id.startsWith('cla:lpub:')) { clearTimeout(tLivro); tLivro = setTimeout(conferirLivro, 250); } });
   function vigiarLivro() {
     const a = mesas.atual;
-    conferirLivro();
+    conferirLivro(); conferirQuadros();
     if (!a) return;
-    try { TC.dados.col('documentos').pronta.then(() => { if (mesas.atual === a) conferirLivro(); }, () => { /* sem os documentos, sem a aba */ }); } catch (e) { /* idem */ }
+    try { TC.dados.col('documentos').pronta.then(() => { if (mesas.atual === a) { conferirLivro(); conferirQuadros(); } }, () => { /* sem os documentos, sem a aba */ }); } catch (e) { /* idem */ }
   }
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;

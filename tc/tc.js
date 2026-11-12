@@ -1094,7 +1094,7 @@
       opt.quem = d.char ? aoVivo.personagem(d.char) : null;
       // (ma, mr: os bônus só desta rolagem — no atributo, antes de rolar, e no resultado; base: o atributo sem o bônus)
       dados = { k: 'fixa', titulo: (String(d.name || '?') + ' · ' + String(d.attrNome || d.attr || '')).slice(0, 120), total: d.total, resumo: semTotal(D().summary({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d, total: d.total, base: d.base, ma: d.ma, mr: d.mr })), veredito: null, passou: null };
-      // (lote 140) com vantagem ou desvantagem: a rolagem descartada aparece riscada, e o dado dela entra na conta do auditor
+      // (lote 143) com vantagem ou desvantagem: a rolagem descartada aparece riscada, e o dado dela entra na conta do auditor
       const vt = (d.vant === 1 || d.vant === -1) && Number.isFinite(Number(d.t2)) ? d.vant : 0;
       if (vt) dados.resumo = (dados.resumo + ' · ' + (vt > 0 ? 'vantagem' : 'desvantagem') + ': ' + d.total + ' e ' + [...String(Math.round(Number(d.t2)))].map(c => c + '\u0336').join('')).slice(0, 600);
       comDd(dados, D().diceOf({ mode: 'fixa', atributo: d.atributo, fixa: d.fixa, dieValue: d.d }).concat(vt && Number.isInteger(Number(d.d2)) && d.atributo - d.fixa >= 2 ? [[d.atributo - d.fixa, Number(d.d2)]] : []));
@@ -1314,6 +1314,7 @@
     || (typeof r.id === 'string' && r.id.startsWith('fichas:mis:pc:'))     // (lote 123) as missões da história de um personagem: o dono é o dono dele
     || (typeof r.id === 'string' && r.id.startsWith('acampamento:base:'))   // (lote 125) a casa ou o esconderijo de um personagem: o dono é o jogador dele
     || (typeof r.id === 'string' && r.id.startsWith('fichas:banc:pc:'))     // (lote 142) os minigames que o mestre mandou a um personagem
+    || (typeof r.id === 'string' && r.id.startsWith('quadroj:' + r.dono_id + ':'))   // (lote 143) os quadros de pistas de quem joga (só ele e o mestre)
     || (typeof r.id === 'string' && (r.id.startsWith('notasj:' + r.dono_id + ':') || r.id.startsWith('notasg:')));   // (lote 52) o caderno de quem joga e o do grupo
   function dadosZerar() {
     for (const k in cols) {

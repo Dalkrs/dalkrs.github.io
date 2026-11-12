@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.12-01",
+      "data": "2026-11-12",
+      "titulo": "Quadro de pistas",
+      "itens": [
+        { "tipo": "novo", "texto": "A aba Quadro de pistas, ao lado de Missões: um mural de cortiça para montar a sua linha de pensamento da quest, dos mistérios e da saga. Vários quadros com nome. Pregue notas, as pistas que você recebeu, as missões dos seus personagens, pessoas, lugares do Mapa-múndi e imagens; pinte cada cartão (certeza, dúvida, perigo, ideia, descartado) e ligue com fios de cor e textura (barbante, torcido, lã, corrente, tracejado, pontilhado), com um texto no fio. Zoom e arrastar o fundo. Só você e o mestre veem." },
+        { "tipo": "novo", "texto": "Quadro de pistas: o mestre vê os quadros de todos os jogadores, só olhando. A aba aparece para ele quando algum jogador monta um.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.11-04",
       "data": "2026-11-11",
       "titulo": "A Bancada: minigames de ofício",

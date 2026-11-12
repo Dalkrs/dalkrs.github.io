@@ -226,6 +226,15 @@ inteira. Ao fechar a página, o que falta vai do jeito simples (não há mais qu
   de quem conta por rondas; `Rondas.naRodada` (na rodada nova do combate), de quem conta por rodadas; no 0, some.
   O `vc` vai no documento público da cena (os outros jogadores recebem, mas não desenham).
 
+### O quadro de pistas (lote 143)
+
+- `quadro/` e `tc/quadro.js`: os quadros de cada jogador, `quadroj:<ele>:<id>` (vis `mestre`, ele como dono: só ele e o
+  mestre recebem; a migração 0043 deixa o jogador criar). Cartões (`nota`, `pista`, `missao`, `pessoa`, `lugar`, `img`)
+  com cor, e fios com cor, textura e texto, numa cortiça de 2400×1600 com zoom e arrasto. As pistas vêm de `pista:*`,
+  as missões dos personagens do jogador (`TC.missoes.doPersonagem`), os lugares dos marcadores do Mapa-múndi
+  (`mundo:pub:*`), as imagens de `TC.arquivos.subir`. O mestre vê os de todos, só olhando; a aba aparece para ele quando
+  há algum (`soQuadro`). Fora de uma mesa, tudo fica em `tinycats:quadros:local`.
+
 ### As aptidões e os lembretes do mestre (lote 131)
 
 - **As aptidões** (`tc/aptidoes.js`, `fichas/aptidoes.js`): a aba Aptidões da ficha. Só quem mestra cria, uma a uma:
