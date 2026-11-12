@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.12-03",
+      "data": "2026-11-12",
+      "titulo": "A atenção dos guardas",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: selecione vários guardas (Shift+clique ou retângulo) e o painel mostra o bloco “Guardas”: o estado de todos (Calmo, Desconfiado, Alerta) e “Olhar para um ponto”, em que um clique no mapa faz eles virarem o cone para lá.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: em Mestre › Rondas, os botões para todos os guardas da cena: Todos calmos, Todos desconfiados, Todos em alerta e Todos olham para um ponto.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.12-02",
       "data": "2026-11-12",
       "titulo": "Quadro de pistas: a legenda",

@@ -212,7 +212,41 @@ const Rondas = (() => {
   }
   function mudarEstado(ts, est) {
     if (!ESTADOS.some(e => e[0] === est)) return;
-    Store.tx('Estado do guarda', () => ts.filter(ehGuarda).forEach(t => Store.upd('tokens', t.id, { alerta: est === 'calmo' ? undefined : est })));
+    const gs = ts.filter(ehGuarda);
+    Store.tx('Estado do guarda', () => gs.forEach(t => Store.upd('tokens', t.id, { alerta: est === 'calmo' ? undefined : est })));
+    // (lote 145) com mais de um, o aviso (com Desfazer)
+    if (gs.length > 1) UI.toast(`${gs.length} guardas ${est === 'calmo' ? 'calmos' : est === 'desconfiado' ? 'desconfiados' : 'em alerta'}.`, { key: 'rondas', action: 'Desfazer', run: Tools.undo });
+  }
+  /* (lote 145) Os guardas olham para um ponto (x, y em pixels da cena): cada um vira o cone para lá. Na ronda, o próximo
+     "Avançar rondas" volta a apontar o caminho; de posto ou em alerta, ele fica olhando. */
+  function olharPara(ts, x, y) {
+    const sc = Store.scene(), gs = (ts || []).filter(ehGuarda);
+    if (!sc || !gs.length) { UI.toast('Nenhum guarda escolhido.'); return 0; }
+    Store.tx('Os guardas olham', () => gs.forEach(t => {
+      const [cx, cy] = tokC(t, sc);
+      if (Math.abs(x - cx) < 1 && Math.abs(y - cy) < 1) return;
+      const dir = ((Math.round(deg(Math.atan2(y - cy, x - cx))) % 360) + 360) % 360;
+      Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { dir }) });
+    }));
+    UI.toast(gs.length === 1 ? `${gs[0].name} olha para lá.` : `${gs.length} guardas olham para lá.`, { key: 'rondas', action: 'Desfazer', run: Tools.undo });
+    return gs.length;
+  }
+  // escolher o ponto no mapa (a ferramenta "olhar", 09-tools): ids = os guardas (vazio: todos da cena)
+  function olharNoMapa(ids) {
+    App.olharIds = ids && ids.length ? ids.slice() : null;
+    Tools.set('olhar');
+    UI.toast(`Clique no ponto para onde ${App.olharIds ? (App.olharIds.length === 1 ? 'o guarda vai' : `os ${App.olharIds.length} guardas vão`) : 'todos os guardas vão'} olhar. Esc cancela.`, { key: 'rondas' });
+  }
+  /* (lote 145) O bloco "Guardas (N)" do painel de vários tokens: o estado de todos de uma vez e o olhar para um ponto. */
+  function blocoGrupo(toks, K) {
+    if (!isGM()) return null;
+    const gs = toks.filter(ehGuarda);
+    if (!gs.length) return null;
+    const est = gs.every(t => estadoDe(t) === estadoDe(gs[0])) ? estadoDe(gs[0]) : null;
+    return K.secR('s-guardas', `Guardas (${gs.length})`, true, est ? ESTADOS.find(e => e[0] === est)[1] : 'estados diferentes',
+      K.field('Estado de todos', K.seg('mt-alerta', est, ESTADOS, v => mudarEstado(gs, v)), 'stack'),
+      h('div', { class: 'row' }, K.btn('Olhar para um ponto', () => olharNoMapa(gs.map(t => t.id)), { kind: 'small', icon: 'eye', id: 'mt-olhar', title: 'Clique no mapa: os guardas selecionados viram o cone para lá (um barulho, uma pedra jogada)' })),
+      gs.length < toks.length ? K.note(`Só os guardas (${gs.length} de ${toks.length} selecionados).`) : null);
   }
 
   /* ---------------- o desenho (só o mestre) ---------------- */
@@ -392,19 +426,22 @@ const Rondas = (() => {
 
   /* ---------------- o painel do grupo Mestre ---------------- */
   function painel(acao, linha, K) {
-    const sc = Store.scene(), gs = guardas(sc), sel = selOf('tokens').filter(ehGuarda);
+    const sc = Store.scene(), gs = guardas(sc);
     const n = { calmo: 0, desconfiado: 0, alerta: 0 };
     gs.forEach(t => n[estadoDe(t)]++);
     return [
       gs.length ? K.note(`${gs.length} ${gs.length === 1 ? 'guarda' : 'guardas'}: ${ESTADOS.filter(e => n[e[0]]).map(e => n[e[0]] + ' ' + e[1].toLowerCase()).join(', ')}.`) : K.note('Nenhum guarda nesta cena. No painel de um token (bloco "Guarda") ele ganha a ronda; os lugares de furtividade já vêm com eles.'),
       linha(acao('Avançar rondas', avancar, { icon: 'ronda', id: 'mtp-rondas', disabled: !gs.length, title: 'Cada guarda anda os passos dele pela rota; o aviso diz quem foi visto (atalho: Shift+W)' })),
-      gs.length ? linha(acao(sel.length ? `Acalmar (${sel.length})` : 'Acalmar todos', () => mudarEstado(sel.length ? sel : gs, 'calmo'), { id: 'mtp-calmo' }),
-        acao(sel.length ? `Alerta (${sel.length})` : 'Todos em alerta', () => mudarEstado(sel.length ? sel : gs, 'alerta'), { id: 'mtp-alerta' })) : null,
+      // (lote 145) todos os guardas da cena de uma vez (para só alguns: selecione e use o bloco "Guardas" do painel)
+      gs.length ? linha(acao('Todos calmos', () => mudarEstado(gs, 'calmo'), { id: 'mtp-calmo', title: 'Todos os guardas da cena ficam Calmos' }),
+        acao('Todos desconfiados', () => mudarEstado(gs, 'desconfiado'), { id: 'mtp-desconf', title: 'Todos os guardas da cena ficam Desconfiados: veem mais longe e mais aberto' }),
+        acao('Todos em alerta', () => mudarEstado(gs, 'alerta'), { id: 'mtp-alerta', title: 'Todos os guardas da cena ficam em Alerta: largam a rota' })) : null,
+      gs.length ? linha(acao('Todos olham para um ponto', () => olharNoMapa(null), { icon: 'eye', id: 'mtp-olhar', title: 'Clique no mapa: todos os guardas da cena viram o cone para lá (um barulho)' })) : null,
       K.toggle('mtp-rver', App.opt.rondasVer !== false, v => { App.opt.rondasVer = v; Render.request(); UI.refresh(); }, 'Mostrar rotas e cones (só você vê)'),
       // (lote 133) o "??" do disfarce: até quantos quadrados um NPC da mesma roupa repara
       K.field('Disfarce: o "??" a até (q)', K.inNum('mtp-disf', typeof Roupas !== 'undefined' ? Roupas.perto() : 3, v => { App.opt.disfPerto = clamp(Math.round(Number(v)) || 3, 1, 20); Render.request(); }, { min: 1, max: 20, step: 1, label: 'Até quantos quadrados um NPC com a mesma roupa repara no disfarçado' })),
     ];
   }
 
-  return { ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
+  return { ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
 })();

@@ -2890,6 +2890,7 @@ const UI = (() => {
           Luta.podeDescanso() && toks.some(t => t.char && !t.clone) ? btn('Descanso curto…', () => Luta.descansoCurto(toks), { icon: 'rest', kind: 'small', id: 'mt-curto', title: 'Abre o Descanso curto do Acampamento com estes tokens já marcados (os ligados a uma ficha). Lá você confere e confirma.' }) : null,
           toks.some(t => t.char && (Fichas.mente(t) || Fichas.fadiga(t))) ? btn('Fadiga, Conforto e Sanidade…', () => menteTodosBox(toks), { icon: 'heart', kind: 'small', id: 'mt-mente', title: 'Para menos ou para mais, nas fichas dos tokens selecionados, de uma vez (com o antes e o depois de cada um)' }) : null) : null) : null,
       condToks.length ? sec('s-cond', 'Condições', true, condActiveMulti(condToks), condMais(condToks)) : null,
+      gm && typeof Rondas !== 'undefined' ? Rondas.blocoGrupo(toks, UI.kit) : null,      // (lote 145) os guardas selecionados: o estado e o olhar
       !gm && !can('target') ? null : h('div', { class: 'row' },
         can('target') ? btn(isTargeted(toks) ? 'Tirar a mira' : 'Mirar', () => Act.targetToggle(toks), { icon: 'center', id: 'mt-mira', title: 'Marca estes tokens como alvo, para a mesa toda ver (tecla A)' }) : null,
         gm ? btn('Aos turnos', () => { const n = Act.turnAdd(toks); toast(n ? `${n} ${n === 1 ? 'token entrou' : 'tokens entraram'} na ordem de turnos.` : 'Todos já estavam na ordem de turnos.'); }, { icon: 'turns' }) : null,

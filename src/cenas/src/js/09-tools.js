@@ -37,8 +37,9 @@ const Tools = (() => {
     { id: 'light', n: 'Luz', k: 'I', i: 'light', grp: 3, gm: true },
     { id: 'fog', n: 'Névoa manual', k: 'U', i: 'fog', grp: 3, gm: true },
     { id: 'terrain', n: 'Terreno', k: 'Q', i: 'terrain', grp: 3, gm: true },
-    { id: 'ronda', n: 'Rota do guarda', i: 'ronda', grp: -1, gm: true },
-    { id: 'gradeImg', n: 'Ajustar a grade à imagem', i: 'gradeImg', grp: -1, gm: true },      // (lote 130) fora do trilho: vem do painel da cena       // (lote 121) fora do trilho: vem do bloco "Guarda"
+    { id: 'ronda', n: 'Rota do guarda', i: 'ronda', grp: -1, gm: true },      // (lote 121) fora do trilho: vem do bloco "Guarda"
+    { id: 'gradeImg', n: 'Ajustar a grade à imagem', i: 'gradeImg', grp: -1, gm: true },      // (lote 130) fora do trilho: vem do painel da cena
+    { id: 'olhar', n: 'Os guardas olham para um ponto', i: 'ronda', grp: -1, gm: true },      // (lote 145) fora do trilho: vem do bloco "Guardas" e do painel do Mestre
   ];
   /* (lote 83) A visão do mestre: "Construção" (mexe em tudo, como sempre) ou "Mestrando" (só os tokens andam; portas,
      luzes, baús e passagens se usam, mas nada do mapa sai do lugar). Cada cena lembra a última, neste aparelho; uma
@@ -1182,6 +1183,30 @@ const Tools = (() => {
       ctx.strokeStyle = pr.edge; ctx.lineWidth = 1.8 * px; ctx.setLineDash([7 * px, 5 * px]); ctx.stroke(ge.path);
       ctx.restore();
       if (g) Render.label(ctx, e.k === 'rect' ? `${fmt(e.rw)} × ${fmt(e.rh)} q` : e.k === 'line' ? `${fmt(e.r)} q de comprimento` : `${fmt(e.r)} q`, ge.hx, ge.hy - 18 * px, px);
+    },
+  };
+
+  /* ---- (lote 145) Os guardas olham para um ponto (um barulho): o mestre clica no mapa e os guardas escolhidos
+     (App.olharIds: os selecionados, ou todos da cena) viram o cone para lá. Esc cancela. ---- */
+  let olharP = null;
+  T.olhar = {
+    hint: 'Clique no ponto para onde os guardas vão olhar (um barulho, uma pedra jogada). Esc cancela.',
+    cursor: 'crosshair',
+    move(p) { olharP = p; Render.request(); },
+    down(p) {
+      const sc = Store.scene(), ids = App.olharIds && App.olharIds.length ? App.olharIds : Rondas.guardas(sc).map(t => t.id);
+      olharP = null; App.olharIds = null;
+      Rondas.olharPara(ids.map(id => Store.get('tokens', id)).filter(Boolean), p.x, p.y);
+      set('select'); Render.request();
+    },
+    key(e) { if (e.key === 'Escape') { olharP = null; App.olharIds = null; set('select'); Render.request(); return true; } return false; },
+    preview(ctx, px, sc) {
+      if (!olharP) return;
+      const ids = App.olharIds && App.olharIds.length ? App.olharIds : Rondas.guardas(sc).map(t => t.id);
+      ctx.save(); ctx.setLineDash([6 * px, 5 * px]); ctx.strokeStyle = 'rgba(240,196,72,0.85)'; ctx.lineWidth = 1.6 * px;
+      for (const id of ids) { const t = Store.get('tokens', id); if (!t || !Rondas.ehGuarda(t)) continue; const [w, hh] = tokWH(t); ctx.beginPath(); ctx.moveTo(t.x + w * sc.cell / 2, t.y + hh * sc.cell / 2); ctx.lineTo(olharP.x, olharP.y); ctx.stroke(); }
+      ctx.setLineDash([]); ctx.fillStyle = 'rgba(240,196,72,0.9)'; ctx.beginPath(); ctx.arc(olharP.x, olharP.y, 6 * px, 0, TAU); ctx.fill();
+      ctx.restore();
     },
   };
 

@@ -464,3 +464,13 @@ de cena mais fácil, num notebook de ~1366×768. O painel da direita e a faixa d
   alçapão escondido (`oculto`). A escolha de antes (cima 0–2, porão sim/não) ainda vale.
 - Objetos novos (06b9): a bancada de alquimia (`alambique`, 2 × 1) e o túnel de fuga (`tunel`).
 - Teste: `test/lote141.js`.
+
+## Lote 145 — a atenção de vários guardas
+
+- `Rondas.blocoGrupo(toks, K)`: no painel de vários tokens, o bloco "Guardas (N)" (só os guardas da seleção): o estado
+  de todos (`mt-alerta`) e "Olhar para um ponto" (`mt-olhar`).
+- `Rondas.olharPara(ts, x, y)` vira o cone de cada um para o ponto (o rumo exato, em graus); `olharNoMapa(ids)` abre a
+  ferramenta `olhar` (09-tools: o clique no mapa, Esc cancela, a prévia com as linhas). Na ronda, o próximo "Avançar
+  rondas" volta a apontar o caminho.
+- Mestre › Rondas: Todos calmos / desconfiados / em alerta (sempre todos da cena) e Todos olham para um ponto.
+- Teste: `test/lote145.js`.
