@@ -474,3 +474,16 @@ de cena mais fácil, num notebook de ~1366×768. O painel da direita e a faixa d
   rondas" volta a apontar o caminho.
 - Mestre › Rondas: Todos calmos / desconfiados / em alerta (sempre todos da cena) e Todos olham para um ponto.
 - Teste: `test/lote145.js`.
+
+## Lote 146 — o casarão com jardim (Furtividade)
+
+- Lugar novo `casarao` (`gerarCasarao`, 60 × 46 no médio): a casa grande na frente (com o escritório trancado), o
+  jardim atrás e do lado: 2 ou 3 estufas (paredes de `mureta` pintadas de vidro: barram a passagem, não a vista; os
+  canteiros dentro), a casa de ferramentas (bancada, carrinho, sacos), o altar num círculo de sebes, a fonte com os
+  bancos, o poço, a horta, o pomar em fileiras, os caminhos de cascalho com flores dos lados.
+- Andares: em cima, os quartos e a `misteriosa` (o círculo, o atril, as velas, o espelho); o tema `misterio`. No porão
+  com a base, a sala `secreta` (neutra); com uma sala só na base, ela fica numa faixa inteira atrás da passagem.
+- Objeto novo (06b9): `canteiro` (2 × 1). O pintor (10g9): o piso `terra` e a linha `vidro`.
+- A cena do Bruno ("Casarão com jardim", 3 cenas, noite, sem guardas, fora do ar) foi gravada direto na mesa, com os
+  fundos em `cenas/mapas/casarao_jardim_*.webp`.
+- Teste: `test/lote146.js` (e o `lote125` passa a contar o banheiro do casarão).

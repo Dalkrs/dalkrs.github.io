@@ -17,13 +17,15 @@
    --------------------------------------------------------------- */
 const Furtividade = (() => {
   const KIT = () => LugaresFora.kit;
-  const IDS = ['mansao', 'fortaleza', 'guilda', 'acampamento', 'ruas', 'torre'];
-  const NOMES = { mansao: 'Mansão do nobre', fortaleza: 'Fortaleza', guilda: 'Guilda e cofre', acampamento: 'Acampamento inimigo', ruas: 'Casas e ruas', torre: 'Torre de guarda' };
-  const CURTO = { mansao: 'Mansão', fortaleza: 'Fortaleza', guilda: 'Guilda', acampamento: 'Acampamento', ruas: 'Ruas', torre: 'Torre' };
+  // (lote 146) o casarão com jardim: a casa grande (não é mansão), o jardim enorme com as estufas, a casa de ferramentas e o altar
+  const IDS = ['mansao', 'casarao', 'fortaleza', 'guilda', 'acampamento', 'ruas', 'torre'];
+  const NOMES = { mansao: 'Mansão do nobre', casarao: 'Casarão com jardim', fortaleza: 'Fortaleza', guilda: 'Guilda e cofre', acampamento: 'Acampamento inimigo', ruas: 'Casas e ruas', torre: 'Torre de guarda' };
+  const CURTO = { mansao: 'Mansão', casarao: 'Casarão', fortaleza: 'Fortaleza', guilda: 'Guilda', acampamento: 'Acampamento', ruas: 'Ruas', torre: 'Torre' };
   const TAM = { pequeno: { n: 'Pequeno', k: 0.84 }, medio: { n: 'Médio', k: 1 }, grande: { n: 'Grande', k: 1.2 } };
   const GUARDAS = [['poucos', 'Poucos'], ['normal', 'Normal'], ['muitos', 'Muitos']];
   const ALVOS = {
     mansao: [['cofre', 'O cofre'], ['documento', 'Um documento'], ['pessoa', 'O senhor da casa'], ['artefato', 'Uma relíquia']],
+    casarao: [['documento', 'Um documento'], ['cofre', 'O cofre do escritório'], ['pessoa', 'O dono da casa'], ['artefato', 'O que está na sala misteriosa']],
     fortaleza: [['prisioneiro', 'Um prisioneiro'], ['documento', 'As ordens'], ['cofre', 'O cofre do soldo'], ['pessoa', 'O comandante']],
     guilda: [['cofre', 'O cofre forte'], ['documento', 'O livro de contas'], ['artefato', 'Uma joia rara']],
     acampamento: [['prisioneiro', 'Os cativos'], ['documento', 'O mapa do chefe'], ['pessoa', 'O chefe'], ['cofre', 'O baú do saque']],
@@ -297,6 +299,9 @@ const Furtividade = (() => {
     reuniao(K, q) { const m = noMeio(K, q, 'mesaGuerra', 2, 2, 0) || noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 6); encosta(K, q, 'estante', 2, 1, 1); canto(K, q, 'candelabro'); canto(K, q, 'estandarte'); },
     laboratorio(K, q) { encosta(K, q, 'alambique', 2, 1, 1); canto(K, q, 'caldeirao'); encosta(K, q, 'estante', 2, 1, 1); canto(K, q, 'jarro'); canto(K, q, 'vela'); canto(K, q, 'bau'); },
     tunel(K, q) { canto(K, q, 'tunel', { n: 'O túnel de fuga', notas: 'Sai longe da casa (o mestre decide onde).' }); canto(K, q, 'escombros'); canto(K, q, 'caixote'); canto(K, q, 'lampiao'); },
+    // (lote 146) a sala misteriosa (o círculo, o atril, as velas, o espelho coberto) e a sala secreta (neutra: o mestre decide)
+    misteriosa(K, q) { noMeio(K, q, 'circulo', 2, 2, 0); canto(K, q, 'atril'); canto(K, q, 'vela'); canto(K, q, 'vela'); canto(K, q, 'vela'); encosta(K, q, 'espelho', 1, 1, 1); canto(K, q, 'estatua'); encosta(K, q, 'estante', 2, 1, 1); canto(K, q, 'bau'); },
+    secreta(K, q) { encosta(K, q, 'estante', 2, 1, 2); const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 1); canto(K, q, 'bau'); canto(K, q, 'vela'); canto(K, q, 'vela'); canto(K, q, 'cofre'); },
     tenda(K, q) { canto(K, q, 'pele'); canto(K, q, 'pele'); canto(K, q, 'bau'); canto(K, q, 'armas'); const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 1); canto(K, q, 'braseiro'); },
   };
   const mobiliar = (K, q) => { const f = MOB[q.papel]; if (f) KIT().dentro(K, q, () => f(K, q)); else KIT().dentro(K, q, () => {}); };
@@ -449,11 +454,12 @@ const Furtividade = (() => {
     const K = plano(lugar, W, H, KIT().sub(o.seed, 300 + nivel), o);
     K.p.guardas_ = o.guardas; K.p.nivel = nivel; K.p.fundo = 'rocha';
     for (const e of escs) K.reserva.add(e[0] + ',' + e[1]);
-    const wl = clamp(Math.round(rect.w * 0.55), 4, rect.w - 4), xs = rect.x + wl, yd = rect.y + Math.floor(rect.h / 2);
+    // (lote 146) uma sala só na base (a "sala secreta"): ela fica com uma faixa estreita, inteira
+    const so1 = base.length === 1, wl = so1 ? rect.w - clamp(Math.round(rect.w * 0.3), 4, 8) : clamp(Math.round(rect.w * 0.55), 4, rect.w - 4), xs = rect.x + wl, yd = rect.y + Math.floor(rect.h / 2);
     K.reserva.add((xs - 1) + ',' + yd); K.reserva.add(xs + ',' + yd);
     const comum = { portaFrente: false, fundosPorta: false, janelas: false, corredor: rect.h >= 9, larg: 2, min: 3, max: 6, extra: 0.25, pisoBase: 'laje' };
     const BL = predio(K, rect.x, rect.y, wl, rect.h, Object.assign({}, comum, cfg, { portaFrente: false, fundosPorta: false, janelas: false, secreta: null }));
-    const BR = predio(K, xs, rect.y, rect.w - wl, rect.h, Object.assign({}, comum, { corredor: false, min: 3, max: 5, extra: 0.5, entrada: base[0], papeis: base.slice(1), resto: ['deposito'], trancar: ['cofreForte', 'cela'], nivelSala: 'dificil' }));
+    const BR = predio(K, xs, rect.y, rect.w - wl, rect.h, Object.assign({}, comum, { corredor: false, min: so1 ? rect.w - wl : 3, max: so1 ? rect.w - wl : 5, extra: 0.5, entrada: base[0], papeis: base.slice(1), resto: ['deposito'], trancar: ['cofreForte', 'cela'], nivelSala: 'dificil' }));
     // a linha entre as duas: tira as paredes das duas e põe uma só, com a porta secreta no meio
     const naLinha = w => w.x1 === xs && w.x2 === xs && Math.min(w.y1, w.y2) >= rect.y && Math.max(w.y1, w.y2) <= rect.y + rect.h;
     K.p.paredes = K.p.paredes.filter(w => !naLinha(w));
@@ -515,9 +521,10 @@ const Furtividade = (() => {
   // o fim dos andares: o resumo de cada um e a lista no plano do térreo
   function fechaAndares(p, F, lugar, o) { p.andares = F.filter(f => f.nivel !== 0).map(f => { const q = fim(f.K.p, lugar, o); q.nomeAndar = NOME_ANDAR(f.nivel); return q; }); }
   // as escolhas dos andares (a janela): de cima 0 a 5, o porão (0 a 2) e a base secreta (lote 141)
-  const ANDARES_OK = { mansao: true, fortaleza: true, guilda: true, ruas: true, torre: true };
+  const ANDARES_OK = { mansao: true, casarao: true, fortaleza: true, guilda: true, ruas: true, torre: true };
   const T_CIMA = {
     nobres: { n: 'Quartos nobres', lista: ['sala', 'quartoSenhor', 'banheiro', 'escritorio', 'quarto', 'quarto'] },
+    misterio: { n: 'Quartos e a sala misteriosa', lista: ['sala', 'misteriosa', 'quartoSenhor', 'banheiro', 'quarto', 'quarto'] },      // (lote 146)
     quartos: { n: 'Quartos', lista: ['quarto', 'banheiro', 'quarto', 'sala'] },
     servico: { n: 'Serviço', lista: ['cozinha', 'despensa', 'criados', 'deposito'] },
     trabalho: { n: 'Trabalho', lista: ['escritorio', 'arquivo', 'biblioteca', 'escritorio'] },
@@ -534,14 +541,14 @@ const Furtividade = (() => {
     tesouro: { n: 'Cofre forte', lista: ['guarda', 'cofreForte', 'deposito'] },
     deposito: { n: 'Depósito', lista: ['deposito', 'deposito', 'adega'] },
   };
-  const PADRAO_CIMA = { mansao: 'nobres', fortaleza: 'quartel', guilda: 'trabalho', ruas: 'quartos', torre: 'torreGuarda' };
-  const PADRAO_PORAO = { mansao: 'adega', fortaleza: 'celas', guilda: 'tesouro', ruas: 'adega', torre: 'celas' };
+  const PADRAO_CIMA = { mansao: 'nobres', casarao: 'misterio', fortaleza: 'quartel', guilda: 'trabalho', ruas: 'quartos', torre: 'torreGuarda' };
+  const PADRAO_PORAO = { mansao: 'adega', casarao: 'adega', fortaleza: 'celas', guilda: 'tesouro', ruas: 'adega', torre: 'celas' };
   const catF = lugar => {
     const cima = Object.assign({}, T_CIMA);
     if (lugar !== 'torre') { delete cima.torreGuarda; delete cima.vigia; }
     return {
       salas: Object.keys(MOB).filter(k => !['corredor', 'tenda', 'torre', 'estabulo'].includes(k)), cima, porao: T_PORAO,
-      base: ['reuniao', 'arsenal', 'dormitorio', 'laboratorio', 'cofreForte', 'cela', 'tunel'],
+      base: ['reuniao', 'arsenal', 'dormitorio', 'laboratorio', 'cofreForte', 'cela', 'tunel', 'secreta'],      // (lote 146: e a sala secreta, neutra)
       padrao: (n, N) => (n < 0 ? PADRAO_PORAO[lugar] || 'adega' : N >= 2 && n === N ? (lugar === 'torre' ? 'vigia' : 'sotao') : PADRAO_CIMA[lugar] || 'quartos'),
     };
   };
@@ -628,6 +635,129 @@ const Furtividade = (() => {
     p.chegada = [gx, H - 1];
     fechaAndares(p, F, 'mansao', o);
     return fim(p, 'mansao', o);
+  }
+
+  /* ================= (lote 146) o casarão com jardim =================
+     A casa grande e bem arrumada (não é mansão) na frente do terreno, com o escritório; o jardim enorme atrás e do lado:
+     as estufas (paredes de vidro, os canteiros dentro), a casa de ferramentas, o altar num canto quieto (no círculo de
+     sebes), a fonte, os bancos, o poço, a horta e o pomar. O andar de cima (os quartos e a sala misteriosa) e o porão. */
+  function gerarCasarao(o) {
+    const k = TAM[o.tamanho].k, W = Math.round(60 * k), H = Math.round(46 * k), K = plano('casarao', W, H, o.seed, o), { p, r } = K;
+    p.guardas_ = o.guardas;
+    K.pinta('piso', { x: 0, y: H - 2, w: W, h: 2, tipo: 'calcada' });                         // a rua de fora
+    const mx0 = 2, my0 = 2, mx1 = W - 2, my1 = H - 2, gx = Math.round(W * 0.3);
+    // a casa: na frente do terreno, à esquerda; o jardim fica atrás (ao norte) e do lado (a leste)
+    const bw = Math.round(W * 0.4), bh = Math.max(12, Math.round(H * 0.32)), bx = Math.max(mx0 + 4, gx - Math.round(bw / 2)), by = my1 - 5 - bh;
+    const rect = { x: bx, y: by, w: bw, h: bh }, sobe = o.cima > 0;
+    const rota = volta(rect, 2, { x0: mx0 + 1, y0: my0 + 1, x1: mx1 - 2, y1: my1 - 2 });
+    { const [[ax, ay], [bx2], [, by2]] = [rota[0], rota[1], rota[2]]; for (let x = ax; x <= bx2; x++) { K.reserva.add(x + ',' + ay); K.reserva.add(x + ',' + by2); } for (let y = ay; y <= by2; y++) { K.reserva.add(ax + ',' + y); K.reserva.add(bx2 + ',' + y); } }
+    muro(K, mx0, my0, mx1, my1, 'muro', [{ horiz: true, a: my1, de: gx - 1, ate: gx + 1 }]);
+    portao(K, gx, my1);
+    K.pinta('caminho', { pts: [[gx, H - 0.5], [gx, by + bh + 0.5]], w: 2.2, tipo: 'terra' });
+    for (let y = by + bh; y < my1; y++) for (const x of [gx - 1, gx]) K.reserva.add(x + ',' + y);
+    const B = predio(K, bx, by, bw, bh, Object.assign({ corredor: true, larg: 2, min: 4, max: 7, entrada: 'sala', fundos: ['cozinha', 'despensa'], trancada: true, nivelFrente: 'medio', fundosPorta: true, nivelFundos: 'facil', nivelSala: 'dificil', extra: 0.3, piso: { cozinha: 'laje', despensa: 'laje', banheiro: 'ladrilho' } },
+      sobe ? { papeis: ['escritorio', 'salao', 'cozinha', 'banheiro', 'biblioteca', 'despensa'], resto: ['sala'], trancar: ['escritorio'] }
+        : { papeis: ['escritorio', 'salao', 'quartoSenhor', 'banheiro', 'cozinha', 'biblioteca', 'despensa'], resto: ['quarto', 'misteriosa'], trancar: ['escritorio', 'quartoSenhor', 'misteriosa'] }));
+    const E = escadas(K, B, rect, o);
+    for (const q of B.salas) mobiliar(K, q);
+    // os caminhos do jardim (de cascalho): da porta dos fundos à fonte, e dela às estufas, à casa de ferramentas e ao altar
+    const fy = Math.round((my0 + by) / 2) - 1, fx = Math.round(bx + bw / 2) + 2;
+    const fundos = B.fundos ? B.fundos.fora : [fx, by - 1];
+    const caminho = pts => { K.pinta('caminho', { pts: pts.map(([x, y]) => [x + 0.5, y + 0.5]), w: 1.6, tipo: 'terra' }); for (let i = 1; i < pts.length; i++) { const [ax, ay] = pts[i - 1], [cx, cy] = pts[i], n = Math.max(Math.abs(cx - ax), Math.abs(cy - ay)); for (let s2 = 0; s2 <= n; s2++) K.reserva.add(Math.round(ax + (cx - ax) * s2 / (n || 1)) + ',' + Math.round(ay + (cy - ay) * s2 / (n || 1))); } };
+    // as estufas: duas (três, no grande), em fileira no canto de cima à direita; a porta embaixo, no meio
+    const ew = 9, eh = 6, ne = W >= 66 ? 3 : 2, ey = my0 + 3, estufas = [];
+    for (let i = 0; i < ne; i++) {
+      const ex = mx1 - 3 - ew - i * (ew + 2);
+      const q = KIT().construcao(K, ex, ey, ew, eh, { lado: 's' }, 'terra', 'estufa', { k: 'mureta', vidro: true });      // (o vidro: barra a passagem, não a vista)
+      KIT().dentro(K, q, () => {
+        for (let x = ex; x + 2 <= ex + ew; x += 2) { K.poeR('canteiro', x, ey, 2, 1, 0); if (x + 2 <= ex + ew && Math.abs(x + 1 - (ex + Math.floor(ew / 2))) > 1) K.poeR('canteiro', x, ey + eh - 1, 2, 1, 0); }
+        for (let x = ex + 1; x + 2 <= ex + ew - 1; x += 3) K.poeR('canteiro', x, ey + 2, 2, 1, 0);
+        K.poe1('jarro', ex + ew - 1, ey + 3); K.poe1('carrinhoMao', ex, ey + 3);
+      });
+      K.ocupa(ex, ey, ew, eh);
+      estufas.push(q);
+      caminho([[ex + Math.floor(ew / 2), ey + eh], [ex + Math.floor(ew / 2), fy + 1]]);
+    }
+    K.marca('interesse', estufas[0].x + 1, estufas[0].y + eh, 'As estufas', 'Paredes de vidro: quem está dentro vê o jardim, e é visto. Os canteiros escondem quem se agacha.');
+    // a casa de ferramentas: madeira, a porta para o caminho; dentro, a bancada, o carrinho, os sacos e o barril
+    const tw = 6, th = 4, tx = mx1 - 2 - tw, ty = ey + eh + 4;
+    const qt = KIT().construcao(K, tx, ty, tw, th, { lado: 'o' }, 'madeira', 'ferramentas');
+    KIT().dentro(K, qt, () => { K.poeR('bancada', tx + 1, ty, 2, 1, 0); K.poe1('carrinhoMao', tx + tw - 1, ty + th - 1); K.poe1('sacos', tx + tw - 1, ty); K.poe1('barril', tx, ty + th - 1); K.poe1('caixote', tx + 3, ty + th - 1); K.poe1('lampiao', tx, ty); });
+    K.ocupa(tx, ty, tw, th);
+    caminho([[tx - 1, ty + Math.floor(th / 2)], [fx + 3, ty + Math.floor(th / 2)], [fx + 3, fy + 1]]);
+    esconderijo(K, tx + 2, ty + 1, 'feno', 'Atrás da bancada, debaixo dos sacos');
+    // o altar: no canto de cima à esquerda, num círculo de sebes, com a abertura para o caminho
+    const ax = mx0 + 6, ay = my0 + 5;
+    for (let a = 0; a < 16; a++) { const ang = a / 16 * Math.PI * 2, x = Math.round(ax + Math.cos(ang) * 4), y = Math.round(ay + Math.sin(ang) * 3.5); if (a >= 1 && a <= 3) continue; K.poe1('arbusto', x, y); }
+    K.poe1('altar', ax, ay, 0, { n: 'O altar do jardim', notas: 'Um altar pequeno, de pedra, com flores frescas.' });
+    K.poe1('vela', ax - 1, ay); K.poe1('vela', ax + 1, ay); K.poe1('estatua', ax, ay - 2); K.poe1('flores', ax - 1, ay + 1); K.poe1('flores', ax + 1, ay + 1); K.poe1('banco', ax - 1, ay + 2);
+    caminho([[ax + 3, ay + 3], [ax + 3, fy + 1], [fx, fy + 1]]);
+    K.marca('interesse', ax, ay + 1, 'O altar do jardim', 'No círculo de sebes: de fora, quase não se vê quem está dentro.');
+    // a fonte no meio do jardim, os bancos e o caminho da porta dos fundos
+    caminho([[fundos[0], fundos[1]], [fundos[0], fy + 1], [fx, fy + 1]]);
+    K.poeR('fonte', fx, fy - 2, 2, 2, 0);
+    for (const [x, y] of [[fx - 3, fy - 2], [fx + 3, fy - 2]]) K.poeR('banco', x, y, 2, 1, 90);
+    for (const [x, y] of [[fx - 1, fy - 4], [fx + 2, fy - 4]]) K.poe1('estatua', x, y);
+    // os canteiros de flores dos dois lados dos caminhos (deixam o caminho livre)
+    for (const c of p.pintados.filter(x => x.k === 'caminho' && x.w < 2)) for (let i = 1; i < c.pts.length; i++) {
+      const [ax2, ay2] = c.pts[i - 1], [bx3, by3] = c.pts[i], n = Math.max(Math.abs(bx3 - ax2), Math.abs(by3 - ay2)), hz = Math.abs(bx3 - ax2) > Math.abs(by3 - ay2);
+      for (let s2 = 1; s2 < n; s2 += 2) { const x = Math.floor(ax2 + (bx3 - ax2) * s2 / n), y = Math.floor(ay2 + (by3 - ay2) * s2 / n); if (r() < 0.6) K.poe1(r() < 0.7 ? 'flores' : 'arbusto', hz ? x : x - 2, hz ? y - 2 : y); if (r() < 0.6) K.poe1(r() < 0.7 ? 'flores' : 'arbusto', hz ? x : x + 2, hz ? y + 2 : y); }
+    }
+    K.poe1('poco', tx - 3, ty + th + 2);
+    // a horta, ao lado das estufas
+    for (let i = 0; i < 4; i++) K.poeR('canteiro', mx1 - 3 - ew * ne - 2 * ne + 2 + i * 3, ey + eh + 2, 2, 1, 0);
+    // o pomar (do lado da casa) e as árvores soltas do jardim; as sebes junto do muro
+    // o pomar: as árvores em fileiras (com um pouco de sorteio), do lado da casa
+    for (let y = ty + th + 5; y < my1 - 3; y += 4) for (let x = bx + bw + 5; x < mx1 - 3; x += 4) if (r() < 0.8) K.poeR('arvore', x + K.ri(0, 1), y + K.ri(0, 1), 2, 2, 0);
+    mato(K, { x0: mx0 + 2, y0: ay + 6, x1: bx - 2, y1: by + bh }, Math.round(5 * k));
+    mato(K, { x0: mx0 + 12, y0: my0 + 2, x1: fx - 4, y1: fy - 3 }, Math.round(5 * k));
+    mato(K, { x0: bx + bw + 3, y0: fy + 3, x1: tx - 4, y1: by + 4 }, Math.round(4 * k));
+    for (let x = mx0 + 1; x < mx1 - 1; x += 1) { if (Math.abs(x - gx) <= 2) continue; if (r() < 0.5) K.poe1('arbusto', x, my1 - 1); }
+    for (let y = my0 + 1; y < my1 - 1; y++) { if (r() < 0.35) K.poe1('arbusto', mx0, y); if (r() < 0.35) K.poe1('arbusto', mx1 - 1, y); }
+    for (let i = 0; i < Math.round(10 * k); i++) K.poe1('flores', K.ri(mx0 + 2, mx1 - 3), K.ri(my0 + 2, my1 - 3));
+    // as luzes: o portão e a porta da frente; o jardim fica no escuro (só a fonte tem um lampião)
+    K.poe1('tocha', gx - 2, my1 - 1); K.poe1('tocha', gx + 1, my1 - 1);
+    if (B.porta) { K.poe1('lampiao', B.porta.x - 2, B.porta.y); K.poe1('lampiao', B.porta.x + 2, B.porta.y); }
+    K.poe1('lampiao', fx + 2, fy + 1);
+    // as entradas: a hera do muro (nos fundos, atrás do altar), a escada de mão dos jardineiros
+    const hx = K.ri(mx0 + 12, mx1 - 4 - ew * ne - 2 * ne);
+    K.p.objetos.push({ id: 'hera', x: hx, y: my0 - 1, s: 1, rot: 180 }); K.marca('interesse', hx + 1, my0 - 1, 'Entrada: a hera do muro', 'Dá para escalar o muro aqui, nos fundos do jardim (longe do portão).');
+    // os andares: em cima, os quartos e a sala misteriosa; o sótão; embaixo, a adega
+    const F = andares(o, 'casarao', W, H, K, B, rect, E, {
+      cima: [{ entrada: 'sala', papeis: ['misteriosa', 'quartoSenhor', 'banheiro', 'quarto', 'quarto'], resto: ['quarto'], piso: { banheiro: 'ladrilho' }, trancar: ['misteriosa', 'quartoSenhor'], nivelSala: 'dificil', janelaCorredor: true },
+        { entrada: 'sotao', papeis: ['criados'], resto: ['sotao'], trancar: [] }],
+      porao: { entrada: 'adega', papeis: ['adega', 'deposito', 'despensa'], resto: ['deposito'], trancar: [], nivelSala: 'medio' } });
+    const f1 = F.find(f => f.nivel === 1), ja = f1 && f1.B.janelaAberta;
+    if (ja) {
+      const u = ja.u, [lx, ly, rt] = ja.lado === 's' ? [u.x1, u.y1, 0] : ja.lado === 'n' ? [u.x1, u.y1 - 2, 0] : ja.lado === 'o' ? [u.x1 - 2, u.y1, 90] : [u.x1, u.y1, 90];
+      if (K.livre(lx, ly) && K.livre(lx + (rt ? 1 : 0), ly + (rt ? 0 : 1))) { K.p.objetos.push({ id: 'escadaMao', x: lx, y: ly, s: 2, fw: 1, fh: 2, rot: rt }); K.ocupa(lx, ly, rt ? 2 : 1, rt ? 1 : 2); K.marca('interesse', lx + (rt ? 0 : 1), ly + (rt ? 1 : 0), 'Entrada: a janela do 1º andar', 'A escada de mão dos jardineiros chega até uma janela destrancada do 1º andar.'); }
+    }
+    // os quadros, a escrivaninha e a penteadeira
+    for (const f of F) for (const q of f.B.salas) {
+      if (q.papel === 'quartoSenhor') { encosta(f.K, q, 'penteadeira', 2, 1, 1); encosta(f.K, q, 'quadro', 1, 1, 1); }
+      if (q.papel === 'escritorio') { encosta(f.K, q, 'escrivaninha', 2, 1, 1); encosta(f.K, q, 'quadro', 1, 1, 1); }
+      if (q.papel === 'sala' || q.papel === 'salao') { encosta(f.K, q, 'relogioPe', 1, 1, 1); canto(f.K, q, 'lustre'); }
+    }
+    // o alvo
+    const a = alvoDe(K, 'casarao', o.alvo), sala = pap => salaEm(F, pap, [0, 1, 2, -1]) || { K, q: B.salas[1] };
+    if (a === 'cofre') { const S2 = sala('escritorio'); alvo(S2.K, S2.q, 'cofre', { id: 'cofreParede', n: 'O cofre do escritório', notas: 'Atrás do quadro, trancado (fechadura difícil).' }); }
+    else if (a === 'documento') { const S2 = sala('escritorio'); alvo(S2.K, S2.q, 'documento', { n: 'O documento', notas: 'Na escrivaninha do escritório.' }); }
+    else if (a === 'pessoa') { const S2 = sala('quartoSenhor'); alvo(S2.K, S2.q, 'pessoa', { n: 'O dono da casa', notas: 'Dormindo.' }); }
+    else { const S2 = salaEm(F, 'misteriosa', [1, 0, 2, -1]) || sala('biblioteca'); alvo(S2.K, S2.q, 'artefato', { id: 'calice', n: 'O objeto da sala misteriosa', notas: 'O mestre decide o que é.' }); }
+    // os guardas: o portão, a ronda em volta da casa, a do jardim (das estufas ao altar) e a da casa
+    posto(K, gx - 2, my1 - 2, 's', { r: 7 });
+    if (qtd(K, [0, 1, 1])) posto(K, gx + 1, my1 - 2, 's', { r: 7 });
+    ronda(K, rota, 'volta', { k: 0, passo: 4, r: 6 });
+    ronda(K, [[ax + 6, fy + 1], [fx, fy + 1], [estufas[0].x + Math.floor(ew / 2), fy + 1], [tx - 1, ty + Math.floor(th / 2)]], 'ida', { passo: 4, r: 6 });
+    if (qtd(K, [0, 0, 1])) ronda(K, rota, 'volta', { k: 2, passo: 4, r: 6 });
+    if (B.corr) ronda(K, [[B.corr.x + 1, B.corr.y], [B.corr.x + B.corr.w - 2, B.corr.y]], 'ida', { passo: 3, r: 6, a: 80 });
+    if (qtd(K, [0, 1, 1]) && B.fundos) posto(K, B.fundos.fora[0], B.fundos.fora[1] - 1, 'n', { r: 6 });
+    guardasDosAndares(F, o);
+    sombras(K, qtd(K, [4, 5, 6]), { x0: mx0 + 1, y0: my0 + 1, x1: mx1 - 2, y1: my1 - 2 });
+    p.cena = B.porta ? [B.porta.x, B.porta.y - 2] : [gx, by + 2];
+    p.chegada = [gx, H - 1];
+    fechaAndares(p, F, 'casarao', o);
+    return fim(p, 'casarao', o);
   }
 
   /* ================= a fortaleza ================= */
@@ -969,7 +1099,7 @@ const Furtividade = (() => {
     p.lugar = lugar; p.tamanho = o.tamanho; p.guardasOp = o.guardas; p.alvoOp = o.alvo || 'sorteio';
     return p;
   }
-  const GERA = { mansao: gerarMansao, fortaleza: gerarFortaleza, guilda: gerarGuilda, acampamento: gerarAcampamento, ruas: gerarRuas, torre: gerarTorre };
+  const GERA = { mansao: gerarMansao, casarao: gerarCasarao, fortaleza: gerarFortaleza, guilda: gerarGuilda, acampamento: gerarAcampamento, ruas: gerarRuas, torre: gerarTorre };
   function gerar(lugar, o) {
     o = Object.assign({}, o);
     o.tamanho = TAM[o.tamanho] ? o.tamanho : 'medio';

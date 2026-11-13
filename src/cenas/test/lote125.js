@@ -20,7 +20,7 @@ const ok = (c, m) => { n++; if (!c) { fails++; console.log('FALHOU:', m); } };
   });
   ok(r.existem && r.oriental, 'os seis objetos do banheiro (e o biombo oriental continua o dele): ' + JSON.stringify(r));
   ok(!r.faltam.length, 'os 28 objetos novos aparecem nos geradores — faltam: ' + JSON.stringify(r.faltam));
-  ok(JSON.stringify(r.banho) === JSON.stringify(['mansao', 'ruas']), 'o banheiro sai na mansão e nas casas das ruas: ' + JSON.stringify(r.banho));
+  ok(JSON.stringify(r.banho) === JSON.stringify(['casarao', 'mansao', 'ruas']), 'o banheiro sai na mansão, no casarão (lote 146) e nas casas das ruas: ' + JSON.stringify(r.banho));
   const inesperados = t.errs.filter(e => !/favicon/.test(e));
   ok(!inesperados.length, 'sem erros no console: ' + inesperados.slice(0, 3).join(' | '));
   await t.close();

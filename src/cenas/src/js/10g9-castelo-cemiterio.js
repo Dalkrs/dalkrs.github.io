@@ -49,7 +49,7 @@ const LugaresFora = (() => {
         if (k >= pp && k < pp + pl && pp >= 0) { if (porta.k !== 'nada') { if (porta.k === 'portao') { if (k === pp) K.p.objetos.push(horiz ? { id: 'portao', x: ax + pp, y: ay - 0.5, s: 1 } : { id: 'portao', x: ax - 0.5, y: ay + pp, s: 1, rot: 90 }); } else K.parede(s[0], s[1], s[2], s[3], 'door'); } continue; }
         if (o.ruina && r() < o.ruina) { K.pinta('entulho', { x: (s[0] + s[2]) / 2, y: (s[1] + s[3]) / 2, r: 0.7 }); continue; }
         K.parede(s[0], s[1], s[2], s[3], o.k || 'wall');
-        K.pinta('paredeFina', { x1: s[0], y1: s[1], x2: s[2], y2: s[3] });
+        K.pinta(o.vidro ? 'vidro' : 'paredeFina', { x1: s[0], y1: s[1], x2: s[2], y2: s[3] });      // (lote 146: a parede de vidro, da estufa)
       }
     }
     K.ocupa(x, y, w, h);
@@ -340,6 +340,7 @@ const LugaresFora = (() => {
       if (o.k === 'piso') {
         if (o.tipo === 'madeira') { g.fillStyle = '#6e4e32'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c); g.strokeStyle = 'rgba(40,24,12,0.5)'; g.lineWidth = Math.max(1, c * 0.03); for (let y = o.y; y < o.y + o.h; y += 0.33) { g.beginPath(); g.moveTo(o.x * c, y * c); g.lineTo((o.x + o.w) * c, y * c); g.stroke(); } }
         else if (o.tipo === 'calcada') blocos(o.x, o.y, o.w, o.h, P.pedra.map(x => x), P.junta, 0.5);
+        else if (o.tipo === 'terra') { g.fillStyle = '#5a4430'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c); g.fillStyle = 'rgba(30,20,10,0.25)'; for (let k = 0; k < o.w * o.h * 2; k++) { const px = o.x + ((k * 7.31) % o.w), py = o.y + ((k * 3.17) % o.h); g.fillRect(px * c, py * c, c * 0.08, c * 0.08); } }      // (lote 146) o chão de terra (a estufa)
         else blocos(o.x, o.y, o.w, o.h, ['#8f8a80', '#9a958a', '#857f76', '#a29c90'], '#5a5650', 1);
       } else if (o.k === 'caminho') {
         g.strokeStyle = P.terra[0]; g.lineWidth = o.w * c; g.lineCap = 'round'; g.beginPath(); o.pts.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.stroke();
@@ -347,6 +348,9 @@ const LugaresFora = (() => {
       } else if (o.k === 'agua') {
         const gr = g.createLinearGradient(o.x * c, o.y * c, (o.x + o.w) * c, (o.y + o.h) * c); gr.addColorStop(0, '#2f5e7d'); gr.addColorStop(1, '#3f7396');
         g.fillStyle = gr; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c);
+      } else if (o.k === 'vidro') {      // (lote 146) a parede de vidro (a estufa): a moldura fina e o vidro claro
+        g.strokeStyle = 'rgba(190,235,250,0.55)'; g.lineWidth = 0.3 * c; g.lineCap = 'butt'; g.beginPath(); g.moveTo(o.x1 * c, o.y1 * c); g.lineTo(o.x2 * c, o.y2 * c); g.stroke();
+        g.strokeStyle = '#d8e8ec'; g.lineWidth = Math.max(1, 0.06 * c); g.stroke();
       } else if (o.k === 'muralha' || o.k === 'muro' || o.k === 'paredeFina') {
         const larg = o.k === 'muralha' ? 0.9 : o.k === 'muro' ? 0.35 : 0.22;
         g.strokeStyle = o.k === 'muralha' ? '#6f6b64' : o.k === 'muro' ? '#7d786f' : '#4a4038'; g.lineWidth = larg * c; g.lineCap = 'square';

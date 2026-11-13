@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.13-01",
+      "data": "2026-11-13",
+      "titulo": "O casarão com jardim",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: no Gerador de mapas, em Furtividade, o lugar novo “Casarão”: uma casa grande e bem arrumada, com escritório, e um jardim enorme com estufas de vidro, casa de ferramentas, um pequeno altar, fonte, horta e pomar. Dá para pôr andares em cima e porão.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: as salas novas para os andares: a sala misteriosa e a sala secreta (no porão com base secreta).", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: o objeto novo Canteiro (de mudas), em Objetos.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.12-03",
       "data": "2026-11-12",
       "titulo": "A atenção dos guardas",

@@ -18,7 +18,7 @@ const PlantaAndares = (() => {
     arquivo: 'Arquivo', galeria: 'Galeria', salao: 'Salão', nobre: 'Salão nobre', capela: 'Capela', vestibulo: 'Vestíbulo',
     dormitorio: 'Dormitório', refeitorio: 'Refeitório', arsenal: 'Arsenal', comandante: 'Sala do comandante', guarda: 'Sala da guarda',
     cela: 'Cela', sotao: 'Sótão', adega: 'Adega', loja: 'Loja', forja: 'Forja', vigia: 'Sala do vigia',
-    reuniao: 'Sala de reunião (com o mapa)', laboratorio: 'Laboratório de alquimia', cofre: 'Cofre', cofreForte: 'Cofre', tunel: 'Túnel de fuga',
+    misteriosa: 'Sala misteriosa', secreta: 'Sala secreta', reuniao: 'Sala de reunião (com o mapa)', laboratorio: 'Laboratório de alquimia', cofre: 'Cofre', cofreForte: 'Cofre', tunel: 'Túnel de fuga',
   };
   const nome = p => NOMES[p] || p;
   const MAX_SALAS = 12;

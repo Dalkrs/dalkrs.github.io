@@ -37,6 +37,7 @@ const Gerador = (() => {
     // (lote 121) a furtividade: a mansão (a casa grande com o muro), a fortaleza (a torre com as ameias), a guilda (o cofre),
     // o acampamento (a barraca e o fogo), as ruas (as casas e o lampião) e a torre de guarda (a torre e o olho)
     mansao: 'M3 20h18M5 20v-8l7-5 7 5v8M9.5 20v-4h5v4M8 13h.1M16 13h.1M2.5 20v-3h2M21.5 20v-3h-2',
+    casarao: 'M2 20h20M4 20v-7l5-4 5 4v7M7 20v-3h4v3M16 20v-5h5v5M16 15l2.5-2 2.5 2M18 8c0-2 2-3 3-3-1 2-1 4-3 4',      // (lote 146) o casarão (a casa e a estufa, com a folha)
     fortaleza: 'M5 20V9h2.5v2H10V9h4v2h2.5V9H19v11H5zM10.5 20v-4.5h3V20M3 20h18',
     guilda: 'M4 5h16v14H4zM12 12m-3.5 0a3.5 3.5 0 1 0 7 0 3.5 3.5 0 1 0-7 0M12 8.5V12l2 1.5M7 8h.1M17 16h.1',
     acampamento: 'M3 19 10 6l7 13H3zM10 6v13M8 19l2-5 2 5M17.5 19c0-1.5 1-2 1-3.2.8.6 2 1.8 2 3.2M16 19h6',

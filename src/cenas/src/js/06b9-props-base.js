@@ -3,6 +3,7 @@
      · a bancada de alquimia (2 × 1, de costas para a parede): os frascos coloridos, o alambique de cobre e a chama;
      · o túnel de fuga (1 × 1): a boca do túnel escorada com tábuas, para sair longe da casa.
    O gerador põe a base no porão (o "Gerar o interior" e a Furtividade, 10g e 10gc).
+     (lote 146) E o canteiro, para as estufas e a horta do casarão com jardim (10gc).
    --------------------------------------------------------------- */
 (() => {
   const { caixa, linha, grad, radial, hsh, MAD, PED } = Props.kit;
@@ -32,6 +33,22 @@
       }
       // o livro aberto na ponta
       c.fillStyle = '#efe4c4'; caixa(c, x + w * 0.86, y + h * 0.18, w * 0.11, h * 0.6, m * 0.02); c.fill(); linha(c, m * 0.025);
+    },
+  });
+  // (lote 146) o canteiro (2 × 1): a terra escura em caixa de madeira, com as mudas em fileira (a estufa, a horta)
+  reg('canteiro', {
+    n: 'Canteiro', g: 'povo', size: 2, fw: 2, fh: 1,
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R; const m = Math.min(R, B), x = -R + m * 0.06, y = -B + m * 0.1, w = R * 2 - m * 0.12, h = B * 2 - m * 0.2;
+      c.fillStyle = MAD.med; caixa(c, x, y, w, h, m * 0.08); c.fill(); linha(c, m * 0.05);
+      c.fillStyle = '#3b2a1c'; caixa(c, x + m * 0.12, y + m * 0.12, w - m * 0.24, h - m * 0.24, m * 0.05); c.fill();
+      const n = 5, verdes = ['#4f9a4a', '#62b45a', '#3f8a44'];
+      for (let i = 0; i < n; i++) {
+        const px = x + w * (i + 0.5) / n, py = y + h / 2, r = m * (0.22 + hsh(s, i, 3) * 0.1);
+        c.fillStyle = verdes[i % 3];
+        for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + hsh(s, i, k) * 0.6; c.beginPath(); c.ellipse(px + Math.cos(a) * r * 0.5, py + Math.sin(a) * r * 0.5, r * 0.55, r * 0.28, a, 0, TAU); c.fill(); }
+        if (hsh(s, i, 9) < 0.35) { c.fillStyle = hsh(s, i, 7) < 0.5 ? '#e05a4a' : '#e8c84a'; c.beginPath(); c.arc(px, py, r * 0.22, 0, TAU); c.fill(); }
+      }
     },
   });
   // o túnel de fuga: a boca escura, escorada com as tábuas, e a terra em volta
