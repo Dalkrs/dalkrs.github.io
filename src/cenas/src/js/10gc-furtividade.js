@@ -195,6 +195,8 @@ const Furtividade = (() => {
   }
 
   /* ================= os móveis ================= */
+  // (lote 148) a casa rica (a mansão, o casarão): a sala de estar com o sofá, o aparador e os vasos de planta
+  const nobre = K => K.p.lugar === 'mansao' || K.p.lugar === 'casarao';
   // encostado numa parede da sala, de costas para ela (a cama, a estante, o armário, a lareira); n vezes
   function encosta(K, q, id, fw, fh, n, lados) {
     let feitos = 0;
@@ -247,20 +249,23 @@ const Furtividade = (() => {
 
   // os móveis de cada papel de sala (q: a sala, em quadrados da cena)
   const MOB = {
-    vestibulo(K, q) { tapete(K, q, 1); canto(K, q, 'candelabro'); canto(K, q, 'estatua'); if (q.w >= 5) canto(K, q, 'candelabro'); encosta(K, q, 'banco', 2, 1, 1); },
+    vestibulo(K, q) { tapete(K, q, 1); canto(K, q, 'candelabro'); canto(K, q, 'estatua'); if (q.w >= 5) canto(K, q, 'candelabro'); encosta(K, q, 'banco', 2, 1, 1); if (nobre(K)) { canto(K, q, 'vasoGrande'); encosta(K, q, 'aparador', 2, 1, 1); } },
     salao(K, q) {
       tapete(K, q, 1);
       encosta(K, q, 'lareira', 2, 1, 1, ['n']);
       const big = q.w >= 8 && q.h >= 5, m = noMeio(K, q, big ? 'mesaBanquete' : 'mesa', big ? Math.min(6, q.w - 4) : 2, big ? 2 : 1, 0);
       if (m) cadeiras(K, m, 'cadeira', 12);
       canto(K, q, 'candelabro'); canto(K, q, 'estandarte'); canto(K, q, 'estandarte');
+      if (nobre(K)) { encosta(K, q, 'aparador', 2, 1, 1); canto(K, q, 'vasoGrande'); canto(K, q, 'vasoGrande'); }      // (lote 148)
     },
     biblioteca(K, q) { encosta(K, q, 'estante', 2, 1, Math.max(2, Math.floor((q.w + q.h) / 3))); const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); canto(K, q, 'atril'); canto(K, q, 'vela'); },
     escritorio(K, q) { encosta(K, q, 'estante', 2, 1, 2); const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 1); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'vela'); },
-    quartoSenhor(K, q) { tapete(K, q, 1); encosta(K, q, 'camaCasal', 2, 2, 1, ['n', 'o', 'l']); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'bau'); canto(K, q, 'vela'); },
+    quartoSenhor(K, q) { tapete(K, q, 1); encosta(K, q, 'camaCasal', 2, 2, 1, ['n', 'o', 'l']); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'bau'); canto(K, q, 'vela'); if (nobre(K)) { canto(K, q, 'poltrona'); canto(K, q, 'vasoGrande'); } },
     quarto(K, q) { encosta(K, q, 'cama', 1, 2, 1); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'bau'); if (K.r() < 0.6) canto(K, q, 'vela'); },
     criados(K, q) { encosta(K, q, 'cama', 1, 2, Math.max(2, Math.floor(q.w / 2))); canto(K, q, 'bau'); canto(K, q, 'vela'); },
-    cozinha(K, q) { encosta(K, q, 'lareira', 2, 1, 1); encosta(K, q, 'pilhaLenha', 2, 1, 1);      // (lote 125: a lenha do fogão)
+    // (lote 148) a cozinha: o fogão a lenha, a pia e as panelas (sem lugar para o fogão, a lareira de antes)
+    cozinha(K, q) { if (!encosta(K, q, 'fogao', 2, 1, 1)) encosta(K, q, 'lareira', 2, 1, 1); encosta(K, q, 'piaCozinha', 2, 1, 1); encosta(K, q, 'pilhaLenha', 2, 1, 1);      // (lote 125: a lenha do fogão)
+      if (q.w * q.h >= 20) encosta(K, q, 'prateleiraPanelas', 2, 1, 1);
       const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'banco', 2); canto(K, q, 'barril'); canto(K, q, 'barril'); canto(K, q, 'jarro'); canto(K, q, 'sacos'); },
     despensa(K, q) { for (let i = 0; i < 3; i++) canto(K, q, 'barril'); canto(K, q, 'caixote'); canto(K, q, 'caixote'); canto(K, q, 'sacos'); encosta(K, q, 'estante', 2, 1, 1); },
     galeria(K, q) { tapete(K, q, 1); for (let i = 0; i < Math.max(2, Math.floor(q.w / 2)); i++) canto(K, q, 'estatua'); canto(K, q, 'candelabro'); },
@@ -292,7 +297,9 @@ const Furtividade = (() => {
     sotao(K, q) { canto(K, q, 'bau'); canto(K, q, 'caixote'); canto(K, q, 'caixote'); canto(K, q, 'cestoRoupa'); canto(K, q, 'chamine'); canto(K, q, 'alcapao', { n: 'O alçapão do telhado', est: 'fechado' }); if (K.r() < 0.5) canto(K, q, 'estatua'); },      // (lote 125: a chaminé e o alçapão)
     deposito(K, q) { for (let i = 0; i < 2; i++) canto(K, q, 'caixote'); canto(K, q, 'barril'); canto(K, q, 'sacos'); encosta(K, q, 'estante', 2, 1, 1); },
     // as casas da rua
-    sala(K, q) { const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'bau'); canto(K, q, 'vela'); },
+    sala(K, q) {
+      if (nobre(K)) { tapete(K, q, 1); encosta(K, q, 'sofa', 2, 1, 1); canto(K, q, 'poltrona'); canto(K, q, 'poltrona'); encosta(K, q, 'aparador', 2, 1, 1); canto(K, q, 'vasoGrande'); canto(K, q, 'vela'); return; }      // (lote 148) a sala de estar da casa rica
+      const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); encosta(K, q, 'armario', 2, 1, 1); canto(K, q, 'bau'); canto(K, q, 'vela'); },
     entrada(K, q) { encosta(K, q, 'lareira', 2, 1, 1); const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); canto(K, q, 'barril'); },
     loja(K, q) { encosta(K, q, 'balcao', Math.min(4, Math.max(2, q.w - 3)), 1, 1, ['n']); encosta(K, q, 'estante', 2, 1, 2); canto(K, q, 'caixote'); canto(K, q, 'barril'); },
     // (lote 141) a base secreta: a sala de reunião (a mesa com o mapa), o laboratório e o túnel de fuga
@@ -695,9 +702,25 @@ const Furtividade = (() => {
     K.marca('interesse', ax, ay + 1, 'O altar do jardim', 'No círculo de sebes: de fora, quase não se vê quem está dentro.');
     // a fonte no meio do jardim, os bancos e o caminho da porta dos fundos
     caminho([[fundos[0], fundos[1]], [fundos[0], fy + 1], [fx, fy + 1]]);
-    K.poeR('fonte', fx, fy - 2, 2, 2, 0);
-    for (const [x, y] of [[fx - 3, fy - 2], [fx + 3, fy - 2]]) K.poeR('banco', x, y, 2, 1, 90);
-    for (const [x, y] of [[fx - 1, fy - 4], [fx + 2, fy - 4]]) K.poe1('estatua', x, y);
+    // (lote 148) metade das vezes, a piscina no lugar da fonte: o deck de tábuas, a borda de pedra, as espreguiçadeiras
+    const pw = 10, ph = 5, px = fx - Math.floor(pw / 2) + 1, py = fy - ph - 2;
+    const cabe = () => { for (let y = py - 1; y < py + ph + 3; y++) for (let x = px - 1; x < px + pw + 1; x++) if (!K.livre(x, y) || K.reserva.has(x + ',' + y)) return false; return true; };
+    if (r() < 0.5 && py - 1 > my0 + 1 && cabe()) {
+      K.pinta('piso', { x: px - 1, y: py - 1, w: pw + 2, h: ph + 4, tipo: 'deck' });
+      K.pinta('piscina', { x: px, y: py, w: pw, h: ph, borda: 0.5 });
+      K.ocupa(px, py, pw, ph);
+      K.p.objetos.push({ id: 'escadaPiscina', x: px + pw - 2, y: py + 1, s: 1 }, { id: 'boia', x: px + 2 + K.ri(0, pw - 5), y: py + 2, s: 1 });
+      for (const x of [px, px + 2, px + pw - 3, px + pw - 1]) K.poeR('espreguicadeira', x, py + ph + 1, 1, 2, 0);
+      K.poeR('guardaSol', px + Math.floor(pw / 2) - 1, py + ph + 1, 2, 2, 0);
+      for (const [x, y] of [[px - 1, py - 1], [px + pw, py - 1]]) K.poe1('lampiao', x, y);
+      K.marca('interesse', px, py + ph, 'A piscina', 'Quem entra na água faz barulho; dá para se esconder agachado atrás das espreguiçadeiras.');
+    } else {
+      K.poeR('fonte', fx, fy - 2, 2, 2, 0);
+      for (const [x, y] of [[fx - 3, fy - 2], [fx + 3, fy - 2]]) K.poeR('banco', x, y, 2, 1, 90);
+      for (const [x, y] of [[fx - 1, fy - 4], [fx + 2, fy - 4]]) K.poe1('estatua', x, y);
+    }
+    // a mesa de jardim com o guarda-sol, perto da casa
+    { const mxj = bx + bw + 3, myj = by + 1; if (K.poeR('mesaJardim', mxj, myj, 2, 2, 0)) K.poeR('guardaSol', mxj + 2, myj, 2, 2, 0); }
     // os canteiros de flores dos dois lados dos caminhos (deixam o caminho livre)
     for (const c of p.pintados.filter(x => x.k === 'caminho' && x.w < 2)) for (let i = 1; i < c.pts.length; i++) {
       const [ax2, ay2] = c.pts[i - 1], [bx3, by3] = c.pts[i], n = Math.max(Math.abs(bx3 - ax2), Math.abs(by3 - ay2)), hz = Math.abs(bx3 - ax2) > Math.abs(by3 - ay2);

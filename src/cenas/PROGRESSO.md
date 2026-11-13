@@ -497,3 +497,9 @@ de cena mais fácil, num notebook de ~1366×768. O painel da direita e a faixa d
   azulejos, a água com o lado fundo e o brilho).
 - A cena "Casa nobre com piscina" (44 × 40, noite, fora do ar) foi montada à mão e gravada direto na mesa, com o fundo
   em `cenas/mapas/casa_nobre_piscina.webp`.
+- Depois do mapa, o gerador: no "Gerar o interior", a cozinha (`fogao`, `piaCozinha`, `prateleiraPanelas`) e o salão
+  nobre da casa do senhor (`sofa`, `poltrona`, `aparador`, `vasoGrande`). Na Furtividade (`nobre(K)`: a mansão e o
+  casarão), a sala de estar, o vestíbulo, o salão e o quarto do senhor com os móveis novos; a cozinha com o fogão (sem
+  lugar, a lareira). O casarão: metade das vezes, a piscina com o deck no lugar da fonte; sempre a mesa de jardim com
+  o guarda-sol. Os compridos de costas têm `legado` (1 × ½), para o "Gerar o interior" medir certo.
+- Teste: `test/lote148.js`.

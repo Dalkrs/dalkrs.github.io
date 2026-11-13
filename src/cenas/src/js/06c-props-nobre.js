@@ -17,7 +17,7 @@
 
   // o sofá: o encosto (atrás, encostado na parede), os braços, as três almofadas e as almofadinhas
   reg('sofa', {
-    n: 'Sofá', g: 'nobre', size: 2, fw: 2, fh: 1, costas: 'n',
+    n: 'Sofá', g: 'nobre', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
     draw(c, R, t, s, ang, tk, B) {
       B = B || R; const m = Math.min(R, B), x = -R + m * 0.06, y = -B + m * 0.06, w = R * 2 - m * 0.12, h = B * 2 - m * 0.16;
       sombraR(c, R, B, m);
@@ -43,7 +43,7 @@
   });
   // o aparador: o móvel baixo de madeira escura, com a fruteira, o castiçal e o livro
   reg('aparador', {
-    n: 'Aparador', g: 'nobre', size: 2, fw: 2, fh: 1, costas: 'n',
+    n: 'Aparador', g: 'nobre', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
     draw(c, R, t, s, ang, tk, B) {
       B = B || R; const m = Math.min(R, B), x = -R + m * 0.06, y = -B, w = R * 2 - m * 0.12, h = Math.min(B * 2, m * 1.1);
       sombraR(c, R, h / 2 + m * 0.05, m);
@@ -79,7 +79,7 @@
 
   // o fogão a lenha: o bloco de ferro e tijolo, a chapa com as duas bocas (a panela numa) e o fogo aceso na frente
   reg('fogao', {
-    n: 'Fogão a lenha', g: 'nobre', size: 2, fw: 2, fh: 1, costas: 'n', fogo: true, luz: { bright: 2, dim: 5, c: '#ff9a48' },
+    n: 'Fogão a lenha', g: 'nobre', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 }, fogo: true, luz: { bright: 2, dim: 5, c: '#ff9a48' },
     draw(c, R, t, s, ang, tk, B) {
       B = B || R; const m = Math.min(R, B), x = -R + m * 0.06, y = -B + m * 0.04, w = R * 2 - m * 0.12, h = B * 2 - m * 0.1;
       sombraR(c, R, B, m);
@@ -100,7 +100,7 @@
   });
   // a pia de pedra: a bancada, a bacia com a água, o jarro e os pratos secando
   reg('piaCozinha', {
-    n: 'Pia de cozinha', g: 'nobre', size: 2, fw: 2, fh: 1, costas: 'n',
+    n: 'Pia de cozinha', g: 'nobre', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
     draw(c, R, t, s, ang, tk, B) {
       B = B || R; const m = Math.min(R, B), x = -R + m * 0.06, y = -B + m * 0.04, w = R * 2 - m * 0.12, h = B * 2 - m * 0.1;
       sombraR(c, R, B, m);
@@ -116,7 +116,7 @@
   });
   // a prateleira das panelas: a tábua na parede, as panelas e as conchas de cobre penduradas
   reg('prateleiraPanelas', {
-    n: 'Prateleira de panelas', g: 'nobre', size: 2, fw: 2, fh: 1, costas: 'n',
+    n: 'Prateleira de panelas', g: 'nobre', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
     draw(c, R, t, s, ang, tk, B) {
       B = B || R; const m = Math.min(R, B), x = -R + m * 0.06, y = -B, w = R * 2 - m * 0.12, h = m * 0.4;
       sombraR(c, R, h / 2 + m * 0.3, m);

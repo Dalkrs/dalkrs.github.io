@@ -44,11 +44,11 @@ const Interior = (() => {
     // (lote 54: os sacos de grãos e as frutas na cozinha, na loja e no depósito; o quadro de missões na taverna; o troféu
     //  no salão nobre; a pedra de amolar e os lingotes na forja; o atril no templo e na biblioteca; o boneco e o alvo no
     //  arsenal do quartel; a cortina na sacristia)
-    cozinha: ['braseiro', 'mesa', 'barril', 'caixote', 'jarro', 'sacos'],
+    cozinha: ['fogao', 'piaCozinha', 'mesa', 'barril', 'jarro', 'sacos', 'prateleiraPanelas'],      // (lote 148: o fogão a lenha, a pia e as panelas)
     loja: ['#balcao', 'estante', 'estante', 'caixote', 'barril', 'jarro', 'frutas', 'sacos'],
     deposito: ['caixote', 'barril', 'caixote', 'estante', 'barril', 'sacos'],
     salao: ['#balcao', '#palco', 'mesa', 'cadeira', 'cadeira', 'mesa', 'cadeira', 'cadeira', 'barril', 'mesa', 'cadeira', 'braseiro', 'quadroMissoes'],
-    nobre: ['#mesaAlta', 'tapete', 'cadeira', 'cadeira', '#colunas', 'estatua', 'estatua', 'braseiro', 'estante', 'trofeu'],
+    nobre: ['#mesaAlta', 'tapete', 'cadeira', 'cadeira', '#colunas', 'estatua', 'estatua', 'braseiro', 'estante', 'trofeu', 'sofa', 'poltrona', 'aparador', 'vasoGrande'],      // (lote 148: o sofá, a poltrona, o aparador e o vaso)
     forja: ['braseiro', 'bigorna', '#tina', 'barril', 'caixote', 'bigorna', 'rebolo', 'lingotes'],
     armazem: ['#alcapao', 'caixote', 'caixote', 'barril', 'estante', 'barril', 'caixote', 'jarro', 'barril', 'sacos', 'sacos'],
     escritorio: ['mesa', 'cadeira', 'estante', 'bau'],
