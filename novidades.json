@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.13-03",
+      "data": "2026-11-13",
+      "titulo": "A casa nobre com piscina",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: o grupo novo de objetos “Casa nobre e quintal”: sofá, poltrona, aparador, vaso com planta, fogão a lenha, pia de cozinha, prateleira de panelas, espreguiçadeira, guarda-sol, mesa de jardim, escadinha da piscina e boia.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: um mapa novo para o mestre, a casa nobre de um andar com cozinha, sala de jantar, 2 quartos, banheiro, varanda coberta, quintal e piscina (de noite, fora do ar).", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.13-02",
       "data": "2026-11-13",
       "titulo": "O cadeado e as placas do jeito do mestre",

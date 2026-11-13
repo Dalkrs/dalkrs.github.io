@@ -487,3 +487,13 @@ de cena mais fácil, num notebook de ~1366×768. O painel da direita e a faixa d
 - A cena do Bruno ("Casarão com jardim", 3 cenas, noite, sem guardas, fora do ar) foi gravada direto na mesa, com os
   fundos em `cenas/mapas/casarao_jardim_*.webp`.
 - Teste: `test/lote146.js` (e o `lote125` passa a contar o banheiro do casarão).
+
+## Lote 148 — a casa nobre com piscina (e os objetos novos)
+
+- Objetos novos (06c, o grupo "Casa nobre e quintal"): `sofa`, `poltrona`, `aparador`, `vasoGrande`, `fogao` (aceso,
+  com luz), `piaCozinha`, `prateleiraPanelas`, `espreguicadeira` (1 × 2), `guardaSol` (2 × 2), `mesaJardim` (2 × 2),
+  `escadaPiscina`, `boia`.
+- O pintor (10g9): os pisos `marmore`, `ladrilho`, `deck` e `grama`, e o pintado `piscina` (a borda de pedra, os
+  azulejos, a água com o lado fundo e o brilho).
+- A cena "Casa nobre com piscina" (44 × 40, noite, fora do ar) foi montada à mão e gravada direto na mesa, com o fundo
+  em `cenas/mapas/casa_nobre_piscina.webp`.

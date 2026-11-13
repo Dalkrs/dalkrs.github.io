@@ -341,8 +341,48 @@ const LugaresFora = (() => {
         if (o.tipo === 'madeira') { g.fillStyle = '#6e4e32'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c); g.strokeStyle = 'rgba(40,24,12,0.5)'; g.lineWidth = Math.max(1, c * 0.03); for (let y = o.y; y < o.y + o.h; y += 0.33) { g.beginPath(); g.moveTo(o.x * c, y * c); g.lineTo((o.x + o.w) * c, y * c); g.stroke(); } }
         else if (o.tipo === 'calcada') blocos(o.x, o.y, o.w, o.h, P.pedra.map(x => x), P.junta, 0.5);
         else if (o.tipo === 'terra') { g.fillStyle = '#5a4430'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c); g.fillStyle = 'rgba(30,20,10,0.25)'; for (let k = 0; k < o.w * o.h * 2; k++) { const px = o.x + ((k * 7.31) % o.w), py = o.y + ((k * 3.17) % o.h); g.fillRect(px * c, py * c, c * 0.08, c * 0.08); } }      // (lote 146) o chão de terra (a estufa)
+        else if (o.tipo === 'marmore') {      // (lote 148) o mármore claro, em xadrez, com os veios
+          g.save(); g.beginPath(); g.rect(o.x * c, o.y * c, o.w * c, o.h * c); g.clip();
+          for (let j = 0; j < o.h; j++) for (let i = 0; i < o.w; i++) { g.fillStyle = (i + j) % 2 ? '#e4ddd0' : '#cfc6b6'; g.fillRect((o.x + i) * c, (o.y + j) * c, c, c); }
+          g.strokeStyle = 'rgba(120,110,95,0.25)'; g.lineWidth = Math.max(1, c * 0.02);
+          for (let k = 0; k < o.w * o.h * 0.6; k++) { const px = o.x + r() * o.w, py = o.y + r() * o.h; g.beginPath(); g.moveTo(px * c, py * c); g.quadraticCurveTo((px + 0.3) * c, (py + 0.1) * c, (px + 0.6) * c, (py - 0.15) * c); g.stroke(); }
+          g.strokeStyle = 'rgba(90,80,70,0.35)'; for (let i = 0; i <= o.w; i++) { g.beginPath(); g.moveTo((o.x + i) * c, o.y * c); g.lineTo((o.x + i) * c, (o.y + o.h) * c); g.stroke(); } for (let j = 0; j <= o.h; j++) { g.beginPath(); g.moveTo(o.x * c, (o.y + j) * c); g.lineTo((o.x + o.w) * c, (o.y + j) * c); g.stroke(); }
+          g.restore();
+        } else if (o.tipo === 'ladrilho') {      // (lote 148) os ladrilhos pequenos (o banheiro, a cozinha)
+          g.save(); g.beginPath(); g.rect(o.x * c, o.y * c, o.w * c, o.h * c); g.clip();
+          for (let j = 0; j < o.h * 2; j++) for (let i = 0; i < o.w * 2; i++) { g.fillStyle = (i + j) % 2 ? '#d9d4c6' : '#4e6f7a'; g.fillRect((o.x + i / 2) * c, (o.y + j / 2) * c, c / 2, c / 2); }
+          g.strokeStyle = 'rgba(40,40,40,0.25)'; g.lineWidth = Math.max(1, c * 0.02); for (let i = 0; i <= o.w * 2; i++) { g.beginPath(); g.moveTo((o.x + i / 2) * c, o.y * c); g.lineTo((o.x + i / 2) * c, (o.y + o.h) * c); g.stroke(); } for (let j = 0; j <= o.h * 2; j++) { g.beginPath(); g.moveTo(o.x * c, (o.y + j / 2) * c); g.lineTo((o.x + o.w) * c, (o.y + j / 2) * c); g.stroke(); }
+          g.restore();
+        } else if (o.tipo === 'deck') {      // (lote 148) o deck de tábuas (a varanda, a beira da piscina)
+          g.fillStyle = '#8a6040'; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c);
+          for (let y = 0, k = 0; y < o.h; y += 0.25, k++) { g.fillStyle = ['#8a6040', '#7e5636', '#94683f', '#835a3a'][k % 4]; g.fillRect(o.x * c, (o.y + y) * c + 1, o.w * c, c * 0.25 - 2); }
+          g.fillStyle = 'rgba(40,24,12,0.55)'; for (let y = 0, k = 0; y < o.h; y += 0.25, k++) for (let x = (k % 3) * 0.9; x < o.w; x += 2.7) g.fillRect((o.x + x) * c, (o.y + y) * c, Math.max(1, c * 0.03), c * 0.25);
+        } else if (o.tipo === 'grama') {      // (lote 148) a grama aparada, em faixas (o quintal bem cuidado)
+          for (let i = 0; i < o.w; i++) { g.fillStyle = i % 2 ? '#4d7a35' : '#56853b'; g.fillRect((o.x + i) * c, o.y * c, c, o.h * c); }
+          g.fillStyle = 'rgba(30,60,20,0.25)'; for (let k = 0; k < o.w * o.h * 3; k++) g.fillRect((o.x + r() * o.w) * c, (o.y + r() * o.h) * c, c * 0.05, c * 0.12);
+        }
         else blocos(o.x, o.y, o.w, o.h, ['#8f8a80', '#9a958a', '#857f76', '#a29c90'], '#5a5650', 1);
+      } else if (o.k === 'piscina') {      // (lote 148) a piscina: a borda de pedra clara, os azulejos no fundo, a água e o brilho
+        const b = o.borda == null ? 0.5 : o.borda, X = o.x * c, Y = o.y * c, Wp = o.w * c, Hp = o.h * c, B2 = b * c;
+        g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(X + c * 0.12, Y + c * 0.14, Wp, Hp);
+        g.fillStyle = '#d6cfc0'; g.fillRect(X, Y, Wp, Hp);
+        g.strokeStyle = 'rgba(110,100,85,0.5)'; g.lineWidth = Math.max(1, c * 0.025);
+        for (let i = 0; i <= o.w / 0.5; i++) { g.beginPath(); g.moveTo(X + i * c * 0.5, Y); g.lineTo(X + i * c * 0.5, Y + B2); g.moveTo(X + i * c * 0.5, Y + Hp - B2); g.lineTo(X + i * c * 0.5, Y + Hp); g.stroke(); }
+        for (let j = 0; j <= o.h / 0.5; j++) { g.beginPath(); g.moveTo(X, Y + j * c * 0.5); g.lineTo(X + B2, Y + j * c * 0.5); g.moveTo(X + Wp - B2, Y + j * c * 0.5); g.lineTo(X + Wp, Y + j * c * 0.5); g.stroke(); }
+        const ix = X + B2, iy = Y + B2, iw = Wp - 2 * B2, ih = Hp - 2 * B2;
+        const gr = g.createLinearGradient(ix, iy, ix + iw, iy + ih); gr.addColorStop(0, '#3fa6c6'); gr.addColorStop(1, '#1f6f96');
+        g.fillStyle = gr; g.fillRect(ix, iy, iw, ih);
+        g.save(); g.beginPath(); g.rect(ix, iy, iw, ih); g.clip();
+        g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = Math.max(1, c * 0.02);
+        for (let x = 0; x < iw; x += c * 0.33) { g.beginPath(); g.moveTo(ix + x, iy); g.lineTo(ix + x, iy + ih); g.stroke(); }
+        for (let y = 0; y < ih; y += c * 0.33) { g.beginPath(); g.moveTo(ix, iy + y); g.lineTo(ix + iw, iy + y); g.stroke(); }
+        g.fillStyle = 'rgba(10,50,80,0.35)'; g.fillRect(ix + iw * 0.55, iy, iw * 0.45, ih);
+        g.strokeStyle = 'rgba(220,245,255,0.35)'; g.lineWidth = Math.max(1, c * 0.05);
+        for (let k = 0; k < o.w * o.h * 0.5; k++) { const px = ix + r() * iw, py = iy + r() * ih, L = c * (0.3 + r() * 0.5); g.beginPath(); g.moveTo(px, py); g.quadraticCurveTo(px + L / 2, py - c * 0.08, px + L, py); g.stroke(); }
+        g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(ix, iy, iw, c * 0.12); g.fillRect(ix, iy, c * 0.12, ih);
+        g.restore();
       } else if (o.k === 'caminho') {
+
         g.strokeStyle = P.terra[0]; g.lineWidth = o.w * c; g.lineCap = 'round'; g.beginPath(); o.pts.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.stroke();
         g.strokeStyle = P.terra[1]; g.lineWidth = o.w * c * 0.6; g.stroke();
       } else if (o.k === 'agua') {
