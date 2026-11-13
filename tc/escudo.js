@@ -374,6 +374,8 @@
       o.msg = linha(p.msg, LIM.msg);
       o.metodo = ['cesar', 'troca', 'runas'].includes(p.metodo) ? p.metodo : 'runas';
     }
+    // (lote 147) o cadeado e as placas montados pelo mestre (a resposta, as pistas prontas e as linhas livres)
+    if ((p.tipo === 'cadeado' || p.tipo === 'placas') && p.manual) { const mm = normManual(p.tipo, p.manual); if (mm) o.manual = mm; }
     if (p.tipo === 'charada') {
       o.idx = Number.isInteger(p.idx) && p.idx >= 0 && p.idx < CHARADAS.length ? p.idx : null;
       if (ehObj(p.propria) && linha(p.propria.p, 400)) {
@@ -384,6 +386,36 @@
       if (o.idx == null && !o.propria) o.idx = 0;
     }
     return o;
+  }
+  /* (lote 147) O mestre monta o cadeado ou as placas: tudo pelos ids dos símbolos (sol, lua…), para não depender da ordem
+     em que aparecem para os jogadores.
+       placas:  { seq: [a ordem certa, 3 a 6 símbolos], pis: [{ k, a, b }] (b: outro símbolo, ou a posição em "lugar"), livres }
+       cadeado: { disc: [os símbolos dos discos, 3 a 8], sol: [a combinação, 3 a 5], pis: [{ c: [um palpite riscado] }], livres }
+     livres: as linhas que o mestre escreve como quiser (o site não confere se elas ajudam). */
+  const REGRAS_DUAS = ['antes', 'logo', 'lado', 'longe'];
+  function normManual(tipo, m) {
+    if (!ehObj(m)) return null;
+    const sid = v => (typeof v === 'string' && Object.prototype.hasOwnProperty.call(SIMBOLOS, v) ? v : null);
+    const livres = (Array.isArray(m.livres) ? m.livres : []).map(x => linha(x, 200)).filter(Boolean).slice(0, 10);
+    if (tipo === 'placas') {
+      const seq = [...new Set((Array.isArray(m.seq) ? m.seq : []).map(sid).filter(Boolean))].slice(0, 6);
+      if (seq.length < 3) return null;
+      const pis = (Array.isArray(m.pis) ? m.pis : []).filter(ehObj).map(c => {
+        const k = Object.prototype.hasOwnProperty.call(REGRAS, c.k) ? c.k : null, a = sid(c.a);
+        if (!k || !a || !seq.includes(a)) return null;
+        if (REGRAS_DUAS.includes(k)) { const b = sid(c.b); return b && b !== a && seq.includes(b) ? { k, a, b } : null; }
+        if (k === 'lugar') { const b = Number(c.b); return Number.isInteger(b) && b >= 0 && b < seq.length ? { k, a, b } : null; }
+        return { k, a };
+      }).filter(Boolean).slice(0, 16);
+      return { seq, pis, livres };
+    }
+    const disc = [...new Set((Array.isArray(m.disc) ? m.disc : []).map(sid).filter(Boolean))].slice(0, 8);
+    if (disc.length < 3) return null;
+    const sol = (Array.isArray(m.sol) ? m.sol : []).map(sid).filter(x => x && disc.includes(x)).slice(0, 5);
+    if (sol.length < 3) return null;
+    const pis = (Array.isArray(m.pis) ? m.pis : []).filter(ehObj).map(x => (Array.isArray(x.c) ? x.c.map(sid) : []))
+      .filter(c => c.length === sol.length && c.every(v => v && disc.includes(v))).slice(0, 12).map(c => ({ c }));
+    return { disc, sol, pis, livres };
   }
   function normHandout(d) {
     d = ehObj(d) ? d : {};
@@ -599,6 +631,13 @@
     }
   }
   function montarCadeado(def, r) {
+    if (def.manual) {                                                  // (lote 147) o do mestre: as notas, o site conta
+      const M = def.manual, simbolos = M.disc.slice(), k = simbolos.length, n = M.sol.length, ix = v => simbolos.indexOf(v), sol = M.sol.map(ix);
+      const todas = M.pis.map(p => { const c = p.c.map(ix), nt = nota(c, sol); return { c, l: nt[0], f: nt[1] }; });
+      const pistas = todas.filter(p => p.l < n);                       // um palpite igual à resposta entregaria tudo: não vai
+      const cand = todasCombinacoes(n, k).filter(c => pistas.every(p => { const x = nota(p.c, c); return x[0] === p.l && x[1] === p.f; }));
+      return { pub: { n, simbolos, pistas, livres: M.livres }, estado: {}, provaCerta: sol.join(','), unica: cand.length === 1, cands: cand.length, fora: todas.length - pistas.length };
+    }
     const n = def.dif === 'facil' ? 3 : def.dif === 'medio' ? 4 : 4;
     const k = def.dif === 'dificil' ? 8 : 6;
     const simbolos = embaralhar(ORDEM_SIMBOLOS, r).slice(0, k);
@@ -665,6 +704,16 @@
   };
   const PESO_REGRA = { antes: 1, lado: 1, longe: 1, naoPrimeira: 1, naoUltima: 1, logo: 2, primeira: 3, ultima: 3, lugar: 4 };
   function montarPlacas(def, r) {
+    if (def.manual) {                                                  // (lote 147) o do mestre: as placas aparecem embaralhadas
+      const M = def.manual, n = M.seq.length;
+      let simbolos = embaralhar(M.seq, r), t = 0;
+      while (simbolos.every((v, i) => v === M.seq[i]) && t++ < 8) simbolos = embaralhar(M.seq, r);
+      const ix = v => simbolos.indexOf(v), ordem = M.seq.map(ix), pos = posDe(ordem);
+      const todas = M.pis.map(c => ({ k: c.k, a: ix(c.a), b: c.k === 'lugar' ? c.b : REGRAS_DUAS.includes(c.k) ? ix(c.b) : null }));
+      const pistas = todas.filter(c => REGRAS[c.k](pos, c.a, c.b, n));     // a inscrição falsa não vai (o editor avisa)
+      const cand = permutacoes(n).map(posDe).filter(p => pistas.every(c => REGRAS[c.k](p, c.a, c.b, n)));
+      return { pub: { n, simbolos, pistas, livres: M.livres }, estado: { seq: [] }, provaCerta: ordem.join(','), unica: cand.length === 1, cands: cand.length, fora: todas.length - pistas.length };
+    }
     const n = def.dif === 'facil' ? 4 : def.dif === 'medio' ? 5 : 6;
     const simbolos = embaralhar(ORDEM_SIMBOLOS, r).slice(0, n);
     const ordem = embaralhar([...Array(n).keys()], r);
@@ -744,7 +793,7 @@
       default: m = EXTRA[def.tipo].montar(def, r, { img, ar, sal });
     }
     const certas = m.certas || [m.provaCerta];
-    return { tipo: def.tipo, dif: def.dif, pub: m.pub, estado: m.estado, sal, chk: certas.map(c => chkDe(sal, c)), dicas: m.dicas || [], unica: m.unica !== false, resposta: certas[0], letras: m.letras || null,
+    return { tipo: def.tipo, dif: def.dif, pub: m.pub, estado: m.estado, sal, chk: certas.map(c => chkDe(sal, c)), dicas: m.dicas || [], unica: m.unica !== false, cands: m.cands || 0, fora: m.fora || 0, resposta: certas[0], letras: m.letras || null,
       seg: m.seg || null, tempo: (def.tempo || 0) * 60 };
   }
   // o documento do jogo, novo (o estado do começo, sem erros, sem ninguém ter resolvido)
@@ -830,7 +879,7 @@
     normResposta, normMensagem,
     normLiga, normPasso, normSessao, sessaoNova, proximaPlanejada, proximoNumero, sobras,
     normRelogio, avancar, vistaDe, normVista, idVista,
-    trechos, chaveTrecho, partesDoTexto, normArea, normPara, normHandout, normPuzzleDef, projetarHandout, normPista, escondidos,
+    trechos, chaveTrecho, partesDoTexto, normArea, normPara, normHandout, normPuzzleDef, normManual, projetarHandout, normPista, escondidos,
     idPista, idJogo, hidDaPista, hidDoJogo,
     montarPuzzle, jogoNovo, normJogo, provaDoEstado, confere, decifrar, tocarLuz, gradesDe, nota, textoPistaCadeado, textoPistaPlacas, sortearCharada, posDe, REGRAS,
     resumoDaSessao,

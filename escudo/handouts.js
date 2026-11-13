@@ -205,6 +205,82 @@
       }
       faz();
     }
+    /* (lote 147) O cadeado e as placas montados à mão. Começa do puzzle sorteado de agora (para não partir do zero). */
+    const NOME_S = v => (E.SIMBOLOS[v] || ['?'])[0];
+    function paraManual(pz) {
+      const m = E.montarPuzzle(Object.assign({}, pz, { manual: null })), p = m.pub, sol = m.resposta.split(',').map(Number);
+      if (pz.tipo === 'placas') return { seq: sol.map(i => p.simbolos[i]), pis: p.pistas.map(c => (c.k === 'lugar' ? { k: c.k, a: p.simbolos[c.a], b: c.b } : c.b == null ? { k: c.k, a: p.simbolos[c.a] } : { k: c.k, a: p.simbolos[c.a], b: p.simbolos[c.b] })), livres: [] };
+      return { disc: p.simbolos.slice(), sol: sol.map(i => p.simbolos[i]), pis: p.pistas.map(c => ({ c: c.c.map(i => p.simbolos[i]) })), livres: [] };
+    }
+    const FRASES = [['antes', 'vem antes de'], ['logo', 'vem logo depois de'], ['lado', 'fica ao lado de'], ['longe', 'não fica ao lado de'],
+      ['primeira', 'é a primeira'], ['ultima', 'é a última'], ['naoPrimeira', 'não é a primeira'], ['naoUltima', 'não é a última'], ['lugar', 'é a…']];
+    const ORDINAIS = ['1ª', '2ª', '3ª', '4ª', '5ª', '6ª'];
+    function selS(lista, val, key, rot, onch) {
+      return h('select', { class: 'in sel-s', 'data-k': key, 'aria-label': rot, value: val, onchange: ev => onch(ev.target.value) },
+        lista.map(v => h('option', { value: v, text: NOME_S(v), selected: v === val })));
+    }
+    function editorManual(hid, pz, m) {
+      const M = pz.manual, pl = pz.tipo === 'placas', out = [];
+      const muda = (rot, fn) => trocarPuzzle(hid, rot, y => { fn(y.puzzle.manual); });
+      const livres = h('label', { class: 'field' }, h('span', { text: 'Linhas livres (uma por linha): ' + (pl ? 'mais inscrições' : 'mais coisas riscadas na parede') + ', do jeito que você quiser' }),
+        h('textarea', { class: 'in', rows: 3, 'data-k': 'pz:livres', value: M.livres.join('\n'), placeholder: pl ? 'O fogo acorda antes de todos.' : 'Quem abriu por último amava a lua.',
+          onchange: ev => muda('mudar as linhas livres', mm => { mm.livres = ev.target.value.split('\n').map(t => t.trim()).filter(Boolean).slice(0, 10); }) }));
+      const estado = () => {
+        if (!m) return null;
+        const fora = m.fora ? ' ' + m.fora + (m.fora === 1 ? (pl ? ' inscrição está errada para a ordem certa e não vai para os jogadores.' : ' palpite é a própria resposta e não vai para os jogadores.') : (pl ? ' inscrições estão erradas para a ordem certa e não vão para os jogadores.' : ' palpites são a própria resposta e não vão para os jogadores.')) : '';
+        const txt = m.cands === 1 ? '✓ As pistas prontas levam a uma resposta só.' : '⚠ As pistas prontas ainda deixam ' + m.cands + ' respostas possíveis. ' + (M.livres.length ? 'Confira se as suas linhas livres resolvem o resto.' : 'Acrescente pistas ou escreva linhas livres.');
+        return h('p', { class: 'ajuda' + (m.cands === 1 && !m.fora ? ' man-ok' : ' man-aviso'), 'data-k': 'pz:man-estado', text: txt + fora });
+      };
+      if (pl) {
+        const seq = M.seq, todos = E.ORDEM_SIMBOLOS;
+        out.push(h('div', { class: 'field' }, h('span', { text: 'A ordem certa (a placa para pisar primeiro, depois a segunda…)' }),
+          h('div', { class: 'row' }, seq.map((v, i) => h('span', { class: 'man-pos' }, h('small', { text: ORDINAIS[i] }), selS(todos, v, 'pz:seq:' + i, 'Placa ' + (i + 1), nv => muda('mudar a ordem das placas', mm => {
+            const j = mm.seq.indexOf(nv), velho = mm.seq[i];
+            if (j >= 0) mm.seq[j] = velho; else mm.pis.forEach(c => { if (c.a === velho) c.a = nv; if (c.b === velho) c.b = nv; });
+            mm.seq[i] = nv;
+          })))),
+            h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:seq+', disabled: seq.length >= 6, onclick: () => muda('pôr mais uma placa', mm => { mm.seq.push(todos.find(v => !mm.seq.includes(v))); }) }, '+ placa'),
+            h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:seq-', disabled: seq.length <= 3, onclick: () => muda('tirar uma placa', mm => { const v = mm.seq.pop(); mm.pis = mm.pis.filter(c => c.a !== v && c.b !== v && !(c.k === 'lugar' && c.b >= mm.seq.length)); }) }, '− placa'))));
+        const pos = {}; seq.forEach((v, i) => { pos[v] = i; });
+        const verdade = c => { const p = seq.map((_, i) => i), ia = seq.indexOf(c.a), ib = c.k === 'lugar' ? c.b : seq.indexOf(c.b); return E.REGRAS[c.k](p, ia, ib, seq.length); };
+        out.push(h('div', { class: 'field' }, h('span', { text: 'As inscrições prontas (o site confere se são verdade e se resolvem)' }),
+          M.pis.map((c, i) => h('div', { class: 'row man-pista' },
+            selS(seq, c.a, 'pz:pa:' + i, 'A placa da inscrição ' + (i + 1), nv => muda('mudar a inscrição', mm => { mm.pis[i].a = nv; if (mm.pis[i].b === nv) mm.pis[i].b = mm.seq.find(v => v !== nv); })),
+            h('select', { class: 'in', 'data-k': 'pz:pk:' + i, 'aria-label': 'O que diz a inscrição ' + (i + 1), value: c.k, onchange: ev => muda('mudar a inscrição', mm => {
+              const k = ev.target.value, q = mm.pis[i]; q.k = k;
+              if (['antes', 'logo', 'lado', 'longe'].includes(k)) { if (typeof q.b !== 'string' || q.b === q.a) q.b = mm.seq.find(v => v !== q.a); } else if (k === 'lugar') q.b = 0; else delete q.b;
+            }) }, FRASES.map(([k, t]) => h('option', { value: k, text: t, selected: k === c.k }))),
+            ['antes', 'logo', 'lado', 'longe'].includes(c.k) ? selS(seq.filter(v => v !== c.a), c.b, 'pz:pb:' + i, 'A outra placa', nv => muda('mudar a inscrição', mm => { mm.pis[i].b = nv; }))
+              : c.k === 'lugar' ? h('select', { class: 'in', 'data-k': 'pz:pb:' + i, 'aria-label': 'A posição', value: String(c.b), onchange: ev => muda('mudar a inscrição', mm => { mm.pis[i].b = Number(ev.target.value); }) }, seq.map((_, j) => h('option', { value: String(j), text: ORDINAIS[j], selected: j === c.b }))) : null,
+            verdade(c) ? null : h('span', { class: 'man-aviso', text: '⚠ falsa' }),
+            h('button', { type: 'button', class: 'ib leve', 'data-k': 'pz:px:' + i, 'aria-label': 'Tirar a inscrição ' + (i + 1), onclick: () => muda('tirar a inscrição', mm => { mm.pis.splice(i, 1); }) }, '✕'))),
+          h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:p+', disabled: M.pis.length >= 16, onclick: () => muda('pôr uma inscrição', mm => { mm.pis.push({ k: 'antes', a: mm.seq[0], b: mm.seq[1] }); }) }, '+ inscrição'))));
+      } else {
+        const disc = M.disc, n = M.sol.length;
+        out.push(h('div', { class: 'field' }, h('span', { text: 'Os símbolos dos discos (de 3 a 8)' }),
+          h('div', { class: 'row' }, E.ORDEM_SIMBOLOS.map(v => h('label', { class: 'chk' }, h('input', { type: 'checkbox', 'data-k': 'pz:disc:' + v, checked: disc.includes(v), disabled: disc.includes(v) ? disc.length <= 3 : disc.length >= 8,
+            onchange: ev => { const on = ev.target.checked; muda(on ? 'pôr um símbolo nos discos' : 'tirar um símbolo dos discos', mm => {
+              if (on) { mm.disc.push(v); return; }
+              mm.disc = mm.disc.filter(x => x !== v); const tr = x => (x === v ? mm.disc[0] : x);
+              mm.sol = mm.sol.map(tr); mm.pis.forEach(c => { c.c = c.c.map(tr); });
+            }); } }), NOME_S(v))))));
+        out.push(h('div', { class: 'field' }, h('span', { text: 'A combinação certa' }),
+          h('div', { class: 'row' }, M.sol.map((v, i) => selS(disc, v, 'pz:sol:' + i, 'Disco ' + (i + 1), nv => muda('mudar a combinação', mm => { mm.sol[i] = nv; }))),
+            h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:sol+', disabled: n >= 5, onclick: () => muda('pôr mais um disco', mm => { mm.sol.push(mm.disc[0]); mm.pis.forEach(c => c.c.push(mm.disc[0])); }) }, '+ disco'),
+            h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:sol-', disabled: n <= 3, onclick: () => muda('tirar um disco', mm => { mm.sol.pop(); mm.pis.forEach(c => c.c.pop()); }) }, '− disco'))));
+        const ix = v => disc.indexOf(v), solI = M.sol.map(ix);
+        out.push(h('div', { class: 'field' }, h('span', { text: 'Os palpites riscados na parede (o site escreve quantos estavam certos)' }),
+          M.pis.map((c, i) => {
+            const nt = E.nota(c.c.map(ix), solI), igual = nt[0] === n;
+            return h('div', { class: 'row man-pista' }, c.c.map((v, j) => selS(disc, v, 'pz:pc:' + i + ':' + j, 'Palpite ' + (i + 1) + ', disco ' + (j + 1), nv => muda('mudar o palpite', mm => { mm.pis[i].c[j] = nv; }))),
+              h('span', { class: igual ? 'man-aviso' : 'ajuda', text: igual ? '⚠ é a própria resposta' : E.textoPistaCadeado({ l: nt[0], f: nt[1] }, n) }),
+              h('button', { type: 'button', class: 'ib leve', 'data-k': 'pz:px:' + i, 'aria-label': 'Tirar o palpite ' + (i + 1), onclick: () => muda('tirar o palpite', mm => { mm.pis.splice(i, 1); }) }, '✕'));
+          }),
+          h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:p+', disabled: M.pis.length >= 12, onclick: () => muda('pôr um palpite', mm => { mm.pis.push({ c: mm.sol.map((_, j) => mm.disc[(j + mm.pis.length + 1) % mm.disc.length]) }); }) }, '+ palpite'))));
+      }
+      out.push(livres, estado());
+      return out.filter(Boolean);
+    }
     function configPuzzle(hid, x) {
       const pz = x.puzzle, m = E.montarPuzzle(pz, x.img, x.imgAr);
       const grupos = {};
@@ -218,7 +294,7 @@
       const partes = [
         h('div', { class: 'tipos-pz' }, Object.keys(grupos).map(g => h('div', { class: 'grp' }, h('span', { text: g }),
           h('div', { class: 'seg', role: 'group', 'aria-label': g }, grupos[g].map(t => h('button', { type: 'button', 'data-k': 'pz:t:' + t, 'aria-pressed': String(pz.tipo === t), title: E.PUZZLES[t].desc, onclick: () => { if (pz.tipo !== t) tipoNovo(t); } }, E.PUZZLES[t].nome)))))),
-        pz.tipo === 'fechadura' ? null : h('div', { class: 'row' }, h('div', { class: 'seg', role: 'group', 'aria-label': 'Dificuldade' }, Object.keys(E.DIF).map(d => h('button', { type: 'button', 'data-k': 'pz:d:' + d, 'aria-pressed': String(pz.dif === d),
+        pz.tipo === 'fechadura' || pz.manual ? null : h('div', { class: 'row' }, h('div', { class: 'seg', role: 'group', 'aria-label': 'Dificuldade' }, Object.keys(E.DIF).map(d => h('button', { type: 'button', 'data-k': 'pz:d:' + d, 'aria-pressed': String(pz.dif === d),
           onclick: () => { if (pz.dif !== d) trocarPuzzle(hid, 'mudar a dificuldade', y => { y.puzzle.dif = d; if (y.puzzle.tipo === 'charada' && !y.puzzle.propria) y.puzzle.idx = E.sortearCharada(d, E.mulberry(E.novaSemente())); }); } }, E.DIF[d]))),
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:sortear', title: 'Outro puzzle do mesmo tipo e da mesma dificuldade', onclick: () => trocarPuzzle(hid, 'sortear outro puzzle', y => { y.puzzle.seed = E.novaSemente(); if (y.puzzle.tipo === 'charada' && !y.puzzle.propria) y.puzzle.idx = E.sortearCharada(y.puzzle.dif, E.mulberry(E.novaSemente()), y.puzzle.idx); }) }, 'Sortear outro')),
       ];
@@ -243,6 +319,13 @@
           partes.push(h('label', { class: 'field' }, h('span', { text: 'As dicas (uma por linha)' }), h('textarea', { class: 'in', rows: 2, 'data-k': 'pz:cd', value: ch.d.join('\n'), onchange: ev => trocarPuzzle(hid, 'mudar as dicas', y => { y.puzzle.propria.d = ev.target.value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 4); }) })));
           partes.push(h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:banco', onclick: () => trocarPuzzle(hid, 'voltar ao banco de charadas', y => { y.puzzle.propria = null; y.puzzle.idx = E.sortearCharada(y.puzzle.dif, E.mulberry(E.novaSemente())); }) }, 'Sortear do banco de charadas')));
         }
+      }
+      // (lote 147) o cadeado e as placas: sortear, ou o mestre monta (a resposta, as pistas prontas e as linhas livres)
+      if (pz.tipo === 'cadeado' || pz.tipo === 'placas') {
+        partes.push(h('div', { class: 'seg', role: 'group', 'aria-label': 'Quem monta o puzzle' }, [['s', 'Sortear'], ['m', 'Montar eu mesmo']].map(([v, nm]) =>
+          h('button', { type: 'button', 'data-k': 'pz:man:' + v, 'aria-pressed': String(!!pz.manual === (v === 'm')),
+            onclick: () => { if (!!pz.manual !== (v === 'm')) trocarPuzzle(hid, v === 'm' ? 'montar o puzzle à mão' : 'voltar ao sorteio', y => { y.puzzle.manual = v === 'm' ? paraManual(y.puzzle) : null; }); } }, nm))));
+        if (pz.manual) partes.push(...editorManual(hid, pz, m));
       }
       if (pz.tipo === 'imagem') {
         partes.push(x.img ? h('div', { class: 'row' }, h('img', { src: x.img, alt: '', style: { maxWidth: '160px', maxHeight: '110px', borderRadius: '6px' } }), h('button', { type: 'button', class: 'btn sm', 'data-k': 'h:img', onclick: () => escolherImagem(hid) }, 'Trocar a imagem'))

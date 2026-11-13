@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.13-02",
+      "data": "2026-11-13",
+      "titulo": "O cadeado e as placas do jeito do mestre",
+      "itens": [
+        { "tipo": "novo", "texto": "Escudo do mestre: no Cadeado de símbolos e nas Placas de pressão, a escolha “Sortear” ou “Montar eu mesmo”. Montando, você escolhe a resposta (a ordem das placas ou a combinação do cadeado), as pistas prontas e escreve linhas livres. O site avisa se uma pista é falsa e quantas respostas ainda sobram.", "mestre": true },
+        { "tipo": "melhorou", "texto": "Pistas: as linhas livres do mestre aparecem junto com as inscrições das placas e com os palpites riscados do cadeado." }
+      ]
+    },
+    {
       "versao": "2026.11.13-01",
       "data": "2026-11-13",
       "titulo": "O casarão com jardim",

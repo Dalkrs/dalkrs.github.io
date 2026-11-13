@@ -172,7 +172,8 @@
     const tent = Array.isArray(e.tent) ? e.tent.slice(-4) : [];
     return [
       h('div', { class: 'cd-pistas' }, h('div', { class: 'cd-rot', text: 'Riscado na parede:' }), p.pistas.map((c, i) => h('div', { class: 'cd-p' },
-        h('span', { class: 'cd-c' }, c.c.map(x => h('span', { class: 'cd-s', title: nomeSimb(p.simbolos[x]) }, SIMB(p.simbolos[x])))), h('span', { class: 'cd-t', text: E.textoPistaCadeado(c, p.n) })))),
+        h('span', { class: 'cd-c' }, c.c.map(x => h('span', { class: 'cd-s', title: nomeSimb(p.simbolos[x]) }, SIMB(p.simbolos[x])))), h('span', { class: 'cd-t', text: E.textoPistaCadeado(c, p.n) }))),
+        (Array.isArray(p.livres) ? p.livres : []).map(t => h('div', { class: 'cd-p cd-livre', text: t }))),      // (lote 147) as linhas do mestre
       h('div', { class: 'cd-discos' }, pos.map((v, i) => h('div', { class: 'cd-d' },
         h('button', { type: 'button', class: 'ib leve', 'data-k': ctx.chave + 'd' + i + '+', disabled: f, 'aria-label': 'Girar o disco ' + (i + 1) + ' para cima', onclick: () => girar(i, -1) }, '▲'),
         h('div', { class: 'cd-v', title: nomeSimb(p.simbolos[v]) }, SIMB(p.simbolos[v])),
@@ -193,7 +194,7 @@
       tentativa(jg, ctx, nova.join(','), { seq: [] }, 'pisou na ordem errada: as placas voltaram', { seq: nova }, 'pisou na ordem certa');
     };
     return [
-      h('div', { class: 'pl-pistas' }, h('div', { class: 'cd-rot', text: 'As inscrições:' }), h('ul', null, p.pistas.map(c => h('li', { text: E.textoPistaPlacas(c, p.simbolos) })))),
+      h('div', { class: 'pl-pistas' }, h('div', { class: 'cd-rot', text: 'As inscrições:' }), h('ul', null, p.pistas.map(c => h('li', { text: E.textoPistaPlacas(c, p.simbolos) })).concat((Array.isArray(p.livres) ? p.livres : []).map(t => h('li', { class: 'pl-livre', text: t }))))),      // (lote 147)
       h('div', { class: 'pl-placas' }, p.simbolos.map((s, i) => {
         const k = seq.indexOf(i);
         return h('button', { type: 'button', class: 'pl-p' + (k >= 0 ? ' pisada' : ''), 'data-k': ctx.chave + 'p' + i, disabled: f || k >= 0, 'aria-label': 'Placa ' + E.SIMBOLOS[s][1] + (k >= 0 ? ', pisada em ' + (k + 1) + 'º' : ''), onclick: () => pisar(i) },

@@ -6,7 +6,7 @@
 <script src="../tc/tema.js?v=1"></script>
 <title>Escudo do mestre · Tiny Cats</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Grenze:wght@500;600;700&family=IM+Fell+English:ital@0;1&family=UnifrakturMaguntia&family=Noto+Sans+Runic&display=swap">
-<link rel="stylesheet" href="../tc/pistas.css?v=5">
+<link rel="stylesheet" href="../tc/pistas.css?v=6">
 <style>
 /* Escudo do mestre: o roteiro (as sessões e os passos), os relógios de ameaça e os handouts e puzzles. As cores da
    interface são as das outras abas. */
@@ -264,6 +264,16 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 .mc-pista.entregue { border-color: color-mix(in srgb, var(--ok, #6fbf8f) 55%, var(--line)); }
 .mc-revira { display: grid; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
 .mc-revira p, .cartao > p { margin: 0; }
+/* (lote 147) o cadeado e as placas montados à mão */
+.man-pos { display: inline-flex; align-items: center; gap: 4px; }
+.man-pos small { color: var(--fg-2); }
+.man-pista { align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+.sel-s { width: auto; min-width: 92px; }
+.man-pista { display: flex; }
+.man-pista .in, .man-pos .in { width: auto; flex: 0 0 auto; }
+.man-pista .ib { margin-left: auto; }
+.man-aviso { color: #e0a24a; font-size: 13px; }
+.man-ok { color: #7fc98a; }
 </style>
 </head>
 <body>
@@ -297,15 +307,15 @@ dialog.dl .corpo { display: grid; gap: 12px; }
 <script src="../tc/rules.js?v=34"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/bestiario.js?v=4"></script>
-<script src="../tc/escudo.js?v=4"></script>
+<script src="../tc/escudo.js?v=5"></script>
 <script src="../tc/escudo-puzzles.js?v=1"></script>
 <script src="../tc/escudo-acoes.js?v=3"></script>
-<script src="../tc/pistas-ui.js?v=3"></script>
+<script src="../tc/pistas-ui.js?v=4"></script>
 <script src="../tc/pistas-puzzles.js?v=1"></script>
 <script src="../tc/fechadura.js?v=4"></script>
 <script src="../tc/npc.js?v=1"></script>
 <script src="../tc/encontros.js?v=1"></script>
-<script src="handouts.js?v=3"></script>
+<script src="handouts.js?v=4"></script>
 <script src="npcs.js?v=1"></script>
 <script src="encontros.js?v=1"></script>
 <script src="../tc/misterio.js?v=1"></script>

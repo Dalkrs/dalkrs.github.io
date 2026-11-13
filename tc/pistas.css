@@ -251,3 +251,6 @@
 .fch-teste { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #a6aec0; }
 .fch-teste .in { width: 90px; }
 .cons-fch { display: grid; gap: 6px; }
+
+/* (lote 147) as linhas livres do mestre, no cadeado e nas placas */
+.cd-livre, .pl-livre { font-style: italic; }
