@@ -1,0 +1,109 @@
+/* ---------------------------------------------------------------
+   10gz. DESCREVER COM A IA (lote 150) — o "texto para o mapa" da janela "Gerar um lugar…".
+   O mestre escreve o lugar do jeito dele ("uma casa nobre de um andar, cozinha, 2 quartos, quintal com piscina…"); o
+   site manda para a função `ia` do servidor (a chave da API fica lá) as instruções e o formato da resposta (uma
+   "ferramenta" com o esquema), e a IA devolve a ficha: o lugar da janela que mais combina e as escolhas dele — no Sob
+   medida, o terreno, a casa, as salas de cada andar e os anexos do quintal; no Interior, o prédio; na Furtividade, o
+   tamanho e os guardas — mais o estilo, a hora, o clima, o nome e as notas só para o mestre (o que é segredo, ideias) e
+   o que o gerador ainda não sabe fazer. A janela aplica a ficha (as escolhas ficam editáveis) e gera.
+   --------------------------------------------------------------- */
+const IaMapa = (() => {
+  const OUTROS = { vila: 'Vilarejo', cidade: 'Cidade', cidadeGrande: 'Cidade grande (a capital)', tribo: 'Aldeia de uma tribo', porto: 'Porto com o mar', encontro: 'Encontro na estrada ou na natureza (combate a céu aberto)',
+    regiao: 'Região livre (um pedaço de natureza: bioma, rio, caminho)', lago: 'Lago', praia: 'Praia', penhasco: 'Penhasco', desfiladeiro: 'Desfiladeiro', castelo: 'Castelo (de fora)',
+    ruinas: 'Ruínas', cemiterio: 'Cemitério', mundo116: 'Lugares do mundo (templo, santuário…)', masmorra: 'Masmorra (níveis de caverna ou de construção)', catacumbas: 'Catacumbas', crime: 'Cena do crime', arena: 'Arena' };
+  const FUR = () => Furtividade.IDS.map(id => [id, Furtividade.NOMES[id]]);
+  const salasAndar = () => Furtividade.catF('sobmedida').salas;
+  const salasBase = () => Furtividade.catF('sobmedida').base;
+
+  function pedido() {
+    const lugares = [['sobmedida', 'Sob medida: uma casa (simples, boa ou nobre) com o terreno em volta, as salas que o texto pedir, os andares, o porão e os anexos do quintal. A escolha certa para casas, sítios, chácaras e propriedades descritas com detalhe.'],
+      ['interior', 'Interior: só o lado de dentro de um prédio pronto (casa, loja, taverna, templo, casa do senhor, quartel…), sem terreno.']]
+      .concat(FUR().map(([id, n]) => [id, 'Furtividade: ' + n + ' (com guardas em ronda, para uma missão de infiltração).']))
+      .concat(Object.entries(OUTROS).map(([id, n]) => [id, n]));
+    const ids = lugares.map(l => l[0]);
+    const anexos = Object.entries(Furtividade.ANEXOS).map(([k, a]) => k + ' (' + a.n + ')').join(', ');
+    const nomeSala = x => PlantaAndares.NOMES[x] || x;
+    const sistema = [
+      'Você monta mapas de RPG de mesa para um gerador de cenas (um VTT em português). O mestre descreve um lugar; você escolhe, entre os geradores que existem, o que melhor faz esse lugar e preenche a ficha dele, chamando a ferramenta "ficha_do_lugar".',
+      'Regras:',
+      '- Use só os valores das listas do esquema. O que o texto pede e o gerador não sabe fazer vai em "nao_deu" (frases curtas, em português), nunca inventado na ficha.',
+      '- Segredos, ideias de enredo e detalhes que o mapa não mostra (o que tem na sala misteriosa, quem mora lá) vão em "notas_mestre", curtas, em blocos simples.',
+      '- Casas e propriedades com cômodos, jardim, piscina, estufas etc.: use "sobmedida". Só o interior de um prédio comum: "interior". Missão de se infiltrar com guardas: um dos de furtividade, ou "sobmedida" com guardas, se a casa for muito específica.',
+      '- No sobmedida: "terreo" é a lista das salas do térreo (sem o corredor); repita "quarto" para cada quarto. "porte": simples, boa ou nobre (pampa, rica, bem ajeitada = nobre ou boa). "anexos": o que fica no quintal, com a quantidade. "guardas": nenhum, se o texto não falar de guardas.',
+      '- "andares" (para sobmedida, interior e furtividade): "cima" é uma lista de andares acima do térreo, de baixo para cima; "porao" é uma lista de porões, do mais alto ao mais fundo; cada andar é a lista das salas dele, e a PRIMEIRA sala é onde a escada chega (use "sala" no andar de cima e "adega" ou "deposito" no porão). "base" são as salas de uma base secreta escondida no porão (precisa de pelo menos 1 porão); use "secreta" para uma "sala secreta" sem uso definido.',
+      '- "hora": dia, entardecer, noite ou breu; "estilo": o povo/arquitetura (comum, se não disser).',
+      '- O nome é curto, em português, como o título da cena.',
+      'Lugares: ' + lugares.map(([id, n]) => id + ' = ' + n).join(' | '),
+      'Salas (papéis): ' + salasAndar().map(x => x + ' = ' + nomeSala(x)).join('; '),
+      'Anexos do quintal: ' + anexos,
+    ].join('\n');
+    const enumS = { type: 'string', enum: salasAndar() };
+    const andar = { type: 'array', items: enumS, maxItems: 12 };
+    const ferramenta = {
+      name: 'ficha_do_lugar',
+      description: 'A ficha do lugar para o gerador de mapas.',
+      input_schema: {
+        type: 'object', required: ['lugar', 'nome'],
+        properties: {
+          lugar: { type: 'string', enum: ids },
+          nome: { type: 'string', description: 'O nome da cena, curto.' },
+          estilo: { type: 'string', enum: Estilos.LISTA.map(e => e[0]) },
+          hora: { type: 'string', enum: TONES.map(t => t.id) },
+          clima: { type: 'string', enum: WEATHERS.map(w => w[0]) },
+          sobmedida: { type: 'object', properties: {
+            terreno: { type: 'string', enum: ['pequeno', 'medio', 'grande'] },
+            muro: { type: 'boolean' },
+            porte: { type: 'string', enum: Furtividade.PORTES.map(p => p[0]) },
+            terreo: { type: 'array', items: { type: 'string', enum: Furtividade.SALAS_TERREO.filter(x => salasAndar().includes(x)) }, maxItems: 12 },
+            anexos: { type: 'array', items: { type: 'object', required: ['t'], properties: { t: { type: 'string', enum: Object.keys(Furtividade.ANEXOS) }, n: { type: 'integer', minimum: 1, maximum: 4 } } } },
+            guardas: { type: 'string', enum: ['nenhum', 'poucos', 'normal', 'muitos'] } } },
+          andares: { type: 'object', properties: {
+            cima: { type: 'array', items: andar, maxItems: 5 }, porao: { type: 'array', items: andar, maxItems: 2 },
+            base: { type: 'array', items: { type: 'string', enum: salasBase() }, maxItems: 8 } } },
+          interior: { type: 'object', properties: { tipo: { type: 'string', enum: Object.keys(Interior.PLANTAS).filter(k => !Interior.PLANTAS[k].so) }, tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] } } },
+          furtividade: { type: 'object', properties: { tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] }, guardas: { type: 'string', enum: ['poucos', 'normal', 'muitos'] } } },
+          notas_mestre: { type: 'string', description: 'Só o mestre lê. Curto.' },
+          nao_deu: { type: 'array', items: { type: 'string' }, maxItems: 8 },
+        },
+      },
+    };
+    return { sistema, ferramenta };
+  }
+
+  // os andares da IA → a escolha de andares (PlantaAndares)
+  function andaresDe(a) {
+    if (!a || typeof a !== 'object') return null;
+    const cima = Array.isArray(a.cima) ? a.cima.filter(Array.isArray).slice(0, 5) : [], porao = Array.isArray(a.porao) ? a.porao.filter(Array.isArray).slice(0, 2) : [];
+    const base = Array.isArray(a.base) ? a.base.filter(x => typeof x === 'string') : [];
+    const out = { cima: cima.length, porao: porao.length || (base.length ? 1 : 0), base: base.length > 0, temas: {}, salas: {} };
+    cima.forEach((l, i) => { if (l.length) out.salas[i + 1] = l.slice(); });
+    porao.forEach((l, i) => { if (l.length) out.salas[-(i + 1)] = l.slice(); });
+    if (base.length) out.salas.base = base;
+    return out;
+  }
+  /* A ficha da IA → { lugar, op (as escolhas do lugar), comum ({ estilo, hora, clima }), nome, notas, fora } */
+  function traduzir(d) {
+    d = d && typeof d === 'object' ? d : {};
+    const and = andaresDe(d.andares), comum = {};
+    if (Estilos.LISTA.some(e => e[0] === d.estilo)) comum.estilo = d.estilo;
+    if (TONES.some(t => t.id === d.hora)) comum.hora = d.hora;
+    if (WEATHERS.some(w => w[0] === d.clima)) comum.clima = d.clima;
+    const notas = typeof d.notas_mestre === 'string' ? d.notas_mestre.trim().slice(0, 1200) : '';
+    const fora = Array.isArray(d.nao_deu) ? d.nao_deu.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 120)).slice(0, 8) : [];
+    let op = null;
+    if (d.lugar === 'sobmedida') op = { spec: d.sobmedida || {}, and, notas, fora, titulo: 'ia' };
+    else if (d.lugar === 'interior') op = Object.assign({}, d.interior && d.interior.tipo ? { tipo: d.interior.tipo } : null, d.interior && d.interior.tamanho ? { tam: d.interior.tamanho } : null, and ? { and } : null);
+    else if (Furtividade.IDS.includes(d.lugar)) op = Object.assign({}, d.furtividade || {}, and ? { and } : null);
+    return { lugar: typeof d.lugar === 'string' ? d.lugar : 'sobmedida', op, comum, nome: typeof d.nome === 'string' ? d.nome.trim().slice(0, 60) : '', notas, fora };
+  }
+  // chama a IA (pela casca, que fala com o servidor)
+  async function pedir(texto) {
+    const T = window.TC;
+    if (!T || !T.ia || !T.ia.pedir) throw new Error('A IA funciona com a mesa aberta no site (pela casca).');
+    const { sistema, ferramenta } = pedido();
+    const r = await T.ia.pedir({ acao: 'mapa', texto, sistema, ferramenta });
+    if (!r || !r.dados) throw new Error('A IA não devolveu o lugar. Tente descrever de outro jeito.');
+    return Object.assign(traduzir(r.dados), { restam: r.restam });
+  }
+  return { pedido, traduzir, pedir, andaresDe };
+})();

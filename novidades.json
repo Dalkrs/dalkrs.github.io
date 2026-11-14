@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.13-06",
+      "data": "2026-11-13",
+      "titulo": "Descrever o lugar com a IA",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: no “Gerar um lugar…”, o bloco “Descrever com a IA”. Escreva o lugar do seu jeito e a IA escolhe o gerador e preenche as escolhas: o lugar, as salas de cada andar, o quintal, a hora, o estilo e o nome. Ela também deixa notas só para você e diz o que o gerador ainda não faz. Depois dá para mudar tudo.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: o lugar novo “Sob medida”: uma casa (simples, boa ou nobre) com o terreno em volta, as salas do térreo que você escolher, andares, porão e os anexos do quintal (piscina, estufas, casa de ferramentas, altar, fonte, horta, pomar, poço, estábulo, canil, mesa de jardim, varal), com ou sem guardas.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.13-05",
       "data": "2026-11-13",
       "titulo": "Um gerador só, e a aba Guardas",

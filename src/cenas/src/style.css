@@ -1356,3 +1356,11 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 /* (lote 149) seis abas no painel (com a Guardas): cabem sem rolar */
 .tabs { gap: 0; padding: 6px 4px 0; }
 .tab { flex: 1 1 auto; padding: 7px 3px 8px; font-size: 12.5px; }
+
+/* (lote 150) o sob medida: a ficha */
+.sob-anxs { display: flex; flex-direction: column; gap: 2px; }
+.sob-anx { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sob-ia { border-left: 3px solid var(--lamp); padding: 4px 8px; background: rgba(230, 171, 79, 0.08); border-radius: 6px; }
+.ia-msg .ia-erro { color: #e88a7a; }
+.ia-msg .ia-notas { border-left: 3px solid var(--lamp); padding-left: 8px; }
+#ger-ia-texto { resize: vertical; min-height: 84px; }

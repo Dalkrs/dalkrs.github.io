@@ -268,6 +268,11 @@
     apagar(url) { enviar({ t: 'arquivo.apagar', url }); },
   };
 
+  /* ---- (lote 150) a IA do site: a casca chama a função `ia` (o servidor guarda a chave) ---- */
+  const ia = {
+    pedir(corpo) { const n = ++seq; const p = new Promise((ok, falha) => { esperas[n] = { ok, falha }; }); enviar({ t: 'ia.pedir', n, corpo }); return p; },
+  };
+
   /* (lote 16) O guia da casca: "Mostrar onde fica". O sistema prepara (aoMostrar), e o lugar ganha um contorno por uns
      instantes, depois de rolar até ele. Responde à casca se achou (à vista: existe e aparece na tela). */
   const reduzido = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -299,6 +304,11 @@
   function receber(m) {
     if (!m || typeof m !== 'object') return;
     if (m.t === 'guia.mostrar') { mostrarParaOGuia(m); return; }
+    if ((m.t === 'ia.ok' || m.t === 'ia.erro') && esperas[m.n]) {      // (lote 150)
+      const e = esperas[m.n]; delete esperas[m.n];
+      if (m.t === 'ia.ok') e.ok(m.dados); else { const er = new Error(m.erro || 'Não deu para falar com a IA agora.'); er.semChave = !!m.semChave; e.falha(er); }
+      return;
+    }
     if ((m.t === 'arquivo.ok' || m.t === 'arquivo.erro') && esperas[m.n]) {
       const e = esperas[m.n]; delete esperas[m.n];
       if (m.t === 'arquivo.ok') e.ok(m.url); else e.falha(new Error(m.erro || 'Não deu para enviar a imagem.'));
@@ -371,6 +381,6 @@
     });
   }
   if (canal) canal.onmessage = ev => { if (!naCasca) receber(ev.data); };
-  TC.ponte = ponte; TC.dados = dados; TC.arquivos = arquivos;
+  TC.ponte = ponte; TC.dados = dados; TC.arquivos = arquivos; TC.ia = ia;
   enviar({ t: 'ola' });
 })();

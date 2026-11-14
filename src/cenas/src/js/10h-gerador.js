@@ -16,11 +16,12 @@ const Gerador = (() => {
     Encontro.LUGAR, Regiao.LUGAR,
     AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
     LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO, LugaresMundo.LUGAR,      // (lote 126) os lugares do mundo
+    Furtividade.LUGAR_SOB,      // (lote 150) o lugar sob medida (a ficha, que a IA preenche)
     Interior.LUGAR,      // (lote 149) o interior (a janela "Gerar o interior" virou esta aba)
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
     LugaresFora.CRIME, Arena.LUGAR].concat(Furtividade.IDS.map(id => Furtividade.LUGARES[id]));      // (lote 121) a furtividade
   /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
-  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Por dentro', ['interior']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
+  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Sob medida', ['sobmedida']], ['Por dentro', ['interior']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
     ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']], ['Furtividade', Furtividade.IDS]];
   const GLIFOS = {
     vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
@@ -33,7 +34,9 @@ const Gerador = (() => {
     lago: 'M4 14c2-3 14-3 16 0-2 3-14 3-16 0zM8 14h1.5M13 13.5h3M6.5 10V7M8 10.5V6M17 10V7.5', praia: 'M3 17c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2 1 3 1M3 12c3-4 7-6 12-6M15 6l2 3',
     penhasco: 'M3 7h8l1 4 1 9h8M3 7v13h18M7 11v.1M9 15v.1', desfiladeiro: 'M3 5l4 2 2 13M21 5l-4 3-2 12M9 20h6M11 9l1 2-1 3 1 3',
     cidadeGrande: 'M2 20h20M3 20V8l3-2 3 2v12M9 20V4h6v16M15 20v-9l3-2 3 2v9M11 7h2M11 10h2M11 13h2',
-    interior: 'M3 20V5h18v15H3zM3 12h7M10 5v4M10 12v8M10 15h11M15 15v5M6 8h.1',      // (lote 149) a planta por dentro (as salas)
+    interior: 'M3 20V5h18v15H3zM3 12h7M10 5v4M10 12v8M10 15h11M15 15v5M6 8h.1',
+    sobmedida: 'M4 20h16M6 20v-7l5-4 5 4v7M9 20v-3h4v3M17 4l3 3-6 6-3 1 1-3 5-5z',      // (lote 150) a casa e o lápis
+      // (lote 149) a planta por dentro (as salas)
     mundo116: 'M3 20h18M5 20V10l7-5 7 5v10M9 20v-5h6v5M12 5V2.5M10.5 3h3',          // (lote 126) o templo
     arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
     // (lote 121) a furtividade: a mansão (a casa grande com o muro), a fortaleza (a torre com as ameias), a guilda (o cofre),
@@ -313,6 +316,38 @@ const Gerador = (() => {
       UI.menuEm(r.left, r.bottom + 4, items);
     }
 
+    /* ---- (lote 150) descrever com a IA: o texto vira a ficha do lugar ---- */
+    const iaMsg = h('div', { class: 'ia-msg', id: 'ger-ia-msg', role: 'status' });
+    let iaOcupada = false;
+    function aplicarIA(res) {
+      const l = lugar(res.lugar) || lugar('sobmedida');
+      L = l;
+      const E = estadoDe(L);
+      if (res.op) L.aplicarOpcoes(E.op, res.op);
+      if (res.comum.estilo) comum.estilo = res.comum.estilo;
+      if (res.comum.hora) comum.hora = res.comum.hora;
+      if (res.comum.clima !== undefined) comum.clima = res.comum.clima;
+      E.trava = null; E.base = null; E.seed = novaSemente();
+      if (res.nome) { inNome.value = res.nome; nomeMexido = true; } else nomeMexido = false;
+      lembrarComum(); pintar(); refazer();
+      iaMsg.replaceChildren(...[h('p', { class: 'note', text: `A IA escolheu: ${L.n}. A ficha ficou preenchida: mude o que quiser, ou "Gerar outro".` + (res.restam != null ? ` (Restam ${res.restam} pedidos hoje.)` : '') }),
+        res.notas && L.id !== 'sobmedida' ? h('p', { class: 'note ia-notas', text: 'Notas para o mestre: ' + res.notas }) : null,
+        res.fora.length && L.id !== 'sobmedida' ? h('p', { class: 'note', text: 'O gerador ainda não faz: ' + res.fora.join('; ') + '.' }) : null].filter(Boolean));
+    }
+    function blocoIA() {
+      const ta = h('textarea', { class: 'in', id: 'ger-ia-texto', rows: 5, maxlength: 4000, 'data-enter': 'proprio', placeholder: 'Ex.: uma casa nobre de um andar, com cozinha, dois quartos, sala de jantar, varanda e um quintal grande com piscina. De noite.',
+        value: App.opt.iaTexto || '', oninput: e => { App.opt.iaTexto = e.target.value.slice(0, 4000); } });
+      const bt = btn(iaOcupada ? 'Pensando…' : 'Montar com a IA', async () => {
+        const txt = ta.value.trim();
+        if (!txt) { UI.toast('Descreva o lugar primeiro.'); ta.focus(); return; }
+        iaOcupada = true; bt.disabled = true; bt.textContent = 'Pensando…'; iaMsg.replaceChildren(h('p', { class: 'note', text: 'A IA está montando a ficha (leva alguns segundos)…' }));
+        try { const res = await IaMapa.pedir(txt); if (cv.isConnected) aplicarIA(res); }
+        catch (e) { if (cv.isConnected) iaMsg.replaceChildren(h('p', { class: 'note ia-erro', text: (e && e.message) || 'Não deu para falar com a IA agora.' })); }
+        finally { iaOcupada = false; if (cv.isConnected) pintar(); }
+      }, { icon: 'fx', id: 'ger-ia', disabled: iaOcupada, title: 'A IA lê o texto e preenche a ficha do lugar (você pode mudar tudo depois)' });
+      return [ta, h('div', { class: 'row' }, bt), iaMsg];
+    }
+
     /* ---- as escolhas ---- */
     function pintar() {
       const a = document.activeElement, fid = a && a.id && (ctl.contains(a) || abas.contains(a)) ? a.id : null;
@@ -346,6 +381,7 @@ const Gerador = (() => {
       const pv = Povoar.prefs(), mi = Misterio.prefs();
       const casoMi = mi.on && mi.caso ? Misterio.casos().find(x => x.id === mi.caso) : null;
       ctl.replaceChildren(...[
+        bloco('ia', 'Descrever com a IA', 'o texto vira o mapa', ...blocoIA()),      // (lote 150)
         bloco('lugar', L.n, '', blocoCampo, blocoHex,
           L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) })),
         bloco('amb', 'Ambiente', resAmb,

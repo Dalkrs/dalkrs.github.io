@@ -2390,6 +2390,23 @@
     },
   };
 
+  /* (lote 150) A IA do site: a função `ia` (no servidor, com a chave guardada lá) — só o mestre de uma mesa liberada usa.
+     corpo: { acao, texto, sistema, ferramenta } → os dados que a IA preencheu; o erro vem com a frase do servidor. */
+  const ia = {
+    async pedir(corpo) {
+      const a = mesas.atual;
+      if (!a) throw new Error('Abra uma mesa primeiro.');
+      if (!temNuvem()) throw new Error('A IA só funciona com a mesa na nuvem.');
+      const { data, error } = await cliente().functions.invoke('ia', { body: Object.assign({}, corpo, { mesa: a.id }) });
+      if (error) {
+        let msg = '', semChave = false;
+        try { const j = await error.context.json(); msg = j && j.erro; semChave = !!(j && j.semChave); } catch (e) { /* sem corpo */ }
+        const er = new Error(msg || 'Não deu para falar com a IA agora. Tente de novo.'); er.semChave = semChave; throw er;
+      }
+      return data;
+    },
+  };
+
   /* Rolagens que vêm do mapa-múndi (encontros sorteados, por exemplo) entram na mesa como as outras. */
   const deSistemaAntes = aoVivo.deSistema;
   aoVivo.deSistema = async (origem, d) => {
@@ -2488,5 +2505,5 @@
   };
 
   TC.sono = sono;
-  TC.conta = conta; TC.mesas = mesas; TC.aoVivo = aoVivo; TC.dados = dados; TC.arquivos = arquivos; TC.erroPt = erroPt;
+  TC.conta = conta; TC.mesas = mesas; TC.aoVivo = aoVivo; TC.dados = dados; TC.arquivos = arquivos; TC.erroPt = erroPt; TC.ia = ia;
 })();

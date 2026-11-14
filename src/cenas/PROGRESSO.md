@@ -515,3 +515,17 @@ de cena mais fácil, num notebook de ~1366×768. O painel da direita e a faixa d
   centraliza), os botões de todos, os cones para os jogadores de todos os guardas de uma vez (`verTodos`) e criar guarda
   (`novoGuarda`, `fazerGuardas`). As teclas das abas vão de 1 a 6. As abas ficaram mais justas para caber as seis.
 - Teste: `test/lote149.js` (e os antigos do interior apontam para os campos da janela única).
+
+## Lote 150 — o texto para o mapa (a IA) e o lugar Sob medida
+
+- O servidor: a função `ia` (supabase/functions/ia) chama o Claude com a chave dos segredos (`ANTHROPIC_API_KEY`;
+  o modelo em `IA_MODELO`, senão claude-sonnet-5-5). Só o mestre ou o auxiliar de uma mesa em `public.ia_mesas`, até o
+  `teto_dia` (40); cada pedido em `public.ia_uso` (migração 0044). O site manda as instruções e o esquema (a ferramenta).
+- O caminho: Cenas → `TC.ia.pedir` (ponte, v22) → a casca (`ia.pedir`) → `TC.ia.pedir` (tc.js) → a função.
+- `IaMapa` (10gz): o pedido (as instruções, com os lugares, as salas e os anexos; o esquema `ficha_do_lugar`) e a
+  tradução da ficha para as escolhas de cada lugar (o sob medida, o interior, a furtividade; os andares viram a escolha
+  do PlantaAndares). No Gerador, o bloco "Descrever com a IA" (`aplicarIA`).
+- O lugar **Sob medida** (`Furtividade.LUGAR_SOB`, `gerarSobMedida`, `fazAnexo`): a ficha (terreno, muro, porte, salas do
+  térreo, anexos, guardas) e os andares de sempre; os anexos se arrumam no quintal (os de uso perto da casa, os quietos
+  longe), com caminhos por baixo de tudo, pela faixa de cima da casa. A hora é a escolhida (`horaLivre` no criar).
+- Teste: `test/lote150.js` (com a casca de mentira respondendo).
