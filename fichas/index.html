@@ -323,6 +323,15 @@ table.attr tr:last-child td{border-bottom:0}
 .itpilha.zero b,.itpilha.zero .itpilhan{color:var(--danger,#c0392b)}
 .itcard.pilhazero .itnome,.itcard.pilhazero .itbon{opacity:.5}
 .itpilhaf input{width:90px}
+/* (lote 161) a arma à distância: a munição na arma */
+.itdist{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;margin:4px 0 2px}
+.itdist>.eyebrow{flex-basis:100%}
+.itdistg{display:inline-flex;align-items:center;gap:4px}
+.itdistr{font-size:12px;color:var(--fg-2,inherit)}
+.itdist input.itdistn{width:56px;text-align:center}
+.itdist.zero .itdistg:first-of-type b,.itdist.zero .itdistg:first-of-type .itdistn{color:var(--danger,#c0392b)}
+.itdpn{width:84px}
+.itdistcapf input{width:90px}
 .itcard.guardado .itnome,.itcard.guardado .itbon,.itcard.guardado .itfxv,.itcard.guardado .ittroca{opacity:.55}
 .itcard.rel{border-color:var(--brass);background:linear-gradient(180deg,var(--brass-fundo),var(--campo) 75%);box-shadow:inset 0 0 0 1px var(--brass-soft)}
 .itcard.rel.guardado{background:var(--brass-fundo)}
@@ -1876,12 +1885,12 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=23"></script>
-<script src="../tc/rules.js?v=34"></script>
+<script src="../tc/rules.js?v=35"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=18"></script>
-<script src="extras.js?v=27"></script>
+<script src="extras.js?v=28"></script>
 <script src="../tc/reputacao.js?v=1"></script>
 <script src="reputacao.js?v=1"></script>
 <script src="../tc/aptidoes.js?v=1"></script>

@@ -1518,6 +1518,44 @@
   // o item soma nas contas? (equipado, e com o que ele precisa)
   // (lote 122) a pilha de arremesso vazia (Kunai ×0) fica na ficha, mas não soma até repor
   const pilhaVazia = it => ehObjeto(it) && typeof it.pilha === 'number' && it.pilha <= 0;
+  /* (lote 161) A arma à distância (arco, besta, arma de fogo): o dano é fixo (it.dp, que soma a melhoria; o elemento vai
+     por cima) e a munição fica na própria arma — it.dist = { k, cap (quantos tiros cabem), bal (quantos tem agora),
+     pen (quantos pentes, ou aljavas, sobram) }. Disparar gasta 1; Recarregar gasta 1 pente e enche. Sem bala, a arma
+     continua equipada (os bônus valem), só não dispara. */
+  const DIST = Object.freeze([
+    { k: 'arco', nome: 'Arco', tiro: 'Flechas', um: 'flecha', pente: 'Aljavas', umPente: 'aljava', cap: 20, pen: 1 },
+    { k: 'besta', nome: 'Besta', tiro: 'Virotes', um: 'virote', pente: 'Aljavas', umPente: 'aljava', cap: 10, pen: 1 },
+    { k: 'fogo', nome: 'Arma de fogo', tiro: 'Balas', um: 'bala', pente: 'Pentes', umPente: 'pente', cap: 6, pen: 2 },
+  ]);
+  const DIST_MAX = 999;
+  const tipoDist = k => DIST.find(d => d.k === k) || null;
+  function distDoItem(it) {
+    if (!ehObjeto(it) || !ehObjeto(it.dist) || !tipoDist(it.dist.k)) return null;
+    const n = (v, a, b, p) => { const x = Math.round(Number(v)); return Number.isFinite(x) ? Math.max(a, Math.min(b, x)) : p; };
+    const T = tipoDist(it.dist.k), cap = n(it.dist.cap, 1, DIST_MAX, T.cap);
+    return { k: T.k, cap, bal: n(it.dist.bal, 0, cap, cap), pen: n(it.dist.pen, 0, DIST_MAX, 0), tipo: T };
+  }
+  const ehDist = it => !!distDoItem(it);
+  // um item novo com a munição mudada: { ok, item, d (a munição nova), erro }
+  function mudarDist(it, f) {
+    const d = distDoItem(it);
+    if (!d) return { ok: false, erro: 'Este item não é uma arma à distância.' };
+    const n = f(Object.assign({}, d));
+    if (n && n.erro) return { ok: false, erro: n.erro };
+    const nd = distDoItem({ dist: Object.assign({ k: d.k }, n) });
+    return { ok: true, item: Object.assign({}, it, { dist: { k: nd.k, cap: nd.cap, bal: nd.bal, pen: nd.pen } }), d: nd };
+  }
+  const dispararDist = it => mudarDist(it, d => {
+    if (!d.bal) return { erro: d.pen ? 'Sem ' + d.tipo.tiro.toLowerCase() + ': recarregue (' + d.pen + ' ' + (d.pen === 1 ? d.tipo.umPente : d.tipo.pente.toLowerCase()) + ').' : 'Acabou a munição.' };
+    return { cap: d.cap, bal: d.bal - 1, pen: d.pen };
+  });
+  const recarregarDist = it => mudarDist(it, d => {
+    if (d.bal >= d.cap) return { erro: 'Já está cheia.' };
+    if (!d.pen) return { erro: 'Não há ' + d.tipo.umPente + ' para recarregar.' };
+    return { cap: d.cap, bal: d.cap, pen: d.pen - 1 };
+  });
+  // "Balas 4/6 · Pentes 2"
+  const textoDist = d => (d ? d.tipo.tiro + ' ' + d.bal + '/' + d.cap + ' · ' + d.tipo.pente + ' ' + d.pen : '');
   function itemAtivo(it, itens) { return ehObjeto(it) && it.equipado !== false && !pilhaVazia(it) && reqAtendido(it, itens); }
   /* o nome do que o item precisa, para a tela: "Espada do Gelo de Selene", "Espada de gelo" (o grupo),
      "Katana de gelo (Nv 2 ou mais)" ou, com vários, "Katana de gelo, Sabre ou Espada longa" — ou '' */
@@ -2196,6 +2234,12 @@
     for (const k of Object.keys(out)) out[k] = ELEM_DANO.filter(e => out[k][e]).map(e => [e, out[k][e]]);
     return out;
   }
+  // (lote 161) o dano de um tiro da arma à distância: o fixo (it.dp) e os elementos por cima — "18 + Fogo 4"
+  function danoDoTiro(it) {
+    const dp = Math.max(0, Math.round(numFinito(it && it.dp) || 0)), d = danoDoItem(it);
+    const elem = ELEM_DANO.filter(e => d[e]).map(e => [e, Math.round(d[e])]);
+    return { dp, elem, texto: [String(dp)].concat(elem.map(([e, v]) => (ELEM_INFO[e] ? ELEM_INFO[e].nome : e) + ' ' + v)).join(' + ') };
+  }
   // a lista de elementos de uma rolagem, arrumada (para a mesa ao vivo): até 4 pares [chave, 1..999]
   const limparElem = l => (Array.isArray(l) ? l : []).filter(x => Array.isArray(x) && ELEM_DANO.includes(x[0]) && Number.isFinite(+x[1]) && Math.round(+x[1]) !== 0)
     .slice(0, 4).map(x => [x[0], Math.max(-999, Math.min(999, Math.round(+x[1])))]);
@@ -2313,7 +2357,7 @@
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
     bonusDaArvore, unicasDe, iniciativa, estadoRecursos, estiloDaBarra, aplicarDelta, podreDe, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
-    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, pilhaVazia, nomeDoReq, textoDoEquipar,
+    FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, pilhaVazia, DIST, tipoDist, distDoItem, ehDist, dispararDist, recarregarDist, textoDist, nomeDoReq, textoDoEquipar,
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,
     NIVEIS_MAX, temNiveis, nivelDoItem, niveisDoItem, itemNoNivel, espelharItem, itemComNivelNovo, itemSemNivel, textoDoNivel,
     MARCAS_BARRA, barraEspecial, defBarraEspecial, marcaDaBarra, textoDaMarca, TETO_INICIO, inicioDoGrau,
@@ -2328,7 +2372,7 @@
     MIS_ESTADOS, missoes,
     XP_PASSO, xpDe, subirNivelXp, anivOk, aniversario,
     POR_NIVEL_PADRAO, porNivelDoTipo, tetoDoTipo, contaDoTeto,
-    FAIXAS_EQ, MAT_MAX, PECAS, ELEM_DANO, ELEM_INFO, svgElem, elemDaFicha, limparElem, elemDaFaixa, danoDoItem, tetoArmadura, repartirArmadura, faixaDoNivel, faixaEq, etiquetasEq, textoEtiquetas, pecaDoItem, chavesDaPeca, valorDaFaixa, itemNaRegra, melhorarItem, outrosDaArma, OUTROS_ARMA, valorEq, ajusteDoItem, ajusteDaFicha
+    FAIXAS_EQ, MAT_MAX, PECAS, ELEM_DANO, ELEM_INFO, svgElem, elemDaFicha, limparElem, elemDaFaixa, danoDoItem, danoDoTiro, tetoArmadura, repartirArmadura, faixaDoNivel, faixaEq, etiquetasEq, textoEtiquetas, pecaDoItem, chavesDaPeca, valorDaFaixa, itemNaRegra, melhorarItem, outrosDaArma, OUTROS_ARMA, valorEq, ajusteDoItem, ajusteDaFicha
   };
 
   (root.TC || (root.TC = {})).rules = api;

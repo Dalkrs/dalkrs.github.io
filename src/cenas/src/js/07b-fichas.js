@@ -600,6 +600,37 @@ const Fichas = (() => {
       return true;
     } };
   }
+  /* (lote 161) As armas à distância equipadas da ficha deste token (arco, besta, arma de fogo): o dano fixo e a munição
+     na arma. → [{ id, nome, d (TC.rules.distDoItem), tiro (danoDoTiro) }]; vazio para quem não mexe nesta ficha. */
+  function armasDist(t) {
+    if (!podeEquipar(t) || typeof R().distDoItem !== 'function') return [];
+    const l = get(t.char), lista = Array.isArray(l.ficha.itens) ? l.ficha.itens : [];
+    return lista.filter(it => it && it.id != null && it.equipado !== false && R().distDoItem(it))
+      .map(it => ({ id: String(it.id), nome: String(it.nome || '').trim() || 'Arma', d: R().distDoItem(it), tiro: R().danoDoTiro(it) }));
+  }
+  /* Disparar (gasta 1) ou recarregar (gasta 1 pente e enche) uma arma à distância — grava na ficha e avisa a mesa no
+     disparo. → { ok, nome, d, tiro, desfazer() } ou { ok: false, error } */
+  function municao(t, id, op) {
+    if (!podeEquipar(t)) return { ok: false, error: papel === 'mestre' ? 'A ficha deste token não está aqui.' : 'Você dispara com o seu personagem.' };
+    const charId = t.char, l = get(charId), antes = l.ficha, lista = Array.isArray(antes.itens) ? antes.itens : [];
+    const i = lista.findIndex(x => x && x.id != null && String(x.id) === String(id)), it = lista[i];
+    if (!it) return { ok: false, error: 'Esta arma não está mais na ficha.' };
+    const r = op === 'recarregar' ? R().recarregarDist(it) : R().dispararDist(it);
+    if (!r.ok) return { ok: false, error: r.erro };
+    const itens = lista.slice(); itens[i] = r.item;
+    P.gravar(charId, { ficha: Object.assign({}, antes, { itens }) });
+    syncAll(charId);
+    const nome = String(it.nome || '').trim() || 'a arma', tiro = R().danoDoTiro(it), distAntes = JSON.parse(JSON.stringify(it.dist));
+    if (op !== 'recarregar') avisarUso(t, charId, tokName(t) + ' disparou ' + nome, 'Dano ' + tiro.texto + ' · ' + R().textoDist(r.d), tiro.dp, [], undefined);
+    return { ok: true, nome, d: r.d, tiro, desfazer: () => {
+      const agora = get(charId);
+      if (!agora || !agora.ficha || !Array.isArray(agora.ficha.itens)) return false;
+      const itens2 = agora.ficha.itens.map(x => (x && x.id != null && String(x.id) === String(id) ? Object.assign({}, x, { dist: distAntes }) : x));
+      P.gravar(charId, { ficha: Object.assign({}, agora.ficha, { itens: itens2 }) });
+      syncAll(charId);
+      return true;
+    } };
+  }
   /* (lote 15) O máximo de uma barra ligada, mudado aqui no token, vai para a ficha. Antes, o token ficava com o número
      só até a próxima mudança: ao descontar, a ficha devolvia o máximo dela (na ficha de jogador ainda sem pontos, o
      "LVL*5" da fórmula — o HP que não descontava e voltava para 10). Agora o número entra na ficha no lugar da fórmula
@@ -1124,7 +1155,7 @@ const Fichas = (() => {
     }
     return false;
   }
-  return { listaBest, soAMao, estiloDaFicha, corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
+  return { armasDist, municao, listaBest, soAMao, estiloDaFicha, corrDoTok, start, on: () => on, chars, get, link, barrasDeArvore, arvore, gravarPainel, linhaBest, linhaBestTok, contasTok, ligado, contasBest, novoTokenBest, quemRecebeSaque, entregarSaque, membrosParaFicha, copiarFicha, abrir, syncAll, syncToken, paraFicha, falta, foraDaFicha, usarBarras, rolaveis, fixaPadrao, rolar, imagemDe, podeBolsa, bolsa, previaUso, usar, usoPedido, feridas, ferido, amputados,
     podeRolar, defesas, donoDe, donoDoToken, donoQueJoga, novoToken, numeros, mente, mudarMente, fadiga, mudarFadiga, previaMente, mexerEmTodos, voltarMente, deJogadorT, podeEquipar, itens, equipar, maximoParaFicha, papel: () => papel, eu: () => eu, vejoTodas, escondida,
     rotulo, campDa, vista, nomeDaCampanha,
     // o que ainda esperava para ir "às cegas" vai agora (a página está fechando)

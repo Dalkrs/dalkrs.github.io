@@ -280,7 +280,7 @@ const FichasExtras = (() => {
   // (lote 89) os tipos de dano de elemento de uma arma: os nove elementos e o psicológico (com os nomes das defesas)
   const ELEM = () => { const R = RE(); return R && R.ELEM_DANO ? ESP().filter(d => R.ELEM_DANO.includes(d.k)) : []; };
   const NOME_K = k => (NOMES_K[k] || k);
-  const NOMES_K = { DP: 'Dano próprio', FOR: 'FOR', DES: 'DES', VIT: 'VIT', CAN: 'CAN', AGI: 'AGI', DFF: 'DEF F', DFM: 'DEF M', ESQ: 'Esquiva', BLQ: 'Bloqueio', FUR: 'FUR', PER: 'PER' };
+  const NOMES_K = { DP: 'Dano fixo', FOR: 'FOR', DES: 'DES', VIT: 'VIT', CAN: 'CAN', AGI: 'AGI', DFF: 'DEF F', DFM: 'DEF M', ESQ: 'Esquiva', BLQ: 'Bloqueio', FUR: 'FUR', PER: 'PER' };
   function htmlEtiquetas(it) {
     const R = RE(); if (!R) return '';
     const t = R.textoEtiquetas(it);
@@ -296,8 +296,11 @@ const FichasExtras = (() => {
     const mats = [['', '—'], [1, 'Q1 (até +2)'], [2, 'Q2 (até +4)'], [3, 'Q3 (até +5)']];
     const melh = [0, 1, 2, 3, 4, 5].map(n => [n, n ? '+' + n : 'nenhuma']);
     // (lote 112) o que rola o dano da arma: um atributo (FOR nas físicas, CAN nas mágicas) ou o dano próprio dela
-    const danos = [['', 'Pelo maior número'], ['FOR', 'FOR'], ['CAN', 'CAN'], ['DES', 'DES'], ['AGI', 'AGI'], ['VIT', 'VIT'], ['dp', 'Próprio (arco, besta, pólvora)']];
-    const danoAtual = +it.dp > 0 ? 'dp' : (it.atr || '');
+    // (lote 161) à distância: arco, besta ou arma de fogo — o dano fixo e a munição na arma
+    const danos = [['', 'Pelo maior número'], ['FOR', 'FOR'], ['CAN', 'CAN'], ['DES', 'DES'], ['AGI', 'AGI'], ['VIT', 'VIT'], ['dp', 'Fixo (sem munição)']]
+      .concat((R.DIST || []).map(d => ['d:' + d.k, 'À distância: ' + d.nome.toLowerCase()]));
+    const dAt = R.distDoItem ? R.distDoItem(it) : null;
+    const danoAtual = dAt ? 'd:' + dAt.k : +it.dp > 0 ? 'dp' : (it.atr || '');
     const semMelhoria = r.peca === 'fora' || r.peca === 'acessorio', niveis = !!R7() && R7().temNiveis(it);
     const podeMelhorar = !semMelhoria && !niveis && r.mat && r.melhoria < r.limite;
     const porQue = semMelhoria ? 'Esta peça não tem melhoria.' : niveis ? 'Item com níveis: use as abas dos níveis.' : !r.mat ? 'Escolha o material primeiro.' : r.melhoria >= r.limite ? 'Q' + r.mat + ' sobe até +' + r.limite + '.' : (r.peca === 'armadura' ? 'Sobe +1 e o total da armadura +' + F.passo + ' (no lado mais baixo)' : 'Sobe +1 e ' + r.chaves.map(NOME_K).join(' e ') + ' +' + F.passo) + ' (o Compendiânio sai à mão: ' + F.custo[r.melhoria] + ').';
@@ -331,6 +334,7 @@ const FichasExtras = (() => {
         ${sel('itregmat', R.etiquetasEq(it).mat || '', mats, 'Material')}
         ${sel('itregmelh', r.melhoria, melh, 'Melhoria')}
         ${r.peca === 'arma' && M ? sel('itregdano', danoAtual, danos, 'Dano rola') : ''}
+        ${r.peca === 'arma' && M && (+it.dp > 0 || dAt) ? `<label class="f itregf"><span class="eyebrow">Dano fixo</span><input class="inm itdpn" type="number" min="1" max="99999" step="1" data-itregdp="${id}" value="${Math.max(0, Math.round(+it.dp || 0))}" aria-label="Dano fixo de ${esc(nomeIt(it) || 'item sem nome')}"></label>` : ''}
         <button type="button" class="mini" data-itregmais="${id}" ${podeMelhorar ? '' : 'disabled'} title="${esc(porQue)}">Melhorar +1</button>
       </div>${aviso}
     </div>`;
@@ -357,6 +361,7 @@ const FichasExtras = (() => {
       <div class="itopc">
         <label class="chk"><input type="checkbox" data-itemrel="${esc(it.id)}" ${it.reliquia ? 'checked' : ''}> <span>Relíquia <span class="hint">(o cartão fica dourado)</span></span></label>
         <label class="f itpilhaf" title="Kunai, Shuriken, facas de arremesso: a quantidade da pilha. Arremessar gasta 1; usar na mão não gasta. Vazio: não é de arremesso."><span class="eyebrow">Arremesso (quantos)</span><input class="inm" type="number" min="0" max="999" data-itpilhaset="${esc(it.id)}" value="${typeof it.pilha === 'number' ? it.pilha : ''}" placeholder="—" aria-label="Quantos ${esc(it.nome || 'deste item')} na pilha de arremesso"></label>
+        ${RE() && RE().distDoItem && RE().distDoItem(it) ? `<label class="f itdistcapf" title="Quantos tiros cabem num ${esc(RE().distDoItem(it).tipo.umPente)} cheio"><span class="eyebrow">Cabem (${esc(RE().distDoItem(it).tipo.tiro.toLowerCase())} por ${esc(RE().distDoItem(it).tipo.umPente)})</span><input class="inm" type="number" min="1" max="999" data-itdistcap="${esc(it.id)}" value="${RE().distDoItem(it).cap}"></label>` : ''}
         <label class="f ittrocaf"><span class="eyebrow">Grupo de troca</span><input class="inm" data-itemtroca="${esc(it.id)}" value="${esc(String(it.troca == null ? '' : it.troca))}" maxlength="40" list="gruposTroca" placeholder="ex.: Arma principal" autocomplete="off" title="Dos itens do mesmo grupo, um só fica equipado: equipar um guarda os outros"></label>
         ${opcoesReq(it, pc)}
       </div>
@@ -433,6 +438,23 @@ const FichasExtras = (() => {
       ${n ? '' : '<span class="hint">acabaram — não soma até repor</span>'}
     </div>`;
   }
+  /* (lote 161) A arma à distância: a munição na própria arma — "Balas 4/6 · Pentes 2", −/+ nas duas, "Disparar" (gasta 1,
+     conta na Mesa ao vivo) e "Recarregar" (gasta 1 pente e enche). */
+  function htmlDist(it, pc, pode, on) {
+    const R = RE(), d = R && R.distDoItem ? R.distDoItem(it) : null; if (!d) return '';
+    const id = esc(it.id), nome = esc(nomeIt(it) || 'a arma'), T = d.tipo, tiro = R.danoDoTiro(it);
+    const conta = (attr, v, max, rot) => pode
+      ? `<button type="button" class="mini" data-${attr}="${id}" data-d="-1" ${v ? '' : 'disabled'} aria-label="${rot}: um a menos">−</button><input class="inm itdistn" type="number" min="0" max="${max}" data-${attr}n="${id}" value="${v}" aria-label="${rot} de ${nome}"><button type="button" class="mini" data-${attr}="${id}" data-d="1" ${v < max ? '' : 'disabled'} aria-label="${rot}: um a mais">+</button>`
+      : `<b>${v}</b>`;
+    return `<div class="itdist ${d.bal ? '' : 'zero'}" data-itdistbox="${id}">
+      <span class="eyebrow" title="Dano fixo de cada tiro${tiro.elem.length ? ', com o elemento por cima' : ''}">${esc(T.nome)} · dano ${esc(tiro.texto)}</span>
+      <span class="itdistg"><span class="itdistr">${esc(T.tiro)}</span>${conta('itdistbal', d.bal, d.cap, T.tiro)}<span class="hint">/ ${d.cap}</span></span>
+      <span class="itdistg"><span class="itdistr">${esc(T.pente)}</span>${conta('itdistpen', d.pen, 999, T.pente)}</span>
+      ${pode ? `<button type="button" class="mini pri" data-itdisparar="${id}" ${d.bal && on ? '' : 'disabled'} title="${!d.bal ? (d.pen ? 'Sem ' + T.tiro.toLowerCase() + ': recarregue.' : 'Acabou a munição.') : !on ? 'Equipe para disparar.' : 'Gasta 1 e avisa a mesa'}">Disparar</button>
+      <button type="button" class="mini" data-itrecarregar="${id}" ${d.pen && d.bal < d.cap ? '' : 'disabled'} title="${d.bal >= d.cap ? 'Já está cheia.' : !d.pen ? 'Não há ' + T.umPente + '.' : 'Gasta 1 ' + T.umPente + ' e enche (' + d.cap + ')'}">Recarregar</button>` : ''}
+      ${d.bal ? '' : `<span class="hint">${d.pen ? 'vazia — recarregue' : 'sem munição'}</span>`}
+    </div>`;
+  }
   function cartaoItem(it, pc, escondido) {
     const aberto = itensAbertos.has(it.id), on = it.equipado !== false, g = grupoDe(it), fx = String(it.efeito || '').trim(), bon = bonusDoItem(it, pc);
     const req = RQ() ? RQ().nomeDoReq(it, pc.itens || []) : '', semEfeito = on && req && !ativoNa(it, pc);
@@ -452,6 +474,7 @@ const FichasExtras = (() => {
         return selos ? `<div class="itselos">${selos}</div>` : ''; })()}
       ${req ? `<div class="itreqlinha"><span class="ittroca itreq ${semEfeito ? 'falta' : ''}" title="${semEfeito ? 'Sem efeito: só vale com ' + esc(req) + ' equipado' : 'Só funciona com ' + esc(req)}">${LIGA_SVG}<span>${semEfeito ? 'sem efeito · ' : 'com '}${esc(req)}</span></span></div>` : ''}
       ${typeof it.pilha === 'number' ? htmlPilha(it, pc, pode, on) : ''}
+      ${it.dist ? htmlDist(it, pc, pode, on) : ''}
       <div class="itbon">${bon.length ? chipsBonus(bon) : '<span class="hint">sem bônus</span>'}</div>
       ${fx && !aberto ? `<div class="itfxv">${esc(fx)}</div>` : ''}
       ${aberto ? editorItem(it, pc) : ''}
@@ -1014,12 +1037,57 @@ const FichasExtras = (() => {
     // (lote 112) o que rola o dano: um atributo (it.atr) ou o dano próprio (it.dp, que começa no número da faixa)
     qa(painel, '[data-itregdano]').forEach(s => s.onchange = () => {
       const it = item(s.getAttribute('data-itregdano')), R = RE(); if (!it || !R) return;
-      const antes = { atr: it.atr, dp: it.dp }, v = s.value;
-      delete it.atr; delete it.dp;
-      if (v === 'dp') it.dp = antes.dp > 0 ? antes.dp : R.valorDaFaixa(R.itemNaRegra(it, pc.level).faixa, 'arma', R.etiquetasEq(it).melhoria);
+      const antes = { atr: it.atr, dp: it.dp, dist: it.dist }, v = s.value;
+      delete it.atr; delete it.dp; delete it.dist;
+      const T = v.startsWith('d:') && R.tipoDist ? R.tipoDist(v.slice(2)) : null;
+      if (v === 'dp' || T) it.dp = antes.dp > 0 ? antes.dp : R.valorDaFaixa(R.itemNaRegra(it, pc.level).faixa, 'arma', R.etiquetasEq(it).melhoria);
       else if (v) it.atr = v;
+      // (lote 161) à distância: a munição que já tinha fica (só o tipo muda); a nova vem cheia, com os pentes do tipo
+      if (T) it.dist = antes.dist && typeof antes.dist === 'object' ? Object.assign({}, antes.dist, { k: T.k }) : { k: T.k, cap: T.cap, bal: T.cap, pen: T.pen };
       save(); desenhar(render, sel('data-itregdano', it.id));
-      aviso((nomeIt(it) || 'O item') + ': ' + (v === 'dp' ? 'dano próprio ' + it.dp : v ? 'o dano rola ' + v : 'o dano rola o maior número') + '.', 'Desfazer', () => { const x = item(it.id); if (!x) return; delete x.atr; delete x.dp; if (antes.atr) x.atr = antes.atr; if (antes.dp) x.dp = antes.dp; save(); render(); });
+      aviso((nomeIt(it) || 'O item') + ': ' + (T ? 'à distância (' + T.nome.toLowerCase() + '), dano fixo ' + it.dp : v === 'dp' ? 'dano fixo ' + it.dp : v ? 'o dano rola ' + v : 'o dano rola o maior número') + '.', 'Desfazer', () => { const x = item(it.id); if (!x) return; delete x.atr; delete x.dp; delete x.dist; if (antes.dist) x.dist = antes.dist; if (antes.atr) x.atr = antes.atr; if (antes.dp) x.dp = antes.dp; save(); render(); });
+    });
+    // (lote 161) o dano fixo digitado
+    qa(painel, '[data-itregdp]').forEach(i => i.onchange = () => {
+      const it = item(i.dataset.itregdp); if (!it) return;
+      const antes = it.dp, n = Math.max(1, Math.min(99999, Math.round(+i.value) || 0));
+      if (!(+i.value > 0)) { render(); return; }
+      it.dp = n; save(); desenhar(render, sel('data-itregdp', it.id));
+      aviso((nomeIt(it) || 'O item') + ': dano fixo ' + n + '.', 'Desfazer', () => { const x = item(it.id); if (!x) return; x.dp = antes; save(); render(); });
+    });
+    // (lote 161) a munição da arma à distância: −/+, digitar, a capacidade, Disparar e Recarregar
+    const mudarDist = (it, novo, txt, sel0) => {
+      const R = RE(); if (!R || !R.distDoItem(it)) return;
+      const antes = JSON.parse(JSON.stringify(it.dist));
+      it.dist = novo; save(); desenhar(render, sel0);
+      if (txt) aviso(txt, 'Desfazer', () => { const x = item(it.id); if (!x) return; x.dist = antes; save(); render(); });
+    };
+    const campoDist = (attr, campo) => {
+      qa(painel, '[data-' + attr + ']').forEach(b => b.onclick = () => { const it = item(b.getAttribute('data-' + attr)), R = RE(); const d = it && R && R.distDoItem(it); if (!d) return;
+        const n = { k: d.k, cap: d.cap, bal: d.bal, pen: d.pen }; n[campo] = Math.max(0, d[campo] + (+b.dataset.d || 0)); const nd = R.distDoItem({ dist: n });
+        mudarDist(it, { k: d.k, cap: nd.cap, bal: nd.bal, pen: nd.pen }, null, sel('data-' + attr + 'n', it.id)); });
+      qa(painel, '[data-' + attr + 'n]').forEach(i => i.onchange = () => { const it = item(i.getAttribute('data-' + attr + 'n')), R = RE(); const d = it && R && R.distDoItem(it); if (!d) return;
+        const n = { k: d.k, cap: d.cap, bal: d.bal, pen: d.pen }; n[campo] = Math.max(0, Math.round(+i.value) || 0); const nd = R.distDoItem({ dist: n });
+        mudarDist(it, { k: d.k, cap: nd.cap, bal: nd.bal, pen: nd.pen }, (nomeIt(it) || 'A arma') + ': ' + R.textoDist(nd) + '.', sel('data-' + attr + 'n', it.id)); });
+    };
+    campoDist('itdistbal', 'bal'); campoDist('itdistpen', 'pen');
+    qa(painel, '[data-itdistcap]').forEach(i => i.onchange = () => {
+      const it = item(i.dataset.itdistcap), R = RE(); const d = it && R && R.distDoItem(it); if (!d) return;
+      const cap = Math.max(1, Math.min(999, Math.round(+i.value) || 0)); if (!(+i.value > 0)) { render(); return; }
+      mudarDist(it, { k: d.k, cap, bal: Math.min(d.bal, cap), pen: d.pen }, (nomeIt(it) || 'A arma') + ': cabem ' + cap + '.', sel('data-itdistcap', it.id));
+    });
+    qa(painel, '[data-itdisparar]').forEach(b => b.onclick = () => {
+      const it = item(b.dataset.itdisparar), R = RE(); if (!it || !R) return;
+      const r = R.dispararDist(it); if (!r.ok) { aviso(r.erro); return; }
+      const nm = nomeIt(it) || 'a arma', tiro = R.danoDoTiro(it), T = r.d.tipo;
+      const resta = r.d.bal ? 'Restam ' + r.d.bal + ' ' + (r.d.bal === 1 ? T.um : T.tiro.toLowerCase()) + '.' : r.d.pen ? 'Vazia: recarregue.' : 'Acabou a munição.';
+      mudarDist(it, r.item.dist, (pc.nome || 'Alguém') + ' disparou ' + nm + ': dano ' + tiro.texto + '. ' + resta, sel('data-itdisparar', it.id));
+      try { if (FichasMesa.ativo() && window.TC && TC.ponte) TC.ponte.publicar('ficha', { pc: pc.id, quem: (pc.nome || 'Alguém') + ' disparou ' + nm + ' (dano ' + tiro.texto + ')', det: resta, id: 'tiro_' + it.id + '_' + Date.now().toString(36) }); } catch (e) { /* (só o aviso) */ }
+    });
+    qa(painel, '[data-itrecarregar]').forEach(b => b.onclick = () => {
+      const it = item(b.dataset.itrecarregar), R = RE(); if (!it || !R) return;
+      const r = R.recarregarDist(it); if (!r.ok) { aviso(r.erro); return; }
+      mudarDist(it, r.item.dist, (nomeIt(it) || 'A arma') + ' recarregada: ' + R.textoDist(r.d) + '.', sel('data-itrecarregar', it.id));
     });
     regraMuda('itregpeca', 'peca', 'peça trocada'); regraMuda('itregfaixa', 'faixa', 'faixa trocada'); regraMuda('itregmat', 'mat', 'material trocado'); regraMuda('itregmelh', 'melhoria', 'melhoria trocada');
     const trocarPelaRegra = (it, novo, txt) => {

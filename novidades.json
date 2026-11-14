@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.14-07",
+      "data": "2026-11-14",
+      "titulo": "Armas à distância com munição",
+      "itens": [
+        { "tipo": "novo", "texto": "Fichas: no \u201cDano rola\u201d da arma, escolha \u201cÀ distância\u201d (arco, besta ou arma de fogo). O dano é fixo, você digita o número, e a melhoria e o elemento somam por cima.", "mestre": true },
+        { "tipo": "novo", "texto": "A munição fica na arma: balas (ou flechas) e pentes (ou aljavas), com \u2212 e +. \u201cDisparar\u201d gasta 1 e avisa a mesa; \u201cRecarregar\u201d gasta 1 pente e enche." },
+        { "tipo": "novo", "texto": "Cenas: na janelinha F (a dos atributos), as armas à distância equipadas têm \u201cDisparar\u201d, com o dano fixo, e \u201cRecarregar\u201d." }
+      ]
+    },
+    {
       "versao": "2026.11.14-06",
       "data": "2026-11-14",
       "titulo": "A IA saiu do site",

@@ -86,7 +86,7 @@ const estado = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d', 'Dain', 3,
     ok(x.atr === 'FOR' && !x.dp, 'Desfazer volta a FOR');
     if (await P.locator('[data-itregdano="ar"]').count() === 0) { await P.locator('[data-itemed="ar"]').click(); await w(250); }
     ok((await P.locator('[data-itregdano="ar"]').inputValue()) === 'dp', 'o arco: "Dano rola" mostra "Próprio"');
-    ok(/A F1 pede 10 em Dano próprio\. Este item está no valor\./.test(await P.locator('[data-itcard="ar"] .itregaviso').first().innerText()), 'o aviso do arco fala do dano próprio');
+    ok(/A F1 pede 10 em Dano fixo\. Este item está no valor\./.test(await P.locator('[data-itcard="ar"] .itregaviso').first().innerText()), 'o aviso do arco fala do dano próprio');
   });
 
   ok(!erros.length, 'sem erro na página: ' + erros.join(' | '));

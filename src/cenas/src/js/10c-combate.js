@@ -181,6 +181,15 @@ const Luta = (() => {
     pintarRelevo(t, sc);
     const bm = botaoMana(t, 'fp-mana');
     pop.mana.replaceChildren(...(bm ? [bm] : [])); pop.mana.hidden = !bm;
+    // (lote 161) as armas à distância equipadas: Disparar (gasta 1, o dano fixo vai para a mesa) e Recarregar
+    { const ad = modo === 'ficha' && Fichas.armasDist ? Fichas.armasDist(t) : [];
+      pop.dist.hidden = !ad.length;
+      pop.dist.replaceChildren(...ad.map(a => { const T = a.d.tipo, vazio = !a.d.bal;
+        return h('div', { class: 'pop-dist-l', 'data-arma': a.id },
+          h('span', { class: 'pop-dist-n', title: T.nome + ' · dano fixo ' + a.tiro.texto }, h('b', { text: a.nome }), h('small', { text: T.tiro + ' ' + a.d.bal + '/' + a.d.cap + ' · ' + T.pente + ' ' + a.d.pen })),
+          h('button', { type: 'button', class: 'btn small primary', id: 'fp-tiro-' + a.id, disabled: vazio, title: vazio ? (a.d.pen ? 'Sem ' + T.tiro.toLowerCase() + ': recarregue.' : 'Acabou a munição.') : 'Gasta 1 e manda o dano (' + a.tiro.texto + ') para a mesa', onclick: () => usarMunicao(t, a.id, 'disparar') }, h('span', { text: 'Disparar · ' + a.tiro.texto })),
+          h('button', { type: 'button', class: 'btn small', id: 'fp-recarga-' + a.id, disabled: !a.d.pen || a.d.bal >= a.d.cap, title: a.d.bal >= a.d.cap ? 'Já está cheia.' : !a.d.pen ? 'Não há ' + T.umPente + '.' : 'Gasta 1 ' + T.umPente + ' e enche (' + a.d.cap + ')', onclick: () => usarMunicao(t, a.id, 'recarregar') }, h('span', { text: 'Recarregar' })));
+      })); }
     if (document.activeElement !== pop.fx) pop.fx.value = fixaAtual(t);
     { const vd = vantBox('fp', vantDe(t.id), v => { guardarVant(t.id, v); pintarPop(); }); pop.vt.replaceChildren(...vd.childNodes); pop.vt.classList.toggle('tem', !!vantDe(t.id)); }      // (lote 140)
     const fixa = lerFixaDoPop(), mais = lerMaisDoPop();
@@ -208,6 +217,19 @@ const Luta = (() => {
     pop.out.className = 'pop-r' + (r && !r.ok ? ' erro' : '');
     pop.out.replaceChildren(...(r ? (r.ok ? [h('b', { class: 'pop-tot', id: 'fp-total', text: String(r.total) }), h('span', { text: r.txt }), h('small', { text: r.det })] : [h('span', { text: r.txt })]) : []));
     if (fid && fid !== 'fp-fixa' && fid !== 'fp-valor' && fid !== 'fp-ma' && fid !== 'fp-mr') { const n = document.getElementById(fid); if (n && !n.disabled) n.focus({ preventScroll: true }); else pop.el.focus({ preventScroll: true }); }
+  }
+  // (lote 161) disparar ou recarregar pela janelinha F
+  function usarMunicao(t, id, op) {
+    const r = Fichas.municao(t, id, op);
+    if (!r.ok) { toast(r.error, { key: 'tiro-' + t.id }); return; }
+    const T = r.d.tipo, resta = r.d.bal ? 'restam ' + r.d.bal + ' ' + (r.d.bal === 1 ? T.um : T.tiro.toLowerCase()) : r.d.pen ? 'vazia: recarregue' : 'acabou a munição';
+    if (op === 'recarregar' && pop && pop.tokId === t.id) pop.res = null;
+    if (op === 'recarregar') toast(`${r.nome} recarregada: ${T.tiro.toLowerCase()} ${r.d.bal}/${r.d.cap}, ${T.pente.toLowerCase()} ${r.d.pen}.`, { action: 'Desfazer', run: () => { r.desfazer(); if (pop) pintarPop(); }, key: 'tiro-' + t.id });
+    else {
+      toast(`${tokName(t)} disparou ${r.nome}: dano ${r.tiro.texto} (${resta}).`, { action: 'Desfazer', run: () => { r.desfazer(); if (pop) pintarPop(); }, long: true, key: 'tiro-' + t.id });
+      if (pop && pop.tokId === t.id) pop.res = { ok: true, total: r.tiro.dp, txt: 'Disparo · ' + r.nome, det: 'Dano fixo ' + r.tiro.texto + ' · ' + resta };
+    }
+    if (pop) pintarPop();
   }
   /* (lote 18) De cima ou de baixo: com o alvo da mira de quem está olhando (o primeiro), a janelinha diz a vantagem da
      altura e oferece somar o bônus no atributo, só nesta rolagem. Nada entra sozinho. */
@@ -241,15 +263,16 @@ const Luta = (() => {
     // (lote 18) o relevo: mirando alguém mais baixo (ou mais alto), a sugestão de somar o bônus da tabela
     const rel = h('div', { class: 'pop-rel', id: 'fp-rel', hidden: true });
     const mana = h('div', { class: 'pop-mana', id: 'fp-mana-w', hidden: true });        // (lote 28) Imbuído de Mana
+    const dist = h('div', { class: 'pop-dist', id: 'fp-dist', hidden: true });          // (lote 161) as armas à distância
     const vt = h('div', { class: 'vant pop-vt', id: 'fp-vd', role: 'group', 'aria-label': 'Vantagem ou desvantagem (fica marcada neste token até desmarcar)' });      // (lote 140)
     const el = h('div', { class: 'pop', id: 'fpop', role: 'dialog', 'aria-label': 'Rolar atributo de ' + tokName(t), tabindex: '-1' },
       h('div', { class: 'pop-h' }, tokenAvatar(t, 26), nome, iconBtn('x', 'Fechar (Esc ou F)', fecharPop, { size: 15, id: 'fp-x' })),
       h('div', { class: 'pop-f' }, h('label', { class: 'pop-l', for: 'fp-fixa', text: 'Fixando' }), fx),
       h('div', { class: 'pop-m', role: 'group', 'aria-label': 'Bônus só nesta rolagem', title: 'Valem só para a próxima rolagem' },
         h('span', { class: 'pop-l', text: 'Só nesta' }), h('label', { class: 'pop-l', for: 'fp-ma', text: '+ atrib.' }), ma, h('label', { class: 'pop-l', for: 'fp-mr', text: '+ result.' }), mr),
-      vt, rel, mana, grid, out);
+      vt, rel, mana, dist, grid, out);
     K.layer.append(el);
-    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr, rel, mana, vt, relSomado: false };
+    pop = { el, tokId: t.id, res: null, grid, fx, out, nome, valor: null, ma, mr, rel, mana, dist, vt, relSomado: false };
     pintarPop();
     if (!pop) return;
     // ao lado do token (à direita; se não couber, à esquerda), sem sair da tela — e ali fica, mesmo que o mapa ande
