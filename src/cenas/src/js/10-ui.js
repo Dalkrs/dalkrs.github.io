@@ -779,6 +779,7 @@ const UI = (() => {
       if (aberta) grupo(dela, true);
     }
     items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Gerar um lugar…', icon: 'house', run: () => Gerador.abrir() }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
+      { label: 'Envelhecer esta cena…', icon: 'copy', run: () => Tempo.abrirEnvelhecer() },
       { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Organizar as cenas…', icon: 'folder', run: () => organizarCenas() },
       Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
     return items;

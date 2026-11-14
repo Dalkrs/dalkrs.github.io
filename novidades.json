@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.13-09",
+      "data": "2026-11-13",
+      "titulo": "O tempo passa nos lugares",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: no “Gerar um lugar…”, o bloco “O tempo”. O lugar pode sair Novo, Usado, Abandonado ou Em ruínas, e com as marcas do que houve ali: incêndio, saque, batalha ou inundação. O chão ganha poeira, teias, mato, fuligem, poças ou sangue. As paredes caem, as luzes apagam, os móveis somem ou tombam, e o saque abre os baús e arromba as portas.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: no menu das cenas, “Envelhecer esta cena…”. Faz uma cópia da cena, anos depois, e a original fica como está.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: cada lugar envelhecido traz uma nota só do mestre, “O que houve aqui”, e uma pista para os jogadores acharem. As duas ficam escondidas no mapa.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.13-08",
       "data": "2026-11-13",
       "titulo": "A história da missão",

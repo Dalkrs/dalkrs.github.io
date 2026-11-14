@@ -220,6 +220,7 @@ const Gerador = (() => {
       if (Trama.vale(L, E.op) && Trama.prefs().on) { try { Trama.tecer(E.plano, Trama.prefs()); } catch (e) { console.error(e); } }      // (lote 152) a história da missão
       let rp = null;
       try { rp = L.previa(fundo, E.plano, 640, 460, { relevo: comum.relevo }); cell = rp.cell; } catch (e) { console.error(e); }
+      if (Tempo.vale(L)) { try { Tempo.previa(fundo.getContext('2d'), E.plano, cell); } catch (e) { console.error(e); } }      // (lote 153) o tempo, por baixo dos números da história
       if (E.plano.trama && !(rp && rp.trama)) Trama.desenhar(fundo.getContext('2d'), E.plano, cell);
       sobre = null; foco = -1;
       desenhar(); mostrarDica(); mostrarResumo();
@@ -395,6 +396,7 @@ const Gerador = (() => {
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
           temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null),
         bloco('pov', 'Povoar', pv.on ? 'perigo ' + nomeDe(Povoar.PERIGOS, pv.perigo, 'médio').toLowerCase() : 'desligado', Povoar.controles(K, () => pintar())),       // (lote 49) povoar o lugar
+        Tempo.vale(L) ? bloco('tempo', 'O tempo', Tempo.resumoBloco(), Tempo.controles(K, () => { pintar(); refazer(); })) : null,      // (lote 153) o lugar envelhecido
         Trama.vale(L, E.op) ? bloco('trama', 'A história', Trama.resumoBloco(), Trama.controles(K, () => { pintar(); refazer(); })) : null,      // (lote 152) a história da missão
         bloco('mist', 'Mistério', mi.on ? (casoMi ? casoMi.c.titulo : 'um caso novo') : 'desligado', Misterio.controles(K, () => pintar())),     // (lote 53) o mistério
         // (lote 129) os marcadores de missão, nos povoados
@@ -421,17 +423,21 @@ const Gerador = (() => {
           const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const E = estadoDe(L), p = E.plano, l = L;
-          l.criar(p, inNome.value, { hora: comum.hora, clima: climaDe(l), relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(sc => {
+          l.criar(p, inNome.value, { hora: comum.hora, clima: climaDe(l), relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(async sc => {
+            // (lote 153) o tempo primeiro (as portas da história ficam de fora), depois a história
+            const tp = Tempo.prefs();
+            const txtTp = Tempo.vale(l) && Tempo.liga(tp) ? await Tempo.aplicar(sc, Object.assign({}, tp, { mascara: Tempo.mascaraDe(p), proteger: p.trama ? p.trama.passos.filter(x => x.porta).map(x => x.porta).concat(p.trama.atalho ? [p.trama.atalho.porta] : []) : [] }), p.seed).catch(e => { console.error(e); return ''; }) : '';
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
             const pv = Povoar.prefs(), txtPov = pv.on ? Povoar.aplicar(sc, l.id, p, pv) : '';      // (lote 49) o lugar povoado
             const mi = Misterio.prefs(), txtMi = mi.on ? Misterio.aplicar(sc, l.id, p, mi) : '';    // (lote 53) o mistério
             const txtTr = p.trama ? Trama.aplicar(sc, p) : '';                                        // (lote 152) a história da missão
             if (txtTr) Persist.scene(sc.id);
+            if (txtTp) Persist.scene(sc.id);
             const txtMq = MissaoCenas.aplicar(sc, l.id);                                              // (lote 129) os marcadores de missão
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTr ? ' ' + txtTr : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTp ? ' ' + txtTp : '') + (txtTr ? ' ' + txtTr : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },
