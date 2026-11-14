@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.13-08",
+      "data": "2026-11-13",
+      "titulo": "A história da missão",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: no “Gerar um lugar…”, o bloco “A história”. O gerador monta os passos até o alvo: uma porta trancada e a chave em outro cômodo; um diário com a combinação; uma alavanca que abre uma passagem secreta; um puzzle do Escudo. Pode ter também um atalho de volta, que só abre por dentro. Vale nos lugares de Furtividade, no Sob medida com guardas, nas masmorras, nas catacumbas e nas ruínas.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: dá para escolher quantos passos (curta, média ou longa) e quais tipos entram. A prévia mostra os passos numerados. Na cena, os objetos ficam escondidos, com a nota do passo. A lista fica na aba Guardas, e o mestre marca o que já foi feito.", "mestre": true },
+        { "tipo": "melhorou", "texto": "Cenas: na aba Guardas, o cone e a rota agora são separados. Para cada jogador, o mestre escolhe se mostra o cone, a rota ou os dois. Com guardas selecionados, vale só para eles. E o botão “Selecionar todos os guardas”.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.13-07",
       "data": "2026-11-13",
       "titulo": "Furtividade medida",

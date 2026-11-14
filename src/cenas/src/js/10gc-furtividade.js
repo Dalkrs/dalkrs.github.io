@@ -1328,6 +1328,8 @@ const Furtividade = (() => {
     for (const n of p.npcs) { g.fillStyle = n.inimigo ? '#9aa6c4' : '#c99aff'; g.beginPath(); g.arc((n.x + 0.5) * cell, (n.y + 0.5) * cell, cell * 0.36, 0, TAU); g.fill(); }
     for (const mk of p.marcas) { if (mk.id === 'esconderijo') { g.strokeStyle = '#9fb3d9'; g.lineWidth = 1.5; g.setLineDash([3, 2]); g.beginPath(); g.arc((mk.x + 0.5) * cell, (mk.y + 0.5) * cell, cell * 0.4, 0, TAU); g.stroke(); g.setLineDash([]); } else if (mk.id === 'alvoMissao') { g.fillStyle = '#ffd34d'; g.beginPath(); g.arc((mk.x + 0.5) * cell, (mk.y + 0.5) * cell, cell * 0.45, 0, TAU); g.fill(); g.strokeStyle = '#7a1e14'; g.lineWidth = 2; g.stroke(); } }
     for (const e of p.entradas) { g.fillStyle = '#e6ab4f'; g.strokeStyle = '#3a2508'; g.lineWidth = 2; g.beginPath(); g.arc((e.x + 0.5) * cell, (e.y + 0.5) * cell, cell * 0.45, 0, TAU); g.fill(); g.stroke(); }
+    // (lote 152) a história da missão: os números, antes das miniaturas dos andares (que ficam por cima)
+    if (p.trama) Trama.desenhar(g, p, cell);
     // (lote 122) os andares: miniaturas do prédio de cada um, no canto de cima (com o nome)
     const And = (p.andares || []).slice().sort((a, b) => b.nivel - a.nivel);
     if (And.length) {
@@ -1349,7 +1351,7 @@ const Furtividade = (() => {
     // (lote 151) o calor (onde os guardas veem) e os dois caminhos: o curto (amarelo, tracejado) e o seguro (verde)
     const md = MED.get(p);
     if (md && verCalor()) Vigia.desenhar(g, md.M, md.med, cell, 0, 0);
-    return { cell };
+    return { cell, trama: !!p.trama };
   }
   const nomeDe = p => NOMES[p.lugar] || 'Furtividade';
   function resumo(p) {

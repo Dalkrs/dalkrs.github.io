@@ -19,20 +19,22 @@ const Vigia = (() => {
     return { W, H, vV: new Uint8Array((W + 1) * H), vH: new Uint8Array(W * (H + 1)), pV: new Uint8Array((W + 1) * H), pH: new Uint8Array(W * (H + 1)), guardas: [], de: null, para: null };
   }
   // um trecho de parede (em quadrados): marca as arestas que ele cobre (os retos; o torto vira uma escada de arestas)
+  // (lote 152) a parede w cruza o trecho (ax, ay)–(bx, by)?
+  function cruza(w, ax, ay, bx, by) {
+    const d = (px, py, qx, qy, rx, ry) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
+    const d1 = d(w.x1, w.y1, w.x2, w.y2, ax, ay), d2 = d(w.x1, w.y1, w.x2, w.y2, bx, by), d3 = d(ax, ay, bx, by, w.x1, w.y1), d4 = d(ax, ay, bx, by, w.x2, w.y2);
+    return ((d1 > 1e-9 && d2 < -1e-9) || (d1 < -1e-9 && d2 > 1e-9)) && ((d3 > 1e-9 && d4 < -1e-9) || (d3 < -1e-9 && d4 > 1e-9) || Math.abs(d3) <= 1e-9 || Math.abs(d4) <= 1e-9);
+  }
+  // um trecho de parede (em quadrados): fecha a aresta entre dois vizinhos quando cruza a linha entre os centros deles
+  // (lote 152: assim as paredes tortas, das catacumbas e das cavernas, não fecham os túneis)
   function parede(M, x1, y1, x2, y2, vista, passo) {
-    const L = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
-    if (L < 0.01) return;
-    const n = Math.max(1, Math.ceil(L * 2));
-    for (let i = 0; i < n; i++) {
-      const t = (i + 0.5) / n, x = x1 + (x2 - x1) * t, y = y1 + (y2 - y1) * t;
-      const fx = x - Math.round(x), fy = y - Math.round(y);
-      if (Math.abs(fx) <= Math.abs(fy)) {            // perto de uma linha vertical: a aresta vertical em (round x, floor y)
-        const gx = Math.round(x), gy = Math.floor(y);
-        if (gx >= 0 && gx <= M.W && gy >= 0 && gy < M.H) { const k = gy * (M.W + 1) + gx; if (vista) M.vV[k] = 1; if (passo) M.pV[k] = 1; }
-      } else {
-        const gx = Math.floor(x), gy = Math.round(y);
-        if (gx >= 0 && gx < M.W && gy >= 0 && gy <= M.H) { const k = gy * M.W + gx; if (vista) M.vH[k] = 1; if (passo) M.pH[k] = 1; }
-      }
+    if (Math.hypot(x2 - x1, y2 - y1) < 0.01) return;
+    const w = { x1, y1, x2, y2 }, W = M.W, H = M.H;
+    const xa = Math.max(0, Math.floor(Math.min(x1, x2)) - 1), xb = Math.min(W - 1, Math.ceil(Math.max(x1, x2)) + 1);
+    const ya = Math.max(0, Math.floor(Math.min(y1, y2)) - 1), yb = Math.min(H - 1, Math.ceil(Math.max(y1, y2)) + 1);
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      if (x + 1 < W && cruza(w, x + 0.5, y + 0.5, x + 1.5, y + 0.5)) { const k = y * (W + 1) + x + 1; if (vista) M.vV[k] = 1; if (passo) M.pV[k] = 1; }
+      if (y + 1 < H && cruza(w, x + 0.5, y + 0.5, x + 0.5, y + 1.5)) { const k = (y + 1) * W + x; if (vista) M.vH[k] = 1; if (passo) M.pH[k] = 1; }
     }
   }
   // o que cada tipo de parede faz: [tapa a vista, barra o passo]
@@ -273,5 +275,5 @@ const Vigia = (() => {
     const { M, med } = daCenaMedida(sc);
     desenhar(c, M, med, sc.cell, 0, 0);
   }
-  return { ligado, daCenaMedida, desenharCena, NIVEIS, nomeNivel, nivelDe, novo, parede, efeito, calor, rota, medir, ajustar, comum, doPlano, daCena, desenhar, trilha, ve };
+  return { cruza, ligado, daCenaMedida, desenharCena, NIVEIS, nomeNivel, nivelDe, novo, parede, efeito, calor, rota, medir, ajustar, comum, doPlano, daCena, desenhar, trilha, ve };
 })();

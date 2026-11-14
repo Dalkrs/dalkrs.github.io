@@ -157,6 +157,17 @@ const EscudoCenas = (() => {
     UI.confirm('Fechadura criada', `“${nome}” (${nomeNivel(nivel)}) está no Escudo e ligada a ${oQue}: quando abrirem, ${porta ? 'ela abre e destranca' : 'ele abre'} sozinho. Entregar agora a quem vai tentar?`, 'Entregar…').then(ok => { if (ok) entregarNoEscudo(id); });
   }
 
+  /* (lote 152) um puzzle novo no Escudo (o Cadeado de símbolos, as Placas de pressão), para a história da missão; sem a
+     mesa aberta, null (o mestre liga depois, pelo painel da porta) */
+  function criarPuzzle(tipo, nome) {
+    if (!D || !Nuvem.mestre()) return null;
+    const id = novoIdHo();
+    const ordem = D.todas().filter(l => l && !l.apagado && typeof l.id === 'string' && l.id.startsWith('escudo:handout:')).reduce((m, l) => Math.max(m, Number(ehObj(l.dados) && l.dados.ordem) || 0), 0) + 1;
+    const est = window.TC && TC.ponte && TC.ponte.estado, camp = est && est.campanha && !est.campanha.encerrada ? est.campanha.id : null;
+    D.gravar('escudo:handout:' + id, { dados: { tipo: 'puzzle', nome: String(nome).slice(0, 80), ordem, camp, puzzle: { tipo, dif: 'medio', seed: 1 + Math.floor(Math.random() * 2147483000) } }, vis: 'mestre' });
+    return id;
+  }
+
   /* ---- (lote 32) o NPC na cena ---- */
   // ped: { nome, pc (a ficha, se o NPC virou uma), ocultos } → o id do token (ou null)
   function npc(ped) {
@@ -197,5 +208,5 @@ const EscudoCenas = (() => {
     });
     if (TC.ponte && TC.ponte.aoMudar) TC.ponte.aoMudar(() => pintarCanto());
   }
-  return { iniciar, vistas, pintarCanto, puzzles, resolvido, aplicarPortas, nomeDoPuzzle, npc, fechadura, trancavel, NIVEIS, entregarNoEscudo };
+  return { criarPuzzle, iniciar, vistas, pintarCanto, puzzles, resolvido, aplicarPortas, nomeDoPuzzle, npc, fechadura, trancavel, NIVEIS, entregarNoEscudo };
 })();

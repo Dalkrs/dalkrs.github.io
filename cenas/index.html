@@ -1410,6 +1410,18 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .ia-msg .ia-erro { color: #e88a7a; }
 .ia-msg .ia-notas { border-left: 3px solid var(--lamp); padding-left: 8px; }
 #ger-ia-texto { resize: vertical; min-height: 84px; }
+/* (lote 152) a história da missão, na aba Guardas */
+.gd-trama { display: flex; flex-direction: column; gap: 6px; }
+.gd-tr { display: flex; flex-direction: column; gap: 2px; padding: 4px 6px; border-radius: 8px; }
+.gd-tr.feito { opacity: 0.55; }
+.gd-tr-t { text-align: left; font-size: 13px; line-height: 1.4; background: none; border: 0; color: inherit; padding: 0 0 0 4px; cursor: pointer; }
+.gd-tr-t:hover { text-decoration: underline; }
+/* (lote 152) o que os jogadores veem: o cone e a rota, por jogador */
+.gd-ver { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 14px; align-items: center; margin: 6px 0; }
+.gd-ver-h, .gd-ver-l { display: contents; }
+.gd-ver-h span { font-size: 12px; font-weight: 600; opacity: 0.75; text-align: center; }
+.gd-ver-n { font-size: 13.5px; }
+.gd-ck { width: 18px; height: 18px; justify-self: center; accent-color: var(--accent, #e6ab4f); cursor: pointer; }
 </style>
 </head>
 <body>
@@ -8756,6 +8768,49 @@ const Props = (() => {
   });
 })();
 /* ---------------------------------------------------------------
+   6cb. A HISTÓRIA DA MISSÃO (lote 152) — os objetos dos passos: a chave (de ferro, caída no chão ou em cima de um móvel)
+   e o diário (o caderno aberto, com a pena: a pista escrita, a combinação, a senha). A alavanca e o baú já existiam.
+   O gerador (Trama) põe estes objetos escondidos dos jogadores, com o nome do passo e a nota do que eles abrem.
+   --------------------------------------------------------------- */
+(() => {
+  const { linha, sombra, FER } = Props.kit;
+  const TAU = Math.PI * 2;
+  Props.grupo('trama', 'A história da missão');
+  // a chave: a argola, a haste e os dentes (de ferro escuro, com o brilho)
+  Props.registrar('chave', {
+    n: 'Chave', g: 'trama', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.45, 0.3);
+      c.save(); c.rotate(-0.5);
+      c.lineCap = 'round';
+      c.strokeStyle = '#2a2016'; c.lineWidth = R * 0.2;
+      c.beginPath(); c.arc(-R * 0.42, 0, R * 0.22, 0, TAU); c.moveTo(-R * 0.2, 0); c.lineTo(R * 0.6, 0); c.moveTo(R * 0.42, 0); c.lineTo(R * 0.42, R * 0.2); c.moveTo(R * 0.58, 0); c.lineTo(R * 0.58, R * 0.24); c.stroke();
+      c.strokeStyle = '#c9a24a'; c.lineWidth = R * 0.1;
+      c.stroke();
+      c.strokeStyle = 'rgba(255,240,190,0.7)'; c.lineWidth = R * 0.035;
+      c.beginPath(); c.arc(-R * 0.42, 0, R * 0.22, Math.PI * 1.1, Math.PI * 1.6); c.stroke();
+      c.restore();
+    },
+  });
+  // o diário: o caderno aberto (as duas páginas com as linhas), a capa de couro e a pena
+  Props.registrar('diario', {
+    n: 'Diário (a pista escrita)', g: 'trama', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.62, 0.48);
+      c.fillStyle = '#5a2e1c'; c.beginPath(); c.roundRect(-R * 0.66, -R * 0.48, R * 1.32, R * 0.96, R * 0.08); c.fill(); linha(c, R * 0.05);
+      for (const s of [-1, 1]) {
+        c.fillStyle = '#efe2c2'; c.beginPath(); c.roundRect(s < 0 ? -R * 0.6 : R * 0.02, -R * 0.42, R * 0.58, R * 0.84, R * 0.04); c.fill();
+        c.strokeStyle = 'rgba(90,60,30,0.55)'; c.lineWidth = R * 0.03;
+        for (let i = 0; i < 5; i++) { const y = -R * 0.28 + i * R * 0.14, x0 = s < 0 ? -R * 0.52 : R * 0.1; c.beginPath(); c.moveTo(x0, y); c.lineTo(x0 + R * (i === 4 ? 0.26 : 0.42), y); c.stroke(); }
+      }
+      c.strokeStyle = '#3a2010'; c.lineWidth = R * 0.04; c.beginPath(); c.moveTo(0, -R * 0.44); c.lineTo(0, R * 0.44); c.stroke();
+      // a pena
+      c.strokeStyle = '#f4f0e6'; c.lineWidth = R * 0.09; c.lineCap = 'round'; c.beginPath(); c.moveTo(R * 0.2, R * 0.5); c.quadraticCurveTo(R * 0.55, R * 0.1, R * 0.8, -R * 0.42); c.stroke();
+      c.strokeStyle = FER.esc; c.lineWidth = R * 0.03; c.beginPath(); c.moveTo(R * 0.2, R * 0.5); c.lineTo(R * 0.28, R * 0.38); c.stroke();
+    },
+  });
+})();
+/* ---------------------------------------------------------------
    6d. AS ZONAS DAS CLASSES (lote 20)
    O chão e as áreas que as árvores de classe criam (os rituais do mago, os círculos do sacerdote, o Rastro de Pólvora do
    bruxo, a Fermata do bardo…), no grupo Classes da aba Efeitos, como as das raças: o desenho, a regra escrita, a
@@ -11819,10 +11874,11 @@ const Proj = (() => {
     if (o.mq && o.mq.e === 'oculta') { o.mq = { id: o.mq.id, tp: o.mq.tp, e: 'oculta' }; if (t.mq.oid) o.mq.oid = t.mq.oid; }
     /* (lote 132) a vista revelada: o cone do guarda (alcance, abertura, rumo, estado) para os jogadores em `para`, e a
        rota só se o mestre deixou. O resto da ronda continua só do mestre. */
-    const rv = t.ronda && t.ronda.ver;
-    if (rv && Array.isArray(rv.para) && rv.para.length) {
-      o.vc = { para: rv.para.slice(), r: t.ronda.r, a: t.ronda.a, dir: t.ronda.dir, est: t.alerta || 'calmo' };
-      if (rv.rota) { o.vc.pts = (t.ronda.pts || []).map(p => p.slice()); o.vc.modo = t.ronda.modo; o.vc.i = t.ronda.i; }
+    // (lote 152) o cone (para) e a rota (rp) vão separados: cada jogador vê o que o mestre mostrou a ele
+    const rv = t.ronda && Rondas.verLimpo(t.ronda.ver);
+    if (rv) {
+      o.vc = { para: rv.para.slice(), rp: rv.rotas.slice(), r: t.ronda.r, a: t.ronda.a, dir: t.ronda.dir, est: t.alerta || 'calmo' };
+      if (rv.rotas.length) { o.vc.pts = (t.ronda.pts || []).map(p => p.slice()); o.vc.modo = t.ronda.modo; o.vc.i = t.ronda.i; }
     } else delete o.vc;
     delete o.ronda; delete o.alerta; delete o.q0; delete o.tranca; delete o.pz; delete o.pzOk;      // (lote 122: a fechadura do objeto)                     // (lote 121) a ronda do guarda e o alerta dele: só do mestre
     /* (lote 8) o Clone: quem é cópia é só do mestre. Os do mesmo grupo (o real e as cópias) vão com a mesma marca, que
@@ -14537,15 +14593,21 @@ const Rondas = (() => {
   // (lote 132) a vista revelada: { para: [ids dos jogadores], rota: bool, por: '' | 'rondas' | 'rodadas', n }
   function verLimpo(v) {
     if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
-    const para = Array.isArray(v.para) ? [...new Set(v.para.filter(x => typeof x === 'string' && /^[A-Za-z0-9_*-]{1,60}$/.test(x)))].slice(0, 12) : [];
-    if (!para.length) return null;
+    const ids = l => (Array.isArray(l) ? [...new Set(l.filter(x => typeof x === 'string' && /^[A-Za-z0-9_*-]{1,60}$/.test(x)))].slice(0, 12) : []);
+    // (lote 152) o cone (para) e a rota (rotas) separados, para quem o mestre quiser; o "rota: true" de antes = a rota para os mesmos do cone
+    const para = ids(v.para), rotas = v.rota && !(Array.isArray(v.rotas) && v.rotas.length) ? para.slice() : ids(v.rotas);
+    if (!para.length && !rotas.length) return null;
     const por = v.por === 'rondas' || v.por === 'rodadas' ? v.por : '';
-    const o = { para, rota: !!v.rota, por, n: por ? num(v.n, 1, 99, 1) : 0 };
+    const o = { para, rotas, por, n: por ? num(v.n, 1, 99, 1) : 0 };
     return o;
   }
   const ehGuarda = t => !!(t && !t.prop && t.ronda && typeof t.ronda === 'object');
   // (lote 132) na tela de um jogador: o guarda cujo cone o mestre mostrou para ele (t.vc, da projeção)
-  const vcMeu = t => !!(t && !t.prop && t.vc && typeof t.vc === 'object' && Array.isArray(t.vc.para) && (t.vc.para.includes(App.viewer) || t.vc.para.includes('*')));
+  const tem = (l, id) => Array.isArray(l) && (l.includes(id) || l.includes('*'));
+  const vcMeu = t => !!(t && !t.prop && t.vc && typeof t.vc === 'object' && (tem(t.vc.para, App.viewer) || tem(t.vc.rp, App.viewer)));
+  // (lote 152) nesta tela: o cone e a rota de cada guarda (o mestre vê tudo; o jogador, o que foi mostrado a ele)
+  const coneMeu = t => isGM() || tem(t.vc && t.vc.para, App.viewer);
+  const rotaMeu = t => isGM() || (t.vc && (Array.isArray(t.vc.rp) ? tem(t.vc.rp, App.viewer) : tem(t.vc.para, App.viewer)));
   // o que vale para o cone: no mestre, a ronda; no jogador, o que veio na projeção
   const fonte = t => (ehGuarda(t) ? { r: t.ronda, est: estadoDe(t) } : { r: t.vc, est: ESTADOS.some(e => e[0] === t.vc.est) ? t.vc.est : 'calmo' });
   const vistos = sc => (sc ? (isGM() ? sc.tokens.filter(ehGuarda) : sc.tokens.filter(vcMeu)) : []);
@@ -14737,14 +14799,14 @@ const Rondas = (() => {
   const rgba = (est, a) => `rgba(${COR[est].join(',')},${a})`;
   // o que desenhar nesta tela: no mestre, todos os guardas (se a chave estiver ligada); no jogador, os revelados a ele
   const aDesenhar = sc => (isGM() ? (mostrar() ? guardas(sc) : []) : vistos(sc));
-  const rotaDe = t => { const f = fonte(t).r; return f && Array.isArray(f.pts) ? f : null; };
+  const rotaDe = t => { const f = fonte(t).r; return f && Array.isArray(f.pts) && rotaMeu(t) ? f : null; };
   function desenhar(c, sc, px) {
     const gs = aDesenhar(sc);
     if (!gs.length) return;
     const cell = sc.cell, sel = new Set(App.sel.filter(s => s.c === 'tokens').map(s => s.id));
     c.save();
     // os cones (cortados pelas paredes), na cor do estado
-    for (const t of gs) {
+    for (const t of gs.filter(coneMeu)) {
       const g = cone(t, sc), poly = poligono(t, sc, g);
       c.save();
       c.beginPath(); for (let i = 0; i < poly.length; i += 2) (i ? c.lineTo(poly[i], poly[i + 1]) : c.moveTo(poly[i], poly[i + 1])); c.closePath(); c.clip();
@@ -14779,7 +14841,7 @@ const Rondas = (() => {
   }
   // os selos por cima dos tokens: o "?" e o "!" dos guardas e o "!" vermelho em quem está sendo visto
   function selos(c, sc, px) {
-    const gs = aDesenhar(sc);
+    const gs = aDesenhar(sc).filter(coneMeu);
     if (!gs.length) return;
     const selo = (x, y, txt, cor) => {
       const r = 9 * px;
@@ -14892,16 +14954,17 @@ const Rondas = (() => {
   /* (lote 132) "Mostrar o cone a um jogador": para quem usou uma skill de ver o campo de visão. Escolhe o(s) jogador(es),
      se a rota vai junto e por quanto tempo. */
   function blocoVer(t, R, K) {
-    const r = t.ronda, v = r.ver || null, js = (Store.S.players || []).filter(p => p && p.id);
-    const nomes = v ? v.para.map(id => (js.find(p => p.id === id) || {}).name || 'um jogador') : [];
+    const r = t.ronda, v = verLimpo(r.ver), js = (Store.S.players || []).filter(p => p && p.id);
+    const nm = id => (js.find(p => p.id === id) || {}).name || 'um jogador';
+    const veem = v ? [v.para.length ? 'o cone: ' + v.para.map(nm).join(', ') : null, v.rotas.length ? 'a rota: ' + v.rotas.map(nm).join(', ') : null].filter(Boolean).join('; ') : '';
     const quanto = v ? (v.por ? `ainda ${v.n} ${v.por === 'rondas' ? (v.n === 1 ? 'ronda' : 'rondas') : (v.n === 1 ? 'rodada' : 'rodadas')}` : 'até você esconder') : '';
-    const novo = Object.assign({ para: [], rota: false, por: '', n: 2 }, v || {});
+    const novo = Object.assign({ para: [], rotas: [], por: '', n: 2 }, v || {});
+    const troca = (k, id, on) => muda({ [k]: on ? novo[k].concat([id]) : novo[k].filter(x => x !== id) });
     const muda = o => R({ ver: verLimpo(Object.assign({}, novo, o)) || undefined });
     if (!js.length) return h('div', { class: 'tk-gver' }, K.note('Mostrar o cone a um jogador: chame os jogadores para a mesa primeiro.'));
     return h('div', { class: 'tk-gver' },
-      h('div', { class: 'o-note', style: { marginTop: '8px', fontWeight: '600' }, text: v ? `${nomes.join(', ')} ${nomes.length === 1 ? 'vê' : 'veem'} o cone (${quanto})` : 'Mostrar o cone a um jogador (quando ele usa uma skill para ver)' }),
-      ...js.map(p => K.toggle('tk-gver-' + p.id, novo.para.includes(p.id), on => muda({ para: on ? novo.para.concat([p.id]) : novo.para.filter(x => x !== p.id) }), p.name)),
-      v ? K.toggle('tk-gver-rota', !!v.rota, on => muda({ rota: on }), 'A rota vai junto') : null,
+      h('div', { class: 'o-note', style: { marginTop: '8px', fontWeight: '600' }, text: v ? `Os jogadores veem ${veem} (${quanto})` : 'Mostrar o cone ou a rota a um jogador (quando ele usa uma skill para ver)' }),
+      gradeVer(js, id => novo.para.includes(id), id => novo.rotas.includes(id), (id, on) => troca('para', id, on), (id, on) => troca('rotas', id, on), 'tk-gver', K),
       v ? K.field('Por quanto tempo', K.seg('tk-gver-por', v.por, [['', 'Até eu esconder'], ['rondas', 'Rondas'], ['rodadas', 'Rodadas']], x => muda({ por: x, n: v.n || 2 })), 'stack') : null,
       v && v.por ? K.field(v.por === 'rondas' ? 'Quantas vezes de "Avançar rondas"' : 'Quantas rodadas de combate', K.inNum('tk-gver-n', v.n, x => muda({ n: num(x, 1, 99, 1) }), { min: 1, max: 99, step: 1, label: 'Por quanto tempo o jogador vê o cone' })) : null,
       v ? h('div', { class: 'row' }, K.btn('Esconder o cone de novo', () => R({ ver: undefined }), { kind: 'small', id: 'tk-gver-fim' })) : null);
@@ -14955,10 +15018,24 @@ const Rondas = (() => {
     if (novos.length === 1) desenharRota(Store.get('tokens', novos[0].id));
   }
   // os cones de todos os guardas para os jogadores: quem vê (para), a rota junto; vazio esconde
-  function verTodos(gs, para, rota) {
-    const ver = verLimpo({ para, rota, por: '' });
-    Store.tx('Os cones para os jogadores', () => gs.forEach(t => Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { ver: ver || undefined }) })));
+  // (lote 152) o cone e a rota separados: para (quem vê o cone) e rotas (quem vê a rota); null deixa como está
+  function verTodos(gs, para, rotas) {
+    Store.tx('O que os jogadores veem', () => gs.forEach(t => {
+      const v0 = verLimpo(t.ronda.ver) || { para: [], rotas: [], por: '', n: 0 };
+      const ver = verLimpo(Object.assign({}, v0, para ? { para } : null, rotas ? { rotas } : null));
+      Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { ver: ver || undefined }) });
+    }));
   }
+  // a grade: um jogador por linha, com o Cone e a Rota
+  function gradeVer(js, cone, rota, mudaCone, mudaRota, pre, K) {
+    return h('div', { class: 'gd-ver' },
+      h('div', { class: 'gd-ver-h' }, h('span', {}), h('span', { text: 'Cone' }), h('span', { text: 'Rota' })),
+      ...js.map(p => h('div', { class: 'gd-ver-l' }, h('span', { class: 'gd-ver-n', text: p.name }),
+        h('input', { type: 'checkbox', class: 'gd-ck', id: pre + '-c-' + p.id, checked: !!cone(p.id), 'aria-label': 'Cone para ' + p.name, onchange: e => mudaCone(p.id, e.target.checked) }),
+        h('input', { type: 'checkbox', class: 'gd-ck', id: pre + '-r-' + p.id, checked: !!rota(p.id), 'aria-label': 'Rota para ' + p.name, onchange: e => mudaRota(p.id, e.target.checked) }))));
+  }
+  // (lote 152) seleciona todos os guardas da cena (no mapa)
+  function selecionarTodos(gs) { setSel(gs.map(t => ({ c: 'tokens', id: t.id }))); Tools.set('select'); UI.refresh(); }
   function aba(K) {
     const sc = Store.scene(), gs = guardas(sc), js = (Store.S.players || []).filter(p => p && p.id);
     const sel = (App.sel || []).filter(x => x.c === 'tokens').map(x => Store.get('tokens', x.id)).filter(t => t && !t.prop && !ehGuarda(t));
@@ -14974,8 +15051,12 @@ const Rondas = (() => {
         K.btn('Todos calmos', () => mudarEstado(gs, 'calmo'), { kind: 'small', id: 'gd-calmo' }),
         K.btn('Todos desconfiados', () => mudarEstado(gs, 'desconfiado'), { kind: 'small', id: 'gd-desconf' }),
         K.btn('Todos em alerta', () => mudarEstado(gs, 'alerta'), { kind: 'small', id: 'gd-alerta' })) : null,
+      gs.length ? h('div', { class: 'row' }, K.btn('Selecionar todos os guardas', () => selecionarTodos(gs), { kind: 'small', icon: 'select', id: 'gd-sel-todos', title: 'Seleciona no mapa todos os guardas desta cena' })) : null,
       gs.length ? h('div', { class: 'row' }, K.btn('Todos olham para um ponto', () => olharNoMapa(null), { kind: 'small', icon: 'eye', id: 'gd-olhar', title: 'Clique no mapa: todos os guardas viram o cone para lá (um barulho)' })) : null,
       K.toggle('gd-rver', App.opt.rondasVer !== false, v => { App.opt.rondasVer = v; Render.request(); UI.refresh(); }, 'Mostrar rotas e cones (só você vê)')));
+    // (lote 152) a história da missão (os passos, em ordem; o mestre marca o que já fizeram)
+    const tr = Trama.secao(K, sc);
+    if (tr) out.push(tr);
     // (lote 151) o calor e os caminhos: onde os guardas veem (com eles andando) e a dificuldade medida
     if (gs.length) {
       const md = Vigia.daCenaMedida(sc).med;
@@ -14984,17 +15065,18 @@ const Rondas = (() => {
         h('p', { class: 'gd-medida', id: 'gd-medida', text: md.texto }),
         Vigia.ligado() ? K.note('Quanto mais vermelho, mais tempo algum guarda olha para lá. O caminho curto vai em amarelo (tracejado); o outro, em verde. Muda quando os guardas andam ou uma porta abre.') : null));
     }
-    // os cones para os jogadores
+    // (lote 152) o que os jogadores veem: o cone e a rota, separados, por jogador; nos guardas selecionados (ou em todos)
     if (gs.length) {
-      const comVer = gs.filter(t => t.ronda.ver), todos = comVer.length === gs.length;
-      const paraDe = id => gs.every(t => t.ronda.ver && t.ronda.ver.para.includes(id));
-      const rota = todos && gs.every(t => t.ronda.ver.rota);
-      const atual = js.filter(p => paraDe(p.id)).map(p => p.id);
-      out.push(K.sec('s-gd-ver', 'Os cones para os jogadores', true,
-        K.note(comVer.length ? (todos ? 'Todos os cones estão à vista de: ' + (js.filter(p => paraDe(p.id)).map(p => p.name).join(', ') || 'alguns jogadores') + '.' : `${comVer.length} de ${gs.length} guardas têm o cone à vista de alguém (no painel de cada um dá para mudar).`) : 'Só você vê os cones. Ligue um jogador para ele ver o cone de todos os guardas desta cena.'),
-        js.length ? js.map(p => K.toggle('gd-ver-' + p.id, paraDe(p.id), on => verTodos(gs, on ? atual.concat([p.id]) : atual.filter(x => x !== p.id), rota), p.name)) : K.note('Chame os jogadores para a mesa primeiro.'),
-        atual.length ? K.toggle('gd-ver-rota', rota, on => verTodos(gs, atual, on), 'A rota vai junto') : null,
-        comVer.length ? h('div', { class: 'row' }, K.btn('Esconder de todos', () => verTodos(gs, [], false), { kind: 'small', id: 'gd-ver-fim' })) : null));
+      const selG = gs.filter(t => (App.sel || []).some(x => x.c === 'tokens' && x.id === t.id)), alvo = selG.length ? selG : gs;
+      const tudo = (k, id) => alvo.every(t => { const v = verLimpo(t.ronda.ver); return v && v[k].includes(id); });
+      const lista = k => js.filter(p => tudo(k, p.id)).map(p => p.id);
+      const comVer = gs.filter(t => verLimpo(t.ronda.ver));
+      out.push(K.sec('s-gd-ver', 'O que os jogadores veem', true,
+        K.note(selG.length ? `Vale para ${selG.length === 1 ? 'o guarda selecionado' : 'os ' + selG.length + ' guardas selecionados'}.` : 'Vale para todos os guardas desta cena. Selecione alguns no mapa (ou na lista) para mudar só os deles.'),
+        js.length ? gradeVer(js, id => tudo('para', id), id => tudo('rotas', id),
+          (id, on) => verTodos(alvo, on ? lista('para').concat([id]) : lista('para').filter(x => x !== id), null),
+          (id, on) => verTodos(alvo, null, on ? lista('rotas').concat([id]) : lista('rotas').filter(x => x !== id)), 'gd-ver', K) : K.note('Chame os jogadores para a mesa primeiro.'),
+        comVer.length ? h('div', { class: 'row' }, K.btn(selG.length ? 'Esconder destes' : 'Esconder de todos', () => verTodos(alvo, [], []), { kind: 'small', id: 'gd-ver-fim' })) : null));
     }
     // criar guarda
     out.push(K.sec('s-gd-novo', 'Criar guarda', true,
@@ -15008,14 +15090,14 @@ const Rondas = (() => {
         return h('li', { class: 'gd-li' + (selec ? ' on' : ''), data: { id: t.id } },
           h('span', { class: 'gd-cor', style: { background: rgba(est, 1) }, title: ESTADOS.find(e => e[0] === est)[1] }),
           h('button', { type: 'button', class: 'li-m gd-nome', id: 'gd-t-' + t.id, title: 'Selecionar e centralizar', onclick: () => { setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); const [cx, cy] = tokC(t, sc); Render.centerOn(cx, cy); } },
-            h('b', { text: t.name }), h('small', { text: [r.pts.length > 1 ? `ronda, ${r.pts.length} pontos` : 'de posto', vida ? 'vida ' + vida : null, r.ver ? 'cone à vista' : null].filter(Boolean).join(' · ') })),
+            h('b', { text: t.name }), h('small', { text: [r.pts.length > 1 ? `ronda, ${r.pts.length} pontos` : 'de posto', vida ? 'vida ' + vida : null, verLimpo(r.ver) ? 'à vista de jogador' : null].filter(Boolean).join(' · ') })),
           h('select', { class: 'in gd-est', id: 'gd-e-' + t.id, 'aria-label': 'Estado de ' + t.name, value: est, onchange: e => { const v = e.target.value; e.target.blur(); mudarEstado([t], v); } },
             ESTADOS.map(([k, nm]) => h('option', { value: k, text: nm, selected: k === est }))));
       }))));
     return out;
   }
 
-  return { aba, novoGuarda, fazerGuardas, verTodos, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
+  return { aba, novoGuarda, fazerGuardas, verTodos, selecionarTodos, coneMeu, rotaMeu, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
 })();
 /* ---------------------------------------------------------------
    7j. AS ROUPAS E OS DISFARCES (lote 133) — para as missões de furtividade.
@@ -15245,20 +15327,22 @@ const Vigia = (() => {
     return { W, H, vV: new Uint8Array((W + 1) * H), vH: new Uint8Array(W * (H + 1)), pV: new Uint8Array((W + 1) * H), pH: new Uint8Array(W * (H + 1)), guardas: [], de: null, para: null };
   }
   // um trecho de parede (em quadrados): marca as arestas que ele cobre (os retos; o torto vira uma escada de arestas)
+  // (lote 152) a parede w cruza o trecho (ax, ay)–(bx, by)?
+  function cruza(w, ax, ay, bx, by) {
+    const d = (px, py, qx, qy, rx, ry) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
+    const d1 = d(w.x1, w.y1, w.x2, w.y2, ax, ay), d2 = d(w.x1, w.y1, w.x2, w.y2, bx, by), d3 = d(ax, ay, bx, by, w.x1, w.y1), d4 = d(ax, ay, bx, by, w.x2, w.y2);
+    return ((d1 > 1e-9 && d2 < -1e-9) || (d1 < -1e-9 && d2 > 1e-9)) && ((d3 > 1e-9 && d4 < -1e-9) || (d3 < -1e-9 && d4 > 1e-9) || Math.abs(d3) <= 1e-9 || Math.abs(d4) <= 1e-9);
+  }
+  // um trecho de parede (em quadrados): fecha a aresta entre dois vizinhos quando cruza a linha entre os centros deles
+  // (lote 152: assim as paredes tortas, das catacumbas e das cavernas, não fecham os túneis)
   function parede(M, x1, y1, x2, y2, vista, passo) {
-    const L = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
-    if (L < 0.01) return;
-    const n = Math.max(1, Math.ceil(L * 2));
-    for (let i = 0; i < n; i++) {
-      const t = (i + 0.5) / n, x = x1 + (x2 - x1) * t, y = y1 + (y2 - y1) * t;
-      const fx = x - Math.round(x), fy = y - Math.round(y);
-      if (Math.abs(fx) <= Math.abs(fy)) {            // perto de uma linha vertical: a aresta vertical em (round x, floor y)
-        const gx = Math.round(x), gy = Math.floor(y);
-        if (gx >= 0 && gx <= M.W && gy >= 0 && gy < M.H) { const k = gy * (M.W + 1) + gx; if (vista) M.vV[k] = 1; if (passo) M.pV[k] = 1; }
-      } else {
-        const gx = Math.floor(x), gy = Math.round(y);
-        if (gx >= 0 && gx < M.W && gy >= 0 && gy <= M.H) { const k = gy * M.W + gx; if (vista) M.vH[k] = 1; if (passo) M.pH[k] = 1; }
-      }
+    if (Math.hypot(x2 - x1, y2 - y1) < 0.01) return;
+    const w = { x1, y1, x2, y2 }, W = M.W, H = M.H;
+    const xa = Math.max(0, Math.floor(Math.min(x1, x2)) - 1), xb = Math.min(W - 1, Math.ceil(Math.max(x1, x2)) + 1);
+    const ya = Math.max(0, Math.floor(Math.min(y1, y2)) - 1), yb = Math.min(H - 1, Math.ceil(Math.max(y1, y2)) + 1);
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      if (x + 1 < W && cruza(w, x + 0.5, y + 0.5, x + 1.5, y + 0.5)) { const k = y * (W + 1) + x + 1; if (vista) M.vV[k] = 1; if (passo) M.pV[k] = 1; }
+      if (y + 1 < H && cruza(w, x + 0.5, y + 0.5, x + 0.5, y + 1.5)) { const k = (y + 1) * W + x; if (vista) M.vH[k] = 1; if (passo) M.pH[k] = 1; }
     }
   }
   // o que cada tipo de parede faz: [tapa a vista, barra o passo]
@@ -15499,7 +15583,7 @@ const Vigia = (() => {
     const { M, med } = daCenaMedida(sc);
     desenhar(c, M, med, sc.cell, 0, 0);
   }
-  return { ligado, daCenaMedida, desenharCena, NIVEIS, nomeNivel, nivelDe, novo, parede, efeito, calor, rota, medir, ajustar, comum, doPlano, daCena, desenhar, trilha, ve };
+  return { cruza, ligado, daCenaMedida, desenharCena, NIVEIS, nomeNivel, nivelDe, novo, parede, efeito, calor, rota, medir, ajustar, comum, doPlano, daCena, desenhar, trilha, ve };
 })();
 /* ---------------------------------------------------------------
    8. RENDER — desenho da cena no canvas
@@ -46819,6 +46903,17 @@ const EscudoCenas = (() => {
     UI.confirm('Fechadura criada', `“${nome}” (${nomeNivel(nivel)}) está no Escudo e ligada a ${oQue}: quando abrirem, ${porta ? 'ela abre e destranca' : 'ele abre'} sozinho. Entregar agora a quem vai tentar?`, 'Entregar…').then(ok => { if (ok) entregarNoEscudo(id); });
   }
 
+  /* (lote 152) um puzzle novo no Escudo (o Cadeado de símbolos, as Placas de pressão), para a história da missão; sem a
+     mesa aberta, null (o mestre liga depois, pelo painel da porta) */
+  function criarPuzzle(tipo, nome) {
+    if (!D || !Nuvem.mestre()) return null;
+    const id = novoIdHo();
+    const ordem = D.todas().filter(l => l && !l.apagado && typeof l.id === 'string' && l.id.startsWith('escudo:handout:')).reduce((m, l) => Math.max(m, Number(ehObj(l.dados) && l.dados.ordem) || 0), 0) + 1;
+    const est = window.TC && TC.ponte && TC.ponte.estado, camp = est && est.campanha && !est.campanha.encerrada ? est.campanha.id : null;
+    D.gravar('escudo:handout:' + id, { dados: { tipo: 'puzzle', nome: String(nome).slice(0, 80), ordem, camp, puzzle: { tipo, dif: 'medio', seed: 1 + Math.floor(Math.random() * 2147483000) } }, vis: 'mestre' });
+    return id;
+  }
+
   /* ---- (lote 32) o NPC na cena ---- */
   // ped: { nome, pc (a ficha, se o NPC virou uma), ocultos } → o id do token (ou null)
   function npc(ped) {
@@ -46859,7 +46954,7 @@ const EscudoCenas = (() => {
     });
     if (TC.ponte && TC.ponte.aoMudar) TC.ponte.aoMudar(() => pintarCanto());
   }
-  return { iniciar, vistas, pintarCanto, puzzles, resolvido, aplicarPortas, nomeDoPuzzle, npc, fechadura, trancavel, NIVEIS, entregarNoEscudo };
+  return { criarPuzzle, iniciar, vistas, pintarCanto, puzzles, resolvido, aplicarPortas, nomeDoPuzzle, npc, fechadura, trancavel, NIVEIS, entregarNoEscudo };
 })();
 /* ---------------------------------------------------------------
    10g9. O CASTELO E O CEMITÉRIO (lote 49) — dois lugares de fora para "Gerar um lugar…".
@@ -49052,6 +49147,8 @@ const Furtividade = (() => {
     for (const n of p.npcs) { g.fillStyle = n.inimigo ? '#9aa6c4' : '#c99aff'; g.beginPath(); g.arc((n.x + 0.5) * cell, (n.y + 0.5) * cell, cell * 0.36, 0, TAU); g.fill(); }
     for (const mk of p.marcas) { if (mk.id === 'esconderijo') { g.strokeStyle = '#9fb3d9'; g.lineWidth = 1.5; g.setLineDash([3, 2]); g.beginPath(); g.arc((mk.x + 0.5) * cell, (mk.y + 0.5) * cell, cell * 0.4, 0, TAU); g.stroke(); g.setLineDash([]); } else if (mk.id === 'alvoMissao') { g.fillStyle = '#ffd34d'; g.beginPath(); g.arc((mk.x + 0.5) * cell, (mk.y + 0.5) * cell, cell * 0.45, 0, TAU); g.fill(); g.strokeStyle = '#7a1e14'; g.lineWidth = 2; g.stroke(); } }
     for (const e of p.entradas) { g.fillStyle = '#e6ab4f'; g.strokeStyle = '#3a2508'; g.lineWidth = 2; g.beginPath(); g.arc((e.x + 0.5) * cell, (e.y + 0.5) * cell, cell * 0.45, 0, TAU); g.fill(); g.stroke(); }
+    // (lote 152) a história da missão: os números, antes das miniaturas dos andares (que ficam por cima)
+    if (p.trama) Trama.desenhar(g, p, cell);
     // (lote 122) os andares: miniaturas do prédio de cada um, no canto de cima (com o nome)
     const And = (p.andares || []).slice().sort((a, b) => b.nivel - a.nivel);
     if (And.length) {
@@ -49073,7 +49170,7 @@ const Furtividade = (() => {
     // (lote 151) o calor (onde os guardas veem) e os dois caminhos: o curto (amarelo, tracejado) e o seguro (verde)
     const md = MED.get(p);
     if (md && verCalor()) Vigia.desenhar(g, md.M, md.med, cell, 0, 0);
-    return { cell };
+    return { cell, trama: !!p.trama };
   }
   const nomeDe = p => NOMES[p.lugar] || 'Furtividade';
   function resumo(p) {
@@ -49480,6 +49577,401 @@ const MissaoCenas = (() => {
   return { eh, soNome, porNome, missoes, copia, ligar, sincronizar, balao, secao, abrirMissao, porNaCena, lugaresDaCena, prefs, controles, aplicar, nome, POVOADOS };
 })();
 /* ---------------------------------------------------------------
+   10gy. A HISTÓRIA DA MISSÃO (lote 152) — o mapa que conta uma história: uma corrente de passos até o alvo.
+   Cada passo é um portão e o que o abre:
+     · chave:      a porta trancada (difícil de arrombar); a chave está em outro cômodo;
+     · pista:      a porta (ou o baú) com fechadura de segredo, que não se arromba; a combinação está num diário;
+     · mecanismo:  a porta vira passagem secreta; a alavanca escondida em outro cômodo abre (o t.liga de sempre);
+     · puzzle:     a porta (ou o baú) abre com um puzzle do Escudo (o Cadeado de símbolos ou as Placas de pressão);
+                   a pista dele fica num diário.
+   E, fora da conta, o atalho de volta: uma porta nova, perto do alvo, que só abre por dentro (o caminho da fuga).
+   Como se acha o portão: pelo caminho da chegada até o que se quer, a porta que, trancada, separa os dois lados (o
+   corte). Sem corte (as janelas e as outras portas dão a volta), o portão é um baú trancado em cima do que se quer.
+   A corrente vai de trás para a frente: o alvo, o portão dele, a coisa que abre (no lado de cá), o portão dela… Para
+   quem joga, o passo 1 é o último que o gerador fez.
+   No plano (em quadrados): p.trama = { passos: [...], atalho }; as portas mudam no plano (a prévia e o fundo já saem
+   certos). Na cena (aplicar): as portas ganham a fechadura, o segredo ou o puzzle; os objetos entram escondidos, com o
+   nome do passo e a nota; sc.trama guarda a lista (a aba Guardas mostra, e o mestre marca o que já fizeram).
+   --------------------------------------------------------------- */
+const Trama = (() => {
+  const arr = v => (Array.isArray(v) ? v : []);
+  const LUGARES_OK = () => new Set(Furtividade.IDS.concat(['sobmedida', 'masmorra', 'catacumbas', 'ruinas']));
+  const TAMS = [['curta', 'Curta (1–2)'], ['media', 'Média (3)'], ['longa', 'Longa (4–5)']];
+  const TIPOS = [['chave', 'Chave e fechadura'], ['pista', 'Pista escrita'], ['mecanismo', 'Mecanismo'], ['puzzle', 'Puzzle do Escudo'], ['atalho', 'Atalho de volta']];
+  const prefs = () => {
+    const o = App.opt, t = o.tramaTipos && typeof o.tramaTipos === 'object' ? o.tramaTipos : {};
+    const tipos = {}; for (const [k] of TIPOS) tipos[k] = t[k] !== false;
+    return { on: o.tramaOn === true, tam: TAMS.some(x => x[0] === o.tramaTam) ? o.tramaTam : 'media', tipos };
+  };
+  // vale para este lugar (o sob medida, só com guardas)
+  const vale = (L, op) => !!L && LUGARES_OK().has(L.id) && !(L.id === 'sobmedida' && op && op.spec && op.spec.guardas === 'nenhum');
+
+  const SALA_NOME = { entrada: 'a entrada', descida: 'a sala da descida', tesouro: 'a sala do tesouro', salao: 'o salão', guarda: 'a sala da guarda', biblioteca: 'a biblioteca', poco: 'a sala do poço', deposito: 'o depósito',
+    nichos: 'a sala dos nichos', ossario: 'o ossário', desabado: 'a sala desabada', corredor: 'o corredor', estufa: 'a estufa', ferramentas: 'o depósito de ferramentas', torre: 'a torre', estabulo: 'o estábulo', salaoPublico: 'o salão de atendimento', tenda: 'a tenda', trono: 'a sala do trono', altar: 'a sala do altar', celas: 'as celas', arsenal: 'o arsenal' };
+  const comArtigo = n => { const f = /^(sala|cozinha|despensa|biblioteca|galeria|capela|cela|adega|loja|forja|sala)/i.test(n) || /a$/.test(n.split(' ')[0]); return (f ? 'a ' : 'o ') + n.charAt(0).toLowerCase() + n.slice(1); };
+
+  /* ---------------- o modelo do plano: as paredes que barram o passo e as portas (por aresta) ---------------- */
+  function modelo(p) {
+    const W = p.W, H = p.H;
+    const M = { W, H, pV: new Uint8Array((W + 1) * H), pH: new Uint8Array(W * (H + 1)), dV: new Int32Array((W + 1) * H), dH: new Int32Array(W * (H + 1)) };
+    arr(p.paredes).forEach((w, i) => {
+      const k = w.k || 'wall', barra = k === 'wall' || k === 'mureta', porta = k === 'door' && !w.secret;
+      if (!barra && !porta) return;
+      if (Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.01) return;
+      // a aresta entre dois quadrados vizinhos fecha quando a parede cruza a linha entre os centros deles
+      const x0 = Math.max(0, Math.floor(Math.min(w.x1, w.x2)) - 1), x1 = Math.min(W - 1, Math.ceil(Math.max(w.x1, w.x2)) + 1);
+      const y0 = Math.max(0, Math.floor(Math.min(w.y1, w.y2)) - 1), y1 = Math.min(H - 1, Math.ceil(Math.max(w.y1, w.y2)) + 1);
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        if (x + 1 < W && cruza(w, x + 0.5, y + 0.5, x + 1.5, y + 0.5)) { const k2 = y * (W + 1) + x + 1; if (barra) M.pV[k2] = 1; else M.dV[k2] = i + 1; }
+        if (y + 1 < H && cruza(w, x + 0.5, y + 0.5, x + 0.5, y + 1.5)) { const k2 = (y + 1) * W + x; if (barra) M.pH[k2] = 1; else M.dH[k2] = i + 1; }
+      }
+    });
+    return M;
+  }
+  // a parede w cruza o trecho (ax, ay)–(bx, by)?
+  function cruza(w, ax, ay, bx, by) {
+    const d = (px, py, qx, qy, rx, ry) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
+    const d1 = d(w.x1, w.y1, w.x2, w.y2, ax, ay), d2 = d(w.x1, w.y1, w.x2, w.y2, bx, by), d3 = d(ax, ay, bx, by, w.x1, w.y1), d4 = d(ax, ay, bx, by, w.x2, w.y2);
+    return ((d1 > 1e-9 && d2 < -1e-9) || (d1 < -1e-9 && d2 > 1e-9)) && ((d3 > 1e-9 && d4 < -1e-9) || (d3 < -1e-9 && d4 > 1e-9) || Math.abs(d3) <= 1e-9 || Math.abs(d4) <= 1e-9);
+  }
+  // a aresta entre (x, y) e o vizinho (só os 4 lados): { barra, porta (índice + 1) }
+  function aresta(M, x, y, dx, dy) {
+    if (dx) { const k = y * (M.W + 1) + (dx > 0 ? x + 1 : x); return [M.pV[k], M.dV[k]]; }
+    const k = (dy > 0 ? y + 1 : y) * M.W + x; return [M.pH[k], M.dH[k]];
+  }
+  const VIZ = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  // a busca em largura de `de`, com as portas fechadas (B); → { dist (Int32, −1 fora), pai, porta (a porta usada para chegar) }
+  function busca(M, de, B, ocup) {
+    const { W, H } = M, N = W * H, dist = new Int32Array(N).fill(-1), pai = new Int32Array(N).fill(-1), porta = new Int32Array(N);
+    const s = de[1] * W + de[0]; dist[s] = 0;
+    const fila = [s];
+    for (let qi = 0; qi < fila.length; qi++) {
+      const u = fila[qi], ux = u % W, uy = (u - ux) / W;
+      for (const [dx, dy] of VIZ) {
+        const vx = ux + dx, vy = uy + dy;
+        if (vx < 0 || vy < 0 || vx >= W || vy >= H) continue;
+        const v = vy * W + vx;
+        if (dist[v] >= 0 || (ocup && ocup[v] === 2)) continue;
+        const [b, d] = aresta(M, ux, uy, dx, dy);
+        if (b || (d && B.has(d))) continue;
+        dist[v] = dist[u] + 1; pai[v] = u; porta[v] = d; fila.push(v);
+      }
+    }
+    return { dist, pai, porta };
+  }
+  // as portas no caminho de `de` até t (da mais perto de t para trás)
+  function portasNoCaminho(bs, W, t) {
+    const out = [];
+    for (let v = t; v !== -1 && bs.pai[v] !== -1; v = bs.pai[v]) if (bs.porta[v] && !out.includes(bs.porta[v])) out.push(bs.porta[v]);
+    return out;
+  }
+  // as casas ocupadas pelos objetos (1: tem coisa em cima — não serve para pôr o item; 2: nem dá para passar não conta)
+  function ocupacao(p) {
+    const o = new Uint8Array(p.W * p.H);
+    for (const ob of p.objetos || []) {
+      const fw = ob.fw || ob.s || 1, fh = ob.fh || ob.s || 1;
+      for (let y = Math.floor(ob.y); y < Math.floor(ob.y) + fh; y++) for (let x = Math.floor(ob.x); x < Math.floor(ob.x) + fw; x++) if (x >= 0 && y >= 0 && x < p.W && y < p.H) o[y * p.W + x] = 1;
+    }
+    for (const g of p.guardas || []) if (g.x >= 0 && g.y >= 0 && g.x < p.W && g.y < p.H) o[g.y * p.W + g.x] = 1;
+    return o;
+  }
+  const salaEm = (p, x, y) => arr(p.salas).find(q => x >= q.x && y >= q.y && x < q.x + q.w && y < q.y + q.h && q.papel !== 'corredor') || null;
+  function nomeDaSala(q) {
+    if (!q || !q.papel) return null;
+    if (SALA_NOME[q.papel]) return SALA_NOME[q.papel];
+    const n = PlantaAndares.NOMES[q.papel];
+    return n ? comArtigo(n) : null;
+  }
+  // o móvel colado na casa (para dizer onde a coisa está: "no escritório, perto da escrivaninha")
+  const FORA_MOVEL = new Set(['arbusto', 'arvore', 'flores', 'pedra', 'rocha', 'grama', 'cogumelos', 'tocha', 'vela', 'lampiao', 'candelabro', 'escada', 'portao', 'chegada', 'interesse']);
+  function movelPerto(p, x, y) {
+    let best = null, bd = 9;
+    for (const o of arr(p.objetos)) {
+      if (FORA_MOVEL.has(o.id) || !Props.P[o.id] || Props.P[o.id].marca) continue;
+      const fw = o.fw || o.s || 1, fh = o.fh || o.s || 1, dx = Math.max(o.x - x, 0, x - (o.x + fw - 1)), dy = Math.max(o.y - y, 0, y - (o.y + fh - 1)), d = Math.max(dx, dy);
+      if (d <= 1 && d < bd) { bd = d; best = o; }
+    }
+    return best ? (best.n || Props.P[best.id].n).toLowerCase() : null;
+  }
+  const ondeTxt = (p, x, y) => {
+    const n = nomeDaSala(salaEm(p, x, y)), m = movelPerto(p, x, y);
+    if (n) return 'n' + n + (m ? ' (perto: ' + m + ')' : '');
+    return m ? 'perto de: ' + m : arr(p.salas).length ? 'do lado de fora' : 'no meio do lugar';
+  };
+
+  /* ---------------- de onde se chega e o que se quer ---------------- */
+  function pontas(p) {
+    const W = p.W, H = p.H, cl = (x, y) => [clamp(Math.floor(x), 0, W - 1), clamp(Math.floor(y), 0, H - 1)];
+    const meio = q => cl(q.x + q.w / 2, q.y + q.h / 2);
+    const sala = papel => arr(p.salas).find(q => q.papel === papel);
+    let de = null, para = null, alvoTxt = null;
+    if (Array.isArray(p.chegada)) de = cl(p.chegada[0], p.chegada[1] - 1);
+    else if (sala('entrada')) de = meio(sala('entrada'));
+    else if (arr(p.entradas).length) { const e = p.entradas[0]; de = cl(e.x, e.y); }
+    else de = cl(W / 2, H - 2);
+    const mk = arr(p.marcas).find(m => m.id === 'alvoMissao'), av = p.alvo && typeof p.alvo === 'object' && isFinite(p.alvo.x) ? p.alvo : null;
+    if (mk) { para = cl(mk.x, mk.y); alvoTxt = (av && av.n) || mk.n || 'o alvo'; }
+    else if (av) { para = cl(av.x, av.y); alvoTxt = av.n || 'o alvo'; }
+    else if (sala('tesouro')) { para = meio(sala('tesouro')); alvoTxt = 'o tesouro'; }
+    else if (sala('descida')) { para = meio(sala('descida')); alvoTxt = 'a descida'; }
+    else {
+      // o alvo num andar: a escada (o "até" diz o andar)
+      const and = arr(p.andares).find(a => (a.alvo && typeof a.alvo === 'object') || arr(a.marcas).some(m => m.id === 'alvoMissao'));
+      const esc = arr(p.objetos).find(o => o.id === 'escada' || o.id === 'alcapao') || (!arr(p.salas).length ? arr(p.objetos).find(o => o.id === 'altar') : null);
+      if (esc) { para = cl(esc.x, esc.y); alvoTxt = esc.id === 'altar' ? 'o altar' : and ? 'a escada (o alvo está n' + (and.nivel < 0 ? 'o ' : 'o ') + (and.nomeAndar || 'outro andar') + ')' : 'a escada'; }
+    }
+    if (!para) {
+      const qs = arr(p.salas).filter(q => q.papel !== 'corredor');
+      if (qs.length) { const q = qs.slice().sort((a, b) => Math.hypot(b.x - de[0], b.y - de[1]) - Math.hypot(a.x - de[0], a.y - de[1]))[0]; para = meio(q); alvoTxt = 'o fundo do lugar'; }
+      else { para = cl(W / 2, 2); alvoTxt = 'o fundo do lugar'; }
+    }
+    return { de, para, alvoTxt: String(alvoTxt).replace(/^O /, 'o ').replace(/^A /, 'a ').replace(/^Os /, 'os ') };
+  }
+
+  /* ---------------- a corrente ---------------- */
+  function tecer(p, pr) {
+    delete p.trama;
+    pr = pr || prefs();
+    const tipos = Object.keys(pr.tipos).filter(k => pr.tipos[k] && k !== 'atalho');
+    if (!tipos.length && !pr.tipos.atalho) return p;
+    const r = mulberry((Math.imul((p.seed || 7) >>> 0, 2654435761) ^ 0x5eed7a) >>> 0);
+    for (let i = 0; i < 7; i++) r();
+    const pick = l => l[Math.floor(r() * l.length)];
+    const N = pr.tam === 'curta' ? 1 + (r() < 0.5 ? 1 : 0) : pr.tam === 'longa' ? 4 + (r() < 0.5 ? 1 : 0) : 3;
+    const M = modelo(p), W = p.W, ocup = ocupacao(p);
+    const { de, para, alvoTxt } = pontas(p);
+    const B = new Set(), usadas = new Set(), passos = [];
+    let alvo = para, alvoNome = alvoTxt, alvoObj = 'alvo';
+    // a casa onde vai a coisa: alcançável, longe da chegada (mas não colada no alvo), livre e, se der, numa sala
+    // (com salas, só dentro delas; sem salas, longe da beira; perto de um móvel vale mais)
+    const temSalas = arr(p.salas).some(q => q.papel !== 'corredor');
+    function casaPara(bs, evita) {
+      let max = 0; for (let k = 0; k < bs.dist.length; k++) if (bs.dist[k] > max) max = bs.dist[k];
+      const cand = [];
+      for (let k = 0; k < bs.dist.length; k++) {
+        const d = bs.dist[k]; if (d < 0 || ocup[k] || evita.has(k)) continue;
+        const x = k % W, y = (k - x) / W;
+        if (x < 2 || y < 2 || x > W - 3 || y > p.H - 3) continue;
+        if (Math.abs(x - de[0]) + Math.abs(y - de[1]) < 4) continue;
+        if (temSalas && !salaEm(p, x, y)) continue;
+        cand.push([k, d / Math.max(1, max) * 0.7 + (movelPerto(p, x, y) ? 0.5 : 0) + r() * 0.5]);
+      }
+      if (!cand.length) return null;
+      cand.sort((a, b) => b[1] - a[1]);
+      const k = cand[Math.floor(r() * Math.min(cand.length, 6))][0];
+      return [k % W, Math.floor(k / W)];
+    }
+    const evita = new Set([para[1] * W + para[0], de[1] * W + de[0]]);
+    for (let i = 0; i < N && tipos.length; i++) {
+      const bs = busca(M, de, B, null), t = alvo[1] * W + alvo[0];
+      if (bs.dist[t] < 0) break;
+      let tipo = pick(tipos);
+      // o corte: a porta do caminho que, fechada, separa a chegada do que se quer
+      let porta = 0;
+      if (tipo !== 'pistaBau') for (const d of portasNoCaminho(bs, W, t)) {
+        if (usadas.has(d)) continue;
+        const B2 = new Set(B); B2.add(d);
+        const b2 = busca(M, de, B2, null);
+        if (b2.dist[t] < 0) { let n = 0; for (let k = 0; k < b2.dist.length; k++) if (b2.dist[k] >= 0) n++; if (n > 12) { porta = d; break; } }
+      }
+      if (!porta && tipo === 'mecanismo') tipo = tipos.filter(x => x !== 'mecanismo').length ? pick(tipos.filter(x => x !== 'mecanismo')) : 'chave';
+      if (porta) { B.add(porta); usadas.add(porta); }
+      const bs2 = porta ? busca(M, de, B, null) : bs;
+      const casa = casaPara(bs2, evita);
+      if (!casa) { if (porta) B.delete(porta); break; }
+      evita.add(casa[1] * W + casa[0]);
+      const w = porta ? p.paredes[porta - 1] : null;
+      const passo = { tipo, alvo: alvo.slice(), alvoNome, alvoObj, item: casa, itemOnde: ondeTxt(p, casa[0], casa[1]) };
+      if (w) {
+        // o lado de lá da porta (o que a chegada não alcança com ela fechada): o nome da sala
+        const mx = (w.x1 + w.x2) / 2, my = (w.y1 + w.y2) / 2, vert = Math.abs(w.x2 - w.x1) < Math.abs(w.y2 - w.y1);
+        const lados = vert ? [[Math.round(mx) - 1, Math.floor(my)], [Math.round(mx), Math.floor(my)]] : [[Math.floor(mx), Math.round(my) - 1], [Math.floor(mx), Math.round(my)]];
+        const la = lados.find(([x, y]) => x >= 0 && y >= 0 && x < W && y < p.H && bs2.dist[y * W + x] < 0) || lados[1];
+        const sn = nomeDaSala(salaEm(p, la[0], la[1]));
+        passo.porta = { x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 };
+        passo.portaNome = tipo === 'mecanismo' ? 'a passagem secreta' + (sn ? ' para ' + sn : '') : 'a porta' + (sn ? ' d' + sn : ' de fora');
+        if (tipo === 'mecanismo') { w.secret = true; w.locked = false; delete w.fech; }
+        else { w.locked = true; w.fech = tipo === 'chave' ? 'dificil' : 'absoluto'; w.secret = false; }
+      } else {
+        // o baú trancado em cima do que se quer (ao lado, se a casa estiver ocupada)
+        let bx = alvo[0], by = alvo[1];
+        if (alvoObj === 'alvo' && ocup[by * W + bx]) { for (const [dx, dy] of VIZ) { const x = bx + dx, y = by + dy; if (x >= 0 && y >= 0 && x < W && y < p.H && !ocup[y * W + x] && bs.dist[y * W + x] >= 0) { bx = x; by = y; break; } } }
+        ocup[by * W + bx] = 1;
+        passo.bau = [bx, by];
+        const sb = nomeDaSala(salaEm(p, bx, by));
+        passo.portaNome = 'o baú trancado' + (sb ? ' n' + sb : '');
+      }
+      if (tipo === 'puzzle') passo.puzzle = r() < 0.5 ? 'cadeado' : 'placas';
+      ocup[casa[1] * W + casa[0]] = 1;
+      passos.push(passo);
+      alvo = casa; alvoObj = tipo === 'chave' ? 'chave' : tipo === 'mecanismo' ? 'alavanca' : 'diario';
+      alvoNome = alvoObj === 'chave' ? 'a chave' : alvoObj === 'alavanca' ? 'a alavanca' : 'o diário';
+    }
+    // os números para quem joga: o primeiro é o último que entrou
+    passos.reverse().forEach((s, i) => { s.n = i + 1; });
+    passos.forEach((s, i) => { if (i && passos[i - 1].bau) s.itemOnde = 'dentro do baú do passo ' + i; });
+    passos.forEach((s, i) => { s.atras = i + 1 < passos.length ? `${s.alvoNome} (o passo ${i + 2})` : s.alvoNome; });
+    // o atalho de volta: uma porta nova perto do alvo (na parede), para um lado que a chegada alcança sem os portões
+    let atalho = null;
+    if (pr.tipos.atalho) {
+      const daC = busca(M, de, B, null), doA = busca(M, para, new Set(), null);
+      let best = null;
+      const qA = salaEm(p, para[0], para[1]);
+      for (let y = 0; y < p.H; y++) for (let x = 0; x < W; x++) {
+        const k = y * W + x;
+        if (doA.dist[k] < 0 || doA.dist[k] > 8 || (qA && salaEm(p, x, y) !== qA && doA.dist[k] > 3)) continue;
+        for (const [dx, dy] of VIZ) {
+          const vx = x + dx, vy = y + dy;
+          if (vx < 0 || vy < 0 || vx >= W || vy >= p.H) continue;
+          const [b, d] = aresta(M, x, y, dx, dy);
+          if (!b || d) continue;
+          const v = vy * W + vx;
+          if (daC.dist[v] < 0 || ocup[v] || ocup[k]) continue;
+          // a volta tem que poupar caminho: longe pelo caminho de dentro, perto pelo atalho
+          const ganho = (daC.dist[k] < 0 ? 999 : daC.dist[k]) - daC.dist[v];
+          if (ganho < 6) continue;
+          const s = ganho - doA.dist[k] * 2 + r() * 2;
+          if (!best || s > best.s) best = { s, x, y, dx, dy };
+        }
+      }
+      if (best && cortar(p, best)) atalho = { x: best.x, y: best.y, dx: best.dx, dy: best.dy, porta: best.porta, onde: ondeTxt(p, best.x, best.y) };
+    }
+    if (!passos.length && !atalho) { p.trama = { passos: [], atalho: null, de, para, alvoTxt, falhou: true }; return p; }
+    p.trama = { passos, atalho, de, para, alvoTxt, pedidos: N };
+    return p;
+  }
+  // abre uma porta de um quadrado na parede reta que passa pela aresta (o atalho): divide a parede em duas
+  function cortar(p, a) {
+    const vert = a.dx !== 0, gx = vert ? (a.dx > 0 ? a.x + 1 : a.x) : a.x, gy = vert ? a.y : (a.dy > 0 ? a.y + 1 : a.y);
+    const i = p.paredes.findIndex(w => (w.k || 'wall') === 'wall' && (vert ? (w.x1 === gx && w.x2 === gx && Math.min(w.y1, w.y2) <= gy && Math.max(w.y1, w.y2) >= gy + 1) : (w.y1 === gy && w.y2 === gy && Math.min(w.x1, w.x2) <= gx && Math.max(w.x1, w.x2) >= gx + 1)));
+    if (i < 0) return false;
+    const w = p.paredes[i], novo = [];
+    if (vert) { const y0 = Math.min(w.y1, w.y2), y1 = Math.max(w.y1, w.y2); if (gy > y0) novo.push(Object.assign({}, w, { y1: y0, y2: gy })); if (y1 > gy + 1) novo.push(Object.assign({}, w, { y1: gy + 1, y2: y1 })); }
+    else { const x0 = Math.min(w.x1, w.x2), x1 = Math.max(w.x1, w.x2); if (gx > x0) novo.push(Object.assign({}, w, { x1: x0, x2: gx })); if (x1 > gx + 1) novo.push(Object.assign({}, w, { x1: gx + 1, x2: x1 })); }
+    const porta = vert ? { x1: gx, y1: gy, x2: gx, y2: gy + 1 } : { x1: gx, y1: gy, x2: gx + 1, y2: gy };
+    p.paredes.splice(i, 1, ...novo, Object.assign({ k: 'door', locked: true, fech: 'absoluto', atalho: true }, porta));
+    a.porta = porta;
+    return true;
+  }
+
+  /* ---------------- os textos ---------------- */
+  const PUZ = { cadeado: 'Cadeado de símbolos', placas: 'Placas de pressão' };
+  const ITEM = { chave: 'A chave', pista: 'O diário', puzzle: 'O diário', mecanismo: 'A alavanca' };
+  function textoPasso(s) {
+    const oque = s.portaNome, guarda = s.alvoNome;
+    const abre = { chave: `${cap(oque)} está ${s.bau ? 'trancado' : 'trancada'} (difícil de arrombar). A chave está ${s.itemOnde}.`,
+      pista: `${cap(oque)} tem fechadura de segredo: não dá para arrombar. A combinação está anotada num diário, ${s.itemOnde}.`,
+      mecanismo: `${cap(oque)} parece parede. A alavanca escondida ${s.itemOnde} abre.`,
+      puzzle: `${cap(oque)} abre com o puzzle "${PUZ[s.puzzle]}". A pista dele está num diário, ${s.itemOnde}.` }[s.tipo];
+    return abre + ` ${s.bau ? 'Dentro dele' : 'Atrás dela'}: ${s.atras || guarda}.`;
+  }
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const textoAtalho = a => `Atalho de volta: uma porta ${a.onde}, perto do alvo, que só abre por dentro (de fora, nem com gazua). É o caminho da fuga.`;
+  function resumo(p) {
+    const t = p && p.trama;
+    if (!t) return '';
+    const n = t.passos.length;
+    if (t.falhou) return ' A história: não deu neste mapa (o caminho até o alvo está fechado). Gere outro.';
+    return ` A história: ${n ? n + (n === 1 ? ' passo' : ' passos') + ' até ' + t.alvoTxt : 'sem passos'}${t.pedidos && n < t.pedidos ? ' (o mapa só deu para ' + n + ')' : ''}${t.atalho ? ', com o atalho de volta' : ''}.`;
+  }
+
+  /* ---------------- a prévia: os números (o portão com o cadeado, a coisa que abre) ---------------- */
+  function desenhar(g, p, cell) {
+    const t = p && p.trama;
+    if (!t) return;
+    g.save();
+    const ponto = (x, y, txt, cor, quad) => {
+      const cx = (x + 0.5) * cell, cy = (y + 0.5) * cell, R = Math.max(7, cell * 0.55);
+      g.fillStyle = cor; g.strokeStyle = '#1a1208'; g.lineWidth = 2; g.beginPath();
+      if (quad) g.rect(cx - R, cy - R, R * 2, R * 2); else g.arc(cx, cy, R, 0, TAU);
+      g.fill(); g.stroke();
+      g.fillStyle = '#1a1208'; g.font = `700 ${Math.round(R * 1.2)}px system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, cx, cy + 1);
+    };
+    const meioPorta = s => (s.porta ? [(s.porta.x1 + s.porta.x2) / 2 - 0.5, (s.porta.y1 + s.porta.y2) / 2 - 0.5] : s.bau);
+    for (const s of t.passos) {
+      const [gx, gy] = meioPorta(s);
+      g.strokeStyle = 'rgba(255,214,90,0.85)'; g.lineWidth = Math.max(1.5, cell * 0.12); g.setLineDash([cell * 0.4, cell * 0.3]);
+      g.beginPath(); g.moveTo((s.item[0] + 0.5) * cell, (s.item[1] + 0.5) * cell); g.lineTo((gx + 0.5) * cell, (gy + 0.5) * cell); g.stroke(); g.setLineDash([]);
+    }
+    for (const s of t.passos) { const [gx, gy] = meioPorta(s); ponto(gx, gy, String(s.n), '#ffb36b', true); ponto(s.item[0], s.item[1], String(s.n), '#ffd34d', false); }
+    if (t.atalho) { const a = t.atalho.porta; ponto((a.x1 + a.x2) / 2 - 0.5, (a.y1 + a.y2) / 2 - 0.5, 'A', '#7fe0a0', true); }
+    g.restore();
+  }
+
+  /* ---------------- na cena ---------------- */
+  function aplicar(sc, p) {
+    const t = p && p.trama;
+    if (!t || t.falhou) return '';
+    const c = sc.cell, perto = (a, b) => Math.abs(a - b) < c * 0.05;
+    const achaParede = q => sc.walls.find(w => (perto(w.x1, q.x1 * c) && perto(w.y1, q.y1 * c) && perto(w.x2, q.x2 * c) && perto(w.y2, q.y2 * c)) || (perto(w.x1, q.x2 * c) && perto(w.y1, q.y2 * c) && perto(w.x2, q.x1 * c) && perto(w.y2, q.y1 * c)));
+    const lista = [];
+    let puzzles = 0, semMesa = 0;
+    for (const s of t.passos) {
+      const txt = textoPasso(s), item = { chave: 'chave', pista: 'diario', puzzle: 'diario', mecanismo: 'alavanca' }[s.tipo];
+      const ids = [];
+      let parede = null, bau = null, pz = null;
+      if (s.porta) { parede = achaParede(s.porta); if (parede) ids.push(parede.id); }
+      if (s.bau) {
+        bau = Props.novo(sc, 'bau', s.bau[0] * c, s.bau[1] * c, 1, false);
+        bau.name = 'Baú trancado (passo ' + s.n + ')'; bau.notes = txt; bau.tranca = s.tipo === 'chave' ? 'dificil' : 'absoluto';
+        sc.tokens.push(bau); ids.push(bau.id);
+      }
+      if (s.tipo === 'puzzle') {
+        pz = EscudoCenas.criarPuzzle ? EscudoCenas.criarPuzzle(s.puzzle, PUZ[s.puzzle] + ': ' + s.portaNome + ' (' + sc.name + ')') : null;
+        if (pz) { puzzles++; if (parede) Object.assign(parede, { pz, pzOk: undefined }); if (bau) bau.pz = pz; } else semMesa++;
+      }
+      const tk = Props.novo(sc, item, s.item[0] * c, s.item[1] * c, 1, true);
+      tk.name = s.n + ' · ' + ITEM[s.tipo] + (s.tipo === 'chave' ? ' (' + s.portaNome.replace(/^o baú trancado.*/, 'o baú') + ')' : '');
+      tk.notes = 'Passo ' + s.n + '. ' + txt + (s.tipo === 'puzzle' && !pz ? ' (Ligue o puzzle pelo painel da porta, com a mesa aberta.)' : '');
+      if (s.tipo === 'mecanismo' && parede) tk.liga = parede.id;
+      sc.tokens.push(tk); ids.push(tk.id);
+      lista.push({ n: s.n, tipo: s.tipo, txt, ids });
+    }
+    if (t.atalho) {
+      const parede = achaParede(t.atalho.porta), ids = [];
+      if (parede) ids.push(parede.id);
+      const a = t.atalho.porta, mk = Props.novo(sc, 'interesse', Math.min(a.x1, a.x2) * c, Math.min(a.y1, a.y2) * c, 1, true);
+      mk.name = 'Atalho de volta'; mk.notes = textoAtalho(t.atalho);
+      sc.tokens.push(mk); ids.push(mk.id);
+      lista.push({ n: 0, tipo: 'atalho', txt: textoAtalho(t.atalho), ids });
+    }
+    lista.sort((a, b) => (a.n || 99) - (b.n || 99));
+    sc.trama = { alvo: t.alvoTxt, passos: lista, feitos: [] };
+    const np = t.passos.length;
+    return `A história: ${np} ${np === 1 ? 'passo' : 'passos'}${t.atalho ? ' e o atalho de volta' : ''} (os objetos estão escondidos; a lista fica na aba Guardas).` +
+      (puzzles ? ` ${puzzles === 1 ? 'Um puzzle novo' : puzzles + ' puzzles novos'} no Escudo.` : '') + (semMesa ? ' Os puzzles se ligam pelo painel da porta, com a mesa aberta.' : '');
+  }
+
+  /* ---------------- os controles (no "Gerar um lugar…") ---------------- */
+  function controles(K, mudou) {
+    const pr = prefs(), set = (k, v) => { App.opt[k] = v; if (mudou) mudou(); };
+    const setTipo = (k, v) => { const t = Object.assign({}, pr.tipos, { [k]: v }); App.opt.tramaTipos = t; if (mudou) mudou(); };
+    return h('div', { class: 'ger-trama', id: 'ger-trama' },
+      K.toggle('ger-trama-on', pr.on, v => set('tramaOn', v), 'Contar uma história: os passos até o alvo'),
+      pr.on ? h('div', { class: 'ger-pov-op' },
+        K.field('Quantos passos', K.seg('ger-trama-tam', pr.tam, TAMS, v => set('tramaTam', v)), 'stack'),
+        ...TIPOS.map(([k, n]) => K.toggle('ger-trama-' + k, pr.tipos[k], v => setTipo(k, v), n)),
+        K.note('Na prévia: o quadrado laranja é o portão, o círculo amarelo é o que abre, com o número do passo. "A" é o atalho de volta.')) : null);
+  }
+  const resumoBloco = () => { const pr = prefs(); return pr.on ? ({ curta: 'curta', media: 'média', longa: 'longa' })[pr.tam] : 'desligada'; };
+
+  /* ---------------- a aba Guardas: a lista, e o mestre marca o que já fizeram ---------------- */
+  function secao(K, sc) {
+    const t = sc && sc.trama;
+    if (!t || !Array.isArray(t.passos) || !t.passos.length) return null;
+    const feitos = new Set(Array.isArray(t.feitos) ? t.feitos : []);
+    const marcar = (n, on) => { const f = new Set(feitos); if (on) f.add(n); else f.delete(n); Store.tx('A história: passo', () => Store.scn({ trama: Object.assign({}, t, { feitos: [...f] }) })); UI.refresh(); };
+    const ver = s => { const tk = s.ids.map(id => Store.get('tokens', id)).find(Boolean); if (!tk) return; setSel([{ c: 'tokens', id: tk.id }]); const [cx, cy] = tokC(tk, sc); Render.centerOn(cx, cy); };
+    return K.sec('s-gd-trama', 'A história' + (t.alvo ? ': até ' + t.alvo : ''), true,
+      h('ul', { class: 'list gd-trama' }, t.passos.map((s, i) => h('li', { class: 'gd-tr' + (feitos.has(s.n || 'A' + i) ? ' feito' : '') },
+        K.toggle('gd-tr-' + (s.n || 'a'), feitos.has(s.n || 'A' + i), on => marcar(s.n || 'A' + i, on), s.n ? 'Passo ' + s.n : 'Atalho'),
+        h('button', { type: 'button', class: 'li-m gd-tr-t', title: 'Mostrar no mapa', onclick: () => ver(s), text: s.txt })))),
+      K.note('Os objetos dos passos estão escondidos dos jogadores: revele quando eles acharem.'));
+  }
+  const TAU = Math.PI * 2;
+  return { nomeSala: nomeDaSala, TAMS, TIPOS, prefs, vale, tecer, resumo, desenhar, aplicar, controles, resumoBloco, secao, pontas, modelo, busca };
+})();
+/* ---------------------------------------------------------------
    10gz. DESCREVER COM A IA (lote 150) — o "texto para o mapa" da janela "Gerar um lugar…".
    O mestre escreve o lugar do jeito dele ("uma casa nobre de um andar, cozinha, 2 quartos, quintal com piscina…"); o
    site manda para a função `ia` do servidor (a chave da API fica lá) as instruções e o formato da resposta (uma
@@ -49801,14 +50293,17 @@ const Gerador = (() => {
     }
     function mostrarResumo() {
       const E = estadoDe(L), p = E.plano, n = L.quantasTravadas(p);
-      resumo.textContent = L.resumo(p) + (n ? ` ${n === 1 ? 'Uma parte travada' : n + ' partes travadas'}.` : '') + (p.soltas ? ` ${p.soltas === 1 ? 'Uma casa travada não coube e saiu' : p.soltas + ' casas travadas não couberam e saíram'}.` : '');
+      resumo.textContent = L.resumo(p) + Trama.resumo(p) + (n ? ` ${n === 1 ? 'Uma parte travada' : n + ' partes travadas'}.` : '') + (p.soltas ? ` ${p.soltas === 1 ? 'Uma casa travada não coube e saiu' : p.soltas + ' casas travadas não couberam e saíram'}.` : '');
       btSoltar.disabled = !n;
     }
     function refazer() {
       const E = estadoDe(L);
       E.plano = L.gerar(E.op, comHex(L, comEstacao(L, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base, seco: usaEv(L) && evDaAba(L).seco })));
       E.trava = L.travaDe(E.plano);                // (o que não coube sai da trava)
-      try { const r = L.previa(fundo, E.plano, 640, 460, { relevo: comum.relevo }); cell = r.cell; } catch (e) { console.error(e); }
+      if (Trama.vale(L, E.op) && Trama.prefs().on) { try { Trama.tecer(E.plano, Trama.prefs()); } catch (e) { console.error(e); } }      // (lote 152) a história da missão
+      let rp = null;
+      try { rp = L.previa(fundo, E.plano, 640, 460, { relevo: comum.relevo }); cell = rp.cell; } catch (e) { console.error(e); }
+      if (E.plano.trama && !(rp && rp.trama)) Trama.desenhar(fundo.getContext('2d'), E.plano, cell);
       sobre = null; foco = -1;
       desenhar(); mostrarDica(); mostrarResumo();
       inSemente.value = E.seed;
@@ -49983,6 +50478,7 @@ const Gerador = (() => {
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
           temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null),
         bloco('pov', 'Povoar', pv.on ? 'perigo ' + nomeDe(Povoar.PERIGOS, pv.perigo, 'médio').toLowerCase() : 'desligado', Povoar.controles(K, () => pintar())),       // (lote 49) povoar o lugar
+        Trama.vale(L, E.op) ? bloco('trama', 'A história', Trama.resumoBloco(), Trama.controles(K, () => { pintar(); refazer(); })) : null,      // (lote 152) a história da missão
         bloco('mist', 'Mistério', mi.on ? (casoMi ? casoMi.c.titulo : 'um caso novo') : 'desligado', Misterio.controles(K, () => pintar())),     // (lote 53) o mistério
         // (lote 129) os marcadores de missão, nos povoados
         MissaoCenas.POVOADOS.has(L.id) ? bloco('mq', 'Missões', ({ nada: 'sem marcadores', vazios: 'marcadores vazios', minhas: (n => n + (n === 1 ? ' missão' : ' missões'))(MissaoCenas.prefs().ids.length) })[MissaoCenas.prefs().modo], MissaoCenas.controles(K, () => pintar())) : null].filter(Boolean));
@@ -50012,11 +50508,13 @@ const Gerador = (() => {
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
             const pv = Povoar.prefs(), txtPov = pv.on ? Povoar.aplicar(sc, l.id, p, pv) : '';      // (lote 49) o lugar povoado
             const mi = Misterio.prefs(), txtMi = mi.on ? Misterio.aplicar(sc, l.id, p, mi) : '';    // (lote 53) o mistério
+            const txtTr = p.trama ? Trama.aplicar(sc, p) : '';                                        // (lote 152) a história da missão
+            if (txtTr) Persist.scene(sc.id);
             const txtMq = MissaoCenas.aplicar(sc, l.id);                                              // (lote 129) os marcadores de missão
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTr ? ' ' + txtTr : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },
@@ -51224,7 +51722,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, IaMapa, Vigia, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, IaMapa, Vigia, Trama, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

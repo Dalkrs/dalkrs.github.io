@@ -44,11 +44,11 @@ const j = JSON.stringify;
   // ---- o painel: mostrar o cone a um jogador ----
   await ev(() => { __tc.setSel([{ c: 'tokens', id: 'tg' }]); __tc.App.tab = 'sel'; __tc.App.sideOpen = true; __tc.UI.renderAll(); }); await w(300);
   await ev(() => { const d = document.getElementById('s-guarda'); if (d && !d.open) d.open = true; }); await w(100);
-  ok(await page.locator('#tk-gver-p1').count() === 1 && await page.locator('#tk-gver-p2').count() === 1, 'o bloco "Mostrar o cone a um jogador" lista os jogadores');
-  await page.locator('#tk-gver-p1').check({ force: true }); await w(300);
+  ok(await page.locator('#tk-gver-c-p1').count() === 1 && await page.locator('#tk-gver-r-p2').count() === 1, 'o bloco "Mostrar o cone a um jogador" lista os jogadores');
+  await page.locator('#tk-gver-c-p1').check({ force: true }); await w(300);
   k = await g();
-  ok(k.ronda.ver && j(k.ronda.ver.para) === j(['p1']) && !k.ronda.ver.rota && k.ronda.ver.por === '', 'marcado: só o Dalmo vê, sem a rota, até o mestre esconder');
-  ok(/Dalmo vê o cone \(até você esconder\)/.test(await page.locator('.tk-gver').innerText()), 'o resumo diz quem vê e até quando');
+  ok(k.ronda.ver && j(k.ronda.ver.para) === j(['p1']) && !k.ronda.ver.rotas.length && k.ronda.ver.por === '', 'marcado: só o Dalmo vê, sem a rota, até o mestre esconder');
+  ok(/veem o cone: Dalmo \(até você esconder\)/.test(await page.locator('.tk-gver').innerText()), 'o resumo diz quem vê e até quando');
   if (process.env.FOTOS) await page.locator('.tk-gver').screenshot({ path: process.env.FOTOS + '/gver-painel.png' });
 
   // ---- a projeção ----

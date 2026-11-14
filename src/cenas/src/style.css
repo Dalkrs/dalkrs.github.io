@@ -1365,3 +1365,15 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .ia-msg .ia-erro { color: #e88a7a; }
 .ia-msg .ia-notas { border-left: 3px solid var(--lamp); padding-left: 8px; }
 #ger-ia-texto { resize: vertical; min-height: 84px; }
+/* (lote 152) a história da missão, na aba Guardas */
+.gd-trama { display: flex; flex-direction: column; gap: 6px; }
+.gd-tr { display: flex; flex-direction: column; gap: 2px; padding: 4px 6px; border-radius: 8px; }
+.gd-tr.feito { opacity: 0.55; }
+.gd-tr-t { text-align: left; font-size: 13px; line-height: 1.4; background: none; border: 0; color: inherit; padding: 0 0 0 4px; cursor: pointer; }
+.gd-tr-t:hover { text-decoration: underline; }
+/* (lote 152) o que os jogadores veem: o cone e a rota, por jogador */
+.gd-ver { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 14px; align-items: center; margin: 6px 0; }
+.gd-ver-h, .gd-ver-l { display: contents; }
+.gd-ver-h span { font-size: 12px; font-weight: 600; opacity: 0.75; text-align: center; }
+.gd-ver-n { font-size: 13.5px; }
+.gd-ck { width: 18px; height: 18px; justify-self: center; accent-color: var(--accent, #e6ab4f); cursor: pointer; }

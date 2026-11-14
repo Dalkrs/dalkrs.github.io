@@ -54,15 +54,21 @@ const Rondas = (() => {
   // (lote 132) a vista revelada: { para: [ids dos jogadores], rota: bool, por: '' | 'rondas' | 'rodadas', n }
   function verLimpo(v) {
     if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
-    const para = Array.isArray(v.para) ? [...new Set(v.para.filter(x => typeof x === 'string' && /^[A-Za-z0-9_*-]{1,60}$/.test(x)))].slice(0, 12) : [];
-    if (!para.length) return null;
+    const ids = l => (Array.isArray(l) ? [...new Set(l.filter(x => typeof x === 'string' && /^[A-Za-z0-9_*-]{1,60}$/.test(x)))].slice(0, 12) : []);
+    // (lote 152) o cone (para) e a rota (rotas) separados, para quem o mestre quiser; o "rota: true" de antes = a rota para os mesmos do cone
+    const para = ids(v.para), rotas = v.rota && !(Array.isArray(v.rotas) && v.rotas.length) ? para.slice() : ids(v.rotas);
+    if (!para.length && !rotas.length) return null;
     const por = v.por === 'rondas' || v.por === 'rodadas' ? v.por : '';
-    const o = { para, rota: !!v.rota, por, n: por ? num(v.n, 1, 99, 1) : 0 };
+    const o = { para, rotas, por, n: por ? num(v.n, 1, 99, 1) : 0 };
     return o;
   }
   const ehGuarda = t => !!(t && !t.prop && t.ronda && typeof t.ronda === 'object');
   // (lote 132) na tela de um jogador: o guarda cujo cone o mestre mostrou para ele (t.vc, da projeção)
-  const vcMeu = t => !!(t && !t.prop && t.vc && typeof t.vc === 'object' && Array.isArray(t.vc.para) && (t.vc.para.includes(App.viewer) || t.vc.para.includes('*')));
+  const tem = (l, id) => Array.isArray(l) && (l.includes(id) || l.includes('*'));
+  const vcMeu = t => !!(t && !t.prop && t.vc && typeof t.vc === 'object' && (tem(t.vc.para, App.viewer) || tem(t.vc.rp, App.viewer)));
+  // (lote 152) nesta tela: o cone e a rota de cada guarda (o mestre vê tudo; o jogador, o que foi mostrado a ele)
+  const coneMeu = t => isGM() || tem(t.vc && t.vc.para, App.viewer);
+  const rotaMeu = t => isGM() || (t.vc && (Array.isArray(t.vc.rp) ? tem(t.vc.rp, App.viewer) : tem(t.vc.para, App.viewer)));
   // o que vale para o cone: no mestre, a ronda; no jogador, o que veio na projeção
   const fonte = t => (ehGuarda(t) ? { r: t.ronda, est: estadoDe(t) } : { r: t.vc, est: ESTADOS.some(e => e[0] === t.vc.est) ? t.vc.est : 'calmo' });
   const vistos = sc => (sc ? (isGM() ? sc.tokens.filter(ehGuarda) : sc.tokens.filter(vcMeu)) : []);
@@ -254,14 +260,14 @@ const Rondas = (() => {
   const rgba = (est, a) => `rgba(${COR[est].join(',')},${a})`;
   // o que desenhar nesta tela: no mestre, todos os guardas (se a chave estiver ligada); no jogador, os revelados a ele
   const aDesenhar = sc => (isGM() ? (mostrar() ? guardas(sc) : []) : vistos(sc));
-  const rotaDe = t => { const f = fonte(t).r; return f && Array.isArray(f.pts) ? f : null; };
+  const rotaDe = t => { const f = fonte(t).r; return f && Array.isArray(f.pts) && rotaMeu(t) ? f : null; };
   function desenhar(c, sc, px) {
     const gs = aDesenhar(sc);
     if (!gs.length) return;
     const cell = sc.cell, sel = new Set(App.sel.filter(s => s.c === 'tokens').map(s => s.id));
     c.save();
     // os cones (cortados pelas paredes), na cor do estado
-    for (const t of gs) {
+    for (const t of gs.filter(coneMeu)) {
       const g = cone(t, sc), poly = poligono(t, sc, g);
       c.save();
       c.beginPath(); for (let i = 0; i < poly.length; i += 2) (i ? c.lineTo(poly[i], poly[i + 1]) : c.moveTo(poly[i], poly[i + 1])); c.closePath(); c.clip();
@@ -296,7 +302,7 @@ const Rondas = (() => {
   }
   // os selos por cima dos tokens: o "?" e o "!" dos guardas e o "!" vermelho em quem está sendo visto
   function selos(c, sc, px) {
-    const gs = aDesenhar(sc);
+    const gs = aDesenhar(sc).filter(coneMeu);
     if (!gs.length) return;
     const selo = (x, y, txt, cor) => {
       const r = 9 * px;
@@ -409,16 +415,17 @@ const Rondas = (() => {
   /* (lote 132) "Mostrar o cone a um jogador": para quem usou uma skill de ver o campo de visão. Escolhe o(s) jogador(es),
      se a rota vai junto e por quanto tempo. */
   function blocoVer(t, R, K) {
-    const r = t.ronda, v = r.ver || null, js = (Store.S.players || []).filter(p => p && p.id);
-    const nomes = v ? v.para.map(id => (js.find(p => p.id === id) || {}).name || 'um jogador') : [];
+    const r = t.ronda, v = verLimpo(r.ver), js = (Store.S.players || []).filter(p => p && p.id);
+    const nm = id => (js.find(p => p.id === id) || {}).name || 'um jogador';
+    const veem = v ? [v.para.length ? 'o cone: ' + v.para.map(nm).join(', ') : null, v.rotas.length ? 'a rota: ' + v.rotas.map(nm).join(', ') : null].filter(Boolean).join('; ') : '';
     const quanto = v ? (v.por ? `ainda ${v.n} ${v.por === 'rondas' ? (v.n === 1 ? 'ronda' : 'rondas') : (v.n === 1 ? 'rodada' : 'rodadas')}` : 'até você esconder') : '';
-    const novo = Object.assign({ para: [], rota: false, por: '', n: 2 }, v || {});
+    const novo = Object.assign({ para: [], rotas: [], por: '', n: 2 }, v || {});
+    const troca = (k, id, on) => muda({ [k]: on ? novo[k].concat([id]) : novo[k].filter(x => x !== id) });
     const muda = o => R({ ver: verLimpo(Object.assign({}, novo, o)) || undefined });
     if (!js.length) return h('div', { class: 'tk-gver' }, K.note('Mostrar o cone a um jogador: chame os jogadores para a mesa primeiro.'));
     return h('div', { class: 'tk-gver' },
-      h('div', { class: 'o-note', style: { marginTop: '8px', fontWeight: '600' }, text: v ? `${nomes.join(', ')} ${nomes.length === 1 ? 'vê' : 'veem'} o cone (${quanto})` : 'Mostrar o cone a um jogador (quando ele usa uma skill para ver)' }),
-      ...js.map(p => K.toggle('tk-gver-' + p.id, novo.para.includes(p.id), on => muda({ para: on ? novo.para.concat([p.id]) : novo.para.filter(x => x !== p.id) }), p.name)),
-      v ? K.toggle('tk-gver-rota', !!v.rota, on => muda({ rota: on }), 'A rota vai junto') : null,
+      h('div', { class: 'o-note', style: { marginTop: '8px', fontWeight: '600' }, text: v ? `Os jogadores veem ${veem} (${quanto})` : 'Mostrar o cone ou a rota a um jogador (quando ele usa uma skill para ver)' }),
+      gradeVer(js, id => novo.para.includes(id), id => novo.rotas.includes(id), (id, on) => troca('para', id, on), (id, on) => troca('rotas', id, on), 'tk-gver', K),
       v ? K.field('Por quanto tempo', K.seg('tk-gver-por', v.por, [['', 'Até eu esconder'], ['rondas', 'Rondas'], ['rodadas', 'Rodadas']], x => muda({ por: x, n: v.n || 2 })), 'stack') : null,
       v && v.por ? K.field(v.por === 'rondas' ? 'Quantas vezes de "Avançar rondas"' : 'Quantas rodadas de combate', K.inNum('tk-gver-n', v.n, x => muda({ n: num(x, 1, 99, 1) }), { min: 1, max: 99, step: 1, label: 'Por quanto tempo o jogador vê o cone' })) : null,
       v ? h('div', { class: 'row' }, K.btn('Esconder o cone de novo', () => R({ ver: undefined }), { kind: 'small', id: 'tk-gver-fim' })) : null);
@@ -472,10 +479,24 @@ const Rondas = (() => {
     if (novos.length === 1) desenharRota(Store.get('tokens', novos[0].id));
   }
   // os cones de todos os guardas para os jogadores: quem vê (para), a rota junto; vazio esconde
-  function verTodos(gs, para, rota) {
-    const ver = verLimpo({ para, rota, por: '' });
-    Store.tx('Os cones para os jogadores', () => gs.forEach(t => Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { ver: ver || undefined }) })));
+  // (lote 152) o cone e a rota separados: para (quem vê o cone) e rotas (quem vê a rota); null deixa como está
+  function verTodos(gs, para, rotas) {
+    Store.tx('O que os jogadores veem', () => gs.forEach(t => {
+      const v0 = verLimpo(t.ronda.ver) || { para: [], rotas: [], por: '', n: 0 };
+      const ver = verLimpo(Object.assign({}, v0, para ? { para } : null, rotas ? { rotas } : null));
+      Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { ver: ver || undefined }) });
+    }));
   }
+  // a grade: um jogador por linha, com o Cone e a Rota
+  function gradeVer(js, cone, rota, mudaCone, mudaRota, pre, K) {
+    return h('div', { class: 'gd-ver' },
+      h('div', { class: 'gd-ver-h' }, h('span', {}), h('span', { text: 'Cone' }), h('span', { text: 'Rota' })),
+      ...js.map(p => h('div', { class: 'gd-ver-l' }, h('span', { class: 'gd-ver-n', text: p.name }),
+        h('input', { type: 'checkbox', class: 'gd-ck', id: pre + '-c-' + p.id, checked: !!cone(p.id), 'aria-label': 'Cone para ' + p.name, onchange: e => mudaCone(p.id, e.target.checked) }),
+        h('input', { type: 'checkbox', class: 'gd-ck', id: pre + '-r-' + p.id, checked: !!rota(p.id), 'aria-label': 'Rota para ' + p.name, onchange: e => mudaRota(p.id, e.target.checked) }))));
+  }
+  // (lote 152) seleciona todos os guardas da cena (no mapa)
+  function selecionarTodos(gs) { setSel(gs.map(t => ({ c: 'tokens', id: t.id }))); Tools.set('select'); UI.refresh(); }
   function aba(K) {
     const sc = Store.scene(), gs = guardas(sc), js = (Store.S.players || []).filter(p => p && p.id);
     const sel = (App.sel || []).filter(x => x.c === 'tokens').map(x => Store.get('tokens', x.id)).filter(t => t && !t.prop && !ehGuarda(t));
@@ -491,8 +512,12 @@ const Rondas = (() => {
         K.btn('Todos calmos', () => mudarEstado(gs, 'calmo'), { kind: 'small', id: 'gd-calmo' }),
         K.btn('Todos desconfiados', () => mudarEstado(gs, 'desconfiado'), { kind: 'small', id: 'gd-desconf' }),
         K.btn('Todos em alerta', () => mudarEstado(gs, 'alerta'), { kind: 'small', id: 'gd-alerta' })) : null,
+      gs.length ? h('div', { class: 'row' }, K.btn('Selecionar todos os guardas', () => selecionarTodos(gs), { kind: 'small', icon: 'select', id: 'gd-sel-todos', title: 'Seleciona no mapa todos os guardas desta cena' })) : null,
       gs.length ? h('div', { class: 'row' }, K.btn('Todos olham para um ponto', () => olharNoMapa(null), { kind: 'small', icon: 'eye', id: 'gd-olhar', title: 'Clique no mapa: todos os guardas viram o cone para lá (um barulho)' })) : null,
       K.toggle('gd-rver', App.opt.rondasVer !== false, v => { App.opt.rondasVer = v; Render.request(); UI.refresh(); }, 'Mostrar rotas e cones (só você vê)')));
+    // (lote 152) a história da missão (os passos, em ordem; o mestre marca o que já fizeram)
+    const tr = Trama.secao(K, sc);
+    if (tr) out.push(tr);
     // (lote 151) o calor e os caminhos: onde os guardas veem (com eles andando) e a dificuldade medida
     if (gs.length) {
       const md = Vigia.daCenaMedida(sc).med;
@@ -501,17 +526,18 @@ const Rondas = (() => {
         h('p', { class: 'gd-medida', id: 'gd-medida', text: md.texto }),
         Vigia.ligado() ? K.note('Quanto mais vermelho, mais tempo algum guarda olha para lá. O caminho curto vai em amarelo (tracejado); o outro, em verde. Muda quando os guardas andam ou uma porta abre.') : null));
     }
-    // os cones para os jogadores
+    // (lote 152) o que os jogadores veem: o cone e a rota, separados, por jogador; nos guardas selecionados (ou em todos)
     if (gs.length) {
-      const comVer = gs.filter(t => t.ronda.ver), todos = comVer.length === gs.length;
-      const paraDe = id => gs.every(t => t.ronda.ver && t.ronda.ver.para.includes(id));
-      const rota = todos && gs.every(t => t.ronda.ver.rota);
-      const atual = js.filter(p => paraDe(p.id)).map(p => p.id);
-      out.push(K.sec('s-gd-ver', 'Os cones para os jogadores', true,
-        K.note(comVer.length ? (todos ? 'Todos os cones estão à vista de: ' + (js.filter(p => paraDe(p.id)).map(p => p.name).join(', ') || 'alguns jogadores') + '.' : `${comVer.length} de ${gs.length} guardas têm o cone à vista de alguém (no painel de cada um dá para mudar).`) : 'Só você vê os cones. Ligue um jogador para ele ver o cone de todos os guardas desta cena.'),
-        js.length ? js.map(p => K.toggle('gd-ver-' + p.id, paraDe(p.id), on => verTodos(gs, on ? atual.concat([p.id]) : atual.filter(x => x !== p.id), rota), p.name)) : K.note('Chame os jogadores para a mesa primeiro.'),
-        atual.length ? K.toggle('gd-ver-rota', rota, on => verTodos(gs, atual, on), 'A rota vai junto') : null,
-        comVer.length ? h('div', { class: 'row' }, K.btn('Esconder de todos', () => verTodos(gs, [], false), { kind: 'small', id: 'gd-ver-fim' })) : null));
+      const selG = gs.filter(t => (App.sel || []).some(x => x.c === 'tokens' && x.id === t.id)), alvo = selG.length ? selG : gs;
+      const tudo = (k, id) => alvo.every(t => { const v = verLimpo(t.ronda.ver); return v && v[k].includes(id); });
+      const lista = k => js.filter(p => tudo(k, p.id)).map(p => p.id);
+      const comVer = gs.filter(t => verLimpo(t.ronda.ver));
+      out.push(K.sec('s-gd-ver', 'O que os jogadores veem', true,
+        K.note(selG.length ? `Vale para ${selG.length === 1 ? 'o guarda selecionado' : 'os ' + selG.length + ' guardas selecionados'}.` : 'Vale para todos os guardas desta cena. Selecione alguns no mapa (ou na lista) para mudar só os deles.'),
+        js.length ? gradeVer(js, id => tudo('para', id), id => tudo('rotas', id),
+          (id, on) => verTodos(alvo, on ? lista('para').concat([id]) : lista('para').filter(x => x !== id), null),
+          (id, on) => verTodos(alvo, null, on ? lista('rotas').concat([id]) : lista('rotas').filter(x => x !== id)), 'gd-ver', K) : K.note('Chame os jogadores para a mesa primeiro.'),
+        comVer.length ? h('div', { class: 'row' }, K.btn(selG.length ? 'Esconder destes' : 'Esconder de todos', () => verTodos(alvo, [], []), { kind: 'small', id: 'gd-ver-fim' })) : null));
     }
     // criar guarda
     out.push(K.sec('s-gd-novo', 'Criar guarda', true,
@@ -525,12 +551,12 @@ const Rondas = (() => {
         return h('li', { class: 'gd-li' + (selec ? ' on' : ''), data: { id: t.id } },
           h('span', { class: 'gd-cor', style: { background: rgba(est, 1) }, title: ESTADOS.find(e => e[0] === est)[1] }),
           h('button', { type: 'button', class: 'li-m gd-nome', id: 'gd-t-' + t.id, title: 'Selecionar e centralizar', onclick: () => { setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); const [cx, cy] = tokC(t, sc); Render.centerOn(cx, cy); } },
-            h('b', { text: t.name }), h('small', { text: [r.pts.length > 1 ? `ronda, ${r.pts.length} pontos` : 'de posto', vida ? 'vida ' + vida : null, r.ver ? 'cone à vista' : null].filter(Boolean).join(' · ') })),
+            h('b', { text: t.name }), h('small', { text: [r.pts.length > 1 ? `ronda, ${r.pts.length} pontos` : 'de posto', vida ? 'vida ' + vida : null, verLimpo(r.ver) ? 'à vista de jogador' : null].filter(Boolean).join(' · ') })),
           h('select', { class: 'in gd-est', id: 'gd-e-' + t.id, 'aria-label': 'Estado de ' + t.name, value: est, onchange: e => { const v = e.target.value; e.target.blur(); mudarEstado([t], v); } },
             ESTADOS.map(([k, nm]) => h('option', { value: k, text: nm, selected: k === est }))));
       }))));
     return out;
   }
 
-  return { aba, novoGuarda, fazerGuardas, verTodos, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
+  return { aba, novoGuarda, fazerGuardas, verTodos, selecionarTodos, coneMeu, rotaMeu, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
 })();
