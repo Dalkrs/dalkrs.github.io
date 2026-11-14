@@ -1224,7 +1224,7 @@ const UI = (() => {
       ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
       ['Shift+W', 'Avançar rondas: os guardas andam um passo da rota (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Inverte a grade (solta ou encaixa)'], ['Shift+G', 'Na grade / Livre (paredes, objetos, luzes, régua)'], ['Shift na parede', 'Reta ou a 45°'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
-      ['1 a 5', 'As abas do painel da direita (Seleção, Turnos, Efeitos, Cena, Jogadores)'], ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
+      ['1 a 6', 'As abas do painel da direita (Seleção, Turnos, Guardas, Efeitos, Cena, Jogadores)'], ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
     modal({
       title: 'Atalhos de teclado', wide: true,
@@ -1449,7 +1449,7 @@ const UI = (() => {
   }
 
   /* ================= Painel lateral ================= */
-  const TABS = [['sel', 'Seleção'], ['turn', 'Turnos'], ['fx', 'Efeitos'], ['scene', 'Cena'], ['players', 'Jogadores']];
+  const TABS = [['sel', 'Seleção'], ['turn', 'Turnos'], ['guard', 'Guardas'], ['fx', 'Efeitos'], ['scene', 'Cena'], ['players', 'Jogadores']];      // (lote 149: a aba Guardas, só do mestre)
   function tabsFor() {
     if (isGM()) return TABS;
     return TABS.filter(([id]) => id === 'sel' || (id === 'turn' && can('turns')) || (id === 'fx' && can('fx')));
@@ -1503,6 +1503,7 @@ const UI = (() => {
     switch (App.tab) {
       case 'turn': body = tabTurn(); break;
       case 'fx': body = tabFx(); break;
+      case 'guard': body = Rondas.aba(UI.kit); break;
       case 'scene': body = tabScene(); break;
       case 'players': body = tabPlayers(); break;
       default: body = tabSel();

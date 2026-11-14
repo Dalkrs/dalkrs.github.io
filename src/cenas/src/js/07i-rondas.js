@@ -443,5 +443,86 @@ const Rondas = (() => {
     ];
   }
 
-  return { ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
+  /* ---------------- (lote 149) a aba Guardas do painel da direita (só o mestre) ----------------
+     Pedido do Bruno: tudo da furtividade num lugar só, ao lado dos Turnos. Os botões de todos (avançar rondas, os estados,
+     olhar para um ponto), os cones para os jogadores (de todos os guardas de uma vez), criar guarda (um novo, no meio da
+     tela, ou os tokens selecionados) e a lista: cada guarda com o estado, a vida e a ronda; o nome seleciona e centraliza. */
+  const VIDA = t => { const b = (t.bars || []).find(x => x && x.on !== false && /vida|pv|hp/i.test(x.n || '')) || (t.bars || [])[0]; return b ? `${b.v}/${b.m}` : null; };
+  function meioDaTela(sc) {
+    const [cw, ch] = Render.size(), c = sc.cell;
+    const x = App.view.x + cw / 2 / App.view.z, y = App.view.y + ch / 2 / App.view.z;
+    return [clamp(Math.floor(x / c), 0, sc.cols - 1) * c, clamp(Math.floor(y / c), 0, sc.rows - 1) * c];
+  }
+  function novoGuarda() {
+    const sc = Store.scene();
+    if (!sc || !isGM()) return;
+    const n = guardas(sc).length + 1, [x, y] = meioDaTela(sc);
+    const t = newToken(sc, x, y, { name: 'Guarda ' + n });
+    t.ronda = novaRonda({ dir: 90 });
+    if (typeof Roupas !== 'undefined' && Roupas.P && Roupas.P.guarda) t.roupa = { k: 'guarda' };
+    Store.tx('Novo guarda', () => Store.add('tokens', t));
+    setSel([{ c: 'tokens', id: t.id }]);
+    desenharRota(Store.get('tokens', t.id));
+  }
+  function fazerGuardas(ts) {
+    const novos = ts.filter(t => t && !t.prop && !ehGuarda(t));
+    if (!novos.length) return;
+    Store.tx('Fazer guarda', () => novos.forEach(t => Store.upd('tokens', t.id, { ronda: novaRonda({ dir: 90 }) })));
+    UI.toast(novos.length === 1 ? `${novos[0].name} agora é guarda (de posto). No painel dele, "Desenhar a rota".` : `${novos.length} tokens agora são guardas (de posto).`, { key: 'rondas', action: 'Desfazer', run: Tools.undo });
+    if (novos.length === 1) desenharRota(Store.get('tokens', novos[0].id));
+  }
+  // os cones de todos os guardas para os jogadores: quem vê (para), a rota junto; vazio esconde
+  function verTodos(gs, para, rota) {
+    const ver = verLimpo({ para, rota, por: '' });
+    Store.tx('Os cones para os jogadores', () => gs.forEach(t => Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { ver: ver || undefined }) })));
+  }
+  function aba(K) {
+    const sc = Store.scene(), gs = guardas(sc), js = (Store.S.players || []).filter(p => p && p.id);
+    const sel = (App.sel || []).filter(x => x.c === 'tokens').map(x => Store.get('tokens', x.id)).filter(t => t && !t.prop && !ehGuarda(t));
+    const n = { calmo: 0, desconfiado: 0, alerta: 0 };
+    gs.forEach(t => n[estadoDe(t)]++);
+    const out = [];
+    out.push(h('p', { class: 'muted', text: gs.length ? `${gs.length} ${gs.length === 1 ? 'guarda' : 'guardas'} nesta cena: ${ESTADOS.filter(e => n[e[0]]).map(e => n[e[0]] + ' ' + e[1].toLowerCase()).join(', ')}.`
+      : 'Nenhum guarda nesta cena. Crie um aqui embaixo, ou gere um lugar de Furtividade (eles já vêm com as rondas).' }));
+    // os botões de todos
+    out.push(K.sec('s-gd-todos', 'Todos os guardas', true,
+      h('div', { class: 'row' }, K.btn('Avançar rondas', avancar, { icon: 'ronda', id: 'gd-avancar', kind: 'primary', disabled: !gs.length, title: 'Cada guarda anda os passos dele pela rota; o aviso diz quem foi visto (atalho: Shift+W)' })),
+      gs.length ? h('div', { class: 'row' },
+        K.btn('Todos calmos', () => mudarEstado(gs, 'calmo'), { kind: 'small', id: 'gd-calmo' }),
+        K.btn('Todos desconfiados', () => mudarEstado(gs, 'desconfiado'), { kind: 'small', id: 'gd-desconf' }),
+        K.btn('Todos em alerta', () => mudarEstado(gs, 'alerta'), { kind: 'small', id: 'gd-alerta' })) : null,
+      gs.length ? h('div', { class: 'row' }, K.btn('Todos olham para um ponto', () => olharNoMapa(null), { kind: 'small', icon: 'eye', id: 'gd-olhar', title: 'Clique no mapa: todos os guardas viram o cone para lá (um barulho)' })) : null,
+      K.toggle('gd-rver', App.opt.rondasVer !== false, v => { App.opt.rondasVer = v; Render.request(); UI.refresh(); }, 'Mostrar rotas e cones (só você vê)')));
+    // os cones para os jogadores
+    if (gs.length) {
+      const comVer = gs.filter(t => t.ronda.ver), todos = comVer.length === gs.length;
+      const paraDe = id => gs.every(t => t.ronda.ver && t.ronda.ver.para.includes(id));
+      const rota = todos && gs.every(t => t.ronda.ver.rota);
+      const atual = js.filter(p => paraDe(p.id)).map(p => p.id);
+      out.push(K.sec('s-gd-ver', 'Os cones para os jogadores', true,
+        K.note(comVer.length ? (todos ? 'Todos os cones estão à vista de: ' + (js.filter(p => paraDe(p.id)).map(p => p.name).join(', ') || 'alguns jogadores') + '.' : `${comVer.length} de ${gs.length} guardas têm o cone à vista de alguém (no painel de cada um dá para mudar).`) : 'Só você vê os cones. Ligue um jogador para ele ver o cone de todos os guardas desta cena.'),
+        js.length ? js.map(p => K.toggle('gd-ver-' + p.id, paraDe(p.id), on => verTodos(gs, on ? atual.concat([p.id]) : atual.filter(x => x !== p.id), rota), p.name)) : K.note('Chame os jogadores para a mesa primeiro.'),
+        atual.length ? K.toggle('gd-ver-rota', rota, on => verTodos(gs, atual, on), 'A rota vai junto') : null,
+        comVer.length ? h('div', { class: 'row' }, K.btn('Esconder de todos', () => verTodos(gs, [], false), { kind: 'small', id: 'gd-ver-fim' })) : null));
+    }
+    // criar guarda
+    out.push(K.sec('s-gd-novo', 'Criar guarda', true,
+      h('div', { class: 'row' }, K.btn('Novo guarda', novoGuarda, { kind: 'small', icon: 'plus', id: 'gd-novo', title: 'Põe um guarda no meio da tela e já começa a desenhar a ronda dele (clique os pontos; Enter termina)' }),
+        sel.length ? K.btn(sel.length === 1 ? 'Fazer guarda: ' + sel[0].name : `Fazer guarda (${sel.length} selecionados)`, () => fazerGuardas(sel), { kind: 'small', icon: 'ronda', id: 'gd-fazer' }) : null),
+      sel.length ? null : K.note('Ou selecione tokens no mapa: aparece aqui o botão para fazer deles guardas.')));
+    // a lista
+    if (gs.length) out.push(K.sec('s-gd-lista', `Os guardas (${gs.length})`, true,
+      h('ul', { class: 'list gd-lista' }, gs.map(t => {
+        const est = estadoDe(t), r = t.ronda, vida = VIDA(t), selec = (App.sel || []).some(x => x.c === 'tokens' && x.id === t.id);
+        return h('li', { class: 'gd-li' + (selec ? ' on' : ''), data: { id: t.id } },
+          h('span', { class: 'gd-cor', style: { background: rgba(est, 1) }, title: ESTADOS.find(e => e[0] === est)[1] }),
+          h('button', { type: 'button', class: 'li-m gd-nome', id: 'gd-t-' + t.id, title: 'Selecionar e centralizar', onclick: () => { setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); const [cx, cy] = tokC(t, sc); Render.centerOn(cx, cy); } },
+            h('b', { text: t.name }), h('small', { text: [r.pts.length > 1 ? `ronda, ${r.pts.length} pontos` : 'de posto', vida ? 'vida ' + vida : null, r.ver ? 'cone à vista' : null].filter(Boolean).join(' · ') })),
+          h('select', { class: 'in gd-est', id: 'gd-e-' + t.id, 'aria-label': 'Estado de ' + t.name, value: est, onchange: e => { const v = e.target.value; e.target.blur(); mudarEstado([t], v); } },
+            ESTADOS.map(([k, nm]) => h('option', { value: k, text: nm, selected: k === est }))));
+      }))));
+    return out;
+  }
+
+  return { aba, novoGuarda, fazerGuardas, verTodos, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
 })();

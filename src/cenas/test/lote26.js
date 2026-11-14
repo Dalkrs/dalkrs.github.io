@@ -39,15 +39,15 @@ const ok = (c, m) => { if (c) pass++; else { fail++; console.log('FALHOU: ' + m)
 
     // a aba Cena e as teclas
     await E(() => { __tc.App.sel = []; document.activeElement.blur(); }); await P.click('#cv', { position: { x: 20, y: 20 } }).catch(() => {});
-    await P.keyboard.press('4'); await w(200);
-    ok(await E(() => __tc.App.tab) === 'scene', 'a tecla 4 abre a aba Cena');
+    await P.keyboard.press('5'); await w(200);
+    ok(await E(() => __tc.App.tab) === 'scene', 'a tecla 5 abre a aba Cena (lote 149: a 3 é a Guardas)');
     ok(await abertos() === 'c-scene- c-bg- c-grid- c-amb+ c-light- c-momentos- c-relevo- c-feridos- c-perm-', 'na aba Cena, só o Ambiente aberto: ' + await abertos());
     await P.click('#c-bg summary'); await P.click('#c-light summary'); await w(120);
     ok(/c-bg\+/.test(await abertos()) && /c-light\+/.test(await abertos()) && /c-amb\+/.test(await abertos()), 'vários blocos abertos ao mesmo tempo');
     await P.keyboard.press('2'); await w(150);
     ok(await E(() => __tc.App.tab) === 'turn', 'a tecla 2 abre Turnos');
     await P.click('#moreBtn'); await w(80); await P.locator('.menu-i', { hasText: 'Atalhos de teclado' }).click(); await w(150);
-    ok(/1 a 5/.test(await P.locator('.keys').innerText()), 'as teclas estão na lista de atalhos');
+    ok(/1 a 6/.test(await P.locator('.keys').innerText()), 'as teclas estão na lista de atalhos');
   } catch (e) { ok(false, 'parou: ' + String(e && e.message || e).split('\n')[0]); }
   if (o.errs.length) console.log(o.errs.slice(0, 8).join('\n'));
   ok(o.errs.length === 0, 'sem erros no console');

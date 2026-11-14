@@ -16,10 +16,11 @@ const Gerador = (() => {
     Encontro.LUGAR, Regiao.LUGAR,
     AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
     LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO, LugaresMundo.LUGAR,      // (lote 126) os lugares do mundo
+    Interior.LUGAR,      // (lote 149) o interior (a janela "Gerar o interior" virou esta aba)
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
     LugaresFora.CRIME, Arena.LUGAR].concat(Furtividade.IDS.map(id => Furtividade.LUGARES[id]));      // (lote 121) a furtividade
   /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
-  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
+  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Por dentro', ['interior']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
     ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']], ['Furtividade', Furtividade.IDS]];
   const GLIFOS = {
     vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
@@ -32,6 +33,7 @@ const Gerador = (() => {
     lago: 'M4 14c2-3 14-3 16 0-2 3-14 3-16 0zM8 14h1.5M13 13.5h3M6.5 10V7M8 10.5V6M17 10V7.5', praia: 'M3 17c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2 1 3 1M3 12c3-4 7-6 12-6M15 6l2 3',
     penhasco: 'M3 7h8l1 4 1 9h8M3 7v13h18M7 11v.1M9 15v.1', desfiladeiro: 'M3 5l4 2 2 13M21 5l-4 3-2 12M9 20h6M11 9l1 2-1 3 1 3',
     cidadeGrande: 'M2 20h20M3 20V8l3-2 3 2v12M9 20V4h6v16M15 20v-9l3-2 3 2v9M11 7h2M11 10h2M11 13h2',
+    interior: 'M3 20V5h18v15H3zM3 12h7M10 5v4M10 12v8M10 15h11M15 15v5M6 8h.1',      // (lote 149) a planta por dentro (as salas)
     mundo116: 'M3 20h18M5 20V10l7-5 7 5v10M9 20v-5h6v5M12 5V2.5M10.5 3h3',          // (lote 126) o templo
     arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
     // (lote 121) a furtividade: a mansão (a casa grande com o muro), a fortaleza (a torre com as ameias), a guilda (o cofre),
@@ -111,6 +113,7 @@ const Gerador = (() => {
     const estadoDe = l => estados[l.id] || (estados[l.id] = { op: l.padrao(), seed: novaSemente(), trava: null, base: null, plano: null });
     if (pre && typeof pre === 'object') {
       if (pre.op) L.aplicarOpcoes(estadoDe(L).op, pre.op);
+      if (Number.isInteger(pre.semente) && pre.semente >= 1) estadoDe(L).seed = pre.semente;      // (lote 149: o prédio da cidade)
       if (pre.estilo) comum.estilo = Estilos.valido(pre.estilo);
       if (TONES.some(t => t.id === pre.hora)) comum.hora = pre.hora;
       if (WEATHERS.some(w => w[0] === pre.clima)) comum.clima = pre.clima;
@@ -216,6 +219,7 @@ const Gerador = (() => {
       desenhar(); mostrarDica(); mostrarResumo();
       inSemente.value = E.seed;
       if (!nomeMexido) inNome.value = L.nomePadrao(E.plano);
+      nota.textContent = L.nota;                    // (lote 149: a nota que depende do plano, como a do Interior)
     }
     function alternar(parte) {
       const E = estadoDe(L);

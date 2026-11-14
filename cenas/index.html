@@ -1388,6 +1388,19 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .and-mais { width: auto; font-size: 12px; padding: 2px 6px; height: auto; }
 .and-sec > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
 .int-ver { margin-bottom: 6px; }
+
+/* (lote 149) a aba Guardas */
+.gd-lista { display: flex; flex-direction: column; gap: 4px; }
+.gd-li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; }
+.gd-li.on { background: rgba(230, 171, 79, 0.14); }
+.gd-cor { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35); }
+.gd-nome { flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; text-align: left; min-width: 0; }
+.gd-nome b { font-weight: 600; }
+.gd-nome small { opacity: 0.7; font-size: 11.5px; }
+.gd-est { width: auto; flex: 0 0 auto; font-size: 12.5px; padding: 3px 6px; }
+/* (lote 149) seis abas no painel (com a Guardas): cabem sem rolar */
+.tabs { gap: 0; padding: 6px 4px 0; }
+.tab { flex: 1 1 auto; padding: 7px 3px 8px; font-size: 12.5px; }
 </style>
 </head>
 <body>
@@ -14904,7 +14917,88 @@ const Rondas = (() => {
     ];
   }
 
-  return { ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
+  /* ---------------- (lote 149) a aba Guardas do painel da direita (só o mestre) ----------------
+     Pedido do Bruno: tudo da furtividade num lugar só, ao lado dos Turnos. Os botões de todos (avançar rondas, os estados,
+     olhar para um ponto), os cones para os jogadores (de todos os guardas de uma vez), criar guarda (um novo, no meio da
+     tela, ou os tokens selecionados) e a lista: cada guarda com o estado, a vida e a ronda; o nome seleciona e centraliza. */
+  const VIDA = t => { const b = (t.bars || []).find(x => x && x.on !== false && /vida|pv|hp/i.test(x.n || '')) || (t.bars || [])[0]; return b ? `${b.v}/${b.m}` : null; };
+  function meioDaTela(sc) {
+    const [cw, ch] = Render.size(), c = sc.cell;
+    const x = App.view.x + cw / 2 / App.view.z, y = App.view.y + ch / 2 / App.view.z;
+    return [clamp(Math.floor(x / c), 0, sc.cols - 1) * c, clamp(Math.floor(y / c), 0, sc.rows - 1) * c];
+  }
+  function novoGuarda() {
+    const sc = Store.scene();
+    if (!sc || !isGM()) return;
+    const n = guardas(sc).length + 1, [x, y] = meioDaTela(sc);
+    const t = newToken(sc, x, y, { name: 'Guarda ' + n });
+    t.ronda = novaRonda({ dir: 90 });
+    if (typeof Roupas !== 'undefined' && Roupas.P && Roupas.P.guarda) t.roupa = { k: 'guarda' };
+    Store.tx('Novo guarda', () => Store.add('tokens', t));
+    setSel([{ c: 'tokens', id: t.id }]);
+    desenharRota(Store.get('tokens', t.id));
+  }
+  function fazerGuardas(ts) {
+    const novos = ts.filter(t => t && !t.prop && !ehGuarda(t));
+    if (!novos.length) return;
+    Store.tx('Fazer guarda', () => novos.forEach(t => Store.upd('tokens', t.id, { ronda: novaRonda({ dir: 90 }) })));
+    UI.toast(novos.length === 1 ? `${novos[0].name} agora é guarda (de posto). No painel dele, "Desenhar a rota".` : `${novos.length} tokens agora são guardas (de posto).`, { key: 'rondas', action: 'Desfazer', run: Tools.undo });
+    if (novos.length === 1) desenharRota(Store.get('tokens', novos[0].id));
+  }
+  // os cones de todos os guardas para os jogadores: quem vê (para), a rota junto; vazio esconde
+  function verTodos(gs, para, rota) {
+    const ver = verLimpo({ para, rota, por: '' });
+    Store.tx('Os cones para os jogadores', () => gs.forEach(t => Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { ver: ver || undefined }) })));
+  }
+  function aba(K) {
+    const sc = Store.scene(), gs = guardas(sc), js = (Store.S.players || []).filter(p => p && p.id);
+    const sel = (App.sel || []).filter(x => x.c === 'tokens').map(x => Store.get('tokens', x.id)).filter(t => t && !t.prop && !ehGuarda(t));
+    const n = { calmo: 0, desconfiado: 0, alerta: 0 };
+    gs.forEach(t => n[estadoDe(t)]++);
+    const out = [];
+    out.push(h('p', { class: 'muted', text: gs.length ? `${gs.length} ${gs.length === 1 ? 'guarda' : 'guardas'} nesta cena: ${ESTADOS.filter(e => n[e[0]]).map(e => n[e[0]] + ' ' + e[1].toLowerCase()).join(', ')}.`
+      : 'Nenhum guarda nesta cena. Crie um aqui embaixo, ou gere um lugar de Furtividade (eles já vêm com as rondas).' }));
+    // os botões de todos
+    out.push(K.sec('s-gd-todos', 'Todos os guardas', true,
+      h('div', { class: 'row' }, K.btn('Avançar rondas', avancar, { icon: 'ronda', id: 'gd-avancar', kind: 'primary', disabled: !gs.length, title: 'Cada guarda anda os passos dele pela rota; o aviso diz quem foi visto (atalho: Shift+W)' })),
+      gs.length ? h('div', { class: 'row' },
+        K.btn('Todos calmos', () => mudarEstado(gs, 'calmo'), { kind: 'small', id: 'gd-calmo' }),
+        K.btn('Todos desconfiados', () => mudarEstado(gs, 'desconfiado'), { kind: 'small', id: 'gd-desconf' }),
+        K.btn('Todos em alerta', () => mudarEstado(gs, 'alerta'), { kind: 'small', id: 'gd-alerta' })) : null,
+      gs.length ? h('div', { class: 'row' }, K.btn('Todos olham para um ponto', () => olharNoMapa(null), { kind: 'small', icon: 'eye', id: 'gd-olhar', title: 'Clique no mapa: todos os guardas viram o cone para lá (um barulho)' })) : null,
+      K.toggle('gd-rver', App.opt.rondasVer !== false, v => { App.opt.rondasVer = v; Render.request(); UI.refresh(); }, 'Mostrar rotas e cones (só você vê)')));
+    // os cones para os jogadores
+    if (gs.length) {
+      const comVer = gs.filter(t => t.ronda.ver), todos = comVer.length === gs.length;
+      const paraDe = id => gs.every(t => t.ronda.ver && t.ronda.ver.para.includes(id));
+      const rota = todos && gs.every(t => t.ronda.ver.rota);
+      const atual = js.filter(p => paraDe(p.id)).map(p => p.id);
+      out.push(K.sec('s-gd-ver', 'Os cones para os jogadores', true,
+        K.note(comVer.length ? (todos ? 'Todos os cones estão à vista de: ' + (js.filter(p => paraDe(p.id)).map(p => p.name).join(', ') || 'alguns jogadores') + '.' : `${comVer.length} de ${gs.length} guardas têm o cone à vista de alguém (no painel de cada um dá para mudar).`) : 'Só você vê os cones. Ligue um jogador para ele ver o cone de todos os guardas desta cena.'),
+        js.length ? js.map(p => K.toggle('gd-ver-' + p.id, paraDe(p.id), on => verTodos(gs, on ? atual.concat([p.id]) : atual.filter(x => x !== p.id), rota), p.name)) : K.note('Chame os jogadores para a mesa primeiro.'),
+        atual.length ? K.toggle('gd-ver-rota', rota, on => verTodos(gs, atual, on), 'A rota vai junto') : null,
+        comVer.length ? h('div', { class: 'row' }, K.btn('Esconder de todos', () => verTodos(gs, [], false), { kind: 'small', id: 'gd-ver-fim' })) : null));
+    }
+    // criar guarda
+    out.push(K.sec('s-gd-novo', 'Criar guarda', true,
+      h('div', { class: 'row' }, K.btn('Novo guarda', novoGuarda, { kind: 'small', icon: 'plus', id: 'gd-novo', title: 'Põe um guarda no meio da tela e já começa a desenhar a ronda dele (clique os pontos; Enter termina)' }),
+        sel.length ? K.btn(sel.length === 1 ? 'Fazer guarda: ' + sel[0].name : `Fazer guarda (${sel.length} selecionados)`, () => fazerGuardas(sel), { kind: 'small', icon: 'ronda', id: 'gd-fazer' }) : null),
+      sel.length ? null : K.note('Ou selecione tokens no mapa: aparece aqui o botão para fazer deles guardas.')));
+    // a lista
+    if (gs.length) out.push(K.sec('s-gd-lista', `Os guardas (${gs.length})`, true,
+      h('ul', { class: 'list gd-lista' }, gs.map(t => {
+        const est = estadoDe(t), r = t.ronda, vida = VIDA(t), selec = (App.sel || []).some(x => x.c === 'tokens' && x.id === t.id);
+        return h('li', { class: 'gd-li' + (selec ? ' on' : ''), data: { id: t.id } },
+          h('span', { class: 'gd-cor', style: { background: rgba(est, 1) }, title: ESTADOS.find(e => e[0] === est)[1] }),
+          h('button', { type: 'button', class: 'li-m gd-nome', id: 'gd-t-' + t.id, title: 'Selecionar e centralizar', onclick: () => { setSel([{ c: 'tokens', id: t.id }]); Tools.set('select'); const [cx, cy] = tokC(t, sc); Render.centerOn(cx, cy); } },
+            h('b', { text: t.name }), h('small', { text: [r.pts.length > 1 ? `ronda, ${r.pts.length} pontos` : 'de posto', vida ? 'vida ' + vida : null, r.ver ? 'cone à vista' : null].filter(Boolean).join(' · ') })),
+          h('select', { class: 'in gd-est', id: 'gd-e-' + t.id, 'aria-label': 'Estado de ' + t.name, value: est, onchange: e => { const v = e.target.value; e.target.blur(); mudarEstado([t], v); } },
+            ESTADOS.map(([k, nm]) => h('option', { value: k, text: nm, selected: k === est }))));
+      }))));
+    return out;
+  }
+
+  return { aba, novoGuarda, fazerGuardas, verTodos, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
 })();
 /* ---------------------------------------------------------------
    7j. AS ROUPAS E OS DISFARCES (lote 133) — para as missões de furtividade.
@@ -19124,7 +19218,7 @@ const UI = (() => {
       ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
       ['Shift+W', 'Avançar rondas: os guardas andam um passo da rota (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Inverte a grade (solta ou encaixa)'], ['Shift+G', 'Na grade / Livre (paredes, objetos, luzes, régua)'], ['Shift na parede', 'Reta ou a 45°'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
-      ['1 a 5', 'As abas do painel da direita (Seleção, Turnos, Efeitos, Cena, Jogadores)'], ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
+      ['1 a 6', 'As abas do painel da direita (Seleção, Turnos, Guardas, Efeitos, Cena, Jogadores)'], ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];
     modal({
       title: 'Atalhos de teclado', wide: true,
@@ -19349,7 +19443,7 @@ const UI = (() => {
   }
 
   /* ================= Painel lateral ================= */
-  const TABS = [['sel', 'Seleção'], ['turn', 'Turnos'], ['fx', 'Efeitos'], ['scene', 'Cena'], ['players', 'Jogadores']];
+  const TABS = [['sel', 'Seleção'], ['turn', 'Turnos'], ['guard', 'Guardas'], ['fx', 'Efeitos'], ['scene', 'Cena'], ['players', 'Jogadores']];      // (lote 149: a aba Guardas, só do mestre)
   function tabsFor() {
     if (isGM()) return TABS;
     return TABS.filter(([id]) => id === 'sel' || (id === 'turn' && can('turns')) || (id === 'fx' && can('fx')));
@@ -19403,6 +19497,7 @@ const UI = (() => {
     switch (App.tab) {
       case 'turn': body = tabTurn(); break;
       case 'fx': body = tabFx(); break;
+      case 'guard': body = Rondas.aba(UI.kit); break;
       case 'scene': body = tabScene(); break;
       case 'players': body = tabPlayers(); break;
       default: body = tabSel();
@@ -40985,7 +41080,8 @@ const Interior = (() => {
     sc.cols = p.W + 2 * M; sc.rows = p.H + 2 * M;
     const c = sc.cell;
     sc.fog.dynamic = true; sc.fog.explored = true;
-    sc.tone = fora ? fora.tone : 'dia'; sc.light = fora ? fora.light : 'claro';
+    sc.tone = op && TONES.some(t => t.id === op.hora) ? op.hora : fora ? fora.tone : 'dia';      // (lote 149) a hora escolhida na janela
+    sc.light = fora && sc.tone === fora.tone ? fora.light : sc.tone === 'dia' ? 'claro' : 'penumbra';
     sc.bgColor = '#16130f'; sc.bg.stretch = true;
     try { const cv = pintar(p, c); const a = await Assets.fromCanvas(cv, 'bg', sc.name); sc.bg.asset = a.id; } catch (e) { console.error(e); }
     const parede = (x1, y1, x2, y2, k) => sc.walls.push({ id: uid('wl'), k: k || 'wall', x1: (x1 + M) * c, y1: (y1 + M) * c, x2: (x2 + M) * c, y2: (y2 + M) * c, open: false, locked: false });
@@ -41032,71 +41128,88 @@ const Interior = (() => {
     return sc;
   }
 
-  /* ================= a janela ================= */
+  /* ================= (lote 149) a aba Interior da janela "Gerar um lugar…" =================
+     A janela "Gerar o interior" virou a aba Interior do "Gerar um lugar…" (as duas eram parecidas: agora é uma só). O
+     estilo, a hora, o relevo, a semente, os modelos, o Povoar e o Mistério são os da janela. Pelos dois cliques (ou pelo
+     menu) na Entrada de um prédio, a janela abre já nesta aba, com o prédio preenchido (o tipo, as medidas, a porta, a
+     semente), a hora da cena de fora, e a cena nova sai dentro dela (com a Saída) e fica ligada à Entrada. */
   const novaSemente = () => 1 + Math.floor(Math.random() * 2147483000);
+  let tipoNota = 'casa';
+  const semPartes = { partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava, quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null };
+  const soPredio = st => !!(st.predio && PLANTAS[st.predio.t] && PLANTAS[st.predio.t].so);
+  const comAndaresI = st => !(PLANTAS[st.tipo] && PLANTAS[st.tipo].so);
+  const medidasDe = (st, estilo) => {
+    const g0 = st.predio;
+    if (g0) return { w: g0.w, h: g0.h, p: g0.p, f: g0.f, c: !!g0.c };
+    const T = TAMANHOS_I[st.tam] || TAMANHOS_I.medio;
+    return { w: T.w, h: T.h, p: 's', f: estilo === 'elfico' && T.w >= 5 && T.h >= 5 ? 'oct' : 'ret' };
+  };
+  const LUGAR = Object.assign({ id: 'interior', n: 'Interior',
+    padrao: () => { const tipo = TIPOS_I.includes(App.opt.intTipo) ? App.opt.intTipo : 'casa'; return { tipo, tam: TAMANHOS_I[App.opt.intTam] ? App.opt.intTam : 'medio', and: PlantaAndares.normalizar(App.opt.intAnd, catDe(tipo)), ver: 0, predio: null, fora: null, tok: null }; },
+    controles(st, K, mudou) {
+      const tipos = soPredio(st) ? [st.tipo] : TIPOS_I;
+      return h('div', { class: 'ger-c' }, ...[
+        st.predio && st.fora ? K.note('O prédio da Entrada' + (Store.S.scenes[st.fora] ? ' de "' + Store.S.scenes[st.fora].name + '"' : '') + ': o tipo e as medidas vêm dele; a cena sai dentro dela, com a Saída junto da porta.') : null,
+        K.field('Que prédio', K.seg('int-tipo', st.tipo, tipos.map(k => [k, PLANTAS[k].n]), v => { st.tipo = v; App.opt.intTipo = v; st.and = PlantaAndares.normalizar(st.and, catDe(v)); mudou(true); }), 'stack'),
+        st.predio ? null : K.field('Tamanho', K.seg('int-tam', st.tam, Object.keys(TAMANHOS_I).map(k => [k, TAMANHOS_I[k].n, null, `${TAMANHOS_I[k].w * 2} × ${TAMANHOS_I[k].h * 2} quadrados`]), v => { st.tam = v; App.opt.intTam = v; mudou(true); }), 'stack'),
+        comAndaresI(st) ? h('details', { class: 'sec and-sec', id: 'int-and-sec', open: !!(st.and.cima || st.and.porao) }, h('summary', { text: 'Andares e porão' }),
+          PlantaAndares.ui(st.and, catDe(st.tipo), a => { st.and = a; App.opt.intAnd = JSON.parse(JSON.stringify(a)); mudou(true); }, 'int')) : null,
+        st.niveis && st.niveis.length > 1 ? K.field('Ver na prévia', K.seg('int-ver', st.ver, st.niveis.map(n => [n, n === 0 ? 'Térreo' : n < 0 ? (n === -1 ? '1º porão' : '2º porão') : n + 'º andar']), v => { st.ver = v; mudou(true); }), 'stack') : null].filter(Boolean));
+    },
+    opcoesDe: st => ({ tipo: st.tipo, tam: st.tam, and: JSON.parse(JSON.stringify(st.and)) }),
+    aplicarOpcoes(st, o) {
+      if (!o || typeof o !== 'object') return;
+      if (o.predio && typeof o.predio === 'object') { st.predio = o.predio; st.tipo = PLANTAS[o.predio.t] && PLANTAS[o.predio.t].so ? o.predio.t : tipoValido(o.predio.t); }
+      else if (TIPOS_I.includes(o.tipo)) st.tipo = o.tipo;
+      if (TAMANHOS_I[o.tam]) st.tam = o.tam;
+      if (o.and) st.and = PlantaAndares.normalizar(o.and, catDe(st.tipo));
+      if (typeof o.fora === 'string') st.fora = o.fora;
+      if (typeof o.tok === 'string') st.tok = o.tok;
+    },
+    gerar(st, comum) {
+      tipoNota = st.tipo;
+      const p = gerar(Object.assign(medidasDe(st, comum && comum.estilo), { tipo: st.tipo, estilo: comum && comum.estilo, seed: comum && comum.seed }, comAndaresI(st) ? { andares: st.and } : null));
+      st.niveis = [0].concat((p.andares || []).map(q => q.nivel)).sort((a, b) => b - a);
+      if (!st.niveis.includes(st.ver)) st.ver = 0;
+      p._ver = st.ver;
+      return p;
+    },
+    previa: (cv, p, w, hh, o) => previa(cv, p, w, hh, { relevo: !o || o.relevo !== false, nivel: p._ver || 0 }),
+    resumo,
+    nomePadrao: p => (p.nome || PLANTAS[p.tipo].n) + ' — por dentro',
+    relevoTxt: 'Com relevo e formas (o estrado, o palco, a água, a luz das janelas)',
+    criar(p, nome, ex) {
+      const st = ex && ex.op ? ex.op : {}, fora = st.fora && Store.S.scenes[st.fora] ? Store.S.scenes[st.fora] : null;
+      return criar(p, nome, fora, { relevo: !ex || ex.relevo !== false, hora: ex && ex.hora }).then(sc => {
+        const t = fora && st.tok ? (fora.tokens || []).find(x => x.id === st.tok) : null;
+        if (t && Store.S.current === fora.id && Store.get('tokens', t.id)) UI.ligarObjeto(t, sc.id);
+        sc._interiorFora = fora ? fora.name : null;
+        return sc;
+      });
+    },
+    feito(sc, p) {
+      const dentro = sc._interiorFora ? `, dentro de "${sc._interiorFora}"` : ''; delete sc._interiorFora;
+      return p.andares && p.andares.length ? `"${sc.name}" criada${dentro}: ${PlantaAndares.resumo(p.and)}, ${p.andares.length + 1} cenas ligadas pelas escadas.` + (dentro ? ' A Saída, junto da porta, leva de volta.' : '')
+        : `"${sc.name}" criada${dentro}: ${p.salas.length === 1 ? 'uma sala' : p.salas.length + ' salas'}.` + (dentro ? ' A Saída, junto da porta, leva de volta.' : '');
+    },
+    dica: '"Gerar outro" sorteia outra planta para o mesmo prédio. Na prévia: as portas em azul, as escadas em amarelo, a passagem da base em roxo.',
+    // a nota acompanha o prédio da prévia (a moradia da tribo, o navio, os outros)
+    get nota() {
+      return PLANTAS[tipoNota] && PLANTAS[tipoNota].fogo ? 'Por dentro, no dobro do tamanho da moradia: a fogueira no meio, as peles para dormir em volta, os baús e os jarros (na do chefe, mais peles, o assento e as armas). Pela Entrada, sai uma cena nova, dentro da de fora, com a Saída junto da porta levando de volta; o marcador fica ligado a ela.'
+        : tipoNota === 'navio' ? 'O porão e as cabines, do tamanho do convés: a cabine do capitão (com as janelas da popa), as cabines pequenas, o porão de carga, o alojamento e o paiol da proa, com as portas de dentro fechadas e a carga de cada sala. Pela Entrada, sai uma cena nova, dentro da de fora, com a Saída na escada da escotilha levando de volta ao convés.'
+        : 'A planta é dividida em salas, com as portas de dentro fechadas, as janelas e os móveis de cada sala. Pela Entrada de um prédio, a cena sai dentro da cena de fora, com a Saída junto da porta levando de volta. Com andares, cada andar e o porão viram uma cena, ligadas pelas escadas.';
+    },
+  }, semPartes);
+  /* A Entrada de um prédio (o marcador da cidade) ou posta à mão: abre o "Gerar um lugar…" na aba Interior. */
   function abrir(t) {
     const fora = Store.scene();
     if (!isGM() || !t || !fora) return;
-    // o prédio da cidade (o marcador sabe o tipo, as medidas, a porta, o estilo e a semente) ou uma Entrada posta à mão
-    const K = UI.kit, { field, seg, btn, note } = K, g0 = t.gera && t.gera.t ? t.gera : null;
-    const st = g0 ? { tipo: PLANTAS[g0.t] && PLANTAS[g0.t].so ? g0.t : tipoValido(g0.t), estilo: Estilos.valido(g0.e), seed: g0.s || novaSemente(), tam: null }
-      : { tipo: 'casa', estilo: Estilos.valido(App.opt.genEstilo), seed: novaSemente(), tam: TAMANHOS_I[App.opt.intTam] ? App.opt.intTam : 'medio' };
-    st.relevo = App.opt.genRelevo !== false;              // (a mesma chave da janela "Gerar um lugar")
-    // (lote 141) os andares e o porão (a escolha fica guardada para a próxima vez); a prévia mostra um andar de cada vez
-    const comAndares = () => !(PLANTAS[st.tipo] && PLANTAS[st.tipo].so);
-    st.and = PlantaAndares.normalizar(App.opt.intAnd, catDe(st.tipo)); st.ver = 0;
-    const medidas = () => {
-      if (g0) return { w: g0.w, h: g0.h, p: g0.p, f: g0.f, c: !!g0.c };
-      const T = TAMANHOS_I[st.tam];
-      return { w: T.w, h: T.h, p: 's', f: st.estilo === 'elfico' && T.w >= 5 && T.h >= 5 ? 'oct' : 'ret' };
-    };
-    let plano = null, nomeMexido = false;
-    const cv = h('canvas', { class: 'ger-cv', id: 'int-prev', width: 460, height: 330, 'aria-label': 'Prévia da planta' });
-    const resumoEl = h('p', { class: 'note', id: 'int-resumo', role: 'status' }), ctl = h('div', { class: 'ger-op' }), verEl = h('div', { class: 'int-ver', 'aria-label': 'Ver o andar' });
-    const inNome = h('input', { id: 'int-nome', class: 'in', type: 'text', maxlength: 60, autocomplete: 'off', 'aria-label': 'Nome da cena', oninput: () => { nomeMexido = true; } });
-    const refazer = () => {
-      plano = gerar(Object.assign(medidas(), { tipo: st.tipo, estilo: st.estilo, seed: st.seed }, comAndares() ? { andares: st.and } : null));
-      const nivs = [0].concat((plano.andares || []).map(q => q.nivel)).sort((a, b) => b - a);
-      if (!nivs.includes(st.ver)) st.ver = 0;
-      verEl.replaceChildren(...(nivs.length > 1 ? [UI.kit.seg('int-ver', st.ver, nivs.map(n => [n, n === 0 ? 'Térreo' : n < 0 ? (n === -1 ? '1º porão' : '2º porão') : n + 'º']), v => { st.ver = v; refazer(); })] : []));
-      try { previa(cv, plano, 460, 330, { tom: fora.tone, relevo: st.relevo, nivel: st.ver }); } catch (e) { console.error(e); }
-      resumoEl.textContent = resumo(plano);
-      if (!nomeMexido) inNome.value = (plano.nome || PLANTAS[plano.tipo].n) + ' — por dentro';
-    };
-    const pintarC = () => ctl.replaceChildren(...[
-      field('Que prédio', seg('int-tipo', st.tipo, (PLANTAS[st.tipo] && PLANTAS[st.tipo].so ? [st.tipo] : TIPOS_I).map(k => [k, PLANTAS[k].n]), v => { st.tipo = v; pintarC(); refazer(); }), 'stack'),
-      g0 ? null : field('Tamanho', seg('int-tam', st.tam, Object.keys(TAMANHOS_I).map(k => [k, TAMANHOS_I[k].n, null, `${TAMANHOS_I[k].w * 2} × ${TAMANHOS_I[k].h * 2} quadrados`]), v => { st.tam = v; App.opt.intTam = v; pintarC(); refazer(); }), 'stack'),
-      field('Estilo', seg('int-est', st.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { st.estilo = v; pintarC(); refazer(); }), 'stack'),
-      K.toggle('int-relevo', st.relevo, v => { st.relevo = v; App.opt.genRelevo = v; pintarC(); refazer(); }, 'Com relevo e formas (o estrado, o palco, a água, a luz das janelas)'),
-      comAndares() ? h('details', { class: 'sec and-sec', id: 'int-and-sec', open: !!(st.and.cima || st.and.porao) }, h('summary', { text: 'Andares e porão' }),
-        PlantaAndares.ui(st.and, catDe(st.tipo), a => { App.opt.intAnd = JSON.parse(JSON.stringify(a)); refazer(); }, 'int')) : null].filter(Boolean));
-    pintarC(); refazer();
-    UI.modal({
-      title: 'Gerar o interior', xl: true,
-      body: h('div', { class: 'ger' },
-        h('div', { class: 'ger-g' }, ctl, h('div', { class: 'ger-pv' }, verEl, cv, h('div', { class: 'row' }, btn('Gerar outro', () => { st.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'int-outro', title: 'Sorteia outra planta para o mesmo prédio' })), resumoEl)),
-        field('Nome da cena', inNome, 'stack'),
-        note(PLANTAS[st.tipo] && PLANTAS[st.tipo].fogo ? 'Por dentro, no dobro do tamanho da moradia: a fogueira no meio, as peles para dormir em volta, os baús e os jarros (na do chefe, mais peles, o assento e as armas). Sai uma cena nova, dentro desta, com a Saída junto da porta levando de volta; o marcador fica ligado a ela. Nada sai escrito.'
-          : st.tipo === 'navio' ? 'O porão e as cabines, do tamanho do convés: a cabine do capitão (com as janelas da popa), as cabines pequenas, o porão de carga, o alojamento e o paiol da proa, com as portas de dentro fechadas e a carga de cada sala. Sai uma cena nova, dentro desta, com a Saída na escada da escotilha levando de volta ao convés; o marcador fica ligado a ela. Nada sai escrito.'
-          : (g0 ? 'A planta tem o dobro das medidas do prédio, dividida em salas' : 'A planta é dividida em salas') + ', com as portas de dentro fechadas, janelas e os móveis de cada sala. Sai uma cena nova, dentro desta (na lista de cenas), com a Saída junto da porta de entrada levando de volta; o marcador fica ligado a ela. A hora do dia é a desta cena. Nada sai escrito.')),
-      actions: [{ label: 'Cancelar' }, {
-        label: 'Criar a cena', kind: 'primary', keep: true, run: () => {
-          const b = UI.kit.card() && UI.kit.card().querySelector('.modal-a .btn.primary');
-          if (b) { b.disabled = true; b.textContent = 'Criando…'; }
-          const p = plano;
-          criar(p, inNome.value, fora, { relevo: st.relevo }).then(sc => {
-            UI.closeModal();
-            if (Store.S.current === fora.id && Store.get('tokens', t.id)) UI.ligarObjeto(t, sc.id);
-            UI.switchScene(sc.id);
-            UI.toast(p.andares && p.andares.length ? `"${sc.name}" criada, dentro de "${fora.name}": ${PlantaAndares.resumo(p.and)}, ${p.andares.length + 1} cenas ligadas pelas escadas. A Saída, junto da porta, leva de volta.`
-              : `"${sc.name}" criada, dentro de "${fora.name}": ${p.salas.length === 1 ? 'uma sala' : p.salas.length + ' salas'}. A Saída, junto da porta, leva de volta.`, { long: true });
-          }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
-          return false;
-        },
-      }],
-    });
+    const g0 = t.gera && t.gera.t ? t.gera : null;
+    const op = { fora: fora.id, tok: t.id };
+    if (g0) op.predio = { t: g0.t, w: g0.w, h: g0.h, p: g0.p, f: g0.f, c: !!g0.c };
+    Gerador.abrir('interior', Object.assign({ op, hora: fora.tone }, g0 ? { estilo: g0.e, semente: g0.s || null } : null));
   }
-  return { PLANTAS, MOVEIS, TAMANHOS_I, gerar, pintar, previa, resumo, criar, abrir, catDe };
+  return { PLANTAS, MOVEIS, TAMANHOS_I, gerar, pintar, previa, resumo, criar, abrir, catDe, LUGAR };
 })();
 /* ---------------------------------------------------------------
    10g2. MASMORRA — os níveis de baixo (lote 7, parte 4b-3)
@@ -48865,10 +48978,11 @@ const Gerador = (() => {
     Encontro.LUGAR, Regiao.LUGAR,
     AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
     LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO, LugaresMundo.LUGAR,      // (lote 126) os lugares do mundo
+    Interior.LUGAR,      // (lote 149) o interior (a janela "Gerar o interior" virou esta aba)
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
     LugaresFora.CRIME, Arena.LUGAR].concat(Furtividade.IDS.map(id => Furtividade.LUGARES[id]));      // (lote 121) a furtividade
   /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
-  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
+  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Por dentro', ['interior']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
     ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']], ['Furtividade', Furtividade.IDS]];
   const GLIFOS = {
     vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
@@ -48881,6 +48995,7 @@ const Gerador = (() => {
     lago: 'M4 14c2-3 14-3 16 0-2 3-14 3-16 0zM8 14h1.5M13 13.5h3M6.5 10V7M8 10.5V6M17 10V7.5', praia: 'M3 17c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2 1 3 1M3 12c3-4 7-6 12-6M15 6l2 3',
     penhasco: 'M3 7h8l1 4 1 9h8M3 7v13h18M7 11v.1M9 15v.1', desfiladeiro: 'M3 5l4 2 2 13M21 5l-4 3-2 12M9 20h6M11 9l1 2-1 3 1 3',
     cidadeGrande: 'M2 20h20M3 20V8l3-2 3 2v12M9 20V4h6v16M15 20v-9l3-2 3 2v9M11 7h2M11 10h2M11 13h2',
+    interior: 'M3 20V5h18v15H3zM3 12h7M10 5v4M10 12v8M10 15h11M15 15v5M6 8h.1',      // (lote 149) a planta por dentro (as salas)
     mundo116: 'M3 20h18M5 20V10l7-5 7 5v10M9 20v-5h6v5M12 5V2.5M10.5 3h3',          // (lote 126) o templo
     arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
     // (lote 121) a furtividade: a mansão (a casa grande com o muro), a fortaleza (a torre com as ameias), a guilda (o cofre),
@@ -48960,6 +49075,7 @@ const Gerador = (() => {
     const estadoDe = l => estados[l.id] || (estados[l.id] = { op: l.padrao(), seed: novaSemente(), trava: null, base: null, plano: null });
     if (pre && typeof pre === 'object') {
       if (pre.op) L.aplicarOpcoes(estadoDe(L).op, pre.op);
+      if (Number.isInteger(pre.semente) && pre.semente >= 1) estadoDe(L).seed = pre.semente;      // (lote 149: o prédio da cidade)
       if (pre.estilo) comum.estilo = Estilos.valido(pre.estilo);
       if (TONES.some(t => t.id === pre.hora)) comum.hora = pre.hora;
       if (WEATHERS.some(w => w[0] === pre.clima)) comum.clima = pre.clima;
@@ -49065,6 +49181,7 @@ const Gerador = (() => {
       desenhar(); mostrarDica(); mostrarResumo();
       inSemente.value = E.seed;
       if (!nomeMexido) inNome.value = L.nomePadrao(E.plano);
+      nota.textContent = L.nota;                    // (lote 149: a nota que depende do plano, como a do Interior)
     }
     function alternar(parte) {
       const E = estadoDe(L);

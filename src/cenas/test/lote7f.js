@@ -185,7 +185,7 @@ const SHOTS = process.env.FOTOS;
     const tipos = await ev(() => [...document.querySelectorAll('#int-tipo button')].map(b => b.textContent.trim()));
     ok(j(tipos) === j(['Tenda']) && await page.locator('#int-tam').count() === 0, 'a janela do interior: o tipo é só "Tenda" (o tamanho é o da moradia): ' + j(tipos));
     ok(/no dobro do tamanho da moradia: a fogueira no meio, as peles para dormir em volta, os baús e os jarros/.test(await page.locator('.modal').innerText()), 'a nota fala da fogueira, das peles e dos baús');
-    ok(await page.locator('#int-nome').inputValue() === 'Tenda do chefe — por dentro' && /^1 sala · \d+ móveis · 10 × 10 quadrados\.$/.test(await page.locator('#int-resumo').innerText()), 'o nome e o resumo: a tenda do chefe, uma sala de 10 × 10: ' + await page.locator('#int-resumo').innerText());
+    ok(await page.locator('#ger-nome').inputValue() === 'Tenda do chefe — por dentro' && /^1 sala · \d+ móveis · 10 × 10 quadrados\.$/.test(await page.locator('#ger-resumo').innerText()), 'o nome e o resumo: a tenda do chefe, uma sala de 10 × 10: ' + await page.locator('#ger-resumo').innerText());
     await foto('04-janela-interior');
     await criar();
     const it = await ev(id => { const u = __tc, sc = u.Store.scene(), fora = u.Store.S.scenes[id], e = fora.tokens.find(x => x.prop === 'entrada' && x.gera && x.gera.c), c = sc.cell; return {

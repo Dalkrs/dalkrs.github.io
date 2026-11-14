@@ -63,7 +63,7 @@ const j = x => JSON.stringify(x);
   await page.locator('#int-l-base .and-x').first().click(); await w(250);
   await page.locator('#int-mais-c1').selectOption('banheiro'); await w(250);
   ok(await page.locator('#int-l-base .and-chip').count() === antes - 1 && /Banheiro/.test(await page.locator('#int-l-c1').innerText()), 'o × tira uma sala; o "+ sala" põe');
-  ok(/térreo \+ 2 andares em cima, 2 porões \(com a base secreta\) \(5 cenas/.test(await page.locator('#int-resumo').innerText()), 'o resumo diz os andares — ' + await page.locator('#int-resumo').innerText());
+  ok(/térreo \+ 2 andares em cima, 2 porões \(com a base secreta\) \(5 cenas/.test(await page.locator('#ger-resumo').innerText()), 'o resumo diz os andares — ' + await page.locator('#ger-resumo').innerText());
   await page.locator('#int-ver button', { hasText: '2º porão' }).click(); await w(250);
   ok(await page.locator('#int-ver .seg-b.on').innerText() === '2º porão', 'a prévia mostra um andar de cada vez');
   await page.locator('.modal .btn.primary').click(); await w(1500);

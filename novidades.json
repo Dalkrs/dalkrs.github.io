@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.13-05",
+      "data": "2026-11-13",
+      "titulo": "Um gerador só, e a aba Guardas",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Cenas: o “Gerar o interior” agora é a aba Interior do “Gerar um lugar…”. Pela Entrada de um prédio, a janela já abre nessa aba com o prédio preenchido. Pelo menu, você escolhe o prédio e o tamanho. Os modelos, a semente, o Povoar e o Mistério valem para o interior também.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: a aba Guardas no painel da direita, ao lado de Turnos. Ela tem a lista dos guardas (estado, vida, ronda), os botões de todos (avançar rondas, calmos, desconfiados, em alerta, olhar para um ponto), os cones para os jogadores de uma vez e o botão para criar um guarda.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.13-04",
       "data": "2026-11-13",
       "titulo": "O gerador usa os objetos da casa nobre",

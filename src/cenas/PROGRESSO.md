@@ -503,3 +503,15 @@ de cena mais fácil, num notebook de ~1366×768. O painel da direita e a faixa d
   lugar, a lareira). O casarão: metade das vezes, a piscina com o deck no lugar da fonte; sempre a mesa de jardim com
   o guarda-sol. Os compridos de costas têm `legado` (1 × ½), para o "Gerar o interior" medir certo.
 - Teste: `test/lote148.js`.
+
+## Lote 149 — um gerador só, e a aba Guardas
+
+- O "Gerar o interior" virou a aba **Interior** do "Gerar um lugar…" (o grupo "Por dentro"): `Interior.LUGAR` (10g)
+  segue a interface dos lugares (padrao, controles, gerar, previa, criar…). Pela Entrada, `Interior.abrir(t)` chama
+  `Gerador.abrir('interior', { op: { predio, fora, tok }, hora, estilo, semente })`; a cena sai dentro da de fora, com a
+  Saída, e a Entrada fica ligada. A hora vem da janela (`criar1`: `op.hora`). A nota do lugar pode ser um getter (o
+  Gerador a reescreve depois de gerar).
+- A aba **Guardas** (10-ui `TABS`, `Rondas.aba`): só do mestre; a lista (o estado, a vida, a ronda; o nome seleciona e
+  centraliza), os botões de todos, os cones para os jogadores de todos os guardas de uma vez (`verTodos`) e criar guarda
+  (`novoGuarda`, `fazerGuardas`). As teclas das abas vão de 1 a 6. As abas ficaram mais justas para caber as seis.
+- Teste: `test/lote149.js` (e os antigos do interior apontam para os campos da janela única).
