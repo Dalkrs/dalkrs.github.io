@@ -17,11 +17,12 @@ const Gerador = (() => {
     AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
     LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO, LugaresMundo.LUGAR,      // (lote 126) os lugares do mundo
     Furtividade.LUGAR_SOB,      // (lote 150) o lugar sob medida (a ficha, que a IA preenche)
+    Furtividade.LUGAR_EX,      // (lote 156) o estilo por exemplo
     Interior.LUGAR,      // (lote 149) o interior (a janela "Gerar o interior" virou esta aba)
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
     LugaresFora.CRIME, Arena.LUGAR].concat(Furtividade.IDS.map(id => Furtividade.LUGARES[id]));      // (lote 121) a furtividade
   /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
-  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Sob medida', ['sobmedida']], ['Por dentro', ['interior']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
+  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Sob medida', ['sobmedida', 'exemplo']], ['Por dentro', ['interior']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
     ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']], ['Furtividade', Furtividade.IDS]];
   const GLIFOS = {
     vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
@@ -36,6 +37,7 @@ const Gerador = (() => {
     cidadeGrande: 'M2 20h20M3 20V8l3-2 3 2v12M9 20V4h6v16M15 20v-9l3-2 3 2v9M11 7h2M11 10h2M11 13h2',
     interior: 'M3 20V5h18v15H3zM3 12h7M10 5v4M10 12v8M10 15h11M15 15v5M6 8h.1',
     sobmedida: 'M4 20h16M6 20v-7l5-4 5 4v7M9 20v-3h4v3M17 4l3 3-6 6-3 1 1-3 5-5z',      // (lote 150) a casa e o lápis
+    exemplo: 'M3 3h7v7H3zM14 14h7v7h-7zM3 14h7v7H3zM14 3h7v7h-7zM6.5 6.5h.1M17.5 17.5h.1',      // (lote 156) os quadradinhos do exemplo
       // (lote 149) a planta por dentro (as salas)
     mundo116: 'M3 20h18M5 20V10l7-5 7 5v10M9 20v-5h6v5M12 5V2.5M10.5 3h3',          // (lote 126) o templo
     arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
@@ -223,6 +225,7 @@ const Gerador = (() => {
       if (Trama.vale(L, E.op) && Trama.prefs().on) { try { Trama.tecer(E.plano, Trama.prefs()); } catch (e) { console.error(e); } }      // (lote 152) a história da missão
       let rp = null;
       try { rp = L.previa(fundo, E.plano, 640, 460, { relevo: comum.relevo }); cell = rp.cell; } catch (e) { console.error(e); }
+      if (Erosao.MAPAS.has(E.plano)) { try { Erosao.sombrear(fundo.getContext('2d'), E.plano, cell); } catch (e) { console.error(e); } }      // (lote 156) o relevo gasto pela água
       if (Tempo.vale(L)) { try { Tempo.previa(fundo.getContext('2d'), E.plano, cell); } catch (e) { console.error(e); } }      // (lote 153) o tempo, por baixo dos números da história
       if (E.plano.trama && !(rp && rp.trama)) Trama.desenhar(fundo.getContext('2d'), E.plano, cell);
       if (Zonas.vale(L) && E.op.zonas && E.op.zonas.length) Zonas.desenhar(fundo.getContext('2d'), E.op.zonas, cell);      // (lote 154)
@@ -444,6 +447,8 @@ const Gerador = (() => {
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const E = estadoDe(L), p = E.plano, l = L;
           l.criar(p, inNome.value, { hora: comum.hora, clima: climaDe(l), relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(async sc => {
+            // (lote 156) o sombreado do relevo gasto pela água, no fundo
+            if (Erosao.MAPAS.has(p)) { try { if (await Erosao.noFundo(sc, p)) Persist.scene(sc.id); } catch (e) { console.error(e); } }
             // (lote 153) o tempo primeiro (as portas da história ficam de fora), depois a história
             const tp = Tempo.prefs();
             const txtTp = Tempo.vale(l) && Tempo.liga(tp) ? await Tempo.aplicar(sc, Object.assign({}, tp, { mascara: Tempo.mascaraDe(p), proteger: p.trama ? p.trama.passos.filter(x => x.porta).map(x => x.porta).concat(p.trama.atalho ? [p.trama.atalho.porta] : []) : [] }), p.seed).catch(e => { console.error(e); return ''; }) : '';

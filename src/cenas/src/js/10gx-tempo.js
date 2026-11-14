@@ -16,7 +16,7 @@ const Tempo = (() => {
   const NIVEIS = [['novo', 'Novo'], ['usado', 'Usado'], ['abandonado', 'Abandonado'], ['ruinas', 'Em ruínas']];
   const EVENTOS = [['nada', 'Nada'], ['incendio', 'Incêndio'], ['saque', 'Saque'], ['batalha', 'Batalha'], ['inundacao', 'Inundação']];
   const NV = { novo: 0, usado: 1, abandonado: 2, ruinas: 3 };
-  const LUGARES_OK = () => new Set(Furtividade.IDS.concat(['sobmedida', 'interior', 'masmorra', 'catacumbas', 'castelo', 'cemiterio']));
+  const LUGARES_OK = () => new Set(Furtividade.IDS.concat(['sobmedida', 'interior', 'masmorra', 'catacumbas', 'castelo', 'cemiterio', 'exemplo']));
   const vale = L => !!L && LUGARES_OK().has(L.id);
   const limpa = o => ({ mascara: o && o.mascara ? o.mascara : null, proteger: o && Array.isArray(o.proteger) ? o.proteger : [], nivel: NIVEIS.some(x => x[0] === (o && o.nivel)) ? o.nivel : 'novo', evento: EVENTOS.some(x => x[0] === (o && o.evento)) ? o.evento : 'nada' });
   const prefs = () => limpa({ nivel: App.opt.tempoNivel, evento: App.opt.tempoEvento });

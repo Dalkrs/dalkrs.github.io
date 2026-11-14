@@ -444,14 +444,15 @@ const Regiao = (() => {
     if (p.hex) partes.push(HexCena.resumoTxt(p.hex));
     return partes.join(' · ') + '.';
   }
-  const lembrar = st => { const o = App.opt; o.regBio = st.bioma; o.regMis = st.mistura; o.regAgua = st.agua; o.regCam = st.caminho; o.regTam = st.tamanho; o.regMarcas = st.marcas; o.regTracado = Tracado.soMudadas(st.t || Tracado.padrao()); o.regHist = Historia.valida(st.historia); o.regAchados = st.achados !== false; };
+  const lembrar = st => { const o = App.opt; o.regBio = st.bioma; o.regMis = st.mistura; o.regAgua = st.agua; o.regCam = st.caminho; o.regTam = st.tamanho; o.regMarcas = st.marcas; o.regTracado = Tracado.soMudadas(st.t || Tracado.padrao()); o.regHist = Historia.valida(st.historia); o.regAchados = st.achados !== false; o.regErosao = st.erosao || 'nada'; };
   // (o relevo natural não vale aqui: a Região já nasce do relevo)
   const tracadoDe = o => Object.assign(Tracado.limpar(o), { relevoNat: false, praca: 'centro', muroForma: null });
   function padrao() {
     const o = App.opt;
     return { bioma: B.BIO[o.regBio] ? o.regBio : 'floresta', mistura: B.mistura(o.regMis), agua: AGUAS.some(a => a[0] === o.regAgua) ? o.regAgua : 'surpresa', caminho: CAMINHOS.some(c => c[0] === o.regCam) ? o.regCam : 'trilha',
       tamanho: TAMANHOS[o.regTam] ? o.regTam : 'medio', marcas: o.regMarcas !== false, t: tracadoDe(o.regTracado),
-      historia: Historia.valida(o.regHist), achados: o.regAchados !== false };        // (lote 13, parte 13c) a história do lugar e os achados raros
+      historia: Historia.valida(o.regHist), achados: o.regAchados !== false,        // (lote 13, parte 13c) a história do lugar e os achados raros
+      erosao: Erosao.FORCAS.some(x => x[0] === o.regErosao) ? o.regErosao : 'nada' };      // (lote 156) a erosão
   }
   /* ctx.hex (lote 14, parte 14a): o hexágono do Mapa-múndi, quando a janela usa ele — o rio e os caminhos dele ficam no
      lugar da Água e do Caminho (e da rosa do Traçado); sem rio ou sem caminho no mapa, a escolha continua */
@@ -466,6 +467,7 @@ const Regiao = (() => {
       field('Bioma', seg('reg-bio', st.bioma, B.LISTA.map(b => [b.id, b.n]), v => muda('bioma', v)), 'stack'),
       h('div', { class: 'ger-l' },
         field('Mistura', seg('reg-mis', st.mistura, B.MISTURAS, v => muda('mistura', v)), 'stack'),
+        field('Erosão', seg('reg-erosao', st.erosao || 'nada', Erosao.FORCAS, v => muda('erosao', v)), 'stack'),      // (lote 156)
         field('Tamanho', seg('reg-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, TAMANHOS[k].W + ' × ' + TAMANHOS[k].H + ' quadrados · ' + plural(TAMANHOS[k].pontos, 'ponto de interesse', 'pontos de interesse')]), v => muda('tamanho', v)), 'stack')),
       h('div', { class: 'ger-l' },
         field('Água', rioHex ? doMapa('reg-agua-hex', rioHex) : seg('reg-agua', st.agua, AGUAS, v => muda('agua', v)), 'stack'),
@@ -481,7 +483,7 @@ const Regiao = (() => {
         rioHex: rioHex ? 'O rio vem do hexágono do Mapa-múndi: ' + rioHex + '.' : null, portoesHex: camHex ? 'Os caminhos vêm do hexágono do Mapa-múndi: ' + camHex + '.' : null }));
   }
   const opcoesDe = st => Object.assign({ bioma: st.bioma, mistura: st.mistura, agua: st.agua, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas },
-    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, Tracado.soMudadas(st.t || Tracado.padrao()));
+    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, st.erosao && st.erosao !== 'nada' ? { erosao: st.erosao } : null, Tracado.soMudadas(st.t || Tracado.padrao()));
   function aplicarOpcoes(st, o, op) {
     if (B.BIO[o.bioma]) st.bioma = o.bioma;
     if (typeof o.mistura === 'string' && B.FRACAO[o.mistura] != null) st.mistura = o.mistura;
@@ -492,6 +494,7 @@ const Regiao = (() => {
     // (lote 13, parte 13c: o modelo de antes não tem a história nem os achados — fica sem eles, o mesmo lugar)
     if (Array.isArray(o.historia) || (op && op.modelo)) st.historia = Historia.valida(o.historia);
     if (typeof o.achados === 'boolean') st.achados = o.achados; else if (op && op.modelo) st.achados = false;
+    if (Erosao.FORCAS.some(x => x[0] === o.erosao)) st.erosao = o.erosao; else if (op && op.modelo) st.erosao = 'nada';
     st.t = tracadoDe(o);
     lembrar(st);
   }
@@ -518,7 +521,7 @@ const Regiao = (() => {
   const baseDe = () => null;
   // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
   // (lote 14, parte 14a) a Região livre aceita o hexágono de terra
-  const LUGAR = { aceitaHex: (st, hex) => HexCena.aceita(hex), biomaDe: st => st.bioma, aceitaEstacao: true, id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  const LUGAR = { aceitaHex: (st, hex) => HexCena.aceita(hex), biomaDe: st => st.bioma, aceitaEstacao: true, id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => Erosao.com(st.erosao, () => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum))), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (a água, os morros e os penhascos, as pontes, o gelo, a lava)',
     aceitaSeco: true,
     dica: 'Clique no traçado da prévia (a água, os morros, o caminho, os pontos de interesse) para travar: "Gerar outro" troca só as árvores, as pedras e os enfeites.',

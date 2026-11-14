@@ -1442,6 +1442,15 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .seg-p-t { text-align: left; font-size: 13px; line-height: 1.4; background: none; border: 0; color: inherit; padding: 0 0 0 4px; cursor: pointer; }
 .seg-p-t:hover { text-decoration: underline; }
 .seg-pista { padding: 6px 0; border-top: 1px solid var(--line); }
+/* (lote 156) o estilo por exemplo: o editor do desenho e a miniatura */
+.ex-ed { display: flex; flex-direction: column; gap: 8px; margin: 6px 0; }
+.ex-pal { display: flex; flex-wrap: wrap; gap: 6px; }
+.ex-tinta { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--raised); color: inherit; font-size: 12.5px; cursor: pointer; }
+.ex-tinta.on { border-color: var(--lamp, #e6ab4f); box-shadow: 0 0 0 1px var(--lamp, #e6ab4f) inset; }
+.ex-amostra { width: 12px; height: 12px; border-radius: 3px; }
+.ex-cv { width: 264px; height: 264px; border-radius: 8px; border: 1px solid var(--line-strong); cursor: crosshair; touch-action: none; image-rendering: pixelated; }
+.ex-mini-w { margin: 6px 0; }
+.ex-mini { border-radius: 6px; border: 1px solid var(--line); image-rendering: pixelated; max-width: 100%; }
 </style>
 </head>
 <body>
@@ -25763,6 +25772,7 @@ const Biomas = (() => {
     }
     const s = hi - lo > 1e-6 ? 1 / (hi - lo) : 0;
     for (let q = 0; q < alt.length; q++) alt[q] = (alt[q] - lo) * s;
+    if (typeof Erosao !== 'undefined') Erosao.naAltura(alt, W, H, seed);      // (lote 156) com a erosão pedida, a água gasta o chão
     return alt;
   }
 
@@ -26100,6 +26110,159 @@ const Biomas = (() => {
 
   return { LISTA, BIO, IDS, IDX, valido, MISTURAS, FRACAO, mistura, sub, campo, alturas, vizinhosDe, mapaDosBiomas, marDe, rioDe, lagoDe, cortarNosLagos, grupos, contornoDe, maisBarato, linhaDe, foraDa, serpentear,
     aguaDe, patamares, manchasDe, prenderPontas };
+})();
+/* ---------------------------------------------------------------
+   10c4b. A EROSÃO (lote 156) — a água da chuva gasta o chão.
+   · No terreno (a Região livre e o Encontro): gotas caem no mapa de alturas, descem pela encosta, arrancam terra onde
+     correm rápido e largam onde param (os leques de areia na boca dos vales). Os morros ficam com as encostas riscadas,
+     os rios acham os vales. A altura mexida vale para o que vem depois (os patamares, os biomas, a água); a prévia e o
+     fundo ganham o sombreado do relevo (a luz do noroeste) e o tom da areia onde ela se juntou.
+   · Na caverna: a água que escorreu pelas galerias arredonda as paredes, abre bolsões e alarga os túneis.
+   A força: leve, média, forte. Erosao.com(forca, fn): o que gerar dentro de fn usa a erosão (o Biomas.alturas pergunta);
+   o mapa gasto fica guardado para o plano (Erosao.MAPAS), para o sombreado.
+   --------------------------------------------------------------- */
+const Erosao = (() => {
+  const FORCAS = [['nada', 'Nenhuma'], ['leve', 'Leve'], ['media', 'Média'], ['forte', 'Forte']];
+  const GOTAS = { leve: 0.5, media: 1, forte: 1.8 };          // gotas por casa da grade
+  const forca = v => (GOTAS[v] ? v : null);
+  let atual = null, ultimo = null;
+  const MAPAS = new WeakMap();
+
+  /* A erosão hidráulica, numa grade de alturas (0 a 1). Devolve dep (o quanto se depositou em cada casa). */
+  function hidraulica(alt, W, H, f, seed) {
+    const n = GOTAS[f];
+    if (!n || W < 4 || H < 4) return null;
+    const r = mulberry(((seed >>> 0) ^ 0xe705a0) || 1), dep = new Float32Array(W * H);
+    // a escala: as alturas vão de 0 a 1; o mapa tem dezenas de casas — a encosta "de verdade" é a diferença × 8
+    const ESC = 8, INERCIA = 0.3, CAP = 4, MIN_ENC = 0.01, ERODE = 0.35, DEPOS = 0.3, EVAP = 0.02, GRAV = 4, RAIO = 1;
+    const h = (x, y) => { const i = Math.floor(x), j = Math.floor(y), u = x - i, v = y - j, k = j * W + i; return { a: alt[k] * ESC, gx: ((alt[k + 1] - alt[k]) * (1 - v) + (alt[k + W + 1] - alt[k + W]) * v) * ESC, gy: ((alt[k + W] - alt[k]) * (1 - u) + (alt[k + W + 1] - alt[k + 1]) * u) * ESC, h: ((alt[k] * (1 - u) + alt[k + 1] * u) * (1 - v) + (alt[k + W] * (1 - u) + alt[k + W + 1] * u) * v) * ESC }; };
+    // tirar (com um pincel de raio 1: a casa e as vizinhas) e pôr (nas 4 casas em volta, pelo peso)
+    const tira = (x, y, q) => { const ci = Math.floor(x), cj = Math.floor(y); let soma = 0; const l = []; for (let j = cj - RAIO; j <= cj + RAIO + 1; j++) for (let i = ci - RAIO; i <= ci + RAIO + 1; i++) { if (i < 0 || j < 0 || i >= W || j >= H) continue; const w = Math.max(0, RAIO + 1 - Math.hypot(i - x, j - y)); if (w > 0) { l.push([j * W + i, w]); soma += w; } } for (const [k, w] of l) { const d = q * w / soma / ESC; alt[k] -= d; dep[k] -= d; } };
+    const poe = (x, y, q) => { const i = Math.floor(x), j = Math.floor(y), u = x - i, v = y - j, k = j * W + i, d = q / ESC; alt[k] += d * (1 - u) * (1 - v); alt[k + 1] += d * u * (1 - v); alt[k + W] += d * (1 - u) * v; alt[k + W + 1] += d * u * v; dep[k] += d * (1 - u) * (1 - v); dep[k + 1] += d * u * (1 - v); dep[k + W] += d * (1 - u) * v; dep[k + W + 1] += d * u * v; };
+    const total = Math.round(W * H * n);
+    for (let g = 0; g < total; g++) {
+      let x = 1 + r() * (W - 3), y = 1 + r() * (H - 3), dx = 0, dy = 0, vel = 1, agua = 1, sed = 0;
+      for (let passo = 0; passo < 40; passo++) {
+        const a = h(x, y);
+        dx = dx * INERCIA - a.gx * (1 - INERCIA); dy = dy * INERCIA - a.gy * (1 - INERCIA);
+        const L = Math.hypot(dx, dy);
+        if (L < 1e-6) break;
+        dx /= L; dy /= L;
+        const nx = x + dx, ny = y + dy;
+        if (nx < 1 || ny < 1 || nx >= W - 2 || ny >= H - 2) break;
+        const dh = h(nx, ny).h - a.h, cap = Math.max(-dh, MIN_ENC) * vel * agua * CAP;
+        if (sed > cap || dh > 0) { const q = dh > 0 ? Math.min(dh, sed) : (sed - cap) * DEPOS; sed -= q; poe(x, y, q); }
+        else { const q = Math.min((cap - sed) * ERODE, -dh); tira(x, y, q); sed += q; }
+        vel = Math.sqrt(Math.max(0, vel * vel + dh * -GRAV)) || 0.2;
+        agua *= 1 - EVAP;
+        x = nx; y = ny;
+      }
+    }
+    for (let q = 0; q < alt.length; q++) alt[q] = clamp(alt[q], 0, 1);
+    return dep;
+  }
+  // o gancho do Biomas.alturas: com a erosão pedida, gasta e guarda (o último mapa, para o plano)
+  // (a erosão roda numa grade 3 vezes mais fina — os sulcos ficam finos — e volta para a grade do mapa misturada com a de
+  // antes: o desenho grande do lugar continua, com as encostas gastas)
+  const MISTURA = { leve: 0.35, media: 0.55, forte: 0.75 };
+  function naAltura(alt, W, H, seed) {
+    if (!atual) return;
+    const F = 3, W3 = W * F, H3 = H * F, A = new Float32Array(W3 * H3);
+    for (let j = 0; j < H3; j++) for (let i = 0; i < W3; i++) {
+      const x = clamp((i + 0.5) / F - 0.5, 0, W - 1.001), y = clamp((j + 0.5) / F - 0.5, 0, H - 1.001), a = Math.floor(x), c = Math.floor(y), u = x - a, v = y - c, k = c * W + a;
+      A[j * W3 + i] = (alt[k] * (1 - u) + alt[Math.min(k + 1, alt.length - 1)] * u) * (1 - v) + (alt[Math.min(k + W, alt.length - 1)] * (1 - u) + alt[Math.min(k + W + 1, alt.length - 1)] * u) * v;
+    }
+    const A0 = Float32Array.from(A), dep = hidraulica(A, W3, H3, atual, seed);
+    const m = MISTURA[atual];
+    for (let q = 0; q < A.length; q++) A[q] = A0[q] + (A[q] - A0[q]) * m;
+    // de volta para a grade do mapa (a média de cada 3 × 3)
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) { let s2 = 0; for (let b = 0; b < F; b++) for (let a = 0; a < F; a++) s2 += A[(j * F + b) * W3 + i * F + a]; alt[j * W + i] = clamp(s2 / (F * F), 0, 1); }
+    ultimo = { W: W3, H: H3, alt: A, dep };
+  }
+  // gerar com a erosão: o plano que sai leva o mapa gasto (para o sombreado)
+  function com(f, fn) {
+    const a0 = atual; atual = forca(f); ultimo = null;
+    try { const p = fn(); if (atual && ultimo && p && typeof p === 'object') { MAPAS.set(p, ultimo); p.erosao = atual; } return p; }
+    finally { atual = a0; }
+  }
+
+  /* O sombreado do relevo (a luz do noroeste) e a areia que se juntou: pintado por cima (g), com k px por casa. */
+  function sombrear(g, p, k, ox, oy) {
+    const m = p && MAPAS.get(p);
+    if (!m) return;
+    const { W, H, alt, dep } = m, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const c = cv.getContext('2d'), img = c.createImageData(W, H), E = W > 90 ? 22 : 9;
+    let dmax = 0; if (dep) for (let q = 0; q < dep.length; q++) dmax = Math.max(dmax, dep[q]);
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const q = j * W + i, a = alt[q], ax = alt[j * W + Math.min(W - 1, i + 1)] - alt[j * W + Math.max(0, i - 1)], ay = alt[Math.min(H - 1, j + 1) * W + i] - alt[Math.max(0, j - 1) * W + i];
+      const luz = clamp(-(ax + ay) * E * 0.7, -1, 1);       // de cima à esquerda: as encostas viradas para lá clareiam
+      const o = q * 4;
+      if (luz >= 0) { img.data[o] = 255; img.data[o + 1] = 246; img.data[o + 2] = 220; img.data[o + 3] = Math.round(luz * 38); }
+      else { img.data[o] = 18; img.data[o + 1] = 14; img.data[o + 2] = 30; img.data[o + 3] = Math.round(-luz * 60); }
+      void a;
+    }
+    c.putImageData(img, 0, 0);
+    g.save(); g.imageSmoothingEnabled = true; g.drawImage(cv, ox || 0, oy || 0, W * k, H * k);
+    // a areia: onde a água largou o que trazia
+    if (dep && dmax > 0) {
+      const cv2 = document.createElement('canvas'); cv2.width = W; cv2.height = H;
+      const c2 = cv2.getContext('2d'), im2 = c2.createImageData(W, H);
+      let dmin = 0; for (let q = 0; q < dep.length; q++) dmin = Math.min(dmin, dep[q]);
+      for (let q = 0; q < dep.length; q++) {
+        const o = q * 4, v = dep[q] / dmax, u = dmin < 0 ? dep[q] / dmin : 0;
+        if (v > 0.15) { im2.data[o] = 214; im2.data[o + 1] = 190; im2.data[o + 2] = 140; im2.data[o + 3] = Math.round(Math.min(1, (v - 0.15) * 1.6) * 120); }
+        else if (u > 0.3) { im2.data[o] = 48; im2.data[o + 1] = 36; im2.data[o + 2] = 26; im2.data[o + 3] = Math.round(Math.min(1, (u - 0.3) * 1.6) * 80); }      // os sulcos: onde a água arrancou
+      }
+      c2.putImageData(im2, 0, 0);
+      g.drawImage(cv2, ox || 0, oy || 0, W * k, H * k);
+    }
+    g.restore();
+  }
+  // o fundo de uma cena já criada (depois de criar, pelo gerador): a mesma camada, numa imagem nova
+  async function noFundo(sc, p) {
+    if (!MAPAS.get(p) || !sc.bg || !sc.bg.asset) return false;
+    const a = Store.S.assets[sc.bg.asset];
+    if (!a || !a.url) return false;
+    const im = await new Promise(ok => { const i = new Image(); if (/^https?:/.test(a.url)) i.crossOrigin = 'anonymous'; const t = setTimeout(() => ok(null), 30000); i.onload = () => { clearTimeout(t); ok(i); }; i.onerror = () => { clearTimeout(t); ok(null); }; i.src = a.url; });
+    if (!im) return false;
+    const cv = document.createElement('canvas'); cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+    const g = cv.getContext('2d'); g.drawImage(im, 0, 0);
+    const m = MAPAS.get(p);
+    sombrear(g, p, cv.width / m.W, 0, 0);
+    const b = await Assets.fromCanvas(cv, 'bg', sc.name);
+    sc.bg = Object.assign({}, sc.bg, { asset: b.id });
+    return true;
+  }
+
+  /* A caverna gasta pela água: aberto (1: chão) numa grade W×H; a margem de 2 fica rocha. As paredes arredondam (a rocha
+     cercada de chão cai), aparecem bolsões rente às galerias e os túneis alargam por onde a água desceu. */
+  function caverna(aberto, W, H, f, r) {
+    const n = { leve: 1, media: 2, forte: 3 }[f];
+    if (!n) return 0;
+    const dentro = (i, j) => i >= 2 && j >= 2 && i < W - 2 && j < H - 2;
+    let abertos = 0;
+    const viz8 = (i, j) => { let c = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) if ((a || b) && aberto[(j + b) * W + i + a]) c++; return c; };
+    for (let it = 0; it < n; it++) {
+      const novo = [];
+      for (let j = 2; j < H - 2; j++) for (let i = 2; i < W - 2; i++) {
+        const k = j * W + i;
+        if (aberto[k]) continue;
+        const v = viz8(i, j);
+        // a rocha cercada cai; a da beira, às vezes (a água lambendo a parede)
+        if (v >= 5 || (v >= 3 && r() < 0.18 * n) || (v >= 1 && r() < 0.03 * n)) novo.push(k);
+      }
+      for (const k of novo) { aberto[k] = 1; abertos++; }
+    }
+    // os bolsões: gotas que descem rente às paredes e cavam no fim
+    const bolsoes = Math.round(W * H / 220 * n);
+    for (let b = 0; b < bolsoes; b++) {
+      let i = 2 + Math.floor(r() * (W - 4)), j = 2 + Math.floor(r() * (H - 4));
+      if (!aberto[j * W + i]) continue;
+      for (let s = 0; s < 8; s++) { const d = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(r() * 4)]; const a = i + d[0], c = j + d[1]; if (!dentro(a, c)) break; i = a; j = c; if (!aberto[j * W + i]) { aberto[j * W + i] = 1; abertos++; if (r() < 0.5) break; } }
+    }
+    return abertos;
+  }
+  return { FORCAS, forca, hidraulica, naAltura, com, sombrear, noFundo, caverna, MAPAS, get atual() { return atual; } };
 })();
 /* ---------------------------------------------------------------
    10c5. A CENA DO HEXÁGONO — o que vem do Mapa-múndi (lote 14, parte 14a)
@@ -33817,9 +33980,10 @@ const Encontro = (() => {
     return { terreno, situacao: T.sit.some(s => s[0] === o.encSit) ? o.encSit : 'surpresa', caminho: camValido(terreno, o.encCam || 'trilha'), tamanho: TAMANHOS[o.encTam] ? o.encTam : 'medio', marcas: o.encMarcas !== false,
       t: Tracado.limpar(o.encTracado),                                            // (lote 8) o traçado (a seção "Traçado")
       chao: 2, mistura: Biomas.mistura(o.encMis),                                 // (lote 13, parte 13b) o chão novo e a mistura dele
-      historia: Historia.valida(o.encHist), achados: o.encAchados !== false };     // (13c) a história do lugar e os achados raros
+      historia: Historia.valida(o.encHist), achados: o.encAchados !== false,      // (13c) a história do lugar e os achados raros
+      erosao: Erosao.FORCAS.some(x => x[0] === o.encErosao) ? o.encErosao : 'nada' };      // (lote 156) a erosão
   }
-  const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; App.opt.encTracado = Tracado.soMudadas(st.t || Tracado.padrao()); App.opt.encMis = st.mistura; App.opt.encHist = Historia.valida(st.historia); App.opt.encAchados = st.achados !== false; };
+  const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; App.opt.encTracado = Tracado.soMudadas(st.t || Tracado.padrao()); App.opt.encMis = st.mistura; App.opt.encHist = Historia.valida(st.historia); App.opt.encAchados = st.achados !== false; App.opt.encErosao = st.erosao || 'nada'; };
   /* ctx.hex (lote 14, parte 14a): o hexágono do Mapa-múndi, quando a janela usa ele — o chão novo vem junto, e o rio e os
      caminhos dele ficam no lugar da rosa do Traçado (o Caminho continua: é o da situação) */
   function controles(st, K, mudou, ctx) {
@@ -33838,6 +34002,7 @@ const Encontro = (() => {
       h('div', { class: 'ger-l' },
         camOps ? field('Caminho', seg('enc-cam', st.caminho, camOps.map(([k, n]) => [k, n]), v => { st.caminho = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack') : null,
         field('Tamanho', seg('enc-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, TAMANHOS[k].W + ' × ' + TAMANHOS[k].H + ' quadrados']), v => { st.tamanho = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack')),
+      semChao || chao !== 2 || semTerra ? null : field('Erosão', seg('enc-erosao', st.erosao || 'nada', Erosao.FORCAS, v => { st.erosao = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack'),      // (lote 156)
       semChao ? null : chao === 2 ? field('Mistura', seg('enc-mis', Biomas.mistura(st.mistura), Biomas.MISTURAS, v => { st.mistura = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack')
         : h('div', { class: 'ger-l', id: 'enc-chao-velho' }, note('Modelo de antes do chão novo: ele gera o mesmo lugar de sempre, sem as manchas dos vizinhos e os morros.'), btn('Usar o chão novo', usarNovo, { kind: 'small', id: 'enc-chao', title: 'Gera de novo com o chão dos biomas (o modelo guardado não muda)' })),
       // (lote 13, parte 13c) a história do lugar e os achados raros (na água e no pântano não há onde)
@@ -33853,7 +34018,7 @@ const Encontro = (() => {
         rioHex: rioHex ? 'O rio vem do hexágono do Mapa-múndi: ' + rioHex + '.' : null, portoesHex: camHex ? 'Os caminhos vêm do hexágono do Mapa-múndi: ' + camHex + ' (o da situação vai até eles).' : null }));
   }
   const opcoesDe = st => Object.assign({ terreno: st.terreno, situacao: st.situacao, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, st.chao === 2 ? { chao: 2, mistura: Biomas.mistura(st.mistura) } : null,
-    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, Tracado.soMudadas(st.t || Tracado.padrao()));
+    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, st.erosao && st.erosao !== 'nada' ? { erosao: st.erosao } : null, Tracado.soMudadas(st.t || Tracado.padrao()));
   // op.modelo: as escolhas vêm de um modelo guardado (o de antes do chão novo não tem o chão: fica no de antes)
   function aplicarOpcoes(st, o, op) {
     if (TER[o.terreno]) st.terreno = o.terreno;
@@ -33868,6 +34033,7 @@ const Encontro = (() => {
     // (lote 13, parte 13c: o modelo de antes não tem a história nem os achados — fica sem eles, o mesmo lugar)
     if (Array.isArray(o.historia) || (op && op.modelo)) st.historia = Historia.valida(o.historia);
     if (typeof o.achados === 'boolean') st.achados = o.achados; else if (op && op.modelo) st.achados = false;
+    if (Erosao.FORCAS.some(x => x[0] === o.erosao)) st.erosao = o.erosao; else if (op && op.modelo) st.erosao = 'nada';
     lembrar(st);
   }
   // as partes que travam: o traçado inteiro (a água, o caminho, os penhascos, a peça do meio)
@@ -33893,7 +34059,7 @@ const Encontro = (() => {
   const baseDe = () => null;
   // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
   // (lote 14, parte 14a) o Encontro aceita o hexágono de terra nos terrenos de chão de bioma (o pântano e a água cobrem tudo)
-  const LUGAR = { aceitaHex: (st, hex) => HexCena.aceita(hex) && !!BIOMA[st.terreno], biomaDe: st => BIOMA[st.terreno] || null, aceitaEstacao: true, id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  const LUGAR = { aceitaHex: (st, hex) => HexCena.aceita(hex) && !!BIOMA[st.terreno], biomaDe: st => BIOMA[st.terreno] || null, aceitaEstacao: true, id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => Erosao.com(st.erosao, () => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum))), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (água, penhascos, abismos, lama, gelo, lava)',
     aceitaSeco: true,                              // (lote 7, parte 5a) a seca do Mapa-múndi seca o chão
     dica: 'Clique no traçado da prévia (o caminho, a água, os morros e os penhascos, a peça do meio) para travar: "Gerar outro" troca só as árvores, as pedras e os objetos.',
@@ -38101,14 +38267,15 @@ const Regiao = (() => {
     if (p.hex) partes.push(HexCena.resumoTxt(p.hex));
     return partes.join(' · ') + '.';
   }
-  const lembrar = st => { const o = App.opt; o.regBio = st.bioma; o.regMis = st.mistura; o.regAgua = st.agua; o.regCam = st.caminho; o.regTam = st.tamanho; o.regMarcas = st.marcas; o.regTracado = Tracado.soMudadas(st.t || Tracado.padrao()); o.regHist = Historia.valida(st.historia); o.regAchados = st.achados !== false; };
+  const lembrar = st => { const o = App.opt; o.regBio = st.bioma; o.regMis = st.mistura; o.regAgua = st.agua; o.regCam = st.caminho; o.regTam = st.tamanho; o.regMarcas = st.marcas; o.regTracado = Tracado.soMudadas(st.t || Tracado.padrao()); o.regHist = Historia.valida(st.historia); o.regAchados = st.achados !== false; o.regErosao = st.erosao || 'nada'; };
   // (o relevo natural não vale aqui: a Região já nasce do relevo)
   const tracadoDe = o => Object.assign(Tracado.limpar(o), { relevoNat: false, praca: 'centro', muroForma: null });
   function padrao() {
     const o = App.opt;
     return { bioma: B.BIO[o.regBio] ? o.regBio : 'floresta', mistura: B.mistura(o.regMis), agua: AGUAS.some(a => a[0] === o.regAgua) ? o.regAgua : 'surpresa', caminho: CAMINHOS.some(c => c[0] === o.regCam) ? o.regCam : 'trilha',
       tamanho: TAMANHOS[o.regTam] ? o.regTam : 'medio', marcas: o.regMarcas !== false, t: tracadoDe(o.regTracado),
-      historia: Historia.valida(o.regHist), achados: o.regAchados !== false };        // (lote 13, parte 13c) a história do lugar e os achados raros
+      historia: Historia.valida(o.regHist), achados: o.regAchados !== false,        // (lote 13, parte 13c) a história do lugar e os achados raros
+      erosao: Erosao.FORCAS.some(x => x[0] === o.regErosao) ? o.regErosao : 'nada' };      // (lote 156) a erosão
   }
   /* ctx.hex (lote 14, parte 14a): o hexágono do Mapa-múndi, quando a janela usa ele — o rio e os caminhos dele ficam no
      lugar da Água e do Caminho (e da rosa do Traçado); sem rio ou sem caminho no mapa, a escolha continua */
@@ -38123,6 +38290,7 @@ const Regiao = (() => {
       field('Bioma', seg('reg-bio', st.bioma, B.LISTA.map(b => [b.id, b.n]), v => muda('bioma', v)), 'stack'),
       h('div', { class: 'ger-l' },
         field('Mistura', seg('reg-mis', st.mistura, B.MISTURAS, v => muda('mistura', v)), 'stack'),
+        field('Erosão', seg('reg-erosao', st.erosao || 'nada', Erosao.FORCAS, v => muda('erosao', v)), 'stack'),      // (lote 156)
         field('Tamanho', seg('reg-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, TAMANHOS[k].W + ' × ' + TAMANHOS[k].H + ' quadrados · ' + plural(TAMANHOS[k].pontos, 'ponto de interesse', 'pontos de interesse')]), v => muda('tamanho', v)), 'stack')),
       h('div', { class: 'ger-l' },
         field('Água', rioHex ? doMapa('reg-agua-hex', rioHex) : seg('reg-agua', st.agua, AGUAS, v => muda('agua', v)), 'stack'),
@@ -38138,7 +38306,7 @@ const Regiao = (() => {
         rioHex: rioHex ? 'O rio vem do hexágono do Mapa-múndi: ' + rioHex + '.' : null, portoesHex: camHex ? 'Os caminhos vêm do hexágono do Mapa-múndi: ' + camHex + '.' : null }));
   }
   const opcoesDe = st => Object.assign({ bioma: st.bioma, mistura: st.mistura, agua: st.agua, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas },
-    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, Tracado.soMudadas(st.t || Tracado.padrao()));
+    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, st.erosao && st.erosao !== 'nada' ? { erosao: st.erosao } : null, Tracado.soMudadas(st.t || Tracado.padrao()));
   function aplicarOpcoes(st, o, op) {
     if (B.BIO[o.bioma]) st.bioma = o.bioma;
     if (typeof o.mistura === 'string' && B.FRACAO[o.mistura] != null) st.mistura = o.mistura;
@@ -38149,6 +38317,7 @@ const Regiao = (() => {
     // (lote 13, parte 13c: o modelo de antes não tem a história nem os achados — fica sem eles, o mesmo lugar)
     if (Array.isArray(o.historia) || (op && op.modelo)) st.historia = Historia.valida(o.historia);
     if (typeof o.achados === 'boolean') st.achados = o.achados; else if (op && op.modelo) st.achados = false;
+    if (Erosao.FORCAS.some(x => x[0] === o.erosao)) st.erosao = o.erosao; else if (op && op.modelo) st.erosao = 'nada';
     st.t = tracadoDe(o);
     lembrar(st);
   }
@@ -38175,7 +38344,7 @@ const Regiao = (() => {
   const baseDe = () => null;
   // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
   // (lote 14, parte 14a) a Região livre aceita o hexágono de terra
-  const LUGAR = { aceitaHex: (st, hex) => HexCena.aceita(hex), biomaDe: st => st.bioma, aceitaEstacao: true, id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  const LUGAR = { aceitaHex: (st, hex) => HexCena.aceita(hex), biomaDe: st => st.bioma, aceitaEstacao: true, id: 'regiao', n: 'Região livre', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => Erosao.com(st.erosao, () => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum))), previa: MO.previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (a água, os morros e os penhascos, as pontes, o gelo, a lava)',
     aceitaSeco: true,
     dica: 'Clique no traçado da prévia (a água, os morros, o caminho, os pontos de interesse) para travar: "Gerar outro" troca só as árvores, as pedras e os enfeites.',
@@ -43094,6 +43263,8 @@ const Masmorra = (() => {
       }
       aberto.set(n);
     }
+    // (lote 156) a erosão: a água que escorreu arredonda as paredes, abre bolsões e alarga as galerias
+    if (p.erosao && typeof Erosao !== 'undefined') Erosao.caverna(aberto, W, H, p.erosao, r);
     // (só a maior região aberta fica)
     const reg = regioes(W, H, (i, j) => aberto[j * W + i] === 1), maior = reg.lista.reduce((m, l, k) => (l.length > reg.lista[m].length ? k : m), 0);
     for (let k = 0; k < W * H; k++) G.g[k] = reg.id[k] === maior ? SALA : ROCHA;
@@ -44512,7 +44683,8 @@ const Masmorra = (() => {
       // (lote 61) as salas especiais, as variações do traçado e as armadilhas (só quando escolhidas)
       if (!are && !sob) { const es = listaDe(o.especiais, SALAS_ESP), va = listaDe(o.variantes, VARIANTES); if (es.length) p.especiais = es; if (va.length) p.variantes = va; if (o.armadilhas === true) p.armadilhas = true; }
       if (ex) Object.assign(p, JSON.parse(JSON.stringify(ex)));
-      if (!are && !sob && typeof Zonas !== 'undefined') { const zs = Zonas.limpa(o.zonas); if (zs.length) p.zonasMao = zs; }      // (lote 154) as zonas desenhadas à mão
+      if (!are && !sob && typeof Zonas !== 'undefined') { const zs = Zonas.limpa(o.zonas); if (zs.length) p.zonasMao = zs; }
+      if (!are && !sob && typeof Erosao !== 'undefined' && Erosao.forca(o.erosao)) p.erosao = Erosao.forca(o.erosao);      // (lote 156) a erosão (a caverna)      // (lote 154) as zonas desenhadas à mão
       const C = contexto(p, G, r);
       if (tipo === 'arena') nivelDeArena(C); else if (tipo === 'subsolo') nivelDeSubsolo(C); else if (tipo === 'caverna' || tipo === 'covil' || BIO_CAV[tipo]) nivelDeCaverna(C); else if (tipo === 'mina') nivelDeMina(C); else if (tipo === 'navio') nivelDeNavio(C); else nivelDeSalas(C);
       p.grade = Array.from(G.g).join('');
@@ -45772,7 +45944,7 @@ const Masmorra = (() => {
   const cenaDeCima = id => (typeof id === 'string' && id && Store.S.scenes[id] && (!Nuvem.comCampanhas() || Nuvem.naVista(id)) ? id : '');
   function padraoL() {
     const o = App.opt;
-    return Object.assign({ tipo: TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra', tamanho: TAMANHOS[o.masTam] ? o.masTam : 'medio', nivel: 1, segredos: o.masSeg !== false, descida: o.masDesce !== false, sob: '', larg: largEscolhida(o.masLarg) }, escolhas61());
+    return Object.assign({ tipo: TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra', tamanho: TAMANHOS[o.masTam] ? o.masTam : 'medio', nivel: 1, segredos: o.masSeg !== false, descida: o.masDesce !== false, sob: '', larg: largEscolhida(o.masLarg), erosao: Erosao.forca(o.masErosao) || 'nada' }, escolhas61());
   }
   // (lote 61) as escolhas novas (lembradas entre uma janela e outra): as armadilhas, as salas especiais e as variações
   const escolhas61 = () => { const o = App.opt; return { armadilhas: o.masArm === true, especiais: listaDe(o.masEsp, SALAS_ESP), variantes: listaDe(o.masVar, VARIANTES) }; };
@@ -45785,7 +45957,7 @@ const Masmorra = (() => {
       h('div', { class: 'ger-l' }, SALAS_ESP.map(([k, n]) => K.toggle('mas-esp-' + k, (st.especiais || []).includes(k), alterna('especiais', SALAS_ESP, k), n))),
       h('div', { class: 'ger-l' }, VARIANTES.map(([k, n]) => K.toggle('mas-var-' + k, (st.variantes || []).includes(k), alterna('variantes', VARIANTES, k), n))));
   }
-  const lembrarL = st => { if (TIPOS.some(x => x[0] === st.tipo)) App.opt.masTipo = st.tipo; if (CATACUMBAS.includes(st.tipo)) App.opt.catTipo = st.tipo; App.opt.masTam = st.tamanho; App.opt.masSeg = st.segredos; App.opt.masDesce = st.descida; App.opt.masLarg = largEscolhida(st.larg); lembrar61(st); };
+  const lembrarL = st => { if (TIPOS.some(x => x[0] === st.tipo)) App.opt.masTipo = st.tipo; if (CATACUMBAS.includes(st.tipo)) App.opt.catTipo = st.tipo; App.opt.masTam = st.tamanho; App.opt.masSeg = st.segredos; App.opt.masDesce = st.descida; App.opt.masLarg = largEscolhida(st.larg); App.opt.masErosao = st.erosao || 'nada'; lembrar61(st); };
   // as cenas na ordem das famílias (as de dentro recuadas), como na lista "Leva para outra cena"
   function cenasEmFamilia() {
     const comCamp = Nuvem.comCampanhas(), vis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id))), F = UI.familiasVistas(vis), arv = [];
@@ -45793,6 +45965,7 @@ const Masmorra = (() => {
     F.raizes.forEach(k => desce(k, 0));
     return arv;
   }
+  const ehCaverna = t => t === 'caverna' || t === 'covil' || !!BIO_CAV[t];      // (lote 156: onde a erosão vale)
   function controlesL(st, K, mudou, lista) {
     if (!Array.isArray(lista)) lista = null;          // (a janela do gerador passa { hex } aqui: só a aba Catacumbas passa a lista)
     const { field, seg, inNum, toggle } = K;
@@ -45802,6 +45975,7 @@ const Masmorra = (() => {
     sel.value = cenaDeCima(st.sob);
     return h('div', { class: 'ger-c' },
       field(lista ? 'Jeito' : 'Tipo', seg('mas-tipo', st.tipo, (lista ? TODOS.filter(x => lista.includes(x[0])) : TIPOS.concat(TIPOS_MAIS.filter(x => x[0] === st.tipo))).map(([k, n]) => [k, n, null, NOTA[k]]), v => muda('tipo', v)), 'stack'),
+      ehCaverna(st.tipo) ? field('Erosão (a água gastou a caverna)', seg('mas-erosao', st.erosao || 'nada', Erosao.FORCAS, v => muda('erosao', v)), 'stack') : null,      // (lote 156)
       field('Largura dos corredores', seg('mas-larg', st.larg || largPadrao(st.tipo), LARGURAS.map(([k, n]) => [k, n]), v => muda('larg', v)), 'stack'),
       h('div', { class: 'ger-l' },
         field('Tamanho', seg('mas-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, `${TAMANHOS[k].W} × ${TAMANHOS[k].H} quadrados`]), v => muda('tamanho', v)), 'stack'),
@@ -45812,7 +45986,7 @@ const Masmorra = (() => {
       controles61(K, st, () => mudou(true)));
   }
   const opcoesDeL = st => Object.assign({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, segredos: !!st.segredos, descida: !!st.descida, larg: st.larg || largPadrao(st.tipo) },
-    st.armadilhas ? { armadilhas: true } : null, st.especiais && st.especiais.length ? { especiais: st.especiais.slice() } : null, st.variantes && st.variantes.length ? { variantes: st.variantes.slice() } : null);
+    st.armadilhas ? { armadilhas: true } : null, st.especiais && st.especiais.length ? { especiais: st.especiais.slice() } : null, st.variantes && st.variantes.length ? { variantes: st.variantes.slice() } : null, Erosao.forca(st.erosao) ? { erosao: st.erosao } : null);
   function aplicarOpcoesL(st, o) {
     if (TODOS.some(x => x[0] === o.tipo)) st.tipo = o.tipo;
     if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
@@ -45820,6 +45994,7 @@ const Masmorra = (() => {
     for (const k of ['segredos', 'descida']) if (typeof o[k] === 'boolean') st[k] = o[k];
     if (typeof o.sob === 'string') st.sob = cenaDeCima(o.sob);
     if (o.larg != null) st.larg = largEscolhida(o.larg);
+    st.erosao = Erosao.forca(o.erosao) || 'nada';      // (lote 156)
     st.armadilhas = o.armadilhas === true; st.especiais = listaDe(o.especiais, SALAS_ESP); st.variantes = listaDe(o.variantes, VARIANTES);      // (lote 61)
     lembrarL(st);
   }
@@ -45828,7 +46003,7 @@ const Masmorra = (() => {
     return `"${sc.name}" criada` + (m ? `, dentro de "${m.name}": a Saída, na escada de subida, leva de volta` : ': uma cena solta — a Saída, na escada de subida, ainda não leva a lugar nenhum (escolha a cena no painel dela)') + (p.desce ? `; a Entrada da escada de descida gera o nível ${p.nivel + 1}.` : '.');
   }
   const LUGAR = { id: 'masmorra', n: 'Masmorra', padrao: padraoL, controles: controlesL, opcoesDe: opcoesDeL, aplicarOpcoes: aplicarOpcoesL,
-    gerar: (st, comum) => gerar(Object.assign({ zonas: st.zonas, tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: comum && comum.estilo, seed: comum && comum.seed, segredos: st.segredos, descida: st.descida, larg: st.larg || largPadrao(st.tipo) }, gerar61(st))),
+    gerar: (st, comum) => gerar(Object.assign({ zonas: st.zonas, erosao: st.erosao, tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: comum && comum.estilo, seed: comum && comum.seed, segredos: st.segredos, descida: st.descida, larg: st.larg || largPadrao(st.tipo) }, gerar61(st))),
     previa, resumo, partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava,
     quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null, nomePadrao,
     criar: (p, nome, ex) => { ex = ex || {}; const sob = cenaDeCima(ex.op && ex.op.sob); return criar(p, nome, sob ? Store.S.scenes[sob] : null, { relevo: ex.relevo !== false, id: ex.id }); },
@@ -49552,8 +49727,93 @@ const Furtividade = (() => {
     nota: 'Uma casa com o terreno em volta, montada a partir da ficha: a casa na frente, os anexos no quintal (ligados por caminhos), os andares e o porão como você escolher, com ou sem guardas. A hora do dia é a escolhida.',
     feito: sc => `"${sc.name}" criada.`,
   }, { partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava, quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null });
+  /* ================= (lote 156) o estilo por exemplo =================
+     O mapa sai do exemplo (Exemplo: o colapso de funções de onda): as casas de parede viram a rocha (o fundo escuro) com as
+     paredes na beira; o chão, do tipo escolhido; a água, a água; o mato, a grama com os arbustos; a porta, uma porta. */
+  const TAM_EX = { pequeno: { n: 'Pequeno', W: 30, H: 22 }, medio: { n: 'Médio', W: 40, H: 30 }, grande: { n: 'Grande', W: 52, H: 38 } };
+  const CHAOS_EX = [['auto', 'Do exemplo'], ['laje', 'Pedra'], ['madeira', 'Madeira'], ['terra', 'Terra'], ['calcada', 'Calçada'], ['grama', 'Grama']];
+  const FONTES_EX = [['pronto', 'Exemplos prontos'], ['desenho', 'O meu desenho'], ['cena', 'De uma cena']];
+  function stEx(o) {
+    o = o && typeof o === 'object' ? o : {};
+    return { fonte: FONTES_EX.some(x => x[0] === o.fonte) ? o.fonte : 'pronto', pronto: Exemplo.PRONTOS[o.pronto] ? o.pronto : 'salas', desenho: Exemplo.valida(o.desenho) && o.desenho.length === 12 && o.desenho[0].length === 12 ? o.desenho.slice() : Exemplo.desenhoPadrao(),
+      cena: typeof o.cena === 'string' ? o.cena : '', tamanho: TAM_EX[o.tamanho] ? o.tamanho : 'medio', sim: o.sim !== false, chao: CHAOS_EX.some(x => x[0] === o.chao) ? o.chao : 'auto' };
+  }
+  function exemploDe(st) {
+    if (st.fonte === 'desenho') return st.desenho;
+    if (st.fonte === 'cena') { const sc = Store.S.scenes[st.cena]; return sc ? Exemplo.daCena(sc) : null; }
+    return Exemplo.PRONTOS[st.pronto].g;
+  }
+  function gerarExemplo(st, comum) {
+    st = stEx(st);
+    const T = TAM_EX[st.tamanho], W = T.W, H = T.H, seed = (Math.round(Number(comum && comum.seed)) >>> 0) || 1;
+    const g0 = exemploDe(st), res = g0 ? Exemplo.fazer(g0, W, H, seed, st.sim, st.fonte === 'pronto' && !!Exemplo.PRONTOS[st.pronto].cerca) : null;
+    const K = plano('exemplo', W, H, seed, { estilo: comum && comum.estilo, estacao: comum && comum.estacao, tamanho: st.tamanho }), p = K.p;
+    p.exemplo = { fonte: st.fonte, nome: st.fonte === 'pronto' ? Exemplo.PRONTOS[st.pronto].n : st.fonte === 'desenho' ? 'o seu desenho' : ((Store.S.scenes[st.cena] || {}).name || 'a cena') };
+    const chao = st.chao !== 'auto' ? st.chao : st.fonte === 'pronto' ? Exemplo.PRONTOS[st.pronto].chao : 'laje';
+    if (!res) {
+      p.falhou = true; p.fundo = 'rocha';
+      K.pinta('piso', { x: 2, y: 2, w: W - 4, h: H - 4, tipo: chao });
+      p.chegada = [Math.floor(W / 2), H - 2];
+      return fim(p, 'exemplo', { tamanho: st.tamanho, guardas: 'poucos' });
+    }
+    const g = res.g, X = (x, y) => x < 0 || y < 0 || x >= W || y >= H ? false : g[y][x] === 'x';
+    p.exemplo.padroes = res.padroes;
+    p.fundo = 'rocha';
+    // o chão, por fileira (as casas iguais juntas)
+    for (let y = 0; y < H; y++) { let x = 0; while (x < W) { const c = g[y][x]; let x2 = x; while (x2 < W && g[y][x2] === c) x2++; const w = x2 - x;
+      if (c === '.' || c === 'p') K.pinta('piso', { x, y, w, h: 1, tipo: chao });
+      else if (c === 'm') K.pinta('piso', { x, y, w, h: 1, tipo: 'grama' });
+      else if (c === 'a') { K.pinta('piso', { x, y, w, h: 1, tipo: 'terra' }); K.pinta('agua', { x, y, w, h: 1 }); p.relevo.push({ t: 'agua', alt: -1.5, k: 'rect', x, y, w, h: 1 }); }
+      if (c === 'x' || c === 'a') K.ocupa(x, y, w, 1);
+      x = x2; } }
+    // as paredes: na beira entre a parede e o resto (juntas numa linha); as portas
+    const portas = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === 'p') { if (X(x - 1, y) && X(x + 1, y)) portas.push([x, y, x + 1, y]); else if (X(x, y - 1) && X(x, y + 1)) portas.push([x, y, x, y + 1]); }
+    for (let y = 1; y < H; y++) { let x = 0; while (x < W) { if (X(x, y - 1) === X(x, y)) { x++; continue; } let x2 = x; while (x2 < W && X(x2, y - 1) !== X(x2, y)) x2++; K.parede(x, y, x2, y, 'wall'); K.pinta('paredeFina', { x1: x, y1: y, x2, y2: y }); x = x2; } }
+    for (let x = 1; x < W; x++) { let y = 0; while (y < H) { if (X(x - 1, y) === X(x, y)) { y++; continue; } let y2 = y; while (y2 < H && X(x - 1, y2) !== X(x, y2)) y2++; K.parede(x, y, x, y2, 'wall'); K.pinta('paredeFina', { x1: x, y1: y, x2: x, y2 }); y = y2; } }
+    for (const [x1, y1, x2, y2] of portas) K.parede(x1, y1, x2, y2, 'door');
+    // o mato: arbustos; as tochas rente às paredes
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === 'm' && K.r() < 0.35) K.poe1(K.r() < 0.3 ? 'arvore' : 'arbusto', x, y);
+    let tochas = 0;
+    for (let i = 0; i < 400 && tochas < Math.round(W * H / 110); i++) { const x = K.ri(1, W - 2), y = K.ri(1, H - 2); if (g[y][x] === '.' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => X(x + dx, y + dy)) && K.poe1('tocha', x, y)) tochas++; }
+    // a chegada: o chão mais perto do meio de baixo
+    let best = null, bd = Infinity;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === '.' || g[y][x] === 'p') { const d = Math.abs(x - W / 2) + (H - 1 - y) * 1.5; if (d < bd) { bd = d; best = [x, y]; } }
+    p.chegada = best ? [best[0], best[1] + 1] : [Math.floor(W / 2), H - 1];
+    p.grade = g.join('');
+    return fim(p, 'exemplo', { tamanho: st.tamanho, guardas: 'poucos' });
+  }
+  const LUGAR_EX = Object.assign({ id: 'exemplo', n: 'Por exemplo', aceitaEstacao: false,
+    padrao: () => stEx(App.opt.exSt),
+    controles(st, K, mudou) {
+      const muda = (k, v) => { st[k] = v; App.opt.exSt = stEx(st); mudou(true); };
+      const g = exemploDe(stEx(st));
+      return h('div', { class: 'ger-c' },
+        K.field('O exemplo', K.seg('ex-fonte', st.fonte, FONTES_EX, v => muda('fonte', v)), 'stack'),
+        st.fonte === 'pronto' ? K.field('Qual', K.seg('ex-pronto', st.pronto, Exemplo.LISTA, v => muda('pronto', v)), 'stack') : null,
+        st.fonte === 'desenho' ? h('div', {}, Exemplo.editor(st.desenho, K, d => muda('desenho', d)),
+          h('div', { class: 'row' }, K.btn('Começar do pronto', () => muda('desenho', Exemplo.PRONTOS[st.pronto].g.slice(0, 12).map(l => (l + 'x'.repeat(12)).slice(0, 12)).concat(Array(12).fill('x'.repeat(12))).slice(0, 12)), { kind: 'small', id: 'ex-do-pronto' }),
+            K.btn('Limpar', () => muda('desenho', Exemplo.vazio(12, 12)), { kind: 'small', id: 'ex-limpar' }))) : null,
+        st.fonte === 'cena' ? K.field('A cena', K.inSelect('ex-cena', st.cena, [['', 'Escolha uma cena']].concat(Store.S.order.filter(id => Store.S.scenes[id]).map(id => [id, Store.S.scenes[id].name])), v => muda('cena', v)), 'stack') : null,
+        st.fonte !== 'desenho' && g ? h('div', { class: 'ex-mini-w' }, Exemplo.miniatura(g)) : null,
+        st.fonte === 'cena' && st.cena && !g ? K.note('Essa cena não tem paredes que fechem um lugar: escolha outra.') : null,
+        K.field('Tamanho', K.seg('ex-tam', st.tamanho, Object.keys(TAM_EX).map(k => [k, TAM_EX[k].n, null, TAM_EX[k].W + ' × ' + TAM_EX[k].H + ' quadrados']), v => muda('tamanho', v)), 'stack'),
+        K.field('O chão', K.seg('ex-chao', st.chao, CHAOS_EX, v => muda('chao', v)), 'stack'),
+        K.toggle('ex-sim', st.sim, v => muda('sim', v), 'Girar e espelhar o exemplo (mais variedade)'));
+    },
+    opcoesDe: st => stEx(st),
+    aplicarOpcoes(st, o) { Object.assign(st, stEx(Object.assign({}, st, o))); },
+    gerar: (st, comum) => gerarExemplo(st, comum),
+    previa, nomePadrao: p => 'Por exemplo: ' + ((p.exemplo && p.exemplo.nome) || 'o exemplo'),
+    resumo: p => (p.falhou ? 'Não deu para seguir esse exemplo (ele é pequeno demais, ou não tem chão bastante, ou não tem pedaços que se encaixam). Tente outro desenho, ou "Gerar outro".' : `Por exemplo (${p.exemplo.nome}) · ${p.W} × ${p.H} quadrados · ${p.exemplo.padroes} pedaços de 3 × 3 aprendidos · ${p.paredes.filter(w => w.k === 'door').length} portas.`),
+    criar: (p, nome, ex) => criar(p, nome, Object.assign({}, ex, { horaLivre: true })),
+    relevoTxt: 'Com relevo (a água)',
+    dica: '"Gerar outro" faz outro mapa no mesmo jeito. Cada pedaço de 3 × 3 do mapa existe no exemplo.',
+    nota: 'O gerador aprende os pedaços de 3 × 3 do exemplo e monta um mapa maior só com pedaços que se encaixam como lá (o colapso de funções de onda). As casas de parede viram rocha com paredes na beira, com a visão e a névoa funcionando.',
+    feito: sc => `"${sc.name}" criada.`,
+  }, semPartes);
   const ehFurtivo = id => IDS.includes(id);
-  return { comodoEm, outraVersaoCena, MOB, chaveSala, IDS, NOMES, LUGARES, ALVOS, TAM, GUARDAS, DIFICS, MED, gerar, previa, resumo, criar, predio, ehFurtivo, catF, LUGAR_SOB, ANEXOS, SALAS_TERREO, PORTES, specLimpa };
+  return { LUGAR_EX, comodoEm, outraVersaoCena, MOB, chaveSala, IDS, NOMES, LUGARES, ALVOS, TAM, GUARDAS, DIFICS, MED, gerar, previa, resumo, criar, predio, ehFurtivo, catF, LUGAR_SOB, ANEXOS, SALAS_TERREO, PORTES, specLimpa };
 })();
 /* ---------------------------------------------------------------
    10gd. OS MARCADORES DE MISSÃO NA CENA (lote 129) — o objeto "Marcador de missão" (06b8), ligado a uma missão da aba
@@ -49776,6 +50036,313 @@ const MissaoCenas = (() => {
   }
 
   return { eh, soNome, porNome, missoes, copia, ligar, sincronizar, balao, secao, abrirMissao, porNaCena, lugaresDaCena, prefs, controles, aplicar, nome, POVOADOS };
+})();
+/* ---------------------------------------------------------------
+   10gt. O ESTILO POR EXEMPLO (lote 156) — o colapso de funções de onda (Wave Function Collapse, o modelo de sobreposição):
+   o gerador olha um exemplo pequeno, aprende os pedaços de 3 × 3 que aparecem nele (e quantas vezes) e monta um mapa
+   grande só com pedaços que se encaixam como no exemplo. O mapa sai "no mesmo jeito": o labirinto vira labirinto, a
+   caverna vira caverna.
+   As casas: x (parede ou rocha), . (chão), p (porta), a (água), m (mato).
+   O exemplo vem de três lugares: os prontos (abaixo), o desenho do mestre (uma grade de 12 × 12) e uma cena dele (as
+   paredes viram casas de parede; um pedaço de até 24 × 24 do meio).
+   --------------------------------------------------------------- */
+const Exemplo = (() => {
+  const CASAS = [['x', 'Parede'], ['.', 'Chão'], ['p', 'Porta'], ['a', 'Água'], ['m', 'Mato']];
+  const COR = { x: '#2a2622', '.': '#b9a98a', p: '#d4893a', a: '#3f7396', m: '#5d8a3e' };
+  const PRONTOS = {
+    labirinto: { n: 'Labirinto', chao: 'laje', cerca: true, g: [
+      '.x.x...x...x',
+      'xx.xxxxxxxxx',
+      '.x...x.x....',
+      '.xxx.xxx.xxx',
+      '.x.x.x...x..',
+      '.xxx.xxxxxxx',
+      '...x.x...x.x',
+      '.x.xxx.x.x.x',
+      '...x...x.x..',
+      'xxxxxx.x.x.x',
+      '...x.......x',
+      '.x.xxx.xxx.x'] },
+    caverna: { n: 'Caverna', chao: 'terra', g: [
+      'xxxxxxxxxxxxxx',
+      'xxx...xxxx..xx',
+      'xx.....xx....x',
+      'x......x...a.x',
+      'x..xx.....aa.x',
+      'xx.xxx.......x',
+      'xx..xx..xx..xx',
+      'x....x.xxx..xx',
+      'x.aa......xxxx',
+      'xx.a...x...xxx',
+      'xxx...xxx..xxx',
+      'xxxxxxxxxxxxxx'] },
+    salas: { n: 'Salas e corredores', chao: 'laje', g: [
+      'xxxxxxxxxxxxxx',
+      'x....xxxxx...x',
+      'x....p...p...x',
+      'x....xx.xx...x',
+      'xxpxxxx.xxxpxx',
+      'xx.xxxx.xxx.xx',
+      'xx.......xx.xx',
+      'xx.xxxxx.xx.xx',
+      'x...xx.....p.x',
+      'x...p......x.x',
+      'x...xx.....x.x',
+      'xxxxxxxxxxxxxx'] },
+    cidade: { n: 'Cidade em quarteirões', chao: 'calcada', g: [
+      '.............',
+      '.xxx.xxx.xxx.',
+      '.xxx.xxx.xxx.',
+      '.xxx.xxx.xxx.',
+      '.............',
+      '.xx.......xx.',
+      '.xx..mmm..xx.',
+      '.xx..mmm..xx.',
+      '.............',
+      '.xxx.xxxx.xx.',
+      '.xxx.xxxx.xx.',
+      '.............'] },
+    jardim: { n: 'Jardim', chao: 'grama', g: [
+      'mmmmmmmmmmmmm',
+      'm.....m.....m',
+      'm.mmm.m.mmm.m',
+      'm.m.......m.m',
+      'm.m..aaa..m.m',
+      'm....aaa....m',
+      'm.m..aaa..m.m',
+      'm.m.......m.m',
+      'm.mmm.m.mmm.m',
+      'm.....m.....m',
+      'mmmmmmmmmmmmm'] },
+    ruinas: { n: 'Ruínas', chao: 'laje', g: [
+      'mmm.....mmmm.',
+      'm.xx.x...x..m',
+      '..x....m.x...',
+      '.xx.xx...xxx.',
+      '....m..mm....',
+      '.x.......x.x.',
+      '.x..xx.x...x.',
+      '.xx.x....xxx.',
+      '..m...m......',
+      'm..xx..xx.m.m',
+      'mm.....m..mmm'] },
+  };
+  const LISTA = Object.keys(PRONTOS).map(k => [k, PRONTOS[k].n]);
+  const valida = g => Array.isArray(g) && g.length >= 4 && g.length <= 40 && g.every(l => typeof l === 'string' && l.length === g[0].length && l.length >= 4 && l.length <= 40 && /^[x.pam]+$/.test(l));
+  const vazio = (w, h) => Array.from({ length: h }, () => '.'.repeat(w));
+  const desenhoPadrao = () => PRONTOS.salas.g.map(l => l.slice(0, 12)).slice(0, 12);
+
+  /* ---------------- aprender: os pedaços N × N do exemplo (com os giros e os espelhos, se pedido) ---------------- */
+  const gira = g => { const H = g.length, W = g[0].length, out = []; for (let x = 0; x < W; x++) { let l = ''; for (let y = H - 1; y >= 0; y--) l += g[y][x]; out.push(l); } return out; };
+  const espelha = g => g.map(l => l.split('').reverse().join(''));
+  function aprender(g, N, sim) {
+    const H = g.length, W = g[0].length, pats = new Map();
+    const grades = [g];
+    if (sim) { let q = g; for (let i = 0; i < 3; i++) { q = gira(q); grades.push(q); } for (const x of grades.slice()) grades.push(espelha(x)); }
+    // (a entrada dá a volta: o pedaço que passa da beira continua do outro lado — assim todo pedaço tem com quem se encaixar)
+    for (const G of grades) { const gh = G.length, gw = G[0].length; for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) { let s2 = ''; for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) s2 += G[(y + j) % gh][(x + i) % gw]; pats.set(s2, (pats.get(s2) || 0) + 1); } }
+    const P = [...pats.keys()], peso = P.map(k => pats.get(k));
+    const at = (k, i, j) => P[k][j * N + i];
+    // o encaixe: b pode ficar em (dx, dy) de a, se as partes que se cobrem são iguais
+    const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    const comb = DIRS.map(([dx, dy]) => P.map((_, a) => {
+      const l = [];
+      for (let b = 0; b < P.length; b++) {
+        let ok = true;
+        for (let j = Math.max(0, dy); j < Math.min(N, N + dy) && ok; j++) for (let i = Math.max(0, dx); i < Math.min(N, N + dx); i++) if (at(a, i, j) !== at(b, i - dx, j - dy)) { ok = false; break; }
+        if (ok) l.push(b);
+      }
+      return l;
+    }));
+    return { N, P, peso, comb, at, borda: (g[0] + g[H - 1] + g.map(l => l[0] + l[W - 1]).join('')).split('').every(c => c === g[0][0]) ? g[0][0] : null };
+  }
+
+  /* ---------------- gerar: W × H casas (ou null, se não deu) ---------------- */
+  function gerar(M, W, H, r) {
+    const { N, P, peso, comb, at } = M, NP = P.length;
+    if (!NP) return null;
+    const GW = W - N + 1, GH = H - N + 1, C = GW * GH;
+    if (GW < 1 || GH < 1) return null;
+    const pode = new Uint8Array(C * NP).fill(1), n = new Int32Array(C).fill(NP);
+    const somaP = new Float64Array(C), somaPL = new Float64Array(C);
+    const pl = peso.map(w => w * Math.log(w)), tot = peso.reduce((a, b) => a + b, 0), totL = pl.reduce((a, b) => a + b, 0);
+    somaP.fill(tot); somaPL.fill(totL);
+    const OPP = [1, 0, 3, 2], DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    // os contadores do AC-4: cont[(c * 4 + d) * NP + b] = quantos de a, no vizinho do lado d, ainda deixam b
+    const cont = new Int16Array(C * 4 * NP);
+    for (let c = 0; c < C; c++) for (let d = 0; d < 4; d++) for (let b = 0; b < NP; b++) cont[(c * 4 + d) * NP + b] = comb[OPP[d]][b].length;
+    const pilha = [];
+    let erro = false;
+    const tira = (c, b) => {
+      if (!pode[c * NP + b]) return;
+      pode[c * NP + b] = 0; n[c]--; somaP[c] -= peso[b]; somaPL[c] -= pl[b];
+      if (n[c] <= 0) erro = true;
+      pilha.push(c, b);
+    };
+    const espalha = () => {
+      while (pilha.length && !erro) {
+        const b = pilha.pop(), c = pilha.pop(), x = c % GW, y = (c - x) / GW;
+        for (let d = 0; d < 4; d++) {
+          const nx = x + DIRS[d][0], ny = y + DIRS[d][1];
+          if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
+          const v = ny * GW + nx, l = comb[d][b];
+          for (const k of l) { const i = (v * 4 + d) * NP + k; cont[i]--; if (cont[i] === 0) tira(v, k); }
+        }
+      }
+    };
+    // a beira: se o exemplo tem a beira toda de uma casa (a parede em volta), o mapa também tem
+    if (M.borda) {
+      for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+        const c = y * GW + x;
+        for (let k = 0; k < NP; k++) {
+          let ok = true;
+          if (x === 0) for (let j = 0; j < N; j++) if (at(k, 0, j) !== M.borda) ok = false;
+          if (y === 0) for (let i = 0; i < N; i++) if (at(k, i, 0) !== M.borda) ok = false;
+          if (x === GW - 1) for (let j = 0; j < N; j++) if (at(k, N - 1, j) !== M.borda) ok = false;
+          if (y === GH - 1) for (let i = 0; i < N; i++) if (at(k, i, N - 1) !== M.borda) ok = false;
+          if (!ok) tira(c, k);
+        }
+      }
+      espalha();
+      if (erro) return null;
+    }
+    for (let passo = 0; passo < C; passo++) {
+      // a casa com menos incerteza (a entropia de Shannon, com um ruído para desempatar)
+      let melhor = -1, menor = Infinity;
+      for (let c = 0; c < C; c++) {
+        if (n[c] <= 1) continue;
+        const e = Math.log(somaP[c]) - somaPL[c] / somaP[c] + r() * 1e-6;
+        if (e < menor) { menor = e; melhor = c; }
+      }
+      if (melhor < 0) break;
+      // sorteia um pedaço, pelo peso
+      let alvo = r() * somaP[melhor], esc = -1;
+      for (let k = 0; k < NP; k++) if (pode[melhor * NP + k]) { alvo -= peso[k]; if (alvo <= 0) { esc = k; break; } }
+      if (esc < 0) for (let k = NP - 1; k >= 0; k--) if (pode[melhor * NP + k]) { esc = k; break; }
+      for (let k = 0; k < NP; k++) if (k !== esc && pode[melhor * NP + k]) tira(melhor, k);
+      espalha();
+      if (erro) return null;
+    }
+    // o mapa: cada casa vem do canto do pedaço dela (as últimas fileiras, do resto do pedaço da beira)
+    const out = Array.from({ length: H }, () => new Array(W).fill('x'));
+    const pat = c => { for (let k = 0; k < NP; k++) if (pode[c * NP + k]) return k; return 0; };
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+      const k = pat(y * GW + x);
+      out[y][x] = at(k, 0, 0);
+      if (x === GW - 1) for (let i = 1; i < N; i++) out[y][x + i] = at(k, i, 0);
+      if (y === GH - 1) for (let j = 1; j < N; j++) out[y + j][x] = at(k, 0, j);
+      if (x === GW - 1 && y === GH - 1) for (let j = 1; j < N; j++) for (let i = 1; i < N; i++) out[y + j][x + i] = at(k, i, j);
+    }
+    return out.map(l => l.join(''));
+  }
+  // tenta algumas vezes (com outra semente); sem os giros, se o exemplo tiver pedaços demais
+  function fazer(g, W, H, seed, sim, cerca) {
+    if (!valida(g)) return null;
+    let M = aprender(g, 3, sim);
+    if (M.P.length > 420 && sim) M = aprender(g, 3, false);
+    if (M.P.length > 700) return null;
+    for (let t = 0; t < 10; t++) {
+      const r = mulberry(((seed >>> 0) + t * 7919) || 1);
+      let out = gerar(t < 6 ? M : Object.assign({}, M, { borda: null }), W, H, r);
+      if (out && cerca) out = out.map((l, y) => (y === 0 || y === H - 1 ? 'x'.repeat(W) : 'x' + l.slice(1, W - 1) + 'x'));
+      if (out) return { g: limpar(out), padroes: M.P.length, tentativas: t + 1 };
+    }
+    return null;
+  }
+  // depois: só a maior região de chão fica (o resto vira parede); a porta sem parede dos dois lados vira chão
+  // depois: as regiões de chão soltas se ligam à maior por uma abertura numa parede de 1 casa (as que não dá, viram
+  // parede); a porta sem parede dos dois lados vira chão
+  function limpar(g) {
+    const H = g.length, W = g[0].length, a = g.map(l => l.split('')), anda = c => c !== 'x';
+    const regioes = () => {
+      const id = new Int32Array(W * H).fill(-1), tam = [];
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (!anda(a[y][x]) || id[y * W + x] >= 0) continue;
+        const k = tam.length, fila = [y * W + x]; id[y * W + x] = k;
+        for (let i = 0; i < fila.length; i++) { const q = fila[i], qx = q % W, qy = (q - qx) / W; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = qx + dx, ny = qy + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H || !anda(a[ny][nx]) || id[ny * W + nx] >= 0) continue; id[ny * W + nx] = k; fila.push(ny * W + nx); } }
+        tam.push(fila.length);
+      }
+      return { id, tam };
+    };
+    for (let volta = 0; volta < 60; volta++) {
+      const { id, tam } = regioes();
+      if (tam.length <= 1) break;
+      const maior = tam.indexOf(Math.max(...tam));
+      // a parede de 1 casa entre a maior e outra: abre (a do meio da lista, para não ser sempre na beira)
+      const cand = [];
+      for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+        if (a[y][x] !== 'x') continue;
+        for (const [p1, p2] of [[[x - 1, y], [x + 1, y]], [[x, y - 1], [x, y + 1]]]) {
+          const i1 = id[p1[1] * W + p1[0]], i2 = id[p2[1] * W + p2[0]];
+          if (i1 >= 0 && i2 >= 0 && i1 !== i2 && (i1 === maior || i2 === maior)) cand.push([x, y]);
+        }
+      }
+      if (!cand.length) {
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (anda(a[y][x]) && id[y * W + x] !== maior && a[y][x] !== 'a' && a[y][x] !== 'm') a[y][x] = 'x';
+        break;
+      }
+      const [x, y] = cand[Math.floor(cand.length / 2)];
+      a[y][x] = '.';
+    }
+    const S = (x, y) => x < 0 || y < 0 || x >= W || y >= H || a[y][x] === 'x';
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (a[y][x] === 'p' && !((S(x - 1, y) && S(x + 1, y) && !S(x, y - 1) && !S(x, y + 1)) || (S(x, y - 1) && S(x, y + 1) && !S(x - 1, y) && !S(x + 1, y)))) a[y][x] = '.';
+    return a.map(l => l.join(''));
+  }
+
+  /* ---------------- o exemplo de uma cena: as paredes viram casas de parede (um pedaço do meio) ---------------- */
+  function daCena(sc, max) {
+    if (!sc || !sc.cols || !sc.rows) return null;
+    max = max || 24;
+    const c = sc.cell, W = sc.cols, H = sc.rows, M = Vigia.novo(W, H);
+    for (const w of sc.walls || []) { const k = w.k || 'wall'; if (k === 'wall' || k === 'mureta' || k === 'door' || k === 'window') Vigia.parede(M, w.x1 / c, w.y1 / c, w.x2 / c, w.y2 / c, k !== 'door', true); }
+    // fora: o que se alcança da beira sem passar parede (as portas fecham); fora vira parede
+    const fora = new Uint8Array(W * H), fila = [];
+    for (let x = 0; x < W; x++) for (const y of [0, H - 1]) { fora[y * W + x] = 1; fila.push(y * W + x); }
+    for (let y = 0; y < H; y++) for (const x of [0, W - 1]) { fora[y * W + x] = 1; fila.push(y * W + x); }
+    for (let i = 0; i < fila.length; i++) { const q = fila[i], x = q % W, y = (q - x) / W; for (const [dx, dy, b] of [[1, 0, M.pV[y * (W + 1) + x + 1]], [-1, 0, M.pV[y * (W + 1) + x]], [0, 1, M.pH[(y + 1) * W + x]], [0, -1, M.pH[y * W + x]]]) { const nx = x + dx, ny = y + dy; if (b || nx < 0 || ny < 0 || nx >= W || ny >= H || fora[ny * W + nx]) continue; fora[ny * W + nx] = 1; fila.push(ny * W + nx); } }
+    const g = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => (fora[y * W + x] ? 'x' : '.')));
+    // as paredes de dentro (entre duas casas de chão): a casa da direita (ou de baixo) vira parede; a porta, porta
+    const porta = new Set();
+    for (const w of sc.walls || []) if (w.k === 'door') porta.add(Math.round(Math.min(w.x1, w.x2) / c) + ',' + Math.round(Math.min(w.y1, w.y2) / c) + (Math.abs(w.x2 - w.x1) < Math.abs(w.y2 - w.y1) ? 'v' : 'h'));
+    for (let y = 0; y < H; y++) for (let x = 1; x < W; x++) if (M.pV[y * (W + 1) + x] && g[y][x] === '.' && g[y][x - 1] === '.') g[y][x] = porta.has(x + ',' + y + 'v') ? 'p' : 'x';
+    for (let y = 1; y < H; y++) for (let x = 0; x < W; x++) if (M.pH[y * W + x] && g[y][x] === '.' && g[y - 1][x] === '.') g[y][x] = porta.has(x + ',' + y + 'h') ? 'p' : 'x';
+    // a água e o mato, pelos objetos e pelas áreas da cena? (não: o exemplo da cena é de paredes e chão)
+    // o pedaço do meio com mais chão (até max × max)
+    const w = Math.min(W, max), h = Math.min(H, max);
+    let best = null, bn = -1;
+    for (let y0 = 0; y0 + h <= H; y0 += 2) for (let x0 = 0; x0 + w <= W; x0 += 2) {
+      let n = 0; for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (g[y][x] !== 'x') n++;
+      const bom = n > 0 && n < w * h * 0.85 ? n : n * 0.3;
+      if (bom > bn) { bn = bom; best = [x0, y0]; }
+    }
+    if (!best) return null;
+    const out = []; for (let y = best[1]; y < best[1] + h; y++) out.push(g[y].slice(best[0], best[0] + w).join(''));
+    return out.some(l => /[.p]/.test(l)) ? out : null;
+  }
+
+  /* ---------------- o desenho: a grade de 12 × 12 onde o mestre pinta ---------------- */
+  function editor(g, K, aoMudar) {
+    let tinta = '.', pintando = false;
+    const L = 12, cel = 22, cv = h('canvas', { class: 'ex-cv', id: 'ex-cv', width: L * cel, height: L * cel, 'aria-label': 'O desenho do exemplo: clique e arraste para pintar' });
+    const linhas = g.map(l => l.split(''));
+    const pinta = () => { const c = cv.getContext('2d'); for (let y = 0; y < L; y++) for (let x = 0; x < L; x++) { c.fillStyle = COR[linhas[y][x]] || '#000'; c.fillRect(x * cel, y * cel, cel, cel); c.strokeStyle = 'rgba(255,255,255,0.08)'; c.strokeRect(x * cel + 0.5, y * cel + 0.5, cel - 1, cel - 1); } };
+    const casa = e => { const b = cv.getBoundingClientRect(); return [Math.floor((e.clientX - b.left) / b.width * L), Math.floor((e.clientY - b.top) / b.height * L)]; };
+    const poe = e => { const [x, y] = casa(e); if (x < 0 || y < 0 || x >= L || y >= L || linhas[y][x] === tinta) return; linhas[y][x] = tinta; pinta(); };
+    cv.addEventListener('pointerdown', e => { pintando = true; cv.setPointerCapture(e.pointerId); poe(e); });
+    cv.addEventListener('pointermove', e => { if (pintando) poe(e); });
+    const fim = () => { if (!pintando) return; pintando = false; aoMudar(linhas.map(l => l.join(''))); };
+    cv.addEventListener('pointerup', fim); cv.addEventListener('pointercancel', fim);
+    setTimeout(pinta, 0);
+    const paleta = h('div', { class: 'ex-pal', id: 'ex-pal' }, CASAS.map(([k, n]) => h('button', { type: 'button', class: 'ex-tinta' + (k === tinta ? ' on' : ''), id: 'ex-t-' + (k === '.' ? 'chao' : k), title: n, onclick: e => { tinta = k; for (const b of e.currentTarget.parentNode.children) b.classList.toggle('on', b === e.currentTarget); } }, h('span', { class: 'ex-amostra', style: { background: COR[k] } }), n)));
+    return h('div', { class: 'ex-ed' }, paleta, cv);
+  }
+  // uma miniatura de um exemplo (o pronto, o da cena)
+  function miniatura(g) {
+    const H = g.length, W = g[0].length, cel = Math.max(4, Math.floor(180 / Math.max(W, H))), cv = h('canvas', { class: 'ex-mini', width: W * cel, height: H * cel });
+    setTimeout(() => { const c = cv.getContext('2d'); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { c.fillStyle = COR[g[y][x]] || '#000'; c.fillRect(x * cel, y * cel, cel, cel); } }, 0);
+    return cv;
+  }
+  return { CASAS, COR, PRONTOS, LISTA, valida, vazio, desenhoPadrao, aprender, gerar, fazer, limpar, daCena, editor, miniatura };
 })();
 /* ---------------------------------------------------------------
    10gu. OS SEGREDOS COM TRÊS PISTAS (lote 155) — a regra das três pistas: para cada coisa que os jogadores precisam
@@ -50180,7 +50747,7 @@ const Tempo = (() => {
   const NIVEIS = [['novo', 'Novo'], ['usado', 'Usado'], ['abandonado', 'Abandonado'], ['ruinas', 'Em ruínas']];
   const EVENTOS = [['nada', 'Nada'], ['incendio', 'Incêndio'], ['saque', 'Saque'], ['batalha', 'Batalha'], ['inundacao', 'Inundação']];
   const NV = { novo: 0, usado: 1, abandonado: 2, ruinas: 3 };
-  const LUGARES_OK = () => new Set(Furtividade.IDS.concat(['sobmedida', 'interior', 'masmorra', 'catacumbas', 'castelo', 'cemiterio']));
+  const LUGARES_OK = () => new Set(Furtividade.IDS.concat(['sobmedida', 'interior', 'masmorra', 'catacumbas', 'castelo', 'cemiterio', 'exemplo']));
   const vale = L => !!L && LUGARES_OK().has(L.id);
   const limpa = o => ({ mascara: o && o.mascara ? o.mascara : null, proteger: o && Array.isArray(o.proteger) ? o.proteger : [], nivel: NIVEIS.some(x => x[0] === (o && o.nivel)) ? o.nivel : 'novo', evento: EVENTOS.some(x => x[0] === (o && o.evento)) ? o.evento : 'nada' });
   const prefs = () => limpa({ nivel: App.opt.tempoNivel, evento: App.opt.tempoEvento });
@@ -50610,7 +51177,7 @@ const Tempo = (() => {
    --------------------------------------------------------------- */
 const Trama = (() => {
   const arr = v => (Array.isArray(v) ? v : []);
-  const LUGARES_OK = () => new Set(Furtividade.IDS.concat(['sobmedida', 'masmorra', 'catacumbas', 'ruinas']));
+  const LUGARES_OK = () => new Set(Furtividade.IDS.concat(['sobmedida', 'masmorra', 'catacumbas', 'ruinas', 'exemplo']));
   const TAMS = [['curta', 'Curta (1–2)'], ['media', 'Média (3)'], ['longa', 'Longa (4–5)']];
   const TIPOS = [['chave', 'Chave e fechadura'], ['pista', 'Pista escrita'], ['mecanismo', 'Mecanismo'], ['puzzle', 'Puzzle do Escudo'], ['atalho', 'Atalho de volta']];
   const prefs = () => {
@@ -51115,11 +51682,12 @@ const Gerador = (() => {
     AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
     LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO, LugaresMundo.LUGAR,      // (lote 126) os lugares do mundo
     Furtividade.LUGAR_SOB,      // (lote 150) o lugar sob medida (a ficha, que a IA preenche)
+    Furtividade.LUGAR_EX,      // (lote 156) o estilo por exemplo
     Interior.LUGAR,      // (lote 149) o interior (a janela "Gerar o interior" virou esta aba)
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
     LugaresFora.CRIME, Arena.LUGAR].concat(Furtividade.IDS.map(id => Furtividade.LUGARES[id]));      // (lote 121) a furtividade
   /* (lote 53) os lugares em grupos, na coluna da esquerda da janela, cada um com o desenho dele */
-  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Sob medida', ['sobmedida']], ['Por dentro', ['interior']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
+  const GRUPOS = [['Povoados', ['vila', 'cidade', 'cidadeGrande', 'tribo', 'porto']], ['Sob medida', ['sobmedida', 'exemplo']], ['Por dentro', ['interior']], ['Natureza', ['encontro', 'regiao']], ['Água e penhasco', ['lago', 'praia', 'penhasco', 'desfiladeiro']], ['Fortes e ruínas', ['castelo', 'ruinas', 'cemiterio']], ['Lugares do mundo', ['mundo116']],
     ['Subterrâneo', ['masmorra', 'catacumbas']], ['Especiais', ['crime', 'arena']], ['Furtividade', Furtividade.IDS]];
   const GLIFOS = {
     vila: 'M4 11.5 12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5', cidade: 'M3.5 20V9l4-3 4 3v11M11.5 20V5h5v15M16.5 20v-8h4v8M2.5 20h19',
@@ -51134,6 +51702,7 @@ const Gerador = (() => {
     cidadeGrande: 'M2 20h20M3 20V8l3-2 3 2v12M9 20V4h6v16M15 20v-9l3-2 3 2v9M11 7h2M11 10h2M11 13h2',
     interior: 'M3 20V5h18v15H3zM3 12h7M10 5v4M10 12v8M10 15h11M15 15v5M6 8h.1',
     sobmedida: 'M4 20h16M6 20v-7l5-4 5 4v7M9 20v-3h4v3M17 4l3 3-6 6-3 1 1-3 5-5z',      // (lote 150) a casa e o lápis
+    exemplo: 'M3 3h7v7H3zM14 14h7v7h-7zM3 14h7v7H3zM14 3h7v7h-7zM6.5 6.5h.1M17.5 17.5h.1',      // (lote 156) os quadradinhos do exemplo
       // (lote 149) a planta por dentro (as salas)
     mundo116: 'M3 20h18M5 20V10l7-5 7 5v10M9 20v-5h6v5M12 5V2.5M10.5 3h3',          // (lote 126) o templo
     arena: 'M3 9c0-2 4-3.5 9-3.5S21 7 21 9v7c0 2-4 3.5-9 3.5S3 18 3 16V9zM3 9c0 2 4 3.5 9 3.5S21 11 21 9M7 12v6M12 12.5v7M17 12v6',
@@ -51321,6 +51890,7 @@ const Gerador = (() => {
       if (Trama.vale(L, E.op) && Trama.prefs().on) { try { Trama.tecer(E.plano, Trama.prefs()); } catch (e) { console.error(e); } }      // (lote 152) a história da missão
       let rp = null;
       try { rp = L.previa(fundo, E.plano, 640, 460, { relevo: comum.relevo }); cell = rp.cell; } catch (e) { console.error(e); }
+      if (Erosao.MAPAS.has(E.plano)) { try { Erosao.sombrear(fundo.getContext('2d'), E.plano, cell); } catch (e) { console.error(e); } }      // (lote 156) o relevo gasto pela água
       if (Tempo.vale(L)) { try { Tempo.previa(fundo.getContext('2d'), E.plano, cell); } catch (e) { console.error(e); } }      // (lote 153) o tempo, por baixo dos números da história
       if (E.plano.trama && !(rp && rp.trama)) Trama.desenhar(fundo.getContext('2d'), E.plano, cell);
       if (Zonas.vale(L) && E.op.zonas && E.op.zonas.length) Zonas.desenhar(fundo.getContext('2d'), E.op.zonas, cell);      // (lote 154)
@@ -51542,6 +52112,8 @@ const Gerador = (() => {
           if (b) { b.disabled = true; b.textContent = 'Criando…'; }
           const E = estadoDe(L), p = E.plano, l = L;
           l.criar(p, inNome.value, { hora: comum.hora, clima: climaDe(l), relevo: comum.relevo, id: idPedido, op: E.op, o: comEstacao(l, Object.assign(l.opcoesDe(E.op), { estilo: comum.estilo, relevo: comum.relevo })) }).then(async sc => {
+            // (lote 156) o sombreado do relevo gasto pela água, no fundo
+            if (Erosao.MAPAS.has(p)) { try { if (await Erosao.noFundo(sc, p)) Persist.scene(sc.id); } catch (e) { console.error(e); } }
             // (lote 153) o tempo primeiro (as portas da história ficam de fora), depois a história
             const tp = Tempo.prefs();
             const txtTp = Tempo.vale(l) && Tempo.liga(tp) ? await Tempo.aplicar(sc, Object.assign({}, tp, { mascara: Tempo.mascaraDe(p), proteger: p.trama ? p.trama.passos.filter(x => x.porta).map(x => x.porta).concat(p.trama.atalho ? [p.trama.atalho.porta] : []) : [] }), p.seed).catch(e => { console.error(e); return ''; }) : '';
@@ -52765,7 +53337,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, IaMapa, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, IaMapa, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Exemplo, Erosao, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

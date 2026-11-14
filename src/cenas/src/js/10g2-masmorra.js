@@ -1478,6 +1478,8 @@ const Masmorra = (() => {
       }
       aberto.set(n);
     }
+    // (lote 156) a erosão: a água que escorreu arredonda as paredes, abre bolsões e alarga as galerias
+    if (p.erosao && typeof Erosao !== 'undefined') Erosao.caverna(aberto, W, H, p.erosao, r);
     // (só a maior região aberta fica)
     const reg = regioes(W, H, (i, j) => aberto[j * W + i] === 1), maior = reg.lista.reduce((m, l, k) => (l.length > reg.lista[m].length ? k : m), 0);
     for (let k = 0; k < W * H; k++) G.g[k] = reg.id[k] === maior ? SALA : ROCHA;
@@ -2896,7 +2898,8 @@ const Masmorra = (() => {
       // (lote 61) as salas especiais, as variações do traçado e as armadilhas (só quando escolhidas)
       if (!are && !sob) { const es = listaDe(o.especiais, SALAS_ESP), va = listaDe(o.variantes, VARIANTES); if (es.length) p.especiais = es; if (va.length) p.variantes = va; if (o.armadilhas === true) p.armadilhas = true; }
       if (ex) Object.assign(p, JSON.parse(JSON.stringify(ex)));
-      if (!are && !sob && typeof Zonas !== 'undefined') { const zs = Zonas.limpa(o.zonas); if (zs.length) p.zonasMao = zs; }      // (lote 154) as zonas desenhadas à mão
+      if (!are && !sob && typeof Zonas !== 'undefined') { const zs = Zonas.limpa(o.zonas); if (zs.length) p.zonasMao = zs; }
+      if (!are && !sob && typeof Erosao !== 'undefined' && Erosao.forca(o.erosao)) p.erosao = Erosao.forca(o.erosao);      // (lote 156) a erosão (a caverna)      // (lote 154) as zonas desenhadas à mão
       const C = contexto(p, G, r);
       if (tipo === 'arena') nivelDeArena(C); else if (tipo === 'subsolo') nivelDeSubsolo(C); else if (tipo === 'caverna' || tipo === 'covil' || BIO_CAV[tipo]) nivelDeCaverna(C); else if (tipo === 'mina') nivelDeMina(C); else if (tipo === 'navio') nivelDeNavio(C); else nivelDeSalas(C);
       p.grade = Array.from(G.g).join('');
@@ -4156,7 +4159,7 @@ const Masmorra = (() => {
   const cenaDeCima = id => (typeof id === 'string' && id && Store.S.scenes[id] && (!Nuvem.comCampanhas() || Nuvem.naVista(id)) ? id : '');
   function padraoL() {
     const o = App.opt;
-    return Object.assign({ tipo: TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra', tamanho: TAMANHOS[o.masTam] ? o.masTam : 'medio', nivel: 1, segredos: o.masSeg !== false, descida: o.masDesce !== false, sob: '', larg: largEscolhida(o.masLarg) }, escolhas61());
+    return Object.assign({ tipo: TIPOS.some(x => x[0] === o.masTipo) ? o.masTipo : 'pedra', tamanho: TAMANHOS[o.masTam] ? o.masTam : 'medio', nivel: 1, segredos: o.masSeg !== false, descida: o.masDesce !== false, sob: '', larg: largEscolhida(o.masLarg), erosao: Erosao.forca(o.masErosao) || 'nada' }, escolhas61());
   }
   // (lote 61) as escolhas novas (lembradas entre uma janela e outra): as armadilhas, as salas especiais e as variações
   const escolhas61 = () => { const o = App.opt; return { armadilhas: o.masArm === true, especiais: listaDe(o.masEsp, SALAS_ESP), variantes: listaDe(o.masVar, VARIANTES) }; };
@@ -4169,7 +4172,7 @@ const Masmorra = (() => {
       h('div', { class: 'ger-l' }, SALAS_ESP.map(([k, n]) => K.toggle('mas-esp-' + k, (st.especiais || []).includes(k), alterna('especiais', SALAS_ESP, k), n))),
       h('div', { class: 'ger-l' }, VARIANTES.map(([k, n]) => K.toggle('mas-var-' + k, (st.variantes || []).includes(k), alterna('variantes', VARIANTES, k), n))));
   }
-  const lembrarL = st => { if (TIPOS.some(x => x[0] === st.tipo)) App.opt.masTipo = st.tipo; if (CATACUMBAS.includes(st.tipo)) App.opt.catTipo = st.tipo; App.opt.masTam = st.tamanho; App.opt.masSeg = st.segredos; App.opt.masDesce = st.descida; App.opt.masLarg = largEscolhida(st.larg); lembrar61(st); };
+  const lembrarL = st => { if (TIPOS.some(x => x[0] === st.tipo)) App.opt.masTipo = st.tipo; if (CATACUMBAS.includes(st.tipo)) App.opt.catTipo = st.tipo; App.opt.masTam = st.tamanho; App.opt.masSeg = st.segredos; App.opt.masDesce = st.descida; App.opt.masLarg = largEscolhida(st.larg); App.opt.masErosao = st.erosao || 'nada'; lembrar61(st); };
   // as cenas na ordem das famílias (as de dentro recuadas), como na lista "Leva para outra cena"
   function cenasEmFamilia() {
     const comCamp = Nuvem.comCampanhas(), vis = Store.S.order.filter(id => Store.S.scenes[id] && (!comCamp || Nuvem.naVista(id))), F = UI.familiasVistas(vis), arv = [];
@@ -4177,6 +4180,7 @@ const Masmorra = (() => {
     F.raizes.forEach(k => desce(k, 0));
     return arv;
   }
+  const ehCaverna = t => t === 'caverna' || t === 'covil' || !!BIO_CAV[t];      // (lote 156: onde a erosão vale)
   function controlesL(st, K, mudou, lista) {
     if (!Array.isArray(lista)) lista = null;          // (a janela do gerador passa { hex } aqui: só a aba Catacumbas passa a lista)
     const { field, seg, inNum, toggle } = K;
@@ -4186,6 +4190,7 @@ const Masmorra = (() => {
     sel.value = cenaDeCima(st.sob);
     return h('div', { class: 'ger-c' },
       field(lista ? 'Jeito' : 'Tipo', seg('mas-tipo', st.tipo, (lista ? TODOS.filter(x => lista.includes(x[0])) : TIPOS.concat(TIPOS_MAIS.filter(x => x[0] === st.tipo))).map(([k, n]) => [k, n, null, NOTA[k]]), v => muda('tipo', v)), 'stack'),
+      ehCaverna(st.tipo) ? field('Erosão (a água gastou a caverna)', seg('mas-erosao', st.erosao || 'nada', Erosao.FORCAS, v => muda('erosao', v)), 'stack') : null,      // (lote 156)
       field('Largura dos corredores', seg('mas-larg', st.larg || largPadrao(st.tipo), LARGURAS.map(([k, n]) => [k, n]), v => muda('larg', v)), 'stack'),
       h('div', { class: 'ger-l' },
         field('Tamanho', seg('mas-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, `${TAMANHOS[k].W} × ${TAMANHOS[k].H} quadrados`]), v => muda('tamanho', v)), 'stack'),
@@ -4196,7 +4201,7 @@ const Masmorra = (() => {
       controles61(K, st, () => mudou(true)));
   }
   const opcoesDeL = st => Object.assign({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, segredos: !!st.segredos, descida: !!st.descida, larg: st.larg || largPadrao(st.tipo) },
-    st.armadilhas ? { armadilhas: true } : null, st.especiais && st.especiais.length ? { especiais: st.especiais.slice() } : null, st.variantes && st.variantes.length ? { variantes: st.variantes.slice() } : null);
+    st.armadilhas ? { armadilhas: true } : null, st.especiais && st.especiais.length ? { especiais: st.especiais.slice() } : null, st.variantes && st.variantes.length ? { variantes: st.variantes.slice() } : null, Erosao.forca(st.erosao) ? { erosao: st.erosao } : null);
   function aplicarOpcoesL(st, o) {
     if (TODOS.some(x => x[0] === o.tipo)) st.tipo = o.tipo;
     if (TAMANHOS[o.tamanho]) st.tamanho = o.tamanho;
@@ -4204,6 +4209,7 @@ const Masmorra = (() => {
     for (const k of ['segredos', 'descida']) if (typeof o[k] === 'boolean') st[k] = o[k];
     if (typeof o.sob === 'string') st.sob = cenaDeCima(o.sob);
     if (o.larg != null) st.larg = largEscolhida(o.larg);
+    st.erosao = Erosao.forca(o.erosao) || 'nada';      // (lote 156)
     st.armadilhas = o.armadilhas === true; st.especiais = listaDe(o.especiais, SALAS_ESP); st.variantes = listaDe(o.variantes, VARIANTES);      // (lote 61)
     lembrarL(st);
   }
@@ -4212,7 +4218,7 @@ const Masmorra = (() => {
     return `"${sc.name}" criada` + (m ? `, dentro de "${m.name}": a Saída, na escada de subida, leva de volta` : ': uma cena solta — a Saída, na escada de subida, ainda não leva a lugar nenhum (escolha a cena no painel dela)') + (p.desce ? `; a Entrada da escada de descida gera o nível ${p.nivel + 1}.` : '.');
   }
   const LUGAR = { id: 'masmorra', n: 'Masmorra', padrao: padraoL, controles: controlesL, opcoesDe: opcoesDeL, aplicarOpcoes: aplicarOpcoesL,
-    gerar: (st, comum) => gerar(Object.assign({ zonas: st.zonas, tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: comum && comum.estilo, seed: comum && comum.seed, segredos: st.segredos, descida: st.descida, larg: st.larg || largPadrao(st.tipo) }, gerar61(st))),
+    gerar: (st, comum) => gerar(Object.assign({ zonas: st.zonas, erosao: st.erosao, tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: comum && comum.estilo, seed: comum && comum.seed, segredos: st.segredos, descida: st.descida, larg: st.larg || largPadrao(st.tipo) }, gerar61(st))),
     previa, resumo, partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava,
     quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null, nomePadrao,
     criar: (p, nome, ex) => { ex = ex || {}; const sob = cenaDeCima(ex.op && ex.op.sob); return criar(p, nome, sob ? Store.S.scenes[sob] : null, { relevo: ex.relevo !== false, id: ex.id }); },

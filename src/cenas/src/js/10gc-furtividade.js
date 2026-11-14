@@ -1682,6 +1682,91 @@ const Furtividade = (() => {
     nota: 'Uma casa com o terreno em volta, montada a partir da ficha: a casa na frente, os anexos no quintal (ligados por caminhos), os andares e o porão como você escolher, com ou sem guardas. A hora do dia é a escolhida.',
     feito: sc => `"${sc.name}" criada.`,
   }, { partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava, quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null });
+  /* ================= (lote 156) o estilo por exemplo =================
+     O mapa sai do exemplo (Exemplo: o colapso de funções de onda): as casas de parede viram a rocha (o fundo escuro) com as
+     paredes na beira; o chão, do tipo escolhido; a água, a água; o mato, a grama com os arbustos; a porta, uma porta. */
+  const TAM_EX = { pequeno: { n: 'Pequeno', W: 30, H: 22 }, medio: { n: 'Médio', W: 40, H: 30 }, grande: { n: 'Grande', W: 52, H: 38 } };
+  const CHAOS_EX = [['auto', 'Do exemplo'], ['laje', 'Pedra'], ['madeira', 'Madeira'], ['terra', 'Terra'], ['calcada', 'Calçada'], ['grama', 'Grama']];
+  const FONTES_EX = [['pronto', 'Exemplos prontos'], ['desenho', 'O meu desenho'], ['cena', 'De uma cena']];
+  function stEx(o) {
+    o = o && typeof o === 'object' ? o : {};
+    return { fonte: FONTES_EX.some(x => x[0] === o.fonte) ? o.fonte : 'pronto', pronto: Exemplo.PRONTOS[o.pronto] ? o.pronto : 'salas', desenho: Exemplo.valida(o.desenho) && o.desenho.length === 12 && o.desenho[0].length === 12 ? o.desenho.slice() : Exemplo.desenhoPadrao(),
+      cena: typeof o.cena === 'string' ? o.cena : '', tamanho: TAM_EX[o.tamanho] ? o.tamanho : 'medio', sim: o.sim !== false, chao: CHAOS_EX.some(x => x[0] === o.chao) ? o.chao : 'auto' };
+  }
+  function exemploDe(st) {
+    if (st.fonte === 'desenho') return st.desenho;
+    if (st.fonte === 'cena') { const sc = Store.S.scenes[st.cena]; return sc ? Exemplo.daCena(sc) : null; }
+    return Exemplo.PRONTOS[st.pronto].g;
+  }
+  function gerarExemplo(st, comum) {
+    st = stEx(st);
+    const T = TAM_EX[st.tamanho], W = T.W, H = T.H, seed = (Math.round(Number(comum && comum.seed)) >>> 0) || 1;
+    const g0 = exemploDe(st), res = g0 ? Exemplo.fazer(g0, W, H, seed, st.sim, st.fonte === 'pronto' && !!Exemplo.PRONTOS[st.pronto].cerca) : null;
+    const K = plano('exemplo', W, H, seed, { estilo: comum && comum.estilo, estacao: comum && comum.estacao, tamanho: st.tamanho }), p = K.p;
+    p.exemplo = { fonte: st.fonte, nome: st.fonte === 'pronto' ? Exemplo.PRONTOS[st.pronto].n : st.fonte === 'desenho' ? 'o seu desenho' : ((Store.S.scenes[st.cena] || {}).name || 'a cena') };
+    const chao = st.chao !== 'auto' ? st.chao : st.fonte === 'pronto' ? Exemplo.PRONTOS[st.pronto].chao : 'laje';
+    if (!res) {
+      p.falhou = true; p.fundo = 'rocha';
+      K.pinta('piso', { x: 2, y: 2, w: W - 4, h: H - 4, tipo: chao });
+      p.chegada = [Math.floor(W / 2), H - 2];
+      return fim(p, 'exemplo', { tamanho: st.tamanho, guardas: 'poucos' });
+    }
+    const g = res.g, X = (x, y) => x < 0 || y < 0 || x >= W || y >= H ? false : g[y][x] === 'x';
+    p.exemplo.padroes = res.padroes;
+    p.fundo = 'rocha';
+    // o chão, por fileira (as casas iguais juntas)
+    for (let y = 0; y < H; y++) { let x = 0; while (x < W) { const c = g[y][x]; let x2 = x; while (x2 < W && g[y][x2] === c) x2++; const w = x2 - x;
+      if (c === '.' || c === 'p') K.pinta('piso', { x, y, w, h: 1, tipo: chao });
+      else if (c === 'm') K.pinta('piso', { x, y, w, h: 1, tipo: 'grama' });
+      else if (c === 'a') { K.pinta('piso', { x, y, w, h: 1, tipo: 'terra' }); K.pinta('agua', { x, y, w, h: 1 }); p.relevo.push({ t: 'agua', alt: -1.5, k: 'rect', x, y, w, h: 1 }); }
+      if (c === 'x' || c === 'a') K.ocupa(x, y, w, 1);
+      x = x2; } }
+    // as paredes: na beira entre a parede e o resto (juntas numa linha); as portas
+    const portas = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === 'p') { if (X(x - 1, y) && X(x + 1, y)) portas.push([x, y, x + 1, y]); else if (X(x, y - 1) && X(x, y + 1)) portas.push([x, y, x, y + 1]); }
+    for (let y = 1; y < H; y++) { let x = 0; while (x < W) { if (X(x, y - 1) === X(x, y)) { x++; continue; } let x2 = x; while (x2 < W && X(x2, y - 1) !== X(x2, y)) x2++; K.parede(x, y, x2, y, 'wall'); K.pinta('paredeFina', { x1: x, y1: y, x2, y2: y }); x = x2; } }
+    for (let x = 1; x < W; x++) { let y = 0; while (y < H) { if (X(x - 1, y) === X(x, y)) { y++; continue; } let y2 = y; while (y2 < H && X(x - 1, y2) !== X(x, y2)) y2++; K.parede(x, y, x, y2, 'wall'); K.pinta('paredeFina', { x1: x, y1: y, x2: x, y2 }); y = y2; } }
+    for (const [x1, y1, x2, y2] of portas) K.parede(x1, y1, x2, y2, 'door');
+    // o mato: arbustos; as tochas rente às paredes
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === 'm' && K.r() < 0.35) K.poe1(K.r() < 0.3 ? 'arvore' : 'arbusto', x, y);
+    let tochas = 0;
+    for (let i = 0; i < 400 && tochas < Math.round(W * H / 110); i++) { const x = K.ri(1, W - 2), y = K.ri(1, H - 2); if (g[y][x] === '.' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => X(x + dx, y + dy)) && K.poe1('tocha', x, y)) tochas++; }
+    // a chegada: o chão mais perto do meio de baixo
+    let best = null, bd = Infinity;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === '.' || g[y][x] === 'p') { const d = Math.abs(x - W / 2) + (H - 1 - y) * 1.5; if (d < bd) { bd = d; best = [x, y]; } }
+    p.chegada = best ? [best[0], best[1] + 1] : [Math.floor(W / 2), H - 1];
+    p.grade = g.join('');
+    return fim(p, 'exemplo', { tamanho: st.tamanho, guardas: 'poucos' });
+  }
+  const LUGAR_EX = Object.assign({ id: 'exemplo', n: 'Por exemplo', aceitaEstacao: false,
+    padrao: () => stEx(App.opt.exSt),
+    controles(st, K, mudou) {
+      const muda = (k, v) => { st[k] = v; App.opt.exSt = stEx(st); mudou(true); };
+      const g = exemploDe(stEx(st));
+      return h('div', { class: 'ger-c' },
+        K.field('O exemplo', K.seg('ex-fonte', st.fonte, FONTES_EX, v => muda('fonte', v)), 'stack'),
+        st.fonte === 'pronto' ? K.field('Qual', K.seg('ex-pronto', st.pronto, Exemplo.LISTA, v => muda('pronto', v)), 'stack') : null,
+        st.fonte === 'desenho' ? h('div', {}, Exemplo.editor(st.desenho, K, d => muda('desenho', d)),
+          h('div', { class: 'row' }, K.btn('Começar do pronto', () => muda('desenho', Exemplo.PRONTOS[st.pronto].g.slice(0, 12).map(l => (l + 'x'.repeat(12)).slice(0, 12)).concat(Array(12).fill('x'.repeat(12))).slice(0, 12)), { kind: 'small', id: 'ex-do-pronto' }),
+            K.btn('Limpar', () => muda('desenho', Exemplo.vazio(12, 12)), { kind: 'small', id: 'ex-limpar' }))) : null,
+        st.fonte === 'cena' ? K.field('A cena', K.inSelect('ex-cena', st.cena, [['', 'Escolha uma cena']].concat(Store.S.order.filter(id => Store.S.scenes[id]).map(id => [id, Store.S.scenes[id].name])), v => muda('cena', v)), 'stack') : null,
+        st.fonte !== 'desenho' && g ? h('div', { class: 'ex-mini-w' }, Exemplo.miniatura(g)) : null,
+        st.fonte === 'cena' && st.cena && !g ? K.note('Essa cena não tem paredes que fechem um lugar: escolha outra.') : null,
+        K.field('Tamanho', K.seg('ex-tam', st.tamanho, Object.keys(TAM_EX).map(k => [k, TAM_EX[k].n, null, TAM_EX[k].W + ' × ' + TAM_EX[k].H + ' quadrados']), v => muda('tamanho', v)), 'stack'),
+        K.field('O chão', K.seg('ex-chao', st.chao, CHAOS_EX, v => muda('chao', v)), 'stack'),
+        K.toggle('ex-sim', st.sim, v => muda('sim', v), 'Girar e espelhar o exemplo (mais variedade)'));
+    },
+    opcoesDe: st => stEx(st),
+    aplicarOpcoes(st, o) { Object.assign(st, stEx(Object.assign({}, st, o))); },
+    gerar: (st, comum) => gerarExemplo(st, comum),
+    previa, nomePadrao: p => 'Por exemplo: ' + ((p.exemplo && p.exemplo.nome) || 'o exemplo'),
+    resumo: p => (p.falhou ? 'Não deu para seguir esse exemplo (ele é pequeno demais, ou não tem chão bastante, ou não tem pedaços que se encaixam). Tente outro desenho, ou "Gerar outro".' : `Por exemplo (${p.exemplo.nome}) · ${p.W} × ${p.H} quadrados · ${p.exemplo.padroes} pedaços de 3 × 3 aprendidos · ${p.paredes.filter(w => w.k === 'door').length} portas.`),
+    criar: (p, nome, ex) => criar(p, nome, Object.assign({}, ex, { horaLivre: true })),
+    relevoTxt: 'Com relevo (a água)',
+    dica: '"Gerar outro" faz outro mapa no mesmo jeito. Cada pedaço de 3 × 3 do mapa existe no exemplo.',
+    nota: 'O gerador aprende os pedaços de 3 × 3 do exemplo e monta um mapa maior só com pedaços que se encaixam como lá (o colapso de funções de onda). As casas de parede viram rocha com paredes na beira, com a visão e a névoa funcionando.',
+    feito: sc => `"${sc.name}" criada.`,
+  }, semPartes);
   const ehFurtivo = id => IDS.includes(id);
-  return { comodoEm, outraVersaoCena, MOB, chaveSala, IDS, NOMES, LUGARES, ALVOS, TAM, GUARDAS, DIFICS, MED, gerar, previa, resumo, criar, predio, ehFurtivo, catF, LUGAR_SOB, ANEXOS, SALAS_TERREO, PORTES, specLimpa };
+  return { LUGAR_EX, comodoEm, outraVersaoCena, MOB, chaveSala, IDS, NOMES, LUGARES, ALVOS, TAM, GUARDAS, DIFICS, MED, gerar, previa, resumo, criar, predio, ehFurtivo, catF, LUGAR_SOB, ANEXOS, SALAS_TERREO, PORTES, specLimpa };
 })();

@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.14-01",
+      "data": "2026-11-14",
+      "titulo": "Mapas por exemplo e a erosão",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: no “Gerar um lugar…”, o lugar “Por exemplo”. O gerador aprende o jeito de um exemplo pequeno e faz um mapa grande do mesmo jeito, com paredes, portas, visão e névoa. O exemplo pode ser um dos prontos (labirinto, caverna, salas e corredores, cidade em quarteirões, jardim, ruínas), um desenho seu numa grade de 12 × 12 (parede, chão, porta, água, mato) ou uma cena que você já tem.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: a escolha “Erosão” (leve, média, forte) na Região livre e no Encontro. A água da chuva gasta o relevo: os morros ganham encostas riscadas e vales, com o sombreado do relevo e a areia que se juntou. Na caverna, a erosão arredonda as paredes, abre bolsões e alarga as galerias.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.13-11",
       "data": "2026-11-13",
       "titulo": "O mundo na cena, o tempo entre sessões e os segredos",

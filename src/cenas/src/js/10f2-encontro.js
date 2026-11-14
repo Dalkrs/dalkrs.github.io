@@ -2282,9 +2282,10 @@ const Encontro = (() => {
     return { terreno, situacao: T.sit.some(s => s[0] === o.encSit) ? o.encSit : 'surpresa', caminho: camValido(terreno, o.encCam || 'trilha'), tamanho: TAMANHOS[o.encTam] ? o.encTam : 'medio', marcas: o.encMarcas !== false,
       t: Tracado.limpar(o.encTracado),                                            // (lote 8) o traçado (a seção "Traçado")
       chao: 2, mistura: Biomas.mistura(o.encMis),                                 // (lote 13, parte 13b) o chão novo e a mistura dele
-      historia: Historia.valida(o.encHist), achados: o.encAchados !== false };     // (13c) a história do lugar e os achados raros
+      historia: Historia.valida(o.encHist), achados: o.encAchados !== false,      // (13c) a história do lugar e os achados raros
+      erosao: Erosao.FORCAS.some(x => x[0] === o.encErosao) ? o.encErosao : 'nada' };      // (lote 156) a erosão
   }
-  const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; App.opt.encTracado = Tracado.soMudadas(st.t || Tracado.padrao()); App.opt.encMis = st.mistura; App.opt.encHist = Historia.valida(st.historia); App.opt.encAchados = st.achados !== false; };
+  const lembrar = st => { App.opt.encTer = st.terreno; App.opt.encSit = st.situacao; App.opt.encCam = st.caminho; App.opt.encTam = st.tamanho; App.opt.encMarcas = st.marcas; App.opt.encTracado = Tracado.soMudadas(st.t || Tracado.padrao()); App.opt.encMis = st.mistura; App.opt.encHist = Historia.valida(st.historia); App.opt.encAchados = st.achados !== false; App.opt.encErosao = st.erosao || 'nada'; };
   /* ctx.hex (lote 14, parte 14a): o hexágono do Mapa-múndi, quando a janela usa ele — o chão novo vem junto, e o rio e os
      caminhos dele ficam no lugar da rosa do Traçado (o Caminho continua: é o da situação) */
   function controles(st, K, mudou, ctx) {
@@ -2303,6 +2304,7 @@ const Encontro = (() => {
       h('div', { class: 'ger-l' },
         camOps ? field('Caminho', seg('enc-cam', st.caminho, camOps.map(([k, n]) => [k, n]), v => { st.caminho = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack') : null,
         field('Tamanho', seg('enc-tam', st.tamanho, Object.keys(TAMANHOS).map(k => [k, TAMANHOS[k].n, null, TAMANHOS[k].W + ' × ' + TAMANHOS[k].H + ' quadrados']), v => { st.tamanho = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack')),
+      semChao || chao !== 2 || semTerra ? null : field('Erosão', seg('enc-erosao', st.erosao || 'nada', Erosao.FORCAS, v => { st.erosao = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack'),      // (lote 156)
       semChao ? null : chao === 2 ? field('Mistura', seg('enc-mis', Biomas.mistura(st.mistura), Biomas.MISTURAS, v => { st.mistura = v; lembrar(st); mudou(true, { soltar: true }); }), 'stack')
         : h('div', { class: 'ger-l', id: 'enc-chao-velho' }, note('Modelo de antes do chão novo: ele gera o mesmo lugar de sempre, sem as manchas dos vizinhos e os morros.'), btn('Usar o chão novo', usarNovo, { kind: 'small', id: 'enc-chao', title: 'Gera de novo com o chão dos biomas (o modelo guardado não muda)' })),
       // (lote 13, parte 13c) a história do lugar e os achados raros (na água e no pântano não há onde)
@@ -2318,7 +2320,7 @@ const Encontro = (() => {
         rioHex: rioHex ? 'O rio vem do hexágono do Mapa-múndi: ' + rioHex + '.' : null, portoesHex: camHex ? 'Os caminhos vêm do hexágono do Mapa-múndi: ' + camHex + ' (o da situação vai até eles).' : null }));
   }
   const opcoesDe = st => Object.assign({ terreno: st.terreno, situacao: st.situacao, caminho: st.caminho, tamanho: st.tamanho, marcas: !!st.marcas }, st.chao === 2 ? { chao: 2, mistura: Biomas.mistura(st.mistura) } : null,
-    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, Tracado.soMudadas(st.t || Tracado.padrao()));
+    Historia.valida(st.historia).length ? { historia: Historia.valida(st.historia) } : null, { achados: st.achados !== false }, st.erosao && st.erosao !== 'nada' ? { erosao: st.erosao } : null, Tracado.soMudadas(st.t || Tracado.padrao()));
   // op.modelo: as escolhas vêm de um modelo guardado (o de antes do chão novo não tem o chão: fica no de antes)
   function aplicarOpcoes(st, o, op) {
     if (TER[o.terreno]) st.terreno = o.terreno;
@@ -2333,6 +2335,7 @@ const Encontro = (() => {
     // (lote 13, parte 13c: o modelo de antes não tem a história nem os achados — fica sem eles, o mesmo lugar)
     if (Array.isArray(o.historia) || (op && op.modelo)) st.historia = Historia.valida(o.historia);
     if (typeof o.achados === 'boolean') st.achados = o.achados; else if (op && op.modelo) st.achados = false;
+    if (Erosao.FORCAS.some(x => x[0] === o.erosao)) st.erosao = o.erosao; else if (op && op.modelo) st.erosao = 'nada';
     lembrar(st);
   }
   // as partes que travam: o traçado inteiro (a água, o caminho, os penhascos, a peça do meio)
@@ -2358,7 +2361,7 @@ const Encontro = (() => {
   const baseDe = () => null;
   // (lote 13, parte 13c: aceitaEstacao — a janela mostra a Estação e passa a escolhida)
   // (lote 14, parte 14a) o Encontro aceita o hexágono de terra nos terrenos de chão de bioma (o pântano e a água cobrem tudo)
-  const LUGAR = { aceitaHex: (st, hex) => HexCena.aceita(hex) && !!BIOMA[st.terreno], biomaDe: st => BIOMA[st.terreno] || null, aceitaEstacao: true, id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum)), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
+  const LUGAR = { aceitaHex: (st, hex) => HexCena.aceita(hex) && !!BIOMA[st.terreno], biomaDe: st => BIOMA[st.terreno] || null, aceitaEstacao: true, id: 'encontro', n: 'Encontro', padrao, controles, opcoesDe, aplicarOpcoes, gerar: (st, comum) => Erosao.com(st.erosao, () => gerar(Object.assign({}, st, Tracado.soMudadas(st.t || Tracado.padrao()), comum))), previa, resumo, partes, parteEm, nomeDaParte, formaDaParte, travada, alternar, quantasTravadas, baseDe, travaDe, nomePadrao, criar,
     relevoTxt: 'Com relevo, formas e zonas (água, penhascos, abismos, lama, gelo, lava)',
     aceitaSeco: true,                              // (lote 7, parte 5a) a seca do Mapa-múndi seca o chão
     dica: 'Clique no traçado da prévia (o caminho, a água, os morros e os penhascos, a peça do meio) para travar: "Gerar outro" troca só as árvores, as pedras e os objetos.',

@@ -201,6 +201,7 @@ const Biomas = (() => {
     }
     const s = hi - lo > 1e-6 ? 1 / (hi - lo) : 0;
     for (let q = 0; q < alt.length; q++) alt[q] = (alt[q] - lo) * s;
+    if (typeof Erosao !== 'undefined') Erosao.naAltura(alt, W, H, seed);      // (lote 156) com a erosão pedida, a água gasta o chão
     return alt;
   }
 

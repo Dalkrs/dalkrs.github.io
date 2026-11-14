@@ -17,7 +17,7 @@
    --------------------------------------------------------------- */
 const Trama = (() => {
   const arr = v => (Array.isArray(v) ? v : []);
-  const LUGARES_OK = () => new Set(Furtividade.IDS.concat(['sobmedida', 'masmorra', 'catacumbas', 'ruinas']));
+  const LUGARES_OK = () => new Set(Furtividade.IDS.concat(['sobmedida', 'masmorra', 'catacumbas', 'ruinas', 'exemplo']));
   const TAMS = [['curta', 'Curta (1–2)'], ['media', 'Média (3)'], ['longa', 'Longa (4–5)']];
   const TIPOS = [['chave', 'Chave e fechadura'], ['pista', 'Pista escrita'], ['mecanismo', 'Mecanismo'], ['puzzle', 'Puzzle do Escudo'], ['atalho', 'Atalho de volta']];
   const prefs = () => {
