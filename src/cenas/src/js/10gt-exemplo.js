@@ -239,7 +239,7 @@ const Exemplo = (() => {
         }
       }
       if (!cand.length) {
-        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (anda(a[y][x]) && id[y * W + x] !== maior && a[y][x] !== 'a' && a[y][x] !== 'm') a[y][x] = 'x';
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (anda(a[y][x]) && id[y * W + x] !== maior) a[y][x] = 'x';      // (lote 157: a água e o mato soltos também)
         break;
       }
       const [x, y] = cand[Math.floor(cand.length / 2)];
@@ -281,21 +281,47 @@ const Exemplo = (() => {
     return out.some(l => /[.p]/.test(l)) ? out : null;
   }
 
-  /* ---------------- o desenho: a grade de 12 × 12 onde o mestre pinta ---------------- */
+  /* ---------------- o desenho: a grade de 12 × 12 onde o mestre pinta ----------------
+     (lote 157) A tinta escolhida fica escolhida (a janela redesenha a cada traço); o botão direito pinta parede; Desfazer
+     volta o último traço; "Encher" pinta a grade toda com a tinta; a linha de baixo diz quanto chão tem e avisa quando o
+     desenho vai dar um mapa ruim (pouco chão, corredores finos demais). */
+  const ed = { tinta: '.', hist: [] };
+  function avaliar(g) {
+    const t = g.join(''), n = t.length, chao = (t.match(/[.p]/g) || []).length, agua = (t.match(/a/g) || []).length, mato = (t.match(/m/g) || []).length, parede = (t.match(/x/g) || []).length;
+    const avisos = [];
+    if (chao / n < 0.25) avisos.push('pouco chão: o mapa vai sair quase todo de rocha');
+    if (parede / n < 0.08 && chao / n > 0.8) avisos.push('quase sem parede: o mapa vai sair todo aberto');
+    // os corredores de 1 quadrado: o chão com parede dos dois lados (na linha ou na coluna)
+    let fino = 0;
+    for (let y = 1; y < g.length - 1; y++) for (let x = 1; x < g[0].length - 1; x++) if (g[y][x] === '.' && ((g[y][x - 1] === 'x' && g[y][x + 1] === 'x') || (g[y - 1][x] === 'x' && g[y + 1][x] === 'x'))) fino++;
+    if (chao && fino / chao > 0.6) avisos.push('quase tudo é corredor de 1 quadrado: faça umas salas de 3 × 3 ou mais');
+    return { chao: Math.round(chao / n * 100), agua: Math.round(agua / n * 100), mato: Math.round(mato / n * 100), parede: Math.round(parede / n * 100), avisos };
+  }
   function editor(g, K, aoMudar) {
-    let tinta = '.', pintando = false;
-    const L = 12, cel = 22, cv = h('canvas', { class: 'ex-cv', id: 'ex-cv', width: L * cel, height: L * cel, 'aria-label': 'O desenho do exemplo: clique e arraste para pintar' });
+    let pintando = false, tintaAgora = ed.tinta;
+    const L = g.length, cel = Math.floor(300 / L), cv = h('canvas', { class: 'ex-cv', id: 'ex-cv', width: L * cel, height: L * cel, 'aria-label': 'O desenho do exemplo: clique e arraste para pintar; o botão direito pinta parede' });
     const linhas = g.map(l => l.split(''));
-    const pinta = () => { const c = cv.getContext('2d'); for (let y = 0; y < L; y++) for (let x = 0; x < L; x++) { c.fillStyle = COR[linhas[y][x]] || '#000'; c.fillRect(x * cel, y * cel, cel, cel); c.strokeStyle = 'rgba(255,255,255,0.08)'; c.strokeRect(x * cel + 0.5, y * cel + 0.5, cel - 1, cel - 1); } };
+    const pinta = () => { const c = cv.getContext('2d'); for (let y = 0; y < L; y++) for (let x = 0; x < L; x++) { c.fillStyle = COR[linhas[y][x]] || '#000'; c.fillRect(x * cel, y * cel, cel, cel); c.strokeStyle = 'rgba(255,255,255,0.1)'; c.strokeRect(x * cel + 0.5, y * cel + 0.5, cel - 1, cel - 1); if (linhas[y][x] === 'p') { c.fillStyle = '#1a1208'; c.font = `700 ${Math.round(cel * 0.55)}px system-ui`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('P', x * cel + cel / 2, y * cel + cel / 2 + 1); } } };
     const casa = e => { const b = cv.getBoundingClientRect(); return [Math.floor((e.clientX - b.left) / b.width * L), Math.floor((e.clientY - b.top) / b.height * L)]; };
-    const poe = e => { const [x, y] = casa(e); if (x < 0 || y < 0 || x >= L || y >= L || linhas[y][x] === tinta) return; linhas[y][x] = tinta; pinta(); };
-    cv.addEventListener('pointerdown', e => { pintando = true; cv.setPointerCapture(e.pointerId); poe(e); });
+    const poe = e => { const [x, y] = casa(e); if (x < 0 || y < 0 || x >= L || y >= L || linhas[y][x] === tintaAgora) return; linhas[y][x] = tintaAgora; pinta(); };
+    const fecha = () => aoMudar(linhas.map(l => l.join('')));
+    cv.addEventListener('contextmenu', e => e.preventDefault());
+    cv.addEventListener('pointerdown', e => { e.preventDefault(); ed.hist.push(linhas.map(l => l.join(''))); if (ed.hist.length > 30) ed.hist.shift(); tintaAgora = e.button === 2 ? 'x' : ed.tinta; pintando = true; cv.setPointerCapture(e.pointerId); poe(e); });
     cv.addEventListener('pointermove', e => { if (pintando) poe(e); });
-    const fim = () => { if (!pintando) return; pintando = false; aoMudar(linhas.map(l => l.join(''))); };
+    const fim = () => { if (!pintando) return; pintando = false; fecha(); };
     cv.addEventListener('pointerup', fim); cv.addEventListener('pointercancel', fim);
     setTimeout(pinta, 0);
-    const paleta = h('div', { class: 'ex-pal', id: 'ex-pal' }, CASAS.map(([k, n]) => h('button', { type: 'button', class: 'ex-tinta' + (k === tinta ? ' on' : ''), id: 'ex-t-' + (k === '.' ? 'chao' : k), title: n, onclick: e => { tinta = k; for (const b of e.currentTarget.parentNode.children) b.classList.toggle('on', b === e.currentTarget); } }, h('span', { class: 'ex-amostra', style: { background: COR[k] } }), n)));
-    return h('div', { class: 'ex-ed' }, paleta, cv);
+    const paleta = h('div', { class: 'ex-pal', id: 'ex-pal', role: 'group', 'aria-label': 'A tinta' }, CASAS.map(([k, n]) => h('button', { type: 'button', class: 'ex-tinta' + (k === ed.tinta ? ' on' : ''), id: 'ex-t-' + (k === '.' ? 'chao' : k), 'aria-pressed': String(k === ed.tinta), title: n, onclick: e => { ed.tinta = k; for (const b of e.currentTarget.parentNode.children) { const on = b === e.currentTarget; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); } } }, h('span', { class: 'ex-amostra', style: { background: COR[k] } }), n)));
+    const av = avaliar(g);
+    return h('div', { class: 'ex-ed' },
+      h('ol', { class: 'ex-passos' }, h('li', { text: 'Escolha a tinta.' }), h('li', { text: 'Clique ou arraste na grade (o botão direito pinta parede).' }), h('li', { text: 'Ao soltar o mouse, a prévia faz o mapa grande no mesmo jeito.' })),
+      paleta, cv,
+      h('div', { class: 'row ex-acoes' },
+        K.btn('Desfazer', () => { const v = ed.hist.pop(); if (v) aoMudar(v); }, { kind: 'small', icon: 'undo', id: 'ex-desfazer', disabled: !ed.hist.length }),
+        K.btn('Encher com a tinta', () => { ed.hist.push(linhas.map(l => l.join(''))); aoMudar(Array.from({ length: L }, () => ed.tinta.repeat(L))); }, { kind: 'small', id: 'ex-encher' })),
+      h('p', { class: 'note ex-conta', id: 'ex-conta', text: `Chão ${av.chao}% · parede ${av.parede}%` + (av.agua ? ` · água ${av.agua}%` : '') + (av.mato ? ` · mato ${av.mato}%` : '') + '. O mapa sai com mais ou menos essa mistura.' }),
+      av.avisos.length ? h('p', { class: 'note ex-aviso', id: 'ex-aviso', text: 'Atenção: ' + av.avisos.join('; ') + '.' }) : null,
+      K.note('Dica: o gerador copia os pedaços de 3 × 3 do desenho. Salas de 3 × 3 ou mais, corredores ligando tudo e uma porta (P) no meio de uma parede de 1 quadrado dão os melhores mapas.'));
   }
   // uma miniatura de um exemplo (o pronto, o da cena)
   function miniatura(g) {
@@ -303,5 +329,5 @@ const Exemplo = (() => {
     setTimeout(() => { const c = cv.getContext('2d'); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { c.fillStyle = COR[g[y][x]] || '#000'; c.fillRect(x * cel, y * cel, cel, cel); } }, 0);
     return cv;
   }
-  return { CASAS, COR, PRONTOS, LISTA, valida, vazio, desenhoPadrao, aprender, gerar, fazer, limpar, daCena, editor, miniatura };
+  return { avaliar, CASAS, COR, PRONTOS, LISTA, valida, vazio, desenhoPadrao, aprender, gerar, fazer, limpar, daCena, editor, miniatura };
 })();

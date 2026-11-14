@@ -354,8 +354,18 @@ const Gerador = (() => {
       if (res.comum.clima !== undefined) comum.clima = res.comum.clima;
       E.trava = null; E.base = null; E.seed = novaSemente();
       if (res.nome) { inNome.value = res.nome; nomeMexido = true; } else nomeMexido = false;
+      // (lote 157) a planta da IA vira as zonas do lugar (o tamanho do terreno vem de um sorteio de prova, sem as zonas)
+      let comPlanta = false;
+      if (res.planta && Zonas.vale(L)) {
+        try {
+          Zonas.guarda(L.id, []); E.op.zonas = [];
+          const prova = L.gerar(E.op, comEstacao(L, { estilo: comum.estilo, seed: E.seed }));
+          const zs = IaMapa.zonasDe(res.planta, prova.W, prova.H, Zonas.tiposDe(L.id).includes('casa'));
+          if (zs.length) { Zonas.guarda(L.id, zs); comPlanta = true; }
+        } catch (e) { console.error(e); }
+      }
       lembrarComum(); pintar(); refazer();
-      iaMsg.replaceChildren(...[h('p', { class: 'note', text: `A IA escolheu: ${L.n}. A ficha ficou preenchida: mude o que quiser, ou "Gerar outro".` + (res.restam != null ? ` (Restam ${res.restam} pedidos hoje.)` : '') }),
+      iaMsg.replaceChildren(...[h('p', { class: 'note', text: `A IA escolheu: ${L.n}. A ficha ficou preenchida${comPlanta ? ' e a planta desenhada (as zonas: veja o bloco "Zonas à mão")' : ''}: mude o que quiser, ou "Gerar outro".` + (res.restam != null ? ` (Restam ${res.restam} pedidos hoje.)` : '') }),
         res.notas && L.id !== 'sobmedida' ? h('p', { class: 'note ia-notas', text: 'Notas para o mestre: ' + res.notas }) : null,
         res.fora.length && L.id !== 'sobmedida' ? h('p', { class: 'note', text: 'O gerador ainda não faz: ' + res.fora.join('; ') + '.' }) : null].filter(Boolean));
     }

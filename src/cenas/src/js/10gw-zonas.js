@@ -115,12 +115,27 @@ const Zonas = (() => {
       vivo = Object.assign(rect(ini, ponto(e)), estado.tipo === 'sala' && estado.papel ? { papel: estado.papel } : null);
       redesenhar(vivo);
     }, true);
+    // (lote 157) a zona debaixo do mouse (a de cima, a última desenhada)
+    const zonaEm = (id, [x, y]) => { const l = de(id); for (let i = l.length - 1; i >= 0; i--) { const z = l[i]; if (x >= z.x && y >= z.y && x < z.x + z.w && y < z.y + z.h) return i; } return -1; };
+    const tirar = (id, i) => { const l = de(id), z = l[i]; l.splice(i, 1); guarda(id, l); pronto(); UI.toast(`Zona tirada: ${(TIPOS[z.k] || {}).n || 'zona'}.`, { key: 'zonas', action: 'Desfazer', run: () => { guarda(id, de(id).concat([z])); pronto(); } }); };
     const fim = e => {
       if (!estado.ativo || !ini) return;
       e.stopImmediatePropagation();
-      const z = vivo; ini = null; vivo = null;
-      if (z && z.w >= 2 && z.h >= 2) { const id = lugarDe(); guarda(id, de(id).concat([z])); pronto(); } else redesenhar(null);
+      const z = vivo, p0 = ini; ini = null; vivo = null;
+      const id = lugarDe();
+      if (z && z.w >= 2 && z.h >= 2) {
+        // (lote 157) a casa é uma só: a nova fica no lugar da de antes
+        const l = z.k === 'casa' ? de(id).filter(x => x.k !== 'casa') : de(id);
+        guarda(id, l.concat([z])); pronto();
+        if (de(id).length === 1) UI.toast('Para tirar uma zona: clique nela (com "Desenhar" ligado), clique com o botão direito, ou use o × da lista.', { key: 'zonas', long: true });
+        return;
+      }
+      // um clique (sem arrastar) numa zona: tira
+      const i = zonaEm(id, p0);
+      if (i >= 0) tirar(id, i); else redesenhar(null);
     };
+    // o botão direito numa zona tira (com ou sem o desenho ligado)
+    cv.addEventListener('contextmenu', e => { const id = lugarDe(), i = zonaEm(id, ponto(e)); if (i < 0) return; e.preventDefault(); e.stopImmediatePropagation(); tirar(id, i); }, true);
     cv.addEventListener('pointerup', fim, true);
     cv.addEventListener('pointercancel', fim, true);
     cv.addEventListener('click', e => { if (estado.ativo) e.stopImmediatePropagation(); }, true);
@@ -132,7 +147,7 @@ const Zonas = (() => {
     if (!tipos.includes(estado.tipo)) estado.tipo = tipos[0];
     const set = o => { Object.assign(estado, o); mudou(false); };
     return h('div', { class: 'ger-zonas', id: 'ger-zonas' },
-      K.toggle('ger-zonas-on', estado.ativo, v => set({ ativo: v }), 'Desenhar na prévia (arraste para criar)'),
+      K.toggle('ger-zonas-on', estado.ativo, v => set({ ativo: v }), 'Desenhar na prévia (arraste para criar; clique numa zona para tirar)'),
       estado.ativo ? K.field('O que desenhar', K.seg('ger-zonas-tipo', estado.tipo, tipos.map(k => [k, TIPOS[k].n]), v => set({ tipo: v })), 'stack') : null,
       estado.ativo && estado.tipo === 'sala' && id !== 'masmorra' ? K.field('O uso da sala', K.inSelect('ger-zonas-uso', estado.papel, USOS(), v => set({ papel: v })), 'stack') : null,
       zs.length ? h('ul', { class: 'list ger-zonas-l' }, zs.map((z, i) => h('li', { class: 'ger-zl' },

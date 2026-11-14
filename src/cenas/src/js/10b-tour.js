@@ -5,7 +5,7 @@
    sozinho na primeira vez que o mestre entra e fica no menu ⋯ para rever.
    --------------------------------------------------------------- */
 const Tour = (() => {
-  let root = null, hole = null, card = null, steps = [], at = 0, saved = null, tick = 0;
+  let root = null, hole = null, card = null, steps = [], at = 0, saved = null, tick = 0, outro = null;      // outro: (lote 157) um passeio de fora (as novidades)
   const SEEN_KEY = 'tinycats-tour', SEEN_KEY_OLD = 'urgm-tour';       // marca de "já viu o tutorial" neste navegador
 
   const rectOf = sel => {
@@ -113,7 +113,7 @@ const Tour = (() => {
     at = clamp(k, 0, steps.length - 1);
     const st = steps[at], last = at === steps.length - 1;
     if (st.enter) st.enter();
-    UI.renderAll();
+    if (!st.semRender) UI.renderAll();
     if (st.after) st.after();
     // ev.detail é 0 quando o "clique" veio do teclado (Enter ou espaço)
     const go = h('button', { type: 'button', class: 'btn primary', id: 'tour-next', onclick: ev => (last ? finish(ev.detail === 0) : show(at + 1)) }, h('span', { text: st.next || 'Próximo' }));
@@ -150,13 +150,16 @@ const Tour = (() => {
     }
   }
 
-  function start() {
+  /* (lote 157) start(o): um passeio de fora — o.passos (a lista), o.aoFim (fechar o que ele abriu), o.marcar (guardar
+     que já viu) */
+  function start(o) {
     if (root) return;
+    outro = o && Array.isArray(o.passos) ? o : null;
     UI.closeMenus(); UI.closeModal();
     if (!isGM()) UI.setViewer('gm');
     Tools.cancel();
     saved = { sel: App.sel.slice(), tab: App.tab, sideOpen: App.sideOpen, tool: App.tool, view: Object.assign({}, App.view) };
-    steps = build();
+    steps = outro ? outro.passos : build();
     hole = h('div', { class: 'tour-hole none' });
     card = h('div', { class: 'tour-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'tour-title' });
     root = h('div', { class: 'tour', id: 'tour' }, hole, card);
@@ -172,6 +175,8 @@ const Tour = (() => {
     document.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', layout);
     root.remove(); root = hole = card = null;
+    const o = outro; outro = null;
+    if (o && o.aoFim) { try { o.aoFim(); } catch (e) { console.error(e); } }
     if (byKey === true) {
       // fechou pelo teclado com a tecla ainda apertada: as repetições dela não podem cair nos atalhos do mapa
       const eat = e => { if (e.repeat) { e.stopPropagation(); e.preventDefault(); } };
@@ -185,6 +190,7 @@ const Tour = (() => {
     Tools.set(saved.tool);
     setSel(saved.sel.filter(s => Store.get(s.c, s.id)));
     saved = null;
+    if (o) { if (o.marcar) o.marcar(); UI.renderAll(); return; }
     Store.S.prefs.tour = 1;
     Persist.meta();
     try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) { /* sem armazenamento: o tutorial volta na próxima visita */ }

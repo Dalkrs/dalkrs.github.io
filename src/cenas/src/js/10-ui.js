@@ -1212,6 +1212,7 @@ const UI = (() => {
       { label: 'Animar efeitos e clima', check: App.anim, run: () => { App.anim = !App.anim; Store.S.prefs.anim = App.anim; Persist.meta(); Render.request(); } },
       { label: 'Atalhos de teclado', icon: 'help', run: helpBox },
       gm ? { label: 'Rever o tutorial', icon: 'play', run: () => Tour.start() } : null,
+      gm ? { label: 'Rever as novidades do gerador', icon: 'play', run: () => Novidades.start() } : null,      // (lote 157)
     ]);
   }
   function helpBox() {

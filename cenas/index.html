@@ -1451,6 +1451,11 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .ex-cv { width: 264px; height: 264px; border-radius: 8px; border: 1px solid var(--line-strong); cursor: crosshair; touch-action: none; image-rendering: pixelated; }
 .ex-mini-w { margin: 6px 0; }
 .ex-mini { border-radius: 6px; border: 1px solid var(--line); image-rendering: pixelated; max-width: 100%; }
+/* (lote 157) o editor do desenho, mais claro */
+.ex-passos { margin: 0 0 2px 18px; padding: 0; font-size: 13px; line-height: 1.5; }
+.ex-cv { width: 300px; height: 300px; }
+.ex-acoes { flex-wrap: wrap; gap: 6px; }
+.ex-aviso { color: var(--warn, #f0c448); }
 </style>
 </head>
 <body>
@@ -19615,6 +19620,7 @@ const UI = (() => {
       { label: 'Animar efeitos e clima', check: App.anim, run: () => { App.anim = !App.anim; Store.S.prefs.anim = App.anim; Persist.meta(); Render.request(); } },
       { label: 'Atalhos de teclado', icon: 'help', run: helpBox },
       gm ? { label: 'Rever o tutorial', icon: 'play', run: () => Tour.start() } : null,
+      gm ? { label: 'Rever as novidades do gerador', icon: 'play', run: () => Novidades.start() } : null,      // (lote 157)
     ]);
   }
   function helpBox() {
@@ -22788,7 +22794,7 @@ const UI = (() => {
    sozinho na primeira vez que o mestre entra e fica no menu ⋯ para rever.
    --------------------------------------------------------------- */
 const Tour = (() => {
-  let root = null, hole = null, card = null, steps = [], at = 0, saved = null, tick = 0;
+  let root = null, hole = null, card = null, steps = [], at = 0, saved = null, tick = 0, outro = null;      // outro: (lote 157) um passeio de fora (as novidades)
   const SEEN_KEY = 'tinycats-tour', SEEN_KEY_OLD = 'urgm-tour';       // marca de "já viu o tutorial" neste navegador
 
   const rectOf = sel => {
@@ -22896,7 +22902,7 @@ const Tour = (() => {
     at = clamp(k, 0, steps.length - 1);
     const st = steps[at], last = at === steps.length - 1;
     if (st.enter) st.enter();
-    UI.renderAll();
+    if (!st.semRender) UI.renderAll();
     if (st.after) st.after();
     // ev.detail é 0 quando o "clique" veio do teclado (Enter ou espaço)
     const go = h('button', { type: 'button', class: 'btn primary', id: 'tour-next', onclick: ev => (last ? finish(ev.detail === 0) : show(at + 1)) }, h('span', { text: st.next || 'Próximo' }));
@@ -22933,13 +22939,16 @@ const Tour = (() => {
     }
   }
 
-  function start() {
+  /* (lote 157) start(o): um passeio de fora — o.passos (a lista), o.aoFim (fechar o que ele abriu), o.marcar (guardar
+     que já viu) */
+  function start(o) {
     if (root) return;
+    outro = o && Array.isArray(o.passos) ? o : null;
     UI.closeMenus(); UI.closeModal();
     if (!isGM()) UI.setViewer('gm');
     Tools.cancel();
     saved = { sel: App.sel.slice(), tab: App.tab, sideOpen: App.sideOpen, tool: App.tool, view: Object.assign({}, App.view) };
-    steps = build();
+    steps = outro ? outro.passos : build();
     hole = h('div', { class: 'tour-hole none' });
     card = h('div', { class: 'tour-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'tour-title' });
     root = h('div', { class: 'tour', id: 'tour' }, hole, card);
@@ -22955,6 +22964,8 @@ const Tour = (() => {
     document.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', layout);
     root.remove(); root = hole = card = null;
+    const o = outro; outro = null;
+    if (o && o.aoFim) { try { o.aoFim(); } catch (e) { console.error(e); } }
     if (byKey === true) {
       // fechou pelo teclado com a tecla ainda apertada: as repetições dela não podem cair nos atalhos do mapa
       const eat = e => { if (e.repeat) { e.stopPropagation(); e.preventDefault(); } };
@@ -22968,6 +22979,7 @@ const Tour = (() => {
     Tools.set(saved.tool);
     setSel(saved.sel.filter(s => Store.get(s.c, s.id)));
     saved = null;
+    if (o) { if (o.marcar) o.marcar(); UI.renderAll(); return; }
     Store.S.prefs.tour = 1;
     Persist.meta();
     try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) { /* sem armazenamento: o tutorial volta na próxima visita */ }
@@ -22978,6 +22990,61 @@ const Tour = (() => {
   const seen = () => { if (Store.S.prefs.tour) return true; try { return localStorage.getItem(SEEN_KEY) === '1' || localStorage.getItem(SEEN_KEY_OLD) === '1'; } catch (e) { return false; } };
 
   return { start, finish, seen, active: () => !!root, step: () => at };
+})();
+/* ---------------------------------------------------------------
+   10b2. AS NOVIDADES DO GERADOR (lote 157) — um passeio que abre as telas de verdade e acende cada novidade dos lotes
+   146 a 156, com um texto curto. Toca uma vez para o mestre, ao abrir as Cenas (depois do tutorial de primeiro uso);
+   fica no menu ⋯ ("Rever as novidades do gerador"). Usa o mesmo cartão do Tour; o que ele abre, ele fecha no fim.
+   --------------------------------------------------------------- */
+const Novidades = (() => {
+  const VERSAO = 157, CHAVE = 'tinycats-novidades-gerador';
+  const vistas = () => { if ((Store.S.prefs.novidades || 0) >= VERSAO) return true; try { return Number(localStorage.getItem(CHAVE) || 0) >= VERSAO; } catch (e) { return false; } };
+  const marcar = () => { Store.S.prefs.novidades = VERSAO; Persist.meta(); try { localStorage.setItem(CHAVE, String(VERSAO)); } catch (e) { /* sem armazenamento */ } };
+  const rect = sel => () => { const n = document.querySelector(sel); if (!n) return null; const r = n.getBoundingClientRect(); return r.width > 4 && r.height > 4 ? r : null; };
+  // abre (ou troca para) o lugar do gerador, e abre o bloco pedido
+  function abrir(lugar, bloco, foco) {
+    const v = Gerador.vivo();
+    if (!v || v.lugar !== lugar) { UI.closeModal(); Gerador.abrir(lugar); }
+    const d = bloco ? document.getElementById('ger-bl-' + bloco) : null;
+    if (d) d.open = true;
+    const n = document.querySelector(foco || ('#ger-bl-' + bloco));
+    if (n) n.scrollIntoView({ block: 'center' });
+  }
+  const passo = (title, text, o) => Object.assign({ title, text, semRender: true }, o || {});
+  function passos() {
+    return [
+      passo('Novidades no gerador de mapas', 'São 12 novidades. Eu abro cada tela e mostro onde fica. Você só lê e avança: nada muda nas cenas.', { next: 'Começar' }),
+      passo('Gerar um lugar…', 'Tudo começa aqui: no menu das cenas, "Gerar um lugar…". Na coluna da esquerda, os lugares. Dois são novos: Sob medida e Por exemplo.',
+        { enter: () => abrir('sobmedida', 'lugar', '#ger-lugar'), target: rect('#ger-lugar'), side: 'right' }),
+      passo('Descrever com a IA', 'Escreva o lugar do seu jeito. A IA escolhe o gerador, preenche a ficha e agora também desenha a planta: onde fica a casa, cada cômodo, o lago, a mata. Depois dá para mudar tudo.',
+        { enter: () => abrir('sobmedida', 'ia'), target: rect('#ger-bl-ia'), side: 'left' }),
+      passo('Sob medida', 'A ficha da casa: o terreno, o muro, o porte, as salas do térreo, os andares e os anexos do quintal (piscina, estufa, estábulo…).',
+        { enter: () => abrir('sobmedida', 'lugar'), target: rect('#ger-bl-lugar'), side: 'left' }),
+      passo('Por exemplo', 'Mostre um exemplo pequeno e o gerador faz um mapa grande do mesmo jeito. O exemplo pode ser um pronto, um desenho seu (12 × 12) ou uma cena que você já tem.',
+        { enter: () => abrir('exemplo', 'lugar', '#ex-fonte'), target: rect('#ger-bl-lugar'), side: 'left' }),
+      passo('Zonas à mão', 'Ligue "Desenhar na prévia" e arraste: onde fica a casa, os cômodos (com o uso), um lago, uma mata, um pátio ou uma área vazia. O gerador obedece.',
+        { enter: () => abrir('casarao', 'zonas'), target: rect('#ger-bl-zonas'), side: 'left' }),
+      passo('Outra versão do cômodo', 'Clique num cômodo da prévia: os móveis dele são sorteados de novo, e o resto fica igual. Na cena pronta, é pelo botão direito dentro do cômodo.',
+        { enter: () => abrir('casarao', null, '#ger-prev'), target: rect('#ger-prev'), side: 'right' }),
+      passo('A dificuldade medida', 'Nos lugares de Furtividade: escolha Fácil, Médio, Difícil ou Muito difícil, e o gerador põe ou tira guardas até bater. "Ver o calor" mostra onde os guardas olham e os caminhos até o alvo.',
+        { enter: () => abrir('casarao', 'lugar', '#fur-dific'), target: rect('#fur-dific'), side: 'left' }),
+      passo('A história da missão', 'Os passos até o alvo: uma porta trancada e a chave em outro cômodo, um diário com a combinação, uma alavanca, um puzzle do Escudo, e o atalho de volta.',
+        { enter: () => abrir('casarao', 'trama'), target: rect('#ger-bl-trama'), side: 'left' }),
+      passo('O tempo', 'O lugar pode sair Usado, Abandonado ou Em ruínas, e com as marcas do que houve: incêndio, saque, batalha ou inundação. Uma nota e uma pista ficam escondidas.',
+        { enter: () => abrir('casarao', 'tempo'), target: rect('#ger-bl-tempo'), side: 'left' }),
+      passo('A erosão', 'Na Região livre, no Encontro e nas cavernas: a água da chuva gasta o relevo. Saem vales, encostas riscadas e areia onde a água para.',
+        { enter: () => abrir('regiao', 'lugar', '#reg-erosao'), target: rect('#reg-erosao'), side: 'left' }),
+      passo('A aba Guardas', 'Para cada jogador, o cone e a rota separados. E também: o calor dos guardas, a lista da história da missão e os segredos com três pistas.',
+        { enter: () => { UI.closeModal(); App.tab = 'guard'; App.sideOpen = true; UI.renderAll(); }, target: rect('#tab-guard'), side: 'below' }),
+      passo('O menu das cenas', '"Envelhecer esta cena…" faz uma cópia anos depois. "O tempo passou…" muda a cena nela mesma entre uma sessão e outra: a guarda reage, as portas são consertadas, os corpos saem.',
+        { enter: () => { UI.closeModal(); }, target: rect('#sceneBtn'), side: 'below' }),
+      passo('Do Mapa-múndi', 'O "Gerar a cena aqui" agora traz o reino dono da região (as cores e o nome nos guardas) e o que está por perto, numa nota só sua.',
+        { enter: () => { UI.closeModal(); } }),
+      passo('Pronto', 'Para ver de novo: menu ⋯ › "Rever as novidades do gerador".', { next: 'Concluir', enter: () => { UI.closeModal(); } }),
+    ];
+  }
+  function start() { if (!isGM()) return; Tour.start({ passos: passos(), aoFim: () => UI.closeModal(), marcar }); }
+  return { start, vistas, marcar, VERSAO };
 })();
 /* ---------------------------------------------------------------
    10c. LUTA — as telas de combate (as contas ficam em 07e-combate.js)
@@ -49792,8 +49859,7 @@ const Furtividade = (() => {
         K.field('O exemplo', K.seg('ex-fonte', st.fonte, FONTES_EX, v => muda('fonte', v)), 'stack'),
         st.fonte === 'pronto' ? K.field('Qual', K.seg('ex-pronto', st.pronto, Exemplo.LISTA, v => muda('pronto', v)), 'stack') : null,
         st.fonte === 'desenho' ? h('div', {}, Exemplo.editor(st.desenho, K, d => muda('desenho', d)),
-          h('div', { class: 'row' }, K.btn('Começar do pronto', () => muda('desenho', Exemplo.PRONTOS[st.pronto].g.slice(0, 12).map(l => (l + 'x'.repeat(12)).slice(0, 12)).concat(Array(12).fill('x'.repeat(12))).slice(0, 12)), { kind: 'small', id: 'ex-do-pronto' }),
-            K.btn('Limpar', () => muda('desenho', Exemplo.vazio(12, 12)), { kind: 'small', id: 'ex-limpar' }))) : null,
+          K.field('Começar de um pronto', K.inSelect('ex-do-pronto', '', [['', 'Escolha (troca o desenho)']].concat(Exemplo.LISTA), v => { if (!v) return; const g12 = Exemplo.PRONTOS[v].g.slice(0, 12).map(l => (l + 'x'.repeat(12)).slice(0, 12)); while (g12.length < 12) g12.push('x'.repeat(12)); muda('desenho', g12); }), 'stack')) : null,
         st.fonte === 'cena' ? K.field('A cena', K.inSelect('ex-cena', st.cena, [['', 'Escolha uma cena']].concat(Store.S.order.filter(id => Store.S.scenes[id]).map(id => [id, Store.S.scenes[id].name])), v => muda('cena', v)), 'stack') : null,
         st.fonte !== 'desenho' && g ? h('div', { class: 'ex-mini-w' }, Exemplo.miniatura(g)) : null,
         st.fonte === 'cena' && st.cena && !g ? K.note('Essa cena não tem paredes que fechem um lugar: escolha outra.') : null,
@@ -50278,7 +50344,7 @@ const Exemplo = (() => {
         }
       }
       if (!cand.length) {
-        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (anda(a[y][x]) && id[y * W + x] !== maior && a[y][x] !== 'a' && a[y][x] !== 'm') a[y][x] = 'x';
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (anda(a[y][x]) && id[y * W + x] !== maior) a[y][x] = 'x';      // (lote 157: a água e o mato soltos também)
         break;
       }
       const [x, y] = cand[Math.floor(cand.length / 2)];
@@ -50320,21 +50386,47 @@ const Exemplo = (() => {
     return out.some(l => /[.p]/.test(l)) ? out : null;
   }
 
-  /* ---------------- o desenho: a grade de 12 × 12 onde o mestre pinta ---------------- */
+  /* ---------------- o desenho: a grade de 12 × 12 onde o mestre pinta ----------------
+     (lote 157) A tinta escolhida fica escolhida (a janela redesenha a cada traço); o botão direito pinta parede; Desfazer
+     volta o último traço; "Encher" pinta a grade toda com a tinta; a linha de baixo diz quanto chão tem e avisa quando o
+     desenho vai dar um mapa ruim (pouco chão, corredores finos demais). */
+  const ed = { tinta: '.', hist: [] };
+  function avaliar(g) {
+    const t = g.join(''), n = t.length, chao = (t.match(/[.p]/g) || []).length, agua = (t.match(/a/g) || []).length, mato = (t.match(/m/g) || []).length, parede = (t.match(/x/g) || []).length;
+    const avisos = [];
+    if (chao / n < 0.25) avisos.push('pouco chão: o mapa vai sair quase todo de rocha');
+    if (parede / n < 0.08 && chao / n > 0.8) avisos.push('quase sem parede: o mapa vai sair todo aberto');
+    // os corredores de 1 quadrado: o chão com parede dos dois lados (na linha ou na coluna)
+    let fino = 0;
+    for (let y = 1; y < g.length - 1; y++) for (let x = 1; x < g[0].length - 1; x++) if (g[y][x] === '.' && ((g[y][x - 1] === 'x' && g[y][x + 1] === 'x') || (g[y - 1][x] === 'x' && g[y + 1][x] === 'x'))) fino++;
+    if (chao && fino / chao > 0.6) avisos.push('quase tudo é corredor de 1 quadrado: faça umas salas de 3 × 3 ou mais');
+    return { chao: Math.round(chao / n * 100), agua: Math.round(agua / n * 100), mato: Math.round(mato / n * 100), parede: Math.round(parede / n * 100), avisos };
+  }
   function editor(g, K, aoMudar) {
-    let tinta = '.', pintando = false;
-    const L = 12, cel = 22, cv = h('canvas', { class: 'ex-cv', id: 'ex-cv', width: L * cel, height: L * cel, 'aria-label': 'O desenho do exemplo: clique e arraste para pintar' });
+    let pintando = false, tintaAgora = ed.tinta;
+    const L = g.length, cel = Math.floor(300 / L), cv = h('canvas', { class: 'ex-cv', id: 'ex-cv', width: L * cel, height: L * cel, 'aria-label': 'O desenho do exemplo: clique e arraste para pintar; o botão direito pinta parede' });
     const linhas = g.map(l => l.split(''));
-    const pinta = () => { const c = cv.getContext('2d'); for (let y = 0; y < L; y++) for (let x = 0; x < L; x++) { c.fillStyle = COR[linhas[y][x]] || '#000'; c.fillRect(x * cel, y * cel, cel, cel); c.strokeStyle = 'rgba(255,255,255,0.08)'; c.strokeRect(x * cel + 0.5, y * cel + 0.5, cel - 1, cel - 1); } };
+    const pinta = () => { const c = cv.getContext('2d'); for (let y = 0; y < L; y++) for (let x = 0; x < L; x++) { c.fillStyle = COR[linhas[y][x]] || '#000'; c.fillRect(x * cel, y * cel, cel, cel); c.strokeStyle = 'rgba(255,255,255,0.1)'; c.strokeRect(x * cel + 0.5, y * cel + 0.5, cel - 1, cel - 1); if (linhas[y][x] === 'p') { c.fillStyle = '#1a1208'; c.font = `700 ${Math.round(cel * 0.55)}px system-ui`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('P', x * cel + cel / 2, y * cel + cel / 2 + 1); } } };
     const casa = e => { const b = cv.getBoundingClientRect(); return [Math.floor((e.clientX - b.left) / b.width * L), Math.floor((e.clientY - b.top) / b.height * L)]; };
-    const poe = e => { const [x, y] = casa(e); if (x < 0 || y < 0 || x >= L || y >= L || linhas[y][x] === tinta) return; linhas[y][x] = tinta; pinta(); };
-    cv.addEventListener('pointerdown', e => { pintando = true; cv.setPointerCapture(e.pointerId); poe(e); });
+    const poe = e => { const [x, y] = casa(e); if (x < 0 || y < 0 || x >= L || y >= L || linhas[y][x] === tintaAgora) return; linhas[y][x] = tintaAgora; pinta(); };
+    const fecha = () => aoMudar(linhas.map(l => l.join('')));
+    cv.addEventListener('contextmenu', e => e.preventDefault());
+    cv.addEventListener('pointerdown', e => { e.preventDefault(); ed.hist.push(linhas.map(l => l.join(''))); if (ed.hist.length > 30) ed.hist.shift(); tintaAgora = e.button === 2 ? 'x' : ed.tinta; pintando = true; cv.setPointerCapture(e.pointerId); poe(e); });
     cv.addEventListener('pointermove', e => { if (pintando) poe(e); });
-    const fim = () => { if (!pintando) return; pintando = false; aoMudar(linhas.map(l => l.join(''))); };
+    const fim = () => { if (!pintando) return; pintando = false; fecha(); };
     cv.addEventListener('pointerup', fim); cv.addEventListener('pointercancel', fim);
     setTimeout(pinta, 0);
-    const paleta = h('div', { class: 'ex-pal', id: 'ex-pal' }, CASAS.map(([k, n]) => h('button', { type: 'button', class: 'ex-tinta' + (k === tinta ? ' on' : ''), id: 'ex-t-' + (k === '.' ? 'chao' : k), title: n, onclick: e => { tinta = k; for (const b of e.currentTarget.parentNode.children) b.classList.toggle('on', b === e.currentTarget); } }, h('span', { class: 'ex-amostra', style: { background: COR[k] } }), n)));
-    return h('div', { class: 'ex-ed' }, paleta, cv);
+    const paleta = h('div', { class: 'ex-pal', id: 'ex-pal', role: 'group', 'aria-label': 'A tinta' }, CASAS.map(([k, n]) => h('button', { type: 'button', class: 'ex-tinta' + (k === ed.tinta ? ' on' : ''), id: 'ex-t-' + (k === '.' ? 'chao' : k), 'aria-pressed': String(k === ed.tinta), title: n, onclick: e => { ed.tinta = k; for (const b of e.currentTarget.parentNode.children) { const on = b === e.currentTarget; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); } } }, h('span', { class: 'ex-amostra', style: { background: COR[k] } }), n)));
+    const av = avaliar(g);
+    return h('div', { class: 'ex-ed' },
+      h('ol', { class: 'ex-passos' }, h('li', { text: 'Escolha a tinta.' }), h('li', { text: 'Clique ou arraste na grade (o botão direito pinta parede).' }), h('li', { text: 'Ao soltar o mouse, a prévia faz o mapa grande no mesmo jeito.' })),
+      paleta, cv,
+      h('div', { class: 'row ex-acoes' },
+        K.btn('Desfazer', () => { const v = ed.hist.pop(); if (v) aoMudar(v); }, { kind: 'small', icon: 'undo', id: 'ex-desfazer', disabled: !ed.hist.length }),
+        K.btn('Encher com a tinta', () => { ed.hist.push(linhas.map(l => l.join(''))); aoMudar(Array.from({ length: L }, () => ed.tinta.repeat(L))); }, { kind: 'small', id: 'ex-encher' })),
+      h('p', { class: 'note ex-conta', id: 'ex-conta', text: `Chão ${av.chao}% · parede ${av.parede}%` + (av.agua ? ` · água ${av.agua}%` : '') + (av.mato ? ` · mato ${av.mato}%` : '') + '. O mapa sai com mais ou menos essa mistura.' }),
+      av.avisos.length ? h('p', { class: 'note ex-aviso', id: 'ex-aviso', text: 'Atenção: ' + av.avisos.join('; ') + '.' }) : null,
+      K.note('Dica: o gerador copia os pedaços de 3 × 3 do desenho. Salas de 3 × 3 ou mais, corredores ligando tudo e uma porta (P) no meio de uma parede de 1 quadrado dão os melhores mapas.'));
   }
   // uma miniatura de um exemplo (o pronto, o da cena)
   function miniatura(g) {
@@ -50342,7 +50434,7 @@ const Exemplo = (() => {
     setTimeout(() => { const c = cv.getContext('2d'); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { c.fillStyle = COR[g[y][x]] || '#000'; c.fillRect(x * cel, y * cel, cel, cel); } }, 0);
     return cv;
   }
-  return { CASAS, COR, PRONTOS, LISTA, valida, vazio, desenhoPadrao, aprender, gerar, fazer, limpar, daCena, editor, miniatura };
+  return { avaliar, CASAS, COR, PRONTOS, LISTA, valida, vazio, desenhoPadrao, aprender, gerar, fazer, limpar, daCena, editor, miniatura };
 })();
 /* ---------------------------------------------------------------
    10gu. OS SEGREDOS COM TRÊS PISTAS (lote 155) — a regra das três pistas: para cada coisa que os jogadores precisam
@@ -50697,12 +50789,27 @@ const Zonas = (() => {
       vivo = Object.assign(rect(ini, ponto(e)), estado.tipo === 'sala' && estado.papel ? { papel: estado.papel } : null);
       redesenhar(vivo);
     }, true);
+    // (lote 157) a zona debaixo do mouse (a de cima, a última desenhada)
+    const zonaEm = (id, [x, y]) => { const l = de(id); for (let i = l.length - 1; i >= 0; i--) { const z = l[i]; if (x >= z.x && y >= z.y && x < z.x + z.w && y < z.y + z.h) return i; } return -1; };
+    const tirar = (id, i) => { const l = de(id), z = l[i]; l.splice(i, 1); guarda(id, l); pronto(); UI.toast(`Zona tirada: ${(TIPOS[z.k] || {}).n || 'zona'}.`, { key: 'zonas', action: 'Desfazer', run: () => { guarda(id, de(id).concat([z])); pronto(); } }); };
     const fim = e => {
       if (!estado.ativo || !ini) return;
       e.stopImmediatePropagation();
-      const z = vivo; ini = null; vivo = null;
-      if (z && z.w >= 2 && z.h >= 2) { const id = lugarDe(); guarda(id, de(id).concat([z])); pronto(); } else redesenhar(null);
+      const z = vivo, p0 = ini; ini = null; vivo = null;
+      const id = lugarDe();
+      if (z && z.w >= 2 && z.h >= 2) {
+        // (lote 157) a casa é uma só: a nova fica no lugar da de antes
+        const l = z.k === 'casa' ? de(id).filter(x => x.k !== 'casa') : de(id);
+        guarda(id, l.concat([z])); pronto();
+        if (de(id).length === 1) UI.toast('Para tirar uma zona: clique nela (com "Desenhar" ligado), clique com o botão direito, ou use o × da lista.', { key: 'zonas', long: true });
+        return;
+      }
+      // um clique (sem arrastar) numa zona: tira
+      const i = zonaEm(id, p0);
+      if (i >= 0) tirar(id, i); else redesenhar(null);
     };
+    // o botão direito numa zona tira (com ou sem o desenho ligado)
+    cv.addEventListener('contextmenu', e => { const id = lugarDe(), i = zonaEm(id, ponto(e)); if (i < 0) return; e.preventDefault(); e.stopImmediatePropagation(); tirar(id, i); }, true);
     cv.addEventListener('pointerup', fim, true);
     cv.addEventListener('pointercancel', fim, true);
     cv.addEventListener('click', e => { if (estado.ativo) e.stopImmediatePropagation(); }, true);
@@ -50714,7 +50821,7 @@ const Zonas = (() => {
     if (!tipos.includes(estado.tipo)) estado.tipo = tipos[0];
     const set = o => { Object.assign(estado, o); mudou(false); };
     return h('div', { class: 'ger-zonas', id: 'ger-zonas' },
-      K.toggle('ger-zonas-on', estado.ativo, v => set({ ativo: v }), 'Desenhar na prévia (arraste para criar)'),
+      K.toggle('ger-zonas-on', estado.ativo, v => set({ ativo: v }), 'Desenhar na prévia (arraste para criar; clique numa zona para tirar)'),
       estado.ativo ? K.field('O que desenhar', K.seg('ger-zonas-tipo', estado.tipo, tipos.map(k => [k, TIPOS[k].n]), v => set({ tipo: v })), 'stack') : null,
       estado.ativo && estado.tipo === 'sala' && id !== 'masmorra' ? K.field('O uso da sala', K.inSelect('ger-zonas-uso', estado.papel, USOS(), v => set({ papel: v })), 'stack') : null,
       zs.length ? h('ul', { class: 'list ger-zonas-l' }, zs.map((z, i) => h('li', { class: 'ger-zl' },
@@ -51588,12 +51695,14 @@ const IaMapa = (() => {
       '- "andares" (para sobmedida, interior e furtividade): "cima" é uma lista de andares acima do térreo, de baixo para cima; "porao" é uma lista de porões, do mais alto ao mais fundo; cada andar é a lista das salas dele, e a PRIMEIRA sala é onde a escada chega (use "sala" no andar de cima e "adega" ou "deposito" no porão). "base" são as salas de uma base secreta escondida no porão (precisa de pelo menos 1 porão); use "secreta" para uma "sala secreta" sem uso definido.',
       '- "hora": dia, entardecer, noite ou breu; "estilo": o povo/arquitetura (comum, se não disser).',
       '- O nome é curto, em português, como o título da cena.',
+      '- (lote 157) "planta": desenhe o lugar, em porcentagens (0 a 100). Para sobmedida, mansao e casarao: "casa" é onde a casa fica no terreno (x da esquerda, y de cima; o portão e a rua ficam embaixo; deixe uns 8% de margem e espaço para o quintal e os anexos); "salas" são os cômodos do térreo, em porcentagem DA CASA (0 a 100 dentro dela), sem se sobrepor; o que sobrar dentro da casa vira corredor — deixe uma faixa livre de uns 15% ligando os cômodos. "agua", "mata", "patio" e "vazio" são retângulos no terreno (o lago, o bosque, o pátio de pedra, uma área sem nada), também em porcentagem do terreno. Para os outros lugares, só "agua", "mata", "patio" e "vazio", se o texto pedir. Sem desenho no texto, faça uma planta que faça sentido.',
       'Lugares: ' + lugares.map(([id, n]) => id + ' = ' + n).join(' | '),
       'Salas (papéis): ' + salasAndar().map(x => x + ' = ' + nomeSala(x)).join('; '),
       'Anexos do quintal: ' + anexos,
     ].join('\n');
     const enumS = { type: 'string', enum: salasAndar() };
     const andar = { type: 'array', items: enumS, maxItems: 12 };
+    const ret = { type: 'object', required: ['x', 'y', 'w', 'h'], properties: { x: { type: 'number' }, y: { type: 'number' }, w: { type: 'number' }, h: { type: 'number' } } };
     const ferramenta = {
       name: 'ficha_do_lugar',
       description: 'A ficha do lugar para o gerador de mapas.',
@@ -51618,6 +51727,9 @@ const IaMapa = (() => {
             base: { type: 'array', items: { type: 'string', enum: salasBase() }, maxItems: 8 } } },
           interior: { type: 'object', properties: { tipo: { type: 'string', enum: Object.keys(Interior.PLANTAS).filter(k => !Interior.PLANTAS[k].so) }, tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] } } },
           furtividade: { type: 'object', properties: { tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] }, guardas: { type: 'string', enum: ['poucos', 'normal', 'muitos'] }, dificuldade: { type: 'string', enum: ['facil', 'medio', 'dificil', 'muito'], description: 'Só se o texto disser o quanto a missão é difícil.' } } },
+          planta: { type: 'object', description: 'A planta, em porcentagens (0 a 100).', properties: {
+            casa: ret, salas: { type: 'array', maxItems: 12, items: Object.assign({}, ret, { properties: Object.assign({}, ret.properties, { uso: { type: 'string', enum: salasAndar() } }) }) },
+            agua: { type: 'array', items: ret, maxItems: 4 }, mata: { type: 'array', items: ret, maxItems: 4 }, patio: { type: 'array', items: ret, maxItems: 4 }, vazio: { type: 'array', items: ret, maxItems: 4 } } },
           notas_mestre: { type: 'string', description: 'Só o mestre lê. Curto.' },
           nao_deu: { type: 'array', items: { type: 'string' }, maxItems: 8 },
         },
@@ -51637,6 +51749,27 @@ const IaMapa = (() => {
     if (base.length) out.salas.base = base;
     return out;
   }
+  /* (lote 157) a planta da IA (em porcentagens), conferida */
+  function plantaDe(v) {
+    if (!v || typeof v !== 'object') return null;
+    const r = q => (q && typeof q === 'object' && ['x', 'y', 'w', 'h'].every(k => Number.isFinite(Number(q[k]))) ? { x: clamp(Number(q.x), 0, 100), y: clamp(Number(q.y), 0, 100), w: clamp(Number(q.w), 1, 100), h: clamp(Number(q.h), 1, 100) } : null);
+    const l = (a, n) => (Array.isArray(a) ? a.map(r).filter(Boolean).slice(0, n) : []);
+    const out = { casa: r(v.casa), salas: (Array.isArray(v.salas) ? v.salas : []).map(q => { const x = r(q); if (x && typeof q.uso === 'string' && salasAndar().includes(q.uso)) x.uso = q.uso; return x; }).filter(Boolean).slice(0, 12), agua: l(v.agua, 4), mata: l(v.mata, 4), patio: l(v.patio, 4), vazio: l(v.vazio, 4) };
+    return out.casa || out.agua.length || out.mata.length || out.patio.length || out.vazio.length ? out : null;
+  }
+  // a planta → as zonas do gerador (em quadrados), num terreno W × H; casa: só onde o lugar tem casa
+  function zonasDe(pl, W, H, comCasa) {
+    if (!pl) return [];
+    const Q = q => ({ x: Math.round(q.x / 100 * W), y: Math.round(q.y / 100 * H), w: Math.max(2, Math.round(q.w / 100 * W)), h: Math.max(2, Math.round(q.h / 100 * H)) });
+    const out = [];
+    if (comCasa && pl.casa) {
+      const c = Object.assign({ k: 'casa' }, Q(pl.casa));
+      out.push(c);
+      for (const q of pl.salas) { const s = { k: 'sala', x: c.x + Math.round(q.x / 100 * c.w), y: c.y + Math.round(q.y / 100 * c.h), w: Math.max(2, Math.round(q.w / 100 * c.w)), h: Math.max(2, Math.round(q.h / 100 * c.h)) }; if (q.uso) s.papel = q.uso; out.push(s); }
+    }
+    for (const k of ['agua', 'mata', 'patio', 'vazio']) for (const q of pl[k]) out.push(Object.assign({ k }, Q(q)));
+    return out;
+  }
   /* A ficha da IA → { lugar, op (as escolhas do lugar), comum ({ estilo, hora, clima }), nome, notas, fora } */
   function traduzir(d) {
     d = d && typeof d === 'object' ? d : {};
@@ -51650,7 +51783,8 @@ const IaMapa = (() => {
     if (d.lugar === 'sobmedida') op = Object.assign({ spec: d.sobmedida || {}, and, notas, fora, titulo: 'ia' }, typeof d.dificuldade === 'string' ? { dific: d.dificuldade } : null);
     else if (d.lugar === 'interior') op = Object.assign({}, d.interior && d.interior.tipo ? { tipo: d.interior.tipo } : null, d.interior && d.interior.tamanho ? { tam: d.interior.tamanho } : null, and ? { and } : null);
     else if (Furtividade.IDS.includes(d.lugar)) { const fu = Object.assign({}, d.furtividade || {}); if (fu.dificuldade) { fu.dific = fu.dificuldade; delete fu.dificuldade; } op = Object.assign(fu, and ? { and } : null); }
-    return { lugar: typeof d.lugar === 'string' ? d.lugar : 'sobmedida', op, comum, nome: typeof d.nome === 'string' ? d.nome.trim().slice(0, 60) : '', notas, fora };
+    const planta = plantaDe(d.planta);
+    return { planta, lugar: typeof d.lugar === 'string' ? d.lugar : 'sobmedida', op, comum, nome: typeof d.nome === 'string' ? d.nome.trim().slice(0, 60) : '', notas, fora };
   }
   // chama a IA (pela casca, que fala com o servidor)
   async function pedir(texto) {
@@ -51661,7 +51795,7 @@ const IaMapa = (() => {
     if (!r || !r.dados) throw new Error('A IA não devolveu o lugar. Tente descrever de outro jeito.');
     return Object.assign(traduzir(r.dados), { restam: r.restam });
   }
-  return { pedido, traduzir, pedir, andaresDe };
+  return { pedido, traduzir, pedir, andaresDe, plantaDe, zonasDe };
 })();
 /* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
@@ -52019,8 +52153,18 @@ const Gerador = (() => {
       if (res.comum.clima !== undefined) comum.clima = res.comum.clima;
       E.trava = null; E.base = null; E.seed = novaSemente();
       if (res.nome) { inNome.value = res.nome; nomeMexido = true; } else nomeMexido = false;
+      // (lote 157) a planta da IA vira as zonas do lugar (o tamanho do terreno vem de um sorteio de prova, sem as zonas)
+      let comPlanta = false;
+      if (res.planta && Zonas.vale(L)) {
+        try {
+          Zonas.guarda(L.id, []); E.op.zonas = [];
+          const prova = L.gerar(E.op, comEstacao(L, { estilo: comum.estilo, seed: E.seed }));
+          const zs = IaMapa.zonasDe(res.planta, prova.W, prova.H, Zonas.tiposDe(L.id).includes('casa'));
+          if (zs.length) { Zonas.guarda(L.id, zs); comPlanta = true; }
+        } catch (e) { console.error(e); }
+      }
       lembrarComum(); pintar(); refazer();
-      iaMsg.replaceChildren(...[h('p', { class: 'note', text: `A IA escolheu: ${L.n}. A ficha ficou preenchida: mude o que quiser, ou "Gerar outro".` + (res.restam != null ? ` (Restam ${res.restam} pedidos hoje.)` : '') }),
+      iaMsg.replaceChildren(...[h('p', { class: 'note', text: `A IA escolheu: ${L.n}. A ficha ficou preenchida${comPlanta ? ' e a planta desenhada (as zonas: veja o bloco "Zonas à mão")' : ''}: mude o que quiser, ou "Gerar outro".` + (res.restam != null ? ` (Restam ${res.restam} pedidos hoje.)` : '') }),
         res.notas && L.id !== 'sobmedida' ? h('p', { class: 'note ia-notas', text: 'Notas para o mestre: ' + res.notas }) : null,
         res.fora.length && L.id !== 'sobmedida' ? h('p', { class: 'note', text: 'O gerador ainda não faz: ' + res.fora.join('; ') + '.' }) : null].filter(Boolean));
     }
@@ -53324,6 +53468,9 @@ async function start(snap) {
   // (o tutorial que abre sozinho espera o menu ou a janela da casca fechar: não aparece no meio do que o mestre faz)
   const abrirTour = () => { if (UI.modalOpen() || Tour.seen() || Tour.active()) return; if (cascaOcupada()) { setTimeout(abrirTour, 1200); return; } Tour.start(); };
   if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) aoAparecer(() => setTimeout(abrirTour, 700));
+  // (lote 157) as novidades do gerador: uma vez, para o mestre que já viu o tutorial de primeiro uso
+  const abrirNovidades = () => { if (Tour.active() || Novidades.vistas() || !Tour.seen()) return; if (UI.modalOpen() || cascaOcupada()) { setTimeout(abrirNovidades, 1500); return; } Novidades.start(); };
+  if (isGM() && !Novidades.vistas() && (!dbg || /[?&]novidades\b/.test(location.search))) aoAparecer(() => setTimeout(abrirNovidades, 1200));
   // O mestre numa mesa: se este navegador guarda cenas de antes, a mesa oferece trazê-las (a janela, uma vez só,
   // quando a mesa ainda não tem cenas; depois disso, fica o lembrete no painel e o item no menu ⋯).
   if (Nuvem.mestre()) setTimeout(() => { if (!had) aoAparecer(() => UI.offerLocal()); else Nuvem.cenasDoNavegador().then(() => UI.refresh()); }, 900);
@@ -53337,7 +53484,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, IaMapa, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Exemplo, Erosao, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, IaMapa, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Exemplo, Erosao, Novidades, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

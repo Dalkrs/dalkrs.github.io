@@ -33,12 +33,14 @@ const IaMapa = (() => {
       '- "andares" (para sobmedida, interior e furtividade): "cima" é uma lista de andares acima do térreo, de baixo para cima; "porao" é uma lista de porões, do mais alto ao mais fundo; cada andar é a lista das salas dele, e a PRIMEIRA sala é onde a escada chega (use "sala" no andar de cima e "adega" ou "deposito" no porão). "base" são as salas de uma base secreta escondida no porão (precisa de pelo menos 1 porão); use "secreta" para uma "sala secreta" sem uso definido.',
       '- "hora": dia, entardecer, noite ou breu; "estilo": o povo/arquitetura (comum, se não disser).',
       '- O nome é curto, em português, como o título da cena.',
+      '- (lote 157) "planta": desenhe o lugar, em porcentagens (0 a 100). Para sobmedida, mansao e casarao: "casa" é onde a casa fica no terreno (x da esquerda, y de cima; o portão e a rua ficam embaixo; deixe uns 8% de margem e espaço para o quintal e os anexos); "salas" são os cômodos do térreo, em porcentagem DA CASA (0 a 100 dentro dela), sem se sobrepor; o que sobrar dentro da casa vira corredor — deixe uma faixa livre de uns 15% ligando os cômodos. "agua", "mata", "patio" e "vazio" são retângulos no terreno (o lago, o bosque, o pátio de pedra, uma área sem nada), também em porcentagem do terreno. Para os outros lugares, só "agua", "mata", "patio" e "vazio", se o texto pedir. Sem desenho no texto, faça uma planta que faça sentido.',
       'Lugares: ' + lugares.map(([id, n]) => id + ' = ' + n).join(' | '),
       'Salas (papéis): ' + salasAndar().map(x => x + ' = ' + nomeSala(x)).join('; '),
       'Anexos do quintal: ' + anexos,
     ].join('\n');
     const enumS = { type: 'string', enum: salasAndar() };
     const andar = { type: 'array', items: enumS, maxItems: 12 };
+    const ret = { type: 'object', required: ['x', 'y', 'w', 'h'], properties: { x: { type: 'number' }, y: { type: 'number' }, w: { type: 'number' }, h: { type: 'number' } } };
     const ferramenta = {
       name: 'ficha_do_lugar',
       description: 'A ficha do lugar para o gerador de mapas.',
@@ -63,6 +65,9 @@ const IaMapa = (() => {
             base: { type: 'array', items: { type: 'string', enum: salasBase() }, maxItems: 8 } } },
           interior: { type: 'object', properties: { tipo: { type: 'string', enum: Object.keys(Interior.PLANTAS).filter(k => !Interior.PLANTAS[k].so) }, tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] } } },
           furtividade: { type: 'object', properties: { tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] }, guardas: { type: 'string', enum: ['poucos', 'normal', 'muitos'] }, dificuldade: { type: 'string', enum: ['facil', 'medio', 'dificil', 'muito'], description: 'Só se o texto disser o quanto a missão é difícil.' } } },
+          planta: { type: 'object', description: 'A planta, em porcentagens (0 a 100).', properties: {
+            casa: ret, salas: { type: 'array', maxItems: 12, items: Object.assign({}, ret, { properties: Object.assign({}, ret.properties, { uso: { type: 'string', enum: salasAndar() } }) }) },
+            agua: { type: 'array', items: ret, maxItems: 4 }, mata: { type: 'array', items: ret, maxItems: 4 }, patio: { type: 'array', items: ret, maxItems: 4 }, vazio: { type: 'array', items: ret, maxItems: 4 } } },
           notas_mestre: { type: 'string', description: 'Só o mestre lê. Curto.' },
           nao_deu: { type: 'array', items: { type: 'string' }, maxItems: 8 },
         },
@@ -82,6 +87,27 @@ const IaMapa = (() => {
     if (base.length) out.salas.base = base;
     return out;
   }
+  /* (lote 157) a planta da IA (em porcentagens), conferida */
+  function plantaDe(v) {
+    if (!v || typeof v !== 'object') return null;
+    const r = q => (q && typeof q === 'object' && ['x', 'y', 'w', 'h'].every(k => Number.isFinite(Number(q[k]))) ? { x: clamp(Number(q.x), 0, 100), y: clamp(Number(q.y), 0, 100), w: clamp(Number(q.w), 1, 100), h: clamp(Number(q.h), 1, 100) } : null);
+    const l = (a, n) => (Array.isArray(a) ? a.map(r).filter(Boolean).slice(0, n) : []);
+    const out = { casa: r(v.casa), salas: (Array.isArray(v.salas) ? v.salas : []).map(q => { const x = r(q); if (x && typeof q.uso === 'string' && salasAndar().includes(q.uso)) x.uso = q.uso; return x; }).filter(Boolean).slice(0, 12), agua: l(v.agua, 4), mata: l(v.mata, 4), patio: l(v.patio, 4), vazio: l(v.vazio, 4) };
+    return out.casa || out.agua.length || out.mata.length || out.patio.length || out.vazio.length ? out : null;
+  }
+  // a planta → as zonas do gerador (em quadrados), num terreno W × H; casa: só onde o lugar tem casa
+  function zonasDe(pl, W, H, comCasa) {
+    if (!pl) return [];
+    const Q = q => ({ x: Math.round(q.x / 100 * W), y: Math.round(q.y / 100 * H), w: Math.max(2, Math.round(q.w / 100 * W)), h: Math.max(2, Math.round(q.h / 100 * H)) });
+    const out = [];
+    if (comCasa && pl.casa) {
+      const c = Object.assign({ k: 'casa' }, Q(pl.casa));
+      out.push(c);
+      for (const q of pl.salas) { const s = { k: 'sala', x: c.x + Math.round(q.x / 100 * c.w), y: c.y + Math.round(q.y / 100 * c.h), w: Math.max(2, Math.round(q.w / 100 * c.w)), h: Math.max(2, Math.round(q.h / 100 * c.h)) }; if (q.uso) s.papel = q.uso; out.push(s); }
+    }
+    for (const k of ['agua', 'mata', 'patio', 'vazio']) for (const q of pl[k]) out.push(Object.assign({ k }, Q(q)));
+    return out;
+  }
   /* A ficha da IA → { lugar, op (as escolhas do lugar), comum ({ estilo, hora, clima }), nome, notas, fora } */
   function traduzir(d) {
     d = d && typeof d === 'object' ? d : {};
@@ -95,7 +121,8 @@ const IaMapa = (() => {
     if (d.lugar === 'sobmedida') op = Object.assign({ spec: d.sobmedida || {}, and, notas, fora, titulo: 'ia' }, typeof d.dificuldade === 'string' ? { dific: d.dificuldade } : null);
     else if (d.lugar === 'interior') op = Object.assign({}, d.interior && d.interior.tipo ? { tipo: d.interior.tipo } : null, d.interior && d.interior.tamanho ? { tam: d.interior.tamanho } : null, and ? { and } : null);
     else if (Furtividade.IDS.includes(d.lugar)) { const fu = Object.assign({}, d.furtividade || {}); if (fu.dificuldade) { fu.dific = fu.dificuldade; delete fu.dificuldade; } op = Object.assign(fu, and ? { and } : null); }
-    return { lugar: typeof d.lugar === 'string' ? d.lugar : 'sobmedida', op, comum, nome: typeof d.nome === 'string' ? d.nome.trim().slice(0, 60) : '', notas, fora };
+    const planta = plantaDe(d.planta);
+    return { planta, lugar: typeof d.lugar === 'string' ? d.lugar : 'sobmedida', op, comum, nome: typeof d.nome === 'string' ? d.nome.trim().slice(0, 60) : '', notas, fora };
   }
   // chama a IA (pela casca, que fala com o servidor)
   async function pedir(texto) {
@@ -106,5 +133,5 @@ const IaMapa = (() => {
     if (!r || !r.dados) throw new Error('A IA não devolveu o lugar. Tente descrever de outro jeito.');
     return Object.assign(traduzir(r.dados), { restam: r.restam });
   }
-  return { pedido, traduzir, pedir, andaresDe };
+  return { pedido, traduzir, pedir, andaresDe, plantaDe, zonasDe };
 })();

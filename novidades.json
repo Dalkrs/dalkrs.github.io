@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.14-02",
+      "data": "2026-11-14",
+      "titulo": "O passeio das novidades e a IA que desenha a planta",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: um passeio pelas novidades do gerador de mapas. Ele abre cada tela e mostra onde fica cada novidade. Toca uma vez para o mestre, e dá para rever no menu ⋯ (“Rever as novidades do gerador”).", "mestre": true },
+        { "tipo": "melhorou", "texto": "Cenas: a IA agora também desenha a planta. Ela devolve onde fica a casa, cada cômodo, o lago, a mata e o pátio, e isso vira as zonas do gerador, que dá para mudar depois.", "mestre": true },
+        { "tipo": "consertado", "texto": "Cenas: as zonas desenhadas à mão agora saem com um clique nelas (com “Desenhar” ligado), com o botão direito ou pelo × da lista. A casa é uma só: desenhar outra troca a de antes.", "mestre": true },
+        { "tipo": "melhorou", "texto": "Cenas: o desenho do “Por exemplo” ficou mais claro. Ele tem os passos escritos, guarda a tinta escolhida, pinta parede com o botão direito e tem Desfazer e “Encher com a tinta”. Também mostra quanto do desenho é chão ou parede e avisa quando ele vai dar um mapa ruim. A água e o mato soltos não aparecem mais no mapa.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.14-01",
       "data": "2026-11-14",
       "titulo": "Mapas por exemplo e a erosão",

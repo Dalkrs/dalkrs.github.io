@@ -1406,3 +1406,8 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .ex-cv { width: 264px; height: 264px; border-radius: 8px; border: 1px solid var(--line-strong); cursor: crosshair; touch-action: none; image-rendering: pixelated; }
 .ex-mini-w { margin: 6px 0; }
 .ex-mini { border-radius: 6px; border: 1px solid var(--line); image-rendering: pixelated; max-width: 100%; }
+/* (lote 157) o editor do desenho, mais claro */
+.ex-passos { margin: 0 0 2px 18px; padding: 0; font-size: 13px; line-height: 1.5; }
+.ex-cv { width: 300px; height: 300px; }
+.ex-acoes { flex-wrap: wrap; gap: 6px; }
+.ex-aviso { color: var(--warn, #f0c448); }
