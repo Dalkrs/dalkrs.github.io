@@ -1377,3 +1377,9 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .gd-ver-h span { font-size: 12px; font-weight: 600; opacity: 0.75; text-align: center; }
 .gd-ver-n { font-size: 13.5px; }
 .gd-ck { width: 18px; height: 18px; justify-self: center; accent-color: var(--accent, #e6ab4f); cursor: pointer; }
+/* (lote 154) as zonas desenhadas à mão */
+.ger-cv.desenhando { cursor: crosshair; }
+.ger-zonas-l { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.ger-zl { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.ger-zl-cor { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.ger-zl-n { flex: 1; }

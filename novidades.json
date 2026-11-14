@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.13-10",
+      "data": "2026-11-13",
+      "titulo": "Zonas à mão e outra versão do cômodo",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: no “Gerar um lugar…”, o bloco “Zonas à mão”. Ligue “Desenhar na prévia” e arraste para marcar: onde fica a casa (e o tamanho), as salas dela (com o uso), um lago, uma mata, um pátio de pedra ou uma área vazia. O gerador obedece. Na masmorra, valem as salas, a água e o vazio.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: “Outra versão deste cômodo”. Na prévia, clique num cômodo e os móveis dele são sorteados de novo, com o resto igual. Na cena pronta, é pelo botão direito dentro do cômodo.", "mestre": true },
+        { "tipo": "consertado", "texto": "Cenas: no Sob medida, os caminhos do quintal não atravessam mais as estufas, os estábulos e os outros anexos.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.13-09",
       "data": "2026-11-13",
       "titulo": "O tempo passa nos lugares",

@@ -385,6 +385,13 @@ const LugaresFora = (() => {
 
         g.strokeStyle = P.terra[0]; g.lineWidth = o.w * c; g.lineCap = 'round'; g.beginPath(); o.pts.forEach(([x, y], i) => (i ? g.lineTo(x * c, y * c) : g.moveTo(x * c, y * c))); g.stroke();
         g.strokeStyle = P.terra[1]; g.lineWidth = o.w * c * 0.6; g.stroke();
+      } else if (o.k === 'lago') {      // (lote 154) o lago desenhado à mão: a margem de terra, a água funda no meio e o brilho
+        const cx = (o.x + o.w / 2) * c, cy = (o.y + o.h / 2) * c, rx = o.w * c / 2, ry = o.h * c / 2;
+        g.fillStyle = P.terra[1] || '#5a4430'; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); g.fill();
+        const gr = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry)); gr.addColorStop(0, '#1f4a66'); gr.addColorStop(0.7, '#2f6488'); gr.addColorStop(1, '#4a86a8');
+        g.fillStyle = gr; g.beginPath(); g.ellipse(cx, cy, Math.max(4, rx - c * 0.35), Math.max(4, ry - c * 0.35), 0, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = 'rgba(210,235,245,0.35)'; g.lineWidth = Math.max(1, c * 0.05);
+        for (let k = 0; k < Math.max(2, Math.round(o.w * o.h / 12)); k++) { const a = r() * Math.PI * 2, d = r() * 0.6; const px = cx + Math.cos(a) * rx * d, py = cy + Math.sin(a) * ry * d; g.beginPath(); g.arc(px, py, c * (0.2 + r() * 0.3), Math.PI * 1.15, Math.PI * 1.75); g.stroke(); }
       } else if (o.k === 'agua') {
         const gr = g.createLinearGradient(o.x * c, o.y * c, (o.x + o.w) * c, (o.y + o.h) * c); gr.addColorStop(0, '#2f5e7d'); gr.addColorStop(1, '#3f7396');
         g.fillStyle = gr; g.fillRect(o.x * c, o.y * c, o.w * c, o.h * c);

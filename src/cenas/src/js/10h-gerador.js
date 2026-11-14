@@ -169,9 +169,9 @@ const Gerador = (() => {
     if (nomeMexido) inNome.value = pre.nome.trim().slice(0, 60);
     const inSemente = h('input', { id: 'ger-semente', class: 'in num', type: 'number', min: 1, max: 2147483647, step: 1, 'data-enter': 'proprio', 'aria-label': 'A semente do sorteio',
       title: 'A mesma semente, com as mesmas escolhas, dá o mesmo lugar',
-      onchange: () => { const v = Math.round(Number(inSemente.value)); if (v >= 1 && v <= 2147483647) { const E = estadoDe(L); E.base = E.plano ? L.baseDe(E.plano) : null; E.seed = v; refazer(); } else inSemente.value = estadoDe(L).seed; },
+      onchange: () => { const v = Math.round(Number(inSemente.value)); if (v >= 1 && v <= 2147483647) { const E = estadoDe(L); E.base = E.plano ? L.baseDe(E.plano) : null; E.seed = v; if (E.op) E.op.variantes = null; refazer(); } else inSemente.value = estadoDe(L).seed; },
       onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); inSemente.dispatchEvent(new Event('change')); } } });
-    const btOutro = btn('Gerar outro', () => { const E = estadoDe(L); E.base = E.plano ? L.baseDe(E.plano) : null; E.seed = novaSemente(); refazer(); }, { icon: 'reset', id: 'ger-outro', title: 'Sorteia de novo, com as mesmas escolhas; o que está travado fica igual' });
+    const btOutro = btn('Gerar outro', () => { const E = estadoDe(L); E.base = E.plano ? L.baseDe(E.plano) : null; E.seed = novaSemente(); if (E.op) E.op.variantes = null; refazer(); }, { icon: 'reset', id: 'ger-outro', title: 'Sorteia de novo, com as mesmas escolhas; o que está travado fica igual' });
     const btSoltar = btn('Soltar tudo', () => soltarTudo(), { icon: 'unlock', id: 'ger-soltar', title: 'Solta todas as partes travadas (o lugar na tela não muda)' });
     const md = h('div', { class: 'ger-md', id: 'ger-md' }), nota = note(L.nota);
 
@@ -215,13 +215,16 @@ const Gerador = (() => {
     }
     function refazer() {
       const E = estadoDe(L);
+      if (Zonas.vale(L)) E.op.zonas = Zonas.de(L.id);      // (lote 154) as zonas desenhadas à mão
       E.plano = L.gerar(E.op, comHex(L, comEstacao(L, { estilo: comum.estilo, seed: E.seed, trava: E.trava, base: E.base, seco: usaEv(L) && evDaAba(L).seco })));
       E.trava = L.travaDe(E.plano);                // (o que não coube sai da trava)
+      if (Zonas.vale(L) && L.id !== 'masmorra' && E.op.zonas && E.op.zonas.length) { try { Zonas.pos(E.plano, E.op.zonas); } catch (e) { console.error(e); } }
       if (Trama.vale(L, E.op) && Trama.prefs().on) { try { Trama.tecer(E.plano, Trama.prefs()); } catch (e) { console.error(e); } }      // (lote 152) a história da missão
       let rp = null;
       try { rp = L.previa(fundo, E.plano, 640, 460, { relevo: comum.relevo }); cell = rp.cell; } catch (e) { console.error(e); }
       if (Tempo.vale(L)) { try { Tempo.previa(fundo.getContext('2d'), E.plano, cell); } catch (e) { console.error(e); } }      // (lote 153) o tempo, por baixo dos números da história
       if (E.plano.trama && !(rp && rp.trama)) Trama.desenhar(fundo.getContext('2d'), E.plano, cell);
+      if (Zonas.vale(L) && E.op.zonas && E.op.zonas.length) Zonas.desenhar(fundo.getContext('2d'), E.op.zonas, cell);      // (lote 154)
       sobre = null; foco = -1;
       desenhar(); mostrarDica(); mostrarResumo();
       inSemente.value = E.seed;
@@ -250,7 +253,21 @@ const Gerador = (() => {
     };
     cv.addEventListener('pointermove', e => { const pt = parteNoPonto(e); if (pt !== sobre) { sobre = pt; foco = -1; desenhar(); mostrarDica(); } });
     cv.addEventListener('pointerleave', () => { if (sobre) { sobre = null; desenhar(); mostrarDica(); } });
-    cv.addEventListener('click', e => alternar(parteNoPonto(e)));
+    // (lote 154) o mouse em quadrados do plano; clicar num cômodo (sem parte) sorteia outra versão dele
+    const noPlano = e => { const r = cv.getBoundingClientRect(), k = Math.min(r.width / cv.width, r.height / cv.height), ox = (r.width - cv.width * k) / 2, oy = (r.height - cv.height * k) / 2; return [(e.clientX - r.left - ox) / k / cell, (e.clientY - r.top - oy) / k / cell]; };
+    const comodoNoPonto = e => { const E = estadoDe(L), p = E.plano; if (!p || !(L.furtivo || L.id === 'sobmedida') || !Array.isArray(p.salas)) return null; const [x, y] = noPlano(e); return p.salas.find(q => q.papel && q.papel !== 'corredor' && x >= q.x && y >= q.y && x < q.x + q.w && y < q.y + q.h) || null; };
+    cv.addEventListener('click', e => {
+      const pt = parteNoPonto(e);
+      if (pt) { alternar(pt); return; }
+      const q = comodoNoPonto(e);
+      if (!q) return;
+      const E = estadoDe(L), k = Furtividade.chaveSala({ p: { nivel: 0 } }, q);
+      E.op.variantes = Object.assign({}, E.op.variantes || {}, { [k]: ((E.op.variantes || {})[k] || 0) + 1 });
+      refazer();
+      UI.toast(`Outra versão: ${(PlantaAndares.NOMES[q.papel] || q.papel).toLowerCase()}. O resto ficou igual.`, { key: 'ger-var' });
+    });
+    cv.classList.toggle('desenhando', Zonas.ativo());
+    Zonas.prender(cv, noPlano, () => L.id, vivo => { desenhar(); if (vivo) Zonas.desenhar(cv.getContext('2d'), [], cell, vivo); }, () => { pintar(); refazer(); });
     cv.addEventListener('keydown', e => {
       const ps = partes();
       if (!ps.length) return;
@@ -396,6 +413,7 @@ const Gerador = (() => {
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
           temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null),
         bloco('pov', 'Povoar', pv.on ? 'perigo ' + nomeDe(Povoar.PERIGOS, pv.perigo, 'médio').toLowerCase() : 'desligado', Povoar.controles(K, () => pintar())),       // (lote 49) povoar o lugar
+        Zonas.vale(L) ? bloco('zonas', 'Zonas à mão', Zonas.resumoBloco(L), Zonas.controles(L, K, regerar => { pintar(); if (regerar) refazer(); else { desenhar(); cv.classList.toggle('desenhando', Zonas.ativo()); } })) : null,      // (lote 154)
         Tempo.vale(L) ? bloco('tempo', 'O tempo', Tempo.resumoBloco(), Tempo.controles(K, () => { pintar(); refazer(); })) : null,      // (lote 153) o lugar envelhecido
         Trama.vale(L, E.op) ? bloco('trama', 'A história', Trama.resumoBloco(), Trama.controles(K, () => { pintar(); refazer(); })) : null,      // (lote 152) a história da missão
         bloco('mist', 'Mistério', mi.on ? (casoMi ? casoMi.c.titulo : 'um caso novo') : 'desligado', Misterio.controles(K, () => pintar())),     // (lote 53) o mistério

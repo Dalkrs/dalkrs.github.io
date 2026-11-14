@@ -146,11 +146,18 @@ const Masmorra = (() => {
     const dentro = op.dentro || null, larg = largDe(op.larg);
     const fs = folhas(r, W, H, op.min);
     const salas = [];
+    // (lote 154) as salas desenhadas à mão primeiro; as sorteadas não encostam nelas (2 de folga)
+    const man = op.manuais || [];
+    for (const m of man) { if (salas.some(s => m.x < s.x + s.w + 2 && s.x < m.x + m.w + 2 && m.y < s.y + s.h + 2 && s.y < m.y + m.h + 2)) continue; salas.push({ i: salas.length, x: m.x, y: m.y, w: m.w, h: m.h, portas: [], liga: [], mao: true }); }
+    const bate = (x, y, w, h) => salas.some(s => s.mao && x < s.x + s.w + 2 && s.x < x + w + 2 && y < s.y + s.h + 2 && s.y < y + h + 2);
+    const tudoDentro = (x, y, w, h) => { if (!dentro) return true; for (let j = y - 1; j <= y + h; j++) for (let i = x - 1; i <= x + w; i++) if (!dentro(i, j)) return false; return true; };
     for (const f of fs) {
       const w = Math.min(f.w - 2, ri(op.salaMin, op.salaMax)), h = Math.min(f.h - 2, ri(op.salaMin, Math.max(op.salaMin, op.salaMax - 1)));
       if (w < op.salaMin - 1 || h < op.salaMin - 1) continue;
       const x = f.x + 1 + Math.floor(r() * (f.w - 2 - w + 1)), y = f.y + 1 + Math.floor(r() * (f.h - 2 - h + 1));
       if (dentro && !(dentro(x - 1, y - 1) && dentro(x + w, y - 1) && dentro(x - 1, y + h) && dentro(x + w, y + h))) continue;
+      if (man.length && bate(x, y, w, h)) continue;
+      if ((op.manuais || op.vazio) && !tudoDentro(x, y, w, h)) continue;
       salas.push({ i: salas.length, x, y, w, h, portas: [], liga: [] });
     }
     for (const s of salas) for (let j = s.y; j < s.y + s.h; j++) for (let i = s.x; i < s.x + s.w; i++) pos(i, j, SALA);
@@ -718,7 +725,18 @@ const Masmorra = (() => {
     const { G, r, p, W, H } = C, E = ESTILOS_SALAS[p.tipo] || ESTILOS_SALAS.pedra;
     const T = TAMANHOS[p.tamanho];
     const op = Object.assign(E.op(T, W, H), { larg: p.larg });
+    // (lote 154) as zonas: as salas desenhadas entram primeiro; o vazio fica fora das salas e dos corredores
+    const zm = p.zonasMao || [];
+    if (zm.length) {
+      const vz = zm.filter(z => z.k === 'vazio'), d0 = op.dentro;
+      if (vz.length) op.vazio = true;
+      if (vz.length) op.dentro = (i, j) => !vz.some(z => i >= z.x && j >= z.y && i < z.x + z.w && j < z.y + z.h) && (!d0 || d0(i, j));
+      const ms = zm.filter(z => z.k === 'sala').map(z => ({ x: clamp(z.x, 2, W - 5), y: clamp(z.y, 2, H - 5), w: clamp(z.w, 3, 16), h: clamp(z.h, 3, 16) })).map(z => Object.assign(z, { w: Math.min(z.w, W - 2 - z.x), h: Math.min(z.h, H - 2 - z.y) }));
+      if (ms.length) op.manuais = ms;
+    }
     const { salas, ligacoes } = salasECorredores(G, r, op);
+    // (lote 154) a água desenhada: o chão (das salas e dos corredores) vira água
+    for (const z of zm.filter(x => x.k === 'agua')) for (let j = z.y; j < z.y + z.h; j++) for (let i = z.x; i < z.x + z.w; i++) if (i > 0 && j > 0 && i < W - 1 && j < H - 1 && (G.at(i, j) === SALA || G.at(i, j) === CORREDOR)) G.pos(i, j, AGUA);
     const V61 = p.variantes || [];
     if (V61.includes('irregular')) corredoresIrregulares(C, ligacoes);          // (lote 61)
     // a entrada: a sala mais perto de um lado sorteado; a descida: a mais longe dela (em passos de sala)
@@ -2878,6 +2896,7 @@ const Masmorra = (() => {
       // (lote 61) as salas especiais, as variações do traçado e as armadilhas (só quando escolhidas)
       if (!are && !sob) { const es = listaDe(o.especiais, SALAS_ESP), va = listaDe(o.variantes, VARIANTES); if (es.length) p.especiais = es; if (va.length) p.variantes = va; if (o.armadilhas === true) p.armadilhas = true; }
       if (ex) Object.assign(p, JSON.parse(JSON.stringify(ex)));
+      if (!are && !sob && typeof Zonas !== 'undefined') { const zs = Zonas.limpa(o.zonas); if (zs.length) p.zonasMao = zs; }      // (lote 154) as zonas desenhadas à mão
       const C = contexto(p, G, r);
       if (tipo === 'arena') nivelDeArena(C); else if (tipo === 'subsolo') nivelDeSubsolo(C); else if (tipo === 'caverna' || tipo === 'covil' || BIO_CAV[tipo]) nivelDeCaverna(C); else if (tipo === 'mina') nivelDeMina(C); else if (tipo === 'navio') nivelDeNavio(C); else nivelDeSalas(C);
       p.grade = Array.from(G.g).join('');
@@ -3904,6 +3923,7 @@ const Masmorra = (() => {
     const sc = newScene(String(nome || '').trim().slice(0, 60) || nomePadrao(p));
     if (typeof op.id === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(op.id) && !Store.S.scenes[op.id]) sc.id = op.id;
     sc.cols = p.W; sc.rows = p.H;
+    if (typeof Furtividade !== 'undefined') sc.comodos = { lugar: 'masmorra', estilo: p.estilo || 'comum', salas: (p.salas || []).filter(q => q.papel && Furtividade.MOB[q.papel]).map(q => ({ x: q.x, y: q.y, w: q.w, h: q.h, papel: q.papel })) };      // (lote 154)
     const c = sc.cell;
     sc.fog.dynamic = true; sc.fog.explored = true;
     const breu = TONES.find(t => t.id === 'breu') || TONES[0];
@@ -4192,7 +4212,7 @@ const Masmorra = (() => {
     return `"${sc.name}" criada` + (m ? `, dentro de "${m.name}": a Saída, na escada de subida, leva de volta` : ': uma cena solta — a Saída, na escada de subida, ainda não leva a lugar nenhum (escolha a cena no painel dela)') + (p.desce ? `; a Entrada da escada de descida gera o nível ${p.nivel + 1}.` : '.');
   }
   const LUGAR = { id: 'masmorra', n: 'Masmorra', padrao: padraoL, controles: controlesL, opcoesDe: opcoesDeL, aplicarOpcoes: aplicarOpcoesL,
-    gerar: (st, comum) => gerar(Object.assign({ tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: comum && comum.estilo, seed: comum && comum.seed, segredos: st.segredos, descida: st.descida, larg: st.larg || largPadrao(st.tipo) }, gerar61(st))),
+    gerar: (st, comum) => gerar(Object.assign({ zonas: st.zonas, tipo: st.tipo, tamanho: st.tamanho, nivel: st.nivel, estilo: comum && comum.estilo, seed: comum && comum.seed, segredos: st.segredos, descida: st.descida, larg: st.larg || largPadrao(st.tipo) }, gerar61(st))),
     previa, resumo, partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava,
     quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null, nomePadrao,
     criar: (p, nome, ex) => { ex = ex || {}; const sob = cenaDeCima(ex.op && ex.op.sob); return criar(p, nome, sob ? Store.S.scenes[sob] : null, { relevo: ex.relevo !== false, id: ex.id }); },

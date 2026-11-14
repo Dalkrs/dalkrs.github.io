@@ -3918,6 +3918,7 @@ const UI = (() => {
       } });
       { const f = gm ? Arena.proxima(sc) : null; if (f) items.push({ label: 'Acionar a ' + f.nome.toLowerCase() + ' da arena…', icon: 'next', run: () => Arena.acionar(f.i) }); }
       if (gm && Rondas.guardas(sc).length) items.push({ label: 'Avançar rondas', icon: 'ronda', key: 'Shift+W', run: () => Rondas.avancar() });      // (lote 121)
+      { const q = gm ? Furtividade.comodoEm(sc, p.x, p.y) : null; if (q) items.push({ label: 'Outra versão deste cômodo (' + (PlantaAndares.NOMES[q.papel] || q.papel).toLowerCase() + ')', icon: 'die', run: () => { const n = Furtividade.outraVersaoCena(Store.scene(), q); toast(n ? `Outra versão: ${n} ${n === 1 ? 'objeto novo' : 'objetos novos'}.` : 'Não coube nada novo nesse cômodo.', { action: 'Desfazer', run: Tools.undo }); } }); }      // (lote 154)
       if (gm && Fichas.on()) items.push({ label: 'Puxar o grupo para cá…', icon: 'users', run: () => Luta.grupo({ x: p.x, y: p.y }) });
       if (gm && Nuvem.on() && window.ClaNucleo) items.push({ label: 'Puxar os membros do clã para cá…', icon: 'users', run: () => MembrosCla.abrir({ x: p.x, y: p.y }) });      // (lote 59)
       if (Luta.podeDescanso() && Store.scene().tokens.some(t => t.char && !t.clone)) items.push({ label: 'Descanso curto do grupo…', icon: 'rest', run: () => Luta.descansoCurto() });
