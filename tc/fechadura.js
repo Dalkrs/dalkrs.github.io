@@ -324,24 +324,35 @@
       const caixa = h('div', { class: 'fch-pinos', style: { gridTemplateColumns: 'repeat(' + n + ', 1fr)' } });
       pinosEl = Array.from({ length: n }, (_, i) => {
         const pino = h('div', { class: 'fch-pino' }), mola = h('div', { class: 'fch-mola' }), alvo = h('div', { class: 'fch-alvo' });
-        const col = h('button', { type: 'button', class: 'fch-col', 'aria-label': 'Pino ' + (i + 1), onclick: () => { if (!fechadoAgora()) { st.pino = i; empurrarOuTravar(); } } }, alvo, mola, pino);
+        /* (lote 155) no apertar (pointerdown), não no soltar: o clique só chega quando o botão do mouse sobe, ~100 ms depois
+           — no Extremo e no Absoluto isso já passava da janela. tabindex −1: a coluna não pega o foco, senão a barra de
+           espaço (que o palco já trata no keydown) ainda "clicava" a coluna no keyup e contava um segundo aperto. */
+        const col = h('button', { type: 'button', tabindex: '-1', class: 'fch-col', 'aria-label': 'Pino ' + (i + 1),
+          onpointerdown: ev => { ev.preventDefault(); if (!fechadoAgora()) { st.pino = i; empurrarOuTravar(ev.timeStamp); } palco.focus({ preventScroll: true }); } }, alvo, mola, pino);
         caixa.append(col);
         return { col, pino, mola, alvo };
       });
       palco.append(caixa);
       st.faixa = null;
     }
-    function empurrarOuTravar() {
+    /* (lote 155) o instante do aperto: o do evento (não o de quando o código roda) */
+    const instante = t => (typeof t === 'number' && t > 0 && Math.abs(performance.now() - t) < 1000 ? t : performance.now());
+    const ATRASO = 70;                 // ms: o que a tela mostra já passou (o quadro, o monitor, o dedo) — vale um pouco depois
+    function empurrarOuTravar(tEv) {
       if (fechadoAgora()) return;
       comecar();
-      const i = st.pino;
+      const i = st.pino, agora = instante(tEv);
       if (st.travados[i]) { st.msg = 'Este pino já está travado.'; return; }
-      if (!st.sobe || st.sobe.i !== i || performance.now() - st.sobe.t0 >= ((segredoDe(c.jg).v || [])[i] || 1200)) { st.sobe = { i, t0: performance.now() }; som('clique'); return; }
+      const per = (segredoDe(c.jg).v || [])[i] || 1200;
+      if (!st.sobe || st.sobe.i !== i || agora - st.sobe.t0 >= per + ATRASO) { st.sobe = { i, t0: agora }; som('clique'); return; }
       // travar: só no alto
-      const s = segredoDe(c.jg), per = (s.v || [])[i] || 1200, f = (performance.now() - st.sobe.t0) / per, jan = Math.min(0.6, T.janela[p().n] * mult());
+      const f = (agora - st.sobe.t0) / per, jan = Math.min(0.6, T.janela[p().n] * mult());
       st.sobe = null;
-      // (lote 134) uma folga de um quadro de tela (o que se vê é o desenho de um instante atrás)
-      if (Math.abs(f - 0.5) <= jan / 2 + 0.012) {
+      /* (lote 134) uma folga de um quadro de tela; (lote 155) e, depois do alto, a folga do atraso de quem vê e aperta:
+         quem aperta quando VÊ o pino no verde chega uns 50–80 ms depois. No Absoluto a janela inteira tem ~40 ms: sem
+         essa folga, apertar no verde caía sempre fora. A faixa verde continua sendo a janela de verdade. */
+      const d = f - 0.5, antes = jan / 2 + 0.012, depois = jan / 2 + 0.012 + ATRASO / per;
+      if (d >= -antes && d <= depois) {
         st.travados[i] = true; som('trava'); st.msg = 'Travou!';
         const n = p().pinos || 3, livres = [...Array(n).keys()].filter(k => !st.travados[k]);
         if (!livres.length) abrir();
@@ -373,7 +384,7 @@
         if (st.faixa !== alto) { st.faixa = alto; pinosEl.forEach(el => { el.alvo.style.top = (PINO_TOPO - 2) + 'px'; el.alvo.style.height = (alto + 2) + 'px'; }); }
         return;
       }
-      if (st.sobe) { const per = (s.v || [])[st.sobe.i] || 1200; if (performance.now() - st.sobe.t0 >= per) st.sobe = null; }
+      if (st.sobe) { const per = (s.v || [])[st.sobe.i] || 1200; if (performance.now() - st.sobe.t0 >= per + ATRASO) st.sobe = null; }
       pinosEl.forEach((el, i) => {
         let alt = 0;
         if (st.travados[i]) alt = 1;
@@ -433,7 +444,7 @@
       } else {
         if (ev.key === 'ArrowLeft' || ev.key === 'a') { st.pino = Math.max(0, st.pino - 1); st.sobe = null; ev.preventDefault(); }
         else if (ev.key === 'ArrowRight' || ev.key === 'd') { st.pino = Math.min((P.pinos || 3) - 1, st.pino + 1); st.sobe = null; ev.preventDefault(); }
-        else if (ev.key === ' ' || ev.key === 'Enter') { if (!ev.repeat) empurrarOuTravar(); ev.preventDefault(); }
+        else if (ev.key === ' ' || ev.key === 'Enter') { if (!ev.repeat) empurrarOuTravar(ev.timeStamp); ev.preventDefault(); }
       }
     });
     palco.addEventListener('keyup', ev => { if (ev.key === ' ' || ev.key === 'ArrowUp' || ev.key === 'w') st.segurando = false; });
@@ -473,7 +484,10 @@
       botoes.replaceChildren(...(c.ctx.soVer || s.aberta || s.falhou ? [] : P.estilo === 'girar'
         ? [h('button', { type: 'button', class: 'btn pri fch-girar', 'data-k': chave + ':girar',
             onpointerdown: ev => { ev.preventDefault(); comecar(); st.segurando = true; }, onpointerup: () => { st.segurando = false; }, onpointerleave: () => { st.segurando = false; }, onpointercancel: () => { st.segurando = false; } }, 'Segure para girar')]
-        : [h('button', { type: 'button', class: 'btn pri', 'data-k': chave + ':empurrar', onclick: () => empurrarOuTravar() }, 'Empurrar / travar')]));
+        : [h('button', { type: 'button', class: 'btn pri', 'data-k': chave + ':empurrar',
+            // (lote 155) no apertar; o teclado neste botão vai pelo keydown (o clique do teclado viria só no soltar)
+            onpointerdown: ev => { ev.preventDefault(); empurrarOuTravar(ev.timeStamp); },
+            onkeydown: ev => { if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); if (!ev.repeat) empurrarOuTravar(ev.timeStamp); } } }, 'Empurrar / travar')]));
       teste.replaceChildren();
       if (c.ctx.mestre && !c.ctx.soVer && P.atr) {
         const inp = h('input', { type: 'number', class: 'in', min: 0, max: 100, value: st.teste, 'data-k': chave + ':teste', oninput: ev => { st.teste = clamp(Number(ev.target.value) || 0, 0, 100); infoChave = ''; } });

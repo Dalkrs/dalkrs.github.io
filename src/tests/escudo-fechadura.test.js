@@ -108,6 +108,21 @@ ok(F.ajuda(0) === 1 && F.ajuda(50) === 1.5 && F.ajuda(500) === 2, 'o atributo al
     jg = await tst();
     ok(await ev(() => document.querySelectorAll('.previa .fch-col.travado').length) === 1, 'travou ao encostar no verde: ' + JSON.stringify(jg.estado) + ' ' + JSON.stringify(v2));
     if (process.env.FOTOS) await p.locator('.previa .fch').screenshot({ path: process.env.FOTOS + '/fch-extremo.png' });
+    // (lote 155) no Absoluto: quem vê o pino no verde e aperta com o atraso de uma pessoa (~60 ms) trava; e com o mouse,
+    // o aperto conta no pointerdown (o clique viria só ao soltar o botão)
+    await p.click('[data-k="pz:niv:absoluto"]'); await w(400);
+    const verde = async () => { const fx = await ev(() => { const a = document.querySelector('.previa .fch-alvo'); return [parseFloat(a.style.top), parseFloat(a.style.height)]; });
+      await ev(([top, h]) => new Promise(res => { const pino = [...document.querySelectorAll('.previa .fch-col')].find(c => c.classList.contains('vez')).querySelector('.fch-pino'), col = pino.parentElement;
+        const olha = () => { const y = pino.getBoundingClientRect().top - col.getBoundingClientRect().top; if (y <= top + h * 0.5) res(); else requestAnimationFrame(olha); }; olha(); }), fx); };
+    await p.locator('.previa .fch-palco').focus();
+    await p.keyboard.press(' '); await verde(); await w(60); await p.keyboard.press(' '); await w(250);
+    ok(await ev(() => document.querySelectorAll('.previa .fch-col.travado').length) === 1, 'no Absoluto, apertar (teclado) ao ver o pino no verde trava');
+    const vez = p.locator('.previa .fch-col.vez');
+    const bx = await vez.boundingBox();
+    await p.mouse.move(bx.x + bx.width / 2, bx.y + bx.height / 2);
+    await p.mouse.down(); await p.mouse.up();
+    await verde(); await w(50); await p.mouse.down(); await w(150); await p.mouse.up(); await w(250);
+    ok(await ev(() => document.querySelectorAll('.previa .fch-col.travado').length) === 2, 'no Absoluto, com o mouse: conta no apertar, não no soltar');
     // (lote 137) ao vivo: a fechadura de quem joga manda o movimento; a do mestre ("Ver como está", só ver) mostra igual
     await ev(() => {
       const subs = [];
