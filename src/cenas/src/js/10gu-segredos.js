@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------
    10gu. OS SEGREDOS COM TRÊS PISTAS (lote 155) — a regra das três pistas: para cada coisa que os jogadores precisam
    descobrir, três pistas, cada uma por um caminho (um objeto, uma pessoa, um lugar); qualquer uma basta.
-   O mestre escreve o segredo e as três pistas (ou pede à IA, e revisa), e escolhe a cena de cada pista. Cada pista vira
+   O mestre escreve o segredo e as três pistas, e escolhe a cena de cada pista. Cada pista vira
    uma Marca de pista escondida (só o mestre vê) na cena dela, com o texto na nota.
    Onde fica: o segredo mora na cena em que nasceu (sc.segredos: { id, titulo, texto, pistas: [{ n, txt, cena, tok,
    achou }] }); a marca de cada pista leva t.seg = { id, n }. A lista (na aba Guardas) junta os segredos de todas as cenas.
@@ -76,26 +76,6 @@ const Segredos = (() => {
     setTimeout(() => { const t = Store.get('tokens', p.tok), sc = Store.scene(); if (!t) return; setSel([{ c: 'tokens', id: t.id }]); const [cx, cy] = tokC(t, sc); Render.centerOn(cx, cy); }, 60);
   }
 
-  /* ---------------- a IA: as três pistas ---------------- */
-  async function pistasDaIA(segredo, titulo, cenas) {
-    const T = window.TC;
-    if (!T || !T.ia || !T.ia.pedir) throw new Error('A IA funciona com a mesa aberta no site.');
-    const nomes = cenas.map(c => c.name).slice(0, 40);
-    const sistema = [
-      'Você ajuda o mestre de uma mesa de RPG de fantasia (em português do Brasil).',
-      'O mestre tem um segredo que os jogadores precisam descobrir. Escreva TRÊS pistas, seguindo a regra das três pistas:',
-      '- cada pista, sozinha, já leva ao segredo, por um caminho diferente: uma é um objeto (uma carta, um diário, uma marca), uma é uma pessoa (o que alguém diz ou faz), uma é um lugar (algo que se vê ali);',
-      '- curtas (uma ou duas frases), concretas, do jeito que o mestre lê ou mostra; sem contar o segredo de cara: os jogadores ligam os pontos;',
-      '- para cada pista, escolha a cena onde ela fica, da lista de cenas do mestre (o nome igual), ou deixe vazio se nenhuma serve.',
-      'Cenas do mestre: ' + (nomes.length ? nomes.join(' | ') : '(nenhuma)'),
-    ].join('\n');
-    const ferramenta = { name: 'tres_pistas', description: 'As três pistas do segredo.', input_schema: { type: 'object', required: ['pistas'], properties: { pistas: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'object', required: ['texto', 'forma'], properties: { texto: { type: 'string' }, forma: { type: 'string', enum: ['objeto', 'pessoa', 'lugar'] }, cena: { type: 'string' } } } } } } };
-    const r = await T.ia.pedir({ acao: 'pistas', texto: (titulo ? 'Título: ' + titulo + '\n' : '') + 'O segredo: ' + segredo, sistema, ferramenta });
-    const l = r && r.dados && Array.isArray(r.dados.pistas) ? r.dados.pistas : null;
-    if (!l || !l.length) throw new Error('A IA não devolveu as pistas. Tente escrever o segredo de outro jeito.');
-    return l.slice(0, 3).map(p => ({ txt: txt(p.texto, 600), forma: p.forma, cena: (cenas.find(c => c.name === p.cena) || {}).id || '' }));
-  }
-
   /* ---------------- a janela "Novo segredo" ---------------- */
   function abrirNovo() {
     if (!isGM()) return;
@@ -103,28 +83,15 @@ const Segredos = (() => {
     const cenas = Store.S.order.map(id => Store.S.scenes[id]).filter(Boolean);
     const outras = cenas.filter(c => c.id !== sc0.id).sort(() => Math.random() - 0.5);
     const o = { titulo: '', texto: '', pistas: [0, 1, 2].map(i => ({ txt: '', cena: i === 0 || !outras.length ? sc0.id : outras[(i - 1) % outras.length].id })) };
-    let msg = '';
     const corpo = h('div', { class: 'seg-novo' });
     const opcs = cenas.map(c => [c.id, c.name]);
     const pintarC = () => corpo.replaceChildren(
       K.field('Título (curto)', h('input', { class: 'in', id: 'seg-titulo', value: o.titulo, maxlength: 60, oninput: e => { o.titulo = e.target.value; } }), 'stack'),
       K.field('O segredo (só você vê)', h('textarea', { class: 'in', id: 'seg-texto', rows: 3, value: o.texto, oninput: e => { o.texto = e.target.value; } }), 'stack'),
-      h('div', { class: 'row' }, K.btn('Escrever as pistas com a IA', ia, { kind: 'small', icon: 'fx', id: 'seg-ia' })),
-      msg ? h('p', { class: 'note', id: 'seg-msg', text: msg }) : null,
       ...o.pistas.map((p, i) => h('div', { class: 'seg-pista' },
-        K.field('Pista ' + (i + 1) + (p.forma ? ' (' + p.forma + ')' : ''), h('textarea', { class: 'in', id: 'seg-p' + i, rows: 2, value: p.txt, oninput: e => { p.txt = e.target.value; } }), 'stack'),
+        K.field('Pista ' + (i + 1), h('textarea', { class: 'in', id: 'seg-p' + i, rows: 2, value: p.txt, oninput: e => { p.txt = e.target.value; } }), 'stack'),
         K.field('Em qual cena', K.inSelect('seg-c' + i, p.cena, opcs, v => { p.cena = v; }), 'stack'))),
       K.note('Cada pista vira uma Marca de pista escondida na cena dela, com o texto na nota. A lista fica na aba Guardas.'));
-    async function ia() {
-      if (!o.texto.trim()) { msg = 'Escreva o segredo primeiro.'; pintarC(); return; }
-      msg = 'Pensando…'; pintarC();
-      try {
-        const l = await pistasDaIA(o.texto.trim(), o.titulo.trim(), cenas);
-        l.forEach((x, i) => { if (!o.pistas[i]) return; o.pistas[i].txt = x.txt; o.pistas[i].forma = x.forma; if (x.cena) o.pistas[i].cena = x.cena; });
-        msg = 'Pronto: revise e mude o que quiser.';
-      } catch (e) { msg = (e && e.message) || 'A IA não respondeu.'; }
-      pintarC();
-    }
     pintarC();
     UI.modal({ title: 'Novo segredo', body: corpo, actions: [{ label: 'Cancelar' }, { label: 'Criar o segredo', kind: 'primary', run: () => {
       if (!o.texto.trim() || o.pistas.some(p => !p.txt.trim())) { UI.toast('Escreva o segredo e as três pistas.'); return false; }
@@ -151,5 +118,5 @@ const Segredos = (() => {
       })) : K.note('Nenhum segredo ainda. Um segredo tem 3 pistas, cada uma num caminho (um objeto, uma pessoa, um lugar): qualquer uma basta para os jogadores chegarem lá.'),
       h('div', { class: 'row' }, K.btn('Novo segredo…', abrirNovo, { kind: 'small', icon: 'plus', id: 'seg-novo' })));
   }
-  return { todos, criar, marcar, apagar, achada, abrirNovo, secao, pistasDaIA };
+  return { todos, criar, marcar, apagar, achada, abrirNovo, secao };
 })();

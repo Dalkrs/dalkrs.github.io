@@ -36,11 +36,9 @@ const Novidades = (() => {
   }
   function passos() {
     return [
-      passo('Novidades no gerador de mapas', 'São 16 novidades. Eu abro cada tela e mostro onde fica. Você só lê e avança: nada muda nas cenas.', { next: 'Começar' }),
+      passo('Novidades no gerador de mapas', 'São 15 novidades. Eu abro cada tela e mostro onde fica. Você só lê e avança: nada muda nas cenas.', { next: 'Começar' }),
       passo('Gerar um lugar…', 'Tudo começa aqui: no menu das cenas, "Gerar um lugar…". Na coluna da esquerda, os lugares. Dois são novos: Sob medida e Por exemplo.',
         { enter: () => abrir('sobmedida', 'lugar', '#ger-lugar'), target: rect('#ger-lugar'), side: 'right' }),
-      passo('Descrever com a IA', 'Escreva o lugar do seu jeito. A IA escolhe o gerador, preenche a ficha e agora também desenha a planta: onde fica a casa, cada cômodo, o lago, a mata. Depois dá para mudar tudo.',
-        { enter: () => abrir('sobmedida', 'ia'), target: rect('#ger-bl-ia'), side: 'left' }),
       passo('Sob medida', 'A ficha da casa: o terreno, o muro, o porte, as salas do térreo, os andares e os anexos do quintal (piscina, estufa, estábulo…).',
         { enter: () => abrir('sobmedida', 'lugar'), target: rect('#ger-bl-lugar'), side: 'left' }),
       passo('Por exemplo', 'Mostre um exemplo pequeno e o gerador faz um mapa grande do mesmo jeito. O exemplo pode ser um pronto, um desenho seu (12 × 12) ou uma cena que você já tem.',

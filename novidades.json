@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.14-06",
+      "data": "2026-11-14",
+      "titulo": "A IA saiu do site",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Gerador de mapas: saiu o \u201cDescrever com a IA\u201d. O gerador funciona como antes, pelas escolhas da janela.", "mestre": true },
+        { "tipo": "melhorou", "texto": "Segredos das Cenas: saiu o \u201cEscrever as pistas com a IA\u201d. As três pistas agora são escritas à mão.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.14-05",
       "data": "2026-11-14",
       "titulo": "Quadro de pistas mais fácil de ler",

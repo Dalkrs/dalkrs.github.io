@@ -1,7 +1,7 @@
 // Bateria do lote 158 (as Cenas): (1) as 15 categorias novas de objetos (desenham sem erro); (2) os 15 climas novos (em
 // grupos; desenham sem erro; os clarões da tempestade têm chave); (3) os objetos do tema no gerador (automático pelo lugar,
 // escolhido, ou nenhum; não tampam portas nem cruzam paredes); (4) "Pôr objetos de um tema…" numa cena pronta, com
-// Desfazer; (5) as salas novas (a taverna, a sala de magia, o treino…) mobiliadas; (6) a IA escolhe o tema; (7) o passeio
+// Desfazer; (5) as salas novas (a taverna, a sala de magia, o treino…) mobiliadas; (7) o passeio
 // das novidades: só os cartões novos para quem já viu o de antes.
 const { open } = require('./lib');
 let fails = 0, n = 0;
@@ -86,13 +86,9 @@ const ok = (c, m) => { n++; if (!c) { fails++; console.log('FALHOU:', m); } };
     const F = __tc.Furtividade, spec = { terreno: 'grande', muro: true, porte: 'boa', terreo: ['tavernaSalao', 'aula', 'treino', 'teatro', 'interrogatorio', 'portal'], anexos: [], guardas: 'nenhum' };
     const pl = F.gerar('sobmedida', { spec, seed: 11, estilo: 'comum' });
     const ids = new Set(pl.objetos.map(o => o.id)), papeis = pl.salas.map(q => q.papel);
-    const sal = __tc.IaMapa.pedido().ferramenta.input_schema.properties;
-    return { papeis, tem: ['chopeira', 'carteira', 'quadroRunas', 'cavaleteArmas', 'mesaInterrogatorio'].filter(x => ids.has(x)), iaSalas: ['tavernaSalao', 'aula', 'teatro'].every(x => sal.planta.properties.salas.items.properties.uso.enum.includes(x)), iaTema: sal.tema && sal.tema.enum.length === 15 };
+    return { papeis, tem: ['chopeira', 'carteira', 'quadroRunas', 'cavaleteArmas', 'mesaInterrogatorio'].filter(x => ids.has(x)) };
   });
   ok(['tavernaSalao', 'aula', 'treino'].every(x => r6.papeis.includes(x)) && r6.tem.length >= 3, 'as salas novas mobiliadas com os objetos novos: ' + r6.tem.join(','));
-  ok(r6.iaSalas && r6.iaTema, 'a IA conhece as salas novas e os 15 temas');
-  // (6) a IA escolhe o tema
-  ok(await p.evaluate(() => __tc.IaMapa.traduzir({ lugar: 'interior', nome: 'A taverna', tema: 'taverna', clima: 'garoa' }).comum.tema === 'taverna'), 'a ficha da IA traz o tema');
   // (7) o passeio: quem já viu o 157 vê só os novos
   await p.evaluate(() => { __tc.UI.closeModal(); __tc.Store.S.prefs.novidades = 157; try { localStorage.setItem('tinycats-novidades-gerador', '157'); } catch (e) { /* */ } __tc.Novidades.start({ auto: true }); }); await w(500);
   const vistos = [];

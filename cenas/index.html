@@ -1406,10 +1406,6 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 /* (lote 150) o sob medida: a ficha */
 .sob-anxs { display: flex; flex-direction: column; gap: 2px; }
 .sob-anx { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.sob-ia { border-left: 3px solid var(--lamp); padding: 4px 8px; background: rgba(230, 171, 79, 0.08); border-radius: 6px; }
-.ia-msg .ia-erro { color: #e88a7a; }
-.ia-msg .ia-notas { border-left: 3px solid var(--lamp); padding-left: 8px; }
-#ger-ia-texto { resize: vertical; min-height: 84px; }
 /* (lote 152) a história da missão, na aba Guardas */
 .gd-trama { display: flex; flex-direction: column; gap: 6px; }
 .gd-tr { display: flex; flex-direction: column; gap: 2px; padding: 4px 6px; border-radius: 8px; }
@@ -1463,7 +1459,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 </style>
 </head>
 <body>
-<script src="../tc/ponte.js?v=22"></script>
+<script src="../tc/ponte.js?v=23"></script>
 <script src="../tc/dice.js?v=3"></script>
 <script src="../tc/rules.js?v=34"></script>
 <script src="../tc/tags.js?v=3"></script>
@@ -24708,11 +24704,9 @@ const Novidades = (() => {
   }
   function passos() {
     return [
-      passo('Novidades no gerador de mapas', 'São 16 novidades. Eu abro cada tela e mostro onde fica. Você só lê e avança: nada muda nas cenas.', { next: 'Começar' }),
+      passo('Novidades no gerador de mapas', 'São 15 novidades. Eu abro cada tela e mostro onde fica. Você só lê e avança: nada muda nas cenas.', { next: 'Começar' }),
       passo('Gerar um lugar…', 'Tudo começa aqui: no menu das cenas, "Gerar um lugar…". Na coluna da esquerda, os lugares. Dois são novos: Sob medida e Por exemplo.',
         { enter: () => abrir('sobmedida', 'lugar', '#ger-lugar'), target: rect('#ger-lugar'), side: 'right' }),
-      passo('Descrever com a IA', 'Escreva o lugar do seu jeito. A IA escolhe o gerador, preenche a ficha e agora também desenha a planta: onde fica a casa, cada cômodo, o lago, a mata. Depois dá para mudar tudo.',
-        { enter: () => abrir('sobmedida', 'ia'), target: rect('#ger-bl-ia'), side: 'left' }),
       passo('Sob medida', 'A ficha da casa: o terreno, o muro, o porte, as salas do térreo, os andares e os anexos do quintal (piscina, estufa, estábulo…).',
         { enter: () => abrir('sobmedida', 'lugar'), target: rect('#ger-bl-lugar'), side: 'left' }),
       passo('Por exemplo', 'Mostre um exemplo pequeno e o gerador faz um mapa grande do mesmo jeito. O exemplo pode ser um pronto, um desenho seu (12 × 12) ou uma cena que você já tem.',
@@ -50721,7 +50715,7 @@ const Furtividade = (() => {
   }
 
   /* ================= (lote 150) o lugar sob medida =================
-     Uma propriedade montada a partir de uma ficha (que a IA preenche com o texto do mestre, ou ele mesmo, na janela):
+     Uma propriedade montada a partir de uma ficha (que o mestre preenche na janela):
      o terreno (o tamanho, o muro), a casa (o porte e as salas do térreo; os andares e o porão pela escolha de sempre),
      os anexos do quintal (a piscina, as estufas, a casa de ferramentas, o altar, a fonte, a horta, o pomar, o poço, o
      estábulo, o canil, a mesa de jardim, o varal) e os guardas (ou nenhum). A casa fica na frente; os anexos se arrumam
@@ -51510,7 +51504,6 @@ const Furtividade = (() => {
         return h('div', { class: 'sob-anx' }, K.toggle('sob-a-' + tp, !!a, on => muda(s => { s.anexos = on ? s.anexos.concat([{ t: tp, n: 1 }]) : s.anexos.filter(b => b.t !== tp); }), ANEXOS[tp].n),
           a && !['piscina', 'pomar', 'altar'].includes(tp) ? K.stepper('sob-n-' + tp, a.n, 1, 4, v => muda(s => { s.anexos.find(b => b.t === tp).n = v; }), 'Quantas: ' + ANEXOS[tp].n) : null); });
       return h('div', { class: 'ger-c' }, ...[
-        st.titulo || st.notas ? h('div', { class: 'sob-ia', id: 'sob-ia' }, st.notas ? K.note('Notas para o mestre: ' + st.notas) : null, st.fora && st.fora.length ? K.note('O gerador ainda não faz: ' + st.fora.join('; ') + '.') : null) : null,
         K.field('Terreno', K.seg('sob-terreno', S.terreno, Object.keys(TAM).map(k => [k, TAM[k].n]), v => muda(s => { s.terreno = v; })), 'stack'),
         K.toggle('sob-muro', S.muro, v => muda(s => { s.muro = v; }), 'Muro em volta, com o portão'),
         K.field('A casa', K.seg('sob-porte', S.porte, PORTES, v => muda(s => { s.porte = v; })), 'stack'),
@@ -51536,7 +51529,7 @@ const Furtividade = (() => {
     resumo: p => resumo(p).replace(/^Sob medida/, 'Sob medida') + (p.naoCouberam ? ` Não couberam no quintal: ${p.naoCouberam.join(', ')} (aumente o terreno).` : ''),
     criar: (p, nome, ex) => criar(p, nome, Object.assign({}, ex, { horaLivre: true })),
     relevoTxt: 'Com relevo',
-    dica: 'A ficha do lado direito é o lugar: mude as salas, os anexos e os andares. "Descrever com a IA" preenche a ficha a partir de um texto.',
+    dica: 'A ficha do lado direito é o lugar: mude as salas, os anexos e os andares.',
     nota: 'Uma casa com o terreno em volta, montada a partir da ficha: a casa na frente, os anexos no quintal (ligados por caminhos), os andares e o porão como você escolher, com ou sem guardas. A hora do dia é a escolhida.',
     feito: sc => `"${sc.name}" criada.`,
   }, { partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava, quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null });
@@ -52477,7 +52470,7 @@ const Exemplo = (() => {
 /* ---------------------------------------------------------------
    10gu. OS SEGREDOS COM TRÊS PISTAS (lote 155) — a regra das três pistas: para cada coisa que os jogadores precisam
    descobrir, três pistas, cada uma por um caminho (um objeto, uma pessoa, um lugar); qualquer uma basta.
-   O mestre escreve o segredo e as três pistas (ou pede à IA, e revisa), e escolhe a cena de cada pista. Cada pista vira
+   O mestre escreve o segredo e as três pistas, e escolhe a cena de cada pista. Cada pista vira
    uma Marca de pista escondida (só o mestre vê) na cena dela, com o texto na nota.
    Onde fica: o segredo mora na cena em que nasceu (sc.segredos: { id, titulo, texto, pistas: [{ n, txt, cena, tok,
    achou }] }); a marca de cada pista leva t.seg = { id, n }. A lista (na aba Guardas) junta os segredos de todas as cenas.
@@ -52552,26 +52545,6 @@ const Segredos = (() => {
     setTimeout(() => { const t = Store.get('tokens', p.tok), sc = Store.scene(); if (!t) return; setSel([{ c: 'tokens', id: t.id }]); const [cx, cy] = tokC(t, sc); Render.centerOn(cx, cy); }, 60);
   }
 
-  /* ---------------- a IA: as três pistas ---------------- */
-  async function pistasDaIA(segredo, titulo, cenas) {
-    const T = window.TC;
-    if (!T || !T.ia || !T.ia.pedir) throw new Error('A IA funciona com a mesa aberta no site.');
-    const nomes = cenas.map(c => c.name).slice(0, 40);
-    const sistema = [
-      'Você ajuda o mestre de uma mesa de RPG de fantasia (em português do Brasil).',
-      'O mestre tem um segredo que os jogadores precisam descobrir. Escreva TRÊS pistas, seguindo a regra das três pistas:',
-      '- cada pista, sozinha, já leva ao segredo, por um caminho diferente: uma é um objeto (uma carta, um diário, uma marca), uma é uma pessoa (o que alguém diz ou faz), uma é um lugar (algo que se vê ali);',
-      '- curtas (uma ou duas frases), concretas, do jeito que o mestre lê ou mostra; sem contar o segredo de cara: os jogadores ligam os pontos;',
-      '- para cada pista, escolha a cena onde ela fica, da lista de cenas do mestre (o nome igual), ou deixe vazio se nenhuma serve.',
-      'Cenas do mestre: ' + (nomes.length ? nomes.join(' | ') : '(nenhuma)'),
-    ].join('\n');
-    const ferramenta = { name: 'tres_pistas', description: 'As três pistas do segredo.', input_schema: { type: 'object', required: ['pistas'], properties: { pistas: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'object', required: ['texto', 'forma'], properties: { texto: { type: 'string' }, forma: { type: 'string', enum: ['objeto', 'pessoa', 'lugar'] }, cena: { type: 'string' } } } } } } };
-    const r = await T.ia.pedir({ acao: 'pistas', texto: (titulo ? 'Título: ' + titulo + '\n' : '') + 'O segredo: ' + segredo, sistema, ferramenta });
-    const l = r && r.dados && Array.isArray(r.dados.pistas) ? r.dados.pistas : null;
-    if (!l || !l.length) throw new Error('A IA não devolveu as pistas. Tente escrever o segredo de outro jeito.');
-    return l.slice(0, 3).map(p => ({ txt: txt(p.texto, 600), forma: p.forma, cena: (cenas.find(c => c.name === p.cena) || {}).id || '' }));
-  }
-
   /* ---------------- a janela "Novo segredo" ---------------- */
   function abrirNovo() {
     if (!isGM()) return;
@@ -52579,28 +52552,15 @@ const Segredos = (() => {
     const cenas = Store.S.order.map(id => Store.S.scenes[id]).filter(Boolean);
     const outras = cenas.filter(c => c.id !== sc0.id).sort(() => Math.random() - 0.5);
     const o = { titulo: '', texto: '', pistas: [0, 1, 2].map(i => ({ txt: '', cena: i === 0 || !outras.length ? sc0.id : outras[(i - 1) % outras.length].id })) };
-    let msg = '';
     const corpo = h('div', { class: 'seg-novo' });
     const opcs = cenas.map(c => [c.id, c.name]);
     const pintarC = () => corpo.replaceChildren(
       K.field('Título (curto)', h('input', { class: 'in', id: 'seg-titulo', value: o.titulo, maxlength: 60, oninput: e => { o.titulo = e.target.value; } }), 'stack'),
       K.field('O segredo (só você vê)', h('textarea', { class: 'in', id: 'seg-texto', rows: 3, value: o.texto, oninput: e => { o.texto = e.target.value; } }), 'stack'),
-      h('div', { class: 'row' }, K.btn('Escrever as pistas com a IA', ia, { kind: 'small', icon: 'fx', id: 'seg-ia' })),
-      msg ? h('p', { class: 'note', id: 'seg-msg', text: msg }) : null,
       ...o.pistas.map((p, i) => h('div', { class: 'seg-pista' },
-        K.field('Pista ' + (i + 1) + (p.forma ? ' (' + p.forma + ')' : ''), h('textarea', { class: 'in', id: 'seg-p' + i, rows: 2, value: p.txt, oninput: e => { p.txt = e.target.value; } }), 'stack'),
+        K.field('Pista ' + (i + 1), h('textarea', { class: 'in', id: 'seg-p' + i, rows: 2, value: p.txt, oninput: e => { p.txt = e.target.value; } }), 'stack'),
         K.field('Em qual cena', K.inSelect('seg-c' + i, p.cena, opcs, v => { p.cena = v; }), 'stack'))),
       K.note('Cada pista vira uma Marca de pista escondida na cena dela, com o texto na nota. A lista fica na aba Guardas.'));
-    async function ia() {
-      if (!o.texto.trim()) { msg = 'Escreva o segredo primeiro.'; pintarC(); return; }
-      msg = 'Pensando…'; pintarC();
-      try {
-        const l = await pistasDaIA(o.texto.trim(), o.titulo.trim(), cenas);
-        l.forEach((x, i) => { if (!o.pistas[i]) return; o.pistas[i].txt = x.txt; o.pistas[i].forma = x.forma; if (x.cena) o.pistas[i].cena = x.cena; });
-        msg = 'Pronto: revise e mude o que quiser.';
-      } catch (e) { msg = (e && e.message) || 'A IA não respondeu.'; }
-      pintarC();
-    }
     pintarC();
     UI.modal({ title: 'Novo segredo', body: corpo, actions: [{ label: 'Cancelar' }, { label: 'Criar o segredo', kind: 'primary', run: () => {
       if (!o.texto.trim() || o.pistas.some(p => !p.txt.trim())) { UI.toast('Escreva o segredo e as três pistas.'); return false; }
@@ -52627,7 +52587,7 @@ const Segredos = (() => {
       })) : K.note('Nenhum segredo ainda. Um segredo tem 3 pistas, cada uma num caminho (um objeto, uma pessoa, um lugar): qualquer uma basta para os jogadores chegarem lá.'),
       h('div', { class: 'row' }, K.btn('Novo segredo…', abrirNovo, { kind: 'small', icon: 'plus', id: 'seg-novo' })));
   }
-  return { todos, criar, marcar, apagar, achada, abrirNovo, secao, pistasDaIA };
+  return { todos, criar, marcar, apagar, achada, abrirNovo, secao };
 })();
 /* ---------------------------------------------------------------
    10gv. O MUNDO EMPRESTA PARA A CENA (lote 155) — o que o Mapa-múndi manda junto com o "Gerar a cena aqui" e o "Gerar
@@ -53699,145 +53659,6 @@ const Trama = (() => {
   return { nomeSala: nomeDaSala, TAMS, TIPOS, prefs, vale, tecer, resumo, desenhar, aplicar, controles, resumoBloco, secao, pontas, modelo, busca };
 })();
 /* ---------------------------------------------------------------
-   10gz. DESCREVER COM A IA (lote 150) — o "texto para o mapa" da janela "Gerar um lugar…".
-   O mestre escreve o lugar do jeito dele ("uma casa nobre de um andar, cozinha, 2 quartos, quintal com piscina…"); o
-   site manda para a função `ia` do servidor (a chave da API fica lá) as instruções e o formato da resposta (uma
-   "ferramenta" com o esquema), e a IA devolve a ficha: o lugar da janela que mais combina e as escolhas dele — no Sob
-   medida, o terreno, a casa, as salas de cada andar e os anexos do quintal; no Interior, o prédio; na Furtividade, o
-   tamanho e os guardas — mais o estilo, a hora, o clima, o nome e as notas só para o mestre (o que é segredo, ideias) e
-   o que o gerador ainda não sabe fazer. A janela aplica a ficha (as escolhas ficam editáveis) e gera.
-   --------------------------------------------------------------- */
-const IaMapa = (() => {
-  const OUTROS = { vila: 'Vilarejo', cidade: 'Cidade', cidadeGrande: 'Cidade grande (a capital)', tribo: 'Aldeia de uma tribo', porto: 'Porto com o mar', encontro: 'Encontro na estrada ou na natureza (combate a céu aberto)',
-    regiao: 'Região livre (um pedaço de natureza: bioma, rio, caminho)', lago: 'Lago', praia: 'Praia', penhasco: 'Penhasco', desfiladeiro: 'Desfiladeiro', castelo: 'Castelo (de fora)',
-    ruinas: 'Ruínas', cemiterio: 'Cemitério', mundo116: 'Lugares do mundo (templo, santuário…)', masmorra: 'Masmorra (níveis de caverna ou de construção)', catacumbas: 'Catacumbas', crime: 'Cena do crime', arena: 'Arena' };
-  const FUR = () => Furtividade.IDS.map(id => [id, Furtividade.NOMES[id]]);
-  const salasAndar = () => Furtividade.catF('sobmedida').salas;
-  const salasBase = () => Furtividade.catF('sobmedida').base;
-
-  function pedido() {
-    const lugares = [['sobmedida', 'Sob medida: uma casa (simples, boa ou nobre) com o terreno em volta, as salas que o texto pedir, os andares, o porão e os anexos do quintal. A escolha certa para casas, sítios, chácaras e propriedades descritas com detalhe.'],
-      ['interior', 'Interior: só o lado de dentro de um prédio pronto (casa, loja, taverna, templo, casa do senhor, quartel…), sem terreno.']]
-      .concat(FUR().map(([id, n]) => [id, 'Furtividade: ' + n + ' (com guardas em ronda, para uma missão de infiltração).']))
-      .concat(Object.entries(OUTROS).map(([id, n]) => [id, n]));
-    const ids = lugares.map(l => l[0]);
-    const anexos = Object.entries(Furtividade.ANEXOS).map(([k, a]) => k + ' (' + a.n + ')').join(', ');
-    const nomeSala = x => PlantaAndares.NOMES[x] || x;
-    const sistema = [
-      'Você monta mapas de RPG de mesa para um gerador de cenas (um VTT em português). O mestre descreve um lugar; você escolhe, entre os geradores que existem, o que melhor faz esse lugar e preenche a ficha dele, chamando a ferramenta "ficha_do_lugar".',
-      'Regras:',
-      '- Use só os valores das listas do esquema. O que o texto pede e o gerador não sabe fazer vai em "nao_deu" (frases curtas, em português), nunca inventado na ficha.',
-      '- Segredos, ideias de enredo e detalhes que o mapa não mostra (o que tem na sala misteriosa, quem mora lá) vão em "notas_mestre", curtas, em blocos simples.',
-      '- Casas e propriedades com cômodos, jardim, piscina, estufas etc.: use "sobmedida". Só o interior de um prédio comum: "interior". Missão de se infiltrar com guardas: um dos de furtividade, ou "sobmedida" com guardas, se a casa for muito específica.',
-      '- No sobmedida: "terreo" é a lista das salas do térreo (sem o corredor); repita "quarto" para cada quarto. "porte": simples, boa ou nobre (pampa, rica, bem ajeitada = nobre ou boa). "anexos": o que fica no quintal, com a quantidade. "guardas": nenhum, se o texto não falar de guardas.',
-      '- "andares" (para sobmedida, interior e furtividade): "cima" é uma lista de andares acima do térreo, de baixo para cima; "porao" é uma lista de porões, do mais alto ao mais fundo; cada andar é a lista das salas dele, e a PRIMEIRA sala é onde a escada chega (use "sala" no andar de cima e "adega" ou "deposito" no porão). "base" são as salas de uma base secreta escondida no porão (precisa de pelo menos 1 porão); use "secreta" para uma "sala secreta" sem uso definido.',
-      '- "hora": dia, entardecer, noite ou breu; "estilo": o povo/arquitetura (comum, se não disser).',
-      '- O nome é curto, em português, como o título da cena.',
-      '- (lote 157) "planta": desenhe o lugar, em porcentagens (0 a 100). Para sobmedida, mansao e casarao: "casa" é onde a casa fica no terreno (x da esquerda, y de cima; o portão e a rua ficam embaixo; deixe uns 8% de margem e espaço para o quintal e os anexos); "salas" são os cômodos do térreo, em porcentagem DA CASA (0 a 100 dentro dela), sem se sobrepor; o que sobrar dentro da casa vira corredor — deixe uma faixa livre de uns 15% ligando os cômodos. "agua", "mata", "patio" e "vazio" são retângulos no terreno (o lago, o bosque, o pátio de pedra, uma área sem nada), também em porcentagem do terreno. Para os outros lugares, só "agua", "mata", "patio" e "vazio", se o texto pedir. Sem desenho no texto, faça uma planta que faça sentido.',
-      'Lugares: ' + lugares.map(([id, n]) => id + ' = ' + n).join(' | '),
-      'Salas (papéis): ' + salasAndar().map(x => x + ' = ' + nomeSala(x)).join('; '),
-      'Anexos do quintal: ' + anexos,
-    ].join('\n');
-    const enumS = { type: 'string', enum: salasAndar() };
-    const andar = { type: 'array', items: enumS, maxItems: 12 };
-    const ret = { type: 'object', required: ['x', 'y', 'w', 'h'], properties: { x: { type: 'number' }, y: { type: 'number' }, w: { type: 'number' }, h: { type: 'number' } } };
-    const ferramenta = {
-      name: 'ficha_do_lugar',
-      description: 'A ficha do lugar para o gerador de mapas.',
-      input_schema: {
-        type: 'object', required: ['lugar', 'nome'],
-        properties: {
-          lugar: { type: 'string', enum: ids },
-          nome: { type: 'string', description: 'O nome da cena, curto.' },
-          estilo: { type: 'string', enum: Estilos.LISTA.map(e => e[0]) },
-          hora: { type: 'string', enum: TONES.map(t => t.id) },
-          clima: { type: 'string', enum: WEATHERS.map(w => w[0]) },
-          tema: { type: 'string', enum: Temas.LISTA.map(t => t.id), description: 'Os objetos de um tema para espalhar pela cena, só se o texto pedir: ' + Temas.LISTA.map(t => t.id + ' = ' + t.n).join('; ') + '.' },
-          sobmedida: { type: 'object', properties: {
-            terreno: { type: 'string', enum: ['pequeno', 'medio', 'grande'] },
-            muro: { type: 'boolean' },
-            porte: { type: 'string', enum: Furtividade.PORTES.map(p => p[0]) },
-            terreo: { type: 'array', items: { type: 'string', enum: Furtividade.SALAS_TERREO.filter(x => salasAndar().includes(x)) }, maxItems: 12 },
-            anexos: { type: 'array', items: { type: 'object', required: ['t'], properties: { t: { type: 'string', enum: Object.keys(Furtividade.ANEXOS) }, n: { type: 'integer', minimum: 1, maximum: 4 } } } },
-            guardas: { type: 'string', enum: ['nenhum', 'poucos', 'normal', 'muitos'] } } },
-          dificuldade: { type: 'string', enum: ['facil', 'medio', 'dificil', 'muito'], description: 'A dificuldade da infiltração (sobmedida com guardas), só se o texto disser.' },
-          andares: { type: 'object', properties: {
-            cima: { type: 'array', items: andar, maxItems: 5 }, porao: { type: 'array', items: andar, maxItems: 2 },
-            base: { type: 'array', items: { type: 'string', enum: salasBase() }, maxItems: 8 } } },
-          interior: { type: 'object', properties: { tipo: { type: 'string', enum: Object.keys(Interior.PLANTAS).filter(k => !Interior.PLANTAS[k].so) }, tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] } } },
-          furtividade: { type: 'object', properties: { tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] }, guardas: { type: 'string', enum: ['poucos', 'normal', 'muitos'] }, dificuldade: { type: 'string', enum: ['facil', 'medio', 'dificil', 'muito'], description: 'Só se o texto disser o quanto a missão é difícil.' } } },
-          planta: { type: 'object', description: 'A planta, em porcentagens (0 a 100).', properties: {
-            casa: ret, salas: { type: 'array', maxItems: 12, items: Object.assign({}, ret, { properties: Object.assign({}, ret.properties, { uso: { type: 'string', enum: salasAndar() } }) }) },
-            agua: { type: 'array', items: ret, maxItems: 4 }, mata: { type: 'array', items: ret, maxItems: 4 }, patio: { type: 'array', items: ret, maxItems: 4 }, vazio: { type: 'array', items: ret, maxItems: 4 } } },
-          notas_mestre: { type: 'string', description: 'Só o mestre lê. Curto.' },
-          nao_deu: { type: 'array', items: { type: 'string' }, maxItems: 8 },
-        },
-      },
-    };
-    return { sistema, ferramenta };
-  }
-
-  // os andares da IA → a escolha de andares (PlantaAndares)
-  function andaresDe(a) {
-    if (!a || typeof a !== 'object') return null;
-    const cima = Array.isArray(a.cima) ? a.cima.filter(Array.isArray).slice(0, 5) : [], porao = Array.isArray(a.porao) ? a.porao.filter(Array.isArray).slice(0, 2) : [];
-    const base = Array.isArray(a.base) ? a.base.filter(x => typeof x === 'string') : [];
-    const out = { cima: cima.length, porao: porao.length || (base.length ? 1 : 0), base: base.length > 0, temas: {}, salas: {} };
-    cima.forEach((l, i) => { if (l.length) out.salas[i + 1] = l.slice(); });
-    porao.forEach((l, i) => { if (l.length) out.salas[-(i + 1)] = l.slice(); });
-    if (base.length) out.salas.base = base;
-    return out;
-  }
-  /* (lote 157) a planta da IA (em porcentagens), conferida */
-  function plantaDe(v) {
-    if (!v || typeof v !== 'object') return null;
-    const r = q => (q && typeof q === 'object' && ['x', 'y', 'w', 'h'].every(k => Number.isFinite(Number(q[k]))) ? { x: clamp(Number(q.x), 0, 100), y: clamp(Number(q.y), 0, 100), w: clamp(Number(q.w), 1, 100), h: clamp(Number(q.h), 1, 100) } : null);
-    const l = (a, n) => (Array.isArray(a) ? a.map(r).filter(Boolean).slice(0, n) : []);
-    const out = { casa: r(v.casa), salas: (Array.isArray(v.salas) ? v.salas : []).map(q => { const x = r(q); if (x && typeof q.uso === 'string' && salasAndar().includes(q.uso)) x.uso = q.uso; return x; }).filter(Boolean).slice(0, 12), agua: l(v.agua, 4), mata: l(v.mata, 4), patio: l(v.patio, 4), vazio: l(v.vazio, 4) };
-    return out.casa || out.agua.length || out.mata.length || out.patio.length || out.vazio.length ? out : null;
-  }
-  // a planta → as zonas do gerador (em quadrados), num terreno W × H; casa: só onde o lugar tem casa
-  function zonasDe(pl, W, H, comCasa) {
-    if (!pl) return [];
-    const Q = q => ({ x: Math.round(q.x / 100 * W), y: Math.round(q.y / 100 * H), w: Math.max(2, Math.round(q.w / 100 * W)), h: Math.max(2, Math.round(q.h / 100 * H)) });
-    const out = [];
-    if (comCasa && pl.casa) {
-      const c = Object.assign({ k: 'casa' }, Q(pl.casa));
-      out.push(c);
-      for (const q of pl.salas) { const s = { k: 'sala', x: c.x + Math.round(q.x / 100 * c.w), y: c.y + Math.round(q.y / 100 * c.h), w: Math.max(2, Math.round(q.w / 100 * c.w)), h: Math.max(2, Math.round(q.h / 100 * c.h)) }; if (q.uso) s.papel = q.uso; out.push(s); }
-    }
-    for (const k of ['agua', 'mata', 'patio', 'vazio']) for (const q of pl[k]) out.push(Object.assign({ k }, Q(q)));
-    return out;
-  }
-  /* A ficha da IA → { lugar, op (as escolhas do lugar), comum ({ estilo, hora, clima }), nome, notas, fora } */
-  function traduzir(d) {
-    d = d && typeof d === 'object' ? d : {};
-    const and = andaresDe(d.andares), comum = {};
-    if (Estilos.LISTA.some(e => e[0] === d.estilo)) comum.estilo = d.estilo;
-    if (TONES.some(t => t.id === d.hora)) comum.hora = d.hora;
-    if (WEATHERS.some(w => w[0] === d.clima)) comum.clima = d.clima;
-    if (Temas.tema(d.tema)) comum.tema = d.tema;      // (lote 158)
-    const notas = typeof d.notas_mestre === 'string' ? d.notas_mestre.trim().slice(0, 1200) : '';
-    const fora = Array.isArray(d.nao_deu) ? d.nao_deu.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 120)).slice(0, 8) : [];
-    let op = null;
-    if (d.lugar === 'sobmedida') op = Object.assign({ spec: d.sobmedida || {}, and, notas, fora, titulo: 'ia' }, typeof d.dificuldade === 'string' ? { dific: d.dificuldade } : null);
-    else if (d.lugar === 'interior') op = Object.assign({}, d.interior && d.interior.tipo ? { tipo: d.interior.tipo } : null, d.interior && d.interior.tamanho ? { tam: d.interior.tamanho } : null, and ? { and } : null);
-    else if (Furtividade.IDS.includes(d.lugar)) { const fu = Object.assign({}, d.furtividade || {}); if (fu.dificuldade) { fu.dific = fu.dificuldade; delete fu.dificuldade; } op = Object.assign(fu, and ? { and } : null); }
-    const planta = plantaDe(d.planta);
-    return { planta, lugar: typeof d.lugar === 'string' ? d.lugar : 'sobmedida', op, comum, nome: typeof d.nome === 'string' ? d.nome.trim().slice(0, 60) : '', notas, fora };
-  }
-  // chama a IA (pela casca, que fala com o servidor)
-  async function pedir(texto) {
-    const T = window.TC;
-    if (!T || !T.ia || !T.ia.pedir) throw new Error('A IA funciona com a mesa aberta no site (pela casca).');
-    const { sistema, ferramenta } = pedido();
-    const r = await T.ia.pedir({ acao: 'mapa', texto, sistema, ferramenta });
-    if (!r || !r.dados) throw new Error('A IA não devolveu o lugar. Tente descrever de outro jeito.');
-    return Object.assign(traduzir(r.dados), { restam: r.restam });
-  }
-  return { pedido, traduzir, pedir, andaresDe, plantaDe, zonasDe };
-})();
-/* ---------------------------------------------------------------
    10h. GERADOR — a janela "Gerar um lugar…" (lote 7)
    Uma janela com uma aba por lugar (o Vilarejo, a Cidade, a Tribo, o Encontro, a Região livre, as Ruínas, a Masmorra e o Porto), as escolhas de cada um e, embaixo, o que vale
    para todos: o estilo (Comum, Oriental, Nórdico, Desértico, Élfico, Anão), a hora do dia, o clima da cena, a estação
@@ -53855,7 +53676,7 @@ const Gerador = (() => {
     Encontro.LUGAR, Regiao.LUGAR,
     AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
     LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO, LugaresMundo.LUGAR,      // (lote 126) os lugares do mundo
-    Furtividade.LUGAR_SOB,      // (lote 150) o lugar sob medida (a ficha, que a IA preenche)
+    Furtividade.LUGAR_SOB,      // (lote 150) o lugar sob medida (a ficha)
     Furtividade.LUGAR_EX,      // (lote 156) o estilo por exemplo
     Interior.LUGAR,      // (lote 149) o interior (a janela "Gerar o interior" virou esta aba)
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
@@ -54180,49 +54001,6 @@ const Gerador = (() => {
       UI.menuEm(r.left, r.bottom + 4, items);
     }
 
-    /* ---- (lote 150) descrever com a IA: o texto vira a ficha do lugar ---- */
-    const iaMsg = h('div', { class: 'ia-msg', id: 'ger-ia-msg', role: 'status' });
-    let iaOcupada = false;
-    function aplicarIA(res) {
-      const l = lugar(res.lugar) || lugar('sobmedida');
-      L = l;
-      const E = estadoDe(L);
-      if (res.op) L.aplicarOpcoes(E.op, res.op);
-      if (res.comum.estilo) comum.estilo = res.comum.estilo;
-      if (res.comum.hora) comum.hora = res.comum.hora;
-      if (res.comum.clima !== undefined) comum.clima = res.comum.clima;
-      if (res.comum.tema !== undefined) App.opt.temaId = res.comum.tema;      // (lote 158) o tema dos objetos que a IA escolheu
-      E.trava = null; E.base = null; E.seed = novaSemente();
-      if (res.nome) { inNome.value = res.nome; nomeMexido = true; } else nomeMexido = false;
-      // (lote 157) a planta da IA vira as zonas do lugar (o tamanho do terreno vem de um sorteio de prova, sem as zonas)
-      let comPlanta = false;
-      if (res.planta && Zonas.vale(L)) {
-        try {
-          Zonas.guarda(L.id, []); E.op.zonas = [];
-          const prova = L.gerar(E.op, comEstacao(L, { estilo: comum.estilo, seed: E.seed }));
-          const zs = IaMapa.zonasDe(res.planta, prova.W, prova.H, Zonas.tiposDe(L.id).includes('casa'));
-          if (zs.length) { Zonas.guarda(L.id, zs); comPlanta = true; }
-        } catch (e) { console.error(e); }
-      }
-      lembrarComum(); pintar(); refazer();
-      iaMsg.replaceChildren(...[h('p', { class: 'note', text: `A IA escolheu: ${L.n}. A ficha ficou preenchida${comPlanta ? ' e a planta desenhada (as zonas: veja o bloco "Zonas à mão")' : ''}: mude o que quiser, ou "Gerar outro".` + (res.restam != null ? ` (Restam ${res.restam} pedidos hoje.)` : '') }),
-        res.notas && L.id !== 'sobmedida' ? h('p', { class: 'note ia-notas', text: 'Notas para o mestre: ' + res.notas }) : null,
-        res.fora.length && L.id !== 'sobmedida' ? h('p', { class: 'note', text: 'O gerador ainda não faz: ' + res.fora.join('; ') + '.' }) : null].filter(Boolean));
-    }
-    function blocoIA() {
-      const ta = h('textarea', { class: 'in', id: 'ger-ia-texto', rows: 5, maxlength: 4000, 'data-enter': 'proprio', placeholder: 'Ex.: uma casa nobre de um andar, com cozinha, dois quartos, sala de jantar, varanda e um quintal grande com piscina. De noite.',
-        value: App.opt.iaTexto || '', oninput: e => { App.opt.iaTexto = e.target.value.slice(0, 4000); } });
-      const bt = btn(iaOcupada ? 'Pensando…' : 'Montar com a IA', async () => {
-        const txt = ta.value.trim();
-        if (!txt) { UI.toast('Descreva o lugar primeiro.'); ta.focus(); return; }
-        iaOcupada = true; bt.disabled = true; bt.textContent = 'Pensando…'; iaMsg.replaceChildren(h('p', { class: 'note', text: 'A IA está montando a ficha (leva alguns segundos)…' }));
-        try { const res = await IaMapa.pedir(txt); if (cv.isConnected) aplicarIA(res); }
-        catch (e) { if (cv.isConnected) iaMsg.replaceChildren(h('p', { class: 'note ia-erro', text: (e && e.message) || 'Não deu para falar com a IA agora.' })); }
-        finally { iaOcupada = false; if (cv.isConnected) pintar(); }
-      }, { icon: 'fx', id: 'ger-ia', disabled: iaOcupada, title: 'A IA lê o texto e preenche a ficha do lugar (você pode mudar tudo depois)' });
-      return [ta, h('div', { class: 'row' }, bt), iaMsg];
-    }
-
     /* ---- as escolhas ---- */
     function pintar() {
       const a = document.activeElement, fid = a && a.id && (ctl.contains(a) || abas.contains(a)) ? a.id : null;
@@ -54256,7 +54034,6 @@ const Gerador = (() => {
       const pv = Povoar.prefs(), mi = Misterio.prefs();
       const casoMi = mi.on && mi.caso ? Misterio.casos().find(x => x.id === mi.caso) : null;
       ctl.replaceChildren(...[
-        bloco('ia', 'Descrever com a IA', 'o texto vira o mapa', ...blocoIA()),      // (lote 150)
         mundoPedido ? bloco('mundo', 'Do mundo', MundoCena.resumoBloco(mundoPedido), MundoCena.controles(mundoPedido, K, () => pintar())) : null,      // (lote 155)
         bloco('lugar', L.n, '', blocoCampo, blocoHex,
           L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) })),
@@ -55532,7 +55309,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, Temas, WEATHERS, WEATHER_GRUPOS, IaMapa, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Exemplo, Erosao, Novidades, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, Temas, WEATHERS, WEATHER_GRUPOS, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Exemplo, Erosao, Novidades, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

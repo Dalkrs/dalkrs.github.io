@@ -906,7 +906,7 @@ const Furtividade = (() => {
   }
 
   /* ================= (lote 150) o lugar sob medida =================
-     Uma propriedade montada a partir de uma ficha (que a IA preenche com o texto do mestre, ou ele mesmo, na janela):
+     Uma propriedade montada a partir de uma ficha (que o mestre preenche na janela):
      o terreno (o tamanho, o muro), a casa (o porte e as salas do térreo; os andares e o porão pela escolha de sempre),
      os anexos do quintal (a piscina, as estufas, a casa de ferramentas, o altar, a fonte, a horta, o pomar, o poço, o
      estábulo, o canil, a mesa de jardim, o varal) e os guardas (ou nenhum). A casa fica na frente; os anexos se arrumam
@@ -1695,7 +1695,6 @@ const Furtividade = (() => {
         return h('div', { class: 'sob-anx' }, K.toggle('sob-a-' + tp, !!a, on => muda(s => { s.anexos = on ? s.anexos.concat([{ t: tp, n: 1 }]) : s.anexos.filter(b => b.t !== tp); }), ANEXOS[tp].n),
           a && !['piscina', 'pomar', 'altar'].includes(tp) ? K.stepper('sob-n-' + tp, a.n, 1, 4, v => muda(s => { s.anexos.find(b => b.t === tp).n = v; }), 'Quantas: ' + ANEXOS[tp].n) : null); });
       return h('div', { class: 'ger-c' }, ...[
-        st.titulo || st.notas ? h('div', { class: 'sob-ia', id: 'sob-ia' }, st.notas ? K.note('Notas para o mestre: ' + st.notas) : null, st.fora && st.fora.length ? K.note('O gerador ainda não faz: ' + st.fora.join('; ') + '.') : null) : null,
         K.field('Terreno', K.seg('sob-terreno', S.terreno, Object.keys(TAM).map(k => [k, TAM[k].n]), v => muda(s => { s.terreno = v; })), 'stack'),
         K.toggle('sob-muro', S.muro, v => muda(s => { s.muro = v; }), 'Muro em volta, com o portão'),
         K.field('A casa', K.seg('sob-porte', S.porte, PORTES, v => muda(s => { s.porte = v; })), 'stack'),
@@ -1721,7 +1720,7 @@ const Furtividade = (() => {
     resumo: p => resumo(p).replace(/^Sob medida/, 'Sob medida') + (p.naoCouberam ? ` Não couberam no quintal: ${p.naoCouberam.join(', ')} (aumente o terreno).` : ''),
     criar: (p, nome, ex) => criar(p, nome, Object.assign({}, ex, { horaLivre: true })),
     relevoTxt: 'Com relevo',
-    dica: 'A ficha do lado direito é o lugar: mude as salas, os anexos e os andares. "Descrever com a IA" preenche a ficha a partir de um texto.',
+    dica: 'A ficha do lado direito é o lugar: mude as salas, os anexos e os andares.',
     nota: 'Uma casa com o terreno em volta, montada a partir da ficha: a casa na frente, os anexos no quintal (ligados por caminhos), os andares e o porão como você escolher, com ou sem guardas. A hora do dia é a escolhida.',
     feito: sc => `"${sc.name}" criada.`,
   }, { partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava, quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null });

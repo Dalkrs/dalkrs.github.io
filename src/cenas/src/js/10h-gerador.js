@@ -16,7 +16,7 @@ const Gerador = (() => {
     Encontro.LUGAR, Regiao.LUGAR,
     AguaPenhasco.LUGARES.lago, AguaPenhasco.LUGARES.praia, AguaPenhasco.LUGARES.penhasco, AguaPenhasco.LUGARES.desfiladeiro,      // (lote 58)
     LugaresFora.CASTELO, Arredores.LUGARES.ruinas, LugaresFora.CEMITERIO, LugaresMundo.LUGAR,      // (lote 126) os lugares do mundo
-    Furtividade.LUGAR_SOB,      // (lote 150) o lugar sob medida (a ficha, que a IA preenche)
+    Furtividade.LUGAR_SOB,      // (lote 150) o lugar sob medida (a ficha)
     Furtividade.LUGAR_EX,      // (lote 156) o estilo por exemplo
     Interior.LUGAR,      // (lote 149) o interior (a janela "Gerar o interior" virou esta aba)
     Masmorra.LUGAR, Masmorra.LUGAR_CAT,
@@ -341,49 +341,6 @@ const Gerador = (() => {
       UI.menuEm(r.left, r.bottom + 4, items);
     }
 
-    /* ---- (lote 150) descrever com a IA: o texto vira a ficha do lugar ---- */
-    const iaMsg = h('div', { class: 'ia-msg', id: 'ger-ia-msg', role: 'status' });
-    let iaOcupada = false;
-    function aplicarIA(res) {
-      const l = lugar(res.lugar) || lugar('sobmedida');
-      L = l;
-      const E = estadoDe(L);
-      if (res.op) L.aplicarOpcoes(E.op, res.op);
-      if (res.comum.estilo) comum.estilo = res.comum.estilo;
-      if (res.comum.hora) comum.hora = res.comum.hora;
-      if (res.comum.clima !== undefined) comum.clima = res.comum.clima;
-      if (res.comum.tema !== undefined) App.opt.temaId = res.comum.tema;      // (lote 158) o tema dos objetos que a IA escolheu
-      E.trava = null; E.base = null; E.seed = novaSemente();
-      if (res.nome) { inNome.value = res.nome; nomeMexido = true; } else nomeMexido = false;
-      // (lote 157) a planta da IA vira as zonas do lugar (o tamanho do terreno vem de um sorteio de prova, sem as zonas)
-      let comPlanta = false;
-      if (res.planta && Zonas.vale(L)) {
-        try {
-          Zonas.guarda(L.id, []); E.op.zonas = [];
-          const prova = L.gerar(E.op, comEstacao(L, { estilo: comum.estilo, seed: E.seed }));
-          const zs = IaMapa.zonasDe(res.planta, prova.W, prova.H, Zonas.tiposDe(L.id).includes('casa'));
-          if (zs.length) { Zonas.guarda(L.id, zs); comPlanta = true; }
-        } catch (e) { console.error(e); }
-      }
-      lembrarComum(); pintar(); refazer();
-      iaMsg.replaceChildren(...[h('p', { class: 'note', text: `A IA escolheu: ${L.n}. A ficha ficou preenchida${comPlanta ? ' e a planta desenhada (as zonas: veja o bloco "Zonas à mão")' : ''}: mude o que quiser, ou "Gerar outro".` + (res.restam != null ? ` (Restam ${res.restam} pedidos hoje.)` : '') }),
-        res.notas && L.id !== 'sobmedida' ? h('p', { class: 'note ia-notas', text: 'Notas para o mestre: ' + res.notas }) : null,
-        res.fora.length && L.id !== 'sobmedida' ? h('p', { class: 'note', text: 'O gerador ainda não faz: ' + res.fora.join('; ') + '.' }) : null].filter(Boolean));
-    }
-    function blocoIA() {
-      const ta = h('textarea', { class: 'in', id: 'ger-ia-texto', rows: 5, maxlength: 4000, 'data-enter': 'proprio', placeholder: 'Ex.: uma casa nobre de um andar, com cozinha, dois quartos, sala de jantar, varanda e um quintal grande com piscina. De noite.',
-        value: App.opt.iaTexto || '', oninput: e => { App.opt.iaTexto = e.target.value.slice(0, 4000); } });
-      const bt = btn(iaOcupada ? 'Pensando…' : 'Montar com a IA', async () => {
-        const txt = ta.value.trim();
-        if (!txt) { UI.toast('Descreva o lugar primeiro.'); ta.focus(); return; }
-        iaOcupada = true; bt.disabled = true; bt.textContent = 'Pensando…'; iaMsg.replaceChildren(h('p', { class: 'note', text: 'A IA está montando a ficha (leva alguns segundos)…' }));
-        try { const res = await IaMapa.pedir(txt); if (cv.isConnected) aplicarIA(res); }
-        catch (e) { if (cv.isConnected) iaMsg.replaceChildren(h('p', { class: 'note ia-erro', text: (e && e.message) || 'Não deu para falar com a IA agora.' })); }
-        finally { iaOcupada = false; if (cv.isConnected) pintar(); }
-      }, { icon: 'fx', id: 'ger-ia', disabled: iaOcupada, title: 'A IA lê o texto e preenche a ficha do lugar (você pode mudar tudo depois)' });
-      return [ta, h('div', { class: 'row' }, bt), iaMsg];
-    }
-
     /* ---- as escolhas ---- */
     function pintar() {
       const a = document.activeElement, fid = a && a.id && (ctl.contains(a) || abas.contains(a)) ? a.id : null;
@@ -417,7 +374,6 @@ const Gerador = (() => {
       const pv = Povoar.prefs(), mi = Misterio.prefs();
       const casoMi = mi.on && mi.caso ? Misterio.casos().find(x => x.id === mi.caso) : null;
       ctl.replaceChildren(...[
-        bloco('ia', 'Descrever com a IA', 'o texto vira o mapa', ...blocoIA()),      // (lote 150)
         mundoPedido ? bloco('mundo', 'Do mundo', MundoCena.resumoBloco(mundoPedido), MundoCena.controles(mundoPedido, K, () => pintar())) : null,      // (lote 155)
         bloco('lugar', L.n, '', blocoCampo, blocoHex,
           L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) })),
