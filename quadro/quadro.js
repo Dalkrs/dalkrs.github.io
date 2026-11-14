@@ -105,16 +105,16 @@
   function aplicarVista() { board.style.transform = `translate(${vista.x}px, ${vista.y}px) scale(${vista.z})`; }
   function zoomEm(f, cx, cy) {
     const r = palco.getBoundingClientRect(), px = cx == null ? r.width / 2 : cx - r.left, py = cy == null ? r.height / 2 : cy - r.top;
-    const z = Math.max(0.2, Math.min(2.5, vista.z * f));
+    const z = Math.max(0.12, Math.min(2.5, vista.z * f));   // (lote 159) a cortiça maior pede um zoom mais longe
     vista.x = px - (px - vista.x) * (z / vista.z); vista.y = py - (py - vista.y) * (z / vista.z); vista.z = z;
     aplicarVista();
   }
   function ajustar() {
     const x = atual(), r = palco.getBoundingClientRect();
     const cs = x ? Object.values(x.q.cartas) : [];
-    if (!cs.length) { vista.z = Math.min(1, r.width / Q.TAM.w * 1.6); vista.x = 20; vista.y = 20; aplicarVista(); return; }
+    if (!cs.length) { vista.z = Math.min(1, r.width / 1500); /* (lote 159) quadro vazio: o zoom de antes */ vista.x = 20; vista.y = 20; aplicarVista(); return; }
     const x0 = Math.min(...cs.map(c => c.x)) - 60, y0 = Math.min(...cs.map(c => c.y)) - 60, x1 = Math.max(...cs.map(c => c.x + (c.w || 200))) + 60, y1 = Math.max(...cs.map(c => c.y + 200)) + 60;
-    vista.z = Math.max(0.2, Math.min(1.2, Math.min(r.width / (x1 - x0), r.height / (y1 - y0))));
+    vista.z = Math.max(0.12, Math.min(1.2, Math.min(r.width / (x1 - x0), r.height / (y1 - y0))));
     vista.x = (r.width - (x1 - x0) * vista.z) / 2 - x0 * vista.z; vista.y = (r.height - (y1 - y0) * vista.z) / 2 - y0 * vista.z;
     aplicarVista();
   }

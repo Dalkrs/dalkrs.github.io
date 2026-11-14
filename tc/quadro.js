@@ -15,7 +15,7 @@
   'use strict';
   const PRE = 'quadroj:';
   const LIM = Object.freeze({ nome: 60, titulo: 80, texto: 1200, cartas: 200, fios: 400, fioTxt: 40, quadros: 30 });
-  const TAM = Object.freeze({ w: 2400, h: 1600 });        // o tamanho da cortiça
+  const TAM = Object.freeze({ w: 3600, h: 2400 });        // o tamanho da cortiça (lote 159: era 2400 × 1600; ficou pequena)
   const TIPOS = Object.freeze([
     ['nota', 'Nota'], ['pista', 'Pista'], ['missao', 'Missão'], ['pessoa', 'Pessoa'], ['lugar', 'Lugar'], ['img', 'Imagem']]);
   // a cor do cartão diz o que ele é para quem montou
