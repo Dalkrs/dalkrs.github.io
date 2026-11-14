@@ -65,9 +65,9 @@ Deno.serve(async (req: Request) => {
       method: "POST",
       headers: { "x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
-        model: modelo, max_tokens: 4000, system: sistema,
+        model: modelo, max_tokens: 4000, system: sistema + "\n\nResponda SEMPRE chamando a ferramenta \"" + f.name + "\", uma vez, sem texto antes.",
         tools: [{ name: f.name, description: String(f.description ?? ""), input_schema: f.input_schema }],
-        tool_choice: { type: "tool", name: f.name },
+        tool_choice: { type: "auto" },      // (o modelo não aceita forçar a ferramenta: as instruções pedem para chamá-la)
         messages: [{ role: "user", content: texto }],
       }),
     });
