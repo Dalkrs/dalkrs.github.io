@@ -1348,6 +1348,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .gd-lista { display: flex; flex-direction: column; gap: 4px; }
 .gd-li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; }
 .gd-li.on { background: rgba(230, 171, 79, 0.14); }
+.gd-medida { margin: 6px 0 2px; font-size: 13px; line-height: 1.45; }
 .gd-cor { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35); }
 .gd-nome { flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; text-align: left; min-width: 0; }
 .gd-nome b { font-weight: 600; }

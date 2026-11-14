@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.13-07",
+      "data": "2026-11-13",
+      "titulo": "Furtividade medida",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: a furtividade medida. O gerador simula as rondas e mede o lugar: onde os guardas olham, os caminhos até o alvo (o curto e o seguro) e a dificuldade (Fácil, Médio, Difícil, Muito difícil). Ele avisa quando só há um caminho.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: nos lugares de Furtividade e no Sob medida, a escolha “Dificuldade”. Com ela, o gerador põe ou tira guardas até a medida bater. “Pelos guardas” só mede. A chave “Ver o calor e os caminhos” pinta a prévia.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: na aba Guardas, a seção “O calor e os caminhos”. Mostra a dificuldade da cena e pinta no mapa, só para o mestre, onde os guardas veem. Muda quando eles andam ou uma porta abre. Para medir os caminhos, a cena precisa da Chegada e do Alvo da missão (ou de uma escada).", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.13-06",
       "data": "2026-11-13",
       "titulo": "Descrever o lugar com a IA",

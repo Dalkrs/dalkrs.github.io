@@ -1281,6 +1281,35 @@ const Furtividade = (() => {
     return GERA[lugar](o);
   }
 
+  /* (lote 151) a furtividade medida: o calor, os caminhos e a dificuldade (Vigia); com a dificuldade escolhida, o
+     ajuste põe ou tira guardas até a medida bater. O calor fica guardado fora do plano (não vai para a cena). */
+  const MED = new WeakMap();
+  const DIFICS = [['livre', 'Pelos guardas']].concat(Vigia.NIVEIS);
+  const dificOk = d => DIFICS.some(x => x[0] === d) ? d : 'livre';
+  function comMedida(p, dific) {
+    dific = dificOk(dific);
+    if (!p.guardas.length && dific === 'livre') return p;
+    const r = dific === 'livre' ? { med: Vigia.medir(Vigia.doPlano(p)), tirados: 0, postos: 0 } : Vigia.ajustar(p, dific);
+    MED.set(p, { M: Vigia.doPlano(p), med: r.med });
+    p.medida = { nivel: r.med.nivel, texto: r.med.texto, caminhos: r.med.caminhos, tirados: r.tirados, postos: r.postos, pedido: dific };
+    return p;
+  }
+  function textoMedida(p) {
+    const m = p.medida;
+    if (!m) return '';
+    const pl = (k, a, b) => k + ' ' + (k === 1 ? a : b);
+    let t = ' ' + m.texto;
+    if (m.tirados) t += ` Para chegar a ${Vigia.nomeNivel(m.pedido)}, saíram ${pl(m.tirados, 'guarda', 'guardas')}.`;
+    if (m.postos) t += ` Para chegar a ${Vigia.nomeNivel(m.pedido)}, entraram ${pl(m.postos, 'guarda parado', 'guardas parados')} no caminho.`;
+    if (m.pedido !== 'livre' && m.pedido !== m.nivel) t += ` Não deu para chegar a ${Vigia.nomeNivel(m.pedido)} só com os guardas.`;
+    return t;
+  }
+  const verCalor = () => App.opt.furCalor === true;
+  // a chave do calor e a dificuldade, nos controles
+  const ctrlMedida = (K, st, muda) => [
+    K.field('Dificuldade', K.seg('fur-dific', dificOk(st.dific), DIFICS, v => muda('dific', v)), 'stack'),
+    K.toggle('fur-calor', verCalor(), v => { App.opt.furCalor = v; muda(null); }, 'Ver o calor e os caminhos na prévia')];
+
   /* ================= a prévia ================= */
   function previa(cv, p, maxW, maxH) {
     const cell = Math.max(5, Math.floor(Math.min((maxW || 460) / p.W, (maxH || 330) / p.H)));
@@ -1317,6 +1346,9 @@ const Furtividade = (() => {
         g.fillStyle = '#f3ead2'; g.font = '600 11px system-ui, sans-serif'; g.textBaseline = 'top'; g.fillText(a.nomeAndar[0].toUpperCase() + a.nomeAndar.slice(1), x, y - 1);
       });
     }
+    // (lote 151) o calor (onde os guardas veem) e os dois caminhos: o curto (amarelo, tracejado) e o seguro (verde)
+    const md = MED.get(p);
+    if (md && verCalor()) Vigia.desenhar(g, md.M, md.med, cell, 0, 0);
     return { cell };
   }
   const nomeDe = p => NOMES[p.lugar] || 'Furtividade';
@@ -1326,8 +1358,8 @@ const Furtividade = (() => {
     const esc = soma(q => q.marcas.filter(m => m.id === 'esconderijo').length), entr = soma(q => q.marcas.filter(m => m.id === 'interesse').length + q.entradas.length + q.paredes.filter(w => w.secret || (w.k === 'window' && w.aberta)).length);
     const pl = (k, um, varios) => k + ' ' + (k === 1 ? um : varios);
     // o alvo pode estar num andar
-    const alv = todos.map(q => q.alvo).find(Boolean);
-    return [nomeDe(p), p.W + ' × ' + p.H + ' quadrados', And.length ? 'térreo + ' + And.slice().sort((a, b) => b.nivel - a.nivel).map(a => a.nomeAndar).join(', ') + ' (' + (And.length + 1) + ' cenas ligadas pelas escadas)' : '', `${pl(ng, 'guarda', 'guardas')}${ng > n ? ' (' + (ng - n) + ' nos andares)' : ''}, ${rondas} de ronda`, dorme ? `${dorme} dormindo` : '', pl(esc, 'esconderijo ou sombra', 'esconderijos e sombras'), pl(entr, 'entrada escondida', 'entradas escondidas'), alv ? 'alvo: ' + (alv.n || '').toLowerCase() : ''].filter(Boolean).join(' · ') + '.';
+    const alv = todos.map(q => q.alvo).find(a => a && typeof a === 'object');
+    return [nomeDe(p), p.W + ' × ' + p.H + ' quadrados', And.length ? 'térreo + ' + And.slice().sort((a, b) => b.nivel - a.nivel).map(a => a.nomeAndar).join(', ') + ' (' + (And.length + 1) + ' cenas ligadas pelas escadas)' : '', `${pl(ng, 'guarda', 'guardas')}${ng > n ? ' (' + (ng - n) + ' nos andares)' : ''}, ${rondas} de ronda`, dorme ? `${dorme} dormindo` : '', pl(esc, 'esconderijo ou sombra', 'esconderijos e sombras'), pl(entr, 'entrada escondida', 'entradas escondidas'), alv ? 'alvo: ' + (alv.n || '').toLowerCase() : ''].filter(Boolean).join(' · ') + '.' + textoMedida(p);
   }
 
   /* ================= a cena ================= */
@@ -1433,30 +1465,31 @@ const Furtividade = (() => {
     LUGARES[id] = Object.assign({ id, n: CURTO[id], aceitaEstacao: true, furtivo: true,
       // (lote 122) os andares: de cima (0 a 2) e o porão; o acampamento não tem
       // (lote 141) os andares: até 5 em cima, até 2 de porão, a base secreta e as salas de cada andar (guardado por lugar)
-      padrao: () => { const o = App.opt; return { tamanho: TAM[o[pre + 'Tam']] ? o[pre + 'Tam'] : 'medio', guardas: GUARDAS.some(g => g[0] === o.furGuardas) ? o.furGuardas : 'normal', alvo: ALVOS[id].some(a => a[0] === o[pre + 'Alvo']) ? o[pre + 'Alvo'] : 'sorteio', and: PlantaAndares.normalizar(o[pre + 'And'], catF(id), { cima: [0, 1, 2].includes(o.furCima) ? o.furCima : 1, porao: o.furPorao !== false }) }; },
+      padrao: () => { const o = App.opt; return { tamanho: TAM[o[pre + 'Tam']] ? o[pre + 'Tam'] : 'medio', guardas: GUARDAS.some(g => g[0] === o.furGuardas) ? o.furGuardas : 'normal', alvo: ALVOS[id].some(a => a[0] === o[pre + 'Alvo']) ? o[pre + 'Alvo'] : 'sorteio', dific: dificOk(o.furDific), and: PlantaAndares.normalizar(o[pre + 'And'], catF(id), { cima: [0, 1, 2].includes(o.furCima) ? o.furCima : 1, porao: o.furPorao !== false }) }; },
       controles(st, K, mudou) {
-        const muda = (k, v) => { st[k] = v; App.opt[pre + 'Tam'] = st.tamanho; App.opt.furGuardas = st.guardas; App.opt[pre + 'Alvo'] = st.alvo; mudou(true); };
+        const muda = (k, v) => { if (k) st[k] = v; App.opt[pre + 'Tam'] = st.tamanho; App.opt.furGuardas = st.guardas; App.opt[pre + 'Alvo'] = st.alvo; App.opt.furDific = dificOk(st.dific); mudou(true); };
         return h('div', { class: 'ger-c' },
           K.field('Tamanho', K.seg('fur-tam', st.tamanho, Object.keys(TAM).map(k => [k, TAM[k].n]), v => muda('tamanho', v)), 'stack'),
           K.field('Guardas', K.seg('fur-guardas', st.guardas, GUARDAS, v => muda('guardas', v)), 'stack'),
+          ...ctrlMedida(K, st, muda),
           K.field('O alvo da missão', K.seg('fur-alvo', st.alvo, [['sorteio', 'Sortear']].concat(ALVOS[id]), v => muda('alvo', v)), 'stack'),
           ANDARES_OK[id] ? h('details', { class: 'sec and-sec', id: 'fur-and-sec', open: true }, h('summary', { text: 'Andares e porão' }),
             PlantaAndares.ui(st.and = PlantaAndares.normalizar(st.and, catF(id), { cima: st.cima, porao: st.porao }), catF(id), a => { st.and = a; App.opt[pre + 'And'] = JSON.parse(JSON.stringify(a)); mudou(true); }, 'fur')) : null);
       },
-      opcoesDe: st => ({ tamanho: st.tamanho, guardas: st.guardas, alvo: st.alvo, and: st.and ? JSON.parse(JSON.stringify(st.and)) : null }),
-      aplicarOpcoes(st, o) { if (TAM[o.tamanho]) st.tamanho = o.tamanho; if (GUARDAS.some(g => g[0] === o.guardas)) st.guardas = o.guardas; if (o.alvo === 'sorteio' || ALVOS[id].some(a => a[0] === o.alvo)) st.alvo = o.alvo; if (o.and || [0, 1, 2].includes(o.cima)) st.and = PlantaAndares.normalizar(o.and, catF(id), { cima: o.cima, porao: o.porao }); },
-      gerar: (st, comum) => gerar(id, Object.assign({}, st, { seed: comum && comum.seed, estilo: comum && comum.estilo, estacao: comum && comum.estacao })),
+      opcoesDe: st => ({ tamanho: st.tamanho, guardas: st.guardas, alvo: st.alvo, dific: dificOk(st.dific), and: st.and ? JSON.parse(JSON.stringify(st.and)) : null }),
+      aplicarOpcoes(st, o) { if (TAM[o.tamanho]) st.tamanho = o.tamanho; if (GUARDAS.some(g => g[0] === o.guardas)) st.guardas = o.guardas; if (o.alvo === 'sorteio' || ALVOS[id].some(a => a[0] === o.alvo)) st.alvo = o.alvo; if (o.dific) st.dific = dificOk(o.dific); if (o.and || [0, 1, 2].includes(o.cima)) st.and = PlantaAndares.normalizar(o.and, catF(id), { cima: o.cima, porao: o.porao }); },
+      gerar: (st, comum) => comMedida(gerar(id, Object.assign({}, st, { seed: comum && comum.seed, estilo: comum && comum.estilo, estacao: comum && comum.estacao })), st.dific),
       previa, resumo, nomePadrao: nomeDe,
       criar: (p, nome, ex) => criar(p, nome, ex),
       relevoTxt: 'Com relevo',
-      dica: '"Gerar outro" sorteia outro lugar, com as mesmas escolhas. Na prévia: os guardas em vermelho (com a rota tracejada), o alvo em amarelo, os esconderijos tracejados.',
+      dica: '"Gerar outro" sorteia outro lugar, com as mesmas escolhas. Na prévia: os guardas em vermelho (com a rota tracejada), o alvo em amarelo, os esconderijos tracejados. Com o calor ligado: quanto mais vermelho, mais vigiado; o caminho curto em amarelo, o seguro em verde.',
       nota: NOTAS[id] + (ANDARES_OK[id] ? ' Com andares, cada andar e o porão viram uma cena (do mesmo tamanho), ligadas pelas escadas.' : '') + ' Sai uma cena nova, de noite (com a hora em Dia; Entardecer e Breu valem como escolhidos): só você vê as rotas, os cones de visão e as marcas; "Avançar rondas" (no grupo Mestre, à esquerda) faz os guardas andarem.',
       feito: sc => `"${sc.name}" criada: os guardas estão nos postos e nas rondas. "Avançar rondas" (no grupo Mestre, à esquerda, ou no botão direito) faz eles andarem.` }, semPartes);
   }
   /* (lote 150) o lugar sob medida, na janela: a ficha (o terreno, a casa, os anexos, os guardas) e os andares de sempre */
   const NOME_SALA = x => (x === 'oficina' ? 'Oficina' : PlantaAndares.NOMES[x] || x);
   const LUGAR_SOB = Object.assign({ id: 'sobmedida', n: 'Sob medida', aceitaEstacao: true,
-    padrao: () => { const sp = specLimpa(App.opt.sobSpec); return { spec: sp, and: PlantaAndares.normalizar(App.opt.sobAnd, catF('sobmedida')), titulo: '', notas: '', fora: [] }; },
+    padrao: () => { const sp = specLimpa(App.opt.sobSpec); return { spec: sp, and: PlantaAndares.normalizar(App.opt.sobAnd, catF('sobmedida')), dific: dificOk(App.opt.sobDific), titulo: '', notas: '', fora: [] }; },
     controles(st, K, mudou) {
       const S = st.spec, muda = fn => { fn(S); st.spec = specLimpa(S); App.opt.sobSpec = JSON.parse(JSON.stringify(st.spec)); mudou(true); };
       const chips = h('div', { class: 'and-chips', id: 'sob-terreo' }, S.terreo.map((x, i) => h('span', { class: 'and-chip' }, NOME_SALA(x),
@@ -1475,9 +1508,10 @@ const Furtividade = (() => {
         h('details', { class: 'sec and-sec', id: 'sob-and-sec', open: !!(st.and.cima || st.and.porao) }, h('summary', { text: 'Andares e porão' }),
           PlantaAndares.ui(st.and, catF('sobmedida'), a => { st.and = a; App.opt.sobAnd = JSON.parse(JSON.stringify(a)); mudou(true); }, 'sob')),
         K.field('No quintal', h('div', { class: 'sob-anxs' }, anexos), 'stack'),
-        K.field('Guardas', K.seg('sob-guardas', S.guardas, [['nenhum', 'Nenhum']].concat(GUARDAS), v => muda(s => { s.guardas = v; })), 'stack')].filter(Boolean));
+        K.field('Guardas', K.seg('sob-guardas', S.guardas, [['nenhum', 'Nenhum']].concat(GUARDAS), v => muda(s => { s.guardas = v; })), 'stack'),
+        ...(S.guardas === 'nenhum' ? [] : ctrlMedida(K, st, (k, v) => { if (k) st[k] = v; App.opt.sobDific = dificOk(st.dific); mudou(true); }))].filter(Boolean));
     },
-    opcoesDe: st => ({ spec: JSON.parse(JSON.stringify(st.spec)), and: JSON.parse(JSON.stringify(st.and)) }),
+    opcoesDe: st => ({ spec: JSON.parse(JSON.stringify(st.spec)), and: JSON.parse(JSON.stringify(st.and)), dific: dificOk(st.dific) }),
     aplicarOpcoes(st, o) {
       if (!o || typeof o !== 'object') return;
       if (o.spec) st.spec = specLimpa(o.spec);
@@ -1485,8 +1519,9 @@ const Furtividade = (() => {
       if (typeof o.notas === 'string') st.notas = o.notas.slice(0, 1200);
       if (Array.isArray(o.fora)) st.fora = o.fora.filter(x => typeof x === 'string').map(x => x.slice(0, 120)).slice(0, 8);
       if (typeof o.titulo === 'string') st.titulo = o.titulo;
+      if (o.dific) st.dific = dificOk(o.dific);
     },
-    gerar: (st, comum) => gerar('sobmedida', { spec: st.spec, and: st.and, tamanho: st.spec.terreno, guardas: st.spec.guardas === 'nenhum' ? 'poucos' : st.spec.guardas, seed: comum && comum.seed, estilo: comum && comum.estilo, estacao: comum && comum.estacao }),
+    gerar: (st, comum) => (p => (st.spec.guardas === 'nenhum' ? p : comMedida(p, st.dific)))(gerar('sobmedida', { spec: st.spec, and: st.and, tamanho: st.spec.terreno, guardas: st.spec.guardas === 'nenhum' ? 'poucos' : st.spec.guardas, seed: comum && comum.seed, estilo: comum && comum.estilo, estacao: comum && comum.estacao })),
     previa, nomePadrao: p => (p.spec && p.spec.porte === 'nobre' ? 'Casa nobre' : 'Casa') + ' com quintal',
     resumo: p => resumo(p).replace(/^Sob medida/, 'Sob medida') + (p.naoCouberam ? ` Não couberam no quintal: ${p.naoCouberam.join(', ')} (aumente o terreno).` : ''),
     criar: (p, nome, ex) => criar(p, nome, Object.assign({}, ex, { horaLivre: true })),
@@ -1496,5 +1531,5 @@ const Furtividade = (() => {
     feito: sc => `"${sc.name}" criada.`,
   }, { partes: () => [], parteEm: () => null, nomeDaParte: () => '', formaDaParte: () => [], travada: () => false, alternar: (p, parte, trava) => trava, quantasTravadas: () => 0, baseDe: () => null, travaDe: () => null });
   const ehFurtivo = id => IDS.includes(id);
-  return { IDS, NOMES, LUGARES, ALVOS, TAM, GUARDAS, gerar, previa, resumo, criar, predio, ehFurtivo, catF, LUGAR_SOB, ANEXOS, SALAS_TERREO, PORTES, specLimpa };
+  return { IDS, NOMES, LUGARES, ALVOS, TAM, GUARDAS, DIFICS, MED, gerar, previa, resumo, criar, predio, ehFurtivo, catF, LUGAR_SOB, ANEXOS, SALAS_TERREO, PORTES, specLimpa };
 })();

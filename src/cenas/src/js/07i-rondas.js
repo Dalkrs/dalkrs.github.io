@@ -493,6 +493,14 @@ const Rondas = (() => {
         K.btn('Todos em alerta', () => mudarEstado(gs, 'alerta'), { kind: 'small', id: 'gd-alerta' })) : null,
       gs.length ? h('div', { class: 'row' }, K.btn('Todos olham para um ponto', () => olharNoMapa(null), { kind: 'small', icon: 'eye', id: 'gd-olhar', title: 'Clique no mapa: todos os guardas viram o cone para lá (um barulho)' })) : null,
       K.toggle('gd-rver', App.opt.rondasVer !== false, v => { App.opt.rondasVer = v; Render.request(); UI.refresh(); }, 'Mostrar rotas e cones (só você vê)')));
+    // (lote 151) o calor e os caminhos: onde os guardas veem (com eles andando) e a dificuldade medida
+    if (gs.length) {
+      const md = Vigia.daCenaMedida(sc).med;
+      out.push(K.sec('s-gd-calor', 'O calor e os caminhos', true,
+        K.toggle('gd-calor', Vigia.ligado(), v => { App.opt.gdCalor = v; Render.request(); UI.refresh(); }, 'Ver o calor e os caminhos (só você vê)'),
+        h('p', { class: 'gd-medida', id: 'gd-medida', text: md.texto }),
+        Vigia.ligado() ? K.note('Quanto mais vermelho, mais tempo algum guarda olha para lá. O caminho curto vai em amarelo (tracejado); o outro, em verde. Muda quando os guardas andam ou uma porta abre.') : null));
+    }
     // os cones para os jogadores
     if (gs.length) {
       const comVer = gs.filter(t => t.ronda.ver), todos = comVer.length === gs.length;

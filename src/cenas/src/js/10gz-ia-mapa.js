@@ -57,11 +57,12 @@ const IaMapa = (() => {
             terreo: { type: 'array', items: { type: 'string', enum: Furtividade.SALAS_TERREO.filter(x => salasAndar().includes(x)) }, maxItems: 12 },
             anexos: { type: 'array', items: { type: 'object', required: ['t'], properties: { t: { type: 'string', enum: Object.keys(Furtividade.ANEXOS) }, n: { type: 'integer', minimum: 1, maximum: 4 } } } },
             guardas: { type: 'string', enum: ['nenhum', 'poucos', 'normal', 'muitos'] } } },
+          dificuldade: { type: 'string', enum: ['facil', 'medio', 'dificil', 'muito'], description: 'A dificuldade da infiltração (sobmedida com guardas), só se o texto disser.' },
           andares: { type: 'object', properties: {
             cima: { type: 'array', items: andar, maxItems: 5 }, porao: { type: 'array', items: andar, maxItems: 2 },
             base: { type: 'array', items: { type: 'string', enum: salasBase() }, maxItems: 8 } } },
           interior: { type: 'object', properties: { tipo: { type: 'string', enum: Object.keys(Interior.PLANTAS).filter(k => !Interior.PLANTAS[k].so) }, tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] } } },
-          furtividade: { type: 'object', properties: { tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] }, guardas: { type: 'string', enum: ['poucos', 'normal', 'muitos'] } } },
+          furtividade: { type: 'object', properties: { tamanho: { type: 'string', enum: ['pequeno', 'medio', 'grande'] }, guardas: { type: 'string', enum: ['poucos', 'normal', 'muitos'] }, dificuldade: { type: 'string', enum: ['facil', 'medio', 'dificil', 'muito'], description: 'Só se o texto disser o quanto a missão é difícil.' } } },
           notas_mestre: { type: 'string', description: 'Só o mestre lê. Curto.' },
           nao_deu: { type: 'array', items: { type: 'string' }, maxItems: 8 },
         },
@@ -91,9 +92,9 @@ const IaMapa = (() => {
     const notas = typeof d.notas_mestre === 'string' ? d.notas_mestre.trim().slice(0, 1200) : '';
     const fora = Array.isArray(d.nao_deu) ? d.nao_deu.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 120)).slice(0, 8) : [];
     let op = null;
-    if (d.lugar === 'sobmedida') op = { spec: d.sobmedida || {}, and, notas, fora, titulo: 'ia' };
+    if (d.lugar === 'sobmedida') op = Object.assign({ spec: d.sobmedida || {}, and, notas, fora, titulo: 'ia' }, typeof d.dificuldade === 'string' ? { dific: d.dificuldade } : null);
     else if (d.lugar === 'interior') op = Object.assign({}, d.interior && d.interior.tipo ? { tipo: d.interior.tipo } : null, d.interior && d.interior.tamanho ? { tam: d.interior.tamanho } : null, and ? { and } : null);
-    else if (Furtividade.IDS.includes(d.lugar)) op = Object.assign({}, d.furtividade || {}, and ? { and } : null);
+    else if (Furtividade.IDS.includes(d.lugar)) { const fu = Object.assign({}, d.furtividade || {}); if (fu.dificuldade) { fu.dific = fu.dificuldade; delete fu.dificuldade; } op = Object.assign(fu, and ? { and } : null); }
     return { lugar: typeof d.lugar === 'string' ? d.lugar : 'sobmedida', op, comum, nome: typeof d.nome === 'string' ? d.nome.trim().slice(0, 60) : '', notas, fora };
   }
   // chama a IA (pela casca, que fala com o servidor)
