@@ -1918,6 +1918,26 @@
     if (c.fx.length) out.fx = c.fx;
     if (c.seco) out.seco = true;
     if (c.eventos.length) out.eventos = c.eventos.map(x => N().nomeEvento(x)).slice(0, 6);
+    // (lote 155) o reino dono do lugar (quem controla a região: as cores e o nome) e o que está por perto (os marcadores
+    // até 3 hexágonos dali, com a direção)
+    try {
+      const reg = N().regiaoEm(m, x, y);
+      if (reg) {
+        const fid = N().controleDaRegiao(m, reg), dono = N().facDaRegiao(m, reg), nome = N().nomeFac(m, fid);
+        if (nome || reg.nome) out.reino = { nome: nome || '', cores: N().coresDeGuerra(m, fid, reg.cor), regiao: String(reg.nome || '').slice(0, 60), ocupada: fid && dono && fid !== dono ? N().nomeFac(m, dono) : '' };
+      }
+      const h0 = N().temGrade(m) ? N().hexDe(m, x, y) : null, perto = [];
+      const DIRS = ['a leste', 'a sudeste', 'ao sul', 'a sudoeste', 'a oeste', 'a noroeste', 'ao norte', 'a nordeste'];
+      for (const o of (m.objs || [])) {
+        if (!o || o.k !== 'm' || !String(o.nome || '').trim()) continue;
+        const d = h0 ? (hx => (hx ? N().distHex(h0, hx) : 99))(N().hexDe(m, o.x, o.y)) : Math.hypot(o.x - x, o.y - y) / 60;
+        if (d > 3) continue;
+        const ang = Math.atan2(o.y - y, o.x - x), dir = d === 0 ? 'aqui mesmo' : DIRS[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8];
+        perto.push({ nome: String(o.nome).trim().slice(0, 60), tipo: (N().ICONES[o.ic] || {}).nome || '', d, dir, boato: !!o.rumor, falso: !!o.falso, oculto: !!o.oculto });
+      }
+      perto.sort((a, b) => a.d - b.d);
+      if (perto.length) out.perto = perto.slice(0, 6);
+    } catch (e) { /* o mapa sem regiões ou sem grade: fica sem */ }
     return out;
   };
   /* (lote 14, parte 14a) o hexágono do ponto (N().hexParaCena: o terreno dele e dos seis vizinhos, os rios e os

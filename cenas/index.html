@@ -1428,6 +1428,20 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .ger-zl { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .ger-zl-cor { width: 12px; height: 12px; border-radius: 3px; flex: none; }
 .ger-zl-n { flex: 1; }
+/* (lote 155) o mundo na janela do gerador, e os segredos na aba Guardas */
+.ger-mundo-cores { display: flex; gap: 6px; margin: 4px 0 6px 2px; }
+.ger-mundo-cor { width: 22px; height: 14px; border-radius: 4px; border: 1px solid var(--line-strong); }
+.ger-mundo-l { margin: 4px 0 8px 18px; padding: 0; font-size: 13px; line-height: 1.45; }
+.seg-lista { display: flex; flex-direction: column; gap: 10px; }
+.seg-li { padding: 8px; border-radius: 10px; border: 1px solid var(--line); }
+.seg-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.seg-cab small { flex: 1; opacity: 0.75; }
+.seg-txt { margin: 4px 0 6px; font-size: 13px; opacity: 0.85; }
+.seg-p { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; }
+.seg-p.achada { opacity: 0.6; }
+.seg-p-t { text-align: left; font-size: 13px; line-height: 1.4; background: none; border: 0; color: inherit; padding: 0 0 0 4px; cursor: pointer; }
+.seg-p-t:hover { text-decoration: underline; }
+.seg-pista { padding: 6px 0; border-top: 1px solid var(--line); }
 </style>
 </head>
 <body>
@@ -15063,6 +15077,7 @@ const Rondas = (() => {
     // (lote 152) a história da missão (os passos, em ordem; o mestre marca o que já fizeram)
     const tr = Trama.secao(K, sc);
     if (tr) out.push(tr);
+    out.push(Segredos.secao(K));      // (lote 155) os segredos com três pistas
     // (lote 151) o calor e os caminhos: onde os guardas veem (com eles andando) e a dificuldade medida
     if (gs.length) {
       const md = Vigia.daCenaMedida(sc).med;
@@ -19159,6 +19174,7 @@ const UI = (() => {
     }
     items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Gerar um lugar…', icon: 'house', run: () => Gerador.abrir() }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
       { label: 'Envelhecer esta cena…', icon: 'copy', run: () => Tempo.abrirEnvelhecer() },
+      { label: 'O tempo passou…', icon: 'turns', run: () => Tempo.abrirPassou() },      // (lote 155)
       { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Organizar as cenas…', icon: 'folder', run: () => organizarCenas() },
       Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
     return items;
@@ -49762,6 +49778,242 @@ const MissaoCenas = (() => {
   return { eh, soNome, porNome, missoes, copia, ligar, sincronizar, balao, secao, abrirMissao, porNaCena, lugaresDaCena, prefs, controles, aplicar, nome, POVOADOS };
 })();
 /* ---------------------------------------------------------------
+   10gu. OS SEGREDOS COM TRÊS PISTAS (lote 155) — a regra das três pistas: para cada coisa que os jogadores precisam
+   descobrir, três pistas, cada uma por um caminho (um objeto, uma pessoa, um lugar); qualquer uma basta.
+   O mestre escreve o segredo e as três pistas (ou pede à IA, e revisa), e escolhe a cena de cada pista. Cada pista vira
+   uma Marca de pista escondida (só o mestre vê) na cena dela, com o texto na nota.
+   Onde fica: o segredo mora na cena em que nasceu (sc.segredos: { id, titulo, texto, pistas: [{ n, txt, cena, tok,
+   achou }] }); a marca de cada pista leva t.seg = { id, n }. A lista (na aba Guardas) junta os segredos de todas as cenas.
+   --------------------------------------------------------------- */
+const Segredos = (() => {
+  const novoId = () => 'sg' + Date.now().toString(36).slice(-5) + Math.random().toString(36).slice(2, 5);
+  const txt = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  // todos os segredos de todas as cenas: [{ s, sc }]
+  function todos() {
+    const out = [];
+    for (const id of Store.S.order) { const sc = Store.S.scenes[id]; for (const s of (sc && Array.isArray(sc.segredos) ? sc.segredos : [])) if (s && s.id) out.push({ s, sc }); }
+    return out;
+  }
+  // uma casa livre na cena: dentro de um cômodo, se ela sabe dos dela; senão, qualquer uma sem nada em cima
+  function casaLivre(sc) {
+    const c = sc.cell, ocup = new Set();
+    for (const t of sc.tokens || []) { const [w, hh] = tokWH(t); for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) ocup.add(Math.round(t.x / c + x) + ',' + Math.round(t.y / c + y)); }
+    const salas = sc.comodos && Array.isArray(sc.comodos.salas) && sc.comodos.salas.length ? sc.comodos.salas : null;
+    for (let i = 0; i < 300; i++) {
+      let x, y;
+      if (salas && i < 200) { const q = salas[Math.floor(Math.random() * salas.length)]; x = q.x + Math.floor(Math.random() * q.w); y = q.y + Math.floor(Math.random() * q.h); }
+      else { x = 1 + Math.floor(Math.random() * Math.max(1, sc.cols - 2)); y = 1 + Math.floor(Math.random() * Math.max(1, sc.rows - 2)); }
+      if (!ocup.has(x + ',' + y)) return [x, y];
+    }
+    return [1, 1];
+  }
+  // a marca da pista numa cena (a de agora pelo Store, com Desfazer; as outras direto, e guardadas)
+  function porPista(scId, seg, n, titulo, texto) {
+    const sc = Store.S.scenes[scId];
+    if (!sc || !Props.P.pista) return null;
+    const [x, y] = casaLivre(sc), t = Props.novo(sc, 'pista', x * sc.cell, y * sc.cell, 1, true);
+    t.name = `Pista ${n}: ${titulo}`.slice(0, 60); t.notes = texto; t.seg = { id: seg, n };
+    if (scId === Store.S.current) Store.add('tokens', t);
+    else { sc.tokens.push(t); Persist.scene(scId); }
+    return t.id;
+  }
+  function criar(o) {
+    const sc = Store.scene(), id = novoId(), titulo = txt(o.titulo, 60) || 'Segredo';
+    let s;
+    Store.tx('Novo segredo', () => {
+      const pistas = o.pistas.map((p, i) => ({ n: i + 1, txt: txt(p.txt, 600), cena: Store.S.scenes[p.cena] ? p.cena : sc.id }));
+      for (const p of pistas) p.tok = porPista(p.cena, id, p.n, titulo, p.txt);
+      s = { id, titulo, texto: txt(o.texto, 1200), pistas };
+      Store.scn({ segredos: (Array.isArray(sc.segredos) ? sc.segredos : []).concat([s]) });
+    });
+    return s;
+  }
+  // marca a pista como achada (no registro, na cena do segredo)
+  function marcar(sc, sid, n, on) {
+    const l = (sc.segredos || []).map(s => (s.id !== sid ? s : Object.assign({}, s, { pistas: s.pistas.map(p => (p.n === n ? Object.assign({}, p, { achou: !!on }) : p)) })));
+    if (sc.id === Store.S.current) Store.tx('Pista achada', () => Store.scn({ segredos: l }));
+    else { sc.segredos = l; Persist.scene(sc.id); }
+  }
+  function apagar(sc, sid) {
+    const s = (sc.segredos || []).find(x => x.id === sid);
+    if (!s) return;
+    Store.tx('Apagar o segredo', () => {
+      for (const p of s.pistas) {
+        const c2 = Store.S.scenes[p.cena];
+        if (!c2) continue;
+        if (c2.id === Store.S.current) { if (Store.get('tokens', p.tok)) Store.del('tokens', p.tok); }
+        else { c2.tokens = c2.tokens.filter(t => t.id !== p.tok); Persist.scene(c2.id); }
+      }
+      if (sc.id === Store.S.current) Store.scn({ segredos: sc.segredos.filter(x => x.id !== sid) });
+      else { sc.segredos = sc.segredos.filter(x => x.id !== sid); Persist.scene(sc.id); }
+    });
+  }
+  const achada = p => { if (p.achou) return true; const c2 = Store.S.scenes[p.cena], t = c2 && (c2.tokens || []).find(x => x.id === p.tok); return !!(t && !t.hidden); };
+  function irPara(p) {
+    if (!Store.S.scenes[p.cena]) return;
+    if (p.cena !== Store.S.current) UI.switchScene(p.cena);
+    setTimeout(() => { const t = Store.get('tokens', p.tok), sc = Store.scene(); if (!t) return; setSel([{ c: 'tokens', id: t.id }]); const [cx, cy] = tokC(t, sc); Render.centerOn(cx, cy); }, 60);
+  }
+
+  /* ---------------- a IA: as três pistas ---------------- */
+  async function pistasDaIA(segredo, titulo, cenas) {
+    const T = window.TC;
+    if (!T || !T.ia || !T.ia.pedir) throw new Error('A IA funciona com a mesa aberta no site.');
+    const nomes = cenas.map(c => c.name).slice(0, 40);
+    const sistema = [
+      'Você ajuda o mestre de uma mesa de RPG de fantasia (em português do Brasil).',
+      'O mestre tem um segredo que os jogadores precisam descobrir. Escreva TRÊS pistas, seguindo a regra das três pistas:',
+      '- cada pista, sozinha, já leva ao segredo, por um caminho diferente: uma é um objeto (uma carta, um diário, uma marca), uma é uma pessoa (o que alguém diz ou faz), uma é um lugar (algo que se vê ali);',
+      '- curtas (uma ou duas frases), concretas, do jeito que o mestre lê ou mostra; sem contar o segredo de cara: os jogadores ligam os pontos;',
+      '- para cada pista, escolha a cena onde ela fica, da lista de cenas do mestre (o nome igual), ou deixe vazio se nenhuma serve.',
+      'Cenas do mestre: ' + (nomes.length ? nomes.join(' | ') : '(nenhuma)'),
+    ].join('\n');
+    const ferramenta = { name: 'tres_pistas', description: 'As três pistas do segredo.', input_schema: { type: 'object', required: ['pistas'], properties: { pistas: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'object', required: ['texto', 'forma'], properties: { texto: { type: 'string' }, forma: { type: 'string', enum: ['objeto', 'pessoa', 'lugar'] }, cena: { type: 'string' } } } } } } };
+    const r = await T.ia.pedir({ acao: 'pistas', texto: (titulo ? 'Título: ' + titulo + '\n' : '') + 'O segredo: ' + segredo, sistema, ferramenta });
+    const l = r && r.dados && Array.isArray(r.dados.pistas) ? r.dados.pistas : null;
+    if (!l || !l.length) throw new Error('A IA não devolveu as pistas. Tente escrever o segredo de outro jeito.');
+    return l.slice(0, 3).map(p => ({ txt: txt(p.texto, 600), forma: p.forma, cena: (cenas.find(c => c.name === p.cena) || {}).id || '' }));
+  }
+
+  /* ---------------- a janela "Novo segredo" ---------------- */
+  function abrirNovo() {
+    if (!isGM()) return;
+    const K = UI.kit, sc0 = Store.scene();
+    const cenas = Store.S.order.map(id => Store.S.scenes[id]).filter(Boolean);
+    const outras = cenas.filter(c => c.id !== sc0.id).sort(() => Math.random() - 0.5);
+    const o = { titulo: '', texto: '', pistas: [0, 1, 2].map(i => ({ txt: '', cena: i === 0 || !outras.length ? sc0.id : outras[(i - 1) % outras.length].id })) };
+    let msg = '';
+    const corpo = h('div', { class: 'seg-novo' });
+    const opcs = cenas.map(c => [c.id, c.name]);
+    const pintarC = () => corpo.replaceChildren(
+      K.field('Título (curto)', h('input', { class: 'in', id: 'seg-titulo', value: o.titulo, maxlength: 60, oninput: e => { o.titulo = e.target.value; } }), 'stack'),
+      K.field('O segredo (só você vê)', h('textarea', { class: 'in', id: 'seg-texto', rows: 3, value: o.texto, oninput: e => { o.texto = e.target.value; } }), 'stack'),
+      h('div', { class: 'row' }, K.btn('Escrever as pistas com a IA', ia, { kind: 'small', icon: 'fx', id: 'seg-ia' })),
+      msg ? h('p', { class: 'note', id: 'seg-msg', text: msg }) : null,
+      ...o.pistas.map((p, i) => h('div', { class: 'seg-pista' },
+        K.field('Pista ' + (i + 1) + (p.forma ? ' (' + p.forma + ')' : ''), h('textarea', { class: 'in', id: 'seg-p' + i, rows: 2, value: p.txt, oninput: e => { p.txt = e.target.value; } }), 'stack'),
+        K.field('Em qual cena', K.inSelect('seg-c' + i, p.cena, opcs, v => { p.cena = v; }), 'stack'))),
+      K.note('Cada pista vira uma Marca de pista escondida na cena dela, com o texto na nota. A lista fica na aba Guardas.'));
+    async function ia() {
+      if (!o.texto.trim()) { msg = 'Escreva o segredo primeiro.'; pintarC(); return; }
+      msg = 'Pensando…'; pintarC();
+      try {
+        const l = await pistasDaIA(o.texto.trim(), o.titulo.trim(), cenas);
+        l.forEach((x, i) => { if (!o.pistas[i]) return; o.pistas[i].txt = x.txt; o.pistas[i].forma = x.forma; if (x.cena) o.pistas[i].cena = x.cena; });
+        msg = 'Pronto: revise e mude o que quiser.';
+      } catch (e) { msg = (e && e.message) || 'A IA não respondeu.'; }
+      pintarC();
+    }
+    pintarC();
+    UI.modal({ title: 'Novo segredo', body: corpo, actions: [{ label: 'Cancelar' }, { label: 'Criar o segredo', kind: 'primary', run: () => {
+      if (!o.texto.trim() || o.pistas.some(p => !p.txt.trim())) { UI.toast('Escreva o segredo e as três pistas.'); return false; }
+      const s = criar(o);
+      UI.toast(`Segredo "${s.titulo}" criado: as 3 pistas estão escondidas nas cenas delas.`, { long: true });
+      UI.refresh();
+      return true;
+    } }] });
+  }
+
+  /* ---------------- a lista (na aba Guardas) ---------------- */
+  function secao(K) {
+    const l = todos();
+    return K.sec('s-gd-seg', 'Segredos' + (l.length ? ` (${l.length})` : ''), true,
+      l.length ? h('ul', { class: 'list seg-lista' }, l.map(({ s, sc }) => {
+        const nAch = s.pistas.filter(achada).length;
+        return h('li', { class: 'seg-li' + (nAch ? ' achou' : '') },
+          h('div', { class: 'seg-cab' }, h('b', { text: s.titulo }), h('small', { text: `${nAch} de 3 achadas · nasceu em ${sc.name}` }),
+            K.iconBtn('trash', 'Apagar o segredo', () => UI.confirm('Apagar o segredo?', `"${s.titulo}" e as 3 marcas de pista saem das cenas.`, 'Apagar').then(ok => { if (ok) { apagar(sc, s.id); UI.refresh(); } }), { size: 14, id: 'seg-x-' + s.id })),
+          h('p', { class: 'seg-txt', text: s.texto }),
+          ...s.pistas.map(p => h('div', { class: 'seg-p' + (achada(p) ? ' achada' : '') },
+            K.toggle('seg-a-' + s.id + '-' + p.n, achada(p), on => { marcar(sc, s.id, p.n, on); UI.refresh(); }, `Pista ${p.n}`),
+            h('button', { type: 'button', class: 'li-m seg-p-t', title: 'Ir até a pista', onclick: () => irPara(p), text: `${p.txt} — ${(Store.S.scenes[p.cena] || {}).name || 'cena apagada'}` }))));
+      })) : K.note('Nenhum segredo ainda. Um segredo tem 3 pistas, cada uma num caminho (um objeto, uma pessoa, um lugar): qualquer uma basta para os jogadores chegarem lá.'),
+      h('div', { class: 'row' }, K.btn('Novo segredo…', abrirNovo, { kind: 'small', icon: 'plus', id: 'seg-novo' })));
+  }
+  return { todos, criar, marcar, apagar, achada, abrirNovo, secao, pistasDaIA };
+})();
+/* ---------------------------------------------------------------
+   10gv. O MUNDO EMPRESTA PARA A CENA (lote 155) — o que o Mapa-múndi manda junto com o "Gerar a cena aqui" e o "Gerar
+   este lugar…", além do chão, do rio, da estação, do clima, da hora e dos eventos (que já vinham):
+     · o reino dono da região (quem a controla, e quem é o dono, se ela está ocupada): as cores vão para os estandartes,
+       os brasões e as cortinas da cena; os guardas levam o nome do reino; a nota diz de quem é a terra;
+     · o que está por perto: os lugares marcados até 3 hexágonos dali, com a direção e a distância (o boato e o falso
+       vão marcados), numa nota só do mestre;
+     · os eventos de hoje, na mesma nota.
+   O bloco "Do mundo", na janela, mostra o que veio e tem as chaves para usar ou não. Depois de criar, a nota "Do mundo"
+   fica escondida no mapa.
+   --------------------------------------------------------------- */
+const MundoCena = (() => {
+  const cor = v => (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v) ? v : null);
+  const txt = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n || 60) : '');
+  function valida(pre) {
+    if (!pre || typeof pre !== 'object') return null;
+    const out = {};
+    const r = pre.reino;
+    if (r && typeof r === 'object') {
+      const cs = Array.isArray(r.cores) ? r.cores.map(cor) : [];
+      const reino = { nome: txt(r.nome), regiao: txt(r.regiao), ocupada: txt(r.ocupada), cores: cs[0] && cs[1] ? [cs[0], cs[1]] : null };
+      if (reino.nome || reino.regiao) out.reino = reino;
+    }
+    if (Array.isArray(pre.perto)) {
+      const l = pre.perto.filter(x => x && typeof x === 'object' && txt(x.nome)).slice(0, 6).map(x => ({ nome: txt(x.nome), tipo: txt(x.tipo, 30), d: Math.max(0, Math.min(9, Math.round(Number(x.d) || 0))), dir: txt(x.dir, 20), boato: !!x.boato, falso: !!x.falso, oculto: !!x.oculto }));
+      if (l.length) out.perto = l;
+    }
+    if (Array.isArray(pre.eventos)) { const e = pre.eventos.filter(x => typeof x === 'string').map(x => txt(x)).filter(Boolean).slice(0, 6); if (e.length) out.eventos = e; }
+    return out.reino || out.perto || out.eventos ? out : null;
+  }
+  const prefs = () => ({ reino: App.opt.mundoReino !== false, perto: App.opt.mundoPerto !== false });
+  const linhaPerto = x => `${x.nome}${x.tipo && x.tipo.toLowerCase() !== x.nome.toLowerCase() ? ' (' + x.tipo.toLowerCase() + ')' : ''}, ${x.d === 0 ? 'aqui mesmo' : (x.d === 1 ? 'a 1 hexágono' : 'a ' + x.d + ' hexágonos') + ' ' + x.dir}${x.falso ? ' — é falso' : x.boato ? ' — é boato' : ''}${x.oculto ? ' (os jogadores não sabem)' : ''}`;
+  function nota(info, o) {
+    const out = [];
+    if (o.reino && info.reino) {
+      const r = info.reino;
+      out.push(r.nome ? `Terra de ${r.nome}${r.regiao ? ' (' + r.regiao + ')' : ''}.` : `Região: ${r.regiao}.`);
+      if (r.ocupada) out.push(`Ocupada: a dona é ${r.ocupada}.`);
+    }
+    if (o.perto && info.perto) out.push('Por perto: ' + info.perto.map(linhaPerto).join('; ') + '.');
+    if (info.eventos) out.push('Hoje: ' + info.eventos.join(', ') + '.');
+    return out.join(' ');
+  }
+  // o bloco da janela
+  function controles(info, K, mudou) {
+    const o = prefs(), set = (k, v) => { App.opt[k] = v; mudou(); };
+    return h('div', { class: 'ger-mundo', id: 'ger-mundo' },
+      info.reino ? K.toggle('ger-mundo-reino', o.reino, v => set('mundoReino', v), info.reino.nome ? `O reino: ${info.reino.nome} (as cores e o nome nos guardas)` : `A região: ${info.reino.regiao}`) : null,
+      info.reino && info.reino.cores ? h('div', { class: 'ger-mundo-cores' }, info.reino.cores.map(c2 => h('span', { class: 'ger-mundo-cor', style: { background: c2 } }))) : null,
+      info.perto ? K.toggle('ger-mundo-perto', o.perto, v => set('mundoPerto', v), `O que está por perto (${info.perto.length})`) : null,
+      info.perto && o.perto ? h('ul', { class: 'ger-mundo-l' }, info.perto.map(x => h('li', { text: linhaPerto(x) }))) : null,
+      info.eventos ? K.note('Hoje: ' + info.eventos.join(', ') + ' (o clima, a hora e os efeitos já vêm nas escolhas).') : null,
+      K.note('Depois de criar, a nota "Do mundo" fica escondida no mapa, só para você.'));
+  }
+  const resumoBloco = info => [info.reino ? info.reino.nome || info.reino.regiao : null, info.perto ? info.perto.length + ' por perto' : null].filter(Boolean).join(' · ') || 'o hexágono';
+  // depois de criar: as cores, o nome dos guardas e a nota
+  function aplicar(sc, info) {
+    if (!info) return '';
+    const o = prefs(), partes = [];
+    if (o.reino && info.reino && info.reino.cores) {
+      let n = 0;
+      for (const t of sc.tokens) if (t.prop && Props.P[t.prop] && Props.P[t.prop].cores) { t.cores = info.reino.cores.slice(); n++; }
+      if (n) partes.push(`${n} ${n === 1 ? 'estandarte' : 'estandartes e brasões'} com as cores`);
+    }
+    if (o.reino && info.reino && info.reino.nome) {
+      let n = 0;
+      for (const t of sc.tokens) if (!t.prop && t.ronda && typeof t.ronda === 'object') { t.name = String(t.name || 'Guarda').replace(/^(Guarda|Sentinela)\b/, '$1 de ' + info.reino.nome).slice(0, 60); if (info.reino.cores) t.color = info.reino.cores[0]; n++; }
+      if (n) partes.push(`${n} ${n === 1 ? 'guarda' : 'guardas'} de ${info.reino.nome}`);
+    }
+    const tx = nota(info, o);
+    if (tx && Props.P.interesse) {
+      const t = Props.novo(sc, 'interesse', sc.cell, sc.cell, 1, true);
+      t.name = 'Do mundo'; t.notes = tx;
+      sc.tokens.push(t);
+      partes.push('a nota "Do mundo" no canto do mapa');
+    }
+    sc.mundo = Object.assign({}, info);
+    return partes.length ? 'Do mundo: ' + partes.join(', ') + '.' : '';
+  }
+  return { valida, prefs, controles, resumoBloco, aplicar, nota };
+})();
+/* ---------------------------------------------------------------
    10gw. AS ZONAS DESENHADAS À MÃO (lote 154) — o mestre arrasta retângulos na prévia do "Gerar um lugar…" e o gerador
    obedece:
      · Casa: onde fica a casa, e de que tamanho (a mansão, o casarão, o sob medida);
@@ -50229,7 +50481,115 @@ const Tempo = (() => {
     UI.toast(`"${sc.name}" criada. ${txt}`, { long: true });
     return sc;
   }
-  return { mascaraDe, NIVEIS, EVENTOS, prefs, vale, liga, aplicar, controles, resumoBloco, previa, abrirEnvelhecer, envelhecer, planejar, doPlano, daCena };
+  /* ---------------- (lote 155) "O tempo passou…": a cena muda nela mesma, entre uma sessão e outra ----------------
+     quanto: dias, semanas, meses, anos. O que muda (cada um, uma chave):
+       · guarda: todos desconfiados; reforços de posto nas portas que ficaram abertas (ou destrancadas);
+       · consertos: as portas fecham, as que tinham fechadura trancam de novo; as armadilhas são armadas (escondidas); os
+         baús e armários fecham;
+       · limpeza: os corpos e quem ficou morto saem; o que tombou fica de pé;
+       · desgaste (meses ou anos): o lugar envelhece (Usado nos meses; Abandonado nos anos).
+     Tudo numa transação só (o Desfazer volta tudo), com a nota "O que mudou" escondida no mapa. */
+  const QUANTOS = [['dias', 'Alguns dias'], ['semanas', 'Semanas'], ['meses', 'Meses'], ['anos', 'Anos']];
+  function igual(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function aplicarDiff(sc, nv, label) {
+    Store.tx(label, () => {
+      for (const c of ['walls', 'tokens', 'lights']) {
+        const A = new Map((sc[c] || []).map(x => [x.id, x])), Bm = new Map((nv[c] || []).map(x => [x.id, x]));
+        for (const id of A.keys()) if (!Bm.has(id)) Store.del(c, id);
+        for (const [id, x] of Bm) {
+          if (!A.has(id)) { Store.add(c, x); continue; }
+          const a = A.get(id), p = {};
+          for (const k of new Set(Object.keys(a).concat(Object.keys(x)))) if (!igual(a[k], x[k])) p[k] = x[k];
+          if (Object.keys(p).length) Store.upd(c, id, p);
+        }
+      }
+      const p = {};
+      for (const k of ['bg', 'tempo']) if (!igual(sc[k], nv[k])) p[k] = nv[k];
+      if (Object.keys(p).length) Store.scn(p);
+    });
+  }
+  async function passou(sc, o) {
+    const nv = clone(sc), r = mulberry(((Math.random() * 2147483000) >>> 0) + 1), c = sc.cell, feito = [];
+    const quanto = QUANTOS.some(x => x[0] === o.quanto) ? o.quanto : 'dias';
+    // o desgaste primeiro (depois os consertos e a guarda valem por cima)
+    if (o.desgaste && (quanto === 'meses' || quanto === 'anos')) { await aplicar(nv, { nivel: quanto === 'anos' ? 'abandonado' : 'usado', evento: 'nada' }); nv.tokens = nv.tokens.filter(t => !(t.prop === 'interesse' && t.name === 'O que houve aqui') && !(t.prop === 'pista' && t.name === 'Pista: o que houve')); feito.push(quanto === 'anos' ? 'o lugar ficou abandonado' : 'o lugar ficou gasto'); }
+    if (o.limpeza) {
+      const antes = nv.tokens.length;
+      nv.tokens = nv.tokens.filter(t => !(t.prop === 'corpo') && !(!t.prop && !t.char && Array.isArray(t.conds) && t.conds.includes('morto')));
+      let ergueu = 0;
+      for (const t of nv.tokens) if (t.prop && t.rot && t.rot % 90) { t.rot = (Math.round(t.rot / 90) * 90) % 360; ergueu++; }
+      const tirou = antes - nv.tokens.length;
+      if (tirou || ergueu) feito.push(`limpeza (${[tirou ? tirou + (tirou === 1 ? ' corpo tirado' : ' corpos tirados') : null, ergueu ? ergueu + (ergueu === 1 ? ' móvel de pé' : ' móveis de pé') : null].filter(Boolean).join(', ')})`);
+    }
+    // as portas que ficaram abertas (onde os reforços vão), antes dos consertos fecharem
+    const abertas = nv.walls.filter(w => w.k === 'door' && !w.secret && (w.open || (w.fech && !w.locked)));
+    if (o.consertos) {
+      let portas = 0, arm = 0, mov = 0;
+      for (const w of nv.walls) if ((w.k === 'door' || w.k === 'window') && !w.secret) { if (w.open) { w.open = false; portas++; } if (w.fech && !w.locked) { w.locked = true; portas++; } }
+      for (const t of nv.tokens) {
+        const d = Props.P[t.prop];
+        if (!d) continue;
+        if (d.armadilha && t.est !== 'armada') { t.est = 'armada'; t.hidden = true; arm++; }
+        const ests = Props.estados(t.prop) || [];
+        if (t.est === 'aberto' && ests.some(e => e[0] === 'fechado')) { t.est = 'fechado'; if (d.tranca && !t.tranca) t.tranca = 'medio'; mov++; }
+      }
+      if (portas || arm || mov) feito.push(`consertos (${[portas ? portas + (portas === 1 ? ' porta' : ' portas') + ' fechada' + (portas === 1 ? '' : 's') + ' e trancada' + (portas === 1 ? '' : 's') : null, arm ? arm + (arm === 1 ? ' armadilha armada' : ' armadilhas armadas') : null, mov ? mov + ' fechado' + (mov === 1 ? '' : 's') : null].filter(Boolean).join(', ')})`);
+    }
+    if (o.guarda) {
+      const gs = nv.tokens.filter(t => !t.prop && t.ronda && typeof t.ronda === 'object');
+      if (gs.length) {
+        for (const g of gs) g.alerta = 'desconfiado';
+        const ocup = new Set(); for (const t of nv.tokens) { const [w, hh] = tokWH(t); for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) ocup.add(Math.round(t.x / c + x) + ',' + Math.round(t.y / c + y)); }
+        const quantos = Math.min(abertas.length || 1, quanto === 'dias' ? 1 : quanto === 'semanas' ? 2 : 3);
+        const lugares = (abertas.length ? abertas : []).slice().sort(() => r() - 0.5).slice(0, quantos);
+        let n = 0;
+        for (const w of lugares) {
+          const mx = (w.x1 + w.x2) / 2 / c, my = (w.y1 + w.y2) / 2 / c, vert = Math.abs(w.x2 - w.x1) < Math.abs(w.y2 - w.y1);
+          const cand = vert ? [[Math.round(mx), Math.floor(my), 180], [Math.round(mx) - 1, Math.floor(my), 0]] : [[Math.floor(mx), Math.round(my), 270], [Math.floor(mx), Math.round(my) - 1, 90]];
+          const q = cand.find(([x, y]) => x >= 0 && y >= 0 && x < nv.cols && y < nv.rows && !ocup.has(x + ',' + y));
+          if (!q) continue;
+          const base = gs[n % gs.length], t = clone(base);
+          t.id = uid('tk'); t.x = q[0] * c; t.y = q[1] * c; t.alerta = 'desconfiado'; t.hidden = false;
+          t.name = String(base.name || 'Guarda').replace(/\s*\(reforço\)$/, '') + ' (reforço)';
+          t.ronda = Rondas.novaRonda({ dir: q[2], r: base.ronda.r || 6, a: base.ronda.a || 100 });
+          delete t.ronda.ver;
+          ocup.add(q[0] + ',' + q[1]); nv.tokens.push(t); n++;
+        }
+        feito.push(`a guarda reagiu (${gs.length} desconfiados${n ? ', ' + n + (n === 1 ? ' reforço de posto' : ' reforços de posto') + ' onde entraram' : ''})`);
+      }
+    }
+    const qn = QUANTOS.find(x => x[0] === quanto)[1].toLowerCase();
+    if (feito.length && Props.P.interesse) {
+      const velho = nv.tokens.find(t => t.prop === 'interesse' && t.name === 'O que mudou');
+      const tx = `Passaram ${qn}: ` + feito.join('; ') + '.';
+      if (velho) velho.notes = (velho.notes ? velho.notes + '\n' : '') + tx;
+      else { const t = Props.novo(nv, 'interesse', c, c * 2, 1, true); t.name = 'O que mudou'; t.notes = tx; nv.tokens.push(t); }
+    }
+    aplicarDiff(sc, nv, 'O tempo passou');
+    return feito.length ? `Passaram ${qn}: ${feito.join('; ')}.` : 'Nada mudou (nada para consertar, limpar ou vigiar).';
+  }
+  function abrirPassou() {
+    if (!isGM()) return;
+    const sc = Store.scene();
+    if (!sc) return;
+    const o = { quanto: 'dias', guarda: true, consertos: true, limpeza: true, desgaste: false };
+    const K = UI.kit, corpo = h('div', { class: 'tempo-passou' });
+    const pintarC = () => corpo.replaceChildren(
+      K.note('A cena muda nela mesma (o Desfazer volta tudo). Bom para quando os jogadores voltam a um lugar.'),
+      K.field('Quanto tempo', K.seg('passou-quanto', o.quanto, QUANTOS, v => { o.quanto = v; pintarC(); }), 'stack'),
+      K.toggle('passou-guarda', o.guarda, v => { o.guarda = v; }, 'A guarda reage (desconfiada, reforços nas portas por onde entraram)'),
+      K.toggle('passou-consertos', o.consertos, v => { o.consertos = v; }, 'Consertos e trancas (portas, armadilhas, baús)'),
+      K.toggle('passou-limpeza', o.limpeza, v => { o.limpeza = v; }, 'Limpeza (os corpos saem, o que tombou fica de pé)'),
+      o.quanto === 'meses' || o.quanto === 'anos' ? K.toggle('passou-desgaste', o.desgaste, v => { o.desgaste = v; }, 'Desgaste: ninguém cuidou (o lugar envelhece)') : null);
+    pintarC();
+    UI.modal({ title: 'O tempo passou', body: corpo, actions: [{ label: 'Cancelar' }, { label: 'Passar o tempo', kind: 'primary', keep: true, run: () => {
+      const b = K.card() && K.card().querySelector('.modal-a .btn.primary');
+      if (b) { b.disabled = true; b.textContent = 'Passando…'; }
+      passou(Store.scene(), o).then(txt => { UI.closeModal(); UI.toast(txt, { long: true, action: 'Desfazer', run: Tools.undo }); }, e => { console.error(e); if (b) { b.disabled = false; b.textContent = 'Passar o tempo'; } UI.toast('Não deu para passar o tempo nesta cena.'); });
+      return false;
+    } }] });
+  }
+  return { QUANTOS, passou, abrirPassou, mascaraDe, NIVEIS, EVENTOS, prefs, vale, liga, aplicar, controles, resumoBloco, previa, abrirEnvelhecer, envelhecer, planejar, doPlano, daCena };
 })();
 /* ---------------------------------------------------------------
    10gy. A HISTÓRIA DA MISSÃO (lote 152) — o mapa que conta uma história: uma corrente de passos até o alvo.
@@ -50876,6 +51236,7 @@ const Gerador = (() => {
        Região livre). Uma chave tira. As outras abas também vêm preenchidas (pre.ops: a Região livre com o bioma, a água e
        o caminho do hexágono), sem mexer no que a janela lembra para a próxima vez. */
     const hexPedido = pre && typeof pre === 'object' ? HexCena.valida(pre.hex) : null;
+    const mundoPedido = MundoCena.valida(pre);      // (lote 155) o reino, o que está por perto e os eventos do Mapa-múndi
     // (lote 18) o campo de batalha (da janela da Batalha do Mapa-múndi): os dois exércitos e os soldados por bloco
     const campoPedido = pre && typeof pre === 'object' && pre.campo ? Campo.valida(pre.campo) : null;
     comum.campoPor = campoPedido ? campoPedido.por : 100;
@@ -51141,6 +51502,7 @@ const Gerador = (() => {
       const casoMi = mi.on && mi.caso ? Misterio.casos().find(x => x.id === mi.caso) : null;
       ctl.replaceChildren(...[
         bloco('ia', 'Descrever com a IA', 'o texto vira o mapa', ...blocoIA()),      // (lote 150)
+        mundoPedido ? bloco('mundo', 'Do mundo', MundoCena.resumoBloco(mundoPedido), MundoCena.controles(mundoPedido, K, () => pintar())) : null,      // (lote 155)
         bloco('lugar', L.n, '', blocoCampo, blocoHex,
           L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) })),
         bloco('amb', 'Ambiente', resAmb,
@@ -51188,12 +51550,14 @@ const Gerador = (() => {
             const mi = Misterio.prefs(), txtMi = mi.on ? Misterio.aplicar(sc, l.id, p, mi) : '';    // (lote 53) o mistério
             const txtTr = p.trama ? Trama.aplicar(sc, p) : '';                                        // (lote 152) a história da missão
             if (txtTr) Persist.scene(sc.id);
+            const txtMu = mundoPedido ? MundoCena.aplicar(sc, mundoPedido) : '';                    // (lote 155) o que o mundo empresta
+            if (txtMu) Persist.scene(sc.id);
             if (txtTp) Persist.scene(sc.id);
             const txtMq = MissaoCenas.aplicar(sc, l.id);                                              // (lote 129) os marcadores de missão
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTp ? ' ' + txtTp : '') + (txtTr ? ' ' + txtTr : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTp ? ' ' + txtTp : '') + (txtTr ? ' ' + txtTr : '') + (txtMu ? ' ' + txtMu : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },
@@ -52401,7 +52765,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, IaMapa, Vigia, Trama, Tempo, Zonas, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, IaMapa, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

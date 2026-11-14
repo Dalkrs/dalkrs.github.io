@@ -317,5 +317,113 @@ const Tempo = (() => {
     UI.toast(`"${sc.name}" criada. ${txt}`, { long: true });
     return sc;
   }
-  return { mascaraDe, NIVEIS, EVENTOS, prefs, vale, liga, aplicar, controles, resumoBloco, previa, abrirEnvelhecer, envelhecer, planejar, doPlano, daCena };
+  /* ---------------- (lote 155) "O tempo passou…": a cena muda nela mesma, entre uma sessão e outra ----------------
+     quanto: dias, semanas, meses, anos. O que muda (cada um, uma chave):
+       · guarda: todos desconfiados; reforços de posto nas portas que ficaram abertas (ou destrancadas);
+       · consertos: as portas fecham, as que tinham fechadura trancam de novo; as armadilhas são armadas (escondidas); os
+         baús e armários fecham;
+       · limpeza: os corpos e quem ficou morto saem; o que tombou fica de pé;
+       · desgaste (meses ou anos): o lugar envelhece (Usado nos meses; Abandonado nos anos).
+     Tudo numa transação só (o Desfazer volta tudo), com a nota "O que mudou" escondida no mapa. */
+  const QUANTOS = [['dias', 'Alguns dias'], ['semanas', 'Semanas'], ['meses', 'Meses'], ['anos', 'Anos']];
+  function igual(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function aplicarDiff(sc, nv, label) {
+    Store.tx(label, () => {
+      for (const c of ['walls', 'tokens', 'lights']) {
+        const A = new Map((sc[c] || []).map(x => [x.id, x])), Bm = new Map((nv[c] || []).map(x => [x.id, x]));
+        for (const id of A.keys()) if (!Bm.has(id)) Store.del(c, id);
+        for (const [id, x] of Bm) {
+          if (!A.has(id)) { Store.add(c, x); continue; }
+          const a = A.get(id), p = {};
+          for (const k of new Set(Object.keys(a).concat(Object.keys(x)))) if (!igual(a[k], x[k])) p[k] = x[k];
+          if (Object.keys(p).length) Store.upd(c, id, p);
+        }
+      }
+      const p = {};
+      for (const k of ['bg', 'tempo']) if (!igual(sc[k], nv[k])) p[k] = nv[k];
+      if (Object.keys(p).length) Store.scn(p);
+    });
+  }
+  async function passou(sc, o) {
+    const nv = clone(sc), r = mulberry(((Math.random() * 2147483000) >>> 0) + 1), c = sc.cell, feito = [];
+    const quanto = QUANTOS.some(x => x[0] === o.quanto) ? o.quanto : 'dias';
+    // o desgaste primeiro (depois os consertos e a guarda valem por cima)
+    if (o.desgaste && (quanto === 'meses' || quanto === 'anos')) { await aplicar(nv, { nivel: quanto === 'anos' ? 'abandonado' : 'usado', evento: 'nada' }); nv.tokens = nv.tokens.filter(t => !(t.prop === 'interesse' && t.name === 'O que houve aqui') && !(t.prop === 'pista' && t.name === 'Pista: o que houve')); feito.push(quanto === 'anos' ? 'o lugar ficou abandonado' : 'o lugar ficou gasto'); }
+    if (o.limpeza) {
+      const antes = nv.tokens.length;
+      nv.tokens = nv.tokens.filter(t => !(t.prop === 'corpo') && !(!t.prop && !t.char && Array.isArray(t.conds) && t.conds.includes('morto')));
+      let ergueu = 0;
+      for (const t of nv.tokens) if (t.prop && t.rot && t.rot % 90) { t.rot = (Math.round(t.rot / 90) * 90) % 360; ergueu++; }
+      const tirou = antes - nv.tokens.length;
+      if (tirou || ergueu) feito.push(`limpeza (${[tirou ? tirou + (tirou === 1 ? ' corpo tirado' : ' corpos tirados') : null, ergueu ? ergueu + (ergueu === 1 ? ' móvel de pé' : ' móveis de pé') : null].filter(Boolean).join(', ')})`);
+    }
+    // as portas que ficaram abertas (onde os reforços vão), antes dos consertos fecharem
+    const abertas = nv.walls.filter(w => w.k === 'door' && !w.secret && (w.open || (w.fech && !w.locked)));
+    if (o.consertos) {
+      let portas = 0, arm = 0, mov = 0;
+      for (const w of nv.walls) if ((w.k === 'door' || w.k === 'window') && !w.secret) { if (w.open) { w.open = false; portas++; } if (w.fech && !w.locked) { w.locked = true; portas++; } }
+      for (const t of nv.tokens) {
+        const d = Props.P[t.prop];
+        if (!d) continue;
+        if (d.armadilha && t.est !== 'armada') { t.est = 'armada'; t.hidden = true; arm++; }
+        const ests = Props.estados(t.prop) || [];
+        if (t.est === 'aberto' && ests.some(e => e[0] === 'fechado')) { t.est = 'fechado'; if (d.tranca && !t.tranca) t.tranca = 'medio'; mov++; }
+      }
+      if (portas || arm || mov) feito.push(`consertos (${[portas ? portas + (portas === 1 ? ' porta' : ' portas') + ' fechada' + (portas === 1 ? '' : 's') + ' e trancada' + (portas === 1 ? '' : 's') : null, arm ? arm + (arm === 1 ? ' armadilha armada' : ' armadilhas armadas') : null, mov ? mov + ' fechado' + (mov === 1 ? '' : 's') : null].filter(Boolean).join(', ')})`);
+    }
+    if (o.guarda) {
+      const gs = nv.tokens.filter(t => !t.prop && t.ronda && typeof t.ronda === 'object');
+      if (gs.length) {
+        for (const g of gs) g.alerta = 'desconfiado';
+        const ocup = new Set(); for (const t of nv.tokens) { const [w, hh] = tokWH(t); for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) ocup.add(Math.round(t.x / c + x) + ',' + Math.round(t.y / c + y)); }
+        const quantos = Math.min(abertas.length || 1, quanto === 'dias' ? 1 : quanto === 'semanas' ? 2 : 3);
+        const lugares = (abertas.length ? abertas : []).slice().sort(() => r() - 0.5).slice(0, quantos);
+        let n = 0;
+        for (const w of lugares) {
+          const mx = (w.x1 + w.x2) / 2 / c, my = (w.y1 + w.y2) / 2 / c, vert = Math.abs(w.x2 - w.x1) < Math.abs(w.y2 - w.y1);
+          const cand = vert ? [[Math.round(mx), Math.floor(my), 180], [Math.round(mx) - 1, Math.floor(my), 0]] : [[Math.floor(mx), Math.round(my), 270], [Math.floor(mx), Math.round(my) - 1, 90]];
+          const q = cand.find(([x, y]) => x >= 0 && y >= 0 && x < nv.cols && y < nv.rows && !ocup.has(x + ',' + y));
+          if (!q) continue;
+          const base = gs[n % gs.length], t = clone(base);
+          t.id = uid('tk'); t.x = q[0] * c; t.y = q[1] * c; t.alerta = 'desconfiado'; t.hidden = false;
+          t.name = String(base.name || 'Guarda').replace(/\s*\(reforço\)$/, '') + ' (reforço)';
+          t.ronda = Rondas.novaRonda({ dir: q[2], r: base.ronda.r || 6, a: base.ronda.a || 100 });
+          delete t.ronda.ver;
+          ocup.add(q[0] + ',' + q[1]); nv.tokens.push(t); n++;
+        }
+        feito.push(`a guarda reagiu (${gs.length} desconfiados${n ? ', ' + n + (n === 1 ? ' reforço de posto' : ' reforços de posto') + ' onde entraram' : ''})`);
+      }
+    }
+    const qn = QUANTOS.find(x => x[0] === quanto)[1].toLowerCase();
+    if (feito.length && Props.P.interesse) {
+      const velho = nv.tokens.find(t => t.prop === 'interesse' && t.name === 'O que mudou');
+      const tx = `Passaram ${qn}: ` + feito.join('; ') + '.';
+      if (velho) velho.notes = (velho.notes ? velho.notes + '\n' : '') + tx;
+      else { const t = Props.novo(nv, 'interesse', c, c * 2, 1, true); t.name = 'O que mudou'; t.notes = tx; nv.tokens.push(t); }
+    }
+    aplicarDiff(sc, nv, 'O tempo passou');
+    return feito.length ? `Passaram ${qn}: ${feito.join('; ')}.` : 'Nada mudou (nada para consertar, limpar ou vigiar).';
+  }
+  function abrirPassou() {
+    if (!isGM()) return;
+    const sc = Store.scene();
+    if (!sc) return;
+    const o = { quanto: 'dias', guarda: true, consertos: true, limpeza: true, desgaste: false };
+    const K = UI.kit, corpo = h('div', { class: 'tempo-passou' });
+    const pintarC = () => corpo.replaceChildren(
+      K.note('A cena muda nela mesma (o Desfazer volta tudo). Bom para quando os jogadores voltam a um lugar.'),
+      K.field('Quanto tempo', K.seg('passou-quanto', o.quanto, QUANTOS, v => { o.quanto = v; pintarC(); }), 'stack'),
+      K.toggle('passou-guarda', o.guarda, v => { o.guarda = v; }, 'A guarda reage (desconfiada, reforços nas portas por onde entraram)'),
+      K.toggle('passou-consertos', o.consertos, v => { o.consertos = v; }, 'Consertos e trancas (portas, armadilhas, baús)'),
+      K.toggle('passou-limpeza', o.limpeza, v => { o.limpeza = v; }, 'Limpeza (os corpos saem, o que tombou fica de pé)'),
+      o.quanto === 'meses' || o.quanto === 'anos' ? K.toggle('passou-desgaste', o.desgaste, v => { o.desgaste = v; }, 'Desgaste: ninguém cuidou (o lugar envelhece)') : null);
+    pintarC();
+    UI.modal({ title: 'O tempo passou', body: corpo, actions: [{ label: 'Cancelar' }, { label: 'Passar o tempo', kind: 'primary', keep: true, run: () => {
+      const b = K.card() && K.card().querySelector('.modal-a .btn.primary');
+      if (b) { b.disabled = true; b.textContent = 'Passando…'; }
+      passou(Store.scene(), o).then(txt => { UI.closeModal(); UI.toast(txt, { long: true, action: 'Desfazer', run: Tools.undo }); }, e => { console.error(e); if (b) { b.disabled = false; b.textContent = 'Passar o tempo'; } UI.toast('Não deu para passar o tempo nesta cena.'); });
+      return false;
+    } }] });
+  }
+  return { QUANTOS, passou, abrirPassou, mascaraDe, NIVEIS, EVENTOS, prefs, vale, liga, aplicar, controles, resumoBloco, previa, abrirEnvelhecer, envelhecer, planejar, doPlano, daCena };
 })();

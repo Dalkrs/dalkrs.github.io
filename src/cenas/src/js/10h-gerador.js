@@ -138,6 +138,7 @@ const Gerador = (() => {
        Região livre). Uma chave tira. As outras abas também vêm preenchidas (pre.ops: a Região livre com o bioma, a água e
        o caminho do hexágono), sem mexer no que a janela lembra para a próxima vez. */
     const hexPedido = pre && typeof pre === 'object' ? HexCena.valida(pre.hex) : null;
+    const mundoPedido = MundoCena.valida(pre);      // (lote 155) o reino, o que está por perto e os eventos do Mapa-múndi
     // (lote 18) o campo de batalha (da janela da Batalha do Mapa-múndi): os dois exércitos e os soldados por bloco
     const campoPedido = pre && typeof pre === 'object' && pre.campo ? Campo.valida(pre.campo) : null;
     comum.campoPor = campoPedido ? campoPedido.por : 100;
@@ -403,6 +404,7 @@ const Gerador = (() => {
       const casoMi = mi.on && mi.caso ? Misterio.casos().find(x => x.id === mi.caso) : null;
       ctl.replaceChildren(...[
         bloco('ia', 'Descrever com a IA', 'o texto vira o mapa', ...blocoIA()),      // (lote 150)
+        mundoPedido ? bloco('mundo', 'Do mundo', MundoCena.resumoBloco(mundoPedido), MundoCena.controles(mundoPedido, K, () => pintar())) : null,      // (lote 155)
         bloco('lugar', L.n, '', blocoCampo, blocoHex,
           L.controles(E.op, K, (regerar, o) => { if (o && o.soltar) { E.trava = null; E.base = null; } else E.base = E.plano ? L.baseDe(E.plano) : null; pintar(); if (regerar) refazer(); }, { hex: usaHex(L) })),
         bloco('amb', 'Ambiente', resAmb,
@@ -450,12 +452,14 @@ const Gerador = (() => {
             const mi = Misterio.prefs(), txtMi = mi.on ? Misterio.aplicar(sc, l.id, p, mi) : '';    // (lote 53) o mistério
             const txtTr = p.trama ? Trama.aplicar(sc, p) : '';                                        // (lote 152) a história da missão
             if (txtTr) Persist.scene(sc.id);
+            const txtMu = mundoPedido ? MundoCena.aplicar(sc, mundoPedido) : '';                    // (lote 155) o que o mundo empresta
+            if (txtMu) Persist.scene(sc.id);
             if (txtTp) Persist.scene(sc.id);
             const txtMq = MissaoCenas.aplicar(sc, l.id);                                              // (lote 129) os marcadores de missão
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTp ? ' ' + txtTp : '') + (txtTr ? ' ' + txtTr : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTp ? ' ' + txtTp : '') + (txtTr ? ' ' + txtTr : '') + (txtMu ? ' ' + txtMu : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },

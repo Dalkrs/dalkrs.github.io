@@ -518,6 +518,7 @@ const Rondas = (() => {
     // (lote 152) a história da missão (os passos, em ordem; o mestre marca o que já fizeram)
     const tr = Trama.secao(K, sc);
     if (tr) out.push(tr);
+    out.push(Segredos.secao(K));      // (lote 155) os segredos com três pistas
     // (lote 151) o calor e os caminhos: onde os guardas veem (com eles andando) e a dificuldade medida
     if (gs.length) {
       const md = Vigia.daCenaMedida(sc).med;

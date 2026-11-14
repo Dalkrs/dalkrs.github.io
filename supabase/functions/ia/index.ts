@@ -1,8 +1,8 @@
-// Tiny Cats · a IA do site (lote 150)
+// Tiny Cats · a IA do site (lote 150; lote 155: as pistas dos segredos)
 // O site pede, a função confere quem pede e chama o Claude com a chave guardada nos segredos (ANTHROPIC_API_KEY): a chave
 // nunca vai para o navegador. Só o mestre (ou o mestre auxiliar) de uma mesa liberada em public.ia_mesas usa, até o teto de
 // pedidos do dia dela; cada pedido fica anotado em public.ia_uso.
-//   { mesa, acao: 'mapa', texto, sistema, ferramenta: { name, description, input_schema } }
+//   { mesa, acao: 'mapa' | 'pistas', texto, sistema, ferramenta: { name, description, input_schema } }
 //     → { ok: true, dados } (o que o Claude preencheu na ferramenta) | { erro }
 // O pedido vem com o "sistema" (as instruções) e a ferramenta (o formato da resposta) montados pelo site, para o gerador
 // evoluir sem mexer aqui; os tamanhos têm teto.
@@ -17,7 +17,7 @@ const cors = {
 const json = (corpo: unknown, status = 200) =>
   new Response(JSON.stringify(corpo), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ACOES = ["mapa"];
+const ACOES = ["mapa", "pistas"];
 type Obj = Record<string, unknown>;
 
 Deno.serve(async (req: Request) => {
@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
   const texto = String(c.texto ?? "").trim().slice(0, 4000);
   const sistema = String(c.sistema ?? "").slice(0, 40000);
   const f = (c.ferramenta ?? {}) as Obj;
-  if (!texto) return json({ erro: "Descreva o lugar primeiro." }, 400);
+  if (!texto) return json({ erro: acao === "pistas" ? "Escreva o segredo primeiro." : "Descreva o lugar primeiro." }, 400);
   if (!f || typeof f.name !== "string" || typeof f.input_schema !== "object" || JSON.stringify(f).length > 40000) return json({ erro: "Pedido inválido." }, 400);
 
   const modelo = Deno.env.get("IA_MODELO") || "claude-sonnet-5-5";
@@ -84,6 +84,6 @@ Deno.serve(async (req: Request) => {
     return json({ erro: r.status === 401 ? "A chave da API não vale (confira o segredo ANTHROPIC_API_KEY)." : "A IA recusou o pedido: " + msg.slice(0, 200) }, 502);
   }
   const bloco = (Array.isArray(corpo.content) ? corpo.content : []).find((b: Obj) => b && b.type === "tool_use") as Obj | undefined;
-  if (!bloco) return json({ erro: "A IA não devolveu o lugar. Tente descrever de outro jeito." }, 502);
+  if (!bloco) return json({ erro: acao === "pistas" ? "A IA não devolveu as pistas. Tente de novo." : "A IA não devolveu o lugar. Tente descrever de outro jeito." }, 502);
   return json({ ok: true, dados: bloco.input, restam: Math.max(0, teto - usados - 1) });
 });

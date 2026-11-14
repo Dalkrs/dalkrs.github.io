@@ -94,6 +94,8 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   // ---------- o grupo ----------
   const ger = {};
   for (const nome of ['floresta-estrada', 'lavoura', 'savana-trilha', 'planicie-estrada', 'planicie', 'neve-selvagem', 'mar', 'rio', 'estranha']) ger[nome] = await gerarAqui(nome);
+  // (lote 155) o reino (a região) e o que está por perto vão junto
+  { const g = ger['floresta-estrada']; ok(g.reino && g.reino.regiao === 'Condado' && Array.isArray(g.reino.cores) && Array.isArray(g.perto) && g.perto.some(x => x.nome === 'Mata Escura'), 'a região e o que está por perto vão para a cena — ' + JSON.stringify({ reino: g.reino, perto: g.perto })); }
   const op = nome => j(ger[nome].op);
   ok(ger['floresta-estrada'].lugar === 'encontro' && op('floresta-estrada') === j({ terreno: 'floresta', situacao: 'surpresa', caminho: 'estrada' }), 'na floresta, numa estrada: o encontro na floresta, com a estrada e a situação sorteada: ' + op('floresta-estrada'));
   ok(op('lavoura') === j({ terreno: 'campo', situacao: 'plantacao', caminho: 'nenhum' }), 'na lavoura, fora de rota: o campo, já na plantação: ' + op('lavoura'));

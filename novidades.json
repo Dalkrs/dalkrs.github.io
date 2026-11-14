@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.13-11",
+      "data": "2026-11-13",
+      "titulo": "O mundo na cena, o tempo entre sessões e os segredos",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: o “Gerar a cena aqui” do Mapa-múndi agora traz também o reino dono da região e o que está por perto. As cores do reino vão para os estandartes, os guardas levam o nome dele, e uma nota só do mestre diz de quem é a terra, os lugares a até 3 hexágonos (com a direção) e os eventos de hoje.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: no menu das cenas, “O tempo passou…”. Escolha quanto tempo e o que mudou: a guarda reage (desconfiada, com reforços nas portas por onde entraram), os consertos (portas trancadas de novo, armadilhas armadas), a limpeza (os corpos saem) e o desgaste. A cena muda nela mesma, com Desfazer.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: os segredos com três pistas. Na aba Guardas, “Novo segredo…”: escreva o segredo e as 3 pistas (ou peça à IA e revise) e escolha a cena de cada uma. As pistas viram marcas escondidas nas cenas, e a lista mostra quais os jogadores já acharam.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.13-10",
       "data": "2026-11-13",
       "titulo": "Zonas à mão e outra versão do cômodo",
