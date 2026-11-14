@@ -62,10 +62,22 @@ textarea.in { height: auto; padding: 7px 9px; resize: vertical; width: 100%; }
   background-size: 7px 7px, 11px 11px, 5px 5px; }
 :root:not([data-claro]) .board { background-color: #6f4f30; }
 .board svg.fios { position: absolute; inset: 0; overflow: visible; z-index: 3; pointer-events: none; }
+/* (lote 159) os fios em duas camadas: inteiros atrás dos cartões; por cima, só um fio fraco (o texto fica legível) */
+.board svg.fios.baixo { z-index: 1; }
+.fios .fraco { opacity: .2; }
+.board [data-fiog], .board .carta { transition: opacity .15s, filter .15s; }
+.board.foco .carta:not(.lig) { opacity: .32; filter: saturate(.4); }
+.board.foco [data-fiog]:not(.lig) { opacity: .06; }
+.board.foco .fios .fraco.lig { opacity: .45; }
+.carta.frente { z-index: 4; box-shadow: 0 12px 26px rgba(0,0,0,.5); }
+/* a etiqueta de papel do fio */
+.fio-tag rect { fill: #f5ecd2; stroke: rgba(60, 40, 15, .35); stroke-width: 1; filter: drop-shadow(1px 2px 1.5px rgba(0,0,0,.4)); }
+.fio-tag .furo { fill: #6f4f30; }
 .board svg.fios .fio-h { pointer-events: stroke; }
 .fio-h { fill: none; stroke: transparent; stroke-width: 16; cursor: pointer; pointer-events: stroke; }
-.fio-txt { font: 700 17px/1 var(--mao); paint-order: stroke; stroke: rgba(30, 20, 10, .75); stroke-width: 3.5px; fill: #fff6df; pointer-events: none; }
-.carta { position: absolute; width: 200px; padding: 18px 12px 10px; border-radius: 3px; background: #efe4c8; color: #2a2116; box-shadow: 0 6px 14px rgba(0,0,0,.35), 0 1px 0 rgba(0,0,0,.2); cursor: grab; user-select: none; touch-action: none; font-size: 13px; line-height: 1.4; }
+.fio-txt { font: 700 16px/1 var(--mao); fill: #2a2116; pointer-events: none; }
+.fio-tag { pointer-events: none; }
+.carta { position: absolute; z-index: 2; width: 200px; padding: 18px 12px 10px; border-radius: 3px; background: #efe4c8; color: #2a2116; box-shadow: 0 6px 14px rgba(0,0,0,.35), 0 1px 0 rgba(0,0,0,.2); cursor: grab; user-select: none; touch-action: none; font-size: 13px; line-height: 1.4; }
 .carta.arrastando { cursor: grabbing; z-index: 5; box-shadow: 0 14px 28px rgba(0,0,0,.45); }
 .carta.escolhida { outline: 3px solid #e0403a; outline-offset: 3px; }
 .carta .alfinete { position: absolute; top: 5px; left: 50%; width: 13px; height: 13px; margin-left: -6px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff8a80, #c62828 60%, #6d0f0f); box-shadow: 0 2px 2px rgba(0,0,0,.4); }
@@ -152,7 +164,7 @@ dialog h2 { margin: 0 0 10px; font: 600 22px/1.1 var(--display); }
 <script src="../tc/ponte.js?v=22"></script>
 <script src="../tc/escudo.js?v=5"></script>
 <script src="../tc/missoes.js?v=3"></script>
-<script src="../tc/quadro.js?v=3"></script>
-<script src="quadro.js?v=3"></script>
+<script src="../tc/quadro.js?v=4"></script>
+<script src="quadro.js?v=4"></script>
 </body>
 </html>

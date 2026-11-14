@@ -123,9 +123,10 @@
   palco.addEventListener('pointerdown', ev => {
     if (ev.target.closest('.carta, .zoom, .vazio, .fio-h, button')) return;
     pan = { x: ev.clientX, y: ev.clientY, vx: vista.x, vy: vista.y }; palco.classList.add('pan'); palco.setPointerCapture(ev.pointerId);
+    pan.soltar = () => Math.hypot(vista.x - pan.vx, vista.y - pan.vy) < 4;
   });
   palco.addEventListener('pointermove', ev => { if (!pan) return; vista.x = pan.vx + ev.clientX - pan.x; vista.y = pan.vy + ev.clientY - pan.y; aplicarVista(); });
-  const soltarPan = () => { pan = null; palco.classList.remove('pan'); };
+  const soltarPan = () => { if (pan && pan.soltar() && fixo) { fixo = null; aplicarFoco(); } pan = null; palco.classList.remove('pan'); };
   palco.addEventListener('pointerup', soltarPan); palco.addEventListener('pointercancel', soltarPan);
   $('zMais').onclick = () => zoomEm(1.2); $('zMenos').onclick = () => zoomEm(1 / 1.2); $('zAjustar').onclick = ajustar;
 
@@ -144,10 +145,31 @@
       case 'pontilhado': p(sombra); p({ stroke: cor, 'stroke-width': 5, 'stroke-dasharray': '0.1 10' }); break;
       default: p(sombra); p({ stroke: cor, 'stroke-width': 3.2 });
     }
-    const hit = sv('path', { d, class: 'fio-h', 'data-fio': f.id });
-    g.append(hit);
-    if (f.txt) { const t = sv('text', { x: mx, y: (a.y + b.y) / 2 + (my - (a.y + b.y) / 2) / 2 - 8, 'text-anchor': 'middle', class: 'fio-txt' }); t.textContent = f.txt; g.append(t); }
-    return hit;
+    return { d, mx, my };
+  }
+  /* (lote 159) a etiqueta de papel do fio: no trecho livre do fio, fora dos cartões e das outras etiquetas.
+     rects: [x0, y0, x1, y1] dos cartões; postas: as etiquetas já postas (o mesmo formato). */
+  function etiqueta(g, f, a, b, c, rects, postas) {
+    const B = t => ({ x: (1 - t) * (1 - t) * a.x + 2 * (1 - t) * t * c.mx + t * t * b.x, y: (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * c.my + t * t * b.y });
+    const w = f.txt.length * 8.4 + 22, hh = 24;
+    const caixa = p => [p.x - w / 2, p.y - hh / 2, p.x + w / 2, p.y + hh / 2];
+    const bate = (k, l) => l.some(r => k[0] < r[2] && r[0] < k[2] && k[1] < r[3] && r[1] < k[3]);
+    let melhor = null;
+    for (const soCartoes of [false, true]) {
+      for (let i = 0; i <= 36; i++) {
+        const t = 0.05 + i * 0.025, p = B(t), k = caixa(p);
+        if (bate(k, rects) || (!soCartoes && bate(k, postas))) continue;
+        if (!melhor || Math.abs(t - 0.5) < Math.abs(melhor.t - 0.5)) melhor = { t, p };
+      }
+      if (melhor) break;
+    }
+    const p = (melhor || { p: B(0.5) }).p;
+    postas.push(caixa(p));
+    const tg = sv('g', { class: 'fio-tag', transform: `translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${((f.id.charCodeAt(1) % 5) - 2) * 1.2})` });
+    tg.append(sv('rect', { x: -w / 2, y: -hh / 2, width: w, height: hh, rx: 2 }));
+    tg.append(sv('circle', { cx: -w / 2 + 7, cy: 0, r: 2.6, class: 'furo' }));
+    const t = sv('text', { x: 5, y: 1, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: 'fio-txt' }); t.textContent = f.txt;
+    tg.append(t); g.append(tg);
   }
 
   /* ---------------- a legenda (lote 144) ---------------- */
@@ -231,8 +253,9 @@
     }
     vazio.hidden = true;
     const mexe = podeMexer(), q = x.q;
-    // (os fios vão por cima dos cartões, de alfinete a alfinete, como num quadro de verdade)
-    const fios = sv('svg', { class: 'fios', width: Q.TAM.w, height: Q.TAM.h });
+    /* (lote 159) os fios em duas camadas: inteiros por trás dos cartões, e por cima só um fio fraco, que deixa ler o texto;
+       as etiquetas e o lugar de clicar no fio ficam por cima de tudo */
+    const fiosB = sv('svg', { class: 'fios baixo', width: Q.TAM.w, height: Q.TAM.h }), fios = sv('svg', { class: 'fios cima', width: Q.TAM.w, height: Q.TAM.h });
     const els = {};
     for (const id of Object.keys(q.cartas)) {
       const c = q.cartas[id];
@@ -248,23 +271,54 @@
       board.append(el);
       if (mexe) {
         el.addEventListener('pointerdown', ev => arrastar(ev, id, el));
-        el.addEventListener('click', ev => { if (ligando && !ev.target.closest('button')) escolher(id); });
+        el.addEventListener('click', ev => { if (ev.target.closest('button')) return; if (ligando) escolher(id); else fixar(id); });
         el.addEventListener('dblclick', () => { if (!ligando) editarCarta(id); });
         el.querySelector('[data-ed]').onclick = ev => { ev.stopPropagation(); editarCarta(id); };
-      } else el.addEventListener('dblclick', () => abrirOriginal(c));
+      } else { el.addEventListener('dblclick', () => abrirOriginal(c)); el.addEventListener('click', () => fixar(id)); }
+      el.addEventListener('pointerenter', () => { sobre = id; aplicarFoco(); });
+      el.addEventListener('pointerleave', () => { if (sobre === id) { sobre = null; aplicarFoco(); } });
     }
-    board.append(fios);
+    if (fixo && !q.cartas[fixo]) fixo = null;
+    board.append(fiosB, fios);
     // os fios, depois que os cartões têm tamanho (o fio sai do alfinete)
     requestAnimationFrame(() => {
       const ponto = id => { const c = q.cartas[id], el = els[id]; return { x: c.x + (el ? el.offsetWidth : 200) / 2, y: c.y + 11 }; };
+      const rects = Object.keys(q.cartas).map(id => { const c = q.cartas[id], el = els[id]; return [c.x - 6, c.y - 6, c.x + (el ? el.offsetWidth : 200) + 6, c.y + (el ? el.offsetHeight : 120) + 6]; });
+      const postas = [], tags = sv('g', { class: 'tags' });
       for (const f of q.fios) {
-        const g = sv('g', { 'data-fiog': f.id }); fios.append(g);
-        const hit = desenharFio(g, f, ponto(f.a), ponto(f.b));
+        const a = ponto(f.a), b = ponto(f.b);
+        const gB = sv('g', { 'data-fiog': f.id }); fiosB.append(gB);
+        const c = desenharFio(gB, f, a, b);
+        const gC = sv('g', { 'data-fiog': f.id, class: 'fraco' }); fios.append(gC);
+        desenharFio(gC, f, a, b);
+        const gH = sv('g', { 'data-fiog': f.id });
+        const hit = sv('path', { d: c.d, class: 'fio-h', 'data-fio': f.id }); gH.append(hit); fios.append(gH);
+        if (f.txt) { const gT = sv('g', { 'data-fiog': f.id }); etiqueta(gT, f, a, b, c, rects, postas); tags.append(gT); }
         if (mexe) hit.addEventListener('click', () => editarFio(f.id));
       }
+      fios.append(tags);
+      aplicarFoco();
     });
     $('avisoLigar').hidden = !ligando;
     $('avisoLigar').textContent = primeiro ? 'Agora clique no outro cartão (Esc cancela).' : 'Clique no primeiro cartão para o fio (Esc cancela).';
+  }
+
+  /* ---------------- (lote 159) o foco: o cartão sob o mouse (ou o clicado) acende, com os fios e os vizinhos dele;
+     o clicado vem para a frente de tudo. Clicar no fundo (ou Esc) solta. ---------------- */
+  let sobre = null, fixo = null;
+  function fixar(id) { fixo = fixo === id ? null : id; aplicarFoco(); }
+  function aplicarFoco() {
+    const x = atual(), id = sobre || fixo;
+    board.classList.toggle('foco', !!(x && id && x.q.cartas[id]));
+    board.querySelectorAll('.lig, .frente').forEach(el => el.classList.remove('lig', 'frente'));
+    if (fixo) { const el = board.querySelector(`.carta[data-carta="${fixo}"]`); if (el) el.classList.add('frente'); }
+    if (!x || !id || !x.q.cartas[id]) return;
+    const viz = new Set([id]);
+    for (const f of x.q.fios) if (f.a === id || f.b === id) {
+      viz.add(f.a); viz.add(f.b);
+      board.querySelectorAll(`[data-fiog="${f.id}"]`).forEach(el => el.classList.add('lig'));
+    }
+    for (const v of viz) { const el = board.querySelector(`.carta[data-carta="${v}"]`); if (el) el.classList.add('lig'); }
   }
 
   /* ---------------- arrastar, ligar ---------------- */
@@ -301,7 +355,7 @@
     mudar({ t: 'fio', f: { id: Q.novoId('f'), a, b: id, cor: $('fioCor').value, tex: $('fioTex').value } });
     toast('Fio preso. Clique nele para escrever o que ele quer dizer.');
   }
-  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && ligando && !dlg.open) modoLigar(false); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && ligando && !dlg.open) modoLigar(false); else if (ev.key === 'Escape' && fixo && !dlg.open) { fixo = null; aplicarFoco(); } });
 
   /* ---------------- as janelas ---------------- */
   function abrirJanela(...kids) { dlg.replaceChildren(...kids); if (!dlg.open) dlg.showModal(); }

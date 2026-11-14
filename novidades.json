@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.14-05",
+      "data": "2026-11-14",
+      "titulo": "Quadro de pistas mais fácil de ler",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Quadro de pistas: os fios passam por trás dos cartões, e por cima fica só um fio fraquinho, então o texto não fica mais cortado." },
+        { "tipo": "melhorou", "texto": "Quadro de pistas: o que está escrito no fio vira uma etiqueta de papel, presa no trecho livre do fio, longe dos cartões." },
+        { "tipo": "novo", "texto": "Quadro de pistas: passe o mouse num cartão para acender os fios dele e os cartões ligados; o resto fica apagado. Clique no cartão para deixá-lo aceso e na frente de tudo; clique no fundo (ou Esc) para soltar." }
+      ]
+    },
+    {
       "versao": "2026.11.14-04",
       "data": "2026-11-14",
       "titulo": "Quadro de pistas maior",
