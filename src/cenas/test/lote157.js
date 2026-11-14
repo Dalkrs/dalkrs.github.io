@@ -20,7 +20,7 @@ const ok = (c, m) => { n++; if (!c) { fails++; console.log('FALHOU:', m); } };
     await p.click('#tour-next'); await w(450);
     if (bt === 'Concluir') break;
   }
-  ok(vistos.length === 15 && vistos.filter(x => x.endsWith('*')).length >= 11, 'o passeio: 15 cartões, os das telas com o destaque — ' + vistos.join(' | '));
+  ok(vistos.length === 19 && vistos.filter(x => x.endsWith('*')).length >= 15, 'o passeio: 19 cartões (lote 158: mais 4), os das telas com o destaque — ' + vistos.join(' | '));
   ok(await p.evaluate(() => __tc.Novidades.vistas() && !__tc.UI.modalOpen()), 'no fim: marcado como visto, e a janela que ele abriu fechou');
   ok(!t.errs.filter(e => !/favicon|willReadFrequently/.test(e)).length, 'o passeio sem erros: ' + t.errs.slice(0, 3).join(' | '));
   // (2) as zonas: tirar

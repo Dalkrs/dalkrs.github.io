@@ -1411,3 +1411,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .ex-cv { width: 300px; height: 300px; }
 .ex-acoes { flex-wrap: wrap; gap: 6px; }
 .ex-aviso { color: var(--warn, #f0c448); }
+/* (lote 158) os objetos do tema: as miniaturas dos objetos do tema escolhido */
+.tema-mini { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+.tema-mini canvas { width: 40px; height: 40px; border-radius: 6px; background: var(--raised); border: 1px solid var(--line); }
+.tema-cena { display: flex; flex-direction: column; gap: 8px; min-width: min(420px, 80vw); }

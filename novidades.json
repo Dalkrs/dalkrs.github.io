@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.14-03",
+      "data": "2026-11-14",
+      "titulo": "15 categorias de objetos e 15 climas novos",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: 15 categorias novas de objetos (mais de 100 objetos): taverna, escola de magia, prisão, fazenda, treino, ruínas, inverno, deserto, pântano, esgoto, acampamento militar, portais, teatro, convés e natureza fantástica. Estão no painel dos Objetos.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: no gerador de mapas, o bloco “Objetos do tema” espalha os objetos de uma categoria na cena, em grupinhos. “Combina com o lugar” escolhe sozinho (a vila ganha a fazenda, o porto o convés, o esgoto o esgoto…). Numa cena pronta: menu das cenas › “Pôr objetos de um tema…”.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: 15 climas novos: tempestade com raios, garoa, granizo, nevasca, tempestade de areia, calor e miragem, sombras de nuvens, névoa rasteira, aurora, estrelas cadentes, chuva de sangue, chuva da corrupção, esporos brilhantes, debaixo d’água e fagulhas arcanas. A lista de climas agora vem em grupos. Os clarões dos raios podem ser desligados na aba Cena.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: seis usos novos de sala nas casas (Sob medida, Furtividade e as Zonas à mão): salão da taverna, sala de magia, interrogatório, treino, portal e teatro, já mobiliados. A cela ganhou o catre e o balde.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.14-02",
       "data": "2026-11-14",
       "titulo": "O passeio das novidades e a IA que desenha a planta",

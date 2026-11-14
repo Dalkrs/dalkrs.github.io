@@ -1456,6 +1456,10 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .ex-cv { width: 300px; height: 300px; }
 .ex-acoes { flex-wrap: wrap; gap: 6px; }
 .ex-aviso { color: var(--warn, #f0c448); }
+/* (lote 158) os objetos do tema: as miniaturas dos objetos do tema escolhido */
+.tema-mini { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+.tema-mini canvas { width: 40px; height: 40px; border-radius: 6px; background: var(--raised); border: 1px solid var(--line); }
+.tema-cena { display: flex; flex-direction: column; gap: 8px; min-width: min(420px, 80vw); }
 </style>
 </head>
 <body>
@@ -2350,7 +2354,25 @@ const TONES = [
   { id: 'noite', n: 'Noite', light: 'penumbra', tint: 'rgba(70,100,190,0.40)' },
   { id: 'breu', n: 'Breu', light: 'escuro', tint: 'rgba(40,50,90,0.35)' },
 ];
-const WEATHERS = [['', 'Nenhum'], ['chuva', 'Chuva'], ['neve', 'Neve'], ['neblina', 'Neblina'], ['cinzas', 'Cinzas e brasas'], ['vagalumes', 'Vaga-lumes'], ['folhas', 'Folhas ao vento'], ['petalas', 'Pétalas ao vento'], ['poeira', 'Poeira no ar']];
+const WEATHERS = [['', 'Nenhum'], ['chuva', 'Chuva'], ['neve', 'Neve'], ['neblina', 'Neblina'], ['cinzas', 'Cinzas e brasas'], ['vagalumes', 'Vaga-lumes'], ['folhas', 'Folhas ao vento'], ['petalas', 'Pétalas ao vento'], ['poeira', 'Poeira no ar'],
+  // (lote 158) os climas novos
+  ['tempestade', 'Tempestade com raios'], ['garoa', 'Garoa'], ['granizo', 'Granizo'], ['nevasca', 'Nevasca'], ['areia', 'Tempestade de areia'],
+  ['miragem', 'Calor e miragem'], ['nuvens', 'Sombras de nuvens'], ['nevoaRasteira', 'Névoa rasteira'], ['aurora', 'Aurora'], ['cadentes', 'Estrelas cadentes'],
+  ['sangue', 'Chuva de sangue'], ['corrupcao', 'Chuva da corrupção'], ['esporos', 'Esporos brilhantes'], ['submerso', 'Debaixo d\'água'], ['fagulhas', 'Fagulhas arcanas']];
+// (lote 158) os climas em grupos, para as listas (o gerador e a aba Cena)
+const WEATHER_GRUPOS = [['Água e frio', ['chuva', 'garoa', 'tempestade', 'granizo', 'neve', 'nevasca']], ['Ar e luz', ['neblina', 'nevoaRasteira', 'nuvens', 'poeira', 'areia', 'miragem', 'folhas', 'petalas']],
+  ['Noite', ['vagalumes', 'aurora', 'cadentes']], ['Magia e perigo', ['cinzas', 'sangue', 'corrupcao', 'esporos', 'fagulhas', 'submerso']]];
+// os climas que ficam por baixo dos tokens (a névoa e a sombra no chão); os outros caem por cima de tudo
+const WEATHER_CHAO = new Set(['neblina', 'nuvens', 'nevoaRasteira']);
+// a lista do clima, em grupos (os <optgroup>); onChange recebe o id ('' é Nenhum)
+function selClima(id, value, onChange, attrs) {
+  const nome = k => (WEATHERS.find(w => w[0] === k) || ['', k])[1];
+  const sel = h('select', Object.assign({ id, class: 'in', onchange: e => { const v = e.target.value; e.target.blur(); onChange(v); } }, attrs || {}),
+    h('option', { value: '', text: 'Nenhum' }),
+    WEATHER_GRUPOS.map(([g, ks]) => h('optgroup', { label: g }, ks.map(k => h('option', { value: k, text: nome(k) })))));
+  sel.value = WEATHERS.some(w => w[0] === value) ? value : '';
+  return sel;
+}
 
 // Dano e cura em área. O que foi digitado: "12" ou "-12" tira, "+8" devolve; vazio vale 0 e texto inválido, null.
 function areaAmount(text) {
@@ -6754,8 +6776,8 @@ const Props = (() => {
     g.restore();
   }
   const isProp = t => !!t && !!t.prop && !!P[t.prop];
-  // Algum objeto com fogo na cena? (o mapa fica se mexendo, para as chamas tremularem)
-  const temFogo = sc => sc.tokens.some(t => t.prop && P[t.prop] && P[t.prop].fogo && !t.hidden && !(t.light && t.light.on === false));
+  // Algum objeto com fogo na cena? (o mapa fica se mexendo, para as chamas tremularem; lote 158: e os que se mexem, def.vivo)
+  const temFogo = sc => sc.tokens.some(t => t.prop && P[t.prop] && (P[t.prop].fogo || P[t.prop].vivo) && !t.hidden && !(t.light && t.light.on === false));
   /* Um token novo para o objeto `id`, em (x, y): sem barras, sem nome à mostra, sem visão; a luz, se o objeto tem
      uma, já acesa e tremulando. */
   function novo(sc, id, x, y, size, hidden) {
@@ -8841,6 +8863,1467 @@ const Props = (() => {
       // a pena
       c.strokeStyle = '#f4f0e6'; c.lineWidth = R * 0.09; c.lineCap = 'round'; c.beginPath(); c.moveTo(R * 0.2, R * 0.5); c.quadraticCurveTo(R * 0.55, R * 0.1, R * 0.8, -R * 0.42); c.stroke();
       c.strokeStyle = FER.esc; c.lineWidth = R * 0.03; c.beginPath(); c.moveTo(R * 0.2, R * 0.5); c.lineTo(R * 0.28, R * 0.38); c.stroke();
+    },
+  });
+})();
+/* ---------------------------------------------------------------
+   6cc. OS OBJETOS DOS TEMAS, parte 1 (lote 158) — cinco categorias novas, para o mestre pôr à mão e para o gerador
+   ("Objetos do tema"):
+     · Taverna e estalagem: a chopeira, a mesa de jogo, o palco do bardo, o quadro de avisos, a lareira com espeto,
+       o beliche da estalagem, o cachorro dormindo e a bandeja de canecas;
+     · Escola de magia: o globo celeste, o telescópio, o quadro de runas, o cristal de vidência, a pilha de livros, os
+       pergaminhos voando, o suporte das varinhas e a carteira do aluno;
+     · Prisão e interrogatório: a gaiola suspensa, o tronco de castigo, a roda, a mesa de interrogatório, o cepo, o balde,
+       o catre e o molho de chaves;
+     · Fazenda e celeiro: o arado, o galinheiro, o espantalho, a colmeia, o moinho de mão, o chiqueiro, as ferramentas e
+       as abóboras;
+     · Treino e arena: o cavalete de armas, o ringue, o pódio, a arquibancada, os pesos, o poste com escudos e o tapete
+       de luta.
+   Props.kitT: os ajudantes de desenho que as partes 2 e 3 (06cd, 06ce) também usam.
+   def.vivo: o desenho se mexe sozinho (o mapa fica animado, como com o fogo, mas sem fumaça).
+   --------------------------------------------------------------- */
+(() => {
+  const { caixa, linha, grad, radial, hsh, MAD, PED, FER, chama, sombra } = Props.kit;
+  const reg = (id, def) => Props.registrar(id, def);
+  /* ---- os ajudantes ---- */
+  const T = {
+    bola(c, x, y, r, cor, lw) { c.beginPath(); c.arc(x, y, Math.max(0.01, r), 0, TAU); c.fillStyle = cor; c.fill(); if (lw) linha(c, lw); },
+    oval(c, x, y, rx, ry, a, cor, lw) { c.beginPath(); c.ellipse(x, y, Math.max(0.01, rx), Math.max(0.01, ry), a || 0, 0, TAU); c.fillStyle = cor; c.fill(); if (lw) linha(c, lw); },
+    ret(c, x, y, w, h, r, cor, lw) { caixa(c, x, y, w, h, r); c.fillStyle = cor; c.fill(); if (lw) linha(c, lw); },
+    seg(c, x1, y1, x2, y2, w, cor) { c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineWidth = w; c.strokeStyle = cor; c.lineCap = 'round'; c.stroke(); },
+    poli(c, pts, cor, lw) { c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); c.fillStyle = cor; c.fill(); if (lw) linha(c, lw); },
+    // a sombra de um objeto retangular (R × B: as metades)
+    somb(c, R, B, m) { c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; caixa(c, -R + m * 0.12, -B + m * 0.14, R * 2 - m * 0.1, B * 2 - m * 0.1, m * 0.2); c.fill(); c.restore(); },
+    // o brilho (somado: clareia o que está embaixo)
+    brilho(c, x, y, r, cor, a) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = a == null ? 0.6 : a; c.fillStyle = radial(c, x, y, r, [cor, cor + '55', cor + '00']); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.restore(); },
+    // as medidas de um comprido: B (a metade da altura) e m (o lado menor)
+    mm(R, B) { B = B || R; return [B, Math.min(R, B)]; },
+  };
+  Props.kitT = T;
+  const { bola, oval, ret, seg, poli, somb, brilho, mm } = T;
+  const CANECA = '#c9a24a', ESPUMA = '#f6f0dc';
+
+  /* ================= TAVERNA E ESTALAGEM ================= */
+  Props.grupo('taverna', 'Taverna e estalagem');
+  // a chopeira: dois barris deitados no cavalete, com as torneiras viradas para a frente
+  reg('chopeira', {
+    n: 'Chopeira', g: 'taverna', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R, b, m);
+      ret(c, -R + m * 0.05, -b + m * 0.1, R * 2 - m * 0.1, b * 2 - m * 0.2, m * 0.06, MAD.esc, m * 0.05);
+      for (const k of [-1, 1]) {
+        const cx = k * R * 0.48, w = R * 0.82, h = b * 1.6;
+        ret(c, cx - w / 2, -h / 2, w, h, m * 0.35, grad(c, cx - w / 2, 0, cx + w / 2, 0, [MAD.med, MAD.luz, MAD.med]), m * 0.05);
+        for (const f of [0.18, 0.5, 0.82]) seg(c, cx - w / 2 + w * f, -h / 2 + m * 0.04, cx - w / 2 + w * f, h / 2 - m * 0.04, m * 0.07, FER.med);
+        ret(c, cx - m * 0.08, h / 2 - m * 0.06, m * 0.16, m * 0.2, m * 0.03, '#b08a3a', m * 0.025);      // a torneira
+      }
+    },
+  });
+  // a mesa de jogo: a mesa redonda, as cartas espalhadas, os dados e as moedas
+  reg('mesaJogo', {
+    n: 'Mesa de jogo', g: 'taverna', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.8, 0.78);
+      bola(c, 0, 0, R * 0.8, radial(c, -R * 0.2, -R * 0.25, R, [MAD.luz, MAD.cla, MAD.med]), R * 0.06);
+      bola(c, 0, 0, R * 0.62, '#2f5a3a'); linha(c, R * 0.03, 'rgba(0,0,0,0.3)');
+      for (let i = 0; i < 5; i++) { c.save(); c.translate((hsh(s, i, 1) - 0.5) * R * 0.7, (hsh(s, i, 2) - 0.5) * R * 0.7); c.rotate(hsh(s, i, 3) * 3); ret(c, -R * 0.1, -R * 0.14, R * 0.2, R * 0.28, R * 0.03, i % 2 ? '#f4efe2' : '#efe6d0', R * 0.02); c.fillStyle = i % 2 ? '#b3262e' : '#222'; c.fillRect(-R * 0.03, -R * 0.03, R * 0.06, R * 0.06); c.restore(); }
+      for (const [x, y] of [[R * 0.3, -R * 0.15], [R * 0.15, R * 0.3]]) { ret(c, x - R * 0.07, y - R * 0.07, R * 0.14, R * 0.14, R * 0.03, '#f8f4ea', R * 0.02); bola(c, x, y, R * 0.025, '#222'); }
+      for (let i = 0; i < 4; i++) bola(c, -R * 0.35 + i * R * 0.03, R * 0.2 - i * R * 0.02, R * 0.07, '#e2b842', R * 0.015);
+    },
+  });
+  // o palco do bardo: o tablado de madeira, o banquinho, o alaúde e o chapéu das moedas
+  reg('palcoBardo', {
+    n: 'Palco do bardo', g: 'taverna', size: 2,
+    draw(c, R) {
+      sombra(c, R, 0.95, 0.95);
+      ret(c, -R * 0.92, -R * 0.92, R * 1.84, R * 1.84, R * 0.08, grad(c, 0, -R, 0, R, [MAD.cla, MAD.med]), R * 0.04);
+      c.strokeStyle = 'rgba(40,22,8,0.4)'; c.lineWidth = R * 0.015; for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(-R * 0.92, -R * 0.92 + i * R * 0.307); c.lineTo(R * 0.92, -R * 0.92 + i * R * 0.307); c.stroke(); }
+      bola(c, -R * 0.1, -R * 0.25, R * 0.2, MAD.esc, R * 0.03);
+      c.save(); c.translate(R * 0.3, -R * 0.1); c.rotate(0.6);
+      oval(c, 0, R * 0.12, R * 0.2, R * 0.26, 0, MAD.luz, R * 0.025); bola(c, 0, R * 0.1, R * 0.06, '#2a1a0e'); ret(c, -R * 0.035, -R * 0.42, R * 0.07, R * 0.38, R * 0.02, MAD.esc, R * 0.015);
+      c.restore();
+      oval(c, -R * 0.45, R * 0.5, R * 0.2, R * 0.16, 0, '#5a3a6e', R * 0.025); for (let i = 0; i < 3; i++) bola(c, -R * 0.5 + i * R * 0.05, R * 0.5, R * 0.04, '#e2b842');
+    },
+  });
+  // o quadro de avisos: a tábua com os papéis pregados (os cartazes de procurado)
+  reg('quadroAvisos', {
+    n: 'Quadro de avisos', g: 'taverna', size: 1, costas: 'n',
+    draw(c, R, t, s) {
+      ret(c, -R * 0.85, -R * 0.85, R * 1.7, R * 0.6, R * 0.06, MAD.med, R * 0.05);
+      for (let i = 0; i < 5; i++) { const x = -R * 0.75 + i * R * 0.3, y = -R * 0.8 + hsh(s, i, 2) * R * 0.1; c.save(); c.translate(x + R * 0.12, y + R * 0.2); c.rotate((hsh(s, i, 1) - 0.5) * 0.3); ret(c, -R * 0.12, -R * 0.18, R * 0.24, R * 0.34, R * 0.02, i === 2 ? '#e8d49a' : '#efe6d0', R * 0.02); seg(c, -R * 0.07, -R * 0.05, R * 0.07, -R * 0.05, R * 0.02, '#6b5a40'); seg(c, -R * 0.07, R * 0.03, R * 0.05, R * 0.03, R * 0.02, '#6b5a40'); bola(c, 0, -R * 0.15, R * 0.025, '#a33'); c.restore(); }
+    },
+  });
+  // a lareira com espeto: a pedra, o fogo e o leitão girando no espeto
+  reg('lareiraEspeto', {
+    n: 'Lareira com espeto', g: 'taverna', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 }, fogo: true, luz: { bright: 3, dim: 6, c: '#ff9a48' },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R, b, m);
+      ret(c, -R + m * 0.04, -b + m * 0.04, R * 2 - m * 0.08, b * 2 - m * 0.08, m * 0.08, grad(c, 0, -b, 0, b, [PED.cla, PED.med]), m * 0.06);
+      ret(c, -R * 0.62, -b + m * 0.2, R * 1.24, b * 1.4, m * 0.1, '#1a1210', m * 0.04);
+      for (let i = 0; i < 5; i++) Props.kit.brasa(c, -R * 0.4 + i * R * 0.2, b * 0.25, m * 0.09, t, s + i);
+      chama(c, -R * 0.2, b * 0.35, m * 0.45, t, s, ang); chama(c, R * 0.2, b * 0.35, m * 0.4, t, s + 3, ang);
+      seg(c, -R * 0.75, -b * 0.1, R * 0.75, -b * 0.1, m * 0.06, FER.cla);
+      oval(c, 0, -b * 0.1, R * 0.36, m * 0.24, 0, grad(c, 0, -b * 0.4, 0, b * 0.2, ['#d08a4a', '#8a4a20']), m * 0.04);
+      bola(c, R * 0.82, -b * 0.1, m * 0.08, FER.esc);
+    },
+  });
+  // o beliche da estalagem: as duas camas (vistas de cima, a de cima por cima), o cobertor de lã
+  reg('beliche', {
+    n: 'Beliche', g: 'taverna', size: 2, fw: 1, fh: 2, costas: 'o', legado: { w: 0.5, h: 1 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R; const m = Math.min(R, B);
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.35)'; caixa(c, -R + m * 0.2, -B + m * 0.2, R * 2 - m * 0.1, B * 2 - m * 0.1, m * 0.1); c.fill(); c.restore();
+      ret(c, -R + m * 0.06, -B + m * 0.04, R * 2 - m * 0.12, B * 2 - m * 0.08, m * 0.06, MAD.esc, m * 0.06);
+      ret(c, -R + m * 0.16, -B + m * 0.12, R * 2 - m * 0.32, B * 2 - m * 0.24, m * 0.08, '#d9ccb0', m * 0.03);
+      ret(c, -R + m * 0.22, -B + m * 0.2, R * 2 - m * 0.44, m * 0.45, m * 0.1, '#f2ead6', m * 0.025);
+      ret(c, -R + m * 0.16, -B + m * 0.8, R * 2 - m * 0.32, B * 2 - m * 0.92, m * 0.08, grad(c, 0, -B, 0, B, ['#8a4a3a', '#6a3428']), m * 0.03);
+      c.strokeStyle = 'rgba(240,220,180,0.35)'; c.lineWidth = m * 0.05; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(-R + m * 0.2, -B + m * 0.8 + i * (B * 2 - m * 0.92) / 4); c.lineTo(R - m * 0.2, -B + m * 0.8 + i * (B * 2 - m * 0.92) / 4); c.stroke(); }
+      for (const k of [-1, 1]) for (const j of [-1, 1]) bola(c, k * (R - m * 0.1), j * (B - m * 0.1), m * 0.08, MAD.med, m * 0.02);
+    },
+  });
+  // o cachorro dormindo, enrolado (respira devagar)
+  reg('cachorro', {
+    n: 'Cachorro dormindo', g: 'taverna', size: 1, vivo: true,
+    draw(c, R, t, s) {
+      const cor = [['#c8955a', '#9a6a38'], ['#5a4a3e', '#3a2e26'], ['#e8dcc4', '#bba98a']][s % 3], r = 1 + Math.sin(t * 1.6) * 0.025;
+      sombra(c, R, 0.7, 0.6);
+      c.save(); c.scale(r, r);
+      oval(c, 0, R * 0.05, R * 0.62, R * 0.5, 0, radial(c, -R * 0.2, -R * 0.1, R * 0.8, [cor[0], cor[1]]), R * 0.05);
+      oval(c, R * 0.28, R * 0.28, R * 0.35, R * 0.13, -0.5, cor[1]);      // o rabo enrolado
+      oval(c, -R * 0.3, -R * 0.22, R * 0.27, R * 0.23, 0.3, cor[0], R * 0.04);
+      oval(c, -R * 0.48, -R * 0.2, R * 0.14, R * 0.08, 0.4, cor[1]); oval(c, -R * 0.16, -R * 0.38, R * 0.12, R * 0.07, -0.4, cor[1]);
+      seg(c, -R * 0.38, -R * 0.2, -R * 0.3, -R * 0.18, R * 0.025, '#1a1410'); bola(c, -R * 0.53, -R * 0.08, R * 0.04, '#1a1410');
+      c.restore();
+    },
+  });
+  // a bandeja de canecas: a bandeja de madeira e as canecas com a espuma
+  reg('canecas', {
+    n: 'Bandeja de canecas', g: 'taverna', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.7, 0.55);
+      ret(c, -R * 0.72, -R * 0.55, R * 1.44, R * 1.1, R * 0.12, grad(c, 0, -R * 0.55, 0, R * 0.55, [MAD.luz, MAD.med]), R * 0.05);
+      for (let i = 0; i < 5; i++) { const x = -R * 0.42 + (i % 3) * R * 0.42 + (i > 2 ? R * 0.21 : 0), y = i > 2 ? R * 0.2 : -R * 0.18; bola(c, x, y, R * 0.18, CANECA, R * 0.03); bola(c, x, y, R * 0.13, ESPUMA); seg(c, x + R * 0.17, y, x + R * 0.26, y, R * 0.05, '#8a6a2a'); }
+    },
+  });
+
+  /* ================= ESCOLA DE MAGIA ================= */
+  Props.grupo('escola', 'Escola de magia');
+  // o globo celeste: os anéis de bronze em volta da esfera das estrelas (giram devagar)
+  reg('globoCeleste', {
+    n: 'Globo celeste', g: 'escola', size: 1, vivo: true,
+    draw(c, R, t) {
+      sombra(c, R, 0.6, 0.6);
+      bola(c, 0, 0, R * 0.42, radial(c, -R * 0.15, -R * 0.15, R * 0.5, ['#4a6aa8', '#1e2c58', '#0e1430']), R * 0.04);
+      for (let i = 0; i < 7; i++) bola(c, Math.cos(i * 2.1 + t * 0.3) * R * 0.28, Math.sin(i * 1.7) * R * 0.3, R * 0.025, '#f6e8a8');
+      c.strokeStyle = '#c99a3a'; c.lineWidth = R * 0.06;
+      for (const [a, k] of [[t * 0.25, 0.35], [t * 0.25 + 1.6, 0.2], [0.4, 1]]) { c.beginPath(); c.ellipse(0, 0, R * 0.7, R * 0.7 * Math.abs(Math.cos(a)) * k + R * 0.05, 0.4 + k, 0, TAU); c.stroke(); }
+      bola(c, 0, 0, R * 0.07, '#e6c060', R * 0.02);
+    },
+  });
+  // o telescópio no tripé, apontado para o alto
+  reg('telescopio', {
+    n: 'Telescópio', g: 'escola', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.55, 0.55);
+      for (const a of [0.6, 2.6, 4.4]) seg(c, 0, 0, Math.cos(a) * R * 0.7, Math.sin(a) * R * 0.7, R * 0.07, MAD.esc);
+      c.save(); c.rotate(-0.7);
+      ret(c, -R * 0.75, -R * 0.13, R * 1.5, R * 0.26, R * 0.1, grad(c, 0, -R * 0.13, 0, R * 0.13, ['#e0b45a', '#9a6a22']), R * 0.04);
+      ret(c, R * 0.55, -R * 0.17, R * 0.24, R * 0.34, R * 0.06, '#7a4e18', R * 0.03);
+      bola(c, R * 0.8, 0, R * 0.12, '#9fd8ff'); bola(c, -R * 0.78, 0, R * 0.06, '#2a2a3a');
+      c.restore();
+      bola(c, 0, 0, R * 0.11, FER.med, R * 0.03);
+    },
+  });
+  // o quadro de runas: a lousa escura na parede, com os círculos e as runas de giz
+  reg('quadroRunas', {
+    n: 'Quadro de runas', g: 'escola', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B), h = Math.min(b * 2, m * 0.7);
+      ret(c, -R + m * 0.04, -b, R * 2 - m * 0.08, h, m * 0.05, MAD.esc, m * 0.05);
+      ret(c, -R + m * 0.12, -b + m * 0.08, R * 2 - m * 0.24, h - m * 0.16, m * 0.03, '#26332e');
+      c.strokeStyle = 'rgba(240,240,230,0.75)'; c.lineWidth = m * 0.025;
+      c.beginPath(); c.arc(-R * 0.45, -b + h / 2, h * 0.3, 0, TAU); c.moveTo(-R * 0.45 + h * 0.18, -b + h / 2); c.arc(-R * 0.45, -b + h / 2, h * 0.18, 0, TAU); c.stroke();
+      for (let i = 0; i < 6; i++) { const x = -R * 0.05 + i * R * 0.16, y = -b + h * (0.35 + (i % 2) * 0.25); c.beginPath(); c.moveTo(x, y - h * 0.1); c.lineTo(x + R * 0.05, y + h * 0.08); c.lineTo(x + R * 0.09, y - h * 0.06); c.stroke(); }
+      ret(c, R * 0.55, -b + h - m * 0.08, m * 0.18, m * 0.06, m * 0.02, '#f4f0e6');
+    },
+  });
+  // o cristal de vidência: a bola de cristal no pedestal, com a névoa girando dentro
+  reg('cristalVidencia', {
+    n: 'Cristal de vidência', g: 'escola', size: 1, vivo: true, calma: true, luz: { bright: 1, dim: 3, c: '#b89cff' },
+    draw(c, R, t) {
+      sombra(c, R, 0.55, 0.55);
+      poli(c, [[-R * 0.5, R * 0.3], [0, -R * 0.2], [R * 0.5, R * 0.3], [0, R * 0.55]], grad(c, 0, -R * 0.2, 0, R * 0.55, [MAD.luz, MAD.esc]), R * 0.04);
+      brilho(c, 0, 0, R * 0.95, '#b89cff', 0.45);
+      bola(c, 0, 0, R * 0.45, radial(c, -R * 0.15, -R * 0.15, R * 0.5, ['#f4ecff', '#a888e8', '#4a2a8f']), R * 0.04);
+      c.save(); c.globalAlpha = 0.55; for (let i = 0; i < 3; i++) oval(c, Math.cos(t * 0.8 + i * 2) * R * 0.14, Math.sin(t * 0.8 + i * 2) * R * 0.14, R * 0.18, R * 0.07, t + i, '#ffffff'); c.restore();
+      bola(c, -R * 0.15, -R * 0.17, R * 0.07, 'rgba(255,255,255,0.85)');
+    },
+  });
+  // a pilha de livros: os livros grossos, uns sobre os outros, e um aberto
+  reg('pilhaLivros', {
+    n: 'Pilha de livros', g: 'escola', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.62, 0.55);
+      const cores = ['#7a2f3a', '#2f4a7a', '#3e6a3a', '#6a4a1e', '#5a2f6a'];
+      for (let i = 0; i < 4; i++) { c.save(); c.rotate((hsh(s, i, 1) - 0.5) * 0.6); const w = R * (1.1 - i * 0.12), h = R * (0.8 - i * 0.08); ret(c, -w / 2, -h / 2 - i * R * 0.04, w, h, R * 0.05, cores[(s + i) % 5], R * 0.04); ret(c, -w / 2 + R * 0.04, h / 2 - R * 0.12 - i * R * 0.04, w - R * 0.08, R * 0.08, R * 0.02, '#efe6d0'); c.restore(); }
+      seg(c, -R * 0.15, -R * 0.1, R * 0.15, -R * 0.1, R * 0.03, '#d6a64a');
+    },
+  });
+  // os pergaminhos voando: três rolos abertos que flutuam em volta (o feitiço que lê sozinho)
+  reg('pergaminhosVoando', {
+    n: 'Pergaminhos voando', g: 'escola', size: 1, vivo: true, calma: true, luz: { bright: 0.5, dim: 2, c: '#ffe7a8' },
+    draw(c, R, t, s) {
+      for (let i = 0; i < 3; i++) {
+        const a = t * 0.6 + i * TAU / 3, x = Math.cos(a) * R * 0.45, y = Math.sin(a) * R * 0.45 + Math.sin(t * 2 + i) * R * 0.06;
+        c.save(); c.fillStyle = 'rgba(0,0,0,0.2)'; c.beginPath(); c.ellipse(x + R * 0.15, y + R * 0.25, R * 0.22, R * 0.08, 0, 0, TAU); c.fill(); c.restore();
+        c.save(); c.translate(x, y); c.rotate(a + Math.sin(t + i) * 0.3);
+        ret(c, -R * 0.2, -R * 0.13, R * 0.4, R * 0.26, R * 0.02, '#efe2c2', R * 0.02);
+        for (const k of [-1, 1]) oval(c, k * R * 0.2, 0, R * 0.04, R * 0.15, 0, '#c9a878', R * 0.015);
+        for (let j = 0; j < 3; j++) seg(c, -R * 0.13, -R * 0.06 + j * R * 0.06, R * 0.12, -R * 0.06 + j * R * 0.06, R * 0.015, 'rgba(90,60,30,0.6)');
+        c.restore();
+      }
+      brilho(c, 0, 0, R * 0.3, '#ffe7a8', 0.3);
+    },
+  });
+  // o suporte das varinhas: o bloco de madeira com os furos e as varinhas de pé
+  reg('suporteVarinhas', {
+    n: 'Suporte de varinhas', g: 'escola', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.62, 0.42);
+      ret(c, -R * 0.7, -R * 0.35, R * 1.4, R * 0.7, R * 0.1, grad(c, 0, -R * 0.35, 0, R * 0.35, [MAD.luz, MAD.med]), R * 0.05);
+      const pontas = ['#9fd8ff', '#ff9a6a', '#b8ff9a', '#e6b8ff', '#fff2a0'];
+      for (let i = 0; i < 5; i++) { const x = -R * 0.5 + i * R * 0.25, y = (i % 2 ? 0.1 : -0.1) * R; seg(c, x, y, x + R * 0.18, y - R * 0.55, R * 0.06, i % 2 ? MAD.esc : '#e8dcc0'); bola(c, x + R * 0.18, y - R * 0.55, R * 0.05, pontas[i]); bola(c, x, y, R * 0.06, '#1e140c'); }
+    },
+  });
+  // a carteira do aluno: a mesinha inclinada com o tinteiro e o caderno
+  reg('carteira', {
+    n: 'Carteira de aluno', g: 'escola', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.75, 0.6);
+      ret(c, -R * 0.75, -R * 0.55, R * 1.5, R * 0.8, R * 0.06, grad(c, 0, -R * 0.55, 0, R * 0.25, [MAD.cla, MAD.med]), R * 0.05);
+      ret(c, -R * 0.45, R * 0.4, R * 0.9, R * 0.38, R * 0.08, MAD.esc, R * 0.04);
+      ret(c, -R * 0.5, -R * 0.42, R * 0.6, R * 0.45, R * 0.03, '#efe2c2', R * 0.02);
+      for (let j = 0; j < 4; j++) seg(c, -R * 0.44, -R * 0.33 + j * R * 0.1, -R * 0.0, -R * 0.33 + j * R * 0.1, R * 0.015, 'rgba(60,40,20,0.5)');
+      bola(c, R * 0.42, -R * 0.3, R * 0.11, '#1a1a2a', R * 0.02); seg(c, R * 0.42, -R * 0.3, R * 0.62, -R * 0.62, R * 0.04, '#f4f0e6');
+    },
+  });
+
+  /* ================= PRISÃO E INTERROGATÓRIO ================= */
+  Props.grupo('prisao', 'Prisão e interrogatório');
+  // a gaiola suspensa: a gaiola redonda pendurada pela corrente (balança um pouco), a sombra no chão
+  reg('gaiolaSuspensa', {
+    n: 'Gaiola suspensa', g: 'prisao', size: 1, vivo: true,
+    draw(c, R, t) {
+      const bal = Math.sin(t * 0.9) * R * 0.06;
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.arc(R * 0.25, R * 0.3, R * 0.62, 0, TAU); c.fill(); c.restore();
+      c.save(); c.translate(bal, 0);
+      bola(c, 0, 0, R * 0.68, 'rgba(30,26,22,0.35)');
+      c.strokeStyle = FER.esc; c.lineWidth = R * 0.07; c.beginPath(); c.arc(0, 0, R * 0.68, 0, TAU); c.stroke();
+      c.lineWidth = R * 0.045; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * R * 0.68, Math.sin(a) * R * 0.68); c.stroke(); }
+      c.beginPath(); c.arc(0, 0, R * 0.36, 0, TAU); c.stroke();
+      bola(c, 0, 0, R * 0.12, FER.cla, R * 0.03);
+      c.restore();
+    },
+  });
+  // o tronco de castigo: a prancha com os três buracos (a cabeça e as mãos) nos dois postes
+  reg('troncoCastigo', {
+    n: 'Tronco de castigo', g: 'prisao', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R, b * 0.5, m);
+      ret(c, -R * 0.9, -m * 0.28, R * 1.8, m * 0.56, m * 0.08, grad(c, 0, -m * 0.28, 0, m * 0.28, [MAD.cla, MAD.med]), m * 0.05);
+      seg(c, -R * 0.9, 0, R * 0.9, 0, m * 0.025, 'rgba(30,16,6,0.6)');
+      for (const [x, r] of [[-R * 0.45, 0.12], [0, 0.18], [R * 0.45, 0.12]]) bola(c, x, 0, m * r, '#1e140c');
+      for (const k of [-1, 1]) bola(c, k * R * 0.95, 0, m * 0.16, MAD.esc, m * 0.04);
+      for (const k of [-1, 1]) ret(c, k * R * 0.7 - m * 0.06, -m * 0.34, m * 0.12, m * 0.12, m * 0.02, FER.cla, m * 0.02);
+    },
+  });
+  // a roda de tortura: a roda grande de madeira com os raios e as correntes
+  reg('rodaTortura', {
+    n: 'Roda de tortura', g: 'prisao', size: 2,
+    draw(c, R) {
+      sombra(c, R, 0.85, 0.85);
+      c.strokeStyle = MAD.esc; c.lineWidth = R * 0.14; c.beginPath(); c.arc(0, 0, R * 0.78, 0, TAU); c.stroke();
+      c.strokeStyle = MAD.med; c.lineWidth = R * 0.09; c.stroke();
+      for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; seg(c, 0, 0, Math.cos(a) * R * 0.74, Math.sin(a) * R * 0.74, R * 0.07, MAD.cla); }
+      bola(c, 0, 0, R * 0.16, FER.med, R * 0.04);
+      c.strokeStyle = FER.cla; c.lineWidth = R * 0.03; for (const a of [0.8, 2.4, 4, 5.5]) { c.beginPath(); c.arc(Math.cos(a) * R * 0.6, Math.sin(a) * R * 0.6, R * 0.08, 0, TAU); c.stroke(); }
+      for (let i = 0; i < 3; i++) bola(c, R * (0.1 + i * 0.12), R * 0.92 - i * R * 0.02, R * 0.06, 'rgba(110,20,20,0.7)');
+    },
+  });
+  // a mesa de interrogatório: a mesa, as duas cadeiras de frente, o lampião, os papéis e as algemas
+  reg('mesaInterrogatorio', {
+    n: 'Mesa de interrogatório', g: 'prisao', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R * 0.7, b * 0.7, m);
+      for (const k of [-1, 1]) ret(c, k * R * 0.88 - m * 0.22, -m * 0.22, m * 0.44, m * 0.44, m * 0.08, MAD.esc, m * 0.04);
+      ret(c, -R * 0.62, -b * 0.75, R * 1.24, b * 1.5, m * 0.06, grad(c, 0, -b, 0, b, [MAD.cla, MAD.med]), m * 0.05);
+      ret(c, -R * 0.42, -b * 0.45, m * 0.45, m * 0.55, m * 0.02, '#efe6d0', m * 0.02); ret(c, -R * 0.36, -b * 0.4, m * 0.45, m * 0.55, m * 0.02, '#f4efe2', m * 0.02);
+      c.strokeStyle = FER.cla; c.lineWidth = m * 0.05; for (const x of [R * 0.05, R * 0.25]) { c.beginPath(); c.arc(x, b * 0.15, m * 0.11, 0, TAU); c.stroke(); } seg(c, R * 0.16, b * 0.15, R * 0.14, b * 0.15, m * 0.04, FER.cla);
+      bola(c, R * 0.42, -b * 0.25, m * 0.14, '#3d434c', m * 0.03); brilho(c, R * 0.42, -b * 0.25, m * 0.45, '#ffcf80', 0.5); bola(c, R * 0.42, -b * 0.25, m * 0.06, '#ffe7a8');
+    },
+  });
+  // o cepo: o toco grosso, com o machado cravado
+  reg('cepo', {
+    n: 'Cepo do carrasco', g: 'prisao', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.62, 0.6);
+      bola(c, 0, 0, R * 0.58, radial(c, -R * 0.15, -R * 0.15, R * 0.6, [MAD.luz, MAD.cla, MAD.med]), R * 0.05);
+      c.strokeStyle = 'rgba(60,32,12,0.45)'; c.lineWidth = R * 0.025; for (const r of [0.15, 0.3, 0.45]) { c.beginPath(); c.arc(0, 0, R * r, 0, TAU); c.stroke(); }
+      oval(c, R * 0.1, R * 0.1, R * 0.2, R * 0.12, 0.3, 'rgba(110,20,20,0.6)');
+      c.save(); c.rotate(-0.5); seg(c, -R * 0.05, 0, R * 0.85, 0, R * 0.09, MAD.esc);
+      poli(c, [[-R * 0.15, -R * 0.25], [R * 0.12, -R * 0.12], [R * 0.12, R * 0.12], [-R * 0.15, R * 0.25]], grad(c, -R * 0.15, 0, R * 0.12, 0, [FER.luz, FER.med]), R * 0.03);
+      c.restore();
+    },
+  });
+  // o balde de madeira, com a água suja
+  reg('balde', {
+    n: 'Balde', g: 'prisao', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.48, 0.45);
+      bola(c, 0, 0, R * 0.42, MAD.med, R * 0.05);
+      c.strokeStyle = FER.med; c.lineWidth = R * 0.05; for (const r of [0.42, 0.34]) { c.beginPath(); c.arc(0, 0, R * r, 0, TAU); c.stroke(); }
+      bola(c, 0, 0, R * 0.3, radial(c, 0, 0, R * 0.3, ['#7a7458', '#4a4636']));
+      c.strokeStyle = FER.cla; c.lineWidth = R * 0.04; c.beginPath(); c.arc(0, 0, R * 0.55, -2.6, -0.5); c.stroke();
+    },
+  });
+  // o catre: a tábua da cela, com a palha e o cobertor puído
+  reg('catre', {
+    n: 'Catre', g: 'prisao', size: 2, fw: 1, fh: 2, costas: 'o', legado: { w: 0.5, h: 1 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R; const m = Math.min(R, B);
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; caixa(c, -R + m * 0.2, -B + m * 0.15, R * 2 - m * 0.2, B * 2 - m * 0.2, m * 0.08); c.fill(); c.restore();
+      ret(c, -R + m * 0.12, -B + m * 0.08, R * 2 - m * 0.24, B * 2 - m * 0.16, m * 0.05, grad(c, -R, 0, R, 0, [MAD.cla, MAD.med]), m * 0.05);
+      c.strokeStyle = '#d9c070'; c.lineWidth = m * 0.03; for (let i = 0; i < 14; i++) { const x = -R * 0.6 + hsh(s, i, 1) * R * 1.2, y = -B * 0.8 + hsh(s, i, 2) * B * 1.6; c.beginPath(); c.moveTo(x, y); c.lineTo(x + m * 0.2 * (hsh(s, i, 3) - 0.5), y + m * 0.2); c.stroke(); }
+      poli(c, [[-R * 0.75, B * 0.05], [R * 0.75, -B * 0.05], [R * 0.75, B * 0.85], [-R * 0.75, B * 0.85]], '#6a5a48', m * 0.03);
+      seg(c, -R * 0.3, B * 0.3, R * 0.2, B * 0.5, m * 0.03, 'rgba(30,24,18,0.5)');
+    },
+  });
+  // o molho de chaves no gancho (o carcereiro esquece aqui)
+  reg('molhoChaves', {
+    n: 'Molho de chaves', g: 'prisao', size: 1, costas: 'n',
+    draw(c, R) {
+      ret(c, -R * 0.12, -R * 0.9, R * 0.24, R * 0.2, R * 0.04, FER.med, R * 0.03);
+      c.strokeStyle = FER.cla; c.lineWidth = R * 0.06; c.beginPath(); c.arc(0, -R * 0.35, R * 0.28, 0, TAU); c.stroke();
+      for (let i = 0; i < 4; i++) { const a = 0.6 + i * 0.6; c.save(); c.translate(Math.cos(a) * R * 0.28, -R * 0.35 + Math.sin(a) * R * 0.28); c.rotate(a - Math.PI / 2); c.strokeStyle = '#c9a24a'; c.lineWidth = R * 0.07; c.beginPath(); c.arc(0, R * 0.06, R * 0.07, 0, TAU); c.moveTo(0, R * 0.13); c.lineTo(0, R * 0.48); c.moveTo(0, R * 0.42); c.lineTo(R * 0.1, R * 0.42); c.stroke(); c.restore(); }
+    },
+  });
+
+  /* ================= FAZENDA E CELEIRO ================= */
+  Props.grupo('fazenda', 'Fazenda e celeiro');
+  // o arado: os dois cabos, a lâmina de ferro e a terra revirada atrás
+  reg('arado', {
+    n: 'Arado', g: 'fazenda', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B);
+      c.strokeStyle = 'rgba(70,46,24,0.55)'; c.lineWidth = m * 0.1; for (const y of [-0.3, 0, 0.3]) { c.beginPath(); c.moveTo(-R * 0.95, y * b); c.lineTo(-R * 0.15, y * b); c.stroke(); }
+      seg(c, -R * 0.1, 0, R * 0.95, 0, m * 0.12, MAD.med);
+      for (const k of [-1, 1]) seg(c, -R * 0.2, 0, -R * 0.7, k * b * 0.55, m * 0.08, MAD.cla);
+      poli(c, [[-R * 0.05, -m * 0.25], [R * 0.3, 0], [-R * 0.05, m * 0.25]], grad(c, -R * 0.05, 0, R * 0.3, 0, [FER.luz, FER.med]), m * 0.03);
+      bola(c, R * 0.95, 0, m * 0.09, FER.esc);
+    },
+  });
+  // o galinheiro: a casinha de madeira com o telhado, o cercado de tela e as galinhas ciscando
+  reg('galinheiro', {
+    n: 'Galinheiro', g: 'fazenda', size: 2, vivo: true,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.95, 0.95);
+      ret(c, -R * 0.92, -R * 0.92, R * 1.84, R * 1.84, R * 0.05, 'rgba(150,120,70,0.35)');
+      c.strokeStyle = 'rgba(200,200,190,0.6)'; c.lineWidth = R * 0.012; for (let i = 0; i <= 12; i++) { const v = -R * 0.92 + i * R * 0.153; c.beginPath(); c.moveTo(v, -R * 0.92); c.lineTo(v, R * 0.92); c.moveTo(-R * 0.92, v); c.lineTo(R * 0.92, v); c.stroke(); }
+      c.strokeStyle = MAD.med; c.lineWidth = R * 0.05; c.strokeRect(-R * 0.92, -R * 0.92, R * 1.84, R * 1.84);
+      ret(c, -R * 0.9, -R * 0.9, R * 0.9, R * 0.75, R * 0.04, grad(c, -R * 0.9, 0, 0, 0, ['#9a4a2a', '#c86a3a']), R * 0.04);
+      seg(c, -R * 0.45, -R * 0.9, -R * 0.45, -R * 0.15, R * 0.04, '#6a2e18');
+      for (let i = 0; i < 4; i++) {
+        const x = (hsh(s, i, 1) - 0.2) * R * 1.2 + Math.sin(t * 0.7 + i) * R * 0.1, y = (hsh(s, i, 2) - 0.1) * R * 1.1, bica = Math.sin(t * 3 + i * 2) > 0.6 ? R * 0.05 : 0;
+        oval(c, x, y, R * 0.13, R * 0.1, i, i % 2 ? '#f4efe2' : '#b8662e', R * 0.02); bola(c, x + R * 0.1, y - R * 0.04 + bica, R * 0.06, i % 2 ? '#f4efe2' : '#b8662e'); bola(c, x + R * 0.1, y - R * 0.09 + bica, R * 0.03, '#d22');
+      }
+      for (let i = 0; i < 8; i++) bola(c, R * 0.1 + hsh(s, i, 5) * R * 0.7, R * 0.2 + hsh(s, i, 6) * R * 0.6, R * 0.018, '#e8c84a');
+    },
+  });
+  // o espantalho: a cruz de madeira, a camisa de retalhos e o chapéu de palha
+  reg('espantalho', {
+    n: 'Espantalho', g: 'fazenda', size: 1, vivo: true,
+    draw(c, R, t) {
+      sombra(c, R, 0.7, 0.3, 0.2, 0.25);
+      const b = Math.sin(t * 1.2) * 0.05;
+      c.save(); c.rotate(b);
+      seg(c, -R * 0.85, 0, R * 0.85, 0, R * 0.08, MAD.med);
+      poli(c, [[-R * 0.6, -R * 0.15], [R * 0.6, -R * 0.15], [R * 0.4, R * 0.35], [-R * 0.4, R * 0.35]], '#8a6a4a', R * 0.04);
+      ret(c, -R * 0.2, -R * 0.05, R * 0.2, R * 0.18, R * 0.02, '#4a6a8a'); ret(c, R * 0.1, R * 0.05, R * 0.18, R * 0.15, R * 0.02, '#a84a3a');
+      c.strokeStyle = '#d9c070'; c.lineWidth = R * 0.04; for (const k of [-1, 1]) for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(k * R * 0.85, 0); c.lineTo(k * R * 0.98, (i - 1) * R * 0.1); c.stroke(); }
+      oval(c, 0, -R * 0.12, R * 0.38, R * 0.36, 0, '#d9b45a', R * 0.04); bola(c, 0, -R * 0.12, R * 0.2, '#c99a3a', R * 0.025);
+      c.restore();
+    },
+  });
+  // a colmeia: a casinha de palha trançada e as abelhas em volta
+  reg('colmeia', {
+    n: 'Colmeia', g: 'fazenda', size: 1, vivo: true,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.55, 0.55);
+      bola(c, 0, 0, R * 0.5, radial(c, -R * 0.15, -R * 0.15, R * 0.55, ['#f0cf7a', '#c9963a', '#8a5e1e']), R * 0.05);
+      c.strokeStyle = 'rgba(110,70,20,0.6)'; c.lineWidth = R * 0.035; for (const r of [0.15, 0.27, 0.39]) { c.beginPath(); c.arc(0, 0, R * r, 0, TAU); c.stroke(); }
+      for (let i = 0; i < 6; i++) { const a = t * (1.5 + hsh(s, i, 1)) + i, x = Math.cos(a) * R * (0.6 + 0.2 * Math.sin(t * 2 + i)), y = Math.sin(a * 1.3) * R * 0.7; bola(c, x, y, R * 0.04, '#2a2010'); bola(c, x + R * 0.02, y, R * 0.03, '#f2c42a'); }
+    },
+  });
+  // o moinho de mão: as duas mós de pedra, o cabo e a farinha
+  reg('moinhoMao', {
+    n: 'Moinho de mão', g: 'fazenda', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.62, 0.6);
+      oval(c, R * 0.1, R * 0.15, R * 0.6, R * 0.55, 0, 'rgba(240,236,224,0.85)');
+      bola(c, 0, 0, R * 0.55, radial(c, -R * 0.15, -R * 0.15, R * 0.6, [PED.luz, PED.cla, PED.med]), R * 0.05);
+      bola(c, 0, 0, R * 0.42, PED.cla, R * 0.03); bola(c, 0, 0, R * 0.09, '#3a3a40');
+      seg(c, R * 0.28, -R * 0.1, R * 0.28, -R * 0.45, R * 0.09, MAD.med);
+    },
+  });
+  // o chiqueiro: o cercadinho de toras, a lama e o porco
+  reg('chiqueiro', {
+    n: 'Chiqueiro', g: 'fazenda', size: 2, vivo: true,
+    draw(c, R, t, s) {
+      ret(c, -R * 0.9, -R * 0.9, R * 1.8, R * 1.8, R * 0.1, '#6a5030');
+      oval(c, R * 0.1, R * 0.15, R * 0.6, R * 0.42, 0.3, '#4a3820');
+      ret(c, R * 0.35, -R * 0.75, R * 0.45, R * 0.28, R * 0.05, MAD.med, R * 0.03);
+      const x = -R * 0.25 + Math.sin(t * 0.4) * R * 0.1;
+      oval(c, x, R * 0.05, R * 0.38, R * 0.26, 0, '#f0a8a8', R * 0.035); oval(c, x - R * 0.4, R * 0.05, R * 0.13, R * 0.12, 0, '#f0a8a8', R * 0.03); oval(c, x - R * 0.5, R * 0.05, R * 0.06, R * 0.07, 0, '#e08a8a', R * 0.02);
+      for (const k of [-1, 1]) oval(c, x - R * 0.36, R * 0.05 + k * R * 0.11, R * 0.05, R * 0.04, 0, '#e08a8a');
+      c.strokeStyle = '#e08a8a'; c.lineWidth = R * 0.03; c.beginPath(); c.arc(x + R * 0.42, R * 0.05, R * 0.06, 0, 5); c.stroke();
+      c.strokeStyle = MAD.cla; c.lineWidth = R * 0.08; c.strokeRect(-R * 0.9, -R * 0.9, R * 1.8, R * 1.8);
+      for (const [px, py] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]]) bola(c, px * R * 0.9, py * R * 0.9, R * 0.08, MAD.esc);
+    },
+  });
+  // as ferramentas encostadas: o forcado, o ancinho e a pá
+  reg('ferramentasFazenda', {
+    n: 'Ferramentas da roça', g: 'fazenda', size: 1, costas: 'n',
+    draw(c, R) {
+      for (const [x, a] of [[-R * 0.5, -0.15], [0, 0.05], [R * 0.5, 0.2]]) { c.save(); c.translate(x, R * 0.1); c.rotate(a); seg(c, 0, R * 0.7, 0, -R * 0.55, R * 0.07, MAD.cla); c.restore(); }
+      c.save(); c.translate(-R * 0.5, R * 0.1); c.rotate(-0.15); for (const k of [-1, 0, 1]) seg(c, k * R * 0.1, -R * 0.55, k * R * 0.1, -R * 0.85, R * 0.035, FER.cla); seg(c, -R * 0.1, -R * 0.55, R * 0.1, -R * 0.55, R * 0.04, FER.cla); c.restore();
+      c.save(); c.translate(0, R * 0.1); c.rotate(0.05); seg(c, -R * 0.2, -R * 0.6, R * 0.2, -R * 0.6, R * 0.05, FER.cla); for (let i = 0; i < 5; i++) seg(c, -R * 0.18 + i * R * 0.09, -R * 0.6, -R * 0.18 + i * R * 0.09, -R * 0.72, R * 0.025, FER.cla); c.restore();
+      c.save(); c.translate(R * 0.5, R * 0.1); c.rotate(0.2); poli(c, [[-R * 0.14, -R * 0.55], [R * 0.14, -R * 0.55], [R * 0.1, -R * 0.9], [-R * 0.1, -R * 0.9]], FER.med, R * 0.025); c.restore();
+    },
+  });
+  // as abóboras: três abóboras laranja com as folhas e a rama
+  reg('aboboras', {
+    n: 'Abóboras', g: 'fazenda', size: 1,
+    draw(c, R, t, s) {
+      for (let i = 0; i < 4; i++) oval(c, (hsh(s, i, 1) - 0.5) * R * 1.3, (hsh(s, i, 2) - 0.5) * R * 1.3, R * 0.28, R * 0.18, hsh(s, i, 3) * 3, i % 2 ? '#3f7a34' : '#4f8a3e');
+      for (const [x, y, r] of [[-R * 0.3, -R * 0.15, 0.32], [R * 0.32, R * 0.05, 0.27], [-R * 0.05, R * 0.4, 0.22]]) {
+        bola(c, x, y, R * r, radial(c, x - R * r * 0.3, y - R * r * 0.3, R * r * 1.2, ['#ffb85a', '#e8782a', '#a8481a']), R * 0.03);
+        c.strokeStyle = 'rgba(120,50,10,0.45)'; c.lineWidth = R * 0.02; for (const k of [0.4, 0.75]) { c.beginPath(); c.ellipse(x, y, R * r * k, R * r, 0, 0, TAU); c.stroke(); }
+        ret(c, x - R * 0.03, y - R * 0.04, R * 0.06, R * 0.08, R * 0.02, '#5a6a2a');
+      }
+    },
+  });
+
+  /* ================= TREINO E ARENA ================= */
+  Props.grupo('treino', 'Treino e arena');
+  // o cavalete de armas: a armação de madeira com as lanças, as espadas e o machado de pé
+  reg('cavaleteArmas', {
+    n: 'Cavalete de armas', g: 'treino', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R, b * 0.6, m);
+      ret(c, -R * 0.95, -b * 0.55, R * 1.9, m * 0.22, m * 0.05, MAD.med, m * 0.04); ret(c, -R * 0.95, b * 0.2, R * 1.9, m * 0.22, m * 0.05, MAD.med, m * 0.04);
+      for (let i = 0; i < 6; i++) {
+        const x = -R * 0.78 + i * R * 0.31;
+        if (i % 3 === 0) { seg(c, x, -b * 0.95, x, b * 0.9, m * 0.06, MAD.cla); poli(c, [[x - m * 0.08, -b * 0.8], [x, -b * 1.05], [x + m * 0.08, -b * 0.8]], FER.luz, m * 0.02); }
+        else if (i % 3 === 1) { seg(c, x, -b * 0.75, x, b * 0.75, m * 0.09, FER.luz); seg(c, x - m * 0.12, b * 0.45, x + m * 0.12, b * 0.45, m * 0.06, '#c9a24a'); }
+        else { seg(c, x, -b * 0.85, x, b * 0.85, m * 0.06, MAD.esc); poli(c, [[x, -b * 0.75], [x + m * 0.25, -b * 0.9], [x + m * 0.25, -b * 0.4], [x, -b * 0.5]], FER.cla, m * 0.02); }
+      }
+    },
+  });
+  // o ringue: o tablado com as cordas e os quatro postes (3 × 3)
+  reg('ringue', {
+    n: 'Ringue', g: 'treino', size: 3,
+    draw(c, R) {
+      sombra(c, R, 0.98, 0.98);
+      ret(c, -R * 0.95, -R * 0.95, R * 1.9, R * 1.9, R * 0.04, grad(c, 0, -R, 0, R, ['#c9b48a', '#a8946a']), R * 0.03);
+      c.strokeStyle = 'rgba(80,60,30,0.25)'; c.lineWidth = R * 0.01; for (let i = 1; i < 8; i++) { c.beginPath(); c.moveTo(-R * 0.95, -R * 0.95 + i * R * 0.237); c.lineTo(R * 0.95, -R * 0.95 + i * R * 0.237); c.stroke(); }
+      for (const [k, cor] of [[0.82, '#b8322e'], [0.74, '#f4efe2']]) { c.strokeStyle = cor; c.lineWidth = R * 0.025; c.strokeRect(-R * k, -R * k, R * k * 2, R * k * 2); }
+      for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) bola(c, x * R * 0.82, y * R * 0.82, R * 0.07, MAD.esc, R * 0.02);
+    },
+  });
+  // o pódio: os três degraus (o do meio mais alto), com os números
+  reg('podio', {
+    n: 'Pódio', g: 'treino', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R, b, m);
+      const blocos = [[-R * 0.95, '#a8acb4', '2', 0.7], [-R * 0.32, '#d6a64a', '1', 1], [R * 0.32, '#b0703a', '3', 0.55]];
+      for (const [x, cor, n, alt] of blocos) {
+        ret(c, x, -b * 0.85, R * 0.63, b * 1.7, m * 0.05, grad(c, x, 0, x + R * 0.63, 0, [PED.luz, PED.cla]), m * 0.04);
+        bola(c, x + R * 0.315, 0, m * 0.25 * alt + m * 0.08, cor, m * 0.03);
+        c.fillStyle = '#2a2016'; c.font = `bold ${m * 0.32}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(n, x + R * 0.315, m * 0.02);
+      }
+    },
+  });
+  // a arquibancada: os três degraus de madeira (3 × 1), vistos de cima, com o público ralo
+  reg('arquibancada', {
+    n: 'Arquibancada', g: 'treino', size: 3, fw: 3, fh: 1, costas: 'n', legado: { w: 1, h: 0.34 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R, b, m);
+      for (let i = 0; i < 3; i++) { const y = -b + i * b * 0.66; ret(c, -R + m * 0.04, y, R * 2 - m * 0.08, b * 0.66, m * 0.03, i % 2 ? MAD.med : MAD.cla, m * 0.035); }
+      for (let i = 0; i < 4; i++) { const x = -R * 0.8 + hsh(s, i, 1) * R * 1.6, y = -b * 0.7 + Math.floor(hsh(s, i, 2) * 3) * b * 0.66; bola(c, x, y, m * 0.13, ['#8a4a3a', '#3a5a8a', '#5a7a3a', '#7a5a2a'][i], m * 0.02); bola(c, x, y, m * 0.07, '#e0b896'); }
+    },
+  });
+  // os pesos: a barra com as duas pedras redondas e os halteres no chão
+  reg('pesos', {
+    n: 'Pesos', g: 'treino', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.8, 0.5);
+      seg(c, -R * 0.75, -R * 0.2, R * 0.75, -R * 0.2, R * 0.07, FER.cla);
+      for (const k of [-1, 1]) bola(c, k * R * 0.65, -R * 0.2, R * 0.26, radial(c, k * R * 0.6, -R * 0.3, R * 0.3, [PED.luz, PED.med, PED.esc]), R * 0.04);
+      for (const x of [-R * 0.3, R * 0.3]) { seg(c, x - R * 0.15, R * 0.45, x + R * 0.15, R * 0.45, R * 0.05, FER.med); for (const k of [-1, 1]) bola(c, x + k * R * 0.17, R * 0.45, R * 0.09, FER.esc, R * 0.02); }
+    },
+  });
+  // o poste com escudos: o poste de madeira e os escudos pintados pendurados nele
+  reg('posteEscudos', {
+    n: 'Poste com escudos', g: 'treino', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.6, 0.6);
+      const cores = [['#b8322e', '#f2d04a'], ['#2f5a9a', '#f4efe2'], ['#3e7a3a', '#d6a64a']];
+      for (let i = 0; i < 3; i++) { const a = i / 3 * TAU + 0.3, x = Math.cos(a) * R * 0.48, y = Math.sin(a) * R * 0.48, [c1, c2] = cores[(s + i) % 3]; bola(c, x, y, R * 0.3, c1, R * 0.04); c.save(); c.beginPath(); c.arc(x, y, R * 0.3, 0, TAU); c.clip(); c.fillStyle = c2; c.fillRect(x - R * 0.04, y - R * 0.3, R * 0.08, R * 0.6); c.restore(); bola(c, x, y, R * 0.07, FER.cla, R * 0.02); }
+      bola(c, 0, 0, R * 0.17, radial(c, -R * 0.05, -R * 0.05, R * 0.2, [MAD.luz, MAD.med]), R * 0.04);
+    },
+  });
+  // o tapete de luta: a lona acolchoada, o círculo no meio e as marcas dos pés
+  reg('tapeteLuta', {
+    n: 'Tapete de luta', g: 'treino', size: 2,
+    draw(c, R) {
+      ret(c, -R * 0.94, -R * 0.94, R * 1.88, R * 1.88, R * 0.1, grad(c, -R, -R, R, R, ['#5a7a9a', '#3e5a7a']), R * 0.035);
+      c.strokeStyle = 'rgba(255,255,255,0.25)'; c.lineWidth = R * 0.015; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(-R * 0.94 + i * R * 0.47, -R * 0.94); c.lineTo(-R * 0.94 + i * R * 0.47, R * 0.94); c.stroke(); }
+      c.strokeStyle = '#f2d04a'; c.lineWidth = R * 0.05; c.beginPath(); c.arc(0, 0, R * 0.6, 0, TAU); c.stroke();
+      for (const k of [-1, 1]) seg(c, k * R * 0.2, -R * 0.1, k * R * 0.2, R * 0.1, R * 0.06, '#f4efe2');
+    },
+  });
+})();
+/* ---------------------------------------------------------------
+   6cd. OS OBJETOS DOS TEMAS, parte 2 (lote 158):
+     · Ruínas antigas: a coluna quebrada caída, a estátua sem cabeça, o obelisco, o portal de pedra, o mosaico rachado,
+       o altar com musgo e a escadaria partida;
+     · Inverno e montanha: o boneco de neve, o trenó, o pinheiro nevado, o iglu, as estalactites de gelo, as pegadas na
+       neve e o lago congelado;
+     · Deserto e oásis: a tenda do deserto, o camelo, a palmeira, o tapete com almofadas, os jarros d'água, a caveira de
+       boi e a duna;
+     · Pântano e brejo: a cabana na palafita, o barco de junco, os juncos, a ponte de tábuas, o caldeirão da bruxa, o
+       tronco podre e o sapo gigante;
+     · Esgoto e subterrâneo: a grade de esgoto, os canos, o ninho de ratos, a passarela de ferro, a comporta, o monte
+       de lixo e a escada de ferro.
+   --------------------------------------------------------------- */
+(() => {
+  const { caixa, linha, grad, radial, hsh, MAD, PED, FER, chama, sombra, pedrinha } = Props.kit;
+  const { bola, oval, ret, seg, poli, somb, brilho, mm } = Props.kitT;
+  const reg = (id, def) => Props.registrar(id, def);
+  const MUSGO = ['#3f6a34', '#5a8a44', '#7aa85a'];
+  const musgo = (c, R, s, n, raio) => { for (let i = 0; i < n; i++) bola(c, (hsh(s, i, 11) - 0.5) * raio * 2, (hsh(s, i, 12) - 0.5) * raio * 2, R * (0.06 + hsh(s, i, 13) * 0.08), MUSGO[i % 3]); };
+
+  /* ================= RUÍNAS ANTIGAS ================= */
+  Props.grupo('ruinas', 'Ruínas antigas');
+  // a coluna quebrada, caída no chão: o fuste com as caneluras, a base e os pedaços
+  reg('colunaQuebrada', {
+    n: 'Coluna caída', g: 'ruinas', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R * 0.9, b * 0.7, m);
+      ret(c, -R * 0.7, -b * 0.55, R * 1.35, b * 1.1, m * 0.4, grad(c, 0, -b * 0.55, 0, b * 0.55, [PED.luz, PED.cla, PED.med]), m * 0.05);
+      c.strokeStyle = 'rgba(70,74,82,0.45)'; c.lineWidth = m * 0.03; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(-R * 0.65, i * b * 0.18); c.lineTo(R * 0.6, i * b * 0.18); c.stroke(); }
+      ret(c, -R * 0.95, -b * 0.75, R * 0.3, b * 1.5, m * 0.08, PED.cla, m * 0.05);
+      poli(c, [[R * 0.62, -b * 0.55], [R * 0.75, -b * 0.2], [R * 0.68, b * 0.1], [R * 0.78, b * 0.55], [R * 0.62, b * 0.55]], PED.med, m * 0.04);
+      pedrinha(c, R * 0.9, -b * 0.4, m * 0.12, s); pedrinha(c, R * 0.88, b * 0.45, m * 0.09, s + 1);
+      musgo(c, R, s, 5, R * 0.4);
+    },
+  });
+  // a estátua sem cabeça: o pedestal, o corpo com o manto e o pescoço partido
+  reg('estatuaSemCabeca', {
+    n: 'Estátua sem cabeça', g: 'ruinas', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.72, 0.72);
+      ret(c, -R * 0.75, -R * 0.75, R * 1.5, R * 1.5, R * 0.08, grad(c, -R, -R, R, R, [PED.cla, PED.med]), R * 0.05);
+      oval(c, 0, R * 0.05, R * 0.5, R * 0.42, 0, radial(c, -R * 0.15, -R * 0.15, R * 0.6, ['#d8d4c8', '#a8a498', '#7a776e']), R * 0.04);
+      for (const k of [-1, 1]) oval(c, k * R * 0.42, 0, R * 0.14, R * 0.22, 0, '#b8b4a8', R * 0.03);
+      bola(c, 0, -R * 0.12, R * 0.15, '#8a867a', R * 0.03); poli(c, [[-R * 0.1, -R * 0.15], [-R * 0.02, -R * 0.08], [R * 0.06, -R * 0.17], [R * 0.1, -R * 0.1]], '#6a665c');
+      pedrinha(c, R * 0.55, R * 0.55, R * 0.15, s, { esc: '#5a564e', med: '#8a867a', cla: '#b8b4a8', luz: '#d8d4c8' });
+      musgo(c, R, s, 4, R * 0.6);
+    },
+  });
+  // o obelisco: a agulha de pedra com as inscrições, vista de cima (a ponta em pirâmide)
+  reg('obelisco', {
+    n: 'Obelisco', g: 'ruinas', size: 1,
+    draw(c, R, t, s) {
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.moveTo(-R * 0.4, -R * 0.4); c.lineTo(R * 0.95, R * 0.75); c.lineTo(R * 0.6, R * 0.95); c.lineTo(-R * 0.4, R * 0.4); c.fill(); c.restore();
+      ret(c, -R * 0.55, -R * 0.55, R * 1.1, R * 1.1, R * 0.04, PED.med, R * 0.05);
+      poli(c, [[-R * 0.42, -R * 0.42], [R * 0.42, -R * 0.42], [0, 0]], PED.luz); poli(c, [[R * 0.42, -R * 0.42], [R * 0.42, R * 0.42], [0, 0]], PED.cla);
+      poli(c, [[R * 0.42, R * 0.42], [-R * 0.42, R * 0.42], [0, 0]], PED.med); poli(c, [[-R * 0.42, R * 0.42], [-R * 0.42, -R * 0.42], [0, 0]], PED.cla);
+      c.beginPath(); c.rect(-R * 0.42, -R * 0.42, R * 0.84, R * 0.84); linha(c, R * 0.04);
+      c.strokeStyle = 'rgba(40,40,46,0.6)'; c.lineWidth = R * 0.025; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(-R * 0.5 + i * R * 0.1, R * 0.5); c.lineTo(-R * 0.5 + i * R * 0.1, R * 0.44); c.stroke(); }
+      musgo(c, R, s, 3, R * 0.5);
+    },
+  });
+  // o portal de pedra: os dois pilares e a viga de cima (o arco antigo), com as runas apagadas
+  reg('portalPedra', {
+    n: 'Portal de pedra', g: 'ruinas', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R, b * 0.6, m);
+      for (const k of [-1, 1]) ret(c, k * R * 0.72 - m * 0.28, -b * 0.6, m * 0.56, b * 1.2, m * 0.06, grad(c, 0, -b, 0, b, [PED.cla, PED.med]), m * 0.05);
+      ret(c, -R * 0.98, -m * 0.25, R * 1.96, m * 0.5, m * 0.06, grad(c, 0, -m * 0.25, 0, m * 0.25, [PED.luz, PED.cla]), m * 0.05);
+      c.strokeStyle = 'rgba(60,64,72,0.55)'; c.lineWidth = m * 0.03; for (let i = 0; i < 5; i++) { const x = -R * 0.45 + i * R * 0.22; c.beginPath(); c.moveTo(x, -m * 0.1); c.lineTo(x + m * 0.06, m * 0.1); c.lineTo(x + m * 0.12, -m * 0.05); c.stroke(); }
+      musgo(c, R, s, 4, R * 0.8);
+    },
+  });
+  // o mosaico rachado: o piso de ladrilhos coloridos (o sol no meio), com a rachadura e as peças soltas
+  reg('mosaico', {
+    n: 'Mosaico rachado', g: 'ruinas', size: 2,
+    draw(c, R, t, s) {
+      const cores = ['#c96a3a', '#d6a64a', '#3a6a8a', '#e8dcc0', '#8a3a3a'];
+      c.save(); c.beginPath(); c.arc(0, 0, R * 0.95, 0, TAU); c.clip();
+      const n = 10, q = R * 2 / n;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const x = -R + i * q, y = -R + j * q, d = Math.hypot(x + q / 2, y + q / 2) / R; if (hsh(s, i * n + j, 4) < 0.08) continue; c.fillStyle = cores[Math.floor(d * 5 + (i + j) % 2) % 5]; c.globalAlpha = 0.82; c.fillRect(x + q * 0.06, y + q * 0.06, q * 0.88, q * 0.88); }
+      c.globalAlpha = 1; c.restore();
+      c.strokeStyle = 'rgba(30,26,22,0.6)'; c.lineWidth = R * 0.03; c.beginPath(); c.arc(0, 0, R * 0.95, 0, TAU); c.stroke();
+      c.strokeStyle = 'rgba(20,16,12,0.8)'; c.lineWidth = R * 0.035; c.beginPath(); c.moveTo(-R * 0.8, -R * 0.4); c.lineTo(-R * 0.3, -R * 0.1); c.lineTo(-R * 0.1, R * 0.3); c.lineTo(R * 0.4, R * 0.5); c.lineTo(R * 0.7, R * 0.4); c.stroke();
+      musgo(c, R, s, 6, R * 0.8);
+    },
+  });
+  // o altar com musgo: a laje de pedra, as velas apagadas e as oferendas velhas
+  reg('altarMusgo', {
+    n: 'Altar com musgo', g: 'ruinas', size: 1,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.8, 0.6);
+      ret(c, -R * 0.82, -R * 0.55, R * 1.64, R * 1.1, R * 0.06, grad(c, 0, -R * 0.55, 0, R * 0.55, [PED.luz, PED.cla]), R * 0.05);
+      c.strokeStyle = 'rgba(60,64,72,0.5)'; c.lineWidth = R * 0.03; c.beginPath(); c.arc(0, 0, R * 0.28, 0, TAU); c.moveTo(-R * 0.28, 0); c.lineTo(R * 0.28, 0); c.moveTo(0, -R * 0.28); c.lineTo(0, R * 0.28); c.stroke();
+      for (const x of [-R * 0.6, R * 0.6]) { bola(c, x, -R * 0.3, R * 0.08, '#e8dcc0', R * 0.02); bola(c, x, -R * 0.3, R * 0.025, '#2a2018'); }
+      bola(c, R * 0.45, R * 0.28, R * 0.1, '#7a2f3a', R * 0.02);
+      musgo(c, R, s, 9, R * 0.75);
+    },
+  });
+  // a escadaria partida: os degraus que sobem e acabam no nada, com o entulho
+  reg('escadariaPartida', {
+    n: 'Escadaria partida', g: 'ruinas', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.9, 0.95);
+      for (let i = 0; i < 6; i++) { const y = R * 0.85 - i * R * 0.3, w = R * (1.7 - (i > 3 ? (i - 3) * 0.4 : 0)); ret(c, -R * 0.85, y - R * 0.28, w, R * 0.3, R * 0.03, grad(c, 0, y - R * 0.28, 0, y, [i % 2 ? PED.luz : PED.cla, PED.med]), R * 0.025); }
+      poli(c, [[R * 0.0, -R * 0.95], [R * 0.3, -R * 0.75], [R * 0.15, -R * 0.55], [R * 0.4, -R * 0.4], [-R * 0.05, -R * 0.35]], 'rgba(20,16,12,0.65)');
+      for (let i = 0; i < 4; i++) pedrinha(c, R * (0.45 + hsh(s, i, 1) * 0.4), -R * (0.2 + hsh(s, i, 2) * 0.6), R * (0.07 + hsh(s, i, 3) * 0.06), s + i);
+      musgo(c, R, s, 5, R * 0.7);
+    },
+  });
+
+  /* ================= INVERNO E MONTANHA ================= */
+  Props.grupo('inverno', 'Inverno e montanha');
+  const NEVE = ['#ffffff', '#e8f0f8', '#c8d6e6'];
+  // o boneco de neve: as três bolas, o nariz de cenoura, o cachecol e o chapéu
+  reg('bonecoNeve', {
+    n: 'Boneco de neve', g: 'inverno', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.6, 0.6);
+      bola(c, 0, R * 0.2, R * 0.52, radial(c, -R * 0.15, 0, R * 0.6, NEVE), R * 0.03);
+      bola(c, 0, -R * 0.15, R * 0.36, radial(c, -R * 0.1, -R * 0.25, R * 0.45, NEVE), R * 0.03);
+      c.strokeStyle = '#b8322e'; c.lineWidth = R * 0.1; c.beginPath(); c.arc(0, -R * 0.15, R * 0.3, 0.5, 2.6); c.stroke(); seg(c, R * 0.2, R * 0.05, R * 0.32, R * 0.35, R * 0.08, '#b8322e');
+      bola(c, 0, -R * 0.32, R * 0.24, '#22262c', R * 0.03); bola(c, 0, -R * 0.32, R * 0.15, '#3d434c');
+      poli(c, [[-R * 0.04, -R * 0.06], [R * 0.04, -R * 0.06], [0, R * 0.12]], '#ee8a2a');
+      for (const y of [R * 0.08, R * 0.25, R * 0.42]) bola(c, 0, y, R * 0.035, '#22262c');
+      for (const k of [-1, 1]) seg(c, k * R * 0.45, R * 0.1, k * R * 0.85, -R * 0.15, R * 0.04, MAD.esc);
+    },
+  });
+  // o trenó: as duas lâminas curvas, as tábuas e a carga amarrada
+  reg('treno', {
+    n: 'Trenó', g: 'inverno', size: 2, fw: 1, fh: 2, legado: { w: 0.5, h: 1 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R; const m = Math.min(R, B);
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.25)'; caixa(c, -R * 0.7, -B * 0.85, R * 1.6, B * 1.8, m * 0.2); c.fill(); c.restore();
+      for (const k of [-1, 1]) { c.strokeStyle = FER.cla; c.lineWidth = m * 0.08; c.beginPath(); c.moveTo(k * R * 0.7, B * 0.85); c.lineTo(k * R * 0.7, -B * 0.6); c.quadraticCurveTo(k * R * 0.7, -B * 0.95, k * R * 0.4, -B * 0.95); c.stroke(); }
+      for (let i = 0; i < 6; i++) ret(c, -R * 0.75, -B * 0.6 + i * B * 0.25, R * 1.5, B * 0.2, m * 0.03, i % 2 ? MAD.cla : MAD.med, m * 0.03);
+      ret(c, -R * 0.5, -B * 0.2, R * 1.0, B * 0.75, m * 0.12, '#8a6a4a', m * 0.04);
+      seg(c, -R * 0.55, B * 0.15, R * 0.55, B * 0.15, m * 0.05, '#c9a878'); seg(c, 0, -B * 0.25, 0, B * 0.6, m * 0.05, '#c9a878');
+    },
+  });
+  // o pinheiro nevado: as camadas de galhos, com a neve por cima
+  reg('pinheiroNevado', {
+    n: 'Pinheiro nevado', g: 'inverno', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.85, 0.85, 0.15, 0.18);
+      for (let k = 0; k < 4; k++) {
+        const r = R * (0.9 - k * 0.2), n = 9 - k;
+        c.beginPath(); for (let i = 0; i <= n * 2; i++) { const a = i / (n * 2) * TAU + k * 0.3, rr = i % 2 ? r * 0.72 : r; if (i) c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else c.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+        c.closePath(); c.fillStyle = ['#1e4a34', '#245a3e', '#2a6a48', '#327a52'][k]; c.fill(); linha(c, R * 0.025, 'rgba(10,30,20,0.6)');
+        for (let i = 0; i < n; i++) { const a = i / n * TAU + k * 0.3 + 0.2; oval(c, Math.cos(a) * r * 0.75, Math.sin(a) * r * 0.75, r * 0.18, r * 0.1, a, 'rgba(250,252,255,0.9)'); }
+      }
+      bola(c, 0, 0, R * 0.12, '#fbfdff');
+    },
+  });
+  // o iglu: a cúpula de blocos de gelo e a entrada (o túnel)
+  reg('iglu', {
+    n: 'Iglu', g: 'inverno', size: 2,
+    draw(c, R) {
+      sombra(c, R, 0.85, 0.85);
+      ret(c, -R * 0.22, R * 0.4, R * 0.44, R * 0.55, R * 0.18, radial(c, 0, R * 0.6, R * 0.5, NEVE), R * 0.03);
+      bola(c, 0, 0, R * 0.78, radial(c, -R * 0.25, -R * 0.3, R * 0.95, NEVE), R * 0.035);
+      c.strokeStyle = 'rgba(130,160,190,0.6)'; c.lineWidth = R * 0.02;
+      for (const r of [0.25, 0.5]) { c.beginPath(); c.arc(0, 0, R * r, 0, TAU); c.stroke(); }
+      for (let k = 0; k < 3; k++) { const r0 = k * 0.25, r1 = r0 + 0.25, n = 4 + k * 4; for (let i = 0; i < n; i++) { const a = (i + (k % 2) * 0.5) / n * TAU; c.beginPath(); c.moveTo(Math.cos(a) * R * r0 * 1.0 + 0.0001, Math.sin(a) * R * r0); c.lineTo(Math.cos(a) * R * Math.min(0.78, r1), Math.sin(a) * R * Math.min(0.78, r1)); c.stroke(); } }
+      ret(c, -R * 0.12, R * 0.75, R * 0.24, R * 0.18, R * 0.08, '#2a3a4a');
+    },
+  });
+  // as estalactites de gelo: os pingentes pendurados (vistos de cima, como agulhas brilhando) e a poça congelada
+  reg('estalactitesGelo', {
+    n: 'Estalactites de gelo', g: 'inverno', size: 1, calma: true, luz: { bright: 0, dim: 1.5, c: '#bfe6ff' },
+    draw(c, R, t, s) {
+      oval(c, 0, R * 0.1, R * 0.75, R * 0.6, 0, 'rgba(190,225,250,0.55)');
+      for (let i = 0; i < 7; i++) { const x = (hsh(s, i, 1) - 0.5) * R * 1.2, y = (hsh(s, i, 2) - 0.5) * R * 1.1, r = R * (0.1 + hsh(s, i, 3) * 0.12); poli(c, [[x, y - r * 2], [x + r, y], [x, y + r * 0.6], [x - r, y]], grad(c, x - r, y, x + r, y, ['#e8f6ff', '#9fd0f0', '#5a9ac8']), R * 0.02); }
+      brilho(c, 0, 0, R * 0.7, '#bfe6ff', 0.3);
+    },
+  });
+  // as pegadas na neve: a trilha de passos (de gente, de animal grande, ou de algo maior)
+  reg('pegadas', {
+    n: 'Pegadas na neve', g: 'inverno', size: 1,
+    draw(c, R, t, s) {
+      const tipo = s % 3;
+      for (let i = 0; i < 5; i++) {
+        const y = R * 0.85 - i * R * 0.42, x = (i % 2 ? 1 : -1) * R * (tipo === 2 ? 0.3 : 0.18);
+        c.save(); c.translate(x, y);
+        if (tipo === 1) { oval(c, 0, 0, R * 0.1, R * 0.12, 0, 'rgba(110,140,170,0.55)'); for (let j = 0; j < 4; j++) bola(c, (j - 1.5) * R * 0.07, -R * 0.15, R * 0.035, 'rgba(110,140,170,0.55)'); }
+        else oval(c, 0, 0, R * (tipo === 2 ? 0.2 : 0.08), R * (tipo === 2 ? 0.28 : 0.16), 0, 'rgba(110,140,170,0.5)');
+        c.restore();
+      }
+    },
+  });
+  // o lago congelado: o gelo azulado, as rachaduras e o buraco de pesca
+  reg('lagoCongelado', {
+    n: 'Lago congelado', g: 'inverno', size: 2,
+    draw(c, R, t, s) {
+      c.beginPath(); for (let i = 0; i <= 12; i++) { const a = i / 12 * TAU, r = R * (0.85 + hsh(s, i % 12, 1) * 0.12); if (i) c.lineTo(Math.cos(a) * r, Math.sin(a) * r); else c.moveTo(r, 0); }
+      c.closePath(); c.fillStyle = radial(c, -R * 0.2, -R * 0.2, R, ['#e6f4fc', '#b8daf0', '#8abde0']); c.fill(); linha(c, R * 0.03, 'rgba(240,248,255,0.9)');
+      c.strokeStyle = 'rgba(255,255,255,0.75)'; c.lineWidth = R * 0.018;
+      for (let i = 0; i < 5; i++) { const a = hsh(s, i, 3) * TAU; c.beginPath(); c.moveTo(Math.cos(a) * R * 0.1, Math.sin(a) * R * 0.1); c.lineTo(Math.cos(a + 0.3) * R * 0.45, Math.sin(a + 0.3) * R * 0.45); c.lineTo(Math.cos(a) * R * 0.75, Math.sin(a) * R * 0.75); c.stroke(); }
+      bola(c, R * 0.3, R * 0.25, R * 0.12, '#2a5a7a', R * 0.02);
+    },
+  });
+
+  /* ================= DESERTO E OÁSIS ================= */
+  Props.grupo('deserto', 'Deserto e oásis');
+  // a tenda do deserto: o pano listrado esticado nas estacas, com a entrada aberta
+  reg('tendaDeserto', {
+    n: 'Tenda do deserto', g: 'deserto', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.95, 0.85, 0.12, 0.15);
+      const cores = [['#c84a3a', '#f0dcb0'], ['#3a5a8a', '#f0dcb0'], ['#7a4a2a', '#e8c890']][s % 3];
+      poli(c, [[-R * 0.92, -R * 0.75], [0, -R * 0.55], [R * 0.92, -R * 0.75], [R * 0.85, R * 0.75], [0, R * 0.6], [-R * 0.85, R * 0.75]], cores[1], R * 0.04);
+      c.save(); c.beginPath(); c.moveTo(-R * 0.92, -R * 0.75); c.lineTo(0, -R * 0.55); c.lineTo(R * 0.92, -R * 0.75); c.lineTo(R * 0.85, R * 0.75); c.lineTo(0, R * 0.6); c.lineTo(-R * 0.85, R * 0.75); c.closePath(); c.clip();
+      c.fillStyle = cores[0]; for (let i = 0; i < 6; i++) c.fillRect(-R + i * R * 0.36, -R, R * 0.16, R * 2); c.restore();
+      seg(c, 0, -R * 0.55, 0, R * 0.6, R * 0.04, 'rgba(60,30,10,0.6)');
+      poli(c, [[-R * 0.2, R * 0.6], [0, R * 0.25], [R * 0.2, R * 0.6]], '#2a1a10');
+      for (const [x, y] of [[-R * 0.92, -R * 0.75], [R * 0.92, -R * 0.75], [R * 0.85, R * 0.75], [-R * 0.85, R * 0.75]]) bola(c, x, y, R * 0.05, MAD.esc);
+    },
+  });
+  // o camelo deitado: o corpo com as duas corcovas, o pescoço e a sela
+  reg('camelo', {
+    n: 'Camelo', g: 'deserto', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 }, vivo: true,
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B), cor = ['#c8955a', '#b8844a'], mx = Math.sin(t * 0.8) * m * 0.05;
+      somb(c, R * 0.85, b * 0.7, m);
+      oval(c, R * 0.05, 0, R * 0.65, b * 0.62, 0, radial(c, 0, -b * 0.2, R * 0.7, ['#ddb07a', cor[0], cor[1]]), m * 0.05);
+      for (const x of [-R * 0.15, R * 0.3]) bola(c, x, 0, m * 0.3, '#d4a46a', m * 0.03);
+      ret(c, -R * 0.05, -b * 0.55, R * 0.25, b * 1.1, m * 0.06, '#8a2a2a', m * 0.03);
+      seg(c, -R * 0.55, 0, -R * 0.85, mx, m * 0.22, cor[0]);
+      oval(c, -R * 0.88, mx, m * 0.24, m * 0.17, 0, cor[1], m * 0.03); bola(c, -R * 0.98, mx - m * 0.06, m * 0.03, '#1a1410');
+      seg(c, R * 0.68, 0, R * 0.85, b * 0.2, m * 0.05, cor[1]);
+    },
+  });
+  // a palmeira: as folhas longas em leque, os cocos e o tronco (só a coroa, vista de cima)
+  reg('palmeira', {
+    n: 'Palmeira', g: 'deserto', size: 2, vivo: true,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.9, 0.9, 0.3, 0.35);
+      for (let i = 0; i < 9; i++) {
+        const a = i / 9 * TAU + hsh(s, i, 1) * 0.3 + Math.sin(t * 0.7 + i) * 0.03, L = R * (0.75 + hsh(s, i, 2) * 0.22);
+        c.save(); c.rotate(a);
+        c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(L * 0.5, -L * 0.22, L, 0); c.quadraticCurveTo(L * 0.5, L * 0.22, 0, 0); c.fillStyle = i % 2 ? '#4f8a3e' : '#3f7a34'; c.fill(); linha(c, R * 0.02, 'rgba(20,50,20,0.6)');
+        c.strokeStyle = 'rgba(200,230,150,0.5)'; c.lineWidth = R * 0.015; c.beginPath(); c.moveTo(0, 0); c.lineTo(L * 0.95, 0); c.stroke();
+        c.restore();
+      }
+      for (let i = 0; i < 3; i++) bola(c, Math.cos(i * 2.1) * R * 0.1, Math.sin(i * 2.1) * R * 0.1, R * 0.08, '#6a4a22', R * 0.015);
+      bola(c, 0, 0, R * 0.08, '#8a6a3a');
+    },
+  });
+  // o tapete com almofadas: o tapete bordado, as almofadas e o bule de chá
+  reg('tapeteAlmofadas', {
+    n: 'Tapete com almofadas', g: 'deserto', size: 2,
+    draw(c, R, t, s) {
+      ret(c, -R * 0.92, -R * 0.75, R * 1.84, R * 1.5, R * 0.04, '#8a2a3a', R * 0.03);
+      c.strokeStyle = '#d6a64a'; c.lineWidth = R * 0.04; c.strokeRect(-R * 0.8, -R * 0.63, R * 1.6, R * 1.26);
+      c.save(); c.translate(0, 0); c.rotate(Math.PI / 4); c.strokeStyle = '#2f5a7a'; c.lineWidth = R * 0.05; c.strokeRect(-R * 0.3, -R * 0.3, R * 0.6, R * 0.6); c.restore();
+      const cores = ['#d6a64a', '#2f5a7a', '#6a3a8a', '#c86a3a'];
+      for (let i = 0; i < 4; i++) { const a = i / 4 * TAU + 0.3, x = Math.cos(a) * R * 0.62, y = Math.sin(a) * R * 0.5; ret(c, x - R * 0.2, y - R * 0.16, R * 0.4, R * 0.32, R * 0.12, cores[i], R * 0.025); bola(c, x, y, R * 0.04, 'rgba(255,240,200,0.6)'); }
+      bola(c, 0, 0, R * 0.14, '#c9a24a', R * 0.025); seg(c, R * 0.12, -R * 0.02, R * 0.25, -R * 0.1, R * 0.04, '#c9a24a');
+      for (const [x, y] of [[-R * 0.22, R * 0.15], [R * 0.2, R * 0.2]]) bola(c, x, y, R * 0.06, '#e8dcc0', R * 0.015);
+    },
+  });
+  // os jarros d'água: as ânforas de barro grandes, com a tampa de pano
+  reg('jarrosAgua', {
+    n: 'Jarros d\'água', g: 'deserto', size: 1,
+    draw(c, R, t, s) {
+      for (const [x, y, r] of [[-R * 0.32, -R * 0.25, 0.36], [R * 0.35, -R * 0.1, 0.3], [-R * 0.05, R * 0.38, 0.3]]) {
+        oval(c, x + R * 0.06, y + R * 0.08, R * r * 1.05, R * r * 1.05, 0, 'rgba(0,0,0,0.3)');
+        bola(c, x, y, R * r, radial(c, x - R * r * 0.3, y - R * r * 0.3, R * r * 1.2, ['#e0a878', '#b8683a', '#7a3e1e']), R * 0.035);
+        bola(c, x, y, R * r * 0.42, '#d8c8a0', R * 0.02); bola(c, x, y, R * r * 0.42, 'rgba(60,110,150,0.5)');
+      }
+    },
+  });
+  // a caveira de boi: o crânio comprido, os chifres curvos, meio enterrado na areia
+  reg('caveiraBoi', {
+    n: 'Caveira de boi', g: 'deserto', size: 1,
+    draw(c, R) {
+      oval(c, R * 0.05, R * 0.15, R * 0.6, R * 0.35, 0, 'rgba(200,160,100,0.5)');
+      c.strokeStyle = '#e8dcc0'; c.lineWidth = R * 0.12; c.lineCap = 'round';
+      for (const k of [-1, 1]) { c.beginPath(); c.moveTo(k * R * 0.2, -R * 0.25); c.quadraticCurveTo(k * R * 0.8, -R * 0.35, k * R * 0.85, -R * 0.75); c.stroke(); }
+      c.strokeStyle = 'rgba(80,60,40,0.5)'; c.lineWidth = R * 0.03; for (const k of [-1, 1]) { c.beginPath(); c.moveTo(k * R * 0.2, -R * 0.25); c.quadraticCurveTo(k * R * 0.8, -R * 0.35, k * R * 0.85, -R * 0.75); c.stroke(); }
+      poli(c, [[-R * 0.3, -R * 0.35], [R * 0.3, -R * 0.35], [R * 0.2, R * 0.2], [R * 0.1, R * 0.6], [-R * 0.1, R * 0.6], [-R * 0.2, R * 0.2]], radial(c, 0, -R * 0.1, R * 0.7, ['#f6eedc', '#e2d7bd', '#b0a284']), R * 0.035);
+      for (const k of [-1, 1]) oval(c, k * R * 0.13, -R * 0.1, R * 0.08, R * 0.1, 0, '#1e1812');
+      for (const k of [-1, 1]) oval(c, k * R * 0.05, R * 0.45, R * 0.03, R * 0.05, 0, '#3a2e22');
+    },
+  });
+  // a duna: o monte de areia com a crista e as marcas do vento
+  reg('duna', {
+    n: 'Duna', g: 'deserto', size: 2,
+    draw(c, R, t, s) {
+      c.beginPath(); c.moveTo(-R * 0.95, R * 0.5); c.quadraticCurveTo(-R * 0.5, -R * 0.9, R * 0.2, -R * 0.6); c.quadraticCurveTo(R * 0.95, -R * 0.3, R * 0.9, R * 0.6); c.quadraticCurveTo(0, R * 0.95, -R * 0.95, R * 0.5);
+      c.fillStyle = radial(c, -R * 0.2, -R * 0.4, R * 1.3, ['#f2d8a0', '#dcb878', '#b8925a']); c.fill();
+      c.beginPath(); c.moveTo(-R * 0.6, -R * 0.2); c.quadraticCurveTo(0, -R * 0.55, R * 0.7, R * 0.2); c.quadraticCurveTo(R * 0.5, R * 0.6, -R * 0.2, R * 0.55); c.closePath(); c.fillStyle = 'rgba(150,110,60,0.35)'; c.fill();
+      c.strokeStyle = 'rgba(255,240,200,0.6)'; c.lineWidth = R * 0.03; c.beginPath(); c.moveTo(-R * 0.6, -R * 0.2); c.quadraticCurveTo(0, -R * 0.55, R * 0.7, R * 0.2); c.stroke();
+      c.strokeStyle = 'rgba(130,95,50,0.35)'; c.lineWidth = R * 0.015; for (let i = 0; i < 5; i++) { c.beginPath(); c.moveTo(-R * 0.8 + i * R * 0.1, R * 0.1 + i * R * 0.08); c.quadraticCurveTo(-R * 0.3 + i * R * 0.1, -R * 0.2 + i * R * 0.1, R * 0.1 + i * R * 0.1, -R * 0.3 + i * R * 0.12); c.stroke(); }
+    },
+  });
+
+  /* ================= PÂNTANO E BREJO ================= */
+  Props.grupo('pantano', 'Pântano e brejo');
+  // a cabana na palafita: o telhado de palha, a varanda de tábuas e as estacas na água
+  reg('palafita', {
+    n: 'Cabana na palafita', g: 'pantano', size: 2,
+    draw(c, R, t, s) {
+      oval(c, 0, R * 0.1, R * 0.98, R * 0.9, 0, 'rgba(60,80,50,0.5)');
+      for (const [x, y] of [[-0.8, -0.8], [0.8, -0.8], [0.8, 0.8], [-0.8, 0.8], [0, 0.85]]) bola(c, x * R, y * R, R * 0.07, MAD.esc, R * 0.02);
+      ret(c, -R * 0.78, -R * 0.78, R * 1.56, R * 1.56, R * 0.04, MAD.med, R * 0.035);
+      c.strokeStyle = 'rgba(40,22,8,0.4)'; c.lineWidth = R * 0.015; for (let i = 1; i < 8; i++) { c.beginPath(); c.moveTo(-R * 0.78 + i * R * 0.195, -R * 0.78); c.lineTo(-R * 0.78 + i * R * 0.195, R * 0.78); c.stroke(); }
+      poli(c, [[-R * 0.6, -R * 0.65], [R * 0.6, -R * 0.65], [R * 0.6, R * 0.35], [-R * 0.6, R * 0.35]], grad(c, -R * 0.6, 0, R * 0.6, 0, ['#c8a85a', '#e2c87a', '#c8a85a']), R * 0.04);
+      seg(c, 0, -R * 0.65, 0, R * 0.35, R * 0.04, '#9a7a3a');
+      c.strokeStyle = 'rgba(120,90,40,0.5)'; c.lineWidth = R * 0.015; for (let i = 0; i < 10; i++) { const y = -R * 0.6 + i * R * 0.1; c.beginPath(); c.moveTo(-R * 0.58, y); c.lineTo(R * 0.58, y); c.stroke(); }
+      ret(c, -R * 0.12, R * 0.35, R * 0.24, R * 0.43, R * 0.02, MAD.cla, R * 0.02);
+    },
+  });
+  // o barco de junco: o casco de feixes amarrados, a vara e a lanterninha
+  reg('barcoJunco', {
+    n: 'Barco de junco', g: 'pantano', size: 2, fw: 1, fh: 2, legado: { w: 0.5, h: 1 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R; const m = Math.min(R, B);
+      c.beginPath(); c.moveTo(0, -B * 0.95); c.quadraticCurveTo(R * 0.85, -B * 0.4, R * 0.7, B * 0.6); c.quadraticCurveTo(0, B * 1.05, -R * 0.7, B * 0.6); c.quadraticCurveTo(-R * 0.85, -B * 0.4, 0, -B * 0.95);
+      c.fillStyle = grad(c, -R, 0, R, 0, ['#9a8a4a', '#c8b46a', '#9a8a4a']); c.fill(); linha(c, m * 0.05);
+      c.strokeStyle = 'rgba(90,70,30,0.6)'; c.lineWidth = m * 0.03; for (const k of [-0.4, 0, 0.4]) { c.beginPath(); c.moveTo(k * R * 0.5, -B * 0.85); c.quadraticCurveTo(k * R * 1.4, 0, k * R * 0.9, B * 0.8); c.stroke(); }
+      for (const y of [-B * 0.5, 0, B * 0.5]) seg(c, -R * 0.6, y, R * 0.6, y, m * 0.04, '#6a5020');
+      seg(c, -R * 0.5, -B * 0.3, R * 0.7, B * 0.9, m * 0.05, MAD.esc);
+    },
+  });
+  // os juncos: as touceiras de taboa com as espigas marrons (balançam ao vento)
+  reg('juncos', {
+    n: 'Juncos', g: 'pantano', size: 1, vivo: true,
+    draw(c, R, t, s) {
+      oval(c, 0, 0, R * 0.45, R * 0.4, 0, 'rgba(40,60,30,0.45)');
+      for (let i = 0; i < 20; i++) {
+        const x0 = (hsh(s, i, 1) - 0.5) * R * 0.5, y0 = (hsh(s, i, 2) - 0.5) * R * 0.5, a = hsh(s, i, 3) * TAU, L = R * (0.45 + hsh(s, i, 4) * 0.45), w = Math.sin(t * 1.4 + i) * R * 0.05;
+        const x1 = x0 + Math.cos(a) * L + w, y1 = y0 + Math.sin(a) * L;
+        c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo((x0 + x1) / 2 + R * 0.08, (y0 + y1) / 2, x1, y1); c.lineWidth = R * 0.075; c.strokeStyle = 'rgba(20,40,10,0.6)'; c.lineCap = 'round'; c.stroke();
+        c.lineWidth = R * 0.05; c.strokeStyle = ['#6a9a44', '#4a7a30', '#7aa850'][i % 3]; c.stroke();
+        if (i % 3 === 0) oval(c, x1, y1, R * 0.11, R * 0.05, a, '#6a4020', R * 0.015);
+      }
+    },
+  });
+  // a ponte de tábuas: as tábuas tortas sobre as estacas (1 × 2)
+  reg('ponteTabuas', {
+    n: 'Ponte de tábuas', g: 'pantano', size: 2, fw: 1, fh: 2, legado: { w: 0.5, h: 1 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R; const m = Math.min(R, B);
+      for (const k of [-1, 1]) for (const j of [-0.7, 0.7]) bola(c, k * R * 0.7, j * B, m * 0.1, MAD.esc);
+      for (let i = 0; i < 8; i++) { const y = -B * 0.95 + i * B * 0.25; c.save(); c.translate(0, y + B * 0.1); c.rotate((hsh(s, i, 1) - 0.5) * 0.12); ret(c, -R * 0.75, -B * 0.1, R * 1.5, B * 0.2, m * 0.03, i % 2 ? MAD.cla : MAD.med, m * 0.03); c.restore(); }
+      for (const k of [-1, 1]) seg(c, k * R * 0.55, -B * 0.9, k * R * 0.55, B * 0.9, m * 0.04, 'rgba(60,40,20,0.5)');
+    },
+  });
+  // o caldeirão da bruxa: o caldeirão preto no fogo, o caldo verde borbulhando e os ossos em volta
+  reg('caldeiraoBruxa', {
+    n: 'Caldeirão da bruxa', g: 'pantano', size: 1, fogo: true, luz: { bright: 1, dim: 3, c: '#9aff7a' },
+    draw(c, R, t, s, ang) {
+      sombra(c, R, 0.62, 0.62);
+      for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; Props.kit.brasa(c, Math.cos(a) * R * 0.55, Math.sin(a) * R * 0.55, R * 0.09, t, s + i); }
+      bola(c, 0, 0, R * 0.55, '#1b1d22', R * 0.05);
+      bola(c, 0, 0, R * 0.44, radial(c, 0, 0, R * 0.44, ['#c8ff8a', '#5ac83a', '#2a7a1e']));
+      for (let i = 0; i < 4; i++) { const f = (t * 0.7 + i / 4) % 1, x = Math.cos(i * 2.3) * R * 0.25, y = Math.sin(i * 1.7) * R * 0.25; c.globalAlpha = 1 - f; bola(c, x, y, R * (0.04 + f * 0.08), '#e8ffc8'); c.globalAlpha = 1; }
+      brilho(c, 0, 0, R * 0.8, '#9aff7a', 0.35);
+      Props.kit.osso(c, R * 0.5, R * 0.75, R * 0.85, R * 0.55, R * 0.06);
+    },
+  });
+  // o tronco podre: o tronco caído, oco, com o musgo, os cogumelos e a água parada
+  reg('troncoPodre', {
+    n: 'Tronco podre', g: 'pantano', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R * 0.9, b * 0.6, m);
+      ret(c, -R * 0.9, -b * 0.5, R * 1.8, b, m * 0.4, grad(c, 0, -b * 0.5, 0, b * 0.5, ['#6a5a3a', '#4a3a24', '#3a2e1c']), m * 0.05);
+      oval(c, -R * 0.88, 0, m * 0.18, b * 0.4, 0, '#2a1e12', m * 0.03); oval(c, -R * 0.88, 0, m * 0.1, b * 0.25, 0, '#120c06');
+      c.strokeStyle = 'rgba(30,20,10,0.5)'; c.lineWidth = m * 0.03; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(-R * 0.7 + i * R * 0.35, -b * 0.4); c.lineTo(-R * 0.5 + i * R * 0.35, b * 0.4); c.stroke(); }
+      musgo(c, R, s, 8, R * 0.7);
+      for (let i = 0; i < 3; i++) { const x = R * (0.2 + i * 0.2), y = -b * 0.45; bola(c, x, y, m * 0.1, '#d8c8a0', m * 0.02); bola(c, x, y, m * 0.05, '#b8a070'); }
+    },
+  });
+  // o sapo gigante: o sapo enorme, verde e manchado, com o papo que enche e esvazia
+  reg('sapoGigante', {
+    n: 'Sapo gigante', g: 'pantano', size: 2, vivo: true,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.85, 0.75);
+      const papo = 1 + Math.max(0, Math.sin(t * 2.2)) * 0.2;
+      for (const k of [-1, 1]) { oval(c, k * R * 0.6, R * 0.45, R * 0.32, R * 0.2, k * 0.6, '#3a6a2a', R * 0.03); for (let j = 0; j < 3; j++) bola(c, k * R * (0.78 + j * 0.06), R * (0.55 + j * 0.08), R * 0.05, '#4a7a34'); oval(c, k * R * 0.55, -R * 0.3, R * 0.2, R * 0.12, -k * 0.6, '#3a6a2a', R * 0.03); }
+      oval(c, 0, R * 0.1, R * 0.62, R * 0.55, 0, radial(c, -R * 0.1, -R * 0.1, R * 0.7, ['#8ac85a', '#5a9a3a', '#3a6a2a']), R * 0.05);
+      for (let i = 0; i < 6; i++) bola(c, (hsh(s, i, 1) - 0.5) * R * 0.8, (hsh(s, i, 2) - 0.3) * R * 0.7, R * 0.05, 'rgba(40,70,20,0.6)');
+      oval(c, 0, -R * 0.42, R * 0.25 * papo, R * 0.15 * papo, 0, '#e8e0a8', R * 0.02);
+      for (const k of [-1, 1]) { bola(c, k * R * 0.28, -R * 0.42, R * 0.15, '#6aa83e', R * 0.03); bola(c, k * R * 0.28, -R * 0.44, R * 0.09, '#e8c83a'); oval(c, k * R * 0.28, -R * 0.44, R * 0.025, R * 0.07, 0, '#1a1410'); }
+    },
+  });
+
+  /* ================= ESGOTO E SUBTERRÂNEO ================= */
+  Props.grupo('esgoto', 'Esgoto e subterrâneo');
+  // a grade de esgoto: a grade quadrada de ferro no chão, a água escura correndo embaixo
+  reg('gradeEsgoto', {
+    n: 'Grade de esgoto', g: 'esgoto', size: 1, vivo: true,
+    draw(c, R, t) {
+      ret(c, -R * 0.75, -R * 0.75, R * 1.5, R * 1.5, R * 0.06, '#0e1210');
+      c.save(); c.beginPath(); c.rect(-R * 0.7, -R * 0.7, R * 1.4, R * 1.4); c.clip(); c.strokeStyle = 'rgba(90,120,100,0.35)'; c.lineWidth = R * 0.04; for (let i = 0; i < 5; i++) { const y = -R * 0.7 + ((i * 0.3 + t * 0.2) % 1.5) * R; c.beginPath(); c.moveTo(-R * 0.7, y); c.quadraticCurveTo(0, y + R * 0.1, R * 0.7, y); c.stroke(); } c.restore();
+      c.strokeStyle = FER.med; c.lineWidth = R * 0.09; c.strokeRect(-R * 0.72, -R * 0.72, R * 1.44, R * 1.44);
+      c.lineWidth = R * 0.07; for (let i = 1; i < 5; i++) { const v = -R * 0.72 + i * R * 0.288; c.beginPath(); c.moveTo(v, -R * 0.72); c.lineTo(v, R * 0.72); c.stroke(); }
+      c.strokeStyle = 'rgba(160,110,60,0.45)'; c.lineWidth = R * 0.03; c.beginPath(); c.moveTo(-R * 0.72, R * 0.3); c.lineTo(-R * 0.4, R * 0.72); c.stroke();
+    },
+  });
+  // os canos: dois canos grossos de cobre com as juntas, a válvula e o pingo
+  reg('canos', {
+    n: 'Canos', g: 'esgoto', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B);
+      for (const [y, r] of [[-b * 0.45, 0.22], [b * 0.2, 0.17]]) {
+        ret(c, -R, y - m * r, R * 2, m * r * 2, m * r, grad(c, 0, y - m * r, 0, y + m * r, ['#c88a5a', '#9a5a32', '#6a3a1e']), m * 0.04);
+        for (const x of [-R * 0.55, R * 0.1, R * 0.7]) ret(c, x - m * 0.06, y - m * r * 1.2, m * 0.12, m * r * 2.4, m * 0.03, '#7a4a28', m * 0.025);
+      }
+      bola(c, -R * 0.2, -b * 0.45, m * 0.16, '#b8322e', m * 0.03); seg(c, -R * 0.33, -b * 0.45, -R * 0.07, -b * 0.45, m * 0.04, '#7a1a1a');
+      const f = (t * 0.8) % 1; c.globalAlpha = 1 - f; bola(c, R * 0.45, b * 0.4 + f * m * 0.4, m * 0.04, '#9ab8a8'); c.globalAlpha = 1;
+      oval(c, R * 0.45, b * 0.85, m * 0.18, m * 0.08, 0, 'rgba(70,90,80,0.6)');
+    },
+    vivo: true,
+  });
+  // o ninho de ratos: o monte de trapos e palha, os ratos e os olhinhos
+  reg('ninhoRatos', {
+    n: 'Ninho de ratos', g: 'esgoto', size: 1, vivo: true,
+    draw(c, R, t, s) {
+      oval(c, 0, 0, R * 0.65, R * 0.55, 0, radial(c, 0, 0, R * 0.65, ['#5a4a36', '#6a5840', '#4a3a28']), R * 0.03);
+      c.strokeStyle = '#8a7a50'; c.lineWidth = R * 0.03; for (let i = 0; i < 10; i++) { const a = hsh(s, i, 1) * TAU, d = R * hsh(s, i, 2) * 0.5; c.beginPath(); c.moveTo(Math.cos(a) * d, Math.sin(a) * d); c.lineTo(Math.cos(a) * d + R * 0.2, Math.sin(a) * d + R * 0.05); c.stroke(); }
+      for (let i = 0; i < 3; i++) {
+        const a = t * 0.5 * (i % 2 ? 1 : -1) + i * 2.1, x = Math.cos(a) * R * 0.55, y = Math.sin(a) * R * 0.45;
+        c.save(); c.translate(x, y); c.rotate(a + (i % 2 ? Math.PI / 2 : -Math.PI / 2));
+        oval(c, 0, 0, R * 0.14, R * 0.08, 0, '#5a524a', R * 0.02); bola(c, R * 0.14, 0, R * 0.05, '#5a524a'); bola(c, R * 0.16, -R * 0.03, R * 0.015, '#ff4a3a');
+        c.strokeStyle = '#c89a8a'; c.lineWidth = R * 0.015; c.beginPath(); c.moveTo(-R * 0.14, 0); c.quadraticCurveTo(-R * 0.3, R * 0.1, -R * 0.35, -R * 0.02); c.stroke();
+        c.restore();
+      }
+      for (const [x, y] of [[-R * 0.1, -R * 0.05], [R * 0.15, R * 0.12]]) if (Math.sin(t * 1.3 + x) > -0.6) { bola(c, x, y, R * 0.025, '#ff6a4a'); bola(c, x + R * 0.06, y, R * 0.025, '#ff6a4a'); }
+    },
+  });
+  // a passarela de ferro: a grade de chapa com os corrimãos (2 × 1)
+  reg('passarela', {
+    n: 'Passarela de ferro', g: 'esgoto', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B);
+      ret(c, -R, -b * 0.8, R * 2, b * 1.6, m * 0.03, '#2a2e34', m * 0.03);
+      c.strokeStyle = FER.cla; c.lineWidth = m * 0.025; for (let i = 0; i <= 14; i++) { const x = -R + i * R / 7; c.beginPath(); c.moveTo(x, -b * 0.8); c.lineTo(x, b * 0.8); c.stroke(); } for (let j = 0; j <= 4; j++) { const y = -b * 0.8 + j * b * 0.4; c.beginPath(); c.moveTo(-R, y); c.lineTo(R, y); c.stroke(); }
+      for (const k of [-1, 1]) { seg(c, -R, k * b * 0.85, R, k * b * 0.85, m * 0.08, FER.med); for (const x of [-R * 0.9, 0, R * 0.9]) bola(c, x, k * b * 0.85, m * 0.07, FER.esc); }
+    },
+  });
+  // a comporta: a porta de ferro rebitada na parede do canal, com a manivela
+  reg('comporta', {
+    n: 'Comporta', g: 'esgoto', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B);
+      ret(c, -R + m * 0.04, -b, R * 2 - m * 0.08, b * 1.3, m * 0.05, grad(c, 0, -b, 0, b * 0.3, [FER.cla, FER.med]), m * 0.05);
+      for (let i = 0; i < 7; i++) for (const y of [-b * 0.8, b * 0.1]) bola(c, -R * 0.85 + i * R * 0.28, y, m * 0.04, FER.luz);
+      seg(c, -R * 0.9, -b * 0.35, R * 0.9, -b * 0.35, m * 0.03, 'rgba(20,20,20,0.5)');
+      c.strokeStyle = '#a07020'; c.lineWidth = m * 0.04; c.beginPath(); c.moveTo(-R * 0.6, -b * 0.6); c.lineTo(-R * 0.2, -b * 0.1); c.stroke();
+      c.strokeStyle = FER.esc; c.lineWidth = m * 0.07; c.beginPath(); c.arc(R * 0.6, -b * 0.35, m * 0.22, 0, TAU); c.stroke(); seg(c, R * 0.38, -b * 0.35, R * 0.82, -b * 0.35, m * 0.05, FER.esc); seg(c, R * 0.6, -b * 0.35 - m * 0.22, R * 0.6, -b * 0.35 + m * 0.22, m * 0.05, FER.esc);
+    },
+  });
+  // o monte de lixo: os restos, os trapos, a garrafa quebrada e as moscas
+  reg('lixo', {
+    n: 'Monte de lixo', g: 'esgoto', size: 1, vivo: true,
+    draw(c, R, t, s) {
+      oval(c, 0, R * 0.05, R * 0.7, R * 0.55, 0, '#4a4234', R * 0.03);
+      const cores = ['#6a5a40', '#7a6a50', '#5a6a5a', '#8a7a5a', '#3a3a30'];
+      for (let i = 0; i < 12; i++) { const x = (hsh(s, i, 1) - 0.5) * R * 1.1, y = (hsh(s, i, 2) - 0.5) * R * 0.9; c.save(); c.translate(x, y); c.rotate(hsh(s, i, 3) * 3); ret(c, -R * 0.1, -R * 0.06, R * (0.12 + hsh(s, i, 4) * 0.12), R * 0.1, R * 0.02, cores[i % 5], R * 0.015); c.restore(); }
+      c.save(); c.translate(R * 0.25, -R * 0.1); c.rotate(0.8); ret(c, -R * 0.14, -R * 0.05, R * 0.28, R * 0.1, R * 0.04, 'rgba(90,140,80,0.8)', R * 0.015); c.restore();
+      Props.kit.osso(c, -R * 0.4, R * 0.2, -R * 0.1, R * 0.32, R * 0.05);
+      for (let i = 0; i < 4; i++) bola(c, Math.cos(t * 3 + i * 1.6) * R * 0.4, -R * 0.2 + Math.sin(t * 4.3 + i) * R * 0.3, R * 0.025, '#111');
+    },
+  });
+  // a escada de ferro: os degraus chumbados na parede, subindo para a tampa da rua
+  reg('escadaFerro', {
+    n: 'Escada de ferro', g: 'esgoto', size: 1, costas: 'n',
+    draw(c, R) {
+      ret(c, -R * 0.55, -R * 0.95, R * 1.1, R * 0.45, R * 0.05, PED.med, R * 0.04);
+      bola(c, 0, -R * 0.72, R * 0.2, '#0e1210', R * 0.03);
+      for (const k of [-1, 1]) seg(c, k * R * 0.35, -R * 0.75, k * R * 0.35, R * 0.75, R * 0.07, FER.cla);
+      for (let i = 0; i < 6; i++) seg(c, -R * 0.35, -R * 0.55 + i * R * 0.25, R * 0.35, -R * 0.55 + i * R * 0.25, R * 0.055, FER.med);
+    },
+  });
+})();
+/* ---------------------------------------------------------------
+   6ce. OS OBJETOS DOS TEMAS, parte 3 (lote 158):
+     · Acampamento militar e cerco: a tenda de comando, a paliçada, as estacas contra a cavalaria, os barris de pólvora,
+       a torre de vigia de madeira, as bandeiras e o tambor de guerra (a mesa de guerra já existia, no Clã);
+     · Portais e magia: o portal arcano, o círculo de teletransporte, a pedra flutuante, o pilar de energia, o orbe e as
+       runas no chão;
+     · Teatro e música: o palco com cortina, o alaúde, o tambor, a harpa, as cadeiras da plateia, a arara de figurinos e
+       as máscaras;
+     · Convés e porto: o leme, o canhão, as cordas enroladas, o mastro, a âncora, as redes de pesca, a carga amarrada e
+       a prancha;
+     · Natureza fantástica: o cogumelo gigante, o ninho gigante, os cristais no chão, a teia gigante, a flor carnívora,
+       a toca e a árvore oca.
+   --------------------------------------------------------------- */
+(() => {
+  const { caixa, linha, grad, radial, hsh, MAD, PED, FER, chama, sombra, pedrinha, folhas } = Props.kit;
+  const { bola, oval, ret, seg, poli, somb, brilho, mm } = Props.kitT;
+  const reg = (id, def) => Props.registrar(id, def);
+  const LONA = ['#c8b88a', '#a8986a', '#7a6a48'];
+
+  /* ================= ACAMPAMENTO MILITAR E CERCO ================= */
+  Props.grupo('militar', 'Acampamento militar e cerco');
+  // a tenda de comando: a lona grande de quatro águas, o mastro com a flâmula e a entrada com as abas abertas
+  reg('tendaComando', {
+    n: 'Tenda de comando', g: 'militar', size: 3, vivo: true,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.95, 0.95, 0.1, 0.12);
+      const cor = ['#8a2a2a', '#2a4a7a', '#3a5a2a'][s % 3];
+      poli(c, [[-R * 0.9, -R * 0.9], [R * 0.9, -R * 0.9], [0, 0]], LONA[0], R * 0.025); poli(c, [[R * 0.9, -R * 0.9], [R * 0.9, R * 0.9], [0, 0]], LONA[1], R * 0.025);
+      poli(c, [[R * 0.9, R * 0.9], [-R * 0.9, R * 0.9], [0, 0]], LONA[2], R * 0.025); poli(c, [[-R * 0.9, R * 0.9], [-R * 0.9, -R * 0.9], [0, 0]], LONA[1], R * 0.025);
+      c.strokeStyle = cor; c.lineWidth = R * 0.06; c.strokeRect(-R * 0.9, -R * 0.9, R * 1.8, R * 1.8);
+      poli(c, [[-R * 0.18, R * 0.9], [0, R * 0.5], [R * 0.18, R * 0.9]], '#2a2016');
+      bola(c, 0, 0, R * 0.05, MAD.esc);
+      const o = Math.sin(t * 3) * R * 0.04; poli(c, [[0, 0], [R * 0.35, -R * 0.06 + o], [R * 0.3, R * 0.04 + o], [0, R * 0.1]], cor, R * 0.015);
+      for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { seg(c, x * R * 0.9, y * R * 0.9, x * R * 0.98, y * R * 0.98, R * 0.015, '#c9b48a'); bola(c, x * R * 0.98, y * R * 0.98, R * 0.025, MAD.esc); }
+    },
+  });
+  // a paliçada: a fileira de toras de ponta, amarradas (2 × 1, encosta)
+  reg('palicada', {
+    n: 'Paliçada', g: 'militar', size: 2, fw: 2, fh: 1, costas: 'n', legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B), n = 6, d = R * 2 / n;
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(-R, -b * 0.25, R * 2, b * 0.9); c.restore();
+      for (let i = 0; i < n; i++) { const x = -R + d / 2 + i * d; bola(c, x, -b * 0.35, d * 0.48, radial(c, x - d * 0.15, -b * 0.45, d * 0.6, [MAD.luz, MAD.cla, MAD.med]), m * 0.035); bola(c, x, -b * 0.35, d * 0.12, '#e0c08a'); }
+      seg(c, -R, -b * 0.35, R, -b * 0.35, m * 0.04, '#6a5030');
+    },
+  });
+  // as estacas contra a cavalaria: a trave com as lanças cruzadas em X, viradas para fora
+  reg('cavalosFrisa', {
+    n: 'Estacas contra cavalaria', g: 'militar', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R, b * 0.4, m);
+      for (let i = 0; i < 5; i++) { const x = -R * 0.8 + i * R * 0.4; for (const k of [-1, 1]) { seg(c, x - k * m * 0.25, -b * 0.95, x + k * m * 0.25, b * 0.95, m * 0.08, MAD.cla); } bola(c, x - m * 0.25, -b * 0.95, m * 0.04, FER.cla); bola(c, x + m * 0.25, -b * 0.95, m * 0.04, FER.cla); }
+      seg(c, -R * 0.95, 0, R * 0.95, 0, m * 0.18, MAD.med); seg(c, -R * 0.95, 0, R * 0.95, 0, m * 0.04, 'rgba(40,22,8,0.4)');
+    },
+  });
+  // os barris de pólvora: os três barris com a marca e o rastilho
+  reg('barrisPolvora', {
+    n: 'Barris de pólvora', g: 'militar', size: 1,
+    draw(c, R, t, s) {
+      for (const [x, y] of [[-R * 0.32, -R * 0.28], [R * 0.33, -R * 0.2], [0, R * 0.35]]) {
+        oval(c, x + R * 0.06, y + R * 0.08, R * 0.33, R * 0.33, 0, 'rgba(0,0,0,0.3)');
+        bola(c, x, y, R * 0.32, radial(c, x - R * 0.1, y - R * 0.1, R * 0.4, [MAD.luz, MAD.cla, MAD.med]), R * 0.035);
+        c.strokeStyle = FER.med; c.lineWidth = R * 0.035; c.beginPath(); c.arc(x, y, R * 0.24, 0, TAU); c.stroke();
+        c.strokeStyle = '#1a1410'; c.lineWidth = R * 0.04; c.beginPath(); c.moveTo(x - R * 0.1, y - R * 0.1); c.lineTo(x + R * 0.1, y + R * 0.1); c.moveTo(x + R * 0.1, y - R * 0.1); c.lineTo(x - R * 0.1, y + R * 0.1); c.stroke();
+      }
+      c.strokeStyle = '#2a2016'; c.lineWidth = R * 0.03; c.beginPath(); c.moveTo(0, R * 0.35); c.quadraticCurveTo(R * 0.5, R * 0.7, R * 0.85, R * 0.6); c.stroke();
+    },
+  });
+  // a torre de vigia de madeira: a plataforma no alto (vista de cima), o parapeito e a escada
+  reg('torreVigiaMadeira', {
+    n: 'Torre de vigia de madeira', g: 'militar', size: 2,
+    draw(c, R) {
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(-R * 0.6, -R * 0.6, R * 1.6, R * 1.6); c.restore();
+      for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) seg(c, x * R * 0.9, y * R * 0.9, x * R * 0.7, y * R * 0.7, R * 0.08, MAD.esc);
+      ret(c, -R * 0.75, -R * 0.75, R * 1.5, R * 1.5, R * 0.04, MAD.cla, R * 0.04);
+      c.strokeStyle = 'rgba(40,22,8,0.4)'; c.lineWidth = R * 0.015; for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(-R * 0.75, -R * 0.75 + i * R * 0.25); c.lineTo(R * 0.75, -R * 0.75 + i * R * 0.25); c.stroke(); }
+      c.strokeStyle = MAD.med; c.lineWidth = R * 0.1; c.strokeRect(-R * 0.7, -R * 0.7, R * 1.4, R * 1.4);
+      ret(c, R * 0.3, R * 0.3, R * 0.3, R * 0.3, R * 0.02, '#1a1208');
+      for (let i = 0; i < 3; i++) seg(c, R * 0.33, R * 0.36 + i * R * 0.09, R * 0.57, R * 0.36 + i * R * 0.09, R * 0.03, MAD.luz);
+      bola(c, -R * 0.35, -R * 0.35, R * 0.12, '#3d434c', R * 0.02); Props.kit.brasa(c, -R * 0.35, -R * 0.35, R * 0.07, 1.3, 2);
+    },
+  });
+  // as bandeiras: o mastro com as três flâmulas, tremulando
+  reg('bandeiras', {
+    n: 'Bandeiras', g: 'militar', size: 1, vivo: true,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.3, 0.3);
+      const cores = ['#b8322e', '#2f5a9a', '#d6a64a'];
+      for (let i = 0; i < 3; i++) { const a = -0.5 + i * 0.5, o = Math.sin(t * 4 + i) * R * 0.06; c.save(); c.rotate(a); c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(R * 0.4, -R * 0.1 + o, R * 0.85, o); c.quadraticCurveTo(R * 0.4, R * 0.15 + o, 0, R * 0.18); c.closePath(); c.fillStyle = cores[(s + i) % 3]; c.fill(); linha(c, R * 0.025); c.restore(); }
+      bola(c, 0, 0, R * 0.12, MAD.esc, R * 0.03); bola(c, 0, 0, R * 0.05, '#d6a64a');
+    },
+  });
+  // o tambor de guerra: o tambor grande de couro, com as cordas em zigue-zague e as baquetas
+  reg('tamborGuerra', {
+    n: 'Tambor de guerra', g: 'militar', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.65, 0.65);
+      bola(c, 0, 0, R * 0.62, '#8a2a2a', R * 0.05);
+      c.strokeStyle = '#e8d8b0'; c.lineWidth = R * 0.03; c.beginPath(); for (let i = 0; i <= 16; i++) { const a = i / 16 * TAU, r = i % 2 ? R * 0.62 : R * 0.48; if (i) c.lineTo(Math.cos(a) * r, Math.sin(a) * r); else c.moveTo(Math.cos(a) * r, Math.sin(a) * r); } c.stroke();
+      bola(c, 0, 0, R * 0.45, radial(c, -R * 0.1, -R * 0.1, R * 0.5, ['#f0e2c0', '#d8c49a', '#b8a070']), R * 0.03);
+      for (const a of [0.6, 1.1]) { c.save(); c.rotate(a); seg(c, -R * 0.1, -R * 0.6, R * 0.05, R * 0.2, R * 0.06, MAD.cla); bola(c, -R * 0.1, -R * 0.6, R * 0.07, '#e8dcc0'); c.restore(); }
+    },
+  });
+
+  /* ================= PORTAIS E MAGIA ================= */
+  Props.grupo('portais', 'Portais e magia');
+  // o portal arcano: o anel de pedra com as runas e o redemoinho de luz girando dentro
+  reg('portalArcano', {
+    n: 'Portal arcano', g: 'portais', size: 2, vivo: true, calma: true, luz: { bright: 2, dim: 5, c: '#a87aff' },
+    draw(c, R, t, s) {
+      const cor = ['#a87aff', '#5ad0ff', '#7aff9a'][s % 3];
+      brilho(c, 0, 0, R * 1.0, cor, 0.5);
+      c.save(); c.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 4; i++) { c.strokeStyle = cor; c.globalAlpha = 0.4; c.lineWidth = R * 0.06; c.beginPath(); for (let k = 0; k <= 30; k++) { const f = k / 30, a = f * 5 + t * 1.5 + i * Math.PI / 2, r = f * R * 0.62; if (k) c.lineTo(Math.cos(a) * r, Math.sin(a) * r); else c.moveTo(0, 0); } c.stroke(); }
+      c.restore(); c.globalAlpha = 1;
+      bola(c, 0, 0, R * 0.12, '#ffffff');
+      c.strokeStyle = PED.med; c.lineWidth = R * 0.2; c.beginPath(); c.arc(0, 0, R * 0.78, 0, TAU); c.stroke();
+      c.strokeStyle = PED.cla; c.lineWidth = R * 0.12; c.stroke();
+      for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + 0.2; bola(c, Math.cos(a) * R * 0.78, Math.sin(a) * R * 0.78, R * 0.05, cor); }
+    },
+  });
+  // o círculo de teletransporte: o círculo azul no chão, as runas que giram e o brilho que sobe
+  reg('circuloTeleporte', {
+    n: 'Círculo de teletransporte', g: 'portais', size: 2, vivo: true, calma: true, luz: { bright: 1, dim: 3, c: '#7ad8ff' },
+    draw(c, R, t) {
+      brilho(c, 0, 0, R * 0.95, '#7ad8ff', 0.3 + 0.15 * Math.sin(t * 2));
+      c.strokeStyle = '#9fe8ff'; c.lineWidth = R * 0.04;
+      for (const r of [0.9, 0.72, 0.35]) { c.beginPath(); c.arc(0, 0, R * r, 0, TAU); c.stroke(); }
+      c.save(); c.rotate(t * 0.4); c.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; c.moveTo(Math.cos(a) * R * 0.72, Math.sin(a) * R * 0.72); c.lineTo(Math.cos(a + 2) * R * 0.72, Math.sin(a + 2) * R * 0.72); } c.stroke();
+      c.lineWidth = R * 0.025; for (let i = 0; i < 12; i++) { const a = i / 12 * TAU, x = Math.cos(a) * R * 0.81, y = Math.sin(a) * R * 0.81; c.beginPath(); c.moveTo(x - R * 0.03, y - R * 0.04); c.lineTo(x + R * 0.03, y); c.lineTo(x - R * 0.02, y + R * 0.04); c.stroke(); }
+      c.restore();
+    },
+  });
+  // a pedra flutuante: a rocha no ar, com a sombra lá embaixo e os pedregulhos girando
+  reg('pedraFlutuante', {
+    n: 'Pedra flutuante', g: 'portais', size: 1, vivo: true,
+    draw(c, R, t, s) {
+      const h = Math.sin(t * 1.2) * R * 0.08;
+      oval(c, R * 0.25, R * 0.4, R * (0.42 - h / R), R * (0.25 - h / R * 0.5), 0, 'rgba(0,0,0,0.25)');
+      pedrinha(c, 0, -R * 0.1 + h, R * 0.5, s);
+      musgo2(c, R, s, h);
+      for (let i = 0; i < 3; i++) { const a = t * 0.8 + i * TAU / 3; pedrinha(c, Math.cos(a) * R * 0.75, -R * 0.1 + h + Math.sin(a) * R * 0.3, R * 0.08, s + i); }
+    },
+  });
+  function musgo2(c, R, s, h) { for (let i = 0; i < 4; i++) bola(c, (hsh(s, i, 5) - 0.5) * R * 0.5, -R * 0.35 + h + hsh(s, i, 6) * R * 0.2, R * 0.07, i % 2 ? '#4f8a3e' : '#3f7a34'); }
+  // o pilar de energia: o cristal alto na base de metal, com os raios saindo dele
+  reg('pilarEnergia', {
+    n: 'Pilar de energia', g: 'portais', size: 1, vivo: true, calma: true, luz: { bright: 2, dim: 4, c: '#7af0ff' },
+    draw(c, R, t, s) {
+      sombra(c, R, 0.6, 0.6);
+      poli(c, [[-R * 0.55, -R * 0.2], [-R * 0.2, -R * 0.55], [R * 0.2, -R * 0.55], [R * 0.55, -R * 0.2], [R * 0.55, R * 0.2], [R * 0.2, R * 0.55], [-R * 0.2, R * 0.55], [-R * 0.55, R * 0.2]], grad(c, -R, -R, R, R, [FER.cla, FER.esc]), R * 0.04);
+      brilho(c, 0, 0, R * 0.9, '#7af0ff', 0.4 + 0.2 * Math.sin(t * 3));
+      poli(c, [[0, -R * 0.42], [R * 0.24, 0], [0, R * 0.42], [-R * 0.24, 0]], grad(c, -R * 0.24, 0, R * 0.24, 0, ['#e8ffff', '#7af0ff', '#2a8aa8']), R * 0.03);
+      c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = 'rgba(180,250,255,0.8)'; c.lineWidth = R * 0.025;
+      for (let i = 0; i < 3; i++) { if (Math.sin(t * 7 + i * 2.3) < 0.3) continue; const a = i * 2.1 + Math.floor(t * 6) * 0.7; c.beginPath(); c.moveTo(0, 0); for (let k = 1; k <= 4; k++) c.lineTo(Math.cos(a + (hsh(Math.floor(t * 6), k, i) - 0.5)) * R * k * 0.22, Math.sin(a + (hsh(Math.floor(t * 6), k, i + 3) - 0.5)) * R * k * 0.22); c.stroke(); }
+      c.restore();
+    },
+  });
+  // o orbe: a esfera de luz que flutua e pulsa
+  reg('orbe', {
+    n: 'Orbe', g: 'portais', size: 1, vivo: true, calma: true, luz: { bright: 1, dim: 4, c: '#ffd77a' },
+    draw(c, R, t, s) {
+      const cor = ['#ffd77a', '#ff7ad8', '#7affb8', '#7ab8ff'][s % 4], h = Math.sin(t * 1.5) * R * 0.1;
+      oval(c, R * 0.15, R * 0.4, R * 0.25, R * 0.12, 0, 'rgba(0,0,0,0.2)');
+      brilho(c, 0, h, R * (0.9 + 0.1 * Math.sin(t * 3)), cor, 0.55);
+      bola(c, 0, h, R * 0.28, radial(c, -R * 0.08, h - R * 0.08, R * 0.3, ['#ffffff', cor, cor]));
+      for (let i = 0; i < 4; i++) { const a = t * 2 + i * TAU / 4; bola(c, Math.cos(a) * R * 0.45, h + Math.sin(a) * R * 0.2, R * 0.03, '#ffffff'); }
+    },
+  });
+  // as runas no chão: as marcas gravadas que acendem uma depois da outra
+  reg('runasChao', {
+    n: 'Runas no chão', g: 'portais', size: 2, vivo: true, calma: true, luz: { bright: 0, dim: 2, c: '#ff9a5a' },
+    draw(c, R, t, s) {
+      const cor = ['#ff9a5a', '#9a7aff', '#5affc8'][s % 3];
+      for (let i = 0; i < 7; i++) {
+        const a = i / 7 * TAU + hsh(s, i, 1) * 0.4, d = R * (0.3 + hsh(s, i, 2) * 0.5), x = Math.cos(a) * d, y = Math.sin(a) * d, on = 0.5 + 0.5 * Math.sin(t * 1.5 - i * 0.9);
+        c.save(); c.translate(x, y); c.rotate(hsh(s, i, 3) * 3);
+        c.strokeStyle = 'rgba(40,30,30,0.7)'; c.lineWidth = R * 0.05; c.beginPath(); c.moveTo(-R * 0.1, -R * 0.12); c.lineTo(R * 0.02, R * 0.12); c.lineTo(R * 0.1, -R * 0.08); c.moveTo(-R * 0.06, 0); c.lineTo(R * 0.08, R * 0.02); c.stroke();
+        c.globalCompositeOperation = 'lighter'; c.globalAlpha = on; c.strokeStyle = cor; c.lineWidth = R * 0.03; c.stroke();
+        c.restore();
+        brilho(c, x, y, R * 0.22, cor, on * 0.4);
+      }
+    },
+  });
+
+  /* ================= TEATRO E MÚSICA ================= */
+  Props.grupo('teatro', 'Teatro e música');
+  // o palco com cortina: o tablado (3 × 2), a cortina vermelha dos lados e as velas da ribalta
+  reg('palcoCortina', {
+    n: 'Palco com cortina', g: 'teatro', size: 3, fw: 3, fh: 2, costas: 'n', legado: { w: 1, h: 0.67 }, fogo: true,
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B); somb(c, R, b, m);
+      ret(c, -R + m * 0.03, -b + m * 0.03, R * 2 - m * 0.06, b * 2 - m * 0.06, m * 0.04, grad(c, 0, -b, 0, b, [MAD.cla, MAD.med]), m * 0.035);
+      c.strokeStyle = 'rgba(40,22,8,0.35)'; c.lineWidth = m * 0.012; for (let i = 1; i < 9; i++) { c.beginPath(); c.moveTo(-R + i * R * 0.222, -b); c.lineTo(-R + i * R * 0.222, b); c.stroke(); }
+      ret(c, -R + m * 0.03, -b + m * 0.03, R * 2 - m * 0.06, m * 0.22, m * 0.03, '#6a1a22', m * 0.03);
+      for (const k of [-1, 1]) { for (let i = 0; i < 4; i++) { const x = k * (R - m * 0.12 - i * m * 0.12); oval(c, x, -b * 0.15, m * 0.08, b * 0.8, 0, i % 2 ? '#9a2a34' : '#b8343e'); } c.beginPath(); c.rect(k > 0 ? R - m * 0.56 : -R + m * 0.04, -b + m * 0.2, m * 0.52, b * 1.5); linha(c, m * 0.02); seg(c, k * (R - m * 0.3), b * 0.2, k * (R - m * 0.45), b * 0.15, m * 0.04, '#d6a64a'); }
+      for (let i = 0; i < 5; i++) { const x = -R * 0.6 + i * R * 0.3; bola(c, x, b - m * 0.12, m * 0.05, '#efe6d0'); chama(c, x, b - m * 0.12, m * 0.12, t, s + i, ang); }
+    },
+  });
+  // o alaúde: o corpo de pera, a boca, o braço e a cabeça dobrada
+  reg('alaude', {
+    n: 'Alaúde', g: 'teatro', size: 1,
+    draw(c, R) {
+      c.save(); c.rotate(-0.6);
+      oval(c, R * 0.06, R * 0.32, R * 0.36, R * 0.42, 0, 'rgba(0,0,0,0.3)');
+      oval(c, 0, R * 0.25, R * 0.36, R * 0.42, 0, radial(c, -R * 0.1, R * 0.15, R * 0.5, ['#e8b878', '#c8884a', '#8a5a2a']), R * 0.035);
+      bola(c, 0, R * 0.15, R * 0.1, '#2a1a0e'); c.strokeStyle = '#6a4a20'; c.lineWidth = R * 0.015; c.beginPath(); c.arc(0, R * 0.15, R * 0.13, 0, TAU); c.stroke();
+      ret(c, -R * 0.05, -R * 0.6, R * 0.1, R * 0.52, R * 0.02, MAD.esc, R * 0.02);
+      ret(c, -R * 0.07, -R * 0.82, R * 0.14, R * 0.24, R * 0.03, MAD.med, R * 0.02);
+      for (let i = 0; i < 4; i++) seg(c, -R * 0.03 + i * R * 0.02, -R * 0.6, -R * 0.03 + i * R * 0.02, R * 0.45, R * 0.006, '#f4f0e6');
+      c.restore();
+    },
+  });
+  // o tambor: o tamborzinho de mão, com o couro e as fitas
+  reg('tambor', {
+    n: 'Tambor', g: 'teatro', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.5, 0.5);
+      bola(c, 0, 0, R * 0.46, '#3a6a8a', R * 0.04);
+      for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; bola(c, Math.cos(a) * R * 0.46, Math.sin(a) * R * 0.46, R * 0.04, '#d6a64a'); }
+      bola(c, 0, 0, R * 0.38, radial(c, -R * 0.1, -R * 0.1, R * 0.4, ['#f4ead0', '#dcc89a']), R * 0.02);
+      seg(c, R * 0.4, R * 0.2, R * 0.75, R * 0.6, R * 0.05, '#b8322e'); seg(c, R * 0.35, R * 0.3, R * 0.6, R * 0.75, R * 0.05, '#f2d04a');
+    },
+  });
+  // a harpa: a moldura triangular dourada e as cordas
+  reg('harpa', {
+    n: 'Harpa', g: 'teatro', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.5, 0.65);
+      c.strokeStyle = '#c99a3a'; c.lineWidth = R * 0.1; c.lineJoin = 'round';
+      c.beginPath(); c.moveTo(-R * 0.45, R * 0.7); c.lineTo(-R * 0.45, -R * 0.7); c.quadraticCurveTo(R * 0.2, -R * 0.75, R * 0.5, -R * 0.2); c.lineTo(-R * 0.45, R * 0.7); c.stroke();
+      c.strokeStyle = '#8a6420'; c.lineWidth = R * 0.03; c.stroke();
+      c.strokeStyle = 'rgba(250,245,230,0.85)'; c.lineWidth = R * 0.012;
+      for (let i = 1; i < 8; i++) { const f = i / 8, y = -R * 0.7 + f * R * 1.4, x2 = -R * 0.45 + (1 - f) * R * 0.95 * (f < 0.5 ? 1 : 1); c.beginPath(); c.moveTo(-R * 0.45, y); c.lineTo(Math.min(x2, R * 0.45), y - (1 - f) * R * 0.12); c.stroke(); }
+      bola(c, R * 0.5, -R * 0.2, R * 0.08, '#d6a64a', R * 0.02);
+    },
+  });
+  // as cadeiras da plateia: a fileira de cadeiras (2 × 1)
+  reg('cadeirasPlateia', {
+    n: 'Cadeiras da plateia', g: 'teatro', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B);
+      const q = Math.min(R * 0.21, b * 0.9);
+      for (let i = 0; i < 4; i++) { const x = -R * 0.75 + i * R * 0.5; oval(c, x + q * 0.12, q * 0.15, q * 0.95, q * 0.95, 0, 'rgba(0,0,0,0.25)'); ret(c, x - q, -q * 0.75, q * 2, q * 1.7, q * 0.25, grad(c, 0, -q, 0, q, ['#b8343e', '#7a1e28']), m * 0.035); ret(c, x - q, -q * 0.98, q * 2, q * 0.45, q * 0.15, MAD.esc, m * 0.03); for (const k of [-1, 1]) ret(c, x + k * q * 0.85 - q * 0.15, -q * 0.6, q * 0.3, q * 1.4, q * 0.1, '#6a1a22'); }
+    },
+  });
+  // a arara de figurinos: a barra com os cabides e as roupas coloridas
+  reg('araraFigurinos', {
+    n: 'Arara de figurinos', g: 'teatro', size: 2, fw: 2, fh: 1, legado: { w: 1, h: 0.5 },
+    draw(c, R, t, s, ang, tk, B) {
+      const [b, m] = mm(R, B), cores = ['#8a2a6a', '#2a6a8a', '#d6a64a', '#3e7a3a', '#b8322e', '#5a3a8a'];
+      somb(c, R, b * 0.7, m);
+      for (let i = 0; i < 6; i++) { const x = -R * 0.8 + i * R * 0.32; c.save(); c.translate(x, 0); c.rotate((hsh(s, i, 1) - 0.5) * 0.3); poli(c, [[-R * 0.12, -b * 0.5], [R * 0.12, -b * 0.5], [R * 0.16, b * 0.6], [-R * 0.16, b * 0.6]], cores[(s + i) % 6], m * 0.025); seg(c, -R * 0.14, b * 0.45, R * 0.14, b * 0.45, m * 0.03, 'rgba(255,230,160,0.6)'); c.restore(); }
+      seg(c, -R * 0.95, -b * 0.5, R * 0.95, -b * 0.5, m * 0.07, FER.cla);
+      for (const k of [-1, 1]) bola(c, k * R * 0.95, -b * 0.5, m * 0.1, FER.esc);
+    },
+  });
+  // as máscaras: a máscara alegre e a triste, com as fitas
+  reg('mascaras', {
+    n: 'Máscaras', g: 'teatro', size: 1,
+    draw(c, R) {
+      for (const [x, y, a, cor, triste] of [[-R * 0.25, -R * 0.1, -0.3, '#f4ecd8', false], [R * 0.28, R * 0.1, 0.3, '#2a2a3a', true]]) {
+        c.save(); c.translate(x, y); c.rotate(a);
+        oval(c, R * 0.05, R * 0.06, R * 0.36, R * 0.44, 0, 'rgba(0,0,0,0.3)');
+        oval(c, 0, 0, R * 0.36, R * 0.44, 0, cor, R * 0.03);
+        const olho = triste ? '#f4ecd8' : '#1a1410';
+        for (const k of [-1, 1]) oval(c, k * R * 0.13, -R * 0.08, R * 0.08, R * 0.05, k * (triste ? -0.4 : 0.4), olho);
+        c.strokeStyle = olho; c.lineWidth = R * 0.05; c.beginPath(); if (triste) c.arc(0, R * 0.3, R * 0.15, 3.6, 5.8); else c.arc(0, R * 0.08, R * 0.16, 0.4, 2.7); c.stroke();
+        seg(c, R * 0.34, -R * 0.1, R * 0.55, -R * 0.2, R * 0.03, triste ? '#5a3a8a' : '#d6a64a');
+        c.restore();
+      }
+    },
+  });
+
+  /* ================= CONVÉS E PORTO ================= */
+  Props.grupo('conves', 'Convés e porto');
+  // o leme: a roda de madeira com os oito punhos
+  reg('leme', {
+    n: 'Leme', g: 'conves', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.6, 0.6);
+      for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; seg(c, 0, 0, Math.cos(a) * R * 0.85, Math.sin(a) * R * 0.85, R * 0.07, MAD.cla); bola(c, Math.cos(a) * R * 0.85, Math.sin(a) * R * 0.85, R * 0.07, MAD.med, R * 0.02); }
+      c.strokeStyle = MAD.med; c.lineWidth = R * 0.11; c.beginPath(); c.arc(0, 0, R * 0.58, 0, TAU); c.stroke(); c.strokeStyle = MAD.luz; c.lineWidth = R * 0.04; c.stroke();
+      bola(c, 0, 0, R * 0.16, '#c9a24a', R * 0.03);
+    },
+  });
+  // o canhão: o cano de ferro na carreta de madeira, com as balas empilhadas (2 × 1, a boca para a frente)
+  reg('canhao', {
+    n: 'Canhão', g: 'conves', size: 2, fw: 1, fh: 2, costas: 's', legado: { w: 0.5, h: 1 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R; const m = Math.min(R, B);
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.3)'; caixa(c, -R * 0.7, -B * 0.85, R * 1.55, B * 1.8, m * 0.15); c.fill(); c.restore();
+      ret(c, -R * 0.75, -B * 0.1, R * 1.5, B * 0.95, m * 0.08, MAD.med, m * 0.04);
+      for (const k of [-1, 1]) for (const y of [B * 0.1, B * 0.65]) bola(c, k * R * 0.8, y, m * 0.16, MAD.esc, m * 0.03);
+      ret(c, -R * 0.38, -B * 0.95, R * 0.76, B * 1.5, m * 0.35, grad(c, -R * 0.4, 0, R * 0.4, 0, [FER.esc, FER.cla, FER.esc]), m * 0.04);
+      bola(c, 0, -B * 0.9, m * 0.2, '#0a0a0c'); for (const y of [-B * 0.55, B * 0.1]) seg(c, -R * 0.4, y, R * 0.4, y, m * 0.06, FER.med);
+      bola(c, 0, B * 0.6, m * 0.24, FER.med, m * 0.03);
+    },
+  });
+  // as cordas enroladas: o rolo de corda grossa, em espiral
+  reg('cordasEnroladas', {
+    n: 'Cordas enroladas', g: 'conves', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.6, 0.6);
+      bola(c, 0, 0, R * 0.62, '#b8985a', R * 0.03);
+      c.strokeStyle = '#8a6a32'; c.lineWidth = R * 0.05; c.beginPath(); for (let k = 0; k <= 80; k++) { const a = k / 80 * TAU * 5, r = R * (0.08 + k / 80 * 0.52); if (k) c.lineTo(Math.cos(a) * r, Math.sin(a) * r); else c.moveTo(r, 0); } c.stroke();
+      c.strokeStyle = '#d8c08a'; c.lineWidth = R * 0.08; c.beginPath(); c.moveTo(R * 0.6, 0); c.quadraticCurveTo(R * 0.85, R * 0.3, R * 0.6, R * 0.75); c.stroke();
+    },
+  });
+  // o mastro: o tronco redondo, o cesto de vigia e as cordas descendo para os lados
+  reg('mastro', {
+    n: 'Mastro', g: 'conves', size: 2,
+    draw(c, R) {
+      c.strokeStyle = 'rgba(140,110,60,0.7)'; c.lineWidth = R * 0.02; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + 0.2; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * R * 0.98, Math.sin(a) * R * 0.98); c.stroke(); }
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(-R * 0.1, -R * 0.95, R * 0.2, R * 1.9); c.restore();
+      seg(c, 0, -R * 0.95, 0, R * 0.95, R * 0.08, MAD.med);
+      bola(c, 0, 0, R * 0.42, MAD.cla, R * 0.04); bola(c, 0, 0, R * 0.32, MAD.esc);
+      bola(c, 0, 0, R * 0.16, radial(c, -R * 0.05, -R * 0.05, R * 0.2, [MAD.luz, MAD.med]), R * 0.03);
+    },
+  });
+  // a âncora: o ferro com as duas unhas, a argola e a corrente
+  reg('ancora', {
+    n: 'Âncora', g: 'conves', size: 1,
+    draw(c, R) {
+      sombra(c, R, 0.55, 0.65);
+      c.lineCap = 'round';
+      c.strokeStyle = FER.esc; c.lineWidth = R * 0.16; c.beginPath(); c.moveTo(0, -R * 0.55); c.lineTo(0, R * 0.6); c.moveTo(-R * 0.3, -R * 0.3); c.lineTo(R * 0.3, -R * 0.3); c.moveTo(-R * 0.55, R * 0.25); c.quadraticCurveTo(0, R * 0.85, R * 0.55, R * 0.25); c.stroke();
+      c.strokeStyle = FER.cla; c.lineWidth = R * 0.08; c.stroke();
+      c.lineWidth = R * 0.07; c.strokeStyle = FER.med; c.beginPath(); c.arc(0, -R * 0.7, R * 0.14, 0, TAU); c.stroke();
+      for (const k of [-1, 1]) poli(c, [[k * R * 0.55, R * 0.25], [k * R * 0.7, R * 0.1], [k * R * 0.48, R * 0.08]], FER.cla, R * 0.02);
+      c.strokeStyle = '#5a5a60'; c.lineWidth = R * 0.03; for (let i = 0; i < 4; i++) { c.beginPath(); c.ellipse(R * 0.15 + i * R * 0.17, -R * 0.82 + (i % 2) * R * 0.04, R * 0.08, R * 0.05, 0, 0, TAU); c.stroke(); }
+    },
+  });
+  // as redes de pesca: a rede estendida para secar, com as boias de cortiça
+  reg('redesPesca', {
+    n: 'Redes de pesca', g: 'conves', size: 2,
+    draw(c, R, t, s) {
+      c.save(); c.beginPath(); c.moveTo(-R * 0.9, -R * 0.7); c.quadraticCurveTo(0, -R * 0.95, R * 0.9, -R * 0.65); c.lineTo(R * 0.85, R * 0.75); c.quadraticCurveTo(0, R * 0.95, -R * 0.85, R * 0.7); c.closePath(); c.clip();
+      c.strokeStyle = 'rgba(90,80,60,0.75)'; c.lineWidth = R * 0.018; for (let i = -12; i <= 12; i++) { c.beginPath(); c.moveTo(-R + i * R * 0.16, -R); c.lineTo(R + i * R * 0.16, R); c.stroke(); c.beginPath(); c.moveTo(R + i * R * 0.16, -R); c.lineTo(-R + i * R * 0.16, R); c.stroke(); }
+      c.restore();
+      for (let i = 0; i < 6; i++) { const f = i / 5, x = -R * 0.9 + f * R * 1.8, y = -R * 0.7 - Math.sin(f * Math.PI) * R * 0.2; bola(c, x, y, R * 0.07, '#c88a4a', R * 0.02); }
+      bola(c, R * 0.3, R * 0.3, R * 0.1, '#9ab0c0', R * 0.02); oval(c, -R * 0.2, R * 0.4, R * 0.12, R * 0.05, 0.3, '#a8b8c8', R * 0.015);
+    },
+  });
+  // a carga amarrada: os caixotes e os sacos sob a lona, com as cordas cruzadas
+  reg('cargaAmarrada', {
+    n: 'Carga amarrada', g: 'conves', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.92, 0.88);
+      ret(c, -R * 0.85, -R * 0.8, R * 0.85, R * 0.8, R * 0.04, MAD.cla, R * 0.03); ret(c, R * 0.02, -R * 0.75, R * 0.8, R * 0.75, R * 0.04, MAD.med, R * 0.03);
+      ret(c, -R * 0.8, R * 0.05, R * 0.75, R * 0.75, R * 0.2, '#c8b080', R * 0.03); ret(c, R * 0.05, R * 0.05, R * 0.8, R * 0.75, R * 0.04, MAD.cla, R * 0.03);
+      c.save(); c.globalAlpha = 0.55; poli(c, [[-R * 0.9, -R * 0.85], [R * 0.1, -R * 0.8], [R * 0.2, R * 0.2], [-R * 0.85, R * 0.1]], '#6a7a5a'); c.restore();
+      c.strokeStyle = '#d8c08a'; c.lineWidth = R * 0.045; c.beginPath(); c.moveTo(-R * 0.9, -R * 0.9); c.lineTo(R * 0.9, R * 0.9); c.moveTo(R * 0.9, -R * 0.9); c.lineTo(-R * 0.9, R * 0.9); c.moveTo(-R * 0.9, 0); c.lineTo(R * 0.9, 0); c.stroke();
+      for (const [x, y] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) bola(c, x * R * 0.9, y * R * 0.9, R * 0.06, FER.med);
+    },
+  });
+  // a prancha: a tábua comprida com as travessas, do cais para o navio (1 × 2)
+  reg('prancha', {
+    n: 'Prancha', g: 'conves', size: 2, fw: 1, fh: 2, legado: { w: 0.5, h: 1 },
+    draw(c, R, t, s, ang, tk, B) {
+      B = B || R; const m = Math.min(R, B);
+      c.save(); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(-R * 0.4, -B * 0.85, R * 0.95, B * 1.85); c.restore();
+      ret(c, -R * 0.5, -B * 0.95, R, B * 1.9, m * 0.06, grad(c, -R * 0.5, 0, R * 0.5, 0, [MAD.cla, MAD.luz, MAD.cla]), m * 0.04);
+      for (let i = 0; i < 7; i++) seg(c, -R * 0.5, -B * 0.8 + i * B * 0.27, R * 0.5, -B * 0.8 + i * B * 0.27, m * 0.06, MAD.med);
+      for (const k of [-1, 1]) seg(c, k * R * 0.6, -B * 0.9, k * R * 0.6, B * 0.9, m * 0.03, '#c9b48a');
+    },
+  });
+
+  /* ================= NATUREZA FANTÁSTICA ================= */
+  Props.grupo('fantastica', 'Natureza fantástica');
+  // o cogumelo gigante: o chapéu enorme com as pintas, que brilha de leve no escuro
+  reg('cogumeloGigante', {
+    n: 'Cogumelo gigante', g: 'fantastica', size: 2, calma: true, luz: { bright: 0, dim: 3, c: '#7ab8ff' },
+    draw(c, R, t, s) {
+      const cor = [['#c84a3a', '#8a2a20'], ['#5a7ad8', '#2a4a9a'], ['#9a5ad8', '#5a2a9a']][s % 3];
+      oval(c, R * 0.15, R * 0.2, R * 0.85, R * 0.75, 0, 'rgba(0,0,0,0.3)');
+      if (s % 3) brilho(c, 0, 0, R * 1.0, cor[0], 0.25);
+      bola(c, 0, 0, R * 0.85, radial(c, -R * 0.25, -R * 0.3, R * 0.95, ['#ffffff', cor[0], cor[1]]), R * 0.04);
+      for (let i = 0; i < 9; i++) { const a = hsh(s, i, 1) * TAU, d = R * (0.2 + hsh(s, i, 2) * 0.55); bola(c, Math.cos(a) * d, Math.sin(a) * d, R * (0.06 + hsh(s, i, 3) * 0.07), 'rgba(255,250,235,0.9)'); }
+      c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = R * 0.02; c.beginPath(); c.arc(0, 0, R * 0.7, 0, TAU); c.stroke();
+    },
+  });
+  // o ninho gigante: os galhos trançados, as penas e os ovos enormes
+  reg('ninhoGigante', {
+    n: 'Ninho gigante', g: 'fantastica', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.95, 0.95);
+      c.lineCap = 'round';
+      for (let i = 0; i < 40; i++) { const a = hsh(s, i, 1) * TAU, r = R * (0.6 + hsh(s, i, 2) * 0.35); seg(c, Math.cos(a) * r, Math.sin(a) * r, Math.cos(a + 0.6) * r, Math.sin(a + 0.6) * r, R * 0.06, i % 3 ? '#6a4a2a' : '#8a6a3a'); }
+      bola(c, 0, 0, R * 0.6, radial(c, 0, 0, R * 0.6, ['#5a4028', '#7a5a34']));
+      for (let i = 0; i < 3; i++) { const a = i * 2.1 + 0.5; oval(c, Math.cos(a) * R * 0.25, Math.sin(a) * R * 0.25, R * 0.2, R * 0.26, a, radial(c, Math.cos(a) * R * 0.2, Math.sin(a) * R * 0.2, R * 0.3, ['#ffffff', '#e8e0c8', '#b8b0a0']), R * 0.025); for (let j = 0; j < 3; j++) bola(c, Math.cos(a) * R * 0.25 + (hsh(s, i * 3 + j, 4) - 0.5) * R * 0.2, Math.sin(a) * R * 0.25 + (hsh(s, i * 3 + j, 5) - 0.5) * R * 0.25, R * 0.025, '#8a7a5a'); }
+      for (let i = 0; i < 3; i++) { const a = hsh(s, i, 7) * TAU; oval(c, Math.cos(a) * R * 0.75, Math.sin(a) * R * 0.75, R * 0.2, R * 0.05, a, '#d8c8b0'); }
+    },
+  });
+  // os cristais no chão: as pontas de cristal saindo da pedra, brilhando
+  reg('cristaisChao', {
+    n: 'Cristais no chão', g: 'fantastica', size: 1, calma: true, luz: { bright: 1, dim: 3, c: '#e07aff' },
+    draw(c, R, t, s) {
+      const cor = [['#f4d8ff', '#c87aff', '#6a2a9a'], ['#d8f4ff', '#7ad0ff', '#2a6a9a'], ['#fff2d0', '#ffb84a', '#9a5a1a']][s % 3];
+      pedrinha(c, 0, R * 0.15, R * 0.5, s);
+      brilho(c, 0, 0, R * 0.95, cor[1], 0.35);
+      for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + (i - 2.5) * 0.45, L = R * (0.45 + hsh(s, i, 1) * 0.4), x0 = Math.cos(a + Math.PI) * R * 0.1, y0 = R * 0.1, w = R * 0.1; c.save(); c.translate(x0, y0); c.rotate(a + Math.PI / 2); poli(c, [[-w, 0], [-w * 0.7, -L * 0.85], [0, -L], [w * 0.7, -L * 0.85], [w, 0]], grad(c, -w, 0, w, 0, cor), R * 0.02); c.restore(); }
+    },
+  });
+  // a teia gigante: os fios esticados de canto a canto, os casulos e a aranha (às vezes)
+  reg('teiaGigante', {
+    n: 'Teia gigante', g: 'fantastica', size: 2,
+    draw(c, R, t, s) {
+      c.strokeStyle = 'rgba(235,235,240,0.75)'; c.lineWidth = R * 0.015;
+      const n = 10;
+      for (let i = 0; i < n; i++) { const a = i / n * TAU + hsh(s, i, 1) * 0.2; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * R * 0.98, Math.sin(a) * R * 0.98); c.stroke(); }
+      for (let k = 1; k <= 7; k++) { c.beginPath(); for (let i = 0; i <= n; i++) { const a = (i % n) / n * TAU + hsh(s, i % n, 1) * 0.2, r = R * k * 0.13 * (0.92 + hsh(s, i % n, k) * 0.12); if (i) c.lineTo(Math.cos(a) * r, Math.sin(a) * r); else c.moveTo(Math.cos(a) * r, Math.sin(a) * r); } c.stroke(); }
+      for (let i = 0; i < 2; i++) { const a = hsh(s, i, 9) * TAU; oval(c, Math.cos(a) * R * 0.55, Math.sin(a) * R * 0.55, R * 0.1, R * 0.17, a, '#e8e4d8', R * 0.02); }
+      if (s % 2) { bola(c, R * 0.1, -R * 0.05, R * 0.12, '#1a1418'); bola(c, R * 0.1, R * 0.1, R * 0.08, '#2a2028'); c.strokeStyle = '#1a1418'; c.lineWidth = R * 0.025; for (const k of [-1, 1]) for (let j = 0; j < 4; j++) { c.beginPath(); c.moveTo(R * 0.1, 0); c.lineTo(R * 0.1 + k * R * 0.25, -R * 0.2 + j * R * 0.13); c.lineTo(R * 0.1 + k * R * 0.32, -R * 0.12 + j * R * 0.15); c.stroke(); } bola(c, R * 0.06, -R * 0.1, R * 0.02, '#e83a3a'); bola(c, R * 0.14, -R * 0.1, R * 0.02, '#e83a3a'); }
+    },
+  });
+  // a flor carnívora: a boca de pétalas com os dentes, que abre e fecha devagar
+  reg('florCarnivora', {
+    n: 'Flor carnívora', g: 'fantastica', size: 1, vivo: true,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.62, 0.62);
+      for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; oval(c, Math.cos(a) * R * 0.5, Math.sin(a) * R * 0.5, R * 0.3, R * 0.12, a, '#3f7a34', R * 0.02); }
+      const ab = 0.25 + 0.2 * (0.5 + 0.5 * Math.sin(t * 0.9));
+      for (const k of [-1, 1]) {
+        c.save(); c.scale(1, k);
+        c.beginPath(); c.moveTo(-R * 0.4, 0); c.quadraticCurveTo(0, -R * (0.3 + ab), R * 0.4, 0); c.closePath(); c.fillStyle = radial(c, 0, -R * 0.2, R * 0.5, ['#ff8aa8', '#c83a5a', '#7a1a3a']); c.fill(); linha(c, R * 0.025);
+        c.fillStyle = '#f8f4e8'; for (let j = 0; j < 5; j++) { const x = -R * 0.3 + j * R * 0.15; c.beginPath(); c.moveTo(x - R * 0.04, -R * 0.02); c.lineTo(x, -R * 0.12); c.lineTo(x + R * 0.04, -R * 0.02); c.fill(); }
+        c.restore();
+      }
+      oval(c, 0, 0, R * 0.38, R * 0.04, 0, '#3a0a1a');
+      for (let i = 0; i < 6; i++) bola(c, Math.cos(i) * R * 0.2, Math.sin(i * 1.7) * R * 0.25, R * 0.025, '#fff2a8');
+    },
+  });
+  // a toca: o buraco na terra, com a terra revirada e as marcas de garra (o que mora lá não aparece)
+  reg('toca', {
+    n: 'Toca', g: 'fantastica', size: 1,
+    draw(c, R, t, s) {
+      oval(c, 0, R * 0.05, R * 0.75, R * 0.62, 0, radial(c, 0, 0, R * 0.75, ['#8a6a44', '#6a5032', '#5a4228']));
+      for (let i = 0; i < 6; i++) { const a = hsh(s, i, 1) * TAU; pedrinha(c, Math.cos(a) * R * 0.6, Math.sin(a) * R * 0.5, R * 0.08, s + i, { esc: '#3a2e20', med: '#6a5032', cla: '#8a6a44', luz: '#a8885a' }); }
+      oval(c, 0, 0, R * 0.38, R * 0.3, 0, radial(c, 0, R * 0.05, R * 0.38, ['#000000', '#120c06', '#2a1e12']), R * 0.03);
+      c.strokeStyle = 'rgba(40,28,16,0.7)'; c.lineWidth = R * 0.03; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(R * 0.45 + i * R * 0.08, -R * 0.45); c.lineTo(R * 0.35 + i * R * 0.08, -R * 0.2); c.stroke(); }
+      for (const k of [-1, 1]) bola(c, k * R * 0.07, -R * 0.02, R * 0.025, Math.sin(t * 0.7 + s) > 0.85 ? '#ffd84a' : 'rgba(0,0,0,0)');
+    },
+    vivo: true,
+  });
+  // a árvore oca: o tronco largo, com o buraco no meio (dá para entrar) e as raízes grossas
+  reg('arvoreOca', {
+    n: 'Árvore oca', g: 'fantastica', size: 2,
+    draw(c, R, t, s) {
+      sombra(c, R, 0.95, 0.95, 0.12, 0.15);
+      for (let i = 0; i < 7; i++) { const a = i / 7 * TAU + hsh(s, i, 1) * 0.4; c.lineCap = 'round'; seg(c, Math.cos(a) * R * 0.45, Math.sin(a) * R * 0.45, Math.cos(a + 0.15) * R * 0.95, Math.sin(a + 0.15) * R * 0.95, R * 0.14, '#5a4028'); seg(c, Math.cos(a) * R * 0.45, Math.sin(a) * R * 0.45, Math.cos(a + 0.15) * R * 0.95, Math.sin(a + 0.15) * R * 0.95, R * 0.06, '#7a5a3a'); }
+      bola(c, 0, 0, R * 0.62, radial(c, -R * 0.2, -R * 0.2, R * 0.7, ['#9a7a54', '#7a5a3a', '#5a4028']), R * 0.04);
+      c.strokeStyle = 'rgba(40,28,16,0.45)'; c.lineWidth = R * 0.025; for (const r of [0.5, 0.42]) { c.beginPath(); c.arc(0, 0, R * r, 0, TAU); c.stroke(); }
+      bola(c, 0, 0, R * 0.32, radial(c, 0, 0, R * 0.32, ['#000000', '#0e0a06', '#2a1e12']), R * 0.03);
+      folhas(c, R * 0.5, -R * 0.55, R * 0.35, s, ['#2f6a34', '#4a8a44', '#6aa85a'], 4);
     },
   });
 })();
@@ -16755,8 +18238,202 @@ const Render = (() => {
         const tw = Math.sin(t * (0.8 + h(i, 5, s)) + i * 1.7);
         FX.blob(ctx, x, y, cell * 0.2, '#dcff7a', tw > 0 ? tw * 0.85 : 0);
       });
-    }
+    } else drawWeather158(wz, W, H, cell, T, pow, each, wrap, h, px, t);
     ctx.restore();
+  }
+  /* (lote 158) Os climas novos. pw: a intensidade escolhida (sem o zoom), para os véus que cobrem a cena. */
+  function drawWeather158(wz, W, H, cell, T, pow, each, wrap, h, px, t) {
+    const k = wz.k, pw = clamp(wz.pow || 0.6, 0.2, 1);
+    const veu = (cor, a) => { ctx.globalAlpha = 1; ctx.fillStyle = `rgba(${cor},${a})`; ctx.fillRect(0, 0, W, H); };
+    // a chuva (a de sempre, a forte, a fina, a vermelha e a verde): n gotas por ladrilho, o comprimento, o vento e a cor
+    const chuva = (n, len, vento, vel, cor, lw) => {
+      ctx.globalAlpha = 1; ctx.beginPath();
+      each(Math.round(n * pow), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T - t * T * vento), y = oy + wrap(h(i, 2, s) * T + t * T * (vel + h(i, 3, s) * 0.5));
+        ctx.moveTo(x, y); ctx.lineTo(x - len * vento * 0.6, y + len);
+      });
+      ctx.strokeStyle = cor; ctx.lineWidth = Math.max(lw * px, cell * lw * 0.016); ctx.lineCap = 'round'; ctx.stroke();
+    };
+    // os pingos que batem no chão: os anéis que abrem e somem
+    const aneis = (n, cor) => {
+      ctx.strokeStyle = cor; ctx.lineWidth = Math.max(0.8 * px, cell * 0.012);
+      each(Math.round(n * pow), (ox, oy, i, s) => {
+        const f = (t * (0.9 + h(i, 4, s) * 0.6) + h(i, 5, s)) % 1, x = ox + h(i, 6, s) * T, y = oy + h(i, 7, s) * T;
+        ctx.globalAlpha = (1 - f) * 0.6; ctx.beginPath(); ctx.ellipse(x, y, cell * 0.22 * f + 0.1, cell * 0.12 * f + 0.1, 0, 0, TAU); ctx.stroke();
+      });
+      ctx.globalAlpha = 1;
+    };
+    if (k === 'tempestade') {
+      veu('12,18,34', 0.2 * pw);
+      chuva(60, cell * 0.8, 0.55, 2.4, 'rgba(190,210,240,0.55)', 1.3);
+      aneis(10, 'rgba(200,220,255,0.7)');
+      // o clarão (com o "Clarões dos raios" ligado na aba Cena, e as animações ligadas): de vez em quando, dois piscos
+      if (wz.clarao !== false && motion()) {
+        const per = 7, q = Math.floor(t / per), o = h(q, 1, 9) * 4, l = t - q * per - o;
+        const f = l >= 0 && l < 0.09 ? 1 : l >= 0.2 && l < 0.26 ? 0.6 : l >= 0.26 && l < 0.6 ? (0.6 - l) / 0.34 * 0.25 : 0;
+        if (f > 0) {
+          veu('235,240,255', 0.42 * f * pw);
+          if (l < 0.3) {
+            // o raio: a linha quebrada, de cima para baixo, num ponto sorteado da cena
+            let x = h(q, 2, 9) * W, y = 0; ctx.beginPath(); ctx.moveTo(x, y);
+            while (y < H * (0.4 + h(q, 3, 9) * 0.5)) { y += cell * (0.8 + h(q, y, 4) * 1.4); x += (h(q, y, 5) - 0.5) * cell * 2.4; ctx.lineTo(x, y); }
+            ctx.globalAlpha = Math.min(1, f + 0.2); ctx.strokeStyle = '#f4f8ff'; ctx.lineWidth = Math.max(2 * px, cell * 0.06); ctx.lineJoin = 'round'; ctx.shadowColor = '#9fc0ff'; ctx.shadowBlur = 14; ctx.stroke(); ctx.shadowBlur = 0;
+          }
+        }
+      }
+    } else if (k === 'garoa') {
+      veu('150,165,180', 0.06 * pw);
+      chuva(80, cell * 0.28, 0.15, 1.1, 'rgba(215,230,245,0.5)', 0.9);
+      aneis(16, 'rgba(220,235,250,0.55)');
+    } else if (k === 'granizo') {
+      ctx.fillStyle = 'rgba(245,250,255,0.95)';
+      each(Math.round(28 * pow), (ox, oy, i, s) => {
+        const sp = 2.6 + h(i, 3, s), f = (t * sp * 0.25 + h(i, 2, s)) % 1, x = ox + wrap(h(i, 1, s) * T - t * T * 0.1), y = oy + f * T, r = cell * (0.04 + h(i, 4, s) * 0.035);
+        ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 0.25; ctx.fillRect(x - r * 0.4, y - cell * 0.35, r * 0.8, cell * 0.3);
+      });
+      // as pedrinhas quicando no chão
+      each(Math.round(12 * pow), (ox, oy, i, s) => {
+        const f = (t * 1.3 + h(i, 5, s)) % 1, x = ox + h(i, 6, s) * T + f * cell * 0.3, y = oy + h(i, 7, s) * T - Math.sin(f * Math.PI) * cell * 0.25;
+        ctx.globalAlpha = (1 - f) * 0.9; ctx.beginPath(); ctx.arc(x, y, cell * 0.04, 0, TAU); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'nevasca') {
+      veu('228,236,246', 0.16 * pw);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      each(Math.round(50 * pow), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T + t * T * (0.9 + h(i, 3, s) * 0.5)), y = oy + wrap(h(i, 2, s) * T + t * T * 0.25 + Math.sin(t * 2 + i) * cell * 0.3);
+        const r = cell * (0.03 + h(i, 4, s) * 0.04);
+        ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.ellipse(x, y, r * 2.2, r, 0.2, 0, TAU); ctx.fill();
+      });
+      // as rajadas: as faixas brancas que passam
+      each(Math.max(1, Math.round(3 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 5, s) * T + t * T * 1.4), y = oy + h(i, 6, s) * T;
+        ctx.save(); ctx.translate(x, y); ctx.scale(3.5, 0.5); FX.blob(ctx, 0, 0, cell * 1.2, '#ffffff', 0.18); ctx.restore();
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'areia') {
+      veu('196,150,90', 0.2 * pw);
+      ctx.strokeStyle = 'rgba(220,180,120,0.55)'; ctx.lineWidth = Math.max(px, cell * 0.02); ctx.lineCap = 'round';
+      ctx.beginPath();
+      each(Math.round(40 * pow), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T + t * T * (1.2 + h(i, 3, s) * 0.8)), y = oy + wrap(h(i, 2, s) * T + Math.sin(t * 1.5 + i) * cell * 0.4 + t * cell * 0.3);
+        ctx.moveTo(x, y); ctx.lineTo(x - cell * (0.3 + h(i, 4, s) * 0.5), y - cell * 0.05);
+      });
+      ctx.stroke();
+      each(Math.max(1, Math.round(3 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 5, s) * T + t * T * 0.8), y = oy + h(i, 6, s) * T;
+        ctx.save(); ctx.translate(x, y); ctx.scale(3, 0.8); FX.blob(ctx, 0, 0, cell * 1.6, '#d8b078', 0.28); ctx.restore();
+      });
+      // as bordas somem na areia
+      ctx.globalAlpha = 1;
+      const r0 = Math.min(W, H) * 0.3, r1 = Math.hypot(W, H) * 0.55, gr = ctx.createRadialGradient(W / 2, H / 2, r0, W / 2, H / 2, r1);
+      gr.addColorStop(0, 'rgba(190,145,85,0)'); gr.addColorStop(1, `rgba(190,145,85,${0.75 * pw})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    } else if (k === 'miragem') {
+      veu('255,196,110', 0.09 * pw);
+      // o ar tremendo: as faixas claras e onduladas que sobem devagar
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineWidth = cell * 0.5; ctx.lineCap = 'round';
+      each(Math.max(1, Math.round(4 * pow)), (ox, oy, i, s) => {
+        const y0 = oy + wrap(h(i, 2, s) * T - t * cell * 0.4), x0 = ox + h(i, 1, s) * T * 0.5;
+        ctx.beginPath(); for (let j = 0; j <= 12; j++) { const x = x0 + j * cell * 0.5, y = y0 + Math.sin(t * 2.2 + j * 0.9 + i) * cell * 0.18; if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+        ctx.globalAlpha = 0.05 + 0.03 * Math.sin(t * 1.5 + i); ctx.strokeStyle = '#fff2d0'; ctx.stroke();
+      });
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    } else if (k === 'nuvens') {
+      // as sombras das nuvens: as manchas grandes que passam devagar pelo chão
+      each(1, (ox, oy, i, s) => {
+        for (let j = 0; j < 3; j++) {
+          const x = ox + wrap(h(j, 1, s) * T + t * cell * 0.35), y = oy + wrap(h(j, 2, s) * T + t * cell * 0.12), r = cell * (2.4 + h(j, 3, s) * 2);
+          for (const dx of [0, -T]) for (const dy of [0, -T]) FX.blob(ctx, x + dx, y + dy, r, '#0a0e18', 0.2 * pw + 0.06);
+        }
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'nevoaRasteira') {
+      // a névoa no chão: as faixas baixas e compridas, que andam de lado
+      each(Math.max(2, Math.round(5 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T + t * cell * (0.3 + h(i, 3, s) * 0.3)), y = oy + h(i, 2, s) * T, r = cell * (1.6 + h(i, 4, s) * 1.4);
+        for (const dx of [0, -T]) { ctx.save(); ctx.translate(x + dx, y); ctx.scale(2.6, 0.55); FX.blob(ctx, 0, 0, r, '#eef3f6', 0.26 + 0.08 * Math.sin(t * 0.5 + i)); ctx.restore(); }
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'aurora') {
+      veu('6,10,30', 0.12 * pw);
+      // as cortinas de luz: as faixas verdes e roxas, onduladas, de um lado ao outro da cena
+      ctx.globalCompositeOperation = 'lighter';
+      const faixas = [['#3dffa0', 0.22], ['#7a5aff', 0.42], ['#3dd8ff', 0.62]];
+      for (const [cor, fy] of faixas) {
+        const passo = cell * 1.5, alto = cell * 5;
+        for (let x = 0; x < W; x += passo) {
+          const y = H * fy + Math.sin(x / (cell * 9) + t * 0.35 + fy * 7) * cell * 3, a = (0.13 + 0.08 * Math.sin(x / (cell * 4) - t * 0.8 + fy * 3)) * pw;
+          const gr = ctx.createLinearGradient(0, y - alto, 0, y + alto * 0.3);
+          gr.addColorStop(0, cor + '00'); gr.addColorStop(0.75, cor); gr.addColorStop(1, cor + '00');
+          ctx.globalAlpha = Math.max(0, a); ctx.fillStyle = gr; ctx.fillRect(x, y - alto, passo + 1, alto * 1.3);
+        }
+      }
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    } else if (k === 'cadentes') {
+      veu('6,10,30', 0.08 * pw);
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      each(1, (ox, oy, i, s) => {
+        for (let j = 0; j < 2; j++) {
+          const per = 3 + h(j, 4, s) * 4, f = ((t + h(j, 5, s) * per) % per) / 0.9;
+          if (f > 1) continue;
+          const x0 = ox + h(j, 1, s) * T, y0 = oy + h(j, 2, s) * T * 0.6, dx = cell * 4, dy = cell * 2, x = x0 + dx * f, y = y0 + dy * f;
+          const gr = ctx.createLinearGradient(x - dx * 0.5, y - dy * 0.5, x, y); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(255,250,220,0.95)');
+          ctx.globalAlpha = Math.sin(f * Math.PI); ctx.strokeStyle = gr; ctx.lineWidth = Math.max(1.5 * px, cell * 0.05); ctx.beginPath(); ctx.moveTo(x - dx * 0.5, y - dy * 0.5); ctx.lineTo(x, y); ctx.stroke();
+          FX.blob(ctx, x, y, cell * 0.25, '#fff4c0', Math.sin(f * Math.PI) * 0.8);
+        }
+      });
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    } else if (k === 'sangue') {
+      veu('110,0,10', 0.1 * pw);
+      chuva(36, cell * 0.5, 0.25, 1.4, 'rgba(170,20,30,0.7)', 1.3);
+      aneis(10, 'rgba(160,20,30,0.75)');
+    } else if (k === 'corrupcao') {
+      veu('40,70,20', 0.1 * pw);
+      chuva(32, cell * 0.45, 0.3, 1.3, 'rgba(150,230,90,0.55)', 1.2);
+      // as poças que fumegam (paradas: sorteadas por ladrilho)
+      each(2, (ox, oy, i, s) => {
+        const x = ox + h(i, 8, s) * T, y = oy + h(i, 9, s) * T, r = cell * (0.6 + h(i, 10, s) * 0.6);
+        ctx.globalAlpha = 0.35; ctx.fillStyle = '#5aa83a'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.55, h(i, 11, s), 0, TAU); ctx.fill();
+        for (let j = 0; j < 3; j++) { const f = (t * 0.25 + j / 3 + h(i, 12, s)) % 1; FX.blob(ctx, x + Math.sin(f * 4 + j) * cell * 0.3, y - f * cell * 1.6, cell * (0.25 + f * 0.5), '#9ad86a', (1 - f) * 0.3); }
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'esporos') {
+      ctx.globalCompositeOperation = 'lighter';
+      each(Math.max(3, Math.round(16 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T + Math.sin(t * (0.2 + h(i, 3, s) * 0.2) + i) * cell * 1.2), y = oy + wrap(h(i, 2, s) * T - t * cell * (0.15 + h(i, 4, s) * 0.2));
+        const tw = 0.5 + 0.5 * Math.sin(t * (0.7 + h(i, 5, s)) + i);
+        FX.blob(ctx, x, y, cell * (0.13 + h(i, 6, s) * 0.1), i % 3 ? '#7affe0' : '#c88aff', 0.45 + tw * 0.55);
+      });
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    } else if (k === 'submerso') {
+      veu('20,80,140', 0.2 * pw);
+      // a luz ondulando no fundo (as cáusticas) e as bolhas subindo
+      ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = '#bfefff'; ctx.lineWidth = Math.max(px, cell * 0.1); ctx.lineJoin = 'round';
+      each(Math.max(2, Math.round(6 * pow)), (ox, oy, i, s) => {
+        const x0 = ox + h(i, 1, s) * T, y0 = oy + h(i, 2, s) * T;
+        ctx.globalAlpha = 0.07 + 0.05 * Math.sin(t * 1.2 + i);
+        ctx.beginPath(); for (let j = 0; j <= 8; j++) { const x = x0 + j * cell * 0.6, y = y0 + Math.sin(t * 1.6 + j * 1.1 + i) * cell * 0.5 + Math.cos(t * 0.9 + j) * cell * 0.2; if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke();
+      });
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = 'rgba(220,245,255,0.75)'; ctx.lineWidth = Math.max(0.8 * px, cell * 0.015);
+      each(Math.max(2, Math.round(10 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 3, s) * T + Math.sin(t * 2 + i) * cell * 0.2), y = oy + wrap(h(i, 4, s) * T - t * cell * (0.8 + h(i, 5, s) * 0.6)), r = cell * (0.04 + h(i, 6, s) * 0.06);
+        ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'fagulhas') {
+      ctx.globalCompositeOperation = 'lighter';
+      const cores = ['#ff7ad8', '#7ad8ff', '#ffd77a', '#a87aff', '#7affa0'];
+      each(Math.max(3, Math.round(14 * pow)), (ox, oy, i, s) => {
+        const f = (t * (0.15 + h(i, 3, s) * 0.15) + h(i, 4, s)) % 1;
+        const x = ox + h(i, 1, s) * T + Math.sin(f * 12 + i) * cell * 0.4, y = oy + wrap(h(i, 2, s) * T - f * cell * 3);
+        const tw = Math.sin(t * (3 + h(i, 5, s) * 4) + i);
+        FX.blob(ctx, x, y, cell * 0.2, cores[i % 5], Math.max(0.15, tw) * Math.sin(f * Math.PI) * 1.2);
+        if (tw > 0.7) { ctx.globalAlpha = 0.8; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(0.8 * px, cell * 0.012); ctx.beginPath(); ctx.moveTo(x - cell * 0.08, y); ctx.lineTo(x + cell * 0.08, y); ctx.moveTo(x, y - cell * 0.08); ctx.lineTo(x, y + cell * 0.08); ctx.stroke(); }
+      });
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    }
   }
 
   /* ---- Quadro completo ---- */
@@ -16833,7 +18510,7 @@ const Render = (() => {
     }
 
     // A neblina fica por baixo dos tokens, para eles continuarem legíveis; chuva, neve e afins caem por cima de tudo.
-    const mist = sc.weather && sc.weather.k === 'neblina';
+    const mist = !!sc.weather && WEATHER_CHAO.has(sc.weather.k);      // (lote 158: e a névoa rasteira e as sombras das nuvens)
     if (mist) drawWeather(sc, px, t);
 
     layer(c => drawUpper(c, sc, px, t));
@@ -19189,6 +20866,7 @@ const UI = (() => {
     items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Gerar um lugar…', icon: 'house', run: () => Gerador.abrir() }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
       { label: 'Envelhecer esta cena…', icon: 'copy', run: () => Tempo.abrirEnvelhecer() },
       { label: 'O tempo passou…', icon: 'turns', run: () => Tempo.abrirPassou() },      // (lote 155)
+      { label: 'Pôr objetos de um tema…', icon: 'plus', run: () => Temas.abrirNaCena() },      // (lote 158)
       { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Organizar as cenas…', icon: 'folder', run: () => organizarCenas() },
       Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
     return items;
@@ -22040,7 +23718,8 @@ const UI = (() => {
         field('Hora do dia', seg('sc-tone', sc.tone, TONES.map(x => [x.id, x.n]), v => S({ tone: v, light: TONES.find(x => x.id === v).light }, 'Hora do dia')), 'stack'),
         field('Luz ambiente', seg('sc-light', sc.light, [['claro', 'Claro'], ['penumbra', 'Penumbra'], ['escuro', 'Escuro']], v => S({ light: v }, 'Luz ambiente')), 'stack'),
         note((sc.light === 'claro' ? 'Tudo iluminado. As fontes de luz não fazem diferença.' : sc.light === 'penumbra' ? 'Dá para enxergar, mas escuro. As fontes de luz clareiam ao redor.' : 'Os jogadores só enxergam o que alguma luz alcança, ou o que a visão no escuro deles permite.') + ' A hora do dia colore o mapa e já escolhe a luz; dá para trocar a luz depois.'),
-        field('Clima', inSelect('sc-wk', sc.weather.k || '', WEATHERS, v => S({ weather: Object.assign({}, sc.weather, { k: v }) }, 'Clima'))),
+        field('Clima', selClima('sc-wk', sc.weather.k || '', v => S({ weather: Object.assign({}, sc.weather, { k: v }) }, 'Clima'))),      // (lote 158: em grupos)
+        sc.weather.k === 'tempestade' ? toggle('sc-clarao', sc.weather.clarao !== false, v => S({ weather: Object.assign({}, sc.weather, { clarao: v }) }, 'Clarões dos raios'), 'Clarões dos raios (o mapa pisca de vez em quando)') : null,
         sc.weather.k ? field('Intensidade', inRange('sc-wp', sc.weather.pow, 0.2, 1, 0.05, v => Store.scn({ weather: Object.assign({}, Store.scene().weather, { pow: v }) }), 'Intensidade do clima')) : null,
         sc.weather.k && !App.anim ? note('As animações estão desligadas no menu ⋯, então o clima aparece parado.') : null)),
       acc(secR('c-light', 'Visão e névoa', false, [f.dynamic ? 'visão por paredes' : 'sem visão por paredes', f.manual ? 'névoa manual' : ''].filter(Boolean).join(' · '),
@@ -22995,10 +24674,13 @@ const Tour = (() => {
    10b2. AS NOVIDADES DO GERADOR (lote 157) — um passeio que abre as telas de verdade e acende cada novidade dos lotes
    146 a 156, com um texto curto. Toca uma vez para o mestre, ao abrir as Cenas (depois do tutorial de primeiro uso);
    fica no menu ⋯ ("Rever as novidades do gerador"). Usa o mesmo cartão do Tour; o que ele abre, ele fecha no fim.
+   (lote 158) mais quatro cartões: os objetos do tema, os climas novos, as salas novas e o "Pôr objetos de um tema…".
+   Quem já tinha visto o passeio do 157 vê, sozinho, só os quatro novos; pelo menu ⋯, o passeio inteiro.
    --------------------------------------------------------------- */
 const Novidades = (() => {
-  const VERSAO = 157, CHAVE = 'tinycats-novidades-gerador';
-  const vistas = () => { if ((Store.S.prefs.novidades || 0) >= VERSAO) return true; try { return Number(localStorage.getItem(CHAVE) || 0) >= VERSAO; } catch (e) { return false; } };
+  const VERSAO = 158, CHAVE = 'tinycats-novidades-gerador';
+  const vistaAte = () => { let v = Store.S.prefs.novidades || 0; try { v = Math.max(v, Number(localStorage.getItem(CHAVE) || 0)); } catch (e) { /* sem armazenamento */ } return v; };
+  const vistas = () => vistaAte() >= VERSAO;
   const marcar = () => { Store.S.prefs.novidades = VERSAO; Persist.meta(); try { localStorage.setItem(CHAVE, String(VERSAO)); } catch (e) { /* sem armazenamento */ } };
   const rect = sel => () => { const n = document.querySelector(sel); if (!n) return null; const r = n.getBoundingClientRect(); return r.width > 4 && r.height > 4 ? r : null; };
   // abre (ou troca para) o lugar do gerador, e abre o bloco pedido
@@ -23011,9 +24693,22 @@ const Novidades = (() => {
     if (n) n.scrollIntoView({ block: 'center' });
   }
   const passo = (title, text, o) => Object.assign({ title, text, semRender: true }, o || {});
+  // (lote 158) os cartões novos: os objetos do tema, os climas, as salas e a cena pronta
+  function novos158() {
+    return [
+      passo('Objetos do tema', 'São 15 categorias novas de objetos: taverna, escola de magia, prisão, fazenda, treino, ruínas, inverno, deserto, pântano, esgoto, acampamento militar, portais, teatro, convés e natureza fantástica. "Combina com o lugar" escolhe sozinho. Ou escolha uma, e quantos (Poucos, Alguns, Muitos).',
+        { enter: () => abrir('vila', 'tema'), target: rect('#ger-bl-tema'), side: 'left' }),
+      passo('Climas novos', 'Agora são 23 climas, em grupos. Os novos: tempestade com raios, garoa, granizo, nevasca, tempestade de areia, calor e miragem, sombras de nuvens, névoa rasteira, aurora, estrelas cadentes, chuva de sangue, chuva da corrupção, esporos brilhantes, debaixo d\'água e fagulhas arcanas. Os raios piscam: na aba Cena, dá para desligar os clarões.',
+        { enter: () => abrir('vila', 'amb', '#ger-clima'), target: rect('#ger-clima'), side: 'left' }),
+      passo('Salas novas', 'Nas casas (Sob medida, Furtividade e as Zonas à mão), seis usos novos de sala: salão da taverna, sala de magia, interrogatório, treino, portal e teatro. Cada uma já vem mobiliada com os objetos novos.',
+        { enter: () => abrir('casarao', 'zonas'), target: rect('#ger-bl-zonas'), side: 'left' }),
+      passo('Numa cena pronta', 'No menu das cenas, "Pôr objetos de um tema…" espalha os objetos de um tema na cena aberta. O Desfazer tira todos de uma vez. E todos os objetos novos estão também no painel dos Objetos, para pôr à mão.',
+        { enter: () => { UI.closeModal(); }, target: rect('#sceneBtn'), side: 'below' }),
+    ];
+  }
   function passos() {
     return [
-      passo('Novidades no gerador de mapas', 'São 12 novidades. Eu abro cada tela e mostro onde fica. Você só lê e avança: nada muda nas cenas.', { next: 'Começar' }),
+      passo('Novidades no gerador de mapas', 'São 16 novidades. Eu abro cada tela e mostro onde fica. Você só lê e avança: nada muda nas cenas.', { next: 'Começar' }),
       passo('Gerar um lugar…', 'Tudo começa aqui: no menu das cenas, "Gerar um lugar…". Na coluna da esquerda, os lugares. Dois são novos: Sob medida e Por exemplo.',
         { enter: () => abrir('sobmedida', 'lugar', '#ger-lugar'), target: rect('#ger-lugar'), side: 'right' }),
       passo('Descrever com a IA', 'Escreva o lugar do seu jeito. A IA escolhe o gerador, preenche a ficha e agora também desenha a planta: onde fica a casa, cada cômodo, o lago, a mata. Depois dá para mudar tudo.',
@@ -23040,10 +24735,16 @@ const Novidades = (() => {
         { enter: () => { UI.closeModal(); }, target: rect('#sceneBtn'), side: 'below' }),
       passo('Do Mapa-múndi', 'O "Gerar a cena aqui" agora traz o reino dono da região (as cores e o nome nos guardas) e o que está por perto, numa nota só sua.',
         { enter: () => { UI.closeModal(); } }),
-      passo('Pronto', 'Para ver de novo: menu ⋯ › "Rever as novidades do gerador".', { next: 'Concluir', enter: () => { UI.closeModal(); } }),
-    ];
+    ].concat(novos158(), [
+      passo('Pronto', 'Para ver de novo: menu ⋯ › "Rever as novidades do gerador".', { next: 'Concluir', enter: () => { UI.closeModal(); } })]);
   }
-  function start() { if (!isGM()) return; Tour.start({ passos: passos(), aoFim: () => UI.closeModal(), marcar }); }
+  // o:{ auto: true } (o que toca sozinho): quem já viu o passeio do lote 157 vê só os cartões novos
+  function start(o) {
+    if (!isGM()) return;
+    const so = !!(o && o.auto) && vistaAte() >= 157;
+    const ps = so ? [passo('Novidades: objetos e climas', 'São 4 novidades. Eu abro cada tela e mostro onde fica. Você só lê e avança.', { next: 'Começar' })].concat(novos158(), [passo('Pronto', 'Para ver tudo de novo: menu ⋯ › "Rever as novidades do gerador".', { next: 'Concluir', enter: () => { UI.closeModal(); } })]) : passos();
+    Tour.start({ passos: ps, aoFim: () => UI.closeModal(), marcar });
+  }
   return { start, vistas, marcar, VERSAO };
 })();
 /* ---------------------------------------------------------------
@@ -41065,6 +42766,8 @@ const PlantaAndares = (() => {
     dormitorio: 'Dormitório', refeitorio: 'Refeitório', arsenal: 'Arsenal', comandante: 'Sala do comandante', guarda: 'Sala da guarda',
     cela: 'Cela', sotao: 'Sótão', adega: 'Adega', loja: 'Loja', forja: 'Forja', vigia: 'Sala do vigia',
     misteriosa: 'Sala misteriosa', secreta: 'Sala secreta', reuniao: 'Sala de reunião (com o mapa)', laboratorio: 'Laboratório de alquimia', cofre: 'Cofre', cofreForte: 'Cofre', tunel: 'Túnel de fuga',
+    // (lote 158) as salas dos temas
+    tavernaSalao: 'Salão da taverna', aula: 'Sala de magia', interrogatorio: 'Sala de interrogatório', treino: 'Sala de treino', portal: 'Sala do portal', teatro: 'Teatro',
   };
   const nome = p => NOMES[p] || p;
   const MAX_SALAS = 12;
@@ -48400,6 +50103,17 @@ const Furtividade = (() => {
     }
     return out;
   }
+  // (lote 158) solto no meio da sala (longe das paredes), em lugares sorteados: as mesas de jogo, as carteiras, a plateia
+  function solto(K, q, id, fw, fh, n) {
+    let feitos = 0;
+    for (let k = 0; k < (n || 1); k++) {
+      const cand = [];
+      for (let y = q.y + 1; y + fh <= q.y + q.h - 1; y++) for (let x = q.x + 1; x + fw <= q.x + q.w - 1; x++) cand.push([x, y]);
+      if (!embaralha(K.r, cand).some(([x, y]) => K.livreR(x - 1, y, fw + 2, fh) && K.poeR(id, x, y, fw, fh, 0))) break;
+      feitos++;
+    }
+    return feitos;
+  }
   // o tapete: pintado no fundo (fica por baixo de tudo e não ocupa)
   const tapete = (K, q, m) => { m = m == null ? 1 : m; if (q.w - 2 * m >= 2 && q.h - 2 * m >= 2) K.pinta('tapete', { x: q.x + m + 0.15, y: q.y + m + 0.15, w: q.w - 2 * m - 0.3, h: q.h - 2 * m - 0.3 }); };
 
@@ -48439,7 +50153,38 @@ const Furtividade = (() => {
     arsenal(K, q) { encosta(K, q, 'estante', 2, 1, 1); for (let i = 0; i < 3; i++) canto(K, q, 'armas'); canto(K, q, 'caixote'); canto(K, q, 'boneco'); },
     comandante(K, q) { encosta(K, q, 'cama', 1, 2, 1); const m = noMeio(K, q, 'mesaGuerra', 2, 2, 0) || noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); canto(K, q, 'estandarte'); canto(K, q, 'braseiro'); },
     guarda(K, q) { const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 3); canto(K, q, 'armas'); canto(K, q, 'braseiro'); canto(K, q, 'bau'); },
-    cela(K, q) { canto(K, q, 'grilhoes'); canto(K, q, 'feno'); canto(K, q, 'jarro'); },
+    cela(K, q) { canto(K, q, 'grilhoes'); if (!encosta(K, q, 'catre', 1, 2, 1)) canto(K, q, 'feno'); canto(K, q, K.r() < 0.5 ? 'balde' : 'jarro'); },      // (lote 158: o catre e o balde)
+    // (lote 158) as salas dos temas novos: a taverna, a sala de magia, o interrogatório, o treino, o portal e o teatro
+    tavernaSalao(K, q) {
+      encosta(K, q, 'chopeira', 2, 1, 1); encosta(K, q, 'lareiraEspeto', 2, 1, 1); canto(K, q, 'quadroAvisos');
+      if (q.w * q.h >= 36) encosta(K, q, 'palcoBardo', 2, 2, 1);
+      solto(K, q, 'mesaJogo', 1, 1, Math.max(1, Math.floor(q.w * q.h / 14)));
+      canto(K, q, 'canecas'); canto(K, q, 'barril'); if (K.r() < 0.6) canto(K, q, 'cachorro');
+    },
+    aula(K, q) {
+      encosta(K, q, 'quadroRunas', 2, 1, 1); encosta(K, q, 'estante', 2, 1, 1);
+      solto(K, q, 'carteira', 1, 1, Math.max(2, Math.floor(q.w * q.h / 8)));
+      canto(K, q, 'globoCeleste'); canto(K, q, 'cristalVidencia'); canto(K, q, 'pilhaLivros'); canto(K, q, 'suporteVarinhas');
+      if (q.w * q.h >= 30) canto(K, q, 'telescopio'); if (K.r() < 0.5) solto(K, q, 'pergaminhosVoando', 1, 1, 1);
+    },
+    interrogatorio(K, q) {
+      noMeio(K, q, 'mesaInterrogatorio', 2, 1, 0); canto(K, q, 'grilhoes'); canto(K, q, 'balde'); canto(K, q, 'molhoChaves');
+      if (q.w * q.h >= 24) encosta(K, q, 'rodaTortura', 2, 2, 1); else canto(K, q, 'cepo');
+      if (q.w * q.h >= 30) solto(K, q, 'gaiolaSuspensa', 1, 1, 1);
+    },
+    treino(K, q) {
+      if (!(q.w >= 7 && q.h >= 7 && noMeio(K, q, 'ringue', 3, 3, 0))) noMeio(K, q, 'tapeteLuta', 2, 2, 0);
+      encosta(K, q, 'cavaleteArmas', 2, 1, 1); canto(K, q, 'pesos'); canto(K, q, 'boneco'); canto(K, q, 'posteEscudos'); if (q.w * q.h >= 30) canto(K, q, 'alvo');
+    },
+    portal(K, q) {
+      if (!noMeio(K, q, 'portalArcano', 2, 2, 0)) noMeio(K, q, 'circuloTeleporte', 2, 2, 0);
+      canto(K, q, 'pilarEnergia'); canto(K, q, 'pilarEnergia'); canto(K, q, 'orbe'); canto(K, q, 'cristaisChao'); solto(K, q, 'runasChao', 2, 2, 1);
+    },
+    teatro(K, q) {
+      if (!encosta(K, q, 'palcoCortina', 3, 2, 1, ['n'])) encosta(K, q, 'palcoBardo', 2, 2, 1);
+      solto(K, q, 'cadeirasPlateia', 2, 1, Math.max(2, Math.floor(q.w * q.h / 10)));
+      encosta(K, q, 'araraFigurinos', 2, 1, 1); canto(K, q, 'mascaras'); canto(K, q, 'alaude'); canto(K, q, 'harpa'); canto(K, q, 'tambor');
+    },
     torre(K, q) { canto(K, q, 'braseiro'); canto(K, q, 'armas'); canto(K, q, 'barril'); },
     estabulo(K, q) { encosta(K, q, 'cocho', 2, 1, 2); for (let i = 0; i < 4; i++) canto(K, q, 'feno'); },
     // a guilda
@@ -48987,7 +50732,8 @@ const Furtividade = (() => {
     poco: { n: 'Poço', w: 2, h: 2 }, estabulo: { n: 'Estábulo', w: 8, h: 6 }, canil: { n: 'Canil', w: 3, h: 3 }, mesaJardim: { n: 'Mesa de jardim', w: 5, h: 3 }, varal: { n: 'Varal', w: 4, h: 3 },
   };
   const PORTES = [['simples', 'Simples'], ['boa', 'Boa'], ['nobre', 'Nobre']];
-  const SALAS_TERREO = ['sala', 'cozinha', 'banheiro', 'quarto', 'quartoSenhor', 'escritorio', 'biblioteca', 'salao', 'despensa', 'criados', 'capela', 'galeria', 'vestibulo', 'deposito', 'loja', 'oficina', 'misteriosa', 'laboratorio', 'adega'];
+  const SALAS_TERREO = ['sala', 'cozinha', 'banheiro', 'quarto', 'quartoSenhor', 'escritorio', 'biblioteca', 'salao', 'despensa', 'criados', 'capela', 'galeria', 'vestibulo', 'deposito', 'loja', 'oficina', 'misteriosa', 'laboratorio', 'adega',
+    'tavernaSalao', 'aula', 'interrogatorio', 'treino', 'portal', 'teatro'];      // (lote 158)
   function specLimpa(s) {
     s = s && typeof s === 'object' ? s : {};
     const terreo = (Array.isArray(s.terreo) ? s.terreo : []).filter(x => SALAS_TERREO.includes(x) && MOB[x]).slice(0, 12);
@@ -50104,6 +51850,298 @@ const MissaoCenas = (() => {
   return { eh, soNome, porNome, missoes, copia, ligar, sincronizar, balao, secao, abrirMissao, porNaCena, lugaresDaCena, prefs, controles, aplicar, nome, POVOADOS };
 })();
 /* ---------------------------------------------------------------
+   10gs. OS OBJETOS DO TEMA (lote 158) — as 15 categorias novas de objetos (06cc, 06cd, 06ce) espalhadas na cena, em
+   grupinhos: um objeto grande no meio (o "núcleo": a chopeira, o ringue, o portal) e os menores em volta.
+   · No gerador: o bloco "Objetos do tema". "Combina com o lugar" escolhe sozinho (a vila ganha a fazenda, o porto o
+     convés, a masmorra de esgoto o esgoto, o encontro na neve o inverno…); ou o mestre escolhe um dos 15, ou Nenhum.
+     Poucos, Alguns ou Muitos. Os objetos entram quando a cena é criada (antes de Povoar: os inimigos ficam fora deles).
+   · Numa cena pronta: menu das cenas › "Pôr objetos de um tema…" (o Desfazer tira tudo de uma vez).
+   As regras: não tampa porta (nem o quadrado na frente dela), não fica na água nem em cima de outro token, não cruza
+   parede; os temas de dentro (a taverna, a escola, a prisão, o esgoto) ficam dentro das salas, os de fora (a fazenda, o
+   inverno, o deserto, o pântano, o acampamento, a natureza fantástica) no quintal ou no campo; na masmorra, nas
+   catacumbas e no interior, sempre dentro; na vila, na cidade, no porto e no campo (os prédios com o telhado pintado),
+   sempre fora, longe dos prédios, das ruas, do rio e da praça. Os objetos de encostar (o quadro de avisos, a chopeira, a comporta) procuram
+   uma parede para as costas. Entre um objeto e outro fica um quadrado livre, para dar passagem.
+   --------------------------------------------------------------- */
+const Temas = (() => {
+  // [id, nome, onde, os núcleos (o primeiro que couber), os outros objetos (sorteados nesta ordem, com repetição)]
+  const LISTA = [
+    ['taverna', 'Taverna e estalagem', 'dentro', ['chopeira', 'lareiraEspeto', 'palcoBardo'], ['mesaJogo', 'canecas', 'quadroAvisos', 'mesaJogo', 'cachorro', 'barril', 'beliche', 'banco', 'mesaJogo']],
+    ['escola', 'Escola de magia', 'dentro', ['quadroRunas', 'globoCeleste', 'cristalVidencia'], ['carteira', 'pilhaLivros', 'carteira', 'telescopio', 'pergaminhosVoando', 'suporteVarinhas', 'estante', 'carteira']],
+    ['prisao', 'Prisão e interrogatório', 'dentro', ['mesaInterrogatorio', 'rodaTortura', 'troncoCastigo'], ['catre', 'balde', 'cepo', 'gaiolaSuspensa', 'molhoChaves', 'grilhoes', 'catre', 'balde']],
+    ['fazenda', 'Fazenda e celeiro', 'fora', ['galinheiro', 'chiqueiro', 'arado'], ['espantalho', 'colmeia', 'aboboras', 'ferramentasFazenda', 'moinhoMao', 'feno', 'sacos', 'aboboras', 'carroca']],
+    ['treino', 'Treino e arena', 'tanto', ['ringue', 'tapeteLuta', 'arquibancada'], ['cavaleteArmas', 'pesos', 'posteEscudos', 'boneco', 'alvo', 'podio', 'pesos']],
+    ['ruinas', 'Ruínas antigas', 'tanto', ['portalPedra', 'mosaico', 'escadariaPartida'], ['colunaQuebrada', 'estatuaSemCabeca', 'obelisco', 'altarMusgo', 'escombros', 'colunaQuebrada', 'estatuaSemCabeca']],
+    ['inverno', 'Inverno e montanha', 'fora', ['iglu', 'lagoCongelado', 'pinheiroNevado'], ['bonecoNeve', 'pinheiroNevado', 'treno', 'pegadas', 'estalactitesGelo', 'pinheiroNevado', 'pegadas']],
+    ['deserto', 'Deserto e oásis', 'fora', ['tendaDeserto', 'tapeteAlmofadas', 'duna'], ['camelo', 'palmeira', 'jarrosAgua', 'caveiraBoi', 'palmeira', 'duna', 'jarrosAgua']],
+    ['pantano', 'Pântano e brejo', 'fora', ['palafita', 'caldeiraoBruxa', 'sapoGigante'], ['juncos', 'troncoPodre', 'barcoJunco', 'juncos', 'ponteTabuas', 'cogumelos', 'juncos']],
+    ['esgoto', 'Esgoto e subterrâneo', 'dentro', ['comporta', 'passarela', 'canos'], ['gradeEsgoto', 'ninhoRatos', 'lixo', 'escadaFerro', 'canos', 'lixo', 'ninhoRatos']],
+    ['militar', 'Acampamento militar e cerco', 'fora', ['tendaComando', 'torreVigiaMadeira', 'mesaGuerra'], ['palicada', 'barrisPolvora', 'bandeiras', 'cavalosFrisa', 'tamborGuerra', 'barraca', 'fogueira', 'cavaleteArmas']],
+    ['portais', 'Portais e magia', 'tanto', ['portalArcano', 'circuloTeleporte', 'runasChao'], ['pilarEnergia', 'pedraFlutuante', 'orbe', 'runasChao', 'cristaisChao', 'pilarEnergia', 'orbe']],
+    ['teatro', 'Teatro e música', 'tanto', ['palcoCortina', 'palcoBardo'], ['cadeirasPlateia', 'cadeirasPlateia', 'araraFigurinos', 'cadeirasPlateia', 'mascaras', 'alaude', 'tambor', 'harpa']],
+    ['conves', 'Convés e porto', 'tanto', ['mastro', 'cargaAmarrada', 'leme'], ['canhao', 'cordasEnroladas', 'ancora', 'redesPesca', 'barril', 'canhao', 'cordasEnroladas', 'prancha']],
+    ['fantastica', 'Natureza fantástica', 'fora', ['arvoreOca', 'cogumeloGigante', 'ninhoGigante'], ['cristaisChao', 'florCarnivora', 'teiaGigante', 'toca', 'cogumeloGigante', 'cristaisChao', 'florCarnivora']],
+  ].map(([id, n, onde, nucleo, itens]) => ({ id, n, onde, nucleo, itens }));
+  const tema = id => LISTA.find(x => x.id === id) || null;
+  const QTDS = [['poucos', 'Poucos'], ['alguns', 'Alguns'], ['muitos', 'Muitos']];
+  const GRUPOS = { poucos: 1, alguns: 2, muitos: 3 }, POR_GRUPO = { poucos: 4, alguns: 6, muitos: 8 };
+  // os lugares fechados: os objetos ficam sempre dentro (fora, ali, é a rocha ou o vazio)
+  const FECHADOS = new Set(['masmorra', 'catacumbas', 'interior']);
+  // os lugares de casa com quintal (a casa por dentro se vê): o tema escolhe dentro ou fora; nos outros lugares de fora
+  // (a vila, o porto, a cidade, o campo), os prédios têm o telhado pintado, e os objetos ficam sempre do lado de fora
+  const casa = id => Furtividade.IDS.includes(id) || id === 'sobmedida' || id === 'exemplo';
+  const MOLHADO = new Set(['agua', 'fosso', 'lava', 'abismo']);      // o chão onde não se põe nada
+
+  /* ---- "Combina com o lugar": o tema que o lugar pede (ou nenhum) ---- */
+  function auto(lugarId, op) {
+    op = op || {};
+    const M = { vila: 'fazenda', cidade: 'teatro', cidadeGrande: 'teatro', porto: 'conves', castelo: 'treino', ruinas: 'ruinas', catacumbas: 'ruinas', arena: 'treino', acampamento: 'militar', fortaleza: 'prisao', torre: 'militar' };
+    if (M[lugarId]) return M[lugarId];
+    if (lugarId === 'interior') return op.tipo === 'taverna' ? 'taverna' : op.tipo === 'quartel' ? 'treino' : '';
+    if (lugarId === 'masmorra') return { esgoto: 'esgoto', cisterna: 'esgoto', torre: 'portais', laboratorio: 'escola', ruinas: 'ruinas', templo: 'ruinas', cripta: 'ruinas', tumba: 'ruinas', caverna: 'fantastica', covil: 'fantastica', colmeia: 'fantastica', gelo: 'inverno', navio: 'conves', fortaleza: 'treino', pedra: 'prisao' }[op.tipo] || '';
+    if (lugarId === 'encontro') {
+      if (op.situacao === 'ruinas') return 'ruinas';
+      if (op.situacao === 'acampamento') return 'militar';
+      return { neve: 'inverno', tundra: 'inverno', deserto: 'deserto', pantano: 'pantano', floresta: 'fantastica', selva: 'fantastica', cristais: 'fantastica', corrompida: 'fantastica', savana: 'deserto' }[op.terreno] || '';
+    }
+    if (lugarId === 'regiao') { const b = String(op.bioma || ''); return /neve|gelo|tundra|glaci/.test(b) ? 'inverno' : /deserto|areia|savana/.test(b) ? 'deserto' : /pantano|mangue|brejo/.test(b) ? 'pantano' : /floresta|selva|fung|cristal|corromp/.test(b) ? 'fantastica' : ''; }
+    return '';
+  }
+  // o que vale agora (a escolha guardada): 'auto', '' (nenhum) ou o id de um tema
+  const prefs = () => { const o = App.opt; return { id: o.temaId === '' || tema(o.temaId) ? o.temaId : 'auto', qtd: GRUPOS[o.temaQtd] ? o.temaQtd : 'alguns' }; };
+  const escolhido = (L, op) => { const p = prefs(); return p.id === 'auto' ? auto(L.id, op) : p.id; };
+
+  /* ---- a grade da cena: o que está livre, as paredes (as arestas), as salas (os pedaços) e o que é dentro ---- */
+  function grade(sc, formas) {
+    const c = sc.cell, W = sc.cols, H = sc.rows, V = Vigia.novo(W, H);
+    for (const w of sc.walls || []) if (w.k !== 'veil') Vigia.parede(V, w.x1 / c, w.y1 / c, w.x2 / c, w.y2 / c, false, true);
+    const livre = new Uint8Array(W * H).fill(1);
+    const tira = (x0, y0, w, h) => { for (let y = Math.max(0, Math.floor(y0)); y < Math.min(H, Math.ceil(y0 + h)); y++) for (let x = Math.max(0, Math.floor(x0)); x < Math.min(W, Math.ceil(x0 + w)); x++) livre[y * W + x] = 0; };
+    for (const t of sc.tokens || []) { const [w, h] = tokWH(t); tira(t.x / c + 0.05, t.y / c + 0.05, w - 0.1, h - 0.1); }
+    // a água (as áreas de terreno de água, de fosso, de lava e o abismo; o rio, pela linha)
+    for (const s of sc.shapes || []) {
+      if (!s.ter || !MOLHADO.has(s.ter.t)) continue;
+      if (s.k === 'free' && Array.isArray(s.pts)) {      // o rio (a linha grossa)
+        const P = s.pts, m = (s.sw || c) / 2 / c + 0.45;
+        for (let i = 0; i + 3 < P.length; i += 2) {
+          const ax = P[i] / c, ay = P[i + 1] / c, bx = P[i + 2] / c, by = P[i + 3] / c;
+          for (let y = Math.max(0, Math.floor(Math.min(ay, by) - m)); y <= Math.min(H - 1, Math.ceil(Math.max(ay, by) + m)); y++) for (let x = Math.max(0, Math.floor(Math.min(ax, bx) - m)); x <= Math.min(W - 1, Math.ceil(Math.max(ax, bx) + m)); x++) if (Geo.distSeg(x + 0.5, y + 0.5, ax, ay, bx, by) < m) livre[y * W + x] = 0;
+        }
+        continue;
+      }
+      if (s.k === 'rect' || s.k === 'ell') tira(Math.min(s.x, s.x + s.w) / c, Math.min(s.y, s.y + s.h) / c, Math.abs(s.w) / c, Math.abs(s.h) / c);
+      else if (s.k === 'poly' && Array.isArray(s.pts)) {
+        const P = s.pts; let xa = Infinity, ya = Infinity, xb = -Infinity, yb = -Infinity; for (let i = 0; i < P.length; i += 2) { xa = Math.min(xa, P[i]); xb = Math.max(xb, P[i]); ya = Math.min(ya, P[i + 1]); yb = Math.max(yb, P[i + 1]); }
+        for (let y = Math.max(0, Math.floor(ya / c)); y < Math.min(H, Math.ceil(yb / c)); y++) for (let x = Math.max(0, Math.floor(xa / c)); x < Math.min(W, Math.ceil(xb / c)); x++) {
+          const px = (x + 0.5) * c, py = (y + 0.5) * c; let d = false; for (let i = 0, j = P.length - 2; i < P.length; j = i, i += 2) { const xi = P[i], yi = P[i + 1], xj = P[j], yj = P[j + 1]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) d = !d; }
+          if (d) livre[y * W + x] = 0;
+        }
+      }
+    }
+    // as partes do plano do gerador (em quadrados): os prédios (com o telhado pintado), as ruas, o rio e a praça
+    for (const f of Array.isArray(formas) ? formas : []) {
+      if (!f || !f.k) continue;
+      const pts = f.k === 'circ' ? [[f.x - f.r, f.y - f.r], [f.x + f.r, f.y + f.r]] : Array.isArray(f.pts) ? f.pts : [];
+      if (!pts.length) continue;
+      const m = f.k === 'linha' ? (f.hw || 0.5) + 0.5 : 0.5;
+      const xa = Math.max(0, Math.floor(Math.min(...pts.map(q => q[0])) - m)), xb = Math.min(W - 1, Math.ceil(Math.max(...pts.map(q => q[0])) + m));
+      const ya = Math.max(0, Math.floor(Math.min(...pts.map(q => q[1])) - m)), yb = Math.min(H - 1, Math.ceil(Math.max(...pts.map(q => q[1])) + m));
+      for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+        const px = x + 0.5, py = y + 0.5;
+        let dentroF = false;
+        if (f.k === 'circ') dentroF = Math.hypot(px - f.x, py - f.y) < f.r + 0.5;
+        else if (f.k === 'linha') { for (let i = 0; i + 1 < pts.length && !dentroF; i++) if (Geo.distSeg(px, py, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]) < m) dentroF = true; }
+        else { for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) dentroF = !dentroF; } if (!dentroF) for (let i = 0, j = pts.length - 1; i < pts.length && !dentroF; j = i++) if (Geo.distSeg(px, py, pts[j][0], pts[j][1], pts[i][0], pts[i][1]) < 0.5) dentroF = true; }
+        if (dentroF) livre[y * W + x] = 0;
+      }
+    }
+    // as portas: o quadrado de cada lado fica livre (ninguém tampa a passagem)
+    for (const w of sc.walls || []) if (w.k === 'door') {
+      const x1 = w.x1 / c, y1 = w.y1 / c, x2 = w.x2 / c, y2 = w.y2 / c;
+      for (let y = Math.max(0, Math.floor(Math.min(y1, y2)) - 2); y <= Math.min(H - 1, Math.ceil(Math.max(y1, y2)) + 1); y++) for (let x = Math.max(0, Math.floor(Math.min(x1, x2)) - 2); x <= Math.min(W - 1, Math.ceil(Math.max(x1, x2)) + 1); x++) if (Geo.distSeg(x + 0.5, y + 0.5, x1, y1, x2, y2) < 1.2) livre[y * W + x] = 0;
+    }
+    // os pedaços (sem cruzar parede) e os que tocam a borda (o "fora")
+    const passa = (x, y, dx, dy) => (dx ? !V.pV[y * (W + 1) + x + (dx > 0 ? 1 : 0)] : !V.pH[(y + (dy > 0 ? 1 : 0)) * W + x]);
+    const comp = new Int32Array(W * H).fill(-1), tam = [], borda = [];
+    for (let q = 0; q < W * H; q++) {
+      if (comp[q] >= 0) continue;
+      const id = tam.length, fila = [q]; comp[q] = id; let n = 0, b = false;
+      for (let i = 0; i < fila.length; i++) {
+        const u = fila[i], x = u % W, y = (u - x) / W; n++; if (x === 0 || y === 0 || x === W - 1 || y === H - 1) b = true;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const vx = x + dx, vy = y + dy; if (vx < 0 || vy < 0 || vx >= W || vy >= H) continue; const v = vy * W + vx; if (comp[v] < 0 && passa(x, y, dx, dy)) { comp[v] = id; fila.push(v); } }
+      }
+      tam.push(n); borda.push(b);
+    }
+    const nDentro = tam.reduce((s, n, i) => s + (borda[i] ? 0 : n), 0);
+    // o espaço em volta de cada quadrado (na janela 5 × 5, do mesmo pedaço): o corredor estreito tem pouco, e lá não se põe nada
+    const aberto = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const q = y * W + x; let n = 0;
+      for (let j = Math.max(0, y - 2); j <= Math.min(H - 1, y + 2); j++) for (let i = Math.max(0, x - 2); i <= Math.min(W - 1, x + 2); i++) if (comp[j * W + i] === comp[q] && livre[j * W + i]) n++;
+      aberto[q] = n;
+    }
+    return { W, H, V, livre, comp, tam, borda, passa, aberto, temDentro: nDentro >= 6, dentro: q => !borda[comp[q]] };
+  }
+
+  /* ---- espalhar: os grupinhos, cada um com o núcleo e os objetos em volta → os tokens novos (fora da cena) ---- */
+  function espalhar(sc, temaId, qtd, seed, o) {
+    const T = tema(temaId);
+    if (!T || !sc || !sc.cols || !sc.rows) return [];
+    o = o || {};
+    const G = grade(sc, o.formas), { W, H, livre, comp } = G, c = sc.cell, r = mulberry(((seed >>> 0) || 1) ^ 0x7e3a5);
+    const usado = new Uint8Array(W * H);      // 1: um objeto; 2: o quadrado de folga em volta
+    const onde = o.dentro || (o.lugar && FECHADOS.has(o.lugar)) ? 'dentro' : o.lugar && !casa(o.lugar) ? 'fora' : T.onde;
+    const serve = q => {
+      if (!livre[q] || usado[q]) return false;
+      if (G.tam[comp[q]] < 6 || G.aberto[q] < 13) return false;      // (o corredor e o canto apertado ficam livres)
+      if (onde === 'dentro' && G.temDentro) return G.dentro(q);
+      if (onde === 'fora') return !G.temDentro || !G.dentro(q) || G.tam[comp[q]] > W * H * 0.5;
+      return true;
+    };
+    const quantos = { grupos: GRUPOS[qtd] || 2, por: POR_GRUPO[qtd] || 6 };
+    let lugaresAncora = []; for (let q = 0; q < W * H; q++) if (serve(q)) lugaresAncora.push(q);
+    if (!lugaresAncora.length) return [];
+    const largos = lugaresAncora.filter(q => G.aberto[q] >= 22);      // a âncora, de preferência no meio de um chão largo
+    const nLivres = lugaresAncora.length;
+    if (largos.length >= 4) lugaresAncora = largos;
+    quantos.grupos = Math.max(1, Math.min(quantos.grupos, Math.floor(nLivres / 30) + 1));
+    // o retângulo w × h com o canto em (x, y) cabe? (tudo livre, no mesmo pedaço, sem parede no meio)
+    const cabe = (x, y, w, h) => {
+      if (x < 0 || y < 0 || x + w > W || y + h > H) return false;
+      const k0 = comp[y * W + x];
+      for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) {
+        const q = j * W + i; if (!serve(q) || comp[q] !== k0) return false;
+        if (i + 1 < x + w && !G.passa(i, j, 1, 0)) return false;
+        if (j + 1 < y + h && !G.passa(i, j, 0, 1)) return false;
+      }
+      return true;
+    };
+    // as costas na parede: quantos quadrados do lado pedido têm parede (n, l, s, o)
+    const naParede = (x, y, w, h, lado) => {
+      let n = 0, tot = 0;
+      if (lado === 'n' || lado === 's') for (let i = x; i < x + w; i++) { tot++; const yy = lado === 'n' ? y : y + h; if (yy === 0 || yy === H || G.V.pH[yy * W + i]) n++; }
+      else for (let j = y; j < y + h; j++) { tot++; const xx = lado === 'o' ? x : x + w; if (xx === 0 || xx === W || G.V.pV[j * (W + 1) + xx]) n++; }
+      return tot ? n / tot : 0;
+    };
+    const LADOS = ['n', 'l', 's', 'o'];
+    const medidas = (id, rot) => { const d = Props.P[id]; if (d.fw) return (rot / 90) % 2 ? [d.fh, d.fw] : [d.fw, d.fh]; const s = d.size || 1; return [s, s]; };
+    const marcar = (x, y, w, h) => {
+      for (let j = y - 1; j <= y + h; j++) for (let i = x - 1; i <= x + w; i++) { if (i < 0 || j < 0 || i >= W || j >= H) continue; const q = j * W + i; usado[q] = i >= x && i < x + w && j >= y && j < y + h ? 1 : Math.max(usado[q], 2); }
+    };
+    const novos = [];
+    // põe o objeto id num dos quadrados da lista (na ordem); com costas, prefere encostar
+    const por = (id, lista) => {
+      const d = Props.P[id];
+      if (!d) return false;
+      const rots = d.fw || d.costas ? [0, 90, 180, 270] : [0];
+      let melhor = null;
+      for (let k = 0; k < lista.length && k < 140; k++) {
+        const q = lista[k], cx = q % W, cy = (q - cx) / W;
+        for (const rot of rots) {
+          const [w, h] = medidas(id, rot), x = cx - Math.floor((w - 1) / 2), y = cy - Math.floor((h - 1) / 2);
+          if (!cabe(x, y, w, h)) continue;
+          const enc = d.costas ? naParede(x, y, w, h, LADOS[(LADOS.indexOf(d.costas) + rot / 90) % 4]) : 0;
+          const nota = enc - k * 0.02 + (rot === 0 ? 0.05 : 0);
+          if (!melhor || nota > melhor.nota) melhor = { x, y, w, h, rot, nota };
+          if (!d.costas && melhor) break;
+        }
+        if (melhor && (!d.costas || melhor.nota > 0.6)) break;
+      }
+      if (!melhor) return false;
+      const t = Props.novo(sc, id, melhor.x * c, melhor.y * c, d.fw ? Math.max(d.fw, d.fh) : d.size || 1, false);
+      if (d.fw) { t.fw = d.fw; t.fh = d.fh; t.size = Math.max(d.fw, d.fh); t.x = melhor.x * c; t.y = melhor.y * c; delete t.q0; }
+      else { t.x = melhor.x * c; t.y = melhor.y * c; }
+      if (melhor.rot) t.rot = melhor.rot;
+      else if (!d.fw && !d.costas && r() < 0.5) t.rot = [0, 90, 180, 270][Math.floor(r() * 4)];      // os soltos, virados de qualquer jeito
+      marcar(melhor.x, melhor.y, melhor.w, melhor.h);
+      novos.push(t);
+      return true;
+    };
+    const ancoras = [];
+    for (let g = 0; g < quantos.grupos; g++) {
+      // a âncora: o lugar livre mais longe das outras (de 40 sorteados)
+      let a = -1, md = -1;
+      for (let k = 0; k < 40; k++) {
+        const q = lugaresAncora[Math.floor(r() * lugaresAncora.length)];
+        if (!serve(q)) continue;
+        const x = q % W, y = (q - x) / W, d = (ancoras.length ? Math.min(...ancoras.map(([ax, ay]) => Math.hypot(ax - x, ay - y))) : 1 + r()) * (0.4 + G.aberto[q] / 40);
+        if (d > md) { md = d; a = q; }
+      }
+      if (a < 0) break;
+      const ax = a % W, ay = (a - ax) / W; ancoras.push([ax, ay]);
+      // os quadrados em volta, por distância (sem cruzar parede), até uns 5 a 7 passos
+      const raio = 4 + Math.ceil(quantos.por / 3), dist = new Map([[a, 0]]), fila = [a];
+      for (let i = 0; i < fila.length; i++) {
+        const u = fila[i], x = u % W, y = (u - x) / W, du = dist.get(u);
+        if (du >= raio) continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const vx = x + dx, vy = y + dy; if (vx < 0 || vy < 0 || vx >= W || vy >= H) continue; const v = vy * W + vx; if (dist.has(v) || !livre[v] || !G.passa(x, y, dx, dy)) continue; dist.set(v, du + 1); fila.push(v); }
+      }
+      const perto = fila.slice().sort((p, q) => dist.get(p) - dist.get(q));
+      const solta = () => perto.map(q => [q, dist.get(q) + r() * 2.5]).sort((p, q) => p[1] - q[1]).map(x => x[0]);
+      // o núcleo (o primeiro que couber, começando por um diferente em cada grupo)
+      let feitos = 0;
+      for (let k = 0; k < T.nucleo.length; k++) if (por(T.nucleo[(g + k) % T.nucleo.length], perto)) { feitos++; break; }
+      // os outros
+      const ini = Math.floor(r() * T.itens.length);
+      for (let k = 0; k < T.itens.length * 2 && feitos < quantos.por; k++) if (por(T.itens[(ini + k) % T.itens.length], solta())) feitos++;
+      if (feitos) novos.grupos = (novos.grupos || 0) + 1;
+    }
+    return novos;
+  }
+  const textoFeito = (T, n, grupos) => (n ? `Objetos do tema ${T.n.toLowerCase()}: ${n}${grupos > 1 ? `, em ${grupos} grupos` : ''}.` : `Os objetos do tema ${T.n.toLowerCase()} não couberam (falta chão livre).`);
+  // no gerador: na cena recém-criada (os tokens entram direto; a cena é guardada por quem chama)
+  // formas: as partes do plano (os prédios, as ruas, o rio, a praça), em quadrados — ali não se põe nada
+  function aplicar(sc, lugarId, op, seed, formas) {
+    const p = prefs(), id = p.id === 'auto' ? auto(lugarId, op) : p.id, T = tema(id);
+    if (!T) return '';
+    const ts = espalhar(sc, id, p.qtd, seed, { lugar: lugarId, formas });
+    for (const t of ts) sc.tokens.push(t);
+    return textoFeito(T, ts.length, ts.grupos || 0);
+  }
+
+  /* ---- a escolha: o bloco do gerador e a janelinha da cena pronta ---- */
+  function miniaturas(T) {
+    const ids = [...new Set(T.nucleo.concat(T.itens))].filter(id => Props.P[id]).slice(0, 10);
+    return h('div', { class: 'tema-mini', 'aria-hidden': 'true' }, ids.map(id => { const cv = h('canvas', { width: 40, height: 40, title: Props.P[id].n }); try { Props.thumb(cv, id, 1.3); } catch (e) { /* desenho que precisa do token */ } return cv; }));
+  }
+  const opcoes = (autoTxt) => [['auto', autoTxt], ['', 'Nenhum']].concat(LISTA.map(x => [x.id, x.n]));
+  function controles(K, L, op, mudou) {
+    const p = prefs(), au = tema(auto(L.id, op)), T = tema(p.id === 'auto' ? auto(L.id, op) : p.id);
+    return [
+      K.field('O tema', K.inSelect('ger-tema', p.id, opcoes('Combina com o lugar' + (au ? ` (${au.n.toLowerCase()})` : ' (nenhum aqui)')), v => { App.opt.temaId = v; mudou(); }), 'stack'),
+      T ? K.field('Quantos', K.seg('ger-tema-qtd', p.qtd, QTDS, v => { App.opt.temaQtd = v; mudou(); }), 'stack') : null,
+      T ? miniaturas(T) : null,
+      K.note(T ? `Os objetos entram quando a cena é criada, em ${GRUPOS[p.qtd] === 1 ? 'um grupinho' : GRUPOS[p.qtd] + ' grupinhos'} (um objeto grande e os menores em volta), sem tampar portas. ${T.onde === 'dentro' ? 'Ficam dentro das salas.' : T.onde === 'fora' ? 'Ficam do lado de fora (no quintal, no campo).' : 'Ficam onde houver espaço.'}`
+        : p.id === 'auto' ? 'Este lugar não pede nenhum tema. Escolha um na lista para pôr os objetos dele.' : 'Sem objetos de tema.'),
+    ].filter(Boolean);
+  }
+  function resumoBloco(L, op) { const p = prefs(), T = tema(p.id === 'auto' ? auto(L.id, op) : p.id); return T ? T.n.toLowerCase() + (p.id === 'auto' ? ' (automático)' : '') : 'nenhum'; }
+  // menu das cenas › "Pôr objetos de um tema…": na cena aberta, com Desfazer
+  function abrirNaCena() {
+    if (!isGM()) return;
+    const sc = Store.scene();
+    if (!sc) return;
+    const o = { id: tema(App.opt.temaUlt) ? App.opt.temaUlt : 'taverna', qtd: prefs().qtd, onde: 'tema' };
+    const K = UI.kit, corpo = h('div', { class: 'tema-cena' });
+    const pintarC = () => { const T = tema(o.id); corpo.replaceChildren(
+      K.note('Os objetos entram em grupinhos, no chão livre (sem tampar portas nem cruzar paredes). O Desfazer tira todos de uma vez.'),
+      K.field('O tema', K.inSelect('tema-cena-id', o.id, LISTA.map(x => [x.id, x.n]), v => { o.id = v; pintarC(); }), 'stack'),
+      miniaturas(T),
+      K.field('Quantos', K.seg('tema-cena-qtd', o.qtd, QTDS, v => { o.qtd = v; pintarC(); }), 'stack'),
+      K.field('Onde', K.seg('tema-cena-onde', o.onde, [['tema', T.onde === 'dentro' ? 'Dentro (o normal deste tema)' : T.onde === 'fora' ? 'Fora (o normal deste tema)' : 'Onde couber'], ['dentro', 'Só dentro das salas']], v => { o.onde = v; pintarC(); }), 'stack')); };
+    pintarC();
+    UI.modal({ title: 'Pôr objetos de um tema', body: corpo, actions: [{ label: 'Cancelar' }, { label: 'Pôr os objetos', kind: 'primary', run: () => {
+      const sc2 = Store.scene(), T = tema(o.id);
+      if (!sc2 || !T) return;
+      App.opt.temaUlt = o.id;
+      const ts = espalhar(sc2, o.id, o.qtd, 1 + Math.floor(Math.random() * 2147483000), { dentro: o.onde === 'dentro' });
+      if (ts.length) Store.tx('Objetos do tema', () => { for (const t of ts) Store.add('tokens', t); });
+      UI.toast(textoFeito(T, ts.length, ts.grupos || 0), ts.length ? { long: true, action: 'Desfazer', run: Tools.undo } : {});
+    } }] });
+  }
+  return { LISTA, QTDS, tema, auto, prefs, escolhido, grade, espalhar, aplicar, controles, resumoBloco, abrirNaCena };
+})();
+/* ---------------------------------------------------------------
    10gt. O ESTILO POR EXEMPLO (lote 156) — o colapso de funções de onda (Wave Function Collapse, o modelo de sobreposição):
    o gerador olha um exemplo pequeno, aprende os pedaços de 3 × 3 que aparecem nele (e quantas vezes) e monta um mapa
    grande só com pedaços que se encaixam como no exemplo. O mapa sai "no mesmo jeito": o labirinto vira labirinto, a
@@ -50690,7 +52728,7 @@ const Zonas = (() => {
   const tiposDe = id => (id === 'masmorra' ? ['sala', 'agua', 'vazio'] : CASA_OK.has(id) ? ['casa', 'sala', 'agua', 'mata', 'patio', 'vazio'] : ['agua', 'mata', 'patio', 'vazio']);
   const vale = L => !!L && (L.id === 'masmorra' || L.id === 'sobmedida' || Furtividade.IDS.includes(L.id));
   // os usos que uma sala da casa pode ter
-  const USOS = () => [['', 'O gerador escolhe']].concat(['sala', 'vestibulo', 'quarto', 'quartoSenhor', 'cozinha', 'banheiro', 'despensa', 'escritorio', 'biblioteca', 'salao', 'galeria', 'capela', 'criados', 'deposito', 'misteriosa', 'secreta', 'corredor'].map(k => [k, PlantaAndares.NOMES[k] || (k === 'corredor' ? 'Corredor' : k)]));
+  const USOS = () => [['', 'O gerador escolhe']].concat(['sala', 'vestibulo', 'quarto', 'quartoSenhor', 'cozinha', 'banheiro', 'despensa', 'escritorio', 'biblioteca', 'salao', 'galeria', 'capela', 'criados', 'deposito', 'misteriosa', 'secreta', 'tavernaSalao', 'aula', 'interrogatorio', 'treino', 'portal', 'teatro', 'corredor'].map(k => [k, PlantaAndares.NOMES[k] || (k === 'corredor' ? 'Corredor' : k)]));
   const limpa = l => (Array.isArray(l) ? l : []).filter(z => z && TIPOS[z.k] && [z.x, z.y, z.w, z.h].every(Number.isFinite) && z.w >= 1 && z.h >= 1).slice(0, 40)
     .map(z => Object.assign({ k: z.k, x: Math.round(z.x), y: Math.round(z.y), w: Math.round(z.w), h: Math.round(z.h) }, z.k === 'sala' && typeof z.papel === 'string' ? { papel: z.papel } : null));
   const de = id => { const t = App.opt.zonas && typeof App.opt.zonas === 'object' ? App.opt.zonas : {}; return limpa(t[id]); };
@@ -51714,6 +53752,7 @@ const IaMapa = (() => {
           estilo: { type: 'string', enum: Estilos.LISTA.map(e => e[0]) },
           hora: { type: 'string', enum: TONES.map(t => t.id) },
           clima: { type: 'string', enum: WEATHERS.map(w => w[0]) },
+          tema: { type: 'string', enum: Temas.LISTA.map(t => t.id), description: 'Os objetos de um tema para espalhar pela cena, só se o texto pedir: ' + Temas.LISTA.map(t => t.id + ' = ' + t.n).join('; ') + '.' },
           sobmedida: { type: 'object', properties: {
             terreno: { type: 'string', enum: ['pequeno', 'medio', 'grande'] },
             muro: { type: 'boolean' },
@@ -51777,6 +53816,7 @@ const IaMapa = (() => {
     if (Estilos.LISTA.some(e => e[0] === d.estilo)) comum.estilo = d.estilo;
     if (TONES.some(t => t.id === d.hora)) comum.hora = d.hora;
     if (WEATHERS.some(w => w[0] === d.clima)) comum.clima = d.clima;
+    if (Temas.tema(d.tema)) comum.tema = d.tema;      // (lote 158)
     const notas = typeof d.notas_mestre === 'string' ? d.notas_mestre.trim().slice(0, 1200) : '';
     const fora = Array.isArray(d.nao_deu) ? d.nao_deu.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 120)).slice(0, 8) : [];
     let op = null;
@@ -52151,6 +54191,7 @@ const Gerador = (() => {
       if (res.comum.estilo) comum.estilo = res.comum.estilo;
       if (res.comum.hora) comum.hora = res.comum.hora;
       if (res.comum.clima !== undefined) comum.clima = res.comum.clima;
+      if (res.comum.tema !== undefined) App.opt.temaId = res.comum.tema;      // (lote 158) o tema dos objetos que a IA escolheu
       E.trava = null; E.base = null; E.seed = novaSemente();
       if (res.nome) { inNome.value = res.nome; nomeMexido = true; } else nomeMexido = false;
       // (lote 157) a planta da IA vira as zonas do lugar (o tamanho do terreno vem de um sorteio de prova, sem as zonas)
@@ -52222,10 +54263,11 @@ const Gerador = (() => {
         bloco('amb', 'Ambiente', resAmb,
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
           L.semHora ? null : field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
-          L.semHora ? null : field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
+          L.semHora ? null : field('Clima', selClima('ger-clima', comum.clima, v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),      // (lote 158: 23 climas, em grupos)
           L.aceitaEstacao ? field('Estação', seg('ger-estacao', comum.estacao, Estacoes.LISTA, v => { comum.estacao = v; lembrarComum(); pintar(); refazer(); }), 'stack') : null,
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
           temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null),
+        bloco('tema', 'Objetos do tema', Temas.resumoBloco(L, E.op), ...Temas.controles(K, L, E.op, () => pintar())),      // (lote 158) as 15 categorias
         bloco('pov', 'Povoar', pv.on ? 'perigo ' + nomeDe(Povoar.PERIGOS, pv.perigo, 'médio').toLowerCase() : 'desligado', Povoar.controles(K, () => pintar())),       // (lote 49) povoar o lugar
         Zonas.vale(L) ? bloco('zonas', 'Zonas à mão', Zonas.resumoBloco(L), Zonas.controles(L, K, regerar => { pintar(); if (regerar) refazer(); else { desenhar(); cv.classList.toggle('desenhando', Zonas.ativo()); } })) : null,      // (lote 154)
         Tempo.vale(L) ? bloco('tempo', 'O tempo', Tempo.resumoBloco(), Tempo.controles(K, () => { pintar(); refazer(); })) : null,      // (lote 153) o lugar envelhecido
@@ -52262,6 +54304,12 @@ const Gerador = (() => {
             const tp = Tempo.prefs();
             const txtTp = Tempo.vale(l) && Tempo.liga(tp) ? await Tempo.aplicar(sc, Object.assign({}, tp, { mascara: Tempo.mascaraDe(p), proteger: p.trama ? p.trama.passos.filter(x => x.porta).map(x => x.porta).concat(p.trama.atalho ? [p.trama.atalho.porta] : []) : [] }), p.seed).catch(e => { console.error(e); return ''; }) : '';
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
+            // (lote 158) os objetos do tema, antes de povoar (os inimigos e os moradores ficam fora deles)
+            let txtTema = '';
+            try {
+              let formas = []; try { formas = l.partes(p).flatMap(pt => l.formaDaParte(p, pt) || []); } catch (e) { formas = []; }
+              txtTema = Temas.aplicar(sc, l.id, E.op, E.seed, formas); if (txtTema) Persist.scene(sc.id);
+            } catch (e) { console.error(e); }
             const pv = Povoar.prefs(), txtPov = pv.on ? Povoar.aplicar(sc, l.id, p, pv) : '';      // (lote 49) o lugar povoado
             const mi = Misterio.prefs(), txtMi = mi.on ? Misterio.aplicar(sc, l.id, p, mi) : '';    // (lote 53) o mistério
             const txtTr = p.trama ? Trama.aplicar(sc, p) : '';                                        // (lote 152) a história da missão
@@ -52273,7 +54321,7 @@ const Gerador = (() => {
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTp ? ' ' + txtTp : '') + (txtTr ? ' ' + txtTr : '') + (txtMu ? ' ' + txtMu : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtTema ? ' ' + txtTema : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTp ? ' ' + txtTp : '') + (txtTr ? ' ' + txtTr : '') + (txtMu ? ' ' + txtMu : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },
@@ -53469,7 +55517,7 @@ async function start(snap) {
   const abrirTour = () => { if (UI.modalOpen() || Tour.seen() || Tour.active()) return; if (cascaOcupada()) { setTimeout(abrirTour, 1200); return; } Tour.start(); };
   if (isGM() && !Tour.seen() && (!dbg || /[?&]tour\b/.test(location.search))) aoAparecer(() => setTimeout(abrirTour, 700));
   // (lote 157) as novidades do gerador: uma vez, para o mestre que já viu o tutorial de primeiro uso
-  const abrirNovidades = () => { if (Tour.active() || Novidades.vistas() || !Tour.seen()) return; if (UI.modalOpen() || cascaOcupada()) { setTimeout(abrirNovidades, 1500); return; } Novidades.start(); };
+  const abrirNovidades = () => { if (Tour.active() || Novidades.vistas() || !Tour.seen()) return; if (UI.modalOpen() || cascaOcupada()) { setTimeout(abrirNovidades, 1500); return; } Novidades.start({ auto: true }); };
   if (isGM() && !Novidades.vistas() && (!dbg || /[?&]novidades\b/.test(location.search))) aoAparecer(() => setTimeout(abrirNovidades, 1200));
   // O mestre numa mesa: se este navegador guarda cenas de antes, a mesa oferece trazê-las (a janela, uma vez só,
   // quando a mesa ainda não tem cenas; depois disso, fica o lembrete no painel e o item no menu ⋯).
@@ -53484,7 +55532,7 @@ async function start(snap) {
 
 (function boot() {
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
-  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, IaMapa, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Exemplo, Erosao, Novidades, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
+  if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { tokWH, ehRet, Temas, WEATHERS, WEATHER_GRUPOS, IaMapa, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Exemplo, Erosao, Novidades, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
   try {
     if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({ view: Object.assign({}, App.view), viewer: App.viewer, tab: App.tab, scene: Store.S.current, tour: Tour.seen() }));

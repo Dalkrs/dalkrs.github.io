@@ -288,6 +288,17 @@ const Furtividade = (() => {
     }
     return out;
   }
+  // (lote 158) solto no meio da sala (longe das paredes), em lugares sorteados: as mesas de jogo, as carteiras, a plateia
+  function solto(K, q, id, fw, fh, n) {
+    let feitos = 0;
+    for (let k = 0; k < (n || 1); k++) {
+      const cand = [];
+      for (let y = q.y + 1; y + fh <= q.y + q.h - 1; y++) for (let x = q.x + 1; x + fw <= q.x + q.w - 1; x++) cand.push([x, y]);
+      if (!embaralha(K.r, cand).some(([x, y]) => K.livreR(x - 1, y, fw + 2, fh) && K.poeR(id, x, y, fw, fh, 0))) break;
+      feitos++;
+    }
+    return feitos;
+  }
   // o tapete: pintado no fundo (fica por baixo de tudo e não ocupa)
   const tapete = (K, q, m) => { m = m == null ? 1 : m; if (q.w - 2 * m >= 2 && q.h - 2 * m >= 2) K.pinta('tapete', { x: q.x + m + 0.15, y: q.y + m + 0.15, w: q.w - 2 * m - 0.3, h: q.h - 2 * m - 0.3 }); };
 
@@ -327,7 +338,38 @@ const Furtividade = (() => {
     arsenal(K, q) { encosta(K, q, 'estante', 2, 1, 1); for (let i = 0; i < 3; i++) canto(K, q, 'armas'); canto(K, q, 'caixote'); canto(K, q, 'boneco'); },
     comandante(K, q) { encosta(K, q, 'cama', 1, 2, 1); const m = noMeio(K, q, 'mesaGuerra', 2, 2, 0) || noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 2); canto(K, q, 'estandarte'); canto(K, q, 'braseiro'); },
     guarda(K, q) { const m = noMeio(K, q, 'mesa', 2, 1, 0); if (m) cadeiras(K, m, 'cadeira', 3); canto(K, q, 'armas'); canto(K, q, 'braseiro'); canto(K, q, 'bau'); },
-    cela(K, q) { canto(K, q, 'grilhoes'); canto(K, q, 'feno'); canto(K, q, 'jarro'); },
+    cela(K, q) { canto(K, q, 'grilhoes'); if (!encosta(K, q, 'catre', 1, 2, 1)) canto(K, q, 'feno'); canto(K, q, K.r() < 0.5 ? 'balde' : 'jarro'); },      // (lote 158: o catre e o balde)
+    // (lote 158) as salas dos temas novos: a taverna, a sala de magia, o interrogatório, o treino, o portal e o teatro
+    tavernaSalao(K, q) {
+      encosta(K, q, 'chopeira', 2, 1, 1); encosta(K, q, 'lareiraEspeto', 2, 1, 1); canto(K, q, 'quadroAvisos');
+      if (q.w * q.h >= 36) encosta(K, q, 'palcoBardo', 2, 2, 1);
+      solto(K, q, 'mesaJogo', 1, 1, Math.max(1, Math.floor(q.w * q.h / 14)));
+      canto(K, q, 'canecas'); canto(K, q, 'barril'); if (K.r() < 0.6) canto(K, q, 'cachorro');
+    },
+    aula(K, q) {
+      encosta(K, q, 'quadroRunas', 2, 1, 1); encosta(K, q, 'estante', 2, 1, 1);
+      solto(K, q, 'carteira', 1, 1, Math.max(2, Math.floor(q.w * q.h / 8)));
+      canto(K, q, 'globoCeleste'); canto(K, q, 'cristalVidencia'); canto(K, q, 'pilhaLivros'); canto(K, q, 'suporteVarinhas');
+      if (q.w * q.h >= 30) canto(K, q, 'telescopio'); if (K.r() < 0.5) solto(K, q, 'pergaminhosVoando', 1, 1, 1);
+    },
+    interrogatorio(K, q) {
+      noMeio(K, q, 'mesaInterrogatorio', 2, 1, 0); canto(K, q, 'grilhoes'); canto(K, q, 'balde'); canto(K, q, 'molhoChaves');
+      if (q.w * q.h >= 24) encosta(K, q, 'rodaTortura', 2, 2, 1); else canto(K, q, 'cepo');
+      if (q.w * q.h >= 30) solto(K, q, 'gaiolaSuspensa', 1, 1, 1);
+    },
+    treino(K, q) {
+      if (!(q.w >= 7 && q.h >= 7 && noMeio(K, q, 'ringue', 3, 3, 0))) noMeio(K, q, 'tapeteLuta', 2, 2, 0);
+      encosta(K, q, 'cavaleteArmas', 2, 1, 1); canto(K, q, 'pesos'); canto(K, q, 'boneco'); canto(K, q, 'posteEscudos'); if (q.w * q.h >= 30) canto(K, q, 'alvo');
+    },
+    portal(K, q) {
+      if (!noMeio(K, q, 'portalArcano', 2, 2, 0)) noMeio(K, q, 'circuloTeleporte', 2, 2, 0);
+      canto(K, q, 'pilarEnergia'); canto(K, q, 'pilarEnergia'); canto(K, q, 'orbe'); canto(K, q, 'cristaisChao'); solto(K, q, 'runasChao', 2, 2, 1);
+    },
+    teatro(K, q) {
+      if (!encosta(K, q, 'palcoCortina', 3, 2, 1, ['n'])) encosta(K, q, 'palcoBardo', 2, 2, 1);
+      solto(K, q, 'cadeirasPlateia', 2, 1, Math.max(2, Math.floor(q.w * q.h / 10)));
+      encosta(K, q, 'araraFigurinos', 2, 1, 1); canto(K, q, 'mascaras'); canto(K, q, 'alaude'); canto(K, q, 'harpa'); canto(K, q, 'tambor');
+    },
     torre(K, q) { canto(K, q, 'braseiro'); canto(K, q, 'armas'); canto(K, q, 'barril'); },
     estabulo(K, q) { encosta(K, q, 'cocho', 2, 1, 2); for (let i = 0; i < 4; i++) canto(K, q, 'feno'); },
     // a guilda
@@ -875,7 +917,8 @@ const Furtividade = (() => {
     poco: { n: 'Poço', w: 2, h: 2 }, estabulo: { n: 'Estábulo', w: 8, h: 6 }, canil: { n: 'Canil', w: 3, h: 3 }, mesaJardim: { n: 'Mesa de jardim', w: 5, h: 3 }, varal: { n: 'Varal', w: 4, h: 3 },
   };
   const PORTES = [['simples', 'Simples'], ['boa', 'Boa'], ['nobre', 'Nobre']];
-  const SALAS_TERREO = ['sala', 'cozinha', 'banheiro', 'quarto', 'quartoSenhor', 'escritorio', 'biblioteca', 'salao', 'despensa', 'criados', 'capela', 'galeria', 'vestibulo', 'deposito', 'loja', 'oficina', 'misteriosa', 'laboratorio', 'adega'];
+  const SALAS_TERREO = ['sala', 'cozinha', 'banheiro', 'quarto', 'quartoSenhor', 'escritorio', 'biblioteca', 'salao', 'despensa', 'criados', 'capela', 'galeria', 'vestibulo', 'deposito', 'loja', 'oficina', 'misteriosa', 'laboratorio', 'adega',
+    'tavernaSalao', 'aula', 'interrogatorio', 'treino', 'portal', 'teatro'];      // (lote 158)
   function specLimpa(s) {
     s = s && typeof s === 'object' ? s : {};
     const terreo = (Array.isArray(s.terreo) ? s.terreo : []).filter(x => SALAS_TERREO.includes(x) && MOB[x]).slice(0, 12);

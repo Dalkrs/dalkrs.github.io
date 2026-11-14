@@ -842,7 +842,25 @@ const TONES = [
   { id: 'noite', n: 'Noite', light: 'penumbra', tint: 'rgba(70,100,190,0.40)' },
   { id: 'breu', n: 'Breu', light: 'escuro', tint: 'rgba(40,50,90,0.35)' },
 ];
-const WEATHERS = [['', 'Nenhum'], ['chuva', 'Chuva'], ['neve', 'Neve'], ['neblina', 'Neblina'], ['cinzas', 'Cinzas e brasas'], ['vagalumes', 'Vaga-lumes'], ['folhas', 'Folhas ao vento'], ['petalas', 'Pétalas ao vento'], ['poeira', 'Poeira no ar']];
+const WEATHERS = [['', 'Nenhum'], ['chuva', 'Chuva'], ['neve', 'Neve'], ['neblina', 'Neblina'], ['cinzas', 'Cinzas e brasas'], ['vagalumes', 'Vaga-lumes'], ['folhas', 'Folhas ao vento'], ['petalas', 'Pétalas ao vento'], ['poeira', 'Poeira no ar'],
+  // (lote 158) os climas novos
+  ['tempestade', 'Tempestade com raios'], ['garoa', 'Garoa'], ['granizo', 'Granizo'], ['nevasca', 'Nevasca'], ['areia', 'Tempestade de areia'],
+  ['miragem', 'Calor e miragem'], ['nuvens', 'Sombras de nuvens'], ['nevoaRasteira', 'Névoa rasteira'], ['aurora', 'Aurora'], ['cadentes', 'Estrelas cadentes'],
+  ['sangue', 'Chuva de sangue'], ['corrupcao', 'Chuva da corrupção'], ['esporos', 'Esporos brilhantes'], ['submerso', 'Debaixo d\'água'], ['fagulhas', 'Fagulhas arcanas']];
+// (lote 158) os climas em grupos, para as listas (o gerador e a aba Cena)
+const WEATHER_GRUPOS = [['Água e frio', ['chuva', 'garoa', 'tempestade', 'granizo', 'neve', 'nevasca']], ['Ar e luz', ['neblina', 'nevoaRasteira', 'nuvens', 'poeira', 'areia', 'miragem', 'folhas', 'petalas']],
+  ['Noite', ['vagalumes', 'aurora', 'cadentes']], ['Magia e perigo', ['cinzas', 'sangue', 'corrupcao', 'esporos', 'fagulhas', 'submerso']]];
+// os climas que ficam por baixo dos tokens (a névoa e a sombra no chão); os outros caem por cima de tudo
+const WEATHER_CHAO = new Set(['neblina', 'nuvens', 'nevoaRasteira']);
+// a lista do clima, em grupos (os <optgroup>); onChange recebe o id ('' é Nenhum)
+function selClima(id, value, onChange, attrs) {
+  const nome = k => (WEATHERS.find(w => w[0] === k) || ['', k])[1];
+  const sel = h('select', Object.assign({ id, class: 'in', onchange: e => { const v = e.target.value; e.target.blur(); onChange(v); } }, attrs || {}),
+    h('option', { value: '', text: 'Nenhum' }),
+    WEATHER_GRUPOS.map(([g, ks]) => h('optgroup', { label: g }, ks.map(k => h('option', { value: k, text: nome(k) })))));
+  sel.value = WEATHERS.some(w => w[0] === value) ? value : '';
+  return sel;
+}
 
 // Dano e cura em área. O que foi digitado: "12" ou "-12" tira, "+8" devolve; vazio vale 0 e texto inválido, null.
 function areaAmount(text) {

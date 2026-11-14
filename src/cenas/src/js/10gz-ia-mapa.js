@@ -52,6 +52,7 @@ const IaMapa = (() => {
           estilo: { type: 'string', enum: Estilos.LISTA.map(e => e[0]) },
           hora: { type: 'string', enum: TONES.map(t => t.id) },
           clima: { type: 'string', enum: WEATHERS.map(w => w[0]) },
+          tema: { type: 'string', enum: Temas.LISTA.map(t => t.id), description: 'Os objetos de um tema para espalhar pela cena, só se o texto pedir: ' + Temas.LISTA.map(t => t.id + ' = ' + t.n).join('; ') + '.' },
           sobmedida: { type: 'object', properties: {
             terreno: { type: 'string', enum: ['pequeno', 'medio', 'grande'] },
             muro: { type: 'boolean' },
@@ -115,6 +116,7 @@ const IaMapa = (() => {
     if (Estilos.LISTA.some(e => e[0] === d.estilo)) comum.estilo = d.estilo;
     if (TONES.some(t => t.id === d.hora)) comum.hora = d.hora;
     if (WEATHERS.some(w => w[0] === d.clima)) comum.clima = d.clima;
+    if (Temas.tema(d.tema)) comum.tema = d.tema;      // (lote 158)
     const notas = typeof d.notas_mestre === 'string' ? d.notas_mestre.trim().slice(0, 1200) : '';
     const fora = Array.isArray(d.nao_deu) ? d.nao_deu.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 120)).slice(0, 8) : [];
     let op = null;

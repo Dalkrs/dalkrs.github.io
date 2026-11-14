@@ -19,6 +19,8 @@ const PlantaAndares = (() => {
     dormitorio: 'Dormitório', refeitorio: 'Refeitório', arsenal: 'Arsenal', comandante: 'Sala do comandante', guarda: 'Sala da guarda',
     cela: 'Cela', sotao: 'Sótão', adega: 'Adega', loja: 'Loja', forja: 'Forja', vigia: 'Sala do vigia',
     misteriosa: 'Sala misteriosa', secreta: 'Sala secreta', reuniao: 'Sala de reunião (com o mapa)', laboratorio: 'Laboratório de alquimia', cofre: 'Cofre', cofreForte: 'Cofre', tunel: 'Túnel de fuga',
+    // (lote 158) as salas dos temas
+    tavernaSalao: 'Salão da taverna', aula: 'Sala de magia', interrogatorio: 'Sala de interrogatório', treino: 'Sala de treino', portal: 'Sala do portal', teatro: 'Teatro',
   };
   const nome = p => NOMES[p] || p;
   const MAX_SALAS = 12;

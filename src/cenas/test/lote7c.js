@@ -277,7 +277,7 @@ const SHOTS = process.env.FOTOS;
     await page.locator('#vila-tam button', { hasText: 'Vila' }).click(); await w(300);
     await page.locator('#ger-est button', { hasText: 'Oriental' }).click(); await w(300);
     await page.locator('#ger-hora button', { hasText: 'Noite' }).click(); await w(100);
-    await page.locator('#ger-clima button', { hasText: 'Chuva' }).click(); await w(100);
+    await page.selectOption('#ger-clima', 'chuva'); await w(100);      // (lote 158: o clima virou uma lista em grupos)
     const plano = (await G()).plano;
     ok(await page.locator('#ger-nome').inputValue() === 'Vila oriental', 'o nome da cena: "Vila oriental"');
     await page.locator('.modal .btn.primary', { hasText: 'Criar a cena' }).click(); await w(2500);

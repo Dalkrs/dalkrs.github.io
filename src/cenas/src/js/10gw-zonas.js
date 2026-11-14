@@ -16,7 +16,7 @@ const Zonas = (() => {
   const tiposDe = id => (id === 'masmorra' ? ['sala', 'agua', 'vazio'] : CASA_OK.has(id) ? ['casa', 'sala', 'agua', 'mata', 'patio', 'vazio'] : ['agua', 'mata', 'patio', 'vazio']);
   const vale = L => !!L && (L.id === 'masmorra' || L.id === 'sobmedida' || Furtividade.IDS.includes(L.id));
   // os usos que uma sala da casa pode ter
-  const USOS = () => [['', 'O gerador escolhe']].concat(['sala', 'vestibulo', 'quarto', 'quartoSenhor', 'cozinha', 'banheiro', 'despensa', 'escritorio', 'biblioteca', 'salao', 'galeria', 'capela', 'criados', 'deposito', 'misteriosa', 'secreta', 'corredor'].map(k => [k, PlantaAndares.NOMES[k] || (k === 'corredor' ? 'Corredor' : k)]));
+  const USOS = () => [['', 'O gerador escolhe']].concat(['sala', 'vestibulo', 'quarto', 'quartoSenhor', 'cozinha', 'banheiro', 'despensa', 'escritorio', 'biblioteca', 'salao', 'galeria', 'capela', 'criados', 'deposito', 'misteriosa', 'secreta', 'tavernaSalao', 'aula', 'interrogatorio', 'treino', 'portal', 'teatro', 'corredor'].map(k => [k, PlantaAndares.NOMES[k] || (k === 'corredor' ? 'Corredor' : k)]));
   const limpa = l => (Array.isArray(l) ? l : []).filter(z => z && TIPOS[z.k] && [z.x, z.y, z.w, z.h].every(Number.isFinite) && z.w >= 1 && z.h >= 1).slice(0, 40)
     .map(z => Object.assign({ k: z.k, x: Math.round(z.x), y: Math.round(z.y), w: Math.round(z.w), h: Math.round(z.h) }, z.k === 'sala' && typeof z.papel === 'string' ? { papel: z.papel } : null));
   const de = id => { const t = App.opt.zonas && typeof App.opt.zonas === 'object' ? App.opt.zonas : {}; return limpa(t[id]); };

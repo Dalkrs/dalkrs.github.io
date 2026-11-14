@@ -781,6 +781,7 @@ const UI = (() => {
     items.push('-', { label: 'Nova cena', icon: 'plus', run: newSceneFlow }, { label: 'Nova cena de exemplo', icon: 'map', run: sampleScene }, { label: 'Gerar um lugar…', icon: 'house', run: () => Gerador.abrir() }, { label: 'Duplicar esta cena', icon: 'copy', run: duplicateScene },
       { label: 'Envelhecer esta cena…', icon: 'copy', run: () => Tempo.abrirEnvelhecer() },
       { label: 'O tempo passou…', icon: 'turns', run: () => Tempo.abrirPassou() },      // (lote 155)
+      { label: 'Pôr objetos de um tema…', icon: 'plus', run: () => Temas.abrirNaCena() },      // (lote 158)
       { label: 'Renomear', icon: 'edit', run: renameScene }, { label: 'Organizar as cenas…', icon: 'folder', run: () => organizarCenas() },
       Nuvem.podeOrganizar() ? { label: 'Campanha desta cena…', icon: 'map', run: sceneCampaignBox } : null, { label: 'Apagar esta cena…', icon: 'trash', danger: true, run: deleteScene });
     return items;
@@ -3632,7 +3633,8 @@ const UI = (() => {
         field('Hora do dia', seg('sc-tone', sc.tone, TONES.map(x => [x.id, x.n]), v => S({ tone: v, light: TONES.find(x => x.id === v).light }, 'Hora do dia')), 'stack'),
         field('Luz ambiente', seg('sc-light', sc.light, [['claro', 'Claro'], ['penumbra', 'Penumbra'], ['escuro', 'Escuro']], v => S({ light: v }, 'Luz ambiente')), 'stack'),
         note((sc.light === 'claro' ? 'Tudo iluminado. As fontes de luz não fazem diferença.' : sc.light === 'penumbra' ? 'Dá para enxergar, mas escuro. As fontes de luz clareiam ao redor.' : 'Os jogadores só enxergam o que alguma luz alcança, ou o que a visão no escuro deles permite.') + ' A hora do dia colore o mapa e já escolhe a luz; dá para trocar a luz depois.'),
-        field('Clima', inSelect('sc-wk', sc.weather.k || '', WEATHERS, v => S({ weather: Object.assign({}, sc.weather, { k: v }) }, 'Clima'))),
+        field('Clima', selClima('sc-wk', sc.weather.k || '', v => S({ weather: Object.assign({}, sc.weather, { k: v }) }, 'Clima'))),      // (lote 158: em grupos)
+        sc.weather.k === 'tempestade' ? toggle('sc-clarao', sc.weather.clarao !== false, v => S({ weather: Object.assign({}, sc.weather, { clarao: v }) }, 'Clarões dos raios'), 'Clarões dos raios (o mapa pisca de vez em quando)') : null,
         sc.weather.k ? field('Intensidade', inRange('sc-wp', sc.weather.pow, 0.2, 1, 0.05, v => Store.scn({ weather: Object.assign({}, Store.scene().weather, { pow: v }) }), 'Intensidade do clima')) : null,
         sc.weather.k && !App.anim ? note('As animações estão desligadas no menu ⋯, então o clima aparece parado.') : null)),
       acc(secR('c-light', 'Visão e névoa', false, [f.dynamic ? 'visão por paredes' : 'sem visão por paredes', f.manual ? 'névoa manual' : ''].filter(Boolean).join(' · '),

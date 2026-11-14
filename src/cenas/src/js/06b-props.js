@@ -1614,8 +1614,8 @@ const Props = (() => {
     g.restore();
   }
   const isProp = t => !!t && !!t.prop && !!P[t.prop];
-  // Algum objeto com fogo na cena? (o mapa fica se mexendo, para as chamas tremularem)
-  const temFogo = sc => sc.tokens.some(t => t.prop && P[t.prop] && P[t.prop].fogo && !t.hidden && !(t.light && t.light.on === false));
+  // Algum objeto com fogo na cena? (o mapa fica se mexendo, para as chamas tremularem; lote 158: e os que se mexem, def.vivo)
+  const temFogo = sc => sc.tokens.some(t => t.prop && P[t.prop] && (P[t.prop].fogo || P[t.prop].vivo) && !t.hidden && !(t.light && t.light.on === false));
   /* Um token novo para o objeto `id`, em (x, y): sem barras, sem nome à mostra, sem visão; a luz, se o objeto tem
      uma, já acesa e tremulando. */
   function novo(sc, id, x, y, size, hidden) {

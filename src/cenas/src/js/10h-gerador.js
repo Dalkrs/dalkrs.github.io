@@ -352,6 +352,7 @@ const Gerador = (() => {
       if (res.comum.estilo) comum.estilo = res.comum.estilo;
       if (res.comum.hora) comum.hora = res.comum.hora;
       if (res.comum.clima !== undefined) comum.clima = res.comum.clima;
+      if (res.comum.tema !== undefined) App.opt.temaId = res.comum.tema;      // (lote 158) o tema dos objetos que a IA escolheu
       E.trava = null; E.base = null; E.seed = novaSemente();
       if (res.nome) { inNome.value = res.nome; nomeMexido = true; } else nomeMexido = false;
       // (lote 157) a planta da IA vira as zonas do lugar (o tamanho do terreno vem de um sorteio de prova, sem as zonas)
@@ -423,10 +424,11 @@ const Gerador = (() => {
         bloco('amb', 'Ambiente', resAmb,
           field('Estilo', seg('ger-est', comum.estilo, Estilos.LISTA.map(([k, n]) => [k, n]), v => { comum.estilo = v; lembrarComum(); const E2 = estadoDe(L); E2.base = E2.plano ? L.baseDe(E2.plano) : null; pintar(); refazer(); }), 'stack'),
           L.semHora ? null : field('Hora do dia', seg('ger-hora', comum.hora, TONES.map(t => [t.id, t.n]), v => { comum.hora = v; lembrarComum(); pintar(); desenhar(); }), 'stack'),
-          L.semHora ? null : field('Clima', seg('ger-clima', comum.clima, WEATHERS.map(([k, n]) => [k, n]), v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),
+          L.semHora ? null : field('Clima', selClima('ger-clima', comum.clima, v => { comum.clima = v; lembrarComum(); pintar(); }), 'stack'),      // (lote 158: 23 climas, em grupos)
           L.aceitaEstacao ? field('Estação', seg('ger-estacao', comum.estacao, Estacoes.LISTA, v => { comum.estacao = v; lembrarComum(); pintar(); refazer(); }), 'stack') : null,
           K.toggle('ger-relevo', comum.relevo, v => { comum.relevo = v; lembrarComum(); pintar(); refazer(); }, L.relevoTxt || 'Com relevo e formas (água, plataformas, torres, bandeirinhas)'),
           temEv(L) ? K.toggle('ger-eventos', comum.comEventos, v => { comum.comEventos = v; pintar(); refazer(); }, textoEventos(evDaAba(L))) : null),
+        bloco('tema', 'Objetos do tema', Temas.resumoBloco(L, E.op), ...Temas.controles(K, L, E.op, () => pintar())),      // (lote 158) as 15 categorias
         bloco('pov', 'Povoar', pv.on ? 'perigo ' + nomeDe(Povoar.PERIGOS, pv.perigo, 'médio').toLowerCase() : 'desligado', Povoar.controles(K, () => pintar())),       // (lote 49) povoar o lugar
         Zonas.vale(L) ? bloco('zonas', 'Zonas à mão', Zonas.resumoBloco(L), Zonas.controles(L, K, regerar => { pintar(); if (regerar) refazer(); else { desenhar(); cv.classList.toggle('desenhando', Zonas.ativo()); } })) : null,      // (lote 154)
         Tempo.vale(L) ? bloco('tempo', 'O tempo', Tempo.resumoBloco(), Tempo.controles(K, () => { pintar(); refazer(); })) : null,      // (lote 153) o lugar envelhecido
@@ -463,6 +465,12 @@ const Gerador = (() => {
             const tp = Tempo.prefs();
             const txtTp = Tempo.vale(l) && Tempo.liga(tp) ? await Tempo.aplicar(sc, Object.assign({}, tp, { mascara: Tempo.mascaraDe(p), proteger: p.trama ? p.trama.passos.filter(x => x.porta).map(x => x.porta).concat(p.trama.atalho ? [p.trama.atalho.porta] : []) : [] }), p.seed).catch(e => { console.error(e); return ''; }) : '';
             if (usaEv(l) && evDaAba(l).fx.length) cobrirComZonas(sc, evDaAba(l).fx);
+            // (lote 158) os objetos do tema, antes de povoar (os inimigos e os moradores ficam fora deles)
+            let txtTema = '';
+            try {
+              let formas = []; try { formas = l.partes(p).flatMap(pt => l.formaDaParte(p, pt) || []); } catch (e) { formas = []; }
+              txtTema = Temas.aplicar(sc, l.id, E.op, E.seed, formas); if (txtTema) Persist.scene(sc.id);
+            } catch (e) { console.error(e); }
             const pv = Povoar.prefs(), txtPov = pv.on ? Povoar.aplicar(sc, l.id, p, pv) : '';      // (lote 49) o lugar povoado
             const mi = Misterio.prefs(), txtMi = mi.on ? Misterio.aplicar(sc, l.id, p, mi) : '';    // (lote 53) o mistério
             const txtTr = p.trama ? Trama.aplicar(sc, p) : '';                                        // (lote 152) a história da missão
@@ -474,7 +482,7 @@ const Gerador = (() => {
             const conta = campoPedido ? Campo.montar(sc, campoPedido, comum.campoPor) : null;
             UI.closeModal();
             UI.switchScene(sc.id);
-            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTp ? ' ' + txtTp : '') + (txtTr ? ' ' + txtTr : '') + (txtMu ? ' ' + txtMu : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
+            UI.toast(l.feito(sc, p) + (conta ? ' ' + Campo.feitoTxt(campoPedido, conta) : '') + (txtTema ? ' ' + txtTema : '') + (txtPov ? ' ' + txtPov : '') + (txtMi ? ' ' + txtMi : '') + (txtTp ? ' ' + txtTp : '') + (txtTr ? ' ' + txtTr : '') + (txtMu ? ' ' + txtMu : '') + (txtMq ? ' ' + txtMq : ''), { long: true });
           }, err => { console.error(err); if (b) { b.disabled = false; b.textContent = 'Criar a cena'; } UI.toast('Não deu para criar a cena: ' + ((err && err.message) || 'falha ao guardar o fundo') + '.'); });
           return false;
         },

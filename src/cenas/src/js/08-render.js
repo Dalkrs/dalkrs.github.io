@@ -1133,8 +1133,202 @@ const Render = (() => {
         const tw = Math.sin(t * (0.8 + h(i, 5, s)) + i * 1.7);
         FX.blob(ctx, x, y, cell * 0.2, '#dcff7a', tw > 0 ? tw * 0.85 : 0);
       });
-    }
+    } else drawWeather158(wz, W, H, cell, T, pow, each, wrap, h, px, t);
     ctx.restore();
+  }
+  /* (lote 158) Os climas novos. pw: a intensidade escolhida (sem o zoom), para os véus que cobrem a cena. */
+  function drawWeather158(wz, W, H, cell, T, pow, each, wrap, h, px, t) {
+    const k = wz.k, pw = clamp(wz.pow || 0.6, 0.2, 1);
+    const veu = (cor, a) => { ctx.globalAlpha = 1; ctx.fillStyle = `rgba(${cor},${a})`; ctx.fillRect(0, 0, W, H); };
+    // a chuva (a de sempre, a forte, a fina, a vermelha e a verde): n gotas por ladrilho, o comprimento, o vento e a cor
+    const chuva = (n, len, vento, vel, cor, lw) => {
+      ctx.globalAlpha = 1; ctx.beginPath();
+      each(Math.round(n * pow), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T - t * T * vento), y = oy + wrap(h(i, 2, s) * T + t * T * (vel + h(i, 3, s) * 0.5));
+        ctx.moveTo(x, y); ctx.lineTo(x - len * vento * 0.6, y + len);
+      });
+      ctx.strokeStyle = cor; ctx.lineWidth = Math.max(lw * px, cell * lw * 0.016); ctx.lineCap = 'round'; ctx.stroke();
+    };
+    // os pingos que batem no chão: os anéis que abrem e somem
+    const aneis = (n, cor) => {
+      ctx.strokeStyle = cor; ctx.lineWidth = Math.max(0.8 * px, cell * 0.012);
+      each(Math.round(n * pow), (ox, oy, i, s) => {
+        const f = (t * (0.9 + h(i, 4, s) * 0.6) + h(i, 5, s)) % 1, x = ox + h(i, 6, s) * T, y = oy + h(i, 7, s) * T;
+        ctx.globalAlpha = (1 - f) * 0.6; ctx.beginPath(); ctx.ellipse(x, y, cell * 0.22 * f + 0.1, cell * 0.12 * f + 0.1, 0, 0, TAU); ctx.stroke();
+      });
+      ctx.globalAlpha = 1;
+    };
+    if (k === 'tempestade') {
+      veu('12,18,34', 0.2 * pw);
+      chuva(60, cell * 0.8, 0.55, 2.4, 'rgba(190,210,240,0.55)', 1.3);
+      aneis(10, 'rgba(200,220,255,0.7)');
+      // o clarão (com o "Clarões dos raios" ligado na aba Cena, e as animações ligadas): de vez em quando, dois piscos
+      if (wz.clarao !== false && motion()) {
+        const per = 7, q = Math.floor(t / per), o = h(q, 1, 9) * 4, l = t - q * per - o;
+        const f = l >= 0 && l < 0.09 ? 1 : l >= 0.2 && l < 0.26 ? 0.6 : l >= 0.26 && l < 0.6 ? (0.6 - l) / 0.34 * 0.25 : 0;
+        if (f > 0) {
+          veu('235,240,255', 0.42 * f * pw);
+          if (l < 0.3) {
+            // o raio: a linha quebrada, de cima para baixo, num ponto sorteado da cena
+            let x = h(q, 2, 9) * W, y = 0; ctx.beginPath(); ctx.moveTo(x, y);
+            while (y < H * (0.4 + h(q, 3, 9) * 0.5)) { y += cell * (0.8 + h(q, y, 4) * 1.4); x += (h(q, y, 5) - 0.5) * cell * 2.4; ctx.lineTo(x, y); }
+            ctx.globalAlpha = Math.min(1, f + 0.2); ctx.strokeStyle = '#f4f8ff'; ctx.lineWidth = Math.max(2 * px, cell * 0.06); ctx.lineJoin = 'round'; ctx.shadowColor = '#9fc0ff'; ctx.shadowBlur = 14; ctx.stroke(); ctx.shadowBlur = 0;
+          }
+        }
+      }
+    } else if (k === 'garoa') {
+      veu('150,165,180', 0.06 * pw);
+      chuva(80, cell * 0.28, 0.15, 1.1, 'rgba(215,230,245,0.5)', 0.9);
+      aneis(16, 'rgba(220,235,250,0.55)');
+    } else if (k === 'granizo') {
+      ctx.fillStyle = 'rgba(245,250,255,0.95)';
+      each(Math.round(28 * pow), (ox, oy, i, s) => {
+        const sp = 2.6 + h(i, 3, s), f = (t * sp * 0.25 + h(i, 2, s)) % 1, x = ox + wrap(h(i, 1, s) * T - t * T * 0.1), y = oy + f * T, r = cell * (0.04 + h(i, 4, s) * 0.035);
+        ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 0.25; ctx.fillRect(x - r * 0.4, y - cell * 0.35, r * 0.8, cell * 0.3);
+      });
+      // as pedrinhas quicando no chão
+      each(Math.round(12 * pow), (ox, oy, i, s) => {
+        const f = (t * 1.3 + h(i, 5, s)) % 1, x = ox + h(i, 6, s) * T + f * cell * 0.3, y = oy + h(i, 7, s) * T - Math.sin(f * Math.PI) * cell * 0.25;
+        ctx.globalAlpha = (1 - f) * 0.9; ctx.beginPath(); ctx.arc(x, y, cell * 0.04, 0, TAU); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'nevasca') {
+      veu('228,236,246', 0.16 * pw);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      each(Math.round(50 * pow), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T + t * T * (0.9 + h(i, 3, s) * 0.5)), y = oy + wrap(h(i, 2, s) * T + t * T * 0.25 + Math.sin(t * 2 + i) * cell * 0.3);
+        const r = cell * (0.03 + h(i, 4, s) * 0.04);
+        ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.ellipse(x, y, r * 2.2, r, 0.2, 0, TAU); ctx.fill();
+      });
+      // as rajadas: as faixas brancas que passam
+      each(Math.max(1, Math.round(3 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 5, s) * T + t * T * 1.4), y = oy + h(i, 6, s) * T;
+        ctx.save(); ctx.translate(x, y); ctx.scale(3.5, 0.5); FX.blob(ctx, 0, 0, cell * 1.2, '#ffffff', 0.18); ctx.restore();
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'areia') {
+      veu('196,150,90', 0.2 * pw);
+      ctx.strokeStyle = 'rgba(220,180,120,0.55)'; ctx.lineWidth = Math.max(px, cell * 0.02); ctx.lineCap = 'round';
+      ctx.beginPath();
+      each(Math.round(40 * pow), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T + t * T * (1.2 + h(i, 3, s) * 0.8)), y = oy + wrap(h(i, 2, s) * T + Math.sin(t * 1.5 + i) * cell * 0.4 + t * cell * 0.3);
+        ctx.moveTo(x, y); ctx.lineTo(x - cell * (0.3 + h(i, 4, s) * 0.5), y - cell * 0.05);
+      });
+      ctx.stroke();
+      each(Math.max(1, Math.round(3 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 5, s) * T + t * T * 0.8), y = oy + h(i, 6, s) * T;
+        ctx.save(); ctx.translate(x, y); ctx.scale(3, 0.8); FX.blob(ctx, 0, 0, cell * 1.6, '#d8b078', 0.28); ctx.restore();
+      });
+      // as bordas somem na areia
+      ctx.globalAlpha = 1;
+      const r0 = Math.min(W, H) * 0.3, r1 = Math.hypot(W, H) * 0.55, gr = ctx.createRadialGradient(W / 2, H / 2, r0, W / 2, H / 2, r1);
+      gr.addColorStop(0, 'rgba(190,145,85,0)'); gr.addColorStop(1, `rgba(190,145,85,${0.75 * pw})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    } else if (k === 'miragem') {
+      veu('255,196,110', 0.09 * pw);
+      // o ar tremendo: as faixas claras e onduladas que sobem devagar
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineWidth = cell * 0.5; ctx.lineCap = 'round';
+      each(Math.max(1, Math.round(4 * pow)), (ox, oy, i, s) => {
+        const y0 = oy + wrap(h(i, 2, s) * T - t * cell * 0.4), x0 = ox + h(i, 1, s) * T * 0.5;
+        ctx.beginPath(); for (let j = 0; j <= 12; j++) { const x = x0 + j * cell * 0.5, y = y0 + Math.sin(t * 2.2 + j * 0.9 + i) * cell * 0.18; if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+        ctx.globalAlpha = 0.05 + 0.03 * Math.sin(t * 1.5 + i); ctx.strokeStyle = '#fff2d0'; ctx.stroke();
+      });
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    } else if (k === 'nuvens') {
+      // as sombras das nuvens: as manchas grandes que passam devagar pelo chão
+      each(1, (ox, oy, i, s) => {
+        for (let j = 0; j < 3; j++) {
+          const x = ox + wrap(h(j, 1, s) * T + t * cell * 0.35), y = oy + wrap(h(j, 2, s) * T + t * cell * 0.12), r = cell * (2.4 + h(j, 3, s) * 2);
+          for (const dx of [0, -T]) for (const dy of [0, -T]) FX.blob(ctx, x + dx, y + dy, r, '#0a0e18', 0.2 * pw + 0.06);
+        }
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'nevoaRasteira') {
+      // a névoa no chão: as faixas baixas e compridas, que andam de lado
+      each(Math.max(2, Math.round(5 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T + t * cell * (0.3 + h(i, 3, s) * 0.3)), y = oy + h(i, 2, s) * T, r = cell * (1.6 + h(i, 4, s) * 1.4);
+        for (const dx of [0, -T]) { ctx.save(); ctx.translate(x + dx, y); ctx.scale(2.6, 0.55); FX.blob(ctx, 0, 0, r, '#eef3f6', 0.26 + 0.08 * Math.sin(t * 0.5 + i)); ctx.restore(); }
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'aurora') {
+      veu('6,10,30', 0.12 * pw);
+      // as cortinas de luz: as faixas verdes e roxas, onduladas, de um lado ao outro da cena
+      ctx.globalCompositeOperation = 'lighter';
+      const faixas = [['#3dffa0', 0.22], ['#7a5aff', 0.42], ['#3dd8ff', 0.62]];
+      for (const [cor, fy] of faixas) {
+        const passo = cell * 1.5, alto = cell * 5;
+        for (let x = 0; x < W; x += passo) {
+          const y = H * fy + Math.sin(x / (cell * 9) + t * 0.35 + fy * 7) * cell * 3, a = (0.13 + 0.08 * Math.sin(x / (cell * 4) - t * 0.8 + fy * 3)) * pw;
+          const gr = ctx.createLinearGradient(0, y - alto, 0, y + alto * 0.3);
+          gr.addColorStop(0, cor + '00'); gr.addColorStop(0.75, cor); gr.addColorStop(1, cor + '00');
+          ctx.globalAlpha = Math.max(0, a); ctx.fillStyle = gr; ctx.fillRect(x, y - alto, passo + 1, alto * 1.3);
+        }
+      }
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    } else if (k === 'cadentes') {
+      veu('6,10,30', 0.08 * pw);
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      each(1, (ox, oy, i, s) => {
+        for (let j = 0; j < 2; j++) {
+          const per = 3 + h(j, 4, s) * 4, f = ((t + h(j, 5, s) * per) % per) / 0.9;
+          if (f > 1) continue;
+          const x0 = ox + h(j, 1, s) * T, y0 = oy + h(j, 2, s) * T * 0.6, dx = cell * 4, dy = cell * 2, x = x0 + dx * f, y = y0 + dy * f;
+          const gr = ctx.createLinearGradient(x - dx * 0.5, y - dy * 0.5, x, y); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(255,250,220,0.95)');
+          ctx.globalAlpha = Math.sin(f * Math.PI); ctx.strokeStyle = gr; ctx.lineWidth = Math.max(1.5 * px, cell * 0.05); ctx.beginPath(); ctx.moveTo(x - dx * 0.5, y - dy * 0.5); ctx.lineTo(x, y); ctx.stroke();
+          FX.blob(ctx, x, y, cell * 0.25, '#fff4c0', Math.sin(f * Math.PI) * 0.8);
+        }
+      });
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    } else if (k === 'sangue') {
+      veu('110,0,10', 0.1 * pw);
+      chuva(36, cell * 0.5, 0.25, 1.4, 'rgba(170,20,30,0.7)', 1.3);
+      aneis(10, 'rgba(160,20,30,0.75)');
+    } else if (k === 'corrupcao') {
+      veu('40,70,20', 0.1 * pw);
+      chuva(32, cell * 0.45, 0.3, 1.3, 'rgba(150,230,90,0.55)', 1.2);
+      // as poças que fumegam (paradas: sorteadas por ladrilho)
+      each(2, (ox, oy, i, s) => {
+        const x = ox + h(i, 8, s) * T, y = oy + h(i, 9, s) * T, r = cell * (0.6 + h(i, 10, s) * 0.6);
+        ctx.globalAlpha = 0.35; ctx.fillStyle = '#5aa83a'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.55, h(i, 11, s), 0, TAU); ctx.fill();
+        for (let j = 0; j < 3; j++) { const f = (t * 0.25 + j / 3 + h(i, 12, s)) % 1; FX.blob(ctx, x + Math.sin(f * 4 + j) * cell * 0.3, y - f * cell * 1.6, cell * (0.25 + f * 0.5), '#9ad86a', (1 - f) * 0.3); }
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'esporos') {
+      ctx.globalCompositeOperation = 'lighter';
+      each(Math.max(3, Math.round(16 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 1, s) * T + Math.sin(t * (0.2 + h(i, 3, s) * 0.2) + i) * cell * 1.2), y = oy + wrap(h(i, 2, s) * T - t * cell * (0.15 + h(i, 4, s) * 0.2));
+        const tw = 0.5 + 0.5 * Math.sin(t * (0.7 + h(i, 5, s)) + i);
+        FX.blob(ctx, x, y, cell * (0.13 + h(i, 6, s) * 0.1), i % 3 ? '#7affe0' : '#c88aff', 0.45 + tw * 0.55);
+      });
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    } else if (k === 'submerso') {
+      veu('20,80,140', 0.2 * pw);
+      // a luz ondulando no fundo (as cáusticas) e as bolhas subindo
+      ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = '#bfefff'; ctx.lineWidth = Math.max(px, cell * 0.1); ctx.lineJoin = 'round';
+      each(Math.max(2, Math.round(6 * pow)), (ox, oy, i, s) => {
+        const x0 = ox + h(i, 1, s) * T, y0 = oy + h(i, 2, s) * T;
+        ctx.globalAlpha = 0.07 + 0.05 * Math.sin(t * 1.2 + i);
+        ctx.beginPath(); for (let j = 0; j <= 8; j++) { const x = x0 + j * cell * 0.6, y = y0 + Math.sin(t * 1.6 + j * 1.1 + i) * cell * 0.5 + Math.cos(t * 0.9 + j) * cell * 0.2; if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y); } ctx.stroke();
+      });
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = 'rgba(220,245,255,0.75)'; ctx.lineWidth = Math.max(0.8 * px, cell * 0.015);
+      each(Math.max(2, Math.round(10 * pow)), (ox, oy, i, s) => {
+        const x = ox + wrap(h(i, 3, s) * T + Math.sin(t * 2 + i) * cell * 0.2), y = oy + wrap(h(i, 4, s) * T - t * cell * (0.8 + h(i, 5, s) * 0.6)), r = cell * (0.04 + h(i, 6, s) * 0.06);
+        ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
+      });
+      ctx.globalAlpha = 1;
+    } else if (k === 'fagulhas') {
+      ctx.globalCompositeOperation = 'lighter';
+      const cores = ['#ff7ad8', '#7ad8ff', '#ffd77a', '#a87aff', '#7affa0'];
+      each(Math.max(3, Math.round(14 * pow)), (ox, oy, i, s) => {
+        const f = (t * (0.15 + h(i, 3, s) * 0.15) + h(i, 4, s)) % 1;
+        const x = ox + h(i, 1, s) * T + Math.sin(f * 12 + i) * cell * 0.4, y = oy + wrap(h(i, 2, s) * T - f * cell * 3);
+        const tw = Math.sin(t * (3 + h(i, 5, s) * 4) + i);
+        FX.blob(ctx, x, y, cell * 0.2, cores[i % 5], Math.max(0.15, tw) * Math.sin(f * Math.PI) * 1.2);
+        if (tw > 0.7) { ctx.globalAlpha = 0.8; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(0.8 * px, cell * 0.012); ctx.beginPath(); ctx.moveTo(x - cell * 0.08, y); ctx.lineTo(x + cell * 0.08, y); ctx.moveTo(x, y - cell * 0.08); ctx.lineTo(x, y + cell * 0.08); ctx.stroke(); }
+      });
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    }
   }
 
   /* ---- Quadro completo ---- */
@@ -1211,7 +1405,7 @@ const Render = (() => {
     }
 
     // A neblina fica por baixo dos tokens, para eles continuarem legíveis; chuva, neve e afins caem por cima de tudo.
-    const mist = sc.weather && sc.weather.k === 'neblina';
+    const mist = !!sc.weather && WEATHER_CHAO.has(sc.weather.k);      // (lote 158: e a névoa rasteira e as sombras das nuvens)
     if (mist) drawWeather(sc, px, t);
 
     layer(c => drawUpper(c, sc, px, t));

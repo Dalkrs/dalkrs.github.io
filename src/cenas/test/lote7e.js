@@ -162,7 +162,7 @@ const SHOTS = process.env.FOTOS;
     await exato('enc-ter', 'Pântano'); await exato('enc-sit', 'Cabana na palafita');
     await semente(31);
     await page.locator('#ger-hora button', { hasText: 'Noite' }).click(); await w(300);
-    await page.locator('#ger-clima button', { hasText: 'Neblina' }).click(); await w(300);
+    await page.selectOption('#ger-clima', 'neblina'); await w(300);      // (lote 158: a lista)
     const pp = (await G()).plano;
     await criar();
     const s2 = await ev(() => { const sc = __tc.Store.scene(); return { nome: sc.name, tom: sc.tone, clima: sc.weather.k, portas: sc.walls.filter(x => x.k === 'door').length, paredes: sc.walls.length, fx: [...new Set(sc.effects.map(e => e.fx))].sort(), luzes: sc.lights.length, ter: sc.shapes.filter(x => x.ter).map(x => x.a) }; });
@@ -186,7 +186,7 @@ const SHOTS = process.env.FOTOS;
     await abrirGerador();
     await exato('enc-ter', 'Lava'); await exato('enc-sit', 'Rio de lava');
     await page.locator('#ger-hora button', { hasText: 'Dia' }).click(); await w(200);
-    await page.locator('#ger-clima button', { hasText: 'Nenhum' }).click(); await w(200);
+    await page.selectOption('#ger-clima', ''); await w(200);      // (lote 158: a lista)
     const lv = (await G()).plano;
     await page.locator('.sw', { has: page.locator('#ger-relevo') }).click(); await w(300);
     await criar();
