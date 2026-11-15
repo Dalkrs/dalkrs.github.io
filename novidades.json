@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.15-01",
+      "data": "2026-11-15",
+      "titulo": "O Arquivo das fichas",
+      "itens": [
+        { "tipo": "novo", "texto": "Fichas: o mestre arquiva uma ficha pelo \u201c\u22ef\u201d (Arquivar; os pets vão junto). Ela sai do elenco e das outras abas e vai para a seção Arquivo, embaixo do elenco, só para consulta.", "mestre": true },
+        { "tipo": "novo", "texto": "Ao encerrar uma campanha, dá para marcar \u201cArquivar as fichas desta campanha\u201d. Reabrindo a campanha, elas voltam.", "mestre": true },
+        { "tipo": "novo", "texto": "Na ficha arquivada: Desarquivar, ou Usar como base (uma ficha nova, igual, na campanha em vista, para o personagem voltar numa saga futura).", "mestre": true },
+        { "tipo": "novo", "texto": "Cada jogador vê as fichas dele no Arquivo. \u201cBaixar\u201d guarda uma cópia num arquivo, que volta pelo Importar." }
+      ]
+    },
+    {
       "versao": "2026.11.14-07",
       "data": "2026-11-14",
       "titulo": "Armas à distância com munição",

@@ -30,7 +30,13 @@ const FichasMesa = (() => {
   const campEmVista = () => (ativo && st && st.campanha ? st.campanha.id : null);
   const encerrada = id => !!id && campanhas().some(c => c.id === id && c.encerrada);
   const nomeDaCampanha = id => { const c = campanhas().find(x => x.id === id); return c ? c.nome : id ? 'Outra campanha' : 'Do mundo'; };
-  const podeEditar = pc => !ativo || (!encerrada(pc && pc._camp) && (mestre() || (!!pc && pc._dono === st.eu)));
+  /* (lote 162) O arquivo: a ficha arquivada (pc.arquivo = { em, camp, junto }) sai da lista e das outras abas e fica só
+     para consulta, na seção Arquivo do elenco. Quem arquiva, desarquiva e usa como base é o mestre (sem mesa, quem usa);
+     o jogador vê no Arquivo as fichas dele. "junto": foi arquivada com a campanha (ao encerrar), e volta ao reabrir. */
+  const arquivada = pc => !!(pc && pc.arquivo && typeof pc.arquivo === 'object');
+  const podeArquivar = () => !ativo || mestre();
+  const verNoArquivo = pc => arquivada(pc) && (!ativo || mestre() || (!!pc && pc._dono === st.eu));
+  const podeEditar = pc => !arquivada(pc) && (!ativo || (!encerrada(pc && pc._camp) && (mestre() || (!!pc && pc._dono === st.eu))));
   /* Passar uma ficha (ou um grupo) de uma campanha para outra é organizar as campanhas: só o mestre da mesa. O mestre
      auxiliar, mesmo mestrando as Fichas, trabalha dentro das campanhas que existem. (Uma casca de antes do mestre
      auxiliar não diz o cargo: vale o papel.) */
@@ -99,7 +105,7 @@ const FichasMesa = (() => {
     if (ficha.estaqueOculto) ficha.estaque = estaqueVazio();          // (lote 15) o texto fica com o mestre
     return { nome: String(pc.nome || '').slice(0, 120), ficha, skills: pc.skills || {}, estado: pc.estado || {}, dono_id: pc._dono || null, vis: pc._vis === 'mesa' ? 'mesa' : 'mestre', campanha: pc._camp || null };
   }
-  const retrato = (p, ordem) => ({ nome: p.nome, ficha: j(p.ficha), skills: j(p.skills), estado: j(p.estado), dono: p.dono_id, vis: p.vis, camp: p.campanha || null, ordem });
+  const retrato = (p, ordem) => ({ nome: p.nome, ficha: j(p.ficha), skills: j(p.skills), estado: j(p.estado), dono: p.dono_id, vis: p.vis, camp: p.campanha || null, ordem, arq: !!(p.ficha && p.ficha.arquivo) });
   const lerLocal = chave => { try { const v = JSON.parse(localStorage.getItem(chave) || 'null'); return v && typeof v === 'object' ? v : null; } catch (e) { return null; } };
   /* Os documentos "um por campanha": a ordem dos grupos e as missões do grupo de cada campanha ficam em
      fichas:grupos@<campanha> e fichas:missoes@<campanha> (os sem "@" são os do mundo). */
@@ -111,7 +117,7 @@ const FichasMesa = (() => {
   function montar() {
     const tela = lerLocal(KEY) || {};
     const velhos = new Map((tela.personagens || []).map(p => [p.id, p]));
-    const linhas = P.todas().sort((a, b) => (a.ordem - b.ordem) || (a.id < b.id ? -1 : 1));
+    const linhas = P.todas({ arquivo: true }).sort((a, b) => (a.ordem - b.ordem) || (a.id < b.id ? -1 : 1));
     const s = {
       v: 1,
       cfg: doc('cfg') || estadoPadrao().cfg,
@@ -174,6 +180,16 @@ const FichasMesa = (() => {
       const ant = sombra.pcs.get(pc.id), novo = !ant;
       if (novo) { nascer(pc); const t = naTela && naTela.get(pc.id); if (t) { if (pc._dono !== undefined) t._dono = pc._dono; t._camp = pc._camp; } }
       if (!novo && !mestre() && ant.dono !== st.eu) return;          // ficha de outra pessoa: só consulta
+      /* (lote 162) Arquivar e desarquivar (só o mestre) mudam só a marca na ficha — também numa campanha encerrada. Fora
+         disso, a ficha arquivada não muda (nem a ordem). */
+      if (!novo && ant.arq !== arquivada(pc)) {
+        if (!mestre()) { pc.arquivo = undefined; return; }
+        const fa = JSON.parse(ant.ficha); if (arquivada(pc)) fa.arquivo = JSON.parse(j(pc.arquivo)); else delete fa.arquivo;
+        P.gravar(pc.id, { ficha: fa }, { ficha: JSON.parse(ant.ficha) });
+        sombra.pcs.set(pc.id, Object.assign({}, ant, { ficha: j(fa), arq: arquivada(pc) }));
+        return;
+      }
+      if (!novo && ant.arq) return;                                  // ficha arquivada: só consulta
       if (!novo && encerrada(ant.camp)) return;                      // ficha de campanha encerrada: só consulta (nem a ordem dela muda)
       if (!novo && (!organiza() || encerrada(pc._camp))) pc._camp = ant.camp;      // (só o mestre da mesa muda a campanha de uma ficha, e nunca para uma encerrada)
       const p = partes(pc), campos = {}, r = retrato(p, mestre() ? i : (ant ? ant.ordem : i));
@@ -539,17 +555,17 @@ const FichasMesa = (() => {
     return fora;
   }
   function limitar() {
-    if (!ativo) return;
     const alvo = document.getElementById('ficha'), pc = S.personagens.find(p => p.id === S.sel);
-    if (!alvo || !pc) return;
-    if (!mestre()) alvo.querySelectorAll('[data-act="del"]').forEach(b => { b.disabled = true; b.title = 'Só o mestre exclui personagens da mesa'; });
+    if (!alvo || !pc || (!ativo && !arquivada(pc))) return;          // (sem mesa, só a ficha arquivada é só consulta)
+    if (ativo && !mestre()) alvo.querySelectorAll('[data-act="del"]').forEach(b => { b.disabled = true; b.title = 'Só o mestre exclui personagens da mesa'; });
     if (podeEditar(pc)) return;
     /* Só consulta: nada se edita — mas dá para andar pela ficha. As abas de dentro dela (Atributos e Defesas; itens,
        poderes, missões…; as bolsas) continuam valendo: sem elas, "consultar" seria ver só a parte que estava aberta. */
     // (lote 7) os filtros, a busca e as seções dos equipamentos também: só mudam o que aparece nesta tela
     // (lote 27) e o Ativo · Inativo · Toldo, que só aparece na ficha do grupo de quem joga (quem confere é o banco)
-    alvo.querySelectorAll('input, select, textarea, button').forEach(el => { if (!el.matches('[data-abaficha], [data-irpara], [data-abaatr], [data-ababolsa], [data-itfil], [data-itbusca], [data-itsecbt], #lugarFicha [data-lugar]')) el.disabled = true; });
+    alvo.querySelectorAll('input, select, textarea, button').forEach(el => { if (!el.matches('[data-abaficha], [data-irpara], [data-abaatr], [data-ababolsa], [data-itfil], [data-itbusca], [data-itsecbt], #lugarFicha [data-lugar], [data-arq]')) el.disabled = true; });
     const fechada = encerrada(pc._camp);
+    if (arquivada(pc)) return;                       // (a ficha arquivada traz o aviso dela, com os botões do mestre)
     if (!alvo.querySelector('.so-consulta')) alvo.insertAdjacentHTML('afterbegin', '<div class="so-consulta">' + (fechada ? 'Campanha encerrada: esta ficha é só para consulta.' + (st.cargo === 'mestre' ? ' Para mexer nela, reabra a campanha em Campanhas…, no menu da mesa.' : '') : 'Ficha de outra pessoa: só para consulta.') + '</div>');
   }
 
@@ -574,6 +590,7 @@ const FichasMesa = (() => {
   const emGrupos = pcs => (ativo && TC.ponte.porCampanha ? TC.ponte.porCampanha(pcs, p => p._camp) : (pcs.length ? [{ id: '', nome: '', vista: true, itens: pcs.slice() }] : []));
   const emOrdem = pcs => emGrupos(pcs).reduce((l, g) => l.concat(g.itens), []);
   function opcoesDePcs(pcs, sel, rotulo) {
+    pcs = pcs.filter(p => !arquivada(p) || p.id === sel);           // (lote 162) as arquivadas não se escolhem
     const op = p => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(rotulo ? rotulo(p) : p.nome)}</option>`;
     const gs = emGrupos(pcs);
     return gs.length === 1 && !gs[0].nome ? gs[0].itens.map(op).join('') : gs.map(g => `<optgroup label="${esc(g.nome)}">${g.itens.map(op).join('')}</optgroup>`).join('');
@@ -850,5 +867,5 @@ const FichasMesa = (() => {
     preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, calendario, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha, lugarNaFicha,
     ehNpc, segDe, porSeg, mexerRel, relsDe, repSegDe, porRepSeg, aptSegDe, porAptSeg, faccoesDaMesa, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
     campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza,
-    ehPet, petsDe, nomeDoPetDe };
+    ehPet, petsDe, nomeDoPetDe, limitar, arquivada, podeArquivar, verNoArquivo };
 })();

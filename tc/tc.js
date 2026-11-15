@@ -2044,9 +2044,15 @@
     contarPendentes();
     return l;
   }
+  const arquivada = l => !!(l && l.ficha && typeof l.ficha === 'object' && l.ficha.arquivo);
+  dados.arquivada = arquivada;
   dados.col = nome => {
     const c = abrirCol(nome);
-    return { pronta: c.pronta, todas: () => [...c.linhas.values()], pegar: id => c.linhas.get(id) || null, gravar: (id, campos, de, mudas, opt) => dadosGravar(nome, id, campos, de, mudas, opt), apagar: (id, de) => dadosGravar(nome, id, { apagado: true }, de) };
+    /* (lote 162) As fichas arquivadas (ficha.arquivo) não entram na lista: nenhum sistema as mostra para escolher, puxar
+       ou contar. Quem precisa delas pede (todas({ arquivo: true }): as Fichas, que têm a seção Arquivo, e a ponte, que
+       repassa tudo e filtra do lado de lá). Pegar pelo id continua valendo (um token antigo, uma nota). */
+    const todas = o => { const l = [...c.linhas.values()]; return nome === 'personagens' && !(o && o.arquivo) ? l.filter(x => !arquivada(x)) : l; };
+    return { pronta: c.pronta, todas, pegar: id => c.linhas.get(id) || null, gravar: (id, campos, de, mudas, opt) => dadosGravar(nome, id, campos, de, mudas, opt), apagar: (id, de) => dadosGravar(nome, id, { apagado: true }, de) };
   };
   dados.remendo = remendo;
   /* As barras de uma ficha que não chega a este aparelho: o mestre auxiliar mestrando as Cenas sem a aba Fichas, num

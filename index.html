@@ -721,7 +721,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=35"></script>
-<script src="tc/tc.js?v=57"></script>
+<script src="tc/tc.js?v=58"></script>
 <script src="tc/busca.js?v=3"></script>
 <script src="tc/calendario.js?v=2"></script>
 <script src="tc/guia.js?v=59"></script>
@@ -744,7 +744,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.14-07';
+  const VERSAO = '2026.11.15-01';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1190,7 +1190,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     else if (m.t === 'busca') abrirBusca();                // (lote 7, parte 6) Ctrl+K de dentro de um sistema
     else if (m.t === 'rolagem' && mesas.atual) aoVivo.deSistema(m.origem, m.dados).catch(e => toast((m.origem === 'arvore' ? 'O aviso para o jogador não foi: ' : 'A rolagem não chegou à mesa: ') + e.message));
     else if (m.t === 'dados.abrir') {
-      try { const c = TC.dados.col(m.col); c.pronta.then(() => responder({ t: 'dados.tudo', col: m.col, n: m.n, linhas: c.todas() }), e => responder({ t: 'dados.erro', n: m.n, erro: e.message })); }
+      try { const c = TC.dados.col(m.col); c.pronta.then(() => responder({ t: 'dados.tudo', col: m.col, n: m.n, linhas: c.todas({ arquivo: true }) }), e => responder({ t: 'dados.erro', n: m.n, erro: e.message })); }
       catch (e) { responder({ t: 'dados.erro', n: m.n, erro: e.message }); }
     } else if (m.t === 'dados.gravar' && mesas.atual) {
       if (m.mesa && m.mesa !== mesas.atual.id) return;        // gravação de uma mesa que já não é a aberta (chegou atrasada): não entra nesta
@@ -1823,8 +1823,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
           h('button', { type: 'button', class: 'btn sm', 'data-a': 'renomear', text: 'Renomear…', onclick: () => janelaRenomearCampanha(c) }),
           c.encerrada ? h('button', { type: 'button', class: 'btn sm', 'data-a': 'reabrir', text: 'Reabrir', onclick: async () => {
               if (!await tentar(() => mesas.mudarCampanha(c.id, { encerrada: false }))) return;
+              const volta = arquivarDaCampanha(c.id, false);            // (lote 162) as fichas arquivadas com ela voltam
               if (aberta(fNova)) janelaCampanhas();
-              toast('Campanha ' + c.nome + ' reaberta: dá para jogar nela de novo.', 'Desfazer', async () => { try { await assentar(); await mesas.mudarCampanha(c.id, { encerrada: true }); toast('Desfeito: a campanha ' + c.nome + ' continua encerrada.'); if ($('f-camps')) janelaCampanhas(); } catch (e) { toast(e.message); } });
+              toast('Campanha ' + c.nome + ' reaberta: dá para jogar nela de novo.' + (volta.length ? ' ' + (volta.length === 1 ? '1 ficha voltou' : volta.length + ' fichas voltaram') + ' do Arquivo.' : ''), 'Desfazer', async () => { try { await assentar(); if (volta.length) { arquivarDaCampanha(c.id, true, volta); await esperarGravar(); } await mesas.mudarCampanha(c.id, { encerrada: true }); toast('Desfeito: a campanha ' + c.nome + ' continua encerrada.'); if ($('f-camps')) janelaCampanhas(); } catch (e) { toast(e.message); } });
             } })
             : h('button', { type: 'button', class: 'btn sm', 'data-a': 'encerrar', text: 'Encerrar…', onclick: () => janelaEncerrar(c) }),
           a.campanhas.length === 1 ? h('button', { type: 'button', class: 'btn sm', 'data-a': 'desfazer', text: 'Desfazer as campanhas…', title: 'Tudo volta a ser da mesa inteira, como antes das campanhas', onclick: () => janelaDesfazer(c) })
@@ -1954,14 +1955,45 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     });
     abrirJanela(f); campo.focus(); campo.select();
   }
+  /* (lote 162) As fichas de uma campanha vão para o Arquivo (ficha.arquivo, com junto: true) — ou voltam de lá, as que
+     foram com ela. Os pets vão com a campanha do dono. Devolve os ids mexidos. */
+  function arquivarDaCampanha(campId, arquivar, soEstes) {
+    let P; try { P = TC.dados.col('personagens'); } catch (e) { return []; }
+    const em = new Date().toISOString(), feitos = [];
+    for (const l of P.todas({ arquivo: true })) {
+      if (!l || l.apagado || l.campanha !== campId || !l.ficha || typeof l.ficha !== 'object') continue;
+      if (soEstes && !soEstes.includes(l.id)) continue;
+      const tem = !!l.ficha.arquivo;
+      if (arquivar ? tem : !(tem && (soEstes || l.ficha.arquivo.junto))) continue;
+      const ficha = Object.assign({}, l.ficha);
+      if (arquivar) ficha.arquivo = { em, camp: campId, junto: true }; else delete ficha.arquivo;
+      P.gravar(l.id, { ficha }); feitos.push(l.id);
+    }
+    return feitos;
+  }
+  // espera o que está na fila subir para o banco (até uns segundos)
+  const esperarGravar = async () => { for (let i = 0; i < 40 && TC.dados.pendentes > 0; i++) await new Promise(r => setTimeout(r, 150)); };
+  const fichasDaCampanha = id => { try { return TC.dados.col('personagens').todas().filter(l => l && !l.apagado && l.campanha === id).length; } catch (e) { return 0; } };
   function janelaEncerrar(c) {
-    confirmar('Encerrar a campanha ' + c.nome + '?',
-      'Ela fica guardada. A conversa, as fichas, o acampamento e as missões do grupo dela passam a ser só para consulta — para os jogadores e para você. As cenas e os mapas dela continuam com você. Dá para reabrir quando quiser.',
-      'Encerrar', async () => {
-        await assentar();
-        await mesas.mudarCampanha(c.id, { encerrada: true });
-        toast('Campanha ' + c.nome + ' encerrada: agora é só para consulta.', 'Desfazer', async () => { try { await mesas.mudarCampanha(c.id, { encerrada: false }); toast('Desfeito: a campanha ' + c.nome + ' continua aberta.'); } catch (e) { toast(e.message); } }, 12000);
-      }, true);
+    const n = fichasDaCampanha(c.id);
+    const err = h('div', { class: 'err', role: 'alert' });
+    const ok = h('button', { type: 'submit', class: 'btn pri', text: 'Encerrar' });
+    const marca = h('input', { type: 'checkbox', id: 'enc-arq' });
+    const f = h('form', { class: 'dl' }, h('h2', { text: 'Encerrar a campanha ' + c.nome + '?' }),
+      h('p', { text: 'Ela fica guardada. A conversa, as fichas, o acampamento e as missões do grupo dela passam a ser só para consulta — para os jogadores e para você. As cenas e os mapas dela continuam com você. Dá para reabrir quando quiser.' }),
+      n ? h('label', { class: 'ck', for: 'enc-arq' }, marca, h('span', { text: ' Arquivar as ' + (n === 1 ? 'a ficha' : n + ' fichas') + ' desta campanha (saem das listas e vão para o Arquivo, nas Fichas; voltam se a campanha for reaberta)' })) : null,
+      err, h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
+    enviarCom(f, err, ok, async () => {
+      await assentar();
+      // (antes de encerrar: depois, as fichas dela não se gravam mais)
+      const arq = n && marca.checked ? arquivarDaCampanha(c.id, true) : [];
+      if (arq.length) await esperarGravar();
+      try { await mesas.mudarCampanha(c.id, { encerrada: true }); }
+      catch (e) { if (arq.length) arquivarDaCampanha(c.id, false, arq); throw e; }
+      if (aberta(f)) fecharJanela();
+      toast('Campanha ' + c.nome + ' encerrada: agora é só para consulta.' + (arq.length ? ' ' + (arq.length === 1 ? '1 ficha foi' : arq.length + ' fichas foram') + ' para o Arquivo.' : ''), 'Desfazer', async () => { try { await mesas.mudarCampanha(c.id, { encerrada: false }); if (arq.length) arquivarDaCampanha(c.id, false, arq); toast('Desfeito: a campanha ' + c.nome + ' continua aberta.'); } catch (e) { toast(e.message); } }, 12000);
+    });
+    abrirJanela(f);
   }
   function janelaApagarCampanha(c) {
     confirmar('Apagar a campanha ' + c.nome + '?',

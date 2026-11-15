@@ -293,6 +293,13 @@ table.attr tr:last-child td{border-bottom:0}
 .idmesa .f{min-width:220px}
 .idmesa .chk{display:flex;align-items:center;gap:7px;padding-bottom:7px;font-size:13px;flex:1 1 240px}
 .so-consulta{margin:0 0 12px;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--campo-sut);color:var(--ink-2);font-size:13px}
+/* (lote 162) o Arquivo */
+.arq-aviso{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.arq-aviso .arq-bts{display:inline-flex;gap:6px;margin-left:auto}
+.bloco.arquivo .blocohd [data-arqbaixar]{margin-left:auto}
+.arqitens{list-style:none;margin:0;padding:0}
+.arqitens .arqcamp{font-size:11px;padding:6px 8px 2px;text-transform:uppercase;letter-spacing:.04em}
+.arqitens .pcrow{opacity:.85}
 .mesa-oferta{margin:0 0 10px;padding:10px;border:1px dashed var(--brass-soft);border-radius:var(--r);background:var(--brass-fundo);font-size:13px}
 .mesa-oferta p{margin:0 0 8px}
 .mesa-falha{margin:14px;padding:12px 14px;border:1px solid var(--rubric-borda);border-radius:var(--r);background:var(--rubric-fundo)}
@@ -1884,12 +1891,12 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <div class="wrap solo" id="tab-mesa" hidden><main id="mesa"></main></div>
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
-<script src="../tc/ponte.js?v=23"></script>
+<script src="../tc/ponte.js?v=24"></script>
 <script src="../tc/rules.js?v=35"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="mesa.js?v=18"></script>
+<script src="mesa.js?v=19"></script>
 <script src="extras.js?v=28"></script>
 <script src="../tc/reputacao.js?v=1"></script>
 <script src="reputacao.js?v=1"></script>
@@ -2359,8 +2366,9 @@ function renderLista(){
   pintarAbasElenco(comAbas);
   pintarSelecao();
   let html='';
+  const vivos=S.personagens.filter(p=>!FichasMesa.arquivada(p));      // (lote 162) as arquivadas vão para o Arquivo, embaixo
   blocos.forEach(b=>{
-    const doBloco=b.unico? S.personagens : S.personagens.filter(p=>FichasMesa.blocoDe(p)===b.camp);
+    const doBloco=b.unico? vivos : vivos.filter(p=>FichasMesa.blocoDe(p)===b.camp);
     const trancado=!!b.encerrada || b.camp==='?';      // (campanha encerrada: só consulta)
     /* Só o mestre da mesa passa ficha de um bloco para outro: para os outros, um bloco sem nenhuma ficha (que não seja o
        da campanha em vista) não diz nada, e não aparece. */
@@ -2408,6 +2416,7 @@ function renderLista(){
       </div>
       <ul class="blocoitens" ${fechadoB?'hidden':''}>${dentro || '<li class="vazio hint">'+(b.camp?'nenhuma ficha nesta campanha ainda':'nenhuma ficha do mundo: o que estiver aqui aparece em todas as campanhas')+'</li>'}</ul></li>`;
   });
+  html+=htmlArquivo();
   ul.innerHTML = html || (comAbas && aba!=='ativo' && !filtroAtivo()
     ? `<li><div class="empty vaziaba" style="padding:18px">${aba==='toldo'?'Ninguém no toldo.':'Ninguém inativo.'}${FichasMesa.mestre()?`<br><span class="hint">Arraste uma ficha até a aba “${aba==='toldo'?'Toldo':'Inativos'}”, use o botão no alto da ficha ou “Vários”.</span>`:''}</div></li>`
     : '<li><div class="empty" style="padding:18px">Nada encontrado.</div></li>');
@@ -2415,6 +2424,81 @@ function renderLista(){
 }
 /* As linhas de uma seção do elenco: cada pet logo embaixo do dono (quando os dois estão nela); o pet cujo dono não está
    ali aparece no lugar dele, com o "pet de …" dizendo de quem é. */
+/* (lote 162) O Arquivo: as fichas arquivadas (de uma saga que acabou, de um NPC que saiu da história), embaixo do elenco,
+   recolhido. Só consulta. O mestre vê todas; o jogador, as dele. Separadas pela campanha de onde vieram. "Baixar" guarda
+   uma cópia num arquivo (o mesmo de Importar: as fichas voltam arquivadas). */
+function arquivadasVisiveis(){ return S.personagens.filter(p=>FichasMesa.verNoArquivo(p) && casaFiltro(p)); }
+function htmlArquivo(){
+  const lista=arquivadasVisiveis();
+  if(!lista.length) return '';
+  const fechado=!(S.abertos||[]).includes('arquivo'), porCamp=new Map();
+  lista.forEach(p=>{ const c=(p.arquivo&&p.arquivo.camp)||p._camp||''; if(!porCamp.has(c)) porCamp.set(c,[]); porCamp.get(c).push(p); });
+  const comCamp=FichasMesa.campanhas().length>0;
+  const dentro=[...porCamp].map(([c,ps])=>`${comCamp?`<li class="arqcamp hint">${esc(FichasMesa.nomeDaCampanha(c||null))}</li>`:''}${ps.map(p=>linhaElenco(p,false)).join('')}`).join('');
+  return `<li class="bloco arquivo" data-bloco="arquivo">
+    <div class="blocohd">
+      <button class="caret" data-arqtoggle="1" aria-expanded="${!fechado}" aria-label="${fechado?'Abrir':'Recolher'} o Arquivo">${fechado?'▸':'▾'}</button>
+      <span class="bloconome">Arquivo</span>
+      <span class="cnt mono">${lista.length}</span>
+      <button class="mini" data-arqbaixar="1" title="Baixa as fichas arquivadas num arquivo (dá para trazer de volta em Importar)">Baixar</button>
+    </div>
+    <ul class="arqitens" ${fechado?'hidden':''}>${dentro}</ul></li>`;
+}
+function baixarArquivo(){
+  const lista=arquivadasVisiveis();
+  if(!lista.length){ toast('Não há fichas no Arquivo.'); return; }
+  const out={v:1, tipo:'arquivo', em:new Date().toISOString(), personagens:lista.map(p=>{ const c=JSON.parse(JSON.stringify(p)); delete c.ultRol; return c; })};
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,1)],{type:'application/json'}));
+  a.download='tinycats-arquivo-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast(lista.length===1? '1 ficha baixada.' : lista.length+' fichas baixadas.');
+}
+const dataCurta=iso=>{ const d=new Date(iso); return isFinite(d)? d.toLocaleDateString('pt-BR') : ''; };
+// as fichas que vão juntas: o personagem e os pets dele
+function comPets(pc){ return [pc].concat(pc.petDe? [] : FichasMesa.petsDe(pc)); }
+function arquivar(pc){
+  if(!FichasMesa.podeArquivar() || !pc || FichasMesa.arquivada(pc)) return;
+  const lista=comPets(pc), em=new Date().toISOString();
+  lista.forEach(p=>{ p.arquivo={em, camp:p._camp||null}; });
+  if(S.sel===pc.id){ const outra=S.personagens.find(p=>!FichasMesa.arquivada(p)); S.sel=outra? outra.id : pc.id; }
+  save(); render();
+  FichasExtras.aviso((pc.nome||'A ficha')+' foi para o Arquivo'+(lista.length>1? ' (com '+(lista.length===2? 'o pet' : 'os '+(lista.length-1)+' pets')+')' : '')+'. Sai das listas e das outras abas; fica só para consulta.', 'Desfazer', ()=>{
+    lista.forEach(p=>{ delete p.arquivo; }); save(); render();
+  }, 9000);
+}
+function desarquivar(pc){
+  if(!FichasMesa.podeArquivar() || !FichasMesa.arquivada(pc)) return;
+  const lista=comPets(pc).filter(p=>FichasMesa.arquivada(p)), antes=lista.map(p=>[p, p.arquivo]);
+  lista.forEach(p=>{ delete p.arquivo; });
+  S.sel=pc.id; save(); render();
+  FichasExtras.aviso((pc.nome||'A ficha')+' voltou do Arquivo'+(FichasMesa.encerrada(pc._camp)? ' (a campanha dela está encerrada: continua só para consulta)' : '')+'.', 'Desfazer', ()=>{
+    antes.forEach(([p,a])=>{ p.arquivo=a; }); save(); render();
+  }, 9000);
+}
+// Usar como base: uma cópia nova, fora do Arquivo, na campanha em vista (a arquivada fica como está). O dono continua.
+function usarComoBase(pc){
+  if(!FichasMesa.podeArquivar() || !FichasMesa.arquivada(pc)) return;
+  const cp=JSON.parse(JSON.stringify(pc)); delete cp.arquivo; delete cp.ultRol;
+  cp.id=uid(); cp._camp=undefined;
+  (cp.itens||[]).forEach(i=>i.id=uid());
+  if(cp.estado){ delete cp.estado.ativo; delete cp.estado.toldo; }
+  S.personagens.push(FichasMesa.nascer(cp)); S.sel=cp.id; save(); render();
+  const onde=cp._camp? ' na campanha '+FichasMesa.nomeDaCampanha(cp._camp) : FichasMesa.campanhas().length? ' no mundo' : '';
+  FichasExtras.aviso('Nova ficha de '+(cp.nome||'personagem')+' criada'+onde+', a partir da arquivada (ela continua no Arquivo).', 'Desfazer', ()=>{
+    S.personagens=S.personagens.filter(p=>p.id!==cp.id); FichasMesa.esquecer(cp.id); S.sel=pc.id; save(); render();
+  }, 9000);
+}
+// o aviso no alto da ficha arquivada, com os botões do mestre (a ficha fica só para consulta)
+function pintarArquivoNaFicha(){
+  const host=document.getElementById('ficha'), pc=S.personagens.find(p=>p.id===S.sel);
+  if(!host || !pc || !FichasMesa.arquivada(pc) || host.querySelector('.arq-aviso')) return;
+  const a=pc.arquivo, camp=a.camp? FichasMesa.nomeDaCampanha(a.camp) : '';
+  host.insertAdjacentHTML('afterbegin', `<div class="so-consulta arq-aviso" role="note"><b>No Arquivo</b> desde ${esc(dataCurta(a.em))}${camp && FichasMesa.campanhas().length? ' · campanha '+esc(camp) : ''}${a.junto? ' (arquivada com a campanha)' : ''}. Só para consulta.
+    ${FichasMesa.podeArquivar()? `<span class="arq-bts"><button type="button" class="mini" data-arq="desarquivar">Desarquivar</button><button type="button" class="mini primary" data-arq="base" title="Cria uma ficha nova, igual a esta, na campanha em vista. A arquivada fica no Arquivo.">Usar como base</button></span>` : ''}</div>`);
+  host.querySelectorAll('[data-arq]').forEach(b=>b.onclick=()=>{ b.dataset.arq==='base'? usarComoBase(pc) : desarquivar(pc); });
+  FichasMesa.limitar();
+}
 function linhasComPets(membros){
   const ids=new Set(membros.map(p=>p.id)), min=S.petsMin||[];
   return membros.filter(p=>!(p.petDe && ids.has(p.petDe))).map(p=>{
@@ -2474,7 +2558,7 @@ function pintarAoVivo(){
 const PATA_SVG='<svg class="pata" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ellipse cx="6" cy="10" rx="2.2" ry="2.8"/><ellipse cx="10" cy="5.6" rx="2.2" ry="2.8"/><ellipse cx="14.4" cy="5.6" rx="2.2" ry="2.8"/><ellipse cx="18.4" cy="10" rx="2.2" ry="2.8"/><path d="M12.2 11.2c3.2 0 6.1 3.9 6.1 6.4 0 1.9-1.6 2.6-3.1 2.6-1.3 0-2-.7-3-.7s-1.7.7-3 .7c-1.5 0-3.1-.7-3.1-2.6 0-2.5 2.9-6.4 6.1-6.4z"/></svg>';
 function linhaElenco(p, embaixo, nPets){
   // (ficha de campanha encerrada — ou de uma campanha que não aparece aqui — não se arrasta: fica onde está)
-  const fixa=FichasMesa.encerrada(p._camp) || FichasMesa.blocoDe(p)==='?';
+  const fixa=FichasMesa.encerrada(p._camp) || FichasMesa.blocoDe(p)==='?' || FichasMesa.arquivada(p);
   const marcado=selecao && selecao.has(p.id), minPets=nPets && (S.petsMin||[]).includes(p.id);
   return `<li class="pcrow${p.petDe?' pet':''}${embaixo?' embaixo':''}${selecao?' selecionando':''}${marcado?' marcado':''}" data-id="${p.id}">
     ${selecao? `<input type="checkbox" class="selck" data-selpc="${p.id}" ${marcado?'checked':''} aria-label="Marcar ${esc(p.nome)}">` : fixa? '<span class="grab fixo" aria-hidden="true"></span>' : `<span class="grab" data-grab="${p.id}" title="Arraste para reordenar ou mudar de grupo${FichasMesa.campanhas().length && FichasMesa.organiza()?' (ou de campanha)':''}">⠿</span>`}
@@ -2505,6 +2589,8 @@ function ligarElenco(){
     const de=document.querySelector('#lista [data-petmin="'+id+'"]'); if(de) de.focus();
   });
   FichasMesa.ligarOlhos(ul);
+  ul.querySelectorAll('[data-arqtoggle]').forEach(b=>b.onclick=()=>{ S.abertos=S.abertos||[]; S.abertos=S.abertos.includes('arquivo')? S.abertos.filter(x=>x!=='arquivo') : [...S.abertos,'arquivo']; save(); renderLista(); });
+  ul.querySelectorAll('[data-arqbaixar]').forEach(b=>b.onclick=baixarArquivo);
   // (cada seção é de um bloco: o grupo "Heróis" da campanha em vista não é o "Heróis" de outra)
   const campDe=b=>{ const s=b.closest('[data-camp]'); return s? s.dataset.camp||'' : ''; };
   const doGrupo=(camp,g)=>S.personagens.filter(p=>FichasMesa.blocoDe(p)===camp && (p.grupo||'')===g);
@@ -3305,6 +3391,7 @@ function htmlResumo(pc,c){
           <div class="fmais-m" role="menu">
             ${!pc.petDe && FichasMesa.podeEditar(pc)?`<button class="mini" data-act="addpet" role="menuitem" title="Uma ficha suplementar para o animal ou companheiro de ${esc(pc.nome||'este personagem')}: atributos à mão, barras e habilidades, sem bolsa. Quem controla ${esc(pc.nome||'o personagem')} controla o pet.">+ Pet</button>`:''}
             <button class="mini" data-act="dup" role="menuitem">Duplicar</button>
+            ${!pc.petDe && FichasMesa.podeArquivar() && !FichasMesa.arquivada(pc)?`<button class="mini" data-act="arquivar" role="menuitem" title="Tira a ficha das listas e das outras abas e guarda no Arquivo, só para consulta (os pets vão junto). Dá para desarquivar.">Arquivar</button>`:''}
             <button class="mini danger" data-act="del" role="menuitem">Excluir</button>
           </div>
         </details>
@@ -3987,6 +4074,7 @@ function ligarFicha(pc){
       // (as barras ficam com o mesmo id: os itens e as poções da cópia apontam para elas. A cópia nasce com as barras no começo.)
       cp.itens.forEach(i=>i.id=uid()); if(cp.estado){ delete cp.estado.rec; delete cp.estado.sob; delete cp.estado.fer; delete cp.estado.mis; }   // (e sem os ferimentos e as missões do original)
       S.personagens.push(FichasMesa.nascer(cp)); S.sel=cp.id; save(); render(); toast('Personagem duplicado'); }
+    if(a==='arquivar'){ arquivar(pc); return; }
     if(a==='del'){
       // (os pets dele saem junto: um pet sem o dono não tem a quem seguir)
       const pets=FichasMesa.petsDe(pc);
@@ -5625,6 +5713,12 @@ function importar(file){
       if(ehArquivoDeArvores(d)){ importarArvores(d); return; }
       if(!d.personagens) throw new Error('sem personagens');
       if(FichasMesa.trazer(d)) return;   // dentro de uma mesa: o arquivo só acrescenta, nada é substituído
+      // (lote 162) o arquivo baixado do Arquivo: as fichas entram (arquivadas, como saíram); nada é substituído
+      if(d.tipo==='arquivo'){
+        const ids=new Set(S.personagens.map(p=>p.id)); let n=0;
+        d.personagens.forEach(p0=>{ if(!p0||typeof p0!=='object') return; const pc=JSON.parse(JSON.stringify(p0)); if(!pc.id||ids.has(pc.id)) pc.id=uid(); ids.add(pc.id); S.personagens.push(pc); n++; });
+        migrar(); save(); render(); toast(n===1? '1 ficha trazida para o Arquivo.' : n+' fichas trazidas para o Arquivo.'); return;
+      }
       if(confirm('Substituir os dados atuais pelos do arquivo?')){
         S=d; migrar(); S.sel=S.personagens[0]?.id||null; save(); render(); toast('Dados importados');
       }
@@ -5690,15 +5784,15 @@ function aplicarTema(k){
 /* ---------- bootstrap ---------- */
 // (os testes antigos, que clicam no elenco, ficam com ele: ver tinycats:testes-ficha-editar)
 const elencoDeTeste=(()=>{ try{ return localStorage.getItem('tinycats:testes-ficha-editar')==='1'; }catch(e){ return false; } })();
-function elencoComoSeletor(){ return !elencoDeTeste && FichasMesa.ativo() && !FichasMesa.mestre() && S.personagens.length>0 && S.personagens.length<=2; }
+function elencoComoSeletor(){ const n=S.personagens.filter(p=>!FichasMesa.arquivada(p)).length; return !elencoDeTeste && FichasMesa.ativo() && !FichasMesa.mestre() && n>0 && n<=2; }
 function render(){
   const aba=S.aba||'fichas';
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===aba));
   ['fichas','mesa','eventos'].forEach(t=>{document.getElementById('tab-'+t).hidden = (t!==aba)});
   // (lote 72) quem joga com 1 ou 2 personagens: o elenco sai e vira um seletor no alto da ficha (a ficha fica com a largura)
   { const sel=elencoComoSeletor(); document.documentElement.classList.toggle('elenco-seletor', sel);
-    if(sel && !S.personagens.some(p=>p.id===S.sel)) S.sel=S.personagens[0].id; }
-  if(aba==='fichas'){barrasDasOutras();renderLista();renderFicha()}
+    if(sel && !S.personagens.some(p=>p.id===S.sel && !FichasMesa.arquivada(p))) S.sel=(S.personagens.find(p=>!FichasMesa.arquivada(p))||S.personagens[0]).id; }
+  if(aba==='fichas'){barrasDasOutras();renderLista();renderFicha();pintarArquivoNaFicha()}
   else if(aba==='mesa') renderMesa();
   else renderEventos();
 }

@@ -220,7 +220,8 @@
       enviar({ t: 'dados.abrir', col: nome, n });
       c.api = {
         pronta,
-        todas: () => [...c.linhas.values()],
+        // (lote 162) as fichas arquivadas ficam de fora; todas({ arquivo: true }) traz também (a aba Fichas)
+        todas: o => { const l = [...c.linhas.values()]; return nome === 'personagens' && !(o && o.arquivo) ? l.filter(x => !(x && x.ficha && typeof x.ficha === 'object' && x.ficha.arquivo)) : l; },
         pegar: id => c.linhas.get(id) || null,
         /* O estado e as skills de um personagem não vão inteiros: vai só o que mudou, contado a partir do que este
            sistema tinha em mãos — a cópia daqui ou, se quem grava trabalhava sobre outra, a que ele passar em
