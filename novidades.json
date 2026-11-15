@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.15-04",
+      "data": "2026-11-15",
+      "titulo": "Bônus: o mestre auxiliar",
+      "itens": [
+        { "tipo": "consertado", "texto": "O mestre auxiliar vê \u201cMeus bônus\u2026\u201d no menu da conta, mesmo mestrando. Só o mestre da mesa dá e tira bônus." }
+      ]
+    },
+    {
       "versao": "2026.11.15-03",
       "data": "2026-11-15",
       "titulo": "A cor do final da campanha",

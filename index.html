@@ -777,7 +777,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.15-03';
+  const VERSAO = '2026.11.15-04';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1575,8 +1575,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     if (a && a.cargo !== 'mestre') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await assentar(); await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
     if (a && a.dono) sec.append(h('button', { type: 'button', class: 'lk per', text: 'Apagar esta mesa…', onclick: () => { fecharMenu(); janelaApagar(a); } }));
     // (lote 163) os bônus da conta
-    if (a && podeBonus() && a.papel !== 'mestre') sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-bonus', text: 'Meus bônus…', title: 'Os bônus que você ganhou por zerar campanhas (são da sua conta, não de uma ficha)', onclick: () => { fecharMenu(); janelaMeusBonus(); } }));
-    if (a && podeBonus() && a.papel === 'mestre') sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-bonus', text: 'Bônus dos jogadores…', title: 'Dar, tirar e ver os bônus da conta de cada jogador', onclick: () => { fecharMenu(); janelaBonusMestre(); } }));
+    if (a && podeBonus() && a.cargo !== 'mestre') sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-bonus', text: 'Meus bônus…', title: 'Os bônus que você ganhou por zerar campanhas (são da sua conta, não de uma ficha)', onclick: () => { fecharMenu(); janelaMeusBonus(); } }));
+    if (a && podeBonus() && a.cargo === 'mestre') sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-bonus', text: 'Bônus dos jogadores…', title: 'Dar, tirar e ver os bônus da conta de cada jogador', onclick: () => { fecharMenu(); janelaBonusMestre(); } }));
     if (a && podeLembretes()) sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-lembretes', text: 'Lembretes do dia…', title: 'A checklist do mestre: fichas, aptidões, descanso, cenas…', onclick: () => { fecharMenu(); janelaLembretes(); } }));
     if (a) sec.append(h('button', { type: 'button', class: 'lk', text: 'Fechar a mesa neste navegador', onclick: async () => { fecharMenu(); await assentar(); mesas.esquecer(); } }));
     menu.append(h('div', { class: 'sec', id: 'mn-tema' }, h('div', { class: 'rot', text: 'Tema' }), seletorTema('mn-tema-seg')));
@@ -3269,7 +3269,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     return gravarBonus(uid, r.dados);
   }
   function janelaBonusMestre(foco) {
-    if (!podeBonus() || mesas.atual.papel !== 'mestre') return;
+    if (!podeBonus() || mesas.atual.cargo !== 'mestre') return;          // (só o mestre dá: o auxiliar tem os bônus dele)
     const B = TC.bonus, gente = jogadoresDaMesa();
     if (!gente.length) { toast('Ainda não há jogadores nesta mesa.'); return; }
     let uid = foco && gente.some(m => m.usuario_id === foco) ? foco : gente[0].usuario_id;
@@ -3326,7 +3326,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   }
   // o mestre fica sabendo quando um jogador gasta
   TC.dados.on('muda', (col, l, origem) => {
-    if (col !== 'documentos' || origem !== 'remota' || !l || typeof l.id !== 'string' || !l.id.startsWith('bonus:') || !mesas.atual || mesas.atual.papel !== 'mestre' || !TC.bonus) return;
+    if (col !== 'documentos' || origem !== 'remota' || !l || typeof l.id !== 'string' || !l.id.startsWith('bonus:') || !mesas.atual || mesas.atual.cargo !== 'mestre' || !TC.bonus) return;
     const x = TC.bonus.norm(l.dados).hist.slice(-1)[0];
     if (x && x.q === 'gastou' && Date.now() - Date.parse(x.em) < 120000 && avisadosBonus.add(l.id + x.em)) toast(nomeDaConta(TC.bonus.donoDoDoc(l.id)) + ' gastou 1 ' + TC.bonus.nomeDe(x.cor, x.tam).replace(/^Bônus/, 'bônus') + '.');
   });
