@@ -34,6 +34,12 @@ const FichasMesa = (() => {
      para consulta, na seção Arquivo do elenco. Quem arquiva, desarquiva e usa como base é o mestre (sem mesa, quem usa);
      o jogador vê no Arquivo as fichas dele. "junto": foi arquivada com a campanha (ao encerrar), e volta ao reabrir. */
   const arquivada = pc => !!(pc && pc.arquivo && typeof pc.arquivo === 'object');
+  /* (lote 164) A cor do final da campanha (o mestre escolhe ao encerrar; documento final:campanhas): o selinho nas fichas
+     dela, no Arquivo e no aviso da ficha. */
+  const finalDaCampanha = camp => { try { if (!ativo || !D || !camp || !window.TC || !TC.bonus) return null; const l = D.pegar(TC.bonus.DOC_FINAIS); return l && !l.apagado ? TC.bonus.finalDe(l.dados, camp) : null; } catch (e) { return null; } };
+  const campDaFicha = pc => (pc && arquivada(pc) && pc.arquivo.camp) || (pc && pc._camp) || null;
+  const finalDaFicha = pc => finalDaCampanha(campDaFicha(pc));
+  const selinhoFinal = fin => { const c = fin && TC.bonus.corDoFinal(fin.cor, fin.forca); return c ? '<span class="fin-selo" style="--fin:' + c + '" title="Final: ' + TC.bonus.textoFinal(fin) + '" aria-label="Final ' + TC.bonus.textoFinal(fin) + '"></span>' : ''; };
   const podeArquivar = () => !ativo || mestre();
   const verNoArquivo = pc => arquivada(pc) && (!ativo || mestre() || (!!pc && pc._dono === st.eu));
   const podeEditar = pc => !arquivada(pc) && (!ativo || (!encerrada(pc && pc._camp) && (mestre() || (!!pc && pc._dono === st.eu))));
@@ -566,7 +572,7 @@ const FichasMesa = (() => {
     alvo.querySelectorAll('input, select, textarea, button').forEach(el => { if (!el.matches('[data-abaficha], [data-irpara], [data-abaatr], [data-ababolsa], [data-itfil], [data-itbusca], [data-itsecbt], #lugarFicha [data-lugar], [data-arq]')) el.disabled = true; });
     const fechada = encerrada(pc._camp);
     if (arquivada(pc)) return;                       // (a ficha arquivada traz o aviso dela, com os botões do mestre)
-    if (!alvo.querySelector('.so-consulta')) alvo.insertAdjacentHTML('afterbegin', '<div class="so-consulta">' + (fechada ? 'Campanha encerrada: esta ficha é só para consulta.' + (st.cargo === 'mestre' ? ' Para mexer nela, reabra a campanha em Campanhas…, no menu da mesa.' : '') : 'Ficha de outra pessoa: só para consulta.') + '</div>');
+    if (!alvo.querySelector('.so-consulta')) alvo.insertAdjacentHTML('afterbegin', '<div class="so-consulta">' + (fechada && finalDaFicha(pc) ? selinhoFinal(finalDaFicha(pc)) : '') + (fechada ? 'Campanha encerrada: esta ficha é só para consulta.' + (st.cargo === 'mestre' ? ' Para mexer nela, reabra a campanha em Campanhas…, no menu da mesa.' : '') : 'Ficha de outra pessoa: só para consulta.') + '</div>');
   }
 
   /* ---------------- campanhas ---------------- */
@@ -867,5 +873,5 @@ const FichasMesa = (() => {
     preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, calendario, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha, lugarNaFicha,
     ehNpc, segDe, porSeg, mexerRel, relsDe, repSegDe, porRepSeg, aptSegDe, porAptSeg, faccoesDaMesa, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
     campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza,
-    ehPet, petsDe, nomeDoPetDe, limitar, arquivada, podeArquivar, verNoArquivo };
+    ehPet, petsDe, nomeDoPetDe, limitar, finalDaCampanha, finalDaFicha, selinhoFinal, arquivada, podeArquivar, verNoArquivo };
 })();

@@ -503,6 +503,17 @@ dialog::backdrop { background: var(--scrim); }
 .dl .lin { display: flex; gap: 8px; align-items: end; }
 .dl .lin label { flex: 1; min-width: 0; }
 .dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+/* (lote 164) a cor do final da campanha */
+.fin-selo{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--fin);margin-right:6px;vertical-align:0;box-shadow:0 0 0 1px #0003 inset}
+.fin-h{font-size:13px;margin:12px 0 6px}
+.fin-sel{display:grid;gap:4px;font-size:12px}
+.fin-cab,.fin-lin{display:grid;grid-template-columns:90px repeat(3,1fr);gap:6px;align-items:center}
+.fin-cab span{text-align:center;color:var(--ink-2)}
+.dl .fin-op{display:block;cursor:pointer;margin:0;position:relative}
+.fin-op input{position:absolute;opacity:0;pointer-events:none}
+.dl .fin-cor{display:block;width:auto;min-width:40px;height:24px;border-radius:6px;background:var(--fin);box-shadow:0 0 0 1px #0002 inset}
+.fin-op input:checked+.fin-cor{box-shadow:0 0 0 2px var(--bg,#111),0 0 0 4px var(--ink,#fff)}
+.fin-op input:focus-visible+.fin-cor{outline:2px solid var(--accent,#e3b341);outline-offset:2px}
 /* (lote 163) os bônus da conta */
 .dl.bn{width:min(680px,94vw)}
 .bn-sub{color:var(--ink-2);font-size:13px;margin:0 0 10px}
@@ -761,12 +772,12 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/conquistas.js?v=2"></script>
 <script src="tc/aptidoes.js?v=1"></script>
 <script src="tc/lembretes.js?v=1"></script>
-<script src="tc/bonus.js?v=1"></script>
+<script src="tc/bonus.js?v=2"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.15-02';
+  const VERSAO = '2026.11.15-03';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1842,10 +1853,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       const seta = (d, rot) => h('button', { type: 'button', class: 'btn sm seta', 'data-a': d < 0 ? 'subir' : 'descer', title: rot, 'aria-label': rot + ': ' + c.nome, disabled: d < 0 ? i === 0 : i === a.campanhas.length - 1,
         onclick: async () => { const ids = a.campanhas.map(x => x.id); ids.splice(i + d, 0, ids.splice(i, 1)[0]); if (await tentar(() => mesas.ordenarCampanhas(ids)) && aberta(fNova)) janelaCampanhas(); } }, d < 0 ? '▲' : '▼');
       lista.append(h('div', { class: 'cpl' + (naVista ? ' vista' : ''), 'data-camp': c.id },
-        h('div', { class: 'cpn' }, h('b', { text: c.nome }), h('small', { text: [naVista ? 'em vista' : '', c.encerrada ? 'encerrada' : '', plural(n, 'jogador', 'jogadores')].filter(Boolean).join(' · ') })),
+        h('div', { class: 'cpn' }, h('b', null, c.encerrada ? selinhoFinal(finalDaCampanha(c.id)) : null, c.nome), h('small', { text: [naVista ? 'em vista' : '', c.encerrada ? 'encerrada' + (finalDaCampanha(c.id) ? ' · ' + TC.bonus.textoFinal(finalDaCampanha(c.id)).toLowerCase() : '') : '', plural(n, 'jogador', 'jogadores')].filter(Boolean).join(' · ') })),
         h('div', { class: 'cpa' }, seta(-1, 'Subir na lista'), seta(1, 'Descer na lista'),
           h('button', { type: 'button', class: 'btn sm', 'data-a': 'jogadores', text: 'Jogadores…', onclick: () => janelaParticipantes(c) }),
           h('button', { type: 'button', class: 'btn sm', 'data-a': 'renomear', text: 'Renomear…', onclick: () => janelaRenomearCampanha(c) }),
+          c.encerrada ? h('button', { type: 'button', class: 'btn sm', 'data-a': 'cor', text: 'Cor…', title: 'A cor do final desta campanha', onclick: () => janelaCorDoFinal(c) }) : null,
           c.encerrada ? h('button', { type: 'button', class: 'btn sm', 'data-a': 'reabrir', text: 'Reabrir', onclick: async () => {
               if (!await tentar(() => mesas.mudarCampanha(c.id, { encerrada: false }))) return;
               const volta = arquivarDaCampanha(c.id, false);            // (lote 162) as fichas arquivadas com ela voltam
@@ -1980,6 +1992,41 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     });
     abrirJanela(f); campo.focus(); campo.select();
   }
+  /* (lote 164) A cor do final de cada campanha (TC.bonus.corDoFinal): obrigatória ao encerrar, troca na lista de
+     campanhas. Fica no documento final:campanhas, que a mesa inteira vê. */
+  const docFinais = () => { try { const l = TC.dados.col('documentos').pegar(TC.bonus.DOC_FINAIS); return l && !l.apagado ? l : null; } catch (e) { return null; } };
+  const finalDaCampanha = id => (TC.bonus ? TC.bonus.finalDe((docFinais() || {}).dados, id) : null);
+  function gravarFinal(id, fin) {
+    try { const D = TC.dados.col('documentos'), l = docFinais(), dados = TC.bonus.comFinal(l ? l.dados : null, id, fin); D.gravar(TC.bonus.DOC_FINAIS, l ? { dados } : { dados, vis: 'mesa' }); return true; }
+    catch (e) { toast('Não deu para guardar a cor do final agora.'); return false; }
+  }
+  const selinhoFinal = fin => { const B = TC.bonus, c = fin && B.corDoFinal(fin.cor, fin.forca); return c ? h('span', { class: 'fin-selo', style: '--fin:' + c, title: 'Final: ' + B.textoFinal(fin), 'aria-label': 'Final ' + B.textoFinal(fin) }) : null; };
+  /* O seletor: as 5 cores (linhas) × Forte, Médio, Fraco (colunas), cada casa com a cor misturada. → el, el.valor() */
+  function seletorFinal(atual, id) {
+    const B = TC.bonus, nome = 'fin-' + Math.random().toString(36).slice(2, 7);
+    const el = h('div', { class: 'fin-sel', id: id || null, role: 'radiogroup', 'aria-label': 'A cor do final' },
+      h('div', { class: 'fin-cab' }, h('span'), B.FORCAS.map(F => h('span', { text: F.nome }))),
+      B.CORES.map(C => h('div', { class: 'fin-lin' }, h('span', { class: 'fin-nome', text: C.nome }),
+        B.FORCAS.map(F => { const k = C.k + ':' + F.k, idr = nome + '-' + k.replace(':', '-');
+          return h('label', { class: 'fin-op', for: idr, title: C.nome + ' ' + F.nome.toLowerCase() },
+            h('input', { type: 'radio', name: nome, id: idr, value: k, 'data-fin': k, checked: atual && atual.cor === C.k && atual.forca === F.k ? '' : null }),
+            h('span', { class: 'fin-cor', style: '--fin:' + B.corDoFinal(C.k, F.k) })); }))));
+    el.valor = () => { const r = el.querySelector('input:checked'); if (!r) return null; const [cor, forca] = r.value.split(':'); return { cor, forca }; };
+    return el;
+  }
+  function janelaCorDoFinal(c) {
+    const B = TC.bonus, antes = finalDaCampanha(c.id), sel = seletorFinal(antes, 'fin-troca');
+    const err = h('div', { class: 'err', role: 'alert' }), ok = h('button', { type: 'submit', class: 'btn pri', text: 'Guardar' });
+    const f = h('form', { class: 'dl', id: 'f-final' }, h('h2', { text: 'A cor do final de ' + c.nome }),
+      h('p', { text: 'Como a campanha foi vencida: a cor e a força. O fraco já puxa para a cor de baixo (dourado, vermelho, azul, cinza, roxo).' }), sel, err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: () => janelaCampanhas() }), ok));
+    enviarCom(f, err, ok, async () => {
+      const fin = sel.valor(); if (!fin) throw new Error('Escolha uma cor.');
+      if (gravarFinal(c.id, fin)) toast('Final de ' + c.nome + ': ' + B.textoFinal(fin) + '.', 'Desfazer', () => { gravarFinal(c.id, antes); });
+      janelaCampanhas();
+    });
+    abrirJanela(f);
+  }
   /* (lote 162) As fichas de uma campanha vão para o Arquivo (ficha.arquivo, com junto: true) — ou voltam de lá, as que
      foram com ela. Os pets vão com a campanha do dono. Devolve os ids mexidos. */
   function arquivarDaCampanha(campId, arquivar, soEstes) {
@@ -2004,17 +2051,23 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     const err = h('div', { class: 'err', role: 'alert' });
     const ok = h('button', { type: 'submit', class: 'btn pri', text: 'Encerrar' });
     const marca = h('input', { type: 'checkbox', id: 'enc-arq' });
+    const corFin = seletorFinal(finalDaCampanha(c.id), 'enc-final');          // (lote 164) a cor do final: obrigatória
     const f = h('form', { class: 'dl' }, h('h2', { text: 'Encerrar a campanha ' + c.nome + '?' }),
       h('p', { text: 'Ela fica guardada. A conversa, as fichas, o acampamento e as missões do grupo dela passam a ser só para consulta — para os jogadores e para você. As cenas e os mapas dela continuam com você. Dá para reabrir quando quiser.' }),
+      h('h3', { class: 'fin-h', text: 'Como foi vencida? (a cor do final)' }), corFin,
       n ? h('label', { class: 'ck', for: 'enc-arq' }, marca, h('span', { text: ' Arquivar as ' + (n === 1 ? 'a ficha' : n + ' fichas') + ' desta campanha (saem das listas e vão para o Arquivo, nas Fichas; voltam se a campanha for reaberta)' })) : null,
       err, h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecharJanela }), ok));
     enviarCom(f, err, ok, async () => {
+      const fin = corFin.valor();
+      if (!fin) throw new Error('Escolha a cor do final antes de encerrar.');
+      const finAntes = finalDaCampanha(c.id);
+      gravarFinal(c.id, fin);
       await assentar();
       // (antes de encerrar: depois, as fichas dela não se gravam mais)
       const arq = n && marca.checked ? arquivarDaCampanha(c.id, true) : [];
       if (arq.length) await esperarGravar();
       try { await mesas.mudarCampanha(c.id, { encerrada: true }); }
-      catch (e) { if (arq.length) arquivarDaCampanha(c.id, false, arq); throw e; }
+      catch (e) { if (arq.length) arquivarDaCampanha(c.id, false, arq); gravarFinal(c.id, finAntes); throw e; }
       if (aberta(f)) fecharJanela();
       setTimeout(() => janelaBonusDaCampanha(c), 400);          // (lote 163) os bônus por zerar
       toast('Campanha ' + c.nome + ' encerrada: agora é só para consulta.' + (arq.length ? ' ' + (arq.length === 1 ? '1 ficha foi' : arq.length + ' fichas foram') + ' para o Arquivo.' : ''), 'Desfazer', async () => { try { await mesas.mudarCampanha(c.id, { encerrada: false }); if (arq.length) arquivarDaCampanha(c.id, false, arq); toast('Desfeito: a campanha ' + c.nome + ' continua aberta.'); } catch (e) { toast(e.message); } }, 12000);

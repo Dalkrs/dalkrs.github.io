@@ -292,6 +292,7 @@ table.attr tr:last-child td{border-bottom:0}
 .idmesa{display:flex;flex-wrap:wrap;align-items:end;gap:14px;margin:0 0 12px;padding:10px 12px;border:1px dashed var(--brass-soft);border-radius:var(--r);background:var(--brass-fundo)}
 .idmesa .f{min-width:220px}
 .idmesa .chk{display:flex;align-items:center;gap:7px;padding-bottom:7px;font-size:13px;flex:1 1 240px}
+.fin-selo{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--fin);margin-right:6px;vertical-align:0;box-shadow:0 0 0 1px #0003 inset;flex:none}
 .so-consulta{margin:0 0 12px;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--campo-sut);color:var(--ink-2);font-size:13px}
 /* (lote 162) o Arquivo */
 .arq-aviso{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
@@ -1893,10 +1894,11 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 
 <script src="../tc/ponte.js?v=24"></script>
 <script src="../tc/rules.js?v=35"></script>
+<script src="../tc/bonus.js?v=2"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="mesa.js?v=19"></script>
+<script src="mesa.js?v=20"></script>
 <script src="extras.js?v=28"></script>
 <script src="../tc/reputacao.js?v=1"></script>
 <script src="reputacao.js?v=1"></script>
@@ -2410,7 +2412,7 @@ function renderLista(){
     html+=`<li class="bloco${b.vista?' vista':''}" data-bloco="${esc(b.camp)}">
       <div class="blocohd">
         <button class="caret" data-btoggle="${esc(b.camp)}" aria-expanded="${!fechadoB}" aria-label="${fechadoB?'Abrir':'Recolher'} ${esc(b.nome)}">${fechadoB?'▸':'▾'}</button>
-        <span class="bloconome">${esc(b.nome)}</span>
+        <span class="bloconome">${b.camp&&FichasMesa.encerrada(b.camp)?FichasMesa.selinhoFinal(FichasMesa.finalDaCampanha(b.camp)):''}${esc(b.nome)}</span>
         <span class="cnt mono">${doBloco.length}</span>
         ${b.encerrada?'<span class="blocotag">encerrada</span>':b.vista && b.camp?'<span class="blocotag vis">em vista</span>':''}
       </div>
@@ -2434,7 +2436,7 @@ function htmlArquivo(){
   const fechado=!(S.abertos||[]).includes('arquivo'), porCamp=new Map();
   lista.forEach(p=>{ const c=(p.arquivo&&p.arquivo.camp)||p._camp||''; if(!porCamp.has(c)) porCamp.set(c,[]); porCamp.get(c).push(p); });
   const comCamp=FichasMesa.campanhas().length>0;
-  const dentro=[...porCamp].map(([c,ps])=>`${comCamp?`<li class="arqcamp hint">${esc(FichasMesa.nomeDaCampanha(c||null))}</li>`:''}${ps.map(p=>linhaElenco(p,false)).join('')}`).join('');
+  const dentro=[...porCamp].map(([c,ps])=>`${comCamp?`<li class="arqcamp hint">${FichasMesa.selinhoFinal(FichasMesa.finalDaCampanha(c||null))}${esc(FichasMesa.nomeDaCampanha(c||null))}${FichasMesa.finalDaCampanha(c||null)?' · '+esc(TC.bonus.textoFinal(FichasMesa.finalDaCampanha(c)).toLowerCase()):''}</li>`:''}${ps.map(p=>linhaElenco(p,false)).join('')}`).join('');
   return `<li class="bloco arquivo" data-bloco="arquivo">
     <div class="blocohd">
       <button class="caret" data-arqtoggle="1" aria-expanded="${!fechado}" aria-label="${fechado?'Abrir':'Recolher'} o Arquivo">${fechado?'▸':'▾'}</button>
@@ -2494,7 +2496,8 @@ function pintarArquivoNaFicha(){
   const host=document.getElementById('ficha'), pc=S.personagens.find(p=>p.id===S.sel);
   if(!host || !pc || !FichasMesa.arquivada(pc) || host.querySelector('.arq-aviso')) return;
   const a=pc.arquivo, camp=a.camp? FichasMesa.nomeDaCampanha(a.camp) : '';
-  host.insertAdjacentHTML('afterbegin', `<div class="so-consulta arq-aviso" role="note"><b>No Arquivo</b> desde ${esc(dataCurta(a.em))}${camp && FichasMesa.campanhas().length? ' · campanha '+esc(camp) : ''}${a.junto? ' (arquivada com a campanha)' : ''}. Só para consulta.
+  const fin=FichasMesa.finalDaFicha(pc);
+  host.insertAdjacentHTML('afterbegin', `<div class="so-consulta arq-aviso" role="note">${FichasMesa.selinhoFinal(fin)}<b>No Arquivo</b> desde ${esc(dataCurta(a.em))}${camp && FichasMesa.campanhas().length? ' · campanha '+esc(camp) : ''}${fin? ' · final '+esc(TC.bonus.textoFinal(fin).toLowerCase()) : ''}${a.junto? ' (arquivada com a campanha)' : ''}. Só para consulta.
     ${FichasMesa.podeArquivar()? `<span class="arq-bts"><button type="button" class="mini" data-arq="desarquivar">Desarquivar</button><button type="button" class="mini primary" data-arq="base" title="Cria uma ficha nova, igual a esta, na campanha em vista. A arquivada fica no Arquivo.">Usar como base</button></span>` : ''}</div>`);
   host.querySelectorAll('[data-arq]').forEach(b=>b.onclick=()=>{ b.dataset.arq==='base'? usarComoBase(pc) : desarquivar(pc); });
   FichasMesa.limitar();
@@ -2565,7 +2568,7 @@ function linhaElenco(p, embaixo, nPets){
     <button class="pc${p.id===S.sel?' on':''}" data-abrir="${p.id}">
       ${FichasExtras.miniatura(p)}
       <span class="pctx">
-      <span class="nm">${esc(p.nome)}${FichasCriacao.selo(p)}</span>
+      <span class="nm">${FichasMesa.selinhoFinal(FichasMesa.finalDaFicha(p))}${esc(p.nome)}${FichasCriacao.selo(p)}</span>
       <span class="mt">${p.petDe? PATA_SVG+' pet de '+esc(FichasMesa.nomeDoPetDe(p))+' · ' : FichasMesa.deJogador(p)? '' : 'Tier '+esc(p.tier)+' · '}Lvl ${p.level}${p.raca?' · '+esc(p.raca):''}${FichasMesa.nomeDoDono(p)?' · de '+esc(FichasMesa.nomeDoDono(p)):''}</span>
       <span class="linhatags">
         <span class="lado ${(p.lado||'Aliado').toLowerCase()}">${esc(p.lado||'Aliado')}</span>

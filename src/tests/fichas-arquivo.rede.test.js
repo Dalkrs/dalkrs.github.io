@@ -49,7 +49,9 @@ const { ok, end } = checker();
     await TM.locator('#enc-arq').waitFor();
     ok(!(await TM.locator('#enc-arq').isChecked()) && /Arquivar as 2 fichas desta campanha/.test(await TM.locator('dialog[open]').innerText()), 'encerrar oferece arquivar as 2 fichas (desmarcado)');
     await TM.locator('#enc-arq').check();
+    await TM.locator('#enc-final label[title="Dourado médio"]').click();
     await TM.locator('dialog[open] button[type="submit"]').click();
+    if (await ate(async () => await TM.locator('#f-bonus-camp').isVisible(), 4000)) await TM.locator('#f-bonus-camp button', { hasText: 'Agora não' }).click();
     ok(await ate(async () => /2 fichas foram para o Arquivo/.test(await avisos(TM))), 'o aviso: ' + await avisos(TM));
     ok(await ate(async () => JSON.stringify(await arqDe()) === JSON.stringify({ npc: 'junto', pc_a: 'junto' })), 'no banco: as duas arquivadas com a campanha — ' + JSON.stringify(await arqDe()));
     ok(await TM.evaluate(() => TC.dados.col('personagens').todas().length === 0 && TC.dados.col('personagens').todas({ arquivo: true }).length === 2 && !!TC.dados.col('personagens').pegar('pc_a')), 'as listas dos sistemas não trazem as arquivadas (mas pegar pelo id continua)');
@@ -57,6 +59,8 @@ const { ok, end } = checker();
     // nas Fichas
     let F = await aba(TM, 'fichas');
     ok(await ate(async () => (await F.locator('#lista .bloco.arquivo .cnt').innerText()) === '2'), 'nas Fichas do mestre, o Arquivo com 2');
+    await F.locator('[data-arqtoggle]').click(); await TM.waitForTimeout(300);
+    ok(/saga 1 · dourado médio/i.test(await F.locator('#lista .arqcamp').innerText()) && await F.locator('#lista .arqitens .pcrow .fin-selo').count() === 2, '(lote 164) o Arquivo mostra a cor do final, e as fichas o selinho: ' + await F.locator('#lista .arqcamp').innerText());
     ok(await F.evaluate(() => [...document.querySelectorAll('#lista > li:not(.arquivo) [data-abrir]')].length) === 0, 'e nenhuma no elenco');
     const FA = await aba(TA, 'fichas');
     ok(await ate(async () => (await FA.locator('#lista .bloco.arquivo .cnt').innerText()) === '1'), 'o jogador vê só a dele no Arquivo');

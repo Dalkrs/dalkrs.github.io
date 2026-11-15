@@ -70,6 +70,7 @@ const { ok, end } = checker();
     await TM.evaluate(c => TC.mesas.participar(c, TC.mesas.atual.membros.find(m => m.cargo !== 'mestre').usuario_id, true), camp).catch(() => {});
     await abrirMenu(TM); await TM.locator('#mn-campanhas').click(); await TM.locator('#f-camps').waitFor();
     await TM.locator(`#cp-lista .cpl[data-camp="${camp}"] [data-a="encerrar"]`).click();
+    await TM.locator('#enc-final label[title="Azul forte"]').click();
     await TM.locator('dialog[open] button[type="submit"]').click();
     ok(await ate(async () => await TM.locator('#f-bonus-camp').isVisible()), 'ao encerrar, a janela "Bônus por zerar"');
     ok((await TM.locator('#bn-camp-nota').inputValue()) === 'Zerou Saga 1' && await TM.locator('#f-bonus-camp .bn-pessoa').count() === 1, 'com o jogador e o motivo pronto');
@@ -77,6 +78,15 @@ const { ok, end } = checker();
     if (process.env.FOTOS) await TM.locator('#f-bonus-camp').screenshot({ path: process.env.FOTOS + '/l163-camp.png' });
     await TM.locator('#f-bonus-camp button[type="submit"]').click();
     ok(await ate(async () => (await doBanco() || {})['dourado:supremo'] === 1), 'o dourado supremo foi para a conta: ' + JSON.stringify(await doBanco()));
+    // (lote 164) a cor do final: no documento, na lista de campanhas, e trocar
+    ok(await ate(async () => (await TA.evaluate(c => { const l = TC.dados.col('documentos').pegar('final:campanhas'); return l ? TC.bonus.textoFinal(TC.bonus.finalDe(l.dados, c)) : ''; }, camp)) === 'Azul forte', 25000), 'a cor do final chega ao jogador: Azul forte');
+    await abrirMenu(TM); await TM.locator('#mn-campanhas').click(); await TM.locator('#f-camps').waitFor();
+    ok(/encerrada · azul forte/.test(await TM.locator(`#cp-lista .cpl[data-camp="${camp}"]`).innerText()) && await TM.locator(`#cp-lista .cpl[data-camp="${camp}"] .fin-selo`).count() === 1, 'a lista de campanhas mostra o final');
+    await TM.locator(`#cp-lista .cpl[data-camp="${camp}"] [data-a="cor"]`).click();
+    await TM.locator('#fin-troca label[title="Vermelho fraco"]').click();
+    if (process.env.FOTOS) await TM.locator('#f-final').screenshot({ path: process.env.FOTOS + '/l164-cor.png' });
+    await TM.locator('#f-final button[type="submit"]').click();
+    ok(await ate(async () => /encerrada · vermelho fraco/.test(await TM.locator(`#cp-lista .cpl[data-camp="${camp}"]`).innerText())), 'trocar a cor depois: vermelho fraco');
   } catch (e) { ok(false, 'falhou: ' + String(e.message).split('\n').slice(0, 3).join(' ')); }
   finally { try { await TM.keyboard.press('Escape'); await apagarMesaTela(TM, nomeT); } catch (e) { console.log('(não apagou a mesa de teste: ' + e.message.split('\n')[0] + ')'); } }
   await t.close(); end();

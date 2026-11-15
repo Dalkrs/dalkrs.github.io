@@ -71,7 +71,31 @@
   // "Gastou 1 bônus vermelho grande — nota"
   const textoHist = h => (h.q === 'deu' ? 'Ganhou ' : h.q === 'tirou' ? 'O mestre tirou ' : 'Gastou ') + nomeDe(h.cor, h.tam, h.qt).replace(/^Bônus/, '1 bônus').replace(/^(\d+) bônus/, '$1 bônus') + (h.nota ? ' — ' + h.nota : '');
 
-  const api = { CORES, TAMANHOS, LIM, PRE, idDoc, donoDoDoc, cor, tam, chave, nomeDe, norm, qtd, total, lista, mudar, textoHist };
+  /* (lote 164) A cor do final de uma campanha: o mestre escolhe ao encerrar (obrigatória) e troca quando quiser. Cada cor
+     tem três forças: Forte (a cor pura), Médio e Fraco — o fraco já se mistura com a cor de baixo, na ordem do melhor final
+     para o pior (dourado > vermelho > azul > cinza > roxo); o roxo fraco só fica apagado. Fica no documento
+     "final:campanhas" (da mesa inteira: os jogadores veem): { c: { <campanha>: { cor, forca, em } } }. */
+  const FORCAS = Object.freeze([{ k: 'forte', nome: 'Forte', mix: 0 }, { k: 'medio', nome: 'Médio', mix: 0.28 }, { k: 'fraco', nome: 'Fraco', mix: 0.55 }]);
+  const DOC_FINAIS = 'final:campanhas';
+  const forca = k => FORCAS.find(f => f.k === k) || null;
+  const hexRgb = x => [1, 3, 5].map(i => parseInt(x.slice(i, i + 2), 16));
+  const rgbHex = a => '#' + a.map(v => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase();
+  const misturar = (a, b, t) => { const A = hexRgb(a), Bb = hexRgb(b); return rgbHex(A.map((v, i) => v + (Bb[i] - v) * t)); };
+  function corDoFinal(c, f) {
+    const i = CORES.findIndex(x => x.k === c), F = forca(f); if (i < 0 || !F) return null;
+    const baixo = CORES[i + 1] ? CORES[i + 1].cor : '#6E6A78';
+    return misturar(CORES[i].cor, baixo, F.mix);
+  }
+  const textoFinal = fin => (fin && cor(fin.cor) && forca(fin.forca) ? cor(fin.cor).nome + ' ' + forca(fin.forca).nome.toLowerCase() : '');
+  function normFinais(d) {
+    const out = {}, src = ehObj(d) && ehObj(d.c) ? d.c : {};
+    for (const [k, v] of Object.entries(src)) if (ehObj(v) && cor(v.cor) && forca(v.forca)) out[k] = { cor: v.cor, forca: v.forca, em: String(v.em || '') };
+    return { c: out };
+  }
+  const finalDe = (d, camp) => (camp ? normFinais(d).c[camp] || null : null);
+  const comFinal = (d, camp, fin) => { const D = normFinais(d); if (fin && cor(fin.cor) && forca(fin.forca)) D.c[camp] = { cor: fin.cor, forca: fin.forca, em: fin.em || new Date().toISOString() }; else delete D.c[camp]; return D; };
+
+  const api = { FORCAS, DOC_FINAIS, forca, corDoFinal, textoFinal, normFinais, finalDe, comFinal, CORES, TAMANHOS, LIM, PRE, idDoc, donoDoDoc, cor, tam, chave, nomeDe, norm, qtd, total, lista, mudar, textoHist };
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (raiz) { raiz.TC = raiz.TC || {}; raiz.TC.bonus = api; }
 })(typeof window !== 'undefined' ? window : null);

@@ -780,8 +780,13 @@ const { ok, end } = checker();
     await abrirMenu(TM); await TM.locator('#mn-campanhas').click(); await TM.locator('#f-camps').waitFor();
     await TM.locator(`#cp-lista .cpl[data-camp="${C1}"] [data-a="encerrar"]`).click();
     ok(await ate(async () => /Encerrar a campanha Geração do Dain\?/.test(await TM.locator('dialog[open] h2').innerText())) && /só para consulta — para os jogadores e para você/.test(await TM.locator('dialog[open] p').first().innerText()), 'encerrar pede confirmação e diz o que muda');
+    // (lote 164) a cor do final é obrigatória
+    await TM.locator('dialog[open] button[type="submit"]').click();
+    ok(await ate(async () => /Escolha a cor do final/.test(await TM.locator('dialog[open] .err').innerText())), 'sem a cor do final, não encerra');
+    await TM.locator('#enc-final label[title="Vermelho fraco"]').click();
     await TM.locator('dialog[open] button[type="submit"]').click();
     ok(await comAviso(TM, /Campanha Geração do Dain encerrada: agora é só para consulta\./), 'encerrada (com desfazer): ' + await avisos(TM));
+    if (await ate(async () => await TM.locator('#f-bonus-camp').isVisible(), 4000)) await TM.locator('#f-bonus-camp button', { hasText: 'Agora não' }).click();   // (lote 163) os bônus: agora não
     ok(await ate(async () => (await barra(TM)) === 'Geração do Dain (encerrada)'), 'a barra do mestre diz que a campanha em vista está encerrada');
     ok(await ate(async () => { const f = await acampDe(TM); return !!f && await f.evaluate(() => __acamp.papel === 'jogador' && /Campanha encerrada: só consulta/.test(document.getElementById('salvo').textContent)); }, 25000),
       'o Acampamento dela, que já estava aberto na tela do mestre, passa a ser só para consulta — sem ninguém recarregar nada');
