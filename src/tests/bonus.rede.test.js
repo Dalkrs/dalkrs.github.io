@@ -46,7 +46,7 @@ const { ok, end } = checker();
     await TM.locator('#bn-dar-ok').click();
     ok(await ate(async () => /Dalmo ganhou 3 bônus/.test(await avisos(TM))), 'o aviso: ' + await avisos(TM));
     ok(await ate(async () => JSON.stringify(await doBanco()) === JSON.stringify({ 'roxo:pequeno': 1, 'vermelho:grande': 2 })), 'no banco: ' + JSON.stringify(await doBanco()));
-    ok(/×2/.test(await TM.locator('#bn-dele tr[data-cor="vermelho"] td[data-tam="grande"]').innerText()), 'a tabela dele mostra ×2');
+    ok(/Vermelho grande\s*×2/.test(await TM.locator('#bn-dele li[data-k="vermelho:grande"]').innerText()), 'a lista dele mostra ×2');
     await TM.keyboard.press('Escape');
     // o jogador vê e gasta
     ok(await ate(async () => (await TA.evaluate(() => { const l = TC.dados.col('documentos').pegar('bonus:' + TC.conta.usuario.id); return l ? TC.bonus.total(l.dados) : 0; })) === 3, 25000), 'o documento chega ao jogador');
@@ -61,7 +61,7 @@ const { ok, end } = checker();
     const subiu = await TA.evaluate(async ([m, u]) => { const r = await window.__sb.from('documentos').update({ dados: { n: { 'vermelho:grande': 5, 'roxo:pequeno': 1 }, hist: [] } }).eq('mesa_id', m).eq('id', 'bonus:' + u); return r.error ? 'recusado' : 'mudou'; }, [mesa, uidA]);
     ok(subiu === 'recusado' && JSON.stringify(await doBanco()) === JSON.stringify({ 'roxo:pequeno': 1, 'vermelho:grande': 1 }), 'o banco não deixa o jogador aumentar: ' + subiu);
     ok(await ate(async () => /Dalmo gastou 1 bônus vermelho grande/.test(await avisos(TM)), 75000), 'o mestre fica sabendo: ' + await avisos(TM));
-    if (process.env.FOTOS) { await TA.keyboard.press('Escape'); await abrirMenu(TA); await TA.locator('#mn-bonus').click(); await TA.waitForTimeout(400); await TA.locator('#f-bonus').screenshot({ path: process.env.FOTOS + '/l163-meus.png' }); }
+    if (process.env.FOTOS) { await TA.keyboard.press('Escape'); await abrirMenu(TA); await TA.locator('#mn-bonus').click(); await TA.waitForTimeout(400); await TA.screenshot({ path: process.env.FOTOS + '/l163-meus.png' }); }
     await TA.keyboard.press('Escape');
     // ao encerrar a campanha
     await TM.evaluate(() => TC.mesas.criarCampanha('Saga 1', true));
@@ -75,7 +75,7 @@ const { ok, end } = checker();
     ok(await ate(async () => await TM.locator('#f-bonus-camp').isVisible()), 'ao encerrar, a janela "Bônus por zerar"');
     ok((await TM.locator('#bn-camp-nota').inputValue()) === 'Zerou Saga 1' && await TM.locator('#f-bonus-camp .bn-pessoa').count() === 1, 'com o jogador e o motivo pronto');
     await TM.locator(`#bn-camp-${uidA} [data-k="dourado:supremo"]`).fill('1');
-    if (process.env.FOTOS) await TM.locator('#f-bonus-camp').screenshot({ path: process.env.FOTOS + '/l163-camp.png' });
+    if (process.env.FOTOS) await TM.screenshot({ path: process.env.FOTOS + '/l163-camp.png' });
     await TM.locator('#f-bonus-camp button[type="submit"]').click();
     ok(await ate(async () => (await doBanco() || {})['dourado:supremo'] === 1), 'o dourado supremo foi para a conta: ' + JSON.stringify(await doBanco()));
     // (lote 164) a cor do final: no documento, na lista de campanhas, e trocar

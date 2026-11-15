@@ -515,11 +515,17 @@ dialog::backdrop { background: var(--scrim); }
 .fin-op input:checked+.fin-cor{box-shadow:0 0 0 2px var(--bg,#111),0 0 0 4px var(--ink,#fff)}
 .fin-op input:focus-visible+.fin-cor{outline:2px solid var(--accent,#e3b341);outline-offset:2px}
 /* (lote 163) os bônus da conta */
-.dl.bn{width:min(680px,94vw)}
+dialog:has(.dl.bn){width:min(520px,calc(100% - 24px))}
+.dl.bn{max-height:calc(100vh - 60px);overflow:auto}
+.bn-lista{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.bn-lista li{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2,transparent)}
+.bn-lista .bn-nome{flex:1;min-width:0;font-weight:600}
+.bn-lista .bn-qt{font-variant-numeric:tabular-nums;color:var(--fg-2,inherit)}
+.bn-lista .bn-gema{margin:0 4px}
 .bn-sub{color:var(--ink-2);font-size:13px;margin:0 0 10px}
 .bn-h{font-size:13px;margin:14px 0 6px}
 .bn-tab{border-collapse:collapse;width:100%;font-size:12px}
-.bn-tab th,.bn-tab td{padding:4px 6px;text-align:center;border-bottom:1px solid var(--line)}
+.bn-tab th,.bn-tab td{padding:3px 2px;text-align:center;border-bottom:1px solid var(--line)}
 .bn-tab tbody th{text-align:left;font-weight:600;white-space:nowrap}
 .bn-cor{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bn);margin-right:6px;vertical-align:-1px}
 .bn-gema{display:inline-block;width:var(--bt);height:var(--bt);border-radius:30%;transform:rotate(45deg);background:radial-gradient(circle at 30% 30%,#fff8,transparent 55%),var(--bn);box-shadow:0 0 0 1px #0003 inset;flex:none}
@@ -527,7 +533,7 @@ dialog::backdrop { background: var(--scrim); }
 .bn-cel{display:inline-flex;align-items:center;gap:6px;justify-content:center}
 .bn-cel .btn.sm{padding:2px 8px}
 .bn-zero{color:var(--ink-3,#999)}
-.dl .bn-tab input.bn-n{width:58px;text-align:center;padding:4px}
+.dl .bn-tab input.bn-n{width:100%;max-width:64px;min-width:0;text-align:center;padding:4px 2px}
 .bn-quem{flex-wrap:wrap}
 .bn-hist{list-style:none;margin:0;padding:0;max-height:180px;overflow:auto;font-size:12px}
 .bn-hist li{display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid var(--line)}
@@ -777,7 +783,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.15-04';
+  const VERSAO = '2026.11.15-05';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -3224,6 +3230,10 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       h('tbody', null, B.CORES.map(C => h('tr', { 'data-cor': C.k }, h('th', { scope: 'row' }, h('span', { class: 'bn-cor', style: '--bn:' + C.cor }), C.nome),
         B.TAMANHOS.map(T => h('td', { 'data-tam': T.k }, celula(C.k, T.k)))))));
   }
+  // a lista do que a pessoa tem: a pedrinha, o nome, quantos e o botão (Gastar ou −), uma linha por tipo
+  const listaBonus = (dados, botao, id) => h('ul', { class: 'bn-lista', id: id || null }, TC.bonus.lista(dados).map(x => h('li', { 'data-k': x.cor + ':' + x.tam },
+    gemaBonus(x.cor, x.tam), h('span', { class: 'bn-nome', text: TC.bonus.cor(x.cor).nome + ' ' + TC.bonus.tam(x.tam).nome.toLowerCase() }),
+    h('b', { class: 'bn-qt', text: '×' + x.qt }), botao(x.cor, x.tam))));
   const histBonus = (dados, n) => {
     const hs = TC.bonus.norm(dados).hist.slice(-n).reverse();
     if (!hs.length) return h('p', { class: 'bn-vazio', text: 'Nada ainda.' });
@@ -3238,8 +3248,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       const l = docBonus(eu), d = l ? l.dados : null, tot = B.total(d);
       corpo.replaceChildren(
         h('p', { class: 'bn-sub', text: tot ? 'Você tem ' + (tot === 1 ? '1 bônus' : tot + ' bônus') + '. O que cada um dá, você combina com o mestre; ao usar, toque em Gastar.' : 'Você ainda não tem bônus. Eles vêm de zerar campanhas: o mestre dá ao encerrar.' }),
-        tot ? tabelaBonus((c, t) => { const q = B.qtd(d, c, t); return q ? h('div', { class: 'bn-cel' }, gemaBonus(c, t), h('b', { text: '×' + q }),
-          h('button', { type: 'button', class: 'btn sm', 'data-gastar': c + ':' + t, text: 'Gastar', onclick: () => gastar(c, t) })) : h('span', { class: 'bn-zero', text: '—' }); }, 'bn-meus') : null,
+        tot ? listaBonus(d, (c, t) => h('button', { type: 'button', class: 'btn sm', 'data-gastar': c + ':' + t, text: 'Gastar', onclick: () => gastar(c, t) }), 'bn-meus') : null,
         h('h3', { class: 'bn-h', text: 'O que aconteceu' }), histBonus(d, 10));
     };
     const gastar = (c, t) => {
@@ -3280,14 +3289,13 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       corpo.replaceChildren(
         h('div', { class: 'seg bn-quem', role: 'group', 'aria-label': 'Jogador' }, gente.map(m => h('button', { type: 'button', 'aria-pressed': String(m.usuario_id === uid), 'data-uid': m.usuario_id, text: m.nome + (B.total((docBonus(m.usuario_id) || {}).dados) ? ' (' + B.total(docBonus(m.usuario_id).dados) + ')' : ''), onclick: () => { uid = m.usuario_id; pintar(); } }))),
         h('h3', { class: 'bn-h', text: tot ? 'Tem ' + (tot === 1 ? '1 bônus' : tot + ' bônus') : 'Ainda sem bônus' }),
-        tot ? tabelaBonus((c, t) => { const q = B.qtd(d, c, t); return q ? h('div', { class: 'bn-cel' }, gemaBonus(c, t), h('b', { text: '×' + q }),
-          h('button', { type: 'button', class: 'btn sm', 'data-tirar': c + ':' + t, title: 'Tirar 1 (um engano, um bônus que ele usou na mesa)', 'aria-label': 'Tirar 1 ' + B.nomeDe(c, t), text: '−', onclick: () => {
+        tot ? listaBonus(d, (c, t) => h('button', { type: 'button', class: 'btn sm', 'data-tirar': c + ':' + t, title: 'Tirar 1 (um engano, um bônus que ele usou na mesa)', 'aria-label': 'Tirar 1 ' + B.nomeDe(c, t), text: '−', onclick: () => {
             const l2 = docBonus(uid), r = B.mudar(l2 ? l2.dados : null, { q: 'tirou', cor: c, tam: t, qt: 1, por: conta.usuario.id });
             if (!r.ok) { toast(r.erro); return; }
             const antes = l2 ? l2.dados : null, quem = uid;
             if (gravarBonus(quem, r.dados)) toast('Tirado 1 ' + B.nomeDe(c, t).replace(/^Bônus/, 'bônus') + ' de ' + nomeDaConta(quem) + '.', 'Desfazer', () => { gravarBonus(quem, B.norm(antes)); if (aberta(f)) pintar(); });
             pintar();
-          } })) : h('span', { class: 'bn-zero', text: '—' }); }, 'bn-dele') : null,
+          } }), 'bn-dele') : null,
         h('h3', { class: 'bn-h', text: 'Dar bônus a ' + nomeDaConta(uid) }), dar,
         h('label', { class: 'f bn-notaf' }, h('span', { text: 'Motivo (aparece para ele)' }), nota),
         h('div', { class: 'pe', style: 'justify-content:flex-start' }, h('button', { type: 'button', class: 'btn pri', id: 'bn-dar-ok', text: 'Dar', onclick: () => {
