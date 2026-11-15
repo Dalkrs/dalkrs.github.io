@@ -317,6 +317,19 @@
       ],
     },
     {
+      id: 'jogos', nome: 'Jogos de Tabuleiro', grupo: 'descanso',
+      resumo: 'Xadrez, Damas brasileiras e Tablut: contra o computador ou contra alguém da mesa, valendo lapros se quiserem.',
+      jogador: [
+        { t: 'Contra o computador', txt: 'Escolha o jogo, o seu lado e o nível (fácil, médio ou difícil). “Desfazer” volta o seu último lance. A partida fica guardada neste aparelho.' },
+        { t: 'Desafiar alguém', txt: 'Escolha o jogo, o adversário, o personagem e a aposta em lapros (0 = sem aposta). A aposta sai da ficha na hora e fica na mesa: quem vence leva tudo; no empate ou no convite recusado, ela volta.' },
+        { t: 'Jogar e assistir', txt: 'Clique na peça e depois na casa. Nas Damas, a captura em várias etapas é clicada casa por casa. Qualquer um da mesa pode abrir uma partida em andamento para assistir; o começo e o fim aparecem na mesa ao vivo.' },
+        { t: 'Desistir e empate', txt: 'Na partida: “Oferecer empate” (vale até alguém jogar) e “Desistir” (quem desiste perde).' },
+      ],
+      mestre: [
+        { t: 'O mestre também joga', txt: 'Quem mestra pode jogar com qualquer personagem (um NPC, por exemplo) e apostar os lapros dele.' },
+      ],
+    },
+    {
       id: 'bestiario', nome: 'Bestiário', grupo: 'mestre', soMestre: true,
       resumo: 'Os inimigos do mestre em cartas, com os números pela regra das fichas, e a bandeja que monta o encontro.',
       img: { arq: 'bestiario.jpg', legenda: 'O Bestiário com um inimigo.', marcas: [

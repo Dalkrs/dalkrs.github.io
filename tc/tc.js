@@ -1315,6 +1315,7 @@
     || (typeof r.id === 'string' && r.id.startsWith('fichas:mis:pc:'))     // (lote 123) as missões da história de um personagem: o dono é o dono dele
     || (typeof r.id === 'string' && r.id.startsWith('acampamento:base:'))   // (lote 125) a casa ou o esconderijo de um personagem: o dono é o jogador dele
     || (typeof r.id === 'string' && r.id.startsWith('fichas:banc:pc:'))     // (lote 142) os minigames que o mestre mandou a um personagem
+    || (typeof r.id === 'string' && r.id.startsWith('jogo:') && r.id.endsWith(':' + r.dono_id))   // (lote 167) a parte de cada jogador numa partida dos Jogos de Tabuleiro
     || (typeof r.id === 'string' && r.id.startsWith('quadroj:' + r.dono_id + ':'))   // (lote 143) os quadros de pistas de quem joga (só ele e o mestre)
     || (typeof r.id === 'string' && (r.id.startsWith('notasj:' + r.dono_id + ':') || r.id.startsWith('notasg:')));   // (lote 52) o caderno de quem joga e o do grupo
   function dadosZerar() {
@@ -2401,14 +2402,14 @@
   const deSistemaAntes = aoVivo.deSistema;
   aoVivo.deSistema = async (origem, d) => {
     // O Mapa-múndi (encontros sorteados) e o Acampamento (descansos, momentos) mandam um título e um resumo.
-    if ((origem === 'mundo' || origem === 'acampamento' || origem === 'escudo' || origem === 'pistas' || origem === 'baralho') && d && typeof d === 'object' && mesas.atual) {
-      const padrao = { mundo: 'Mapa-múndi', acampamento: 'Acampamento', escudo: 'Escudo do mestre', pistas: 'Pistas', baralho: 'Baralho' }[origem];
+    if ((origem === 'mundo' || origem === 'acampamento' || origem === 'escudo' || origem === 'pistas' || origem === 'baralho' || origem === 'jogos') && d && typeof d === 'object' && mesas.atual) {
+      const padrao = { mundo: 'Mapa-múndi', acampamento: 'Acampamento', escudo: 'Escudo do mestre', pistas: 'Pistas', baralho: 'Baralho', jogos: 'Jogos de Tabuleiro' }[origem];
       // (o encontro do Mapa-múndi acompanha o "em segredo" do mestre; descanso e momento do Acampamento são da mesa toda)
       const dados = { k: 'tabela', titulo: String(d.titulo || padrao).slice(0, 120), total: null, resumo: String(d.resumo || '').slice(0, 600), veredito: null, passou: null };
       // (lote 29) a bancada: a receita que falhou com condições — quem mestra as Cenas põe no token do personagem
       if (origem === 'acampamento' && typeof d.pc === 'string' && d.pc && Array.isArray(d.conds) && d.conds.length)
         dados.sis = { t: 'bc', c: d.pc.slice(0, 64), cs: d.conds.slice(0, 6).filter(x => x && typeof x.c === 'string').map(x => ({ c: x.c.slice(0, 40), r: Math.max(0, Math.min(99, Math.round(+x.r) || 0)) })) };
-      return aoVivo.rolagem(dados, { origem, quem: (origem === 'acampamento' || origem === 'baralho') && typeof d.pc === 'string' && d.pc ? aoVivo.personagem(d.pc) : null, secreta: d.secreta ? true : origem === 'acampamento' || origem === 'pistas' || origem === 'baralho' ? false : undefined });
+      return aoVivo.rolagem(dados, { origem, quem: (origem === 'acampamento' || origem === 'baralho' || origem === 'jogos') && typeof d.pc === 'string' && d.pc ? aoVivo.personagem(d.pc) : null, secreta: d.secreta ? true : origem === 'acampamento' || origem === 'pistas' || origem === 'baralho' || origem === 'jogos' ? false : undefined });
     }
     // A Árvore avisa o dono de um personagem que o mestre abriu para ele um caminho trancado (lote 6): uma linha em
     // segredo, endereçada a ele — só os dois a veem.

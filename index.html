@@ -759,7 +759,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=35"></script>
-<script src="tc/tc.js?v=59"></script>
+<script src="tc/tc.js?v=60"></script>
 <script src="tc/busca.js?v=3"></script>
 <script src="tc/calendario.js?v=2"></script>
 <script src="tc/guia.js?v=59"></script>
@@ -783,7 +783,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.15-05';
+  const VERSAO = '2026.11.15-06';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -806,6 +806,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     missoes: '<path d="M5.5 5.5h13l-.6 15h-11.8z"/><circle cx="12" cy="4" r="1.6"/><path d="M12 9v5.2"/><path d="M12 17.2v.3"/>',
     // (lote 142) a Bancada: a bigorna com o frasco em cima
     bancada: '<path d="M4 14h11l-2 3H7z"/><path d="M8 17v3h5v-3"/><path d="M15 14c2 0 4-1 5-3H9"/><path d="M17 4v3l1.5 3h-5L15 7V4z"/>',
+    // (lote 167) os Jogos de Tabuleiro: o tabuleiro com duas casas escuras e o peão
+    jogos: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><path d="M3.5 12h17M12 3.5v17"/><path d="M3.5 3.5h8.5V12H3.5zM12 12h8.5v8.5H12z" fill="currentColor" opacity=".3" stroke="none"/><circle cx="16.2" cy="6.4" r="1.4"/><path d="M14.4 10.2c.2-1.4 1-2.2 1.8-2.2s1.6.8 1.8 2.2z"/>',
     // (lote 105) o Baralho: duas cartas, uma sobre a outra, com a estrela
     baralho: '<rect x="3.5" y="6" width="10" height="14" rx="1.5" transform="rotate(-10 8.5 13)"/><rect x="10" y="4" width="10" height="14" rx="1.5"/><path d="M15 8.2l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z"/>',
     loja: '<path d="M4 9l1.5-5h13L20 9"/><path d="M4 9h16v2a2.7 2.7 0 0 1-5.3 0 2.7 2.7 0 0 1-5.4 0A2.7 2.7 0 0 1 4 11z"/><path d="M5.5 13v7h13v-7"/><path d="M10 20v-4h4v4"/>',
@@ -837,7 +839,8 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     { id: 'livro', get nome() { return mestraAba('cla') ? 'Bestiário do clã' : 'Bestiário'; }, src: 'livro/', dados: true, grupo: 'mundo', soLivro: true, permissao: 'cla' },
     { id: 'acampamento', nome: 'Bases', src: 'acampamento/', dados: true, grupo: 'descanso' },
     { id: 'meditacao', nome: 'Meditação', src: 'meditacao/', dados: true, grupo: 'descanso' },      // (lote 6) a meditação dos personagens
-    { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true, grupo: 'descanso', soJogador: true },     // (lote 24) a árvore de quem joga; quem mestra usa a Oficina
+    { id: 'arvore', nome: 'Árvore', src: 'arvore/', dados: true, grupo: 'descanso', soJogador: true },
+    { id: 'jogos', nome: 'Jogos de Tabuleiro', src: 'jogos/', dados: true, grupo: 'descanso' },          // (lote 167) xadrez, damas e tablut: online entre a mesa (com aposta) ou contra o computador     // (lote 24) a árvore de quem joga; quem mestra usa a Oficina
     // (lote 24) a Oficina de árvores: a mesma página da Árvore, aberta no modo de quem mestra (montar e editar as árvores)
     { id: 'oficina', nome: 'Oficina', src: 'arvore/?oficina', dados: true, grupo: 'preparar', soMestre: true, permissao: 'arvore' },
     // (lote 29) o Bestiário: os inimigos do mestre, prontos para puxar para a cena (só quem mestra)
@@ -852,11 +855,11 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
   const GRUPOS = [
     { id: 'sessao', nome: 'Sessão', dica: 'A mesa rodando: as cenas, as fichas' },
     { id: 'mundo', nome: 'Mundo', dica: 'O mapa-múndi, o jornal, o clã e as conquistas' },
-    { id: 'descanso', nome: 'Descanso', dica: 'O acampamento, a meditação e a árvore' },
+    { id: 'descanso', nome: 'Descanso', dica: 'O acampamento, a meditação, a árvore e os jogos de tabuleiro' },
     { id: 'preparar', nome: 'Preparar', dica: 'O que se monta antes da sessão' },
   ];
   let souAdmin = false;                           // (lote 27) conta.ehAdmin(), conferido ao entrar
-  const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento', meditacao: 'Meditação', escudo: 'Escudo do mestre', pistas: 'Pistas', baralho: 'Baralho' };
+  const ORIGENS = { rolador: 'Rolador', ficha: 'Fichas', cena: 'Cenas', mundo: 'Mapa-múndi', arvore: 'Árvore', acampamento: 'Acampamento', meditacao: 'Meditação', escudo: 'Escudo do mestre', pistas: 'Pistas', baralho: 'Baralho', jogos: 'Jogos de Tabuleiro' };
   const CHAVE = 'tinycats:aba';
   const $ = id => document.getElementById(id);
   const stage = $('stage'), tabs = $('tabs'), wait = $('wait'), pop = $('pop');
@@ -2390,7 +2393,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       const b = h('button', { type: 'button', class: 'chave', id: 'segredo', 'aria-pressed': String(!!aoVivo.segredo), title: 'Ligado: as rolagens que você fizer (aqui, no Rolador, nas Fichas e nas Cenas) ficam só para você, até mostrar à mesa', onclick: () => aoVivo.definirSegredo(!aoVivo.segredo) }, icone(CAD_SVG), h('span', { text: 'Em segredo' }));
       dica.append(b, h('span', { id: 'dicaTxt', text: aoVivo.segredo ? 'Só você vê as suas rolagens.' : 'A mesa vê as suas rolagens.' }));
     } else {
-      dica.append(h('span', { text: '/r 2d6+3 rola dados · /fixa 60 20 · /ajuda' }));
+      dica.append(h('span', { text: '/r 2d6+3 rola dados · /f 60 20 (fixa) · /ajuda' }));
     }
     // com que personagem a pessoa aparece na mesa (só há o que escolher quando existe algum personagem)
     fecharComo();
