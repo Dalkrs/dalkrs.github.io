@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.15-02",
+      "data": "2026-11-15",
+      "titulo": "Os bônus da conta",
+      "itens": [
+        { "tipo": "novo", "texto": "Os bônus por zerar campanhas agora ficam na conta do jogador (não na ficha), em 5 cores (dourado, vermelho, azul, cinza, roxo) e 4 tamanhos (supremo, grande, médio, pequeno)." },
+        { "tipo": "novo", "texto": "Jogador: no menu da conta, \u201cMeus bônus\u2026\u201d mostra os seus e a história. \u201cGastar\u201d tira o bônus, e o mestre fica sabendo." },
+        { "tipo": "novo", "texto": "Mestre: \u201cBônus dos jogadores\u2026\u201d, no menu da conta, dá e tira. Ao encerrar uma campanha, abre a janela \u201cBônus por zerar\u201d, com os jogadores dela.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.15-01",
       "data": "2026-11-15",
       "titulo": "O Arquivo das fichas",

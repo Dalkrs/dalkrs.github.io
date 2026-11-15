@@ -503,6 +503,27 @@ dialog::backdrop { background: var(--scrim); }
 .dl .lin { display: flex; gap: 8px; align-items: end; }
 .dl .lin label { flex: 1; min-width: 0; }
 .dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+/* (lote 163) os bônus da conta */
+.dl.bn{width:min(680px,94vw)}
+.bn-sub{color:var(--ink-2);font-size:13px;margin:0 0 10px}
+.bn-h{font-size:13px;margin:14px 0 6px}
+.bn-tab{border-collapse:collapse;width:100%;font-size:12px}
+.bn-tab th,.bn-tab td{padding:4px 6px;text-align:center;border-bottom:1px solid var(--line)}
+.bn-tab tbody th{text-align:left;font-weight:600;white-space:nowrap}
+.bn-cor{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bn);margin-right:6px;vertical-align:-1px}
+.bn-gema{display:inline-block;width:var(--bt);height:var(--bt);border-radius:30%;transform:rotate(45deg);background:radial-gradient(circle at 30% 30%,#fff8,transparent 55%),var(--bn);box-shadow:0 0 0 1px #0003 inset;flex:none}
+.bn-gema.mini{--bt:10px!important}
+.bn-cel{display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.bn-cel .btn.sm{padding:2px 8px}
+.bn-zero{color:var(--ink-3,#999)}
+.dl .bn-tab input.bn-n{width:58px;text-align:center;padding:4px}
+.bn-quem{flex-wrap:wrap}
+.bn-hist{list-style:none;margin:0;padding:0;max-height:180px;overflow:auto;font-size:12px}
+.bn-hist li{display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid var(--line)}
+.bn-hist small{margin-left:auto;color:var(--ink-2)}
+.bn-vazio{font-size:12px;color:var(--ink-2)}
+.bn-pessoa{margin-bottom:6px}
+.bn-notaf{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px}
 /* (lote 131) os lembretes do mestre: a checklist do dia */
 .lembr { display: grid; gap: 6px; margin: 4px 0 2px; }
 .lembr li { list-style: none; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
@@ -721,7 +742,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/config.js?v=1"></script>
 <script src="tc/dice.js?v=3"></script>
 <script src="tc/rules.js?v=35"></script>
-<script src="tc/tc.js?v=58"></script>
+<script src="tc/tc.js?v=59"></script>
 <script src="tc/busca.js?v=3"></script>
 <script src="tc/calendario.js?v=2"></script>
 <script src="tc/guia.js?v=59"></script>
@@ -740,11 +761,12 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
 <script src="tc/conquistas.js?v=2"></script>
 <script src="tc/aptidoes.js?v=1"></script>
 <script src="tc/lembretes.js?v=1"></script>
+<script src="tc/bonus.js?v=1"></script>
 <script>
 (() => {
   'use strict';
   // Versão publicada: entra no endereço de cada sistema para o navegador buscar a página nova depois de uma atualização.
-  const VERSAO = '2026.11.15-01';
+  const VERSAO = '2026.11.15-02';
   const ICO = {
     cenas: '<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5"/><path d="M15 6.5V20"/>',
     mundo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3z"/>',
@@ -1541,6 +1563,9 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     sec.append(h('button', { type: 'button', class: 'lk', text: a ? 'Trocar de mesa…' : 'Escolher ou criar mesa…', onclick: () => { fecharMenu(); janelaMesas(); } }));
     if (a && a.cargo !== 'mestre') sec.append(h('button', { type: 'button', class: 'lk per', text: 'Sair desta mesa', onclick: () => { fecharMenu(); confirmar('Sair da mesa ' + a.nome + '?', 'Você deixa de ver esta mesa. Para voltar, precisa do código de convite.', 'Sair da mesa', async () => { await assentar(); await mesas.sair(); toast('Você saiu da mesa.'); }); } }));
     if (a && a.dono) sec.append(h('button', { type: 'button', class: 'lk per', text: 'Apagar esta mesa…', onclick: () => { fecharMenu(); janelaApagar(a); } }));
+    // (lote 163) os bônus da conta
+    if (a && podeBonus() && a.papel !== 'mestre') sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-bonus', text: 'Meus bônus…', title: 'Os bônus que você ganhou por zerar campanhas (são da sua conta, não de uma ficha)', onclick: () => { fecharMenu(); janelaMeusBonus(); } }));
+    if (a && podeBonus() && a.papel === 'mestre') sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-bonus', text: 'Bônus dos jogadores…', title: 'Dar, tirar e ver os bônus da conta de cada jogador', onclick: () => { fecharMenu(); janelaBonusMestre(); } }));
     if (a && podeLembretes()) sec.append(h('button', { type: 'button', class: 'lk', id: 'mn-lembretes', text: 'Lembretes do dia…', title: 'A checklist do mestre: fichas, aptidões, descanso, cenas…', onclick: () => { fecharMenu(); janelaLembretes(); } }));
     if (a) sec.append(h('button', { type: 'button', class: 'lk', text: 'Fechar a mesa neste navegador', onclick: async () => { fecharMenu(); await assentar(); mesas.esquecer(); } }));
     menu.append(h('div', { class: 'sec', id: 'mn-tema' }, h('div', { class: 'rot', text: 'Tema' }), seletorTema('mn-tema-seg')));
@@ -1991,6 +2016,7 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
       try { await mesas.mudarCampanha(c.id, { encerrada: true }); }
       catch (e) { if (arq.length) arquivarDaCampanha(c.id, false, arq); throw e; }
       if (aberta(f)) fecharJanela();
+      setTimeout(() => janelaBonusDaCampanha(c), 400);          // (lote 163) os bônus por zerar
       toast('Campanha ' + c.nome + ' encerrada: agora é só para consulta.' + (arq.length ? ' ' + (arq.length === 1 ? '1 ficha foi' : arq.length + ' fichas foram') + ' para o Arquivo.' : ''), 'Desfazer', async () => { try { await mesas.mudarCampanha(c.id, { encerrada: false }); if (arq.length) arquivarDaCampanha(c.id, false, arq); toast('Desfeito: a campanha ' + c.nome + ' continua aberta.'); } catch (e) { toast(e.message); } }, 12000);
     });
     abrirJanela(f);
@@ -3124,6 +3150,134 @@ dialog.busca { width: min(600px, calc(100% - 24px)); margin: min(10vh, 80px) aut
     }
     return b;
   }
+  /* (lote 163) Os bônus da conta (TC.bonus): o que cada jogador ganhou por zerar campanhas — cor e tamanho; o que dá é
+     combinado com o mestre. Ficam no documento bonus:<conta> (só o jogador e quem mestra veem). O jogador gasta (some);
+     o mestre dá (aqui ou ao encerrar a campanha) e tira. */
+  const podeBonus = () => { const a = mesas.atual; return !!(a && !a.auditoria && TC.bonus); };
+  const docBonus = uid => { try { const l = TC.dados.col('documentos').pegar(TC.bonus.idDoc(uid)); return l && !l.apagado ? l : null; } catch (e) { return null; } };
+  function gravarBonus(uid, dados) {
+    try { const D = TC.dados.col('documentos'), l = docBonus(uid); D.gravar(TC.bonus.idDoc(uid), l ? { dados } : { dados, vis: 'mestre', dono_id: uid }); return true; }
+    catch (e) { toast('Não deu para guardar os bônus agora.'); return false; }
+  }
+  const jogadoresDaMesa = () => (mesas.atual ? mesas.atual.membros.filter(m => m.cargo !== 'mestre') : []);
+  const nomeDaConta = uid => { const m = mesas.atual && mesas.atual.membros.find(x => x.usuario_id === uid); return m ? m.nome : 'Alguém'; };
+  // a pedrinha: a cor e o tamanho
+  const gemaBonus = (c, t, extra) => { const C = TC.bonus.cor(c), T = TC.bonus.tam(t); return h('span', { class: 'bn-gema' + (extra ? ' ' + extra : ''), style: `--bn:${C.cor};--bt:${T.px}px`, title: TC.bonus.nomeDe(c, t), 'aria-hidden': 'true' }); };
+  /* A tabela: as cores nas linhas, os tamanhos nas colunas. celula(c, t, qt) → o que vai em cada casa. */
+  function tabelaBonus(celula, id) {
+    const B = TC.bonus;
+    return h('table', { class: 'bn-tab', id: id || null },
+      h('thead', null, h('tr', null, h('th'), B.TAMANHOS.map(T => h('th', { scope: 'col', text: T.nome })))),
+      h('tbody', null, B.CORES.map(C => h('tr', { 'data-cor': C.k }, h('th', { scope: 'row' }, h('span', { class: 'bn-cor', style: '--bn:' + C.cor }), C.nome),
+        B.TAMANHOS.map(T => h('td', { 'data-tam': T.k }, celula(C.k, T.k)))))));
+  }
+  const histBonus = (dados, n) => {
+    const hs = TC.bonus.norm(dados).hist.slice(-n).reverse();
+    if (!hs.length) return h('p', { class: 'bn-vazio', text: 'Nada ainda.' });
+    return h('ul', { class: 'bn-hist' }, hs.map(x => h('li', null, gemaBonus(x.cor, x.tam, 'mini'),
+      h('span', { text: TC.bonus.textoHist(x) }),
+      h('small', { text: new Date(x.em).toLocaleDateString('pt-BR') }))));
+  };
+  function janelaMeusBonus() {
+    if (!podeBonus()) return;
+    const B = TC.bonus, eu = conta.usuario.id, corpo = h('div');
+    const pintar = () => {
+      const l = docBonus(eu), d = l ? l.dados : null, tot = B.total(d);
+      corpo.replaceChildren(
+        h('p', { class: 'bn-sub', text: tot ? 'Você tem ' + (tot === 1 ? '1 bônus' : tot + ' bônus') + '. O que cada um dá, você combina com o mestre; ao usar, toque em Gastar.' : 'Você ainda não tem bônus. Eles vêm de zerar campanhas: o mestre dá ao encerrar.' }),
+        tot ? tabelaBonus((c, t) => { const q = B.qtd(d, c, t); return q ? h('div', { class: 'bn-cel' }, gemaBonus(c, t), h('b', { text: '×' + q }),
+          h('button', { type: 'button', class: 'btn sm', 'data-gastar': c + ':' + t, text: 'Gastar', onclick: () => gastar(c, t) })) : h('span', { class: 'bn-zero', text: '—' }); }, 'bn-meus') : null,
+        h('h3', { class: 'bn-h', text: 'O que aconteceu' }), histBonus(d, 10));
+    };
+    const gastar = (c, t) => {
+      const nome = B.nomeDe(c, t);
+      confirmar('Gastar 1 ' + nome.replace(/^Bônus/, 'bônus') + '?', 'Ele some da sua conta. O mestre fica sabendo. Se foi engano, peça para ele devolver.', 'Gastar', () => {
+        const l = docBonus(eu), r = B.mudar(l ? l.dados : null, { q: 'gastou', cor: c, tam: t, qt: 1, por: eu });
+        if (!r.ok) { toast(r.erro); return; }
+        if (gravarBonus(eu, r.dados)) toast('Você gastou 1 ' + nome.replace(/^Bônus/, 'bônus') + '.');
+        janelaMeusBonus();
+      });
+    };
+    const f = h('form', { class: 'dl bn', id: 'f-bonus' }, h('h2', { text: 'Meus bônus' }), corpo,
+      h('div', { class: 'pe' }, h('button', { type: 'submit', class: 'btn pri', text: 'Fechar' })));
+    f.addEventListener('submit', ev => { ev.preventDefault(); fecharJanela(); });
+    abrirJanela(f); pintar();
+  }
+  // a grade de dar: um número por casa (começa em 0) → [{ cor, tam, qt }]
+  function gradeDeDar(id) {
+    const tab = tabelaBonus((c, t) => h('input', { type: 'number', min: '0', max: '99', value: '0', class: 'bn-n', 'data-k': c + ':' + t, 'aria-label': TC.bonus.nomeDe(c, t) + ': quantos dar' }), id);
+    tab.ler = () => [...tab.querySelectorAll('.bn-n')].map(i => { const [cor, tam] = i.dataset.k.split(':'); return { cor, tam, qt: Math.max(0, Math.min(99, Math.round(+i.value) || 0)) }; }).filter(x => x.qt > 0);
+    tab.zerar = () => tab.querySelectorAll('.bn-n').forEach(i => { i.value = '0'; });
+    return tab;
+  }
+  function darBonus(uid, itens, nota) {
+    const l = docBonus(uid), r = TC.bonus.mudar(l ? l.dados : null, { q: 'deu', itens, nota, por: conta.usuario.id });
+    if (!r.ok) { toast(r.erro); return false; }
+    return gravarBonus(uid, r.dados);
+  }
+  function janelaBonusMestre(foco) {
+    if (!podeBonus() || mesas.atual.papel !== 'mestre') return;
+    const B = TC.bonus, gente = jogadoresDaMesa();
+    if (!gente.length) { toast('Ainda não há jogadores nesta mesa.'); return; }
+    let uid = foco && gente.some(m => m.usuario_id === foco) ? foco : gente[0].usuario_id;
+    const corpo = h('div');
+    const pintar = () => {
+      const l = docBonus(uid), d = l ? l.dados : null, tot = B.total(d), dar = gradeDeDar('bn-dar');
+      const nota = h('input', { type: 'text', id: 'bn-nota', maxlength: String(B.LIM.nota), placeholder: 'Por quê? (ex.: zerou a Saga 1)' });
+      corpo.replaceChildren(
+        h('div', { class: 'seg bn-quem', role: 'group', 'aria-label': 'Jogador' }, gente.map(m => h('button', { type: 'button', 'aria-pressed': String(m.usuario_id === uid), 'data-uid': m.usuario_id, text: m.nome + (B.total((docBonus(m.usuario_id) || {}).dados) ? ' (' + B.total(docBonus(m.usuario_id).dados) + ')' : ''), onclick: () => { uid = m.usuario_id; pintar(); } }))),
+        h('h3', { class: 'bn-h', text: tot ? 'Tem ' + (tot === 1 ? '1 bônus' : tot + ' bônus') : 'Ainda sem bônus' }),
+        tot ? tabelaBonus((c, t) => { const q = B.qtd(d, c, t); return q ? h('div', { class: 'bn-cel' }, gemaBonus(c, t), h('b', { text: '×' + q }),
+          h('button', { type: 'button', class: 'btn sm', 'data-tirar': c + ':' + t, title: 'Tirar 1 (um engano, um bônus que ele usou na mesa)', 'aria-label': 'Tirar 1 ' + B.nomeDe(c, t), text: '−', onclick: () => {
+            const l2 = docBonus(uid), r = B.mudar(l2 ? l2.dados : null, { q: 'tirou', cor: c, tam: t, qt: 1, por: conta.usuario.id });
+            if (!r.ok) { toast(r.erro); return; }
+            const antes = l2 ? l2.dados : null, quem = uid;
+            if (gravarBonus(quem, r.dados)) toast('Tirado 1 ' + B.nomeDe(c, t).replace(/^Bônus/, 'bônus') + ' de ' + nomeDaConta(quem) + '.', 'Desfazer', () => { gravarBonus(quem, B.norm(antes)); if (aberta(f)) pintar(); });
+            pintar();
+          } })) : h('span', { class: 'bn-zero', text: '—' }); }, 'bn-dele') : null,
+        h('h3', { class: 'bn-h', text: 'Dar bônus a ' + nomeDaConta(uid) }), dar,
+        h('label', { class: 'f bn-notaf' }, h('span', { text: 'Motivo (aparece para ele)' }), nota),
+        h('div', { class: 'pe', style: 'justify-content:flex-start' }, h('button', { type: 'button', class: 'btn pri', id: 'bn-dar-ok', text: 'Dar', onclick: () => {
+          const itens = dar.ler(); if (!itens.length) { toast('Escolha quantos de cada bônus (os números da grade).'); return; }
+          const antes = d, quem = uid, n = itens.reduce((a, x) => a + x.qt, 0);
+          if (darBonus(quem, itens, nota.value)) toast(nomeDaConta(quem) + ' ganhou ' + (n === 1 ? '1 bônus' : n + ' bônus') + '.', 'Desfazer', () => { gravarBonus(quem, B.norm(antes)); if (aberta(f)) pintar(); });
+          pintar();
+        } })),
+        h('h3', { class: 'bn-h', text: 'O que aconteceu' }), histBonus(d, 12));
+    };
+    const f = h('form', { class: 'dl bn', id: 'f-bonus-m' }, h('h2', { text: 'Bônus dos jogadores' }),
+      h('p', { class: 'bn-sub', text: 'São da conta de cada jogador nesta mesa (passam de campanha para campanha). O que cada um dá, vocês combinam.' }), corpo,
+      h('div', { class: 'pe' }, h('button', { type: 'submit', class: 'btn', text: 'Fechar' })));
+    f.addEventListener('submit', ev => { ev.preventDefault(); fecharJanela(); });
+    abrirJanela(f); pintar();
+  }
+  // ao encerrar uma campanha: quais bônus cada jogador dela ganhou por zerar
+  function janelaBonusDaCampanha(c) {
+    const B = TC.bonus, gente = jogadoresDa(c).length ? jogadoresDa(c) : jogadoresDaMesa();
+    if (!podeBonus() || !gente.length) return;
+    const grades = gente.map(m => [m, gradeDeDar('bn-camp-' + m.usuario_id)]);
+    const nota = h('input', { type: 'text', id: 'bn-camp-nota', maxlength: String(B.LIM.nota), value: 'Zerou ' + c.nome });
+    const err = h('div', { class: 'err', role: 'alert' }), ok = h('button', { type: 'submit', class: 'btn pri', text: 'Dar os bônus' });
+    const f = h('form', { class: 'dl bn', id: 'f-bonus-camp' }, h('h2', { text: 'Bônus por zerar ' + c.nome }),
+      h('p', { class: 'bn-sub', text: 'Quantos de cada bônus cada jogador ganhou? Deixe em 0 o que não ganhou. Os bônus vão para a conta deles (não para a ficha).' }),
+      grades.map(([m, g]) => h('section', { class: 'bn-pessoa', 'data-uid': m.usuario_id }, h('h3', { class: 'bn-h', text: m.nome }), g)),
+      h('label', { class: 'f bn-notaf' }, h('span', { text: 'Motivo (aparece para eles)' }), nota), err,
+      h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Agora não', onclick: fecharJanela }), ok));
+    enviarCom(f, err, ok, async () => {
+      let quantos = 0, pessoas = 0;
+      for (const [m, g] of grades) { const itens = g.ler(); if (!itens.length) continue; if (darBonus(m.usuario_id, itens, nota.value)) { pessoas++; quantos += itens.reduce((a, x) => a + x.qt, 0); } }
+      if (aberta(f)) fecharJanela();
+      toast(quantos ? (quantos === 1 ? '1 bônus dado' : quantos + ' bônus dados') + (pessoas > 1 ? ' a ' + pessoas + ' jogadores' : '') + '.' : 'Nenhum bônus dado.');
+    });
+    abrirJanela(f);
+  }
+  // o mestre fica sabendo quando um jogador gasta
+  TC.dados.on('muda', (col, l, origem) => {
+    if (col !== 'documentos' || origem !== 'remota' || !l || typeof l.id !== 'string' || !l.id.startsWith('bonus:') || !mesas.atual || mesas.atual.papel !== 'mestre' || !TC.bonus) return;
+    const x = TC.bonus.norm(l.dados).hist.slice(-1)[0];
+    if (x && x.q === 'gastou' && Date.now() - Date.parse(x.em) < 120000 && avisadosBonus.add(l.id + x.em)) toast(nomeDaConta(TC.bonus.donoDoDoc(l.id)) + ' gastou 1 ' + TC.bonus.nomeDe(x.cor, x.tam).replace(/^Bônus/, 'bônus') + '.');
+  });
+  const avisadosBonus = { vistos: new Set(), add(k) { if (this.vistos.has(k)) return false; this.vistos.add(k); return true; } };
   /* (lote 131) Os lembretes do mestre (TC.lembretes): a checklist do dia. Abre sozinha uma vez por dia (o dia de verdade)
      e por mesa, na primeira vez que quem mestra entra; depois, pelo menu da mesa ("Lembretes do dia…"). Cada item leva à
      aba certa; as marcas valem para o dia e ficam no documento escudo:lembretes (só quem mestra), junto da lista, que o
