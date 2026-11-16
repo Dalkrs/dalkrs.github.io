@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.16-03",
+      "data": "2026-11-16",
+      "titulo": "Biblioteca de aptidões",
+      "itens": [
+        { "tipo": "novo", "texto": "Fichas: toda aptidão que o mestre cria fica guardada numa biblioteca. “+ Nova aptidão” abre essa biblioteca: dá para pôr uma aptidão que já existe em outra ficha (começa no nível 1, com a barra vazia) ou criar uma nova.", "mestre": true },
+        { "tipo": "melhorou", "texto": "Fichas: as cópias de uma aptidão ficam ligadas. Mudar o nome, a descrição ou o texto dos níveis numa ficha muda em todas; o nível e a barra de cada ficha não mudam.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.16-02",
       "data": "2026-11-16",
       "titulo": "Mago em sete galhos",

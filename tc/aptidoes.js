@@ -8,6 +8,12 @@
    A barra enche como a de XP do personagem: o mestre clica +1/+5 ou escreve "+15 -4". Cheia, aparece "Subir de nível":
    o nível sobe, o que passou do máximo fica na barra.
 
+   (lote 171) A biblioteca de moldes: toda aptidão nasce de um molde { id, n, d, teto, max, tx } (o nome, a descrição, o
+   nível máximo, o XP para subir e o texto de cada nível). O molde fica guardado (segredos.aptBib) mesmo se a ficha
+   sumir, e serve para pôr a mesma aptidão em outra ficha (começa no nível 1, com a barra vazia). As cópias ficam ligadas
+   pelo campo m (o id do molde): mudar o texto numa ficha muda o molde e as outras fichas — o nível, a barra e o "secreta"
+   de cada uma não mudam.
+
    Onde fica:
      segredos.apt[personagem]   a lista inteira (em fichas:segredos, que só quem mestra recebe)
      estado.apt                 o que o jogador vê: [{ id, n, d, nv }] das que não são secretas — sem a barra e sem o
@@ -31,8 +37,10 @@
     const teto = int(x.teto, 1, LIM.teto, PADRAO.teto), nv = int(x.nv, 1, teto, 1);
     const tx = {};
     if (ehObj(x.tx)) for (const k of Object.keys(x.tx)) { const i = int(k, 1, teto, 0), t = txt(x.tx[k], LIM.texto); if (i && t && String(i) === k) tx[k] = t; }
-    return { id: x.id, n: txt(x.n, LIM.nome) || 'Aptidão', d: txt(x.d, LIM.desc), nv, teto,
+    const a = { id: x.id, n: txt(x.n, LIM.nome) || 'Aptidão', d: txt(x.d, LIM.desc), nv, teto,
       xp: int(x.xp, 0, LIM.max * 10, 0), max: int(x.max, 1, LIM.max, PADRAO.max), tx, oc: !!x.oc };
+    if (idOk(x.m)) a.m = x.m;
+    return a;
   }
   // a lista arrumada (sem repetidos, no máximo LIM.lista)
   function norm(lista) {
@@ -97,7 +105,77 @@
     return { lista: l, mudou: true, pronta: pronta(b) && !pronta(antes), a: b };
   }
 
-  const API = { LIM, PADRAO, norm, publica, doJogador, pronta, prontas, noTeto, fracao, textoDoNivel, conta, mudar };
+  /* ---------- (lote 171) a biblioteca de moldes ---------- */
+  const LIM_BIB = 300;
+  const chave = n => String(n == null ? '' : n).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  // um molde arrumado (as mesmas regras de uma aptidão, sem nível, barra nem "secreta")
+  function moldeDe(x) {
+    if (!ehObj(x) || !idOk(x.id)) return null;
+    const a = umaDe(Object.assign({}, x, { nv: 1, xp: 0, oc: false }));
+    return a && { id: a.id, n: a.n, d: a.d, teto: a.teto, max: a.max, tx: a.tx };
+  }
+  function normBib(lista) {
+    const out = [], vistos = new Set();
+    for (const x of Array.isArray(lista) ? lista : []) {
+      const mo = moldeDe(x);
+      if (!mo || vistos.has(mo.id) || out.length >= LIM_BIB) continue;
+      vistos.add(mo.id); out.push(mo);
+    }
+    return out.sort((a, b) => a.n.localeCompare(b.n, 'pt'));
+  }
+  // o molde de uma aptidão de ficha (com o id que se der)
+  const moldeDaAptidao = (a, id) => moldeDe(Object.assign({}, a, { id }));
+  const MOLDE = ['n', 'd', 'teto', 'max', 'tx'];
+  const mesmoMolde = (a, mo) => MOLDE.every(k => JSON.stringify(a[k]) === JSON.stringify(mo[k]));
+  // põe o molde em todas as aptidões da lista ligadas a ele (o nível fica no novo teto, no máximo) → { lista, mudou }
+  function aplicarMolde(lista, molde) {
+    const mo = moldeDe(molde), l = norm(lista);
+    if (!mo) return { lista: l, mudou: false };
+    let mudou = false;
+    const out = l.map(a => {
+      if (a.m !== mo.id || mesmoMolde(a, mo)) return a;
+      mudou = true;
+      return umaDe(Object.assign({}, a, { n: mo.n, d: mo.d, teto: mo.teto, max: mo.max, tx: mo.tx }));
+    });
+    return { lista: out, mudou };
+  }
+  // uma aptidão nova a partir de um molde: nível 1, barra vazia, ligada ao molde
+  function doMolde(molde, id, oc) {
+    const mo = moldeDe(molde);
+    return mo && idOk(id) ? umaDe({ id, m: mo.id, n: mo.n, d: mo.d, teto: mo.teto, max: mo.max, tx: mo.tx, nv: 1, xp: 0, oc: !!oc }) : null;
+  }
+  /* Guardar na biblioteca as aptidões das fichas que ainda não têm molde (ou cujo molde sumiu): uma com o mesmo nome de
+     um molde já guardado se liga a ele; senão, nasce um molde novo (o primeiro texto que aparecer). novoId() dá os ids.
+     listas: { personagem: [aptidões] } → { bib, listas (só as que mudaram), mudou } — não altera o que recebeu. */
+  function semear(bib, listas, novoId) {
+    const b = normBib(bib), porNome = new Map(b.map(mo => [chave(mo.n), mo])), ids = new Set(b.map(mo => mo.id)), mudaram = {};
+    let mudou = false;
+    for (const pid of Object.keys(ehObj(listas) ? listas : {})) {
+      let trocou = false;
+      const l = norm(listas[pid]).map(a => {
+        if (a.m && ids.has(a.m)) return a;
+        let mo = porNome.get(chave(a.n));
+        if (!mo) {
+          mo = moldeDaAptidao(a, novoId());
+          if (!mo) return a;
+          b.push(mo); porNome.set(chave(mo.n), mo); ids.add(mo.id); mudou = true;
+        }
+        trocou = true;
+        return Object.assign({}, a, { m: mo.id });
+      });
+      if (trocou) { mudaram[pid] = l; mudou = true; }
+    }
+    return { bib: normBib(b), listas: mudaram, mudou };
+  }
+  // quantas fichas usam cada molde: { molde: [personagem, ...] }
+  function usos(listas) {
+    const out = {};
+    for (const pid of Object.keys(ehObj(listas) ? listas : {})) for (const a of norm(listas[pid])) if (a.m) (out[a.m] = out[a.m] || []).push(pid);
+    return out;
+  }
+
+  const API = { LIM, PADRAO, norm, publica, doJogador, pronta, prontas, noTeto, fracao, textoDoNivel, conta, mudar,
+    LIM_BIB, chave, moldeDe, normBib, moldeDaAptidao, mesmoMolde, aplicarMolde, doMolde, semear, usos };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else { root.TC = root.TC || {}; root.TC.aptidoes = API; }
 })(typeof window !== 'undefined' ? window : globalThis);

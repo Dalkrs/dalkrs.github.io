@@ -46,7 +46,16 @@ ok(/^\d{4}-\d\d-\d\d$/.test(L.hoje()), 'o dia de hoje');
 
 /* ---------------- a tela (fora da mesa: quem usa mestra) ---------------- */
 const pc = Object.assign(R.personagemPadrao('Dain'), { id: 'pc_dain', nome: 'Dain' });
-const estado = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], situacoes: [], tabelas: [], log: [], bib: null, sel: 'pc_dain', selSit: null, aba: 'fichas', grupos: [] });
+const pc2 = Object.assign(R.personagemPadrao('Hayana'), { id: 'pc_hay', nome: 'Hayana' });
+// (lote 171) a biblioteca: a lógica dos moldes
+{ let k = 0; const r = A.semear([], { p1: [{ id: 'a1', n: 'Rastreio', nv: 3, xp: 4 }], p2: [{ id: 'b1', n: 'rastreio' }, { id: 'b2', n: 'Pescar' }] }, () => 'am' + (++k));
+  ok(r.bib.length === 2 && r.listas.p1[0].m === r.listas.p2[0].m && r.listas.p2[1].m && r.listas.p1[0].nv === 3, '(lote 171) semear: um molde por nome (Rastreio e rastreio são o mesmo), e cada aptidão fica ligada a ele');
+  const mo = Object.assign({}, r.bib.find(m => m.n === 'Rastreio'), { d: 'Pegadas.', teto: 2 }), ap = A.aplicarMolde(r.listas.p1, mo).lista[0];
+  ok(ap.d === 'Pegadas.' && ap.teto === 2 && ap.nv === 2 && ap.xp === 4, '(lote 171) o molde muda o texto das ligadas; o nível fica no novo teto e a barra não muda');
+  const nv = A.doMolde(mo, 'z1');
+  ok(nv.nv === 1 && nv.xp === 0 && nv.m === mo.id && nv.d === 'Pegadas.', '(lote 171) puxar da biblioteca: nível 1, barra vazia, ligada ao molde');
+  ok(!('m' in A.publica([nv])[0]), '(lote 171) o jogador não recebe o molde'); }
+const estado = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc, pc2], situacoes: [], tabelas: [], log: [], bib: null, sel: 'pc_dain', selSit: null, aba: 'fichas', grupos: [] });
 (async () => {
   const t = await start();
   const { page: P } = await t.device({ name: 'apt', w: 1300, h: 900, seed: { urgm_calc_atributos_v1: estado } });
@@ -58,6 +67,8 @@ const estado = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], situacoes: [], t
     await P.locator('[data-abaficha="aptidoes"]').click(); await w(300);
     ok(await P.locator('#painelApt').isVisible() && /Nenhuma aptidão ainda/.test(await P.locator('#painelApt').innerText()), 'vazia: o convite para criar');
     await P.locator('[data-aptnova]').click(); await w(200);
+    ok(/biblioteca ainda está vazia/.test(await P.locator('.itjanela').innerText()), '(lote 171) "+ Nova aptidão" abre a biblioteca (vazia)');
+    await P.locator('[data-aptcriar]').click(); await w(200);
     await P.locator('[data-aptn]').fill('Rastreio');
     await P.locator('[data-aptd]').fill('Seguir pegadas e sinais.');
     await P.locator('[data-aptmax]').fill('20');
@@ -77,6 +88,22 @@ const estado = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], situacoes: [], t
     await P.locator(`[data-aptsobe="${k}"]`).click(); await w(250);
     ok(await E(() => S.personagens[0].estado.apt[0].nv) === 2 && await E(() => S.personagens[0].estado.apt[0].xp) === 0, 'subiu para o nível 2');
     if (process.env.TC_SCRATCH) { const pa = require('path'); require('fs').mkdirSync(pa.join(process.env.TC_SCRATCH, 'fotos'), { recursive: true }); await P.locator('#painelApt').screenshot({ path: pa.join(process.env.TC_SCRATCH, 'fotos', 'apt-ficha.png') }); }
+  });
+  await passo('a biblioteca', async () => {
+    await E(() => { S.sel = 'pc_hay'; save(); render(); }); await w(300);
+    await P.locator('[data-abaficha="aptidoes"]').click(); await w(200);
+    await P.locator('[data-aptnova]').click(); await w(200);
+    ok(/Rastreio/.test(await P.locator('.aptbibl').innerText()), '(lote 171) a Rastreio do Dain está na biblioteca');
+    await P.locator('[data-aptpor]').first().click(); await w(300);
+    const h = await E(() => S.personagens[1].estado.apt), d0 = await E(() => S.personagens[0].estado.apt[0]);
+    ok(h && h.length === 1 && h[0].n === 'Rastreio' && h[0].nv === 1 && h[0].xp === 0 && h[0].m === d0.m && h[0].tx['1'] === 'Rastro de até 1 dia.', '(lote 171) posta na Hayana: nível 1, barra vazia, o mesmo molde');
+    await P.locator('[data-apted]').first().click(); await w(200);
+    ok(/também está na ficha de Dain/.test(await P.locator('.itjanela').innerText()), '(lote 171) o editor avisa que está ligada a outra ficha');
+    await P.locator('[data-aptd]').fill('Seguir rastros na mata.'); await P.locator('[data-aptok]').click(); await w(300);
+    const d1 = await E(() => S.personagens[0].estado.apt[0]);
+    ok(d1.d === 'Seguir rastros na mata.' && d1.nv === 2, '(lote 171) ligadas: o texto mudou no Dain também, e o nível dele (2) ficou');
+    ok(/outra ficha/.test(await E(() => (document.querySelector('.toast') || {}).textContent || '')), '(lote 171) o aviso conta a outra ficha');
+    await E(() => { S.sel = 'pc_dain'; save(); render(); }); await w(300);
   });
   await passo('a aba Mesa', async () => {
     await E(() => { S.aba = 'mesa'; save(); render(); }); await w(400);

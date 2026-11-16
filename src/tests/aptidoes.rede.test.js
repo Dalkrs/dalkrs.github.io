@@ -41,7 +41,7 @@ const local = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], situacoes: [], ta
     await passo('o mestre cria e dá XP', async () => {
       await F.locator('#ficha [data-abaficha="aptidoes"]').click(); await w(300);
       for (const [n, oc] of [['Rastreio', false], ['Sombra antiga', true]]) {
-        await F.locator('[data-aptnova]').click(); await w(200);
+        await F.locator('[data-aptnova]').click(); await w(200); await F.locator('[data-aptcriar]').click(); await w(200);
         await F.locator('[data-aptn]').fill(n); await F.locator('[data-aptd]').fill('Descrição de ' + n);
         await F.locator('[data-apttx="1"]').fill('Texto secreto do nível 1 de ' + n);
         if (oc) await F.locator('[data-aptoc]').check();
