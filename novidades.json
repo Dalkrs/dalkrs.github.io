@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.15-07",
+      "data": "2026-11-15",
+      "titulo": "Vida negativa: o mestre decide",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Cenas: quando um dano levaria a vida de um token abaixo de zero, ela para em 0 e o aviso do mestre pergunta se aplica o que sobrou como vida negativa (até o limite da ficha). Já negativa, o dano seguinte desce direto." }
+      ]
+    },
+    {
       "versao": "2026.11.15-06",
       "data": "2026-11-15",
       "titulo": "Jogos de Tabuleiro",

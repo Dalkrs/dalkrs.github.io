@@ -11107,6 +11107,31 @@ function feridosQuePioraram(ops, inv) {
   }
   return out;
 }
+/* (lote 168) A vida que passou do zero: o mestre decide. Quando a barra da vida estava em 0 ou mais e o passo a levou
+   abaixo de zero (só acontece na barra que pode ficar negativa: o piso vem da ficha), ela para em 0 e o aviso pergunta
+   se aplica o que sobrou como vida negativa. Já negativa, o dano seguinte desce direto.
+   → [{ tok, barra, neg }] (neg: quanto passou do zero, já dentro do piso) */
+const negativaLiberada = new Set();      // os tokens em que o mestre acabou de dizer "aplicar" (o passo não para no 0)
+function vidaQuePassouDoZero(ops, inv) {
+  const out = [];
+  const ids = new Set((ops || []).filter(op => op.t === 'upd' && op.c === 'tokens' && op.p && 'bars' in op.p).map(op => op.id));
+  for (const id of ids) {
+    const t = Store.get('tokens', id), antes = antesDoToken(inv, id, ['bars']);
+    if (!t || t.prop || t.clone || negativaLiberada.has(id) || !('bars' in antes)) continue;
+    const d = barraDaVida(t.bars), a = d ? (antes.bars || []).find(b => b && b.n === d.n) : null;
+    if (d && a && a.v >= 0 && d.v < 0) out.push({ tok: id, barra: d.n, neg: Math.round(-d.v * 10) / 10 });
+  }
+  return out;
+}
+// dentro de um passo: a vida volta para 0 e o aviso pergunta
+function pararNoZero(lista) {
+  for (const z of lista) {
+    const t = Store.get('tokens', z.tok); if (!t) continue;
+    const bars = t.bars.map(b => (b && b.n === z.barra && b.v < 0 ? Object.assign({}, b, { v: 0 }) : b));
+    Store.upd('tokens', z.tok, { bars });
+    Store.emit('negativa', z);
+  }
+}
 // aplica as regras (dentro de um passo) e avisa quem some
 function aplicarRegrasDoClone(regras) {
   const sc = Store.scene();
@@ -11126,6 +11151,7 @@ function avisarMorte(id, antes, p) {
 }
 Store.aoFechar(tx => {
   if (!acertaAqui()) return;
+  pararNoZero(vidaQuePassouDoZero(tx.fwd, tx.inv));        // (lote 168) antes do Morto e dos Feridos: a vida para em 0 e o mestre decide
   const ids = [...new Set(tx.fwd.filter(op => op.t === 'upd' && op.c === 'tokens').map(op => op.id))];
   for (const id of ids) {
     const t = Store.get('tokens', id), p = acertarCondicoes(t, antesDoToken(tx.inv, id));
@@ -11152,6 +11178,8 @@ Store.aoFechar(tx => {
 });
 Store.on('commit', e => {
   if (!e.remote || !acertaAqui() || e.sceneId !== Store.S.current) return;
+  // (lote 168) a vida que passou do zero pelo que chegou de fora (a ficha, um jogador): num passo logo depois
+  { const zs = vidaQuePassouDoZero(e.ops, e.inv); if (zs.length) setTimeout(() => Store.tx('Vida em 0', () => pararNoZero(zs.filter(z => { const t = Store.get('tokens', z.tok), b = t && barraDaVida(t.bars); return b && b.n === z.barra && b.v < 0; }))), 0); }
   const ids = [...new Set((e.ops || []).filter(op => op.t === 'upd' && op.c === 'tokens').map(op => op.id))];
   const mud = ids.map(id => [id, acertarCondicoes(Store.get('tokens', id), antesDoToken(e.inv, id))]).filter(x => x[1]);
   if (mud.length) setTimeout(() => Store.tx('Condição', () => {
@@ -24393,6 +24421,22 @@ const UI = (() => {
     somAviso('urgente');
     toast(`${tokName(t)} chegou a 0 de vida: Morto.` + (naOrdem ? ' Tirar da iniciativa?' : ''), naOrdem ? { action: 'Tirar da iniciativa', key: 'morto-' + t.id, long: true,
       run: () => { if (!Store.get('tokens', d.tok)) return; Act.turnPatch(tn => turnDrop(tn, [d.tok]), 'Tirar da iniciativa'); toast(`${tokName(t)} saiu da iniciativa.`, { action: 'Desfazer', run: Tools.undo }); } } : { key: 'morto-' + t.id });
+  });
+  // (lote 168) a vida passou do zero: parou em 0, e o mestre escolhe se aplica o resto como vida negativa
+  Store.on('negativa', d => {
+    const t = Store.get('tokens', d.tok);
+    if (!t || !isGM()) return;
+    somAviso('urgente');
+    toast(`${tokName(t)} parou em 0 de ${d.barra}. Aplicar os ${fmt(d.neg)} que sobraram como vida negativa?`, { action: `Aplicar −${fmt(d.neg)}`, key: 'neg-' + t.id, long: true,
+      run: () => {
+        const tk = Store.get('tokens', d.tok), b = tk && (tk.bars || []).find(x => x && x.n === d.barra);
+        if (!b) return;
+        const v = Math.max(-barLo(b), Math.round((Math.min(b.v, 0) - d.neg) * 10) / 10);
+        if (v === b.v) return;
+        negativaLiberada.add(tk.id);
+        try { Store.tx('Vida negativa', () => Store.upd('tokens', tk.id, { bars: tk.bars.map(x => (x === b ? Object.assign({}, x, { v }) : x)) })); } finally { negativaLiberada.delete(tk.id); }
+        toast(`${tokName(tk)}: ${d.barra} em ${fmt(v)}.`, { action: 'Desfazer', run: Tools.undo });
+      } });
   });
   Store.on('reviveu', d => {
     const t = Store.get('tokens', d.tok);
