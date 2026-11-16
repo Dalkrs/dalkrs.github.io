@@ -203,7 +203,9 @@
     const I = indice(bib, e.skills.arvores), total = pontosDe(e, bib), resta = Object.assign({}, total), al = {};
     const cabe = custo => Object.keys(custo).every(k => !(num(custo[k], 0) > 0) || (resta[k] || 0) >= num(custo[k], 0));
     const pagar = (custo, m) => { for (const k in custo) if (num(custo[k], 0) > 0) resta[k] = (resta[k] || 0) - m * num(custo[k], 0); };
-    const fechado = (n, mapa) => { const g = grupoEx(n); return !!g && [...I.porId.values()].some(x => x !== n && grupoEx(x) === g && mapa[x.id] > 0); };
+    // (lote 170) um grupo pode aceitar mais de um nódulo: n.exclusivoMax = [[nível, quantos], ...] (as 3 Mestrias do Mago)
+    const limite = n => { let q = 1; for (const t of (Array.isArray(n.exclusivoMax) ? n.exclusivoMax : [])) if (Array.isArray(t) && (num((ehObj(e.ficha) ? e.ficha.level : null) ?? e.level, 1) || 1) >= num(t[0], 99)) q = Math.max(q, Math.round(num(t[1], 1)) || 1); return q; };
+    const fechado = (n, mapa) => { const g = grupoEx(n); return !!g && [...I.porId.values()].filter(x => x !== n && grupoEx(x) === g && mapa[x.id] > 0).length >= limite(n); };
     const somaCusto = n => Object.values(custoDoGrau(n, 1)).reduce((s, v) => s + Math.max(0, num(v, 0)), 0);
     // tenta deixar o nódulo com pelo menos o grau 1, com o caminho; tudo ou nada (numa cópia), devolve se conseguiu
     function garantir(id, mapa, resto, pilha) {

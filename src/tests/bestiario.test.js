@@ -28,6 +28,10 @@ const d1 = B.distribuir(e1, bib);
 ok(j(d1.alocados) === j({ r: 1, n1: 1, n2: 1, n4: 1 }) && d1.gastos.p1 === 4 && j(d1.faltou) === j(['Escudo']), 'a árvore: o caminho até o Totem (Raiz, Raio), a Espada, e o Escudo não cabe (exclusivo da Espada): ' + j(d1));
 ok(j(B.distribuir(B.novo('m', { skills: { arvores: ['a1'], prioridade: ['n1'] } }), bib).alocados) === j({ r: 1, n1: 2 }), 'a prioridade sobe os graus enquanto der (Raio 2)');
 ok(j(B.distribuir(B.novo('m', { skills: { arvores: ['a1'], prioridade: ['n5'] } }), bib).alocados) === j({ r: 1, n3: 1, n5: 1 }), 'a regra "ou": pega o caminho mais barato (Escudo, 1)');
+{ // (lote 170) grupo exclusivo com limite por nível (as 3 Mestrias do Mago)
+  const mx = [[1, 1], [12, 2], [22, 3]], bm = { pools: [{ id: 'p1', nome: 'Pontos', padrao: 50 }], usos: [], arvores: [{ id: 'am', nome: 'Mago', nodes: [{ id: 'o', nome: 'O', pais: [], graus: [{ custos: {} }] }].concat(['m1', 'm2', 'm3', 'm4'].map(id => ({ id, nome: id, pais: ['o'], exclusivo: 'Mago: Mestria', exclusivoMax: mx, graus: [{ custos: { p1: 1 } }] }))) }] };
+  const q = lv => Object.keys(B.distribuir(B.novo('m', { ficha: { level: lv }, skills: { arvores: ['am'], prioridade: ['m1', 'm2', 'm3', 'm4'] } }), bm).alocados).filter(k => k !== 'o').length;
+  ok(q(1) === 1 && q(12) === 2 && q(22) === 3 && q(30) === 3, '(lote 170) Mestrias do Mago: 1 no nível 1, 2 no 12, 3 no 22 e nunca 4 — ' + [q(1), q(12), q(22), q(30)]); }
 ok(B.distribuir(B.novo('m', { skills: { arvores: [], prioridade: ['n1'] } }), bib).faltou.length === 0 && j(B.distribuir(B.novo('m', { skills: { arvores: [], prioridade: ['n1'] } }), bib).alocados) === '{}', 'árvore não equipada: nada');
 const e2 = B.novo('m', { skills: { arvores: ['a1'], prioridade: ['n2'], sobra: true, pontos: { p1: 6 } } });
 ok(j(B.distribuir(e2, bib).alocados) === j({ r: 1, n1: 1, n2: 1, n3: 1, n5: 1 }) || j(B.distribuir(e2, bib).alocados) === j({ r: 1, n1: 1, n2: 1, n4: 1, n5: 1 }), 'com a sobra (e 6 pontos escritos à mão): os mais baratos que já dá para pegar: ' + j(B.distribuir(e2, bib).alocados));

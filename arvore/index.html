@@ -1613,6 +1613,9 @@ function nosEmCiclo(a){
    ============================================================ */
 const conjuntoAlocado = p => new Set(Object.keys(p.alocados));
 const grupoEx = n => norm(n.exclusivo);
+// (lote 170) um grupo exclusivo pode aceitar mais de um nódulo: n.exclusivoMax = [[nível, quantos], ...]
+// (o Mago tem até 3 Mestrias: 1 desde o começo, 2 no nível 12, 3 no nível 22). Sem a tabela, vale 1.
+const limiteDoGrupo = (n, nivel) => { let q = 1; for (const t of (Array.isArray(n.exclusivoMax) ? n.exclusivoMax : [])) if (Array.isArray(t) && (nivel == null ? Infinity : (+nivel || 1)) >= +t[0]) q = Math.max(q, Math.round(+t[1]) || 1); return q; };
 function equipado(p, id){ const a = arvDe.get(id); return !!a && p.arvores.includes(a.id); }
 function satisfeito(n, conj){
   if(!n.pais.length) return true;
@@ -1620,12 +1623,13 @@ function satisfeito(n, conj){
 }
 function fechadoPor(p, n){
   const g = grupoEx(n); if(!g) return null;
+  const outros = [];
   for(const id in p.alocados){
     if(id===n.id) continue;
     const m = porId.get(id);
-    if(m && grupoEx(m)===g) return m;
+    if(m && grupoEx(m)===g) outros.push(m);
   }
-  return null;
+  return outros.length >= limiteDoGrupo(n, p.level ?? p.nivel) ? outros[0] : null;
 }
 const custoGrau = (n, k) => (n.graus[k-1] && n.graus[k-1].custos) || {};
 function gastos(p, poolId){
@@ -1677,11 +1681,12 @@ function podarPersonagem(p){
     if(!equipado(p, id)){ delete p.alocados[id]; continue; }
     if(p.alocados[id] > n.graus.length) p.alocados[id] = n.graus.length;
   }
-  const vistos = new Set();
+  const vistos = new Map();
   for(const id of Object.keys(p.alocados)){
     const n = porId.get(id); if(!n) continue;
     const g = grupoEx(n); if(!g) continue;
-    if(vistos.has(g)) delete p.alocados[id]; else vistos.add(g);
+    const q = (vistos.get(g) || 0) + 1;
+    if(q > limiteDoGrupo(n, p.level ?? p.nivel)) delete p.alocados[id]; else vistos.set(g, q);
   }
   const ok = sustentados(conjuntoAlocado(p));
   for(const id of Object.keys(p.alocados)) if(!ok.has(id)) delete p.alocados[id];

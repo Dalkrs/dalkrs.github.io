@@ -1908,7 +1908,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="quadros.js?v=9"></script>
 <script src="skills-lista.js?v=1"></script>
 <script src="filtro-skills.js?v=3"></script>
-<script src="criacao.js?v=3"></script>
+<script src="criacao.js?v=4"></script>
 <script src="../tc/corrupcao.js?v=1"></script>
 <script src="corrupcao.js?v=1"></script>
 <script src="../meditacao/nucleo.js?v=2"></script>
@@ -4646,6 +4646,9 @@ const natArv     = id => (BIBX()?.naturezas||[]).find(x=>x.id===id)||null;
 const usoArv     = id => (BIBX()?.usos||[]).find(x=>x.id===id)||null;
 const tipoArv    = n  => (BIBX()?.tipos||{})[n.tipo] || {nome:n.tipo||'Pequeno'};
 const grupoEx    = n  => String(n.exclusivo||'').trim().toLowerCase();
+// (lote 170) um grupo exclusivo pode aceitar mais de um nódulo: n.exclusivoMax = [[nível, quantos], ...]
+// (o Mago tem até 3 Mestrias: 1 desde o começo, 2 no nível 12, 3 no nível 22). Sem a tabela, vale 1.
+const limiteDoGrupo = (n, nivel) => { let q = 1; for (const t of (Array.isArray(n.exclusivoMax) ? n.exclusivoMax : [])) if (Array.isArray(t) && (+nivel || 1) >= +t[0]) q = Math.max(q, Math.round(+t[1]) || 1); return q; };
 const grausDe    = n  => (n.graus&&n.graus.length? n.graus : [{custos:{},texto:''}]);
 const custoGrauArv = (n,k) => (grausDe(n)[k-1]&&grausDe(n)[k-1].custos) || {};
 
@@ -4656,12 +4659,13 @@ function satisfeitoNo(n,conj){
 }
 function fechadoPorNo(pc,n){
   const g=grupoEx(n); if(!g) return null;
+  const outros=[];
   for(const id in skillsDe(pc).alocados){
     if(id===n.id) continue;
     const m=ARV.porId.get(id);
-    if(m && grupoEx(m)===g) return m;
+    if(m && grupoEx(m)===g) outros.push(m);
   }
-  return null;
+  return outros.length >= limiteDoGrupo(n, pc.level) ? outros[0] : null;
 }
 function gastosPool(pc,poolId){
   const al=skillsDe(pc).alocados; let soma=0;
@@ -4721,11 +4725,12 @@ function podarSkills(pc){
     if(al[id]>grausDe(n).length) al[id]=grausDe(n).length;
     if(al[id]<1) delete al[id];
   }
-  const vistos=new Set();
+  const vistos=new Map();
   for(const id of Object.keys(al)){
     const n=ARV.porId.get(id); if(!n) continue;
     const g=grupoEx(n); if(!g) continue;
-    if(vistos.has(g)) delete al[id]; else vistos.add(g);
+    const q=(vistos.get(g)||0)+1;
+    if(q>limiteDoGrupo(n, pc.level)) delete al[id]; else vistos.set(g,q);
   }
   const ok=sustentadosArv(new Set(Object.keys(al)));
   for(const id of Object.keys(al)) if(!ok.has(id)) delete al[id];

@@ -65,10 +65,13 @@ const FichasCriacao = (() => {
   }
   const satisfeito = (n, aloc) => !(n.pais || []).length || (n.regra === 'ou' ? n.pais.some(x => aloc[x] > 0) : n.pais.every(x => aloc[x] > 0));
   const custoDo = (n, k) => (n.graus[k - 1] && n.graus[k - 1].custos) || {};
+  // (lote 170) um grupo pode aceitar mais de um nódulo: n.exclusivoMax = [[nível, quantos], ...] (as 3 Mestrias do Mago)
+  const limiteDoGrupo = (n, nivel) => { let q = 1; for (const t of (Array.isArray(n.exclusivoMax) ? n.exclusivoMax : [])) if (Array.isArray(t) && (+nivel || 1) >= +t[0]) q = Math.max(q, Math.round(+t[1]) || 1); return q; };
   function exclusivoFechado(ix, aloc, n) {
     const g = norm(n.exclusivo); if (!g) return null;
-    for (const id in aloc) { if (id === n.id || !(aloc[id] > 0)) continue; const m = ix.porId.get(id); if (m && norm(m.exclusivo) === g) return m; }
-    return null;
+    const outros = [];
+    for (const id in aloc) { if (id === n.id || !(aloc[id] > 0)) continue; const m = ix.porId.get(id); if (m && norm(m.exclusivo) === g) outros.push(m); }
+    return outros.length >= limiteDoGrupo(n, w ? w.level : 1) ? outros[0] : null;
   }
   function podeComprar(ix, w, n) {
     const k = (w.aloc[n.id] || 0) + 1;

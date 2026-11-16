@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.16-02",
+      "data": "2026-11-16",
+      "titulo": "Mago em sete galhos",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Árvores: um caminho exclusivo pode aceitar mais de uma escolha conforme o nível. O Mago usa isso: 1 Mestria desde o começo, 2 no nível 12 e 3 no nível 22." }
+      ]
+    },
+    {
       "versao": "2026.11.16-01",
       "data": "2026-11-16",
       "titulo": "Parar e Retomar no Mapa-múndi",
