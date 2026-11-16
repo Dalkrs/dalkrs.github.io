@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.16-05",
+      "data": "2026-11-16",
+      "titulo": "As caudas da Kitsune",
+      "itens": [
+        { "tipo": "novo", "texto": "Fichas: quem tem a árvore da Kitsune vê, na aba Skills, as caudas e o que cada uma guarda. Quando a Kitsune come um yokai, o mestre ou o jogador usa “+ Guardar poder”: o yokai, o nome do poder, o que ele faz e, se for o caso, a ferida que ele deixa. O poder fica até ser usado; usar não queima a cauda, mas a ferida fica escrita nela até o mestre tirar." },
+        { "tipo": "novo", "texto": "Cenas: a Kitsune ganhou o painel das Caudas. A cauda que guarda um poder acende; tocar nela usa o poder e escreve no registro da mesa." }
+      ]
+    },
+    {
       "versao": "2026.11.16-04",
       "data": "2026-11-16",
       "titulo": "Desenhos no lugar dos símbolos japoneses",

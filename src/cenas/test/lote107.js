@@ -16,12 +16,12 @@ const j = JSON.stringify;
   const erros = [];
   page.on('pageerror', e => erros.push(e.message));
   const ids = await ev(() => __tc.TC ? null : (window.TC.painelBarras.BARRAS.map(b => b.id)));
-  ok(ids && ids.length === 20, 'o motor tem as 20 barras do mundo novo — ' + j(ids));
+  ok(ids && ids.length === 22, 'o motor tem as 22 barras do mundo novo — ' + j(ids));
   const tk = await ev(() => { const { Store, newToken } = __tc, sc = Store.scene();
     const a = newToken(sc, 8 * sc.cell, 6 * sc.cell, { name: 'Teste' }); Store.tx('Criar', () => Store.add('tokens', a)); return a.id; });
   await w(200);
   await ev(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, tk); await w(250);
-  ok((await page.locator('#pb-escolher option').count()) === 21, 'na escolha da barra especial: Nenhuma e as 20');
+  ok((await page.locator('#pb-escolher option').count()) === 23, 'na escolha da barra especial: Nenhuma e as 22');
   for (const id of ids) {
     await ev(id => { __tc.setSel([{ c: 'tokens', id }]); __tc.UI.openTab('sel'); }, tk); await w(120);
     await page.locator('#pb-escolher').selectOption(id); await w(200);
