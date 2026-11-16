@@ -558,7 +558,7 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <body>
 <div id="app">
   <header id="topo">
-    <div class="selo" aria-hidden="true">道</div>
+    <div class="selo" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M12 3.5A8.5 8.5 0 1 1 12 20.5A8.5 8.5 0 1 1 12 3.5ZM12 8.5A3.5 3.5 0 1 1 12 15.5A3.5 3.5 0 1 1 12 8.5Z"/></svg></div>
     <input id="nomeBib" value="Árvores de Habilidade" aria-label="Nome da biblioteca">
     <div class="espaco"></div>
     <input id="busca" class="campo" type="search" placeholder="Buscar skill…" aria-label="Buscar skill pelo nome ou pelo texto" autocomplete="off">
@@ -631,6 +631,7 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <script src="../tc/ponte.js?v=24"></script>
 <script src="../tc/rules.js?v=35"></script>
 <script src="../tc/icones.js?v=1"></script>
+<script src="../tc/simbolos.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=3"></script>
 <script src="mesa.js?v=13"></script>
@@ -789,11 +790,11 @@ function bibliotecaInicial(){
     natureza:'', usos:[], desc:'', exclusivo:'', escola:null,
     graus:[{custos: tipos[tipo].custo>0 ? {p1:tipos[tipo].custo} : {}, texto:''}]
   }, extra);
-  const raiz = mk('keystone', {nome:'Origem', desc:'Ponto de partida da árvore.', glifo:'道', graus:[{custos:{}, texto:''}]});
+  const raiz = mk('keystone', {nome:'Origem', desc:'Ponto de partida da árvore.', glifo:'@origem', graus:[{custos:{}, texto:''}]});
   const ramos = [
-    mk('notavel', {nome:'Corpo',    pais:[raiz.id], natureza:'forca',       usos:['passiva'], glifo:'力', desc:'Técnicas externas, do corpo.'}),
-    mk('notavel', {nome:'Mente',    pais:[raiz.id], natureza:'canalizacao', usos:['ativa'],   glifo:'气', desc:'Técnicas internas, do qi.'}),
-    mk('notavel', {nome:'Espírito', pais:[raiz.id], natureza:'hibrida',     usos:['postura'], glifo:'合', desc:'Corpo e qi cultivados juntos.'})
+    mk('notavel', {nome:'Corpo',    pais:[raiz.id], natureza:'forca',       usos:['passiva'], glifo:'@punho', desc:'Técnicas externas, do corpo.'}),
+    mk('notavel', {nome:'Mente',    pais:[raiz.id], natureza:'canalizacao', usos:['ativa'],   glifo:'@espiral', desc:'Técnicas internas, do qi.'}),
+    mk('notavel', {nome:'Espírito', pais:[raiz.id], natureza:'hibrida',     usos:['postura'], glifo:'@estrela', desc:'Corpo e qi cultivados juntos.'})
   ];
   return {
     nome:'Árvores de Habilidade',
@@ -865,7 +866,7 @@ function normalizarNo(n, b, ids){
   if(!b.tipos[n.tipo]) n.tipo = 'pequeno';
   if(!FORMAS.some(f=>f.id===n.forma)) n.forma = b.tipos[n.tipo].forma || 'circulo';
   n.nome = String(n.nome ?? '').trim() || 'Sem nome';
-  n.glifo = [...String(n.glifo||'')].slice(0,2).join('');
+  n.glifo = /^@[A-Za-z]+$/.test(String(n.glifo||'').trim()) ? String(n.glifo).trim() : [...String(n.glifo||'')].slice(0,2).join('');   // (lote 172) "@fogo": um desenho de TC.simbolos
   n.cor = corOk(n.cor, '');
   n.natureza = ids.nat.has(n.natureza) ? n.natureza : '';
   // aceita o formato anterior, de um tipo de uso só
@@ -1841,6 +1842,10 @@ function traco(x1,y1,w1,x2,y2,w2,curva){
        + ` L${p(x2-nx*w2,y2-ny*w2)} Q${p(mx-nx*wm,my-ny*wm)} ${p(x1-nx*w1,y1-ny*w1)} Z`;
 }
 function glifoEl(txt, r, cor, op){
+  const sb = window.TC && TC.simbolos;
+  if (sb && sb.ehSimbolo(txt)) {           // (lote 172) "@fogo": o desenho, não um texto
+    const w = el('g', {opacity:op, class:'glifo-simb'}); w.innerHTML = sb.g(txt.trim().slice(1), 0, 0, Math.max(12, r*1.25), cor, { traco: 2 }); return w;
+  }
   const t = el('text', {class:'glifo', y:f1(r*.04), fill:cor, opacity:op, 'font-size':f1(Math.max(10, r*(txt.length>1 ? .78 : 1.08)))});
   t.textContent = txt; return t;
 }
@@ -1979,7 +1984,9 @@ function seloSecreto(g, x, y, tema){
   g.appendChild(el('rect', {x:f1(x-s/2), y:f1(y-s/2), width:s, height:s, rx:2.5,
     fill: tema==='tinta' ? COR_T.verm : 'none', stroke: tema==='tinta' ? 'none' : COR_P.ouro, 'stroke-width':1.2}));
   const t = el('text', {class:'glifo', x:f1(x), y:f1(y+.5), fill: tema==='tinta' ? '#F3E9D6' : COR_P.ouro, 'font-size':13});
-  t.textContent = '秘'; g.appendChild(t);
+  t.textContent = ''; g.appendChild(t);
+  // (lote 172) o cadeado no lugar do kanji
+  const sb = window.TC && TC.simbolos; if (sb) { const w = document.createElementNS('http://www.w3.org/2000/svg', 'g'); w.innerHTML = sb.g('cadeado', x, y, 12, tema==='tinta' ? '#F3E9D6' : COR_P.ouro, { traco: 2.2 }); g.appendChild(w); }
 }
 
 // um degradê radial por cor de natureza (criado sob demanda a cada desenho)
@@ -2412,13 +2419,13 @@ function pintarAbas(){
     lembrarRecente(ui.arvoreMestre);
     if(atual){
       const c = caminhoDaArvore(atual), onde = [nomeCat(atual.categoria), ...(c.partes.length ? [c.fam, ...c.partes.slice(0,-1)] : [])];
-      $('#atualArv').innerHTML = `<small>${esc(onde.join(' › '))}</small><b>${esc(atual.nome)}${atual.secreta ? ' <span class="lacre" title="Secreta">秘</span>' : ''}</b>`;
+      $('#atualArv').innerHTML = `<small>${esc(onde.join(' › '))}</small><b>${esc(atual.nome)}${atual.secreta ? ' <span class="lacre" title="Secreta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M6.5 11H17.5V20.5H6.5ZM8.5 11V8A3.5 3.5 0 0 1 15.5 8V11M12 14.5V17"/></svg></span>' : ''}</b>`;
       $('#atualArv').hidden = false;
     }
     const rec = (ui.recentes || []).filter(id=>id!==ui.arvoreMestre).map(arvorePorId).filter(Boolean).slice(0,4);
     cx.innerHTML = rec.length ? '<span class="recentes-rot">Recentes</span>' + rec.map(a=>`
       <button class="aba" role="tab" data-id="${esc(a.id)}" aria-selected="false" title="${esc(nomeCat(a.categoria))} · ${esc(a.nome)}">
-        ${esc(a.nome)}${a.secreta ? '<span class="lacre" title="Secreta">秘</span>' : ''}
+        ${esc(a.nome)}${a.secreta ? '<span class="lacre" title="Secreta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M6.5 11H17.5V20.5H6.5ZM8.5 11V8A3.5 3.5 0 0 1 15.5 8V11M12 14.5V17"/></svg></span>' : ''}
       </button>`).join('') : (lista.length ? '' : '<span class="vazio" style="padding:6px 4px">Nenhuma árvore ainda</span>');
     $('#btNovaAba').title = 'Nova árvore';
     $('#btNovaAba').setAttribute('aria-label', 'Nova árvore');
@@ -2510,7 +2517,7 @@ const selAberto = () => $('#veuSel').classList.contains('on');
 function cardArvore(a, nome, sub){
   const n = a.nodes.length;
   return `<button type="button" class="sel-card${a.id===ui.arvoreMestre ? ' atual' : ''}" data-arv="${esc(a.id)}">
-    <b>${esc(nome)}${a.secreta ? '<span class="lacre" title="Secreta">秘</span>' : ''}</b><small>${sub ? esc(sub) + ' · ' : ''}${plural(n,'nódulo','nódulos')}</small></button>`;
+    <b>${esc(nome)}${a.secreta ? '<span class="lacre" title="Secreta"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M6.5 11H17.5V20.5H6.5ZM8.5 11V8A3.5 3.5 0 0 1 15.5 8V11M12 14.5V17"/></svg></span>' : ''}</b><small>${sub ? esc(sub) + ' · ' : ''}${plural(n,'nódulo','nódulos')}</small></button>`;
 }
 function abrirSelecao(){
   if(ui.modo!=='mestre') return;
@@ -3055,7 +3062,7 @@ function blocoNo(a, n){
     <div class="grupo linha2">
       <div><label class="rot" for="eTipo">Tamanho</label><select id="eTipo" class="campo">
         ${Object.entries(bib().tipos).map(([k,t])=>`<option value="${esc(k)}"${n.tipo===k ? ' selected' : ''}>${esc(t.nome)}</option>`).join('')}</select></div>
-      <div><label class="rot" for="eGlifo">Glifo</label><input id="eGlifo" class="campo" value="${esc(n.glifo)}" placeholder="力 ou A" autocomplete="off"></div>
+      <div><label class="rot" for="eGlifo">Glifo</label><input id="eGlifo" class="campo" value="${esc(n.glifo)}" placeholder="@fogo ou A" title="Uma ou duas letras, ou um desenho: @fogo, @gelo, @raio, @terra, @agua, @vento, @planta, @luz, @sombra…" autocomplete="off"></div>
     </div>
     <div class="grupo"><span class="rot">Forma</span><div class="formas">
       ${FORMAS.map(f=>`<button data-forma="${esc(f.id)}" aria-pressed="${n.forma===f.id}" title="${f.nome}" aria-label="${f.nome}">${iconeForma(f.id)}</button>`).join('')}</div></div>
@@ -3283,7 +3290,7 @@ function ligarMestre(){
   const muda = (rot, chave, fn, opts) => { registrar(rot, chave); fn(); if(opts?.podar) podarTodos(); salvar(); if(!opts?.semDesenho) desenhar(); if(opts?.painel) pintarPainel(); };
   on('#eNome', 'input', e=>muda('renomear nódulo', 'nome'+n.id, ()=>{ n.nome = e.target.value; }));
   on('#eNome', 'change', e=>{ if(!e.target.value.trim()){ n.nome = 'Sem nome'; salvar(); desenhar(); pintarPainel(); } });
-  on('#eGlifo', 'input', e=>muda('glifo', 'glifo'+n.id, ()=>{ n.glifo = [...e.target.value].slice(0,2).join(''); }));
+  on('#eGlifo', 'input', e=>muda('glifo', 'glifo'+n.id, ()=>{ const v = e.target.value.trim(); n.glifo = /^@[A-Za-z]+$/.test(v) ? v : [...e.target.value].slice(0,2).join(''); }));
   on('#eTipo', 'change', e=>muda('mudar tamanho', null, ()=>{
     const antigo = bib().tipos[n.tipo], novo = bib().tipos[e.target.value], p0 = poolPadrao(arvoreVisivel()).id;
     const c = n.graus[0].custos;
@@ -3779,7 +3786,7 @@ function interpretarEtiqueta(item, bruto, b){
     return;
   }
   if((m = bruto.match(/^\s*(?:exclusivo|excl|x)\s*[:=]\s*(.+)$/i)) || (m = bruto.match(/^\s*exclusivo\s+(.+)$/i))){ item.exclusivo = m[1].trim(); return; }
-  if((m = bruto.match(/^\s*glifo\s*[:=]?\s*(.+)$/i))){ item.glifo = [...m[1].trim()].slice(0,2).join(''); return; }
+  if((m = bruto.match(/^\s*glifo\s*[:=]?\s*(.+)$/i))){ item.glifo = /^@[A-Za-z]+$/.test(m[1].trim()) ? m[1].trim() : [...m[1].trim()].slice(0,2).join(''); return; }
   if((m = bruto.match(/^\s*escola\s*[:=]\s*(.+)$/i))){ item.escola = Object.assign(item.escola || {}, {nome:m[1].trim()}); return; }
   if(t==='escola'){ item.escola = item.escola || {}; return; }
   if(t==='secreta' || t==='secreto'){ item.escola = Object.assign(item.escola || {}, {secreta:true}); return; }
@@ -3825,7 +3832,7 @@ function abrirTexto(){
         <textarea id="txtEntrada" class="campo" spellcheck="false" placeholder="${esc(exemplo)}">${esc(rascunhoTexto)}</textarea>
         <p class="nota">Etiquetas: natureza (${b.naturezas.map(t=>esc(t.nome)).join(', ') || '—'}), tipos de uso (${b.usos.map(u=>esc(u.nome)).join(', ') || '—'}; dá para pôr vários),
           tamanho (pequeno, notável, keystone), forma (círculo, losango, hexágono…), custo (“2” ou “2 ${esc(b.pools[b.pools.length>1 ? 1 : 0].nome)}”),
-          “3 graus”, “exclusivo: grupo”, “glifo 力”, “escola”, “secreta”. Linhas com # são ignoradas.</p></div>
+          “3 graus”, “exclusivo: grupo”, “glifo @fogo”, “escola”, “secreta”. Linhas com # são ignoradas.</p></div>
       <div><span class="rot">Prévia</span><div class="previa" id="txtPrevia"></div><ul class="problemas" id="txtAvisos"></ul></div>
     </div>
     <div class="grupo" style="margin-top:12px"><span class="rot">Onde entra</span><div class="chips" id="txtDestino">

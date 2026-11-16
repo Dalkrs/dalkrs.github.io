@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.16-04",
+      "data": "2026-11-16",
+      "titulo": "Desenhos no lugar dos símbolos japoneses",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Cenas: as barras de classe mostram desenhos no lugar dos símbolos japoneses — a Palavra do Mago (foguinho, floco de neve, raio, gota, folha…), as Posturas do Samurai e do Monge, os selos do Ninja, as formas do Druida, do Vampiro e do Lobisomem e o resto. O selo em cima do token também." },
+        { "tipo": "melhorou", "texto": "Árvores: o centro de cada árvore e o selo de árvore secreta também viraram desenhos. No editor, o campo Glifo aceita um desenho escrito assim: @fogo, @gelo, @raio, @terra, @agua, @vento, @planta.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.16-03",
       "data": "2026-11-16",
       "titulo": "Biblioteca de aptidões",

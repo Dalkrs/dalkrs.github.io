@@ -355,7 +355,8 @@ const PainelBarras = (() => {
     const hh = clamp(s * 0.3, 13 * px, 18 * px), u = hh / 18, ic = 12.5 * u, pad = 5 * u, gap = 3 * u;
     c.save();
     c.font = `800 ${11.5 * u}px ${FONT_UI}`; c.textBaseline = 'middle';
-    const larg = sl.partes.map(p => pad + (p.marca ? c.measureText(p.marca).width : ic) + gap + c.measureText(p.n).width + pad);
+    // (lote 172) a marca pode ser um desenho (p.simb, de TC.simbolos) com um número ao lado
+    const larg = sl.partes.map(p => pad + (p.simb ? ic + (p.marca ? c.measureText(p.marca).width + 1.5 * u : 0) : p.marca ? c.measureText(p.marca).width : ic) + gap + c.measureText(p.n).width + pad);
     const total = larg.reduce((a, b) => a + b, 0);
     const x0 = t.x + s * 0.68, y0 = t.y - hh * 0.55;
     let x = x0;
@@ -370,7 +371,12 @@ const PainelBarras = (() => {
       c.fillStyle = '#16191F'; c.fill();
       c.strokeStyle = p.cor; c.lineWidth = 1.5 * u; c.stroke();
       let cx = x + pad;
-      if (p.marca) { c.fillStyle = p.cor; c.textAlign = 'left'; c.font = `700 ${12 * u}px ${FONT_UI}`; c.fillText(p.marca, cx, y0 + hh / 2 + 0.5 * u); cx += c.measureText(p.marca).width; c.font = `800 ${11.5 * u}px ${FONT_UI}`; }
+      if (p.simb) {
+        c.save(); c.translate(cx, y0 + (hh - ic) / 2); c.scale(ic / 24, ic / 24);
+        c.strokeStyle = p.cor; c.lineWidth = 2.2; c.lineCap = 'round'; c.lineJoin = 'round'; c.stroke(new Path2D(p.simb.d)); c.restore();
+        cx += ic;
+        if (p.marca) { c.fillStyle = p.cor; c.textAlign = 'left'; cx += 1.5 * u; c.fillText(p.marca, cx, y0 + hh / 2 + 0.5 * u); cx += c.measureText(p.marca).width; }
+      } else if (p.marca) { c.fillStyle = p.cor; c.textAlign = 'left'; c.font = `700 ${12 * u}px ${FONT_UI}`; c.fillText(p.marca, cx, y0 + hh / 2 + 0.5 * u); cx += c.measureText(p.marca).width; c.font = `800 ${11.5 * u}px ${FONT_UI}`; }
       else { const im = imgIcone(p.id, p.cor); if (im) c.drawImage(im, cx, y0 + (hh - ic) / 2, ic, ic); cx += ic; }
       c.fillStyle = '#ECE7DC'; c.textAlign = 'left'; c.fillText(p.n, cx + gap, y0 + hh / 2 + 0.5 * u);
       x += w;

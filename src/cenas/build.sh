@@ -40,6 +40,7 @@ body_parts() {
   printf '%s' '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif;background:#faf9f5}img{max-width:100%}[hidden]{display:none!important}</style></head><body>'
   # (lote 44) o painel de barras, dentro da página de teste (no site ele vem por <script src>)
   echo '<script>'
+  cat ../../tc/simbolos.js
   cat ../../tc/barras-painel.js
   cat ../../tc/npc.js
   cat ../../tc/misterio.js
@@ -64,11 +65,12 @@ mkdir -p "$(dirname "$SITE")"
   echo '<script src="../tc/dice.js?v=3"></script>'
   echo '<script src="../tc/rules.js?v=35"></script>'
   echo '<script src="../tc/tags.js?v=3"></script>'
-  echo '<script src="../tc/bestiario.js?v=4"></script>'
+  echo '<script src="../tc/bestiario.js?v=5"></script>'
   echo '<script src="../tc/sede.js?v=3"></script>'
   echo '<script src="../tc/corrupcao.js?v=1"></script>'
   echo '<script src="../cla/nucleo.js?v=11"></script>'            # (lote 59) os membros do clã, para "Puxar os membros do clã"
-  echo '<script src="../tc/barras-painel.js?v=9"></script>'      # (lote 44) o painel de barras
+  echo '<script src="../tc/simbolos.js?v=1"></script>'           # (lote 172) os desenhos no lugar dos kanjis
+  echo '<script src="../tc/barras-painel.js?v=10"></script>'      # (lote 44) o painel de barras
   echo '<script src="../tc/npc.js?v=1"></script>'                # (lote 49) o gerador de NPC, para os moradores do lugar povoado
   echo '<script src="../tc/misterio.js?v=1"></script>'           # (lote 53) os mistérios: a cena do crime e as marcas de pista
   echo '<script src="../tc/missoes.js?v=3"></script>'            # (lote 129) as missões, para os marcadores de missão
