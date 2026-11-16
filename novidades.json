@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.15-08",
+      "data": "2026-11-15",
+      "titulo": "Destino de Hemvria",
+      "itens": [
+        { "tipo": "novo", "texto": "Jogos de Tabuleiro: o Destino de Hemvria, jogo de cartas com as 78 cartas do tarô num tabuleiro de 3 fileiras. Os naipes jogam diferente (Paus avança, Ouros espalha, Copas fortalece, Espadas enfraquece) e cada arcano maior tem um poder próprio." },
+        { "tipo": "novo", "texto": "Monte baralhos de 15 cartas (no máximo 3 arcanos maiores); eles ficam no personagem. Há 4 baralhos prontos, um por naipe." },
+        { "tipo": "novo", "texto": "Contra o computador (três níveis) ou contra alguém da mesa, com aposta em lapros e plateia. Quem assiste não vê as mãos." },
+        { "tipo": "melhorou", "texto": "Jogos de Tabuleiro: a lista de lances virou uma coluna só, que rola." }
+      ]
+    },
+    {
       "versao": "2026.11.15-07",
       "data": "2026-11-15",
       "titulo": "Vida negativa: o mestre decide",

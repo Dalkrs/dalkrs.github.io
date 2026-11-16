@@ -61,7 +61,7 @@ main { padding: 14px; display: grid; gap: 14px; max-width: 1200px; margin: 0 aut
 .salao { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; align-items: start; }
 .campo { display: grid; gap: 4px; font-size: 13px; color: var(--fg-2); }
 .linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.escolha-jogo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.escolha-jogo { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
 .escolha-jogo button { display: grid; justify-items: center; gap: 4px; padding: 10px 6px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--raised); font-weight: 600; }
 .escolha-jogo button[aria-pressed="true"] { border-color: var(--lamp); box-shadow: 0 0 0 2px var(--lamp-soft); background: var(--lamp-soft); }
 .escolha-jogo .ico { font-size: 28px; line-height: 1; }
@@ -110,7 +110,7 @@ main { padding: 14px; display: grid; gap: 14px; max-width: 1200px; margin: 0 aut
 .jog b { font-family: var(--display); font-size: 16px; }
 .jog small { color: var(--fg-2); }
 .status { font: 600 16px/1.3 var(--display); color: var(--lamp-ink); margin: 0; }
-.historico { margin: 0; padding: 0 0 0 26px; max-height: 240px; overflow: auto; font: 12.5px/1.6 var(--mono); color: var(--fg-2); columns: 2; column-gap: 14px; }
+.historico { margin: 0; padding: 0 0 0 34px; max-height: 300px; overflow: auto; font: 12.5px/1.6 var(--mono); color: var(--fg-2); }
 .toasts { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 50; width: min(560px, calc(100vw - 24px)); }
 .toast { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow); font-size: 13.5px; }
 .toast span { flex: 1; }
@@ -121,6 +121,45 @@ dialog.dl h2 { margin: 0 0 8px; font: 600 20px/1.1 var(--display); }
 dialog.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .promo { display: flex; gap: 8px; justify-content: center; }
 .promo button { width: 64px; height: 64px; font-size: 44px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--casa-c); color: #1d1a17; }
+
+/* (lote 169) o Destino de Hemvria */
+.carta { --ac: #8a93a8; position: relative; display: grid; grid-template-rows: auto auto 1fr auto; justify-items: center; gap: 3px; width: 116px; min-height: 170px; padding: 18px 6px 7px; border-radius: 10px; border: 1px solid var(--line-strong); background: linear-gradient(180deg, color-mix(in srgb, var(--ac) 22%, var(--raised)), var(--raised) 60%); color: var(--fg); text-align: center; font: inherit; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+button.carta:hover { border-color: var(--lamp); }
+.carta.sel { border-color: var(--lamp); box-shadow: 0 0 0 3px var(--lamp-soft), 0 6px 14px rgba(0,0,0,.4); transform: translateY(-6px); }
+.carta.nP { --ac: #5fae6e; } .carta.nC { --ac: #e0646a; } .carta.nE { --ac: #6f9ad6; } .carta.nO { --ac: #e2b23e; } .carta.nM { --ac: #b597e0; }
+.carta .cust { position: absolute; top: 4px; left: 7px; font-size: 9px; letter-spacing: 1px; color: var(--lamp-ink); }
+.carta .pod { position: absolute; top: 3px; right: 5px; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 999px; display: grid; place-items: center; font: 700 13px var(--mono); background: var(--table); border: 1px solid var(--line-strong); }
+.carta .pod.up { color: var(--ok); border-color: var(--ok); } .carta .pod.dn { color: var(--danger); border-color: var(--danger); }
+.carta .topo { font: 600 18px/1 var(--display); color: var(--ac); }
+.carta .nome { font: 600 13px/1.1 var(--display); }
+.carta .txt { font-size: 10.5px; line-height: 1.25; color: var(--fg-2); }
+.desenho { display: grid; grid-template-columns: repeat(5, 11px); grid-template-rows: repeat(5, 11px); gap: 2px; }
+.desenho i { border-radius: 2px; background: rgba(127,127,127,.18); }
+.desenho i.pe { background: #e6ab4f; } .desenho i.ma { background: #6fbf8f; } .desenho i.me { background: #f0786e; }
+.desenho i.pe.ma { background: linear-gradient(135deg, #e6ab4f 50%, #6fbf8f 50%); } .desenho i.pe.me { background: linear-gradient(135deg, #e6ab4f 50%, #f0786e 50%); }
+.desenho i.eu { background: var(--fg); }
+.carta.mini { width: 100%; min-height: 0; height: 100%; padding: 16px 3px 4px; grid-template-rows: auto 1fr; gap: 1px; }
+.carta.mini .topo { font-size: 15px; } .carta.mini .nome { font-size: 10.5px; }
+.carta.d0 { box-shadow: inset 0 0 0 3px rgba(230,171,79,.85); } .carta.d1 { box-shadow: inset 0 0 0 3px rgba(150,180,240,.85); }
+.hem { width: 100%; }
+.hem-placar { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: wrap; }
+.hem-placar .lado { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; font-size: 14px; } .hem-placar strong { font: 700 22px var(--display); }
+.hem-placar .d0 strong { color: #e6ab4f; } .hem-placar .d1 strong { color: #9ab8f0; }
+.hem-tab { display: grid; grid-template-columns: 34px repeat(5, minmax(0, 1fr)) 34px; gap: 6px; width: min(100%, 600px); }
+.hem-pt { display: grid; place-items: center; font: 700 16px var(--mono); color: var(--fg-3); border-radius: 8px; }
+.hem-pt.ganha.d0 { color: #e6ab4f; background: rgba(230,171,79,.12); } .hem-pt.ganha.d1 { color: #9ab8f0; background: rgba(150,180,240,.12); }
+.hem-casa { aspect-ratio: 3 / 4; border-radius: 9px; border: 1px solid var(--line); background: var(--raised); padding: 3px; display: grid; place-items: center; }
+.hem-casa.d0 { background: rgba(230,171,79,.13); border-color: rgba(230,171,79,.45); } .hem-casa.d1 { background: rgba(150,180,240,.13); border-color: rgba(150,180,240,.45); }
+.hem-casa.alvo { outline: 3px solid var(--lamp); outline-offset: -2px; cursor: pointer; }
+.hem-casa.ult { box-shadow: 0 0 0 2px var(--lamp-ink); }
+.hem-casa:disabled { cursor: default; color: inherit; }
+.peoes { display: flex; gap: 5px; } .peoes i { width: 14px; height: 14px; border-radius: 50%; background: currentColor; }
+.hem-casa.d0 .peoes { color: #e6ab4f; } .hem-casa.d1 .peoes { color: #9ab8f0; }
+.hem-mao, .maosel { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding-top: 8px; }
+.maosel .carta.mini { width: 74px; height: 92px; }
+.grade-cartas { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 10px; justify-items: center; }
+.editor { display: grid; gap: 14px; }
+
 </style>
 </head>
 <body>
@@ -138,8 +177,9 @@ dialog.dl .pe { display: flex; justify-content: flex-end; gap: 8px; margin-top: 
 <script src="../tc/jogos-xadrez.js?v=1"></script>
 <script src="../tc/jogos-damas.js?v=1"></script>
 <script src="../tc/jogos-tablut.js?v=1"></script>
-<script src="../tc/jogos-ia.js?v=1"></script>
-<script src="../tc/jogos.js?v=1"></script>
-<script src="jogos.js?v=1"></script>
+<script src="../tc/jogos-hemvria.js?v=1"></script>
+<script src="../tc/jogos-ia.js?v=2"></script>
+<script src="../tc/jogos.js?v=2"></script>
+<script src="jogos.js?v=2"></script>
 </body>
 </html>

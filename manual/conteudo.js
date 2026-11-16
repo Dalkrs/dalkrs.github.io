@@ -318,11 +318,13 @@
     },
     {
       id: 'jogos', nome: 'Jogos de Tabuleiro', grupo: 'descanso',
-      resumo: 'Xadrez, Damas brasileiras e Tablut: contra o computador ou contra alguém da mesa, valendo lapros se quiserem.',
+      resumo: 'Xadrez, Damas brasileiras, Tablut e o Destino de Hemvria (cartas de tarô): contra o computador ou contra alguém da mesa, valendo lapros se quiserem.',
       jogador: [
         { t: 'Contra o computador', txt: 'Escolha o jogo, o seu lado e o nível (fácil, médio ou difícil). “Desfazer” volta o seu último lance. A partida fica guardada neste aparelho.' },
         { t: 'Desafiar alguém', txt: 'Escolha o jogo, o adversário, o personagem e a aposta em lapros (0 = sem aposta). A aposta sai da ficha na hora e fica na mesa: quem vence leva tudo; no empate ou no convite recusado, ela volta.' },
         { t: 'Jogar e assistir', txt: 'Clique na peça e depois na casa. Nas Damas, a captura em várias etapas é clicada casa por casa. Qualquer um da mesa pode abrir uma partida em andamento para assistir; o começo e o fim aparecem na mesa ao vivo.' },
+        { t: 'Destino de Hemvria', txt: 'Jogo de cartas num tabuleiro 3×5. Escolha a carta da mão e depois uma casa sua com peões que bastem para o custo. Ao entrar, a carta espalha peões e faz o efeito dela. Em cada fileira, quem soma mais poder leva os pontos. Dois passes seguidos terminam a partida.' },
+        { t: 'Os baralhos', txt: 'Em “Baralhos do Destino de Hemvria”: 15 cartas diferentes, no máximo 3 arcanos maiores. Ficam no personagem (sem personagem, neste aparelho). Os 4 prontos estão sempre à mão.' },
         { t: 'Desistir e empate', txt: 'Na partida: “Oferecer empate” (vale até alguém jogar) e “Desistir” (quem desiste perde).' },
       ],
       mestre: [

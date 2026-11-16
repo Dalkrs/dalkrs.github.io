@@ -12,7 +12,9 @@
   function escolher(J, e, nivel, opt) {
     opt = opt || {};
     const sorte = opt.sorte || Math.random;
-    const raiz = J.lances(e);
+    // (lote 169) um jogo pode dar à busca uma lista mais curta (no Destino de Hemvria: não passar à toa)
+    const L = J.lancesBusca || J.lances;
+    const raiz = L(e);
     if (!raiz.length) return null;
     if (raiz.length === 1) return { lance: raiz[0], nota: 0, prof: 0 };
     nivel = J.profundidade[nivel] != null ? nivel : 'medio';
@@ -27,7 +29,7 @@
       return f.vencedor === J.vez(x) ? VITORIA - ply : -(VITORIA - ply);
     }
     function calmo(x, alfa, beta, ply, q) {
-      const ls = J.lances(x);
+      const ls = L(x);
       const t = terminal(x, ls, ply); if (t !== null) return t;
       const parado = J.avaliar(x);
       if (!J.ruidoso || q <= 0) return parado;
@@ -50,7 +52,7 @@
       if ((++nos & 1023) === 0 && Date.now() > prazo) { estourou = true; }
       if (estourou) return 0;
       if (prof <= 0) return calmo(x, alfa, beta, ply, 6);
-      const ls = J.lances(x);
+      const ls = L(x);
       const t = terminal(x, ls, ply); if (t !== null) return t;
       ls.sort((a, b) => J.ordem(x, b) - J.ordem(x, a));
       let melhor = -INF;

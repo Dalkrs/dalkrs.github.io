@@ -73,6 +73,40 @@ const { ok, end } = checker();
     ok((await lapros(M, 'pc_bruno')) === 70, 'quem perdeu não recebe nada');
     const doc = await J.evaluate(([u]) => { const x = TC.dados.col('documentos').todas().find(l => l.id.startsWith('jogo:') && !l.id.startsWith('jogo:abcdefgh') && l.id.endsWith(u)); return x && x.dados; }, [uidJ]);
     ok(doc && doc.recebeu === true && doc.publicou === true, 'a parte do jogador marca o recebido e o aviso: ' + JSON.stringify(doc && { r: doc.recebeu, p: doc.publicou }));
+
+    // (lote 169) o Destino de Hemvria: o jogador monta um baralho para o Dain (fica na ficha), o mestre convida com um
+    // pronto, o jogador aceita com o dele; um lance de cada; o jogador desiste
+    await FJ.locator('#voltar').click();
+    await FJ.locator('[data-k="bar:novo:pc_dain"]').click();
+    await FJ.locator('[data-k="bar:filtro:O"]').click();
+    for (let i = 1; i <= 14; i++) await FJ.locator(`.grade-cartas [data-carta="O${i}"]`).click();
+    await FJ.locator('[data-k="bar:filtro:M"]').click();
+    await FJ.locator('.grade-cartas [data-carta="M17"]').click();
+    await FJ.locator('[data-k="bar:nome"]').fill('Ouro do Dain');
+    await FJ.locator('[data-k="bar:salvar"]').click();
+    ok(await ate(async () => (await M.evaluate(() => { const l = TC.dados.col('personagens').pegar('pc_dain'); return l && l.estado && l.estado.hemvria && l.estado.hemvria.baralhos.length; })) === 1), 'o baralho do Dain fica na ficha dele (o mestre vê)');
+    await FM.locator('#voltar').click();
+    await FM.locator('[data-k="on:hemvria"]').click();
+    await FM.locator('[data-k="on:pc"]').selectOption('pc_bruno');
+    await FM.locator('[data-k="ladoon:0"]').click();
+    await FM.locator('[data-k="on:aposta"]').fill('0');
+    await FM.locator('[data-k="on:baralho"]').selectOption('pronto:E');
+    await FM.locator('[data-k="on:convidar"]').click();
+    ok(await ate(async () => (await FJ.locator('select[data-k^="aceitar:baralho:"]').count()) === 1, 25000), 'o convite do Destino de Hemvria chega, com a escolha do baralho');
+    await FJ.locator('select[data-k^="aceitar:pc:"]').selectOption('pc_dain');
+    await FJ.locator('select[data-k^="aceitar:baralho:"]').selectOption('meu:pc_dain:0');
+    await FJ.locator('button[data-k^="aceitar:"]').click();
+    ok(await ate(async () => (await FJ.locator('.hem-mao .carta').count()) === 5), 'o jogador vê a mesa e a mão dele (5 cartas)');
+    ok((await FJ.locator('.hem-mao .carta.nO, .hem-mao [data-carta="M17"]').count()) === 5, 'a mão sai do baralho dele (Ouros e a Estrela)');
+    await FM.locator('[data-k^="abrir:"]').first().click({ timeout: 25000 });
+    ok(await ate(async () => (await FM.locator('.hem-mao .carta').count()) === 5), 'o mestre vê a mão dele');
+    const joga = async F => { const ids = await F.locator('.hem-mao button.carta').evaluateAll(xs => xs.map(x => x.dataset.carta)); for (const id of ids) { await F.locator(`.hem-mao [data-carta="${id}"]`).click(); if (await F.locator('.hem-casa.alvo').count()) { await F.locator('.hem-casa.alvo').first().click(); return id; } await F.locator(`.hem-mao [data-carta="${id}"]`).click(); } return null; };
+    const c1 = await joga(FM); ok(!!c1, 'o mestre joga uma carta: ' + c1);
+    ok(await ate(async () => (await FJ.locator('.hem-mao .carta').count()) === 6 && (await FJ.locator('.hem-casa .carta').count()) === 1, 25000), 'o jogador vê a carta na mesa e compra uma');
+    const c2 = await joga(FJ); ok(!!c2, 'o jogador joga: ' + c2);
+    if (process.env.FOTOS) await J.screenshot({ path: process.env.FOTOS + '/l169-hemvria.png' });
+    await FJ.locator('[data-k="on:desistir"]').click(); await FJ.locator('dialog[open] [data-k="dl:sim"]').click();
+    ok(await ate(async () => /Velho Bruno \(Sol\) venceu Dain \(Lua\) no Destino de Hemvria \(desistência/.test(await vivo(M)), 25000), 'a mesa ao vivo conta o fim do Destino de Hemvria');
   } catch (e) { ok(false, 'erro: ' + (e && e.stack || e)); }
   finally {
     try { await apagarMesaTela(M, nomeT); } catch (e) { /* fica */ }

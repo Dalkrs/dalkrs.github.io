@@ -8,6 +8,7 @@
 //   · as partidas online: juntar os dois documentos, lance fora da vez, desistência, empate combinado, a aposta.
 global.self = global;
 const X = require('../../tc/jogos-xadrez.js'), Dm = require('../../tc/jogos-damas.js'), T = require('../../tc/jogos-tablut.js');
+const H = require('../../tc/jogos-hemvria.js');
 const IA = require('../../tc/jogos-ia.js'), O = require('../../tc/jogos.js');
 const { checker } = require('./lib');
 const { ok, end } = checker();
@@ -82,6 +83,59 @@ ok([1, 2, 3, 4].map(d => perft(Dm, Dm.inicial(), d)).join() === '7,49,302,1469',
   b = vazio(); b[s('c3')] = 'K'; b[s('h8')] = 'a';
   k = { b, vez: 1, n: 0, rep: {}, fimJa: null }; k = T.jogar(k, T.lancePorId(k, 'c3-a3'));
   ok(T.fim(k) && T.fim(k).vencedor === 1, 'tablut: o rei chega à borda');
+}
+
+// Destino de Hemvria (lote 169)
+{
+  ok(H.TODAS.length === 78 && H.TODAS.filter(id => H.CARTAS[id].maior).length === 22, 'hemvria: 78 cartas, 22 arcanos maiores');
+  ok(Object.values(H.PRONTOS).every(p => H.baralhoInvalido(p.cartas) === null), 'hemvria: os 4 baralhos prontos valem');
+  ok(H.baralhoInvalido(H.PRONTOS.P.cartas.slice(0, 14)) && H.baralhoInvalido(['M0', 'M1', 'M2', 'M3'].concat(H.PRONTOS.P.cartas.slice(0, 11))), 'hemvria: 14 cartas não vale; 4 arcanos maiores não vale');
+  const cfg = { baralhos: [H.PRONTOS.P.cartas, H.PRONTOS.E.cartas], semente: 'teste' };
+  const e0 = H.inicial(cfg), e1 = H.inicial(cfg);
+  ok(JSON.stringify(e0) === JSON.stringify(e1) && e0.maos[0].length === 5 && e0.pilhas[0].length === 10, 'hemvria: o mesmo começo para a mesma semente; mão de 5');
+  ok(e0.tab[0].d === 0 && e0.tab[0].p === 2 && e0.tab[4].d === 1 && e0.tab[2].d === -1, 'hemvria: 2 peões em cada casa da ponta de cada lado');
+  // um tabuleiro feito à mão
+  const vazio = () => { const e = H.inicial(cfg); e.tab.forEach(t => { t.d = -1; t.p = 0; t.c = null; }); return e; };
+  let e = vazio(); e.tab[5].d = 0; e.tab[5].p = 1; e.maos[0] = ['P1']; e.tab[7].d = 1; e.tab[7].p = 2;
+  e = H.jogar(e, H.lancePorId(e, 'P1@5'));
+  ok(e.tab[6].d === 0 && e.tab[6].p === 1 && e.tab[7].d === 0 && e.tab[7].p === 2, 'hemvria: o Ás de Paus põe peão à frente e toma a casa do outro: ' + JSON.stringify(e.tab.slice(5, 8)));
+  e = vazio(); e.tab[9].d = 1; e.tab[9].p = 1; e.vez = 1; e.maos[1] = ['P1'];
+  e = H.jogar(e, H.lancePorId(e, 'P1@9'));
+  ok(e.tab[8].d === 1 && e.tab[7].d === 1, 'hemvria: o desenho da Lua é o espelho (a frente é para a esquerda)');
+  e = vazio(); e.tab[6].c = { id: 'P5', d: 0, m: 0 }; e.tab[6].d = 0; e.tab[7].d = 0; e.tab[7].p = 1; e.maos[0] = ['C1'];
+  e = H.jogar(e, H.lancePorId(e, 'C1@7'));
+  ok(H.poderEm(e, 6) === 4, 'hemvria: o Ás de Copas fortalece a carta vizinha (+1)');
+  e = vazio(); e.tab[8].c = { id: 'P1', d: 1, m: 0 }; e.tab[8].d = 1; e.tab[7].d = 0; e.tab[7].p = 1; e.maos[0] = ['E1'];
+  e = H.jogar(e, H.lancePorId(e, 'E1@7'));
+  ok(!e.tab[8].c && e.tab[8].d === 1 && e.tab[8].p === 1, 'hemvria: o Ás de Espadas enfraquece a carta da frente até destruí-la');
+  e = vazio(); e.tab[8].c = { id: 'P14', d: 1, m: 0 }; e.tab[8].d = 1; e.tab[2].c = { id: 'P2', d: 1, m: 0 }; e.tab[7].d = 0; e.tab[7].p = 3; e.maos[0] = ['M16'];
+  e = H.jogar(e, H.lancePorId(e, 'M16@7'));
+  ok(!e.tab[8].c && !!e.tab[2].c, 'hemvria: A Torre destrói a mais forte em volta');
+  e = vazio(); e.tab[8].c = { id: 'P2', d: 1, m: 0 }; e.tab[8].d = 1; e.tab[7].d = 0; e.tab[7].p = 3; e.maos[0] = ['M13'];
+  e = H.jogar(e, H.lancePorId(e, 'M13@7'));
+  ok(e.tab[8].c.d === 0, 'hemvria: A Morte toma a carta do outro');
+  e = vazio(); e.tab[7].d = 0; e.tab[7].p = 3; e.maos[0] = ['M8']; e = H.jogar(e, H.lancePorId(e, 'M8@7'));
+  e.vez = 0; e.tab[6].d = 1; e.tab[6].p = 1; e.vez = 1; e.maos[1] = ['E4']; e = H.jogar(e, H.lancePorId(e, 'E4@6'));
+  ok(H.poderEm(e, 7) === 9, 'hemvria: A Força não enfraquece');
+  e = vazio(); e.tab[0].c = { id: 'P9', d: 0, m: 0 }; e.tab[4].c = { id: 'P3', d: 1, m: 0 }; e.tab[10].c = { id: 'M21', d: 1, m: 0 };
+  const pt = H.pontos(e);
+  ok(pt.total[0] === 5 && pt.total[1] === 11 && pt.fileiras[0].join() === '5,2', 'hemvria: os pontos por fileira (o Mundo dá +5 a quem vence a fileira dele): ' + JSON.stringify(pt));
+  e = H.inicial(cfg); e = H.jogar(e, H.lancePorId(e, 'passar')); e = H.jogar(e, H.lancePorId(e, 'passar'));
+  ok(H.fim(e) && H.fim(e).vencedor === null, 'hemvria: dois passes seguidos terminam a partida');
+  ok(e.maos[1].length === 6 && e.maos[0].length === 5, 'hemvria: quem joga depois compra no começo da vez');
+  let g = H.inicial(cfg), k = 0;
+  while (!H.fim(g) && k < 80) { g = H.jogar(g, IA.escolher(H, g, H.vez(g) === 0 ? 'medio' : 'facil', { tempo: 150 }).lance); k++; }
+  ok(!!H.fim(g), 'hemvria: o computador joga uma partida inteira: ' + H.fim(g).motivo);
+  // online: os dois baralhos
+  const A = 'aaaaaaaa-0000-0000-0000-000000000001', B = 'bbbbbbbb-0000-0000-0000-000000000002', pid = 'hem1234567';
+  const da = d => ({ id: O.docId(pid, A), dono_id: A, dados: Object.assign({ papel: 'criador', jogo: 'hemvria', pc: null, pcNome: 'Ana', contra: B, contraNome: 'Beto', aposta: 0, lado: 0, t: 1, lances: [], baralho: H.PRONTOS.P.cartas }, d) });
+  const db = d => ({ id: O.docId(pid, B), dono_id: B, dados: Object.assign({ papel: 'convidado', resp: 'aceito', pcNome: 'Bia', lances: [], baralho: H.PRONTOS.O.cartas }, d) });
+  let p = O.juntar([da(), db()]);
+  ok(p.status === 'jogando' && p.cfg && p.cfg.semente === pid && p.estado.maos[1].length === 5, 'online: o Destino de Hemvria começa com os dois baralhos');
+  const primeira = p.estado.maos[0].find(id => H.CARTAS[id].custo <= 2);
+  p = O.juntar([da({ lances: [{ n: 0, id: primeira + '@0' }] }), db()]);
+  ok(p.lances.length === 1 && p.vez === B && p.estado.tab[0].c.id === primeira, 'online: a carta jogada entra');
+  ok(O.juntar([da(), db({ baralho: ['P1'] })]).status === 'convite', 'online: sem baralho válido a partida não começa');
 }
 // o computador
 {

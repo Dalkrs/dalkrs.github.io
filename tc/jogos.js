@@ -16,8 +16,8 @@
 (function (root) {
   'use strict';
   const PRE = 'jogo:';
-  const JOGOS = ['xadrez', 'damas', 'tablut'];
-  const NOMES = { xadrez: 'Xadrez', damas: 'Damas', tablut: 'Tablut' };
+  const JOGOS = ['xadrez', 'damas', 'tablut', 'hemvria'];
+  const NOMES = { xadrez: 'Xadrez', damas: 'Damas', tablut: 'Tablut', hemvria: 'Destino de Hemvria' };
   const MAX_APOSTA = 1000000;
   const motor = nome => { const J = (root.TC && root.TC.jogos) || {}; return J[nome] || null; };
 
@@ -51,17 +51,24 @@
       pid, jogo: A.jogo, nomeJogo: NOMES[A.jogo], aposta: inteiro(A.aposta, MAX_APOSTA), t: Number(A.t) || 0,
       criador: { conta: contaA, pc: A.pc || null, pcNome: String(A.pcNome || '?'), lado: ladoA, d: A },
       convidado: { conta: contaB, nome: String(A.contraNome || '?'), pc: B ? B.pc || null : null, pcNome: B ? String(B.pcNome || '?') : null, lado: 1 - ladoA, d: B },
-      status: 'convite', estado: J.inicial(), lances: [], ultimo: null, fim: null, vez: null, empateOferecido: null,
+      status: 'convite', cfg: null, estado: J.cartas ? null : J.inicial(), lances: [], ultimo: null, fim: null, vez: null, empateOferecido: null,
     };
     if (A.cancela && !(B && B.resp === 'aceito')) { p.status = 'cancelado'; return p; }
     if (!B) return p;
     if (B.resp === 'recusado') { p.status = 'recusado'; return p; }
     if (B.resp !== 'aceito') return p;
+    // (lote 169) o jogo de cartas: os dois baralhos (um de cada documento) e a semente (o nome da partida) dão o começo
+    if (J.cartas) {
+      const bs = [null, null]; bs[ladoA] = A.baralho; bs[1 - ladoA] = B.baralho;
+      if (bs.some(b => J.baralhoInvalido(b))) return p;
+      p.cfg = { baralhos: bs, semente: pid };
+      p.estado = J.inicial(p.cfg);
+    }
     p.status = 'jogando';
     // os lances, na ordem, conferidos pelas regras
     const porLado = [null, null]; porLado[ladoA] = lancesDe(A); porLado[1 - ladoA] = lancesDe(B);
     const contaDoLado = l => (l === ladoA ? contaA : contaB);
-    let e = J.inicial(), n = 0, ultimo = null;
+    let e = J.inicial(p.cfg), n = 0, ultimo = null;
     for (;;) {
       const lado = J.vez(e);
       if (J.fim(e)) break;
@@ -69,7 +76,7 @@
       if (!x) break;
       const m = J.lancePorId(e, x.id);
       if (!m) break;
-      ultimo = { de: m.de, para: m.para, caminho: m.caminho || null, id: m.id, nome: J.nomeDoLance(e, m), quem: contaDoLado(lado) };
+      ultimo = { de: m.de, para: m.para, casa: m.casa, caminho: m.caminho || null, id: m.id, nome: J.nomeDoLance(e, m), quem: contaDoLado(lado) };
       e = J.jogar(e, m); p.lances.push(x.id); n++;
     }
     p.estado = e; p.ultimo = ultimo;
@@ -123,7 +130,7 @@
     if (!p.fim) return '';
     if (p.fim.vencedor === null) return a.pcNome + ' e ' + b.pcNome + ' empataram no ' + p.nomeJogo + ' (' + p.fim.motivo + ').' + (p.aposta ? ' Cada um recebe de volta os ' + p.aposta + ' lapros.' : '');
     const v = p.fim.vencedor === a.conta ? a : b, d = v === a ? b : a;
-    return nomeLado(v) + ' venceu ' + nomeLado(d) + ' no ' + p.nomeJogo + ' (' + p.fim.motivo + ', em ' + p.lances.length + ' lances).' + (p.aposta ? ' Levou ' + 2 * p.aposta + ' lapros.' : '');
+    return nomeLado(v) + ' venceu ' + nomeLado(d) + ' no ' + p.nomeJogo + ' (' + p.fim.motivo + (J && J.cartas ? ' pontos' : ', em ' + p.lances.length + ' lances') + ').' + (p.aposta ? ' Levou ' + 2 * p.aposta + ' lapros.' : '');
   }
   function textoDoInicio(p) {
     return p.criador.pcNome + ' e ' + p.convidado.pcNome + ' começaram uma partida de ' + p.nomeJogo + (p.aposta ? ', valendo ' + p.aposta + ' lapros de cada um' : '') + '. Quem quiser, assiste na aba Jogos de Tabuleiro.';
