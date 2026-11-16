@@ -987,16 +987,16 @@ classe({ id: 'lobisomem', cat: 'linhagem', arvore: 'Lobisomem', barra: 'Lua', co
 });
 /* ---------------- (lote 173) Kitsune: as Caudas e o poder dos yokais ----------------
    A barra Caudas (bolinhas, até 9) e, em volta, as 9 caudas: a que guarda o poder de um yokai que ela comeu acende.
-   Tocar numa cauda acesa usa o poder (a cauda não queima; alguns poderes deixam ferida). Guardar um poder novo é na
-   ficha (aba Skills). As caudas ficam em s.caudas, o mesmo lugar que a ficha usa (TC.caudas). */
+   Tocar numa cauda acesa usa o poder (a cauda não queima). Alguns poderes apodrecem a cauda enquanto estão guardados:
+   ela não pode ser queimada até o poder ser usado (na ficha, o podre da barra). Guardar um poder novo é na ficha. As caudas ficam em s.caudas, o mesmo lugar que a ficha usa (TC.caudas). */
 const CAUDAS = () => (root.TC && root.TC.caudas) || (() => { try { return typeof require !== 'undefined' ? require('./caudas.js') : null; } catch (e) { return null; } })();
 classe({ id: 'kitsune', cat: 'raca', arvore: 'Kitsune', barra: 'Caudas', cor: '#7FB8F0', glifo: '@raposa', inicio: 1, max: 9, teto: null,
   patamares: [],
   est: () => ({ caudas: [] }),
   persiste: ['caudas'],
-  marcas(s){ const cs = CAUDAS() ? CAUDAS().norm(s.caudas) : []; return cs.map((c, i) => ({ k: 'c' + i, glifo: c.p ? '@fogo' : c.fer.length ? '@impacto' : '·',
-    rotulo: c.p ? `Cauda ${i + 1}: ${c.p.n || 'poder'}${c.p.y ? ' (' + c.p.y + ')' : ''} — toque para usar` : c.fer.length ? `Cauda ${i + 1}: ferida (${c.fer.join('; ')})` : `Cauda ${i + 1}: vazia`,
-    dica: c.p ? (c.p.e || 'usar o poder') + (c.p.f ? ' · ao usar, deixa ferida: ' + c.p.f : '') : 'guarde um poder de yokai na ficha (aba Skills)' })); },
+  marcas(s){ const cs = CAUDAS() ? CAUDAS().norm(s.caudas) : []; return cs.map((c, i) => ({ k: 'c' + i, glifo: c.p ? '@fogo' : '·',
+    rotulo: c.p ? `Cauda ${i + 1}: ${c.p.n || 'poder'}${c.p.y ? ' (' + c.p.y + ')' : ''}${c.p.a ? ' · podre' : ''} — toque para usar` : `Cauda ${i + 1}: vazia`,
+    dica: c.p ? (c.p.e || 'usar o poder') + (c.p.a ? ' · podre: a cauda não queima até o poder ser usado' : '') : 'guarde um poder de yokai na ficha (aba Skills)' })); },
   marcasOpc: { raio: 60, r: 11.5, inicio: 0 },
   ativo: (s, k) => { const cs = CAUDAS() ? CAUDAS().norm(s.caudas) : []; const c = cs[+k.slice(1)]; return !!(c && c.p); },
   tocar(s, k, ctx){
@@ -1004,10 +1004,10 @@ classe({ id: 'kitsune', cat: 'raca', arvore: 'Kitsune', barra: 'Caudas', cor: '#
     const i = +k.slice(1), r = C.mudar(s.caudas, { t: 'usar', i });
     if (!r.mudou) return ctx.log(`Cauda ${i + 1} de ${ctx.nome} está vazia: guarde um poder na ficha.`);
     s.caudas = r.caudas;
-    ctx.log(C.textoUso(ctx.nome, i, r.usado) + (r.ferida ? ` A cauda ficou ferida: ${r.ferida}` : ''));
+    ctx.log(C.textoUso(ctx.nome, i, r.usado));
   },
-  linhaEstado(s){ const C = CAUDAS(); if (!C) return ''; const n = C.comPoder(s.caudas), f = C.comFerida(s.caudas);
-    return (n ? `<b>${n === 1 ? '1 cauda com poder de yokai' : n + ' caudas com poder de yokai'}</b> <em>· toque numa cauda acesa para usar</em>` : '<em>Nenhum poder de yokai guardado. Guarde na ficha, aba Skills.</em>') + (f ? ` <em>· ${f === 1 ? '1 cauda ferida' : f + ' caudas feridas'}</em>` : ''); },
+  linhaEstado(s){ const C = CAUDAS(); if (!C) return ''; const n = C.comPoder(s.caudas), f = C.podres(s.caudas);
+    return (n ? `<b>${n === 1 ? '1 cauda com poder de yokai' : n + ' caudas com poder de yokai'}</b> <em>· toque numa cauda acesa para usar</em>` : '<em>Nenhum poder de yokai guardado. Guarde na ficha, aba Skills.</em>') + (f ? ` <em>· ${f === 1 ? '1 cauda podre (não queima até usar o poder)' : f + ' caudas podres (não queimam até usar o poder)'}</em>` : ''); },
   ganhos: [{ c: 'Um espírito se soltou perto (1 por luta)', v: 1, max: 1 }],
   selo: s => { const C = CAUDAS(), n = C ? C.comPoder(s.caudas) : 0; return n ? '@fogo ' + n : null; }
 });

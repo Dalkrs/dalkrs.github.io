@@ -11,15 +11,16 @@ ok(P.BARRAS.length === 22, 'as 22 barras do mundo novo (lote 118: o Malho do Fer
 { // (lote 173) as Caudas da Kitsune: o poder do yokai guardado numa cauda
   const C = require('../../tc/caudas.js');
   ok(P.barraDaArvore('a_kitsune') === 'kitsune' && P.BARRA.kitsune.fim === 'fica', '(lote 173) a árvore da Kitsune liga a barra Caudas, que fica como está no fim do combate');
-  const g = { s: { caudas: [null, { p: { y: 'Kappa', n: 'Pele de Água', e: 'Defesa tier II por 2 turnos', f: 'a cauda fica fria' } }] } };
+  const g = { s: { caudas: [null, { p: { y: 'Kappa', n: 'Pele de Água', e: 'Defesa tier II por 2 turnos', a: true } }] } };
   const b = P.instancia('kitsune', 3, g, { min: 0, max: 5 }), log = [];
   const marcas = P.BARRA.kitsune.dica ? P.BARRA.kitsune.dica(b.s, 'c1') : '';
-  ok(/Pele de Água/.test(marcas), '(lote 173) a cauda 2 mostra o poder: ' + marcas.replace(/<[^>]+>/g, ''));
+  ok(/Pele de Água/.test(marcas) && /podre/.test(marcas), '(lote 174) a cauda 2 mostra o poder e que está podre: ' + marcas.replace(/<[^>]+>/g, ''));
   P.BARRA.kitsune.clique(b.s, 'c1', { nome: 'Dain', log: t => log.push(t), v: 3 });
   const c1 = C.norm(b.s.caudas)[1];
-  ok(!c1.p && c1.fer[0] === 'a cauda fica fria' && /Dain usa Pele de Água \(Kappa\), da cauda 2/.test(log.join(' ')) && /ficou ferida/.test(log.join(' ')), '(lote 173) tocar a cauda usa o poder, deixa a ferida e escreve no registro: ' + log.join(' '));
-  const novo = C.naFicha({ rec: { x: 1 }, pb: { kitsune: { s: { caudas: b.s.caudas }, c: {}, u: {}, g: 0 } } }, C.mudar(b.s.caudas, { t: 'guardar', i: 0, p: { n: 'Grito', y: 'Tengu' } }).caudas);
-  ok(C.daFicha(novo)[0].p.n === 'Grito' && C.daFicha(novo)[1].fer.length === 1 && novo.rec.x === 1, '(lote 173) a ficha e o painel usam o mesmo lugar (estado.pb.kitsune.s.caudas)');
+  ok(!c1.p && /Dain usa Pele de Água \(Kappa\), da cauda 2/.test(log.join(' ')) && /volta a servir/.test(log.join(' ')), '(lote 174) tocar a cauda usa o poder, e a cauda podre volta a servir: ' + log.join(' '));
+  const novo = C.naFicha({ rec: { x: 1 }, pb: { kitsune: { s: { caudas: b.s.caudas }, c: {}, u: {}, g: 0 } } }, C.mudar(b.s.caudas, { t: 'guardar', i: 0, p: { n: 'Grito', y: 'Tengu', a: true } }).caudas);
+  ok(novo.podre && novo.podre.ba_a_kitsune === 1 && C.bibDaFicha(novo).some(p => p.n === 'Grito'), '(lote 174) a cauda podre vira o podre da barra Caudas, e o poder entra na biblioteca');
+  ok(C.daFicha(novo)[0].p.n === 'Grito' && novo.rec.x === 1, '(lote 173) a ficha e o painel usam o mesmo lugar (estado.pb.kitsune.s.caudas)');
 }
 ok(P.barraDaArvore('a_kare_ma') === 'karema' && P.barraDaArvore({ id: 'outro', nome: 'Lobisomem' }) === 'lobisomem' && P.barraDaArvore('azavpm5qd8') === null, 'a ligação pela árvore (id e nome); as do mundo antigo não ligam mais');
 for (const d of P.BARRAS) {

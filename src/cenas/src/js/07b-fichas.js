@@ -1118,7 +1118,9 @@ const Fichas = (() => {
     const e = l.estado || {}, est = Object.assign({}, e);
     if (rec && Object.keys(rec).length) est.rec = Object.assign({}, e.rec && typeof e.rec === 'object' ? e.rec : {}, rec);
     if (pb && Object.keys(pb).length) est.pb = Object.assign({}, e.pb && typeof e.pb === 'object' ? e.pb : {}, pb);
-    P.gravar(charId, { estado: est });
+    // (lote 174) as caudas podres da Kitsune viram o podre da barra Caudas (TC.caudas)
+    const Kc = window.TC && window.TC.caudas, est2 = pb && pb.kitsune && Kc && Kc.comPodre ? Kc.comPodre(est) : est;
+    P.gravar(charId, { estado: est2 });
     if (on) syncAll(charId);                 // (o mestre: o token acompanha já, sem esperar a volta do banco)
     return true;
   }
