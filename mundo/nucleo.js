@@ -1747,6 +1747,8 @@
   function andarTempos(mapa, grupoId, n) {
     const g = objQueAnda(mapa, grupoId), N_ = Math.max(0, Math.floor(num(n, 1)));
     if (!g) return marchar(mapa, grupoId, 0);
+    // (lote 170) parado pelo mestre: não anda (nem conta a parada ou o descanso) até "Retomar"
+    if (g.pausado) return { ok: false, pausado: true, msg: 'Está parado: aperte "Retomar" para seguir a rota' };
     const tpd = tpdDe(mapa && mapa.cal), pt = passoDe(g, tpd), jan = g.k === 'g' ? janelaDeDescanso(g, tpd) : null;
     if (!(Array.isArray(g.paradas) && g.paradas.length) && !(g.espera > 0) && !jan) return marchar(mapa, grupoId, pt * N_);
     const t0 = inteiro(mapa && ehObj(mapa.cal) ? mapa.cal.tempo : 0, 0, 0, tpd - 1);
@@ -2324,6 +2326,7 @@
     if (o.modo === 'volta' || o.modo === 'circuito') out.modo = o.modo;
     // (na volta: indo e voltando, ou — lote 9 — "Voltar pela mesma rota" de quem só ia; o circuito não volta)
     if (out.modo !== 'circuito' && num(o.sentido, 1) < 0) out.sentido = -1;
+    if (o.pausado === true) out.pausado = true;                // (lote 170) parado pelo mestre até "Retomar"
     if (!comParadas) return out;
     const ps = normParadas(o.paradas);
     if (ps.length) out.paradas = ps;

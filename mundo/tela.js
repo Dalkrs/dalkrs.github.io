@@ -2214,7 +2214,7 @@
     let extra = (ctx.mestre ? 'M' : 'J') + ctx.fb;
     if (o.mis && o.mis.ref && ctx.mestre) extra += '|mis' + JSON.stringify(App.missaoDaFicha ? App.missaoDaFicha(o.mis.ref, o.mis.oid) : null);
     if (o.k === 'r') { const fid = facEfetiva(ctx.m, o), f = fid && ctx.fac.get(fid); extra += (f ? f.cor : '') + '|' + (o.pai || '') + '|' + JSON.stringify(filhasDe(ctx.m, o)) + chaveBr(ctx, fid) + '|' + JSON.stringify(modoDe(ctx, o)) + (o.ocup ? '|oc' + corOcup(ctx, o) : ''); }
-    else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o)) + chaveBr(ctx, o.fac) + (o.desc && ctx.mestre && N().descansandoAgora && N().descansandoAgora(ctx.m, o) ? '|zz' : '');
+    else if (o.k === 'g') extra += '|' + JSON.stringify(bolinhasDe(ctx, o)) + chaveBr(ctx, o.fac) + (o.desc && ctx.mestre && N().descansandoAgora && N().descansandoAgora(ctx.m, o) ? '|zz' : '') + (o.pausado && ctx.mestre ? '|pa' : '');
     else if (o.k === 'f') { const a = o.a && ctx.fac.get(o.a), b = o.b && ctx.fac.get(o.b); extra += (a ? a.cor : '') + '/' + (b ? b.cor : '') + '|' + faseNoDia(o, ctx.dia) + chaveBr(ctx, o.a) + chaveBr(ctx, o.b); }
     else if (o.k === 't') extra += '|' + andadoDe(ctx.m, o) + '|mar' + trechosDeMar(ctx, o.pts).join(',');
     else if (o.k === 'a') { const f = o.fac && ctx.fac.get(o.fac); extra += (f ? f.cor : ''); }
@@ -2797,6 +2797,9 @@
       arte.append(s('g', { class: 'dorme', transform: 'translate(-15 15) scale(1.15)' }, s('title', { texto: 'Descansando (do ' + jn.de + 'º ao ' + jn.ate + 'º tempo)' }),
         s('circle', { class: 'dorme-bola', r: 8.5 }), s('text', { class: 'dorme-z', x: -0.5, y: 3.6, 'text-anchor': 'middle', 'font-size': 9.5, texto: 'zZ' })));
     }
+    // (lote 170) parado pelo mestre: "⏸" embaixo à esquerda — só o mestre
+    if (o.pausado && ctx.mestre) arte.append(s('g', { class: 'dorme pausado', transform: 'translate(-15 15) scale(1.15)' }, s('title', { texto: 'Parado pelo mestre: anda depois de "Retomar"' }),
+      s('circle', { class: 'dorme-bola', r: 8.5 }), s('text', { class: 'dorme-z', x: 0, y: 3.4, 'text-anchor': 'middle', 'font-size': 9, texto: '❚❚' })));
     if (forca) fx.append(seloDaForca(o, forca));
     if (vet != null) fx.append(seloDaVeterania(vet, yVet));
     if (o.nome) fx.append(rotulo(o.nome, 29));

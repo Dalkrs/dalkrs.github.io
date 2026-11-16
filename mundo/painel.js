@@ -2349,9 +2349,10 @@
           h('small', { class: 'note', text: 'Ajuste à mão: o tempo do mundo não muda.' })));
       } else out.push(h('div', { class: 'row' }, nota('Defina a grade de hexágonos do mapa para medir a viagem.'), botao('Abrir a aba Terreno', () => abrirAba('terreno'), { c: 'sm', k: 'o:ir-grade' })));
     }
+    if (rota) out.push(linha(botaoPausa(o)));                                          // (lote 170) Parar / Retomar
     out.push(linha(
-      botao('Andar 1 tempo', () => andar(id, 'tempo'), { c: 'pri', k: 'o:andar', off: !rota, title: rota ? 'O grupo anda pela rota os cubos de um tempo de marcha, de hexágono em hexágono' : 'Escolha uma rota primeiro' }),
-      botao('Andar 1 dia', () => andar(id, 'dia'), { k: 'o:andar-dia', off: !rota, title: rota ? 'Anda os tempos que faltam para acabar o dia, e o dia passa' : 'Escolha uma rota primeiro' }),
+      botao('Andar 1 tempo', () => andar(id, 'tempo'), { c: 'pri', k: 'o:andar', off: !rota || !!o.pausado, title: o.pausado ? 'Está parado: aperte "Retomar" primeiro' : rota ? 'O grupo anda pela rota os cubos de um tempo de marcha, de hexágono em hexágono' : 'Escolha uma rota primeiro' }),
+      botao('Andar 1 dia', () => andar(id, 'dia'), { k: 'o:andar-dia', off: !rota || !!o.pausado, title: o.pausado ? 'Está parado: aperte "Retomar" primeiro' : rota ? 'Anda os tempos que faltam para acabar o dia, e o dia passa' : 'Escolha uma rota primeiro' }),
       botao('Sortear encontro', () => sortearGrupo(id), { k: 'o:sortear', title: 'Usa a tabela de encontros da região onde o grupo está' })));
     // (lote 7, parte 4b) um encontro onde o grupo está, na aba Cenas
     if (naCasca()) out.push(linha(botao('Gerar a cena aqui', () => gerarAqui(o), { c: 'sm', k: 'o:gerar-cena', title: 'Abre a janela "Gerar um lugar" das Cenas na aba Encontro, já com o terreno, o caminho, a hora, o clima e o estilo daqui' })));
@@ -2467,6 +2468,8 @@
       const antes = new Set(N_.pesoNoPonto(m0, g0.x, g0.y).eventos.map(e => e.id));
       for (const e of N_.pesoNoPonto(m, g.x, g.y).eventos) if (!antes.has(e.id)) avisos.push(nome + ' — agora dentro de "' + N_.nomeEvento(e) + '" (' + textoPeso(e.peso) + ').');
     }
+    // (lote 170) quem o mestre parou: lembra no aviso
+    for (const o of m.objs) if (o.pausado && o.rota && (o.k === 'g' || o.k === 'e')) avisos.push(nomeDe(o, m) + ' — parado (aperte "Retomar" para seguir).');
     const andou = gruposQueAndaram.length ? ' ' + (gruposQueAndaram.length === 1 ? '1 grupo andou: ' + nomeDe(achar(m, gruposQueAndaram[0]) || {}, m) + '.' : gruposQueAndaram.length + ' grupos andaram.') : '';
     const av = avisos.length ? ' ' + avisos.slice(0, 3).join(' ') + (avisos.length > 3 ? ' (E mais ' + (avisos.length - 3) + ' na aba Hoje.)' : '') : '';
     avisoDesfazer((t.dias > 0 ? 'Novo dia: ' + N_.textoDataSemana(m.cal, m.cal.dia) + ', ' + tempoTxt(m) + '.' : 'Passou 1 tempo: agora é o ' + tempoTxt(m) + '.') + andou + av);
@@ -2772,12 +2775,22 @@
       if (vg) { const on = N().ondeNoCaminho(mm, Object.assign({}, x, { prog: 0 }), vg); x.prog = on.longe ? 0 : vg.acum[on.i]; }
     });
   }
+  /* (lote 170) Parar e Retomar: o mestre para a caravana, a patrulha ou o exército onde está. Parado, não anda com o
+     "+1 tempo", o "Próximo dia" nem o "Andar" (a parada e o descanso também esperam); "Retomar" segue a rota de onde parou. */
+  function pausar(id, sim) {
+    mudarObj(id, sim ? 'parar' : 'retomar a rota', x => { if (!!x.pausado === !!sim) return false; if (sim) x.pausado = true; else delete x.pausado; });
+    const o = achar(App.mapa, id);
+    if (o) App.toast(nomeDe(o, App.mapa) + (sim ? ' parou. Só volta a andar com "Retomar".' : ' retomou a rota.'));
+  }
+  const botaoPausa = (o, k) => botao(o.pausado ? 'Retomar' : 'Parar', () => pausar(o.id, !o.pausado),
+    { c: 'sm' + (o.pausado ? ' pri' : ''), k: k || ('o:' + o.id + ':pausa'), title: o.pausado ? 'Volta a andar pela rota, de onde parou, no próximo tempo' : 'Para aqui: não anda com o tempo até você apertar "Retomar"' });
   function porNoComeco(id) {
     mudarObj(id, 'pôr no começo da rota', (x, mm) => { const r = achar(mm, x.rota); if (!r) return false; x.x = r.pts[0][0]; x.y = r.pts[0][1]; x.prog = 0; delete x.sentido; delete x.espera; });
   }
   // a linha do estado de quem anda: parado numa parada (e quanto falta), voltando
   function estadoDaMarcha(m, o) {
     const partes = [];
+    if (o.pausado) partes.push('Parado pelo mestre: só anda depois de "Retomar".');          // (lote 170)
     if (o.espera > 0) {
       const hx = N().hexDe(m, o.x, o.y), ps = o.paradas || [];
       let nome = 'a parada';
@@ -2943,6 +2956,8 @@
         campoNumero('o:' + id + ':ept', 'Anda por tempo (cubos)', o.pt || 2, n => mudarObj(id, 'mudar quanto o evento anda', x => { if (x.pt === n) return false; x.pt = n; }),
           { decimal: true, min: 0.1, max: 9999, erro: 'Use um número de cubos por tempo de marcha, de 0,1 a 9999.' }),
         campoEscolha('o:' + id + ':emodo', 'Ao chegar ao fim', o.modo || 'ida', Object.keys(N_.MODOS_ROTA).map(k => [k, N_.MODOS_ROTA[k]]), v => mudarModo(id, v))));
+      out.push(linha(botaoPausa(o, 'o:' + id + ':epausa')));                                   // (lote 170)
+      if (o.pausado) out.push(h('p', { class: 'note', 'data-k': 'o:' + id + ':eestado', text: 'Parado pelo mestre: só anda depois de "Retomar".' }));
       if (o.prog > 0 || o.sentido === -1 || N_.dist(o, { x: rota.pts[0][0], y: rota.pts[0][1] }) > 0.5) out.push(linha(botao('Pôr no começo da rota', () => porNoComeco(id), { c: 'sm', k: 'o:' + id + ':ecomeco' })));
       out.push(nota('Enquanto acontece, o evento anda pela rota com o tempo do mapa ("+1 tempo" e "Próximo dia"), e a área vai junto.'));
     } else out.push(nota('Uma migração, uma peregrinação, uma caravana mercante… podem andar por uma rota com o tempo do mapa.'));
