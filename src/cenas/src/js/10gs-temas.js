@@ -27,6 +27,7 @@ const Temas = (() => {
     ['esgoto', 'Esgoto e subterrâneo', 'dentro', ['comporta', 'passarela', 'canos'], ['gradeEsgoto', 'ninhoRatos', 'lixo', 'escadaFerro', 'canos', 'lixo', 'ninhoRatos']],
     ['militar', 'Acampamento militar e cerco', 'fora', ['tendaComando', 'torreVigiaMadeira', 'mesaGuerra'], ['palicada', 'barrisPolvora', 'bandeiras', 'cavalosFrisa', 'tamborGuerra', 'barraca', 'fogueira', 'cavaleteArmas']],
     ['portais', 'Portais e magia', 'tanto', ['portalArcano', 'circuloTeleporte', 'runasChao'], ['pilarEnergia', 'pedraFlutuante', 'orbe', 'runasChao', 'cristaisChao', 'pilarEnergia', 'orbe']],
+    ['noturna', 'Casa noturna', 'dentro', ['balcaoBebidas', 'palcoDanca', 'piano'], ['diva', 'poltronaVeludo', 'mesinhaTacas', 'narguile', 'biomboSeda', 'diva', 'mesinhaTacas', 'cortinaContas', 'garrafasChao']],      // (lote 180)
     ['teatro', 'Teatro e música', 'tanto', ['palcoCortina', 'palcoBardo'], ['cadeirasPlateia', 'cadeirasPlateia', 'araraFigurinos', 'cadeirasPlateia', 'mascaras', 'alaude', 'tambor', 'harpa']],
     ['conves', 'Convés e porto', 'tanto', ['mastro', 'cargaAmarrada', 'leme'], ['canhao', 'cordasEnroladas', 'ancora', 'redesPesca', 'barril', 'canhao', 'cordasEnroladas', 'prancha']],
     ['fantastica', 'Natureza fantástica', 'fora', ['arvoreOca', 'cogumeloGigante', 'ninhoGigante'], ['cristaisChao', 'florCarnivora', 'teiaGigante', 'toca', 'cogumeloGigante', 'cristaisChao', 'florCarnivora']],

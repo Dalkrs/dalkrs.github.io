@@ -365,6 +365,19 @@ const Furtividade = (() => {
       if (!noMeio(K, q, 'portalArcano', 2, 2, 0)) noMeio(K, q, 'circuloTeleporte', 2, 2, 0);
       canto(K, q, 'pilarEnergia'); canto(K, q, 'pilarEnergia'); canto(K, q, 'orbe'); canto(K, q, 'cristaisChao'); solto(K, q, 'runasChao', 2, 2, 1);
     },
+    // (lote 180) a casa noturna: o salão (o bar, o palco, os divãs), a alcova (o quarto) e o escritório da madame (as pistas)
+    salaoNoturno(K, q) {
+      encosta(K, q, 'balcaoBebidas', 3, 1, 1); if (q.w * q.h >= 30) noMeio(K, q, 'palcoDanca', 2, 2, 0); encosta(K, q, 'piano', 2, 2, 1);
+      solto(K, q, 'diva', 2, 1, Math.max(1, Math.floor(q.w * q.h / 18))); solto(K, q, 'mesinhaTacas', 1, 1, Math.max(1, Math.floor(q.w * q.h / 16)));
+      canto(K, q, 'poltronaVeludo'); canto(K, q, 'poltronaVeludo'); canto(K, q, 'narguile'); if (K.r() < 0.5) canto(K, q, 'garrafasChao');
+    },
+    alcova(K, q) {
+      if (!encosta(K, q, 'camaDossel', 2, 2, 1)) encosta(K, q, 'colchaoChao', 1, 2, 1);
+      canto(K, q, 'baciaJarro'); if (K.r() < 0.5) encosta(K, q, 'penteadeira', 2, 1, 1); else canto(K, q, 'bau'); if (q.w * q.h >= 12) encosta(K, q, 'biomboSeda', 2, 1, 1); if (K.r() < 0.4) canto(K, q, 'garrafasChao');
+    },
+    escritorioMadame(K, q) {
+      encosta(K, q, 'escrivaninha', 2, 1, 1); canto(K, q, 'livroCaixa'); canto(K, q, 'quadroChaves'); canto(K, q, 'cofre'); canto(K, q, 'cartasClientes'); canto(K, q, 'poltronaVeludo');
+    },
     teatro(K, q) {
       if (!encosta(K, q, 'palcoCortina', 3, 2, 1, ['n'])) encosta(K, q, 'palcoBardo', 2, 2, 1);
       solto(K, q, 'cadeirasPlateia', 2, 1, Math.max(2, Math.floor(q.w * q.h / 10)));
@@ -918,7 +931,7 @@ const Furtividade = (() => {
   };
   const PORTES = [['simples', 'Simples'], ['boa', 'Boa'], ['nobre', 'Nobre']];
   const SALAS_TERREO = ['sala', 'cozinha', 'banheiro', 'quarto', 'quartoSenhor', 'escritorio', 'biblioteca', 'salao', 'despensa', 'criados', 'capela', 'galeria', 'vestibulo', 'deposito', 'loja', 'oficina', 'misteriosa', 'laboratorio', 'adega',
-    'tavernaSalao', 'aula', 'interrogatorio', 'treino', 'portal', 'teatro'];      // (lote 158)
+    'tavernaSalao', 'aula', 'interrogatorio', 'treino', 'portal', 'teatro', 'salaoNoturno', 'alcova', 'escritorioMadame'];      // (lote 180: a casa noturna)      // (lote 158)
   function specLimpa(s) {
     s = s && typeof s === 'object' ? s : {};
     const terreo = (Array.isArray(s.terreo) ? s.terreo : []).filter(x => SALAS_TERREO.includes(x) && MOB[x]).slice(0, 12);

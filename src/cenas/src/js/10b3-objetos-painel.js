@@ -11,7 +11,7 @@
 const ObjPainel = (() => {
   const SECOES = [
     ['casa', 'Casa e móveis', ['luz', 'movel', 'nobre', 'banho', 'taverna']],
-    ['cidade', 'Cidade e comércio', ['mercado', 'povo', 'diaadia', 'forja', 'teatro', 'oriental']],
+    ['cidade', 'Cidade e comércio', ['mercado', 'povo', 'diaadia', 'noturna', 'forja', 'teatro', 'oriental']],      // (lote 180: a casa noturna)
     ['natureza', 'Natureza e clima', ['natureza', 'fantastica', 'fazenda', 'inverno', 'deserto', 'pantano']],
     ['masmorra', 'Masmorra e perigo', ['perigo', 'masmorra', 'prisao', 'esgoto', 'ruinas', 'portao']],
     ['magia', 'Magia e templo', ['templo', 'escola', 'portais', 'linhagem']],
@@ -49,6 +49,7 @@ const ObjPainel = (() => {
     'sujeira lixo esgoto cano canos bueiro',
     'festa bandeirola bandeirolas fitas palco danca festival',
     'guarda soldado quartel militar acampamento tenda barraca',
+    'bordel boate noturna cabare cabaré madame veludo',      // (lote 180)
   ].map(l => l.split(' '));
   const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const GUARDA = 'tinycats:cenas:objetos';
