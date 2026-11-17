@@ -618,6 +618,7 @@ const Tools = (() => {
       const t = Props.novo(sc, id, x, y, size, !!App.opt.objHidden);
       if (d.fw) { t.fw = d.fw; t.fh = d.fh; t.size = Math.max(d.fw, d.fh); t.x = x; t.y = y; delete t.q0; }
       Store.tx('Pôr ' + Props.P[id].n.toLowerCase(), () => Store.add('tokens', t));
+      try { ObjPainel.usou(id); } catch (e) { /* sem o painel */ }      // (lote 179) os usados por último
       if (Props.P[id].luz && sc.light === 'claro') UI.toast('A cena está clara, então a luz do objeto ainda não aparece.', { action: 'Pôr em penumbra', run: () => Store.tx('Luz ambiente', () => Store.scn({ light: 'penumbra' })) });
       else UI.toast(Props.P[id].n + ' no mapa.', { key: 'obj', action: 'Desfazer', run: undo });       // (um aviso só: o novo troca o anterior)
     },

@@ -1391,14 +1391,8 @@ const UI = (() => {
         v => { if (v === 'room' && isDoor(o.wallKind)) o.wallKind = 'wall'; Tools.cancel(); optSet('wallMode', v, true); }));
       if (!sc.fog.dynamic) kids.push(h('span', { class: 'o-warn' }, 'A visão por paredes está desligada nesta cena.', btn('Ligar', () => Store.tx('Ligar visão por paredes', () => Store.scn({ fog: Object.assign({}, sc.fog, { dynamic: true }) })), { kind: 'small' })));
     } else if (t === 'obj') {
-      // os objetos da categoria escolhida, em miniaturas; um clique escolhe, e o clique no mapa põe
-      const cat = Props.G.some(g => g.id === o.objCat) ? o.objCat : 'luz';
-      kids.push(seg('o-oc', cat, Props.G.map(g => [g.id, g.n]), v => { o.objCat = v; const ids = Props.ORDER.filter(id => Props.P[id].g === v); if (!ids.includes(o.obj)) o.obj = ids[0]; optSet('objCat', v, true); }));
-      kids.push(h('div', { class: 'o-objs', role: 'group', 'aria-label': 'Objetos' }, Props.ORDER.filter(id => Props.P[id].g === cat).map(id => {
-        const cv = h('canvas', { width: 64, height: 64 });
-        Props.thumb(cv, id, 1.3);
-        return h('button', { type: 'button', class: 'o-obj' + (o.obj === id ? ' on' : ''), id: 'o-obj-' + id, title: Props.P[id].n + (Props.P[id].luz ? ' (com luz que tremula)' : ''), 'aria-pressed': String(o.obj === id), onclick: () => optSet('obj', id, true) }, cv);
-      })));
+      // (lote 179) a busca, as 7 seções com as categorias, os usados por último e os favoritos, e as miniaturas (ObjPainel)
+      kids.push(...ObjPainel.montar(o, optSet));
       const dObj = Props.P[o.obj];
       if (dObj && dObj.fw) kids.push(oGroup('Medidas', h('span', { class: 'o-note', id: 'o-omed', text: `${dObj.fw} × ${dObj.fh} quadrados (mude no painel do objeto)` })));      // (lote 121) o comprido
       else kids.push(oGroup('Tamanho', seg('o-osz', o.objSize || 0, [[0, 'Normal'], [0.5, '½'], [1, '1'], [2, '2'], [3, '3']], v => optSet('objSize', v, true))));

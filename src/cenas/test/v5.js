@@ -12,6 +12,8 @@
 //   · a plataforma de madeira desenhada como tábuas.
 const path = require('path');
 const { open } = require('./lib');
+// (lote 179) a categoria do painel de Objetos: primeiro a seção dela, depois a categoria
+const irCat = async (page, nome) => { await page.evaluate(n => { const g = __tc.Props.G.find(x => x.n.startsWith(n)), s = g && __tc.ObjPainel.secoes().find(z => z[2].includes(g.id)); const b = s && [...document.querySelectorAll('#o-osec .seg-b')].find(x => x.textContent === s[1]); if (b) b.click(); }, nome); await page.waitForTimeout(120); await page.locator('#o-oc .seg-b', { hasText: nome }).first().click(); };
 let fails = 0, n = 0;
 const ok = (c, m) => { n++; if (!c) { fails++; console.log('FALHOU:', m); } };
 const SHOTS = path.join(__dirname, 'v5');
@@ -334,7 +336,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   await w(250);
   await page.keyboard.press('j'); await w(200);
   ok(await ev(() => __tc.App.tool) === 'obj' && await page.locator('#tool-obj.on').count() === 1 && (await page.locator('#tool-obj').getAttribute('title')) === 'Objetos de cenário (J)', 'a tecla J abre a ferramenta Objetos de cenário (também no trilho)');
-  ok(await page.locator('#o-oc .seg-b').count() === 18 &&     /* (lote 121: a Furtividade; lote 125: o Banheiro; lote 129: as Missões) */  await page.locator('.o-obj').count() === 9 && await page.locator('#o-obj-fogueira.on').count() === 1, 'a barra de cima tem as oito categorias (as quatro novas no lote 39) e, em Luzes, as nove luzes (a fogueira escolhida; a lanterna de papel veio no lote 7; a lareira e a fornalha, no lote 30; o lustre, no lote 122)');
+  ok(await page.locator('#o-osec .seg-b').count() === 7 &&      /* (lote 179: as 7 seções) */     /* (lote 121: a Furtividade; lote 125: o Banheiro; lote 129: as Missões) */  await page.locator('#o-objs .o-obj').count() === 9 && await page.locator('#o-obj-fogueira.on').count() === 1, 'a barra de cima tem as oito categorias (as quatro novas no lote 39) e, em Luzes, as nove luzes (a fogueira escolhida; a lanterna de papel veio no lote 7; a lareira e a fornalha, no lote 30; o lustre, no lote 122)');
   await page.locator('#o-obj-tocha').click(); await w(120);
   { const p = await tela(3.5 * C, 2.5 * C); await page.mouse.click(p[0], p[1]); await w(200); }
   let objs = await ev(() => __tc.Store.scene().tokens.filter(k => k.prop).map(k => JSON.parse(JSON.stringify(k))));
@@ -343,12 +345,12 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
   ok(await ev(() => __tc.App.tool) === 'obj' && /Tocha de parede no mapa/.test(await toasts()), 'a ferramenta continua escolhida (para pôr outras), e a mesa avisa com Desfazer');
   await page.locator('#o-obj-fogueira').click(); await w(80);
   { const p = await tela(10.5 * C, 4.5 * C); await page.mouse.click(p[0], p[1]); await w(200); }
-  await page.locator('#o-oc .seg-b', { hasText: 'Móveis' }).click(); await w(120);
-  ok(await page.locator('.o-obj').count() === 27 && await page.locator('#o-obj-bau.on').count() === 1, 'em Móveis e baús, vinte e sete móveis (lote 121: a cama de casal, o armário e a mesa de banquete; lote 122: a cômoda, a penteadeira, a escrivaninha, o relógio de pé e o quadro) (o baú já escolhido; almofada, tapete, jarro, bigorna, banco e balcão vieram no lote 7; a pele e as armas, das moradias da tribo, na parte 4b; o estandarte, o feno, o cocho e a escada, da Casa do clã, no lote 30)');
+  await irCat(page, 'Móveis'); await w(120);
+  ok(await page.locator('#o-objs .o-obj').count() === 27 && await page.locator('#o-obj-bau.on').count() === 1, 'em Móveis e baús, vinte e sete móveis (lote 121: a cama de casal, o armário e a mesa de banquete; lote 122: a cômoda, a penteadeira, a escrivaninha, o relógio de pé e o quadro) (o baú já escolhido; almofada, tapete, jarro, bigorna, banco e balcão vieram no lote 7; a pele e as armas, das moradias da tribo, na parte 4b; o estandarte, o feno, o cocho e a escada, da Casa do clã, no lote 30)');
   await page.locator('#o-obj-mesa').click(); await w(80);
   { const p = await tela(4 * C, 6 * C); await page.mouse.click(p[0], p[1]); await w(200); }
-  for (const [cat, id, x, y] of [['Natureza', 'arvore', 12, 1], ['Natureza', 'pedra', 9.5, 7.5], ['Perigos', 'armadilha', 5.5, 4.5], ['Perigos', 'estatua', 12.5, 7.5]]) {
-    await page.locator('#o-oc .seg-b', { hasText: cat }).click(); await w(80);
+  for (const [cat, id, x, y] of [['Natureza', 'arvore', 12, 4], ['Natureza', 'pedra', 9.5, 7.5], ['Perigos', 'armadilha', 5.5, 4.5], ['Perigos', 'estatua', 12.5, 7.5]]) {
+    await irCat(page, cat); await w(80);
     await page.locator('#o-obj-' + id).click(); await w(80);
     const p = await tela(x * C, y * C); await page.mouse.click(p[0], p[1]); await w(150);
   }

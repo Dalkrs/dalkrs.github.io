@@ -1415,3 +1415,23 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .tema-mini { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
 .tema-mini canvas { width: 40px; height: 40px; border-radius: 6px; background: var(--raised); border: 1px solid var(--line); }
 .tema-cena { display: flex; flex-direction: column; gap: 8px; min-width: min(420px, 80vw); }
+/* (lote 179) o painel de Objetos: a busca, as seções, os atalhos (últimos e favoritos) e a estrela de cada miniatura */
+.o-objtopo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%; }
+.o-buscaw { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); color: var(--muted, inherit); }
+.o-buscaw:focus-within { border-color: var(--lamp); }
+.o-busca.in { border: 0; background: transparent; padding: 5px 0; width: min(190px, 40vw); box-shadow: none; }
+.o-achados { font-size: 12px; opacity: 0.8; }
+.o-filtros { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.o-filtros[hidden], .o-atalhos[hidden] { display: none; }
+#o-oc .seg-b { font-size: 12px; padding: 3px 8px; }
+.o-atalhos { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.o-atalhos .o-obj { width: 34px; height: 34px; }
+.o-atalhos .o-obj canvas { width: 28px; height: 28px; }
+.o-atal { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.o-atal-l { font-size: 12px; opacity: 0.75; margin-right: 2px; }
+.o-objs { width: 100%; }
+.o-objw { position: relative; display: inline-flex; }
+.o-fav { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: var(--raised); color: var(--lamp); font-size: 12px; line-height: 18px; text-align: center; opacity: 0; cursor: pointer; box-shadow: 0 0 0 1px var(--line); }
+.o-objw:hover .o-fav, .o-fav:focus-visible, .o-objw.fav .o-fav { opacity: 1; }
+@media (hover: none) { .o-fav { opacity: 0.85; } }
+.o-busca.in:focus, .o-busca.in:focus-visible { outline: none; box-shadow: none; }

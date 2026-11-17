@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.17-05",
+      "data": "2026-11-17",
+      "titulo": "O painel de Objetos organizado, com busca, e 50 objetos novos",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Cenas: o painel de Objetos agora vem em 7 seções (Casa e móveis, Cidade e comércio, Natureza e clima, Masmorra e perigo, Magia e templo, Viagem e guerra, Missão e mistério). Cada seção abre as suas categorias.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: a busca de objetos. Acha pelo nome e por palavras parecidas (“cadeira” acha o banco e o trono; “fogo” acha a lareira e o braseiro), sem ligar para acento. Enter escolhe o primeiro; Esc limpa.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: os objetos usados por último e os favoritos (a estrela no canto de cada objeto) ficam no alto do painel.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: 50 objetos novos. A categoria nova Dia a dia (21: cavalo, gato, porteira, poste de lampião, ponte de madeira, forno de barro…) e mais objetos em Mistério, Base secreta, A história da missão, Mercado, Templo, Forja, Oriental, Portões e Vila e festa.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.17-04",
       "data": "2026-11-17",
       "titulo": "A arma à distância volta a somar",

@@ -11,6 +11,8 @@
 // FOTOS=<pasta> guarda a vitrine dos objetos, a barra, o painel e a sede.
 const fs = require('fs'), path = require('path');
 const { open } = require('./lib');
+// (lote 179) a categoria do painel de Objetos: primeiro a seção dela, depois a categoria
+const irCat = async (page, nome) => { await page.evaluate(n => { const g = __tc.Props.G.find(x => x.n.startsWith(n)), s = g && __tc.ObjPainel.secoes().find(z => z[2].includes(g.id)); const b = s && [...document.querySelectorAll('#o-osec .seg-b')].find(x => x.textContent === s[1]); if (b) b.click(); }, nome); await page.waitForTimeout(120); await page.locator('#o-oc .seg-b', { hasText: nome }).first().click(); };
 let fails = 0, n = 0;
 const ok = (c, m) => { n++; if (!c) { fails++; console.log('FALHOU:', m); } };
 const SHOTS = process.env.FOTOS;
@@ -46,23 +48,23 @@ const BRASAO = { cores: ['#5b3f8a', '#e8eaf0'], div: 'cortado', f: 'M6 6H94V58C9
   await passo('a barra', async () => {
     await ev(() => { const { Store, App, setSel } = __tc; Store.tx('preparar', () => Store.scn({ cols: 30, rows: 20, light: 'penumbra' })); setSel([]); App.view.z = 1; __tc.Render.fit(); });
     await page.keyboard.press('j'); await w(250);
-    const cats = await page.locator('#o-oc .seg-b').allInnerTexts();
-    ok(cats.length === 16 && j(cats.slice(4, 8)) === j(['Masmorra e chefe', 'Clã e sede', 'Linhagens', 'Viagem e acampamento']), 'a barra da ferramenta Objetos tem as categorias (16 desde o lote 121; 15 desde o lote 61; 14 desde o lote 53; 13 desde o lote 48): ' + cats.join(' / '));
+    const cats = await ev(() => __tc.ObjPainel.secoes().flatMap(z => z[2]).map(g => __tc.Props.G.find(x => x.id === g).n));      // (lote 179: as categorias nas 7 seções)
+    ok(['Masmorra e chefe', 'Clã e sede', 'Linhagens', 'Viagem e acampamento'].every(n => cats.includes(n)), 'a barra da ferramenta Objetos tem as categorias (16 desde o lote 121; 15 desde o lote 61; 14 desde o lote 53; 13 desde o lote 48): ' + cats.join(' / '));
     for (const [g, nome] of [['masmorra', 'Masmorra e chefe'], ['cla', 'Clã e sede'], ['linhagem', 'Linhagens'], ['viagem', 'Viagem']]) {
-      await page.locator('#o-oc .seg-b', { hasText: nome }).click(); await w(150);
-      const ids = await page.locator('.o-obj').evaluateAll(l => l.map(b => b.id.replace('o-obj-', '')));
+      await irCat(page, nome); await w(150);
+      const ids = await page.locator('#o-objs .o-obj').evaluateAll(l => l.map(b => b.id.replace('o-obj-', '')));
       ok(j(ids.filter(x => !['casulo', 'fonteSagrada'].includes(x))) === j(NOVOS[g]), nome + ': os oito objetos (e, na masmorra, o casulo e a fonte do lote 61) — ' + ids.join(', '));
       if (g === 'linhagem') await foto('l39-barra-linhagens');
     }
     // pôr o cristal e o candelabro: o cristal brilha parado, a chama do candelabro tremula
-    await page.locator('#o-oc .seg-b', { hasText: 'Masmorra e chefe' }).click(); await w(120);
+    await irCat(page, 'Masmorra e chefe'); await w(120);
     await page.locator('#o-obj-cristal').click(); await w(80);
     const tela = async (x, y) => { const box = await page.locator('#cv').boundingBox(), p = await ev(([x, y]) => __tc.Render.toScreen(x, y), [x, y]); return [box.x + p[0], box.y + p[1]]; };
     const C = await ev(() => __tc.Store.scene().cell);
     { const p = await tela(3.5 * C, 3.5 * C); await page.mouse.click(p[0], p[1]); await w(200); }
-    await page.locator('#o-oc .seg-b', { hasText: 'Linhagens' }).click(); await w(120);
+    await irCat(page, 'Linhagens'); await w(120);
     await page.locator('#o-obj-candelabro').click(); await w(80);
-    { const p = await tela(6.5 * C, 3.5 * C); await page.mouse.click(p[0], p[1]); await w(200); }
+    { const p = await tela(6.5 * C, 9.5 * C);      /* (lote 179: abaixo da barra, que ganhou a linha dos Últimos) */ await page.mouse.click(p[0], p[1]); await w(200); }
     const l = await ev(() => __tc.Store.scene().tokens.filter(k => k.prop === 'cristal' || k.prop === 'candelabro').map(k => [k.prop, k.light.on, !!k.light.fl, k.light.c]));
     ok(j(l) === j([['cristal', true, false, '#9fd8ff'], ['candelabro', true, true, '#ffb8a0']]), 'o cristal brilha parado; a chama do candelabro tremula: ' + j(l));
     await page.keyboard.press('Escape'); await w(150);

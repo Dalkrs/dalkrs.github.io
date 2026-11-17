@@ -12,6 +12,8 @@
 //   · as regras dos planos da tribo em muitos sorteios (todas as moradias, tamanhos, terrenos e chaves).
 const path = require('path');
 const { open } = require('./lib');
+// (lote 179) a categoria do painel de Objetos: primeiro a seção dela, depois a categoria
+const irCat = async (page, nome) => { await page.evaluate(n => { const g = __tc.Props.G.find(x => x.n.startsWith(n)), s = g && __tc.ObjPainel.secoes().find(z => z[2].includes(g.id)); const b = s && [...document.querySelectorAll('#o-osec .seg-b')].find(x => x.textContent === s[1]); if (b) b.click(); }, nome); await page.waitForTimeout(120); await page.locator('#o-oc .seg-b', { hasText: nome }).first().click(); };
 let fails = 0, n = 0;
 const ok = (c, m) => { n++; if (!c) { fails++; console.log('FALHOU:', m); } };
 const SHOTS = process.env.FOTOS;
@@ -376,9 +378,9 @@ const SHOTS = process.env.FOTOS;
     // na ferramenta de objetos: as armas e a pele, em Móveis; o totem, em Perigos
     await ev(() => { const u = __tc, sc = u.newScene('Objetos'); u.Store.addScene(sc); u.Store.setCurrent(sc.id); u.Render.fit(); u.setSel([]); });
     await page.keyboard.press('j'); await w(200);
-    await page.locator('#o-oc .seg-b', { hasText: 'Móveis' }).click(); await w(150);
+    await irCat(page, 'Móveis'); await w(150);
     ok(await page.locator('#o-obj-armas').count() === 1 && await page.locator('#o-obj-pele').count() === 1, 'na ferramenta de objetos, em Móveis: a pele e as armas');
-    await page.locator('#o-oc .seg-b', { hasText: 'Perigos' }).click(); await w(150);
+    await irCat(page, 'Perigos'); await w(150);
     ok(await page.locator('#o-obj-totem').count() === 1, 'e o totem, em Perigos e marcos');
     await page.keyboard.press('Escape'); await w(150);
   }
