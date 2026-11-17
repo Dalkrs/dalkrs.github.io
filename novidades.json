@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.17-03",
+      "data": "2026-11-17",
+      "titulo": "Atalhos dos guardas",
+      "itens": [
+        { "tipo": "novo", "mestre": true, "texto": "Cenas: Shift+1, Shift+2 e Shift+3 deixam o guarda Calmo, Desconfiado ou em Alerta. Vale o guarda sob o mouse ou, sem nenhum embaixo, os guardas selecionados." },
+        { "tipo": "novo", "mestre": true, "texto": "Cenas: Shift+setas viram o guarda para aquele lado, sem andar. Duas setas juntas (ex.: Shift+↑ e →) viram na diagonal. Sem guarda, Shift+seta continua movendo o token." }
+      ]
+    },
+    {
       "versao": "2026.11.17-02",
       "data": "2026-11-17",
       "titulo": "Todo ícone gera um lugar",

@@ -1227,6 +1227,8 @@ const UI = (() => {
       ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
       ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
       ['Shift+W', 'Avançar rondas: os guardas andam um passo da rota (só o mestre)'],
+      ['Shift+1 · 2 · 3', 'O guarda sob o mouse (ou os selecionados): Calmo · Desconfiado · Alerta (só o mestre)'],
+      ['Shift+setas', 'O guarda sob o mouse (ou os selecionados) vira para aquele lado, sem andar; duas setas juntas, a diagonal (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Inverte a grade (solta ou encaixa)'], ['Shift+G', 'Na grade / Livre (paredes, objetos, luzes, régua)'], ['Shift na parede', 'Reta ou a 45°'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
       ['1 a 6', 'As abas do painel da direita (Seleção, Turnos, Guardas, Efeitos, Cena, Jogadores)'], ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];

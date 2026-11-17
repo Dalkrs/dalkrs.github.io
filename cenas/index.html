@@ -16313,6 +16313,17 @@ const Rondas = (() => {
     Store.tx('Estado do guarda', () => gs.forEach(t => Store.upd('tokens', t.id, { alerta: est === 'calmo' ? undefined : est })));
     // (lote 145) com mais de um, o aviso (com Desfazer)
     if (gs.length > 1) UI.toast(`${gs.length} guardas ${est === 'calmo' ? 'calmos' : est === 'desconfiado' ? 'desconfiados' : 'em alerta'}.`, { key: 'rondas', action: 'Desfazer', run: Tools.undo });
+    return gs.length;
+  }
+  /* (lote 177) Shift+setas: os guardas viram para um dos 8 rumos (em graus: 0 a direita, 90 para baixo), sem andar. */
+  const RUMO_TXT = { 0: 'a direita', 45: 'baixo, à direita', 90: 'baixo', 135: 'baixo, à esquerda', 180: 'a esquerda', 225: 'cima, à esquerda', 270: 'cima', 315: 'cima, à direita' };
+  const SETA = { 0: '→', 45: '↘', 90: '↓', 135: '↙', 180: '←', 225: '↖', 270: '↑', 315: '↗' };
+  function virarPara(ts, dir) {
+    const gs = (ts || []).filter(ehGuarda), d = ((Math.round(dir) % 360) + 360) % 360;
+    if (!gs.length) return 0;
+    Store.tx('O guarda vira', () => gs.forEach(t => { if (t.ronda.dir !== d) Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { dir: d }) }); }));
+    UI.toast((gs.length === 1 ? gs[0].name + ' olha para ' : gs.length + ' guardas olham para ') + (RUMO_TXT[d] || d + '°') + ' ' + (SETA[d] || '') + '.', { key: 'rondas', action: 'Desfazer', run: Tools.undo });
+    return gs.length;
   }
   /* (lote 145) Os guardas olham para um ponto (x, y em pixels da cena): cada um vira o cone para lá. Na ronda, o próximo
      "Avançar rondas" volta a apontar o caminho; de posto ou em alerta, ele fica olhando. */
@@ -16650,7 +16661,7 @@ const Rondas = (() => {
     return out;
   }
 
-  return { aba, novoGuarda, fazerGuardas, verTodos, selecionarTodos, coneMeu, rotaMeu, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
+  return { aba, novoGuarda, fazerGuardas, verTodos, selecionarTodos, coneMeu, rotaMeu, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, virarPara, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
 })();
 /* ---------------------------------------------------------------
    7j. AS ROUPAS E OS DISFARCES (lote 133) — para as missões de furtividade.
@@ -20026,6 +20037,18 @@ const Tools = (() => {
   function undo() { const e = Store.undo(); if (e) { pruneSel(); UI.toast('Desfeito' + (e.label ? ': ' + e.label.toLowerCase() : '') + '.'); } }
   function redo() { const e = Store.redo(); if (e) { pruneSel(); UI.toast('Refeito' + (e.label ? ': ' + e.label.toLowerCase() : '') + '.'); } }
 
+  /* (lote 177) As setas apertadas agora (para a diagonal do Shift+setas dos guardas) e os guardas do atalho: o guarda sob
+     o mouse que não está na seleção, ou os guardas selecionados, ou o que está sob o mouse. */
+  const setas = new Set();
+  window.addEventListener('keydown', e => { if (e.key && e.key.startsWith('Arrow')) setas.add(e.key); }, true);
+  window.addEventListener('keyup', e => { if (e.key) setas.delete(e.key); }, true);
+  window.addEventListener('blur', () => setas.clear());
+  function guardasDoAtalho() {
+    const hit = App.mouse.inside ? hitTest(App.mouse, { tokensOnly: true, noProps: true }) : null, sob = hit ? Store.get('tokens', hit.id) : null;
+    if (sob && Rondas.ehGuarda(sob) && !selHas('tokens', sob.id)) return [sob];
+    const sel = selOf('tokens').filter(Rondas.ehGuarda);
+    return sel.length ? sel : sob && Rondas.ehGuarda(sob) ? [sob] : [];
+  }
   window.addEventListener('keydown', e => {
     if (UI.modalOpen()) return;
     const fk = focusKind(e.target);
@@ -20063,6 +20086,27 @@ const Tools = (() => {
       else if (App.sel.length) setSel([]);
       else if (App.tool !== 'select') set('select');
       return;
+    }
+    /* (lote 177, pedido do Bruno) Os guardas, só o mestre: Shift+1, 2, 3 trocam o estado (Calmo, Desconfiado, Alerta);
+       Shift+setas viram para onde ele olha, sem andar (duas setas juntas: a diagonal). Vale o guarda sob o mouse ou, sem
+       nenhum embaixo, os guardas selecionados. Sem guarda, as setas com Shift andam como sempre. */
+    if (e.shiftKey && isGM() && /^(Digit|Numpad)[123]$/.test(e.code)) {
+      e.preventDefault();
+      if (e.repeat) return;
+      const gs = guardasDoAtalho(), est = Rondas.ESTADOS[+e.code.slice(-1) - 1];
+      if (!gs.length) { UI.toast('Passe o mouse sobre um guarda (ou selecione os guardas) e aperte Shift+1, 2 ou 3.'); return; }
+      Rondas.mudarEstado(gs, est[0]);
+      if (gs.length === 1) UI.toast(gs[0].name + ': ' + est[1] + '.', { key: 'rondas', action: 'Desfazer', run: undo });
+      return;
+    }
+    if (e.shiftKey && isGM() && setas.size && k.startsWith('Arrow')) {
+      const gs = guardasDoAtalho();
+      if (gs.length) {
+        e.preventDefault();
+        const dx = (setas.has('ArrowRight') ? 1 : 0) - (setas.has('ArrowLeft') ? 1 : 0), dy = (setas.has('ArrowDown') ? 1 : 0) - (setas.has('ArrowUp') ? 1 : 0);
+        if ((dx || dy) && !e.repeat) Rondas.virarPara(gs, Math.round(Math.atan2(dy, dx) * 180 / Math.PI));
+        return;
+      }
     }
     if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown') {
       if (nudge(k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0, k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0)) e.preventDefault();
@@ -21347,6 +21391,8 @@ const UI = (() => {
       ['K', 'Ataque com defesa no token sob o cursor (ou nos selecionados) — só o mestre'],
       ['N · Shift+N', 'Passar o turno · voltar o turno (só o mestre)'],
       ['Shift+W', 'Avançar rondas: os guardas andam um passo da rota (só o mestre)'],
+      ['Shift+1 · 2 · 3', 'O guarda sob o mouse (ou os selecionados): Calmo · Desconfiado · Alerta (só o mestre)'],
+      ['Shift+setas', 'O guarda sob o mouse (ou os selecionados) vira para aquele lado, sem andar; duas setas juntas, a diagonal (só o mestre)'],
       ['Setas', 'Mover o token selecionado um quadrado'], ['Alt ao arrastar', 'Inverte a grade (solta ou encaixa)'], ['Shift+G', 'Na grade / Livre (paredes, objetos, luzes, régua)'], ['Shift na parede', 'Reta ou a 45°'], ['Shift ao desenhar', 'Trava em quadrado, círculo ou 45°'],
       ['1 a 6', 'As abas do painel da direita (Seleção, Turnos, Guardas, Efeitos, Cena, Jogadores)'], ['Ctrl+Z · Ctrl+Shift+Z', 'Desfazer · refazer'], ['Ctrl+C · Ctrl+V · Ctrl+D', 'Copiar, colar, duplicar'], ['Delete', 'Apagar a seleção'], ['Esc', 'Cancelar, soltar a seleção, voltar a Selecionar'],
     ];

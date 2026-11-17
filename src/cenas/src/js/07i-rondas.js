@@ -222,6 +222,17 @@ const Rondas = (() => {
     Store.tx('Estado do guarda', () => gs.forEach(t => Store.upd('tokens', t.id, { alerta: est === 'calmo' ? undefined : est })));
     // (lote 145) com mais de um, o aviso (com Desfazer)
     if (gs.length > 1) UI.toast(`${gs.length} guardas ${est === 'calmo' ? 'calmos' : est === 'desconfiado' ? 'desconfiados' : 'em alerta'}.`, { key: 'rondas', action: 'Desfazer', run: Tools.undo });
+    return gs.length;
+  }
+  /* (lote 177) Shift+setas: os guardas viram para um dos 8 rumos (em graus: 0 a direita, 90 para baixo), sem andar. */
+  const RUMO_TXT = { 0: 'a direita', 45: 'baixo, à direita', 90: 'baixo', 135: 'baixo, à esquerda', 180: 'a esquerda', 225: 'cima, à esquerda', 270: 'cima', 315: 'cima, à direita' };
+  const SETA = { 0: '→', 45: '↘', 90: '↓', 135: '↙', 180: '←', 225: '↖', 270: '↑', 315: '↗' };
+  function virarPara(ts, dir) {
+    const gs = (ts || []).filter(ehGuarda), d = ((Math.round(dir) % 360) + 360) % 360;
+    if (!gs.length) return 0;
+    Store.tx('O guarda vira', () => gs.forEach(t => { if (t.ronda.dir !== d) Store.upd('tokens', t.id, { ronda: Object.assign({}, t.ronda, { dir: d }) }); }));
+    UI.toast((gs.length === 1 ? gs[0].name + ' olha para ' : gs.length + ' guardas olham para ') + (RUMO_TXT[d] || d + '°') + ' ' + (SETA[d] || '') + '.', { key: 'rondas', action: 'Desfazer', run: Tools.undo });
+    return gs.length;
   }
   /* (lote 145) Os guardas olham para um ponto (x, y em pixels da cena): cada um vira o cone para lá. Na ronda, o próximo
      "Avançar rondas" volta a apontar o caminho; de posto ou em alerta, ele fica olhando. */
@@ -559,5 +570,5 @@ const Rondas = (() => {
     return out;
   }
 
-  return { aba, novoGuarda, fazerGuardas, verTodos, selecionarTodos, coneMeu, rotaMeu, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
+  return { aba, novoGuarda, fazerGuardas, verTodos, selecionarTodos, coneMeu, rotaMeu, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, virarPara, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
 })();

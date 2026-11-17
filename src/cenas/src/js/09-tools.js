@@ -1444,6 +1444,18 @@ const Tools = (() => {
   function undo() { const e = Store.undo(); if (e) { pruneSel(); UI.toast('Desfeito' + (e.label ? ': ' + e.label.toLowerCase() : '') + '.'); } }
   function redo() { const e = Store.redo(); if (e) { pruneSel(); UI.toast('Refeito' + (e.label ? ': ' + e.label.toLowerCase() : '') + '.'); } }
 
+  /* (lote 177) As setas apertadas agora (para a diagonal do Shift+setas dos guardas) e os guardas do atalho: o guarda sob
+     o mouse que não está na seleção, ou os guardas selecionados, ou o que está sob o mouse. */
+  const setas = new Set();
+  window.addEventListener('keydown', e => { if (e.key && e.key.startsWith('Arrow')) setas.add(e.key); }, true);
+  window.addEventListener('keyup', e => { if (e.key) setas.delete(e.key); }, true);
+  window.addEventListener('blur', () => setas.clear());
+  function guardasDoAtalho() {
+    const hit = App.mouse.inside ? hitTest(App.mouse, { tokensOnly: true, noProps: true }) : null, sob = hit ? Store.get('tokens', hit.id) : null;
+    if (sob && Rondas.ehGuarda(sob) && !selHas('tokens', sob.id)) return [sob];
+    const sel = selOf('tokens').filter(Rondas.ehGuarda);
+    return sel.length ? sel : sob && Rondas.ehGuarda(sob) ? [sob] : [];
+  }
   window.addEventListener('keydown', e => {
     if (UI.modalOpen()) return;
     const fk = focusKind(e.target);
@@ -1481,6 +1493,27 @@ const Tools = (() => {
       else if (App.sel.length) setSel([]);
       else if (App.tool !== 'select') set('select');
       return;
+    }
+    /* (lote 177, pedido do Bruno) Os guardas, só o mestre: Shift+1, 2, 3 trocam o estado (Calmo, Desconfiado, Alerta);
+       Shift+setas viram para onde ele olha, sem andar (duas setas juntas: a diagonal). Vale o guarda sob o mouse ou, sem
+       nenhum embaixo, os guardas selecionados. Sem guarda, as setas com Shift andam como sempre. */
+    if (e.shiftKey && isGM() && /^(Digit|Numpad)[123]$/.test(e.code)) {
+      e.preventDefault();
+      if (e.repeat) return;
+      const gs = guardasDoAtalho(), est = Rondas.ESTADOS[+e.code.slice(-1) - 1];
+      if (!gs.length) { UI.toast('Passe o mouse sobre um guarda (ou selecione os guardas) e aperte Shift+1, 2 ou 3.'); return; }
+      Rondas.mudarEstado(gs, est[0]);
+      if (gs.length === 1) UI.toast(gs[0].name + ': ' + est[1] + '.', { key: 'rondas', action: 'Desfazer', run: undo });
+      return;
+    }
+    if (e.shiftKey && isGM() && setas.size && k.startsWith('Arrow')) {
+      const gs = guardasDoAtalho();
+      if (gs.length) {
+        e.preventDefault();
+        const dx = (setas.has('ArrowRight') ? 1 : 0) - (setas.has('ArrowLeft') ? 1 : 0), dy = (setas.has('ArrowDown') ? 1 : 0) - (setas.has('ArrowUp') ? 1 : 0);
+        if ((dx || dy) && !e.repeat) Rondas.virarPara(gs, Math.round(Math.atan2(dy, dx) * 180 / Math.PI));
+        return;
+      }
     }
     if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown') {
       if (nudge(k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0, k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0)) e.preventDefault();
