@@ -360,7 +360,7 @@ const FichasExtras = (() => {
       <textarea rows="1" data-itemfx="${esc(it.id)}"${nvAttr} placeholder="${k ? 'Passivas e efeitos do Nv ' + k + ' — ex.: +1 dado de gelo contra quem está molhado' : 'Passivas e efeitos deste item — ex.: +10% de dano contra mortos-vivos · 1×/dia: escudo de luz'}" aria-label="Passivas e efeitos de ${esc(it.nome || 'item sem nome')}${k ? ' no Nv ' + k : ''}">${esc(alvo.efeito || '')}</textarea>
       <div class="itopc">
         <label class="chk"><input type="checkbox" data-itemrel="${esc(it.id)}" ${it.reliquia ? 'checked' : ''}> <span>Relíquia <span class="hint">(o cartão fica dourado)</span></span></label>
-        <label class="f itpilhaf" title="Kunai, Shuriken, facas de arremesso: a quantidade da pilha. Arremessar gasta 1; usar na mão não gasta. Vazio: não é de arremesso."><span class="eyebrow">Arremesso (quantos)</span><input class="inm" type="number" min="0" max="999" data-itpilhaset="${esc(it.id)}" value="${typeof it.pilha === 'number' ? it.pilha : ''}" placeholder="—" aria-label="Quantos ${esc(it.nome || 'deste item')} na pilha de arremesso"></label>
+        ${RE() && RE().ehDist && RE().ehDist(it) ? '' : `<label class="f itpilhaf" title="Kunai, Shuriken, facas de arremesso: a quantidade da pilha. Arremessar gasta 1; usar na mão não gasta. Vazio: não é de arremesso."><span class="eyebrow">Arremesso (quantos)</span><input class="inm" type="number" min="0" max="999" data-itpilhaset="${esc(it.id)}" value="${typeof it.pilha === 'number' ? it.pilha : ''}" placeholder="—" aria-label="Quantos ${esc(it.nome || 'deste item')} na pilha de arremesso"></label>`}
         ${RE() && RE().distDoItem && RE().distDoItem(it) ? `<label class="f itdistcapf" title="Quantos tiros cabem num ${esc(RE().distDoItem(it).tipo.umPente)} cheio"><span class="eyebrow">Cabem (${esc(RE().distDoItem(it).tipo.tiro.toLowerCase())} por ${esc(RE().distDoItem(it).tipo.umPente)})</span><input class="inm" type="number" min="1" max="999" data-itdistcap="${esc(it.id)}" value="${RE().distDoItem(it).cap}"></label>` : ''}
         <label class="f ittrocaf"><span class="eyebrow">Grupo de troca</span><input class="inm" data-itemtroca="${esc(it.id)}" value="${esc(String(it.troca == null ? '' : it.troca))}" maxlength="40" list="gruposTroca" placeholder="ex.: Arma principal" autocomplete="off" title="Dos itens do mesmo grupo, um só fica equipado: equipar um guarda os outros"></label>
         ${opcoesReq(it, pc)}
@@ -460,7 +460,7 @@ const FichasExtras = (() => {
     const req = RQ() ? RQ().nomeDoReq(it, pc.itens || []) : '', semEfeito = on && req && !ativoNa(it, pc);
     const pode = FichasMesa.podeEditar(pc), niv = !!R7() && R7().temNiveis(it);
     const alca = pode && !!R7();
-    return `<div class="itcard ${on ? '' : 'guardado'} ${typeof it.pilha === 'number' && it.pilha <= 0 ? 'pilhazero' : ''} ${it.reliquia ? 'rel' : ''} ${aberto ? 'aberto' : ''} ${semEfeito ? 'semfx' : ''} ${alca ? 'comalca' : ''}" data-itcard="${esc(it.id)}"${escondido ? ' hidden' : ''}>
+    return `<div class="itcard ${on ? '' : 'guardado'} ${typeof it.pilha === 'number' && it.pilha <= 0 && !(RE() && RE().ehDist && RE().ehDist(it)) ? 'pilhazero' : ''} ${it.reliquia ? 'rel' : ''} ${aberto ? 'aberto' : ''} ${semEfeito ? 'semfx' : ''} ${alca ? 'comalca' : ''}" data-itcard="${esc(it.id)}"${escondido ? ' hidden' : ''}>
       <div class="ittopo">
         ${alca ? `<button type="button" class="itarr" data-itarr="${esc(it.id)}" title="Arraste para mudar a ordem — ou para outra seção, que troca o tipo. Com o teclado: as setas para cima e para baixo." aria-label="Mudar ${esc(nomeIt(it) || 'o item sem nome')} de lugar">${ALCA_SVG}</button>` : ''}
         <label class="itchave" title="${on ? 'Equipado: soma nas contas. Clique para guardar.' : 'Guardado: não soma. Clique para equipar.'}${g ? ' Grupo de troca: ' + esc(g) + '.' : ''}"><input type="checkbox" data-itemon="${esc(it.id)}" ${on ? 'checked' : ''} aria-label="${esc(it.nome || 'Item sem nome')}: equipado"><span class="itsw" aria-hidden="true"></span></label>
@@ -473,7 +473,7 @@ const FichasExtras = (() => {
           + (g ? `<span class="ittroca" title="Grupo de troca: equipar um item do grupo guarda os outros">${TROCA_SVG}<span>${esc(g)}</span></span>` : '');
         return selos ? `<div class="itselos">${selos}</div>` : ''; })()}
       ${req ? `<div class="itreqlinha"><span class="ittroca itreq ${semEfeito ? 'falta' : ''}" title="${semEfeito ? 'Sem efeito: só vale com ' + esc(req) + ' equipado' : 'Só funciona com ' + esc(req)}">${LIGA_SVG}<span>${semEfeito ? 'sem efeito · ' : 'com '}${esc(req)}</span></span></div>` : ''}
-      ${typeof it.pilha === 'number' ? htmlPilha(it, pc, pode, on) : ''}
+      ${typeof it.pilha === 'number' && !(RE() && RE().ehDist && RE().ehDist(it)) ? htmlPilha(it, pc, pode, on) : ''}
       ${it.dist ? htmlDist(it, pc, pode, on) : ''}
       <div class="itbon">${bon.length ? chipsBonus(bon) : '<span class="hint">sem bônus</span>'}</div>
       ${fx && !aberto ? `<div class="itfxv">${esc(fx)}</div>` : ''}

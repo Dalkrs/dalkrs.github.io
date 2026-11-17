@@ -1517,7 +1517,8 @@
   }
   // o item soma nas contas? (equipado, e com o que ele precisa)
   // (lote 122) a pilha de arremesso vazia (Kunai ×0) fica na ficha, mas não soma até repor
-  const pilhaVazia = it => ehObjeto(it) && typeof it.pilha === 'number' && it.pilha <= 0;
+  // (lote 178) a arma à distância (it.dist: o arco, a besta, a de fogo) não é de arremesso: um 0 que sobrou no campo não a apaga
+  const pilhaVazia = it => ehObjeto(it) && typeof it.pilha === 'number' && it.pilha <= 0 && !ehObjeto(it.dist);
   /* (lote 161) A arma à distância (arco, besta, arma de fogo): o dano é fixo (it.dp, que soma a melhoria; o elemento vai
      por cima) e a munição fica na própria arma — it.dist = { k, cap (quantos tiros cabem), bal (quantos tem agora),
      pen (quantos pentes, ou aljavas, sobram) }. Disparar gasta 1; Recarregar gasta 1 pente e enche. Sem bala, a arma

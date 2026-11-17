@@ -28,6 +28,12 @@ ok(R.chavesDaPeca(pistola, 'arma')[0] === 'DP', 'na regra, o principal é o dano
 
 // 2) na tela
 const estado = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_d', 'Dain', 1, [it('ar', 'Mosquete', { tipo: 'arma', peca: 'arma', atr: 'DES', faixa: 1, bonus: Object.assign({}, zero, { DES: 10 }) })])], situacoes: [], tabelas: [], log: [], bib: null, sel: 'pc_d' });
+{ // (lote 178) a pistola com um 0 no campo "Arremesso" (pilha: 0) continua dando os atributos: arma à distância não é de arremesso
+  const p0 = it('p0', 'Pistola', { tipo: 'arma', pilha: 0, dist: { k: 'fogo', cap: 10, bal: 7, pen: 1 }, dp: 30, bonus: Object.assign({}, zero, { DES: 12, AGI: 10 }) });
+  const ku = it('ku', 'Kunai', { tipo: 'arma', pilha: 0, bonus: Object.assign({}, zero, { FOR: 3 }) });
+  ok(R.itemAtivo(p0, [p0, ku]) && !R.itemAtivo(ku, [p0, ku]), 'a pistola com pilha 0 soma; a Kunai sem nenhuma, não');
+}
+
 (async () => {
   const t = await start();
   const { page: P } = await t.device({ name: 'distancia', w: 1320, h: 960, seed: { urgm_calc_atributos_v1: estado } });
