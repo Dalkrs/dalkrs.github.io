@@ -2702,6 +2702,19 @@ const UI = (() => {
       luz ? sec('s-propluz', 'Luz', true,
         toggle('pr-luz', luz.on, v => all({ light: Object.assign({}, luz, { on: v }) }, v ? 'Acender' : 'Apagar'), 'Acesa'),
         toggle('pr-fl', !!luz.fl, v => all({ light: Object.assign({}, luz, v ? { fl: true } : { fl: undefined }) }, 'Luz que tremula'), 'Tremula, como chama'),
+        // (lote 181) as cores: a da chama (os que têm fogo) e a da luz que ela joga no mapa; juntas, a não ser que se separe
+        ...(() => {
+          const ehFogo = !!def.fogo, solta = !ehFogo || !!t.luzSolta, corLuz = /^#[0-9a-f]{6}$/i.test(luz.c || '') ? luz.c : (def.luz.c || '#ffcf80');
+          const corChama = /^#[0-9a-f]{6}$/i.test(t.chamaCor || '') ? t.chamaCor : '#ff8a2a';
+          const mudou = t.chamaCor || t.luzSolta || (luz.c || '') !== (def.luz.c || '');
+          return [
+            ehFogo || solta ? h('div', { class: 'grid2' },
+              ehFogo ? field('Cor da chama', inColor('pr-chama', corChama, v => { const x = Store.get('tokens', t.id) || t; Store.upd('tokens', t.id, Object.assign({ chamaCor: v }, x.luzSolta ? {} : { light: Object.assign({}, x.light, { c: v }) })); }, 'Cor da chama')) : null,
+              solta ? field('Cor da luz', inColor('pr-luzcor', corLuz, v => { const x = Store.get('tokens', t.id) || t; Store.upd('tokens', t.id, { light: Object.assign({}, x.light, { c: v }) }); }, 'Cor da luz')) : null) : null,
+            ehFogo ? toggle('pr-luzsolta', !!t.luzSolta, v => all(v ? { luzSolta: true } : { luzSolta: undefined, light: Object.assign({}, luz, { c: t.chamaCor || def.luz.c }) }, v ? 'Luz de outra cor' : 'Luz da cor da chama'), 'A luz numa cor diferente da chama') : null,
+            mudou ? h('div', { class: 'row' }, btn('Voltar às cores de sempre', () => all({ chamaCor: undefined, luzSolta: undefined, light: Object.assign({}, luz, { c: def.luz.c }) }, 'Cores da luz'), { kind: 'small', id: 'pr-luzcor-0' })) : null,
+          ];
+        })(),
         h('div', { class: 'grid2' },
           field('Luz forte (q)', inNum('pr-lb', luz.bright, v => all({ light: Object.assign({}, luz, { bright: Math.min(v, luz.dim) }) }), { min: 0, max: 60, step: 0.5 })),
           field('Até (q)', inNum('pr-ld', luz.dim, v => all({ light: Object.assign({}, luz, { dim: v, bright: Math.min(luz.bright, v) }) }), { min: 0.5, max: 60, step: 0.5 }))),

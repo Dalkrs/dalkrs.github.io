@@ -5217,6 +5217,11 @@ const Props = (() => {
      tamanho. k separa as chamas de um mesmo objeto, para não tremularem juntas. */
   // (lote 47b) com a luz do objeto apagada, a chama some e as brasas ficam escuras (Props.draw liga e desliga)
   let APAGADO = false, EST = '';
+  // (lote 181) a cor da chama do objeto que está sendo desenhado (t.chamaCor, '#rrggbb'); vazio é o fogo de sempre
+  let CHAMA = '';
+  const rgbDe = hx => { const m = /^#?([0-9a-f]{6})$/i.exec(String(hx || '')); if (!m) return null; const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const mistura = (a, b, f) => a.map((v, i) => Math.round(v + (b[i] - v) * f));
+  const css = (c, al) => al == null ? `rgb(${c[0]},${c[1]},${c[2]})` : `rgba(${c[0]},${c[1]},${c[2]},${al})`;
   function chama(c, x, y, a, t, k, ang) {
     if (APAGADO) return;
     const f = Math.sin(t * 9.3 + k * 3.7) * 0.5 + Math.sin(t * 14.1 + k * 1.9) * 0.3 + Math.sin(t * 4.7 + k * 5.3) * 0.2;
@@ -5224,19 +5229,21 @@ const Props = (() => {
     c.save();
     c.translate(x, y); c.rotate(-ang);
     c.globalCompositeOperation = 'lighter';
-    c.fillStyle = radial(c, 0, -alt * 0.35, alt * 1.25, ['rgba(255,190,90,0.42)', 'rgba(255,140,40,0.14)', 'rgba(255,110,20,0)']);
+    const cc = CHAMA && rgbDe(CHAMA);      // (lote 181) a chama de outra cor: o mesmo desenho, nos tons da cor escolhida
+    c.fillStyle = cc ? radial(c, 0, -alt * 0.35, alt * 1.25, [css(mistura(cc, [255, 255, 255], 0.3), 0.42), css(cc, 0.14), css(cc, 0)]) : radial(c, 0, -alt * 0.35, alt * 1.25, ['rgba(255,190,90,0.42)', 'rgba(255,140,40,0.14)', 'rgba(255,110,20,0)']);
     c.beginPath(); c.arc(0, -alt * 0.35, alt * 1.25, 0, TAU); c.fill();
     c.globalCompositeOperation = 'source-over';
     const gota = (w, hh, sw) => { c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(-w, -hh * 0.15, -w * 0.7, -hh * 0.62, sw, -hh); c.bezierCurveTo(w * 0.7, -hh * 0.62, w, -hh * 0.15, 0, 0); c.closePath(); };
-    c.fillStyle = grad(c, 0, 0, 0, -alt, ['#e2380f', '#ff7a1a', '#ffb347']);
+    c.fillStyle = cc ? grad(c, 0, 0, 0, -alt, [css(mistura(cc, [0, 0, 0], 0.35)), css(cc), css(mistura(cc, [255, 255, 255], 0.35))]) : grad(c, 0, 0, 0, -alt, ['#e2380f', '#ff7a1a', '#ffb347']);
     gota(larg, alt, bal); c.fill();
-    c.fillStyle = grad(c, 0, 0, 0, -alt * 0.6, ['#ffc95e', '#fff4c6']);
+    c.fillStyle = cc ? grad(c, 0, 0, 0, -alt * 0.6, [css(mistura(cc, [255, 255, 255], 0.55)), css(mistura(cc, [255, 255, 255], 0.88))]) : grad(c, 0, 0, 0, -alt * 0.6, ['#ffc95e', '#fff4c6']);
     gota(larg * 0.5, alt * 0.6, bal * 0.6); c.fill();
     c.restore();
   }
   function brasa(c, x, y, r, t, k) {
     if (APAGADO) { c.fillStyle = 'rgba(40,30,26,0.85)'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); return; }
-    const p = 0.6 + 0.4 * Math.sin(t * (2 + hsh(k, 1, 3) * 3) + k * 2.1);
+    const p = 0.6 + 0.4 * Math.sin(t * (2 + hsh(k, 1, 3) * 3) + k * 2.1), cc = CHAMA && rgbDe(CHAMA);
+    if (cc) { c.fillStyle = css(mistura(cc, [255, 255, 255], 0.2 * p), 0.55 + 0.45 * p); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); return; }      // (lote 181)
     c.fillStyle = `rgba(255,${Math.round(90 + 90 * p)},${Math.round(30 * p)},${0.55 + 0.45 * p})`;
     c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
   }
@@ -6710,8 +6717,9 @@ const Props = (() => {
     c.save();
     c.translate(cx, cy); c.rotate(ang);
     APAGADO = !!(def.luz && t.light && t.light.on === false);
+    CHAMA = t && typeof t.chamaCor === 'string' ? t.chamaCor : '';      // (lote 181)
     EST = estado(t);
-    try { def.draw(c, R, tm, semente, ang, t, B); } finally { APAGADO = false; EST = ''; }
+    try { def.draw(c, R, tm, semente, ang, t, B); } finally { APAGADO = false; EST = ''; CHAMA = ''; }
     c.restore();
   }
   /* (lote 121) Desenha o objeto id num canvas qualquer (as prévias dos geradores): o canto (x, y) e as medidas em
@@ -6819,7 +6827,7 @@ const Props = (() => {
   // (lote 47b) um objeto novo no catálogo (06b2: o mercado, o templo, a forja, o oriental, os portões)
   function registrar(id, def) { P[id] = def; if (!ORDER.includes(id)) ORDER.push(id); }
   function grupo(id, n) { if (!G.some(g => g.id === id)) G.push({ id, n }); }
-  const kit = { caixa, sombra, linha, grad, radial, hsh, MAD, PED, FER, chama, brasa, pedrinha, tabua, folhas, osso, cranio, tom, apagado: () => APAGADO, est: () => EST };
+  const kit = { caixa, sombra, linha, grad, radial, hsh, MAD, PED, FER, chama, brasa, pedrinha, tabua, folhas, osso, cranio, tom, apagado: () => APAGADO, est: () => EST, chamaCor: () => CHAMA };
   return { P, G, ORDER, draw, thumb, isProp, temFogo, novo, coresDe, estados, estado, registrar, grupo, kit, desenhar, encaixar, girado, medido };
 })();
 /* ---------------------------------------------------------------
@@ -11195,6 +11203,105 @@ const Props = (() => {
       for (let i = 0; i < 5; i++) { const cor = ['#2a5a2a', '#5a2a1a', '#3a3a5a', '#7a6a2a', '#2a5a2a'][i]; c.save(); c.translate((hsh(s, i, 1) - 0.5) * R * 1.0, (hsh(s, i, 2) - 0.5) * R * 1.0); c.rotate(hsh(s, i, 3) * TAU);
         ret(c, -R * 0.32, -R * 0.12, R * 0.48, R * 0.24, R * 0.1, grad(c, 0, -R * 0.12, 0, R * 0.12, ['rgba(255,255,255,0.35)', cor]), R * 0.025); ret(c, -R * 0.32, -R * 0.12, R * 0.48, R * 0.24, R * 0.1, cor); ret(c, R * 0.14, -R * 0.05, R * 0.2, R * 0.1, R * 0.03, cor, R * 0.02); bola(c, -R * 0.15, -R * 0.05, R * 0.04, 'rgba(255,255,255,0.4)'); c.restore(); }
       bola(c, -R * 0.4, R * 0.35, R * 0.1, 'rgba(230,240,250,0.5)', R * 0.015);
+    },
+  });
+})();
+/* ---------------------------------------------------------------
+   6ci. AS VELAS DE COR E O POLE DANCE (lote 181).
+   · Em Luzes: a vela de cor (uma vela grossa no castiçal), o grupo de velas de cor (velas de alturas diferentes) e o
+     candelabro de cor. A cor da chama e a da luz mudam no painel do objeto (seção Luz: "Cor da chama"; a luz vai junto,
+     a não ser que se ligue "A luz numa cor diferente da chama"). A cor da cera e a do metal, na seção Cores.
+     Valem para todo objeto com fogo: a cor da chama é t.chamaCor, que o desenho de qualquer chama usa (06b, chama()).
+   · Na Casa noturna: a barra de pole dance (a barra de metal na base redonda) e o palco com a barra (o palco redondo, a
+     barra no meio e as luzinhas em volta).
+   --------------------------------------------------------------- */
+(() => {
+  const { caixa, linha, grad, radial, hsh, MAD, FER, chama, sombra } = Props.kit;
+  const { bola, oval, ret, seg, poli, brilho } = Props.kitT;
+  const reg = (id, def) => Props.registrar(id, def);
+  const CERAS = ['#efe6d0', '#b8283a', '#2a2a2e', '#6a3a9a', '#2a6a4a', '#d6a64a'];
+  // a cera e o metal: os do painel (Cores) ou, sem escolha, pela semente
+  const coresVela = (tk, s) => (tk && Array.isArray(tk.cores) && tk.cores.length === 2 ? tk.cores : [CERAS[s % CERAS.length], '#c99a3a']);
+  const escurece = (hx, f) => { const n = parseInt(String(hx).slice(1), 16); if (isNaN(n)) return hx; const c = [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => Math.round(v * (1 - f))); return `rgb(${c[0]},${c[1]},${c[2]})`; };
+  // o brilho da chama no chão, na cor da chama (ou no laranja de sempre)
+  const halo = (c, x, y, r) => { if (Props.kit.apagado()) return; brilho(c, x, y, r, Props.kit.chamaCor() || '#ffb050', 0.3); };
+  // uma vela vista de cima: o círculo da cera, a borda derretida, o pavio e a chama
+  function vela(c, x, y, r, cera, t, k, ang) {
+    bola(c, x + r * 0.25, y + r * 0.3, r * 1.05, 'rgba(0,0,0,0.25)');
+    bola(c, x, y, r, radial(c, x - r * 0.3, y - r * 0.3, r * 1.2, ['#ffffff', cera, escurece(cera, 0.35)]), r * 0.12);
+    for (let i = 0; i < 3; i++) { const a = hsh(k, i, 7) * TAU; oval(c, x + Math.cos(a) * r * 0.9, y + Math.sin(a) * r * 0.9, r * 0.22, r * 0.14, a, cera); }
+    bola(c, x, y, r * 0.12, '#2a2018');
+    chama(c, x, y, r * 1.4, t, k, ang);
+  }
+
+  reg('velaCor', {
+    n: 'Vela de cor', g: 'luz', size: 1, fogo: true, cores: true, luz: { bright: 1, dim: 3, c: '#ffcf80' }, tags: 'vela chama cor luz castical castiçal',
+    draw(c, R, t, s, ang, tk) {
+      const [cera, metal] = coresVela(tk, s);
+      sombra(c, R, 0.45, 0.45);
+      halo(c, 0, 0, R * 0.9);
+      bola(c, 0, 0, R * 0.42, radial(c, -R * 0.12, -R * 0.12, R * 0.45, ['#fff2c0', metal, escurece(metal, 0.45)]), R * 0.035);
+      seg(c, R * 0.35, R * 0.1, R * 0.62, R * 0.32, R * 0.07, metal);
+      vela(c, 0, 0, R * 0.22, cera, t, s, ang);
+    },
+  });
+  reg('velasCor', {
+    n: 'Grupo de velas de cor', g: 'luz', size: 1, fogo: true, cores: true, luz: { bright: 1.5, dim: 3.5, c: '#ffcf80' }, tags: 'velas chama cor altar luz',
+    draw(c, R, t, s, ang, tk) {
+      const [cera] = coresVela(tk, s);
+      halo(c, 0, 0, R * 1.0);
+      const pos = [[-R * 0.35, -R * 0.2, 0.2], [R * 0.3, -R * 0.3, 0.17], [R * 0.05, R * 0.25, 0.22], [-R * 0.4, R * 0.4, 0.14], [R * 0.45, R * 0.3, 0.13], [-R * 0.02, -R * 0.55, 0.12]];
+      for (let i = 0; i < pos.length; i++) { const [x, y, r] = pos[i]; vela(c, x, y, R * r, i % 2 ? cera : escurece(cera, 0.12), t, s + i, ang); }
+    },
+  });
+  reg('candelabroCor', {
+    n: 'Candelabro de cor', g: 'luz', size: 1, fogo: true, cores: true, luz: { bright: 2, dim: 4, c: '#ffcf80' }, tags: 'candelabro velas chama cor luz',
+    draw(c, R, t, s, ang, tk) {
+      const [cera, metal] = coresVela(tk, s);
+      sombra(c, R, 0.6, 0.6);
+      halo(c, 0, 0, R * 1.0);
+      c.strokeStyle = metal; c.lineWidth = R * 0.06;
+      for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * TAU / 5; c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(Math.cos(a + 0.4) * R * 0.3, Math.sin(a + 0.4) * R * 0.3, Math.cos(a) * R * 0.6, Math.sin(a) * R * 0.6); c.stroke(); }
+      bola(c, 0, 0, R * 0.17, radial(c, -R * 0.05, -R * 0.05, R * 0.2, ['#fff2c0', metal, escurece(metal, 0.45)]), R * 0.025);
+      for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * TAU / 5, x = Math.cos(a) * R * 0.6, y = Math.sin(a) * R * 0.6; bola(c, x, y, R * 0.13, metal, R * 0.02); vela(c, x, y, R * 0.09, cera, t, s + i, ang); }
+      vela(c, 0, 0, R * 0.1, cera, t, s + 9, ang);
+    },
+  });
+
+  /* ---- o pole dance ---- */
+  const CROMO = ['#ffffff', '#d8dce4', '#8a909c', '#4a505a'];
+  function barra(c, x, y, r) {
+    bola(c, x + r * 0.6, y + r * 0.7, r * 1.1, 'rgba(0,0,0,0.35)');
+    bola(c, x, y, r, radial(c, x - r * 0.35, y - r * 0.35, r * 1.2, CROMO), r * 0.12);
+    bola(c, x - r * 0.3, y - r * 0.3, r * 0.25, 'rgba(255,255,255,0.9)');
+  }
+  reg('poleBarra', {
+    n: 'Barra de pole dance', g: 'noturna', size: 1, tags: 'pole dance barra danca dança palco show',
+    draw(c, R) {
+      sombra(c, R, 0.62, 0.62);
+      bola(c, 0, 0, R * 0.58, radial(c, -R * 0.15, -R * 0.15, R * 0.6, ['#5a5e68', '#2a2e36', '#14161c']), R * 0.04);
+      c.strokeStyle = 'rgba(220,225,235,0.5)'; c.lineWidth = R * 0.025; c.beginPath(); c.arc(0, 0, R * 0.45, 0, TAU); c.stroke();
+      for (let i = 0; i < 4; i++) { const a = i * TAU / 4 + 0.6; bola(c, Math.cos(a) * R * 0.5, Math.sin(a) * R * 0.5, R * 0.035, '#8a909c'); }
+      barra(c, 0, 0, R * 0.13);
+    },
+  });
+  reg('palcoPole', {
+    n: 'Palco com a barra', g: 'noturna', size: 2, vivo: true, calma: true, luz: { bright: 1, dim: 3, c: '#ff6ab8' }, tags: 'pole dance palco barra danca dança show luzes',
+    draw(c, R, t, s, ang, tk) {
+      sombra(c, R, 0.95, 0.95);
+      // a cor das luzinhas: a "Cor da luz" do painel (a luz que o palco joga no mapa)
+      const lc = tk && tk.light && /^#[0-9a-f]{6}$/i.test(tk.light.c || '') ? tk.light.c : '', cor = lc || ['#ff6ab8', '#a87aff', '#ff4a4a'][s % 3];
+      bola(c, 0, 0, R * 0.92, radial(c, -R * 0.2, -R * 0.25, R, ['#4a4a56', '#24242e', '#121218']), R * 0.04);
+      if (!Props.kit.apagado()) brilho(c, 0, 0, R * 0.8, cor.length === 7 ? cor : '#ff6ab8', 0.28 + 0.08 * Math.sin(t * 1.5));
+      c.strokeStyle = 'rgba(255,255,255,0.12)'; c.lineWidth = R * 0.015; for (const r of [0.35, 0.6]) { c.beginPath(); c.arc(0, 0, R * r, 0, TAU); c.stroke(); }
+      c.strokeStyle = '#c9a24a'; c.lineWidth = R * 0.04; c.beginPath(); c.arc(0, 0, R * 0.86, 0, TAU); c.stroke();
+      // as luzinhas em volta: acendem em roda
+      for (let i = 0; i < 16; i++) {
+        const a = i / 16 * TAU, x = Math.cos(a) * R * 0.86, y = Math.sin(a) * R * 0.86, on = Props.kit.apagado() ? 0 : 0.5 + 0.5 * Math.sin(t * 3 - i * 0.8);
+        bola(c, x, y, R * 0.04, '#3a3a40');
+        if (on > 0.05) { c.save(); c.globalAlpha = on; bola(c, x, y, R * 0.045, '#fff4d0'); c.restore(); brilho(c, x, y, R * 0.12, cor.length === 7 ? cor : '#ff6ab8', on * 0.5); }
+      }
+      barra(c, 0, 0, R * 0.08);
     },
   });
 })();
@@ -23736,6 +23843,19 @@ const UI = (() => {
       luz ? sec('s-propluz', 'Luz', true,
         toggle('pr-luz', luz.on, v => all({ light: Object.assign({}, luz, { on: v }) }, v ? 'Acender' : 'Apagar'), 'Acesa'),
         toggle('pr-fl', !!luz.fl, v => all({ light: Object.assign({}, luz, v ? { fl: true } : { fl: undefined }) }, 'Luz que tremula'), 'Tremula, como chama'),
+        // (lote 181) as cores: a da chama (os que têm fogo) e a da luz que ela joga no mapa; juntas, a não ser que se separe
+        ...(() => {
+          const ehFogo = !!def.fogo, solta = !ehFogo || !!t.luzSolta, corLuz = /^#[0-9a-f]{6}$/i.test(luz.c || '') ? luz.c : (def.luz.c || '#ffcf80');
+          const corChama = /^#[0-9a-f]{6}$/i.test(t.chamaCor || '') ? t.chamaCor : '#ff8a2a';
+          const mudou = t.chamaCor || t.luzSolta || (luz.c || '') !== (def.luz.c || '');
+          return [
+            ehFogo || solta ? h('div', { class: 'grid2' },
+              ehFogo ? field('Cor da chama', inColor('pr-chama', corChama, v => { const x = Store.get('tokens', t.id) || t; Store.upd('tokens', t.id, Object.assign({ chamaCor: v }, x.luzSolta ? {} : { light: Object.assign({}, x.light, { c: v }) })); }, 'Cor da chama')) : null,
+              solta ? field('Cor da luz', inColor('pr-luzcor', corLuz, v => { const x = Store.get('tokens', t.id) || t; Store.upd('tokens', t.id, { light: Object.assign({}, x.light, { c: v }) }); }, 'Cor da luz')) : null) : null,
+            ehFogo ? toggle('pr-luzsolta', !!t.luzSolta, v => all(v ? { luzSolta: true } : { luzSolta: undefined, light: Object.assign({}, luz, { c: t.chamaCor || def.luz.c }) }, v ? 'Luz de outra cor' : 'Luz da cor da chama'), 'A luz numa cor diferente da chama') : null,
+            mudou ? h('div', { class: 'row' }, btn('Voltar às cores de sempre', () => all({ chamaCor: undefined, luzSolta: undefined, light: Object.assign({}, luz, { c: def.luz.c }) }, 'Cores da luz'), { kind: 'small', id: 'pr-luzcor-0' })) : null,
+          ];
+        })(),
         h('div', { class: 'grid2' },
           field('Luz forte (q)', inNum('pr-lb', luz.bright, v => all({ light: Object.assign({}, luz, { bright: Math.min(v, luz.dim) }) }), { min: 0, max: 60, step: 0.5 })),
           field('Até (q)', inNum('pr-ld', luz.dim, v => all({ light: Object.assign({}, luz, { dim: v, bright: Math.min(luz.bright, v) }) }), { min: 0.5, max: 60, step: 0.5 }))),

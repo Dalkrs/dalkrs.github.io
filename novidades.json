@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.17-07",
+      "data": "2026-11-17",
+      "titulo": "Velas de cor e pole dance",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: velas de cor em Luzes (a vela, o grupo de velas e o candelabro). A cor da cera e do metal ficam em Cores, no painel do objeto.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: todo objeto com fogo (velas, tocha, lareira, fogueira…) ganhou a “Cor da chama”, e a luz que ele joga no mapa muda junto. Uma chave deixa a luz numa cor diferente. Os objetos acesos sem fogo ganharam a “Cor da luz”.", "mestre": true },
+        { "tipo": "novo", "texto": "Cenas: na Casa noturna, a barra de pole dance e o palco com a barra (as luzinhas em volta tomam a cor da luz).", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.17-06",
       "data": "2026-11-17",
       "titulo": "A casa noturna nas Cenas",

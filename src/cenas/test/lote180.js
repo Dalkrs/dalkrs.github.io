@@ -13,7 +13,7 @@ const ok = (c, m) => { n++; if (!c) { fails++; console.log('FALHOU:', m); } };
     const sec = __tc.ObjPainel.secoes().find(s => s[2].includes('noturna'));
     return { n: ids.length, erros, sec: sec && sec[0], busca: __tc.ObjPainel.achar('bordel').length, madame: __tc.ObjPainel.achar('madame')[0], lanterna: __tc.ObjPainel.achar('lanterna vermelha')[0] };
   });
-  ok(r1.n === 20 && !r1.erros.length, 'os 20 objetos da casa noturna desenham sem erro: ' + r1.erros.join(','));
+  ok(r1.n >= 20 && !r1.erros.length,      /* (lote 181: mais o pole dance) */ 'os 20 objetos da casa noturna desenham sem erro: ' + r1.erros.join(','));
   ok(r1.sec === 'cidade', 'a categoria fica em Cidade e comércio');
   ok(r1.busca >= 15 && r1.madame === 'livroCaixa' && r1.lanterna === 'lanternaVermelha', 'a busca: "bordel" acha a categoria; "madame" acha o livro-caixa; "lanterna vermelha" acha a lanterna');
   // (3) o tema
@@ -36,7 +36,7 @@ const ok = (c, m) => { n++; if (!c) { fails++; console.log('FALHOU:', m); } };
   await p.keyboard.press('j'); await w(400);
   await p.locator('#o-osec .seg-b', { hasText: 'Cidade e comércio' }).click(); await w(200);
   await p.locator('#o-oc .seg-b', { hasText: 'Casa noturna' }).click(); await w(200);
-  ok(await p.locator('#o-objs .o-obj').count() === 20, 'no painel, a Casa noturna com os 20');
+  ok(await p.locator('#o-objs .o-obj').count() === 22, 'no painel, a Casa noturna com os 22 (lote 181: a barra e o palco do pole dance)');
   ok(!t.errs.filter(e => !/favicon|willReadFrequently/.test(e)).length, 'sem erros na página: ' + t.errs.slice(0, 3).join(' | '));
   console.log(`lote180: ${n - fails}/${n} ok`);
   await t.close();

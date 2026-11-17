@@ -33,6 +33,11 @@ const Props = (() => {
      tamanho. k separa as chamas de um mesmo objeto, para não tremularem juntas. */
   // (lote 47b) com a luz do objeto apagada, a chama some e as brasas ficam escuras (Props.draw liga e desliga)
   let APAGADO = false, EST = '';
+  // (lote 181) a cor da chama do objeto que está sendo desenhado (t.chamaCor, '#rrggbb'); vazio é o fogo de sempre
+  let CHAMA = '';
+  const rgbDe = hx => { const m = /^#?([0-9a-f]{6})$/i.exec(String(hx || '')); if (!m) return null; const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const mistura = (a, b, f) => a.map((v, i) => Math.round(v + (b[i] - v) * f));
+  const css = (c, al) => al == null ? `rgb(${c[0]},${c[1]},${c[2]})` : `rgba(${c[0]},${c[1]},${c[2]},${al})`;
   function chama(c, x, y, a, t, k, ang) {
     if (APAGADO) return;
     const f = Math.sin(t * 9.3 + k * 3.7) * 0.5 + Math.sin(t * 14.1 + k * 1.9) * 0.3 + Math.sin(t * 4.7 + k * 5.3) * 0.2;
@@ -40,19 +45,21 @@ const Props = (() => {
     c.save();
     c.translate(x, y); c.rotate(-ang);
     c.globalCompositeOperation = 'lighter';
-    c.fillStyle = radial(c, 0, -alt * 0.35, alt * 1.25, ['rgba(255,190,90,0.42)', 'rgba(255,140,40,0.14)', 'rgba(255,110,20,0)']);
+    const cc = CHAMA && rgbDe(CHAMA);      // (lote 181) a chama de outra cor: o mesmo desenho, nos tons da cor escolhida
+    c.fillStyle = cc ? radial(c, 0, -alt * 0.35, alt * 1.25, [css(mistura(cc, [255, 255, 255], 0.3), 0.42), css(cc, 0.14), css(cc, 0)]) : radial(c, 0, -alt * 0.35, alt * 1.25, ['rgba(255,190,90,0.42)', 'rgba(255,140,40,0.14)', 'rgba(255,110,20,0)']);
     c.beginPath(); c.arc(0, -alt * 0.35, alt * 1.25, 0, TAU); c.fill();
     c.globalCompositeOperation = 'source-over';
     const gota = (w, hh, sw) => { c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(-w, -hh * 0.15, -w * 0.7, -hh * 0.62, sw, -hh); c.bezierCurveTo(w * 0.7, -hh * 0.62, w, -hh * 0.15, 0, 0); c.closePath(); };
-    c.fillStyle = grad(c, 0, 0, 0, -alt, ['#e2380f', '#ff7a1a', '#ffb347']);
+    c.fillStyle = cc ? grad(c, 0, 0, 0, -alt, [css(mistura(cc, [0, 0, 0], 0.35)), css(cc), css(mistura(cc, [255, 255, 255], 0.35))]) : grad(c, 0, 0, 0, -alt, ['#e2380f', '#ff7a1a', '#ffb347']);
     gota(larg, alt, bal); c.fill();
-    c.fillStyle = grad(c, 0, 0, 0, -alt * 0.6, ['#ffc95e', '#fff4c6']);
+    c.fillStyle = cc ? grad(c, 0, 0, 0, -alt * 0.6, [css(mistura(cc, [255, 255, 255], 0.55)), css(mistura(cc, [255, 255, 255], 0.88))]) : grad(c, 0, 0, 0, -alt * 0.6, ['#ffc95e', '#fff4c6']);
     gota(larg * 0.5, alt * 0.6, bal * 0.6); c.fill();
     c.restore();
   }
   function brasa(c, x, y, r, t, k) {
     if (APAGADO) { c.fillStyle = 'rgba(40,30,26,0.85)'; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); return; }
-    const p = 0.6 + 0.4 * Math.sin(t * (2 + hsh(k, 1, 3) * 3) + k * 2.1);
+    const p = 0.6 + 0.4 * Math.sin(t * (2 + hsh(k, 1, 3) * 3) + k * 2.1), cc = CHAMA && rgbDe(CHAMA);
+    if (cc) { c.fillStyle = css(mistura(cc, [255, 255, 255], 0.2 * p), 0.55 + 0.45 * p); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); return; }      // (lote 181)
     c.fillStyle = `rgba(255,${Math.round(90 + 90 * p)},${Math.round(30 * p)},${0.55 + 0.45 * p})`;
     c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
   }
@@ -1526,8 +1533,9 @@ const Props = (() => {
     c.save();
     c.translate(cx, cy); c.rotate(ang);
     APAGADO = !!(def.luz && t.light && t.light.on === false);
+    CHAMA = t && typeof t.chamaCor === 'string' ? t.chamaCor : '';      // (lote 181)
     EST = estado(t);
-    try { def.draw(c, R, tm, semente, ang, t, B); } finally { APAGADO = false; EST = ''; }
+    try { def.draw(c, R, tm, semente, ang, t, B); } finally { APAGADO = false; EST = ''; CHAMA = ''; }
     c.restore();
   }
   /* (lote 121) Desenha o objeto id num canvas qualquer (as prévias dos geradores): o canto (x, y) e as medidas em
@@ -1635,6 +1643,6 @@ const Props = (() => {
   // (lote 47b) um objeto novo no catálogo (06b2: o mercado, o templo, a forja, o oriental, os portões)
   function registrar(id, def) { P[id] = def; if (!ORDER.includes(id)) ORDER.push(id); }
   function grupo(id, n) { if (!G.some(g => g.id === id)) G.push({ id, n }); }
-  const kit = { caixa, sombra, linha, grad, radial, hsh, MAD, PED, FER, chama, brasa, pedrinha, tabua, folhas, osso, cranio, tom, apagado: () => APAGADO, est: () => EST };
+  const kit = { caixa, sombra, linha, grad, radial, hsh, MAD, PED, FER, chama, brasa, pedrinha, tabua, folhas, osso, cranio, tom, apagado: () => APAGADO, est: () => EST, chamaCor: () => CHAMA };
   return { P, G, ORDER, draw, thumb, isProp, temFogo, novo, coresDe, estados, estado, registrar, grupo, kit, desenhar, encaixar, girado, medido };
 })();
