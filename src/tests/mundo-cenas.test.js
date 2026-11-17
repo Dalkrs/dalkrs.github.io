@@ -10,7 +10,7 @@
 //     pedaços) e a Região livre já preenchida com ele (o bioma, a água, o caminho); no mar, o hexágono sem a Região;
 //   · o marcador: o lugar do ícone (cidade, vila, ponte, floresta, montanha, porto; as ruínas: ruína, templo, torre, castelo,
 //     masmorra, caverna, mina), o terreno da vila e o nome; o atalho para a
-//     cena que vai nascer (um passo de Desfazer); outros ícones e fora da casca, sem o botão;
+//     cena que vai nascer (um passo de Desfazer); fora da casca, sem o botão; (lote 176) todo ícone e o evento geram;
 //   · (lote 18) a arena do chefe: o ninho, a ruína e a masmorra oferecem "Gerar a arena do chefe…" (a aba Arena);
 //   · (lote 14, parte 14c) o marcador leva o hexágono dele (menos a masmorra), com o cerco do próprio lugar marcado; nas
 //     Cenas, a janela abre no lugar com os arredores (o Médio) e o bloco do hexágono.
@@ -70,6 +70,9 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
       mk('Areia Alta', 12, 'cidade'); mk('Vila do Campo', 6, 'vila'); mk('Vila Fria', 9, 'vila'); mk('Ponte Velha', 7, 'ponte'); mk('Pico Azul', 8, 'montanha'); mk('Forte', 3, 'castelo'); mk('', 5, 'vila'); mk('Porto Azul', 13, 'porto');
       // (lote 7, parte 4b-3) as ruínas
       mk('Templo Velho', 1, 'templo'); mk('Torre Negra', 9, 'torre'); mk('Ruína', 2, 'ruina'); mk('Covil', 4, 'caverna'); mk('Mina Funda', 13, 'mina'); mk('Masmorra', 10, 'masmorra'); mk('Tesouro', 3, 'tesouro');
+      // (lote 176) todo ícone gera: o acampamento (a aba Acampamento inimigo) e o evento dos bandidos
+      mk('Acampamento dos Bandidos', 11, 'acampamento');
+      { const p = c(15, 14), o = N.objNovo('e', { x: p.x, y: p.y, tipo: 'bandidos', r: 20, ini: m.cal.dia, nome: 'Bando' }); m.objs.push(o); out['e:bandidos'] = o.id; }
       { const o = N.objNovo('m', { x: 120, y: 165, ic: 'floresta', nome: 'Mata Escura' }); m.objs.push(o); out['m:floresta:1'] = o.id; }       // (dentro do Condado)
       // os eventos de hoje: cada um sobre um grupo
       const ev = (tipo, nome, extra) => { const g = m.objs.find(o => o.id === out[nome]); m.objs.push(Object.assign(N.objNovo('e', { x: g.x, y: g.y, tipo, r: 30, ini: m.cal.dia }), extra || {})); };
@@ -266,7 +269,28 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     await CF.evaluate(() => __tc.UI.closeModal());
     await P.evaluate(() => document.getElementById('cenasF2').remove());
   }
-  ok(await lugar('m:tesouro:3') === null, 'um ícone que não é lugar gerável (o tesouro) não tem o botão');
+  { // (lote 176) todo ícone tem o botão: o tesouro vira um encontro no chão dele; o acampamento e os bandidos, o acampamento inimigo
+    const te = await lugar('m:tesouro:3'), ac = await lugar('m:acampamento:11'), bd = await lugar('e:bandidos');
+    ok(te && te.gerar.lugar === 'encontro' && te.gerar.op.terreno && te.liga && te.liga.t === 'cena', 'o tesouro: um encontro no chão do hexágono, ligado à cena: ' + j(te && te.gerar.op));
+    ok(ac && ac.gerar.lugar === 'acampamento' && ac.gerar.nome === 'Acampamento dos Bandidos' && ac.liga && ac.liga.t === 'cena', 'o acampamento: a aba Acampamento inimigo, com o nome: ' + j(ac && ac.gerar));
+    ok(bd && bd.gerar.lugar === 'acampamento' && bd.liga && bd.liga.t === 'cena', 'o evento "Bandidos na estrada" também gera e fica ligado: ' + j(bd && bd.gerar));
+    await selecionar(ids['e:bandidos']);
+    ok(await pane(`[data-k="o:${ids['e:bandidos']}:liga"]`).count() === 1, 'o evento tem o Atalho, para ligar a outra cena ou mapa');
+    // de ponta a ponta: o acampamento abre a janela das Cenas na aba Acampamento, e o tesouro no Encontro
+    await P.evaluate(() => { const f = document.createElement('iframe'); f.id = 'cenasF3'; f.src = '/cenas/?debug'; f.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2'; document.body.append(f); });
+    let CF = null;
+    for (let i = 0; i < 100 && !CF; i++) { CF = P.frames().find(f => /\/cenas\//.test(f.url())) || null; if (!CF) await espera(100); }
+    await CF.waitForFunction(() => window.__tc && __tc.Gerador && __tc.Store && __tc.Store.S, null, { timeout: 20000 });
+    await espera(800);
+    for (const [g, quer] of [[ac, 'acampamento'], [te, 'encontro']]) {
+      await P.evaluate(alvo => document.getElementById('cenasF3').contentWindow.postMessage({ tinycats: { t: 'alvo', alvo } }, location.origin), { cena: g.cena, gerar: g.gerar });
+      await CF.waitForFunction(() => !!__tc.Gerador.vivo(), null, { timeout: 15000 }).catch(() => null);
+      const na = await CF.evaluate(() => { const V = __tc.Gerador.vivo(); return V ? V.lugar : null; });
+      ok(na === quer, 'nas Cenas, a janela abre em: ' + na + ' (quer ' + quer + ')');
+      await CF.evaluate(() => __tc.UI.closeModal()); await espera(300);
+    }
+    await P.evaluate(() => document.getElementById('cenasF3').remove());
+  }
   // ligado a uma cena que ainda não existe: o botão de seguir oferece gerar de novo, com o mesmo id
   await selecionar(ids['m:vila:6']);
   const seguir = pane(`[data-k="o:${ids['m:vila:6']}:seguir"]`);

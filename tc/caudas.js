@@ -10,6 +10,8 @@
 
    A biblioteca (lote 174): todo poder guardado fica também em estado.pb.kitsune.s.bib (os poderes que ela já
    guardou, sem repetir yokai + nome). A janela de guardar junta a biblioteca de todas as fichas que a pessoa vê.
+   (lote 176) E a biblioteca do mestre (fichas:segredos, kitBib): recolhe os poderes de todas as fichas e fica mesmo se
+   a ficha for apagada.
 
    Onde fica: estado.pb.kitsune.s.caudas da ficha — o mesmo lugar que o painel de barras das Cenas usa, para a ficha e
    as Cenas mostrarem a mesma coisa — e o podre da barra Caudas em estado.podre.ba_a_kitsune (quantas caudas podres).
@@ -91,7 +93,7 @@
     return e;
   }
 
-  const API = { N, REF, LIM, norm, daFicha, naFicha, comPodre, mudar, comPoder, podres, textoUso, bibDaFicha, juntar, semDaBib, chave };
+  const API = { N, REF, LIM, norm, daFicha, naFicha, comPodre, mudar, comPoder, podres, textoUso, bibDaFicha, normBib, juntar, semDaBib, chave };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else { root.TC = root.TC || {}; root.TC.caudas = API; }
 })(typeof window !== 'undefined' ? window : globalThis);

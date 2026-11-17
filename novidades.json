@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.17-02",
+      "data": "2026-11-17",
+      "titulo": "Todo ícone gera um lugar",
+      "itens": [
+        { "tipo": "melhorou", "mestre": true, "texto": "Mapa-múndi: agora todo marcador tem \"Gerar este lugar…\". O acampamento abre o Acampamento inimigo, o forte abre a Fortaleza, a estalagem abre uma taverna e o mercado abre uma loja. A fazenda, a pedreira, a serraria e o farol abrem um encontro que combina, e os outros (tesouro, perigo, mistério, bandeira, portal) abrem um encontro no chão do hexágono." },
+        { "tipo": "novo", "mestre": true, "texto": "Mapa-múndi: os eventos também ganharam o Atalho (para ligar a uma cena, a outro mapa ou ao acampamento) e o \"Gerar este lugar…\". Os Bandidos na estrada abrem o Acampamento inimigo." },
+        { "tipo": "melhorou", "mestre": true, "texto": "Kitsune: a biblioteca de poderes de yokai agora fica também com o mestre. O poder continua lá mesmo se a ficha que o guardou for apagada." }
+      ]
+    },
+    {
       "versao": "2026.11.17-01",
       "data": "2026-11-17",
       "titulo": "Desvantagens e vícios",

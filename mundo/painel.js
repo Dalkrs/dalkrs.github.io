@@ -1558,7 +1558,7 @@
     if ((o.k === 'm' || o.k === 'g') && CP()) { const q = CP().secQuemEsta(o, v); if (q) out.push(q); }    // (lote 11) quem está aqui (os conhecidos)
     const txt = (o.txt || '').trim();
     out.push(txt ? h('p', { class: 'publico', text: txt }) : nota('Ninguém sabe muito sobre isto ainda.'));
-    out.push(linha(o.k === 'm' && o.liga ? botaoLiga(o) : null, o.k === 'g' ? botaoAcampar() : null, botao('Centralizar', () => irPara(o.id), { k: 'ler:centrar' })));
+    out.push(linha((o.k === 'm' || o.k === 'e') && o.liga ? botaoLiga(o) : null, o.k === 'g' ? botaoAcampar() : null, botao('Centralizar', () => irPara(o.id), { k: 'ler:centrar' })));
     return out;
   }
 
@@ -1712,7 +1712,7 @@
         { dica: 'Para onde este marcador leva: dois cliques nele (ou o botão "Abrir") abrem a cena, o outro mapa ou o acampamento.' }),
       o.liga ? linha(botaoLiga(o)) : null,
       // (lote 7, parte 4b) sem atalho, o lugar que o ícone é (cidade, vila, ponte, floresta, montanha) pode ser gerado
-      !o.liga && naCasca() && LUGAR_DO_ICONE[o.ic] ? h('div', { class: 'row' }, botao('Gerar este lugar…', () => gerarLugar(o), { c: 'sm', k: 'o:' + id + ':gerar', title: 'Abre a janela "Gerar um lugar" das Cenas, já preenchida (o terreno, a hora, o clima e o estilo daqui); ao criar, este marcador fica ligado à cena' })) : null,
+      !o.liga && naCasca() && lugarDoIcone(o) ? h('div', { class: 'row' }, botao('Gerar este lugar…', () => gerarLugar(o), { c: 'sm', k: 'o:' + id + ':gerar', title: 'Abre a janela "Gerar um lugar" das Cenas, já preenchida (o terreno, a hora, o clima e o estilo daqui); ao criar, este marcador fica ligado à cena' })) : null,
       // (lote 18) o ninho, a ruína e a masmorra: a arena do chefe (uma cena à parte; o marcador não muda)
       naCasca() && ARENA_DO_ICONE[o.ic] && App.podeEditar() ? h('div', { class: 'row' }, botao('Gerar a arena do chefe…', () => gerarArena(o), { c: 'sm', k: 'o:' + id + ':arena', title: 'Abre a janela "Gerar um lugar" das Cenas na aba Arena: a luta com o chefe deste lugar, com as fases prontas' })) : null);
   }
@@ -1870,7 +1870,7 @@
   }
   const textoLiga = l => (l.t === 'acampamento' ? 'Ir para o acampamento' : l.t === 'cena' ? 'Abrir a cena' + (l.nome ? ' "' + l.nome + '"' : '') : 'Abrir o mapa' + (l.nome ? ' "' + l.nome + '"' : ''));
   // (lote 7, parte 4b) o marcador ligado a uma cena que ainda não existe (o mestre fechou o gerador sem criar): gera de novo
-  const aGerar = o => !!(o && o.liga && o.liga.t === 'cena' && LUGAR_DO_ICONE[o.ic] && App.podeEditar() && !cenasConhecidas().some(c => c.id === o.liga.id));
+  const aGerar = o => !!(o && o.liga && o.liga.t === 'cena' && lugarDoIcone(o) && App.podeEditar() && !cenasConhecidas().some(c => c.id === o.liga.id));
   function seguirLiga(o) {
     const l = o && o.liga;
     if (!l) return false;
@@ -1891,7 +1891,26 @@
     ruina: { lugar: 'ruinas' }, templo: { lugar: 'ruinas', op: { tipo: 'templo' } }, torre: { lugar: 'ruinas', op: { tipo: 'torre' } }, castelo: { lugar: 'castelo' }, cemiterio: { lugar: 'cemiterio' },      // (lote 49) o castelo e o cemitério têm aba própria
    
     masmorra: { lugar: 'masmorra' }, caverna: { lugar: 'ruinas', op: { tipo: 'circulo' } }, mina: { lugar: 'ruinas', op: { tipo: 'mina' } },
-    ninho: { lugar: 'ruinas', op: { tipo: 'circulo' } } };     // (lote 17) o ninho de monstro: a boca da caverna, com o covil lá embaixo
+    ninho: { lugar: 'ruinas', op: { tipo: 'circulo' } },     // (lote 17) o ninho de monstro: a boca da caverna, com o covil lá embaixo
+    // (lote 176) os outros ícones também geram: o acampamento inimigo e a fortaleza (as abas de furtividade), a taverna
+    // e a loja (o Interior), e os encontros que combinam com o ícone
+    acampamento: { lugar: 'acampamento' }, forte: { lugar: 'fortaleza' },
+    estalagem: { lugar: 'interior', op: { tipo: 'taverna' } }, mercado: { lugar: 'interior', op: { tipo: 'loja' } },
+    fazenda: { lugar: 'encontro', op: { terreno: 'campo', situacao: 'moinho' } }, pedreira: { lugar: 'encontro', op: { terreno: 'campo', situacao: 'morro' } },
+    serraria: { lugar: 'encontro', op: { terreno: 'floresta', situacao: 'clareira' } }, farol: { lugar: 'encontro', op: { terreno: 'costa', situacao: 'falesia' } } };
+  // (lote 176) os eventos: o lugar que combina (os outros, um encontro no chão do hexágono)
+  const LUGAR_DO_EVENTO = { bandidos: { lugar: 'acampamento' }, caravana: { lugar: 'encontro', op: { terreno: 'estrada', situacao: 'carroca' } },
+    ponte: { lugar: 'encontro', op: { terreno: 'estrada', situacao: 'ponte' } }, cerco: { lugar: 'castelo', op: { estado: 'sitiado' } },
+    dragao: { lugar: 'mundo116', op: { tipo: 'ninho' } }, seita: { lugar: 'mundo116', op: { tipo: 'templo', culto: 'sombra' } } };
+  /* (lote 176) Todo ícone gera um lugar: o que não tem um lugar próprio (o tesouro, o perigo, o mistério, a bandeira, o
+     portal…) vira um encontro no chão do hexágono dele. */
+  function lugarDoIcone(o) {
+    if (!o || (o.k !== 'm' && o.k !== 'e')) return null;
+    if (o.k === 'm' && LUGAR_DO_ICONE[o.ic]) return LUGAR_DO_ICONE[o.ic];
+    if (o.k === 'e' && LUGAR_DO_EVENTO[o.tipo]) return LUGAR_DO_EVENTO[o.tipo];
+    const m = App.mapa, ter = m ? terrenoNoPonto(m, o.x, o.y) : null, enc = ENC_DA_TEX[(ter && ter.tex) || ''] || ['campo'];
+    return { lugar: 'encontro', op: Object.assign({ terreno: enc[0] }, enc[1] ? { situacao: enc[1] } : null) };
+  }     // (lote 17) o ninho de monstro: a boca da caverna, com o covil lá embaixo
   // (o desenho do hexágono → o terreno do encontro e, às vezes, a situação; lote 13: a savana e a tundra nos terrenos delas)
   const ENC_DA_TEX = { mato: ['campo'], liso: ['campo'], arvores: ['floresta'], colinas: ['campo', 'morro'], montes: ['montanha'], juncos: ['pantano'], areia: ['deserto'], neve: ['neve'], ondas: ['agua', 'navio'], pedras: ['montanha'],
     lavoura: ['campo', 'plantacao'], ruinas: ['campo'], lava: ['lava'], cristais: ['cristais'], selva: ['selva'], savana: ['savana'], tundra: ['tundra'], corrompida: ['corrompida'],
@@ -1984,12 +2003,12 @@
     return TC.ponte.ir('cenas', { gerar: Object.assign({ lugar: 'arena', op: { tipo } }, comum(m, o.x, o.y), nome ? { nome: nome + ' — a arena do chefe' } : null) });
   }
   function gerarLugar(o) {
-    const m = App.mapa, def = LUGAR_DO_ICONE[o.ic];
+    const m = App.mapa, def = lugarDoIcone(o);
     if (!m || !def || !naCasca() || !App.podeEditar()) return false;
     let id = o.liga && o.liga.t === 'cena' ? o.liga.id : null;
     if (!id) {
       id = 'cena_mundo_' + Math.random().toString(36).slice(2, 10);
-      if (mudarObj(o.id, 'ligar o marcador à cena gerada', x => { x.liga = { t: 'cena', id, nome: (x.nome || '').trim() }; }) === false) return false;
+      if (mudarObj(o.id, o.k === 'e' ? 'ligar o evento à cena gerada' : 'ligar o marcador à cena gerada', x => { x.liga = { t: 'cena', id, nome: (x.nome || '').trim() }; }) === false) return false;
     }
     const op = Object.assign({}, def.op || null);
     if (def.lugar === 'encontro') op.caminho = 'nenhum';
@@ -2657,6 +2676,13 @@
     out.push(h('p', { class: 'status' }, h('span', { class: 'tag' + (st === 'acontecendo hoje' ? ' alianca' : ''), text: st }),
       st === 'acontecendo hoje' ? ' raio hoje: ' + (ke ? fmt(cubos(m, r), 1) + ' cubos' : fmt(r, 0) + ' unidades') : '',
       o.fim != null ? ' · termina em ' + dataTxt(m, o.fim) : ''));
+    // (lote 176) o atalho e o "Gerar este lugar…", como nos marcadores
+    if (App.podeEditar()) {
+      out.push(campoEscolha('o:' + id + ':liga', 'Atalho', valorLiga(o.liga), opcoesLiga(o), grava('mudar o atalho', (x, v) => { x.liga = ligaDe(v); }),
+        { dica: 'Para onde este evento leva: dois cliques nele (ou o botão "Abrir") abrem a cena, o outro mapa ou o acampamento.' }));
+      if (o.liga) out.push(linha(botaoLiga(o)));
+      else if (naCasca() && lugarDoIcone(o)) out.push(h('div', { class: 'row' }, botao('Gerar este lugar…', () => gerarLugar(o), { c: 'sm', k: 'o:' + id + ':gerar', title: 'Abre a janela "Gerar um lugar" das Cenas, já preenchida; o evento fica ligado à cena que nascer' })));
+    }
     return [secao('Evento', out), secPeso(o, m, grava), secAndaEvento(o, m)];
   }
   /* (lote 7, parte 5a) O que o evento pesa na viagem: os cubos a mais por hexágono dentro dele, a chance de encontro a

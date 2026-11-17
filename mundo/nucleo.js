@@ -2421,6 +2421,8 @@
         if (peso) ev.peso = peso;
         const lua = idRef(o.lua);                       // (lote 126) a horda de uma lua: de qual lua ela veio
         if (lua) ev.lua = lua;
+        const lg = normLiga(o.liga);                    // (lote 176) o evento também leva a uma cena, a um mapa ou ao acampamento
+        if (lg) ev.liga = lg;
         // (lote 7, parte 5b) o evento que anda: o centro dele vai pela rota, com o tempo do mapa, enquanto acontece
         const rota = idRef(o.rota);
         if (rota) {

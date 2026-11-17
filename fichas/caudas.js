@@ -5,6 +5,7 @@
    pode ser queimada até o poder ser usado (na barra Caudas, ela fica podre). "Usar": o poder sai e a cauda volta a
    servir. As Cenas mostram o mesmo no painel de barras (TC.painelBarras, a barra "kitsune").
    (lote 174) A biblioteca: todo poder guardado fica lembrado na ficha; a janela junta os de todas as fichas visíveis.
+   (lote 176) E fica com o mestre também (fichas:segredos, kitBib): não some se a ficha for apagada.
    A conta é de TC.caudas; o lugar é estado.pb.kitsune.s.caudas. */
 const FichasCaudas = (() => {
   'use strict';
@@ -29,6 +30,37 @@ const FichasCaudas = (() => {
     } catch (_) { return 9; }
   }
   const caudasDe = pc => C().daFicha(pc.estado);
+  /* (lote 176) A biblioteca do mestre: os poderes de todas as fichas ficam também com o mestre (fichas:segredos, kitBib;
+     fora de uma mesa, neste aparelho), e não somem se a ficha for apagada. Quem mestra recolhe os das fichas sempre que
+     abre o painel ou guarda um poder. */
+  const CHAVE_BIB = 'tc:kitBib';
+  const naMesa = () => !!(M() && M().ativo());
+  const fichas = () => (typeof S !== 'undefined' ? S.personagens || [] : []);
+  function bibDoMestre() {
+    if (!C()) return [];
+    if (naMesa()) return M().mestre() && S.segredos ? C().normBib(S.segredos.kitBib) : [];
+    try { return C().normBib(JSON.parse(localStorage.getItem(CHAVE_BIB) || '[]')); } catch (_) { return []; }
+  }
+  function porBibDoMestre(lista) {
+    const b = C().normBib(lista);
+    if (naMesa()) {
+      if (!M().mestre()) return;
+      const sg = S.segredos && typeof S.segredos === 'object' && !Array.isArray(S.segredos) ? S.segredos : (S.segredos = {});
+      if (b.length) sg.kitBib = b; else delete sg.kitBib;
+    } else { try { if (b.length) localStorage.setItem(CHAVE_BIB, JSON.stringify(b)); else localStorage.removeItem(CHAVE_BIB); } catch (_) { /* sem espaço */ } }
+  }
+  // junta na biblioteca do mestre os poderes que as fichas já guardaram → true se mudou (e grava)
+  function recolher() {
+    if (!C() || !mestre()) return false;
+    const antes = bibDoMestre(), novo = C().juntar([antes].concat(fichas().map(x => C().bibDaFicha(x.estado))));
+    const ch = l => JSON.stringify(l.map(C().chave).sort());
+    if (ch(novo) === ch(antes)) return false;
+    porBibDoMestre(novo);
+    if (naMesa() && typeof save === 'function') save();
+    return true;
+  }
+  // a biblioteca que a janela mostra: a do mestre (para quem mestra) e a das fichas que a pessoa vê
+  const bibToda = () => C().juntar([mestre() ? bibDoMestre() : []].concat(fichas().map(x => C().bibDaFicha(x.estado))));
   function gravar(pc, caudas) { pc.estado = C().naFicha(pc.estado, caudas); if (typeof save === 'function') save(); }
   function mexer(pc, op, aviso) {
     if (!C() || !pode(pc)) return;
@@ -65,7 +97,8 @@ const FichasCaudas = (() => {
     const livre = cs.slice(0, n).findIndex(c => !c.p);
     const opc = Array.from({ length: n }, (_, i) => `<option value="${i}"${i === (livre < 0 ? 0 : livre) ? ' selected' : ''}>Cauda ${i + 1}${cs[i].p ? ' (troca ' + e(cs[i].p.n || 'o poder') + ')' : ' (vazia)'}</option>`).join('');
     // (lote 174) a biblioteca: os poderes que as fichas visíveis já guardaram
-    const bib = C().juntar((typeof S !== 'undefined' ? S.personagens || [] : [pc]).map(x => C().bibDaFicha(x.estado)));
+    recolher();
+    const bib = bibToda();
     const linhaBib = (p, k) => `<div class="kbib"><button type="button" class="kbibp" data-kbib="${k}" title="Usar este poder"><b>${e(p.n || 'Poder')}</b>${p.y ? ` <small>de ${e(p.y)}</small>` : ''}${p.a ? ' <small>· apodrece</small>' : ''}${p.e ? `<span>${e(p.e)}</span>` : ''}</button></div>`;
     const { m, fechar } = ex.janela('Guardar o poder de um yokai', `
       <p class="hint" style="margin:0 0 8px">${e(pc.nome || 'A Kitsune')} comeu um yokai: puxe um poder da biblioteca ou escreva um novo, e escolha a cauda. Ele fica até ser usado.</p>
@@ -86,12 +119,14 @@ const FichasCaudas = (() => {
       if (!p.n.trim() && !p.e.trim()) { const er = q(m, '[data-kerro]'); er.textContent = 'Escreva o nome do poder ou o que ele faz.'; er.hidden = false; return; }
       fechar();
       mexer(pc, { t: 'guardar', i, p }, 'O poder ' + (p.n.trim() || 'do yokai') + ' ficou na cauda ' + (i + 1) + '.');
+      recolher();
     };
   }
 
   function ligar(host, pc) {
     if (!host || !tem(pc) || !pode(pc)) return;
     const b = q(host, '[data-kguardar]'); if (b) b.onclick = () => guardar(pc);
+    if (mestre()) setTimeout(recolher, 0);
     qa(host, '[data-kusar]').forEach(x => x.onclick = () => {
       const i = +x.dataset.kusar;
       mexer(pc, { t: 'usar', i }, r => C().textoUso(pc.nome, i, r.usado));
@@ -105,5 +140,5 @@ const FichasCaudas = (() => {
     const novo = t.firstElementChild; if (!novo) { el.remove(); return; }
     el.replaceWith(novo); ligar(novo, pc);
   }
-  return { tem, painel, ligar, guardar };
+  return { tem, painel, ligar, guardar, bibDoMestre, recolher };
 })();

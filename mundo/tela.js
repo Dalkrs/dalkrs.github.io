@@ -4725,7 +4725,7 @@
       if (!M || App.ferramenta !== 'sel' || (e.target.closest && e.target.closest('.opts, .zoom, .luas, .vazio'))) return;
       // (o gesto captura o ponteiro, então o alvo do evento é o palco: quem está embaixo do cursor é achado pelo ponto)
       const id = idDoAlvo(document.elementFromPoint(e.clientX, e.clientY) || e.target), o = id ? M.objs.find(x => x.id === id) : null;
-      if (o && o.k === 'm' && o.liga && window.MundoPainel && MundoPainel.seguirLiga) { e.preventDefault(); MundoPainel.seguirLiga(o); }
+      if (o && (o.k === 'm' || o.k === 'e') && o.liga && window.MundoPainel && MundoPainel.seguirLiga) { e.preventDefault(); MundoPainel.seguirLiga(o); }
     });
     palco.addEventListener('contextmenu', e => {
       if (e.target.closest && e.target.closest('.opts, .zoom, .luas, .vazio')) return;
