@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.17-01",
+      "data": "2026-11-17",
+      "titulo": "Desvantagens e vícios",
+      "itens": [
+        { "tipo": "novo", "texto": "Fichas, aba Aptidões: agora tem também as Desvantagens, o inverso das aptidões (Medo de altura, Manco…). Cada uma tem nível, e o mestre escreve o que cada nível tira. Ele também pode deixar uma desvantagem secreta." },
+        { "tipo": "novo", "texto": "Fichas, aba Aptidões: os Vícios (cigarro, bebida, jogo…). A necessidade vai de 0 a 10 e aparece como Tranquilo, Inquieto, Com fissura ou Desesperado." },
+        { "tipo": "novo", "mestre": true, "texto": "Vícios: a necessidade sobe sozinha com os dias do Mapa-múndi, no ritmo que você escolhe para cada vício. Quando um vício passa para \"Com fissura\" ou \"Desesperado\", aparece um aviso e um ⚠ na aba. \"Cumpriu…\" baixa a necessidade, e o buff você dá na mão. Você escolhe se o jogador vê cada vício." },
+        { "tipo": "novo", "mestre": true, "texto": "Desvantagens e vícios ficam numa biblioteca, como as aptidões, para pôr o mesmo em outra ficha. A aba Mesa ganhou os quadros \"Desvantagens dos personagens\" e \"Vícios dos personagens\"." }
+      ]
+    },
+    {
       "versao": "2026.11.16-06",
       "data": "2026-11-16",
       "titulo": "Caudas podres e biblioteca de poderes",

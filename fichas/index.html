@@ -1841,6 +1841,20 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 .aptpchd{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .aptpronto{font-size:12px;font-weight:600;color:var(--teal)}
 .apts.curto{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+/* (lote 175) as desvantagens e os vícios, na mesma aba */
+#painelDesv{margin-top:14px}
+#painelDesv .aptcard.pronta{border-color:var(--erro,#d0473e);box-shadow:0 0 0 1px color-mix(in srgb,var(--erro,#d0473e) 40%,transparent)}
+#painelDesv .aptbar.cheia i,#desvMesa .aptbar.cheia i{background:var(--erro,#d0473e)}
+.vicbar{flex:1;height:12px;border-radius:6px;background:var(--campo-sut);border:1px solid var(--line-2);overflow:hidden;position:relative}
+.vicbar i{display:block;height:100%}
+.vicbar b{position:absolute;top:0;bottom:0;width:1px;background:var(--line-2)}
+.vicbar b:nth-of-type(1){left:30%}.vicbar b:nth-of-type(2){left:60%}.vicbar b:nth-of-type(3){left:90%}
+.vicfx{font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;border:1px solid var(--fx);color:var(--fx);white-space:nowrap}
+.viccard.fx-fissura{border-color:#e07b39}
+.viccard.fx-desesperado{border-color:#d0473e;box-shadow:0 0 0 1px rgba(208,71,62,.45)}
+.vicrit{font-size:12px}
+.vicnums{grid-template-columns:repeat(3,minmax(0,1fr))}
+.vicalto{font-size:12px;font-weight:600;color:#e07b39}
 @media (max-width:520px){ .aptnums{grid-template-columns:repeat(2,minmax(0,1fr))} }
 .repniveis span{padding:0 4px;border-radius:6px}
 .repfim{display:flex;justify-content:flex-end}
@@ -1921,12 +1935,14 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="mesa.js?v=20"></script>
+<script src="mesa.js?v=21"></script>
 <script src="extras.js?v=28"></script>
 <script src="../tc/reputacao.js?v=1"></script>
 <script src="reputacao.js?v=1"></script>
-<script src="../tc/aptidoes.js?v=2"></script>
-<script src="aptidoes.js?v=2"></script>
+<script src="../tc/aptidoes.js?v=3"></script>
+<script src="aptidoes.js?v=3"></script>
+<script src="../tc/vicios.js?v=1"></script>
+<script src="vicios.js?v=1"></script>
 <script src="../tc/simbolos.js?v=1"></script>
 <script src="../tc/caudas.js?v=2"></script>
 <script src="caudas.js?v=2"></script>
@@ -3231,7 +3247,7 @@ function renderFicha(){
   ${htmlCaixinha(pc)}`)}
   ${parte('social', `${FichasExtras.painelMente(pc)}${typeof FichasRep!=='undefined'? FichasRep.painel(pc) : ''}`)}
   ${parte('skills', (typeof FichasCaudas!=='undefined'? FichasCaudas.painel(pc) : '') + htmlAbaSkills(pc))}
-  ${pc.petDe||typeof FichasApt==='undefined'? '' : parte('aptidoes', FichasApt.painel(pc))}
+  ${pc.petDe||typeof FichasApt==='undefined'? '' : parte('aptidoes', FichasApt.painel(pc) + (typeof FichasDesv!=='undefined'? FichasDesv.painel(pc) : '') + (typeof FichasVic!=='undefined'? FichasVic.painel(pc) : ''))}
   ${FichasTropas.tem(pc)? parte('tropas', FichasTropas.htmlAba(pc)) : ''}
   ${parte('notas', htmlAbaNotas(pc))}
   ${(()=>{ const cb=FichasCorr.htmlBarra(pc); return cb? `<details class="so-mestre-fim" id="soMestreFim"${corrAbertaFim?' open':''}><summary><span class="corr-so">Só o mestre</span> Corrupção${FichasCorr.htmlEtiqueta(pc)? ' · '+esc(FichasCorr.estadoDe(pc)? 'estágio '+FichasCorr.estadoDe(pc).n : 'ligada') : ''}</summary>${cb}</details>` : ''; })()}
@@ -3258,11 +3274,27 @@ const ABAS_FICHA=[['atributos','Atributos'],['bolsas','Bolsas e itens'],['social
 const abasDaFicha=pc=>{ const b=pc && pc.petDe? ABAS_FICHA.filter(x=>x[0]!=='aptidoes') : ABAS_FICHA, i=b.findIndex(x=>x[0]==='notas');
   return pc && FichasTropas.tem(pc)? b.slice(0,i).concat([['tropas','Tropas']], b.slice(i)) : b; };
 const abaDaFicha=pc=>{ const a=S.abaFicha; return abasDaFicha(pc).some(x=>x[0]===a)? a : 'atributos'; };
+/* (lote 131) ▲: aptidões prontas para subir. (lote 175) ▼: desvantagens prontas para piorar; ⚠: vícios com necessidade
+   alta (com fissura ou desesperado). Sem nada disso, quantas são as três listas. */
+function marcaAptidoes(pc){
+  if(typeof FichasApt==='undefined') return '';
+  const D=typeof FichasDesv!=='undefined'? FichasDesv : null, Vc=typeof FichasVic!=='undefined'? FichasVic : null;
+  const sobe=FichasApt.prontasDe(pc), piora=D? D.prontasDe(pc) : 0, alto=Vc? Vc.alerta(pc) : 0, out=[];
+  if(sobe) out.push('▲'+sobe); if(piora) out.push('▼'+piora); if(alto) out.push('⚠'+alto);
+  if(out.length) return out.join(' ');
+  return (FichasApt.listaDe(pc).length+(D? D.listaDe(pc).length : 0)+(Vc? Vc.listaDe(pc).length : 0))||'';
+}
+// a marca da aba Aptidões depois de uma mudança (sem redesenhar a ficha)
+function atualizarMarcaAptidoes(pc){
+  const b=document.getElementById('abaficha-aptidoes'); if(!b||!pc||S.sel!==pc.id) return;
+  const mk=b.querySelector('.mk'), t=marcaAptidoes(pc);
+  if(mk) mk.remove(); if(t!=='') b.insertAdjacentHTML('beforeend','<span class="mk">'+String(t).replace(/[&<>"]/g,'')+'</span>');
+}
 function marcaDaAba(pc,k){
   if(k==='tropas') return FichasTropas.marca(pc);
   if(k==='skills'){ const n=(pc.habilidades||[]).length+habsDaArvore(pc).length+unicasDaFicha(pc).length; return n||''; }
   if(k==='bolsas'){ const n=(pc.itens||[]).length; return n||''; }
-  if(k==='aptidoes'){ if(typeof FichasApt==='undefined') return ''; const p=FichasApt.prontasDe(pc); return p? '▲'+p : (FichasApt.listaDe(pc).length||''); }     // (lote 131) ▲: prontas para subir
+  if(k==='aptidoes') return marcaAptidoes(pc);
   if(k==='notas'){ const n=FichasQuadros.contaAtivas(pc); return n? n : ((!estaqueEscondido(pc)&&(pc.estaque?.a||pc.estaque?.b))||(pc.notas||'').trim())? '•' : ''; }
   return '';
 }
@@ -3925,6 +3957,8 @@ function ligarFicha(pc){
   FichasExtras.ligarMente(host, pc);
   if(typeof FichasRep!=='undefined') FichasRep.ligar(host, pc);          // (lote 126) a reputação com as facções
   if(typeof FichasApt!=='undefined') FichasApt.ligar(host, pc);          // (lote 131) as aptidões
+  if(typeof FichasDesv!=='undefined') FichasDesv.ligar(host, pc);        // (lote 175) as desvantagens
+  if(typeof FichasVic!=='undefined') FichasVic.ligar(host, pc);          // (lote 175) os vícios
   if(typeof FichasCaudas!=='undefined'){ const kc=host.querySelector('#painelCaudas'); if(kc) FichasCaudas.ligar(kc, pc); }   // (lote 173) as caudas da Kitsune
   FichasExtras.ligarEfeitos(host, pc);
   FichasExtras.ligarSobrevida(host, pc);
@@ -4310,9 +4344,13 @@ function renderMesa(){
   ${painelRegistro()}
 
   ${typeof FichasApt!=='undefined'? FichasApt.quadroMesa() : ''}
+  ${typeof FichasDesv!=='undefined'? FichasDesv.quadroMesa() : ''}
+  ${typeof FichasVic!=='undefined'? FichasVic.quadroMesa() : ''}
   `;
   ligarMesa(sit);
   if(typeof FichasApt!=='undefined'){ const am=host.querySelector('#aptMesa'); if(am) FichasApt.ligar(am, null); }     // (lote 131) as aptidões de todos
+  if(typeof FichasDesv!=='undefined'){ const dm=host.querySelector('#desvMesa'); if(dm) FichasDesv.ligar(dm, null); }     // (lote 175) as desvantagens
+  if(typeof FichasVic!=='undefined'){ const vm=host.querySelector('#vicMesa'); if(vm) FichasVic.ligar(vm, null); }     // (lote 175) os vícios
 }
 function linhaParticipante(sit,pt){
   const pc=pt.pcId? S.personagens.find(p=>p.id===pt.pcId):null;

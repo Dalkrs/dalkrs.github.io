@@ -55,7 +55,8 @@
   // o que o jogador vê (estado.apt): só as que não são secretas, sem a barra e sem o texto do nível
   const publica = lista => norm(lista).filter(a => !a.oc).map(a => ({ id: a.id, n: a.n, d: a.d, nv: a.nv }));
   // a lista que o jogador recebeu (estado.apt), lida com cuidado: só nome, descrição e nível
-  const doJogador = estado => (ehObj(estado) && Array.isArray(estado.apt) ? estado.apt : [])
+  // (lote 175) k: onde a lista mora no estado ('apt'; as desvantagens, 'desv')
+  const doJogador = (estado, k) => (ehObj(estado) && Array.isArray(estado[k || 'apt']) ? estado[k || 'apt'] : [])
     .filter(x => ehObj(x) && idOk(x.id)).slice(0, LIM.lista)
     .map(x => ({ id: x.id, n: txt(x.n, LIM.nome) || 'Aptidão', d: txt(x.d, LIM.desc), nv: int(x.nv, 1, LIM.teto, 1) }));
 

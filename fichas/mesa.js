@@ -307,6 +307,8 @@ const FichasMesa = (() => {
         redesenhar();
         return;
       }
+      // (lote 175) um mapa do Mapa-múndi mudou (o dia pode ter passado): os vícios sobem pelos dias (só quem mestra grava)
+      if (/^mundo:mapa:/.test(l0.id || '')) { if (mestre() && typeof FichasVic !== 'undefined') setTimeout(() => FichasVic.avancarTudo(), 0); return; }
       const k = Object.keys(DOCS).find(x => DOCS[x] === l0.id);
       if (!k) return;
       const v = l0.apagado || !l0.dados ? undefined : l0.dados.v, jv = v === undefined ? undefined : j(v);
@@ -491,6 +493,17 @@ const FichasMesa = (() => {
     if (Array.isArray(lista) && lista.length) apt[pc.id] = lista; else delete apt[pc.id];
     if (!Object.keys(apt).length) delete s.apt;
   }
+  /* (lote 175) O mesmo, para qualquer lista por personagem em fichas:segredos: 'apt' (as aptidões), 'desv' (as
+     desvantagens), 'vic' (os vícios). */
+  const LISTAS_SEG = ['apt', 'desv', 'vic'];
+  const listaSegDe = (pc, k) => (ativo && mestre() && LISTAS_SEG.includes(k) ? ((S.segredos && S.segredos[k] && S.segredos[k][pc.id]) || null) : null);
+  function porListaSeg(pc, k, lista) {
+    if (!ativo || !mestre() || !LISTAS_SEG.includes(k)) return;
+    const s = S.segredos && typeof S.segredos === 'object' && !Array.isArray(S.segredos) ? S.segredos : (S.segredos = {});
+    const o = s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) ? s[k] : (s[k] = {});
+    if (Array.isArray(lista) && lista.length) o[pc.id] = lista; else delete o[pc.id];
+    if (!Object.keys(o).length) delete s[k];
+  }
   /* As facções dos mapas do Mapa-múndi: quem mestra, as dos mapas (com as escondidas); quem joga, as que o mapa mostra a
      ele. [{ id, nome, cor, oculta }], uma vez cada, em ordem de nome. Fora de uma mesa: as dos mapas deste navegador. */
   function faccoesDaMesa() {
@@ -557,7 +570,7 @@ const FichasMesa = (() => {
     if (s.rel && s.rel[id]) { fora.rel = s.rel[id]; delete s.rel[id]; }
     if (s.mis && s.mis.p && s.mis.p[id]) { fora.mis = s.mis.p[id]; delete s.mis.p[id]; }
     if (s.rep && s.rep[id]) { fora.rep = s.rep[id]; delete s.rep[id]; }
-    if (s.apt && s.apt[id]) { fora.apt = s.apt[id]; delete s.apt[id]; }
+    for (const k of LISTAS_SEG) if (s[k] && s[k][id]) { fora[k] = s[k][id]; delete s[k][id]; }
     return fora;
   }
   function limitar() {
@@ -723,7 +736,7 @@ const FichasMesa = (() => {
     const total = meses.reduce((s, x) => s + x.dias, 0), dia = Math.max(0, Math.floor(+m.cal.dia || 0)), ano0 = Number.isFinite(+m.cal.ano0) ? Math.round(+m.cal.ano0) : 1;
     let r = dia % total, mes = 0;
     while (mes < meses.length - 1 && r >= meses[mes].dias) { r -= meses[mes].dias; mes++; }
-    return { meses, hoje: { a: ano0 + Math.floor(dia / total), m: mes, d: r + 1 }, mapa: m.nome };
+    return { meses, hoje: { a: ano0 + Math.floor(dia / total), m: mes, d: r + 1 }, mapa: m.nome, dia, mapaId: m.id };      // (lote 175) dia: os dias desde o começo (os vícios contam por ele)
   }
   function nomeDoDono(pc) {
     if (!ativo || !pc._dono) return '';
@@ -871,7 +884,7 @@ const FichasMesa = (() => {
   }
   return { corrDe, gravarCorr, tropasDe, gravarTropas, caixaDoGrupo, mexeNaCaixa, caixaSemFicha, moverCaixa, levarCaixa, nomeDoGrupo,
     preparar, falhou, depoisDeAbrir, htmlDono, ligarDono, nomeDoDono, calendario, trazer, podeEditar, ativo: () => ativo, mestre, deJogador, htmlOlho, ligarOlhos, garantirRelacoes, ativoNaFicha, lugarNaFicha,
-    ehNpc, segDe, porSeg, mexerRel, relsDe, repSegDe, porRepSeg, aptSegDe, porAptSeg, faccoesDaMesa, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
+    ehNpc, segDe, porSeg, mexerRel, relsDe, repSegDe, porRepSeg, aptSegDe, porAptSeg, listaSegDe, porListaSeg, faccoesDaMesa, esquecer, OLHO, OLHO_FECHADO, ancorar, comCursor, depoisDoGesto, listaEmUso,
     campanhas, campEmVista, encerrada, nomeDaCampanha, blocos, blocoDe, emOrdem, opcoesDePcs, avisarDeFora, nascer, organiza,
     ehPet, petsDe, nomeDoPetDe, limitar, finalDaCampanha, finalDaFicha, selinhoFinal, arquivada, podeArquivar, verNoArquivo };
 })();
