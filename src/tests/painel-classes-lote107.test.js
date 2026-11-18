@@ -8,6 +8,17 @@ const ator = b => ({ nome: 'Teste', dono: 'jogador', barras: [b], aba: 0, aberto
   alvos: [{ nome: 'Orc' }], aliados: [{ nome: 'Ana' }], fila: [], pedirMapa(sp, h) { this.fila.push({ sp, h }); } });
 
 ok(P.BARRAS.length === 22, 'as 22 barras do mundo novo (lote 118: o Malho do Ferreiro; lote 173: as Caudas da Kitsune)');
+{ // (lote 182) o botão ◆ das passivas e a lista à esquerda
+  const b = P.instancia('ninja', 3, null, {}), at = { chave: 'x', nome: 'Dain', dono: 'jogador', barras: [b], aba: 0, aberto: true, linhas: [], rodada: () => 1, logar(){},
+    passivas: [{ arv: 'Kitsune', cat: 'raca', itens: [{ nome: 'Pé Leve', grau: 2, tipo: 'passiva', desc: 'Anda sem som.\nNo nível 2: E sem rastro.' }] }, { arv: 'Ninja', cat: 'classe', itens: [{ nome: 'Lâmina Fina', grau: 1, tipo: 'melhoria', desc: '+1 tier.' }] }] };
+  const h0 = P.painelHTML(at, { papel: 'jogador' }).html;
+  ok(/data-a="__passivas"/.test(h0) && /<small>2<\/small>/.test(h0) && !/pb-pass"/.test(h0), '(lote 182) o botão mostra quantas passivas; a lista começa fechada');
+  at.passAberto = true;
+  const h1 = P.painelHTML(at, { papel: 'jogador' }).html;
+  ok(/class="pb-pass"/.test(h1) && /Kitsune <small>Raça<\/small>/.test(h1) && /Pé Leve <small>nível 2<\/small>/.test(h1) && /No nível 2: E sem rastro/.test(h1) && /melhoria/.test(h1), '(lote 182) aberta: separada por árvore, com o nível e a descrição');
+  at.passivas = [];
+  ok(!/__passivas/.test(P.painelHTML(at, { papel: 'jogador' }).html), '(lote 182) sem passivas (o NPC sem ficha), sem botão');
+}
 { // (lote 173) as Caudas da Kitsune: o poder do yokai guardado numa cauda
   const C = require('../../tc/caudas.js');
   ok(P.barraDaArvore('a_kitsune') === 'kitsune' && P.BARRA.kitsune.fim === 'fica', '(lote 173) a árvore da Kitsune liga a barra Caudas, que fica como está no fim do combate');

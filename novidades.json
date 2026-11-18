@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.17-08",
+      "data": "2026-11-17",
+      "titulo": "As passivas no painel de barras",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: o painel de barras ganhou o botão ◆ (com o número de passivas). Ele abre, à esquerda, todas as passivas que o personagem já comprou, separadas por árvore (raça, classe, bênção, linhagem, profissão). Passe o mouse (ou toque) no nome para ler a descrição." }
+      ]
+    },
+    {
       "versao": "2026.11.17-07",
       "data": "2026-11-17",
       "titulo": "Velas de cor e pole dance",

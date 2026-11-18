@@ -104,6 +104,30 @@ const PainelBarras = (() => {
     }
     return out;
   }
+  /* (lote 182) As passivas que o personagem já comprou, de todas as árvores da ficha (o NPC sem ficha não tem):
+     [{ arv, cat, itens: [{ nome, grau, desc, tipo }] }] — a descrição junta o texto de cada nível comprado. */
+  function passivasDe(t) {
+    if (!t.char || typeof Fichas === 'undefined' || !Fichas.arvore) return [];
+    const l = Fichas.get(t.char), sk = l && l.skills && typeof l.skills === 'object' ? l.skills : null;
+    if (!sk) return [];
+    const al = sk.alocados && typeof sk.alocados === 'object' ? sk.alocados : {}, out = [];
+    for (const aid of Array.isArray(sk.arvores) ? sk.arvores : []) {
+      const a = Fichas.arvore(aid);
+      if (!a || !Array.isArray(a.nodes)) continue;
+      const itens = [];
+      for (const n of a.nodes) {
+        const g = Math.floor(Number(al[n && n.id]) || 0);
+        if (!n || g <= 0 || !Array.isArray(n.graus) || !n.graus.length) continue;
+        const us = Array.isArray(n.usos) ? n.usos : [], tipo = us.includes('passiva') ? 'passiva' : us.includes('melhoria') ? 'melhoria' : '';
+        if (!tipo) continue;
+        const txt = n.graus.slice(0, Math.min(g, n.graus.length)).map((gr, i) => (i ? 'No nível ' + (i + 1) + ': ' : '') + String(gr && gr.texto || '').trim()).filter(x => x && !/: $/.test(x)).join('\n');
+        const narr = /» (.*)$/m.exec(String(n.desc || ''));
+        itens.push({ nome: String(n.nome || 'Passiva'), grau: g, tipo, desc: (txt || String(n.desc || '').replace(/^[^\n]*\n/, '')) + (narr ? '\n» ' + narr[1] : '') });
+      }
+      if (itens.length) out.push({ arv: String(a.nome || ''), cat: String(a.categoria || ''), itens });
+    }
+    return out;
+  }
   // os outros tokens da cena, para escolher o Escolhido, o Protegido, o Distraído
   function alvosDe(t) {
     const sc = Store.scene(), out = { alvos: [], aliados: [] };
@@ -130,6 +154,8 @@ const PainelBarras = (() => {
       aba: Math.max(0, Math.min(m.aba || 0, barras.length - 1)), aberto: !!m.aberto, linhas: [],
       rodada: () => (Store.scene() && Store.scene().turn.round) || 1 };
     ator.logar = texto => { ator.linhas.push(texto); };
+    try { ator.passivas = passivasDe(t); } catch (e) { ator.passivas = []; }      // (lote 182) o botão ◆ das passivas
+    ator.passAberto = !!m.passAberto;
     Object.assign(ator, alvosDe(t));
     ator.fila = [];
     ator.pedirMapa = (sp, h) => { ator.fila.push({ sp, h }); };
@@ -271,16 +297,17 @@ const PainelBarras = (() => {
     els.set(chave, el);
     return el;
   }
-  const assinatura = (ator, o) => JSON.stringify([ator.nome, ator.aberto, ator.aba, ator.barras.map(b => [b.def.id, b.v, b.min, b.max, P0g()(b)]), o.papel, o.desfazer, o.esconder]);
+  const assinatura = (ator, o) => JSON.stringify([ator.nome, ator.aberto, ator.aba, ator.passAberto, (ator.passivas || []).map(g => g.itens.length), ator.barras.map(b => [b.def.id, b.v, b.min, b.max, P0g()(b)]), o.papel, o.desfazer, o.esconder]);
   function opcoes(ator) {
     const gm = isGM();
     return {
       papel: gm ? 'mestre' : 'jogador', desfazer: (hist.get(ator.chave) || []).length > 0, esconder: !gm,
       aoAntes: a => antesDeMexer(a),
-      aoMexer: a => { gravar(a); mem.set(a.chave, { aberto: a.aberto, aba: a.aba }); },
+      aoMexer: a => { gravar(a); mem.set(a.chave, { aberto: a.aberto, aba: a.aba, passAberto: !!a.passAberto }); },
+      aoPassivas: a => { mem.set(a.chave, Object.assign({}, mem.get(a.chave), { aberto: a.aberto, aba: a.aba, passAberto: !!a.passAberto })); },
       aoDesfazer: a => desfazer(a),
-      aoAbrir: a => { mem.set(a.chave, { aberto: true, aba: a.aba }); if (gm) focoNpc = a.tok; },
-      aoFechar: a => { a.aberto = false; mem.set(a.chave, { aberto: false, aba: a.aba }); if (gm) { focoNpc = null; render(); } },
+      aoAbrir: a => { mem.set(a.chave, { aberto: true, aba: a.aba, passAberto: !!a.passAberto }); if (gm) focoNpc = a.tok; },
+      aoFechar: a => { a.aberto = false; a.passAberto = false; mem.set(a.chave, { aberto: false, aba: a.aba, passAberto: false }); if (gm) { focoNpc = null; render(); } },
       aoEsconder: () => { esconder(true); escondidoMem = true; render(); toast('Painel de barras escondido neste aparelho. Para mostrar de novo: selecione o seu token → Painel de barras.', { long: true, action: 'Mostrar', run: () => { esconder(false); escondidoMem = false; render(); } }); },
       aoDesenhar: () => {}
     };

@@ -1189,6 +1189,26 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .pb-quem em { font: 700 11px var(--ui); font-style: normal; color: #16191F; background: var(--pb-apoio); border-radius: 4px; padding: 1px 5px; vertical-align: 3px; }
 .pb-x { display: inline-grid; place-items: center; min-width: 28px; height: 28px; background: none; border: 0; color: var(--pb-apoio); font-size: 15px; padding: 0 6px; border-radius: 6px; }
 .pb-x:hover { color: var(--pb-tinta); background: #ffffff10; }
+.pb-pbt { gap: 2px; color: var(--pb-apoio); }
+.pb-pbt small { font: 700 11px var(--ui); }
+.pb-pbt[aria-pressed="true"] { color: var(--c); background: #ffffff10; }
+/* (lote 182) a lista de passivas, à esquerda do painel */
+.pb-pass { position: fixed; z-index: 6; width: 268px; max-height: 70vh; display: flex; flex-direction: column; background: var(--pb-fundo); color: var(--pb-tinta);
+  border: 1px solid var(--pb-linha); border-radius: 12px; box-shadow: 0 10px 30px #0008; overflow: hidden; }
+.pb-pass.pb-pass-cima { left: 8px; right: 8px; top: 8px; width: auto; max-height: 40vh; }
+.pb-pcab { display: flex; align-items: center; gap: 6px; padding: 8px 6px 6px 12px; border-bottom: 1px solid var(--pb-linha); }
+.pb-pcab b { display: inline-flex; align-items: center; gap: 5px; color: var(--c); }
+.pb-pcab small { flex: 1; color: var(--pb-apoio); font-size: 11.5px; }
+.pb-plista { overflow-y: auto; overscroll-behavior: contain; padding: 6px 8px 10px; }
+.pb-pg h4 { margin: 8px 4px 4px; font: 700 12.5px var(--ui); color: var(--pb-apoio); }
+.pb-pg h4 small { font-weight: 400; opacity: .8; }
+.pb-pi { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 8px; padding: 4px 8px; color: var(--pb-tinta); }
+.pb-pi:hover, .pb-pi:focus-visible, .pb-pi:focus { border-color: var(--pb-linha); background: #ffffff08; outline: none; }
+.pb-pn { display: block; font-size: 13.5px; }
+.pb-pn small { color: var(--pb-apoio); font-size: 11px; }
+.pb-pdesc { display: none; margin-top: 3px; font-size: 12.5px; line-height: 1.4; color: var(--pb-apoio); }
+.pb-pi:hover .pb-pdesc, .pb-pi:focus .pb-pdesc { display: block; }
+.pb-pvazio { margin: 8px; color: var(--pb-apoio); font-size: 13px; }
 .pb-abas { display: flex; gap: 4px; padding: 6px 10px 0; flex-wrap: wrap; }
 .pb-aba { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--pb-linha); background: transparent; color: var(--pb-apoio); border-radius: 8px; padding: 4px 9px; font-size: 13px; }
 .pb-aba .pb-ic { color: var(--ac); }
@@ -1493,7 +1513,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <script src="../cla/nucleo.js?v=11"></script>
 <script src="../tc/simbolos.js?v=1"></script>
 <script src="../tc/caudas.js?v=3"></script>
-<script src="../tc/barras-painel.js?v=12"></script>
+<script src="../tc/barras-painel.js?v=13"></script>
 <script src="../tc/npc.js?v=1"></script>
 <script src="../tc/misterio.js?v=1"></script>
 <script src="../tc/missoes.js?v=3"></script>
@@ -55481,6 +55501,30 @@ const PainelBarras = (() => {
     }
     return out;
   }
+  /* (lote 182) As passivas que o personagem já comprou, de todas as árvores da ficha (o NPC sem ficha não tem):
+     [{ arv, cat, itens: [{ nome, grau, desc, tipo }] }] — a descrição junta o texto de cada nível comprado. */
+  function passivasDe(t) {
+    if (!t.char || typeof Fichas === 'undefined' || !Fichas.arvore) return [];
+    const l = Fichas.get(t.char), sk = l && l.skills && typeof l.skills === 'object' ? l.skills : null;
+    if (!sk) return [];
+    const al = sk.alocados && typeof sk.alocados === 'object' ? sk.alocados : {}, out = [];
+    for (const aid of Array.isArray(sk.arvores) ? sk.arvores : []) {
+      const a = Fichas.arvore(aid);
+      if (!a || !Array.isArray(a.nodes)) continue;
+      const itens = [];
+      for (const n of a.nodes) {
+        const g = Math.floor(Number(al[n && n.id]) || 0);
+        if (!n || g <= 0 || !Array.isArray(n.graus) || !n.graus.length) continue;
+        const us = Array.isArray(n.usos) ? n.usos : [], tipo = us.includes('passiva') ? 'passiva' : us.includes('melhoria') ? 'melhoria' : '';
+        if (!tipo) continue;
+        const txt = n.graus.slice(0, Math.min(g, n.graus.length)).map((gr, i) => (i ? 'No nível ' + (i + 1) + ': ' : '') + String(gr && gr.texto || '').trim()).filter(x => x && !/: $/.test(x)).join('\n');
+        const narr = /» (.*)$/m.exec(String(n.desc || ''));
+        itens.push({ nome: String(n.nome || 'Passiva'), grau: g, tipo, desc: (txt || String(n.desc || '').replace(/^[^\n]*\n/, '')) + (narr ? '\n» ' + narr[1] : '') });
+      }
+      if (itens.length) out.push({ arv: String(a.nome || ''), cat: String(a.categoria || ''), itens });
+    }
+    return out;
+  }
   // os outros tokens da cena, para escolher o Escolhido, o Protegido, o Distraído
   function alvosDe(t) {
     const sc = Store.scene(), out = { alvos: [], aliados: [] };
@@ -55507,6 +55551,8 @@ const PainelBarras = (() => {
       aba: Math.max(0, Math.min(m.aba || 0, barras.length - 1)), aberto: !!m.aberto, linhas: [],
       rodada: () => (Store.scene() && Store.scene().turn.round) || 1 };
     ator.logar = texto => { ator.linhas.push(texto); };
+    try { ator.passivas = passivasDe(t); } catch (e) { ator.passivas = []; }      // (lote 182) o botão ◆ das passivas
+    ator.passAberto = !!m.passAberto;
     Object.assign(ator, alvosDe(t));
     ator.fila = [];
     ator.pedirMapa = (sp, h) => { ator.fila.push({ sp, h }); };
@@ -55648,16 +55694,17 @@ const PainelBarras = (() => {
     els.set(chave, el);
     return el;
   }
-  const assinatura = (ator, o) => JSON.stringify([ator.nome, ator.aberto, ator.aba, ator.barras.map(b => [b.def.id, b.v, b.min, b.max, P0g()(b)]), o.papel, o.desfazer, o.esconder]);
+  const assinatura = (ator, o) => JSON.stringify([ator.nome, ator.aberto, ator.aba, ator.passAberto, (ator.passivas || []).map(g => g.itens.length), ator.barras.map(b => [b.def.id, b.v, b.min, b.max, P0g()(b)]), o.papel, o.desfazer, o.esconder]);
   function opcoes(ator) {
     const gm = isGM();
     return {
       papel: gm ? 'mestre' : 'jogador', desfazer: (hist.get(ator.chave) || []).length > 0, esconder: !gm,
       aoAntes: a => antesDeMexer(a),
-      aoMexer: a => { gravar(a); mem.set(a.chave, { aberto: a.aberto, aba: a.aba }); },
+      aoMexer: a => { gravar(a); mem.set(a.chave, { aberto: a.aberto, aba: a.aba, passAberto: !!a.passAberto }); },
+      aoPassivas: a => { mem.set(a.chave, Object.assign({}, mem.get(a.chave), { aberto: a.aberto, aba: a.aba, passAberto: !!a.passAberto })); },
       aoDesfazer: a => desfazer(a),
-      aoAbrir: a => { mem.set(a.chave, { aberto: true, aba: a.aba }); if (gm) focoNpc = a.tok; },
-      aoFechar: a => { a.aberto = false; mem.set(a.chave, { aberto: false, aba: a.aba }); if (gm) { focoNpc = null; render(); } },
+      aoAbrir: a => { mem.set(a.chave, { aberto: true, aba: a.aba, passAberto: !!a.passAberto }); if (gm) focoNpc = a.tok; },
+      aoFechar: a => { a.aberto = false; a.passAberto = false; mem.set(a.chave, { aberto: false, aba: a.aba, passAberto: false }); if (gm) { focoNpc = null; render(); } },
       aoEsconder: () => { esconder(true); escondidoMem = true; render(); toast('Painel de barras escondido neste aparelho. Para mostrar de novo: selecione o seu token → Painel de barras.', { long: true, action: 'Mostrar', run: () => { esconder(false); escondidoMem = false; render(); } }); },
       aoDesenhar: () => {}
     };

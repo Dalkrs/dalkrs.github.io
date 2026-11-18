@@ -286,6 +286,21 @@ function faceSVG(b, papel){
 }
 const deTexto = b => (b.def.de || (minDe(b) < 0 ? `${minDe(b)} a +${maxDe(b)}` : 'de ' + maxDe(b)));
 
+/* (lote 182) As passivas que o personagem já comprou, de todas as árvores (ator.passivas, que as Cenas montam:
+   [{ arv, cat, itens: [{ nome, grau, desc, tipo }] }]). O botão ◆ no cabeçalho abre a lista à esquerda do painel; passar
+   o mouse (ou tocar) num nome mostra a descrição. */
+const DIAMANTE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3L21 12L12 21L3 12Z"/></svg>';
+const NOME_CAT_P = { raca: 'Raça', classe: 'Classe', bencao: 'Bênção', linhagem: 'Linhagem', profissao: 'Profissão', escola: 'Escola' };
+const contaPassivas = ator => (Array.isArray(ator.passivas) ? ator.passivas : []).reduce((n, g) => n + (g.itens || []).length, 0);
+function passivasHTML(ator){
+  const gs = (Array.isArray(ator.passivas) ? ator.passivas : []).filter(g => g.itens && g.itens.length);
+  return `<div class="pb-pass" data-sem-tags role="region" aria-label="Passivas de ${esc(ator.nome)}">
+    <div class="pb-pcab"><b>${DIAMANTE} Passivas</b><small>${contaPassivas(ator)} compradas · passe o mouse para ler</small><button type="button" class="pb-x" data-a="__passivas" aria-label="Fechar as passivas" title="Fechar">✕</button></div>
+    <div class="pb-plista">${gs.map(g => `<div class="pb-pg"><h4>${esc(g.arv)}${NOME_CAT_P[g.cat] ? ` <small>${NOME_CAT_P[g.cat]}</small>` : ''}</h4>
+      ${g.itens.map(it => `<button type="button" class="pb-pi"><span class="pb-pn">${esc(it.nome)}${it.grau > 1 ? ` <small>nível ${it.grau}</small>` : ''}${it.tipo === 'melhoria' ? ' <small>melhoria</small>' : ''}</span><span class="pb-pdesc">${esc(it.desc || 'Sem descrição.').replace(/\n/g, '<br>')}</span></button>`).join('')}</div>`).join('') || '<p class="pb-pvazio">Nenhuma passiva comprada.</p>'}</div>
+  </div>`;
+}
+
 /* o: { papel ('mestre' | 'jogador'), desfazer (há o que desfazer), esconder (o jogador pode esconder o painel) }
    ("Fim do combate", uma barra só, é do mestre: o fim de todas vem com o "Encerrar" da aba Turnos. As abas, os botões
    e os ganhos não ganham o sublinhado do glossário; a linha de estado, sim.) */
@@ -303,6 +318,7 @@ function painelHTML(ator, o){
   const mestre = o.papel === 'mestre';
   return { cls: 'pb', html: `
     <div class="pb-cab" data-sem-tags><span class="pb-quem">${esc(ator.nome)}${ator.dono === 'mestre' ? ' <em>NPC</em>' : ''}</span>
+      ${contaPassivas(ator) ? `<button type="button" class="pb-x pb-pbt" data-a="__passivas" aria-pressed="${!!ator.passAberto}" aria-label="Passivas de ${esc(ator.nome)} (${contaPassivas(ator)})" title="As passivas que ${esc(ator.nome)} já comprou">${DIAMANTE}<small>${contaPassivas(ator)}</small></button>` : ''}
       ${!mestre && o.esconder ? `<button type="button" class="pb-x" data-a="__esconder" aria-label="Esconder o painel neste aparelho" title="Esconder o painel neste aparelho (a aba Turnos mostra de novo)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.2A9.8 9.8 0 0 1 12 5c5 0 8.5 4.6 9.5 7-.4 1-1.3 2.4-2.6 3.7M6.2 6.6C4.3 8 3 10 2.5 12c1 2.4 4.5 7 9.5 7 1.7 0 3.2-.5 4.5-1.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>` : ''}
       <button type="button" class="pb-x" data-a="__recolher" aria-label="${mestre ? 'Fechar o painel' : 'Recolher o painel'}" title="${mestre ? 'Fechar' : 'Recolher (vira a moeda)'}">${mestre ? '✕' : '▾'}</button></div>
     <div class="pb-abas" role="tablist" data-sem-tags>${abas}</div>
@@ -313,7 +329,8 @@ function painelHTML(ator, o){
     ${habsHTML(b)}
     <div class="pb-rodape" data-sem-tags><span class="pb-mao">Ajuste <button type="button" data-a="__menos" aria-label="Tirar 1 de ${esc(d.barra)}">−</button><button type="button" data-a="__mais" aria-label="Pôr 1 de ${esc(d.barra)}">+</button></span>
       ${o.desfazer ? `<button type="button" class="pb-fim" data-a="__desfazer" title="Volta o último toque neste painel">Desfazer</button>` : ''}
-      ${mestre ? `<button type="button" class="pb-fim" data-a="__fim" title="Só esta barra; “Encerrar”, na aba Turnos, faz o fim de todas">Fim do combate</button>` : ''}</div>` };
+      ${mestre ? `<button type="button" class="pb-fim" data-a="__fim" title="Só esta barra; “Encerrar”, na aba Turnos, faz o fim de todas">Fim do combate</button>` : ''}</div>
+    ${ator.passAberto && contaPassivas(ator) ? passivasHTML(ator) : ''}` };
 }
 
 // liga um elemento de painel a um personagem; quem chama guarda el._ator e el._opts
@@ -330,6 +347,13 @@ function desenharPainel(el){
   // (o foco fica onde estava, quando o elemento continua lá depois de redesenhar)
   const a = el.ownerDocument && el.ownerDocument.activeElement, foco = a && el.contains(a) ? (a.dataset.k ? `[data-k="${a.dataset.k}"]` : a.dataset.a ? `[data-a="${a.dataset.a}"]${a.dataset.i ? `[data-i="${a.dataset.i}"]` : ''}${a.dataset.q ? `[data-q="${a.dataset.q}"]` : ''}` : a.dataset.ga ? `[data-ga="${a.dataset.ga}"]` : a.dataset.g ? `[data-g="${a.dataset.g}"]` : a.dataset.gp ? `[data-gp="${a.dataset.gp}"]` : a.dataset.gm ? `[data-gm="${a.dataset.gm}"]` : null) : null;
   el.innerHTML = html;
+  // (lote 182) a lista de passivas fica à esquerda do painel (fixa na tela, para não ser cortada pela rolagem dele)
+  const pp = el.querySelector('.pb-pass');
+  if (pp && el.ownerDocument && el.ownerDocument.defaultView) {
+    const W = el.ownerDocument.defaultView, r = el.getBoundingClientRect();
+    if (W.innerWidth > 700 && r.left > 240) { pp.style.right = Math.round(W.innerWidth - r.left + 8) + 'px'; pp.style.top = Math.round(Math.max(8, r.top)) + 'px'; pp.style.maxHeight = Math.round(Math.max(200, W.innerHeight - Math.max(8, r.top) - 12)) + 'px'; }
+    else pp.classList.add('pb-pass-cima');
+  }
   if (foco) { try { const n = el.querySelector(foco); if (n) n.focus({ preventScroll: true }); } catch (e) { /* seletor estranho: deixa o foco */ } }
   if (o.aoDesenhar) o.aoDesenhar();
 }
@@ -355,6 +379,7 @@ function ligarPainel(el){
     if (bt.dataset.gm){ antes(ator, b); b.cont[bt.dataset.gm] = Math.max(0, (b.cont[bt.dataset.gm] || 0) - 1); return mudou(ator); }
     const a = bt.dataset.a; if (!a) return;
     if (a === '__aba'){ ator.aba = +bt.dataset.i; return redesenha(); }
+    if (a === '__passivas'){ ator.passAberto = !ator.passAberto; if (opts().aoPassivas) opts().aoPassivas(ator); return redesenha(); }
     if (a === '__recolher'){ if (opts().aoFechar) opts().aoFechar(ator); else ator.aberto = false; return redesenha(); }
     if (a === '__esconder'){ if (opts().aoEsconder) opts().aoEsconder(ator); return; }
     if (a === '__desfazer'){ if (opts().aoDesfazer) opts().aoDesfazer(ator); return redesenha(); }
