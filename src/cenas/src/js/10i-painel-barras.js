@@ -163,7 +163,11 @@ const PainelBarras = (() => {
     ator.antesDeHab = (b, i, fazer) => {
       const h = (b.habs || [])[i], tok = Store.get('tokens', ator.tok);
       if (typeof HabAcao === 'undefined' || !h || !tok) return false;
-      return HabAcao.comecar(ator, tok, b, h, () => { ator.pulaMapa = true; try { fazer(); } finally { ator.pulaMapa = false; } });
+      // (lote 188) a habilidade de transformação com imagem na ficha: o token veste a forma depois de gastar a barra
+      const veste = () => { if (HabAcao.temForma(tok, h)) HabAcao.forma(tok.id, h); };
+      if (HabAcao.comecar(ator, tok, b, h, () => { ator.pulaMapa = true; try { fazer(); } finally { ator.pulaMapa = false; } veste(); })) return true;
+      if (HabAcao.temForma(tok, h) && !(h.patamar && b.v < h.patamar) && !(!h.inverso && h.custo > b.v)) { fazer(); veste(); return true; }
+      return false;
     };
     return ator;
   }

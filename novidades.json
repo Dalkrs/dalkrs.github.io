@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.18-07",
+      "data": "2026-11-18",
+      "titulo": "A imagem das formas",
+      "itens": [
+        { "tipo": "novo", "texto": "Fichas, aba Skills: o painel Formas lista as habilidades de transformação compradas (Druida, Lobisomem, Vampiro, Kitsune Nirus…). Cada uma pode ter uma imagem: Pôr imagem, Trocar ou Tirar." },
+        { "tipo": "novo", "texto": "Cenas: usar a habilidade troca a imagem do token e põe Transformado (pelos turnos do texto). A imagem volta quando a condição sai ou no Encerrar do combate. A forma que não gasta barra (a Pele de Raposa) se usa pelo menu do token: Virar." }
+      ]
+    },
+    {
       "versao": "2026.11.18-06",
       "data": "2026-11-18",
       "titulo": "Armadilha segue a caixa Oculto",

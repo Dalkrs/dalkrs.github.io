@@ -1166,7 +1166,7 @@ const Nuvem = (() => {
   function usarHab(op) {
     if (modo !== 'jogador' || vazia || !ehObj(op) || !ehObj(op.hab)) return false;
     pedir([{ t: 'hab', de: String(op.de || ''), hab: { id: String(op.hab.id || '').slice(0, 60), nome: String(op.hab.nome || '').slice(0, 60), grau: Math.max(1, Math.min(9, Math.floor(Number(op.hab.grau) || 1))), texto: String(op.hab.texto || '').slice(0, 400) },
-      x: typeof op.x === 'number' && isFinite(op.x) ? op.x : null, y: typeof op.y === 'number' && isFinite(op.y) ? op.y : null, alvos: Array.isArray(op.alvos) ? op.alvos.filter(id => typeof id === 'string').slice(0, 12) : [] }]);
+      forma: op.forma ? 1 : 0, x: typeof op.x === 'number' && isFinite(op.x) ? op.x : null, y: typeof op.y === 'number' && isFinite(op.y) ? op.y : null, alvos: Array.isArray(op.alvos) ? op.alvos.filter(id => typeof id === 'string').slice(0, 12) : [] }]);
     return true;
   }
   function ping(x, y) {

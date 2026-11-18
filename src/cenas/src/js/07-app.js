@@ -315,6 +315,8 @@ function acertarCondicoes(t, antes) {
       Object.assign(p, { size: tam, x, y });
     }
   }
+  // (lote 188) a forma acabou (o Transformado saiu): o token volta à imagem de antes
+  if (t.tf && typeof t.tf === 'object' && !conds.includes('transformado')) { p.img = t.tf.img || null; p.imgChar = !!t.tf.imgChar; p.tf = null; }
   /* (lote 8) a Ferida permanente e as barras podres andam juntas: a condição tirada leva o podre de todas as barras; a
      barra que apodreceu (pela ficha, por exemplo) traz a condição; e a última barra que deixou de estar podre a leva. */
   const podres = bs => (bs || []).some(b => barPod(b) > 0);

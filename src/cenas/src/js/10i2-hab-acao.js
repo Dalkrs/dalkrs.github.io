@@ -343,12 +343,49 @@ const HabAcao = (() => {
     Store.upd('tokens', t.id, { x: clamp(px0, 0, sc.cols * cell - s * cell), y: clamp(py0, 0, sc.rows * cell - s * cell) });
   }
 
+  /* ---------------- (lote 188) as formas: a imagem do token na transformação ----------------
+     A ficha guarda a imagem de cada habilidade de transformação (ficha.formas[id]). Usou a habilidade: o token troca de
+     imagem e fica Transformado (pelos turnos do texto; sem número, até alguém tirar). Quando a condição sai (o prazo, à
+     mão, ou o Encerrar do combate), acertarCondicoes devolve a imagem de antes (t.tf). */
+  const F = () => (window.TC && window.TC.formas) || null;
+  function urlDaForma(t, h) {
+    if (!t || !t.char || !h || !h.id || typeof Fichas === 'undefined') return null;
+    const l = Fichas.get(t.char), fm = l && l.ficha && F() ? F().normFormas(l.ficha.formas) : {};
+    return fm[h.id] || null;
+  }
+  const temForma = (t, h) => !!urlDaForma(t, h);
+  function turnosDaForma(h) {
+    const sp = specDe(h), c = sp && (sp.c || []).find(x => x[0] === 'transformado');
+    if (c && c[1] > 0 && c[1] < 10) return c[1];
+    return F() ? F().turnosDe(h.desc || '') : 0;
+  }
+  function forma(tokId, h) {
+    const sc = Store.scene(), t = sc && sc.tokens.find(x => x.id === tokId), url = urlDaForma(t, h);
+    if (!t || !url) return false;
+    if (!isGM()) {
+      if (typeof Nuvem !== 'undefined' && Nuvem.usarHab) Nuvem.usarHab({ t: 'hab', de: t.id, hab: { id: h.id, nome: h.nome, grau: h.grau || 1, texto: String(h.desc || '').split('\n')[0] }, forma: 1, alvos: [] });
+      return true;
+    }
+    vestir(t, h, url);
+    return true;
+  }
+  function vestir(t, h, url) {
+    const a = Assets.register(url, 0, 0, 'token', h.nome || 'Forma'), tur = turnosDaForma(h);
+    const tf = t.tf && typeof t.tf === 'object' ? t.tf : { img: t.img || null, imgChar: !!t.imgChar };
+    const info = Object.assign({}, t.cinfo), cur = Object.assign({}, info.transformado);
+    if (tur > 0) { cur.d = tur; cur.d0 = tur; } else { delete cur.d; delete cur.d0; }
+    if (Object.keys(cur).length) info.transformado = cur; else delete info.transformado;
+    Store.tx('Forma: ' + (h.nome || ''), () => Store.upd('tokens', t.id, { img: a.id, imgChar: false, tf: Object.assign({}, tf, { h: h.id }), conds: t.conds.includes('transformado') ? t.conds : t.conds.concat('transformado'), cinfo: info }));
+  }
+
   /* ---------------- o pedido de um jogador, no aparelho do mestre ---------------- */
   // op = { t: 'hab', de: token, hab: { id, nome, grau, texto }, x, y, alvos }
   function pedidoDe(quem, op, sc) {
     if (!op || typeof op.de !== 'string' || !op.hab || typeof op.hab.id !== 'string') return false;
     const de = sc.tokens.find(t => t.id === op.de);
     if (!de || !(de.owner === quem || de.owner === '*')) return false;              // só o token dele
+    // (lote 188) a forma: a imagem da ficha dele, na hora (sem janela)
+    if (op.forma) { const u = urlDaForma(de, { id: op.hab.id }); if (u) setTimeout(() => vestir(Store.get('tokens', de.id) || de, { id: op.hab.id, nome: String(op.hab.nome || 'Forma').slice(0, 60), desc: String(op.hab.texto || '') }, u), 0); return !!u; }
     const grau = clamp(Math.floor(Number(op.hab.grau) || 1), 1, 9), sp = A() && A().de(op.hab.id, grau);
     if (!sp) return false;
     const x = typeof op.x === 'number' && isFinite(op.x) ? op.x : centro(de, sc)[0], y = typeof op.y === 'number' && isFinite(op.y) ? op.y : centro(de, sc)[1];
@@ -363,5 +400,20 @@ const HabAcao = (() => {
     return true;
   }
 
-  return { comecar, cancelar, clique, mover, desenhar, ativa: () => !!mira, temAcao, specDe, pedidoDe, aplicar, padrao, planejar, _plano: o => planejar(o) };
+  // as formas com imagem que o personagem do token tem (para virar pelo menu: a Pele de Raposa, que não gasta barra)
+  function formasDoToken(t) {
+    if (!t || !t.char || typeof Fichas === 'undefined' || !F()) return [];
+    const l = Fichas.get(t.char), fm = l && l.ficha ? F().normFormas(l.ficha.formas) : {}, ids = Object.keys(fm), out = [];
+    if (!ids.length) return out;
+    const arvs = l.skills && Array.isArray(l.skills.arvores) ? l.skills.arvores : [];
+    for (const aid of arvs) {
+      const a = Fichas.arvore ? Fichas.arvore(aid) : null;
+      for (const n of (a && a.nodes) || []) if (ids.includes(n.id)) {
+        const tx = (n.graus || []).map(g => (g && g.texto) || '').join(' ');
+        out.push({ id: n.id, nome: /_o$/.test(n.id) ? ((/^([^:]{3,40}):/.exec(tx) || [, n.nome])[1]) : n.nome, desc: tx });
+      }
+    }
+    return out;
+  }
+  return { formasDoToken, forma, temForma, comecar, cancelar, clique, mover, desenhar, ativa: () => !!mira, temAcao, specDe, pedidoDe, aplicar, padrao, planejar, _plano: o => planejar(o) };
 })();

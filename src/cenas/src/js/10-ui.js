@@ -3238,6 +3238,8 @@ const UI = (() => {
     const tinha = Store.scene().turn.list.some(e => e.init != null) || App.iniRolls.size > 0;
     Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; delete e.sur; } }, 'Encerrar combate');
     App.iniRolls.clear();
+    // (lote 188) as formas acabam com o combate: o Transformado sai, e a imagem volta
+    { const tf = Store.scene().tokens.filter(t => t.tf && t.conds.includes('transformado')); if (tf.length) Store.tx('Fim das formas', () => tf.forEach(t => { const i = Object.assign({}, t.cinfo); delete i.transformado; Store.upd('tokens', t.id, { conds: t.conds.filter(c => c !== 'transformado'), cinfo: i }); })); }
     toast(tinha ? 'Combate encerrado: a iniciativa de todos foi zerada para o próximo.' : 'Combate encerrado.', { action: 'Desfazer', run: Tools.undo });
     // (lote 44) o painel de barras: cada barra faz o fim dela (o aviso tem o Desfazer dele)
     if (typeof PainelBarras !== 'undefined') PainelBarras.fimDoCombate(tokensDoCombate(Store.scene()));
@@ -3885,6 +3887,8 @@ const UI = (() => {
       if (gm && toks.length > 1) items.push({ label: 'Dano, cura ou condição…', icon: 'area', run: () => areaBox(`Aplicar a ${toks.length} tokens`, toks, null) });
       if (gm && toks.length > 1) items.push({ label: 'Sobrevida…', icon: 'shield', run: () => sobreBox(toks, `Sobrevida a ${toks.length} tokens`) });
       if (gm && Luta.podeAtaque()) items.push({ label: 'Ataque com defesa…', icon: 'shield', key: 'K', run: () => Luta.ataque(toks) });
+      // (lote 188) as formas com imagem na ficha: virar pelo menu (a que não gasta barra, como a Pele de Raposa)
+      if (toks.length === 1 && (gm || ownsTok(toks[0])) && typeof HabAcao !== 'undefined') for (const f of HabAcao.formasDoToken(toks[0])) items.push({ label: 'Virar: ' + f.nome, icon: 'reset', run: () => HabAcao.forma(toks[0].id, f) });
       if (gm) {
         const allHidden = toks.every(t => t.hidden), allLocked = toks.every(t => t.locked);
         items.push({ label: 'Adicionar aos turnos', icon: 'turns', run: () => { Act.turnAdd(toks); openTab('turn'); } });

@@ -256,8 +256,8 @@ const Fichas = (() => {
     const fd = fadigaDe(l);
     if ((t.fad == null ? null : t.fad) !== fd) p.fad = fd;
     // a imagem da ficha vai para o token (imgChar marca que a imagem dele é a da ficha; uma escolhida à mão fica)
-    const url = imagemDe(l);
-    if (url) {
+    const url = t.tf ? null : imagemDe(l);          // (lote 188) na forma, a imagem é a da forma: a da ficha espera
+    if (t.tf) { /* nada */ } else if (url) {
       const a = Assets.register(url, 0, 0, 'token', l.nome || '');
       if (t.img !== a.id && (!t.img || t.imgChar)) { p.img = a.id; p.imgChar = true; }
       else if (t.img === a.id && !t.imgChar) p.imgChar = true;
