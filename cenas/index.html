@@ -26419,7 +26419,8 @@ const Luta = (() => {
     const atr = comFicha ? (itens.some(x => x[0] === atrMem.get(t.id)) ? atrMem.get(t.id) : itens[0][0]) : '';
     return { tok: t.id, nome: t.name, valor: valorMem.has(t.id) ? valorMem.get(t.id) : 40, fixa: fixaAtual(t), atr, vant: vantDe(t.id) };
   }
-  function disputa(toksArg) {
+  /* (lote 185) o: { aoFechar(res, st) } — a janela Resolver de uma habilidade abre a disputa e volta com o resultado */
+  function disputa(toksArg, o = {}) {
     if (!isGM()) { toast('A disputa pelo mapa é do mestre. Na sua ficha, o botão "Disputar" faz o mesmo.'); return; }
     fecharPop();
     const sc = Store.scene(), sel = (toksArg && toksArg.length ? toksArg : selOf('tokens')).slice();
@@ -26487,7 +26488,9 @@ const Luta = (() => {
       paint();
       return false;                        // a janela fica aberta: dá para rolar de novo
     };
-    UI.modal({ title: 'Disputa', wide: true, body: corpo, focusPrimary: true, actions: [{ label: 'Fechar' }, { label: 'Rolar disputa', kind: 'primary', run: rolar }] });
+    const volta = () => { if (o.aoFechar) setTimeout(() => o.aoFechar(st.res, st), 0); };
+    UI.modal({ title: o.titulo || 'Disputa', wide: true, body: corpo, focusPrimary: true, onCancel: volta,
+      actions: [{ label: o.aoFechar ? 'Voltar à habilidade' : 'Fechar', run: volta }, { label: 'Rolar disputa', kind: 'primary', run: rolar }] });
     paint();
   }
 
@@ -56182,8 +56185,8 @@ const HabAcao = (() => {
     if (janelaAberta) { fila.push({ pl, quem }); UI.toast(`Mais uma habilidade esperando: ${pl.hab.nome}.`, { key: 'hab-fila' }); return; }
     abrirJanela(pl, quem);
   }
-  function abrirJanela(pl, quem) {
-    const sc = Store.scene(), de = sc.tokens.find(t => t.id === pl.de), sp = pl.sp, esc = padrao(pl);
+  function abrirJanela(pl, quem, esc0) {
+    const sc = Store.scene(), de = sc.tokens.find(t => t.id === pl.de), sp = pl.sp, esc = esc0 || padrao(pl);
     if (!de) return;
     janelaAberta = true;
     const linhas = [], tierTxt = sp.d ? 'Dano tier ' + ROM[sp.d] : sp.cu ? 'Cura tier ' + ROM[sp.cu] : '';
@@ -56192,8 +56195,15 @@ const HabAcao = (() => {
     for (const id of pl.alvos) {
       const t = sc.tokens.find(x => x.id === id), e = esc.alvos[id];
       if (!t || !e) continue;
-      const nIn = tierTxt ? h('input', { class: 'in num ha-n', type: 'number', min: 0, max: 999, step: 1, placeholder: tierTxt, 'aria-label': tierTxt + ' em ' + nomeDe(t), oninput: ev => { e.n = ev.target.value; } }) : null;
-      const res = h('span', { class: 'ha-res' });
+      const nIn = tierTxt ? h('input', { class: 'in num ha-n', type: 'number', min: 0, max: 999, step: 1, placeholder: tierTxt, value: e.n || '', 'aria-label': tierTxt + ' em ' + nomeDe(t), oninput: ev => { e.n = ev.target.value; } }) : null;
+      const res = h('span', { class: 'ha-res', text: e.disp || '' });
+      // (lote 185) a mesma Disputa do mestre (tecla C): quem usou × o alvo; quem perder sofre
+      const disp = typeof Luta !== 'undefined' && Luta.disputa ? h('button', { type: 'button', class: 'btn sm ha-disp', text: 'Disputa', title: `Abre a Disputa: ${nomeDe(de)} × ${nomeDe(t)}`, onclick: () => {
+        Luta.disputa([Store.get('tokens', de.id), Store.get('tokens', id)].filter(Boolean), { titulo: `Disputa · ${pl.hab.nome}`, aoFechar: r => {
+          if (r) { const ganhou = r.a.total > r.b.total; e.falhou = ganhou; e.disp = `${ganhou ? nomeDe(de) : nomeDe(t)} venceu (${r.a.total} × ${r.b.total})`; }
+          abrirJanela(pl, quem, esc);
+        } });
+      } }) : null;
       const teste = temTeste ? h('div', { class: 'ha-teste' },
         h('span', { class: 'ha-tl', text: 'Teste de ' + NOME_TESTE[temTeste[2]] + ':' }),
         ...(ATR_TESTE[temTeste[2]] || []).map(k => (Fichas.podeRolar && Fichas.podeRolar(t) ? h('button', { type: 'button', class: 'btn ghost sm', text: 'Rolar ' + k, onclick: () => {
@@ -56201,19 +56211,20 @@ const HabAcao = (() => {
           res.textContent = r && r.ok !== false && r.total != null ? `${k}: ${r.total}` : (r && r.error) || 'Não deu para rolar.';
         } }) : null)),
         res,
-        h('label', { class: 'cl-op' }, h('input', { type: 'radio', name: 'ha-t-' + id, checked: true, onchange: () => { e.falhou = true; } }), h('span', { text: 'Falhou' })),
-        h('label', { class: 'cl-op' }, h('input', { type: 'radio', name: 'ha-t-' + id, onchange: () => { e.falhou = false; } }), h('span', { text: 'Passou' }))) : null;
-      const cs = e.conds.length ? h('div', { class: 'ha-conds' }, ...e.conds.map(cid => h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: true, onchange: ev => { e.conds = ev.target.checked ? e.conds.concat(cid) : e.conds.filter(x => x !== cid); } }), h('span', { text: condTxt(cid) + ((sp.c.find(c => c[0] === cid) || [])[1] ? ' (' + sp.c.find(c => c[0] === cid)[1] + ' t)' : '') })))) : null;
+        h('label', { class: 'cl-op' }, h('input', { type: 'radio', name: 'ha-t-' + id, checked: e.falhou, onchange: () => { e.falhou = true; } }), h('span', { text: 'Falhou' })),
+        h('label', { class: 'cl-op' }, h('input', { type: 'radio', name: 'ha-t-' + id, checked: !e.falhou, onchange: () => { e.falhou = false; } }), h('span', { text: 'Passou' }))) : null;
+      const todasC = (sp.c || []).filter(c => c[3] === 'a').map(c => c[0]);
+      const cs = todasC.length ? h('div', { class: 'ha-conds' }, ...todasC.map(cid => h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: e.conds.includes(cid), onchange: ev => { e.conds = ev.target.checked ? e.conds.concat(cid) : e.conds.filter(x => x !== cid); } }), h('span', { text: condTxt(cid) + ((sp.c.find(c => c[0] === cid) || [])[1] ? ' (' + sp.c.find(c => c[0] === cid)[1] + ' t)' : '') })))) : null;
       linhas.push(h('div', { class: 'ha-alvo' },
-        h('label', { class: 'cl-op ha-nome' }, h('input', { type: 'checkbox', checked: true, onchange: ev => { e.on = ev.target.checked; } }), h('b', { text: nomeDe(t) })),
-        nIn, teste, cs,
-        sp.lp ? h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: true, onchange: ev => { e.lp = ev.target.checked; } }), h('span', { text: 'Tirar as condições ruins' })) : null));
+        h('label', { class: 'cl-op ha-nome' }, h('input', { type: 'checkbox', checked: e.on, onchange: ev => { e.on = ev.target.checked; } }), h('b', { text: nomeDe(t) })),
+        disp, temTeste ? null : (e.disp ? h('span', { class: 'ha-res', text: e.disp }) : null), nIn, teste, cs,
+        sp.lp ? h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: e.lp, onchange: ev => { e.lp = ev.target.checked; } }), h('span', { text: 'Tirar as condições ruins' })) : null));
     }
     const extra = [];
-    if (sp.z) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: true, onchange: ev => { esc.zona = ev.target.checked; } }), h('span', { text: `Pôr a zona ${(FX.P[sp.z.fx] || {}).n || sp.z.fx} (${sp.z.t} turno${sp.z.t === 1 ? '' : 's'})` })));
-    if (sp.inv) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: true, onchange: ev => { esc.inv = ev.target.checked; } }), h('span', { text: sp.inv.clone ? `Pôr ${sp.inv.n} clone${sp.inv.n === 1 ? '' : 's'} de ${nomeDe(de)} (${sp.inv.t} turnos)` : `Pôr ${sp.inv.n} × ${sp.inv.nome} (${sp.inv.t} turnos)` })));
-    if (sp.mv) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: true, onchange: ev => { esc.mv = ev.target.checked; } }), h('span', { text: { empurra: `Empurrar ${sp.mv.d} cédula${sp.mv.d === 1 ? '' : 's'} (quem falhar no teste)`, puxa: `Puxar ${sp.mv.d} cédula${sp.mv.d === 1 ? '' : 's'}`, salta: `${nomeDe(de)} vai até o lugar`, troca: 'Trocar de lugar' }[sp.mv.k] })));
-    for (const cid of esc.si) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: true, onchange: ev => { esc.si = ev.target.checked ? esc.si.concat(cid) : esc.si.filter(x => x !== cid); } }), h('span', { text: `${condTxt(cid)} em ${nomeDe(de)}` })));
+    if (sp.z) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.zona, onchange: ev => { esc.zona = ev.target.checked; } }), h('span', { text: `Pôr a zona ${(FX.P[sp.z.fx] || {}).n || sp.z.fx} (${sp.z.t} turno${sp.z.t === 1 ? '' : 's'})` })));
+    if (sp.inv) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.inv, onchange: ev => { esc.inv = ev.target.checked; } }), h('span', { text: sp.inv.clone ? `Pôr ${sp.inv.n} clone${sp.inv.n === 1 ? '' : 's'} de ${nomeDe(de)} (${sp.inv.t} turnos)` : `Pôr ${sp.inv.n} × ${sp.inv.nome} (${sp.inv.t} turnos)` })));
+    if (sp.mv) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.mv, onchange: ev => { esc.mv = ev.target.checked; } }), h('span', { text: { empurra: `Empurrar ${sp.mv.d} cédula${sp.mv.d === 1 ? '' : 's'} (quem falhar no teste)`, puxa: `Puxar ${sp.mv.d} cédula${sp.mv.d === 1 ? '' : 's'}`, salta: `${nomeDe(de)} vai até o lugar`, troca: 'Trocar de lugar' }[sp.mv.k] })));
+    for (const cid of (sp.c || []).filter(c => c[3] === 's').map(c => c[0])) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.si.includes(cid), onchange: ev => { esc.si = ev.target.checked ? esc.si.concat(cid) : esc.si.filter(x => x !== cid); } }), h('span', { text: `${condTxt(cid)} em ${nomeDe(de)}` })));
     const fechar = () => { janelaAberta = false; const prox = fila.shift(); if (prox) setTimeout(() => abrirJanela(prox.pl, prox.quem), 60); };
     UI.modal({
       title: `${pl.hab.nome}${pl.hab.grau > 1 ? ' (nível ' + pl.hab.grau + ')' : ''} — ${nomeDe(de)}`,

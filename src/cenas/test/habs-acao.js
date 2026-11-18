@@ -31,6 +31,14 @@ const { open } = require('./lib');
   await ev(p => __tc.HabAcao.clique(p), pb); await w(250);
   chk(await page.locator('.ha-janela').count() === 1, 'a janela Resolver abriu');
   chk(/Teste de Vigor/.test(await page.locator('.ha-janela').innerText()), 'mostra o teste de Vigor');
+  // a Disputa (a mesma do mestre) abre e volta para a janela com o resultado
+  await page.locator('.ha-janela .ha-disp').first().click(); await w(200);
+  chk(/Disputa · Sombra que Segura/.test(await page.locator('.modal').innerText()), 'o botão Disputa abre a tela de disputa');
+  await page.locator('.modal .modal-a button', { hasText: 'Rolar disputa' }).click(); await w(150);
+  if (process.env.FOTOS) await page.screenshot({ path: process.env.FOTOS + '/habs-disputa.png' });
+  await page.locator('.modal .modal-a button', { hasText: 'Voltar à habilidade' }).click(); await w(250);
+  chk(/venceu \(/.test(await page.locator('.ha-janela').innerText()), 'de volta à janela, com quem venceu a disputa');
+  await page.locator('.ha-janela input[type=radio]').first().check();
   await page.locator('.ha-janela .modal-a button', { hasText: 'Aplicar' }).click(); await w(200);
   chk(await ev(id => __tc.Store.get('tokens', id).conds.includes('preso'), ids.b), 'quem falhou ficou Preso');
 

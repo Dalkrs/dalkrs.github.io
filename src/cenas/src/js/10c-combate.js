@@ -383,7 +383,8 @@ const Luta = (() => {
     const atr = comFicha ? (itens.some(x => x[0] === atrMem.get(t.id)) ? atrMem.get(t.id) : itens[0][0]) : '';
     return { tok: t.id, nome: t.name, valor: valorMem.has(t.id) ? valorMem.get(t.id) : 40, fixa: fixaAtual(t), atr, vant: vantDe(t.id) };
   }
-  function disputa(toksArg) {
+  /* (lote 185) o: { aoFechar(res, st) } — a janela Resolver de uma habilidade abre a disputa e volta com o resultado */
+  function disputa(toksArg, o = {}) {
     if (!isGM()) { toast('A disputa pelo mapa é do mestre. Na sua ficha, o botão "Disputar" faz o mesmo.'); return; }
     fecharPop();
     const sc = Store.scene(), sel = (toksArg && toksArg.length ? toksArg : selOf('tokens')).slice();
@@ -451,7 +452,9 @@ const Luta = (() => {
       paint();
       return false;                        // a janela fica aberta: dá para rolar de novo
     };
-    UI.modal({ title: 'Disputa', wide: true, body: corpo, focusPrimary: true, actions: [{ label: 'Fechar' }, { label: 'Rolar disputa', kind: 'primary', run: rolar }] });
+    const volta = () => { if (o.aoFechar) setTimeout(() => o.aoFechar(st.res, st), 0); };
+    UI.modal({ title: o.titulo || 'Disputa', wide: true, body: corpo, focusPrimary: true, onCancel: volta,
+      actions: [{ label: o.aoFechar ? 'Voltar à habilidade' : 'Fechar', run: volta }, { label: 'Rolar disputa', kind: 'primary', run: rolar }] });
     paint();
   }
 
