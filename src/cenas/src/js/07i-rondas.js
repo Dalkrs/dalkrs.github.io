@@ -63,6 +63,9 @@ const Rondas = (() => {
     return o;
   }
   const ehGuarda = t => !!(t && !t.prop && t.ronda && typeof t.ronda === 'object');
+  // (lote 186) o guarda Adormecido (ou Inconsciente, ou Morto) não enxerga: sem cone e sem ver ninguém
+  const SEM_VISTA = ['adormecido', 'inconsciente', 'morto'];
+  const dormindo = t => !!(t && Array.isArray(t.conds) && t.conds.some(c => SEM_VISTA.includes(c)));
   // (lote 132) na tela de um jogador: o guarda cujo cone o mestre mostrou para ele (t.vc, da projeção)
   const tem = (l, id) => Array.isArray(l) && (l.includes(id) || l.includes('*'));
   const vcMeu = t => !!(t && !t.prop && t.vc && typeof t.vc === 'object' && (tem(t.vc.para, App.viewer) || tem(t.vc.rp, App.viewer)));
@@ -119,7 +122,7 @@ const Rondas = (() => {
   function quemVe(sc, lista) {
     const out = [], alvos = sc.tokens.filter(t => !t.prop && t.owner && !t.hidden && !ehGuarda(t) && !(t.conds || []).includes('oculto'));
     if (!alvos.length) return out;
-    for (const gd of lista || guardas(sc)) {
+    for (const gd of (lista || guardas(sc)).filter(x => !dormindo(x))) {
       const g = cone(gd, sc), segs = Walls.sightFor(sc, gd);
       for (const t of alvos) {
         const [x, y, half] = tokC(t, sc);
@@ -278,7 +281,7 @@ const Rondas = (() => {
     const cell = sc.cell, sel = new Set(App.sel.filter(s => s.c === 'tokens').map(s => s.id));
     c.save();
     // os cones (cortados pelas paredes), na cor do estado
-    for (const t of gs.filter(coneMeu)) {
+    for (const t of gs.filter(x => coneMeu(x) && !dormindo(x))) {
       const g = cone(t, sc), poly = poligono(t, sc, g);
       c.save();
       c.beginPath(); for (let i = 0; i < poly.length; i += 2) (i ? c.lineTo(poly[i], poly[i + 1]) : c.moveTo(poly[i], poly[i + 1])); c.closePath(); c.clip();
@@ -570,5 +573,5 @@ const Rondas = (() => {
     return out;
   }
 
-  return { aba, novoGuarda, fazerGuardas, verTodos, selecionarTodos, coneMeu, rotaMeu, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, virarPara, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
+  return { dormindo, aba, novoGuarda, fazerGuardas, verTodos, selecionarTodos, coneMeu, rotaMeu, ESTADOS, MODOS, limpar, ehGuarda, estadoDe, guardas, novaRonda, cone, noCone, quemVe, naLuz, andar, avancar, virar, naRodada, verLimpo, vcMeu, vistos, mudarEstado, virarPara, olharPara, olharNoMapa, blocoGrupo, desenhar, selos, secao, painel, porPonto, tirarPonto, terminar, previaRota, desenharRota, editando, resumoVistos };
 })();

@@ -224,7 +224,8 @@ const Vigia = (() => {
   function daCena(sc) {
     const c = sc.cell, M = novo(sc.cols, sc.rows);
     for (const w of sc.walls || []) { const [v, ps] = efeito(w); parede(M, w.x1 / c, w.y1 / c, w.x2 / c, w.y2 / c, v, ps); }
-    for (const t of (sc.tokens || []).filter(x => !x.prop && x.ronda && typeof x.ronda === 'object')) {
+    // (lote 186) o guarda dormindo não vê: fica fora do mapa de calor
+    for (const t of (sc.tokens || []).filter(x => !x.prop && x.ronda && typeof x.ronda === 'object' && !(Array.isArray(x.conds) && x.conds.some(c => c === 'adormecido' || c === 'inconsciente' || c === 'morto')))) {
       const r = t.ronda, al = t.alerta === 'desconfiado' ? [1.25, 20] : t.alerta === 'alerta' ? [1.5, 40] : [1, 0];
       M.guardas.push({ x: Math.round(t.x / c), y: Math.round(t.y / c), pts: t.alerta === 'alerta' ? [] : r.pts || [], passo: r.passo, modo: r.modo, r: Math.round((r.r || 6) * al[0]), a: (r.a || 90) + al[1], dir: r.dir || 0 });
     }
