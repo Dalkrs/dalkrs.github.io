@@ -4423,3 +4423,17 @@ duração de começo na ferramenta, o painel com a raça e a regra, o Totem com 
 avisa quem entra); o `lote19.rede.test.js`, numa mesa, os membros na ficha (a mão amputada do lado certo, as costelas no
 peito, desmarcar ao tirar, o Desfazer, a marca feita à mão que fica); e o `rules.test.js` confere que a lista de TC.rules
 continua igual à das Cenas (123).
+
+### Os prêmios das conquistas na ficha (lote 184)
+
+- **O prêmio que entra sozinho** (`premios` em cada conquista de `conq:lista`): `{ t: "pontos", pool, n }` (pontos de
+  árvore num tipo: `p_raca`, `p_classe`, `p_profissao`, `p_bencao`, `p_linhagem`) e `{ t: "titulo", v }`. O `premio`
+  de texto continua: é o lembrete do que o mestre aplica à mão. O editor de conquistas tem os três campos.
+- **Quem faz a conta é o banco** (migração 0047): a coluna `personagens.conq` (`{ pontos, origem, titulos }`) é refeita
+  a cada gravação do personagem e sempre que mudam `conq:j:<conta>` ou `conq:lista`. Vale para todos os personagens da
+  conta (os criados depois também; os pets, não). Tirar a conquista tira o prêmio. Nenhum aparelho escreve na coluna.
+  E as conquistas passam a ser só do mestre: o jogador, dono de `conq:j:<conta>`, não pode mais mexer nela.
+- **Na ficha e na Árvore**: os pontos de conquista somam no que sobra para gastar (`restantesPool`, `restantes`) e
+  aparecem com a origem ("+2 de conquistas (Fantasma +1, Um de Nós +1)"), fora do total digitado e do teto do nível.
+- **O título**: `ficha.titulo` é o escolhido, entre os de `conq.titulos` (um que saiu da coleção deixa de valer). Aparece
+  embaixo do nome na ficha e ao lado do nome do personagem na mesa ao vivo (`dados.tit` da linha).

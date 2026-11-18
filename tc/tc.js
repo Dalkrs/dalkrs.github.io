@@ -764,6 +764,7 @@
     if (quem && (quem.nome || quem.av)) {
       dados = Object.assign({}, dados);
       if (quem.nome) dados.como = String(quem.nome).slice(0, 80);
+      if (quem.tit) dados.tit = String(quem.tit).slice(0, 40);              // (lote 184) o título do personagem
       if (aoVivo.imagemValida(quem.av)) dados.av = quem.av;
     }
     const linha = { mesa_id: a.id, id: opt.id || novoId(tipo === 'rolagem' ? 'r' : 'm'), tipo, origem: opt.origem || 'mesa', secreta: !!opt.secreta && a.papel === 'mestre', dados };
@@ -1139,15 +1140,17 @@
      e manda para o banco só os campos que mudaram. O que ainda não subiu continua valendo aqui até subir;
      se a rede cair, tenta de novo sozinho. Cada linha: { id, ...campos, rev }. */
   const TABELAS = {
-    personagens: ['nome', 'dono_id', 'vis', 'ordem', 'ficha', 'skills', 'estado', 'campanha'],
+    personagens: ['nome', 'dono_id', 'vis', 'ordem', 'ficha', 'skills', 'estado', 'campanha', 'conq'],
     documentos: ['dono_id', 'vis', 'dados', 'campanhas', 'para'],
   };
   /* A campanha de um personagem (uma, ou nenhuma: do mundo) e as de um documento (uma lista; vazia: do mundo). Num banco
      de antes das campanhas essas colunas não existem — a linha que chega sem elas não "chegou incompleta". */
   const OPCIONAIS = ['campanha', 'campanhas'];
+  // (lote 184) conq: os prêmios das conquistas do jogador (pontos de árvore e títulos). Quem calcula é o banco (0047);
+  // nenhum aparelho escreve nela. Num banco de antes da 0047 a coluna não existe.
   // (lote 31) "para": o documento só para algumas pessoas (o handout do Escudo). Num banco de antes da 0025 a coluna não
   // existe; quem grava com ela é só o Escudo, que pergunta antes ao banco (escudo_versao).
-  const SEM_FALTA = OPCIONAIS.concat(['para']);
+  const SEM_FALTA = OPCIONAIS.concat(['para', 'conq']);
   /* Campanha encerrada: as fichas dela e os documentos "dela" (nome@campanha: o acampamento, as missões do grupo) são só
      para consulta — o banco recusa, do mestre também. Aqui a gravação nem sai: quem pediu recebe um aviso e a linha de
      volta, como está, para a tela dele voltar atrás. */
@@ -2352,7 +2355,10 @@
   const imgBase = () => CFG.url + '/storage/v1/object/public/mesas/';
   aoVivo.imagemValida = u => typeof u === 'string' && u.length < 500 && !!mesas.atual && u.startsWith(imgBase() + mesas.atual.id + '/');
   function linhasPcs() { const c = cols.personagens; return c && !c.morta && mesas.atual && c.mesa === mesas.atual.id ? [...c.linhas.values()] : []; }
-  const resumoPc = l => ({ id: l.id, nome: l.nome || 'Sem nome', av: l.ficha && aoVivo.imagemValida(l.ficha.img) ? l.ficha.img : null, camp: l.campanha || null });
+  /* (lote 184) o título que o personagem escolheu, entre os que as conquistas do jogador deram (coluna conq) */
+  const tituloDe = l => { const t = l && l.ficha && typeof l.ficha.titulo === 'string' ? l.ficha.titulo : ''; const ts = l && l.conq && Array.isArray(l.conq.titulos) ? l.conq.titulos : []; return t && ts.some(x => x && x.v === t) ? t : ''; };
+  aoVivo.tituloDe = tituloDe;
+  const resumoPc = l => ({ id: l.id, nome: l.nome || 'Sem nome', av: l.ficha && aoVivo.imagemValida(l.ficha.img) ? l.ficha.img : null, camp: l.campanha || null, tit: tituloDe(l) || null });
   /* Os personagens com que a pessoa pode falar e rolar: o jogador, os que ele controla; quem mestra, todos. Com
      campanhas, primeiro os da campanha em vista, depois os do mundo, depois os das outras. */
   aoVivo.personagens = () => {

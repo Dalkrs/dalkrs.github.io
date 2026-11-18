@@ -1403,6 +1403,13 @@ html.elenco-seletor #tab-fichas > .roster{display:none} html.elenco-seletor #tab
 .fmais-m{position:absolute;right:0;top:calc(100% + 4px);z-index:30;display:grid;gap:4px;min-width:150px;padding:6px;background:var(--panel);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28)}
 .fmais-m .mini{justify-content:flex-start;text-align:left}
 .rsnomej{margin:0;font:700 30px/1.1 var(--display,inherit);color:var(--ink)}
+/* (lote 184) o título de conquista, embaixo do nome, e os pontos que vieram de conquistas */
+.rstitulo{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:2px}
+.rstitulo:empty{display:none}
+.rstit{font:italic 600 15px/1.2 var(--display,inherit);color:var(--accent,#b08a5a)}
+.rstitsel{display:inline-flex;align-items:center;gap:6px}
+.rstitsel select{max-width:240px}
+.conq-pts{display:block;font-size:11.5px;color:var(--ok,#3a8a5a);margin-top:3px}
 /* os números do resumo rolam: o total (com o equipamento) e, nos atributos, a base embaixo */
 button.rsn,.rsatr .rsrola,.rsatr .rsbase{border:0;cursor:pointer;color:inherit;text-align:left}
 button.rsn{display:inline-flex;border:1px solid transparent}
@@ -1938,7 +1945,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=3"></script>
-<script src="mesa.js?v=21"></script>
+<script src="mesa.js?v=22"></script>
 <script src="extras.js?v=29"></script>
 <script src="../tc/reputacao.js?v=1"></script>
 <script src="reputacao.js?v=1"></script>
@@ -1950,7 +1957,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../tc/caudas.js?v=4"></script>
 <script src="caudas.js?v=4"></script>
 <script src="../tc/missoes.js?v=3"></script>
-<script src="quadros.js?v=9"></script>
+<script src="quadros.js?v=10"></script>
 <script src="skills-lista.js?v=1"></script>
 <script src="filtro-skills.js?v=3"></script>
 <script src="criacao.js?v=4"></script>
@@ -3468,6 +3475,7 @@ function htmlResumo(pc,c){
         <div class="rsnome">
           <label class="f so-editar"><span class="eyebrow">Nome</span><input id="f_nome" value="${esc(pc.nome)}"></label>
           <h2 class="rsnomej so-jogando">${esc(pc.nome||'Sem nome')}</h2>
+          ${htmlTitulo(pc)}
           <span class="rsmeta" id="rsmeta">${esc(metaDaFicha(pc))}</span>
           ${htmlLugarNaFicha(pc)}
         </div>
@@ -3481,6 +3489,16 @@ function htmlResumo(pc,c){
       </div>
     </div>
   </div>`;
+}
+/* (lote 184) O título: os títulos vêm das conquistas do jogador (todos os personagens dele ganham); o personagem
+   escolhe um, que aparece embaixo do nome, aqui e na mesa ao vivo. Sem conquista com título, nada aparece. */
+function htmlTitulo(pc){
+  const ts=titulosDe(pc), at=tituloAtivo(pc);
+  if(!ts.length) return '';
+  const pode=FichasMesa.podeEditar(pc);
+  const sel=pode? `<label class="rstitsel"><span class="eyebrow">Título</span><select id="f_titulo" title="Os títulos que as conquistas deram. O escolhido aparece embaixo do nome e na mesa ao vivo.">
+      <option value="">Sem título</option>${ts.map(t=>`<option value="${esc(t.v)}" ${t.v===at?'selected':''}>${esc(t.v)}${t.nome&&t.nome!==t.v? ` (de ${esc(t.nome)})` : ''}</option>`).join('')}</select></label>` : '';
+  return `<div class="rstitulo">${at? `<span class="rstit" title="Título de conquista">“${esc(at)}”</span>` : ''}${sel}</div>`;
 }
 // quem é (na aba Atributos): a raça, o lado, o tier, o level, o XP, o dono, o grupo, as tags e o resto da identidade
 function htmlQuemE(pc,optTier,optLvl){
@@ -3949,6 +3967,7 @@ function ligarFicha(pc){
   const patchLeve=(f)=>{f(); save(); /* sem re-render: não perde o foco */};
 
   host.querySelector('#f_nome').oninput=e=>{pc.nome=e.target.value; save(); renderLista()};
+  { const ft=host.querySelector('#f_titulo'); if(ft) ft.onchange=e=>{ if(e.target.value) pc.titulo=e.target.value; else delete pc.titulo; save(); renderFicha(); }; }
   host.querySelector('#f_raca').oninput=e=>{pc.raca=e.target.value; save(); renderLista()};
   host.querySelector('#f_lado').onchange=e=>{pc.lado=e.target.value; save(); renderLista()};
   FichasMesa.ligarDono(host, pc);
@@ -4744,7 +4763,14 @@ function gastosPool(pc,poolId){
   }
   return soma;
 }
-const restantesPool = (pc,poolId) => (skillsDe(pc).pontos[poolId]||0) - gastosPool(pc,poolId);
+/* (lote 184) Os pontos que vêm das conquistas do jogador (a coluna conq, que o banco calcula para todos os personagens
+   dele): somam no que sobra para gastar, mas ficam fora do total digitado e do teto do nível. */
+const conqPontos = (pc,pid) => { const q=pc&&pc._conq, v=q&&q.pontos? +q.pontos[pid] : 0; return Number.isFinite(v)? Math.trunc(v) : 0; };
+const conqOrigem = (pc,pid) => ((pc&&pc._conq&&Array.isArray(pc._conq.origem))? pc._conq.origem : []).filter(o=>o&&o.pool===pid).map(o=>`${o.nome} ${o.n>0?'+':''}${o.n}`).join(', ');
+const conqSelo = (pc,pid) => { const n=conqPontos(pc,pid); return n? `<span class="conq-pts" title="Vieram de conquistas: ${esc(conqOrigem(pc,pid))}. Não contam no teto do nível.">${n>0?'+':''}${n} de conquista${Math.abs(n)===1?'':'s'} (${esc(conqOrigem(pc,pid))})</span>` : ''; };
+const titulosDe = pc => ((pc&&pc._conq&&Array.isArray(pc._conq.titulos))? pc._conq.titulos : []).filter(t=>t&&typeof t.v==='string'&&t.v);
+const tituloAtivo = pc => { const t=pc&&typeof pc.titulo==='string'? pc.titulo : ''; return t && titulosDe(pc).some(x=>x.v===t)? t : ''; };
+const restantesPool = (pc,poolId) => (skillsDe(pc).pontos[poolId]||0) + conqPontos(pc,poolId) - gastosPool(pc,poolId);
 function podePagarArv(pc,n,k){
   const c=custoGrauArv(n,k);
   return (BIBX().pools||[]).every(pl=>(c[pl.id]||0) <= restantesPool(pc,pl.id));
@@ -5222,12 +5248,13 @@ function blocoSkills(pc){
   const barra = poolsEmUso.length? `<div class="poolbar">
       ${poolsEmUso.map(pid=>{
         const pl=poolArv(pid)||{nome:pid,cor:'#888'};
-        const total=sk.pontos[pid]||0, gasto=gastosPool(pc,pid), resta=total-gasto;
+        const total=sk.pontos[pid]||0, gasto=gastosPool(pc,pid), resta=total+conqPontos(pc,pid)-gasto;
         return `<div class="poolcard">
           <span class="pooldot" style="background:${esc(pl.cor||'#888')}"></span>
           <span class="poolnome">${esc(pl.nome)}</span>
           <input type="number" min="0" data-skpontos="${esc(pid)}" value="${total}" title="Total de pontos nesta pool">
           <span class="poolconta ${resta<0?'warn':''}">${gasto} gastos · <strong>${resta}</strong> ${resta===1?'livre':'livres'}</span>
+          ${conqSelo(pc,pid)}
           ${typeof FichasQuadros!=='undefined' && FichasQuadros.tetoHtml ? FichasQuadros.tetoHtml(pl, total, pc, false) : ''}
         </div>`}).join('')}
     </div>` : '';

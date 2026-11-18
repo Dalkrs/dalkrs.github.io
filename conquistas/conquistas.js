@@ -114,7 +114,7 @@
         h('span', { class: 'rar', text: R.n + (modo === 'mestre' && x.oculta ? ' · oculta' : '') }),
         h('span', { class: 'nome', text: oc ? '???' : x.nome }),
         !oc && x.desc ? h('span', { class: 'desc', text: x.desc }) : null,
-        !oc && x.premio ? h('span', { class: 'premio', text: 'Prêmio: ' + x.premio }) : null,
+        !oc && C.textoPremio(x) ? h('span', { class: 'premio', text: 'Prêmio: ' + C.textoPremio(x) }) : null,
         x.em ? h('span', { class: 'quando', text: 'Conquistada em ' + quando(x.em) }) : null,
         extra || null),
       modo === 'mestre' ? null : dicaQuem(quem));
@@ -190,15 +190,31 @@
     janela(h('h2', { text: 'Liberar “' + x.nome + '”' }),
       h('p', { text: R.k === 'comum' ? 'Todos que estiverem no site ouvem o som e veem o nome e a descrição.' : 'Todos ouvem o som e veem que saiu uma conquista ' + R.n + ' — o nome, só quem ganhou.' }),
       h('label', { class: 'campo' }, h('span', { text: 'Para quem' }), sel),
-      x.premio ? h('p', { text: 'Lembrete do prêmio (você aplica na ficha): ' + x.premio }) : null,
+      (x.premios || []).length ? h('p', { class: 'ajuda', text: 'Vai sozinho para todas as fichas do jogador (as que ele criar depois também): ' + C.textoPremio({ premios: x.premios }) + '.' }) : null,
+      x.premio ? h('p', { class: 'ajuda', text: 'Lembrete (este você aplica à mão): ' + x.premio }) : null,
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fechar }),
         h('button', { type: 'button', class: 'btn pri', text: 'Liberar', disabled: !livre, onclick: () => { if (liberar(x.id, sel.value)) fechar(); } })));
   }
   function abrirForm(x) {
-    const novo = !x, f = Object.assign({ nome: '', desc: '', rar: 'comum', oculta: false, premio: '', ic: 'estrela' }, x ? copia(x) : {});
+    const novo = !x, f = Object.assign({ nome: '', desc: '', rar: 'comum', oculta: false, premio: '', premios: [], ic: 'estrela' }, x ? copia(x) : {});
     const nome = h('input', { class: 'in', maxlength: '60', value: f.nome, placeholder: 'Ex.: Matador de Goblins' });
     const desc = h('textarea', { class: 'in', rows: '2', maxlength: '300', placeholder: 'O que a pessoa precisa fazer' }); desc.value = f.desc;
-    const premio = h('input', { class: 'in', maxlength: '120', value: f.premio, placeholder: 'Ex.: +1 ponto de árvore (opcional)' });
+    const premio = h('input', { class: 'in', maxlength: '120', value: f.premio, placeholder: 'Ex.: reputação com uma facção (opcional)' });
+    /* (lote 184) os prêmios que vão sozinhos para as fichas: pontos de árvore por tipo e um título */
+    const pts = C.premiosOk(f.premios).filter(p => p.t === 'pontos');
+    const tit = h('input', { class: 'in', maxlength: '40', value: (C.premiosOk(f.premios).find(p => p.t === 'titulo') || {}).v || '', placeholder: 'Ex.: Sem Rosto (opcional)' });
+    const caixaPts = h('div', { class: 'pts' });
+    function pintarPts() {
+      caixaPts.replaceChildren(...pts.map((p, i) => {
+        const sel = h('select', { class: 'in', 'aria-label': 'Tipo de ponto' }, C.POOLS.map(o => h('option', { value: o.id }, o.n))); sel.value = p.pool;
+        const num = h('input', { class: 'in', type: 'number', min: '1', max: '20', step: '1', value: String(p.n), 'aria-label': 'Quantos pontos' });
+        sel.onchange = () => { p.pool = sel.value; previa(); };
+        num.oninput = () => { p.n = Math.max(1, Math.min(20, Math.trunc(+num.value || 1))); previa(); };
+        return h('div', { class: 'pt-lin' }, h('span', { text: '+' }), num, h('span', { text: 'de' }), sel,
+          h('button', { type: 'button', class: 'btn', text: 'Tirar', onclick: () => { pts.splice(i, 1); pintarPts(); previa(); } }));
+      }), pts.length < 5 ? h('button', { type: 'button', class: 'btn', text: '+ Pontos de árvore', onclick: () => { pts.push({ t: 'pontos', pool: 'p_classe', n: 1 }); pintarPts(); previa(); } }) : null);
+    }
+    const premiosDoForm = () => pts.map(p => ({ t: 'pontos', pool: p.pool, n: p.n })).concat(tit.value.trim() ? [{ t: 'titulo', v: tit.value }] : []);
     const rar = h('select', { class: 'in' }, C.RARIDADES.map(r => h('option', { value: r.k }, r.n))); rar.value = f.rar;
     const oculta = h('input', { type: 'checkbox', checked: f.oculta });
     let ocultaMexida = !novo;
@@ -209,22 +225,24 @@
     const pintarIcones = () => icones.replaceChildren(...Object.keys(C.ICONES).map(k => h('button', { type: 'button', title: C.NOMES_ICONES[k] || k, 'aria-label': C.NOMES_ICONES[k] || k,
       'aria-pressed': String(f.ic === k), html: C.svgDe(k, 22), onclick: () => { f.ic = k; pintarIcones(); previa(); } })));
     function previa() {
-      const y = C.conquista({ id: 'previa', nome: nome.value || 'Conquista', desc: desc.value, premio: premio.value, rar: rar.value, ic: f.ic, oculta: oculta.checked });
+      const y = C.conquista({ id: 'previa', nome: nome.value || 'Conquista', desc: desc.value, premio: premio.value, premios: premiosDoForm(), rar: rar.value, ic: f.ic, oculta: oculta.checked });
       prev.replaceChildren(cartao(y, 'ganha', []));
     }
-    for (const el of [nome, desc, premio]) el.oninput = previa;
-    pintarIcones(); previa();
+    for (const el of [nome, desc, premio, tit]) el.oninput = previa;
+    pintarPts(); pintarIcones(); previa();
     janela(h('h2', { text: novo ? 'Nova conquista' : 'Editar conquista' }), prev,
       h('label', { class: 'campo' }, h('span', { text: 'Nome' }), nome),
       h('label', { class: 'campo' }, h('span', { text: 'Descrição' }), desc),
       h('div', { class: 'linha' }, h('label', { class: 'campo' }, h('span', { text: 'Raridade' }), rar),
         h('label', { class: 'chk' }, oculta, 'Oculta (ninguém vê até ganhar)')),
-      h('label', { class: 'campo' }, h('span', { text: 'Prêmio' }), premio),
+      h('div', { class: 'campo' }, h('span', { text: 'Pontos de árvore (entram sozinhos nas fichas do jogador)' }), caixaPts),
+      h('label', { class: 'campo' }, h('span', { text: 'Título (entra sozinho nas fichas do jogador)' }), tit),
+      h('label', { class: 'campo' }, h('span', { text: 'Outro prêmio (lembrete: você aplica à mão)' }), premio),
       h('div', { class: 'campo' }, h('span', { text: 'Ícone' }), icones),
       h('div', { class: 'pe' }, h('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fechar }),
         h('button', { type: 'button', class: 'btn pri', text: novo ? 'Criar' : 'Salvar', onclick: () => {
           if (!nome.value.trim()) { toast('Dê um nome à conquista.'); nome.focus(); return; }
-          const L = lista(), y = C.conquista({ id: novo ? null : x.id, nome: nome.value, desc: desc.value, premio: premio.value, rar: rar.value, ic: f.ic, oculta: oculta.checked });
+          const L = lista(), y = C.conquista({ id: novo ? null : x.id, nome: nome.value, desc: desc.value, premio: premio.value, premios: premiosDoForm(), rar: rar.value, ic: f.ic, oculta: oculta.checked });
           if (novo) { y.de = 'mestre'; L.itens.push(y); } else { const k = L.itens.findIndex(z => z.id === x.id); if (k >= 0) L.itens[k] = y; else L.itens.push(y); }
           salvarCatalogo(L, novo ? null : y.id);
           fechar();

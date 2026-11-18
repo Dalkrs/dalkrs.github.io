@@ -175,7 +175,7 @@ const FichasQuadros = (() => {
         <span style="margin-left:auto"><button type="button" class="mini" data-ascir="1" title="Abrir Skills, onde os pontos são gastos">Gastar em Skills</button></span>
       </div>
       <div class="bd">${regraDosPontos(tipos, pc)}<div class="asclist">${tipos.map(pl => {
-        const total = Math.max(0, Math.round(+sk.pontos[pl.id] || 0)), gasto = gastosPool(pc, pl.id), livre = total - gasto, id = esc(pl.id), nome = esc(pl.nome || pl.id);
+        const total = Math.max(0, Math.round(+sk.pontos[pl.id] || 0)), gasto = gastosPool(pc, pl.id), livre = total + conqPontos(pc, pl.id) - gasto, id = esc(pl.id), nome = esc(pl.nome || pl.id);
         const teto = tetoHtml(pl, total, pc, true);
         return `<div class="ascrow" data-asc="${id}">
           <span class="ascnome"><span class="pooldot" style="background:${esc(pl.cor || '#888')}"></span>${nome}</span>
@@ -184,7 +184,7 @@ const FichasQuadros = (() => {
             <input type="number" min="0" step="1" data-asctot="${id}" value="${total}" aria-label="Pontos de ${nome} que o personagem tem">
             <button type="button" class="mini" data-ascstep="${id}|1" title="Dar 1 ponto" aria-label="Dar 1 ponto de ${nome}">+</button>
           </span>
-          <span class="ascconta ${livre < 0 ? 'warn' : ''}">${plural(gasto, 'gasto', 'gastos')} · <strong>${livre}</strong> ${livre === 1 ? 'livre' : 'livres'}${livre < 0 ? ' — gastou mais do que tem' : ''}</span>${teto}
+          <span class="ascconta ${livre < 0 ? 'warn' : ''}">${plural(gasto, 'gasto', 'gastos')} · <strong>${livre}</strong> ${livre === 1 ? 'livre' : 'livres'}${livre < 0 ? ' — gastou mais do que tem' : ''}</span>${teto}${conqSelo(pc, pl.id)}
         </div>`;
       }).join('')}</div></div>
     </div>`;

@@ -80,6 +80,8 @@ const FichasMesa = (() => {
     pc._dono = l.dono_id || null;
     pc._vis = l.vis === 'mesa' ? 'mesa' : 'mestre';
     pc._camp = l.campanha || null;
+    // (lote 184) os prêmios das conquistas do jogador (pontos de árvore e títulos): o banco calcula; a ficha só lê
+    pc._conq = l.conq && typeof l.conq === 'object' && !Array.isArray(l.conq) ? l.conq : {};
     pc.ultRol = antigo ? antigo.ultRol || null : null;     // a última rolagem mostrada na ficha é só desta tela
     if (pc.estaqueOculto && mestre()) pc.estaque = estaqueGuardado(pc.id, manter ? antigo : null);
     return pc;
@@ -104,14 +106,14 @@ const FichasMesa = (() => {
   }
   function partes(pc) {
     const ficha = Object.assign({}, pc);
-    for (const k of ['id', 'skills', 'estado', '_dono', '_vis', '_camp', 'ultRol']) delete ficha[k];
+    for (const k of ['id', 'skills', 'estado', '_dono', '_vis', '_camp', '_conq', 'ultRol']) delete ficha[k];
     // (lote 40) a corrupção e a tropa de uma ficha de fora da mesa não vão para a linha do personagem (que outros podem
     // ver): numa mesa, elas moram nos documentos delas, que só o dono e quem mestra recebem
     delete ficha.corr; delete ficha.tropas;
     if (ficha.estaqueOculto) ficha.estaque = estaqueVazio();          // (lote 15) o texto fica com o mestre
-    return { nome: String(pc.nome || '').slice(0, 120), ficha, skills: pc.skills || {}, estado: pc.estado || {}, dono_id: pc._dono || null, vis: pc._vis === 'mesa' ? 'mesa' : 'mestre', campanha: pc._camp || null };
+    return { nome: String(pc.nome || '').slice(0, 120), ficha, skills: pc.skills || {}, estado: pc.estado || {}, dono_id: pc._dono || null, vis: pc._vis === 'mesa' ? 'mesa' : 'mestre', campanha: pc._camp || null, conq: pc._conq || {} };
   }
-  const retrato = (p, ordem) => ({ nome: p.nome, ficha: j(p.ficha), skills: j(p.skills), estado: j(p.estado), dono: p.dono_id, vis: p.vis, camp: p.campanha || null, ordem, arq: !!(p.ficha && p.ficha.arquivo) });
+  const retrato = (p, ordem) => ({ nome: p.nome, ficha: j(p.ficha), skills: j(p.skills), estado: j(p.estado), dono: p.dono_id, vis: p.vis, camp: p.campanha || null, ordem, arq: !!(p.ficha && p.ficha.arquivo), cq: j(p.conq || {}) });
   const lerLocal = chave => { try { const v = JSON.parse(localStorage.getItem(chave) || 'null'); return v && typeof v === 'object' ? v : null; } catch (e) { return null; } };
   /* Os documentos "um por campanha": a ordem dos grupos e as missões do grupo de cada campanha ficam em
      fichas:grupos@<campanha> e fichas:missoes@<campanha> (os sem "@" são os do mundo). */
@@ -141,7 +143,7 @@ const FichasMesa = (() => {
       abaFicha: tela.abaFicha, abaAtr: tela.abaAtr, abaBolsa: tela.abaBolsa, skillsUI: tela.skillsUI, fechados: tela.fechados, abertos: tela.abertos, abaElenco: tela.abaElenco, petsMin: tela.petsMin, filtroTags: tela.filtroTags, ultimaExpr: tela.ultimaExpr,
     };
     sombra = { pcs: new Map(), docs: {} };
-    linhas.forEach(l => sombra.pcs.set(l.id, retrato({ nome: l.nome || '', ficha: l.ficha || {}, skills: l.skills || {}, estado: l.estado || {}, dono_id: l.dono_id || null, vis: l.vis || 'mestre', campanha: l.campanha || null }, l.ordem)));
+    linhas.forEach(l => sombra.pcs.set(l.id, retrato({ nome: l.nome || '', ficha: l.ficha || {}, skills: l.skills || {}, estado: l.estado || {}, dono_id: l.dono_id || null, vis: l.vis || 'mestre', campanha: l.campanha || null, conq: l.conq || {} }, l.ordem)));
     // o retrato guarda a ficha como a calculadora a escreveria: assim a primeira gravação não reenvia tudo à toa
     s.personagens.forEach((pc, i) => { const p = partes(pc), r = sombra.pcs.get(pc.id); r.ficha = j(p.ficha); r.skills = j(p.skills); r.estado = j(p.estado); r.nome = p.nome; if (mestre()) r.ordem = linhas[i].ordem; });
     for (const k in DOCS) { const v = doc(k); sombra.docs[k] = v === undefined ? undefined : j(v); }
@@ -251,7 +253,7 @@ const FichasMesa = (() => {
       } else {
         const pc = daLinha(l, i >= 0 ? S.personagens[i] : null, true), p = partes(pc);
         const r = retrato(p, l.ordem), ant = sombra.pcs.get(l.id);
-        if (ant && i >= 0 && ant.nome === r.nome && ant.ficha === r.ficha && ant.skills === r.skills && ant.estado === r.estado && ant.dono === r.dono && ant.vis === r.vis && ant.camp === r.camp && ant.ordem === r.ordem) return;   // eco do que já está aqui
+        if (ant && i >= 0 && ant.nome === r.nome && ant.ficha === r.ficha && ant.skills === r.skills && ant.estado === r.estado && ant.dono === r.dono && ant.vis === r.vis && ant.camp === r.camp && ant.ordem === r.ordem && ant.cq === r.cq) return;   // eco do que já está aqui
         /* O personagem que já está na tela é atualizado no lugar (o mesmo objeto): quem está digitando na ficha dele
            continua digitando no personagem de verdade, e o que digitar depois deste aviso não se perde. */
         if (i >= 0) { const alvo = S.personagens[i]; for (const k of Object.keys(alvo)) delete alvo[k]; Object.assign(alvo, pc); }

@@ -2,7 +2,8 @@
    TC.conquistas — as conquistas da mesa (lote 117). Lógica pura (Node e navegador).
 
    Três documentos:
-     conq:lista        (vis mestre)  o catálogo inteiro: { v, itens: [{ id, nome, desc, ic, rar, oculta, premio }] }
+     conq:lista        (vis mestre)  o catálogo inteiro: { v, itens: [{ id, nome, desc, ic, rar, oculta, premio, premios }] }
+                                     premios: [{ t: "pontos", pool, n } | { t: "titulo", v }] (lote 184: vão sozinhos para as fichas)
      conq:pub          (vis mesa)    o que todos podem ver: as visíveis inteiras; das ocultas, só a raridade e quem ganhou
                                      { v, itens: [{ id, rar, oculta, ic?, nome?, desc?, premio?, quem: [{ u, em }] }],
                                        log: [{ k, c, u, em }] (os anúncios, os 30 últimos) }
@@ -86,7 +87,9 @@
   const svgOculta = tam => svgDe(null, tam, OCULTA);
 
   /* As conquistas de começo (o mundo do Bruno). As comuns ficam à mostra (são metas); as outras, ocultas. */
-  const c = (id, rar, ic, nome, desc, premio, oculta) => ({ id, rar, ic, nome, desc, premio: premio || '', oculta: oculta == null ? rar !== 'comum' : !!oculta });
+  // (lote 184) premio: o lembrete em texto; ou uma lista de prêmios que vão sozinhos para as fichas (pontos e títulos)
+  const c = (id, rar, ic, nome, desc, premio, oculta) => ({ id, rar, ic, nome, desc, premio: typeof premio === 'string' ? premio : '', premios: Array.isArray(premio) ? premio : [], oculta: oculta == null ? rar !== 'comum' : !!oculta });
+  const PT = (pool, n) => ({ t: 'pontos', pool, n }), TIT = v => ({ t: 'titulo', v });
   const PADRAO = Object.freeze([
     c('cq_primeiro_sangue', 'comum', 'espada', 'Primeiro Sangue', 'Vencer a primeira luta.'),
     c('cq_pe_na_estrada', 'comum', 'pegada', 'Pé na Estrada', 'Passar 10 dias de viagem longe de onde começou.'),
@@ -104,7 +107,7 @@
     c('cq_amigo_bichos', 'comum', 'garra', 'Amigo dos Bichos', 'Domar uma montaria ou ajudar a converter um monstro.'),
     c('cq_esgoto', 'rara', 'lanterna', 'Rato de Esgoto', 'Descer às Catacumbas de Hemvria.'),
     c('cq_dungeon', 'rara', 'porta', 'Corredor sem Fim', 'Chegar ao fundo de uma dungeon.'),
-    c('cq_chefe', 'rara', 'caveira', 'Matador de Chefe', 'Derrotar um chefe de região.', '+1 ponto de árvore'),
+    c('cq_chefe', 'rara', 'caveira', 'Matador de Chefe', 'Derrotar um chefe de região.', [PT('p_classe', 1)]),
     c('cq_mercado_negro', 'rara', 'chave', 'Contato no Escuro', 'Entrar num mercado negro.'),
     c('cq_libertador', 'rara', 'corrente', 'Libertador', 'Libertar escravizados de um comboio Konaito.', 'Reputação com as facções contra a escravidão'),
     c('cq_pedagio', 'rara', 'ponte', 'Pedágio Não', 'Passar por um forte da Coroa sem pagar e sem ser pego.'),
@@ -116,16 +119,16 @@
     c('cq_rumor', 'rara', 'bussola', 'Era Verdade', 'Seguir um rumor até o lugar e ver que era verdade.'),
     c('cq_rumor_falso', 'rara', 'ampulheta', 'Era Mentira', 'Seguir um rumor falso até o fim.'),
     c('cq_vila_secreta', 'rara', 'olho', 'Gente que Não Existe', 'Encontrar uma vila secreta.'),
-    c('cq_teceloes', 'epica', 'fio', 'Os Fios do Reino', 'Descobrir que alguém puxa os fios da Coroa.', '+1 ponto de árvore'),
-    c('cq_heroi', 'epica', 'estrela', 'Herói Esquecido', 'Descobrir que Iroma foi um herói.', '+1 ponto de árvore'),
+    c('cq_teceloes', 'epica', 'fio', 'Os Fios do Reino', 'Descobrir que alguém puxa os fios da Coroa.', [PT('p_classe', 1)]),
+    c('cq_heroi', 'epica', 'estrela', 'Herói Esquecido', 'Descobrir que Iroma foi um herói.', [PT('p_bencao', 1)]),
     c('cq_mar', 'epica', 'navio', 'Do Outro Lado do Mar', 'Atravessar o mar.'),
     c('cq_alma_dupla', 'epica', 'mao', 'A Voz que Não Manda', 'Resistir a um comando Konaita com a força que mora dentro de si.'),
     c('cq_dragao', 'epica', 'asa', 'Sobreviveu ao Ninho', 'Sair vivo de um ninho de dragão.'),
-    c('cq_ranking', 'epica', 'taca', 'Nome no Ranking', 'Entrar no ranking dos aventureiros famosos.', 'Título de aventureiro famoso'),
+    c('cq_ranking', 'epica', 'taca', 'Nome no Ranking', 'Entrar no ranking dos aventureiros famosos.', [TIT('Aventureiro Famoso')]),
     c('cq_deus', 'epica', 'sol', 'Alguém Respondeu', 'Receber a resposta direta de um deus.'),
     c('cq_corte_lunar', 'epica', 'lua', 'Hóspede da Lua', 'Ser recebido pela Corte lunar dos Kitsunes.'),
-    c('cq_parte_iroma', 'lendaria', 'olhoroxo', 'Pedaço de Iroma', 'Encontrar uma das partes de Iroma.', '+2 pontos de árvore'),
-    c('cq_trono', 'lendaria', 'trono', 'O Trono Vazio', 'Chegar ao Trono Vazio, no extremo norte.', '+2 pontos de árvore'),
+    c('cq_parte_iroma', 'lendaria', 'olhoroxo', 'Pedaço de Iroma', 'Encontrar uma das partes de Iroma.', [PT('p_bencao', 2)]),
+    c('cq_trono', 'lendaria', 'trono', 'O Trono Vazio', 'Chegar ao Trono Vazio, no extremo norte.', [PT('p_classe', 1), PT('p_raca', 1)]),
     c('cq_dinastia', 'lendaria', 'arvore', 'Dinastia', 'Passar a história a um herdeiro: a próxima geração.', 'O herdeiro começa com um talento de família'),
     c('cq_ascensao', 'lendaria', 'coroa', 'Ascensão', 'Ser reconhecido pelo mundo como um deus.'),
   ]);
@@ -134,11 +137,51 @@
   const ehObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   const txt = (v, n) => (typeof v === 'string' ? v : v == null ? '' : String(v)).trim().slice(0, n || 200);
   const idOk = v => typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v);
+  /* (lote 184) Os prêmios que entram sozinhos nas fichas: pontos de árvore num tipo e títulos. São de todos os
+     personagens do jogador (os que ele criar depois também); quem faz a conta é o banco, na coluna personagens.conq.
+     O "premio" de texto continua: é o lembrete de outro prêmio, que o mestre aplica à mão. */
+  const POOLS = Object.freeze([
+    { id: 'p_raca', n: 'Raça' }, { id: 'p_classe', n: 'Classe' }, { id: 'p_profissao', n: 'Profissão' },
+    { id: 'p_bencao', n: 'Bênção' }, { id: 'p_linhagem', n: 'Linhagem' }]);
+  const nomePool = id => { const p = POOLS.find(x => x.id === id); return p ? p.n : String(id || '').replace(/^p_/, ''); };
+  function premiosOk(v) {
+    const out = [];
+    for (const p of Array.isArray(v) ? v : []) {
+      if (!ehObj(p) || out.length >= 6) continue;
+      if (p.t === 'pontos' && idOk(p.pool) && Number.isFinite(+p.n) && Math.trunc(+p.n) !== 0) out.push({ t: 'pontos', pool: p.pool, n: Math.max(-20, Math.min(20, Math.trunc(+p.n))) });
+      else if (p.t === 'titulo' && txt(p.v, 40)) out.push({ t: 'titulo', v: txt(p.v, 40) });
+    }
+    return out;
+  }
+  /* O texto do prêmio, para mostrar: o que vai sozinho para a ficha e, depois, o lembrete. */
+  function textoPremio(x) {
+    if (!ehObj(x)) return '';
+    const partes = premiosOk(x.premios).map(p => p.t === 'pontos'
+      ? (p.n > 0 ? '+' : '') + p.n + (Math.abs(p.n) === 1 ? ' ponto' : ' pontos') + ' de ' + nomePool(p.pool)
+      : 'Título “' + p.v + '”');
+    const t = txt(x.premio, 120);
+    if (t) partes.push(t);
+    return partes.join(' · ');
+  }
+  /* A coluna conq de um personagem, arrumada: { pontos: { pool: n }, origem: [{ c, nome, pool, n }], titulos: [{ c, nome, v }] } */
+  function conqDe(v) {
+    v = ehObj(v) ? v : {};
+    const pontos = {};
+    if (ehObj(v.pontos)) for (const k of Object.keys(v.pontos)) if (idOk(k) && Number.isFinite(+v.pontos[k])) pontos[k] = Math.trunc(+v.pontos[k]);
+    const origem = (Array.isArray(v.origem) ? v.origem : []).filter(o => ehObj(o) && idOk(o.pool) && Number.isFinite(+o.n)).map(o => ({ c: String(o.c || ''), nome: txt(o.nome, 60), pool: o.pool, n: Math.trunc(+o.n) }));
+    const titulos = (Array.isArray(v.titulos) ? v.titulos : []).filter(o => ehObj(o) && txt(o.v, 40)).map(o => ({ c: String(o.c || ''), nome: txt(o.nome, 60), v: txt(o.v, 40) }));
+    return { pontos, origem, titulos };
+  }
+  /* "+2 de conquistas (Fantasma +1, Um de Nós +1)" — de onde vieram os pontos de um tipo. */
+  function origemTexto(cq, pool) {
+    const o = conqDe(cq).origem.filter(x => x.pool === pool);
+    return o.map(x => x.nome + ' ' + (x.n > 0 ? '+' : '') + x.n).join(', ');
+  }
   function conquista(o) {
     o = ehObj(o) ? o : {};
     const rar = rarDe(o.rar).k;
     return { id: idOk(o.id) ? o.id : 'cq_' + Math.random().toString(36).slice(2, 10), nome: txt(o.nome, 60) || 'Conquista', desc: txt(o.desc, 300),
-      ic: ICONES[o.ic] ? o.ic : 'estrela', rar, oculta: o.oculta == null ? rar !== 'comum' : !!o.oculta, premio: txt(o.premio, 120) };
+      ic: ICONES[o.ic] ? o.ic : 'estrela', rar, oculta: o.oculta == null ? rar !== 'comum' : !!o.oculta, premio: txt(o.premio, 120), premios: premiosOk(o.premios) };
   }
   const lista = d => ({ v: 1, itens: (ehObj(d) && Array.isArray(d.itens) ? d.itens : PADRAO).filter(ehObj).map(conquista) });
   const quemOk = q => (Array.isArray(q) ? q : []).filter(x => ehObj(x) && typeof x.u === 'string' && x.u).map(x => ({ u: x.u, em: Number(x.em) || 0 }));
@@ -146,7 +189,7 @@
     d = ehObj(d) ? d : {};
     return { v: 1, itens: (Array.isArray(d.itens) ? d.itens : []).filter(x => ehObj(x) && idOk(x.id)).map(x => {
       const o = { id: x.id, rar: rarDe(x.rar).k, oculta: !!x.oculta, quem: quemOk(x.quem) };
-      if (!o.oculta) Object.assign(o, { ic: ICONES[x.ic] ? x.ic : 'estrela', nome: txt(x.nome, 60), desc: txt(x.desc, 300), premio: txt(x.premio, 120) });
+      if (!o.oculta) Object.assign(o, { ic: ICONES[x.ic] ? x.ic : 'estrela', nome: txt(x.nome, 60), desc: txt(x.desc, 300), premio: txt(x.premio, 120), premios: premiosOk(x.premios) });
       return o;
     }), log: (Array.isArray(d.log) ? d.log : []).filter(x => ehObj(x) && typeof x.k === 'string' && idOk(x.c) && typeof x.u === 'string').slice(-30) };
   }
@@ -158,7 +201,7 @@
     const itens = L.itens.map(x => {
       const velho = P.itens.find(y => y.id === x.id);
       const o = { id: x.id, rar: x.rar, oculta: x.oculta, quem: velho ? velho.quem : [] };
-      if (!x.oculta) Object.assign(o, { ic: x.ic, nome: x.nome, desc: x.desc, premio: x.premio });
+      if (!x.oculta) Object.assign(o, { ic: x.ic, nome: x.nome, desc: x.desc, premio: x.premio, premios: x.premios });
       return o;
     });
     return { v: 1, itens, log: P.log };
@@ -194,11 +237,11 @@
     if (!inteira && linhaLog.u === eu && jogMeu) inteira = doJogador(jogMeu).itens.find(y => y.id === linhaLog.c) || null;
     if (!inteira && lst) inteira = lista(lst).itens.find(y => y.id === linhaLog.c) || null;
     const meu = linhaLog.u === eu;
-    if (inteira) return { titulo: (meu ? 'Você conquistou' : quem + ' conquistou') + ': ' + inteira.nome + '!', nome: inteira.nome, desc: inteira.desc, premio: inteira.premio || '', ic: inteira.ic, rar: R.k, nomeRar: R.n, cor: R.cor, oculta: false };
+    if (inteira) return { titulo: (meu ? 'Você conquistou' : quem + ' conquistou') + ': ' + inteira.nome + '!', nome: inteira.nome, desc: inteira.desc, premio: textoPremio(inteira), ic: inteira.ic, rar: R.k, nomeRar: R.n, cor: R.cor, oculta: false };
     return { titulo: quem + ' conquistou uma conquista ' + R.n + '!', rar: R.k, nomeRar: R.n, cor: R.cor, oculta: true };
   }
 
-  const api = { LISTA, PUB, PRE_J, RARIDADES, rarDe, ICONES, NOMES_ICONES, svgDe, svgOculta, PADRAO, conquista, lista, pub, doJogador, projetar, conceder, tirar, anuncio };
+  const api = { POOLS, nomePool, premiosOk, textoPremio, conqDe, origemTexto, LISTA, PUB, PRE_J, RARIDADES, rarDe, ICONES, NOMES_ICONES, svgDe, svgOculta, PADRAO, conquista, lista, pub, doJogador, projetar, conceder, tirar, anuncio };
   if (typeof module === 'object' && module.exports) module.exports = api;
   root.TC = root.TC || {}; root.TC.conquistas = api;
 })(typeof window !== 'undefined' ? window : globalThis);

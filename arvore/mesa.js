@@ -230,9 +230,10 @@ const ArvoreMesa = (() => {
     const linhas = meus(), ids = new Set(linhas.map(l => l.id));
     for (const l of linhas) {
       const i = doc.personagens.findIndex(p => p.id === l.id), novo = daLinha(l, i >= 0 ? doc.personagens[i] : null), js = j(skillsDe(novo)), jt = j(skillsTudo(novo)), ant = sombra.pcs.get(l.id);
-      if (ant && i >= 0 && ant.nome === novo.nome && ant.tudo === jt) continue;
+      const cq = j(l.conq || {});
+      if (ant && i >= 0 && ant.nome === novo.nome && ant.tudo === jt && ant.cq === cq) continue;
       if (i >= 0) doc.personagens[i] = novo; else doc.personagens.push(novo);
-      sombra.pcs.set(l.id, { nome: novo.nome, skills: js, tudo: jt }); mudou = true;
+      sombra.pcs.set(l.id, { nome: novo.nome, skills: js, tudo: jt, cq }); mudou = true;
     }
     for (let i = doc.personagens.length - 1; i >= 0; i--) {
       const p = doc.personagens[i];
@@ -378,11 +379,17 @@ const ArvoreMesa = (() => {
     const l = P.pegar(id), n = l && l.ficha && typeof l.ficha === 'object' ? +l.ficha.level : NaN;
     return Number.isFinite(n) && n >= 1 ? Math.floor(n) : null;
   }
+  // (lote 184) os prêmios das conquistas do jogador dono do personagem (a coluna conq, que o banco calcula): { pontos, origem, titulos }
+  function conqDe(id) {
+    if (!ativo || !P) return {};
+    const l = P.pegar(id), q = l && l.conq;
+    return q && typeof q === 'object' && !Array.isArray(q) ? q : {};
+  }
   // de quem é cada ficha daqui (e a rev de cada uma): para saber se alguma mudou
   function revsDosMeus() { return P ? meus().map(l => l.id + ':' + (l.rev || 0)).join(',') + '|' + ((D && D.pegar('fichas:cfg') || {}).rev || 0) : ''; }
 
   // (lote 76) o documento que a mesa montou, uma vez só (para o aplicativo abrir); e o que vai para o navegador
   const abrirDoc = () => { const d = docAberto; docAberto = null; return d; };
   const paraGuardar = d => guardavel(d);
-  return { preparar, abrirDoc, paraGuardar, falhou, personagemInicial, depoisDeSalvar, depoisDeAbrir, restringir, ativo: () => ativo, mestre, etiqueta, calcDe, barras, donoDe, nivelDe };
+  return { preparar, abrirDoc, paraGuardar, falhou, personagemInicial, depoisDeSalvar, depoisDeAbrir, restringir, ativo: () => ativo, mestre, etiqueta, calcDe, barras, donoDe, nivelDe, conqDe };
 })();

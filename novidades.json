@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.18-01",
+      "data": "2026-11-18",
+      "titulo": "Os prêmios das conquistas vão para a ficha",
+      "itens": [
+        { "tipo": "novo", "texto": "Conquistas: o prêmio agora entra sozinho na ficha. Uma conquista pode dar pontos de árvore (Raça, Classe, Profissão, Bênção ou Linhagem) e um título, e vale para todos os personagens do jogador, inclusive os que ele criar depois. Se o mestre tirar a conquista, o prêmio sai junto." },
+        { "tipo": "novo", "texto": "Fichas e Árvore: os pontos que vieram de conquistas aparecem ao lado de cada tipo, com o nome da conquista (\"+2 de conquistas (Fantasma +1, Um de Nós +1)\"). Eles entram no que sobra para gastar, mas não contam no teto do nível." },
+        { "tipo": "novo", "texto": "Fichas: o título. O personagem escolhe um dos títulos que as conquistas deram, e ele aparece embaixo do nome na ficha e ao lado do nome dele na mesa ao vivo." },
+        { "tipo": "novo", "texto": "Conquistas: mais 80 conquistas — 14 de furtividade e 66 gerais (morrer, fugir, passar a perna no plano do mestre e muito mais).", "mestre": true },
+        { "tipo": "melhorou", "texto": "Conquistas: no editor, o prêmio tem agora três campos — os pontos de árvore e o título (que vão sozinhos para as fichas) e um lembrete para o que você aplica à mão.", "mestre": true }
+      ]
+    },
+    {
       "versao": "2026.11.17-09",
       "data": "2026-11-17",
       "titulo": "A Kitsune Nirus",

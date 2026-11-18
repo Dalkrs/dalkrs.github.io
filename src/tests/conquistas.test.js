@@ -24,6 +24,19 @@ const r2 = C.conceder(r.lista, r.pub, null, 'cq_primeiro_sangue', 'u2', 3000);
 ok(C.anuncio(r2.pub.log[1], r2.pub, 'u1', null, null, () => 'Lia').titulo === 'Lia conquistou: Primeiro Sangue!', 'a comum: inteira para todos');
 const t = C.tirar(r2.lista, r2.pub, r.jog, 'cq_teceloes', 'u1');
 ok(t.jog.itens.length === 0 && t.pub.log.length === 1 && t.pub.itens.find(x => x.id === 'cq_teceloes').quem.length === 0, 'tirar');
+// ---- (lote 184) os prêmios que vão sozinhos para as fichas ----
+{
+  const x = C.conquista({ nome: 'X', premios: [{ t: 'pontos', pool: 'p_classe', n: 2 }, { t: 'titulo', v: '  Sem Rosto ' }, { t: 'pontos', pool: 'mau id!', n: 1 }, { t: 'pontos', pool: 'p_raca', n: 0 }, { t: 'outro' }], premio: 'Reputação' });
+  ok(JSON.stringify(x.premios) === JSON.stringify([{ t: 'pontos', pool: 'p_classe', n: 2 }, { t: 'titulo', v: 'Sem Rosto' }]), 'prêmios arrumados (tipo, id do tipo, 0 e lixo saem): ' + JSON.stringify(x.premios));
+  ok(C.textoPremio(x) === '+2 pontos de Classe · Título “Sem Rosto” · Reputação', 'o texto do prêmio: ' + C.textoPremio(x));
+  ok(C.textoPremio({ premios: [{ t: 'pontos', pool: 'p_bencao', n: 1 }] }) === '+1 ponto de Bênção', 'um ponto, no singular');
+  const P2 = C.projetar({ itens: [x, C.conquista({ id: 'cq_oc', nome: 'Oc', rar: 'epica', premios: [{ t: 'pontos', pool: 'p_classe', n: 1 }] })] }, null);
+  ok(P2.itens[0].premios.length === 2 && !('premios' in P2.itens[1]), 'na parte de todos: a visível leva os prêmios; a oculta, não');
+  const cq = C.conqDe({ pontos: { p_classe: 3, 'x y': 1 }, origem: [{ c: 'a', nome: 'Fantasma', pool: 'p_classe', n: 1 }, { c: 'b', nome: 'Um de Nós', pool: 'p_classe', n: 2 }], titulos: [{ c: 'c', nome: 'Sem Rosto', v: 'Sem Rosto' }, { v: '' }] });
+  ok(cq.pontos.p_classe === 3 && !('x y' in cq.pontos) && cq.titulos.length === 1, 'a coluna conq arrumada');
+  ok(C.origemTexto(cq, 'p_classe') === 'Fantasma +1, Um de Nós +2', 'de onde vieram os pontos: ' + C.origemTexto(cq, 'p_classe'));
+  ok(C.PADRAO.find(y => y.id === 'cq_chefe').premios[0].pool === 'p_classe' && C.PADRAO.find(y => y.id === 'cq_ranking').premios[0].v === 'Aventureiro Famoso', 'as de começo com prêmio de verdade');
+}
 (async () => {
   const s = await start();
   const dv = await s.device({ name: 'conquistas', w: 1300, h: 900 });
