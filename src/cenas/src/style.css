@@ -1455,3 +1455,16 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .o-objw:hover .o-fav, .o-fav:focus-visible, .o-objw.fav .o-fav { opacity: 1; }
 @media (hover: none) { .o-fav { opacity: 0.85; } }
 .o-busca.in:focus, .o-busca.in:focus-visible { outline: none; box-shadow: none; }
+/* (lote 185) a janela Resolver das habilidades */
+.ha-box { display: flex; flex-direction: column; gap: 10px; max-height: 62vh; overflow-y: auto; }
+.ha-txt { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted, #a9a39a); }
+.ha-ped { margin: 0; font-weight: 600; color: var(--accent, #e6ab4f); }
+.ha-alvos { display: flex; flex-direction: column; gap: 8px; }
+.ha-alvo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; border: 1px solid var(--line, #ffffff22); border-radius: 10px; }
+.ha-nome { min-width: 130px; }
+.ha-n { width: 120px; }
+.ha-teste { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ha-tl { font-size: 12.5px; color: var(--muted, #a9a39a); }
+.ha-res { font-weight: 700; min-width: 54px; }
+.ha-conds, .ha-extra { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.ha-nota, .ha-vazio { margin: 0; font-size: 12.5px; color: var(--muted, #a9a39a); }

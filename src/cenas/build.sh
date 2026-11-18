@@ -43,6 +43,7 @@ body_parts() {
   cat ../../tc/simbolos.js
   cat ../../tc/caudas.js
   cat ../../tc/barras-painel.js
+  cat ../../tc/habs-acoes.js
   cat ../../tc/npc.js
   cat ../../tc/misterio.js
   cat ../../tc/missoes.js
@@ -72,7 +73,8 @@ mkdir -p "$(dirname "$SITE")"
   echo '<script src="../cla/nucleo.js?v=11"></script>'            # (lote 59) os membros do clã, para "Puxar os membros do clã"
   echo '<script src="../tc/simbolos.js?v=1"></script>'           # (lote 172) os desenhos no lugar dos kanjis
   echo '<script src="../tc/caudas.js?v=4"></script>'             # (lote 173) as caudas da Kitsune
-  echo '<script src="../tc/barras-painel.js?v=14"></script>'      # (lote 44) o painel de barras
+  echo '<script src="../tc/barras-painel.js?v=15"></script>'      # (lote 44) o painel de barras
+  echo '<script src="../tc/habs-acoes.js?v=1"></script>'         # (lote 185) o que cada habilidade faz no mapa
   echo '<script src="../tc/npc.js?v=1"></script>'                # (lote 49) o gerador de NPC, para os moradores do lugar povoado
   echo '<script src="../tc/misterio.js?v=1"></script>'           # (lote 53) os mistérios: a cena do crime e as marcas de pista
   echo '<script src="../tc/missoes.js?v=3"></script>'            # (lote 129) as missões, para os marcadores de missão

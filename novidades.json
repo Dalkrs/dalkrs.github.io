@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.18-03",
+      "data": "2026-11-18",
+      "titulo": "As habilidades agem no mapa",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: usar uma habilidade no painel de barras agora age no mapa. As de alvo ou de lugar abrem a mira (o alcance em volta do personagem e a área no cursor); clique para escolher, Esc ou o botão direito cancelam sem gastar a barra." },
+        { "tipo": "novo", "texto": "O que ela faz, pelo nível comprado: zonas no chão com os turnos, invocações (os clones viram cópias do personagem: o Clone de Sombra nível 2 põe dois), empurrar, puxar, saltar, trocar de lugar e as condições nos alvos." },
+        { "tipo": "novo", "texto": "A janela Resolver, do mestre: cada alvo com os botões de rolar o teste pela ficha e Passou / Falhou, e um campo para o Dano ou a Cura do tier. O pedido do jogador chega nessa mesma janela." },
+        { "tipo": "novo", "texto": "Condições novas: Distraído, Escondido, Abalado, Preso, Sonolento, Escolhido e Protegido. O Exposto foi para Combate, e a antiga \"Protegido\" (a de escudo) virou \"Com escudo\"." }
+      ]
+    },
+    {
       "versao": "2026.11.18-02",
       "data": "2026-11-18",
       "titulo": "Os pontos de conquista na Árvore",

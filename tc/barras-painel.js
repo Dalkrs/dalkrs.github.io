@@ -257,7 +257,7 @@ function habsHTML(b){
   const d = b.def;
   const linhas = L.map((h, i) => {
     const falta = h.inverso ? false : h.custo > b.v, trava = h.patamar && b.v < h.patamar;
-    const mapa = d.mapa && d.mapa[h.nome] ? ' <i class="pb-hab-mapa" title="Põe algo no mapa">◈</i>' : '';
+    const mapa = h.acao || (d.mapa && d.mapa[h.nome]) ? ' <i class="pb-hab-mapa" title="Age no mapa">◈</i>' : '';
     const custo = h.custo ? (h.inverso ? '▲' : '▼') + h.custo : '·';
     return `<button type="button" class="pb-chip pb-hab${(falta || trava) ? ' off' : ''}" data-hab="${i}" title="${esc(h.desc || h.nome)}${trava ? ' (exige ' + h.patamar + ' de ' + d.barra + ')' : falta ? ' (falta ' + d.barra + ')' : ''}">${esc(h.nome)}${mapa} <b>${custo}</b></button>`;
   }).join('');
@@ -372,7 +372,12 @@ function ligarPainel(el){
     const k = e.target.closest('[data-k]');
     if (k && d.clique){ antes(ator, b); mexer(ator, b, ctx => d.clique.call(d, b.s, k.dataset.k, ctx)); return mudou(ator); }
     const bt = e.target.closest('button'); if (!bt || bt.disabled) return;
-    if (bt.dataset.hab != null && bt.dataset.hab !== ''){ antes(ator, b); usarHab(ator, b, +bt.dataset.hab); return mudou(ator); }
+    if (bt.dataset.hab != null && bt.dataset.hab !== ''){
+      // (lote 185) a habilidade que age no mapa: as Cenas abrem a mira e só gastam a barra quando o alvo é escolhido
+      const i = +bt.dataset.hab, fazer = () => { antes(ator, b); usarHab(ator, b, i); mudou(ator); };
+      if (ator.antesDeHab && ator.antesDeHab(b, i, fazer)) return redesenha();
+      return fazer();
+    }
     if (bt.dataset.ga){ antes(ator, b); tocarAgora(ator, b, d.ganhos.find(g => g.id === bt.dataset.ga)); return mudou(ator); }
     if (bt.dataset.g){ antes(ator, b); b.cont[bt.dataset.g] = b.cont[bt.dataset.g] ? 0 : 1; return mudou(ator); }
     if (bt.dataset.gp){ const g = d.ganhos.find(x => x.id === bt.dataset.gp), n = (b.cont[g.id] || 0) + 1; if (g.max && n > g.max) { b.aviso = `${g.c}: no máximo ${g.max}.`; return redesenha(); } antes(ator, b); b.cont[g.id] = n; return mudou(ator); }

@@ -98,7 +98,7 @@ const PainelBarras = (() => {
         if (!u) continue;
         const v = String(u.v == null ? '' : u.v).trim(), custo = Math.abs(parseInt(v, 10)) || 0;
         const pm = /Exige (?:o patamar|a Mão cheia) \(?(\d+)/i.exec(String(n.desc || '') + ' ' + String(gr.texto || ''));
-        out.push({ id: n.id, nome: n.nome, custo, inverso: v.startsWith('+'), patamar: pm ? +pm[1] : (/Exige a Mão cheia/i.test(n.desc || '') ? 7 : 0),
+        out.push({ id: n.id, nome: n.nome, grau: Math.min(Math.max(1, g), n.graus.length), custo, inverso: v.startsWith('+'), patamar: pm ? +pm[1] : (/Exige a Mão cheia/i.test(n.desc || '') ? 7 : 0),
           desc: String(gr.texto || '') + (n.desc ? '\n' + String(n.desc).replace(/^[^\n]*\n/, '') : ''), usos: n.usos || [] });
       }
     }
@@ -147,7 +147,7 @@ const PainelBarras = (() => {
     const barras = bs.map(x => {
       const b = P0.instancia(x.id, x.v, x.guard, { min: x.min, max: x.max });
       b.ref = x.ref; b.inicioFicha = x.inicio;
-      try { b.habs = habsDe(t, x.arvs, P0.BARRA[x.id]); } catch (e) { b.habs = []; }
+      try { b.habs = habsDe(t, x.arvs, P0.BARRA[x.id]); if (typeof HabAcao !== 'undefined') for (const h of b.habs) h.acao = HabAcao.temAcao(h); } catch (e) { b.habs = []; }
       return b;
     });
     const ator = { chave, tok: t.id, char: t.char || null, nome: tokName(t), dono: deJogador(t) ? 'jogador' : 'mestre', barras,
@@ -158,7 +158,13 @@ const PainelBarras = (() => {
     ator.passAberto = !!m.passAberto;
     Object.assign(ator, alvosDe(t));
     ator.fila = [];
-    ator.pedirMapa = (sp, h) => { ator.fila.push({ sp, h }); };
+    ator.pedirMapa = (sp, h) => { if (!ator.pulaMapa) ator.fila.push({ sp, h }); };
+    // (lote 185) a habilidade que age no mapa (TC.habsAcoes): a mira, e o que ela faz; o mapa antigo por nome fica de fora
+    ator.antesDeHab = (b, i, fazer) => {
+      const h = (b.habs || [])[i], tok = Store.get('tokens', ator.tok);
+      if (typeof HabAcao === 'undefined' || !h || !tok) return false;
+      return HabAcao.comecar(ator, tok, b, h, () => { ator.pulaMapa = true; try { fazer(); } finally { ator.pulaMapa = false; } });
+    };
     return ator;
   }
 
@@ -544,5 +550,5 @@ const PainelBarras = (() => {
   // as Cenas avisam quando mudam (o desenho geral e o mapa)
   return { render, ligado, desenharSelo, novoQuadro, cliqueNoSelo, depoisDaVez, fimDoCombate, temPainel, cuida, doPainel, secaoToken, secaoTurnos, abrirNpc,
     // para os testes
-    _atorDe: atorDe, _barrasDoToken: barrasDoToken, _selos: () => selos, _hits: () => hits, _porNoMapa: porNoMapa, _gravar: gravar };
+    deJogador, _atorDe: atorDe, _barrasDoToken: barrasDoToken, _selos: () => selos, _hits: () => hits, _porNoMapa: porNoMapa, _gravar: gravar };
 })();

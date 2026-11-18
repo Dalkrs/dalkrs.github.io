@@ -1431,6 +1431,7 @@ const Render = (() => {
     drawSelection(sc, px);
     drawNums(sc, px);
     Tools.drawPreview(ctx, px, sc);
+    if (typeof HabAcao !== 'undefined') HabAcao.desenhar(ctx, px, sc);      // (lote 185) a mira de uma habilidade
     // (lote 65) os rabiscos do lápis, por cima de tudo (da névoa também: são recados para a mesa)
     try { lapisAnima = typeof Lapis !== 'undefined' && Lapis.desenhar(ctx, sc, px, Tools.rascunhoLapis ? Tools.rascunhoLapis() : null); } catch (e) { lapisAnima = false; }
     drawFloats(sc, px, ts);

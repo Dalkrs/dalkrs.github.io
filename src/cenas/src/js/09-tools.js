@@ -1378,10 +1378,12 @@ const Tools = (() => {
       cursor();
       return;
     }
+    if (e.button === 2 && typeof HabAcao !== 'undefined' && HabAcao.ativa()) { HabAcao.cancelar(); return; }      // (lote 185) o botão direito cancela a mira
     if (e.button === 2) { rdown = { sx: e.clientX, sy: e.clientY, vx: App.view.x, vy: App.view.y, moved: false }; return; }
     if (e.button !== 0) return;
     // (lote 8) escolhendo o real de um Clone: o clique escolhe (não seleciona nem arrasta)
     if (UI.escolhendoReal()) { const ht = hitTest(p, { tokensOnly: true, noProps: true }); UI.escolherReal(ht && ht.id); return; }
+    if (typeof HabAcao !== 'undefined' && HabAcao.clique(p)) return;                      // (lote 185) a mira de uma habilidade
     if (typeof PainelBarras !== 'undefined' && PainelBarras.cliqueNoSelo(p)) return;      // (lote 44) o selo do painel de barras
     const t = T[App.tool];
     if (t.down) t.down(p, e);
@@ -1404,6 +1406,7 @@ const Tools = (() => {
       }
       return;
     }
+    if (typeof HabAcao !== 'undefined') HabAcao.mover(p);                                 // (lote 185) a mira segue o cursor
     const t = T[App.tool];
     if (t.move) t.move(p, e);
     UI.status();

@@ -377,6 +377,14 @@ const ICONS = {
   c_seloLushmania: 'M12 12m-8.500 0a8.500 8.500 0 1 0 17 0a8.500 8.500 0 1 0-17 0M12 6.500l1.400 4.100 4.100 1.400-4.100 1.400L12 17.500l-1.400-4.100L6.500 12l4.100-1.400z',
   c_sobEgide: 'M3 12.500a9 9 0 0 1 18 0zM12 12.500v8M9.500 20.500h5',
   c_sobExorcismo: 'M8 15c0-3 1.800-5 4-5s4 2 4 5v5.500H8zM8.300 10.500L6.500 6.500M15.700 10.500l1.800-4M12 2v3M4.500 12.500H2M22 12.500h-2.500',
+  // (lote 185) as condições do mundo novo que as habilidades usam
+  c_distraido: 'M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0M9 10h.01M15 10h.01M9 15.500c1.800-1 4.200-1 6 .500M17.500 3.500l1 1.500 1.500-.5',
+  c_escondido: 'M3 3l18 18M10.600 6.200A9.800 9.800 0 0 1 12 6c5 0 8.500 4.500 9.500 6-.5.800-1.600 2.300-3.200 3.600M6.600 7.800C4.600 9.100 3.200 11 2.500 12c1 1.500 4.500 6 9.500 6 1.500 0 2.900-.4 4.100-1',
+  c_abalado: 'M12 3a7 7 0 0 0-7 7v3l-2 3h18l-2-3v-3a7 7 0 0 0-7-7zM9 10h.01M15 10h.01M9.500 14c1.500-1 3.500-1 5 0M4 20l2-1.500M20 20l-2-1.500',
+  c_preso: 'M7 11V8a5 5 0 0 1 10 0v3M5 11h14v9H5zM12 14.500v2.500',
+  c_sonolento: 'M5 14h5l-5 5h5M13 6h4l-4 4h4M17 13h3l-3 3h3',
+  c_escolhido: 'M12 3l2.600 5.400 5.900.8-4.300 4.100 1 5.800L12 16.300 6.800 19.100l1-5.800L3.500 9.200l5.900-.8zM12 8v4',
+  c_protegido: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800-4.500-1.500-7.500-5.200-7.500-9.800V5.800zM8.500 12l2.500 2.500 4.500-5',
   c_tutelado: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800-4.500-1.500-7.500-5.200-7.500-9.800V5.800zM12 10a1.700 1.700 0 1 0 0-3.400 1.700 1.700 0 0 0 0 3.400zM8.800 16c.500-2.200 1.600-3.300 3.200-3.300s2.700 1.100 3.200 3.300',
   // (lote 19) as condições das raças
   // (lote 34) as do Vampiro, do Licantropo e do Antro Roedor
@@ -640,6 +648,8 @@ const CONDS = [
   { id: 'inconsciente', n: 'Inconsciente', c: '#4b5568', i: 'c_inconsciente', g: 'controle' },
   { id: 'petrificado', n: 'Petrificado', c: '#8d8f94', i: 'c_petrificado', g: 'controle' },
   { id: 'adormecido', n: 'Adormecido', c: '#6b7fc4', i: 'c_adormecido', g: 'controle' },
+  { id: 'preso', n: 'Preso', c: '#8a6a3a', i: 'c_preso', g: 'controle', dur: 1 },      // (lote 185) laço, rede, fosso, raízes: escapa com Vigor
+  { id: 'sonolento', n: 'Sonolento', c: '#7f8fd0', i: 'c_sonolento', g: 'controle', dur: 1 },
   { id: 'enraizado', n: 'Enraizado', c: '#7a6a3a', i: 'c_enraizado', g: 'controle' },
   { id: 'furia', n: 'Fúria', c: '#c8242c', i: 'c_furia', g: 'combate' },
   { id: 'grito', n: 'Grito de Batalha', c: '#d9572b', i: 'c_grito', g: 'combate' },
@@ -649,7 +659,13 @@ const CONDS = [
   { id: 'foco', n: 'Concentrando', c: '#2f9d93', i: 'c_foco', g: 'combate' },
   { id: 'vulneravel', n: 'Vulnerável', c: '#d0583c', i: 'c_vulneravel', g: 'combate' },
   { id: 'determinado', n: 'Determinado', c: '#d98f24', i: 'c_determinado', g: 'combate' },
+  // (lote 185) as do mundo novo, que as habilidades põem (o Exposto veio das raças; o Escolhido e o Protegido, das classes)
+  { id: 'distraido', n: 'Distraído', c: '#c9a24a', i: 'c_distraido', g: 'combate', dur: 1 },
+  { id: 'exposto', n: 'Exposto', c: '#d67a3c', i: 'c_exposto', g: 'combate', dur: 1 },
+  { id: 'escolhido', n: 'Escolhido', c: '#c0392b', i: 'c_escolhido', g: 'combate', r: 'Espadachim' },
+  { id: 'protegido', n: 'Protegido', c: '#4f8fd6', i: 'c_protegido', g: 'combate', r: 'Aégis' },
   { id: 'medo', n: 'Amedrontado', c: '#b0559f', i: 'c_medo', g: 'mente' },
+  { id: 'abalado', n: 'Abalado', c: '#a5679a', i: 'c_abalado', g: 'mente', dur: 1 },      // (lote 185) o medo leve
   { id: 'paranoico', n: 'Paranoico', c: '#a13d63', i: 'c_paranoico', g: 'mente' },
   { id: 'confuso', n: 'Confuso', c: '#b77ad0', i: 'c_confuso', g: 'mente' },
   { id: 'enfeiticado', n: 'Enfeitiçado', c: '#e0609a', i: 'c_enfeiticado', g: 'mente' },
@@ -683,10 +699,11 @@ const CONDS = [
   { id: 'lento', n: 'Lento', c: '#6f8f6a', i: 'c_lento', g: 'ritmo' },
   { id: 'acelerado', n: 'Acelerado', c: '#2ea6c9', i: 'c_acelerado', g: 'ritmo' },
   { id: 'voando', n: 'Voando', c: '#6aa8d8', i: 'c_voando', g: 'ritmo' },
+  { id: 'escondido', n: 'Escondido', c: '#3f4a5e', i: 'c_escondido', g: 'ritmo' },      // (lote 185)
   { id: 'oculto', n: 'Oculto', c: '#4b4f63', i: 'c_oculto', g: 'ritmo' },
   { id: 'invisivel', n: 'Invisível', c: '#6f8aa6', i: 'c_invisivel', g: 'ritmo' },
   { id: 'etereo', n: 'Etéreo', c: '#8a9cc4', i: 'c_etereo', g: 'ritmo' },
-  { id: 'escudo', n: 'Protegido', c: '#3f7fc0', i: 'c_escudo', g: 'bencao' },
+  { id: 'escudo', n: 'Com escudo', c: '#3f7fc0', i: 'c_escudo', g: 'bencao' },      // (lote 185: era "Protegido", que agora é a do Aégis)
   { id: 'bencao', n: 'Abençoado', c: '#c9a227', i: 'c_bencao', g: 'bencao' },
   { id: 'inspirado', n: 'Inspirado', c: '#e6a700', i: 'c_inspirado', g: 'bencao' },
   { id: 'regen', n: 'Regeneração', c: '#58b368', i: 'c_regen', g: 'bencao' },
@@ -721,7 +738,6 @@ const CONDS = [
   { id: 'enxertado', n: 'Enxertado', c: '#8f5a6b', i: 'c_enxertado', g: 'racas', r: 'Ghoul Mãzier\'na', dur: 3 },
   { id: 'enxerto', n: 'Enxerto', c: '#6fae4f', i: 'c_enxerto', g: 'racas', r: 'Humano Sarep', dur: 1 },
   { id: 'erguido', n: 'Erguido', c: '#a66b3a', i: 'c_erguido', g: 'racas', r: 'Antro Bovino' },
-  { id: 'exposto', n: 'Exposto', c: '#d67a3c', i: 'c_exposto', g: 'racas', r: 'Antro Equino', dur: 1 },
   { id: 'farejado', n: 'Farejado', c: '#a08a5c', i: 'c_farejado', g: 'racas', r: 'Antro Canino', dur: 1 },
   { id: 'feraSolta', n: 'Fera Solta', c: '#b5462a', i: 'c_feraSolta', g: 'racas', r: 'Licantropo' },
   { id: 'frio', n: 'Frio', c: '#7fc8ee', i: 'c_frio', g: 'racas', r: 'Kitsune Selene', max: 5, ini: 1, lim: { em: 'max', sug: 'gelo', d: 1, zera: true, txt: 'teste de VIT: se falhar, fica Congelado até o fim do próximo turno dele (o gelo tem 10 de HP) e os acúmulos zeram' } },

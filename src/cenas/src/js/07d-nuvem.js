@@ -716,6 +716,7 @@ const Nuvem = (() => {
               if (ehObj(op) && op.t === 'ping') { pingDe(quem, op, sc); continue; }
               if (ehObj(op) && op.t === 'andar') { if (moverDeAndar(Array.isArray(op.ids) ? op.ids : [op.id], sc.id, op.para, quem, typeof op.p === 'string' ? op.p : null)) tocadas.add(op.para); continue; }   // (lote 78/82) a escada
               if (ehObj(op) && op.t === 'item') { Fichas.usoPedido(quem, op, sc); continue; }      // um item da bolsa dele, num token (lote 5)
+              if (ehObj(op) && op.t === 'hab') { if (typeof HabAcao !== 'undefined') HabAcao.pedidoDe(quem, op, sc); continue; }      // (lote 185) uma habilidade nos alvos: a janela do mestre
               const v = Proj.validar(op, quem, sc);         // contra a cena como está agora: as anteriores do lote já valeram
               if (!v || !Store.remoteIn(sc.id, [v])) continue;
               // token ligado a uma ficha, numa cena que o mestre não tem aberta: a ficha acompanha mesmo assim
@@ -1160,6 +1161,14 @@ const Nuvem = (() => {
     pedir([{ t: 'item', de: String(op.de || ''), item: String(op.item || ''), alvo: String(op.alvo || ''), rol: Array.isArray(op.rol) ? op.rol.slice(0, 8).map(v => (typeof v === 'number' && isFinite(v) ? v : null)) : [] }]);
     return true;
   }
+  /* (lote 185) O jogador usou uma habilidade que mexe em outros tokens (o dano, a condição, o empurrão, os clones): vai
+     ao mestre, que vê a janela Resolver e aplica. op = { t: 'hab', de: token, hab: { id, nome, grau, texto }, x, y, alvos } */
+  function usarHab(op) {
+    if (modo !== 'jogador' || vazia || !ehObj(op) || !ehObj(op.hab)) return false;
+    pedir([{ t: 'hab', de: String(op.de || ''), hab: { id: String(op.hab.id || '').slice(0, 60), nome: String(op.hab.nome || '').slice(0, 60), grau: Math.max(1, Math.min(9, Math.floor(Number(op.hab.grau) || 1))), texto: String(op.hab.texto || '').slice(0, 400) },
+      x: typeof op.x === 'number' && isFinite(op.x) ? op.x : null, y: typeof op.y === 'number' && isFinite(op.y) ? op.y : null, alvos: Array.isArray(op.alvos) ? op.alvos.filter(id => typeof id === 'string').slice(0, 12) : [] }]);
+    return true;
+  }
   function ping(x, y) {
     if (modo === 'jogador') { if (!vazia) pedir([{ t: 'ping', x, y }]); return; }
     if (modo === 'mestre' && idx.noAr && idx.noAr === S.current && isGM()) { assumir(); porPing({ id: uid('pg'), x, y, c: '#e6ab4f', n: 'Mestre', by: 'gm' }, false); }
@@ -1299,7 +1308,7 @@ const Nuvem = (() => {
     modo: () => modo, on: () => modo !== 'local', mestre: () => modo === 'mestre', jogador: () => modo === 'jogador',
     estado: () => estado, aoEstado(fn) { ouvinte = fn; },
     noAr: () => (S.scenes[idx.noAr] ? idx.noAr : null), transmito,
-    andaresNoAr, noArJunto, definirAndares, ligadas, levarParaAndar, voltarDeAndar, andaresDoJogador, verAndar, pedirAndar, segue, cobrar, apareceu, mostrar, esconder, ping, usarItem, semCena: () => vazia,
+    andaresNoAr, noArJunto, definirAndares, ligadas, levarParaAndar, voltarDeAndar, andaresDoJogador, verAndar, pedirAndar, segue, cobrar, apareceu, mostrar, esconder, ping, usarItem, usarHab, semCena: () => vazia,
     // campanhas: a que está em vista, as da mesa, as de cada cena, e se a cena aparece na lista da campanha em vista
     comCampanhas, podeOrganizar, campanha: () => camp, campanhas: () => campsDaMesa.slice(), campanhasDaCena, definirCampanhas, naVista,
     arDeFora: () => arDeFora.slice(),
