@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.17-09",
+      "data": "2026-11-17",
+      "titulo": "A Kitsune Nirus",
+      "itens": [
+        { "tipo": "novo", "texto": "Árvores: a raça Kitsune Nirus, a kitsune caçadora das tribos da floresta. Quatro galhos: Caçadora (a Lança Verde), Farejadora, Xamã e Fera (a forma de raposa). Cada cauda é um troféu de caça." },
+        { "tipo": "novo", "texto": "Fichas e Cenas: as caudas da Kitsune Nirus, em verde. Quando ela come uma RP, um ser vivo ou um monstro, guarda numa cauda o Pedaço da Vítima (uma lembrança ou um truque), até usar. Tem a sua biblioteca, como a do poder de yokai." }
+      ]
+    },
+    {
       "versao": "2026.11.17-08",
       "data": "2026-11-17",
       "titulo": "As passivas no painel de barras",

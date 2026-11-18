@@ -551,7 +551,8 @@ Object.assign(ICONES, {
   cartomante: '<rect x="6" y="3.5" width="10" height="15" rx="1.5"/><path d="M9 21L19 19L17 6"/><path d="M11 8L12.5 11L11 14L9.5 11Z"/>',
   vampiro: '<path d="M4 6L9 9L12 5L15 9L20 6L17 14L12 20L7 14Z"/>',
   lobisomem: '<path d="M18 5A7.5 7.5 0 1 0 20 15A6 6 0 1 1 18 5Z"/>',
-  kitsune: '<path d="M4 3L9.5 9H14.5L20 3V11C20 15 16.5 19 12 21C7.5 19 4 15 4 11ZM9 12.5V13M15 12.5V13M11 16.5H13"/>'
+  kitsune: '<path d="M4 3L9.5 9H14.5L20 3V11C20 15 16.5 19 12 21C7.5 19 4 15 4 11ZM9 12.5V13M15 12.5V13M11 16.5H13"/>',
+  nirus: '<path d="M4 3L9.5 9H14.5L20 3V11C20 15 16.5 19 12 21C7.5 19 4 15 4 11ZM8.5 12L10 13M15.5 12L14 13M10.5 16.5L12 17.5L13.5 16.5"/>'
 });
 
 /* ---------------- Samurai: as três Posturas ---------------- */
@@ -1015,28 +1016,37 @@ classe({ id: 'lobisomem', cat: 'linhagem', arvore: 'Lobisomem', barra: 'Lua', co
    Tocar numa cauda acesa usa o poder (a cauda não queima). Alguns poderes apodrecem a cauda enquanto estão guardados:
    ela não pode ser queimada até o poder ser usado (na ficha, o podre da barra). Guardar um poder novo é na ficha. As caudas ficam em s.caudas, o mesmo lugar que a ficha usa (TC.caudas). */
 const CAUDAS = () => (root.TC && root.TC.caudas) || (() => { try { return typeof require !== 'undefined' ? require('./caudas.js') : null; } catch (e) { return null; } })();
-classe({ id: 'kitsune', cat: 'raca', arvore: 'Kitsune', barra: 'Caudas', cor: '#7FB8F0', glifo: '@raposa', inicio: 1, max: 9, teto: null,
-  patamares: [],
-  est: () => ({ caudas: [] }),
-  persiste: ['caudas'],
-  marcas(s){ const cs = CAUDAS() ? CAUDAS().norm(s.caudas) : []; return cs.map((c, i) => ({ k: 'c' + i, glifo: c.p ? '@fogo' : '·',
-    rotulo: c.p ? `Cauda ${i + 1}: ${c.p.n || 'poder'}${c.p.y ? ' (' + c.p.y + ')' : ''}${c.p.a ? ' · podre' : ''} — toque para usar` : `Cauda ${i + 1}: vazia`,
-    dica: c.p ? (c.p.e || 'usar o poder') + (c.p.a ? ' · podre: a cauda não queima até o poder ser usado' : '') : 'guarde um poder de yokai na ficha (aba Skills)' })); },
-  marcasOpc: { raio: 60, r: 11.5, inicio: 0 },
-  ativo: (s, k) => { const cs = CAUDAS() ? CAUDAS().norm(s.caudas) : []; const c = cs[+k.slice(1)]; return !!(c && c.p); },
-  tocar(s, k, ctx){
-    const C = CAUDAS(); if (!C) return;
-    const i = +k.slice(1), r = C.mudar(s.caudas, { t: 'usar', i });
-    if (!r.mudou) return ctx.log(`Cauda ${i + 1} de ${ctx.nome} está vazia: guarde um poder na ficha.`);
-    s.caudas = r.caudas;
-    ctx.log(C.textoUso(ctx.nome, i, r.usado));
-  },
-  linhaEstado(s){ const C = CAUDAS(); if (!C) return ''; const n = C.comPoder(s.caudas), f = C.podres(s.caudas);
-    return (n ? `<b>${n === 1 ? '1 cauda com poder de yokai' : n + ' caudas com poder de yokai'}</b> <em>· toque numa cauda acesa para usar</em>` : '<em>Nenhum poder de yokai guardado. Guarde na ficha, aba Skills.</em>') + (f ? ` <em>· ${f === 1 ? '1 cauda podre (não queima até usar o poder)' : f + ' caudas podres (não queimam até usar o poder)'}</em>` : ''); },
-  ganhos: [{ c: 'Um espírito se soltou perto (1 por luta)', v: 1, max: 1 }],
-  selo: s => { const C = CAUDAS(), n = C ? C.comPoder(s.caudas) : 0; return n ? '@fogo ' + n : null; }
-});
-BARRA.kitsune.fim = 'fica';
+/* (lote 183) A Kitsune Nirus usa o mesmo painel, em verde: a cauda guarda o Pedaço da Vítima (uma RP, um ser vivo ou um
+   monstro que ela comeu), em s.caudas do pb.nirus (TC.caudas.nirus). */
+function classeCaudas(o){
+  const C = () => { const c = CAUDAS(); return c && o.slot === 'nirus' ? c.nirus : c; };
+  classe({ id: o.slot, cat: 'raca', arvore: o.arvore, barra: 'Caudas', cor: o.cor, glifo: o.glifo, inicio: 1, max: 9, teto: null,
+    patamares: [],
+    est: () => ({ caudas: [] }),
+    persiste: ['caudas'],
+    marcas(s){ const cs = C() ? C().norm(s.caudas) : []; return cs.map((c, i) => ({ k: 'c' + i, glifo: c.p ? o.aceso : '·',
+      rotulo: c.p ? `Cauda ${i + 1}: ${c.p.n || 'poder'}${c.p.y ? ' (' + c.p.y + ')' : ''}${c.p.a ? ' · podre' : ''} — toque para usar` : `Cauda ${i + 1}: vazia`,
+      dica: c.p ? (c.p.e || 'usar o poder') + (c.p.a ? ' · podre: a cauda não baixa até o poder ser usado' : '') : o.vazia })); },
+    marcasOpc: { raio: 60, r: 11.5, inicio: 0 },
+    ativo: (s, k) => { const cs = C() ? C().norm(s.caudas) : []; const c = cs[+k.slice(1)]; return !!(c && c.p); },
+    tocar(s, k, ctx){
+      const K = C(); if (!K) return;
+      const i = +k.slice(1), r = K.mudar(s.caudas, { t: 'usar', i });
+      if (!r.mudou) return ctx.log(`Cauda ${i + 1} de ${ctx.nome} está vazia: guarde ${o.oque} na ficha.`);
+      s.caudas = r.caudas;
+      ctx.log(K.textoUso(ctx.nome, i, r.usado));
+    },
+    linhaEstado(s){ const K = C(); if (!K) return ''; const n = K.comPoder(s.caudas), f = K.podres(s.caudas);
+      return (n ? `<b>${n === 1 ? '1 cauda com ' + o.um : n + ' caudas com ' + o.um}</b> <em>· toque numa cauda acesa para usar</em>` : `<em>${o.nenhum} Guarde na ficha, aba Skills.</em>`) + (f ? ` <em>· ${f === 1 ? '1 cauda podre (não baixa até usar o poder)' : f + ' caudas podres (não baixam até usar o poder)'}</em>` : ''); },
+    ganhos: [o.ganho],
+    selo: s => { const K = C(), n = K ? K.comPoder(s.caudas) : 0; return n ? o.aceso + ' ' + n : null; }
+  });
+  BARRA[o.slot].fim = 'fica';
+}
+classeCaudas({ slot: 'kitsune', arvore: 'Kitsune', cor: '#7FB8F0', glifo: '@raposa', aceso: '@fogo', oque: 'um poder', um: 'poder de yokai',
+  nenhum: 'Nenhum poder de yokai guardado.', vazia: 'guarde um poder de yokai na ficha (aba Skills)', ganho: { c: 'Um espírito se soltou perto (1 por luta)', v: 1, max: 1 } });
+classeCaudas({ slot: 'nirus', arvore: 'Kitsune Nirus', cor: '#6FBF73', glifo: '@pata', aceso: '@garra', oque: 'um Pedaço da Vítima', um: 'Pedaço da Vítima',
+  nenhum: 'Nenhum Pedaço da Vítima guardado.', vazia: 'guarde um Pedaço da Vítima (de uma RP, um ser vivo ou um monstro) na ficha (aba Skills)', ganho: { c: 'Um inimigo Marcado caiu (1 por luta)', v: 1, max: 1 } });
 
 // (o teto do Lobisomem: 8 na lua cheia, 6 nas outras)
 BARRA.lobisomem.teto = s => (s && s.lua === 'cheia' ? 8 : 6);
@@ -1055,7 +1065,7 @@ const ARVORES = {
   samurai: ['a_samurai'], ninja: ['a_ninja'], barbaro: ['a_barbaro'], espadachim: ['a_espadachim'], monge: ['a_monge'], aegis: ['a_aegis'],
   arqueiro: ['a_arqueiro'], mago: ['a_mago'], feiticeiro: ['a_feiticeiro'], necromante: ['a_necromante'], druida: ['a_druida'],
   sacerdote: ['a_sacerdote'], artifice: ['a_artifice'], alquimista: ['a_alquimista'], ferreiro: ['a_ferreiro'], bardo: ['a_bardo'], shaji: ['a_shaji'],
-  karema: ['a_kare_ma'], cartomante: ['a_cartomante'], vampiro: ['a_vampiro'], lobisomem: ['a_lobisomem'], kitsune: ['a_kitsune']
+  karema: ['a_kare_ma'], cartomante: ['a_cartomante'], vampiro: ['a_vampiro'], lobisomem: ['a_lobisomem'], kitsune: ['a_kitsune'], nirus: ['a_kitsune_nirus']
 };
 const BENCAO_SELENE = 'aq0onsk37x';                          // (do mundo antigo; nenhuma árvore liga mais nela)
 const POR_ID = {};

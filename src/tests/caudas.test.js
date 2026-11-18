@@ -26,6 +26,13 @@ const j = JSON.stringify;
   ok(C.juntar([C.bibDaFicha(e2), [{ y: 'kappa', n: 'pele de água', e: 'outro' }, { y: 'Tengu', n: 'Asas' }]]).length === 2, '(lote 174) juntar as bibliotecas sem repetir (yokai + nome)');
   ok(C.bibDaFicha(C.semDaBib(e2, { y: 'Kappa', n: 'Pele de Água' })).length === 0, '(lote 174) tirar da biblioteca');
 }
+{ // (lote 183) a Kitsune Nirus: o mesmo jeito, no seu lugar (pb.nirus) e na sua barra
+  const N = C.nirus, g = N.mudar([], { t: 'guardar', i: 1, p: { y: 'Humano, o bandido Joca', n: 'Golpe Baixo', e: 'um truque', a: true } });
+  const e = N.naFicha({ pb: { kitsune: { s: { caudas: [{ p: { n: 'X' } }] } } } }, g.caudas);
+  ok(N.daFicha(e)[1].p.n === 'Golpe Baixo' && C.daFicha(e)[0].p.n === 'X', '(lote 183) a Nirus guarda em pb.nirus, sem mexer nas caudas da Kitsune lunar');
+  ok(e.podre.ba_a_kitsune_nirus === 1 && !e.podre.ba_a_kitsune, '(lote 183) a cauda podre da Nirus vai para a barra dela');
+  ok(C.variante('nirus') === N && C.variante('kitsune') === C && /A Kitsune Nirus usa/.test(N.textoUso('', 0, { n: 'a' })), '(lote 183) as duas variantes');
+}
 
 /* ---------------- a tela ---------------- */
 const pc = Object.assign(R.personagemPadrao('Dain'), { id: 'pc_dain', nome: 'Dain', skills: { arvores: ['a_kitsune'], pontos: {}, alocados: {} } });
@@ -60,6 +67,16 @@ const estado = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], situacoes: [], t
     ok(!d.p && !(await E(() => S.personagens[0].estado.podre)), 'usar: o poder sai, e a cauda deixa de estar podre');
     ok(/Dain usa Asas do Vento \(Tengu\), da cauda 3.*volta a servir/.test(await E(() => (document.querySelector('.toast') || {}).textContent || '')), 'o aviso conta o uso');
     if (process.env.TC_SCRATCH) { const pa = require('path'); require('fs').mkdirSync(pa.join(process.env.TC_SCRATCH, 'fotos'), { recursive: true }); await P.locator('#painelCaudas').screenshot({ path: pa.join(process.env.TC_SCRATCH, 'fotos', 'caudas.png') }); }
+  });
+  // (lote 183) a Nirus vê o painel verde dela, e não o da Kitsune lunar
+  await passo('a Nirus', async () => {
+    await E(() => { S.personagens[0].skills.arvores = ['a_kitsune_nirus']; render(); }); await w(300);
+    ok(await P.locator('#painelCaudasNirus.knirus').isVisible() && !(await P.locator('#painelCaudas').count()), '(lote 183) a Nirus vê o painel dela (verde), não o da Kitsune lunar');
+    await P.locator('#painelCaudasNirus [data-kguardar]').click(); await w(200);
+    ok(/Pedaço da Vítima/.test(await P.locator('.modal, [role=dialog]').last().innerText().catch(() => '')) || /Pedaço da Vítima/.test(await E(() => document.body.innerText)), '(lote 183) a janela fala do Pedaço da Vítima');
+    await P.locator('[data-ky]').fill('Urso-coruja'); await P.locator('[data-kn]').fill('Abraço'); await P.locator('[data-kok]').click(); await w(300);
+    ok(await E(() => TC.caudas.nirus.daFicha(S.personagens[0].estado).some(c => c.p && c.p.n === 'Abraço')), '(lote 183) o pedaço fica nas caudas da Nirus');
+    if (process.env.TC_SCRATCH) { const pa = require('path'); await P.locator('#painelCaudasNirus').screenshot({ path: pa.join(process.env.TC_SCRATCH, 'fotos', 'nirus.png') }); }
   });
   await t.close();
   end();

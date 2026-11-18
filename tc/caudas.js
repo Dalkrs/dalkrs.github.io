@@ -20,7 +20,14 @@
    ======================================================================= */
 (function (root) {
   'use strict';
-  const N = 9, REF = 'ba_a_kitsune', LIM = Object.freeze({ yokai: 60, nome: 60, efeito: 400 });
+  /* (lote 183) Duas Kitsunes usam as caudas assim: a Kitsune lunar (yokais) e a Kitsune Nirus (RP, seres vivos e
+     monstros: o Pedaço da Vítima). Cada uma tem o seu lugar no estado (pb.<slot>) e a sua barra (o podre). */
+  const VARIANTES = {
+    kitsune: { slot: 'kitsune', ref: 'ba_a_kitsune', arv: 'a_kitsune', quem: 'A Kitsune', de: 'yokai' },
+    nirus: { slot: 'nirus', ref: 'ba_a_kitsune_nirus', arv: 'a_kitsune_nirus', quem: 'A Kitsune Nirus', de: 'presa' }
+  };
+  function fazer(V) {
+  const N = 9, REF = V.ref, SLOT = V.slot, LIM = Object.freeze({ yokai: 60, nome: 60, efeito: 400 });
   const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const txt = (x, n) => String(x == null ? '' : x).replace(/\r/g, '').trim().slice(0, n);
   function poderDe(x) {
@@ -34,7 +41,7 @@
   }
   // as 9 caudas, arrumadas
   const norm = lista => Array.from({ length: N }, (_, i) => caudaDe(Array.isArray(lista) ? lista[i] : null));
-  const sDa = estado => (ehObj(estado) && ehObj(estado.pb) && ehObj(estado.pb.kitsune) && ehObj(estado.pb.kitsune.s) ? estado.pb.kitsune.s : {});
+  const sDa = estado => (ehObj(estado) && ehObj(estado.pb) && ehObj(estado.pb[SLOT]) && ehObj(estado.pb[SLOT].s) ? estado.pb[SLOT].s : {});
   // as caudas de uma ficha (estado.pb.kitsune.s.caudas)
   const daFicha = estado => norm(sDa(estado).caudas);
   // a biblioteca de poderes: sem repetir (yokai + nome); o mais novo fica
@@ -51,9 +58,9 @@
   // um estado NOVO da ficha com estas caudas (o resto do painel da Kitsune fica como estava)
   function naFicha(estado, caudas) {
     const e = Object.assign({}, ehObj(estado) ? estado : {}), pb = Object.assign({}, ehObj(e.pb) ? e.pb : {});
-    const k = ehObj(pb.kitsune) ? pb.kitsune : {};
+    const k = ehObj(pb[SLOT]) ? pb[SLOT] : {};
     const cs = norm(caudas), bib = normBib([].concat(ehObj(k.s) && Array.isArray(k.s.bib) ? k.s.bib : [], cs.filter(c => c.p).map(c => c.p)));
-    pb.kitsune = Object.assign({ c: {}, u: {}, g: 0 }, k, { s: Object.assign({}, ehObj(k.s) ? k.s : {}, { caudas: cs, bib }) });
+    pb[SLOT] = Object.assign({ c: {}, u: {}, g: 0 }, k, { s: Object.assign({}, ehObj(k.s) ? k.s : {}, { caudas: cs, bib }) });
     e.pb = pb;
     return comPodre(e);
   }
@@ -82,18 +89,26 @@
   const comPoder = caudas => norm(caudas).filter(c => c.p).length;
   const podres = caudas => norm(caudas).filter(c => c.p && c.p.a).length;
   // o texto do uso, para o registro: "Dain usa Pele de Pedra (Kappa), da cauda 3: …"
-  const textoUso = (nome, i, p) => `${nome || 'A Kitsune'} usa ${p.n || 'o poder'}${p.y ? ' (' + p.y + ')' : ''}, da cauda ${i + 1}${p.e ? ': ' + p.e : '.'}${p.a ? ' A cauda volta a servir.' : ''}`;
+  const textoUso = (nome, i, p) => `${nome || V.quem} usa ${p.n || 'o poder'}${p.y ? ' (' + p.y + ')' : ''}, da cauda ${i + 1}${p.e ? ': ' + p.e : '.'}${p.a ? ' A cauda volta a servir.' : ''}`;
 
   // tirar um poder da biblioteca de uma ficha (num estado NOVO)
   function semDaBib(estado, p) {
-    const e = Object.assign({}, ehObj(estado) ? estado : {}), pb = Object.assign({}, ehObj(e.pb) ? e.pb : {}), k = ehObj(pb.kitsune) ? pb.kitsune : {}, kp = poderDe(p);
+    const e = Object.assign({}, ehObj(estado) ? estado : {}), pb = Object.assign({}, ehObj(e.pb) ? e.pb : {}), k = ehObj(pb[SLOT]) ? pb[SLOT] : {}, kp = poderDe(p);
     if (!kp) return e;
-    pb.kitsune = Object.assign({}, k, { s: Object.assign({}, ehObj(k.s) ? k.s : {}, { bib: bibDaFicha(e).filter(x => chave(x) !== chave(kp)) }) });
+    pb[SLOT] = Object.assign({}, k, { s: Object.assign({}, ehObj(k.s) ? k.s : {}, { bib: bibDaFicha(e).filter(x => chave(x) !== chave(kp)) }) });
     e.pb = pb;
     return e;
   }
 
-  const API = { N, REF, LIM, norm, daFicha, naFicha, comPodre, mudar, comPoder, podres, textoUso, bibDaFicha, normBib, juntar, semDaBib, chave };
+  return { N, REF, SLOT, ARV: V.arv, VAR: V, LIM, norm, daFicha, naFicha, comPodre, mudar, comPoder, podres, textoUso, bibDaFicha, normBib, juntar, semDaBib, chave };
+  }
+  // a Kitsune lunar continua sendo TC.caudas; a Nirus é TC.caudas.nirus
+  const API = fazer(VARIANTES.kitsune);
+  API.nirus = fazer(VARIANTES.nirus);
+  API.variante = slot => (slot === 'nirus' ? API.nirus : API);
+  // as caudas podres das duas viram o podre das suas barras
+  const comPodreSo = API.comPodre;
+  API.comPodreTodas = estado => API.nirus.comPodre(comPodreSo(estado));
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else { root.TC = root.TC || {}; root.TC.caudas = API; }
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -7,7 +7,7 @@ const ok = (c, m) => { n++; if (!c) { bad++; console.log('FALHOU: ' + m); } };
 const ator = b => ({ nome: 'Teste', dono: 'jogador', barras: [b], aba: 0, aberto: true, linhas: [], logar(t) { this.linhas.push(t); }, rodada: () => 1,
   alvos: [{ nome: 'Orc' }], aliados: [{ nome: 'Ana' }], fila: [], pedirMapa(sp, h) { this.fila.push({ sp, h }); } });
 
-ok(P.BARRAS.length === 22, 'as 22 barras do mundo novo (lote 118: o Malho do Ferreiro; lote 173: as Caudas da Kitsune)');
+ok(P.BARRAS.length === 23, 'as 23 barras do mundo novo (lote 118: o Malho do Ferreiro; lote 173: as Caudas da Kitsune; lote 183: as da Kitsune Nirus)');
 { // (lote 182) o botão ◆ das passivas e a lista à esquerda
   const b = P.instancia('ninja', 3, null, {}), at = { chave: 'x', nome: 'Dain', dono: 'jogador', barras: [b], aba: 0, aberto: true, linhas: [], rodada: () => 1, logar(){},
     passivas: [{ arv: 'Kitsune', cat: 'raca', itens: [{ nome: 'Pé Leve', grau: 2, tipo: 'passiva', desc: 'Anda sem som.\nNo nível 2: E sem rastro.' }] }, { arv: 'Ninja', cat: 'classe', itens: [{ nome: 'Lâmina Fina', grau: 1, tipo: 'melhoria', desc: '+1 tier.' }] }] };
