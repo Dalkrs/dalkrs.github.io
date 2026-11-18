@@ -20249,6 +20249,8 @@ const Tools = (() => {
       const wh = d.fw ? [d.fw, d.fh] : [size, size];
       const [x, y] = snapTok(sc, p.x - wh[0] * sc.cell / 2, p.y - wh[1] * sc.cell / 2, wh, solto(e));
       const t = Props.novo(sc, id, x, y, size, !!App.opt.objHidden);
+      // (lote 187) a caixa "Oculto dos jogadores" manda: a armadilha não nasce mais escondida à força (os marcadores do mestre, sim)
+      if (d.armadilha) t.hidden = !!App.opt.objHidden;
       if (d.fw) { t.fw = d.fw; t.fh = d.fh; t.size = Math.max(d.fw, d.fh); t.x = x; t.y = y; delete t.q0; }
       Store.tx('Pôr ' + Props.P[id].n.toLowerCase(), () => Store.add('tokens', t));
       try { ObjPainel.usou(id); } catch (e) { /* sem o painel */ }      // (lote 179) os usados por último
