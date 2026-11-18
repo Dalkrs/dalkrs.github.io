@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.18-02",
+      "data": "2026-11-18",
+      "titulo": "Os pontos de conquista na Árvore",
+      "itens": [
+        { "tipo": "consertado", "texto": "Árvore: os pontos que vieram de conquistas não apareciam nem podiam ser gastos na aba Árvore (só na ficha). Agora somam no que sobra e aparecem na bolsa de cada tipo, com o nome da conquista." }
+      ]
+    },
+    {
       "versao": "2026.11.18-01",
       "data": "2026-11-18",
       "titulo": "Os prêmios das conquistas vão para a ficha",

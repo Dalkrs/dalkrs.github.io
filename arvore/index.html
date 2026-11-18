@@ -1645,7 +1645,7 @@ function gastos(p, poolId){
   return s;
 }
 /* (lote 184) os pontos que vêm das conquistas do jogador (a coluna conq): somam no que sobra, fora do total e do teto */
-const conqDoPc = p => (window.ArvoreMesa && ArvoreMesa.ativo() && ArvoreMesa.conqDe ? ArvoreMesa.conqDe(p.id) : {}) || {};
+const conqDoPc = p => (typeof ArvoreMesa !== 'undefined' && ArvoreMesa.ativo() && ArvoreMesa.conqDe ? ArvoreMesa.conqDe(p.id) : {}) || {};
 const conqPts = (p, poolId) => { const q = conqDoPc(p), v = q.pontos ? +q.pontos[poolId] : 0; return Number.isFinite(v) ? Math.trunc(v) : 0; };
 const conqOrigem = (p, poolId) => (Array.isArray(conqDoPc(p).origem) ? conqDoPc(p).origem : []).filter(o => o && o.pool === poolId).map(o => o.nome + ' ' + (o.n > 0 ? '+' : '') + o.n).join(', ');
 const restantes = (p, poolId) => (p.pontos[poolId] || 0) + conqPts(p, poolId) - gastos(p, poolId);
