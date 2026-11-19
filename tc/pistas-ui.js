@@ -53,7 +53,9 @@
     if (E.PUZZLES[jg.tipo].erra && jg.erros) linhas.push(h('div', { class: 'pz-erros', text: jg.erros === 1 ? 'Uma tentativa errada.' : jg.erros + ' tentativas erradas.' }));
     // (lote 46) o cronômetro: a conta anda sozinha (relogioPz, abaixo); acabado, o puzzle trava até o mestre decidir
     const pr = E.prazo && E.prazo(jg);
-    if (pr && !jg.resolvido) linhas.push(h('div', { class: 'pz-tempo' + (pr.acabou ? ' acabou' : ''), 'data-pz-fim': String(pr.acabou ? 0 : pr.fim), 'data-k': ctx.chave + 'tempo', text: textoTempo(pr.acabou ? 0 : pr.resta) }));
+    // (lote 179) a sequência que ninguém viu: o tempo parado, até o primeiro "Ver a sequência"
+    if (pr && !jg.resolvido && pr.parado && !pr.acabou) linhas.push(h('div', { class: 'pz-tempo parado', 'data-k': ctx.chave + 'tempo', text: textoTempo(pr.resta) + ' · começa quando alguém vê a sequência' }));
+    else if (pr && !jg.resolvido) linhas.push(h('div', { class: 'pz-tempo' + (pr.acabou ? ' acabou' : ''), 'data-pz-fim': String(pr.acabou ? 0 : pr.fim), 'data-k': ctx.chave + 'tempo', text: textoTempo(pr.acabou ? 0 : pr.resta) }));
     return h('div', { class: 'pz-cab' },
       h('div', { class: 'pz-tipo' }, h('b', { text: E.PUZZLES[jg.tipo].nome }), h('span', { class: 'pz-dif', text: jg.tipo === 'fechadura' && E.fechadura && jg.pub ? E.fechadura.NIVEIS[E.fechadura.nivDe(jg.pub.nivel)][1] : E.DIF[jg.dif] })),
       h('p', { class: 'pz-desc', text: E.PUZZLES[jg.tipo].desc }), linhas);
@@ -65,6 +67,7 @@
     if (relogioPz || typeof document === 'undefined') return;
     relogioPz = setInterval(() => {
       for (const el of document.querySelectorAll('[data-pz-fim]')) {
+        if (el.closest('.pz.tocando')) continue;          // (lote 179) a sequência passando: o relógio fica parado
         const fim = Number(el.getAttribute('data-pz-fim')), resta = fim ? fim - Date.now() : 0;
         el.textContent = textoTempo(resta);
         if (resta <= 0) { el.classList.add('acabou'); const pz = el.closest('.pz'); if (pz) pz.classList.add('esgotado'); }

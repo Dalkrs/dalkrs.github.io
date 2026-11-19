@@ -306,10 +306,21 @@
     const mostrar = ev => {
       const raiz = ev.target.closest('.pz'); if (!raiz || tocando.has(raiz)) return;
       tocando.add(raiz);
+      /* (lote 179) O tempo para enquanto a sequência pisca: o relógio desta tela fica parado (.tocando) e, no fim, quem
+         clicou empurra o fim da mesa toda pelo tempo que a sequência levou; a primeira vez, o cronômetro começa ali. */
+      const pr = !f && E.prazo && E.prazo(jg), t0 = Date.now();
+      if (pr && !pr.acabou) raiz.classList.add('tocando');
+      const acabouDeMostrar = () => {
+        raiz.classList.remove('tocando');
+        if (!pr || pr.acabou) return;
+        if (pr.parado) { lance(jg, ctx, { t0: new Date().toISOString() }, 'começou a ver a sequência'); return; }
+        const seg = Math.ceil((Date.now() - t0) / 1000);
+        lance(jg, ctx, { mais: Math.min(36000, (Number(jg.estado.mais) || 0) + seg) }, 'viu a sequência');
+      };
       let k = 0;
       const passo = () => {
         raiz.querySelectorAll('.sq-r.aceso').forEach(el => el.classList.remove('aceso'));
-        if (k >= r) { tocando.delete(raiz); return; }
+        if (k >= r) { tocando.delete(raiz); acabouDeMostrar(); return; }
         const el = raiz.querySelector('[data-k="' + ctx.chave + 'r' + seq[k] + '"]');
         if (el) el.classList.add('aceso');
         k++;

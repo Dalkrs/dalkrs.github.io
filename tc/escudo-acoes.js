@@ -304,7 +304,14 @@
       const h = handout(id), jg = jogoDe(id, h);
       if (!h || !jg || jg.resolvido || !jg.tempo) return null;
       const pr = E.prazo(jg), t0 = Date.parse(jg.estado.t0);
-      if (!pr || !Number.isFinite(t0)) return null;
+      if (!pr) return null;
+      // (lote 179) a sequência que ainda não começou: soma ao total
+      if (pr.parado) {
+        const mais = Math.min(36000, (Number(jg.estado.mais) || 0) + Math.max(30, Math.round(seg || 120)));
+        await kit.jogar(E.idJogo(id, h.camp), 'jogar', { mais, fim: null, _txt: 'o mestre deu mais tempo' });
+        return mais;
+      }
+      if (!Number.isFinite(t0)) return null;
       // (acabado, o tempo novo conta de agora; senão, soma ao que falta)
       const novoFim = (pr.acabou ? Date.now() : pr.fim) + Math.max(30, Math.round(seg || 120)) * 1000;
       const mais = Math.min(36000, Math.max(0, Math.round((novoFim - t0) / 1000 - jg.tempo)));

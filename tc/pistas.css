@@ -254,3 +254,4 @@
 
 /* (lote 147) as linhas livres do mestre, no cadeado e nas placas */
 .cd-livre, .pl-livre { font-style: italic; }
+.pz-tempo.parado { color: var(--ink-2, #c9c2b3); border-style: dashed; }   /* (lote 179) a sequência que ninguém viu: o tempo parado */

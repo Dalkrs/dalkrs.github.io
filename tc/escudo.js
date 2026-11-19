@@ -803,7 +803,8 @@
     if (!m) return null;
     // (lote 46) o cronômetro: o tempo (em segundos) e quando começou (o estado t0; "mais" soma o tempo que o mestre deu)
     const estado = Object.assign({}, m.estado);
-    if (m.tempo) estado.t0 = new Date().toISOString();
+    // (lote 179) a sequência: o tempo só começa no primeiro "Ver a sequência" (quem clica grava o t0)
+    if (m.tempo && m.tipo !== 'sequencia') estado.t0 = new Date().toISOString();
     return { v: 1, hid, tipo: m.tipo, dif: m.dif, nome: h.nome, pub: m.pub, sal: m.sal, chk: m.chk, estado, erros: 0, resolvido: null, ultimo: null, tempo: m.tempo || 0 };
   }
   // o documento do jogo, como chegou (vindo de qualquer lugar: os jogadores mexem nele)
@@ -821,7 +822,8 @@
   function prazo(jogo, agora) {
     if (!jogo || !jogo.tempo) return null;
     const t0 = Date.parse(jogo.estado && jogo.estado.t0);
-    if (!Number.isFinite(t0)) return null;
+    // (lote 179) a sequência que ninguém viu ainda: o tempo está parado no total ({ parado: true, fim: 0 })
+    if (!Number.isFinite(t0)) return jogo.tipo === 'sequencia' ? { fim: 0, resta: (jogo.tempo + int((jogo.estado || {}).mais, 0, 0, 36000)) * 1000, acabou: (jogo.estado || {}).fim === 1, parado: true } : null;
     const fim = t0 + (jogo.tempo + int(jogo.estado.mais, 0, 0, 36000)) * 1000, a = Number.isFinite(agora) ? agora : Date.now();
     return { fim, resta: Math.max(0, fim - a), acabou: a >= fim || jogo.estado.fim === 1 };
   }

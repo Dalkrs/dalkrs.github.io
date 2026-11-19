@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.18-09",
+      "data": "2026-11-18",
+      "titulo": "O tempo da sequência",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Pistas, puzzle de repetir a sequência: o cronômetro só começa quando alguém clica em \"Ver a sequência\" pela primeira vez. Enquanto as runas piscam, o tempo fica parado, e volta a contar quando a sequência termina." }
+      ]
+    },
+    {
       "versao": "2026.11.18-08",
       "data": "2026-11-18",
       "titulo": "Interiores de apotecário e de casa noturna",

@@ -207,6 +207,32 @@ function resolverDeslizante(p, n) {
     ok(await p.locator('.previa [data-k="tst:tempo"]').count() === 0, '"Sem tempo" tira a conta');
   });
 
+  // (lote 179) a sequência: o tempo só começa no primeiro "Ver a sequência", e para enquanto ela pisca
+  await passo('o cronômetro da sequência', async () => {
+    await tipo('sequencia', 'dificil');
+    await p.selectOption('[data-k="pz:tempo"]', '2'); await w(300);
+    const txt = () => p.locator('.previa [data-k="tst:tempo"]').innerText();
+    ok(/^Falta 2:00 · começa quando alguém vê a sequência$/.test(await txt()) && !(await tst()).estado.t0, 'antes de ver: parado em 2:00, sem começar');
+    await w(1300);
+    ok(/^Falta 2:00/.test(await txt()), 'continua parado');
+    // a rodada 3: a sequência leva uns 2 segundos para passar
+    const jg = await tst(), s = await ev(j0 => __escudo.E.mais.seqDe(j0), jg);
+    for (let r = 1; r <= 2; r++) for (let i = 0; i < r; i++) await clicar('tst:r' + s[i]);
+    await clicar('tst:ver'); await w(200);
+    ok(!(await tst()).estado.t0 && await p.locator('.previa .pz.tocando').count() === 1, 'piscando: ainda não começou');
+    await w(2600);
+    ok(!!(await tst()).estado.t0 && /^Falta (2:00|1:59)$/.test(await txt()), 'acabou de piscar: começa a contar dali (' + await txt() + ')');
+    await w(2200);
+    const antes = await txt();
+    await clicar('tst:ver'); await w(1200);
+    ok(await txt() === antes, 'vendo de novo: o relógio fica parado (' + antes + ')');
+    await w(1800);
+    const j3 = await tst();
+    const seg = s => { const m = /(\d+):(\d\d)/.exec(s); return m ? +m[1] * 60 + +m[2] : -1; };
+    ok(j3.estado.mais >= 2 && j3.estado.mais <= 4 && seg(antes) - seg(await txt()) <= 1, 'no fim, o tempo de ver volta para o relógio (mais ' + j3.estado.mais + ' s; ' + antes + ' → ' + await txt() + ')');
+    await p.selectOption('[data-k="pz:tempo"]', '0'); await w(300);
+  });
+
   const fora = t.errs.filter(e => !/favicon|fonts\.g/.test(e));
   ok(fora.length === 0, 'sem erros no console: ' + fora.slice(0, 3).join(' | '));
   await t.close(); end();
