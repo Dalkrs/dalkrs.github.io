@@ -294,77 +294,150 @@
   }
 
   // -- espelhos de luz: a luz entra pela esquerda; os espelhos giram ("/" ou "\")
+  /* (lote 191) Mais difícil no Médio e no Difícil:
+       · os espelhos ligados (pub.lig[k]: o grupo, 0 solto): girar um gira todos do mesmo grupo;
+       · os prismas (pub.pr: casas; fixos) dividem a luz para os dois lados (como um T) — no Difícil, 2 ou 3 cristais
+         (pub.alvos), todos acesos juntos;
+       · o tabuleiro maior (Médio 7×7, Difícil 9×9), mais curvas, mais espelhos falsos e mais paredes.
+     Os jogos de antes (pub.alvo, sem lig nem pr) continuam iguais. */
   const DIRS = { L: [1, 0], O: [-1, 0], N: [0, -1], S: [0, 1] };
   const REFLETE = { '/': { L: 'N', N: 'L', O: 'S', S: 'O' }, '\\': { L: 'S', S: 'L', O: 'N', N: 'O' } };
+  const LADOS = d => (d === 'L' || d === 'O' ? ['N', 'S'] : ['L', 'O']);
+  const alvosDe = pub => (Array.isArray(pub.alvos) && pub.alvos.length ? pub.alvos : pub.alvo ? [pub.alvo] : []);
+  const chaveAlvos = pub => alvosDe(pub).map(chaveAlvo).sort().join(',');
+  // girar o espelho k: ele e os do mesmo grupo
+  function girarEsp(pub, o, k) {
+    const lig = pub.lig || [], g = lig[k] || 0, no = o.split('');
+    for (let j = 0; j < no.length; j++) if (j === k || (g && lig[j] === g)) no[j] = no[j] === '1' ? '0' : '1';
+    return no.join('');
+  }
   function montarEspelhos(def, r) {
-    const n = N3(def.dif, 5, 6, 7), voltas = N3(def.dif, 2, 3, 4), iscas = N3(def.dif, 1, 3, 5), paredes = N3(def.dif, 0, 1, 3);
-    for (let tent = 0; tent < 300; tent++) {
-      const y0 = Math.floor(r() * n);
-      let x = 0, y = y0, d = 'L';
-      const usado = new Set([y * n + x]), espelhos = [];
-      let ok = true, feitas = 0;
-      while (true) {
-        // virar aqui?
-        if (feitas < voltas && x > 0 && r() < 0.45) {
-          const nd = d === 'L' || d === 'O' ? sortear(['N', 'S'], r) : sortear(['L', 'O'], r);
-          const tipo = REFLETE['/'][d] === nd ? '/' : '\\';
-          espelhos.push({ i: y * n + x, o: tipo });
-          d = nd; feitas++;
+    const dif = def.dif;
+    const n = N3(dif, 5, 7, 9), voltas = N3(dif, 2, 4, 6), iscas = N3(dif, 1, 4, 7), paredes = N3(dif, 0, 2, 4);
+    const nGrupos = N3(dif, 0, 1, 3);
+    for (let tent = 0; tent < 1500; tent++) {
+      const prismas = dif === 'dificil' ? (r() < 0.5 ? 1 : 2) : 0;
+      const y0 = Math.floor(r() * n), usado = new Set([y0 * n]), espelhos = [], prs = [], saidas = [];
+      const raios = [{ x: 0, y: y0, d: 'L', primeiro: true }];
+      let ok = true, faltaPr = prismas;
+      while (ok && raios.length) {
+        let { x, y, d, primeiro } = raios.pop();
+        while (true) {
+          const i = y * n + x;
+          if (!primeiro) {
+            if (faltaPr > 0 && r() < 0.22) {
+              prs.push(i); faltaPr--;
+              const [a, b] = LADOS(d);
+              raios.push({ x, y, d: b, cont: true });
+              d = a;
+            } else if ((dif !== 'facil' || espelhos.length < voltas) && r() < 0.42) {      // (o Fácil fica como era: só as curvas que pede)
+              const nd = sortear(LADOS(d), r);
+              espelhos.push({ i, o: REFLETE['/'][d] === nd ? '/' : '\\' });
+              d = nd;
+            }
+          }
+          primeiro = false;
+          const nx = x + DIRS[d][0], ny = y + DIRS[d][1];
+          if (nx < 0 || nx >= n || ny < 0 || ny >= n) {
+            saidas.push(d === 'L' ? { l: 'L', i: y } : d === 'O' ? { l: 'O', i: y } : d === 'N' ? { l: 'N', i: x } : { l: 'S', i: x });
+            break;
+          }
+          x = nx; y = ny;
+          if (usado.has(y * n + x)) { ok = false; break; }
+          usado.add(y * n + x);
         }
-        const nx = x + DIRS[d][0], ny = y + DIRS[d][1];
-        if (nx < 0 || nx >= n || ny < 0 || ny >= n) break;
-        x = nx; y = ny;
-        if (usado.has(y * n + x)) { ok = false; break; }
-        usado.add(y * n + x);
-        if (usado.size > n * n) { ok = false; break; }
+        // o ramo do prisma sai da mesma casa: o próximo passo já é na direção dele (sem decidir de novo na casa do prisma)
+        while (ok && raios.length && raios[raios.length - 1].cont) {
+          const rr = raios[raios.length - 1]; delete rr.cont;
+          const nx = rr.x + DIRS[rr.d][0], ny = rr.y + DIRS[rr.d][1];
+          if (nx < 0 || nx >= n || ny < 0 || ny >= n) { raios.pop(); saidas.push(rr.d === 'L' ? { l: 'L', i: rr.y } : rr.d === 'O' ? { l: 'O', i: rr.y } : rr.d === 'N' ? { l: 'N', i: rr.x } : { l: 'S', i: rr.x }); }
+          else if (usado.has(ny * n + nx)) ok = false;
+          else { rr.x = nx; rr.y = ny; usado.add(ny * n + nx); }
+        }
       }
-      if (!ok || feitas < voltas || espelhos.some(e => e.i === y0 * n)) continue;
-      // a saída (o alvo): o lado e a posição
-      const alvo = d === 'L' ? { l: 'L', i: y } : d === 'O' ? { l: 'O', i: y } : d === 'N' ? { l: 'N', i: x } : { l: 'S', i: x };
-      if (alvo.l === 'O' && alvo.i === y0) continue;
-      const livres = [...Array(n * n).keys()].filter(i => !usado.has(i));
-      const emb = embaralhar(livres, r);
-      const isc = emb.slice(0, iscas).map(i => ({ i, o: r() < 0.5 ? '/' : '\\' })), par = emb.slice(iscas, iscas + paredes);
+      if (!ok || faltaPr > 0 || espelhos.length < voltas + prismas) continue;
+      const ks = saidas.map(chaveAlvo);
+      if (new Set(ks).size !== ks.length || ks.includes('O' + y0)) continue;
+      const livres = embaralhar([...Array(n * n).keys()].filter(i => !usado.has(i)), r);
+      if (livres.length < iscas + paredes) continue;
+      const isc = livres.slice(0, iscas).map(i => ({ i, o: r() < 0.5 ? '/' : '\\' })), par = livres.slice(iscas, iscas + paredes).sort((a, b) => a - b);
       const todos = espelhos.concat(isc).sort((a, b) => a.i - b.i);
-      const sol = todos.map(e => (e.o === '/' ? '0' : '1')).join('');
-      // o começo: os espelhos virados ao acaso, sem já estar resolvido
-      let o0, t2 = 0;
-      do { o0 = todos.map(() => (r() < 0.5 ? '0' : '1')).join(''); } while (t2++ < 40 && tracarLuz({ n, ms: todos.map(e => e.i), par, y0 }, o0).saida === chaveAlvo(alvo));
-      const pub = { n, y0, ms: todos.map(e => e.i), par, alvo };
-      if (tracarLuz(pub, sol).saida !== chaveAlvo(alvo)) continue;
-      return { pub, estado: { o: o0 }, provaCerta: 'luz:' + chaveAlvo(alvo), seg: { sol, certos: espelhos.map(e => todos.findIndex(t => t.i === e.i)) } };
+      const ms = todos.map(e => e.i), sol = todos.map(e => (e.o === '/' ? '0' : '1')).join('');
+      const certos = espelhos.map(e => ms.indexOf(e.i));
+      // os grupos ligados: 2 ou 3 espelhos cada, pelo menos 2 no caminho da luz
+      const lig = ms.map(() => 0);
+      if (nGrupos) {
+        const reais = embaralhar(certos.slice(), r), falsos = embaralhar(todos.map((e, k) => k).filter(k => !certos.includes(k)), r);
+        for (let g = 1; g <= nGrupos && reais.length >= 2; g++) {
+          const m = [reais.pop(), reais.pop()];
+          if (r() < 0.5 && falsos.length) m.push(falsos.pop()); else if (r() < 0.4 && reais.length > 2) m.push(reais.pop());
+          m.forEach(k => { lig[k] = g; });
+        }
+      }
+      const pub = { n, y0, ms, par, alvos: saidas, alvo: saidas[0] };
+      if (prs.length) pub.pr = prs.slice().sort((a, b) => a - b);
+      if (nGrupos) pub.lig = lig;
+      if (!todosAcesos(pub, sol)) continue;
+      // o começo: a solução girada ao acaso (cada solto e cada grupo, inteiro): sempre dá para voltar; sem já estar resolvido
+      let o0 = null;
+      for (let t2 = 0; t2 < 60; t2++) {
+        let o = sol;
+        const feitos = new Set();
+        ms.forEach((_, k) => { const g = lig[k]; if (g ? feitos.has(g) : false) return; if (g) feitos.add(g); if (r() < 0.6) o = girarEsp(pub, o, k); });
+        const difs = o.split('').filter((c, k) => certos.includes(k) && c !== sol[k]).length;
+        if (!todosAcesos(pub, o) && difs >= Math.min(certos.length, N3(dif, 1, 3, 4))) { o0 = o; break; }
+      }
+      if (!o0) continue;
+      return { pub, estado: { o: o0 }, provaCerta: 'luz:' + chaveAlvos(pub), seg: { sol, certos } };
     }
     // (não deveria chegar aqui)
     return { pub: { n: 3, y0: 0, ms: [], par: [], alvo: { l: 'L', i: 0 } }, estado: { o: '' }, provaCerta: 'luz:L0', seg: { sol: '', certos: [] } };
   }
   const chaveAlvo = a => a.l + a.i;
-  // o caminho da luz: { casas (por onde passou), saida ('L3', ou null se bateu numa parede) }
+  /* o caminho da luz: { casas (por onde passou, todos os raios), saidas (as bordas por onde saiu), saida (a primeira, ou
+     null) }. O prisma divide o raio para os dois lados; a parede para o raio. */
   function tracarLuz(pub, o) {
-    const n = pub.n, casas = [];
-    let x = 0, y = pub.y0, d = 'L', passos = 0;
-    while (passos++ < n * n * 4) {
-      const i = y * n + x;
-      if ((pub.par || []).includes(i)) return { casas, saida: null };
-      casas.push(i);
-      const k = pub.ms.indexOf(i);
-      if (k >= 0) d = REFLETE[(o || '')[k] === '1' ? '\\' : '/'][d];
-      const nx = x + DIRS[d][0], ny = y + DIRS[d][1];
-      if (nx < 0) return { casas, saida: 'O' + y };
-      if (nx >= n) return { casas, saida: 'L' + y };
-      if (ny < 0) return { casas, saida: 'N' + x };
-      if (ny >= n) return { casas, saida: 'S' + x };
-      x = nx; y = ny;
+    const n = pub.n, casas = [], vistas = new Set(), saidas = [], par = pub.par || [], pr = pub.pr || [];
+    const raios = [[0, pub.y0, 'L']];
+    let passos = 0;
+    while (raios.length && passos++ < n * n * 8) {
+      let [x, y, d] = raios.pop();
+      while (passos++ < n * n * 8) {
+        const i = y * n + x, ch = i + d;
+        if (vistas.has(ch)) break;
+        vistas.add(ch);
+        if (par.includes(i)) break;
+        if (!casas.includes(i)) casas.push(i);
+        const k = pub.ms.indexOf(i);
+        if (k >= 0) d = REFLETE[(o || '')[k] === '1' ? '\\' : '/'][d];
+        else if (pr.includes(i)) { const [a, b] = LADOS(d); raios.push([x, y, b + '!']); d = a; }
+        const nx = x + DIRS[d][0], ny = y + DIRS[d][1];
+        if (nx < 0) { saidas.push('O' + y); break; }
+        if (nx >= n) { saidas.push('L' + y); break; }
+        if (ny < 0) { saidas.push('N' + x); break; }
+        if (ny >= n) { saidas.push('S' + x); break; }
+        x = nx; y = ny;
+      }
+      // (o ramo do prisma: sai da casa do prisma já virado, sem passar por ele de novo)
+      while (raios.length && raios[raios.length - 1][2].endsWith('!')) {
+        const [x, y, dd] = raios.pop(), d = dd[0], nx = x + DIRS[d][0], ny = y + DIRS[d][1];
+        if (nx < 0) saidas.push('O' + y); else if (nx >= n) saidas.push('L' + y); else if (ny < 0) saidas.push('N' + x); else if (ny >= n) saidas.push('S' + x);
+        else raios.push([nx, ny, d]);
+      }
     }
-    return { casas, saida: null };
+    return { casas, saidas, saida: saidas.length === 1 ? saidas[0] : saidas.length ? saidas[0] : null };
   }
+  const todosAcesos = (pub, o) => { const s = new Set(tracarLuz(pub, o).saidas); return alvosDe(pub).every(a => s.has(chaveAlvo(a))); };
   const oriEsp = jg => (typeof jg.estado.o === 'string' && jg.estado.o.length === jg.pub.ms.length ? jg.estado.o : '0'.repeat(jg.pub.ms.length));
-  const provaEsp = jg => (tracarLuz(jg.pub, oriEsp(jg)).saida === chaveAlvo(jg.pub.alvo) ? 'luz:' + chaveAlvo(jg.pub.alvo) : null);
+  const provaEsp = jg => (todosAcesos(jg.pub, oriEsp(jg)) ? 'luz:' + chaveAlvos(jg.pub) : null);
   function dicaEsp(jg, m) {
-    const o = oriEsp(jg).split(''), fixos = listaInt(jg.estado.f, 0, 60);
+    const o = oriEsp(jg), fixos = listaInt(jg.estado.f, 0, 60), lig = jg.pub.lig || [];
     const k = m.seg.certos.find(i => !fixos.includes(i) && o[i] !== m.seg.sol[i]) ?? m.seg.certos.find(i => !fixos.includes(i));
     if (k == null) return null;
-    o[k] = m.seg.sol[k];
-    return { mudas: { o: o.join(''), f: fixos.concat(k) }, txt: 'um espelho no lugar (e travado)' };
+    // (lote 191) o espelho ligado: o grupo inteiro gira para o lugar e trava junto
+    const no = o[k] !== m.seg.sol[k] ? girarEsp(jg.pub, o, k) : o, g = lig[k] || 0;
+    const trava = g ? lig.map((x, j) => (x === g ? j : -1)).filter(j => j >= 0) : [k];
+    return { mudas: { o: no, f: fixos.concat(trava.filter(j => !fixos.includes(j))) }, txt: g ? 'um grupo de espelhos no lugar (e travado)' : 'um espelho no lugar (e travado)' };
   }
 
   // -- ligar os fios: cada par de pontas da mesma cor, por caminhos que não se cruzam
@@ -619,8 +692,8 @@
     resposta: m => m.seg.pals.join(', ') });
   P('labirinto', { nome: 'Labirinto', grupo: 'Caminhos', erra: false, desc: 'Levem a marca da entrada até a saída, uma casa de cada vez.', montar: montarLabirinto, prova: provaLab, dica: dicaLab,
     resposta: () => 'chegar à saída (o caminho aparece no teste)' });
-  P('espelhos', { nome: 'Espelhos de luz', grupo: 'Caminhos', erra: false, desc: 'Girem os espelhos até a luz chegar ao cristal.', montar: montarEspelhos, prova: provaEsp, dica: dicaEsp,
-    resposta: m => 'a luz até o cristal (' + m.seg.certos.length + ' espelhos no caminho)' });
+  P('espelhos', { nome: 'Espelhos de luz', grupo: 'Caminhos', erra: false, desc: 'Girem os espelhos até a luz chegar ao cristal (ou a todos os cristais).', montar: montarEspelhos, prova: provaEsp, dica: dicaEsp,
+    resposta: m => { const na = (m.pub.alvos || [1]).length; return (na > 1 ? 'a luz até os ' + na + ' cristais (' : 'a luz até o cristal (') + m.seg.certos.length + ' espelhos no caminho' + (m.pub.lig ? '; os de mesma marca giram juntos' : '') + ')'; } });
   P('fios', { nome: 'Ligar os fios', grupo: 'Caminhos', erra: false, desc: 'Liguem cada par de pontas da mesma cor. Os fios não podem se cruzar.', montar: montarFios, prova: provaFios, dica: dicaFios,
     resposta: () => 'ligar todos os pares sem cruzar' });
   P('sudoku', { nome: 'Sudoku de runas', grupo: 'Lógica', erra: true, desc: 'Cada runa uma vez só em cada linha, em cada coluna e em cada caixa.', montar: montarSudoku, prova: provaSudoku, dica: dicaSudoku,
@@ -639,7 +712,7 @@
   const api = {
     TEMAS, ORDEM_TEMAS, chaveP, palavrasDe, normPalavras, cobrir, descobrir,
     letraCz, linhaReta, palavraNaLinha, achadasCaca, confereAnagrama,
-    PAREDE, paredesLab, passoLab, caminhoLab, posLab, tracarLuz, oriEsp, chaveAlvo, fioDe, fioCompleto, vizinhas,
+    PAREDE, paredesLab, passoLab, caminhoLab, posLab, tracarLuz, oriEsp, chaveAlvo, alvosDe, todosAcesos, girarEsp, fioDe, fioCompleto, vizinhas,
     valSdk, dadasSdk, conflitosSdk, resolverSudoku, segredoFalsa, pesar, ladoEq, pratosEq, posDsl, deslizar,
     cartasPares, seqDe, rodadaSeq, progSeq,
   };

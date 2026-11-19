@@ -255,3 +255,13 @@
 /* (lote 147) as linhas livres do mestre, no cadeado e nas placas */
 .cd-livre, .pl-livre { font-style: italic; }
 .pz-tempo.parado { color: var(--ink-2, #c9c2b3); border-style: dashed; }   /* (lote 179) a sequência que ninguém viu: o tempo parado */
+/* (lote 191) os espelhos ligados (a marca no canto, a cor do grupo) e o prisma */
+.es-c.esp { position: relative; }
+.es-c.lig1 { --lig: #e8a54b; } .es-c.lig2 { --lig: #7fb7e8; } .es-c.lig3 { --lig: #c58ee8; } .es-c.lig4 { --lig: #8fd6ab; } .es-c.lig5 { --lig: #f08a8a; }
+.es-c.esp.ligado { box-shadow: inset 0 0 0 2px var(--lig); }
+.es-c.esp.ligado.travado { box-shadow: inset 0 0 0 2px #8fd6ab, inset 0 0 0 4px var(--lig); }
+.es-lig { position: absolute; top: 1px; right: 3px; font-size: 13px; font-weight: 700; line-height: 1; color: var(--lig); pointer-events: none; }
+.es-c.prisma { color: #b9e3f6; background: #1c2633; }
+.es-c.prisma.luz { color: #fff2c4; }
+.es { width: min(100%, 460px); }
+.es-regras { font-size: 12px; opacity: .85; }

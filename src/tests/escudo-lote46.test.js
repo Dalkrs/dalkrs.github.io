@@ -108,9 +108,26 @@ function resolverDeslizante(p, n) {
     await tipo('espelhos', 'medio');
     const mm = await m(), jg = await tst();
     // (a luz pode chegar ao cristal antes do último espelho: outro caminho também vale)
-    for (let k = 0; k < mm.seg.sol.length; k++) { if ((await tst()).resolvido) break; if (jg.estado.o[k] !== mm.seg.sol[k]) await clicar('tst:e' + k); }
+    // (lote 191) os ligados giram juntos: confere o estado de agora a cada espelho
+    for (let k = 0; k < mm.seg.sol.length; k++) { const a = await tst(); if (a.resolvido) break; if (a.estado.o[k] !== mm.seg.sol[k]) await clicar('tst:e' + k); }
     ok(await resolvido(), 'girar os espelhos certos leva a luz ao cristal');
     await foto('l46-espelhos');
+  });
+
+  // (lote 191) o Difícil: 9×9, espelhos ligados (girar um gira os da mesma marca), prismas e 2 ou 3 cristais
+  await passo('espelhos de luz, difícil', async () => {
+    await tipo('espelhos', 'dificil');
+    const mm = await m(), jg = await tst();
+    ok(jg.pub.n === 9 && jg.pub.alvos.length >= 2 && jg.pub.pr.length >= 1 && Math.max(...jg.pub.lig) === 3, '9×9, ' + jg.pub.alvos.length + ' cristais, ' + jg.pub.pr.length + ' prisma(s), 3 grupos ligados');
+    ok(await p.locator('.previa .es-lig').count() >= 6 && await p.locator('.previa .es-c.prisma').count() === jg.pub.pr.length && await p.locator('.previa .es-b.alvo').count() === jg.pub.alvos.length, 'na tela: as marcas, os prismas e os cristais');
+    const k1 = jg.pub.lig.findIndex(g => g === 1), outros = jg.pub.lig.map((g, k) => (g === 1 ? k : -1)).filter(k => k >= 0);
+    await clicar('tst:e' + k1);
+    const a = await tst();
+    ok(outros.every(k => a.estado.o[k] !== jg.estado.o[k]) && a.estado.o.split('').filter((c, k) => c !== jg.estado.o[k]).length === outros.length, 'girar um espelho ◆ gira os ' + outros.length + ' da marca, e só eles');
+    ok(/cristais acesos/.test(await p.locator('.previa .pz-conta').first().innerText()), 'a conta dos cristais acesos');
+    await foto('l191-espelhos-dificil');
+    for (let k = 0; k < mm.seg.sol.length; k++) { const b = await tst(); if (b.resolvido) break; if (b.estado.o[k] !== mm.seg.sol[k]) await clicar('tst:e' + k); }
+    ok(await resolvido(), 'com todos os cristais acesos, resolve');
   });
 
   await passo('ligar os fios', async () => {

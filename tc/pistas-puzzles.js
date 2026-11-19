@@ -116,29 +116,42 @@
   });
 
   /* ---------------- espelhos de luz ---------------- */
+  // (lote 191) as marcas dos espelhos ligados (girar um gira os da mesma marca) e o prisma (divide a luz)
+  const MARCAS = ['', '◆', '▲', '●', '■', '★'];
   reg('espelhos', (jg, ctx) => {
-    const p = jg.pub, n = p.n, f = fechado(jg, ctx), o = X.oriEsp(jg), fixos = new Set(lista(jg.estado.f, 0, 60));
-    const luz = X.tracarLuz(p, o), acesas = new Set(luz.casas), chegou = luz.saida === X.chaveAlvo(p.alvo);
+    const p = jg.pub, n = p.n, f = fechado(jg, ctx), o = X.oriEsp(jg), fixos = new Set(lista(jg.estado.f, 0, 60)), lig = p.lig || [], pr = p.pr || [];
+    const luz = X.tracarLuz(p, o), acesas = new Set(luz.casas), saidas = new Set(luz.saidas), alvos = X.alvosDe(p);
+    const acesos = alvos.filter(a => saidas.has(X.chaveAlvo(a))).length, todos = acesos === alvos.length;
+    const ehAlvo = (x, y) => alvos.find(a => (a.l === 'L' && x === n && y === a.i) || (a.l === 'O' && x === -1 && y === a.i) || (a.l === 'N' && y === -1 && x === a.i) || (a.l === 'S' && y === n && x === a.i));
     const W = n + 2, cel = [];
     for (let y = -1; y <= n; y++) for (let x = -1; x <= n; x++) {
       const borda = x < 0 || y < 0 || x >= n || y >= n;
       if (borda) {
-        const fonte = x === -1 && y === p.y0;
-        const alvo = (p.alvo.l === 'L' && x === n && y === p.alvo.i) || (p.alvo.l === 'O' && x === -1 && y === p.alvo.i) || (p.alvo.l === 'N' && y === -1 && x === p.alvo.i) || (p.alvo.l === 'S' && y === n && x === p.alvo.i);
-        cel.push(h('div', { class: 'es-b' + (fonte ? ' fonte' : '') + (alvo ? ' alvo' + (chegou ? ' aceso' : '') : '') }, fonte ? svg(20, '<circle cx="12" cy="12" r="4"/><path d="M17 12h5M12 3v2M12 19v2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>', '1.8')
+        const fonte = x === -1 && y === p.y0, alvo = ehAlvo(x, y), aceso = alvo && saidas.has(X.chaveAlvo(alvo));
+        cel.push(h('div', { class: 'es-b' + (fonte ? ' fonte' : '') + (alvo ? ' alvo' + (aceso ? ' aceso' : '') : '') }, fonte ? svg(20, '<circle cx="12" cy="12" r="4"/><path d="M17 12h5M12 3v2M12 19v2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>', '1.8')
           : alvo ? svg(20, '<path d="M12 3 18 9 12 21 6 9z"/><path d="M6 9h12"/>', '1.8') : null));
         continue;
       }
       const i = y * n + x, k = p.ms.indexOf(i), parede = (p.par || []).includes(i);
       if (k >= 0) {
-        const barra = o[k] === '1', trav = fixos.has(k);
-        cel.push(h('button', { type: 'button', class: 'es-c esp' + (acesas.has(i) ? ' luz' : '') + (trav ? ' travado' : ''), 'data-k': ctx.chave + 'e' + k, disabled: f || trav, 'aria-label': 'Espelho ' + (k + 1) + (trav ? ', travado' : ''),
-          onclick: () => { const no = o.split(''); no[k] = barra ? '0' : '1'; lance(jg, ctx, { o: no.join('') }, 'girou um espelho'); } },
-          svg(30, barra ? '<path d="M5 5 19 19"/>' : '<path d="M19 5 5 19"/>', '3')));
-      } else cel.push(h('div', { class: 'es-c' + (parede ? ' parede' : '') + (acesas.has(i) ? ' luz' : '') }));
+        const barra = o[k] === '1', trav = fixos.has(k), g = lig[k] || 0;
+        cel.push(h('button', { type: 'button', class: 'es-c esp' + (acesas.has(i) ? ' luz' : '') + (trav ? ' travado' : '') + (g ? ' ligado lig' + ((g - 1) % 5 + 1) : ''), 'data-k': ctx.chave + 'e' + k, disabled: f || trav,
+          'aria-label': 'Espelho ' + (k + 1) + (g ? ', ligado aos da marca ' + MARCAS[g % MARCAS.length] : '') + (trav ? ', travado' : ''),
+          title: g ? 'Ligado: gira junto com os outros espelhos da marca ' + MARCAS[g % MARCAS.length] : null,
+          onclick: () => lance(jg, ctx, { o: X.girarEsp(p, o, k) }, g ? 'girou os espelhos ' + MARCAS[g % MARCAS.length] : 'girou um espelho') },
+          svg(30, barra ? '<path d="M5 5 19 19"/>' : '<path d="M19 5 5 19"/>', '3'), g ? h('span', { class: 'es-lig', text: MARCAS[g % MARCAS.length] }) : null));
+      } else if (pr.includes(i)) cel.push(h('div', { class: 'es-c prisma' + (acesas.has(i) ? ' luz' : ''), title: 'Prisma: divide a luz para os dois lados', 'aria-label': 'Prisma' },
+        svg(28, '<path d="M12 4 20 19H4z"/><path d="M12 4v15"/>', '1.8')));
+      else cel.push(h('div', { class: 'es-c' + (parede ? ' parede' : '') + (acesas.has(i) ? ' luz' : '') }));
     }
+    const multi = alvos.length > 1;
+    const txt = todos ? (multi ? 'A luz chegou aos ' + alvos.length + ' cristais.' : 'A luz chegou ao cristal.')
+      : multi ? acesos + ' de ' + alvos.length + ' cristais acesos.' : luz.saida === null ? 'A luz bate numa parede.' : 'A luz sai sem tocar o cristal.';
+    const dicas = [];
+    if (lig.some(Boolean)) dicas.push('Os espelhos com a mesma marca giram juntos.');
+    if (pr.length) dicas.push('O prisma divide a luz para os dois lados: acenda todos os cristais.');
     return [h('div', { class: 'es', style: { gridTemplateColumns: 'repeat(' + W + ', 1fr)' } }, cel),
-      h('p', { class: 'pz-conta', text: chegou ? 'A luz chegou ao cristal.' : luz.saida === null ? 'A luz bate numa parede.' : 'A luz sai sem tocar o cristal.' })];
+      h('p', { class: 'pz-conta', text: txt }), dicas.length ? h('p', { class: 'pz-conta es-regras', text: dicas.join(' ') }) : null];
   });
 
   /* ---------------- ligar os fios ---------------- */
