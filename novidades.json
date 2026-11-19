@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.19-01",
+      "data": "2026-11-19",
+      "titulo": "O preço das habilidades na Árvore",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Árvore: cada habilidade que dá para pegar agora mostra o preço numa plaquinha ao lado do nódulo, na cor do tipo de ponto. Se faltam pontos, a plaquinha fica vazada, em vermelho." },
+        { "tipo": "melhorou", "texto": "Árvore: o botão de comprar diz quanto vai gastar, como \"Alocar · −2 Classe\" ou \"Subir para o 2º grau · −1 Classe\"." },
+        { "tipo": "melhorou", "texto": "Árvore: quando faltam pontos, o aviso diz quantos: \"Falta 1 ponto de Classe — custa 3, você tem 2.\" O custo aparece como \"2 de Classe\", e o que não custa nada aparece como \"Grátis\"." }
+      ]
+    },
+    {
       "versao": "2026.11.18-10",
       "data": "2026-11-18",
       "titulo": "Espelhos de luz mais difíceis",

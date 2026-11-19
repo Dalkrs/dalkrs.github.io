@@ -83,7 +83,7 @@ const doc = JSON.stringify({ formato: 'urgm-skilltree-doc', versao: 4,
   const desc = await P.locator('#descJog').innerHTML();
   ok(/<span class="conta sem"[^>]*>FOR\*2 \+ 10<\/span>/.test(desc) && (await P.locator('#descJog').innerText()) === 'Causa FOR*2 + 10 de dano.', 'sem mesa não há ficha: a conta aparece escrita (passando o mouse, a explicação): ' + await P.locator('#descJog').innerText());
   const graus = await P.locator('.graus-lista').innerText();
-  ok(/Lua: 1 · uso: 10 SP/.test(graus) && /Lua: 2 — \+floor\(CAN\/2\) de gelo · uso: 15 SP · CAN\/2 Energia/.test(graus), 'cada grau diz o custo de uso (a conta, escrita): ' + graus.replace(/\s+/g, ' '));
+  ok(/1 de Lua · uso: 10 SP/.test(graus) && /2 de Lua — \+floor\(CAN\/2\) de gelo · uso: 15 SP · CAN\/2 Energia/.test(graus), 'cada grau diz o custo de uso (a conta, escrita): ' + graus.replace(/\s+/g, ' '));
   await foto('arvore6-02-jogador');
   await modo('mestre');
 

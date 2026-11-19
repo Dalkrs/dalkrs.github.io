@@ -455,6 +455,10 @@ a.lk-no:hover{text-decoration-thickness:2px}
 [data-tema="pedra"] .siglas-txt{fill:rgba(232,234,240,.6);stroke:#111520}
 [data-tema="tinta"] .siglas-txt{fill:rgba(31,27,22,.56);stroke:#ECE4D0}
 .etq-txt{font:700 9.5px var(--ui);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+/* (lote 192) o preço no nódulo e no botão */
+.preco-txt{font:800 10.5px var(--ui);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.preco{pointer-events:none}
+.preco-bt{font-weight:600;opacity:.85;white-space:nowrap}
 .icone-papel{pointer-events:none}
 .nomeesc{pointer-events:none;font-family:var(--titulo);font-weight:600;letter-spacing:.04em}
 .no.apagado{opacity:.16}
@@ -1650,14 +1654,26 @@ const conqPts = (p, poolId) => { const q = conqDoPc(p), v = q.pontos ? +q.pontos
 const conqOrigem = (p, poolId) => (Array.isArray(conqDoPc(p).origem) ? conqDoPc(p).origem : []).filter(o => o && o.pool === poolId).map(o => o.nome + ' ' + (o.n > 0 ? '+' : '') + o.n).join(', ');
 const restantes = (p, poolId) => (p.pontos[poolId] || 0) + conqPts(p, poolId) - gastos(p, poolId);
 function podePagarGrau(p, n, k){ const c = custoGrau(n, k); return bib().pools.every(pl=>(c[pl.id]||0) <= restantes(p, pl.id)); }
+/* (lote 192) "de Classe" — o tipo "Pontos" (o nome genérico) fica sem o "de" */
+const dePool = pl => /^pontos?$/i.test(String(pl.nome).trim()) ? '' : ' de ' + pl.nome;
+/* (lote 192) quanto falta, com os números: "Falta 1 ponto de Classe — custa 3, você tem 2." */
 function faltaTexto(p, n, k){
   const c = custoGrau(n, k);
   const f = bib().pools.filter(pl=>(c[pl.id]||0) > restantes(p, pl.id));
-  return f.length ? 'Faltam pontos: ' + f.map(x=>x.nome).join(', ') + '.' : '';
+  return f.map(pl=>{
+    const custa = c[pl.id], tem = restantes(p, pl.id), falta = custa - tem;
+    return `${falta===1 ? 'Falta' : 'Faltam'} ${falta} ${falta===1 ? 'ponto' : 'pontos'}${dePool(pl)} — custa ${custa}, você tem ${Math.max(0, tem)}${tem<0 ? ` (já gastou ${-tem} a mais)` : ''}.`;
+  }).join(' ');
 }
 function custoTexto(custos){
-  const partes = bib().pools.filter(pl=>custos[pl.id]>0).map(pl=>`${pl.nome}: ${custos[pl.id]}`);
-  return partes.length ? partes.join(' · ') : 'sem custo';
+  // (lote 192) "2 de Classe", "1 ponto" (era "Classe: 2")
+  const partes = bib().pools.filter(pl=>custos[pl.id]>0).map(pl=>{ const v = custos[pl.id], d = dePool(pl); return d ? v + d : v + (v===1 ? ' ponto' : ' pontos'); });
+  return partes.length ? partes.join(' + ') : 'Grátis';
+}
+/* (lote 192) o preço no botão de comprar: "−2 Classe", "−2 pontos", "grátis" */
+function precoBotao(custos){
+  const partes = bib().pools.filter(pl=>custos[pl.id]>0).map(pl=>`−${custos[pl.id]} ${/^pontos?$/i.test(String(pl.nome).trim()) ? (custos[pl.id]===1 ? 'ponto' : 'pontos') : pl.nome}`);
+  return partes.length ? partes.join(', ') : 'grátis';
 }
 function estadoNo(p, n){
   if((p.alocados[n.id]||0) > 0) return 'on';
@@ -2157,6 +2173,7 @@ function desenharNo(g, n, e, tema, p, bate, busca){
     if(siglas){ const s2 = el('text', {class:'siglas-txt', y:f1(yRot + (n.tipo==='keystone' ? 14 : 12.5))}); s2.textContent = siglas; grp.appendChild(s2); }
   }
   etiquetasNoNo(grp, n, r, tema, etq);
+  if(p && (e==='disp' || e==='caro')) precoNoNo(grp, n, r, tema, e, p);
   grp.appendChild(el('circle', {r:Math.max(r+8, 18), class:'toque'}));
   g.appendChild(grp);
 }
@@ -2256,6 +2273,30 @@ function etiquetasNoNo(grp, n, r, tema, etq){
     x += w + gap;
   });
   grp.appendChild(g);
+}
+/* (lote 192) O preço, no lado direito do nódulo que dá para pegar agora (liberado, com ou sem pontos): uma plaquinha
+   por tipo de ponto, na cor dele. Sem pontos que bastem, a plaquinha fica vazada, em vermelho. Grátis: sem plaquinha.
+   Os já aprendidos e os bloqueados ficam limpos. */
+function precoNoNo(grp, n, r, tema, e, p){
+  if(n.tipo==='pequeno' && cam.k<=.55) return;
+  const c = custoGrau(n, 1), pools = bib().pools.filter(pl=>(c[pl.id]||0)>0);
+  if(!pools.length) return;
+  const fundo = tema==='tinta' ? COR_T.papelNo : COR_P.encaixe, verm = tema==='tinta' ? COR_T.verm : COR_P.verm;
+  const g = el('g', {class:'preco' + (e==='caro' ? ' caro' : '')});
+  let x = r + (n.tipo==='keystone' ? 15 : n.tipo==='notavel' ? 8 : 5);
+  const falas = [];
+  pools.forEach(pl=>{
+    const v = c[pl.id], txt = String(v), w = Math.max(15, txt.length*7 + 8);
+    const sem = v > restantes(p, pl.id);
+    g.appendChild(el('rect', {x:f1(x), y:-7.5, width:f1(w), height:15, rx:7.5,
+      fill: sem ? fundo : pl.cor, stroke: sem ? verm : (tema==='tinta' ? COR_T.tinta : '#0B0D10'), 'stroke-width': sem ? 1.5 : .8, 'stroke-dasharray': sem ? '2.5 1.8' : null}));
+    const t = el('text', {class:'preco-txt', x:f1(x + w/2), y:.5, fill: sem ? verm : (claro(pl.cor) ? '#1B1813' : '#FFFFFF')});
+    t.textContent = txt; g.appendChild(t);
+    falas.push(v + dePool(pl));
+    x += w + 3;
+  });
+  grp.appendChild(g);
+  grp.setAttribute('aria-label', grp.getAttribute('aria-label') + ' · custa ' + falas.join(' e ') + (e==='caro' ? ' (faltam pontos)' : ''));
 }
 // as etiquetas por extenso ("▼ 2 Geada"), para os painéis e o cartão
 function htmlEtiquetas(n, opt){ const I = ICONES(); return I ? I.etiquetas(etiquetasDoNo(n, opt)) : ''; }
@@ -3567,7 +3608,7 @@ function painelJogador(){
       ${esc0 ? `<p class="info">Escola: ${esc(esc0.escola.nome)}</p>` : ''}
       <p class="info" style="font-weight:600">${esc(txtEstado)}</p>
       <div class="acoes" style="margin-top:10px">
-        ${(G>1 || g0===0) ? `<button class="btn ouro" id="btSubir" ${podeSubir ? '' : 'disabled'}>${g0===0 ? 'Alocar' : g0<G ? 'Subir para o ' + (g0+1) + 'º grau' : 'Grau máximo'}</button>` : ''}
+        ${(G>1 || g0===0) ? `<button class="btn ouro" id="btSubir" ${podeSubir ? '' : 'disabled'}>${g0===0 ? 'Alocar' : g0<G ? 'Subir para o ' + (g0+1) + 'º grau' : 'Grau máximo'}${g0<G ? `<span class="preco-bt"> · ${esc(precoBotao(custoGrau(n, g0+1)))}</span>` : ''}</button>` : ''}
         <button class="btn perigo" id="btDescer" ${g0>0 ? '' : 'disabled'}>${g0>1 ? 'Descer grau' : 'Soltar'}</button>
       </div></div>`;
   }
