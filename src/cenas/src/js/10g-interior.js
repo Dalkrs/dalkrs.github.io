@@ -21,6 +21,10 @@ const Interior = (() => {
     templo: { n: 'Templo', salas: ['nave', 'sacristia'], min: 2, grande: 0.72 },
     senhor: { n: 'Casa do senhor', salas: ['nobre', 'biblioteca', 'quarto', 'banheiro', 'cozinha', 'quarto'], min: 4, grande: 0.42 },
     quartel: { n: 'Quartel', salas: ['refeitorio', 'dormitorio', 'arsenal'], min: 3 },
+    // (lote 189) o apotecário (a botica na frente, o laboratório e o quarto atrás) e a casa noturna (o salão fino na
+    // frente; as alcovas finas, o escritório da madame e as alcovas sujas dos fundos atrás)
+    apotecario: { n: 'Apotecário', salas: ['botica', 'laboratorio', 'quarto'], min: 2, grande: 0.55 },
+    bordel: { n: 'Casa noturna', salas: ['salaoNoturno', 'alcova', 'alcova', 'escritorioMadame', 'alcovaFundos', 'alcovaFundos', 'cozinha'], min: 4, grande: 0.42 },
     // (lote 7, parte 4b) o navio: a planta vem do Navio (do tamanho do convés, com o porão e as cabines)
     navio: { n: 'Navio', salas: ['capitao', 'cabine', 'porao', 'alojamento', 'paiol'], min: 1, so: true, planta: o => Navio.planta(Object.assign({}, o, { tipo: 'navio' })) },
     // (lote 7, parte 4b) as moradias da tribo: a planta vem da Tribo (uma sala só, redonda nas tendas, nas iurtes e nos
@@ -67,6 +71,12 @@ const Interior = (() => {
     reuniao: ['mesaGuerra', 'cadeira', 'cadeira', 'cadeira', 'cadeira', 'estante', 'candelabro'],
     laboratorio: ['alambique', 'caldeirao', 'estante', 'jarro', 'vela', 'bau'],
     cofre: ['cofre', 'cofre', 'bau', 'lingotes', 'sacos'],
+    // (lote 189) o apotecário e a casa noturna
+    botica: ['#balcao', 'estante', 'estante', 'vasinhosErvas', 'jarro', 'balanca', 'cesto', 'pilhaLivros', 'sacos'],
+    salaoNoturno: ['palcoPole', 'diva', 'diva', 'poltronaVeludo', 'mesinhaTacas', 'mesinhaTacas', 'poltronaVeludo', 'piano', 'narguile', 'velasCor', 'cortinaVeludo', 'mesinhaTacas'],
+    alcova: ['camaDossel', 'baciaJarro', 'biomboSeda', 'velaCor', 'tapete'],
+    alcovaFundos: ['colchaoChao', 'balde', 'garrafasChao', 'vela'],
+    escritorioMadame: ['mesa', 'cadeira', 'livroCaixa', 'quadroChaves', 'cofre', 'cartasClientes', 'poltronaVeludo', 'candelabroCor'],
     tunel: ['tunel', 'escombros', 'caixote', 'lampiao'],
   };
   // perto de quê cada móvel gosta de ficar (a cadeira junto da mesa, o baú e a vela junto da cama, as estátuas junto do altar)
@@ -75,7 +85,7 @@ const Interior = (() => {
   const TROCA = { oriental: { cadeira: 'almofada', vela: 'lanterna' }, desertico: { cadeira: 'almofada' }, anao: { vela: 'braseiro' } };
   const EXTRA = { nordico: { sala: 'fogueira', salao: 'fogueira', nobre: 'fogueira' }, elfico: { sala: 'flores', quarto: 'flores', salao: 'flores', nobre: 'flores' }, desertico: { sala: 'jarro', quarto: 'tapete' }, oriental: { sala: ['lanterna', 'tatame', 'bonsai'], quarto: ['tatame', 'biombo'], salao: ['lanterna', 'biombo'], nobre: ['lanterna', 'biombo', 'bonsai'] } };     // (lote 54: o tatame, o biombo e o bonsai)
   // o piso de cada tipo (pelo tipo do vilarejo que mais se parece)
-  const PISO_DE = { casa: 'casa', loja: 'armazem', taverna: 'taverna', ferraria: 'ferraria', armazem: 'armazem', templo: 'capela', senhor: 'taverna', quartel: 'ferraria', navio: 'armazem' };
+  const PISO_DE = { apotecario: 'casa', bordel: 'taverna', casa: 'casa', loja: 'armazem', taverna: 'taverna', ferraria: 'ferraria', armazem: 'armazem', templo: 'capela', senhor: 'taverna', quartel: 'ferraria', navio: 'armazem' };
   const tipoValido = t => (PLANTAS[t] ? t : PLANTAS[DO_VILAREJO[t]] ? DO_VILAREJO[t] : 'casa');
   /* (lote 141) Os andares: as salas que o interior sabe mobiliar, os temas de cada andar e o da base secreta. */
   const TEMAS_CIMA = {
@@ -95,7 +105,7 @@ const Interior = (() => {
   const BASE_I = ['reuniao', 'arsenal', 'dormitorio', 'laboratorio', 'cofre', 'cela', 'tunel'];
   const catDe = tipo => ({
     salas: Object.keys(MOVEIS), cima: TEMAS_CIMA, porao: TEMAS_PORAO, base: BASE_I,
-    padrao: (n, N) => (n < 0 ? (tipo === 'quartel' ? 'celas' : 'adega')
+    padrao: (n, N) => (n < 0 ? (tipo === 'quartel' || tipo === 'bordel' ? 'celas' : 'adega')
       : n === N && N >= 2 && tipo !== 'quartel' ? 'sotao'
         : tipo === 'quartel' ? 'quartel' : tipo === 'senhor' && n === 2 ? 'luxo' : tipo === 'armazem' || tipo === 'ferraria' ? 'deposito' : 'quartos'),
   });

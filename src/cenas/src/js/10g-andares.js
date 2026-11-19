@@ -22,6 +22,7 @@ const PlantaAndares = (() => {
     // (lote 158) as salas dos temas
     tavernaSalao: 'Salão da taverna', aula: 'Sala de magia', interrogatorio: 'Sala de interrogatório', treino: 'Sala de treino', portal: 'Sala do portal', teatro: 'Teatro',
     salaoNoturno: 'Salão da casa noturna', alcova: 'Alcova', escritorioMadame: 'Escritório da madame',      // (lote 180)
+    botica: 'Botica', alcovaFundos: 'Alcova dos fundos',      // (lote 189)
   };
   const nome = p => NOMES[p] || p;
   const MAX_SALAS = 12;
