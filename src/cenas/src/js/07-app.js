@@ -305,6 +305,10 @@ function acertarCondicoes(t, antes) {
     for (const id of tem) if (id !== fica) { conds = conds.filter(c => c !== id); delete info[id]; }
     mudou = true;
   }
+  // (lote 193) a forma grande acabou (o Transformado saiu): o Agigantado que veio com ela sai junto, e o tamanho volta
+  if (tinha('transformado') && !conds.includes('transformado') && conds.includes('agigantado') && info.agigantado && info.agigantado.f) {
+    conds = conds.filter(c => c !== 'agigantado'); delete info.agigantado; mudou = true;
+  }
   if (Array.isArray(a.conds) && ['agigantado', 'encolhido'].some(id => tinha(id) !== conds.includes(id))) {
     const fator = conds.includes('agigantado') ? 2 : conds.includes('encolhido') ? 0.5 : 1, base = t.tam0 > 0 ? t.tam0 : t.size;
     const tam = fator === 1 ? base : clamp(base * fator, TAM_MIN, TAM_MAX);

@@ -33,7 +33,11 @@
     for (const k of Object.keys(v)) if (/^[A-Za-z0-9_-]{1,60}$/.test(k) && okUrl(v[k])) out[k] = v[k];
     return out;
   }
-  const API = { ehForma, turnosDe, normFormas, okUrl };
+  /* (lote 193, pedido do Dalmo) as formas grandes: usar a habilidade deixa o token Transformado e Agigantado (o dobro do
+     tamanho no mapa), com ou sem imagem na ficha; o Agigantado sai junto com o Transformado. */
+  const GRANDES = ['n_druida_acab', 'n_druida_aya', 'n_druida_ak1', 'n_druida_ac1'];   // Urso de Casca, Behemoth, Grande Espírito, Grifo Verde
+  const grande = id => GRANDES.includes(String(id || ''));
+  const API = { ehForma, turnosDe, normFormas, okUrl, GRANDES, grande };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (root) { root.TC = root.TC || {}; root.TC.formas = API; }
 })(typeof window !== 'undefined' ? window : null);

@@ -2112,6 +2112,8 @@ const UI = (() => {
   function novoTokenBox(t, done) {
     if (!perguntarToken()) { done(t); return; }
     const bars = t.bars.map(b => Object.assign({}, b));
+    // (lote 193) a barra do HP: a do nome de vida (HP, PV, Vida…), ou a primeira
+    const iVida = Math.max(0, bars.findIndex(b => VIDA_NOMES.test(String(b.n || '').trim())));
     const nome = h('input', { type: 'text', class: 'in', id: 'nt-nome', value: t.name, maxlength: 60, autocomplete: 'off', 'data-focus': '', 'aria-label': 'Nome do token' });
     const ini = h('input', { type: 'number', class: 'in num', id: 'nt-ini', value: clampIni(t.ini), min: -99, max: 99, step: 1, 'aria-label': 'Bônus de iniciativa', title: 'A rolagem é 1d20 + este valor' });
     const nao = h('input', { type: 'checkbox', id: 'nt-nao', class: 'ck' });
@@ -2125,15 +2127,22 @@ const UI = (() => {
       h('div', { class: 'nt-top' }, field('Nome', nome, 'stack'), field('Iniciativa', ini, 'stack')),
       roupa ? field('Roupa (para os disfarces: de que grupo ele é?)', roupa, 'stack') : null,
       h('div', { class: 'bd-list nt-list' },
-        h('div', { class: 'bd-row bd-h' }, h('span', { text: 'Usar' }), h('span'), h('span', { text: 'Barra' }), h('span', { text: 'Máximo' })),
+        h('div', { class: 'bd-row bd-h' }, h('span', { text: 'Usar' }), h('span'), h('span', { text: 'Barra' }), h('span', { text: 'Máximo' }),
+          h('span', { text: 'Negativo até', title: 'Até quanto o HP pode descer abaixo de zero (0: não fica negativo)' })),
         bars.map((b, i) => {
           const max = h('input', { type: 'number', class: 'in num', id: `nt-${i}-m`, value: b.m, min: 0, step: 1, 'aria-label': 'Máximo de ' + b.n, disabled: !b.on,
             oninput: e => { const v = parseFloat(e.target.value); if (isFinite(v) && v >= 0) { b.m = v; b.v = v; } } });
+          // (lote 193, pedido do Dalmo) só no HP: até quanto ele pode ficar negativo (0 = não fica)
+          const lo = i === iVida ? h('span', { class: 'nt-lo' }, h('span', { class: 'nt-menos', text: '−', 'aria-hidden': 'true' }),
+            h('input', { type: 'number', class: 'in num', id: 'nt-lo', value: barLo(b), min: 0, step: 1, disabled: !b.on, 'aria-label': `Até quanto ${b.n} pode ficar negativo (0: não fica)`,
+              title: 'Até quanto o HP pode descer abaixo de zero. 0: não fica negativo.',
+              oninput: e => { const v = parseFloat(String(e.target.value).replace(',', '.')); b.lo = isFinite(v) && v > 0 ? Math.min(999999, Math.round(v * 10) / 10) : 0; } })) : h('span');
+          const loIn = i === iVida ? lo.querySelector('input') : null;
           return h('div', { class: 'bd-row' },
-            h('input', { type: 'checkbox', class: 'ck', id: `nt-${i}-on`, checked: b.on, 'aria-label': 'Usar ' + b.n, onchange: e => { b.on = e.target.checked; max.disabled = !b.on; if (b.on) { max.focus(); max.select(); } } }),
+            h('input', { type: 'checkbox', class: 'ck', id: `nt-${i}-on`, checked: b.on, 'aria-label': 'Usar ' + b.n, onchange: e => { b.on = e.target.checked; max.disabled = !b.on; if (loIn) loIn.disabled = !b.on; if (b.on) { max.focus(); max.select(); } } }),
             h('span', { class: 'nt-cor', style: 'background:' + b.c, 'aria-hidden': 'true' }),
             h('span', { class: 'nt-n', text: b.n }),
-            max);
+            max, lo);
         })),
       h('label', { class: 'o-ck bd-ck' }, nao, h('span', { text: 'Criar os próximos sem perguntar (volta nas Barras padrão…)' })));
     modal({
@@ -3239,7 +3248,7 @@ const UI = (() => {
     Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; delete e.sur; } }, 'Encerrar combate');
     App.iniRolls.clear();
     // (lote 188) as formas acabam com o combate: o Transformado sai, e a imagem volta
-    { const tf = Store.scene().tokens.filter(t => t.tf && t.conds.includes('transformado')); if (tf.length) Store.tx('Fim das formas', () => tf.forEach(t => { const i = Object.assign({}, t.cinfo); delete i.transformado; Store.upd('tokens', t.id, { conds: t.conds.filter(c => c !== 'transformado'), cinfo: i }); })); }
+    { const tf = Store.scene().tokens.filter(t => (t.tf || (t.cinfo && t.cinfo.transformado && t.cinfo.transformado.f)) && t.conds.includes('transformado')); if (tf.length) Store.tx('Fim das formas', () => tf.forEach(t => { const i = Object.assign({}, t.cinfo); delete i.transformado; Store.upd('tokens', t.id, { conds: t.conds.filter(c => c !== 'transformado'), cinfo: i }); })); }
     toast(tinha ? 'Combate encerrado: a iniciativa de todos foi zerada para o próximo.' : 'Combate encerrado.', { action: 'Desfazer', run: Tools.undo });
     // (lote 44) o painel de barras: cada barra faz o fim dela (o aviso tem o Desfazer dele)
     if (typeof PainelBarras !== 'undefined') PainelBarras.fimDoCombate(tokensDoCombate(Store.scene()));

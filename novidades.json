@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.19-02",
+      "data": "2026-11-19",
+      "titulo": "Formas grandes do Druida e HP negativo no token novo",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Cenas: as formas grandes do Druida (Urso de Casca, Behemoth, Grande Espírito e Grifo Verde) deixam o token Transformado e Agigantado, com o dobro do tamanho, mesmo sem imagem na ficha. Quando a forma acaba, o Agigantado sai junto e o token volta ao tamanho." },
+        { "tipo": "novo", "mestre": true, "texto": "Cenas: na janela \"Token novo\", dá para escolher até quanto o HP pode ficar negativo (0: não fica)." }
+      ]
+    },
+    {
       "versao": "2026.11.19-01",
       "data": "2026-11-19",
       "titulo": "O preço das habilidades na Árvore",

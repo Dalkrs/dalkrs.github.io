@@ -26,7 +26,21 @@ const HabAcao = (() => {
   let janelaAberta = false;
 
   const tirarAviso = () => { for (const x of document.querySelectorAll('.toast[data-k="hab-mira"]')) x.remove(); };
-  const specDe = h => { const a = A(); return a && h && h.id ? a.de(h.id, h.grau || 1) : null; };
+  const specDe = h => { const a = A(); return a && h && h.id ? formaGrande(h, a.de(h.id, h.grau || 1)) : null; };
+  /* (lote 193) a forma grande (TC.formas.grande): Transformado e Agigantado em quem usa, pelos mesmos turnos (sem número,
+     até alguém tirar). Quando o texto ("Vira urso: … garras de Dano tier III") virou um golpe num alvo, ele vira a forma
+     em você: as garras são da forma, não um ataque na hora de vestir. fg marca as duas condições como da forma. */
+  function formaGrande(h, sp) {
+    const fm = window.TC && window.TC.formas;
+    if (!fm || !fm.grande || !fm.grande(h.id)) return sp;
+    const o = Object.assign({}, sp || {}), c = (o.c || []).slice(), tf = c.find(x => x[0] === 'transformado');
+    if (!tf && (o.m === 'alvo' || !o.m)) { delete o.d; delete o.q; delete o.al; delete o.mx; o.m = 'si'; }
+    const tur = tf ? tf[1] : fm.turnosDe(h.desc || '');
+    if (!tf) c.push(['transformado', tur, null, 's']);
+    if (!c.some(x => x[0] === 'agigantado')) c.push(['agigantado', tur, null, 's']);
+    o.c = c; o.fg = 1;
+    return o;
+  }
   const temAcao = h => !!specDe(h);
   const cellsDe = sc => sc.cell;
   const centro = (t, sc) => { const [x, y] = tokC(t, sc); return [x, y]; };
@@ -273,15 +287,16 @@ const HabAcao = (() => {
         }
       }
       // você: as condições em quem usou
-      const condEm = (t, cid, tur, n) => {
+      const condEm = (t, cid, tur, n, forma) => {
         const t0 = Store.get('tokens', t.id) || t, conds = t0.conds.includes(cid) ? t0.conds : t0.conds.concat(cid), info = Object.assign({}, t0.cinfo);
         const cur = Object.assign({}, info[cid]);
         if (tur > 0) { cur.d = tur; cur.d0 = tur; }
+        if (forma) cur.f = 1;                              // (lote 193) da forma: sai com ela
         if (n > 0) cur.n = (cur.n || 0) + n;
         if (Object.keys(cur).length) info[cid] = cur;
         Store.upd('tokens', t0.id, { conds, cinfo: info });
       };
-      for (const cid of esc.si || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(de, cid, c ? c[1] : 1, 0); }
+      for (const cid of esc.si || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(de, cid, c ? c[1] : 1, 0, !!sp.fg && (cid === 'transformado' || cid === 'agigantado')); }
       // mover quem usou (o salto, o bote: para perto do alvo)
       if (esc.mv && sp.mv && sp.mv.k === 'salta') {
         const s = Math.max(1, de.size || 1), [cx, cy] = centro(de, sc);

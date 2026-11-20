@@ -1304,7 +1304,11 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .menu-pasta.dentro { padding-left: 22px; }
 /* (lote 118) a janela do token novo: o nome e a iniciativa em cima, as barras embaixo */
 .nt-top { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 10px; margin-bottom: 10px; }
-.nt-list { grid-template-columns: auto 18px minmax(0, 1fr) 80px; margin-bottom: 8px; }
+.nt-list { grid-template-columns: auto 18px minmax(0, 1fr) 80px 96px; margin-bottom: 8px; }
+.nt-lo { display: flex; align-items: center; gap: 4px; }      /* (lote 193) o HP negativo até */
+.nt-lo .in.num { min-width: 0; width: 100%; }
+.nt-menos { font-weight: 700; color: var(--neg, #ff5d73); }
+
 .nt-cor { width: 14px; height: 14px; border-radius: 50%; justify-self: center; }
 .nt-n { font-weight: 600; }
 .nt-list .in.num:disabled { opacity: .45; }

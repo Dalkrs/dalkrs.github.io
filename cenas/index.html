@@ -1349,7 +1349,11 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 .menu-pasta.dentro { padding-left: 22px; }
 /* (lote 118) a janela do token novo: o nome e a iniciativa em cima, as barras embaixo */
 .nt-top { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 10px; margin-bottom: 10px; }
-.nt-list { grid-template-columns: auto 18px minmax(0, 1fr) 80px; margin-bottom: 8px; }
+.nt-list { grid-template-columns: auto 18px minmax(0, 1fr) 80px 96px; margin-bottom: 8px; }
+.nt-lo { display: flex; align-items: center; gap: 4px; }      /* (lote 193) o HP negativo até */
+.nt-lo .in.num { min-width: 0; width: 100%; }
+.nt-menos { font-weight: 700; color: var(--neg, #ff5d73); }
+.nt-list .in.num:disabled + *, .nt-lo .in.num:disabled { opacity: .45; }
 .nt-cor { width: 14px; height: 14px; border-radius: 50%; justify-self: center; }
 .nt-n { font-weight: 600; }
 .nt-list .in.num:disabled { opacity: .45; }
@@ -1528,7 +1532,7 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <script src="../tc/caudas.js?v=4"></script>
 <script src="../tc/barras-painel.js?v=15"></script>
 <script src="../tc/habs-acoes.js?v=1"></script>
-<script src="../tc/formas.js?v=1"></script>
+<script src="../tc/formas.js?v=2"></script>
 <script src="../tc/npc.js?v=1"></script>
 <script src="../tc/misterio.js?v=1"></script>
 <script src="../tc/missoes.js?v=3"></script>
@@ -11898,6 +11902,10 @@ function acertarCondicoes(t, antes) {
     const tem = FERIDOS.filter(id => conds.includes(id)), novos = tem.filter(id => !tinha(id)), fica = (novos.length ? novos : tem)[(novos.length ? novos : tem).length - 1];
     for (const id of tem) if (id !== fica) { conds = conds.filter(c => c !== id); delete info[id]; }
     mudou = true;
+  }
+  // (lote 193) a forma grande acabou (o Transformado saiu): o Agigantado que veio com ela sai junto, e o tamanho volta
+  if (tinha('transformado') && !conds.includes('transformado') && conds.includes('agigantado') && info.agigantado && info.agigantado.f) {
+    conds = conds.filter(c => c !== 'agigantado'); delete info.agigantado; mudou = true;
   }
   if (Array.isArray(a.conds) && ['agigantado', 'encolhido'].some(id => tinha(id) !== conds.includes(id))) {
     const fator = conds.includes('agigantado') ? 2 : conds.includes('encolhido') ? 0.5 : 1, base = t.tam0 > 0 ? t.tam0 : t.size;
@@ -23325,6 +23333,8 @@ const UI = (() => {
   function novoTokenBox(t, done) {
     if (!perguntarToken()) { done(t); return; }
     const bars = t.bars.map(b => Object.assign({}, b));
+    // (lote 193) a barra do HP: a do nome de vida (HP, PV, Vida…), ou a primeira
+    const iVida = Math.max(0, bars.findIndex(b => VIDA_NOMES.test(String(b.n || '').trim())));
     const nome = h('input', { type: 'text', class: 'in', id: 'nt-nome', value: t.name, maxlength: 60, autocomplete: 'off', 'data-focus': '', 'aria-label': 'Nome do token' });
     const ini = h('input', { type: 'number', class: 'in num', id: 'nt-ini', value: clampIni(t.ini), min: -99, max: 99, step: 1, 'aria-label': 'Bônus de iniciativa', title: 'A rolagem é 1d20 + este valor' });
     const nao = h('input', { type: 'checkbox', id: 'nt-nao', class: 'ck' });
@@ -23338,15 +23348,22 @@ const UI = (() => {
       h('div', { class: 'nt-top' }, field('Nome', nome, 'stack'), field('Iniciativa', ini, 'stack')),
       roupa ? field('Roupa (para os disfarces: de que grupo ele é?)', roupa, 'stack') : null,
       h('div', { class: 'bd-list nt-list' },
-        h('div', { class: 'bd-row bd-h' }, h('span', { text: 'Usar' }), h('span'), h('span', { text: 'Barra' }), h('span', { text: 'Máximo' })),
+        h('div', { class: 'bd-row bd-h' }, h('span', { text: 'Usar' }), h('span'), h('span', { text: 'Barra' }), h('span', { text: 'Máximo' }),
+          h('span', { text: 'Negativo até', title: 'Até quanto o HP pode descer abaixo de zero (0: não fica negativo)' })),
         bars.map((b, i) => {
           const max = h('input', { type: 'number', class: 'in num', id: `nt-${i}-m`, value: b.m, min: 0, step: 1, 'aria-label': 'Máximo de ' + b.n, disabled: !b.on,
             oninput: e => { const v = parseFloat(e.target.value); if (isFinite(v) && v >= 0) { b.m = v; b.v = v; } } });
+          // (lote 193, pedido do Dalmo) só no HP: até quanto ele pode ficar negativo (0 = não fica)
+          const lo = i === iVida ? h('span', { class: 'nt-lo' }, h('span', { class: 'nt-menos', text: '−', 'aria-hidden': 'true' }),
+            h('input', { type: 'number', class: 'in num', id: 'nt-lo', value: barLo(b), min: 0, step: 1, disabled: !b.on, 'aria-label': `Até quanto ${b.n} pode ficar negativo (0: não fica)`,
+              title: 'Até quanto o HP pode descer abaixo de zero. 0: não fica negativo.',
+              oninput: e => { const v = parseFloat(String(e.target.value).replace(',', '.')); b.lo = isFinite(v) && v > 0 ? Math.min(999999, Math.round(v * 10) / 10) : 0; } })) : h('span');
+          const loIn = i === iVida ? lo.querySelector('input') : null;
           return h('div', { class: 'bd-row' },
-            h('input', { type: 'checkbox', class: 'ck', id: `nt-${i}-on`, checked: b.on, 'aria-label': 'Usar ' + b.n, onchange: e => { b.on = e.target.checked; max.disabled = !b.on; if (b.on) { max.focus(); max.select(); } } }),
+            h('input', { type: 'checkbox', class: 'ck', id: `nt-${i}-on`, checked: b.on, 'aria-label': 'Usar ' + b.n, onchange: e => { b.on = e.target.checked; max.disabled = !b.on; if (loIn) loIn.disabled = !b.on; if (b.on) { max.focus(); max.select(); } } }),
             h('span', { class: 'nt-cor', style: 'background:' + b.c, 'aria-hidden': 'true' }),
             h('span', { class: 'nt-n', text: b.n }),
-            max);
+            max, lo);
         })),
       h('label', { class: 'o-ck bd-ck' }, nao, h('span', { text: 'Criar os próximos sem perguntar (volta nas Barras padrão…)' })));
     modal({
@@ -24452,7 +24469,7 @@ const UI = (() => {
     Act.turnPatch(x => { x.on = false; for (const e of x.list) { e.init = null; e.roll = null; delete e.reac; delete e.sur; } }, 'Encerrar combate');
     App.iniRolls.clear();
     // (lote 188) as formas acabam com o combate: o Transformado sai, e a imagem volta
-    { const tf = Store.scene().tokens.filter(t => t.tf && t.conds.includes('transformado')); if (tf.length) Store.tx('Fim das formas', () => tf.forEach(t => { const i = Object.assign({}, t.cinfo); delete i.transformado; Store.upd('tokens', t.id, { conds: t.conds.filter(c => c !== 'transformado'), cinfo: i }); })); }
+    { const tf = Store.scene().tokens.filter(t => (t.tf || (t.cinfo && t.cinfo.transformado && t.cinfo.transformado.f)) && t.conds.includes('transformado')); if (tf.length) Store.tx('Fim das formas', () => tf.forEach(t => { const i = Object.assign({}, t.cinfo); delete i.transformado; Store.upd('tokens', t.id, { conds: t.conds.filter(c => c !== 'transformado'), cinfo: i }); })); }
     toast(tinha ? 'Combate encerrado: a iniciativa de todos foi zerada para o próximo.' : 'Combate encerrado.', { action: 'Desfazer', run: Tools.undo });
     // (lote 44) o painel de barras: cada barra faz o fim dela (o aviso tem o Desfazer dele)
     if (typeof PainelBarras !== 'undefined') PainelBarras.fimDoCombate(tokensDoCombate(Store.scene()));
@@ -56051,7 +56068,21 @@ const HabAcao = (() => {
   let janelaAberta = false;
 
   const tirarAviso = () => { for (const x of document.querySelectorAll('.toast[data-k="hab-mira"]')) x.remove(); };
-  const specDe = h => { const a = A(); return a && h && h.id ? a.de(h.id, h.grau || 1) : null; };
+  const specDe = h => { const a = A(); return a && h && h.id ? formaGrande(h, a.de(h.id, h.grau || 1)) : null; };
+  /* (lote 193) a forma grande (TC.formas.grande): Transformado e Agigantado em quem usa, pelos mesmos turnos (sem número,
+     até alguém tirar). Quando o texto ("Vira urso: … garras de Dano tier III") virou um golpe num alvo, ele vira a forma
+     em você: as garras são da forma, não um ataque na hora de vestir. fg marca as duas condições como da forma. */
+  function formaGrande(h, sp) {
+    const fm = window.TC && window.TC.formas;
+    if (!fm || !fm.grande || !fm.grande(h.id)) return sp;
+    const o = Object.assign({}, sp || {}), c = (o.c || []).slice(), tf = c.find(x => x[0] === 'transformado');
+    if (!tf && (o.m === 'alvo' || !o.m)) { delete o.d; delete o.q; delete o.al; delete o.mx; o.m = 'si'; }
+    const tur = tf ? tf[1] : fm.turnosDe(h.desc || '');
+    if (!tf) c.push(['transformado', tur, null, 's']);
+    if (!c.some(x => x[0] === 'agigantado')) c.push(['agigantado', tur, null, 's']);
+    o.c = c; o.fg = 1;
+    return o;
+  }
   const temAcao = h => !!specDe(h);
   const cellsDe = sc => sc.cell;
   const centro = (t, sc) => { const [x, y] = tokC(t, sc); return [x, y]; };
@@ -56298,15 +56329,16 @@ const HabAcao = (() => {
         }
       }
       // você: as condições em quem usou
-      const condEm = (t, cid, tur, n) => {
+      const condEm = (t, cid, tur, n, forma) => {
         const t0 = Store.get('tokens', t.id) || t, conds = t0.conds.includes(cid) ? t0.conds : t0.conds.concat(cid), info = Object.assign({}, t0.cinfo);
         const cur = Object.assign({}, info[cid]);
         if (tur > 0) { cur.d = tur; cur.d0 = tur; }
+        if (forma) cur.f = 1;                              // (lote 193) da forma: sai com ela
         if (n > 0) cur.n = (cur.n || 0) + n;
         if (Object.keys(cur).length) info[cid] = cur;
         Store.upd('tokens', t0.id, { conds, cinfo: info });
       };
-      for (const cid of esc.si || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(de, cid, c ? c[1] : 1, 0); }
+      for (const cid of esc.si || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(de, cid, c ? c[1] : 1, 0, !!sp.fg && (cid === 'transformado' || cid === 'agigantado')); }
       // mover quem usou (o salto, o bote: para perto do alvo)
       if (esc.mv && sp.mv && sp.mv.k === 'salta') {
         const s = Math.max(1, de.size || 1), [cx, cy] = centro(de, sc);
