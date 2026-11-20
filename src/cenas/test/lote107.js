@@ -37,7 +37,7 @@ const j = JSON.stringify;
   // o que as habilidades põem no mapa
   const antes = await ev(() => ({ t: __tc.Store.scene().tokens.length, e: __tc.Store.scene().effects.length }));
   await ev(id => { const P = __tc.PainelBarras, a = P._atorDe(__tc.Store.get('tokens', id)); const B = window.TC.painelBarras.BARRA;
-    P._porNoMapa(a, __tc.Store.get('tokens', id), [{ sp: B.necromante.mapa['Horda'] }, { sp: B.karema.mapa['Passo de Brisa'] }, { sp: B.ninja.mapa['Bomba de Fumaça'] }]); }, tk);
+    P._porNoMapa(a, __tc.Store.get('tokens', id), [{ sp: B.necromante.mapa['Horda'] }, { sp: B.karema.mapa['Passo de Brisa'] }, { sp: B.alquimista.mapa['Bomba de Fumaça'] }]); }, tk);
   await w(200);
   const depois = await ev(() => { const sc = __tc.Store.scene(); return { t: sc.tokens.length, e: sc.effects.length, inv: sc.tokens.filter(x => x.inv).map(x => [x.name, x.inv.d]), ef: sc.effects.filter(x => x.pb).map(x => [x.fx, x.k, x.dur]) }; });
   ok(depois.t - antes.t === 3 && depois.inv.every(x => x[0] === 'Esqueleto' && x[1] === 3), 'Horda: 3 esqueletos perto, com 3 turnos — ' + j(depois.inv));

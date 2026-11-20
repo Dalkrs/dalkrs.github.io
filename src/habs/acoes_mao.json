@@ -1,34 +1,387 @@
 {
- "_leia": "(lote 195) O que cada habilidade faz no mapa, escrito à mão: ganha do texto lido pelo gerador (gerar_acoes.py junta este arquivo por cima). null tira a habilidade do mapa. Nas condições, o 5º campo 'e' quer dizer 'à escolha': o alvo leva só 'um' delas (1, se não disser).",
+ "_leia": "(lote 195) O que cada habilidade faz no mapa, escrito à mão: ganha do texto lido pelo gerador (gerar_acoes.py junta este arquivo por cima). null tira a habilidade do mapa. Nas condições, o 5º campo 'e' quer dizer 'à escolha': o alvo leva só 'um' delas (1, se não disser). 'pad' é quantas vêm marcadas na janela (se não disser, 'um').",
  "n_ninja_bcab": [
-  {"d": 1, "q": "i", "m": "alvo", "al": 6, "c": [["agulhaPerna", 0, null, "a", "e"], ["agulhaBraco", 0, null, "a", "e"], ["agulhaOlhos", 0, null, "a", "e"]]},
-  {"d": 1, "q": "i", "m": "alvo", "al": 6, "c": [["agulhaPerna", 0, null, "a", "e"], ["agulhaBraco", 0, null, "a", "e"], ["agulhaOlhos", 0, null, "a", "e"], ["agulhaFluxo", 0, null, "a", "e"], ["agulhaCura", 0, null, "a", "e"]]}
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "agulhaPerna",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaBraco",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaOlhos",
+     0,
+     null,
+     "a",
+     "e"
+    ]
+   ]
+  },
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "um": 2,
+   "pad": 1,
+   "c": [
+    [
+     "agulhaPerna",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaBraco",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaOlhos",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaFluxo",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaCura",
+     0,
+     null,
+     "a",
+     "e"
+    ]
+   ]
+  }
  ],
  "n_ninja_bb1": [
-  {"d": 1, "q": "i", "m": "ponto", "f": "circ", "r": 2, "al": 5, "mx": 3, "c": [["agulhas", 0, null, "a"]]},
-  {"d": 1, "q": "i", "m": "ponto", "f": "circ", "r": 2, "al": 5, "mx": 4, "c": [["agulhas", 0, null, "a"]]}
+  {
+   "d": 1,
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 2,
+   "al": 5,
+   "mx": 3,
+   "c": [
+    [
+     "agulhas",
+     0,
+     null,
+     "a"
+    ]
+   ]
+  },
+  {
+   "d": 1,
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 2,
+   "al": 5,
+   "mx": 4,
+   "c": [
+    [
+     "agulhas",
+     0,
+     null,
+     "a"
+    ]
+   ]
+  }
  ],
  "n_ninja_bb2": [
-  {"d": 2, "q": "i", "m": "alvo", "al": 6, "mv": {"k": "puxa", "d": 2}},
-  {"d": 2, "q": "i", "m": "alvo", "al": 8, "mv": {"k": "puxa", "d": 3}}
+  {
+   "d": 2,
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "mv": {
+    "k": "puxa",
+    "d": 2
+   }
+  },
+  {
+   "d": 2,
+   "q": "i",
+   "m": "alvo",
+   "al": 8,
+   "mv": {
+    "k": "puxa",
+    "d": 3
+   }
+  }
  ],
  "n_ninja_bb3": [
-  {"q": "i", "m": "alvo", "al": 5, "c": [["preso", 1, "vigor", "a", "e"], ["silencio", 1, "vigor", "a", "e"], ["reflexoTravado", 1, "vigor", "a", "e"]]}
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 5,
+   "c": [
+    [
+     "preso",
+     1,
+     "vigor",
+     "a",
+     "e"
+    ],
+    [
+     "silencio",
+     1,
+     "vigor",
+     "a",
+     "e"
+    ],
+    [
+     "reflexoTravado",
+     1,
+     "vigor",
+     "a",
+     "e"
+    ]
+   ]
+  }
  ],
- "n_ninja_bb4": [{"d": 2, "q": "i", "m": "ponto", "f": "circ", "r": 2, "al": 6}],
- "n_ninja_bxa": null, "n_ninja_bxb": null, "n_ninja_bm1": null, "n_ninja_bm2": null, "n_ninja_bmes": null,
- "n_ninja_bc1": null, "n_ninja_bc3": null, "n_ninja_bc4": null, "n_ninja_byb": null, "n_ninja_bk2": null,
- "n_ninja_bc2": [{"q": "i", "m": "alvo", "al": 5, "c": [["fluxoSelado", 1, "vigor", "a"]]}],
+ "n_ninja_bb4": [
+  {
+   "d": 2,
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 2,
+   "al": 6
+  }
+ ],
+ "n_ninja_bxa": null,
+ "n_ninja_bxb": null,
+ "n_ninja_bm1": null,
+ "n_ninja_bm2": null,
+ "n_ninja_bmes": null,
+ "n_ninja_bc1": null,
+ "n_ninja_bc3": null,
+ "n_ninja_bc4": null,
+ "n_ninja_byb": null,
+ "n_ninja_bk2": null,
+ "n_ninja_bc2": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 5,
+   "c": [
+    [
+     "fluxoSelado",
+     1,
+     "vigor",
+     "a"
+    ]
+   ]
+  }
+ ],
  "n_ninja_bya": [
-  {"d": 1, "q": "i", "m": "ponto", "f": "circ", "r": 3, "al": 6, "mx": 4, "um": 2, "c": [["agulhaPerna", 0, null, "a", "e"], ["agulhaBraco", 0, null, "a", "e"], ["agulhaOlhos", 0, null, "a", "e"], ["agulhaFluxo", 0, null, "a", "e"], ["agulhaCura", 0, null, "a", "e"]]}
+  {
+   "d": 1,
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 3,
+   "al": 6,
+   "mx": 4,
+   "um": 2,
+   "c": [
+    [
+     "agulhaPerna",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaBraco",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaOlhos",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaFluxo",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaCura",
+     0,
+     null,
+     "a",
+     "e"
+    ]
+   ]
+  }
  ],
  "n_ninja_bk1": [
-  {"d": 3, "q": "i", "m": "alvo", "al": 6, "c": [["agulhaPerna", 0, null, "a"], ["agulhaBraco", 0, null, "a"], ["agulhaOlhos", 0, null, "a"], ["agulhaFluxo", 0, null, "a"], ["agulhaCura", 0, null, "a"]]}
+  {
+   "d": 3,
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "agulhaPerna",
+     0,
+     null,
+     "a"
+    ],
+    [
+     "agulhaBraco",
+     0,
+     null,
+     "a"
+    ],
+    [
+     "agulhaOlhos",
+     0,
+     null,
+     "a"
+    ],
+    [
+     "agulhaFluxo",
+     0,
+     null,
+     "a"
+    ],
+    [
+     "agulhaCura",
+     0,
+     null,
+     "a"
+    ]
+   ]
+  }
  ],
  "n_ninja_ponte1": [
-  {"d": 3, "q": "i", "m": "alvo", "al": 6, "c": [["agulhaPerna", 0, null, "a", "e"], ["agulhaBraco", 0, null, "a", "e"], ["agulhaOlhos", 0, null, "a", "e"], ["agulhaFluxo", 0, null, "a", "e"], ["agulhaCura", 0, null, "a", "e"]]}
+  {
+   "d": 3,
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "agulhaPerna",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaBraco",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaOlhos",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaFluxo",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaCura",
+     0,
+     null,
+     "a",
+     "e"
+    ]
+   ]
+  }
  ],
  "n_ninja_ponte3": [
-  {"d": 2, "q": "i", "m": "alvo", "al": 5, "c": [["sangue", 0, null, "a"], ["agulhaPerna", 0, null, "a", "e"], ["agulhaBraco", 0, null, "a", "e"], ["agulhaOlhos", 0, null, "a", "e"], ["agulhaFluxo", 0, null, "a", "e"], ["agulhaCura", 0, null, "a", "e"]]}
- ]
+  {
+   "d": 2,
+   "q": "i",
+   "m": "alvo",
+   "al": 5,
+   "c": [
+    [
+     "sangue",
+     0,
+     null,
+     "a"
+    ],
+    [
+     "agulhaPerna",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaBraco",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaOlhos",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaFluxo",
+     0,
+     null,
+     "a",
+     "e"
+    ],
+    [
+     "agulhaCura",
+     0,
+     null,
+     "a",
+     "e"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_f1": null,
+ "n_ninja_f2": null
 }

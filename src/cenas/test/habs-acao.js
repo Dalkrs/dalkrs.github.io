@@ -47,8 +47,8 @@ const { open } = require('./lib');
   await page.keyboard.press('Escape'); await w(100);
   chk(!(await ev(() => __tc.HabAcao.ativa())) && await ev(() => window.__gastou) === 0, 'Esc cancela, sem gastar a barra');
 
-  // 4. Bomba de Fumaça: clicar num lugar põe a fumaça por 2 turnos
-  await usar('n_ninja_f2', 1, 'Bomba de Fumaça');
+  // 4. Bomba de Fumaça (a do Alquimista; a do Ninja virou item no lote 196): clicar num lugar põe a fumaça por 2 turnos
+  await usar('n_alquimista_bb4', 1, 'Bomba de Fumaça');
   const pa = await centro(ids.a);
   await ev(p => __tc.HabAcao.clique({ x: p.x + 80, y: p.y }), pa); await w(250);
   chk(await ev(() => __tc.Store.scene().effects.some(e => e.fx === 'fumaca' && e.dur === 2)), 'a fumaça ficou no chão, 2 turnos');

@@ -10,6 +10,10 @@ const { open } = require('./lib');
   const tok = id => ev(id => { const t = __tc.Store.get('tokens', id); return { conds: t.conds, ci: t.cinfo }; }, id);
   const jan = await ev(() => { const sp = __tc.HabAcao.specDe({ id: 'n_ninja_bcab', grau: 2 }); return { n: sp.c.length, e: sp.c.filter(c => c[4] === 'e').length }; });
   chk(jan.n === 5 && jan.e === 5, 'a Senbon 2 tem 5 pontos à escolha — ' + j(jan));
+  // (lote 196) o Ponto Vital: o arremesso normal já deu o dano; a habilidade só crava (nível 2: até 2, começando com 1)
+  const pv = await ev(() => { const sp = __tc.HabAcao.specDe({ id: 'n_ninja_bcab', grau: 2 }); return { d: sp.d || 0, um: sp.um, pad: sp.pad }; });
+  chk(!pv.d && pv.um === 2 && pv.pad === 1, 'o Ponto Vital não dá dano (é o arremesso normal) e deixa cravar até 2 — ' + j(pv));
+  chk(await ev(() => !__tc.HabAcao.specDe({ id: 'n_ninja_f1', grau: 1 }) && !__tc.HabAcao.specDe({ id: 'n_ninja_f2', grau: 1 })), 'a Kunai e a Bomba de Fumaça saíram do mapa');
   // aplicar direto pelo plano (como a janela faria): o padrão marca só o primeiro ponto
   const r = await ev(([a, b]) => { const H = __tc.HabAcao; const sp = H.specDe({ id: 'n_ninja_bcab', grau: 2 });
     const pl = { de: a, hab: { id: 'n_ninja_bcab', nome: 'Senbon', grau: 2 }, sp, x: 0, y: 0, area: null, alvos: [b] };

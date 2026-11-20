@@ -187,7 +187,8 @@ const HabAcao = (() => {
   /* (lote 195) a escolha: as condições marcadas com 'e' (o 5º campo) são opções, e o alvo leva só sp.um delas (1, se não
      disser) — a agulha cravada "num ponto à escolha". A janela traz marcadas as primeiras; marcar outra desmarca a mais antiga. */
   const escolhas = sp => (sp && sp.c || []).filter(c => c[3] === 'a' && c[4] === 'e').map(c => c[0]);
-  const condsPadrao = sp => { const es = escolhas(sp), lim = Math.max(1, sp.um || 1); return (sp.c || []).filter(c => c[3] === 'a' && (c[4] !== 'e' || es.indexOf(c[0]) < lim)).map(c => c[0]); };
+  const condsPadrao = sp => { const es = escolhas(sp), lim = Math.max(1, sp.pad || sp.um || 1);   // pad: quantas vêm marcadas (o Ponto Vital 2 deixa 2, mas começa com 1)
+    return (sp.c || []).filter(c => c[3] === 'a' && (c[4] !== 'e' || es.indexOf(c[0]) < lim)).map(c => c[0]); };
 
   // o que vem marcado na janela
   function padrao(pl) {

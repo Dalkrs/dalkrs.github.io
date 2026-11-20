@@ -591,7 +591,7 @@ classe({ id: 'samurai', arvore: 'Samurai', barra: 'Postura', cor: '#D9A441', gli
 
 /* ---------------- Ninja: Selos e sombra ---------------- */
 classe({ id: 'ninja', arvore: 'Ninja', barra: 'Jutsu', cor: '#8C9BE0', glifo: '@shuriken', inicio: 4,
-  patamares: [[5, 'Mão Leve', 'a primeira kunai ou senbon do turno custa 1 a menos de Jutsu'], [10, 'Instinto', 'Defesa tier I contra o primeiro golpe que vier em você a cada rodada'], [15, 'Selo Completo', 'o próximo jutsu sai sem gastar a ação']],
+  patamares: [[5, 'Mão Leve', 'a primeira técnica de arremesso do turno custa 1 a menos de Jutsu (o arremesso normal já não gasta)'], [10, 'Instinto', 'Defesa tier I contra o primeiro golpe que vier em você a cada rodada'], [15, 'Selo Completo', 'o próximo jutsu sai sem gastar a ação']],
   risco: ['Sombra Cheia', 'você aparece como silhueta e não se esconde até gastar'],
   // (lote 194, pedido do Dalmo) saíram os Selos de mão; o Jutsu enche também lutando às claras (Por um Fio, Acrobacia, Arremesso Certeiro)
   est: () => ({ escondido: false }),
@@ -608,7 +608,7 @@ classe({ id: 'ninja', arvore: 'Ninja', barra: 'Jutsu', cor: '#8C9BE0', glifo: '@
            { c: 'Acrobacia', t: 'Andou 3 cédulas ou mais passando colado ou por cima de um inimigo, correndo na parede ou pulando de um ponto alto', v: 2, max: 1 },
            { c: 'Arremesso Certeiro', t: 'Acertou uma kunai ou senbon a 3 cédulas ou mais', v: 1 }],
   selo: s => (s.escondido ? '@escondido' : null),
-  mapa: { 'Bomba de Fumaça': AREA('fumaca', 2, 2), 'Clone de Sombra': TOK('Clone de Sombra', '#3A3F55', { turnos: 2 }), 'Exército de Sombras': TOK('Sombra', '#3A3F55', { turnos: 2, n: 4 }),
+  mapa: { 'Clone de Sombra': TOK('Clone de Sombra', '#3A3F55', { turnos: 2 }), 'Exército de Sombras': TOK('Sombra', '#3A3F55', { turnos: 2, n: 4 }),
     'Cegueira da Noite': AREA('escuridao', 3, 2), 'Ayto-Abso — A Noite Sem Lua': AREA('escuridao', 4, 2) }
 });
 

@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.20-03",
+      "data": "2026-11-20",
+      "titulo": "Ninja: arremesso normal sem Jutsu",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Ninja: arremessar kunai e senbon é ataque normal e não gasta Jutsu. A Senbon virou Ponto Vital: quando o arremesso acerta, você paga 1 de Jutsu para a agulha cravar num ponto (no nível 2, pode cravar um segundo ponto)." },
+        { "tipo": "melhorou", "texto": "Ninja: saíram as habilidades Kunai e Bomba de Fumaça (a kunai é arma e a bomba é item). A Kunai Dentada e a Mão Rápida agora valem para o arremesso normal." }
+      ]
+    },
+    {
       "versao": "2026.11.20-02",
       "data": "2026-11-20",
       "titulo": "Ninja: o ramo do Arremesso",
