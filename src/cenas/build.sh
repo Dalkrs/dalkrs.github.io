@@ -74,7 +74,7 @@ mkdir -p "$(dirname "$SITE")"
   echo '<script src="../cla/nucleo.js?v=11"></script>'            # (lote 59) os membros do clã, para "Puxar os membros do clã"
   echo '<script src="../tc/simbolos.js?v=1"></script>'           # (lote 172) os desenhos no lugar dos kanjis
   echo '<script src="../tc/caudas.js?v=4"></script>'             # (lote 173) as caudas da Kitsune
-  echo '<script src="../tc/barras-painel.js?v=15"></script>'      # (lote 44) o painel de barras
+  echo '<script src="../tc/barras-painel.js?v=16"></script>'      # (lote 44) o painel de barras
   echo '<script src="../tc/habs-acoes.js?v=1"></script>'         # (lote 185) o que cada habilidade faz no mapa
   echo '<script src="../tc/formas.js?v=2"></script>'             # (lote 188) as formas (a imagem da transformação)
   echo '<script src="../tc/npc.js?v=1"></script>'                # (lote 49) o gerador de NPC, para os moradores do lugar povoado

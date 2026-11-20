@@ -589,19 +589,20 @@ classe({ id: 'samurai', arvore: 'Samurai', barra: 'Postura', cor: '#D9A441', gli
 classe({ id: 'ninja', arvore: 'Ninja', barra: 'Jutsu', cor: '#8C9BE0', glifo: '@shuriken', inicio: 4,
   patamares: [[5, 'Passo Mudo', 'andar não te revela para quem está em alerta 0, 1 ou 2'], [10, 'Olhos de Noite', 'você vê no escuro e na fumaça'], [15, 'Selo Completo', 'o próximo jutsu sai sem gastar a ação']],
   risco: ['Sombra Cheia', 'você aparece como silhueta e não se esconde até gastar'],
-  est: () => ({ escondido: false, selos: 0 }),
-  marcas: s => [{ k: 'esc', glifo: '@escondido', rotulo: s.escondido ? 'Escondido (toque para aparecer)' : 'Ficar Escondido', dica: 'golpes com +1 tier de Dano enquanto ninguém te vê' },
-                { k: 'selo', glifo: '@mao', rotulo: 'Selos de mão', dica: 'no lugar de andar: +3 e o próximo jutsu ganha o bônus do ramo' }],
+  // (lote 194, pedido do Dalmo) saíram os Selos de mão; o Jutsu enche também lutando às claras (Por um Fio, Acrobacia, Arremesso Certeiro)
+  est: () => ({ escondido: false }),
+  marcas: s => [{ k: 'esc', glifo: '@escondido', rotulo: s.escondido ? 'Escondido (toque para aparecer)' : 'Ficar Escondido', dica: 'golpes com +1 tier de Dano enquanto ninguém te vê' }],
   marcasOpc: { raio: 56, r: 17, inicio: -90 },
-  ativo: (s, k) => (k === 'esc' && s.escondido) || (k === 'selo' && s.selos > 0),
+  ativo: (s, k) => k === 'esc' && s.escondido,
   arte(s){ return `<path d="M110 70 L118 102 L150 110 L118 118 L110 150 L102 118 L70 110 L102 102 Z" fill="${s.escondido ? '#ffffff10' : '#ffffff20'}" stroke="${this.cor}" stroke-width="1.6"/>` + glifoCentro(this, '@shuriken', { tam: 26, dy: 9 }); },
   tocar(s, k, ctx){
     if (k === 'esc'){ s.escondido = !s.escondido; ctx.log(`${ctx.nome} ${s.escondido ? 'some nas sombras' : 'aparece'}.`); }
-    if (k === 'selo'){ if (s.selos) return ctx.aviso('Os selos já estão feitos neste turno.'); s.selos = 1; ctx.ganhar(3, 'selos de mão'); }
   },
-  linhaEstado: s => `${s.escondido ? '<b>Escondido</b> <em>· +1 tier de Dano</em>' : '<em>À vista.</em>'}${s.selos ? ' · <b>Selos feitos</b>' : ''}`,
-  ganhos: [{ c: 'Atacou sem ser visto', t: 'Escondido, pelas costas ou de um flanco', v: 3 }, { c: 'Pôs Sangramento ou Veneno', t: 'Cada camada de Sangramento ou golpe com veneno', v: 1, max: 3 }],
-  aoComecarTurno(s){ s.selos = 0; },
+  linhaEstado: s => (s.escondido ? '<b>Escondido</b> <em>· +1 tier de Dano</em>' : '<em>À vista.</em>'),
+  ganhos: [{ c: 'Atacou sem ser visto', t: 'Escondido, pelas costas ou de um flanco', v: 3 }, { c: 'Pôs Sangramento ou Veneno', t: 'Cada camada de Sangramento ou golpe com veneno', v: 1, max: 3 },
+           { c: 'Por um Fio', t: 'Um golpe errou você', v: 2 },
+           { c: 'Acrobacia', t: 'Andou 3 cédulas ou mais passando colado ou por cima de um inimigo, correndo na parede ou pulando de um ponto alto', v: 2, max: 1 },
+           { c: 'Arremesso Certeiro', t: 'Acertou uma kunai ou senbon a 3 cédulas ou mais', v: 1 }],
   selo: s => (s.escondido ? '@escondido' : null),
   mapa: { 'Bomba de Fumaça': AREA('fumaca', 2, 2), 'Clone de Sombra': TOK('Clone de Sombra', '#3A3F55', { turnos: 2 }), 'Exército de Sombras': TOK('Sombra', '#3A3F55', { turnos: 2, n: 4 }),
     'Nuvem Verde': AREA('toxica', 2, 2), 'Fumaça Amarela': AREA('toxica', 3, 2), 'Cegueira da Noite': AREA('escuridao', 3, 2), 'Ayto-Abso — A Noite Sem Lua': AREA('escuridao', 4, 2) }

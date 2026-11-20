@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.20-01",
+      "data": "2026-11-20",
+      "titulo": "Árvores destravadas e o Jutsu do Ninja em combate",
+      "itens": [
+        { "tipo": "consertado", "texto": "Árvores: 132 habilidades que pediam as duas opções de uma escolha (só dá para ter uma) nunca podiam ser compradas. Agora basta ter uma das duas. Vale para todas as classes e para Vampiro e Lobisomem." },
+        { "tipo": "melhorou", "texto": "Ninja: o Jutsu agora enche também lutando às claras. Por um Fio (+2 quando um golpe erra você), Acrobacia (+2, uma vez por turno) e Arremesso Certeiro (+1 com kunai ou senbon a 3 cédulas ou mais). Os Selos de mão saíram." }
+      ]
+    },
+    {
       "versao": "2026.11.19-02",
       "data": "2026-11-19",
       "titulo": "Formas grandes do Druida e HP negativo no token novo",
