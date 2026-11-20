@@ -4391,6 +4391,7 @@ const UI = (() => {
     modalOpen: () => !!modalEl || Tour.active(),
     alternarObjeto, closeModal, condPicker, barDefaultsBox, novoTokenBox, areaBox, bagBox, iniFromTable, passarTurno,
     // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
+    sugerirLimite,                                        // (lote 195) o contador cheio pelas habilidades (Agulhas no Corpo)
     feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
     passagem, porNaFamilia, janelaAndares, andarPelaPassagem, andarVertical, levarAndar, irDeAndar, bgFromFile, pintarAndares, saidasDeAndar, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,

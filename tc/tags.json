@@ -1664,6 +1664,87 @@
    "cor": "#5a8fd6"
   },
   {
+   "id": "c:agulhaPerna",
+   "nome": "Agulha na Perna",
+   "tipo": "condicao",
+   "texto": "Uma senbon cravada na perna: o alvo anda menos. Sai quando ele gasta a ação de movimento para arrancar as agulhas.",
+   "formas": [],
+   "de": "Ninja",
+   "cor": "#8c9bb0"
+  },
+  {
+   "id": "c:agulhaBraco",
+   "nome": "Agulha no Braço",
+   "tipo": "condicao",
+   "texto": "Uma senbon cravada no braço: os golpes do alvo saem mais fracos. Sai quando ele gasta a ação de movimento para arrancar as agulhas.",
+   "formas": [],
+   "de": "Ninja",
+   "cor": "#8c9bb0"
+  },
+  {
+   "id": "c:agulhaOlhos",
+   "nome": "Agulha nos Olhos",
+   "tipo": "condicao",
+   "texto": "Uma senbon perto dos olhos: o alvo erra mais contra quem está longe. Sai quando ele gasta a ação de movimento para arrancar as agulhas.",
+   "formas": [],
+   "de": "Ninja",
+   "cor": "#8c9bb0"
+  },
+  {
+   "id": "c:agulhaFluxo",
+   "nome": "Agulha no Fluxo",
+   "tipo": "condicao",
+   "texto": "Uma senbon no fluxo: o alvo ganha só metade da barra de classe e de raça. Sai quando ele gasta a ação de movimento para arrancar as agulhas.",
+   "formas": [],
+   "de": "Ninja",
+   "cor": "#8c9bb0"
+  },
+  {
+   "id": "c:agulhaCura",
+   "nome": "Agulha na Cura",
+   "tipo": "condicao",
+   "texto": "Uma senbon que trava a cura: o alvo recebe menos Cura. Sai quando ele gasta a ação de movimento para arrancar as agulhas.",
+   "formas": [],
+   "de": "Ninja",
+   "cor": "#8c9bb0"
+  },
+  {
+   "id": "c:agulhas",
+   "nome": "Agulhas no Corpo",
+   "tipo": "condicao",
+   "texto": "Senbons espalhadas pelo corpo. Quando o contador enche, o alvo testa Vigor: se falhar, fica com o Corpo Travado, e as agulhas zeram.",
+   "formas": [],
+   "de": "Ninja",
+   "cor": "#a7b3c4"
+  },
+  {
+   "id": "c:corpoTravado",
+   "nome": "Corpo Travado",
+   "tipo": "condicao",
+   "texto": "As agulhas travaram o corpo: não anda e perde a reação até o fim do próximo turno. Chefe: só perde a reação.",
+   "formas": [],
+   "de": "Ninja",
+   "cor": "#6f7d92"
+  },
+  {
+   "id": "c:reflexoTravado",
+   "nome": "Reflexo Travado",
+   "tipo": "condicao",
+   "texto": "Uma senbon fechou o ponto do reflexo: perde a reação até o fim do próximo turno.",
+   "formas": [],
+   "de": "Ninja",
+   "cor": "#7d8aa0"
+  },
+  {
+   "id": "c:fluxoSelado",
+   "nome": "Fluxo Selado",
+   "tipo": "condicao",
+   "texto": "O fluxo foi selado: não ganha barra de classe nem de raça até o fim do próximo turno.",
+   "formas": [],
+   "de": "Ninja",
+   "cor": "#5f6f96"
+  },
+  {
    "id": "e:sagrado",
    "nome": "Luz sagrada",
    "tipo": "efeito",

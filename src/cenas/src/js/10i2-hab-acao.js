@@ -183,7 +183,11 @@ const HabAcao = (() => {
   const soMeu = (pl, de) => !!(pl.sp.z || (pl.sp.inv && !pl.sp.inv.clone) || (pl.sp.c || []).some(c => c[3] === 's') || (pl.sp.mv && pl.sp.mv.k === 'salta'));
   const precisaMestre = pl => !!(pl.alvos.length || (pl.sp.inv && pl.sp.inv.clone));
   // precisa da janela: teste, dano ou cura em alguém, ou um pedido de jogador
-  const precisaJanela = pl => !!(pl.alvos.length && (pl.sp.d || pl.sp.cu || (pl.sp.c || []).some(c => c[2] && c[3] === 'a') || pl.sp.lp));
+  const precisaJanela = pl => !!(pl.alvos.length && (pl.sp.d || pl.sp.cu || (pl.sp.c || []).some(c => c[2] && c[3] === 'a') || pl.sp.lp || escolhas(pl.sp).length));
+  /* (lote 195) a escolha: as condições marcadas com 'e' (o 5º campo) são opções, e o alvo leva só sp.um delas (1, se não
+     disser) — a agulha cravada "num ponto à escolha". A janela traz marcadas as primeiras; marcar outra desmarca a mais antiga. */
+  const escolhas = sp => (sp && sp.c || []).filter(c => c[3] === 'a' && c[4] === 'e').map(c => c[0]);
+  const condsPadrao = sp => { const es = escolhas(sp), lim = Math.max(1, sp.um || 1); return (sp.c || []).filter(c => c[3] === 'a' && (c[4] !== 'e' || es.indexOf(c[0]) < lim)).map(c => c[0]); };
 
   // o que vem marcado na janela
   function padrao(pl) {
@@ -191,7 +195,7 @@ const HabAcao = (() => {
     for (const id of pl.alvos) {
       const t = sc.tokens.find(x => x.id === id);
       if (!t) continue;
-      o.alvos[id] = { on: true, falhou: true, n: '', conds: (sp.c || []).filter(c => c[3] === 'a').map(c => c[0]), lp: !!sp.lp };
+      o.alvos[id] = { on: true, falhou: true, n: '', conds: condsPadrao(sp), lp: !!sp.lp };
     }
     return o;
   }
@@ -231,7 +235,15 @@ const HabAcao = (() => {
         h('label', { class: 'cl-op' }, h('input', { type: 'radio', name: 'ha-t-' + id, checked: e.falhou, onchange: () => { e.falhou = true; } }), h('span', { text: 'Falhou' })),
         h('label', { class: 'cl-op' }, h('input', { type: 'radio', name: 'ha-t-' + id, checked: !e.falhou, onchange: () => { e.falhou = false; } }), h('span', { text: 'Passou' }))) : null;
       const todasC = (sp.c || []).filter(c => c[3] === 'a').map(c => c[0]);
-      const cs = todasC.length ? h('div', { class: 'ha-conds' }, ...todasC.map(cid => h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: e.conds.includes(cid), onchange: ev => { e.conds = ev.target.checked ? e.conds.concat(cid) : e.conds.filter(x => x !== cid); } }), h('span', { text: condTxt(cid) + ((sp.c.find(c => c[0] === cid) || [])[1] ? ' (' + sp.c.find(c => c[0] === cid)[1] + ' t)' : '') })))) : null;
+      const cs = todasC.length ? h('div', { class: 'ha-conds' }, ...todasC.map(cid => h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: e.conds.includes(cid), onchange: ev => {
+        e.conds = ev.target.checked ? e.conds.concat(cid) : e.conds.filter(x => x !== cid);
+        // (lote 195) a escolha: passou do limite, a mais antiga sai (e a caixa dela desmarca)
+        const es = escolhas(sp);
+        if (ev.target.checked && es.includes(cid)) {
+          const lim = Math.max(1, sp.um || 1), marcadas = e.conds.filter(x => es.includes(x));
+          if (marcadas.length > lim) { const sai = marcadas[0]; e.conds = e.conds.filter(x => x !== sai); const cx = ev.target.closest('.ha-conds').querySelector(`input[data-cid="${sai}"]`); if (cx) cx.checked = false; }
+        }
+      }, 'data-cid': cid }), h('span', { text: (escolhas(sp).includes(cid) ? '◇ ' : '') + condTxt(cid) + ((sp.c.find(c => c[0] === cid) || [])[1] ? ' (' + sp.c.find(c => c[0] === cid)[1] + ' t)' : '') })))) : null;
       linhas.push(h('div', { class: 'ha-alvo' },
         h('label', { class: 'cl-op ha-nome' }, h('input', { type: 'checkbox', checked: e.on, onchange: ev => { e.on = ev.target.checked; } }), h('b', { text: nomeDe(t) })),
         disp, temTeste ? null : (e.disp ? h('span', { class: 'ha-res', text: e.disp }) : null), nIn, teste, cs,
@@ -264,6 +276,7 @@ const HabAcao = (() => {
     const sp = pl.sp, cell = sc.cell, vez = sc.turn && Array.isArray(sc.turn.list) ? sc.turn.list.find(e => e.token === de.id) : null;
     const quem = de.owner && de.owner !== '*' ? de.owner : null, local = !!o.soLocal;
     let clones = 0;
+    const limites = [];                                     // (lote 195) contadores que chegaram ao máximo
     Store.tx(pl.hab.nome, () => {
       // a zona no chão
       if (esc.zona && sp.z && pl.area) {
@@ -292,7 +305,9 @@ const HabAcao = (() => {
         const cur = Object.assign({}, info[cid]);
         if (tur > 0) { cur.d = tur; cur.d0 = tur; }
         if (forma) cur.f = 1;                              // (lote 193) da forma: sai com ela
-        if (n > 0) cur.n = (cur.n || 0) + n;
+        const cd = COND_BY_ID[cid];
+        if (n > 0) cur.n = cd && cd.max ? Math.min(cd.max, (cur.n || 0) + n) : (cur.n || 0) + n;
+        if (n > 0 && cd && cd.max && cd.lim && cd.lim.em === 'max' && cur.n >= cd.max) limites.push([t0.id, cd]);   // (lote 195)
         if (Object.keys(cur).length) info[cid] = cur;
         Store.upd('tokens', t0.id, { conds, cinfo: info });
       };
@@ -324,11 +339,12 @@ const HabAcao = (() => {
         }
         const testa = (sp.c || []).some(c => c[2] && c[3] === 'a');
         if (testa && !e.falhou) continue;                   // passou no teste: nem a condição nem o empurrão
-        for (const cid of e.conds || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(t, cid, c ? c[1] : 1, cid === 'sangue' ? 1 : 0); }
+        for (const cid of e.conds || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(t, cid, c ? c[1] : 1, cid === 'sangue' || (COND_BY_ID[cid] || {}).max ? 1 : 0); }
         if (esc.mv && sp.mv && (sp.mv.k === 'empurra' || sp.mv.k === 'puxa')) empurrar(sc, de, Store.get('tokens', id), sp.mv.k === 'empurra' ? sp.mv.d : -sp.mv.d);
         if (esc.mv && sp.mv && sp.mv.k === 'troca') { const a = Store.get('tokens', de.id), b = Store.get('tokens', id); Store.upd('tokens', a.id, { x: b.x, y: b.y }); Store.upd('tokens', b.id, { x: a.x, y: a.y }); }
       }
     });
+    for (const [tid, cd] of limites) setTimeout(() => { if (UI.sugerirLimite) UI.sugerirLimite(tid, cd); }, 80);   // (lote 195) Agulhas no Corpo chegou a 3: o teste e o Corpo Travado
     // os clones: as cópias do personagem (o sistema de Clone), com a condição durando os turnos da habilidade
     if (!local && esc.inv && sp.inv && sp.inv.clone) {
       const t = Store.get('tokens', de.id);

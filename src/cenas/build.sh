@@ -66,16 +66,16 @@ mkdir -p "$(dirname "$SITE")"
   # só a página do site fala com a casca: mesa ao vivo, fichas da mesa, regras da ficha e dados
   echo '<script src="../tc/ponte.js?v=24"></script>'
   echo '<script src="../tc/dice.js?v=3"></script>'
-  echo '<script src="../tc/rules.js?v=36"></script>'
-  echo '<script src="../tc/tags.js?v=3"></script>'
+  echo '<script src="../tc/rules.js?v=37"></script>'
+  echo '<script src="../tc/tags.js?v=4"></script>'
   echo '<script src="../tc/bestiario.js?v=5"></script>'
   echo '<script src="../tc/sede.js?v=3"></script>'
   echo '<script src="../tc/corrupcao.js?v=1"></script>'
   echo '<script src="../cla/nucleo.js?v=11"></script>'            # (lote 59) os membros do clã, para "Puxar os membros do clã"
   echo '<script src="../tc/simbolos.js?v=1"></script>'           # (lote 172) os desenhos no lugar dos kanjis
   echo '<script src="../tc/caudas.js?v=4"></script>'             # (lote 173) as caudas da Kitsune
-  echo '<script src="../tc/barras-painel.js?v=16"></script>'      # (lote 44) o painel de barras
-  echo '<script src="../tc/habs-acoes.js?v=1"></script>'         # (lote 185) o que cada habilidade faz no mapa
+  echo '<script src="../tc/barras-painel.js?v=17"></script>'      # (lote 44) o painel de barras
+  echo '<script src="../tc/habs-acoes.js?v=2"></script>'         # (lote 185) o que cada habilidade faz no mapa
   echo '<script src="../tc/formas.js?v=2"></script>'             # (lote 188) as formas (a imagem da transformação)
   echo '<script src="../tc/npc.js?v=1"></script>'                # (lote 49) o gerador de NPC, para os moradores do lugar povoado
   echo '<script src="../tc/misterio.js?v=1"></script>'           # (lote 53) os mistérios: a cena do crime e as marcas de pista

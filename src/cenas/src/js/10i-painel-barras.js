@@ -152,7 +152,8 @@ const PainelBarras = (() => {
     });
     const ator = { chave, tok: t.id, char: t.char || null, nome: tokName(t), dono: deJogador(t) ? 'jogador' : 'mestre', barras,
       aba: Math.max(0, Math.min(m.aba || 0, barras.length - 1)), aberto: !!m.aberto, linhas: [],
-      rodada: () => (Store.scene() && Store.scene().turn.round) || 1 };
+      rodada: () => (Store.scene() && Store.scene().turn.round) || 1,
+      conds: () => ((Store.get('tokens', t.id) || t).conds || []) };          // (lote 195) o Fluxo das agulhas
     ator.logar = texto => { ator.linhas.push(texto); };
     try { ator.passivas = passivasDe(t); } catch (e) { ator.passivas = []; }      // (lote 182) o botão ◆ das passivas
     ator.passAberto = !!m.passAberto;

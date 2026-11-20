@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.20-02",
+      "data": "2026-11-20",
+      "titulo": "Ninja: o ramo do Arremesso",
+      "itens": [
+        { "tipo": "novo", "texto": "Ninja: o ramo de Venenos virou o ramo do Arremesso. A senbon e a kunai acertam pontos vitais: agulhas que ficam cravadas (perna, braço, olhos, fluxo ou cura), agulhas que se acumulam até travar o corpo, e agulhas que fecham um ponto na hora (perna, garganta ou reflexo). O veneno continua como item, com a Agulha Untada para passar nas armas." },
+        { "tipo": "novo", "texto": "Cenas: 9 condições novas do Ninja (Agulha na Perna, no Braço, nos Olhos, no Fluxo e na Cura, Agulhas no Corpo, Corpo Travado, Reflexo Travado e Fluxo Selado). As habilidades do Arremesso já põem essas condições no alvo; quando a agulha é num ponto à escolha, a janela do mestre deixa escolher." },
+        { "tipo": "melhorou", "texto": "Cenas: quem tem Agulha no Fluxo ganha só metade da barra no painel, e quem está com o Fluxo Selado não ganha nada. Agulhas no Corpo chegando a 3 avisa e oferece o Corpo Travado." },
+        { "tipo": "melhorou", "texto": "Ninja: as passivas que repetiam aptidões viraram passivas de luta (Reflexo de Shinobi, Golpe Sem Aviso e Sombra que Não Se Fixa), e os patamares 5 e 10 do Jutsu agora são Mão Leve e Instinto." }
+      ]
+    },
+    {
       "versao": "2026.11.20-01",
       "data": "2026-11-20",
       "titulo": "Árvores destravadas e o Jutsu do Ninja em combate",

@@ -188,7 +188,9 @@
     {id:'extremamenteFerido', n:'Extremamente Ferido', g:'classes'}, {id:'ginga', n:'Ginga', g:'classes'}, {id:'guardaQuebrada', n:'Guarda Quebrada', g:'classes'},
     {id:'levementeFerido', n:'Levemente Ferido', g:'classes'}, {id:'mortalmenteFerido', n:'Mortalmente Ferido', g:'classes'}, {id:'pacto', n:'Pacto', g:'classes'},
     {id:'perjuro', n:'Perjuro', g:'classes'}, {id:'portaAberta', n:'Porta Aberta', g:'classes'}, {id:'seloLushmania', n:'Selo de Lushmânia', g:'classes'},
-    {id:'sobEgide', n:'Sob a Égide', g:'classes'}, {id:'sobExorcismo', n:'Sob Exorcismo', g:'classes'}, {id:'tutelado', n:'Tutelado', g:'classes'}
+    {id:'sobEgide', n:'Sob a Égide', g:'classes'}, {id:'sobExorcismo', n:'Sob Exorcismo', g:'classes'}, {id:'tutelado', n:'Tutelado', g:'classes'},
+    // (lote 195) as agulhas do Ninja
+    {id:'agulhaPerna', n:'Agulha na Perna', g:'classes'}, {id:'agulhaBraco', n:'Agulha no Braço', g:'classes'}, {id:'agulhaOlhos', n:'Agulha nos Olhos', g:'classes'}, {id:'agulhaFluxo', n:'Agulha no Fluxo', g:'classes'}, {id:'agulhaCura', n:'Agulha na Cura', g:'classes'}, {id:'agulhas', n:'Agulhas no Corpo', g:'classes'}, {id:'corpoTravado', n:'Corpo Travado', g:'classes'}, {id:'reflexoTravado', n:'Reflexo Travado', g:'classes'}, {id:'fluxoSelado', n:'Fluxo Selado', g:'classes'}
   ];
 
   /* O corpo, em 12 partes (esquerda e direita são as do personagem), e o que se anota de um ferimento. */

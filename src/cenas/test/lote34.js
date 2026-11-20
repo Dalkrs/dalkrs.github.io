@@ -19,7 +19,7 @@ const NOVAS = ['sementeSangue', 'criaNoite', 'feraSolta', 'pocaRoedor', 'naToca'
 
   const L = await ev(novas => { const { CONDS, ICONS } = __tc; const r = CONDS.filter(c => c.g === 'racas');
     return { total: CONDS.length, ids: new Set(CONDS.map(c => c.id)).size, nomes: r.map(c => c.n), novas: novas.map(id => { const c = CONDS.find(x => x.id === id); return c ? [c.n, c.g, c.r, !!ICONS[c.i], c.dur || 0] : null; }) }; }, NOVAS);
-  ok(L.total === 153 && L.ids === 153, 'as 5 novas entram (153 condições ao todo, sem repetir): ' + L.total);
+  ok(L.total === 169 && L.ids === 169, 'as 5 novas entram (169 condições, com as do lote 185 e as 9 do Ninja do lote 195 ao todo, sem repetir): ' + L.total);
   ok(JSON.stringify(L.novas) === JSON.stringify([['Semente de Sangue', 'racas', 'Vampiro', true, 0], ['Cria da Noite', 'racas', 'Vampiro', true, 0], ['Fera Solta', 'racas', 'Licantropo', true, 0], ['Poça do Roedor', 'racas', 'Antro Roedor', true, 2], ['Na Toca', 'racas', 'Antro Roedor', true, 2]]),
     'cada uma na aba Raças, com quem a traz, o ícone próprio e a duração de começo — ' + JSON.stringify(L.novas));
   const ord = L.nomes.slice().sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));

@@ -1522,16 +1522,16 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <body>
 <script src="../tc/ponte.js?v=24"></script>
 <script src="../tc/dice.js?v=3"></script>
-<script src="../tc/rules.js?v=36"></script>
-<script src="../tc/tags.js?v=3"></script>
+<script src="../tc/rules.js?v=37"></script>
+<script src="../tc/tags.js?v=4"></script>
 <script src="../tc/bestiario.js?v=5"></script>
 <script src="../tc/sede.js?v=3"></script>
 <script src="../tc/corrupcao.js?v=1"></script>
 <script src="../cla/nucleo.js?v=11"></script>
 <script src="../tc/simbolos.js?v=1"></script>
 <script src="../tc/caudas.js?v=4"></script>
-<script src="../tc/barras-painel.js?v=16"></script>
-<script src="../tc/habs-acoes.js?v=1"></script>
+<script src="../tc/barras-painel.js?v=17"></script>
+<script src="../tc/habs-acoes.js?v=2"></script>
 <script src="../tc/formas.js?v=2"></script>
 <script src="../tc/npc.js?v=1"></script>
 <script src="../tc/misterio.js?v=1"></script>
@@ -1942,6 +1942,16 @@ const ICONS = {
   c_extremamenteFerido: 'M12 3c3.200 4.200 5.500 7 5.500 10a5.500 5.500 0 0 1-11 0c0-3 2.300-5.800 5.500-10zM12 11v5.500M9.300 13.700h5.400',
   c_ginga: 'M12 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 6v7l-3 8M12 13l3 8M7 9l5 1 5-1M4 6c-1.500 2-1.500 5 0 7M20 6c1.500 2 1.500 5 0 7',
   c_guardaQuebrada: 'M5 5l7-2 7 2v6c0 5-3.500 8-7 10-3.500-2-7-5-7-10zM2.500 12h18M17 9l3 3-3 3',
+  // (lote 195) as agulhas do Ninja (o ramo do Arremesso)
+  c_agulhaPerna: 'M4 20L15 9M13 7l4 4M9 4v6l-2 3v7M13 20l-2-7',
+  c_agulhaBraco: 'M4 20L15 9M13 7l4 4M6 6h7l4 4v3',
+  c_agulhaOlhos: 'M4 20L15 9M13 7l4 4M3 8c3-4 9-4 12 0-3 4-9 4-12 0zM9 8h.01',
+  c_agulhaFluxo: 'M4 20L15 9M13 7l4 4M5 7c2-2 4 2 6 0s4 2 6 0',
+  c_agulhaCura: 'M4 20L15 9M13 7l4 4M7 3v6M4 6h6',
+  c_agulhas: 'M4 20L13 11M8 20L17 11M12 20L21 11M11 9l4 4',
+  c_corpoTravado: 'M12 3v18M5 8l7 4 7-4M5 16l7-4 7 4M3 12h18',
+  c_reflexoTravado: 'M4 20L15 9M13 7l4 4M4 4l5 5M9 4L4 9',
+  c_fluxoSelado: 'M4 20L15 9M13 7l4 4M4 12a8 8 0 0 1 16 0M8 12a4 4 0 0 1 8 0',
   c_levementeFerido: 'M4 15L15 4a3 3 0 0 1 4.200 4.200L8.200 19.200A3 3 0 0 1 4 15zM9.500 9.500l5 5M11.500 11.500h.01M13 13h.01',
   c_mortalmenteFerido: 'M2 12.500h5l2-5.500 3 11 2.300-5.500H22',
   c_pacto: 'M6 3h9l3 3v15H6zM9 17c1-1.500 2-1.500 3 0s2 1.500 3 0M12 7c1 1.200 1.600 2 1.600 2.800a1.600 1.600 0 0 1-3.200 0c0-.800.600-1.600 1.600-2.800z',
@@ -2344,13 +2354,22 @@ const CONDS = [
   { id: 'tregua', n: 'Trégua', c: '#8fb8a8', i: 'c_tregua', g: 'racas', r: 'Anão Mercador', dur: 1 },
   { id: 'vinculoSangue', n: 'Vínculo de Sangue', c: '#a8202e', i: 'c_vinculoSangue', g: 'racas', r: 'Taekeir Zier\'Asurper', dur: 3 },
   { id: 'vozVolkhum', n: 'Voz de Volkhum\'Pansar', c: '#d4a017', i: 'c_vozVolkhum', g: 'racas', r: 'Konaito', dur: 2 },
+  /* (lote 195: as 9 do Ninja — as agulhas cravadas, que saem quando o alvo gasta o movimento para arrancar; o acúmulo
+     Agulhas no Corpo, até 3, que sugere o Corpo Travado; e as que fecham um ponto por 1 turno.)
   /* (lote 20) As condições das classes: um grupo só, em ordem alfabética (r: a classe; dur: as rodadas de começo). Os
      três Feridos (ferido) são as tags de ferimento do Bruno: o HP negativo sugere a de cada terço do limite. */
+  { id: 'agulhaCura', n: 'Agulha na Cura', c: '#8c9bb0', i: 'c_agulhaCura', g: 'classes', r: 'Ninja' },
+  { id: 'agulhaPerna', n: 'Agulha na Perna', c: '#8c9bb0', i: 'c_agulhaPerna', g: 'classes', r: 'Ninja' },
+  { id: 'agulhaBraco', n: 'Agulha no Braço', c: '#8c9bb0', i: 'c_agulhaBraco', g: 'classes', r: 'Ninja' },
+  { id: 'agulhaFluxo', n: 'Agulha no Fluxo', c: '#8c9bb0', i: 'c_agulhaFluxo', g: 'classes', r: 'Ninja' },
+  { id: 'agulhaOlhos', n: 'Agulha nos Olhos', c: '#8c9bb0', i: 'c_agulhaOlhos', g: 'classes', r: 'Ninja' },
+  { id: 'agulhas', n: 'Agulhas no Corpo', c: '#a7b3c4', i: 'c_agulhas', g: 'classes', r: 'Ninja', max: 3, ini: 1, lim: { em: 'max', sug: 'corpoTravado', d: 1, zera: true, txt: 'teste de Vigor: se falhar, fica com o Corpo Travado por 1 turno (não anda e perde a reação; chefe só perde a reação), e as agulhas zeram' } },
   { id: 'alvoDuelo', n: 'Alvo do Duelo', c: '#c0392b', i: 'c_alvoDuelo', g: 'classes', r: 'Bárbaro' },
   { id: 'armaduraRachada', n: 'Armadura Rachada', c: '#a5663a', i: 'c_armaduraRachada', g: 'classes', r: 'Bárbaro' },
   { id: 'assombrado', n: 'Assombrado', c: '#8f9ac4', i: 'c_assombrado', g: 'classes', r: 'Bruxo', dur: 2 },
   { id: 'clausula', n: 'Cláusula', c: '#7a2f9a', i: 'c_clausula', g: 'classes', r: 'Feiticeiro', dur: 2 },
   { id: 'cobranca', n: 'Cobrança', c: '#b08a2a', i: 'c_cobranca', g: 'classes', r: 'Feiticeiro' },
+  { id: 'corpoTravado', n: 'Corpo Travado', c: '#6f7d92', i: 'c_corpoTravado', g: 'classes', r: 'Ninja', dur: 1 },
   { id: 'dancando', n: 'Dançando', c: '#c05aa8', i: 'c_dancando', g: 'classes', r: 'Bardo', dur: 1 },
   { id: 'definhando', n: 'Definhando', c: '#76703a', i: 'c_definhando', g: 'classes', r: 'Bruxo', dur: 2 },
   { id: 'desguarnecido', n: 'Desguarnecido', c: '#e0603a', i: 'c_desguarnecido', g: 'classes', r: 'Aégis', dur: 1 },
@@ -2359,6 +2378,7 @@ const CONDS = [
   { id: 'escudoPlantado', n: 'Escudo Plantado', c: '#7a8aa8', i: 'c_escudoPlantado', g: 'classes', r: 'Aégis' },
   { id: 'escudoRachado', n: 'Escudo Rachado', c: '#8d8f94', i: 'c_escudoRachado', g: 'classes', r: 'Espadachim' },
   { id: 'extremamenteFerido', n: 'Extremamente Ferido', c: '#c8542f', i: 'c_extremamenteFerido', g: 'classes', r: 'Ferimento', ferido: true },
+  { id: 'fluxoSelado', n: 'Fluxo Selado', c: '#5f6f96', i: 'c_fluxoSelado', g: 'classes', r: 'Ninja', dur: 1 },
   { id: 'ginga', n: 'Ginga', c: '#2f9d93', i: 'c_ginga', g: 'classes', r: 'Bardo', dur: 1 },
   { id: 'guardaQuebrada', n: 'Guarda Quebrada', c: '#d98b2b', i: 'c_guardaQuebrada', g: 'classes', r: 'Espadachim', dur: 1 },
   { id: 'levementeFerido', n: 'Levemente Ferido', c: '#d9a05a', i: 'c_levementeFerido', g: 'classes', r: 'Ferimento', ferido: true },
@@ -2366,6 +2386,7 @@ const CONDS = [
   { id: 'pacto', n: 'Pacto', c: '#9a2a4a', i: 'c_pacto', g: 'classes', r: 'Feiticeiro' },
   { id: 'perjuro', n: 'Perjuro', c: '#6b4a7a', i: 'c_perjuro', g: 'classes', r: 'Aégis' },
   { id: 'portaAberta', n: 'Porta Aberta', c: '#5a3a6a', i: 'c_portaAberta', g: 'classes', r: 'Feiticeiro', dur: 2 },
+  { id: 'reflexoTravado', n: 'Reflexo Travado', c: '#7d8aa0', i: 'c_reflexoTravado', g: 'classes', r: 'Ninja', dur: 1 },
   { id: 'seloLushmania', n: 'Selo de Lushmânia', c: '#e6c35a', i: 'c_seloLushmania', g: 'classes', r: 'Sacerdote', dur: 3 },
   { id: 'sobEgide', n: 'Sob a Égide', c: '#c9a227', i: 'c_sobEgide', g: 'classes', r: 'Aégis', dur: 1 },
   { id: 'sobExorcismo', n: 'Sob Exorcismo', c: '#e8b83a', i: 'c_sobExorcismo', g: 'classes', r: 'Sacerdote', dur: 2 },
@@ -25612,6 +25633,7 @@ const UI = (() => {
     modalOpen: () => !!modalEl || Tour.active(),
     alternarObjeto, closeModal, condPicker, barDefaultsBox, novoTokenBox, areaBox, bagBox, iniFromTable, passarTurno,
     // (lote 8) a Ferida permanente e o Clone (as janelas; escolher o real no mapa)
+    sugerirLimite,                                        // (lote 195) o contador cheio pelas habilidades (Agulhas no Corpo)
     feridaBox, cloneBox, escolherReal, fimEscolhaReal, escolhendoReal: () => !!App.escolhaReal,
     // (lote 7) as famílias de cenas e as passagens, para o gerador de lugares
     passagem, porNaFamilia, janelaAndares, andarPelaPassagem, andarVertical, levarAndar, irDeAndar, bgFromFile, pintarAndares, saidasDeAndar, herdarCampanha, maeDaCena, colocarCena, organizarCenas, ligarObjeto, showToPlayers, menuEm: menu, familiasVistas,
@@ -55636,7 +55658,8 @@ const PainelBarras = (() => {
     });
     const ator = { chave, tok: t.id, char: t.char || null, nome: tokName(t), dono: deJogador(t) ? 'jogador' : 'mestre', barras,
       aba: Math.max(0, Math.min(m.aba || 0, barras.length - 1)), aberto: !!m.aberto, linhas: [],
-      rodada: () => (Store.scene() && Store.scene().turn.round) || 1 };
+      rodada: () => (Store.scene() && Store.scene().turn.round) || 1,
+      conds: () => ((Store.get('tokens', t.id) || t).conds || []) };          // (lote 195) o Fluxo das agulhas
     ator.logar = texto => { ator.linhas.push(texto); };
     try { ator.passivas = passivasDe(t); } catch (e) { ator.passivas = []; }      // (lote 182) o botão ◆ das passivas
     ator.passAberto = !!m.passAberto;
@@ -56225,7 +56248,11 @@ const HabAcao = (() => {
   const soMeu = (pl, de) => !!(pl.sp.z || (pl.sp.inv && !pl.sp.inv.clone) || (pl.sp.c || []).some(c => c[3] === 's') || (pl.sp.mv && pl.sp.mv.k === 'salta'));
   const precisaMestre = pl => !!(pl.alvos.length || (pl.sp.inv && pl.sp.inv.clone));
   // precisa da janela: teste, dano ou cura em alguém, ou um pedido de jogador
-  const precisaJanela = pl => !!(pl.alvos.length && (pl.sp.d || pl.sp.cu || (pl.sp.c || []).some(c => c[2] && c[3] === 'a') || pl.sp.lp));
+  const precisaJanela = pl => !!(pl.alvos.length && (pl.sp.d || pl.sp.cu || (pl.sp.c || []).some(c => c[2] && c[3] === 'a') || pl.sp.lp || escolhas(pl.sp).length));
+  /* (lote 195) a escolha: as condições marcadas com 'e' (o 5º campo) são opções, e o alvo leva só sp.um delas (1, se não
+     disser) — a agulha cravada "num ponto à escolha". A janela traz marcadas as primeiras; marcar outra desmarca a mais antiga. */
+  const escolhas = sp => (sp && sp.c || []).filter(c => c[3] === 'a' && c[4] === 'e').map(c => c[0]);
+  const condsPadrao = sp => { const es = escolhas(sp), lim = Math.max(1, sp.um || 1); return (sp.c || []).filter(c => c[3] === 'a' && (c[4] !== 'e' || es.indexOf(c[0]) < lim)).map(c => c[0]); };
 
   // o que vem marcado na janela
   function padrao(pl) {
@@ -56233,7 +56260,7 @@ const HabAcao = (() => {
     for (const id of pl.alvos) {
       const t = sc.tokens.find(x => x.id === id);
       if (!t) continue;
-      o.alvos[id] = { on: true, falhou: true, n: '', conds: (sp.c || []).filter(c => c[3] === 'a').map(c => c[0]), lp: !!sp.lp };
+      o.alvos[id] = { on: true, falhou: true, n: '', conds: condsPadrao(sp), lp: !!sp.lp };
     }
     return o;
   }
@@ -56273,7 +56300,15 @@ const HabAcao = (() => {
         h('label', { class: 'cl-op' }, h('input', { type: 'radio', name: 'ha-t-' + id, checked: e.falhou, onchange: () => { e.falhou = true; } }), h('span', { text: 'Falhou' })),
         h('label', { class: 'cl-op' }, h('input', { type: 'radio', name: 'ha-t-' + id, checked: !e.falhou, onchange: () => { e.falhou = false; } }), h('span', { text: 'Passou' }))) : null;
       const todasC = (sp.c || []).filter(c => c[3] === 'a').map(c => c[0]);
-      const cs = todasC.length ? h('div', { class: 'ha-conds' }, ...todasC.map(cid => h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: e.conds.includes(cid), onchange: ev => { e.conds = ev.target.checked ? e.conds.concat(cid) : e.conds.filter(x => x !== cid); } }), h('span', { text: condTxt(cid) + ((sp.c.find(c => c[0] === cid) || [])[1] ? ' (' + sp.c.find(c => c[0] === cid)[1] + ' t)' : '') })))) : null;
+      const cs = todasC.length ? h('div', { class: 'ha-conds' }, ...todasC.map(cid => h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: e.conds.includes(cid), onchange: ev => {
+        e.conds = ev.target.checked ? e.conds.concat(cid) : e.conds.filter(x => x !== cid);
+        // (lote 195) a escolha: passou do limite, a mais antiga sai (e a caixa dela desmarca)
+        const es = escolhas(sp);
+        if (ev.target.checked && es.includes(cid)) {
+          const lim = Math.max(1, sp.um || 1), marcadas = e.conds.filter(x => es.includes(x));
+          if (marcadas.length > lim) { const sai = marcadas[0]; e.conds = e.conds.filter(x => x !== sai); const cx = ev.target.closest('.ha-conds').querySelector(`input[data-cid="${sai}"]`); if (cx) cx.checked = false; }
+        }
+      }, 'data-cid': cid }), h('span', { text: (escolhas(sp).includes(cid) ? '◇ ' : '') + condTxt(cid) + ((sp.c.find(c => c[0] === cid) || [])[1] ? ' (' + sp.c.find(c => c[0] === cid)[1] + ' t)' : '') })))) : null;
       linhas.push(h('div', { class: 'ha-alvo' },
         h('label', { class: 'cl-op ha-nome' }, h('input', { type: 'checkbox', checked: e.on, onchange: ev => { e.on = ev.target.checked; } }), h('b', { text: nomeDe(t) })),
         disp, temTeste ? null : (e.disp ? h('span', { class: 'ha-res', text: e.disp }) : null), nIn, teste, cs,
@@ -56306,6 +56341,7 @@ const HabAcao = (() => {
     const sp = pl.sp, cell = sc.cell, vez = sc.turn && Array.isArray(sc.turn.list) ? sc.turn.list.find(e => e.token === de.id) : null;
     const quem = de.owner && de.owner !== '*' ? de.owner : null, local = !!o.soLocal;
     let clones = 0;
+    const limites = [];                                     // (lote 195) contadores que chegaram ao máximo
     Store.tx(pl.hab.nome, () => {
       // a zona no chão
       if (esc.zona && sp.z && pl.area) {
@@ -56334,7 +56370,9 @@ const HabAcao = (() => {
         const cur = Object.assign({}, info[cid]);
         if (tur > 0) { cur.d = tur; cur.d0 = tur; }
         if (forma) cur.f = 1;                              // (lote 193) da forma: sai com ela
-        if (n > 0) cur.n = (cur.n || 0) + n;
+        const cd = COND_BY_ID[cid];
+        if (n > 0) cur.n = cd && cd.max ? Math.min(cd.max, (cur.n || 0) + n) : (cur.n || 0) + n;
+        if (n > 0 && cd && cd.max && cd.lim && cd.lim.em === 'max' && cur.n >= cd.max) limites.push([t0.id, cd]);   // (lote 195)
         if (Object.keys(cur).length) info[cid] = cur;
         Store.upd('tokens', t0.id, { conds, cinfo: info });
       };
@@ -56366,11 +56404,12 @@ const HabAcao = (() => {
         }
         const testa = (sp.c || []).some(c => c[2] && c[3] === 'a');
         if (testa && !e.falhou) continue;                   // passou no teste: nem a condição nem o empurrão
-        for (const cid of e.conds || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(t, cid, c ? c[1] : 1, cid === 'sangue' ? 1 : 0); }
+        for (const cid of e.conds || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(t, cid, c ? c[1] : 1, cid === 'sangue' || (COND_BY_ID[cid] || {}).max ? 1 : 0); }
         if (esc.mv && sp.mv && (sp.mv.k === 'empurra' || sp.mv.k === 'puxa')) empurrar(sc, de, Store.get('tokens', id), sp.mv.k === 'empurra' ? sp.mv.d : -sp.mv.d);
         if (esc.mv && sp.mv && sp.mv.k === 'troca') { const a = Store.get('tokens', de.id), b = Store.get('tokens', id); Store.upd('tokens', a.id, { x: b.x, y: b.y }); Store.upd('tokens', b.id, { x: a.x, y: a.y }); }
       }
     });
+    for (const [tid, cd] of limites) setTimeout(() => { if (UI.sugerirLimite) UI.sugerirLimite(tid, cd); }, 80);   // (lote 195) Agulhas no Corpo chegou a 3: o teste e o Corpo Travado
     // os clones: as cópias do personagem (o sistema de Clone), com a condição durando os turnos da habilidade
     if (!local && esc.inv && sp.inv && sp.inv.clone) {
       const t = Store.get('tokens', de.id);

@@ -118,6 +118,10 @@ function ctxDe(ator, b){
     marcar(gid, n = 1){ b.cont[gid] = n; },
     ganhar(n, motivo, o = {}){
       if (n <= 0) return 0;
+      // (lote 195) as agulhas do Ninja no fluxo: Fluxo Selado não ganha nada; Agulha no Fluxo ganha a metade (para baixo)
+      const cs = ator.conds ? ator.conds() : [];
+      if (cs.includes('fluxoSelado')) { ctx.aviso('Fluxo Selado: não ganha barra até o fim do próximo turno.'); if (!o.mudo) ctx.log(`${ctx.nome}: o Fluxo Selado segura o ganho de ${def.barra}.`); return 0; }
+      if (cs.includes('agulhaFluxo')) { n = Math.floor(n / 2); if (!n) { ctx.aviso('Agulha no Fluxo: a metade de 1 é nada.'); return 0; } motivo = (motivo ? motivo + ', ' : '') + 'metade: agulha no fluxo'; }
       const t = tetoDe(b), livre = (o.foraTeto || t == null) ? Infinity : Math.max(0, t - b.ganhoRodada);
       const antes = b.v; ctx.v = b.v + Math.min(n, livre); const d = b.v - antes;
       if (!o.foraTeto && t != null) b.ganhoRodada += d;
@@ -587,7 +591,7 @@ classe({ id: 'samurai', arvore: 'Samurai', barra: 'Postura', cor: '#D9A441', gli
 
 /* ---------------- Ninja: Selos e sombra ---------------- */
 classe({ id: 'ninja', arvore: 'Ninja', barra: 'Jutsu', cor: '#8C9BE0', glifo: '@shuriken', inicio: 4,
-  patamares: [[5, 'Passo Mudo', 'andar não te revela para quem está em alerta 0, 1 ou 2'], [10, 'Olhos de Noite', 'você vê no escuro e na fumaça'], [15, 'Selo Completo', 'o próximo jutsu sai sem gastar a ação']],
+  patamares: [[5, 'Mão Leve', 'a primeira kunai ou senbon do turno custa 1 a menos de Jutsu'], [10, 'Instinto', 'Defesa tier I contra o primeiro golpe que vier em você a cada rodada'], [15, 'Selo Completo', 'o próximo jutsu sai sem gastar a ação']],
   risco: ['Sombra Cheia', 'você aparece como silhueta e não se esconde até gastar'],
   // (lote 194, pedido do Dalmo) saíram os Selos de mão; o Jutsu enche também lutando às claras (Por um Fio, Acrobacia, Arremesso Certeiro)
   est: () => ({ escondido: false }),
@@ -599,13 +603,13 @@ classe({ id: 'ninja', arvore: 'Ninja', barra: 'Jutsu', cor: '#8C9BE0', glifo: '@
     if (k === 'esc'){ s.escondido = !s.escondido; ctx.log(`${ctx.nome} ${s.escondido ? 'some nas sombras' : 'aparece'}.`); }
   },
   linhaEstado: s => (s.escondido ? '<b>Escondido</b> <em>· +1 tier de Dano</em>' : '<em>À vista.</em>'),
-  ganhos: [{ c: 'Atacou sem ser visto', t: 'Escondido, pelas costas ou de um flanco', v: 3 }, { c: 'Pôs Sangramento ou Veneno', t: 'Cada camada de Sangramento ou golpe com veneno', v: 1, max: 3 },
+  ganhos: [{ c: 'Atacou sem ser visto', t: 'Escondido, pelas costas ou de um flanco', v: 3 }, { c: 'Pôs Sangramento ou agulha', t: 'Cada camada de Sangramento ou agulha que você crava', v: 1, max: 3 },
            { c: 'Por um Fio', t: 'Um golpe errou você', v: 2 },
            { c: 'Acrobacia', t: 'Andou 3 cédulas ou mais passando colado ou por cima de um inimigo, correndo na parede ou pulando de um ponto alto', v: 2, max: 1 },
            { c: 'Arremesso Certeiro', t: 'Acertou uma kunai ou senbon a 3 cédulas ou mais', v: 1 }],
   selo: s => (s.escondido ? '@escondido' : null),
   mapa: { 'Bomba de Fumaça': AREA('fumaca', 2, 2), 'Clone de Sombra': TOK('Clone de Sombra', '#3A3F55', { turnos: 2 }), 'Exército de Sombras': TOK('Sombra', '#3A3F55', { turnos: 2, n: 4 }),
-    'Nuvem Verde': AREA('toxica', 2, 2), 'Fumaça Amarela': AREA('toxica', 3, 2), 'Cegueira da Noite': AREA('escuridao', 3, 2), 'Ayto-Abso — A Noite Sem Lua': AREA('escuridao', 4, 2) }
+    'Cegueira da Noite': AREA('escuridao', 3, 2), 'Ayto-Abso — A Noite Sem Lua': AREA('escuridao', 4, 2) }
 });
 
 /* ---------------- Bárbaro: a Guarda Aberta ---------------- */

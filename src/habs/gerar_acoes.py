@@ -312,6 +312,13 @@ def main():
             if any(util(s) for s in lst):
                 out[n['id']] = [{k: v for k, v in s.items() if v is not None} for s in lst]
                 cont['com'] += 1
+    # (lote 195) o que foi escrito à mão (src/habs/acoes_mao.json) ganha do texto; null tira do mapa
+    mao_f = os.path.join(os.path.dirname(__file__), 'acoes_mao.json')
+    if os.path.exists(mao_f):
+        for k, v in json.load(open(mao_f)).items():
+            if k.startswith('_'): continue
+            if v is None: out.pop(k, None)
+            else: out[k] = v
     js = json.dumps(out, ensure_ascii=False, separators=(',', ':'))
     dest = os.path.join(os.path.dirname(__file__), '..', '..', 'tc', 'habs-acoes.js')
     with open(dest, 'w') as f:
