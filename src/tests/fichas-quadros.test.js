@@ -86,11 +86,11 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc('pc_s
 
   // ---------- Ascensão ----------
   await aba('skills');
-  ok(await P.locator('#painelAsc .ascrow').count() === 2 && (await P.locator('#painelAsc [data-asc="pr"] .ascconta').innerText()).replace(/\s+/g, ' ') === '2 gastos · 0 livres' && await P.locator('[data-asctot="pr"]').inputValue() === '2' && await P.locator('[data-asctot="pc"]').inputValue() === '0',
+  ok(await P.locator('#painelAsc .ascrow').count() === 2 && (await P.locator('#painelAsc [data-asc="pr"] .ascconta').innerText()).replace(/\s+/g, ' ') === 'Total 2 · 2 gastos · 0 livres' && await P.locator('[data-asctot="pr"]').inputValue() === '2' && await P.locator('[data-asctot="pc"]').inputValue() === '0',
     'o quadro de Ascensão mostra cada tipo de ponto: Raça 2 (2 gastos, 0 livres) e Classe 0');
   ok(await P.locator('[data-ascstep="pc|-1"]').isDisabled(), 'não dá para tirar ponto de quem tem zero');
   await P.locator('[data-ascstep="pr|1"]').click(); await P.locator('[data-ascstep="pr|1"]').click(); await w(300);
-  ok((await sel()).skills.pontos.pr === 4 && (await P.locator('#painelAsc [data-asc="pr"] .ascconta').innerText()).replace(/\s+/g, ' ') === '2 gastos · 2 livres' && /Raça de Selene: 3 → 4 \(2 livres\)/.test(await toast()), 'dar dois pontos de Raça: 4, com 2 livres — "' + await toast() + '"');
+  ok((await sel()).skills.pontos.pr === 4 && (await P.locator('#painelAsc [data-asc="pr"] .ascconta').innerText()).replace(/\s+/g, ' ') === 'Total 4 · 2 gastos · 2 livres' && /Raça de Selene \(nível\): 3 → 4 \(2 livres\)/.test(await toast()), 'dar dois pontos de Raça: 4, com 2 livres — "' + await toast() + '"');
   await desfazer();
   ok((await sel()).skills.pontos.pr === 3 && await P.locator('[data-asctot="pr"]').inputValue() === '3', 'o Desfazer volta o último ponto');
   await P.locator('[data-asctot="pc"]').fill('5'); await P.locator('[data-asctot="pc"]').press('Tab'); await w(300);

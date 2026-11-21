@@ -24,7 +24,7 @@ ok(R.tetoDoTipo(raca, 0) === 4 && R.tetoDoTipo(raca, null) === 4 && R.tetoDoTipo
 const c1 = R.contaDoTeto(raca, 27, 9), c2 = R.contaDoTeto(raca, 28, 9), c3 = R.contaDoTeto(raca, 31, 9), c4 = R.contaDoTeto(escola, 10, 9), c5 = R.contaDoTeto(raca, 25, 9);
 ok(c1.estado === 'abaixo' && c1.d === -1 && c1.txt === '27 de 28 · falta 1' && c5.txt === '25 de 28 · faltam 3' && /Falta 1 ponto para chegar ao teto/.test(c1.dica), 'abaixo do teto: "27 de 28 · falta 1", "25 de 28 · faltam 3"');
 ok(c2.estado === 'no' && c2.txt === '28 de 28 · no teto' && /teto do nível 9: 28 \(4 no nível 1, \+3 por nível\)\. Está no teto\./.test(c2.dica), 'no teto: "28 de 28 · no teto", e a dica explica a conta');
-ok(c3.estado === 'acima' && c3.d === 3 && c3.txt === '31 · teto 28 · +3 extraordinário' && /3 pontos acima do teto: o extraordinário/.test(c3.dica), 'acima: "31 · teto 28 · +3 extraordinário"');
+ok(c3.estado === 'acima' && c3.d === 3 && c3.txt === '31 de 28 · 3 acima do teto' && /3 pontos de nível acima do teto/.test(c3.dica), 'acima (lote 198: o extraordinário agora vem à parte): "31 de 28 · 3 acima do teto"');
 ok(c4.estado === 'mestre' && c4.teto === null && c4.txt === 'o mestre distribui', 'sem teto: "o mestre distribui"');
 
 // ---------- as Fichas ----------
@@ -45,12 +45,12 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
   await passo(F, 'o quadro de Ascensão', async () => {
     await F.locator('#ficha [data-abaficha="skills"]').click(); await w(300);
     const r = await teto('pr'), c = await teto('pc'), e = await teto('pe');
-    ok(r && r.txt === '31 · teto 28 · +3 extraordinário' && /\bextra\b/.test(r.cls) && /teto do nível 9: 28/.test(r.dica), 'Raça no nível 9: 31 pontos, teto 28 → "+3 extraordinário", na cor do extraordinário — ' + j(r));
+    ok(r && r.txt === '31 de 28 · 3 acima do teto' && /\bextra\b/.test(r.cls) && /teto do nível 9: 28/.test(r.dica), 'Raça no nível 9: 31 pontos, teto 28 → "+3 extraordinário", na cor do extraordinário — ' + j(r));
     ok(c && c.txt === '30 de 30 · no teto' && /\bcerto\b/.test(c.cls), 'Classe: 30 de 30, no teto (a cor de "certo") — ' + j(c));
     const rg = (await F.locator('#painelAsc [data-ascregra]').innerText()).replace(/\s+/g, ' ');
     ok(/Raça: 4 no nível 1, \+3 por nível · Classe: 6 no nível 1, \+3 por nível\. No nível 9, o teto é: Raça 28, Classe 30\./.test(rg) && !/Escola/.test(rg), '(lote 108) a regra dos pontos fica à vista no quadro, com o teto do nível — ' + rg);
     ok(e && e.txt === 'o mestre distribui' && /\bmestre\b/.test(e.cls), 'Escola: "o mestre distribui", sem teto — ' + j(e));
-    ok((await F.locator('#painelAsc [data-asc="pr"] .ascconta').innerText()).replace(/\s+/g, ' ') === '2 gastos · 29 livres', 'a conta de gastos e livres continua a mesma, ao lado');
+    ok((await F.locator('#painelAsc [data-asc="pr"] .ascconta').innerText()).replace(/\s+/g, ' ') === 'Total 31 · 2 gastos · 29 livres', 'a conta de gastos e livres continua a mesma, ao lado');
     await F.locator('[data-ascstep="pc|-1"]').click(); await w(300);
     const c2 = await teto('pc');
     ok(c2 && c2.txt === '29 de 30 · falta 1' && /\bfalta\b/.test(c2.cls), 'tirar um ponto de Classe: "29 de 30 · falta 1" (a cor de "falta") — ' + j(c2));
@@ -93,7 +93,7 @@ const estado = JSON.stringify({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], sit
     ok(j(b) === j([['pr', 'abaixo', '27 de 28 · falta 1'], ['pc', 'no', '30 de 30 · no teto'], ['pe', 'abaixo', '7 de 17 · faltam 10']]), 'com o nível 9 da ficha: Raça "27 de 28 · falta 1", Classe no teto, e a Escola (agora com 2 por nível) "7 de 17 · faltam 10" — ' + j(b));
     await A.locator('#tot_pr').fill('30'); await A.locator('#tot_pr').press('Tab'); await A.waitForTimeout(300);
     const r = await A.evaluate(() => { const e = document.querySelector('.bolsa-teto[data-teto="pr"]'); return [e.className, e.textContent.trim(), getComputedStyle(e).color]; });
-    ok(/acima/.test(r[0]) && r[1] === '30 · teto 28 · +2 extraordinário', 'dar mais que o teto: "+2 extraordinário" — ' + j(r));
+    ok(/acima/.test(r[0]) && r[1] === '30 de 28 · 2 acima do teto', 'dar mais que o teto: "+2 extraordinário" — ' + j(r));
     await foto(A, 'arvore-teto');
   });
   await foto(F, 'fichas-teto');

@@ -2125,15 +2125,31 @@
     if (teto == null) return { teto: null, total: t, nivel: n, porNivel: 0, d: 0, estado: 'mestre', txt: 'o mestre distribui',
       dica: nome + ': sem teto por nível — o mestre distribui.' };
     const d = t - teto, estado = d < 0 ? 'abaixo' : d === 0 ? 'no' : 'acima';
+    // (lote 198) o total aqui é o dos pontos de NÍVEL; o extraordinário e o de conquista vêm à parte (extrasDe, conq)
     const regra = 'teto do nível ' + n + ': ' + teto + ' (' + Math.max(0, Math.floor(numFinito(pool.padrao) || 0)) + ' no nível 1, +' + pn + ' por nível).';
     const txt = estado === 'no' ? t + ' de ' + teto + ' · no teto'
       : estado === 'abaixo' ? t + ' de ' + teto + ' · ' + (d === -1 ? 'falta 1' : 'faltam ' + (-d))
-      : t + ' · teto ' + teto + ' · +' + d + ' extraordinário';
+      : t + ' de ' + teto + ' · ' + d + ' acima do teto';
     const dica = nome + ': ' + regra + ' ' + (estado === 'no' ? 'Está no teto.'
       : estado === 'abaixo' ? (d === -1 ? 'Falta 1 ponto' : 'Faltam ' + (-d) + ' pontos') + ' para chegar ao teto.'
-      : (d === 1 ? '1 ponto' : d + ' pontos') + ' acima do teto: o extraordinário, dado pelo mestre por feitos fora do comum.');
+      : (d === 1 ? '1 ponto' : d + ' pontos') + ' de nível acima do teto. O que o mestre dá por feitos fora do comum vai em Extraordinário, com o motivo.');
     return { teto, total: t, nivel: n, porNivel: pn, d, estado, txt, dica };
   }
+
+
+  /* (lote 198) Os pontos extraordinários: o mestre dá por feitos fora do comum, com o motivo, e eles ficam à parte dos
+     pontos de nível (skills.pontos, que respeitam o teto) e dos de conquista (a coluna conq). Cada um é uma linha:
+       skills.extra = [{ id, pid (o tipo de ponto), n (inteiro, pode ser negativo para corrigir), motivo, em (data), por }]
+     Só o mestre escreve (o banco desfaz o que outra pessoa mudar aí: privado.extra_guarda).
+       extrasDe(skills)          → a lista limpa (até 200 linhas)
+       extraDoTipo(skills, pid)  → a soma do tipo */
+  function extrasDe(sk) {
+    const l = ehObjeto(sk) && Array.isArray(sk.extra) ? sk.extra : [];
+    return l.filter(x => ehObjeto(x) && typeof x.pid === 'string' && x.pid && Number.isFinite(+x.n) && Math.trunc(+x.n) !== 0).slice(0, 200).map(x => ({
+      id: String(x.id || '').slice(0, 40), pid: x.pid.slice(0, 60), n: Math.max(-999, Math.min(999, Math.trunc(+x.n))),
+      motivo: String(x.motivo == null ? '' : x.motivo).slice(0, 200), em: String(x.em || '').slice(0, 30), por: String(x.por || '').slice(0, 60) }));
+  }
+  function extraDoTipo(sk, pid) { return extrasDe(sk).filter(x => x.pid === pid).reduce((a, x) => a + x.n, 0); }
 
 
   /* ---------- (lote 89) A regra dos equipamentos: faixa, material e melhoria ----------
@@ -2374,7 +2390,7 @@
     ROM_MAX, relacoes, temRelacoes, relacoesDoMestre, mexerRelacao, relacaoCom,
     MIS_ESTADOS, missoes,
     XP_PASSO, xpDe, subirNivelXp, anivOk, aniversario,
-    POR_NIVEL_PADRAO, porNivelDoTipo, tetoDoTipo, contaDoTeto,
+    POR_NIVEL_PADRAO, porNivelDoTipo, tetoDoTipo, contaDoTeto, extrasDe, extraDoTipo,
     FAIXAS_EQ, MAT_MAX, PECAS, ELEM_DANO, ELEM_INFO, svgElem, elemDaFicha, limparElem, elemDaFaixa, danoDoItem, danoDoTiro, tetoArmadura, repartirArmadura, faixaDoNivel, faixaEq, etiquetasEq, textoEtiquetas, pecaDoItem, chavesDaPeca, valorDaFaixa, itemNaRegra, melhorarItem, outrosDaArma, OUTROS_ARMA, valorEq, ajusteDoItem, ajusteDaFicha
   };
 

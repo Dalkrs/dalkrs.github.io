@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.21-02",
+      "data": "2026-11-21",
+      "titulo": "Pontos de nível, extraordinários e de conquista, separados",
+      "itens": [
+        { "tipo": "novo", "texto": "Fichas, Ascensão: cada tipo de ponto (Raça, Classe e os outros) mostra três partes separadas: Nível (o que respeita o teto), Extraordinário e Conquista, com o total e o que sobra para gastar." },
+        { "tipo": "novo", "mestre": true, "texto": "Fichas, Ascensão: o mestre dá pontos extraordinários com o botão \"+ Dar\", dizendo quantos e o motivo. Cada um fica numa lista, com a data. Só o mestre muda essa lista." },
+        { "tipo": "novo", "mestre": true, "texto": "Fichas, Ascensão: o Quadro da mesa mostra todos os personagens com o nível, o extraordinário e a conquista de cada tipo de ponto." },
+        { "tipo": "melhorou", "texto": "Aba Skills e Árvore: os cartões de pontos mostram também os extraordinários." }
+      ]
+    },
+    {
       "versao": "2026.11.21-01",
       "data": "2026-11-21",
       "titulo": "Kitsune: Devorador de Sombras",

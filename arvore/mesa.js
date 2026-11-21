@@ -74,6 +74,7 @@ const ArvoreMesa = (() => {
     if (s.ramos && typeof s.ramos === 'object' && !Array.isArray(s.ramos) && Object.keys(s.ramos).length) p.ramos = JSON.parse(j(s.ramos));
     if (Array.isArray(s.unicas) && s.unicas.length) p.unicas = JSON.parse(j(s.unicas));
     if (Array.isArray(s.fav) && s.fav.length) p.fav = s.fav.filter(x => typeof x === 'string').slice(0, 60);
+    if (Array.isArray(s.extra) && s.extra.length) p.extra = JSON.parse(j(s.extra));   // (lote 198) só para ler: quem escreve é a ficha (o mestre)
     return p;
   }
   // A biblioteca que esta pessoa enxerga: o mestre, a original; o jogador, o pacote publicado.

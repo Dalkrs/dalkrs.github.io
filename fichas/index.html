@@ -1213,6 +1213,24 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
 .ascpts .mini{min-width:30px;font-family:var(--monof)}
 .ascconta{font-size:12.5px;color:var(--ink-soft)} .ascconta strong{color:var(--ink)} .ascconta.warn,.ascconta.warn strong{color:var(--rubric)}
 .ascteto{grid-column:3;justify-self:start;margin-top:-4px}
+/* (lote 198) as três partes dos pontos: nível, extraordinário e conquista; a lista dos extraordinários e o quadro da mesa */
+.ascpartes{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.ascparte{display:inline-flex;align-items:center;gap:6px}
+.asclab{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft)}
+.ascval{font-family:var(--monof);font-weight:700;min-width:22px;text-align:right}
+[data-ascx] .ascval{color:var(--accent,#b08a5a)} [data-ascc] .ascval{color:var(--ok,#3a8a5a)}
+.ascxform,.ascxlista{grid-column:1/-1}
+.ascxform{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 8px;border:1px dashed var(--line);border-radius:var(--r)}
+.ascxform label{display:inline-flex;gap:6px;align-items:center;font-size:12.5px}
+.ascxform input[type=number]{width:64px} .ascxmot{flex:1 1 220px} .ascxmot input{flex:1;min-width:160px}
+.ascxlista{list-style:none;margin:0;padding:0 0 0 4px;display:grid;gap:2px;font-size:12.5px}
+.ascxlista b{font-family:var(--monof);color:var(--accent,#b08a5a);display:inline-block;min-width:28px}
+.ascxtira{min-width:22px;padding:0 6px;margin-left:4px}
+.ascquadro{overflow:auto;margin:0 0 12px;border:1px solid var(--line-2);border-radius:var(--r)}
+.ascquadro table{border-collapse:collapse;width:100%;font-size:12.5px}
+.ascquadro th,.ascquadro td{padding:6px 8px;border-bottom:1px solid var(--line-2);text-align:left;white-space:nowrap}
+.ascquadro small{display:block;font-weight:400;color:var(--ink-soft);font-size:10.5px}
+.ascquadro td.acima{background:var(--brass-fundo,rgba(176,138,90,.12))}
 /* Corpo e ferimentos */
 .corpo2{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start}
 .boneco svg{width:150px;height:auto;display:block}
@@ -1410,6 +1428,7 @@ html.elenco-seletor #tab-fichas > .roster{display:none} html.elenco-seletor #tab
 .rstitsel{display:inline-flex;align-items:center;gap:6px}
 .rstitsel select{max-width:240px}
 .conq-pts{display:block;font-size:11.5px;color:var(--ok,#3a8a5a);margin-top:3px}
+.extra-pts{display:block;font-size:11.5px;color:var(--accent,#b08a5a);margin-top:3px}   /* (lote 198) */
 /* os números do resumo rolam: o total (com o equipamento) e, nos atributos, a base embaixo */
 button.rsn,.rsatr .rsrola,.rsatr .rsbase{border:0;cursor:pointer;color:inherit;text-align:left}
 button.rsn{display:inline-flex;border:1px solid transparent}
@@ -1946,7 +1965,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=24"></script>
-<script src="../tc/rules.js?v=37"></script>
+<script src="../tc/rules.js?v=38"></script>
 <script src="../tc/bonus.js?v=2"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
@@ -1965,7 +1984,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../tc/formas.js?v=2"></script>
 <script src="formas.js?v=1"></script>
 <script src="../tc/missoes.js?v=3"></script>
-<script src="quadros.js?v=10"></script>
+<script src="quadros.js?v=11"></script>
 <script src="skills-lista.js?v=1"></script>
 <script src="filtro-skills.js?v=3"></script>
 <script src="criacao.js?v=4"></script>
@@ -4778,7 +4797,11 @@ const conqOrigem = (pc,pid) => ((pc&&pc._conq&&Array.isArray(pc._conq.origem))? 
 const conqSelo = (pc,pid) => { const n=conqPontos(pc,pid); return n? `<span class="conq-pts" title="Vieram de conquistas: ${esc(conqOrigem(pc,pid))}. Não contam no teto do nível.">${n>0?'+':''}${n} de conquista${Math.abs(n)===1?'':'s'} (${esc(conqOrigem(pc,pid))})</span>` : ''; };
 const titulosDe = pc => ((pc&&pc._conq&&Array.isArray(pc._conq.titulos))? pc._conq.titulos : []).filter(t=>t&&typeof t.v==='string'&&t.v);
 const tituloAtivo = pc => { const t=pc&&typeof pc.titulo==='string'? pc.titulo : ''; return t && titulosDe(pc).some(x=>x.v===t)? t : ''; };
-const restantesPool = (pc,poolId) => (skillsDe(pc).pontos[poolId]||0) + conqPontos(pc,poolId) - gastosPool(pc,poolId);
+/* (lote 198) Os pontos extraordinários (skills.extra: o mestre dá, com o motivo): à parte do nível e da conquista */
+const extraPontos = (pc,pid) => (window.TC&&TC.rules&&TC.rules.extraDoTipo)? TC.rules.extraDoTipo(skillsDe(pc),pid) : 0;
+const extrasDoTipo = (pc,pid) => ((window.TC&&TC.rules&&TC.rules.extrasDe)? TC.rules.extrasDe(skillsDe(pc)) : []).filter(x=>x.pid===pid);
+const extraSelo = (pc,pid) => { const n=extraPontos(pc,pid); return n? `<span class="extra-pts" title="${esc(extrasDoTipo(pc,pid).map(x=>`${x.n>0?'+':''}${x.n}: ${x.motivo||'sem motivo'}`).join(' · '))}. Dados pelo mestre; não contam no teto do nível.">${n>0?'+':''}${n} extraordinário${Math.abs(n)===1?'':'s'}</span>` : ''; };
+const restantesPool = (pc,poolId) => (skillsDe(pc).pontos[poolId]||0) + extraPontos(pc,poolId) + conqPontos(pc,poolId) - gastosPool(pc,poolId);
 function podePagarArv(pc,n,k){
   const c=custoGrauArv(n,k);
   return (BIBX().pools||[]).every(pl=>(c[pl.id]||0) <= restantesPool(pc,pl.id));
@@ -5256,13 +5279,13 @@ function blocoSkills(pc){
   const barra = poolsEmUso.length? `<div class="poolbar">
       ${poolsEmUso.map(pid=>{
         const pl=poolArv(pid)||{nome:pid,cor:'#888'};
-        const total=sk.pontos[pid]||0, gasto=gastosPool(pc,pid), resta=total+conqPontos(pc,pid)-gasto;
+        const total=sk.pontos[pid]||0, gasto=gastosPool(pc,pid), resta=total+extraPontos(pc,pid)+conqPontos(pc,pid)-gasto;
         return `<div class="poolcard">
           <span class="pooldot" style="background:${esc(pl.cor||'#888')}"></span>
           <span class="poolnome">${esc(pl.nome)}</span>
-          <input type="number" min="0" data-skpontos="${esc(pid)}" value="${total}" title="Total de pontos nesta pool">
+          <input type="number" min="0" data-skpontos="${esc(pid)}" value="${total}" title="Pontos de nível nesta pool (o extraordinário e o de conquista vêm à parte)">
           <span class="poolconta ${resta<0?'warn':''}">${gasto} gastos · <strong>${resta}</strong> ${resta===1?'livre':'livres'}</span>
-          ${conqSelo(pc,pid)}
+          ${extraSelo(pc,pid)}${conqSelo(pc,pid)}
           ${typeof FichasQuadros!=='undefined' && FichasQuadros.tetoHtml ? FichasQuadros.tetoHtml(pl, total, pc, false) : ''}
         </div>`}).join('')}
     </div>` : '';

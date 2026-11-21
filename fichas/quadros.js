@@ -160,7 +160,59 @@ const FichasQuadros = (() => {
     const n = com[0].c.nivel;
     const regra = com.map(({ pl, c }) => `${esc(pl.nome || pl.id)}: ${Math.max(0, Math.floor(+pl.padrao || 0))} no nível 1, +${c.porNivel} por nível`).join(' · ');
     const agora = com.map(({ pl, c }) => `${esc(pl.nome || pl.id)} <strong>${c.teto}</strong>`).join(', ');
-    return `<p class="hint ascregra" data-ascregra="1"><strong>Regra dos pontos.</strong> ${regra}. No nível ${n}, o teto é: ${agora}. Passar do teto só por feito extraordinário.</p>`;
+    return `<p class="hint ascregra" data-ascregra="1"><strong>Regra dos pontos.</strong> ${regra}. No nível ${n}, o teto é: ${agora}. O que o mestre dá por feitos fora do comum entra em Extraordinário, com o motivo.</p>`;
+  }
+  /* (lote 198) Cada tipo de ponto tem três partes, à vista e separadas:
+       · Nível: os pontos de nível (skills.pontos), que respeitam o teto — o mestre ou quem mexe na ficha muda aqui;
+       · Extraordinário: o que o mestre deu por feitos fora do comum, um por linha, com o motivo e a data (skills.extra);
+       · Conquista: o que veio das conquistas do jogador (a coluna conq, que o banco calcula).
+     O total é a soma das três; o que sobra para gastar é o total menos o que já foi gasto na árvore. O mestre também
+     abre o Quadro da mesa: todos os personagens, com as três partes de cada tipo. */
+  let extraAberto = null, quadroAberto = false;            // (o tipo com o formulário de extraordinário aberto: 'pcId|pid')
+  const podeExtra = () => !FichasMesa.ativo() || FichasMesa.mestre();
+  const RX = () => (window.TC && TC.rules && TC.rules.extrasDe ? TC.rules : null);
+  const extrasDe = pc => (RX() ? RX().extrasDe(skillsDe(pc)) : []);
+  const extraDe = (pc, pid) => extrasDe(pc).filter(x => x.pid === pid).reduce((a, x) => a + x.n, 0);
+  const sinal = n => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n);
+  const dataCurta = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleDateString('pt-BR') : ''; };
+  const partesDe = (pc, pl) => {
+    const sk = skillsDe(pc), nivel = Math.max(0, Math.round(+sk.pontos[pl.id] || 0)), extra = extraDe(pc, pl.id), conq = conqPontos(pc, pl.id);
+    const total = nivel + extra + conq, gasto = gastosPool(pc, pl.id);
+    return { nivel, extra, conq, total, gasto, livre: total - gasto };
+  };
+  function linhaAsc(pc, pl) {
+    const p = partesDe(pc, pl), id = esc(pl.id), nome = esc(pl.nome || pl.id), teto = tetoHtml(pl, p.nivel, pc, true), chave = pc.id + '|' + pl.id;
+    const lista = extrasDe(pc).filter(x => x.pid === pl.id);
+    const form = extraAberto === chave ? `<div class="ascxform" data-ascxform="${id}">
+        <label>Quantos <input type="number" step="1" value="1" data-ascxn="${id}" aria-label="Quantos pontos extraordinários de ${nome}"></label>
+        <label class="ascxmot">Por quê <input type="text" maxlength="200" placeholder="ex.: salvou a vila do dragão" data-ascxm="${id}" aria-label="Motivo do extraordinário de ${nome}"></label>
+        <button type="button" class="mini primary" data-ascxok="${id}">Dar</button><button type="button" class="mini" data-ascxnao="${id}">Cancelar</button>
+        <span class="hint">Número negativo tira (para corrigir).</span></div>` : '';
+    const hist = lista.length ? `<ul class="ascxlista">${lista.map(x => `<li><b>${sinal(x.n)}</b> ${esc(x.motivo || 'sem motivo')}${x.em ? ` <span class="hint">· ${esc(dataCurta(x.em))}</span>` : ''}${podeExtra() ? ` <button type="button" class="mini ascxtira" data-ascxtira="${esc(x.id)}" title="Tirar esta linha" aria-label="Tirar o extraordinário: ${esc(x.motivo || 'sem motivo')}">×</button>` : ''}</li>`).join('')}</ul>` : '';
+    return `<div class="ascrow" data-asc="${id}">
+          <span class="ascnome"><span class="pooldot" style="background:${esc(pl.cor || '#888')}"></span>${nome}</span>
+          <span class="ascpartes">
+            <span class="ascparte"><span class="asclab">Nível</span><span class="ascpts">
+              <button type="button" class="mini" data-ascstep="${id}|-1" title="Tirar 1 ponto de nível" aria-label="Tirar 1 ponto de nível de ${nome}" ${p.nivel <= 0 ? 'disabled' : ''}>−</button>
+              <input type="number" min="0" step="1" data-asctot="${id}" value="${p.nivel}" aria-label="Pontos de nível de ${nome}">
+              <button type="button" class="mini" data-ascstep="${id}|1" title="Dar 1 ponto de nível" aria-label="Dar 1 ponto de nível de ${nome}">+</button></span></span>
+            <span class="ascparte" data-ascx="${id}"><span class="asclab">Extraordinário</span><b class="ascval">${sinal(p.extra) || '0'}</b>${podeExtra() ? `<button type="button" class="mini" data-ascxabre="${id}" title="Dar pontos extraordinários, com o motivo">+ Dar</button>` : ''}</span>
+            <span class="ascparte" data-ascc="${id}" title="${esc(conqOrigemTxt(pc, pl.id) || 'Nenhuma conquista deu pontos deste tipo.')}"><span class="asclab">Conquista</span><b class="ascval">${sinal(p.conq) || '0'}</b></span>
+          </span>
+          <span class="ascconta ${p.livre < 0 ? 'warn' : ''}" data-asctotal="${id}">Total <strong>${p.total}</strong> · ${plural(p.gasto, 'gasto', 'gastos')} · <strong>${p.livre}</strong> ${p.livre === 1 ? 'livre' : 'livres'}${p.livre < 0 ? ' — gastou mais do que tem' : ''}</span>${teto}
+          ${form}${hist}
+        </div>`;
+  }
+  const conqOrigemTxt = (pc, pid) => ((pc && pc._conq && Array.isArray(pc._conq.origem)) ? pc._conq.origem : []).filter(o => o && o.pool === pid).map(o => `${o.nome} ${o.n > 0 ? '+' : ''}${o.n}`).join(', ');
+  function quadroDaMesa(tipos) {
+    const pcs = (S.personagens || []).filter(p => !FichasMesa.arquivada(p) && !(p.petDe));
+    if (!pcs.length) return '';
+    return `<div class="ascquadro" id="ascQuadro"><table><thead><tr><th>Personagem</th>${tipos.map(pl => `<th>${esc(pl.nome || pl.id)}<small>nível · extra · conquista = total (livres)</small></th>`).join('')}</tr></thead><tbody>
+      ${pcs.map(pc => `<tr><th scope="row">${esc(pc.nome || 'Sem nome')}<small>nível ${Math.max(1, +pc.level || 1)}</small></th>${tipos.map(pl => {
+        const p = partesDe(pc, pl), c = window.TC && TC.rules && TC.rules.contaDoTeto ? TC.rules.contaDoTeto(pl, p.nivel, pc.level) : null;
+        return `<td class="${c && c.estado === 'acima' ? 'acima' : ''}" title="${c ? esc(c.dica) : ''}">${p.nivel} · ${sinal(p.extra) || '0'} · ${sinal(p.conq) || '0'} = <b>${p.total}</b> <span class="hint">(${p.livre})</span></td>`;
+      }).join('')}</tr>`).join('')}
+    </tbody></table></div>`;
   }
   function painelAscensao(pc) {
     const tipos = tiposDePonto();
@@ -168,25 +220,13 @@ const FichasQuadros = (() => {
       return FichasMesa.ativo() ? `<div class="panel" id="painelAsc" style="margin-bottom:18px"><div class="bd menteoff">
         <span class="hint"><strong>Ascensão.</strong> Esta mesa ainda não tem tipos de ponto: eles nascem com as árvores de habilidade, na aba Árvore.</span></div></div>` : '';
     }
-    const sk = skillsDe(pc);
+    const mesaMestre = FichasMesa.ativo() && FichasMesa.mestre();
     return `<div class="panel" id="painelAsc" style="margin-bottom:18px">
       <div class="hd"><span class="eyebrow">Ascensão</span>
-        <span class="hint" style="margin-left:8px">os pontos que o personagem tem para gastar nas árvores de habilidade</span>
-        <span style="margin-left:auto"><button type="button" class="mini" data-ascir="1" title="Abrir Skills, onde os pontos são gastos">Gastar em Skills</button></span>
+        <span class="hint" style="margin-left:8px">os pontos para gastar nas árvores: os de nível, os extraordinários e os de conquista</span>
+        <span style="margin-left:auto;display:flex;gap:6px">${mesaMestre ? `<button type="button" class="mini${quadroAberto ? ' on' : ''}" data-ascquadro="1" aria-pressed="${quadroAberto}" title="Todos os personagens da mesa, com as três partes dos pontos">Quadro da mesa</button>` : ''}<button type="button" class="mini" data-ascir="1" title="Abrir Skills, onde os pontos são gastos">Gastar em Skills</button></span>
       </div>
-      <div class="bd">${regraDosPontos(tipos, pc)}<div class="asclist">${tipos.map(pl => {
-        const total = Math.max(0, Math.round(+sk.pontos[pl.id] || 0)), gasto = gastosPool(pc, pl.id), livre = total + conqPontos(pc, pl.id) - gasto, id = esc(pl.id), nome = esc(pl.nome || pl.id);
-        const teto = tetoHtml(pl, total, pc, true);
-        return `<div class="ascrow" data-asc="${id}">
-          <span class="ascnome"><span class="pooldot" style="background:${esc(pl.cor || '#888')}"></span>${nome}</span>
-          <span class="ascpts">
-            <button type="button" class="mini" data-ascstep="${id}|-1" title="Tirar 1 ponto" aria-label="Tirar 1 ponto de ${nome}" ${total <= 0 ? 'disabled' : ''}>−</button>
-            <input type="number" min="0" step="1" data-asctot="${id}" value="${total}" aria-label="Pontos de ${nome} que o personagem tem">
-            <button type="button" class="mini" data-ascstep="${id}|1" title="Dar 1 ponto" aria-label="Dar 1 ponto de ${nome}">+</button>
-          </span>
-          <span class="ascconta ${livre < 0 ? 'warn' : ''}">${plural(gasto, 'gasto', 'gastos')} · <strong>${livre}</strong> ${livre === 1 ? 'livre' : 'livres'}${livre < 0 ? ' — gastou mais do que tem' : ''}</span>${teto}${conqSelo(pc, pl.id)}
-        </div>`;
-      }).join('')}</div></div>
+      <div class="bd">${regraDosPontos(tipos, pc)}${mesaMestre && quadroAberto ? quadroDaMesa(tipos) : ''}<div class="asclist">${tipos.map(pl => linhaAsc(pc, pl)).join('')}</div></div>
     </div>`;
   }
   function ligarAscensao(host, pc) {
@@ -200,12 +240,34 @@ const FichasQuadros = (() => {
       const antes = Math.max(0, Math.round(+sk().pontos[pid] || 0)), depois = Math.max(0, Math.round(+n || 0));
       if (antes === depois) { guardar(focar, campo); return; }
       sk().pontos[pid] = depois; guardar(focar, campo);
-      const pl = tiposDePonto().find(x => x.id === pid), livre = depois - gastosPool(pc, pid);
-      aviso((pl ? pl.nome : 'Pontos') + ' de ' + pc.nome + ': ' + antes + ' → ' + depois + ' (' + (livre === 1 ? '1 livre' : livre + ' livres') + ')', 'Desfazer', () => { sk().pontos[pid] = antes; guardar(); });
+      const pl = tiposDePonto().find(x => x.id === pid), livre = restantesPool(pc, pid);
+      aviso((pl ? pl.nome : 'Pontos') + ' de ' + pc.nome + ' (nível): ' + antes + ' → ' + depois + ' (' + (livre === 1 ? '1 livre' : livre + ' livres') + ')', 'Desfazer', () => { sk().pontos[pid] = antes; guardar(); });
     };
     U().qa(painel, '[data-ascstep]').forEach(b => b.onclick = () => { const [pid, d] = b.dataset.ascstep.split('|'); por(pid, (+sk().pontos[pid] || 0) + (+d), '[data-ascstep="' + b.dataset.ascstep + '"]'); });
     U().qa(painel, '[data-asctot]').forEach(i => i.onchange = () => por(i.dataset.asctot, i.value, '[data-asctot="' + i.dataset.asctot + '"]', true));
     U().qa(painel, '[data-ascir]').forEach(b => b.onclick = () => { irParaAba('skills', '#painelSkills'); U().refocar('#ficha [data-abaficha="skills"]'); });
+    // (lote 198) o extraordinário: só o mestre (ou a ficha fora da mesa)
+    U().qa(painel, '[data-ascquadro]').forEach(b => b.onclick = () => { quadroAberto = !quadroAberto; pintar(); U().refocar('#painelAsc [data-ascquadro]'); });
+    if (!podeExtra()) return;
+    U().qa(painel, '[data-ascxabre]').forEach(b => b.onclick = () => { const k = pc.id + '|' + b.dataset.ascxabre; extraAberto = extraAberto === k ? null : k; pintar(); U().refocar('#painelAsc ' + (extraAberto ? '[data-ascxm="' + b.dataset.ascxabre + '"]' : '[data-ascxabre="' + b.dataset.ascxabre + '"]')); });
+    U().qa(painel, '[data-ascxnao]').forEach(b => b.onclick = () => { const pid = b.dataset.ascxnao; extraAberto = null; pintar(); U().refocar('#painelAsc [data-ascxabre="' + pid + '"]'); });
+    const dar = pid => {
+      const n = Math.trunc(+U().q(painel, '[data-ascxn="' + pid + '"]').value || 0), motivo = String(U().q(painel, '[data-ascxm="' + pid + '"]').value || '').trim().slice(0, 200);
+      if (!n) { aviso('Diga quantos pontos (pode ser negativo, para corrigir).'); return; }
+      if (!motivo) { aviso('Escreva o motivo: é o que o Bruno vai conferir depois.'); U().refocar('#painelAsc [data-ascxm="' + pid + '"]'); return; }
+      const linha = { id: 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), pid, n, motivo, em: new Date().toISOString() };
+      const s = sk(); s.extra = (RX() ? RX().extrasDe(s) : []).concat(linha);
+      extraAberto = null; guardar('[data-ascxabre="' + pid + '"]');
+      const pl = tiposDePonto().find(x => x.id === pid);
+      aviso((pl ? pl.nome : 'Pontos') + ' de ' + pc.nome + ': ' + sinal(n) + ' extraordinário (' + motivo + ')', 'Desfazer', () => { const t = sk(); t.extra = (RX() ? RX().extrasDe(t) : []).filter(x => x.id !== linha.id); guardar(); });
+    };
+    U().qa(painel, '[data-ascxok]').forEach(b => b.onclick = () => dar(b.dataset.ascxok));
+    U().qa(painel, '[data-ascxm]').forEach(i => i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); dar(i.dataset.ascxm); } else if (e.key === 'Escape') { extraAberto = null; pintar(); } });
+    U().qa(painel, '[data-ascxtira]').forEach(b => b.onclick = () => {
+      const s = sk(), antes = RX() ? RX().extrasDe(s) : [], sai = antes.find(x => x.id === b.dataset.ascxtira); if (!sai) return;
+      s.extra = antes.filter(x => x.id !== sai.id); guardar();
+      aviso('Tirado: ' + sinal(sai.n) + ' extraordinário (' + (sai.motivo || 'sem motivo') + ')', 'Desfazer', () => { const t = sk(); t.extra = (RX() ? RX().extrasDe(t) : []).concat(sai); guardar(); });
+    });
   }
 
   /* ======================= Corpo e ferimentos ======================= */

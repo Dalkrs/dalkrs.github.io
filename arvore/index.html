@@ -345,6 +345,7 @@ body.ordenando, body.ordenando *{cursor:grabbing!important;user-select:none;-web
 .bolsa-teto.no{color:var(--ok);border-color:var(--ok);background:transparent}
 .bolsa-teto.acima{color:var(--extra);border-color:var(--extra);background:var(--extra-fundo)}
 /* (lote 184) os pontos que vieram de conquistas */
+.bolsa-extra{font-size:11.5px;color:var(--ouro,#c9a24a);margin-top:3px}   /* (lote 198) */
 .bolsa-conq{margin-top:6px;font-size:11.5px;line-height:1.3;color:var(--ok)}
 .natcont{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
 .natcont span{display:inline-flex;align-items:center;gap:6px}
@@ -635,12 +636,12 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <input type="file" id="arquivo" accept=".json,application/json" hidden>
 
 <script src="../tc/ponte.js?v=24"></script>
-<script src="../tc/rules.js?v=37"></script>
+<script src="../tc/rules.js?v=38"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/simbolos.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=4"></script>
-<script src="mesa.js?v=14"></script>
+<script src="mesa.js?v=15"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -1652,7 +1653,9 @@ function gastos(p, poolId){
 const conqDoPc = p => (typeof ArvoreMesa !== 'undefined' && ArvoreMesa.ativo() && ArvoreMesa.conqDe ? ArvoreMesa.conqDe(p.id) : {}) || {};
 const conqPts = (p, poolId) => { const q = conqDoPc(p), v = q.pontos ? +q.pontos[poolId] : 0; return Number.isFinite(v) ? Math.trunc(v) : 0; };
 const conqOrigem = (p, poolId) => (Array.isArray(conqDoPc(p).origem) ? conqDoPc(p).origem : []).filter(o => o && o.pool === poolId).map(o => o.nome + ' ' + (o.n > 0 ? '+' : '') + o.n).join(', ');
-const restantes = (p, poolId) => (p.pontos[poolId] || 0) + conqPts(p, poolId) - gastos(p, poolId);
+/* (lote 198) os extraordinários (skills.extra, que só o mestre escreve, nas Fichas): à parte do total de nível e do teto */
+const extraPts = (p, poolId) => (window.TC && TC.rules && TC.rules.extraDoTipo) ? TC.rules.extraDoTipo({ extra: p.extra }, poolId) : 0;
+const restantes = (p, poolId) => (p.pontos[poolId] || 0) + extraPts(p, poolId) + conqPts(p, poolId) - gastos(p, poolId);
 function podePagarGrau(p, n, k){ const c = custoGrau(n, k); return bib().pools.every(pl=>(c[pl.id]||0) <= restantes(p, pl.id)); }
 /* (lote 192) "de Classe" — o tipo "Pontos" (o nome genérico) fica sem o "de" */
 const dePool = pl => /^pontos?$/i.test(String(pl.nome).trim()) ? '' : ' de ' + pl.nome;
@@ -3580,9 +3583,9 @@ function painelJogador(){
     const g = gastos(p, pl.id), r = restantes(p, pl.id), tot = p.pontos[pl.id] || 0, teto = tetoNaBolsa(pl, tot, nivel);
     return `<div class="bolsa"><div class="bolsa-topo"><i style="background:${esc(pl.cor)}"></i><span>${esc(pl.nome)}</span>
         <em style="color:${r<0 ? 'var(--perigo)' : 'var(--texto)'}">${r}</em></div>
-      <div class="bolsa-barra"><span style="width:${(tot + conqPts(p, pl.id))>0 ? Math.min(100, Math.max(0, g/(tot + conqPts(p, pl.id))*100)) : 0}%;background:${esc(pl.cor)}"></span></div>
+      <div class="bolsa-barra"><span style="width:${(tot + extraPts(p, pl.id) + conqPts(p, pl.id))>0 ? Math.min(100, Math.max(0, g/(tot + extraPts(p, pl.id) + conqPts(p, pl.id))*100)) : 0}%;background:${esc(pl.cor)}"></span></div>
       <div class="bolsa-pe"><label for="tot_${esc(pl.id)}">Gastos ${g} de</label>
-        <input class="campo pool-total" id="tot_${esc(pl.id)}" data-pool="${esc(pl.id)}" type="number" min="0" step="1" value="${tot}"></div>${teto}${conqPts(p, pl.id) ? `<div class="bolsa-conq" title="Vieram de conquistas. Não contam no teto do nível.">${conqPts(p, pl.id) > 0 ? '+' : ''}${conqPts(p, pl.id)} de conquista${Math.abs(conqPts(p, pl.id)) === 1 ? '' : 's'}: ${esc(conqOrigem(p, pl.id))}</div>` : ''}</div>`;
+        <input class="campo pool-total" id="tot_${esc(pl.id)}" data-pool="${esc(pl.id)}" type="number" min="0" step="1" value="${tot}" title="Pontos de nível (o extraordinário e o de conquista vêm à parte)"></div>${teto}${extraPts(p, pl.id) ? `<div class="bolsa-extra" title="Dados pelo mestre por feitos fora do comum (nas Fichas, Ascensão). Não contam no teto do nível.">${extraPts(p, pl.id) > 0 ? '+' : ''}${extraPts(p, pl.id)} extraordinário${Math.abs(extraPts(p, pl.id)) === 1 ? '' : 's'}</div>` : ''}${conqPts(p, pl.id) ? `<div class="bolsa-conq" title="Vieram de conquistas. Não contam no teto do nível.">${conqPts(p, pl.id) > 0 ? '+' : ''}${conqPts(p, pl.id)} de conquista${Math.abs(conqPts(p, pl.id)) === 1 ? '' : 's'}: ${esc(conqOrigem(p, pl.id))}</div>` : ''}</div>`;
   }).join('');
 
   let detalhe = '';
