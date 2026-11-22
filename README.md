@@ -353,6 +353,13 @@ a todos. Agora, em quem transmite (`vivoOuCheio`, em `07d-nuvem.js`):
   (`Unauthorized`: o mestre auxiliar que passou a jogar, no `cenam`) é fechado e não insiste (`r.negado`); tenta de novo só
   quando alguém assina o tópico ou a mesa religa os canais. Teste: `cenas-lote200.rede`.
 
+### A presença leve (lote 202)
+
+- O aviso "estou aqui" (a cada 60 s) vai por `presenca_marcar(p_mesa)` (migração 0050) para `public.presencas`, que fica fora
+  do tempo real, e a resposta traz a hora de todos os membros (`vistos`), guardada na casca (`vistos`, por mesa) e somada à
+  do `mesa_membros.visto_em` (`maisRecente`). O `mesa_membros.visto_em` só é regravado com mais de 10 min (a administração
+  lê dali). Num banco sem a função, volta ao `marcar_presenca` (`semPresencaLeve`). Teste: a parte nova do `banco.test.js`.
+
 ### A conferência leve (lote 201)
 
 - Quem não é o mestre confere de tempos em tempos (45 s com o tempo real, 15 s sem) se as linhas que tem ainda são visíveis

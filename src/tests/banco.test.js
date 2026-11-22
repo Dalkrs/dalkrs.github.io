@@ -137,6 +137,23 @@ const { ok, end } = checker();
   ok(!pres.erro && !!pres.hora && pres.vistos === 2, 'presença: o jogador marca que está online e vê quem mais está — ' + JSON.stringify(pres));
   const presFora = await F.evaluate(async mesa => { const r = await sb.rpc('marcar_presenca', { p_mesa: mesa }); return r.error ? r.error.message : 'ACEITO'; }, mesa);
   ok(/não participa/.test(presFora), 'presença: quem está fora não marca — ' + presFora);
+  // (lote 202) a presença leve: vai para presencas (fora do tempo real) e devolve a hora de todos; o mesa_membros.visto_em
+  // só é regravado com mais de 10 min
+  const leve = await J.evaluate(async mesa => {
+    const antes = (await sb.from('mesa_membros').select('usuario_id,visto_em').eq('mesa_id', mesa)).data;
+    const r1 = await sb.rpc('presenca_marcar', { p_mesa: mesa });
+    const r2 = await sb.rpc('presenca_marcar', { p_mesa: mesa });
+    const depois = (await sb.from('mesa_membros').select('usuario_id,visto_em').eq('mesa_id', mesa)).data;
+    const direto = await sb.from('presencas').select('*').eq('mesa_id', mesa);
+    const eu = (await sb.auth.getUser()).data.user.id;
+    return { erro: (r1.error || r2.error || {}).message || null, n: Object.keys((r2.data || {}).vistos || {}).length,
+      meu: !!(r2.data && r2.data.vistos && r2.data.vistos[eu]), igual: JSON.stringify(antes) === JSON.stringify(depois), direto: direto.error ? 'recusado' : direto.data.length };
+  }, mesa);
+  ok(!leve.erro && leve.n === 2 && leve.meu, 'presença leve: a resposta traz a hora dos dois membros — ' + JSON.stringify(leve));
+  ok(leve.igual, 'presença leve: o mesa_membros não é regravado (ainda não passaram 10 min), então não há mensagem de tempo real');
+  ok(leve.direto === 'recusado' || leve.direto === 0, 'presença leve: ninguém lê a tabela presencas direto — ' + leve.direto);
+  const leveFora = await F.evaluate(async mesa => { const r = await sb.rpc('presenca_marcar', { p_mesa: mesa }); return r.error ? r.error.message : 'ACEITO'; }, mesa);
+  ok(/não participa/.test(leveFora), 'presença leve: quem está fora não marca — ' + leveFora);
 
   // --- código novo, sair, remover ---
   const novo = await M.evaluate(async mesa => { const r = await sb.rpc('novo_codigo', { p_mesa: mesa }); return r.error ? r.error.message : r.data; }, mesa);

@@ -134,7 +134,7 @@ const ocultavel = () => { let o = false; Object.defineProperty(document, 'hidden
   if (!LOCAL) {
     A.reqs.length = 0; await P.mouse.move(10, 10);
     await P.waitForTimeout(70000);
-    const pres = A.reqs.filter(r => r.u.includes('marcar_presenca')).length, mem = A.reqs.filter(r => r.m === 'GET' && r.u.includes('/mesa_membros')).length, tudo = A.reqs.filter(r => r.m !== 'OPTIONS').length;
+    const pres = A.reqs.filter(r => r.u.includes('marcar_presenca') || r.u.includes('presenca_marcar')).length, mem = A.reqs.filter(r => r.m === 'GET' && r.u.includes('/mesa_membros')).length, tudo = A.reqs.filter(r => r.m !== 'OPTIONS').length;
     ok(pres <= 2, 'presença em 70 s: ' + pres);
     ok(mem <= 2, 'releituras de membros em 70 s: ' + mem);
     console.log('   requisições em 70 s à vista: ' + tudo);

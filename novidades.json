@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.22-04",
+      "data": "2026-11-22",
+      "titulo": "Mesa mais leve: a presença",
+      "itens": [
+        { "tipo": "melhorou", "texto": "O aviso de quem está online não vira mais uma mensagem ao vivo para todos a cada minuto. Cada um fica sabendo quem está na mesa pela resposta do próprio aviso. A mesa gasta bem menos mensagens." }
+      ]
+    },
+    {
       "versao": "2026.11.22-03",
       "data": "2026-11-22",
       "titulo": "Mesa mais leve: a conferência das fichas escondidas",

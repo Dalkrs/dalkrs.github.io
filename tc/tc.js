@@ -206,11 +206,15 @@
      jogador, como 'jogador'. É pelo `papel` que os sistemas decidem o que mostrar; pelo `cargo`, quem administra.
      `abas`: as abas que o auxiliar mestra (o mestre mestra todas; o jogador, nenhuma). */
   const ABAS_DE_MESTRE = ['cenas', 'mundo', 'acampamento', 'fichas', 'arvore', 'rolador', 'jornal', 'meditacao', 'cla', 'bestiario', 'itens', 'escudo'];      // (lote 29: o Bestiário e os Itens; lote 31: o Escudo)
+  /* (lote 202) A presença de cada um, como veio na resposta do último aviso (presenca_marcar). O mesa_membros.visto_em
+     só é regravado a cada 10 min (para não virar mensagem de tempo real a cada minuto): vale o mais recente dos dois. */
+  const vistos = new Map();
+  const maisRecente = (a, b) => (!a ? b || null : !b ? a : Date.parse(a) >= Date.parse(b) ? a : b);
   function membroDe(x) {
     const cargo = x.papel === 'mestre' || x.papel === 'auxiliar' ? x.papel : 'jogador', jogando = cargo === 'auxiliar' && !!x.jogando;
     // semVivo: o mestre fechou a mesa ao vivo para esta pessoa (ela só vê as próprias linhas, até ele liberar)
     // acamp: o mestre deixou esta pessoa mexer no acampamento (quase tudo; o descanso, as regras e os momentos, não)
-    return { usuario_id: x.usuario_id, nome: x.nome, cor: x.cor, visto_em: x.visto_em, cargo, jogando, semVivo: cargo !== 'mestre' && !!x.sem_vivo, acamp: cargo !== 'mestre' && !!x.acamp,
+    return { usuario_id: x.usuario_id, nome: x.nome, cor: x.cor, visto_em: maisRecente(x.visto_em, vistos.get(x.usuario_id)), cargo, jogando, semVivo: cargo !== 'mestre' && !!x.sem_vivo, acamp: cargo !== 'mestre' && !!x.acamp,
       abas: cargo === 'auxiliar' && Array.isArray(x.abas) ? ABAS_DE_MESTRE.filter(a => x.abas.includes(a)) : [],
       papel: cargo === 'mestre' || (cargo === 'auxiliar' && !jogando) ? 'mestre' : 'jogador' };
   }
@@ -591,13 +595,32 @@
   /* (lote 86) A presença vai a cada 60 s e não relê mais os membros e o nome da mesa a cada vez: com o tempo real, as
      mudanças já chegam pelo canal. Fica uma releitura a cada 3 presenças, porque a saída de alguém (um DELETE com filtro)
      não chega por ele. `tudo`: ao abrir a mesa e ao voltar para a aba, relê de qualquer jeito. */
-  let contaPresenca = 0, pausado = false;
+  let contaPresenca = 0, pausado = false, semPresencaLeve = false;
   async function presenca(tudo) {
     if (!mesaId || document.hidden || pausado) return;
     if (mesas.atual && mesas.atual.auditoria) { recarregarMembros(); conferirNome(); return; }     // (lote 27) quem audita não aparece online
     try {
-      const { data } = await cliente().rpc('marcar_presenca', { p_mesa: mesaId });
-      if (data) folga = Date.parse(data) - Date.now();
+      /* (lote 202) presenca_marcar: o aviso vai para uma tabela fora do tempo real e a resposta traz a presença de todos.
+         Num banco sem ela (migração 0050), o aviso de antes. */
+      let feito = false;
+      if (!semPresencaLeve) {
+        const { data, error } = await cliente().rpc('presenca_marcar', { p_mesa: mesaId });
+        if (!error && data && data.agora) {
+          feito = true;
+          folga = Date.parse(data.agora) - Date.now();
+          const a = mesas.atual;
+          for (const [u, v] of Object.entries(data.vistos || {})) {
+            if (!v) continue;
+            vistos.set(u, maisRecente(vistos.get(u), v));
+            const m = a && a.id === mesaId && Array.isArray(a.membros) ? a.membros.find(x => x.usuario_id === u) : null;
+            if (m && m.visto_em !== maisRecente(m.visto_em, v)) { m.visto_em = maisRecente(m.visto_em, v); mesas.emit('presenca', m); }
+          }
+        } else if (error && /presenca_marcar|PGRST202|404/i.test(String(error.message) + String(error.code))) semPresencaLeve = true;
+      }
+      if (!feito) {
+        const { data } = await cliente().rpc('marcar_presenca', { p_mesa: mesaId });
+        if (data) folga = Date.parse(data) - Date.now();
+      }
     } catch (e) { /* idem */ }
     if (tudo === true || !aoVivo.conectado || ++contaPresenca % 3 === 0) { recarregarMembros(); conferirNome(); }
   }
@@ -713,6 +736,7 @@
   aoVivo.iniciar = async id => {
     aoVivo.parar();
     mesaId = id; maxRev = 0; anterior = null; aoVivo.itens = []; leitura++;
+    vistos.clear();                                      // (lote 202) a presença é de cada mesa
     // (o "em segredo" lembrado só vale para quem está mestrando: o auxiliar que passou a jogar como jogador não rola em segredo)
     aoVivo.segredo = guarda.ler('tinycats:segredo:' + id) === '1' && !!mesas.atual && mesas.atual.papel === 'mestre';
     await carregarItens(id);
