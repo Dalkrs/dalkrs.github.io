@@ -633,13 +633,22 @@
   /* (lote 92) O movimento leve das Cenas: canais privados do Realtime por onde vai só o que mudou (ver
      supabase/migrations/0038). Quem assina é a moldura das Cenas; a conexão, e o fechar na pausa, são daqui. */
   const leves = new Map();                               // tópico → { fn, canal, ok, aviso }
+  /* (lote 200) Canal recusado pelo banco (quem pediu não tem mais o direito: o mestre auxiliar que passou a jogar, por
+     exemplo): o canal é fechado e não insiste — antes ele tentava de novo a cada 12 s, a sessão inteira. Volta a tentar
+     só quando alguém assina o tópico de novo ou a mesa religa os canais (ao sair da pausa). */
+  const RECUSA = /unauthori[sz]ed|permiss/i;
   function ligarLeve(topico, r) {
-    if (r.canal || !mesaId || pausado || !topico.includes(':' + mesaId)) return;
+    if (r.canal || r.negado || !mesaId || pausado || !topico.includes(':' + mesaId)) return;
     try {
       const ch = cliente().channel(topico, { config: { private: true, broadcast: { self: false, ack: false } } });
       ch.on('broadcast', { event: 'm' }, e => { if (r.canal === ch) for (const f of [...r.fns]) { try { f(e.payload); } catch (x) { /* a moldura pode ter saído */ } } });
       r.canal = ch;
-      ch.subscribe(st => { if (r.canal !== ch) return; const ok = st === 'SUBSCRIBED'; if (ok !== r.ok) { r.ok = ok; for (const a of [...r.avisos]) { try { a(ok); } catch (x) { /* idem */ } } } });
+      ch.subscribe((st, err) => {
+        if (r.canal !== ch) return;
+        if (st === 'CHANNEL_ERROR' && err && RECUSA.test(String(err.message || err))) { r.negado = true; fecharLeve(r); }
+        const ok = st === 'SUBSCRIBED';
+        if (ok !== r.ok || r.negado) { r.ok = ok; for (const a of [...r.avisos]) { try { a(ok); } catch (x) { /* idem */ } } }
+      });
     } catch (e) { r.canal = null; r.ok = false; }
   }
   function fecharLeve(r) {
@@ -653,6 +662,7 @@
       let r = leves.get(topico);
       if (!r) { r = { fns: new Set(), avisos: new Set(), canal: null, ok: false }; leves.set(topico, r); }
       r.fns.add(fn); if (aviso) r.avisos.add(aviso);
+      r.negado = false;                                  // (lote 200) quem assina agora pode ter o direito que o outro não tinha
       ligarLeve(topico, r);
       if (r.ok && aviso) { try { aviso(true); } catch (x) { /* idem */ } }
       return () => {
@@ -698,7 +708,7 @@
       // (lote 86: o aviso de um canal que já saiu, ao pausar, não diz nada sobre o de agora)
       este.subscribe(st => { if (canal !== este) return; const c = st === 'SUBSCRIBED'; if (c !== aoVivo.conectado) { aoVivo.conectado = c; aoVivo.emit('estado', c); if (c) { buscarNovos(); dadosBuscar(); voltouARede(); } } });
     } catch (e) { canal = null; }
-    for (const [t, r] of leves) ligarLeve(t, r);
+    for (const [t, r] of leves) { r.negado = false; ligarLeve(t, r); }
   }
   aoVivo.iniciar = async id => {
     aoVivo.parar();

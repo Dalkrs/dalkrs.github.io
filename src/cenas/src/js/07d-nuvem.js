@@ -394,6 +394,14 @@ const Nuvem = (() => {
     if (!L || assinados.has(topico)) return;
     assinados.set(topico, L.assinar(topico, deOutroAparelho, aviso));
   }
+  /* (lote 200) A conexão é da casca e sobrevive a esta página. Ao sair (recarregar, trocar de mesa, o mestre auxiliar
+     passar a jogar), o que esta página assinou é solto — senão a casca guardava o canal do mestre para quem já não
+     mestra, e o banco o recusava a cada poucos segundos. */
+  function soltarAssinados() {
+    for (const sair of assinados.values()) { try { if (typeof sair === 'function') sair(); } catch (e) { /* a casca pode já ter ido */ } }
+    assinados.clear();
+  }
+  window.addEventListener('pagehide', soltarAssinados);
   function soltarVivo(id) { const st = vivos.get(id); if (st) { clearTimeout(st.t); vivos.delete(id); } }
   function gravarCheia(id, st) {
     clearTimeout(st.t); st.t = 0;
@@ -954,11 +962,11 @@ const Nuvem = (() => {
     a = par;
     // a mesma cena: o que o mestre já aplicou sai da fila; o que falta continua valendo por cima do que chegou
     const vp = vPrincipal(a.v), ack = ackDe(vp), agora = relogio();
-    let mudou = false;
+    let mudou = false, voltou = false;
     seq = Math.max(seq, ack);
     if (ack < ultimaConta) {                               // a conta voltou atrás: o que tinha sido confirmado depois dela volta para a fila
       const voltam = confirmados.filter(b => b.n > ack);
-      if (voltam.length) { caixa = voltam.map(b => ({ n: b.n, ops: b.ops, c: b.c })).concat(caixa).sort((x, y) => x.n - y.n); mudou = true; }
+      if (voltam.length) { caixa = voltam.map(b => ({ n: b.n, ops: b.ops, c: b.c })).concat(caixa).sort((x, y) => x.n - y.n); mudou = true; voltou = true; }
       confirmados = confirmados.filter(b => b.n <= ack);
     }
     ultimaConta = ack;
@@ -982,7 +990,7 @@ const Nuvem = (() => {
       if (p.cena && p.cena !== S.current) continue;          // (lote 78) o sinal de outro andar
       if (p.by !== eu && isFinite(p.x) && isFinite(p.y)) { App.pings.push({ x: p.x, y: p.y, t0: performance.now(), c: p.c || '#e6ab4f', n: p.n || '' }); if (App.pings.length > 8) App.pings.shift(); Render.request(); }
     }
-    if (mudou) gravarPedido();
+    if (voltou) agendarPedido(); else if (mudou) limparDepois();      // (o que voltou para a fila tem de chegar ao mestre logo)
     situacao();
   }
   /* O que o jogador fez vai para a fila; o mestre aplica e confirma na projeção seguinte. Barras, condições e auras
@@ -997,12 +1005,28 @@ const Nuvem = (() => {
     caixa.push({ n: seq, ops: clone(lote), c: S.current });   // (lote 78) c: o andar em que o pedido foi feito
     if (caixa.length > 80) caixa.shift();
     if (!desde) desde = Date.now();
-    if (!tPedido) tPedido = setTimeout(gravarPedido, 120);
+    agendarPedido();
     situacao();
+  }
+  /* (lote 200) O documento de pedidos vai inteiro a cada gravação (a fila e os confirmados há pouco), e cada gravação chega
+     ao mestre pelo banco. Andar com o token passo a passo gravava 100 vezes por minuto. Agora: o primeiro pedido sai logo
+     (120 ms); os que vêm em seguida esperam até PEDIDO_MIN depois da gravação anterior e vão juntos, num lote só. */
+  const PEDIDO_MIN = 1000, LIMPAR_MS = 8000;
+  let ultimoPedido = 0, tLimpar = 0;
+  function agendarPedido() {
+    if (tPedido) return;
+    tPedido = setTimeout(gravarPedido, Math.max(120, ultimoPedido + PEDIDO_MIN - Date.now()));
+  }
+  /* (lote 200) O mestre confirmou: o que ele aplicou sai do documento, mas sem pressa — a limpeza vai junto com o próximo
+     pedido ou, se não vier nenhum, alguns segundos depois. Antes, cada confirmação era mais uma gravação na hora. */
+  function limparDepois() {
+    if (!tLimpar && !tPedido) tLimpar = setTimeout(() => { tLimpar = 0; if (!tPedido) gravarPedido(); }, LIMPAR_MS);
   }
   function gravarPedido() {
     clearTimeout(tPedido); tPedido = 0;
+    clearTimeout(tLimpar); tLimpar = 0;
     if (modo !== 'jogador') return;
+    ultimoPedido = Date.now();
     /* Além do que ainda falta o mestre aplicar, ficam no documento os pedidos confirmados há pouco: se a cena passar a
        ser transmitida por um aparelho do mestre que ainda não os tinha, ele os encontra aqui, na ordem — e aplica os
        que passam da conta dele. (O documento é do próprio jogador: o banco só aceita que ele crie o que é dele.) */
@@ -1063,7 +1087,7 @@ const Nuvem = (() => {
   }
   function descarregar() {
     if (modo === 'mestre') { if (tGravar) gravar(); vivosAgora(); }
-    else if (tPedido) gravarPedido();
+    else if (tPedido || tLimpar) gravarPedido();
     gravarExplorado();
   }
   // O que já foi explorado: neste aparelho, por mesa e por cena.

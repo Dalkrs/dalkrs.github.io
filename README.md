@@ -346,6 +346,12 @@ a todos. Agora, em quem transmite (`vivoOuCheio`, em `07d-nuvem.js`):
   gravar por cima. Por ser o valor novo de cada campo, uma mensagem perdida não estraga as seguintes.
 - **Os andares**: a conta dos pedidos e os sinais ficam só na projeção principal (cada pedido regravava todos os andares).
 - Testes: `cenas-leve.rede` (no banco local, a queda para o documento; com `TC_REAL=1`, o canal, inclusive o token escondido, quem é de fora e a mensagem forjada).
+- **(lote 200) Menos gravações.** Os pedidos do jogador vão juntos: o primeiro sai em 120 ms, os seguintes esperam até 1 s depois
+  do envio anterior (`PEDIDO_MIN`) e vão num lote só. A confirmação do mestre não regrava o documento de pedidos na hora: a
+  limpeza vai com o próximo pedido ou 8 s depois (`LIMPAR_MS`); só o que voltou para a fila (a conta andou para trás) vai logo.
+  A página das Cenas, ao sair (`pagehide`), solta os canais que assinou na casca. Na casca, um canal recusado pelo banco
+  (`Unauthorized`: o mestre auxiliar que passou a jogar, no `cenam`) é fechado e não insiste (`r.negado`); tenta de novo só
+  quando alguém assina o tópico ou a mesa religa os canais. Teste: `cenas-lote200.rede`.
 
 ### A cópia local dos dados da mesa (lote 91)
 

@@ -529,3 +529,11 @@ de cena mais fácil, num notebook de ~1366×768. O painel da direita e a faixa d
   térreo, anexos, guardas) e os andares de sempre; os anexos se arrumam no quintal (os de uso perto da casa, os quietos
   longe), com caminhos por baixo de tudo, pela faixa de cima da casa. A hora é a escolhida (`horaLivre` no criar).
 - Teste: `test/lote150.js` (com a casca de mentira respondendo).
+
+## Lote 200 — menos gravações na mesa
+
+- Os pedidos do jogador (7d) vão juntos: o primeiro em 120 ms, os seguintes no máximo um por segundo (`PEDIDO_MIN`). A
+  confirmação do mestre não regrava o documento de pedidos na hora (`limparDepois`, 8 s); o que voltou para a fila vai logo.
+- Ao sair (`pagehide`), a página solta os canais que assinou na casca (`soltarAssinados`).
+- Na casca (tc.js), o canal recusado pelo banco fecha e não insiste a cada 12 s.
+- Teste: `src/tests/cenas-lote200.rede.test.js`.
