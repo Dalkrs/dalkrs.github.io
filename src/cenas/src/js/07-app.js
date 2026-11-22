@@ -75,9 +75,16 @@ function veilState(sc) {
 }
 
 /* O que quem está olhando enxerga de cada coisa. */
+/* (lote 199) A ilusão (t.il: o token que a vê): o mestre vê; o jogador só se for o dono de quem está iludido. */
+function ilVe(t) {
+  if (!t || !t.il || isGM()) return true;
+  const alvo = Store.get('tokens', t.il);
+  return !!alvo && ownsTok(alvo);
+}
 function tokShown(t, sc) {
   if (isGM()) return true;
   if (t.hidden) return false;
+  if (t.il) return ilVe(t);                                 // (lote 199) a ilusão: só quem está iludido (e sem névoa)
   if (ownsTok(t)) return true;
   const [cx, cy] = tokC(t, sc);
   return Vision.canSee(cx, cy);

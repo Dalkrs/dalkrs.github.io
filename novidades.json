@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.22-01",
+      "data": "2026-11-22",
+      "titulo": "Feiticeiro em três ramos: Invocação, Maldição e Sangue que Assina",
+      "itens": [
+        { "tipo": "novo", "texto": "Feiticeiro: a árvore foi refeita com 100 habilidades em três ramos. Invocação (crias que estouram, agarram, guardam ou cercam), Maldição (fraquezas, Loucura e ilusões) e Sangue que Assina (o seu sangue vira selos e contratos), mais 3 pontes entre eles." },
+        { "tipo": "novo", "texto": "Cenas: condições novas do Feiticeiro — Loucura (de 1 a 3; no 3 vem o Surto, que rola 1d6 na tabela), Iludido, Fundido, Assinado (de 1 a 3), Mau Agouro e Elo Escrito." },
+        { "tipo": "novo", "texto": "Cenas: as ilusões do Feiticeiro (Miragem, Dois de Você, Amigo Imaginário) põem um token que só o iludido vê. O mestre vê esse token meio apagado." },
+        { "tipo": "melhorou", "texto": "Painel de barras: o Pacto enche também quando alguém surta, quando uma invocação estoura ou cai e a cada Sangue pago." }
+      ]
+    },
+    {
       "versao": "2026.11.21-02",
       "data": "2026-11-21",
       "titulo": "Pontos de nível, extraordinários e de conquista, separados",

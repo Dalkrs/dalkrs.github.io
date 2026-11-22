@@ -383,5 +383,1076 @@
   }
  ],
  "n_ninja_f1": null,
- "n_ninja_f2": null
+ "n_ninja_f2": null,
+ "_leia_199": "(lote 199) O Feiticeiro em três ramos: todas as ativas dele estão aqui (null = não mexe no mapa). Chaves novas: il (a ilusão: { nome, cor, t, n, copia } — token que só o alvo vê), tira (condições que saem do alvo) e nq (quanto um contador sobe: { loucura: 2 }).",
+ "n_feiticeiro_f1": [
+  {
+   "d": 2,
+   "q": "i",
+   "m": "alvo",
+   "al": 8
+  },
+  {
+   "d": 3,
+   "q": "i",
+   "m": "alvo",
+   "al": 8
+  }
+ ],
+ "n_feiticeiro_f4": null,
+ "n_feiticeiro_acab": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 3,
+   "inv": {
+    "nome": "Cria do Pacto",
+    "cor": "#8E3B3B",
+    "tam": 0.5,
+    "vida": 6,
+    "t": 3,
+    "n": 1
+   }
+  },
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 3,
+   "inv": {
+    "nome": "Cria do Pacto",
+    "cor": "#8E3B3B",
+    "tam": 0.5,
+    "vida": 10,
+    "t": 3,
+    "n": 1
+   }
+  }
+ ],
+ "n_feiticeiro_ab5": [
+  {
+   "d": 2,
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 1.5,
+   "al": 30
+  },
+  {
+   "d": 3,
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 1.5,
+   "al": 30
+  }
+ ],
+ "n_feiticeiro_ab6": null,
+ "n_feiticeiro_ab1": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 3,
+   "inv": {
+    "nome": "Larva de Brasa",
+    "cor": "#D0602A",
+    "tam": 0.5,
+    "vida": 3,
+    "t": 3,
+    "n": 2
+   }
+  },
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 3,
+   "inv": {
+    "nome": "Larva de Brasa",
+    "cor": "#D0602A",
+    "tam": 0.5,
+    "vida": 3,
+    "t": 3,
+    "n": 3
+   }
+  }
+ ],
+ "n_feiticeiro_ab8": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 3,
+   "inv": {
+    "nome": "Barril Vivo",
+    "cor": "#7A3A1E",
+    "tam": 1,
+    "vida": 10,
+    "t": 2,
+    "n": 1
+   }
+  }
+ ],
+ "n_feiticeiro_ab9": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 0.5,
+   "al": 6,
+   "inv": {
+    "nome": "Larva de Brasa",
+    "cor": "#D0602A",
+    "tam": 0.5,
+    "vida": 3,
+    "t": 1,
+    "n": 2
+   }
+  }
+ ],
+ "n_feiticeiro_ab2": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 0.5,
+   "al": 4,
+   "inv": {
+    "nome": "Sombra que Abraça",
+    "cor": "#3A2F4A",
+    "tam": 1,
+    "vida": 6,
+    "t": 3,
+    "n": 1
+   },
+   "c": [
+    [
+     "fundido",
+     0,
+     "vigor",
+     "a"
+    ]
+   ]
+  },
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 0.5,
+   "al": 4,
+   "inv": {
+    "nome": "Sombra que Abraça",
+    "cor": "#3A2F4A",
+    "tam": 1,
+    "vida": 6,
+    "t": 3,
+    "n": 1
+   },
+   "c": [
+    [
+     "fundido",
+     0,
+     "vigor",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_ab10": null,
+ "n_feiticeiro_ab12": [
+  {
+   "d": 3,
+   "q": "i",
+   "m": "alvo",
+   "al": 30,
+   "tira": [
+    "fundido"
+   ]
+  }
+ ],
+ "n_feiticeiro_ab3": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 3,
+   "inv": {
+    "nome": "Casca",
+    "cor": "#3A3A40",
+    "tam": 1,
+    "vida": 12,
+    "t": 3,
+    "n": 1
+   }
+  },
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 3,
+   "inv": {
+    "nome": "Casca",
+    "cor": "#3A3A40",
+    "tam": 1,
+    "vida": 18,
+    "t": 3,
+    "n": 1
+   }
+  }
+ ],
+ "n_feiticeiro_ab13": [
+  {
+   "q": "t",
+   "m": "alvo",
+   "al": 4,
+   "mv": {
+    "k": "troca",
+    "d": 0
+   }
+  }
+ ],
+ "n_feiticeiro_ab14": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 4,
+   "inv": {
+    "nome": "Casca",
+    "cor": "#3A3A40",
+    "tam": 1,
+    "vida": 8,
+    "t": 2,
+    "n": 3
+   }
+  }
+ ],
+ "n_feiticeiro_ab4": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 4,
+   "inv": {
+    "nome": "Moscas do Pacto",
+    "cor": "#4A5A2A",
+    "tam": 1,
+    "vida": 5,
+    "t": 3,
+    "n": 1
+   }
+  },
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 4,
+   "inv": {
+    "nome": "Moscas do Pacto",
+    "cor": "#4A5A2A",
+    "tam": 1,
+    "vida": 5,
+    "t": 3,
+    "n": 1
+   }
+  }
+ ],
+ "n_feiticeiro_ab17": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 1,
+   "al": 30,
+   "c": [
+    [
+     "abalado",
+     1,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_ab18": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 6,
+   "inv": {
+    "nome": "Mil Bocas",
+    "cor": "#3F4A22",
+    "tam": 2,
+    "vida": 10,
+    "t": 2,
+    "n": 1
+   }
+  }
+ ],
+ "n_feiticeiro_ab_c1": null,
+ "n_feiticeiro_ab_ya": null,
+ "n_feiticeiro_ab_yb": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 4,
+   "inv": {
+    "nome": "Cria do Pacto",
+    "cor": "#8E3B3B",
+    "tam": 1,
+    "vida": 6,
+    "t": 2,
+    "n": 4
+   }
+  }
+ ],
+ "n_feiticeiro_ab_k1": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "f": "circ",
+   "r": 2,
+   "al": 6,
+   "z": {
+    "fx": "portal",
+    "t": 3
+   }
+  }
+ ],
+ "n_feiticeiro_ab_k2": null,
+ "n_feiticeiro_bcab": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "maldicao",
+     2,
+     "candes",
+     "a"
+    ]
+   ]
+  },
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "maldicao",
+     2,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_l1": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "loucura",
+     0,
+     "candes",
+     "a"
+    ]
+   ]
+  },
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "loucura",
+     0,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_i1": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "iludido",
+     1,
+     "candes",
+     "a"
+    ]
+   ],
+   "il": {
+    "nome": "Miragem",
+    "cor": "#B07FD8",
+    "t": 1
+   }
+  },
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "iludido",
+     2,
+     "candes",
+     "a"
+    ]
+   ],
+   "il": {
+    "nome": "Miragem",
+    "cor": "#B07FD8",
+    "t": 2
+   }
+  }
+ ],
+ "n_feiticeiro_b_d1": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "silencio",
+     1,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_d2": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "fraco",
+     2,
+     "candes",
+     "a"
+    ]
+   ]
+  },
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "fraco",
+     3,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_i2": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "iludido",
+     1,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_i5": null,
+ "n_feiticeiro_b_i6": null,
+ "n_feiticeiro_b_d3": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "lento",
+     2,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_d4": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 30,
+   "c": [
+    [
+     "maldicao",
+     1,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_m1": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "agouro",
+     1,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_m2": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "preso",
+     1,
+     "candes",
+     "a"
+    ],
+    [
+     "iludido",
+     1,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_m3": null,
+ "n_feiticeiro_b_l3": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "loucura",
+     0,
+     "candes",
+     "a"
+    ]
+   ],
+   "nq": {
+    "loucura": 2
+   }
+  }
+ ],
+ "n_feiticeiro_b_l6": [
+  {
+   "d": 1,
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "tira": [
+    "loucura"
+   ]
+  }
+ ],
+ "n_feiticeiro_b_i3": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "iludido",
+     1,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_i4": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 3,
+   "al": 6,
+   "mx": 2,
+   "c": [
+    [
+     "iludido",
+     2,
+     "candes",
+     "a"
+    ]
+   ],
+   "il": {
+    "copia": true,
+    "t": 2,
+    "n": 2
+   }
+  }
+ ],
+ "n_feiticeiro_b_d6": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "ofuscado",
+     2,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_ya": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 3,
+   "al": 6,
+   "c": [
+    [
+     "medo",
+     2,
+     "candes",
+     "a"
+    ],
+    [
+     "loucura",
+     0,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_yb": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 3,
+   "al": 6,
+   "mx": 3,
+   "c": [
+    [
+     "maldicao",
+     2,
+     "candes",
+     "a"
+    ],
+    [
+     "lento",
+     2,
+     "candes",
+     "a"
+    ],
+    [
+     "fraco",
+     2,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_b_k1": [
+  {
+   "q": "i",
+   "m": "volta",
+   "f": "circ",
+   "r": 30,
+   "al": 0,
+   "c": [
+    [
+     "loucura",
+     0,
+     "candes",
+     "a"
+    ]
+   ],
+   "nq": {
+    "loucura": 2
+   }
+  }
+ ],
+ "n_feiticeiro_b_k2": null,
+ "n_feiticeiro_ccab": [
+  {
+   "d": 1,
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "assinado",
+     0,
+     null,
+     "a"
+    ]
+   ]
+  },
+  {
+   "d": 2,
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "assinado",
+     0,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c1": [
+  {
+   "d": 1,
+   "q": "i",
+   "m": "alvo",
+   "al": 8,
+   "tira": [
+    "assinado"
+   ]
+  },
+  {
+   "d": 1,
+   "q": "i",
+   "m": "alvo",
+   "al": 8,
+   "tira": [
+    "assinado"
+   ],
+   "c": [
+    [
+     "exposto",
+     1,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c2": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 0.5,
+   "al": 6,
+   "z": {
+    "fx": "luaSangue",
+    "t": 3
+   }
+  },
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 1,
+   "al": 6,
+   "z": {
+    "fx": "luaSangue",
+    "t": 3
+   }
+  }
+ ],
+ "n_feiticeiro_c3": [
+  {
+   "q": "t",
+   "m": "si",
+   "c": [
+    [
+     "escudo",
+     2,
+     null,
+     "s"
+    ]
+   ]
+  },
+  {
+   "q": "t",
+   "m": "si",
+   "c": [
+    [
+     "escudo",
+     2,
+     null,
+     "s"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c4": null,
+ "n_feiticeiro_c5": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "clausula",
+     2,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c20": [
+  {
+   "d": 2,
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 1,
+   "al": 30
+  }
+ ],
+ "n_feiticeiro_c16": null,
+ "n_feiticeiro_c8": [
+  {
+   "cu": 1,
+   "q": "a",
+   "m": "alvo",
+   "al": 1,
+   "tira": [
+    "sangue",
+    "hemorragia"
+   ]
+  }
+ ],
+ "n_feiticeiro_c_m1": [
+  {
+   "q": "a",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "elo",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c_m2": null,
+ "n_feiticeiro_c9": [
+  {
+   "d": 1,
+   "q": "i",
+   "m": "volta",
+   "f": "circ",
+   "r": 30,
+   "al": 0,
+   "tira": [
+    "assinado"
+   ]
+  }
+ ],
+ "n_feiticeiro_c10": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "mandado",
+     1,
+     "candes",
+     "a"
+    ]
+   ],
+   "tira": [
+    "assinado"
+   ]
+  }
+ ],
+ "n_feiticeiro_c11": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 1,
+   "al": 6,
+   "z": {
+    "fx": "luaSangue",
+    "t": 2
+   },
+   "c": [
+    [
+     "preso",
+     1,
+     "vigor",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c19": [
+  {
+   "q": "a",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "inspirado",
+     1,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c13": null,
+ "n_feiticeiro_c14": [
+  {
+   "q": "a",
+   "m": "volta",
+   "f": "circ",
+   "r": 2,
+   "al": 0,
+   "z": {
+    "fx": "luaSangue",
+    "t": 2
+   },
+   "c": [
+    [
+     "regen",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c_ya": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "f": "circ",
+   "r": 4,
+   "al": 30,
+   "mx": 3,
+   "c": [
+    [
+     "clausula",
+     3,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c_yb": [
+  {
+   "q": "t",
+   "m": "si",
+   "c": [
+    [
+     "escudo",
+     3,
+     null,
+     "s"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c_k1": [
+  {
+   "d": 4,
+   "q": "i",
+   "m": "alvo",
+   "al": 30,
+   "tira": [
+    "assinado"
+   ],
+   "c": [
+    [
+     "marcado",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_feiticeiro_c_k2": null,
+ "n_feiticeiro_p1": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "iludido",
+     3,
+     "candes",
+     "a"
+    ],
+    [
+     "loucura",
+     0,
+     "candes",
+     "a"
+    ]
+   ],
+   "il": {
+    "nome": "Amigo Imaginário",
+    "cor": "#6E2A6E",
+    "t": 3
+   }
+  }
+ ],
+ "n_feiticeiro_p2": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 3,
+   "inv": {
+    "nome": "Cria de Sangue",
+    "cor": "#9B1B30",
+    "tam": 1,
+    "vida": 10,
+    "t": 3,
+    "n": 1
+   }
+  }
+ ],
+ "n_feiticeiro_p3": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "maldicao",
+     2,
+     null,
+     "a"
+    ],
+    [
+     "loucura",
+     0,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ]
 }

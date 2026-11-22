@@ -22,7 +22,7 @@ const SHOTS = process.env.FOTOS;
 
   // ---------- a lista ----------
   const L = await ev(() => { const { CONDS, ICONS } = __tc; const r = CONDS.filter(c => c.g === 'racas'); return { n: r.length, total: CONDS.length, nomes: r.map(c => c.n), sem: r.filter(c => !ICONS[c.i] || !c.r).map(c => c.id), ids: new Set(CONDS.map(c => c.id)).size }; });
-  ok(L.n === 57 && L.total === 169 && L.ids === 169, 'as 57 condições (lote 185: o Exposto foi para Combate) das raças no grupo novo (as 53 e, no lote 34, as 5 do Vampiro, do Licantropo e do Antro Roedor; 153 ao todo com as das classes e o Imbuído de Mana do lote 28, sem repetir): ' + L.n + '/' + L.total);
+  ok(L.n === 57 && L.total === 176 && L.ids === 176, 'as 57 condições (lote 185: o Exposto foi para Combate) das raças no grupo novo (as 53 e, no lote 34, as 5 do Vampiro, do Licantropo e do Antro Roedor; 153 ao todo com as das classes e o Imbuído de Mana do lote 28, sem repetir): ' + L.n + '/' + L.total);
   const ord = L.nomes.slice().sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
   ok(JSON.stringify(ord) === JSON.stringify(L.nomes), 'em ordem alfabética: ' + L.nomes.slice(0, 6).join(', ') + '…');
   ok(L.sem.length === 0, 'cada uma com o ícone próprio e a raça: ' + JSON.stringify(L.sem));

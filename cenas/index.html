@@ -1530,8 +1530,8 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <script src="../cla/nucleo.js?v=11"></script>
 <script src="../tc/simbolos.js?v=1"></script>
 <script src="../tc/caudas.js?v=4"></script>
-<script src="../tc/barras-painel.js?v=18"></script>
-<script src="../tc/habs-acoes.js?v=3"></script>
+<script src="../tc/barras-painel.js?v=19"></script>
+<script src="../tc/habs-acoes.js?v=4"></script>
 <script src="../tc/formas.js?v=2"></script>
 <script src="../tc/npc.js?v=1"></script>
 <script src="../tc/misterio.js?v=1"></script>
@@ -1930,6 +1930,14 @@ const ICONS = {
   c_alvoDuelo: 'M4 4l10.500 10.500M20 4L9.500 14.500M6.500 17.500L4 20M17.500 17.500L20 20M7.500 14.500l2 2M16.500 14.500l-2 2',
   c_armaduraRachada: 'M8 3.500l4 1.800 4-1.800 4 3.500-2.500 4V20.500h-11V11L4 7zM13 6.500l-2 4 3 2-2 4.500',
   c_assombrado: 'M7 21V11a5 5 0 0 1 10 0v10l-2.500-2-2.500 2-2.500-2zM10 11h.01M14 11h.01',
+  // (lote 199) o Feiticeiro em três ramos: a Loucura e o Surto, a ilusão, a sombra fundida, a assinatura de sangue
+  c_loucura: 'M9 21v-3a6 6 0 1 1 7-5.900V15h2l-2 3v3M11 9a2 2 0 1 1 2 2',
+  c_surto: 'M7 21v-3a7 7 0 1 1 10-6l2 3h-2v3M12 5l-2 5h3l-2 5',
+  c_iludido: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9l1 3-1 3-1-3zM19 2l.600 1.400L21 4l-1.400.600L19 6l-.600-1.400L17 4l1.400-.600z',
+  c_fundido: 'M8 4.500a2.500 2.500 0 1 0 0 5 2.500 2.500 0 0 0 0-5M16 4.500a2.500 2.500 0 1 0 0 5 2.500 2.500 0 0 0 0-5M4 21v-4a4 4 0 0 1 8 0v4M12 21v-4a4 4 0 0 1 8 0v4M9 14c2 2 4 2 6 0',
+  c_assinado: 'M19 3l2 2L10 16l-3 1 1-3zM5 13c-1.500 2-2 3-2 4a2 2 0 0 0 4 0c0-1-.500-2-2-4z',
+  c_agouro: 'M3 14c3-1 5-4 9-4 3 0 5 2 6 4l3 1-3 1c-1 2-3 3-6 3H8l-3 2 1-3c-2-1-3-2-3-4zM15 13h.01',
+  c_elo: 'M10 14a4 4 0 0 1 0-5.660l2-2a4 4 0 0 1 5.660 5.660l-1 1M14 10a4 4 0 0 1 0 5.660l-2 2a4 4 0 0 1-5.660-5.660l1-1',
   c_clausula: 'M12 12m-8.500 0a8.500 8.500 0 1 0 17 0a8.500 8.500 0 1 0-17 0M6 6l12 12',
   c_cobranca: 'M12.500 7.500a3 3 0 1 0 6 0 3 3 0 1 0-6 0M3 14h3.500l4 3h6a1.800 1.800 0 0 0 0-3.600H13M3 12v9',
   c_dancando: 'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
@@ -2358,6 +2366,8 @@ const CONDS = [
      Agulhas no Corpo, até 3, que sugere o Corpo Travado; e as que fecham um ponto por 1 turno.)
   /* (lote 20) As condições das classes: um grupo só, em ordem alfabética (r: a classe; dur: as rodadas de começo). Os
      três Feridos (ferido) são as tags de ferimento do Bruno: o HP negativo sugere a de cada terço do limite. */
+  /* (lote 199) o Feiticeiro: a Loucura (até 3) sugere o Surto, que rola 1d6 na tabela (tab) ao entrar; Iludido marca quem vê
+     uma ilusão (o token que só ele enxerga: t.il); Fundido, a sombra que abraça; Assinado (até 3), o nome escrito em sangue. */
   { id: 'agulhaCura', n: 'Agulha na Cura', c: '#8c9bb0', i: 'c_agulhaCura', g: 'classes', r: 'Ninja' },
   { id: 'agulhaPerna', n: 'Agulha na Perna', c: '#8c9bb0', i: 'c_agulhaPerna', g: 'classes', r: 'Ninja' },
   { id: 'agulhaBraco', n: 'Agulha no Braço', c: '#8c9bb0', i: 'c_agulhaBraco', g: 'classes', r: 'Ninja' },
@@ -2366,6 +2376,7 @@ const CONDS = [
   { id: 'agulhas', n: 'Agulhas no Corpo', c: '#a7b3c4', i: 'c_agulhas', g: 'classes', r: 'Ninja', max: 3, ini: 1, lim: { em: 'max', sug: 'corpoTravado', d: 1, zera: true, txt: 'teste de Vigor: se falhar, fica com o Corpo Travado por 1 turno (não anda e perde a reação; chefe só perde a reação), e as agulhas zeram' } },
   { id: 'alvoDuelo', n: 'Alvo do Duelo', c: '#c0392b', i: 'c_alvoDuelo', g: 'classes', r: 'Bárbaro' },
   { id: 'armaduraRachada', n: 'Armadura Rachada', c: '#a5663a', i: 'c_armaduraRachada', g: 'classes', r: 'Bárbaro' },
+  { id: 'assinado', n: 'Assinado', c: '#9b1b30', i: 'c_assinado', g: 'classes', r: 'Feiticeiro', max: 3, ini: 1 },
   { id: 'assombrado', n: 'Assombrado', c: '#8f9ac4', i: 'c_assombrado', g: 'classes', r: 'Bruxo', dur: 2 },
   { id: 'clausula', n: 'Cláusula', c: '#7a2f9a', i: 'c_clausula', g: 'classes', r: 'Feiticeiro', dur: 2 },
   { id: 'cobranca', n: 'Cobrança', c: '#b08a2a', i: 'c_cobranca', g: 'classes', r: 'Feiticeiro' },
@@ -2375,13 +2386,18 @@ const CONDS = [
   { id: 'desguarnecido', n: 'Desguarnecido', c: '#e0603a', i: 'c_desguarnecido', g: 'classes', r: 'Aégis', dur: 1 },
   { id: 'devedor', n: 'Devedor', c: '#a04a2a', i: 'c_devedor', g: 'classes', r: 'Feiticeiro', dur: 1 },
   { id: 'eloLuz', n: 'Elo de Luz', c: '#d8b84a', i: 'c_eloLuz', g: 'classes', r: 'Sacerdote' },
+  { id: 'elo', n: 'Elo Escrito', c: '#b0303e', i: 'c_elo', g: 'classes', r: 'Feiticeiro', dur: 2 },
   { id: 'escudoPlantado', n: 'Escudo Plantado', c: '#7a8aa8', i: 'c_escudoPlantado', g: 'classes', r: 'Aégis' },
   { id: 'escudoRachado', n: 'Escudo Rachado', c: '#8d8f94', i: 'c_escudoRachado', g: 'classes', r: 'Espadachim' },
   { id: 'extremamenteFerido', n: 'Extremamente Ferido', c: '#c8542f', i: 'c_extremamenteFerido', g: 'classes', r: 'Ferimento', ferido: true },
   { id: 'fluxoSelado', n: 'Fluxo Selado', c: '#5f6f96', i: 'c_fluxoSelado', g: 'classes', r: 'Ninja', dur: 1 },
+  { id: 'fundido', n: 'Fundido', c: '#3a2f4a', i: 'c_fundido', g: 'classes', r: 'Feiticeiro' },
   { id: 'ginga', n: 'Ginga', c: '#2f9d93', i: 'c_ginga', g: 'classes', r: 'Bardo', dur: 1 },
   { id: 'guardaQuebrada', n: 'Guarda Quebrada', c: '#d98b2b', i: 'c_guardaQuebrada', g: 'classes', r: 'Espadachim', dur: 1 },
+  { id: 'iludido', n: 'Iludido', c: '#b07fd8', i: 'c_iludido', g: 'classes', r: 'Feiticeiro', dur: 1 },
   { id: 'levementeFerido', n: 'Levemente Ferido', c: '#d9a05a', i: 'c_levementeFerido', g: 'classes', r: 'Ferimento', ferido: true },
+  { id: 'loucura', n: 'Loucura', c: '#c4488c', i: 'c_loucura', g: 'classes', r: 'Feiticeiro', max: 3, ini: 1, lim: { em: 'max', sug: 'surto', d: 1, zera: true, txt: 'o Surto começa — o d6 da tabela sai no aviso, e por 1 turno ele faz o que saiu; a Loucura zera' } },
+  { id: 'agouro', n: 'Mau Agouro', c: '#6a5a7a', i: 'c_agouro', g: 'classes', r: 'Feiticeiro', dur: 1 },
   { id: 'mortalmenteFerido', n: 'Mortalmente Ferido', c: '#8f1d1d', i: 'c_mortalmenteFerido', g: 'classes', r: 'Ferimento', ferido: true },
   { id: 'pacto', n: 'Pacto', c: '#9a2a4a', i: 'c_pacto', g: 'classes', r: 'Feiticeiro' },
   { id: 'perjuro', n: 'Perjuro', c: '#6b4a7a', i: 'c_perjuro', g: 'classes', r: 'Aégis' },
@@ -2390,6 +2406,7 @@ const CONDS = [
   { id: 'seloLushmania', n: 'Selo de Lushmânia', c: '#e6c35a', i: 'c_seloLushmania', g: 'classes', r: 'Sacerdote', dur: 3 },
   { id: 'sobEgide', n: 'Sob a Égide', c: '#c9a227', i: 'c_sobEgide', g: 'classes', r: 'Aégis', dur: 1 },
   { id: 'sobExorcismo', n: 'Sob Exorcismo', c: '#e8b83a', i: 'c_sobExorcismo', g: 'classes', r: 'Sacerdote', dur: 2 },
+  { id: 'surto', n: 'Surto', c: '#d9342b', i: 'c_surto', g: 'classes', r: 'Feiticeiro', dur: 1, tab: ['Ri sem parar: só anda, não ataca nem usa habilidade', 'Ataca a criatura mais perto, amiga ou inimiga', 'Foge 4 cédulas para longe de quem causou o surto', 'Larga a arma (Desarmado) e fica olhando para ela', 'Grita com quem não está lá: fica Distraído e Exposto', 'Congela olhando o nada: perde o turno (chefe: só perde a reação)'] },
   { id: 'tutelado', n: 'Tutelado', c: '#5a8fd6', i: 'c_tutelado', g: 'classes', r: 'Aégis' },
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
@@ -2724,6 +2741,8 @@ function normalizeScene(sc) {
       const idv = v => (typeof v === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(v) ? v : null);
       t.inv = { d: clamp(Math.round(Number(t.inv.d)) || 1, 1, 20), at: idv(t.inv.at), de: idv(t.inv.de) };
     } else delete t.inv;
+    // (lote 199) a ilusão do Feiticeiro: o id do token que a vê. Ela só aparece para o mestre e para o dono desse token.
+    if (typeof t.il === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.il) && !t.char && !t.prop) { /* fica */ } else delete t.il;
     const sq = t.prop ? cleanSaque(t.saque) : null;
     if (sq) t.saque = sq; else delete t.saque;
     // (lote 53) a marca de pista de um caso do Escudo (e o corpo da cena do crime): { c: o caso, p: a pista }
@@ -11694,9 +11713,16 @@ function veilState(sc) {
 }
 
 /* O que quem está olhando enxerga de cada coisa. */
+/* (lote 199) A ilusão (t.il: o token que a vê): o mestre vê; o jogador só se for o dono de quem está iludido. */
+function ilVe(t) {
+  if (!t || !t.il || isGM()) return true;
+  const alvo = Store.get('tokens', t.il);
+  return !!alvo && ownsTok(alvo);
+}
 function tokShown(t, sc) {
   if (isGM()) return true;
   if (t.hidden) return false;
+  if (t.il) return ilVe(t);                                 // (lote 199) a ilusão: só quem está iludido (e sem névoa)
   if (ownsTok(t)) return true;
   const [cx, cy] = tokC(t, sc);
   return Vision.canSee(cx, cy);
@@ -18631,7 +18657,7 @@ const Render = (() => {
     const s = t.size * sc.cell, cx = t.x + s / 2, cy = t.y + s / 2, r = s / 2 - s * 0.05;
     const dead = t.conds.includes('morto');
     c.save();
-    if (t.hidden) c.globalAlpha = 0.5;
+    if (t.hidden || (t.il && isGM())) c.globalAlpha = 0.5;            // (lote 199) a ilusão, para o mestre: meio apagada
     // (lote 37) a aura da corrupção: só quem recebe a corrupção do personagem (o dono e quem mestra) a vê
     const corr = !dead && typeof Fichas !== 'undefined' && Fichas.corrDoTok ? Fichas.corrDoTok(t) : null;
     if (corr) auraDaCorrupcao(c, t, cx, cy, r, corr, px);
@@ -19003,8 +19029,8 @@ const Render = (() => {
     drawFumaca(c, sc, px, t);                              // (lote 48) a fumaça e as fagulhas, por cima dos objetos
     Vigia.desenharCena(c, sc);                             // (lote 151) o calor e os caminhos, por baixo dos cones (só o mestre, com a chave)
     Rondas.desenhar(c, sc, px);                            // (lote 121) as rotas e os cones dos guardas (o mestre; lote 132: e o cone revelado a um jogador)
-    for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) { Roupas.atras(c, tk, sc, px); drawTokenBody(c, tk, sc, px); Roupas.frente(c, tk, sc, px); }      // (lote 133) a roupa: a capa atrás, o resto por cima
-    for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenTop(c, tk, sc, px);
+    for (const tk of sc.tokens) if (!tk.prop && (gm || (!tk.hidden && ilVe(tk)))) { Roupas.atras(c, tk, sc, px); drawTokenBody(c, tk, sc, px); Roupas.frente(c, tk, sc, px); }      // (lote 133) a roupa: a capa atrás, o resto por cima
+    for (const tk of sc.tokens) if (!tk.prop && (gm || (!tk.hidden && ilVe(tk)))) drawTokenTop(c, tk, sc, px);
     Rondas.selos(c, sc, px);
     Roupas.selos(c, sc, px);                               // (lote 133) o "??" do disfarçado perto de alguém da mesma roupa (só o mestre)                               // (lote 121) o "?" e o "!" dos guardas e de quem é visto (lote 132: idem)
   }
@@ -22876,6 +22902,13 @@ const UI = (() => {
         if (c.lim.zera) { cs = conds.filter(x => x !== c.id); delete info[c.id]; }
         Store.upd('tokens', tk.id, { conds: cs, cinfo: info });
       });
+      // (lote 199) a condição com tabela (o Surto do Feiticeiro): rola 1d6 na hora e diz o que saiu
+      const tab = Array.isArray(s.tab) && s.tab.length ? s.tab : null, dado = tab ? 1 + Math.floor(Math.random() * tab.length) : 0;
+      if (tab) {
+        try { const T = window.TC && window.TC.ponte; if (T && T.estado && T.estado.mesa && typeof T.publicar === 'function') T.publicar('cena', { kind: 'uso', titulo: `${tokName(tk)} surta (d${tab.length}: ${dado})`, resumo: tab[dado - 1], total: dado, char: tk.char || null, oculto: !!(tk.hidden || tk.showName === false), dd: [] }); } catch (e) { /* sem a casca */ }
+        toast(`${tokName(tk)}: ${s.n} — d${tab.length} = ${dado}: ${tab[dado - 1]}.${c.lim.zera ? ` (${c.n} zerou)` : ''}`, { action: 'Desfazer', run: Tools.undo, long: true });
+        return;
+      }
       toast(`${tokName(tk)}: ${s.n}${c.lim.d > 0 ? ' por ' + c.lim.d + (c.lim.d === 1 ? ' rodada' : ' rodadas') : ''}${c.lim.zera ? ` (${c.n} zerou)` : ''}.`, { action: 'Desfazer', run: Tools.undo });
     } });
   }
@@ -56234,7 +56267,7 @@ const HabAcao = (() => {
     const area = sp.m === 'volta' || sp.f ? areaDe(sp, de, x, y, sc) : null;
     let alvos = [];
     if (sp.m === 'alvo' && alvo) alvos = [alvo];
-    else if (area && (sp.d || sp.cu || (sp.c || []).some(c => c[3] === 'a') || (sp.mv && sp.mv.k !== 'salta') || sp.lp)) alvos = dentro(area, sc, de, sp);
+    else if (area && (sp.d || sp.cu || (sp.c || []).some(c => c[3] === 'a') || (sp.mv && sp.mv.k !== 'salta') || sp.lp || sp.il || (sp.tira || []).length)) alvos = dentro(area, sc, de, sp);
     const plano = { de: de.id, hab: { id: h.id, nome: h.nome, grau: h.grau || 1, texto: String(h.desc || '').split('\n')[0] }, sp, x: Math.round(x), y: Math.round(y), area, alvos: alvos.map(t => t.id) };
     if (isGM()) return decidir(plano, null);
     // o jogador: o que é só dele vale agora; o resto vai ao mestre
@@ -56248,7 +56281,7 @@ const HabAcao = (() => {
   const soMeu = (pl, de) => !!(pl.sp.z || (pl.sp.inv && !pl.sp.inv.clone) || (pl.sp.c || []).some(c => c[3] === 's') || (pl.sp.mv && pl.sp.mv.k === 'salta'));
   const precisaMestre = pl => !!(pl.alvos.length || (pl.sp.inv && pl.sp.inv.clone));
   // precisa da janela: teste, dano ou cura em alguém, ou um pedido de jogador
-  const precisaJanela = pl => !!(pl.alvos.length && (pl.sp.d || pl.sp.cu || (pl.sp.c || []).some(c => c[2] && c[3] === 'a') || pl.sp.lp || escolhas(pl.sp).length));
+  const precisaJanela = pl => !!(pl.alvos.length && (pl.sp.d || pl.sp.cu || (pl.sp.c || []).some(c => c[2] && c[3] === 'a') || pl.sp.lp || pl.sp.il || (pl.sp.tira || []).length || escolhas(pl.sp).length));
   /* (lote 195) a escolha: as condições marcadas com 'e' (o 5º campo) são opções, e o alvo leva só sp.um delas (1, se não
      disser) — a agulha cravada "num ponto à escolha". A janela traz marcadas as primeiras; marcar outra desmarca a mais antiga. */
   const escolhas = sp => (sp && sp.c || []).filter(c => c[3] === 'a' && c[4] === 'e').map(c => c[0]);
@@ -56257,7 +56290,7 @@ const HabAcao = (() => {
 
   // o que vem marcado na janela
   function padrao(pl) {
-    const sp = pl.sp, sc = Store.scene(), o = { zona: !!sp.z, inv: !!sp.inv, mv: !!sp.mv, si: (sp.c || []).filter(c => c[3] === 's').map(c => c[0]), alvos: {} };
+    const sp = pl.sp, sc = Store.scene(), o = { zona: !!sp.z, inv: !!sp.inv, il: !!sp.il, mv: !!sp.mv, si: (sp.c || []).filter(c => c[3] === 's').map(c => c[0]), alvos: {} };
     for (const id of pl.alvos) {
       const t = sc.tokens.find(x => x.id === id);
       if (!t) continue;
@@ -56318,6 +56351,9 @@ const HabAcao = (() => {
     const extra = [];
     if (sp.z) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.zona, onchange: ev => { esc.zona = ev.target.checked; } }), h('span', { text: `Pôr a zona ${(FX.P[sp.z.fx] || {}).n || sp.z.fx} (${sp.z.t} turno${sp.z.t === 1 ? '' : 's'})` })));
     if (sp.inv) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.inv, onchange: ev => { esc.inv = ev.target.checked; } }), h('span', { text: sp.inv.clone ? `Pôr ${sp.inv.n} clone${sp.inv.n === 1 ? '' : 's'} de ${nomeDe(de)} (${sp.inv.t} turnos)` : `Pôr ${sp.inv.n} × ${sp.inv.nome} (${sp.inv.t} turnos)` })));
+    // (lote 199) a ilusão do Feiticeiro: um token ao lado de quem falhou, que só ele (o dono dele) e o mestre veem
+    if (sp.il) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.il, onchange: ev => { esc.il = ev.target.checked; } }), h('span', { text: `Pôr a ilusão: ${sp.il.copia ? (sp.il.n || 1) + ' cópia' + ((sp.il.n || 1) === 1 ? '' : 's') + ' de ' + nomeDe(de) : sp.il.nome} ao lado de quem falhou (só ele vê, ${sp.il.t || 1} turno${(sp.il.t || 1) === 1 ? '' : 's'})` })));
+    if ((sp.tira || []).length) extra.push(h('div', { class: 'ha-nota', text: `Sai dos alvos: ${sp.tira.map(condTxt).join(', ')}.` }));
     if (sp.mv) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.mv, onchange: ev => { esc.mv = ev.target.checked; } }), h('span', { text: { empurra: `Empurrar ${sp.mv.d} cédula${sp.mv.d === 1 ? '' : 's'} (quem falhar no teste)`, puxa: `Puxar ${sp.mv.d} cédula${sp.mv.d === 1 ? '' : 's'}`, salta: `${nomeDe(de)} vai até o lugar`, troca: 'Trocar de lugar' }[sp.mv.k] })));
     for (const cid of (sp.c || []).filter(c => c[3] === 's').map(c => c[0])) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.si.includes(cid), onchange: ev => { esc.si = ev.target.checked ? esc.si.concat(cid) : esc.si.filter(x => x !== cid); } }), h('span', { text: `${condTxt(cid)} em ${nomeDe(de)}` })));
     const fechar = () => { janelaAberta = false; const prox = fila.shift(); if (prox) setTimeout(() => abrirJanela(prox.pl, prox.quem), 60); };
@@ -56333,6 +56369,21 @@ const HabAcao = (() => {
       actions: [{ label: quem ? 'Recusar' : 'Cancelar', run: () => { fechar(); } }, { label: 'Aplicar', kind: 'primary', run: () => { aplicar(pl, esc); fechar(); } }],
       onCancel: fechar,
     });
+  }
+
+  /* (lote 199) A ilusão: n tokens colados em quem foi iludido, que somem com os turnos (inv) e que só ele vê (il: o id
+     dele). A cópia (Dois de Você) tem o nome, a cor e a imagem de quem usou; a criatura (Miragem), o nome da habilidade,
+     sem o nome à mostra. Fica do mestre (sem dono): o iludido não a mexe. */
+  function ilusaoEm(sc, de, alvo, il, vez) {
+    const n = clamp(il.n || 1, 1, 4), cell = sc.cell, tam = il.copia ? Math.max(0.5, Math.min(2, de.size || 1)) : (il.tam || 1), [ax, ay] = centro(alvo, sc);
+    const dist = meio(alvo, sc) + tam * cell / 2 + cell * 0.1;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * TAU - Math.PI / 4;
+      const [sx, sy] = snapPt(sc, ax + Math.cos(ang) * dist - tam * cell / 2, ay + Math.sin(ang) * dist - tam * cell / 2, false, 1);
+      const o = il.copia ? { name: tokName(de).slice(0, 40), color: de.color, img: de.img || null, shape: de.shape, showName: de.showName !== false } : { name: String(il.nome || 'Ilusão').slice(0, 40), color: il.cor || '#B07FD8', showName: false };
+      Store.add('tokens', newToken(sc, clamp(sx, 0, sc.cols * cell - tam * cell), clamp(sy, 0, sc.rows * cell - tam * cell), Object.assign(o, { size: tam, owner: null,
+        bars: barDefaults().map(b => Object.assign({}, b, { on: false })), barVis: 'none', vis: { on: false, range: 0, dark: 0 }, il: alvo.id, inv: { d: clamp(il.t || 1, 1, 20), at: vez ? vez.id : null, de: de.id } })));
+    }
   }
 
   /* ---------------- aplicar: um passo de desfazer ---------------- */
@@ -56403,9 +56454,13 @@ const HabAcao = (() => {
           const info = Object.assign({}, t2.cinfo); for (const k of Object.keys(info)) if (ruins.has(k)) delete info[k];
           Store.upd('tokens', id, { conds: t2.conds.filter(c => !ruins.has(c)), cinfo: info });
         }
+        // (lote 199) o que a habilidade tira do alvo (Cobrar: as Assinaturas; o Último Abraço: o Fundido), com ou sem teste
+        if ((sp.tira || []).length) { const t2 = Store.get('tokens', id), info = Object.assign({}, t2.cinfo); for (const k of sp.tira) delete info[k]; Store.upd('tokens', id, { conds: t2.conds.filter(c => !sp.tira.includes(c)), cinfo: info }); }
         const testa = (sp.c || []).some(c => c[2] && c[3] === 'a');
         if (testa && !e.falhou) continue;                   // passou no teste: nem a condição nem o empurrão
-        for (const cid of e.conds || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(t, cid, c ? c[1] : 1, cid === 'sangue' || (COND_BY_ID[cid] || {}).max ? 1 : 0); }
+        // (lote 199) nq: quanto o contador sobe (a Crise põe +2 de Loucura)
+        for (const cid of e.conds || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(t, cid, c ? c[1] : 1, cid === 'sangue' || (COND_BY_ID[cid] || {}).max ? Math.max(1, (sp.nq && sp.nq[cid]) || 1) : 0); }
+        if (esc.il && sp.il) ilusaoEm(sc, de, Store.get('tokens', id) || t, sp.il, vez);
         if (esc.mv && sp.mv && (sp.mv.k === 'empurra' || sp.mv.k === 'puxa')) empurrar(sc, de, Store.get('tokens', id), sp.mv.k === 'empurra' ? sp.mv.d : -sp.mv.d);
         if (esc.mv && sp.mv && sp.mv.k === 'troca') { const a = Store.get('tokens', de.id), b = Store.get('tokens', id); Store.upd('tokens', a.id, { x: b.x, y: b.y }); Store.upd('tokens', b.id, { x: a.x, y: a.y }); }
       }

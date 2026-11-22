@@ -409,7 +409,7 @@ const Render = (() => {
     const s = t.size * sc.cell, cx = t.x + s / 2, cy = t.y + s / 2, r = s / 2 - s * 0.05;
     const dead = t.conds.includes('morto');
     c.save();
-    if (t.hidden) c.globalAlpha = 0.5;
+    if (t.hidden || (t.il && isGM())) c.globalAlpha = 0.5;            // (lote 199) a ilusão, para o mestre: meio apagada
     // (lote 37) a aura da corrupção: só quem recebe a corrupção do personagem (o dono e quem mestra) a vê
     const corr = !dead && typeof Fichas !== 'undefined' && Fichas.corrDoTok ? Fichas.corrDoTok(t) : null;
     if (corr) auraDaCorrupcao(c, t, cx, cy, r, corr, px);
@@ -781,8 +781,8 @@ const Render = (() => {
     drawFumaca(c, sc, px, t);                              // (lote 48) a fumaça e as fagulhas, por cima dos objetos
     Vigia.desenharCena(c, sc);                             // (lote 151) o calor e os caminhos, por baixo dos cones (só o mestre, com a chave)
     Rondas.desenhar(c, sc, px);                            // (lote 121) as rotas e os cones dos guardas (o mestre; lote 132: e o cone revelado a um jogador)
-    for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) { Roupas.atras(c, tk, sc, px); drawTokenBody(c, tk, sc, px); Roupas.frente(c, tk, sc, px); }      // (lote 133) a roupa: a capa atrás, o resto por cima
-    for (const tk of sc.tokens) if (!tk.prop && (gm || !tk.hidden)) drawTokenTop(c, tk, sc, px);
+    for (const tk of sc.tokens) if (!tk.prop && (gm || (!tk.hidden && ilVe(tk)))) { Roupas.atras(c, tk, sc, px); drawTokenBody(c, tk, sc, px); Roupas.frente(c, tk, sc, px); }      // (lote 133) a roupa: a capa atrás, o resto por cima
+    for (const tk of sc.tokens) if (!tk.prop && (gm || (!tk.hidden && ilVe(tk)))) drawTokenTop(c, tk, sc, px);
     Rondas.selos(c, sc, px);
     Roupas.selos(c, sc, px);                               // (lote 133) o "??" do disfarçado perto de alguém da mesma roupa (só o mestre)                               // (lote 121) o "?" e o "!" dos guardas e de quem é visto (lote 132: idem)
   }

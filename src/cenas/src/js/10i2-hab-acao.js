@@ -169,7 +169,7 @@ const HabAcao = (() => {
     const area = sp.m === 'volta' || sp.f ? areaDe(sp, de, x, y, sc) : null;
     let alvos = [];
     if (sp.m === 'alvo' && alvo) alvos = [alvo];
-    else if (area && (sp.d || sp.cu || (sp.c || []).some(c => c[3] === 'a') || (sp.mv && sp.mv.k !== 'salta') || sp.lp)) alvos = dentro(area, sc, de, sp);
+    else if (area && (sp.d || sp.cu || (sp.c || []).some(c => c[3] === 'a') || (sp.mv && sp.mv.k !== 'salta') || sp.lp || sp.il || (sp.tira || []).length)) alvos = dentro(area, sc, de, sp);
     const plano = { de: de.id, hab: { id: h.id, nome: h.nome, grau: h.grau || 1, texto: String(h.desc || '').split('\n')[0] }, sp, x: Math.round(x), y: Math.round(y), area, alvos: alvos.map(t => t.id) };
     if (isGM()) return decidir(plano, null);
     // o jogador: o que é só dele vale agora; o resto vai ao mestre
@@ -183,7 +183,7 @@ const HabAcao = (() => {
   const soMeu = (pl, de) => !!(pl.sp.z || (pl.sp.inv && !pl.sp.inv.clone) || (pl.sp.c || []).some(c => c[3] === 's') || (pl.sp.mv && pl.sp.mv.k === 'salta'));
   const precisaMestre = pl => !!(pl.alvos.length || (pl.sp.inv && pl.sp.inv.clone));
   // precisa da janela: teste, dano ou cura em alguém, ou um pedido de jogador
-  const precisaJanela = pl => !!(pl.alvos.length && (pl.sp.d || pl.sp.cu || (pl.sp.c || []).some(c => c[2] && c[3] === 'a') || pl.sp.lp || escolhas(pl.sp).length));
+  const precisaJanela = pl => !!(pl.alvos.length && (pl.sp.d || pl.sp.cu || (pl.sp.c || []).some(c => c[2] && c[3] === 'a') || pl.sp.lp || pl.sp.il || (pl.sp.tira || []).length || escolhas(pl.sp).length));
   /* (lote 195) a escolha: as condições marcadas com 'e' (o 5º campo) são opções, e o alvo leva só sp.um delas (1, se não
      disser) — a agulha cravada "num ponto à escolha". A janela traz marcadas as primeiras; marcar outra desmarca a mais antiga. */
   const escolhas = sp => (sp && sp.c || []).filter(c => c[3] === 'a' && c[4] === 'e').map(c => c[0]);
@@ -192,7 +192,7 @@ const HabAcao = (() => {
 
   // o que vem marcado na janela
   function padrao(pl) {
-    const sp = pl.sp, sc = Store.scene(), o = { zona: !!sp.z, inv: !!sp.inv, mv: !!sp.mv, si: (sp.c || []).filter(c => c[3] === 's').map(c => c[0]), alvos: {} };
+    const sp = pl.sp, sc = Store.scene(), o = { zona: !!sp.z, inv: !!sp.inv, il: !!sp.il, mv: !!sp.mv, si: (sp.c || []).filter(c => c[3] === 's').map(c => c[0]), alvos: {} };
     for (const id of pl.alvos) {
       const t = sc.tokens.find(x => x.id === id);
       if (!t) continue;
@@ -253,6 +253,9 @@ const HabAcao = (() => {
     const extra = [];
     if (sp.z) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.zona, onchange: ev => { esc.zona = ev.target.checked; } }), h('span', { text: `Pôr a zona ${(FX.P[sp.z.fx] || {}).n || sp.z.fx} (${sp.z.t} turno${sp.z.t === 1 ? '' : 's'})` })));
     if (sp.inv) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.inv, onchange: ev => { esc.inv = ev.target.checked; } }), h('span', { text: sp.inv.clone ? `Pôr ${sp.inv.n} clone${sp.inv.n === 1 ? '' : 's'} de ${nomeDe(de)} (${sp.inv.t} turnos)` : `Pôr ${sp.inv.n} × ${sp.inv.nome} (${sp.inv.t} turnos)` })));
+    // (lote 199) a ilusão do Feiticeiro: um token ao lado de quem falhou, que só ele (o dono dele) e o mestre veem
+    if (sp.il) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.il, onchange: ev => { esc.il = ev.target.checked; } }), h('span', { text: `Pôr a ilusão: ${sp.il.copia ? (sp.il.n || 1) + ' cópia' + ((sp.il.n || 1) === 1 ? '' : 's') + ' de ' + nomeDe(de) : sp.il.nome} ao lado de quem falhou (só ele vê, ${sp.il.t || 1} turno${(sp.il.t || 1) === 1 ? '' : 's'})` })));
+    if ((sp.tira || []).length) extra.push(h('div', { class: 'ha-nota', text: `Sai dos alvos: ${sp.tira.map(condTxt).join(', ')}.` }));
     if (sp.mv) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.mv, onchange: ev => { esc.mv = ev.target.checked; } }), h('span', { text: { empurra: `Empurrar ${sp.mv.d} cédula${sp.mv.d === 1 ? '' : 's'} (quem falhar no teste)`, puxa: `Puxar ${sp.mv.d} cédula${sp.mv.d === 1 ? '' : 's'}`, salta: `${nomeDe(de)} vai até o lugar`, troca: 'Trocar de lugar' }[sp.mv.k] })));
     for (const cid of (sp.c || []).filter(c => c[3] === 's').map(c => c[0])) extra.push(h('label', { class: 'cl-op' }, h('input', { type: 'checkbox', checked: esc.si.includes(cid), onchange: ev => { esc.si = ev.target.checked ? esc.si.concat(cid) : esc.si.filter(x => x !== cid); } }), h('span', { text: `${condTxt(cid)} em ${nomeDe(de)}` })));
     const fechar = () => { janelaAberta = false; const prox = fila.shift(); if (prox) setTimeout(() => abrirJanela(prox.pl, prox.quem), 60); };
@@ -268,6 +271,21 @@ const HabAcao = (() => {
       actions: [{ label: quem ? 'Recusar' : 'Cancelar', run: () => { fechar(); } }, { label: 'Aplicar', kind: 'primary', run: () => { aplicar(pl, esc); fechar(); } }],
       onCancel: fechar,
     });
+  }
+
+  /* (lote 199) A ilusão: n tokens colados em quem foi iludido, que somem com os turnos (inv) e que só ele vê (il: o id
+     dele). A cópia (Dois de Você) tem o nome, a cor e a imagem de quem usou; a criatura (Miragem), o nome da habilidade,
+     sem o nome à mostra. Fica do mestre (sem dono): o iludido não a mexe. */
+  function ilusaoEm(sc, de, alvo, il, vez) {
+    const n = clamp(il.n || 1, 1, 4), cell = sc.cell, tam = il.copia ? Math.max(0.5, Math.min(2, de.size || 1)) : (il.tam || 1), [ax, ay] = centro(alvo, sc);
+    const dist = meio(alvo, sc) + tam * cell / 2 + cell * 0.1;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * TAU - Math.PI / 4;
+      const [sx, sy] = snapPt(sc, ax + Math.cos(ang) * dist - tam * cell / 2, ay + Math.sin(ang) * dist - tam * cell / 2, false, 1);
+      const o = il.copia ? { name: tokName(de).slice(0, 40), color: de.color, img: de.img || null, shape: de.shape, showName: de.showName !== false } : { name: String(il.nome || 'Ilusão').slice(0, 40), color: il.cor || '#B07FD8', showName: false };
+      Store.add('tokens', newToken(sc, clamp(sx, 0, sc.cols * cell - tam * cell), clamp(sy, 0, sc.rows * cell - tam * cell), Object.assign(o, { size: tam, owner: null,
+        bars: barDefaults().map(b => Object.assign({}, b, { on: false })), barVis: 'none', vis: { on: false, range: 0, dark: 0 }, il: alvo.id, inv: { d: clamp(il.t || 1, 1, 20), at: vez ? vez.id : null, de: de.id } })));
+    }
   }
 
   /* ---------------- aplicar: um passo de desfazer ---------------- */
@@ -338,9 +356,13 @@ const HabAcao = (() => {
           const info = Object.assign({}, t2.cinfo); for (const k of Object.keys(info)) if (ruins.has(k)) delete info[k];
           Store.upd('tokens', id, { conds: t2.conds.filter(c => !ruins.has(c)), cinfo: info });
         }
+        // (lote 199) o que a habilidade tira do alvo (Cobrar: as Assinaturas; o Último Abraço: o Fundido), com ou sem teste
+        if ((sp.tira || []).length) { const t2 = Store.get('tokens', id), info = Object.assign({}, t2.cinfo); for (const k of sp.tira) delete info[k]; Store.upd('tokens', id, { conds: t2.conds.filter(c => !sp.tira.includes(c)), cinfo: info }); }
         const testa = (sp.c || []).some(c => c[2] && c[3] === 'a');
         if (testa && !e.falhou) continue;                   // passou no teste: nem a condição nem o empurrão
-        for (const cid of e.conds || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(t, cid, c ? c[1] : 1, cid === 'sangue' || (COND_BY_ID[cid] || {}).max ? 1 : 0); }
+        // (lote 199) nq: quanto o contador sobe (a Crise põe +2 de Loucura)
+        for (const cid of e.conds || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(t, cid, c ? c[1] : 1, cid === 'sangue' || (COND_BY_ID[cid] || {}).max ? Math.max(1, (sp.nq && sp.nq[cid]) || 1) : 0); }
+        if (esc.il && sp.il) ilusaoEm(sc, de, Store.get('tokens', id) || t, sp.il, vez);
         if (esc.mv && sp.mv && (sp.mv.k === 'empurra' || sp.mv.k === 'puxa')) empurrar(sc, de, Store.get('tokens', id), sp.mv.k === 'empurra' ? sp.mv.d : -sp.mv.d);
         if (esc.mv && sp.mv && sp.mv.k === 'troca') { const a = Store.get('tokens', de.id), b = Store.get('tokens', id); Store.upd('tokens', a.id, { x: b.x, y: b.y }); Store.upd('tokens', b.id, { x: a.x, y: a.y }); }
       }

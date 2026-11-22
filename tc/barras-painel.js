@@ -739,7 +739,7 @@ classe({ id: 'mago', arvore: 'Mago', barra: 'Preparo', cor: '#7FA4F5', glifo: '@
 
 /* ---------------- Feiticeiro: o Preço ---------------- */
 classe({ id: 'feiticeiro', arvore: 'Feiticeiro', barra: 'Pacto', cor: '#C37BDB', glifo: '@pacto', inicio: 5,
-  patamares: [[5, 'Sussurro', 'Defesa tier I contra o primeiro golpe de cada turno'], [10, 'Marca Visível', 'maldições têm +1 no teste'], [15, 'Voz do Patrono', 'a próxima magia tem +1 tier no efeito e alcance dobrado']],
+  patamares: [[5, 'Sussurro', 'Defesa tier I contra o primeiro golpe de cada turno'], [10, 'Marca Visível', 'quem testa contra as suas maldições tem -1, e suas invocações chegam com +2 de Vida'], [15, 'Voz do Patrono', 'a próxima magia tem +1 tier no efeito e alcance dobrado']],
   risco: ['Dívida', 'o patrono quer algo agora: se não gastar, perde 2 de Vida no fim do turno'],
   est: () => ({ promessas: 0 }),
   marcas: s => [{ k: 'vida', glifo: '@sangue', rotulo: 'Preço: 2 de Vida (+3)', dica: 'tire 2 de Vida na ficha' }, { k: 'memoria', glifo: '@espiral', rotulo: 'Preço: uma lembrança (+5)', dica: 'o mestre escolhe qual' }, { k: 'promessa', glifo: '@elo', rotulo: `Preço: uma promessa (+4)${s.promessas ? ' · ' + s.promessas + ' em aberto' : ''}`, dica: 'cumprir até o fim da sessão' }],
@@ -755,10 +755,11 @@ classe({ id: 'feiticeiro', arvore: 'Feiticeiro', barra: 'Pacto', cor: '#C37BDB',
   acoes(s){ return s.promessas ? `<button type="button" data-a="cumpriu">Cumpri uma promessa</button><button type="button" data-a="quebrou" title="A barra zera e o patrono fica em silêncio">Quebrei uma promessa</button>` : ''; },
   acao(s, a, ctx){ if (a === 'cumpriu' && s.promessas){ s.promessas--; ctx.log(`${ctx.nome} cumpriu uma promessa ao patrono.`); } if (a === 'quebrou' && s.promessas){ s.promessas--; ctx.definir(0, 'quebrou uma promessa'); ctx.log(`O patrono de ${ctx.nome} fica em silêncio.`); } },
   persiste: ['promessas'],
-  ganhos: [{ c: 'Maldição pegou', v: 2 }, { c: 'Disse o nome do patrono', t: 'Antes de uma magia', v: 1, max: 1 }],
+  // (lote 199) os três ramos: a Maldição (pegou, e o Surto), a Invocação (estourou ou caiu) e o Sangue que Assina (cada Sangue pago)
+  ganhos: [{ c: 'Maldição pegou', v: 2 }, { c: 'Alguém surtou', t: 'A Loucura de um alvo seu chegou a 3', v: 3 }, { c: 'Invocação estourou ou caiu', v: 2 },
+           { c: 'Pagou Sangue', t: 'Cada Sangue das habilidades do ramo de Sangue', v: 1 }, { c: 'Disse o nome do patrono', t: 'Antes de uma magia', v: 1, max: 1 }],
   aoTerminarTurno(s, ctx){ if (ctx.v >= 20) ctx.log(`Dívida: o patrono cobra 2 de Vida de ${ctx.nome}.`); },
-  mapa: { 'Imp': TOK('Imp', '#8E3B3B', { tam: 0.5, vida: 3, turnos: 3 }), 'Portão Menor': TOK('Demônio', '#6E2A2A', { vida: 8, turnos: 2 }), 'Portão Maior': TOK('Demônio Grande', '#5A1E1E', { tam: 2, vida: 20, turnos: 2 }),
-    'Altar de Bolso': TOK('Altar', '#C37BDB', { tam: 0.5, turnos: 2 }), 'Círculo Sagrado': AREA('consagrado', 2, 2), 'Chuva de Brasas': AREA('brasas', 3, 1), 'Legião de Lamentos': AREA('espiritos', 3, 1), 'Deus que Desce': TOK('Avatar do Patrono', '#E8D9F0', { tam: 2, turnos: 1 }) }
+  mapa: {}           // (lote 199) as habilidades novas agem no mapa pelo TC.habsAcoes (src/habs/acoes_mao.json)
 });
 
 /* ---------------- Necromante: os Frascos de Alma ---------------- */

@@ -1634,6 +1634,13 @@ const UI = (() => {
         if (c.lim.zera) { cs = conds.filter(x => x !== c.id); delete info[c.id]; }
         Store.upd('tokens', tk.id, { conds: cs, cinfo: info });
       });
+      // (lote 199) a condição com tabela (o Surto do Feiticeiro): rola 1d6 na hora e diz o que saiu
+      const tab = Array.isArray(s.tab) && s.tab.length ? s.tab : null, dado = tab ? 1 + Math.floor(Math.random() * tab.length) : 0;
+      if (tab) {
+        try { const T = window.TC && window.TC.ponte; if (T && T.estado && T.estado.mesa && typeof T.publicar === 'function') T.publicar('cena', { kind: 'uso', titulo: `${tokName(tk)} surta (d${tab.length}: ${dado})`, resumo: tab[dado - 1], total: dado, char: tk.char || null, oculto: !!(tk.hidden || tk.showName === false), dd: [] }); } catch (e) { /* sem a casca */ }
+        toast(`${tokName(tk)}: ${s.n} — d${tab.length} = ${dado}: ${tab[dado - 1]}.${c.lim.zera ? ` (${c.n} zerou)` : ''}`, { action: 'Desfazer', run: Tools.undo, long: true });
+        return;
+      }
       toast(`${tokName(tk)}: ${s.n}${c.lim.d > 0 ? ' por ' + c.lim.d + (c.lim.d === 1 ? ' rodada' : ' rodadas') : ''}${c.lim.zera ? ` (${c.n} zerou)` : ''}.`, { action: 'Desfazer', run: Tools.undo });
     } });
   }

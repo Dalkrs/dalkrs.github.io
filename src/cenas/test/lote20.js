@@ -25,7 +25,7 @@ const SHOTS = process.env.FOTOS;
 
   // ---------- a lista ----------
   const L = await ev(() => { const { CONDS, ICONS } = __tc; const r = CONDS.filter(c => c.g === 'classes'); return { n: r.length, total: CONDS.length, nomes: r.map(c => c.n), sem: r.filter(c => !ICONS[c.i] || !c.r).map(c => c.id), ids: new Set(CONDS.map(c => c.id)).size, fer: r.filter(c => c.ferido).map(c => c.id) }; });
-  ok(L.n === 33 && L.total === 169 && L.ids === 169, 'as 33 condições das classes no grupo novo (169 ao todo; lote 195: +9 do Ninja; lote 185: +7 com o Imbuído de Mana do lote 28 e as 5 do lote 34, sem repetir): ' + L.n + '/' + L.total);
+  ok(L.n === 40 && L.total === 176 && L.ids === 176, 'as 40 condições das classes no grupo novo (176 ao todo; lote 199: +7 do Feiticeiro; lote 195: +9 do Ninja; lote 185: +7 com o Imbuído de Mana do lote 28 e as 5 do lote 34, sem repetir): ' + L.n + '/' + L.total);
   const ord = L.nomes.slice().sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
   ok(JSON.stringify(ord) === JSON.stringify(L.nomes), 'em ordem alfabética: ' + L.nomes.slice(0, 6).join(', ') + '…');
   ok(L.sem.length === 0, 'cada uma com o ícone próprio e a classe: ' + JSON.stringify(L.sem));
@@ -36,7 +36,7 @@ const SHOTS = process.env.FOTOS;
   await ev(id => __tc.UI.condPicker([__tc.Store.get('tokens', id)]), id); await w(300);
   ok(await page.locator('#cgm-tab-classes').count() === 1, 'a aba "Classes" no seletor de condições');
   await page.locator('#cgm-tab-classes').click(); await w(200);
-  ok(await page.locator('.modal .chips .chip.chip-r').count() === 33, 'na aba Classes, as 33, cada uma com a classe embaixo do nome');
+  ok(await page.locator('.modal .chips .chip.chip-r').count() === 40, 'na aba Classes, as 40, cada uma com a classe embaixo do nome');
   await foto('l20-cenas-seletor');
   const chipDur = await ev(() => __tc.CONDS.find(c => c.g === 'classes' && c.dur > 0));
   if (chipDur) {

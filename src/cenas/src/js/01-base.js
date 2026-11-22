@@ -357,6 +357,14 @@ const ICONS = {
   c_alvoDuelo: 'M4 4l10.500 10.500M20 4L9.500 14.500M6.500 17.500L4 20M17.500 17.500L20 20M7.500 14.500l2 2M16.500 14.500l-2 2',
   c_armaduraRachada: 'M8 3.500l4 1.800 4-1.800 4 3.500-2.500 4V20.500h-11V11L4 7zM13 6.500l-2 4 3 2-2 4.500',
   c_assombrado: 'M7 21V11a5 5 0 0 1 10 0v10l-2.500-2-2.500 2-2.500-2zM10 11h.01M14 11h.01',
+  // (lote 199) o Feiticeiro em três ramos: a Loucura e o Surto, a ilusão, a sombra fundida, a assinatura de sangue
+  c_loucura: 'M9 21v-3a6 6 0 1 1 7-5.900V15h2l-2 3v3M11 9a2 2 0 1 1 2 2',
+  c_surto: 'M7 21v-3a7 7 0 1 1 10-6l2 3h-2v3M12 5l-2 5h3l-2 5',
+  c_iludido: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9l1 3-1 3-1-3zM19 2l.600 1.400L21 4l-1.400.600L19 6l-.600-1.400L17 4l1.400-.600z',
+  c_fundido: 'M8 4.500a2.500 2.500 0 1 0 0 5 2.500 2.500 0 0 0 0-5M16 4.500a2.500 2.500 0 1 0 0 5 2.500 2.500 0 0 0 0-5M4 21v-4a4 4 0 0 1 8 0v4M12 21v-4a4 4 0 0 1 8 0v4M9 14c2 2 4 2 6 0',
+  c_assinado: 'M19 3l2 2L10 16l-3 1 1-3zM5 13c-1.500 2-2 3-2 4a2 2 0 0 0 4 0c0-1-.500-2-2-4z',
+  c_agouro: 'M3 14c3-1 5-4 9-4 3 0 5 2 6 4l3 1-3 1c-1 2-3 3-6 3H8l-3 2 1-3c-2-1-3-2-3-4zM15 13h.01',
+  c_elo: 'M10 14a4 4 0 0 1 0-5.660l2-2a4 4 0 0 1 5.660 5.660l-1 1M14 10a4 4 0 0 1 0 5.660l-2 2a4 4 0 0 1-5.660-5.660l1-1',
   c_clausula: 'M12 12m-8.500 0a8.500 8.500 0 1 0 17 0a8.500 8.500 0 1 0-17 0M6 6l12 12',
   c_cobranca: 'M12.500 7.500a3 3 0 1 0 6 0 3 3 0 1 0-6 0M3 14h3.500l4 3h6a1.800 1.800 0 0 0 0-3.600H13M3 12v9',
   c_dancando: 'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
@@ -785,6 +793,8 @@ const CONDS = [
      Agulhas no Corpo, até 3, que sugere o Corpo Travado; e as que fecham um ponto por 1 turno.)
   /* (lote 20) As condições das classes: um grupo só, em ordem alfabética (r: a classe; dur: as rodadas de começo). Os
      três Feridos (ferido) são as tags de ferimento do Bruno: o HP negativo sugere a de cada terço do limite. */
+  /* (lote 199) o Feiticeiro: a Loucura (até 3) sugere o Surto, que rola 1d6 na tabela (tab) ao entrar; Iludido marca quem vê
+     uma ilusão (o token que só ele enxerga: t.il); Fundido, a sombra que abraça; Assinado (até 3), o nome escrito em sangue. */
   { id: 'agulhaCura', n: 'Agulha na Cura', c: '#8c9bb0', i: 'c_agulhaCura', g: 'classes', r: 'Ninja' },
   { id: 'agulhaPerna', n: 'Agulha na Perna', c: '#8c9bb0', i: 'c_agulhaPerna', g: 'classes', r: 'Ninja' },
   { id: 'agulhaBraco', n: 'Agulha no Braço', c: '#8c9bb0', i: 'c_agulhaBraco', g: 'classes', r: 'Ninja' },
@@ -793,6 +803,7 @@ const CONDS = [
   { id: 'agulhas', n: 'Agulhas no Corpo', c: '#a7b3c4', i: 'c_agulhas', g: 'classes', r: 'Ninja', max: 3, ini: 1, lim: { em: 'max', sug: 'corpoTravado', d: 1, zera: true, txt: 'teste de Vigor: se falhar, fica com o Corpo Travado por 1 turno (não anda e perde a reação; chefe só perde a reação), e as agulhas zeram' } },
   { id: 'alvoDuelo', n: 'Alvo do Duelo', c: '#c0392b', i: 'c_alvoDuelo', g: 'classes', r: 'Bárbaro' },
   { id: 'armaduraRachada', n: 'Armadura Rachada', c: '#a5663a', i: 'c_armaduraRachada', g: 'classes', r: 'Bárbaro' },
+  { id: 'assinado', n: 'Assinado', c: '#9b1b30', i: 'c_assinado', g: 'classes', r: 'Feiticeiro', max: 3, ini: 1 },
   { id: 'assombrado', n: 'Assombrado', c: '#8f9ac4', i: 'c_assombrado', g: 'classes', r: 'Bruxo', dur: 2 },
   { id: 'clausula', n: 'Cláusula', c: '#7a2f9a', i: 'c_clausula', g: 'classes', r: 'Feiticeiro', dur: 2 },
   { id: 'cobranca', n: 'Cobrança', c: '#b08a2a', i: 'c_cobranca', g: 'classes', r: 'Feiticeiro' },
@@ -802,13 +813,18 @@ const CONDS = [
   { id: 'desguarnecido', n: 'Desguarnecido', c: '#e0603a', i: 'c_desguarnecido', g: 'classes', r: 'Aégis', dur: 1 },
   { id: 'devedor', n: 'Devedor', c: '#a04a2a', i: 'c_devedor', g: 'classes', r: 'Feiticeiro', dur: 1 },
   { id: 'eloLuz', n: 'Elo de Luz', c: '#d8b84a', i: 'c_eloLuz', g: 'classes', r: 'Sacerdote' },
+  { id: 'elo', n: 'Elo Escrito', c: '#b0303e', i: 'c_elo', g: 'classes', r: 'Feiticeiro', dur: 2 },
   { id: 'escudoPlantado', n: 'Escudo Plantado', c: '#7a8aa8', i: 'c_escudoPlantado', g: 'classes', r: 'Aégis' },
   { id: 'escudoRachado', n: 'Escudo Rachado', c: '#8d8f94', i: 'c_escudoRachado', g: 'classes', r: 'Espadachim' },
   { id: 'extremamenteFerido', n: 'Extremamente Ferido', c: '#c8542f', i: 'c_extremamenteFerido', g: 'classes', r: 'Ferimento', ferido: true },
   { id: 'fluxoSelado', n: 'Fluxo Selado', c: '#5f6f96', i: 'c_fluxoSelado', g: 'classes', r: 'Ninja', dur: 1 },
+  { id: 'fundido', n: 'Fundido', c: '#3a2f4a', i: 'c_fundido', g: 'classes', r: 'Feiticeiro' },
   { id: 'ginga', n: 'Ginga', c: '#2f9d93', i: 'c_ginga', g: 'classes', r: 'Bardo', dur: 1 },
   { id: 'guardaQuebrada', n: 'Guarda Quebrada', c: '#d98b2b', i: 'c_guardaQuebrada', g: 'classes', r: 'Espadachim', dur: 1 },
+  { id: 'iludido', n: 'Iludido', c: '#b07fd8', i: 'c_iludido', g: 'classes', r: 'Feiticeiro', dur: 1 },
   { id: 'levementeFerido', n: 'Levemente Ferido', c: '#d9a05a', i: 'c_levementeFerido', g: 'classes', r: 'Ferimento', ferido: true },
+  { id: 'loucura', n: 'Loucura', c: '#c4488c', i: 'c_loucura', g: 'classes', r: 'Feiticeiro', max: 3, ini: 1, lim: { em: 'max', sug: 'surto', d: 1, zera: true, txt: 'o Surto começa — o d6 da tabela sai no aviso, e por 1 turno ele faz o que saiu; a Loucura zera' } },
+  { id: 'agouro', n: 'Mau Agouro', c: '#6a5a7a', i: 'c_agouro', g: 'classes', r: 'Feiticeiro', dur: 1 },
   { id: 'mortalmenteFerido', n: 'Mortalmente Ferido', c: '#8f1d1d', i: 'c_mortalmenteFerido', g: 'classes', r: 'Ferimento', ferido: true },
   { id: 'pacto', n: 'Pacto', c: '#9a2a4a', i: 'c_pacto', g: 'classes', r: 'Feiticeiro' },
   { id: 'perjuro', n: 'Perjuro', c: '#6b4a7a', i: 'c_perjuro', g: 'classes', r: 'Aégis' },
@@ -817,6 +833,7 @@ const CONDS = [
   { id: 'seloLushmania', n: 'Selo de Lushmânia', c: '#e6c35a', i: 'c_seloLushmania', g: 'classes', r: 'Sacerdote', dur: 3 },
   { id: 'sobEgide', n: 'Sob a Égide', c: '#c9a227', i: 'c_sobEgide', g: 'classes', r: 'Aégis', dur: 1 },
   { id: 'sobExorcismo', n: 'Sob Exorcismo', c: '#e8b83a', i: 'c_sobExorcismo', g: 'classes', r: 'Sacerdote', dur: 2 },
+  { id: 'surto', n: 'Surto', c: '#d9342b', i: 'c_surto', g: 'classes', r: 'Feiticeiro', dur: 1, tab: ['Ri sem parar: só anda, não ataca nem usa habilidade', 'Ataca a criatura mais perto, amiga ou inimiga', 'Foge 4 cédulas para longe de quem causou o surto', 'Larga a arma (Desarmado) e fica olhando para ela', 'Grita com quem não está lá: fica Distraído e Exposto', 'Congela olhando o nada: perde o turno (chefe: só perde a reação)'] },
   { id: 'tutelado', n: 'Tutelado', c: '#5a8fd6', i: 'c_tutelado', g: 'classes', r: 'Aégis' },
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
@@ -1151,6 +1168,8 @@ function normalizeScene(sc) {
       const idv = v => (typeof v === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(v) ? v : null);
       t.inv = { d: clamp(Math.round(Number(t.inv.d)) || 1, 1, 20), at: idv(t.inv.at), de: idv(t.inv.de) };
     } else delete t.inv;
+    // (lote 199) a ilusão do Feiticeiro: o id do token que a vê. Ela só aparece para o mestre e para o dono desse token.
+    if (typeof t.il === 'string' && /^[A-Za-z0-9_-]{1,60}$/.test(t.il) && !t.char && !t.prop) { /* fica */ } else delete t.il;
     const sq = t.prop ? cleanSaque(t.saque) : null;
     if (sq) t.saque = sq; else delete t.saque;
     // (lote 53) a marca de pista de um caso do Escudo (e o corpo da cena do crime): { c: o caso, p: a pista }
