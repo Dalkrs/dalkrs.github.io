@@ -353,6 +353,16 @@ a todos. Agora, em quem transmite (`vivoOuCheio`, em `07d-nuvem.js`):
   (`Unauthorized`: o mestre auxiliar que passou a jogar, no `cenam`) é fechado e não insiste (`r.negado`); tenta de novo só
   quando alguém assina o tópico ou a mesa religa os canais. Teste: `cenas-lote200.rede`.
 
+### A pintura do Mapa-múndi à parte (lote 203)
+
+- Como a grade (lote 87), a pintura (`m.pintura`, perto de 180 KB num mapa grande) mora em `mundo:pinm:<mapa>` (mestre) e
+  `mundo:pinp:<mapa>` (jogadores). `semPint` tira a pintura da cópia depois que a separada está no banco; `comPint` junta
+  na leitura: a pintura de dentro vale se tiver traços (cópias de antes, aparelho antigo), senão a separada. Limpar a
+  pintura grava a separada vazia junto. Esconder ou apagar o mapa apaga a `pinp` (e a `pinm`, ao apagar). Só o Mapa-múndi
+  lê a pintura. Teste: `mundo-pintura.rede`.
+- Os objetos (cerca de 240 KB) continuam dentro do mapa: vários sistemas (Escudo, Missões, Acampamento, Clã, Quadro, busca)
+  leem `objs` direto do documento; separá-los pede um leitor comum antes.
+
 ### A presença leve (lote 202)
 
 - O aviso "estou aqui" (a cada 60 s) vai por `presenca_marcar(p_mesa)` (migração 0050) para `public.presencas`, que fica fora
