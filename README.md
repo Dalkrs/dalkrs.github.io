@@ -353,6 +353,14 @@ a todos. Agora, em quem transmite (`vivoOuCheio`, em `07d-nuvem.js`):
   (`Unauthorized`: o mestre auxiliar que passou a jogar, no `cenam`) é fechado e não insiste (`r.negado`); tenta de novo só
   quando alguém assina o tópico ou a mesa religa os canais. Teste: `cenas-lote200.rede`.
 
+### A conferência leve (lote 201)
+
+- Quem não é o mestre confere de tempos em tempos (45 s com o tempo real, 15 s sem) se as linhas que tem ainda são visíveis
+  para ele. Antes baixava a lista inteira de ids da mesa (cerca de 800 documentos, 70 KB por volta). Agora manda os ids que
+  tem para `conferir_vivos(p_mesa, p_tabela, p_ids)` (migração 0049, `security invoker`: vale a regra de acesso de quem
+  chama) e recebe só os que sumiram. Num banco sem a função, volta à lista inteira (`semConferirVivos`).
+- Teste: `conferencia-lote201.rede`.
+
 ### A cópia local dos dados da mesa (lote 91)
 
 Abrir ou recarregar o site baixava a mesa inteira (mais de 9 MB na mesa de verdade, dezenas de vezes por dia). Agora as linhas

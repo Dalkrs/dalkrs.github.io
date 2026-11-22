@@ -1763,6 +1763,7 @@
      como mudança: o banco simplesmente para de mostrar a linha. Então, de tempos em tempos, o jogador confere a lista
      do que ainda pode ver e tira da tela o resto. (O mestre vê tudo: para ele não há o que conferir. O auxiliar, mesmo
      mestrando, pode não ter todas as abas: confere como os jogadores.) */
+  let semConferirVivos = false;                          // (lote 201) o banco ainda não tem a função: lista inteira
   async function dadosConferir() {
     if (!mesas.atual || mesas.atual.cargo === 'mestre') return;
     for (const c of Object.values(cols)) {
@@ -1772,13 +1773,27 @@
       try {
         await c.pronta;
         const ate = c.maxRev;                                 // o que chegar depois disto ainda não está na lista: fica
-        const { data, error } = await cliente().from(nome).select('id').eq('mesa_id', c.mesa).eq('apagado', false).limit(5000);
-        if (!error && !c.morta && data.length < 5000) {
-          const vivos = new Set(data.map(r => r.id));
-          for (const [id, l] of [...c.linhas]) {
-            if (vivos.has(id) || c.sujos.has(id) || c.emVoo.has(id) || !l.rev || l.rev > ate) continue;
-            c.linhas.delete(id);
-            dados.emit('muda', nome, { id, apagado: true }, 'remota', null);
+        const tirar = id => { c.linhas.delete(id); dados.emit('muda', nome, { id, apagado: true }, 'remota', null); };
+        const candidatas = () => [...c.linhas].filter(([id, l]) => !c.sujos.has(id) && !c.emVoo.has(id) && l.rev && l.rev <= ate).map(([id]) => id);
+        /* (lote 201) A conferência leve: vão os ids que estão aqui; voltam só os que não são mais visíveis (quase sempre
+           nenhum). Num banco sem a função (migração 0049), a lista inteira, como antes. */
+        let feito = false;
+        if (!semConferirVivos) {
+          const ids = candidatas();
+          if (!ids.length) feito = true;
+          else {
+            const { data, error } = await cliente().rpc('conferir_vivos', { p_mesa: c.mesa, p_tabela: nome, p_ids: ids });
+            if (!error && Array.isArray(data)) {
+              feito = true;
+              if (!c.morta) for (const id of data) { const l = c.linhas.get(id); if (l && !c.sujos.has(id) && !c.emVoo.has(id) && l.rev && l.rev <= ate) tirar(id); }
+            } else if (error && /conferir_vivos|PGRST202|404/i.test(String(error.message) + String(error.code))) semConferirVivos = true;
+          }
+        }
+        if (!feito) {
+          const { data, error } = await cliente().from(nome).select('id').eq('mesa_id', c.mesa).eq('apagado', false).limit(5000);
+          if (!error && !c.morta && data.length < 5000) {
+            const vivos = new Set(data.map(r => r.id));
+            for (const id of candidatas()) if (!vivos.has(id)) tirar(id);
           }
         }
       } catch (e) { /* sem rede: a próxima volta confere */ }
