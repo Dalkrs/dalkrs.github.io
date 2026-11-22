@@ -353,6 +353,13 @@ a todos. Agora, em quem transmite (`vivoOuCheio`, em `07d-nuvem.js`):
   (`Unauthorized`: o mestre auxiliar que passou a jogar, no `cenam`) é fechado e não insiste (`r.negado`); tenta de novo só
   quando alguém assina o tópico ou a mesa religa os canais. Teste: `cenas-lote200.rede`.
 
+### As cópias de segurança da árvore fora da mesa (lote 204)
+
+- As cópias da biblioteca de habilidades tiradas antes de cada lote (`arvore:biblioteca:copia-<data>`, cerca de 1,3 MB
+  cada) ficavam em `public.documentos`: quem mestra as baixava inteiras ao abrir a mesa. Foram para
+  `privado.copias_arvore` (mesmas colunas, fora da API) e saíram da mesa (apagadas, com os dados vazios). As próximas
+  cópias vão direto para essa tabela, nunca para `documentos`.
+
 ### A pintura do Mapa-múndi à parte (lote 203)
 
 - Como a grade (lote 87), a pintura (`m.pintura`, perto de 180 KB num mapa grande) mora em `mundo:pinm:<mapa>` (mestre) e
