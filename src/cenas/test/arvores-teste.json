@@ -1,0 +1,10 @@
+{"_": "(lote 205) Nós de verdade das árvores refeitas (lote 202), para os testes lerem as habilidades do texto sem o banco.",
+ "a_druida": {"id": "a_druida", "nodes": [
+  {"id":"n_druida_aC","nome":"Forma do Urso de Casca","usos":["ativa"],"graus":[{"uso":[{"b":"Seiva","v":"4"}],"texto":"Vire o Urso de Casca até sair (sair gasta o movimento): garras de Dano tier II e Defesa tier I. Ao sair, fica o Traço Casca por 1 turno (Defesa tier I).","custos":{"p_classe":1}},{"uso":[{"b":"Seiva","v":"4"}],"texto":"Garras de Dano tier III.","custos":{"p_classe":2}}]},
+  {"id":"n_druida_a1","nome":"Forma do Lobo de Musgo","usos":["ativa"],"graus":[{"uso":[{"b":"Seiva","v":"3"}],"texto":"Vire o Lobo de Musgo: anda 3 cédulas a mais, mordida de Dano tier II, e o alvo testa Vigor ou cai. Traço Faro: +1 no acerto por 1 turno.","custos":{"p_classe":1}}]},
+  {"id":"n_druida_a4","nome":"Forma do Behemoth","usos":["ativa"],"graus":[{"uso":[{"b":"Seiva","v":"10"}],"texto":"Vire o Behemoth: um pisão de Dano tier III num círculo de 1, e todos testam Vigor ou caem. Traço Peso: ninguém te empurra por 1 turno.","custos":{"p_classe":1}}]}]},
+ "a_shaji": {"id": "a_shaji", "nodes": [
+  {"id":"n_shaji_bc1","nome":"Virote de Fumaça","usos":["ativa"],"graus":[{"uso":[{"b":"Malandragem","v":"3"}],"texto":"Uma nuvem de fumaça num círculo de 2 cédulas por 2 turnos.","custos":{"p_classe":1}}]}]},
+ "a_bardo": {"id": "a_bardo", "nodes": [
+  {"id":"n_bardo_byb","nome":"Dança da Tempestade","usos":["ativa"],"graus":[{"uso":[{"b":"Ritmo","v":"10"}],"texto":"Dano tier II num círculo de 2, e todos são empurrados 2 cédulas para onde você quiser.","custos":{"p_classe":2}}]}]}
+}

@@ -6,17 +6,19 @@ const { open } = require('./lib');
   const t = await open(); const { page } = t; const ev = (fn, a) => page.evaluate(fn, a); const w = ms => page.waitForTimeout(ms);
   let ok = 0, fail = 0; const chk = (c, m) => { if (c) ok++; else { fail++; console.log('FALHOU: ' + m); } };
   const j = JSON.stringify;
+  // (lote 205) as árvores refeitas: os nós de verdade, para o leitor do texto (tc/habs-ler.js)
+  await ev(fx => { const F = __tc.Fichas, velho = F.arvore; F.arvore = id => fx[id] || velho(id); window.TC.habsLer.usar(F); }, require('./arvores-teste.json'));
   // a regra: o Urso vira "em você", sem o golpe das garras
-  const sp = await ev(() => __tc.HabAcao.specDe({ id: 'n_druida_acab', grau: 1, desc: 'Vira urso: Defesa tier II e garras de Dano tier III.' }));
-  chk(sp.m === 'si' && !sp.d && j(sp.c.map(c => [c[0], c[3]])) === j([['transformado', 's'], ['agigantado', 's']]), 'o Urso: em você, Transformado e Agigantado — ' + j(sp));
-  const beh = await ev(() => __tc.HabAcao.specDe({ id: 'n_druida_aya', grau: 1, desc: '' }));
-  chk(beh.c.find(c => c[0] === 'agigantado')[1] === 2 && beh.c.find(c => c[0] === 'escudo'), 'o Behemoth: Agigantado pelos 2 turnos da forma, e o resto fica — ' + j(beh.c));
-  const lobo = await ev(() => __tc.HabAcao.specDe({ id: 'n_druida_ab1', grau: 1, desc: '' }));
+  const sp = await ev(() => __tc.HabAcao.specDe({ id: 'n_druida_aC', grau: 1, desc: 'Vira urso: Defesa tier II e garras de Dano tier III.' }));
+  chk(sp.m === 'si' && !sp.d && ['transformado', 'agigantado'].every(k => sp.c.some(c => c[0] === k && c[3] === 's')), 'o Urso: em você, Transformado e Agigantado — ' + j(sp));
+  const beh = await ev(() => __tc.HabAcao.specDe({ id: 'n_druida_a4', grau: 1, desc: '' }));
+  chk(beh.c.find(c => c[0] === 'agigantado') && beh.c.find(c => c[0] === 'agigantado')[1] === beh.c.find(c => c[0] === 'transformado')[1] && beh.c.find(c => c[0] === 'caido'), 'o Behemoth: Agigantado pelos turnos da forma, e o resto fica — ' + j(beh.c));
+  const lobo = await ev(() => __tc.HabAcao.specDe({ id: 'n_druida_a1', grau: 1, desc: '' }));
   chk(!lobo.c.some(c => c[0] === 'agigantado'), 'o Lobo não fica grande');
   // usar o Urso, sem imagem na ficha
   const id = await ev(() => { const { Store, newToken } = __tc, sc = Store.scene(); const a = newToken(sc, 8 * sc.cell, 6 * sc.cell, { name: 'Druida', size: 1 }); Store.tx('Criar', () => Store.add('tokens', a)); return a.id; });
   const tok = () => ev(id => { const t = __tc.Store.get('tokens', id); return { size: t.size, conds: t.conds, ci: t.cinfo }; }, id);
-  const fez = await ev(id => { let gastou = 0; const t = __tc.Store.get('tokens', id); const r = __tc.HabAcao.comecar({}, t, { v: 10 }, { id: 'n_druida_acab', nome: 'Forma do Urso de Casca', grau: 1, custo: 4, desc: 'Vira urso: Defesa tier II e garras de Dano tier III.' }, () => { gastou++; }); return { r, gastou, mira: __tc.HabAcao.ativa() }; }, id);
+  const fez = await ev(id => { let gastou = 0; const t = __tc.Store.get('tokens', id); const r = __tc.HabAcao.comecar({}, t, { v: 10 }, { id: 'n_druida_aC', nome: 'Forma do Urso de Casca', grau: 1, custo: 4, desc: 'Vira urso: Defesa tier II e garras de Dano tier III.' }, () => { gastou++; }); return { r, gastou, mira: __tc.HabAcao.ativa() }; }, id);
   await w(150);
   const a = await tok();
   chk(fez.r && fez.gastou === 1 && !fez.mira, 'usou: gastou a barra e não pediu alvo — ' + j(fez));

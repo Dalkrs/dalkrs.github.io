@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.23-01",
+      "data": "2026-11-23",
+      "titulo": "As classes novas agem no mapa",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: 22 condições novas das classes refeitas, como Ponto (o lado do alvo que leva o dano verdadeiro), Esfera, Placas, Costelas, Calor, Mira, Verso e Lenda. As que contam mostram o número no token." },
+        { "tipo": "melhorou", "texto": "Cenas: as habilidades das 16 classes refeitas usam a mira, a área, o empurrão e as condições no mapa, lidas do texto da árvore na hora. Quando o mestre muda o texto, a ação muda junto." },
+        { "tipo": "consertado", "texto": "Cenas: as formas grandes do Druida (Urso de Casca, Behemoth, Grande Espírito e Grifo Verde) voltam a deixar o token Agigantado." }
+      ]
+    },
+    {
       "versao": "2026.11.22-05",
       "data": "2026-11-22",
       "titulo": "Mapa-múndi mais leve",

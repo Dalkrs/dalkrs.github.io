@@ -3,6 +3,8 @@ const { open } = require('./lib');
 (async () => {
   const t = await open(); const { page } = t; const ev = (fn, a) => page.evaluate(fn, a); const w = ms => page.waitForTimeout(ms);
   let ok = 0, fail = 0; const chk = (c, m) => { if (c) ok++; else { fail++; console.log('FALHOU: ' + m); } };
+  // (lote 205) as árvores refeitas: os nós de verdade, para o leitor do texto (tc/habs-ler.js)
+  await ev(fx => { const F = __tc.Fichas, velho = F.arvore; F.arvore = id => fx[id] || velho(id); window.TC.habsLer.usar(F); }, require('./arvores-teste.json'));
   const ids = await ev(() => {
     const { Store, newToken } = __tc, sc = Store.scene();
     const a = newToken(sc, 8 * sc.cell, 6 * sc.cell, { name: 'Dain' }), b = newToken(sc, 11 * sc.cell, 6 * sc.cell, { name: 'Bandido' });
@@ -47,8 +49,8 @@ const { open } = require('./lib');
   await page.keyboard.press('Escape'); await w(100);
   chk(!(await ev(() => __tc.HabAcao.ativa())) && await ev(() => window.__gastou) === 0, 'Esc cancela, sem gastar a barra');
 
-  // 4. Bomba de Fumaça (a do Alquimista; a do Ninja virou item no lote 196): clicar num lugar põe a fumaça por 2 turnos
-  await usar('n_alquimista_bb4', 1, 'Bomba de Fumaça');
+  // 4. Virote de Fumaça (o do Shaji; a Bomba do Alquimista saiu no lote 202): clicar num lugar põe a fumaça por 2 turnos
+  await usar('n_shaji_bc1', 1, 'Virote de Fumaça');
   const pa = await centro(ids.a);
   await ev(p => __tc.HabAcao.clique({ x: p.x + 80, y: p.y }), pa); await w(250);
   chk(await ev(() => __tc.Store.scene().effects.some(e => e.fx === 'fumaca' && e.dur === 2)), 'a fumaça ficou no chão, 2 turnos');
@@ -61,9 +63,9 @@ const { open } = require('./lib');
   await page.locator('.ha-janela .modal-a button', { hasText: 'Aplicar' }).click(); await w(200);
   chk(await ev(id => __tc.Store.get('tokens', id).bars[0].v, ids.b) === 23, 'Dano 7: a Vida foi de 30 para 23');
 
-  // 6. Tempestade dos Pilares: a área no lugar clicado empurra quem falhou
+  // 6. Dança da Tempestade (Bardo; a Tempestade dos Pilares saiu no lote 202): a área no lugar clicado empurra
   const antes = await ev(id => __tc.Store.get('tokens', id).x, ids.b);
-  await usar('n_kare_ma_bya', 1, 'Tempestade dos Pilares');
+  await usar('n_bardo_byb', 1, 'Dança da Tempestade');
   await page.mouse.move(10, 10);
   await ev(p => __tc.HabAcao.clique({ x: p.x - 40, y: p.y }), pb); await w(250);
   await page.locator('.ha-janela .modal-a button', { hasText: 'Aplicar' }).click(); await w(200);

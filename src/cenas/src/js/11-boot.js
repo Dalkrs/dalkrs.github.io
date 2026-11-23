@@ -312,6 +312,8 @@ async function start(snap) {
 }
 
 (function boot() {
+  // (lote 205) o leitor das habilidades (tc/habs-ler.js) lê as árvores pelas Fichas, que vivem dentro do pacote
+  if (window.TC && window.TC.habsLer && window.TC.habsLer.usar) window.TC.habsLer.usar(Fichas);
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
   if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { HabAcao, tokWH, ehRet, ObjPainel, PlantaAndares, Temas, WEATHERS, WEATHER_GRUPOS, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Exemplo, Erosao, Novidades, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;

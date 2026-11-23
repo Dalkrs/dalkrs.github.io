@@ -52,13 +52,48 @@ CONDS = [
   (r'\blent[oa]s?\b|metade do movimento|\bandam? (?:só )?metade', 'lento'),
   (r'\bescolhid', 'escolhido'),
   (r'\bo protegido\b|\bseu protegido|\bvira (?:o )?(?:seu )?protegido|\bfica protegid[oa] (?:por|pel)', 'protegido'),
+  # (lote 205) as condições das classes refeitas (lote 202) — as mesmas de tc/habs-ler.js
+  (r'\bfica(?:m)? no ar\b', 'noAr'),
+  (r'\bganha um ponto\b|\bfica com 2 pontos\b', 'ponto'),
+  (r'\+\d de mira\b', 'mira'),
+  (r'\bfica cravada\b|\bdeixa (?:uma |2 )?cravadas?\b', 'cravada'),
+  (r'\bcomo réu\b|\bviram réus\b|\bganha(?:m)? (?:1|2) acusaç', 'acusacoes'),
+  (r'\bcom um elo\b|\bficam com elo\b|\bviram elos\b', 'eloVoto'),
+  (r'\b(?:\d|um) rachados?\b', 'rachado'),
+  (r'\ba esfera fica nele\b|\buma esfera em cada\b|\bponha uma esfera\b', 'esfera'),
+  (r'\b(?:\d|um) iluminados?\b', 'iluminado'),
+  (r'\brecebe uma bênção\b|^bênção:|\btêm a bênção', 'bencao'),
+  (r'\bplante (?:um|\d) brotos?\b|\b(?:\d|um) brotos?\b', 'broto'),
+  (r'\bescolha um par\b', 'par'),
+  (r'\b(?:\d|um|uma) lendas?\b', 'lenda'),
+  (r'\b(?:\d|um) envergonhados?\b', 'envergonhado'),
 ]
 # o que é em você (ou no aliado): só quando o texto fala de você
 CONDS_SI = [
   (r'\bfica(?:m)? escondid|\bfica(?:m)? invisív|\bsome da vista|\bvocê some\b', 'escondido'),
   (r'\bvocê voa\b|\bvoa por\b|\bfica voando|\bvoa livre', 'voando'),
   (r'\bregenera|\bcura tier [IV]+ por turno|\bcura .{0,20} no começo', 'regen'),
+  # (lote 205)
+  (r'\bguarda aberta (?:iii|ii|i)\b', 'guardaAberta'),
+  (r'\+\d cargas? de vento\b', 'cargasVento'),
+  (r'\bcobrem você\b|\+\d costelas\b', 'costelas'),
+  (r'\+\d de calor\b', 'calor'),
+  (r'\+\d compassos?\b', 'compasso'),
+  (r'\bponha \d placas\b|\+\d placas?\b', 'placas'),
+  (r'\bquem te bate\w* (?:corpo a corpo )?leva dano tier \w+ de fogo', 'armaduraBrasa'),
+  (r'^uma canção\b|\bcomece uma canção\b', 'verso'),
 ]
+# (lote 205) quanto o contador sobe ("2 Rachados", "+2 Costelas", "Guarda Aberta II"): sai em nq
+QUANTO = {
+  'rachado': r'\b(\d) rachados?\b', 'iluminado': r'\b(\d) iluminados?\b', 'broto': r'\b(\d) brotos?\b',
+  'lenda': r'\b(\d) lendas?\b', 'envergonhado': r'\b(\d) envergonhados?\b', 'mira': r'\+(\d) de mira\b',
+  'costelas': r'(?:\+|cobrem você: )(\d) costelas\b', 'calor': r'\+(\d) de calor\b', 'compasso': r'\+(\d) compassos?\b',
+  'placas': r'(?:ponha |\+)(\d) placas?\b', 'cargasVento': r'\+(\d) cargas? de vento\b', 'acusacoes': r'\b(\d) acusaç',
+}
+SEM_DURACAO = {'sangue', 'veneno', 'marcado', 'escolhido', 'ponto', 'mira', 'cravada', 'acusacoes', 'eloVoto', 'rachado', 'esfera',
+  'iluminado', 'bencao', 'broto', 'lenda', 'envergonhado', 'cargasVento', 'costelas', 'calor', 'compasso', 'placas', 'verso'}
+COM_TESTE = {'caido', 'preso', 'atordoado', 'medo', 'abalado', 'adormecido', 'sonolento', 'confuso', 'enfeiticado', 'cego', 'lento',
+  'distraido', 'silencio', 'gelo', 'provocado', 'desarmado', 'maldicao', 'noAr', 'envergonhado', 'par'}
 
 FX_PALAVRAS = [
   (r'fumaça', 'fumaca'), (r'névoa (?:de|que) (?:veneno|tóxic)|gás|nuvem verde|nuvem tóxica|fumaça amarela', 'toxica'), (r'escur(?:o|idão|ece)|breu|trevas', 'escuridao'),
@@ -137,7 +172,7 @@ def ler(t, nome, base):
     # o nível 2 que só muda um detalhe ("Dois clones.", "E o alvo fica Marcado.") fica com a mira do nível 1
     herda = bool(base) and al is None and len(t) < 90 and not re.search(r'área|raio|círculo|cone|linha|parede|muro|em volta', tl)
     plural = re.search(r'\b(inimigos|aliados|todos|quem estiver|cada inimigo|cada aliado|os seres|todo inimigo|todo aliado)\b', tl)
-    area = re.search(r'(?:área|raio|círculo|cúpula) de ' + NUMW + r' cédulas?', tl)
+    area = re.search(r'(?:área|raio|círculo|cúpula) de ' + NUMW + r'(?: cédulas?)?', tl)   # (lote 205) as árvores novas dizem "círculo de 2"
     cone = re.search(r'\bcone\b(?: de ' + NUMW + r')?', tl)
     linha = re.search(r'\b(?:em linha|uma linha|linha de|parede de|muro de|muralha de|corredor de)\s*' + NUMW + r'?', tl)
     if 'q' not in s or not base:
@@ -157,7 +192,7 @@ def ler(t, nome, base):
         s.update(m='volta', f='circ', r=30, al=0)
     elif area:
         r = num(area.group(1))
-        centro_si = re.search(r'em volta de você|à sua volta|ao seu redor|em volta\b', tl) and not al
+        centro_si = re.search(r'em volta de você|à sua volta|ao seu redor|em volta\b|\bpisão\b|\bpisa\b', tl) and not al
         s.update(m='volta' if centro_si else 'ponto', f='circ', r=r, al=0 if centro_si else (al if al and al != r else 6))
     elif plural and al and re.search(r'\b(?:inimigos|aliados|todos|todo inimigo|todo aliado|cada inimigo|cada aliado) (?:a|que estiverem a|que começarem o turno a|a até) ' + NUMW + r' cédulas?', tl):
         s.update(m='volta', f='circ', r=al, al=0)
@@ -191,7 +226,7 @@ def ler(t, nome, base):
             break   # mexe num que já existe (expulsar, consertar, domar)
         if re.search(r'\b(?:a|o|as|os|sua|seu|à|ao|da|do|na|no) $', tl[max(0, mm.start() - 4):mm.start()]) and not re.search(r'levanta|invoca|chama|aparece|surge|cria|ergue|nasce|brota|monta|planta|finca', tl):
             break   # "você e a fera": a que já está na cena
-        if re.search(r'\bvira (?:o |a |um |uma |meia )?$', tl[max(0, mm.start() - 12):mm.start()]):
+        if re.search(r'\bvir[ae] (?:o |a |um |uma |meia )?$', tl[max(0, mm.start() - 12):mm.start()]):
             break   # vira a fera: é você que muda (Transformado), não um token novo
         if not re.search(r'levanta|invoca|chama|aparece|aparecem|surge|surgem|lutam?\b|cria|ergue|nasce|brota|monta|planta|finca|\b(?:um|uma|dois|duas|três|quatro|cinco|seis) ' + re.escape(mm.group(0).strip()[:5]), tl):
             continue
@@ -216,11 +251,12 @@ def ler(t, nome, base):
     mv = None
     m = re.search(r'' + NUMW + r' cédulas? para (?:trás|longe|fora)', tc) if re.search(r'empurr|joga|arremessa', tc) else None
     m = m or re.search(r'empurr\w*(?: [^.]{0,30}?)? ' + NUMW + r' cédulas?', tc) or re.search(r'empurr', tc)
+    if m and re.search(r'ninguém (?:te|o|a|os) empurra|não (?:pode ser|é) empurrad', tc) and len(re.findall(r'empurr', tc)) == 1: m = None   # (lote 205) "ninguém te empurra" é defesa
     if m: mv = {'k': 'empurra', 'd': num(m.group(1)) if m.lastindex else 1}
     m = re.search(r'\bpuxa\w*(?: [^.]{0,30}?)? ' + NUMW + r' cédulas?', tc) or (re.search(r'\bpuxa(?:d[oa]s?)? (?:o alvo|um inimigo|para perto|até você)', tc))
     if m and not mv: mv = {'k': 'puxa', 'd': num(m.group(1)) if m.lastindex else 3}
     if re.search(r'troca(?:m)? de lugar', tc): mv = {'k': 'troca', 'd': 0}
-    m = re.search(r'\b(?:anda|salta|corre|pula|teleporta|avança|recua|atravessa|dispara|voa)\w*(?: [^.]{0,20}?)? (?:até )?' + NUMW + r' cédulas?', tc)
+    m = re.search(r'\b(?:anda|salta|corre|pula|teleporta|avança|recua|atravessa|dispara|voa)\w*(?: [^.]{0,20}?)? (?:até )?' + NUMW + r' cédulas?(?!s| a mais)', tc)   # (lote 205) "anda 3 cédulas a mais" é bônus, não salto
     if m and not mv: mv = {'k': 'salta', 'd': num(m.group(1))}
     elif re.search(r'teleporta|reaparece|aparece (?:atrás|ao lado|colado)', tc) and not mv: mv = {'k': 'salta', 'd': al or 6}
     if mv:
@@ -232,21 +268,32 @@ def ler(t, nome, base):
     limpa = bool(re.search(r'perde(?:m)? (?:todas )?as condições|sem condições|tira (?:uma |a |as )?(?:maldição|condição|condições|veneno|o veneno)|remove (?:uma |a )?condição', tl))
     if limpa: s['lp'] = 1
     cs = []
-    te = teste(t); tt1 = tt or 1
+    te = teste(t); tt1 = tt or 1; nq = {}
+    def quanto(cid):
+        if cid not in QUANTO: return
+        q = re.search(QUANTO[cid], tc)
+        if q and int(q.group(1)) > 1: nq[cid] = min(6, int(q.group(1)))
     for p, cid in ([] if limpa else CONDS):
         if re.search(p, tc):
             mneg = re.search(p, tc)
             if re.search(r'(?:não|nem|sem) (?:fica\w*|é|está|pode ficar|\w+r) ?$', tc[max(0, mneg.start() - 22):mneg.start()]): continue
             if cid == 'marcado' and re.search(r'\bmarcad[oa]s? (?:pela|por)|contra (?:o|um) (?:alvo )?marcad|quem está marcad|alvo marcado|presa marcada', tl) and not re.search(r'\bmarca (?:um|o|uma|dois)', tl): continue
             if cid == 'caido' and re.search(r'(?:quando|se) (?:um|o|uma)? ?\w+ cai|cair\b|que cai\b|quem cai|antes de cair|caído\b(?! )', tl) and not re.search(r'derrub|o alvo cai|e cai\b|cai no chão', tl): continue
+            if cid == 'caido' and re.search(r'\bca(?:i|em) (?:\d|um|dois) tiers?\b', tl) and not re.search(r'derrub(?!a \d placa)|o alvo cai\b|cai no chão|ou caem?\b|e caem\b|testa\w* vigor ou cai', tl): continue   # (lote 205) "o golpe cai 1 tier"
             if cid == 'distraido' and re.search(r'quem está distraíd|contra (?:quem|um alvo|o alvo) distraíd|acertar quem', tl) and not re.search(r'fica(?:m)? distraíd|distrai\b', tl): continue
             if cid == 'sangue' and re.search(r'contra quem (?:está )?sangr|em quem sangra', tl) and not re.search(r'\+\d camada|camadas? de sangramento', tl): continue
-            cs.append([cid, tt1 if cid not in ('sangue', 'veneno', 'marcado', 'escolhido') else (tt or 0), te if cid in ('caido', 'preso', 'atordoado', 'medo', 'abalado', 'adormecido', 'sonolento', 'confuso', 'enfeiticado', 'cego', 'lento', 'distraido', 'silencio', 'gelo', 'provocado', 'desarmado', 'maldicao') else None, 'a'])
-    if re.search(r'\bvira (?:o |a |um |uma |meia |fera|lobo|névoa|morcego|besta|raposa)', tl) and not re.search(r'vira frasco|vira o rosto', tl):
-        cs.append(['transformado', tt or 10, None, 's'])
+            if cid in ('rachado', 'iluminado', 'envergonhado', 'lenda', 'broto') and re.search(r'(?:tem|com|tinha) (?:\d|um) ' + re.escape(re.sub(r'^\S+ ', '', mneg.group(0))), tc) and not re.search(r'\b(?:ganha|põe|fica com|e \d|recebe|plante)\b', tc): continue
+            cs.append([cid, (tt or 0) if cid in SEM_DURACAO else tt1, te if cid in COM_TESTE else None, 'a'])
+            quanto(cid)
+    if re.search(r'\bvir[ae] (?:o |a |um |uma |meia |fera|lobo|névoa|morcego|besta|raposa)', tl) and not re.search(r'vir[ae] frasco|vir[ae] o rosto', tl):
+        cs.append(['transformado', turnos(re.split(r'tra[çc]o |ao sair', t, flags=re.I)[0]) or 10, None, 's'])   # (lote 205) o Traço de depois não conta
     for p, cid in CONDS_SI:
         if re.search(p, tc) and not re.search(r'(?:não|nem) (?:fica|ficam)\w* (?:escondid|invisív)', tc):
-            cs.append([cid, tt or 1, None, 's' if s.get('m') in ('si', None, 'ponto', 'volta') or re.search(r'\bvocê\b', tl) else 'a'])
+            cs.append([cid, (tt or 0) if cid in SEM_DURACAO else (tt or 1), None, 's' if s.get('m') in ('si', None, 'ponto', 'volta') or re.search(r'\bvocê\b', tl) or cid not in ('escondido', 'voando', 'regen') else 'a'])
+            if cid == 'guardaAberta':
+                g = re.search(r'\bguarda aberta (iii|ii|i)\b', tc)
+                if g and len(g.group(1)) > 1: nq['guardaAberta'] = len(g.group(1))
+            quanto(cid)
     # bônus e penalidades com duração: Inspirado (aliado/você) e Vulnerável / Fraquejado (inimigo)
     if tt and re.search(r'\+\d+ (?:tiers? de dano|no acerto|de dano)|\+\d+ tiers? de dano', tl) and not re.search(r'contra (?:o|um|quem)', tl[:40]):
         cs.append(['inspirado', tt, None, 'a' if s.get('q') == 'a' or re.search(r'\baliad', tl) else 's'])
@@ -259,6 +306,7 @@ def ler(t, nome, base):
         cs = [c for c in base['c']] + [c for c in cs if c[0] not in [b[0] for b in base['c']]]
     if any(c[0] == 'maldicao' for c in cs): cs = [c for c in cs if c[0] not in ('vulneravel', 'fraco')]
     if any(c[0] == 'transformado' for c in cs) and s.get('m') == 'alvo' and not re.search(r'o alvo|um inimigo|num alvo|um alvo', tl): s.update(m='si')
+    if any(c[0] == 'transformado' for c in cs) and s.get('m') == 'si': s.pop('d', None)   # (lote 205) virar a fera é em você; as garras ficam para os golpes
     if cs:
         vis = set(); out = []
         for c in cs:
@@ -268,6 +316,8 @@ def ler(t, nome, base):
     elif base and base.get('c'):
         # "Por 3 turnos." no nível 2: as mesmas condições, com a duração nova
         if tt: s['c'] = [[c[0], tt if c[1] else 0, c[2], c[3]] for c in base['c']]
+    if nq: s['nq'] = nq
+    elif not herda: s.pop('nq', None)
     if s.get('z') and tt: s['z'] = dict(s['z'], t=tt)
     if s.get('inv') and tt and not s['inv'].get('clone'): s['inv'] = dict(s['inv'], t=tt)
     if s.get('m') == 'alvo' and not herda: s['q'] = 'a' if re.search(r'\b(?:um|o|num|no|a um|ao) aliado', tl) and not re.search(r'\b(?:um|o|num) (?:alvo|inimigo)', tl) else 'i'

@@ -330,7 +330,7 @@ const HabAcao = (() => {
         if (Object.keys(cur).length) info[cid] = cur;
         Store.upd('tokens', t0.id, { conds, cinfo: info });
       };
-      for (const cid of esc.si || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(de, cid, c ? c[1] : 1, 0, !!sp.fg && (cid === 'transformado' || cid === 'agigantado')); }
+      for (const cid of esc.si || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(de, cid, c ? c[1] : 1, (COND_BY_ID[cid] || {}).max ? Math.max(1, (sp.nq && sp.nq[cid]) || 1) : 0, !!sp.fg && (cid === 'transformado' || cid === 'agigantado')); }   // (lote 205) o contador em você também sobe (Costelas, Placas, Calor)
       // mover quem usou (o salto, o bote: para perto do alvo)
       if (esc.mv && sp.mv && sp.mv.k === 'salta') {
         const s = Math.max(1, de.size || 1), [cx, cy] = centro(de, sc);

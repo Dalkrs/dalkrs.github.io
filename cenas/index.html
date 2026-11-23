@@ -1531,7 +1531,8 @@ button.hud-tira:not(.hud-c) .hud-x { left: 0; }
 <script src="../tc/simbolos.js?v=1"></script>
 <script src="../tc/caudas.js?v=4"></script>
 <script src="../tc/barras-painel.js?v=19"></script>
-<script src="../tc/habs-acoes.js?v=4"></script>
+<script src="../tc/habs-acoes.js?v=5"></script>
+<script src="../tc/habs-ler.js?v=3"></script>
 <script src="../tc/formas.js?v=2"></script>
 <script src="../tc/npc.js?v=1"></script>
 <script src="../tc/misterio.js?v=1"></script>
@@ -1930,6 +1931,29 @@ const ICONS = {
   c_alvoDuelo: 'M4 4l10.500 10.500M20 4L9.500 14.500M6.500 17.500L4 20M17.500 17.500L20 20M7.500 14.500l2 2M16.500 14.500l-2 2',
   c_armaduraRachada: 'M8 3.500l4 1.800 4-1.800 4 3.500-2.500 4V20.500h-11V11L4 7zM13 6.500l-2 4 3 2-2 4.500',
   c_assombrado: 'M7 21V11a5 5 0 0 1 10 0v10l-2.500-2-2.500 2-2.500-2zM10 11h.01M14 11h.01',
+  // (lote 205) as condições das classes refeitas na tríade (lote 202)
+  c_noAr: 'M12 21V9M8 13l4-4 4 4M5 5c2 1.500 4 1.500 7 0s5-1.500 7 0',
+  c_ponto: 'M12 3v4M12 17v4M3 12h4M17 12h4M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+  c_guardaAberta: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800M12 3L4.500 5.800v3M4.500 13l3 3M4.500 16l3-3',
+  c_mira: 'M12 12m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0M12 2v5M12 17v5M2 12h5M17 12h5',
+  c_cravada: 'M4 20L15 9M15 9l1-5 4 4-5 1M7 13l-2 2M11 17l-2 2',
+  c_acusacoes: 'M5 14l6-6M8 5l6 6M3 21h10M14 11l6 6-2 2-6-6',
+  c_eloVoto: 'M9 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0M15 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0',
+  c_rachado: 'M5 4h14v16H5zM12 4l-2 5 3 2-2 5 2 4',
+  c_esfera: 'M12 12m-6 0a6 6 0 1 0 12 0a6 6 0 1 0-12 0M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M4 4l2 2M20 4l-2 2',
+  c_iluminado: 'M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2',
+  c_broto: 'M12 21v-9M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 10c0-3 2-5 6-5 0 3-2 5-6 5z',
+  c_par: 'M8 4.500a1.800 1.800 0 1 0 .010 0M16 4.500a1.800 1.800 0 1 0 .010 0M8 9v6l-2 6M16 9v6l2 6M8 12h8',
+  c_lenda: 'M4 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-7a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h7z',
+  c_envergonhado: 'M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0M9 10h.010M15 10h.010M9 16c2-1.500 4-1.500 6 0M6 13h2M16 13h2',
+  c_cargasVento: 'M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7',
+  c_costelas: 'M12 3v18M12 7c-3 0-6 1-7 3M12 7c3 0 6 1 7 3M12 11c-3 0-6 1-7 3M12 11c3 0 6 1 7 3M12 15c-2 0-4 1-5 2M12 15c2 0 4 1 5 2',
+  c_calor: 'M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0zM12 9v7',
+  c_compasso: 'M9 18V6l10-2v12M9 18a2.500 2.500 0 1 1-5 0a2.500 2.500 0 1 1 5 0M19 16a2.500 2.500 0 1 1-5 0a2.500 2.500 0 1 1 5 0',
+  c_placas: 'M4 7l8-3 8 3-8 3zM4 12l8 3 8-3M4 17l8 3 8-3',
+  c_armaduraBrasa: 'M12 3l7.500 2.800v5.400c0 4.600-3 8.300-7.500 9.800-4.500-1.500-7.500-5.200-7.500-9.800V5.800zM12 16c-2 0-3-1.500-3-3 0-2 3-4 3-6 0 2 3 4 3 6 0 1.500-1 3-3 3z',
+  c_verso: 'M4 8h10M4 12h10M4 16h6M17 16V5l3 1M17 16a2 2 0 1 1-4 0a2 2 0 1 1 4 0',
+  c_peso: 'M7 9h10l2 11H5zM9 9a3 3 0 1 1 6 0',
   // (lote 199) o Feiticeiro em três ramos: a Loucura e o Surto, a ilusão, a sombra fundida, a assinatura de sangue
   c_loucura: 'M9 21v-3a6 6 0 1 1 7-5.900V15h2l-2 3v3M11 9a2 2 0 1 1 2 2',
   c_surto: 'M7 21v-3a7 7 0 1 1 10-6l2 3h-2v3M12 5l-2 5h3l-2 5',
@@ -2408,6 +2432,29 @@ const CONDS = [
   { id: 'sobExorcismo', n: 'Sob Exorcismo', c: '#e8b83a', i: 'c_sobExorcismo', g: 'classes', r: 'Sacerdote', dur: 2 },
   { id: 'surto', n: 'Surto', c: '#d9342b', i: 'c_surto', g: 'classes', r: 'Feiticeiro', dur: 1, tab: ['Ri sem parar: só anda, não ataca nem usa habilidade', 'Ataca a criatura mais perto, amiga ou inimiga', 'Foge 4 cédulas para longe de quem causou o surto', 'Larga a arma (Desarmado) e fica olhando para ela', 'Grita com quem não está lá: fica Distraído e Exposto', 'Congela olhando o nada: perde o turno (chefe: só perde a reação)'] },
   { id: 'tutelado', n: 'Tutelado', c: '#5a8fd6', i: 'c_tutelado', g: 'classes', r: 'Aégis' },
+  // (lote 205) as classes refeitas na tríade (lote 202): o que cada ramo marca no mapa
+  { id: 'noAr', n: 'No Ar', c: '#8fd3c8', i: 'c_noAr', g: 'classes', r: 'Samurai', dur: 1 },
+  { id: 'cargasVento', n: 'Cargas de Vento', c: '#8fd3c8', i: 'c_cargasVento', g: 'classes', r: 'Samurai', max: 3, ini: 1 },
+  { id: 'ponto', n: 'Ponto', c: '#c9d6e8', i: 'c_ponto', g: 'classes', r: 'Espadachim', tab: ['Frente', 'Direita', 'Costas', 'Esquerda'] },
+  { id: 'guardaAberta', n: 'Guarda Aberta', c: '#d9822b', i: 'c_guardaAberta', g: 'classes', r: 'Bárbaro', max: 3, ini: 1, dur: 1 },
+  { id: 'mira', n: 'Mira', c: '#9cb86b', i: 'c_mira', g: 'classes', r: 'Arqueiro', max: 3, ini: 1 },
+  { id: 'cravada', n: 'Flecha Cravada', c: '#e07b39', i: 'c_cravada', g: 'classes', r: 'Arqueiro' },
+  { id: 'costelas', n: 'Costelas', c: '#bdb6a6', i: 'c_costelas', g: 'classes', r: 'Necromante', max: 6, ini: 3 },
+  { id: 'calor', n: 'Calor do Cano', c: '#c0603a', i: 'c_calor', g: 'classes', r: 'Artífice', max: 3, ini: 1 },
+  { id: 'compasso', n: 'Compassos', c: '#7ec8a9', i: 'c_compasso', g: 'classes', r: 'Karê\'mã', max: 3, ini: 1 },
+  { id: 'acusacoes', n: 'Réu (Acusações)', c: '#e0c25a', i: 'c_acusacoes', g: 'classes', r: 'Aégis', max: 3, ini: 1 },
+  { id: 'eloVoto', n: 'Elo do Voto', c: '#b9a3d9', i: 'c_eloVoto', g: 'classes', r: 'Aégis' },
+  { id: 'rachado', n: 'Rachado', c: '#9a6b4b', i: 'c_rachado', g: 'classes', r: 'Ferreiro', max: 3, ini: 1 },
+  { id: 'placas', n: 'Placas', c: '#7c7c86', i: 'c_placas', g: 'classes', r: 'Ferreiro', max: 6, ini: 3 },
+  { id: 'armaduraBrasa', n: 'Armadura em Brasa', c: '#d9612b', i: 'c_armaduraBrasa', g: 'classes', r: 'Ferreiro', dur: 2 },
+  { id: 'peso', n: 'Peso', c: '#8e8e8e', i: 'c_peso', g: 'classes', r: 'Monge', max: 5, ini: 1 },
+  { id: 'esfera', n: 'Esfera de Chi', c: '#7fa8e0', i: 'c_esfera', g: 'classes', r: 'Monge' },
+  { id: 'iluminado', n: 'Iluminado', c: '#e8d06a', i: 'c_iluminado', g: 'classes', r: 'Sacerdote', max: 3, ini: 1 },
+  { id: 'broto', n: 'Brotos', c: '#9ad07a', i: 'c_broto', g: 'classes', r: 'Druida', max: 3, ini: 1 },
+  { id: 'verso', n: 'Canção (Verso)', c: '#e8a0bf', i: 'c_verso', g: 'classes', r: 'Bardo', max: 3, ini: 1 },
+  { id: 'par', n: 'Par de Dança', c: '#f0c27b', i: 'c_par', g: 'classes', r: 'Bardo', dur: 1 },
+  { id: 'lenda', n: 'Lenda', c: '#9fb4e0', i: 'c_lenda', g: 'classes', r: 'Bardo', max: 3, ini: 1 },
+  { id: 'envergonhado', n: 'Envergonhado', c: '#c07090', i: 'c_envergonhado', g: 'classes', r: 'Bardo', max: 3, ini: 1 },
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
 /* (lote 8) As condições que pedem uma janela antes (a Ferida permanente: qual barra e quanto apodrece; o Clone:
@@ -56452,7 +56499,7 @@ const HabAcao = (() => {
         if (Object.keys(cur).length) info[cid] = cur;
         Store.upd('tokens', t0.id, { conds, cinfo: info });
       };
-      for (const cid of esc.si || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(de, cid, c ? c[1] : 1, 0, !!sp.fg && (cid === 'transformado' || cid === 'agigantado')); }
+      for (const cid of esc.si || []) { const c = (sp.c || []).find(x => x[0] === cid); condEm(de, cid, c ? c[1] : 1, (COND_BY_ID[cid] || {}).max ? Math.max(1, (sp.nq && sp.nq[cid]) || 1) : 0, !!sp.fg && (cid === 'transformado' || cid === 'agigantado')); }   // (lote 205) o contador em você também sobe (Costelas, Placas, Calor)
       // mover quem usou (o salto, o bote: para perto do alvo)
       if (esc.mv && sp.mv && sp.mv.k === 'salta') {
         const s = Math.max(1, de.size || 1), [cx, cy] = centro(de, sc);
@@ -57279,6 +57326,8 @@ async function start(snap) {
 }
 
 (function boot() {
+  // (lote 205) o leitor das habilidades (tc/habs-ler.js) lê as árvores pelas Fichas, que vivem dentro do pacote
+  if (window.TC && window.TC.habsLer && window.TC.habsLer.usar) window.TC.habsLer.usar(Fichas);
   // Acesso para testes automáticos (só com ?debug no endereço). __tc é o nome de agora; __urgm, o que os testes antigos usam.
   if (/[?&]debug\b/.test(location.search)) window.__tc = window.__urgm = { HabAcao, tokWH, ehRet, ObjPainel, PlantaAndares, Temas, WEATHERS, WEATHER_GRUPOS, Vigia, Trama, Tempo, Zonas, Segredos, MundoCena, Exemplo, Erosao, Novidades, Rondas, Roupas, Furtividade, Andares, Lapis, MembrosCla, AguaPenhasco, Misterio, MissaoCenas, LugaresFora, Mestre, PainelBarras, Best, SedeCenas, EscudoCenas, cleanSaque, Combate, Relevo, Arena, Reforco, Campo, Luta, Vila, Cidade, Tracado, Biomas, Regiao, Interior, Masmorra, Encontro, Navio, Tribo, Porto, Ruinas, LugaresMundo, CidadeGrande, Paisagem, Estacoes, Historia, HexCena, MarcasGuerra, Arredores, Gerador, Estilos, Fichas, Store, App, Tools, Vision, Render, UI, Act, FX, Props, Persist, Assets, Tour, Walls, Ext, Nuvem, Proj, can, tokShown, setSel, barsShown, tokensIn, auraShape, fxVisible, doorSpots, rollDie, applyLabel, newToken, newScene, barAfter, barX, cleanBar, normalizeScene, cleanInis, turnSort, cleanTer, isTer, TERRENOS, selOf, Som, condNum, acertarCondicoes, CONDS, COND_BY_ID, ICONS, barPod, barTeto, barFull, grupoDoClone, realDeClone, regrasDoClone, vagasDoClone, MAX_CLONES };
   const hot = window.claude && window.claude.hot;
