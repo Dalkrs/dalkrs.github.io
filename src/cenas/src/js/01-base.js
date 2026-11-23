@@ -372,6 +372,10 @@ const ICONS = {
   c_par: 'M8 4.500a1.800 1.800 0 1 0 .010 0M16 4.500a1.800 1.800 0 1 0 .010 0M8 9v6l-2 6M16 9v6l2 6M8 12h8',
   c_lenda: 'M4 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-7a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h7z',
   c_envergonhado: 'M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0M9 10h.010M15 10h.010M9 16c2-1.500 4-1.500 6 0M6 13h2M16 13h2',
+  // (lote 205) a Kitsune Ayto: a fome, a sombra engolida e a lembrança arrancada
+  c_fomeNegra: 'M4 9c2-4 14-4 16 0l-2 7c-3 3-9 3-12 0zM8 12l1.500 2 1.500-2 1.500 2 1.500-2 1.500 2',
+  c_semSombra: 'M12 3a3 3 0 1 0 0.010 0M9 9h6l1 6h-2l-1 6h-2l-1-6H8zM5 21h14M4 4l16 16',
+  c_roubado: 'M5 8a7 7 0 0 1 14 0c0 3-2 4-3 5v2H8v-2c-1-1-3-2-3-5M9 19h6M10 22h4M15 6l-3 3-2-2',
   c_cargasVento: 'M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7',
   c_costelas: 'M12 3v18M12 7c-3 0-6 1-7 3M12 7c3 0 6 1 7 3M12 11c-3 0-6 1-7 3M12 11c3 0 6 1 7 3M12 15c-2 0-4 1-5 2M12 15c2 0 4 1 5 2',
   c_calor: 'M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0zM12 9v7',
@@ -881,6 +885,10 @@ const CONDS = [
   { id: 'par', n: 'Par de Dança', c: '#f0c27b', i: 'c_par', g: 'classes', r: 'Bardo', dur: 1 },
   { id: 'lenda', n: 'Lenda', c: '#9fb4e0', i: 'c_lenda', g: 'classes', r: 'Bardo', max: 3, ini: 1 },
   { id: 'envergonhado', n: 'Envergonhado', c: '#c07090', i: 'c_envergonhado', g: 'classes', r: 'Bardo', max: 3, ini: 1 },
+  // (lote 205) a Kitsune Ayto
+  { id: 'fomeNegra', n: 'Fome Negra', c: '#6b3f8f', i: 'c_fomeNegra', g: 'racas', r: 'Kitsune Ayto', max: 3, ini: 1 },
+  { id: 'semSombra', n: 'Sem Sombra', c: '#4a4060', i: 'c_semSombra', g: 'racas', r: 'Kitsune Ayto', dur: 2 },
+  { id: 'roubado', n: 'Lembrança Roubada', c: '#8e78c8', i: 'c_roubado', g: 'racas', r: 'Kitsune Ayto' },
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
 /* (lote 8) As condições que pedem uma janela antes (a Ferida permanente: qual barra e quanto apodrece; o Clone:

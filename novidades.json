@@ -2,6 +2,17 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.23-02",
+      "data": "2026-11-23",
+      "titulo": "Ninja com jutsus e a Kitsune Ayto",
+      "itens": [
+        { "tipo": "novo", "texto": "Árvore do Ninja: jutsus de Sombra, Gelo e Fogo, um em cada ramo, que invocam o elemento (corvos, lobo de gelo, sapo e dragão de fogo). A escolha é livre: golpe, jutsu ou os dois." },
+        { "tipo": "novo", "texto": "Raça nova: Kitsune Ayto, os Filhos de Semune. Três galhos: Sombra Viva, Devorar e Lembrança Roubada. Começa com 2 caudas." },
+        { "tipo": "novo", "texto": "Ficha e Cenas: o painel roxo das caudas da Kitsune Ayto guarda o poder arrancado de um yokai devorado. Ele se usa uma vez." },
+        { "tipo": "novo", "texto": "Cenas: condições Fome Negra, Sem Sombra e Lembrança Roubada." }
+      ]
+    },
+    {
       "versao": "2026.11.23-01",
       "data": "2026-11-23",
       "titulo": "As classes novas agem no mapa",

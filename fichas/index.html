@@ -1858,6 +1858,8 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 /* (lote 183) a Kitsune Nirus: o mesmo painel, em verde */
 .knirus .kcauda.cheia,.knirus .kbibp.on{border-color:#5aa35e;box-shadow:0 0 0 1px #5aa35e66}
 .knirus .eyebrow,.knirus .kcnum svg{color:#4f9a55}
+.kayto .kcauda.cheia,.kayto .kbibp.on{border-color:#8e62c9;box-shadow:0 0 0 1px #8e62c966}
+.kayto .eyebrow,.kayto .kcnum svg{color:#8e62c9}
 .fmlista{display:flex;flex-direction:column;gap:8px}
 .fmrow{display:flex;align-items:center;gap:12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
 .fmimg{width:52px;height:52px;border-radius:50%;overflow:hidden;flex:0 0 52px;display:grid;place-items:center;background:var(--bg2,#00000022);font-size:10.5px;color:var(--muted);text-align:center}
@@ -1979,8 +1981,8 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <script src="../tc/vicios.js?v=1"></script>
 <script src="vicios.js?v=1"></script>
 <script src="../tc/simbolos.js?v=1"></script>
-<script src="../tc/caudas.js?v=4"></script>
-<script src="caudas.js?v=4"></script>
+<script src="../tc/caudas.js?v=5"></script>
+<script src="caudas.js?v=5"></script>
 <script src="../tc/formas.js?v=2"></script>
 <script src="formas.js?v=1"></script>
 <script src="../tc/missoes.js?v=3"></script>
@@ -3283,7 +3285,7 @@ function renderFicha(){
 
   ${htmlCaixinha(pc)}`)}
   ${parte('social', `${FichasExtras.painelMente(pc)}${typeof FichasRep!=='undefined'? FichasRep.painel(pc) : ''}`)}
-  ${parte('skills', (typeof FichasCaudas!=='undefined'? FichasCaudas.painel(pc) : '') + (typeof FichasCaudasNirus!=='undefined'? FichasCaudasNirus.painel(pc) : '') + (typeof FichasFormas!=='undefined'? FichasFormas.painel(pc) : '') + htmlAbaSkills(pc))}
+  ${parte('skills', (typeof FichasCaudas!=='undefined'? FichasCaudas.painel(pc) : '') + (typeof FichasCaudasNirus!=='undefined'? FichasCaudasNirus.painel(pc) : '') + (typeof FichasCaudasAyto!=='undefined'? FichasCaudasAyto.painel(pc) : '') + (typeof FichasFormas!=='undefined'? FichasFormas.painel(pc) : '') + htmlAbaSkills(pc))}
   ${pc.petDe||typeof FichasApt==='undefined'? '' : parte('aptidoes', FichasApt.painel(pc) + (typeof FichasDesv!=='undefined'? FichasDesv.painel(pc) : '') + (typeof FichasVic!=='undefined'? FichasVic.painel(pc) : ''))}
   ${FichasTropas.tem(pc)? parte('tropas', FichasTropas.htmlAba(pc)) : ''}
   ${parte('notas', htmlAbaNotas(pc))}
@@ -4008,7 +4010,7 @@ function ligarFicha(pc){
   if(typeof FichasApt!=='undefined') FichasApt.ligar(host, pc);          // (lote 131) as aptidões
   if(typeof FichasDesv!=='undefined') FichasDesv.ligar(host, pc);        // (lote 175) as desvantagens
   if(typeof FichasVic!=='undefined') FichasVic.ligar(host, pc);          // (lote 175) os vícios
-  if(typeof FichasCaudas!=='undefined'){ const kc=host.querySelector('#painelCaudas'); if(kc) FichasCaudas.ligar(kc, pc); } if(typeof FichasCaudasNirus!=='undefined'){ const kn=host.querySelector('#painelCaudasNirus'); if(kn) FichasCaudasNirus.ligar(kn, pc); } if(typeof FichasFormas!=='undefined'){ const fm=host.querySelector('#painelFormas'); if(fm) FichasFormas.ligar(fm, pc); }   // (lote 173) as caudas da Kitsune
+  if(typeof FichasCaudas!=='undefined'){ const kc=host.querySelector('#painelCaudas'); if(kc) FichasCaudas.ligar(kc, pc); } if(typeof FichasCaudasNirus!=='undefined'){ const kn=host.querySelector('#painelCaudasNirus'); if(kn) FichasCaudasNirus.ligar(kn, pc); } if(typeof FichasCaudasAyto!=='undefined'){ const ka=host.querySelector('#painelCaudasAyto'); if(ka) FichasCaudasAyto.ligar(ka, pc); } if(typeof FichasFormas!=='undefined'){ const fm=host.querySelector('#painelFormas'); if(fm) FichasFormas.ligar(fm, pc); }   // (lote 173) as caudas da Kitsune
   FichasExtras.ligarEfeitos(host, pc);
   FichasExtras.ligarSobrevida(host, pc);
   FichasExtras.ligarNovos(host, pc);

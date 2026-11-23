@@ -1454,5 +1454,557 @@
     ]
    ]
   }
+ ],
+ "n_ninja_aj4": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "al": 6,
+   "mv": {
+    "k": "salta",
+    "d": 6
+   }
+  }
+ ],
+ "n_ninja_ajc2": [
+  {
+   "d": 3,
+   "q": "i",
+   "m": "ponto",
+   "al": 6,
+   "inv": {
+    "nome": "Serpente de sombra",
+    "cor": "#3A3050",
+    "tam": 1,
+    "vida": 6,
+    "t": 2,
+    "n": 1
+   },
+   "c": [
+    [
+     "lento",
+     1,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_ak3": [
+  {
+   "d": 3,
+   "q": "t",
+   "m": "ponto",
+   "al": 6,
+   "inv": {
+    "nome": "Grande Corvo",
+    "cor": "#2E2840",
+    "tam": 2,
+    "vida": 12,
+    "t": 3,
+    "n": 1
+   },
+   "c": [
+    [
+     "cego",
+     1,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_bjcab": [
+  {
+   "d": 2,
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "resfriado",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  },
+  {
+   "d": 3,
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "resfriado",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_bj3": [
+  {
+   "d": 2,
+   "q": "i",
+   "m": "ponto",
+   "al": 3,
+   "inv": {
+    "nome": "Lobo de gelo",
+    "cor": "#9FD8EE",
+    "tam": 1,
+    "vida": 5,
+    "t": 2,
+    "n": 1
+   },
+   "c": [
+    [
+     "resfriado",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_bjxa": [
+  {
+   "d": 3,
+   "q": "t",
+   "m": "ponto",
+   "f": "line",
+   "r": 5,
+   "al": 0,
+   "c": [
+    [
+     "resfriado",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_bjc1": [
+  {
+   "d": 3,
+   "q": "t",
+   "m": "ponto",
+   "f": "circ",
+   "r": 3,
+   "al": 6,
+   "z": {
+    "fx": "gelado",
+    "t": 1
+   },
+   "c": [
+    [
+     "resfriado",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_bjc2": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "f": "circ",
+   "r": 3,
+   "al": 6,
+   "z": {
+    "fx": "nevoa",
+    "t": 2
+   },
+   "c": [
+    [
+     "resfriado",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_bk3": [
+  {
+   "q": "t",
+   "m": "si",
+   "c": [
+    [
+     "lento",
+     3,
+     null,
+     "s"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_cj3": [
+  {
+   "d": 2,
+   "q": "i",
+   "m": "ponto",
+   "al": 3,
+   "inv": {
+    "nome": "Sapo de fogo",
+    "cor": "#E07A3A",
+    "tam": 1,
+    "vida": 5,
+    "t": 2,
+    "n": 1
+   },
+   "c": [
+    [
+     "fogo",
+     1,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_cj4": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 4,
+   "mv": {
+    "k": "salta",
+    "d": 4
+   }
+  }
+ ],
+ "n_ninja_cjxb": [
+  {
+   "q": "t",
+   "m": "si",
+   "inv": {
+    "clone": true,
+    "n": 1,
+    "t": 2
+   }
+  }
+ ],
+ "n_ninja_cjc1": [
+  {
+   "d": 2,
+   "q": "t",
+   "m": "ponto",
+   "f": "line",
+   "r": 5,
+   "al": 6,
+   "z": {
+    "fx": "fogo",
+    "t": 2
+   },
+   "c": [
+    [
+     "fogo",
+     1,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_cjc2": [
+  {
+   "d": 3,
+   "q": "t",
+   "m": "ponto",
+   "f": "circ",
+   "r": 3,
+   "al": 8,
+   "z": {
+    "fx": "brasas",
+    "t": 2
+   },
+   "c": [
+    [
+     "fogo",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_cjc3": [
+  {
+   "d": 3,
+   "q": "i",
+   "m": "alvo",
+   "al": 5,
+   "c": [
+    [
+     "fogo",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_ninja_ck3": [
+  {
+   "d": 4,
+   "q": "t",
+   "m": "ponto",
+   "f": "circ",
+   "r": 3,
+   "al": 8,
+   "z": {
+    "fx": "fogo",
+    "t": 2
+   },
+   "c": [
+    [
+     "fogo",
+     2,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_kitsune_ayto_acab": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 6,
+   "inv": {
+    "nome": "Raposa-Sombra",
+    "cor": "#2B2238",
+    "tam": 1,
+    "vida": 1,
+    "t": 3,
+    "n": 1
+   }
+  },
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 6,
+   "inv": {
+    "nome": "Raposa-Sombra",
+    "cor": "#2B2238",
+    "tam": 1,
+    "vida": 1,
+    "t": 10,
+    "n": 1
+   }
+  }
+ ],
+ "n_kitsune_ayto_ab1": [
+  {
+   "q": "t",
+   "m": "alvo",
+   "al": 30,
+   "mv": {
+    "k": "troca",
+    "d": 0
+   }
+  }
+ ],
+ "n_kitsune_ayto_ab5": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 6,
+   "inv": {
+    "nome": "Raposa-Sombra",
+    "cor": "#2B2238",
+    "tam": 1,
+    "vida": 1,
+    "t": 2,
+    "n": 1
+   }
+  }
+ ],
+ "n_kitsune_ayto_ab7": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 1,
+   "c": [
+    [
+     "semSombra",
+     2,
+     "vigor",
+     "a"
+    ],
+    [
+     "lento",
+     2,
+     "vigor",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_kitsune_ayto_ak": [
+  {
+   "d": 4,
+   "q": "i",
+   "m": "alvo",
+   "al": 1,
+   "c": [
+    [
+     "preso",
+     1,
+     "vigor",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_kitsune_ayto_bb1": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 1,
+   "c": [
+    [
+     "fraco",
+     2,
+     "VIT",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_kitsune_ayto_bb6": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 4,
+   "c": [
+    [
+     "preso",
+     1,
+     null,
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_kitsune_ayto_bb7": [
+  {
+   "q": "t",
+   "m": "si",
+   "c": [
+    [
+     "escudo",
+     1,
+     null,
+     "s"
+    ]
+   ]
+  }
+ ],
+ "n_kitsune_ayto_bk": [
+  {
+   "d": 5,
+   "q": "i",
+   "m": "alvo",
+   "al": 1,
+   "c": [
+    [
+     "fomeNegra",
+     0,
+     null,
+     "s"
+    ]
+   ],
+   "nq": {
+    "fomeNegra": 3
+   }
+  }
+ ],
+ "n_kitsune_ayto_ccab": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 1,
+   "c": [
+    [
+     "confuso",
+     1,
+     "candes",
+     "a"
+    ],
+    [
+     "roubado",
+     0,
+     "candes",
+     "a"
+    ]
+   ]
+  },
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 3,
+   "c": [
+    [
+     "confuso",
+     1,
+     "candes",
+     "a"
+    ],
+    [
+     "roubado",
+     0,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_kitsune_ayto_cb2": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "medo",
+     2,
+     "candes",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_kitsune_ayto_ck": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 1,
+   "c": [
+    [
+     "confuso",
+     2,
+     "candes",
+     "a"
+    ],
+    [
+     "atordoado",
+     1,
+     "candes",
+     "a"
+    ],
+    [
+     "roubado",
+     0,
+     "candes",
+     "a"
+    ]
+   ]
+  }
  ]
 }

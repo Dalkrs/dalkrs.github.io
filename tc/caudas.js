@@ -24,7 +24,9 @@
      monstros: o Pedaço da Vítima). Cada uma tem o seu lugar no estado (pb.<slot>) e a sua barra (o podre). */
   const VARIANTES = {
     kitsune: { slot: 'kitsune', ref: 'ba_a_kitsune', arv: 'a_kitsune', quem: 'A Kitsune', de: 'yokai' },
-    nirus: { slot: 'nirus', ref: 'ba_a_kitsune_nirus', arv: 'a_kitsune_nirus', quem: 'A Kitsune Nirus', de: 'presa' }
+    nirus: { slot: 'nirus', ref: 'ba_a_kitsune_nirus', arv: 'a_kitsune_nirus', quem: 'A Kitsune Nirus', de: 'presa' },
+    // (lote 205) a Kitsune Ayto: o poder ARRANCADO de um yokai que ela devorou; um uso, e o yokai some
+    ayto: { slot: 'ayto', ref: 'ba_a_kitsune_ayto', arv: 'a_kitsune_ayto', quem: 'A Kitsune Ayto', de: 'yokai' }
   };
   function fazer(V) {
   const N = 9, REF = V.ref, SLOT = V.slot, LIM = Object.freeze({ yokai: 60, nome: 60, efeito: 400 });
@@ -105,10 +107,11 @@
   // a Kitsune lunar continua sendo TC.caudas; a Nirus é TC.caudas.nirus
   const API = fazer(VARIANTES.kitsune);
   API.nirus = fazer(VARIANTES.nirus);
-  API.variante = slot => (slot === 'nirus' ? API.nirus : API);
+  API.ayto = fazer(VARIANTES.ayto);
+  API.variante = slot => (slot === 'nirus' ? API.nirus : slot === 'ayto' ? API.ayto : API);
   // as caudas podres das duas viram o podre das suas barras
   const comPodreSo = API.comPodre;
-  API.comPodreTodas = estado => API.nirus.comPodre(comPodreSo(estado));
+  API.comPodreTodas = estado => API.ayto.comPodre(API.nirus.comPodre(comPodreSo(estado)));
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else { root.TC = root.TC || {}; root.TC.caudas = API; }
 })(typeof window !== 'undefined' ? window : globalThis);

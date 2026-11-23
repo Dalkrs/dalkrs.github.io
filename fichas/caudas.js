@@ -11,7 +11,7 @@
    (uma RP, um ser vivo ou um monstro que ela comeu); a biblioteca do mestre dela é a nirBib. */
 const fazerFichasCaudas = (T) => {
   'use strict';
-  const C = () => window.TC && TC.caudas && (T.slot === 'nirus' ? TC.caudas.nirus : TC.caudas);
+  const C = () => window.TC && TC.caudas && (TC.caudas.variante ? TC.caudas.variante(T.slot) : T.slot === 'nirus' ? TC.caudas.nirus : TC.caudas);   // (lote 205) e a Ayto
   const M = () => (typeof FichasMesa !== 'undefined' ? FichasMesa : null);
   const X = () => (typeof FichasExtras !== 'undefined' ? FichasExtras : null);
   const q = (el, s) => el.querySelector(s), qa = (el, s) => [...el.querySelectorAll(s)];
@@ -84,7 +84,7 @@ const fazerFichasCaudas = (T) => {
         ${c.p ? `<b class="kcpoder">${e(c.p.n || 'Poder')}${c.p.y ? ` <small>de ${e(c.p.y)}</small>` : ''}</b>${c.p.e ? `<p class="kctx">${e(c.p.e)}</p>` : ''}${c.p.a ? `<p class="kcfer">${SV('impacto', 13)} Podre: esta cauda não pode ser ${T.queimada} até o poder ser usado.</p>` : ''}`
           : '<p class="kctx hint">Vazia.</p>'}
       </div>`;
-    return `<div class="panel${T.slot === 'nirus' ? ' knirus' : ''}" id="${PID}" data-kpc="${e(pc.id)}">
+    return `<div class="panel${T.slot === 'nirus' ? ' knirus' : T.slot === 'ayto' ? ' kayto' : ''}" id="${PID}" data-kpc="${e(pc.id)}">
       <div class="hd"><span class="eyebrow">${SV(T.icone, 15)} ${T.titulo}</span>
         <span class="hint" style="margin-left:auto">${T.sub}</span>
         ${ed ? `<button type="button" class="mini primary" data-kguardar>+ ${T.botao}</button>` : ''}</div>
@@ -152,3 +152,8 @@ const FichasCaudasNirus = fazerFichasCaudas({ slot: 'nirus', arv: 'a_kitsune_nir
   aceso: 'garra', icone: 'pata', titulo: 'Caudas da Kitsune Nirus', sub: 'o Pedaço da Vítima: de uma RP, um ser vivo ou um monstro que ela comeu', botao: 'Guardar pedaço',
   janela: 'Guardar um Pedaço da Vítima', quem: 'A Kitsune Nirus', comeu: 'comeu uma RP, um ser vivo ou um monstro', rotY: 'De quem (RP, ser vivo ou monstro)',
   exY: 'Humano, o bandido Joca', exN: 'Golpe Baixo', exE: 'Uma lembrança: onde o bando esconde o ouro. Ou um truque da ficha dele, no nível 1.', doQue: 'da vítima', queima: 'baixa', queimada: 'baixada' });
+// (lote 205) a Kitsune Ayto, em roxo: a cauda guarda o poder ARRANCADO de um yokai que ela devorou (um uso)
+const FichasCaudasAyto = fazerFichasCaudas({ slot: 'ayto', arv: 'a_kitsune_ayto', ref: 'ba_a_kitsune_ayto', pid: 'painelCaudasAyto', chaveBib: 'tc:aytBib', bib: 'aytBib',
+  aceso: 'presas', icone: 'raposa', titulo: 'Caudas da Kitsune Ayto', sub: 'o poder arrancado do yokai que ela devorou: um uso, e o yokai some', botao: 'Guardar poder',
+  janela: 'Guardar o poder arrancado de um yokai', quem: 'A Kitsune Ayto', comeu: 'devorou um yokai', rotY: 'Yokai devorado', exY: 'Kappa', exN: 'Pele de Água',
+  exE: 'Defesa tier II contra fogo por 2 turnos. Um uso.', doQue: 'do yokai', queima: 'baixa', queimada: 'baixada' });

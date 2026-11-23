@@ -1030,7 +1030,7 @@ const CAUDAS = () => (root.TC && root.TC.caudas) || (() => { try { return typeof
 /* (lote 183) A Kitsune Nirus usa o mesmo painel, em verde: a cauda guarda o Pedaço da Vítima (uma RP, um ser vivo ou um
    monstro que ela comeu), em s.caudas do pb.nirus (TC.caudas.nirus). */
 function classeCaudas(o){
-  const C = () => { const c = CAUDAS(); return c && o.slot === 'nirus' ? c.nirus : c; };
+  const C = () => { const c = CAUDAS(); return c && o.slot === 'nirus' ? c.nirus : c && o.slot === 'ayto' ? c.ayto : c; };   // (lote 205) e a Ayto
   classe({ id: o.slot, cat: 'raca', arvore: o.arvore, barra: 'Caudas', cor: o.cor, glifo: o.glifo, inicio: 1, max: 9, teto: null,
     patamares: [],
     est: () => ({ caudas: [] }),
@@ -1058,6 +1058,9 @@ classeCaudas({ slot: 'kitsune', arvore: 'Kitsune', cor: '#7FB8F0', glifo: '@rapo
   nenhum: 'Nenhum poder de yokai guardado.', vazia: 'guarde um poder de yokai na ficha (aba Skills)', ganho: { c: 'Um espírito se soltou perto (1 por luta)', v: 1, max: 1 } });
 classeCaudas({ slot: 'nirus', arvore: 'Kitsune Nirus', cor: '#6FBF73', glifo: '@pata', aceso: '@garra', oque: 'um Pedaço da Vítima', um: 'Pedaço da Vítima',
   nenhum: 'Nenhum Pedaço da Vítima guardado.', vazia: 'guarde um Pedaço da Vítima (de uma RP, um ser vivo ou um monstro) na ficha (aba Skills)', ganho: { c: 'Um inimigo Marcado caiu (1 por luta)', v: 1, max: 1 } });
+// (lote 205) a Kitsune Ayto, em roxo: o poder arrancado de um yokai devorado (um uso)
+classeCaudas({ slot: 'ayto', arvore: 'Kitsune Ayto', cor: '#8E62C9', glifo: '@raposa', aceso: '@presas', oque: 'um poder arrancado', um: 'poder arrancado',
+  nenhum: 'Nenhum poder arrancado guardado.', vazia: 'guarde o poder arrancado de um yokai devorado na ficha (aba Skills)', ganho: { c: 'Devorou um yokai ou espírito (1 por luta)', v: 1, max: 1 } });
 
 // (o teto do Lobisomem: 8 na lua cheia, 6 nas outras)
 BARRA.lobisomem.teto = s => (s && s.lua === 'cheia' ? 8 : 6);
@@ -1076,7 +1079,7 @@ const ARVORES = {
   samurai: ['a_samurai'], ninja: ['a_ninja'], barbaro: ['a_barbaro'], espadachim: ['a_espadachim'], monge: ['a_monge'], aegis: ['a_aegis'],
   arqueiro: ['a_arqueiro'], mago: ['a_mago'], feiticeiro: ['a_feiticeiro'], necromante: ['a_necromante'], druida: ['a_druida'],
   sacerdote: ['a_sacerdote'], artifice: ['a_artifice'], alquimista: ['a_alquimista'], ferreiro: ['a_ferreiro'], bardo: ['a_bardo'], shaji: ['a_shaji'],
-  karema: ['a_kare_ma'], cartomante: ['a_cartomante'], vampiro: ['a_vampiro'], lobisomem: ['a_lobisomem'], kitsune: ['a_kitsune'], nirus: ['a_kitsune_nirus']
+  karema: ['a_kare_ma'], cartomante: ['a_cartomante'], vampiro: ['a_vampiro'], lobisomem: ['a_lobisomem'], kitsune: ['a_kitsune'], nirus: ['a_kitsune_nirus'], ayto: ['a_kitsune_ayto']
 };
 const BENCAO_SELENE = 'aq0onsk37x';                          // (do mundo antigo; nenhuma árvore liga mais nela)
 const POR_ID = {};
