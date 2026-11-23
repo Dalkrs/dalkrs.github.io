@@ -265,3 +265,48 @@
 .es-c.prisma.luz { color: #fff2c4; }
 .es { width: min(100%, 460px); }
 .es-regras { font-size: 12px; opacity: .85; }
+/* (lote 207) as fechaduras de dedução: o perfil da chave e as engrenagens */
+.fch-palco.larga { width: min(100%, 600px); }
+.fpf { display: grid; gap: 12px; }
+.fpf-grade { display: grid; gap: 4px; align-items: center; }
+.fpf-num, .fpf-alt { font: 700 11.5px/1 var(--mono, ui-monospace, monospace); color: #8b94a8; text-align: center; }
+.fpf-c { height: 30px; border-radius: 6px; border: 1px solid #343b4c; background: #151922; cursor: pointer; padding: 0; position: relative; }
+.fpf-c:hover:not(:disabled) { border-color: #e6ab4f; }
+.fpf-c.cheio { background: linear-gradient(90deg, #a07a2c, #e0b45a, #a07a2c); border-color: #c99a3e; }
+.fpf-c.topo { box-shadow: inset 0 3px 0 #fff3; }
+.fpf-c.travado.cheio { background: linear-gradient(90deg, #3f8a5f, #7fd3a0, #3f8a5f); border-color: #6fbf8f; }
+.fpf-c.x::after { content: '✕'; position: absolute; inset: 0; display: grid; place-items: center; color: #e0675d; font-weight: 700; font-size: 14px; }
+.fpf-c:disabled { cursor: default; }
+.fpf-pistas { margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 13.5px; line-height: 1.35; color: #dfe4ee; text-align: left; }
+.fpf-pistas li { cursor: pointer; border-radius: 4px; padding: 1px 4px; }
+.fpf-pistas li:hover { background: #ffffff0d; }
+.fpf-pistas li.riscada { text-decoration: line-through; color: #6b7386; }
+.fpf-falsa { margin: 0; font-weight: 700; color: #f0b45e; font-size: 13px; text-align: center; }
+.feg-svg { display: block; width: 100%; height: auto; cursor: pointer; touch-action: manipulation; }
+.feg-fundo { fill: #10131a; }
+.feg-g { stroke-width: 0.06; }
+.feg-livre { fill: #8a6b2e; stroke: #e0b45a; }
+.feg-livre.travada { fill: #2f6a49; stroke: #7fd3a0; }
+.feg-manivela { fill: #6f5420; stroke: #e6ab4f; stroke-width: 0.12; }
+.feg-g.feg-manivela { stroke-width: 0.06; }
+line.feg-manivela { stroke: #e6ab4f; stroke-width: 0.14; stroke-linecap: round; }
+.feg-punho { fill: #e6ab4f; }
+.feg-cilindro { fill: #3a4256; stroke: #c9cfdb; }
+.feg-presa { fill: #6e2f27; stroke: #e0675d; stroke-dasharray: 0.12 0.08; }
+.feg-catraca { fill: #4b5468; stroke: #c9cfdb; }
+.feg-g.atras { stroke-dasharray: 0.18 0.1; }
+.feg-g.outra { opacity: .35; }
+.feg-g.mal { stroke: #f0786e; stroke-width: 0.14; }
+.feg-cubo { fill: #12151c; }
+.feg-buraco { fill: #12151c; stroke: #c9cfdb; stroke-width: 0.04; }
+.feg-seta { fill: none; stroke: #e6ab4f; stroke-width: 0.1; }
+.feg-seta-p { fill: #e6ab4f; }
+.feg-rot { fill: #f2f4f8; paint-order: stroke; stroke: #12151c; stroke-width: 0.08; font: 700 0.46px/1 var(--mono, ui-monospace, monospace); text-anchor: middle; }
+.feg-alvo { fill: transparent; }
+.feg-eixo:hover .feg-pino { fill: #e6ab4f; }
+.feg-pino { fill: #8b94a8; stroke: #12151c; stroke-width: 0.05; }
+.feg-anel { fill: none; stroke: #8b94a8; stroke-width: 0.06; }
+.feg-eixo.travado .feg-pino { fill: #7fd3a0; }
+.feg-leg { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 3px; font-size: 12.5px; line-height: 1.35; color: #a6aec0; text-align: left; }
+.feg-quer { fill: none; stroke: #e6ab4f; stroke-width: 0.11; stroke-linecap: round; }
+.feg-quer-p { fill: #e6ab4f; }

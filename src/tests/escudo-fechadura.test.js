@@ -11,7 +11,7 @@ ok(F.NIVEIS.map(n => n[1]).join(',') === 'Fácil,Médio,Difícil,Extremo,Absolut
 const g = jogo({ nivel: 'facil', estilo: 'girar' }), pn = jogo({ nivel: 'absoluto', estilo: 'pinos' });
 ok(g.pub.estilo === 'girar' && pn.pub.estilo === 'pinos' && pn.pub.pinos === 7, 'o jeito escolhido; o Absoluto tem 7 pinos');
 const sorteados = new Set([...Array(30).keys()].map(s => jogo({ seed: s + 1 }).pub.estilo));
-ok(sorteados.size === 2, 'no sorteio, saem os dois jeitos');
+ok(sorteados.size === 4, 'no sorteio, saem os quatro jeitos (lote 207: e os de pensar)');
 ok(!JSON.stringify(g.pub).includes(F.segredoDe(g).s), 'o segredo não vai à vista');
 ok(E.confere(g, E.provaDoEstado(g, 'fim')) && !E.confere(g, 'outra'), 'a prova da fechadura aberta');
 const e3 = jogo({ nivel: 'extremo', estilo: 'girar', gazuas: 2, cons: { quebra: true, barulho: true, emperra: true } });
@@ -45,7 +45,7 @@ ok(F.ajuda(0) === 1 && F.ajuda(50) === 1.5 && F.ajuda(500) === 2, 'o atributo al
     await p.click('[data-k="pz:niv:facil"]'); await w(250);
     await p.click('[data-k="pz:est:girar"]'); await w(300);
     ok(await p.locator('.previa .fch-svg').count() === 1, 'o teste: a fechadura de girar');
-    await p.selectOption('[data-k="pz:atr"]', ''); await w(250);
+    ok(await p.locator('[data-k="pz:apt"]').count() === 1 && await p.locator('[data-k="pz:atr"]').count() === 0, '(lote 207) a aptidão no lugar do atributo');
     // forçar fora do ponto: quebra
     const c = (await segredo()).c;
     const palco = p.locator('.previa .fch-palco');

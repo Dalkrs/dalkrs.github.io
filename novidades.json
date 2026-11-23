@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.23-04",
+      "data": "2026-11-23",
+      "titulo": "Fechaduras de pensar",
+      "itens": [
+        { "tipo": "novo", "texto": "Fechadura: dois jogos novos, de pensar em vez de reflexo. No Perfil da chave, você descobre a altura de cada pino pelas pistas gravadas no mecanismo. Nas Engrenagens, liga a manivela aos cilindros com engrenagens de três tamanhos." },
+        { "tipo": "novo", "texto": "Nos jogos de pensar, mexer é de graça. Só o teste errado quebra uma gazua e faz barulho. Nos níveis baixos, o teste errado mostra onde falhou." },
+        { "tipo": "novo", "mestre": true, "texto": "Cada nível traz uma regra nova: no Extremo, uma pista é falsa e aparecem o eixo duplo e a engrenagem enferrujada; no Absoluto, a catraca e as pistas de “nenhum”." },
+        { "tipo": "melhorou", "mestre": true, "texto": "Fechadura: no lugar do atributo, vale uma aptidão da ficha de quem abre. O mestre escolhe qual, se ajuda ou atrapalha (pelas desvantagens) e, nos jogos de pensar, se a ajuda é peça certa ou teste extra." },
+        { "tipo": "melhorou", "mestre": true, "texto": "Fechadura: o sorteio agora escolhe entre os quatro jogos." }
+      ]
+    },
+    {
       "versao": "2026.11.23-03",
       "data": "2026-11-23",
       "titulo": "Árvore de habilidades arrumada",

@@ -370,14 +370,31 @@
         partes.push(h('div', { class: 'row' }, h('div', { class: 'seg', role: 'group', 'aria-label': 'O jeito de abrir' }, F.ESTILOS.map(([v, nm]) => h('button', { type: 'button', 'data-k': 'pz:est:' + v, 'aria-pressed': String(pz.estilo === v),
           onclick: () => { if (pz.estilo !== v) trocarPuzzle(hid, 'mudar o jeito de abrir', y => { y.puzzle.estilo = v; }); } }, nm))),
           h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:sortear', title: 'Outra fechadura do mesmo nível (outro ponto certo, outro ritmo dos pinos)', onclick: () => trocarPuzzle(hid, 'sortear outra fechadura', y => { y.puzzle.seed = E.novaSemente(); }) }, 'Sortear outra')));
-        if (m) partes.push(h('p', { class: 'ajuda', text: pz.estilo === 'sorteio' ? 'Saiu: ' + (m.pub.estilo === 'girar' ? 'girar a gazua' : 'pinos (' + m.pub.pinos + ')') + '. “Sortear outra” pode trocar.' : '' }));
+        if (m) partes.push(h('p', { class: 'ajuda', text: (pz.estilo === 'sorteio' ? 'Saiu: ' + (m.pub.estilo === 'girar' ? 'girar a gazua' : m.pub.estilo === 'pinos' ? 'pinos (' + m.pub.pinos + ')' : F.nomeEstilo(m.pub.estilo)) + '. “Sortear outra” pode trocar. ' : '')
+          + (F.ehDeducao(m.pub.estilo) ? 'Jogo de pensar: mexer é de graça; cada teste errado quebra uma gazua e faz barulho.' : '') }));
+        /* (lote 207, pedido do Dalmo) a aptidão no lugar do atributo: o nome (como está na ficha), se ajuda ou atrapalha e,
+           nos jogos de pensar, se a ajuda é pista (peças certas já no lugar) ou teste extra (testes errados de graça) */
+        const ap = pz.apt || null, nomesApt = (() => { const out = new Set(); try { const P = window.TC && window.TC.dados && window.TC.dados.disponivel && window.TC.dados.disponivel() ? window.TC.dados.col('personagens') : null;
+          for (const l of P ? P.todas() : []) for (const k of ['apt', 'desv']) for (const a of (l && l.estado && Array.isArray(l.estado[k]) ? l.estado[k] : [])) if (a && a.n) out.add(String(a.n)); } catch (e) { /* sem fichas aqui */ } return [...out].sort(); })();
+        const mudarApt = (o, txt) => trocarPuzzle(hid, txt, y => { const a = Object.assign({ n: '', modo: 'ajuda', tipo: 'pista' }, y.puzzle.apt || {}, o); y.puzzle.apt = a.n ? a : null; if (a.n) y.puzzle.atr = ''; });
         partes.push(h('div', { class: 'row' },
-          h('label', { class: 'field' }, h('span', { text: 'O atributo que ajuda (da ficha de quem abre)' }),
-            h('select', { class: 'in', 'data-k': 'pz:atr', value: pz.atr, onchange: ev => { const v = ev.target.value; trocarPuzzle(hid, 'mudar o atributo da fechadura', y => { y.puzzle.atr = v; }); } },
-              F.ATRS.map(([v, nm]) => h('option', { value: v, text: nm })))),
+          h('label', { class: 'field' }, h('span', { text: 'A aptidão que vale (como está na ficha de quem abre)' }),
+            h('input', { class: 'in', 'data-k': 'pz:apt', list: 'fch-apt-nomes', maxlength: 60, placeholder: 'ex.: Gazua (vazio: nenhuma)', value: ap ? ap.n : '',
+              onchange: ev => { const v = ev.target.value.trim(); mudarApt({ n: v }, v ? 'escolher a aptidão da fechadura' : 'tirar a aptidão da fechadura'); } }),
+            h('datalist', { id: 'fch-apt-nomes' }, nomesApt.map(n => h('option', { value: n })))),
           h('label', { class: 'field' }, h('span', { text: 'Gazuas' }),
             h('input', { class: 'in', type: 'number', min: 1, max: 30, 'data-k': 'pz:gaz', value: pz.gazuas, disabled: !pz.cons.quebra,
               onchange: ev => { const v = Math.round(Number(ev.target.value)); if (!(v >= 1 && v <= 30)) { toast('De 1 a 30 gazuas.'); k.pintar(); return; } trocarPuzzle(hid, 'mudar as gazuas', y => { y.puzzle.gazuas = v; }); } }))));
+        if (ap) {
+          partes.push(h('div', { class: 'row' }, h('div', { class: 'seg', role: 'group', 'aria-label': 'A aptidão ajuda ou atrapalha' }, F.APT_MODOS.map(([v, nm]) => h('button', { type: 'button', 'data-k': 'pz:aptm:' + v, 'aria-pressed': String(ap.modo === v),
+            onclick: () => { if (ap.modo !== v) mudarApt({ modo: v }, 'mudar o que a aptidão faz'); } }, nm))),
+            ap.modo === 'ajuda' ? h('div', { class: 'seg', role: 'group', 'aria-label': 'Nos jogos de pensar, a ajuda é' }, F.APT_TIPOS.map(([v, nm]) => h('button', { type: 'button', 'data-k': 'pz:aptt:' + v, 'aria-pressed': String(ap.tipo === v),
+              onclick: () => { if (ap.tipo !== v) mudarApt({ tipo: v }, 'mudar a ajuda da aptidão'); } }, nm))) : null));
+          partes.push(h('p', { class: 'ajuda', text: ap.modo === 'ajuda'
+            ? 'Pelo nível na ficha (1–2: 1 · 3–4: 2 · 5 ou mais: 3). Girar e Pinos: alarga o ponto certo e a janela (até o dobro no nível 5). Jogos de pensar: ' + (ap.tipo === 'pista' ? 'essa quantidade de peças já vem certa.' : 'essa quantidade de testes errados não quebra a gazua.')
+            : 'Procura “' + ap.n + '” nas desvantagens de quem abre. Pelo nível (1–2: 1 · 3–4: 2 · 5 ou mais: 3): Girar e Pinos apertam o ponto certo e a janela (até a metade no nível 5); nos jogos de pensar, tira essa quantidade de gazuas do começo (sempre sobra uma).' }));
+        } else if (pz.atr) partes.push(h('p', { class: 'ajuda', text: 'Esta fechadura é de antes: o atributo ' + ((F.ATRS.find(a => a[0] === pz.atr) || ['', pz.atr])[1]) + ' ainda alarga o ponto certo. Escolha uma aptidão para trocar.' }));
+        else partes.push(h('p', { class: 'ajuda', text: 'Sem aptidão: ninguém tem ajuda nem atrapalho.' }));
         partes.push(h('div', { class: 'cons-fch' }, h('span', { class: 'sub', text: 'O que acontece ao errar' }), F.CONS.map(([kk, nm]) => h('label', { class: 'chk' },
           h('input', { type: 'checkbox', 'data-k': 'pz:cons:' + kk, checked: !!pz.cons[kk], onchange: ev => { const on = ev.target.checked; trocarPuzzle(hid, 'mudar as consequências', y => { y.puzzle.cons = Object.assign({}, y.puzzle.cons, { [kk]: on }); }); } }),
           nm + (kk === 'tempo' ? ' (' + F.T.tempo[n] + 's)' : kk === 'barulho' ? ' (o alarme toca com ' + F.T.barulho[n] + ' de barulho: você é avisado)' : kk === 'emperra' ? ' (com ' + F.T.emperra[n] + ' erros)' : '')))));

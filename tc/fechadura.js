@@ -21,7 +21,27 @@
 
   const NIVEIS = Object.freeze([['facil', 'Fácil'], ['medio', 'Médio'], ['dificil', 'Difícil'], ['extremo', 'Extremo'], ['absoluto', 'Absoluto']]);
   const nivDe = k => Math.max(0, NIVEIS.findIndex(n => n[0] === k));
-  const ESTILOS = Object.freeze([['sorteio', 'Sorteio'], ['girar', 'Girar a gazua'], ['pinos', 'Pinos']]);
+  /* (lote 207) os jogos de dedução (tc/fechadura-deducao.js): pensar é de graça, testar custa a gazua */
+  const DD = () => (W.TC && W.TC.fechDeducao) || (typeof require === 'function' ? (() => { try { return require('./fechadura-deducao.js'); } catch (e) { return null; } })() : null);
+  const DEDUCAO = Object.freeze(['perfil', 'engrenagens']);
+  const ESTILOS = Object.freeze([['sorteio', 'Sorteio'], ['girar', 'Girar a gazua'], ['pinos', 'Pinos'], ['perfil', 'Perfil da chave'], ['engrenagens', 'Engrenagens']]);
+  const ehDeducao = e => DEDUCAO.includes(e);
+  const nomeEstilo = e => (ESTILOS.find(x => x[0] === e) || ['', e])[1];
+  /* (lote 207, pedido do Dalmo) a aptidão que vale (no lugar do atributo): o nome dela (procura na ficha de quem abre,
+     nas aptidões — ou, se atrapalha, nas desvantagens), se ajuda ou atrapalha e, nos jogos de dedução, se a ajuda é
+     pista (peças certas já no lugar) ou teste (testes errados que não quebram a gazua). */
+  const APT_MODOS = Object.freeze([['ajuda', 'Ajuda'], ['atrapalha', 'Atrapalha']]);
+  const APT_TIPOS = Object.freeze([['pista', 'Pista'], ['teste', 'Teste extra']]);
+  function normApt(a) {
+    if (!ehObj(a)) return null;
+    const n = String(a.n == null ? '' : a.n).replace(/\s+/g, ' ').trim().slice(0, 60);
+    if (!n) return null;
+    return { n, modo: a.modo === 'atrapalha' ? 'atrapalha' : 'ajuda', tipo: a.tipo === 'teste' ? 'teste' : 'pista' };
+  }
+  // quanto a aptidão vale: nível 1–2 → 1, 3–4 → 2, 5 ou mais → 3 (sem a aptidão, 0)
+  const pontosApt = nv => (!(nv > 0) ? 0 : nv <= 2 ? 1 : nv <= 4 ? 2 : 3);
+  // no Girar e nos Pinos: ajuda alarga até o dobro (nível 5); atrapalha aperta até a metade
+  const multApt = (apt, nv) => { const f = 1 + clamp(Number(nv) || 0, 0, 5) / 5; return apt && apt.modo === 'atrapalha' ? 1 / f : f; };
   const ATRS = Object.freeze([['', 'Nenhum'], ['DES', 'Destreza'], ['AGI', 'Agilidade'], ['FUR', 'Furtividade'], ['PER', 'Percepção'], ['FOR', 'Força'], ['VIT', 'Vitalidade'], ['CAN', 'Canalização'], ['ESQ', 'Esquiva']]);
   const CONS = Object.freeze([['quebra', 'A gazua quebra'], ['tempo', 'Tempo limite'], ['barulho', 'Barulho e alarme'], ['emperra', 'A fechadura emperra']]);
   // por nível: Fácil … Absoluto
@@ -47,7 +67,9 @@
     o.nivel = NIVEIS.some(n => n[0] === p.nivel) ? p.nivel : 'medio';
     o.dif = ['facil', 'medio'].includes(o.nivel) ? o.nivel : 'dificil';       // (a dificuldade de sempre acompanha o nível)
     o.estilo = ESTILOS.some(n => n[0] === p.estilo) ? p.estilo : 'sorteio';
-    o.atr = ATRS.some(n => n[0] === p.atr) ? p.atr : 'DES';
+    o.atr = ATRS.some(n => n[0] === p.atr) ? p.atr : '';            // (lote 207: o atributo ficou só nas fechaduras antigas)
+    o.apt = normApt(p.apt);
+    if (o.apt) o.atr = '';
     const n = nivDe(o.nivel);
     o.gazuas = Number.isInteger(p.gazuas) && p.gazuas >= 1 && p.gazuas <= 30 ? p.gazuas : T.gazuas[n];
     const c = ehObj(p.cons) ? p.cons : PADRAO_CONS;
@@ -55,47 +77,60 @@
     delete o.tempo;                                                            // (o tempo da fechadura é o dela)
   }
   function montar(def, r, ctx) {
-    const n = nivDe(def.nivel), estilo = def.estilo === 'girar' || def.estilo === 'pinos' ? def.estilo : (r() < 0.5 ? 'girar' : 'pinos');
+    const D = DD(), jogos = ['girar', 'pinos'].concat(D ? DEDUCAO : []);
+    const n = nivDe(def.nivel), estilo = jogos.includes(def.estilo) ? def.estilo : jogos[Math.floor(r() * jogos.length)];
     const segredo = Math.floor(r() * 1e9).toString(36) + Math.floor(r() * 1e9).toString(36);
     const cons = Object.assign({}, def.cons);
     const sec = { s: segredo };
+    let jogo = null;
     if (estilo === 'girar') sec.c = Math.round((r() * 150 - 75) * 10) / 10;
-    else { const [a, b] = T.ritmo[n]; sec.v = Array.from({ length: T.pinos[n] }, () => Math.round(a + r() * (b - a))); }
-    const pub = { estilo, nivel: def.nivel, n, atr: def.atr, gazuas: def.gazuas, cons,
+    else if (estilo === 'pinos') { const [a, b] = T.ritmo[n]; sec.v = Array.from({ length: T.pinos[n] }, () => Math.round(a + r() * (b - a))); }
+    else {
+      // (a mesma fechadura sai sempre igual da mesma semente: guarda, que a geração do Absoluto leva um tempinho)
+      const k = estilo + ':' + n + ':' + def.seed;
+      let g = MEMO.get(k);
+      if (!g) { g = D.JOGOS[estilo].gerar(r, n); MEMO.set(k, g); if (MEMO.size > 60) MEMO.delete(MEMO.keys().next().value); }
+      sec.sol = g.sol; jogo = g.pub;
+    }
+    const pub = { estilo, nivel: def.nivel, n, atr: def.atr, apt: def.apt || null, gazuas: def.gazuas, cons,
       tempo: cons.tempo ? T.tempo[n] : 0, barulho: cons.barulho ? T.barulho[n] : 0, emperra: cons.emperra ? T.emperra[n] : 0,
       x: X.cobrir(sec, ctx.sal) };
     if (estilo === 'pinos') pub.pinos = T.pinos[n];
+    if (jogo) pub.jogo = jogo;
     return { pub, estado: {}, provaCerta: segredo, seg: sec };
   }
+  const MEMO = new Map();
   const segredoDe = jg => (X.descobrir(jg.pub.x, jg.sal) || {});
   const prova = (jg, t) => (t === 'fim' ? segredoDe(jg).s || null : null);
   const intE = (v, a) => (Number.isInteger(v) && v >= 0 ? v : a || 0);
   // o resumo da tentativa: { quebradas, barulho, erros, falhou, alarme, aberta, restam }
-  function situacao(jg) {
-    const e = jg.estado || {}, p = jg.pub;
+  /* gz: as gazuas que a pessoa tem de verdade (a desvantagem tira algumas do começo); sem gz, as da fechadura */
+  function situacao(jg, gz) {
+    const e = jg.estado || {}, p = jg.pub, G = gz > 0 ? gz : p.gazuas;
     const q = intE(e.q), b = intE(e.b), er = intE(e.e);
     return { quebradas: q, barulho: b, erros: er, falhou: typeof e.falhou === 'string' ? e.falhou : null, alarme: e.alarme === 1, aberta: !!jg.resolvido,
-      restam: p.cons && p.cons.quebra ? Math.max(0, p.gazuas - q) : null, t0: Date.parse(e.t0) || null };
+      restam: p.cons && p.cons.quebra ? Math.max(0, G - q) : null, t0: Date.parse(e.t0) || null, livres: intE(e.l), gazuas: G };
   }
   const MOTIVO = { gazuas: 'As gazuas acabaram.', tempo: 'O tempo acabou.', emperrou: 'A fechadura emperrou de vez.' };
   // as mudanças de um erro (gazua quebrada ou não, barulho) e se ele encerra a tentativa
-  function erro(jg, quebrou, barulho) {
-    const p = jg.pub, s = situacao(jg), m = { e: s.erros + 1 };
+  function erro(jg, quebrou, barulho, gz) {
+    const p = jg.pub, s = situacao(jg, gz), m = { e: s.erros + 1 };
     if (quebrou && p.cons.quebra) m.q = s.quebradas + 1;
     if (p.cons.barulho) { m.b = s.barulho + (barulho || 1); if (!s.alarme && m.b >= p.barulho) m.alarme = 1; }
-    if (p.cons.quebra && m.q >= p.gazuas) m.falhou = 'gazuas';
+    if (p.cons.quebra && m.q >= s.gazuas) m.falhou = 'gazuas';
     else if (p.cons.emperra && m.e >= p.emperra) m.falhou = 'emperrou';
     return m;
   }
 
   E.registrar('fechadura', { nome: 'Fechadura', grupo: 'Fechaduras', erra: true,
-    desc: 'Abrir uma fechadura com gazuas: girar no ponto certo, ou travar os pinos no alto. Cinco níveis, do Fácil ao Absoluto.',
+    desc: 'Abrir uma fechadura com gazuas: girar no ponto certo, travar os pinos no alto, ou um jogo de pensar (o perfil da chave, as engrenagens). Cinco níveis, do Fácil ao Absoluto.',
     normDef, montar, prova, dica: null,
     resposta: (m) => {
       const s = m.seg || {}, p = m.pub;
+      if (ehDeducao(p.estilo)) { const D = DD(); return nomeEstilo(p.estilo) + ': ' + (D && s.sol ? D.JOGOS[p.estilo].resposta(p.jogo, s.sol) : '?') + ' · ' + NIVEIS[p.n][1]; }
       return (p.estilo === 'girar' ? 'girar a ' + Math.round(s.c) + '° (do centro; para a direita é positivo)' : 'travar os ' + p.pinos + ' pinos no alto') + ' · ' + NIVEIS[p.n][1];
     } });
-  const api = { NIVEIS, ESTILOS, ATRS, CONS, T, PADRAO_CONS, ajuda, nivDe, situacao, erro, segredoDe, MOTIVO };
+  const api = { NIVEIS, ESTILOS, DEDUCAO, ATRS, CONS, T, PADRAO_CONS, APT_MODOS, APT_TIPOS, ajuda, nivDe, situacao, erro, segredoDe, MOTIVO, normApt, pontosApt, multApt, ehDeducao, nomeEstilo };
   E.fechadura = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 
@@ -120,6 +155,28 @@
       const l = meus.find(x => x.id === st.pc) || meus[0];
       return { v: Math.round(R.valorDoAtributo(R.calcular(l.ficha), atr) || 0), de: l.nome || l.ficha.nome || 'sua ficha' };
     } catch (e) { return { v: 0, de: null }; }
+  }
+
+  /* (lote 207) O nível da aptidão de quem joga: a ficha dele (a escolhida, ou a primeira), na lista que ele vê (as
+     aptidões; se a aptidão atrapalha, as desvantagens), pelo nome (sem ligar para maiúsculas e acentos). No teste do
+     mestre, o nível do teste. → { nv, de } */
+  const chaveNome = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  function meusPersonagens(ctx) {
+    try {
+      const P = W.TC.dados && W.TC.dados.disponivel && W.TC.dados.disponivel() ? W.TC.dados.col('personagens') : null;
+      const eu = ctx.eu || (W.TC.conta && W.TC.conta.usuario && W.TC.conta.usuario.id);
+      return P && eu ? P.todas().filter(l => l && !l.apagado && l.dono_id === eu && ehObj(l.ficha)) : [];
+    } catch (e) { return []; }
+  }
+  function valorDaAptidao(apt, ctx, st) {
+    if (!apt) return { nv: 0, de: null };
+    if (ctx.mestre || ctx.soVer) return { nv: st.testeNv || 0, de: 'teste' };
+    const meus = meusPersonagens(ctx);
+    if (!meus.length) return { nv: 0, de: null };
+    const l = meus.find(x => x.id === st.pc) || meus[0], est = ehObj(l.estado) ? l.estado : {};
+    const lista = Array.isArray(est[apt.modo === 'atrapalha' ? 'desv' : 'apt']) ? est[apt.modo === 'atrapalha' ? 'desv' : 'apt'] : [];
+    const a = lista.find(x => ehObj(x) && chaveNome(x.n) === chaveNome(apt.n));
+    return { nv: a ? clamp(Math.round(Number(a.nv) || 0), 0, 20) : 0, de: l.nome || (l.ficha && l.ficha.nome) || 'sua ficha' };
   }
 
   // o som (o clique da gazua, o estalo ao quebrar, o destrancar): curtinho, gerado na hora
@@ -178,7 +235,7 @@
 
   function criar(jg0, ctx0, chave) {
     const c = { jg: jg0, ctx: ctx0, morto: false };
-    const st = { teste: 15, pc: null, a: 0, rot: 0, forca: 0, segurando: false, quebrou: 0, pino: 0, travados: [], sobe: null, msg: '', pendente: false, abrindo: false };
+    const st = { teste: 15, testeNv: 3, pc: null, a: 0, rot: 0, forca: 0, segurando: false, quebrou: 0, pino: 0, travados: [], sobe: null, msg: '', pendente: false, abrindo: false };
     const p = () => c.jg.pub;
     const fechadoAgora = () => { const s = situacao(c.jg); return s.aberta || !!s.falhou || c.ctx.soVer || st.abrindo; };
     const raiz = h('div', { class: 'fch', 'data-k': chave + ':raiz:' + Math.random().toString(36).slice(2, 8) });      // (cada tentativa, um nó: a repintura troca, não mistura)
@@ -213,7 +270,8 @@
       if (!vivoV) return;
       const P = p(), m = mult();
       const msg = { k: 'fch', h: c.jg.hid || '', sal: c.jg.sal, u: vivoV.eu, e: P.estilo };
-      if (P.estilo === 'girar') Object.assign(msg, { a: Math.round(st.a * 10) / 10, r: Math.round(st.rot * 10) / 10, f: Math.round(clamp(st.forca / (T.forca[P.n] * (0.75 + 0.25 * m)), 0, 1) * 100) / 100, fo: st.forcando ? 1 : 0 });
+      if (ded()) { if (tela) msg.d = tela.vivo(); }
+      else if (P.estilo === 'girar') Object.assign(msg, { a: Math.round(st.a * 10) / 10, r: Math.round(st.rot * 10) / 10, f: Math.round(clamp(st.forca / (T.forca[P.n] * (0.75 + 0.25 * m)), 0, 1) * 100) / 100, fo: st.forcando ? 1 : 0 });
       else Object.assign(msg, { p: st.pino, tv: (st.travados || []).map(x => (x ? 1 : 0)), al: (st.alts || []).map(x => Math.round(x * 100) / 100) });
       if (st.msg) msg.m = st.msg;
       // (manda só quando mudou, e uma vez por segundo de todo jeito, para quem acabou de abrir a tela)
@@ -237,7 +295,7 @@
     }
     function falhar(motivo, txt) { if (st.falhando) return; st.falhando = true; mandar('jogar', { falhou: motivo, _anuncio: 'falhou' }, txt); }
     function errar(quebrou, barulho, txt) {
-      const m = erro(c.jg, quebrou, barulho);
+      const m = erro(c.jg, quebrou, barulho, gz());
       if (m.falhou) m._anuncio = 'falhou';
       som(quebrou ? 'quebra' : 'erro');
       // (o erro conta no puzzle — o relógio que o mestre ligou anda — só quando quebra a gazua)
@@ -252,9 +310,16 @@
       mandar('acertar', { aberta: 1, _anuncio: 'abriu' }, 'abriu a fechadura', pr);
     }
 
-    // ---- o valor do atributo ----
+    // ---- o valor do atributo (as fechaduras antigas) ou o nível da aptidão (lote 207) ----
     const valor = () => valorDoAtributo(p().atr, c.ctx, st);
-    const mult = () => ajuda(valor().v);
+    const nivelApt = () => valorDaAptidao(p().apt, c.ctx, st);
+    const mult = () => (p().apt ? multApt(p().apt, nivelApt().nv) : ajuda(valor().v));
+    const pontos = () => (p().apt ? pontosApt(nivelApt().nv) : 0);
+    const ded = () => ehDeducao(p().estilo);
+    // as gazuas de verdade: nos jogos de dedução, a desvantagem tira do começo (sempre sobra uma)
+    const gz = () => { const P = p(); return ded() && P.apt && P.apt.modo === 'atrapalha' ? Math.max(1, P.gazuas - pontos()) : P.gazuas; };
+    const fixos = () => { const P = p(); return P.apt && P.apt.modo === 'ajuda' && P.apt.tipo === 'pista' ? pontos() : 0; };
+    const gracas = () => { const P = p(); return P.apt && P.apt.modo === 'ajuda' && P.apt.tipo === 'teste' ? pontos() : 0; };
     // (lote 134) o desgaste da gazua da vez fica guardado neste aparelho (recarregar a página não conserta a gazua)
     const chaveGasto = () => 'tinycats:fech-gasto:' + chave.replace(/:raiz.*$/, '') + ':' + situacao(c.jg).quebradas;
     let gastoSalvo = 0;
@@ -404,6 +469,42 @@
       if (st.faixa !== alto) { st.faixa = alto; pinosEl.forEach(el => { el.alvo.style.top = (PINO_TOPO - 2) + 'px'; el.alvo.style.height = (alto + 2) + 'px'; }); }
     }
 
+    // ================= os jogos de dedução (lote 207) =================
+    let tela = null;
+    const chaveGuarda = () => 'tinycats:fech-ded:' + chave.replace(/:raiz.*$/, '');
+    function guardado() { try { const x = JSON.parse(localStorage.getItem(chaveGuarda()) || 'null'); return x && typeof x === 'object' ? x : null; } catch (e) { return null; } }
+    function guardar() { if (c.ctx.soVer || c.ctx.mestre || !tela) return; try { localStorage.setItem(chaveGuarda(), JSON.stringify(tela.vivo())); } catch (e) { /* sem armazenamento */ } }
+    function testar(tentativa, atraso) {
+      if (fechadoAgora() || st.testando) return null;
+      comecar();
+      const P = p(), D = DD(), sol = segredoDe(c.jg).sol;
+      if (!D || !sol) return null;
+      const res = D.JOGOS[P.estilo].conferir(P.jogo, sol, tentativa, P.n);
+      st.testando = true; st.msg = 'Testando…';
+      setTimeout(() => {
+        st.testando = false;
+        if (res.ok) { st.msg = ''; abrir(); return; }
+        const s = situacao(c.jg, gz());
+        if (s.livres < gracas()) {
+          som('erro'); st.msg = res.texto + ' (Teste de graça: a gazua aguentou.)';
+          mandar('jogar', { l: s.livres + 1 }, 'testou e errou (um teste de graça)');
+          c.jg = Object.assign({}, c.jg, { estado: Object.assign({}, c.jg.estado, { l: s.livres + 1 }) });
+        } else {
+          st.msg = res.texto + (P.cons.quebra ? ' A gazua quebrou.' : '');
+          errar(true, 1, 'quebrou');
+        }
+        if (tela) tela.atualizar();
+        botoesDe();
+      }, atraso || 0);
+      return res;
+    }
+    function montarDeducao() {
+      const D = DD(), P = p();
+      if (!D || !D.telas || !D.telas[P.estilo] || !P.jogo) { palco.append(h('p', { class: 'fch-ajuda', text: 'Este jogo não carregou. Recarregue a página.' })); tela = null; return; }
+      tela = D.telas[P.estilo]({ palco, pub: () => p().jogo, n: () => p().n, sol: () => segredoDe(c.jg).sol, fixos, fechado: () => fechadoAgora() || !!st.testando,
+        testar, msg: t => { st.msg = t; }, mudou: () => { guardar(); st.vivoSujo = true; }, repintarBotoes: () => botoesDe(), semente: c.jg.sal, guardado: c.ctx.soVer ? null : guardado() });
+    }
+
     // ================= o laço =================
     function quadro(agora) {
       if (!raiz.isConnected) { if (c.saiu == null) c.saiu = agora; if (agora - c.saiu > 4000) { c.morto = true; if (ouvindo) ouvintes.set(ouvindo, (ouvintes.get(ouvindo) || []).filter(f => f !== receber)); return; } requestAnimationFrame(quadro); return; }
@@ -411,7 +512,7 @@
       if (st.querFoco && document.activeElement !== palco && (!document.activeElement || document.activeElement === document.body)) palco.focus({ preventScroll: true });
       const dt = Math.min(50, ultimo ? agora - ultimo : 16); ultimo = agora;
       const P = p();
-      if (P.estilo === 'girar') passoGirar(dt); else passoPinos();
+      if (P.estilo === 'girar') passoGirar(dt); else if (ded()) { if (tela) { if (c.ctx.soVer && st.rem && st.rem.d && st.rem.e === P.estilo && st.remVisto !== st.remEm) { st.remVisto = st.remEm; tela.verVivo(st.rem.d); } tela.passo(dt); } } else passoPinos();
       transmitir();                                    // (lote 137) ao vivo, para o mestre
       if (c.ctx.soVer) {
         const vivo = st.rem && Date.now() - st.remEm < 4000, s0 = situacao(c.jg);
@@ -437,6 +538,7 @@
     palco.addEventListener('keydown', ev => {
       if (fechadoAgora()) return;
       const P = p();
+      if (ded()) return;
       if (P.estilo === 'girar') {
         if (ev.key === 'ArrowLeft' || ev.key === 'a') { st.a = clamp(st.a - (ev.shiftKey ? 0.5 : 2), -90, 90); ev.preventDefault(); }
         else if (ev.key === 'ArrowRight' || ev.key === 'd') { st.a = clamp(st.a + (ev.shiftKey ? 0.5 : 2), -90, 90); ev.preventDefault(); }
@@ -452,13 +554,18 @@
     // ---- o que se escreve em volta ----
     let infoChave = '';
     function pintarInfo() {
-      const P = p(), s = situacao(c.jg), val = valor(), nAtr = (ATRS.find(a => a[0] === P.atr) || ['', ''])[1];
-      const partes = [NIVEIS[P.n][1], P.estilo === 'girar' ? 'girar a gazua' : P.pinos + ' pinos'];
+      const P = p(), s = situacao(c.jg, gz()), val = valor(), nAtr = (ATRS.find(a => a[0] === P.atr) || ['', ''])[1];
+      const partes = [NIVEIS[P.n][1], P.estilo === 'girar' ? 'girar a gazua' : P.estilo === 'pinos' ? P.pinos + ' pinos' : nomeEstilo(P.estilo).toLowerCase()];
       if (P.cons.quebra) partes.push('gazuas: ' + s.restam + ' de ' + P.gazuas);
       if (P.cons.barulho) partes.push('barulho: ' + s.barulho + ' de ' + P.barulho + (s.alarme ? ' (alarme!)' : ''));
       if (P.cons.emperra) partes.push('erros: ' + s.erros + ' de ' + P.emperra);
       if (P.tempo) partes.push('tempo: ' + (s.t0 && !s.aberta && !s.falhou && !c.ctx.soVer ? Math.ceil((st.resta || 0) / 1000) + 's' : P.tempo + 's'));
-      if (P.atr) partes.push(nAtr + ': ' + val.v + (val.de && val.de !== 'teste' ? ' (' + val.de + ')' : ''));
+      if (P.atr && !P.apt) partes.push(nAtr + ': ' + val.v + (val.de && val.de !== 'teste' ? ' (' + val.de + ')' : ''));
+      if (P.apt) {
+        const a = nivelApt(), k = pontosApt(a.nv);
+        const efeito = !k ? 'não tem' : P.apt.modo === 'atrapalha' ? (ded() ? '−' + (P.gazuas - gz()) + ' gazua' + (P.gazuas - gz() === 1 ? '' : 's') : 'aperta') : !ded() ? 'alarga' : P.apt.tipo === 'pista' ? '+' + k + ' peça' + (k > 1 ? 's' : '') + ' certa' + (k > 1 ? 's' : '') : 'testes de graça: ' + Math.max(0, k - s.livres) + ' de ' + k;
+        partes.push(P.apt.n + (k ? ' ' + a.nv : '') + ' (' + efeito + ')' + (a.de && a.de !== 'teste' ? ' · ' + a.de : ''));
+      }
       const txt = partes.join(' · ');
       const fim = s.aberta ? 'Aberta!' : s.falhou ? 'Não abriu. ' + MOTIVO[s.falhou] : '';
       const msg = fim || st.msg || '';
@@ -473,14 +580,39 @@
     c.atualizar = () => {
       const P = p();
       escutar();
-      if (!c.estilo || c.estilo !== P.estilo) { palco.replaceChildren(); c.estilo = P.estilo; if (P.estilo === 'girar') montarGirar(); else montarPinos(); }
+      // (lote 207) o jogo de pensar muda com a fechadura (outra semente, outro nível): a tela recomeça
+      const qual = P.estilo + (ded() ? ':' + P.n + ':' + c.jg.sal + ':' + fixos() : '');
+      if (!c.estilo || c.estilo !== qual) { palco.replaceChildren(); palco.classList.remove('larga'); c.estilo = qual; tela = null; if (P.estilo === 'girar') montarGirar(); else if (ded()) montarDeducao(); else montarPinos(); }
+      else if (tela) tela.atualizar();
       const s = situacao(c.jg);
       if (s.aberta || s.falhou) { st.segurando = false; st.sobe = null; }
       if (s.aberta && P.estilo === 'pinos') st.travados = Array.from({ length: P.pinos }, () => true);
       if (s.aberta && P.estilo === 'girar') st.rot = 90;
-      ajudaTxt.textContent = c.ctx.soVer ? '' : P.estilo === 'girar'
+      ajudaTxt.textContent = c.ctx.soVer ? '' : ded() ? (tela ? tela.ajuda : '') : P.estilo === 'girar'
         ? 'Mova o mouse (ou ← →) para posicionar a gazua e segure Girar (ou a barra de espaço). No ponto certo, o cilindro gira até o fim. Fora dele, trava: a gazua treme e se gasta. O desgaste não volta quando você solta: com a barra cheia, ela quebra (a próxima gazua começa inteira).'
         : 'Escolha o pino (clique, ou ← →). Espaço (ou clique) empurra o pino; quando ele estiver lá no alto, espaço de novo trava. Travar fora da hora faz barulho e pode quebrar a gazua.';
+      botoesDe();
+      teste.replaceChildren();
+      if (c.ctx.mestre && !c.ctx.soVer && P.apt) {
+        const inp = h('input', { type: 'number', class: 'in', min: 0, max: 20, value: st.testeNv, 'data-k': chave + ':testeNv', oninput: ev => { st.testeNv = clamp(Math.round(Number(ev.target.value) || 0), 0, 20); infoChave = ''; },
+          onchange: () => { if (ded()) { c.estilo = null; c.atualizar(); } } });
+        teste.append('No teste, o nível de “' + P.apt.n + '”: ', inp);
+      } else if (c.ctx.mestre && !c.ctx.soVer && P.atr) {
+        const inp = h('input', { type: 'number', class: 'in', min: 0, max: 100, value: st.teste, 'data-k': chave + ':teste', oninput: ev => { st.teste = clamp(Number(ev.target.value) || 0, 0, 100); infoChave = ''; } });
+        teste.append('No teste, o valor do atributo: ', inp);
+      }
+      if (!c.ctx.mestre && !c.ctx.soVer && (P.atr || P.apt)) {
+        // quem tem mais de uma ficha escolhe com qual abre
+        const meus = meusPersonagens(c.ctx);
+        if (meus.length > 1 && !s.t0) teste.append('Quem abre: ', h('select', { class: 'in', 'data-k': chave + ':pc', value: st.pc || meus[0].id, onchange: ev => { st.pc = ev.target.value; infoChave = ''; if (ded()) { c.estilo = null; c.atualizar(); } } },
+          meus.map(l => h('option', { value: l.id, text: l.nome || 'Sem nome' }))));
+      }
+      infoChave = '';
+      pintarInfo();
+    };
+    function botoesDe() {
+      const P = p(), s = situacao(c.jg);
+      if (ded()) { botoes.replaceChildren(...(c.ctx.soVer || s.aberta || s.falhou || !tela ? [] : tela.botoes())); return; }
       botoes.replaceChildren(...(c.ctx.soVer || s.aberta || s.falhou ? [] : P.estilo === 'girar'
         ? [h('button', { type: 'button', class: 'btn pri fch-girar', 'data-k': chave + ':girar',
             onpointerdown: ev => { ev.preventDefault(); comecar(); st.segurando = true; }, onpointerup: () => { st.segurando = false; }, onpointerleave: () => { st.segurando = false; }, onpointercancel: () => { st.segurando = false; } }, 'Segure para girar')]
@@ -488,24 +620,7 @@
             // (lote 155) no apertar; o teclado neste botão vai pelo keydown (o clique do teclado viria só no soltar)
             onpointerdown: ev => { ev.preventDefault(); empurrarOuTravar(ev.timeStamp); },
             onkeydown: ev => { if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); if (!ev.repeat) empurrarOuTravar(ev.timeStamp); } } }, 'Empurrar / travar')]));
-      teste.replaceChildren();
-      if (c.ctx.mestre && !c.ctx.soVer && P.atr) {
-        const inp = h('input', { type: 'number', class: 'in', min: 0, max: 100, value: st.teste, 'data-k': chave + ':teste', oninput: ev => { st.teste = clamp(Number(ev.target.value) || 0, 0, 100); infoChave = ''; } });
-        teste.append('No teste, o valor do atributo: ', inp);
-      }
-      if (!c.ctx.mestre && !c.ctx.soVer && P.atr) {
-        // quem tem mais de uma ficha escolhe com qual abre
-        try {
-          const P2 = W.TC.dados && W.TC.dados.disponivel && W.TC.dados.disponivel() ? W.TC.dados.col('personagens') : null;
-          const eu = c.ctx.eu || (W.TC.conta && W.TC.conta.usuario && W.TC.conta.usuario.id);
-          const meus = P2 && eu ? P2.todas().filter(l => l && !l.apagado && l.dono_id === eu && ehObj(l.ficha)) : [];
-          if (meus.length > 1 && !s.t0) teste.append('Quem abre: ', h('select', { class: 'in', 'data-k': chave + ':pc', value: st.pc || meus[0].id, onchange: ev => { st.pc = ev.target.value; infoChave = ''; } },
-            meus.map(l => h('option', { value: l.id, text: l.nome || 'Sem nome' }))));
-        } catch (e) { /* sem fichas aqui */ }
-      }
-      infoChave = '';
-      pintarInfo();
-    };
+    }
     requestAnimationFrame(quadro);
     return c;
   }
