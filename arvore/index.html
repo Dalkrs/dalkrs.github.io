@@ -642,6 +642,7 @@ a.lk-no:hover{text-decoration-thickness:2px}
 <script src="../tc/barras.js?v=3"></script>
 <script src="../tc/tags.js?v=4"></script>
 <script src="mesa.js?v=15"></script>
+<script src="layout.js?v=1"></script>
 <script>
 'use strict';
 /* ============================================================
@@ -1551,7 +1552,18 @@ let unicaRaiz = false;
 
 function raioDe(n){ return (bib().tipos[n.tipo] || bib().tipos.pequeno).raio; }
 
+/* (lote 206) O radial arrumado (arvore/layout.js): cada ramo numa fatia, em anéis por camada, as vertentes em
+   faixas lado a lado, as pontes nos vãos e os fundamentos num anel pequeno em volta da origem. O radial antigo
+   (calcularLayoutAntigo) fica só de reserva, se o layout.js não carregar. */
+let aneisLayout = null;          // os raios dos anéis do desenho novo (o fundo desenha um círculo em cada)
 function calcularLayout(a){
+  const L = window.TC && TC.arvLayout;
+  if(!L || !a || !a.nodes.length){ aneisLayout = null; return calcularLayoutAntigo(a); }
+  const r = L.calc(a.nodes, {pais: paisNaArvore, raio: raioDe});
+  pos = r.pos; aneisLayout = r.aneis; unicaRaiz = true;
+  return pos;
+}
+function calcularLayoutAntigo(a){
   pos = new Map();
   if(!a || !a.nodes.length) return pos;
   const meta = new Map(a.nodes.map(n=>[n.id, {prof:null, principal:null}]));
@@ -1945,12 +1957,13 @@ function desenhar(){
 function desenharFundo(g, a, tema){
   let maxP = 0; pos.forEach(q=>{ if(q.prof>maxP) maxP = q.prof; });
   const ini = unicaRaiz ? 1 : 0;
+  const raios = aneisLayout ? aneisLayout.slice() : Array.from({length: Math.max(0, maxP-ini+1)}, (_, i) => raioProf(i+ini));
+  desenharFaixas(g, a, tema);
   if(tema==='tinta'){
-    for(let k=ini;k<=maxP;k++) g.appendChild(el('circle', {r:f1(raioProf(k)), fill:'none', stroke:'rgba(31,27,22,.08)', 'stroke-width':1, 'stroke-dasharray':'2 7'}));
+    for(const R of raios) g.appendChild(el('circle', {r:f1(R), fill:'none', stroke:'rgba(31,27,22,.08)', 'stroke-width':1, 'stroke-dasharray':'2 7'}));
     return;
   }
-  for(let k=ini;k<=maxP;k++){
-    const R = raioProf(k);
+  for(const R of raios){
     g.appendChild(el('circle', {r:f1(R), fill:'none', stroke:'#27251F', 'stroke-width':1}));
     for(let i=0;i<24;i++){
       const an = i*Math.PI/12, r2 = R + (i%2 ? 3 : 6);
@@ -1967,6 +1980,30 @@ function desenharFundo(g, a, tema){
   }
 }
 
+/* (lote 206) As faixas: cada vertente de um ramo (o golpe e o jutsu do Ninja, os estilos do Espadachim) ganha um
+   fundo leve, da cor da cabeça dela (ou do ramo), por baixo dos nós e das ligações. */
+function desenharFaixas(g, a, tema){
+  const grupos = new Map();
+  pos.forEach((q, id) => { if(q.faixa) (grupos.get(q.faixa) || grupos.set(q.faixa, []).get(q.faixa)).push(id); });
+  if(!grupos.size) return;
+  const corRamo = new Map();
+  pos.forEach((q, id) => { const n = porId.get(id); if(q.ramo!=null && q.prof===1 && n && n.cor) corRamo.set(q.ramo, n.cor); });
+  grupos.forEach((ids, f) => {
+    const cab = porId.get(f), q0 = pos.get(f);
+    const cor = (cab && cab.cor) || corRamo.get(q0 && q0.ramo) || (tema==='tinta' ? '#7A6A55' : '#8A829E');
+    const conj = new Set(ids);
+    const grp = el('g', {opacity: tema==='tinta' ? .07 : .09});
+    for(const id of ids){
+      const q = pos.get(id), n = porId.get(id);
+      grp.appendChild(el('circle', {cx:f1(q.x), cy:f1(q.y), r:f1(raioDe(n)+24), fill:cor}));
+      for(const pid of paisNaArvore(n)) if(conj.has(pid)){
+        const s = pos.get(pid);
+        grp.appendChild(el('line', {x1:f1(s.x), y1:f1(s.y), x2:f1(q.x), y2:f1(q.y), stroke:cor, 'stroke-width':46, 'stroke-linecap':'round'}));
+      }
+    }
+    g.appendChild(grp);
+  });
+}
 function desenharTerritorio(g, entrada, tema){
   const membros = membrosDaEscola(entrada.id).filter(id=>pos.has(id));
   if(!membros.length) return;
@@ -2060,7 +2097,7 @@ function desenharAresta(g, pid, n, est, tema){
      sai ou chega num nó fechado (o outro lado de uma encruzilhada) fica apagado */
   const aberto = ep==='on' && perto, morto = ep==='fechado' || eb==='fechado';
   const L = Math.hypot(b.x-a.x, b.y-a.y) || 1;
-  const curva = (semente(n.id+'t')-.5)*L*0.12;
+  const curva = (semente(n.id+'t')-.5)*L*(aneisLayout ? 0.05 : 0.12);   // (lote 206) mais retas no desenho novo
   if(tema==='tinta'){
     const d = traco(a.x, a.y, Math.max(3.4, raioDe(pn)*.32), b.x, b.y, Math.max(1.8, raioDe(n)*.24), curva);
     const op = ligado ? .9 : morto ? .05 : aberto ? .5 : eb==='mestre' ? .62 : perto ? .28 : .13;
@@ -2123,7 +2160,8 @@ function ligacaoExtra(g, pid, n, est, tema){
   const aberto = ep==='on' && (eb==='disp' || eb==='caro'), morto = ep==='fechado' || eb==='fechado';
   const dx = b.x-a.x, dy = b.y-a.y, L = Math.hypot(dx,dy) || 1;
   const lado = semente(n.id+pid) > .5 ? 1 : -1;
-  const cx = (a.x+b.x)/2 + (-dy/L)*L*0.15*lado, cy = (a.y+b.y)/2 + (dx/L)*L*0.15*lado;
+  const cv = aneisLayout ? 0.08 : 0.15;   // (lote 206) arco mais leve no desenho novo
+  const cx = (a.x+b.x)/2 + (-dy/L)*L*cv*lado, cy = (a.y+b.y)/2 + (dx/L)*L*cv*lado;
   const cor = tema==='tinta' ? (ligado ? COR_T.tinta : aberto ? 'rgba(31,27,22,.6)' : morto ? 'rgba(31,27,22,.08)' : 'rgba(31,27,22,.32)')
     : (ligado ? COR_P.ouro : aberto ? COR_P.bronzeClaro : morto ? 'rgba(233,227,214,.07)' : 'rgba(233,227,214,.24)');
   const at = {d:`M${f1(a.x)},${f1(a.y)} Q${f1(cx)},${f1(cy)} ${f1(b.x)},${f1(b.y)}`, fill:'none', stroke:cor,

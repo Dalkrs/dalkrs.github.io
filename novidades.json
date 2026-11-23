@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.23-03",
+      "data": "2026-11-23",
+      "titulo": "Árvore de habilidades arrumada",
+      "itens": [
+        { "tipo": "melhorou", "texto": "Árvore: o mapa foi redesenhado. Cada ramo ganha a sua fatia e cresce em anéis, sem cruzar com os outros. A Mestria fica depois das trilhas que chegam nela." },
+        { "tipo": "melhorou", "texto": "Árvore: as vertentes de um ramo (como golpe e jutsu do Ninja) andam lado a lado, com um fundo leve da cor delas. As pontes ficam nos vãos entre os ramos, e os fundamentos num anel em volta da origem." }
+      ]
+    },
+    {
       "versao": "2026.11.23-02",
       "data": "2026-11-23",
       "titulo": "Ninja com jutsus e a Kitsune Ayto",
