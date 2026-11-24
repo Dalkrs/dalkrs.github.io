@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.24-02",
+      "data": "2026-11-24",
+      "titulo": "Zoom liso na Árvore e a travessia da Ayto",
+      "itens": [
+        { "tipo": "consertado", "texto": "Árvore: o zoom não engasga mais. A roda só muda a escala na hora, o desenho completo vem quando ela para, e as faixas das vertentes pesam menos para o navegador." },
+        { "tipo": "novo", "texto": "Kitsune Ayto: Dentes de Yokai, no nível 2, deixa cruzar para o mundo espiritual fora da luta, para achar e seguir yokais e espíritos." }
+      ]
+    },
+    {
       "versao": "2026.11.24-01",
       "data": "2026-11-24",
       "titulo": "Agulhas no painel do Ninja",

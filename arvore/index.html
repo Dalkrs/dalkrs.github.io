@@ -1903,6 +1903,9 @@ function centralizar(){
   cam.y = t.height/2 + 18 - ((y0+y1)/2)*cam.k;
   aplicarCam();
 }
+// (lote 210) redesenha uma vez só, 120 ms depois do último passo de zoom (a roda manda dezenas de passos por segundo)
+let tDesenharDepois = 0;
+function desenharDepois(){ clearTimeout(tDesenharDepois); tDesenharDepois = setTimeout(()=>{ tDesenharDepois = 0; desenhar(); }, 120); }
 function zoomPara(k, cx, cy){
   const t = $('#tela').getBoundingClientRect();
   cx = cx ?? t.width/2; cy = cy ?? t.height/2;
@@ -1991,17 +1994,17 @@ function desenharFaixas(g, a, tema){
   grupos.forEach((ids, f) => {
     const cab = porId.get(f), q0 = pos.get(f);
     const cor = (cab && cab.cor) || corRamo.get(q0 && q0.ramo) || (tema==='tinta' ? '#7A6A55' : '#8A829E');
-    const conj = new Set(ids);
-    const grp = el('g', {opacity: tema==='tinta' ? .07 : .09});
+    // (lote 210) um só caminho de traço e um só de bolinhas por faixa, com a transparência no próprio desenho
+    // (um <g> com opacity obrigava o navegador a repintar a faixa inteira a cada passo de zoom, e o mapa engasgava)
+    const conj = new Set(ids), op = tema==='tinta' ? .07 : .09;
+    let dLin = '', dBol = '';
     for(const id of ids){
-      const q = pos.get(id), n = porId.get(id);
-      grp.appendChild(el('circle', {cx:f1(q.x), cy:f1(q.y), r:f1(raioDe(n)+24), fill:cor}));
-      for(const pid of paisNaArvore(n)) if(conj.has(pid)){
-        const s = pos.get(pid);
-        grp.appendChild(el('line', {x1:f1(s.x), y1:f1(s.y), x2:f1(q.x), y2:f1(q.y), stroke:cor, 'stroke-width':46, 'stroke-linecap':'round'}));
-      }
+      const q = pos.get(id), n = porId.get(id), r = raioDe(n)+24;
+      dBol += `M${f1(q.x-r)} ${f1(q.y)}a${f1(r)} ${f1(r)} 0 1 0 ${f1(2*r)} 0a${f1(r)} ${f1(r)} 0 1 0 ${f1(-2*r)} 0`;
+      for(const pid of paisNaArvore(n)) if(conj.has(pid)){ const s2 = pos.get(pid); dLin += `M${f1(s2.x)} ${f1(s2.y)}L${f1(q.x)} ${f1(q.y)}`; }
     }
-    g.appendChild(grp);
+    if(dLin) g.appendChild(el('path', {d:dLin, fill:'none', stroke:cor, 'stroke-opacity':op, 'stroke-width':46, 'stroke-linecap':'round'}));
+    g.appendChild(el('path', {d:dBol, fill:cor, 'fill-opacity':op}));
   });
 }
 function desenharTerritorio(g, entrada, tema){
@@ -4568,7 +4571,7 @@ function ligarTela(){
     ev.preventDefault();
     const r = tela.getBoundingClientRect();
     zoomPara(cam.k * (ev.deltaY<0 ? 1.12 : 1/1.12), ev.clientX-r.left, ev.clientY-r.top);
-    desenhar();
+    desenharDepois();   // (lote 210) a roda só muda a escala na hora; o desenho completo vem quando ela para
   }, {passive:false});
   $('#btMais').onclick = ()=>{ zoomPara(cam.k*1.25); desenhar(); };
   $('#btVoltarNo').onclick = voltarNo;                  // (lote 27)
