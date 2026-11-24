@@ -2,6 +2,14 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.24-01",
+      "data": "2026-11-24",
+      "titulo": "Agulhas no painel do Ninja",
+      "itens": [
+        { "tipo": "novo", "texto": "Cenas: o painel do Ninja ganhou, à direita do disco, as Agulhas cravadas. Cada toque crava mais uma (até 3), e o número aparece na marca. Depois da 3ª, volta a 0." }
+      ]
+    },
+    {
       "versao": "2026.11.23-05",
       "data": "2026-11-23",
       "titulo": "Ícones dos painéis",

@@ -456,7 +456,8 @@ function marcasEmVolta(def, lista, ativo, o = {}){
     const [x, y] = P(110, 110, raio, a0 + i * 360 / lista.length), on = ativo(m.k), off = m.trava;
     return KIT.botao(m.k, m.rotulo + (off ? ' (trancada)' : ''), `<circle cx="${f1(x)}" cy="${f1(y)}" r="${r}" fill="${on ? def.cor : '#22262E'}" stroke="${on ? '#fff' : off ? '#4A4E58' : '#6F7684'}" stroke-width="${on ? 2 : 1.3}" ${off ? 'stroke-dasharray="2 2"' : ''}/>
       ${simb(m.glifo) ? SIMB.g(simb(m.glifo).k, x, y, r * 1.2, on ? '#0E1014' : off ? '#5A5E68' : '#D8D2C4', { traco: 2 })
-        : `<text x="${f1(x)}" y="${f1(y + r * .36)}" text-anchor="middle" font-family="${FONTE_SERIF}" font-size="${f1(r * 1.02)}" font-weight="700" fill="${on ? '#0E1014' : off ? '#5A5E68' : '#D8D2C4'}" pointer-events="none">${m.glifo}</text>`}`);
+        : `<text x="${f1(x)}" y="${f1(y + r * .36)}" text-anchor="middle" font-family="${FONTE_SERIF}" font-size="${f1(r * 1.02)}" font-weight="700" fill="${on ? '#0E1014' : off ? '#5A5E68' : '#D8D2C4'}" pointer-events="none">${m.glifo}</text>`}
+      ${m.num ? `<circle cx="${f1(x + r * .78)}" cy="${f1(y - r * .78)}" r="${f1(r * .52)}" fill="#fff" stroke="${def.cor}" stroke-width="1.4" pointer-events="none"/><text x="${f1(x + r * .78)}" y="${f1(y - r * .78 + r * .2)}" text-anchor="middle" font-size="${f1(r * .62)}" font-weight="800" fill="#0E1014" pointer-events="none">${m.num}</text>` : ''}`);   // (lote 209) o número da marca (as agulhas do Ninja)
   }).join('');
 }
 // o anel da barra com os patamares marcados
@@ -597,15 +598,18 @@ classe({ id: 'ninja', arvore: 'Ninja', barra: 'Jutsu', cor: '#8C9BE0', glifo: '@
   patamares: [[5, 'Mão Leve', 'a primeira técnica de arremesso do turno custa 1 a menos de Jutsu (o arremesso normal já não gasta)'], [10, 'Instinto', 'Defesa tier I contra o primeiro golpe que vier em você a cada rodada'], [15, 'Selo Completo', 'o próximo jutsu sai sem gastar a ação']],
   risco: ['Sombra Cheia', 'você aparece como silhueta e não se esconde até gastar'],
   // (lote 194, pedido do Dalmo) saíram os Selos de mão; o Jutsu enche também lutando às claras (Por um Fio, Acrobacia, Arremesso Certeiro)
-  est: () => ({ escondido: false }),
-  marcas: s => [{ k: 'esc', glifo: '@escondido', rotulo: s.escondido ? 'Escondido (toque para aparecer)' : 'Ficar Escondido', dica: 'golpes com +1 tier de Dano enquanto ninguém te vê' }],
+  // (lote 209, pedido do Dalmo) à direita, as Agulhas cravadas no alvo: de 0 a 3; cada toque crava mais uma, e depois da 3ª volta a 0
+  est: () => ({ escondido: false, agulhas: 0 }),
+  marcas: s => [{ k: 'esc', glifo: '@escondido', rotulo: s.escondido ? 'Escondido (toque para aparecer)' : 'Ficar Escondido', dica: 'golpes com +1 tier de Dano enquanto ninguém te vê' },
+                { k: 'agu', glifo: '@agulha', num: s.agulhas || 0, rotulo: `Agulhas cravadas: ${s.agulhas || 0} de 3 (toque para cravar mais uma)`, dica: 'ficam até o alvo gastar o movimento para arrancar; no máximo 3 por alvo' }],
   marcasOpc: { raio: 56, r: 17, inicio: -90 },
-  ativo: (s, k) => k === 'esc' && s.escondido,
+  ativo: (s, k) => (k === 'esc' && s.escondido) || (k === 'agu' && (s.agulhas || 0) > 0),
   arte(s){ return `<path d="M110 70 L118 102 L150 110 L118 118 L110 150 L102 118 L70 110 L102 102 Z" fill="${s.escondido ? '#ffffff10' : '#ffffff20'}" stroke="${this.cor}" stroke-width="1.6"/>` + glifoCentro(this, '@shuriken', { tam: 26, dy: 9 }); },
   tocar(s, k, ctx){
     if (k === 'esc'){ s.escondido = !s.escondido; ctx.log(`${ctx.nome} ${s.escondido ? 'some nas sombras' : 'aparece'}.`); }
+    if (k === 'agu'){ s.agulhas = ((s.agulhas || 0) + 1) % 4; ctx.log(s.agulhas ? `${ctx.nome} crava uma agulha (${s.agulhas} de 3).` : `As agulhas de ${ctx.nome} saem do alvo.`); }
   },
-  linhaEstado: s => (s.escondido ? '<b>Escondido</b> <em>· +1 tier de Dano</em>' : '<em>À vista.</em>'),
+  linhaEstado: s => (s.escondido ? '<b>Escondido</b> <em>· +1 tier de Dano</em>' : '<em>À vista.</em>') + (s.agulhas ? ` · <b>${s.agulhas} agulha${s.agulhas > 1 ? 's' : ''}</b> cravada${s.agulhas > 1 ? 's' : ''}` : ''),
   ganhos: [{ c: 'Atacou sem ser visto', t: 'Escondido, pelas costas ou de um flanco', v: 3 }, { c: 'Pôs Sangramento ou agulha', t: 'Cada camada de Sangramento ou agulha que você crava', v: 1, max: 3 },
            { c: 'Por um Fio', t: 'Um golpe errou você', v: 2 },
            { c: 'Acrobacia', t: 'Andou 3 cédulas ou mais passando colado ou por cima de um inimigo, correndo na parede ou pulando de um ponto alto', v: 2, max: 1 },
