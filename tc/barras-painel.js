@@ -561,7 +561,10 @@ Object.assign(ICONES, {
   vampiro: '<path d="M4 6L9 9L12 5L15 9L20 6L17 14L12 20L7 14Z"/>',
   lobisomem: '<path d="M18 5A7.5 7.5 0 1 0 20 15A6 6 0 1 1 18 5Z"/>',
   kitsune: '<path d="M4 3L9.5 9H14.5L20 3V11C20 15 16.5 19 12 21C7.5 19 4 15 4 11ZM9 12.5V13M15 12.5V13M11 16.5H13"/>',
-  nirus: '<path d="M4 3L9.5 9H14.5L20 3V11C20 15 16.5 19 12 21C7.5 19 4 15 4 11ZM8.5 12L10 13M15.5 12L14 13M10.5 16.5L12 17.5L13.5 16.5"/>'
+  nirus: '<path d="M4 3L9.5 9H14.5L20 3V11C20 15 16.5 19 12 21C7.5 19 4 15 4 11ZM8.5 12L10 13M15.5 12L14 13M10.5 16.5L12 17.5L13.5 16.5"/>',
+  // (lote 208) faltavam: a Kitsune Ayto (a máscara de raposa com os dentes à mostra) e o Ferreiro (o martelo na bigorna)
+  ayto: '<path d="M4 3L9.5 9H14.5L20 3V11C20 15 16.5 19 12 21C7.5 19 4 15 4 11Z"/><path d="M8.3 12.2L10.4 13.4M15.7 12.2L13.6 13.4M9.6 16.3L10.8 18.3L12 16.7L13.2 18.3L14.4 16.3"/>',
+  ferreiro: '<path d="M3 12.5H15C15 14.5 17 15.5 20.5 15.5V17.5H7V15.5C5 15.5 3 14.3 3 12.5Z"/><path d="M10 17.5V21H15.5V17.5"/><path d="M13.5 3L18 7.5M15.75 5.25L10.5 10.5"/>'
 });
 
 /* ---------------- Samurai: as três Posturas ---------------- */
