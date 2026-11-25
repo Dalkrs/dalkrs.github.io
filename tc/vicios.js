@@ -6,14 +6,16 @@
    necessidade baixa (o mestre diz quanto; cada vício tem um "baixa ao cumprir" de começo). O buff de cumprir o
    mestre dá na mão: o sistema só mostra se a necessidade está alta ou não.
 
-   Cada vício: { id, m (o molde), n (o nome), d (a descrição), nec (0 a 10), rit (por dia), bx (baixa ao cumprir),
+   Cada vício: { id, m (o molde), n (o nome), d (a descrição), g (o grau), nec (0 a 10), rit (por dia), bx (baixa ao cumprir),
                  oc (secreto), dia (o dia do mundo em que a necessidade foi contada), mp (o mapa desse dia) }
    As faixas: 0–2 Tranquilo · 3–5 Inquieto · 6–8 Com fissura · 9–10 Desesperado.
+   O grau (lote 208): leve, medio ou profundo — uma marca que o mestre põe e lê; não muda conta nenhuma. É de cada
+   ficha (o mesmo vício pode ser leve num e profundo noutro), não do molde. Todo vício tem um: sem grau, é leve.
 
    Onde fica:
      segredos.vic[personagem]   a lista inteira (fichas:segredos, só quem mestra)
      segredos.vicBib            os moldes { id, n, d, rit, bx } (para pôr o mesmo vício em outra ficha)
-     estado.vic                 o que o jogador vê: [{ id, n, d, nec }] dos que não são secretos (fora de uma mesa, tudo)
+     estado.vic                 o que o jogador vê: [{ id, n, d, g, nec }] dos que não são secretos (fora de uma mesa, tudo)
 
      navegador   <script src="../tc/vicios.js"></script> → window.TC.vicios
      Node        const V = require('./tc/vicios.js')
@@ -28,6 +30,13 @@
     { k: 'fissura', n: 'Com fissura', de: 6, cor: '#e07b39' },
     { k: 'desesperado', n: 'Desesperado', de: 9, cor: '#d0473e' }
   ]);
+  const GRAUS = Object.freeze([
+    { k: 'leve', n: 'Leve', cor: '#7fa8c9' },
+    { k: 'medio', n: 'Médio', cor: '#b98ad6' },
+    { k: 'profundo', n: 'Profundo', cor: '#b04a76' }
+  ]);
+  const grauOk = g => (GRAUS.some(x => x.k === g) ? g : 'leve');
+  const grau = g => GRAUS.find(x => x.k === grauOk(g));
   const ehObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const idOk = k => typeof k === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(k);
   const txt = (x, n) => String(x == null ? '' : x).replace(/\r/g, '').trim().slice(0, n);
@@ -36,7 +45,7 @@
 
   function umDe(x) {
     if (!ehObj(x) || !idOk(x.id)) return null;
-    const v = { id: x.id, n: txt(x.n, LIM.nome) || 'Vício', d: txt(x.d, LIM.desc), nec: dec(x.nec, 0, LIM.nec, 0),
+    const v = { id: x.id, n: txt(x.n, LIM.nome) || 'Vício', d: txt(x.d, LIM.desc), g: grauOk(x.g), nec: dec(x.nec, 0, LIM.nec, 0),
       rit: dec(x.rit, 0, LIM.rit, PADRAO.rit), bx: dec(x.bx, 0.1, LIM.nec, PADRAO.bx), oc: !!x.oc };
     if (idOk(x.m)) v.m = x.m;
     const dia = inteiro(x.dia);
@@ -65,11 +74,11 @@
   const num = x => String(Math.round(Number(x) * 10) / 10).replace('.', ',');
   const textoRitmo = v => (v.rit ? '+' + num(v.rit) + ' por dia' : 'não sobe sozinho');
 
-  // o que o jogador vê (estado.vic): os não secretos, sem o ritmo
-  const publica = lista => norm(lista).filter(v => !v.oc).map(v => ({ id: v.id, n: v.n, d: v.d, nec: v.nec }));
+  // o que o jogador vê (estado.vic): os não secretos, com o grau, sem o ritmo
+  const publica = lista => norm(lista).filter(v => !v.oc).map(v => ({ id: v.id, n: v.n, d: v.d, g: v.g, nec: v.nec }));
   const doJogador = estado => (ehObj(estado) && Array.isArray(estado.vic) ? estado.vic : [])
     .filter(x => ehObj(x) && idOk(x.id)).slice(0, LIM.lista)
-    .map(x => ({ id: x.id, n: txt(x.n, LIM.nome) || 'Vício', d: txt(x.d, LIM.desc), nec: dec(x.nec, 0, LIM.nec, 0) }));
+    .map(x => ({ id: x.id, n: txt(x.n, LIM.nome) || 'Vício', d: txt(x.d, LIM.desc), g: grauOk(x.g), nec: dec(x.nec, 0, LIM.nec, 0) }));
 
   /* "+2 -1", "3", "-1,5": a soma. null: não é uma conta dessas. */
   function conta(s) {
@@ -80,7 +89,7 @@
 
   /* Uma mudança na lista. op:
        { t: 'nova', id, n, d, rit, bx, nec, oc, m, dia, mp }
-       { t: 'editar', id, n?, d?, rit?, bx?, nec?, oc? }
+       { t: 'editar', id, n?, d?, g?, rit?, bx?, nec?, oc? }
        { t: 'nec', id, d }        soma d na necessidade (fica entre 0 e 10)
        { t: 'cumprir', id, d? }   baixa d (sem d: o "baixa ao cumprir" do vício)
        { t: 'oc', id, v }
@@ -103,7 +112,7 @@
     if (op.t === 'nec') { const d = Number(op.d); if (!Number.isFinite(d) || !d) return nada; v.nec = antes.nec + d; }
     else if (op.t === 'cumprir') { const d = op.d == null ? antes.bx : Number(op.d); if (!Number.isFinite(d) || d <= 0) return nada; v.nec = antes.nec - d; }
     else if (op.t === 'oc') v.oc = !!op.v;
-    else if (op.t === 'editar') { for (const k of ['n', 'd', 'rit', 'bx', 'nec', 'oc']) if (op[k] !== undefined) v[k] = op[k]; }
+    else if (op.t === 'editar') { for (const k of ['n', 'd', 'g', 'rit', 'bx', 'nec', 'oc']) if (op[k] !== undefined) v[k] = op[k]; }
     else return nada;
     const b = umDe(v);
     if (JSON.stringify(b) === JSON.stringify(antes)) return nada;
@@ -179,7 +188,7 @@
     return out;
   }
 
-  const API = { LIM, PADRAO, FAIXAS, norm, faixa, alta, altos, num, textoRitmo, publica, doJogador, conta, mudar, avancar,
+  const API = { LIM, PADRAO, FAIXAS, GRAUS, grau, grauOk, norm, faixa, alta, altos, num, textoRitmo, publica, doJogador, conta, mudar, avancar,
     chave, moldeDe, normBib, moldeDoVicio, mesmoMolde, aplicarMolde, doMolde, usos };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else { root.TC = root.TC || {}; root.TC.vicios = API; }

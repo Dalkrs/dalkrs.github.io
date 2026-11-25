@@ -3,6 +3,8 @@
    com os dias do mundo (o dia do Mapa-múndi) no ritmo que o mestre escolhe para cada um. "Cumpriu…" baixa a
    necessidade (quanto, o mestre diz; cada vício tem um valor de começo). O buff de cumprir o mestre dá na mão.
    As faixas: Tranquilo · Inquieto · Com fissura · Desesperado.
+   O grau (lote 208): Leve, Médio ou Profundo, que o mestre escolhe no editor de cada ficha. É só uma marca (não muda
+   conta nenhuma); o jogador também vê. Todo vício tem um: o que não tinha conta como Leve.
    Quem joga vê o nome, a descrição e a necessidade dos que não são secretos. O ritmo, só o mestre.
    A conta é de TC.vicios; a lista inteira fica com o mestre (FichasMesa.listaSegDe(pc, 'vic'), em fichas:segredos).
    A biblioteca: todo vício criado vira um molde (fichas:segredos, vicBib), para pôr o mesmo em outra ficha. */
@@ -135,12 +137,13 @@ const FichasVic = (() => {
     const f = V().faixa(nec), pct = Math.round(Math.max(0, Math.min(10, nec)) * 10);
     return `<div class="vicbar" role="img" aria-label="${e('Necessidade ' + V().num(nec) + ' de 10: ' + f.n)}"><i style="width:${pct}%;background:${f.cor}"></i><b></b><b></b><b></b></div>`;
   }
+  const tagGrau = g => { const x = V().grau(g); return `<span class="vicg vicg-${x.k}" style="--vg:${x.cor}" title="${e('Grau do vício: ' + x.n)}">${e(x.n)}</span>`; };
   const tagFaixa = nec => { const f = V().faixa(nec); return `<span class="vicfx vicfx-${f.k}" style="--fx:${f.cor}">${e(f.n)}</span>`; };
   function cartaoMestre(pc, v, curto) {
     const k = e(pc.id + '|' + v.id);
     const olho = naMesa() ? `<button type="button" class="olho" data-vicolho="${k}" aria-pressed="${!v.oc}" title="${v.oc ? 'Secreto: o jogador não vê este vício. Clique para mostrar.' : 'O jogador vê o nome, a descrição e a necessidade. Clique para deixar secreto.'}" aria-label="${e(v.n + ': ' + (v.oc ? 'secreto' : 'o jogador vê'))}">${v.oc ? M().OLHO_FECHADO : M().OLHO}</button>` : '';
     return `<div class="aptcard viccard${v.oc ? ' guardada' : ''} fx-${V().faixa(v.nec).k}" data-vicc="${k}">
-      <div class="apttopo"><b class="aptnome">${e(v.n)}</b>${tagFaixa(v.nec)}
+      <div class="apttopo"><b class="aptnome">${e(v.n)}</b>${tagGrau(v.g)}${tagFaixa(v.nec)}
         ${v.oc && naMesa() ? '<span class="tagseg" title="Só você vê este vício">secreto</span>' : ''}
         <span class="aptacoes">${olho}<button type="button" class="mini" data-viced="${k}">Editar</button></span></div>
       ${!curto && v.d ? `<p class="aptd">${e(v.d)}</p>` : ''}
@@ -154,7 +157,7 @@ const FichasVic = (() => {
     </div>`;
   }
   function cartaoJogador(v) {
-    return `<div class="aptcard viccard fx-${V().faixa(v.nec).k}"><div class="apttopo"><b class="aptnome">${e(v.n)}</b>${tagFaixa(v.nec)}</div>
+    return `<div class="aptcard viccard fx-${V().faixa(v.nec).k}"><div class="apttopo"><b class="aptnome">${e(v.n)}</b>${tagGrau(v.g)}${tagFaixa(v.nec)}</div>
       ${v.d ? `<p class="aptd">${e(v.d)}</p>` : ''}<div class="aptlinha">${barra(v.nec)}</div></div>`;
   }
   function painel(pc) {
@@ -189,12 +192,14 @@ const FichasVic = (() => {
   function editor(pc, vid) {
     const ex = X(); if (!ex || !V() || !mestra()) return;
     const v = (vid ? listaDe(pc).find(x => x.id === vid) : null), P = V().PADRAO;
-    const w = v || { n: '', d: '', nec: 0, rit: P.rit, bx: P.bx, oc: false };
+    const w = v || { n: '', d: '', g: 'leve', nec: 0, rit: P.rit, bx: P.bx, oc: false };
     const ligadas = v && v.m ? (V().usos(todasListas())[v.m] || []).filter(id => id !== pc.id).map(id => (pcDe(id) || {}).nome || 'sem nome') : [];
     const { m, fechar } = ex.janela(v ? 'Vício de ' + nomeDe(pc) : 'Novo vício para ' + nomeDe(pc), `
       ${ligadas.length ? `<p class="hint" style="margin:0 0 8px">Este vício também está ${ligadas.length === 1 ? 'na ficha de ' + e(ligadas[0]) : 'em ' + ligadas.length + ' outras fichas (' + e(ligadas.join(', ')) + ')'}. Mudar o nome, a descrição, o ritmo ou o quanto baixa muda em todas. A necessidade de cada ficha não muda.</p>` : ''}
       <label class="f"><span class="eyebrow">Nome</span><input data-vicn maxlength="${V().LIM.nome}" value="${e(w.n)}" placeholder="ex.: Cigarro" autocomplete="off"></label>
       <label class="f"><span class="eyebrow">Descrição curta (o jogador vê)</span><textarea rows="2" data-vicd maxlength="${V().LIM.desc}" placeholder="ex.: Fuma desde menino; sem tabaco, fica irritado.">${e(w.d)}</textarea></label>
+      <div class="f"><span class="eyebrow">Grau (o jogador vê)</span>
+        <div class="vicgraus" role="radiogroup" aria-label="Grau do vício">${V().GRAUS.map(x => `<label class="vicgopc" style="--vg:${x.cor}"><input type="radio" name="vicg" value="${x.k}" data-vicg ${V().grauOk(w.g) === x.k ? 'checked' : ''}><span>${e(x.n)}</span></label>`).join('')}</div></div>
       <div class="aptnums vicnums">
         <label class="f"><span class="eyebrow">Sobe por dia</span><input type="number" min="0" max="10" step="0.5" data-vicrit value="${w.rit}"></label>
         <label class="f"><span class="eyebrow">Cumprir baixa</span><input type="number" min="0.5" max="10" step="0.5" data-vicbx value="${w.bx}"></label>
@@ -210,7 +215,8 @@ const FichasVic = (() => {
       const n = nome.value.trim();
       if (!n) { erro.textContent = 'Escreva o nome do vício.'; erro.hidden = false; nome.focus(); return; }
       const oc = q(m, '[data-vicoc]');
-      const campos = { n, d: q(m, '[data-vicd]').value, rit: +q(m, '[data-vicrit]').value, bx: +q(m, '[data-vicbx]').value, nec: +q(m, '[data-vicnecv]').value, oc: oc ? oc.checked : false };
+      const gEl = q(m, '[data-vicg]:checked');
+      const campos = { n, d: q(m, '[data-vicd]').value, g: gEl ? gEl.value : 'leve', rit: +q(m, '[data-vicrit]').value, bx: +q(m, '[data-vicbx]').value, nec: +q(m, '[data-vicnecv]').value, oc: oc ? oc.checked : false };
       fechar();
       if (v) mexer(pc, Object.assign({ t: 'editar', id: v.id }, campos), 'O vício ' + n + ' foi salvo.');
       else mexer(pc, Object.assign({ t: 'nova', id: novoId() }, campos), 'O vício ' + n + ' foi criado para ' + nomeDe(pc) + '.');

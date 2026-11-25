@@ -63,7 +63,7 @@ const local = j({ v: 1, cfg: R.cfgPadrao(), personagens: [pc], situacoes: [], ta
       ok(await ate(async () => { const s = await noBanco(M, 'documentos', 'fichas:segredos', mesa), b = await noBanco(M, 'personagens', 'pc_dain', mesa);
         const v = s && s.dados && s.dados.v && s.dados.v.vic && s.dados.v.vic.pc_dain, d = s && s.dados && s.dados.v && s.dados.v.desv && s.dados.v.desv.pc_dain;
         return v && v.length === 2 && v[0].rit === 2 && v[0].dia === 3 && v[1].oc && d && d[0].nv === 2 && b
-          && j((b.estado.vic || []).map(x => Object.keys(x).sort())) === j([['d', 'id', 'n', 'nec']]) && b.estado.vic[0].nec === 1
+          && j((b.estado.vic || []).map(x => Object.keys(x).sort())) === j([['d', 'g', 'id', 'n', 'nec']]) && b.estado.vic[0].nec === 1
           && j((b.estado.desv || []).map(x => [x.n, x.nv])) === j([['Medo de altura', 2]]); }),
         'no banco: as listas inteiras com o mestre; na ficha, só o Cigarro (sem ritmo) e a desvantagem (sem barra)');
     });
