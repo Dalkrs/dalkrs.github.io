@@ -2,6 +2,16 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.26-01",
+      "data": "2026-11-26",
+      "titulo": "A Vida do mestiço",
+      "itens": [
+        { "tipo": "novo", "texto": "Fichas: no cartão da Vida, o mestre escolhe de qual raça a Vida do mestiço vem, ou dá um valor único (VIT × multiplicador + base). Sem escolha, vale a primeira raça. Antes, as duas raças somavam." },
+        { "tipo": "melhorou", "texto": "Fichas: o cartão da Vida mostra de onde ela vem (VIT × o multiplicador da raça + a base) e avisa quando a fórmula foi escrita à mão sem o multiplicador da raça, com o botão Usar a fórmula padrão." },
+        { "tipo": "consertado", "texto": "Kitsune Ayto: a Vida da origem era 24, sem o multiplicador. Agora é VIT × 1 + 32, como diz o texto." }
+      ]
+    },
+    {
       "versao": "2026.11.25-02",
       "data": "2026-11-25",
       "titulo": "26 puzzles novos e a galeria de puzzles",

@@ -276,6 +276,9 @@ table.attr tr:last-child td{border-bottom:0}
 .rescard{border:1px solid var(--line);border-radius:var(--r);padding:10px;background:var(--campo)}
 .rescard .top{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
 .rescard .val{font-family:var(--monof);font-size:24px;font-weight:600;margin-left:auto;line-height:1}
+.rescard .vida-mestica{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:6px 0;font-size:12.5px}
+.rescard .vida-mestica select{max-width:100%}
+.rescard .aviso-vida{color:var(--aviso,#b7791f)}
 .rescard .val.err{font-size:13px;color:var(--rubric);font-weight:500}
 .darv{margin-left:5px;font-size:10.5px;color:var(--teal);font-weight:500;white-space:nowrap}
 .inirow{display:flex;align-items:end;gap:10px;margin-top:10px;flex-wrap:wrap}
@@ -1974,7 +1977,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=24"></script>
-<script src="../tc/rules.js?v=38"></script>
+<script src="../tc/rules.js?v=39"></script>
 <script src="../tc/bonus.js?v=2"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
@@ -2617,6 +2620,40 @@ function podreDoRecurso(pc,r){
   return v>0 && isFinite(v) && max>0 ? Math.round(Math.min(v,max)*10)/10 : 0;
 }
 function tetoDoRecurso(pc,r){ const piso=r.min<0? r.min : 0; return Math.max(piso, arred(r.val)-podreDoRecurso(pc,r)); }
+/* (lote 211) A Vida da raça, no cartão da Vida (HP):
+   - diz de onde vem: VIT × o multiplicador da raça + a base;
+   - mestiço: o mestre escolhe de qual raça a Vida vem, ou um valor único (multiplicador e base); sem escolha, a primeira;
+   - fórmula escrita à mão que não usa VIDAVIT: avisa, e o mestre pode voltar à fórmula padrão. */
+const FML_VIDA_PADRAO='(VIT-VIT_EQ)*VIDAVIT';
+function ehRecursoVida(r){ const n=String(r&&r.nome||'').trim().toLowerCase(); return n==='hp'||n==='vida'; }
+function htmlVidaRaca(pc,r){
+  if(!ehRecursoVida(r)||!window.TC||!TC.rules||!TC.rules.vidaDeRaca) return '';
+  const v=TC.rules.vidaDeRaca(pc.skills,S.bib);
+  if(!v.racas.length) return '';
+  const mestre=FichasMesa.mestre() || (!FichasMesa.ativo() && FichasMesa.podeEditar(pc));   // sem mesa: quem usa
+  const conta=x=>x?`VIT × ${x.vv||0} + ${x.base||0}`:'—';
+  const nomeDe=id=>{ const x=v.racas.find(y=>y.id===id); return x?x.nome:id; };
+  let o='';
+  if(!v.mestico) o+=`<div class="hint vida-raca">Vida da raça (${esc(v.racas[0].nome)}): ${conta(v.vida)}.</div>`;
+  else{
+    const de=v.modo==='fixo'?'um valor único':nomeDe(v.arv);
+    o+=`<div class="hint vida-raca">Mestiço (${v.racas.map(x=>esc(x.nome)).join(' + ')}): a Vida vem de <b>${esc(de)}</b>: ${conta(v.vida)}${v.escolhida?'':' <em>(a primeira raça, até o mestre escolher)</em>'}.</div>`;
+    if(mestre){
+      const sel=v.modo==='fixo'?'@fixo':v.arv;
+      o+=`<div class="vida-mestica" data-vidamest="${r.id}">
+        <label>A Vida do mestiço vem de <select data-vidamodo>
+          ${v.racas.map(x=>`<option value="${esc(x.id)}"${sel===x.id?' selected':''}>${esc(x.nome)} (VIT × ${x.vv} + ${x.hp})</option>`).join('')}
+          <option value="@fixo"${sel==='@fixo'?' selected':''}>Valor único</option></select></label>
+        ${v.modo==='fixo'?`<label>VIT × <input class="inm" type="number" min="0" max="3" step="1" style="width:52px" data-vidavv value="${v.fixo.vv}"></label>
+        <label>+ base <input class="inm" type="number" step="1" style="width:64px" data-vidabase value="${v.fixo.base}"></label>`:''}
+      </div>`;
+    }
+  }
+  if(!/vidavit/i.test(String(r.fml||''))){
+    o+=`<div class="hint aviso-vida">Esta fórmula foi escrita à mão e não usa o multiplicador da raça (VIDAVIT).${mestre?` <button class="mini" data-vidapadrao="${r.id}" title="Trocar por ${FML_VIDA_PADRAO}">Usar a fórmula padrão</button>`:''}</div>`;
+  }
+  return o;
+}
 function atualDoRecurso(pc,r){
   const v=temAtual(pc,r)? +pc.estado.rec[r.id] : (r.inicio!=null? r.inicio : arred(r.val));
   return podreDoRecurso(pc,r)>0 ? Math.min(v, tetoDoRecurso(pc,r)) : v;
@@ -3257,6 +3294,7 @@ function renderFicha(){
             <input class="fml" data-resfml="${r.id}" value="${esc(r.fml||'')}" placeholder="ex: VIT*8 + LVL*5">
             ${r.err?`<div class="fmlerr">${esc(r.err)}</div>`:''}
             ${r.arv?`<div class="hint">Inclui ${r.arv>0?'+':'−'}${Math.abs(r.arv)} dos nódulos da árvore.</div>`:''}
+            ${htmlVidaRaca(pc,r)}
             ${r.eq?`<div class="hint">Inclui ${r.eq>0?'+':'−'}${Math.abs(r.eq)} dos equipamentos em uso.</div>`:''}
             ${Array.isArray(r.arvs)&&r.arvs.length?`<div class="hint barra-arv" data-resarv="${r.id}">${esc(textoDaBarraArv(r))}</div>`:''}
             ${r.err||r.val==null?'':FichasExtras.htmlOpcoesBarra(pc,r)}
@@ -4307,6 +4345,19 @@ function ligarFicha(pc){
     i.oninput=e=>{ const r=pc.recursos.find(x=>x.id===e.target.dataset.resfml); if(!r)return;
       r.fml=e.target.value; save(); atualizaRecurso(e.target,r,pc); };
   });
+  // (lote 211) a Vida do mestiço e a fórmula padrão da Vida (só o mestre)
+  host.querySelectorAll('[data-vidamest]').forEach(box=>{
+    const sk=()=>(pc.skills=pc.skills||{arvores:[],pontos:{},alocados:{}});
+    const sel=box.querySelector('[data-vidamodo]');
+    if(sel) sel.onchange=()=>patch(()=>{ const s2=sk();
+      if(sel.value==='@fixo'){ const v=TC.rules.vidaDeRaca(s2,S.bib); s2.vidaMestica={modo:'fixo', vv:(v.vida&&v.vida.vv)||2, base:(v.vida&&v.vida.base)||0}; }
+      else s2.vidaMestica={modo:'raca', arv:sel.value}; });
+    const num=(q,k)=>{ const i=box.querySelector(q); if(i) i.onchange=()=>patch(()=>{ const s2=sk(); const vm=Object.assign({modo:'fixo',vv:2,base:0},s2.vidaMestica||{}); vm.modo='fixo';
+      let x=Math.round(+i.value||0); if(k==='vv') x=Math.max(0,Math.min(3,x)); vm[k]=x; s2.vidaMestica=vm; }); };
+    num('[data-vidavv]','vv'); num('[data-vidabase]','base');
+  });
+  host.querySelectorAll('[data-vidapadrao]').forEach(b=>b.onclick=()=>patch(()=>{
+    const r=pc.recursos.find(x=>x.id===b.dataset.vidapadrao); if(r) r.fml=FML_VIDA_PADRAO; }));
   host.querySelectorAll('[data-resdel]').forEach(b=>b.onclick=()=>patch(()=>{
     pc.recursos=pc.recursos.filter(x=>x.id!==b.dataset.resdel)}));
 

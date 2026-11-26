@@ -671,7 +671,8 @@
     });
     const vars={LVL:+pc.level, NIVEL:+pc.level, MULT:mult, PTS:arred(cfg,total), TOTAL:arred(cfg,total)};
     // (lote 106) quanto cada ponto de VIT vale de Vida: vem da árvore de raça ("Vida por VIT": 1, 2 ou 3); sem raça, 2.
-    // A fórmula da Vida (fichas:cfg) usa VIDAVIT: "VIT*VIDAVIT". Mestiço: as duas raças somam, e o teto é 3.
+    // A fórmula da Vida (fichas:cfg) usa VIDAVIT: "VIT*VIDAVIT". Mestiço (lote 211): vem de uma raça só, a que o mestre
+    // escolheu (ou um valor único), e sem escolha da primeira; o teto continua 3.
     { const vv=tem(arvRec,'vida por vit')? numFinito(arvRec['vida por vit']) : null; vars.VIDAVIT = vv!=null&&vv>0? Math.min(3,vv) : 2; }
     DERIV.forEach(d=>{
       vars[d.k]=der[d.k]; vars[d.k+'_B']=daConta(d,base); vars[d.k+'_EQ']=eq[d.k];
@@ -1110,6 +1111,41 @@
     const m = RE_INI_GRAU.exec(String(g.texto || ''));
     return m ? Number(m[1]) : null;
   }
+  /* (lote 211) a Vida que a raça dá: as raças equipadas (com a origem comprada), o HP e o Vida por VIT de cada uma,
+     e, no mestiço (2 raças ou mais), de onde a Vida vem: skills.vidaMestica = {modo:'raca', arv} ou
+     {modo:'fixo', vv, base}; sem escolha válida, a primeira raça da lista. */
+  function vidaDeRaca(skills, biblioteca) {
+    const sk = skills || {}, equipadas = Array.isArray(sk.arvores) ? sk.arvores : [], al = sk.alocados || {};
+    const arvores = biblioteca && Array.isArray(biblioteca.arvores) ? biblioteca.arvores : [];
+    const racas = [];
+    equipadas.forEach(id => {
+      const a = arvores.filter(x => x && x.id === id && x.categoria === 'raca').pop();
+      if (!a) return;
+      let hp = 0, vv = 0, origem = null;
+      (a.nodes || []).forEach(n => {
+        if (!n || (Array.isArray(n.pais) && n.pais.length)) return;
+        origem = origem || n.id;
+        if (!tem(al, n.id)) return;
+        const graus = Array.isArray(n.graus) ? n.graus : [], g = Math.min(+al[n.id], graus.length);
+        for (let k = 0; k < g; k++) {
+          const b = graus[k] && graus[k].bonus; if (!b || typeof b !== 'object') continue;
+          Object.keys(b).forEach(ch => { const v = numFinito(b[ch]); if (v == null) return; const nm = normNome(ch);
+            if (nm === 'hp' || nm === 'vida') hp += v; else if (nm === 'vida por vit') vv += v; });
+        }
+      });
+      racas.push({ id: a.id, nome: a.nome || a.id, hp, vv, comprada: !!(origem && tem(al, origem)) });
+    });
+    const mestico = racas.length > 1;
+    const e = sk.vidaMestica && typeof sk.vidaMestica === 'object' ? sk.vidaMestica : null;
+    let modo = 'raca', arv = racas.length ? racas[0].id : null, fixo = null, escolhida = false;
+    if (mestico && e) {
+      if (e.modo === 'fixo') { modo = 'fixo'; escolhida = true; fixo = { vv: Math.max(0, Math.min(3, numFinito(e.vv) || 0)), base: numFinito(e.base) || 0 }; }
+      else if (racas.some(r => r.id === e.arv)) { arv = e.arv; escolhida = true; }
+    }
+    const r = racas.find(x => x.id === arv) || null;
+    const vida = modo === 'fixo' ? fixo : r ? { vv: r.vv, base: r.hp } : null;
+    return { racas, mestico, modo, arv, fixo, escolhida, vida };
+  }
   // a chave do que os nós de uma árvore somam ao início da barra dela, no mapa de bonusDaArvore
   const CHAVE_INI = 'inicio@';
   function bonusDaArvore(skills, biblioteca) {
@@ -1126,10 +1162,16 @@
       if (n) { porId.set(n.id, n); arvDe.set(n.id, a); }
     }));
     const grafia = new Map();                    // nome normalizado → primeira grafia
+    // (lote 211) mestiço: a Vida (HP e Vida por VIT) da origem vem de UMA raça só, a que o mestre escolheu
+    // (skills.vidaMestica), ou de um valor único; sem escolha, da primeira raça da lista
+    const vm = vidaDeRaca(sk, biblioteca);
+    const daVida = k => { const nm = normNome(k); return nm === 'hp' || nm === 'vida' || nm === 'vida por vit'; };
     arvores.forEach(a => {
       if (!a || equipadas.indexOf(a.id) < 0) return;
+      const cortaVida = vm.mestico && a.categoria === 'raca' && (vm.modo === 'fixo' || vm.arv !== a.id);
       (a.nodes || []).forEach(n => {
         if (!n || porId.get(n.id) !== n || arvDe.get(n.id) !== a || !tem(al, n.id)) return;
+        const origem = !(Array.isArray(n.pais) && n.pais.length);
         const graus = Array.isArray(n.graus) ? n.graus : [];
         const g = Math.min(+al[n.id], graus.length);
         // (lote 34) o início da barra: o do grau mais alto comprado que diz quanto
@@ -1140,6 +1182,7 @@
           Object.keys(b).forEach(ch => {
             const v = numFinito(b[ch]);
             if (v == null) return;
+            if (cortaVida && origem && daVida(ch)) return;          // (lote 211) a Vida de outra raça do mestiço
             const cod = codigoBonus(ch);
             if (cod) { somar(out, cod, v); return; }
             const nm = normNome(ch);
@@ -1150,6 +1193,10 @@
         }
       });
     });
+    if (vm.mestico && vm.modo === 'fixo') {                        // (lote 211) o valor único do mestre
+      if (vm.fixo.vv > 0) somar(out, 'Vida por VIT', vm.fixo.vv);
+      if (vm.fixo.base) somar(out, 'HP', vm.fixo.base);
+    }
     // (lote 16) e as skills únicas do personagem, que vêm já aprendidas
     unicasDe(sk).forEach(u => {
       if (!u.bonus) return;
@@ -2374,7 +2421,7 @@
     ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, ehDerivado, ehDefesa, chaveViva,
     cfgPadrao, personagemPadrao,
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
-    bonusDaArvore, unicasDe, iniciativa, estadoRecursos, estiloDaBarra, aplicarDelta, podreDe, resumo,
+    bonusDaArvore, vidaDeRaca, unicasDe, iniciativa, estadoRecursos, estiloDaBarra, aplicarDelta, podreDe, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
     FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, pilhaVazia, DIST, tipoDist, distDoItem, ehDist, dispararDist, recarregarDist, textoDist, nomeDoReq, textoDoEquipar,
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,
