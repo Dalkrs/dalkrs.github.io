@@ -9,7 +9,7 @@
 //     teste da prévia, com a resposta à vista do mestre; o erro na charada; a chave da cifra virando handout; a charada
 //     escrita pelo mestre; o que acontece ao acertar e ao errar); entregar só numa mesa.
 const path = require('path');
-const { start, checker } = require('./lib');
+const { start, checker, passosPuzzle } = require('./lib');
 const { ok, end } = checker();
 const j = JSON.stringify;
 function resolverLuzes(l, n) {
@@ -23,6 +23,7 @@ function resolverLuzes(l, n) {
 (async () => {
   const t = await start();
   const { page: p } = await t.device({ name: 'escudo', w: 1440, h: 900 });
+  passosPuzzle(p);   // (lote 209) o puzzle em passos
   const w = ms => p.waitForTimeout(ms);
   const foto = async nome => { if (process.env.FOTOS) await p.screenshot({ path: process.env.FOTOS + '/' + nome + '.png' }); };
   const passo = async (nome, fn) => { try { await fn(); } catch (e) { ok(false, nome + ' — parou: ' + String((e && e.message) || e).split('\n')[0]); } };
@@ -166,6 +167,7 @@ function resolverLuzes(l, n) {
   const resolvido = async () => { for (let i = 0; i < 20; i++) { if (await p.locator('.previa .pz.resolvido').count()) return true; await w(100); } return false; };
   await passo('o puzzle', async () => {
     await p.click('[data-k="h:novo:puzzle"]'); await w(200);
+    await p.click('[data-k="pz:passo:2"]'); await w(200);   // (lote 209) o puzzle novo começa na galeria
     puz = await ev(() => __escudo.HO.sel);
     ok(await ev(id => __escudo.A.handout(id).puzzle.tipo === 'charada', puz) && await p.locator('.previa .pz-charada').count() === 1, 'o puzzle novo: uma charada fácil, com o teste na prévia');
     ok((await p.locator('.previa [data-k="tst:resposta"]').innerText()).startsWith('Resposta (só você vê):'), 'a resposta, só para o mestre');

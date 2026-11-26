@@ -2,6 +2,18 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.25-02",
+      "data": "2026-11-25",
+      "titulo": "26 puzzles novos e a galeria de puzzles",
+      "itens": [
+        { "tipo": "novo", "texto": "Pistas: 26 puzzles novos para resolver em grupo — quadro de dedução, guardas que mentem, nonograma, somas de runas, quadrado mágico, conta cifrada, oito guardas, campo de armadilhas, tesouro enterrado, palavra secreta, mensagem escondida, ordem dos acontecimentos, achar as diferenças, torre dos discos, jarros d’água, travessia do rio, canos de água, empurrar estátuas, chão de gelo, resta um, pontes entre ilhas, trilhos, constelação, encaixar peças, mapa e bússola e cavalo do rei." },
+        { "tipo": "novo", "mestre": true, "texto": "Os puzzles novos têm 5 níveis, do Fácil ao Absoluto. Cada nível muda uma regra, e a tela diz o que muda." },
+        { "tipo": "melhorou", "mestre": true, "texto": "Escudo → Handouts e puzzles: o puzzle agora se faz em três passos — Escolher, Ajustar e Entregar. Escolher é uma galeria com os 46 tipos, separados por família, com busca e com o que cada um pede de tempo de mesa." },
+        { "tipo": "novo", "mestre": true, "texto": "O “?” de cada puzzle abre um tutorial que joga o puzzle sozinho, passo a passo, mostrando onde clicar, com as regras em três frases." },
+        { "tipo": "novo", "mestre": true, "texto": "Dá para escrever: os nomes e a resposta do quadro de dedução (o site escreve as pistas), as portas e os guardas, a palavra secreta, a história da ordem dos acontecimentos, o caminho do mapa e a mensagem escondida." }
+      ]
+    },
+    {
       "versao": "2026.11.25-01",
       "data": "2026-11-25",
       "titulo": "Grau dos vícios",

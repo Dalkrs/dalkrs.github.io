@@ -1,7 +1,7 @@
 // As fechaduras de dedução (lote 207): o Perfil da chave e as Engrenagens. O núcleo (toda fechadura gerada tem
 // solução; o perfil tem uma só, e com a pista falsa, uma só pista falsa; as engrenagens giram certo com a solução e
 // travam com o erro), a aptidão no lugar do atributo e, no Escudo do mestre sozinho, o teste jogável.
-const { start, checker } = require('./lib');
+const { start, checker, passosPuzzle } = require('./lib');
 const E = require('../../tc/escudo.js'); require('../../tc/escudo-puzzles.js');
 const F = require('../../tc/fechadura.js');
 const D = require('../../tc/fechadura-deducao.js');
@@ -79,6 +79,7 @@ const jogo = pz => E.jogoNovo('h1', E.normHandout({ tipo: 'puzzle', nome: 'Porta
 (async () => {
   const t = await start();
   const { page: p } = await t.device({ name: 'fech-deducao', w: 1366, h: 768 });
+  passosPuzzle(p);   // (lote 209) o puzzle em passos
   p.setDefaultTimeout(8000);
   const w = ms => p.waitForTimeout(ms);
   const ev = (fn, a) => p.evaluate(fn, a);

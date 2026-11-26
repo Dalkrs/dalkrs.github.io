@@ -3,7 +3,7 @@
 // a pedra falsa, a balança, os pares, a sequência); a dica no teste; o tema e as palavras do mestre; o tabuleiro com
 // runas; o cronômetro (a conta e o puzzle travado quando acaba). TC_SCRATCH=<pasta> guarda capturas.
 const path = require('path');
-const { start, checker } = require('./lib');
+const { start, checker, passosPuzzle } = require('./lib');
 const { ok, end } = checker();
 const j = JSON.stringify;
 
@@ -26,6 +26,7 @@ function resolverDeslizante(p, n) {
 (async () => {
   const t = await start();
   const { page: p } = await t.device({ name: 'escudo46', w: 1440, h: 950 });
+  passosPuzzle(p);   // (lote 209) o puzzle em passos
   p.setDefaultTimeout(8000);
   const w = ms => p.waitForTimeout(ms);
   const ev = (fn, a) => p.evaluate(fn, a);
@@ -44,8 +45,9 @@ function resolverDeslizante(p, n) {
   const X = fn => ev(fn);
 
   await passo('os grupos novos', async () => {
-    const txt = await p.locator('.tipos-pz').textContent();
-    ok(['Palavras', 'Caminhos', 'Lógica', 'Memória e sequência'].every(g => txt.includes(g)) && await p.locator('[data-k^="pz:t:"]').count() === 20, 'os quatro grupos novos e os 20 tipos de puzzle (com a fechadura, do lote 120)');
+    // (lote 209) a galeria: as famílias e os 46 tipos (os 20 de antes e os 26 do lote 209)
+    const txt = await p.locator('.gal').textContent();
+    ok(['Palavras e códigos', 'Caminhos e mapas', 'Lógica e dedução', 'Olhos e memória'].every(g => txt.includes(g)) && await p.locator('[data-k^="pz:t:"]').count() === 46, 'a galeria com as famílias e os 46 tipos de puzzle');
   });
 
   await passo('palavras cruzadas', async () => {

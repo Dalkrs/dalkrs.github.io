@@ -2,7 +2,7 @@
 //   · o Dalmo abre nas Pistas: força fora do ponto duas vezes (duas gazuas quebram; o banco conta os erros);
 //   · o barulho passa do limite (2, no Absoluto): o mestre recebe o aviso "Barulho!";
 //   · no ponto certo, a fechadura abre (o banco confere o segredo); a Mesa ao vivo: "Fechadura aberta".
-const { start, checker } = require('./lib');
+const { start, checker, passosPuzzle } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, codigoDaMesa, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
 (async () => {
@@ -13,7 +13,7 @@ const { ok, end } = checker();
   const M = (await t.device({ name: 'mestre', w: 1500, h: 950, seed })).page, Dp = (await t.device({ name: 'dalmo', w: 1300, h: 900, seed })).page;
   M.setDefaultTimeout(12000); Dp.setDefaultTimeout(12000);
   const w = (ms, p) => (p || M).waitForTimeout(ms);
-  const quadro = async (p, re) => { for (let i = 0; i < 80; i++) { const f = p.frame({ url: re }); if (f) return f; await p.waitForTimeout(250); } return null; };
+  const quadro = async (p, re) => { for (let i = 0; i < 80; i++) { const f = p.frame({ url: re }); if (f) return passosPuzzle(f); await p.waitForTimeout(250); } return null; };
   const ate = async (fn, ms = 30000) => { const t0 = Date.now(); for (;;) { try { if (await fn()) return true; } catch (e) { /* recarregando */ } if (Date.now() - t0 > ms) return false; await M.waitForTimeout(400); } };
   const jogo = (p, hid) => p.evaluate(h => { const l = TC.dados.col('documentos').pegar('pista:jogo:' + h); return l && !l.apagado ? JSON.parse(JSON.stringify(l.dados)) : null; }, hid);
   const fecharJanela = p => p.evaluate(() => { const d = document.querySelector('dialog[open]'); if (d) d.close(); });

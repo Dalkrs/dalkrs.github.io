@@ -20,6 +20,12 @@
     let sel = U.guarda.ler('tinycats:escudo:handout') || null, filtro = 'todos';
     const testes = {};                                     // o teste de cada puzzle: { chave, jogo, sel }
     let selPeca = null;                                    // a peça escolhida no quebra-cabeça dos jogadores (vendo)
+    /* (lote 209) O puzzle em três passos: 1 Escolher (a galeria), 2 Ajustar (o nível e os detalhes), 3 Testar e
+       entregar (o que acontece ao acertar e ao errar, e para quem vai). O teste jogável fica sempre ao lado. */
+    const passoPz = {};                                    // o passo de cada puzzle aberto (só nesta tela)
+    let famF = 'todos', buscaF = '', soEscreve = false;     // os filtros da galeria
+    const passoDe = hid => passoPz[hid] || 2;
+    function irPasso(hid, n) { passoPz[hid] = n; k.pintar(); const el = document.querySelector('.ed'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' }); }
     const H = id => E.PRE.handout + id;
     function selecionar(id) { sel = id; U.guarda.gravar('tinycats:escudo:handout', id); }
 
@@ -36,6 +42,7 @@
     function novo(tipo) {
       let id;
       k.mudar('criar um handout', [], () => { id = A.handoutNovo(tipo, { camp: k.campVista() }); });
+      if (tipo === 'puzzle') passoPz[id] = 1;
       selecionar(id);
       k.pintar();
       setTimeout(() => { const i = document.querySelector('[data-k="h:nome"]'); if (i) { i.focus(); i.select(); } }, 30);
@@ -281,23 +288,152 @@
       out.push(livres, estado());
       return out.filter(Boolean);
     }
-    function configPuzzle(hid, x) {
-      const pz = x.puzzle, m = E.montarPuzzle(pz, x.img, x.imgAr);
-      const grupos = {};
-      for (const t of Object.keys(E.PUZZLES)) (grupos[E.PUZZLES[t].grupo] = grupos[E.PUZZLES[t].grupo] || []).push(t);
-      const tipoNovo = t => trocarPuzzle(hid, 'trocar o tipo do puzzle', y => {
+    /* ---------------- (lote 209) escolher o tipo: a galeria ---------------- */
+    function escolherTipo(hid, t) {
+      const x = A.handout(hid);
+      passoPz[hid] = 2;
+      if (!x || x.puzzle.tipo === t) { k.pintar(); return; }
+      trocarPuzzle(hid, 'escolher o puzzle', y => {
         y.puzzle = Object.assign({}, y.puzzle, { tipo: t, seed: E.novaSemente() });
+        if (!E.niveisDe(t).includes(y.puzzle.dif)) y.puzzle.dif = 'medio';
         if (t === 'cifra' && !y.puzzle.msg) y.puzzle.msg = E.MENSAGENS[Math.floor(Math.random() * E.MENSAGENS.length)];
         if (t === 'charada') y.puzzle.idx = E.sortearCharada(y.puzzle.dif, E.mulberry(E.novaSemente()));
-        if (['cruzadas', 'caca', 'anagrama'].includes(t) && !y.puzzle.tema) y.puzzle.tema = 'taverna';
+        if (['cruzadas', 'caca', 'anagrama', 'palavra'].includes(t) && !y.puzzle.tema) y.puzzle.tema = 'taverna';
       });
+    }
+    function barraPassos(hid) {
+      const p = passoDe(hid);
+      return h('nav', { class: 'pz-passos', 'aria-label': 'Os passos do puzzle' }, [[1, 'Escolher', 'o tipo de puzzle'], [2, 'Ajustar', 'o nível e os detalhes'], [3, 'Entregar', 'testar e mandar aos jogadores']].map(([n, t, sub]) =>
+        h('button', { type: 'button', class: 'pz-passo' + (p === n ? ' at' : '') + (p > n ? ' feito' : ''), 'data-k': 'pz:passo:' + n, 'aria-current': p === n ? 'step' : null, onclick: () => irPasso(hid, n) },
+          h('span', { class: 'pz-pn', text: p > n ? '✓' : String(n) }), h('span', { class: 'pz-pt' }, h('b', { text: t }), h('small', { text: sub })))));
+    }
+    function galeria(hid, x) {
+      const G = window.TC.puzzlesGuia;
+      const todos = Object.keys(E.PUZZLES);
+      if (!G) return h('div', { class: 'cartao' }, todos.map(t => h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:t:' + t, onclick: () => escolherTipo(hid, t) }, E.PUZZLES[t].nome)));
+      const ordemFam = G.FAM.map(f => f[0]);
+      const ord = todos.slice().sort((a, b) => ordemFam.indexOf(G.cat(a).fam) - ordemFam.indexOf(G.cat(b).fam) || G.cat(a).nome.localeCompare(G.cat(b).nome));
+      const busca = E.sem(buscaF).trim();
+      const passa = (t, f) => { const c = G.cat(t); return (f === 'todos' || (f === 'novos' ? c.novo : c.fam === f)) && (!soEscreve || c.escreve) && (!busca || E.sem(c.nome + ' ' + c.como).includes(busca)); };
+      const vis = ord.filter(t => passa(t, famF));
+      const chips = [['todos', 'Todos', null], ['novos', '✦ Novos', null]].concat(G.FAM.map(f => [f[0], f[1], f[3]])).filter(([v]) => v === 'todos' || ord.some(t => passa(t, v)) || famF === v);
+      const cartao = t => {
+        const c = G.cat(t), cor = G.famDe(c.fam)[3];
+        return h('div', { class: 'gal-card' + (x.puzzle.tipo === t ? ' escolhido' : ''), style: { '--fam': cor } },
+          h('button', { type: 'button', class: 'gal-main', 'data-k': 'pz:t:' + t, 'aria-pressed': String(x.puzzle.tipo === t), title: E.PUZZLES[t].desc, onclick: () => escolherTipo(hid, t) },
+            h('span', { class: 'gal-topo' }, h('span', { class: 'gal-ico' }, G.icone(t, 24)), h('span', { class: 'gal-nome', text: c.nome }), c.novo ? h('span', { class: 'gal-novo', text: 'novo' }) : null),
+            h('span', { class: 'gal-como', text: c.como }),
+            h('span', { class: 'gal-tags' }, G.tags(t).map(([tx, cl]) => h('span', { class: 'gal-tag ' + cl, text: tx })))),
+          h('button', { type: 'button', class: 'gal-q', 'data-k': 'pz:tut:' + t, title: 'Como funciona (tutorial animado)', 'aria-label': 'Como funciona: ' + c.nome, onclick: () => G.abrirTutorial(J, t, { usar: tt => escolherTipo(hid, tt) }) }, '?'));
+      };
+      return h('div', { class: 'cartao gal' },
+        h('div', { class: 'gal-cab' }, h('div', null, h('p', { class: 'tit', text: 'Escolha o puzzle' }), h('p', { class: 'ajuda', text: todos.length + ' tipos. Clique num cartão para usar; no “?”, um tutorial mostra como se joga.' })),
+          h('input', { class: 'in gal-busca', type: 'search', 'data-k': 'pz:busca', placeholder: 'Procurar…', value: buscaF, 'aria-label': 'Procurar um puzzle', oninput: ev => { buscaF = ev.target.value; k.pintar(); } })),
+        h('div', { class: 'gal-chips', role: 'group', 'aria-label': 'Famílias' }, chips.map(([v, nm, cor]) => h('button', { type: 'button', class: 'gal-chip', 'data-k': 'pz:fam:' + v, 'aria-pressed': String(famF === v), style: cor ? { '--fam': cor } : null, onclick: () => { famF = v; k.pintar(); } },
+          cor ? h('i', { class: 'gal-ponto' }) : null, nm, h('small', { text: String(ord.filter(t => passa(t, v)).length) })))),
+        h('label', { class: 'chk gal-so' }, h('input', { type: 'checkbox', 'data-k': 'pz:soescreve', checked: soEscreve || null, onchange: ev => { soEscreve = ev.target.checked; k.pintar(); } }), 'Só os que eu posso escrever (nomes, palavras, mensagens)'),
+        vis.length ? h('div', { class: 'gal-grade' }, vis.map(cartao)) : h('p', { class: 'ajuda', text: 'Nenhum puzzle com esse filtro.' }));
+    }
+
+    /* ---------------- (lote 209) os puzzles novos que o mestre escreve ---------------- */
+    function editorNovo(hid, x, pz, m) {
+      const out = [], muda = (rot, fn) => trocarPuzzle(hid, rot, y => fn(y.puzzle));
+      const quem = (ehMeu, escrever, sortear) => h('div', { class: 'seg', role: 'group', 'aria-label': 'Quem monta o puzzle' }, [['s', 'Sortear'], ['m', 'Escrever o meu']].map(([v, nm]) =>
+        h('button', { type: 'button', 'data-k': 'pz:man:' + v, 'aria-pressed': String(ehMeu === (v === 'm')), onclick: () => { if (ehMeu !== (v === 'm')) (v === 'm' ? escrever : sortear)(); } }, nm)));
+      const repete = l => new Set(l.map(v => E.sem(v).trim())).size !== l.length || l.some(v => !String(v).trim());
+      const campo = (rot, dk, val, max, fn) => h('label', { class: 'field' }, h('span', { text: rot }), h('input', { class: 'in', 'data-k': dk, value: val, maxlength: max, onchange: ev => fn(ev.target.value.trim()) }));
+      if (!m) return out;
+      if (pz.tipo === 'deducao') {
+        const M = pz.ded;
+        out.push(quem(!!M, () => muda('escrever o quadro', p => { p.ded = { pes: m.pub.pes.slice(), cats: m.pub.cats.map((c, ci) => ({ n: c.n, v: m.pub.pes.map((_, i) => c.v[m.seg.sol[ci][i]]) })) }; }), () => muda('voltar ao sorteio', p => { p.ded = null; })));
+        if (M) {
+          const mudaDed = (rot, fn) => { const d = copia(M); fn(d); if (repete(d.pes) || d.cats.some(c => repete(c.v) || !c.n.trim())) { toast('Os nomes não podem repetir, nem os valores de uma coluna.'); k.pintar(); return; } muda(rot, p => { p.ded = d; }); };
+          out.push(h('p', { class: 'ajuda', text: 'Escreva a resposta certa: cada linha é uma pessoa e o que é dela. O site embaralha e escreve as pistas sozinho (e confere que só há uma resposta).' }));
+          out.push(h('div', { class: 'ded-ed', style: { gridTemplateColumns: 'repeat(' + (M.cats.length + 1) + ', minmax(0, 1fr)) 30px' } },
+            h('span', { class: 'ded-rot', text: 'Pessoa' }), M.cats.map((c, ci) => h('input', { class: 'in ded-col', 'data-k': 'pz:dc' + ci, value: c.n, maxlength: 20, 'aria-label': 'O nome da coluna ' + (ci + 1), onchange: ev => mudaDed('mudar a coluna', d => { d.cats[ci].n = ev.target.value.trim(); }) })), h('span'),
+            M.pes.map((nm, i) => [h('input', { class: 'in', 'data-k': 'pz:dp' + i, value: nm, maxlength: 24, 'aria-label': 'Pessoa ' + (i + 1), onchange: ev => mudaDed('mudar um nome', d => { d.pes[i] = ev.target.value.trim(); }) }),
+              M.cats.map((c, ci) => h('input', { class: 'in', 'data-k': 'pz:dv' + ci + '-' + i, value: c.v[i], maxlength: 30, 'aria-label': c.n + ' de ' + nm, onchange: ev => mudaDed('mudar a resposta', d => { d.cats[ci].v[i] = ev.target.value.trim(); }) })),
+              h('button', { type: 'button', class: 'ib leve', 'data-k': 'pz:dx' + i, title: 'Tirar esta pessoa', disabled: M.pes.length <= 3, onclick: () => mudaDed('tirar uma pessoa', d => { d.pes.splice(i, 1); d.cats.forEach(c => c.v.splice(i, 1)); }) }, '×')])));
+          out.push(h('div', { class: 'row' },
+            h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:d+p', disabled: M.pes.length >= 5, onclick: () => mudaDed('pôr uma pessoa', d => { d.pes.push('Pessoa ' + (d.pes.length + 1)); d.cats.forEach((c, ci) => c.v.push(c.n + ' ' + (c.v.length + 1))); }) }, '+ Pessoa'),
+            h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:d+c', disabled: M.cats.length >= 3, onclick: () => mudaDed('pôr uma coluna', d => { d.cats.push({ n: 'Coluna ' + (d.cats.length + 1), v: d.pes.map((_, i) => 'Item ' + (i + 1)) }); }) }, '+ Coluna'),
+            h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:d-c', disabled: M.cats.length <= 1, onclick: () => mudaDed('tirar uma coluna', d => { d.cats.pop(); }) }, '− Coluna')));
+        }
+      }
+      if (pz.tipo === 'guardas') {
+        const M = pz.grd;
+        out.push(quem(!!M, () => muda('escrever as portas', p => { p.grd = { portas: m.pub.ps.slice(), guardas: m.pub.gs.slice(), certa: m.seg.s }; }), () => muda('voltar ao sorteio', p => { p.grd = null; })));
+        if (M) {
+          const mudaG = (rot, fn) => { const d = copia(M); fn(d); if (repete(d.portas) || repete(d.guardas)) { toast('Os nomes não podem repetir nem ficar vazios.'); k.pintar(); return; } if (d.certa >= d.portas.length) d.certa = 0; muda(rot, p => { p.grd = d; }); };
+          out.push(h('p', { class: 'ajuda', text: 'As portas aparecem como “a porta …”: escreva “de ferro”, “do norte”, “da cripta”. O site decide quem mente e escreve o que cada guarda diz.' }));
+          out.push(h('div', { class: 'grd-ed' },
+            h('div', null, h('span', { class: 'sub2', text: 'As portas' }), M.portas.map((v, i) => h('div', { class: 'row' }, h('input', { class: 'in', 'data-k': 'pz:gp' + i, value: v, maxlength: 30, onchange: ev => mudaG('mudar uma porta', d => { d.portas[i] = ev.target.value.trim(); }) }),
+              h('button', { type: 'button', class: 'ib leve', title: 'Tirar', disabled: M.portas.length <= 2, onclick: () => mudaG('tirar uma porta', d => { d.portas.splice(i, 1); }) }, '×'))),
+              h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:g+p', disabled: M.portas.length >= 4, onclick: () => mudaG('pôr uma porta', d => { d.portas.push('nova ' + (d.portas.length + 1)); }) }, '+ Porta')),
+            h('div', null, h('span', { class: 'sub2', text: 'Os guardas' }), M.guardas.map((v, i) => h('div', { class: 'row' }, h('input', { class: 'in', 'data-k': 'pz:gg' + i, value: v, maxlength: 20, onchange: ev => mudaG('mudar um guarda', d => { d.guardas[i] = ev.target.value.trim(); }) }),
+              h('button', { type: 'button', class: 'ib leve', title: 'Tirar', disabled: M.guardas.length <= 2, onclick: () => mudaG('tirar um guarda', d => { d.guardas.splice(i, 1); }) }, '×'))),
+              h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:g+g', disabled: M.guardas.length >= 5, onclick: () => mudaG('pôr um guarda', d => { d.guardas.push('Guarda ' + (d.guardas.length + 1)); }) }, '+ Guarda'))));
+          out.push(h('label', { class: 'field' }, h('span', { text: 'A porta segura' }), h('select', { class: 'in', 'data-k': 'pz:gcerta', value: String(M.certa), onchange: ev => mudaG('mudar a porta segura', d => { d.certa = Number(ev.target.value); }) }, M.portas.map((v, i) => h('option', { value: String(i), text: 'a porta ' + v })))));
+        }
+      }
+      if (pz.tipo === 'palavra') {
+        out.push(quem(!!pz.palavra, () => muda('escrever a palavra', p => { p.palavra = m.seg.pal; }), () => muda('voltar ao sorteio', p => { p.palavra = null; })));
+        if (pz.palavra) out.push(campo('A palavra (de 4 a 8 letras)', 'pz:palavra', pz.palavra, 12, v => { const kk = E.sem(v).toUpperCase().replace(/[^A-Z]/g, ''); if (kk.length < 4 || kk.length > 8) { toast('De 4 a 8 letras.'); k.pintar(); return; } muda('mudar a palavra', p => { p.palavra = kk; }); }), h('p', { class: 'ajuda', text: 'Acentos e espaços somem. O nível muda as tentativas (e, no Absoluto, tira as cores).' }));
+        else {
+          const temas = E.mais ? E.mais.TEMAS : {};
+          out.push(h('label', { class: 'field' }, h('span', { text: 'O tema' }), h('select', { class: 'in', 'data-k': 'pz:tema', value: pz.tema || 'taverna', onchange: ev => { const v = ev.target.value; muda('mudar o tema', p => { p.tema = v; p.seed = E.novaSemente(); }); } }, Object.keys(temas).map(t => h('option', { value: t, text: temas[t][0] })))));
+          out.push(h('p', { class: 'ajuda', text: 'A palavra sorteada: ' + m.seg.pal + ' (só você vê).' }));
+        }
+      }
+      if (pz.tipo === 'espelhada') {
+        out.push(h('label', { class: 'field' }, h('span', { text: 'A mensagem' }), h('textarea', { class: 'in', rows: 2, 'data-k': 'pz:msg', value: pz.msg || m.seg.pal.join(' '), maxlength: 160, onchange: ev => { const v = ev.target.value.trim(); muda('mudar a mensagem', p => { p.msg = v; }); } })));
+        out.push(h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:msg-sortear', onclick: () => muda('sortear a mensagem', p => { let v; do { v = E.MENSAGENS[Math.floor(Math.random() * E.MENSAGENS.length)]; } while (v === p.msg && E.MENSAGENS.length > 1); p.msg = v; }) }, 'Sortear uma mensagem')));
+        out.push(h('p', { class: 'ajuda', text: 'O truque muda com o nível: ' + (m.pub.dica || '') }));
+      }
+      if (pz.tipo === 'ordem') {
+        const M = pz.ord;
+        out.push(quem(!!M, () => muda('escrever a história', p => { p.ord = { tit: m.pub.tit, evs: m.seg.sol.map(i => m.pub.evs[i]) }; }), () => muda('voltar ao sorteio', p => { p.ord = null; })));
+        if (M) {
+          out.push(campo('O título', 'pz:otit', M.tit, 60, v => muda('mudar o título', p => { p.ord.tit = v; })));
+          out.push(h('label', { class: 'field' }, h('span', { text: 'Os acontecimentos, na ordem certa (um por linha, de 3 a 8)' }), h('textarea', { class: 'in', rows: 6, 'data-k': 'pz:oevs', value: M.evs.join('\n'),
+            onchange: ev => { const l = ev.target.value.split('\n').map(v => v.trim()).filter(Boolean).slice(0, 8); if (l.length < 3 || repete(l)) { toast('Escreva de 3 a 8 acontecimentos, sem repetir.'); k.pintar(); return; } muda('mudar os acontecimentos', p => { p.ord.evs = l; }); } })));
+          out.push(h('p', { class: 'ajuda', text: 'Frases curtas funcionam melhor. O site embaralha e escreve as pistas sozinho.' }));
+        } else out.push(h('p', { class: 'ajuda', text: 'A história sorteada: “' + m.pub.tit + '”.' }));
+      }
+      if (pz.tipo === 'bussola') {
+        const M = pz.bus, DIRS = [['N', 'Norte'], ['NE', 'Nordeste'], ['L', 'Leste'], ['SE', 'Sudeste'], ['S', 'Sul'], ['SO', 'Sudoeste'], ['O', 'Oeste'], ['NO', 'Noroeste']];
+        out.push(quem(!!M, () => muda('escrever o caminho', p => { p.bus = { passos: [{ d: 'N', n: 2 }, { d: 'L', n: 3 }, { d: 'S', n: 1 }] }; }), () => muda('voltar ao sorteio', p => { p.bus = null; })));
+        if (M) {
+          const mudaB = (rot, fn) => muda(rot, p => { fn(p.bus.passos); });
+          out.push(h('p', { class: 'ajuda', text: 'O caminho começa no marco que aparece na primeira instrução. O mapa cresce para o caminho caber.' }));
+          out.push(h('div', { class: 'bus-ed' }, M.passos.map((ps, i) => h('div', { class: 'row' }, h('span', { class: 'bus-n', text: (i + 1) + '.' }), 'Andem',
+            h('input', { class: 'in', type: 'number', min: 1, max: 9, 'data-k': 'pz:bn' + i, value: ps.n, style: { width: '62px' }, onchange: ev => { const v = Math.round(Number(ev.target.value)); if (!(v >= 1 && v <= 9)) { toast('De 1 a 9 passos.'); k.pintar(); return; } mudaB('mudar os passos', l => { l[i].n = v; }); } }),
+            'passos para o', h('select', { class: 'in', 'data-k': 'pz:bd' + i, value: ps.d, style: { width: 'auto' }, onchange: ev => mudaB('mudar a direção', l => { l[i].d = ev.target.value; }) }, DIRS.map(([v, nm]) => h('option', { value: v, text: nm.toLowerCase() }))),
+            h('button', { type: 'button', class: 'ib leve', title: 'Tirar', disabled: M.passos.length <= 1, onclick: () => mudaB('tirar uma instrução', l => { l.splice(i, 1); }) }, '×')))));
+          out.push(h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:b+', disabled: M.passos.length >= 8, onclick: () => mudaB('pôr uma instrução', l => { l.push({ d: 'L', n: 2 }); }) }, '+ Instrução')));
+          if (m.pub.erro) out.push(h('p', { class: 'aviso', text: 'O caminho sai do mapa: diminua os passos.' }));
+        }
+      }
+      return out;
+    }
+    function configPuzzle(hid, x) {
+      const pz = x.puzzle, m = E.montarPuzzle(pz, x.img, x.imgAr);
+      const G = window.TC.puzzlesGuia, cg = G ? G.cat(pz.tipo) : null, niv = E.niveisDe(pz.tipo), nivTxt = G ? G.niveisTexto(pz.tipo) : [];
+      const cor = G ? G.famDe(cg.fam)[3] : 'var(--ouro)';
       const partes = [
-        h('div', { class: 'tipos-pz' }, Object.keys(grupos).map(g => h('div', { class: 'grp' }, h('span', { text: g }),
-          h('div', { class: 'seg', role: 'group', 'aria-label': g }, grupos[g].map(t => h('button', { type: 'button', 'data-k': 'pz:t:' + t, 'aria-pressed': String(pz.tipo === t), title: E.PUZZLES[t].desc, onclick: () => { if (pz.tipo !== t) tipoNovo(t); } }, E.PUZZLES[t].nome)))))),
-        pz.tipo === 'fechadura' || pz.manual ? null : h('div', { class: 'row' }, h('div', { class: 'seg', role: 'group', 'aria-label': 'Dificuldade' }, Object.keys(E.DIF).map(d => h('button', { type: 'button', 'data-k': 'pz:d:' + d, 'aria-pressed': String(pz.dif === d),
-          onclick: () => { if (pz.dif !== d) trocarPuzzle(hid, 'mudar a dificuldade', y => { y.puzzle.dif = d; if (y.puzzle.tipo === 'charada' && !y.puzzle.propria) y.puzzle.idx = E.sortearCharada(d, E.mulberry(E.novaSemente())); }); } }, E.DIF[d]))),
-          h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:sortear', title: 'Outro puzzle do mesmo tipo e da mesma dificuldade', onclick: () => trocarPuzzle(hid, 'sortear outro puzzle', y => { y.puzzle.seed = E.novaSemente(); if (y.puzzle.tipo === 'charada' && !y.puzzle.propria) y.puzzle.idx = E.sortearCharada(y.puzzle.dif, E.mulberry(E.novaSemente()), y.puzzle.idx); }) }, 'Sortear outro')),
+        h('div', { class: 'pz-esc', style: { '--fam': cor } },
+          h('span', { class: 'pz-esc-ico' }, G ? G.icone(pz.tipo, 26) : icone(ICO.puzzle, 22)),
+          h('span', { class: 'pz-esc-txt' }, h('b', { text: E.PUZZLES[pz.tipo].nome }), h('span', { text: cg ? cg.como : E.PUZZLES[pz.tipo].desc })),
+          G ? h('button', { type: 'button', class: 'gal-q', 'data-k': 'pz:tut', title: 'Como funciona (um tutorial animado)', 'aria-label': 'Como funciona', onclick: () => G.abrirTutorial(J, pz.tipo) }, '?') : null,
+          h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:trocar', onclick: () => irPasso(hid, 1) }, 'Trocar')),
+        pz.tipo === 'fechadura' || pz.manual ? null : h('div', { class: 'pz-niv' },
+          h('span', { class: 'sub2', text: 'O nível' }),
+          h('div', { class: 'row' }, h('div', { class: 'seg', role: 'group', 'aria-label': 'Dificuldade' }, niv.map(d => h('button', { type: 'button', 'data-k': 'pz:d:' + d, 'aria-pressed': String(pz.dif === d),
+            onclick: () => { if (pz.dif !== d) trocarPuzzle(hid, 'mudar a dificuldade', y => { y.puzzle.dif = d; if (y.puzzle.tipo === 'charada' && !y.puzzle.propria) y.puzzle.idx = E.sortearCharada(d, E.mulberry(E.novaSemente())); }); } }, E.DIF[d]))),
+            h('button', { type: 'button', class: 'btn sm', 'data-k': 'pz:sortear', title: 'Outro puzzle do mesmo tipo e do mesmo nível', onclick: () => trocarPuzzle(hid, 'sortear outro puzzle', y => { y.puzzle.seed = E.novaSemente(); if (y.puzzle.tipo === 'charada' && !y.puzzle.propria) y.puzzle.idx = E.sortearCharada(y.puzzle.dif, E.mulberry(E.novaSemente()), y.puzzle.idx); }) }, '↻ Sortear outro')),
+          nivTxt[niv.indexOf(pz.dif)] ? h('p', { class: 'nivel-txt', text: 'Neste nível: ' + nivTxt[niv.indexOf(pz.dif)] }) : null),
       ];
+      partes.push(...editorNovo(hid, x, pz, m));
       if (pz.tipo === 'cifra') {
         partes.push(h('div', { class: 'seg', role: 'group', 'aria-label': 'O jeito de cifrar' }, [['runas', 'Runas'], ['troca', 'Troca de letras'], ['cesar', 'César (andar no alfabeto)']].map(([v, n]) =>
           h('button', { type: 'button', 'data-k': 'pz:m:' + v, 'aria-pressed': String(pz.metodo === v), onclick: () => { if (pz.metodo !== v) trocarPuzzle(hid, 'mudar a cifra', y => { y.puzzle.metodo = v; }); } }, n))));
@@ -517,9 +653,13 @@
         } }, 'Apagar')));
       if (k.naMesa() && k.temCampanhas()) form.push(h('label', { class: 'field' }, h('span', { text: 'Campanha' }), h('select', { class: 'in', 'data-k': 'h:camp', disabled: !!x.entregue, title: x.entregue ? 'Tire dos jogadores antes de trocar a campanha' : null,
         onchange: ev => mudarH(hid, 'mudar a campanha', y => { y.camp = ev.target.value || null; }) }, h('option', { value: '', text: 'Do mundo (todas)', selected: !x.camp ? true : null }), k.campanhas().map(c => h('option', { value: c.id, text: c.nome, selected: x.camp === c.id ? true : null })))));
-      if (x.tipo === 'puzzle') form.push(configPuzzle(hid, x));
+      // (lote 209) o puzzle em três passos
+      const ps = x.tipo === 'puzzle' ? passoDe(hid) : 0;
+      if (ps) form.push(barraPassos(hid));
+      if (ps === 1) return h('div', { class: 'ed so' }, h('div', { class: 'form' }, form, galeria(hid, x)));
+      if (ps === 2) form.push(configPuzzle(hid, x));
       // a imagem (a do handout de imagem; na carta e no puzzle, opcional — no quebra-cabeça, a imagem é o puzzle)
-      if (!E.imagemEhPuzzle(x)) {
+      if (!E.imagemEhPuzzle(x) && ps !== 3) {
         const temImg = !!x.img;
         form.push(h('div', { class: 'cartao' }, h('span', { class: 'sub', text: x.tipo === 'imagem' ? 'A imagem' : 'Uma imagem (opcional)' }),
           temImg ? [imagemComAreas(hid, x, true), h('p', { class: 'ajuda', text: 'Arraste sobre a imagem para esconder uma área: os jogadores a veem coberta até você revelar.' }),
@@ -532,7 +672,7 @@
       }
       // o texto (a carta; na imagem, uma nota; no puzzle, o que vem antes)
       const tr = E.trechos(x.texto);
-      form.push(h('div', { class: 'cartao' },
+      if (ps !== 3) form.push(h('div', { class: 'cartao' },
         h('span', { class: 'sub', text: x.tipo === 'carta' ? 'O texto' : x.tipo === 'imagem' ? 'Uma nota embaixo (opcional)' : 'O que vem antes do puzzle (opcional)' }),
         x.tipo === 'carta' ? h('div', { class: 'seg', role: 'group', 'aria-label': 'O papel' }, Object.keys(E.PAPEIS).map(p => h('button', { type: 'button', 'data-k': 'h:papel:' + p, 'aria-pressed': String(x.papel === p), onclick: () => mudarH(hid, 'mudar o papel', y => { y.papel = p; }) }, E.PAPEIS[p]))) : null,
         h('textarea', { class: 'in', rows: x.tipo === 'carta' ? 9 : 3, 'data-k': 'h:texto', value: x.texto, maxlength: E.LIM.texto, placeholder: x.tipo === 'carta' ? 'Caro amigo, …' : '', 'aria-label': 'O texto',
@@ -549,8 +689,10 @@
         tr.length ? h('div', { class: 'trechos' }, tr.map(t => { const rev = x.revelados.includes(t.k); return h('div', { class: 'trecho' + (rev ? ' rev' : '') }, h('span', { text: '“' + t.txt + '”' + (rev ? ' — revelado' : ' — escondido') }),
           h('button', { type: 'button', class: 'btn xs' + (rev ? '' : ' pri'), 'data-k': 'h:tr:' + t.k, onclick: () => revelarUm(hid, { trechos: [t.k], areas: [] }, rev) }, rev ? 'Esconder de novo' : 'Revelar')); }),
           tr.some(t => !x.revelados.includes(t.k)) ? h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn xs', 'data-k': 'h:revelar-tudo', onclick: () => revelarUm(hid, null) }, 'Revelar tudo')) : null) : null));
-      if (x.tipo === 'puzzle') form.push(ligacoes(hid, x));
-      form.push(entregue(hid, x));
+      if (ps === 2) form.push(h('div', { class: 'pz-nav' }, h('span', { class: 'ajuda', text: 'Teste à vontade na prévia, ao lado.' }), h('button', { type: 'button', class: 'btn pri', 'data-k': 'pz:prox', onclick: () => irPasso(hid, 3) }, 'Próximo: o que acontece e entregar →')));
+      if (ps === 3) form.push(ligacoes(hid, x));
+      if (ps !== 2) form.push(entregue(hid, x));
+      if (ps === 3) form.push(h('div', { class: 'pz-nav' }, h('button', { type: 'button', class: 'btn', 'data-k': 'pz:volta', onclick: () => irPasso(hid, 2) }, '← Voltar ao ajuste')));
       const previa = h('aside', { class: 'previa', 'aria-label': 'Como os jogadores veem' },
         h('span', { class: 'sub', text: x.tipo === 'puzzle' ? 'Como os jogadores veem (teste à vontade)' : 'Como os jogadores veem' }),
         x.tipo !== 'puzzle' || x.texto.trim() || (x.img && !E.imagemEhPuzzle(x)) ? h('div', { class: 'moldura' }, previaHandout(hid, x)) : null,

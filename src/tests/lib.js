@@ -140,4 +140,22 @@ function checker() {
   const end = () => { console.log(bad ? `${n - bad} verificações passaram, ${bad} falharam` : `${n} verificações passaram`); process.exit(bad ? 1 : 0); };
   return { ok, end };
 }
-module.exports = { start, checker, espiarBanco, ROOT, LOCAL, BANCO };
+
+/* (lote 209) No Escudo, o puzzle é feito em três passos (Escolher, Ajustar, Entregar). Nos testes de antes, que clicam
+   direto num botão de outro passo, este embrulho vai ao passo onde o botão está e então clica (só quando o botão não
+   está na tela e há os passos do puzzle). */
+function passosPuzzle(p) {
+  if (!p || p.__passos) return p;
+  p.__passos = true;
+  for (const nome of ['click', 'fill', 'selectOption', 'press', 'check', 'uncheck', 'setInputFiles']) {
+    const orig = p[nome].bind(p);
+    p[nome] = async (sel, ...r) => {
+      if (typeof sel === 'string' && /data-k=/.test(sel) && !(await p.locator(sel).count()) && await p.locator('[data-k="pz:passo:1"]').count()) {
+        for (const n of /pz:t:/.test(sel) ? [1] : [2, 3, 1]) { await p.click('[data-k="pz:passo:' + n + '"]'); await p.waitForTimeout(150); if (await p.locator(sel).count()) break; }
+      }
+      return orig(sel, ...r);
+    };
+  }
+  return p;
+}
+module.exports = { start, checker, espiarBanco, passosPuzzle, ROOT, LOCAL, BANCO };

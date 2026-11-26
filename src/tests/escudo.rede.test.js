@@ -10,7 +10,7 @@
 //     relógio ao passar o dia; fechar a sessão (o resumo) e levar ao Jornal;
 //   · tirar dos jogadores (some das Pistas) e o Desfazer (volta).
 const path = require('path');
-const { start, checker } = require('./lib');
+const { start, checker, passosPuzzle } = require('./lib');
 const { contas, entrar, loginTela, criarMesaTela, codigoDaMesa, entrarMesaTela, apagarMesaTela } = require('./contas');
 const { ok, end } = checker();
 const j = JSON.stringify;
@@ -30,7 +30,7 @@ function resolverLuzes(l, n) {
   const Dp = (await t.device({ name: 'dalmo', w: 1300, h: 900, seed: { 'tinycats:aba': 'fichas', 'tinycats-tour': '1' } })).page;
   const Ap = (await t.device({ name: 'ana', w: 1200, h: 850, seed: { 'tinycats:aba': 'fichas', 'tinycats-tour': '1' } })).page;
   const w = (ms, p) => (p || M).waitForTimeout(ms);
-  const quadro = async (p, re, vezes = 80) => { for (let i = 0; i < vezes; i++) { const f = p.frame({ url: re }); if (f) return f; await p.waitForTimeout(250); } return null; };
+  const quadro = async (p, re, vezes = 80) => { for (let i = 0; i < vezes; i++) { const f = p.frame({ url: re }); if (f) return passosPuzzle(f); await p.waitForTimeout(250); } return null; };
   const ate = async (fn, ms = 30000) => { const t0 = Date.now(); for (;;) { try { if (await fn()) return true; } catch (e) { /* moldura recarregando */ } if (Date.now() - t0 > ms) return false; await M.waitForTimeout(400); } };
   const foto = async (p, nome) => { if (process.env.FOTOS) await p.screenshot({ path: process.env.FOTOS + '/' + nome + '.png' }); };
   const passo = async (nome, fn) => { try { await fn(); } catch (e) { ok(false, nome + ' — parou: ' + String((e && e.message) || e).split('\n')[0]); } };

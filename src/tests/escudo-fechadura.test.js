@@ -1,7 +1,7 @@
 // A fechadura (lote 120): o núcleo (os cinco níveis, o sorteio do jeito, a prova, os erros e o que encerra) e, no Escudo
 // do mestre sozinho, o teste jogável: girar a gazua até o ponto certo e abrir; forçar fora do ponto até quebrar; travar
 // os pinos no alto; as opções (nível, jeito, atributo, gazuas, consequências).
-const { start, checker } = require('./lib');
+const { start, checker, passosPuzzle } = require('./lib');
 const E = require('../../tc/escudo.js'); require('../../tc/escudo-puzzles.js');
 const F = require('../../tc/fechadura.js');
 const { ok, end } = checker();
@@ -28,6 +28,7 @@ ok(F.ajuda(0) === 1 && F.ajuda(50) === 1.5 && F.ajuda(500) === 2, 'o atributo al
 (async () => {
   const t = await start();
   const { page: p } = await t.device({ name: 'fechadura', w: 1440, h: 950 });
+  passosPuzzle(p);   // (lote 209) o puzzle em passos
   p.setDefaultTimeout(8000);
   const w = ms => p.waitForTimeout(ms);
   const ev = (fn, a) => p.evaluate(fn, a);

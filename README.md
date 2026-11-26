@@ -4475,3 +4475,32 @@ continua igual à das Cenas (123).
   aparecem com a origem ("+2 de conquistas (Fantasma +1, Um de Nós +1)"), fora do total digitado e do teto do nível.
 - **O título**: `ficha.titulo` é o escolhido, entre os de `conq.titulos` (um que saiu da coleção deixa de valer). Aparece
   embaixo do nome na ficha e ao lado do nome do personagem na mesa ao vivo (`dados.tit` da linha).
+
+### Os 26 puzzles novos, a galeria e o tutorial (lote 209)
+
+- **Os puzzles** (`tc/escudo-puzzles2.js`, `tc/escudo-puzzles3.js`; as telas em `tc/pistas-puzzles2.js` e `3`): quadro
+  de dedução, guardas que mentem, nonograma, somas de runas, quadrado mágico, conta cifrada, oito guardas, campo de
+  armadilhas, tesouro enterrado, palavra secreta, mensagem escondida, ordem dos acontecimentos, achar as diferenças, torre
+  dos discos, jarros d'água, travessia do rio, canos de água, empurrar estátuas, chão de gelo, resta um, pontes entre
+  ilhas, trilhos, constelação, encaixar peças, mapa e bússola e cavalo do rei. O contrato é o do lote 46 (montar, prova,
+  dica, resposta; a resposta vai como md5; a palavra secreta, embaralhada com o sal). O banco não mudou: `pista_jogar`
+  já aceitava qualquer tipo.
+- **5 níveis** (Fácil, Médio, Difícil, Extremo, Absoluto) nos novos: `registrar(..., { niveis: 5 })`; `E.niveisDe(tipo)`
+  diz os níveis de cada um. Os de antes continuam com 3 (um "absoluto" num deles vira "dificil"). Cada tipo novo traz
+  `niv` (o que muda em cada nível, numa frase) e `demo(m, jg)` (os passos do tutorial; o último deixa resolvido).
+- **O que o mestre escreve**: a dedução (os nomes e a resposta: o site escreve as pistas e confere que há uma resposta
+  só), os guardas (as portas, os guardas e a porta segura), a palavra secreta, a ordem dos acontecimentos (a história
+  na ordem certa) e o mapa e bússola (as instruções). A mensagem escondida aceita a mensagem do mestre, como a cifra.
+- **O puzzle em três passos** (`escudo/handouts.js`): 1 Escolher (a galeria: as famílias, "Novos", a busca e "só os que
+  eu escrevo"; cada cartão com o desenho, como se joga, o tempo de mesa, os níveis, se errar custa e se o mestre
+  escreve), 2 Ajustar (o nível com a frase do que muda, os detalhes, o cronômetro), 3 Entregar (o que acontece ao acertar
+  e ao errar, e para quem vai). O teste jogável fica sempre ao lado, nos passos 2 e 3. O puzzle novo abre no passo 1;
+  os que já existem, no 2.
+- **O tutorial do "?"** (`tc/puzzles-guia.js`): uma janela que joga o próprio puzzle (o Fácil, sempre o mesmo), passo a
+  passo, com um cursor que aponta onde clicar e a frase do passo; anda sozinha, pausa, volta e avança. Ao lado, as regras
+  em três frases, os níveis e o que o mestre ajusta; "Usar este puzzle" escolhe e vai ao passo 2. Vale para os 46 tipos
+  (o quebra-cabeça de imagem e a fechadura, que dependem do mestre, explicam em palavras).
+- **Testes**: `escudo-puzzles-lote209.test.js` (os 26 nos 5 níveis, em 8 sementes: começa por resolver, o fim do
+  tutorial resolve, há dica e resposta; os que o mestre escreve), `escudo-lote209.test.js` (a galeria, o tutorial e os
+  editores na tela de 1366×768) e `escudo-lote209.rede.test.js` (o jogador joga quatro deles na aba Pistas, pelo banco).
+  Nos testes de antes, `passosPuzzle(p)` (em `lib.js`) leva ao passo onde está o botão que eles clicam.

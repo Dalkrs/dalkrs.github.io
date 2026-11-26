@@ -90,7 +90,9 @@
   const GOMOS = [4, 6, 8, 10, 12];
   const PAPEIS = { pergaminho: 'Pergaminho', carta: 'Carta', bilhete: 'Bilhete', tomo: 'Página de livro' };
   const TIPOS_HANDOUT = { imagem: 'Imagem', carta: 'Carta / pergaminho', puzzle: 'Puzzle' };
-  const DIF = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' };
+  const DIF = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil', extremo: 'Extremo', absoluto: 'Absoluto' };
+  /* (lote 209) Os puzzles novos têm 5 níveis (Fácil a Absoluto); os de antes, os 3 primeiros. */
+  const DIF3 = ['facil', 'medio', 'dificil'], DIF5 = Object.keys(DIF);
   const PUZZLES = {
     cifra: { nome: 'Cifra', grupo: 'Cifras e códigos', erra: false, desc: 'Uma mensagem cifrada: descubram que letra é cada símbolo.' },
     charada: { nome: 'Charada', grupo: 'Charadas e enigmas', erra: true, desc: 'Uma charada: escrevam a resposta.' },
@@ -103,7 +105,9 @@
   /* (lote 46) Os puzzles de fora deste arquivo (tc/escudo-puzzles.js) se registram aqui: o nome e o grupo vão para
      PUZZLES; o resto — normDef (os campos próprios da definição), montar, prova, dica, resposta — fica em EXTRA. */
   const EXTRA = {};
-  function registrar(tipo, x) { PUZZLES[tipo] = { nome: x.nome, grupo: x.grupo, erra: !!x.erra, desc: x.desc }; EXTRA[tipo] = x; }
+  function registrar(tipo, x) { PUZZLES[tipo] = { nome: x.nome, grupo: x.grupo, erra: !!x.erra, desc: x.desc, niveis: x.niveis === 5 ? 5 : 3 }; EXTRA[tipo] = x; }
+  // os níveis que um tipo de puzzle tem (as chaves de DIF)
+  const niveisDe = tipo => (PUZZLES[tipo] && PUZZLES[tipo].niveis === 5 ? DIF5 : DIF3);
   // o cronômetro (em minutos; 0 = sem tempo): vale para todos os puzzles
   const TEMPOS = [0, 1, 2, 3, 5, 10, 15, 20, 30];
   const LIGAS = { cena: 'Cena', lugar: 'Lugar do Mapa-múndi', encontro: 'Encontro do Bestiário', handout: 'Handout ou puzzle', relogio: 'Relógio', npc: 'NPC' };
@@ -368,6 +372,7 @@
   function normPuzzleDef(p) {
     if (!ehObj(p) || !Object.prototype.hasOwnProperty.call(PUZZLES, p.tipo)) return null;
     const o = { tipo: p.tipo, dif: Object.prototype.hasOwnProperty.call(DIF, p.dif) ? p.dif : 'medio', seed: int(p.seed, 1, 1, 2147483646) };
+    if (!niveisDe(p.tipo).includes(o.dif)) o.dif = 'dificil';
     if (TEMPOS.includes(p.tempo) && p.tempo) o.tempo = p.tempo;
     if (EXTRA[p.tipo] && EXTRA[p.tipo].normDef) EXTRA[p.tipo].normDef(p, o);
     if (p.tipo === 'cifra') {
@@ -492,7 +497,7 @@
      montarPuzzle(def, img) → { pub (o desenho que os jogadores veem), estado (o começo), sal, chk (os md5 das respostas
      certas) }. A solução não sai daqui: só o md5 dela. Cada tipo tem também o "prova" — a resposta que o estado de agora
      dá (ou null) — e quem resolve manda essa prova ao banco. */
-  const QTD = { facil: 0, medio: 1, dificil: 2 };
+  const QTD = { facil: 0, medio: 1, dificil: 2, extremo: 3, absoluto: 4 };
   function salDe(r) { let s = ''; for (let i = 0; i < 10; i++) s += 'abcdefghijkmnpqrstuvwxyz23456789'[Math.floor(r() * 32)]; return s; }
 
   // -- cifra
@@ -886,7 +891,7 @@
     montarPuzzle, jogoNovo, normJogo, provaDoEstado, confere, decifrar, tocarLuz, gradesDe, nota, textoPistaCadeado, textoPistaPlacas, sortearCharada, posDe, REGRAS,
     resumoDaSessao,
     // (lote 46)
-    EXTRA, registrar, TEMPOS, prazo, dicaDe, temDica, imagemEhPuzzle,
+    EXTRA, registrar, niveisDe, DIF3, DIF5, TEMPOS, prazo, dicaDe, temDica, imagemEhPuzzle,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') { window.TC = window.TC || {}; window.TC.escudo = api; }

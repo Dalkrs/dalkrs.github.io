@@ -1,12 +1,13 @@
 // Lote 147: o cadeado de símbolos e as placas de pressão montados pelo mestre (o pedido do Bruno): "Sortear" ou
 // "Montar eu mesmo"; a resposta (a ordem das placas, a combinação do cadeado), as pistas prontas (o site confere se são
 // verdade e quantas respostas sobram) e as linhas livres; os jogadores recebem as linhas livres e não a resposta.
-const { start, checker } = require('./lib');
+const { start, checker, passosPuzzle } = require('./lib');
 const { ok, end } = checker();
 const j = JSON.stringify;
 (async () => {
   const t = await start();
   const { page: p } = await t.device({ name: 'escudo', w: 1440, h: 900 });
+  passosPuzzle(p);   // (lote 209) o puzzle em passos
   const w = ms => p.waitForTimeout(ms);
   const ev = (fn, a) => p.evaluate(fn, a);
   const passo = async (nome, fn) => { try { await fn(); } catch (e) { ok(false, nome + ' — parou: ' + String((e && e.message) || e).split('\n')[0]); } };
