@@ -1977,7 +1977,7 @@ button.rsn:hover{border-color:var(--line-2);background:var(--campo)}
 <div class="wrap solo" id="tab-eventos" hidden><main id="eventos"></main></div>
 
 <script src="../tc/ponte.js?v=24"></script>
-<script src="../tc/rules.js?v=39"></script>
+<script src="../tc/rules.js?v=40"></script>
 <script src="../tc/bonus.js?v=2"></script>
 <script src="../tc/icones.js?v=1"></script>
 <script src="../tc/barras.js?v=3"></script>
@@ -2624,6 +2624,20 @@ function tetoDoRecurso(pc,r){ const piso=r.min<0? r.min : 0; return Math.max(pis
    - diz de onde vem: VIT × o multiplicador da raça + a base;
    - mestiço: o mestre escolhe de qual raça a Vida vem, ou um valor único (multiplicador e base); sem escolha, a primeira;
    - fórmula escrita à mão que não usa VIDAVIT: avisa, e o mestre pode voltar à fórmula padrão. */
+/* (lote 212) De onde vem o que a árvore soma: "+32 Origem: Kitsune Ayto (Kitsune Ayto) · +2 Pele Grossa (Bovino)".
+   chave: o código (FOR, VIT, ESQ, DFF…) ou o nome do recurso (HP, Vida por VIT). */
+function fontesArv(pc){ try{ return window.TC&&TC.rules&&TC.rules.fontesDaArvore? TC.rules.fontesDaArvore(pc.skills,S.bib) : {}; }catch(e){ return {}; } }
+function textoFontes(pc,chave){
+  const f=fontesArv(pc), k=String(chave||'').trim();
+  const l=f[k]||f[k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')]||[];
+  return l.map(x=>`${x.v>0?'+':'−'}${Math.abs(x.v)} ${x.no}${x.arv==='única'?' (habilidade única)':x.arv==='mestiço'?'':` (${x.arv})`}`).join(' · ');
+}
+// a marquinha "+2 árv." com o de onde vem no título (atributos, derivados e defesas)
+function marcaArv(pc,c,k){
+  const v=c.arv? (c.arv[k]||0) : 0; if(!v) return '';
+  const t=textoFontes(pc,k);
+  return `<span class="darv" title="${esc('Da árvore: '+(t||(v>0?'+':'−')+Math.abs(v)))}">${v>0?'+':'−'}${Math.abs(v)} árv.</span>`;
+}
 const FML_VIDA_PADRAO='(VIT-VIT_EQ)*VIDAVIT';
 function ehRecursoVida(r){ const n=String(r&&r.nome||'').trim().toLowerCase(); return n==='hp'||n==='vida'; }
 function htmlVidaRaca(pc,r){
@@ -2634,7 +2648,7 @@ function htmlVidaRaca(pc,r){
   const conta=x=>x?`VIT × ${x.vv||0} + ${x.base||0}`:'—';
   const nomeDe=id=>{ const x=v.racas.find(y=>y.id===id); return x?x.nome:id; };
   let o='';
-  if(!v.mestico) o+=`<div class="hint vida-raca">Vida da raça (${esc(v.racas[0].nome)}): ${conta(v.vida)}.</div>`;
+  if(!v.mestico) o+=`<div class="hint vida-raca">Vida da raça: ${conta(v.vida)}, da origem da árvore ${esc(v.racas[0].nome)}${v.racas[0].comprada?'':' (a origem não está comprada na ficha: não conta)'}.</div>`;
   else{
     const de=v.modo==='fixo'?'um valor único':nomeDe(v.arv);
     o+=`<div class="hint vida-raca">Mestiço (${v.racas.map(x=>esc(x.nome)).join(' + ')}): a Vida vem de <b>${esc(de)}</b>: ${conta(v.vida)}${v.escolhida?'':' <em>(a primeira raça, até o mestre escolher)</em>'}.</div>`;
@@ -3141,7 +3155,7 @@ function renderFicha(){
             return `<tr>
               <td><span class="aname">${a.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${a.k}</span></td>
               <td><select class="tsel" data-tier="${a.k}">${TIERS_ATR.map(t=>`<option ${pc.tiers[a.k]===t?'selected':''}>${t}</option>`).join('')}</select></td>
-              <td class="num vbase" ${arv?`title="${c.nat[a.k]} do nível ${arv>0?'+':'−'} ${Math.abs(arv)} da árvore"`:''}>${c.base[a.k]}${arv?`<span class="darv">${arv>0?'+':'−'}${Math.abs(arv)} árv.</span>`:''}</td>
+              <td class="num vbase" ${arv?`title="${esc(c.nat[a.k]+' do nível; da árvore: '+(textoFontes(pc,a.k)||((arv>0?'+':'−')+Math.abs(arv))))}"`:''}>${c.base[a.k]}${marcaArv(pc,c,a.k)}</td>
               <td class="num vequip">${c.eq[a.k]?(c.eq[a.k]>0?'+':'')+c.eq[a.k]:'—'}${FichasExtras.htmlTemp(c,a.k)}</td>
               <td class="num vtot">${c.tot[a.k]}</td>
               <td class="num"><span style="color:var(--ink-soft);font-size:12.5px">${c.ant[a.k]}</span>
@@ -3150,7 +3164,7 @@ function renderFicha(){
           ${DERIV.map(d=>{const dd=c.der[d.k]-c.derAnt[d.k];return `<tr class="derived">
             <td><span class="aname">${d.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${d.k}</span></td>
             <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">${d.desc}</span></td>
-            <td class="num vbase">${d.calc(c.base, c.def)}</td>
+            <td class="num vbase">${d.calc(c.base, c.def)}${marcaArv(pc,c,d.k)}</td>
             <td class="num vequip">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}${FichasExtras.htmlTemp(c,d.k)}</td>
             <td class="num vtot">${c.der[d.k]}</td>
             <td class="num"><span style="color:var(--ink-soft);font-size:12.5px">${c.derAnt[d.k]}</span>
@@ -3159,7 +3173,7 @@ function renderFicha(){
           ${DEFESAS.map(d=>`<tr class="defesa"${d.k==='BLQ'?` title="Bloqueio = metade da Vitalidade base (${Math.floor((+c.base.VIT||0)/2)}) + o que você digita (a raça) + os equipamentos"`:''}>
             <td><span class="aname">${d.nome}</span> <span class="mono" style="color:var(--ink-soft);font-size:11px">${d.rot}</span></td>
             <td><span class="mono" style="font-size:10.5px;color:var(--ink-soft)">${d.k==='BLQ'?'VIT/2 + manual':'manual'}</span></td>
-            <td><input type="number" class="defbase" data-defesa="${d.k}" value="${(+((pc.defesas||{})[d.k])||0)}"></td>
+            <td><input type="number" class="defbase" data-defesa="${d.k}" value="${(+((pc.defesas||{})[d.k])||0)}">${marcaArv(pc,c,d.k)}</td>
             <td class="num vequip">${c.eq[d.k]?(c.eq[d.k]>0?'+':'')+c.eq[d.k]:'—'}${FichasExtras.htmlTemp(c,d.k)}</td>
             <td class="num vtot">${c.def[d.k]}</td>
             <td class="num"><span class="hint">—</span></td>
@@ -3293,7 +3307,7 @@ function renderFicha(){
             </div>`}
             <input class="fml" data-resfml="${r.id}" value="${esc(r.fml||'')}" placeholder="ex: VIT*8 + LVL*5">
             ${r.err?`<div class="fmlerr">${esc(r.err)}</div>`:''}
-            ${r.arv?`<div class="hint">Inclui ${r.arv>0?'+':'−'}${Math.abs(r.arv)} dos nódulos da árvore.</div>`:''}
+            ${r.arv?`<div class="hint arv-fontes">Inclui ${r.arv>0?'+':'−'}${Math.abs(r.arv)} da árvore${textoFontes(pc,r.nome)?': '+esc(textoFontes(pc,r.nome)):'.'}</div>`:''}
             ${htmlVidaRaca(pc,r)}
             ${r.eq?`<div class="hint">Inclui ${r.eq>0?'+':'−'}${Math.abs(r.eq)} dos equipamentos em uso.</div>`:''}
             ${Array.isArray(r.arvs)&&r.arvs.length?`<div class="hint barra-arv" data-resarv="${r.id}">${esc(textoDaBarraArv(r))}</div>`:''}

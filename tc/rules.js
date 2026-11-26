@@ -1146,10 +1146,20 @@
     const vida = modo === 'fixo' ? fixo : r ? { vv: r.vv, base: r.hp } : null;
     return { racas, mestico, modo, arv, fixo, escolhida, vida };
   }
+  /* (lote 212) de onde vem cada bônus da árvore, pelo nome normalizado da chave (for, hp, vida por vit…) */
+  function fontesDaArvore(skills, biblioteca) {
+    const f = {}; bonusDaArvore(skills, biblioteca, f);
+    const out = {};
+    Object.keys(f).forEach(k => { const c = codigoBonus(k); out[c || normNome(k)] = f[k]; });
+    return out;
+  }
   // a chave do que os nós de uma árvore somam ao início da barra dela, no mapa de bonusDaArvore
   const CHAVE_INI = 'inicio@';
-  function bonusDaArvore(skills, biblioteca) {
+  /* (lote 212) fontes (opcional): { chave → [{ arv, no, v }] } — de onde veio cada bônus (a árvore e a habilidade), para a
+     ficha dizer "+32 da Origem: Kitsune Ayto (Kitsune Ayto)". A chave é a mesma do resultado (FOR, HP, Vida por VIT…). */
+  function bonusDaArvore(skills, biblioteca, fontes) {
     const out = {};
+    const anota = (ch, v, arv, no) => { if (!fontes || !v) return; (fontes[ch] = fontes[ch] || []).push({ arv, no, v }); };
     const sk = skills || {};
     const equipadas = Array.isArray(sk.arvores) ? sk.arvores : [];
     const al = sk.alocados || {};
@@ -1184,18 +1194,19 @@
             if (v == null) return;
             if (cortaVida && origem && daVida(ch)) return;          // (lote 211) a Vida de outra raça do mestiço
             const cod = codigoBonus(ch);
-            if (cod) { somar(out, cod, v); return; }
+            if (cod) { somar(out, cod, v); anota(cod, v, a.nome || a.id, n.nome || n.id); return; }
             const nm = normNome(ch);
             if (!nm) return;
             if (!grafia.has(nm)) grafia.set(nm, String(ch).trim());
-            somar(out, grafia.get(nm), v);
+            somar(out, grafia.get(nm), v); anota(grafia.get(nm), v, a.nome || a.id, n.nome || n.id);
           });
         }
       });
     });
     if (vm.mestico && vm.modo === 'fixo') {                        // (lote 211) o valor único do mestre
-      if (vm.fixo.vv > 0) somar(out, 'Vida por VIT', vm.fixo.vv);
-      if (vm.fixo.base) somar(out, 'HP', vm.fixo.base);
+      const kv = grafia.get('vida por vit') || 'Vida por VIT', kh = grafia.get('hp') || 'HP';
+      if (vm.fixo.vv > 0) { somar(out, kv, vm.fixo.vv); anota(kv, vm.fixo.vv, 'mestiço', 'valor único do mestre'); }
+      if (vm.fixo.base) { somar(out, kh, vm.fixo.base); anota(kh, vm.fixo.base, 'mestiço', 'valor único do mestre'); }
     }
     // (lote 16) e as skills únicas do personagem, que vêm já aprendidas
     unicasDe(sk).forEach(u => {
@@ -1204,11 +1215,11 @@
         const v = numFinito(u.bonus[ch]);
         if (v == null) return;
         const cod = codigoBonus(ch);
-        if (cod) { somar(out, cod, v); return; }
+        if (cod) { somar(out, cod, v); anota(cod, v, 'única', u.nome); return; }
         const nm = normNome(ch);
         if (!nm) return;
         if (!grafia.has(nm)) grafia.set(nm, String(ch).trim());
-        somar(out, grafia.get(nm), v);
+        somar(out, grafia.get(nm), v); anota(grafia.get(nm), v, 'única', u.nome);
       });
     });
     return out;
@@ -2421,7 +2432,7 @@
     ATRIBS, DERIV, DEFESAS, TIERS_ATR, CHAVES_BONUS, NOMES, ehDerivado, ehDefesa, chaveViva,
     cfgPadrao, personagemPadrao,
     evalFormula, calcular, valorDoAtributo, somaPercentuaisUsados,
-    bonusDaArvore, vidaDeRaca, unicasDe, iniciativa, estadoRecursos, estiloDaBarra, aplicarDelta, podreDe, resumo,
+    bonusDaArvore, fontesDaArvore, vidaDeRaca, unicasDe, iniciativa, estadoRecursos, estiloDaBarra, aplicarDelta, podreDe, resumo,
     ESPECIAL_PADRAO, REC_ESPECIAL, especiais, mudarEspecial, textoRecEspecial,
     FAD_MAX, FADIGA, fadiga, usaFadiga, mudarFadiga, mexerNaMente, grupoDeTroca, equiparItem, reqDoItem, reqsDoItem, reqAtendido, itemAtivo, pilhaVazia, DIST, tipoDist, distDoItem, ehDist, dispararDist, recarregarDist, textoDist, nomeDoReq, textoDoEquipar,
     TIPOS_ITEM, TIPOS_MAX, tiposCriados, tiposDeItem, tipoDoItem, secoesDeItens, tipoPeloNome,
