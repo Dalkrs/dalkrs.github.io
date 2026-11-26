@@ -2643,7 +2643,8 @@ function ehRecursoVida(r){ const n=String(r&&r.nome||'').trim().toLowerCase(); r
 function htmlVidaRaca(pc,r){
   if(!ehRecursoVida(r)||!window.TC||!TC.rules||!TC.rules.vidaDeRaca) return '';
   const v=TC.rules.vidaDeRaca(pc.skills,S.bib);
-  if(!v.racas.length) return '';
+  // (lote 213) sem árvore de raça equipada: a Vida fica com VIT × 2 e sem a base da raça
+  if(!v.racas.length) return `<div class="hint aviso-vida">Sem árvore de raça na ficha: a Vida usa VIT × 2 e não tem a base da raça. Equipe a raça na aba Skills (e compre a origem).</div>`;
   const mestre=FichasMesa.mestre() || (!FichasMesa.ativo() && FichasMesa.podeEditar(pc));   // sem mesa: quem usa
   const conta=x=>x?`VIT × ${x.vv||0} + ${x.base||0}`:'—';
   const nomeDe=id=>{ const x=v.racas.find(y=>y.id===id); return x?x.nome:id; };
