@@ -2,6 +2,15 @@
   "_leia": "O que muda em cada versão publicada, a mais nova primeiro. O site mostra isto na janela do botão “Versão nova” e no item “Novidades” do menu da conta. tipo: novo, melhorou ou consertado; mestre: true marca o que é só para o mestre. interno: true esconde o item de todos (o que é da administração do site, como a auditoria): ele fica só como registro.",
   "versoes": [
     {
+      "versao": "2026.11.26-04",
+      "data": "2026-11-26",
+      "titulo": "Raça nova: Antro Lebre",
+      "itens": [
+        { "tipo": "novo", "texto": "Árvore: o Antro Lebre, com os galhos Salto Longo (o Coice no pouso), Coração Disparado (o perigo vira velocidade) e Pé da Sorte (o azar muda de dono). Barra Fôlego, 6 bolinhas." },
+        { "tipo": "novo", "texto": "Cenas: as condições Disparada (1 a 3) e Azarado, e as ações da Lebre no mapa (salto, coice que empurra, azarar)." }
+      ]
+    },
+    {
       "versao": "2026.11.26-03",
       "data": "2026-11-26",
       "titulo": "Aviso de ficha sem raça",

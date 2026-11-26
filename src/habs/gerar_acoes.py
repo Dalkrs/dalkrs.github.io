@@ -69,11 +69,14 @@ CONDS = [
   (r'\b(?:\d|um) envergonhados?\b', 'envergonhado'),
   # (lote 205) a Kitsune Ayto
   (r'\bficam? sem sombra\b', 'semSombra'),
+  # (lote 214) o Antro Lebre
+  (r'\bfica azarad[oa]\b|\bficam? azarad[oa]s?\b', 'azarado'),
   (r'\barranca (?:uma|a) lembrança\b', 'roubado'),
 ]
 # o que é em você (ou no aliado): só quando o texto fala de você
 CONDS_SI = [
   (r'\ba fome negra sobe\b|\+1 de fome negra\b', 'fomeNegra'),   # (lote 205) a Kitsune Ayto
+  (r'\bganha \d de disparada\b', 'disparada'),   # (lote 214) o Antro Lebre
   (r'\bfica(?:m)? escondid|\bfica(?:m)? invisív|\bsome da vista|\bvocê some\b', 'escondido'),
   (r'\bvocê voa\b|\bvoa por\b|\bfica voando|\bvoa livre', 'voando'),
   (r'\bregenera|\bcura tier [IV]+ por turno|\bcura .{0,20} no começo', 'regen'),
@@ -95,7 +98,7 @@ QUANTO = {
   'placas': r'(?:ponha |\+)(\d) placas?\b', 'cargasVento': r'\+(\d) cargas? de vento\b', 'acusacoes': r'\b(\d) acusaç',
 }
 SEM_DURACAO = {'sangue', 'veneno', 'marcado', 'escolhido', 'ponto', 'mira', 'cravada', 'acusacoes', 'eloVoto', 'rachado', 'esfera',
-  'iluminado', 'bencao', 'broto', 'lenda', 'envergonhado', 'cargasVento', 'costelas', 'calor', 'compasso', 'placas', 'verso', 'fomeNegra', 'roubado'}
+  'iluminado', 'bencao', 'broto', 'lenda', 'envergonhado', 'cargasVento', 'costelas', 'calor', 'compasso', 'placas', 'verso', 'fomeNegra', 'roubado', 'disparada'}
 COM_TESTE = {'caido', 'preso', 'atordoado', 'medo', 'abalado', 'adormecido', 'sonolento', 'confuso', 'enfeiticado', 'cego', 'lento',
   'distraido', 'silencio', 'gelo', 'provocado', 'desarmado', 'maldicao', 'noAr', 'envergonhado', 'par', 'roubado'}
 

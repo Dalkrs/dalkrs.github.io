@@ -2006,5 +2006,136 @@
     ]
    ]
   }
+ ],
+ "n_lebre_ab4": [
+  {
+   "q": "i",
+   "m": "ponto",
+   "al": 2,
+   "mv": {
+    "k": "salta",
+    "d": 3
+   }
+  }
+ ],
+ "n_lebre_ab7": [
+  {
+   "d": 2,
+   "q": "i",
+   "m": "alvo",
+   "al": 1,
+   "mv": {
+    "k": "empurra",
+    "d": 3
+   },
+   "c": [
+    [
+     "caido",
+     1,
+     "vigor",
+     "a"
+    ]
+   ]
+  }
+ ],
+ "n_lebre_ab8": [
+  {
+   "q": "t",
+   "m": "ponto",
+   "al": 6,
+   "mv": {
+    "k": "salta",
+    "d": 6
+   }
+  }
+ ],
+ "n_lebre_ak": [
+  {
+   "q": "t",
+   "m": "si",
+   "c": [
+    [
+     "lento",
+     3,
+     null,
+     "s"
+    ]
+   ]
+  }
+ ],
+ "n_lebre_bb5": [
+  {
+   "q": "t",
+   "m": "si"
+  }
+ ],
+ "n_lebre_cb3": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "azarado",
+     0,
+     "candes",
+     "a"
+    ]
+   ]
+  },
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 6,
+   "c": [
+    [
+     "azarado",
+     0,
+     "candes",
+     "a"
+    ]
+   ],
+   "nq": {
+    "azarado": 2
+   }
+  }
+ ],
+ "n_lebre_cb7": [
+  {
+   "q": "i",
+   "m": "alvo",
+   "al": 30,
+   "c": [
+    [
+     "azarado",
+     0,
+     null,
+     "a"
+    ]
+   ],
+   "nq": {
+    "azarado": 2
+   }
+  }
+ ],
+ "n_lebre_ck": [
+  {
+   "q": "i",
+   "m": "volta",
+   "f": "circ",
+   "r": 4,
+   "al": 0,
+   "c": [
+    [
+     "azarado",
+     0,
+     null,
+     "a"
+    ]
+   ],
+   "nq": {
+    "azarado": 2
+   }
+  }
  ]
 }

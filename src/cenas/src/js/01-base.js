@@ -375,6 +375,9 @@ const ICONS = {
   // (lote 205) a Kitsune Ayto: a fome, a sombra engolida e a lembrança arrancada
   c_fomeNegra: 'M4 9c2-4 14-4 16 0l-2 7c-3 3-9 3-12 0zM8 12l1.500 2 1.500-2 1.500 2 1.500-2 1.500 2',
   c_semSombra: 'M12 3a3 3 0 1 0 0.010 0M9 9h6l1 6h-2l-1 6h-2l-1-6H8zM5 21h14M4 4l16 16',
+  // (lote 214) o Antro Lebre: o coração disparado e o azar
+  c_disparada: 'M12 20C6 16 3 12.5 3 9.5A4.5 4.5 0 0 1 12 7.500A4.5 4.5 0 0 1 21 9.5C21 12.5 18 16 12 20ZM7 11H9.500L11 8.500L13 13.500L14.500 11H17',
+  c_azarado: 'M12 3A9 9 0 1 0 12.010 3ZM9 9.5L10.5 11M10.5 9.5L9 11M13.5 9.5L15 11M15 9.5L13.5 11M8.500 16.500C10.500 14.500 13.500 14.500 15.500 16.500',
   c_roubado: 'M5 8a7 7 0 0 1 14 0c0 3-2 4-3 5v2H8v-2c-1-1-3-2-3-5M9 19h6M10 22h4M15 6l-3 3-2-2',
   c_cargasVento: 'M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7',
   c_costelas: 'M12 3v18M12 7c-3 0-6 1-7 3M12 7c3 0 6 1 7 3M12 11c-3 0-6 1-7 3M12 11c3 0 6 1 7 3M12 15c-2 0-4 1-5 2M12 15c2 0 4 1 5 2',
@@ -889,6 +892,9 @@ const CONDS = [
   { id: 'fomeNegra', n: 'Fome Negra', c: '#6b3f8f', i: 'c_fomeNegra', g: 'racas', r: 'Kitsune Ayto', max: 3, ini: 1 },
   { id: 'semSombra', n: 'Sem Sombra', c: '#4a4060', i: 'c_semSombra', g: 'racas', r: 'Kitsune Ayto', dur: 2 },
   { id: 'roubado', n: 'Lembrança Roubada', c: '#8e78c8', i: 'c_roubado', g: 'racas', r: 'Kitsune Ayto' },
+  // (lote 214) o Antro Lebre
+  { id: 'disparada', n: 'Disparada', c: '#c0563a', i: 'c_disparada', g: 'racas', r: 'Antro Lebre', max: 3, ini: 1 },
+  { id: 'azarado', n: 'Azarado', c: '#6b7a3a', i: 'c_azarado', g: 'racas', r: 'Antro Lebre', max: 2, ini: 1 },
 ];
 const COND_BY_ID = Object.fromEntries(CONDS.map(c => [c.id, c]));
 /* (lote 8) As condições que pedem uma janela antes (a Ferida permanente: qual barra e quanto apodrece; o Clone:

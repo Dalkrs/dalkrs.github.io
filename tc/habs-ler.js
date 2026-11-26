@@ -66,11 +66,14 @@
     [String.raw`\b(?:\d|um) envergonhados?\b`, 'envergonhado'],
     // (lote 205) a Kitsune Ayto
     [String.raw`\bficam? sem sombra\b`, 'semSombra'],
+    // (lote 214) o Antro Lebre
+    [String.raw`\bfica azarad[oa]\b|\bficam? azarad[oa]s?\b`, 'azarado'],
     [String.raw`\barranca (?:uma|a) lembrança\b`, 'roubado'],
   ];
   // o que é em você (ou no aliado): só quando o texto fala de você
   const CONDS_SI = [
     [String.raw`\ba fome negra sobe\b|\+1 de fome negra\b`, 'fomeNegra'],   // (lote 205) a Kitsune Ayto
+    [String.raw`\bganha \d de disparada\b`, 'disparada'],   // (lote 214) o Antro Lebre
     [String.raw`\bfica(?:m)? escondid|\bfica(?:m)? invisív|\bsome da vista|\bvocê some\b`, 'escondido'],
     [String.raw`\bvocê voa\b|\bvoa por\b|\bfica voando|\bvoa livre`, 'voando'],
     [String.raw`\bregenera|\bcura tier [IV]+ por turno|\bcura .{0,20} no começo`, 'regen'],
@@ -92,7 +95,7 @@
     placas: String.raw`(?:ponha |\+)(\d) placas?\b`, cargasVento: String.raw`\+(\d) cargas? de vento\b`, acusacoes: String.raw`\b(\d) acusaç`,
   };
   const SEM_DURACAO = new Set(['sangue', 'veneno', 'marcado', 'escolhido', 'ponto', 'mira', 'cravada', 'acusacoes', 'eloVoto', 'rachado', 'esfera',
-    'iluminado', 'bencao', 'broto', 'lenda', 'envergonhado', 'cargasVento', 'costelas', 'calor', 'compasso', 'placas', 'verso', 'fomeNegra', 'roubado']);
+    'iluminado', 'bencao', 'broto', 'lenda', 'envergonhado', 'cargasVento', 'costelas', 'calor', 'compasso', 'placas', 'verso', 'fomeNegra', 'roubado', 'disparada']);
   const COM_TESTE = new Set(['caido', 'preso', 'atordoado', 'medo', 'abalado', 'adormecido', 'sonolento', 'confuso', 'enfeiticado', 'cego', 'lento',
     'distraido', 'silencio', 'gelo', 'provocado', 'desarmado', 'maldicao', 'noAr', 'envergonhado', 'par', 'roubado']);
 
